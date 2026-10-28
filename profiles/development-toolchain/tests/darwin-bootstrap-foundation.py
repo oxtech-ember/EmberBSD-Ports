@@ -38,6 +38,7 @@ PROVIDERS = {
     'pkgtools/pkg_install-info': ('pkg_install-info', ('bin/pkg_install-info',)),
     'devel/diffutils': ('diffutils', ('bin/gcmp', 'bin/gdiff')),
     'devel/meson': ('meson', ('bin/meson',)),
+    'devel/wayland': ('wayland', ('bin/wayland-scanner',)),
     'security/mozilla-rootcerts-openssl': ('mozilla-rootcerts-openssl',
         ('${MYETCDIR}/openssl/certs/ca-certificates.crt',)),
 }
@@ -104,6 +105,7 @@ def versions():
         values[recipe] = match(source(file), r'^DISTNAME=\s*' + name + r'-(\S+)')
     values['sysutils/bsdinstall'] += 'nb' + match(source('sysutils/bsdinstall/Makefile'),
                                                 r'^PKGREVISION=\s*(\S+)')
+    values['devel/wayland'] = match(source('devel/wayland/Makefile'), r'^WAYLAND_VERSION=\s*(\S+)')
     ca = 'security/mozilla-rootcerts-openssl'
     revision_patch = (SOURCE / 'profiles/common-build-tools/patches/mozilla-rootcerts-prefix.patch').read_text()
     values[ca] = match(source(ca + '/Makefile'), r'^PKGNAME=\s*mozilla-rootcerts-openssl-(\S+)')
