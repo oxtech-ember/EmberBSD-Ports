@@ -1,0 +1,15 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted); preserve OS portability and build routing.
+
+--- makefile.orig
++++ makefile
+@@ -11,7 +11,7 @@
+ all: $(ALL)
+ 
+ ek: $(OBJS)
+-	$(CC) $(CFLAGS) -o ek $(OBJS)
++	$(CC) $(CFLAGS) $(LDFLAGS) -o ek $(OBJS) $(LDLIBS)
+ 
+ #Dependencies
+ 

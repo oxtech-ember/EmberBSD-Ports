@@ -1,0 +1,11 @@
+$NetBSD$
+
+BLAKE2s (ek18.tar) = 20b8d05f4ad6f97888029e84a9fc59688e404352be133f04998e7a6c49eb76c1
+SHA512 (ek18.tar) = 5e42d1cfc999b13b757f94670c2475535f5d604dd8a10b32faedd794a9f81b2ececb7e52885d8d5b6cd728d13784c7f195eff2e239c7953c51c9ffeb7d4ecb89
+Size (ek18.tar) = 143360 bytes
+SHA1 (patch-kermit.c) = d19c233fa1db04afb71a4fd5322a8832d8dc111c
+SHA1 (patch-kermit.h) = 20a2dd55cdec32922e6df2e9cf9a136a670d7a26
+SHA1 (patch-main.c) = bb29c35cb40ff8418d20f928064dbb7591f19794
+SHA1 (patch-makefile) = 5f522e5be2bb00933a346ad6169c9668afa5f414
+SHA1 (patch-platform.h) = 6419b4360c017d70750737f7c6c536844a9b4543
+SHA1 (patch-unixio.c) = b064f34165a25b52696e02af8a45f35e585f8a9b
