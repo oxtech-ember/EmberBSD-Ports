@@ -207,7 +207,7 @@ PREFER.gettext=	pkgsrc
 .include "../../devel/gettext-lib/buildlink3.mk"
 .include "../../devel/glib2/buildlink3.mk"
 .include "../../devel/gobject-introspection/buildlink3.mk"
-# GCC16 provides libatomic; do not add a separate older GCC runtime.
+# WebKit's lock-free atomics are inline; cross.mk checks that before configure.
 # WebKit retains its actual ATOMICS_ARE_BUILTIN/REQUIRE_LIBATOMIC link tests.
 .include "../../www/webkit-gtk41/cross.mk"
 .include "../../devel/pango/buildlink3.mk"

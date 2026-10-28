@@ -17,8 +17,9 @@ CONFIGURE_ENV+= EMBERBSD_GI_READELF=${TOOLDIR:Q}/bin/${_EMBER_GI_TRIPLET}-readel
 pre-configure: emberbsd-webkit-atomic
 .PHONY: emberbsd-webkit-atomic
 emberbsd-webkit-atomic:
-	${RUN}${SETENV} ${CONFIGURE_ENV} ${SH} ${.CURDIR}/../../www/webkit-gtk41/files/check-gcc16-atomic.sh \
+	${RUN}${SETENV} ${CONFIGURE_ENV} ${SH} ${.CURDIR}/../../www/webkit-gtk41/files/check-atomic.sh \
 	    ${CROSS_DESTDIR:Q} ${MACHINE_GNU_PLATFORM:Q} \
 	    ${TOOLDIR:Q}/bin/${MACHINE_GNU_PLATFORM}-readelf \
+	    ${WRKSRC:Q}/Source/cmake/WebKitCompilerFlags.cmake \
 	    ${WRAPPER_BINDIR:Q}/c++ --sysroot=${CROSS_DESTDIR:Q} ${CXXFLAGS}
 .endif

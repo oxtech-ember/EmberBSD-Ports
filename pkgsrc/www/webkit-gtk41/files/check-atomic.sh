@@ -1,33 +1,47 @@
 #!/bin/sh
 # SPDX-License-Identifier: BSD-2-Clause
-# Origin: EmberBSD (AI-assisted). Check the actual selected cross runtime.
+# Origin: EmberBSD (AI-assisted). Check the actual selected cross compiler.
+# WebKit's own ATOMIC_TEST_SOURCE must link for the target either inline
+# (ATOMICS_ARE_BUILTIN) or with -latomic resolved by compiler-rt's
+# clang_rt.atomic, the only atomic runtime; never GCC's libatomic.
 set -eu
 LC_ALL=C
 export LC_ALL
-[ "$#" -ge 4 ] || { echo 'Usage: check-gcc16-atomic.sh SYSROOT TRIPLET READELF CXX [FLAGS...]' >&2; exit 2; }
+[ "$#" -ge 5 ] || { echo 'Usage: check-atomic.sh SYSROOT TRIPLET READELF WEBKIT_COMPILER_FLAGS_CMAKE CXX [FLAGS...]' >&2; exit 2; }
 sysroot=$1
 triplet=$2
 readelf=$3
-shift 3
-case "$sysroot:$readelf:$1" in /*:/*:/*) ;; *) echo 'Absolute tool and sysroot paths are required' >&2; exit 2 ;; esac
+cmake=$4
+shift 4
+case "$sysroot:$readelf:$cmake:$1" in /*:/*:/*:/*) ;; *) echo 'Absolute tool and sysroot paths are required' >&2; exit 2 ;; esac
 case "$triplet" in
     aarch64--netbsd) machine=AArch64 ;;
     x86_64--netbsd) machine='Advanced Micro Devices X86-64' ;;
     *) echo 'Unsupported WebKit cross triplet' >&2; exit 2 ;;
 esac
-[ "$("$@" -dumpmachine)" = "$triplet" ] || { echo 'Compiler target mismatch' >&2; exit 1; }
-[ "$("$@" -dumpfullversion)" = 16.2.0 ] || { echo 'WebKit requires the common GCC 16.2.0 provider' >&2; exit 1; }
-selected=$("$@" -print-file-name=libatomic.so)
-expected=$sysroot/usr/pkg/gcc16/lib/libatomic.so
-[ -f "$selected" ] && [ "$selected" -ef "$expected" ] || {
-    echo 'The driver must select libatomic.so from the staged GCC16 provider' >&2; exit 1;
-}
-header=$("$readelf" -h "$selected")
-printf '%s\n' "$header" | grep -q 'Class:.*ELF64'
-printf '%s\n' "$header" | grep -q 'Data:.*little endian'
+case "$("$@" -dumpmachine)" in
+    "$triplet"|"${triplet%%-*}-unknown-netbsd"*) ;;
+    *) echo 'Compiler target mismatch' >&2; exit 1 ;;
+esac
+work=$(mktemp -d "${TMPDIR:-/tmp}/webkit-atomic.XXXXXX")
+trap 'rm -rf "$work"' EXIT
+awk '/set\(ATOMIC_TEST_SOURCE \[=\[/ { f = 1; next } /\]=\]\)/ { f = 0 } f' \
+    "$cmake" > "$work/t.cpp"
+grep -q 'compare_and_swap_pair_weak' "$work/t.cpp" || { echo 'WebKit atomic test source not found' >&2; exit 1; }
+mode=inline
+if ! "$@" --std=c++17 "$work/t.cpp" -o "$work/t" 2> "$work/inline.log" ||
+    "$readelf" -s --dyn-syms "$work/t" | grep -qE 'UND.* __atomic_'; then
+    mode=libatomic
+    "$@" --std=c++17 "$work/t.cpp" -latomic -o "$work/t"
+fi
+header=$("$readelf" -h "$work/t")
 [ "$(printf '%s\n' "$header" | sed -n 's/^[[:space:]]*Machine:[[:space:]]*//p')" = "$machine" ]
-dynamic=$("$readelf" -d "$selected")
-[ "$(printf '%s\n' "$dynamic" | sed -n 's/.*(SONAME).*\[\([^]]*\)\].*/\1/p')" = libatomic.so.3 ] || {
-    echo 'The selected GCC16 libatomic SONAME is not libatomic.so.3' >&2; exit 1;
-}
-printf 'GCC16 target atomic provider: %s\n' "$selected"
+needed=$("$readelf" -d "$work/t" | sed -n 's/.*(NEEDED).*\[\(.*\)\].*/\1/p')
+if printf '%s\n' "$needed" | grep -E '^(libatomic\.so\.|libgcc_s)'; then
+    echo 'WebKit atomics resolve to the GCC runtime' >&2; exit 1
+fi
+if [ "$mode" = libatomic ]; then
+    printf '%s\n' "$needed" | grep -q '^libclang_rt\.atomic-' || {
+        echo 'WebKit atomics need -latomic but it is not compiler-rt' >&2; exit 1; }
+fi
+echo "WebKit atomics for $triplet: $mode"

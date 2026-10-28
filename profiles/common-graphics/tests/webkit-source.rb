@@ -56,13 +56,14 @@ versions = File.readlines(output + '/abi.txt', chomp: true).map { |line| line.sp
   plist = File.read(File.dirname(recipe) + '/webkit-gtk' + (i < 2 ? '41' : '60') + '/PLIST')
   raise 'PLIST library version disagrees with upstream CMake.' unless plist.lines.map(&:chomp).include?('lib/' + name + '.so.' + version)
 end
-triplet = run.call('compiler-target', [cxx, '-dumpmachine']).strip
-raise 'This actual cache-flush regression requires AArch64.' unless triplet == 'aarch64--netbsd'
-raise 'Wrong GCC release.' unless run.call('compiler-version', [cxx, '-dumpfullversion']).strip == '16.2.0'
-flags = ['--sysroot=' + sysroot, '-B' + sysroot + '/usr/lib/', '-B' + sysroot + '/usr/pkg/gcc16/lib/']
+machine = run.call('compiler-target', [cxx, '-dumpmachine']).strip
+raise 'This actual cache-flush regression requires AArch64.' unless machine.match?(/\Aaarch64-(unknown)?-netbsd/)
+raise 'Wrong Clang release.' unless run.call('compiler-version', [cxx, '--version']).include?('clang version 23.')
+triplet = 'aarch64--netbsd'
+flags = ['--sysroot=' + sysroot]
 environment = %w[LIBRARY_PATH CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH].to_h { |name| [name, nil] }
 readelf = File.dirname(cxx) + '/' + triplet + '-readelf'
-link = ['-L' + sysroot + '/usr/pkg/gcc16/lib', '-Wl,-rpath,/usr/pkg/gcc16/lib', '-Wl,-rpath-link,' + sysroot + '/usr/pkg/gcc16/lib']
+link = []
 gi_project = output + '/gi-project'
 Dir.mkdir(gi_project)
 File.write(gi_project + '/CMakeLists.txt', "cmake_minimum_required(VERSION 3.20)\nproject(RealWebKitFindGI NONE)\nset(ENABLE_INTROSPECTION ON)\ninclude(\"#{source}/Source/cmake/FindGI.cmake\")\n")
@@ -89,19 +90,17 @@ raise 'Target cache builtin was not linked.' unless elf.include?('AArch64') && e
 atomic = File.read(source + '/Source/cmake/WebKitCompilerFlags.cmake')[/set\(ATOMIC_TEST_SOURCE \[=\[\n(.*?)\n    \]=\]\)/m, 1]
 raise 'Upstream atomic test boundary changed.' unless atomic
 File.write(output + '/atomic.cpp', atomic + "\n")
-checker = recipe + '/files/check-gcc16-atomic.sh'
-run.call('atomic-provider', ['sh', checker, sysroot, triplet, readelf, cxx, *flags], environment: environment)
-run.call('atomic-wrong-target', ['sh', checker, sysroot, 'x86_64--netbsd', readelf, cxx, *flags], success: false, environment: environment)
-run.call('atomic-wrong-provider', ['sh', checker, sysroot, triplet, readelf, cxx, *flags.take(2)], success: false, environment: environment)
-log = run.call('atomic-no-library', [cxx, *flags, '-std=c++23', output + '/atomic.cpp', *link, '-o', output + '/atomic-no-library'], success: false, environment: environment)
-raise 'Wrong atomic failure.' unless log.include?('__atomic_')
-run.call('atomic-library', [cxx, *flags, '-std=c++23', output + '/atomic.cpp', *link, '-latomic', '-o', output + '/atomic'], environment: environment)
-elf = run.call('atomic-elf', [readelf, '-h', '-d', output + '/atomic'])
-raise 'Wrong target atomic closure.' unless elf.include?('AArch64') && elf.include?('[libatomic.so.3]')
-inputs = [__FILE__, archive, cxx, checker, recipe + '/distinfo', sysroot + '/usr/pkg/gcc16/lib/libatomic.so'] + patches
+checker = recipe + '/files/check-atomic.sh'
+cmake = source + '/Source/cmake/WebKitCompilerFlags.cmake'
+run.call('atomic-provider', ['sh', checker, sysroot, triplet, readelf, cmake, cxx, *flags], environment: environment)
+run.call('atomic-wrong-target', ['sh', checker, sysroot, 'x86_64--netbsd', readelf, cmake, cxx, *flags], success: false, environment: environment)
+run.call('atomic-no-library', [cxx, *flags, '-std=c++23', output + '/atomic.cpp', *link, '-o', output + '/atomic'], environment: environment)
+elf = run.call('atomic-elf', [readelf, '-h', '-d', '-Ws', output + '/atomic'])
+raise 'Wrong target atomic closure.' unless elf.include?('AArch64') && !elf.include?('libatomic') && elf !~ /UND.* __atomic_/
+inputs = [__FILE__, archive, cxx, checker, recipe + '/distinfo'] + patches
 File.write(output + '/result.json', JSON.pretty_generate({
   scope: 'Actual release patch/checksum and CMake ABI checks; extracted real cache/atomic source target links. No full WebKit compile, package or target execution.',
   inputs: inputs.to_h { |path| [path, Digest::SHA256.file(path).hexdigest] },
   versions: versions, commands: commands
 }) + "\n")
-puts 'PASS: release patches, actual ABI declarations, AArch64 cache-flush and GCC16 atomic links.'
+puts 'PASS: release patches, actual ABI declarations, AArch64 cache-flush and inline atomic links.'
