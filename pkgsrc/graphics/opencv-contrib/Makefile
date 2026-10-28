@@ -3,16 +3,22 @@
 # can't use ninja because we only want to install parts of it
 CMAKE_GENERATORS_INCOMPATIBLE=	ninja
 INSTALL_DIRS=		modules/face modules/ml modules/plot modules/tracking modules/xobjdetect
+# The one cv2 Python module, built here where every module is available.
+INSTALL_DIRS+=		modules/python3
 
 .include "../../graphics/opencv/Makefile.common"
 
 DISTNAME=	opencv_contrib-${OPENCV_VERSION}
 PKGNAME=	${DISTNAME:S/_contrib/-contrib/}
-PKGREVISION=	1
+PKGREVISION=	2
 GITHUB_PROJECT=	opencv_contrib
 
 MAINTAINER=	markd@NetBSD.org
-COMMENT=	OpenCV contributed modules (face, ml, plot, tracking, xobjdetect)
+COMMENT=	OpenCV contributed modules and the cv2 Python module
+
+PY_PATCHPLIST=		yes
+PYTHON_VERSIONS_INCOMPATIBLE=	310 311
+CMAKE_CONFIGURE_ARGS+=		-DPYTHON_EXECUTABLE=${PYTHONBIN}
 
 DISTFILES=	${DEFAULT_DISTFILES} opencv-${PKGVERSION_NOREV}${EXTRACT_SUFX} opencv-${PKGVERSION_NOREV}_face_landmark_model.dat
 # use the hash from modules/face/CMakeLists.txt
@@ -34,9 +40,9 @@ post-extract:
 	${CP} ${WRKDIR}/opencv-${PKGVERSION_NOREV}_face_landmark_model.dat \
 	    ${WRKDIR}/opencv-download/data/${FACE_MODEL_MD5}-face_landmark_model.dat
 
-CMAKE_CONFIGURE_ARGS+=		-DBUILD_DOCS=OFF
-CMAKE_CONFIGURE_ARGS+=		-DWITH_FFMPEG=OFF
-CMAKE_CONFIGURE_ARGS+=		-DWITH_JASPER=OFF
+# Build the OpenCV modules with the options of graphics/opencv, so cv2
+# matches the installed libraries.
+.include "../../graphics/opencv/options.mk"
 
 CMAKE_CONFIGURE_ARGS+=		-DOPENCV_EXTRA_MODULES_PATH=${WRKDIR}/${DISTNAME}/modules
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_adas=OFF
@@ -53,7 +59,7 @@ CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_fuzzy=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_hdf=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_hfs=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_img_hash=OFF
-CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_intensity_transforms=OFF
+CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_intensity_transform=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_latentsvm=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_line_descriptor=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_matlab=OFF
@@ -65,23 +71,22 @@ CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_rgbd=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_saliency=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_shape=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_signal=OFF
-CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_stereo=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_structured_light=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_surface_matching=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_text=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_xfeatures2d=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_ximgproc=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_xphoto=OFF
+CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_dnn_superres=OFF
+CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_quality=OFF
+CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_wechat_qrcode=OFF
+CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_xstereo=OFF
 
-CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_dnn=OFF
-CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_highgui=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_ml=ON
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_python2=OFF
-CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_python3=OFF
-CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_stitching=OFF
+CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_python3=ON
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_superres=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_ts=OFF
-CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_videoio=OFF
 CMAKE_CONFIGURE_ARGS+=		-DBUILD_opencv_videostab=OFF
 
 # needed by face
@@ -109,4 +114,6 @@ post-install:
 
 BUILDLINK_API_DEPENDS.opencv+=	opencv>=${PKGVERSION_NOREV}
 .include "../../graphics/opencv/buildlink3.mk"
+.include "../../lang/python/extension.mk"
+.include "../../math/py-numpy/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

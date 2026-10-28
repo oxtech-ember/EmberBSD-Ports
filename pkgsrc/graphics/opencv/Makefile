@@ -3,17 +3,13 @@
 .include "Makefile.common"
 
 DISTNAME=	opencv-${OPENCV_VERSION}
-PKGREVISION=	1
+PKGREVISION=	2
 
 MAINTAINER=	anthony.mallet@laas.fr
 COMMENT=	Library for computer vision problems
 
-PY_PATCHPLIST=		yes
-REPLACE_PYTHON+=	samples/python/*.py
-
-PYTHON_VERSIONS_INCOMPATIBLE=	310 311
-
-CMAKE_CONFIGURE_ARGS+=	-DPYTHON_EXECUTABLE=${PYTHONBIN}
+# cv2 is built by graphics/opencv-contrib, with every module.
+CMAKE_CONFIGURE_ARGS+=	-DBUILD_opencv_python3=OFF
 
 PLIST_VARS+=	opencl
 
@@ -41,7 +37,5 @@ BUILDLINK_API_DEPENDS.openjpeg+=	openjpeg>=2.3.1
 .include "../../graphics/openjpeg/buildlink3.mk"
 .include "../../graphics/png/buildlink3.mk"
 .include "../../graphics/tiff/buildlink3.mk"
-.include "../../lang/python/extension.mk"
-.include "../../math/py-numpy/buildlink3.mk"
 .include "../../mk/jpeg.buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
