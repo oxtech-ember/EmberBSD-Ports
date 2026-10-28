@@ -54,8 +54,9 @@ lua_assert, so it accepts Lua 5.5 and defines lua_assert itself; its tests
 pass with Lua 5.5.
 KStars finds OpenCV 5 by its split calibration modules, calib and geometry,
 instead of OpenCV 4's calib3d.
-frei0r's face detection plugins include and link OpenCV 5's xobjdetect module
-from opencv-contrib, which now has CascadeClassifier.
+frei0r's face detection plugins include OpenCV 5's xobjdetect module from
+opencv-contrib, which now has CascadeClassifier, and ask CMake for it as an
+OpenCV component.
 digiKam no longer includes the C API headers that OpenCV 5 removed, and takes
 the ml module from opencv-contrib, which replaces opencv-contrib-face.
 lua-bit32 builds from the same lua-compat53 0.10 distfile and patches as
@@ -1424,31 +1425,40 @@ lua-rapidjson builds and works with Lua 5.5 unchanged.
  .include "../../mk/bsd.pkg.mk"
 --- a/multimedia/frei0r/distinfo
 +++ b/multimedia/frei0r/distinfo
-@@ -4,3 +4,7 @@
+@@ -4,3 +4,5 @@
  SHA512 (frei0r-2.3.3.tar.gz) = 4f1b7b098563b38379821a81b19e2f9722512827e6ef986e5bac836e4406ce23f7cb486fd882646a372044555a897c3532c4fa733f2e5797613c3b65aff4b015
  Size (frei0r-2.3.3.tar.gz) = 921452 bytes
- SHA1 (patch-CMakeLists.txt) = 14f7986423393935afb05519643f3568df0f2c18
-+SHA1 (patch-src_filter_facebl0r_CMakeLists.txt) = 60cfcd0e04d7b25051da031c35fdec7caa95eba8
+-SHA1 (patch-CMakeLists.txt) = 14f7986423393935afb05519643f3568df0f2c18
++SHA1 (patch-CMakeLists.txt) = 71e3b34276f132c6467323b96534fcfcdeeee638
 +SHA1 (patch-src_filter_facebl0r_facebl0r.cpp) = c06961acf7651272431aa3195cf5d1d5099557a8
-+SHA1 (patch-src_filter_facedetect_CMakeLists.txt) = f3c7c9eb1caed8063d27313848d1087ca372807c
 +SHA1 (patch-src_filter_facedetect_facedetect.cpp) = ec6de3bb876f43f6b538e066db446ae2b94932b7
---- /dev/null
-+++ b/multimedia/frei0r/patches/patch-src_filter_facebl0r_CMakeLists.txt
-@@ -0,0 +1,14 @@
-+$NetBSD$
+--- a/multimedia/frei0r/patches/patch-CMakeLists.txt
++++ b/multimedia/frei0r/patches/patch-CMakeLists.txt
+@@ -2,7 +2,10 @@
+ 
+ https://github.com/dyne/frei0r/commit/31efba74b26c161125c6c41d381dcf3f6207a728
+ 
+---- CMakeLists.txt.orig	2025-08-13 08:57:30.241196674 +0000
++Ask for the OpenCV 5 modules the face plugins use; CascadeClassifier is
++in the opencv_contrib xobjdetect module.
 +
-+OpenCV 5 moved CascadeClassifier to the opencv_contrib xobjdetect module.
-+
-+--- src/filter/facebl0r/CMakeLists.txt.orig
-++++ src/filter/facebl0r/CMakeLists.txt
-+@@ -8,6 +8,6 @@
-+ include_directories(${OpenCV_INCLUDE_DIRS})
-+ add_library (${TARGET}  MODULE ${SOURCES})
-+ set_target_properties (${TARGET} PROPERTIES PREFIX "")
-+-target_link_libraries(${TARGET} ${OpenCV_LIBS})
-++target_link_libraries(${TARGET} ${OpenCV_LIBS} opencv_xobjdetect)
++--- CMakeLists.txt.orig
+ +++ CMakeLists.txt
+ @@ -1,4 +1,4 @@
+ -cmake_minimum_required (VERSION 3.1)
+@@ -10,3 +13,12 @@
+  
+  list (APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
+  
++@@ -9,7 +9,7 @@
 + 
-+ install (TARGETS ${TARGET} LIBRARY DESTINATION ${LIBDIR})
++ option (WITHOUT_OPENCV "Disable plugins dependent upon OpenCV" OFF)
++ if (NOT WITHOUT_OPENCV)
++-  find_package (OpenCV)
+++  find_package (OpenCV 5.0 COMPONENTS core imgproc video xobjdetect)
++ endif ()
++ 
++ find_package (Cairo)
 --- /dev/null
 +++ b/multimedia/frei0r/patches/patch-src_filter_facebl0r_facebl0r.cpp
 @@ -0,0 +1,14 @@
@@ -1466,23 +1476,6 @@ lua-rapidjson builds and works with Lua 5.5 unchanged.
 + #include "frei0r.hpp"
 + #include "frei0r_math.h"
 + 
---- /dev/null
-+++ b/multimedia/frei0r/patches/patch-src_filter_facedetect_CMakeLists.txt
-@@ -0,0 +1,14 @@
-+$NetBSD$
-+
-+OpenCV 5 moved CascadeClassifier to the opencv_contrib xobjdetect module.
-+
-+--- src/filter/facedetect/CMakeLists.txt.orig
-++++ src/filter/facedetect/CMakeLists.txt
-+@@ -8,6 +8,6 @@
-+ include_directories(${OpenCV_INCLUDE_DIRS})
-+ add_library (${TARGET}  MODULE ${SOURCES})
-+ set_target_properties (${TARGET} PROPERTIES PREFIX "")
-+-target_link_libraries(${TARGET} ${OpenCV_LIBS})
-++target_link_libraries(${TARGET} ${OpenCV_LIBS} opencv_xobjdetect)
-+ 
-+ install (TARGETS ${TARGET} LIBRARY DESTINATION ${LIBDIR})
 --- /dev/null
 +++ b/multimedia/frei0r/patches/patch-src_filter_facedetect_facedetect.cpp
 @@ -0,0 +1,14 @@
