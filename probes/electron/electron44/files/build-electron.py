@@ -580,7 +580,7 @@ def reconfigure(options):
         native, environment, values = producer_inputs(candidate, sdk)
         new_commands = json.loads((candidate.work / 'target-commands/commands.json').read_text())
         require(new_commands == old_commands, 'target compiler, sysroot or runtime changed')
-        environment = {key: value.replace(scratch + '/target-commands/',
+        environment = {key: value.replace(str(candidate.work.resolve()) + '/target-commands/',
                                            str(work / 'target-commands') + '/')
                        for key, value in environment.items()}
         permitted_env = {'EMBERBSD_HOST_TYPESCRIPT', 'EMBERBSD_HOST_ROLLUP',

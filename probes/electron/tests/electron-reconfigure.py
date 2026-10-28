@@ -54,7 +54,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     local=b.local_module; b.local_module=lambda name, file: Source if file == 'prepare-build-sources.py' else local(name,file)
     state={'commands':commands, 'values':new}
     def inputs(candidate, sdk):
-        path=candidate.work/'target-commands'; path.mkdir()
+        path=candidate.work.resolve()/'target-commands'; path.mkdir()
         (path/'commands.json').write_text(json.dumps(state['commands']))
         return Native(), {'PATH':state.get('path', Native.path), 'EMBERBSD_CONTROL_GIT':state.get('git', '/usr/bin/git'), 'EMBERBSD_HOST_TYPESCRIPT':'/new', 'CC':str(path/'cc'), **state.get('extra', {})}, state['values']
     b.producer_inputs=inputs
