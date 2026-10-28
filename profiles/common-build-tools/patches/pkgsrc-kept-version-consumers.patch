@@ -58,7 +58,8 @@ frei0r's face detection plugins include OpenCV 5's xobjdetect module from
 opencv-contrib, which now has CascadeClassifier, and ask CMake for it as an
 OpenCV component.
 digiKam no longer includes the C API headers that OpenCV 5 removed, and takes
-the ml module from opencv-contrib, which replaces opencv-contrib-face.
+the ml module from opencv-contrib, which replaces opencv-contrib-face, as an
+OpenCV component.
 lua-bit32 builds from the same lua-compat53 0.10 distfile and patches as
 lua-compat53, which build with Lua 5.5; its tests pass with Lua 5.5.
 LuaBitOp finds the double lua_Number of Lua 5.3 and later through
@@ -1099,11 +1100,12 @@ lua-rapidjson builds and works with Lua 5.5 unchanged.
  #.include "../../multimedia/ffmpeg7/buildlink3.mk"
 --- a/graphics/digikam/distinfo
 +++ b/graphics/digikam/distinfo
-@@ -3,3 +3,4 @@
+@@ -3,3 +3,5 @@
  BLAKE2s (digiKam-9.1.0.tar.xz) = 7c0946c0eb3874a3561f1d24b73cefa55d025b928488e4a2fb62e114e9038557
  SHA512 (digiKam-9.1.0.tar.xz) = ab083cbde1f3e243a8766b8fe5ea256d32877ff7f2e048349fb063e1ca90b0395eee16028466516a9ab74f10582a413bfc9d64392a4b25b33e45b70ca34f5cd6
  Size (digiKam-9.1.0.tar.xz) = 73714208 bytes
 +SHA1 (patch-core_app_utils_digikam__opencv.h.cmake.in) = 5d78cc7d8c04810acb1c14561d66cc8f58800073
++SHA1 (patch-core_cmake_rules_RulesLibOpenCV.cmake) = 1e206d05a8dbb50abeba9fa8429ef16a8776d157
 --- /dev/null
 +++ b/graphics/digikam/patches/patch-core_app_utils_digikam__opencv.h.cmake.in
 @@ -0,0 +1,23 @@
@@ -1130,6 +1132,24 @@ lua-rapidjson builds and works with Lua 5.5 unchanged.
 + 
 + // Shape detection/recognition module headers
 + 
+--- /dev/null
++++ b/graphics/digikam/patches/patch-core_cmake_rules_RulesLibOpenCV.cmake
+@@ -0,0 +1,15 @@
++$NetBSD$
++
++digiKam links opencv_ml, which is an OpenCV 5 component from
++graphics/opencv-contrib; ask find_package(OpenCV) for it.
++
++--- core/cmake/rules/RulesLibOpenCV.cmake.orig
+++++ core/cmake/rules/RulesLibOpenCV.cmake
++@@ -10,6 +10,7 @@
++                                     imgcodecs
++                                     dnn
++                                     flann
+++                                    ml
++ )
++ 
++ if(${OpenCV_FOUND})
 --- a/graphics/osg/Makefile
 +++ b/graphics/osg/Makefile
 @@ -1,7 +1,7 @@
