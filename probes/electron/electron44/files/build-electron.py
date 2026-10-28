@@ -366,51 +366,6 @@ def ensure_allocator_shim_cpp_noexcept(workspace):
 
 
 
-def ensure_target_llvm_resource_includes(sysroot, host_prefix):
-    """Publish freestanding Clang headers under the target -resource-dir.
-
-    Electron binds -resource-dir to sysroot usr/pkg/llvm/lib/clang/<ver> and
-    drops host -isystem resource includes from cxx so Chromium libc++ wins.
-    The stage often has only compiler-rt there, or an absolute symlink into
-    host-tools. Copy real headers from the host Clang resource dir so
-    xmmintrin.h / immintrin.h resolve without depending on abs symlinks.
-    """
-    import shutil
-    llvm_lib = Path(sysroot) / 'usr' / 'pkg' / 'llvm' / 'lib' / 'clang'
-    host_clang = Path(host_prefix) / 'lib' / 'clang'
-    if not llvm_lib.is_dir() or not host_clang.is_dir():
-        return
-    host_versions = sorted(p.name for p in host_clang.iterdir() if (p / 'include').is_dir())
-    if not host_versions:
-        return
-    for ver_dir in sorted(p for p in llvm_lib.iterdir() if p.is_dir()):
-        dest = ver_dir / 'include'
-        host_src = host_clang / ver_dir.name / 'include'
-        if not host_src.is_dir():
-            host_src = host_clang / host_versions[-1] / 'include'
-        replace = False
-        if dest.is_symlink():
-            target = os.fspath(dest.readlink())
-            # Absolute host symlink is not durable across machines/prefix moves.
-            if target.startswith('/'):
-                dest.unlink()
-                replace = True
-        elif not dest.is_dir():
-            replace = True
-        elif not (dest / 'xmmintrin.h').is_file():
-            shutil.rmtree(dest)
-            replace = True
-        if not replace:
-            continue
-        tmp = ver_dir / '.include.publish-tmp'
-        if tmp.exists():
-            shutil.rmtree(tmp)
-        shutil.copytree(host_src, tmp, symlinks=False)
-        require((tmp / 'xmmintrin.h').is_file(),
-                'host Clang resource includes missing xmmintrin.h')
-        tmp.rename(dest)
-
-
 def ensure_bindgen_dyld_fallback(workspace):
     """run_bindgen sets DYLD_LIBRARY_PATH to the host LLVM lib dir, which makes
     /usr/lib/libiconv.2.dylib (needed by libxml2) resolve to GNU libiconv lacking
@@ -581,7 +536,6 @@ def configure(options):
     ensure_bindgen_dyld_fallback(options.workspace)
     ensure_allocator_shim_cpp_noexcept(options.workspace)
     ensure_host_libiconv_unshadow(options.host_prefix)
-    ensure_target_llvm_resource_includes(options.sysroot, options.host_prefix)
     output = work / 'out'; output.mkdir()
     (output / 'args.gn').write_text(gn_arguments(values))
     sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
@@ -607,7 +561,6 @@ def build(options):
     ensure_bindgen_dyld_fallback(options.workspace)
     ensure_allocator_shim_cpp_noexcept(options.workspace)
     ensure_host_libiconv_unshadow(options.host_prefix)
-    ensure_target_llvm_resource_includes(options.sysroot, options.host_prefix)
     saved = json.loads((options.work / 'configuration.json').read_text())
     require(saved['source'] == str(options.workspace) and saved['sdk'] == str(options.sdk_source) and
             saved['host_prefix'] == str(options.host_prefix) and saved['target'] == options.target,
