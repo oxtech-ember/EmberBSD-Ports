@@ -20,8 +20,9 @@ platform behavior, shared-library naming, installed script layout and
 Fortran/cross recipe composition. The Makefile installation-directory hunk
 is applied to the current upstream rule.
 
-Regeneration uses Autoconf 2.73 and Automake 1.18.1. Verify the exact generated
-files rather than independently editing generated shell code:
+The archive's generated files come from Automake 1.18.1; regeneration uses the
+Ports Autoconf 2.73 and Automake 1.19. Verify the generated changes rather
+than independently editing generated shell code:
 
 ```sh
 PATH=/absolute/current-autotools/bin:$PATH \
@@ -31,8 +32,11 @@ sh profiles/common-build-tools/tests/libtool-source.sh \
 ```
 
 The gate verifies the archive and pkgsrc patch checksums, applies source and
-manual series with zero fuzz, rejects repeated patch application and compares
-regenerated configure/ltmain output byte for byte. This gate passed on macOS;
+manual series with zero fuzz and rejects repeated patch application. It
+regenerates the unchanged and the `manual-*` trees with the same tools and
+requires that the shipped `configure` and `libltdl/configure` deltas change
+exactly the lines that regeneration changes; `ltmain.sh` is compared byte for
+byte. This gate passed on macOS;
 it does not substitute for installed target execution.
 
 ## GCC driver-prefix transport
@@ -275,8 +279,7 @@ with Automake 1.18.1. The generated `configure` and `libltdl/configure`
 changes were therefore made as a delta: regenerate the unchanged and the
 changed `manual-*` trees with the same tools, and apply only that difference
 to the shipped generated files with zero fuzz. Automake output does not
-change in that delta. `tests/libtool-source.sh` still names Automake 1.18.1
-and needs a new pin before it can check the full regeneration again.
+change in that delta. `tests/libtool-source.sh` checks this delta.
 
 libtool-fortran and cross-libtool-fortran 2.6.2nb2 carry the case. The common
 dependency rules require that revision from both Fortran script providers.
