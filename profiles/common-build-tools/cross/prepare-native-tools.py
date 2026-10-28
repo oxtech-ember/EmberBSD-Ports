@@ -43,7 +43,7 @@ ROLE_VARIABLES = {
 OPTIONAL_ROLES = {'clang-tblgen': 'EMBERBSD_CLANG_TABLEGEN',
                   'wayland-scanner': 'EMBERBSD_WAYLAND_SCANNER',
                   'flex': 'TOOLS_PLATFORM.flex', 'bison': 'TOOLS_PLATFORM.bison',
-                  'yacc': 'TOOLS_PLATFORM.yacc',
+                  'yacc': 'TOOLS_PLATFORM.yacc', 'rpcgen': 'TOOLS_PATH.rpcgen',
                   'gcmp': 'TOOLS_PLATFORM.cmp', 'gchgrp': 'TOOLS_PLATFORM.chgrp',
                   'gchown': 'TOOLS_PLATFORM.chown', 'gwc': 'TOOLS_PLATFORM.wc',
                   'gprintf': 'TOOLS_PLATFORM.printf', 'gtail': 'TOOLS_PLATFORM.tail',
@@ -176,6 +176,12 @@ def render(toolset, qt=(), fetch_mode='fetch'):
     if 'flex' not in toolset.tools:
         lines += ['TOOLS_PLATFORM.lex?=', '.if !empty(TOOLS_PLATFORM.lex)',
                   '.error TOOLS_PLATFORM.lex was not selected from the host prefix', '.endif']
+    # pkgsrc probes system directories for rpcgen independently of
+    # TOOLS_PLATFORM. Refuse execution until the native package is installed.
+    if 'rpcgen' not in toolset.tools:
+        lines += ['TOOLS_PATH.rpcgen?= ${TOOLS_DIR}/bin/false',
+                  '.if "${TOOLS_PATH.rpcgen}" != "${TOOLS_DIR}/bin/false"',
+                  '.error TOOLS_PATH.rpcgen was not selected from the host prefix', '.endif']
     # The explicit manual mode supports only already available sources.
     if fetch_mode == 'fetch':
         value = literal(toolset.tool('fetch'))

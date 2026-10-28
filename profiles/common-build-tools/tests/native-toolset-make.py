@@ -52,6 +52,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
                          'abi_flags': {key: list(value) for key, value in flags.items()}})
     api = types.ModuleType('emberbsd_sdk.native_toolset')
     api.load_host_prefix = mock.Mock(return_value=selected)
+    del tools['rpcgen']
     pins = ['--host-prefix', str(root / 'host-pkg-llvm')]
     # Cross Qt modules need the native Qt prefix and libexec directory from qtpaths.
     clang_tblgen = root / 'host-pkg-llvm/bin/clang-tblgen'
@@ -114,6 +115,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         # A make command-line assignment can replace even := variables.
         # Expected values must be literals, not aliases to another variable.
         assert b'TOOLS_PLATFORM.lex?= ${_EMBER_SDK_LEX}' in before
+        assert b'TOOLS_PATH.rpcgen?= ${TOOLS_DIR}/bin/false' in before
         for role in adapter.ROLE_VARIABLES:
             name = '_EMBER_SDK_' + role.upper().replace('-', '_')
             value = (shlex.join((*selected.command(role), '-p')) if role == 'gmkdir' else
@@ -212,6 +214,15 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
                 assert b'TOOLS_PLATFORM.lex?=\n' in include.read_bytes()
             tools[role] = str(root / ('sdk-' + role))
             executable.touch()
+        rpcgen = root / 'host-pkg-llvm/bin/rpcgen'
+        rpcgen.touch()
+        tools['rpcgen'] = str(root / 'sdk-rpcgen')
+        with contextlib.redirect_stdout(io.StringIO()):
+            adapter.main(['write', *pins, '--output', str(destination)])
+        assert 'rpcgen' in api.load_host_prefix.call_args.kwargs['required_roles']
+        assert b'TOOLS_PATH.rpcgen?= ${_EMBER_SDK_RPCGEN}' in include.read_bytes()
+        rpcgen.unlink()
+        del tools['rpcgen']
         tools['clang-tblgen'] = str(root / 'sdk-clang-tblgen')
         clang_tblgen.touch()
         adapter.write(selected, str(destination))
