@@ -68,6 +68,7 @@ with Lua 5.5 and its tests pass.
 lua-rapidjson builds and works with Lua 5.5 unchanged.
 libuv is updated to 1.53.0, the newest release, which luv 1.53.0-0 is built for.
 luv is updated to 1.53.0-0, which passes threads their arguments with Lua 5.5 and fixes use-after-frees under its garbage collector.
+py-Willow takes cv2 from opencv-contrib, the one cv2, which has CascadeClassifier.
 
 --- a/devel/Guitar/Makefile
 +++ b/devel/Guitar/Makefile
@@ -1277,6 +1278,26 @@ luv is updated to 1.53.0-0, which passes threads their arguments with Lua 5.5 an
  .include "../../www/curl/buildlink3.mk"
  .include "../../multimedia/ffmpeg4/buildlink3.mk"
  
+--- a/graphics/py-Willow/Makefile
++++ b/graphics/py-Willow/Makefile
+@@ -2,7 +2,7 @@
+ 
+ DISTNAME=	willow-1.12.0
+ PKGNAME=	${PYPKGPREFIX}-${DISTNAME:S/^w/W/}
+-PKGREVISION=	6
++PKGREVISION=	7
+ CATEGORIES=	graphics python
+ MASTER_SITES=	${MASTER_SITE_PYPI:=W/Willow/}
+ 
+@@ -19,6 +19,7 @@
+ 
+ PYTHON_VERSIONS_INCOMPATIBLE=	310 311
+ 
+-.include "../../graphics/opencv/buildlink3.mk"
++# cv2, with CascadeClassifier from OpenCV 5's xobjdetect, is in opencv-contrib.
++.include "../../graphics/opencv-contrib/buildlink3.mk"
+ .include "../../lang/python/wheel.mk"
+ .include "../../mk/bsd.pkg.mk"
 --- a/lang/hs-lua/Makefile
 +++ b/lang/hs-lua/Makefile
 @@ -1,7 +1,7 @@

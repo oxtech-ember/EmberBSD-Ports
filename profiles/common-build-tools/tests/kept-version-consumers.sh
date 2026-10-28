@@ -40,6 +40,7 @@ games/simgear graphics/osg
 graphics/darktable lang/lua55
 graphics/digikam graphics/opencv-contrib
 graphics/osg lang/lua55
+graphics/py-Willow graphics/opencv-contrib
 lang/hs-lua lang/lua55
 misc/kstars graphics/opencv
 multimedia/frei0r graphics/opencv-contrib
