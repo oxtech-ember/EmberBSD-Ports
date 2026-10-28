@@ -1,0 +1,17 @@
+Origin: EmberBSD, AI-assisted.
+db18's buildlink3.mk mapped -ldb-18 to -ldb6, a library db18 does not
+install, so a configure probe for -ldb-18 (jigdo tries db-18.1, db18.1,
+db-18, db18, db) linked against db6 or failed. Map it to db18, as db4
+and db5 map -ldb-4/-ldb-5 to themselves. Not submitted upstream.
+
+--- a/databases/db18/buildlink3.mk
++++ b/databases/db18/buildlink3.mk
+@@ -11,7 +11,7 @@
+ BUILDLINK_PKGSRCDIR.db18?=	../../databases/db18
+ BUILDLINK_INCDIRS.db18?=	include/db18
+ BUILDLINK_LDADD.db18=		-ldb18
+-BUILDLINK_TRANSFORM+=		l:db-18:db6
++BUILDLINK_TRANSFORM+=		l:db-18:db18
+ 
+ .if defined(USE_DB185) && !empty(USE_DB185:M[yY][eE][sS])
+ BUILDLINK_TRANSFORM+=		l:db:db18
