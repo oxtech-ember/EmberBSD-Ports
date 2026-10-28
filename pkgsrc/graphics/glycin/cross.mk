@@ -39,7 +39,8 @@ MAKE_ENV+= RUSTC=${TOOLBASE}/bin/rustc
 MAKE_ENV+= CARGO_NET_OFFLINE=true CARGO_BUILD_JOBS=${MAKE_JOBS:U1}
 MAKE_ENV+= CARGO_TARGET_${_EMBER_GLYCIN_RUST_KEY}_LINKER=${WRAPPER_BINDIR}/cc
 .if exists(${TOOLBASE}/bin/rustc)
-_EMBER_GLYCIN_RUST_HOST!= ${TOOLBASE:Q}/bin/rustc -vV | ${EMBERBSD_NATIVE_AWK:Q} \
+_EMBER_GLYCIN_AWK= ${EMBERBSD_NATIVE_AWK:U${TOOLBASE}/bin/nawk}
+_EMBER_GLYCIN_RUST_HOST!= ${TOOLBASE:Q}/bin/rustc -vV | ${_EMBER_GLYCIN_AWK:Q} \
     '/^release: / {release=$$2} /^commit-hash: / {commit=$$2} /^host: / {host=$$2} \
     END {if (release == "1.99.1" && commit == "58cf8f9c35b355199727627d07ae34a4e2846d67") print host; else exit 1}'
 .if empty(_EMBER_GLYCIN_RUST_HOST) || !empty(_EMBER_GLYCIN_RUST_HOST:C/[A-Za-z0-9_-]//g)

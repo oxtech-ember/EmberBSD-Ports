@@ -54,7 +54,8 @@ MAKE_ENV+= CARGO_TARGET_${_EMBER_RSVG_RUST_KEY}_LINKER=${WRAPPER_BINDIR}/cc
 # Dependencies may not be installed during the first make parse. Once present,
 # derive the host key only from the matching native compiler's actual identity.
 .if exists(${TOOLBASE}/bin/rustc)
-_EMBER_RSVG_RUST_HOST!= ${TOOLBASE:Q}/bin/rustc -vV | ${EMBERBSD_NATIVE_AWK:Q} \
+_EMBER_RSVG_AWK= ${EMBERBSD_NATIVE_AWK:U${TOOLBASE}/bin/nawk}
+_EMBER_RSVG_RUST_HOST!= ${TOOLBASE:Q}/bin/rustc -vV | ${_EMBER_RSVG_AWK:Q} \
     '/^release: / {release=$$2} /^commit-hash: / {commit=$$2} /^host: / {host=$$2} \
     END {if (release == "1.99.1" && commit == "58cf8f9c35b355199727627d07ae34a4e2846d67") print host; else exit 1}'
 .if empty(_EMBER_RSVG_RUST_HOST) || !empty(_EMBER_RSVG_RUST_HOST:C/[A-Za-z0-9_-]//g)
@@ -80,7 +81,7 @@ pre-configure: emberbsd-librsvg-rust
 emberbsd-librsvg-rust:
 	${RUN}set -eu; \
 	rustc=${TOOLBASE:Q}/bin/rustc; cargo=${TOOLBASE:Q}/bin/cargo; \
-	"$$rustc" -vV | ${EMBERBSD_NATIVE_AWK:Q} -v expected=${_EMBER_RSVG_RUST_HOST:Q} \
+	"$$rustc" -vV | ${_EMBER_RSVG_AWK:Q} -v expected=${_EMBER_RSVG_RUST_HOST:Q} \
 	    '/^release: / {release=$$2} /^commit-hash: / {commit=$$2} /^host: / {host=$$2} \
 	     END {if (release != "1.99.1" || commit != "58cf8f9c35b355199727627d07ae34a4e2846d67" || host != expected) exit 1}'; \
 	test '${_EMBER_RSVG_RUST_HOST}' != '${RUST_TARGET}'; \

@@ -26,7 +26,7 @@ with tempfile.TemporaryDirectory(prefix='glycin-cross-test-') as tmp:
     for target, triple, gnu, std in (('amd64','x86_64-unknown-netbsd','x86_64--netbsd','rust-std-x86_64-netbsd'),
                                      ('aarch64','aarch64-unknown-netbsd','aarch64--netbsd','rust-std-aarch64-netbsd')):
         args=[str(a.bmake),'-f',str(makefile),'EMBERBSD_CROSS_TARGET='+target,
-              'TOOLBASE='+str(prefix),'EMBERBSD_NATIVE_AWK='+str(prefix/'bin/nawk'),'TOOLDIR=/selected/cross','PREFIX=/usr/pkg','WRKDIR='+tmp,
+              'TOOLBASE='+str(prefix),'TOOLDIR=/selected/cross','PREFIX=/usr/pkg','WRKDIR='+tmp,
               'WRAPPER_BINDIR=/selected/wrappers','EMBERBSD_CROSS_BUILD_AR='+str(prefix/'bin/llvm-ar'),
               'EMBERBSD_CROSS_BUILD_CC='+str(prefix/'bin/clang'),'EMBERBSD_CROSS_BUILD_CXX='+str(prefix/'bin/clang++')]
         for var in ('MAKE_ENV','MESON_CROSS.rust_target','MESON_BINARY.nm','TOOL_DEPENDS'):
