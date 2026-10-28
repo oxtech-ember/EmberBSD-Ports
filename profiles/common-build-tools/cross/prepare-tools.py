@@ -41,7 +41,7 @@ def make_value(value):
 
 
 def prepare_clang(options):
-    from emberbsd_sdk import application_toolchain, paths, process, target_toolchain
+    from emberbsd_sdk import application_toolchain, llvm_runtime, paths, process, target_toolchain
     from emberbsd_sdk.host_prefix import load_host_prefix, _member
     if application_toolchain.APPLICATION_TOOLCHAIN_API < 2:
         raise ValueError('The selected SDK must provide application toolchain API 2')
@@ -58,7 +58,13 @@ def prepare_clang(options):
     compiler = target_toolchain.clang_compiler(options.compiler, triplet,
         host=native.host, env=env)
     sysroot = paths.canonical_existing(options.sysroot)
-    runtime = application_toolchain.load_clang_runtime(sysroot, target=options.target)
+    if options.runtime_stage:
+        runtime_root = paths.canonical_existing(options.runtime_stage)
+        runtime = llvm_runtime.validate_stage(runtime_root, target=options.target,
+            required_components=llvm_runtime.FULL_COMPONENTS, base=sysroot)
+    else:
+        runtime_root = sysroot
+        runtime = application_toolchain.load_clang_runtime(sysroot, target=options.target)
     os_tools = paths.canonical_existing(options.os_tools)
     install = str(Path(os_tools, 'bin', triplet + '-install'))
     _member(install, os_tools, native.host, search_path=native.path)
@@ -66,7 +72,7 @@ def prepare_clang(options):
     runtime_prefix = make_value(runtime['prefix'])
     libraries = sorted({str(Path(runtime['artifacts'][role]['shared']).parent)
                         for role in ('libcxx', 'libcxxabi', 'libunwind')})
-    for value in (str(output), sysroot, *libraries):
+    for value in (str(output), sysroot, runtime_root, *libraries):
         make_value(value)
     # A prepared directory is routing, not another runtime or acceptance record.
     # Refuse all input errors before creating it and remove only our new output
@@ -75,7 +81,7 @@ def prepare_clang(options):
     try:
         bound = application_toolchain.bind_clang_application_commands(
             output/'commands', compiler, sysroot, runtime,
-            python=native.tool('python'), include_auxiliary=True)
+            python=native.tool('python'), include_auxiliary=True, runtime_root=runtime_root)
         binaries = output/'bin'; binaries.mkdir()
         aliases = {'clang':bound['cc'], 'clang++':bound['cxx'], 'clang-cpp':bound['cpp']}
         aliases.update({triplet+'-'+name:path for name,path in aliases.copy().items()})
@@ -88,7 +94,8 @@ def prepare_clang(options):
             (binaries/name).symlink_to(path)
         values = {'FAMILY':'clang', 'TARGET':options.target, 'TRIPLET':triplet,
                   'SYSROOT':sysroot, 'TOOLS':str(output), 'RUNTIME_PREFIX':runtime_prefix,
-                  'RUNTIME_LIBRARY_PATHS':';'.join(str(Path(sysroot, name)) for name in libraries)}
+                  'RUNTIME_ROOT':runtime_root,
+                  'RUNTIME_LIBRARY_PATHS':';'.join(str(Path(runtime_root, name)) for name in libraries)}
         text = '# Generated from the selected SDK compiler and runtime.\n'
         text += ''.join('_EMBER_TARGET_' + key + ':= ' + value + '\n'
                         for key,value in values.items())
@@ -106,6 +113,7 @@ def prepare(args):
     parser.add_argument('--host-compiler-family', choices=('clang','gcc'), default='clang')
     parser.add_argument('--host-prefix')
     parser.add_argument('--sysroot')
+    parser.add_argument('--runtime-stage', help='explicit completed LLVM runtime stage for this sysroot')
     parser.add_argument('compiler', metavar='COMPILER_PREFIX')
     parser.add_argument('os_tools', metavar='OS_TOOLDIR')
     parser.add_argument('output', metavar='NEW_TOOLDIR')
@@ -116,6 +124,8 @@ def prepare(args):
     if options.compiler_family == 'clang':
         prepare_clang(options)
     else:
+        if options.runtime_stage:
+            raise ValueError('--runtime-stage requires Clang')
         prepare_gcc(options.compiler, options.os_tools, options.output, options.target)
 
 

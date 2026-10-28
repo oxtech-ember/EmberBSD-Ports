@@ -138,6 +138,17 @@ mismatched runtime inputs fail before output creation. Select the explicit
 GCC composition route with `--compiler-family gcc`; it links installed GCC
 drivers and Binutils tools.
 
+For a build against a separately prepared full LLVM runtime, pass
+`--runtime-stage /absolute/completed-runtime-stage`. The adapter validates its
+target, payload and recorded base inputs against the selected sysroot, then
+uses the SDK application binding with that runtime root. The sysroot itself
+is not modified. This is useful for testing a replacement before installing
+it; target execution and final sysroot acceptance remain separate checks.
+`tests/cross-runtime-rpath.py` checks a prepared pkgsrc C++ wrapper and real
+target linker: pass `--wrapper`, `--wrapper-config`, `--runtime-stage`,
+`--readelf` and a new absolute `--work`. It checks that an explicit stage
+RPATH becomes a target path rather than embedding the build machine's path.
+
 The default remains AArch64. For amd64, pass `--target amd64` before paths.
 Also set `EMBERBSD_CROSS_TARGET=amd64` in the cross MAKECONF. This selects
 `MACHINE_ARCH=x86_64` and the `x86_64--netbsd` compiler and CRT paths.

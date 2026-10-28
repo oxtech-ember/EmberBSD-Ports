@@ -3,6 +3,8 @@
 # Origin: EmberBSD (AI-assisted). Synthetic runtime fixture; not ABI acceptance.
 """Exercise the selected Clang cross route with the installed host toolchain."""
 import argparse
+import hashlib
+import json
 import os
 from pathlib import Path
 import shutil
@@ -70,7 +72,7 @@ def profile_setup():
 profile, native_mapping, pkg_admin = profile_setup()
 
 
-def pkgsrc_route(target, triple, tools, sysroot, *, cxx):
+def pkgsrc_route(target, triple, tools, sysroot, *, cxx, runtime_root=None):
     config = work / ('makeconf-' + target)
     config.write_text(''.join(f'{key}= {value}\n' for key, value in {
         'BSD_PKG_MK': 'yes', 'BATCH': 'yes', 'USE_CROSS_COMPILE': 'yes',
@@ -83,7 +85,8 @@ def pkgsrc_route(target, triple, tools, sysroot, *, cxx):
         f'.include "{profile / "mk.conf"}"\n')
     package = 'textproc/icu' if cxx else 'devel/zlib'
     keys = ('PKGSRC_COMPILER', 'CC', 'CXX', 'PKG_CC', 'PKG_CXX', 'PKG_FAIL_REASON',
-            'DEPENDS', 'BUILD_DEPENDS', 'TOOL_DEPENDS', '.MAKE.MAKEFILES')
+            'DEPENDS', 'BUILD_DEPENDS', 'TOOL_DEPENDS', '.MAKE.MAKEFILES',
+            'BUILDLINK_PASSTHRU_RPATHDIRS', '_CWRAPPERS_TRANSFORM')
     command = [str(bmake), '-C', str(pkgsrc / package), 'MAKECONF=' + str(config),
         'OPSYS=NetBSD', 'OS_VERSION=11.0', 'OPSYS_VERSION=110000',
         'NATIVE_OPSYS=Darwin', 'NATIVE_OS_VERSION=27.0', 'NATIVE_OPSYS_VERSION=270001',
@@ -111,6 +114,10 @@ def pkgsrc_route(target, triple, tools, sysroot, *, cxx):
         assert data['PKG_CXX'] == str(tools / 'bin/clang++'), data
         assert (tools / 'bin/clang++').resolve(strict=True) == (tools / 'commands/cxx').resolve(strict=True)
     assert not data['PKG_FAIL_REASON'], data['PKG_FAIL_REASON']
+    if runtime_root is not None:
+        assert str(runtime_root) not in data['BUILDLINK_PASSTHRU_RPATHDIRS']
+        assert '/usr/pkg/llvm/lib' in data['BUILDLINK_PASSTHRU_RPATHDIRS']
+        assert ('R:' + str(runtime_root) + '/usr/pkg/llvm:/usr/pkg/llvm') in data['_CWRAPPERS_TRANSFORM']
     makefiles = [Path(name) if Path(name).is_absolute() else pkgsrc / package / name
                  for name in data['.MAKE.MAKEFILES'].split()]
     assert any(path.resolve() == pkgsrc / 'mk/tools/cross.NetBSD.mk' for path in makefiles), data['.MAKE.MAKEFILES']
@@ -178,8 +185,8 @@ def completed_sysroot(target):
     # not the target ABI or runtime payload acceptance.
     from test_builder import fixture as builder_fixture
     options = builder_fixture(case.root, target=target)
-    builder, runtime = case.builder(options=options)
-    retarget_runtime(runtime, target)
+    builder, runtime = case.builder(options=options,
+                                    retarget=lambda fixture: retarget_runtime(fixture, target))
 
     def compiler_for_selected_target(self):
         triplet = {'aarch64': 'aarch64--netbsd', 'amd64': 'x86_64--netbsd'}[self.options['target']]
@@ -200,7 +207,14 @@ def completed_sysroot(target):
 
     llvm_builder.ClangBuilder.compiler = compiler_for_selected_target
     builder.run()
-    return case, Path(builder.paths['destination'])
+    sysroot = Path(builder.paths['destination'])
+    base_header = sysroot / 'usr/include/stdint.h'
+    base_header.parent.mkdir(parents=True, exist_ok=True)
+    base_header.write_text('/* selected runtime base fixture */\n')
+    runtime.record['base']['files'] = {
+        'usr/include/stdint.h': hashlib.sha256(base_header.read_bytes()).hexdigest()}
+    runtime.save()
+    return case, sysroot, runtime.stage
 
 
 def invoke(target, sysroot, output, *, accept, extra=()):
@@ -232,7 +246,7 @@ for triple in ('aarch64--netbsd', 'x86_64--netbsd'):
 for target, triple, machine, instruction in (
         ('aarch64', 'aarch64--netbsd', 183, 'ret'),
         ('amd64', 'x86_64--netbsd', 62, 'retq')):
-    case, sysroot = completed_sysroot(target)
+    case, sysroot, stage = completed_sysroot(target)
     try:
         output = work / ('tools-' + target)
         require_default_clang(target, work / ('default-' + target))
@@ -259,13 +273,29 @@ for target, triple, machine, instruction in (
         target_mk = (output / 'target.mk').read_text()
         assert '_EMBER_TARGET_FAMILY:= clang\n' in target_mk
         assert '_EMBER_TARGET_SYSROOT:= ' + str(sysroot) in target_mk
+        assert '_EMBER_TARGET_RUNTIME_ROOT:= ' + str(sysroot) in target_mk
         assert 'gcc' not in target_mk.lower() and 'g++' not in target_mk.lower()
+        staged = work / ('tools-staged-' + target)
+        invoke(target, sysroot, staged, accept=True, extra=('--runtime-stage', stage))
+        staged_mk = (staged / 'target.mk').read_text()
+        assert '_EMBER_TARGET_RUNTIME_ROOT:= ' + str(stage) in staged_mk
+        commands = json.loads((staged / 'commands/commands.json').read_text())
+        assert any(str(stage) in word for word in commands['commands']['cxx'])
+        assert any(str(stage) in word for word in commands['link_flags']['cxx'])
+        base_header = sysroot / 'usr/include/stdint.h'
+        original = base_header.read_text()
+        base_header.write_text('/* changed base */\n')
+        invalid = work / ('tools-staged-wrong-base-' + target)
+        text = invoke(target, sysroot, invalid, accept=False, extra=('--runtime-stage', stage))
+        assert 'base inputs changed' in text and not invalid.exists(), text
+        base_header.write_text(original)
         pkgsrc_route(target, triple, output, sysroot, cxx=(target == 'aarch64'))
+        pkgsrc_route(target, triple, staged, sysroot, cxx=(target == 'aarch64'), runtime_root=stage)
     finally:
         case.doCleanups()
 
 # The adapter must refuse absent runtime inputs before creating its output.
-case, sysroot = completed_sysroot('aarch64')
+case, sysroot, stage = completed_sysroot('aarch64')
 try:
     missing = work / 'missing-sysroot'
     text = invoke('aarch64', work / 'no-such-sysroot', missing, accept=False)
