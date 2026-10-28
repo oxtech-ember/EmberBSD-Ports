@@ -46,9 +46,12 @@ configure; without it, configure selected `sys_macosx.c` from the build host.
 | Built dependencies | gnutls 3.8.13nb1, nettle 4.0, gmp, libtasn1, p11-kit, libunistring, libffi, zlib, mozilla-rootcerts, bash 5.3.20 |
 | Compiler diagnostics | Only `-Wunused-command-line-argument`: the cross wrapper passes `-pie` and `-Wl,-zrelro` to compile-only commands; no warning from the chrony sources |
 
-`chronyc` has no line editing: the configure probe did not find the base
-`readline.h` compatibility header in the cross sysroot. The package was not
-run on a target.
+`chronyc` in this package has no line editing: the configure probe did not
+find the base `readline.h` compatibility header. The package was built before
+two cross fixes. Before them, the [built-in package root](../../profiles/common-build-tools/cross/builtin-prefix.md)
+kept `-I/usr/include/readline` out of the flags, and the cwrapper kept that
+flag as a build host path. `chronyc -c tracking` does not need line editing.
+The package was not run on a target.
 
 ## Installation on a clean amd64 system
 
@@ -75,8 +78,9 @@ from the same package root (163 MB, SHA256 checked).
 
 - AArch64 execution: a target with the full base set, its shared libraries and
   the dependency packages above.
-- Line editing for the cross `chronyc`: the editline built-in check must add
-  the sysroot `readline` include directory.
+- Line editing for the cross `chronyc`: rebuild from an export with both cross
+  fixes (`make clean` first), then confirm `+READLINE` and `libedit.so` in
+  `chronyc`.
 - The CIX P1 board root is a reduced static C cohort without shared libraries
   or pkgsrc; the package cannot run there until the board uses the common stack.
 - PPS through RFC 2783 and `gpiopps` waits for GPIO017 interrupts (N36).

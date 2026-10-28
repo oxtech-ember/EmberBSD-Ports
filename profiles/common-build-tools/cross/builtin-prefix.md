@@ -37,7 +37,24 @@ It builds nothing.
 The phase caches of a kept work directory record the old prefix. Run
 `make clean` before you rebuild an affected package.
 
-Two limits remain. The cwrapper keeps `-I/usr/include/<subdir>` as a build
-host path, so chrony line editing also needs a target mapping for these
-directories. The sqlite3 autosetup script skips its readline header search in
-a cross build, so sqlite3 needs explicit readline options.
+A cross compiler does not put `-I` paths below its sysroot. The cwrapper kept
+`-I/usr/include/<subdir>`, for example `/usr/include/readline` from the
+editline built-in, as a build host path. On a Linux host that path can name
+host headers. `patches/pkgsrc-cross-base-include-subdirs.patch` maps these
+subdirectories to the target sysroot in a cross build and keeps the same
+sysroot paths from pkg-config. The base directory stays a default search path.
+Native builds keep the previous rules.
+
+Check it with the cross `MAKECONF` and the installed cwrapper:
+
+```sh
+python3 -B tests/cross-base-include.py --pkgsrc EXPORT \
+    --makeconf CROSS_MAKECONF --bmake "BMAKE -m SYS_MK_DIR" \
+    --cwrapper HOST_PREFIX/libexec/cwrappers/cc-wrapper --work NEW_DIRECTORY
+```
+
+It runs the real `cc-wrapper` with the chrony rules and a program that prints
+its arguments. It builds nothing.
+
+One limit remains. The sqlite3 autosetup script skips its readline header
+search in a cross build, so sqlite3 needs explicit readline options.

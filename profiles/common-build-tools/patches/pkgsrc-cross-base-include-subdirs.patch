@@ -1,0 +1,25 @@
+# Origin: EmberBSD (AI-assisted), cross base include subdirectories.
+# A cross compiler does not put -I paths below its sysroot. Map -I/usr/include/<subdir>
+# from built-in packages to the target sysroot, and keep the same sysroot path
+# from pkg-config. Native builds are unchanged.
+
+--- a/mk/buildlink3/bsd.buildlink3.mk
++++ b/mk/buildlink3/bsd.buildlink3.mk
+@@ -1107,7 +1107,17 @@
+ .for _dir_ in ${COMPILER_INCLUDE_DIRS}
+ _BLNK_TRANSFORM+=	opt-sub:-I${_dir_}:-I${_BLNK_MANGLE_DIR.${_dir_}}
+ _BLNK_TRANSFORM+=	opt-sub:-isystem,${_dir_}:-isystem,${_BLNK_MANGLE_DIR.${_dir_}}
++.  if !empty(_CROSS_DESTDIR)
++# A cross compiler does not put -I paths below its sysroot. Map a base
++# subdirectory, for example /usr/include/readline, to the target, and
++# keep the same sysroot path from pkg-config. The base directory itself
++# stays a default search path and is removed above.
++_CWRAPPERS_TRANSFORM+=	I:${_dir_}:${_CROSS_DESTDIR}${_dir_}
++_CWRAPPERS_TRANSFORM+=	I:${_CROSS_DESTDIR}${_dir_}/:
++_CWRAPPERS_TRANSFORM+=	I:${_CROSS_DESTDIR}${_dir_}:${_CROSS_DESTDIR}${_dir_}
++.  else
+ _CWRAPPERS_TRANSFORM+=	I:${_dir_}:${_dir_}
++.  endif
+ .endfor
+ .for _dir_ in ${COMPILER_LIB_DIRS}
+ _BLNK_TRANSFORM+=	opt-sub:-L${_dir_}:-L${_BLNK_MANGLE_DIR.${_dir_}}

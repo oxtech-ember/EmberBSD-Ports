@@ -273,6 +273,8 @@ Header and link-time search paths, native mappings and ABI remain unchanged.
 The [built-in package root](cross/builtin-prefix.md) keeps the macOS SDK prefix
 for Darwin targets only. A cross build from macOS takes base editline, gettext,
 iconv, termcap, curses, xz and bzip2 from the target sysroot.
+In a cross build, the cwrappers map base include subdirectories such as
+`/usr/include/readline` to the target sysroot.
 
 The [LLVM Python migration](cross/llvm-python315.md) keeps one lit provider and
 updates installed Clang helper interpreters. It records package changes separately
