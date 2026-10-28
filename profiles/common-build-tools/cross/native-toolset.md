@@ -92,3 +92,10 @@ Source archive checksums, package checks and target ABI checks remain enabled.
 with API doubles. `tests/native-toolset-make.py` checks the make mapping,
 atomic rewrites, the optional Qt mapping and rejection of stale or conflicting inputs.
 These tests do not build a compiler or establish target runtime behavior.
+
+For a nested host phase that must search command names without target wrappers,
+`prepare-native-tools.py aliases --host-prefix PREFIX --output NEW_DIRECTORY`
+creates aliases to the checked native roles. Its `make` alias selects GNU make;
+`awk`, `ar`, `ranlib`, `ld`, `cc`, `c++` and `sh` select their native roles.
+The returned path consists of that directory and the selected prefix paths.
+Select the SDK source as for `write`; the caller owns the output directory.

@@ -280,21 +280,56 @@ def write(toolset, destination, qt=(), fetch_mode='fetch'):
     return {'makeconf': str(output)}
 
 
+# Bare host tool names required by nested GNU configure/build scripts.
+# All targets come from the already checked native tool selection.
+HOST_PHASE_ALIASES = {'awk': 'nawk', 'make': 'gmake', 'ar': 'ar',
+                      'ranlib': 'ranlib', 'ld': 'ld', 'cc': 'cc',
+                      'c++': 'cxx', 'sh': 'sh'}
+
+
+def write_aliases(toolset, destination):
+    from emberbsd_sdk.errors import SDKError
+    from emberbsd_sdk import paths
+    output = Path(destination)
+    if not output.is_absolute():
+        raise SDKError('Use an absolute host alias directory')
+    paths.reject_overlap(str(output), toolset.bundle_root)
+    members = {name: toolset.tool(role) for name, role in HOST_PHASE_ALIASES.items()}
+    if output.exists():
+        if output.is_symlink() or not output.is_dir() or set(os.listdir(output)) != set(members):
+            raise SDKError('Host alias directory does not match the selected tools')
+        if any(not (output / name).is_symlink() or os.readlink(output / name) != target
+               for name, target in members.items()):
+            raise SDKError('Host alias directory does not match the selected tools')
+    else:
+        from emberbsd_sdk.publication import publish_directory_noreplace
+        with tempfile.TemporaryDirectory(prefix='.host-aliases-', dir=output.parent) as tmp:
+            stage = Path(tmp) / 'aliases'
+            stage.mkdir()
+            for name, target in members.items():
+                (stage / name).symlink_to(target)
+            publish_directory_noreplace(str(stage), str(output))
+    return {'aliases': str(output), 'path': str(output) + os.pathsep + toolset.path}
+
+
 def main(arguments):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=('write', 'verify'))
+    parser.add_argument('operation', choices=('write', 'verify', 'aliases'))
     parser.add_argument('--host-prefix', required=True)
     parser.add_argument('--compiler-family', choices=('clang', 'gcc'), default='clang')
     parser.add_argument('--fetch-mode', choices=('fetch', 'manual'), default='fetch')
     parser.add_argument('--output')
     parser.add_argument('--makeconf')
     args = parser.parse_args(arguments)
-    if args.operation == 'write':
+    if args.operation in ('write', 'aliases'):
         if not args.output or args.makeconf:
             parser.error('write requires only --output')
     elif not args.makeconf or args.output:
         parser.error('verify requires only --makeconf')
     toolset = selection(args)
+    if args.operation == 'aliases':
+        print(json.dumps(write_aliases(toolset, args.output)))
+        return
     qt = qt_host_paths(args.host_prefix, toolset.path) + mlir_host_tools(args.host_prefix) + \
         flang_host_tool(args.host_prefix)
     if args.operation == 'write':
