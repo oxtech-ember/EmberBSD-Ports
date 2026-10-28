@@ -1,0 +1,34 @@
+# Keep target bin directories out of the build-host program search path.
+# Origin: EmberBSD (AI-assisted). Scoped to the explicit SDK cross profile.
+
+--- a/mk/bsd.prefs.mk	2026-10-28 23:24:17
++++ b/mk/bsd.prefs.mk	2026-10-28 23:24:30
+@@ -933,10 +933,14 @@
+ PKG_OPTIONS?=		# empty
+ 
+ # we want this *before* compiler.mk, so that compiler.mk paths override them
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && defined(EMBERBSD_CROSS_HOST_PREFIX)
++PREPEND_PATH+=		${TOOLBASE}/bin
++.else
+ .if ${X11_TYPE} != "modular" && defined(USE_X11)
+ PREPEND_PATH+=		${X11BASE}/bin
+ .endif
+ PREPEND_PATH+=		${LOCALBASE}/bin
++.endif
+ 
+ .if ${_USE_NEW_PKGINSTALL:Uno} == "no"
+ # Support alternative init systems.
+--- a/mk/bsd.pkg.mk	2026-10-28 23:24:17
++++ b/mk/bsd.pkg.mk	2026-10-28 23:24:30
+@@ -188,7 +188,11 @@
+ ALL_ENV+=	LC_TIME=C
+ ALL_ENV+=	LDFLAGS=${LDFLAGS:M*:Q}
+ ALL_ENV+=	LINKER_RPATH_FLAG=${LINKER_RPATH_FLAG:Q}
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && defined(EMBERBSD_CROSS_HOST_PREFIX)
++ALL_ENV+=	PATH=${PATH:Q}:${TOOLBASE}/bin
++.else
+ ALL_ENV+=	PATH=${PATH:Q}:${TOOLBASE}/bin:${X11BASE}/bin
++.endif
+ ALL_ENV+=	PREFIX=${PREFIX}
+ ALL_ENV+=	MAKELEVEL=0
+ ALL_ENV+=	CONFIG_SITE=${PKGSRC_CONFIG_SITE:U}
