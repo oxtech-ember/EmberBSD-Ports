@@ -91,7 +91,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
                      'clang-tblgen'):
             assert role in call.kwargs['required_roles']
         for role, variable in (('gcp', 'cp'), ('gtouch', 'touch'), ('gsed', 'sed'),
-                               ('gcat', 'cat'), ('gmv', 'mv')):
+                               ('gcat', 'cat'), ('gmv', 'mv'), ('gchmod', 'chmod')):
             assert ('.if "${TOOLS_PLATFORM.' + variable + '}" != "' + tools[role] + '"').encode() in before
         for role, variable in (('sh', 'sh'), ('nawk', 'awk'), ('ar', 'ar'),
                                ('ranlib', 'ranlib'), ('nm', 'nm'), ('strip', 'strip')):

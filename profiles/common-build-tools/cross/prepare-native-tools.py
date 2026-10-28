@@ -29,7 +29,7 @@ ROLE_VARIABLES = {
     # Native pkgsrc recipes and BSD submakes must not select system tools.
     'gcp': 'TOOLS_PLATFORM.cp', 'gtouch': 'TOOLS_PLATFORM.touch',
     'gsed': 'TOOLS_PLATFORM.sed', 'gcat': 'TOOLS_PLATFORM.cat',
-    'gmv': 'TOOLS_PLATFORM.mv',
+    'gmv': 'TOOLS_PLATFORM.mv', 'gchmod': 'TOOLS_PLATFORM.chmod',
     # Wayland protocol code generator for wayland consumers.
     'wayland-scanner': 'EMBERBSD_WAYLAND_SCANNER',
 }
