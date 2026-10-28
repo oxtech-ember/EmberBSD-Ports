@@ -1,7 +1,6 @@
-$NetBSD: patch-configure,v 1.1 2024/11/01 08:37:29 adam Exp $
+$NetBSD$
 
-Ignore the macOS iconv bug test for pkgsrc PLIST consistency.
-Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
+Origin: EmberBSD (AI-assisted): explicit native tools and host build environment.
 
 --- configure.orig
 +++ configure
@@ -90,18 +89,18 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
  
  # Extract the first word of "perl", so it can be a program name with args.
  set dummy perl; ac_word=$2
-@@ -5818,6 +5848,11 @@
+@@ -5817,6 +5847,11 @@
  
  
  
++
 +else
 +  PERL=
 +  unicode_collate=not-required
 +fi
-+
+ 
  # Find awk for running texindex.
  # Don't use AC_PROG_AWK because this prefers gawk, which may be much
- # slower than the awk that the user has in their path (e.g. mawk).
 @@ -14444,6 +14479,7 @@
          iconv_close (cd_utf8_to_88591);
        }
@@ -138,7 +137,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
    native_tools=
  else
    native_tools=tools
-@@ -40301,11 +40338,21 @@
+@@ -40301,11 +40338,32 @@
    # it gets the wrong CC etc.
    # env -i gives this build host configure a clean environment;
    # consequently, we have to re-initialize $PATH.
@@ -149,6 +148,14 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
 +      as_fn_error $? "native C-only tools require selected BUILD_CC, BUILD_AR, BUILD_RANLIB and LD_FOR_BUILD" "$LINENO" 5
 +    native_c_only_options="--disable-perl-tools --disable-perl-xs"
 +  fi
++  (
++  set -- $native_c_only_options
++  if test -n "${PREFIX_FOR_BUILD-}"; then
++    set -- "$@" "--prefix=$PREFIX_FOR_BUILD" \
++      "--with-libunistring-prefix=$PREFIX_FOR_BUILD" \
++      "--with-libiconv-prefix=$PREFIX_FOR_BUILD" \
++      "--with-libintl-prefix=$PREFIX_FOR_BUILD"
++  fi
    env -i CC="$BUILD_CC" AR="$BUILD_AR" RANLIB="$BUILD_RANLIB" \
 -      PATH="$PATH" \
 -      tools_only=1 \
@@ -157,14 +164,17 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
 +      LD="${LD_FOR_BUILD-}" CPPFLAGS="${CPPFLAGS_FOR_BUILD-}" \
 +      CFLAGS="${CFLAGS_FOR_BUILD-}" LDFLAGS="${LDFLAGS_FOR_BUILD-}" \
 +      LIBS="${LIBS_FOR_BUILD-}" \
-+      PATH="$PATH" PATH_SEPARATOR="$PATH_SEPARATOR" PERL="$PERL" \
++      PATH="${PATH_FOR_BUILD-$PATH}" PATH_SEPARATOR="$PATH_SEPARATOR" PERL="$PERL" \
++      PERL_EXT_CC="${PERL_EXT_CC_FOR_BUILD-}" PERL_EXT_CFLAGS="${CFLAGS_FOR_BUILD-}" \
++      PERL_EXT_LDFLAGS="${LDFLAGS_FOR_BUILD-}" MAKE="${MAKE_FOR_BUILD-make}" \
 +      CONFIG_SHELL="$native_shell" SHELL="$native_shell" tools_only=1 \
 +    "$native_shell" "${confdir}/configure" --build=${build} --host=${build} \
-+                         --disable-rpath --disable-nls $native_c_only_options || exit 1
++                         --disable-rpath --disable-nls "$@" || exit 1
++  ) || exit 1
    cd .. || exit 1
    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Continuing with main configure (${host})." >&5
  printf "%s\n" "$as_me: Continuing with main configure (${host})." >&6;}
-@@ -41296,6 +41343,7 @@
+@@ -41296,6 +41354,7 @@
          iconv_close (cd_utf8_to_88591);
        }
    }
@@ -172,7 +182,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
    /* Test against macOS 14.4 bug: Failures are not distinguishable from
       successful returns.
       POSIX:2018 says: "The iconv() function shall ... return the number of
-@@ -41325,6 +41373,7 @@
+@@ -41325,6 +41384,7 @@
          iconv_close (cd_utf8_to_88591);
        }
    }
@@ -180,7 +190,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
    /* Test against Solaris 10 bug: Failures are not distinguishable from
       successful returns.  */
    {
-@@ -42169,6 +42218,76 @@
+@@ -42169,6 +42229,76 @@
  
  
  
@@ -257,7 +267,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
  # Check whether --with-external-Unicode-EastAsianWidth was given.
  if test ${with_external_Unicode_EastAsianWidth+y}
  then :
-@@ -42488,7 +42607,7 @@
+@@ -42488,7 +42618,7 @@
       fi
  else case e in #(
    e)
@@ -266,7 +276,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
       then
         pod_simple_texinfo_tests='yes'
       else
-@@ -42524,7 +42643,7 @@
+@@ -42524,7 +42654,7 @@
       fi
  else case e in #(
    e)
@@ -275,7 +285,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
       then
         build_perl_api_texi='yes'
       else
-@@ -42584,7 +42703,9 @@
+@@ -42584,7 +42714,9 @@
  
  
  

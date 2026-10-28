@@ -1,6 +1,6 @@
 $NetBSD$
 
-Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
+Origin: EmberBSD (AI-assisted): explicit native tools and host build environment.
 
 --- configure.ac.orig
 +++ configure.ac
@@ -34,18 +34,18 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
  AC_PATH_PROG([PERL], [perl])
  if test -z "$PERL"; then
     AC_MSG_ERROR(
-@@ -86,6 +106,11 @@
+@@ -84,6 +104,11 @@
+ AC_MSG_RESULT($unicode_collate)
+ if test z"$unicode_collate" = 'zno' ; then
    AC_MSG_WARN([Unicode::Collate not present; indices may be sorted incorrectly])
- fi
- 
++fi
++
 +else
 +  PERL=
 +  unicode_collate=not-required
-+fi
-+
- AC_REQUIRE_AUX_FILE([tap-driver.sh])
+ fi
  
- # Find awk for running texindex.
+ AC_REQUIRE_AUX_FILE([tap-driver.sh])
 @@ -180,7 +205,7 @@
  # $native_tools is also added to SUBDIRS in the main Makefile.am,
  # so that make compiles the native tools first.
@@ -55,7 +55,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
    native_tools=
  else
    native_tools=tools
-@@ -195,11 +220,21 @@
+@@ -195,11 +220,32 @@
    # it gets the wrong CC etc.
    # env -i gives this build host configure a clean environment;
    # consequently, we have to re-initialize $PATH.
@@ -66,6 +66,14 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
 +      AC_MSG_ERROR([native C-only tools require selected BUILD_CC, BUILD_AR, BUILD_RANLIB and LD_FOR_BUILD])
 +    native_c_only_options="--disable-perl-tools --disable-perl-xs"
 +  fi
++  (
++  set -- $native_c_only_options
++  if test -n "${PREFIX_FOR_BUILD-}"; then
++    set -- "$@" "--prefix=$PREFIX_FOR_BUILD" \
++      "--with-libunistring-prefix=$PREFIX_FOR_BUILD" \
++      "--with-libiconv-prefix=$PREFIX_FOR_BUILD" \
++      "--with-libintl-prefix=$PREFIX_FOR_BUILD"
++  fi
    env -i CC="$BUILD_CC" AR="$BUILD_AR" RANLIB="$BUILD_RANLIB" \
 -      PATH="$PATH" \
 -      tools_only=1 \
@@ -74,14 +82,17 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
 +      LD="${LD_FOR_BUILD-}" CPPFLAGS="${CPPFLAGS_FOR_BUILD-}" \
 +      CFLAGS="${CFLAGS_FOR_BUILD-}" LDFLAGS="${LDFLAGS_FOR_BUILD-}" \
 +      LIBS="${LIBS_FOR_BUILD-}" \
-+      PATH="$PATH" PATH_SEPARATOR="$PATH_SEPARATOR" PERL="$PERL" \
++      PATH="${PATH_FOR_BUILD-$PATH}" PATH_SEPARATOR="$PATH_SEPARATOR" PERL="$PERL" \
++      PERL_EXT_CC="${PERL_EXT_CC_FOR_BUILD-}" PERL_EXT_CFLAGS="${CFLAGS_FOR_BUILD-}" \
++      PERL_EXT_LDFLAGS="${LDFLAGS_FOR_BUILD-}" MAKE="${MAKE_FOR_BUILD-make}" \
 +      CONFIG_SHELL="$native_shell" SHELL="$native_shell" tools_only=1 \
 +    "$native_shell" "${confdir}/configure" --build=${build} --host=${build} \
-+                         --disable-rpath --disable-nls $native_c_only_options || exit 1
++                         --disable-rpath --disable-nls "$@" || exit 1
++  ) || exit 1
    cd .. || exit 1
    AC_MSG_NOTICE([[Continuing with main configure (${host}).]])
  fi
-@@ -301,6 +336,39 @@
+@@ -301,6 +347,39 @@
  AM_GNU_GETTEXT_VERSION([0.26])
  AM_GNU_GETTEXT([external])
  
@@ -121,7 +132,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
  AC_ARG_WITH([external-Unicode-EastAsianWidth],
     AS_HELP_STRING([--with-external-Unicode-EastAsianWidth],[use external Unicode-EastAsianWidth (default: no)]))
  
-@@ -377,7 +445,7 @@
+@@ -377,7 +456,7 @@
         pod_simple_texinfo_tests='yes'
       fi],
      [
@@ -130,7 +141,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
       then
         pod_simple_texinfo_tests='yes'
       else
-@@ -399,7 +467,7 @@
+@@ -399,7 +478,7 @@
         build_perl_api_texi='yes'
       fi],
      [
@@ -139,7 +150,7 @@ Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
       then
         build_perl_api_texi='yes'
       else
-@@ -448,7 +516,9 @@
+@@ -448,7 +527,9 @@
  AC_CONFIG_FILES([pre-inst-env:build-aux/pre-inst-env.in],
    [chmod +x pre-inst-env])
  

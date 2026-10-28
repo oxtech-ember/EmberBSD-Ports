@@ -1,0 +1,56 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+Use scoped target build Config while the host interpreter retains its ABI.
+
+--- tta/m4/txi_perl_conf.m4.orig
++++ tta/m4/txi_perl_conf.m4
+@@ -53,8 +53,12 @@
+ subst_cr=`printf 's/\r//g'`
+ fetch_conf ()
+ {
+-          conf_value=`${PERL} -V:$[]1 | sed $subst_cr`
+-          conf_value=`echo $conf_value | sed "$sed_script"`
++          if test -n "${EMBERBSD_PERL_BUILD_CONFIG-}"; then
++            conf_value=`${PERL} -MExtUtils::MakeMaker::Config -e 'print $Config{+shift}' "$[]1"` || exit 1
++          else
++            conf_value=`${PERL} -V:$[]1 | sed $subst_cr`
++            conf_value=`echo $conf_value | sed "$sed_script"`
++          fi
+ }
+ 
+ # defines PERL_CONF_cc
+--- tta/configure.orig
++++ tta/configure
+@@ -5905,8 +5905,12 @@
+ subst_cr=`printf 's/\r//g'`
+ fetch_conf ()
+ {
+-          conf_value=`${PERL} -V:$1 | sed $subst_cr`
+-          conf_value=`echo $conf_value | sed "$sed_script"`
++          if test -n "${EMBERBSD_PERL_BUILD_CONFIG-}"; then
++            conf_value=`${PERL} -MExtUtils::MakeMaker::Config -e 'print $Config{+shift}' "$1"` || exit 1
++          else
++            conf_value=`${PERL} -V:$1 | sed $subst_cr`
++            conf_value=`echo $conf_value | sed "$sed_script"`
++          fi
+ }
+ 
+ # defines PERL_CONF_cc
+--- tta/perl/CheckXS/configure.orig
++++ tta/perl/CheckXS/configure
+@@ -3600,8 +3600,12 @@
+ subst_cr=`printf 's/\r//g'`
+ fetch_conf ()
+ {
+-          conf_value=`${PERL} -V:$1 | sed $subst_cr`
+-          conf_value=`echo $conf_value | sed "$sed_script"`
++          if test -n "${EMBERBSD_PERL_BUILD_CONFIG-}"; then
++            conf_value=`${PERL} -MExtUtils::MakeMaker::Config -e 'print $Config{+shift}' "$1"` || exit 1
++          else
++            conf_value=`${PERL} -V:$1 | sed $subst_cr`
++            conf_value=`echo $conf_value | sed "$sed_script"`
++          fi
+ }
+ 
+ # defines PERL_CONF_cc
