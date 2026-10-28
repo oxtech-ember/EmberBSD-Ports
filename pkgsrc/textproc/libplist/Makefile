@@ -12,7 +12,6 @@ COMMENT=	Handle Apple Binary and XML Property Lists
 LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2.1
 
 GNU_CONFIGURE=	yes
-CONFIG_SHELL=	bash
 USE_TOOLS+=	bash gmake pkg-config
 USE_LIBTOOL=	yes
 USE_LANGUAGES=	c c++
