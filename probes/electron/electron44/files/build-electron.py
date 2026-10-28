@@ -328,40 +328,6 @@ def ensure_host_dsymutil(workspace, native):
     dest.symlink_to(src)
 
 
-def ensure_rollup_darwin_arm64(workspace, host_prefix, environment):
-    """Yarn may omit optional @rollup/rollup-darwin-arm64; fabricate from host rollup.darwin-arm64.node."""
-    import json, shutil
-    electron = workspace / 'src/electron'
-    nm = electron / 'node_modules' / '@rollup' / 'rollup-darwin-arm64'
-    marker = nm / 'rollup.darwin-arm64.node'
-    if marker.is_file():
-        return
-    host_node = Path(host_prefix) / 'lib' / 'node_modules' / 'rollup' / 'dist' / 'rollup.darwin-arm64.node'
-    host_pkg = Path(host_prefix) / 'lib' / 'node_modules' / '@rollup' / 'rollup-darwin-arm64'
-    if host_pkg.is_dir():
-        nm.parent.mkdir(parents=True, exist_ok=True)
-        if nm.exists():
-            shutil.rmtree(nm)
-        shutil.copytree(host_pkg, nm)
-        return
-    require(host_node.is_file(), 'host rollup.darwin-arm64.node missing for @rollup/rollup-darwin-arm64')
-    ver = '4.60.4'
-    pkg_json = Path(host_prefix) / 'lib' / 'node_modules' / 'rollup' / 'package.json'
-    if pkg_json.is_file():
-        ver = json.loads(pkg_json.read_text()).get('version') or ver
-    if nm.exists():
-        shutil.rmtree(nm)
-    nm.mkdir(parents=True)
-    shutil.copy2(host_node, marker)
-    (nm / 'package.json').write_text(json.dumps({
-        'name': '@rollup/rollup-darwin-arm64',
-        'version': ver,
-        'os': ['darwin'],
-        'cpu': ['arm64'],
-        'main': 'rollup.darwin-arm64.node',
-    }, indent=2) + "\n")
-
-
 def ensure_ffmpeg_netbsd_config(workspace):
     """DEPS ffmpeg-copy-config-netbsd only teaches copy_config.sh; config trees are not generated here.
     Reuse linux configs for netbsd (same approach as fuchsia/chromeos -> linux in ffmpeg_options.gni).
@@ -439,7 +405,6 @@ def configure(options):
     ensure_lastchange(options.workspace, native, environment, sdk)
     ensure_ffmpeg_netbsd_config(options.workspace)
     ensure_host_dsymutil(options.workspace, native)
-    ensure_rollup_darwin_arm64(options.workspace, options.host_prefix, environment)
     require_rust_std(options.host_prefix, options.target)
     output = work / 'out'; output.mkdir()
     (output / 'args.gn').write_text(gn_arguments(values))
@@ -546,7 +511,6 @@ def build(options):
     ensure_lastchange(options.workspace, native, environment, sdk)
     ensure_ffmpeg_netbsd_config(options.workspace)
     ensure_host_dsymutil(options.workspace, native)
-    ensure_rollup_darwin_arm64(options.workspace, options.host_prefix, environment)
     require_rust_std(options.host_prefix, options.target)
     saved = json.loads((options.work / 'configuration.json').read_text())
     require(saved['source'] == str(options.workspace) and saved['sdk'] == str(options.sdk_source) and
