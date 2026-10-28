@@ -651,6 +651,11 @@
       "path": "gn-system-libdrm.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-node-provider-commands.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

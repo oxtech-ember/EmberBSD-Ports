@@ -51,7 +51,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     gnfile = src/'electron/BUILD.gn'; gnfile.write_text('group("electron_dist_zip") {}\n')
     old = dict(emberbsd_node_provider_inputs=['old'], emberbsd_typescript_definitions=['old'], feature=False, target_cpu='x64')
     new = dict(emberbsd_node_provider_inputs=['new'], emberbsd_typescript_definitions=['new'], feature=True, target_cpu='x64')
-    env = {'PATH':str(host/'bin') + ':/usr/bin', 'EMBERBSD_HOST_TYPESCRIPT':'/new', 'CC':str(work/'target-commands/cc'), 'CXX':str(work/'target-commands/cxx')}
+    env = {'PATH':str(host/'bin') + ':/usr/bin', 'EMBERBSD_HOST_TYPESCRIPT':'/old', 'EMBERBSD_HOST_NODE':'/old-node', 'CC':str(work/'target-commands/cc'), 'CXX':str(work/'target-commands/cxx')}
     opt = SimpleNamespace(workspace=src.parent, ports_source=root, sdk_source=root, host_prefix=host, target='amd64', compiler_family='clang', work=work, git=Path('/usr/bin/git'))
     saved = dict(arguments=old, environment=env, source=str(src.parent), sdk=str(root), host_prefix=str(host), target='amd64')
     config = work/'configuration.json'; config.write_text(json.dumps(saved)); before = config.read_bytes()
@@ -63,12 +63,9 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     state={'commands':commands, 'values':new}
     def inputs(candidate, sdk):
         bound=b.bind_versioned(sdk, Native(), candidate.work/'target-commands', state['commands'])
-        return Native(), {'PATH':state.get('path', Native.path), 'EMBERBSD_CONTROL_GIT':state.get('git', '/usr/bin/git'), 'EMBERBSD_HOST_TYPESCRIPT':state.get('tsc', '/new'), 'CC':bound['cc'], 'CXX':bound['cxx'], **state.get('extra', {})}, state['values']
+        return Native(), {'PATH':state.get('path', Native.path), 'EMBERBSD_CONTROL_GIT':state.get('git', '/usr/bin/git'), 'EMBERBSD_HOST_TYPESCRIPT':'/new', 'EMBERBSD_HOST_NODE':str(host/'bin/node'), 'CC':bound['cc'], 'CXX':bound['cxx'], **state.get('extra', {})}, state['values']
     b.producer_inputs=inputs
-    state['tsc']='/other'
-    try: b.reconfigure(opt); raise AssertionError('accepted untracked provider change')
-    except ValueError as e: assert 'producer input changed: EMBERBSD_HOST_TYPESCRIPT' in str(e)
-    state.pop('tsc'); state['path']=Native.path + ':/bin'
+    state['path']=Native.path + ':/bin'
     try: b.reconfigure(opt); raise AssertionError('accepted external PATH')
     except ValueError as e: assert 'PATH is not prefix-only' in str(e)
     state.pop('path'); state['git']='/wrong/git'
@@ -115,6 +112,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     except ValueError as e: assert 'incomplete reconfiguration' in str(e)
     gnfile.write_text('group("electron_dist_zip") {}\n'); b.reconfigure(opt)
     assert not (work/'reconfigure-incomplete').exists() and json.loads(config.read_text())['arguments']==new
+    assert json.loads(config.read_text())['environment']['EMBERBSD_HOST_TYPESCRIPT']=='/new'
     assert (out/'build.ninja').read_text()!='old graph' and obj.read_bytes()==b'object' and json.loads(binding.read_text())==commands
     b.reconfigure(opt)  # Already migrated configurations are reusable.
     assert not (work/'reconfigure-incomplete').exists() and obj.read_bytes()==b'object'

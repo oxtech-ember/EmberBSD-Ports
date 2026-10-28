@@ -1,0 +1,240 @@
+Track and select Node providers in actual Chromium and DevTools actions.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- a/third_party/node/node.gni
++++ b/third_party/node/node.gni
+@@ -18,6 +18,7 @@
+   # The caller enumerates the selected common provider's actual package files.
+   emberbsd_node_provider_inputs = []
+   emberbsd_typescript_definitions = []
++  emberbsd_node_provider_versions = []
+ }
+ 
+ # Shared host providers remain explicit action inputs. The caller selects
+@@ -36,8 +37,32 @@
+ 
+ template("node") {
+   action(target_name) {
+-    forward_variables_from(invoker, "*", TESTONLY_AND_VISIBILITY)
++    forward_variables_from(invoker, "*", TESTONLY_AND_VISIBILITY + [ "script", "args" ])
+     forward_variables_from(invoker, TESTONLY_AND_VISIBILITY)
++    if (emberbsd_host_node != "") {
++      _typescript = getenv("EMBERBSD_HOST_TYPESCRIPT")
++      _rollup = getenv("EMBERBSD_HOST_ROLLUP")
++      assert(emberbsd_node_provider_versions != [] &&
++             emberbsd_node_provider_versions != [ "" ],
++             "selected provider versions are required")
++      script = "//third_party/node/run_selected_providers.py"
++      args = [
++        emberbsd_host_node,
++        _typescript,
++        _rollup,
++      ] + emberbsd_node_provider_versions + [
++        rebase_path(invoker.script, root_build_dir),
++      ]
++      if (defined(invoker.args)) {
++        args += invoker.args
++      }
++      inputs += [ invoker.script, "//third_party/node/node_version_guard.js" ]
++    } else {
++      script = invoker.script
++      if (defined(invoker.args)) {
++        args = invoker.args
++      }
++    }
+ 
+     # Declare dependencies to all involved tools.
+     # sha1 files needs to be kept to serve anywhere where node.gni is used.
+--- /dev/null
++++ b/third_party/node/run_selected_providers.py
+@@ -0,0 +1,65 @@
++#!/usr/bin/env python3
++# Copyright 2026 EmberBSD contributors. BSD-2-Clause.
++# Origin: EmberBSD (AI-assisted).
++"""Bind selected Node providers and their versions to a GN action command."""
++import json
++import os
++from pathlib import Path
++import subprocess
++import sys
++
++
++def package_version(entry, expected):
++    if not entry:
++        return "-"
++    current = Path(entry).resolve(strict=True).parent
++    for directory in (current, *current.parents):
++        metadata = directory / "package.json"
++        if metadata.is_file():
++            package = json.loads(metadata.read_text())
++            if package.get("name") == expected:
++                version = package.get("version")
++                if isinstance(version, str) and version and "\n" not in version:
++                    return version
++                break
++    raise ValueError("selected provider package version missing: " + expected)
++
++
++def check_paths(node, typescript, rollup):
++    for variable, value in (("EMBERBSD_HOST_NODE", node),
++                            ("EMBERBSD_HOST_TYPESCRIPT", typescript),
++                            ("EMBERBSD_HOST_ROLLUP", rollup)):
++        if value and (not os.path.isabs(value) or not os.path.isfile(value)):
++            raise ValueError(variable + " must name an absolute file")
++    if not node:
++        raise ValueError("selected Node is required")
++
++
++def versions(node, typescript, rollup):
++    check_paths(node, typescript, rollup)
++    version = subprocess.check_output([node, "--version"], text=True).strip()
++    if not version or "\n" in version:
++        raise ValueError("selected Node version invalid")
++    return [version, package_version(typescript, "typescript"),
++            package_version(rollup, "rollup")]
++
++
++if sys.argv[1] == "--inspect":
++    print("\n".join(versions(*sys.argv[2:5])))
++else:
++    node, typescript, rollup, node_version, ts_version, rollup_version, script, *args = sys.argv[1:]
++    check_paths(node, typescript, rollup)
++    if [package_version(typescript, "typescript"), package_version(rollup, "rollup")] != [ts_version, rollup_version]:
++        raise RuntimeError("selected Node provider version changed; regenerate GN")
++    for variable, value in (("EMBERBSD_HOST_NODE", node),
++                            ("EMBERBSD_HOST_TYPESCRIPT", typescript),
++                            ("EMBERBSD_HOST_ROLLUP", rollup)):
++        if value:
++            os.environ[variable] = value
++        else:
++            os.environ.pop(variable, None)
++    guard = str(Path(__file__).with_name("node_version_guard.js").resolve(strict=True))
++    options = os.environ.get("NODE_OPTIONS", "")
++    os.environ["NODE_OPTIONS"] = (options + " --require=" + json.dumps(guard)).strip()
++    os.environ["EMBERBSD_HOST_NODE_EXPECTED_VERSION"] = node_version
++    os.execv(sys.executable, [sys.executable, script, *args])
+--- /dev/null
++++ b/third_party/node/node_version_guard.js
+@@ -0,0 +1,7 @@
++// Copyright 2026 EmberBSD contributors. BSD-2-Clause.
++// Origin: EmberBSD (AI-assisted).
++const expected = process.env.EMBERBSD_HOST_NODE_EXPECTED_VERSION;
++if (expected && process.version !== expected) {
++  console.error("selected Node provider version changed; regenerate GN");
++  process.exit(1);
++}
+--- a/third_party/devtools-frontend/src/scripts/build/ninja/node.gni
++++ b/third_party/devtools-frontend/src/scripts/build/ninja/node.gni
+@@ -4,11 +4,28 @@
+ 
+ import("./vars.gni")
+ 
++# Keep standalone DevTools actions unchanged while routing Chromium actions
++# through the selected-provider command wrapper.
++if (build_with_chromium) {
++  import("//third_party/node/node.gni")
++}
++template("devtools_provider_action") {
++  if (build_with_chromium && emberbsd_host_node != "") {
++    node(target_name) {
++      forward_variables_from(invoker, "*")
++    }
++  } else {
++    action(target_name) {
++      forward_variables_from(invoker, "*")
++    }
++  }
++}
++
+ template("node_action") {
+   assert(defined(invoker.script),
+          "You must define the 'script' for a Node action")
+ 
+-  action(target_name) {
++  devtools_provider_action(target_name) {
+     script = "//third_party/node/node.py"
+ 
+     forward_variables_from(invoker,
+@@ -25,7 +42,9 @@
+       devtools_location_prepend + "scripts/build/ninja/write-if-changed.js",
+     ]
+ 
+-    if (host_os == "linux") {
++    if (build_with_chromium && emberbsd_host_node != "") {
++      # The common node template declares the selected host executable.
++    } else if (host_os == "linux") {
+       inputs += [ "//third_party/node/linux/node-linux-x64/bin/node" ]
+     } else if (host_os == "win") {
+       inputs += [ "//third_party/node/win/node.exe" ]
+--- a/third_party/devtools-frontend/src/scripts/build/typescript/typescript.gni
++++ b/third_party/devtools-frontend/src/scripts/build/typescript/typescript.gni
+@@ -9,6 +9,7 @@
+ import("//build/toolchain/rbe.gni")
+ import("//build/toolchain/siso.gni")
+ import("../ninja/vars.gni")
++import("../ninja/node.gni")
+ 
+ declare_args() {
+   devtools_skip_typecheck = build_with_chromium && !is_official_build
+@@ -47,7 +48,7 @@
+ #   }
+ #
+ template("ts_library") {
+-  action(target_name) {
++  devtools_provider_action(target_name) {
+     script =
+         devtools_location_prepend + "scripts/build/typescript/ts_library.py"
+ 
+@@ -73,11 +74,14 @@
+       "//third_party/node/node.py",
+       devtools_location_prepend + "scripts/devtools_paths.py",
+       devtools_location_prepend + "config/typescript/tsconfig.base.json",
+-      devtools_location_prepend + "node_modules/typescript/lib/tsc.js",
+       devtools_location_prepend + "front_end/legacy/legacy-defs.d.ts",
+       devtools_location_prepend + "front_end/global_typings/global_defs.d.ts",
+       devtools_location_prepend + "node_modules/@types/filesystem/index.d.ts",
+     ]
++
++    if (!build_with_chromium || emberbsd_host_node == "") {
++      inputs += [ devtools_location_prepend + "node_modules/typescript/lib/tsc.js" ]
++    }
+ 
+     # When use_remoteexec=true, node actions run on remote Linux worker.
+     # So it should include linux node binary in inputs.
+--- a/third_party/devtools-frontend/src/scripts/build/typescript/ts_library.py
++++ b/third_party/devtools-frontend/src/scripts/build/typescript/ts_library.py
+@@ -19,7 +19,8 @@
+ ROOT_DIRECTORY_OF_REPOSITORY = path.join(_CURRENT_DIR, '..', '..', '..')
+ NODE_MODULES_DIRECTORY = path.join(ROOT_DIRECTORY_OF_REPOSITORY,
+                                    'node_modules')
+-TSC_LOCATION = path.join(NODE_MODULES_DIRECTORY, 'typescript', 'bin', 'tsc')
++TSC_LOCATION = os.environ.get('EMBERBSD_HOST_TYPESCRIPT',
++                              path.join(NODE_MODULES_DIRECTORY, 'typescript', 'bin', 'tsc'))
+ 
+ # Assuming a full chromium checkout.
+ TSGO_BASE_LOCATION = path.join(ROOT_DIRECTORY_OF_REPOSITORY, '..', '..',
+--- a/third_party/devtools-frontend/src/inspector_overlay/BUILD.gn
++++ b/third_party/devtools-frontend/src/inspector_overlay/BUILD.gn
+@@ -7,7 +7,7 @@
+ 
+ resources_out_dir = "$root_out_dir/resources/inspector_overlay"
+ 
+-action("build_inspector_overlay") {
++devtools_provider_action("build_inspector_overlay") {
+   script = "../scripts/build/build_inspector_overlay.py"
+ 
+   inputs = [
+@@ -38,8 +38,11 @@
+     "$target_gen_dir/tool_window_controls.css",
+     "$target_gen_dir/main.js",
+     devtools_location_prepend + "inspector_overlay/loadCSS.rollup.js",
+-    devtools_location_prepend + "node_modules/rollup/dist/bin/rollup",
+   ]
++
++  if (!build_with_chromium || emberbsd_host_node == "") {
++    inputs += [ devtools_location_prepend + "node_modules/rollup/dist/bin/rollup" ]
++  }
+ 
+   outputs = [ "$resources_out_dir/main.js" ]
+ 

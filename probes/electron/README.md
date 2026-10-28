@@ -755,8 +755,11 @@ by four inherited parameterized GTest linkage errors; target execution is pendin
 `configure` and regenerates the existing `--work` graph. It allows GN feature and compiler option changes while checking target and
 toolchain identity. Compiler bindings are immutable and their content-addressed
 paths change when their commands change, so Ninja rebuilds affected commands.
-Provider environment paths must stay unchanged: older action commands do not
-track those environment values. Existing objects remain for Ninja to update. A failed or interrupted
+The prepared Node actions record the selected Node, TypeScript and Rollup paths
+and versions in their command lines and use those selections. After a provider
+update, reconfigure records the current versions; changing a path or version
+makes Ninja rerun the affected actions. Each action rejects a version that has
+changed since configuration. Existing objects remain for Ninja to update. A failed or interrupted
 GN generation leaves `reconfigure-incomplete` and prevents `build`; rerun
 `reconfigure` successfully before building. This operation does not establish
 that changed compiler or sysroot contents at the same paths are compatible.

@@ -290,6 +290,12 @@ def producer_inputs(options, sdk):
     launcher = shlex.join([native.tool('python'), str(options.sdk_source / 'scripts/link-launcher.py'),
                           '--lock-root', str(options.lock_root), '--context', str(options.link_context), '--'])
     values = arguments(options, native, tools, rust, launcher)
+    provider_check = options.workspace / 'src/third_party/node/run_selected_providers.py'
+    versions = sdk['process'].capture([native.tool('python'), str(provider_check), '--inspect',
+        environment['EMBERBSD_HOST_NODE'], environment['EMBERBSD_HOST_TYPESCRIPT'],
+        environment['EMBERBSD_HOST_ROLLUP']], env=environment).stdout.decode('utf-8', 'strict').splitlines()
+    require(len(versions) == 3 and all(versions), 'selected Node provider versions are invalid')
+    values['emberbsd_node_provider_versions'] = versions
     return native, environment, values
 
 
@@ -476,10 +482,9 @@ def reconfigure(options):
         new_commands = json.loads((new_directory / 'commands.json').read_text())
         require(binding_identity(new_commands) == binding_identity(old_commands),
                 'target compiler, sysroot or runtime changed')
-        # Provider paths are read from the environment by actions; Ninja does
-        # not fingerprint those values in old graphs. Refuse to reuse such a
-        # graph across a provider change until actions track that selection.
-        permitted_env = {'CC', 'CXX',
+        # Prepared Node actions encode the selected providers in their argv.
+        permitted_env = {'CC', 'CXX', 'EMBERBSD_HOST_NODE',
+                         'EMBERBSD_HOST_TYPESCRIPT', 'EMBERBSD_HOST_ROLLUP',
                          'HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'}
         old_env = saved['environment']
         # Migrate exactly the old control-Git PATH, never arbitrary tool paths.

@@ -501,3 +501,20 @@ This does not test an installed allocator or bindgen execution on the target.
 The fixture checks both system and bundled GN routes, including direct libdrm
 consumers. It links a target consumer using installed target pkg-config metadata;
 it does not execute the program or establish GPU support.
+
+## Selected Node provider command invalidation
+
+```sh
+/absolute/native/bin/python3.15 -B -S probes/electron/tests/gn-provider-invalidation.py \
+  --source /absolute/prepared/chromium/src --host-prefix /absolute/native \
+  --git /absolute/git
+```
+
+The fixture applies the provider-command patch and runs real GN, Ninja and Node.
+It changes Node, TypeScript and Rollup selections one at a time while the new
+JavaScript entries have older timestamps than the outputs. It also changes
+provider versions at the same paths, including a test Node wrapper that reports
+a new version, and checks refusal of stale configured versions. Chromium `node`,
+DevTools Python actions and DevTools JavaScript actions rerun and use the new
+selections; unchanged invocations are no-ops. Standalone GN generation is
+checked separately. This does not execute the complete Electron target.
