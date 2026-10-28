@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Origin: EmberBSD (AI-assisted), based on the official RTAB-Map release.
 DISTNAME=	rtabmap-0.23.8
+PKGREVISION=	1
 CATEGORIES=	geography
 MASTER_SITES=	${MASTER_SITE_GITHUB:=introlab/}
 GITHUB_PROJECT=	rtabmap
@@ -19,7 +20,7 @@ CMAKE_REQD+=		3.22
 CMAKE_CONFIGURE_ARGS+=	-C ${.CURDIR}/features.cmake
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_PREFIX=${PREFIX}
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_LIBDIR=lib
-CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_RPATH=${PREFIX}/lib\;${PREFIX}/gcc16/lib
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_RPATH=${PREFIX}/lib
 
 # Build this host tool with probes/rtabmap/build-resource-tool.sh first.
 .include "../../mk/bsd.prefs.mk"
