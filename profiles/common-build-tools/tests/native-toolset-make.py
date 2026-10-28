@@ -53,6 +53,18 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
     api = types.ModuleType('emberbsd_sdk.native_toolset')
     api.load_host_prefix = mock.Mock(return_value=selected)
     pins = ['--host-prefix', str(root / 'host-pkg-llvm')]
+    # Cross Qt modules need the native Qt prefix and libexec directory from qtpaths.
+    qt_prefix = root / 'host-pkg-llvm/qt6'
+    (qt_prefix / 'libexec').mkdir(parents=True)
+    (qt_prefix / 'bin').mkdir()
+    qtpaths = qt_prefix / 'bin/qtpaths'
+    qt_answers = {'QT_INSTALL_PREFIX': str(qt_prefix), 'QT_INSTALL_LIBEXECS': str(qt_prefix / 'libexec')}
+
+    def answer_qt(answers):
+        qtpaths.write_text('#!/bin/sh\ncase "$2" in\n' + ''.join(
+            name + ') echo "' + value + '" ;;\n' for name, value in answers.items()) + '*) exit 1 ;;\nesac\n')
+        qtpaths.chmod(0o755)
+    answer_qt(qt_answers)
     destination = root / 'host-tools.mk'
     with mock.patch.dict(sys.modules, {'emberbsd_sdk.native_toolset': api}):
         api.load_host_prefix.side_effect = SDKError('Missing selected native compiler')
@@ -113,8 +125,19 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
                                 ('EMBERBSD_CLANG_TABLEGEN', tools.get('clang-tblgen')),
                                 ('EMBERBSD_CROSS_BUILD_PYTHON', sys.executable)):
             assert ('.if "${' + variable + '}" != "' + str(value) + '"').encode() in before, variable
-        adapter.write(selected, str(destination))
+        for variable, value in (('EMBERBSD_QT_HOST_PATH', qt_answers['QT_INSTALL_PREFIX']),
+                                ('EMBERBSD_QT_HOST_LIBEXECS', qt_answers['QT_INSTALL_LIBEXECS'])):
+            assert ('.if "${' + variable + '}" != "' + value + '"').encode() in before, variable
+        qt = adapter.qt_host_paths(str(root / 'host-pkg-llvm'), '/usr/bin:/bin')
+        adapter.write(selected, str(destination), qt)
         assert include.read_bytes() == before and not list(root.glob('.native-tools-*'))
+        # A Qt outside the selected prefix or without qtpaths is refused.
+        answer_qt(dict(qt_answers, QT_INSTALL_LIBEXECS='/usr/libexec'))
+        refused(adapter.main, ['write', *pins, '--output', str(destination)])
+        qtpaths.unlink()
+        refused(adapter.main, ['write', *pins, '--output', str(destination)])
+        answer_qt(qt_answers)
+        assert include.read_bytes() == before
         selected.compiler_family = 'gcc'
         with contextlib.redirect_stdout(io.StringIO()):
             adapter.main(['write', *pins, '--compiler-family', 'gcc', '--output', str(destination)])
@@ -123,14 +146,14 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         selected.compiler_family = 'unknown'
         refused(adapter.render, selected)
         selected.compiler_family = 'clang'
-        adapter.write(selected, str(destination))
+        adapter.write(selected, str(destination), qt)
         verify = ['verify', *pins, '--makeconf', str(include)]
         with contextlib.redirect_stdout(io.StringIO()) as output:
             adapter.main(verify)
         assert output.getvalue() == 'VERIFIED\n'
         include.write_bytes(before + b'# stale mapping\n')
         refused(adapter.main, verify)
-        adapter.write(selected, str(include))
+        adapter.write(selected, str(include), qt)
         tools['python'] = str(root / 'absent-python')
         try:
             adapter.main(verify)
@@ -149,4 +172,4 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         refused(adapter.render, selected)
         assert not list(root.glob('.native-tools-*'))
 
-print('PASS: native make role/ABI argv, prefix selection, stale/foreign mapping refusals and atomic rewrite; no compiler or bmake build')
+print('PASS: native make role/ABI argv, prefix selection, qtpaths Qt directories, stale/foreign mapping refusals and atomic rewrite; no compiler or bmake build')

@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import shlex
+import subprocess
 import sys
 import tempfile
 
@@ -37,6 +38,29 @@ ROLE_DIRECTORIES = {
     # Native LLVM TableGen tools for the lld and clang cross recipes.
     'llvm-tblgen': 'EMBERBSD_LLVM_NATIVE_TOOLS',
 }
+# Cross Qt modules take host moc, rcc, uic and lrelease from the native Qt.
+# qtpaths reports these directories. Qt installs it below the prefix.
+QT_QTPATHS = 'qt6/bin/qtpaths'
+QT_QUERIES = {'qt-host-path': ('EMBERBSD_QT_HOST_PATH', 'QT_INSTALL_PREFIX'),
+              'qt-host-libexecs': ('EMBERBSD_QT_HOST_LIBEXECS', 'QT_INSTALL_LIBEXECS')}
+
+
+def qt_host_paths(prefix, search_path):
+    from emberbsd_sdk.errors import SDKError
+    root = Path(prefix).resolve(strict=True)
+    qtpaths = root / QT_QTPATHS
+    if not qtpaths.is_file() or not os.access(qtpaths, os.X_OK):
+        raise SDKError('The host prefix has no native Qt qtpaths: ' + str(qtpaths))
+    values = []
+    for role, (variable, query) in QT_QUERIES.items():
+        result = subprocess.run([str(qtpaths), '--query', query], capture_output=True, text=True,
+                                env={'PATH': search_path, 'LC_ALL': 'C'})
+        value = result.stdout.strip()
+        if result.returncode != 0 or not os.path.isabs(value) or not Path(value).is_dir() \
+                or not Path(value).resolve().is_relative_to(root):
+            raise SDKError('qtpaths ' + query + ' does not name a directory in the host prefix')
+        values.append((role, variable, value))
+    return tuple(values)
 
 
 def sdk_loader():
@@ -61,7 +85,7 @@ def literal(value):
     return value
 
 
-def render(toolset):
+def render(toolset, qt=()):
     lines = ['# Generated from the selected Ports host prefix. Do not edit.']
     family = toolset.compiler_family
     if family not in ('clang', 'gcc'):
@@ -78,6 +102,7 @@ def render(toolset):
                 for role, variable in ROLE_VARIABLES.items()]
     selected += [(role + '-dir', variable, os.path.dirname(toolset.tool(role)))
                  for role, variable in ROLE_DIRECTORIES.items()]
+    selected += list(qt)
     for role, variable, value in selected:
         value = literal(value)
         if "'" in value:
@@ -136,13 +161,13 @@ def selection(arguments):
     return toolset
 
 
-def write(toolset, destination):
+def write(toolset, destination, qt=()):
     from emberbsd_sdk import paths
     from emberbsd_sdk.errors import SDKError
     if not Path(destination).is_absolute():
         raise SDKError('Use an absolute native include destination')
     output = Path(paths.canonical_new(destination))
-    data = render(toolset)
+    data = render(toolset, qt)
     # Replace only the requested configuration file, after a complete write.
     with tempfile.NamedTemporaryFile(prefix='.native-tools-', dir=output.parent,
                                      delete=False) as temporary:
@@ -170,8 +195,9 @@ def main(arguments):
     elif not args.makeconf or args.output:
         parser.error('verify requires only --makeconf')
     toolset = selection(args)
+    qt = qt_host_paths(args.host_prefix, toolset.path)
     if args.operation == 'write':
-        print(json.dumps(write(toolset, args.output)))
+        print(json.dumps(write(toolset, args.output, qt)))
         return
     from emberbsd_sdk import paths
     from emberbsd_sdk.errors import SDKError
@@ -180,7 +206,7 @@ def main(arguments):
     path = Path(paths.canonical_existing(args.makeconf))
     paths.regular_file(str(path))
     data = path.read_bytes()
-    if data != render(toolset):
+    if data != render(toolset, qt):
         raise SDKError('Regenerate the native include for the selected host prefix')
     print('VERIFIED')
 
