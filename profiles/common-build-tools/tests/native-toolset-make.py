@@ -255,6 +255,25 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         assert output.getvalue() == 'VERIFIED\n'
         for tool in adapter.MLIR_HOST_TOOLS:
             (mlir_bin / tool).unlink()
+        # Cross Fortran runs the real native flang file, never the link.
+        assert b'EMBERBSD_FLANG' not in without_qt
+        (mlir_bin / 'flang-23').write_text('#!/bin/sh\n')
+        (mlir_bin / 'flang-23').chmod(0o755)
+        (mlir_bin / 'flang').symlink_to('flang-23')
+        with contextlib.redirect_stdout(io.StringIO()):
+            adapter.main(['write', *pins, '--output', str(destination)])
+        flang_real = str((mlir_bin / 'flang-23').resolve())
+        assert ('.if "${EMBERBSD_FLANG}" != "' + flang_real + '"').encode() in include.read_bytes()
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            adapter.main(['verify', *pins, '--makeconf', str(include)])
+        assert output.getvalue() == 'VERIFIED\n'
+        (mlir_bin / 'flang').unlink()
+        (mlir_bin / 'flang').symlink_to(root / 'foreign-flang')
+        (root / 'foreign-flang').write_text('#!/bin/sh\n')
+        (root / 'foreign-flang').chmod(0o755)
+        refused(adapter.main, ['write', *pins, '--output', str(destination)])
+        for path in (mlir_bin / 'flang', mlir_bin / 'flang-23', root / 'foreign-flang'):
+            path.unlink()
         answer_qt(qt_answers)
         adapter.write(selected, str(destination), qt)
         assert include.read_bytes() == before
@@ -292,4 +311,4 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         refused(adapter.render, selected)
         assert not list(root.glob('.native-tools-*'))
 
-print('PASS: native make role/ABI argv, prefix selection, qtpaths Qt directories or none, complete native MLIR generators or none, stale/foreign mapping refusals and atomic rewrite; no compiler or bmake build')
+print('PASS: native make role/ABI argv, prefix selection, qtpaths Qt directories or none, complete native MLIR generators or none, the real native flang file or none, stale/foreign mapping refusals and atomic rewrite; no compiler or bmake build')

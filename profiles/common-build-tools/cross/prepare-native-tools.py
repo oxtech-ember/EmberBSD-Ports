@@ -104,6 +104,19 @@ def mlir_host_tools(prefix):
             raise SDKError('The host prefix has an incomplete native MLIR: ' + str(path))
     return (('mlir-tools-dir', 'EMBERBSD_MLIR_NATIVE_TOOLS', str(bindir)),)
 
+# Cross Fortran packages run the native flang driver. Pin its real file: the
+# driver searches the library directory beside that file, not beside the link.
+def flang_host_tool(prefix):
+    from emberbsd_sdk.errors import SDKError
+    bindir = Path(prefix).resolve(strict=True) / 'bin'
+    driver = bindir / 'flang'
+    if not os.path.lexists(driver):
+        return ()
+    real = driver.resolve()
+    if real.parent != bindir or not real.is_file() or not os.access(real, os.X_OK):
+        raise SDKError('The host prefix has an invalid native flang: ' + str(driver))
+    return (('flang', 'EMBERBSD_FLANG', str(real)),)
+
 def sdk_loader():
     here = Path(__file__).resolve()
     candidates = [here.parent / 'lang/llvm/files/sdk_source.py']
@@ -282,7 +295,8 @@ def main(arguments):
     elif not args.makeconf or args.output:
         parser.error('verify requires only --makeconf')
     toolset = selection(args)
-    qt = qt_host_paths(args.host_prefix, toolset.path) + mlir_host_tools(args.host_prefix)
+    qt = qt_host_paths(args.host_prefix, toolset.path) + mlir_host_tools(args.host_prefix) + \
+        flang_host_tool(args.host_prefix)
     if args.operation == 'write':
         print(json.dumps(write(toolset, args.output, qt, args.fetch_mode)))
         return
