@@ -72,7 +72,8 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         assert call.kwargs['compiler_family'] == 'clang'
         assert b'EMBERBSD_HOST_COMPILER_FAMILY?= clang\n' in before
         assert call.kwargs['required_roles'] == tuple(adapter.ROLE_VARIABLES) + tuple(directories)
-        for role in ('bmake', 'gmake', 'xz', 'xzcat', 'install', 'fetch', 'wayland-scanner', 'llvm-tblgen'):
+        for role in ('bmake', 'gmake', 'xz', 'xzcat', 'install', 'fetch', 'wayland-scanner', 'llvm-tblgen',
+                     'clang-tblgen'):
             assert role in call.kwargs['required_roles']
         # A make command-line assignment can replace even := variables.
         # Expected values must be literals, not aliases to another variable.
@@ -109,8 +110,9 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         # Cross wayland, lld and clang recipes need these native tools.
         for variable, value in (('EMBERBSD_WAYLAND_SCANNER', tools['wayland-scanner']),
                                 ('EMBERBSD_LLVM_NATIVE_TOOLS', str(root / 'llvm/bin')),
+                                ('EMBERBSD_CLANG_TABLEGEN', tools.get('clang-tblgen')),
                                 ('EMBERBSD_CROSS_BUILD_PYTHON', sys.executable)):
-            assert ('.if "${' + variable + '}" != "' + value + '"').encode() in before, variable
+            assert ('.if "${' + variable + '}" != "' + str(value) + '"').encode() in before, variable
         adapter.write(selected, str(destination))
         assert include.read_bytes() == before and not list(root.glob('.native-tools-*'))
         selected.compiler_family = 'gcc'

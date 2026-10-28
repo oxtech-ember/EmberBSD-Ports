@@ -29,6 +29,8 @@ ROLE_VARIABLES = {
     'fetch': 'TOOLS_PLATFORM.fetch',
     # Wayland protocol code generator for wayland consumers.
     'wayland-scanner': 'EMBERBSD_WAYLAND_SCANNER',
+    # Native Clang TableGen for the clang cross recipe.
+    'clang-tblgen': 'EMBERBSD_CLANG_TABLEGEN',
 }
 # These variables select the directory of the role tool.
 ROLE_DIRECTORIES = {
