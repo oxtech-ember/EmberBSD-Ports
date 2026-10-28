@@ -140,3 +140,11 @@ modules with the target compilation settings. Pristine `gzread` and
 The complete series passes every invocation. GCC16 reports no finding;
 Clang retains the two division-model findings and one existing dead store.
 Native and target raw reports remain separate.
+
+## Shared Chromium compression helper
+
+The package also installs `share/zlib-source/google/compression_utils_portable.{h,cc}`
+from Chromium zlib commit `868f187def53b2208f7a0447c069e6ea1ecde7ae`, with
+its Chromium BSD license at `share/zlib-source/LICENSE.chromium`. Consumers
+compile this one helper with `USE_SYSTEM_ZLIB` and link the common zlib package;
+the artifact does not introduce another zlib library or C++ ABI.

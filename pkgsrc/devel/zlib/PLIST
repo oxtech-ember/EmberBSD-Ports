@@ -4,3 +4,6 @@ include/zlib.h
 lib/libz.la
 lib/pkgconfig/zlib.pc
 man/man3/zlib.3
+share/zlib-source/LICENSE.chromium
+share/zlib-source/google/compression_utils_portable.cc
+share/zlib-source/google/compression_utils_portable.h

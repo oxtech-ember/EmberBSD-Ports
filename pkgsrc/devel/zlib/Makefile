@@ -2,7 +2,7 @@
 # EmberBSD: use the verified upstream release, with the pkgsrc libtool ABI.
 
 DISTNAME=	zlib-1.3.2
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	devel
 MASTER_SITES=	https://zlib.net/
 EXTRACT_SUFX=	.tar.xz
@@ -10,7 +10,7 @@ EXTRACT_SUFX=	.tar.xz
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://www.zlib.net/
 COMMENT=	General purpose data compression library
-LICENSE=	zlib
+LICENSE=	zlib AND modified-bsd
 
 USE_LIBTOOL=	yes
 
@@ -54,5 +54,9 @@ do-install:
 	${INSTALL_DATA} ${WRKSRC}/zconf.h ${DESTDIR}${PREFIX}/include
 	${INSTALL_DATA} ${WRKSRC}/zlib.h ${DESTDIR}${PREFIX}/include
 	${INSTALL_DATA} ${WRKSRC}/zlib.pc.in ${DESTDIR}${PREFIX}/lib/pkgconfig/zlib.pc
+	${INSTALL_DATA_DIR} ${DESTDIR:Q}${PREFIX:Q}/share/zlib-source/google
+	${INSTALL_DATA} ${FILESDIR:Q}/chromium-google/compression_utils_portable.h ${DESTDIR:Q}${PREFIX:Q}/share/zlib-source/google/
+	${INSTALL_DATA} ${FILESDIR:Q}/chromium-google/compression_utils_portable.cc ${DESTDIR:Q}${PREFIX:Q}/share/zlib-source/google/
+	${INSTALL_DATA} ${FILESDIR:Q}/chromium-google/LICENSE ${DESTDIR:Q}${PREFIX:Q}/share/zlib-source/LICENSE.chromium
 
 .include "../../mk/bsd.pkg.mk"
