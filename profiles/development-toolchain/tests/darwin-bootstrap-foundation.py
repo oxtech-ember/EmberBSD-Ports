@@ -36,6 +36,9 @@ PROVIDERS = {
     'pkgtools/pkg_install': ('pkg_install', tuple('sbin/pkg_' + name for name in
                                               ('add', 'create', 'admin', 'info'))),
     'pkgtools/pkg_install-info': ('pkg_install-info', ('bin/pkg_install-info',)),
+    # Every cross package patches with nbpatch on Darwin; PKG_DEVELOPER runs checkperms.
+    'devel/nbpatch': ('nbpatch', ('bin/nbpatch',)),
+    'sysutils/checkperms': ('checkperms', ('bin/checkperms',)),
     'devel/diffutils': ('diffutils', ('bin/gcmp', 'bin/gdiff')),
     'devel/meson': ('meson', ('bin/meson',)),
     'devel/wayland': ('wayland', ('bin/wayland-scanner',)),
@@ -93,17 +96,38 @@ def patched_version(patch_name, recipe, variable, name):
     return after.removeprefix(name + '-')
 
 
+def revision_chain(recipe):
+    """Follow the recorded common patches from the source PKGREVISION to the last one."""
+    current = re.search(r'^PKGREVISION=\s*(\d+)', source(recipe + '/Makefile'), re.M)
+    current = current[1] if current else '0'
+    steps = {}
+    for patch in sorted((SOURCE / 'profiles/common-build-tools/patches').glob('*.patch')):
+        for section in re.split(r'(?m)^(?=--- a/)', patch.read_text())[1:]:
+            if not section.startswith('--- a/' + recipe + '/Makefile\n'):
+                continue
+            after = re.search(r'^\+PKGREVISION=\s*(\d+)', section, re.M)
+            if after:
+                before = re.search(r'^-PKGREVISION=\s*(\d+)', section, re.M)
+                steps.setdefault(before[1] if before else '0', set()).add(after[1])
+    while current in steps:
+        assert len(steps[current]) == 1, (recipe, current, steps[current])
+        current, = steps[current]
+    return '' if current == '0' else 'nb' + current
+
+
 def versions():
     values = {'devel/bmake': patched_version('pkgsrc-bmake-20260912.patch', 'devel/bmake', 'PKGNAME', 'bmake'),
         'archivers/gzip': patched_version('pkgsrc-gzip-1.15.patch', 'archivers/gzip', 'DISTNAME', 'gzip'),
         'pkgtools/pkg_install': match(source('pkgtools/pkg_install/files/lib/version.h'),
-                                     r'^#define PKGTOOLS_VERSION (\d+)'),
+                                     r'^#define PKGTOOLS_VERSION (\d+)') +
+                                revision_chain('pkgtools/pkg_install'),
         'pkgtools/pkg_install-info': match(source('devel/gtexinfo/Makefile.common'),
                                           r'^TEXINFO_VERSION=\s*(\S+)')}
     for recipe, name in (('sysutils/bsdinstall', 'bsdinstall'), ('devel/gmake', 'make'),
                          ('sysutils/coreutils', 'coreutils'), ('sysutils/findutils', 'findutils'),
                          ('textproc/grep', 'grep'), ('textproc/gsed', 'sed'),
-                         ('lang/nawk', 'nawk'), ('devel/diffutils', 'diffutils'), ('devel/meson', 'meson')):
+                         ('lang/nawk', 'nawk'), ('devel/diffutils', 'diffutils'), ('devel/meson', 'meson'),
+                         ('devel/nbpatch', 'nbpatch'), ('sysutils/checkperms', 'checkperms')):
         file = recipe + ('/Makefile.common' if recipe == 'sysutils/coreutils' else '/Makefile')
         values[recipe] = match(source(file), r'^DISTNAME=\s*' + name + r'-(\S+)')
     values['sysutils/bsdinstall'] += 'nb' + match(source('sysutils/bsdinstall/Makefile'),
