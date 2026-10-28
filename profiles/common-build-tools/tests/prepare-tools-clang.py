@@ -48,9 +48,10 @@ def profile_setup():
     profile = work / 'profile'
     profile.mkdir()
     for name in ('mk.conf', 'native-tools.mk', 'prepare-native-tools.py', 'fortran.mk',
-                 'sort-c.sh', 'gcc16-external-runtime.sh'):
+                 'gcc16-external-runtime.sh'):
         shutil.copy2(cross / 'cross' / name, profile / name)
     shutil.copy2(ports / 'pkgsrc/defaults.mk.conf', profile / 'EMBERBSD-DEFAULTS-MK.CONF')
+    shutil.copy2(ports / 'pkgsrc/versions.mk', profile / 'EMBERBSD-VERSIONS.MK')
     loader = profile / 'lang/llvm/files/sdk_source.py'
     loader.parent.mkdir(parents=True)
     shutil.copy2(ports / 'pkgsrc/lang/llvm/files/sdk_source.py', loader)

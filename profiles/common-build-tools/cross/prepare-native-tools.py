@@ -41,7 +41,18 @@ ROLE_VARIABLES = {
 }
 # These generators are required only by their respective consumers.
 OPTIONAL_ROLES = {'clang-tblgen': 'EMBERBSD_CLANG_TABLEGEN',
-                  'wayland-scanner': 'EMBERBSD_WAYLAND_SCANNER'}
+                  'wayland-scanner': 'EMBERBSD_WAYLAND_SCANNER',
+                  'flex': 'TOOLS_PLATFORM.flex', 'bison': 'TOOLS_PLATFORM.bison',
+                  'yacc': 'TOOLS_PLATFORM.yacc',
+                  'gcmp': 'TOOLS_PLATFORM.cmp', 'gchgrp': 'TOOLS_PLATFORM.chgrp',
+                  'gchown': 'TOOLS_PLATFORM.chown', 'gwc': 'TOOLS_PLATFORM.wc',
+                  'gprintf': 'TOOLS_PLATFORM.printf', 'gtail': 'TOOLS_PLATFORM.tail',
+                  'gxargs': 'TOOLS_PLATFORM.xargs', 'gid': 'TOOLS_PLATFORM.id',
+                  'gfind': 'TOOLS_PLATFORM.find', 'bsdtar': 'TOOLS_PLATFORM.bsdtar',
+                  'zcat': 'TOOLS_PLATFORM.gzcat', 'gdate': 'TOOLS_PLATFORM.date',
+                  'ghostname': 'TOOLS_PLATFORM.hostname', 'gls': 'TOOLS_PLATFORM.ls',
+                  'gpwd': 'TOOLS_PLATFORM.pwd', 'grmdir': 'TOOLS_PLATFORM.rmdir',
+                  'gsleep': 'TOOLS_PLATFORM.sleep'}
 # These variables select the directory of the role tool.
 ROLE_DIRECTORIES = {
     # Native LLVM TableGen tools for the lld and clang cross recipes.
@@ -133,6 +144,8 @@ def render(toolset, qt=(), fetch_mode='fetch'):
                 for role, variable in ROLE_VARIABLES.items()]
     selected += [(role, variable, toolset.tool(role))
                  for role, variable in OPTIONAL_ROLES.items() if role in toolset.tools]
+    if 'flex' in toolset.tools:
+        selected.append(('lex', 'TOOLS_PLATFORM.lex', toolset.tool('flex')))
     selected += [(role + '-dir', variable, os.path.dirname(toolset.tool(role)))
                  for role, variable in ROLE_DIRECTORIES.items()]
     selected += list(qt)
@@ -154,6 +167,15 @@ def render(toolset, qt=(), fetch_mode='fetch'):
                   variable + '?= ${' + pinned + '}',
                   '.if "${' + variable + '}" != "' + value + '"',
                   '.error ' + variable + ' differs from the selected Ports tool', '.endif']
+    # Empty platform mappings make pkgsrc resolve these build tools through
+    # the native package dependency rather than /usr/bin when absent.
+    for role, variable in OPTIONAL_ROLES.items():
+        if variable.startswith('TOOLS_PLATFORM.') and role not in toolset.tools:
+            lines += [variable + '?=', '.if !empty(' + variable + ')',
+                      '.error ' + variable + ' was not selected from the host prefix', '.endif']
+    if 'flex' not in toolset.tools:
+        lines += ['TOOLS_PLATFORM.lex?=', '.if !empty(TOOLS_PLATFORM.lex)',
+                  '.error TOOLS_PLATFORM.lex was not selected from the host prefix', '.endif']
     # The explicit manual mode supports only already available sources.
     if fetch_mode == 'fetch':
         value = literal(toolset.tool('fetch'))

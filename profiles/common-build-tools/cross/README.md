@@ -216,12 +216,11 @@ EMBERBSD_BUILD_AUTOCONF=/absolute/host-autoconf/bin/autoconf
 .endif
 ```
 
-Keep `mk.conf` and its executable `sort-c.sh` together. The profile uses
-one executable path to preserve C collation in pkgsrc's `TOOLS_SORT`.
+The profile selects native prefix `gsort` as one executable and exports C
+collation for pkgsrc's `TOOLS_SORT`.
 An `env LC_ALL=C sort` command loses its arguments in libtool PLIST expansion.
-The prepared export includes both files. Check the exported helper with
-`BMAKE=/absolute/host/bin/bmake sh scripts/tests/cross-export-sort.sh /absolute/pkgsrc`.
-The check reads the actual exported profile and executes its selected sort path.
+The prepared export carries the profile; the regression below checks the
+selected prefix executable and its locale through actual pkgsrc targets.
 
 Shell scripts selected by `REPLACE_SH` retain the target base `/bin/sh`.
 The selected native `CONFIG_SHELL` and build commands remain unchanged.
@@ -673,7 +672,7 @@ accepts all 2899 entries. Extra-file and missing-alias controls still fail.
 The test verifies that input aliases resolve within the staged database.
 This is a packing-list check, not package installation or target execution.
 
-The cross profile exports `LC_ALL=C` and selects `/usr/bin/sort` directly.
+The cross profile exports `LC_ALL=C` and selects `gsort` from the native prefix.
 pkgsrc passes `TOOLS_SORT` as one executable to its libtool PLIST expander.
 An `env` command in the tool path drops shared and static library entries.
 This check exercises the actual PLIST target under a non-C caller locale:

@@ -21,7 +21,6 @@ profiles.each do |kind, path|
   abort 'Expected one scoped Ruby selection.' unless text.scan(block).size == 1
   sources[kind] = { 'before' => text.sub(block, ''), 'fixed' => text }
 end
-FileUtils.cp(root + '/profiles/common-build-tools/cross/sort-c.sh', work)
 configs = {}
 %w[before fixed].each do |revision|
   profiles.each_key do |kind|

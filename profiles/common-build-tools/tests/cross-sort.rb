@@ -9,11 +9,9 @@ tree, config = ARGV.first(2).map { |p| File.realpath(p) }
 work = File.expand_path(ARGV.last)
 Dir.mkdir(work)
 make = ENV.fetch('BMAKE', 'bmake')
-FileUtils.cp(File.expand_path('../cross/mk.conf', __dir__), work + '/cross.mk.conf')
 text = File.read(config)
 line = /^\.include "[^"]*\/EMBERBSD-CROSS-MK\.CONF"$/
 abort 'expected exactly one common cross profile include' unless text.scan(line).length == 1
-text = text.sub(line, ".include \"#{work}/cross.mk.conf\"")
 text += "\nWRKOBJDIR=#{work}/objects\nPACKAGES=#{work}/packages\n"
 File.write(work + '/mk.conf', text)
 prefix = work + '/stage/usr/pkg'
@@ -44,7 +42,7 @@ run = lambda do |name, *args|
   abort "real pkgsrc command failed: #{name}: #{err}" unless status.success?
   out
 end
-vars = %w[PLIST TOOLS_SORT TOOLS_PLATFORM.sort LC_ALL]
+vars = %w[PLIST TOOLS_SORT TOOLS_PLATFORM.sort LC_ALL EMBERBSD_HOST_PREFIX]
 values = run.call('metadata', *vars.flat_map { |v| ['-V', '${' + v + '}'] }).lines.map(&:chomp)
 abort 'unexpected query output' unless values.length == vars.length
 v = vars.zip(values).to_h
@@ -56,7 +54,7 @@ check = lambda do |name, condition|
   puts "PASS: #{name}"
 end
 check.call('actual pkgsrc PLIST retains all libtool shared and static payloads', actual.sort == expected.sort)
-check.call('TOOLS_SORT is the selected single executable', v.fetch('TOOLS_SORT') == '/usr/bin/sort' && v.fetch('TOOLS_PLATFORM.sort') == '/usr/bin/sort')
+check.call('TOOLS_SORT is the selected single executable', v.fetch('TOOLS_SORT') == File.join(v.fetch('EMBERBSD_HOST_PREFIX'), 'bin/gsort') && v.fetch('TOOLS_PLATFORM.sort') == v.fetch('TOOLS_SORT'))
 check.call('cross MAKECONF exports C collation despite the non-C caller', v.fetch('LC_ALL') == 'C' && File.read(work + '/child-locale.txt') == "C\n")
 check.call('ordinary make child sort uses deterministic C byte order', File.read(work + '/child-sort.txt') == "A\nB\na\nb\n")
 puts 'PASS: actual PLIST/libtool and child-locale contracts; no target build or execution'

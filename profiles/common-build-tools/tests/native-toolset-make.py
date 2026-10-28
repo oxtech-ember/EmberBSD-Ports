@@ -59,6 +59,12 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
     clang_tblgen.touch()
     wayland_scanner = root / 'host-pkg-llvm/bin/wayland-scanner'
     wayland_scanner.touch()
+    flex = root / 'host-pkg-llvm/bin/flex'
+    bison = root / 'host-pkg-llvm/bin/bison'
+    flex.touch()
+    bison.touch()
+    yacc = root / 'host-pkg-llvm/bin/yacc'
+    yacc.touch()
     qt_prefix = root / 'host-pkg-llvm/qt6'
     (qt_prefix / 'libexec').mkdir(parents=True)
     (qt_prefix / 'bin').mkdir()
@@ -88,7 +94,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         assert set(call.kwargs) == {'required_roles', 'compiler_family'}
         assert call.kwargs['compiler_family'] == 'clang'
         assert b'EMBERBSD_HOST_COMPILER_FAMILY?= clang\n' in before
-        assert call.kwargs['required_roles'] == tuple(adapter.ROLE_VARIABLES) + tuple(directories) + ('clang-tblgen', 'wayland-scanner', 'fetch')
+        assert call.kwargs['required_roles'] == tuple(adapter.ROLE_VARIABLES) + tuple(directories) + ('clang-tblgen', 'wayland-scanner', 'flex', 'bison', 'yacc', 'fetch')
         for role in ('bmake', 'gmake', 'xz', 'xzcat', 'install', 'fetch', 'wayland-scanner', 'llvm-tblgen',
                      'clang-tblgen'):
             assert role in call.kwargs['required_roles']
@@ -107,6 +113,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
             assert ('.if "${TOOLS_PLATFORM.' + variable + '}" != "' + value + '"').encode() in before
         # A make command-line assignment can replace even := variables.
         # Expected values must be literals, not aliases to another variable.
+        assert b'TOOLS_PLATFORM.lex?= ${_EMBER_SDK_LEX}' in before
         for role in adapter.ROLE_VARIABLES:
             name = '_EMBER_SDK_' + role.upper().replace('-', '_')
             value = (shlex.join((*selected.command(role), '-p')) if role == 'gmkdir' else
@@ -190,6 +197,21 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         assert b'EMBERBSD_WAYLAND_SCANNER' not in include.read_bytes()
         tools['wayland-scanner'] = str(root / 'sdk-wayland-scanner')
         wayland_scanner.touch()
+        for role, variable in adapter.OPTIONAL_ROLES.items():
+            if not variable.startswith('TOOLS_PLATFORM.'):
+                continue
+            executable = root / 'host-pkg-llvm/bin' / role
+            executable.touch()
+            executable.unlink()
+            del tools[role]
+            with contextlib.redirect_stdout(io.StringIO()):
+                adapter.main(['write', *pins, '--output', str(destination)])
+            assert role not in api.load_host_prefix.call_args.kwargs['required_roles']
+            assert (variable + '?=\n').encode() in include.read_bytes()
+            if role == 'flex':
+                assert b'TOOLS_PLATFORM.lex?=\n' in include.read_bytes()
+            tools[role] = str(root / ('sdk-' + role))
+            executable.touch()
         tools['clang-tblgen'] = str(root / 'sdk-clang-tblgen')
         clang_tblgen.touch()
         adapter.write(selected, str(destination))

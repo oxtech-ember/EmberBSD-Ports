@@ -24,10 +24,11 @@ def prepare_profile(source, destination):
     destination.mkdir()
     cross = source / 'profiles/common-build-tools/cross'
     for name in ('mk.conf', 'native-tools.mk', 'prepare-native-tools.py', 'fortran.mk',
-                 'sort-c.sh', 'gcc16-external-runtime.sh'):
+                 'gcc16-external-runtime.sh'):
         shutil.copy2(cross / name, destination / name)
     shutil.copy2(source / 'pkgsrc/defaults.mk.conf',
                  destination / 'EMBERBSD-DEFAULTS-MK.CONF')
+    shutil.copy2(source / 'pkgsrc/versions.mk', destination / 'EMBERBSD-VERSIONS.MK')
     loader = destination / 'lang/llvm/files/sdk_source.py'
     loader.parent.mkdir(parents=True)
     shutil.copy2(source / 'pkgsrc/lang/llvm/files/sdk_source.py', loader)

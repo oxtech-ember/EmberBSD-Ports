@@ -45,7 +45,6 @@ source = File.read(profile)
 old = source.sub(/^CROSS_SYSCONFBASE\?=\/etc$/, 'CROSS_SYSCONFBASE=/usr/pkg/etc')
 abort 'No profile mutation point' if source == old
 File.write("#{output}/old-profile.mk", old)
-FileUtils.cp(File.join(File.dirname(profile), 'sort-c.sh'), output)
 cfg = File.read(config)
 abort 'MAKECONF must include the tested cross profile' unless cfg.include?(profile)
 File.write("#{output}/old.mk.conf", cfg.gsub(profile, "#{output}/old-profile.mk"))
