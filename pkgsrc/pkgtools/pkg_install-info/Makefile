@@ -6,6 +6,7 @@
 EXTRACT_SUFX=	.tar.gz
 
 PKGNAME= pkg_install-info-${TEXINFO_VERSION}
+PKGREVISION= 1
 CATEGORIES= pkgtools
 MAINTAINER= pkgsrc-users@NetBSD.org
 HOMEPAGE= https://www.gnu.org/software/texinfo/
@@ -19,10 +20,8 @@ BUILD_DIRS= gnulib/lib install-info
 INSTALL_DIRS= install-info
 INSTALL_TARGET= install-exec
 CONFIGURE_ARGS+= --program-transform-name=s/install-info/pkg_install-info/
-CONFIGURE_ARGS+= --disable-nls --disable-perl-xs
-# Only install-info is built. It does not run Perl, but configure checks for
-# it; a Perl dependency would close the gmake and Info file cycle again.
-CONFIGURE_ARGS+= PERL=/usr/bin/true
+CONFIGURE_ARGS+= --disable-nls --disable-perl-xs --disable-perl-tools
+# The common C-only mode configures no Perl converter or nested tta tree.
 TEST_DIRS= install-info
 TEST_TARGET= check
 

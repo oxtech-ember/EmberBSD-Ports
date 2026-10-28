@@ -2,7 +2,7 @@
 
 .include "Makefile.common"
 PKGNAME=	g${DISTNAME}
-PKGREVISION=	4
+PKGREVISION=	5
 CATEGORIES=	devel sysutils
 
 MAINTAINER=	pkgsrc-users@NetBSD.org

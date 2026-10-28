@@ -1,0 +1,50 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
+
+--- Makefile.am.orig
++++ Makefile.am
+@@ -29,6 +29,7 @@
+ # Ensure that this file is built early, as it is needed to run texi2any
+ # and pod2texi in rules under "man" and "doc".  This helps in running
+ # "make dist" without running "make" first.
++if PERL_TOOLS
+ BUILT_SOURCES = tta/perl/Texinfo/ModulePath.pm
+ tta/perl/Texinfo/ModulePath.pm:
+ 	cd tta/perl && $(MAKE) $(AM_MAKEFLAGS) Texinfo/ModulePath.pm
+@@ -37,6 +38,9 @@
+ # directories.  This allows to run configure and make after make distclean
+ BUILT_SOURCES += $(top_srcdir)/tta/perl/Texinfo/HTMLData.pm \
+                  $(top_srcdir)/tta/C/main/html_conversion_data.c
++else
++BUILT_SOURCES =
++endif
+ $(top_srcdir)/tta/perl/Texinfo/HTMLData.pm:
+ 	cd tta/perl && $(MAKE) $(AM_MAKEFLAGS) translated_source_files
+ 
+@@ -48,6 +52,7 @@
+ 	cd doc && $(MAKE) TEXMF=$(TEXMF) install-tex
+ 
+ # painful separate build for cross-compiling.
++if PERL_TOOLS
+ SUBDIRS =
+ if TOOLS_ONLY
+   # Build native tools only.
+@@ -79,6 +84,17 @@
+   SUBDIRS += js
+ endif
+ 
++else
++SUBDIRS = gnulib/lib install-info
++if HAVE_TERMLIBS
++SUBDIRS += info
++else
++if HOST_IS_WINDOWS
++SUBDIRS += info
++endif
++endif
++endif
++
+ distclean-local:
+ 	-test -d "$(native_tools)" && rm -rf "$(native_tools)"
+ 

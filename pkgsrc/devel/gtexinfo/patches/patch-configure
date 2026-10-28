@@ -1,11 +1,85 @@
 $NetBSD: patch-configure,v 1.1 2024/11/01 08:37:29 adam Exp $
 
-Ignore iconv bug check for macOS for the sake of PLIST consistency.
-This check has been introduced in gtexinfo 7.1.1.
+Ignore the macOS iconv bug test for pkgsrc PLIST consistency.
+Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
 
---- configure.orig	2024-09-07 17:33:21.000000000 +0000
+--- configure.orig
 +++ configure
-@@ -13469,6 +13469,7 @@ int result = 0;
+@@ -709,6 +709,8 @@
+ TERMLIBS
+ TOOLS_ONLY_FALSE
+ TOOLS_ONLY_TRUE
++PERL_TOOLS_FALSE
++PERL_TOOLS_TRUE
+ native_tools
+ PTYS_TESTS_FALSE
+ PTYS_TESTS_TRUE
+@@ -2487,6 +2489,7 @@
+ ac_subst_files=''
+ ac_user_opts='
+ enable_option_checking
++enable_perl_tools
+ enable_silent_rules
+ enable_dependency_tracking
+ enable_largefile
+@@ -3155,6 +3158,7 @@
+ 
+ Optional Features:
+   --disable-option-checking  ignore unrecognized --enable/--with options
++  --disable-perl-tools    configure only the C info and install-info tools
+   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
+   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+   --enable-silent-rules   less verbose build output (undo: "make V=1")
+@@ -5383,8 +5387,8 @@
+ then :
+   printf %s "(cached) " >&6
+ else case e in #(
+-  e) cat >conftest.make <<\_ACEOF
+-SHELL = /bin/sh
++  e) printf '%s\n' "SHELL = ${CONFIG_SHELL-${SHELL-/bin/sh}}" >conftest.make
++cat >>conftest.make <<\_ACEOF
+ all:
+ 	@echo '@@@%%%=$(MAKE)=@@@%%%'
+ _ACEOF
+@@ -5724,7 +5728,24 @@
+ PACKAGE_DATE=`${SHELL} "$srcdir"/build-aux/mdate-sh "$srcdir"/configure.ac`
+ 
+ 
+-# We need Perl
++# The standalone C tools can be configured without the Perl converter.
++if test ${enable_perl_tools+y}; then :; else enable_perl_tools=yes; fi
++case $enable_perl_tools in yes|no) ;; *) as_fn_error $? "--enable-perl-tools accepts yes or no" "$LINENO" 5;; esac
++if test "$enable_perl_tools" = yes; then
++  PERL_TOOLS_TRUE=
++  PERL_TOOLS_FALSE='#'
++else
++  PERL_TOOLS_TRUE='#'
++  PERL_TOOLS_FALSE=
++fi
++if test "$enable_perl_tools" = no; then
++  for option in "$enable_perl_xs" "$enable_t2a_tests" "$enable_pod_simple_texinfo_tests" "$enable_perl_api_texi_build" "$enable_using_c_texi2any"; do
++    if test "$option" = yes; then
++      as_fn_error $? "Perl tools cannot be enabled in the C-only configuration" "$LINENO" 5
++    fi
++  done
++fi
++if test "$enable_perl_tools" = yes; then
+ 
+ # Extract the first word of "perl", so it can be a program name with args.
+ set dummy perl; ac_word=$2
+@@ -5818,6 +5839,11 @@
+ 
+ 
+ 
++else
++  PERL=
++  unicode_collate=not-required
++fi
++
+ # Find awk for running texindex.
+ # Don't use AC_PROG_AWK because this prefers gawk, which may be much
+ # slower than the awk that the user has in their path (e.g. mawk).
+@@ -14444,6 +14470,7 @@
          iconv_close (cd_utf8_to_88591);
        }
    }
@@ -13,7 +87,7 @@ This check has been introduced in gtexinfo 7.1.1.
    /* Test against macOS 14.4 bug: Failures are not distinguishable from
       successful returns.
       POSIX:2018 says: "The iconv() function shall ... return the number of
-@@ -13498,6 +13499,7 @@ int result = 0;
+@@ -14473,6 +14500,7 @@
          iconv_close (cd_utf8_to_88591);
        }
    }
@@ -21,7 +95,47 @@ This check has been introduced in gtexinfo 7.1.1.
    /* Test against Solaris 10 bug: Failures are not distinguishable from
       successful returns.  */
    {
-@@ -39577,6 +39579,7 @@ int result = 0;
+@@ -40004,8 +40032,8 @@
+ then :
+   printf %s "(cached) " >&6
+ else case e in #(
+-  e) cat >conftest.make <<\_ACEOF
+-SHELL = /bin/sh
++  e) printf '%s\n' "SHELL = ${CONFIG_SHELL-${SHELL-/bin/sh}}" >conftest.make
++cat >>conftest.make <<\_ACEOF
+ all:
+ 	@echo '@@@%%%=$(MAKE)=@@@%%%'
+ _ACEOF
+@@ -40285,7 +40313,7 @@
+ # $native_tools is also added to SUBDIRS in the main Makefile.am,
+ # so that make compiles the native tools first.
+ #
+-if test "$cross_compiling" = no; then
++if test "$cross_compiling" = no || test "$enable_perl_tools" = no; then
+   native_tools=
+ else
+   native_tools=tools
+@@ -40301,11 +40329,15 @@
+   # it gets the wrong CC etc.
+   # env -i gives this build host configure a clean environment;
+   # consequently, we have to re-initialize $PATH.
++  native_shell=${CONFIG_SHELL-${SHELL-/bin/sh}}
+   env -i CC="$BUILD_CC" AR="$BUILD_AR" RANLIB="$BUILD_RANLIB" \
+-      PATH="$PATH" \
+-      tools_only=1 \
+-    ${confdir}/configure --build=${build} --host=${build} \
+-                         --disable-rpath --disable-nls
++      LD="${LD_FOR_BUILD-}" CPPFLAGS="${CPPFLAGS_FOR_BUILD-}" \
++      CFLAGS="${CFLAGS_FOR_BUILD-}" LDFLAGS="${LDFLAGS_FOR_BUILD-}" \
++      LIBS="${LIBS_FOR_BUILD-}" \
++      PATH="$PATH" PATH_SEPARATOR="$PATH_SEPARATOR" PERL="$PERL" \
++      CONFIG_SHELL="$native_shell" SHELL="$native_shell" tools_only=1 \
++    "$native_shell" "${confdir}/configure" --build=${build} --host=${build} \
++                         --disable-rpath --disable-nls || exit 1
+   cd .. || exit 1
+   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Continuing with main configure (${host})." >&5
+ printf "%s\n" "$as_me: Continuing with main configure (${host})." >&6;}
+@@ -41296,6 +41328,7 @@
          iconv_close (cd_utf8_to_88591);
        }
    }
@@ -29,7 +143,7 @@ This check has been introduced in gtexinfo 7.1.1.
    /* Test against macOS 14.4 bug: Failures are not distinguishable from
       successful returns.
       POSIX:2018 says: "The iconv() function shall ... return the number of
-@@ -39606,6 +39609,7 @@ int result = 0;
+@@ -41325,6 +41358,7 @@
          iconv_close (cd_utf8_to_88591);
        }
    }
@@ -37,3 +151,32 @@ This check has been introduced in gtexinfo 7.1.1.
    /* Test against Solaris 10 bug: Failures are not distinguishable from
       successful returns.  */
    {
+@@ -42488,7 +42522,7 @@
+      fi
+ else case e in #(
+   e)
+-     if $PERL -e "use 5.008_001; use Encode; use Test::More; use Pod::Simple::PullParser; use Pod::Simple::XHTML;" > /dev/null 2>&5;
++     if test "$enable_perl_tools" = yes && $PERL -e "use 5.008_001; use Encode; use Test::More; use Pod::Simple::PullParser; use Pod::Simple::XHTML;" > /dev/null 2>&5;
+      then
+        pod_simple_texinfo_tests='yes'
+      else
+@@ -42524,7 +42558,7 @@
+      fi
+ else case e in #(
+   e)
+-     if $PERL -e "use 5.008_001; use Encode; use Pod::Simple::PullParser; use Pod::Simple::XHTML;" > /dev/null 2>&5;
++     if test "$enable_perl_tools" = yes && $PERL -e "use 5.008_001; use Encode; use Pod::Simple::PullParser; use Pod::Simple::XHTML;" > /dev/null 2>&5;
+      then
+        build_perl_api_texi='yes'
+      else
+@@ -42584,7 +42618,9 @@
+ 
+ 
+ 
+-subdirs="$subdirs tta"
++if test "$enable_perl_tools" = yes; then
++  subdirs="$subdirs tta"
++fi
+ 
+ 
+ cat >confcache <<\_ACEOF

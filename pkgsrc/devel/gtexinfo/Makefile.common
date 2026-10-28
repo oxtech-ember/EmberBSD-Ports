@@ -7,3 +7,8 @@ EXTRACT_SUFX=	.tar.xz
 TEXINFO_PKGDIR:=	${.PARSEDIR:tA}
 DISTINFO_FILE=	${TEXINFO_PKGDIR}/distinfo
 PATCHDIR=	${TEXINFO_PKGDIR}/patches
+
+# Both configure.ac and its generated configure are patched together. Keep
+# the distributed Autotools outputs authoritative during ordinary builds.
+post-patch:
+	${TOUCH} -r ${WRKSRC}/aclocal.m4 ${WRKSRC}/configure.ac

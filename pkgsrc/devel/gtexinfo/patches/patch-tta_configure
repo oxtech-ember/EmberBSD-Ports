@@ -1,0 +1,28 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
+
+--- tta/configure.orig
++++ tta/configure
+@@ -5144,8 +5144,8 @@
+ then :
+   printf %s "(cached) " >&6
+ else case e in #(
+-  e) cat >conftest.make <<\_ACEOF
+-SHELL = /bin/sh
++  e) printf '%s\n' "SHELL = ${CONFIG_SHELL-${SHELL-/bin/sh}}" >conftest.make
++cat >>conftest.make <<\_ACEOF
+ all:
+ 	@echo '@@@%%%=$(MAKE)=@@@%%%'
+ _ACEOF
+@@ -5591,8 +5591,8 @@
+ then :
+   printf %s "(cached) " >&6
+ else case e in #(
+-  e) cat >conftest.make <<\_ACEOF
+-SHELL = /bin/sh
++  e) printf '%s\n' "SHELL = ${CONFIG_SHELL-${SHELL-/bin/sh}}" >conftest.make
++cat >>conftest.make <<\_ACEOF
+ all:
+ 	@echo '@@@%%%=$(MAKE)=@@@%%%'
+ _ACEOF

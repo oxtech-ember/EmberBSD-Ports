@@ -1,0 +1,99 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
+
+--- configure.ac.orig
++++ configure.ac
+@@ -44,8 +44,21 @@
+ PACKAGE_DATE=`${SHELL} "$srcdir"/build-aux/mdate-sh "$srcdir"/configure.ac`
+ AC_SUBST([PACKAGE_DATE])
+ 
+-# We need Perl
++# The standalone C tools can be configured without the Perl converter.
++AC_ARG_ENABLE([perl-tools],
++  AS_HELP_STRING([--disable-perl-tools], [configure only the C info and install-info tools]),
++  [], [enable_perl_tools=yes])
++case $enable_perl_tools in yes|no) ;; *) AC_MSG_ERROR([--enable-perl-tools accepts yes or no]);; esac
++AM_CONDITIONAL([PERL_TOOLS], [test "$enable_perl_tools" = yes])
+ AC_ARG_VAR([PERL], [The path to the 'perl' executable.])
++if test "$enable_perl_tools" = no; then
++  for option in "$enable_perl_xs" "$enable_t2a_tests" "$enable_pod_simple_texinfo_tests" "$enable_perl_api_texi_build" "$enable_using_c_texi2any"; do
++    if test "$option" = yes; then
++      AC_MSG_ERROR([Perl tools cannot be enabled in the C-only configuration])
++    fi
++  done
++fi
++if test "$enable_perl_tools" = yes; then
+ AC_PATH_PROG([PERL], [perl])
+ if test -z "$PERL"; then
+    AC_MSG_ERROR(
+@@ -86,6 +99,11 @@
+   AC_MSG_WARN([Unicode::Collate not present; indices may be sorted incorrectly])
+ fi
+ 
++else
++  PERL=
++  unicode_collate=not-required
++fi
++
+ AC_REQUIRE_AUX_FILE([tap-driver.sh])
+ 
+ # Find awk for running texindex.
+@@ -180,7 +198,7 @@
+ # $native_tools is also added to SUBDIRS in the main Makefile.am,
+ # so that make compiles the native tools first.
+ #
+-if test "$cross_compiling" = no; then
++if test "$cross_compiling" = no || test "$enable_perl_tools" = no; then
+   native_tools=
+ else
+   native_tools=tools
+@@ -195,11 +213,15 @@
+   # it gets the wrong CC etc.
+   # env -i gives this build host configure a clean environment;
+   # consequently, we have to re-initialize $PATH.
++  native_shell=${CONFIG_SHELL-${SHELL-/bin/sh}}
+   env -i CC="$BUILD_CC" AR="$BUILD_AR" RANLIB="$BUILD_RANLIB" \
+-      PATH="$PATH" \
+-      tools_only=1 \
+-    ${confdir}/configure --build=${build} --host=${build} \
+-                         --disable-rpath --disable-nls
++      LD="${LD_FOR_BUILD-}" CPPFLAGS="${CPPFLAGS_FOR_BUILD-}" \
++      CFLAGS="${CFLAGS_FOR_BUILD-}" LDFLAGS="${LDFLAGS_FOR_BUILD-}" \
++      LIBS="${LIBS_FOR_BUILD-}" \
++      PATH="$PATH" PATH_SEPARATOR="$PATH_SEPARATOR" PERL="$PERL" \
++      CONFIG_SHELL="$native_shell" SHELL="$native_shell" tools_only=1 \
++    "$native_shell" "${confdir}/configure" --build=${build} --host=${build} \
++                         --disable-rpath --disable-nls || exit 1
+   cd .. || exit 1
+   AC_MSG_NOTICE([[Continuing with main configure (${host}).]])
+ fi
+@@ -377,7 +399,7 @@
+        pod_simple_texinfo_tests='yes'
+      fi],
+     [
+-     if $PERL -e "use 5.008_001; use Encode; use Test::More; use Pod::Simple::PullParser; use Pod::Simple::XHTML;" > /dev/null 2>&AS_MESSAGE_LOG_FD;
++     if test "$enable_perl_tools" = yes && $PERL -e "use 5.008_001; use Encode; use Test::More; use Pod::Simple::PullParser; use Pod::Simple::XHTML;" > /dev/null 2>&AS_MESSAGE_LOG_FD;
+      then
+        pod_simple_texinfo_tests='yes'
+      else
+@@ -399,7 +421,7 @@
+        build_perl_api_texi='yes'
+      fi],
+     [
+-     if $PERL -e "use 5.008_001; use Encode; use Pod::Simple::PullParser; use Pod::Simple::XHTML;" > /dev/null 2>&AS_MESSAGE_LOG_FD;
++     if test "$enable_perl_tools" = yes && $PERL -e "use 5.008_001; use Encode; use Pod::Simple::PullParser; use Pod::Simple::XHTML;" > /dev/null 2>&AS_MESSAGE_LOG_FD;
+      then
+        build_perl_api_texi='yes'
+      else
+@@ -448,7 +470,9 @@
+ AC_CONFIG_FILES([pre-inst-env:build-aux/pre-inst-env.in],
+   [chmod +x pre-inst-env])
+ 
+-AC_CONFIG_SUBDIRS([tta])
++if test "$enable_perl_tools" = yes; then
++  AC_CONFIG_SUBDIRS([tta])
++fi
+ 
+ AC_OUTPUT
+ 

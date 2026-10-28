@@ -1,0 +1,38 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted): explicit C-only mode and selected native shell.
+
+--- Makefile.in.orig
++++ Makefile.in
+@@ -113,6 +113,8 @@
+ @HAVE_TERMLIBS_FALSE@@HOST_IS_WINDOWS_TRUE@@TOOLS_ONLY_FALSE@am__append_6 = info
+ @TOOLS_ONLY_FALSE@am__append_7 = install-info po po_document tta \
+ @TOOLS_ONLY_FALSE@	Pod-Simple-Texinfo texindex util doc man js
++@HAVE_TERMLIBS_TRUE@@PERL_TOOLS_FALSE@am__append_8 = info
++@HAVE_TERMLIBS_FALSE@@HOST_IS_WINDOWS_TRUE@@PERL_TOOLS_FALSE@am__append_9 = info
+ subdir = .
+ ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+ am__aclocal_m4_deps = $(top_srcdir)/m4/txi_DIFF_OPTION.m4 \
+@@ -1927,14 +1929,16 @@
+ 
+ # Ensure that those files are built early, as they are needed in po*
+ # directories.  This allows to run configure and make after make distclean
+-BUILT_SOURCES = tta/perl/Texinfo/ModulePath.pm \
+-	$(top_srcdir)/tta/perl/Texinfo/HTMLData.pm \
+-	$(top_srcdir)/tta/C/main/html_conversion_data.c
++@PERL_TOOLS_TRUE@BUILT_SOURCES = tta/perl/Texinfo/ModulePath.pm \
++@PERL_TOOLS_TRUE@	$(top_srcdir)/tta/perl/Texinfo/HTMLData.pm \
++@PERL_TOOLS_TRUE@	$(top_srcdir)/tta/C/main/html_conversion_data.c
++@PERL_TOOLS_FALSE@BUILT_SOURCES =
+ 
+ # painful separate build for cross-compiling.
+-SUBDIRS = $(am__append_1) $(am__append_2) $(am__append_3) \
+-	$(am__append_4) $(am__append_5) $(am__append_6) \
+-	$(am__append_7)
++@PERL_TOOLS_TRUE@SUBDIRS = $(am__append_1) $(am__append_2) $(am__append_3) \
++@PERL_TOOLS_TRUE@	$(am__append_4) $(am__append_5) $(am__append_6) \
++@PERL_TOOLS_TRUE@	$(am__append_7)
++@PERL_TOOLS_FALSE@SUBDIRS = gnulib/lib install-info $(am__append_8) $(am__append_9)
+ 
+ # to be run before making a distribution: ensure that the texinfo.dtd on
+ # the web is what we will be releasing.  See README-hacking.
