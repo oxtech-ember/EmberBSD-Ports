@@ -25,6 +25,8 @@ my $original = read_file("$source/config.sh");
 my $original_header = read_file("$source/config.h");
 my ($arch) = $original =~ /^archname='(aarch64|x86_64)-netbsd-thread-multi'$/m;
 defined $arch or die "Unsupported configured Perl target architecture\n";
+my ($rm_args) = $original =~ /^rm_try='[^ ]+( .*)'$/m;
+defined $rm_args or die "Missing rm_try command arguments\n";
 my $text = $original;
 my %replace = (
     cc => '/usr/pkg/bin/clang', ld => '/usr/pkg/bin/clang',
@@ -33,6 +35,8 @@ my %replace = (
     cppstdin => '/usr/pkg/bin/clang -E',
     cpprun => '/usr/pkg/bin/clang -E',
     sh => '/bin/sh', sed => 'sed', full_sed => '/usr/bin/sed',
+    aphostname => '/bin/hostname', lns => '/bin/ln -s',
+    rm_try => '/bin/rm' . $rm_args,
     make => 'make', make_set_make => '#', firstmakefile => 'makefile',
     usecrosscompile => 'undef',
     cf_by => 'EmberBSD-Ports', cf_email => '', perladmin => '',
@@ -75,7 +79,8 @@ system($^X, "-I$output", "$source/configpm", "--chdir=$output", '--no-glossary')
 # Preserve the exact configured ABI header, including cross-build provenance.
 # Only installed tool names and personal build-host comments are replaced.
 my $header = $original_header;
-for my $pair ([LOC_SED => 'full_sed'], [CPPSTDIN => 'cppstdin'], [CPPRUN => 'cpprun']) {
+for my $pair ([LOC_SED => 'full_sed'], [CPPSTDIN => 'cppstdin'], [CPPRUN => 'cpprun'],
+              [PHOSTNAME => 'aphostname']) {
     my ($macro, $key) = @$pair;
     ($header =~ s/^(#define\s+\Q$macro\E\s+)"[^"]*"/$1"$replace{$key}"/m) == 1
         or die "Missing header macro: $macro\n";

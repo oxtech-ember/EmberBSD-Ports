@@ -8,7 +8,7 @@
  .include "Makefile.common"
  
 -PKGREVISION=	8
-+PKGREVISION=	9
++PKGREVISION=	10
  
  COMMENT=	Practical Extraction and Report Language
  

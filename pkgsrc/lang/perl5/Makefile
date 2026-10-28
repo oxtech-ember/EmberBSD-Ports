@@ -97,10 +97,13 @@ SUBST_STAGE.toolsbin=	pre-configure
 SUBST_FILES.toolsbin=	Configure
 SUBST_VARS.toolsbin=	TOOLS_RM
 
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 SUBST_CLASSES+=		pwd
 SUBST_STAGE.pwd=	pre-configure
 SUBST_FILES.pwd=	dist/PathTools/Cwd.pm
 SUBST_SED.pwd+=		-e "s,/bin/pwd,${TOOLS_PLATFORM.pwd},g"
+
+.endif
 
 .if ${OPSYS} == "Darwin" || ${OPSYS} == "Cygwin"
 #
