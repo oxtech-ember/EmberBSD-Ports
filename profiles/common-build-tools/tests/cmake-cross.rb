@@ -13,7 +13,7 @@ abort 'Output exists.' if File.exist?(work) || File.symlink?(work)
 root = File.expand_path('../../..', __dir__)
 profile = root + '/profiles/common-build-tools/cross/mk.conf'
 fixed = File.read(profile)
-pattern = /^CMAKE_CONFIGURE_ARGS\+= -DCMAKE_(?:SYSTEM_NAME|SYSTEM_PROCESSOR|SYSROOT|FIND_ROOT_PATH(?:_MODE_(?:PROGRAM|LIBRARY|INCLUDE|PACKAGE))?):[^\n]+\n/
+pattern = /^EMBERBSD_CROSS_CMAKE_ARGS\+= -DCMAKE_(?:SYSTEM_NAME|SYSTEM_PROCESSOR|SYSROOT|FIND_ROOT_PATH(?:_MODE_(?:PROGRAM|LIBRARY|INCLUDE|PACKAGE))?):[^\n]+\n/
 removed = fixed.scan(pattern)
 abort 'Expected eight common CMake settings.' unless removed.size == 8
 before = fixed.gsub(pattern, '')
@@ -100,8 +100,30 @@ abort 'Native recursion changed.' unless results['before-native'] == results['fi
   end
   results[name] = { selected_flags: selected, identity: identity }
 end
+# The LAPACK recipes assign CMAKE_CONFIGURE_ARGS= after the MAKECONF. The
+# configure framework must still append the shared target settings, once.
+%w[aarch64 native].each do |kind|
+  name = 'blas-' + kind
+  args = [bmake, '-C', tree + '/math/blas', "MAKECONF=#{work}/fixed.conf",
+          "WRKOBJDIR=#{work}/objects", "PACKAGES=#{work}/packages", '_PKGSRC_BARRIER=yes']
+  args += kind == 'native' ? ['USE_CROSS_COMPILE=no'] : ["EMBERBSD_CROSS_TARGET=#{kind}"]
+  flags = Shellwords.split(run.call(name + '-metadata', args + ['show-var', 'VARNAME=CMAKE_CONFIGURE_ARGS']))
+  abort 'The recipe lost its own CMake settings.' unless flags.include?('-DBUILD_DEPRECATED=ON')
+  selected = flags.select { |s| s.match?(/\A-DCMAKE_(?:SYSTEM_NAME|SYSTEM_PROCESSOR|SYSROOT|FIND_ROOT_PATH)(?::|_)/) }
+  run.call(name + '-configure', [cmake, '-S', work + '/fixture', '-B', work + '/' + name] + selected)
+  identity = File.readlines(work + '/' + name + '/identity.txt', chomp: true).to_h { |line| line.split('=', 2) }
+  if kind == 'native'
+    abort 'Assigning recipe native recursion was forced cross.' unless selected.empty? && identity['cross'] == 'FALSE'
+  else
+    abort 'Assigning recipe dropped the target identity.' unless identity['system'] == 'NetBSD' && identity['cross'] == 'TRUE' && identity['processor'] == kind
+    abort 'Assigning recipe repeats target settings.' unless selected.size == 8 && selected.uniq.size == 8
+    roots = identity['roots'].split(';')
+    abort 'Assigning recipe overrides package-first lookup.' unless roots.size == 2 && roots[0].end_with?('/.buildlink') && roots[1] == identity['sysroot']
+  end
+  results[name] = { selected_flags: selected, identity: identity }
+end
 File.write(work + '/result.json', JSON.pretty_generate({
   scope: 'Real pkgsrc metadata and compiler-free CMake identity/search checks; amd64 is metadata only.',
   profile_sha256: Digest::SHA256.file(profile).hexdigest, results: results
 }) + "\n")
-puts 'PASS: actual CMake host-to-target identity change, rooted library/header lookup, native program lookup, unchanged native recursion; aarch64 and amd64 metadata.'
+puts 'PASS: actual CMake host-to-target identity change, rooted library/header lookup, native program lookup, unchanged native recursion, recipe-assigned CMake arguments; aarch64 and amd64 metadata.'

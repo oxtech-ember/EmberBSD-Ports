@@ -351,10 +351,13 @@ This order retains the selected package when base has the same library name.
 Base-only dependencies remain available through the sysroot. Native tool
 dependency recursion receives none of these cross settings. This corrects
 host-system detection even when the selected compiler already emits target
-objects. `tests/cmake-cross.rb EXPORTED_PKGSRC MAKECONF NEW_WORK` checks the
+objects. The profile collects these settings in `EMBERBSD_CROSS_CMAKE_ARGS`;
+the CMake configure framework appends them after the package Makefile, so a
+recipe that assigns `CMAKE_CONFIGURE_ARGS=` (for example `math/lapack`) keeps
+them. `tests/cmake-cross.rb EXPORTED_PKGSRC MAKECONF NEW_WORK` checks the
 actual pkgsrc arguments and CMake identity/search behavior for AArch64 and
-amd64, plus unchanged native recursion. Its compiler-free fixture establishes
-configuration behavior; actual compiler and installed-consumer checks remain
+amd64, plus unchanged native recursion and the `math/blas` assigning recipe.
+Its compiler-free fixture establishes configuration behavior; actual compiler and installed-consumer checks remain
 separate. It also checks LLVM's final recipe arguments, so its local settings
 cannot override the shared package-first order.
 

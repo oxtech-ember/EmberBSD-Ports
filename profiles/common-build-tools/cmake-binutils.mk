@@ -73,5 +73,8 @@ _EMBERBSD_CMAKE_BINUTILS_ARGS+= -DCMAKE_${_cmake_var}:FILEPATH=${${_tool_var}:Q}
 .endif
 .endif
 .endfor
+.else
+# Cross target identity and rooted lookup from the common cross profile.
+_EMBERBSD_CMAKE_BINUTILS_ARGS+= ${EMBERBSD_CROSS_CMAKE_ARGS}
 .endif
 .endif

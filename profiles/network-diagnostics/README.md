@@ -14,8 +14,8 @@ base (registry item R10).
   the Qt GUI, Lua and the lldpd SNMP subagent are on. For a light
   build, set `PKG_OPTIONS.wireshark=-qt6 -lua` and
   `PKG_OPTIONS.lldpd=-snmp`.
-  The file also applies the common CMake cross settings to CMake
-  consumers, pins `NATIVE_CC` for libgpg-error/libgcrypt build-time
+  CMake consumers get the target identity and rooted lookup from the
+  common build-tools cross profile. The file pins `NATIVE_CC` for libgpg-error/libgcrypt build-time
   generators, and routes script interpreter/awk substitution to target
   base paths (`TOOLS_PLATFORM.sh=/bin/sh`, `TOOLS_PLATFORM.awk=/usr/bin/awk`).
 - `src/hcisnoop.c` and `src/build-hcisnoop.sh` — a small C recorder for
