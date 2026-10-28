@@ -298,6 +298,12 @@ TDB clears it before configure and rejects configuration if it appears, so a
 lost connection cannot silently disable a required feature. Keep this hook
 when integrating the executor into another build system.
 
+Optional JSON fields `ssh_executable` and `ssh_config` select absolute host
+transport and configuration files; `ssh_port` selects a numeric port. The
+executable and config are passed as separate arguments, and strict host-key
+checking remains mandatory. Existing configurations without these fields retain
+their previous SSH command selection.
+
 An optional `host_key_alias` JSON field selects an already verified SSH host
 key when the destination uses a numeric address. Strict key checking remains
 mandatory. Keep addresses and this machine-specific configuration private.
