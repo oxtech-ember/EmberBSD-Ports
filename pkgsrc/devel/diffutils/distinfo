@@ -8,3 +8,5 @@ SHA1 (patch-configure) = 7868014fc5dfc7488b8ea6b1d7ae267896e652be
 SHA1 (patch-po_Makefile.in.in) = 1d6594703875cf01eb813b05aa5507de87f3a260
 SHA1 (patch-src_Makefile.in) = 4695e1df071e573004b3614f45db30fd4494e788
 SHA1 (patch-configure.ac) = b1f7bf3cb8122c37b86dd7ab3ebf105677061864
+SHA1 (patch-m4_strcasecmp.m4) = fd36ab2a8b5cca06ace97789730219ccb9510461
+SHA1 (patch-z-cross-configure) = 1eff6695b7c759123e587d016b7298dfe84e0166

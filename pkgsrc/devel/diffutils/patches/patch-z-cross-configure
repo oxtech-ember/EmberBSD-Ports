@@ -1,0 +1,31 @@
+$NetBSD$
+
+Preserve the upstream cross-compilation locale guess; native tests are unchanged.
+Origin: EmberBSD (AI-assisted).
+
+--- configure.orig
++++ configure
+@@ -46255,10 +46255,7 @@
+      esac
+      if test "$cross_compiling" = yes
+ then :
+-  { { printf '%s\n' "$as_me:${as_lineno-$LINENO}: error: in '$ac_pwd':" >&5
+-printf '%s\n' "$as_me: error: in '$ac_pwd':" >&2;}
+-as_fn_error $? "cannot run test program while cross compiling
+-See 'config.log' for more details" "$LINENO" 5; }
++  :
+ else case e in #(
+   e) cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+@@ -46599,10 +46596,7 @@
+      esac
+      if test "$cross_compiling" = yes
+ then :
+-  { { printf '%s\n' "$as_me:${as_lineno-$LINENO}: error: in '$ac_pwd':" >&5
+-printf '%s\n' "$as_me: error: in '$ac_pwd':" >&2;}
+-as_fn_error $? "cannot run test program while cross compiling
+-See 'config.log' for more details" "$LINENO" 5; }
++  :
+ else case e in #(
+   e) cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */

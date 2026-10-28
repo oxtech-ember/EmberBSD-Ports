@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.44 2024/05/26 07:05:45 adam Exp $
 
 DISTNAME=	diffutils-3.12
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GNU:=diffutils/}
 EXTRACT_SUFX=	.tar.xz
@@ -41,6 +41,7 @@ post-extract:
 # The paired configure patch retains the released generator outputs.
 pre-configure:
 	${TOUCH} -r ${WRKSRC}/aclocal.m4 ${WRKSRC}/configure.ac
+	${TOUCH} -r ${WRKSRC}/aclocal.m4 ${WRKSRC}/m4/strcasecmp.m4
 
 post-install:
 .for f in cmp diff diff3 sdiff
