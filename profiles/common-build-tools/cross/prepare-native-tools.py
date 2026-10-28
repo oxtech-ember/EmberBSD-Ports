@@ -67,6 +67,23 @@ def qt_host_paths(prefix, search_path):
     return tuple(values)
 
 
+# Cross lang/mlir runs these generators from the native mlir package. A host
+# prefix without mlir maps nothing; lang/mlir refuses the empty variable.
+MLIR_HOST_TOOLS = ('mlir-tblgen', 'mlir-pdll', 'mlir-src-sharder',
+                   'mlir-linalg-ods-yaml-gen', 'mlir-irdl-to-cpp')
+
+
+def mlir_host_tools(prefix):
+    from emberbsd_sdk.errors import SDKError
+    bindir = Path(prefix).resolve(strict=True) / 'bin'
+    if not any(os.path.lexists(bindir / tool) for tool in MLIR_HOST_TOOLS):
+        return ()
+    for tool in MLIR_HOST_TOOLS:
+        path = bindir / tool
+        if not path.is_file() or not os.access(path, os.X_OK):
+            raise SDKError('The host prefix has an incomplete native MLIR: ' + str(path))
+    return (('mlir-tools-dir', 'EMBERBSD_MLIR_NATIVE_TOOLS', str(bindir)),)
+
 def sdk_loader():
     here = Path(__file__).resolve()
     candidates = [here.parent / 'lang/llvm/files/sdk_source.py']
@@ -204,7 +221,7 @@ def main(arguments):
     elif not args.makeconf or args.output:
         parser.error('verify requires only --makeconf')
     toolset = selection(args)
-    qt = qt_host_paths(args.host_prefix, toolset.path)
+    qt = qt_host_paths(args.host_prefix, toolset.path) + mlir_host_tools(args.host_prefix)
     if args.operation == 'write':
         print(json.dumps(write(toolset, args.output, qt)))
         return

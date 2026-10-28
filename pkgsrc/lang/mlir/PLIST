@@ -1,5 +1,6 @@
 @comment $NetBSD: PLIST,v 1.7 2026/04/16 06:33:52 wiz Exp $
 bin/mlir-irdl-to-cpp
+bin/mlir-linalg-ods-yaml-gen
 bin/mlir-pdll
 bin/mlir-src-sharder
 bin/mlir-tblgen

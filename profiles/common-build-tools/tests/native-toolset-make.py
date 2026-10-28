@@ -164,6 +164,29 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         with contextlib.redirect_stdout(io.StringIO()) as output:
             adapter.main(['verify', *pins, '--makeconf', str(include)])
         assert output.getvalue() == 'VERIFIED\n'
+        # Cross lang/mlir takes all of its generators from a native mlir
+        # package in the prefix. A partial set is refused.
+        assert b'EMBERBSD_MLIR_NATIVE_TOOLS' not in without_qt
+        mlir_bin = root / 'host-pkg-llvm/bin'
+        mlir_bin.mkdir()
+        for count, tool in enumerate(adapter.MLIR_HOST_TOOLS):
+            (mlir_bin / tool).write_text('#!/bin/sh\n')
+            (mlir_bin / tool).chmod(0o755)
+            if count + 1 < len(adapter.MLIR_HOST_TOOLS):
+                refused(adapter.main, ['write', *pins, '--output', str(destination)])
+                assert include.read_bytes() == without_qt
+        with contextlib.redirect_stdout(io.StringIO()):
+            adapter.main(['write', *pins, '--output', str(destination)])
+        with_mlir = include.read_bytes()
+        mlir_dir = str(mlir_bin.resolve())
+        assert b'EMBERBSD_MLIR_NATIVE_TOOLS?= ${_EMBER_SDK_MLIR_TOOLS_DIR}\n' in with_mlir
+        assert ('.if "${EMBERBSD_MLIR_NATIVE_TOOLS}" != "' + mlir_dir + '"').encode() in with_mlir
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            adapter.main(['verify', *pins, '--makeconf', str(include)])
+        assert output.getvalue() == 'VERIFIED\n'
+        for tool in adapter.MLIR_HOST_TOOLS:
+            (mlir_bin / tool).unlink()
+        mlir_bin.rmdir()
         answer_qt(qt_answers)
         adapter.write(selected, str(destination), qt)
         assert include.read_bytes() == before
@@ -201,4 +224,4 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         refused(adapter.render, selected)
         assert not list(root.glob('.native-tools-*'))
 
-print('PASS: native make role/ABI argv, prefix selection, qtpaths Qt directories or none, stale/foreign mapping refusals and atomic rewrite; no compiler or bmake build')
+print('PASS: native make role/ABI argv, prefix selection, qtpaths Qt directories or none, complete native MLIR generators or none, stale/foreign mapping refusals and atomic rewrite; no compiler or bmake build')
