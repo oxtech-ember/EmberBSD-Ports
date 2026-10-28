@@ -39,7 +39,8 @@ def main():
         root=args.work/case;root.mkdir();config=root/'mk.conf'
         selected=root/'EMBERBSD-DARWIN-BOOTSTRAP-MK.CONF'
         selected.write_text(policy.replace(BINDING,'') if case=='missing-binding' else policy)
-        (root/'EMBERBSD-DEVELOPMENT-MK.CONF').symlink_to(args.pkgsrc/'EMBERBSD-DEVELOPMENT-MK.CONF')
+        for name in ('EMBERBSD-DEVELOPMENT-MK.CONF','EMBERBSD-DEFAULTS-MK.CONF','EMBERBSD-VERSIONS.MK'):
+            (root/name).symlink_to(args.pkgsrc/name)
         config.write_text(include.sub(lambda match:'.include '+json.dumps(str(selected)),makeconf))
         env=dict(os.environ);env.pop('SDKROOT',None);env.pop('DEVELOPER_DIR',None)
         if case=='poisoned-inherited-sdk':env['SDKROOT']='/unselected-native-sdk'

@@ -118,6 +118,7 @@ def main():
         original_profile = args.darwin_profile.read_text()
         profile.write_text(original_profile)
         (profile_dir / 'EMBERBSD-DEVELOPMENT-MK.CONF').write_text('# no common fixture policy\n')
+        (profile_dir / 'EMBERBSD-DEFAULTS-MK.CONF').write_text('# no common fixture defaults\n')
         abi = args.work / 'abi'
         (abi / 'usr/lib').mkdir(parents=True)
         (abi / 'usr/lib/libiconv.tbd').write_text('source fixture only\n')

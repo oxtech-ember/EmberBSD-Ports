@@ -844,7 +844,7 @@ to an independent working tree. A local recipe can replace an upstream
 recipe only if `pkgsrc/replaces` names its path, one path on each line.
 `pkgsrc/defaults.mk.conf` holds package defaults for every build. The export
 copies it to `EMBERBSD-DEFAULTS-MK.CONF`; the common tools `mk.conf` files
-include it.
+and the Darwin bootstrap profile include it.
 
 The export keeps one version of each versioned package family, as EmberBSD
 does for LLVM. `pkgsrc/versions.mk` lists each family as `FAMILY=KEPT`

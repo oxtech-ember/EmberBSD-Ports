@@ -84,6 +84,13 @@ mksh. It does not search PATH or replace a missing compiler.
 The profile selects the ordinary unprivileged pkgsrc install policy.
 It does not modify system users or `/etc/shells`. Native package checks,
 checksums, and required-library checks remain enabled.
+The profile includes `EMBERBSD-DEFAULTS-MK.CONF` on the later MAKECONF read,
+which has `PKGPATH`. Native bootstrap builds thus accept the shared licenses.
+They also reject any version of a versioned family other than the kept one.
+The profile does not require the `od`, `lipo` and `otool` roles of the Mach-O
+load-command checker. The defaults do not turn that checker on here, so pkgsrc
+uses its default Mach-O requirement detection. A recipe that turns the checker
+on before `bsd.prefs.mk` keeps it.
 The initial ordinary bootstrap omits the optional builtin helper from its PLIST.
 `tests/bootstrap-mk-plist.py` checks this selection with an exported tree,
 the selected make executable, and an ordinary bootstrap MAKECONF.
@@ -108,6 +115,10 @@ working compatible tools.
 The compiler-family fixture evaluates the actual make policy and wrapper
 fragment. It checks Clang defaults, explicit GCC compatibility, exact command
 arguments, missing inputs, invalid families, and unchanged ordinary branches.
+It also checks the shared defaults with two MAKECONF reads, as
+`mk/bsd.prefs.mk` does. A removed `lang/python314` is rejected and
+`lang/python315` is accepted. The shared licenses keep the pkgsrc default
+license list. The Mach-O checker stays off unless a recipe turns it on.
 Native adapter checks cover compiler-family forwarding, assembler arguments,
 prefix paths, and stale configuration refusal. The `clang-as` fixture checks
 argument preservation, child exit statuses, and missing-compiler refusal.

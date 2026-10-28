@@ -20,8 +20,8 @@ def main():
     work.mkdir(parents=True, exist_ok=True)
     candidate = work / 'EMBERBSD-DARWIN-BOOTSTRAP-MK.CONF'
     candidate.write_text(profile.read_text())
-    (work / 'EMBERBSD-DEVELOPMENT-MK.CONF').write_text(
-        (pkgsrc / 'EMBERBSD-DEVELOPMENT-MK.CONF').read_text())
+    for name in ('EMBERBSD-DEVELOPMENT-MK.CONF', 'EMBERBSD-DEFAULTS-MK.CONF', 'EMBERBSD-VERSIONS.MK'):
+        (work / name).write_text((pkgsrc / name).read_text())
     config = makeconf.read_text()
     old = str(pkgsrc / 'EMBERBSD-DARWIN-BOOTSTRAP-MK.CONF')
     if config.count(old) != 1:

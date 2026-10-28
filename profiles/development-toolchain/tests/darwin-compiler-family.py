@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
-"""Evaluate compiler families and wrapper arguments with real bmake."""
+"""Evaluate compiler families, wrapper arguments and shared defaults with real bmake."""
 import argparse
 import os
 from pathlib import Path
@@ -36,6 +36,8 @@ with tempfile.TemporaryDirectory(prefix='darwin-family-') as temporary:
     shutil.copyfile(args.policy or root / 'profiles/development-toolchain/darwin-bootstrap.mk.conf', policy)
     shutil.copyfile(root / 'profiles/development-toolchain/mk.conf',
                     work / 'EMBERBSD-DEVELOPMENT-MK.CONF')
+    shutil.copyfile(root / 'pkgsrc/defaults.mk.conf', work / 'EMBERBSD-DEFAULTS-MK.CONF')
+    shutil.copyfile(root / 'pkgsrc/versions.mk', work / 'EMBERBSD-VERSIONS.MK')
     (work / 'mk/compiler').mkdir(parents=True)
     (work / 'lang/fixture').mkdir(parents=True)
     (work / 'mk/bsd.prefs.mk').touch()
@@ -77,18 +79,18 @@ with tempfile.TemporaryDirectory(prefix='darwin-family-') as temporary:
                    '_WRAP_EXTRA_ARGS.AS', 'CWRAPPERS_PREPEND.cpp',
                    '_WRAP_EXTRA_ARGS.CPP', 'BOOTSTRAP_DEPENDS')
 
-    def evaluate(values, wrapper=False):
+    def evaluate(values, wrapper=False, names=query_names):
         makefile = work / 'lang/fixture/Makefile'
         makefile.write_text(''.join(name + '= ' + value + '\n' for name, value in values.items())
                             + '.include "' + str(policy) + '"\n'
                             + ('.include "../../mk/compiler/clang.mk"\n' if wrapper else ''))
         command = [str(args.bmake), '-r', '-f', str(makefile), 'SHELL=' + str(args.shell)]
-        for name in query_names:
+        for name in names:
             command += ['-V', '${' + name + '}']
         result = subprocess.run(command, cwd=makefile.parent,
                                 env={'PATH': str(prefix / 'bin'), 'LC_ALL': 'C',
                                      'MAKECONF': str(work / 'unused.mk')}, capture_output=True)
-        return result, dict(zip(query_names, result.stdout.decode().splitlines()))
+        return result, dict(zip(names, result.stdout.decode().splitlines()))
 
     result, values = evaluate(dict(common, **generic), wrapper=True)
     assert result.returncode == 0, result.stderr
@@ -142,4 +144,45 @@ with tempfile.TemporaryDirectory(prefix='darwin-family-') as temporary:
     for flag in ('-static-libstdc++', '-static-libgcc', '-nodefaultrpaths'):
         assert shlex.split(values['LDFLAGS']).count(flag) == 1
     assert shlex.split(values['CC']) == [str(prefix / 'bin/gcc'), *flags]
-print('PASS: Clang default, exact wrapper/assembler argv, invalid/missing inputs and explicit legacy GCC route')
+    # The shared defaults apply on the read with PKGPATH: licenses and one
+    # version of each family. The bootstrap does not turn the Mach-O checker on.
+    policy_names = ('PKG_FAIL_REASON', 'ACCEPTABLE_LICENSES', 'MACHO_USE_LOAD_COMMANDS')
+    for pkgpath, rejected in (('lang/python314', True), ('lang/python315', False)):
+        result, values = evaluate(dict(common, **generic, OPSYS='Darwin', PKGPATH=pkgpath),
+                                  names=policy_names)
+        assert result.returncode == 0, result.stderr
+        reason = 'EmberBSD keeps only lang/python315 of lang/python[0-9]*'
+        assert (reason in values['PKG_FAIL_REASON']) == rejected, (pkgpath, values['PKG_FAIL_REASON'])
+        for license in ('esdl-license', 'gnu-agpl-v3', 'apple-public-source-license'):
+            assert license in values['ACCEPTABLE_LICENSES'].split(), license
+        assert values['MACHO_USE_LOAD_COMMANDS'] == '', values['MACHO_USE_LOAD_COMMANDS']
+
+    # mk/bsd.prefs.mk reads MAKECONF twice; PKGPATH exists only on the later
+    # read, after ACCEPTABLE_LICENSES?= ${DEFAULT_ACCEPTABLE_LICENSES}. A recipe
+    # can turn the Mach-O checker on before bsd.prefs.mk.
+    def two_reads(recipe_macho):
+        first = {name: value for name, value in dict(common, **generic, OPSYS='Darwin').items()
+                 if name != 'PKGPATH'}
+        makefile = work / 'lang/fixture/Makefile'
+        makefile.write_text(''.join(name + '= ' + value + '\n' for name, value in first.items())
+                            + ('MACHO_USE_LOAD_COMMANDS= ' + recipe_macho + '\n' if recipe_macho else '')
+                            + '.include "' + str(policy) + '"\n'
+                            + 'ACCEPTABLE_LICENSES?= ${DEFAULT_ACCEPTABLE_LICENSES}\n'
+                            + 'PKGPATH= lang/python314\n'
+                            + '.include "' + str(policy) + '"\n')
+        result = subprocess.run([str(args.bmake), '-r', '-f', str(makefile), 'SHELL=' + str(args.shell),
+                                 '-dV', '-V', '${PKG_FAIL_REASON}', '-V', 'ACCEPTABLE_LICENSES',
+                                 '-V', '${MACHO_USE_LOAD_COMMANDS}'], cwd=makefile.parent,
+                                env={'PATH': str(prefix / 'bin'), 'LC_ALL': 'C',
+                                     'MAKECONF': str(work / 'unused.mk')}, capture_output=True)
+        assert result.returncode == 0, result.stderr
+        return result.stdout.decode().splitlines()
+
+    # 'no' differs from the defaults' value, so it shows the recipe value.
+    for recipe_macho, expected in ((None, ''), ('yes', 'yes'), ('no', 'no')):
+        reason, licenses, macho = two_reads(recipe_macho)
+        assert 'EmberBSD keeps only lang/python315' in reason, ('two reads', reason)
+        assert '${DEFAULT_ACCEPTABLE_LICENSES}' in licenses.split(), ('two reads', licenses)
+        assert macho == expected, ('recipe Mach-O choice', recipe_macho, macho)
+print('PASS: Clang default, exact wrapper/assembler argv, invalid/missing inputs, explicit legacy GCC route,'
+      ' shared licenses and version policy on the later MAKECONF read')
