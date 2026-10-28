@@ -9,7 +9,7 @@ BUILDLINK_ABI_DEPENDS.SDL2+=	SDL2>=2.32.74
 BUILDLINK_PKGSRCDIR.SDL2?=	../../devel/SDL2
 BUILDLINK_INCDIRS.SDL2+=	include/SDL2
 
-.if ${USE_CROSS_COMPILE:tl} == "yes"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # sdl2-config is a shell script that we need to run at build-time to
 # learn about the target system's SDL2 toolchain options.
 TOOLS_CREATE+=		sdl2-config
