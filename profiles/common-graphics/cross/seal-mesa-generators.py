@@ -298,8 +298,9 @@ def seal_locked(args):
         gtest_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_include_mesa-gtest-extras.h'
         gtest_provider_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_meson.build'
         interface_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h'
+        dynarray_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_util_u__dynarray.h'
         inputs = [Path(__file__).resolve(), archive, validator, build / 'build.ninja',
-                  build / 'compile_commands.json', bvnc_patch, objc_patch, gtest_patch, gtest_provider_patch, interface_patch]
+                  build / 'compile_commands.json', bvnc_patch, objc_patch, gtest_patch, gtest_provider_patch, interface_patch, dynarray_patch]
         targets = json.loads((metadata / 'intro-targets.json').read_text())
         for name, path in tools.items():
             selected = [row for row in targets if row['name'] == name and row['type'] == 'executable']
@@ -324,6 +325,7 @@ def seal_locked(args):
             run(patch_command(native, reference, gtest_patch, 0), 'gtest-patch')
         if sha(reference / 'src/gtest/meson.build') != sha(source / 'src/gtest/meson.build'):
             run(patch_command(native, reference, gtest_provider_patch, 0), 'gtest-provider-patch')
+        run(patch_command(native, reference, dynarray_patch, 0), 'dynarray-patch')
         source_hashes = {}
         for path in sorted(reference.rglob('*')):
             if path.is_file():
@@ -343,7 +345,7 @@ def seal_locked(args):
         for name in ('build.ninja', 'compile_commands.json'):
             shutil.copy2(build / name, work / 'metadata' / name)
         run(patch_command(native, reference, interface_patch, 0), 'interface-patch')
-        interfaces = ['src/compiler/nir/nir.h', 'src/compiler/nir/nir_serialize.c', 'src/compiler/nir/nir_intrinsics.py', 'src/compiler/spirv/spirv_to_nir.c']
+        interfaces = ['src/util/u_dynarray.h', 'src/compiler/nir/nir.h', 'src/compiler/nir/nir_serialize.c', 'src/compiler/nir/nir_intrinsics.py', 'src/compiler/spirv/spirv_to_nir.c']
         if 'powervr' in profiles:
             interfaces += ['src/imagination/' + p for p in ('common/pvr_iface.h', 'pco/pco.h', 'pco/pco_common.h.py', 'pco/usclib/common.cl', 'pco/usclib/sync.cl', 'pco/usclib/tex.cl')]
         if 'intel' in profiles:

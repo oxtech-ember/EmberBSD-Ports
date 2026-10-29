@@ -47,5 +47,6 @@ done
 for name in $required; do
     [ -x "$tools/bin/$name" ] || fail "not executable: $name"
 done
+[ "$(awk '$2 == "src/util/u_dynarray.h" { n++ } END { print n+0 }' "$tools/interface.sha256")" = 1 ] || fail 'missing or duplicate shared generator source: src/util/u_dynarray.h'
 verify "$source" "$tools/interface.sha256"
 echo 'PASS: Mesa 26.2.5 native generator bytes and target interfaces'

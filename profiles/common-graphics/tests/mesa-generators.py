@@ -74,7 +74,7 @@ def test(arguments):
     receipt.write_text(manifest)
     run('model-positive', fixture, True)
     names = ('missing-tool', 'changed-tool', 'missing-manifest-entry', 'duplicate-tool', 'bad-hash',
-             'traversal', 'changed-abi', 'changed-last-tool-no-lf', 'changed-last-interface-no-lf', 'wrong-version')
+             'traversal', 'changed-abi', 'changed-dynarray', 'missing-dynarray', 'changed-last-tool-no-lf', 'changed-last-interface-no-lf', 'wrong-version')
     for name in names:
         backup, source_backup = work / 'save', work / 'save-source'
         shutil.copytree(fixture, backup)
@@ -95,6 +95,14 @@ def test(arguments):
             receipt.write_text(manifest + '0' * 64 + '  ../secret\n')
         elif name == 'changed-abi':
             (source / 'src/compiler/nir/nir.h').write_text('changed')
+        elif name == 'changed-dynarray':
+            (source / 'src/util/u_dynarray.h').write_text('changed')
+        elif name == 'missing-dynarray':
+            interface = fixture / 'interface.sha256'
+            interface.write_text(''.join(line for line in interface.read_text().splitlines(keepends=True)
+                                         if line.split()[-1] != 'src/util/u_dynarray.h'))
+            receipt.write_text(''.join(f'{digest(interface)}  interface.sha256\n'
+                if line.endswith('interface.sha256\n') else line for line in manifest.splitlines(keepends=True)))
         elif name == 'changed-last-tool-no-lf':
             receipt.write_text((manifest.replace(row, '') + row).removesuffix('\n'))
             binary.write_text('changed')

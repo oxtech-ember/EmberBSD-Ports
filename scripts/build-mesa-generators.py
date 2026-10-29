@@ -209,8 +209,9 @@ def build(arguments, sdk_root):
         objc_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-meson.build-host-objc'
         gtest_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_include_mesa-gtest-extras.h'
         gtest_provider_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_meson.build'
+        dynarray_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_util_u__dynarray.h'
         scripts = [Path(__file__).resolve(), graphics / 'cross/seal-mesa-generators.py',
-                   helpers / 'mesa-26.2.4-pco-bvnc.patch', objc_patch, gtest_patch, gtest_provider_patch,
+                   helpers / 'mesa-26.2.4-pco-bvnc.patch', objc_patch, gtest_patch, gtest_provider_patch, dynarray_patch,
                    PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h',
                    graphics / 'sources.tsv']
         scripts.append(selector_path)
@@ -277,6 +278,8 @@ def build(arguments, sdk_root):
             run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p1', '-d', source, '-i', helpers / 'mesa-26.2.4-pco-bvnc.patch'], 'mesa-bvnc-patch')
             run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p0',
                  '-d', source, '-i', objc_patch], 'mesa-host-objc-patch')
+            run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p0',
+                 '-d', source, '-i', dynarray_patch], 'mesa-dynarray-patch')
             run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p0',
                  '-d', source, '-i', gtest_patch], 'mesa-gtest-patch')
             run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p0',
