@@ -707,6 +707,37 @@ class ExportTests(unittest.TestCase):
                                     'Patch application created numbered backup artifacts'):
             self.fake_export(runner=creates_backup)
 
+    def test_backup_check_lists_only_directories_of_patched_files(self):
+        (self.upstream / 'devel/tool').mkdir(parents=True)
+        (self.upstream / 'devel/tool/Makefile').write_text('one\n')
+        (self.upstream / 'other').mkdir()
+        (self.upstream / 'other/Makefile.~1~').write_text('unrelated upstream file\n')
+        (self.root / 'change.patch').write_bytes(
+            b'--- a/devel/tool/Makefile\t2026-01-01\n+++ b/devel/tool/Makefile\n'
+            b'@@ -1 +1 @@\n-one\n+two\n')
+        (self.root / 'pkgsrc/export.conf').write_text('patch\tchange.patch\n')
+        created = []
+
+        def patch_with_backup(argv, **kwargs):
+            if argv[0] == self.selected.command('patch')[0] and argv[1:2] == ['-f']:
+                created.append(self.work / 'export/devel/tool/Makefile.~1~')
+                created[-1].write_text('created by patch\n')
+                return b''
+            return self.runner(argv, **kwargs)
+
+        # The check never walks the whole exported tree ...
+        with mock.patch.object(exporter.Path, 'rglob', side_effect=AssertionError('whole tree scanned')):
+            with self.assertRaisesRegex(exporter.ExportError, 'devel/tool/Makefile.~1~'):
+                self.fake_export(runner=patch_with_backup)
+            self.assertEqual(len(created), 1)
+            # ... and still accepts an unrelated upstream numbered file.
+            self.fake_export(name='clean')
+        self.assertEqual(exporter.patched_directories([('patch', self.root / 'change.patch', None, None)]),
+                         {'devel/tool'})
+        # Unknown names fall back to the whole tree.
+        (self.root / 'opaque.patch').write_bytes(b'fixture patch')
+        self.assertIsNone(exporter.patched_directories([('patch', self.root / 'opaque.patch', None, None)]))
+
     def test_zero_fuzz_rejects_context_that_fuzz_one_accepts(self):
         patch = b'--- a/plain\n+++ b/plain\n@@ -1,3 +1,3 @@\n wrong\n-two\n+changed\n three\n'
         (self.root / 'fuzz.patch').write_bytes(patch)

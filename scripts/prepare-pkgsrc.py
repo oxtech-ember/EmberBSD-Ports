@@ -372,10 +372,46 @@ def patch_safety_options(selection, runner):
             if b'--no-backup-if-mismatch' in help_text else ())
 
 
-def numbered_backup_paths(root):
-    """Return existing GNU-style numbered backup paths relative to a tree."""
-    return {path.relative_to(root) for path in Path(root).rglob('*')
-            if path.is_file() and re.search(r'\.~[0-9]+~$', path.name)}
+def numbered_backup_paths(root, directories=None):
+    """Return existing GNU-style numbered backup paths relative to a tree.
+
+    With directories, only those directories (relative to root) are listed.
+    """
+    def backup(path):
+        return path.is_file() and re.search(r'\.~[0-9]+~$', path.name)
+    if directories is None:
+        return {path.relative_to(root) for path in Path(root).rglob('*') if backup(path)}
+    result = set()
+    for directory in directories:
+        path = Path(root, directory)
+        if path.is_dir() and not path.is_symlink():
+            result.update(item.relative_to(root) for item in path.iterdir() if backup(item))
+    return result
+
+
+def patched_directories(patches):
+    """Return the directories in which patch -p1 may leave backup files.
+
+    patch writes a backup next to each file it changes, and every such file
+    is named on a ---/+++ header line.  Other lines may look like headers too;
+    they only add directories.  None means the names are unknown, and the
+    caller then scans the whole tree.
+    """
+    directories = set()
+    for method, source, _, _ in patches:
+        if method != 'patch':
+            continue
+        names = [line[4:].split(b'\t')[0].strip() for line in source.read_bytes().split(b'\n')
+                 if line.startswith((b'--- ', b'+++ '))]
+        names = [name for name in names if name != b'/dev/null']
+        if not names:
+            return None
+        for name in names:
+            parts = name.decode('utf-8', 'surrogateescape').split('/')[1:]
+            if not parts or any(part in ('', '.', '..') for part in parts):
+                return None
+            directories.add('/'.join(parts[:-1]))
+    return directories
 
 
 def export_pkgsrc(root, destination, *, selection, runner, scratch):
@@ -468,7 +504,9 @@ def export_pkgsrc(root, destination, *, selection, runner, scratch):
             shutil.rmtree(target)
         ensure_destination_directory(destination, name.rpartition('/')[0])
         shutil.copytree(source, target, copy_function=copy_file)
-    backup_baseline = numbered_backup_paths(destination)
+    # Only directories of patched files can receive patch backups.
+    backup_directories = patched_directories(patches)
+    backup_baseline = numbered_backup_paths(destination, backup_directories)
     for method, source, recipe, name in patches:
         if method == 'patch':
             try:
@@ -492,7 +530,7 @@ def export_pkgsrc(root, destination, *, selection, runner, scratch):
             fd = os.open(distinfo, os.O_WRONLY | os.O_APPEND | getattr(os, 'O_NOFOLLOW', 0))
             with os.fdopen(fd, 'a', encoding='utf-8') as output:
                 output.write(f'SHA1 ({name}) = {patch_sha1(source)}\n')
-    new_backups = numbered_backup_paths(destination) - backup_baseline
+    new_backups = numbered_backup_paths(destination, backup_directories) - backup_baseline
     require(not new_backups, 'Patch application created numbered backup artifacts: ' +
             ', '.join(sorted(path.as_posix() for path in new_backups)))
     for source, name in files:
