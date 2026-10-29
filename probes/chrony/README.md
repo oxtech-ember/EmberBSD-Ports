@@ -73,12 +73,50 @@ from the same package root (163 MB, SHA256 checked).
 - `chronyc -c tracking` returns the 14-field CSV. A downstream time-policy
   consumer read it for 10 minutes and rejected no measurements for time.
 
+## Installation on AArch64
+
+Target: an EmberBSD AArch64 VM under QEMU HVF on macOS arm64, on 29 October
+2026. It has the full base set of release `6dd5714` with shared libraries,
+the EMBER64 kernel from OS `fd21f1a2d71` and no chrony, gmp or LLVM runtime
+packages. The disk ran in snapshot mode.
+
+- The `gmp-6.3.0` package of 28 October requires `libc++.so.1`,
+  `libc++abi.so.1` and `libunwind.so.1` in `/usr/pkg/llvm/lib`. It declares
+  no dependency on their packages, so `pkg_add chrony` stopped at gmp.
+  Since Ports `877d0a56`, cross C++ packages depend on `libcxx`, `libcxxabi`
+  and `libunwind`.
+- The LLVM runtime packages 23.1.4nb2 come from the full AArch64 runtime stage
+  of OS `c93e0f475bf`, built from the Ports `b14cc37b` sources. The cross tools
+  select it with `--runtime-stage` and `--runtime-base` (Ports `aa892eeb`).
+- gmp was rebuilt from Ports `d52a59e2`. Before that change, its install
+  scripts named the coreutils of the build host instead of the target tools.
+- `PKG_RCD_SCRIPTS=YES pkg_add chrony-4.9.tgz` installed chrony and its
+  11 dependencies without `-f` and without errors; `pkg_admin check` passed.
+- With `chronyd=YES`, the packaged `rc.d` script starts `chronyd` at boot.
+  The test clock was set 3 s ahead. With pool sources and `makestep 1.0 3`,
+  `chronyd` selected a source after 5 s and stepped the clock by -1.39 s.
+  Then the system time was 31 us from NTP time, stratum 4, leap status Normal.
+  After a reboot, `chronyd` read its drift file and selected a source after 11 s.
+- `chronyc -c tracking` returns the 14-field CSV.
+
+| Package | SHA256 |
+| --- | --- |
+| `chrony-4.9.tgz` | `cf154f9e1c5b5e5d604ea160278197aeb885119db8f6345bd5bb5aa40dfe2272` |
+| `gmp-6.3.0.tgz` | `3cdd1e10ee68c1f952f05fc888e73c2084ac1ff451d44014fcbfc14cb0e44cd9` |
+| `libcxx-23.1.4nb2.tgz` | `35d852bc3a22adc0a3d77d7fdce1c0499760ff57e109805cbfd7b9b42b13b9b4` |
+| `libcxxabi-23.1.4nb2.tgz` | `9d5ae1b0d63f34db00e07b1d9eada56adbc327b13f0b3f002a7c46792e33c692` |
+| `libunwind-23.1.4nb2.tgz` | `f69f172de17faea68e9ca7f789c72a18aedbfbd3f2024a0f4a397ccd3462c53e` |
+
+The chrony package is a later 28 October rebuild of the package above, so its
+hash differs. The other dependencies are the 28 October packages listed above.
+
 ## Remaining
 
-- AArch64 execution: a target with the full base set, its shared libraries and
-  the dependency packages above.
+- AArch64 execution on the base sets of OS `c93e0f475bf`, which also supply
+  the runtime packages above. The VM used the older `6dd5714` base.
 - The CIX P1 board root is a reduced static C cohort without shared libraries
-  or pkgsrc; the package cannot run there until the board uses the common stack.
+  or pkgsrc; the package cannot run there until the board root comes from the
+  common base sets.
 - PPS through RFC 2783 and `gpiopps` waits for GPIO017 interrupts (N36).
 - An installable amd64 set needs the `gmp` and `gcc16` rebuilds above and a
   runtime-only GCC16 provider.
