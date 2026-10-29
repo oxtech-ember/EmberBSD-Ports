@@ -1,0 +1,16 @@
+# $NetBSD$
+# Origin: EmberBSD (AI-assisted). One Sonnet source for the target framework
+# and its native trigram generator.
+#
+# used by textproc/kf6-sonnet/Makefile
+# used by textproc/kf6-sonnet-parsetrigrams/Makefile
+
+DISTNAME=	sonnet-${KF6VER}
+CATEGORIES=	textproc
+
+HOMEPAGE=	https://community.kde.org/Frameworks
+LICENSE=	gnu-lgpl-v2.1
+
+EMBERBSD_SONNET_PKGDIR:=	${.PARSEDIR:tA}
+DISTINFO_FILE=	${EMBERBSD_SONNET_PKGDIR}/distinfo
+PATCHDIR=	${EMBERBSD_SONNET_PKGDIR}/patches

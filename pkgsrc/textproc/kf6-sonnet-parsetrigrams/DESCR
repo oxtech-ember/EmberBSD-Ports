@@ -1,0 +1,3 @@
+The native parsetrigrams6 program of Sonnet. It converts the language
+trigram tables into the binary map that a cross-built textproc/kf6-sonnet
+installs for language detection.
