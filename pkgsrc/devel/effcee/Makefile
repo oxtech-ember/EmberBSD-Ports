@@ -2,6 +2,15 @@
 # Origin: EmberBSD contributors (AI-assisted); current tested upstream sources.
 DISTNAME=	effcee-1.2026.0
 PKGREVISION=	2
+.include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
+    ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
+PKGREVISION= 3
+DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
+DEPENDS+= abseil>=20260817.0nb4:../../devel/abseil
+DEPENDS+= re2>=20251105nb4:../../devel/re2
+BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
+.endif
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=google/}
 GITHUB_TAG=	f8e8a164822d4f65e757bff66bc00e1567959aa0
