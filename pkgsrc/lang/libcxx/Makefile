@@ -1,3 +1,8 @@
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && !empty(EMBER_LLVM_CXX_STAGE:U)
+EMBER_LLVM_CXX_COMPONENT= libcxx
+.include "../../lang/compiler-rt/runtime-package.mk"
+.else
 # Origin: EmberBSD contributors (AI-assisted).
 # The runtime source and complete patch set belong to lang/compiler-rt.
 .include "../../lang/llvm/version.mk"
@@ -46,3 +51,5 @@ do-install:
 
 .include "../../lang/python/tool.mk"
 .include "../../mk/bsd.pkg.mk"
+
+.endif

@@ -41,7 +41,9 @@ EXTRACT_ELEMENTS+=	${DISTNAME}/libc
 .if ${PKGPATH} != "lang/llvm" && ${PKGPATH} != "lang/llvm-devel" && ${PKGPATH} != "lang/clang" && \
     ${PKGPATH} != "devel/lld" && ${PKGPATH} != "devel/py-llvm-lit" && ${PKGPATH} != "lang/compiler-rt" && \
     ${PKGPATH} != "lang/mlir" && ${PKGPATH} != "lang/flang" && ${PKGPATH} != "lang/flang-rt" && \
-    ${PKGPATH} != "lang/libcxx" && ${PKGPATH} != "lang/wasi-compiler-rt" && \
+    ${PKGPATH} != "lang/libcxx" && ${PKGPATH} != "lang/libcxx-devel" && \
+    ${PKGPATH} != "lang/libcxxabi" && ${PKGPATH} != "lang/libcxxabi-devel" && \
+    ${PKGPATH} != "lang/libunwind" && ${PKGPATH} != "lang/libunwind-devel" && ${PKGPATH} != "lang/wasi-compiler-rt" && \
     ${PKGPATH} != "lang/wasi-libc" && \
     ${PKGPATH} != "lang/llvm-libc-source" && \
     ${PKGPATH} != "lang/clang-python-bindings" && \

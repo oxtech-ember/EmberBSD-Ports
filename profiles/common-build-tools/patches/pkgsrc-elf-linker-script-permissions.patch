@@ -1,0 +1,34 @@
+--- a/mk/pkgformat/pkg/metadata.mk
++++ b/mk/pkgformat/pkg/metadata.mk
+@@ -76,6 +76,7 @@
+ 	requires="";							\
+ 	case ${OBJECT_FMT:Q}"" in					\
+ 	ELF)								\
++		${TEST} -x ${TOOLS_PATH.readelf:Q}"" || { ${ECHO} "metadata requires selected readelf" >&2; exit 1; }; \
+ 		libs=`${AWK} '/\/lib.*\.so(\.[0-9]+)*$$/ { print "${DESTDIR}${PREFIX}/" $$0 } END { exit 0 }' ${_PLIST_NOKEYWORDS}`; \
+ 		if ${TEST} -n "$$bins" -o -n "$$libs"; then		\
+ 			if ${TEST} ${USE_CROSS_COMPILE:Uno:tl:Q} = yes; then \
+@@ -109,7 +110,8 @@
+ 			${CHECK_SHLIBS_SKIP:U:@p@${DESTDIR}${PREFIX}/${p}) continue ;;@}	\
+ 			*);;						\
+ 			esac;						\
+-			if ${TEST} -r $$i -a ! -x $$i -a ! -h $$i; then	\
++			if ${TEST} -r $$i -a ! -x $$i -a ! -h $$i && \
++			    ${TOOLS_PATH.readelf:Q} -h "$$i" >/dev/null 2>&1; then	\
+ 				${TEST} ${PKG_DEVELOPER:Uno:Q}"" = "no" || \
+ 					${ECHO} "$$i: installed without execute permission; fixing (should use [BSD_]INSTALL_LIB)"; \
+ 				${CHMOD} +x $$i;			\
+--- a/mk/check/check-shlibs.mk
++++ b/mk/check/check-shlibs.mk
+@@ -45,6 +45,11 @@
+ CHECK_SHLIBS_SUPPORTED?=	yes
+ CHECK_SHLIBS_SKIP?=		# none
+ 
++# Package metadata uses readelf in the ELF branch independently of CHECK_SHLIBS.
++.if !empty(CHECK_SHLIBS_SUPPORTED:M[yY][eE][sS]) && ${OBJECT_FMT} == "ELF"
++USE_TOOLS+= readelf
++.endif
++
+ # All binaries and shared libraries.
+ _CHECK_SHLIBS_ERE=	(bin/|sbin/|libexec/|\.(dylib|sl|so)$$|lib/lib.*\.(dylib|sl|so))
+ 

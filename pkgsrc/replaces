@@ -386,3 +386,6 @@ textproc/libcroco
 
 security/tcp_wrappers
 net/tcpdump
+
+lang/libunwind
+lang/libcxxabi
