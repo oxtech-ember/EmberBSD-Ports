@@ -1,0 +1,15 @@
+$NetBSD$
+
+Ruby 4.0 has no TimeoutError constant; rescue Timeout::Error.
+
+--- lib/jekyll-gist/gist_tag.rb.orig
++++ lib/jekyll-gist/gist_tag.rb
+@@ -95,7 +95,7 @@
+           response = http.request(request)
+           response.body
+         end
+-      rescue SocketError, Net::HTTPError, Net::OpenTimeout, Net::ReadTimeout, TimeoutError
++      rescue SocketError, Net::HTTPError, Net::OpenTimeout, Net::ReadTimeout, Timeout::Error
+         nil
+       end
+ 

@@ -22,6 +22,17 @@ EMBERBSD_VERSION_FAMILIES+=	benchmarks/ruby-benchmark=lang/ruby40
 EMBERBSD_VERSION_FAMILIES+=	devel/ruby-io-console=lang/ruby40
 EMBERBSD_VERSION_FAMILIES+=	devel/ruby-reline=lang/ruby40
 EMBERBSD_VERSION_FAMILIES+=	security/ruby-openssl=lang/ruby40
+# Faraday 2 and Octokit 6; faraday_middleware is Faraday 1 only.
+EMBERBSD_VERSION_FAMILIES+=	www/ruby-faraday1=www/ruby-faraday
+EMBERBSD_VERSION_FAMILIES+=	www/ruby-faraday-excon1=www/ruby-faraday-excon
+EMBERBSD_VERSION_FAMILIES+=	www/ruby-faraday-httpclient1=www/ruby-faraday-httpclient
+EMBERBSD_VERSION_FAMILIES+=	www/ruby-faraday-net_http1=www/ruby-faraday-net_http
+EMBERBSD_VERSION_FAMILIES+=	www/ruby-faraday-net_http_persistent1=www/ruby-faraday-net_http_persistent
+EMBERBSD_VERSION_FAMILIES+=	www/ruby-faraday-patron1=www/ruby-faraday-patron
+EMBERBSD_VERSION_FAMILIES+=	www/ruby-faraday-rack1=www/ruby-faraday-rack
+EMBERBSD_VERSION_FAMILIES+=	www/ruby-faraday-retry1=www/ruby-faraday-retry
+EMBERBSD_VERSION_FAMILIES+=	www/ruby-faraday_middleware=www/ruby-faraday
+EMBERBSD_VERSION_FAMILIES+=	devel/ruby-octokit4=devel/ruby-octokit
 EMBERBSD_VERSION_FAMILIES+=	lang/openjdk[0-9]*=lang/openjdk21
 # One Berkeley DB, db18; db1 is the libc one.
 EMBERBSD_VERSION_FAMILIES+=	databases/db=databases/db18
@@ -43,6 +54,9 @@ EMBERBSD_VERSION_DEPENDENTS+=	games/asc
 EMBERBSD_VERSION_DEPENDENTS+=	games/valyriatear
 EMBERBSD_VERSION_DEPENDENTS+=	security/ap-modsecurity2
 EMBERBSD_VERSION_DEPENDENTS+=	www/nsm
+# EventMachine adapters for Faraday 1; Faraday 2 has none.
+EMBERBSD_VERSION_DEPENDENTS+=	www/ruby-faraday-em_http
+EMBERBSD_VERSION_DEPENDENTS+=	www/ruby-faraday-em_synchrony
 # GNAT from GCC 14; GCC16 has no Ada package. GPC needs GCC 2.
 EMBERBSD_VERSION_DEPENDENTS+=	cad/ghdl
 EMBERBSD_VERSION_DEPENDENTS+=	devel/ghdl-yosys-plugin

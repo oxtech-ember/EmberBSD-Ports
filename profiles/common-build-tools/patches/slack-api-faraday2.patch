@@ -1,0 +1,26 @@
+$NetBSD$
+
+Faraday 2: faraday_middleware is gone. Use the multipart middleware from
+faraday-multipart and the JSON response middleware from Faraday itself.
+
+--- lib/slack/connection.rb.orig
++++ lib/slack/connection.rb
+@@ -1,4 +1,5 @@
+-require 'faraday_middleware'
++require 'faraday'
++require 'faraday/multipart'
+ Dir[File.expand_path('../../faraday/*.rb', __FILE__)].each{|f| require f}
+ 
+ module Slack
+@@ -18,9 +19,9 @@
+         Array(middlewares).each do |middleware|
+           connection.use middleware
+         end
+-        connection.use Faraday::Request::Multipart
++        connection.use Faraday::Multipart::Middleware
+         connection.use Faraday::Request::UrlEncoded
+-        connection.use Faraday::Response::ParseJson
++        connection.use Faraday::Response::Json
+         connection.use FaradayMiddleware::RaiseHttpException
+         connection.adapter(adapter)
+       end

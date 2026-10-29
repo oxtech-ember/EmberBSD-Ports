@@ -1,0 +1,63 @@
+Origin: EmberBSD, AI-assisted.
+pkgsrc/versions.mk keeps Faraday 2 and Octokit 6 only: Faraday 1, its
+version-1 adapters, faraday_middleware and Octokit 4 accepted only Ruby
+3.3 and 3.4. Move their last users onto the kept versions: slack-api onto
+Faraday 2 and faraday-multipart (with patch-lib_slack_connection.rb) and
+jekyll-gist onto Octokit 6, which keeps Client#gist.
+Not submitted upstream.
+
+--- a/net/ruby-slack-api/Makefile
++++ b/net/ruby-slack-api/Makefile
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.8 2026/04/08 14:29:34 taca Exp $
+ 
+ DISTNAME=	slack-api-1.6.1
+-PKGREVISION=	1
++PKGREVISION=	2
+ CATEGORIES=	net
+ 
+ MAINTAINER=	tsutsui@NetBSD.org
+@@ -10,12 +10,12 @@
+ LICENSE=	mit
+ 
+ DEPENDS+=	${RUBY_PKGPREFIX}-multi_json>=1.0.3:../../textproc/ruby-multi_json
+-DEPENDS+=	${RUBY_PKGPREFIX}-faraday_middleware>=0.10.0:../../www/ruby-faraday_middleware
++DEPENDS+=	${RUBY_PKGPREFIX}-faraday>=2<3:../../www/ruby-faraday
++DEPENDS+=	${RUBY_PKGPREFIX}-faraday-multipart>=1<2:../../www/ruby-faraday-multipart
+ DEPENDS+=	${RUBY_PKGPREFIX}-faye-websocket>=0.10.6:../../www/ruby-faye-websocket
+ 
+-RUBY_VERSIONS_ACCEPTED=	33 34
+-
+-OVERRIDE_GEMSPEC+=	faraday_middleware>=0.10.0
++# Faraday 2 has no faraday_middleware; patches/ use faraday-multipart.
++OVERRIDE_GEMSPEC+=	faraday_middleware:faraday-multipart>=1.0
+ 
+ .include "../../lang/ruby/gem.mk"
+ .include "../../mk/bsd.pkg.mk"
+--- a/www/ruby-jekyll-gist/Makefile
++++ b/www/ruby-jekyll-gist/Makefile
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.10 2026/04/08 14:29:35 taca Exp $
+ 
+ DISTNAME=	jekyll-gist-1.5.0
+-PKGREVISION=	1
++PKGREVISION=	2
+ CATEGORIES=	www
+ 
+ MAINTAINER=	pkgsrc-users@NetBSD.org
+@@ -9,12 +9,13 @@
+ COMMENT=	Liquid tag for displaying GitHub Gists in Jekyll sites
+ LICENSE=	mit
+ 
+-DEPENDS+=	${RUBY_PKGPREFIX}-octokit4>=4.2<5:../../devel/ruby-octokit4
++DEPENDS+=	${RUBY_PKGPREFIX}-octokit>=4.2<7:../../devel/ruby-octokit
+ 
+ USE_LANGUAGES=	# none
+ USE_TOOLS+=	bash:run
+ 
+-RUBY_VERSIONS_ACCEPTED=	33 34
++# Octokit 6 keeps Client#gist.
++OVERRIDE_GEMSPEC+=	octokit>=4.2
+ 
+ REPLACE_BASH+=	script/bootstrap script/cibuild script/fmt script/release
+ 
