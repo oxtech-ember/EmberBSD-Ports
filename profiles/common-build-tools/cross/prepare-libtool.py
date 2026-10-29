@@ -114,6 +114,20 @@ def activate_context(tooldir, root, context):
     return alias
 
 
+def sysroot_inputs(sysroot, inventory):
+    """Record the headers and libraries used by the configured compiler."""
+    return {name: inventory.snapshot_installed_tree(os.path.join(sysroot, name))
+            for name in ('lib', 'usr/include', 'usr/lib')}
+
+
+def clang_runtime(sysroot, target, stage, base, paths, llvm_runtime, application_toolchain):
+    if stage:
+        return llvm_runtime.validate_stage(stage, target=target,
+            required_components=llvm_runtime.FULL_COMPONENTS,
+            base=paths.canonical_existing(base or sysroot))
+    return application_toolchain.load_clang_runtime(sysroot, target=target)
+
+
 def main():
     sdk, argv = load_sdk()
     from emberbsd_sdk import (application_toolchain, inventory, llvm_runtime, native_toolset,
@@ -126,6 +140,7 @@ def main():
     parser.add_argument('--distdir')
     parser.add_argument('--lock-directory', help='shared prefix/pkgdb lock directory')
     parser.add_argument('--runtime-stage')
+    parser.add_argument('--runtime-base')
     parser.add_argument('--target', choices=('aarch64', 'amd64'), required=True)
     parser.add_argument('--compiler-family', choices=('clang', 'gcc'), default='clang')
     parser.add_argument('--host-compiler-family', choices=('clang', 'gcc'), default='clang')
@@ -135,8 +150,10 @@ def main():
         raise SDKError('jobs must be positive')
     if a.compiler_family != 'clang' and a.runtime_stage:
         raise SDKError('--runtime-stage requires Clang')
+    if a.runtime_base and not a.runtime_stage:
+        raise SDKError('--runtime-base requires --runtime-stage')
     for value in (sdk, a.host_prefix, a.compiler, a.os_tools, a.sysroot,
-                  a.output, a.work_parent, a.git, a.distdir, a.runtime_stage, a.lock_directory):
+                  a.output, a.work_parent, a.git, a.distdir, a.runtime_stage, a.runtime_base, a.lock_directory):
         if value is None:
             continue
         if not os.path.isabs(value) or any(c.isspace() or c in '\\"\'`$#;:' for c in value):
@@ -181,23 +198,14 @@ def main():
                        '--sysroot', sysroot]
             if a.runtime_stage:
                 command += ['--runtime-stage', paths.canonical_existing(a.runtime_stage)]
+                if a.runtime_base:
+                    command += ['--runtime-base', paths.canonical_existing(a.runtime_base)]
             # The SDK validates the actual foundation and runtime before any reuse.
             triplet = {'aarch64': 'aarch64--netbsd', 'amd64': 'x86_64--netbsd'}[a.target]
             if a.compiler_family == 'clang':
                 compiler_record = target_toolchain.clang_compiler(compiler, triplet, host=native.host, env=env)
-                if a.runtime_stage:
-                    runtime_record = llvm_runtime.validate_stage(a.runtime_stage, target=a.target,
-                        required_components=llvm_runtime.FULL_COMPONENTS, base=sysroot)
-                else:
-                    runtime_record = application_toolchain.load_clang_runtime(sysroot, target=a.target)
-                    for name, digest in runtime_record['base']['files'].items():
-                        value = paths.canonical_existing(os.path.join(sysroot, name))
-                        if not paths.inside(value, sysroot) or inventory.sha256_file(value) != digest:
-                            raise SDKError('LLVM runtime base inputs changed: ' + name)
-                    for name, target in runtime_record['base']['symlinks'].items():
-                        value = os.path.join(sysroot, name)
-                        if not os.path.islink(value) or os.readlink(value) != target or not paths.inside(paths.canonical_existing(value), sysroot):
-                            raise SDKError('LLVM runtime base inputs changed: ' + name)
+                runtime_record = clang_runtime(sysroot, a.target, a.runtime_stage, a.runtime_base,
+                                               paths, llvm_runtime, application_toolchain)
             else:
                 # GCC's selected foundation lacks an LLVM manifest; its ABI inputs
                 # are the installed headers and libraries used by configure.
@@ -224,6 +232,7 @@ def main():
             identity = {'version': 1, 'target': a.target, 'compiler_family': a.compiler_family,
                         'host': native.as_dict(), 'native_tool_hashes': selected_tools,
                         'compiler': compiler_record, 'sysroot': sysroot, 'runtime': runtime_record,
+                        'sysroot_inputs': sysroot_inputs(sysroot, inventory),
                         'wrapper_binding': json.loads(binding.read_text()) if binding.exists() else None,
                         'recipe': recipe_digest(exported),
                         'cross_config': {name: inventory.sha256_file(str(exported / name)) for name in

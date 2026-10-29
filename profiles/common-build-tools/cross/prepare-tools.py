@@ -47,7 +47,7 @@ def prepare_clang(options):
         raise ValueError('The selected SDK must provide application toolchain API 2')
     if not options.sysroot or not options.host_prefix:
         raise ValueError('Clang applications require --sysroot and --host-prefix')
-    checked_paths((options.sysroot, options.host_prefix))
+    checked_paths((options.sysroot, options.host_prefix, *([options.runtime_base] if options.runtime_base else [])))
     native = load_host_prefix(options.host_prefix, required_roles=('python', 'sh'),
         compiler_family=options.host_compiler_family)
     if Path(sys.executable).resolve() != Path(native.tool('python')).resolve():
@@ -60,8 +60,9 @@ def prepare_clang(options):
     sysroot = paths.canonical_existing(options.sysroot)
     if options.runtime_stage:
         runtime_root = paths.canonical_existing(options.runtime_stage)
+        runtime_base = paths.canonical_existing(options.runtime_base or sysroot)
         runtime = llvm_runtime.validate_stage(runtime_root, target=options.target,
-            required_components=llvm_runtime.FULL_COMPONENTS, base=sysroot)
+            required_components=llvm_runtime.FULL_COMPONENTS, base=runtime_base)
     else:
         runtime_root = sysroot
         runtime = application_toolchain.load_clang_runtime(sysroot, target=options.target)
@@ -117,10 +118,13 @@ def prepare(args):
     parser.add_argument('--host-prefix')
     parser.add_argument('--sysroot')
     parser.add_argument('--runtime-stage', help='explicit completed LLVM runtime stage for this sysroot')
+    parser.add_argument('--runtime-base', help='foundation used to build the explicit runtime stage')
     parser.add_argument('compiler', metavar='COMPILER_PREFIX')
     parser.add_argument('os_tools', metavar='OS_TOOLDIR')
     parser.add_argument('output', metavar='NEW_TOOLDIR')
     options = parser.parse_args(args)
+    if options.runtime_base and not options.runtime_stage:
+        raise ValueError('--runtime-base requires --runtime-stage')
     checked_paths((options.compiler, options.os_tools, options.output))
     if os.path.lexists(options.output):
         raise ValueError('Output already exists')

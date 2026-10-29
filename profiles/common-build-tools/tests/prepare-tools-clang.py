@@ -18,6 +18,8 @@ parser.add_argument('--host-prefix', type=Path, required=True)
 parser.add_argument('--pkgsrc', type=Path, required=True,
                     help='complete pkgsrc export produced by scripts/prepare-pkgsrc.py')
 parser.add_argument('--bmake', type=Path, required=True)
+parser.add_argument('--runtime-only', action='store_true',
+                    help='check runtime routing without the pkgsrc metadata fixture')
 parser.add_argument('new_work', type=Path)
 args = parser.parse_args()
 sdk, prefix, work = args.sdk_source, args.host_prefix, args.new_work
@@ -212,7 +214,8 @@ def completed_sysroot(target):
     base_header.parent.mkdir(parents=True, exist_ok=True)
     base_header.write_text('/* selected runtime base fixture */\n')
     runtime.record['base']['files'] = {
-        'usr/include/stdint.h': hashlib.sha256(base_header.read_bytes()).hexdigest()}
+        'usr/include/stdint.h': hashlib.sha256(base_header.read_bytes()).hexdigest(),
+        'usr/lib/libc.so': hashlib.sha256((sysroot / 'usr/lib/libc.so').read_bytes()).hexdigest()}
     runtime.save()
     return case, sysroot, runtime.stage
 
@@ -279,6 +282,33 @@ for target, triple, machine, instruction in (
         invoke(target, sysroot, staged, accept=True, extra=('--runtime-stage', stage))
         staged_mk = (staged / 'target.mk').read_text()
         assert '_EMBER_TARGET_RUNTIME_ROOT:= ' + str(stage) in staged_mk
+        final_root = work / ('final-sysroot-' + target)
+        shutil.copytree(sysroot, final_root, symlinks=True)
+        (final_root / 'usr/include/stdint.h').write_text('/* final userland header */\n')
+        libc = final_root / 'usr/lib/libc.so'
+        libc.write_bytes(libc.read_bytes() + b'final-libc')
+        ready = work / ('tools-ready-distinct-base-' + target)
+        invoke(target, final_root, ready, accept=True)
+        assert '_EMBER_TARGET_SYSROOT:= ' + str(final_root) in (ready / 'target.mk').read_text()
+        library = final_root / 'usr/pkg/llvm/lib/libc++.so.1'
+        saved_library = library.read_bytes()
+        library.write_bytes(saved_library + b'damaged')
+        damaged = work / ('tools-damaged-runtime-' + target)
+        invoke(target, final_root, damaged, accept=False)
+        assert not damaged.exists()
+        library.write_bytes(saved_library)
+        alternate = work / ('tools-distinct-base-' + target)
+        invoke(target, final_root, alternate, accept=True,
+               extra=('--runtime-stage', stage, '--runtime-base', sysroot))
+        alternate_mk = (alternate / 'target.mk').read_text()
+        assert '_EMBER_TARGET_SYSROOT:= ' + str(final_root) in alternate_mk
+        assert '_EMBER_TARGET_RUNTIME_ROOT:= ' + str(stage) in alternate_mk
+        bad_base = work / ('tools-wrong-base-' + target)
+        invoke(target, final_root, bad_base, accept=False, extra=('--runtime-stage', stage))
+        assert not bad_base.exists()
+        without_stage = work / ('tools-base-without-stage-' + target)
+        invoke(target, final_root, without_stage, accept=False, extra=('--runtime-base', sysroot))
+        assert not without_stage.exists()
         commands = json.loads((staged / 'commands/commands.json').read_text())
         assert any(str(stage) in word for word in commands['commands']['cxx'])
         assert any(str(stage) in word for word in commands['link_flags']['cxx'])
@@ -289,8 +319,9 @@ for target, triple, machine, instruction in (
         text = invoke(target, sysroot, invalid, accept=False, extra=('--runtime-stage', stage))
         assert 'base inputs changed' in text and not invalid.exists(), text
         base_header.write_text(original)
-        pkgsrc_route(target, triple, output, sysroot, cxx=(target == 'aarch64'))
-        pkgsrc_route(target, triple, staged, sysroot, cxx=(target == 'aarch64'), runtime_root=stage)
+        if not args.runtime_only:
+            pkgsrc_route(target, triple, output, sysroot, cxx=(target == 'aarch64'))
+            pkgsrc_route(target, triple, staged, sysroot, cxx=(target == 'aarch64'), runtime_root=stage)
     finally:
         case.doCleanups()
 

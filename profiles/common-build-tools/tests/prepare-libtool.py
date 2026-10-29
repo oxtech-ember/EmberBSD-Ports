@@ -49,4 +49,8 @@ with tempfile.TemporaryDirectory(dir=a.work_dir) as temp:
     assert '--runtime-stage requires Clang' in reject('--output', invalid,
            '--compiler-family', 'gcc', '--runtime-stage', a.sysroot)
     assert not invalid.exists()
+    invalid_base = tools / 'base-without-stage'
+    assert '--runtime-base requires --runtime-stage' in reject('--output', invalid_base,
+           '--runtime-base', a.sysroot)
+    assert not invalid_base.exists()
 print('cross-libtool producer destination/family boundaries: PASS')

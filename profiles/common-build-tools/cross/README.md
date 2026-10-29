@@ -140,8 +140,11 @@ drivers and Binutils tools.
 
 For a build against a separately prepared full LLVM runtime, pass
 `--runtime-stage /absolute/completed-runtime-stage`. The adapter validates its
-target, payload and recorded base inputs against the selected sysroot, then
-uses the SDK application binding with that runtime root. The sysroot itself
+target, payload and recorded base inputs against the selected sysroot by default.
+When the runtime was built against a distinct foundation, pass its path as
+`--runtime-base`; this option requires `--runtime-stage`. Compiler commands
+continue to use the selected `--sysroot`, and the SDK application binding uses
+the explicit runtime root. The sysroot itself
 is not modified. This is useful for testing a replacement before installing
 it; target execution and final sysroot acceptance remain separate checks.
 `tests/cross-runtime-rpath.py` checks a prepared pkgsrc C++ wrapper and real

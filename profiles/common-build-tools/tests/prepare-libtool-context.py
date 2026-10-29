@@ -4,10 +4,13 @@
 # Origin: EmberBSD (AI-assisted).
 """Check owned cross-libtool context reuse and interrupted attempts."""
 import importlib.util
+import os
 from pathlib import Path
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
+from unittest.mock import Mock
 
 cross = Path(__file__).resolve().parents[1] / 'cross'
 sys.path.insert(0, str(cross))
@@ -16,6 +19,41 @@ producer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(producer)
 
 class ContextTest(unittest.TestCase):
+    def test_clang_runtime_uses_foundation_only_for_explicit_stage(self):
+        paths = SimpleNamespace(canonical_existing=lambda p: p)
+        stage = SimpleNamespace(FULL_COMPONENTS=('runtime',), validate_stage=Mock(return_value={'stage': 'ok'}))
+        ready = SimpleNamespace(load_clang_runtime=Mock(return_value={'base': {'files': {'lib/libc.so': 'old'}}}))
+        result = producer.clang_runtime('/final', 'aarch64', '/stage', '/foundation', paths, stage, ready)
+        self.assertEqual(result, {'stage': 'ok'})
+        self.assertEqual(stage.validate_stage.call_args.kwargs['base'], '/foundation')
+        producer.clang_runtime('/final', 'aarch64', '/stage', None, paths, stage, ready)
+        self.assertEqual(stage.validate_stage.call_args.kwargs['base'], '/final')
+        result = producer.clang_runtime('/final', 'aarch64', None, None, paths, stage, ready)
+        self.assertEqual(result['base']['files']['lib/libc.so'], 'old')
+        ready.load_clang_runtime.assert_called_once_with('/final', target='aarch64')
+        ready.load_clang_runtime.side_effect = ValueError('damaged runtime')
+        with self.assertRaisesRegex(ValueError, 'damaged runtime'):
+            producer.clang_runtime('/final', 'aarch64', None, None, paths, stage, ready)
+
+    def test_actual_sysroot_inputs_change_with_library_or_header(self):
+        sys.path.insert(0, os.path.join(os.environ['EMBERBSD_SDK_SOURCE'], 'src'))
+        from emberbsd_sdk import inventory
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            for name in ('lib', 'usr/lib', 'usr/include'):
+                (root / name).mkdir(parents=True)
+            libc = root / 'lib/libc.so.12'
+            libc.write_text('first')
+            (root / 'usr/lib/libc.so').symlink_to('../../lib/libc.so.12')
+            header = root / 'usr/include/stdio.h'
+            header.write_text('first')
+            before = producer.sysroot_inputs(str(root), inventory)
+            libc.write_text('second')
+            self.assertNotEqual(before, producer.sysroot_inputs(str(root), inventory))
+            before = producer.sysroot_inputs(str(root), inventory)
+            header.write_text('second')
+            self.assertNotEqual(before, producer.sysroot_inputs(str(root), inventory))
+
     def test_recipe_identity_tracks_patch_inventory_but_not_unrelated_metadata(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
