@@ -298,7 +298,9 @@ for module in $modules; do
                 shasum -a 256 "$HOST_LLVM_BUILD/lib/libLTO.dylib" >> "$work/inputs.txt"
             fi
         fi
-        (cd "$work/$module" && "$HOST_SH" "$work/qtbase/bin/qt-configure-module" \
+        # Qt runs project-signature try_compile in a separate CMake process.
+        # Its package search must retain the selected native prefix as well.
+        (cd "$work/$module" && CMAKE_PREFIX_PATH="$HOST_PACKAGE_PREFIX" "$HOST_SH" "$work/qtbase/bin/qt-configure-module" \
             "$work/source/$module-everywhere-src-6.12.0" \
             -- -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF -DPython3_EXECUTABLE:FILEPATH="$HOST_PYTHON" "$@") > "$work/$module/configure.log" 2>&1
         grep -F -x "ZLIB_ROOT:PATH=$HOST_PACKAGE_PREFIX" "$work/$module/CMakeCache.txt" >/dev/null || {
