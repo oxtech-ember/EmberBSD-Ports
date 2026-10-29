@@ -1,0 +1,36 @@
+Honor the selected cwrappers directory and guard native-stage rpcgen.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/mk/cwrappers.mk
++++ b/mk/cwrappers.mk
+@@ -7,7 +7,7 @@
+ 
+ TOOL_DEPENDS+=		cwrappers>=20220403nb5:../../pkgtools/cwrappers
+ 
+-CWRAPPERS_SRC_DIR=	${TOOLBASE}/libexec/cwrappers
++CWRAPPERS_SRC_DIR?=	${TOOLBASE}/libexec/cwrappers
+ CWRAPPERS_CONFIG_DIR=	${WRKDIR}/.cwrapper/config
+ CONFIGURE_ENV+=		CWRAPPERS_CONFIG_DIR=${CWRAPPERS_CONFIG_DIR}
+ MAKE_ENV+=		CWRAPPERS_CONFIG_DIR=${CWRAPPERS_CONFIG_DIR}
+--- a/mk/tools/rpcgen.mk
++++ b/mk/tools/rpcgen.mk
+@@ -49,7 +49,18 @@
+ .elif ${OPSYS} == "Linux"
+ TOOLS_ARGS.rpcgen?=	-Y ${WRAPPER_BINDIR:Q}
+ .endif
++# A native stage must resolve the selected tool inside its own prefix when
++# it is actually invoked, including when the executable is a symlink.
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
++    defined(EMBERBSD_NATIVE_STAGE_ROOT) && defined(EMBERBSD_NATIVE_STAGE_PREFIX) && \
++    defined(EMBERBSD_NATIVE_STAGE_PYTHON)
++TOOLS_SCRIPT.rpcgen= ${EMBERBSD_NATIVE_STAGE_PYTHON:Q} -c \
++    'import os,sys; p,r=map(os.path.realpath,sys.argv[1:]); ok=os.path.isfile(p) and os.access(p,os.X_OK) and os.path.commonpath((p,r))==r; sys.exit(0 if ok else "rpcgen must resolve to an executable in the native stage")' \
++    ${TOOLS_PATH.rpcgen:Q} ${EMBERBSD_NATIVE_STAGE_ROOT:Q}${EMBERBSD_NATIVE_STAGE_PREFIX:Q} && \
++    CPP=${WRAPPER_BINDIR:Q}/cpp ${TOOLS_SCRIPT_DFLT.rpcgen}
++.else
+ TOOLS_SCRIPT.rpcgen=	CPP=${WRAPPER_BINDIR:Q}/cpp ${TOOLS_SCRIPT_DFLT.rpcgen}
++.endif
+ 
+ # Make ${RPCGEN} call the "rpcgen" through the PATH, which should find
+ # the rpcgen tool wrapper.
