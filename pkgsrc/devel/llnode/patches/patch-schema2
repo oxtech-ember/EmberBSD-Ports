@@ -1,0 +1,1095 @@
+diff --git a/src/llnode.cc b/src/llnode.cc
+index 3d400e3..9dd10fa 100644
+--- src/llnode.cc
++++ src/llnode.cc
+@@ -53,6 +53,10 @@ bool BacktraceCmd::DoExecute(SBDebugger d, char** cmd,
+ 
+   // Load V8 constants from postmortem data
+   llv8_->Load(target);
++  if (const char* reason = llv8_->MetadataError()) {
++    result.SetError(reason);
++    return false;
++  }
+ 
+   {
+     SBStream desc;
+@@ -200,6 +204,10 @@ bool PrintCmd::DoExecute(SBDebugger d, char** cmd,
+ 
+   // Load V8 constants from postmortem data
+   llv8_->Load(target);
++  if (const char* reason = llv8_->MetadataError()) {
++    result.SetError(reason);
++    return false;
++  }
+ 
+   v8::Value v8_value(llv8_, value.GetValueAsSigned());
+   Error err;
+@@ -257,6 +265,10 @@ bool ListCmd::DoExecute(SBDebugger d, char** cmd,
+ 
+   // Load V8 constants from postmortem data
+   llv8_->Load(target);
++  if (const char* reason = llv8_->MetadataError()) {
++    result.SetError(reason);
++    return false;
++  }
+   SBFrame frame = thread.GetSelectedFrame();
+ 
+   bool reset_line = false;
+@@ -313,6 +325,10 @@ bool WorkqueueCmd::DoExecute(SBDebugger d, char** cmd,
+   Error err;
+ 
+   llv8_->Load(target);
++  if (const char* reason = llv8_->MetadataError()) {
++    result.SetError(reason);
++    return false;
++  }
+   node_->Load(target);
+ 
+   node::Environment env = node::Environment::GetCurrent(node_, err);
+diff --git a/src/llscan.cc b/src/llscan.cc
+index a8dd29f..47decb6 100644
+--- src/llscan.cc
++++ src/llscan.cc
+@@ -14,7 +14,7 @@
+ 
+ #include <lldb/API/SBExpressionOptions.h>
+ 
+-#include "deps/rang/include/rang.hpp"
++#include <rang.hpp>
+ #include "src/error.h"
+ #include "src/llscan.h"
+ #include "src/llv8-inl.h"
+@@ -105,6 +105,10 @@ bool FindObjectsCmd::DoExecute(SBDebugger d, char** cmd,
+ 
+   // Load V8 constants from postmortem data
+   llscan_->v8()->Load(target);
++  if (const char* reason = llscan_->v8()->MetadataError()) {
++    result.SetError(reason);
++    return false;
++  }
+ 
+   /* Ensure we have a map of objects. */
+   if (!llscan_->ScanHeapForObjects(target, result)) {
+@@ -208,6 +212,10 @@ bool FindInstancesCmd::DoExecute(SBDebugger d, char** cmd,
+ 
+   // Load V8 constants from postmortem data
+   llscan_->v8()->Load(target);
++  if (const char* reason = llscan_->v8()->MetadataError()) {
++    result.SetError(reason);
++    return false;
++  }
+ 
+   /* Ensure we have a map of objects. */
+   if (!llscan_->ScanHeapForObjects(target, result)) {
+@@ -306,6 +314,10 @@ bool NodeInfoCmd::DoExecute(SBDebugger d, char** cmd,
+ 
+   // Load V8 constants from postmortem data
+   llscan_->v8()->Load(target);
++  if (const char* reason = llscan_->v8()->MetadataError()) {
++    result.SetError(reason);
++    return false;
++  }
+ 
+   /* Ensure we have a map of objects. */
+   if (!llscan_->ScanHeapForObjects(target, result)) {
+@@ -484,6 +496,10 @@ bool FindReferencesCmd::DoExecute(SBDebugger d, char** cmd,
+ 
+   // Load V8 constants from postmortem data
+   llscan_->v8()->Load(target);
++  if (const char* reason = llscan_->v8()->MetadataError()) {
++    result.SetError(reason);
++    return false;
++  }
+ 
+   ScanOptions scan_options;
+   char** start = ParseScanOptions(cmd, &scan_options);
+diff --git a/src/llv8-constants.cc b/src/llv8-constants.cc
+index 15d85d8..07c83b3 100644
+--- src/llv8-constants.cc
++++ src/llv8-constants.cc
+@@ -34,6 +34,9 @@ void Common::Load() {
+   kVersionMajor = LoadRawConstant("v8::internal::Version::major_");
+   kVersionMinor = LoadRawConstant("v8::internal::Version::minor_");
+   kVersionPatch = LoadRawConstant("v8::internal::Version::patch_");
++  kMetadataSchema = LoadConstant("metadata_schema_version");
++  kSandboxEnabled = LoadConstant("sandbox_enabled");
++  kPointerCompressionEnabled = LoadConstant("pointer_compression_enabled");
+ }
+ 
+ 
+@@ -98,6 +101,10 @@ void Map::Load() {
+         LoadConstant("class_Map__constructor_or_back_pointer__Object");
+   }
+ 
++  if (kMaybeConstructorOffset == -1)
++    kMaybeConstructorOffset = LoadConstant(
++        "class_Map__constructor_or_back_pointer_or_native_context__Object");
++
+   kInstanceDescriptorsOffset = LoadConstant({
+       "class_Map__instance_descriptors__DescriptorArray",
+       "class_Map__instance_descriptors_offset",
+@@ -150,6 +157,8 @@ void JSObject::Load() {
+       LoadConstant("class_JSReceiver__raw_properties_or_hash__Object",
+                    "class_JSReceiver__properties__FixedArray");
+ 
++  if (kPropertiesOffset == -1)
++    kPropertiesOffset = LoadConstant("class_JSReceiver__properties_or_hash__Object");
+   if (kPropertiesOffset == -1)
+     kPropertiesOffset = LoadConstant("class_JSObject__properties__FixedArray");
+ 
+@@ -196,13 +205,18 @@ void JSRegExp::Load() {
+ 
+ 
+ void JSDate::Load() {
+-  kValueOffset = LoadConstant("class_JSDate__value__Object");
++  kValueOffset = LoadConstant("class_JSDate__value__double");
++  kValueIsDouble = kValueOffset != -1;
++  if (!kValueIsDouble)
++    kValueOffset = LoadConstant("class_JSDate__value__Object");
+ };
+ 
+ 
+ void SharedInfo::Load() {
+   kFunctionDataOffset =
+       LoadConstant("class_SharedFunctionInfo__function_data__Object");
++  kTrustedFunctionDataOffset =
++      LoadConstant("class_SharedFunctionInfo__raw_trusted_function_data__TrustedPointer");
+   kNameOrScopeInfoOffset =
+       LoadConstant("class_SharedFunctionInfo__name_or_scope_info__Object");
+   kNameOffset = LoadConstant("class_SharedFunctionInfo__raw_name__Object",
+@@ -273,6 +287,25 @@ void ScopeInfo::Load() {
+   kEmbeddedParamAndStackLocals = kStackLocalCountOffset != -1;
+   kContextLocalCountOffset = LoadConstant("scopeinfo_idx_ncontextlocals");
+   kVariablePartIndex = LoadConstant("scopeinfo_idx_first_vars");
++  kVariablePartOffset = LoadConstant("scopeinfo_variable_part_offset");
++  kFlagsOffset = LoadConstant("scopeinfo_flags_offset");
++  kPositionStartOffset = LoadConstant("scopeinfo_position_start_offset");
++  kPositionEndOffset = LoadConstant("scopeinfo_position_end_offset");
++  kScopeTypeMask = LoadConstant("scopeinfo_scope_type_mask");
++  kScopeTypeShift = LoadConstant("scopeinfo_scope_type_shift");
++  kModuleScope = LoadConstant("scopeinfo_module_scope");
++  kMaxInlinedNames = LoadConstant("scopeinfo_max_inlined_names");
++  kSavedClassMask = LoadConstant("scopeinfo_saved_class_mask");
++  kFunctionVariableMask = LoadConstant("scopeinfo_function_variable_mask");
++  kFunctionVariableShift = LoadConstant("scopeinfo_function_variable_shift");
++  kFunctionVariableNone = LoadConstant("scopeinfo_function_variable_none");
++  kInferredNameMask = LoadConstant("scopeinfo_inferred_name_mask");
++  kFunctionVariableInfoSize = LoadConstant("scopeinfo_function_variable_info_size");
++  kFunctionVariableNameOffset = LoadConstant("scopeinfo_function_variable_name_offset");
++  if (kVariablePartOffset != -1) {
++    kParameterCountOffset = LoadConstant("scopeinfo_parameter_count_offset");
++    kContextLocalCountOffset = LoadConstant("scopeinfo_context_local_count_offset");
++  }
+   // Prior to Node.js v16, ScopeInfo inherited from FixedArray. In release
+   // lines after Node.js v16, it no longer does.
+   kIsFixedArray = LoadConstant("parent_ScopeInfo__FixedArray") != -1;
+@@ -360,7 +393,10 @@ void ThinString::Load() {
+ }
+ 
+ void FixedArrayBase::Load() {
+-  kLengthOffset = LoadConstant("class_FixedArrayBase__length__SMI");
++  kLengthOffset = LoadConstant("class_FixedArrayBase__length__uint32_t");
++  kLengthIsUInt32 = kLengthOffset != -1;
++  if (!kLengthIsUInt32)
++    kLengthOffset = LoadConstant("class_FixedArrayBase__length__SMI");
+ }
+ 
+ 
+@@ -415,11 +451,14 @@ void JSArrayBuffer::Load() {
+   if (kBackingStoreOffset.Check()) {
+   }
+ 
+-  kWasNeuteredMask = LoadConstant("jsarray_buffer_was_neutered_mask");
+-  kWasNeuteredShift = LoadConstant("jsarray_buffer_was_neutered_shift");
++  kWasNeuteredMask = LoadConstant("jsarray_buffer_was_detached_mask",
++                                   "jsarray_buffer_was_neutered_mask");
++  kWasNeuteredShift = LoadConstant("jsarray_buffer_was_detached_shift",
++                                    "jsarray_buffer_was_neutered_shift");
+ 
+-  if (kWasNeuteredMask == -1) {
+-    // TODO(indutny): check V8 version?
++  common_->Load();
++  if (kWasNeuteredMask == -1 && common_->kMetadataSchema != 2) {
++    // Legacy releases did not export the bit.
+     kWasNeuteredMask = 1 << 3;
+     kWasNeuteredShift = 3;
+   }
+@@ -468,6 +507,10 @@ void DescriptorArray::Load() {
+ 
+   kPropertyIndexMask = LoadConstant("prop_index_mask");
+   kPropertyIndexShift = LoadConstant("prop_index_shift");
++  kPropertyOffsetWordsMask = LoadConstant("prop_offset_words_mask");
++  kPropertyOffsetWordsShift = LoadConstant("prop_offset_words_shift");
++  kPropertyInObjectMask = LoadConstant("prop_inobject_mask");
++  kPropertyFirstOutObjectWords = LoadConstant("prop_first_outobject_offset_words");
+   kPropertyTypeMask = LoadConstant("prop_type_mask");
+ 
+   if (kPropertyTypeMask == -1) {  // node.js >= 8
+@@ -618,6 +661,8 @@ void Types::Load() {
+   kJSArrayType = LoadConstant("type_JSArray__JS_ARRAY_TYPE");
+   kCodeType = LoadConstant("type_Code__CODE_TYPE");
+   kJSFunctionType = LoadConstant("type_JSFunction__JS_FUNCTION_TYPE");
++  kFirstJSFunctionType = LoadConstant("FirstJSFunctionType");
++  kLastJSFunctionType = LoadConstant("LastJSFunctionType");
+   kFixedArrayType = LoadConstant("type_FixedArray__FIXED_ARRAY_TYPE");
+   kJSArrayBufferType = LoadConstant("type_JSArrayBuffer__JS_ARRAY_BUFFER_TYPE");
+   kJSTypedArrayType = LoadConstant("type_JSTypedArray__JS_TYPED_ARRAY_TYPE");
+@@ -636,6 +681,10 @@ void Types::Load() {
+        "SCOPE_TYPE",
+        "type_UncompiledDataWithPreparseData__UNCOMPILED_DATA_WITH_"
+        "PREPARSE_DATA_TYPE"});
++  kUncompiledDataWithoutPreparseWithJobType = LoadConstant(
++      {"type_UncompiledDataWithoutPreparseDataWithJob__UNCOMPILED_DATA_WITHOUT_PREPARSE_DATA_WITH_JOB_TYPE"});
++  kUncompiledDataWithPreparseAndJobType = LoadConstant(
++      {"type_UncompiledDataWithPreparseDataAndJob__UNCOMPILED_DATA_WITH_PREPARSE_DATA_AND_JOB_TYPE"});
+   kScriptType = LoadConstant("type_Script__SCRIPT_TYPE");
+   kScopeInfoType = LoadConstant("type_ScopeInfo__SCOPE_INFO_TYPE");
+   kSymbolType = LoadConstant("type_Symbol__SYMBOL_TYPE");
+diff --git a/src/llv8-constants.h b/src/llv8-constants.h
+index 8a86a0a..3a49e8b 100644
+--- src/llv8-constants.h
++++ src/llv8-constants.h
+@@ -31,6 +31,9 @@ class Common : public Module {
+   int64_t kVersionMajor;
+   int64_t kVersionMinor;
+   int64_t kVersionPatch;
++  int64_t kMetadataSchema;
++  int64_t kSandboxEnabled;
++  int64_t kPointerCompressionEnabled;
+ 
+   bool CheckLowestVersion(int64_t major, int64_t minor, int64_t patch);
+   bool CheckHighestVersion(int64_t major, int64_t minor, int64_t patch);
+@@ -147,6 +150,7 @@ class JSDate : public Module {
+   CONSTANTS_DEFAULT_METHODS(JSDate);
+ 
+   int64_t kValueOffset;
++  bool kValueIsDouble;
+ 
+  protected:
+   void Load();
+@@ -156,6 +160,7 @@ class SharedInfo : public Module {
+  public:
+   CONSTANTS_DEFAULT_METHODS(SharedInfo);
+ 
++  int64_t kTrustedFunctionDataOffset;
+   int64_t kNameOrScopeInfoOffset;
+   int64_t kNameOffset;
+   int64_t kInferredNameOffset;
+@@ -207,6 +212,21 @@ class ScopeInfo : public Module {
+   int64_t kContextLocalCountOffset;
+   bool kEmbeddedParamAndStackLocals;
+   int64_t kVariablePartIndex;
++  int64_t kVariablePartOffset;
++  int64_t kFlagsOffset;
++  int64_t kPositionStartOffset;
++  int64_t kPositionEndOffset;
++  int64_t kScopeTypeMask;
++  int64_t kScopeTypeShift;
++  int64_t kModuleScope;
++  int64_t kMaxInlinedNames;
++  int64_t kSavedClassMask;
++  int64_t kFunctionVariableMask;
++  int64_t kFunctionVariableShift;
++  int64_t kFunctionVariableNone;
++  int64_t kInferredNameMask;
++  int64_t kFunctionVariableInfoSize;
++  int64_t kFunctionVariableNameOffset;
+   bool kIsFixedArray;
+ 
+  protected:
+@@ -333,6 +353,7 @@ class FixedArrayBase : public Module {
+   CONSTANTS_DEFAULT_METHODS(FixedArrayBase);
+ 
+   int64_t kLengthOffset;
++  bool kLengthIsUInt32;
+ 
+  protected:
+   void Load();
+@@ -434,6 +455,10 @@ class DescriptorArray : public Module {
+ 
+   int64_t kPropertyIndexMask;
+   int64_t kPropertyIndexShift;
++  int64_t kPropertyOffsetWordsMask;
++  int64_t kPropertyOffsetWordsShift;
++  int64_t kPropertyInObjectMask;
++  int64_t kPropertyFirstOutObjectWords;
+   int64_t kRepresentationMask;
+   int64_t kRepresentationShift;
+ 
+@@ -543,6 +568,14 @@ class Types : public Module {
+   int64_t kJSArrayType;
+   int64_t kCodeType;
+   int64_t kJSFunctionType;
++  int64_t kFirstJSFunctionType;
++  int64_t kLastJSFunctionType;
++
++  bool IsJSFunctionType(int64_t type) const {
++    return type >= 0 && ((kJSFunctionType >= 0 && type == kJSFunctionType) ||
++        (kFirstJSFunctionType >= 0 && kLastJSFunctionType >= kFirstJSFunctionType &&
++         type >= kFirstJSFunctionType && type <= kLastJSFunctionType));
++  }
+   int64_t kFixedArrayType;
+   int64_t kJSArrayBufferType;
+   int64_t kJSTypedArrayType;
+@@ -551,6 +584,8 @@ class Types : public Module {
+   int64_t kSharedFunctionInfoType;
+   Constant<int64_t> kUncompiledDataWithoutPreParsedScopeType;
+   Constant<int64_t> kUncompiledDataWithPreParsedScopeType;
++  Constant<int64_t> kUncompiledDataWithoutPreparseWithJobType;
++  Constant<int64_t> kUncompiledDataWithPreparseAndJobType;
+   int64_t kScriptType;
+   int64_t kScopeInfoType;
+   int64_t kSymbolType;
+diff --git a/src/llv8-inl.h b/src/llv8-inl.h
+index e649dc6..1095530 100644
+--- src/llv8-inl.h
++++ src/llv8-inl.h
+@@ -2,6 +2,7 @@
+ #define SRC_LLV8_INL_H_
+ 
+ #include <cinttypes>
++#include <limits>
+ #include "llv8.h"
+ 
+ namespace llnode {
+@@ -190,7 +191,10 @@ inline bool Value::IsUncompiledData(Error& err) {
+   if (err.Fail()) return false;
+ 
+   return type == *v8()->types()->kUncompiledDataWithoutPreParsedScopeType ||
+-         type == *v8()->types()->kUncompiledDataWithPreParsedScopeType;
++         type == *v8()->types()->kUncompiledDataWithPreParsedScopeType ||
++         (v8()->common()->kMetadataSchema == 2 &&
++          (type == *v8()->types()->kUncompiledDataWithoutPreparseWithJobType ||
++           type == *v8()->types()->kUncompiledDataWithPreparseAndJobType));
+ }
+ 
+ 
+@@ -379,7 +383,7 @@ inline std::string JSObject::GetName(Error& err) {
+   int64_t constructor_type = constructor_obj.GetType(err);
+   if (err.Fail()) return std::string();
+ 
+-  if (constructor_type != v8()->types()->kJSFunctionType) {
++  if (!v8()->types()->IsJSFunctionType(constructor_type)) {
+     return "no constructor";
+   }
+ 
+@@ -511,6 +515,32 @@ ACCESSOR(UncompiledData, end_position, uncompiled_data()->kEndPositionOffset,
+          int32_t)
+ 
+ Value SharedFunctionInfo::GetInferredName(Error& err) {
++  if (v8()->common()->kMetadataSchema == 2) {
++    Value value = HeapObject::LoadFieldValue<Value>(
++        v8()->shared_info()->kNameOrScopeInfoOffset, err);
++    if (err.Fail()) return Value();
++    HeapObject scope(value);
++    if (scope.Check() && scope.IsScopeInfo(err))
++      return ScopeInfo(scope).MaybeFunctionName(err, true);
++    if (err.Fail()) return Value();
++    Value data = HeapObject::LoadFieldValue<Value>(
++        v8()->shared_info()->kTrustedFunctionDataOffset, err);
++    if (err.Fail()) return Value();
++    if (data.raw() == 0) return Value();
++    if (!HeapObject(data).Check()) {
++      err = Error::Failure("Invalid SharedFunctionInfo trusted data");
++      return Value();
++    }
++    if (!data.IsUncompiledData(err)) return Value();
++    if (err.Fail()) return Value();
++    Value name = UncompiledData(data).inferred_name(err);
++    if (err.Fail()) return Value();
++    if (!HeapObject(name).Check() || !String::IsString(v8(), HeapObject(name), err)) {
++      if (err.Success()) err = Error::Failure("UncompiledData inferred name is not a string");
++      return Value();
++    }
++    return name;
++  }
+   if (v8()->uncompiled_data()->kInferredNameOffset == -1)
+     return inferred_name(err);
+ 
+@@ -559,16 +589,41 @@ Script SharedFunctionInfo::GetScript(Error& err) {
+ String SharedFunctionInfo::Name(Error& err) {
+   if (v8()->shared_info()->kNameOrScopeInfoOffset == -1) return name(err);
+ 
+-  HeapObject maybe_scope_info = name_or_scope_info(err);
+-  if (err.Fail()) return String();
++  HeapObject maybe_scope_info;
++  if (v8()->common()->kMetadataSchema == 2) {
++    Value value = HeapObject::LoadFieldValue<Value>(
++        v8()->shared_info()->kNameOrScopeInfoOffset, err);
++    if (err.Fail()) return String();
++    if (Smi(value).Check()) {
++      if (Smi(value).GetValue() != 0)
++        err = Error::Failure("Unexpected SharedFunctionInfo name sentinel");
++      return String();
++    }
++    maybe_scope_info = HeapObject(value);
++    if (!maybe_scope_info.Check()) {
++      err = Error::Failure("Invalid SharedFunctionInfo name value");
++      return String();
++    }
++  } else {
++    maybe_scope_info = name_or_scope_info(err);
++    if (err.Fail()) return String();
++  }
+ 
+   if (String::IsString(v8(), maybe_scope_info, err))
+     return String(maybe_scope_info);
+ 
+   if (err.Fail()) return String();
+ 
++  if (v8()->common()->kMetadataSchema == 2 && !maybe_scope_info.IsScopeInfo(err)) {
++    if (err.Success()) err = Error::Failure("SharedFunctionInfo name layout is unsupported");
++    return String();
++  }
+   Value maybe_function_name =
+       ScopeInfo(maybe_scope_info).MaybeFunctionName(err);
++  if (v8()->common()->kMetadataSchema == 2) {
++    if (err.Fail() || !maybe_function_name.Check()) return String();
++    return String(maybe_function_name);
++  }
+   if (err.Fail()) {
+     err = Error::Ok();
+     return String();
+@@ -726,6 +781,32 @@ inline CheckedType<uintptr_t> JSTypedArray::GetData() {
+ inline ScopeInfo::PositionInfo ScopeInfo::MaybePositionInfo(Error& err) {
+   ScopeInfo::PositionInfo position_info = {
+       .start_position = 0, .end_position = 0, .is_valid = false};
++  if (v8()->scope_info()->kVariablePartOffset != -1) {
++    const auto* m = v8()->scope_info();
++    const int64_t ptr = v8()->common()->kPointerSize;
++    const int64_t tag = v8()->heap_obj()->kTag;
++    const int64_t max = std::numeric_limits<int64_t>::max();
++    if (ptr <= 0 || tag < 0 || raw() < tag ||
++        m->kPositionStartOffset < 0 || m->kPositionEndOffset < 0 ||
++        m->kPositionStartOffset > max - ptr || m->kPositionEndOffset > max - ptr ||
++        raw() - tag > max - m->kPositionStartOffset - ptr ||
++        raw() - tag > max - m->kPositionEndOffset - ptr) {
++      err = Error::Failure("Invalid ScopeInfo position bounds");
++      return position_info;
++    }
++    Smi start = HeapObject::LoadFieldValue<Smi>(m->kPositionStartOffset, err);
++    if (err.Fail()) return position_info;
++    Smi end = HeapObject::LoadFieldValue<Smi>(m->kPositionEndOffset, err);
++    if (err.Fail()) return position_info;
++    if (!start.Check() || !end.Check()) {
++      err = Error::Failure("Invalid ScopeInfo positions");
++      return position_info;
++    }
++    position_info.start_position = start.GetValue();
++    position_info.end_position = end.GetValue();
++    position_info.is_valid = true;
++    return position_info;
++  }
+   auto kPointerSize = v8()->common()->kPointerSize;
+   int bytes_offset = kPointerSize * ContextLocalIndex(err);
+   if (err.Fail()) return position_info;
+@@ -771,8 +852,39 @@ inline int64_t SharedFunctionInfo::ParameterCount(Error& err) {
+   return field;
+ }
+ 
++inline int64_t SharedFunctionInfo::Schema2Position(bool end, Error& err) {
++  Value value = HeapObject::LoadFieldValue<Value>(
++      v8()->shared_info()->kNameOrScopeInfoOffset, err);
++  if (err.Fail()) return -1;
++  HeapObject scope(value);
++  if (scope.Check() && scope.IsScopeInfo(err)) {
++    auto info = ScopeInfo(scope).MaybePositionInfo(err);
++    if (err.Fail()) return -1;
++    if (!info.is_valid) {
++      err = Error::Failure("ScopeInfo positions unavailable");
++      return -1;
++    }
++    return end ? info.end_position : info.start_position;
++  }
++  if (err.Fail()) return -1;
++  Value data = HeapObject::LoadFieldValue<Value>(
++      v8()->shared_info()->kTrustedFunctionDataOffset, err);
++  if (err.Fail()) return -1;
++  if (data.raw() != 0 && !HeapObject(data).Check()) {
++    err = Error::Failure("Invalid SharedFunctionInfo trusted data");
++    return -1;
++  }
++  if (data.raw() != 0 && data.IsUncompiledData(err)) {
++    UncompiledData uncompiled(data);
++    return end ? uncompiled.end_position(err) : uncompiled.start_position(err);
++  }
++  if (err.Success()) err = Error::Failure("SharedFunctionInfo position kind is unsupported");
++  return -1;
++}
++
+ // TODO(indutny): this field is a Smi on 32bit
+ inline int64_t SharedFunctionInfo::StartPosition(Error& err) {
++  if (v8()->common()->kMetadataSchema == 2) return Schema2Position(false, err);
+   if (v8()->uncompiled_data()->kStartPositionOffset != -1) {
+     Value maybe_scope_info = name_or_scope_info(err);
+     if (err.Fail()) return -1;
+@@ -804,6 +916,7 @@ inline int64_t SharedFunctionInfo::StartPosition(Error& err) {
+ 
+ // TODO (hhellyer): as above, this field is different on 32bit.
+ inline int64_t SharedFunctionInfo::EndPosition(Error& err) {
++  if (v8()->common()->kMetadataSchema == 2) return Schema2Position(true, err);
+   if (v8()->uncompiled_data()->kEndPositionOffset != -1) {
+     Value maybe_scope_info = name_or_scope_info(err);
+     if (err.Fail()) return -1;
+@@ -844,7 +957,18 @@ SAFE_ACCESSOR(SlicedString, Offset, sliced_string()->kOffsetOffset, Smi);
+ 
+ SAFE_ACCESSOR(ThinString, Actual, thin_string()->kActualOffset, String);
+ 
+-ACCESSOR(FixedArrayBase, Length, fixed_array_base()->kLengthOffset, Smi);
++inline int64_t FixedArrayBase::Length(Error& err) {
++  if (!Check() || v8()->fixed_array_base()->kLengthOffset == -1) {
++    err = Error::Failure("FixedArray length metadata is unavailable");
++    return -1;
++  }
++  int64_t offset = v8()->fixed_array_base()->kLengthOffset;
++  if (v8()->fixed_array_base()->kLengthIsUInt32)
++    return v8()->LoadUnsigned(LeaField(offset), sizeof(uint32_t), err);
++  Smi length = LoadFieldValue<Smi>(offset, err);
++  if (err.Fail()) return -1;
++  return length.GetValue();
++}
+ 
+ inline CheckedType<int64_t> FixedTypedArrayBase::GetBase() {
+   return LoadCheckedField<int64_t>(
+@@ -1026,9 +1150,22 @@ inline bool DescriptorArray::IsDoubleField(Smi details) {
+   return repr == v8()->descriptor_array()->kRepresentationDouble;
+ }
+ 
+-inline int64_t DescriptorArray::FieldIndex(Smi details) {
+-  return (details.GetValue() & v8()->descriptor_array()->kPropertyIndexMask) >>
+-         v8()->descriptor_array()->kPropertyIndexShift;
++inline int64_t DescriptorArray::FieldIndex(Smi details, int64_t instance_size,
++                                             int64_t in_object_count) {
++  const auto* metadata = v8()->descriptor_array();
++  int64_t value = details.GetValue();
++  if (metadata->kPropertyOffsetWordsMask != -1 &&
++      metadata->kPropertyOffsetWordsShift != -1 &&
++      metadata->kPropertyInObjectMask != -1 &&
++      metadata->kPropertyFirstOutObjectWords != -1) {
++    int64_t words = (value & metadata->kPropertyOffsetWordsMask) >>
++                    metadata->kPropertyOffsetWordsShift;
++    if (value & metadata->kPropertyInObjectMask)
++      return words - instance_size / v8()->common()->kPointerSize;
++    return words - metadata->kPropertyFirstOutObjectWords;
++  }
++  return ((value & metadata->kPropertyIndexMask) >>
++          metadata->kPropertyIndexShift) - in_object_count;
+ }
+ 
+ inline Value NameDictionary::GetKey(int index, Error& err) {
+@@ -1046,10 +1183,10 @@ inline Value NameDictionary::GetValue(int index, Error& err) {
+ }
+ 
+ inline int64_t NameDictionary::Length(Error& err) {
+-  Smi length = FixedArray::Length(err);
++  int64_t length = FixedArray::Length(err);
+   if (err.Fail()) return -1;
+ 
+-  int64_t res = length.GetValue() - v8()->name_dictionary()->kPrefixSize;
++  int64_t res = length - v8()->name_dictionary()->kPrefixSize;
+   res /= v8()->name_dictionary()->kEntrySize;
+   return res;
+ }
+@@ -1102,6 +1239,8 @@ inline Value Context::ContextSlot(int index, Error& err) {
+ }
+ 
+ inline Smi ScopeInfo::ParameterCount(Error& err) {
++  if (v8()->scope_info()->kVariablePartOffset != -1)
++    return HeapObject::LoadFieldValue<Smi>(v8()->scope_info()->kParameterCountOffset, err);
+   int64_t data_offset =
+       v8()->scope_info()->kIsFixedArray ? v8()->fixed_array()->kDataOffset : 0;
+   return HeapObject::LoadFieldValue<Smi>(
+@@ -1123,6 +1262,8 @@ inline Smi ScopeInfo::StackLocalCount(Error& err) {
+ }
+ 
+ inline Smi ScopeInfo::ContextLocalCount(Error& err) {
++  if (v8()->scope_info()->kVariablePartOffset != -1)
++    return HeapObject::LoadFieldValue<Smi>(v8()->scope_info()->kContextLocalCountOffset, err);
+   int64_t data_offset = v8()->scope_info()->kIsFixedArray
+                             ? v8()->fixed_array()->kDataOffset
+                             : v8()->common()->kPointerSize;
+@@ -1148,6 +1289,63 @@ inline int ScopeInfo::ContextLocalIndex(Error& err) {
+ }
+ 
+ inline String ScopeInfo::ContextLocalName(int index, Error& err) {
++  auto* metadata = v8()->scope_info();
++  if (metadata->kVariablePartOffset != -1) {
++    if (metadata->kContextLocalCountOffset == -1 ||
++        metadata->kFlagsOffset == -1 || metadata->kScopeTypeMask == -1 ||
++        metadata->kScopeTypeShift == -1 || metadata->kModuleScope == -1 ||
++        metadata->kMaxInlinedNames == -1) {
++      err = Error::Failure("ScopeInfo layout metadata is incomplete");
++      return String();
++    }
++    const int64_t ptr = v8()->common()->kPointerSize;
++    const int64_t max = std::numeric_limits<int64_t>::max();
++    const int64_t tag = v8()->heap_obj()->kTag;
++    if (ptr <= 0 || tag < 0 || raw() < tag || metadata->kFlagsOffset < 0 ||
++        metadata->kContextLocalCountOffset < 0 || metadata->kVariablePartOffset < 0 ||
++        metadata->kMaxInlinedNames < 0 || metadata->kScopeTypeShift < 0 ||
++        metadata->kScopeTypeShift >= 32 ||
++        metadata->kFlagsOffset > max - static_cast<int64_t>(sizeof(uint32_t)) ||
++        metadata->kContextLocalCountOffset > max - ptr ||
++        raw() - tag > max - metadata->kFlagsOffset - static_cast<int64_t>(sizeof(uint32_t)) ||
++        raw() - tag > max - metadata->kContextLocalCountOffset - ptr) {
++      err = Error::Failure("Invalid ScopeInfo header bounds");
++      return String();
++    }
++    int64_t flags = v8()->LoadUnsigned(LeaField(metadata->kFlagsOffset), sizeof(uint32_t), err);
++    if (err.Fail()) return String();
++    Smi local_count = ContextLocalCount(err);
++    if (err.Fail() || !local_count.Check() || local_count.GetValue() < 0) {
++      if (err.Success()) err = Error::Failure("Invalid ScopeInfo local count");
++      return String();
++    }
++    if (local_count.GetValue() >= metadata->kMaxInlinedNames) {
++      err = Error::Failure("ScopeInfo hashed local names are not supported");
++      return String();
++    }
++    if (index < 0 || index >= local_count.GetValue()) {
++      err = Error::Failure("ScopeInfo local index is out of range");
++      return String();
++    }
++    const int64_t module = ((flags & metadata->kScopeTypeMask) >> metadata->kScopeTypeShift) == metadata->kModuleScope;
++    const int64_t slot = static_cast<int64_t>(index) + module;
++    if (slot > (max - metadata->kVariablePartOffset) / ptr) {
++      err = Error::Failure("ScopeInfo local-name offset overflow");
++      return String();
++    }
++    const int64_t offset = metadata->kVariablePartOffset + slot * ptr;
++    if (offset > max - ptr || raw() - tag > max - offset - ptr) {
++      err = Error::Failure("ScopeInfo local-name address overflow");
++      return String();
++    }
++    Value name = HeapObject::LoadFieldValue<Value>(offset, err);
++    if (err.Fail()) return String();
++    if (!HeapObject(name).Check() || !String::IsString(v8(), HeapObject(name), err)) {
++      if (err.Success()) err = Error::Failure("ScopeInfo local name is not a string");
++      return String();
++    }
++    return String(name);
++  }
+   int64_t data_offset = v8()->scope_info()->kIsFixedArray
+                             ? v8()->fixed_array()->kDataOffset
+                             : v8()->common()->kPointerSize;
+@@ -1157,7 +1355,76 @@ inline String ScopeInfo::ContextLocalName(int index, Error& err) {
+   return HeapObject::LoadFieldValue<String>(proper_index, err);
+ }
+ 
+-inline HeapObject ScopeInfo::MaybeFunctionName(Error& err) {
++inline HeapObject ScopeInfo::MaybeFunctionName(Error& err, bool inferred_only) {
++  if (v8()->scope_info()->kVariablePartOffset != -1) {
++    const auto* m = v8()->scope_info();
++    const int64_t ptr = v8()->common()->kPointerSize;
++    const int64_t max = std::numeric_limits<int64_t>::max();
++    const int64_t tag = v8()->heap_obj()->kTag;
++    if (ptr <= 0 || tag < 0 || raw() < tag || m->kFlagsOffset < 0 ||
++        m->kContextLocalCountOffset < 0 ||
++        m->kFlagsOffset > max - static_cast<int64_t>(sizeof(uint32_t)) ||
++        m->kContextLocalCountOffset > max - ptr ||
++        raw() - tag > max - m->kFlagsOffset - static_cast<int64_t>(sizeof(uint32_t)) ||
++        raw() - tag > max - m->kContextLocalCountOffset - ptr) {
++      err = Error::Failure("Invalid ScopeInfo header bounds");
++      return HeapObject();
++    }
++    int64_t flags = v8()->LoadUnsigned(LeaField(m->kFlagsOffset), sizeof(uint32_t), err);
++    if (err.Fail()) return HeapObject();
++    Smi count = ContextLocalCount(err);
++    if (err.Fail() || !count.Check()) {
++      if (err.Success()) err = Error::Failure("Invalid ScopeInfo local count");
++      return HeapObject();
++    }
++    const int64_t n = count.GetValue();
++    if (n < 0 || m->kMaxInlinedNames < 0 || m->kVariablePartOffset < 0 ||
++        m->kFunctionVariableInfoSize < 0 || m->kFunctionVariableNameOffset < 0 ||
++        m->kFunctionVariableNameOffset > m->kFunctionVariableInfoSize ||
++        ptr > m->kFunctionVariableInfoSize - m->kFunctionVariableNameOffset ||
++        m->kScopeTypeShift < 0 || m->kScopeTypeShift >= 32 ||
++        m->kFunctionVariableShift < 0 || m->kFunctionVariableShift >= 32) {
++      err = Error::Failure("Invalid ScopeInfo layout");
++      return HeapObject();
++    }
++    const int64_t module = ((flags & m->kScopeTypeMask) >> m->kScopeTypeShift) == m->kModuleScope;
++    const int64_t names = n < m->kMaxInlinedNames ? n : 1;
++    const int64_t saved = (flags & m->kSavedClassMask) != 0;
++    if (n > max - names - module - saved ||
++        n + names + module + saved > (max - m->kVariablePartOffset) / ptr) {
++      err = Error::Failure("ScopeInfo layout overflow");
++      return HeapObject();
++    }
++    int64_t offset = m->kVariablePartOffset + (n + names + module + saved) * ptr;
++    bool function = ((flags & m->kFunctionVariableMask) >> m->kFunctionVariableShift) != m->kFunctionVariableNone;
++    if (!function && !inferred_only) return HeapObject();
++    const int64_t info_size = function ? m->kFunctionVariableInfoSize : 0;
++    if (offset > max - info_size - ptr ||
++        raw() - tag > max - offset - info_size - ptr) {
++      err = Error::Failure("ScopeInfo layout overflow");
++      return HeapObject();
++    }
++    if (!inferred_only) {
++      Value name = HeapObject::LoadFieldValue<Value>(offset + m->kFunctionVariableNameOffset, err);
++      if (err.Fail()) return HeapObject();
++      if (HeapObject(name).Check() && String::IsString(v8(), HeapObject(name), err)) {
++        auto length = String(name).Length(err);
++        if (err.Fail()) return HeapObject();
++        if (!length.Check()) {
++          err = Error::Failure("Unable to read function name length");
++          return HeapObject();
++        }
++        if (*length > 0) return HeapObject(name);
++      }
++      if (err.Fail()) return HeapObject();
++    }
++    if (!(flags & m->kInferredNameMask)) return HeapObject();
++    Value inferred = HeapObject::LoadFieldValue<Value>(offset + info_size, err);
++    if (err.Fail()) return HeapObject();
++    if (HeapObject(inferred).Check() && String::IsString(v8(), HeapObject(inferred), err))
++      return HeapObject(inferred);
++    return HeapObject();
++  }
+   // NOTE(mmarchini): FunctionName can be stored either in the first, second or
+   // third slot after ContextLocalCount. Since there are missing postmortem
+   // metadata to determine in which slot its being stored for the present
+@@ -1217,6 +1484,11 @@ inline bool Oddball::IsHole(Error& err) {
+ 
+ // TODO(mmarchini): return CheckedType
+ inline bool JSArrayBuffer::WasNeutered(Error& err) {
++  if (v8()->js_array_buffer()->kWasNeuteredMask == -1 ||
++      v8()->js_array_buffer()->kWasNeuteredShift == -1) {
++    err = Error(true, "ArrayBuffer detach metadata is unavailable");
++    return false;
++  }
+   CheckedType<int64_t> bit_field = BitField();
+   RETURN_IF_INVALID(bit_field, false);
+ 
+diff --git a/src/llv8.cc b/src/llv8.cc
+index f12957d..b3e9b4e 100644
+--- src/llv8.cc
++++ src/llv8.cc
+@@ -6,8 +6,9 @@
+ #include <iomanip>
+ #include <sstream>
+ #include <string>
++#include <unordered_set>
+ 
+-#include "deps/rang/include/rang.hpp"
++#include <rang.hpp>
+ #include "llv8-inl.h"
+ #include "llv8.h"
+ #include "src/settings.h"
+@@ -66,6 +67,54 @@ void LLV8::Load(SBTarget target) {
+   types.Assign(target, &common);
+ }
+ 
++const char* LLV8::MetadataError() {
++  const auto* metadata = common();
++  if (metadata->kMetadataSchema == -1) {
++    if (metadata->kVersionMajor >= 15)
++      return "V8 metadata schema is missing for this version";
++    return nullptr;
++  }
++  if (metadata->kMetadataSchema != 2)
++    return "Unsupported V8 metadata schema";
++  if (metadata->kSandboxEnabled == -1 || metadata->kPointerCompressionEnabled == -1)
++    return "V8 configuration metadata is incomplete";
++  if (metadata->kSandboxEnabled != 0 || metadata->kPointerCompressionEnabled != 0)
++    return "V8 sandbox or pointer compression is not supported";
++  const auto* property = descriptor_array();
++  const auto* scope = scope_info();
++  if (shared_info()->kTrustedFunctionDataOffset == -1 ||
++      uncompiled_data()->kInferredNameOffset == -1 ||
++      uncompiled_data()->kStartPositionOffset == -1 ||
++      uncompiled_data()->kEndPositionOffset == -1 ||
++      !types()->kUncompiledDataWithoutPreParsedScopeType.Loaded() ||
++      !types()->kUncompiledDataWithPreParsedScopeType.Loaded() ||
++      !types()->kUncompiledDataWithoutPreparseWithJobType.Loaded() ||
++      !types()->kUncompiledDataWithPreparseAndJobType.Loaded() ||
++      shared_info()->kNameOrScopeInfoOffset == -1 ||
++      shared_info()->kScriptOffset == -1 || map()->kMaybeConstructorOffset == -1 ||
++      map()->kInstanceTypeOffset == -1 || js_object()->kPropertiesOffset == -1 ||
++      script()->kLineOffsetOffset == -1 || types()->kMapType == -1 ||
++      types()->kFirstContextType == -1 || types()->kLastContextType == -1 ||
++      types()->kScopeInfoType == -1 || types()->kFirstJSFunctionType < 0 ||
++      types()->kLastJSFunctionType < types()->kFirstJSFunctionType ||
++      property->kPropertyOffsetWordsMask == -1 ||
++      property->kPropertyOffsetWordsShift == -1 ||
++      property->kPropertyInObjectMask == -1 ||
++      property->kPropertyFirstOutObjectWords == -1 ||
++      scope->kVariablePartOffset == -1 || scope->kFlagsOffset == -1 ||
++      scope->kPositionStartOffset == -1 || scope->kPositionEndOffset == -1 ||
++      scope->kScopeTypeMask == -1 || scope->kScopeTypeShift == -1 ||
++      scope->kModuleScope == -1 || scope->kMaxInlinedNames == -1 ||
++      scope->kSavedClassMask == -1 || scope->kFunctionVariableMask == -1 ||
++      scope->kFunctionVariableShift == -1 || scope->kFunctionVariableNone == -1 ||
++      scope->kInferredNameMask == -1 || scope->kFunctionVariableInfoSize == -1 ||
++      scope->kFunctionVariableNameOffset == -1 ||
++      scope->kParameterCountOffset == -1 || scope->kContextLocalCountOffset == -1 ||
++      !fixed_array_base()->kLengthIsUInt32 || !js_date()->kValueIsDouble)
++    return "V8 schema 2 layout metadata is incomplete";
++  return nullptr;
++}
++
+ int64_t LLV8::LoadPtr(int64_t addr, Error& err) {
+   SBError sberr;
+   int64_t value =
+@@ -373,7 +422,17 @@ std::string SharedFunctionInfo::ProperName(Error& err) {
+ 
+   String name = Name(err);
+   if (err.Fail()) return std::string();
+-
++  if (v8()->common()->kMetadataSchema == 2) {
++    std::string result;
++    if (name.Check()) result = name.ToString(err);
++    if (err.Fail()) return std::string();
++    if (!result.empty()) return result;
++    Value inferred = GetInferredName(err);
++    if (err.Fail()) return std::string();
++    if (inferred.Check()) result = inferred.ToString(err);
++    if (err.Fail()) return std::string();
++    return result.empty() ? "(anonymous)" : result;
++  }
+   std::string res = name.ToString(err);
+   if (err.Fail() || res.empty()) {
+     Value inferred = GetInferredName(err);
+@@ -634,7 +693,7 @@ std::string HeapObject::GetTypeName(Error& err) {
+       return std::string();
+     }
+ 
+-    if (constructor_type != v8()->types()->kJSFunctionType) {
++    if (!v8()->types()->IsJSFunctionType(constructor_type)) {
+       return "(Object)";
+     }
+ 
+@@ -655,7 +714,7 @@ std::string HeapObject::GetTypeName(Error& err) {
+     return "(Oddball)";
+   }
+ 
+-  if (type == v8()->types()->kJSFunctionType) {
++  if (v8()->types()->IsJSFunctionType(type)) {
+     return "(Function)";
+   }
+ 
+@@ -702,6 +761,13 @@ std::string HeapNumber::ToString(bool whole, Error& err) {
+ }
+ 
+ std::string JSDate::ToString(Error& err) {
++  if (v8()->js_date()->kValueIsDouble) {
++    double value = LoadFieldValue<double>(v8()->js_date()->kValueOffset, err);
++    if (err.Fail()) return "";
++    char buf[128];
++    snprintf(buf, sizeof(buf), "%f", value);
++    return buf;
++  }
+   v8::Value val(GetValue(err));
+ 
+   // Check if it is SMI
+@@ -826,8 +892,23 @@ Value Context::Locals::Iterator::GetValue(Error& err) {
+ 
+ HeapObject Map::Constructor(Error& err) {
+   Map current = this;
++  std::unordered_set<int64_t> visited;
+ 
+   do {
++    if (v8()->common()->kMetadataSchema == 2) {
++      if (!visited.insert(current.raw()).second) {
++        err = Error::Failure("Map backpointer cycle");
++        return HeapObject();
++      }
++      int64_t instance_type = current.InstanceType(err);
++      if (err.Fail()) return HeapObject();
++      if (instance_type == v8()->types()->kMapType ||
++          (instance_type >= v8()->types()->kFirstContextType &&
++           instance_type <= v8()->types()->kLastContextType)) {
++        err = Error::Failure("Map native-context field is not a constructor");
++        return HeapObject();
++      }
++    }
+     HeapObject obj = current.MaybeConstructor(err);
+     if (err.Fail()) return current;
+ 
+@@ -962,7 +1043,7 @@ std::vector<std::pair<Value, Value>> JSObject::DescriptorEntries(Map map,
+ 
+     if (descriptors.IsDoubleField(details)) continue;
+ 
+-    int64_t index = descriptors.FieldIndex(details) - in_object_count;
++    int64_t index = descriptors.FieldIndex(details, instance_size, in_object_count);
+ 
+     Value value;
+     if (index < 0) {
+@@ -984,10 +1065,9 @@ void JSObject::ElementKeys(std::vector<std::string>& keys, Error& err) {
+ 
+   FixedArray elements(elements_obj);
+ 
+-  Smi length_smi = elements.Length(err);
++  int64_t length = elements.Length(err);
+   if (err.Fail()) return;
+ 
+-  int64_t length = length_smi.GetValue();
+   for (int i = 0; i < length; ++i) {
+     // Add keys for anything that isn't a hole.
+     Value value = elements.Get<Value>(i, err);
+@@ -1176,7 +1256,7 @@ Value JSObject::GetDescriptorProperty(std::string key_name, Map map,
+       continue;
+     }
+ 
+-    int64_t index = descriptors.FieldIndex(details) - in_object_count;
++    int64_t index = descriptors.FieldIndex(details, instance_size, in_object_count);
+ 
+     if (descriptors.IsDoubleField(details)) {
+       return GetDoubleField(index, err);
+@@ -1208,10 +1288,9 @@ int64_t JSObject::GetArrayLength(Error& err) {
+   if (err.Fail()) return 0;
+ 
+   FixedArray elements(elements_obj);
+-  Smi length_smi = elements.Length(err);
++  int64_t length = elements.Length(err);
+   if (err.Fail()) return 0;
+ 
+-  int64_t length = length_smi.GetValue();
+   return length;
+ }
+ 
+@@ -1231,10 +1310,9 @@ v8::Value JSObject::GetArrayElement(int64_t pos, Error& err) {
+   if (err.Fail()) return Value();
+ 
+   FixedArray elements(elements_obj);
+-  Smi length_smi = elements.Length(err);
++  int64_t length = elements.Length(err);
+   if (err.Fail()) return Value();
+ 
+-  int64_t length = length_smi.GetValue();
+   if (pos >= length) {
+     return Value();
+   }
+diff --git a/src/llv8.h b/src/llv8.h
+index a5f4399..7cf7e18 100644
+--- src/llv8.h
++++ src/llv8.h
+@@ -207,6 +207,7 @@ class SharedFunctionInfo : public HeapObject {
+   inline Script GetScript(Error& err);
+   inline HeapObject GetScopeInfo(Error& err);
+   inline int64_t ParameterCount(Error& err);
++  inline int64_t Schema2Position(bool end, Error& err);
+   inline int64_t StartPosition(Error& err);
+   inline int64_t EndPosition(Error& err);
+   inline Value GetInferredName(Error& err);
+@@ -459,7 +460,7 @@ class FixedArrayBase : public HeapObject {
+  public:
+   V8_VALUE_DEFAULT_METHODS(FixedArrayBase, HeapObject);
+ 
+-  inline Smi Length(Error& err);
++  inline int64_t Length(Error& err);
+ };
+ 
+ class FixedArray : public FixedArrayBase {
+@@ -497,7 +498,8 @@ class DescriptorArray : public FixedArray {
+   inline bool IsDescriptorDetails(Smi details);
+   inline bool IsConstFieldDetails(Smi details);
+   inline bool IsDoubleField(Smi details);
+-  inline int64_t FieldIndex(Smi details);
++  inline int64_t FieldIndex(Smi details, int64_t instance_size,
++                            int64_t in_object_count);
+ };
+ 
+ class NameDictionary : public FixedArray {
+@@ -526,7 +528,7 @@ class ScopeInfo : public HeapObject {
+   inline PositionInfo MaybePositionInfo(Error& err);
+ 
+   inline String ContextLocalName(int index, Error& err);
+-  inline HeapObject MaybeFunctionName(Error& err);
++  inline HeapObject MaybeFunctionName(Error& err, bool inferred_only = false);
+ };
+ 
+ class Context : public FixedArray {
+@@ -655,6 +657,7 @@ class LLV8 {
+   LLV8() : target_(lldb::SBTarget()) {}
+ 
+   void Load(lldb::SBTarget target);
++  const char* MetadataError();
+ 
+  private:
+   template <class T>
+diff --git a/src/printer.cc b/src/printer.cc
+index 377adc3..97144bb 100644
+--- src/printer.cc
++++ src/printer.cc
+@@ -2,7 +2,7 @@
+ #include <iostream>
+ #include <sstream>
+ 
+-#include "deps/rang/include/rang.hpp"
++#include <rang.hpp>
+ #include "src/llv8-inl.h"
+ #include "src/printer.h"
+ 
+@@ -64,7 +64,7 @@ std::string Printer::Stringify(v8::JSFrame js_frame, Error& err) {
+   if (err.Fail()) return std::string();
+ 
+   if (fn_type == llv8_->types()->kCodeType) return "<internal code>";
+-  if (fn_type != llv8_->types()->kJSFunctionType) return "<non-function>";
++  if (!llv8_->types()->IsJSFunctionType(fn_type)) return "<non-function>";
+ 
+   std::string args;
+   if (options_.with_args) {
+@@ -176,17 +176,17 @@ std::string Printer::Stringify(v8::String str, Error& err) {
+ 
+ template <>
+ std::string Printer::Stringify(v8::FixedArray fixed_array, Error& err) {
+-  v8::Smi length_smi = fixed_array.Length(err);
++  int64_t length = fixed_array.Length(err);
+   if (err.Fail()) return std::string();
+ 
+-  std::string res = "<FixedArray, len=" + length_smi.ToString(err);
++  std::string res = "<FixedArray, len=" + std::to_string(length);
+   if (err.Fail()) return std::string();
+ 
+   if (options_.detailed) {
+     std::stringstream ss;
+     ss << rang::fg::magenta << res;
+     std::string contents =
+-        StringifyContents(fixed_array, length_smi.GetValue(), err);
++        StringifyContents(fixed_array, length, err);
+     if (!contents.empty()) {
+       ss << " contents" << rang::fg::reset << "={\n" + contents + "}";
+       res = ss.str();
+@@ -721,7 +721,7 @@ std::string Printer::Stringify(v8::HeapObject heap_object, Error& err) {
+     return pre + Stringify(o, err);
+   }
+ 
+-  if (type == llv8_->types()->kJSFunctionType) {
++  if (llv8_->types()->IsJSFunctionType(type)) {
+     v8::JSFunction fn(heap_object);
+     return pre + Stringify(fn, err);
+   }
+@@ -879,10 +879,9 @@ std::string Printer::StringifyElements(v8::JSObject js_object, Error& err) {
+ 
+   v8::FixedArray elements(elements_obj);
+ 
+-  v8::Smi length_smi = elements.Length(err);
++  int64_t length = elements.Length(err);
+   if (err.Fail()) return std::string();
+ 
+-  int64_t length = length_smi.GetValue();
+   return StringifyElements(js_object, length, err);
+ }
+ 
+@@ -1027,7 +1026,7 @@ std::string Printer::StringifyDescriptors(v8::JSObject js_object, v8::Map map,
+       continue;
+     }
+ 
+-    int64_t index = descriptors.FieldIndex(details) - in_object_count;
++    int64_t index = descriptors.FieldIndex(details, instance_size, in_object_count);
+ 
+     if (descriptors.IsDoubleField(details)) {
+       v8::HeapNumber value = js_object.GetDoubleField(index, err);
+diff --git a/src/settings.cc b/src/settings.cc
+index bf1bd12..e8d8010 100644
+--- src/settings.cc
++++ src/settings.cc
+@@ -1,5 +1,5 @@
+ #include "src/settings.h"
+-#include "deps/rang/include/rang.hpp"
++#include <rang.hpp>
+ 
+ namespace llnode {
+ 

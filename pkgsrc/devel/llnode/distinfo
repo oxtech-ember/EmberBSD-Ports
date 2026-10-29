@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (llnode-4.0.0.tar.gz) = 331207237eba9e300e6462c326ab605798643190e3f7387a6afa126cd8e2b0d0
+SHA512 (llnode-4.0.0.tar.gz) = 4170fbcd46dc790504c6992aa686c93b52d19b4c468664b7701498253ac91bbee2683a0fcddf34d4726c74509784066f30d6f7dd70eade6769a43167b5f51f62
+Size (llnode-4.0.0.tar.gz) = 101897 bytes
+SHA1 (patch-schema2) = 58bdc8e3307cf6d0dee0379c757839e67dddcabd
