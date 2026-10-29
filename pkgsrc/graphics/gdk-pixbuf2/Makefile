@@ -64,9 +64,6 @@ MESON_BINARY.glib-mkenums=	${TOOLBASE}/bin/glib-mkenums
 
 .  if !empty(PKG_OPTIONS:Mintrospection)
 # Introspection and loaders.cache/MIME generation need a live target query.
-.    if empty(EMBERBSD_SDK_SOURCE:M/*) || !exists(${EMBERBSD_SDK_SOURCE}/src/emberbsd_sdk/__init__.py)
-PKG_FAIL_REASON+= "GdkPixbuf cross tools require an explicit SDK host API source"
-.    endif
 EMBERBSD_GI_MESON_OPTIONS=	no
 # thumbnailer is built in cross only on the emberbsd_gi_cross path.
 PLIST.native=	yes
@@ -79,7 +76,8 @@ MESON_CROSS.emberbsd_pixbuf_runner=	['${EMBERBSD_CROSS_BUILD_PYTHON}', '-E', '-S
 MAKE_ENV+=	EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q}
 pre-configure: emberbsd-pixbuf-native
 .PHONY: emberbsd-pixbuf-native
-emberbsd-pixbuf-native:
+# The shared GI include checks the SDK and query inputs at configure time.
+emberbsd-pixbuf-native: emberbsd-gi-inputs
 	${RUN}${SETENV} EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} EMBERBSD_GI_TARGET=${_EMBER_GI_TARGET:Q} ${EMBERBSD_CROSS_BUILD_PYTHON} -E -S ${FILESDIR}/target-tools.py --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${_EMBER_GI_TRIPLET}-readelf
 .  endif
 

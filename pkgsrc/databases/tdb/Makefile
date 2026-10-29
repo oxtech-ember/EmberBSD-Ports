@@ -60,13 +60,29 @@ SUBST_SED.docbook+=	-e 's,http://docbook.sourceforge.net/release/xsl/current,${T
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # Waf runs on the host; its compiled feature probes run on the EmberBSD target.
+# Fetch, checksum and extract do not use these build-host inputs, so they
+# are checked when configure starts instead of refusing the whole package.
+_EMBER_TDB_INPUT_ERRORS=
 .for _input in EMBERBSD_CROSS_BUILD_PYTHON EMBERBSD_GI_QUERY_CONFIG
 .if empty(${_input}:M/*) || !empty(${_input}:C/[A-Za-z0-9_.\/-]//g) || !exists(${${_input}})
-PKG_FAIL_REASON+= "${_input} must name an existing absolute file without shell metacharacters"
+_EMBER_TDB_INPUT_ERRORS+= ${_input}
 .endif
 .endfor
 .if empty(EMBERBSD_SDK_SOURCE:M/*) || !empty(EMBERBSD_SDK_SOURCE:C/[A-Za-z0-9_.\/-]//g) || !exists(${EMBERBSD_SDK_SOURCE}/src/emberbsd_sdk/__init__.py)
-PKG_FAIL_REASON+= "EMBERBSD_SDK_SOURCE must name an absolute SDK source directory without shell metacharacters"
+_EMBER_TDB_INPUT_ERRORS+= EMBERBSD_SDK_SOURCE
+.endif
+pre-configure: emberbsd-tdb-inputs
+.PHONY: emberbsd-tdb-inputs
+emberbsd-tdb-inputs:
+.for _input in ${_EMBER_TDB_INPUT_ERRORS}
+.if ${_input} == "EMBERBSD_SDK_SOURCE"
+	@${ERROR_MSG} "EMBERBSD_SDK_SOURCE must name an absolute SDK source directory without shell metacharacters"
+.else
+	@${ERROR_MSG} "${_input} must name an existing absolute file without shell metacharacters"
+.endif
+.endfor
+.if !empty(_EMBER_TDB_INPUT_ERRORS)
+	@${FALSE}
 .endif
 EMBERBSD_TDB_QUERY= ${.CURDIR}/../../devel/gobject-introspection/files/target-query.py
 EMBERBSD_TDB_EXECUTOR= ${EMBERBSD_CROSS_BUILD_PYTHON} -E -S ${EMBERBSD_TDB_QUERY} --execute
@@ -84,7 +100,7 @@ CONFIGURE_ENV+= PYTHON_CONFIG=${TOOL_PYTHONBIN:Q}\ ${CROSS_DESTDIR}${PYTHONBIN}-
 .endif
 pre-configure: emberbsd-tdb-query
 .PHONY: emberbsd-tdb-query
-emberbsd-tdb-query:
+emberbsd-tdb-query: emberbsd-tdb-inputs
 	${RUN}${SETENV} EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_CROSS_BUILD_PYTHON} -E -S ${EMBERBSD_TDB_QUERY} --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-readelf ${MACHINE_ARCH:S/x86_64/amd64/:Q}
 	${RUN}${RM} -f ${WRKDIR}/.tdb-query-failure
 post-configure: emberbsd-tdb-query-result

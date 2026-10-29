@@ -25,13 +25,29 @@ PKG_FAIL_REASON+= "GI and common build tools must select the same Python provide
 EMBERBSD_CROSS_BUILD_PYTHON?= ${EMBERBSD_GI_PYTHON}
 .endif
 .endif
+# Fetch, checksum and extract do not use these build-host inputs, so they
+# are checked when configure starts instead of refusing the whole package.
+_EMBER_GI_INPUT_ERRORS=
 .for _input in EMBERBSD_CROSS_BUILD_PYTHON EMBERBSD_GI_QUERY_CONFIG EMBERBSD_CROSS_BUILD_CC
 .if empty(${_input}:M/*) || !empty(${_input}:C/[A-Za-z0-9_.\/-]//g) || !exists(${${_input}})
-PKG_FAIL_REASON+= "${_input} must name an existing absolute file without shell metacharacters"
+_EMBER_GI_INPUT_ERRORS+= ${_input}
 .endif
 .endfor
 .if empty(EMBERBSD_SDK_SOURCE:M/*) || !empty(EMBERBSD_SDK_SOURCE:C/[A-Za-z0-9_.\/-]//g) || !exists(${EMBERBSD_SDK_SOURCE}/src/emberbsd_sdk/__init__.py)
-PKG_FAIL_REASON+= "EMBERBSD_SDK_SOURCE must name an absolute SDK source directory without shell metacharacters"
+_EMBER_GI_INPUT_ERRORS+= EMBERBSD_SDK_SOURCE
+.endif
+pre-configure: emberbsd-gi-inputs
+.PHONY: emberbsd-gi-inputs
+emberbsd-gi-inputs:
+.for _input in ${_EMBER_GI_INPUT_ERRORS}
+.if ${_input} == "EMBERBSD_SDK_SOURCE"
+	@${ERROR_MSG} "EMBERBSD_SDK_SOURCE must name an absolute SDK source directory without shell metacharacters"
+.else
+	@${ERROR_MSG} "${_input} must name an existing absolute file without shell metacharacters"
+.endif
+.endfor
+.if !empty(_EMBER_GI_INPUT_ERRORS)
+	@${FALSE}
 .endif
 # Cross dependency traversal builds the native tool package independently.
 TOOL_DEPENDS+= gobject-introspection>=1.86.0nb4:../../devel/gobject-introspection
@@ -52,7 +68,7 @@ MESON_BINARY.pkg-config= ${WRKDIR}/.meson-gi-pkg-config
 
 pre-configure: emberbsd-gi-native
 .PHONY: emberbsd-gi-native
-emberbsd-gi-native:
+emberbsd-gi-native: emberbsd-gi-inputs
 	${RUN}${SETENV} EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_CROSS_BUILD_PYTHON} -E -S ${EMBERBSD_GI_FILESDIR}/target-query.py --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${_EMBER_GI_TRIPLET}-readelf ${_EMBER_GI_TARGET}
 	${RUN}${TEST} -x ${TOOLBASE}/bin/g-ir-scanner && ${TEST} -x ${TOOLBASE}/bin/g-ir-compiler
 	${RUN}version=$$(env PKG_CONFIG_SYSROOT_DIR= PKG_CONFIG_PATH= PKG_CONFIG_LIBDIR=${TOOLBASE}/lib/pkgconfig:${TOOLBASE}/share/pkgconfig ${TOOLBASE}/bin/pkg-config --modversion gobject-introspection-1.0); ${TEST} "$$version" = 1.86.0

@@ -27,9 +27,13 @@ for recipe in fonts/harfbuzz devel/pango x11/gtk3 devel/at-spi2-core; do
     query "$recipe" MESON_ARGS "PKG_OPTIONS.$name=-introspection" > "$work/$name-disabled"
     case "$name" in gtk3) flag=false;; *) flag=disabled;; esac
     grep -- "-Dintrospection=$flag" "$work/$name-disabled" > /dev/null
+    # An absent query configuration must not refuse fetch; configure refuses it.
     query "$recipe" PKG_FAIL_REASON EMBERBSD_GI_QUERY_CONFIG=/ember-missing-gi-query.json > "$work/$name-missing-query"
-    grep 'EMBERBSD_GI_QUERY_CONFIG must name an existing absolute file' "$work/$name-missing-query" > /dev/null
-    printf 'PASS: %s real cross/native selection, optional disable and absent query refusal\n' "$recipe"
+    ! grep 'EMBERBSD_GI_QUERY_CONFIG must name' "$work/$name-missing-query" > /dev/null
+    if "$make" -C "$tree/$recipe" MAKECONF="$conf" EMBERBSD_GI_QUERY_CONFIG=/ember-missing-gi-query.json \
+        emberbsd-gi-inputs > "$work/$name-missing-check" 2>&1; then exit 1; fi
+    grep 'EMBERBSD_GI_QUERY_CONFIG must name an existing absolute file' "$work/$name-missing-check" > /dev/null
+    printf 'PASS: %s real cross/native selection, optional disable and configure-time query refusal\n' "$recipe"
 done
 options=$(cat "$work/gtk3-options")
 case " $options " in *' quartz '*) exit 1;; esac

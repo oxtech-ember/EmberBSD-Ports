@@ -199,6 +199,20 @@ SDK host API 1 through the explicit `EMBERBSD_SDK_SOURCE` setting.
 `EMBERBSD_GI_PYTHON` remains an alias for the common Python provider. If both
 selectors are set, they must name the same executable.
 
+These inputs are checked when configure starts, not while the recipe is
+parsed. Fetch, checksum and extract do not use them, so a bulk fetch succeeds
+without a target. `pre-configure` runs `emberbsd-gi-inputs` (talloc and tdb:
+`emberbsd-talloc-inputs`, `emberbsd-tdb-inputs`) before any target query. It
+names each absent or invalid input and stops the build. Check this with:
+
+```sh
+MAKECONF=CROSS_MAKECONF python3 profiles/common-graphics/tests/gi-configure-inputs.py \
+    --bmake BMAKE --pkgsrc PKGSRC --makeconf CROSS_MAKECONF
+```
+
+The cross MAKECONF must not set `EMBERBSD_GI_QUERY_CONFIG`. The test fails
+with the earlier parse-time `PKG_FAIL_REASON` checks.
+
 Then use ordinary host `bmake ... package install` for the exported
 `devel/gobject-introspection` recipe. `install` populates only the private
 cross sysroot. Do not set `gi_cross_pkgconfig_sysroot_path`: pkgsrc's pkgconf
