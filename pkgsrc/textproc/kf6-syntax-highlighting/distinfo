@@ -3,4 +3,5 @@ $NetBSD: distinfo,v 1.5 2026/09/06 10:05:19 markd Exp $
 BLAKE2s (syntax-highlighting-6.31.0.tar.xz) = ea8f6d5ea7ca1e86f28d328a686894dc2aa7455dbd099516ed4e1a53ca61e58e
 SHA512 (syntax-highlighting-6.31.0.tar.xz) = cfa55bad3cd32d83853459a7be88ae96012547afac8a4637bdd3f19b63da1e106a2a9e15fd1e934a70a1b6a1804f7dcebb9aa34413d97104370429d343b0dfcc
 Size (syntax-highlighting-6.31.0.tar.xz) = 3959348 bytes
+SHA1 (patch-CMakeLists.txt) = 4f364d19a564068f7a895115dc209d6ce8dbe1e6
 SHA1 (patch-autotests_input_highlight.sh) = a03c2d3a389b066d914a1c1aab97977013af4626

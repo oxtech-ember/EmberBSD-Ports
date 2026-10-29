@@ -15,6 +15,7 @@ query() { # MAKECONF PKGPATH ARGS...
 # consumer|native tool package|source owner|CMake argument below TOOLBASE
 cat > "$work/table" <<'TABLE'
 textproc/kf6-sonnet|textproc/kf6-sonnet-parsetrigrams|textproc/kf6-sonnet|-DPARSETRIGRAMS_EXECUTABLE=@TOOLBASE@/bin/parsetrigrams6
+textproc/kf6-syntax-highlighting|textproc/kf6-syntax-highlighting-indexer|textproc/kf6-syntax-highlighting|-DKATEHIGHLIGHTINGINDEXER_EXECUTABLE=@TOOLBASE@/bin/katehighlightingindexer
 TABLE
 # A native CMake framework build in the same configuration fails for no
 # reason of the generator packages.

@@ -1,0 +1,3 @@
+The native katehighlightingindexer program of KSyntaxHighlighting. It
+validates the syntax definitions and generates the index that a cross-built
+textproc/kf6-syntax-highlighting compiles into its library.

@@ -53,6 +53,7 @@
 # used by textproc/kf6-sonnet/Makefile
 # used by textproc/kf6-sonnet-parsetrigrams/Makefile
 # used by textproc/kf6-syntax-highlighting/Makefile
+# used by textproc/kf6-syntax-highlighting-indexer/Makefile
 # used by time/kf6-kcalendarcore/Makefile
 # used by time/kf6-kholidays/Makefile
 # used by www/kf6-syndication/Makefile
@@ -131,6 +132,7 @@ _EMBERBSD_KF6VER_RECIPES= \
     textproc/kf6-sonnet \
     textproc/kf6-sonnet-parsetrigrams \
     textproc/kf6-syntax-highlighting \
+    textproc/kf6-syntax-highlighting-indexer \
     time/kf6-kcalendarcore \
     time/kf6-kholidays \
     www/kf6-syndication \

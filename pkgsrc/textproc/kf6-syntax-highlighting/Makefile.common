@@ -1,0 +1,16 @@
+# $NetBSD$
+# Origin: EmberBSD (AI-assisted). One KSyntaxHighlighting source for the
+# target framework and its native definition indexer.
+#
+# used by textproc/kf6-syntax-highlighting/Makefile
+# used by textproc/kf6-syntax-highlighting-indexer/Makefile
+
+DISTNAME=	syntax-highlighting-${KF6VER}
+CATEGORIES=	textproc
+
+HOMEPAGE=	https://community.kde.org/Frameworks
+LICENSE=	gnu-lgpl-v2.1
+
+EMBERBSD_SYNTAX_HIGHLIGHTING_PKGDIR:=	${.PARSEDIR:tA}
+DISTINFO_FILE=	${EMBERBSD_SYNTAX_HIGHLIGHTING_PKGDIR}/distinfo
+PATCHDIR=	${EMBERBSD_SYNTAX_HIGHLIGHTING_PKGDIR}/patches
