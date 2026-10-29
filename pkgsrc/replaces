@@ -374,3 +374,4 @@ math/fast_float
 devel/libuv
 devel/lldb
 net/pppd
+sysutils/top

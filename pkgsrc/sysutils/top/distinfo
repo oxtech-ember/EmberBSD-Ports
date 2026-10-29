@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (top-3.8beta1.tar.gz) = d8c7f79dcca16c1c29031fd8311f94d6610e2e6e217ce58a9d5c6483102b60ad
+SHA512 (top-3.8beta1.tar.gz) = 48a43104064fc0c25db6ac14ef21d8a5f58c5ee2da35a144ba2a3cfca4503e23af35aa20dfe59458be0fd1f585b7a372e89725b10be4268fff1282df3418bad3
+Size (top-3.8beta1.tar.gz) = 282777 bytes
+SHA1 (patch-top_ember) = 314b859203fb155a329c2a68b6e1af3d3f1298c5
