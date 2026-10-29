@@ -12,6 +12,7 @@ import tempfile
 p = argparse.ArgumentParser(description=__doc__)
 for name in ('sdk-source', 'host-prefix', 'binding-record'):
     p.add_argument('--' + name, type=Path, required=True)
+p.add_argument('--stage-root', type=Path)
 a = p.parse_args()
 sys.path.insert(0, str(a.sdk_source.resolve(strict=True) / 'src'))
 from emberbsd_sdk import compiler_bindings
@@ -22,7 +23,7 @@ adapter = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(adapter)
 args = argparse.Namespace(host_prefix=str(a.host_prefix), compiler_family='clang', fetch_mode='fetch')
 tools = adapter.selection(args)
-selected = adapter.select_native_cxx(tools, str(a.binding_record))
+selected = adapter.select_native_cxx(tools, str(a.binding_record), str(a.stage_root) if a.stage_root else None)
 assert selected['adapters']['cxx'] == str(a.binding_record.parent / 'cxx')
 record = json.loads(a.binding_record.read_text())
 commands = {role:spec['argv'] for role, spec in record['commands'].items()}
@@ -36,9 +37,17 @@ with tempfile.TemporaryDirectory(prefix='native-cxx-routing-') as temp:
         compiler_bindings.bind_compilers(path, commands=changed, flags=record['flags'],
                                         python=tools.tool('python'), native_cxx_runtime=runtime)
         try:
-            adapter.select_native_cxx(tools, str(path / 'commands.json'))
+            adapter.select_native_cxx(tools, str(path / 'commands.json'), str(a.stage_root) if a.stage_root else None)
         except SDKError:
             pass
         else:
             raise AssertionError('mismatched native compiler context accepted')
+if a.stage_root:
+    for root in (None, str(a.host_prefix)):
+        try:
+            adapter.select_native_cxx(tools, str(a.binding_record), root)
+        except (SDKError, OSError):
+            pass
+        else:
+            raise AssertionError('unselected or overlapping stage accepted')
 print('PASS: selected native binding and mismatched compiler contexts')

@@ -224,6 +224,11 @@ def render(toolset, qt=(), fetch_mode='fetch', native_cxx=None):
         lines += ['EMBERBSD_NATIVE_CXX_BINDING_RECORD?= ' + value,
                   '.if "${EMBERBSD_NATIVE_CXX_BINDING_RECORD}" != "' + value + '"',
                   '.error Native C++ binding record differs from selected host runtime', '.endif']
+        if native_cxx.get('stage_root') is not None:
+            value = literal(native_cxx['stage_root'])
+            lines += ['EMBERBSD_NATIVE_CXX_STAGE_ROOT?= ' + value,
+                      '.if "${EMBERBSD_NATIVE_CXX_STAGE_ROOT}" != "' + value + '"',
+                      '.error Native C++ stage differs from selected host runtime', '.endif']
     # Native platform probes can run before the child's MAKECONF include.
     lines += ['.export EMBERBSD_NATIVE_AWK']
     flags = toolset.abi_flags
@@ -272,9 +277,12 @@ def selection(arguments):
     return toolset
 
 
-def select_native_cxx(toolset, selected_record):
+def select_native_cxx(toolset, selected_record, stage_root=None):
     """Use one explicit SDK binding for native C++, retaining raw tool selection."""
     if selected_record is None:
+        if stage_root is not None:
+            from emberbsd_sdk.errors import SDKError
+            raise SDKError('Native C++ stage requires a selected binding record')
         return None
     from emberbsd_sdk import compiler_bindings, paths
     from emberbsd_sdk.errors import SDKError
@@ -287,10 +295,12 @@ def select_native_cxx(toolset, selected_record):
             getattr(compiler_bindings, 'NATIVE_COMPILER_CONTEXT_API', None) != 1):
         raise SDKError('Unsupported native C++ binding record')
     record = json.loads(record_path.read_text(encoding='utf-8'))
-    if record.get('version') not in (2, 3) or record.get('format') != 'emberbsd-compiler-binding':
+    if record.get('version') not in (2, 3, 4) or record.get('format') != 'emberbsd-compiler-binding':
         raise SDKError('Native C++ runtime requires an SDK native binding')
-    if record['version'] == 3 and getattr(compiler_bindings, 'NATIVE_CXX_PLATFORM_ABI_API', None) != 1:
+    if record['version'] in (3, 4) and getattr(compiler_bindings, 'NATIVE_CXX_PLATFORM_ABI_API', None) != 1:
         raise SDKError('Selected SDK cannot use platform C++ ABI headers')
+    if record['version'] == 4 and getattr(compiler_bindings, 'NATIVE_CXX_ABI_IDENTITY_API', None) != 1:
+        raise SDKError('Selected SDK cannot use native C++ ABI identity')
     runtime = record.get('native_cxx_runtime')
     if not isinstance(runtime, dict) or not isinstance(runtime.get('targets'), list):
         raise SDKError('Incomplete native C++ runtime selection')
@@ -303,9 +313,21 @@ def select_native_cxx(toolset, selected_record):
                 for target in runtime['targets'])):
         raise SDKError('Native C++ runtime targets differ from selected host')
     prefix = Path(toolset.bundle_root).resolve(strict=True)
+    if stage_root is not None:
+        stage = Path(paths.canonical_existing(stage_root))
+        paths.real_directory(str(stage))
+        paths.reject_overlap(str(stage), str(prefix))
+        if record['version'] != 4:
+            raise SDKError('Native C++ stage requires ABI identity binding')
+        selected_prefix = (stage / str(prefix).lstrip('/')).resolve(strict=True)
+        if not selected_prefix.is_relative_to(stage):
+            raise SDKError('Native C++ stage prefix escapes selected root')
+    else:
+        stage = None
+        selected_prefix = prefix
     for key in ('include_dir', 'library_dir'):
         selected = Path(runtime.get(key, '')).resolve(strict=True)
-        if not selected.is_relative_to(prefix) or selected == prefix:
+        if not selected.is_relative_to(selected_prefix) or selected == selected_prefix:
             raise SDKError('Native C++ runtime must be selected from the host prefix')
     commands = {}
     for role, spec in record.get('commands', {}).items():
@@ -331,7 +353,8 @@ def select_native_cxx(toolset, selected_record):
         flags=record['flags'], python=toolset.tool('python'), aliases=record.get('aliases'),
         link_flags=record.get('link_flags'), runtime_rpath=record.get('runtime_rpath'),
         native_cxx_runtime=runtime)
-    return {'record':str(record_path), 'adapters':adapters, 'flags':record['flags']}
+    return {'record':str(record_path), 'adapters':adapters, 'flags':record['flags'],
+            'stage_root':str(stage) if stage is not None else None}
 
 
 def write(toolset, destination, qt=(), fetch_mode='fetch', native_cxx=None):
@@ -396,6 +419,7 @@ def main(arguments):
     parser.add_argument('--output')
     parser.add_argument('--makeconf')
     parser.add_argument('--native-cxx-binding-record')
+    parser.add_argument('--native-cxx-stage-root')
     args = parser.parse_args(arguments)
     if args.operation in ('write', 'aliases'):
         if not args.output or args.makeconf:
@@ -403,7 +427,7 @@ def main(arguments):
     elif not args.makeconf or args.output:
         parser.error('verify requires only --makeconf')
     toolset = selection(args)
-    native_cxx = select_native_cxx(toolset, args.native_cxx_binding_record)
+    native_cxx = select_native_cxx(toolset, args.native_cxx_binding_record, args.native_cxx_stage_root)
     if args.operation == 'aliases':
         print(json.dumps(write_aliases(toolset, args.output, native_cxx)))
         return

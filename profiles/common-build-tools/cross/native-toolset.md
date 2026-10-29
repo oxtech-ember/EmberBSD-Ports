@@ -118,3 +118,12 @@ native mapping. Its verifier checks the selected host compiler and runtime;
 optional host aliases then use the same SDK binding. Its selected ABI flags are
 applied once by the adapters. Target compiler commands and sysroot
 remain independent. Omit this selection to keep the previous native mapping.
+
+For a native ABI replacement stage, pass `--native-cxx-stage-root` when writing
+or verifying the mapping, and set `EMBERBSD_NATIVE_CXX_STAGE_ROOT` to that same
+root before including it. The host tools still come from the selected host
+prefix; the v4 binding's C++ runtime must be under the corresponding prefix
+inside that stage. A stage requires the SDK ABI identity API and is never
+selected implicitly. Stage and active prefix must not overlap. This mapping
+does not make old C++ libraries or generated objects compatible with the new
+ABI; rebuild the affected closure before linking or running its consumers.
