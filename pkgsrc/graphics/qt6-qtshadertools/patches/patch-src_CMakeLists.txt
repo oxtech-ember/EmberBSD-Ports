@@ -1,0 +1,16 @@
+$NetBSD$
+
+Use shared shader toolchain libraries.
+
+--- src/CMakeLists.txt.orig
++++ src/CMakeLists.txt
+@@ -3,6 +3,7 @@
+ 
+ # Generated from src.pro.
+ 
+-add_subdirectory(glslang)
+-add_subdirectory(SPIRV-Cross)
++find_package(glslang CONFIG REQUIRED)
++find_package(spirv_cross_c_shared CONFIG REQUIRED)
++find_package(SPIRV-Tools-opt CONFIG REQUIRED)
+ add_subdirectory(shadertools)

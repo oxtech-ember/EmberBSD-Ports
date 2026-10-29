@@ -1,0 +1,27 @@
+$NetBSD$
+
+Use shared shader toolchain libraries.
+
+--- src/shadertools/CMakeLists.txt.orig
++++ src/shadertools/CMakeLists.txt
+@@ -19,16 +19,13 @@
+         qtshadertoolsglobal_p.h
+     DEFINES
+         QT_BUILD_SHADERTOOLS_LIB
+-    INCLUDE_DIRECTORIES
+-        ../3rdparty/SPIRV-Cross
+-        ../3rdparty/glslang
+     LIBRARIES
+         Qt::GuiPrivate
+ # special case begin
+-        Qt::BundledSpirv_Cross
+-        Qt::BundledGlslang_Glslang
+-        Qt::BundledGlslang_Spirv
+-        Qt::BundledGlslang_Osdependent
++        spirv-cross-c-shared
++        glslang::glslang
++        glslang::glslang-default-resource-limits
++        SPIRV-Tools-opt
+ # special case end
+     PUBLIC_LIBRARIES
+         Qt::Core

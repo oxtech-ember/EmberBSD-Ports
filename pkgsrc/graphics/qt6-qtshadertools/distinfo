@@ -3,3 +3,8 @@ $NetBSD: distinfo,v 1.25 2026/08/18 18:26:05 adam Exp $
 BLAKE2s (qtshadertools-everywhere-src-6.12.0.tar.xz) = e3da78e186bb541d337a093b442466d1c7c9db28813b948e6c190b2104cef001
 SHA512 (qtshadertools-everywhere-src-6.12.0.tar.xz) = 2993c6e541ff6bdf370dc22a0873dded988ffc46b0e0c3b5607962d06e667283e8c30b88a1691dfa590971f0ae821e3e47a65f673efccee9286027adc7987856
 Size (qtshadertools-everywhere-src-6.12.0.tar.xz) = 1244684 bytes
+SHA1 (patch-src_CMakeLists.txt) = 0eb2ef7e8c94fc5c8b81be2bd319f9b88ff3aa67
+SHA1 (patch-src_shadertools_CMakeLists.txt) = d59c42b6ae7548af43bcbd50d51828ba86edaa81
+SHA1 (patch-src_shadertools_qspirvcompiler.cpp) = 282c5bc8f82f54a7f12a4aaad5eac1a9b0f90adf
+SHA1 (patch-src_shadertools_qspirvshaderremap.cpp) = 34b304e2823398acd71ea42e4d63ec53f5388655
+SHA1 (patch-src_shadertools_qspirvshaderremap_p.h) = cbefbc6eecdd954374722fafbafe861c074cf345

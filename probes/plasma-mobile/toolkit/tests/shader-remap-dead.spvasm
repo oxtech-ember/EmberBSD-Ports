@@ -1,0 +1,14 @@
+OpCapability Shader
+OpMemoryModel Logical GLSL450
+OpEntryPoint Vertex %main "main"
+OpSource GLSL 450
+%void = OpTypeVoid
+%fun = OpTypeFunction %void
+%main = OpFunction %void None %fun
+%entry = OpLabel
+OpReturn
+OpFunctionEnd
+%dead = OpFunction %void None %fun
+%deadentry = OpLabel
+OpReturn
+OpFunctionEnd
