@@ -274,7 +274,7 @@ show:
 def check_make_modes(bmake, work):
     source = (RECIPE / 'Makefile').read_text()
     native, sdk, buildlink = make_query(bmake, work / 'native', source, 'x86_64', False, '')
-    require(native['PKGREVISION'] == '8' and native['_EMBERBSD_MESA_LIBELF_MODE'] == 'native' and
+    require(native['PKGREVISION'] == '9' and native['_EMBERBSD_MESA_LIBELF_MODE'] == 'native' and
             native['_EMBERBSD_MESA_LIBELF_ROOT'] == '/', 'native bmake root selection changed')
     argv = shlex.split(native['_EMBERBSD_MESA_LIBELF_CHECK'])
     require(argv[1:4] == ['-B', '-E', '-S'] and '--target-root' in argv and argv[argv.index('--target-root') + 1] == '/' and

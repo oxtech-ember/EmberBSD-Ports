@@ -83,6 +83,7 @@ EMBERBSD_CROSS_HOST_PREFIX={work}
 CROSS_LOCALBASE=/usr/pkg
 EMBERBSD_SDK_SOURCE={work}/sdk-source
 PKGSRC_COMPILER=gcc
+EMBERBSD_CROSS_COMPILER_FAMILY=gcc
 USE_NATIVE_GCC=yes
 USE_PKGSRC_GCC=no
 USE_PKGSRC_GCC_RUNTIME=no
@@ -90,7 +91,7 @@ _TOOLS_USE_PKGSRC.flex=no
 PKGPATH?=graphics/MesaLib
 PKG_OPTIONS=llvm x11 wayland
 DISTNAME=mesa-26.2.5
-PKGREVISION=8
+PKGREVISION=9
 .if ${{USE_CROSS_COMPILE:Uno:tl}} == "yes"
 EMBERBSD_GRAPHICS_LLVM_CONFIG={work}/helper/bin/llvm-config
 EMBERBSD_WAYLAND_SCANNER={work}/scanner
@@ -150,12 +151,12 @@ def static_profile_checks():
         and "-Damdgpu=disabled" in drm_makefile,
     )
     check(
-        "common profile enforces libdrm 2.4.134nb7",
-        "libdrm>=2.4.134nb7" in profile and 'PKGREVISION:U} != "7"' in profile,
+        "common profile enforces libdrm 2.4.134nb8",
+        "libdrm>=2.4.134nb8" in profile and 'PKGREVISION:U} != "8"' in profile,
     )
     check(
-        "common profile enforces MesaLib 26.2.5nb8",
-        "MesaLib>=26.2.5nb8" in profile,
+        "common profile enforces MesaLib 26.2.5nb9",
+        "MesaLib>=26.2.5nb9" in profile,
     )
 
 
@@ -234,11 +235,11 @@ def profile_checks():
 
         drm_arm = query(
             "MACHINE_ARCH=aarch64", "PKGPATH=x11/libdrm", "RECIPE=drm",
-            "DISTNAME=libdrm-2.4.134", "PKGREVISION=7"
+            "DISTNAME=libdrm-2.4.134", "PKGREVISION=8"
         )
         drm_amd = query(
             "MACHINE_ARCH=x86_64", "PKGPATH=x11/libdrm", "RECIPE=drm",
-            "DISTNAME=libdrm-2.4.134", "PKGREVISION=7"
+            "DISTNAME=libdrm-2.4.134", "PKGREVISION=8"
         )
         check(
             "AArch64 libdrm disables Intel and AMDGPU modules",

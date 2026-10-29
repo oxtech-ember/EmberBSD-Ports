@@ -198,3 +198,21 @@ relocation parsing and hashing. Real bmake dry-runs both recipe hooks for each
 CPU in native and cross modes. External dependency includes are outside this
 finite source check. No compiler, configure step, generator or target program
 runs. These fixtures do not establish a complete package or installed runtime.
+
+## Unordered array deletion
+
+`dynarray-delete.c` exercises the prepared Mesa `u_dynarray.h`: deletion of
+last and interior elements, a missing value, and a subsequent last element.
+Its local copy observer rejects self-copy even on hosts whose libc does not.
+Compile it with the selected host compiler and the prepared patched Mesa
+`src/util` include directory, then run it. For example:
+
+```sh
+"$HOST_CC" -std=c11 -Wall -Wextra -Werror -I"$MESA_SOURCE/src/util" \
+    dynarray-delete.c -o "$WORK/dynarray-delete"
+"$WORK/dynarray-delete"
+```
+
+The original header returns 1 on the first case; the patched header returns 0.
+This fixture checks array behavior and overlap, not the full NIR compiler or
+target libc. The affected Mesa test binaries still require target execution.
