@@ -36,7 +36,7 @@ for name in ('qt6-qtbase', 'qt6-qtbase-devel'):
 host_makeconf = Path(os.environ.get('QT_SPLIT_HOST_MAKECONF', str(host / 'etc/mk.conf')))
 if not host_makeconf.is_absolute() or not host_makeconf.is_file(): raise SystemExit('selected host makeconf must be an absolute file')
 (work / 'mk.conf').write_text(f'.include "{host_makeconf}"\nWRKOBJDIR= {work}/objects\nPACKAGES= {work}/packages\nPKG_DBDIR= {work}/pkgdb\nCXXFLAGS= -O2\n')
-common = [str(host / 'bin/bmake'), 'MAKECONF='+str(work/'mk.conf'), 'AWK='+str(host/'bin/nawk'), 'CAT=/bin/cat', 'SED=/usr/bin/sed', 'TEST=/bin/test', 'MKDIR=/bin/mkdir -p', 'PERL5='+str(host/'bin/perl'), 'FIND=/usr/bin/find', 'LN=/bin/ln', 'INSTALL_DATA_DIR=/usr/bin/install -d', 'X11_TYPE=modular', 'PLATFORM_SUPPORTS_WAYLAND=no', 'EMBERBSD_QT_HOST_PATH='+str(qt)]
+common = [str(host / 'bin/bmake'), 'MAKECONF='+str(work/'mk.conf'), 'AWK='+str(host/'bin/nawk'), 'CAT='+str(host/'bin/gcat'), 'SED='+str(host/'bin/gsed'), 'TEST='+str(host/'bin/gtest'), 'MKDIR='+str(host/'bin/gmkdir')+' -p', 'PERL5='+str(host/'bin/perl'), 'FIND='+str(host/'bin/gfind'), 'LN='+str(host/'bin/gln'), 'INSTALL_DATA_DIR='+str(host/'bin/bsdinstall')+' -d', 'X11_TYPE=modular', 'PLATFORM_SUPPORTS_WAYLAND=no', 'EMBERBSD_QT_HOST_PATH='+str(qt)]
 for tool, binary in (('m4', 'gm4'), ('yacc', 'yacc')):
     path = host / 'bin' / binary
     if not path.is_file() or not os.access(path, os.X_OK):
