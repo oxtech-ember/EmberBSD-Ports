@@ -1,0 +1,17 @@
+$NetBSD$
+
+Keep Qt5 GitHub dialect aligned with supported flags when md4c adds extensions.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- src/gui/text/qtextmarkdownimporter.cpp.orig
++++ src/gui/text/qtextmarkdownimporter.cpp
+@@ -74,7 +74,8 @@
+ Q_STATIC_ASSERT(int(QTextMarkdownImporter::FeatureTasklists) == MD_FLAG_TASKLISTS);
+ Q_STATIC_ASSERT(int(QTextMarkdownImporter::FeatureNoHTML) == MD_FLAG_NOHTML);
+ Q_STATIC_ASSERT(int(QTextMarkdownImporter::DialectCommonMark) == MD_DIALECT_COMMONMARK);
+-Q_STATIC_ASSERT(int(QTextMarkdownImporter::DialectGitHub) == MD_DIALECT_GITHUB);
++Q_STATIC_ASSERT(int(QTextMarkdownImporter::DialectGitHub) ==
++                (MD_FLAG_PERMISSIVEAUTOLINKS | MD_FLAG_TABLES | MD_FLAG_STRIKETHROUGH | MD_FLAG_TASKLISTS));
+ 
+ // --------------------------------------------------------
+ // MD4C callback function wrappers

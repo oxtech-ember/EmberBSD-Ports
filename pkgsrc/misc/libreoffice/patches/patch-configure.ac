@@ -1,0 +1,66 @@
+$NetBSD: patch-configure.ac,v 1.30 2026/02/09 16:59:59 ryoon Exp $
+
+* Add NetBSD/aarch64 support.
+* Disable freetype2 and fontconfig from pkgsrc explicitly.
+  to fix X11_TYPE=native build and internal pdfium's internal freetype build.
+* Fix some static links.
+* Find devel/apache-ant.
+* Fix broken xinerama detection.
+
+--- configure.ac.orig	2026-01-27 21:11:38.000000000 +0000
++++ configure.ac
+@@ -5733,6 +5733,11 @@ linux-android*)
+         RTL_ARCH=X86_64
+         PLATFORMID=netbsd_x86_64
+         ;;
++    aarch64)
++        CPUNAME=AARCH64
++        RTL_ARCH=AARCH64
++        PLATFORMID=netbsd_aarch64
++        ;;
+     *)
+         AC_MSG_ERROR([Unsupported host_cpu $host_cpu for host_os $host_os])
+         ;;
+@@ -10349,9 +10354,9 @@ if test "x$ac_config_site_64bit_host" = xYES; then
+ dnl ===================================================================
+ FREETYPE_CFLAGS_internal="${ISYSTEM}${WORKDIR}/UnpackedTarball/freetype/include"
+ if test "x$ac_config_site_64bit_host" = xYES; then
+-    FREETYPE_LIBS_internal="-L${WORKDIR}/UnpackedTarball/freetype/instdir/lib64 -lfreetype"
++    FREETYPE_LIBS_internal="${WORKDIR}/UnpackedTarball/freetype/instdir/lib64/libfreetype.a"
+ else
+-    FREETYPE_LIBS_internal="-L${WORKDIR}/UnpackedTarball/freetype/instdir/lib -lfreetype"
++    FREETYPE_LIBS_internal="${WORKDIR}/UnpackedTarball/freetype/instdir/lib/libfreetype.a"
+ fi
+ libo_CHECK_SYSTEM_MODULE([freetype],[FREETYPE],[freetype2 >= 9.9.3],,system,TRUE)
+ 
+@@ -13464,7 +13469,7 @@ elif test "$enable_fuzzers" = "yes"; then
+     AC_MSG_RESULT([no (MPL only)])
+ elif test "$enable_fuzzers" = "yes"; then
+     AC_MSG_RESULT([no (oss-fuzz)])
+-elif test \( \( "$_os" = "Linux" -o "$_os" = "Darwin" \) -a "$ENABLE_NSS" = TRUE \) -o "$_os" = "WINNT" ; then
++elif test \( \( "$_os" = "Linux" -o "$_os" = "Darwin" -o "$_os" = "NetBSD" \) -a "$ENABLE_NSS" = TRUE \) -o "$_os" = "WINNT" ; then
+     AC_MSG_RESULT([yes])
+     dnl ===================================================================
+     dnl Check for system gpgme
+@@ -14623,8 +14628,8 @@ if test "$USING_X11" = TRUE; then
+         AC_CHECK_HEADER(X11/extensions/Xinerama.h, [],
+             [AC_MSG_ERROR(Xinerama header not found.)], [])
+         XEXTLIBS=`$PKG_CONFIG --variable=libs xext`
+-        if test "x$XEXTLIB" = x; then
+-           XEXTLIBS="-L$XLIB -L$XINERAMALIB -lXext"
++        if test "x$XEXTLIBS" = x; then
++           XEXTLIBS="-L$XINERAMALIB -lXext"
+         fi
+         XINERAMA_EXTRA_LIBS="$XEXTLIBS"
+         if test "$_os" = "FreeBSD"; then
+@@ -15004,8 +15009,8 @@ EOF
+                     if test -f /usr/share/ant-core/lib/ant.jar; then
+                         ANT_LIB=/usr/share/ant-core/lib
+                     else
+-                        if test -f $ANT_HOME/lib/ant/ant.jar; then
+-                            ANT_LIB="$ANT_HOME/lib/ant"
++                        if test -f $ANT_HOME/lib/java/ant/ant.jar; then
++                            ANT_LIB="$ANT_HOME/lib/java/ant"
+                         else
+                             if test -f /usr/share/lib/ant/ant.jar; then
+                                 ANT_LIB=/usr/share/lib/ant

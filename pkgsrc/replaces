@@ -425,3 +425,10 @@ security/fail2ban
 # Track the selected native C++ ABI for the static Catch2 provider.
 devel/catch2
 graphics/libjpeg-turbo
+
+# Use the current common Markdown parser.
+textproc/md4c
+
+# Preserve existing Markdown dialects with the shared parser.
+x11/qt5-qtbase
+misc/libreoffice

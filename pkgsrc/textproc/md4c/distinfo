@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (md4c-0.6.0.tar.gz) = f4bb1fdc5d65985fc5f7845f17a5bdc057c3dd2988a4d6e2e04013a4203a4352
+SHA512 (md4c-0.6.0.tar.gz) = a8b3deba8b6e25b11cfc8f796ff8299d47f73c0e668badeaadd38609d72d1d301c662e17f0fab6ccefe382d83bad6f47a3aedf68a16021521822cc7a285efcad
+Size (md4c-0.6.0.tar.gz) = 268862 bytes
+SHA1 (patch-src_md4c.h) = bba7fc6fd443b1d867493f8dcaf4532154a8ade4
