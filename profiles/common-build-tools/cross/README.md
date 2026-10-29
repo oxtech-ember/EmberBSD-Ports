@@ -498,6 +498,13 @@ and refuses a graph in which any package reaches a skipped one, so a Clang
 bulk never orders a GCC16 compiler or runtime.
 `scripts/tests/cross-bulk-gcc16-guard.sh PKGPATH NEW_OUTPUT` checks both with
 a list that names the GCC16 recipes and with an injected GCC16 dependency.
+The GCC16 recipes themselves skip under the Clang family and do not ask
+for their `GCC16_*` build-host inputs there. Fetch and build check
+`PKG_SKIP_REASON` again, so an order written by an older tree cannot fetch
+or build a GCC16 package; it is recorded in `STATE/skipped` and its
+dependents are blocked. The guard also scans the compiler, dependency and
+flag variables of PKGPATH for any GCC16 reference, and runs fetch and build
+on a stale order that names the GCC16 packages.
 `scripts/tests/cross-bulk-options-cache.sh NEW_OUTPUT PKGPATH...` checks
 that order asks for the build options of each dependency once and writes
 the same order as without the cache, and that fetch reuses the cache only

@@ -39,6 +39,11 @@ GCC16_FORTRAN_PKGSRC?=	${PKGSRCDIR}
 GCC16_FORTRAN_RUNTIME_FILES?=	${PKGSRCDIR}/lang/gcc16-runtime/files
 _GCC16_FORTRAN_FILES=	${PKGSRCDIR}/lang/gcc16-fortran-runtime/files
 .include "../../mk/bsd.prefs.mk"
+.if ${EMBERBSD_CROSS_COMPILER_FAMILY:U} == "clang"
+# The Clang profile compiles Fortran with Flang and links LLVM runtimes.
+# It never builds GCC16 packages, so it never asks for GCC16 inputs.
+PKG_SKIP_REASON+=	"The Clang profile uses Flang and LLVM runtimes, not GCC16 Fortran"
+.else
 .for _input in GCC16_FORTRAN_PYTHON EMBERBSD_SDK_SOURCE GCC16_FORTRAN_WORK GCC16_FORTRAN_ARCHIVE
 .if empty(${_input}:M/*)
 PKG_FAIL_REASON+=	"Set ${_input} to its audited absolute build-host path"
@@ -59,6 +64,7 @@ BUILD_DEFS+=	${_field:C/=.*//}
 PKG_FAIL_REASON+=	"Fortran stage architecture or role differs from the package"
 .endif
 GENERATE_PLIST+=	${_GCC16_FORTRAN_CMD} plist ${_GCC16_FORTRAN_ARGS};
+.endif
 .endif
 
 do-install:

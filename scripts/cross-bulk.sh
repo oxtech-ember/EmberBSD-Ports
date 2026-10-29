@@ -13,6 +13,11 @@
 #          checksums.
 #   build  Build and install each package in STATE/order.
 #
+# Fetch and build check PKG_SKIP_REASON again before they act on a package:
+# an order written by an older tree or by hand may name a package that the
+# profile now skips. Such a package goes to STATE/skipped, never to a
+# failure list, and the packages that depend on it are blocked.
+#
 # The build options of target dependencies that are not installed come
 # from the tree (mk/pkg-build-options.mk). Order starts a new pkgsrc
 # PBULK_CACHE_DIRECTORY in STATE/build-options, as a pbulk scan does.
@@ -183,6 +188,11 @@ fetch()
     case "$distdir" in /*) ;; *) echo "DISTDIR is not absolute: $distdir" >&2; return 1 ;; esac
     while read -r path; do
         have_distfiles "$path" && continue
+        skip=$(var "$path" PKG_SKIP_REASON) || skip=
+        if [ -n "$skip" ]; then
+            echo "$path $skip" >> "$state/skipped"
+            continue
+        fi
         log=$state/logs/fetch-$(echo "$path" | tr / _).log
         mk -C "$PKGSRCDIR/$path" fetch < /dev/null > "$log" 2>&1 ||
             echo "$path fetch" >> "$state/failed-fetch"
@@ -197,20 +207,25 @@ build()
     for list_name in failed blocked; do
         [ -s "$state/$list_name" ] && mv "$state/$list_name" "$state/$list_name.$stamp"
     done
-    touch "$state/done" "$state/failed" "$state/blocked"
+    touch "$state/done" "$state/failed" "$state/blocked" "$state/skipped"
     packages=$(var pkgtools/pkg_install PACKAGES)/All
     while read -r path; do
-        vars=$(mk -C "$PKGSRCDIR/$path" show-vars VARNAMES='PKGNAME WRKDIR' < /dev/null) ||
+        vars=$(mk -C "$PKGSRCDIR/$path" show-vars VARNAMES='PKGNAME WRKDIR PKG_SKIP_REASON' < /dev/null) ||
             { echo "$path vars" >> "$state/failed"; continue; }
         name=$(printf '%s\n' "$vars" | sed -n 1p)
         wrkdir=$(printf '%s\n' "$vars" | sed -n 2p)
+        skip=$(printf '%s\n' "$vars" | sed -n 3p)
+        if [ -n "$skip" ]; then
+            echo "$path $skip" >> "$state/skipped"
+            continue
+        fi
         file=$packages/$name.tgz
         if [ -f "$file" ] && grep -qFx "$path $name $(shasum -a 256 "$file" | cut -d ' ' -f 1)" "$state/done"; then
             continue
         fi
         bad=$(awk -v p="$path" '$2 == p && $1 != p { print $1 }' "$state/edges" |
             while read -r dep; do
-                cat "$state/failed" "$state/blocked" | awk -v d="$dep" '$1 == d { found = 1 } END { exit !found }' && echo "$dep"
+                cat "$state/failed" "$state/blocked" "$state/skipped" | awk -v d="$dep" '$1 == d { found = 1 } END { exit !found }' && echo "$dep"
             done | head -n 1)
         if [ -n "$bad" ]; then
             echo "$path $bad" >> "$state/blocked"

@@ -28,6 +28,11 @@ GCC16_RUNTIME_PKGSRC?=	${.CURDIR}/../..
 FILESDIR?=	${.CURDIR}/files
 
 .include "../../mk/bsd.prefs.mk"
+.if ${EMBERBSD_CROSS_COMPILER_FAMILY:U} == "clang"
+# The Clang profile compiles Fortran with Flang and links LLVM runtimes.
+# It never builds GCC16 packages, so it never asks for GCC16 inputs.
+PKG_SKIP_REASON+=	"The Clang profile uses Flang and LLVM runtimes, not the GCC16 runtime"
+.else
 
 .if defined(GCC16_RUNTIME_RUBY)
 PKG_FAIL_REASON+= "GCC16_RUNTIME_RUBY is obsolete. Set GCC16_RUNTIME_PYTHON and EMBERBSD_SDK_SOURCE."
@@ -51,6 +56,7 @@ BUILD_DEFS+=	${_definition:C/=.*//}
 .endfor
 .if "${GCC_RUNTIME_MACHINE_ARCH:U}" != "${MACHINE_ARCH}"
 PKG_FAIL_REASON+= "Audited runtime architecture does not match the package target MACHINE_ARCH."
+.endif
 .endif
 .endif
 
