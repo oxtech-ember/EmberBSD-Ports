@@ -19,7 +19,7 @@ gcc_fail() {
 }
 # math/blas is a plain Fortran recipe.
 "$bmake" -C "$pkgsrc/math/blas" MAKECONF="$makeconf" USE_CROSS_COMPILE=no show-vars \
-    VARNAMES='EMBERBSD_HOST_COMPILER_FAMILY PKGSRC_FORTRAN FC PKG_FC PKG_FAIL_REASON' \
+    VARNAMES='EMBERBSD_HOST_COMPILER_FAMILY PKGSRC_FORTRAN FC PKG_FC PKG_FAIL_REASON OPSYS CMAKE_CONFIGURE_ARGS' \
     > "$work/native.txt" 2> "$work/native.err" || {
     ! grep -Eiq 'gcc|gfortran' "$work/native.err" || gcc_fail "$work/native.err"
     fail "native Fortran metadata does not evaluate; see $work/native.err"
@@ -36,6 +36,15 @@ case "$(line 4)" in */.flang/bin/flang) ;; *)
 # No compiler, Fortran module or dependency may name GCC.
 ! grep -Eiq 'gcc|gfortran|g95|f2c' "$work/native.txt" "$work/depends.txt" ||
     gcc_fail "$work/native.txt" "$work/depends.txt"
+# CMake's Darwin shared-library rule passes -install_name to the Fortran
+# driver; Flang accepts it only through the linker.
+if [ "$(line 6)" = Darwin ]; then
+    case " $(line 7) " in
+    # One shell-quoted CMake value: CMake splits it on the link line.
+    *' -DCMAKE_SHARED_LIBRARY_SONAME_Fortran_FLAG:STRING=-Xlinker\ -install_name\ -Xlinker '*) ;;
+    *) fail 'Darwin CMake hands Flang the C driver -install_name flag' ;;
+    esac
+fi
 if grep -qx 'lang/flang-rt' "$work/depends.txt"; then
     result='links the native prefix Flang-RT'
 else

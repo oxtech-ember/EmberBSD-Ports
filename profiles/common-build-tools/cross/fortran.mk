@@ -78,6 +78,12 @@ CWRAPPERS_APPEND.f77+=--target=${_EMBER_CROSS_TRIPLET}
 .endif
 CWRAPPERS_APPEND.f77+=-resource-dir=${_EMBER_FLANG_RESOURCE}
 CWRAPPERS_APPEND.f77+=-fintrinsic-modules-path=${_EMBER_FLANG_RT}/finclude/flang/${_EMBER_FLANG_TRIPLE}
+.if ${_EMBER_FLANG_MODE} == "native" && ${OPSYS} == "Darwin"
+# CMake's Darwin platform gives Fortran the C driver's -install_name, which
+# the Flang driver rejects; Flang hands it to the linker instead.
+_EMBER_FLANG_DARWIN_SONAME=-Xlinker -install_name -Xlinker
+CMAKE_CONFIGURE_ARGS+=-DCMAKE_SHARED_LIBRARY_SONAME_Fortran_FLAG:STRING=${_EMBER_FLANG_DARWIN_SONAME:Q}
+.endif
 .if ${_EMBER_FLANG_MODE} == "cross"
 CWRAPPERS_APPEND_LINK.f77+=-fuse-ld=${LD}
 CWRAPPERS_APPEND_LINK.f77+=--rtlib=compiler-rt
