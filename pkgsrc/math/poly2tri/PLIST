@@ -1,0 +1,16 @@
+@comment $NetBSD$
+include/poly2tri/common/dll_symbol.h
+include/poly2tri/common/shapes.h
+include/poly2tri/common/utils.h
+include/poly2tri/poly2tri.h
+include/poly2tri/sweep/advancing_front.h
+include/poly2tri/sweep/cdt.h
+include/poly2tri/sweep/sweep.h
+include/poly2tri/sweep/sweep_context.h
+lib/cmake/poly2tri/poly2triConfig.cmake
+lib/cmake/poly2tri/poly2triTargets-noconfig.cmake
+lib/cmake/poly2tri/poly2triTargets.cmake
+lib/libpoly2tri.so
+lib/libpoly2tri.so.0
+lib/libpoly2tri.so.0.0.0
+share/doc/poly2tri/LICENSE

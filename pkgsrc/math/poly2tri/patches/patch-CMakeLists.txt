@@ -1,0 +1,47 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Install the shared library and its relocatable CMake target.
+--- CMakeLists.txt
++++ CMakeLists.txt
+@@ -1,6 +1,7 @@
+ cmake_minimum_required(VERSION 3.12)
+ 
+ project(poly2tri LANGUAGES CXX)
++include(GNUInstallDirs)
+ set(CMAKE_CXX_STANDARD 14)
+ 
+ option(P2T_BUILD_TESTS "Build tests" OFF)
+@@ -9,7 +10,13 @@
+ file(GLOB SOURCES poly2tri/common/*.cc poly2tri/sweep/*.cc)
+ file(GLOB HEADERS poly2tri/*.h poly2tri/common/*.h poly2tri/sweep/*.h)
+ add_library(poly2tri ${SOURCES} ${HEADERS})
+-target_include_directories(poly2tri INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
++target_include_directories(poly2tri PUBLIC
++  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
++  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
++set_target_properties(poly2tri PROPERTIES VERSION 0.0.0 SOVERSION 0)
++if(APPLE)
++  set_target_properties(poly2tri PROPERTIES INSTALL_NAME_DIR "@rpath")
++endif()
+ 
+ get_target_property(poly2tri_target_type poly2tri TYPE)
+ if(poly2tri_target_type STREQUAL SHARED_LIBRARY)
+@@ -18,6 +25,17 @@
+   target_compile_definitions(poly2tri PUBLIC P2T_STATIC_EXPORTS)
+ endif()
+ 
++install(TARGETS poly2tri EXPORT poly2triTargets
++  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
++  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
++  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
++install(DIRECTORY poly2tri/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/poly2tri
++  FILES_MATCHING PATTERN "*.h")
++install(EXPORT poly2triTargets NAMESPACE poly2tri:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/poly2tri)
++file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/poly2triConfig.cmake"
++  "include(\"\${CMAKE_CURRENT_LIST_DIR}/poly2triTargets.cmake\")\n")
++install(FILES "${CMAKE_CURRENT_BINARY_DIR}/poly2triConfig.cmake" DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/poly2tri)
++
+ if(P2T_BUILD_TESTS)
+     enable_testing()
+     add_subdirectory(unittest)

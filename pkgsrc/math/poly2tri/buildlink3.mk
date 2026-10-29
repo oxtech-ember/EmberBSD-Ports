@@ -1,0 +1,8 @@
+# $NetBSD$
+BUILDLINK_TREE+= poly2tri
+.if !defined(POLY2TRI_BUILDLINK3_MK)
+POLY2TRI_BUILDLINK3_MK:=
+BUILDLINK_API_DEPENDS.poly2tri+= poly2tri>=0.0.20261020
+BUILDLINK_PKGSRCDIR.poly2tri?= ../../math/poly2tri
+.endif
+BUILDLINK_TREE+= -poly2tri
