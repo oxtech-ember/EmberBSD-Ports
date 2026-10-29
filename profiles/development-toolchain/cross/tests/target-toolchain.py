@@ -31,6 +31,28 @@ def put(path, data=b'fixture'):
 
 
 class TargetToolchainTests(unittest.TestCase):
+    def test_selected_git_works_outside_isolated_host_path(self):
+        git = shutil.which('git')
+        self.assertIsNotNone(git)
+        git = os.path.realpath(git)
+        repo = self.root / 'os-git'
+        repo.mkdir()
+        subprocess.run([git, 'init', '-q', str(repo)], check=True)
+        subprocess.run([git, '-C', str(repo), '-c', 'user.name=Fixture', '-c',
+                        'user.email=fixture@example.invalid', 'commit', '--allow-empty', '-qm', 'fixture'], check=True)
+        expected = subprocess.check_output([git, '-C', str(repo), 'rev-parse', 'HEAD'], text=True).strip()
+        options, remaining = pipeline.compile_test_options(['--git', git, '/compiler', '/sysroot', '/output'])
+        self.assertEqual(remaining, ['/compiler', '/sysroot', '/output'])
+        self.assertEqual(options.git, git)
+        self.host_prefix.mkdir(exist_ok=True)
+        with patch.dict(os.environ, {'PATH': str(self.host_prefix)}):
+            self.assertEqual(pipeline.os_test_source_revision(repo, options.git), expected)
+
+    def test_git_option_rejects_non_absolute_or_nonexecutable(self):
+        for value in ('git', '/missing-git', str(self.root)):
+            with self.subTest(value=value), self.assertRaises(SDKError):
+                pipeline.compile_test_options(['--git', value])
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='target-toolchain-')
         self.addCleanup(self.temp.cleanup)

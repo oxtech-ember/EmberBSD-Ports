@@ -373,7 +373,18 @@ def compile_test_options(args):
     parser.add_argument('--compiler-family', choices=('clang', 'gcc'), default='clang')
     parser.add_argument('--host-prefix')
     parser.add_argument('--os-source', help='optional EmberBSD source tree for OS-owned target runtime regressions')
-    return parser.parse_known_args(args)
+    parser.add_argument('--git', help='absolute path to the host Git executable')
+    options, remaining = parser.parse_known_args(args)
+    if options.git is not None:
+        require(os.path.isabs(options.git) and os.path.isfile(options.git) and os.access(options.git, os.X_OK),
+                '--git must name an absolute executable file')
+    return options, remaining
+
+
+def os_test_source_revision(source, git):
+    revision = capture([git or 'git', '-C', str(source), 'rev-parse', 'HEAD']).strip()
+    require(re.fullmatch('[0-9a-f]{40}', revision), 'Invalid OS test source revision')
+    return revision
 
 
 def os_runtime_programs(os_source, cc_link, output):
@@ -396,7 +407,7 @@ def os_runtime_programs(os_source, cc_link, output):
 def compile_tests_main(args):
     options, args = compile_test_options(args)
     target, _, args = parse(args)
-    require(len(args) == 3, 'Usage: compile-tests.py [--compiler-family clang|gcc] [--host-prefix PREFIX] [--target TARGET] [--os-source SOURCE] PREFIX SYSROOT NEW_OUTPUT --sdk-source SOURCE')
+    require(len(args) == 3, 'Usage: compile-tests.py [--compiler-family clang|gcc] [--host-prefix PREFIX] [--git PATH] [--target TARGET] [--os-source SOURCE] PREFIX SYSROOT NEW_OUTPUT --sdk-source SOURCE')
     prefix, sysroot = [build_path(value) for value in args[:2]]
     out = new_path(args[2])
     selected = select_test_toolchain(options.compiler_family, prefix, sysroot, target,
@@ -420,8 +431,7 @@ def compile_tests_main(args):
         path + '\t' + digest + '\n' for path, digest in
         target_test_source_inventory(PROFILE, HERE, sdk_root, os_source=os_source)))
     if os_source is not None:
-        os_commit = capture(['git', '-C', str(os_source), 'rev-parse', 'HEAD']).strip()
-        require(re.fullmatch('[0-9a-f]{40}', os_commit), 'Invalid OS test source revision')
+        os_commit = os_test_source_revision(os_source, options.git)
         (out / 'os-source-commit.txt').write_text(os_commit + '\n')
         (out / 'os-tests.txt').write_text('yes\n')
     if selected['sysroot_identity'] is not None:
