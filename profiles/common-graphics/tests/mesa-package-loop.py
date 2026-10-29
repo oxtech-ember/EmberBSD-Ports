@@ -36,7 +36,7 @@ executable(timeout, '[ "$1" = 30 ] || exit 91\nshift\n[ "$1" = ' + shlex.quote(s
 setup = f'set -eu\nbundle={shlex.quote(str(work / "bundle"))}\nlogs={shlex.quote(str(work / "logs"))}\ntimeout={shlex.quote(str(timeout))}\n'
 result = subprocess.run(['sh', '-c', setup + loader + '\n' + loop], env={**os.environ, 'PATH': str(work / 'tools') + ':' + os.environ['PATH']}, capture_output=True, text=True)
 (work / 'loop.log').write_text('Host shell fixture only; no target runtime tested.\n' + result.stdout + result.stderr)
-if result.returncode or 'executed actual fixture path' not in (work / 'logs/fixture.log').read_text():
+if result.returncode or 'START fixture' not in result.stdout or 'executed actual fixture path' not in (work / 'logs/fixture.log').read_text():
     raise ValueError('production loop failed or lost executable name')
 print('PASS: production loader and test loop')
 render_timeout = work / 'render-timeout'

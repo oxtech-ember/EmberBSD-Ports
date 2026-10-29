@@ -17,6 +17,7 @@ elif [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
     exit 2
 fi
 bundle=$(CDPATH= cd -- "$1" && pwd -P)
+echo "START bundle verification"
 hash() {
     if command -v sha256 >/dev/null 2>&1; then sha256 -q "$1"
     else shasum -a 256 "$1" | awk '{print $1}'; fi
@@ -82,6 +83,7 @@ renderer=${3:-llvmpipe}
 timeout=${TIMEOUT:-/usr/bin/timeout}
 case "$timeout" in /*) ;; *) echo 'TIMEOUT must be absolute' >&2; exit 2;; esac
 [ -x "$timeout" ]
+echo 'START installed provider verification'
 check_installed ''
 uname -a > "$logs/platform.log"
 check_loader() {
@@ -104,6 +106,7 @@ check_loader() {
 $(awk '$2 == "=>" { print $3 }' "$logs/$loader_name.ldd.log")
 EOF
 }
+echo "START renderer loader check"
 check_loader "$bundle/bin/mesa-render" mesa-render
 run_render() {
     if [ "$renderer" = llvmpipe ]; then
@@ -115,10 +118,12 @@ run_render() {
             "$bundle/bin/mesa-render" surfaceless "$renderer"
     fi
 }
+echo "START renderer $renderer"
 run_render > "$logs/mesa-render.log" 2>&1
 echo "PASS: installed $renderer shader rejection, triangle and four EGL lifecycles"
 failures=0
 while IFS="$(printf '\t')" read -r name executable limit; do
+    echo "START $name"
     check_loader "$bundle/bin/$executable" "$name"
     result=0
     case "$name" in
