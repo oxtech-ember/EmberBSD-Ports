@@ -1,0 +1,16 @@
+$NetBSD$
+
+Let the OpenBSD package provider run on NetBSD as well.  NetBSD's pkg_add
+can do a lot more than OpenBSD's, but for now basic support should suffice.
+
+--- lib/puppet/provider/package/openbsd.rb.orig
++++ lib/puppet/provider/package/openbsd.rb
+@@ -20,7 +20,7 @@
+            :pkgdelete => "pkg_delete"
+ 
+   defaultfor 'os.name' => :openbsd
+-  confine 'os.name' => :openbsd
++  confine 'os.name' => [:openbsd, :netbsd]
+ 
+   has_feature :install_options
+   has_feature :uninstall_options

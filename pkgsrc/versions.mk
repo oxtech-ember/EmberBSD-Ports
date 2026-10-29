@@ -35,6 +35,11 @@ EMBERBSD_VERSION_FAMILIES+=	www/ruby-faraday_middleware=www/ruby-faraday
 EMBERBSD_VERSION_FAMILIES+=	devel/ruby-octokit4=devel/ruby-octokit
 # rubyzip 3; winrm-fs 1.3.7 needs it.
 EMBERBSD_VERSION_FAMILIES+=	archivers/ruby-zip24=archivers/ruby-zip
+# OpenVox and OpenFact; puppet 7 and facter 4 need Ruby < 4.0.
+EMBERBSD_VERSION_FAMILIES+=	sysutils/puppet=sysutils/openvox
+EMBERBSD_VERSION_FAMILIES+=	sysutils/ruby-facter=sysutils/ruby-openfact
+# concurrent-ruby 1.1 was only for puppet 7.
+EMBERBSD_VERSION_FAMILIES+=	devel/ruby-concurrent-ruby11=devel/ruby-concurrent-ruby
 # Rails 8.1; roadie-rails 3.2/3.3 and propshaft 1.1 do not allow it.
 EMBERBSD_VERSION_FAMILIES+=	devel/ruby-activesupport[0-9]*=devel/ruby-activesupport81
 EMBERBSD_VERSION_FAMILIES+=	devel/ruby-activemodel[0-9]*=devel/ruby-activemodel81

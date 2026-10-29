@@ -1,0 +1,10 @@
+$NetBSD$
+
+BLAKE2s (openvox-9.2.1.gem) = 9da7236ee3a85ce66efa58337a5637c7ca8a5aa868472eb45e2cbff4878f17c3
+SHA512 (openvox-9.2.1.gem) = d9800e71df4126bb55d46220cceccc2e692cd8a4963f6a78d9b4066335ce513bf9cdbed16dfb842802eb160f4e209ee17eec75ae709682a57632a62c86f63cea
+Size (openvox-9.2.1.gem) = 1550336 bytes
+SHA1 (patch-aa) = c273c27cf82f2d022e58955cc0ee3921e233ee51
+SHA1 (patch-ab) = 7b7419d16217f7eec1c0cb056dde48c1934f1ff5
+SHA1 (patch-ac) = c4b00957c526eabc590238312a7492826cd0d62e
+SHA1 (patch-ae) = 70f6c5ea3272a1070a138c2aeb9fad89c08642d9
+SHA1 (patch-lib_puppet_util_command__line.rb) = 9ae6726fa1777bebfd8917f5c66bb56913ff61dd

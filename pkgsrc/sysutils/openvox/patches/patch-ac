@@ -1,0 +1,15 @@
+$NetBSD$
+
+NetBSD also has its init scripts in /etc/rc.d.
+
+--- lib/puppet/provider/service/init.rb.orig
++++ lib/puppet/provider/service/init.rb
+@@ -11,7 +11,7 @@
+       ["/etc/rc.d", "/usr/local/etc/rc.d"]
+     when "HP-UX"
+       "/sbin/init.d"
+-    when "Archlinux"
++    when "Archlinux", "NetBSD"
+       "/etc/rc.d"
+     when "AIX"
+       "/etc/rc.d/init.d"

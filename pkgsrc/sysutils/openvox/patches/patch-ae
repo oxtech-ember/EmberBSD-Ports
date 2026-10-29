@@ -1,0 +1,37 @@
+$NetBSD$
+
+Fix detection of useradd user management under NetBSD.
+
+NetBSD doesn't have chage but can use the -e and -f flags to passwd to
+achieve the same.
+
+--- lib/puppet/provider/user/useradd.rb.orig
++++ lib/puppet/provider/user/useradd.rb
+@@ -14,14 +14,23 @@
+     To use the `forcelocal` parameter, you need to install the `libuser` package (providing
+     `/usr/sbin/lgroupadd` and `/usr/sbin/luseradd`)."
+ 
+-  commands :add => "useradd", :delete => "userdel", :modify => "usermod", :password => "chage", :chpasswd => "chpasswd"
++  if %w{NetBSD}.include? Puppet.runtime[:facter].value('os.name')
++    commands :add => "useradd", :delete => "userdel", :modify => "usermod", :password => "passwd"
++  else
++    commands :add => "useradd", :delete => "userdel", :modify => "usermod", :password => "chage", :chpasswd => "chpasswd"
++  end
+ 
+   options :home, :flag => "-d", :method => :dir
+   options :comment, :method => :gecos
+   options :groups, :flag => "-G"
+-  options :password_min_age, :flag => "-m", :method => :sp_min
+-  options :password_max_age, :flag => "-M", :method => :sp_max
+-  options :password_warn_days, :flag => "-W", :method => :sp_warn
++  if %w{NetBSD}.include? Puppet.runtime[:facter].value('os.name')
++    options :password_min_age, :flag => "-e"
++    options :password_max_age, :flag => "-f"
++  else
++    options :password_min_age, :flag => "-m", :method => :sp_min
++    options :password_max_age, :flag => "-M", :method => :sp_max
++    options :password_warn_days, :flag => "-W", :method => :sp_warn
++  end
+   options :password, :method => :sp_pwdp
+   options :expiry, :method => :sp_expire,
+                    :munge => proc { |value|

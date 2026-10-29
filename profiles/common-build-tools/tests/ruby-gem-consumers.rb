@@ -36,8 +36,8 @@ kept = {
   'www/ruby-rouge' => %w[rouge 5.1.0 www/heel www/ruby-jekyll textproc/ruby-review graphics/rabbit www/motyl],
   'mail/ruby-mail' => %w[mail 2.9.1 mail/ruby-actionmailer81 mail/ruby-actionmailbox81 www/ruby-padrino-mailer],
   'devel/ruby-thor' => %w[thor 1.5.0 devel/ruby-approvaltests devel/ruby-jirametrics devel/ruby-protobuf-cucumber
-                          devel/ruby-railties81 sysutils/ruby-inspec-core textproc/ruby-haml www/ruby-jquery-rails
-                          www/ruby-padrino-core]
+                          devel/ruby-railties81 sysutils/ruby-inspec-core sysutils/ruby-openfact textproc/ruby-haml
+                          www/ruby-jquery-rails www/ruby-padrino-core]
 }
 kept.each do |kept_path, (gem, wanted, *consumers)|
   kept_vars = vars(tree, makeconf, kept_path, 'PKGNAME', 'PKG_FAIL_REASON')
