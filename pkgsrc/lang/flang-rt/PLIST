@@ -1,4 +1,5 @@
 @comment $NetBSD$
+${PLIST.drivercfg}bin/${FLANG_RT_TRIPLE}-flang.cfg
 include/flang-rt/runtime/allocator-registry.h
 include/flang-rt/runtime/array-constructor.h
 include/flang-rt/runtime/assign-impl.h

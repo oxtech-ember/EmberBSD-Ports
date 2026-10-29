@@ -3,7 +3,7 @@
 .include "../../lang/llvm/version.mk"
 
 PKGNAME=	flang-rt-${LLVM_VERSION}
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	lang devel
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -63,6 +63,28 @@ CMAKE_CONFIGURE_ARGS+=	-DRUNTIMES_INSTALL_RESOURCE_PATH:STRING=lib/clang/${LLVM_
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_Fortran_COMPILER_TARGET=${MACHINE_GNU_PLATFORM}
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_DEFAULT_TARGET_TRIPLE=${MACHINE_GNU_PLATFORM}
 PLIST_SUBST+=		FLANG_RT_TRIPLE=${MACHINE_GNU_PLATFORM}
+# The build uses only the modules it builds, not a configuration file that
+# an installed copy of this package left beside the selected driver. CMake
+# takes the initial Fortran flags from FFLAGS.
+FFLAGS+=		--no-default-config
+
+# The Darwin driver's default triple carries the full kernel version, such
+# as aarch64-apple-darwin27.0.0, and Flang looks for intrinsic modules only
+# under that exact name. Its configuration file lookup also tries the major
+# version, which is the module directory above. A configuration file beside
+# the driver names that directory, so plain flang finds the modules. An
+# explicit --target or --no-default-config does not read it.
+PLIST_VARS+=		drivercfg
+.if ${OPSYS} == "Darwin"
+PLIST.drivercfg=	yes
+INSTALLATION_DIRS+=	bin
+FLANG_RT_DRIVER_CFG=	bin/${MACHINE_GNU_PLATFORM}-flang.cfg
+
+post-install:
+	${PRINTF} '%s\n' \
+	    '-fintrinsic-modules-path=<CFGDIR>/../lib/clang/${LLVM_MAJOR_VERSION}/finclude/flang/${MACHINE_GNU_PLATFORM}' \
+	    > ${DESTDIR}${PREFIX}/${FLANG_RT_DRIVER_CFG}
+.endif
 
 .include "../../devel/cmake/build.mk"
 .include "../../mk/bsd.pkg.mk"
