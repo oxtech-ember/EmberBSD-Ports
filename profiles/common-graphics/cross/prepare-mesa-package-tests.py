@@ -146,6 +146,9 @@ def main(argv):
         initial[cmd[0]]=h; shutil.copy2(cmd[0], dest); tests.append((name,executable,test['timeout']))
     iris_tests='mda_tests intel_device_info_test isl_surf_get_image_offset isl_aux_info isl_tile_std_y isl_tilememcpy isl_surf_get_image_range_B_tile intel_compiler_gen_tests intel_compiler_brw_tests jay_tests intel_compiler_elk_tests genxml_test'.split()
     names=[t[0] for t in tests]; require(sorted(set(names)&set(iris_tests)) == (sorted(iris_tests) if iris else []), 'incomplete Intel test set')
+    if radeon:
+        required_amd = {'ac_surface_modifier_test', 'ac_surface_meta_address_test', 'ac_nir_tests'}
+        require(required_amd.issubset(names), 'incomplete Radeon test set')
     require(len(tests)>=37+(arch=='aarch64')+zink+(len(iris_tests) if iris else 0) and ('zink_format_test' in names)==zink and ('qpu_disasm' in names)==(arch=='aarch64') and sum(n.startswith('lp_test_') for n in names)==7 and 'xmlconfig' in names, 'missing expected upstream tests')
     (bundle/'upstream-tests.tsv').write_text(''.join('\t'.join(map(str,row))+'\n' for row in tests))
     for name in ('drirc_home','drirc_configdir'): shutil.copytree(source/'src/util/tests'/name,bundle/'fixtures'/name)

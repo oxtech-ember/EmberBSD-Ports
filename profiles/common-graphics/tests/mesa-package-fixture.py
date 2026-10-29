@@ -39,7 +39,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (info/'intro-projectinfo.json').write_text(json.dumps({'version':'26.2.5'}))
     opts={'prefix':'/usr/pkg','llvm':'enabled','shared-llvm':'enabled','build-tests':True,'egl':'enabled','gles2':'enabled','glx':'dri','gallium-drivers':['llvmpipe','softpipe','virgl','radeonsi'],'platforms':['wayland','x11']}
     (info/'intro-buildoptions.json').write_text(json.dumps([{'name':k,'value':v} for k,v in opts.items()]))
-    names=['lp_test_'+str(i) for i in range(7)]+['xmlconfig']+['case'+str(i) for i in range(29)]
+    names=['lp_test_'+str(i) for i in range(7)]+['xmlconfig']+['case'+str(i) for i in range(29)]+['ac_surface_modifier_test','ac_surface_meta_address_test','ac_nir_tests']
     tests=[]
     for name in names:
         path=build/name; path.write_bytes(header)
@@ -72,6 +72,13 @@ with tempfile.TemporaryDirectory() as tmp:
         try: m.main([str(tools),str(sysroot),str(source),str(build),str(package),str(root/'bad-escape')])
         except ValueError: pass
         else: raise AssertionError('escaping regular payload accepted')
+        archive(valid)
+        original_tests = tests[:]
+        (info/'intro-tests.json').write_text(json.dumps([t for t in tests if t['name'] != 'ac_nir_tests']))
+        try: m.main([str(tools),str(sysroot),str(source),str(build),str(package),str(root/'bad-amd')])
+        except ValueError as error: assert 'incomplete Radeon test set' in str(error)
+        else: raise AssertionError('missing Radeon test accepted')
+        (info/'intro-tests.json').write_text(json.dumps(original_tests))
         archive(valid, duplicate_contents=True)
         try: m.main([str(tools),str(sysroot),str(source),str(build),str(package),str(root/'bad-contents')])
         except ValueError: pass
