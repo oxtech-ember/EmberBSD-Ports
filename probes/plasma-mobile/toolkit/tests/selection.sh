@@ -30,7 +30,8 @@ MAKE
 sh "$toolkit/validate.sh" --recipes "$toolkit" "$recipes" > "$work/recipes.txt"
 # These modules must remain selectable even if a manifest row is removed.
 # Their upstream recipes use the same Qt version and cannot keep older inputs.
-for recipe in lang/qt6-qtscxml www/qt6-qthttpserver; do
+for recipe in lang/qt6-qtscxml www/qt6-qthttpserver graphics/qt6-qtlottie \
+    net/qt6-qtgrpc net/qt6-qtremoteobjects; do
     grep -qxF "$recipe" "$work/recipes.txt"
     for cross in yes no; do
         (cd "$work" && "$make" -r -m / FAMILY=qt PKGPATH="$recipe" \

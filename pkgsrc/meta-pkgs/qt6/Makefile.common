@@ -18,6 +18,7 @@ _EMBERBSD_QTVERSION_RECIPES= \
     geography/qt6-qtlocation \
     graphics/qt6-qtcharts \
     graphics/qt6-qtimageformats \
+    graphics/qt6-qtlottie \
     graphics/qt6-qtquick3d \
     graphics/qt6-qtquicktimeline \
     graphics/qt6-qtshadertools \
@@ -28,6 +29,8 @@ _EMBERBSD_QTVERSION_RECIPES= \
     lang/qt6-qtscxml \
     misc/qt6-qtsensors \
     multimedia/qt6-qtmultimedia \
+    net/qt6-qtgrpc \
+    net/qt6-qtremoteobjects \
     net/qt6-qtwebsockets \
     security/qt6-qtnetworkauth \
     www/qt6-qthttpserver \

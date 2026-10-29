@@ -203,6 +203,7 @@ graphics/plasma6-aurorae
 graphics/plasma6-breeze
 graphics/qt6-qtcharts
 graphics/qt6-qtimageformats
+graphics/qt6-qtlottie
 graphics/qt6-qtquick3d
 graphics/qt6-qtquicktimeline
 graphics/qt6-qtshadertools
@@ -232,6 +233,8 @@ net/kdsoap
 net/kdsoap-ws-discovery-client
 net/kf6-kdnssd
 net/kf6-knewstuff
+net/qt6-qtgrpc
+net/qt6-qtremoteobjects
 net/qt6-qtwebsockets
 net/samba4
 print/poppler
