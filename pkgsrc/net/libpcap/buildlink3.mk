@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	libpcap
 .if !defined(LIBPCAP_BUILDLINK3_MK)
 LIBPCAP_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.libpcap+=	libpcap>=0.5.0
-BUILDLINK_ABI_DEPENDS.libpcap+=	libpcap>=1.3.0nb1
+BUILDLINK_API_DEPENDS.libpcap+=	libpcap>=1.10.7nb1<1.11
+BUILDLINK_ABI_DEPENDS.libpcap+=	libpcap>=1.10.7nb1<1.11
 BUILDLINK_PKGSRCDIR.libpcap?=	../../net/libpcap
 
 .include "../../mk/bsd.fast.prefs.mk"
