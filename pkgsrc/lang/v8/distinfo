@@ -43,4 +43,4 @@ SHA1 (patch-v8_zzz_unicode_backref_serialization) = 15c26009299209a453042f86f0ee
 SHA1 (patch-v8_src_wasm_stacks.cc) = 9f7d4a1cec393c8e5deb34f9659407c4ec0330f5
 SHA1 (patch-v8_zzzz_metagen_scoped_runtime) = fdbd7b2c239c4b0ef640aa20e60fbd86290a9347
 SHA1 (patch-v8_zzzz_version_hash_test) = 4513bafa163f0baaeddbea711b4c6b9be84ac271
-SHA1 (patch-v8_tools_gen-postmortem-metadata.py) = 8f5cfa77dcc5d30f4d981a5fb086cfc533b4e65b
+SHA1 (patch-v8_tools_gen-postmortem-metadata.py) = a5ace4410f53322bccae05e349b184d62ced5298

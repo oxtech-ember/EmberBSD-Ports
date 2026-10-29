@@ -3,8 +3,8 @@ $NetBSD$
 Export versioned postmortem metadata for the shared V8 layout.
 Origin: EmberBSD (AI-assisted).
 
---- a/tools/gen-postmortem-metadata.py
-+++ b/tools/gen-postmortem-metadata.py
+--- tools/gen-postmortem-metadata.py
++++ tools/gen-postmortem-metadata.py
 @@ -58,6 +58,32 @@
  # enumeration values used as indexes in internal tables, etc..
  #

@@ -1,6 +1,6 @@
 # Origin: EmberBSD contributors (AI-assisted).
 V8_VERSION= 15.6.75.25
-PKGREVISION= 6
+PKGREVISION= 7
 V8_REVISION= 235050a0df6db2c9d92a419af2b72fbf3b2dd73b
 DISTNAME= v8-${V8_VERSION}
 PKGNAME= v8-source-${V8_VERSION}
