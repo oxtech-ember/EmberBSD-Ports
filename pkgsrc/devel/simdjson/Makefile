@@ -1,5 +1,6 @@
 # $NetBSD$
 DISTNAME= simdjson-5.0.6
+PKGREVISION= 1
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=simdjson/}
 GITHUB_TAG= v${PKGVERSION_NOREV}
@@ -10,6 +11,7 @@ USE_LANGUAGES= c c++
 USE_CXX_FEATURES= c++17
 CMAKE_CONFIGURE_ARGS+= -DBUILD_SHARED_LIBS=ON -DSIMDJSON_DEVELOPER_MODE=OFF -DSIMDJSON_ENABLE_THREADS=ON
 .include "../../mk/bsd.prefs.mk"
+.include "../../mk/emberbsd-native-cxx-runtime.mk"
 .if ${OPSYS} == "Darwin"
 SIMDJSON_LIB= libsimdjson.dylib
 SIMDJSON_SOVERSION= libsimdjson.34.dylib

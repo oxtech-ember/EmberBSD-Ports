@@ -1,5 +1,6 @@
 # $NetBSD$
 DISTNAME= simdutf-9.3.3
+PKGREVISION= 1
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=simdutf/}
 GITHUB_TAG= v${PKGVERSION_NOREV}
@@ -12,6 +13,7 @@ CMAKE_CONFIGURE_ARGS+= -DBUILD_SHARED_LIBS=ON -DSIMDUTF_TESTS=ON -DSIMDUTF_CXX_S
 BUILDLINK_PASSTHRU_RPATHDIRS+= ${WRKDIR}/${DISTNAME}/cmake-pkgsrc-build/src
 TEST_TARGET= test
 .include "../../mk/bsd.prefs.mk"
+.include "../../mk/emberbsd-native-cxx-runtime.mk"
 .if ${OPSYS} == "Darwin"
 SIMDUTF_LIB= libsimdutf.dylib
 SIMDUTF_SOVERSION= libsimdutf.37.dylib
