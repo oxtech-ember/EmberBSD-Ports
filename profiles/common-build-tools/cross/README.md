@@ -438,7 +438,9 @@ declares its Python dependency for the installed browse tool.
 
 ## What the cross adaptation checks
 
-Host dependency recursion drops cached target platform values. Target package
+Host dependency recursion drops cached target platform values and applies
+the native common-tools profile, so host tools build with the host prefix
+compiler instead of pkgsrc GCC or plain `cc`. Target package
 metadata uses cross `readelf` and sysroot libraries, never the macOS loader.
 It rejects missing ELF files, failed inspection tools and unresolved DSOs.
 Scripts and empty files are not ELF providers. Relative, absolute and directory
@@ -478,6 +480,10 @@ target package dependency.
 
 Run `tests/cross-pkgsrc.sh` against a staged pkgconf package. It exercises real
 pkgsrc parsing, native dependency recursion, ELF metadata and failure cases.
+`tests/native-recursion-compiler.sh EXPORTED_PKGSRC CROSS_MAKECONF NEW_WORK`
+recurses from `math/py-numpy` into `devel/py-meson_python` as a native tool
+dependency. It requires the host prefix compiler and no GCC16 dependency, and
+checks that `math/blas` keeps the cross compiler.
 `tests/cross-tools.py` explicitly selects the GCC profile and checks GCC tool
 composition, refusal of existing output,
 missing host tools, target Info utility routing and the pkgsrc runtime
