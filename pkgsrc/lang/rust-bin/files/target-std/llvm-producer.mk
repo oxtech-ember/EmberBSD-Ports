@@ -1,5 +1,5 @@
 # Shared Rust target standard-library producer for the selected LLVM runtime.
-# The including package sets RUST_STD_TARGET to amd64 or aarch64.
+# The including package selects a NetBSD CPU or wasm32-wasip1.
 .for var in EMBERBSD_SDK_SOURCE EMBERBSD_RUST_COMPILER_PREFIX EMBERBSD_RUST_TARGET_SYSROOT EMBERBSD_RUST_MACOS_SDK EMBERBSD_RUST_MACOS_MINIMUM EMBERBSD_RUST_LOCK_ROOT EMBERBSD_RUST_LINK_CONTEXT
 .if empty(${var}:U)
 PKG_FAIL_REASON+= "Set ${var} to the selected SDK input."
@@ -20,6 +20,8 @@ PKG_FAIL_REASON+= "Unsupported Darwin Rust host CPU"
 RUST_TARGET_TRIPLE= x86_64-unknown-netbsd
 .elif ${RUST_STD_TARGET} == "aarch64"
 RUST_TARGET_TRIPLE= aarch64-unknown-netbsd
+.elif ${RUST_STD_TARGET} == "wasm32-wasip1"
+RUST_TARGET_TRIPLE= wasm32-wasip1
 .else
 PKG_FAIL_REASON+= "Unsupported Rust std target"
 .endif

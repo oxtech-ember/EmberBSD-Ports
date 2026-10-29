@@ -1,0 +1,4 @@
+@comment Target files follow the complete official component manifest.
+share/licenses/rust-std-wasm32-wasip1/COPYRIGHT
+share/licenses/rust-std-wasm32-wasip1/LICENSE-APACHE
+share/licenses/rust-std-wasm32-wasip1/LICENSE-MIT

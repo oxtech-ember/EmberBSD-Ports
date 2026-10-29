@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (rustc-1.99.1-src.tar.xz) = 8c2e4c447417246d0047979c332bdbb8ed24b8d1dfea0b55e71526c9ca6a4546
+SHA512 (rustc-1.99.1-src.tar.xz) = 641fb7ebb205cc8fc7a05d79f1353ae4aedf5a1080cd3928da51865b6b7ec721c755992c8bfdcc9fe93893dfac15439093e78580e7a78913a7f1db4e3b6f95e8
+Size (rustc-1.99.1-src.tar.xz) = 265270392 bytes
+SHA1 (patch-stage0-cross-std) = ae32a8c7cab4d5589488bd281ff017bc67776a73
+SHA1 (patch-netbsd-llvm-unwind) = a1279cbc4e88a6823fbb159d69f7c4531feb6eb8
+SHA1 (patch-bootstrap-darwin-loader) = d16df1dfa05138e03f54d151a82ba307be126cde

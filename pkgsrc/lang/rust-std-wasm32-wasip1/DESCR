@@ -1,0 +1,2 @@
+Rust standard library for wasm32-wasip1, built with the selected shared
+LLVM, wasi-libc and compiler-rt. Target execution is a separate check.

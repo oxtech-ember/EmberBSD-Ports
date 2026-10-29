@@ -15,7 +15,7 @@ import sys
 p = argparse.ArgumentParser()
 for name in ('source', 'work', 'host-prefix', 'compiler-prefix', 'sysroot', 'sdk-source', 'macos-sdk', 'lock-root', 'link-context'):
     p.add_argument('--' + name, type=Path, required=True)
-p.add_argument('--target', choices=('amd64', 'aarch64'), required=True)
+p.add_argument('--target', choices=('amd64', 'aarch64', 'wasm32-wasip1'), required=True)
 p.add_argument('--macos-minimum', required=True)
 p.add_argument('--jobs', type=int, required=True)
 p.add_argument('--plan', action='store_true', help='check the bootstrap plan without building target std')
@@ -35,7 +35,7 @@ sys.path.insert(0, str(a.sdk_source/'src'))
 import emberbsd_sdk
 from emberbsd_sdk import application_toolchain, compiler_bindings, host_prefix, process, target_toolchain, targets
 modules = (emberbsd_sdk, application_toolchain, compiler_bindings, host_prefix, process, target_toolchain, targets)
-if emberbsd_sdk.API_VERSION != 1 or application_toolchain.APPLICATION_TOOLCHAIN_API != 2 or compiler_bindings.COMPILER_BINDINGS_API != 2:
+if emberbsd_sdk.API_VERSION != 1 or application_toolchain.APPLICATION_TOOLCHAIN_API != 2 or compiler_bindings.COMPILER_BINDINGS_API not in (2, 3):
     raise ValueError('incompatible selected SDK API')
 if any(not Path(module.__file__).resolve().is_relative_to(a.sdk_source/'src/emberbsd_sdk') for module in modules):
     raise ValueError('SDK module origin differs from the selected source')
@@ -62,11 +62,31 @@ if host not in ('aarch64-apple-darwin','x86_64-apple-darwin'):
 expected_host = {'arm64':'aarch64-apple-darwin', 'aarch64':'aarch64-apple-darwin',
                  'x86_64':'x86_64-apple-darwin', 'amd64':'x86_64-apple-darwin'}.get(native.host['cpu'])
 if host != expected_host: raise ValueError('Rust compiler host differs from selected native CPU')
-triplet = {'amd64':'x86_64-unknown-netbsd','aarch64':'aarch64-unknown-netbsd'}[a.target]
-definition = targets.target_definition(a.target)
-compiler = target_toolchain.clang_compiler(str(a.compiler_prefix), definition['triplet'], host=native.host, env=env)
-runtime = application_toolchain.load_clang_runtime(str(a.sysroot), target=a.target)
-target = application_toolchain.bind_clang_application_commands(a.work/'target-commands', compiler, str(a.sysroot), runtime, python=native.tool('python'))
+triplet = {'amd64':'x86_64-unknown-netbsd','aarch64':'aarch64-unknown-netbsd', 'wasm32-wasip1':'wasm32-wasip1'}[a.target]
+if a.target == 'wasm32-wasip1':
+    if a.compiler_prefix != a.host_prefix: p.error('WASI compiler must be the selected native prefix')
+    wasm_ld = (a.host_prefix / 'bin/wasm-ld').resolve(strict=True)
+    if not wasm_ld.is_relative_to(a.host_prefix) or not wasm_ld.is_file():
+        p.error('selected wasm linker must belong to the native prefix')
+    resource = Path(capture([native.tool('cc'), '-print-resource-dir']).strip()).resolve(strict=True)
+    if not resource.is_relative_to(a.host_prefix) or not (resource / 'lib/wasm32-unknown-wasip1/libclang_rt.builtins.a').is_file():
+        p.error('selected WASI compiler-rt builtins are missing')
+    if a.sysroot != (a.host_prefix / 'wasi').resolve(strict=True):
+        p.error('WASI target requires the selected host prefix wasi-libc sysroot')
+    for item in ('lib/wasm32-wasip1/libc.a', 'lib/wasm32-wasip1/crt1-command.o',
+                 'lib/wasm32-wasip1/crt1-reactor.o', 'include/wasm32-wasip1/stdlib.h'):
+        if not (a.sysroot / item).is_file(): p.error('missing WASI libc input: ' + item)
+    wasm_flags = ['--target=wasm32-wasip1', '--sysroot=' + str(a.sysroot)]
+    target = compiler_bindings.bind_compilers(a.work/'target-commands',
+        commands={role:[native.tool(role), *wasm_flags] for role in ('cc','cxx','cpp')},
+        flags={name:[] for name in ('cppflags','cflags','cxxflags','ldflags')},
+        python=native.tool('python'),
+        link_flags={role:['--ld-path='+str(wasm_ld)] for role in ('cc','cxx')})
+else:
+    definition = targets.target_definition(a.target)
+    compiler = target_toolchain.clang_compiler(str(a.compiler_prefix), definition['triplet'], host=native.host, env=env)
+    runtime = application_toolchain.load_clang_runtime(str(a.sysroot), target=a.target)
+    target = application_toolchain.bind_clang_application_commands(a.work/'target-commands', compiler, str(a.sysroot), runtime, python=native.tool('python'))
 env.update(SDKROOT=str(a.macos_sdk), MACOSX_DEPLOYMENT_TARGET=a.macos_minimum)
 flags = ['-isysroot',str(a.macos_sdk),'-mmacosx-version-min='+a.macos_minimum]
 commands = {role:[native.tool(role),*flags] for role in ('cc','cxx','cpp')}
@@ -82,7 +102,7 @@ def linker_binding(name, compiler_path):
     return compiler_bindings.bind_compilers(directory/hashlib.sha256(identity).hexdigest(),
         commands={role:command for role in ('cc','cxx','cpp')}, flags=common_flags,
         python=native.tool('python'))['cc']
-target_linker = linker_binding('target-linker', target['cc'])
+target_linker = linker_binding('target-linker', str(wasm_ld) if a.target == 'wasm32-wasip1' else target['cc'])
 host_linker = linker_binding('host-linker', host_tools['cc'])
 env.update(CC=host_tools['cc'], CXX=host_tools['cxx'], AR=native.tool('ar'))
 env['CARGO_TARGET_'+host.upper().replace('-', '_')+'_LINKER'] = host_linker
@@ -111,7 +131,7 @@ cc = {q(target['cc'])}
 cxx = {q(target['cxx'])}
 ar = {q(native.tool('ar'))}
 linker = {q(target_linker)}
-llvm-libunwind = "system"
+{("wasi-root = " + q(a.sysroot)) if a.target == "wasm32-wasip1" else 'llvm-libunwind = "system"'}
 [target.{host}]
 cc = {q(host_tools['cc'])}
 cxx = {q(host_tools['cxx'])}
@@ -132,16 +152,21 @@ if a.plan:
     sys.exit(0)
 subprocess.run(command, cwd=a.source, env=env, check=True)
 print('Rust std producer completed for',triplet)
-# Link with the newly built target std; an ELF file is not target execution.
+# Link with the newly built target std; this does not execute the target.
 stage = a.work/'out'/host/'stage0-sysroot'
 component = stage/'lib/rustlib'/triplet/'lib'
-for name in ('libstd-*.rlib','libcore-*.rlib','liballoc-*.rlib','libpanic_unwind-*.rlib','libstd-*.so'):
+expected = ('libstd-*.rlib','libcore-*.rlib','liballoc-*.rlib','libpanic_abort-*.rlib') if a.target == 'wasm32-wasip1' else ('libstd-*.rlib','libcore-*.rlib','liballoc-*.rlib','libpanic_unwind-*.rlib','libstd-*.so')
+for name in expected:
     if len(list(component.glob(name))) != 1: raise RuntimeError('missing or duplicate Rust component: '+name)
 probe = a.work/'std-consumer.rs'
 probe.write_text('fn main() { println!("{}", std::env::args().count()); }\n')
 consumer = a.work/'std-consumer'
 subprocess.run([native.tool('rustc'),'--target',triplet,'--sysroot',str(stage),'-C','linker='+target_linker,
                 '-C','default-linker-libraries',str(probe),'-o',str(consumer)],env=env,check=True)
+if a.target == 'wasm32-wasip1':
+    if consumer.read_bytes()[:4] != b'\0asm': raise RuntimeError('Rust output is not WebAssembly')
+    print('Rust WASI preview1 std and consumer link passed; target execution not tested')
+    sys.exit(0)
 readelf = native.tool('readelf')
 for path in (consumer, next(component.glob('libstd-*.so'))):
     header = capture([readelf,'-h',path])

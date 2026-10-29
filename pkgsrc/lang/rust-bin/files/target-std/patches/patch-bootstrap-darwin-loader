@@ -4,8 +4,8 @@ Keep absolute host system library install names authoritative while allowing
 bootstrap to locate its own Rust dynamic libraries on Darwin.
 Origin: EmberBSD (AI-assisted).
 
---- src/shim_utils/src/shared_helpers.rs.orig
-+++ src/shim_utils/src/shared_helpers.rs
+--- a/src/shim_utils/src/shared_helpers.rs
++++ b/src/shim_utils/src/shared_helpers.rs
 @@ -12,7 +12,7 @@ pub fn dylib_path_var() -> &'static str {
      if cfg!(any(target_os = "windows", target_os = "cygwin")) {
          "PATH"
