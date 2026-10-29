@@ -3,7 +3,7 @@
 # Origin: EmberBSD (AI-assisted). Reuse canonical PNG and JPEG provider recipes.
 set -eu
 umask 022
-[ "$#" = 7 ] || { echo 'Usage: build.sh native|cross GCC_PREFIX SYSROOT|- PREFIX ARCHIVES JPEG_RECIPE NEW_WORK' >&2; exit 2; }
+[ "$#" = 7 ] || { echo 'Usage: build.sh native|cross CLANG_TOOLS SYSROOT|- PREFIX ARCHIVES JPEG_RECIPE NEW_WORK' >&2; exit 2; }
 mode=$1 compiler=$2 sysroot=$3 prefix=$4 archives=$5 jpeg_recipe=$6 out=$7
 case "$mode" in native|cross) ;; *) exit 2;; esac
 for path in "$compiler" "$prefix" "$archives" "$jpeg_recipe" "$out"; do
@@ -23,27 +23,26 @@ done < "$recipe/sources.tsv"
 grep -F 'DISTNAME=' "$png_recipe/Makefile" | grep -F 'libpng-1.6.59' >/dev/null
 grep -F 'DISTNAME=' "$jpeg_recipe/Makefile" | grep -F 'libjpeg-turbo-3.2.0' >/dev/null
 grep -E '^PKGREVISION=[[:space:]]*2$' "$jpeg_recipe/Makefile" >/dev/null
-unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
+unset COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
 if [ "$mode" = cross ]; then
     case "$sysroot" in /*) ;; *) exit 2;; esac
     [ "$prefix" = /usr/pkg ] || exit 2
-    cc=$compiler/bin/aarch64--netbsd-gcc
-    cxx=$compiler/bin/aarch64--netbsd-g++
-    [ "$("$cc" -dumpmachine)" = aarch64--netbsd ]
-    crt=$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0
-    flags="--sysroot=$sysroot -B$crt/ -march=armv8-a -O2"
-    linkflags='-Wl,-rpath,/usr/pkg/gcc16/lib'
+    cc=$compiler/bin/aarch64--netbsd-clang
+    cxx=$compiler/bin/aarch64--netbsd-clang++
+    case "$("$cc" -dumpmachine)" in aarch64-unknown-netbsd*|aarch64--netbsd*) ;; *) exit 2;; esac
+    flags="--sysroot=$sysroot -march=armv8-a -O2"
+    linkflags='-Wl,-rpath,/usr/pkg/lib'
     host_args='--host=aarch64--netbsd'
     png_extra=-DPNG_NO_ASSEMBLER_CODE
 else
     [ "$sysroot" = - ] || exit 2
-    cc=$compiler/bin/gcc cxx=$compiler/bin/g++
+    cc=$compiler/bin/clang cxx=$compiler/bin/clang++
     flags=-O2
     linkflags="-Wl,-rpath,$prefix/lib"
     host_args= png_extra=
 fi
-[ "$("$cc" -dumpfullversion)" = 16.2.0 ]
-[ "$("$cxx" -dumpfullversion)" = 16.2.0 ]
+[ "$("$cc" -dumpversion)" = 23.1.4 ]
+[ "$("$cxx" -dumpversion)" = 23.1.4 ]
 mkdir -p "$out/png/source" "$out/png/build" "$out/png/stage" "$out/jpeg/source" "$out/jpeg/stage" "$out/logs"
 df -B1 "$out" > "$out/logs/disk-start.txt"
 sha256sum "$recipe/build.sh" "$recipe/sources.tsv" "$png_recipe/Makefile" "$png_recipe/distinfo" "$jpeg_recipe/Makefile" "$jpeg_recipe/distinfo" > "$out/logs/inputs.sha256"
@@ -102,7 +101,7 @@ cmake -S "$out/jpeg/source" -B "$out/jpeg/build" -G Ninja $toolchain \
     -DCMAKE_INSTALL_PREFIX="$prefix" -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_MANDIR=man \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DWITH_JPEG8=ON -DWITH_SYSTEM_ZLIB=ON \
     -DWITH_SIMD="$simd" -DWITH_TESTS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-    -DCMAKE_INSTALL_RPATH="$prefix/lib;/usr/pkg/gcc16/lib" -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
+    -DCMAKE_INSTALL_RPATH="$prefix/lib" -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
     > "$out/logs/jpeg-configure.log" 2>&1
 cmake --build "$out/jpeg/build" --parallel "$jobs" > "$out/logs/jpeg-build.log" 2>&1
 DESTDIR="$out/jpeg/stage" cmake --install "$out/jpeg/build" > "$out/logs/jpeg-install.log" 2>&1

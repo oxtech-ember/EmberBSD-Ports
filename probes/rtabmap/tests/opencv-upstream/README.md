@@ -34,7 +34,8 @@ OPENCV_UPSTREAM_MEMCHECK=1 LD_LIBRARY_PATH=/absolute/opencv-install/lib \
   /absolute/new-tests/opencv-core-upstream /absolute/new-memcheck-results
 ```
 
-For a cross build, add the provider's GCC16 CMake toolchain file.
+For a cross build, add a Clang CMake toolchain file like the one
+`../../cross-build.sh` writes (Ports `aarch64--netbsd-clang` wrappers).
 Use target prefixes and set the executable install RPATH to the target paths.
 Execute that binary on EmberBSD with the same runner and selection file.
 Keep the upstream license notices beside a redistributed executable.

@@ -1,10 +1,10 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Origin: EmberBSD (AI-assisted). Shared GCC16 headless mapping core.
+# Origin: EmberBSD (AI-assisted). Shared Clang headless mapping core.
 set -eu
 umask 022
-[ "$#" = 5 ] || { echo 'Usage: cross-build.sh GCC_PREFIX SYSROOT ARCHIVE NATIVE_RES_TOOL NEW_OUTPUT' >&2; exit 2; }
-compiler=$1 sysroot=$2 archive=$3 resource=$4 out=$5
+[ "$#" = 5 ] || { echo 'Usage: cross-build.sh CROSS_TOOLS SYSROOT ARCHIVE NATIVE_RES_TOOL NEW_OUTPUT' >&2; exit 2; }
+tools=$1 sysroot=$2 archive=$3 resource=$4 out=$5
 for path do
     case "$path" in /*) ;; *) exit 2;; esac
     case "$path" in *[!A-Za-z0-9_./-]*) exit 2;; esac
@@ -15,18 +15,16 @@ case "$jobs" in ''|0|*[!0-9]*) exit 2;; esac
 [ "$jobs" -gt 0 ] 2>/dev/null || exit 2
 ports=$(CDPATH= cd "$(dirname "$0")/../.." && pwd -P)
 recipe=$ports/pkgsrc/local-robotics/rtabmap
-[ "$("$compiler/bin/aarch64--netbsd-g++" -dumpfullversion)" = 16.2.0 ]
-[ "$("$compiler/bin/aarch64--netbsd-g++" -dumpmachine)" = aarch64--netbsd ]
+[ "$("$tools/bin/aarch64--netbsd-clang++" -dumpversion)" = 23.1.4 ]
+case "$("$tools/bin/aarch64--netbsd-clang++" -dumpmachine)" in aarch64-unknown-netbsd*|aarch64--netbsd*) ;; *) exit 2;; esac
 [ -x "$resource" ] || { echo 'Build the genuine native resource tool first.' >&2; exit 2; }
 printf '%s  %s\n' 587d8936b8d8669b196d500df80e373417e0c4c033309a2e4a0b84a627117284 "$archive" | sha256sum -c -
-crt=$sysroot/usr/pkg/gcc16/lib/gcc/aarch64--netbsd/16.2.0
-runtime=$sysroot/usr/pkg/gcc16/lib
-headers=$sysroot/usr/pkg/gcc16/include/c++
+[ -f "$sysroot/usr/pkg/llvm/lib/libc++.so.1" ] || { echo 'Missing target libc++ runtime.' >&2; exit 2; }
 for config in lib/cmake/opencv5/OpenCVConfig.cmake share/pcl-1.15/PCLConfig.cmake lib/cmake/GTSAM/GTSAMConfig.cmake; do
     [ -f "$sysroot/usr/pkg/$config" ] || { echo "Missing dependency: $config" >&2; exit 2; }
 done
 [ -f "$sysroot/usr/pkg/lib/libsqlite3.so" ]
-unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
+unset COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
 PKG_CONFIG_SYSROOT_DIR=$sysroot PKG_CONFIG_LIBDIR=$sysroot/usr/pkg/lib/pkgconfig:$sysroot/usr/lib/pkgconfig PKG_CONFIG_PATH=
 export PKG_CONFIG_SYSROOT_DIR PKG_CONFIG_LIBDIR PKG_CONFIG_PATH
 mkdir -p "$out/source" "$out/logs"
@@ -43,10 +41,10 @@ cat > "$out/toolchain.cmake" <<CMAKE
 set(CMAKE_SYSTEM_NAME NetBSD)
 set(CMAKE_SYSTEM_PROCESSOR aarch64)
 set(CMAKE_SYSROOT $sysroot)
-set(CMAKE_C_COMPILER $compiler/bin/aarch64--netbsd-gcc)
-set(CMAKE_CXX_COMPILER $compiler/bin/aarch64--netbsd-g++)
-set(CMAKE_C_FLAGS_INIT "-B$crt/ -L$runtime -march=armv8-a -Wl,-rpath,/usr/pkg/gcc16/lib")
-set(CMAKE_CXX_FLAGS_INIT "-B$crt/ -L$runtime -march=armv8-a -Wl,-rpath,/usr/pkg/gcc16/lib -isystem $headers -isystem $headers/aarch64--netbsd -isystem $headers/backward")
+set(CMAKE_C_COMPILER $tools/bin/aarch64--netbsd-clang)
+set(CMAKE_CXX_COMPILER $tools/bin/aarch64--netbsd-clang++)
+set(CMAKE_C_FLAGS_INIT "-march=armv8-a")
+set(CMAKE_CXX_FLAGS_INIT "-march=armv8-a")
 if(NOT CMAKE_FIND_ROOT_PATH)
   set(CMAKE_FIND_ROOT_PATH $sysroot)
 endif()
@@ -64,13 +62,13 @@ cmake -S "$out/source" -B "$out/build" -G Ninja -C "$recipe/features.cmake" \
     -DGTSAM_DIR="$sysroot/usr/pkg/lib/cmake/GTSAM" \
     -DSQLite3_INCLUDE_DIR="$sysroot/usr/pkg/include" -DSQLite3_LIBRARY="$sysroot/usr/pkg/lib/libsqlite3.so" \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
-    '-DCMAKE_INSTALL_RPATH=/usr/pkg/lib;/usr/pkg/gcc16/lib' > "$out/logs/configure.log" 2>&1
+    '-DCMAKE_INSTALL_RPATH=/usr/pkg/lib;/usr/pkg/llvm/lib' > "$out/logs/configure.log" 2>&1
 cmake --build "$out/build" --parallel "$jobs" > "$out/logs/build.log" 2>&1
 DESTDIR="$out/stage" cmake --install "$out/build" > "$out/logs/install.log" 2>&1
 sh "$recipe/files/install-licenses.sh" "$out/source" "$out/stage/usr/pkg" "$recipe"
-find "$out/stage/usr/pkg/lib" -type f -name '*.so*' -exec "$compiler/bin/aarch64--netbsd-readelf" -h -d {} + > "$out/elf.txt"
+find "$out/stage/usr/pkg/lib" -type f -name '*.so*' -exec "$tools/bin/aarch64--netbsd-readelf" -h -d {} + > "$out/elf.txt"
 [ "$(grep -c 'Machine:.*AArch64' "$out/elf.txt")" = 2 ]
-for path in "$compiler" "$sysroot" "$out"; do
+for path in "$tools" "$sysroot" "$out"; do
     if grep -E 'RPATH|RUNPATH|NEEDED' "$out/elf.txt" | grep -F "$path"; then exit 1; fi
     if grep -R -F "$path" "$out/stage/usr/pkg/lib/rtabmap-0.23"; then
         echo 'Build-host path leaked into installed CMake exports.' >&2; exit 1

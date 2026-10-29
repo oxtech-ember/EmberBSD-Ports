@@ -3,16 +3,16 @@
 # Origin: EmberBSD (AI-assisted). Native consumer of the common package set.
 set -eu
 umask 022
-[ "$#" -ge 2 ] && [ "$#" -le 3 ] || {
-    echo 'Usage: build.sh COMMON_PREFIX ABS_NEW_WORK [ABS_ARCHIVE_CACHE]' >&2; exit 2;
+[ "$#" = 3 ] || {
+    echo 'Usage: build.sh COMMON_PREFIX ABS_NEW_WORK ABS_PORTS_DISTDIR' >&2; exit 2;
 }
-common=$1 work=$2 cache=${3:-}
+common=$1 work=$2 cache=$3
 for path in "$@"; do
     case "$path" in /*) ;; *) echo 'Use absolute paths.' >&2; exit 2;; esac
     case "$path" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2;; esac
 done
 [ ! -e "$work" ] && [ ! -L "$work" ] || { echo 'Work path already exists.' >&2; exit 2; }
-[ -z "$cache" ] || [ -d "$cache" ] || { echo 'Archive cache is not a directory.' >&2; exit 2; }
+[ -d "$cache" ] || { echo 'Fetch the archives with Ports fetch and pass its DISTDIR.' >&2; exit 2; }
 jobs=${JOBS:-1}
 case "$jobs" in ''|*[!0-9]*) jobs=0;; esac
 [ "$jobs" -gt 0 ] 2>/dev/null || { echo 'JOBS must be positive.' >&2; exit 2; }
@@ -33,11 +33,8 @@ hash() {
 }
 while read -r name expected url; do
     [ -n "$name" ] || continue
-    if [ -n "$cache" ]; then
-        cp "$cache/$name" "$work/archives/$name"
-    else
-        curl -fLsS --connect-timeout 20 --max-time 900 "$url" -o "$work/archives/$name"
-    fi
+    [ -f "$cache/$name" ] || { echo "Missing $name; fetch it with Ports fetch." >&2; exit 2; }
+    cp "$cache/$name" "$work/archives/$name"
     [ "$(hash "$work/archives/$name")" = "$expected" ] || {
         echo "Checksum mismatch: $name; nothing extracted." >&2; exit 2;
     }
@@ -46,12 +43,12 @@ done < "$probe/sources.tsv"
 [ "$(uname -s):$(uname -p)" = NetBSD:aarch64 ] || { echo 'Native AArch64 EmberBSD required.' >&2; exit 2; }
 [ -d "$common" ] || { echo 'Common dependency prefix is missing.' >&2; exit 2; }
 common=$(CDPATH= cd "$common" && pwd -P)
-CC=${CC:-$common/gcc16/bin/gcc}
-CXX=${CXX:-$common/gcc16/bin/g++}
+CC=${CC:-$common/bin/clang}
+CXX=${CXX:-$common/bin/clang++}
 for compiler in "$CC" "$CXX"; do
     case "$compiler" in /*) ;; *) echo 'Use absolute compiler paths.' >&2; exit 2;; esac
-    [ -x "$compiler" ] && [ "$("$compiler" -dumpfullversion)" = 16.2.0 ] || {
-        echo 'The common GCC 16.2.0 compiler is required.' >&2; exit 2;
+    [ -x "$compiler" ] && [ "$("$compiler" -dumpversion)" = 23.1.4 ] || {
+        echo 'The common Clang 23.1.4 compiler is required.' >&2; exit 2;
     }
     case "$("$compiler" -dumpmachine)" in aarch64*netbsd*) ;;
         *) echo 'Native AArch64 EmberBSD compiler required.' >&2; exit 2;; esac
@@ -69,7 +66,7 @@ if [ -n "$build_as" ]; then
     ulimit -S -v "$build_as"
     [ "$(ulimit -S -v)" = "$build_as" ] || exit 2
 fi
-unset GCC_EXEC_PREFIX COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
+unset COMPILER_PATH LIBRARY_PATH CPATH CPLUS_INCLUDE_PATH C_INCLUDE_PATH
 unset PKG_CONFIG_SYSROOT_DIR
 PKG_CONFIG_PATH=
 PKG_CONFIG_LIBDIR=$common/lib/pkgconfig:$common/share/pkgconfig
@@ -111,8 +108,8 @@ run rtabmap-configure cmake -S "$work/source" -B "$work/rtabmap-build" -G Ninja 
     -DGTSAM_DIR="$common/lib/cmake/GTSAM" \
     -DSQLite3_INCLUDE_DIR="$common/include" -DSQLite3_LIBRARY="$common/lib/libsqlite3.so" \
     -DCMAKE_BUILD_WITH_INSTALL_RPATH=OFF \
-    -DCMAKE_BUILD_RPATH="$common/lib;$common/gcc16/lib" \
-    -DCMAKE_INSTALL_RPATH="$prefix/lib;$common/lib;$common/gcc16/lib" \
+    -DCMAKE_BUILD_RPATH="$common/lib;$common/llvm/lib" \
+    -DCMAKE_INSTALL_RPATH="$prefix/lib;$common/lib;$common/llvm/lib" \
     -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF
 run rtabmap-build cmake --build "$work/rtabmap-build" --parallel "$jobs"
 run rtabmap-install cmake --install "$work/rtabmap-build"

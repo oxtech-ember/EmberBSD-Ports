@@ -5,6 +5,16 @@ AArch64 base at `267ee85eee1027198175809a8b7b0572df36ad1e`, and the
 existing `aarch64--netbsd` ABI. Native controls use Linux x86-64 with GCC16;
 those controls are separate from actual EmberBSD execution.
 
+## Toolchain status
+
+Every result below was measured with GCC 16.2.0 and its `libstdc++.so.7`
+runtime on 2026-10-15. The probe scripts now use the Ports Clang 23.1.4
+toolchain with libc++ (`/usr/pkg/llvm/lib/libc++.so.1`), compiler-rt and
+libunwind, and no longer use GCC. Clang validation of the cross build, the
+native controls, the installed consumer test and the target acceptance run is
+pending; until it is recorded here, the GCC results are historical and do not
+establish the Clang build.
+
 ## Shared package boundary
 
 RTAB-Map 0.23.8 installs two DSOs and 195 package paths. OpenCV 5.0.0

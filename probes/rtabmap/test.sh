@@ -33,7 +33,7 @@ CXX=$(cat "$work/logs/cxx.txt")
 common=$(cat "$work/logs/common-prefix.txt")
 [ -d "$common" ] || exit 2
 for compiler in "$CC" "$CXX"; do
-    [ -x "$compiler" ] && [ "$("$compiler" -dumpfullversion)" = 16.2.0 ] || exit 2
+    [ -x "$compiler" ] && [ "$("$compiler" -dumpversion)" = 23.1.4 ] || exit 2
 done
 printf '%s\n' "$opencv_source" > "$work/logs/opencv-source.txt"
 run() {
@@ -50,17 +50,17 @@ run consumer-configure cmake -S "$probe/tests" -B "$work/test-build" -G Ninja \
     -DGTSAM_PREFIX="$common" -DSQLITE_PREFIX="$common" -DLZ4_PREFIX="$common" \
     -Dlz4_DIR="$common/lib/cmake/lz4" -DOPENCV_SOURCE="$opencv_source" \
     -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
-    -DCMAKE_INSTALL_RPATH="$prefix/lib;$common/lib;$common/gcc16/lib" \
+    -DCMAKE_INSTALL_RPATH="$prefix/lib;$common/lib;$common/llvm/lib" \
     -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF
 run consumer-build cmake --build "$work/test-build" --parallel 1
 run consumer-test ctest --test-dir "$work/test-build" --no-tests=error --output-on-failure --verbose
 cat "$work/logs/consumer-test.log"
 ldd "$work/test-build/rtabmap-contract" > "$work/logs/installed-linkage.txt"
 grep -F "$prefix/lib/librtabmap_core.so" "$work/logs/installed-linkage.txt" >/dev/null
-if grep -E 'not found|libc[+][+]' "$work/logs/installed-linkage.txt" >/dev/null; then exit 1; fi
-expected=$("$CXX" -print-file-name=libstdc++.so)
+if grep -E 'not found|libstdc[+][+]|libgcc_s' "$work/logs/installed-linkage.txt" >/dev/null; then exit 1; fi
+expected=$common/llvm/lib/libc++.so.1
 [ -f "$expected" ] || exit 1
-loaded=$(awk '/libstdc[+][+]/ {print $3}' "$work/logs/installed-linkage.txt")
+loaded=$(awk '/libc[+][+][.]so/ {print $3}' "$work/logs/installed-linkage.txt")
 [ -n "$loaded" ] && [ "$(printf '%s\n' "$loaded" | wc -l | tr -d ' ')" = 1 ] || exit 1
 [ "$(realpath "$loaded")" = "$(realpath "$expected")" ] || exit 1
-echo 'PASS installed mapping/dependency contracts and coherent GCC16 runtime'
+echo 'PASS installed mapping/dependency contracts and coherent Clang libc++ runtime'

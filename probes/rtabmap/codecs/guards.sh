@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Origin: EmberBSD (AI-assisted). Reject invalid inputs before extraction.
 set -eu
-[ "$#" = 4 ] || { echo 'Usage: guards.sh GCC_PREFIX SYSROOT JPEG_RECIPE NEW_RESULTS' >&2; exit 2; }
+[ "$#" = 4 ] || { echo 'Usage: guards.sh CLANG_TOOLS SYSROOT JPEG_RECIPE NEW_RESULTS' >&2; exit 2; }
 compiler=$1 sysroot=$2 jpeg_recipe=$3 out=$4
 [ ! -e "$out" ] && [ ! -L "$out" ] || exit 2
 recipe=$(CDPATH= cd "$(dirname "$0")" && pwd -P)

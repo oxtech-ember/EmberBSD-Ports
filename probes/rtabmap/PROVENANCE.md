@@ -96,7 +96,8 @@ material. They do not override the canonical package patches.
   destroys an already unlocked POSIX mutex without unlocking it a second time.
 - [Thread state](../../pkgsrc/local-robotics/rtabmap/patches/patch-uthread-atomic)
   publishes lifecycle state atomically and takes one snapshot in `isRunning()`.
-  Size, alignment and lock-free assertions cover the selected GCC16 layouts.
+  Size, alignment and lock-free assertions cover the selected toolchain's layouts
+  (measured with GCC16 on 2026-10-15; Clang/libc++ validation is pending).
 - [Natural completion and self-join](../../pkgsrc/local-robotics/rtabmap/patches/patch-uthread-self-join)
   uses thread-local worker identity before acquiring the join lock. It avoids
   reading an OS handle that natural completion can reset concurrently.

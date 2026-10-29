@@ -11,8 +11,10 @@ It keeps PNG's chunk-cache and allocation limits, default APNG selection,
 and architecture flags. It keeps JPEG8 ABI compatibility, position-independent
 code, system zlib, and the recipe's five patches.
 
-The helper requires GCC 16.2.0, Ruby, GNU make, CMake, Ninja, patch, tar,
-and SHA256/SHA1 utilities. Use an absolute new work directory. Set
+The helper requires Clang 23.1.4, Ruby, GNU make, CMake, Ninja, patch, tar,
+and SHA256/SHA1 utilities. For cross builds pass the Ports cross-tools
+directory that holds `bin/aarch64--netbsd-clang`; for native builds pass the
+prefix that holds `bin/clang`. Use an absolute new work directory. Set
 `CODECS_JOBS=1` or `2` to control concurrent compiler jobs.
 
 Fetch the two archives from [sources.tsv](sources.tsv). Set `jpeg_recipe`
@@ -20,7 +22,7 @@ to `graphics/libjpeg-turbo` inside the pinned pkgsrc export. The helper reads
 the canonical PNG recipe from its owning Ports checkout.
 
 ```sh
-sh probes/rtabmap/codecs/build.sh cross "$gcc_prefix" "$sysroot" /usr/pkg \
+sh probes/rtabmap/codecs/build.sh cross "$cross_tools" "$sysroot" /usr/pkg \
   "$archives" "$jpeg_recipe" "$new_cross_work"
 ```
 
@@ -40,7 +42,7 @@ Use the normal package tools for target installation and lifecycle checks.
 Build the portable native controls separately:
 
 ```sh
-sh probes/rtabmap/codecs/build.sh native "$native_gcc_prefix" - "$native_prefix" \
+sh probes/rtabmap/codecs/build.sh native "$native_clang_prefix" - "$native_prefix" \
   "$archives" "$jpeg_recipe" "$new_native_work"
 ```
 

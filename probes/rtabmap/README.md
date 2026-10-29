@@ -1,6 +1,6 @@
 # RTAB-Map recorded-data mapping
 
-The shared, headless **RTAB-Map 0.23.8** profile uses GCC 16.2.0 and the common
+The shared, headless **RTAB-Map 0.23.8** profile uses Clang 23.1.4 with libc++ and the common
 Eigen 5.0.1, Boost 1.92.0, OpenCV 5.0.0, PCL 1.15.1nb1, GTSAM 4.3.0,
 SQLite 3.54.1, PNG 1.6.59 and libjpeg-turbo 3.2.0nb2 providers.
 The [canonical package](../../pkgsrc/local-robotics/rtabmap) installs the core
@@ -18,7 +18,7 @@ The original recording is CC-BY-4.0 and is downloaded separately.
 
 ## Cross build
 
-Use the fork's coherent AArch64 base sysroot and GCC16 C/C++ runtime. Install
+Use the fork's coherent AArch64 base sysroot and the LLVM libc++ runtime. Install
 the exact dependency payloads into a writable copy of the common sysroot.
 The [OpenCV package](../../pkgsrc/graphics/opencv) provides the shared
 libraries, including the `flann` and `objdetect` closure.
@@ -32,10 +32,13 @@ executable cannot perform that step on the Linux host, so install the native
 `bin/rtabmap-res_tool`.
 
 ```sh
-CROSS_JOBS=2 sh probes/rtabmap/cross-build.sh /absolute/gcc-prefix /absolute/sysroot \
+CROSS_JOBS=2 sh probes/rtabmap/cross-build.sh /absolute/cross-tools /absolute/sysroot \
   /absolute/rtabmap-0.23.8.tar.gz /absolute/native-prefix/bin/rtabmap-res_tool \
   /absolute/new-cross-work
 ```
+
+`/absolute/cross-tools` is the Ports cross-tools directory whose `bin` holds
+`aarch64--netbsd-clang`, `aarch64--netbsd-clang++` and `aarch64--netbsd-readelf`.
 
 The cross builder verifies the archive, applies every canonical patch without
 fuzz, records the actual compilation database, and checks the two AArch64 DSOs
@@ -49,14 +52,17 @@ no build-host setting. `tests/res-tool-package.sh` checks that wiring.
 ## Native control and target acceptance
 
 ```sh
-JOBS=1 sh probes/rtabmap/build.sh /absolute/common-prefix /absolute/new-native-work /absolute/archive-cache
+JOBS=1 sh probes/rtabmap/build.sh /absolute/common-prefix /absolute/new-native-work /absolute/ports-distdir
 sh probes/rtabmap/test.sh /absolute/new-native-work /absolute/patched-opencv-source
 sh probes/rtabmap/run-target.sh /absolute/packages /absolute/target-tests /absolute/new-results
 ```
 
 The first two commands require native EmberBSD/NetBSD and the exact installed
-dependencies. The target runner requires EmberBSD AArch64 and a disposable
-package database. It installs fourteen real packages, checks loaded libraries,
+dependencies. They use `COMMON_PREFIX/bin/clang` and `clang++` 23.1.4 (or `CC`
+and `CXX`) with libc++; the archives come from the Ports DISTDIR after
+`make fetch` in `local-robotics/rtabmap`. The target runner requires EmberBSD AArch64 and a disposable
+package database. It installs sixteen real packages, including the LLVM
+libunwind, libc++abi and libc++ runtimes, checks loaded libraries,
 runs the analytic and recorded mapping scenarios, protects dependencies from
 premature deletion, removes all packages, reinstalls them and repeats mapping.
 It also runs the selected PCL, OpenCV, PNG/JPEG and SQLite checks and the local
