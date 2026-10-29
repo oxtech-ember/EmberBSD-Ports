@@ -38,6 +38,13 @@ BUILDLINK_API_DEPENDS.llvm+=	llvm-${LLVM_VERSION}{,nb*}
 # This consumer uses LLVM llvm_setup_rpath for installed targets.
 LLVM_USES_SETUP_RPATH= yes
 .include "../../lang/llvm/buildlink3.mk"
+# LLVM exports these libraries in LLD's link interface, so LLD loads them directly.
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
+DEPENDS+= zstd>=1.3.6:../../archivers/zstd
+.if ${USE_BUILTIN.zlib:Uno:tl} != "yes"
+DEPENDS+= zlib>=1.3.2nb1:../../devel/zlib
+.endif
+.endif
 .include "../../devel/py-llvm-lit/buildlink3.mk"
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.llvm}/lib/cmake/llvm
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_CMAKE_DIR=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.llvm}/lib/cmake/llvm

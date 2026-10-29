@@ -29,6 +29,10 @@ for package, revision in (('lang/clang', 'clang-23.1.4nb12'),
     assert variables(a.pkgsrc, package, a.stage_makeconf, 'PKGNAME') == [revision]
     assert variables(a.pkgsrc, package, a.native_makeconf, 'PKGNAME', extra=('EMBERBSD_NATIVE_CXX_ABI_NAMESPACE=',)) == variables(a.baseline_pkgsrc, package, a.native_makeconf, 'PKGNAME', extra=('EMBERBSD_NATIVE_CXX_ABI_NAMESPACE=',))
     assert variables(a.pkgsrc, package, a.cross_makeconf, 'PKGNAME', cross=True) == variables(a.baseline_pkgsrc, package, a.cross_makeconf, 'PKGNAME', cross=True)
+lld_deps = variables(a.pkgsrc, 'devel/lld', a.stage_makeconf, 'DEPENDS')[0]
+assert 'zstd>=1.3.6:' in lld_deps and 'zlib>=1.3.2nb1:' in lld_deps, lld_deps
+builtin_deps = variables(a.pkgsrc, 'devel/lld', a.stage_makeconf, 'DEPENDS', extra=('USE_BUILTIN.zlib=yes',))[0]
+assert 'zlib>=1.3.2nb1:' not in builtin_deps, builtin_deps
 assert 'lld>=23.1.4nb7:' in variables(a.pkgsrc, 'lang/clang', a.stage_makeconf, 'DEPENDS')[0]
 assert 'clang>=23.1.4nb12:' in variables(a.pkgsrc, 'devel/lldb', a.stage_makeconf, 'DEPENDS')[0]
 bindings_deps = variables(a.pkgsrc, 'lang/clang-python-bindings', a.stage_makeconf, 'DEPENDS')[0]
@@ -46,12 +50,20 @@ expected = '-DCMAKE_INSTALL_RPATH:STRING=@loader_path/../lib;'+str(a.prefix/'lib
 for package in ('lang/clang', 'devel/lld', 'devel/lldb'):
     values = query(a.pkgsrc, package, a.stage_makeconf)
     assert values == [expected], (package, values)
+    args, passthru = variables(a.pkgsrc, package, a.stage_makeconf, 'CMAKE_CONFIGURE_ARGS', 'BUILDLINK_PASSTHRU_RPATHDIRS')
+    assert '-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON' in shlex.split(args), args
+    assert '@loader_path/../lib' in passthru.split(), passthru
     with tempfile.TemporaryDirectory() as temporary:
         conf = Path(temporary) / 'mk.conf'
         conf.write_text('.include "'+str(a.stage_makeconf)+'"\n'
                         'CMAKE_CONFIGURE_ARGS+= -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=FALSE\n')
         values = query(a.pkgsrc, package, conf)
         assert values == [expected], (package, values)
+        conf.write_text('.include \"'+str(a.stage_makeconf)+'\"\n'
+                        'CMAKE_CONFIGURE_ARGS+= -DCMAKE_INSTALL_RPATH=/custom -DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=OFF\n')
+        args = variables(a.pkgsrc, package, conf, 'CMAKE_CONFIGURE_ARGS')[0]
+        assert '-DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=OFF' in shlex.split(args), args
+        assert '-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON' not in shlex.split(args), args
     for override in ('-DCMAKE_INSTALL_RPATH:STRING=/chosen/one;/chosen/two',
                      '-DCMAKE_INSTALL_RPATH=/chosen/one;/chosen/two'):
         values = query(a.pkgsrc, package, a.stage_makeconf, 'CMAKE_CONFIGURE_ARGS='+override)
