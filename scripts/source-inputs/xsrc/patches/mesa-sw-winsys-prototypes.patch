@@ -1,0 +1,116 @@
+--- external/mit/MesaLib/dist/src/gallium/include/frontend/sw_driver.h
++++ external/mit/MesaLib/dist/src/gallium/include/frontend/sw_driver.h
+@@ -6,13 +6,17 @@
+ 
+ struct pipe_screen;
+ struct sw_winsys;
++struct drisw_loader_funcs;
+ 
+ struct sw_driver_descriptor
+ {
+    struct pipe_screen *(*create_screen)(struct sw_winsys *ws, bool sw_vk);
+    struct {
+        const char * const name;
+-       struct sw_winsys *(*create_winsys)();
++       struct sw_winsys *(*create_winsys_dri)(const struct drisw_loader_funcs *lf);
++       struct sw_winsys *(*create_winsys_kms_dri)(int fd);
++       struct sw_winsys *(*create_winsys_null)(void);
++       struct sw_winsys *(*create_winsys_wrapped)(struct pipe_screen *screen);
+    } winsys[];
+ };
+ 
+--- external/mit/MesaLib/dist/src/gallium/auxiliary/pipe-loader/pipe_loader_sw.c
++++ external/mit/MesaLib/dist/src/gallium/auxiliary/pipe-loader/pipe_loader_sw.c
+@@ -66,23 +66,23 @@
+ #ifdef HAVE_PIPE_LOADER_DRI
+       {
+          .name = "dri",
+-         .create_winsys = dri_create_sw_winsys,
++         .create_winsys_dri = dri_create_sw_winsys,
+       },
+ #endif
+ #ifdef HAVE_PIPE_LOADER_KMS
+       {
+          .name = "kms_dri",
+-         .create_winsys = kms_dri_create_winsys,
++         .create_winsys_kms_dri = kms_dri_create_winsys,
+       },
+ #endif
+ #ifndef __ANDROID__
+       {
+          .name = "null",
+-         .create_winsys = null_sw_create,
++         .create_winsys_null = null_sw_create,
+       },
+       {
+          .name = "wrapped",
+-         .create_winsys = wrapper_sw_winsys_wrap_pipe_screen,
++         .create_winsys_wrapped = wrapper_sw_winsys_wrap_pipe_screen,
+       },
+ #endif
+       { 0 },
+@@ -148,7 +148,7 @@
+ 
+    for (i = 0; sdev->dd->winsys[i].name; i++) {
+       if (strcmp(sdev->dd->winsys[i].name, "dri") == 0) {
+-         sdev->ws = sdev->dd->winsys[i].create_winsys(drisw_lf);
++         sdev->ws = sdev->dd->winsys[i].create_winsys_dri(drisw_lf);
+          break;
+       }
+    }
+@@ -183,7 +183,7 @@
+ 
+    for (i = 0; sdev->dd->winsys[i].name; i++) {
+       if (strcmp(sdev->dd->winsys[i].name, "kms_dri") == 0) {
+-         sdev->ws = sdev->dd->winsys[i].create_winsys(sdev->fd);
++         sdev->ws = sdev->dd->winsys[i].create_winsys_kms_dri(sdev->fd);
+          break;
+       }
+    }
+@@ -216,7 +216,7 @@
+ 
+    for (i = 0; sdev->dd->winsys[i].name; i++) {
+       if (strcmp(sdev->dd->winsys[i].name, "null") == 0) {
+-         sdev->ws = sdev->dd->winsys[i].create_winsys();
++         sdev->ws = sdev->dd->winsys[i].create_winsys_null();
+          break;
+       }
+    }
+@@ -261,7 +261,7 @@
+ 
+    for (i = 0; sdev->dd->winsys[i].name; i++) {
+       if (strcmp(sdev->dd->winsys[i].name, "wrapped") == 0) {
+-         sdev->ws = sdev->dd->winsys[i].create_winsys(screen);
++         sdev->ws = sdev->dd->winsys[i].create_winsys_wrapped(screen);
+          break;
+       }
+    }
+--- external/mit/MesaLib/dist/src/gallium/targets/pipe-loader/pipe_swrast.c
++++ external/mit/MesaLib/dist/src/gallium/targets/pipe-loader/pipe_swrast.c
+@@ -29,22 +29,22 @@
+ #ifdef HAVE_PIPE_LOADER_DRI
+       {
+          .name = "dri",
+-         .create_winsys = dri_create_sw_winsys,
++         .create_winsys_dri = dri_create_sw_winsys,
+       },
+ #endif
+ #ifdef HAVE_PIPE_LOADER_KMS
+       {
+          .name = "kms_dri",
+-         .create_winsys = kms_dri_create_winsys,
++         .create_winsys_kms_dri = kms_dri_create_winsys,
+       },
+ #endif
+       {
+          .name = "null",
+-         .create_winsys = null_sw_create,
++         .create_winsys_null = null_sw_create,
+       },
+       {
+          .name = "wrapped",
+-         .create_winsys = wrapper_sw_winsys_wrap_pipe_screen,
++         .create_winsys_wrapped = wrapper_sw_winsys_wrap_pipe_screen,
+       },
+       { 0 },
+    }

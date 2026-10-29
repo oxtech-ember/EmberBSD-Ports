@@ -12,7 +12,7 @@ import sys
 import tempfile
 
 parser = argparse.ArgumentParser(description=__doc__)
-for name in ('sdk-source', 'archive', 'work-dir'):
+for name in ('sdk-source', 'archive', 'patch', 'work-dir'):
     parser.add_argument('--' + name, type=Path, required=True)
 args = parser.parse_args()
 owner = Path(__file__).with_name('source.py')
@@ -31,16 +31,25 @@ with tempfile.TemporaryDirectory(dir=args.work_dir) as directory:
     shutil.copyfile(args.archive, changed)
     with changed.open('ab') as handle:
         handle.write(b'\0')
-    assert 'checksum differs' in run('prepare', '--archive', changed, '--output', root, success=False).stderr
+    assert 'checksum differs' in run('prepare', '--archive', changed, '--output', root,
+                                     '--patch', args.patch, success=False).stderr
     assert not root.exists()
-    record = json.loads(run('prepare', '--archive', args.archive, '--output', root).stdout)
+    # The EmberBSD patches are part of the source contract.
+    assert 'absolute patch tool' in run('prepare', '--archive', args.archive, '--output', root,
+                                        success=False).stderr
+    assert not root.exists()
+    record = json.loads(run('prepare', '--archive', args.archive, '--output', root,
+                            '--patch', args.patch).stdout)
     assert record['package'] == 'netbsd/xsrc'
     assert record['identity'] == json.loads(run('pin').stdout)
     run('verify-source', '--source', root)
     assert (root / 'external/mit/libX11/dist/configure.ac').is_file()
     assert (root / 'external/mit/xorg-server/dist/configure.ac').is_file()
     assert not (root / 'CVS').exists() and not (root / 'external/CVS').exists()
-    run('prepare', '--archive', args.archive, '--output', root, success=False)
+    assert sorted(record['identity']['patches']) == sorted(p.name for p in owner.with_name('patches').glob('*.patch'))
+    assert 'xcb_setup_generic_t header;' in (root / 'external/mit/libxcb/dist/src/xcb_conn.c').read_text()
+    assert not any(p.name.endswith(('.orig', '.rej')) for p in (root / 'external/mit/MesaLib/dist/src').rglob('*'))
+    run('prepare', '--archive', args.archive, '--output', root, '--patch', args.patch, success=False)
     (root / 'unexpected').write_text('changed\n')
     assert 'payload changed' in run('verify-source', '--source', root, success=False).stderr
     (root / 'unexpected').unlink()

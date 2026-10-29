@@ -1,0 +1,16 @@
+--- external/mit/MesaLib/dist/src/util/macros.h
++++ external/mit/MesaLib/dist/src/util/macros.h
+@@ -248,7 +248,12 @@
+  * trivially destructible themselves.
+  */
+ #   if (defined(__clang__) && defined(__has_feature))
+-#      if __has_feature(has_trivial_destructor)
++#      if defined(__has_builtin)
++#         if __has_builtin(__is_trivially_destructible)
++#            define HAS_TRIVIAL_DESTRUCTOR(T) __is_trivially_destructible(T)
++#         endif
++#      endif
++#      if !defined(HAS_TRIVIAL_DESTRUCTOR) && __has_feature(has_trivial_destructor)
+ #         define HAS_TRIVIAL_DESTRUCTOR(T) __has_trivial_destructor(T)
+ #      endif
+ #   elif defined(__GNUC__)

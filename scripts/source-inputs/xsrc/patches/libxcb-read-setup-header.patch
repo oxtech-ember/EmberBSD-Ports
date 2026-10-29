@@ -1,0 +1,33 @@
+--- external/mit/libxcb/dist/src/xcb_conn.c
++++ external/mit/libxcb/dist/src/xcb_conn.c
+@@ -172,22 +172,18 @@
+ {
+     const char newline = '\n';
+ 
+-    /* Read the server response */
+-    c->setup = malloc(sizeof(xcb_setup_generic_t));
+-    if(!c->setup)
+-        return 0;
++    xcb_setup_generic_t header;
+ 
+-    if(_xcb_in_read_block(c, c->setup, sizeof(xcb_setup_generic_t)) != sizeof(xcb_setup_generic_t))
++    /* Read the fixed header of the server response, then all of it */
++    if(_xcb_in_read_block(c, &header, sizeof(header)) != sizeof(header))
+         return 0;
+ 
+-    {
+-        void *tmp = realloc(c->setup, c->setup->length * 4 + sizeof(xcb_setup_generic_t));
+-        if(!tmp)
+-            return 0;
+-        c->setup = tmp;
+-    }
++    c->setup = malloc(header.length * 4 + sizeof(header));
++    if(!c->setup)
++        return 0;
++    memcpy(c->setup, &header, sizeof(header));
+ 
+-    if(_xcb_in_read_block(c, (char *) c->setup + sizeof(xcb_setup_generic_t), c->setup->length * 4) <= 0)
++    if(_xcb_in_read_block(c, (char *) c->setup + sizeof(header), header.length * 4) <= 0)
+         return 0;
+ 
+     /* 0 = failed, 2 = authenticate, 1 = success */

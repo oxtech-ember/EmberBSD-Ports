@@ -23,6 +23,9 @@ PIN = dict(release='NetBSD-11.0',
 # The set stores the tree below usr/xsrc; CVS metadata is recorded as hard links.
 ARCHIVE_ROOT, COMPONENT, SKIPPED = 'usr', 'xsrc', ('CVS',)
 MAX_MEMBERS, MAX_BYTES = 100000, 1024 ** 3
+# EmberBSD fixes to the set, applied in name order with -p0 from the xsrc root.
+PATCHES = Path(__file__).resolve().with_name('patches')
+PATCH_ARGS = ('-p0', '-f', '-N', '-F0', '-V', 'none')
 sys.path.insert(0, str(PORTS / 'pkgsrc/lang/llvm/files'))
 import sdk_source
 
@@ -54,16 +57,26 @@ def read(path):
     return data
 
 
+def patch_files():
+    found = sorted(PATCHES.iterdir()) if PATCHES.is_dir() else []
+    require(all(p.name.endswith('.patch') and p.is_file() and not p.is_symlink() for p in found),
+            'xsrc patches directory holds an unexpected entry')
+    return found
+
+
 def source_identity():
     owner = hashlib.sha256(read(Path(__file__).resolve())).hexdigest()
-    return dict(PIN, skipped_directories=list(SKIPPED), owner_sha256=owner)
+    patches = {p.name: hashlib.sha256(read(p)).hexdigest() for p in patch_files()}
+    return dict(PIN, skipped_directories=list(SKIPPED), patches=patches, owner_sha256=owner)
 
 
 def verify(source):
     return sourceprep.validate_prepared_tree(source, package=PACKAGE, identity=source_identity())
 
 
-def prepare(archive, output):
+def prepare(archive, output, patch=None):
+    patches = patch_files()
+    require(not patches or (patch and os.path.isabs(patch)), 'xsrc patches require an absolute patch tool')
     output = Path(output)
     require(output.is_absolute(), 'prepared source output must be absolute')
     output = Path(paths.canonical_existing(output.parent), output.name)
@@ -90,6 +103,13 @@ def prepare(archive, output):
         require((root / 'Makefile').is_file() and (root / 'external/mit').is_dir() and
                 (root / 'local').is_dir(), 'xsrc archive lacks the X11 source layout')
         require(not any(p.name in SKIPPED for p in root.rglob('*')), 'xsrc metadata directory left in tree')
+        for index, path in enumerate(patches):
+            delta = read(path)
+            require(hashlib.sha256(delta).hexdigest() == identity['patches'][path.name], 'xsrc patch changed')
+            sourceprep.apply_patch(patch, path, delta, root, 'xsrc', patch_args=PATCH_ARGS,
+                                   backup_directory=tmp / ('patch-backups-' + str(index)))
+        require(not any(p.name.endswith(('.orig', '.rej')) for p in root.rglob('*')),
+                'xsrc patch left a backup or reject')
         require(identity == source_identity(), 'xsrc owner changed during preparation')
         record = sourceprep.write_prepared_tree_receipt(root, package=PACKAGE, identity=identity)
         verify(root)
@@ -106,13 +126,14 @@ def main():
     produce = sub.add_parser('prepare')
     produce.add_argument('--archive', required=True)
     produce.add_argument('--output', required=True)
+    produce.add_argument('--patch', help='absolute patch tool, required while patches/ is not empty')
     check = sub.add_parser('verify-source')
     check.add_argument('--source', required=True)
     sub.add_parser('pin')
     selected = parser.parse_args(args)
     try:
         if selected.action == 'prepare':
-            record = prepare(selected.archive, selected.output)
+            record = prepare(selected.archive, selected.output, selected.patch)
         elif selected.action == 'verify-source':
             record = verify(selected.source)
         else:
