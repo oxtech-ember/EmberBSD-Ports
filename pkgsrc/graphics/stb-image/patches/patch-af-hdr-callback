@@ -1,0 +1,14 @@
+$NetBSD$
+
+Return the HDR callback probe result after cleanup (EmberBSD, AI-assisted).
+
+--- stb_image.h.orig
++++ stb_image.h
+@@ -1579,6 +1579,7 @@
+    stbi__start_callbacks(&s, (stbi_io_callbacks *) clbk, user);
+    result = stbi__hdr_test(&s);
+    stbi__stop(&s);
++   return result;
+    #else
+    STBI_NOTUSED(clbk);
+    STBI_NOTUSED(user);

@@ -1,0 +1,24 @@
+$NetBSD$
+
+Expose checked two-factor allocation for GIF-only builds (EmberBSD, AI-assisted).
+
+--- stb_image.h.orig
++++ stb_image.h
+@@ -1035,7 +1035,7 @@
+    return a <= INT_MAX/b;
+ }
+ 
+-#if !defined(STBI_NO_JPEG) || !defined(STBI_NO_PNG) || !defined(STBI_NO_TGA) || !defined(STBI_NO_HDR)
++#if !defined(STBI_NO_JPEG) || !defined(STBI_NO_PNG) || !defined(STBI_NO_TGA) || !defined(STBI_NO_HDR) || !defined(STBI_NO_GIF)
+ // returns 1 if "a*b + add" has no negative terms/factors and doesn't overflow
+ static int stbi__mad2sizes_valid(int a, int b, int add)
+ {
+@@ -1059,7 +1059,7 @@
+ }
+ #endif
+ 
+-#if !defined(STBI_NO_JPEG) || !defined(STBI_NO_PNG) || !defined(STBI_NO_TGA) || !defined(STBI_NO_HDR)
++#if !defined(STBI_NO_JPEG) || !defined(STBI_NO_PNG) || !defined(STBI_NO_TGA) || !defined(STBI_NO_HDR) || !defined(STBI_NO_GIF)
+ // mallocs with size overflow checking
+ static void *stbi__malloc_mad2(int a, int b, int add)
+ {

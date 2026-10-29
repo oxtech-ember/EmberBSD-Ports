@@ -1,0 +1,14 @@
+$NetBSD$
+
+Return before reading dimensions when a corrupt HDR image fails (EmberBSD, AI-assisted).
+
+--- stb_image.h.orig
++++ stb_image.h
+@@ -1196,6 +1196,7 @@
+    #ifndef STBI_NO_HDR
+    if (stbi__hdr_test(s)) {
+       float *hdr = stbi__hdr_load(s, x,y,comp,req_comp, ri);
++      if (!hdr) return NULL;
+       return stbi__hdr_to_ldr(hdr, *x, *y, req_comp ? req_comp : *comp);
+    }
+    #endif

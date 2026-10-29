@@ -1,0 +1,11 @@
+$NetBSD$
+
+BLAKE2s (stb-image-2.30.20261023.tar.gz) = b6451c34e12340aacce05d91e1f1835a1f3ee91246ca49e968374206712affa4
+SHA512 (stb-image-2.30.20261023.tar.gz) = fb613800ab05fc7f21971d6974715922f6825f29875ec82e00c074bbc0b2f50e22d1fcb401574dd4c0a7baaa5943e28021b370600f4d78a6423661b21bdf811a
+Size (stb-image-2.30.20261023.tar.gz) = 1515348
+SHA1 (patch-aa-image-backports) = 6cd36fdd469f6f44ef95d59960b45629e4759721
+SHA1 (patch-ab-pic-null) = 50ed2abce5e9578f5458375198bd7906de29c529
+SHA1 (patch-ac-default-components) = 57a8a7f47f7b00c32480ee6be141d11206ab2a2f
+SHA1 (patch-ad-hdr-error) = 83d21c130f2553022a6138d8a6f0352de09ba253
+SHA1 (patch-ae-gif-only) = 449ca554a5c191fa82b2d40f4e497d2c3584995b
+SHA1 (patch-af-hdr-callback) = f6478f7c5a9b5370ad6622df227c7ff11b25dd19

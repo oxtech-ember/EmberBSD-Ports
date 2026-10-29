@@ -1,0 +1,15 @@
+$NetBSD$
+
+Preserve PIC support and backport upstream PR #1454 (MIT/public domain).
+
+--- stb_image.h.orig
++++ stb_image.h
+@@ -6491,7 +6491,7 @@
+ 
+    if (!stbi__pic_load_core(s,x,y,comp, result)) {
+       STBI_FREE(result);
+-      result=0;
++      return 0;
+    }
+    *px = x;
+    *py = y;
