@@ -1,0 +1,34 @@
+Origin: EmberBSD (AI-assisted).
+Upstream status: not submitted.
+
+--- a/mk/license.mk
++++ b/mk/license.mk
+@@ -164,6 +164,7 @@
+ 	ofl-v1.0 ofl-v1.1 \
+ 	openssl \
+ 	original-bsd modified-bsd 2-clause-bsd 0-clause-bsd \
++	ppp-cmu ppp-attribution \
+ 	osl \
+ 	paratype \
+ 	php \
+--- a/pkgtools/pkg_install/files/lib/license.c
++++ b/pkgtools/pkg_install/files/lib/license.c
+@@ -88,6 +88,7 @@
+     "ofl-v1.0 ofl-v1.1 "
+     "openssl "
+     "original-bsd modified-bsd 2-clause-bsd 0-clause-bsd "
++    "ppp-cmu ppp-attribution "
+     "osl "
+     "paratype "
+     "php "
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -7,7 +7,7 @@
+ # change in the pkg_* tools that pkgsrc relies on for proper operation.
+ 
+ PKGNAME=		pkg_install-${VERSION}
+-PKGREVISION=		10
++PKGREVISION=		11
+ CATEGORIES=		pkgtools
+ 
+ MAINTAINER=		agc@NetBSD.org
