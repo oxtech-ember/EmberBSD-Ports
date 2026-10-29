@@ -204,6 +204,14 @@ def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
     return record
 
 
+def shared_tree(selected):
+    """Return the run's shared pkgsrc export, bound to current inputs, if any."""
+    if not selected.pkgsrc_export:
+        return None
+    require(selected.patch and os.path.isabs(selected.patch), 'select an absolute patch executable')
+    return identity_module().shared_export(selected.pkgsrc_export, PORTS, selected.git, SDK_SOURCE, selected.patch)
+
+
 def main():
     sdk_source.install_signal_handlers()
     args = load_sdk(sys.argv[1:])
@@ -215,6 +223,7 @@ def main():
     produce.add_argument('--output', required=True)
     produce.add_argument('--patch', required=True)
     produce.add_argument('--scoped-identity', action='store_true')
+    produce.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
     check = sub.add_parser('verify-source')
     check.add_argument('--source', required=True)
     check.add_argument('--archive')
@@ -222,7 +231,8 @@ def main():
     selected = parser.parse_args(args)
     try:
         if selected.action == 'prepare':
-            record = prepare(selected.archive, selected.output, selected.patch, selected.git, selected.scoped_identity)
+            record = prepare(selected.archive, selected.output, selected.patch, selected.git, selected.scoped_identity,
+                             exported=shared_tree(selected))
         else:
             record = verify(selected.source, selected.git, selected.archive, selected.patch)
         sys.stdout.buffer.write(jsonio.json_bytes(record))

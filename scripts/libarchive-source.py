@@ -89,7 +89,7 @@ def verify(source, sdk_source, git, patch=None, pkgsrc_export=None):
     return record
 
 
-def prepare(destination, sdk_source, git, patch, scoped_identity=False):
+def prepare(destination, sdk_source, git, patch, scoped_identity=False, pkgsrc_export=None):
     destination = Path(destination)
     if not destination.is_absolute() or not destination.parent.is_dir() or os.path.lexists(destination):
         raise ValueError('destination must be a new absolute path with an existing parent')
@@ -98,16 +98,20 @@ def prepare(destination, sdk_source, git, patch, scoped_identity=False):
     paths.reject_overlap(str(destination), str(ROOT))
     with tempfile.TemporaryDirectory(prefix='.libarchive-source-', dir=destination.parent) as work:
         work = Path(work)
-        export = work / 'pkgsrc'
-        command = [sys.executable, '-B', str(ROOT / 'scripts/prepare-pkgsrc.py'),
-                   str(export), '--git', git, '--patch', patch]
-        subprocess.run(command, check=True, env=process.sanitized_environment(), stdout=sys.stderr)
+        selector = module(ROOT / 'scripts/pkgsrc-source-identity.py', 'pkgsrc_identity')
+        if pkgsrc_export:
+            # The run's single export, bound to the current Ports inputs.
+            export = selector.shared_export(pkgsrc_export, ROOT, git, sdk_source, patch)
+        else:
+            export = work / 'pkgsrc'
+            command = [sys.executable, '-B', str(ROOT / 'scripts/prepare-pkgsrc.py'),
+                       str(export), '--git', git, '--patch', patch]
+            subprocess.run(command, check=True, env=process.sanitized_environment(), stdout=sys.stderr)
         payload = work / 'source'
         shutil.copytree(export / PACKAGE / 'files', payload, symlinks=True)
         if selected_identity(sdk_source, git) != identity:
             raise ValueError('Ports export inputs changed during preparation')
         if scoped_identity:
-            selector = module(ROOT / 'scripts/pkgsrc-source-identity.py', 'pkgsrc_identity')
             identity = {'effective': selector.git_package_identity(ROOT, PACKAGE, git),
                         'owner_sha256': identity['owner_sha256']}
         record = sourceprep.write_prepared_tree_receipt(payload, package=PACKAGE, identity=identity)
@@ -123,13 +127,14 @@ def main():
     parser.add_argument('--sdk-source', required=True)
     parser.add_argument('--git', required=True)
     parser.add_argument('--patch')
-    parser.add_argument('--pkgsrc-export', help='verify: shared export from scripts/pkgsrc-shared-export.py')
+    parser.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
     parser.add_argument('--scoped-identity', action='store_true', help='record effective package identity')
     args = parser.parse_args()
     if args.operation == 'prepare':
         if not args.patch or not os.path.isabs(args.patch):
             parser.error('prepare requires an absolute --patch')
-        result = prepare(args.source, args.sdk_source, args.git, args.patch, args.scoped_identity)
+        result = prepare(args.source, args.sdk_source, args.git, args.patch, args.scoped_identity,
+                         args.pkgsrc_export)
     else:
         result = verify(args.source, args.sdk_source, args.git, args.patch, args.pkgsrc_export)
     print(json.dumps(result, sort_keys=True))

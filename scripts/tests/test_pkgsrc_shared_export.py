@@ -227,6 +227,24 @@ class OwnerTest(unittest.TestCase):
                     owner.verify('/source', sys.executable, archive='/archive', patch='/patch', **extra)
                     self.assertEqual((capture.call_count, prepare.call_count), (2, 2))
 
+    def test_prepare_uses_the_selected_shared_export(self):
+        for name in GIT_OWNERS:
+            with self.subTest(owner=name):
+                owner = self.owner(name)
+                selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')
+                argv = ['--git', sys.executable, 'prepare', '--archive', '/archive', '--output', '/output',
+                        '--patch', '/patch', '--scoped-identity', '--pkgsrc-export', '/export']
+                if name == 'rcs':
+                    argv[argv.index('--scoped-identity'):argv.index('--scoped-identity')] = ['--lzip', '/lzip']
+                with patch.object(owner, 'load_sdk', return_value=argv), \
+                     patch.object(owner, 'identity_module', return_value=selector), \
+                     patch.object(selector, 'shared_export', return_value=Path('/tree')) as shared, \
+                     patch.object(owner, 'prepare', return_value={}) as prepare, \
+                     patch.object(owner.sys.stdout.buffer, 'write'):
+                    owner.main()
+                    shared.assert_called_once_with('/export', owner.PORTS, sys.executable, owner.SDK_SOURCE, '/patch')
+                    self.assertEqual(prepare.call_args.kwargs['exported'], Path('/tree'))
+
     def test_owners_use_the_shared_export_without_exporting(self):
         with tempfile.TemporaryDirectory(dir=WORK) as temp:
             shared = Path(temp) / 'shared'

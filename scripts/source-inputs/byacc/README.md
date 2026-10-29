@@ -30,9 +30,9 @@ them, the recipe patches and files added to them, and every infrastructure
 patch that names a path in them. When the record and the owner are unchanged,
 `verify-source` needs no pkgsrc export. Otherwise, and for older records, the
 verifier needs one export to compare the effective recipe. Callers that
-verify several sources in one run can make that export once
+prepare or verify several sources in one run can make that export once
 with `scripts/pkgsrc-shared-export.py DIR --sdk-source ... --git ... --patch ...`
-and pass `--pkgsrc-export DIR` to `verify-source`. The libarchive, libevent,
+and pass `--pkgsrc-export DIR` to `prepare` or `verify-source`. The libarchive, libevent,
 Texinfo, RCS, diffutils, GNU grep and E-Kermit owners accept the same option.
 Each owner refuses the export unless the Ports commit, the pinned pkgsrc
 commit, the overlay inputs and the patch tool still match its receipt.
