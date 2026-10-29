@@ -574,6 +574,9 @@ patched native package tools described above; no force flags are used.
 The separate `tests/pkg-admin-destdir.sh ORIGINAL_PKG_ADMIN FIXED_PKG_ADMIN NEW_WORK`
 checks `pkg_admin rebuild` and `add` against a staged tree. It verifies that
 file checks use DESTDIR while B-tree keys retain target paths.
+`tests/pkg-admin-check-stage.py --pkg-admin PKG_ADMIN --work-dir WORK`
+checks `pkg_admin -P ... check` through staged absolute and relative symlinks,
+including directory links, checksum failures, loops and host-only targets.
 The cross package tools also carry the OS replacement dry-run repair from
 EmberBSD `c22fa34ebe0`. A successful simulated deletion returns zero. Real
 deletion results and metadata errors retain their original return values.

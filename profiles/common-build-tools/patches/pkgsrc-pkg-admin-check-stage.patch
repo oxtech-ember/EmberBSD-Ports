@@ -1,0 +1,234 @@
+Check package files under the selected alternate root.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -7,7 +7,7 @@
+ # change in the pkg_* tools that pkgsrc relies on for proper operation.
+ 
+ PKGNAME=		pkg_install-${VERSION}
+-PKGREVISION=		12
++PKGREVISION=		13
+ CATEGORIES=		pkgtools
+ 
+ MAINTAINER=		agc@NetBSD.org
+--- a/pkgtools/pkg_install/files/admin/admin.h
++++ b/pkgtools/pkg_install/files/admin/admin.h
+@@ -27,6 +27,11 @@
+ extern int quiet;
+ extern int verbose;
+ 
++char *destdir_path(const char *);
++char *target_path(const char *);
++char *resolve_check_path(const char *, int);
++int check_root_active(void);
++
+ int 	check(char **);
+ 
+ void	audit_pkgdb(int, char **);
+--- a/pkgtools/pkg_install/files/admin/main.c
++++ b/pkgtools/pkg_install/files/admin/main.c
+@@ -78,6 +78,10 @@
+ #include <string.h>
+ #endif
+ 
++#if HAVE_UNISTD_H
++#include <unistd.h>
++#endif
++
+ #ifndef BOOTSTRAP
+ #include <archive.h>
+ #include <fetch.h>
+@@ -167,7 +171,7 @@
+ /*
+  * Return a path inside the alternate root.
+  */
+-static char *
++char *
+ destdir_path(const char *path)
+ {
+ 	char *root, *result;
+@@ -196,10 +200,100 @@
+ 	return result;
+ }
+ 
++/* Check whether an alternate root is selected. */
++int
++check_root_active(void)
++{
++	return Destdir != NULL && Destdir[0] != '\0';
++}
++
++/* Resolve a checked path within the selected alternate root. */
++char *
++resolve_check_path(const char *path, int follow_last)
++{
++	char *pending, *cursor, *component, *logical, *candidate, *physical;
++	char *next, *slash;
++	char linkbuf[MaxPathSize];
++	struct stat st;
++	ssize_t count;
++	unsigned int links = 0;
++
++	if (!check_root_active())
++		return xstrdup(path);
++	pending = xstrdup(path);
++	cursor = pending;
++	logical = xstrdup("/");
++	while ((component = strsep(&cursor, "/")) != NULL) {
++		if (component[0] == '\0' || strcmp(component, ".") == 0)
++			continue;
++		if (strcmp(component, "..") == 0) {
++			slash = strrchr(logical, '/');
++			if (slash != logical)
++				*slash = '\0';
++			else
++				logical[1] = '\0';
++			continue;
++		}
++		candidate = xasprintf("%s%s%s", logical,
++		    strcmp(logical, "/") == 0 ? "" : "/", component);
++		physical = destdir_path(candidate);
++		if (lstat(physical, &st) != 0) {
++			free(candidate);
++			free(physical);
++			goto fail;
++		}
++		if (S_ISLNK(st.st_mode) && (follow_last || cursor != NULL)) {
++			if (++links > 40) {
++				errno = ELOOP;
++				free(candidate);
++				free(physical);
++				goto fail;
++			}
++			count = readlink(physical, linkbuf, sizeof(linkbuf));
++			free(candidate);
++			free(physical);
++			if (count < 0)
++				goto fail;
++			if (count == 0 || (size_t)count >= sizeof(linkbuf)) {
++				errno = count == 0 ? EINVAL : ENAMETOOLONG;
++				goto fail;
++			}
++			linkbuf[count] = '\0';
++			next = cursor ? xasprintf("%s/%s", linkbuf, cursor) :
++			    xstrdup(linkbuf);
++			if (linkbuf[0] == '/') {
++				free(logical);
++				logical = xstrdup("/");
++			}
++			free(pending);
++			pending = next;
++			cursor = pending;
++			continue;
++		}
++		if (cursor != NULL && !S_ISDIR(st.st_mode)) {
++			errno = ENOTDIR;
++			free(candidate);
++			free(physical);
++			goto fail;
++		}
++		free(physical);
++		free(logical);
++		logical = candidate;
++	}
++	physical = destdir_path(logical);
++	free(logical);
++	free(pending);
++	return physical;
++fail:
++	free(logical);
++	free(pending);
++	return NULL;
++}
++
+ /*
+  * Convert a package database path below DESTDIR to its target path.
+  */
+-static char *
++char *
+ target_path(const char *path)
+ {
+ 	char *root, *result;
+--- a/pkgtools/pkg_install/files/admin/check.c
++++ b/pkgtools/pkg_install/files/admin/check.c
+@@ -90,7 +90,9 @@
+ 	plist_t *p;
+ 	package_t Plist;
+ 	int	rv = 0;
+-	char   *PkgName, *dirp = NULL, *md5file;
++	struct stat link_stat;
++	char   *PkgName, *dirp = NULL, *dirp_allocated = NULL, *md5file;
++	char   *stagefile, *resolved;
+ 	char    file[MaxPathSize];
+ 	char   *content;
+ 
+@@ -116,10 +118,16 @@
+ 			
+ 			(void) snprintf(file, sizeof(file), "%s/%s", dirp, p->name);
+ 
+-			if (isfile(file) || islinktodir(file)) {
++			stagefile = resolve_check_path(file, 0);
++			resolved = resolve_check_path(file, 1);
++			if (stagefile != NULL && resolved != NULL &&
++			    (isfile(resolved) ||
++			     (!check_root_active() && islinktodir(stagefile)) ||
++			     (check_root_active() && isdir(resolved) &&
++			      lstat(stagefile, &link_stat) == 0 && S_ISLNK(link_stat.st_mode)))) {
+ 				if (p->next && p->next->type == PLIST_COMMENT) {
+ 					if (strncmp(p->next->name, CHECKSUM_HEADER, ChecksumHeaderLen) == 0) {
+-						if ((md5file = MD5File(file, NULL)) != NULL) {
++						if ((md5file = MD5File(resolved, NULL)) != NULL) {
+ 							/* Mismatch? */
+ 							if (strcmp(md5file, p->next->name + ChecksumHeaderLen) != 0) {
+ 								fprintf(stderr, "%s fails MD5 checksum\n", file);
+@@ -133,7 +141,7 @@
+ 						int	cc;
+ 
+ 						(void) strlcpy(buf, SYMLINK_HEADER, sizeof(buf));
+-						if ((cc = readlink(file, &buf[SymlinkHeaderLen],
++						if ((cc = readlink(stagefile, &buf[SymlinkHeaderLen],
+ 							  sizeof(buf) - SymlinkHeaderLen - 1)) < 0) {
+ 							warnx("can't readlink `%s'", file);
+ 							rv = 1;
+@@ -149,19 +157,28 @@
+ 				}
+ 				
+ 				(*filecnt)++;
+-			} else if (isbrokenlink(file)) {
++			} else if (stagefile != NULL &&
++			    (check_root_active() ?
++			     (resolved == NULL && lstat(stagefile, &link_stat) == 0 &&
++			      S_ISLNK(link_stat.st_mode)) : isbrokenlink(stagefile))) {
+ 				warnx("%s: Symlink `%s' exists and is in %s but target does not exist!", PkgName, file, CONTENTS_FNAME);
+ 				rv = 1;
+ 			} else {
+ 				warnx("%s: File `%s' is in %s but not on filesystem!", PkgName, file, CONTENTS_FNAME);
+ 				rv = 1;
+ 			}
++			free(resolved);
++			free(stagefile);
+ 			break;
+ 		case PLIST_CWD:
++			free(dirp_allocated);
++			dirp_allocated = NULL;
+ 			if (strcmp(p->name, ".") != 0)
+ 				dirp = p->name;
+-			else
+-				dirp = pkgdb_pkg_dir(pkgdir);
++			else {
++				dirp_allocated = target_path(pkgdb_pkg_dir(pkgdir));
++				dirp = dirp_allocated;
++			}
+ 			break;
+ 		case PLIST_IGNORE:
+ 			p = p->next;
+@@ -185,6 +202,7 @@
+ 			break;
+ 		}
+ 	}
++	free(dirp_allocated);
+ 	free_plist(&Plist);
+ 	fclose(f);
+ 	(*pkgcnt)++;
