@@ -1,0 +1,2 @@
+SPIRV-Cross translates SPIR-V to shader languages and exposes reflection
+through C and C++ APIs.
