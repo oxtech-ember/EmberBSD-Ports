@@ -74,6 +74,14 @@ CMAKE_CONFIGURE_ARGS+=	-DCOMPILER_RT_BUILD_SANITIZERS=OFF
 
 TEST_TARGET=	check-compiler-rt
 
+.if ${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+PKGREVISION=	10
+# Symbol-list generators run on the build host and read target archives.
+.if !empty(EMBERBSD_CROSS_HOST_PREFIX:M/*)
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_NM:FILEPATH=${EMBERBSD_CROSS_HOST_PREFIX:Q}/bin/llvm-nm
+.endif
+.endif
+
 .if ${OPSYS} == "NetBSD"
 # The one libatomic: atomic.c as a shared library, so every object shares
 # its lock table. Link it as -latomic; no GCC libatomic is installed.
@@ -90,7 +98,12 @@ post-install:
 GENERATE_PLIST+=	${FIND} ${DESTDIR}${PREFIX} \( -type f -o -type l \) -print | \
 			${SED} 's,${DESTDIR}${PREFIX}/,,' | ${SORT} ;
 
+.if ${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# Build scripts use the selected host Python and its standard library.
+PYTHON_FOR_BUILD_ONLY=	tool
+.else
 PYTHON_FOR_BUILD_ONLY=	yes
+.endif
 
 .if ${OPSYS} == "Darwin"
 post-install:
