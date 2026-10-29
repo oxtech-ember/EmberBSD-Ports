@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (Clipper2-2.0.1.tar.gz) = 0a56407d6118581595ac2a5ca7a8e86087eea9087831198b43a71fc9feeee586
+SHA512 (Clipper2-2.0.1.tar.gz) = ce753ae3752b7516a9e0cb23c9788d9533c204819d5451ee50cf3b69a06e24165fa9f5270781764c036ad597eef83cf80532a5bebce5c96f5230179dc3ed499a
+Size (Clipper2-2.0.1.tar.gz) = 715527 bytes
+SHA1 (patch-CPP_Clipper2Lib_include_clipper2_clipper.core.h) = 2b5eb764c807638c0b612ce1dcb9acd1fa2a703f

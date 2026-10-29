@@ -1,0 +1,8 @@
+# $NetBSD$
+BUILDLINK_TREE+= clipper2
+.if !defined(CLIPPER2_BUILDLINK3_MK)
+CLIPPER2_BUILDLINK3_MK:=
+BUILDLINK_API_DEPENDS.clipper2+= Clipper2>=2.0.1
+BUILDLINK_PKGSRCDIR.clipper2?= ../../math/clipper2
+.endif
+BUILDLINK_TREE+= -clipper2
