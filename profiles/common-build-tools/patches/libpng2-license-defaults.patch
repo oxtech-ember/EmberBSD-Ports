@@ -1,0 +1,39 @@
+Origin: EmberBSD (AI-assisted).
+Upstream status: not submitted.
+
+PNG Reference Library License version 2 permits use, modification, and
+redistribution without fee, with notice and attribution conditions. It meets
+pkgsrc's default policy for obviously free licenses; this is not a claim of
+formal OSI or FSF approval. Keep build and package tool defaults aligned.
+
+--- a/mk/license.mk
++++ b/mk/license.mk
+@@ -166,6 +166,7 @@
+ 	original-bsd modified-bsd 2-clause-bsd 0-clause-bsd \
+ 	ppp-cmu ppp-attribution \
+ 	tcp-wrappers \
++	libpng-2.0 \
+ 	osl \
+ 	paratype \
+ 	php \
+--- a/pkgtools/pkg_install/files/lib/license.c
++++ b/pkgtools/pkg_install/files/lib/license.c
+@@ -90,6 +90,7 @@
+     "original-bsd modified-bsd 2-clause-bsd 0-clause-bsd "
+     "ppp-cmu ppp-attribution "
+     "tcp-wrappers "
++    "libpng-2.0 "
+     "osl "
+     "paratype "
+     "php "
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -7,7 +7,7 @@
+ # change in the pkg_* tools that pkgsrc relies on for proper operation.
+ 
+ PKGNAME=		pkg_install-${VERSION}
+-PKGREVISION=		16
++PKGREVISION=		17
+ CATEGORIES=		pkgtools
+ 
+ MAINTAINER=		agc@NetBSD.org

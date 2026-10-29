@@ -1,0 +1,14 @@
+$NetBSD$
+
+Give the shared library a stable ABI soname (EmberBSD, AI-assisted).
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -33,6 +33,7 @@
+ 
+ if(SPNG_SHARED)
+     add_library(spng SHARED ${spng_SOURCES})
++    set_target_properties(spng PROPERTIES VERSION ${SPNG_VERSION} SOVERSION ${SPNG_MAJOR})
+     list(APPEND spng_TARGETS spng)
+ 
+     if(BUILD_EXAMPLES)

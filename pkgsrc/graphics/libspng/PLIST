@@ -1,0 +1,14 @@
+@comment $NetBSD$
+include/spng.h
+lib/cmake/spng/SPNGConfig.cmake
+lib/cmake/spng/SPNGConfigVersion.cmake
+lib/cmake/spng/SPNGTargets-release.cmake
+lib/cmake/spng/SPNGTargets.cmake
+lib/libspng.so
+lib/libspng.so.0
+lib/libspng.so.0.7.4
+lib/libspng_static.a
+lib/pkgconfig/libspng.pc
+lib/pkgconfig/libspng_static.pc
+share/licenses/libspng/BSD-2-Clause
+share/licenses/libspng/libpng-2.0
