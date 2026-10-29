@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.57 2026/01/02 08:33:33 adam Exp $
 
 DISTNAME=	tcpdump-4.99.7
+PKGREVISION=	1
 CATEGORIES=	net
 MASTER_SITES=	https://www.tcpdump.org/release/
 
@@ -10,6 +11,7 @@ COMMENT=	Network monitoring tool
 LICENSE=	modified-bsd
 
 GNU_CONFIGURE=		yes
+USE_TOOLS+=		pkg-config
 CONFIGURE_ARGS.Darwin+=	--disable-universal
 
 BUILD_DEFS+=		VARBASE

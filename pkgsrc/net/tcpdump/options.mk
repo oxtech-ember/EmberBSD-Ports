@@ -8,6 +8,7 @@ PKG_SUGGESTED_OPTIONS=	ssl
 
 .if !empty(PKG_OPTIONS:Mssl)
 .include "../../security/openssl/buildlink3.mk"
+CONFIGURE_ARGS+=	--with-crypto
 .else
 CONFIGURE_ARGS+=	--without-crypto
 .endif

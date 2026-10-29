@@ -5,3 +5,4 @@ SHA512 (tcpdump-4.99.7.tar.gz) = 5f6bf26d72fd12d31320ab06cd9051226df513bdc9a1ed6
 Size (tcpdump-4.99.7.tar.gz) = 2061395 bytes
 SHA1 (patch-Makefile.in) = e492eeb10b2a08ae0d0f4a3433e4956bcbba04df
 SHA1 (patch-netbsd-integration) = bbfe7ffaf13fd4734824d30ec546c40cd31effb5
+SHA1 (patch-selected-search-paths) = 4a64104e0f61d80c464eeb7103209615bb36a26e

@@ -1,0 +1,356 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Upstream status: not submitted.
+
+Use selected compiler and dependency search paths instead of automatic local discovery.
+
+--- aclocal.m4.orig
++++ aclocal.m4
+@@ -100,8 +100,6 @@
+ 	    #
+ 	    ac_lbl_cc_force_warning_errors=-Werror
+     else
+-	    $2="$$2 -I/usr/local/include"
+-	    LDFLAGS="$LDFLAGS -L/usr/local/lib"
+ 
+ 	    case "$host_os" in
+ 
+@@ -748,40 +746,6 @@
+                 AC_CHECK_LIB(pcap, main, libpcap="-lpcap")
+                 if test $libpcap = FAIL ; then
+                     AC_MSG_ERROR(see the INSTALL.md file for more info)
+-                fi
+-                dnl
+-                dnl Some versions of Red Hat Linux put "pcap.h" in
+-                dnl "/usr/include/pcap"; had the LBL folks done so,
+-                dnl that would have been a good idea, but for
+-                dnl the Red Hat folks to do so just breaks source
+-                dnl compatibility with other systems.
+-                dnl
+-                dnl We work around this by assuming that, as we didn't
+-                dnl find a local libpcap, libpcap is in /usr/lib or
+-                dnl /usr/local/lib and that the corresponding header
+-                dnl file is under one of those directories; if we don't
+-                dnl find it in either of those directories, we check to
+-                dnl see if it's in a "pcap" subdirectory of them and,
+-                dnl if so, add that subdirectory to the "-I" list.
+-                dnl
+-                dnl (We now also put pcap.h in /usr/include/pcap, but we
+-                dnl leave behind a /usr/include/pcap.h that includes it,
+-                dnl so you can still just include <pcap.h>.)
+-                dnl
+-                AC_MSG_CHECKING(for extraneous pcap header directories)
+-                if test \( ! -r /usr/local/include/pcap.h \) -a \
+-                        \( ! -r /usr/include/pcap.h \); then
+-                    if test -r /usr/local/include/pcap/pcap.h; then
+-                        d="/usr/local/include/pcap"
+-                    elif test -r /usr/include/pcap/pcap.h; then
+-                        d="/usr/include/pcap"
+-                    fi
+-                fi
+-                if test -z "$d" ; then
+-                    AC_MSG_RESULT(not found)
+-                else
+-                    $2="-I$d $$2"
+-                    AC_MSG_RESULT(found -- -I$d added)
+                 fi
+             fi
+         fi
+--- configure.orig
++++ configure
+@@ -4071,8 +4071,6 @@
+ 	    #
+ 	    ac_lbl_cc_force_warning_errors=-Werror
+     else
+-	    V_INCLS="$V_INCLS -I/usr/local/include"
+-	    LDFLAGS="$LDFLAGS -L/usr/local/lib"
+ 
+ 	    case "$host_os" in
+ 
+@@ -6843,24 +6841,6 @@
+ 
+                 if test $libpcap = FAIL ; then
+                     as_fn_error $? "see the INSTALL.md file for more info" "$LINENO" 5
+-                fi
+-                                                                                                                                                                                                                                                                                                                                { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for extraneous pcap header directories" >&5
+-printf %s "checking for extraneous pcap header directories... " >&6; }
+-                if test \( ! -r /usr/local/include/pcap.h \) -a \
+-                        \( ! -r /usr/include/pcap.h \); then
+-                    if test -r /usr/local/include/pcap/pcap.h; then
+-                        d="/usr/local/include/pcap"
+-                    elif test -r /usr/include/pcap/pcap.h; then
+-                        d="/usr/include/pcap"
+-                    fi
+-                fi
+-                if test -z "$d" ; then
+-                    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: not found" >&5
+-printf "%s\n" "not found" >&6; }
+-                else
+-                    V_INCLS="-I$d $V_INCLS"
+-                    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: found -- -I$d added" >&5
+-printf "%s\n" "found -- -I$d added" >&6; }
+                 fi
+             fi
+         fi
+@@ -9538,26 +9518,7 @@
+ 		#
+ 		# First, try looking for it with pkg-config, if we have it.
+ 		#
+-		# Homebrew's pkg-config does not, by default, look for
+-		# pkg-config files for packages it has installed.
+-		# Furthermore, at least for OpenSSL, they appear to be
+-		# dumped in package-specific directories whose paths are
+-		# not only package-specific but package-version-specific.
+-		#
+-		# So the only way to find openssl is to get the value of
+-		# PKG_CONFIG_PATH from "brew --env openssl" and add that
+-		# to PKG_CONFIG_PATH.  (No, we can't just assume it's under
+-		# /usr/local; Homebrew have conveniently chosen to put it
+-		# under /opt/homebrew on ARM.)
+-		#
+-		# That's the nice thing about Homebrew - it makes things easier!
+-		# Thanks!
+-		#
+ 		save_PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
+-		if test -n "$BREW"; then
+-			openssl_pkgconfig_dir=`$BREW --env --plain openssl | sed -n 's/PKG_CONFIG_PATH: //p'`
+-			PKG_CONFIG_PATH="$openssl_pkgconfig_dir:$PKG_CONFIG_PATH"
+-		fi
+ 
+ { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for libcrypto with pkg-config" >&5
+ printf %s "checking for libcrypto with pkg-config... " >&6; }
+@@ -9665,106 +9626,6 @@
+ fi
+ 
+ 		PKG_CONFIG_PATH="$save_PKG_CONFIG_PATH"
+-
+-		#
+-		# If it wasn't found, and we have Homebrew installed, see
+-		# if it's in Homebrew.
+-		#
+-		if test "x$HAVE_LIBCRYPTO" != "xyes" -a -n "$BREW"; then
+-			{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for openssl in Homebrew" >&5
+-printf %s "checking for openssl in Homebrew... " >&6; }
+-			#
+-			# The brew man page lies when it speaks of
+-			# $BREW --prefix --installed <formula>
+-			# outputting nothing.  In Homebrew 3.3.16,
+-			# it produces output regardless of whether
+-			# the formula is installed or not, so we
+-			# send the standard output and error to
+-			# the bit bucket.
+-			#
+-			# libcrypto isn't a formula, openssl is a formula.
+-			#
+-			if $BREW --prefix --installed openssl >/dev/null 2>&1; then
+-				#
+-				# Yes.  Get the include directory and library
+-				# directory.  (No, we can't just assume it's
+-				# under /usr/local; Homebrew have conveniently
+-				# chosen to put it under /opt/homebrew on ARM.)
+-				#
+-				{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+-printf "%s\n" "yes" >&6; }
+-				HAVE_LIBCRYPTO=yes
+-				openssl_path=`$BREW --prefix openssl`
+-				LIBCRYPTO_CFLAGS="-I$openssl_path/include"
+-				LIBCRYPTO_LIBS="-L$openssl_path/lib -lcrypto"
+-			else
+-				{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+-printf "%s\n" "no" >&6; }
+-			fi
+-		fi
+-
+-		#
+-		# If it wasn't found, and /usr/local/include and /usr/local/lib
+-		# exist, check if it's in /usr/local.  (We check whether they
+-		# exist because, if they don't exist, the compiler will warn
+-		# about that and then ignore the argument, so they test
+-		# using just the system header files and libraries.)
+-		#
+-		# We include the standard include file to 1) make sure that
+-		# it's installed (if it's just a shared library for the
+-		# benefit of existing programs, that's not useful) and 2)
+-		# because SSL_library_init() is a library routine in some
+-		# versions and a #defined wrapper around OPENSSL_init_ssl()
+-		# in others.
+-		#
+-		if test "x$HAVE_LIBCRYPTO" != "xyes" -a -d "/usr/local/include" -a -d "/usr/local/lib"; then
+-
+-	save_CFLAGS="$CFLAGS"
+-	save_LIBS="$LIBS"
+-	save_LDFLAGS="$LDFLAGS"
+-
+-			CFLAGS="$CFLAGS -I/usr/local/include"
+-			LIBS="$LIBS -L/usr/local/lib -lcrypto"
+-			{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether we have an OpenSSL/libressl libcrypto in /usr/local that we can use" >&5
+-printf %s "checking whether we have an OpenSSL/libressl libcrypto in /usr/local that we can use... " >&6; }
+-			cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+-/* end confdefs.h.  */
+-
+-#include <openssl/evp.h>
+-
+-int
+-main (void)
+-{
+-
+-EVP_CIPHER_CTX_block_size((EVP_CIPHER_CTX *)0);
+-return 0;
+-
+-  ;
+-  return 0;
+-}
+-_ACEOF
+-if ac_fn_c_try_link "$LINENO"
+-then :
+-
+-				{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+-printf "%s\n" "yes" >&6; }
+-				HAVE_LIBCRYPTO=yes
+-				LIBCRYPTO_CFLAGS="-I/usr/local/include"
+-				LIBCRYPTO_LIBS="-L/usr/local/lib -lcrypto"
+-
+-else case e in #(
+-  e) { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+-printf "%s\n" "no" >&6; } ;;
+-esac
+-fi
+-rm -f core conftest.err conftest.$ac_objext conftest.beam \
+-    conftest$ac_exeext conftest.$ac_ext
+-
+-	CFLAGS="$save_CFLAGS"
+-	LIBS="$save_LIBS"
+-	LDFLAGS="$save_LDFLAGS"
+-
+-		fi
+ 
+ 		#
+ 		# If it wasn't found, check if it's a system library.
+@@ -9932,6 +9793,9 @@
+ fi
+ 
+ 	else
++		if test "$want_libcrypto" = yes; then
++			as_fn_error $? "requested libcrypto was not found" "$LINENO" 5
++		fi
+ 		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: OpenSSL/libressl libcrypto not found" >&5
+ printf "%s\n" "$as_me: OpenSSL/libressl libcrypto not found" >&6;}
+ 	fi
+--- configure.ac.orig
++++ configure.ac
+@@ -1041,26 +1041,7 @@
+ 		#
+ 		# First, try looking for it with pkg-config, if we have it.
+ 		#
+-		# Homebrew's pkg-config does not, by default, look for
+-		# pkg-config files for packages it has installed.
+-		# Furthermore, at least for OpenSSL, they appear to be
+-		# dumped in package-specific directories whose paths are
+-		# not only package-specific but package-version-specific.
+-		#
+-		# So the only way to find openssl is to get the value of
+-		# PKG_CONFIG_PATH from "brew --env openssl" and add that
+-		# to PKG_CONFIG_PATH.  (No, we can't just assume it's under
+-		# /usr/local; Homebrew have conveniently chosen to put it
+-		# under /opt/homebrew on ARM.)
+-		#
+-		# That's the nice thing about Homebrew - it makes things easier!
+-		# Thanks!
+-		#
+ 		save_PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
+-		if test -n "$BREW"; then
+-			openssl_pkgconfig_dir=`$BREW --env --plain openssl | sed -n 's/PKG_CONFIG_PATH: //p'`
+-			PKG_CONFIG_PATH="$openssl_pkgconfig_dir:$PKG_CONFIG_PATH"
+-		fi
+ 		PKG_CHECK_MODULE(LIBCRYPTO, libcrypto,
+ 		    [
+ 			#
+@@ -1069,77 +1050,6 @@
+ 			HAVE_LIBCRYPTO=yes
+ 		    ])
+ 		PKG_CONFIG_PATH="$save_PKG_CONFIG_PATH"
+-
+-		#
+-		# If it wasn't found, and we have Homebrew installed, see
+-		# if it's in Homebrew.
+-		#
+-		if test "x$HAVE_LIBCRYPTO" != "xyes" -a -n "$BREW"; then
+-			AC_MSG_CHECKING(for openssl in Homebrew)
+-			#
+-			# The brew man page lies when it speaks of
+-			# $BREW --prefix --installed <formula>
+-			# outputting nothing.  In Homebrew 3.3.16,
+-			# it produces output regardless of whether
+-			# the formula is installed or not, so we
+-			# send the standard output and error to
+-			# the bit bucket.
+-			#
+-			# libcrypto isn't a formula, openssl is a formula.
+-			#
+-			if $BREW --prefix --installed openssl >/dev/null 2>&1; then
+-				#
+-				# Yes.  Get the include directory and library
+-				# directory.  (No, we can't just assume it's
+-				# under /usr/local; Homebrew have conveniently
+-				# chosen to put it under /opt/homebrew on ARM.)
+-				#
+-				AC_MSG_RESULT(yes)
+-				HAVE_LIBCRYPTO=yes
+-				openssl_path=`$BREW --prefix openssl`
+-				LIBCRYPTO_CFLAGS="-I$openssl_path/include"
+-				LIBCRYPTO_LIBS="-L$openssl_path/lib -lcrypto"
+-			else
+-				AC_MSG_RESULT(no)
+-			fi
+-		fi
+-
+-		#
+-		# If it wasn't found, and /usr/local/include and /usr/local/lib
+-		# exist, check if it's in /usr/local.  (We check whether they
+-		# exist because, if they don't exist, the compiler will warn
+-		# about that and then ignore the argument, so they test
+-		# using just the system header files and libraries.)
+-		#
+-		# We include the standard include file to 1) make sure that
+-		# it's installed (if it's just a shared library for the
+-		# benefit of existing programs, that's not useful) and 2)
+-		# because SSL_library_init() is a library routine in some
+-		# versions and a #defined wrapper around OPENSSL_init_ssl()
+-		# in others.
+-		#
+-		if test "x$HAVE_LIBCRYPTO" != "xyes" -a -d "/usr/local/include" -a -d "/usr/local/lib"; then
+-			AC_LBL_SAVE_CHECK_STATE
+-			CFLAGS="$CFLAGS -I/usr/local/include"
+-			LIBS="$LIBS -L/usr/local/lib -lcrypto"
+-			AC_MSG_CHECKING(whether we have an OpenSSL/libressl libcrypto in /usr/local that we can use)
+-			AC_LINK_IFELSE([AC_LANG_PROGRAM(
+-			    [[
+-#include <openssl/evp.h>
+-			    ]],
+-			    [[
+-EVP_CIPHER_CTX_block_size((EVP_CIPHER_CTX *)0);
+-return 0;
+-			    ]])],
+-			    [
+-				AC_MSG_RESULT(yes)
+-				HAVE_LIBCRYPTO=yes
+-				LIBCRYPTO_CFLAGS="-I/usr/local/include"
+-				LIBCRYPTO_LIBS="-L/usr/local/lib -lcrypto"
+-			    ],
+-			    AC_MSG_RESULT(no))
+-			AC_LBL_RESTORE_CHECK_STATE
+-		fi
+ 
+ 		#
+ 		# If it wasn't found, check if it's a system library.
+@@ -1241,6 +1151,9 @@
+ 		#
+ 		AC_CHECK_FUNCS(EVP_CIPHER_CTX_new EVP_DecryptInit_ex)
+ 	else
++		if test "$want_libcrypto" = yes; then
++			AC_MSG_ERROR([requested libcrypto was not found])
++		fi
+ 		AC_MSG_NOTICE(OpenSSL/libressl libcrypto not found)
+ 	fi
+ fi
