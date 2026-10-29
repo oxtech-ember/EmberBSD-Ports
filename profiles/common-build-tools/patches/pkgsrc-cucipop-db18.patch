@@ -1,0 +1,19 @@
+Origin: EmberBSD, AI-assisted.
+cucipop's db option needed Berkeley DB 2 (BDB_ACCEPTED=db2), which
+EmberBSD no longer has. Build it against db18; the recipe patch
+patch-sdb.h maps the DB 2 calls (db_appinit, db_appexit, db_open) onto
+the current API. Not submitted upstream.
+
+--- a/mail/cucipop/Makefile
++++ b/mail/cucipop/Makefile
+@@ -40,8 +40,8 @@
+ LIBS+=		-lcrypt
+ 
+ .if !empty(PKG_OPTIONS:Mdb)
+-BDB_ACCEPTED=	db2
+-CFLAGS+=	-DUSE_DB
++BDB_ACCEPTED=	db18
++CFLAGS+=	-DUSE_DB -I${BUILDLINK_DIR}/include/db18
+ LIBS+=		${BDB_LIBS}
+ .  include "../../mk/bdb.buildlink3.mk"
+ .endif

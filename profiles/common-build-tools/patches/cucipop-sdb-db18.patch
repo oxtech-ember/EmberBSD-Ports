@@ -1,0 +1,59 @@
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+Provide the Berkeley DB 2 application calls cucipop uses (db_appinit,
+db_appexit, db_open with a DB_ENV value carrying mp_size) on top of the
+current Berkeley DB API, so the db option builds with db18.
+
+--- sdb.h.orig
++++ sdb.h
+@@ -1,7 +1,50 @@
+ /*$Id: sdb.h,v 1.3 1998/05/12 20:35:58 srb Exp $*/
+ 
+ #ifdef USE_DB
+-#include <db2/db.h>
++#include <db.h>
++
++/* The Berkeley DB 2 calls cucipop uses, on top of the current API. */
++typedef struct {DB_ENV*env;unsigned mp_size;} SDB_ENV;
++#define DB_ENV SDB_ENV
++
++static inline int db_appinit(const char*home,char*const*config,SDB_ENV*e,
++ u_int32_t flags)
++{ int r;
++  (void)config;e->env=0;
++  if(!flags)
++     return 0;
++  if((r=db_env_create(&e->env,0)))
++   { e->env=0;
++     return r;
++   }
++  if(e->mp_size&&(r=e->env->set_cachesize(e->env,0,e->mp_size,0)))
++     goto fail;
++  if(!(r=e->env->open(e->env,home,flags,0)))
++     return 0;
++fail:
++  e->env->close(e->env,0);e->env=0;
++  return r;
++}
++
++static inline int db_appexit(SDB_ENV*e)
++{ int r=0;
++  if(e->env)
++     r=e->env->close(e->env,0),e->env=0;
++  return r;
++}
++
++static inline int db_open(const char*file,DBTYPE type,u_int32_t flags,
++ int mode,SDB_ENV*e,void*info,DB**dbp)
++{ int r;
++  (void)info;
++  if((r=db_create(dbp,e->env,0)))
++   { *dbp=0;
++     return r;
++   }
++  if((r=(*dbp)->open(*dbp,0,file,0,type,flags,mode)))
++     (*dbp)->close(*dbp,0),*dbp=0;
++  return r;
++}
+ #else
+ 
+ typedef struct {
