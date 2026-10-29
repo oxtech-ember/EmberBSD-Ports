@@ -66,6 +66,43 @@ def target_matches(machine, arch):
     return machine in (f'{arch}--netbsd', f'{arch}-unknown-netbsd')
 
 
+def normalize_test_rpath(path, readelf, sysroot, ninja, allowed, native_python):
+    """Remove Meson's verified sysroot-only build path from a copied test ELF."""
+    dynamic = query(str(readelf), '-d', str(path))
+    paths = [x for row in re.findall(r'\((?:RUNPATH|RPATH)\).*\[([^]]+)\]', dynamic) for x in row.split(':')]
+    build_path = str(sysroot / 'usr/pkg/lib')
+    foreign = {x for x in paths if not (x.startswith('/') and os.path.normpath(x) in allowed)}
+    require(not foreign or (foreign == {build_path} and
+            f'-Wl,-rpath,{build_path}' in ninja), f'foreign ELF runtime path: {path}')
+    if foreign:
+        adapter = """
+import inspect, json, os, pathlib, sys
+from mesonbuild import coredata
+from mesonbuild.scripts import depfixer
+prefix = pathlib.Path(sys.prefix).resolve(strict=True)
+python = pathlib.Path(sys.executable).resolve(strict=True)
+module = pathlib.Path(depfixer.__file__).resolve(strict=True)
+version_file = pathlib.Path(coredata.__file__).resolve(strict=True)
+if not all(p.is_relative_to(prefix) for p in (python, module, version_file)):
+    raise SystemExit('Meson/Python outside selected native prefix')
+if list(inspect.signature(depfixer.fix_rpath).parameters) != [
+    'fname', 'rpath_dirs_to_remove', 'new_rpath', 'final_path',
+    'install_name_mappings', 'system', 'verbose']:
+    raise SystemExit('unsupported Meson depfixer API')
+depfixer.fix_rpath(sys.argv[1], {os.fsencode(sys.argv[2])}, b'', '', {}, 'netbsd', verbose=False)
+print(json.dumps({'python': str(python), 'module': str(module),
+                  'version_file': str(version_file), 'version': coredata.version}))
+"""
+        require(native_python and native_python.is_absolute() and os.access(native_python, os.X_OK), 'missing selected SDK Python for Meson fixup')
+        metadata = json.loads(query(str(native_python), '-I', '-c', adapter, str(path), build_path))
+        dynamic = query(str(readelf), '-d', str(path))
+        paths = [x for row in re.findall(r'\((?:RUNPATH|RPATH)\).*\[([^]]+)\]', dynamic) for x in row.split(':')]
+        require(all(x.startswith('/') and os.path.normpath(x) in allowed for x in paths),
+                f'foreign ELF runtime path after Meson fixup: {path}')
+        return metadata
+    return None
+
+
 def main(argv):
     require(len(argv) in (6, 7), 'usage: prepare-mesa-package-tests.py CROSS_TOOLS SYSROOT MESA_SOURCE MESA_BUILD MESA_PACKAGE NEW_WORK [LIBDRM_PACKAGE]')
     tools, sysroot, source, build, package = [Path(p).resolve(strict=True) for p in argv[:5]]
@@ -143,7 +180,13 @@ def main(argv):
     (work/'render-build.command').write_text(shlex.join(command)+'\n')
     proc = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True); (work/'render-build.log').write_text(proc.stdout)
     require(proc.returncode == 0, 'render consumer compile/link failed')
-    tests=[]
+    tests=[]; copied_tests={}
+    target_mk = tools / 'target.mk'
+    if target_mk.is_file(): initial[str(target_mk)] = digest(target_mk)
+    native_python_match = re.findall(r'^_EMBER_TARGET_NATIVE_PYTHON:= (.+)$', target_mk.read_text(), re.M) if target_mk.is_file() else []
+    require(len(native_python_match) <= 1, 'ambiguous selected SDK Python')
+    native_python = Path(native_python_match[0]) if native_python_match else None
+    allowed=['/usr/pkg/lib',runtime_dir,'/usr/pkg/lib/python3.15/config-3.15','/usr/lib','/lib']+([f'/usr/pkg/gcc16/{arch}--netbsd/lib'] if family=='gcc' else [])
     for test in json.loads((info/'intro-tests.json').read_text()):
         cmd=test['cmd']; name=test['name']; executable=Path(cmd[0]).name
         if not cmd[0].startswith(str(build)+'/'): continue
@@ -154,8 +197,18 @@ def main(argv):
         require(all(re.fullmatch(r'[A-Za-z0-9_-]+', x) for x in (name,executable)) and test['workdir'] is None and test['protocol'] in ('exitcode','gtest'), f'unsupported test: {name}')
         expected_env = {'HOME':str(source/'src/util/tests/drirc_home'),'DRIRC_CONFIGDIR':str(source/'src/util/tests/drirc_configdir')} if name == 'xmlconfig' else ({'BUILD_FULL_PATH':cmd[0]} if name == 'process' else ({'BUILD_FULL_PATH':cmd[0],'MESA_PROCESS_NAME':'hello'} if name == 'process_with_overrides' else {}))
         require(test['env'] == expected_env and isinstance(test['timeout'], int) and 1 <= test['timeout'] <= 600, f'unsupported environment/timeout: {name}')
-        dest=bundle/'bin'/executable; h=digest(cmd[0]); require(not dest.exists() or digest(dest)==h, f'test basename collision: {executable}')
-        initial[cmd[0]]=h; shutil.copy2(cmd[0], dest); tests.append((name,executable,test['timeout']))
+        dest=bundle/'bin'/executable; h=digest(cmd[0]); require(executable not in copied_tests or copied_tests[executable] == h, f'test basename collision: {executable}')
+        initial[cmd[0]]=h
+        if executable not in copied_tests:
+            require(not dest.exists(), f'test basename collision: {executable}')
+            shutil.copy2(cmd[0], dest)
+            metadata = normalize_test_rpath(dest, readelf, sysroot, ninja, allowed, native_python)
+            if metadata:
+                for key in ('python', 'module', 'version_file'):
+                    initial[metadata[key]] = digest(metadata[key])
+                (work/'meson-depfixer.json').write_text(json.dumps(metadata, sort_keys=True) + '\n')
+            copied_tests[executable] = h
+        tests.append((name,executable,test['timeout']))
     iris_tests='mda_tests intel_device_info_test isl_surf_get_image_offset isl_aux_info isl_tile_std_y isl_tilememcpy isl_surf_get_image_range_B_tile intel_compiler_gen_tests intel_compiler_brw_tests jay_tests intel_compiler_elk_tests genxml_test'.split()
     names=[t[0] for t in tests]; require(sorted(set(names)&set(iris_tests)) == (sorted(iris_tests) if iris else []), 'incomplete Intel test set')
     if radeon:
@@ -200,7 +253,6 @@ def main(argv):
         require(len(header)==20 and header[:6]==b'\x7fELF\x02\x01' and struct.unpack_from('<H',header,16)[0] in (2,3) and struct.unpack_from('<H',header,18)[0]==machine, f'wrong target ELF: {real}')
         dynamic=query(str(readelf),'-d',str(real)); (work/'elf'/(hashlib.sha256(str(real).encode()).hexdigest()[:16]+'.txt')).write_text(str(real)+'\n'+dynamic+'\n')
         paths=[x for row in re.findall(r'\((?:RUNPATH|RPATH)\).*\[([^]]+)\]',dynamic) for x in row.split(':')]
-        allowed=['/usr/pkg/lib',runtime_dir,'/usr/pkg/lib/python3.15/config-3.15','/usr/lib','/lib']+([f'/usr/pkg/gcc16/{arch}--netbsd/lib'] if family=='gcc' else [])
         require(all(x.startswith('/') and os.path.normpath(x) in allowed for x in paths), f'foreign ELF runtime path: {real}')
         for name in re.findall(r'\(NEEDED\).*\[([^]]+)\]',dynamic):
             require(re.fullmatch(r'lib[A-Za-z0-9_.+-]+',name) is not None, f'invalid NEEDED: {name}')
