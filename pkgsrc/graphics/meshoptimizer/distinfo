@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (meshoptimizer-1.3.tar.gz) = 12d53710b19ca0ecd63ee24806257cd1d1f595c9ad448f1b6694897987bdc49d
+SHA512 (meshoptimizer-1.3.tar.gz) = eef5c17afbdd551c44bc3f55d42099563d1370392f2bcc56e5e1099d37abf7ece439e6bfdee6be3adff3960c1d510956dd1cd5ddf4b1ef7c7625f0671c466ad2
+Size (meshoptimizer-1.3.tar.gz) = 609460 bytes

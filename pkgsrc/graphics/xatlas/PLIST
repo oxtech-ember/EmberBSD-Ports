@@ -1,0 +1,6 @@
+@comment $NetBSD$
+include/xatlas.h
+lib/cmake/xatlas/xatlasConfig.cmake
+lib/cmake/xatlas/xatlasTargets-noconfig.cmake
+lib/cmake/xatlas/xatlasTargets.cmake
+lib/libxatlas.a
