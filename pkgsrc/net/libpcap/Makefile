@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.74 2026/09/07 05:16:32 adam Exp $
 
 DISTNAME=	libpcap-1.10.7
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	net
 MASTER_SITES=	https://www.tcpdump.org/release/
 

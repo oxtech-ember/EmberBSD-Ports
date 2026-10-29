@@ -2,6 +2,8 @@ $NetBSD: patch-Makefile.in,v 1.5 2024/09/01 09:47:09 adam Exp $
 
 Add libtoolization.
 Fix manpage installation.
+Select the C libtool tag for pkgsrc's C compiler wrapper.
+Origin: EmberBSD (AI-assisted); upstream status: pkgsrc integration.
 
 --- Makefile.in.orig	2024-08-30 19:34:14.000000000 +0000
 +++ Makefile.in
@@ -10,7 +12,7 @@ Fix manpage installation.
  
  LD = /usr/bin/ld
 -CC = @CC@
-+CC = ${LIBTOOL} --mode=compile @CC@
++CC = ${LIBTOOL} --tag=CC --mode=compile @CC@
  AR = @AR@
  LN_S = @LN_S@
  MKDEP = @MKDEP@
@@ -58,7 +60,7 @@ Fix manpage installation.
 -	$(AR) rc $@ $(OBJ) $(ADDLARCHIVEOBJS)
 -	$(RANLIB) $@
 +libpcap.la: $(OBJ)
-+	${LIBTOOL} --mode=link @CC@ -rpath ${PREFIX}/lib ${LDFLAGS} $(OBJ) $(LIBS) -version-info 1:0:0 -o libpcap.la
++	${LIBTOOL} --tag=CC --mode=link @CC@ -rpath ${PREFIX}/lib ${LDFLAGS} $(OBJ) $(LIBS) -version-info 1:0:0 -o libpcap.la
  
  shared: libpcap.$(DYEXT)
  
