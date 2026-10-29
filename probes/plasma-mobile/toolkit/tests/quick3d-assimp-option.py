@@ -23,6 +23,8 @@ for selection, enabled in [('', True), ('assimp', True), ('-assimp', False)]:
     has_assimp = any(dependency.endswith(':../../multimedia/assimp') for dependency in dependencies.split())
     assert has_assimp == enabled, (selection, dependencies)
     assert ('-DFEATURE_quick3d_assimp:BOOL=OFF' in configure.split()) == (not enabled), (selection, configure)
+    for flag in ('-DINPUT_quick3d_assimp:STRING=system', '-DFEATURE_system_assimp:BOOL=ON'):
+        assert (flag in configure.split()) == enabled, (selection, configure)
     assert '-no-feature-quick3d-assimp' not in configure.split(), configure
     assert (plist == 'yes') == enabled, (selection, plist)
     print(f'PASS: {selection or "default"} selects the expected dependency, feature and package manifest')
