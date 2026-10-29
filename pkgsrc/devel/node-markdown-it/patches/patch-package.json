@@ -1,0 +1,15 @@
+$NetBSD$
+
+Use the validated common current dependencies.
+
+--- package.json.orig
++++ package.json
+@@ -78,7 +78,7 @@
+   ],
+   "dependencies": {
+     "argparse": "^3.0.3",
+-    "entities": "^8.1.0",
++    "entities": "^9.0.0",
+     "linkify-it": "^6.1.0",
+     "mdurl": "^2.1.0",
+     "punycode.js": "^2.3.1",

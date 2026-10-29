@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (markdown-it-15.0.3.tgz) = e55dfa459a7fecd890439d533051a12c5ac2a3f09cee3399d95568c227dd1c40
+SHA512 (markdown-it-15.0.3.tgz) = f80cfb3a3cf78911aef0a60cbc9eb1561bebc4fdde13ebc4b495fbe4ec3cf17069710355ff49465f96729c82017ed444a380c2da3b2f78030369e96d9a6f10bd
+Size (markdown-it-15.0.3.tgz) = 587613 bytes
+SHA1 (patch-package.json) = 60c9229999c21bf48cbc32685198af8d81b059bc

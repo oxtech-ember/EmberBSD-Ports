@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (docs-parser-3.0.3.tgz) = 72574e14d19547163199c3652e422d83252c58fa0a55f01995b8fb2ca6db1759
+SHA512 (docs-parser-3.0.3.tgz) = a95487ef23b1cf35d13abd331cbd826fe0977d120ee20f57b4c6964314adbe8669c5a6c50053e82c6cc253a8c7338383b47cd9fa81721dc66a7c128b823e23ad
+Size (docs-parser-3.0.3.tgz) = 29902 bytes
+SHA1 (patch-package.json) = 802e4c025e6fd68989122677d6b7051cbece7693

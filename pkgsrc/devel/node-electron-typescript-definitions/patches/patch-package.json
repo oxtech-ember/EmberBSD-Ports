@@ -1,0 +1,21 @@
+$NetBSD$
+
+Use the validated common current dependencies.
+
+--- package.json.orig
++++ package.json
+@@ -39,10 +39,11 @@
+     "vitest": "^4.1.1"
+   },
+   "dependencies": {
+-    "@types/node": "^22.10.7",
+-    "chalk": "^5.3.0",
++    "@electron/docs-parser": "^3.0.3",
++    "@types/node": "^26.6.6",
++    "chalk": "^6.0.1",
+     "debug": "^4.3.7",
+-    "pretty-ms": "^9.1.0",
++    "pretty-ms": "^10.0.0",
+     "yocto-spinner": "^1.2.2"
+   },
+   "repository": {

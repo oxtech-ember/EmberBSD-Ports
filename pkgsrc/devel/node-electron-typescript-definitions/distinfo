@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (typescript-definitions-10.0.0.tgz) = 95b843bd2c405fb712f28c646962c84aca8ae1d2657eae2500793ef26ffccd32
+SHA512 (typescript-definitions-10.0.0.tgz) = 47a35ea3909e3ffc1953c2599938a8aa82f64bc84d443ad9a5394b9be8679d5b22d5956c0f74cf8affa814b422761d697fb61b6af2e8e8e4c38cc20931037a3d
+Size (typescript-definitions-10.0.0.tgz) = 25066 bytes
+SHA1 (patch-package.json) = b790195cdf20c17e16c124e1c4c3029395420ab0
