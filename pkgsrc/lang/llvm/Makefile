@@ -27,7 +27,7 @@ EMBERBSD_LLVM_PKGDIR:= ${.PARSEDIR:tA}
 .include "version.mk"
 
 PKGNAME=	llvm-${LLVM_VERSION}
-PKGREVISION=	4
+PKGREVISION=	5
 CATEGORIES=	lang devel
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -88,6 +88,13 @@ SUBST_SED.linkmap=	-e '/^LLVM/d'
 LDFLAGS.SunOS+=		-lsocket -lnsl
 
 .include "../../mk/bsd.prefs.mk"
+
+# The native Darwin runtime is part of the C++ ABI used by libLLVM.
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
+    ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
+DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
+BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
+.endif
 
 .if defined(EMBERBSD_LLVM_DEVEL)
 .if ${EMBERBSD_LLVM_DEVEL} != "yes" || ${PKGPATH} != "lang/llvm-devel"
