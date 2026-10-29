@@ -17,16 +17,23 @@ cannot generate a Qt 6.12 build. See the
 [upstream cross-build instructions](https://doc.qt.io/qt-6/cross-compiling-qt.html).
 
 ```sh
-CMAKE=/absolute/native/cmake NINJA=/absolute/native/ninja \
+HOST_SH=/absolute/native/sh CMAKE=/absolute/native/cmake NINJA=/absolute/native/ninja \
 TAR=/absolute/native/bsdtar PATCH=/absolute/native/patch \
 HOST_PYTHON=/absolute/native/python3 \
 WAYLAND_SCANNER=/absolute/wayland-1.26/bin/wayland-scanner \
 HOST_LLVM_BUILD=/absolute/native-llvm23 HOST_CLANG_BUILD=/absolute/native-clang23 \
 HOST_DBUS_PREFIX=/absolute/native-dbus \
 HOST_CC=/absolute/native/cc HOST_CXX=/absolute/native/c++ JOBS=4 \
-sh probes/plasma-mobile/toolkit/cross/build-host-tools.sh \
+/absolute/native/sh probes/plasma-mobile/toolkit/cross/build-host-tools.sh \
     /absolute/verified-distfiles /absolute/new-host-qt
 ```
+
+On Darwin, a native stage with libraries outside their installed paths can set
+`HOST_RUNTIME_VIEW` to a directory containing the selected runtime libraries and
+`HOST_SDK_SOURCE` to the SDK source. The selected native Python runs the SDK
+runtime launcher for Qt's custom build commands. The producer records the view
+contents and rejects a changed view on resume. Leave these variables unset for
+an ordinary installed host runtime.
 
 Set `QT_HOST_TOOLS_PROFILE=quick` for the Core/Quick/QML generator subset.
 It uses qtbase, qtsvg, qtshadertools and qtdeclarative. It does not require

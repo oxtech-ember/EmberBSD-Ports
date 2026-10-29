@@ -16,11 +16,39 @@ toolkit=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 scanner_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_tools_qtwaylandscanner_qtwaylandscanner.cpp
 syncqt_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_tools_syncqt_CMakeLists.txt
 RESUME=${RESUME:-0}
+HOST_SH=${HOST_SH:-/bin/sh}
+HOST_RUNTIME_VIEW=${HOST_RUNTIME_VIEW:-}
+: "${HOST_PYTHON:?Set an absolute native Python 3 executable}"
+runtime_inputs=
+runtime_view_identity=none
+if [ -n "$HOST_RUNTIME_VIEW" ]; then
+    [ "$(uname -s)" = Darwin ] || { echo 'Native runtime view requires Darwin' >&2; exit 2; }
+    : "${HOST_SDK_SOURCE:?Set the SDK source for the selected native runtime}"
+    for path in "$HOST_RUNTIME_VIEW" "$HOST_SDK_SOURCE"; do
+        case "$path" in /*) ;; *) echo 'Absolute paths required' >&2; exit 2;; esac
+        case "$path" in *[!a-zA-Z0-9_./+-]*) echo 'Use paths without shell metacharacters' >&2; exit 2;; esac
+    done
+    [ -d "$HOST_RUNTIME_VIEW" ] || { echo 'Native runtime view is not a directory' >&2; exit 2; }
+    runtime_launcher=$HOST_SDK_SOURCE/scripts/run-darwin-with-runtime.py
+    runtime_module=$HOST_SDK_SOURCE/src/emberbsd_sdk/runtime_loader.py
+    runtime_cmake=$toolkit/cross/native-host-runtime.cmake
+    for input in "$runtime_launcher" "$runtime_module" "$runtime_cmake"; do
+        [ -s "$input" ] || { echo "Missing native runtime input: $input" >&2; exit 2; }
+        runtime_inputs="$runtime_inputs $input"
+    done
+    for input in "$HOST_RUNTIME_VIEW"/*; do
+        [ -f "$input" ] || { echo 'Native runtime view contains a missing or non-file entry' >&2; exit 2; }
+        case "$input" in *[!a-zA-Z0-9_./+-]*) echo 'Use paths without shell metacharacters' >&2; exit 2;; esac
+        runtime_inputs="$runtime_inputs $input"
+    done
+    runtime_view_identity=$(shasum -a 256 "$HOST_RUNTIME_VIEW"/* | shasum -a 256 | cut -d ' ' -f 1)
+    QT_NATIVE_RUNTIME_PYTHON=$HOST_PYTHON QT_NATIVE_RUNTIME_LAUNCHER=$runtime_launcher QT_NATIVE_RUNTIME_VIEW=$HOST_RUNTIME_VIEW
+    export QT_NATIVE_RUNTIME_PYTHON QT_NATIVE_RUNTIME_LAUNCHER QT_NATIVE_RUNTIME_VIEW
+fi
 : "${CMAKE:?Set an absolute native CMake executable}"
 : "${NINJA:?Set an absolute native Ninja executable}"
 : "${TAR:?Set an absolute native tar executable}"
 : "${PATCH:?Set an absolute native patch executable}"
-: "${HOST_PYTHON:?Set an absolute native Python 3 executable}"
 : "${WAYLAND_SCANNER:?Set the matching native Wayland scanner}"
 qdoc_paths=
 if [ "$profile" = full ]; then
@@ -33,11 +61,11 @@ fi
 : "${HOST_CXX:?Set the selected native C++ compiler}"
 JOBS=${JOBS:-2}
 case "$JOBS" in ''|*[!0-9]*|0) echo 'JOBS must be positive' >&2; exit 2;; esac
-for path in "$distfiles" "$work" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_DBUS_PREFIX" $qdoc_paths; do
+for path in "$distfiles" "$work" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_DBUS_PREFIX" $qdoc_paths; do
     case "$path" in /*) ;; *) echo 'Absolute paths required' >&2; exit 2;; esac
     case "$path" in *[!a-zA-Z0-9_./+-]*) echo 'Use paths without shell metacharacters' >&2; exit 2;; esac
 done
-for tool in "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX"; do
+for tool in "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX"; do
     [ -x "$tool" ] || { echo "Missing executable: $tool" >&2; exit 2; }
 done
 host_deployment_target=
@@ -94,10 +122,16 @@ if [ -e "$work" ] || [ -L "$work" ]; then
             echo 'Host deployment target changed; use a new work directory' >&2; exit 2;
         }
     fi
+    grep -F -x "host_runtime_view=$HOST_RUNTIME_VIEW" "$work/inputs.txt" >/dev/null || {
+        echo 'Host runtime view changed; use a new work directory' >&2; exit 2;
+    }
+    grep -F -x "host_runtime_view_identity=$runtime_view_identity" "$work/inputs.txt" >/dev/null || {
+        echo 'Host runtime view contents changed; use a new work directory' >&2; exit 2;
+    }
     grep -q -x "profile=$profile" "$work/inputs.txt" || {
         echo 'Host profile changed; use a new work directory' >&2; exit 2;
     }
-    for tool in "$0" "$toolkit/sources.tsv" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$scanner_patch" "$syncqt_patch" $host_dbus_inputs; do
+    for tool in "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$scanner_patch" "$syncqt_patch" $host_dbus_inputs $runtime_inputs; do
         shasum -a 256 "$tool" | grep -F -x -f - "$work/inputs.txt" >/dev/null || {
             echo "Host input changed; use a new work directory: $tool" >&2; exit 2;
         }
@@ -124,10 +158,12 @@ ln -sf "$NINJA" "$work/bin/ninja"
 PATH="$work/bin:$PATH"
 export PATH
 {
-    shasum -a 256 "$0" "$toolkit/sources.tsv" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$scanner_patch" "$syncqt_patch" $host_dbus_inputs
+    shasum -a 256 "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$scanner_patch" "$syncqt_patch" $host_dbus_inputs $runtime_inputs
     "$CMAKE" --version
     "$NINJA" --version
     printf 'profile=%s\n' "$profile"
+    printf 'host_runtime_view=%s\n' "$HOST_RUNTIME_VIEW"
+    printf 'host_runtime_view_identity=%s\n' "$runtime_view_identity"
     printf 'host_deployment_target=%s\n' "$host_deployment_target"
     if [ "$profile" = full ]; then
         shasum -a 256 "$HOST_LLVM_BUILD/lib/cmake/llvm/LLVMConfig.cmake" \
@@ -164,8 +200,9 @@ for module in $modules; do
         # configure: developer builds cache failed package searches.
         set --
         [ -z "$host_deployment_target" ] || set -- "-DCMAKE_OSX_DEPLOYMENT_TARGET:STRING=$host_deployment_target"
+        [ -z "$HOST_RUNTIME_VIEW" ] || set -- "$@" "-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES:FILEPATH=$runtime_cmake"
         (cd "$work/$module" && CC="$HOST_CC" CXX="$HOST_CXX" \
-            "$work/source/$module-everywhere-src-6.12.0/configure" \
+            "$HOST_SH" "$work/source/$module-everywhere-src-6.12.0/configure" \
             -developer-build -opensource -confirm-license -release \
             -nomake tests -nomake examples -- \
             -DCMAKE_MAKE_PROGRAM="$NINJA" -DPython3_EXECUTABLE:FILEPATH="$HOST_PYTHON" -DQT_FIND_ALL_PACKAGES_ALWAYS=ON \
@@ -190,8 +227,9 @@ for module in $modules; do
     else
         set --
         [ "$module" != qtdeclarative ] || set -- -DFEATURE_quick_vectorimage=ON
+        [ -z "$HOST_RUNTIME_VIEW" ] || set -- "$@" "-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES:FILEPATH=$runtime_cmake"
         if [ "$module" = qttools ]; then
-            set -- -DLLVM_DIR="$HOST_LLVM_BUILD/lib/cmake/llvm" \
+            set -- "$@" -DLLVM_DIR="$HOST_LLVM_BUILD/lib/cmake/llvm" \
                 -DClang_DIR="$HOST_CLANG_BUILD/lib/cmake/clang" \
                 -DFEATURE_clang=ON -DFEATURE_qdoc=ON
             # Upstream macOS archives contain LLVM 23 LTO bitcode. Apple ld's
@@ -201,7 +239,7 @@ for module in $modules; do
                 shasum -a 256 "$HOST_LLVM_BUILD/lib/libLTO.dylib" >> "$work/inputs.txt"
             fi
         fi
-        (cd "$work/$module" && "$work/qtbase/bin/qt-configure-module" \
+        (cd "$work/$module" && "$HOST_SH" "$work/qtbase/bin/qt-configure-module" \
             "$work/source/$module-everywhere-src-6.12.0" \
             -- -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF -DPython3_EXECUTABLE:FILEPATH="$HOST_PYTHON" "$@") > "$work/$module/configure.log" 2>&1
         target=host_tools
