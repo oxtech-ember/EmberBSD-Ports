@@ -6,9 +6,10 @@ set -eu
 work=$1
 cache=$2
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-NODE=${NODE:-$(command -v node)}
+NODE=${NODE:-}
+[ -n "$NODE" ] || { echo 'Select the common Node26 with NODE.' >&2; exit 2; }
 case "$NODE" in /*) ;; *) echo 'NODE must be an absolute executable path.' >&2; exit 2 ;; esac
-[ "$("$NODE" --version)" = v24.21.0 ] || { echo 'Use common Node24.21.0 LTS.' >&2; exit 2; }
+[ "$("$NODE" --version)" = v26.12.1 ] || { echo 'Use common Node26.12.1.' >&2; exit 2; }
 PATH=$(dirname "$NODE"):$PATH
 export PATH
 case "$(uname -s)" in
