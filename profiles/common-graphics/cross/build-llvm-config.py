@@ -46,18 +46,56 @@ def replace_once(text, old, replacement):
     return text.replace(old, replacement, 1)
 
 
+def target_sysroot(cache, sysroot, prefix, target, relocated):
+    original = sdk.existing_directory(cache['CMAKE_SYSROOT'])
+    if relocated:
+        require(prefix == sdk.existing_directory(sysroot + '/usr/pkg') and
+                Path(prefix).is_relative_to(Path(sysroot)) and prefix != target,
+                'relocated mode requires an installed /usr/pkg prefix inside sysroot, distinct from target build')
+    else:
+        require(original == sysroot, 'supplied sysroot differs from the target configuration')
+    return original
+
+
+def target_flags(values, source, target, native, sysroot, original_sysroot):
+    roots = (source, target, native, sysroot, original_sysroot)
+    for name in ('LLVM_CFLAGS', 'LLVM_CXXFLAGS', 'LLVM_SYSTEM_LIBS'):
+        for flag in shlex.split(string(values, name)):
+            require(not any(root in flag for root in roots),
+                    name + ' contains a build-host path: ' + flag)
+    original = string(values, 'LLVM_LDFLAGS')
+    mapped = []
+    for flag in shlex.split(original):
+        if flag.startswith('-L/'):
+            path = flag[2:]
+            require(not any(path == root or path.startswith(root + '/') for root in (sysroot, original_sysroot)),
+                    'target LLVM_LDFLAGS leaks CMAKE_SYSROOT; fix target metadata before building this tool')
+            require(any(path == p or path.startswith(p + '/') for p in ('/usr/lib', '/usr/pkg', '/lib')),
+                    'unmapped library search path: ' + path)
+            flag = '-L' + sysroot + path
+        elif flag.startswith('-L') or re.search(r'\s', flag):
+            raise ValueError('unsupported target linker flag: ' + flag)
+        elif any(root in flag for root in roots):
+            raise ValueError('build path outside a library search flag: ' + flag)
+        mapped.append(flag)
+    return original, ' '.join(mapped)
+
+
 def build(args):
     from emberbsd_sdk.process import ContextLocks
-    require(len(args) == 6, 'usage: build-llvm-config.py --sdk-source SDK LLVM_SOURCE TARGET_BUILD NATIVE_BUILD SYSROOT TARGET_PREFIX NEW_WORK')
+    relocated = '--relocated-installed-prefix' in args
+    if relocated:
+        args = [arg for arg in args if arg != '--relocated-installed-prefix']
+    require(len(args) == 6, 'usage: build-llvm-config.py [--relocated-installed-prefix] --sdk-source SDK LLVM_SOURCE TARGET_BUILD NATIVE_BUILD SYSROOT TARGET_PREFIX NEW_WORK')
     source, target, native, sysroot, prefix = [sdk.existing_directory(p) for p in args[:5]]
     destination = sdk.new_destination(args[5], (source, target, native, sysroot, prefix))
     # The lock covers preflight, every producer, stable input verification and publication.
     with ContextLocks([destination], str(Path(destination).parent)):
         sdk.new_destination(destination, (source, target, native, sysroot, prefix))
-        return build_locked(source, target, native, sysroot, prefix, destination)
+        return build_locked(source, target, native, sysroot, prefix, destination, relocated=relocated)
 
 
-def build_locked(source, target, native, sysroot, prefix, destination):
+def build_locked(source, target, native, sysroot, prefix, destination, *, relocated=False):
     sdk_root = sdk.sdk_source.load()
     producer_inputs = {name: sdk.digest(Path(__file__).parent / name) for name in ('build-llvm-config.py', 'llvm_target.py', 'llvm_native.py', 'llvm_sdk.py')}
     cpp = source + '/tools/llvm-config/llvm-config.cpp'
@@ -74,7 +112,7 @@ def build_locked(source, target, native, sysroot, prefix, destination):
     config = definitions(target + '/include/llvm/Config/config.h')
     variables = definitions(target + '/tools/llvm-config/BuildVariables.inc')
     require(tc.get('CMAKE_SYSTEM_NAME') == 'NetBSD' and tc.get('CMAKE_SYSTEM_PROCESSOR') in ('aarch64', 'x86_64'), 'target must be configured for NetBSD/aarch64 or NetBSD/x86_64')
-    require(tc.get('CMAKE_SYSROOT') and sdk.existing_directory(tc['CMAKE_SYSROOT']) == sysroot, 'supplied sysroot differs from the target configuration')
+    original_sysroot = target_sysroot(tc, sysroot, prefix, target, relocated)
     require(all(string(d, 'LLVM_VERSION_STRING') == VERSION for d in (td, nd)), 'target and native LLVM versions must both be 23.1.4')
     require(string(config, 'PACKAGE_VERSION') == string(td, 'LLVM_VERSION_STRING'), 'target PACKAGE_VERSION disagrees with LLVM_VERSION_STRING')
     require(sdk.existing_directory(nc['CMAKE_HOME_DIRECTORY']) == source, 'native source does not match the supplied source tree')
@@ -154,20 +192,8 @@ def build_locked(source, target, native, sysroot, prefix, destination):
     required += [host_config, cxx, *host_libs, *(a for a in host_system if a.startswith('/'))]
     for p in required:
         hashes.setdefault(p, sdk.digest(p))
-    original_ldflags = string(variables, 'LLVM_LDFLAGS')
-    mapped = []
-    for flag in shlex.split(original_ldflags):
-        if flag.startswith('-L/'):
-            path = flag[2:]
-            require(not (path == sysroot or path.startswith(sysroot + '/')), 'target LLVM_LDFLAGS leaks CMAKE_SYSROOT; fix target metadata before building this tool')
-            require(any(path == p or path.startswith(p + '/') for p in ('/usr/lib', '/usr/pkg', '/lib')), 'unmapped library search path: ' + path)
-            flag = '-L' + sysroot + path
-        elif flag.startswith('-L') or re.search(r'\s', flag):
-            raise ValueError('unsupported target linker flag: ' + flag)
-        elif any(p in flag for p in (source, target, native, sysroot)):
-            raise ValueError('build path outside a library search flag: ' + flag)
-        mapped.append(flag)
-    mapped_ldflags = ' '.join(mapped)
+    original_ldflags, mapped_ldflags = target_flags(
+        variables, source, target, native, sysroot, original_sysroot)
     # All preflight above is read-only. Failed producers retain this unique partial path.
     work = sdk.stage_for(destination)
     work_root = str(Path(work).resolve(strict=True))

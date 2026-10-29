@@ -24,6 +24,14 @@ python3.15 test-llvm-config.py /absolute/new-work /absolute/new-test-work
 
 `scripts/build-llvm-config.sh` runs the build and its tests with the same five inputs and a new `WORK`.
 Set `PYTHON` to the Python 3.15 executable for this shell entry point.
+To use a compatible installed LLVM package in a different sysroot from the
+original CMake build, pass `--relocated-installed-prefix` directly to
+`build-llvm-config.py` (the shell wrapper does not accept it). The new prefix must
+be the selected sysroot's `/usr/pkg`; target headers, shared library, ELF,
+metadata and linker inputs are still checked against the original build. The
+original CMake cache is read without modification. The default remains strict
+about the build sysroot.
+
 Each producer holds the SDK context lock and owns its child session.
 Preflight compiler reads and metadata queries also use owned sessions.
 They refuse output above 16 MiB on stdout or 1 MiB on stderr, and stop
