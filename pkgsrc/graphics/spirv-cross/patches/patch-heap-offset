@@ -1,0 +1,38 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted). Reject descriptor heap offsets unless the
+explicit literal Offset or nonspecialized 32-bit scalar integer OffsetIdEXT
+is provably zero. OpConstantSizeOfEXT is symbolic and cannot be assumed zero.
+
+--- spirv_cross.cpp.orig
++++ spirv_cross.cpp
+@@ -5550,12 +5550,25 @@
+ 				if (is_struct_wrapped_runtime_array)
+ 				{
+ 					descriptor_array_type_id = data_type.member_types.front();
+-					if (!compiler.has_member_decoration(data_type.self, 0, DecorationOffset) &&
+-					    compiler.get_member_decoration(data_type.self, 0, DecorationOffset) != 0)
++					bool has_offset = compiler.has_member_decoration(data_type.self, 0, DecorationOffset);
++					bool has_offset_id = compiler.has_member_decoration(data_type.self, 0, DecorationOffsetIdEXT);
++					if (has_offset == has_offset_id)
++						SPIRV_CROSS_THROW("Offset for resource heap must be constant 0.");
++					if (has_offset)
++					{
++						if (compiler.get_member_decoration(data_type.self, 0, DecorationOffset) != 0)
++							SPIRV_CROSS_THROW("Offset for resource heap must be constant 0.");
++					}
++					else
+ 					{
+ 						ID offset_id = compiler.get_member_decoration(data_type.self, 0, DecorationOffsetIdEXT);
+-						auto *c = compiler.maybe_get <SPIRConstant>(offset_id);
+-						if (!c || c->specialization || c->scalar() != 0)
++						auto *c = compiler.maybe_get<SPIRConstant>(offset_id);
++						if (!c || c->size_of_type || c->specialization || !c->constant_is_null())
++							SPIRV_CROSS_THROW("Offset for resource heap must be constant 0.");
++						auto &offset_type = compiler.get<SPIRType>(c->constant_type);
++						if ((offset_type.basetype != SPIRType::Int && offset_type.basetype != SPIRType::UInt) ||
++						    offset_type.vecsize != 1 || offset_type.columns != 1 ||
++						    !offset_type.array.empty() || compiler.is_pointer(offset_type))
+ 							SPIRV_CROSS_THROW("Offset for resource heap must be constant 0.");
+ 					}
+ 				}

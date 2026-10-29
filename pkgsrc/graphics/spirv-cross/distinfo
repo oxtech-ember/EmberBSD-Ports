@@ -3,4 +3,8 @@ $NetBSD$
 BLAKE2s (spirv-cross-1.4.363.0.tar.gz) = 40d8f34e56410a72fff0e9bcfa12a43dcf72edc0e7c4fb54bfdd99e49d75df3d
 SHA512 (spirv-cross-1.4.363.0.tar.gz) = 10d1888cc430bb2bf39683d68054ab57e92b9474b3ddddbff4dd171a5c5da4dc332dd65b2d10f1a54dbbb1dd2e01d7c7735cbff97cd9512c2995673362c58cec
 Size (spirv-cross-1.4.363.0.tar.gz) = 2032974 bytes
+SHA1 (patch-descriptor-heap) = 7445e4d6489cf50aa724cab3cd046dd60d774322
+SHA1 (patch-heap-offset) = 6b2d38be563070d7a76b94851efa1dede7b8d2a2
+SHA1 (patch-reference-current-glslang) = 7e902a15dd65851c6e744ccd1debe36457c290de
+SHA1 (patch-reference-descriptor-heap) = 6fa0e2c08fc81f42994c457b063eabee52b126c8
 SHA1 (patch-spirv__parser.cpp) = e3ebd8b8945fbc9db0da45f36b563e042a00da63
