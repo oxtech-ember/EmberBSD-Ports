@@ -10,9 +10,11 @@ target must still refuse it with its message, run before any target query,
 and accept an existing file. The cross configuration already verifies
 EMBERBSD_SDK_SOURCE, EMBERBSD_CROSS_BUILD_CC and EMBERBSD_CROSS_BUILD_PYTHON
 for every package while it is parsed, so the test keeps the configured ones.
-Recipes that only produce introspection dumps need the query configuration
-only outside stored-dump replay, so they are checked in live mode here;
-gi-dump-modes.py covers replay and capture.
+Recipes that replay stored GI dumps and GdkPixbuf target data need the
+query configuration only outside replay, so they are checked in live mode
+here; gi-dump-modes.py covers replay and capture. talloc and tdb replay
+stored Waf cross answers and need it only in capture mode
+(EMBERBSD_WAF_ANSWERS_MODE=capture); waf-answers.py covers replay.
 
 Usage: gi-configure-inputs.py --bmake BMAKE --pkgsrc TREE --makeconf CROSS_MAKECONF
 """
@@ -31,11 +33,14 @@ RECIPES = (
     ('devel/glib2-introspection', 'emberbsd-gi-inputs'),
     ('devel/pango', 'emberbsd-gi-inputs'),
     ('graphics/gdk-pixbuf2', 'emberbsd-gi-inputs'),
-    ('devel/talloc', 'emberbsd-talloc-inputs'),
-    ('databases/tdb', 'emberbsd-tdb-inputs'),
+    ('devel/talloc', 'emberbsd-waf-inputs'),
+    ('databases/tdb', 'emberbsd-waf-inputs'),
 )
-# Dump-only recipes replay stored dumps by default; live mode queries.
-LIVE = {'devel/gobject-introspection', 'devel/glib2-introspection', 'devel/pango'}
+# These replay stored data by default; live mode queries.
+LIVE = {'devel/gobject-introspection', 'devel/glib2-introspection', 'devel/pango', 'graphics/gdk-pixbuf2'}
+# Waf recipes replay stored answers by default; capture mode queries.
+WAF = {'devel/talloc', 'databases/tdb'}
+CAPTURE_DIR = None
 MESSAGE = 'EMBERBSD_GI_QUERY_CONFIG must name an existing absolute file without shell metacharacters'
 ABSENT = ((), ('EMBERBSD_GI_QUERY_CONFIG=/ember-missing-gi-query.json',),
           ('EMBERBSD_GI_QUERY_CONFIG=relative.json',))
@@ -43,6 +48,8 @@ ABSENT = ((), ('EMBERBSD_GI_QUERY_CONFIG=/ember-missing-gi-query.json',),
 
 def bmake(recipe, *args):
     mode = ('EMBERBSD_GI_DUMP_MODE=live',) if recipe in LIVE else ()
+    if recipe in WAF:
+        mode = ('EMBERBSD_WAF_ANSWERS_MODE=capture', 'EMBERBSD_WAF_ANSWERS_CAPTURE_DIR=' + CAPTURE_DIR)
     return subprocess.run([ARGS.bmake, '-C', str(ARGS.pkgsrc / recipe), f'MAKECONF={ARGS.makeconf}', *mode, *args],
                           capture_output=True, text=True, timeout=300, env=dict(os.environ, LC_ALL='C'))
 
@@ -50,7 +57,9 @@ def bmake(recipe, *args):
 class ConfigureTimeInputs(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        global CAPTURE_DIR
         cls.temp = tempfile.TemporaryDirectory()
+        CAPTURE_DIR = cls.temp.name
         query = Path(cls.temp.name) / 'query.json'
         query.write_text('{}\n')
         cls.valid = ('EMBERBSD_GI_QUERY_CONFIG=' + str(query),)

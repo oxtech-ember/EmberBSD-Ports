@@ -51,7 +51,7 @@ PKGCONFIG_OVERRIDE=		output/meson-private/gdk-pixbuf-2.0.pc
 PLIST_VARS+=		native
 
 # Resolve options before cross tooling so PKG_DEFAULT_OPTIONS+=-introspection
-# can skip the SSH target-query path (loaders.cache / GIR) on hosts without a guest.
+# skips the introspection and loaders.cache/MIME cross path.
 .include "options.mk"
 
 .if ${USE_CROSS_COMPILE:tl} == "yes"
@@ -63,10 +63,11 @@ MESON_BINARY.glib-genmarshal=	${TOOLBASE}/bin/glib-genmarshal
 MESON_BINARY.glib-mkenums=	${TOOLBASE}/bin/glib-mkenums
 
 .  if !empty(PKG_OPTIONS:Mintrospection)
-# Introspection and loaders.cache/MIME generation need a live target query.
+# The GIR replays stored GI dumps, and loaders.cache/MIME generation replays
+# stored target data from files/target-data/PLATFORM (files/pixbuf_data.py),
+# so the default build runs nothing on a target. EMBERBSD_GI_DUMP_MODE=live
+# or capture queries a target instead (profiles/common-graphics/cross/gi-dumps.md).
 EMBERBSD_GI_MESON_OPTIONS=	no
-# loaders.cache and MIME data run target programs, so replay is not enough.
-EMBERBSD_GI_EXECUTE=		yes
 # thumbnailer is built in cross only on the emberbsd_gi_cross path.
 PLIST.native=	yes
 .include "../../devel/gobject-introspection/cross.mk"
@@ -75,12 +76,18 @@ MESON_CROSS.emberbsd_gi_cross=	true
 MESON_CROSS.emberbsd_pixbuf_python=	'${TOOL_PYTHONBIN}'
 MESON_CROSS.emberbsd_gi_ldd_wrapper=	'${EMBERBSD_GI_FILESDIR}/elf-needed.sh'
 MESON_CROSS.emberbsd_pixbuf_runner=	['${EMBERBSD_CROSS_BUILD_PYTHON}', '-E', '-S', '${FILESDIR}/target-tools.py']
+EMBERBSD_PIXBUF_DATA_DIR=	${PKGDIR}/files/target-data/${_EMBER_GI_PLATFORM}
+MAKE_ENV+=	EMBERBSD_PIXBUF_DATA_DIR=${EMBERBSD_PIXBUF_DATA_DIR:Q}
 MAKE_ENV+=	EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q}
 pre-configure: emberbsd-pixbuf-native
 .PHONY: emberbsd-pixbuf-native
 # The shared GI include checks the SDK and query inputs at configure time.
 emberbsd-pixbuf-native: emberbsd-gi-inputs
+.    if "${EMBERBSD_GI_DUMP_MODE}" == "replay"
+	${RUN}${TEST} -f ${EMBERBSD_PIXBUF_DATA_DIR:Q}/loaders.cache && ${TEST} -f ${EMBERBSD_PIXBUF_DATA_DIR:Q}/mime-types.txt || { ${ERROR_MSG} "No stored GdkPixbuf target data for ${_EMBER_GI_PLATFORM} in ${PKGPATH}; capture them from an EmberBSD target (profiles/common-graphics/cross/gi-dumps.md)"; exit 1; }
+.    else
 	${RUN}${SETENV} EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} EMBERBSD_GI_TARGET=${_EMBER_GI_TARGET:Q} ${EMBERBSD_CROSS_BUILD_PYTHON} -E -S ${FILESDIR}/target-tools.py --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${_EMBER_GI_TRIPLET}-readelf
+.    endif
 .  endif
 
 .else

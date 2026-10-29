@@ -1,5 +1,6 @@
-# STATUS: does not complete yet; see the shared-executor failure marker
-# note in net/samba4. The cross-execute wiring mirrors databases/tdb.
+# STATUS: cross capture mode (EMBERBSD_WAF_ANSWERS_MODE=capture) does not
+# complete yet; see the shared-executor failure marker note in net/samba4.
+# The default replay of stored answers runs nothing on a target.
 
 # $NetBSD: Makefile,v 1.53 2026/08/10 16:45:32 adam Exp $
 
@@ -46,56 +47,14 @@ SUBST_SED.docbook+=	-e 's,http://docbook.sourceforge.net/release/xsl/current,${P
 
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-# Waf runs on the host; its compiled feature probes run on the EmberBSD
-# target through the shared executor (same flow as databases/tdb).
-# Fetch, checksum and extract do not use these build-host inputs, so they
-# are checked when configure starts instead of refusing the whole package.
-_EMBER_TALLOC_INPUT_ERRORS=
-.for _input in EMBERBSD_CROSS_BUILD_PYTHON EMBERBSD_GI_QUERY_CONFIG
-.if empty(${_input}:M/*) || !empty(${_input}:C/[A-Za-z0-9_.\/-]//g) || !exists(${${_input}})
-_EMBER_TALLOC_INPUT_ERRORS+= ${_input}
-.endif
-.endfor
-.if empty(EMBERBSD_SDK_SOURCE:M/*) || !empty(EMBERBSD_SDK_SOURCE:C/[A-Za-z0-9_.\/-]//g) || !exists(${EMBERBSD_SDK_SOURCE}/src/emberbsd_sdk/__init__.py)
-_EMBER_TALLOC_INPUT_ERRORS+= EMBERBSD_SDK_SOURCE
-.endif
-pre-configure: emberbsd-talloc-inputs
-.PHONY: emberbsd-talloc-inputs
-emberbsd-talloc-inputs:
-.for _input in ${_EMBER_TALLOC_INPUT_ERRORS}
-.if ${_input} == "EMBERBSD_SDK_SOURCE"
-	@${ERROR_MSG} "EMBERBSD_SDK_SOURCE must name an absolute SDK source directory without shell metacharacters"
-.else
-	@${ERROR_MSG} "${_input} must name an existing absolute file without shell metacharacters"
-.endif
-.endfor
-.if !empty(_EMBER_TALLOC_INPUT_ERRORS)
-	@${FALSE}
-.endif
-EMBERBSD_TALLOC_QUERY= ${.CURDIR}/../../devel/gobject-introspection/files/target-query.py
-EMBERBSD_TALLOC_EXECUTOR= ${EMBERBSD_CROSS_BUILD_PYTHON} -E -S ${EMBERBSD_TALLOC_QUERY} --execute
-CONFIGURE_ARGS+= --cross-compile --cross-execute=${EMBERBSD_TALLOC_EXECUTOR:Q}
-# Parallel configure mutates provider files while a query walks them.
-CONFIGURE_ARGS+= --jobs=1
-# The Python binding probes build host binaries that the shared target
-# executor rightly refuses; the KIO SMB consumer needs the C library only.
+# Waf runs on the host. Its compiled feature probes are answered from the
+# stored per-platform answers in files/cross-answers (devel/talloc/waf-cross.mk).
+.include "waf-cross.mk"
+# The Python binding probes build host binaries that the target executor
+# rightly refuses; the KIO SMB consumer needs the C library only.
 CONFIGURE_ARGS+= --disable-python
-CONFIGURE_ENV+= EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q}
-CONFIGURE_ENV+= EMBERBSD_GI_TARGET=${MACHINE_ARCH:S/x86_64/amd64/}
-CONFIGURE_ENV+= EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q}
-CONFIGURE_ENV+= EMBERBSD_GI_FAILURE_MARKER=${WRKDIR}/.talloc-query-failure
-CONFIGURE_ENV+= PYTHON=${TOOL_PYTHONBIN:Q}
 CONFIGURE_ENV+= PYTHONPATH=${WRKDIR}/.pysite:${CROSS_DESTDIR}${LOCALBASE}/${PYLIB}
 CONFIGURE_ENV+= PYTHON_CONFIG=${TOOL_PYTHONBIN:Q}\ ${CROSS_DESTDIR}${PYTHONBIN}-config
-pre-configure: emberbsd-talloc-query
-.PHONY: emberbsd-talloc-query
-emberbsd-talloc-query: emberbsd-talloc-inputs
-	${RUN}${SETENV} EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q} EMBERBSD_GI_TARGET=${MACHINE_ARCH:S/x86_64/amd64/:Q} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_CROSS_BUILD_PYTHON} -E -S ${EMBERBSD_TALLOC_QUERY} --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${MACHINE_ARCH}--netbsd-readelf ${MACHINE_ARCH:S/x86_64/amd64/:Q}
-	${RUN}${RM} -f ${WRKDIR}/.talloc-query-failure
-post-configure: emberbsd-talloc-query-result
-.PHONY: emberbsd-talloc-query-result
-emberbsd-talloc-query-result:
-	${RUN}${TEST} ! -e ${WRKDIR}/.talloc-query-failure || { ${CAT} ${WRKDIR}/.talloc-query-failure; exit 1; }
 .endif
 
 .include "../../devel/gettext-lib/buildlink3.mk"

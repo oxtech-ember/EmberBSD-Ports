@@ -204,9 +204,10 @@ selectors are set, they must name the same executable.
 
 These inputs are checked when configure starts, not while the recipe is
 parsed. Fetch, checksum and extract do not use them, so a bulk fetch succeeds
-without a target. `pre-configure` runs `emberbsd-gi-inputs` (talloc and tdb:
-`emberbsd-talloc-inputs`, `emberbsd-tdb-inputs`) before any target query. It
-names each absent or invalid input and stops the build. Check this with:
+without a target. `pre-configure` runs `emberbsd-gi-inputs` (talloc and tdb
+in Waf capture mode: `emberbsd-waf-inputs`, see
+[waf-answers.md](../../common-media/cross/waf-answers.md)) before any target
+query. It names each absent or invalid input and stops the build. Check this with:
 
 ```sh
 MAKECONF=CROSS_MAKECONF python3 profiles/common-graphics/tests/gi-configure-inputs.py \

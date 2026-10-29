@@ -18,10 +18,11 @@ selects the mode with `EMBERBSD_GI_DUMP_MODE`:
 | `live` | yes | yes | writes the target's dump |
 | `capture` | yes | yes, and `EMBERBSD_GI_DUMP_CAPTURE_DIR` | as `live`, and stores the normalized dump |
 
-Recipes that also execute target programs (`gdk-pixbuf2` loaders and MIME
-data) set `EMBERBSD_GI_EXECUTE=yes` before the include and keep needing the
-query configuration. `talloc` and `tdb` run `--execute` waf probes outside
-this include and are not affected. The configure-time check
+A recipe that also executes target programs can set `EMBERBSD_GI_EXECUTE=yes`
+before the include; it then needs the query configuration in every mode.
+`gdk-pixbuf2` does not: its loader cache and MIME list follow the same modes
+(see below). `talloc` and `tdb` replay stored Waf answers instead
+([waf-answers.md](../../common-media/cross/waf-answers.md)). The configure-time check
 `emberbsd-gi-inputs` refuses a wrong mode, a missing query configuration
 outside replay and a missing capture directory. Fetch is never refused.
 
@@ -95,6 +96,26 @@ Dumps appear under `/absolute/gi-capture/PLATFORM/CATEGORY_NAME/`. Review
 them and copy them to `pkgsrc/CATEGORY/NAME/files/gi-dump/PLATFORM/`.
 Capture refuses to overwrite an existing captured file.
 
+## GdkPixbuf target data
+
+`graphics/gdk-pixbuf2` also needs the output of two target programs at build
+time: `gdk-pixbuf-query-loaders` (the build-time loader cache; the installed
+cache is generated on the target at package install) and
+`gdk-pixbuf-print-mime-types` (the thumbnailer MIME list). Both depend only
+on the release and the loader module set.
+[target-tools.py](../../../pkgsrc/graphics/gdk-pixbuf2/files/target-tools.py)
+follows `EMBERBSD_GI_DUMP_MODE`. In replay it answers from
+`files/target-data/PLATFORM/loaders.cache` and `mime-types.txt`
+([pixbuf_data.py](../../../pkgsrc/graphics/gdk-pixbuf2/files/pixbuf_data.py))
+without the SDK, a query configuration or a target. Each file has a
+`# EmberBSD GdkPixbuf target data 1` header naming platform, recipe,
+package, query, the sorted loader module file names and the data checksum;
+module paths are stored as `@MODULE@/<file name>`. Replay refuses another
+platform, recipe, package or module set. A capture build also writes
+`/absolute/gi-capture/PLATFORM/graphics_gdk-pixbuf2/loaders.cache` and
+`mime-types.txt`; copy them to `files/target-data/PLATFORM/`. Its remote
+directories are `/tmp/ember-pixbuf.XXXXXXXX`, removed after each query.
+
 ## Tests
 
 - [gi-dump.py](../tests/gi-dump.py) runs the launcher without a target:
@@ -103,6 +124,10 @@ Capture refuses to overwrite an existing captured file.
 - [gi-dump-modes.py](../tests/gi-dump-modes.py) checks the recipe wiring
   with a real cross MAKECONF: default replay directory and environment,
   replay without a query configuration, the live `--check`, capture and
-  mode refusals, `EMBERBSD_GI_EXECUTE` and WebKit's CMake environment.
+  mode refusals, `EMBERBSD_GI_EXECUTE`, GdkPixbuf target data replay and
+  WebKit's CMake environment.
+- [pixbuf-data.py](../tests/pixbuf-data.py) runs the GdkPixbuf runner in
+  replay without SDK or target: round trip, identity, module-set and
+  checksum refusals, capture normalization and the unchanged live path.
 - [gi-configure-inputs.py](../tests/gi-configure-inputs.py) checks the
   query configuration in live mode.

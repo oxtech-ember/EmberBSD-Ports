@@ -16,6 +16,7 @@ import tempfile
 
 sys.dont_write_bytecode = True
 
+import pixbuf_data
 from sdk_source import install_signal_handlers, load_sdk
 
 TARGETS = {'aarch64': ('aarch64', 183), 'amd64': ('x86_64', 62)}
@@ -264,10 +265,9 @@ exit "$result"
     else:
         require(re.fullmatch(rb'[a-zA-Z0-9.+_-]+/[a-zA-Z0-9.+_-]+;(?:[a-zA-Z0-9.+_-]+/[a-zA-Z0-9.+_-]+;)*', output),
                 'invalid MIME query output')
-    sys.stdout.buffer.write(output)
     shutil.rmtree(stage)
     archive.unlink()
-    return 0
+    return output
 
 
 def main(arguments=None):
@@ -279,10 +279,31 @@ def main(arguments=None):
         while arguments and arguments[0] == '--sdk-source':
             selection.extend(arguments[:2])
             del arguments[:2]
+        data_mode = pixbuf_data.mode(os.environ)
+        kind = arguments[0][2:] if arguments and arguments[0] in ('--loaders', '--mime') else None
+        if kind is not None:
+            require(len(arguments) >= 2, 'binary required')
+            expected = 'gdk-pixbuf-query-loaders' if kind == 'loaders' else 'gdk-pixbuf-print-mime-types'
+            require(os.path.basename(arguments[1]) == expected, 'unexpected target tool')
+            # The paths a live query reports: canonical existing files.
+            inputs = [os.path.realpath(path) for path in arguments[2:]]
+            for path in inputs:
+                require(os.path.isfile(path), f'missing input: {path}')
+        if kind is not None and data_mode == 'replay':
+            # Stored target data: no SDK, no target and no query configuration.
+            sys.stdout.buffer.write(pixbuf_data.replay(os.environ, kind, inputs))
+            return 0
         unused_source, unused_options = load_sdk(selection)
         install_signal_handlers()
-        return query(arguments)
-    except (ToolError, OSError, ValueError, KeyError) as error:
+        output = query(arguments)
+        if kind is None:
+            return output
+        if data_mode == 'capture':
+            stored = pixbuf_data.capture(os.environ, kind, inputs, output)
+            print(f'Stored GdkPixbuf target data: {stored}', file=sys.stderr)
+        sys.stdout.buffer.write(output)
+        return 0
+    except (ToolError, pixbuf_data.DataError, OSError, ValueError, KeyError) as error:
         print(str(error), file=sys.stderr)
         return 1
     except Exception as error:

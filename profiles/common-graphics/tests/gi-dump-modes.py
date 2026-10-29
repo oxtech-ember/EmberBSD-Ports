@@ -6,8 +6,10 @@
 The default mode is replay from the recipe's files/gi-dump/PLATFORM, and it
 needs no GI query configuration. Live and capture modes need one, capture
 also an existing capture directory, and recipes that execute target programs
-(EMBERBSD_GI_EXECUTE=yes) need one in every mode. The dump identity reaches
-the launcher through MAKE_ENV (and CONFIGURE_ENV for WebKit's CMake).
+(EMBERBSD_GI_EXECUTE=yes) need one in every mode. gdk-pixbuf2 replays its
+stored loader cache and MIME data in the same modes and needs none in replay.
+The dump identity reaches the launcher through MAKE_ENV (and CONFIGURE_ENV
+for WebKit's CMake).
 
 Usage: gi-dump-modes.py --bmake BMAKE --pkgsrc TREE --makeconf CROSS_MAKECONF
 """
@@ -113,10 +115,31 @@ class DumpModes(unittest.TestCase):
         self.assertIn('EMBERBSD_GI_DUMP_MODE must be replay, live or capture', result.stdout + result.stderr)
 
     def test_target_execution_needs_a_query_in_replay(self):
-        self.assertEqual(value('graphics/gdk-pixbuf2', '${EMBERBSD_GI_EXECUTE}'), 'yes')
-        result = bmake('graphics/gdk-pixbuf2', 'emberbsd-gi-inputs')
+        # A recipe that still executes target programs needs the query.
+        result = bmake('devel/pango', 'EMBERBSD_GI_EXECUTE=yes', 'emberbsd-gi-inputs')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(QUERY_MESSAGE, result.stdout + result.stderr)
+
+    def test_pixbuf_replays_stored_target_data(self):
+        recipe = 'graphics/gdk-pixbuf2'
+        platform = value(recipe, '${CROSS_OPSYS}-${CROSS_OS_VERSION}-${MACHINE_ARCH}')
+        self.assertEqual(value(recipe, '${EMBERBSD_GI_EXECUTE:Uno}'), 'no')
+        self.assertEqual(value(recipe, '${PKG_FAIL_REASON}'), '')
+        result = bmake(recipe, 'emberbsd-gi-inputs')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        data = str(ARGS.pkgsrc / recipe / 'files' / 'target-data' / platform)
+        self.assertIn(f'EMBERBSD_PIXBUF_DATA_DIR={data}', value(recipe, '${MAKE_ENV}').split())
+        self.assertIn('EMBERBSD_GI_DUMP_MODE=replay', value(recipe, '${MAKE_ENV}').split())
+        replay = bmake(recipe, '-n', 'emberbsd-pixbuf-native')
+        self.assertEqual(replay.returncode, 0, replay.stderr)
+        self.assertIn('No stored GdkPixbuf target data for', replay.stdout)
+        self.assertNotIn('target-tools.py --check', replay.stdout)
+        missing = bmake(recipe, 'EMBERBSD_PIXBUF_DATA_DIR=/ember-missing-pixbuf-data', 'emberbsd-pixbuf-native')
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertIn('No stored GdkPixbuf target data for', missing.stdout + missing.stderr)
+        live = bmake(recipe, 'EMBERBSD_GI_DUMP_MODE=live', self.query, '-n', 'emberbsd-pixbuf-native')
+        self.assertEqual(live.returncode, 0, live.stderr)
+        self.assertIn('target-tools.py --check', live.stdout)
 
     def test_webkit_cmake_receives_the_dump_identity(self):
         env = value('www/webkit-gtk41', '${CONFIGURE_ENV}').split()

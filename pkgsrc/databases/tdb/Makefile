@@ -59,54 +59,15 @@ SUBST_SED.docbook+=	-e 's,http://docbook.sourceforge.net/release/xsl/current,${T
 
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-# Waf runs on the host; its compiled feature probes run on the EmberBSD target.
-# Fetch, checksum and extract do not use these build-host inputs, so they
-# are checked when configure starts instead of refusing the whole package.
-_EMBER_TDB_INPUT_ERRORS=
-.for _input in EMBERBSD_CROSS_BUILD_PYTHON EMBERBSD_GI_QUERY_CONFIG
-.if empty(${_input}:M/*) || !empty(${_input}:C/[A-Za-z0-9_.\/-]//g) || !exists(${${_input}})
-_EMBER_TDB_INPUT_ERRORS+= ${_input}
-.endif
-.endfor
-.if empty(EMBERBSD_SDK_SOURCE:M/*) || !empty(EMBERBSD_SDK_SOURCE:C/[A-Za-z0-9_.\/-]//g) || !exists(${EMBERBSD_SDK_SOURCE}/src/emberbsd_sdk/__init__.py)
-_EMBER_TDB_INPUT_ERRORS+= EMBERBSD_SDK_SOURCE
-.endif
-pre-configure: emberbsd-tdb-inputs
-.PHONY: emberbsd-tdb-inputs
-emberbsd-tdb-inputs:
-.for _input in ${_EMBER_TDB_INPUT_ERRORS}
-.if ${_input} == "EMBERBSD_SDK_SOURCE"
-	@${ERROR_MSG} "EMBERBSD_SDK_SOURCE must name an absolute SDK source directory without shell metacharacters"
-.else
-	@${ERROR_MSG} "${_input} must name an existing absolute file without shell metacharacters"
-.endif
-.endfor
-.if !empty(_EMBER_TDB_INPUT_ERRORS)
-	@${FALSE}
-.endif
-EMBERBSD_TDB_QUERY= ${.CURDIR}/../../devel/gobject-introspection/files/target-query.py
-EMBERBSD_TDB_EXECUTOR= ${EMBERBSD_CROSS_BUILD_PYTHON} -E -S ${EMBERBSD_TDB_QUERY} --execute
-CONFIGURE_ARGS+= --cross-compile --cross-execute=${EMBERBSD_TDB_EXECUTOR:Q}
-CONFIGURE_ENV+= EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q}
-CONFIGURE_ENV+= EMBERBSD_GI_TARGET=${MACHINE_ARCH:S/x86_64/amd64/}
-CONFIGURE_ENV+= EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q}
-CONFIGURE_ENV+= EMBERBSD_GI_FAILURE_MARKER=${WRKDIR}/.tdb-query-failure
-CONFIGURE_ENV+= PYTHON=${TOOL_PYTHONBIN:Q}
+# Waf runs on the host. Its compiled feature probes are answered from the
+# stored per-platform answers in files/cross-answers (devel/talloc/waf-cross.mk).
+.include "../../devel/talloc/waf-cross.mk"
 # Reuse pkgsrc's target sysconfig environment during configure as well as make.
 # Execute the target python-config script with the host interpreter.
 .if !empty(PKG_OPTIONS:Mpython)
 CONFIGURE_ENV+= PYTHONPATH=${WRKDIR}/.pysite:${CROSS_DESTDIR}${LOCALBASE}/${PYLIB}
 CONFIGURE_ENV+= PYTHON_CONFIG=${TOOL_PYTHONBIN:Q}\ ${CROSS_DESTDIR}${PYTHONBIN}-config
 .endif
-pre-configure: emberbsd-tdb-query
-.PHONY: emberbsd-tdb-query
-emberbsd-tdb-query: emberbsd-tdb-inputs
-	${RUN}${SETENV} EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_CROSS_BUILD_PYTHON} -E -S ${EMBERBSD_TDB_QUERY} --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-readelf ${MACHINE_ARCH:S/x86_64/amd64/:Q}
-	${RUN}${RM} -f ${WRKDIR}/.tdb-query-failure
-post-configure: emberbsd-tdb-query-result
-.PHONY: emberbsd-tdb-query-result
-emberbsd-tdb-query-result:
-	${RUN}${TEST} ! -e ${WRKDIR}/.tdb-query-failure || { ${CAT} ${WRKDIR}/.tdb-query-failure; exit 1; }
 .endif
 
 .include "../../devel/gettext-lib/buildlink3.mk"

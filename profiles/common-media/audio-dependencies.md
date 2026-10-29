@@ -28,8 +28,8 @@ or acceptance is claimed.
 ## Reproduce
 
 Build the normal `databases/tdb` and `devel/libdaemon` packages in an exported
-tree. Supply the shared executor configuration
-and matching host Ruby as documented in the introspection guide.
+tree. Cross builds replay the stored Waf answers
+([cross/waf-answers.md](cross/waf-answers.md)); no target is needed.
 
 ```sh
 BMAKE=/absolute/native-bmake MAKECONF=/absolute/cross-mk.conf \
@@ -38,7 +38,8 @@ BMAKE=/absolute/native-bmake MAKECONF=/absolute/cross-mk.conf \
 
 The check inspects actual Waf flags, host generators, target Python ABI,
 native-mode selection and every file from the package list. It also injects a
-transport-failure marker into the real post-configure hook and checks refusal.
+transport-failure marker into the real capture-mode post-configure hook and
+checks refusal.
 
 For TDB runtime acceptance, copy the unchanged extracted `test/` directory,
 `python/tests/simple.py`, all 37 built `bin/tdb1-*` programs and `bin/tdbtorture`

@@ -66,8 +66,10 @@ cross selection (no build-time `loaders.cache` / thumbnailer via a guest).
 `PLIST.native` stays unset in that mode so `bin/gdk-pixbuf-thumbnailer` and
 `share/thumbnailers/gdk-pixbuf-thumbnailer.thumbnailer` are not expected in
 DESTDIR (the `emberbsd_gi_cross` Meson gate disables the thumbnailer subdir).
-Enable introspection only when `EMBERBSD_GI_QUERY_CONFIG` names a live target
-query JSON. For a
+With introspection the default build replays stored GI dumps and stored
+loader/MIME target data ([gi-dumps.md](gi-dumps.md)) and needs no target.
+`EMBERBSD_GI_DUMP_MODE=live` or `capture` uses a live target query JSON
+named by `EMBERBSD_GI_QUERY_CONFIG`. For a
 GCC16 runtime closure, select its provider consistently in the JSON:
 
 ```json

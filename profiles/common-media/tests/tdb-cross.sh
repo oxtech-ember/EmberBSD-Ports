@@ -9,7 +9,7 @@ mkdir "$2"
 work=$(CDPATH= cd -- "$2" && pwd)
 recipe=$tree/databases/tdb
 get() { "$BMAKE" -C "$recipe" -V "\${$1}"; }
-[ "$(get PKGNAME)" = tdb-1.4.15nb1 ]
+[ "$(get PKGNAME)" = tdb-1.4.15nb8 ]
 source=$(get WRKSRC)
 stage=$(get DESTDIR)$(get PREFIX)
 config=$source/bin/c4che/default_cache.py
@@ -28,13 +28,18 @@ native=$("$BMAKE" -C "$recipe" USE_CROSS_COMPILE=no -V '${CONFIGURE_ARGS}')
 case "$native" in *--cross-compile*|*--cross-execute*) exit 1 ;; esac
 sed -e '/^@/d' -e "s,\${PYSITELIB},$(get PYSITELIB),g" -e "s,\${PKGVERSION},$(get PKGVERSION_NOREV),g" "$recipe/PLIST" > "$work/package-files.txt"
 while read -r file; do [ -e "$stage/$file" ]; done < "$work/package-files.txt"
-# Exercise the real post-configure hook without changing the accepted build.
-"$BMAKE" -C "$recipe" WRKDIR="$work" emberbsd-tdb-query-result > "$work/query-result-pass.log" 2>&1
-printf '%s\n' 'Injected transport failure' > "$work/.tdb-query-failure"
-if "$BMAKE" -C "$recipe" WRKDIR="$work" emberbsd-tdb-query-result > "$work/query-result-fail.log" 2>&1; then
+# The default build replays stored answers and never asks a target.
+case "$(get CONFIGURE_ARGS)" in *--cross-execute*) exit 1 ;; *--cross-answers=*) ;; *) exit 1 ;; esac
+# Exercise the real capture-mode post-configure hook without changing the accepted build.
+mkdir "$work/capture"
+capture="EMBERBSD_WAF_ANSWERS_MODE=capture EMBERBSD_WAF_ANSWERS_CAPTURE_DIR=$work/capture"
+printf '%s\n' 'Checking simple C program: "NetBSD"' > "$work/.cross-answers.txt"
+printf '%s\n' 'Injected transport failure' > "$work/.waf-query-failure"
+if env $capture "$BMAKE" -C "$recipe" WRKDIR="$work" emberbsd-waf-capture > "$work/query-result-fail.log" 2>&1; then
     echo 'TDB accepted an unverified configure result' >&2
     exit 1
 fi
 grep -F 'Injected transport failure' "$work/query-result-fail.log" >/dev/null
-rm "$work/.tdb-query-failure"
+rm "$work/.waf-query-failure"
+env $capture "$BMAKE" -C "$recipe" WRKDIR="$work" emberbsd-waf-capture > "$work/query-result-pass.log" 2>&1
 echo 'PASS: target Python flags/ABI, host generators, native mode, complete TDB package and configure failure gate'
