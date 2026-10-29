@@ -3,3 +3,6 @@ $NetBSD: distinfo,v 1.41 2026/04/16 06:33:50 wiz Exp $
 BLAKE2s (llvm-project-23.1.4.src.tar.xz) = 9fd3c4efc2f039d49b78c7c17a164c3530bb026dad9479fa1555d23d6ab52f77
 SHA512 (llvm-project-23.1.4.src.tar.xz) = 1443531768d7040677302e4468b95b345511f10881a072e703814e9e10316d6ce12f56e8d1fbab5c350550380ae8d242acebb68c833fa385ea7777f05d8bde23
 Size (llvm-project-23.1.4.src.tar.xz) = 179272572 bytes
+SHA1 (patch-tools_debugserver_source_JSONGenerator.h) = 0e31bc914fc3b309b37712a7053c30353461f306
+SHA1 (patch-tools_debugserver_source_MacOSX_MachThreadList.h) = ec16e149f60c8d582f5ae8fb5cd27309a4f0d777
+SHA1 (patch-tools_debugserver_source_MacOSX_MachVMMemory.cpp) = d599885f03a6c1e04167da2f894d63599db11dfd

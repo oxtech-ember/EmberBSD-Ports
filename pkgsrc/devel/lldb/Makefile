@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.65 2026/09/02 19:01:39 wiz Exp $
 
-PKGREVISION= 2
+PKGREVISION= 3
 .include "../../lang/llvm/version.mk"
 
 PKGNAME=	lldb-${LLVM_VERSION}
@@ -59,9 +59,27 @@ TEST_ENV+=		LD_LIBRARY_PATH=${WRKDIR}/build/lib
 .if ${OPSYS} == "Darwin"
 TOOL_DEPENDS+= mig>=138:../../devel/mig
 .if ${NATIVE_OPSYS} == "Darwin"
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes" && defined(EMBERBSD_NATIVE_CXX_BINDING_RECORD) && !empty(EMBERBSD_NATIVE_CXX_BINDING_RECORD)
+DEPENDS+= libcxx>=23.1.4:../../lang/libcxx
+.endif
 TOOL_DEPENDS+= cctools-codesign-allocate>=1030.6.3:../../devel/cctools
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_CODESIGN=/usr/bin/codesign
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_CODESIGN_ALLOCATE=${TOOLBASE:Q}/bin/codesign_allocate
+
+# CMake's install/strip removes debugserver's signature.  Sign the installed
+# binary after all pkgsrc stripping, before package metadata is generated.
+.PHONY: lldb-sign-debugserver
+.if ${STRIP_DEBUG:Uno:tl} == "yes" && ${STRIP_DEBUG_SUPPORTED:Uyes:tl} == "yes"
+lldb-sign-debugserver: install-strip-debug
+.else
+lldb-sign-debugserver: post-install
+.endif
+lldb-sign-debugserver:
+	${RUN} CODESIGN_ALLOCATE=${TOOLBASE:Q}/bin/codesign_allocate \
+	    /usr/bin/codesign --force --sign - \
+	    --entitlements ${WRKSRC:Q}/tools/debugserver/resources/debugserver-macosx-entitlements.plist \
+	    ${DESTDIR:Q}${PREFIX:Q}/bin/debugserver
+install-doc-handling: lldb-sign-debugserver
 .endif
 MAKE_ENV+= MIGCC=${CC:Q}
 MAKE_ENV+= MIGCOM=${TOOLBASE:Q}/libexec/migcom
