@@ -1,0 +1,10 @@
+$NetBSD$
+
+BLAKE2s (openddl-parser-0.5.2.tar.gz) = dc3de52c714ded2869cd59ff606d1163189b7405656ac3ea61ba14e66ad50b90
+SHA512 (openddl-parser-0.5.2.tar.gz) = 8a33711e911ef5ab631382dd8f196cc72acfe2726db2d9dd97dd4d5f543dde7a1430c29b8d36e1abec611dfd5d4bb77d11940bbcd827ed4907dc333668bb5e52
+Size (openddl-parser-0.5.2.tar.gz) = 1092721
+SHA1 (patch-CMakeLists.txt) = 8a81cc330d461c78eb459fe4cbc576678dccbb26
+SHA1 (patch-code_OpenDDLParser.cpp) = d51aaecf58bcd159e9ec0df39b13261d6952b01e
+SHA1 (patch-test_OpenDDLParserTest.cpp) = f10b458b2f0393d02a6f5b717ef3a7683d2abe23
+SHA1 (patch-code_OpenDDLParser-property.cpp) = 91fcd88e29831d4b00b90f8baacc80f2101088ac
+SHA1 (patch-test_OpenDDLParserTest-property.cpp) = 3d195e3a01a22ec6d9b81d50499e4e8754ac1381

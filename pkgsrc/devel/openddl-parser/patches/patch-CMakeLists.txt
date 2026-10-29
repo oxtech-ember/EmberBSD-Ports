@@ -1,0 +1,65 @@
+$NetBSD$
+
+Use shared GoogleTest, register upstream tests and version the shared library.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -36,7 +36,6 @@
+ endif()
+ 
+ add_definitions( -D_VARIADIC_MAX=10 )
+-add_definitions( -DGTEST_HAS_PTHREAD=0 )
+ if ( DDL_DEBUG_OUTPUT )
+     message("Enable debug output.")
+     add_definitions( -DDDL_DEBUG_HEADER_NAME)
+@@ -115,22 +114,13 @@
+     target_compile_definitions(openddlparser PUBLIC OPENDDL_STATIC_LIBARY)
+ endif()
+ 
+-set_target_properties( openddlparser PROPERTIES PUBLIC_HEADER "${openddlparser_headers}")
++set_target_properties( openddlparser PROPERTIES PUBLIC_HEADER "${openddlparser_headers}"
++    VERSION "${openddlparser_VERSION}" SOVERSION 0)
+ 
+ if (DDL_BUILD_TESTS)
+     find_package(Threads REQUIRED)
+ 
+-    SET ( GTEST_PATH contrib/gtest-1.7.0 )
+-
+-    SET ( gtest_src
+-        ${GTEST_PATH}/src/gtest-death-test.cc
+-        ${GTEST_PATH}/src/gtest-filepath.cc
+-        ${GTEST_PATH}/src/gtest-port.cc
+-        ${GTEST_PATH}/src/gtest-printers.cc
+-        ${GTEST_PATH}/src/gtest-test-part.cc
+-        ${GTEST_PATH}/src/gtest-typed-test.cc
+-        ${GTEST_PATH}/src/gtest.cc
+-    )
++    find_package(GTest CONFIG REQUIRED)
+ 
+     SET( openddlparser_unittest_src
+         test/DDLNodeTest.cpp
+@@ -147,21 +137,16 @@
+     )
+ 
+     SOURCE_GROUP( code  FILES ${openddlparser_unittest_src} )
+-    SOURCE_GROUP( gtest FILES ${gtest_src} )
+ 
+     ADD_EXECUTABLE( openddlparser_unittest
+-        ${gtest_src}
+         ${openddlparser_unittest_src}
+     )
+ 
+-    target_include_directories(openddlparser_unittest
+-        PRIVATE
+-            ${GTEST_PATH}
+-            ${GTEST_PATH}/include
+-    )
+-    target_link_libraries(openddlparser_unittest openddlparser Threads::Threads)
++    target_link_libraries(openddlparser_unittest openddlparser Threads::Threads GTest::gtest)
+     target_compile_features(openddlparser_unittest PRIVATE cxx_std_11)
+     target_compile_definitions(openddlparser_unittest PRIVATE OPENDDL_TEST_DATA="${PROJECT_SOURCE_DIR}/test/TestData")
++    enable_testing()
++    add_test(NAME openddlparser_unittest COMMAND openddlparser_unittest)
+ endif ()
+ 
+ if (DDL_BUILD_PARSER_DEMO)

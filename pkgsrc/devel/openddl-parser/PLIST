@@ -1,0 +1,15 @@
+@comment $NetBSD$
+include/openddlparser/DDLNode.h
+include/openddlparser/OpenDDLCommon.h
+include/openddlparser/OpenDDLExport.h
+include/openddlparser/OpenDDLParser.h
+include/openddlparser/OpenDDLParserUtils.h
+include/openddlparser/OpenDDLStream.h
+include/openddlparser/TPoolAllocator.h
+include/openddlparser/Value.h
+lib/cmake/openddlparser/openddlparser-config-version.cmake
+lib/cmake/openddlparser/openddlparser-config.cmake
+lib/cmake/openddlparser/openddlparser-config-noconfig.cmake
+lib/libopenddlparser.so
+lib/libopenddlparser.so.0
+lib/libopenddlparser.so.0.5.2
