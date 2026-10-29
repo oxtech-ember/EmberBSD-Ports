@@ -22,6 +22,9 @@ before = fixed.gsub(pattern, '')
 conf = File.read(makeconf)
 include_pattern = /^\.include "[^"\n]*(?:\/profiles\/common-build-tools\/cross\/mk\.conf|\/EMBERBSD-CROSS-MK\.CONF)"$/
 abort 'MAKECONF must include the common cross profile exactly once.' unless conf.scan(include_pattern).size == 1
+# The copies live in NEW_WORK; their sibling includes still name the directory
+# of the profile that MAKECONF includes.
+profile_dir = File.dirname(conf[include_pattern][/"(.*)"/, 1])
 FileUtils.mkdir_p(work + '/fixture')
 File.write(work + '/fixture/CMakeLists.txt', <<~'CMAKE')
   cmake_minimum_required(VERSION 3.25)
@@ -53,7 +56,7 @@ cmake = ENV.fetch('CMAKE', 'cmake')
 results = {}
 { 'before' => before, 'fixed' => fixed }.each do |revision, source|
   path = work + '/' + revision + '.mk'
-  File.write(path, source)
+  File.write(path, source.gsub('${.PARSEDIR}', profile_dir))
   selection = work + '/' + revision + '.conf'
   File.write(selection, conf.sub(include_pattern, '.include "' + path + '"'))
   %w[aarch64 amd64 native].each do |kind|
