@@ -50,7 +50,7 @@ for name, text in files.items():
     path = a.work / name
     path.write_text(text)
     obj = path.with_suffix('.o')
-    subprocess.run([str(cxx), *a.flag, '-std=c++20', '-I'+str(source),
+    subprocess.run([str(cxx), *a.flag, '-O2', '-std=c++20', '-I'+str(source),
                     '-I'+str(source/'include'), '-c', str(path), '-o', str(obj)], check=True)
     objects.append(obj)
 exe = a.work/'hash-tu'
