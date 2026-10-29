@@ -204,6 +204,14 @@ A causal mutant that omits the render-node check must fail this fixture.
 The receipt regression uses the production verifier and rejects changed
 binaries, missing entries, duplicate tools, unsafe paths and ABI mismatches.
 It also checks the final manifest row when that row has no trailing newline.
+The host-policy regression accepts the supported Darwin and Linux pairs, rejects
+wrong CPU/compiler pairs, and rejects compiler or inspector paths outside the
+selected prefix:
+
+```sh
+python3.15 ../tests/mesa-generators-host.py ../cross/mesa_generator_host.py
+```
+
 Run it with the real sealed native tools:
 
 ```sh

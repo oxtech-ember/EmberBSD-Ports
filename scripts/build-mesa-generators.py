@@ -7,7 +7,6 @@ import importlib.util
 import json
 import os
 from pathlib import Path
-import platform
 import re
 import sys
 import tempfile
@@ -15,7 +14,9 @@ import tempfile
 sys.dont_write_bytecode = True
 PORTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PORTS / 'pkgsrc/lang/llvm/files'))
+sys.path.insert(0, str(PORTS / 'profiles/common-graphics/cross'))
 import sdk_source
+import mesa_generator_host
 
 DEPENDENCIES = (
     'meson>=1.12.1', 'ninja-build>=1.13.2', 'cmake>=4.4.4', 'pkgconf>=0',
@@ -57,7 +58,7 @@ def archive_pin(table, name):
 HOST_ROLES = ('cc', 'cxx', 'cpp', 'ar', 'ranlib', 'nm', 'strip',
               'sh', 'python', 'cmake', 'meson', 'ninja', 'pkg-config',
               'pkg_info', 'llvm-config', 'flex', 'bison', 'bsdtar', 'patch',
-              'curl', 'otool', 'spirv-val')
+              'curl', 'spirv-val')
 
 
 MODULE_QUERY = '''import importlib,json,pathlib,sys
@@ -81,6 +82,8 @@ def native_environment(native, sdk_root, temporary, binding=None):
                 'PKG_CONFIG_PATH', 'PKG_CONFIG_LIBDIR', 'PKG_CONFIG_SYSROOT_DIR',
                 'CMAKE_PREFIX_PATH', 'CMAKE_TOOLCHAIN_FILE', 'CMAKE_GENERATOR',
                 'DYLD_LIBRARY_PATH', 'DYLD_FALLBACK_LIBRARY_PATH',
+                'LD_PRELOAD', 'LD_AUDIT', 'LD_LIBRARY_PATH', 'LD_RUN_PATH',
+                'LD_DEBUG', 'LD_DEBUG_OUTPUT',
                 'GCC_EXEC_PREFIX', 'COMPILER_PATH', 'PYTHONPATH', 'PYTHONHOME'):
         environment.pop(key, None)
     for variable, role in (('CC', 'cc'), ('CXX', 'cxx'), ('CPP', 'cpp'),
@@ -176,7 +179,7 @@ def build(arguments, sdk_root):
     parser.add_argument('work')
     parser.add_argument('distdir')
     args = parser.parse_args(arguments)
-    require(platform.system() == 'Darwin' and platform.machine() == 'arm64', 'The native generators require macOS ARM64')
+    host_policy = mesa_generator_host.host_policy(compiler_family=args.host_compiler_family)
     require(1 <= args.jobs <= 256, 'Use a positive job count no greater than 256')
     for value in (args.host_prefix, args.pkgdb, args.lock_directory, args.work, args.distdir):
         require(re.fullmatch(r'/[A-Za-z0-9_./-]+', value), 'Use absolute paths without shell metacharacters')
@@ -196,10 +199,18 @@ def build(arguments, sdk_root):
         reject_overlap(str(work), str(value))
     # Match the package writer's namespace and retain read leases through sealing.
     with ContextLocks([str(host), str(pkgdb)], str(lock_directory), shared=True):
-        native = load_host_prefix(host, required_roles=HOST_ROLES,
+        native = load_host_prefix(host, required_roles=mesa_generator_host.required_roles(HOST_ROLES, host_policy),
                                   compiler_family=args.host_compiler_family)
+        for role in ('cc', 'cxx', 'cpp', 'ar', 'ranlib', 'nm', 'strip',
+                     'llvm-config', 'meson', 'ninja'):
+            mesa_generator_host.require_prefix_tool(native.tool(role), host, role)
+        mesa_generator_host.inspection_tool(native, host_policy)
+        mesa_generator_host.loader_tool(host_policy)
         selector_path = PORTS / 'profiles/common-build-tools/cross/prepare-native-tools.py'
         binding = load(selector_path, 'mesa_native_tool_selector').select_native_cxx(native, args.native_cxx_binding_record)
+        if binding:
+            for role in ('cc', 'cxx', 'cpp'):
+                mesa_generator_host.require_prefix_tool(binding['adapters'][role], host, role + ' adapter')
         python = Path(native.tool('python'))
         require(python.resolve(strict=True) == Path(sys.executable).resolve(strict=True),
                 'Run this command with Python 3.15 from the selected host prefix')
@@ -211,6 +222,7 @@ def build(arguments, sdk_root):
         gtest_provider_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_meson.build'
         dynarray_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_util_u__dynarray.h'
         scripts = [Path(__file__).resolve(), graphics / 'cross/seal-mesa-generators.py',
+                   graphics / 'cross/mesa_generator_host.py',
                    helpers / 'mesa-26.2.4-pco-bvnc.patch', objc_patch, gtest_patch, gtest_provider_patch, dynarray_patch,
                    PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h',
                    graphics / 'sources.tsv']
@@ -294,7 +306,8 @@ def build(arguments, sdk_root):
                 if name == 'configure-mesa':
                     check_compilers(native, native_work / 'mesa', binding)
             sealer = load(graphics / 'cross/seal-mesa-generators.py', 'mesa_native_sealer')
-            sealer.seal(['--profile', args.profile, '--host-prefix', str(host), '--pkgdb', str(pkgdb),
+            sealer.seal(['--profile', args.profile, '--host-compiler-family', args.host_compiler_family,
+                         '--host-prefix', str(host), '--pkgdb', str(pkgdb),
                          '--lock-directory', str(lock_directory), str(mesa_archive), str(work / 'mesa-source'),
                          str(work / 'native/mesa'), tools['spirv-val'], str(work / 'sealed')])
             require(source_hashes == {path: sha256_file(path) for path in source_hashes}, 'Builder source changed during the native build')

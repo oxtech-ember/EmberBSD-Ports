@@ -61,7 +61,9 @@ def test(arguments):
     run('real-tools', sealed, True, selected)
     fixture = work / 'fixture'
     (fixture / 'bin').mkdir(parents=True)
-    (fixture / 'FORMAT').write_text('ember-mesa-generators-1\n')
+    shutil.copy2(sealed / 'FORMAT', fixture / 'FORMAT')
+    if (sealed / 'HOST').is_file():
+        shutil.copy2(sealed / 'HOST', fixture / 'HOST')
     (fixture / 'receipt.json').write_text('{}\n')
     shutil.copy2(sealed / 'interface.sha256', fixture / 'interface.sha256')
     for name in ('mesa_clc', 'vtn_bindgen2', 'pco_clc'):

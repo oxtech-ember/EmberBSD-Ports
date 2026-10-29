@@ -7,7 +7,7 @@ Mesa runs native `mesa_clc` and `vtn_bindgen2` through its native file.
 The target compiler remains on the development host.
 
 Native NetBSD builds use Mesa's in-tree generators and build-only CLC library
-dependencies. They do not need a sealed macOS generator directory. See the
+dependencies. They do not need a sealed cross-host generator directory. See the
 [recipe selection and metadata check](../../../pkgsrc/graphics/MesaLib/tests/README.md#native-and-cross-shader-generators).
 
 The [PowerVR workflow](powervr.md#native-build-tools) already prepares these
@@ -16,6 +16,11 @@ Intel-only seal. The target package still builds the complete Iris shaders.
 No shader path or driver feature is disabled to avoid the host dependency.
 
 ## Prepare the native tools
+
+Sealed generators support Darwin arm64 with Clang or GCC and Linux x86_64 with
+Clang. The host record binds each seal to its OS, CPU and compiler family.
+Format 2 seals carry this record, and the verifier rejects a different host ABI.
+Format 1 keeps its existing verifier contract and interface checks.
 
 Use one native Ports prefix with Clang/LLVM by default. The shared recipes own
 LLVM, Clang CLC libraries, SPIRV-Headers, SPIRV-Tools and SPIRV-LLVM-Translator.
@@ -33,8 +38,10 @@ SDK `load_host_prefix` selects tools, checks their native CPU and resolves their
 It also checks the selected compiler components and script interpreters.
 No separate toolchain qualification or acceptance receipt is required.
 The build uses a prefix-only PATH and an explicit Meson native file.
-Host ABI headers and libraries remain normal macOS inputs.
+Host ABI headers and libraries remain inputs from the selected host OS.
 Target include, library and pkg-config paths do not enter this native build.
+Linux sealing validates ELF64 x86_64 binaries and their loader closure with the
+selected prefix's `llvm-readelf` and the system `/usr/bin/ldd`.
 
 The full native build prepares the generic CLC tools and PowerVR's compiler.
 An Intel seal does not copy or execute the PowerVR compiler.

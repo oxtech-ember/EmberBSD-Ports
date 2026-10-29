@@ -7,17 +7,17 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import platform
 import re
 import shlex
 import shutil
-import struct
 import sys
 
 sys.dont_write_bytecode = True
 PORTS = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PORTS / 'pkgsrc/lang/llvm/files'))
+sys.path.insert(0, str(PORTS / 'profiles/common-graphics/cross'))
 import sdk_source
+import mesa_generator_host
 
 MESA_SHA256 = '794b3d1729075dae7ebd47c7283b7ca0cdb5dec668f7f11cc0a5d82f6138a0a5'
 
@@ -63,14 +63,25 @@ def shader_dependencies(path, build, virtual_headers):
     return sorted(result)
 
 
-def select_host(prefix):
+def select_host(prefix, policy):
     from emberbsd_sdk.native_toolset import load_host_prefix
-    return load_host_prefix(prefix, required_roles=('bsdtar', 'patch', 'otool', 'spirv-val'))
+    roles = ('bsdtar', 'patch', 'spirv-val', 'cc', 'cxx', 'cpp', 'llvm-config')
+    native = load_host_prefix(prefix,
+                              required_roles=mesa_generator_host.required_roles(roles, policy),
+                              compiler_family=policy['compiler_family'])
+    for role in ('cc', 'cxx', 'cpp', 'llvm-config'):
+        mesa_generator_host.require_prefix_tool(native.tool(role), prefix, role)
+    mesa_generator_host.inspection_tool(native, policy)
+    mesa_generator_host.loader_tool(policy)
+    return native
 
 
 def sealing_environment(native, temporary, overrides):
     from emberbsd_sdk.process import sanitized_environment
     env = sanitized_environment()
+    for key in tuple(env):
+        if key.startswith(('DYLD_', 'LD_')):
+            env.pop(key, None)
     env.update(TMPDIR=str(temporary), TMP=str(temporary), TEMP=str(temporary))
     env.update(overrides)
     env['PATH'] = native.path
@@ -177,12 +188,130 @@ def native_dependencies(executable, prefix, inspect):
     return inputs
 
 
+def linux_dynamic_metadata(path, readelf, run, label, prefix):
+    before = sha(path)
+    mesa_generator_host.validate_binary(path, mesa_generator_host.host_policy('Linux', 'x86_64', 'clang'))
+    text = run([readelf, '-dW', path], label + '-dynamic')
+    needed = re.findall(r'\(NEEDED\).*?\[([^\]]+)\]', text)
+    sonames = re.findall(r'\(SONAME\).*?\[([^\]]+)\]', text)
+    require(len(sonames) <= 1, 'Duplicate ELF SONAME')
+    for name in needed + sonames:
+        require(re.fullmatch(r'[A-Za-z0-9_+.-]+', name) is not None and '..' not in name,
+                'Unsafe ELF dependency name: ' + name)
+    rpaths = []
+    for value in re.findall(r'\((?:RPATH|RUNPATH)\).*?\[([^\]]*)\]', text):
+        for item in value.split(':'):
+            candidate = Path(item)
+            require(item and candidate.is_absolute() and '$' not in item,
+                    'Unsafe ELF runtime search path: ' + item)
+            resolved = candidate.resolve(strict=True)
+            prefix = Path(prefix).resolve(strict=True)
+            require(resolved.is_dir() and (resolved.is_relative_to(prefix) or
+                    str(resolved).startswith(('/lib/', '/lib64/', '/usr/lib/', '/usr/lib64/'))),
+                    'ELF runtime search path escapes selected host roots: ' + str(resolved))
+            rpaths.append(str(resolved))
+    require(sha(path) == before, 'Native ELF input changed during inspection: ' + str(path))
+    return dict(needed=needed, soname=sonames[0] if sonames else None,
+                rpaths=rpaths, sha256=before)
+
+
+def linux_dependencies(executable, prefix, readelf, ldd, run, native):
+    """Inspect only freshly built, validated x86_64 ELF tools with the system loader."""
+    import hashlib
+
+    executable = Path(executable).resolve(strict=True)
+    prefix = Path(prefix).resolve(strict=True)
+    policy = mesa_generator_host.host_policy('Linux', 'x86_64', 'clang')
+    mesa_generator_host.validate_binary(executable, policy)
+    program = run([readelf, '-lW', executable], 'linux-loader')
+    interpreters = re.findall(r'\[Requesting program interpreter: ([^\]]+)\]', program)
+    require(len(interpreters) == 1 and interpreters[0].startswith('/'),
+            'Expected one absolute native ELF interpreter')
+    interpreter = Path(interpreters[0]).resolve(strict=True)
+
+    def system_path(path):
+        value = str(path)
+        return any(value == root or value.startswith(root + '/')
+                   for root in ('/lib', '/lib64', '/usr/lib', '/usr/lib64'))
+
+    require(system_path(interpreter), 'Native ELF interpreter is outside system library roots')
+    initial = linux_dynamic_metadata(executable, readelf, run, 'linux-executable', prefix)
+    listing = run([ldd, executable], 'linux-loader-map')
+    paths = {}
+    for line in listing.splitlines():
+        if re.fullmatch(r'\s*linux-vdso(?:64)?\.so\.1 \(0x[0-9a-f]+\)\s*', line):
+            continue
+        unresolved = re.fullmatch(r'\s*(\S+) => not found\s*', line)
+        require(unresolved is None,
+                'Unresolved native ELF dependency: ' + (unresolved[1] if unresolved else ''))
+        match = re.fullmatch(r'\s*(\S+) => (\S+) \(0x[0-9a-f]+\)\s*', line)
+        if match:
+            name, raw_path = match.groups()
+        else:
+            match = re.fullmatch(r'\s*(/\S+) \(0x[0-9a-f]+\)\s*', line)
+            require(match is not None, 'Unresolved native loader entry: ' + line.strip())
+            raw_path = match[1]
+            name = Path(raw_path).name
+        path = Path(raw_path).resolve(strict=True)
+        require(name not in paths, 'Duplicate native loader entry: ' + name)
+        require(path.is_file() and (path.is_relative_to(prefix) or system_path(path)),
+                'Native ELF dependency escapes selected host roots: ' + str(path))
+        paths[name] = path
+    loader_name = mesa_generator_host.loader_key(interpreters[0])
+    require(paths.get(loader_name) == interpreter, 'Native loader differs from ELF interpreter')
+    images = {str(executable): initial}
+    reachable = {loader_name}
+    pending = list(initial['needed'])
+    while pending:
+        name = pending.pop()
+        require(name in paths, 'Native loader omitted ELF dependency: ' + name)
+        if name in reachable:
+            continue
+        reachable.add(name)
+        path = paths[name]
+        meta = linux_dynamic_metadata(path, readelf, run, 'linux-dependency', prefix)
+        require(meta['soname'] == name or (meta['soname'] is None and path.name == name),
+                'ELF dependency filename differs from SONAME: ' + name)
+        images[str(path)] = meta
+        pending.extend(meta['needed'])
+    require(set(paths) == reachable, 'Native loader reports an unexplained ELF dependency')
+    allowed_system = {'ld-linux-x86-64.so.2', 'libc.so.6', 'libm.so.6',
+                      'libdl.so.2', 'libpthread.so.0', 'librt.so.1'}
+    for name, path in paths.items():
+        if not path.is_relative_to(prefix):
+            require(name in allowed_system or name in ('libstdc++.so.6', 'libgcc_s.so.1'),
+                    'Native system dependency is outside the allowed ABI set: ' + name)
+    from llvm_native import compiler as inspect_compiler
+    selected = inspect_compiler(native.tool('cxx'), native.compiler['triplet'],
+                                list(native.abi_flags.get('cxxflags', ())))
+    require(selected['family'] == native.compiler_family,
+            'Selected C++ runtime differs from the host compiler family')
+    selected_runtime = {}
+    for candidate in selected['compiler_libraries']:
+        candidate = Path(candidate).resolve(strict=True)
+        metadata = linux_dynamic_metadata(candidate, readelf, run, 'selected-cxx-runtime', prefix)
+        if metadata['soname'] in ('libstdc++.so.6', 'libgcc_s.so.1'):
+            selected_runtime[metadata['soname']] = candidate
+    for name in ('libstdc++.so.6', 'libgcc_s.so.1'):
+        if name in paths:
+            require(paths[name] == selected_runtime.get(name),
+                    'Native runtime does not match the selected C++ compiler library: ' + name)
+    input_hashes = {path: record['sha256'] for path, record in images.items()}
+    input_hashes.update({str(path): sha(path) for path in paths.values()})
+    require(all(sha(path) == digest for path, digest in input_hashes.items()),
+            'Native ELF runtime changed during sealing')
+    input_hashes[str(readelf)] = sha(readelf)
+    input_hashes[str(ldd)] = sha(ldd)
+    return input_hashes
+
+
 def seal(arguments):
     from emberbsd_sdk.paths import canonical_new, reject_overlap
     from emberbsd_sdk.process import ContextLocks
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--profile', choices=('intel', 'powervr', 'all'), default='powervr')
+    parser.add_argument('--host-compiler-family', choices=('clang', 'gcc'), default='clang')
     parser.add_argument('--host-prefix', required=True, type=Path)
     parser.add_argument('--pkgdb', required=True, type=Path)
     parser.add_argument('--lock-directory', required=True, type=Path)
@@ -217,10 +346,11 @@ def seal_locked(args):
     archive, source, build, validator = [Path(value).resolve(strict=True) for value in values[:4]]
     work = Path(args.work)
     require(not os.path.lexists(work), 'NEW_WORK must not exist')
-    require(platform.system() == 'Darwin' and platform.machine() == 'arm64',
-            'This native generator recipe requires macOS ARM64')
-    native = select_host(args.host_prefix)
+    host_policy = mesa_generator_host.host_policy(compiler_family=args.host_compiler_family)
+    native = select_host(args.host_prefix, host_policy)
     prefix = Path(native.bundle_root)
+    inspector = mesa_generator_host.inspection_tool(native, host_policy)
+    loader = mesa_generator_host.loader_tool(host_policy)
     require(validator == Path(native.tool('spirv-val')).resolve(strict=True),
             'Validator must be the selected host-prefix spirv-val')
     profiles = profiles_for(args.profile)
@@ -273,14 +403,21 @@ def seal_locked(args):
                 index += 1
                 before = regular_file(path)
                 label = name + '-runtime-' + str(index)
-                listing = run([native.tool('otool'), '-arch', 'arm64', '-L', path], label + '-libraries')
-                commands = run([native.tool('otool'), '-arch', 'arm64', '-l', path], label + '-commands')
-                result = dependency_metadata(listing, commands)
-                result['sha256'] = sha(path)
+                if host_policy['os'] == 'Darwin':
+                    listing = run([inspector, '-arch', 'arm64', '-L', path], label + '-libraries')
+                    commands = run([inspector, '-arch', 'arm64', '-l', path], label + '-commands')
+                    result = dependency_metadata(listing, commands)
+                    result['sha256'] = sha(path)
+                else:
+                    result = None
                 verify_stable(path, before)
                 return result
 
-            found = native_dependencies(binary, prefix, inspect)
+            if host_policy['os'] == 'Darwin':
+                mesa_generator_host.validate_binary(binary, host_policy)
+                found = native_dependencies(binary, prefix, inspect)
+            else:
+                found = linux_dependencies(binary, prefix, inspector, loader, run, native)
             require(all(path not in runtime_inputs or runtime_inputs[path] == digest
                         for path, digest in found.items()), 'Native runtime changed during sealing')
             runtime_inputs.update(found)
@@ -288,8 +425,7 @@ def seal_locked(args):
         for name, path in tools.items():
             binary = build / path
             require(os.access(binary, os.X_OK), 'Missing real native tool: ' + str(binary))
-            with binary.open('rb') as stream:
-                require(stream.read(8) == struct.pack('<II', 0xfeedfacf, 0x0100000c), 'Expected native ARM64 Mach-O')
+            mesa_generator_host.validate_binary(binary, host_policy)
             check_runtime(binary, name)
         require(os.access(validator, os.X_OK), 'Missing SPIR-V validator')
         check_runtime(validator, 'validator')
@@ -299,7 +435,8 @@ def seal_locked(args):
         gtest_provider_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_meson.build'
         interface_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h'
         dynarray_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_util_u__dynarray.h'
-        inputs = [Path(__file__).resolve(), archive, validator, build / 'build.ninja',
+        inputs = [Path(__file__).resolve(), PORTS / 'profiles/common-graphics/cross/mesa_generator_host.py',
+                  archive, validator, build / 'build.ninja',
                   build / 'compile_commands.json', bvnc_patch, objc_patch, gtest_patch, gtest_provider_patch, interface_patch, dynarray_patch]
         targets = json.loads((metadata / 'intro-targets.json').read_text())
         for name, path in tools.items():
@@ -402,12 +539,14 @@ def seal_locked(args):
         if 'intel' in profiles:
             scope += ' Intel shader interfaces are bound; full Intel shader generation is a separate target build gate.'
         scope += ' No target execution.'
-        write_json(work / 'receipt.json', dict(schema='ember-mesa-generators-1', mesa='26.2.5', llvm='23.1.4',
+        host_record = '/'.join((host_policy['os'], host_policy['cpu'], host_policy['compiler_family']))
+        write_json(work / 'receipt.json', dict(schema='ember-mesa-generators-2', mesa='26.2.5', llvm='23.1.4',
                    source=str(source), build=str(build), archive_sha256=MESA_SHA256, profiles=profiles,
-                   host_prefix=str(prefix),
+                   host=host_record, host_prefix=str(prefix),
                    commands=commands, inputs=input_hashes, directory_inputs=directory_inputs,
                    virtual_headers=virtual_headers, scope=scope))
-        (work / 'FORMAT').write_text('ember-mesa-generators-1\n')
+        (work / 'FORMAT').write_text('ember-mesa-generators-2\n')
+        (work / 'HOST').write_text(host_record + '\n')
         (work / 'PROFILES').write_text(','.join(profiles) + '\n')
         shutil.rmtree(reference)
         files = [path for path in sorted(work.rglob('*')) if path.is_file()]

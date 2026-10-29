@@ -6,7 +6,23 @@ set -eu
 digest=$1 tools=$2 source=$3 requested=${4-powervr}
 fail() { echo "Mesa generator receipt: $*" >&2; exit 1; }
 [ -x "$digest" ] && [ -d "$tools" ] && [ -d "$source" ] || fail 'missing input'
-[ "$(cat "$tools/FORMAT")" = ember-mesa-generators-1 ] || fail 'wrong format'
+format=$(cat "$tools/FORMAT")
+case "$format" in
+    ember-mesa-generators-1) legacy=yes;;
+    ember-mesa-generators-2)
+        legacy=no
+        [ -r "$tools/HOST" ] || fail 'missing host ABI record'
+        host=$(cat "$tools/HOST")
+        case "$host" in
+            Darwin/arm64/clang|Darwin/arm64/gcc)
+                [ "$(uname -s)" = Darwin ] || fail 'sealed generator host OS differs from build host'
+                case "$(uname -m)" in arm64|aarch64) ;; *) fail 'sealed generator host CPU differs from build host';; esac;;
+            Linux/x86_64/clang)
+                [ "$(uname -s)" = Linux ] && [ "$(uname -m)" = x86_64 ] || fail 'sealed generator host ABI differs from build host';;
+            *) fail 'unsupported sealed generator host ABI';;
+        esac;;
+    *) fail 'wrong format';;
+esac
 [ "$(cat "$source/VERSION")" = 26.2.5 ] || fail 'wrong source version'
 case "$requested" in intel|powervr|intel,powervr) ;; *) fail 'unsupported generator profile';; esac
 profiles=powervr
@@ -38,7 +54,8 @@ verify() {
     [ "$count" -gt 0 ] || fail 'empty manifest'
 }
 verify "$tools" "$tools/installed.sha256"
-names="FORMAT receipt.json interface.sha256"
+names="FORMAT HOST receipt.json interface.sha256"
+if [ "$legacy" = yes ]; then names="FORMAT receipt.json interface.sha256"; fi
 [ ! -f "$tools/PROFILES" ] || names="$names PROFILES"
 for program in $required; do names="$names bin/$program"; done
 for name in $names; do
