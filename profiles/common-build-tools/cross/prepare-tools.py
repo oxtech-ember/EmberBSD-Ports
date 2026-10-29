@@ -64,7 +64,7 @@ def prepare_clang(options):
         runtime = llvm_runtime.validate_stage(runtime_root, target=options.target,
             required_components=llvm_runtime.FULL_COMPONENTS, base=runtime_base)
     else:
-        runtime_root = sysroot
+        runtime_root = runtime_base = sysroot
         runtime = application_toolchain.load_clang_runtime(sysroot, target=options.target)
     os_tools = paths.canonical_existing(options.os_tools)
     install = str(Path(os_tools, 'bin', triplet + '-install'))
@@ -73,7 +73,7 @@ def prepare_clang(options):
     runtime_prefix = make_value(runtime['prefix'])
     libraries = sorted({str(Path(runtime['artifacts'][role]['shared']).parent)
                         for role in ('libcxx', 'libcxxabi', 'libunwind')})
-    for value in (str(output), sysroot, runtime_root, *libraries):
+    for value in (str(output), sysroot, runtime_root, runtime_base, *libraries):
         make_value(value)
     # A prepared directory is routing, not another runtime or acceptance record.
     # Refuse all input errors before creating it and remove only our new output
@@ -96,7 +96,7 @@ def prepare_clang(options):
         values = {'FAMILY':'clang', 'TARGET':options.target, 'TRIPLET':triplet,
                   'SYSROOT':sysroot, 'TOOLS':str(output), 'RUNTIME_PREFIX':runtime_prefix,
                   'RUNTIME_ROOT':runtime_root, 'RUNTIME_KIND':('stage' if options.runtime_stage else 'sysroot'),
-                  'RUNTIME_VERSION':runtime['llvm_version'], 'RUNTIME_BASE':sysroot,
+                  'RUNTIME_VERSION':runtime['llvm_version'], 'RUNTIME_BASE':runtime_base,
                   'SDK_SOURCE':str(Path(__import__('emberbsd_sdk').__file__).resolve().parents[2]),
                   'NATIVE_PYTHON':native.tool('python'),
                   'RUNTIME_LIBRARY_PATHS':';'.join(str(Path(runtime_root, name)) for name in libraries)}

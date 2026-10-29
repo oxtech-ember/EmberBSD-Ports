@@ -282,6 +282,7 @@ for target, triple, machine, instruction in (
         invoke(target, sysroot, staged, accept=True, extra=('--runtime-stage', stage))
         staged_mk = (staged / 'target.mk').read_text()
         assert '_EMBER_TARGET_RUNTIME_ROOT:= ' + str(stage) in staged_mk
+        assert '_EMBER_TARGET_RUNTIME_BASE:= ' + str(sysroot) + '\n' in staged_mk
         final_root = work / ('final-sysroot-' + target)
         shutil.copytree(sysroot, final_root, symlinks=True)
         (final_root / 'usr/include/stdint.h').write_text('/* final userland header */\n')
@@ -303,6 +304,8 @@ for target, triple, machine, instruction in (
         alternate_mk = (alternate / 'target.mk').read_text()
         assert '_EMBER_TARGET_SYSROOT:= ' + str(final_root) in alternate_mk
         assert '_EMBER_TARGET_RUNTIME_ROOT:= ' + str(stage) in alternate_mk
+        # Package recipes check the stage again against this recorded foundation.
+        assert '_EMBER_TARGET_RUNTIME_BASE:= ' + str(sysroot) + '\n' in alternate_mk, alternate_mk
         bad_base = work / ('tools-wrong-base-' + target)
         invoke(target, final_root, bad_base, accept=False, extra=('--runtime-stage', stage))
         assert not bad_base.exists()

@@ -142,7 +142,10 @@ For a build against a separately prepared full LLVM runtime, pass
 `--runtime-stage /absolute/completed-runtime-stage`. The adapter validates its
 target, payload and recorded base inputs against the selected sysroot by default.
 When the runtime was built against a distinct foundation, pass its path as
-`--runtime-base`; this option requires `--runtime-stage`. Compiler commands
+`--runtime-base`; this option requires `--runtime-stage`. `target.mk` records
+the base that the stage was checked against: the sysroot, unless
+`--runtime-base` is given. The runtime package recipes check the stage against
+it again. Compiler commands
 continue to use the selected `--sysroot`, and the SDK application binding uses
 the explicit runtime root. The sysroot itself
 is not modified. This is useful for testing a replacement before installing
