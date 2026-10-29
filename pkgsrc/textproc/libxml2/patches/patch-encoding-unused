@@ -1,0 +1,28 @@
+$NetBSD$
+
+Remove unused endian state while retaining the internal initialization call.
+Origin: EmberBSD (AI-assisted). Upstream status: not submitted.
+
+--- encoding.c.orig
++++ encoding.c
+@@ -63,8 +63,6 @@
+ static xmlCharEncodingAliasPtr xmlCharEncodingAliases = NULL;
+ static int xmlCharEncodingAliasesNb = 0;
+ static int xmlCharEncodingAliasesMax = 0;
+-
+-static int xmlLittleEndian = 1;
+ 
+ typedef struct {
+     const char *name;
+@@ -819,11 +817,6 @@
+  */
+ void
+ xmlInitEncodingInternal(void) {
+-    unsigned short int tst = 0x1234;
+-    unsigned char *ptr = (unsigned char *) &tst;
+-
+-    if (*ptr == 0x12) xmlLittleEndian = 0;
+-    else xmlLittleEndian = 1;
+ }
+ 
+ /**

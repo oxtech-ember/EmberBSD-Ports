@@ -4,4 +4,5 @@ BLAKE2s (libxml2-2.15.4.tar.xz) = e2deff0a536cae3d337df790988604787fe3eeaa1147eb
 SHA512 (libxml2-2.15.4.tar.xz) = e162ed16ad6fb6c6ef1c40c6bed66a5f76db177fc24410cc261c9ddc6b19e9b003315db67f67cbcadaf08e546f0672de87bf6f297014af50fe544a781647f584
 Size (libxml2-2.15.4.tar.xz) = 3177444 bytes
 SHA1 (patch-configure) = 1f94becea5804e89d32b4e600753aa4dc7527045
+SHA1 (patch-encoding-unused) = 45ccecbc45e381b0bb5ee2d7d088f3ea774e86c2
 SHA1 (patch-zz-schema-option-shift) = ce09c4f7459fb237e64190c7633d5a0c0b8f9daa
