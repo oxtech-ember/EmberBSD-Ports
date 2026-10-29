@@ -1,0 +1,7 @@
+@comment $NetBSD$
+include/mariadb/sqlmariadb.h
+lib/libmaodbc.so
+lib/pkgconfig/libmaodbc.pc
+share/doc/mariadb-connector-odbc/COPYING
+share/doc/mariadb-connector-odbc/README
+share/doc/mariadb-connector-odbc/maodbc.ini

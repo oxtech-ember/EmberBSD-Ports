@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (mariadb-connector-odbc-3.2.10-src.tar.gz) = 229013934201b25bda5d2b2cf130f779c42ec1405aa416afb66b9e8295e712bc
+SHA512 (mariadb-connector-odbc-3.2.10-src.tar.gz) = ec4ac8dd2583a105aa53b76270457ae28d3a8d34cf1c3756231a3488b7ef1f1a1412544bcb2d034c12afc84ce9c31ef4778273db34b7e0078f5b2902b598906a
+Size (mariadb-connector-odbc-3.2.10-src.tar.gz) = 692118 bytes

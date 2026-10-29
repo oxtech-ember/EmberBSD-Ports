@@ -1,0 +1,4 @@
+MariaDB Connector/ODBC is an ODBC 3.5 driver for MariaDB and MySQL
+servers. It is built on MariaDB Connector/C and works with the unixODBC
+or iODBC driver manager. It replaces the MySQL Connector/ODBC driver
+(myodbc).

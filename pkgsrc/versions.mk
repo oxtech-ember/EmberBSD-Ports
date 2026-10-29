@@ -23,6 +23,8 @@ EMBERBSD_VERSION_FAMILIES+=	databases/db[0-9]*=databases/db18
 EMBERBSD_VERSION_FAMILIES+=	databases/postgresql[0-9]*=databases/postgresql18*
 EMBERBSD_VERSION_FAMILIES+=	databases/mariadb[0-9]*=databases/mariadb118-*
 EMBERBSD_VERSION_FAMILIES+=	databases/mysql[0-9]*=databases/mariadb118-*
+# One MySQL ODBC driver: MariaDB Connector/ODBC, built on the one client.
+EMBERBSD_VERSION_FAMILIES+=	databases/myodbc=databases/mariadb-connector-odbc
 EMBERBSD_VERSION_FAMILIES+=	security/libressl=security/openssl
 EMBERBSD_VERSION_FAMILIES+=	games/love[0-9]*=games/love11
 EMBERBSD_VERSION_FAMILIES+=	lang/tcl[0-9]*=lang/tcl
