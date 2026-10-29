@@ -1,0 +1,109 @@
+Origin: EmberBSD, AI-assisted.
+Remove databases/java-db3, the Java binding of Berkeley DB 3. EmberBSD
+keeps one Berkeley DB, db18, which has no separate Java package, and
+nothing depends on java-db3.
+Not submitted upstream.
+
+--- a/databases/Makefile
++++ b/databases/Makefile
+@@ -62,7 +62,6 @@
+ SUBDIR+=	innotop
+ SUBDIR+=	iodbc
+ SUBDIR+=	ipa_sdb
+-SUBDIR+=	java-db3
+ SUBDIR+=	java-qdbm
+ SUBDIR+=	java-tokyocabinet
+ SUBDIR+=	jdbc-mysql31
+--- a/databases/java-db3/DESCR
++++ /dev/null
+@@ -1,23 +0,0 @@
+-Berkeley DB is an embeddable database system that supports keyed access to
+-data. The software is distributed in source code form, and developers can
+-compile and link the source code into a single library for inclusion
+-directly in their applications.
+-
+-Developers may choose to store data in any of several different storage
+-structures to satisfy the requirements of a particular application. In
+-database terminology, these storage structures and the code that operates on
+-them are called access methods. The library includes support for the
+-following access methods:
+-
+-   * B+tree: Stores keys in sorted order, using either a programmer-supplied
+-     ordering function or a default function that does lexicographical
+-     ordering of keys. Applications may perform equality or range searches.
+-   * Hashing: Stores records in a hash table for fast searches based on
+-     strict equality. Extended Linear Hashing modifies the hash function
+-     used by the table as new records are inserted, in order to keep buckets
+-     underfull in the steady state.
+-   * Fixed and Variable-Length Records: Stores fixed- or variable-length
+-     records in sequential order. Record numbers may be immutable or
+-     mutable, i.e., permitting new records to be inserted between existing
+-     records or requiring that new records be added only at the end of the
+-     database.
+--- a/databases/java-db3/Makefile
++++ /dev/null
+@@ -1,58 +0,0 @@
+-# $NetBSD: Makefile,v 1.35 2026/08/03 13:12:24 wiz Exp $
+-
+-DISTNAME=	db-3.3.11
+-PKGNAME=	java-db3-3.11.2
+-PKGREVISION=	1
+-CATEGORIES=	databases java
+-MASTER_SITES=	http://www.sleepycat.com/update/3.3.11/
+-
+-MAINTAINER=	pkgsrc-users@NetBSD.org
+-HOMEPAGE=	https://www.oracle.com/database/berkeley-db.html
+-COMMENT=	Java interface to Sleepycat Software's Berkeley DB version 3
+-
+-PATCH_SITES=		${MASTER_SITES}
+-PATCHFILES=		patch.3.3.11.1 patch.3.3.11.2
+-PATCH_DIST_ARGS=	-d ${WRKSRC}/.. --forward --quiet
+-PATCH_DIST_STRIP=	-p0
+-
+-DISTINFO_FILE?=		${.CURDIR}/../db3/distinfo
+-PATCHDIR?=		${.CURDIR}/../db3/patches
+-
+-PKG_JVMS_ACCEPTED=	openjdk8
+-
+-.include "../../mk/java-vm.mk"
+-
+-JAVAC=			${PKG_JAVA_HOME}/bin/javac
+-JAR=			${PKG_JAVA_HOME}/bin/jar
+-JAVACABS=		${JAVAC}
+-
+-WRKSRC=			${WRKDIR}/${DISTNAME}/build_unix
+-USE_LIBTOOL=		yes
+-GNU_CONFIGURE=		yes
+-USE_TOOLS+=		gmake
+-CONFIGURE_SCRIPT=	../dist/configure
+-CONFIG_SUB_OVERRIDE+=	../dist/config.sub
+-CONFIG_GUESS_OVERRIDE+=	../dist/config.guess
+-
+-CONFIGURE_ARGS+=	--program-transform-name=s,db_,db3_,
+-CONFIGURE_ARGS+=	--includedir=${PREFIX}/include/db3
+-CONFIGURE_ARGS+=	--enable-shared
+-CONFIGURE_ARGS+=	--enable-java
+-CONFIGURE_ENV+=		JAVAC=${JAVAC:Q}
+-CONFIGURE_ENV+=		JAVACABS=${JAVACABS:Q}
+-CONFIGURE_ENV+=		JAR=${JAR:Q}
+-
+-CPPFLAGS+=		${BUILDLINK_CPPFLAGS.${PKG_JVM}}
+-
+-BUILD_TARGET=		libdb3_java.la java
+-INSTALL_TARGET=		install_java
+-
+-.include "../../mk/bsd.prefs.mk"
+-
+-.if ${OPSYS} == "NetBSD"
+-# jdk 1.1.8 leads to segmentation faults when building the package.
+-USE_JAVA2=		yes
+-.endif
+-
+-.include "../../databases/db3/buildlink3.mk"
+-.include "../../mk/bsd.pkg.mk"
+--- a/databases/java-db3/PLIST
++++ /dev/null
+@@ -1,3 +0,0 @@
+-@comment $NetBSD: PLIST,v 1.3 2004/09/22 08:09:22 jlam Exp $
+-lib/db3.jar
+-lib/libdb3_java.la
