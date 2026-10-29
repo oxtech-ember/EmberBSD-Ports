@@ -1,7 +1,7 @@
 # Origin: EmberBSD (AI-assisted). Honor the selected awk in early pkgsrc probes.
 # Platform queries precede MAKECONF and must retain an explicit caller tool.
 # The selected native PATH holds only the Ports prefix, so the macOS release
-# query names the system sw_vers by its fixed absolute path.
+# and OSX_VERSION queries name the system sw_vers by its fixed absolute path.
 
 --- a/mk/bsd.prefs.mk
 +++ b/mk/bsd.prefs.mk
@@ -33,3 +33,14 @@
  .  endif
  .  if exists(/etc/debian_version)
  NATIVE_LOWER_VENDOR?=		debian
+--- a/mk/platform/Darwin.mk
++++ b/mk/platform/Darwin.mk
+@@ -92,7 +92,7 @@
+ _OPSYS_SYSTEM_RPATH?=	/usr/lib
+ 
+ .if !defined(OSX_VERSION)
+-OSX_VERSION!=		sw_vers -productVersion
++OSX_VERSION!=		/usr/bin/sw_vers -productVersion
+ .  if "${OSX_VERSION:R:R}" != "${OSX_VERSION:R}"
+ OSX_VERSION:=		${OSX_VERSION:R}
+ .  endif

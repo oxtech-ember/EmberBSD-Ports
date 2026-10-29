@@ -69,8 +69,8 @@ The include also selects the common `nawk` executable and exports its path
 as `EMBERBSD_NATIVE_AWK`. Recursive early platform probes use it before
 loading their MAKECONF. This preserves the native prefix when no bare `awk`
 command exists in its PATH.
-The macOS release probe runs `/usr/bin/sw_vers`, a system command outside
-that PATH.
+The macOS release probes for `NATIVE_OPSYS_VERSION` and `OSX_VERSION` run
+`/usr/bin/sw_vers`, a system command outside that PATH.
 
 The verification runs once per selection. A successful parse exports
 `EMBERBSD_NATIVE_TOOLSET_VERIFIED`, so its recursive queries skip the
