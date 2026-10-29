@@ -1,0 +1,21 @@
+--- external/mit/MesaLib/dist/src/glx/glxcmds.c
++++ external/mit/MesaLib/dist/src/glx/glxcmds.c
+@@ -1960,10 +1960,14 @@
+           (Display * dpy, GLXFBConfigSGIX config, int attribute, int *value),
+           (dpy, config, attribute, value), glXGetFBConfigAttrib)
+ 
+-_GLX_PUBLIC GLX_ALIAS(GLXFBConfigSGIX *, glXChooseFBConfigSGIX,
+-                 (Display * dpy, int screen, int *attrib_list,
+-                  int *nelements), (dpy, screen, attrib_list, nelements),
+-                 glXChooseFBConfig)
++/* The SGIX prototype lacks the const of glXChooseFBConfig, so an alias
++ * would have a different type; forward the call instead. */
++_GLX_PUBLIC GLXFBConfigSGIX *
++glXChooseFBConfigSGIX(Display * dpy, int screen, int *attrib_list,
++                      int *nelements)
++{
++   return glXChooseFBConfig(dpy, screen, attrib_list, nelements);
++}
+ 
+ _GLX_PUBLIC GLX_ALIAS(XVisualInfo *, glXGetVisualFromFBConfigSGIX,
+                  (Display * dpy, GLXFBConfigSGIX config),

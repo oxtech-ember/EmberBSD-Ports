@@ -41,6 +41,10 @@ patch's SHA256 is part of the identity. They fix code that the OS build's
   gets one prototyped constructor per winsys instead of an unprototyped
   `create_winsys()` called with different arguments
   (`-Wdeprecated-non-prototype`, `-Wstrict-prototypes`).
+- `mesa-glx-sgix-choose-fbconfig.patch`: `glXChooseFBConfigSGIX` forwards
+  to `glXChooseFBConfig` instead of being an alias of it. The SGIX
+  prototype takes a non-const attribute list, and Clang rejects an alias
+  whose type differs from the aliased function.
 The identity covers the pin and this owner; verification refuses a changed
 receipt or payload. `pin` prints the identity without reading an archive.
 This prepares source only; it does not build X11 or any set.
@@ -53,8 +57,9 @@ The owner regression (about 1 GiB of scratch space):
   --patch "$HOST_PREFIX/bin/gpatch" --work-dir "$WORK"
 ```
 
-The patch regression compiles each fixed construct with the target Clang
-and the OS build's `-Werror`; it passes on a prepared tree and, with
+The patch regression compiles each fixed construct to assembly with the
+target Clang and the OS build's `-Werror` (alias types are checked only
+when code is generated); it passes on a prepared tree and, with
 `--expect-failure`, every case fails on an unpatched tree. `--sysroot` is a
 target DESTDIR with the base and the installed X11 headers:
 

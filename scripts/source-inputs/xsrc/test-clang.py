@@ -9,6 +9,7 @@ OS build's -Werror with a current Clang. Run it against a prepared tree to
 check the patches and against an unpatched tree to see the cases fail.
 """
 import argparse
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -26,7 +27,8 @@ root = args.source / 'external/mit'
 mesa = root / 'MesaLib/dist'
 x11 = args.sysroot / 'usr/X11R7/include'
 common = [str(args.clang), '--target=' + args.target, '--sysroot=' + str(args.sysroot),
-          '-fsyntax-only', '-Werror', '-Wall']
+          # Code generation: Clang checks alias types only when it emits code.
+          '-S', '-o', os.devnull, '-Werror', '-Wall']
 
 CASES = {
     # libxcb sized the first setup read for the generic header only.
@@ -57,6 +59,15 @@ CASES = {
                               '          dd->winsys[3].create_winsys_null() :\n'
                               '          dd->winsys[3].create_winsys_wrapped(screen);\n'
                               '}\n'),
+    # GLX aliased the SGIX entry point whose attribute list is not const.
+    'Mesa glXChooseFBConfigSGIX alias': (['-std=gnu11', '-pthread', '-DHAVE_PTHREAD=1',
+                                          '-DHAVE_TIMESPEC_GET', '-DHAVE_FUNC_ATTRIBUTE_ALIAS=1',
+                                          '-I', str(mesa / 'include'), '-I', str(mesa / 'src'),
+                                          '-I', str(mesa / 'src/loader'), '-I', str(mesa / 'src/mapi'),
+                                          '-I', str(mesa / 'src/mapi/glapi'), '-I', str(mesa / 'src/mesa'),
+                                          '-I', str(mesa / 'src/glx'),
+                                          '-I', str(root / 'MesaLib/src/mapi/glapi/gen'),
+                                          '-I', str(x11), str(mesa / 'src/glx/glxcmds.c')], None),
 }
 
 failed = []
