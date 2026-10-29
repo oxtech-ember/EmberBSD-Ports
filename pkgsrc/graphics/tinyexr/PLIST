@@ -1,0 +1,17 @@
+@comment $NetBSD$
+include/exr.h
+include/exr_gpu.h
+include/exr_reader.hh
+include/exr_vk.h
+include/streamreader.hh
+include/tinyexr.h
+lib/cmake/TinyEXR/TinyEXRConfig.cmake
+lib/cmake/TinyEXR/TinyEXRConfigVersion.cmake
+lib/cmake/TinyEXR/TinyEXRTargets-noconfig.cmake
+lib/cmake/TinyEXR/TinyEXRTargets.cmake
+lib/libtinyexr.so
+lib/libtinyexr.so.3
+lib/libtinyexr.so.3.2.0
+lib/libtinyexr3.so
+lib/libtinyexr3.so.3
+lib/libtinyexr3.so.3.2.0

@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (tinyexr-3.2.0.tar.gz) = 29ddf2241306c232e96f42e509ae2bf0f303942217e5c4b9c35cef6ea9c5cb1a
+SHA512 (tinyexr-3.2.0.tar.gz) = 01b666903719db3ade3363dc477abbecb9d8a3b4bcb6b6a4496c76b79e67efe21cbf9cffce939cc4dda3d9656809e2365d04e17d2b70053614ae4da426ce35f0
+Size (tinyexr-3.2.0.tar.gz) = 25444587 bytes
+SHA1 (patch-src_exr__zstd.c) = 90f74f627e3691fabaaeeaea45b6438a4f4e64cd
