@@ -1,8 +1,9 @@
 # Berkeley DB libtool language selection
 
-The common db4 recipe selects explicit C and C++ libtool tags after configure.
-The compiler, fixed arguments, compile/link modes and library ABI remain unchanged.
-`PKGREVISION` is 2.
+EmberBSD keeps one Berkeley DB, db18 (`pkgsrc/versions.mk`), so the db4
+package and its tag recipe have been removed. db18 selects the same tags in
+`patches/db18-libtool-tags.patch`. The rest of this note records the db4
+repair; the check script still takes any configured Berkeley DB Makefile.
 
 Libtool can record a compiler with fixed arguments, such as `clang -std=gnu23`.
 Berkeley DB previously passed an untagged `clang` command. Automatic language

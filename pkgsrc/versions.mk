@@ -17,6 +17,9 @@ EMBERBSD_VERSION_FAMILIES+=	lang/lua[0-9]*=lang/lua55
 EMBERBSD_VERSION_FAMILIES+=	lang/php[0-9]*=lang/php85
 EMBERBSD_VERSION_FAMILIES+=	lang/ruby[0-9]*=lang/ruby40
 EMBERBSD_VERSION_FAMILIES+=	lang/openjdk[0-9]*=lang/openjdk21
+# One Berkeley DB, db18; db1 is the libc one.
+EMBERBSD_VERSION_FAMILIES+=	databases/db=databases/db18
+EMBERBSD_VERSION_FAMILIES+=	databases/db[0-9]*=databases/db18
 EMBERBSD_VERSION_FAMILIES+=	databases/postgresql[0-9]*=databases/postgresql18*
 EMBERBSD_VERSION_FAMILIES+=	databases/mariadb[0-9]*=databases/mariadb118-*
 EMBERBSD_VERSION_FAMILIES+=	databases/mysql[0-9]*=databases/mariadb118-*

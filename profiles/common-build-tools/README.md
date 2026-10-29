@@ -4,7 +4,8 @@ The [Mach-O metadata resolver](macho-metadata.md) uses selected structural tools
 It does not require libmagic or create a file/libtool bootstrap cycle.
 
 [Berkeley DB language tags](db4-libtool.md) keep configured C/C++ commands
-usable when libtool's compiler contains fixed language-mode arguments.
+usable when libtool's compiler contains fixed language-mode arguments
+(db18 now; the db4 recipe was removed with the old Berkeley DB versions).
 
 Package size generation skips empty batches with either GNU or BSD `xargs`.
 The shared recipe uses the selected shell and preserves each command argument.
