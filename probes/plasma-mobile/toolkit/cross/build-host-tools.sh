@@ -19,6 +19,10 @@ zlib_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-cmake_FindWrapS
 widgets_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_widgets_CMakeLists.txt
 markdown_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_gui_text_qtextmarkdownimporter.cpp
 shader_patches="$toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_CMakeLists.txt $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_CMakeLists.txt $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_qspirvcompiler.cpp $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_qspirvshaderremap.cpp $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_qspirvshaderremap_p.h"
+quick3d_patches="$toolkit/../../../pkgsrc/graphics/qt6-qtquick3d/patches/patch-src_3rdparty_CMakeLists.txt $toolkit/../../../pkgsrc/graphics/qt6-qtquick3d/patches/patch-src_runtimerender_CMakeLists.txt $toolkit/../../../pkgsrc/graphics/qt6-qtquick3d/patches/patch-src_runtimerender_rendererimpl_qssglightmapper.cpp $toolkit/../../../pkgsrc/graphics/qt6-qtquick3d/patches/patch-src_runtimerender_resourcemanager_qssgrenderloadedtexture.cpp $toolkit/../../../pkgsrc/graphics/qt6-qtquick3d/patches/patch-src_utils_CMakeLists.txt"
+quick3d_transition=$toolkit/cross/quick3d-source-transition.py
+quick3d_inputs=
+[ "$profile" != full ] || quick3d_inputs="$quick3d_patches $quick3d_transition $toolkit/cross/check-quick3d-cache.py"
 RESUME=${RESUME:-0}
 HOST_INCREMENTAL_RECONFIGURE=${HOST_INCREMENTAL_RECONFIGURE:-0}
 case "$HOST_INCREMENTAL_RECONFIGURE" in
@@ -28,6 +32,14 @@ case "$HOST_INCREMENTAL_RECONFIGURE" in
 esac
 HOST_SH=${HOST_SH:-/bin/sh}
 HOST_RUNTIME_VIEW=${HOST_RUNTIME_VIEW:-}
+QT_HOST_RESUME_FROM=${QT_HOST_RESUME_FROM:-}
+HOST_QT_QUICK3D_BUILD_DIR=${HOST_QT_QUICK3D_BUILD_DIR:-$work/qtquick3d}
+case "$QT_HOST_RESUME_FROM" in
+'') ;;
+qtquick3d) [ "$RESUME" = 1 ] && [ "$HOST_INCREMENTAL_RECONFIGURE" = 1 ] && [ "$profile" = full ] || {
+    echo 'Quick3D resume requires full incremental reconfigure' >&2; exit 2; } ;;
+*) echo 'Unsupported Qt host resume starting module' >&2; exit 2 ;;
+esac
 : "${HOST_PYTHON:?Set an absolute native Python 3 executable}"
 runtime_inputs=
 runtime_view_identity=none
@@ -192,6 +204,36 @@ for module in $modules; do
         }
     fi
 done
+if [ "$HOST_QT_QUICK3D_BUILD_DIR" != "$work/qtquick3d" ]; then
+    [ "$QT_HOST_RESUME_FROM" = qtquick3d ] || { echo 'External Quick3D build requires selected module resume' >&2; exit 2; }
+    case "$HOST_QT_QUICK3D_BUILD_DIR" in /*) ;; *) echo 'Quick3D build path must be absolute' >&2; exit 2;; esac
+    case "$HOST_QT_QUICK3D_BUILD_DIR" in *[!a-zA-Z0-9_./+-]*) echo 'Use a Quick3D build path without shell metacharacters' >&2; exit 2;; esac
+    "$HOST_PYTHON" -I "$toolkit/cross/check-quick3d-cache.py" \
+        "$HOST_QT_QUICK3D_BUILD_DIR" "$work" "$HOST_PACKAGE_PREFIX" "$HOST_CC" "$HOST_CXX" \
+        "$host_deployment_target" "${runtime_cmake:-}"
+
+fi
+if [ "$QT_HOST_RESUME_FROM" = qtquick3d ]; then
+    for tool in libexec/moc libexec/rcc libexec/uic libexec/qmlcachegen bin/qsb bin/svgtoqml bin/lrelease bin/qdoc; do
+        [ -x "$work/qtbase/$tool" ] || { echo "Missing previous Qt host tool: $tool" >&2; exit 2; }
+    done
+    for module in Core CoreTools Svg ShaderTools Qml LinguistTools QuickTimeline; do
+        [ -s "$work/qtbase/lib/cmake/Qt6$module/Qt6${module}Config.cmake" ] || {
+            echo "Missing previous Qt CMake package: $module" >&2; exit 2;
+        }
+    done
+fi
+if [ "$profile" = full ] && [ -d "$work/source/qtquick3d-everywhere-src-6.12.0" ]; then
+    if [ ! -f "$work/qtquick3d-source.sha256" ] && [ "$HOST_INCREMENTAL_RECONFIGURE" != 1 ]; then
+        echo 'Quick3D owner patches require explicit incremental reconfigure' >&2; exit 2
+    fi
+    quick3d_action=apply
+    [ "$plan_only" != 1 ] || quick3d_action=plan
+    "$HOST_PYTHON" -I "$quick3d_transition" "$quick3d_action" \
+        "$work/source/qtquick3d-everywhere-src-6.12.0" \
+        "$distfiles/qtquick3d-everywhere-src-6.12.0.tar.xz" \
+        "$work/qtquick3d-source.sha256" "$PATCH" $quick3d_patches
+fi
 if [ "$plan_only" = 1 ]; then
     modules_csv=$(printf '%s' "$modules" | tr ' ' ',')
     printf 'PLAN: profile=%s modules=%s\n' "$profile" "$modules_csv"
@@ -205,10 +247,12 @@ ln -sf "$NINJA" "$work/bin/ninja"
 PATH="$work/bin:$PATH"
 export PATH
 {
-    shasum -a 256 "$toolkit/cross/build-host-tools.sh" "$toolkit/cross/host-resume-inputs.py" $resume_otool_input "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" "$markdown_patch" $shader_patches $host_dbus_inputs $runtime_inputs $host_codesign
+    shasum -a 256 "$toolkit/cross/build-host-tools.sh" "$toolkit/cross/host-resume-inputs.py" $resume_otool_input "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" "$markdown_patch" $shader_patches $quick3d_inputs $host_dbus_inputs $runtime_inputs $host_codesign
     "$CMAKE" --version
     "$NINJA" --version
     printf 'profile=%s\n' "$profile"
+    printf 'resume_from=%s\n' "$QT_HOST_RESUME_FROM"
+    printf 'quick3d_build_dir=%s\n' "$HOST_QT_QUICK3D_BUILD_DIR"
     printf 'host_package_prefix=%s\n' "$HOST_PACKAGE_PREFIX"
     printf 'host_runtime_view=%s\n' "$HOST_RUNTIME_VIEW"
     printf 'host_runtime_view_identity=%s\n' "$runtime_view_identity"
@@ -222,7 +266,12 @@ export PATH
 } >> "$work/inputs.txt"
 for module in $modules; do
     archive=$module-everywhere-src-6.12.0.tar.xz
+    module_work=$work/$module
+    [ "$module" != qtquick3d ] || module_work=$HOST_QT_QUICK3D_BUILD_DIR
     shasum -a 256 "$distfiles/$archive" >> "$work/inputs.txt"
+    if [ "$QT_HOST_RESUME_FROM" = qtquick3d ] && [ "$module" != qtquick3d ]; then
+        continue
+    fi
     if [ ! -d "$work/source/$module-everywhere-src-6.12.0" ]; then
         "$TAR" -xf "$distfiles/$archive" -C "$work/source"
         if [ "$module" = qtbase ]; then
@@ -239,12 +288,16 @@ for module in $modules; do
             done
             (cd "$work/source/$module-everywhere-src-6.12.0" &&
                 shasum -a 256 src/CMakeLists.txt src/shadertools/CMakeLists.txt src/shadertools/qspirvcompiler.cpp src/shadertools/qspirvshaderremap.cpp src/shadertools/qspirvshaderremap_p.h > "$work/qtshadertools-source.sha256")
+        elif [ "$module" = qtquick3d ]; then
+            "$HOST_PYTHON" -I "$quick3d_transition" apply \
+                "$work/source/$module-everywhere-src-6.12.0" "$distfiles/$archive" \
+                "$work/qtquick3d-source.sha256" "$PATCH" $quick3d_patches
         fi
     fi
-    mkdir -p "$work/$module"
+    mkdir -p "$module_work"
     for log in configure build; do
-        if [ -f "$work/$module/$log.log" ]; then
-            mv "$work/$module/$log.log" "$work/$module/$log.before-resume-$$.log"
+        if [ -f "$module_work/$log.log" ]; then
+            mv "$module_work/$log.log" "$module_work/$log.before-resume-$$.log"
         fi
     done
     if [ "$module" = qtbase ]; then
@@ -258,7 +311,7 @@ for module in $modules; do
         set --
         [ -z "$host_deployment_target" ] || set -- "-DCMAKE_OSX_DEPLOYMENT_TARGET:STRING=$host_deployment_target"
         [ -z "$HOST_RUNTIME_VIEW" ] || set -- "$@" "-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES:FILEPATH=$runtime_cmake"
-        (cd "$work/$module" && CC="$HOST_CC" CXX="$HOST_CXX" \
+        (cd "$module_work" && CC="$HOST_CC" CXX="$HOST_CXX" \
             PKG_CONFIG_LIBDIR="$HOST_PACKAGE_PREFIX/lib/pkgconfig:$HOST_PACKAGE_PREFIX/share/pkgconfig" PKG_CONFIG_PATH= \
             "$HOST_SH" "$work/source/$module-everywhere-src-6.12.0/configure" \
             -developer-build -opensource -confirm-license -release \
@@ -276,33 +329,37 @@ for module in $modules; do
             -DDBus1_ARCH_INCLUDE_DIR:PATH="$HOST_DBUS_PREFIX/lib/dbus-1.0/include" \
             -DFEATURE_dbus=ON -DFEATURE_dbus_linked=ON \
             -DWaylandScanner_EXECUTABLE="$WAYLAND_SCANNER" \
-            -DFEATURE_qtwaylandscanner=ON "$@") > "$work/$module/configure.log" 2>&1
+            -DFEATURE_qtwaylandscanner=ON "$@") > "$module_work/configure.log" 2>&1
         # Qt can reset a requested feature when a dependency search was cached.
         # Reject that result before an XML generator can emit empty signatures.
-        grep -q -x 'FEATURE_dbus_linked:BOOL=ON' "$work/$module/CMakeCache.txt"
-        grep -q -x 'QT_FEATURE_dbus_linked:INTERNAL=ON' "$work/$module/CMakeCache.txt"
-        grep -F -x "ZLIB_ROOT:PATH=$HOST_PACKAGE_PREFIX" "$work/$module/CMakeCache.txt" >/dev/null || {
+        grep -q -x 'FEATURE_dbus_linked:BOOL=ON' "$module_work/CMakeCache.txt"
+        grep -q -x 'QT_FEATURE_dbus_linked:INTERNAL=ON' "$module_work/CMakeCache.txt"
+        grep -F -x "ZLIB_ROOT:PATH=$HOST_PACKAGE_PREFIX" "$module_work/CMakeCache.txt" >/dev/null || {
             echo 'Qt did not retain the selected zlib root' >&2; exit 1;
         }
         for feature in doubleconversion freetype harfbuzz jpeg libb2 pcre2 png sqlite textmarkdownreader zlib; do
-            grep -F -x "QT_FEATURE_system_${feature}:INTERNAL=ON" "$work/$module/CMakeCache.txt" >/dev/null || {
+            grep -F -x "QT_FEATURE_system_${feature}:INTERNAL=ON" "$module_work/CMakeCache.txt" >/dev/null || {
                 echo "Qt system dependency was not selected: $feature" >&2; exit 1;
             }
         done
         for variable in FREETYPE_LIBRARY_RELEASE HARFBUZZ_LIBRARIES JPEG_LIBRARY_RELEASE LIBB2_LIBRARY PCRE2_LIBRARY_RELEASE PNG_LIBRARY_RELEASE SQLite3_LIBRARY ZLIB_LIBRARY_RELEASE double-conversion_DIR md4c_DIR; do
-            value=$(sed -n -e "s/^${variable}:FILEPATH=//p" -e "s/^${variable}:PATH=//p" "$work/$module/CMakeCache.txt")
+            value=$(sed -n -e "s/^${variable}:FILEPATH=//p" -e "s/^${variable}:PATH=//p" "$module_work/CMakeCache.txt")
             case "$value" in "$HOST_PACKAGE_PREFIX"/*) ;; *)
                 echo "Qt dependency is outside selected native prefix: $variable" >&2; exit 1;; esac
         done
         # Other modules' host generators link these libraries. Their metadata
         # alone is insufficient when the modules are built independently.
-        "$CMAKE" --build "$work/$module" --parallel "$JOBS" \
+        "$CMAKE" --build "$module_work" --parallel "$JOBS" \
             --target host_tools Gui Network Widgets OpenGL Sql Concurrent Test PrintSupport QSQLiteDriverPlugin QMinimalIntegrationPlugin \
-            > "$work/$module/build.log" 2>&1
+            > "$module_work/build.log" 2>&1
     else
         set --
         [ "$module" != qtdeclarative ] || set -- -DFEATURE_quick_vectorimage=ON
         [ "$module" != qtquick3d ] || set -- "$@" -DINPUT_quick3d_assimp:STRING=system -DFEATURE_system_assimp:BOOL=ON
+        if [ "$module" = qtquick3d ] && [ "$HOST_INCREMENTAL_RECONFIGURE" = 1 ]; then
+            # A previous configure may have cached the old provider search failure.
+            set -- "$@" -U HAVE_quick3d_assimp -U TEST_quick3d_assimp
+        fi
         if [ "$module" = qtshadertools ]; then
             set -- "$@" "-DSPIRV-Tools_DIR:PATH=$HOST_PACKAGE_PREFIX/lib/cmake/SPIRV-Tools" \
                 "-DSPIRV-Tools-opt_DIR:PATH=$HOST_PACKAGE_PREFIX/lib/cmake/SPIRV-Tools-opt"
@@ -323,21 +380,21 @@ for module in $modules; do
         fi
         # Qt runs project-signature try_compile in a separate CMake process.
         # Its package search must retain the selected native prefix as well.
-        (cd "$work/$module" && CMAKE_PREFIX_PATH="$HOST_PACKAGE_PREFIX" "$HOST_SH" "$work/qtbase/bin/qt-configure-module" \
+        (cd "$module_work" && CMAKE_PREFIX_PATH="$HOST_PACKAGE_PREFIX" "$HOST_SH" "$work/qtbase/bin/qt-configure-module" \
             "$work/source/$module-everywhere-src-6.12.0" \
-            -- -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF -DPython3_EXECUTABLE:FILEPATH="$HOST_PYTHON" "$@") > "$work/$module/configure.log" 2>&1
-        grep -F -x "ZLIB_ROOT:PATH=$HOST_PACKAGE_PREFIX" "$work/$module/CMakeCache.txt" >/dev/null || {
+            -- -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF -DPython3_EXECUTABLE:FILEPATH="$HOST_PYTHON" "$@") > "$module_work/configure.log" 2>&1
+        grep -F -x "ZLIB_ROOT:PATH=$HOST_PACKAGE_PREFIX" "$module_work/CMakeCache.txt" >/dev/null || {
             echo 'Qt module did not retain the selected zlib root' >&2; exit 1;
         }
         if [ "$module" = qtshadertools ]; then
             for provider in SPIRV-Tools SPIRV-Tools-opt; do
-                grep -F -x "${provider}_DIR:PATH=$HOST_PACKAGE_PREFIX/lib/cmake/$provider" "$work/$module/CMakeCache.txt" >/dev/null || {
+                grep -F -x "${provider}_DIR:PATH=$HOST_PACKAGE_PREFIX/lib/cmake/$provider" "$module_work/CMakeCache.txt" >/dev/null || {
                     echo "Qt ShaderTools dependency is outside selected native prefix: $provider" >&2; exit 1;
                 }
             done
         fi
         if [ "$module" = qtquick3d ]; then
-            grep -F -x "QT_FEATURE_system_assimp:INTERNAL=ON" "$work/$module/CMakeCache.txt" >/dev/null || {
+            grep -F -x "QT_FEATURE_system_assimp:INTERNAL=ON" "$module_work/CMakeCache.txt" >/dev/null || {
                 echo 'QtQuick3D did not select system Assimp' >&2; exit 1;
             }
         fi
@@ -347,11 +404,16 @@ for module in $modules; do
         set -- "$target"
         # balsam's executable alone cannot import assets without this plugin.
         [ "$module" != qtquick3d ] || set -- host_tools AssimpImporterPlugin
-        "$CMAKE" --build "$work/$module" --parallel "$JOBS" --target "$@" \
-            > "$work/$module/build.log" 2>&1
+        "$CMAKE" --build "$module_work" --parallel "$JOBS" --target "$@" \
+            > "$module_work/build.log" 2>&1
     fi
 done
-[ "$("$work/qtbase/bin/qmake" -query QT_VERSION)" = 6.12.0 ]
+if [ -n "$HOST_RUNTIME_VIEW" ]; then
+    qt_version=$("$HOST_PYTHON" -I "$runtime_launcher" --runtime-view "$HOST_RUNTIME_VIEW" -- "$work/qtbase/bin/qmake" -query QT_VERSION)
+else
+    qt_version=$("$work/qtbase/bin/qmake" -query QT_VERSION)
+fi
+[ "$qt_version" = 6.12.0 ]
 for tool in moc rcc uic qtwaylandscanner qmlcachegen qmltyperegistrar; do
     [ -x "$work/qtbase/libexec/$tool" ] || { echo "Missing host tool: $tool" >&2; exit 1; }
 done

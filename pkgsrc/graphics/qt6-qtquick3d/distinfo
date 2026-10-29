@@ -3,6 +3,10 @@ $NetBSD: distinfo,v 1.30 2026/08/18 18:26:04 adam Exp $
 BLAKE2s (qtquick3d-everywhere-src-6.12.0.tar.xz) = b00b3b7f3bf60eaada1228d177aa44903c5ae501e9b8d05d1d4ffb2a84f17f9e
 SHA512 (qtquick3d-everywhere-src-6.12.0.tar.xz) = 4b81fb3a6bb5c78e01f3900533deb81fe4ddb79fe0a999ce27f5b6c971e4cc6e340979860eb5358a2156162f710d11af490462aefb4054a9ccc0b8dd3fdd1a77
 Size (qtquick3d-everywhere-src-6.12.0.tar.xz) = 70489844 bytes
-SHA1 (patch-src_3rdparty_xatlas_xatlas.cpp) = 1f6741c74d1b88dc454f188e4756673d4ae80fa2
+SHA1 (patch-src_3rdparty_CMakeLists.txt) = 5de2c03dea19b6155e4f12dbde96ba3fa6fc902e
 SHA1 (patch-src_helpers_proceduralskytexturedata.cpp) = 82b23567218170b016385135d0854bd6c6a544c8
+SHA1 (patch-src_runtimerender_CMakeLists.txt) = 46ef350e3f8813d248574568c8fd9e9b075f5185
+SHA1 (patch-src_runtimerender_rendererimpl_qssglightmapper.cpp) = 697dc9693a9fe4514456cb5f58d3b1dcc4b67998
+SHA1 (patch-src_runtimerender_resourcemanager_qssgrenderloadedtexture.cpp) = 818cb1c5aa44df1aa91b1ad5ebcc95ef0c4f445a
+SHA1 (patch-src_utils_CMakeLists.txt) = 7c471f79d69c17df3208c0bca729967d598a444b
 SHA1 (patch-tools_lightmapviewer_CMakeLists.txt) = 050b689ab096a0c24c820656f0d07a62a6744173

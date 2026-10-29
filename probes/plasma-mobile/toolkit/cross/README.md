@@ -90,6 +90,10 @@ This records a new input block and permits changed or added runtime providers
 only after checking their selected prefixes and existing Mach-O load names;
 compiler, ABI, core tools and archived Qt sources remain fixed. Validate the
 reconfigured modules and their actual consumers after changing dependencies.
+For a completed set of earlier modules, `QT_HOST_RESUME_FROM=qtquick3d`
+selects that module only. `HOST_QT_QUICK3D_BUILD_DIR` may point to its existing
+CMake build directory; its source, Qtbase, compilers, ABI flags, runtime and
+provider locations must match the selected inputs. The actual path is recorded.
 
 On macOS, Qt's portable `qtwaylandscanner` requires an explicit native
 Wayland scanner and `QT_FIND_ALL_PACKAGES_ALWAYS=ON` during the initial

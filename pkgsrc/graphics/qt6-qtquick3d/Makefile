@@ -2,7 +2,7 @@
 
 DISTNAME=	qtquick3d-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qtquick3d-${QTVERSION}
-PKGREVISION=	3
+PKGREVISION=	4
 COMMENT=	3d engine for Qt6 quick
 CATEGORIES=	graphics
 LICENSE=	gnu-gpl-v3
@@ -25,7 +25,16 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Quick3DUtils.pc
  || !empty(MACHINE_PLATFORM:MDarwin-*-x86_64) \
  || !empty(MACHINE_PLATFORM:MLinux-*-aarch64) \
  || !empty(MACHINE_PLATFORM:MLinux-*-x86_64)
-PLIST_SRC=	PLIST PLIST.embree PLIST.openxr
+PLIST_SRC=	PLIST PLIST.openxr
+.endif
+
+.include "../../graphics/tinyexr/buildlink3.mk"
+.include "../../graphics/xatlas/buildlink3.mk"
+.include "../../graphics/meshoptimizer/buildlink3.mk"
+.if !empty(MACHINE_PLATFORM:MDarwin-*-aarch64) || !empty(MACHINE_PLATFORM:MDarwin-*-x86_64) || \
+    !empty(MACHINE_PLATFORM:MLinux-*-aarch64) || !empty(MACHINE_PLATFORM:MLinux-*-x86_64) || \
+    !empty(MACHINE_PLATFORM:MNetBSD-*-aarch64) || !empty(MACHINE_PLATFORM:MNetBSD-*-x86_64)
+.include "../../graphics/embree/buildlink3.mk"
 .endif
 
 .include "../../graphics/qt6-qtquicktimeline/buildlink3.mk"

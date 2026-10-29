@@ -1,0 +1,37 @@
+Use common external providers for Qt Quick 3D.
+
+--- src/runtimerender/CMakeLists.txt.orig
++++ src/runtimerender/CMakeLists.txt
+@@ -128,13 +128,14 @@
+ 
+ if(QT_QUICK3D_HAS_EMBREE)
+     find_package(Qt6 ${PROJECT_VERSION} CONFIG REQUIRED COMPONENTS Concurrent)
++    find_package(embree 4 CONFIG REQUIRED)
+ endif()
+ 
+ qt_internal_extend_target(Quick3DRuntimeRender CONDITION QT_QUICK3D_HAS_EMBREE
+     PUBLIC_LIBRARIES
+         Qt::Concurrent
+     LIBRARIES
+-        Qt::BundledEmbree
++        embree
+     DEFINES
+         QT_QUICK3D_HAS_LIGHTMAPPER
+ )
+@@ -196,13 +197,10 @@
+ 
+ # special case begin
+ 
++find_package(TinyEXR 3 CONFIG REQUIRED)
+ qt_internal_extend_target(Quick3DRuntimeRender
+-    INCLUDE_DIRECTORIES
+-        ../3rdparty/tinyexr
+-    NO_UNITY_BUILD_SOURCES
+-        ../3rdparty/tinyexr/tinyexr.h
+-    ATTRIBUTION_FILE_DIR_PATHS
+-        ../3rdparty/tinyexr
++    LIBRARIES
++        TinyEXR::tinyexr
+ )
+ 
+ qt_internal_extend_target(Quick3DRuntimeRender CONDITION QT_FEATURE_system_zlib
