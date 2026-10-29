@@ -19,7 +19,12 @@ library; target Guile is not needed for that use.
 ```
 
 Pass the same arguments with `--source` in place of `--output` to verify an
-existing prepared source. `--make-arg` passes a selected pkgsrc variable as a
+existing prepared source against the selected installed package. For later
+OS builds, `source.py --sdk-source "$SDK_SOURCE" --git "$GIT" verify-source
+--source "$WORK/libopts-source" --patch "$HOST_PREFIX/bin/gpatch"` checks the
+payload and current common source, patchset and generation recipe without an
+installed AutoGen package. Recipe metadata such as comments and revision are
+excluded; configure controls and options remain part of the selection. `--make-arg` passes a selected pkgsrc variable as a
 separate argument when the native configuration needs it. `--package` selects
 one installed version if more than one package of the same upstream version is
 present. The export must be created by `scripts/pkgsrc-shared-export.py` from

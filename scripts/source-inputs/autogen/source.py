@@ -19,6 +19,7 @@ sys.dont_write_bytecode = True
 PORTS = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PORTS / 'pkgsrc/lang/llvm/files'))
 import sdk_source
+from recipe import generation_recipe
 
 
 def main():
@@ -27,6 +28,8 @@ def main():
     from emberbsd_sdk import host_prefix, jsonio, paths, process, sourceprep
     from emberbsd_sdk.errors import SDKError
     from emberbsd_sdk.publication import publish_directory_noreplace
+    if 'verify-source' in argv:
+        return verify_source(argv, sdk, jsonio, paths, process, sourceprep, SDKError)
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('export', 'host-prefix', 'pkg-admin', 'make', 'makeconf', 'git', 'patch'):
         parser.add_argument('--' + name, required=True)
@@ -110,7 +113,8 @@ def main():
     archive_hash = digest(archive)
     root_name = archive.name.removesuffix('.tar.gz')
     identity = {'package': name, 'recipe': expected, 'configure_args': generation_args(configure_args),
-                'archive_sha256': archive_hash, 'options': options}
+                'archive_sha256': archive_hash, 'options': options,
+                'generation_recipe': generation_recipe(recipe)}
     if args.source:
         result = sourceprep.validate_prepared_tree(args.source, package='devel/autogen', identity=identity)
         sys.stdout.buffer.write(jsonio.json_bytes(result))
@@ -129,6 +133,60 @@ def main():
         sourceprep.validate_prepared_tree(root, package='devel/autogen', identity=identity)
         publish_directory_noreplace(root, output)
     sys.stdout.buffer.write(jsonio.json_bytes(result))
+
+
+def verify_source(argv, sdk, jsonio, paths, process, sourceprep, SDKError):
+    """Verify an already prepared tearoff without installed AutoGen tools."""
+    parser = argparse.ArgumentParser(description=verify_source.__doc__)
+    parser.add_argument('--git', required=True)
+    sub = parser.add_subparsers(dest='action', required=True)
+    check = sub.add_parser('verify-source')
+    check.add_argument('--source', required=True)
+    check.add_argument('--patch', required=True)
+    check.add_argument('--pkgsrc-export')
+    args = parser.parse_args(argv)
+    if not all(os.path.isabs(x) for x in (args.git, args.source, args.patch)):
+        raise SDKError('select absolute Git, patch and source paths')
+    record = jsonio.read_json(str(Path(args.source) / sourceprep.PREPARED_TREE_RECEIPT))
+    identity = record.get('identity') if isinstance(record, dict) else None
+    record = sourceprep.validate_prepared_tree(args.source, package='devel/autogen', identity=identity)
+    if (not isinstance(identity, dict) or
+            set(identity) != {'package', 'recipe', 'configure_args', 'options', 'archive_sha256', 'generation_recipe'} or
+            not re.fullmatch(r'autogen-[0-9]+(?:\.[0-9]+)+(?:nb[0-9]+)?', str(identity.get('package', ''))) or
+            not isinstance(identity.get('recipe'), dict) or
+            not isinstance(identity.get('generation_recipe'), dict) or
+            not isinstance(identity.get('configure_args'), list) or
+            not all(isinstance(value, str) for value in identity['configure_args']) or
+            not isinstance(identity.get('options'), str) or
+            not re.fullmatch(r'[0-9a-f]{64}', str(identity.get('archive_sha256', '')))):
+        raise SDKError('unrecognized AutoGen tearoff identity')
+    spec = importlib.util.spec_from_file_location('pkgsrc_source_identity', PORTS / 'scripts/pkgsrc-source-identity.py')
+    selector = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(selector)
+    current = selector.identity(PORTS, 'devel/autogen', args.git, sdk)
+    with tempfile.TemporaryDirectory(prefix='.autogen-verify-') as temporary:
+        if args.pkgsrc_export:
+            exported = selector.shared_export(args.pkgsrc_export, PORTS, args.git, sdk, args.patch)
+        else:
+            exported = Path(temporary) / 'pkgsrc'
+            process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
+                             str(exported), '--git', args.git, '--patch', args.patch],
+                            env=process.sanitized_environment())
+        recipe = exported / 'devel/autogen'
+        def digest(path):
+            f, before = paths.open_regular(str(path))
+            with f:
+                data = f.read()
+            paths.verify_stable(str(path), before)
+            return hashlib.sha256(data).hexdigest()
+        expected = {'devel/autogen/distinfo': digest(recipe / 'distinfo')}
+        for patch in sorted((recipe / 'patches').glob('patch-*')):
+            expected['devel/autogen/patches/' + patch.name] = digest(patch)
+        if identity['recipe'] != expected or identity['generation_recipe'] != generation_recipe(recipe):
+            raise SDKError('prepared libopts source differs from the current common AutoGen recipe, source or patchset')
+        if current != selector.identity(PORTS, 'devel/autogen', args.git, sdk):
+            raise SDKError('common AutoGen export inputs changed during verification')
+    sys.stdout.buffer.write(jsonio.json_bytes(record))
 
 
 if __name__ == '__main__':
