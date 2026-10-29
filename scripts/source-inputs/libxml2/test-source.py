@@ -24,6 +24,10 @@ with tempfile.TemporaryDirectory(dir=args.work_dir) as directory:
         return result
     run('prepare', '--archive', args.archive, '--patch', args.patch, '--output', root, '--scoped-identity')
     run('verify-source', '--source', root, '--patch', args.patch)
+    stamp = (root / 'configure.ac').stat().st_mtime_ns
+    for generated in [root / 'aclocal.m4', root / 'configure', root / 'config.h.in',
+                      *root.rglob('Makefile.in')]:
+        assert generated.stat().st_mtime_ns >= stamp, generated
     assert (root / 'include/libxml/parser.h').is_file()
     assert (root / 'run_and_diff.cmake').is_file()
     assert (root / 'test_xmlcatalog_add_del.cmake').is_file()

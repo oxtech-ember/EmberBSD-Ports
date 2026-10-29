@@ -191,6 +191,12 @@ def prepare(archive, output, patch, git, scoped_identity=False):
             sourceprep.apply_patch(patch, path, delta, root, 'libxml2',
                 patch_args=('-p0', '-f', '-N', '-F0', '-V', 'none'),
                 backup_directory=tmp / ('patch-backups-' + str(index)))
+        # Match the recipe: the XML_LIBDIR-only configure.ac change does not
+        # alter the release's aclocal or Automake output; configure is patched.
+        stamp = (root / 'configure.ac').stat().st_mtime_ns
+        for path in [root / 'aclocal.m4', root / 'configure', root / 'config.h.in',
+                     *root.rglob('Makefile.in')]:
+            os.utime(path, ns=(stamp, stamp))
         # The shared recipe installs these source-owned test drivers after extraction.
         for name in ('run_and_diff.cmake', 'test_xmlcatalog_add_del.cmake'):
             source = exported / PACKAGE / 'files' / name

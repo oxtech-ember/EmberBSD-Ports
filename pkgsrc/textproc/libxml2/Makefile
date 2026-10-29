@@ -2,7 +2,7 @@
 
 .include "../../textproc/libxml2/Makefile.common"
 
-PKGREVISION=	2
+PKGREVISION=	3
 
 # The release tarball omits two CMake test drivers from the same upstream tag.
 post-extract:
@@ -42,15 +42,19 @@ CONFIGURE_ARGS+=	--with-iconv=${BUILDLINK_PREFIX.iconv}
 CONFIGURE_ARGS+=	--with-iconv
 .endif
 
+# The configure.ac change only adjusts XML_LIBDIR; release-generated files
+# already contain the matching change and must remain newer than its input.
+post-patch:
+	${TOUCH} -r ${WRKSRC}/configure.ac ${WRKSRC}/aclocal.m4 \
+	    ${WRKSRC}/configure ${WRKSRC}/config.h.in
+	${FIND} ${WRKSRC} -name Makefile.in -exec ${TOUCH} -r ${WRKSRC}/configure.ac {} +
+
 PKGCONFIG_OVERRIDE=	libxml-2.0.pc.in
 
 # for struct addrinfo on glibc
 CPPFLAGS.Linux+=	-D_POSIX_C_SOURCE=200112L
 
-SUBST_CLASSES+=		rpath
-SUBST_STAGE.rpath=	pre-configure
-SUBST_FILES.rpath=	configure
-SUBST_VARS.rpath=	COMPILER_RPATH_FLAG
+CONFIGURE_ENV+=	COMPILER_RPATH_FLAG=${COMPILER_RPATH_FLAG:Q}
 
 .include "../../mk/bsd.prefs.mk"
 

@@ -1,0 +1,17 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Upstream status: pkgsrc-specific run-path integration.
+
+Keep the source configure logic consistent with patch-configure.
+
+--- configure.ac.orig
++++ configure.ac
+@@ -289,4 +289,7 @@
+ XML_LIBDIR='-L${libdir}'
++if test -n "$COMPILER_RPATH_FLAG"; then
++    XML_LIBDIR="${COMPILER_RPATH_FLAG}"'${libdir} '"$XML_LIBDIR"
++fi
+ XML_INCLUDEDIR='-I${includedir}/libxml2'
+ XML_CFLAGS=""
+ XML_STATIC_CFLAGS=""
