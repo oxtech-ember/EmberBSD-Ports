@@ -10,7 +10,7 @@
 +.include "../../mk/bsd.prefs.mk"
 +.include "../../mk/emberbsd-native-cxx-runtime.mk"
 +.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
-+PKGREVISION=	1
++PKGREVISION=	2
 +.endif
 +
  .include "../../devel/cmake/build.mk"
@@ -26,7 +26,7 @@
 +.include "../../mk/bsd.fast.prefs.mk"
  BUILDLINK_API_DEPENDS.spdlog+=	spdlog>=1.8.5nb1
 +.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
-+BUILDLINK_ABI_DEPENDS.spdlog+=	spdlog>=1.17.0nb1
++BUILDLINK_ABI_DEPENDS.spdlog+=	spdlog>=1.17.0nb2
 +.endif
  BUILDLINK_ABI_DEPENDS.spdlog+=	spdlog>=1.15.3nb1
  BUILDLINK_PKGSRCDIR.spdlog?=	../../devel/spdlog
