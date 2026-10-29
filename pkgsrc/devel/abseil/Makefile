@@ -2,7 +2,7 @@
 
 # Origin: EmberBSD (AI-assisted); preserve target execinfo in installed metadata.
 DISTNAME=	abseil-20260817.0
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=abseil/}
 GITHUB_PROJECT=	abseil-cpp
@@ -29,6 +29,9 @@ CMAKE_CONFIGURE_ARGS+=	-DBUILD_SHARED_LIBS=ON
 
 
 .if ${OPSYS} == "Darwin"
+.  if ${USE_CROSS_COMPILE:Uno:tl} != "yes" && defined(EMBERBSD_NATIVE_CXX_BINDING_RECORD) && !empty(EMBERBSD_NATIVE_CXX_BINDING_RECORD)
+DEPENDS+=	libcxx>=23.1.4:../../lang/libcxx
+.  endif
 .  if exists(${OSX_SDK_PATH}/usr/include/execinfo.h)
 BUILDLINK_TRANSFORM+=	rm:-lexecinfo
 .  endif
