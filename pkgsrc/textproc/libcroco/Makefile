@@ -1,0 +1,27 @@
+# $NetBSD: Makefile,v 1.74 2026/09/02 19:04:44 wiz Exp $
+
+DISTNAME=	libcroco-0.6.13
+PKGREVISION=	18
+CATEGORIES=	textproc
+MASTER_SITES=	${MASTER_SITE_GNOME:=sources/libcroco/0.6/}
+EXTRACT_SUFX=	.tar.xz
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://gitlab.gnome.org/Archive/libcroco
+COMMENT=	Toolkit to parse and manipulate CSS (Cascading Style Sheets)
+LICENSE=	gnu-lgpl-v2 AND gnu-lgpl-v2.1
+
+USE_TOOLS+=	gmake pkg-config
+USE_LIBTOOL=	yes
+GNU_CONFIGURE=	yes
+
+PKGCONFIG_OVERRIDE+=	libcroco-0.6.pc
+
+post-install:
+	${INSTALL_DATA_DIR} ${DESTDIR}${PREFIX}/share/licenses/libcroco
+	${INSTALL_DATA} ${WRKSRC}/COPYING ${DESTDIR}${PREFIX}/share/licenses/libcroco/COPYING.LGPL-2
+	${INSTALL_DATA} ${FILESDIR}/COPYING.LGPL-2.1 ${DESTDIR}${PREFIX}/share/licenses/libcroco/COPYING.LGPL-2.1
+
+.include "../../devel/glib2/buildlink3.mk"
+.include "../../textproc/libxml2/buildlink3.mk"
+.include "../../mk/bsd.pkg.mk"

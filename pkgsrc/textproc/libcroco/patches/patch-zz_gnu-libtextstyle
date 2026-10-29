@@ -1,0 +1,1699 @@
+Bring the complete GNU libtextstyle libcroco source delta into the shared recipe.
+Origin: GNU gettext 1.0 libtextstyle/gnulib-local/lib/libcroco.
+Original copyright and LGPL notices remain in the affected files.
+EmberBSD integration: AI-assisted; not submitted upstream.
+
+--- src/cr-additional-sel.c.orig
++++ src/cr-additional-sel.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2024 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,12 +29,12 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyright information.
+- *
+- */
+-
++ *
++ */
++
++#include <config.h>
+ #include "cr-additional-sel.h"
+-#include "string.h"
++#include <string.h>
+ 
+ /**
+  * CRAdditionalSel:
+--- src/cr-additional-sel.h.orig
++++ src/cr-additional-sel.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,7 +29,6 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See the COPYRIGHTS file for copyright information.
+  */
+ 
+ 
+--- src/cr-attr-sel.c.orig
++++ src/cr-attr-sel.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -16,10 +27,9 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+  * USA
+- * 
+- * See COPYRIGHTS file for copyrights information.
+- */
+-
++ */
++
++#include <config.h>
+ #include <stdio.h>
+ #include "cr-attr-sel.h"
+ 
+--- src/cr-attr-sel.h.orig
++++ src/cr-attr-sel.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,7 +29,6 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyright information.
+  */
+ 
+ #ifndef __CR_ATTR_SEL_H__
+--- src/cr-cascade.c.orig
++++ src/cr-cascade.c
+@@ -1,4 +1,13 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
+@@ -26,6 +35,7 @@
+  *$Id$
+  */
+ 
++#include <config.h>
+ #include <string.h>
+ #include "cr-cascade.h"
+ 
+--- src/cr-cascade.h.orig
++++ src/cr-cascade.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the 
+--- src/cr-declaration.c.orig
++++ src/cr-declaration.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 8 -*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,10 +29,9 @@
+  * USA
+  *
+  * Author: Dodji Seketeli.
+- * See COPYRIGHTS file for copyright information.
+- */
+-
+-
++ */
++
++#include <config.h>
+ #include <string.h>
+ #include "cr-declaration.h"
+ #include "cr-statement.h"
+--- src/cr-declaration.h.orig
++++ src/cr-declaration.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 8 -*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -16,8 +27,6 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+  * USA
+- * 
+- * See the COPYRIGHTS file for copyright information.
+  */
+ 
+ #ifndef __CR_DECLARATION_H__
+--- src/cr-doc-handler.c.orig
++++ src/cr-doc-handler.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 8 -*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -16,10 +27,9 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+  * USA
+- * 
+- * See COPRYRIGHTS file for copyright information.
+- */
+-
++ */
++
++#include <config.h>
+ #include <string.h>
+ #include "cr-doc-handler.h"
+ #include "cr-parser.h"
+--- src/cr-doc-handler.h.orig
++++ src/cr-doc-handler.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 8 -*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -16,8 +27,6 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+  * USA
+- *
+- * See the COPYRIGHTS file for copyright information.
+  */
+ 
+ #ifndef __CR_DOC_HANDLER_H__
+--- src/cr-enc-handler.c.orig
++++ src/cr-enc-handler.c
+@@ -1,4 +1,13 @@
+ /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 8 -*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2024 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
+@@ -29,6 +38,7 @@
+  *The definition of the #CREncHandler class.
+  */
+ 
++#include <config.h>
+ #include "cr-enc-handler.h"
+ #include "cr-utils.h"
+ 
+@@ -57,7 +67,7 @@
+         {"UCS-4", CR_UCS_4},
+         {"UCS_4", CR_UCS_4},
+         {"ASCII", CR_ASCII},
+-        {0, 0}
++        {NULL, 0}
+ };
+ 
+ static CREncHandler gv_default_enc_handlers[] = {
+--- src/cr-enc-handler.h.orig
++++ src/cr-enc-handler.h
+@@ -1,4 +1,13 @@
+ /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 8 -*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
+--- src/cr-fonts.c.orig
++++ src/cr-fonts.c
+@@ -1,8 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
+  *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of 
+@@ -19,10 +29,9 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+  * USA
+- *
+- *See COPYRIGHTS file for copyright information
+- */
+-
++ */
++
++#include <config.h>
+ #include "cr-fonts.h"
+ #include <string.h>
+ 
+--- src/cr-fonts.h.orig
++++ src/cr-fonts.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of 
+@@ -20,7 +31,6 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyright information.
+  */
+ 
+ #ifndef __CR_FONTS_H__
+--- src/cr-input.c.orig
++++ src/cr-input.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2024 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,10 +29,10 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyright information.
+- */
+-
+-#include "stdio.h"
++ */
++
++#include <config.h>
++#include <stdio.h>
+ #include <string.h>
+ #include "cr-input.h"
+ #include "cr-enc-handler.h"
+--- src/cr-input.h.orig
++++ src/cr-input.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset:8 -*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,7 +29,6 @@
+  * USA
+  * 
+  * Author: Dodji Seketeli
+- * See the COPYRIGHTS file for copyrights information.
+  */
+ 
+ #ifndef __CR_INPUT_SRC_H__
+--- src/cr-num.c.orig
++++ src/cr-num.c
+@@ -1,8 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2024 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
+  *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -19,7 +29,6 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyrights information.
+  */
+ 
+ /**
+@@ -29,8 +38,9 @@
+  *of the #CRNum class.
+  */
+ 
++#include <config.h>
+ #include "cr-num.h"
+-#include "string.h"
++#include <string.h>
+ 
+ /**
+  * cr_num_new:
+--- src/cr-num.h.orig
++++ src/cr-num.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,7 +29,6 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyright information
+  */
+ 
+ 
+--- src/cr-om-parser.c.orig
++++ src/cr-om-parser.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2024 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,9 +29,9 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyright information.
+  */
+ 
++#include <config.h>
+ #include <string.h>
+ #include "cr-utils.h"
+ #include "cr-om-parser.h"
+@@ -1065,7 +1076,7 @@
+         if (!result) {
+                 for (i = 0; i < 3; i++) {
+                         cr_stylesheet_unref (sheets[i]);
+-                        sheets[i] = 0;
++                        sheets[i] = NULL;
+                 }
+                 return CR_ERROR;
+         }
+--- src/cr-om-parser.h.orig
++++ src/cr-om-parser.h
+@@ -1,4 +1,13 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
+--- src/cr-parser.c.orig
++++ src/cr-parser.c
+@@ -1,8 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2024 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
+  *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the 
+@@ -20,7 +30,6 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyrights information.
+  */
+ 
+ /**
+@@ -29,7 +38,8 @@
+  *The definition of the #CRParser class.
+  */
+ 
+-#include "string.h"
++#include <config.h>
++#include <string.h>
+ #include "cr-parser.h"
+ #include "cr-num.h"
+ #include "cr-term.h"
+--- src/cr-parser.h.orig
++++ src/cr-parser.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,7 +29,6 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyrights information.
+  */
+ 
+ #ifndef __CR_PARSER_H__
+--- src/cr-parsing-location.c.orig
++++ src/cr-parsing-location.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 8 -*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,9 +29,9 @@
+  * USA
+  *
+  * Author: Dodji Seketeli.
+- * See the COPYRIGHTS file for copyright information.
+  */
+ 
++#include <config.h>
+ #include <string.h>
+ #include "cr-parsing-location.h"
+ 
+--- src/cr-parsing-location.h.orig
++++ src/cr-parsing-location.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 8 -*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,7 +29,6 @@
+  * USA
+  *
+  * Author: Dodji Seketeli.
+- * See the COPYRIGHTS file for copyright information.
+  */
+ 
+ #ifndef __CR_PARSING_LOCATION_H__
+--- src/cr-prop-list.c.orig
++++ src/cr-prop-list.c
+@@ -1,5 +1,16 @@
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
++
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -16,9 +27,9 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyrights information.
+- */
+-
++ */
++
++#include <config.h>
+ #include <string.h>
+ #include "cr-prop-list.h"
+ 
+--- src/cr-prop-list.h.orig
++++ src/cr-prop-list.h
+@@ -1,5 +1,16 @@
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
++
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -16,7 +27,6 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyrights information.
+  */
+ 
+ #ifndef __CR_PROP_LIST_H__
+--- src/cr-pseudo.c.orig
++++ src/cr-pseudo.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,9 +29,9 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyright information.
+  */
+ 
++#include <config.h>
+ #include "cr-pseudo.h"
+ 
+ /**
+--- src/cr-pseudo.h.orig
++++ src/cr-pseudo.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -16,8 +27,6 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+  * USA
+- * 
+- * See COPYRIGHTS file for copyright information
+  */
+ 
+ #ifndef __CR_PSEUDO_H__
+--- src/cr-rgb.c.orig
++++ src/cr-rgb.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2026 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,10 +29,9 @@
+  * USA
+  * 
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyrights information.
+- */
+-
+-#include "config.h"
++ */
++
++#include <config.h>
+ 
+ #include <stdio.h>
+ #include <string.h>
+@@ -473,7 +483,7 @@
+ cr_rgb_set_from_name (CRRgb * a_this, const guchar * a_color_name)
+ {
+         enum CRStatus status = CR_OK;
+-        CRRgb *result;
++        CRRgb const *result;
+ 
+         g_return_val_if_fail (a_this && a_color_name, CR_BAD_PARAM_ERROR);
+ 
+--- src/cr-rgb.h.orig
++++ src/cr-rgb.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -16,8 +27,6 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+  * USA
+- * 
+- * see COPYRIGHTS file for copyright information.
+  */
+ 
+ #ifndef __CR_RGB_H__
+--- src/cr-sel-eng.c.orig
++++ src/cr-sel-eng.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2025 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -17,10 +28,9 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+  * USA
+- *
+- * See  COPYRIGHTS file for copyright informations.
+  */
+ 
++#include <config.h>
+ #include <string.h>
+ #include "cr-sel-eng.h"
+ 
+@@ -1196,8 +1206,7 @@
+                                                 guchar * a_name,
+                                                 enum CRPseudoType a_type)
+ {
+-        GList *elem = NULL,
+-                *deleted_elem = NULL;
++        GList *elem = NULL;
+         gboolean found = FALSE;
+         struct CRPseudoClassSelHandlerEntry *entry = NULL;
+ 
+@@ -1214,13 +1223,11 @@
+         }
+         if (found == FALSE)
+                 return CR_PSEUDO_CLASS_SEL_HANDLER_NOT_FOUND_ERROR;
+-        PRIVATE (a_this)->pcs_handlers = g_list_delete_link
+-                (PRIVATE (a_this)->pcs_handlers, elem);
+         entry = elem->data;
+         if (entry->name)
+                 g_free (entry->name);
+-        g_free (elem);
+-        g_list_free (deleted_elem);
++        PRIVATE (a_this)->pcs_handlers =
++          g_list_delete_link (PRIVATE (a_this)->pcs_handlers, elem); /* free()s elem ! */
+ 
+         return CR_OK;
+ }
+--- src/cr-sel-eng.h.orig
++++ src/cr-sel-eng.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,7 +29,6 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyrights information.
+  */
+ 
+ #ifndef __CR_SEL_ENG_H__
+--- src/cr-selector.c.orig
++++ src/cr-selector.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 8 -*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -16,10 +27,9 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+  * USA
+- *
+- * See COPYRIGHTS file for copyright information.
+- */
+-
++ */
++
++#include <config.h>
+ #include <string.h>
+ #include "cr-selector.h"
+ #include "cr-parser.h"
+--- src/cr-selector.h.orig
++++ src/cr-selector.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 8 -*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -19,7 +30,6 @@
+  *
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyright information.
+  */
+ 
+ #ifndef __CR_SELECTOR_H__
+--- src/cr-simple-sel.c.orig
++++ src/cr-simple-sel.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,9 +29,9 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyright information.
+- */
+-
++ */
++
++#include <config.h>
+ #include <string.h>
+ #include <glib.h>
+ #include "cr-simple-sel.h"
+--- src/cr-simple-sel.h.orig
++++ src/cr-simple-sel.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,7 +29,6 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyright information.
+  */
+ 
+ 
+--- src/cr-statement.c.orig
++++ src/cr-statement.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 8 -*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,9 +29,9 @@
+  * USA
+  *
+  * Author: Dodji Seketeli.
+- * See COPYRIGHTS files for copyrights information.
+- */
+-
++ */
++
++#include <config.h>
+ #include <string.h>
+ #include "cr-statement.h"
+ #include "cr-parser.h"
+--- src/cr-statement.h.orig
++++ src/cr-statement.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 8 -*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,7 +29,6 @@
+  * USA
+  * 
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyright information.
+  */
+ 
+ #include <stdio.h>
+--- src/cr-string.c.orig
++++ src/cr-string.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,9 +29,9 @@
+  * USA
+  * 
+  * Author: Dodji Seketeli.
+- * See COPYRIGHTS file for copyright information.
+  */
+ 
++#include <config.h>
+ #include <string.h>
+ #include "cr-string.h"
+ 
+--- src/cr-string.h.orig
++++ src/cr-string.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -16,8 +27,6 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+  * USA
+- * 
+- * See COPYRIGHTS file for copyright information.
+  */
+ 
+ /**
+--- src/cr-style.c.orig
++++ src/cr-style.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of 
+@@ -20,9 +31,9 @@
+  * USA
+  *
+  * Author: Dodji Seketeli.
+- * see COPYRIGTHS file for copyright information
+  */
+ 
++#include <config.h>
+ #include <string.h>
+ #include "cr-style.h"
+ 
+--- src/cr-style.h.orig
++++ src/cr-style.h
+@@ -1,8 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
+  *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -19,7 +29,6 @@
+  * USA
+  *
+  * Author: Dodji Seketeli.
+- * See COPYRIGHTS file for copyright information.
+  */
+ 
+ #ifndef __CR_STYLE_H__
+--- src/cr-stylesheet.c.orig
++++ src/cr-stylesheet.c
+@@ -1,4 +1,13 @@
+ /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 8 -*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2024 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
+@@ -20,7 +29,8 @@
+  * USA
+  */
+ 
+-#include "string.h"
++#include <config.h>
++#include <string.h>
+ #include "cr-stylesheet.h"
+ 
+ /**
+--- src/cr-stylesheet.h.orig
++++ src/cr-stylesheet.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 8 -*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -16,8 +27,6 @@
+  * along with this program; if not, write to the Free Software
+  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+  * USA
+- * 
+- * see COPYRIGHTS file for copyright information.
+  */
+ 
+ 
+--- src/cr-term.c.orig
++++ src/cr-term.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,9 +29,9 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyright information.
+- */
+-
++ */
++
++#include <config.h>
+ #include <stdio.h>
+ #include <string.h>
+ #include "cr-term.h"
+--- src/cr-term.h.orig
++++ src/cr-term.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,7 +29,6 @@
+  * USA
+  * 
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyright information.
+  */
+ 
+ #include <stdio.h>
+--- src/cr-tknzr.c.orig
++++ src/cr-tknzr.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2024 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,7 +29,6 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See the COPYRIGHTS file for copyrights information.
+  */
+ 
+ /**
+@@ -27,7 +37,8 @@
+  *class.
+  */
+ 
+-#include "string.h"
++#include <config.h>
++#include <string.h>
+ #include "cr-tknzr.h"
+ #include "cr-doc-handler.h"
+ 
+--- src/cr-tknzr.h.orig
++++ src/cr-tknzr.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,7 +29,6 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for coypyright information.
+  */
+ 
+ /**
+--- src/cr-token.c.orig
++++ src/cr-token.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,7 +29,6 @@
+  * USA
+  * 
+  * Author: Dodji Seketeli
+- * see COPYRIGHTS file for copyright information.
+  */
+ 
+ /**
+@@ -26,6 +36,8 @@
+  *The definition of the #CRToken class.
+  *Abstracts a css2 token.
+  */
++
++#include <config.h>
+ #include <string.h>
+ #include "cr-token.h"
+ 
+--- src/cr-token.h.orig
++++ src/cr-token.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode:nil; c-basic-offset: 8-*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,7 +29,6 @@
+  * USA
+  * 
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyright information.
+  */
+ 
+ #ifndef __CR_TOKEN_H__
+--- src/cr-utils.c.orig
++++ src/cr-utils.c
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 8 -*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,9 +29,9 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * See COPYRIGHTS file for copyright information.
+- */
+-
++ */
++
++#include <config.h>
+ #include "cr-utils.h"
+ #include "cr-string.h"
+ 
+--- src/cr-utils.h.orig
++++ src/cr-utils.h
+@@ -1,7 +1,18 @@
+ /* -*- Mode: C; indent-tabs-mode: nil; c-basic-offset: 8 -*- */
++
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
+ 
+ /*
+  * This file is part of The Croco Library
++ *
++ * Copyright (C) 2003-2004 Dodji Seketeli.  All Rights Reserved.
+  *
+  * This program is free software; you can redistribute it and/or
+  * modify it under the terms of version 2.1 of the GNU Lesser General Public
+@@ -18,7 +29,6 @@
+  * USA
+  *
+  * Author: Dodji Seketeli
+- * Look at file COPYRIGHTS for copyright information
+  */
+ 
+ #ifndef __CR_DEFS_H__
+--- src/libcroco-config.h.orig
++++ src/libcroco-config.h
+@@ -1,3 +1,23 @@
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU Lesser General Public License as published by
++ * the Free Software Foundation; either version 2.1 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public License
++ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
++ */
++
+ #ifndef LIBCROCO_VERSION_NUMBER
+ #define LIBCROCO_VERSION_NUMBER 612
+ #endif
+--- src/libcroco.h.orig
++++ src/libcroco.h
+@@ -1,3 +1,12 @@
++/* libcroco - Library for parsing and applying CSS
++ * Copyright (C) 2006-2019 Free Software Foundation, Inc.
++ *
++ * This file is not part of the GNU gettext program, but is used with
++ * GNU gettext.
++ *
++ * The original copyright notice is as follows:
++ */
++
+ /*
+  * This file is part of The Croco Library
+  *
