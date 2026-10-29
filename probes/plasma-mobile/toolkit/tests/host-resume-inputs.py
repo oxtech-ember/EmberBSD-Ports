@@ -67,6 +67,31 @@ with tempfile.TemporaryDirectory(prefix='qt-host-resume-') as temp:
         inputs.write_text(block() + block(view=new,producer=m.digest(script)))
         (new/'new.dylib').unlink();require_failure(lambda:m.check(*args),'previous runtime entry changed')
         (new/'new.dylib').symlink_to(provider);assert m.check(*args)[1]>1
+    # Explicit incremental reconfiguration can select changed providers or new
+    # dependencies before their future Qt module has been built.
+    inputs.write_text(block(producer='f'*64))
+    (new/'a.dylib').unlink()
+    changed = prefix/'lib/a.dylib'; changed.write_bytes(b'new version')
+    (new/'a.dylib').symlink_to(changed)
+    def inspect_incremental(_otool, path):
+        if path in (new/'a.dylib', new/'new.dylib'):
+            return (str(native/'lib'/path.name), [])
+        return (None, [])
+    with patch.object(m, 'inspect_loads', side_effect=inspect_incremental):
+        assert m.check(*args, '1')[0] == 'f'*64
+        require_failure(lambda:m.check(*args), 'unsupported previous producer')
+        (new/'b.dylib').unlink()
+        require_failure(lambda:m.check(*args, '1'), 'previous runtime entry changed')
+        (new/'b.dylib').write_bytes(b'b')
+    def inspect_system(_otool, path):
+        if path in (new/'a.dylib', new/'new.dylib'):
+            return (str(native/'lib'/path.name), [])
+        if path == image:
+            return (None, ['/usr/lib/a.dylib'])
+        return (None, [])
+    with patch.object(m, 'inspect_loads', side_effect=inspect_system):
+        require_failure(lambda:m.check(*args, '1'), 'install name differs')
+    (new/'a.dylib').unlink(); (new/'a.dylib').write_bytes(b'a')
     inputs.write_text(block())
     with patch.object(m,'inspect_loads',side_effect=lambda _o,p: (load, []) if p in (new/'new.dylib', new/'a.dylib') else (None, [])):
         require_failure(lambda:m.check(*args),'lacks previous static Qt dependency')

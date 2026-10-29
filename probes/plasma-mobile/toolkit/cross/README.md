@@ -84,7 +84,12 @@ reports an accelerated session.
 Use `RESUME=1` with the same arguments after correcting a build failure.
 The recipe checks the selected tool hashes and all seven archives again,
 preserves earlier logs and reuses existing sources and objects. Do not edit
-those extracted sources; choose a new work directory to change inputs.
+those extracted sources. To reconfigure against an updated selected native
+runtime view, set `HOST_INCREMENTAL_RECONFIGURE=1` together with `RESUME=1`.
+This records a new input block and permits changed or added runtime providers
+only after checking their selected prefixes and existing Mach-O load names;
+compiler, ABI, core tools and archived Qt sources remain fixed. Validate the
+reconfigured modules and their actual consumers after changing dependencies.
 
 On macOS, Qt's portable `qtwaylandscanner` requires an explicit native
 Wayland scanner and `QT_FIND_ALL_PACKAGES_ALWAYS=ON` during the initial

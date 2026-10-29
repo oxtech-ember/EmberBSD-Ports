@@ -20,6 +20,12 @@ widgets_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_widgets_
 markdown_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_gui_text_qtextmarkdownimporter.cpp
 shader_patches="$toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_CMakeLists.txt $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_CMakeLists.txt $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_qspirvcompiler.cpp $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_qspirvshaderremap.cpp $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_qspirvshaderremap_p.h"
 RESUME=${RESUME:-0}
+HOST_INCREMENTAL_RECONFIGURE=${HOST_INCREMENTAL_RECONFIGURE:-0}
+case "$HOST_INCREMENTAL_RECONFIGURE" in
+0) ;;
+1) [ "$RESUME" = 1 ] || { echo 'Incremental reconfigure requires RESUME=1' >&2; exit 2; } ;;
+*) echo 'HOST_INCREMENTAL_RECONFIGURE must be 0 or 1' >&2; exit 2 ;;
+esac
 HOST_SH=${HOST_SH:-/bin/sh}
 HOST_RUNTIME_VIEW=${HOST_RUNTIME_VIEW:-}
 : "${HOST_PYTHON:?Set an absolute native Python 3 executable}"
@@ -142,7 +148,7 @@ if [ -e "$work" ] || [ -L "$work" ]; then
     resume_helper=$toolkit/cross/host-resume-inputs.py
     [ -f "$resume_helper" ] || { echo 'Missing Qt host resume checker' >&2; exit 2; }
     resume_record=$("$HOST_PYTHON" -I "$resume_helper" "$work/inputs.txt" "$toolkit/cross/build-host-tools.sh" \
-        "$HOST_RUNTIME_VIEW" "$profile" "$HOST_PACKAGE_PREFIX" "$host_deployment_target" "$work" "$HOST_DBUS_PREFIX" "$resume_otool_input") || exit 2
+        "$HOST_RUNTIME_VIEW" "$profile" "$HOST_PACKAGE_PREFIX" "$host_deployment_target" "$work" "$HOST_DBUS_PREFIX" "$resume_otool_input" "$HOST_INCREMENTAL_RECONFIGURE") || exit 2
     set -- $resume_record
     [ "$#" = 2 ] || { echo 'Invalid Qt host resume result' >&2; exit 2; }
     old_producer_identity=$1 resume_start=$2
@@ -152,6 +158,9 @@ if [ -e "$work" ] || [ -L "$work" ]; then
     2987bc8a260733ebcec67eeda99d1da40488a40fb4493fda76e37a3a28ebd329|4ec29e9a317a7b794b4f5de60dd940065a3c034bf1c8230df92163eb9fe6ac67) ;;
     *) resume_extra_inputs="$resume_helper $resume_otool_input" ;;
     esac
+    if [ "$HOST_INCREMENTAL_RECONFIGURE" = 1 ] && [ -n "$resume_extra_inputs" ]; then
+        resume_extra_inputs=$resume_otool_input
+    fi
     if [ "$profile" = full ]; then
         resume_full_inputs="$HOST_LLVM_BUILD/lib/cmake/llvm/LLVMConfig.cmake $HOST_CLANG_BUILD/lib/cmake/clang/ClangConfig.cmake $host_clang_library"
     else

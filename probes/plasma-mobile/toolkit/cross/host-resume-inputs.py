@@ -54,7 +54,7 @@ def inspect_loads(otool, path):
     return identity, loads
 
 
-def check_additions(view, old_names, work, prefix, native_prefix, otool):
+def check_additions(view, old_names, work, prefix, native_prefix, otool, incremental=False):
     additions = {p.name: p for p in Path(view).iterdir() if p.name not in old_names}
     if not additions:
         return
@@ -110,12 +110,15 @@ def check_additions(view, old_names, work, prefix, native_prefix, otool):
                 fail('noncanonical previous dependency: ' + load)
             if not previous.is_relative_to(prefix) and not previous.is_relative_to(native_prefix):
                 fail('previous dependency outside selected native prefixes: ' + load)
-            if previous.exists():
+            if previous.exists() and not incremental:
                 fail('addition shadows existing provider: ' + load)
-    if referenced != set(additions):
+    if not incremental and referenced != set(additions):
         fail('addition lacks previous static Qt dependency: ' + ', '.join(sorted(set(additions) - referenced)))
 
-def check(inputs, script, view, profile, prefix, deployment, work, native_prefix, otool):
+def check(inputs, script, view, profile, prefix, deployment, work, native_prefix, otool, incremental="0"):
+    if incremental not in ("0", "1"):
+        fail("invalid incremental reconfigure selection")
+    incremental = incremental == "1"
     lines = Path(inputs).read_text().splitlines()
     pattern = re.compile(r'^([0-9a-f]{64})  ((?:.*/)?probes/plasma-mobile/toolkit/cross/build-host-tools\.sh)$')
     starts = [(i, pattern.fullmatch(line)) for i, line in enumerate(lines) if pattern.fullmatch(line)]
@@ -126,7 +129,7 @@ def check(inputs, script, view, profile, prefix, deployment, work, native_prefix
     old_script = match.group(2)
     if os.path.abspath(old_script) != os.path.abspath(script):
         fail('producer path changed')
-    if match.group(1) not in (PREDECESSOR, PREDECESSOR_CMAKE, digest(script)):
+    if not incremental and match.group(1) not in (PREDECESSOR, PREDECESSOR_CMAKE, digest(script)):
         fail('unsupported previous producer identity')
     def value(key):
         values = [line[len(key)+1:] for line in block if line.startswith(key + '=')]
@@ -158,16 +161,22 @@ def check(inputs, script, view, profile, prefix, deployment, work, native_prefix
     recorded = ''.join(line + '\n' for _, _, line in records).encode()
     if hashlib.sha256(recorded).hexdigest() != old_identity:
         fail('previous runtime identity differs from its entries')
+    unchanged = set()
     for name, expected, _ in records:
         entry = Path(view) / name
-        if not entry.is_file() or digest(entry) != expected:
+        if not entry.is_file():
             fail('previous runtime entry changed: ' + name)
-    check_additions(view, {name for name, _, _ in records}, work, prefix, native_prefix, otool)
+        if digest(entry) != expected:
+            if not incremental:
+                fail('previous runtime entry changed: ' + name)
+        else:
+            unchanged.add(name)
+    check_additions(view, unchanged, work, prefix, native_prefix, otool, incremental)
     return match.group(1), start + 1
 
 if __name__ == '__main__':
     try:
-        if len(sys.argv) != 10:
+        if len(sys.argv) not in (10, 11):
             fail('usage: host-resume-inputs.py INPUTS SCRIPT VIEW PROFILE PREFIX DEPLOYMENT WORK NATIVE_PREFIX OTOOL')
         print(*check(*sys.argv[1:]))
     except (OSError, ValueError) as error:
