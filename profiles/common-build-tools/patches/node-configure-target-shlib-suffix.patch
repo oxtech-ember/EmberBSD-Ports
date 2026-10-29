@@ -1,0 +1,26 @@
+Select Node shared library suffix from the resolved target, not build host.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- configure.py
++++ configure.py
+@@ -2162,15 +2162,13 @@
+   o['variables']['libdir'] = options.libdir
+   node_module_version = getmoduleversion.get_version()
+ 
+-  if options.dest_os == 'android':
++  if flavor == 'android':
+     shlib_suffix = 'so'
+-  elif sys.platform == 'darwin':
++  elif flavor in ('mac', 'ios'):
+     shlib_suffix = '%s.dylib'
+-  elif sys.platform.startswith('aix'):
++  elif flavor in ('aix', 'os400'):
+     shlib_suffix = '%s.a'
+-  elif sys.platform == 'os400':
+-    shlib_suffix = '%s.a'
+-  elif sys.platform.startswith('zos'):
++  elif flavor == 'zos':
+     shlib_suffix = '%s.x'
+   else:
+     shlib_suffix = 'so.%s'
