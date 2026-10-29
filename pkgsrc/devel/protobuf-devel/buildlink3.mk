@@ -3,8 +3,8 @@
 BUILDLINK_TREE+=	protobuf-devel
 .if !defined(PROTOBUF_DEVEL_BUILDLINK3_MK)
 PROTOBUF_DEVEL_BUILDLINK3_MK:=
-BUILDLINK_API_DEPENDS.protobuf-devel+=	protobuf-devel>=36.2nb1
-BUILDLINK_ABI_DEPENDS.protobuf-devel+=	protobuf-devel>=36.2nb1
+BUILDLINK_API_DEPENDS.protobuf-devel+=	protobuf-devel>=36.2nb2
+BUILDLINK_ABI_DEPENDS.protobuf-devel+=	protobuf-devel>=36.2nb2
 BUILDLINK_PKGSRCDIR.protobuf-devel?=	../../devel/protobuf-devel
 BUILDLINK_DEPMETHOD.protobuf-devel=	build
 # CMake checks every imported target, including the target-side generators.

@@ -79,11 +79,11 @@ abort 'Native full manifest changed.' unless native.size == 351 && (native + lic
 end
 %w[protobuf protobuf-devel].each do |name|
   identity = query.call(name + '-identity', name, cross + ['-V', '${PKGNAME}', '-V', '${PKG_FAIL_REASON}']).lines
-  abort 'Wrong package identity or failure reason.' unless identity[0].strip == name + '-36.2nb1' && identity.drop(1).join.strip.empty?
+  abort 'Wrong package identity or failure reason.' unless identity[0].strip == name + '-36.2nb2' && identity.drop(1).join.strip.empty?
 end
-abort 'Native identity changed.' unless query.call('native-name', 'protobuf', ['USE_CROSS_COMPILE=no', '-V', '${PKGNAME}']).strip == 'protobuf-36.2'
+abort 'Native identity changed.' unless query.call('native-name', 'protobuf', ['USE_CROSS_COMPILE=no', '-V', '${PKGNAME}']).strip == 'protobuf-36.2nb1'
 sdk_fields = query.call('sdk-metadata', 'protobuf-devel', cross + ['-V', '${DEPENDS}', '-V', '${DISTINFO_FILE}', '-V', '${PATCHDIR}', '-V', '${FILESDIR}'])
-abort 'SDK lost exact runtime or source owner.' unless sdk_fields.include?('protobuf-36.2nb1:../../devel/protobuf') && %w[distinfo patches files].all? { |p| sdk_fields.include?(owner + '/' + p) }
+abort 'SDK lost exact runtime or source owner.' unless sdk_fields.include?('protobuf-36.2nb2:../../devel/protobuf') && %w[distinfo patches files].all? { |p| sdk_fields.include?(owner + '/' + p) }
 FileUtils.mkdir_p(tree + '/devel/protobuf-split-consumer')
 File.write(tree + '/devel/protobuf-split-consumer/Makefile', <<~MAKE)
   DISTNAME= protobuf-split-contract-1
@@ -97,11 +97,11 @@ File.write(tree + '/devel/protobuf-split-consumer/Makefile', <<~MAKE)
   .include "../../mk/bsd.pkg.mk"
 MAKE
 fields = query.call('consumer-dependencies', 'protobuf-split-consumer', cross + ['-V', '${BUILD_DEPENDS}', '-V', '${DEPENDS}', '-V', '${TOOL_DEPENDS}']).lines
-abort 'SDK is not target build-only.' unless fields[0].include?('protobuf-devel>=36.2nb1:') && !fields[1].include?('protobuf-devel') && fields[1].include?('protobuf>=36.2nb1:')
+abort 'SDK is not target build-only.' unless fields[0].include?('protobuf-devel>=36.2nb2:') && !fields[1].include?('protobuf-devel') && fields[1].include?('protobuf>=36.2nb2:')
 abort 'Default native generator dependency changed.' unless fields[2].include?('protobuf-36.2{,nb[0-9]*}:../../devel/protobuf') && !fields[2].include?('protobuf-devel')
 negatives = [
   ['wrong-part', 'protobuf', cross + ['PROTOBUF_PACKAGE_PART=devel']],
-  ['wrong-revision', 'protobuf', cross + ['PKGREVISION=2']],
+  ['wrong-revision', 'protobuf', cross + ['PKGREVISION=3']],
   ['wrong-role', 'protobuf', cross + ['EMBERBSD_PROTOBUF_DEVEL=yes']],
   ['wrong-sdk-role', 'protobuf-devel', cross + ['EMBERBSD_PROTOBUF_DEVEL=no']],
   ['unsupported-architecture', 'protobuf', cross + ['CROSS_MACHINE_ARCH=i386']],

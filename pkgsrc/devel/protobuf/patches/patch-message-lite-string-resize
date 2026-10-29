@@ -1,0 +1,25 @@
+$NetBSD$
+
+Use public string resize; serialization may throw and cannot be placed in
+a resize_and_overwrite callback. Origin: EmberBSD contributors (AI-assisted).
+
+--- src/google/protobuf/message_lite.cc.orig
++++ src/google/protobuf/message_lite.cc
+@@ -27,7 +27,6 @@
+ #include "absl/log/absl_log.h"
+ #include "absl/strings/cord.h"
+ #include "absl/strings/cord_buffer.h"
+-#include "absl/strings/internal/resize_uninitialized.h"
+ #include "absl/strings/str_cat.h"
+ #include "absl/strings/string_view.h"
+ #include "absl/types/span.h"
+@@ -608,8 +607,7 @@
+     return false;
+   }
+ 
+-  absl::strings_internal::STLStringResizeUninitializedAmortized(
+-      output, old_size + byte_size);
++  output->resize(old_size + byte_size);
+   uint8_t* start =
+       reinterpret_cast<uint8_t*>(io::mutable_string_data(output) + old_size);
+   SerializeToArrayImpl(*this, start, byte_size);

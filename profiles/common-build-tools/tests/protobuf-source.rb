@@ -21,7 +21,7 @@ File.readlines(probe + '/sources.sha256').each do |line|
 end
 local = Dir.glob(probe + '/patches/patch-*').sort
 patches = Dir.glob(tree + '/devel/protobuf/patches/patch-*').sort
-abort 'Expected six materialized patches.' unless patches.size == 6 && patches.all? { |p| File.file?(p) && !File.symlink?(p) }
+abort 'Expected eight materialized patches.' unless patches.size == 8 && patches.all? { |p| File.file?(p) && !File.symlink?(p) }
 local.each { |p| abort "Changed patch #{p}" unless File.binread(p) == File.binread(tree + '/devel/protobuf/patches/' + File.basename(p)) }
 FileUtils.mkdir_p(work + '/package')
 commands = []
@@ -42,7 +42,7 @@ metadata = %w[PKGNAME PKG_FAIL_REASON WRKSRC CONFIGURE_ARGS CMAKE_CONFIGURE_ARGS
   [name, run.call('metadata-' + name, make + ['show-var', "VARNAME=#{name}"]).strip]
 end
 cross_split = metadata['USE_CROSS_COMPILE'].downcase == 'yes' && metadata['OPSYS'] == 'NetBSD'
-expected_name = cross_split ? 'protobuf-36.2nb1' : 'protobuf-36.2'
+expected_name = cross_split ? 'protobuf-36.2nb2' : 'protobuf-36.2nb1'
 abort 'Wrong recipe metadata.' unless metadata['PKGNAME'] == expected_name && metadata['PKG_FAIL_REASON'].empty?
 abort 'Non-private source path.' unless metadata['WRKSRC'] == work + '/package/protobuf-36.2'
 %w[-Dprotobuf_LOCAL_DEPENDENCIES_ONLY=ON -Dprotobuf_BUILD_SHARED_LIBS=ON].each do |flag|
@@ -117,4 +117,4 @@ File.write(work + '/result.json', JSON.pretty_generate({
   metadata: metadata, compared_source_files: files.size, host_protoc: protoc, host_protoc_sha256: sha,
   inputs: (patches + [tree + '/devel/protobuf/Makefile', tree + '/devel/protobuf/host-protoc.mk', archive, makeconf]).to_h { |p| [p, Digest::SHA256.file(p).hexdigest] }
 }) + "\n")
-puts "PASS: protobuf 36.2 metadata, six patches, #{files.size} source files and real host-protoc selection."
+puts "PASS: protobuf 36.2 metadata, eight patches, #{files.size} source files and real host-protoc selection."

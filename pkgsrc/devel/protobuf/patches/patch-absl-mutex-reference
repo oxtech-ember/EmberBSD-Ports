@@ -1,0 +1,193 @@
+$NetBSD$
+
+Use current Abseil reference-lock API without changing lock lifetimes.
+The previous nonnull pointer constructor delegates to the same reference API.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- python/google/protobuf/pyext/weak_value_map.cc.orig
++++ python/google/protobuf/pyext/weak_value_map.cc
+@@ -15,7 +15,7 @@
+ // which returns false if the object is dying.
+ 
+ PyObject* PyWeakValueMap::Get(const void* key, const PyTypeObject* type) {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   auto it = cache_.find(key);
+   if (it != cache_.end()) {
+     ABSL_DCHECK(type == nullptr || Py_TYPE(it->second) == type);
+@@ -34,7 +34,7 @@
+   PyUnstable_EnableTryIncRef(value);
+ 
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto [it, inserted] = cache_.insert(std::make_pair(key, value));
+     if (inserted) return true;
+ 
+@@ -59,12 +59,12 @@
+ }
+ 
+ bool PyWeakValueMap::Erase(const void* key) {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   return cache_.erase(key) != 0;
+ }
+ 
+ void PyWeakValueMap::EraseIfEqual(const void* key, PyObject* value) {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   auto it = cache_.find(key);
+   if (it != cache_.end() && it->second == value) {
+     cache_.erase(it);
+@@ -72,12 +72,12 @@
+ }
+ 
+ bool PyWeakValueMap::IsEmpty() const {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   return cache_.empty();
+ }
+ 
+ void PyWeakValueMap::Clear() {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   cache_.clear();
+ }
+ 
+--- python/google/protobuf/pyext/weak_value_map.h.orig
++++ python/google/protobuf/pyext/weak_value_map.h
+@@ -102,7 +102,7 @@
+ 
+ template <typename Func>
+ void PyWeakValueMap::ForEach(Func&& func) {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   for (auto it = cache_.begin(); it != cache_.end();) {
+     if (PyUnstable_TryIncRef(it->second)) {
+       func(it->first, it->second);
+--- src/google/protobuf/arena.cc.orig
++++ src/google/protobuf/arena.cc
+@@ -700,7 +700,7 @@
+   }
+ 
+   // Slow path with acquiring mutex.
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+ 
+   // Refetch and if someone else installed a new head, try allocating on that!
+   SerialArenaChunk* new_head = head_.load(std::memory_order_acquire);
+--- src/google/protobuf/compiler/cpp/helpers.cc.orig
++++ src/google/protobuf/compiler/cpp/helpers.cc
+@@ -2032,7 +2032,7 @@
+   };
+   static auto& bootstrap_cache = *new BootstrapGlobals();
+ 
+-  absl::MutexLock lock(&bootstrap_cache.mutex);
++  absl::MutexLock lock(bootstrap_cache.mutex);
+   if (bootstrap_cache.cached.contains(file)) return true;
+   if (bootstrap_cache.non_cached.contains(file)) return false;
+ 
+--- src/google/protobuf/compiler/python/generator.cc.orig
++++ src/google/protobuf/compiler/python/generator.cc
+@@ -237,7 +237,7 @@
+   // TODO:  The proper thing to do would be to allocate any state on
+   //   the stack and use that, so that the Generator class itself does not need
+   //   to have any mutable members.  Then it is implicitly thread-safe.
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   file_ = file;
+ 
+   std::string filename = GetFileName(file, ".py");
+--- src/google/protobuf/compiler/python/pyi_generator.cc.orig
++++ src/google/protobuf/compiler/python/pyi_generator.cc
+@@ -606,7 +606,7 @@
+                             const std::string& parameter,
+                             GeneratorContext* context,
+                             std::string* error) const {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   import_map_.clear();
+   // Calculate file name.
+   file_ = file;
+--- src/google/protobuf/descriptor.h.orig
++++ src/google/protobuf/descriptor.h
+@@ -2748,7 +2748,7 @@
+     auto result = std::make_unique<MemoData<ResultT>>();
+     result->value = func(descriptor);
+     {
+-      absl::MutexLock lock(&pool->field_memo_table_mutex_);
++      absl::MutexLock lock(pool->field_memo_table_mutex_);
+       auto insert_result =
+           pool->field_memo_table_->insert({key, std::move(result)});
+       auto it = insert_result.first;
+--- src/google/protobuf/dynamic_message.cc.orig
++++ src/google/protobuf/dynamic_message.cc
+@@ -866,7 +866,7 @@
+ const Message* PROTOBUF_NONNULL
+ DynamicMessageFactory::GetPrototype(const Descriptor* PROTOBUF_NONNULL type) {
+   ABSL_CHECK(type != nullptr);
+-  absl::MutexLock lock(&prototypes_mutex_);
++  absl::MutexLock lock(prototypes_mutex_);
+   return GetPrototypeNoLock(type);
+ }
+ 
+--- src/google/protobuf/map_field.cc.orig
++++ src/google/protobuf/map_field.cc
+@@ -266,7 +266,7 @@
+   ConstAccess();
+   size_t size = 0;
+   if (auto* p = maybe_payload()) {
+-    absl::MutexLock lock(&p->mutex());
++    absl::MutexLock lock(p->mutex());
+     // Measure the map under the lock, because there could be some repeated
+     // field data that might be sync'd back into the map.
+     size = GetMapRaw().SpaceUsedExcludingSelfLong();
+@@ -316,7 +316,7 @@
+     }
+ 
+     {
+-      absl::MutexLock lock(&p->mutex());
++      absl::MutexLock lock(p->mutex());
+       // Double check state, because another thread may have seen the same
+       // state and done the synchronization before the current thread.
+       if (p->load_state_relaxed() == STATE_MODIFIED_MAP) {
+@@ -425,7 +425,7 @@
+   if (state() == STATE_MODIFIED_REPEATED) {
+     auto& p = payload();
+     {
+-      absl::MutexLock lock(&p.mutex());
++      absl::MutexLock lock(p.mutex());
+       // Double check state, because another thread may have seen the same state
+       // and done the synchronization before the current thread.
+       if (p.load_state_relaxed() == STATE_MODIFIED_REPEATED) {
+--- src/google/protobuf/message_lite.cc.orig
++++ src/google/protobuf/message_lite.cc
+@@ -806,7 +806,7 @@
+ 
+ void OnShutdownRun(void (*f)(const void*), const void* arg) {
+   auto shutdown_data = ShutdownData::get();
+-  absl::MutexLock lock(&shutdown_data->mutex);
++  absl::MutexLock lock(shutdown_data->mutex);
+   shutdown_data->functions.push_back(std::make_pair(f, arg));
+ }
+ 
+--- upb/mem/arena_test.cc.orig
++++ upb/mem/arena_test.cc
+@@ -456,7 +456,7 @@
+   }
+ 
+   std::shared_ptr<const upb::Arena> IndexedNonNullArena(size_t index) {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     std::shared_ptr<const upb::Arena>& ret = arenas_[index];
+     if (!ret) ret = std::make_shared<const upb::Arena>();
+     return ret;
+@@ -485,7 +485,7 @@
+   void SwapRandomArena(absl::BitGen& gen, std::shared_ptr<const upb::Arena>& a,
+                        size_t min_index) {
+     size_t i = RandomIndex(gen, min_index);
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     arenas_[i].swap(a);
+   }
+ 

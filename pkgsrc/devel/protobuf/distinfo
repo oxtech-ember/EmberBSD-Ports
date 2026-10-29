@@ -9,3 +9,5 @@ SHA1 (patch-src_google_protobuf_io_zero_copy_stream_impl.cc) = 379eeacfd54d4d3ad
 SHA1 (patch-upb_message_array_oom) = 3ceabd7d215ca69eacfa248cf7e77815b2f1884e
 SHA1 (patch-upb_message_copy.c) = 03245837ddeca66de800a0fb2ed346965baf8254
 SHA1 (patch-upb_message_string_oom) = a0bef25f81c13cdf403e85060b3b72e7c872233f
+SHA1 (patch-absl-mutex-reference) = ed90fa5501b27172a5b0b352501ea6848ffc1799
+SHA1 (patch-message-lite-string-resize) = 68d8d268558914296279aa59b774b998ee4e75ca

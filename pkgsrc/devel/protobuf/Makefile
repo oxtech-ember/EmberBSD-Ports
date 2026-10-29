@@ -10,6 +10,7 @@
 
 # Origin: EmberBSD (AI-assisted); current common provider with reviewed fixes.
 EMBERBSD_PROTOBUF_PKGDIR:= ${.PARSEDIR:tA}
+PKGREVISION=	1
 PROTOBUF_VERSION=	36.2
 DISTNAME=	protobuf-${PROTOBUF_VERSION}
 CATEGORIES=	devel
@@ -41,6 +42,8 @@ CHECK_PORTABILITY_SKIP+=	src/google/protobuf/compiler/zip_output_unittest.sh
 
 .include "../../mk/bsd.prefs.mk"
 
+.include "../../mk/emberbsd-native-cxx-runtime.mk"
+
 .if defined(EMBERBSD_PROTOBUF_DEVEL)
 .if ${EMBERBSD_PROTOBUF_DEVEL} != "yes" || ${PKGPATH} != "devel/protobuf-devel"
 PKG_FAIL_REASON+= "The protobuf SDK role belongs to devel/protobuf-devel"
@@ -60,9 +63,9 @@ PLIST_VARS+=	runtime_split
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The protobuf runtime/SDK split requires the common aarch64 or amd64 cross target"
 .endif
-PKGREVISION=	1
-.if ${PKGREVISION} != 1
-PKG_FAIL_REASON+= "The protobuf runtime/SDK split requires package revision 1"
+PKGREVISION=	2
+.if ${PKGREVISION} != 2
+PKG_FAIL_REASON+= "The protobuf runtime/SDK split requires package revision 2"
 .endif
 PLIST.runtime_split=	yes
 PROTOBUF_FULL_PLIST_SRC=	${EMBERBSD_PROTOBUF_PKGDIR}/PLIST
@@ -74,8 +77,8 @@ PROTOBUF_PACKAGE_PART=	devel
 PKG_FAIL_REASON+= "The protobuf SDK recipe must select the devel partition"
 .endif
 PLIST_SRC=	${PROTOBUF_DEVEL_PLIST_SRC}
-DEPENDS+=	protobuf-${PROTOBUF_VERSION}nb1:../../devel/protobuf
-CONFLICTS+=	protobuf<${PROTOBUF_VERSION}nb1
+DEPENDS+=	protobuf-${PROTOBUF_VERSION}nb2:../../devel/protobuf
+CONFLICTS+=	protobuf<${PROTOBUF_VERSION}nb2
 .else
 PROTOBUF_PACKAGE_PART=	runtime
 .if ${PROTOBUF_PACKAGE_PART} != "runtime"
@@ -88,7 +91,7 @@ USE_TOOLS+=	perl:build
 
 .include "../../devel/cmake/build.mk"
 #.include "../../devel/googletest/buildlink3.mk"
-BUILDLINK_API_DEPENDS.abseil+=	abseil>=20260817.0nb2
+BUILDLINK_API_DEPENDS.abseil+=	abseil>=20260817.0nb3
 .include "../../devel/abseil/buildlink3.mk"
 BUILDLINK_API_DEPENDS.zlib+=	zlib>=1.3.2
 .include "../../devel/zlib/buildlink3.mk"
