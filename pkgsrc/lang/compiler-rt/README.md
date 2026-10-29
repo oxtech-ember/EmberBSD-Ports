@@ -388,3 +388,8 @@ both modes from the actual archive and checks their identical source and recipe
 hashes, cross-verification, and changed-patch rejection.
 `tests/wasi-stage.py` verifies a completed stage and checks rejection of
 changed or missing archive bytes; it does not build or run a WASI program.
+
+Target runtime packages and their development counterparts require revision nb2
+of the matching LLVM 23.1.4 runtime closure, including libunwind. Repackage the
+affected runtime components after updating their dependency metadata; the LLVM
+source version does not change.

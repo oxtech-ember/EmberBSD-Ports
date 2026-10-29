@@ -2,12 +2,8 @@
 # Compose packages from the common compiler-rt full-stage producer.
 .include "../../lang/llvm/version.mk"
 PKGNAME= ${EMBER_LLVM_CXX_COMPONENT}${EMBER_LLVM_CXX_DEVEL:D-devel}-${LLVM_VERSION}
-LLVM_CXX_RUNTIME_REVISION= 1
-.if ${EMBER_LLVM_CXX_COMPONENT} == "libunwind"
-PKGREVISION= 2
-.else
+LLVM_CXX_RUNTIME_REVISION= 2
 PKGREVISION= ${LLVM_CXX_RUNTIME_REVISION}
-.endif
 CATEGORIES= lang devel
 COMMENT= LLVM ${EMBER_LLVM_CXX_COMPONENT} target runtime
 LICENSE= apache-2.0
