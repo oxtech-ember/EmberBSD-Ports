@@ -379,13 +379,15 @@ def compile_test_options(args):
 def os_runtime_programs(os_source, cc_link, output):
     """Build the OS-owned runtime regressions with the already selected SDK C route."""
     source = Path(os_source) / 'ember/tests/target-acceptance'
-    files = {name: source / name for name in ('libc-aliases.c', 'base-loader-smoke.c', 'fork-cas.c')}
+    files = {name: source / name for name in ('libc-aliases.c', 'base-loader-smoke.c', 'fork-cas.c', 'libm-valid.c', 'setjmp-valid.c')}
     require(all(path.is_file() and not path.is_symlink() for path in files.values()),
             'OS target acceptance sources are incomplete or not regular files')
     common = ['-std=c11', '-O2', '-Wall', '-Wextra', '-Werror']
     return [
         ('libc-aliases', cc_link + common + [files['libc-aliases.c']]),
         ('base-loader-smoke', cc_link + common + [files['base-loader-smoke.c']]),
+        ('libm-valid', cc_link + common + [files['libm-valid.c'], '-lm']),
+        ('setjmp-valid', cc_link + common + [files['setjmp-valid.c']]),
         ('fork-cas', cc_link + common + ['-pthread', files['fork-cas.c']]),
         ('fork-cas-static', cc_link + common + ['-pthread', '-static', files['fork-cas.c']])
     ]
@@ -547,7 +549,7 @@ def target_test_source_inventory(profile, cross, sdk_root, *, os_source=None):
     if os_source is not None:
         os_source = Path(os_source)
         os_tests = os_source / 'ember/tests/target-acceptance'
-        names = ('libc-aliases.c', 'base-loader-smoke.c', 'fork-cas.c')
+        names = ('libc-aliases.c', 'base-loader-smoke.c', 'fork-cas.c', 'libm-valid.c', 'setjmp-valid.c')
         selected = [os_tests / name for name in names]
         require(all(path.is_file() and not path.is_symlink() for path in selected),
                 'OS target acceptance sources are incomplete or not regular files')

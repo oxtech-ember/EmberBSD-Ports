@@ -33,13 +33,17 @@ if [ -f "$out/os-tests.txt" ]; then
     [ ! -L "$out/os-tests.txt" ] && [ "$(cat "$out/os-tests.txt")" = yes ] || {
         echo 'Invalid OS test-suite receipt.' >&2; exit 2;
     }
-    for test in libc-aliases base-loader-smoke fork-cas fork-cas-static; do
+    for test in libc-aliases base-loader-smoke fork-cas fork-cas-static libm-valid setjmp-valid; do
         [ -f "$out/$test" ] && [ -x "$out/$test" ] && [ ! -L "$out/$test" ] || {
             echo "Missing OS runtime regression: $test" >&2; exit 2;
         }
     done
     "$out/libc-aliases"
     mark_check libc_aliases
+    "$out/libm-valid"
+    mark_check libm_valid
+    "$out/setjmp-valid"
+    mark_check setjmp_valid
     "$out/base-loader-smoke"
     mark_check base_loader_smoke
     "$out/fork-cas"

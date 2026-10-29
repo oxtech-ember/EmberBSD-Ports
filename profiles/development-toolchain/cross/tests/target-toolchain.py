@@ -94,7 +94,7 @@ class TargetToolchainTests(unittest.TestCase):
     def test_os_target_sources_are_included_in_deterministic_source_inventory(self):
         os_source = self.root / 'os'
         test_dir = os_source / 'ember/tests/target-acceptance'
-        for name in ('base-loader-smoke.c', 'fork-cas.c', 'libc-aliases.c'):
+        for name in ('base-loader-smoke.c', 'fork-cas.c', 'libc-aliases.c', 'libm-valid.c', 'setjmp-valid.c'):
             put(test_dir / name, name.encode())
         rows = pipeline.target_test_source_inventory(
             PROFILE, CROSS, Path(sdk_source.load()), os_source=os_source)
@@ -102,7 +102,9 @@ class TargetToolchainTests(unittest.TestCase):
         self.assertEqual(names, sorted(set(names)))
         for name in ('os/ember/tests/target-acceptance/base-loader-smoke.c',
                      'os/ember/tests/target-acceptance/fork-cas.c',
-                     'os/ember/tests/target-acceptance/libc-aliases.c'):
+                     'os/ember/tests/target-acceptance/libc-aliases.c',
+                     'os/ember/tests/target-acceptance/libm-valid.c',
+                     'os/ember/tests/target-acceptance/setjmp-valid.c'):
             self.assertIn(name, names)
         before = dict(rows)
         put(test_dir / 'fork-cas.c', b'changed test source')
@@ -114,14 +116,16 @@ class TargetToolchainTests(unittest.TestCase):
     def test_os_runtime_program_plan_builds_dynamic_and_static_fork_cas(self):
         os_source = self.root / 'os'
         target_dir = os_source / 'ember/tests/target-acceptance'
-        for name in ('base-loader-smoke.c', 'fork-cas.c', 'libc-aliases.c'):
+        for name in ('base-loader-smoke.c', 'fork-cas.c', 'libc-aliases.c', 'libm-valid.c', 'setjmp-valid.c'):
             put(target_dir / name)
         rows = pipeline.os_runtime_programs(os_source, ['clang', '--target=aarch64--netbsd'],
                                             self.root / 'output')
         by_name = {name: argv for name, argv in rows}
         self.assertEqual(set(by_name), {'libc-aliases', 'base-loader-smoke',
-                                        'fork-cas', 'fork-cas-static'})
+                                        'fork-cas', 'fork-cas-static', 'libm-valid', 'setjmp-valid'})
         self.assertIn(str(target_dir / 'fork-cas.c'), [str(arg) for arg in by_name['fork-cas']])
+        self.assertIn('-lm', by_name['libm-valid'])
+        self.assertIn(str(target_dir / 'setjmp-valid.c'), [str(arg) for arg in by_name['setjmp-valid']])
         self.assertIn('-static', by_name['fork-cas-static'])
         self.assertNotIn('-static', by_name['fork-cas'])
 
@@ -132,7 +136,7 @@ class TargetToolchainTests(unittest.TestCase):
         put(out / 'compiler-family.txt', b'clang\n')
         put(out / 'os-tests.txt', b'yes\n')
         names = ('atomic-tls', 'atomic-tls-lto', 'boundary', 'libc-aliases',
-                 'base-loader-smoke', 'fork-cas', 'fork-cas-static')
+                 'base-loader-smoke', 'fork-cas', 'fork-cas-static', 'libm-valid', 'setjmp-valid')
         for name in names:
             output = 'printf "LOADED /usr/pkg/llvm/lib/libc++.so.1.0\\n"\n' if name == 'boundary' else 'exit 0\n'
             put(out / name, ('#!/bin/sh\n' + output).encode()).chmod(0o755)
@@ -151,11 +155,11 @@ class TargetToolchainTests(unittest.TestCase):
         markers = [line.split()[2] for line in result.stdout.splitlines()
                    if line.startswith('EMBERBSD-CHECK ')]
         self.assertEqual(markers, ['target_c11', 'target_cxx20', 'libc_aliases',
-                                   'base_loader_smoke', 'fork_cas'])
+                                   'libm_valid', 'setjmp_valid', 'base_loader_smoke', 'fork_cas'])
         self.assertNotIn('cross_c11', markers)
         self.assertNotIn('cross_cxx20', markers)
         for name in ('target_c11', 'target_cxx20', 'libc_aliases',
-                     'base_loader_smoke', 'fork_cas'):
+                     'libm_valid', 'setjmp_valid', 'base_loader_smoke', 'fork_cas'):
             self.assertIn('EMBERBSD-CHECK fixture-nonce ' + name + ' PASS', result.stdout)
 
     def test_source_inventory_covers_controller_and_complete_selected_sdk_package(self):
