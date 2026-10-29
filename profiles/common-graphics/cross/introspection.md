@@ -109,6 +109,9 @@ The current native package uses Python 3.15 and GLib 2.90.1. This does not
 establish target execution, an older-distutils runtime result or a complete
 memory-clean GI/GLib suite. The hash-test memory limits above still apply.
 
+Cross builds replay stored introspection dumps by default; see
+[gi-dumps.md](gi-dumps.md) for live and capture modes.
+
 ## Build and execution roles
 
 Use the [common graphics cross profile](profile.md) with an

@@ -65,6 +65,8 @@ MESON_BINARY.glib-mkenums=	${TOOLBASE}/bin/glib-mkenums
 .  if !empty(PKG_OPTIONS:Mintrospection)
 # Introspection and loaders.cache/MIME generation need a live target query.
 EMBERBSD_GI_MESON_OPTIONS=	no
+# loaders.cache and MIME data run target programs, so replay is not enough.
+EMBERBSD_GI_EXECUTE=		yes
 # thumbnailer is built in cross only on the emberbsd_gi_cross path.
 PLIST.native=	yes
 .include "../../devel/gobject-introspection/cross.mk"

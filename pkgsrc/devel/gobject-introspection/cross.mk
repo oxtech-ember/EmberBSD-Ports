@@ -25,10 +25,28 @@ PKG_FAIL_REASON+= "GI and common build tools must select the same Python provide
 EMBERBSD_CROSS_BUILD_PYTHON?= ${EMBERBSD_GI_PYTHON}
 .endif
 .endif
+# Introspection dumps: replay the recipe's stored dumps (default), query a
+# live EmberBSD target, or query it and capture the dumps
+# (profiles/common-graphics/cross/gi-dumps.md). Recipes that also execute
+# target programs set EMBERBSD_GI_EXECUTE=yes and always need the query.
+EMBERBSD_GI_DUMP_MODE?= replay
+_EMBER_GI_PLATFORM= ${CROSS_OPSYS}-${CROSS_OS_VERSION}-${MACHINE_ARCH}
+EMBERBSD_GI_DUMP_DIR= ${PKGDIR}/files/gi-dump/${_EMBER_GI_PLATFORM}
+_EMBER_GI_INPUTS= EMBERBSD_CROSS_BUILD_PYTHON EMBERBSD_CROSS_BUILD_CC
+.if "${EMBERBSD_GI_DUMP_MODE}" != "replay" || ${EMBERBSD_GI_EXECUTE:Uno:tl} == "yes"
+_EMBER_GI_INPUTS+= EMBERBSD_GI_QUERY_CONFIG
+.endif
 # Fetch, checksum and extract do not use these build-host inputs, so they
 # are checked when configure starts instead of refusing the whole package.
 _EMBER_GI_INPUT_ERRORS=
-.for _input in EMBERBSD_CROSS_BUILD_PYTHON EMBERBSD_GI_QUERY_CONFIG EMBERBSD_CROSS_BUILD_CC
+.if "${EMBERBSD_GI_DUMP_MODE}" != "replay" && "${EMBERBSD_GI_DUMP_MODE}" != "live" && "${EMBERBSD_GI_DUMP_MODE}" != "capture"
+_EMBER_GI_INPUT_ERRORS+= EMBERBSD_GI_DUMP_MODE
+.endif
+.if "${EMBERBSD_GI_DUMP_MODE}" == "capture" && (empty(EMBERBSD_GI_DUMP_CAPTURE_DIR:M/*) || \
+    !empty(EMBERBSD_GI_DUMP_CAPTURE_DIR:C/[A-Za-z0-9_.\/-]//g) || !exists(${EMBERBSD_GI_DUMP_CAPTURE_DIR}/.))
+_EMBER_GI_INPUT_ERRORS+= EMBERBSD_GI_DUMP_CAPTURE_DIR
+.endif
+.for _input in ${_EMBER_GI_INPUTS}
 .if empty(${_input}:M/*) || !empty(${_input}:C/[A-Za-z0-9_.\/-]//g) || !exists(${${_input}})
 _EMBER_GI_INPUT_ERRORS+= ${_input}
 .endif
@@ -42,6 +60,10 @@ emberbsd-gi-inputs:
 .for _input in ${_EMBER_GI_INPUT_ERRORS}
 .if ${_input} == "EMBERBSD_SDK_SOURCE"
 	@${ERROR_MSG} "EMBERBSD_SDK_SOURCE must name an absolute SDK source directory without shell metacharacters"
+.elif ${_input} == "EMBERBSD_GI_DUMP_MODE"
+	@${ERROR_MSG} "EMBERBSD_GI_DUMP_MODE must be replay, live or capture"
+.elif ${_input} == "EMBERBSD_GI_DUMP_CAPTURE_DIR"
+	@${ERROR_MSG} "EMBERBSD_GI_DUMP_CAPTURE_DIR must name an existing absolute directory without shell metacharacters"
 .else
 	@${ERROR_MSG} "${_input} must name an existing absolute file without shell metacharacters"
 .endif
@@ -62,6 +84,13 @@ MAKE_ENV+= EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q}
 MAKE_ENV+= EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q}
 MAKE_ENV+= EMBERBSD_GI_TARGET=${_EMBER_GI_TARGET:Q}
 MAKE_ENV+= EMBERBSD_GI_READELF=${TOOLDIR:Q}/bin/${_EMBER_GI_TRIPLET}-readelf
+_EMBER_GI_DUMP_ENV= EMBERBSD_GI_DUMP_MODE=${EMBERBSD_GI_DUMP_MODE:Q}
+_EMBER_GI_DUMP_ENV+= EMBERBSD_GI_DUMP_PLATFORM=${_EMBER_GI_PLATFORM:Q}
+_EMBER_GI_DUMP_ENV+= EMBERBSD_GI_DUMP_RECIPE=${PKGPATH:Q}
+_EMBER_GI_DUMP_ENV+= EMBERBSD_GI_DUMP_PACKAGE=${PKGNAME_NOREV:Q}
+_EMBER_GI_DUMP_ENV+= EMBERBSD_GI_DUMP_DIR=${EMBERBSD_GI_DUMP_DIR:Q}
+_EMBER_GI_DUMP_ENV+= EMBERBSD_GI_DUMP_CAPTURE_DIR=${EMBERBSD_GI_DUMP_CAPTURE_DIR:Q}
+MAKE_ENV+= ${_EMBER_GI_DUMP_ENV}
 MESON_NATIVE_ARGS+= --native-file ${WRKDIR}/.meson-gi-native
 MESON_BINARIES+= pkg-config
 MESON_BINARY.pkg-config= ${WRKDIR}/.meson-gi-pkg-config
@@ -69,7 +98,11 @@ MESON_BINARY.pkg-config= ${WRKDIR}/.meson-gi-pkg-config
 pre-configure: emberbsd-gi-native
 .PHONY: emberbsd-gi-native
 emberbsd-gi-native: emberbsd-gi-inputs
+.if "${EMBERBSD_GI_DUMP_MODE}" == "replay"
+	${RUN}${TEST} -d ${EMBERBSD_GI_DUMP_DIR:Q} || { ${ERROR_MSG} "No stored GI dumps for ${_EMBER_GI_PLATFORM} in ${PKGPATH}; capture them from an EmberBSD target (profiles/common-graphics/cross/gi-dumps.md)"; exit 1; }
+.else
 	${RUN}${SETENV} EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_CROSS_BUILD_PYTHON} -E -S ${EMBERBSD_GI_FILESDIR}/target-query.py --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${_EMBER_GI_TRIPLET}-readelf ${_EMBER_GI_TARGET}
+.endif
 	${RUN}${TEST} -x ${TOOLBASE}/bin/g-ir-scanner && ${TEST} -x ${TOOLBASE}/bin/g-ir-compiler
 	${RUN}version=$$(env PKG_CONFIG_SYSROOT_DIR= PKG_CONFIG_PATH= PKG_CONFIG_LIBDIR=${TOOLBASE}/lib/pkgconfig:${TOOLBASE}/share/pkgconfig ${TOOLBASE}/bin/pkg-config --modversion gobject-introspection-1.0); ${TEST} "$$version" = 1.86.0
 	${RUN}${SED} \

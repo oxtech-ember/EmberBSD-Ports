@@ -10,6 +10,9 @@ target must still refuse it with its message, run before any target query,
 and accept an existing file. The cross configuration already verifies
 EMBERBSD_SDK_SOURCE, EMBERBSD_CROSS_BUILD_CC and EMBERBSD_CROSS_BUILD_PYTHON
 for every package while it is parsed, so the test keeps the configured ones.
+Recipes that only produce introspection dumps need the query configuration
+only outside stored-dump replay, so they are checked in live mode here;
+gi-dump-modes.py covers replay and capture.
 
 Usage: gi-configure-inputs.py --bmake BMAKE --pkgsrc TREE --makeconf CROSS_MAKECONF
 """
@@ -31,13 +34,16 @@ RECIPES = (
     ('devel/talloc', 'emberbsd-talloc-inputs'),
     ('databases/tdb', 'emberbsd-tdb-inputs'),
 )
+# Dump-only recipes replay stored dumps by default; live mode queries.
+LIVE = {'devel/gobject-introspection', 'devel/glib2-introspection', 'devel/pango'}
 MESSAGE = 'EMBERBSD_GI_QUERY_CONFIG must name an existing absolute file without shell metacharacters'
 ABSENT = ((), ('EMBERBSD_GI_QUERY_CONFIG=/ember-missing-gi-query.json',),
           ('EMBERBSD_GI_QUERY_CONFIG=relative.json',))
 
 
 def bmake(recipe, *args):
-    return subprocess.run([ARGS.bmake, '-C', str(ARGS.pkgsrc / recipe), f'MAKECONF={ARGS.makeconf}', *args],
+    mode = ('EMBERBSD_GI_DUMP_MODE=live',) if recipe in LIVE else ()
+    return subprocess.run([ARGS.bmake, '-C', str(ARGS.pkgsrc / recipe), f'MAKECONF={ARGS.makeconf}', *mode, *args],
                           capture_output=True, text=True, timeout=300, env=dict(os.environ, LC_ALL='C'))
 
 

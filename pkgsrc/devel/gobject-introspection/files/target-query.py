@@ -17,6 +17,7 @@ import tempfile
 sys.dont_write_bytecode = True
 
 from sdk_source import install_signal_handlers, load_sdk
+import gi_dump
 
 TARGETS = {'aarch64': ('aarch64', 183), 'amd64': ('x86_64', 62)}
 REMOTE_DIRECTORY = re.compile(r'/tmp/ember-gir\.[A-Za-z0-9]{8}')
@@ -566,10 +567,20 @@ def main(arguments=None):
         while arguments and arguments[0] == '--sdk-source':
             selection.extend(arguments[:2])
             del arguments[:2]
+        # Stored dumps replay without a target, the SDK or a query config.
+        dump_mode = gi_dump.mode()
+        is_dump = gi_dump.dump_arguments(arguments) is not None
+        if dump_mode == 'replay' and is_dump:
+            return gi_dump.replay(arguments)
+        require(dump_mode != 'replay' or (arguments and arguments[0] in ('--check', '--execute')),
+                'replay supports only introspection dumps')
         unused_source, unused_options = load_sdk(selection)
         install_signal_handlers()
-        return query(arguments)
-    except (QueryError, OSError, ValueError, KeyError) as error:
+        status = query(arguments)
+        if dump_mode == 'capture' and is_dump and status == 0:
+            return gi_dump.capture(arguments)
+        return status
+    except (QueryError, gi_dump.DumpError, OSError, ValueError, KeyError) as error:
         print(str(error), file=sys.stderr)
         return 1
     except Exception as error:
