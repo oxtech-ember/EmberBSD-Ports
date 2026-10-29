@@ -1,0 +1,54 @@
+Origin: EmberBSD, AI-assisted.
+Ruby 4.0 ships io-console 0.8.2, openssl 4.0.2 (default gems), reline
+0.6.3 and benchmark 0.5.0 (bundled gems), the same or newer versions than
+devel/ruby-io-console, security/ruby-openssl, devel/ruby-reline and
+benchmarks/ruby-benchmark. pkgsrc/versions.mk removes those four packages,
+so drop the branches for Ruby older than 4.0 that still name them.
+Not submitted upstream.
+
+--- a/misc/ruby-pry/Makefile
++++ b/misc/ruby-pry/Makefile
+@@ -15,11 +15,5 @@
+ 
+ USE_LANGUAGES=	# none
+ 
+-.include "../../lang/ruby/rubyversion.mk"
+-
+-.if ${RUBY_VER} < 34
+-DEPENDS+=	${RUBY_PKGPREFIX}-reline>=0.6.0:../../devel/ruby-reline
+-.endif
+-
+ .include "../../lang/ruby/gem.mk"
+ .include "../../mk/bsd.pkg.mk"
+--- a/www/ruby-html-proofer/Makefile
++++ b/www/ruby-html-proofer/Makefile
+@@ -21,11 +21,5 @@
+ 
+ RUBYGEM_OPTIONS+=	--format-executable
+ 
+-.include "../../lang/ruby/rubyversion.mk"
+-# for older Ruby
+-.if ${RUBY_VER} < 40
+-DEPENDS+=	${RUBY_PKGPREFIX}-benchmark>=0.5<0.6:../../benchmarks/ruby-benchmark
+-.endif
+-
+ .include "../../lang/ruby/gem.mk"
+ .include "../../mk/bsd.pkg.mk"
+--- a/www/ruby-neocities/Makefile
++++ b/www/ruby-neocities/Makefile
+@@ -15,14 +15,8 @@
+ DEPENDS+=	${RUBY_PKGPREFIX}-http-cookie>=1.0:../../www/ruby-http-cookie
+ DEPENDS+=	${RUBY_PKGPREFIX}-whirly>=0.3:../../devel/ruby-whirly
+ 
+-.include "../../lang/ruby/rubyversion.mk"
+-# for older Ruby
+-.if ${RUBY_VER} < 40
+-DEPENDS+=	${RUBY_PKGPREFIX}-openssl>=3.3:../../security/ruby-openssl
+-.else
+-# Remove dependency to ruby-openssl
++# Ruby 4.0 has the openssl default gem.
+ OVERRIDE_GEMSPEC+=	openssl:
+-.endif
+ 
+ USE_LANGUAGES=	# none
+ 

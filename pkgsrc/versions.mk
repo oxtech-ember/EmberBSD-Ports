@@ -16,6 +16,12 @@ EMBERBSD_VERSION_FAMILIES+=	lang/go[0-9]*=lang/go127
 EMBERBSD_VERSION_FAMILIES+=	lang/lua[0-9]*=lang/lua55
 EMBERBSD_VERSION_FAMILIES+=	lang/php[0-9]*=lang/php85
 EMBERBSD_VERSION_FAMILIES+=	lang/ruby[0-9]*=lang/ruby40
+# Gems that Ruby 4.0 ships as default or bundled gems, at the same or a
+# newer version.
+EMBERBSD_VERSION_FAMILIES+=	benchmarks/ruby-benchmark=lang/ruby40
+EMBERBSD_VERSION_FAMILIES+=	devel/ruby-io-console=lang/ruby40
+EMBERBSD_VERSION_FAMILIES+=	devel/ruby-reline=lang/ruby40
+EMBERBSD_VERSION_FAMILIES+=	security/ruby-openssl=lang/ruby40
 EMBERBSD_VERSION_FAMILIES+=	lang/openjdk[0-9]*=lang/openjdk21
 # One Berkeley DB, db18; db1 is the libc one.
 EMBERBSD_VERSION_FAMILIES+=	databases/db=databases/db18
