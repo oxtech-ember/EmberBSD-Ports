@@ -423,3 +423,4 @@ security/fail2ban
 
 # Track the selected native C++ ABI for the static Catch2 provider.
 devel/catch2
+graphics/libjpeg-turbo

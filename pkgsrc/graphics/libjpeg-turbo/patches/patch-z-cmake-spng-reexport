@@ -1,0 +1,20 @@
+$NetBSD$
+
+Preserve Mach-O compatibility for libspng symbols previously exposed by the
+bundled static copy, while using the common shared provider (EmberBSD, AI-assisted).
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -802,6 +802,12 @@
+     add_library(turbojpeg SHARED ${TURBOJPEG_SOURCES})
+     if(SPNG_LIBRARY)
+       target_link_libraries(turbojpeg ${SPNG_LIBRARY})
++      if(APPLE AND TARGET spng::spng)
++        target_link_options(turbojpeg PRIVATE
++          "LINKER:-reexport_library,$<TARGET_FILE:spng::spng>")
++        target_link_directories(turbojpeg INTERFACE
++          "$<TARGET_FILE_DIR:spng::spng>")
++      endif()
+     endif()
+     if(NOT WITH_SYSTEM_SPNG AND ZLIB_LIBRARY)
+       target_link_libraries(turbojpeg ${ZLIB_LIBRARY})

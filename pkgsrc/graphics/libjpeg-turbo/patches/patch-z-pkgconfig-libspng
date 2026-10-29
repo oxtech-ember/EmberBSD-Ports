@@ -1,0 +1,37 @@
+$NetBSD$
+
+Use the actual libspng pkg-config module name (EmberBSD, AI-assisted).
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -742,7 +742,7 @@
+       endif()
+     else()
+       include(FindPkgConfig)
+-      pkg_check_modules(spng REQUIRED spng IMPORTED_TARGET)
++      pkg_check_modules(spng REQUIRED libspng IMPORTED_TARGET)
+       set(SPNG_TARGET_DEFAULT PkgConfig::spng)
+     endif()
+     set(SPNG_TARGET ${SPNG_TARGET_DEFAULT} CACHE STRING
+--- release/Config.cmake.in.orig
++++ release/Config.cmake.in
+@@ -10,7 +10,7 @@
+     if(SPNG_LIBRARY MATCHES "PkgConfig::")
+       find_dependency(PkgConfig)
+       if(PkgConfig_FOUND)
+-        pkg_check_modules(spng REQUIRED spng IMPORTED_TARGET)
++        pkg_check_modules(spng REQUIRED libspng IMPORTED_TARGET)
+       endif()
+     else()
+       find_dependency(SPNG)
+--- cmakescripts/BuildPackages.cmake.orig
++++ cmakescripts/BuildPackages.cmake
+@@ -199,7 +199,7 @@
+ 
+ if(WITH_TURBOJPEG)
+   if(WITH_SYSTEM_SPNG)
+-    set(LIBTURBOJPEG_REQUIRES_PRIVATE "Requires.private: spng")
++    set(LIBTURBOJPEG_REQUIRES_PRIVATE "Requires.private: libspng")
+   elseif(WITH_SYSTEM_ZLIB)
+     set(LIBTURBOJPEG_REQUIRES_PRIVATE "Requires.private: zlib")
+   endif()
