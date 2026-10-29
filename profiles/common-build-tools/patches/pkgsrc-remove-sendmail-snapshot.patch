@@ -1,0 +1,3158 @@
+Origin: EmberBSD, AI-assisted.
+Remove mail/sendmail-snapshot. It packages sendmail 8.18.0.2, older
+than mail/sendmail (8.18.2), and still uses databases/db and db4.
+EmberBSD keeps one version per program. Not submitted upstream.
+
+--- a/mail/Makefile
++++ b/mail/Makefile
+@@ -422,7 +422,6 @@
+ SUBDIR+=	sendmail
+ SUBDIR+=	sendmail-cidrexpand
+ SUBDIR+=	sendmail-qtool
+-SUBDIR+=	sendmail-snapshot
+ SUBDIR+=	sendymail
+ SUBDIR+=	serialmail
+ SUBDIR+=	sid-milter
+--- a/mail/sendmail-snapshot/DESCR
++++ /dev/null
+@@ -1,13 +0,0 @@
+-Sendmail acts as a unified "post office" to which all mail can be
+-submitted.  Address interpretation is controlled by a production
+-system, which can parse both domain-based addressing and old-style
+-"ad hoc" addresses.  The production system is powerful enough to
+-rewrite addresses in the message header to conform to the standards
+-of a number of common target networks, including old (NCP/RFC733)
+-Arpanet, new (TCP/RFC822) Arpanet, UUCP, and Phonenet. Sendmail
+-also implements an SMTP server, message queueing, and aliasing.
+-
+-This package is for snapshot (alpha/beta) releases, which aren't
+-considered to be release/production quality.  It may be used to
+-test new features.  Some features / bug fixes may be backported to
+-the regular sendmail package.
+--- a/mail/sendmail-snapshot/MESSAGE
++++ /dev/null
+@@ -1,67 +0,0 @@
+-===========================================================================
+-$NetBSD: MESSAGE,v 1.1 2024/01/15 04:50:54 jnemeth Exp $
+-
+-INCOMPATIBLE CONFIG CHANGE
+-
+-If you are updating from a previous version to 8.15.1 or later,
+-note that there has been an incompatible config change for IPv6
+-addresses:
+-
+-        Incompatible Change: Use uncompressed IPv6 addresses by default,
+-                i.e., they will not contain "::".  For example,
+-                instead of ::1 it will be 0:0:0:0:0:0:0:1.  This
+-                permits a zero subnet to have a more specific match,
+-                such as different map entries for IPv6:0:0 vs IPv6:0.
+-                This change requires that configuration data
+-                (including maps, files, classes, custom ruleset,
+-                etc) must use the same format, so make certain such
+-                configuration data is updated before using 8.15.
+-                As a very simple check search for patterns like
+-                'IPv6:[0-9a-fA-F:]*::' and 'IPv6::'. If necessary,
+-                the prior format can be retained by compiling with:
+-                APPENDDEF(`conf_sendmail_ENVDEF', `-DIPV6_FULL=0')
+-                in your devtools/Site/site.config.m4 file.
+-
+-===========================================================================
+-
+-To use "${PKGNAME}" as the system's mail transport agent you have
+-to install "${PREFIX}/share/examples/sendmail/mailer.conf" as global
+-mailwrapper configuration file.  The command below will do that for you:
+-
+-ln -fs ${PREFIX}/share/examples/sendmail/mailer.conf /etc/mailer.conf
+-
+-You should also add a line to /etc/mtree/special.local so you won't
+-get a complaint in the daily insecurity e-mail like this:
+-
+-./etc/mailer.conf			type=link mode=0444
+-
+-
+-If you are changing the database format used by sendmail you must run
+-"newaliases" and "makemap" in order to re-create the databases.
+-
+-You may also need to install (and/or customize) the configuration files
+-for Sendmail before it will be operational.  "cd" to the directory
+-
+-    ${PREFIX}/share/sendmail/cf
+-
+-and read the file README for instructions on creating and installing
+-configuration files.
+-
+-
+-NOTE: If your system doesn't have mailwrapper and/or it won't
+-install on your system, then you will need to move aside system
+-supplied binaries and replace them with symlinks to the binaries
+-supplied with sendmail.  The most important of these is the sendmail
+-binary itself.  This is typically located at /usr/sbin/sendmail or
+-/usr/lib/sendmail.  These will need to be moved aside, and you will
+-need to create a symlink from /usr/sbin/sendmail to
+-${PREFIX}/libexec/sendmail/sendmail.  This is required because most
+-third party apps (or, even system supplied apps) will look for
+-sendmail at one of the above locations.  There are a variety of
+-other apps such as:  editmap, hoststat, mailq, mailstats, makemap,
+-newaliases, praliases, purgestat, and vacation.  You can deal with
+-these either by having ${PREFIX}/bin and ${PREFIX}/sbin at the
+-beginning of your PATH, or creating symlinks.  hoststat, mailq,
+-mailstats, newaliases, and purgestat are just links to sendmail.
+-
+-===========================================================================
+--- a/mail/sendmail-snapshot/Makefile
++++ /dev/null
+@@ -1,155 +0,0 @@
+-# $NetBSD: Makefile,v 1.8 2026/01/07 08:47:49 wiz Exp $
+-
+-PKGNAME=	sendmail-${DIST_VERS}
+-PKGREVISION=	7
+-COMMENT=	The well known Mail Transport Agent
+-
+-CONFLICTS+=	courier-mta-[0-9]* fastforward>=0.51nb2 postfix-[0-9]*
+-CONFLICTS+=	esmtp>=1.2
+-
+-.include "options.mk"
+-.include "../../mail/sendmail-snapshot/Makefile.common"
+-
+-USE_TOOLS+=	pax
+-
+-MESSAGE_SRC=	${WRKDIR}/.MESSAGE_SRC
+-PLIST_SRC=	${WRKDIR}/.PLIST_SRC
+-
+-SMRSH_CMDDIR?=	${PREFIX}/libexec/sm.bin
+-PLIST_SUBST+=	SMRSH_CMDDIR=${SMRSH_CMDDIR}
+-RCD_SCRIPTS=	sendmail smmsp
+-SMF_METHODS=	sendmail sendmail_include smmsp
+-
+-BUILD_DEFS+=	VARBASE
+-
+-# Not OWN_DIRS, so that the admin doesn't get a suggestion to delete the
+-# queue dirs if they are nonempty at deinstall (probably undesirable).
+-#
+-MAKE_DIRS_PERMS+=	/${VARBASE}/spool/clientmqueue smmsp smmsp 0770
+-MAKE_DIRS_PERMS+=	/${VARBASE}/spool/mqueue ${REAL_ROOT_USER} ${REAL_ROOT_GROUP} 0700
+-
+-SPECIAL_PERMS+=		libexec/sendmail/sendmail ${REAL_ROOT_USER} smmsp 2555
+-SPECIAL_PERMS+=		libexec/sendmail/mail.local ${REAL_ROOT_USER} ${REAL_ROOT_GROUP} 4555
+-
+-PKG_GROUPS=		smmsp
+-PKG_USERS=		smmsp:smmsp
+-PKG_GECOS.smmsp=	Sendmail Message Submission Program
+-
+-SUBST_CLASSES+=		paths
+-SUBST_CLASSES+=		cf-paths
+-
+-SUBST_STAGE.paths=	pre-configure
+-SUBST_FILES.paths=	../mailer.conf smrsh/smrsh.8 cf/cf/Makefile
+-SUBST_SED.paths+=	-e "s|@@BINGRP@@|${BINGRP}|g"
+-SUBST_SED.paths+=	-e "s|@@BINOWN@@|${BINOWN}|g"
+-SUBST_SED.paths+=	-e "s|@@INSTALL@@|${INSTALL}|g"
+-SUBST_SED.paths+=	-e "s|@@PREFIX@@|${PREFIX}|g"
+-SUBST_SED.paths+=	-e "s|@@SMRSH_CMDDIR@@|${SMRSH_CMDDIR}|g"
+-SUBST_MESSAGE.paths=	Fixing paths.
+-
+-SUBST_STAGE.cf-paths=	pre-build
+-.for f in cf/README cf/cf/generic-bsd4.4.cf cf/cf/generic-hpux10.cf	\
+-	cf/cf/generic-hpux9.cf cf/cf/generic-linux.cf			\
+-	cf/cf/generic-mpeix.cf cf/cf/generic-nextstep3.3.cf		\
+-	cf/cf/generic-osf1.cf cf/cf/generic-solaris.cf			\
+-	cf/cf/generic-sunos4.1.cf cf/cf/generic-ultrix4.cf		\
+-	cf/cf/knecht.mc cf/cf/submit.cf cf/feature/local_lmtp.m4	\
+-	cf/feature/msp.m4 cf/feature/smrsh.m4 cf/m4/proto.m4		\
+-	cf/mailer/pop.m4 cf/mailer/usenet.m4 cf/ostype/a-ux.m4		\
+-	cf/ostype/aix3.m4 cf/ostype/aix4.m4 cf/ostype/aix5.m4		\
+-	cf/ostype/altos.m4 cf/ostype/amdahl-uts.m4 cf/ostype/bsd4.4.m4	\
+-	cf/ostype/darwin.m4 cf/ostype/dgux.m4 cf/ostype/domainos.m4	\
+-	cf/ostype/dragonfly.m4 cf/ostype/dynix3.2.m4			\
+-	cf/ostype/freebsd4.m4 cf/ostype/freebsd5.m4			\
+-	cf/ostype/freebsd6.m4 cf/ostype/hpux10.m4 cf/ostype/hpux9.m4	\
+-	cf/ostype/irix4.m4 cf/ostype/irix5.m4 cf/ostype/irix6.m4	\
+-	cf/ostype/isc4.1.m4 cf/ostype/maxion.m4 cf/ostype/nextstep.m4	\
+-	cf/ostype/openbsd.m4 cf/ostype/ptx2.m4 cf/ostype/riscos4.5.m4	\
+-	cf/ostype/sco-uw-2.1.m4 cf/ostype/sco3.2.m4 cf/ostype/sinix.m4	\
+-	cf/ostype/solaris11.m4 cf/ostype/solaris2.m4			\
+-	cf/ostype/solaris2.ml.m4 cf/ostype/solaris2.pre5.m4		\
+-	cf/ostype/solaris8.m4 cf/ostype/sunos3.5.m4			\
+-	cf/ostype/sunos4.1.m4 cf/ostype/ultrix4.m4 cf/ostype/unicos.m4	\
+-	cf/ostype/unicosmk.m4 cf/ostype/unicosmp.m4			\
+-	cf/ostype/unixware7.m4
+-SUBST_FILES.cf-paths+=	${f}
+-.endfor
+-SUBST_SED.cf-paths+=	-e "s|/var/spool|${VARBASE}/spool|g"
+-SUBST_SED.cf-paths+=	-e "s|/var/run|${VARBASE}/run|g"
+-SUBST_SED.cf-paths+=	-e "s|/usr/libexec|${PREFIX}/libexec/sendmail|g"
+-SUBST_SED.cf-paths+=	-e "s|/usr/lib|${PREFIX}/libexec/sendmail|g"
+-SUBST_NOOP_OK.cf-paths=	yes # some files contain only /var
+-
+-REPLACE_PERL=		contrib/socketmapClient.pl contrib/socketmapServer.pl
+-
+-AUTO_MKDIRS=	yes
+-
+-post-patch: make-sendmail-siteconfig
+-.if !empty(PKG_OPTIONS:Mtcpwrappers)
+-	cat ${FILESDIR}/site.config.m4-tcpwrappers >>${SITECONFIG}
+-.endif
+-.if !empty(PKG_OPTIONS:Mldap)
+-	cat ${FILESDIR}/site.config.m4-ldap >>${SITECONFIG}
+-.endif
+-.if !empty(PKG_OPTIONS:Mdb2)
+-	cat ${FILESDIR}/site.config.m4-db2 >>${SITECONFIG}
+-.endif
+-.if !empty(PKG_OPTIONS:Mdb4)
+-	cat ${FILESDIR}/site.config.m4-db4 >>${SITECONFIG}
+-.endif
+-.if !empty(PKG_OPTIONS:Mtls)
+-	cat ${FILESDIR}/site.config.m4-starttls >>${SITECONFIG}
+-.endif
+-.if !empty(PKG_OPTIONS:Msendmail-ffr-tls)
+-	cat ${FILESDIR}/site.config.m4-ffr_tls >>${SITECONFIG}
+-.endif
+-.if !empty(PKG_OPTIONS:Msasl)
+-	cat ${FILESDIR}/site.config.m4-sasl2 >>${SITECONFIG}
+-.endif
+-.if !empty(PKG_OPTIONS:Msendmail-ffr-badrcptshutdown)
+-	cat ${FILESDIR}/site.config.m4-ffr_badrcptshutdown >>${SITECONFIG}
+-.endif
+-.if !empty(PKG_OPTIONS:Mblacklist)
+-	cat ${FILESDIR}/site.config.m4-blacklistd >>${SITECONFIG}
+-.endif
+-.if !empty(PKG_OPTIONS:Msmtputf8)
+-	cat ${FILESDIR}/site.config.m4-smtputf8 >>${SITECONFIG}
+-.endif
+-
+-post-extract:
+-	cp ${FILESDIR}/mailer.conf ${WRKDIR}/mailer.conf
+-
+-do-build:
+-	(cd ${WRKSRC} && env ${MAKE_ENV} ./Build)
+-	(cd ${WRKSRC}/cf/cf && env ${MAKE_ENV} ./Build)
+-
+-post-build:
+-	cp ${PKGDIR}/MESSAGE ${MESSAGE_SRC}
+-	cp ${PKGDIR}/PLIST ${WRKDIR}/.PLIST_SRC
+-
+-post-install:
+-	(cd ${WRKSRC}/mail.local && env ${INSTALL_ENV} ${MAKE_ENV} ./Build force-install)
+-
+-	${INSTALL_DATA} ${WRKDIR}/mailer.conf \
+-		${DESTDIR}${PREFIX}/share/examples/sendmail/
+-	cd ${WRKSRC}/cf && pax -rw -pp -pm -s',^.*\.orig$$,,' . ${DESTDIR}${PREFIX}/share/sendmail
+-	cp ${FILESDIR}/netbsd-proto.mc ${DESTDIR}${PREFIX}/share/sendmail/cf
+-
+-	${INSTALL_DATA} ${WRKSRC}/obj.`${UNAME} -srm | tr \  . | tr \/ - | sed s/sun4./sun4/`/libsm/libsm.a \
+-		${DESTDIR}${PREFIX}/lib
+-
+-	${INSTALL_DATA} \
+-		${WRKSRC}/obj.`${UNAME} -srm | tr \  . | tr \/ - | sed s/sun4./sun4/`/libsmutil/libsmutil.a \
+-		${DESTDIR}${PREFIX}/lib
+-	${INSTALL_SCRIPT} ${WRKSRC}/contrib/socketmap*.pl \
+-		${DESTDIR}${PREFIX}/share/examples/sendmail/
+-	${INSTALL_DATA} ${WRKSRC}/RELEASE_NOTES ${DESTDIR}${PREFIX}/share/doc/sendmail
+-	${INSTALL_DATA} ${WRKSRC}/cf/README ${DESTDIR}${PREFIX}/share/doc/sendmail
+-	${INSTALL_DATA} ${WRKSRC}/sendmail/SECURITY ${DESTDIR}${PREFIX}/share/doc/sendmail
+-	${INSTALL_DATA} ${WRKSRC}/doc/op/op.me ${DESTDIR}${PREFIX}/share/doc/sendmail
+-	${INSTALL_DATA} ${WRKSRC}/doc/op/op.ps ${DESTDIR}${PREFIX}/share/doc/sendmail
+-
+-.include "../../mk/bsd.pkg.mk"
+-
+-# has to be below include for bsd.pkg.mk, else substition fails
+-OBJDIR!=	${ECHO} obj.`${UNAME} -srm | tr \  . | tr \/ -`
+--- a/mail/sendmail-snapshot/Makefile.common
++++ /dev/null
+@@ -1,69 +0,0 @@
+-# $NetBSD: Makefile.common,v 1.2 2025/03/31 14:13:21 wiz Exp $
+-#
+-# used by mail/sendmail-snapshot/Makefile
+-#
+-
+-DISTNAME=	sendmail.${DIST_VERS}
+-CATEGORIES=	mail
+-MASTER_SITES=	ftp://ftp.sendmail.org/pub/sendmail/snapshots/
+-MASTER_SITES+=	ftp://ftp.sendmail.org/pub/sendmail/
+-MASTER_SITES+=	ftp://ftp.sendmail.org/pub/sendmail/past-releases/
+-MASTER_SITES+=	ftp://ftp.fu-berlin.de/pub/unix/mail/sendmail/
+-
+-MAINTAINER?=	pkgsrc-users@NetBSD.org
+-HOMEPAGE=	http://www.sendmail.org/
+-LICENSE=	sendmail-license
+-
+-DISTINFO_FILE=	${.CURDIR}/../../mail/sendmail-snapshot/distinfo
+-FILESDIR=	${.CURDIR}/../../mail/sendmail-snapshot/files
+-PATCHDIR=	${.CURDIR}/../../mail/sendmail-snapshot/patches
+-
+-USE_CC_FEATURES=	c99
+-
+-DIST_VERS=	8.18.0.2
+-
+-MAKE_ENV+=	BSD_BINOWN=${BINOWN} BSD_BINGRP=${BINGRP} \
+-		BSD_MANOWN=${MANOWN} BSD_MANGRP=${MANGRP} \
+-		BUILDLINK_DIR=${BUILDLINK_DIR} \
+-		SMRSH_CMDDIR=${SMRSH_CMDDIR}
+-SITECONFIG=	${WRKSRC}/devtools/Site/site.config.m4
+-
+-BUILD_DEFS+=	SMRSH_CMDDIR
+-
+-WRKSRC=		${WRKDIR}/sendmail-${DIST_VERS}
+-USE_TOOLS+=	gm4
+-MAKE_ENV+=	M4=${TOOLS_M4}
+-
+-.include "../../mk/bsd.prefs.mk"
+-
+-.if ${OPSYS} == "SunOS" && exists(/usr/include/paths.h)
+-CFLAGS+=	-DSOLARIS_HAS_PATHS_H
+-.endif
+-
+-pre-configure:
+-	cp ${FILESDIR}/sm_os_netbsd.h ${WRKSRC}/include/sm/os/sm_os_netbsd.h
+-
+-.PHONY: make-sendmail-siteconfig
+-make-sendmail-siteconfig:
+-	${CP} ${FILESDIR}/site.config.m4 ${SITECONFIG}
+-	${CHMOD} +w ${SITECONFIG}
+-
+-.if !empty(PKG_OPTIONS:Minet6)
+-	${CAT} ${FILESDIR}/site.config.m4-v6 >>${SITECONFIG}
+-.  if (${OPSYS} != "SunOS") && \
+-      (${OPSYS} != "DragonFly") && (${OPSYS} != "FreeBSD")
+-	${CAT} ${FILESDIR}/site.config.m4-v6-not-solaris >>${SITECONFIG}
+-.  endif
+-.  if ${OPSYS} == "NetBSD"
+-	${CAT} ${FILESDIR}/site.config.m4-gethostbyname2 >>${SITECONFIG}
+-.  endif
+-.endif
+-
+-	${CAT} ${FILESDIR}/site.config.m4-milter >>${SITECONFIG}
+-.if ${OPSYS} == "SunOS"
+-	${CAT} ${FILESDIR}/site.config.m4-fpic >>${SITECONFIG}
+-	${CAT} ${FILESDIR}/site.config.m4-libresolv >>${SITECONFIG}
+-.  if exists(/usr/include/stdbool.h)
+-	${CAT} ${FILESDIR}/site.config.m4-stdbool >>${SITECONFIG}
+-.  endif
+-.endif
+--- a/mail/sendmail-snapshot/PLIST
++++ /dev/null
+@@ -1,239 +0,0 @@
+-@comment $NetBSD: PLIST,v 1.1 2024/01/15 04:50:54 jnemeth Exp $
+-bin/hoststat
+-bin/mailq
+-bin/newaliases
+-bin/purgestat
+-bin/vacation
+-lib/libsm.a
+-lib/libsmutil.a
+-libexec/sendmail/mail.local
+-libexec/sendmail/sendmail
+-libexec/sendmail/smrsh
+-man/man1/mailq.1
+-man/man1/newaliases.1
+-man/man1/vacation.1
+-man/man5/aliases.5
+-man/man8/editmap.8
+-man/man8/mail.local.8
+-man/man8/mailstats.8
+-man/man8/makemap.8
+-man/man8/praliases.8
+-man/man8/sendmail.8
+-man/man8/smrsh.8
+-sbin/editmap
+-sbin/mailstats
+-sbin/makemap
+-sbin/praliases
+-share/doc/sendmail/README
+-share/doc/sendmail/RELEASE_NOTES
+-share/doc/sendmail/SECURITY
+-share/doc/sendmail/op.me
+-share/doc/sendmail/op.ps
+-share/examples/sendmail/mailer.conf
+-share/examples/sendmail/socketmapClient.pl
+-share/examples/sendmail/socketmapServer.pl
+-share/misc/helpfile
+-share/sendmail/README
+-share/sendmail/cf/Build
+-share/sendmail/cf/Makefile
+-share/sendmail/cf/README
+-share/sendmail/cf/chez.cs.mc
+-share/sendmail/cf/clientproto.mc
+-share/sendmail/cf/cs-hpux10.mc
+-share/sendmail/cf/cs-hpux9.mc
+-share/sendmail/cf/cs-osf1.mc
+-share/sendmail/cf/cs-solaris2.mc
+-share/sendmail/cf/cs-sunos4.1.mc
+-share/sendmail/cf/cs-ultrix4.mc
+-share/sendmail/cf/cyrusproto.mc
+-share/sendmail/cf/generic-bsd4.4.cf
+-share/sendmail/cf/generic-bsd4.4.mc
+-share/sendmail/cf/generic-hpux10.cf
+-share/sendmail/cf/generic-hpux10.mc
+-share/sendmail/cf/generic-hpux9.cf
+-share/sendmail/cf/generic-hpux9.mc
+-share/sendmail/cf/generic-linux.cf
+-share/sendmail/cf/generic-linux.mc
+-share/sendmail/cf/generic-mpeix.cf
+-share/sendmail/cf/generic-mpeix.mc
+-share/sendmail/cf/generic-nextstep3.3.cf
+-share/sendmail/cf/generic-nextstep3.3.mc
+-share/sendmail/cf/generic-osf1.cf
+-share/sendmail/cf/generic-osf1.mc
+-share/sendmail/cf/generic-solaris.cf
+-share/sendmail/cf/generic-solaris.mc
+-share/sendmail/cf/generic-sunos4.1.cf
+-share/sendmail/cf/generic-sunos4.1.mc
+-share/sendmail/cf/generic-ultrix4.cf
+-share/sendmail/cf/generic-ultrix4.mc
+-share/sendmail/cf/huginn.cs.mc
+-share/sendmail/cf/knecht.cf
+-share/sendmail/cf/knecht.mc
+-share/sendmail/cf/mail.cs.mc
+-share/sendmail/cf/mail.eecs.mc
+-share/sendmail/cf/mailspool.cs.mc
+-share/sendmail/cf/netbsd-proto.mc
+-share/sendmail/cf/python.cs.mc
+-share/sendmail/cf/s2k-osf1.mc
+-share/sendmail/cf/s2k-ultrix4.mc
+-share/sendmail/cf/submit.cf
+-share/sendmail/cf/submit.mc
+-share/sendmail/cf/tcpproto.mc
+-share/sendmail/cf/ucbarpa.mc
+-share/sendmail/cf/ucbvax.mc
+-share/sendmail/cf/uucpproto.mc
+-share/sendmail/cf/vangogh.cs.mc
+-share/sendmail/domain/Berkeley.EDU.m4
+-share/sendmail/domain/CS.Berkeley.EDU.m4
+-share/sendmail/domain/EECS.Berkeley.EDU.m4
+-share/sendmail/domain/S2K.Berkeley.EDU.m4
+-share/sendmail/domain/berkeley-only.m4
+-share/sendmail/domain/generic.m4
+-share/sendmail/feature/accept_unqualified_senders.m4
+-share/sendmail/feature/accept_unresolvable_domains.m4
+-share/sendmail/feature/access_db.m4
+-share/sendmail/feature/allmasquerade.m4
+-share/sendmail/feature/always_add_domain.m4
+-share/sendmail/feature/authinfo.m4
+-share/sendmail/feature/badmx.m4
+-share/sendmail/feature/bcc.m4
+-share/sendmail/feature/bestmx_is_local.m4
+-share/sendmail/feature/bitdomain.m4
+-share/sendmail/feature/blacklist_recipients.m4
+-share/sendmail/feature/block_bad_helo.m4
+-share/sendmail/feature/blocklist_recipients.m4
+-share/sendmail/feature/check_cert_altnames.m4
+-share/sendmail/feature/check_other.m4
+-share/sendmail/feature/compat_check.m4
+-share/sendmail/feature/conncontrol.m4
+-share/sendmail/feature/delay_checks.m4
+-share/sendmail/feature/dnsbl.m4
+-share/sendmail/feature/domaintable.m4
+-share/sendmail/feature/enhdnsbl.m4
+-share/sendmail/feature/fips3.m4
+-share/sendmail/feature/generics_entire_domain.m4
+-share/sendmail/feature/genericstable.m4
+-share/sendmail/feature/greet_pause.m4
+-share/sendmail/feature/ldap_routing.m4
+-share/sendmail/feature/limited_masquerade.m4
+-share/sendmail/feature/local_lmtp.m4
+-share/sendmail/feature/local_no_masquerade.m4
+-share/sendmail/feature/local_procmail.m4
+-share/sendmail/feature/lookupdotdomain.m4
+-share/sendmail/feature/loose_relay_check.m4
+-share/sendmail/feature/mailertable.m4
+-share/sendmail/feature/masquerade_entire_domain.m4
+-share/sendmail/feature/masquerade_envelope.m4
+-share/sendmail/feature/msp.m4
+-share/sendmail/feature/mtamark.m4
+-share/sendmail/feature/no_default_msa.m4
+-share/sendmail/feature/nocanonify.m4
+-share/sendmail/feature/nopercenthack.m4
+-share/sendmail/feature/notsticky.m4
+-share/sendmail/feature/nouucp.m4
+-share/sendmail/feature/nullclient.m4
+-share/sendmail/feature/prefixmod.m4
+-share/sendmail/feature/preserve_local_plus_detail.m4
+-share/sendmail/feature/preserve_luser_host.m4
+-share/sendmail/feature/promiscuous_relay.m4
+-share/sendmail/feature/queuegroup.m4
+-share/sendmail/feature/ratecontrol.m4
+-share/sendmail/feature/redirect.m4
+-share/sendmail/feature/relay_based_on_MX.m4
+-share/sendmail/feature/relay_entire_domain.m4
+-share/sendmail/feature/relay_hosts_only.m4
+-share/sendmail/feature/relay_local_from.m4
+-share/sendmail/feature/relay_mail_from.m4
+-share/sendmail/feature/require_rdns.m4
+-share/sendmail/feature/smrsh.m4
+-share/sendmail/feature/stickyhost.m4
+-share/sendmail/feature/sts.m4
+-share/sendmail/feature/tls_failures.m4
+-share/sendmail/feature/tls_session_features.m4
+-share/sendmail/feature/use_client_ptr.m4
+-share/sendmail/feature/use_ct_file.m4
+-share/sendmail/feature/use_cw_file.m4
+-share/sendmail/feature/uucpdomain.m4
+-share/sendmail/feature/virtuser_entire_domain.m4
+-share/sendmail/feature/virtusertable.m4
+-share/sendmail/hack/cssubdomain.m4
+-share/sendmail/hack/xconnect.m4
+-share/sendmail/m4/cf.m4
+-share/sendmail/m4/cfhead.m4
+-share/sendmail/m4/proto.m4
+-share/sendmail/m4/version.m4
+-share/sendmail/mailer/cyrus.m4
+-share/sendmail/mailer/cyrusv2.m4
+-share/sendmail/mailer/fax.m4
+-share/sendmail/mailer/local.m4
+-share/sendmail/mailer/mail11.m4
+-share/sendmail/mailer/phquery.m4
+-share/sendmail/mailer/pop.m4
+-share/sendmail/mailer/procmail.m4
+-share/sendmail/mailer/qpage.m4
+-share/sendmail/mailer/smtp.m4
+-share/sendmail/mailer/usenet.m4
+-share/sendmail/mailer/uucp.m4
+-share/sendmail/ostype/a-ux.m4
+-share/sendmail/ostype/aix3.m4
+-share/sendmail/ostype/aix4.m4
+-share/sendmail/ostype/aix5.m4
+-share/sendmail/ostype/altos.m4
+-share/sendmail/ostype/amdahl-uts.m4
+-share/sendmail/ostype/bsd4.3.m4
+-share/sendmail/ostype/bsd4.4.m4
+-share/sendmail/ostype/bsdi.m4
+-share/sendmail/ostype/bsdi1.0.m4
+-share/sendmail/ostype/bsdi2.0.m4
+-share/sendmail/ostype/darwin.m4
+-share/sendmail/ostype/dgux.m4
+-share/sendmail/ostype/domainos.m4
+-share/sendmail/ostype/dragonfly.m4
+-share/sendmail/ostype/dynix3.2.m4
+-share/sendmail/ostype/freebsd4.m4
+-share/sendmail/ostype/freebsd5.m4
+-share/sendmail/ostype/freebsd6.m4
+-share/sendmail/ostype/gnu.m4
+-share/sendmail/ostype/hpux10.m4
+-share/sendmail/ostype/hpux11.m4
+-share/sendmail/ostype/hpux9.m4
+-share/sendmail/ostype/irix4.m4
+-share/sendmail/ostype/irix5.m4
+-share/sendmail/ostype/irix6.m4
+-share/sendmail/ostype/isc4.1.m4
+-share/sendmail/ostype/linux.m4
+-share/sendmail/ostype/maxion.m4
+-share/sendmail/ostype/mklinux.m4
+-share/sendmail/ostype/mpeix.m4
+-share/sendmail/ostype/nextstep.m4
+-share/sendmail/ostype/openbsd.m4
+-share/sendmail/ostype/osf1.m4
+-share/sendmail/ostype/powerux.m4
+-share/sendmail/ostype/ptx2.m4
+-share/sendmail/ostype/qnx.m4
+-share/sendmail/ostype/riscos4.5.m4
+-share/sendmail/ostype/sco-uw-2.1.m4
+-share/sendmail/ostype/sco3.2.m4
+-share/sendmail/ostype/sinix.m4
+-share/sendmail/ostype/solaris11.m4
+-share/sendmail/ostype/solaris2.m4
+-share/sendmail/ostype/solaris2.ml.m4
+-share/sendmail/ostype/solaris2.pre5.m4
+-share/sendmail/ostype/solaris8.m4
+-share/sendmail/ostype/sunos3.5.m4
+-share/sendmail/ostype/sunos4.1.m4
+-share/sendmail/ostype/svr4.m4
+-share/sendmail/ostype/ultrix4.m4
+-share/sendmail/ostype/unicos.m4
+-share/sendmail/ostype/unicosmk.m4
+-share/sendmail/ostype/unicosmp.m4
+-share/sendmail/ostype/unixware7.m4
+-share/sendmail/ostype/unknown.m4
+-share/sendmail/ostype/uxpds.m4
+-share/sendmail/sendmail.schema
+-share/sendmail/sh/makeinfo.sh
+-share/sendmail/siteconfig/uucp.cogsci.m4
+-share/sendmail/siteconfig/uucp.old.arpa.m4
+-share/sendmail/siteconfig/uucp.ucbarpa.m4
+-share/sendmail/siteconfig/uucp.ucbvax.m4
+-@pkgdir libexec/sm.bin
+--- a/mail/sendmail-snapshot/distinfo
++++ /dev/null
+@@ -1,39 +0,0 @@
+-$NetBSD: distinfo,v 1.1 2024/01/15 04:50:54 jnemeth Exp $
+-
+-BLAKE2s (sendmail.8.18.0.2.tar.gz) = 21d4c4834abc4026463ec4f26f323c2f7c51f07eaf8ee8f834f263fe0f8a9fcb
+-SHA512 (sendmail.8.18.0.2.tar.gz) = b2ee60595285bf79e5216fcc039c3b321f4719311f6ab3fbd6ad787254b17997639ca9f709036d6a5b552ffc573d22efbc392fafba5952bf77b8b9c1f55edc70
+-Size (sendmail.8.18.0.2.tar.gz) = 2330539 bytes
+-SHA1 (patch-aa) = bd1ab754f7146d002eaf8c0347e114b4049a7776
+-SHA1 (patch-af) = 8c80610916000dfb4e4e28a64eeb0b283535fc93
+-SHA1 (patch-ag) = 6dcca8944aa854f1767c7ee12fe14872a4e14d2e
+-SHA1 (patch-ah) = e6be09008b9230ffdd1560aaacbdbb2ee4fb8028
+-SHA1 (patch-ai) = 7a306d7239f4036cd8d80d6dbe2a07eb80f02d13
+-SHA1 (patch-aj) = e65e6fe44380de2f9c397c1a97677eb4ad285433
+-SHA1 (patch-an) = 8015196ab361df50cc4a63611f3fe5f1f547cbbe
+-SHA1 (patch-ao) = 88dd76b71ad57a8d0efdb6e8518ff01689ecf634
+-SHA1 (patch-aq) = 5c083d9f9f71bcc42811a3d085e936eaaa404c96
+-SHA1 (patch-ar) = 4e9162c96329716f844c0c64efb9d0a2915ad1cb
+-SHA1 (patch-as) = e5e266d3c488494a12c303b068c15edde24e0504
+-SHA1 (patch-at) = bbc068b810efb20a0cc6e6a5f04fdcde63adcdfb
+-SHA1 (patch-au) = 08a96e145a9c37ba1ba836457157f1ab781380dc
+-SHA1 (patch-av) = bb6ecd69f6b0db22056b492890d2c6369cd08977
+-SHA1 (patch-aw) = e340bd366ce04c4d5ddd15f964bc4040e715a6c9
+-SHA1 (patch-ax) = 771c9c8a951a09c80eb85233986af1fc7fedbe77
+-SHA1 (patch-ay) = 0a043f2ff0028d475ee852b302844626f4ff4609
+-SHA1 (patch-az) = 50cc76176f53ff58dbbef58fc12f5d22fb8ce746
+-SHA1 (patch-ba) = c190b11b9874f00a18b9c75b6e734f4a9dd3f68f
+-SHA1 (patch-bb) = 6c86a60af25b02fc0389f1d40f59c5031d9679f1
+-SHA1 (patch-bc) = 9e7346342dfe1ca5d84053b913df4be41a979683
+-SHA1 (patch-bd) = 1a6d035c585838e771a1a677892b95bb82000a7b
+-SHA1 (patch-be) = d2f3397b7880f23f8cbd5d3c4eb5ccfe6a6ca75b
+-SHA1 (patch-bf) = 9c5faf5b38c18623e5ce4ffafc00a4430965e41a
+-SHA1 (patch-bg) = 716c90ff76edbdcb223111412bdd011d4a252ca6
+-SHA1 (patch-bl) = 4fff262691deb2fcacf5013bfeb5aede45783dcd
+-SHA1 (patch-bm) = ef40555ed40961f76ceedf58c100ac91ce2b0657
+-SHA1 (patch-bn) = 8ba1998d579bb7d33ee92bfdf4e4bb2dafab23a0
+-SHA1 (patch-bo) = 7dc9b24ebcfdf571c5f8428032325e9d55187daf
+-SHA1 (patch-bp) = 9a1daac264aba6c4fc39a63a464b942dd25b06eb
+-SHA1 (patch-bq) = 548bf6d373cb49958437548a65803b6f3c6b35d2
+-SHA1 (patch-br) = 1f0b9716906b91ce2b867bf65e5c06ad16749e36
+-SHA1 (patch-bs) = 2af257532fd837d9817b0b5572027947881b0396
+-SHA1 (patch-bt) = 44a297b44071c5c84680af137ed00962f9ea35d4
+--- a/mail/sendmail-snapshot/files/mailer.conf
++++ /dev/null
+@@ -1,10 +0,0 @@
+-#	$NetBSD: mailer.conf,v 1.1 2024/01/15 04:50:54 jnemeth Exp $
+-#
+-# Execute the "real" sendmail program, named @@PREFIX@@/libexec/sendmail/sendmail
+-#
+-sendmail	@@PREFIX@@/libexec/sendmail/sendmail
+-send-mail	@@PREFIX@@/libexec/sendmail/sendmail
+-mailq		@@PREFIX@@/libexec/sendmail/sendmail
+-newaliases	@@PREFIX@@/libexec/sendmail/sendmail
+-hoststat	@@PREFIX@@/libexec/sendmail/sendmail
+-purgestat	@@PREFIX@@/libexec/sendmail/sendmail
+--- a/mail/sendmail-snapshot/files/netbsd-proto.mc
++++ /dev/null
+@@ -1,66 +0,0 @@
+-# $NetBSD: netbsd-proto.mc,v 1.1 2024/01/15 04:50:54 jnemeth Exp $
+-
+-divert(-1)
+-#
+-# Copyright (c) 1994 Adam Glass
+-# Copyright (c) 1983 Eric P. Allman
+-# Copyright (c) 1988, 1993
+-#	The Regents of the University of California.  All rights reserved.
+-#
+-# Redistribution and use in source and binary forms, with or without
+-# modification, are permitted provided that the following conditions
+-# are met:
+-# 1. Redistributions of source code must retain the above copyright
+-#    notice, this list of conditions and the following disclaimer.
+-# 2. Redistributions in binary form must reproduce the above copyright
+-#    notice, this list of conditions and the following disclaimer in the
+-#    documentation and/or other materials provided with the distribution.
+-# 3. All advertising materials mentioning features or use of this software
+-#    must display the following acknowledgement:
+-#	This product includes software developed by the University of
+-#	California, Berkeley and its contributors.
+-# 4. Neither the name of the University nor the names of its contributors
+-#    may be used to endorse or promote products derived from this software
+-#    without specific prior written permission.
+-#
+-# THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+-# ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+-# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+-# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+-# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+-# OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+-# SUCH DAMAGE.
+-#
+-
+-#
+-#  This is the prototype file for a configuration that supports SMTP
+-#  connections via TCP and some commonly required features.
+-#
+-
+-include(`../m4/cf.m4')
+-VERSIONID(`@(#)netbsd-proto.mc	$Revision: 1.1 $')
+-OSTYPE(bsd4.4)dnl
+-DOMAIN(generic)dnl
+-FEATURE(genericstable,DATABASE_MAP_TYPE` -o 'MAIL_SETTINGS_DIR`genericstable')
+-FEATURE(mailertable,  DATABASE_MAP_TYPE` -o 'MAIL_SETTINGS_DIR`mailertable')
+-FEATURE(virtusertable,DATABASE_MAP_TYPE` -o 'MAIL_SETTINGS_DIR`virtusertable')
+-FEATURE(domaintable,  DATABASE_MAP_TYPE` -o 'MAIL_SETTINGS_DIR`domaintable')
+-FEATURE(access_db,    DATABASE_MAP_TYPE` -T<TMPF>; -o 'MAIL_SETTINGS_DIR`access')
+-FEATURE(`redirect')
+-FEATURE(`no_default_msa')
+-MAILER(local)dnl
+-MAILER(smtp)dnl
+-
+-# Enable port 587 also to serve as local submission server
+-DAEMON_OPTIONS(`Family=inet, address=127.0.0.1, Name=MTA, Modifiers=O, Port=smtp')dnl
+-DAEMON_OPTIONS(`Family=inet, address=127.0.0.1, Name=MSA, Modifiers=O, Port=submission')dnl
+-# Enable IPv6.  IPv6 is marked as optional so the configuration file
+-# can be used on IPV4-only kernel as well.
+-DAEMON_OPTIONS(`Family=inet6, address=::1, Name=MTA6, Modifiers=O, Port=smtp')dnl
+-DAEMON_OPTIONS(`Family=inet6, address=::1, Name=MSA6, Modifiers=O, Port=submission')dnl
+-# Above setup is outgoing service only, replace
+-# 127.0.0.1 by 0.0.0.0  and  ::1 by :: to accept incoming mails.
+--- a/mail/sendmail-snapshot/files/sendmail.sh
++++ /dev/null
+@@ -1,60 +0,0 @@
+-#!@RCD_SCRIPTS_SHELL@
+-#
+-# $NetBSD: sendmail.sh,v 1.1 2024/01/15 04:50:54 jnemeth Exp $
+-#
+-
+-# PROVIDE: mail
+-# REQUIRE: LOGIN
+-#	we make mail start late, so that things like .forward's are not
+-#	processed until the system is fully operational
+-
+-
+-. /etc/rc.subr
+-
+-name="sendmail"
+-rcvar=$name
+-pidfile="@VARBASE@/run/${name}.pid"
+-required_files="/etc/mail/sendmail.cf"
+-start_precmd="sendmail_precmd"
+-extra_commands="reload"
+-
+-makemap="@PREFIX@/sbin/makemap"
+-newaliases="@PREFIX@/bin/newaliases"
+-smbin="@PREFIX@/libexec/sendmail/sendmail"
+-check_files="aliases access genericstable virtusertable domaintable mailertable"
+-sendmail_flags="-Lsm-mta -bd -q30m"
+-command=$smbin
+-
+-sendmail_precmd()
+-{
+-	# check modifications on /etc/mail/ databases
+-	for f in ${check_files}; do
+-		if [ -r "/etc/mail/$f.db" ] && [ -r "/etc/mail/$f" ]; then
+-			if [ ! "/etc/mail/$f" -ot "/etc/mail/$f.db" ]; then
+-				echo \
+-	    "${name}: /etc/mail/$f newer than /etc/mail/$f.db, regenerating"
+-				if [ "x$f" = "xaliases" ]; then
+-					${newaliases}
+-				else
+-					${makemap} hash \
+-						/etc/mail/$f < /etc/mail/$f	
+-				fi
+-			fi
+-		fi
+-	done
+-
+-	# check existence on /etc/mail/ databases
+-	for f in ${check_files}; do
+-		if [ ! -r "/etc/mail/$f.db" ] && [ -r "/etc/mail/$f" ]; then
+-			echo "${name}: /etc/mail/$f.db not present, generating"
+-			if [ "x$f" = "xaliases" ]; then
+-				${newaliases}
+-			else
+-				${makemap} hash /etc/mail/$f < /etc/mail/$f
+-			fi
+-		fi
+-	done
+-}
+-
+-load_rc_config $name
+-run_rc_command "$1"
+--- a/mail/sendmail-snapshot/files/site.config.m4
++++ /dev/null
+@@ -1,31 +0,0 @@
+-# $NetBSD: site.config.m4,v 1.1 2024/01/15 04:50:54 jnemeth Exp $
+-
+-# pathnames specific to pkgsrc
+-#
+-define(`confEBINDIR', `${PREFIX}/libexec/sendmail')
+-define(`confMBINDIR', `${PREFIX}/libexec/sendmail')
+-define(`confSBINDIR', `${PREFIX}/sbin')
+-define(`confUBINDIR', `${PREFIX}/bin')
+-define(`confHFDIR', `${PREFIX}/share/misc')
+-define(`confINSTALL_RAWMAN', 'yes')
+-define(`confDONT_INSTALL_CATMAN', 'yes')
+-define(`confMANROOT', `${PREFIX}/${PKGMANDIR}/man')
+-define(`confMANROOTMAN', `${PREFIX}/${PKGMANDIR}/man')
+-define(`confMAN1EXT', `1')
+-define(`confMAN3EXT', `3')
+-define(`confMAN4EXT', `4')
+-define(`confMAN5EXT', `5')
+-define(`confMAN8EXT', `8')
+-APPENDDEF(`confENVDEF', `-I${PREFIX}/include -DSMRSH_CMDDIR=\"${SMRSH_CMDDIR}\"')
+-define(`confLDOPTS', `${LDFLAGS}')
+-APPENDDEF(`confMAPDEF', `-DSOCKETMAP')
+-
+-# the following are handled by pkgsrc
+-define(`confINST_DEP',`')
+-define(`confNO_STATISTICS_INSTALL')
+-
+-# have libmilter use poll(2) instead of select(2)
+-# XXX all supported systems should support poll(2), if one is discovered
+-# that doesn't, we can revisit this
+-APPENDDEF(`conf_libmilter_ENVDEF', `-DSM_CONF_POLL=1')
+-
+--- a/mail/sendmail-snapshot/files/site.config.m4-blacklistd
++++ /dev/null
+@@ -1,5 +0,0 @@
+-# $Id: site.config.m4-blacklistd,v 1.1 2024/01/15 04:50:54 jnemeth Exp $
+-
+-APPENDDEF(`conf_sendmail_ENVDEF', `-DUSE_BLACKLIST')
+-APPENDDEF(`conf_sendmail_LIBS', `-lblacklist')
+-
+--- a/mail/sendmail-snapshot/files/site.config.m4-db2
++++ /dev/null
+@@ -1,5 +0,0 @@
+-# $NetBSD: site.config.m4-db2,v 1.1 2024/01/15 04:50:54 jnemeth Exp $
+-
+-# enable db2
+-APPENDDEF(`confENVDEF', `-DNEWDB -I${BUILDLINK_DIR}/include/db2')
+-APPENDDEF(`confLIBS', `-ldb2')
+--- a/mail/sendmail-snapshot/files/site.config.m4-db4
++++ /dev/null
+@@ -1,5 +0,0 @@
+-# $NetBSD: site.config.m4-db4,v 1.1 2024/01/15 04:50:54 jnemeth Exp $
+-
+-# enable db4
+-APPENDDEF(`confENVDEF', `-DNEWDB -I${BUILDLINK_DIR}/include/db4')
+-APPENDDEF(`confLIBS', `-ldb4')
+--- a/mail/sendmail-snapshot/files/site.config.m4-ffr_badrcptshutdown
++++ /dev/null
+@@ -1,4 +0,0 @@
+-# $NetBSD: site.config.m4-ffr_badrcptshutdown,v 1.1 2024/01/15 04:50:54 jnemeth Exp $
+-
+-# enable _FFR_BARRCPT_SHUTDOWN
+-APPENDDEF(`conf_sendmail_ENVDEF', `-D_FFR_BADRCPT_SHUTDOWN')
+--- a/mail/sendmail-snapshot/files/site.config.m4-ffr_tls
++++ /dev/null
+@@ -1,5 +0,0 @@
+-# $NetBSD: site.config.m4-ffr_tls,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-
+-# enable _FFR_TLS_1
+-APPENDDEF(`conf_sendmail_ENVDEF', `-D_FFR_TLS_1')
+-APPENDDEF(`conf_sendmail_ENVDEF', `-D_FFR_TLS_EC')
+--- a/mail/sendmail-snapshot/files/site.config.m4-fpic
++++ /dev/null
+@@ -1,4 +0,0 @@
+-# $NetBSD: site.config.m4-fpic,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-
+-# Build with -fPIC on SunOS to ensure third parties can pull in libmilter.a
+-APPENDDEF(`confCCOPTS', `-fPIC')
+--- a/mail/sendmail-snapshot/files/site.config.m4-gethostbyname2
++++ /dev/null
+@@ -1,4 +0,0 @@
+-# $NetBSD: site.config.m4-gethostbyname2,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-
+-# has gethostbyname2()
+-APPENDDEF(`confENVDEF', `-DHAS_GETHOSTBYNAME2')
+--- a/mail/sendmail-snapshot/files/site.config.m4-ldap
++++ /dev/null
+@@ -1,6 +0,0 @@
+-# $NetBSD: site.config.m4-ldap,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-
+-# enable ldap
+-APPENDDEF(`confMAPDEF', `-DLDAPMAP')
+-APPENDDEF(`confMAPDEF', `-D_FFR_LDAP_NETWORK_TIMEOUT')
+-APPENDDEF(`confLIBS', `-lldap -llber')
+--- a/mail/sendmail-snapshot/files/site.config.m4-libresolv
++++ /dev/null
+@@ -1,4 +0,0 @@
+-# $NetBSD: site.config.m4-libresolv,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-
+-# add -lresolv to prevent linker unresolved symbols
+-APPENDDEF(`confLIBS', `-lresolv')
+--- a/mail/sendmail-snapshot/files/site.config.m4-milter
++++ /dev/null
+@@ -1,4 +0,0 @@
+-# $NetBSD: site.config.m4-milter,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-
+-# enable milter
+-APPENDDEF(`conf_sendmail_ENVDEF', `-DMILTER')
+--- a/mail/sendmail-snapshot/files/site.config.m4-sasl2
++++ /dev/null
+@@ -1,9 +0,0 @@
+-# $NetBSD: site.config.m4-sasl2,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-
+-# enable SASL 2
+-APPENDDEF(`confENVDEF', `-DSASL=2')
+-APPENDDEF(`conf_sendmail_LIBS', `-lsasl2')
+-
+-dnl # XXX JMN  always enable NAMED_RESN for now
+-dnl # for some strange reason SASL, and NAMED_RESN and MILTER are incompatible
+-dnl APPENDDEF(`confENVDEF', `-DNAMED_RESN=0')
+--- a/mail/sendmail-snapshot/files/site.config.m4-smtputf8
++++ /dev/null
+@@ -1,6 +0,0 @@
+-
+-# $NetBSD: site.config.m4-smtputf8,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-
+-# enable SMTPUTF8
+-APPENDDEF(`confENVDEF',`-DUSE_EAI')
+-APPENDDEF(`confLIBS', `-licuuc')
+--- a/mail/sendmail-snapshot/files/site.config.m4-starttls
++++ /dev/null
+@@ -1,5 +0,0 @@
+-# $NetBSD: site.config.m4-starttls,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-
+-# enable STARTTLS
+-APPENDDEF(`conf_sendmail_ENVDEF', `-DSTARTTLS')
+-APPENDDEF(`conf_sendmail_LIBS', `-lssl -lcrypto')
+--- a/mail/sendmail-snapshot/files/site.config.m4-stdbool
++++ /dev/null
+@@ -1,4 +0,0 @@
+-# $NetBSD: site.config.m4-stdbool,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-
+-# PM: stdbool.h on SunOS needs -std=c99
+-APPENDDEF(`confENVDEF', `-DSM_CONF_STDBOOL_H=1')
+--- a/mail/sendmail-snapshot/files/site.config.m4-tcpwrappers
++++ /dev/null
+@@ -1,5 +0,0 @@
+-# $NetBSD: site.config.m4-tcpwrappers,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-
+-# enable tcpwrappers
+-APPENDDEF(`confENVDEF', `-DTCPWRAPPERS')
+-APPENDDEF(`conf_sendmail_LIBS', `-lwrap')
+--- a/mail/sendmail-snapshot/files/site.config.m4-v6
++++ /dev/null
+@@ -1,4 +0,0 @@
+-# $NetBSD: site.config.m4-v6,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-
+-# enable IPv6 
+-APPENDDEF(`confENVDEF', `-DNETINET6')
+--- a/mail/sendmail-snapshot/files/site.config.m4-v6-not-solaris
++++ /dev/null
+@@ -1,4 +0,0 @@
+-# $NetBSD: site.config.m4-v6-not-solaris,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-
+-# enable IPv6 - not Solaris
+-APPENDDEF(`confENVDEF', `-DNEEDSGETIPNODE')
+--- a/mail/sendmail-snapshot/files/sm_os_netbsd.h
++++ /dev/null
+@@ -1,29 +0,0 @@
+-/*
+- *	$NetBSD: sm_os_netbsd.h,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+- */
+-
+-/*
+-**  Platform definitions for NetBSD
+-*/
+-
+-#define SM_OS_NAME	"netbsd"
+-
+-#define SM_CONF_SYS_CDEFS_H	1
+-
+-#include <sys/param.h> /* defines __NetBSD_version__ */
+-#if __NetBSD_version__ >= 104000300
+-   /* 1.4.3 and later have strlcpy()/strlcat() */
+-#  ifndef SM_CONF_STRL
+-#     define SM_CONF_STRL		1
+-#  endif
+-#endif
+-
+-#ifndef SM_CONF_SHM
+-# define SM_CONF_SHM	1
+-#endif /* SM_CONF_SHM */
+-#ifndef SM_CONF_SEM
+-# define SM_CONF_SEM	0
+-#endif /* SM_CONF_SEM */
+-#ifndef SM_CONF_MSG
+-# define SM_CONF_MSG	1
+-#endif /* SM_CONF_MSG */
+--- a/mail/sendmail-snapshot/files/smf/manifest.xml
++++ /dev/null
+@@ -1,284 +0,0 @@
+-<?xml version="1.0"?>
+-<!DOCTYPE service_bundle SYSTEM "/usr/share/lib/xml/dtd/service_bundle.dtd.1">
+-<!--
+-    CDDL HEADER START
+-   
+-    The contents of this file are subject to the terms of the
+-    Common Development and Distribution License (the "License").
+-    You may not use this file except in compliance with the License.
+-   
+-    You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+-    or http://www.opensolaris.org/os/licensing.
+-    See the License for the specific language governing permissions
+-    and limitations under the License.
+-   
+-    When distributing Covered Code, include this CDDL HEADER in each
+-    file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+-    If applicable, add the following below this CDDL HEADER, with the
+-    fields enclosed by brackets "[]" replaced with your own identifying
+-    information: Portions Copyright [yyyy] [name of copyright owner]
+-   
+-    CDDL HEADER END
+-   
+-    Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
+-    Use is subject to license terms.
+-
+-    Copyright 2016 Hans Rosenfeld <rosenfeld@grumpf.hope-2000.org>
+-
+-    NOTE:  This service manifest is not editable; its contents will
+-    be overwritten by package or patch operations, including
+-    operating system upgrade.  Make customizations in a different
+-    file.
+--->
+-
+-<service_bundle type='manifest' name='@SMF_NAME@'>
+-
+-<service
+-	name='@SMF_PREFIX@/@SMF_NAME@'
+-	type='service'
+-	version='1'>
+-
+-	<dependency
+-	    name='fs-local'
+-	    grouping='require_all'
+-	    restart_on='none'
+-	    type='service'>
+-		<service_fmri value='svc:/system/filesystem/local' />
+-	</dependency>
+-
+-	<dependency
+-	    name='network-service'
+-	    grouping='require_all'
+-	    restart_on='none'
+-	    type='service'>
+-		<service_fmri value='svc:/network/service' />
+-	</dependency>
+-
+-	<dependency
+-	    name='name-services'
+-	    grouping='require_all'
+-	    restart_on='refresh'
+-	    type='service'>
+-		<service_fmri value='svc:/milestone/name-services' />
+-	</dependency>
+-
+-	<dependency
+-	    name='identity'
+-	    grouping='optional_all'
+-	    restart_on='refresh'
+-	    type='service'>
+-		<service_fmri value='svc:/system/identity:domain' />
+-	</dependency>
+-
+-	<dependency
+-	    name='system-log'
+-	    grouping='optional_all'
+-	    restart_on='none'
+-	    type='service'>
+-		<service_fmri value='svc:/system/system-log' />
+-	</dependency>
+-
+-	<property_group name='firewall_context' type='com.sun,fw_definition'>
+-		<propval name='name' type='astring' value='smtp' />
+-	</property_group>
+-
+-
+-	<instance name='mta' enabled='false'>
+-
+-		<dependency
+-		    name='config-file'
+-		    grouping='require_all'
+-		    restart_on='refresh'
+-		    type='path'>
+-			<service_fmri
+-			    value='file://localhost/etc/mail/sendmail.cf' />
+-		</dependency>
+-
+-		<dependency
+-		    name='nsswitch'
+-		    grouping='require_all'
+-		    restart_on='refresh'
+-		    type='path'>
+-			<service_fmri
+-			    value='file://localhost/etc/nsswitch.conf' />
+-		</dependency>
+-
+-		<!-- If spamassassin is enabled, wait for it. -->
+-		<dependency
+-		    name='spamassassin'
+-		    grouping='optional_all'
+-		    restart_on='none'
+-		    type='service'>
+-			<service_fmri value='svc:/@SMF_PREFIX@/spamassassin' />
+-		</dependency>
+-
+-		<dependency
+-		    name='spamass-milter'
+-		    grouping='optional_all'
+-		    restart_on='none'
+-		    type='service'>
+-			<service_fmri value='svc:/@SMF_PREFIX@/spamass-milter' />
+-		</dependency>
+-                
+-		<!--
+-		If autofs is enabled, wait for it to get users' home
+-		directories.
+-		-->
+-		<dependency
+-		    name='autofs'
+-		    grouping='optional_all'
+-		    restart_on='none'
+-		    type='service'>
+-			<service_fmri value='svc:/system/filesystem/autofs' />
+-		</dependency>
+-
+-		<dependent
+-			name='smtp-sendmail_multi-user'
+-			grouping='optional_all'
+-			restart_on='none'>
+-				<service_fmri
+-				    value='svc:/milestone/multi-user' />
+-		</dependent>
+-
+-		<!--
+-		Sendmail is hard-coded to sleep for 60 seconds if it cannot
+-		determine the FQHN, so the timeout for start must be longer
+-		than that.  For details, see
+-		http://www.sendmail.org/vendor/sun/differences.html#3.2
+-		-->
+-
+-		<exec_method
+-			type='method'
+-			name='start'
+-			exec='@PREFIX@/@SMF_METHOD_FILE.sendmail@ start'
+-			timeout_seconds='120' />
+-
+-		<exec_method
+-			type='method'
+-			name='stop'
+-			exec='@PREFIX@/@SMF_METHOD_FILE.sendmail@ stop %{restarter/contract}'
+-			timeout_seconds='60' />
+-
+-		<exec_method
+-			type='method'
+-			name='refresh'
+-			exec='@PREFIX@/@SMF_METHOD_FILE.sendmail@ refresh'
+-			timeout_seconds='60' />
+-
+-		<property_group name='firewall_config' type='com.sun,fw_configuration'>
+-			<propval name='policy' type='astring' value='use_global' />
+-			<propval name='block_policy' type='astring'
+-				value='use_global' />
+-			<propval name='apply_to' type='astring' value='' />
+-			<propval name='apply_to_6' type='astring' value='' />
+-			<propval name='exceptions' type='astring' value='' />
+-			<propval name='exceptions_6' type='astring' value='' />
+-			<propval name='target' type='astring' value='' />
+-			<propval name='target_6' type='astring' value='' />
+-			<propval name='value_authorization' type='astring'
+-				value='solaris.smf.value.firewall.config' />
+-		</property_group>
+-
+-		<property_group name='startd' type='framework'>
+-			<propval name='ignore_error' type='astring'
+-			    value='core,signal' />
+-		</property_group>
+-
+-		<property_group name='general' type='framework'>
+-			<propval name='action_authorization' type='astring'
+-				value='solaris.smf.manage.sendmail' />
+-		</property_group>
+-
+-		<property_group name='config' type='application'>
+-			<propval name='include_info'
+-				type='boolean' value='false' />
+-			<propval name='local_only'
+-				type='boolean' value='true' />
+-			<propval name='path_to_sendmail_mc'
+-				type='astring'
+-                                value='@PREFIX@/share/sendmail/cf/sendmail.mc' />
+-			<propval name='value_authorization' type='astring'
+-				value='solaris.smf.value.sendmail' />
+-		</property_group>
+-			
+-		<template>
+-			<common_name>
+-				<loctext xml:lang='C'>
+-				sendmail SMTP mail transfer agent
+-				</loctext>
+-			</common_name>
+-			<documentation>
+-				<manpage title='sendmail' section='8'
+-				    manpath='@PREFIX@/@PKGMANDIR@' />
+-			</documentation>
+-		</template>
+-
+-	</instance>
+-
+-	<instance name='msp' enabled='false'>
+-
+-		<dependency
+-		    name='config-file'
+-		    grouping='require_all'
+-		    restart_on='refresh'
+-		    type='path'>
+-			<service_fmri
+-			    value='file://localhost/etc/mail/submit.cf' />
+-		</dependency>
+-
+-		<!--
+-		Sendmail is hard-coded to sleep for 60 seconds if it cannot
+-		determine the FQHN, so the timeout for start must be longer
+-		than that.  For details, see
+-		http://www.sendmail.org/vendor/sun/differences.html#3.2
+-		-->
+-
+-		<exec_method
+-			type='method'
+-			name='start'
+-			exec='@PREFIX@/@SMF_METHOD_FILE.smmsp@ start'
+-			timeout_seconds='120' />
+-
+-		<exec_method
+-			type='method'
+-			name='stop'
+-			exec='@PREFIX@/@SMF_METHOD_FILE.smmsp@ stop %{restarter/contract}'
+-			timeout_seconds='60' />
+-
+-		<exec_method
+-			type='method'
+-			name='refresh'
+-			exec='@PREFIX@/@SMF_METHOD_FILE.smmsp@ refresh'
+-			timeout_seconds='60' />
+-
+-		<property_group name='general' type='framework'>
+-			<propval name='action_authorization' type='astring'
+-				value='solaris.smf.manage.sendmail' />
+-		</property_group>
+-
+-		<property_group name='config' type='application'>
+-			<propval name='value_authorization' type='astring'
+-				value='solaris.smf.value.sendmail' />
+-			<propval name='path_to_submit_mc'
+-				type='astring'
+-                                value='@PREFIX@/share/sendmail/cf/submit.mc' />
+-		</property_group>
+-			
+-		<template>
+-			<common_name>
+-				<loctext xml:lang='C'>
+-				sendmail SMTP client queue runner
+-				</loctext>
+-			</common_name>
+-			<documentation>
+-				<manpage title='sendmail' section='8'
+-				    manpath='@PREFIX@/@PKGMANDIR@' />
+-			</documentation>
+-		</template>
+-
+-	</instance>
+-	<stability value='Unstable' />
+-
+-</service>
+-
+-</service_bundle>
+--- a/mail/sendmail-snapshot/files/smf/sendmail.sh
++++ /dev/null
+@@ -1,131 +0,0 @@
+-#!/sbin/sh
+-#
+-# $NetBSD: sendmail.sh,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-#
+-# CDDL HEADER START
+-#
+-# The contents of this file are subject to the terms of the
+-# Common Development and Distribution License (the "License").
+-# You may not use this file except in compliance with the License.
+-#
+-# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+-# or http://www.opensolaris.org/os/licensing.
+-# See the License for the specific language governing permissions
+-# and limitations under the License.
+-#
+-# When distributing Covered Code, include this CDDL HEADER in each
+-# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+-# If applicable, add the following below this CDDL HEADER, with the
+-# fields enclosed by brackets "[]" replaced with your own identifying
+-# information: Portions Copyright [yyyy] [name of copyright owner]
+-#
+-# CDDL HEADER END
+-#
+-# Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
+-# Use is subject to license terms.
+-
+-. /lib/svc/share/smf_include.sh
+-. @PREFIX@/lib/svc/method/sendmail_include
+-
+-ERRMSG1='WARNING: /var/mail is NFS-mounted without setting actimeo=0,'
+-ERRMSG2='this can cause mailbox locking and access problems.'
+-SERVER_PID_FILE="@VARBASE@/run/sendmail.pid"
+-ALIASES_FILE="/etc/mail/aliases"
+-SENDMAIL_CF="/etc/mail/sendmail.cf"
+-
+-case "$1" in 
+-'refresh')
+-        [ -f $SERVER_PID_FILE ] && kill -1 `head -1 $SERVER_PID_FILE`
+-        ;;
+-
+-'start')
+-	exist_or_exit $SENDMAIL
+-	if [ ! -d @VARBASE@/spool/mqueue ]; then
+-		/usr/bin/mkdir -m 0750 @VARBASE@/spool/mqueue
+-		/usr/bin/chown root:bin @VARBASE@/spool/mqueue
+-	fi
+-	if [ ! -f $ALIASES_FILE.db ] && [ ! -f $ALIASES_FILE.dir ] \
+-	    && [ ! -f $ALIASES_FILE.pag ]; then
+-		@PREFIX@/bin/newaliases
+-	fi
+-	MODE="-bd"
+-	[ -f $DEFAULT_FILE ] && . $DEFAULT_FILE
+-	#
+-	# * MODE should be "-bd" or null (MODE= or MODE="") or
+-	#   left alone.  Anything else and you're on your own.
+-	# * QUEUEOPTION should be "p" or null (as above).
+-	# * QUEUEINTERVAL should be set to some legal value;
+-	#   sanity checks are done below.
+-	# * OPTIONS are catch-alls; set with care.
+-	#
+-	if [ -n "$QUEUEOPTION" -a "$QUEUEOPTION" != "p" ]; then
+-		QUEUEOPTION=""
+-	fi
+-	if [ -z "$QUEUEOPTION" -o -n "$QUEUEINTERVAL" ]; then
+-		check_queue_interval_syntax $QUEUEINTERVAL
+-		QUEUEINTERVAL=$answer
+-	fi
+-
+-	local=`/usr/bin/svcprop -p config/local_only $SMF_FMRI 2>/dev/null`
+-	if [ $? -eq 0 -a "$local" = "true" ]; then
+-		MODE="-bl"
+-	fi
+-	sendmail_path=`svcprop -p config/path_to_sendmail_mc $SMF_FMRI \
+-	    2>/dev/null`
+-	if [ $? -eq 0 -a -n "$sendmail_path" ]; then
+-		turn_m4_crank "$SENDMAIL_CF" "$sendmail_path"
+-	fi
+-	exist_or_exit "$SENDMAIL_CF"
+-
+-	$SENDMAIL $MODE -q$QUEUEOPTION$QUEUEINTERVAL $OPTIONS &
+-
+-	#
+-	# ETRN_HOSTS should be of the form
+-	# "s1:c1.1,c1.2        s2:c2.1 s3:c3.1,c3.2,c3.3"
+-	# i.e., white-space separated groups of server:client where
+-	# client can be one or more comma-separated names; N.B. that
+-	# the :client part is optional; see etrn(1M) for details.
+-	# server is the name of the server to prod; a mail queue run
+-	# is requested for each client name.  This is comparable to
+-	# running "/usr/lib/sendmail -qRclient" on the host server.
+-	#
+-	# See RFC 1985 for more information.
+-	#
+-	for i in $ETRN_HOSTS; do
+-		SERVER=`echo $i | /usr/bin/sed -e 's/:.*$//'`
+-		CLIENTS=`echo $i | /usr/bin/sed -n -e 's/,/ /g' \
+-		    -e '/:/s/^.*://p'`
+-		/usr/sbin/etrn -b $SERVER $CLIENTS >/dev/null 2>&1 &
+-	done
+-
+-	if /usr/bin/nawk 'BEGIN{s = 1}
+-	    $2 == "/var/mail" && $3 == "nfs" && $4 !~ /actimeo=0/ &&
+-	    $4 !~ /noac/{s = 0} END{exit s}' /etc/mnttab; then
+-
+-		/usr/bin/logger -p mail.crit "$ERRMSG1"
+-		/usr/bin/logger -p mail.crit "$ERRMSG2"
+-	fi
+-	;;
+-
+-'stop')
+-	[ -f $SERVER_PID_FILE ] && check_and_kill $SERVER_PID_FILE
+-	# Need to kill the entire service contract to kill all sendmail related
+-	# processes
+-	smf_kill_contract $2 TERM 1 30
+-	ret=$?
+-	[ $ret -eq 1 ] && exit 1
+-
+-	# Since sendmail spawns user processes out of .forward files, it is
+-	# possible that some of these are not responding to TERM.  If the
+-	# contract did not empty after TERM, move on to KILL.
+-	if [ $ret -eq 2 ] ; then
+-		smf_kill_contract $2 KILL 1
+-	fi
+-	;;
+-
+-*)
+-	echo "Usage: $0 { start | stop | refresh }"
+-	exit 1
+-	;;
+-esac
+-exit 0
+--- a/mail/sendmail-snapshot/files/smf/sendmail_include.sh
++++ /dev/null
+@@ -1,103 +0,0 @@
+-#!/sbin/sh
+-#
+-# $NetBSD: sendmail_include.sh,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-#
+-# CDDL HEADER START
+-#
+-# The contents of this file are subject to the terms of the
+-# Common Development and Distribution License (the "License").
+-# You may not use this file except in compliance with the License.
+-#
+-# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+-# or http://www.opensolaris.org/os/licensing.
+-# See the License for the specific language governing permissions
+-# and limitations under the License.
+-#
+-# When distributing Covered Code, include this CDDL HEADER in each
+-# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+-# If applicable, add the following below this CDDL HEADER, with the
+-# fields enclosed by brackets "[]" replaced with your own identifying
+-# information: Portions Copyright [yyyy] [name of copyright owner]
+-#
+-# CDDL HEADER END
+-#
+-# Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
+-# Use is subject to license terms.
+-
+-DEFAULT_FILE="/etc/default/sendmail"
+-SENDMAIL="@PREFIX@/libexec/sendmail/sendmail"
+-PATH="/usr/bin:/usr/sbin:/usr/ccs/bin"
+-export PATH
+-
+-check_queue_interval_syntax()
+-{
+-	default="15m"
+-	if [ $# -lt 1 ]; then
+-		answer=$default
+-		return
+-	fi
+-	if echo $1 | egrep '^([0-9]*[1-9][0-9]*[smhdw])+$' >/dev/null 2>&1; then
+-		answer=$1
+-	else
+-		answer=$default
+-	fi
+-}
+-
+-check_and_kill()
+-{
+-	PID=`head -1 $1`
+-	kill -0 $PID > /dev/null 2>&1
+-	[ $? -eq 0 ] && kill $PID
+-}
+-
+-exist_or_exit()
+-{
+-	if [ ! -f $1 ]; then
+-		echo "$1 does not exist" >&2
+-		exit $SMF_EXIT_ERR_CONFIG
+-	fi
+-}
+-
+-turn_m4_crank()
+-{
+-	# expected to be called with two arguments: .cf path & path to m4 file
+-	[ $# -lt 2 ] && return
+-	cf_path=$1
+-	m4_path=$2
+-	if [ "$m4_path" = "_DONT_TOUCH_THIS" ]; then
+-		if [ -f "${cf_path}.old" ]; then
+-			mv "$cf_path" "${cf_path}.new"
+-			[ $? -ne 0 ] && exit $SMF_EXIT_ERR_CONFIG
+-			mv "${cf_path}.old" "$cf_path"
+-			[ $? -ne 0 ] && exit $SMF_EXIT_ERR_CONFIG
+-		fi
+-		#
+-		# If ${cf_path}.old does not exist, assume it was taken care
+-		# of on a previous run.
+-		#
+-	else
+-		case "$m4_path" in
+-		/*)	;;	# absolute path
+-		*)	return;;
+-		esac
+-		exist_or_exit "$m4_path"
+-		cd `dirname "$m4_path"`
+-		base=`basename "$m4_path"`
+-		name=`basename "$m4_path" .mc`
+-		info=`svcprop -p config/include_info $SMF_FMRI 2>/dev/null`
+-		if [ "$info" = "true" ]; then
+-			m4flags=""
+-		else
+-			m4flags="-DSUN_HIDE_INTERNAL_DETAILS"
+-		fi
+-		m4 $m4flags @PREFIX@/share/sendmail/m4/cf.m4 "$base" > "${name}.cf"
+-		[ $? -ne 0 ] && exit $SMF_EXIT_ERR_CONFIG
+-		cmp -s "${name}.cf" "$cf_path" || (
+-			cp "${name}.cf" "${cf_path}.tmp" &&
+-			chown root:bin "${cf_path}.tmp" &&
+-			chmod 444 "${cf_path}.tmp" &&
+-			mv "${cf_path}.tmp" "$cf_path"
+-		)
+-		[ $? -ne 0 ] && exit $SMF_EXIT_ERR_CONFIG
+-	fi
+-}
+--- a/mail/sendmail-snapshot/files/smf/smmsp.sh
++++ /dev/null
+@@ -1,82 +0,0 @@
+-#!/sbin/sh
+-#
+-# $NetBSD: smmsp.sh,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-#
+-# CDDL HEADER START
+-#
+-# The contents of this file are subject to the terms of the
+-# Common Development and Distribution License (the "License").
+-# You may not use this file except in compliance with the License.
+-#
+-# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+-# or http://www.opensolaris.org/os/licensing.
+-# See the License for the specific language governing permissions
+-# and limitations under the License.
+-#
+-# When distributing Covered Code, include this CDDL HEADER in each
+-# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+-# If applicable, add the following below this CDDL HEADER, with the
+-# fields enclosed by brackets "[]" replaced with your own identifying
+-# information: Portions Copyright [yyyy] [name of copyright owner]
+-#
+-# CDDL HEADER END
+-#
+-# Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
+-# Use is subject to license terms.
+-
+-. /lib/svc/share/smf_include.sh
+-. @PREFIX@/lib/svc/method/sendmail_include
+-
+-CLIENT_PID_FILE="@VARBASE@/spool/clientmqueue/sm-client.pid"
+-SUBMIT_CF="/etc/mail/submit.cf"
+-
+-case "$1" in 
+-'refresh')
+-        [ -f $CLIENT_PID_FILE ] && kill -1 `head -1 $CLIENT_PID_FILE`
+-        ;;
+-
+-'start')
+-	exist_or_exit $SENDMAIL
+-	[ -f $DEFAULT_FILE ] && . $DEFAULT_FILE
+-	#
+-	# * CLIENTQUEUEINTERVAL should be set to some legal value;
+-	#   sanity checks are done below.
+-	# * CLIENTOPTIONS are catch-alls; set with care.
+-	#
+-	check_queue_interval_syntax $CLIENTQUEUEINTERVAL
+-	CLIENTQUEUEINTERVAL=$answer
+-
+-	submit_path=`svcprop -p config/path_to_submit_mc $SMF_FMRI 2>/dev/null`
+-	if [ $? -eq 0 -a -n "$submit_path" ]; then
+-		turn_m4_crank "$SUBMIT_CF" "$submit_path"
+-	fi
+-	exist_or_exit "$SUBMIT_CF"
+-
+-	$SENDMAIL -Ac -q$CLIENTQUEUEINTERVAL $CLIENTOPTIONS &
+-	;;
+-
+-'stop')
+-	if [ -f $CLIENT_PID_FILE ]; then
+-		check_and_kill $CLIENT_PID_FILE
+-		rm -f $CLIENT_PID_FILE
+-	fi
+-	# Need to kill the entire service contract to kill all sendmail related
+-	# processes
+-	smf_kill_contract $2 TERM 1 30
+-	ret=$?
+-	[ $ret -eq 1 ] && exit 1
+-
+-	# Sendmail can take its time responding to SIGTERM, as it waits for
+-	# things like child processes and SMTP connections to clean up.  If
+-	# the contract did not empty after TERM, move on to KILL.
+-	if [ $ret -eq 2 ] ; then
+-		smf_kill_contract $2 KILL 1
+-	fi
+-	;;
+-
+-*)
+-	echo "Usage: $0 { start | stop | refresh }"
+-	exit 1
+-	;;
+-esac
+-exit 0
+--- a/mail/sendmail-snapshot/files/smmsp.sh
++++ /dev/null
+@@ -1,30 +0,0 @@
+-#!@RCD_SCRIPTS_SHELL@
+-#
+-# $NetBSD: smmsp.sh,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-#
+-
+-# REQUIRE: mail
+-
+-#	The only function of the smmsp process is to push locally
+-#	collected mail (which got stuck in the local client queue)
+-#	to a more fully functional smtp relay.  It is not a fully
+-#	functional smtp daemon.
+-#
+-#	It can, however, be used as a completely unprivileged
+-#	replacement for hosts that were previously using a "null
+-#	client" configuration and a smart relay.
+-
+-. /etc/rc.subr
+-
+-name="smmsp"
+-rcvar=$name
+-pidfile="@VARBASE@/spool/clientmqueue/sm-client.pid"
+-required_files="/etc/mail/submit.cf"
+-extra_commands="reload"
+-
+-smbin="@PREFIX@/libexec/sendmail/sendmail"
+-smmsp_flags="-Lsm-msp-queue -Ac -q30m"
+-command=$smbin
+-
+-load_rc_config $name
+-run_rc_command "$1"
+--- a/mail/sendmail-snapshot/options.mk
++++ /dev/null
+@@ -1,88 +0,0 @@
+-# $NetBSD: options.mk,v 1.2 2024/05/05 21:01:04 wiz Exp $
+-
+-PKG_OPTIONS_VAR=	PKG_OPTIONS.sendmail
+-PKG_SUPPORTED_OPTIONS=	inet6 db2 db4 ldap sasl tls tcpwrappers
+-PKG_SUPPORTED_OPTIONS+=	sendmail-ffr-tls sendmail-ffr-badrcptshutdown
+-PKG_SUPPORTED_OPTIONS+=	smtputf8
+-PKG_SUGGESTED_OPTIONS=	inet6 tcpwrappers tls
+-
+-.include "../../mk/bsd.prefs.mk"
+-
+-.for dir in ${COMPILER_INCLUDE_DIRS}
+-.  if exists(${dir}/blacklist.h)
+-PKG_SUPPORTED_OPTIONS+=		blacklist
+-#PKG_SUGGESTED_OPTIONS+=		blacklist
+-PKG_OPTIONS_LEGACY_OPTS+=	blacklistd:blacklist
+-.  endif
+-.endfor
+-
+-PKG_OPTIONS_LEGACY_OPTS+=	starttls:tls ffr_tls_1:sendmail-ffr-tls
+-
+-.include "../../mk/bsd.options.mk"
+-
+-###
+-### Berkeley DB version 2/4 format for on disk databases e.g. aliases
+-###
+-.if !empty(PKG_OPTIONS:Mdb2)
+-.  include "../../databases/db/buildlink3.mk"
+-.elif !empty(PKG_OPTIONS:Mdb4)
+-.  include "../../databases/db4/buildlink3.mk"
+-.endif
+-
+-###
+-### Use OpenLDAP for remote database access
+-###
+-.if !empty(PKG_OPTIONS:Mldap)
+-.  include "../../databases/openldap-client/buildlink3.mk"
+-.endif
+-
+-###
+-### Use SASL/v2 for SMTP AUTH
+-###
+-.if !empty(PKG_OPTIONS:Msasl)
+-.  include "../../security/cyrus-sasl/buildlink3.mk"
+-.endif
+-
+-###
+-### Use OpenSSL libraries for SMTP STARTTLS support
+-###
+-.if !empty(PKG_OPTIONS:Mtls)
+-.  include "../../security/openssl/buildlink3.mk"
+-.endif
+-
+-###
+-### 'For Future Release' _FFR_TLS_* options: CipherList, multiple certs
+-###
+-# Nothing to do here, activation is done in Makefile
+-
+-###
+-### 'For Future Release' _FFR_BADRCPT_SHUTDOWN options:
+-###      BadRcptShutdown, BadRcptShutdownGood
+-###
+-# Nothing to do here, activation is done in Makefile
+-
+-###
+-### Use tcpwrappers for network access control to sendmail
+-###
+-.if !empty(PKG_OPTIONS:Mtcpwrappers)
+-.  include "../../security/tcp_wrappers/buildlink3.mk"
+-.endif
+-
+-###
+-### IPv6 support.
+-###
+-.if !empty(PKG_OPTIONS:Minet6)
+-.endif
+-
+-###
+-### NetBSD blacklistd(8) support.
+-###
+-# Nothing to do here, activation is done in Makefile
+-
+-###
+-### SMTPUTF8 support
+-###
+-.if !empty(PKG_OPTIONS:Msmtputf8)
+-.  include "../../textproc/icu/buildlink3.mk"
+-.endif
+-
+--- a/mail/sendmail-snapshot/patches/patch-aa
++++ /dev/null
+@@ -1,22 +0,0 @@
+-$NetBSD: patch-aa,v 1.1 2024/01/15 04:50:55 jnemeth Exp $
+-
+---- devtools/OS/NetBSD.orig	2014-03-06 17:31:29.000000000 +0000
+-+++ devtools/OS/NetBSD
+-@@ -5,15 +5,11 @@ dnl	Place personal settings in devtools/
+- 
+- define(`confMAPDEF', `-DNEWDB -DNIS -DMAP_REGEX')
+- define(`confLIBS', `-lutil')
+--define(`confENVDEF', ` -DNETISO')
+-+define(`confSM_OS_HEADER', `sm_os_netbsd')
+- define(`confDEPEND_TYPE', `CC-M')
+--define(`confSBINGRP', `wheel')
+--define(`confUBINOWN', `root')
+--define(`confUBINGRP', `wheel')
+--define(`confMANOWN', `root')
+--define(`confMANGRP', `wheel')
+- define(`confMAN1EXT', `0')
+- define(`confMAN3EXT', `0')
+- define(`confMAN4EXT', `0')
+- define(`confMAN5EXT', `0')
+- define(`confMAN8EXT', `0')
+-+define(`conf_sendmail_ENVDEF', `-D_FFR_USE_GETPWNAM_ERRNO=1')
+--- a/mail/sendmail-snapshot/patches/patch-af
++++ /dev/null
+@@ -1,60 +0,0 @@
+-$NetBSD: patch-af,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- sendmail/conf.c.orig	2023-04-27 10:39:42.000000000 +0000
+-+++ sendmail/conf.c
+-@@ -45,6 +45,10 @@ SM_RCSID("@(#)$Id: conf.c,v 8.1192 2014-
+- # include "tls.h"
+- #endif
+- 
+-+#if !HAS_GETHOSTBYNAME2
+-+extern struct __res_state sm_res;
+-+#endif
+-+
+- static void	setupmaps __P((void));
+- static void	setupmailers __P((void));
+- static void	setupqueues __P((void));
+-@@ -4322,15 +4326,15 @@ sm_getipnodebyname(name, family, flags, 
+- 	if (family == AF_INET6)
+- 	{
+- 		/* From RFC2133, section 6.1 */
+--		resv6 = bitset(RES_USE_INET6, _res.options);
+--		_res.options |= RES_USE_INET6;
+-+		resv6 = bitset(RES_USE_INET6, sm_res.options);
+-+		sm_res.options |= RES_USE_INET6;
+- 	}
+- #  endif /* RES_USE_INET6 */
+- 	SM_SET_H_ERRNO(0);
+- 	h = gethostbyname(name);
+- #  ifdef RES_USE_INET6
+- 	if (!resv6)
+--		_res.options &= ~RES_USE_INET6;
+-+		sm_res.options &= ~RES_USE_INET6;
+- #  endif
+- 
+- 	/* the function is supposed to return only the requested family */
+-@@ -4551,7 +4555,8 @@ sm_gethostbyaddr(addr, len, type)
+- 
+- #if NETINET6
+- 	if (type == AF_INET6 &&
+--	    IN6_IS_ADDR_UNSPECIFIED((struct in6_addr *) addr))
+-+	    (IN6_IS_ADDR_UNSPECIFIED((struct in6_addr *) addr) ||
+-+	    IN6_IS_ADDR_LINKLOCAL((struct in6_addr *) addr)))
+- 	{
+- 		/* Avoid reverse lookup for IPv6 unspecified address */
+- 		SM_SET_H_ERRNO(HOST_NOT_FOUND);
+-@@ -5724,12 +5729,12 @@ local_hostname_length(hostname)
+- {
+- 	size_t len_host, len_domain;
+- 
+--	if (!*_res.defdname)
+-+	if (!*sm_res.defdname)
+- 		res_init();
+- 	len_host = strlen(hostname);
+--	len_domain = strlen(_res.defdname);
+-+	len_domain = strlen(sm_res.defdname);
+- 	if (len_host > len_domain &&
+--	    (SM_STRCASEEQ(hostname + len_host - len_domain, _res.defdname)) &&
+-+	    (SM_STRCASEEQ(hostname + len_host - len_domain, sm_res.defdname)) &&
+- 	    hostname[len_host - len_domain - 1] == '.')
+- 		return len_host - len_domain - 1;
+- 	else
+--- a/mail/sendmail-snapshot/patches/patch-ag
++++ /dev/null
+@@ -1,26 +0,0 @@
+-$NetBSD: patch-ag,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- include/sm/conf.h.orig	2020-06-04 06:27:49.000000000 +0000
+-+++ include/sm/conf.h
+-@@ -381,7 +381,7 @@ typedef int		pid_t;
+- #   ifndef __svr4__
+- #    define __svr4__		/* use all System V Release 4 defines below */
+- #   endif
+--#   if SOLARIS >= 21100
+-+#   if SOLARIS >= 21100 && defined(SOLARIS_HAS_PATHS_H)
+- #    include <paths.h>
+- #   endif
+- #   ifndef _PATH_VARRUN
+-@@ -827,7 +827,11 @@ extern unsigned int sleepX __P((unsigned
+- #  ifndef LA_TYPE
+- #   define LA_TYPE	LA_SUBR
+- #  endif
+--#  define SFS_TYPE	SFS_MOUNT	/* use <sys/mount.h> statfs() impl */
+-+#  if defined(__NetBSD__) && (__NetBSD_Version__ > 299000900)
+-+#   define SFS_TYPE    SFS_STATVFS     /* use <sys/statvfs.h> statfs() impl */
+-+#  else
+-+#   define SFS_TYPE    SFS_MOUNT       /* use <sys/mount.h> statfs() impl */
+-+#  endif
+- #  define SPT_TYPE	SPT_PSSTRINGS	/* use PS_STRINGS pointer */
+- # endif /* defined(BSD4_4) && !defined(__bsdi__) && !defined(__GNU__) && !defined(DARWIN)*/
+- 
+--- a/mail/sendmail-snapshot/patches/patch-ah
++++ /dev/null
+@@ -1,38 +0,0 @@
+-$NetBSD: patch-ah,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- smrsh/smrsh.8.orig	2004-08-06 04:55:35.000000000 +0100
+-+++ smrsh/smrsh.8
+-@@ -39,7 +39,7 @@ Briefly,
+- .I smrsh
+- limits programs to be in a single directory,
+- by default
+--/usr/adm/sm.bin,
+-+@@SMRSH_CMDDIR@@,
+- allowing the system administrator to choose the set of acceptable commands,
+- and to the shell builtin commands ``exec'', ``exit'', and ``echo''.
+- It also rejects any commands with the characters
+-@@ -56,7 +56,7 @@ so forwarding to ``/usr/ucb/vacation'',
+- and
+- ``vacation''
+- all actually forward to
+--``/usr/adm/sm.bin/vacation''.
+-+``@@SMRSH_CMDDIR@@/vacation''.
+- .PP
+- System administrators should be conservative about populating
+- the sm.bin directory.
+-@@ -86,13 +86,9 @@ to adjust the default search path
+- (defaults to ``/bin:/usr/bin:/usr/ucb'')
+- and/or \-DSMRSH_CMDDIR=\e"\fIdir\fP\e"
+- to change the default program directory
+--(defaults to ``/usr/adm/sm.bin'').
+-+(defaults to ``@@SMRSH_CMDDIR@@'').
+- .SH FILES
+--/usr/adm/sm.bin \- default directory for restricted programs on most OSs
+--.PP
+--/var/adm/sm.bin \- directory for restricted programs on HP UX and Solaris
+--.PP
+--/usr/libexec/sm.bin \- directory for restricted programs on FreeBSD (>= 3.3) and DragonFly BSD
+-+@@SMRSH_CMDDIR@@ \- default directory for restricted programs
+- 
+- .SH SEE ALSO
+- sendmail(8)
+--- a/mail/sendmail-snapshot/patches/patch-ai
++++ /dev/null
+@@ -1,24 +0,0 @@
+-$NetBSD: patch-ai,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- sendmail/mci.c.orig	2020-05-19 19:54:33.000000000 +0000
+-+++ sendmail/mci.c
+-@@ -20,6 +20,7 @@ SM_RCSID("@(#)$Id: mci.c,v 8.225 2013-11
+- #endif
+- 
+- #include <dirent.h>
+-+#include <limits.h>
+- #if STARTTLS
+- # include <tls.h>
+- #endif
+-@@ -788,7 +789,11 @@ mci_lock_host_statfile(mci)
+- {
+- 	int save_errno = errno;
+- 	int retVal = EX_OK;
+-+#if defined(PATH_MAX)
+-+	char fname[PATH_MAX];
+-+#else
+- 	char fname[MAXPATHLEN];
+-+#endif
+- 
+- 	if (HostStatDir == NULL || mci->mci_host == NULL)
+- 		return EX_OK;
+--- a/mail/sendmail-snapshot/patches/patch-aj
++++ /dev/null
+@@ -1,18 +0,0 @@
+-$NetBSD: patch-aj,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- cf/cf/Makefile.orig	2005-06-13 22:16:34.000000000 -0400
+-+++ cf/cf/Makefile
+-@@ -25,10 +25,10 @@ CHMOD=	chmod
+- ROMODE=	444
+- RM=	rm -f
+- # use our own install program; should be really confINSTALL
+--INSTALL=../../devtools/bin/install.sh
+-+INSTALL=@@INSTALL@@
+- # CF file ownership/permissions
+--CFOWN=root
+--CFGRP=bin
+-+CFOWN=@@BINOWN@@
+-+CFGRP=@@BINGRP@@
+- CFMODE=0444
+- 
+- 
+--- a/mail/sendmail-snapshot/patches/patch-an
++++ /dev/null
+@@ -1,52 +0,0 @@
+-$NetBSD: patch-an,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- sendmail/Makefile.m4.orig	2023-02-09 18:24:38.000000000 +0000
+-+++ sendmail/Makefile.m4
+-@@ -4,9 +4,10 @@ include(confBUILDTOOLSDIR`/M4/switch.m4'
+- define(`confREQUIRE_LIBSM', `true')
+- define(`confREQUIRE_SM_OS_H', `true')
+- bldPRODUCT_START(`executable', `sendmail')
+--define(`bldBIN_TYPE', `G')
+-+dnl define(`bldBIN_TYPE', `G')
+- define(`bldINSTALL_DIR', `')
+- define(`bldSOURCES', `main.c alias.c arpadate.c bf.c collect.c conf.c control.c convtime.c daemon.c deliver.c domain.c envelope.c err.c headers.c macro.c map.c mci.c milter.c mime.c parseaddr.c queue.c ratectrl.c readcf.c recipient.c sasl.c savemail.c sched.c sfsasl.c shmticklib.c sm_resolve.c srvrsmtp.c stab.c stats.c sysexits.c timers.c tlsh.c tls.c trace.c udb.c usersmtp.c util.c version.c ')
+-+APPENDDEF(`bldSOURCES',`blacklist.c ')
+- PREPENDDEF(`confENVDEF', `confMAPDEF')
+- bldPUSH_SMLIB(`sm')
+- bldPUSH_SMLIB(`smutil')
+-@@ -68,7 +69,7 @@ ifdef(`confNO_STATISTICS_INSTALL',, `bld
+- divert(bldTARGETS_SECTION)
+- 
+- install-set-user-id: bldCURRENT_PRODUCT ifdef(`confNO_HELPFILE_INSTALL',, `install-hf') ifdef(`confNO_STATISTICS_INSTALL',, `install-st') ifdef(`confNO_MAN_BUILD',, `install-docs')
+--	${INSTALL} -c -o ${S`'BINOWN} -g ${S`'BINGRP} -m ${S`'BINMODE} bldCURRENT_PRODUCT ${DESTDIR}${M`'BINDIR}
+-+	${INSTALL} -c -m ${S`'BINMODE} bldCURRENT_PRODUCT ${DESTDIR}${M`'BINDIR}
+- 	for i in ${sendmailTARGET_LINKS}; do \
+- 		rm -f $$i; \
+- 		${LN} ${LNOPTS} ${M`'BINDIR}/sendmail $$i; \
+-@@ -76,7 +77,7 @@ install-set-user-id: bldCURRENT_PRODUCT 
+- 
+- define(`confMTA_LINKS', `${DESTDIR}${UBINDIR}/newaliases ${DESTDIR}${UBINDIR}/mailq ${DESTDIR}${UBINDIR}/hoststat ${DESTDIR}${UBINDIR}/purgestat')
+- install-sm-mta: bldCURRENT_PRODUCT
+--	${INSTALL} -c -o ${M`'BINOWN} -g ${M`'BINGRP} -m ${M`'BINMODE} bldCURRENT_PRODUCT ${DESTDIR}${M`'BINDIR}/sm-mta
+-+	${INSTALL} -c -m ${M`'BINMODE} bldCURRENT_PRODUCT ${DESTDIR}${M`'BINDIR}/sm-mta
+- 	for i in confMTA_LINKS; do \
+- 		rm -f $$i; \
+- 		${LN} ${LNOPTS} ${M`'BINDIR}/sm-mta $$i; \
+-@@ -84,14 +85,14 @@ install-sm-mta: bldCURRENT_PRODUCT
+- 
+- install-hf:
+- 	if [ ! -d ${DESTDIR}${HFDIR} ]; then mkdir -p ${DESTDIR}${HFDIR}; else :; fi
+--	${INSTALL} -c -o ${UBINOWN} -g ${UBINGRP} -m 444 helpfile ${DESTDIR}${HFFILE}
+-+	${INSTALL} -c -m 444 helpfile ${DESTDIR}${HFFILE}
+- 
+- install-st: statistics
+- 	if [ ! -d ${DESTDIR}${STDIR} ]; then mkdir -p ${DESTDIR}${STDIR}; else :; fi
+--	${INSTALL} -c -o ${SBINOWN} -g ${UBINGRP} -m ifdef(`confSTMODE', `confSTMODE', `0600') statistics ${DESTDIR}${STPATH}
+-+	${INSTALL} -c -m ifdef(`confSTMODE', `confSTMODE', `0600') statistics ${DESTDIR}${STPATH}
+- 
+- install-submit-st: statistics ${DESTDIR}${MSPQ}
+--	${INSTALL} -c -o ${MSPQOWN} -g ${GBINGRP} -m ifdef(`confSTMODE', `confSTMODE', `0600') statistics ${DESTDIR}${MSPQ}/${MSPSTFILE}
+-+	${INSTALL} -c -m ifdef(`confSTMODE', `confSTMODE', `0600') statistics ${DESTDIR}${MSPQ}/${MSPSTFILE}
+- 
+- divert(0)
+- bldPRODUCT_END
+--- a/mail/sendmail-snapshot/patches/patch-ao
++++ /dev/null
+@@ -1,50 +0,0 @@
+-$NetBSD: patch-ao,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- devtools/bin/install.sh.orig	2014-03-06 17:31:29.000000000 +0000
+-+++ devtools/bin/install.sh
+-@@ -101,25 +101,26 @@ then
+- 	$strip $dst
+- fi
+- 
+--# Change owner if requested
+--if [ ! -z "$owner" ]
+--then
+--	$chown $owner $dst
+--	if [ $? != 0 ]
+--	then
+--		exit 1
+--	fi
+--fi
+--
+--# Change group if requested
+--if [ ! -z "$group" ]
+--then
+--	chgrp $group $dst
+--	if [ $? != 0 ]
+--	then
+--		exit 1
+--	fi
+--fi
+-+# XXX Don't try to change owner or group, let pkgsrc infrastructure handle it.
+-+## Change owner if requested
+-+#if [ ! -z "$owner" ]
+-+#then
+-+#	$chown $owner $dst
+-+#	if [ $? != 0 ]
+-+#	then
+-+#		exit 1
+-+#	fi
+-+#fi
+-+#
+-+## Change group if requested
+-+#if [ ! -z "$group" ]
+-+#then
+-+#	chgrp $group $dst
+-+#	if [ $? != 0 ]
+-+#	then
+-+#		exit 1
+-+#	fi
+-+#fi
+- 
+- # Change mode if requested
+- if [ ! -z "$mode" ]
+--- a/mail/sendmail-snapshot/patches/patch-aq
++++ /dev/null
+@@ -1,15 +0,0 @@
+-$NetBSD: patch-aq,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- sendmail/conf.h.orig	2020-05-19 19:54:33.000000000 +0000
+-+++ sendmail/conf.h
+-@@ -236,6 +236,10 @@ struct rusage;	/* forward declaration to
+- # define PIPELINING	1	/* SMTP PIPELINING */
+- #endif
+- 
+-+#ifndef NAMED_RESN
+-+# define NAMED_RESN	1	/* res_n* functions are available */
+-+#endif
+-+
+- /**********************************************************************
+- **  End of site-specific configuration.
+- **********************************************************************/
+--- a/mail/sendmail-snapshot/patches/patch-ar
++++ /dev/null
+@@ -1,119 +0,0 @@
+-$NetBSD: patch-ar,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- sendmail/daemon.c.orig	2020-06-02 09:41:43.000000000 +0000
+-+++ sendmail/daemon.c
+-@@ -75,6 +75,10 @@ SM_RCSID("@(#)$Id: daemon.c,v 8.698 2013
+- # endif /* HAS_IN_H */
+- #endif /* IP_SRCROUTE && NETINET */
+- 
+-+#if NAMED_BIND
+-+extern struct __res_state sm_res;
+-+#endif
+-+
+- #include <sm/fdset.h>
+- 
+- #include <ratectrl.h>
+-@@ -774,6 +778,8 @@ getrequests(e)
+- 						anynet_ntoa(&RealHostAddr));
+- 			}
+- 
+-+			BLACKLIST_INIT();
+-+
+- 			if (pipefd[0] != -1)
+- 			{
+- 				auto char c;
+-@@ -2335,16 +2341,16 @@ makeconnection(host, port, mci, e, enoug
+- 				if (hp == NULL && p[-1] == '.')
+- 				{
+- #if NAMED_BIND
+--					int oldopts = _res.options;
+-+					int oldopts = sm_res.options;
+- 
+--					_res.options &= ~(RES_DEFNAMES|RES_DNSRCH);
+-+					sm_res.options &= ~(RES_DEFNAMES|RES_DNSRCH);
+- #endif /* NAMED_BIND */
+- 					p[-1] = '\0';
+- 					hp = sm_gethostbyname(&host[1],
+- 							      family);
+- 					p[-1] = '.';
+- #if NAMED_BIND
+--					_res.options = oldopts;
+-+					sm_res.options = oldopts;
+- #endif
+- 				}
+- 				*p = ']';
+-@@ -2420,15 +2426,15 @@ makeconnection(host, port, mci, e, enoug
+- 			if (hp == NULL && *p == '.')
+- 			{
+- #if NAMED_BIND
+--				int oldopts = _res.options;
+-+				int oldopts = sm_res.options;
+- 
+--				_res.options &= ~(RES_DEFNAMES|RES_DNSRCH);
+-+				sm_res.options &= ~(RES_DEFNAMES|RES_DNSRCH);
+- #endif
+- 				*p = '\0';
+- 				hp = sm_gethostbyname(host, family);
+- 				*p = '.';
+- #if NAMED_BIND
+--				_res.options = oldopts;
+-+				sm_res.options = oldopts;
+- #endif
+- 			}
+- 		}
+-@@ -4136,13 +4142,13 @@ host_map_lookup(map, name, av, statp)
+- #if NAMED_BIND
+- 	if (map->map_timeout > 0)
+- 	{
+--		retrans = _res.retrans;
+--		_res.retrans = map->map_timeout;
+-+		retrans = sm_res.retrans;
+-+		sm_res.retrans = map->map_timeout;
+- 	}
+- 	if (map->map_retry > 0)
+- 	{
+--		retry = _res.retry;
+--		_res.retry = map->map_retry;
+-+		retry = sm_res.retry;
+-+		sm_res.retry = map->map_retry;
+- 	}
+- #endif /* NAMED_BIND */
+- 
+-@@ -4220,9 +4226,9 @@ host_map_lookup(map, name, av, statp)
+- 	}
+- #if NAMED_BIND
+- 	if (map->map_timeout > 0)
+--		_res.retrans = retrans;
+-+		sm_res.retrans = retrans;
+- 	if (map->map_retry > 0)
+--		_res.retry = retry;
+-+		sm_res.retry = retry;
+- #endif /* NAMED_BIND */
+- 
+- 	s->s_namecanon.nc_flags |= NCF_VALID;	/* will be soon */
+-@@ -4551,11 +4557,11 @@ hostnamebyanyaddr(sap)
+- 
+- # if NAMED_BIND
+- 	/* shorten name server timeout to avoid higher level timeouts */
+--	saveretry = _res.retry;
+--	if (_res.retry * _res.retrans > 20)
+--		_res.retry = 20 / _res.retrans;
+--	if (_res.retry == 0)
+--		_res.retry = 1;
+-+	saveretry = sm_res.retry;
+-+	if (sm_res.retry * sm_res.retrans > 20)
+-+		sm_res.retry = 20 / sm_res.retrans;
+-+	if (sm_res.retry == 0)
+-+		sm_res.retry = 1;
+- # endif /* NAMED_BIND */
+- 
+- 	switch (sap->sa.sa_family)
+-@@ -4594,7 +4600,7 @@ hostnamebyanyaddr(sap)
+- 	}
+- 
+- # if NAMED_BIND
+--	_res.retry = saveretry;
+-+	sm_res.retry = saveretry;
+- # endif
+- 
+- # if NETINET || NETINET6
+--- a/mail/sendmail-snapshot/patches/patch-as
++++ /dev/null
+@@ -1,60 +0,0 @@
+-$NetBSD: patch-as,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- sendmail/deliver.c.orig	2023-02-22 16:41:28.000000000 +0000
+-+++ sendmail/deliver.c
+-@@ -31,6 +31,10 @@ SM_RCSID("@(#)$Id: deliver.c,v 8.1030 20
+- # include "tls.h"
+- #endif
+- 
+-+#if NAMED_BIND
+-+extern struct __res_state sm_res;
+-+#endif
+-+
+- #if !_FFR_DMTRIGGER
+- static int	deliver __P((ENVELOPE *, ADDRESS *));
+- #endif
+-@@ -2245,7 +2249,7 @@ deliver(e, firstto)
+- 
+- #if NAMED_BIND
+- 	if (ConfigLevel < 2)
+--		_res.options &= ~(RES_DEFNAMES | RES_DNSRCH);	/* XXX */
+-+		sm_res.options &= ~(RES_DEFNAMES | RES_DNSRCH);	/* XXX */
+- #endif
+- 
+- 	if (tTd(11, 1))
+-@@ -4100,7 +4104,7 @@ do_transfer:
+- 	}
+- #if NAMED_BIND
+- 	if (ConfigLevel < 2)
+--		_res.options |= RES_DEFNAMES | RES_DNSRCH;	/* XXX */
+-+		sm_res.options |= RES_DEFNAMES | RES_DNSRCH;	/* XXX */
+- #endif
+- 
+- 	if (tTd(62, 1))
+-@@ -6618,7 +6622,7 @@ hostsignature(m, host, ad)
+- 	char *hp;
+- 	char *endp;
+- 	char *lstr;
+--	int oldoptions = _res.options;
+-+	int oldoptions = sm_res.options;
+- 	char *mxhosts[MAXMXHOSTS + 1];
+- 	unsigned short mxprefs[MAXMXHOSTS + 1];
+- #endif /* NAMED_BIND */
+-@@ -6688,7 +6692,7 @@ hostsignature(m, host, ad)
+- 
+- #if NAMED_BIND
+- 	if (ConfigLevel < 2)
+--		_res.options &= ~(RES_DEFNAMES | RES_DNSRCH);	/* XXX */
+-+		sm_res.options &= ~(RES_DEFNAMES | RES_DNSRCH);	/* XXX */
+- 
+- 	for (hp = host; hp != NULL; hp = endp)
+- 	{
+-@@ -6821,7 +6825,7 @@ hostsignature(m, host, ad)
+- 	lstr = makelower_a(&s->s_hostsig.hs_sig, NULL);
+- 	ASSIGN_IFDIFF(s->s_hostsig.hs_sig, lstr);
+- 	if (ConfigLevel < 2)
+--		_res.options = oldoptions;
+-+		sm_res.options = oldoptions;
+- #else /* NAMED_BIND */
+- 	/* not using BIND -- the signature is just the host name */
+- 	/*
+--- a/mail/sendmail-snapshot/patches/patch-at
++++ /dev/null
+@@ -1,146 +0,0 @@
+-$NetBSD: patch-at,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- sendmail/domain.c.orig	2023-07-24 18:49:57.000000000 +0000
+-+++ sendmail/domain.c
+-@@ -23,6 +23,7 @@ SM_RCSID("@(#)$Id: domain.c,v 8.205 2013
+- #include <sm/sendmail.h>
+- 
+- #if NAMED_BIND
+-+extern struct __res_state sm_res;
+- # include <arpa/inet.h>
+- # include "sm_resolve.h"
+- # if DANE
+-@@ -51,7 +52,7 @@ static char	MXHostBuf[MXHOSTBUFSIZE];
+- # endif
+- 
+- # ifndef RES_DNSRCH_VARIABLE
+--#  define RES_DNSRCH_VARIABLE	_res.dnsrch
+-+#  define RES_DNSRCH_VARIABLE	sm_res.dnsrch
+- # endif
+- 
+- # ifndef HFIXEDSZ
+-@@ -909,9 +910,9 @@ getmxrr(host, mxhosts, mxprefs, flags, r
+- # if DANE
+- 	cname2mx = false;
+- 	qname[0] = '\0';
+--	old_options = _res.options;
+-+	old_options = sm_res.options;
+- 	if (ad)
+--		_res.options |= SM_RES_DNSSEC;
+-+		sm_res.options |= SM_RES_DNSSEC;
+- # endif
+- 
+- 	if ((fallbackMX != NULL && (flags & DROPLOCALHOST) != 0 &&
+-@@ -1072,7 +1073,7 @@ getmxrr(host, mxhosts, mxprefs, flags, r
+- # endif
+- 		if (type != T_MX)
+- 		{
+--			if ((tTd(8, 8) || _res.options & RES_DEBUG)
+-+			if ((tTd(8, 8) || sm_res.options & RES_DEBUG)
+- # if DANE
+- 			    && type != T_RRSIG
+- # endif
+-@@ -1410,13 +1411,13 @@ punt:
+- 	}
+-     done:
+- # if DANE
+--	_res.options = old_options;
+-+	sm_res.options = old_options;
+- # endif
+- 	return nmx;
+- 
+-    error:
+- # if DANE
+--	_res.options = old_options;
+-+	sm_res.options = old_options;
+- # endif
+- 	return -1;
+- }
+-@@ -1486,7 +1487,7 @@ bestmx_map_lookup(map, name, av, statp)
+- 	int *statp;
+- {
+- 	int nmx;
+--	int saveopts = _res.options;
+-+	int saveopts = sm_res.options;
+- 	int i;
+- 	ssize_t len = 0;
+- 	char *result;
+-@@ -1498,9 +1499,9 @@ bestmx_map_lookup(map, name, av, statp)
+- 	char buf[PSBUFSIZE / 2];
+- # endif
+- 
+--	_res.options &= ~(RES_DNSRCH|RES_DEFNAMES);
+-+	sm_res.options &= ~(RES_DNSRCH|RES_DEFNAMES);
+- 	nmx = getmxrr(name, mxhosts, NULL, 0, statp, NULL, -1, NULL);
+--	_res.options = saveopts;
+-+	sm_res.options = saveopts;
+- 	if (nmx <= 0)
+- 		return NULL;
+- 	if (bitset(MF_MATCHONLY, map->map_mflags))
+-@@ -1650,16 +1651,22 @@ dns_getcanonname(host, hbsize, trymx, st
+- 	if (tTd(8, 2))
+- 		sm_dprintf("dns_getcanonname(%s, trymx=%d)\n", host, trymx);
+- 
+--	if ((_res.options & RES_INIT) == 0 && res_init() == -1)
+--	{
+--		*statp = EX_UNAVAILABLE;
+--		return HOST_NOTFOUND;
+-+	if ((sm_res.options & RES_INIT) == 0) {
+-+# if NAMED_RESN
+-+		memset(&sm_res, 0, sizeof(sm_res));
+-+		if (res_ninit(&sm_res) == -1) {
+-+# else
+-+		if (res_init() == -1) {
+-+# endif
+-+			*statp = EX_UNAVAILABLE;
+-+			return false;
+-+		}
+- 	}
+- 
+- # if DANE
+--	old_options = _res.options;
+-+	old_options = sm_res.options;
+- 	if (DANE_SECURE == Dane)
+--		_res.options |= SM_RES_DNSSEC;
+-+		sm_res.options |= SM_RES_DNSSEC;
+- # endif
+- 
+- 	*statp = EX_OK;
+-@@ -1709,7 +1716,7 @@ cnameloop:
+- 		searchlist[sli++] = NameSearchList;
+- 	}
+- # endif
+--	if (n >= 0 && *--cp != '.' && bitset(RES_DNSRCH, _res.options))
+-+	if (n >= 0 && *--cp != '.' && bitset(RES_DNSRCH, sm_res.options))
+- 	{
+- 		/* make sure there are less than MAXDNSRCH domains */
+- 		for (domain = RES_DNSRCH_VARIABLE, ret = 0;
+-@@ -1717,10 +1724,10 @@ cnameloop:
+- 		     ret++)
+- 			searchlist[sli++] = *domain++;
+- 	}
+--	else if (n == 0 && bitset(RES_DEFNAMES, _res.options))
+-+	else if (n == 0 && bitset(RES_DEFNAMES, sm_res.options))
+- 	{
+- 		SM_ASSERT(sli < SLSIZE);
+--		searchlist[sli++] = _res.defdname;
+-+		searchlist[sli++] = sm_res.defdname;
+- 	}
+- 	else if (*cp == '.')
+- 	{
+-@@ -2026,13 +2033,13 @@ nexttype:
+- 	if (ttl > 0 && pttl != NULL)
+- 		*pttl = ttl;
+- # if DANE
+--	_res.options = old_options;
+-+	sm_res.options = old_options;
+- # endif
+- 	return ad ? HOST_SECURE : HOST_OK;
+- 
+-   error:
+- # if DANE
+--	_res.options = old_options;
+-+	sm_res.options = old_options;
+- # endif
+- 	return HOST_NOTFOUND;
+- }
+--- a/mail/sendmail-snapshot/patches/patch-au
++++ /dev/null
+@@ -1,89 +0,0 @@
+-$NetBSD: patch-au,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- sendmail/main.c.orig	2020-06-02 09:41:43.000000000 +0000
+-+++ sendmail/main.c
+-@@ -153,6 +153,10 @@ int		SyslogPrefixLen; /* estimated lengt
+- 	}								\
+- }
+- 
+-+#if NAMED_BIND
+-+struct __res_state sm_res;
+-+#endif
+-+
+- int
+- main(argc, argv, envp)
+- 	int argc;
+-@@ -215,6 +219,15 @@ main(argc, argv, envp)
+- 	envp = environ;
+- #endif
+- 
+-+#if NAMED_BIND
+-+# if NAMED_RESN
+-+	sm_res = *(struct __res_state *)sm_malloc(sizeof(struct __res_state));
+-+	memset(&sm_res, 0, sizeof(struct __res_state));
+-+# else
+-+	sm_res = _res;
+-+# endif
+-+#endif
+-+
+- 	/* turn off profiling */
+- 	SM_PROF(0);
+- 
+-@@ -697,21 +710,25 @@ main(argc, argv, envp)
+- 	*/
+- 
+- #if NAMED_BIND
+--	if (!bitset(RES_INIT, _res.options))
+-+	if (!bitset(RES_INIT, sm_res.options))
+-+# if NAMED_RESN
+-+		(void) res_ninit(&sm_res);
+-+# else
+- 		(void) res_init();
+-+# endif
+- 	if (tTd(8, 8))
+--		_res.options |= RES_DEBUG;
+-+		sm_res.options |= RES_DEBUG;
+- 	else
+--		_res.options &= ~RES_DEBUG;
+-+		sm_res.options &= ~RES_DEBUG;
+- # ifdef RES_NOALIASES
+--	_res.options |= RES_NOALIASES;
+-+	sm_res.options |= RES_NOALIASES;
+- # endif
+--	TimeOuts.res_retry[RES_TO_DEFAULT] = _res.retry;
+--	TimeOuts.res_retry[RES_TO_FIRST] = _res.retry;
+--	TimeOuts.res_retry[RES_TO_NORMAL] = _res.retry;
+--	TimeOuts.res_retrans[RES_TO_DEFAULT] = _res.retrans;
+--	TimeOuts.res_retrans[RES_TO_FIRST] = _res.retrans;
+--	TimeOuts.res_retrans[RES_TO_NORMAL] = _res.retrans;
+-+	TimeOuts.res_retry[RES_TO_DEFAULT] = sm_res.retry;
+-+	TimeOuts.res_retry[RES_TO_FIRST] = sm_res.retry;
+-+	TimeOuts.res_retry[RES_TO_NORMAL] = sm_res.retry;
+-+	TimeOuts.res_retrans[RES_TO_DEFAULT] = sm_res.retrans;
+-+	TimeOuts.res_retrans[RES_TO_FIRST] = sm_res.retrans;
+-+	TimeOuts.res_retrans[RES_TO_NORMAL] = sm_res.retrans;
+- #endif /* NAMED_BIND */
+- 
+- 	errno = 0;
+-@@ -1394,8 +1411,8 @@ main(argc, argv, envp)
+- 	}
+- 
+- #if NAMED_BIND
+--	_res.retry = TimeOuts.res_retry[RES_TO_DEFAULT];
+--	_res.retrans = TimeOuts.res_retrans[RES_TO_DEFAULT];
+-+	sm_res.retry = TimeOuts.res_retry[RES_TO_DEFAULT];
+-+	sm_res.retrans = TimeOuts.res_retrans[RES_TO_DEFAULT];
+- #endif
+- 
+- 	/*
+-@@ -2944,8 +2961,8 @@ main(argc, argv, envp)
+- 		sm_getla();
+- 		GrabTo = false;
+- #if NAMED_BIND
+--		_res.retry = TimeOuts.res_retry[RES_TO_FIRST];
+--		_res.retrans = TimeOuts.res_retrans[RES_TO_FIRST];
+-+		sm_res.retry = TimeOuts.res_retry[RES_TO_FIRST];
+-+		sm_res.retrans = TimeOuts.res_retrans[RES_TO_FIRST];
+- #endif
+- 		next = e->e_sibling;
+- 		e->e_sibling = NULL;
+--- a/mail/sendmail-snapshot/patches/patch-av
++++ /dev/null
+@@ -1,33 +0,0 @@
+-$NetBSD: patch-av,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- sendmail/queue.c.orig	2020-05-27 16:32:09.000000000 +0000
+-+++ sendmail/queue.c
+-@@ -34,6 +34,10 @@ SM_RCSID("@(#)$Id: queue.c,v 8.1000 2013
+- # define SM_OPEN_EXLOCK 0
+- #endif
+- 
+-+#if NAMED_BIND
+-+extern struct __res_state sm_res;
+-+#endif
+-+
+- /*
+- **  Historical notes:
+- **	QF_VERSION == 4 was sendmail 8.10/8.11 without _FFR_QUEUEDELAY
+-@@ -4394,13 +4398,13 @@ readqf(e, openonly)
+- 			/* adjust BIND parameters immediately */
+- 			if (e->e_ntries == 0)
+- 			{
+--				_res.retry = TimeOuts.res_retry[RES_TO_FIRST];
+--				_res.retrans = TimeOuts.res_retrans[RES_TO_FIRST];
+-+				sm_res.retry = TimeOuts.res_retry[RES_TO_FIRST];
+-+				sm_res.retrans = TimeOuts.res_retrans[RES_TO_FIRST];
+- 			}
+- 			else
+- 			{
+--				_res.retry = TimeOuts.res_retry[RES_TO_NORMAL];
+--				_res.retrans = TimeOuts.res_retrans[RES_TO_NORMAL];
+-+				sm_res.retry = TimeOuts.res_retry[RES_TO_NORMAL];
+-+				sm_res.retrans = TimeOuts.res_retrans[RES_TO_NORMAL];
+- 			}
+- #endif /* NAMED_BIND */
+- 			break;
+--- a/mail/sendmail-snapshot/patches/patch-aw
++++ /dev/null
+@@ -1,54 +0,0 @@
+-$NetBSD: patch-aw,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- sendmail/readcf.c.orig	2023-04-27 10:39:42.000000000 +0000
+-+++ sendmail/readcf.c
+-@@ -26,6 +26,10 @@ SM_RCSID("@(#)$Id: readcf.c,v 8.692 2013
+- # include <arpa/inet.h>
+- #endif
+- 
+-+#if NAMED_BIND
+-+extern struct __res_state sm_res;
+-+#endif
+-+
+- 
+- #define SECONDS
+- #define MINUTES	* 60
+-@@ -3210,6 +3214,9 @@ static struct optioninfo
+- 	{ "CipherSuites",		O_CIPHERSUITES,	OI_NONE	},
+- #endif
+- 
+-+# define O_BLACKLIST	0xfb
+-+	{ "UseBlacklist",		O_BLACKLIST,	OI_NONE },
+-+
+- 	{ NULL,				'\0',		OI_NONE	}
+- };
+- 
+-@@ -3620,13 +3627,13 @@ setoption(opt, val, safe, sticky, e)
+- 			if (rfp->rf_name == NULL)
+- 				syserr("readcf: I option value %s unrecognized", q);
+- 			else if (clearmode)
+--				_res.options &= ~rfp->rf_bits;
+-+				sm_res.options &= ~rfp->rf_bits;
+- 			else
+--				_res.options |= rfp->rf_bits;
+-+				sm_res.options |= rfp->rf_bits;
+- 		}
+- 		if (tTd(8, 2))
+--			sm_dprintf("_res.options = %x, HasWildcardMX = %d\n",
+--				   (unsigned int) _res.options, HasWildcardMX);
+-+			sm_dprintf("sm_res.options = %x, HasWildcardMX = %d\n",
+-+				   (unsigned int) sm_res.options, HasWildcardMX);
+- #else /* NAMED_BIND */
+- 		usrerr("name server (I option) specified but BIND not compiled in");
+- #endif /* NAMED_BIND */
+-@@ -4949,6 +4956,10 @@ setoption(opt, val, safe, sticky, e)
+- 		break;
+- #endif
+- 
+-+	  case O_BLACKLIST:
+-+		UseBlacklist = atobool(val);
+-+		break;
+-+
+- 	  default:
+- 		if (tTd(37, 1))
+- 		{
+--- a/mail/sendmail-snapshot/patches/patch-ax
++++ /dev/null
+@@ -1,18 +0,0 @@
+-$NetBSD: patch-ax,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- sendmail/savemail.c.orig	2020-06-08 08:35:03.000000000 +0000
+-+++ sendmail/savemail.c
+-@@ -17,2 +17,6 @@ SM_RCSID("@(#)$Id: savemail.c,v 8.319 20
+- 
+-+#if NAMED_BIND
+-+extern struct __res_state sm_res;
+-+#endif
+-+
+- static bool	errbody __P((MCI *, ENVELOPE *, char *));
+-@@ -598,4 +602,4 @@ returntosender(msg, returnq, flags, e)
+- #if NAMED_BIND
+--	_res.retry = TimeOuts.res_retry[RES_TO_FIRST];
+--	_res.retrans = TimeOuts.res_retrans[RES_TO_FIRST];
+-+	sm_res.retry = TimeOuts.res_retry[RES_TO_FIRST];
+-+	sm_res.retrans = TimeOuts.res_retrans[RES_TO_FIRST];
+- #endif
+--- a/mail/sendmail-snapshot/patches/patch-ay
++++ /dev/null
+@@ -1,121 +0,0 @@
+-$NetBSD: patch-ay,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- sendmail/sm_resolve.c.orig	2023-02-09 18:24:38.000000000 +0000
+-+++ sendmail/sm_resolve.c
+-@@ -61,2 +61,6 @@ SM_RCSID("$Id: sm_resolve.c,v 8.40 2013-
+- 
+-+#if NAMED_BIND
+-+extern struct __res_state sm_res;
+-+#endif
+-+
+- static struct stot
+-@@ -879,3 +883,3 @@ dnscrtrr(domain, query, qtype, value, rr
+- 
+--			adflag = (_res.options & RES_USE_DNSSEC) != 0;
+-+			adflag = (sm_res.options & RES_USE_DNSSEC) != 0;
+- 
+-@@ -1239,3 +1243,2 @@ dns_lookup_int(domain, rr_class, rr_type
+- 	unsigned char *reply;
+--	int (*resfunc) __P((const char *, int, int, u_char *, int));
+- 
+-@@ -1246,10 +1249,4 @@ dns_lookup_int(domain, rr_class, rr_type
+- 
+--	resfunc = res_search;
+--#  if DNSSEC_TEST
+--	if (tTd(8, 110))
+--		resfunc = tstdns_search;
+--#  endif
+--
+--	old_options = _res.options;
+--	_res.options |= options;
+-+	old_options = sm_res.options;
+-+	sm_res.options |= options;
+- 	if (err != NULL)
+-@@ -1260,3 +1257,3 @@ dns_lookup_int(domain, rr_class, rr_type
+- 	{
+--		_res.options |= RES_DEBUG;
+-+		sm_res.options |= RES_DEBUG;
+- 		sm_dprintf("dns_lookup_int(%s, %d, %s, %x)\n", domain,
+-@@ -1267,4 +1264,4 @@ dns_lookup_int(domain, rr_class, rr_type
+- 		sm_dprintf("NS=%s, port=%d\n",
+--			inet_ntoa(_res.nsaddr_list[0].sin_addr),
+--			ntohs(_res.nsaddr_list[0].sin_port));
+-+			inet_ntoa(sm_res.nsaddr_list[0].sin_addr),
+-+			ntohs(sm_res.nsaddr_list[0].sin_port));
+- #  endif
+-@@ -1272,4 +1269,4 @@ dns_lookup_int(domain, rr_class, rr_type
+- 	{
+--		save_retrans = _res.retrans;
+--		_res.retrans = retrans;
+-+		save_retrans = sm_res.retrans;
+-+		sm_res.retrans = retrans;
+- 	}
+-@@ -1277,4 +1274,4 @@ dns_lookup_int(domain, rr_class, rr_type
+- 	{
+--		save_retry = _res.retry;
+--		_res.retry = retry;
+-+		save_retry = sm_res.retry;
+-+		sm_res.retry = retry;
+- 	}
+-@@ -1283,3 +1280,12 @@ dns_lookup_int(domain, rr_class, rr_type
+- 	reply = (unsigned char *)&reply_buf;
+--	len = (*resfunc)(domain, rr_class, rr_type, reply, SMRBSIZE);
+-+#  if DNSSEC_TEST
+-+	if (tTd(8, 110))
+-+		len = tstdns_search(domain, rr_class, rr_type, reply, SMRBSIZE);
+-+	else
+-+#  endif
+-+#  if NAMED_RESN
+-+	len = res_nsearch(&sm_res, domain, rr_class, rr_type, reply, SMRBSIZE);
+-+#  else
+-+	len = res_search(domain, rr_class, rr_type, reply, SMRBSIZE);
+-+#  endif
+- 	if (len >= SMRBSIZE)
+-@@ -1303,4 +1309,15 @@ dns_lookup_int(domain, rr_class, rr_type
+- 				SM_SET_H_ERRNO(0);
+--				len = (*resfunc)(domain, rr_class, rr_type,
+--						 reply, IP_MAXPACKET);
+-+#  if DNSSEC_TEST
+-+				if (tTd(8, 110))
+-+					len = tstdns_search(domain, rr_class,
+-+					    rr_type, reply, IP_MAXPACKET);
+-+				else
+-+#  endif
+-+#  if NAMED_RESN
+-+				len = res_nsearch(&sm_res, domain, rr_class,
+-+				    rr_type, reply, IP_MAXPACKET);
+-+#  else
+-+				len = res_search(domain, rr_class, rr_type,
+-+				    reply, IP_MAXPACKET);
+-+#  endif
+- 			}
+-@@ -1308,3 +1325,3 @@ dns_lookup_int(domain, rr_class, rr_type
+- 	}
+--	_res.options = old_options;
+-+	sm_res.options = old_options;
+- 	if (len < 0)
+-@@ -1344,5 +1361,5 @@ dns_lookup_int(domain, rr_class, rr_type
+- 	if (retrans > 0)
+--		_res.retrans = save_retrans;
+-+		sm_res.retrans = save_retrans;
+- 	if (retry > 0)
+--		_res.retry = save_retry;
+-+		sm_res.retry = save_retry;
+- 	return dr;
+-@@ -1578,7 +1595,7 @@ dns_addns(ns, port)
+- 		syserr("too many NameServers defined (%d max)", MAXNS);
+--	_res.nsaddr_list[nsidx].sin_family = AF_INET;
+--	_res.nsaddr_list[nsidx].sin_addr = *ns;
+-+	sm_res.nsaddr_list[nsidx].sin_family = AF_INET;
+-+	sm_res.nsaddr_list[nsidx].sin_addr = *ns;
+- 	if (port != 0)
+--		_res.nsaddr_list[nsidx].sin_port = htons(port);
+--	_res.nscount = ++nsidx;
+-+		sm_res.nsaddr_list[nsidx].sin_port = htons(port);
+-+	sm_res.nscount = ++nsidx;
+- 	if (tTd(8, 61))
+-@@ -1639,3 +1656,3 @@ nsportip(p)
+- 	{
+--		if ((_res.options & RES_INIT) == 0)
+-+		if ((sm_res.options & RES_INIT) == 0)
+- 			(void) res_init();
+--- a/mail/sendmail-snapshot/patches/patch-az
++++ /dev/null
+@@ -1,89 +0,0 @@
+-$NetBSD: patch-az,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- sendmail/srvrsmtp.c.orig	2023-12-05 09:53:22.000000000 +0000
+-+++ sendmail/srvrsmtp.c
+-@@ -51,6 +51,10 @@ static bool	tls_ok_srv = false;
+- static bool	NotFirstDelivery = false;
+- #endif
+- 
+-+#if NAMED_BIND
+-+extern struct __res_state sm_res;
+-+#endif
+-+
+- /* server features */
+- #define SRV_NONE	0x00000000	/* none... */
+- #define SRV_OFFER_TLS	0x00000001	/* offer STARTTLS */
+-@@ -1801,7 +1805,12 @@ smtp(nullserver, d_flags, e)
+- 			/* get an OK if we're done */
+- 			if (result == SASL_OK)
+- 			{
+-+				int fd;
+-+
+-   authenticated:
+-+				fd = sm_io_getinfo(InChannel, SM_IO_WHAT_FD, NULL);
+-+				BLACKLIST_NOTIFY(BLACKLIST_AUTH_OK, fd, "AUTH OK");
+-+
+- 				message("235 2.0.0 OK Authenticated");
+- 				authenticating = SASL_IS_AUTH;
+- 				macdefine(&BlankEnvelope.e_macro, A_TEMP,
+-@@ -1946,6 +1955,7 @@ smtp(nullserver, d_flags, e)
+- 	{	\
+- 		SET_AUTH_USER_CONDITIONALLY	\
+- 		message("535 5.7.0 authentication failed");	\
+-+		BLACKLIST_NOTIFY(BLACKLIST_AUTH_FAIL, sm_io_getinfo(InChannel, SM_IO_WHAT_FD, NULL), "AUTH FAIL");	\
+- 		if (LogLevel >= 9)	\
+- 			sm_syslog(LOG_WARNING, e->e_id,	\
+- 				  "AUTH failure (%s): %s (%d) %s%s%.*s, relay=%.100s",	\
+-@@ -2061,6 +2071,10 @@ smtp(nullserver, d_flags, e)
+- 				if (nullserver != NULL &&
+- 				    ++n_badcmds > MAXBADCOMMANDS)
+- 				{
+-+					int fd;
+-+
+-+					fd = sm_io_getinfo(InChannel, SM_IO_WHAT_FD, NULL);
+-+					BLACKLIST_NOTIFY(BLACKLIST_ABUSIVE_BEHAVIOR, fd, "too many bad commands");
+- 					message("421 4.7.0 %s Too many bad commands; closing connection",
+- 						MyHostName);
+- 
+-@@ -2578,6 +2592,7 @@ smtp(nullserver, d_flags, e)
+- 					"rejecting %s from %s [%s] due to traffic before response",
+- 					SmtpPhase, CurHostName,
+- 					anynet_ntoa(&RealHostAddr));
+-+				BLACKLIST_NOTIFY(BLACKLIST_AUTH_FAIL, fd, "pre-greeting traffic");
+- 				usrerr("554 5.5.0 SMTP protocol error");
+- 				nullserver = "Command rejected";
+- #if MILTER
+-@@ -3514,7 +3529,10 @@ smtp(nullserver, d_flags, e)
+- 			if (!smtp_data(&smtp, e,
+- 					!bitset(SRV_ALLOW_BAD_PIPELINE, features) &&
+- 					!gothello && !tls_active && !auth_active))
+-+			{
+-+				BLACKLIST_NOTIFY(BLACKLIST_ABUSIVE_BEHAVIOR, fd, "pre-DATA traffic stuffing");
+- 				goto doquit;
+-+			}
+- 			break;
+- 
+- 		  case CMDRSET:		/* rset -- reset state */
+-@@ -3921,7 +3939,11 @@ smtp(nullserver, d_flags, e)
+- #if MAXBADCOMMANDS > 0
+- 			if (++n_badcmds > MAXBADCOMMANDS)
+- 			{
+-+				int fd;
+-+
+-   stopattack:
+-+				fd = sm_io_getinfo(InChannel, SM_IO_WHAT_FD, NULL);
+-+				BLACKLIST_NOTIFY(BLACKLIST_ABUSIVE_BEHAVIOR, fd, "too many bad commands");
+- 				message("421 4.7.0 %s Too many bad commands; closing connection",
+- 					MyHostName);
+- 
+-@@ -4414,8 +4436,8 @@ smtp_data(smtp, e, check_stuffing)
+- 	id = e->e_id;
+- 
+- #if NAMED_BIND
+--	_res.retry = TimeOuts.res_retry[RES_TO_FIRST];
+--	_res.retrans = TimeOuts.res_retrans[RES_TO_FIRST];
+-+	sm_res.retry = TimeOuts.res_retry[RES_TO_FIRST];
+-+	sm_res.retrans = TimeOuts.res_retrans[RES_TO_FIRST];
+- #endif
+- 
+- #if _FFR_PROXY
+--- a/mail/sendmail-snapshot/patches/patch-ba
++++ /dev/null
+@@ -1,13 +0,0 @@
+-$NetBSD: patch-ba,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- devtools/M4/UNIX/executable.m4.orig	2014-03-06 17:31:29.000000000 +0000
+-+++ devtools/M4/UNIX/executable.m4
+-@@ -31,7 +31,7 @@ ifdef(`bldLINK_SOURCES', `bldMAKE_SOURCE
+- ifdef(`bldNO_INSTALL', ,
+- `install-`'bldCURRENT_PRODUCT: bldCURRENT_PRODUCT ifdef(`bldTARGET_INST_DEP', `bldTARGET_INST_DEP')
+- 	ifdef(`confMKDIR', `if [ ! -d ${DESTDIR}${bldINSTALL_DIR`'BINDIR} ]; then confMKDIR -p ${DESTDIR}${bldINSTALL_DIR`'BINDIR}; else :; fi ')
+--	${INSTALL} -c -o ${bldBIN_TYPE`'BINOWN} -g ${bldBIN_TYPE`'BINGRP} -m ${bldBIN_TYPE`'BINMODE} bldCURRENT_PRODUCT ${DESTDIR}${bldINSTALL_DIR`'BINDIR}
+-+	${INSTALL} -c -m ${bldBIN_TYPE`'BINMODE} bldCURRENT_PRODUCT ${DESTDIR}${bldINSTALL_DIR`'BINDIR}
+- ifdef(`bldTARGET_LINKS', `bldMAKE_TARGET_LINKS(${bldINSTALL_DIR`'BINDIR}/bldCURRENT_PRODUCT, ${bldCURRENT_PRODUCT`'TARGET_LINKS})')')
+- 
+- strip-`'bldCURRENT_PRODUCT: bldCURRENT_PRODUCT
+--- a/mail/sendmail-snapshot/patches/patch-bb
++++ /dev/null
+@@ -1,13 +0,0 @@
+-$NetBSD: patch-bb,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- devtools/M4/UNIX/library.m4.orig	2014-03-06 17:31:29.000000000 +0000
+-+++ devtools/M4/UNIX/library.m4
+-@@ -28,7 +28,7 @@ ifdef(`bldLINK_SOURCES', `bldMAKE_SOURCE
+- 
+- install-`'bldCURRENT_PRODUCT: bldCURRENT_PRODUCT.a
+- ifdef(`bldINSTALLABLE', `	ifdef(`confMKDIR', `if [ ! -d ${DESTDIR}${bldINSTALL_DIR`'LIBDIR} ]; then confMKDIR -p ${DESTDIR}${bldINSTALL_DIR`'LIBDIR}; else :; fi ')
+--	${INSTALL} -c -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} bldCURRENT_PRODUCT.a ${DESTDIR}${LIBDIR}')
+-+	${INSTALL} -c -m ${LIBMODE} bldCURRENT_PRODUCT.a ${DESTDIR}${LIBDIR}')
+- 
+- bldCURRENT_PRODUCT-clean:
+- 	rm -f ${OBJS} bldCURRENT_PRODUCT.a ${MANPAGES}
+--- a/mail/sendmail-snapshot/patches/patch-bc
++++ /dev/null
+@@ -1,17 +0,0 @@
+-$NetBSD: patch-bc,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- devtools/M4/UNIX/manpage.m4.orig	2014-03-06 17:31:29.000000000 +0000
+-+++ devtools/M4/UNIX/manpage.m4
+-@@ -69,10 +69,10 @@ ifdef(`confNO_MAN_INSTALL', `divert(-1)'
+- define(`bldMAN_INSTALL_CMD',
+- `ifdef(`confDONT_INSTALL_CATMAN', `dnl',
+- `	ifdef(`confMKDIR', `if [ ! -d ${DESTDIR}${MAN'bldGET_MAN_SOURCE_NUM($1)`SRC} ]; then confMKDIR -p ${DESTDIR}${MAN'bldGET_MAN_SOURCE_NUM($1)`SRC}; else :; fi ')
+--	${INSTALL} -c -o ${MANOWN} -g ${MANGRP} -m ${MANMODE} bldGET_MAN_BASE_NAME($1).`${MAN'bldGET_MAN_SOURCE_NUM($1)`SRC}' `${DESTDIR}${MAN'bldGET_MAN_SOURCE_NUM($1)}/bldGET_MAN_BASE_NAME($1)`.${MAN'bldGET_MAN_SOURCE_NUM($1)`EXT}'')
+-+	${INSTALL} -c -m ${MANMODE} bldGET_MAN_BASE_NAME($1).`${MAN'bldGET_MAN_SOURCE_NUM($1)`SRC}' `${DESTDIR}${MAN'bldGET_MAN_SOURCE_NUM($1)}/bldGET_MAN_BASE_NAME($1)`.${MAN'bldGET_MAN_SOURCE_NUM($1)`EXT}'')
+- ifdef(`confINSTALL_RAWMAN',
+- `	ifdef(`confMKDIR', `if [ ! -d ${DESTDIR}${MAN'bldGET_MAN_SOURCE_NUM($1)`MAN} ]; then confMKDIR -p ${DESTDIR}${MAN'bldGET_MAN_SOURCE_NUM($1)`MAN}; else :; fi ')
+--	${INSTALL} -c -o ${MANOWN} -g ${MANGRP} -m ${MANMODE} bldGET_MAN_BASE_NAME($1).bldGET_MAN_SOURCE_NUM($1) `${DESTDIR}${MAN'bldGET_MAN_SOURCE_NUM($1)`MAN}'/bldGET_MAN_BASE_NAME($1)`.${MAN'bldGET_MAN_SOURCE_NUM($1)`EXT}'', `dnl')'
+-+	${INSTALL} -c -m ${MANMODE} bldGET_MAN_BASE_NAME($1).bldGET_MAN_SOURCE_NUM($1) `${DESTDIR}${MAN'bldGET_MAN_SOURCE_NUM($1)`MAN}'/bldGET_MAN_BASE_NAME($1)`.${MAN'bldGET_MAN_SOURCE_NUM($1)`EXT}'', `dnl')'
+- )dnl
+- bldFOREACH(`bldMAN_INSTALL_CMD(', `bldMAN_PAGES')
+- ifdef(`confNO_MAN_INSTALL', `divert(0)', `dnl')
+--- a/mail/sendmail-snapshot/patches/patch-bd
++++ /dev/null
+@@ -1,13 +0,0 @@
+-$NetBSD: patch-bd,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- mail.local/Makefile.m4.orig	2014-03-06 17:31:30.000000000 +0000
+-+++ mail.local/Makefile.m4
+-@@ -30,7 +30,7 @@ install:
+- force-install: install-mail.local ifdef(`confNO_MAN_BUILD',, `install-docs')
+- 
+- install-mail.local: mail.local
+--	${INSTALL} -c -o ${UBINOWN} -g ${UBINGRP} -m ${UBINMODE} mail.local ${DESTDIR}${EBINDIR}
+-+	${INSTALL} -c -m ${UBINMODE} mail.local ${DESTDIR}${EBINDIR}
+- divert
+- 
+- bldFINISH
+--- a/mail/sendmail-snapshot/patches/patch-be
++++ /dev/null
+@@ -1,13 +0,0 @@
+-$NetBSD: patch-be,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- rmail/Makefile.m4.orig	2014-03-06 17:31:31.000000000 +0000
+-+++ rmail/Makefile.m4
+-@@ -31,7 +31,7 @@ defeat-install:
+- force-install: install-rmail ifdef(`confNO_MAN_BUILD',, `install-docs')
+- 
+- install-rmail: rmail
+--	${INSTALL} -c -o ${UBINOWN} -g ${UBINGRP} -m ${UBINMODE} rmail ${DESTDIR}${UBINDIR}
+-+	${INSTALL} -c -m ${UBINMODE} rmail ${DESTDIR}${UBINDIR}
+- divert
+- 
+- bldFINISH
+--- a/mail/sendmail-snapshot/patches/patch-bf
++++ /dev/null
+@@ -1,15 +0,0 @@
+-$NetBSD: patch-bf,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- libmilter/Makefile.m4.orig	2014-05-16 20:40:15.000000000 +0000
+-+++ libmilter/Makefile.m4
+-@@ -33,8 +33,8 @@ MFAPI=	${SRCDIR}/inc`'lude/libmilter/mfa
+- MFDEF=	${SRCDIR}/inc`'lude/libmilter/mfdef.h
+- install-mfapi: ${MFAPI}
+- 	if [ ! -d ${DESTDIR}${INCLUDEDIR}/libmilter ]; then mkdir -p ${DESTDIR}${INCLUDEDIR}/libmilter; else :; fi
+--	${INSTALL} -c -o ${INCOWN} -g ${INCGRP} -m ${INCMODE} ${MFAPI} ${DESTDIR}${INCLUDEDIR}/libmilter/mfapi.h
+--	${INSTALL} -c -o ${INCOWN} -g ${INCGRP} -m ${INCMODE} ${MFDEF} ${DESTDIR}${INCLUDEDIR}/libmilter/mfdef.h
+-+	${INSTALL} -c -m ${INCMODE} ${MFAPI} ${DESTDIR}${INCLUDEDIR}/libmilter/mfapi.h
+-+	${INSTALL} -c -m ${INCMODE} ${MFDEF} ${DESTDIR}${INCLUDEDIR}/libmilter/mfdef.h
+- divert(0)
+- 
+- bldFINISH
+--- a/mail/sendmail-snapshot/patches/patch-bg
++++ /dev/null
+@@ -1,13 +0,0 @@
+-$NetBSD: patch-bg,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- include/sm/config.h.orig	2020-05-19 19:54:32.000000000 +0000
+-+++ include/sm/config.h
+-@@ -29,7 +29,7 @@
+- */
+- 
+- # ifndef SM_CONF_STDBOOL_H
+--#  if !defined(__clang__) && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+-+#  if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+- #   define SM_CONF_STDBOOL_H		1
+- #  else
+- #   define SM_CONF_STDBOOL_H		0
+--- a/mail/sendmail-snapshot/patches/patch-bl
++++ /dev/null
+@@ -1,62 +0,0 @@
+-$NetBSD: patch-bl,v 1.1 2024/01/15 04:50:56 jnemeth Exp $
+-
+---- sendmail/blacklist.c.orig	2018-01-02 20:16:44 UTC
+-+++ sendmail/blacklist.c
+-@@ -0,0 +1,57 @@
+-+/*-
+-+ * Copyright (c) 2016 The FreeBSD Foundation
+-+ * All rights reserved.
+-+ *
+-+ * This software was developed by Kurt Lidl under sponsorship from the
+-+ * FreeBSD Foundation.
+-+ *
+-+ * Redistribution and use in source and binary forms, with or without
+-+ * modification, are permitted provided that the following conditions
+-+ * are met:
+-+ * 1. Redistributions of source code must retain the above copyright
+-+ *    notice, this list of conditions and the following disclaimer.
+-+ * 2. Redistributions in binary form must reproduce the above copyright
+-+ *    notice, this list of conditions and the following disclaimer in the
+-+ *    documentation and/or other materials provided with the distribution.
+-+ *
+-+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+-+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+-+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+-+ * ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+-+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+-+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+-+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+-+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+-+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+-+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+-+ * SUCH DAMAGE. */
+-+
+-+/* $FreeBSD$ */
+-+
+-+#ifdef USE_BLACKLIST
+-+#include <sm/gen.h>
+-+#include <sendmail.h>	/* for EXTERN UseBlacklist */
+-+
+-+#include <blacklist.h>
+-+#include "blacklist_client.h"
+-+
+-+static struct blacklist *blstate;
+-+
+-+void
+-+blacklist_init(void)
+-+{
+-+
+-+	if (UseBlacklist)
+-+		blstate = blacklist_open();
+-+}
+-+
+-+void
+-+blacklist_notify(int action, int fd, const char *msg)
+-+{
+-+
+-+	if (blstate == NULL)
+-+		return;
+-+	(void)blacklist_r(blstate, action, fd, msg);
+-+}
+-+
+-+#endif /* USE_BLACKLIST */
+--- a/mail/sendmail-snapshot/patches/patch-bm
++++ /dev/null
+@@ -1,62 +0,0 @@
+-$NetBSD: patch-bm,v 1.1 2024/01/15 04:50:57 jnemeth Exp $
+-
+---- sendmail/blacklist_client.h.orig	2018-01-02 20:16:44 UTC
+-+++ sendmail/blacklist_client.h
+-@@ -0,0 +1,57 @@
+-+/*-
+-+ * Copyright (c) 2016 The FreeBSD Foundation
+-+ * All rights reserved.
+-+ *
+-+ * This software was developed by Kurt Lidl under sponsorship from the
+-+ * FreeBSD Foundation.
+-+ *
+-+ * Redistribution and use in source and binary forms, with or without
+-+ * modification, are permitted provided that the following conditions
+-+ * are met:
+-+ * 1. Redistributions of source code must retain the above copyright
+-+ *    notice, this list of conditions and the following disclaimer.
+-+ * 2. Redistributions in binary form must reproduce the above copyright
+-+ *    notice, this list of conditions and the following disclaimer in the
+-+ *    documentation and/or other materials provided with the distribution.
+-+ *
+-+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+-+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+-+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+-+ * ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+-+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+-+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+-+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+-+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+-+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+-+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+-+ * SUCH DAMAGE. */
+-+
+-+/* $FreeBSD$ */
+-+
+-+#ifndef BLACKLIST_CLIENT_H
+-+#define BLACKLIST_CLIENT_H
+-+
+-+#ifndef BLACKLIST_API_ENUM
+-+enum {
+-+	BLACKLIST_AUTH_OK = 0,
+-+	BLACKLIST_AUTH_FAIL,
+-+	BLACKLIST_ABUSIVE_BEHAVIOR,
+-+	BLACKLIST_BAD_USER
+-+};
+-+#endif
+-+
+-+#ifdef USE_BLACKLIST
+-+void blacklist_init(void);
+-+void blacklist_notify(int, int, const char *);
+-+
+-+#define BLACKLIST_INIT() blacklist_init()
+-+#define BLACKLIST_NOTIFY(x, y, msg) blacklist_notify(x, y, msg)
+-+
+-+#else
+-+
+-+#define BLACKLIST_INIT()
+-+#define BLACKLIST_NOTIFY(x, y, msg)
+-+
+-+#endif
+-+
+-+#endif /* BLACKLIST_CLIENT_H */
+--- a/mail/sendmail-snapshot/patches/patch-bn
++++ /dev/null
+@@ -1,16 +0,0 @@
+-$NetBSD: patch-bn,v 1.1 2024/01/15 04:50:57 jnemeth Exp $
+-
+---- sendmail/sendmail.8.orig	2023-02-09 18:24:38.000000000 +0000
+-+++ sendmail/sendmail.8
+-@@ -552,6 +552,11 @@ for this amount of time,
+- failed messages will be returned to the sender.
+- The default is five days.
+- .TP
+-+.RI UseBlacklist
+-+If set, send authentication failure and success notifications to the
+-+.BR blacklistd (8)
+-+daemon.
+-+.TP
+- .RI UserDatabaseSpec= userdatabase
+- If set, a user database is consulted to get forwarding information.
+- You can consider this an adjunct to the aliasing mechanism,
+--- a/mail/sendmail-snapshot/patches/patch-bo
++++ /dev/null
+@@ -1,24 +0,0 @@
+-$NetBSD: patch-bo,v 1.1 2024/01/15 04:50:57 jnemeth Exp $
+-
+---- sendmail/sendmail.h.orig	2023-04-27 10:39:42.000000000 +0000
+-+++ sendmail/sendmail.h
+-@@ -73,6 +73,10 @@ SM_UNUSED(static char SmailId[]) = "@(#)
+- #endif
+- 
+- #include "bf.h"
+-+#ifdef USE_BLACKLIST
+-+#include <blacklist.h>
+-+#endif
+-+#include "blacklist_client.h"
+- #include "timers.h"
+- #include <sm/exc.h>
+- #include <sm/gen.h>
+-@@ -2708,6 +2712,8 @@ EXTERN int Hacks;	/* bit field of run-ti
+- 
+- EXTERN int ConnectionRateWindowSize;
+- 
+-+EXTERN bool	UseBlacklist;
+-+
+- /*
+- **  Declarations of useful functions
+- */
+--- a/mail/sendmail-snapshot/patches/patch-bp
++++ /dev/null
+@@ -1,14 +0,0 @@
+-$NetBSD: patch-bp,v 1.1 2024/01/15 04:50:57 jnemeth Exp $
+-
+---- cf/README.orig	2015-06-17 16:51:58.000000000 +0000
+-+++ cf/README
+-@@ -4456,6 +4456,9 @@ confMILTER_MACROS_EOH		Milter.macros.eoh
+- confMILTER_MACROS_DATA		Milter.macros.data
+- 					Macros to transmit to milters
+- 					after DATA command is received.
+-+confUSE_BLACKLIST	UseBlacklist	[False] Whether to send authentication
+-+					failure and success information to
+-+					blacklistd.
+- 
+- 
+- See also the description of OSTYPE for some parameters that can be
+--- a/mail/sendmail-snapshot/patches/patch-bq
++++ /dev/null
+@@ -1,12 +0,0 @@
+-$NetBSD: patch-bq,v 1.1 2024/01/15 04:50:57 jnemeth Exp $
+-
+---- cf/m4/cfhead.m4.orig	2015-02-28 00:20:38.000000000 +0000
+-+++ cf/m4/cfhead.m4
+-@@ -304,6 +304,7 @@ define(`confMILTER_MACROS_HELO', ``{tls_
+- define(`confMILTER_MACROS_ENVFROM', ``i, {auth_type}, {auth_authen}, {auth_ssf}, {auth_author}, {mail_mailer}, {mail_host}, {mail_addr}'')
+- define(`confMILTER_MACROS_ENVRCPT', ``{rcpt_mailer}, {rcpt_host}, {rcpt_addr}'')
+- define(`confMILTER_MACROS_EOM', `{msg_id}')
+-+define(`confUSE_BLACKLIST', `False')
+- 
+- 
+- divert(0)dnl
+--- a/mail/sendmail-snapshot/patches/patch-br
++++ /dev/null
+@@ -1,14 +0,0 @@
+-$NetBSD: patch-br,v 1.1 2024/01/15 04:50:57 jnemeth Exp $
+-
+---- cf/m4/proto.m4.orig	2015-05-22 13:42:27.000000000 +0000
+-+++ cf/m4/proto.m4
+-@@ -695,6 +695,9 @@ _OPTION(MaxNOOPCommands, `confMAX_NOOP_C
+- # Name to use for EHLO (defaults to $j)
+- _OPTION(HeloName, `confHELO_NAME')
+- 
+-+# blacklistd
+-+_OPTION(UseBlacklist, `confUSE_BLACKLIST', `False')
+-+
+- ifdef(`_NEED_SMTPOPMODES_', `dnl
+- # SMTP operation modes
+- C{SMTPOpModes} s d D')
+--- a/mail/sendmail-snapshot/patches/patch-bs
++++ /dev/null
+@@ -1,12 +0,0 @@
+-$NetBSD: patch-bs,v 1.1 2024/01/15 04:50:57 jnemeth Exp $
+-
+---- libsm/notify.c.orig	2023-02-09 18:24:38.000000000 +0000
+-+++ libsm/notify.c
+-@@ -19,6 +19,7 @@
+- #include <sm/time.h>
+- #include <sm/string.h>
+- 
+-+#include <sys/select.h>
+- #include <sys/types.h>
+- #include <signal.h>
+- #include <stdio.h>
+--- a/mail/sendmail-snapshot/patches/patch-bt
++++ /dev/null
+@@ -1,13 +0,0 @@
+-$NetBSD: patch-bt,v 1.1 2024/01/15 04:50:57 jnemeth Exp $
+-
+---- devtools/bin/configure.sh.orig	2024-01-08 07:00:05.372673095 +0000
+-+++ devtools/bin/configure.sh
+-@@ -167,7 +167,7 @@ then
+- 	echo "define(\`confRANLIB', \`ranlib')dnl"
+- fi
+- 
+--roff_progs="groff nroff mandoc"
+-+roff_progs="mandoc groff nroff"
+- for roff_prog in $roff_progs
+- do
+- 	if [ ! -z "`$SHELL $find_prog $roff_prog`" ]
