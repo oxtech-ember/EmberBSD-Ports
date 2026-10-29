@@ -66,7 +66,7 @@ fi
 : "${HOST_CXX:?Set the selected native C++ compiler}"
 JOBS=${JOBS:-2}
 case "$JOBS" in ''|*[!0-9]*|0) echo 'JOBS must be positive' >&2; exit 2;; esac
-for path in "$distfiles" "$work" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_DBUS_PREFIX" "$HOST_PACKAGE_PREFIX" "$HOST_PKG_CONFIG" $qdoc_paths; do
+for path in "$toolkit" "$distfiles" "$work" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_DBUS_PREFIX" "$HOST_PACKAGE_PREFIX" "$HOST_PKG_CONFIG" $qdoc_paths; do
     case "$path" in /*) ;; *) echo 'Absolute paths required' >&2; exit 2;; esac
     case "$path" in *[!a-zA-Z0-9_./+-]*) echo 'Use paths without shell metacharacters' >&2; exit 2;; esac
 done
