@@ -1,0 +1,33 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Resolve shared dependencies for static consumers.
+--- cmake-modules/assimp-plain-config.cmake.in
++++ cmake-modules/assimp-plain-config.cmake.in
+@@ -1,5 +1,26 @@
+ @PACKAGE_INIT@
+ 
++if(NOT @BUILD_SHARED_LIBS@)
++  include(CMakeFindDependencyMacro)
++  find_dependency(ZLIB)
++  find_dependency(openddlparser CONFIG)
++  find_dependency(utf8cpp CONFIG)
++  find_dependency(poly2tri CONFIG)
++  find_dependency(Clipper2 CONFIG)
++  find_dependency(PkgConfig)
++  pkg_check_modules(ASSIMP_MINIZIP REQUIRED IMPORTED_TARGET minizip)
++  set_property(TARGET PkgConfig::ASSIMP_MINIZIP PROPERTY INTERFACE_INCLUDE_DIRECTORIES "")
++  if(@ASSIMP_CONFIG_HAS_LIBZIP@)
++    find_dependency(libzip CONFIG)
++  endif()
++  if(@ASSIMP_CONFIG_HAS_PUGIXML@)
++    find_dependency(pugixml CONFIG)
++  endif()
++  if(@ASSIMP_CONFIG_HAS_OPEN3DGC@)
++    find_dependency(open3dgc CONFIG)
++  endif()
++endif()
++
+ include("${CMAKE_CURRENT_LIST_DIR}/@TARGETS_EXPORT_NAME@.cmake")
+ 
+ set(ASSIMP_ROOT_DIR ${PACKAGE_PREFIX_DIR})

@@ -1,0 +1,444 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Use Clipper2 with the existing IFC clipping policy.
+--- code/AssetLib/IFC/IFCOpenings.cpp
++++ code/AssetLib/IFC/IFCOpenings.cpp
+@@ -48,7 +48,9 @@
+ #include "Common/PolyTools.h"
+ #include "PostProcessing/ProcessHelper.h"
+ #include <poly2tri/poly2tri.h>
+-#include "contrib/clipper/clipper.hpp"
++#include <clipper2/clipper.h>
++#include <cmath>
++#include <stdexcept>
+ 
+ #include <deque>
+ #include <forward_list>
+@@ -58,17 +60,26 @@
+ namespace Assimp {
+ namespace IFC {
+ 
+-using ClipperLib::ulong64;
++const int64_t clipper_scale = 1518500249;
+ 
+-// XXX use full -+ range ...
+-const ClipperLib::long64 max_ulong64 = 1518500249; // clipper.cpp / hiRange var
++AI_FORCE_INLINE int64_t to_int64(IfcFloat p) {
++    const IfcFloat scaled = p * clipper_scale;
++    if (!std::isfinite(scaled) || scaled <= -1 ||
++            scaled >= static_cast<IfcFloat>(Clipper2Lib::MAX_COORD + 1)) {
++        throw std::runtime_error("invalid Clipper coordinate");
++    }
++    return static_cast<int64_t>(scaled);
++}
+ 
+-AI_FORCE_INLINE ulong64 to_int64(IfcFloat p) {
+-    return (static_cast<ulong64>(static_cast<IfcFloat>((p) ) * max_ulong64 ));
++AI_FORCE_INLINE IfcFloat from_int64(int64_t p) {
++    return static_cast<IfcFloat>(p) / clipper_scale;
+ }
+ 
+-AI_FORCE_INLINE IfcFloat from_int64(ulong64 p) {
+-    return (static_cast<IfcFloat>((p)) / max_ulong64);
++static void ExecuteClip(Clipper2Lib::Clipper64& clipper, Clipper2Lib::ClipType operation,
++        Clipper2Lib::Paths64& result) {
++    if (!clipper.Execute(operation, Clipper2Lib::FillRule::NonZero, result)) {
++        throw std::runtime_error("polygon clipping failed");
++    }
+ }
+ 
+ AI_FORCE_INLINE void fillRectangle(const IfcVector2& pmin, const IfcVector2& pmax, std::vector<IfcVector2>& out) {
+@@ -215,11 +226,11 @@
+ }
+ 
+ // ------------------------------------------------------------------------------------------------
+-void ExtractVerticesFromClipper(const ClipperLib::Path& poly, std::vector<IfcVector2>& temp_contour,
++void ExtractVerticesFromClipper(const Clipper2Lib::Path64& poly, std::vector<IfcVector2>& temp_contour,
+         bool filter_duplicates = false) {
+     temp_contour.clear();
+-    for(const ClipperLib::IntPoint& point : poly) {
+-        IfcVector2 vv = IfcVector2( from_int64(point.X), from_int64(point.Y));
++    for(const Clipper2Lib::Point64& point : poly) {
++        IfcVector2 vv = IfcVector2( from_int64(point.x), from_int64(point.y));
+         vv = std::max(vv, IfcVector2());
+         vv = std::min(vv, one_vec);
+ 
+@@ -230,12 +241,12 @@
+ }
+ 
+ // ------------------------------------------------------------------------------------------------
+-BoundingBox GetBoundingBox(const ClipperLib::Path& poly) {
++BoundingBox GetBoundingBox(const Clipper2Lib::Path64& poly) {
+     IfcVector2 newbb_min, newbb_max;
+     MinMaxChooser<IfcVector2>()(newbb_min, newbb_max);
+ 
+-    for (const ClipperLib::IntPoint& point : poly) {
+-        IfcVector2 vv = IfcVector2(from_int64(point.X), from_int64(point.Y));
++    for (const Clipper2Lib::Point64& point : poly) {
++        IfcVector2 vv = IfcVector2(from_int64(point.x), from_int64(point.y));
+ 
+         // sanity rounding
+         vv = std::max(vv,IfcVector2());
+@@ -363,65 +374,69 @@
+ 
+ // ------------------------------------------------------------------------------------------------
+ void MergeWindowContours (const std::vector<IfcVector2>& a, const std::vector<IfcVector2>& b,
+-        ClipperLib::Paths& out) {
++        Clipper2Lib::Paths64& out) {
+     out.clear();
+ 
+-    ClipperLib::Clipper clipper;
+-    ClipperLib::Path clip;
++    Clipper2Lib::Clipper64 clipper;
++    clipper.PreserveCollinear(false);
++    clipper.ReverseSolution(false);
++    Clipper2Lib::Path64 clip;
+ 
+     for(const IfcVector2& pip : a) {
+         clip.emplace_back(to_int64(pip.x), to_int64(pip.y));
+     }
+ 
+-    if (ClipperLib::Orientation(clip)) {
++    if (Clipper2Lib::IsPositive(clip)) {
+         std::reverse(clip.begin(), clip.end());
+     }
+ 
+-    clipper.AddPath(clip, ClipperLib::ptSubject, true);
++    clipper.AddSubject({clip});
+     clip.clear();
+ 
+     for(const IfcVector2& pip : b) {
+         clip.emplace_back(to_int64(pip.x), to_int64(pip.y));
+     }
+ 
+-    if (ClipperLib::Orientation(clip)) {
++    if (Clipper2Lib::IsPositive(clip)) {
+         std::reverse(clip.begin(), clip.end());
+     }
+ 
+-    clipper.AddPath(clip, ClipperLib::ptSubject, true);
+-    clipper.Execute(ClipperLib::ctUnion, out,ClipperLib::pftNonZero,ClipperLib::pftNonZero);
++    clipper.AddSubject({clip});
++    ExecuteClip(clipper, Clipper2Lib::ClipType::Union, out);
+ }
+ 
+ // ------------------------------------------------------------------------------------------------
+ // Subtract a from b
+ void MakeDisjunctWindowContours (const std::vector<IfcVector2>& a,
+         const std::vector<IfcVector2>& b,
+-        ClipperLib::Paths& out) {
++        Clipper2Lib::Paths64& out) {
+     out.clear();
+ 
+-    ClipperLib::Clipper clipper;
+-    ClipperLib::Path clip;
++    Clipper2Lib::Clipper64 clipper;
++    clipper.PreserveCollinear(false);
++    clipper.ReverseSolution(false);
++    Clipper2Lib::Path64 clip;
+     for(const IfcVector2& pip : a) {
+         clip.emplace_back(to_int64(pip.x), to_int64(pip.y));
+     }
+ 
+-    if (ClipperLib::Orientation(clip)) {
++    if (Clipper2Lib::IsPositive(clip)) {
+         std::reverse(clip.begin(), clip.end());
+     }
+ 
+-    clipper.AddPath(clip, ClipperLib::ptClip, true);
++    clipper.AddClip({clip});
+     clip.clear();
+ 
+     for(const IfcVector2& pip : b) {
+         clip.emplace_back(to_int64(pip.x), to_int64(pip.y));
+     }
+ 
+-    if (ClipperLib::Orientation(clip)) {
++    if (Clipper2Lib::IsPositive(clip)) {
+         std::reverse(clip.begin(), clip.end());
+     }
+ 
+-    clipper.AddPath(clip, ClipperLib::ptSubject, true);
+-    clipper.Execute(ClipperLib::ctDifference, out,ClipperLib::pftNonZero,ClipperLib::pftNonZero);
++    clipper.AddSubject({clip});
++    ExecuteClip(clipper, Clipper2Lib::ClipType::Difference, out);
+ }
+ 
+ // ------------------------------------------------------------------------------------------------
+@@ -429,16 +444,18 @@
+     std::vector<IfcVector2> scratch;
+     std::vector<IfcVector2>& contour = window.contour;
+ 
+-    ClipperLib::Path subject;
+-    ClipperLib::Clipper clipper;
+-    ClipperLib::Paths clipped;
++    Clipper2Lib::Path64 subject;
++    Clipper2Lib::Clipper64 clipper;
++    clipper.PreserveCollinear(false);
++    clipper.ReverseSolution(false);
++    Clipper2Lib::Paths64 clipped;
+ 
+     for(const IfcVector2& pip : contour) {
+         subject.emplace_back(to_int64(pip.x), to_int64(pip.y));
+     }
+ 
+-    clipper.AddPath(subject,ClipperLib::ptSubject, true);
+-    clipper.Execute(ClipperLib::ctUnion,clipped,ClipperLib::pftNonZero,ClipperLib::pftNonZero);
++    clipper.AddSubject({subject});
++    ExecuteClip(clipper, Clipper2Lib::ClipType::Union, clipped);
+ 
+     // This should yield only one polygon or something went wrong
+     if (clipped.size() != 1) {
+@@ -467,6 +484,9 @@
+     } catch (const char* sx) {
+         IFCImporter::LogError("error during polygon clipping, window shape may be wrong: (Clipper: "
+             + std::string(sx) + ")");
++    } catch (const std::exception& sx) {
++        IFCImporter::LogError("error during polygon clipping, window shape may be wrong: (Clipper: "
++            + std::string(sx.what()) + ")");
+     }
+ }
+ 
+@@ -480,17 +500,19 @@
+ 
+     // Fix the outer contour using polyclipper
+     try {
+-        ClipperLib::Path subject;
+-        ClipperLib::Clipper clipper;
+-        ClipperLib::Paths clipped;
++        Clipper2Lib::Path64 subject;
++        Clipper2Lib::Clipper64 clipper;
++        clipper.PreserveCollinear(false);
++        clipper.ReverseSolution(false);
++        Clipper2Lib::Paths64 clipped;
+ 
+-        ClipperLib::Path clip;
++        Clipper2Lib::Path64 clip;
+         clip.reserve(contour_flat.size());
+         for(const IfcVector2& pip : contour_flat) {
+             clip.emplace_back(to_int64(pip.x), to_int64(pip.y));
+         }
+ 
+-        if (!ClipperLib::Orientation(clip)) {
++        if (!Clipper2Lib::IsPositive(clip)) {
+             std::reverse(clip.begin(), clip.end());
+         }
+ 
+@@ -509,19 +531,19 @@
+             }
+             subject.emplace_back(to_int64(pip.x), to_int64(pip.y));
+             if (--countdown == 0) {
+-                if (!ClipperLib::Orientation(subject)) {
++                if (!Clipper2Lib::IsPositive(subject)) {
+                     std::reverse(subject.begin(), subject.end());
+                 }
+ 
+-                clipper.AddPath(subject,ClipperLib::ptSubject, true);
+-                clipper.AddPath(clip,ClipperLib::ptClip, true);
++                clipper.AddSubject({subject});
++                clipper.AddClip({clip});
+ 
+-                clipper.Execute(ClipperLib::ctIntersection,clipped,ClipperLib::pftNonZero,ClipperLib::pftNonZero);
++                ExecuteClip(clipper, Clipper2Lib::ClipType::Intersection, clipped);
+ 
+-                for(const ClipperLib::Path& ex : clipped) {
++                for(const Clipper2Lib::Path64& ex : clipped) {
+                     iold.push_back(static_cast<unsigned int>(ex.size()));
+-                    for(const ClipperLib::IntPoint& point : ex) {
+-                        vold.emplace_back(from_int64(point.X), from_int64(point.Y), 0.0f);
++                    for(const Clipper2Lib::Point64& point : ex) {
++                        vold.emplace_back(from_int64(point.x), from_int64(point.y), 0.0f);
+                     }
+                 }
+ 
+@@ -535,6 +557,11 @@
+             + std::string(sx) + ")");
+ 
+         return;
++    } catch (const std::exception& sx) {
++        IFCImporter::LogError("Ifc: error during polygon clipping, wall contour line may be wrong: (Clipper: "
++            + std::string(sx.what()) + ")");
++
++        return;
+     }
+ 
+     // swap data arrays
+@@ -1240,12 +1267,17 @@
+                 }
+ 
+                 const std::vector<IfcVector2>& other = (*it).contour;
+-                ClipperLib::Paths poly;
++                Clipper2Lib::Paths64 poly;
+ 
+                 // First check whether subtracting the old contour (to which ibb belongs)
+                 // from the new contour (to which bb belongs) yields an updated bb which
+                 // no longer overlaps ibb
+-                MakeDisjunctWindowContours(other, temp_contour, poly);
++                try {
++                    MakeDisjunctWindowContours(other, temp_contour, poly);
++                } catch (const std::exception& error) {
++                    IFCImporter::LogWarn("Ifc: clipping failed; retaining original mesh: " + std::string(error.what()));
++                    return false;
++                }
+                 if(poly.size() == 1) {
+                     const BoundingBox newbb = GetBoundingBox(poly[0]);
+                     if (!BoundingBoxesOverlapping(ibb, newbb )) {
+@@ -1260,7 +1292,12 @@
+                 // Take these two overlapping contours and try to merge them. If they
+                 // overlap (which should not happen, but in fact happens-in-the-real-
+                 // world [tm] ), resume using a single contour and a single bounding box.
+-                MergeWindowContours(temp_contour, other, poly);
++                try {
++                    MergeWindowContours(temp_contour, other, poly);
++                } catch (const std::exception& error) {
++                    IFCImporter::LogWarn("Ifc: clipping failed; retaining original mesh: " + std::string(error.what()));
++                    return false;
++                }
+ 
+                 if (poly.size() > 1) {
+                     return TryAddOpenings_Poly2Tri(openings, curmesh);
+@@ -1680,21 +1717,23 @@
+     // If this happens then the projection must have been wrong.
+     ai_assert(vmax.Length());
+ 
+-    ClipperLib::Paths clipped;
+-    ClipperLib::Paths holes_union;
++    Clipper2Lib::Paths64 clipped;
++    Clipper2Lib::Paths64 holes_union;
+ 
+     IfcVector3 wall_extrusion;
+     bool first = true;
+ 
+     try {
+-        ClipperLib::Clipper clipper_holes;
++        Clipper2Lib::Clipper64 clipper_holes;
++        clipper_holes.PreserveCollinear(false);
++        clipper_holes.ReverseSolution(false);
+ 
+         for(const TempOpening& t : openings) {
+             auto contours = GetContoursInPlane(t.profileMesh,m,nor,coord,t.extrusionDir,wall_extrusion,first);
+ 
+             for(auto& contour : contours) {
+                 // scale to clipping space
+-                ClipperLib::Path hole;
++                Clipper2Lib::Path64 hole;
+                 for(IfcVector2& pip : contour) {
+                     pip.x = (pip.x - vmin.x) / vmax.x;
+                     pip.y = (pip.y - vmin.y) / vmax.y;
+@@ -1702,25 +1741,23 @@
+                     hole.emplace_back(to_int64(pip.x), to_int64(pip.y));
+                 }
+ 
+-                if(!ClipperLib::Orientation(hole)) {
++                if(!Clipper2Lib::IsPositive(hole)) {
+                     std::reverse(hole.begin(),hole.end());
+                 }
+ 
+-                clipper_holes.AddPath(hole,ClipperLib::ptSubject, true);
++                clipper_holes.AddSubject({hole});
+                 {
+                     std::stringstream msg;
+                     msg << "- added polygon ";
+                     for(auto elem : hole) {
+-                        msg << " (" << elem.X << ", " << elem.Y << ")";
++                        msg << " (" << elem.x << ", " << elem.y << ")";
+                     }
+                     IFCImporter::LogDebug(msg.str().c_str());
+                 }
+             }
+         }
+ 
+-        clipper_holes.Execute(ClipperLib::ctUnion,holes_union,
+-            ClipperLib::pftNonZero,
+-            ClipperLib::pftNonZero);
++        ExecuteClip(clipper_holes, Clipper2Lib::ClipType::Union, holes_union);
+ 
+         if (holes_union.empty()) {
+             return false;
+@@ -1729,7 +1766,7 @@
+         // Now that we have the big union of all holes, subtract it from the outer contour
+         // to obtain the final polygon to feed into the triangulator.
+         {
+-            ClipperLib::Path poly;
++            Clipper2Lib::Path64 poly;
+             for(IfcVector2& pip : contour_flat) {
+                 pip.x  = (pip.x - vmin.x) / vmax.x;
+                 pip.y  = (pip.y - vmin.y) / vmax.y;
+@@ -1737,22 +1774,25 @@
+                 poly.emplace_back(to_int64(pip.x), to_int64(pip.y));
+             }
+ 
+-            if (ClipperLib::Orientation(poly)) {
++            if (Clipper2Lib::IsPositive(poly)) {
+                 std::reverse(poly.begin(), poly.end());
+             }
+             clipper_holes.Clear();
+-            clipper_holes.AddPath(poly,ClipperLib::ptSubject, true);
++            clipper_holes.AddSubject({poly});
+ 
+-            clipper_holes.AddPaths(holes_union,ClipperLib::ptClip, true);
+-            clipper_holes.Execute(ClipperLib::ctDifference,clipped,
+-                ClipperLib::pftNonZero,
+-                ClipperLib::pftNonZero);
++            clipper_holes.AddClip(holes_union);
++            ExecuteClip(clipper_holes, Clipper2Lib::ClipType::Difference, clipped);
+         }
+     } catch (const char* sx) {
+         IFCImporter::LogError("Ifc: error during polygon clipping, skipping openings for this face: (Clipper: "
+             + std::string(sx) + ")");
+ 
+         return false;
++    } catch (const std::exception& sx) {
++        IFCImporter::LogError("Ifc: error during polygon clipping, skipping openings for this face: (Clipper: "
++            + std::string(sx.what()) + ")");
++
++        return false;
+     }
+ 
+     std::vector<IfcVector3> old_verts;
+@@ -1762,14 +1802,14 @@
+     old_vertcnt.swap(curmesh.mVertcnt);
+ 
+     std::vector< std::vector<p2t::Point*> > contours;
+-    for(ClipperLib::Path &clip : clipped) {
++    for(Clipper2Lib::Path64 &clip : clipped) {
+ 
+         contours.clear();
+ 
+         // Build the outer polygon contour line for feeding into poly2tri
+         std::vector<p2t::Point*> contour_points;
+-        for(ClipperLib::IntPoint& point : clip) {
+-            contour_points.push_back( new p2t::Point(from_int64(point.X), from_int64(point.Y)) );
++        for(Clipper2Lib::Point64& point : clip) {
++            contour_points.push_back( new p2t::Point(from_int64(point.x), from_int64(point.y)) );
+         }
+ 
+         p2t::CDT* cdt ;
+@@ -1786,13 +1826,13 @@
+         }
+ 
+         // Build the poly2tri inner contours for all holes we got from ClipperLib
+-        for(ClipperLib::Path& opening : holes_union) {
++        for(Clipper2Lib::Path64& opening : holes_union) {
+ 
+             contours.emplace_back();
+             std::vector<p2t::Point*>& contour = contours.back();
+ 
+-            for(ClipperLib::IntPoint& point : opening) {
+-                contour.push_back( new p2t::Point(from_int64(point.X), from_int64(point.Y)) );
++            for(Clipper2Lib::Point64& point : opening) {
++                contour.push_back( new p2t::Point(from_int64(point.x), from_int64(point.y)) );
+             }
+ 
+             cdt->AddHole(contour);
+--- code/AssetLib/IFC/IFCGeometry.cpp
++++ code/AssetLib/IFC/IFCGeometry.cpp
+@@ -46,7 +46,6 @@
+ #include "Common/PolyTools.h"
+ #include "PostProcessing/ProcessHelper.h"
+ #include <poly2tri/poly2tri.h>
+-#include "contrib/clipper/clipper.hpp"
+ 
+ #include <iterator>
+ #include <memory>

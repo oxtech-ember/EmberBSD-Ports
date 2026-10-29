@@ -1,0 +1,56 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Register tests and preserve static consumer metadata.
+--- CMakeLists.txt
++++ CMakeLists.txt
+@@ -518,11 +518,6 @@
+ # Note: PROJECT_VERSION is used as a VERSION
+ write_basic_package_version_file("${VERSION_CONFIG}" COMPATIBILITY SameMajorVersion)
+ 
+-configure_package_config_file(
+-    ${CMAKE_CONFIG_TEMPLATE_FILE}
+-    "${PROJECT_CONFIG}"
+-    INSTALL_DESTINATION "${CONFIG_INSTALL_DIR}"
+-)
+ 
+ IF(ASSIMP_INSTALL)
+   INSTALL(
+@@ -562,6 +557,10 @@
+ 
+   IF ( NOT ASSIMP_BUILD_ZLIB )
+     FIND_PACKAGE(ZLIB)
++    if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
++      add_library(ZLIB::ZLIB INTERFACE IMPORTED)
++      target_link_libraries(ZLIB::ZLIB INTERFACE ${ZLIB_LIBRARIES})
++    endif()
+   ENDIF()
+ 
+   IF ( NOT ZLIB_FOUND AND NOT ASSIMP_BUILD_ZLIB )
+@@ -795,8 +794,18 @@
+ ENDIF()
+ 
+ # Main assimp code
++set(ASSIMP_CONFIG_HAS_OPEN3DGC FALSE)
++set(ASSIMP_CONFIG_HAS_LIBZIP FALSE)
++set(ASSIMP_CONFIG_HAS_PUGIXML FALSE)
+ ADD_SUBDIRECTORY( code/ )
+ 
++configure_package_config_file(
++    ${CMAKE_CONFIG_TEMPLATE_FILE}
++    "${PROJECT_CONFIG}"
++    INSTALL_DESTINATION "${CONFIG_INSTALL_DIR}"
++)
++
++
+ IF ( ASSIMP_BUILD_ASSIMP_TOOLS )
+   # The viewer for windows only
+   IF (WIN32)
+@@ -823,6 +832,7 @@
+ ENDIF ()
+ 
+ IF ( ASSIMP_BUILD_TESTS )
++  enable_testing()
+   ADD_SUBDIRECTORY( test/ )
+ ENDIF ()
+ 

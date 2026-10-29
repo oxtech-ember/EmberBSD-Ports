@@ -131,6 +131,7 @@ audio/sonic
 audio/speech-dispatcher
 databases/tdb
 devel/libdaemon
+multimedia/assimp
 multimedia/ffmpeg9
 multimedia/gst-plugins1-bad
 multimedia/gst-plugins1-base

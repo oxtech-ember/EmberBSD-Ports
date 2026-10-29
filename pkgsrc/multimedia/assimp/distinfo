@@ -1,0 +1,18 @@
+$NetBSD: distinfo,v 1.22 2026/05/03 10:01:40 wiz Exp $
+
+BLAKE2s (assimp-6.0.5.tar.gz) = 9ab0c698246d272e6c5928ba3f98452848ddf54a0c88301136e50781f86b5007
+SHA512 (assimp-6.0.5.tar.gz) = 57326194bf3a8e2ae793c739878231067fdd6d031531e910d4d20fc8a673eacf48f75e11bd21ca2e6421682f78585d445bffb647bdcb52e01b2cd4d3ff0e2c62
+Size (assimp-6.0.5.tar.gz) = 152371278 bytes
+SHA1 (patch-CMakeLists.txt) = 01693d8e6ead183313d2e3375e0c9306bf122cde
+SHA1 (patch-cmake-modules_assimp-plain-config.cmake.in) = f4d4040024131546599ba720ed8670751657e25a
+SHA1 (patch-code_AssetLib_3MF_D3MFExporter.cpp) = 190ad92d1845ed17539cca2cca3294b08ddd6a9b
+SHA1 (patch-code_AssetLib_MD2_MD2Loader.cpp) = 219a5241cf16905a80e686bb1366136ddc471d83
+SHA1 (patch-code_CMakeLists.txt) = ec9ed991b20fc0ee8465cbeec936c212c1dd7946
+SHA1 (patch-contrib_googletest_googletest_src_gtest.cc) = 9717b1a060e1a259d1fe53cd4bf46b1b8e739282
+SHA1 (patch-contrib_zip_src_zip.h) = 744aa7ffcec42ab3743124c954ef26daa80a8d31
+SHA1 (patch-minizip-headers) = fe6dff7ff4af9f2169c1b42d71d7a984c52ad9df
+SHA1 (patch-poly2tri-includes) = 7185aa6eedd1603772c935f41e816e3d1bceecb7
+SHA1 (patch-test_CMakeLists.txt) = d09ae560b0b842447f56e0a9741936048eaf74f2
+SHA1 (patch-test_unit_ImportExport_utMD2Importer.cpp) = cc1d390928b4af3e49675492264311ed55104394
+SHA1 (patch-test_unit_utD3MFImportExport.cpp) = 035f983ad923df3b93fddd9ce1a9e9d25fc93b4a
+SHA1 (patch-z-clipper2-ifc) = 9e325d2e173fc175cc1c91dfe1400841fc8e0f91

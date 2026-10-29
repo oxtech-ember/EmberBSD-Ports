@@ -1,0 +1,51 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Use common test dependencies and discover the actual unit executable.
+--- test/CMakeLists.txt
++++ test/CMakeLists.txt
+@@ -43,13 +43,6 @@
+     ${Assimp_SOURCE_DIR}/code
+ )
+ 
+-if(NOT ASSIMP_HUNTER_ENABLED)
+-  INCLUDE_DIRECTORIES(
+-    ${Assimp_SOURCE_DIR}/contrib/googletest/googletest/include
+-    ${Assimp_SOURCE_DIR}/contrib/googletest/googletest/
+-    ${Assimp_SOURCE_DIR}/contrib/pugixml/src
+-  )
+-endif()
+ 
+ if (MSVC)
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING")
+@@ -250,20 +243,16 @@
+     ${TOOLS}
+ )
+ 
+-if(ASSIMP_HUNTER_ENABLED)
+-    hunter_add_package(GTest)
+-    find_package(GTest CONFIG REQUIRED)
+-    target_link_libraries(unit GTest::gtest_main GTest::gmock)
+-else()
+-    target_sources(unit PUBLIC ${Assimp_SOURCE_DIR}/contrib/googletest/googletest/src/gtest-all.cc)
+-endif()
++find_package(libzip CONFIG REQUIRED)
++find_package(GTest CONFIG REQUIRED)
++find_package(pugixml CONFIG REQUIRED)
++target_link_libraries(unit GTest::gtest pugixml::pugixml libzip::zip)
+ 
+ # RapidJSON
+ IF(ASSIMP_HUNTER_ENABLED)
+   hunter_add_package(RapidJSON)
+   find_package(RapidJSON CONFIG REQUIRED)
+ ELSE()
+-  INCLUDE_DIRECTORIES("../contrib/rapidjson/include")
+   ADD_DEFINITIONS( -DRAPIDJSON_HAS_STDSTRING=1)
+   option( ASSIMP_RAPIDJSON_NO_MEMBER_ITERATOR "Suppress rapidjson warning on MSVC (NOTE: breaks android build)" ON )
+   if(ASSIMP_RAPIDJSON_NO_MEMBER_ITERATOR)
+@@ -306,4 +295,4 @@
+ 
+ add_subdirectory(headercheck)
+ 
+-add_test( unittests unit )
++add_test(NAME unittests COMMAND $<TARGET_FILE:unit>)

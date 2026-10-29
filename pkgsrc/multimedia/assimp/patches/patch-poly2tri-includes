@@ -1,0 +1,37 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Select the common poly2tri headers.
+--- code/AssetLib/IFC/IFCGeometry.cpp
++++ code/AssetLib/IFC/IFCGeometry.cpp
+@@ -45,7 +45,7 @@
+ #include "IFCUtil.h"
+ #include "Common/PolyTools.h"
+ #include "PostProcessing/ProcessHelper.h"
+-#include "contrib/poly2tri/poly2tri/poly2tri.h"
++#include <poly2tri/poly2tri.h>
+ #include "contrib/clipper/clipper.hpp"
+ 
+ #include <iterator>
+--- code/AssetLib/IFC/IFCOpenings.cpp
++++ code/AssetLib/IFC/IFCOpenings.cpp
+@@ -47,7 +47,7 @@
+ #include "IFCUtil.h"
+ #include "Common/PolyTools.h"
+ #include "PostProcessing/ProcessHelper.h"
+-#include "contrib/poly2tri/poly2tri/poly2tri.h"
++#include <poly2tri/poly2tri.h>
+ #include "contrib/clipper/clipper.hpp"
+ 
+ #include <deque>
+--- code/AssetLib/Blender/BlenderTessellator.h
++++ code/AssetLib/Blender/BlenderTessellator.h
+@@ -143,7 +143,7 @@
+ 
+ #if ASSIMP_BLEND_WITH_POLY_2_TRI
+ 
+-#include "contrib/poly2tri/poly2tri/poly2tri.h"
++#include <poly2tri/poly2tri.h>
+ 
+ namespace Assimp
+ {
