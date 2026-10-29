@@ -1,0 +1,26 @@
+Preserve package directories when unregistering without deleting files.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/pkgtools/pkg_install/files/lib/plist.c
++++ b/pkgtools/pkg_install/files/lib/plist.c
+@@ -556,6 +556,8 @@
+ 
+ 		case PLIST_PKGDIR:
+ 		case PLIST_DIR_RM:
++			if (NoDeleteFiles)
++				break;
+ 			(void) snprintf(tmp, sizeof(tmp), "%s/%s",
+ 			    prefix, p->name);
+ 			if (has_pkgdir(tmp))
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -7,7 +7,7 @@
+ # change in the pkg_* tools that pkgsrc relies on for proper operation.
+ 
+ PKGNAME=		pkg_install-${VERSION}
+-PKGREVISION=		17
++PKGREVISION=		18
+ CATEGORIES=		pkgtools
+ 
+ MAINTAINER=		agc@NetBSD.org
