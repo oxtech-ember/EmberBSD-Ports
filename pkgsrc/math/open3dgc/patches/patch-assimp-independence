@@ -1,0 +1,25 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Remove the consumer-only Assimp header dependency from Open3DGC.
+--- o3dgcArithmeticCodec.h
++++ o3dgcArithmeticCodec.h
+@@ -75,7 +75,6 @@
+ 
+ #include <stdio.h>
+ #include "o3dgcCommon.h"
+-#include <assimp/defs.h>
+ 
+ namespace o3dgc
+ {
+--- o3dgcArithmeticCodec.cpp
++++ o3dgcArithmeticCodec.cpp
+@@ -92,7 +92,7 @@
+     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+     // - - Static functions  - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ 
+-    AI_WONT_RETURN static void AC_Error(const char * msg) AI_WONT_RETURN_SUFFIX;
++    [[noreturn]] static void AC_Error(const char * msg);
+     static void AC_Error(const char * msg)
+     {
+       fprintf(stderr, "\n\n -> Arithmetic coding error: ");

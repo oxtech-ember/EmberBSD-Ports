@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (open3dgc/assimp-6.0.5/assimp-6.0.5.tar.gz) = 9ab0c698246d272e6c5928ba3f98452848ddf54a0c88301136e50781f86b5007
+SHA512 (open3dgc/assimp-6.0.5/assimp-6.0.5.tar.gz) = 57326194bf3a8e2ae793c739878231067fdd6d031531e910d4d20fc8a673eacf48f75e11bd21ca2e6421682f78585d445bffb647bdcb52e01b2cd4d3ff0e2c62
+Size (open3dgc/assimp-6.0.5/assimp-6.0.5.tar.gz) = 152371278 bytes
+SHA1 (patch-assimp-independence) = 6ccc19a4d5c2cbd0a4e76b9f55e4a080063c8b48

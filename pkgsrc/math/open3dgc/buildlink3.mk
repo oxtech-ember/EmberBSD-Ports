@@ -1,0 +1,8 @@
+# $NetBSD$
+BUILDLINK_TREE+= open3dgc
+.if !defined(OPEN3DGC_BUILDLINK3_MK)
+OPEN3DGC_BUILDLINK3_MK:=
+BUILDLINK_API_DEPENDS.open3dgc+= open3dgc>=0.0.20260430
+BUILDLINK_PKGSRCDIR.open3dgc?= ../../math/open3dgc
+.endif
+BUILDLINK_TREE+= -open3dgc
