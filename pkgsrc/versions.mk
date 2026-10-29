@@ -49,6 +49,11 @@ EMBERBSD_VERSION_FAMILIES+=	textproc/ruby-actiontext[0-9]*=textproc/ruby-actiont
 EMBERBSD_VERSION_FAMILIES+=	www/ruby-rails[0-9]*=www/ruby-rails81
 EMBERBSD_VERSION_FAMILIES+=	mail/ruby-roadie-rails3[0-9]=mail/ruby-roadie-rails
 EMBERBSD_VERSION_FAMILIES+=	www/ruby-propshaft1[0-9]=www/ruby-propshaft
+# Redmine 7.0 on Rails 8.1; the parsers and net-imap that only Redmine 6 used.
+EMBERBSD_VERSION_FAMILIES+=	devel/ruby-redmine6[0-9]=devel/ruby-redmine70
+EMBERBSD_VERSION_FAMILIES+=	textproc/ruby-commonmarker0=textproc/ruby-commonmarker
+EMBERBSD_VERSION_FAMILIES+=	textproc/ruby-commonmarker23=textproc/ruby-commonmarker
+EMBERBSD_VERSION_FAMILIES+=	net/ruby-net-imap=lang/ruby40
 EMBERBSD_VERSION_FAMILIES+=	lang/openjdk[0-9]*=lang/openjdk21
 # One Berkeley DB, db18; db1 is the libc one.
 EMBERBSD_VERSION_FAMILIES+=	databases/db=databases/db18

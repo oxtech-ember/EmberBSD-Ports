@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (redmine-7.0.2.tar.gz) = b574d427d606dc668697f4d2de3ec55703d2cef12904a08d3dd2cb6e0a54b640
+SHA512 (redmine-7.0.2.tar.gz) = 937decac4f9d680aee7f231c55e9ad754edd5492851397708dd7f36ecf28b34d4a1adc37683c74574b3b21030f53c9803aae27752a315390e5bc99ba3dfa5830
+Size (redmine-7.0.2.tar.gz) = 4258656 bytes
+SHA1 (patch-Gemfile) = 9c0c4a9992d06810a658cbb5fa2f1fb64196836f
+SHA1 (patch-config_additional__environment.rb.example) = dac287fba4da09c2e137c0089a8e0f8aac3537ac
+SHA1 (patch-lib_tasks_initializers.rake) = b0d697e4d0496cc3c33aca52761f448a553d209c

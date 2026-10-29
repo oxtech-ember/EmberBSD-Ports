@@ -399,3 +399,5 @@ lang/libcxxabi
 # Ruby gems updated to the newest release.
 mail/ruby-mail
 www/ruby-rouge
+textproc/ruby-sanitize
+www/ruby-crass

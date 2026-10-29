@@ -91,9 +91,26 @@ wal=databases/ruby-with_advisory_lock
 ! grep -q "^RUBY_VERSIONS_ACCEPTED=" "$pkgsrc/$wal/Makefile" ||
     { echo "$wal accepts only some Ruby versions" >&2; exit 1; }
 [ -z "$(reason "$wal")" ] || { echo "Guard rejected $wal" >&2; exit 1; }
-# Redmine 6.0 and 6.1 accept only Ruby 3.3 and Rails 7.2; Redmine 7 replaces them.
+# Redmine 7.0 runs on Ruby 4.0 and Rails 8.1; Redmine 6.0 and 6.1 accepted only
+# Ruby 3.3 and 3.4 and Rails 7.2, and their plugins and themes pinned Ruby 3.3.
+rm70=devel/ruby-redmine70
+[ -f "$pkgsrc/$rm70/PLIST" ] || { echo "Missing kept $rm70" >&2; exit 1; }
+grep -Eq '^RUBY_RAILS_ACCEPTED=[[:space:]]+81$' "$pkgsrc/$rm70/Makefile" ||
+    { echo "$rm70 does not accept Rails 81" >&2; exit 1; }
+grep -Eq '^RM_VERSIONS_SUPPORTED[?]=[[:space:]]+70$' "$pkgsrc/devel/ruby-redmine/redmine.mk" ||
+    { echo "devel/ruby-redmine/redmine.mk does not select Redmine 70" >&2; exit 1; }
+for p in $rm70 meta-pkgs/ruby-redmine-plugins meta-pkgs/ruby-redmine-themes; do
+    ! grep -q '^RUBY_VERSIONS_ACCEPTED=' "$pkgsrc/$p"/Makefile* ||
+        { echo "$p accepts only some Ruby versions" >&2; exit 1; }
+    [ -z "$(reason "$p")" ] || { echo "Guard rejected $p" >&2; exit 1; }
+done
+for old in devel/ruby-redmine60 devel/ruby-redmine61 textproc/ruby-commonmarker0 \
+    textproc/ruby-commonmarker23 net/ruby-net-imap; do
+    [ ! -e "$pkgsrc/$old" ] || { echo "Old version $old exported" >&2; exit 1; }
+    reason "$old" | grep -Fq 'EmberBSD keeps only' ||
+        { echo "Guard accepted $old" >&2; exit 1; }
+done
 old_rails=$(find "$pkgsrc" -mindepth 3 -maxdepth 3 -name Makefile \
-    ! -path '*/devel/ruby-redmine6[01]/*' \
     -exec grep -lE '^RUBY_RAILS_ACCEPTED=.*(72|80)' {} +) || :
 [ -z "$old_rails" ] || { echo "Accept only an old Rails: $old_rails" >&2; exit 1; }
 echo 'PASS: the export and the guard keep one version of each family.'

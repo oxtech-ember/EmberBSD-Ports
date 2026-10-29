@@ -1,0 +1,19 @@
+@comment $NetBSD$
+${GEM_HOME}/cache/${GEM_NAME}.gem
+${GEM_LIBDIR}/.github/workflows/tests.yml
+${GEM_LIBDIR}/.gitignore
+${GEM_LIBDIR}/.yardopts
+${GEM_LIBDIR}/Gemfile
+${GEM_LIBDIR}/HISTORY.md
+${GEM_LIBDIR}/LICENSE
+${GEM_LIBDIR}/README.md
+${GEM_LIBDIR}/Rakefile
+${GEM_LIBDIR}/SECURITY.md
+${GEM_LIBDIR}/crass.gemspec
+${GEM_LIBDIR}/lib/crass.rb
+${GEM_LIBDIR}/lib/crass/parser.rb
+${GEM_LIBDIR}/lib/crass/scanner.rb
+${GEM_LIBDIR}/lib/crass/token-scanner.rb
+${GEM_LIBDIR}/lib/crass/tokenizer.rb
+${GEM_LIBDIR}/lib/crass/version.rb
+${GEM_HOME}/specifications/${GEM_NAME}.gemspec

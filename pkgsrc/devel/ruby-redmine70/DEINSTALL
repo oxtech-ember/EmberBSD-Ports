@@ -1,0 +1,12 @@
+#!@SH@
+#
+# $NetBSD$
+
+WWWGRP="@WWWGRP@"
+WWWOWN="@WWWOWN@"
+RM_DIR="@PREFIX@/@RM_DIR@"
+
+case "${STAGE}" in
+DEINSTALL)
+	cd ${RM_DIR} && ${RM} -f Gemfile.lock;;
+esac

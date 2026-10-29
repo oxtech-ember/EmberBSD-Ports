@@ -1,0 +1,105 @@
+Origin: EmberBSD, AI-assisted.
+
+Make Redmine 7.0 the only Redmine version.  Ports keeps one version of
+each package; Redmine 6.0 and 6.1 need Ruby 3.3 or 3.4 and Rails 7.2,
+which Ports no longer has.  Redmine 7.0 runs on Ruby 4.0 and Rails 8.1,
+so the plugins and themes no longer need to pin the Ruby version.
+Not submitted upstream.
+
+--- a/devel/ruby-redmine/redmine.mk
++++ b/devel/ruby-redmine/redmine.mk
+@@ -9,8 +9,8 @@
+ # RM_VERSION_DEFAULT
+ #	Select default Redmine version.
+ #
+-#	Possible values: 60 61
+-#	Default: 61
++#	Possible values: 70
++#	Default: 70
+ #
+ #
+ # === Infrastructure variables ===
+@@ -19,23 +19,23 @@
+ #	Ruby version to use. This variable should not be set in
+ #	packages.  It assumes that it is  used by bulk build tools.
+ #
+-#	Possible values: 60 61
++#	Possible values: 70
+ #	Default: ${RUBY_VERSION_DEFAULT}
+ #
+ # === Package-settable variables ===
+ #
+ # RM_VERSIONS_SUPPORTED
+ #	Supported Redmine version.
+-#	Possible values: 60 61
+-#	Default: 60
++#	Possible values: 70
++#	Default: 70
+ #
+ #
+ # === Defined variables ===
+ #
+ # RM_VER
+ #	Redmine version.
+-#	Possible values: 60 61
+-#	Default: 60
++#	Possible values: 70
++#	Default: 70
+ #
+ # RM_DIR
+ #	Redmine directory.
+@@ -54,8 +54,8 @@
+ .  endif
+ .endif
+ 
+-RM_VERSION_DEFAULT?=	61
+-RM_VERSIONS_SUPPORTED?=	61 60
++RM_VERSION_DEFAULT?=	70
++RM_VERSIONS_SUPPORTED?=	70
+ 
+ RM_VERSION?=	# empty
+ RM_VER?=	# empty
+--- a/meta-pkgs/ruby-redmine-plugins/Makefile
++++ b/meta-pkgs/ruby-redmine-plugins/Makefile
+@@ -18,8 +18,6 @@
+ META_PACKAGE=		yes
+ MESSAGE_SRC+=		${.CURDIR}/MESSAGE.common ${.CURDIR}/MESSAGE
+ 
+-RUBY_VERSIONS_ACCEPTED=	33 34
+-
+ .include "../../devel/ruby-redmine/redmine.mk"
+ .include "../../lang/ruby/rubyversion.mk"
+ .include "../../mk/bsd.pkg.mk"
+--- a/meta-pkgs/ruby-redmine-plugins/Makefile.common
++++ b/meta-pkgs/ruby-redmine-plugins/Makefile.common
+@@ -7,8 +7,6 @@
+ 
+ CATEGORIES=	devel
+ 
+-RUBY_VERSIONS_ACCEPTED=	33 34
+-
+ .include "../../devel/ruby-redmine/redmine.mk"
+ 
+ DEPENDS+=	${REDMINE_DEPENDS}
+--- a/meta-pkgs/ruby-redmine-themes/Makefile
++++ b/meta-pkgs/ruby-redmine-themes/Makefile
+@@ -20,8 +20,6 @@
+ 
+ META_PACKAGE=		yes
+ 
+-RUBY_VERSIONS_ACCEPTED=	33 34
+-
+ .include "../../devel/ruby-redmine/redmine.mk"
+ .include "../../lang/ruby/rubyversion.mk"
+ .include "../../mk/bsd.pkg.mk"
+--- a/meta-pkgs/ruby-redmine-themes/Makefile.common
++++ b/meta-pkgs/ruby-redmine-themes/Makefile.common
+@@ -10,8 +10,6 @@
+ 
+ CATEGORIES=	devel
+ 
+-RUBY_VERSIONS_ACCEPTED=	33 34
+-
+ .include "../../devel/ruby-redmine/redmine.mk"
+ 
+ DEPENDS+=	${REDMINE_DEPENDS}
