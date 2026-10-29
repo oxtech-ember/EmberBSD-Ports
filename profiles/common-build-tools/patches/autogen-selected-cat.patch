@@ -1,0 +1,27 @@
+$NetBSD$
+
+Use the selected build PATH when finding the cat utility.
+Origin: EmberBSD (AI-assisted). Upstream status: not submitted.
+
+--- autoopts/mk-tpl-config.sh
++++ autoopts/mk-tpl-config.sh
+@@ -139,11 +139,14 @@
+     do
+         \unalias -a
+         unset -f command cat which
+-        POSIX_CAT=`which cat`
+-        test -x "$POSIX_CAT" && break
+-        POSIX_CAT=`
+-            PATH=\`command -p getconf CS_PATH\`
+-            command -v cat `
++        POSIX_CAT=`IFS=:
++            for dir in $PATH; do
++                test -n "$dir" || dir=.
++                if test -x "$dir/cat" && test ! -d "$dir/cat"; then
++                    printf '%s\n' "$dir/cat"
++                    break
++                fi
++            done`
+         test -x "${POSIX_CAT}" && break
+         die "cannot locate 'cat' command"
+     done
