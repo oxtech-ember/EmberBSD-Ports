@@ -18,7 +18,8 @@ SDK = Path(os.environ['EMBERBSD_SDK_SOURCE'])
 WORK = Path(os.environ['EMBERBSD_TEST_WORK'])
 sys.path.insert(0, str(ROOT / 'pkgsrc/lang/llvm/files'))
 sys.path.insert(0, str(SDK / 'src'))
-OWNERS = ('libevent', 'byacc', 'texinfo', 'rcs', 'diffutils', 'grep', 'ekermit', 'nvi')
+OWNERS = ('libevent', 'byacc', 'texinfo', 'rcs', 'diffutils', 'grep', 'ekermit', 'nvi',
+          'tdb', 'ppp', 'libpcap', 'tcp_wrappers')
 
 
 def load(path, name):
@@ -139,6 +140,53 @@ class OwnerTest(unittest.TestCase):
         module = load(ROOT / f'scripts/source-inputs/{name}/source.py', name + '_owner')
         module.load_sdk(['--sdk-source', str(SDK)])
         return module
+
+    def test_legacy_owners_share_selected_export_and_keep_default(self):
+        from emberbsd_sdk.errors import SDKError
+        with tempfile.TemporaryDirectory(dir=WORK) as temp:
+            tree = Path(temp) / 'selected-tree'
+            for name in ('tdb', 'ppp', 'libpcap', 'tcp_wrappers'):
+                with self.subTest(owner=name):
+                    owner = self.owner(name)
+                    selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')
+                    old = {'export': {'api': 1, 'package': owner.PACKAGE,
+                           'export_inputs_sha256': '1' * 64, 'upstream': '2' * 40},
+                           'owner_sha256': '3' * 64}
+                    current = {'export': {'upstream': '2' * 40}, 'owner_sha256': '4' * 64}
+                    with patch.object(owner, 'source_identity', return_value=current), \
+                         patch.object(owner.jsonio, 'read_json', return_value={'identity': old}), \
+                         patch.object(owner.sourceprep, 'validate_prepared_tree', return_value={'tree_sha256': '5' * 64}), \
+                         patch.object(owner, 'identity_module', return_value=selector), \
+                         patch.object(selector, 'shared_export', return_value=tree) as shared, \
+                         patch.object(owner, 'prepare', return_value={'tree_sha256': '5' * 64}) as prepare:
+                        owner.verify('/source', sys.executable, archive='/archive', patch='/patch', pkgsrc_export='/export')
+                        self.assertEqual(prepare.call_args.kwargs['exported'], tree)
+                        shared.assert_called_once_with('/export', owner.PORTS, sys.executable, owner.SDK_SOURCE, '/patch')
+                        owner.verify('/source', sys.executable, archive='/archive', patch='/patch')
+                        self.assertIsNone(prepare.call_args.kwargs['exported'])
+                        shared.side_effect = SDKError('invalid shared export')
+                        with self.assertRaisesRegex(SDKError, 'invalid shared export'):
+                            owner.verify('/source', sys.executable, archive='/archive', patch='/patch', pkgsrc_export='/invalid')
+
+    def test_scoped_owners_keep_one_default_export(self):
+        for name in ('tdb', 'ppp', 'libpcap', 'tcp_wrappers'):
+            with self.subTest(owner=name):
+                owner = self.owner(name)
+                selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')
+                effective = {'api': 1, 'package': owner.PACKAGE,
+                             'effective_package_sha256': '4' * 64, 'upstream': '1' * 40}
+                old = {'effective': effective, 'owner_sha256': '2' * 64}
+                current = {'export': {'upstream': '1' * 40}, 'owner_sha256': '3' * 64}
+                with patch.object(owner, 'source_identity', return_value=current), \
+                     patch.object(owner.jsonio, 'read_json', return_value={'identity': old}), \
+                     patch.object(owner.sourceprep, 'validate_prepared_tree', return_value={'tree_sha256': '5' * 64}), \
+                     patch.object(owner, 'identity_module', return_value=selector), \
+                     patch.object(selector, 'effective_package_identity', return_value=effective), \
+                     patch.object(owner.process, 'capture') as capture, \
+                     patch.object(owner, 'prepare', return_value={'tree_sha256': '5' * 64}) as prepare:
+                    owner.verify('/source', sys.executable, archive='/archive', patch='/patch')
+                    self.assertEqual(capture.call_count, 1)
+                    self.assertEqual(prepare.call_args.kwargs['exported'], Path(capture.call_args.args[0][3]))
 
     def test_owners_use_the_shared_export_without_exporting(self):
         with tempfile.TemporaryDirectory(dir=WORK) as temp:
