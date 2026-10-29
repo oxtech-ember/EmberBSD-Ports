@@ -1,0 +1,588 @@
+# Adapted from Conrad Ludgate, upstream 46005cb614c806605785c66864d0f7f02137e965 (MIT).
+# EmberBSD contributors (AI-assisted); retains stable SharedValue and guards.
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -65,8 +65,7 @@
+ version = "0.8"
+ 
+ [dependencies.hashbrown]
+-version = "0.14.5"
+-features = ["raw"]
++version = "0.17.1"
+ default-features = false
+ 
+ [dependencies.lock_api]
+@@ -91,3 +90,4 @@
+ version = "0.1.14"
+ optional = true
+ default-features = false
++
+--- a/src/iter.rs
++++ b/src/iter.rs
+@@ -38,7 +38,7 @@
+     }
+ }
+ 
+-type GuardOwningIter<K, V> = hashbrown::raw::RawIntoIter<(K, SharedValue<V>)>;
++type GuardOwningIter<K, V> = hashbrown::hash_table::IntoIter<(K, SharedValue<V>)>;
+ 
+ impl<K: Eq + Hash, V, S: BuildHasher + Clone> Iterator for OwningIter<K, V, S> {
+     type Item = (K, V);
+@@ -88,14 +88,15 @@
+ {
+ }
+ 
++// The iterator is dropped before the guard. Each yielded reference owns a
++// clone of that guard, so the table cannot be modified while it is borrowed.
+ type GuardIter<'a, K, V> = (
++    hashbrown::hash_table::Iter<'a, (K, SharedValue<V>)>,
+     Arc<RwLockReadGuard<'a, HashMap<K, V>>>,
+-    hashbrown::raw::RawIter<(K, SharedValue<V>)>,
+ );
+-
+ type GuardIterMut<'a, K, V> = (
++    hashbrown::hash_table::Iter<'a, (K, SharedValue<V>)>,
+     Arc<RwLockWriteGuard<'a, HashMap<K, V>>>,
+-    hashbrown::raw::RawIter<(K, SharedValue<V>)>,
+ );
+ 
+ /// Iterator over a DashMap yielding immutable references.
+@@ -159,10 +160,9 @@
+     fn next(&mut self) -> Option<Self::Item> {
+         loop {
+             if let Some(current) = self.current.as_mut() {
+-                if let Some(b) = current.1.next() {
++                if let Some((k, v)) = current.0.next() {
+                     return unsafe {
+-                        let (k, v) = b.as_ref();
+-                        let guard = current.0.clone();
++                        let guard = current.1.clone();
+                         Some(RefMulti::new(guard, k, v.get()))
+                     };
+                 }
+@@ -174,9 +174,11 @@
+ 
+             let guard = unsafe { self.map._yield_read_shard(self.shard_i) };
+ 
+-            let iter = unsafe { guard.iter() };
+-
+-            self.current = Some((Arc::new(guard), iter));
++            let guard = Arc::new(guard);
++            // SAFETY: the Arc guard outlives the iterator and all its items.
++            let table: &'a HashMap<K, V> = unsafe { &*(&**guard as *const _) };
++            let iter = table.iter();
++            self.current = Some((iter, guard));
+ 
+             self.shard_i += 1;
+         }
+@@ -241,11 +243,10 @@
+     fn next(&mut self) -> Option<Self::Item> {
+         loop {
+             if let Some(current) = self.current.as_mut() {
+-                if let Some(b) = current.1.next() {
++                if let Some((k, v)) = current.0.next() {
+                     return unsafe {
+-                        let (k, v) = b.as_mut();
+-                        let guard = current.0.clone();
+-                        Some(RefMutMulti::new(guard, k, v.get_mut()))
++                        let guard = current.1.clone();
++                        Some(RefMutMulti::new(guard, k, v.as_ptr()))
+                     };
+                 }
+             }
+@@ -256,9 +257,11 @@
+ 
+             let guard = unsafe { self.map._yield_write_shard(self.shard_i) };
+ 
+-            let iter = unsafe { guard.iter() };
+-
+-            self.current = Some((Arc::new(guard), iter));
++            let guard = Arc::new(guard);
++            // SAFETY: the Arc guard outlives the iterator and all its items.
++            let table: &'a HashMap<K, V> = unsafe { &*(&**guard as *const _) };
++            let iter = table.iter();
++            self.current = Some((iter, guard));
+ 
+             self.shard_i += 1;
+         }
+@@ -280,7 +283,7 @@
+         let mut c = 0;
+ 
+         for shard in map.shards() {
+-            c += unsafe { shard.write().iter().count() };
++            c += shard.write().iter().count();
+         }
+ 
+         assert_eq!(c, 1);
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -54,7 +54,7 @@
+     }
+ }
+ 
+-pub(crate) type HashMap<K, V> = hashbrown::raw::RawTable<(K, SharedValue<V>)>;
++pub(crate) type HashMap<K, V> = hashbrown::HashTable<(K, SharedValue<V>)>;
+ 
+ // Temporary reimplementation of [`std::collections::TryReserveError`]
+ // util [`std::collections::TryReserveError`] stabilises.
+@@ -348,7 +348,7 @@
+             /// };
+             /// let data = (42, SharedValue::new("forty two"));
+             /// let hash = hasher(&data);
+-            /// map.shards_mut()[shard_ind].get_mut().insert(hash, data, hasher);
++            /// map.shards_mut()[shard_ind].get_mut().insert_unique(hash, data, hasher);
+             /// assert_eq!(*map.get(&42).unwrap(), "forty two");
+             /// ```
+             pub fn shards_mut(&mut self) -> &mut [CachePadded<RwLock<HashMap<K, V>>>] {
+@@ -967,8 +967,8 @@
+ 
+         let mut shard = unsafe { self._yield_write_shard(idx) };
+ 
+-        if let Some(bucket) = shard.find(hash, |(k, _v)| key == k.borrow()) {
+-            let ((k, v), _) = unsafe { shard.remove(bucket) };
++        if let Ok(entry) = shard.find_entry(hash, |(k, _v)| key == k.borrow()) {
++            let ((k, v), _) = entry.remove();
+             Some((k, v.into_inner()))
+         } else {
+             None
+@@ -986,10 +986,10 @@
+ 
+         let mut shard = unsafe { self._yield_write_shard(idx) };
+ 
+-        if let Some(bucket) = shard.find(hash, |(k, _v)| key == k.borrow()) {
+-            let (k, v) = unsafe { bucket.as_ref() };
++        if let Ok(entry) = shard.find_entry(hash, |(k, _v)| key == k.borrow()) {
++            let (k, v) = entry.get();
+             if f(k, v.get()) {
+-                let ((k, v), _) = unsafe { shard.remove(bucket) };
++                let ((k, v), _) = entry.remove();
+                 Some((k, v.into_inner()))
+             } else {
+                 None
+@@ -1010,10 +1010,10 @@
+ 
+         let mut shard = unsafe { self._yield_write_shard(idx) };
+ 
+-        if let Some(bucket) = shard.find(hash, |(k, _v)| key == k.borrow()) {
+-            let (k, v) = unsafe { bucket.as_mut() };
++        if let Ok(mut entry) = shard.find_entry(hash, |(k, _v)| key == k.borrow()) {
++            let (k, v) = entry.get_mut();
+             if f(k, v.get_mut()) {
+-                let ((k, v), _) = unsafe { shard.remove(bucket) };
++                let ((k, v), _) = entry.remove();
+                 Some((k, v.into_inner()))
+             } else {
+                 None
+@@ -1042,10 +1042,12 @@
+ 
+         let shard = unsafe { self._yield_read_shard(idx) };
+ 
+-        if let Some(bucket) = shard.find(hash, |(k, _v)| key == k.borrow()) {
++        if let Some((k, v)) = shard.find(hash, |(k, _v)| key == k.borrow()) {
++            let k = k as *const K;
++            let v = v.as_ptr();
+             unsafe {
+-                let (k, v) = bucket.as_ref();
+-                Some(Ref::new(shard, k, v.as_ptr()))
++                let k = &*k;
++                Some(Ref::new(shard, k, v))
+             }
+         } else {
+             None
+@@ -1063,10 +1065,12 @@
+ 
+         let shard = unsafe { self._yield_write_shard(idx) };
+ 
+-        if let Some(bucket) = shard.find(hash, |(k, _v)| key == k.borrow()) {
++        if let Some((k, v)) = shard.find(hash, |(k, _v)| key == k.borrow()) {
++            let k = k as *const K;
++            let v = v.as_ptr();
+             unsafe {
+-                let (k, v) = bucket.as_ref();
+-                Some(RefMut::new(shard, k, v.as_ptr()))
++                let k = &*k;
++                Some(RefMut::new(shard, k, v))
+             }
+         } else {
+             None
+@@ -1087,10 +1091,12 @@
+             None => return TryResult::Locked,
+         };
+ 
+-        if let Some(bucket) = shard.find(hash, |(k, _v)| key == k.borrow()) {
++        if let Some((k, v)) = shard.find(hash, |(k, _v)| key == k.borrow()) {
++            let k = k as *const K;
++            let v = v.as_ptr();
+             unsafe {
+-                let (k, v) = bucket.as_ref();
+-                TryResult::Present(Ref::new(shard, k, v.as_ptr()))
++                let k = &*k;
++                TryResult::Present(Ref::new(shard, k, v))
+             }
+         } else {
+             TryResult::Absent
+@@ -1111,10 +1117,12 @@
+             None => return TryResult::Locked,
+         };
+ 
+-        if let Some(bucket) = shard.find(hash, |(k, _v)| key == k.borrow()) {
++        if let Some((k, v)) = shard.find(hash, |(k, _v)| key == k.borrow()) {
++            let k = k as *const K;
++            let v = v.as_ptr();
+             unsafe {
+-                let (k, v) = bucket.as_ref();
+-                TryResult::Present(RefMut::new(shard, k, v.as_ptr()))
++                let k = &*k;
++                TryResult::Present(RefMut::new(shard, k, v))
+             }
+         } else {
+             TryResult::Absent
+@@ -1135,16 +1143,7 @@
+ 
+     fn _retain(&self, mut f: impl FnMut(&K, &mut V) -> bool) {
+         self.shards.iter().for_each(|s| {
+-            unsafe {
+-                let mut shard = s.write();
+-                // Here we only use `iter` as a temporary, preventing use-after-free
+-                for bucket in shard.iter() {
+-                    let (k, v) = bucket.as_mut();
+-                    if !f(&*k, v.get_mut()) {
+-                        shard.erase(bucket);
+-                    }
+-                }
+-            }
++            s.write().retain(|(k, v)| f(k, v.get_mut()));
+         });
+     }
+ 
+@@ -1189,7 +1188,10 @@
+ 
+         let mut shard = unsafe { self._yield_write_shard(idx) };
+ 
+-        match shard.find_or_find_insert_slot(
++        // SAFETY: the entry is stored before the guard and dropped before it.
++        // No other table access occurs while the entry exists.
++        let table: &'a mut HashMap<K, V> = unsafe { &mut *(&mut *shard as *mut _) };
++        match table.entry(
+             hash,
+             |(k, _v)| k == &key,
+             |(k, _v)| {
+@@ -1198,8 +1200,8 @@
+                 hasher.finish()
+             },
+         ) {
+-            Ok(elem) => Entry::Occupied(unsafe { OccupiedEntry::new(shard, key, elem) }),
+-            Err(slot) => Entry::Vacant(unsafe { VacantEntry::new(shard, key, hash, slot) }),
++            hashbrown::hash_table::Entry::Occupied(elem) => Entry::Occupied(unsafe { OccupiedEntry::new(shard, key, elem) }),
++            hashbrown::hash_table::Entry::Vacant(slot) => Entry::Vacant(unsafe { VacantEntry::new(shard, key, slot) }),
+         }
+     }
+ 
+@@ -1210,7 +1212,10 @@
+ 
+         let mut shard = unsafe { self._try_yield_write_shard(idx) }?;
+ 
+-        match shard.find_or_find_insert_slot(
++        // SAFETY: the entry is stored before the guard and dropped before it.
++        // No other table access occurs while the entry exists.
++        let table: &'a mut HashMap<K, V> = unsafe { &mut *(&mut *shard as *mut _) };
++        match table.entry(
+             hash,
+             |(k, _v)| k == &key,
+             |(k, _v)| {
+@@ -1219,11 +1224,11 @@
+                 hasher.finish()
+             },
+         ) {
+-            Ok(elem) => Some(Entry::Occupied(unsafe {
++            hashbrown::hash_table::Entry::Occupied(elem) => Some(Entry::Occupied(unsafe {
+                 OccupiedEntry::new(shard, key, elem)
+             })),
+-            Err(slot) => Some(Entry::Vacant(unsafe {
+-                VacantEntry::new(shard, key, hash, slot)
++            hashbrown::hash_table::Entry::Vacant(slot) => Some(Entry::Vacant(unsafe {
++                VacantEntry::new(shard, key, slot)
+             })),
+         }
+     }
+@@ -1356,13 +1361,13 @@
+             .iter()
+             .map(|shard_lock| {
+                 let shard = shard_lock.read();
+-                let hashtable_size = shard.allocation_info().1.size();
++                let hashtable_size = shard.allocation_size();
+ 
+                 // Safety: The iterator is dropped before the HashTable
+-                let iter = unsafe { shard.iter() };
++                let iter = shard.iter();
+                 let entry_size_iter = iter.map(|bucket| {
+                     // Safety: The iterator returns buckets with valid pointers to entries
+-                    let (key, value) = unsafe { bucket.as_ref() };
++                    let (key, value) = bucket;
+                     key.extra_size() + value.get().extra_size()
+                 });
+ 
+--- a/src/mapref/entry.rs
++++ b/src/mapref/entry.rs
+@@ -111,73 +111,54 @@
+     }
+ }
+ 
++// Entry borrows the table only while its owning shard guard is held. Fields
++// are dropped in declaration order, so the borrow ends before the lock and
++// the caller-owned key is dropped after the lock is released.
+ pub struct VacantEntry<'a, K, V> {
++    entry: hashbrown::hash_table::VacantEntry<'a, (K, SharedValue<V>)>,
+     shard: RwLockWriteGuard<'a, HashMap<K, V>>,
+     key: K,
+-    hash: u64,
+-    slot: hashbrown::raw::InsertSlot,
+ }
+ 
+ unsafe impl<K: Eq + Hash + Sync, V: Sync> Send for VacantEntry<'_, K, V> {}
+ unsafe impl<K: Eq + Hash + Sync, V: Sync> Sync for VacantEntry<'_, K, V> {}
+ 
+ impl<'a, K: Eq + Hash, V> VacantEntry<'a, K, V> {
+-    pub(crate) unsafe fn new(
+-        shard: RwLockWriteGuard<'a, HashMap<K, V>>,
+-        key: K,
+-        hash: u64,
+-        slot: hashbrown::raw::InsertSlot,
+-    ) -> Self {
+-        Self {
+-            shard,
+-            key,
+-            hash,
+-            slot,
+-        }
+-    }
+-
+-    pub fn insert(mut self, value: V) -> RefMut<'a, K, V> {
+-        unsafe {
+-            let occupied = self.shard.insert_in_slot(
+-                self.hash,
+-                self.slot,
+-                (self.key, SharedValue::new(value)),
+-            );
+-
+-            let (k, v) = occupied.as_ref();
+-
+-            RefMut::new(self.shard, k, v.as_ptr())
+-        }
+-    }
+-
+-    /// Sets the value of the entry with the VacantEntry’s key, and returns an OccupiedEntry.
+-    pub fn insert_entry(mut self, value: V) -> OccupiedEntry<'a, K, V>
+-    where
+-        K: Clone,
+-    {
+-        unsafe {
+-            let bucket = self.shard.insert_in_slot(
+-                self.hash,
+-                self.slot,
+-                (self.key.clone(), SharedValue::new(value)),
+-            );
+-
+-            OccupiedEntry::new(self.shard, self.key, bucket)
+-        }
++    pub(crate) unsafe fn new(shard: RwLockWriteGuard<'a, HashMap<K, V>>, key: K,
++        entry: hashbrown::hash_table::VacantEntry<'a, (K, SharedValue<V>)>) -> Self {
++        Self { entry, shard, key }
++    }
++
++    pub fn insert(self, value: V) -> RefMut<'a, K, V> {
++        let Self { entry, shard, key } = self;
++        let (k, v) = entry.insert((key, SharedValue::new(value))).into_mut();
++        // SAFETY: the returned guard keeps this entry's shard locked for 'a.
++        unsafe { RefMut::new(shard, &*(k as *const K), v.as_ptr()) }
++    }
++
++    pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V>
++    where K: Clone {
++        // Clone while the entry still owns its guard, so unwinding drops the
++        // borrowed entry and guard before dropping the caller-owned key.
++        let cloned = self.key.clone();
++        let Self { entry, shard, key } = self;
++        let entry = entry.insert((cloned, SharedValue::new(value)));
++        OccupiedEntry { entry, shard, key }
+     }
+ 
+     pub fn into_key(self) -> K {
+-        self.key
+-    }
+-
+-    pub fn key(&self) -> &K {
+-        &self.key
+-    }
++        let Self { entry, shard, key } = self;
++        drop(entry);
++        drop(shard);
++        key
++    }
++
++    pub fn key(&self) -> &K { &self.key }
+ }
+ 
+ pub struct OccupiedEntry<'a, K, V> {
++    entry: hashbrown::hash_table::OccupiedEntry<'a, (K, SharedValue<V>)>,
+     shard: RwLockWriteGuard<'a, HashMap<K, V>>,
+-    bucket: hashbrown::raw::Bucket<(K, SharedValue<V>)>,
+     key: K,
+ }
+ 
+@@ -185,57 +166,51 @@
+ unsafe impl<K: Eq + Hash + Sync, V: Sync> Sync for OccupiedEntry<'_, K, V> {}
+ 
+ impl<'a, K: Eq + Hash, V> OccupiedEntry<'a, K, V> {
+-    pub(crate) unsafe fn new(
+-        shard: RwLockWriteGuard<'a, HashMap<K, V>>,
+-        key: K,
+-        bucket: hashbrown::raw::Bucket<(K, SharedValue<V>)>,
+-    ) -> Self {
+-        Self { shard, bucket, key }
+-    }
+-
+-    pub fn get(&self) -> &V {
+-        unsafe { self.bucket.as_ref().1.get() }
+-    }
+-
+-    pub fn get_mut(&mut self) -> &mut V {
+-        unsafe { self.bucket.as_mut().1.get_mut() }
+-    }
+-
+-    pub fn insert(&mut self, value: V) -> V {
+-        mem::replace(self.get_mut(), value)
+-    }
+-
++    pub(crate) unsafe fn new(shard: RwLockWriteGuard<'a, HashMap<K, V>>, key: K,
++        entry: hashbrown::hash_table::OccupiedEntry<'a, (K, SharedValue<V>)>) -> Self {
++        Self { entry, shard, key }
++    }
++    pub fn get(&self) -> &V { self.entry.get().1.get() }
++    pub fn get_mut(&mut self) -> &mut V { self.entry.get_mut().1.get_mut() }
++    pub fn insert(&mut self, value: V) -> V { mem::replace(self.get_mut(), value) }
+     pub fn into_ref(self) -> RefMut<'a, K, V> {
+-        unsafe {
+-            let (k, v) = self.bucket.as_ref();
+-            RefMut::new(self.shard, k, v.as_ptr())
+-        }
+-    }
+-
++        let Self { entry, shard, key } = self;
++        let (k, v) = entry.into_mut();
++        // SAFETY: the returned guard keeps this entry's shard locked for 'a.
++        let result = unsafe { RefMut::new(shard, &*(k as *const K), v.as_ptr()) };
++        drop(key);
++        result
++    }
+     pub fn into_key(self) -> K {
+-        self.key
+-    }
+-
+-    pub fn key(&self) -> &K {
+-        unsafe { &self.bucket.as_ref().0 }
+-    }
+-
+-    pub fn remove(mut self) -> V {
+-        let ((_k, v), _) = unsafe { self.shard.remove(self.bucket) };
+-        v.into_inner()
+-    }
+-
+-    pub fn remove_entry(mut self) -> (K, V) {
+-        let ((k, v), _) = unsafe { self.shard.remove(self.bucket) };
+-        (k, v.into_inner())
+-    }
+-
++        let Self { entry, shard, key } = self;
++        drop(entry);
++        drop(shard);
++        key
++    }
++    pub fn key(&self) -> &K { &self.entry.get().0 }
++    pub fn remove(self) -> V {
++        let Self { entry, shard, key } = self;
++        let ((stored_key, value), vacant) = entry.remove();
++        drop(vacant);
++        drop(shard);
++        drop(stored_key);
++        drop(key);
++        value.into_inner()
++    }
++    pub fn remove_entry(self) -> (K, V) {
++        let Self { entry, shard, key } = self;
++        let ((stored_key, value), vacant) = entry.remove();
++        drop(vacant);
++        drop(shard);
++        drop(key);
++        (stored_key, value.into_inner())
++    }
+     pub fn replace_entry(self, value: V) -> (K, V) {
+-        let (k, v) = mem::replace(
+-            unsafe { self.bucket.as_mut() },
+-            (self.key, SharedValue::new(value)),
+-        );
+-        (k, v.into_inner())
++        let Self { mut entry, shard, key } = self;
++        let (old_key, old_value) = mem::replace(entry.get_mut(), (key, SharedValue::new(value)));
++        drop(entry);
++        drop(shard);
++        (old_key, old_value.into_inner())
+     }
+ }
+ 
+--- a/src/rayon/map.rs
++++ b/src/rayon/map.rs
+@@ -142,9 +142,10 @@
+             .into_par_iter()
+             .flat_map_iter(|shard| unsafe {
+                 let guard = Arc::new(shard.read());
+-                guard.iter().map(move |b| {
++                // SAFETY: the closure owns the guard and every yielded item clones it.
++                let table: &'a HashMap<K, V> = &*(&**guard as *const _);
++                table.iter().map(move |(k, v)| {
+                     let guard = Arc::clone(&guard);
+-                    let (k, v) = b.as_ref();
+                     RefMulti::new(guard, k, v.get())
+                 })
+             })
+@@ -200,10 +201,11 @@
+             .into_par_iter()
+             .flat_map_iter(|shard| unsafe {
+                 let guard = Arc::new(shard.write());
+-                guard.iter().map(move |b| {
++                // SAFETY: the exclusive guard stays alive for all disjoint items.
++                let table: &'a HashMap<K, V> = &*(&**guard as *const _);
++                table.iter().map(move |(k, v)| {
+                     let guard = Arc::clone(&guard);
+-                    let (k, v) = b.as_mut();
+-                    RefMutMulti::new(guard, k, v.get_mut())
++                    RefMutMulti::new(guard, k, v.as_ptr())
+                 })
+             })
+             .drive_unindexed(consumer)
+--- a/src/read_only.rs
++++ b/src/read_only.rs
+@@ -86,10 +86,7 @@
+ 
+         let shard = unsafe { self.map._get_read_shard(idx) };
+ 
+-        shard.find(hash, |(k, _v)| key == k.borrow()).map(|b| {
+-            let (k, v) = unsafe { b.as_ref() };
+-            (k, v.get())
+-        })
++        shard.find(hash, |(k, _v)| key == k.borrow()).map(|(k, v)| (k, v.get()))
+     }
+ 
+     /// An iterator visiting all key-value pairs in arbitrary order. The iterator element type is `(&'a K, &'a V)`.
+@@ -98,10 +95,7 @@
+             (0..self.map._shard_count())
+                 .map(move |shard_i| self.map._get_read_shard(shard_i))
+                 .flat_map(|shard| shard.iter())
+-                .map(|b| {
+-                    let (k, v) = b.as_ref();
+-                    (k, v.get())
+-                })
++                .map(|(k, v)| (k, v.get()))
+         }
+     }
+ 

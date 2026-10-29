@@ -1,7 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	rollup-4.65.1
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	devel
 ROLLUP_REVISION=	7879c65994dd591d287b177b8d0b88d7d76c2a49
 DISTFILES=	rollup-${ROLLUP_REVISION}.tar.gz ${DISTNAME}.tgz
@@ -58,6 +58,11 @@ _ROLLUP_NAPI_BASE=	linux-${_ROLLUP_NODE_ARCH}-${_ROLLUP_LIBC}
 .  endif
 .endif
 EMBER_CARGO_TARGET?=	${_ROLLUP_RUST_TARGET:U}
+
+# cc-rs normalizes this target to arm; retain the explicit armv7 triple.
+.if ${EMBER_CARGO_TARGET} == "armv7-unknown-linux-gnueabihf" && !empty(PKGSRC_COMPILER:Mclang)
+CFLAGS+=	--target=${EMBER_CARGO_TARGET}
+.endif
 ROLLUP_NAPI_BASE?=	${_ROLLUP_NAPI_BASE:U}
 .if ${OPSYS} == "Darwin"
 ROLLUP_DYLIB_SUFFIX=	dylib

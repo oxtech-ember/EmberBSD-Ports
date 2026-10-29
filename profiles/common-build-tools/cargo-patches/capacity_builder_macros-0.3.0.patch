@@ -1,0 +1,8 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -33,4 +33,4 @@
+ version = "1"
+ 
+ [dependencies.syn]
+-version = "2"
++version = "3.0.9"

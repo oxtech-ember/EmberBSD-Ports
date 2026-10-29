@@ -16,6 +16,15 @@
     },
     "patch": "ast_node-7.0.0.patch"
   },
+  "capacity_builder_macros-0.3.0": {
+    "files": {
+      "Cargo.toml": {
+        "before": "c41034530558857f6b50fced6a10bd2dc9cfd7422169cd3ebb58e4f48e72244a",
+        "after": "0175e60a5c239a1aa25caa821854fd350b8bbd4a63ae39952c8a73dcc7ec4d69"
+      }
+    },
+    "patch": "capacity_builder_macros-0.3.0.patch"
+  },
   "chrono-0.4.45": {
     "files": {
       "Cargo.toml": {
@@ -34,6 +43,35 @@
     },
     "patch": "clang-sys-1.9.1.patch"
   },
+  "dashmap-6.2.1": {
+    "files": {
+      "Cargo.toml": {
+        "before": "e106c81b532f1aa7b98b969afc144003827d9f67b353d5d973d286ae62117273",
+        "after": "41de1ccec9a8ab3d80f39270e71e66a73ed1dc0e8f1705c5267cd0805b9ae892"
+      },
+      "src/iter.rs": {
+        "before": "e40b934ac1ed00f2a04427cf16c175996281a85786283089f83196d8c0991d63",
+        "after": "f3b25824f478201d833a961d9fdeb94671bbc2d805947868e7b0288bee8667d2"
+      },
+      "src/lib.rs": {
+        "before": "64b90c70475da6b2def36975f9ae21ed3c71b1d0fb8d4ccd1fcbd3bb260be582",
+        "after": "de1ed66ca60b09c2717ef0bcc89328230d6ad3279703de076c90b36c19732216"
+      },
+      "src/mapref/entry.rs": {
+        "before": "3f782101321f02567e60970c0fb66a3f5ff714a810a0fd4892cfa32c3f03030c",
+        "after": "1c97f3d1ab6dea0efa09eab74fc141001ff52bfd70414001bdedb6f927f5e1a5"
+      },
+      "src/rayon/map.rs": {
+        "before": "3c923143d20ed2fcbb727f598ca3b69ad8a15c80cc0dcf95bbc673034a14d0b5",
+        "after": "194324c7a9e6c3107101b043a6a94ebc98b4b606697817801c0831cf9286bf29"
+      },
+      "src/read_only.rs": {
+        "before": "6c1ef010eb40e5744cfe09049589829cd803f0c082b43253676e43fd376ade57",
+        "after": "2903a4a0a100ff1a8f1cb90347380370c75410e9467f6e339828e191b4678619"
+      }
+    },
+    "patch": "dashmap-6.2.1.patch"
+  },
   "dlib-0.5.3": {
     "files": {
       "Cargo.toml": {
@@ -43,6 +81,37 @@
     },
     "patch": "dlib-0.5.3.patch"
   },
+  "dprint-core-0.71.1": {
+    "files": {
+      "Cargo.toml": {
+        "before": "f03ee04cf7b7dec96d7a3c9e508f867c8c708166d840303de90f4b438ac28210",
+        "after": "5342918462e01050dd79df7fa7707592860fc59c04f659ba2d5055005372bf9d"
+      }
+    },
+    "patch": "dprint-core-0.71.1.patch"
+  },
+  "dprint-core-macros-0.1.0": {
+    "files": {
+      "Cargo.toml": {
+        "before": "bcb61ed11b0054ab27b0de135998620e35e40e2ae6aa5ef1894a69d8c64920fd",
+        "after": "34d0556c87cc42f3bccd86e9763faeb223bbd07ee779c0977c3facf1a8fece67"
+      }
+    },
+    "patch": "dprint-core-macros-0.1.0.patch"
+  },
+  "dprint-swc-ext-0.26.1": {
+    "files": {
+      "Cargo.toml": {
+        "before": "3eee764e8edb02005187153e0cc0e9167a6fe4762a23928bab9d1dd58e2bcbf5",
+        "after": "9bd0c750607bdfb1552e19a033551075113370f47365a7674f5b392e70e87449"
+      },
+      "src/view/generated.rs": {
+        "before": "dc6cbaa4cb3c87c63b3a5f08c8b012fbabc889c780367cfaef139bc0d2dfba51",
+        "after": "19fd4532cca71b7fa1abebf6a9d24df58727b8c29a79e5f473fd2815e109e165"
+      }
+    },
+    "patch": "dprint-swc-ext-0.26.1.patch"
+  },
   "from_variant-3.0.0": {
     "files": {
       "Cargo.toml": {
@@ -51,6 +120,15 @@
       }
     },
     "patch": "from_variant-3.0.0.patch"
+  },
+  "hstr-4.0.3": {
+    "files": {
+      "Cargo.toml": {
+        "before": "650ffdc5a12d71ca1a31694d1741aa1319bd7d51f32695ae5372126867b2909a",
+        "after": "9832d91792fcb9efae7bfd1f71f7dbd00d3fbcafad01c1933fc1666ff4fd85bc"
+      }
+    },
+    "patch": "hstr-4.0.3.patch"
   },
   "is-macro-0.3.8": {
     "files": {
@@ -128,6 +206,15 @@
     },
     "patch": "phf_macros-0.14.0.patch"
   },
+  "regress-0.11.1": {
+    "files": {
+      "Cargo.toml": {
+        "before": "4645cf20c1fd389a56058c71b7146a07ea42ac28e1ebbdcac9867a65103f2d76",
+        "after": "fef9ece9caad2de8317d5a29d09b9234a7a453892ab5dfa4991948808672b50e"
+      }
+    },
+    "patch": "regress-0.11.1.patch"
+  },
   "string_enum-1.0.2": {
     "files": {
       "Cargo.toml": {
@@ -140,6 +227,24 @@
       }
     },
     "patch": "string_enum-1.0.2.patch"
+  },
+  "swc_allocator-5.0.0": {
+    "files": {
+      "Cargo.toml": {
+        "before": "dc2099bbdb11bc3faf04948b59755aa698b05c4b2acf6ee7187991d54872b9c1",
+        "after": "3443a7886cb7b37d7146bcc771448dbf89310add57698d3372201f5dc0c7e2f7"
+      }
+    },
+    "patch": "swc_allocator-5.0.0.patch"
+  },
+  "swc_common-26.0.0": {
+    "files": {
+      "Cargo.toml": {
+        "before": "e1e535693f08ce93d41c2ca99fc9b030b2c18ff9c68b6f5ab410e0993190b856",
+        "after": "2a8971ff95d9f18b952d65747983ba78d73f4b4d6c88dc630a23175c8f760aaa"
+      }
+    },
+    "patch": "swc_common-26.0.0.patch"
   },
   "swc_config_macro-1.0.1": {
     "files": {

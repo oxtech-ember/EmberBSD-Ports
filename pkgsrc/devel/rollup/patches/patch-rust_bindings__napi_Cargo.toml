@@ -1,7 +1,6 @@
 $NetBSD$
 
-Use the shared mimalloc v3 ABI selected by the Ports dependency.
-The allocator and all existing target feature policies remain enabled.
+Use shared mimalloc v3 and current common build tools.
 
 --- rust/bindings_napi/Cargo.toml.orig
 +++ rust/bindings_napi/Cargo.toml
@@ -14,7 +13,7 @@ The allocator and all existing target feature policies remain enabled.
  
  # Readable version of the target specifier
  # cfg(
-@@ -34,13 +34,13 @@
+@@ -34,21 +34,16 @@
  # 	)
  # )
  [target.'cfg(any(all(target_os = "linux", not(target_arch = "loongarch64"), not(all(target_arch = "riscv64", target_env = "musl")), not(target_env = "ohos")), all(target_os = "freebsd", not(target_arch = "aarch64"))))'.dependencies]
@@ -30,3 +29,14 @@ The allocator and all existing target feature policies remain enabled.
  
  [build-dependencies]
  napi-build = "2.6.0"
+-# Pins for the transitive cmake/cc build chain (libmimalloc-sys2): cc 1.4.7
+-# changes the clang --target triple for armv7-unknown-linux-gnueabihf and breaks
+-# that CI build, and cc 1.4.6 does not compile against the regenerated
+-# find-msvc-tools 0.1.13 bindings. Renovate lock file maintenance ignores
+-# allowedVersions rules, so the pins need to live here. Remove once
+-# https://github.com/rust-lang/cc-rs/issues/1940 is fixed.
+-cc = "=1.4.6"
+-find-msvc-tools = "=0.1.12"
++# Use the shared current host build tools.
++cc = "1.10.0"
++find-msvc-tools = "0.1.15"

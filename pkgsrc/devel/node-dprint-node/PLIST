@@ -1,0 +1,6 @@
+@comment $NetBSD$
+lib/node_modules/dprint-node/dprint-node.node
+lib/node_modules/dprint-node/index.d.ts
+lib/node_modules/dprint-node/index.js
+lib/node_modules/dprint-node/options.d.ts
+lib/node_modules/dprint-node/package.json

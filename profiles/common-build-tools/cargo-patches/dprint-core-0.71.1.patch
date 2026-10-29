@@ -1,0 +1,11 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -107,7 +107,7 @@
+ optional = true
+ 
+ [dependencies.hashbrown]
+-version = "0.15.2"
++version = "0.17.1"
+ optional = true
+ 
+ [dependencies.indexmap]

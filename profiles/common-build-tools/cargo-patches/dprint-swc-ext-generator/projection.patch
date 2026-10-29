@@ -1,0 +1,306 @@
+--- a/generation/analyze/analyze_ast_crate.ts
++++ b/generation/analyze/analyze_ast_crate.ts
+@@ -1,3 +1,4 @@
++import { readFileSync } from "node:fs";
+ import type {
+   AstEnumDefinition,
+   AstEnumVariantDefinition,
+@@ -9,9 +10,10 @@
+ } from "./analysis_types.ts";
+ import type { Crate, EnumInner, EnumVariantInner, Item, StructInner, TypeInner } from "./doc_types.ts";
+ import { getEnumVariants, getTypeDefinition, sortNamedDefinitions } from "./helpers.ts";
++import { validateAstViewContract } from "./view_contract.ts";
+ 
+ export function analyzeAstCrate() {
+-  const crate: Crate = JSON.parse(Deno.readTextFileSync("swc_ecma_ast.json"));
++  const crate: Crate = JSON.parse(readFileSync("swc_ecma_ast.json", "utf8"));
+   const astStructs = Array.from(getAstStructs());
+   const { astEnums, plainEnums } = getEnums();
+ 
+@@ -19,7 +21,9 @@
+   sortNamedDefinitions(astEnums);
+   sortNamedDefinitions(plainEnums);
+ 
++  projectAccessorFunctions(astStructs);
+   fillStructParents(astStructs, astEnums);
++  validateAstViewContract(astStructs, astEnums);
+ 
+   return {
+     astStructs,
+@@ -199,7 +203,28 @@
+   }
+ }
+ 
+-function fillStructParents(astStructs: AstStructDefinition[], astEnums: AstEnumDefinition[]) {
++
++// Preserve accessor subfields without exposing an overlapping Function sibling.
++// Each projection borrows from inner.function; the generated accessor owns the
++// view-parent relationship while the underlying SWC nodes remain untouched.
++export function projectAccessorFunctions(structs: AstStructDefinition[]) {
++  const functionNode = structs.find(s => s.name === "Function");
++  if (functionNode == null) throw new Error("Missing SWC Function definition");
++  for (const name of ["GetterProp", "SetterProp"]) {
++    const accessor = structs.find(s => s.name === name);
++    if (accessor == null) throw new Error(`Missing SWC ${name} definition`);
++    const functionField = accessor.fields.findIndex(f => f.innerName === "function");
++    if (functionField < 0) throw new Error(`Missing ${name}.function`);
++    const existing = new Set(accessor.fields.map(f => f.name));
++    const projected = functionNode.fields.map(field => {
++      if (existing.has(field.name)) throw new Error(`Projection collision: ${name}.${field.name}`);
++      return { ...field, innerName: `function.${field.innerName}` };
++    });
++    accessor.fields.splice(functionField, 1, ...projected);
++  }
++}
++
++export function fillStructParents(astStructs: AstStructDefinition[], astEnums: AstEnumDefinition[]) {
+   astStructs.forEach(analyzeStruct);
+ 
+   function analyzeStruct(struct: AstStructDefinition) {
+--- a/generation/analyze/analyze_parser_crate.ts
++++ b/generation/analyze/analyze_parser_crate.ts
+@@ -1,9 +1,10 @@
++import { readFileSync } from "node:fs";
+ import type { EnumDefinition, EnumVariantDefinition } from "./analysis_types.ts";
+ import type { Crate, Item, TypeInner } from "./doc_types.ts";
+ import { getEnumVariants, getTypeDefinition, sortNamedDefinitions } from "./helpers.ts";
+ 
+ export function analyzeParserCrate() {
+-  const crate: Crate = JSON.parse(Deno.readTextFileSync("swc_ecma_parser.json"));
++  const crate: Crate = JSON.parse(readFileSync("swc_ecma_parser.json", "utf8"));
+   const tokenEnums = Array.from(getEnums());
+ 
+   sortNamedDefinitions(tokenEnums);
+--- a/generation/analyze/helpers.ts
++++ b/generation/analyze/helpers.ts
+@@ -1,5 +1,5 @@
+-import { NamedDefinition, TypeDefinition } from "./analysis_types.ts";
+-import { Crate, Item, ItemSummary, ResolvedPathTypeInner, TypeInner } from "./doc_types.ts";
++import type { NamedDefinition, TypeDefinition } from "./analysis_types.ts";
++import type { Crate, Item, ItemSummary, ResolvedPathTypeInner, TypeInner } from "./doc_types.ts";
+ 
+ export function* getEnumVariants(crate: Crate, item: Item) {
+   const inner = item.inner.enum!;
+--- /dev/null
++++ b/generation/analyze/view_contract.ts
+@@ -0,0 +1,65 @@
++import type { AstEnumDefinition, AstStructDefinition, TypeDefinition } from "./analysis_types.ts";
++
++// SWC 29 moved function blocks and accessor contents into distinct nodes.
++// Refuse to generate a view that silently drops them when its input JSON is stale.
++export function validateAstViewContract(structs: AstStructDefinition[], enums: AstEnumDefinition[]) {
++  function struct(name: string): AstStructDefinition {
++    const result = structs.find(s => s.name === name);
++    if (result == null) throw new Error(`Missing SWC view node ${name}`);
++    return result;
++  }
++  function hasType(type: TypeDefinition, expected: string): boolean {
++    return type.kind === "Reference"
++      && (type.name === expected || type.genericArgs.some(t => hasType(t, expected)));
++  }
++  function field(owner: string, name: string, type: string) {
++    const result = struct(owner).fields.find(f => f.innerName === name);
++    if (result == null || !hasType(result.type, type)) {
++      throw new Error(`Unexpected SWC view field ${owner}.${name}; expected ${type}`);
++    }
++  }
++  function parent(child: string, owner: string) {
++    if (!struct(child).parents.some(p => p.name === owner)) {
++      throw new Error(`Missing SWC view parent ${owner} for ${child}`);
++    }
++  }
++  field("FunctionBody", "stmts", "Stmt");
++  field("TsThisParam", "this_span", "Span");
++  field("TsThisParam", "type_ann", "TsTypeAnn");
++  field("Function", "this_param", "TsThisParam");
++  field("Function", "body", "FunctionBody");
++  field("Function", "params", "Param");
++  field("Function", "type_params", "TsTypeParamDecl");
++  field("Function", "return_type", "TsTypeAnn");
++  field("Constructor", "body", "FunctionBody");
++  field("ArrowExpr", "body", "ArrowFunctionBody");
++  for (const owner of ["GetterProp", "SetterProp"]) {
++    field(owner, "function.this_param", "TsThisParam");
++    field(owner, "function.params", "Param");
++    field(owner, "function.decorators", "Decorator");
++    field(owner, "function.type_params", "TsTypeParamDecl");
++    field(owner, "function.return_type", "TsTypeAnn");
++    field(owner, "function.body", "FunctionBody");
++    for (const name of ["is_async", "is_generator"]) {
++      const flag = struct(owner).fields.find(f => f.innerName === `function.${name}`);
++      if (flag?.type.kind !== "Primitive" || flag.type.text !== "bool") {
++        throw new Error(`Missing ${owner}.function.${name} flag`);
++      }
++    }
++  }
++  field("JSXText", "value", "Wtf8Atom");
++  field("JSXText", "raw", "Atom");
++  parent("TsThisParam", "Function");
++  parent("FunctionBody", "Function");
++  parent("FunctionBody", "Constructor");
++  parent("FunctionBody", "ArrowExpr");
++  parent("TsThisParam", "GetterProp");
++  parent("TsThisParam", "SetterProp");
++  parent("FunctionBody", "GetterProp");
++  parent("FunctionBody", "SetterProp");
++  const arrow = enums.find(e => e.name === "ArrowFunctionBody");
++  if (arrow == null || !arrow.variants.some(v => v.name === "FunctionBody" && v.tupleArg.name === "FunctionBody")
++    || !arrow.variants.some(v => v.name === "Expr" && v.tupleArg.name === "Expr")) {
++    throw new Error("Unexpected SWC ArrowFunctionBody variants");
++  }
++}
+--- a/generation/generate/generate.ts
++++ b/generation/generate/generate.ts
+@@ -1,4 +1,4 @@
+-import { AnalysisResult, AstEnumDefinition, AstEnumVariantDefinition, AstStructDefinition, TypeDefinition } from "../analyze/analysis_types.ts";
++import type { AnalysisResult, AstEnumDefinition, AstEnumVariantDefinition, AstStructDefinition, TypeDefinition } from "../analyze/analysis_types.ts";
+ import { createWriter } from "../utils/create_writer.ts";
+ import { nameToSnakeCase } from "../utils/string_utils.ts";
+ import {
+@@ -583,9 +583,14 @@
+           if (structFields.length === 0) {
+             writer.write("Vec::with_capacity(0)");
+           } else {
+-            writer.writeLine(`let mut children = Vec::with_capacity(${getStructChildrenCapacityExpr()});`);
++            const explicit = ["Function", "GetterProp", "SetterProp"].includes(struct.name) ? ": Vec<Node<'a>>" : "";
++            writer.writeLine(`let mut children${explicit} = Vec::with_capacity(${getStructChildrenCapacityExpr()});`);
+             for (const field of structFields) {
+               writeAppendChild(field.type, `self.${field.name}`, false, false);
++            }
++            // Accessor Function spans begin at get/set, before the property key.
++            if (["Function", "GetterProp", "SetterProp"].includes(struct.name)) {
++              writer.writeLine("children.sort_by_key(|node| node.start());");
+             }
+             writer.write("children");
+           }
+@@ -709,7 +714,7 @@
+           }
+           for (const field of structFields) {
+             writer.write(`${field.name}: `);
+-            writeMaybeVecCollect(field.type, `&inner.${field.name}`);
++            writeMaybeVecCollect(field.type, `&inner.${field.innerName}`);
+             writer.write(`,`).newLine();
+           }
+         }).write(");").newLine();
+--- a/generation/generate/helpers.ts
++++ b/generation/generate/helpers.ts
+@@ -1,4 +1,4 @@
+-import { AnalysisResult, PrimitiveTypeDefinition, TypeDefinition, TypeReferenceDefinition } from "../analyze/analysis_types.ts";
++import type { AnalysisResult, PrimitiveTypeDefinition, TypeDefinition, TypeReferenceDefinition } from "../analyze/analysis_types.ts";
+ import { Writer } from "../deps.ts";
+ 
+ export function writeHeader(writer: Writer) {
+--- a/generation/main.ts
++++ b/generation/main.ts
+@@ -1,6 +1,7 @@
++import { writeFileSync } from "node:fs";
+ import { analyze } from "./analyze/analyze.ts";
+ import { generate } from "./generate/generate.ts";
+ 
+ const analysisResult = analyze();
+ 
+-Deno.writeTextFileSync("./rs-lib/src/view/generated.rs", generate(analysisResult));
++writeFileSync("./rs-lib/src/view/generated.rs", generate(analysisResult));
+--- a/generation/deps.ts
++++ b/generation/deps.ts
+@@ -1,2 +1,5 @@
+-// this is intended to be used with TS/JS, but it will work for our purposes of writing Rust code
+-export { default as Writer } from "https://deno.land/x/code_block_writer@11.0.3/mod.ts";
++import { pathToFileURL } from "node:url";
++import { isAbsolute } from "node:path";
++const writer = process.env.CODE_BLOCK_WRITER_ESM;
++if (!writer || !isAbsolute(writer)) throw new Error("CODE_BLOCK_WRITER_ESM must select the common package's absolute esm/mod.js");
++export const Writer = (await import(pathToFileURL(writer).href)).default;
+--- a/scripts/generate.ts
++++ b/scripts/generate.ts
+@@ -1,66 +1,27 @@
+-#!/usr/bin/env -S deno run -A
+-import $ from "https://deno.land/x/dax@0.35.0/mod.ts";
++#!/usr/bin/env node
++// The caller supplies rustdoc JSON and the common code-block-writer package.
++// No package download, toolchain installation or compiler bootstrap occurs here.
++import { copyFileSync, mkdtempSync, mkdirSync, rmSync } from "node:fs";
++import { tmpdir } from "node:os";
++import { dirname, isAbsolute, join, resolve } from "node:path";
++import { fileURLToPath } from "node:url";
++import { spawnSync } from "node:child_process";
+ 
+-$.setPrintCommand(true);
+-
+-const rustVersion = "nightly-2025-08-20";
+-const root = $.path(import.meta).join("../../").resolve();
+-
+-if (!Deno.args.some(a => a === "--quick")) {
+-  await $`rustup install ${rustVersion}`;
+-  const swcVersions = await getSwcVersions();
+-  $.logStep("Setting up crates. Note: Provide --quick to just code generate.");
+-  $.logStep(`Setting up swc_ecma_ast ${swcVersions.swcEcmaAst}...`);
+-  const astDir = root.join("swc_ecma_ast");
+-  astDir.emptyDirSync();
+-  await $`cargo clone --version`;
+-  await $`cargo clone swc_ecma_ast@${swcVersions.swcEcmaAst}`;
+-  // force using an old version of the regex and triomphe crates that work in Rust 1.65
+-  const astCargoFile = astDir.join("Cargo.toml");
+-  astCargoFile.writeTextSync(
+-    astCargoFile.readTextSync().replaceAll(`"swc_atoms/arbitrary",`, ""), // this feature doesn't exist
+-  );
+-  await $`cd swc_ecma_ast ; rustup run ${rustVersion} cargo rustdoc -- --output-format json -Z unstable-options`;
+-  astDir.join("target/doc/swc_ecma_ast.json")
+-    .copyFileSync(root.join("swc_ecma_ast.json"));
+-
+-  $.logStep(`Setting up swc_ecma_parser ${swcVersions.swcEcmaParser}...`);
+-  const parserDir = root.join("swc_ecma_parser");
+-  parserDir.emptyDirSync();
+-  await $`cargo clone swc_ecma_parser@${swcVersions.swcEcmaParser}`;
+-  // force using an old version of the regex and triomphe crates that work in Rust 1.65
+-  const parserCargoFile = parserDir.join("Cargo.toml");
+-  parserCargoFile.writeTextSync(parserCargoFile.readTextSync());
+-  const parserLibFile = parserDir.join("src/lib.rs");
+-  parserLibFile.writeTextSync(
+-    // enable this feature to make our old cargo version happy
+-    parserLibFile.readTextSync()
+-      .replace("#![", "#![feature(label_break_value)]\n#!["),
+-  );
+-  // generate these files to make cargo happy
+-  parserDir.join("benches/compare/main.rs").ensureFileSync();
+-  parserDir.join("benches/parser/main.rs").ensureFileSync();
+-  parserDir.join("benches/lexer/main.rs").ensureFileSync();
+-  await $`cd swc_ecma_parser ; rustup run ${rustVersion} cargo rustdoc -- --output-format json -Z unstable-options`;
+-  parserDir.join("target/doc/swc_ecma_parser.json")
+-    .copyFileSync(root.join("swc_ecma_parser.json"));
++const args = process.argv.slice(2);
++if (args.length !== 3 || !process.env.CODE_BLOCK_WRITER_ESM || !isAbsolute(process.env.CODE_BLOCK_WRITER_ESM)) {
++  throw new Error("Usage: CODE_BLOCK_WRITER_ESM=/absolute/esm/mod.js node scripts/generate.ts AST_JSON PARSER_JSON OUTPUT");
+ }
+-
+-$.logStep("Generating", "code...");
+-await $`deno run -A generation/main.ts`;
+-
+-async function getSwcVersions() {
+-  const output = await $`cargo metadata --format-version 1`.json();
+-  return {
+-    swcEcmaAst: getPackageOrThrow("swc_ecma_ast").version,
+-    swcEcmaParser: getPackageOrThrow("swc_ecma_parser").version,
+-  };
+-
+-  function getPackageOrThrow(name: string) {
+-    const pkg = output.packages.find((pkg: any) => pkg.name === name);
+-    if (pkg == null) {
+-      throw new Error(`Could not find package: ${name}`);
+-    }
+-    return pkg;
+-  }
++const [ast, parser, output] = args.map(a => resolve(a));
++const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
++const tmp = mkdtempSync(join(tmpdir(), "dprint-swc-view-"));
++try {
++  copyFileSync(ast, join(tmp, "swc_ecma_ast.json"));
++  copyFileSync(parser, join(tmp, "swc_ecma_parser.json"));
++  mkdirSync(join(tmp, "rs-lib/src/view"), { recursive: true });
++  const child = spawnSync(process.execPath, [join(root, "generation/main.ts")], { cwd: tmp, env: process.env, stdio: "inherit" });
++  if (child.error) throw child.error;
++  if (child.status !== 0) throw new Error(`Generation failed (status ${child.status}, signal ${child.signal})`);
++  copyFileSync(join(tmp, "rs-lib/src/view/generated.rs"), output);
++} finally {
++  rmSync(tmp, { recursive: true, force: true });
+ }

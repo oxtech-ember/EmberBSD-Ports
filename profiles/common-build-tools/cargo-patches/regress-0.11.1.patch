@@ -1,0 +1,11 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -82,7 +82,7 @@
+ path = "tests/unicodesets.rs"
+ 
+ [dependencies.hashbrown]
+-version = "0.16.0"
++version = "0.17.1"
+ 
+ [dependencies.memchr]
+ version = "2.4.0"

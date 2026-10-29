@@ -35,8 +35,12 @@ async function main() {
     fs.writeFileSync(entry, "import { half } from './dependency.js'; export const value = half * 2;\n");
     const bundle = await rollup.rollup({ input: entry });
     try {
-      const result = await bundle.generate({ format: 'cjs' });
-      assert.equal(result.output.length, 1);
+      const result = await bundle.generate({ format: 'cjs', sourcemap: true });
+      assert.equal(result.output.length, 2);
+      assert.equal(result.output[1].type, 'asset');
+      assert.ok(result.output[0].map);
+      assert.ok(result.output[0].map.sources.some(source => source.endsWith('entry.js')));
+      assert.ok(result.output[0].map.sources.some(source => source.endsWith('dependency.js')));
       const exports = {};
       vm.runInNewContext(result.output[0].code, { exports, module: { exports } });
       assert.equal(exports.value, 42);

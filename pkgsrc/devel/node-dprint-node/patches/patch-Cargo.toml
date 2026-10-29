@@ -1,0 +1,26 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- Cargo.toml.orig
++++ Cargo.toml
+@@ -12,13 +12,12 @@
+ lto = true
+ 
+ [dependencies]
+-napi = { version = "2", features = ["serde-json"] }
+-napi-derive = "2"
+-dprint-plugin-typescript = "0.87.1"
+-dprint-core = "0.62.1"
++napi = { version = "3", features = ["compat-mode"] }
++napi-derive = "3"
++dprint-plugin-typescript = { version = "0.96.1", path = "../dprint-plugin-typescript-98525274ee276fb61709c77f791b212a48c59dd6" }
++dprint-core = "0.71.1"
+ 
+-[target.'cfg(target_os = "macos")'.dependencies]
+-jemallocator = { version = "0.3.2", features = ["disable_initial_exec_tls"] }
+ 
+ [build-dependencies]
+-napi-build = { version = "1" }
++napi-build = { version = "2" }
++
