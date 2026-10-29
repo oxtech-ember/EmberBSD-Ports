@@ -14,7 +14,7 @@ EMBER_LLVM_CXX_SYSROOT= ${_EMBER_TARGET_RUNTIME_ROOT}
 .endif
 DEPENDS+= libcxx>=${_EMBER_TARGET_RUNTIME_VERSION}nb1:../../lang/libcxx
 DEPENDS+= libcxxabi>=${_EMBER_TARGET_RUNTIME_VERSION}nb1:../../lang/libcxxabi
-DEPENDS+= libunwind>=${_EMBER_TARGET_RUNTIME_VERSION}nb1:../../lang/libunwind
+DEPENDS+= libunwind>=${_EMBER_TARGET_RUNTIME_VERSION}nb2:../../lang/libunwind
 BUILD_DEPENDS+= libcxx-devel>=${_EMBER_TARGET_RUNTIME_VERSION}nb1:../../lang/libcxx-devel
 BUILD_DEPENDS+= libcxxabi-devel>=${_EMBER_TARGET_RUNTIME_VERSION}nb1:../../lang/libcxxabi-devel
-BUILD_DEPENDS+= libunwind-devel>=${_EMBER_TARGET_RUNTIME_VERSION}nb1:../../lang/libunwind-devel
+BUILD_DEPENDS+= libunwind-devel>=${_EMBER_TARGET_RUNTIME_VERSION}nb2:../../lang/libunwind-devel
