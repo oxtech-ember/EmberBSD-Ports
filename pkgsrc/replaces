@@ -417,3 +417,6 @@ devel/ruby-thor
 
 # OpenVox 9 needs puppet-resource_api 2.
 sysutils/ruby-puppet-resource_api
+
+# fail2ban 1.1.1 runs on Python 3.15 without 2to3.
+security/fail2ban
