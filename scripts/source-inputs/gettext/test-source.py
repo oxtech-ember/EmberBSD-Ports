@@ -28,12 +28,34 @@ with tempfile.TemporaryDirectory(dir=args.work_dir) as directory:
     assert (root / 'gettext-tools/src/Makefile.in').is_file()
     assert 'EMBER_GETTEXT_PLAIN_STYLE' in (root / 'gettext-tools/configure.ac').read_text()
     assert 'EMBER_GETTEXT_PLAIN_STYLE' in (root / 'gettext-tools/configure').read_text()
+    assert 'EMBER_GETTEXT_PLAIN_STYLE' in (root / 'configure.ac').read_text()
+    assert 'EMBER_GETTEXT_PLAIN_STYLE' in (root / 'configure').read_text()
+    assert '@LIBTEXTSTYLE_SUBDIR@' in (root / 'Makefile.am').read_text()
+    assert '@LIBTEXTSTYLE_SUBDIR@' in (root / 'Makefile.in').read_text()
+    assert 'HAVE_EXTERNAL_LIBCROCO' in (root / 'libtextstyle/config.h.in').read_text()
+    assert 'HAVE_EXTERNAL_LIBCROCO' in (root / 'libtextstyle/configure').read_text()
+    for name in ('term-styled-ostream.c', 'term-styled-ostream.oo.c'):
+        assert '<libcroco/cr-om-parser.h>' in (root / 'libtextstyle/lib' / name).read_text()
     assert 'libgettextpo/textstyle.in.h' in (root / 'gettext-tools/src/Makefile.in').read_text()
     assert (root / 'gettext-tools/src/Makefile.am').stat().st_mtime_ns == (root / 'gettext-tools/src/Makefile.in').stat().st_mtime_ns
-    for aclocal, macro in (('gettext-runtime/intl/aclocal.m4', 'gettext-runtime/m4/gettext.m4'),
+    for aclocal, macro in (('aclocal.m4', 'configure.ac'),
+                           ('Makefile.in', 'Makefile.am'),
+                           ('libtextstyle/lib/term-styled-ostream.c', 'libtextstyle/lib/term-styled-ostream.oo.c'),
+                           ('libtextstyle/lib/term-styled-ostream.c', 'libtextstyle/lib/term-styled-ostream.h'),
+                           ('libtextstyle/lib/term-styled-ostream.c', 'libtextstyle/lib/term_styled_ostream.priv.h'),
+                           ('libtextstyle/lib/term-styled-ostream.c', 'libtextstyle/lib/term_styled_ostream.vt.h'),
+                           ('gettext-runtime/intl/aclocal.m4', 'gettext-runtime/m4/gettext.m4'),
                            ('gettext-tools/aclocal.m4', 'gettext-tools/gnulib-m4/gocomp.m4'),
-                           ('configure', 'gettext-tools/configure.ac')):
+                           ('gettext-tools/aclocal.m4', 'gettext-tools/gnulib-m4/gnulib-comp.m4'),
+                           ('libtextstyle/aclocal.m4', 'libtextstyle/gnulib-m4/gnulib-comp.m4'),
+                           ('gettext-tools/aclocal.m4', 'gettext-tools/configure.ac')):
         assert (root / macro).stat().st_mtime_ns == (root / aclocal).stat().st_mtime_ns
+    for project, marker in (('libtextstyle', 'EMBER_EXTERNAL_TEXTSTYLE'),
+                            ('gettext-tools', 'EMBER_EXTERNAL_XML')):
+        macro = (root / project / 'gnulib-m4/gnulib-comp.m4').read_text()
+        generated = (root / project / 'configure').read_text()
+        assert macro.count('BEGIN_' + marker) == generated.count('BEGIN_' + marker) == 1
+        assert macro.count('END_' + marker) == generated.count('END_' + marker) == 1
     runtime_macro = (root / 'gettext-runtime/m4/gettext.m4').read_text()
     runtime_configure = (root / 'gettext-runtime/configure').read_text()
     corrected = '#define __GNU_GETTEXT_SYMBOL_EXPRESSION (_nl_msg_cat_cntr)'

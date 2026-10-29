@@ -51,6 +51,9 @@ The profile remains native-only and does not change cross host/target selection.
 no inherited SDKROOT, a deliberately conflicting inherited value, and removing
 only the binding must reproduce rustc's attempted `xcrun` discovery.
 
+The common [gettext bootstrap composition](../common-build-tools/gettext-bootstrap.md)
+uses the same prefix for its initial plain tools and final full package.
+
 ## Explicit Darwin package profile
 
 The exporter installs [darwin-bootstrap.mk.conf](darwin-bootstrap.mk.conf) as

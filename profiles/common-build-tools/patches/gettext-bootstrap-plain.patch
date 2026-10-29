@@ -1,0 +1,72 @@
+Allow the common gettext tools recipe to omit libtextstyle during bootstrap.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- configure.ac
++++ configure.ac
+@@ -43,7 +43,15 @@
+ 
+ dnl Checks for library functions.
+ 
+-AC_CONFIG_SUBDIRS([gettext-runtime libtextstyle gettext-tools])
++AC_CONFIG_SUBDIRS([gettext-runtime])
++if test "$EMBER_GETTEXT_PLAIN_STYLE" = yes; then
++  LIBTEXTSTYLE_SUBDIR=
++else
++  LIBTEXTSTYLE_SUBDIR=libtextstyle
++  AC_CONFIG_SUBDIRS([libtextstyle])
++fi
++AC_CONFIG_SUBDIRS([gettext-tools])
++AC_SUBST([LIBTEXTSTYLE_SUBDIR])
+ 
+ AM_EXTRA_RECURSIVE_TARGETS([maintainer-update-po])
+ 
+--- configure
++++ configure
+@@ -610,7 +610,8 @@
+ 
+ ac_unique_file="gettext-tools/src/msgfmt.c"
+ enable_option_checking=no
+-ac_subst_vars='LTLIBOBJS
++ac_subst_vars='LIBTEXTSTYLE_SUBDIR
++LTLIBOBJS
+ LIBOBJS
+ OBJCFLAGS
+ OBJC
+@@ -3020,7 +3021,14 @@
+ 
+ 
+ 
+-subdirs="$subdirs gettext-runtime libtextstyle gettext-tools"
++subdirs="$subdirs gettext-runtime"
++if test "$EMBER_GETTEXT_PLAIN_STYLE" = yes; then
++  LIBTEXTSTYLE_SUBDIR=
++else
++  LIBTEXTSTYLE_SUBDIR=libtextstyle
++  subdirs="$subdirs libtextstyle"
++fi
++subdirs="$subdirs gettext-tools"
+ 
+ 
+ 
+--- Makefile.am
++++ Makefile.am
+@@ -19,7 +19,7 @@
+ AUTOMAKE_OPTIONS = 1.5 gnu
+ ACLOCAL_AMFLAGS = -I m4
+ 
+-SUBDIRS = gnulib-local gettext-runtime libtextstyle gettext-tools
++SUBDIRS = gnulib-local gettext-runtime @LIBTEXTSTYLE_SUBDIR@ gettext-tools
+ 
+ changelog_etc = \
+   gettext-runtime/ChangeLog.0 \
+--- Makefile.in
++++ Makefile.in
+@@ -323,7 +323,7 @@
+ top_srcdir = @top_srcdir@
+ AUTOMAKE_OPTIONS = 1.5 gnu
+ ACLOCAL_AMFLAGS = -I m4
+-SUBDIRS = gettext-runtime libtextstyle gettext-tools
++SUBDIRS = gettext-runtime @LIBTEXTSTYLE_SUBDIR@ gettext-tools
+ changelog_etc = \
+   gettext-runtime/ChangeLog.0 \
+   gettext-runtime/doc/ChangeLog.0 \

@@ -196,9 +196,17 @@ def prepare(archive, output, patch, git, scoped_identity=False):
         generated = (root / 'gettext-tools/src/Makefile.in').stat()
         os.utime(root / 'gettext-tools/src/Makefile.am',
                  ns=(generated.st_atime_ns, generated.st_mtime_ns))
-        for aclocal, macro in (('gettext-runtime/intl/aclocal.m4', 'gettext-runtime/m4/gettext.m4'),
+        for aclocal, macro in (('aclocal.m4', 'configure.ac'),
+                               ('Makefile.in', 'Makefile.am'),
+                               ('libtextstyle/lib/term-styled-ostream.c', 'libtextstyle/lib/term-styled-ostream.oo.c'),
+                               ('libtextstyle/lib/term-styled-ostream.c', 'libtextstyle/lib/term-styled-ostream.h'),
+                               ('libtextstyle/lib/term-styled-ostream.c', 'libtextstyle/lib/term_styled_ostream.priv.h'),
+                               ('libtextstyle/lib/term-styled-ostream.c', 'libtextstyle/lib/term_styled_ostream.vt.h'),
+                               ('gettext-runtime/intl/aclocal.m4', 'gettext-runtime/m4/gettext.m4'),
                                ('gettext-tools/aclocal.m4', 'gettext-tools/gnulib-m4/gocomp.m4'),
-                               ('configure', 'gettext-tools/configure.ac')):
+                               ('gettext-tools/aclocal.m4', 'gettext-tools/gnulib-m4/gnulib-comp.m4'),
+                               ('libtextstyle/aclocal.m4', 'libtextstyle/gnulib-m4/gnulib-comp.m4'),
+                               ('gettext-tools/aclocal.m4', 'gettext-tools/configure.ac')):
             reference = (root / aclocal).stat()
             os.utime(root / macro, ns=(reference.st_atime_ns, reference.st_mtime_ns))
         require(not any(p.name.endswith(('.orig', '.rej')) for p in root.rglob('*')),

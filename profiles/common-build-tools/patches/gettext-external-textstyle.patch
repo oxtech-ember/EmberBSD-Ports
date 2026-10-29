@@ -1,0 +1,244 @@
+Require common libcroco, GLib and libxml2 when explicitly selected.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- libtextstyle/gnulib-m4/gnulib-comp.m4
++++ libtextstyle/gnulib-m4/gnulib-comp.m4
+@@ -678,6 +678,46 @@
+   # These are more than 12800 relocations, to perform at program startup.
+   # So, force the use of the included libxml part.
+   gl_LIBXML([yes])
++  # BEGIN_EMBER_EXTERNAL_TEXTSTYLE
++  if test "x$EMBER_GETTEXT_EXTERNAL_TEXTSTYLE" = xyes; then
++    test -n "$PKG_CONFIG" && test -x "$PKG_CONFIG" ||
++      AC_MSG_ERROR([external libtextstyle dependencies require the selected PKG_CONFIG])
++    INCCROCO=`"$PKG_CONFIG" --cflags libcroco-0.6` || AC_MSG_ERROR([libcroco metadata is required])
++    LTLIBCROCO=`"$PKG_CONFIG" --libs libcroco-0.6` || AC_MSG_ERROR([libcroco link flags are required])
++    INCGLIB=`"$PKG_CONFIG" --cflags glib-2.0` || AC_MSG_ERROR([GLib metadata is required])
++    LTLIBGLIB=`"$PKG_CONFIG" --libs glib-2.0` || AC_MSG_ERROR([GLib link flags are required])
++    INCXML=`"$PKG_CONFIG" --cflags libxml-2.0` || AC_MSG_ERROR([libxml2 metadata is required])
++    LTLIBXML=`"$PKG_CONFIG" --libs libxml-2.0` || AC_MSG_ERROR([libxml2 link flags are required])
++    ember_save_CPPFLAGS=$CPPFLAGS
++    ember_save_LIBS=$LIBS
++    CPPFLAGS="$CPPFLAGS $INCCROCO $INCGLIB $INCXML"
++    LIBS="$LTLIBCROCO $LTLIBGLIB $LTLIBXML $LIBS"
++    AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <libcroco/libcroco.h>
++#include <glib.h>
++#include <libxml/parser.h>]], [[
++      CRSelEng *engine = cr_sel_eng_new();
++      GString *str = g_string_new("test");
++      xmlInitParser();
++      g_string_free(str, 1);
++      cr_sel_eng_destroy(engine);
++    ]])], [], [AC_MSG_ERROR([selected external libtextstyle dependencies do not link])])
++    CPPFLAGS=$ember_save_CPPFLAGS
++    LIBS=$ember_save_LIBS
++    AC_DEFINE([HAVE_EXTERNAL_LIBCROCO], [1], [Define when using installed libcroco headers.])
++    LIBCROCO=$LTLIBCROCO
++    LIBGLIB=$LTLIBGLIB
++    LIBXML=$LTLIBXML
++    gl_cv_libcroco_use_included=no
++    gl_cv_libglib_use_included=no
++    gl_cv_libxml_use_included=no
++    INCLUDED_LIBCROCO_TRUE='#'; INCLUDED_LIBCROCO_FALSE=
++    INCLUDED_LIBGLIB_TRUE='#'; INCLUDED_LIBGLIB_FALSE=
++    INCLUDED_LIBXML_TRUE='#'; INCLUDED_LIBXML_FALSE=
++    LIBGLIB_H=
++    LIBXML_H=
++  fi
++  # END_EMBER_EXTERNAL_TEXTSTYLE
++
+   gl_LIMITS_H
+   gl_CONDITIONAL_HEADER([limits.h])
+   AC_PROG_MKDIR_P
+--- libtextstyle/configure
++++ libtextstyle/configure
+@@ -48721,6 +48721,66 @@
+   INCLUDED_LIBXML_FALSE=
+ fi
+ 
++  # BEGIN_EMBER_EXTERNAL_TEXTSTYLE
++  if test "x$EMBER_GETTEXT_EXTERNAL_TEXTSTYLE" = xyes; then
++    test -n "$PKG_CONFIG" && test -x "$PKG_CONFIG" ||
++      as_fn_error $? "external libtextstyle dependencies require the selected PKG_CONFIG" "$LINENO" 5
++    INCCROCO=`"$PKG_CONFIG" --cflags libcroco-0.6` || as_fn_error $? "libcroco metadata is required" "$LINENO" 5
++    LTLIBCROCO=`"$PKG_CONFIG" --libs libcroco-0.6` || as_fn_error $? "libcroco link flags are required" "$LINENO" 5
++    INCGLIB=`"$PKG_CONFIG" --cflags glib-2.0` || as_fn_error $? "GLib metadata is required" "$LINENO" 5
++    LTLIBGLIB=`"$PKG_CONFIG" --libs glib-2.0` || as_fn_error $? "GLib link flags are required" "$LINENO" 5
++    INCXML=`"$PKG_CONFIG" --cflags libxml-2.0` || as_fn_error $? "libxml2 metadata is required" "$LINENO" 5
++    LTLIBXML=`"$PKG_CONFIG" --libs libxml-2.0` || as_fn_error $? "libxml2 link flags are required" "$LINENO" 5
++    ember_save_CPPFLAGS=$CPPFLAGS
++    ember_save_LIBS=$LIBS
++    CPPFLAGS="$CPPFLAGS $INCCROCO $INCGLIB $INCXML"
++    LIBS="$LTLIBCROCO $LTLIBGLIB $LTLIBXML $LIBS"
++
++cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++/* end confdefs.h.  */
++#include <libcroco/libcroco.h>
++#include <glib.h>
++#include <libxml/parser.h>
++int
++main (void)
++{
++
++      CRSelEng *engine = cr_sel_eng_new();
++      GString *str = g_string_new("test");
++      xmlInitParser();
++      g_string_free(str, 1);
++      cr_sel_eng_destroy(engine);
++
++  ;
++  return 0;
++}
++_ACEOF
++if ac_fn_c_try_link "$LINENO"
++then :
++
++else case e in #(
++  e) as_fn_error $? "selected external libtextstyle dependencies do not link" "$LINENO" 5 ;;
++esac
++fi
++rm -f core conftest.err conftest.$ac_objext conftest.beam \
++    conftest$ac_exeext conftest.$ac_ext
++    CPPFLAGS=$ember_save_CPPFLAGS
++    LIBS=$ember_save_LIBS
++    printf '%s\n' '#define HAVE_EXTERNAL_LIBCROCO 1' >>confdefs.h
++    LIBCROCO=$LTLIBCROCO
++    LIBGLIB=$LTLIBGLIB
++    LIBXML=$LTLIBXML
++    gl_cv_libcroco_use_included=no
++    gl_cv_libglib_use_included=no
++    gl_cv_libxml_use_included=no
++    INCLUDED_LIBCROCO_TRUE='#'; INCLUDED_LIBCROCO_FALSE=
++    INCLUDED_LIBGLIB_TRUE='#'; INCLUDED_LIBGLIB_FALSE=
++    INCLUDED_LIBXML_TRUE='#'; INCLUDED_LIBXML_FALSE=
++    LIBGLIB_H=
++    LIBXML_H=
++  fi
++  # END_EMBER_EXTERNAL_TEXTSTYLE
++
+ 
+ 
+ 
+--- gettext-tools/gnulib-m4/gnulib-comp.m4
++++ gettext-tools/gnulib-m4/gnulib-comp.m4
+@@ -1640,6 +1640,12 @@
+   gl___INLINE
+   gl_LIBUNISTRING_OPTIONAL
+   gl_LIBXML
++  # BEGIN_EMBER_EXTERNAL_XML
++  if test "x$EMBER_GETTEXT_EXTERNAL_TEXTSTYLE" = xyes &&
++     test "$gl_cv_libxml_use_included" != no; then
++    AC_MSG_ERROR([external libxml2 is required for gettext tools])
++  fi
++  # END_EMBER_EXTERNAL_XML
+   gl_LIMITS_H
+   gl_CONDITIONAL_HEADER([limits.h])
+   AC_PROG_MKDIR_P
+--- gettext-tools/configure
++++ gettext-tools/configure
+@@ -76614,6 +76614,13 @@
+   INCLUDED_LIBXML_FALSE=
+ fi
+ 
++  # BEGIN_EMBER_EXTERNAL_XML
++  if test "x$EMBER_GETTEXT_EXTERNAL_TEXTSTYLE" = xyes &&
++     test "$gl_cv_libxml_use_included" != no; then
++    as_fn_error $? "external libxml2 is required for gettext tools" "$LINENO" 5
++  fi
++  # END_EMBER_EXTERNAL_XML
++
+ 
+ 
+ 
+--- libtextstyle/config.h.in
++++ libtextstyle/config.h.in
+@@ -1,3 +1,6 @@
++/* Define when using installed libcroco headers. */
++#undef HAVE_EXTERNAL_LIBCROCO
++
+ /* config.h.in.  Generated from configure.ac by autoheader.  */
+ 
+ #if defined __GNUC__ && __GNUC__ >= 15 && !defined __clang__
+--- libtextstyle/lib/term-styled-ostream.c
++++ libtextstyle/lib/term-styled-ostream.c
+@@ -29,6 +29,17 @@
+ 
+ #include <stdlib.h>
+ 
++#if HAVE_EXTERNAL_LIBCROCO
++#include <libcroco/cr-om-parser.h>
++#include <libcroco/cr-sel-eng.h>
++#include <libcroco/cr-style.h>
++#include <libcroco/cr-rgb.h>
++/* <libcroco/cr-fonts.h> has a broken double-inclusion guard in libcroco-0.6.1.  */
++#ifndef __CR_FONTS_H__
++# include <libcroco/cr-fonts.h>
++#endif
++#include <libcroco/cr-string.h>
++#else
+ #include <cr-om-parser.h>
+ #include <cr-sel-eng.h>
+ #include <cr-style.h>
+@@ -38,6 +49,7 @@
+ # include <cr-fonts.h>
+ #endif
+ #include <cr-string.h>
++#endif
+ 
+ #include "term-ostream.h"
+ #include "mem-hash-map.h"
+@@ -66,7 +78,7 @@
+   term_underline_t underline;
+ } attributes_t;
+ 
+-#line 70 "term-styled-ostream.c"
++#line 82 "term-styled-ostream.c"
+ #include "term_styled_ostream.priv.h"
+ 
+ const typeinfo_t term_styled_ostream_typeinfo = { "term_styled_ostream" };
+@@ -76,7 +88,7 @@
+ 
+ #define super styled_ostream_vtable
+ 
+-#line 85 "term-styled-ostream.oo.c"
++#line 97 "term-styled-ostream.oo.c"
+ 
+ /* Implementation of ostream_t methods.  */
+ 
+@@ -661,7 +673,7 @@
+   return IS_INSTANCE (stream, ostream, term_styled_ostream);
+ }
+ 
+-#line 665 "term-styled-ostream.c"
++#line 677 "term-styled-ostream.c"
+ 
+ const struct term_styled_ostream_implementation term_styled_ostream_vtable =
+ {
+--- libtextstyle/lib/term-styled-ostream.oo.c
++++ libtextstyle/lib/term-styled-ostream.oo.c
+@@ -23,6 +23,17 @@
+ 
+ #include <stdlib.h>
+ 
++#if HAVE_EXTERNAL_LIBCROCO
++#include <libcroco/cr-om-parser.h>
++#include <libcroco/cr-sel-eng.h>
++#include <libcroco/cr-style.h>
++#include <libcroco/cr-rgb.h>
++/* <libcroco/cr-fonts.h> has a broken double-inclusion guard in libcroco-0.6.1.  */
++#ifndef __CR_FONTS_H__
++# include <libcroco/cr-fonts.h>
++#endif
++#include <libcroco/cr-string.h>
++#else
+ #include <cr-om-parser.h>
+ #include <cr-sel-eng.h>
+ #include <cr-style.h>
+@@ -32,6 +43,7 @@
+ # include <cr-fonts.h>
+ #endif
+ #include <cr-string.h>
++#endif
+ 
+ #include "term-ostream.h"
+ #include "mem-hash-map.h"
