@@ -1,0 +1,85 @@
+$NetBSD$
+
+Preserve selected Clang runtime and linker driver options during links.
+Origin: EmberBSD (AI-assisted).
+
+--- build-aux/ltmain.in.orig
++++ build-aux/ltmain.in
+@@ -5204,6 +5204,15 @@
+ 	  prev=
+ 	  continue
+ 	  ;;
++	driver_option)
++	  func_quote_arg pretty "$arg"
++	  qarg=$func_quote_arg_result
++	  func_append compiler_flags " $driver_option $qarg"
++	  func_append compile_command " $driver_option $qarg"
++	  func_append finalize_command " $driver_option $qarg"
++	  prev=
++	  continue
++	  ;;
+ 	xassembler)
+ 	  func_append compiler_flags " -Xassembler $qarg"
+ 	  prev=
+@@ -5625,6 +5634,12 @@
+ 	arg=$func_stripname_result
+ 	;;
+ 
++      -resource-dir|--rtlib)
++        driver_option=$arg
++        prev=driver_option
++        continue
++        ;;
++
+       -Xassembler)
+         prev=xassembler
+         continue
+@@ -5687,7 +5702,7 @@
+       -64|-mips[0-9]|-r[0-9][0-9]*|-xarch=*|-xtarget=*|+DA*|+DD*|-q*|-m*| \
+       -t[45]*|-txscale*|-p|-pg|--coverage|-fprofile-*|-F*|@*|-tp=*|--sysroot=*|--target=*| \
+       -O*|-g*|-flto*|-fwhopr*|-fuse-linker-plugin|-fstack-protector*|-no-canonical-prefixes| \
+-      -stdlib=*|-resource-dir=*|-rtlib=*|--unwindlib=*| \
++      -stdlib=*|-resource-dir=*|-rtlib=*|--rtlib=*|--unwindlib=*|--ld-path=*| \
+       -specs=*|-fsanitize=*|-fno-sanitize*|-shared-libsan|-static-libsan| \
+       -ffile-prefix-map=*|-fdebug-prefix-map=*|-fmacro-prefix-map=*|-fprofile-prefix-map=*| \
+       -fdiagnostics-color*|-frecord-gcc-switches| \
+--- build-aux/ltmain.sh.orig
++++ build-aux/ltmain.sh
+@@ -7357,6 +7357,15 @@
+ 	  prev=
+ 	  continue
+ 	  ;;
++	driver_option)
++	  func_quote_arg pretty "$arg"
++	  qarg=$func_quote_arg_result
++	  func_append compiler_flags " $driver_option $qarg"
++	  func_append compile_command " $driver_option $qarg"
++	  func_append finalize_command " $driver_option $qarg"
++	  prev=
++	  continue
++	  ;;
+ 	xassembler)
+ 	  func_append compiler_flags " -Xassembler $qarg"
+ 	  prev=
+@@ -7810,6 +7819,12 @@
+ 	arg=$func_stripname_result
+ 	;;
+ 
++      -resource-dir|--rtlib)
++        driver_option=$arg
++        prev=driver_option
++        continue
++        ;;
++
+       -Xassembler)
+         prev=xassembler
+         continue
+@@ -7872,7 +7887,7 @@
+       -64|-mips[0-9]|-r[0-9][0-9]*|-xarch=*|-xtarget=*|+DA*|+DD*|-q*|-m*| \
+       -t[45]*|-txscale*|-p|-pg|--coverage|-fprofile-*|-F*|@*|-tp=*|--sysroot=*|--target=*| \
+       -O*|-g*|-flto*|-fwhopr*|-fuse-linker-plugin|-fstack-protector*|-no-canonical-prefixes| \
+-      -stdlib=*|-resource-dir=*|-rtlib=*|--unwindlib=*| \
++      -stdlib=*|-resource-dir=*|-rtlib=*|--rtlib=*|--unwindlib=*|--ld-path=*| \
+       -specs=*|-fsanitize=*|-fno-sanitize*|-shared-libsan|-static-libsan| \
+       -ffile-prefix-map=*|-fdebug-prefix-map=*|-fmacro-prefix-map=*|-fprofile-prefix-map=*| \
+       -fdiagnostics-color*|-frecord-gcc-switches| \
