@@ -25,6 +25,9 @@ def expect_error(fn, text):
 
 linux = module.host_policy('Linux', 'x86_64', 'clang')
 assert module.loader_key("/lib64/ld-linux-x86-64.so.2") == "ld-linux-x86-64.so.2"
+assert module.is_system_library_path('/usr/lib')
+assert module.is_system_library_path('/usr/lib/x86_64-linux-gnu')
+assert not module.is_system_library_path('/usr/library')
 assert linux['inspector'] == 'llvm-readelf'
 assert linux['loader'] == '/usr/bin/ldd'
 assert linux['compiler_family'] == 'clang'
@@ -50,8 +53,12 @@ with tempfile.TemporaryDirectory() as root:
     readelf = prefix / 'bin' / 'llvm-readelf'
     readelf.write_bytes(b'tool')
     readelf.chmod(0o755)
+    readobj = prefix / 'bin' / 'llvm-readobj'
+    readelf.rename(readobj)
+    readelf.symlink_to(readobj.name)
     native = SimpleNamespace(bundle_root=str(prefix))
-    assert module.inspection_tool(native, linux) == readelf.resolve()
+    assert module.inspection_tool(native, linux) == readelf
+    assert module.inspection_tool(native, linux).resolve() == readobj.resolve()
     external_readelf = prefix / 'bin' / 'external-readelf'
     external_readelf.symlink_to('/usr/bin/env')
     native.bundle_root = str(prefix)

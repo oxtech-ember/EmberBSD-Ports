@@ -51,12 +51,21 @@ def inspection_tool(native, policy):
     prefix = Path(native.bundle_root).resolve(strict=True)
     path = (Path(native.tool('otool')) if policy['os'] == 'Darwin'
             else prefix / 'bin/llvm-readelf')
-    return require_prefix_tool(path, prefix, policy['inspector'])
+    require_prefix_tool(path, prefix, policy['inspector'])
+    # Keep the selected alias as argv[0]: llvm-readelf may resolve to
+    # llvm-readobj, whose output format differs when invoked by that name.
+    return path
 
 
 def loader_key(interpreter_request):
     """Return the PT_INTERP basename used as the ldd map key."""
     return Path(interpreter_request).name
+
+
+def is_system_library_path(path):
+    value = str(path)
+    return any(value == root or value.startswith(root + '/')
+               for root in ('/lib', '/lib64', '/usr/lib', '/usr/lib64'))
 
 
 def loader_tool(policy):

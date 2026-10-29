@@ -207,7 +207,7 @@ def linux_dynamic_metadata(path, readelf, run, label, prefix):
             resolved = candidate.resolve(strict=True)
             prefix = Path(prefix).resolve(strict=True)
             require(resolved.is_dir() and (resolved.is_relative_to(prefix) or
-                    str(resolved).startswith(('/lib/', '/lib64/', '/usr/lib/', '/usr/lib64/'))),
+                    mesa_generator_host.is_system_library_path(resolved)),
                     'ELF runtime search path escapes selected host roots: ' + str(resolved))
             rpaths.append(str(resolved))
     require(sha(path) == before, 'Native ELF input changed during inspection: ' + str(path))
@@ -229,10 +229,7 @@ def linux_dependencies(executable, prefix, readelf, ldd, run, native):
             'Expected one absolute native ELF interpreter')
     interpreter = Path(interpreters[0]).resolve(strict=True)
 
-    def system_path(path):
-        value = str(path)
-        return any(value == root or value.startswith(root + '/')
-                   for root in ('/lib', '/lib64', '/usr/lib', '/usr/lib64'))
+    system_path = mesa_generator_host.is_system_library_path
 
     require(system_path(interpreter), 'Native ELF interpreter is outside system library roots')
     initial = linux_dynamic_metadata(executable, readelf, run, 'linux-executable', prefix)
