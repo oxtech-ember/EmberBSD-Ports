@@ -392,3 +392,7 @@ net/tcpdump
 
 lang/libunwind
 lang/libcxxabi
+
+# Ruby gems updated to the newest release.
+mail/ruby-mail
+www/ruby-rouge
