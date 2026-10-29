@@ -120,7 +120,7 @@ def verify(source, git, archive=None, patch=None, pkgsrc_export=None):
                     old['owner_sha256'] != identity['owner_sha256']):
                 require(archive and os.path.isabs(archive),
                         'changed diffutils inputs require an explicit archive for payload comparison')
-                prepared = prepare(archive, Path(tmp) / 'expected', patch, git)
+                prepared = prepare(archive, Path(tmp) / 'expected', patch, git, exported=exported)
                 require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
                 require(prepared['tree_sha256'] == record['tree_sha256'],
                         'prepared diffutils differs from current effective source')
@@ -144,7 +144,7 @@ def verify(source, git, archive=None, patch=None, pkgsrc_export=None):
     return record
 
 
-def prepare(archive, output, patch, git, scoped_identity=False):
+def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
     require(os.path.isabs(git) and os.path.isabs(patch), 'select absolute Git and patch executables')
     output = Path(output)
     require(output.is_absolute(), 'prepared source output must be absolute')
@@ -154,10 +154,11 @@ def prepare(archive, output, patch, git, scoped_identity=False):
     identity = source_identity(git)
     with tempfile.TemporaryDirectory(prefix='.diffutils-source-', dir=output.parent) as tmp:
         tmp = Path(tmp)
-        exported = tmp / 'pkgsrc'
-        process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
-                         str(exported), '--git', git, '--patch', patch],
-                        env=process.sanitized_environment())
+        if exported is None:
+            exported = tmp / 'pkgsrc'
+            process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
+                             str(exported), '--git', git, '--patch', patch],
+                            env=process.sanitized_environment())
         metadata, patches = recipe(exported)
         archive = Path(paths.canonical_existing(archive))
         require(archive.name == metadata['archive'], 'diffutils archive filename differs from recipe')

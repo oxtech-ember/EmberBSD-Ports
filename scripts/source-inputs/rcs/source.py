@@ -120,7 +120,7 @@ def verify(source, git, archive=None, patch=None, lzip=None, pkgsrc_export=None)
                     old['owner_sha256'] != identity['owner_sha256']):
                 require(archive and os.path.isabs(archive) and lzip and os.path.isabs(lzip),
                         'changed rcs inputs require an explicit archive and lzip for payload comparison')
-                prepared = prepare(archive, Path(tmp) / 'expected', patch, git, lzip)
+                prepared = prepare(archive, Path(tmp) / 'expected', patch, git, lzip, exported=exported)
                 require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
                 require(prepared['tree_sha256'] == record['tree_sha256'],
                         'prepared rcs differs from current effective source')
@@ -144,7 +144,7 @@ def verify(source, git, archive=None, patch=None, lzip=None, pkgsrc_export=None)
     return record
 
 
-def prepare(archive, output, patch, git, lzip, scoped_identity=False):
+def prepare(archive, output, patch, git, lzip, scoped_identity=False, exported=None):
     require(all(os.path.isabs(tool) for tool in (git, patch, lzip)), 'select absolute Git, patch and lzip executables')
     output = Path(output)
     require(output.is_absolute(), 'prepared source output must be absolute')
@@ -154,10 +154,11 @@ def prepare(archive, output, patch, git, lzip, scoped_identity=False):
     identity = source_identity(git)
     with tempfile.TemporaryDirectory(prefix='.rcs-source-', dir=output.parent) as tmp:
         tmp = Path(tmp)
-        exported = tmp / 'pkgsrc'
-        process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
-                         str(exported), '--git', git, '--patch', patch],
-                        env=process.sanitized_environment())
+        if exported is None:
+            exported = tmp / 'pkgsrc'
+            process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
+                             str(exported), '--git', git, '--patch', patch],
+                            env=process.sanitized_environment())
         metadata, patches = recipe(exported)
         archive = Path(paths.canonical_existing(archive))
         require(archive.name == metadata['archive'], 'rcs archive filename differs from recipe')

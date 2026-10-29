@@ -30,3 +30,6 @@ and pass `--pkgsrc-export DIR` to `verify-source`. The libarchive, libevent,
 Texinfo, RCS, diffutils, GNU grep and E-Kermit owners accept the same option.
 Each owner refuses the export unless the Ports commit, the pinned pkgsrc
 commit, the overlay inputs and the patch tool still match its receipt.
+When the owner or the effective recipe changed since preparation, verification
+prepares the expected payload from that same export (shared or its own)
+instead of exporting pkgsrc a second time.

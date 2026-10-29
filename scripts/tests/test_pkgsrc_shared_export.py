@@ -3,6 +3,7 @@
 """One shared pkgsrc export serves every source owner of a run."""
 
 import importlib.util
+import inspect
 import json
 import os
 from pathlib import Path
@@ -167,6 +168,67 @@ class OwnerTest(unittest.TestCase):
                     self.assertEqual(record, {'tree_sha256': '5' * 64})
                     self.assertEqual([call[0] for call in calls], [str(shared)])
                     self.assertEqual(calls[0][4], '/selected/patch')
+
+    def test_changed_owners_compare_against_the_selected_export_without_exporting_again(self):
+        # When the owner or the effective recipe changed, verify prepares the
+        # expected payload from the archive. It must use the export it already
+        # selected (shared or its own) instead of exporting pkgsrc once more.
+        class Stop(Exception):
+            pass
+        names = sorted(path.parent.name for path in (ROOT / 'scripts/source-inputs').glob('*/source.py')
+                       if 'exported=exported)' in path.read_text())
+        self.assertTrue(set(OWNERS) <= set(names), names)
+        with tempfile.TemporaryDirectory(dir=WORK) as temp:
+            temp = Path(temp).resolve()
+            for name in names:
+                with self.subTest(owner=name):
+                    owner = self.owner(name)
+                    selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')
+                    effective = {'api': 1, 'package': owner.PACKAGE,
+                                 'effective_package_sha256': '4' * 64, 'upstream': '1' * 40}
+                    old = {'effective': effective, 'owner_sha256': '2' * 64}
+                    tree = temp / 'shared-tree'
+                    prepared = []
+                    def prepare(*args, **kwargs):
+                        prepared.append(kwargs.get('exported'))
+                        return {'tree_sha256': '5' * 64}
+                    exports = []
+                    def capture(command, **kwargs):
+                        raise AssertionError('owner exported pkgsrc itself: ' + ' '.join(map(str, command)))
+                    def own_export(command, **kwargs):
+                        # Owners without --pkgsrc-export make one export of their own.
+                        self.assertTrue(str(command[2]).endswith('prepare-pkgsrc.py'), command)
+                        exports.append(Path(command[3]))
+                    extra = {'lzip': '/selected/lzip'} if name == 'rcs' else {}
+                    shared = 'pkgsrc_export' in inspect.signature(owner.verify).parameters
+                    if shared:
+                        extra['pkgsrc_export'] = str(temp / 'shared')
+                    with patch.object(owner, 'source_identity', return_value={'export': {'upstream': '1' * 40}, 'owner_sha256': '3' * 64}), \
+                            patch.object(owner.jsonio, 'read_json', return_value={'identity': old}), \
+                            patch.object(owner.sourceprep, 'validate_prepared_tree', return_value={'tree_sha256': '5' * 64}), \
+                            patch.object(owner, 'identity_module', return_value=selector), \
+                            patch.object(selector, 'shared_export', return_value=tree), \
+                            patch.object(selector, 'effective_package_identity', return_value=effective), \
+                            patch.object(owner, 'prepare', side_effect=prepare), \
+                            patch.object(owner.process, 'capture', side_effect=capture if shared else own_export):
+                        owner.verify(str(temp / 'source'), sys.executable, archive='/selected/archive',
+                                     patch='/selected/patch', **extra)
+                    self.assertEqual(prepared, [tree] if shared else exports)
+                    self.assertEqual(len(exports), 0 if shared else 1)
+                    # prepare itself reads the given export and does not make one.
+                    seen = []
+                    def recipe(exported):
+                        seen.append(exported)
+                        raise Stop()
+                    arguments = [str(temp / 'archive'), temp / f'expected-{name}', '/selected/patch', sys.executable]
+                    if name == 'rcs':
+                        arguments.append('/selected/lzip')
+                    with patch.object(owner, 'source_identity', return_value={'export': {'upstream': '1' * 40}, 'owner_sha256': '3' * 64}), \
+                            patch.object(owner, 'recipe', side_effect=recipe), \
+                            patch.object(owner.process, 'capture', side_effect=capture), \
+                            self.assertRaises(Stop):
+                        owner.prepare(*arguments, exported=tree)
+                    self.assertEqual(seen, [tree])
 
     def test_libarchive_uses_the_shared_export_without_exporting(self):
         owner = load(ROOT / 'scripts/libarchive-source.py', 'libarchive_owner')
