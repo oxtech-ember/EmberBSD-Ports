@@ -490,6 +490,10 @@ and refuses a graph in which any package reaches a skipped one, so a Clang
 bulk never orders a GCC16 compiler or runtime.
 `scripts/tests/cross-bulk-gcc16-guard.sh PKGPATH NEW_OUTPUT` checks both with
 a list that names the GCC16 recipes and with an injected GCC16 dependency.
+`scripts/tests/cross-bulk-options-cache.sh NEW_OUTPUT PKGPATH...` checks
+that order asks for the build options of each dependency once and writes
+the same order as without the cache, and that fetch reuses the cache only
+while the MAKECONF is unchanged.
 `tests/cross-tools.py` explicitly selects the GCC profile and checks GCC tool
 composition, refusal of existing output,
 missing host tools, target Info utility routing and the pkgsrc runtime

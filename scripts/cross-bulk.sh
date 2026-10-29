@@ -10,6 +10,13 @@
 #   fetch  Get the distfiles for STATE/order. Only network and DISTDIR.
 #   build  Build and install each package in STATE/order.
 #
+# The build options of target dependencies that are not installed come
+# from the tree (mk/pkg-build-options.mk). Order starts a new pkgsrc
+# PBULK_CACHE_DIRECTORY in STATE/build-options, as a pbulk scan does.
+# Fetch reuses it only while the tree, the MAKECONF and the native
+# selection are those of that order run. Build does not use it: there
+# the installed dependencies answer the query.
+#
 # A built package is recorded in STATE/done with its PKGNAME and SHA256.
 # The build skips a package if the record and the package file agree.
 # Failures go to STATE/failed. Packages with a failed dependency go to
@@ -45,9 +52,49 @@ native=$("$BMAKE" -C "$PKGSRCDIR/pkgtools/pkg_install" show-var \
 }
 [ -n "$native" ] || { echo 'The MAKECONF has no native host prefix selection' >&2; exit 2; }
 
+cache=$state/build-options
+cachearg=
+
 mk()
 {
-    "$BMAKE" EMBERBSD_NATIVE_TOOLSET_VERIFIED="$native" "$@"
+    "$BMAKE" EMBERBSD_NATIVE_TOOLSET_VERIFIED="$native" \
+        ${cachearg:+"PBULK_CACHE_DIRECTORY=$cachearg"} "$@"
+}
+
+# The inputs of the cached build options: the native selection, the tree
+# directory itself, so a replaced export does not match, and the content of
+# each absolute makefile that a parse reads: the MAKECONF, its includes and
+# the generated files at the top of the tree.
+cache_identity()
+{
+    files=$(var pkgtools/pkg_install .MAKE.MAKEFILES) || return 1
+    printf '%s\n' "$PKGSRCDIR" "$native"
+    ls -id "$PKGSRCDIR/" | awk '{ print $1 }'
+    for file in $files; do
+        case "$file" in /*) shasum -a 256 "$file" || return 1 ;; esac
+    done
+}
+
+new_cache()
+{
+    rm -rf "$cache"
+    mkdir "$cache"
+    cache_identity > "$cache/identity" || { rm -rf "$cache"; return 0; }
+    cachearg=$cache
+}
+
+# Use the order cache only with the same inputs, and if no file in mk/ or
+# in an ordered package directory changed after the order run started.
+reuse_cache()
+{
+    if [ -f "$cache/identity" ] && cache_identity > "$state/identity" &&
+        cmp -s "$state/identity" "$cache/identity" &&
+        [ -z "$(cd "$PKGSRCDIR" && find mk $(cat "$state/order") -newer "$cache/identity" -print | head -n 1)" ]; then
+        cachearg=$cache
+    else
+        echo 'The build options cache is not from this tree; querying without it' >&2
+    fi
+    rm -f "$state/identity"
 }
 
 var()
@@ -69,6 +116,7 @@ target_deps()
 
 order()
 {
+    new_cache
     : > "$state/edges.new"
     : > "$state/skipped.new"
     sort -u "$list" > "$state/queue"
@@ -115,6 +163,7 @@ order()
 
 fetch()
 {
+    reuse_cache
     while read -r path; do
         log=$state/logs/fetch-$(echo "$path" | tr / _).log
         mk -C "$PKGSRCDIR/$path" fetch < /dev/null > "$log" 2>&1 ||
