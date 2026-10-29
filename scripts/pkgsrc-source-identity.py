@@ -53,19 +53,242 @@ def effective_package_identity(exported, package, upstream):
             'upstream': upstream}
 
 
+# A recipe file is an input to source preparation when it is one of these
+# top-level entries of the package directory or a top-level *.mk file.
+RECIPE_INPUTS = ('Makefile', 'Makefile.common', 'distinfo', 'patches', 'files')
+GIT_PACKAGE_API = 2
+
+
+def recipe_input(relative):
+    top = relative.split('/', 1)[0]
+    return top in RECIPE_INPUTS or ('/' not in relative and top.endswith('.mk'))
+
+
+def _exporter(root):
+    path = Path(root) / 'scripts/prepare-pkgsrc.py'
+    spec = importlib.util.spec_from_file_location('emberbsd_pkgsrc_export_identity', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _git_environment():
+    # Only the explicit Git executable and its own object store are used;
+    # no index, alternate index or lazy fetch from a promisor remote.
+    return {'PATH': '/usr/bin:/bin', 'LC_ALL': 'C', 'GIT_OPTIONAL_LOCKS': '0',
+            'GIT_NO_LAZY_FETCH': '1', 'GIT_CONFIG_NOSYSTEM': '1', 'HOME': '/nonexistent'}
+
+
+def _file_mode(path):
+    # The exporter copies files with umask 022, so only the execute bit of
+    # the owner survives as a distinction; Git records exactly that.
+    return '100755' if os.stat(path).st_mode & 0o100 else '100644'
+
+
+def _hash_objects(git, root, paths):
+    """Return Git blob ids of the given files (no filters, no writes)."""
+    if not paths:
+        return []
+    data = ''.join(str(path) + '\n' for path in paths).encode()
+    out = subprocess.run([str(git), '-C', str(root), 'hash-object', '--no-filters', '--stdin-paths'],
+                         input=data, stdout=subprocess.PIPE, check=True,
+                         env=_git_environment()).stdout.split()
+    if len(out) != len(paths):
+        raise ValueError('git hash-object returned an unexpected number of ids')
+    return [oid.decode('ascii') for oid in out]
+
+
+def _hash_bytes(git, root, data):
+    return subprocess.run([str(git), '-C', str(root), 'hash-object', '--no-filters', '--stdin'],
+                          input=data, stdout=subprocess.PIPE, check=True,
+                          env=_git_environment()).stdout.strip().decode('ascii')
+
+
+def _directory_rows(git, root, directory):
+    """Rows of a materialised recipe directory as the exporter copies it.
+
+    shutil.copytree follows the (checked, in-tree, regular-file) links of a
+    Ports overlay, so a link contributes its target's content.
+    """
+    directory = Path(directory)
+    names, paths = [], []
+    for current, dirs, files in os.walk(directory):
+        dirs.sort()
+        for name in sorted(files):
+            path = Path(current) / name
+            relative = path.relative_to(directory).as_posix()
+            if recipe_input(relative):
+                names.append(relative)
+                paths.append(path.resolve(strict=True))
+    oids = _hash_objects(git, root, paths)
+    return {name: [_file_mode(path), oid] for name, path, oid in zip(names, paths, oids)}
+
+
+def _tree_rows(git, repository, revision, package):
+    """Rows of one package directory of a pinned commit, from Git's tree."""
+    out = subprocess.run([str(git), '-C', str(repository), 'ls-tree', '-r', '-z', '--full-tree',
+                          revision, '--', package + '/'],
+                         stdout=subprocess.PIPE, check=True, env=_git_environment()).stdout
+    rows = {}
+    for entry in out.split(b'\0'):
+        if not entry:
+            continue
+        meta, _, name = entry.partition(b'\t')
+        mode, kind, oid = meta.decode('ascii').split()
+        relative = name.decode('utf-8', 'surrogateescape')[len(package) + 1:]
+        if kind == 'commit':
+            raise ValueError('effective package contains a gitlink: ' + package + '/' + relative)
+        if recipe_input(relative):
+            # git archive gives regular files mode 644/755 after umask 022.
+            rows[relative] = [mode, oid]
+    return rows
+
+
+def _patch_targets(source):
+    """Paths (after -p1) named by a patch, or None when they are unknown."""
+    names = []
+    for line in Path(source).read_bytes().split(b'\n'):
+        if line.startswith((b'--- ', b'+++ ', b'diff --git ')):
+            if line.startswith(b'diff --git '):
+                fields = line[11:].split(b' ')
+            else:
+                fields = [line[4:].split(b'\t')[0].strip()]
+            for field in fields:
+                if field == b'/dev/null':
+                    continue
+                parts = field.decode('utf-8', 'surrogateescape').split('/')[1:]
+                if not parts or any(part in ('', '.', '..') for part in parts):
+                    return None
+                names.append('/'.join(parts))
+    return names or None
+
+
+def git_package_inputs(ports_root, package, git):
+    """Identify one effective recipe from Git object ids, without an export.
+
+    The identity covers the same recipe inputs as effective_package_identity
+    (Makefile, Makefile.common, distinfo, *.mk, patches/ and files/ of the
+    package after all overlays): the blob ids of the pinned pkgsrc tree or of
+    the Ports overlay that replaces it, the recipe patches and exported files
+    placed into it, and the blob ids of every infrastructure patch that names
+    a path in it (or whose paths are unknown).  Git already stores these ids
+    for the pinned tree; overlay files are hashed with git hash-object, so
+    uncommitted overlay edits count.  The upstream revision is provenance.
+    """
+    root = Path(ports_root).resolve(strict=True)
+    if not os.path.isabs(str(git)) or not os.path.isfile(git) or not os.access(git, os.X_OK):
+        raise ValueError('git must be an absolute executable')
+    if not isinstance(package, str) or re.fullmatch(
+            r'[a-z0-9][a-z0-9+_.-]*/[a-z0-9][a-z0-9+_.-]*', package) is None:
+        raise ValueError('invalid package path')
+    exporter = _exporter(root)
+    recipes, patches, files, _ = exporter.configuration(root)
+    if exporter.version_pruned(package, exporter.version_families(root)):
+        raise ValueError('pkgsrc/versions.mk removes ' + package)
+
+    def run(directory, *args):
+        return subprocess.run([str(git), '-C', str(directory), *args], stdout=subprocess.PIPE,
+                              check=True, env=_git_environment()).stdout.strip()
+
+    pin = run(root, 'ls-files', '--stage', '--', 'upstream/pkgsrc').split()
+    if len(pin) != 4 or pin[0] != b'160000' or pin[2] != b'0':
+        raise ValueError('Expected one pinned pkgsrc gitlink')
+    upstream = pin[1].decode('ascii')
+    if run(root / 'upstream/pkgsrc', 'rev-parse', 'HEAD').decode('ascii') != upstream:
+        raise ValueError('pkgsrc checkout differs from its gitlink')
+    overlay = dict(recipes).get(package)
+    if overlay is not None:
+        origin = 'ports'
+        rows = _directory_rows(git, root, overlay)
+    else:
+        origin = 'pkgsrc'
+        rows = _tree_rows(git, root / 'upstream/pkgsrc', upstream, package)
+    if 'Makefile' not in rows:
+        raise ValueError('effective package has no Makefile: ' + package)
+    appended = []
+    for method, source, recipe, name in patches:
+        if method == 'recipe-patch' and recipe == package:
+            rows['patches/' + name] = [_file_mode(source), _hash_objects(git, root, [source])[0]]
+            appended.append(f'SHA1 ({name}) = {exporter.patch_sha1(source)}\n')
+    if appended:
+        if 'distinfo' not in rows:
+            raise ValueError('recipe patch for a package without distinfo: ' + package)
+        if origin == 'ports':
+            base = (Path(overlay) / 'distinfo').read_bytes()
+        else:
+            base = subprocess.run([str(git), '-C', str(root / 'upstream/pkgsrc'), 'cat-file', 'blob',
+                                   rows['distinfo'][1]], stdout=subprocess.PIPE, check=True,
+                                  env=_git_environment()).stdout
+        rows['distinfo'] = [rows['distinfo'][0],
+                            _hash_bytes(git, root, base + ''.join(appended).encode('utf-8'))]
+    for source, destination in files:
+        if destination.startswith(package + '/'):
+            relative = destination[len(package) + 1:]
+            if recipe_input(relative):
+                rows[relative] = [_file_mode(source), _hash_objects(git, root, [source])[0]]
+    infrastructure = []
+    for method, source, _, _ in patches:
+        if method not in ('patch', 'git-apply'):
+            continue
+        targets = _patch_targets(source)
+        if targets is None or any(target.startswith(package + '/') and
+                                  recipe_input(target[len(package) + 1:]) for target in targets):
+            infrastructure.append([method, source.relative_to(root).as_posix(),
+                                   _hash_objects(git, root, [source])[0]])
+    return {'api': GIT_PACKAGE_API, 'package': package, 'origin': origin,
+            'tree': dict(sorted(rows.items())), 'infrastructure_patches': infrastructure,
+            'upstream': upstream}
+
+
+def git_package_identity(ports_root, package, git):
+    """Return the API 2 effective package identity of git_package_inputs."""
+    payload = git_package_inputs(ports_root, package, git)
+    upstream = payload.pop('upstream')
+    encoded = json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()
+    return {'api': GIT_PACKAGE_API, 'package': package,
+            'effective_package_sha256': hashlib.sha256(encoded).hexdigest(),
+            'upstream': upstream}
+
+
+def exported_package_rows(exported, package, git):
+    """Rows of an exported package directory, for comparison with the Git rows.
+
+    Used to show that the Git-derived identity describes the files that the
+    canonical export materialises.
+    """
+    root = Path(exported).resolve(strict=True)
+    return _directory_rows(git, root, root.joinpath(*package.split('/')))
+
+
+def current_git_package(old, owner_sha256, current):
+    """Whether a scoped receipt still names the current Git recipe objects.
+
+    Only API 2 receipts qualify; `current` computes the owner's present
+    identity lazily, so API 1 receipts keep using the export comparison.
+    """
+    if not isinstance(old, dict) or set(old) != {'effective', 'owner_sha256'}:
+        return False
+    effective = old['effective']
+    if (not isinstance(effective, dict) or effective.get('api') != GIT_PACKAGE_API or
+            old['owner_sha256'] != owner_sha256):
+        return False
+    return equivalent_effective_package(effective, current())
+
+
 def equivalent_effective_package(left, right):
     """Compare effective inputs while leaving the recorded origin untouched."""
     keys = {'api', 'package', 'effective_package_sha256', 'upstream'}
     def valid(value):
         return (isinstance(value, dict) and set(value) == keys and
-                type(value['api']) is int and value['api'] == 1 and
+                type(value['api']) is int and value['api'] in (1, GIT_PACKAGE_API) and
                 isinstance(value['package'], str) and
                 re.fullmatch(r'[a-z0-9][a-z0-9+_.-]*/[a-z0-9][a-z0-9+_.-]*', value['package']) is not None and
                 isinstance(value['effective_package_sha256'], str) and
                 re.fullmatch(r'[0-9a-f]{64}', value['effective_package_sha256']) is not None and
                 isinstance(value['upstream'], str) and
                 re.fullmatch(r'[0-9a-f]{40}', value['upstream']) is not None)
-    return (valid(left) and valid(right) and left['package'] == right['package'] and
+    return (valid(left) and valid(right) and left['api'] == right['api'] and
+            left['package'] == right['package'] and
             left['effective_package_sha256'] == right['effective_package_sha256'])
 
 
