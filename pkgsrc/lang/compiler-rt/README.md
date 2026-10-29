@@ -287,7 +287,12 @@ stubs; those upstream functions do no registration.
 See [the exact LLVM implementation](https://github.com/llvm/llvm-project/blob/llvmorg-23.1.4/libunwind/src/UnwindLevel1-gcc-ext.c).
 
 For ordinary ELF code, LLVM uses `dl_iterate_phdr` and `PT_GNU_EH_FRAME`; the
-NetBSD Clang driver already emits `--eh-frame-hdr`. The weak legacy references
+NetBSD Clang driver already emits `--eh-frame-hdr`. The local index-miss repair
+keeps a complete index miss from scanning an unbounded `.eh_frame` without a
+terminator; a missing table retains the existing scan and dynamic FDE lookup.
+`tests/unwind-index.py` exercises the actual patched header parser with
+bounded fixtures; target execution remains separate. This is not a general
+validator for arbitrary malformed DWARF. The weak legacy references
 in OS crtbegin can remain unresolved on this path. That does not implement the
 old frame-info API for consumers that require it. JIT consumers must register
 and deregister each FDE with the actual public API, not pass a whole section as

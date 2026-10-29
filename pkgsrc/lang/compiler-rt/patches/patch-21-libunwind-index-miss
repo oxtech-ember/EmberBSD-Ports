@@ -1,0 +1,145 @@
+# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+# Preserve LLVM Apache-2.0 WITH LLVM-exception terms.
+# Avoid unbounded frame scans after index misses.
+
+--- a/libunwind/src/EHHeaderParser.hpp
++++ b/libunwind/src/EHHeaderParser.hpp
+@@ -41,7 +41,8 @@
+   static bool findFDE(A &addressSpace, typename R::link_hardened_reg_arg_t pc,
+                       pint_t ehHdrStart, uint32_t sectionLength,
+                       typename CFI_Parser<A>::FDE_Info *fdeInfo,
+-                      typename CFI_Parser<A>::CIE_Info *cieInfo);
++                      typename CFI_Parser<A>::CIE_Info *cieInfo,
++                      bool &indexPresent);
+ 
+ private:
+   static bool decodeTableEntry(A &addressSpace, pint_t &tableEntry,
+@@ -58,6 +59,8 @@
+   pint_t p = ehHdrStart;
+ 
+   // Ensure that we don't read data beyond the end of .eh_frame_hdr
++  if (ehHdrEnd < ehHdrStart)
++    return false;
+   if (ehHdrEnd - ehHdrStart < 4) {
+     // Don't print a message for an empty .eh_frame_hdr (this can happen if
+     // the linker script defines symbols for it even in the empty case).
+@@ -80,6 +83,47 @@
+   uint8_t fde_count_enc = addressSpace.get8(p++);
+   ehHdrInfo.table_enc = addressSpace.get8(p++);
+ 
++  // Validate operands before getEncodedP reads them. The decoder retains its
++  // existing relative and indirect semantics after this bounds check.
++  auto operandEnd = [&](pint_t &at, uint8_t enc) -> bool {
++    if (enc == DW_EH_PE_omit) return true;
++    size_t width = 0;
++    switch (enc & 0x0f) {
++    case DW_EH_PE_ptr: width = sizeof(pint_t); break;
++    case DW_EH_PE_udata2: case DW_EH_PE_sdata2: width = 2; break;
++    case DW_EH_PE_udata4: case DW_EH_PE_sdata4: width = 4; break;
++    case DW_EH_PE_udata8: case DW_EH_PE_sdata8: width = 8; break;
++    case DW_EH_PE_uleb128: case DW_EH_PE_sleb128: {
++      const size_t maxBytes = (sizeof(uint64_t) * 8 + 6) / 7;
++      for (size_t i = 0; i < maxBytes; ++i) {
++        if (at >= ehHdrEnd) return false;
++        uint8_t byte = addressSpace.get8(at++);
++        if (!(byte & 0x80)) {
++          if (i + 1 == maxBytes) {
++            const unsigned bits = sizeof(uint64_t) * 8 - 7 * i;
++            const uint8_t payload = byte & 0x7f;
++            const uint8_t mask = (1u << bits) - 1;
++            if ((enc & 0x0f) == DW_EH_PE_uleb128)
++              return (payload & ~mask) == 0;
++            const bool negative = payload & (1u << (bits - 1));
++            return (payload & ~mask) == (negative ? (0x7f & ~mask) : 0);
++          }
++          return true;
++        }
++      }
++      return false;
++    }
++    default: return false;
++    }
++    if (at > ehHdrEnd || width > ehHdrEnd - at) return false;
++    at += width;
++    return true;
++  };
++  pint_t checked = p;
++  if (eh_frame_ptr_enc == DW_EH_PE_omit ||
++      !operandEnd(checked, eh_frame_ptr_enc) ||
++      !operandEnd(checked, fde_count_enc))
++    return false;
+   ehHdrInfo.eh_frame_ptr =
+       addressSpace.getEncodedP(p, ehHdrEnd, eh_frame_ptr_enc, ehHdrStart);
+   ehHdrInfo.fde_count =
+@@ -118,7 +162,13 @@
+                                 typename R::link_hardened_reg_arg_t pc,
+                                 pint_t ehHdrStart, uint32_t sectionLength,
+                                 typename CFI_Parser<A>::FDE_Info *fdeInfo,
+-                                typename CFI_Parser<A>::CIE_Info *cieInfo) {
++                                typename CFI_Parser<A>::CIE_Info *cieInfo,
++                                bool &indexPresent) {
++  // A present but invalid index cannot safely authorize a scan whose
++  // .eh_frame length is unknown. The caller can still consult its cache.
++  indexPresent = true;
++  if (sectionLength < 4 || ehHdrStart + sectionLength < ehHdrStart)
++    return false;
+   pint_t ehHdrEnd = ehHdrStart + sectionLength;
+ 
+   EHHeaderParser<A>::EHHeaderInfo hdrInfo;
+@@ -126,9 +176,25 @@
+                                       hdrInfo))
+     return false;
+ 
+-  if (hdrInfo.fde_count == 0) return false;
+-
++  // A complete, fixed-width data-relative table can prove a miss.
++  if (addressSpace.get8(ehHdrStart + 2) == DW_EH_PE_omit ||
++      hdrInfo.table_enc == DW_EH_PE_omit) {
++    indexPresent = false; // Explicitly no table; retain the existing scan.
++    return false;
++  }
++  const uint8_t tableFormat = hdrInfo.table_enc & 0x0f;
++  const uint8_t tableBase = hdrInfo.table_enc & 0x70;
++  if ((tableBase != DW_EH_PE_absptr && tableBase != DW_EH_PE_pcrel &&
++       tableBase != DW_EH_PE_datarel) ||
++      (tableFormat != DW_EH_PE_sdata2 && tableFormat != DW_EH_PE_udata2 &&
++       tableFormat != DW_EH_PE_sdata4 && tableFormat != DW_EH_PE_udata4 &&
++       tableFormat != DW_EH_PE_sdata8 && tableFormat != DW_EH_PE_udata8))
++    return false;
+   size_t tableEntrySize = getTableEntrySize(hdrInfo.table_enc);
++  if (hdrInfo.table > ehHdrEnd ||
++      hdrInfo.fde_count > (ehHdrEnd - hdrInfo.table) / tableEntrySize)
++    return false;
++  if (hdrInfo.fde_count == 0) return false;
+   pint_t tableEntry;
+ 
+   size_t low = 0;
+--- a/libunwind/src/UnwindCursor.hpp
++++ b/libunwind/src/UnwindCursor.hpp
+@@ -1814,10 +1814,12 @@
+         sects.dwarf_section + fdeSectionOffsetHint, &fdeInfo, &cieInfo);
+   }
+ #if defined(_LIBUNWIND_SUPPORT_DWARF_INDEX)
++  bool indexPresent = false;
+   if (!foundFDE && (sects.dwarf_index_section != 0)) {
+     foundFDE = EHHeaderParser<A>::template findFDE<R>(
+         _addressSpace, pc, sects.dwarf_index_section,
+-        (uint32_t)sects.dwarf_index_section_length, &fdeInfo, &cieInfo);
++        (uint32_t)sects.dwarf_index_section_length, &fdeInfo, &cieInfo,
++        indexPresent);
+   }
+ #endif
+   if (!foundFDE) {
+@@ -1831,7 +1833,11 @@
+       foundInCache = foundFDE;
+     }
+   }
+-  if (!foundFDE) {
++  if (!foundFDE
++#if defined(_LIBUNWIND_SUPPORT_DWARF_INDEX)
++      && (!indexPresent || sects.dwarf_section_length != SIZE_MAX)
++#endif
++  ) {
+     // Still not found, do full scan of __eh_frame section.
+     foundFDE = CFI_Parser<A>::template findFDE<R>(
+         _addressSpace, pc, sects.dwarf_section, sects.dwarf_section_length, 0,
