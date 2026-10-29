@@ -435,3 +435,4 @@ textproc/md4c
 x11/qt5-qtbase
 misc/libreoffice
 parallel/threadingbuildingblocks
+x11/xcb-util

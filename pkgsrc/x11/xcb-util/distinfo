@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.10 2022/12/26 22:10:43 wiz Exp $
+
+BLAKE2s (xcb-util-0.4.1.tar.xz) = c89e95ee48b72a3187a3d35d7b3891513e83ccffaa6f884c438119f895e8e3f0
+SHA512 (xcb-util-0.4.1.tar.xz) = da67f2f017d2a1788dcf35f28d6956e171303a622a1dd085cd3d69fdb2ed77965d83c557cc926ebf9b32e905eb2cbb5921987250192d78a2f5edc4d437ed7d2b
+Size (xcb-util-0.4.1.tar.xz) = 267396 bytes
