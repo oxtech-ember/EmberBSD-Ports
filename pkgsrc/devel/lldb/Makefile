@@ -1,12 +1,12 @@
 # $NetBSD: Makefile,v 1.65 2026/09/02 19:01:39 wiz Exp $
 
-PKGREVISION= 3
+PKGREVISION= 4
 .include "../../lang/llvm/version.mk"
 
 # Native Darwin LLDB crosses the LLVM and Clang C++ interfaces.
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
     ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
-PKGREVISION= 5
+PKGREVISION= 6
 DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
 DEPENDS+= llvm>=23.1.4nb5:../../lang/llvm
 DEPENDS+= clang>=23.1.4nb12:../../lang/clang
