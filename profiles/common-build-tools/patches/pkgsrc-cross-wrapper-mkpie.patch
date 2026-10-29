@@ -1,0 +1,62 @@
+# Origin: EmberBSD (AI-assisted). Preserve pkgsrc PIE policy for cross
+# compiler wrappers without changing shared-object or compile-only commands.
+
+--- a/mk/wrapper/bsd.wrapper.mk
++++ b/mk/wrapper/bsd.wrapper.mk
+@@ -358,6 +358,11 @@
+ .endif
+ 
+ .if !empty(TOOLS_USE_CROSS_COMPILE:M[yY][eE][sS])
++.  if ${_PKGSRC_MKPIE} == "yes" && ${PKGSRC_OVERRIDE_MKPIE:tl} == "no"
++MKPIE_CFLAGS=		${_MKPIE_CFLAGS}
++MKPIE_LDFLAGS=		${_MKPIE_LDFLAGS}
++.export MKPIE_CFLAGS MKPIE_LDFLAGS
++.  endif
+ _WRAP_CMD_SINK.CC=	${WRAPPER_TMPDIR}/cmd-sink-cross-gcc
+ _WRAP_CMD_SINK.CPP=	${WRAPPER_TMPDIR}/cmd-sink-cross-cpp
+ _WRAP_CMD_SINK.CXX=	${WRAPPER_TMPDIR}/cmd-sink-cross-gxx
+--- a/mk/wrapper/cmd-sink-cross-gcc
++++ b/mk/wrapper/cmd-sink-cross-gcc
+@@ -61,3 +61,14 @@
+ 		;;
+ 	esac
+ done
++
++# Keep the normal pkgsrc MKPIE policy when the cross sink replaces the
++# ordinary compiler sink. Shared, relocatable and compile-only paths stay as-is.
++if $test "$dont_link_binary" != "yes"; then
++	MKPIE_FLAGS="$MKPIE_LDFLAGS"
++	$test "$has_source" = "yes" && MKPIE_FLAGS="$MKPIE_CFLAGS $MKPIE_FLAGS"
++	for arg in $MKPIE_FLAGS; do
++		$debug_log $wrapperlog "    (cmd-sink-cross-mkpie) pop: $arg"
++		. $buildcmd
++	done
++fi
+--- a/mk/wrapper/cmd-sink-cross-gxx
++++ b/mk/wrapper/cmd-sink-cross-gxx
+@@ -61,3 +61,14 @@
+ 		;;
+ 	esac
+ done
++
++# Keep the normal pkgsrc MKPIE policy when the cross sink replaces the
++# ordinary compiler sink. Shared, relocatable and compile-only paths stay as-is.
++if $test "$dont_link_binary" != "yes"; then
++	MKPIE_FLAGS="$MKPIE_LDFLAGS"
++	$test "$has_source" = "yes" && MKPIE_FLAGS="$MKPIE_CFLAGS $MKPIE_FLAGS"
++	for arg in $MKPIE_FLAGS; do
++		$debug_log $wrapperlog "    (cmd-sink-cross-mkpie) pop: $arg"
++		. $buildcmd
++	done
++fi
+--- a/mk/wrapper/arg-source
++++ b/mk/wrapper/arg-source
+@@ -171,7 +171,7 @@
+ 		append_queue argbuf "$arg"
+ 		$debug_log $wrapperlog "    (arg-source) push: $arg"
+ 		;;
+-	-Wl,-N|-Wl,-r|-shared)
++	-Wl,-N|-Wl,-r|-r|-shared)
+ 		dont_link_binary=yes
+ 		append_queue argbuf "$arg"
+ 		$debug_log $wrapperlog "    (arg-source) push: $arg"
