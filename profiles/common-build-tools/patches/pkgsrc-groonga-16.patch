@@ -1,0 +1,342 @@
+Origin: EmberBSD, AI-assisted.
+Update Groonga to 16.1.4, the newest release. PGroonga 4.x, the only
+PGroonga for PostgreSQL 18, needs Groonga 14.1 or later. The autotools
+build and its options are unchanged; the PLIST follows the new headers,
+plugins and documentation.
+Not submitted upstream.
+
+--- a/textproc/groonga/Makefile
++++ b/textproc/groonga/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.80 2026/09/02 19:04:42 wiz Exp $
+ 
+-DISTNAME=	groonga-14.0.6
+-PKGREVISION=	4
++DISTNAME=	groonga-16.1.4
+ CATEGORIES=	textproc
+ MASTER_SITES=	http://packages.groonga.org/source/groonga/
+ 
+--- a/textproc/groonga/PLIST
++++ b/textproc/groonga/PLIST
+@@ -26,6 +26,7 @@
+ include/groonga/groonga/dump.h
+ include/groonga/groonga/error.h
+ include/groonga/groonga/expr.h
++include/groonga/groonga/extractor.h
+ include/groonga/groonga/file_reader.h
+ include/groonga/groonga/float.h
+ include/groonga/groonga/geo.h
+@@ -36,7 +37,10 @@
+ include/groonga/groonga/id.h
+ include/groonga/groonga/ii.h
+ include/groonga/groonga/index_column.h
++include/groonga/groonga/json.h
++include/groonga/groonga/language_model.h
+ include/groonga/groonga/memory.h
++include/groonga/groonga/memory_map.h
+ include/groonga/groonga/msgpack.h
+ include/groonga/groonga/nfkc.h
+ include/groonga/groonga/normalizer.h
+@@ -58,6 +62,7 @@
+ include/groonga/groonga/scorer.h
+ include/groonga/groonga/selector.h
+ include/groonga/groonga/smart_obj.hpp
++include/groonga/groonga/sorter.h
+ include/groonga/groonga/string.h
+ include/groonga/groonga/table.h
+ include/groonga/groonga/table_module.h
+@@ -81,6 +86,7 @@
+ include/onigmo.h
+ include/onigmognu.h
+ include/onigmoposix.h
++lib/groonga/plugins/functions/binary.la
+ lib/groonga/plugins/functions/index_column.la
+ lib/groonga/plugins/functions/math.la
+ lib/groonga/plugins/functions/number.la
+@@ -102,6 +108,7 @@
+ share/doc/groonga/en/html/_images/geo-points.png
+ share/doc/groonga/en/html/_images/used-when-indexing.png
+ share/doc/groonga/en/html/_images/used-when-searching.png
++share/doc/groonga/en/html/_images/zulip-icon-128x128.png
+ share/doc/groonga/en/html/_static/basic.css
+ share/doc/groonga/en/html/_static/doctools.js
+ share/doc/groonga/en/html/_static/documentation_options.js
+@@ -115,28 +122,20 @@
+ share/doc/groonga/en/html/_static/scripts/bootstrap.js
+ share/doc/groonga/en/html/_static/scripts/bootstrap.js.LICENSE.txt
+ share/doc/groonga/en/html/_static/scripts/bootstrap.js.map
++share/doc/groonga/en/html/_static/scripts/fontawesome.js
++share/doc/groonga/en/html/_static/scripts/fontawesome.js.LICENSE.txt
++share/doc/groonga/en/html/_static/scripts/fontawesome.js.map
+ share/doc/groonga/en/html/_static/scripts/pydata-sphinx-theme.js
+ share/doc/groonga/en/html/_static/scripts/pydata-sphinx-theme.js.map
+ share/doc/groonga/en/html/_static/searchtools.js
+ share/doc/groonga/en/html/_static/sphinx_highlight.js
+-share/doc/groonga/en/html/_static/styles/bootstrap.css
+-share/doc/groonga/en/html/_static/styles/bootstrap.css.map
+ share/doc/groonga/en/html/_static/styles/pydata-sphinx-theme.css
+ share/doc/groonga/en/html/_static/styles/pydata-sphinx-theme.css.map
+ share/doc/groonga/en/html/_static/styles/theme.css
+ share/doc/groonga/en/html/_static/switcher.json
+-share/doc/groonga/en/html/_static/vendor/fontawesome/6.5.2/LICENSE.txt
+-share/doc/groonga/en/html/_static/vendor/fontawesome/6.5.2/css/all.min.css
+-share/doc/groonga/en/html/_static/vendor/fontawesome/6.5.2/js/all.min.js
+-share/doc/groonga/en/html/_static/vendor/fontawesome/6.5.2/js/all.min.js.LICENSE.txt
+-share/doc/groonga/en/html/_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.ttf
+-share/doc/groonga/en/html/_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2
+-share/doc/groonga/en/html/_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.ttf
+-share/doc/groonga/en/html/_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2
+-share/doc/groonga/en/html/_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.ttf
+-share/doc/groonga/en/html/_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2
+-share/doc/groonga/en/html/_static/vendor/fontawesome/6.5.2/webfonts/fa-v4compatibility.ttf
+-share/doc/groonga/en/html/_static/vendor/fontawesome/6.5.2/webfonts/fa-v4compatibility.woff2
++share/doc/groonga/en/html/_static/vendor/fontawesome/webfonts/fa-brands-400.woff2
++share/doc/groonga/en/html/_static/vendor/fontawesome/webfonts/fa-regular-400.woff2
++share/doc/groonga/en/html/_static/vendor/fontawesome/webfonts/fa-solid-900.woff2
+ share/doc/groonga/en/html/_static/webpack-macros.html
+ share/doc/groonga/en/html/characteristic.html
+ share/doc/groonga/en/html/client.html
+@@ -185,6 +184,8 @@
+ share/doc/groonga/en/html/news/12.html
+ share/doc/groonga/en/html/news/13.html
+ share/doc/groonga/en/html/news/14.html
++share/doc/groonga/en/html/news/15.html
++share/doc/groonga/en/html/news/16.html
+ share/doc/groonga/en/html/news/2.html
+ share/doc/groonga/en/html/news/3.html
+ share/doc/groonga/en/html/news/4.html
+@@ -195,6 +196,7 @@
+ share/doc/groonga/en/html/news/9.html
+ share/doc/groonga/en/html/news/senna.html
+ share/doc/groonga/en/html/objects.inv
++share/doc/groonga/en/html/origin.html
+ share/doc/groonga/en/html/reference.html
+ share/doc/groonga/en/html/reference/alias.html
+ share/doc/groonga/en/html/reference/api.html
+@@ -232,6 +234,7 @@
+ share/doc/groonga/en/html/reference/columns/vector.html
+ share/doc/groonga/en/html/reference/command.html
+ share/doc/groonga/en/html/reference/command/command_version.html
++share/doc/groonga/en/html/reference/command/n_workers.html
+ share/doc/groonga/en/html/reference/command/output_format.html
+ share/doc/groonga/en/html/reference/command/output_trace_log.html
+ share/doc/groonga/en/html/reference/command/pretty_print.html
+@@ -260,6 +263,7 @@
+ share/doc/groonga/en/html/reference/commands/defrag.html
+ share/doc/groonga/en/html/reference/commands/delete.html
+ share/doc/groonga/en/html/reference/commands/dump.html
++share/doc/groonga/en/html/reference/commands/extract.html
+ share/doc/groonga/en/html/reference/commands/index_column_diff.html
+ share/doc/groonga/en/html/reference/commands/io_flush.html
+ share/doc/groonga/en/html/reference/commands/load.html
+@@ -319,6 +323,9 @@
+ share/doc/groonga/en/html/reference/executables/groonga-suggest-httpd.html
+ share/doc/groonga/en/html/reference/executables/groonga-suggest-learner.html
+ share/doc/groonga/en/html/reference/executables/groonga.html
++share/doc/groonga/en/html/reference/extractors.html
++share/doc/groonga/en/html/reference/extractors/extractor_html.html
++share/doc/groonga/en/html/reference/extractors/extractor_json.html
+ share/doc/groonga/en/html/reference/function.html
+ share/doc/groonga/en/html/reference/functions/between.html
+ share/doc/groonga/en/html/reference/functions/cast_loose.html
+@@ -334,6 +341,9 @@
+ share/doc/groonga/en/html/reference/functions/html_untag.html
+ share/doc/groonga/en/html/reference/functions/in_records.html
+ share/doc/groonga/en/html/reference/functions/in_values.html
++share/doc/groonga/en/html/reference/functions/json_extract.html
++share/doc/groonga/en/html/reference/functions/language_model_knn.html
++share/doc/groonga/en/html/reference/functions/language_model_vectorize.html
+ share/doc/groonga/en/html/reference/functions/math_abs.html
+ share/doc/groonga/en/html/reference/functions/now.html
+ share/doc/groonga/en/html/reference/functions/number_classify.html
+@@ -346,6 +356,7 @@
+ share/doc/groonga/en/html/reference/functions/string_length.html
+ share/doc/groonga/en/html/reference/functions/string_slice.html
+ share/doc/groonga/en/html/reference/functions/string_substring.html
++share/doc/groonga/en/html/reference/functions/string_truncate.html
+ share/doc/groonga/en/html/reference/functions/sub_filter.html
+ share/doc/groonga/en/html/reference/functions/time_classify_day.html
+ share/doc/groonga/en/html/reference/functions/time_classify_day_of_week.html
+@@ -363,9 +374,11 @@
+ share/doc/groonga/en/html/reference/grn_expr/query_syntax.html
+ share/doc/groonga/en/html/reference/grn_expr/script_syntax.html
+ share/doc/groonga/en/html/reference/indexing.html
++share/doc/groonga/en/html/reference/language_model.html
+ share/doc/groonga/en/html/reference/log.html
+ share/doc/groonga/en/html/reference/normalizers.html
+ share/doc/groonga/en/html/reference/normalizers/normalizer_auto.html
++share/doc/groonga/en/html/reference/normalizers/normalizer_nfkc.html
+ share/doc/groonga/en/html/reference/normalizers/normalizer_nfkc100.html
+ share/doc/groonga/en/html/reference/normalizers/normalizer_nfkc121.html
+ share/doc/groonga/en/html/reference/normalizers/normalizer_nfkc130.html
+@@ -391,6 +404,7 @@
+ share/doc/groonga/en/html/reference/tables.html
+ share/doc/groonga/en/html/reference/token_filter/summary.html
+ share/doc/groonga/en/html/reference/token_filters.html
++share/doc/groonga/en/html/reference/token_filters/token_filter_nfkc.html
+ share/doc/groonga/en/html/reference/token_filters/token_filter_nfkc100.html
+ share/doc/groonga/en/html/reference/token_filters/token_filter_nfkc150.html
+ share/doc/groonga/en/html/reference/token_filters/token_filter_stem.html
+@@ -407,6 +421,7 @@
+ share/doc/groonga/en/html/reference/tokenizers/token_bigram_split_symbol_alpha_digit.html
+ share/doc/groonga/en/html/reference/tokenizers/token_delimit.html
+ share/doc/groonga/en/html/reference/tokenizers/token_delimit_null.html
++share/doc/groonga/en/html/reference/tokenizers/token_language_model_knn.html
+ share/doc/groonga/en/html/reference/tokenizers/token_mecab.html
+ share/doc/groonga/en/html/reference/tokenizers/token_ngram.html
+ share/doc/groonga/en/html/reference/tokenizers/token_pattern.html
+@@ -454,6 +469,7 @@
+ share/doc/groonga/ja/html/_images/geo-points.png
+ share/doc/groonga/ja/html/_images/used-when-indexing.png
+ share/doc/groonga/ja/html/_images/used-when-searching.png
++share/doc/groonga/ja/html/_images/zulip-icon-128x128.png
+ share/doc/groonga/ja/html/_static/basic.css
+ share/doc/groonga/ja/html/_static/doctools.js
+ share/doc/groonga/ja/html/_static/documentation_options.js
+@@ -467,29 +483,21 @@
+ share/doc/groonga/ja/html/_static/scripts/bootstrap.js
+ share/doc/groonga/ja/html/_static/scripts/bootstrap.js.LICENSE.txt
+ share/doc/groonga/ja/html/_static/scripts/bootstrap.js.map
++share/doc/groonga/ja/html/_static/scripts/fontawesome.js
++share/doc/groonga/ja/html/_static/scripts/fontawesome.js.LICENSE.txt
++share/doc/groonga/ja/html/_static/scripts/fontawesome.js.map
+ share/doc/groonga/ja/html/_static/scripts/pydata-sphinx-theme.js
+ share/doc/groonga/ja/html/_static/scripts/pydata-sphinx-theme.js.map
+ share/doc/groonga/ja/html/_static/searchtools.js
+ share/doc/groonga/ja/html/_static/sphinx_highlight.js
+-share/doc/groonga/ja/html/_static/styles/bootstrap.css
+-share/doc/groonga/ja/html/_static/styles/bootstrap.css.map
+ share/doc/groonga/ja/html/_static/styles/pydata-sphinx-theme.css
+ share/doc/groonga/ja/html/_static/styles/pydata-sphinx-theme.css.map
+ share/doc/groonga/ja/html/_static/styles/theme.css
+ share/doc/groonga/ja/html/_static/switcher.json
+ share/doc/groonga/ja/html/_static/translations.js
+-share/doc/groonga/ja/html/_static/vendor/fontawesome/6.5.2/LICENSE.txt
+-share/doc/groonga/ja/html/_static/vendor/fontawesome/6.5.2/css/all.min.css
+-share/doc/groonga/ja/html/_static/vendor/fontawesome/6.5.2/js/all.min.js
+-share/doc/groonga/ja/html/_static/vendor/fontawesome/6.5.2/js/all.min.js.LICENSE.txt
+-share/doc/groonga/ja/html/_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.ttf
+-share/doc/groonga/ja/html/_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2
+-share/doc/groonga/ja/html/_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.ttf
+-share/doc/groonga/ja/html/_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2
+-share/doc/groonga/ja/html/_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.ttf
+-share/doc/groonga/ja/html/_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2
+-share/doc/groonga/ja/html/_static/vendor/fontawesome/6.5.2/webfonts/fa-v4compatibility.ttf
+-share/doc/groonga/ja/html/_static/vendor/fontawesome/6.5.2/webfonts/fa-v4compatibility.woff2
++share/doc/groonga/ja/html/_static/vendor/fontawesome/webfonts/fa-brands-400.woff2
++share/doc/groonga/ja/html/_static/vendor/fontawesome/webfonts/fa-regular-400.woff2
++share/doc/groonga/ja/html/_static/vendor/fontawesome/webfonts/fa-solid-900.woff2
+ share/doc/groonga/ja/html/_static/webpack-macros.html
+ share/doc/groonga/ja/html/characteristic.html
+ share/doc/groonga/ja/html/client.html
+@@ -538,6 +546,8 @@
+ share/doc/groonga/ja/html/news/12.html
+ share/doc/groonga/ja/html/news/13.html
+ share/doc/groonga/ja/html/news/14.html
++share/doc/groonga/ja/html/news/15.html
++share/doc/groonga/ja/html/news/16.html
+ share/doc/groonga/ja/html/news/2.html
+ share/doc/groonga/ja/html/news/3.html
+ share/doc/groonga/ja/html/news/4.html
+@@ -548,6 +558,7 @@
+ share/doc/groonga/ja/html/news/9.html
+ share/doc/groonga/ja/html/news/senna.html
+ share/doc/groonga/ja/html/objects.inv
++share/doc/groonga/ja/html/origin.html
+ share/doc/groonga/ja/html/reference.html
+ share/doc/groonga/ja/html/reference/alias.html
+ share/doc/groonga/ja/html/reference/api.html
+@@ -585,6 +596,7 @@
+ share/doc/groonga/ja/html/reference/columns/vector.html
+ share/doc/groonga/ja/html/reference/command.html
+ share/doc/groonga/ja/html/reference/command/command_version.html
++share/doc/groonga/ja/html/reference/command/n_workers.html
+ share/doc/groonga/ja/html/reference/command/output_format.html
+ share/doc/groonga/ja/html/reference/command/output_trace_log.html
+ share/doc/groonga/ja/html/reference/command/pretty_print.html
+@@ -613,6 +625,7 @@
+ share/doc/groonga/ja/html/reference/commands/defrag.html
+ share/doc/groonga/ja/html/reference/commands/delete.html
+ share/doc/groonga/ja/html/reference/commands/dump.html
++share/doc/groonga/ja/html/reference/commands/extract.html
+ share/doc/groonga/ja/html/reference/commands/index_column_diff.html
+ share/doc/groonga/ja/html/reference/commands/io_flush.html
+ share/doc/groonga/ja/html/reference/commands/load.html
+@@ -672,6 +685,9 @@
+ share/doc/groonga/ja/html/reference/executables/groonga-suggest-httpd.html
+ share/doc/groonga/ja/html/reference/executables/groonga-suggest-learner.html
+ share/doc/groonga/ja/html/reference/executables/groonga.html
++share/doc/groonga/ja/html/reference/extractors.html
++share/doc/groonga/ja/html/reference/extractors/extractor_html.html
++share/doc/groonga/ja/html/reference/extractors/extractor_json.html
+ share/doc/groonga/ja/html/reference/function.html
+ share/doc/groonga/ja/html/reference/functions/between.html
+ share/doc/groonga/ja/html/reference/functions/cast_loose.html
+@@ -687,6 +703,9 @@
+ share/doc/groonga/ja/html/reference/functions/html_untag.html
+ share/doc/groonga/ja/html/reference/functions/in_records.html
+ share/doc/groonga/ja/html/reference/functions/in_values.html
++share/doc/groonga/ja/html/reference/functions/json_extract.html
++share/doc/groonga/ja/html/reference/functions/language_model_knn.html
++share/doc/groonga/ja/html/reference/functions/language_model_vectorize.html
+ share/doc/groonga/ja/html/reference/functions/math_abs.html
+ share/doc/groonga/ja/html/reference/functions/now.html
+ share/doc/groonga/ja/html/reference/functions/number_classify.html
+@@ -699,6 +718,7 @@
+ share/doc/groonga/ja/html/reference/functions/string_length.html
+ share/doc/groonga/ja/html/reference/functions/string_slice.html
+ share/doc/groonga/ja/html/reference/functions/string_substring.html
++share/doc/groonga/ja/html/reference/functions/string_truncate.html
+ share/doc/groonga/ja/html/reference/functions/sub_filter.html
+ share/doc/groonga/ja/html/reference/functions/time_classify_day.html
+ share/doc/groonga/ja/html/reference/functions/time_classify_day_of_week.html
+@@ -716,9 +736,11 @@
+ share/doc/groonga/ja/html/reference/grn_expr/query_syntax.html
+ share/doc/groonga/ja/html/reference/grn_expr/script_syntax.html
+ share/doc/groonga/ja/html/reference/indexing.html
++share/doc/groonga/ja/html/reference/language_model.html
+ share/doc/groonga/ja/html/reference/log.html
+ share/doc/groonga/ja/html/reference/normalizers.html
+ share/doc/groonga/ja/html/reference/normalizers/normalizer_auto.html
++share/doc/groonga/ja/html/reference/normalizers/normalizer_nfkc.html
+ share/doc/groonga/ja/html/reference/normalizers/normalizer_nfkc100.html
+ share/doc/groonga/ja/html/reference/normalizers/normalizer_nfkc121.html
+ share/doc/groonga/ja/html/reference/normalizers/normalizer_nfkc130.html
+@@ -744,6 +766,7 @@
+ share/doc/groonga/ja/html/reference/tables.html
+ share/doc/groonga/ja/html/reference/token_filter/summary.html
+ share/doc/groonga/ja/html/reference/token_filters.html
++share/doc/groonga/ja/html/reference/token_filters/token_filter_nfkc.html
+ share/doc/groonga/ja/html/reference/token_filters/token_filter_nfkc100.html
+ share/doc/groonga/ja/html/reference/token_filters/token_filter_nfkc150.html
+ share/doc/groonga/ja/html/reference/token_filters/token_filter_stem.html
+@@ -760,6 +783,7 @@
+ share/doc/groonga/ja/html/reference/tokenizers/token_bigram_split_symbol_alpha_digit.html
+ share/doc/groonga/ja/html/reference/tokenizers/token_delimit.html
+ share/doc/groonga/ja/html/reference/tokenizers/token_delimit_null.html
++share/doc/groonga/ja/html/reference/tokenizers/token_language_model_knn.html
+ share/doc/groonga/ja/html/reference/tokenizers/token_mecab.html
+ share/doc/groonga/ja/html/reference/tokenizers/token_ngram.html
+ share/doc/groonga/ja/html/reference/tokenizers/token_pattern.html
+--- a/textproc/groonga/buildlink3.mk
++++ b/textproc/groonga/buildlink3.mk
+@@ -6,7 +6,7 @@
+ GROONGA_BUILDLINK3_MK:=
+ 
+ BUILDLINK_API_DEPENDS.groonga+=	groonga>=7.0.4
+-BUILDLINK_ABI_DEPENDS.groonga+=	groonga>=14.0.6nb4
++BUILDLINK_ABI_DEPENDS.groonga+=	groonga>=16.1.4
+ BUILDLINK_PKGSRCDIR.groonga?=	../../textproc/groonga
+ BUILDLINK_INCDIRS.groonga+=	include/groonga
+ 
+--- a/textproc/groonga/distinfo
++++ b/textproc/groonga/distinfo
+@@ -1,5 +1,5 @@
+ $NetBSD: distinfo,v 1.48 2024/08/19 11:55:25 adam Exp $
+ 
+-BLAKE2s (groonga-14.0.6.tar.gz) = bed32dab1f72bcaa1b2f3d769ec6680c0db153f7c91215f7f8a9df1f8afb94b6
+-SHA512 (groonga-14.0.6.tar.gz) = b4d980931b2d21a73f0ae8ce1fb7d61d1bef452c3d086124c3bcdaa761ae591517b0568003cf40d231ade5bdb7da74584fb1411efa21dc6a4a9b4e561562826c
+-Size (groonga-14.0.6.tar.gz) = 48912876 bytes
++BLAKE2s (groonga-16.1.4.tar.gz) = 56cc159201cc409d6dbeb36ee295d3c462215c0a1ab1a3601e057dc9526a7a54
++SHA512 (groonga-16.1.4.tar.gz) = 1a95b78aaabc67d4658834219e00dbe86f49cc0473e643f331a5ac6ebb391bf1335e7039e8a8503724e0d48487dce70f16f5420d6c1643e688832485efbb3c9d
++Size (groonga-16.1.4.tar.gz) = 110554131 bytes
