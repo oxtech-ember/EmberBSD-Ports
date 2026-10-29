@@ -63,6 +63,8 @@ fi
 : "${HOST_DBUS_PREFIX:?Set the native D-Bus prefix with headers, library and DBus1 CMake exports}"
 : "${HOST_PACKAGE_PREFIX:?Set the selected native dependency prefix}"
 : "${HOST_PKG_CONFIG:?Set the selected native pkg-config executable}"
+resume_otool_input=
+[ -z "$HOST_RUNTIME_VIEW" ] || resume_otool_input=$HOST_PACKAGE_PREFIX/bin/llvm-otool
 : "${HOST_CC:?Set the selected native C compiler}"
 : "${HOST_CXX:?Set the selected native C++ compiler}"
 JOBS=${JOBS:-2}
@@ -137,25 +139,32 @@ if [ -e "$work" ] || [ -L "$work" ]; then
     [ "$RESUME" = 1 ] && [ ! -L "$work" ] && [ -f "$work/inputs.txt" ] || {
         echo 'Output already exists; resume only a build created by this recipe' >&2; exit 2;
     }
-    if [ -n "$host_deployment_target" ]; then
-        grep -F -x "host_deployment_target=$host_deployment_target" "$work/inputs.txt" >/dev/null || {
-            echo 'Host deployment target changed; use a new work directory' >&2; exit 2;
-        }
+    resume_helper=$toolkit/cross/host-resume-inputs.py
+    [ -f "$resume_helper" ] || { echo 'Missing Qt host resume checker' >&2; exit 2; }
+    resume_record=$("$HOST_PYTHON" -I "$resume_helper" "$work/inputs.txt" "$toolkit/cross/build-host-tools.sh" \
+        "$HOST_RUNTIME_VIEW" "$profile" "$HOST_PACKAGE_PREFIX" "$host_deployment_target" "$work" "$HOST_DBUS_PREFIX" "$resume_otool_input") || exit 2
+    set -- $resume_record
+    [ "$#" = 2 ] || { echo 'Invalid Qt host resume result' >&2; exit 2; }
+    old_producer_identity=$1 resume_start=$2
+    # The predecessor did not record this checker. Later builds must retain it.
+    resume_extra_inputs=
+    case "$old_producer_identity" in
+    2987bc8a260733ebcec67eeda99d1da40488a40fb4493fda76e37a3a28ebd329|4ec29e9a317a7b794b4f5de60dd940065a3c034bf1c8230df92163eb9fe6ac67) ;;
+    *) resume_extra_inputs="$resume_helper $resume_otool_input" ;;
+    esac
+    if [ "$profile" = full ]; then
+        resume_full_inputs="$HOST_LLVM_BUILD/lib/cmake/llvm/LLVMConfig.cmake $HOST_CLANG_BUILD/lib/cmake/clang/ClangConfig.cmake $host_clang_library"
+    else
+        resume_full_inputs=
     fi
-    grep -F -x "host_runtime_view=$HOST_RUNTIME_VIEW" "$work/inputs.txt" >/dev/null || {
-        echo 'Host runtime view changed; use a new work directory' >&2; exit 2;
-    }
-    grep -F -x "host_runtime_view_identity=$runtime_view_identity" "$work/inputs.txt" >/dev/null || {
-        echo 'Host runtime view contents changed; use a new work directory' >&2; exit 2;
-    }
-    grep -F -x "host_package_prefix=$HOST_PACKAGE_PREFIX" "$work/inputs.txt" >/dev/null || {
-        echo 'Host package prefix changed; use a new work directory' >&2; exit 2;
-    }
-    grep -q -x "profile=$profile" "$work/inputs.txt" || {
-        echo 'Host profile changed; use a new work directory' >&2; exit 2;
-    }
-    for tool in "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" "$markdown_patch" $shader_patches $host_dbus_inputs $runtime_inputs $host_codesign; do
-        shasum -a 256 "$tool" | grep -F -x -f - "$work/inputs.txt" >/dev/null || {
+    for tool in "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" "$markdown_patch" $shader_patches $host_dbus_inputs $runtime_inputs $host_codesign $resume_full_inputs $resume_extra_inputs; do
+        # The runtime view is compared by basename and digest by the checker.
+        if [ -n "$HOST_RUNTIME_VIEW" ]; then
+            case "$tool" in "$HOST_RUNTIME_VIEW"/*) continue ;; esac
+        fi
+        old_path=$tool
+        hash=$(shasum -a 256 "$tool" | cut -d ' ' -f 1)
+        sed -n "${resume_start},\$p" "$work/inputs.txt" | grep -F -x "$hash  $old_path" >/dev/null || {
             echo "Host input changed; use a new work directory: $tool" >&2; exit 2;
         }
     done
@@ -168,6 +177,11 @@ for module in $modules; do
     [ -n "$expected" ] && [ "$(shasum -a 256 "$distfiles/$archive" | awk '{print $1}')" = "$expected" ] || {
         echo "Archive verification failed: $archive" >&2; exit 2;
     }
+    if [ "$RESUME" = 1 ] && [ -d "$work/source/$module-everywhere-src-6.12.0" ]; then
+        grep -F -x "$expected  $distfiles/$archive" "$work/inputs.txt" >/dev/null || {
+            echo "Previous archive input changed: $archive" >&2; exit 2;
+        }
+    fi
 done
 if [ "$plan_only" = 1 ]; then
     modules_csv=$(printf '%s' "$modules" | tr ' ' ',')
@@ -182,7 +196,7 @@ ln -sf "$NINJA" "$work/bin/ninja"
 PATH="$work/bin:$PATH"
 export PATH
 {
-    shasum -a 256 "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" "$markdown_patch" $shader_patches $host_dbus_inputs $runtime_inputs $host_codesign
+    shasum -a 256 "$toolkit/cross/build-host-tools.sh" "$toolkit/cross/host-resume-inputs.py" $resume_otool_input "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" "$markdown_patch" $shader_patches $host_dbus_inputs $runtime_inputs $host_codesign
     "$CMAKE" --version
     "$NINJA" --version
     printf 'profile=%s\n' "$profile"

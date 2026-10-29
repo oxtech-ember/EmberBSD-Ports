@@ -33,8 +33,13 @@ On Darwin, a native stage with libraries outside their installed paths can set
 `HOST_RUNTIME_VIEW` to a directory containing the selected runtime libraries and
 `HOST_SDK_SOURCE` to the SDK source. The selected native Python runs the SDK
 runtime launcher for Qt's custom build commands. The producer records the view
-contents and rejects a changed view on resume. Leave these variables unset for
-an ordinary installed host runtime.
+contents. Resume preserves every previous entry and substantial build input. A
+view may add a native library only when a previous Qt image or view library
+statically declared its absolute dependency and that provider was absent;
+selected LLVM inspection rejects shadowed, system and ambiguous providers.
+Additions used only through dynamic loading are not supported by this transition.
+The previous producer evidence remains in the work directory. Leave these
+variables unset for an ordinary installed host runtime.
 
 Set `QT_HOST_TOOLS_PROFILE=quick` for the Core/Quick/QML generator subset.
 It uses qtbase, qtsvg, qtshadertools and qtdeclarative. It does not require
