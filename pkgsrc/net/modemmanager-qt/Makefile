@@ -2,6 +2,7 @@
 
 DISTNAME=	modemmanager-qt-6.31.0
 CATEGORIES=	net
+MASTER_SITES=	${MASTER_SITE_KDE:=frameworks/${PKGVERSION_NOREV:R}/}
 EXTRACT_SUFX=	.tar.xz
 
 HOMEPAGE=	https://api.kde.org/frameworks/networkmanager-qt/html/

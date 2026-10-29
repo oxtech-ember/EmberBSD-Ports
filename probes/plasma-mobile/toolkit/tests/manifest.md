@@ -34,6 +34,7 @@ sh probes/plasma-mobile/toolkit/validate.sh probes/plasma-mobile/toolkit
 sh probes/plasma-mobile/toolkit/tests/manifest.sh /absolute/new-manifest-results
 python3 probes/plasma-mobile/toolkit/tests/cssparser-crates.py --archive /absolute/distfiles/cxx-rust-cssparser-1.1.0.tar.gz --patch-tool /absolute/host/bin/gpatch
 sh probes/plasma-mobile/toolkit/tests/selection.sh probes/plasma-mobile/toolkit /absolute/new-selection-results
+sh probes/plasma-mobile/toolkit/tests/source-sites.sh probes/plasma-mobile/toolkit /absolute/new-source-site-results
 sh probes/plasma-mobile/toolkit/tests/source-profile.sh /absolute/verified-distfiles /absolute/new-source-results
 ```
 
@@ -79,3 +80,7 @@ Hunspell, US English dictionary, NSS and ebook-tools recipes differ. They come
 from upstream with the common patches. The manifest regression includes 41 rejected variants.
 These are source/export checks; they do not rebuild every package or establish
 a working desktop.
+
+`source-sites.sh` requires every manifest archive to have a recipe fetch site:
+`MASTER_SITES` or `SITES.<archive>` in the recipe or its framework include.
+Without one, Ports fetch only tries the generic distfile mirrors.
