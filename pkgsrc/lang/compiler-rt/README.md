@@ -51,7 +51,8 @@ checks that CMake uses SDK compiler adapters with nonempty ABI flags. For a
 normal consumer check, run `tests/native-consumer.py` with `--sdk-source`,
 `--host-prefix`, `--macos-sdk`, `--macos-minimum` and a new absolute `--work`.
 Pass `--stage` with a producer DESTDIR to check a staged package; omit it to
-check the installed default compiler selection. The staged check temporarily
+check the installed compiler selection. Pass the configured SDK C++ binding as
+`--native-cxx` when the common native runtime is selected. The staged check temporarily
 selects that stage for dynamic loading. The caller coordinates shared prefix
 and stage access through the SDK context locks.
 

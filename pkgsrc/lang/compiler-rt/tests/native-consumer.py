@@ -3,6 +3,7 @@
 # Origin: EmberBSD contributors (AI-assisted).
 """Compile and run normal native libc++ consumers across a DSO boundary."""
 import argparse
+import os
 from pathlib import Path
 import sys
 
@@ -11,6 +12,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 for name in ('sdk-source', 'host-prefix', 'macos-sdk', 'macos-minimum', 'work'):
     parser.add_argument('--' + name, required=True)
 parser.add_argument('--stage', help='producer DESTDIR; omit to check installed default selection')
+parser.add_argument('--native-cxx', help='selected SDK native C++ binding for the installed runtime')
 args = parser.parse_args()
 sys.path.insert(0, str(Path(args.sdk_source) / 'src'))
 from emberbsd_sdk import host_prefix, native_checks, process
@@ -24,7 +26,13 @@ native = host_prefix.load_host_prefix(str(host), compiler_family='clang',
 env = native_checks.check_environment(native, bindings=str(work / 'commands'),
     environment=process.sanitized_environment())
 env.update(SDKROOT=args.macos_sdk, MACOSX_DEPLOYMENT_TARGET=args.macos_minimum)
-common = [env['CXX'], '--no-default-config', '--ld-path=' + native.tool('ld'),
+if args.native_cxx:
+    selected = Path(args.native_cxx)
+    if not selected.is_absolute() or not selected.is_file() or not os.access(selected, os.X_OK):
+        parser.error('--native-cxx must select an absolute executable binding')
+else:
+    selected = Path(env['CXX'])
+common = [str(selected), '--no-default-config', '--ld-path=' + native.tool('ld'),
           '-mmacosx-version-min=' + args.macos_minimum, '-isysroot', args.macos_sdk,
           '-std=c++23']
 if args.stage:
