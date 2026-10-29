@@ -122,9 +122,11 @@ ordinary GCC16 AArch64 package passes all 613 payload checks. Four native
 and installed EmberBSD numerical checks pass, including normal package
 removal and reinstallation. Companion BLAS/LAPACK runtime coverage remains pending.
 
-This opt-in source profile prepares canonical MesaLib 26.2.5nb9, adapted
+This opt-in source profile prepares canonical MesaLib 26.2.5nb10, adapted
 libdrm 2.4.134nb8, Wayland 1.26.0 (native nb1/cross nb2) and
 wayland-protocols 1.49 for EmberBSD/AArch64 and amd64, retaining the NetBSD 11 ABI.
+Mesa nb10 requires target OS headers with the compiler-backed `alloca` fix
+([OS dbce4900](https://github.com/oxtech-ember/EmberBSD/commit/dbce490059bb2595e3c64acd1c0010026709f8c3)).
 The amd64 profile includes RadeonSI and its drirc defaults. Mesa keeps its
 upstream DRM 3.54 minimum on other systems and uses the legacy reset path on
 NetBSD DRM 3.36.

@@ -95,7 +95,7 @@ After installing the real package into the matching sysroot, run:
 ```sh
 /absolute/native-prefix/bin/python3.15 -B prepare-mesa-package-tests.py /absolute/cross-tools /absolute/sysroot \
     /absolute/prepared-mesa-26.2.5 /absolute/mesa-build \
-    /absolute/MesaLib-26.2.5nb9.tgz /absolute/new-acceptance-work \
+    /absolute/MesaLib-26.2.5nb10.tgz /absolute/new-acceptance-work \
     /absolute/libdrm-2.4.134nb8.tgz
 ```
 
