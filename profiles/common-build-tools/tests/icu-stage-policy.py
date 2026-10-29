@@ -41,7 +41,7 @@ def main():
             "full": recipe / "PLIST.full-cross",
             "runtime": recipe / "PLIST.runtime",
             "devel": recipe.parent / "icu-devel/PLIST"}.items():
-        data = path.read_text(encoding="utf-8").replace("${PKGVERSION}", "78.3")
+        data = path.read_text(encoding="utf-8").replace("${PKGVERSION}", "79.1")
         data = data.replace("${MH_NAME}", args.mh_name)
         data = "\n".join(
             man_root + name[3:] if name.startswith("man/") else name

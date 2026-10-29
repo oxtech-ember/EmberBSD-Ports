@@ -25,8 +25,8 @@ def main():
     for item in (sdk, prefix, Path(__file__).resolve().parents[1]):
         paths.reject_overlap(str(work), str(item))
     version = process.capture([str(prefix / "bin/icu-config"), "--version"])
-    if version.stdout.decode("utf-8").strip() != "78.3":
-        parser.error("the native ICU generators must be release 78.3")
+    if version.stdout.decode("utf-8").strip() != "79.1":
+        parser.error("the native ICU generators must be release 79.1")
     work.mkdir()
     (work / "en.txt").write_text('en { message { "Ember ICU probe" } answer:int { 42 } }\n')
     (work / "resources.txt").write_text("en.res\n")
@@ -41,7 +41,7 @@ def main():
         paths.regular_file(work / name)
         if not (work / name).stat().st_size:
             raise ValueError(f"empty ICU resource fixture: {name}")
-    print("PASS: native ICU 78.3 generated target resource fixtures")
+    print("PASS: native ICU 79.1 generated target resource fixtures")
 
 
 if __name__ == "__main__":

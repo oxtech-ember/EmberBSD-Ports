@@ -2,9 +2,8 @@
 
 EMBERBSD_ICU_PKGDIR:= ${.PARSEDIR:tA}
 
-DISTNAME=	icu4c-78.3-sources
+DISTNAME=	icu4c-79.1-sources
 PKGNAME=	${DISTNAME:S/4c//:S/-sources//}
-PKGREVISION=	2
 CATEGORIES=	textproc
 MASTER_SITES=	${MASTER_SITE_GITHUB:=unicode-org/}
 GITHUB_PROJECT=	icu
@@ -32,7 +31,18 @@ CONFIGURE_ENV+=		U_MAKE=${TOOLS_GMAKE}
 # Fixes circular dependency on Python and Sqlite3 with ICU.
 CONFIGURE_ENV+=		ac_cv_prog_PYTHON=""
 
+# Set the supported work-directory policy before prefs derive tool paths.
+.if defined(ICU_STAGED_HOST_PREFIX)
+_ICU_STAGE_KEY_CMD= ${EMBERBSD_CROSS_BUILD_PYTHON:Q} -c 'import hashlib,sys; print(hashlib.sha256(sys.argv[1].encode()).hexdigest())' ${ICU_STAGED_HOST_PREFIX:Q}
+WRKDIR_BASENAME?= work${_CROSSDIR_SUFFIX}-${ICU_STAGED_HOST_PREFIX:hash}
+.endif
+
 .include "../../mk/bsd.prefs.mk"
+
+# The selected Darwin binding links ICU C++ components to the shared runtime.
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && defined(EMBERBSD_NATIVE_CXX_BINDING_RECORD)
+DEPENDS+= libcxx>=23.1.4:../../lang/libcxx
+.endif
 
 # The upstream data tests require the explicit development-host Python.
 .if defined(EMBERBSD_CROSS_BUILD_PYTHON)
@@ -43,20 +53,20 @@ TEST_MAKE_FLAGS+= ICU_TEST_PYTHON=${EMBERBSD_CROSS_BUILD_PYTHON:Q}
 .if ${EMBERBSD_ICU_DEVEL} != "yes" || ${PKGPATH} != "textproc/icu-devel"
 PKG_FAIL_REASON+= "The ICU SDK role belongs to textproc/icu-devel"
 .endif
-PKGNAME= icu-devel-78.3
+PKGNAME= icu-devel-79.1
 COMMENT= ICU target SDK for the development-host sysroot
 DISTINFO_FILE= ${EMBERBSD_ICU_PKGDIR}/distinfo
 PATCHDIR= ${EMBERBSD_ICU_PKGDIR}/patches
 FILESDIR= ${EMBERBSD_ICU_PKGDIR}/files
-DEPENDS+= icu-${PKGVERSION_NOREV}nb4:../../textproc/icu
-CONFLICTS+= icu<${PKGVERSION_NOREV}nb4
+DEPENDS+= icu-${PKGVERSION_NOREV}nb1:../../textproc/icu
+CONFLICTS+= icu<${PKGVERSION_NOREV}nb1
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes" || ${OPSYS} != "NetBSD"
 PKG_FAIL_REASON+= "The ICU SDK requires a NetBSD cross build; native builds keep the full package"
 .endif
 .endif
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
-PKGREVISION= 4
+PKGREVISION= 1
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The ICU split requires a common AArch64 or amd64 target"
 .endif
@@ -81,17 +91,63 @@ PKG_FAIL_REASON+= "ICU cross packages require EMBERBSD_SDK_SOURCE and EMBERBSD_C
 # Host tools must match the ICU release; target-only metadata revisions
 # do not change its data format or require rebuilding identical host tools.
 _ICU_HOST_PATTERN=	icu-${PKGVERSION_NOREV}{,nb[0-9]*}
+# A staged replacement package can supply the matching native generators while
+# the previous ICU remains installed. Normal builds use the installed package.
+.if defined(ICU_STAGED_HOST_PREFIX)
+.  if empty(ICU_STAGED_HOST_PREFIX) || empty(ICU_STAGED_HOST_PREFIX:M/*)
+PKG_FAIL_REASON+= "ICU_STAGED_HOST_PREFIX must be an absolute staged package path"
+.  endif
+.  if ${NATIVE_OPSYS} != "Darwin"
+PKG_FAIL_REASON+= "Staged ICU host tools currently require a Darwin host"
+.  endif
+USE_TOOLS+= find
+_ICU_STAGED_ENV= ${TOOLBASE:Q}/bin/genv DYLD_LIBRARY_PATH=${ICU_STAGED_HOST_PREFIX:Q}/lib
+.else
 TOOL_DEPENDS+=		${_ICU_HOST_PATTERN}:../../textproc/icu
+.endif
 
+.if defined(ICU_STAGED_HOST_PREFIX)
+# Keep metadata for distinct explicit stages apart when a work tree is reused.
+_ICU_STAGE_KEY:= ${_ICU_STAGE_KEY_CMD:sh}
+.if empty(WRKDIR_BASENAME:M*-${ICU_STAGED_HOST_PREFIX:hash}) || "${WRKDIR}" != "${BUILD_DIR}/${WRKDIR_BASENAME}"
+.error Staged ICU tools require a stage-keyed work directory under WRKOBJDIR
+.endif
+# The short directory hash is guarded by the complete selected-path digest.
+_ICU_STAGE_MARKER= ${WRKDIR}/.icu-host-stage-key
+.if exists(${WRKDIR}/.configure_done) && !exists(${_ICU_STAGE_MARKER}) && !${_CLEANING}
+.error ICU configured work tree lacks host-tool identity; clean this package work tree
+.endif
+.if exists(${_ICU_STAGE_MARKER}) && !${_CLEANING}
+_ICU_RECORDED_STAGE_CMD= ${EMBERBSD_CROSS_BUILD_PYTHON:Q} -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).read_text().strip())' ${_ICU_STAGE_MARKER:Q}
+_ICU_RECORDED_STAGE:= ${_ICU_RECORDED_STAGE_CMD:sh}
+.  if ${_ICU_RECORDED_STAGE} != ${_ICU_STAGE_KEY}
+.error ICU stage hash collision; use a fresh WRKOBJDIR or clean this package work tree
+.  endif
+.endif
+ICU_CROSS_DIR= ${WRKDIR}/.icu_cross
+.else
 ICU_CROSS_DIR=		${WRKDIR}/.icu_cross
+.endif
 ICU_CROSS_COOKIE=	${ICU_CROSS_DIR}/.cookie
 
 CONFIGURE_ARGS+=	--with-cross-build=${ICU_CROSS_DIR}
 pre-configure: ${ICU_CROSS_COOKIE}
+.if defined(ICU_STAGED_HOST_PREFIX)
+pre-configure: icu-staged-tools-verify
+icu-staged-tools-verify: .PHONY
+	${RUN}case ${ICU_STAGED_HOST_PREFIX:Q} in /*) ;; *) ${ECHO_MSG} "Staged ICU prefix must be absolute"; exit 1;; esac
+	${RUN}${TEST} "$$(${_ICU_STAGED_ENV} ${ICU_STAGED_HOST_PREFIX:Q}/bin/icu-config --version)" = ${PKGVERSION_NOREV:Q} || { ${ECHO_MSG} "Staged ICU host tools have a different release"; exit 1; }
+	${RUN}${_ICU_STAGED_ENV} ${ICU_STAGED_HOST_PREFIX:Q}/bin/icuinfo >/dev/null
+.endif
 
+.if defined(ICU_STAGED_HOST_PREFIX)
+ICU_CROSS_TOOLS= ${FIND} ${ICU_STAGED_HOST_PREFIX:Q}/bin ${ICU_STAGED_HOST_PREFIX:Q}/sbin \
+	-maxdepth 1 \( -type f -o -type l \) -print
+.else
 ICU_CROSS_TOOLS=	\
 	${HOST_PKG_INFO} -qL ${_ICU_HOST_PATTERN:Q} \
 	| ${GREP} -e '^'${TOOLBASE}/bin -e '^'${TOOLBASE}/sbin
+.endif
 
 show-icu-cross-tools: .PHONY
 	@${ICU_CROSS_TOOLS}
@@ -99,8 +155,16 @@ show-icu-cross-tools: .PHONY
 icu-cross-clean: .PHONY
 	${RUN}${RM} -f ${ICU_CROSS_COOKIE}
 icu-cross-tools: .PHONY ${ICU_CROSS_COOKIE}
+.if defined(ICU_STAGED_HOST_PREFIX)
+icu-cross-tools: icu-staged-tools-verify
+.endif
 ${ICU_CROSS_COOKIE}:
 	@${STEP_MSG} Faking ICU cross-build directory
+.if defined(ICU_STAGED_HOST_PREFIX)
+	${RUN}case ${ICU_STAGED_HOST_PREFIX:Q} in /*) ;; *) ${ECHO_MSG} "Staged ICU prefix must be absolute"; exit 1;; esac
+	${RUN}${TEST} "$$(${_ICU_STAGED_ENV} ${ICU_STAGED_HOST_PREFIX:Q}/bin/icu-config --version)" = ${PKGVERSION_NOREV:Q} || { ${ECHO_MSG} "Staged ICU host tools have a different release"; exit 1; }
+	${RUN}${_ICU_STAGED_ENV} ${ICU_STAGED_HOST_PREFIX:Q}/bin/icuinfo >/dev/null
+.endif
 	${RUN}${TEST} -d ${ICU_CROSS_DIR} || ${MKDIR} ${ICU_CROSS_DIR}
 .  for d in bin config lib
 	${RUN}${TEST} -d ${ICU_CROSS_DIR}/${d} || \
@@ -115,10 +179,10 @@ ${ICU_CROSS_COOKIE}:
 		${ECHO} TOOLEXEEXT=;					\
 		${ECHO} TOOLBINDIR='$$(cross_buildroot)/bin';		\
 		${ECHO} TOOLLIBDIR='$$(cross_buildroot)/lib';		\
-		${ECHO} INVOKE=;					\
-		${ECHO} PKGDATA_INVOKE=;				\
+		${ECHO} INVOKE=${_ICU_STAGED_ENV:U:Q};		\
+		${ECHO} PKGDATA_INVOKE=${_ICU_STAGED_ENV:U:Q};	\
 	} >${ICU_CROSS_DIR}/config/icucross.mk
-	${RUN}${ECHO} ${:UCURR_FULL_DIR?=$$(shell pwd | sed 's/ /\\ /g'):Q} \
+	${RUN}${ECHO} 'CURR_FULL_DIR?=$$(shell pwd | sed "s/ /\\\\\\\\ /g")' \
 		>${ICU_CROSS_DIR}/config/icucross.inc
 	${RUN}${ECHO} > ${.TARGET}
 
@@ -203,6 +267,9 @@ REPLACE_SH=	config/icu-config-top
 # work around ICU-20533 (build failure on big endian machines)
 post-configure:
 	${MKDIR} ${WRKSRC}/data/out
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && defined(ICU_STAGED_HOST_PREFIX)
+	${ECHO} ${_ICU_STAGE_KEY:Q} > ${_ICU_STAGE_MARKER:Q}
+.endif
 
 .if ${OPSYS} == "Cygwin"
 INSTALL_UNSTRIPPED=	yes

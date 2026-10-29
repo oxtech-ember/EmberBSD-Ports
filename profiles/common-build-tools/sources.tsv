@@ -29,7 +29,7 @@ protobuf-36.2.tar.gz	3d9642a662d10e68ebae5e53f14dcce5105684212d5078f8e0d47d1ab3a
 abseil-20260817.0-20260817.0.tar.gz	f7e05179df39c45434cad433f5783840bb3788ef322976f9138bc6b72b3a107d	https://github.com/abseil/abseil-cpp/archive/refs/tags/20260817.0.tar.gz
 tcl9.1.0-src.tar.gz	536c45543f64d6eb11832d97ba3494aacff046fbc5040273bd55258d0e448ff1	https://downloads.sourceforge.net/project/tcl/Tcl/9.1.0/tcl9.1.0-src.tar.gz
 mDNSResponder-2881.120.11.tar.gz	f665cf02b5c930f9b70fb39b7567f03dd821997594c56ce399098eaa0372fb15	https://github.com/apple-oss-distributions/mDNSResponder/archive/refs/tags/mDNSResponder-2881.120.11.tar.gz
-icu4c-78.3-sources.tgz	3a2e7a47604ba702f345878308e6fefeca612ee895cf4a5f222e7955fabfe0c0	https://github.com/unicode-org/icu/releases/download/release-78.3/icu4c-78.3-sources.tgz
+icu4c-79.1-sources.tgz	06fa63ecb521048f8082f12ad988f6b678d90cbd88aafce24cbc94902b191d99	https://github.com/unicode-org/icu/releases/download/release-79.1/icu4c-79.1-sources.tgz
 flex-2.6.4.tar.gz	e87aae032bf07c26f85ac0ed3250998c37621d95f8bd748b31f15b33c45ee995	https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz
 libarchive-3.8.10.tar.xz	56cad765459d5ee25a3b761f90c47d99379d28297fbfb72d908880d6b875fb96	https://github.com/libarchive/libarchive/releases/download/v3.8.10/libarchive-3.8.10.tar.xz
 pkgsrc-libarchive-3.8.10-import.patch	6fb33f0e6d48672efb8e3c33bf5e7528561929daa9286da8864a100d461a26d1	https://github.com/NetBSD/pkgsrc/commit/f09692cc2727cf2defd37e5331aab77679b5d1e7.patch

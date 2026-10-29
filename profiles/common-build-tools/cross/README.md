@@ -430,10 +430,6 @@ the host. Cross runtime images contain shared libraries and user commands.
 The exact SDK dependency retains `icu-config`, headers, generators and build
 metadata in the host sysroot. The metadata regression remains
 `tests/icu-cross-metadata.sh`; resource fixtures are now generated on the host.
-The earlier full ICU 78.3nb1 package passed CM5 conversion, collation, resource
-generation and package lifecycle checks. Its SHA256 is
-`328a62398f4c1231bd2511d0f2b3a2d9780b1f68323f314cdd978b8946737fed`.
-Those results do not establish acceptance of the new 78.3nb2 split packages.
 
 Cross Ninja uses the matching native Ninja and Python to generate and build
 for the target platform. Its normal native bootstrap is retained; the cross

@@ -7,7 +7,7 @@ work=$(CDPATH= cd -- "$1" && pwd)
 PATH=/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/bin:/usr/sbin:/sbin
 export PATH
 cd "$work"
-pkg_info -e icu-78.3nb3 > package.log
+pkg_info -e icu-79.1nb1 > package.log
 if pkg_info -e 'icu-devel-[0-9]*' > sdk-package.log 2>&1; then
     echo 'The target must contain only the ICU runtime package' >&2; exit 1
 fi

@@ -6,12 +6,12 @@ BUILDLINK_TREE+=	icu
 ICU_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.icu+=	icu>=3.4
-BUILDLINK_ABI_DEPENDS.icu+=	icu>=78.1
+BUILDLINK_ABI_DEPENDS.icu+=	icu>=79.1
 BUILDLINK_PKGSRCDIR.icu?=	../../textproc/icu
 
 .include "../../mk/bsd.fast.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
-BUILDLINK_ABI_DEPENDS.icu+= icu>=78.3nb3
+BUILDLINK_ABI_DEPENDS.icu+= icu>=79.1nb1
 .include "../../textproc/icu-devel/buildlink3.mk"
 .endif
 .endif # ICU_BUILDLINK3_MK

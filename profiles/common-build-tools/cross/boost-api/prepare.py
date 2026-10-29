@@ -69,7 +69,7 @@ def main():
     inputs['compiler'] = dict(path=str(cxx), sha256=inventory.sha256_file(cxx.resolve()), version=run('compiler-identity', [cxx, '--version']))
     inputs['python'] = dict(path=sys.executable, version=sys.version, sha256=inventory.sha256_file(Path(sys.executable).resolve()))
     inputs['cmake'] = dict(path=str(cmake), sha256=inventory.sha256_file(cmake), version=run('cmake-version', [cmake, '--version']))
-    selected = ('boost-headers-1.92.0', 'boost-libs-1.92.0nb1', 'icu-78.3nb2', 'icu-devel-78.3nb2', 'gcc16-runtime-16.2.0nb3')
+    selected = ('boost-headers-1.92.0', 'boost-libs-1.92.0nb1', 'icu-79.1nb1', 'icu-devel-79.1nb1', 'gcc16-runtime-16.2.0nb3')
     inputs['packages'] = {}
     for name in selected:
         archive = packages / (name + '.tgz')

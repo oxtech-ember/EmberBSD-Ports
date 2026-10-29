@@ -11,7 +11,7 @@ mkdir "$work"
 buildshell=$(sed -n '1p' "$work/settings")
 sysroot=$(sed -n '2p' "$work/settings")
 version=$(sed -n '3p' "$work/settings")
-[ -n "$buildshell" ] && [ -n "$sysroot" ] && [ "$version" = 78.3 ]
+[ -n "$buildshell" ] && [ -n "$sysroot" ] && [ "$version" = 79.1 ]
 mkdir -p "$work/dest/usr/pkg/bin" "$work/dest/usr/pkg/lib/icu/$version"
 cp -p "$icuwork/icu/source/config/icu-config" "$work/dest/usr/pkg/bin/icu-config"
 cp -p "$icuwork/icu/source/config/Makefile.inc" "$work/dest/usr/pkg/lib/icu/$version/Makefile.inc"
@@ -52,4 +52,10 @@ done
     ICU_CROSS_DIR="$work/cross-tools" ICU_CROSS_COOKIE="$work/cross-tools/.cookie" \
     icu-cross-tools > "$work/cross-tools.log" 2>&1
 grep -qx "CROSS_ICU_VERSION=$version" "$work/cross-tools/config/icucross.mk"
+grep -Fq 'CURR_FULL_DIR?=$(shell pwd | sed ' "$work/cross-tools/config/icucross.inc"
+mkdir "$work/cross path"
+cp "$work/cross-tools/config/icucross.inc" "$work/cross path/icucross.inc"
+printf '%s\n' 'include icucross.inc' 'all:' \
+    '	@set -- $(CURR_FULL_DIR); test "$$#" = 1; test "$$1" = "$(CURDIR)"' > "$work/cross path/Makefile"
+"${GMAKE:-gmake}" -C "$work/cross path" --no-print-directory
 echo 'PASS: real ICU cross metadata, target shell/compiler settings, native release match and idempotent installation'
