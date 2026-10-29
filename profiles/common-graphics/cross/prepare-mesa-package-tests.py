@@ -62,6 +62,10 @@ def render_command(tools, sysroot, arch, source, output):
     return family, cc, readelf, runtime, command
 
 
+def target_matches(machine, arch):
+    return machine in (f'{arch}--netbsd', f'{arch}-unknown-netbsd')
+
+
 def main(argv):
     require(len(argv) == 6, 'usage: prepare-mesa-package-tests.py CROSS_TOOLS SYSROOT MESA_SOURCE MESA_BUILD MESA_PACKAGE NEW_WORK')
     tools, sysroot, source, build, package = [Path(p).resolve(strict=True) for p in argv[:5]]
@@ -71,7 +75,7 @@ def main(argv):
     machine = {'aarch64': 183, 'x86_64': 62}[arch]
     owner = Path(__file__).resolve().parent; prefix = sysroot / 'usr/pkg'; bundle = work / 'bundle'
     family, cc, readelf, runtime_dir, command = render_command(tools, sysroot, arch, bundle / 'source/mesa-render.c', bundle / 'bin/mesa-render')
-    require(query(str(cc), '-dumpmachine') == f'{arch}--netbsd', 'unexpected cross compiler target')
+    require(target_matches(query(str(cc), '-dumpmachine'), arch), 'unexpected cross compiler target')
     info = build / 'meson-info'; version = (source/'VERSION').read_text().strip()
     require(json.loads((info/'intro-projectinfo.json').read_text())['version'] == version, 'Mesa source/build version differs')
     options = {o['name']: o['value'] for o in json.loads((info/'intro-buildoptions.json').read_text())}
@@ -121,7 +125,7 @@ def main(argv):
             else: raise ValueError(f'unsupported package entry: {name}')
             payload['/usr/pkg/'+name] = digest(installed)
             if elf(installed): mesa_elfs.append(installed)
-    require(contents is not None and len(re.findall(r'^@name (.*)$', contents, re.M)) == 1 and re.fullmatch(r'MesaLib-'+re.escape(version)+r'(?:nb\d+)?', re.findall(r'^@name (.*)$', contents, re.M)[0]) and re.findall(r'^@cwd (.*)$', contents, re.M) == ['/usr/pkg'], 'package identity/prefix differs')
+    require(contents is not None and len(re.findall(r'^@name (.*)$', contents, re.M)) == 1 and re.fullmatch(r'MesaLib-'+re.escape(version)+r'(?:nb\d+)?', re.findall(r'^@name (.*)$', contents, re.M)[0]) and set(re.findall(r'^@cwd (.*)$', contents, re.M)) == {'/usr/pkg'}, 'package identity/prefix differs')
     (bundle/'source/MesaLib.CONTENTS').write_text(contents)
     if zink:
         require(all(p in payload for p in ('/usr/pkg/lib/dri/zink_dri.so','/usr/pkg/share/drirc.d/00-zink-defaults.conf')) and re.search(r'^@pkgdep vulkan-loader>=1\.4\.357\.0$',contents,re.M), 'Zink package incomplete')

@@ -61,7 +61,7 @@ with tempfile.TemporaryDirectory() as tmp:
     valid='@name MesaLib-26.2.5nb8\n@cwd /usr/pkg\n'
     os.environ['EMBERBSD_CROSS_ARCH']='x86_64'
     with patch.object(m,'query',side_effect=fake_query), patch.object(m.subprocess,'run',side_effect=fake_run):
-        archive(valid); m.main([str(tools),str(sysroot),str(source),str(build),str(package),str(root/'ok')])
+        archive(valid+'@cwd /usr/pkg\n'); m.main([str(tools),str(sysroot),str(source),str(build),str(package),str(root/'ok')])
         for index,contents,duplicate in ((1,valid,True),(2,valid+'@cwd /elsewhere\n',False),(3,valid.replace('26.2.5','26.2.4'),False),(4,valid+'@name Other-1\n',False)):
             archive(contents,duplicate)
             try: m.main([str(tools),str(sysroot),str(source),str(build),str(package),str(root/f'bad{index}')])

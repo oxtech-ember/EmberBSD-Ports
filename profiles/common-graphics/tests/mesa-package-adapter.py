@@ -9,6 +9,11 @@ import tempfile
 owner = Path(__file__).resolve().parents[1] / 'cross/prepare-mesa-package-tests.py'
 spec = importlib.util.spec_from_file_location('mesa_package', owner)
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+for arch in ('x86_64', 'aarch64'):
+    assert m.target_matches(f'{arch}--netbsd', arch)
+    assert m.target_matches(f'{arch}-unknown-netbsd', arch)
+    assert not m.target_matches(f'{arch}-unknown-linux', arch)
+    assert not m.target_matches('i386-unknown-netbsd', arch)
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp); tools = root/'tools'; (tools/'bin').mkdir(parents=True); sysroot=root/'sysroot'; sysroot.mkdir()
     for name in ('x86_64--netbsd-gcc','x86_64--netbsd-clang','x86_64--netbsd-readelf'):
