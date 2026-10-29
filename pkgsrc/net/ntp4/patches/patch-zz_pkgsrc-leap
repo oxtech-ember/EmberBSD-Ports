@@ -1,0 +1,12 @@
+$NetBSD$
+
+Include the current upstream leap-file updater in the pkgsrc layout.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- sntp/loc/pkgsrc
++++ sntp/loc/pkgsrc
+@@ -15,3 +15,4 @@
+ calc_tickadj,sbin,8
+ tickadj,sbin,8
+ timetrim,sbin,8
++update-leap,sbin,8

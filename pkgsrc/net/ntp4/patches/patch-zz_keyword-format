@@ -1,0 +1,16 @@
+$NetBSD$
+
+Match the keyword generator diagnostic format to its int argument.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- ntpd/keyword-gen.c
++++ ntpd/keyword-gen.c
+@@ -378,7 +378,7 @@
+ 		token = ntp_keywords[i].token;
+ 		if (1 > token || token >= COUNTOF(sst)) {
+ 			fprintf(stderr,
+-				"keyword-gen sst[%u] too small "
++				"keyword-gen sst[%d] too small "
+ 				"for keyword '%s' id %d\n",
+ 				(int)COUNTOF(sst),
+ 				ntp_keywords[i].key,

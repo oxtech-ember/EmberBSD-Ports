@@ -1,0 +1,31 @@
+$NetBSD$
+
+Retain the NetBSD setproctitle probe in source and generated configure.
+Origin: NetBSD pkgsrc; rebased by EmberBSD (AI-assisted). Upstream status: not submitted.
+
+--- configure.ac.orig
++++ configure.ac
+@@ -849,7 +849,7 @@
+     )]
+ )
+ 
+-AC_CHECK_FUNCS([fnmatch getbootfile getuid getrusage nanosleep strsignal ]dnl
++AC_CHECK_FUNCS([fnmatch getbootfile getuid getrusage nanosleep strsignal setproctitle ]dnl
+ 	       [strsignal closefrom getdtablesize])
+ 
+ 
+--- configure.orig
++++ configure
+@@ -29035,6 +29035,12 @@
+   printf "%s\n" "#define HAVE_GETBOOTFILE 1" >>confdefs.h
+ 
+ fi
++ac_fn_c_check_func "$LINENO" "setproctitle" "ac_cv_func_setproctitle"
++if test "x$ac_cv_func_setproctitle" = xyes
++then :
++  printf "%s\n" "#define HAVE_SETPROCTITLE 1" >>confdefs.h
++
++fi
+ ac_fn_c_check_func "$LINENO" "getuid" "ac_cv_func_getuid"
+ if test "x$ac_cv_func_getuid" = xyes
+ then :

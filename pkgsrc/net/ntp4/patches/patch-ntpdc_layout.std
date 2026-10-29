@@ -1,0 +1,27 @@
+$NetBSD$
+
+Keep the upstream ABI layout check in native header declaration order.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- ntpdc/layout.std
++++ ntpdc/layout.std
+@@ -1,6 +1,9 @@
+ sizeof(union req_data_u_tag) = 176
+ offsetof(u32) = 0
+ offsetof(data) = 0
++
++sizeof(struct conf_sys_flags) = 4
++offsetof(flags) = 0
+ 
+ sizeof(struct req_pkt) = 216
+ offsetof(rm_vn_mode) = 0
+@@ -255,9 +258,6 @@
+ offsetof(v6_flag) = 4
+ offsetof(peeraddr6) = 8
+ 
+-sizeof(struct conf_sys_flags) = 4
+-offsetof(flags) = 0
+-
+ sizeof(struct info_restrict) = 56
+ offsetof(addr) = 0
+ offsetof(mask) = 4

@@ -1,0 +1,41 @@
+$NetBSD$
+
+Require the selected external libevent for the common package.
+Origin: EmberBSD (AI-assisted).
+Upstream status: not submitted.
+
+--- sntp/m4/ntp_libevent.m4
++++ sntp/m4/ntp_libevent.m4
+@@ -129,6 +129,8 @@
+ 
+ case "$ntp_use_local_libevent" in
+  yes)
++    AS_IF([test "x$EMBER_NTP_EXTERNAL_LIBEVENT" = xyes],
++      [AC_MSG_ERROR([selected external libevent is required])])
+     AC_MSG_NOTICE([Using libevent tearoff])
+     CPPFLAGS_LIBEVENT="-I\$(top_builddir)/$ntp_libevent_tearoff/include -I\$(top_srcdir)/$ntp_libevent_tearoff/include"
+     case "$LIBISC_PTHREADS_NOTHREADS" in
+--- configure
++++ configure
+@@ -16464,6 +16464,9 @@
+ 
+ case "$ntp_use_local_libevent" in
+  yes)
++    if test "x$EMBER_NTP_EXTERNAL_LIBEVENT" = xyes; then
++      as_fn_error $? "selected external libevent is required" "$LINENO" 5
++    fi
+     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Using libevent tearoff" >&5
+ printf "%s\n" "$as_me: Using libevent tearoff" >&6;}
+     CPPFLAGS_LIBEVENT="-I\$(top_builddir)/$ntp_libevent_tearoff/include -I\$(top_srcdir)/$ntp_libevent_tearoff/include"
+--- sntp/configure
++++ sntp/configure
+@@ -26897,6 +26897,9 @@
+ 
+ case "$ntp_use_local_libevent" in
+  yes)
++    if test "x$EMBER_NTP_EXTERNAL_LIBEVENT" = xyes; then
++      as_fn_error $? "selected external libevent is required" "$LINENO" 5
++    fi
+     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Using libevent tearoff" >&5
+ printf "%s\n" "$as_me: Using libevent tearoff" >&6;}
+     CPPFLAGS_LIBEVENT="-I\$(top_builddir)/$ntp_libevent_tearoff/include -I\$(top_srcdir)/$ntp_libevent_tearoff/include"

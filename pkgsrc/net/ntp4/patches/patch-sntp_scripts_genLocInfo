@@ -1,0 +1,39 @@
+$NetBSD$
+
+Use shell option parsing to preserve explicitly selected install locations.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- sntp/scripts/genLocInfo
++++ sntp/scripts/genLocInfo
+@@ -1,20 +1,21 @@
+ #! /bin/sh
+-
+-args=`getopt d:f:v $*`
+-set -- $args
+ 
+ LF=
+ V=": "
+ 
+-for i
+-do
+-    case "$i" in
+-     -d) sdir="$2" ; shift 2 ;;
+-     -f) locfile="$2" ; shift 2 ;;
+-     -v) V= ; shift ;;
+-     --) shift ; break ;;
++while getopts "d:f:v" option; do
++    case "$option" in
++     d) sdir=$OPTARG ;;
++     f) locfile=$OPTARG ;;
++     v) V= ;;
++     *) exit 1 ;;
+     esac
+ done
++shift $((OPTIND - 1))
++if test "$#" -ne 0; then
++    echo "unexpected genLocInfo arguments" >&2
++    exit 1
++fi
+ 
+ case "$sdir" in
+  '')
