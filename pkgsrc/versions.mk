@@ -41,10 +41,6 @@ EMBERBSD_VERSION_DEPENDENTS+=	devel/ghdl-yosys-plugin
 EMBERBSD_VERSION_DEPENDENTS+=	lang/gpc
 # The embedded MariaDB 10.11 server; MariaDB 11.8 has no embedded package.
 EMBERBSD_VERSION_DEPENDENTS+=	audio/amarok
-# PostgreSQL 14 only. PGroonga supports PostgreSQL 18 from 4.0.4, which
-# needs a Meson build and, from 4.1.0, Groonga 14.1 (textproc/groonga is
-# 14.0.6); a version update, not a port.
-EMBERBSD_VERSION_DEPENDENTS+=	databases/postgresql-pgroonga
 # Upstream bulk test sets that pin removed versions.
 EMBERBSD_VERSION_DEPENDENTS+=	meta-pkgs/bulk-large
 EMBERBSD_VERSION_DEPENDENTS+=	meta-pkgs/bulk-medium
