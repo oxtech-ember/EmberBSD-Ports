@@ -92,6 +92,13 @@ _EMBER_GI_DUMP_ENV+= EMBERBSD_GI_DUMP_DIR=${EMBERBSD_GI_DUMP_DIR:Q}
 _EMBER_GI_DUMP_ENV+= EMBERBSD_GI_DUMP_CAPTURE_DIR=${EMBERBSD_GI_DUMP_CAPTURE_DIR:Q}
 MAKE_ENV+= ${_EMBER_GI_DUMP_ENV}
 MESON_NATIVE_ARGS+= --native-file ${WRKDIR}/.meson-gi-native
+# Meson consumers can replace DYLD_LIBRARY_PATH for target artifacts. Keep the
+# selected native GI runtime available to the compiler and scanner on Darwin.
+_EMBER_GI_COMPILER= ${TOOLBASE}/bin/g-ir-compiler
+.if ${NATIVE_OPSYS:U} == "Darwin" && !empty(EMBERBSD_NATIVE_RUNTIME_VIEW:U)
+_EMBER_GI_COMPILER= ${WRKDIR}/.meson-gi-compiler
+MAKE_ENV+= EMBERBSD_NATIVE_RUNTIME_VIEW=${EMBERBSD_NATIVE_RUNTIME_VIEW:Q}
+.endif
 MESON_BINARIES+= pkg-config
 MESON_BINARY.pkg-config= ${WRKDIR}/.meson-gi-pkg-config
 
@@ -105,10 +112,20 @@ emberbsd-gi-native: emberbsd-gi-inputs
 .endif
 	${RUN}${TEST} -x ${TOOLBASE}/bin/g-ir-scanner && ${TEST} -x ${TOOLBASE}/bin/g-ir-compiler
 	${RUN}version=$$(env PKG_CONFIG_SYSROOT_DIR= PKG_CONFIG_PATH= PKG_CONFIG_LIBDIR=${TOOLBASE}/lib/pkgconfig:${TOOLBASE}/share/pkgconfig ${TOOLBASE}/bin/pkg-config --modversion gobject-introspection-1.0); ${TEST} "$$version" = 1.86.0
+.if ${NATIVE_OPSYS:U} == "Darwin" && !empty(EMBERBSD_NATIVE_RUNTIME_VIEW:U)
+	${RUN}for path in ${EMBERBSD_CROSS_BUILD_PYTHON:Q} ${EMBERBSD_SDK_SOURCE:Q} ${EMBERBSD_NATIVE_RUNTIME_VIEW:Q} ${TOOLBASE:Q}; do \
+	    case "$$path" in /*) ;; *) ${ERROR_MSG} "Select absolute native GI inputs"; exit 1;; esac; \
+	    case "$$path" in *[!A-Za-z0-9_./+@%=\ -]*) ${ERROR_MSG} "Unsafe native GI path"; exit 1;; esac; \
+	done
+	${RUN}${TEST} -x ${EMBERBSD_CROSS_BUILD_PYTHON:Q} && ${TEST} -d ${EMBERBSD_NATIVE_RUNTIME_VIEW:Q} && ${TEST} -f ${EMBERBSD_SDK_SOURCE:Q}/scripts/run-darwin-with-runtime.py
+	${RUN}${PRINTF} '%s\n' '#!${TOOLS_SHELL}' \
+	    'exec "${EMBERBSD_CROSS_BUILD_PYTHON}" -E -S "${EMBERBSD_SDK_SOURCE}/scripts/run-darwin-with-runtime.py" --runtime-view "${EMBERBSD_NATIVE_RUNTIME_VIEW}" -- "${TOOLBASE}/bin/g-ir-compiler" "$$@"' > ${_EMBER_GI_COMPILER:Q}
+	${RUN}${CHMOD} +x ${_EMBER_GI_COMPILER:Q}
+.endif
 	${RUN}${SED} \
 	    -e 's|@PKG_CONFIG@|${TOOLS_CMD.pkg-config}|g' \
 	    -e 's|@GI_SCANNER@|${WRKDIR}/.meson-gi-scanner|g' \
-	    -e 's|@GI_COMPILER@|${TOOLBASE}/bin/g-ir-compiler|g' \
+	    -e 's|@GI_COMPILER@|${_EMBER_GI_COMPILER}|g' \
 	    ${EMBERBSD_GI_FILESDIR}/target-pkg-config.sh > ${WRKDIR}/.meson-gi-pkg-config
 	${RUN}${CHMOD} +x ${WRKDIR}/.meson-gi-pkg-config
 	${RUN}${SED} \
@@ -119,7 +136,7 @@ emberbsd-gi-native: emberbsd-gi-inputs
 	${RUN}${PRINTF} '%s\n' '[binaries]' \
 	    "c = '${EMBERBSD_CROSS_BUILD_CC}'" \
 	    "g-ir-scanner = '${WRKDIR}/.meson-gi-scanner'" \
-	    "g-ir-compiler = '${TOOLBASE}/bin/g-ir-compiler'" \
+	    "g-ir-compiler = '${_EMBER_GI_COMPILER}'" \
 	    "pkg-config = ['/usr/bin/env', 'PKG_CONFIG_SYSROOT_DIR=', '${TOOLBASE}/bin/pkg-config']" \
 	    '[properties]' \
 	    "pkg_config_libdir = ['${TOOLBASE}/lib/pkgconfig', '${TOOLBASE}/share/pkgconfig']" \
