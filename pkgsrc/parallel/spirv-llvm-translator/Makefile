@@ -5,6 +5,16 @@
 # package expects.
 DISTNAME=	SPIRV-LLVM-Translator-23.1.2
 PKGNAME=	${DISTNAME:tl}
+
+.include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
+    ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
+PKGREVISION= 1
+DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
+DEPENDS+= llvm>=23.1.4nb5:../../lang/llvm
+BUILD_DEPENDS+= clang>=23.1.4nb11<23.2:../../lang/clang
+BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
+.endif
 CATEGORIES=	parallel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=KhronosGroup/}
 GITHUB_TAG=	v${PKGVERSION_NOREV}
@@ -28,7 +38,7 @@ CMAKE_CONFIGURE_ARGS+=	-DLLVM_SPIRV_INCLUDE_TESTS=ON
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_EXTERNAL_LIT=${TOOLBASE}/bin/llvm-lit
 CMAKE_CONFIGURE_ARGS+=	-DPython3_EXECUTABLE=${TOOL_PYTHONBIN}
 TEST_TARGET=	check-llvm-spirv
-# Clang translates upstream shader test inputs. GCC builds all package objects.
+# Clang translates shader test inputs; the selected compiler builds package objects.
 TOOL_DEPENDS+=	clang>=23.1.4<23.2:../../lang/clang
 TOOL_DEPENDS+=	${PYPKGPREFIX}-llvm-lit>=23.1.4<23.2:../../devel/py-llvm-lit
 
