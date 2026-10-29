@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.87 2026/10/14 10:59:01 wiz Exp $
 
 DISTNAME=		libzip-1.12.1
+PKGREVISION=		1
 CATEGORIES=		archivers devel
 MASTER_SITES=		https://libzip.org/download/
 MASTER_SITES+=		${MASTER_SITE_GITHUB:=nih-at/}
@@ -20,6 +21,10 @@ CMAKE_CONFIGURE_ARGS+=	-DNIHTEST=${PREFIX}/bin/nihtest-${PYVERSSUFFIX}
 MAKE_ENV+=		LD_LIBRARY_PATH=${WRKSRC}/${CMAKE_BUILD_DIR}/lib
 # for Darwin
 MAKE_ENV+=		DYLD_LIBRARY_PATH=${WRKSRC}/${CMAKE_BUILD_DIR}/lib
+
+PREFER.bzip2=		pkgsrc
+PREFER.xz=		pkgsrc
+PREFER.openssl=		pkgsrc
 
 .include "options.mk"
 
