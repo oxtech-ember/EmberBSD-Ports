@@ -49,6 +49,29 @@ class CompatibilityTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'differs from current effective source'):
                     owner.verify(source, '/sdk', '/git', '/patch')
 
+    def test_git_identity_receipt_needs_no_export(self):
+        with tempfile.TemporaryDirectory(dir=os.environ['EMBERBSD_TEST_WORK']) as tmp:
+            source = Path(tmp) / 'prepared'
+            source.mkdir()
+            (source / 'source.c').write_text('payload\n')
+            selector = owner.module(ROOT / 'scripts/pkgsrc-source-identity.py', 'test_git_identity')
+            effective = {'api': 2, 'package': owner.PACKAGE,
+                         'effective_package_sha256': '4' * 64, 'upstream': '1' * 40}
+            scoped = {'effective': effective, 'owner_sha256': '3' * 64}
+            record = sourceprep.write_prepared_tree_receipt(source, package=owner.PACKAGE, identity=scoped)
+            current = {'upstream': '1' * 40, 'owner_sha256': '3' * 64}
+            with patch.object(owner, 'selected_identity', return_value=current), \
+                    patch.object(owner, 'module', return_value=selector), \
+                    patch.object(selector, 'git_package_identity', return_value=effective) as git_identity, \
+                    patch.object(owner.subprocess, 'run') as run:
+                self.assertEqual(record, owner.verify(source, '/sdk', '/git'))
+                git_identity.assert_called_once_with(owner.ROOT, owner.PACKAGE, '/git')
+                self.assertEqual(run.call_count, 0)
+                # A changed dependent Git object needs the export comparison.
+                git_identity.return_value = dict(effective, effective_package_sha256='6' * 64)
+                with self.assertRaisesRegex(ValueError, 'explicit patch'):
+                    owner.verify(source, '/sdk', '/git')
+
     def test_legacy_comparison_and_payload_integrity(self):
         with tempfile.TemporaryDirectory(dir=os.environ['EMBERBSD_TEST_WORK']) as tmp:
             root = Path(tmp)

@@ -59,6 +59,10 @@ def identity_module():
     return module
 
 
+def git_effective_identity(git):
+    return identity_module().git_package_identity(PORTS, PACKAGE, git)
+
+
 def source_identity(git):
     module = identity_module()
     return {'export': module.identity(PORTS, PACKAGE, git, SDK_SOURCE),
@@ -106,6 +110,10 @@ def verify(source, git, archive=None, patch=None, pkgsrc_export=None):
     if isinstance(old, dict) and set(old) == {'effective', 'owner_sha256'}:
         require(isinstance(old['owner_sha256'], str) and re.fullmatch('[0-9a-f]{64}', old['owner_sha256']),
                 'invalid scoped ekermit owner identity')
+        if identity_module().current_git_package(old, identity['owner_sha256'], lambda: git_effective_identity(git)):
+            # The receipt names the Git objects of the current effective recipe.
+            require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
+            return record
         require(patch and os.path.isabs(patch), 'effective ekermit verification requires an explicit patch')
         with tempfile.TemporaryDirectory(prefix='.ekermit-verify-') as tmp:
             selector = identity_module()
@@ -186,8 +194,7 @@ def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
                 'ekermit patch left a backup or reject')
         require(identity == source_identity(git), 'pkgsrc export inputs changed during preparation')
         if scoped_identity:
-            selector = identity_module()
-            identity = {'effective': selector.effective_package_identity(exported, PACKAGE, identity['export']['upstream']),
+            identity = {'effective': git_effective_identity(git),
                         'owner_sha256': identity['owner_sha256']}
         record = sourceprep.write_prepared_tree_receipt(root, package=PACKAGE, identity=identity)
         sourceprep.validate_prepared_tree(root, package=PACKAGE, identity=identity)

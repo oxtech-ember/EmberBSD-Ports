@@ -23,8 +23,14 @@ When source inputs or the owner have changed, also supply the current
 `--archive`; the verifier prepares the current expected payload and compares
 it with the unchanged record.
 
-A scoped record needs one pkgsrc export to compute the effective recipe.
-Callers that verify several sources in one run can make that export once
+A scoped record names the effective recipe by Git object ids (API 2, see
+`git_package_identity` in `scripts/pkgsrc-source-identity.py`): the blobs of
+the recipe inputs in the pinned pkgsrc tree or the Ports overlay that replaces
+them, the recipe patches and files added to them, and every infrastructure
+patch that names a path in them. When the record and the owner are unchanged,
+`verify-source` needs no pkgsrc export. Otherwise, and for older records, the
+verifier needs one export to compare the effective recipe. Callers that
+verify several sources in one run can make that export once
 with `scripts/pkgsrc-shared-export.py DIR --sdk-source ... --git ... --patch ...`
 and pass `--pkgsrc-export DIR` to `verify-source`. The libarchive, libevent,
 Texinfo, RCS, diffutils, GNU grep and E-Kermit owners accept the same option.

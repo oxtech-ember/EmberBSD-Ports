@@ -20,6 +20,9 @@ sys.path.insert(0, str(ROOT / 'pkgsrc/lang/llvm/files'))
 sys.path.insert(0, str(SDK / 'src'))
 OWNERS = ('libevent', 'byacc', 'texinfo', 'rcs', 'diffutils', 'grep', 'ekermit', 'nvi',
           'tdb', 'ppp', 'libpcap', 'tcp_wrappers')
+GIT_OWNERS = ('7zip', 'brotli', 'byacc', 'diffutils', 'ekermit', 'gettext', 'grep', 'iscsi', 'libevent',
+              'libpcap', 'libxml2', 'ntp', 'nvi', 'ppp', 'protobuf', 'rcs', 'tcp_wrappers', 'tcpdump',
+              'tdb', 'texinfo', 'top')
 
 
 def load(path, name):
@@ -187,6 +190,42 @@ class OwnerTest(unittest.TestCase):
                     owner.verify('/source', sys.executable, archive='/archive', patch='/patch')
                     self.assertEqual(capture.call_count, 1)
                     self.assertEqual(prepare.call_args.kwargs['exported'], Path(capture.call_args.args[0][3]))
+
+    def test_git_identity_receipts_verify_without_an_export(self):
+        """An API 2 receipt naming the current Git objects needs no export."""
+        for name in GIT_OWNERS:
+            with self.subTest(owner=name):
+                owner = self.owner(name)
+                selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')
+                effective = {'api': 2, 'package': owner.PACKAGE,
+                             'effective_package_sha256': '4' * 64, 'upstream': '1' * 40}
+                old = {'effective': effective, 'owner_sha256': '3' * 64}
+                current = {'export': {'upstream': '1' * 40}, 'owner_sha256': '3' * 64}
+                record = {'tree_sha256': '5' * 64}
+                with patch.object(owner, 'source_identity', return_value=current), \
+                     patch.object(owner.jsonio, 'read_json', return_value={'identity': old}), \
+                     patch.object(owner.sourceprep, 'validate_prepared_tree', return_value=record), \
+                     patch.object(owner, 'identity_module', return_value=selector), \
+                     patch.object(owner, 'git_effective_identity', return_value=effective) as git_identity, \
+                     patch.object(selector, 'effective_package_identity', return_value=dict(effective, api=1)), \
+                     patch.object(selector, 'shared_export') as shared, \
+                     patch.object(owner.process, 'capture') as capture, \
+                     patch.object(owner, 'prepare', return_value=record) as prepare:
+                    accepted = inspect.signature(owner.verify).parameters
+                    extra = {'lzip': '/lzip'} if 'lzip' in accepted else {}
+                    shared_args = {'pkgsrc_export': '/export'} if 'pkgsrc_export' in accepted else {}
+                    self.assertEqual(owner.verify('/source', sys.executable, **shared_args), record)
+                    git_identity.assert_called_once_with(sys.executable)
+                    self.assertEqual((capture.call_count, shared.call_count, prepare.call_count), (0, 0, 0))
+                    # A changed dependent Git object falls back to the payload comparison.
+                    git_identity.return_value = dict(effective, effective_package_sha256='6' * 64)
+                    owner.verify('/source', sys.executable, archive='/archive', patch='/patch', **extra)
+                    self.assertEqual((capture.call_count, prepare.call_count), (1, 1))
+                    # So does a changed owner.
+                    git_identity.return_value = effective
+                    current['owner_sha256'] = '7' * 64
+                    owner.verify('/source', sys.executable, archive='/archive', patch='/patch', **extra)
+                    self.assertEqual((capture.call_count, prepare.call_count), (2, 2))
 
     def test_owners_use_the_shared_export_without_exporting(self):
         with tempfile.TemporaryDirectory(dir=WORK) as temp:

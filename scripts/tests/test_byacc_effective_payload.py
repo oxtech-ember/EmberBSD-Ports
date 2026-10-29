@@ -56,12 +56,20 @@ class EffectivePayloadTest(unittest.TestCase):
                     shutil.copytree(recipe, destination)
                     return None
                 return real_capture(command, **kwargs)
+            def git_identity(git):
+                # Stand in for the Git object ids of the fixture recipe.
+                rows = sorted((path.relative_to(recipe).as_posix(), path.read_bytes().hex())
+                              for path in recipe.rglob('*') if path.is_file())
+                return {'api': 2, 'package': owner.PACKAGE, 'upstream': '1' * 40,
+                        'effective_package_sha256': hashlib.sha256(repr(rows).encode()).hexdigest()}
             tool = os.environ['EMBERBSD_TEST_PATCH']
             git = os.environ['EMBERBSD_TEST_GIT']
             output = root / 'prepared'
             with patch.object(owner, 'source_identity', return_value=identity), \
-                    patch.object(owner.process, 'capture', side_effect=capture):
+                    patch.object(owner.process, 'capture', side_effect=capture), \
+                    patch.object(owner, 'git_effective_identity', side_effect=git_identity):
                 record = owner.prepare(str(archive), output, tool, git, True)
+                self.assertEqual(record, owner.verify(output, git))
                 (recipe / 'Makefile').write_text('DISTNAME=\tbyacc-20260126\nCOMMENT=after\n')
                 self.assertEqual(record, owner.verify(output, git, str(archive), tool))
                 delta = b'--- main.c\n+++ main.c\n@@ -1 +1 @@\n-original\n+changed\n'

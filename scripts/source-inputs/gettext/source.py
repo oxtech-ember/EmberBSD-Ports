@@ -74,6 +74,16 @@ def effective_identity(exported, upstream):
     return dict(source, effective_package_sha256=digest(pair))
 
 
+def git_effective_identity(git):
+    """Bind both recipes by their Git objects, without an export."""
+    selector = identity_module()
+    source = selector.git_package_identity(PORTS, PACKAGE, git)
+    tools = selector.git_package_identity(PORTS, 'devel/gettext-tools', git)
+    pair = json.dumps([source['effective_package_sha256'], tools['effective_package_sha256']],
+                      separators=(',', ':')).encode('ascii')
+    return dict(source, effective_package_sha256=digest(pair))
+
+
 def recipe(exported):
     recipe_root = Path(exported) / PACKAGE
     tools = read(Path(exported) / 'devel/gettext-tools/Makefile')
@@ -115,6 +125,10 @@ def verify(source, git, archive=None, patch=None, pkgsrc_export=None):
     if isinstance(old, dict) and set(old) == {'effective', 'owner_sha256'}:
         require(isinstance(old['owner_sha256'], str) and re.fullmatch('[0-9a-f]{64}', old['owner_sha256']),
                 'invalid scoped gettext owner identity')
+        if identity_module().current_git_package(old, identity['owner_sha256'], lambda: git_effective_identity(git)):
+            # The receipt names the Git objects of the current effective recipe.
+            require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
+            return record
         require(patch and os.path.isabs(patch), 'effective gettext verification requires an explicit patch')
         with tempfile.TemporaryDirectory(prefix='.gettext-verify-') as tmp:
             selector = identity_module()
@@ -214,8 +228,7 @@ def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
                 'gettext patch left a backup or reject')
         require(identity == source_identity(git), 'pkgsrc export inputs changed during preparation')
         if scoped_identity:
-            selector = identity_module()
-            identity = {'effective': effective_identity(exported, identity['export']['upstream']),
+            identity = {'effective': git_effective_identity(git),
                         'owner_sha256': identity['owner_sha256']}
         record = sourceprep.write_prepared_tree_receipt(root, package=PACKAGE, identity=identity)
         sourceprep.validate_prepared_tree(root, package=PACKAGE, identity=identity)

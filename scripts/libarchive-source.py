@@ -54,6 +54,13 @@ def verify(source, sdk_source, git, patch=None, pkgsrc_export=None):
                 for key, pattern in (('export_inputs_sha256', '[0-9a-f]{64}'),
                                      ('upstream', '[0-9a-f]{40}'), ('owner_sha256', '[0-9a-f]{64}')))):
         raise ValueError('unrecognized legacy libarchive identity')
+    selector = module(ROOT / 'scripts/pkgsrc-source-identity.py', 'pkgsrc_identity')
+    if scoped and selector.current_git_package(old_identity, identity['owner_sha256'],
+                                               lambda: selector.git_package_identity(ROOT, PACKAGE, git)):
+        # The receipt names the Git objects of the current effective recipe.
+        if selected_identity(sdk_source, git) != identity:
+            raise ValueError('Ports export inputs changed during verification')
+        return record
     if not patch or not os.path.isabs(patch):
         raise ValueError('changed export requires an explicit patch to compare the current libarchive source')
     with tempfile.TemporaryDirectory(prefix='.libarchive-verify-') as work:
@@ -101,7 +108,7 @@ def prepare(destination, sdk_source, git, patch, scoped_identity=False):
             raise ValueError('Ports export inputs changed during preparation')
         if scoped_identity:
             selector = module(ROOT / 'scripts/pkgsrc-source-identity.py', 'pkgsrc_identity')
-            identity = {'effective': selector.effective_package_identity(export, PACKAGE, identity['upstream']),
+            identity = {'effective': selector.git_package_identity(ROOT, PACKAGE, git),
                         'owner_sha256': identity['owner_sha256']}
         record = sourceprep.write_prepared_tree_receipt(payload, package=PACKAGE, identity=identity)
         sourceprep.validate_prepared_tree(payload, package=PACKAGE, identity=identity)
