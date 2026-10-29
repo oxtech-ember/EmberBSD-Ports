@@ -12,6 +12,8 @@ PKGREVISION= 12
 DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
 DEPENDS+= llvm>=23.1.4nb5:../../lang/llvm
 DEPENDS+= lld>=23.1.4nb7:../../devel/lld
+# clang-tblgen links the LLVM-provided zstd library directly.
+DEPENDS+= zstd>=1.3.6:../../archivers/zstd
 BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
 .endif
 

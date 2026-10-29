@@ -33,7 +33,8 @@ lld_deps = variables(a.pkgsrc, 'devel/lld', a.stage_makeconf, 'DEPENDS')[0]
 assert 'zstd>=1.3.6:' in lld_deps and 'zlib>=1.3.2nb1:' in lld_deps, lld_deps
 builtin_deps = variables(a.pkgsrc, 'devel/lld', a.stage_makeconf, 'DEPENDS', extra=('USE_BUILTIN.zlib=yes',))[0]
 assert 'zlib>=1.3.2nb1:' not in builtin_deps, builtin_deps
-assert 'lld>=23.1.4nb7:' in variables(a.pkgsrc, 'lang/clang', a.stage_makeconf, 'DEPENDS')[0]
+clang_deps = variables(a.pkgsrc, 'lang/clang', a.stage_makeconf, 'DEPENDS')[0]
+assert 'lld>=23.1.4nb7:' in clang_deps and 'zstd>=1.3.6:' in clang_deps, clang_deps
 assert 'clang>=23.1.4nb12:' in variables(a.pkgsrc, 'devel/lldb', a.stage_makeconf, 'DEPENDS')[0]
 bindings_deps = variables(a.pkgsrc, 'lang/clang-python-bindings', a.stage_makeconf, 'DEPENDS')[0]
 assert 'clang-23.1.4{,nb*}:' in bindings_deps, bindings_deps
