@@ -10,7 +10,11 @@ USE_CXX_FEATURES+=	c++11 is_trivially_copy_constructible
 .include "../../graphics/librsvg/available.mk"
 
 BUILDLINK_API_DEPENDS.harfbuzz+=	harfbuzz>=2.1.1
-BUILDLINK_ABI_DEPENDS.harfbuzz+=	harfbuzz>=15.0.0nb1
+BUILDLINK_ABI_DEPENDS.harfbuzz+=	harfbuzz>=15.0.0nb3
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
+    ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
+BUILDLINK_ABI_DEPENDS.harfbuzz+= harfbuzz>=15.0.0nb4
+.endif
 BUILDLINK_PKGSRCDIR.harfbuzz?=		../../fonts/harfbuzz
 BUILDLINK_INCDIRS.harfbuzz?=		include/harfbuzz
 
