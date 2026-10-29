@@ -29,6 +29,7 @@ trap '"$HOST_PREFIX/bin/grm" -rf "$work"' EXIT HUP INT TERM
   -DCMAKE_PREFIX_PATH="$LIEF_PREFIX;$HOST_PREFIX" \
   -DCMAKE_CXX_LINKER_LAUNCHER="$HOST_PREFIX/bin/python3.15;$SDK_SOURCE/scripts/link-launcher.py;--lock-root;$LOCK_ROOT;--context;$LOCK_ROOT/coordination/heavy-link;--"
 "$HOST_PREFIX/bin/cmake" --build "$work/build"
+DYLD_LIBRARY_PATH="$LIEF_PREFIX/lib" "$work/build/lief_header_link"
 DYLD_LIBRARY_PATH="$LIEF_PREFIX/lib" "$work/build/lief_consumer" \
   "$work/cert.pem" "$work/signature"
 ```
@@ -37,3 +38,7 @@ Run from this directory on macOS using the selected SDK and prefix. The
 consumer checks the byte-buffer certificate parser before other LIEF crypto
 operations, then checks hash, UTF, dates, certificate and RSA attributes, and
 one valid signature. It does not claim target execution or runtime acceptance.
+
+The header-link consumer checks host-version constructors after system headers
+and a shared-library result template. For a cross build, compile and link it
+with the selected target SDK and staged LIEF; execute only on the target.

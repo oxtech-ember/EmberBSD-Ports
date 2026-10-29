@@ -1,6 +1,7 @@
 # Origin: EmberBSD contributors (AI-assisted).
 DISTNAME= LIEF-1.0.0
 PKGNAME= lief-1.0.0
+PKGREVISION= 1
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=lief-project/}
 GITHUB_PROJECT= LIEF
