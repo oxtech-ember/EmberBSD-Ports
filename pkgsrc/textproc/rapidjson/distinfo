@@ -5,9 +5,15 @@ SHA512 (rapidjson-1.1.0.20250205-24b5e7a8b27f42fa16b96fc70aade9106cf7102f.tar.gz
 Size (rapidjson-1.1.0.20250205-24b5e7a8b27f42fa16b96fc70aade9106cf7102f.tar.gz) = 1116703 bytes
 SHA1 (patch-allocator-ownership) = 23989ad045337499239b4ea6fefbd3add6ffd9ad
 SHA1 (patch-example_CMakeLists.txt) = c7e1fff4b43c1e027cf49206d30b82b14b08aeb5
+SHA1 (patch-example_jsonx_jsonx.cpp) = c7c51311a7ca45b6943e9cfd7028b7b6d4a97440
+SHA1 (patch-example_tutorial_tutorial.cpp) = a678244abda87468dd38dd477bbbd3db9fe8e75f
 SHA1 (patch-float-oracle) = 8589a7c086d066bd8e715bd9bace2aeb49564fbe
 SHA1 (patch-gtest-suite) = 359e6442ce4956a2771c548af0d43eefb474631d
 SHA1 (patch-pointer-token-copy) = e7dfd5c50af1005d80aec517bffd998ccef7b7a3
 SHA1 (patch-shared-pool-owner) = 68f2101720102eb8102629860bda0aa3f297ede6
 SHA1 (patch-system-gtest) = 3b2ec5a7972028912224b9eeb2196fa67e2a7482
 SHA1 (patch-wide-stream) = 1c8cd4812b4a389765e934b32aacbd4e99932dcb
+SHA1 (patch-writer-string-overload) = 0570b3a44fdc2b953c1837225369886dbf183605
+SHA1 (patch-zz-pretty-utf32-test) = 9f64cc2290c7ce4c3653455b775faea0a4153a35
+SHA1 (patch-zz-test-bounded-format) = eb27fe8142f12a8f41e99b235cc8d79d99f02819
+SHA1 (patch-zzz-stdstring-key-tests) = a786cb669eac4b850e8d89a58a7277f9a82bb924

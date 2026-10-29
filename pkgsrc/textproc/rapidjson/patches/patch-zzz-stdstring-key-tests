@@ -1,0 +1,64 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Exercise std::string, brace, and implicit-conversion overloads.
+--- test/unittest/writertest.cpp
++++ test/unittest/writertest.cpp
+@@ -85,6 +85,27 @@
+     TEST_ROUNDTRIP("[9223372036854775807]");
+ }
+ 
++#if RAPIDJSON_HAS_STDSTRING && RAPIDJSON_HAS_CXX11
++struct StringConvertible { operator std::string() const { return "value"; } };
++#endif
++
++#if RAPIDJSON_HAS_STDSTRING
++TEST(Writer, StdStringKeyAndValue) {
++    StringBuffer buffer;
++    Writer<StringBuffer> writer(buffer);
++    EXPECT_TRUE(writer.StartObject());
++    EXPECT_TRUE(writer.Key(std::string("key")));
++    EXPECT_TRUE(writer.String(std::string("value")));
++#if RAPIDJSON_HAS_CXX11
++    EXPECT_TRUE(writer.Key({"key", 3}));
++    EXPECT_TRUE(writer.String(StringConvertible()));
++    EXPECT_TRUE(writer.Key(StringConvertible()));
++    EXPECT_TRUE(writer.String({"value", 5}));
++#endif
++    EXPECT_TRUE(writer.EndObject());
++}
++#endif
++
+ TEST(Writer, String) {
+     TEST_ROUNDTRIP("[\"Hello\"]");
+     TEST_ROUNDTRIP("[\"Hello\\u0000World\"]");
+--- test/unittest/prettywritertest.cpp
++++ test/unittest/prettywritertest.cpp
+@@ -115,6 +115,27 @@
+         buffer.GetString());
+ }
+ 
++#if RAPIDJSON_HAS_STDSTRING && RAPIDJSON_HAS_CXX11
++struct StringConvertible { operator std::string() const { return "value"; } };
++#endif
++
++#if RAPIDJSON_HAS_STDSTRING
++TEST(PrettyWriter, StdStringKeyAndValue) {
++    StringBuffer buffer;
++    PrettyWriter<StringBuffer> writer(buffer);
++    EXPECT_TRUE(writer.StartObject());
++    EXPECT_TRUE(writer.Key(std::string("key")));
++    EXPECT_TRUE(writer.String(std::string("value")));
++#if RAPIDJSON_HAS_CXX11
++    EXPECT_TRUE(writer.Key({"key", 3}));
++    EXPECT_TRUE(writer.String(StringConvertible()));
++    EXPECT_TRUE(writer.Key(StringConvertible()));
++    EXPECT_TRUE(writer.String({"value", 5}));
++#endif
++    EXPECT_TRUE(writer.EndObject());
++}
++#endif
++
+ TEST(PrettyWriter, String) {
+     StringBuffer buffer;
+     PrettyWriter<StringBuffer> writer(buffer);

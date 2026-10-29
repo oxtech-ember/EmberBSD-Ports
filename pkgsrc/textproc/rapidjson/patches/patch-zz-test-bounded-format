@@ -1,0 +1,297 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Reject truncated numeric and path formatting in the upstream tests.
+--- /dev/null
++++ test/checked_test_format.h
+@@ -0,0 +1,17 @@
++// Copyright (c) 2026 EmberBSD contributors
++// SPDX-License-Identifier: MIT
++#ifndef RAPIDJSON_CHECKED_TEST_FORMAT_H_
++#define RAPIDJSON_CHECKED_TEST_FORMAT_H_
++#include <cstdio>
++#include <cstdlib>
++#include <cstddef>
++
++template <std::size_t N>
++int checked_test_format_result(char (&)[N], int length) {
++    if (length < 0 || static_cast<std::size_t>(length) >= N)
++        std::abort();
++    return length;
++}
++#define checked_test_format(buffer, ...) \
++    checked_test_format_result(buffer, std::snprintf(buffer, sizeof(buffer), __VA_ARGS__))
++#endif
+--- test/perftest/misctest.cpp
++++ test/perftest/misctest.cpp
+@@ -1,3 +1,4 @@
++#include "../checked_test_format.h"
+ // Tencent is pleased to support the open source community by making RapidJSON available.
+ // 
+ // Copyright (C) 2015 THL A29 Limited, a Tencent company, and Milo Yip.
+@@ -764,7 +765,7 @@
+     Writer writer(sb);
+     for (size_t j = 0; j < randvalCount; j++) {
+         char buffer[32];
+-        sprintf(buffer, "%d", randval[j]);
++        checked_test_format(buffer, "%d", randval[j]);
+         writer.WriteInt(randval[j]);
+         ASSERT_STREQ(buffer, sb.GetString());
+         sb.Clear();
+@@ -776,7 +777,7 @@
+     Writer writer;
+     for (size_t j = 0; j < randvalCount; j++) {
+         char buffer[32];
+-        sprintf(buffer, "%d", randval[j]);
++        checked_test_format(buffer, "%d", randval[j]);
+         char buffer2[32];
+         rapidjson::InsituStringStream ss(buffer2);
+         writer.Reset(ss);
+@@ -830,7 +831,7 @@
+     for (size_t j = 0; j < randvalCount; j++) {
+         char buffer[32];
+         int64_t x = randval[j] * randval[j];
+-        sprintf(buffer, "%" PRIi64, x);
++        checked_test_format(buffer, "%" PRIi64, x);
+         writer.WriteInt64(x);
+         ASSERT_STREQ(buffer, sb.GetString());
+         sb.Clear();
+@@ -843,7 +844,7 @@
+     for (size_t j = 0; j < randvalCount; j++) {
+         char buffer[32];
+         int64_t x = randval[j] * randval[j];
+-        sprintf(buffer, "%" PRIi64, x);
++        checked_test_format(buffer, "%" PRIi64, x);
+         char buffer2[32];
+         rapidjson::InsituStringStream ss(buffer2);
+         writer.Reset(ss);
+--- test/perftest/perftest.h
++++ test/perftest/perftest.h
+@@ -1,3 +1,4 @@
++#include "../checked_test_format.h"
+ // Tencent is pleased to support the open source community by making RapidJSON available.
+ // 
+ // Copyright (C) 2015 THL A29 Limited, a Tencent company, and Milo Yip.
+@@ -138,7 +139,7 @@
+                 types_[j] = 0;
+                 for (size_t i = 0; i < sizeof(typespaths) / sizeof(typespaths[0]); i++) {
+                     char filename[256];
+-                    sprintf(filename, "%s/%s", typespaths[i], typesfilenames[j]);
++                    checked_test_format(filename, "%s/%s", typespaths[i], typesfilenames[j]);
+                     if (FILE* fp = fopen(filename, "rb")) {
+                         fseek(fp, 0, SEEK_END);
+                         typesLength_[j] = (size_t)ftell(fp);
+--- test/perftest/schematest.cpp
++++ test/perftest/schematest.cpp
+@@ -1,3 +1,4 @@
++#include "../checked_test_format.h"
+ #include "perftest.h"
+ 
+ #if TEST_RAPIDJSON
+@@ -28,7 +29,7 @@
+     char buffer[1024];
+     FILE *fp = 0;
+     for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
+-        sprintf(buffer, "%s%s", paths[i], filename);
++        checked_test_format(buffer, "%s%s", paths[i], filename);
+         fp = fopen(buffer, "rb");
+         if (fp)
+             break;
+@@ -92,7 +93,7 @@
+ 
+         for (size_t i = 0; i < ARRAY_SIZE(filenames); i++) {
+             char filename[FILENAME_MAX];
+-            sprintf(filename, "jsonschema/tests/draft4/%s", filenames[i]);
++            checked_test_format(filename, "jsonschema/tests/draft4/%s", filenames[i]);
+             char* json = ReadFile(filename, jsonAllocator);
+             if (!json) {
+                 printf("json test suite file %s not found", filename);
+--- test/unittest/documenttest.cpp
++++ test/unittest/documenttest.cpp
+@@ -1,3 +1,4 @@
++#include "../checked_test_format.h"
+ // Tencent is pleased to support the open source community by making RapidJSON available.
+ // 
+ // Copyright (C) 2015 THL A29 Limited, a Tencent company, and Milo Yip.
+@@ -163,7 +164,7 @@
+     };
+     char buffer[1024];
+     for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
+-        sprintf(buffer, "%s/%s", paths[i], filename);
++        checked_test_format(buffer, "%s/%s", paths[i], filename);
+         FILE *fp = fopen(buffer, "rb");
+         if (fp)
+             return fp;
+--- test/unittest/encodedstreamtest.cpp
++++ test/unittest/encodedstreamtest.cpp
+@@ -1,3 +1,4 @@
++#include "../checked_test_format.h"
+ // Tencent is pleased to support the open source community by making RapidJSON available.
+ // 
+ // Copyright (C) 2015 THL A29 Limited, a Tencent company, and Milo Yip.
+@@ -51,7 +52,7 @@
+         };
+         char buffer[1024];
+         for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
+-            sprintf(buffer, "%s/%s", paths[i], filename);
++            checked_test_format(buffer, "%s/%s", paths[i], filename);
+             FILE *fp = fopen(buffer, "rb");
+             if (fp)
+                 return fp;
+--- test/unittest/istreamwrappertest.cpp
++++ test/unittest/istreamwrappertest.cpp
+@@ -1,3 +1,4 @@
++#include "../checked_test_format.h"
+ // Tencent is pleased to support the open source community by making RapidJSON available.
+ // 
+ // Copyright (C) 2015 THL A29 Limited, a Tencent company, and Milo Yip.
+@@ -113,7 +114,7 @@
+     };
+     char buffer[1024];
+     for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
+-        sprintf(buffer, "%s/%s", paths[i], filename);
++        checked_test_format(buffer, "%s/%s", paths[i], filename);
+         fs.open(buffer, ios_base::in | ios_base::binary);
+         if (fs.is_open())
+             return true;
+--- test/unittest/jsoncheckertest.cpp
++++ test/unittest/jsoncheckertest.cpp
+@@ -1,3 +1,4 @@
++#include "../checked_test_format.h"
+ // Tencent is pleased to support the open source community by making RapidJSON available.
+ // 
+ // Copyright (C) 2015 THL A29 Limited, a Tencent company, and Milo Yip.
+@@ -29,7 +30,7 @@
+     char buffer[1024];
+     FILE *fp = 0;
+     for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
+-        sprintf(buffer, "%s/%s", paths[i], filename);
++        checked_test_format(buffer, "%s/%s", paths[i], filename);
+         fp = fopen(buffer, "rb");
+         if (fp)
+             break;
+@@ -76,7 +77,7 @@
+         if (i == 18)    // fail18.json is valid in rapidjson, which has no limitation on depth of nesting.
+             continue;
+ 
+-        sprintf(filename, "fail%d.json", i);
++        checked_test_format(filename, "fail%d.json", i);
+         size_t length;
+         char* json = ReadFile(filename, length);
+         if (!json) {
+@@ -110,7 +111,7 @@
+ 
+     // passX.json
+     for (int i = 1; i <= 3; i++) {
+-        sprintf(filename, "pass%d.json", i);
++        checked_test_format(filename, "pass%d.json", i);
+         size_t length;
+         char* json = ReadFile(filename, length);
+         if (!json) {
+--- test/unittest/readertest.cpp
++++ test/unittest/readertest.cpp
+@@ -1,3 +1,4 @@
++#include "../checked_test_format.h"
+ // Tencent is pleased to support the open source community by making RapidJSON available.
+ //
+ // Copyright (C) 2015 THL A29 Limited, a Tencent company, and Milo Yip.
+@@ -633,7 +634,7 @@
+     { \
+         char buffer[2048]; \
+         ASSERT_LT(std::strlen(str), 2048u); \
+-        sprintf(buffer, "%s", str); \
++        checked_test_format(buffer, "%s", str); \
+         InsituStringStream s(buffer); \
+         BaseReaderHandler<> h; \
+         Reader reader; \
+--- test/unittest/schematest.cpp
++++ test/unittest/schematest.cpp
+@@ -1,3 +1,4 @@
++#include "../checked_test_format.h"
+ // Tencent is pleased to support the open source community by making RapidJSON available.
+ // 
+ // Copyright (C) 2015 THL A29 Limited, a Tencent company, and Milo Yip.
+@@ -2028,7 +2029,7 @@
+     char buffer[1024];
+     FILE *fp = 0;
+     for (size_t i = 0; i < sizeof(paths) / sizeof(paths[0]); i++) {
+-        sprintf(buffer, "%s%s", paths[i], filename);
++        checked_test_format(buffer, "%s%s", paths[i], filename);
+         fp = fopen(buffer, "rb");
+         if (fp)
+             break;
+@@ -2234,7 +2235,7 @@
+ 
+     for (size_t i = 0; i < sizeof(filenames) / sizeof(filenames[0]); i++) {
+         char filename[FILENAME_MAX];
+-        sprintf(filename, "jsonschema/tests/draft4/%s", filenames[i]);
++        checked_test_format(filename, "jsonschema/tests/draft4/%s", filenames[i]);
+         char* json = ReadFile(filename, jsonAllocator);
+         if (!json) {
+             printf("json test suite file %s not found", filename);
+--- test/unittest/valuetest.cpp
++++ test/unittest/valuetest.cpp
+@@ -1,3 +1,4 @@
++#include "../checked_test_format.h"
+ // Tencent is pleased to support the open source community by making RapidJSON available.
+ // 
+ // Copyright (C) 2015 THL A29 Limited, a Tencent company, and Milo Yip.
+@@ -1574,7 +1575,7 @@
+ 
+     for (int i = 0; i < 10; i++) {
+         char name[10];
+-        Value n(name, static_cast<SizeType>(sprintf(name, "%d", i)), allocator);
++        Value n(name, static_cast<SizeType>(checked_test_format(name, "%d", i)), allocator);
+         x.AddMember(n, i, allocator);
+     }
+ 
+@@ -1582,7 +1583,7 @@
+         int i = 0;
+         for (auto& m : x.GetObject()) {
+             char name[11];
+-            sprintf(name, "%d", i);
++            checked_test_format(name, "%d", i);
+             EXPECT_STREQ(name, m.name.GetString());
+             EXPECT_EQ(i, m.value.GetInt());
+             i++;
+@@ -1593,7 +1594,7 @@
+         int i = 0;
+         for (const auto& m : const_cast<const Value&>(x).GetObject()) {
+             char name[11];
+-            sprintf(name, "%d", i);
++            checked_test_format(name, "%d", i);
+             EXPECT_STREQ(name, m.name.GetString());
+             EXPECT_EQ(i, m.value.GetInt());
+             i++;
+@@ -1653,7 +1654,7 @@
+ 
+     for (SizeType i = 0; i < n; i++) {
+         char name1[10];
+-        sprintf(name1, format, i);
++        checked_test_format(name1, format, i);
+ 
+         // Value name(name1); // should not compile
+         Value name(name1, static_cast<SizeType>(strlen(name1)), allocator);
+@@ -1661,7 +1662,7 @@
+ 
+         for (SizeType j = 0; j < n; j++) {
+             char name2[10];
+-            sprintf(name2, format, j);
++            checked_test_format(name2, format, j);
+ 
+             Value name3(name2, static_cast<SizeType>(strlen(name2)), allocator);
+             Value number(static_cast<int>(i * n + j));
+@@ -1674,11 +1675,11 @@
+ 
+     for (SizeType i = 0; i < n; i++) {
+         char name1[10];
+-        sprintf(name1, format, i);
++        checked_test_format(name1, format, i);
+ 
+         for (SizeType j = 0; j < n; j++) {
+             char name2[10];
+-            sprintf(name2, format, j);
++            checked_test_format(name2, format, j);
+             x[name1];
+             EXPECT_EQ(static_cast<int>(i * n + j), x[name1][name2].GetInt());
+         }

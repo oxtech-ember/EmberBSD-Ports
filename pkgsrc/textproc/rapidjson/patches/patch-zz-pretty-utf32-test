@@ -1,0 +1,25 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Exercise UTF-32 null-terminated PrettyWriter string and key overloads.
+--- test/unittest/prettywritertest.cpp
++++ test/unittest/prettywritertest.cpp
+@@ -66,6 +66,18 @@
+     EXPECT_STREQ(kPrettyJson, buffer.GetString());
+ }
+ 
++TEST(PrettyWriter, Utf32NullTerminatedStringAndKey) {
++    StringBuffer buffer;
++    PrettyWriter<StringBuffer, UTF32<> > writer(buffer);
++    const UTF32<>::Ch key[] = {'k', 0};
++    const UTF32<>::Ch value[] = {'v', 0};
++    EXPECT_TRUE(writer.StartObject());
++    EXPECT_TRUE(writer.Key(key));
++    EXPECT_TRUE(writer.String(value));
++    EXPECT_TRUE(writer.EndObject());
++    EXPECT_STREQ("{\n    \"k\": \"v\"\n}", buffer.GetString());
++}
++
+ TEST(PrettyWriter, FormatOptions) {
+     StringBuffer buffer;
+     PrettyWriter<StringBuffer> writer(buffer);

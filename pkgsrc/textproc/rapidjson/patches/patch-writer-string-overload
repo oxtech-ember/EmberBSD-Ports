@@ -1,0 +1,66 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Defer std::basic_string instantiation for unsupported character traits while retaining conversions.
+--- include/rapidjson/writer.h
++++ include/rapidjson/writer.h
+@@ -209,7 +209,13 @@
+     }
+ 
+ #if RAPIDJSON_HAS_STDSTRING
+-    bool String(const std::basic_string<Ch>& str) {
++#if RAPIDJSON_HAS_CXX11
++    template <typename C = Ch, typename = typename std::char_traits<C>::char_type>
++    bool String(const std::basic_string<typename internal::RemoveConst<C>::Type>& str)
++#else
++    bool String(const std::basic_string<Ch>& str)
++#endif
++    {
+         return String(str.data(), SizeType(str.size()));
+     }
+ #endif
+@@ -223,7 +229,12 @@
+     bool Key(const Ch* str, SizeType length, bool copy = false) { return String(str, length, copy); }
+ 
+ #if RAPIDJSON_HAS_STDSTRING
++#if RAPIDJSON_HAS_CXX11
++    template <typename C = Ch, typename = typename std::char_traits<C>::char_type>
++    bool Key(const std::basic_string<typename internal::RemoveConst<C>::Type>& str)
++#else
+     bool Key(const std::basic_string<Ch>& str)
++#endif
+     {
+       return Key(str.data(), SizeType(str.size()));
+     }
+--- include/rapidjson/prettywriter.h
++++ include/rapidjson/prettywriter.h
+@@ -115,7 +115,13 @@
+     }
+ 
+ #if RAPIDJSON_HAS_STDSTRING
+-    bool String(const std::basic_string<Ch>& str) {
++#if RAPIDJSON_HAS_CXX11
++    template <typename C = Ch, typename = typename std::char_traits<C>::char_type>
++    bool String(const std::basic_string<typename internal::RemoveConst<C>::Type>& str)
++#else
++    bool String(const std::basic_string<Ch>& str)
++#endif
++    {
+         return String(str.data(), SizeType(str.size()));
+     }
+ #endif
+@@ -129,7 +135,13 @@
+     bool Key(const Ch* str, SizeType length, bool copy = false) { return String(str, length, copy); }
+ 
+ #if RAPIDJSON_HAS_STDSTRING
+-    bool Key(const std::basic_string<Ch>& str) {
++#if RAPIDJSON_HAS_CXX11
++    template <typename C = Ch, typename = typename std::char_traits<C>::char_type>
++    bool Key(const std::basic_string<typename internal::RemoveConst<C>::Type>& str)
++#else
++    bool Key(const std::basic_string<Ch>& str)
++#endif
++    {
+         return Key(str.data(), SizeType(str.size()));
+     }
+ #endif

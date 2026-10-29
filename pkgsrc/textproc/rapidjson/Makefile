@@ -2,7 +2,7 @@
 # Origin: EmberBSD (AI-assisted), installed GoogleTest and GCC16 checks.
 
 DISTNAME=	rapidjson-1.1.0.20250205
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	textproc
 MASTER_SITES=	${MASTER_SITE_GITHUB:=Tencent/}
 GITHUB_TAG=	24b5e7a8b27f42fa16b96fc70aade9106cf7102f
@@ -31,7 +31,11 @@ CMAKE_CONFIGURE_ARGS+=		-DCMAKE_INSTALL_DIR:STRING=lib/cmake/RapidJSON
 PKGCONFIG_OVERRIDE+=	RapidJSON.pc.in
 
 post-install:
-	rm ${DESTDIR}${PREFIX}/share/doc/RapidJSON/examples/CMakeLists.txt.orig \
+	rm -f ${DESTDIR}${PREFIX}/share/doc/RapidJSON/examples/CMakeLists.txt.orig \
+	    ${DESTDIR}${PREFIX}/share/doc/RapidJSON/examples/jsonx/jsonx.cpp.orig \
+	    ${DESTDIR}${PREFIX}/share/doc/RapidJSON/examples/tutorial/tutorial.cpp.orig \
+	    ${DESTDIR}${PREFIX}/include/rapidjson/writer.h.orig \
+	    ${DESTDIR}${PREFIX}/include/rapidjson/prettywriter.h.orig \
 	    ${DESTDIR}${PREFIX}/include/rapidjson/allocators.h.orig \
 	    ${DESTDIR}${PREFIX}/include/rapidjson/pointer.h.orig
 
