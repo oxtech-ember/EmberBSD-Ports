@@ -2,7 +2,7 @@
 
 .include "../../textproc/libxml2/Makefile.common"
 
-PKGREVISION=	3
+PKGREVISION=	4
 
 # The release tarball omits two CMake test drivers from the same upstream tag.
 post-extract:
@@ -31,6 +31,7 @@ TEST_TARGET=		check
 
 # /usr/include might not exist on some platforms, like Darwin.
 # If so, cmake fails with non-existent path.
+PREFER.iconv=	pkgsrc
 .include "../../converters/libiconv/buildlink3.mk"
 CHECK_BUILTIN.iconv:=   yes
 .include "../../converters/libiconv/builtin.mk"
