@@ -5,27 +5,24 @@ cross path imports those executables; it cannot execute target AArch64 tools
 on macOS. The complete target package keeps both icon themes, generated 24px
 icons, resource data and the shared Breeze Icons library.
 
-## Build the tools
+## Native generators package
 
-Use matching native Qt 6.12, ECM 6.31 and a native Python with lxml.
-Python remains an existing upstream dependency for 24px icon generation.
-The EmberBSD builder is a shell script. It verifies the source archive and
-recipe patch hashes, applies patches with zero fuzz, then builds only the
-two native C++ executables.
+`graphics/breeze-icons-generators` builds the two native C++ executables from
+the same verified Breeze source, distinfo and patches as `graphics/breeze-icons`
+(both include its `Makefile.common`). A cross `breeze-icons` build pulls it in
+as a `TOOL_DEPENDS` package of the same release and passes the executables
+from `TOOLBASE` to upstream CMake. No build-host setting is needed, so a bulk
+fetch or parse cannot fail on a missing prefix. The generators package refuses
+cross builds; it is a build-host tool. A missing executable fails before
+configure.
 
 ```sh
-CMAKE=/absolute/cmake NINJA=/absolute/ninja \
-HOST_CC=/absolute/cc HOST_CXX=/absolute/c++ \
-HOST_PYTHON=/absolute/native-python3.14 JOBS=2 \
-    sh build-breeze-host.sh /absolute/distfiles /absolute/native-qt \
-    /absolute/native-prefix /absolute/native-ecm/cmake /absolute/new-work
+BMAKE=/absolute/bmake sh ../tests/breeze-native-package.sh \
+    /absolute/pkgsrc /absolute/cross.mk /absolute/new-check
 ```
 
-Set `EMBERBSD_KF6_BREEZE_HOST=/absolute/new-work/prefix` in the private cross
-MAKECONF. Keep the shared `EMBERBSD_KF6_HOST_TOOLING` setting from the
-[KConfig workflow](frameworks.md). The recipe supplies explicit generator
-paths to upstream CMake. Missing executables and old version markers fail.
-Build a fresh native prefix after any generator patch changes.
+The standalone `build-breeze-host.sh` builder remains for the instrumented
+generator builds described below.
 
 The recipe also removes an inherited GCC14 workaround that discarded
 `-fno-lto`. GCC16 accepts the upstream option. Breeze disables LTO because

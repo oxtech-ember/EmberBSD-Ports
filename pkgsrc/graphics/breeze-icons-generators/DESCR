@@ -1,0 +1,4 @@
+Native Breeze Icons generators (generate-symbolic-dark and qrcAlias).
+Cross builds of graphics/breeze-icons run them on the build host to make
+the dark symbolic icons and the icon resource. The target package is
+graphics/breeze-icons.

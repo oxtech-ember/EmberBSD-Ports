@@ -24,6 +24,7 @@
 # used by devel/kf6-purpose/Makefile
 # used by devel/kf6-threadweaver/Makefile
 # used by graphics/breeze-icons/Makefile
+# used by graphics/breeze-icons-generators/Makefile
 # used by graphics/kf6-kiconthemes/Makefile
 # used by graphics/kf6-kimageformats/Makefile
 # used by graphics/kf6-kplotting/Makefile
@@ -100,6 +101,7 @@ _EMBERBSD_KF6VER_RECIPES= \
     devel/kf6-purpose \
     devel/kf6-threadweaver \
     graphics/breeze-icons \
+    graphics/breeze-icons-generators \
     graphics/kf6-kiconthemes \
     graphics/kf6-kimageformats \
     graphics/kf6-kplotting \

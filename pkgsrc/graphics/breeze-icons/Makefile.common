@@ -1,0 +1,16 @@
+# $NetBSD$
+# Origin: EmberBSD (AI-assisted). One Breeze Icons source for the target
+# icon theme and its native generators.
+#
+# used by graphics/breeze-icons/Makefile
+# used by graphics/breeze-icons-generators/Makefile
+
+DISTNAME=	breeze-icons-${KF6VER}
+CATEGORIES=	graphics
+
+HOMEPAGE=	https://community.kde.org/Frameworks
+LICENSE=	gnu-lgpl-v2.1 AND gnu-lgpl-v3
+
+EMBERBSD_BREEZE_ICONS_PKGDIR:=	${.PARSEDIR:tA}
+DISTINFO_FILE=	${EMBERBSD_BREEZE_ICONS_PKGDIR}/distinfo
+PATCHDIR=	${EMBERBSD_BREEZE_ICONS_PKGDIR}/patches
