@@ -19,6 +19,34 @@ producer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(producer)
 
 class ContextTest(unittest.TestCase):
+    def test_dependencies_use_native_prefix_before_provider_package(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cookie = root / 'depends-cookie'
+            calls = []
+            make = ['/selected/bmake', 'MAKECONF=/selected/cross.conf',
+                    'USE_CROSS_COMPILE=no', 'TARGET_MACHINE_ARCH=aarch64']
+            def run(argv, log, *, env):
+                calls.append((argv, log, env))
+                if argv[-1] == 'depends':
+                    self.assertEqual(argv[-3], 'PREFIX=/selected/native')
+                    self.assertEqual(argv[-2], 'PKG_ADD=/selected/native/sbin/pkg_add -K /selected/native/var/db/pkg -U')
+                    cookie.write_text('native dependencies ready')
+                else:
+                    self.assertEqual(argv[-1], 'package')
+                    self.assertEqual(argv[-2], 'PREFIX=' + str(root))
+                    self.assertEqual(cookie.read_text(), 'native dependencies ready')
+            producer.build_package(make, '/selected/native', root, '/selected/native/sbin/pkg_add',
+                                   SimpleNamespace(run_logged=run), {'PATH': '/selected/native/bin'})
+            self.assertEqual([call[0][-1] for call in calls], ['depends', 'package'])
+            self.assertEqual(calls[0][0][:-3], make)
+            self.assertEqual(calls[1][0][:-2], make)
+            def fail(*args, **kwargs):
+                raise ValueError('dependency failure')
+            with self.assertRaisesRegex(ValueError, 'dependency failure'):
+                producer.build_package(make, '/selected/native', root, '/selected/native/sbin/pkg_add',
+                                       SimpleNamespace(run_logged=fail), {})
+
     def test_clang_runtime_uses_foundation_only_for_explicit_stage(self):
         paths = SimpleNamespace(canonical_existing=lambda p: p)
         stage = SimpleNamespace(FULL_COMPONENTS=('runtime',), validate_stage=Mock(return_value={'stage': 'ok'}))
@@ -77,6 +105,7 @@ class ContextTest(unittest.TestCase):
             context, reused = producer.claim_context(root, identity)
             self.assertFalse(reused)
             (context / 'build.log').write_text('old')
+            (context / 'depends.log').write_text('old')
             same, reused = producer.claim_context(root, identity)
             self.assertFalse(reused)
             self.assertEqual(same, context)

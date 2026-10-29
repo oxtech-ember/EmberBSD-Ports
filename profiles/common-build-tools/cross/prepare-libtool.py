@@ -80,7 +80,7 @@ def claim_context(root, identity):
             raise ValueError('cannot replace an incomplete active cross-libtool context')
         # Delete only outputs belonging to a matching interrupted producer.
         for child in context.iterdir():
-            if child.name not in ('configure-inputs.json', 'build.log', 'target-tools', 'pkgdb', 'bin') and not re.fullmatch(r'cross-NetBSD-[0-9.]+-[A-Za-z0-9_]+', child.name):
+            if child.name not in ('configure-inputs.json', 'depends.log', 'build.log', 'target-tools', 'pkgdb', 'bin') and not re.fullmatch(r'cross-NetBSD-[0-9.]+-[A-Za-z0-9_]+', child.name):
                 raise ValueError('incompatible files in partial cross-libtool context')
         shutil.rmtree(context)
     context.mkdir()
@@ -126,6 +126,15 @@ def clang_runtime(sysroot, target, stage, base, paths, llvm_runtime, application
             required_components=llvm_runtime.FULL_COMPONENTS,
             base=paths.canonical_existing(base or sysroot))
     return application_toolchain.load_clang_runtime(sysroot, target=target)
+
+
+def build_package(make, prefix, context, pkg_add, process, env):
+    """Install dependencies in the native prefix before staging this tool."""
+    process.run_logged([*make, 'PREFIX=' + prefix,
+                        'PKG_ADD=' + pkg_add + ' -K ' + prefix + '/var/db/pkg -U', 'depends'],
+                       str(context / 'depends.log'), env=env)
+    process.run_logged([*make, 'PREFIX=' + str(context), 'package'],
+                       str(context / 'build.log'), env=env)
 
 
 def main():
@@ -251,6 +260,7 @@ def main():
             conf.write_text('\n'.join([
                 'LOCALBASE=' + prefix, 'TOOLBASE=' + prefix,
                 'HOST_PKG_DBDIR=' + prefix + '/var/db/pkg',
+                'PKG_DBDIR=' + prefix + '/var/db/pkg', 'UNPRIVILEGED=yes',
                 'PKG_TOOLS_BIN=' + prefix + '/sbin', 'NATIVE_PKG_TOOLS_BIN=' + prefix + '/sbin',
                 '.if defined(BSD_PKG_MK)', 'EMBERBSD_SDK_SOURCE=' + sdk,
                 'EMBERBSD_HOST_PREFIX=' + prefix, 'EMBERBSD_NATIVE_TOOLSET_MAKECONF=' + str(native_conf),
@@ -274,13 +284,13 @@ def main():
                     'USE_CROSS_COMPILE=no', 'TARGET_MACHINE_ARCH=' + arch,
                     'TARGET_OPSYS=NetBSD', 'TARGET_OS_VERSION=' + os_version,
                     'TARGET_OPSYS_VERSION=' + opsys_version, 'TARGET_OBJECT_FMT=ELF',
-                    'TARGET_LOWER_OPSYS=netbsd', 'PREFIX=' + str(context)]
-            name = process.capture([*make, '-V', '${PKGNAME}'], env=env).stdout.decode('utf-8').strip()
+                    'TARGET_LOWER_OPSYS=netbsd']
+            name = process.capture([*make, 'PREFIX=' + str(context), '-V', '${PKGNAME}'], env=env).stdout.decode('utf-8').strip()
             if not name.startswith('cross-libtool-base-') or '/' in name or not name:
                 raise SDKError('cross-libtool recipe returned an invalid package name')
             database = context / 'pkgdb'
             if not reused:
-                process.run_logged([*make, 'package'], str(context / 'build.log'), env=env)
+                build_package(make, prefix, context, native.tool('pkg_add'), process, env)
                 package = tmp / 'packages/All' / (name + '.tgz')
                 if not package.is_file():
                     raise SDKError('cross-libtool package was not produced')

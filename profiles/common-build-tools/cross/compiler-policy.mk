@@ -5,7 +5,8 @@
 .else
 .include "${.PARSEDIR}/EMBERBSD-CROSS-FORTRAN.MK"
 .endif
-.if ${TOOLS_USE_CROSS_COMPILE:Uno:tl} == "yes" && \
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && \
+    ${TOOLS_USE_CROSS_COMPILE:Uno:tl} == "yes" && \
     ${EMBERBSD_CROSS_COMPILER_FAMILY:Uclang} == "clang" && \
     !empty(USE_LANGUAGES:Mc++) && \
     empty(PKGPATH:Mlang/compiler-rt) && empty(PKGPATH:Mlang/llvm) && \
