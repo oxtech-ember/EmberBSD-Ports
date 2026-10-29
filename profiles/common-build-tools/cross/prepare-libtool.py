@@ -4,6 +4,7 @@
 # Origin: EmberBSD (AI-assisted).
 """Build the shared pkgsrc cross-libtool recipe into one OS TOOLDIR context."""
 import argparse
+import contextlib
 import copy
 import hashlib
 import json
@@ -128,10 +129,27 @@ def clang_runtime(sysroot, target, stage, base, paths, llvm_runtime, application
     return application_toolchain.load_clang_runtime(sysroot, target=target)
 
 
-def build_package(make, prefix, context, pkg_add, process, env):
+def native_package_database(pkg_admin, process, env):
+    """Return the package database of the selected native pkg_install."""
+    # Each native prefix configures its own database; do not assume var/db/pkg.
+    output = process.capture([pkg_admin, 'config-var', 'PKG_DBDIR'], env=env).stdout
+    database = (output.decode('utf-8') if isinstance(output, bytes) else output).strip()
+    if (not os.path.isabs(database) or any(c.isspace() or c in '\\"\'`$#;:' for c in database)
+            or not os.path.isdir(database)
+            or os.path.realpath(database) != os.path.normpath(database)):
+        raise ValueError('native pkg_install reports an invalid package database')
+    return os.path.normpath(database)
+
+
+def package_database_conf(pkgdb):
+    """Register native dependencies in the selected prefix database."""
+    return ['HOST_PKG_DBDIR=' + pkgdb, 'PKG_DBDIR=' + pkgdb]
+
+
+def build_package(make, prefix, pkgdb, context, pkg_add, process, env):
     """Install dependencies in the native prefix before staging this tool."""
     process.run_logged([*make, 'PREFIX=' + prefix,
-                        'PKG_ADD=' + pkg_add + ' -K ' + prefix + '/var/db/pkg -U', 'depends'],
+                        'PKG_ADD=' + pkg_add + ' -K ' + pkgdb + ' -U', 'depends'],
                        str(context / 'depends.log'), env=env)
     process.run_logged([*make, 'PREFIX=' + str(context), 'package'],
                        str(context / 'build.log'), env=env)
@@ -169,11 +187,16 @@ def main():
             raise SDKError('select absolute cross-tool paths without make metacharacters')
     prefix = paths.canonical_existing(a.host_prefix)
     lock_directory = paths.canonical_existing(a.lock_directory or os.path.dirname(prefix))
-    pkgdb = os.path.join(prefix, 'var/db/pkg')
-    with process.ContextLocks([prefix, pkgdb], lock_directory):
+    with contextlib.ExitStack() as locks:
+        # Select the tools and their database under the prefix lock.
+        locks.enter_context(process.ContextLocks([prefix], lock_directory))
         native = native_toolset.load_host_prefix(a.host_prefix,
             required_roles={'python', 'make', 'pkg_add', 'pkg_admin', 'gpatch', 'sh', 'cc', 'cxx'},
             compiler_family=a.host_compiler_family)
+        query_env = process.sanitized_environment()
+        query_env['PATH'] = os.pathsep.join((prefix + '/bin', prefix + '/sbin'))
+        pkgdb = native_package_database(native.tool('pkg_admin'), process, query_env)
+        locks.enter_context(process.ContextLocks([pkgdb], lock_directory))
         tooldir = paths.canonical_existing(a.os_tools)
         output = os.path.join(paths.canonical_existing(os.path.dirname(a.output)), os.path.basename(a.output))
         if os.path.commonpath((output, tooldir)) != tooldir or output == tooldir:
@@ -259,8 +282,7 @@ def main():
             chosen_distdir = distdir or str(tmp / 'distfiles')
             conf.write_text('\n'.join([
                 'LOCALBASE=' + prefix, 'TOOLBASE=' + prefix,
-                'HOST_PKG_DBDIR=' + prefix + '/var/db/pkg',
-                'PKG_DBDIR=' + prefix + '/var/db/pkg', 'UNPRIVILEGED=yes',
+                *package_database_conf(pkgdb), 'UNPRIVILEGED=yes',
                 'PKG_TOOLS_BIN=' + prefix + '/sbin', 'NATIVE_PKG_TOOLS_BIN=' + prefix + '/sbin',
                 '.if defined(BSD_PKG_MK)', 'EMBERBSD_SDK_SOURCE=' + sdk,
                 'EMBERBSD_HOST_PREFIX=' + prefix, 'EMBERBSD_NATIVE_TOOLSET_MAKECONF=' + str(native_conf),
@@ -290,7 +312,7 @@ def main():
                 raise SDKError('cross-libtool recipe returned an invalid package name')
             database = context / 'pkgdb'
             if not reused:
-                build_package(make, prefix, context, native.tool('pkg_add'), process, env)
+                build_package(make, prefix, pkgdb, context, native.tool('pkg_add'), process, env)
                 package = tmp / 'packages/All' / (name + '.tgz')
                 if not package.is_file():
                     raise SDKError('cross-libtool package was not produced')

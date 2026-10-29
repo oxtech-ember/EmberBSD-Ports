@@ -3,7 +3,9 @@
 `prepare-libtool.py` composes the selected cross tools, exports the common
 pkgsrc recipe and builds its `cross/cross-libtool-base` package. The package is
 installed with its own package database inside the selected OS TOOLDIR. Its
-ordinary native build dependencies use the selected native Ports prefix.
+ordinary native build dependencies use the selected native Ports prefix and
+the package database that its `pkg_admin config-var PKG_DBDIR` reports.
+A prefix can keep that database outside `var/db/pkg`.
 
 Select the host prefix, compiler, target sysroot, OS TOOLDIR, Git, work parent,
 and target explicitly. A Clang runtime stage must match the actual foundation;

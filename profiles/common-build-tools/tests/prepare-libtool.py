@@ -41,8 +41,12 @@ with tempfile.TemporaryDirectory(dir=a.work_dir) as temp:
     lock_root = root / 'locks'
     lock_root.mkdir()
     locked = tools / 'locked'
-    with ContextLocks([str(Path(a.host_prefix).resolve()),
-                       str(Path(a.host_prefix).resolve() / 'var/db/pkg')], str(lock_root)):
+    # The producer locks the database that the prefix's pkg_install reports.
+    # Hold only that lock, so a return to another database path fails here.
+    pkgdb = subprocess.run([str(Path(a.host_prefix) / 'sbin/pkg_admin'), 'config-var', 'PKG_DBDIR'],
+                           capture_output=True, text=True, check=True,
+                           env={'PATH': '/usr/bin:/bin'}).stdout.strip()
+    with ContextLocks([pkgdb], str(lock_root)):
         assert 'busy' in reject('--output', locked, '--lock-directory', lock_root)
     assert not locked.exists()
     invalid = tools / 'wrong-family'

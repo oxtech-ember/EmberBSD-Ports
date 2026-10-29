@@ -30,13 +30,14 @@ class ContextTest(unittest.TestCase):
                 calls.append((argv, log, env))
                 if argv[-1] == 'depends':
                     self.assertEqual(argv[-3], 'PREFIX=/selected/native')
-                    self.assertEqual(argv[-2], 'PKG_ADD=/selected/native/sbin/pkg_add -K /selected/native/var/db/pkg -U')
+                    self.assertEqual(argv[-2], 'PKG_ADD=/selected/native/sbin/pkg_add -K /selected/native/pkgdb -U')
                     cookie.write_text('native dependencies ready')
                 else:
                     self.assertEqual(argv[-1], 'package')
                     self.assertEqual(argv[-2], 'PREFIX=' + str(root))
                     self.assertEqual(cookie.read_text(), 'native dependencies ready')
-            producer.build_package(make, '/selected/native', root, '/selected/native/sbin/pkg_add',
+            producer.build_package(make, '/selected/native', '/selected/native/pkgdb', root,
+                                   '/selected/native/sbin/pkg_add',
                                    SimpleNamespace(run_logged=run), {'PATH': '/selected/native/bin'})
             self.assertEqual([call[0][-1] for call in calls], ['depends', 'package'])
             self.assertEqual(calls[0][0][:-3], make)
@@ -44,8 +45,35 @@ class ContextTest(unittest.TestCase):
             def fail(*args, **kwargs):
                 raise ValueError('dependency failure')
             with self.assertRaisesRegex(ValueError, 'dependency failure'):
-                producer.build_package(make, '/selected/native', root, '/selected/native/sbin/pkg_add',
+                producer.build_package(make, '/selected/native', '/selected/native/pkgdb', root,
+                                       '/selected/native/sbin/pkg_add',
                                        SimpleNamespace(run_logged=fail), {})
+
+    def test_package_database_comes_from_native_pkg_install(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            database = root / 'pkgdb'
+            database.mkdir()
+            calls = []
+            def reply(value):
+                def capture(argv, *, env):
+                    calls.append((argv, env))
+                    return SimpleNamespace(stdout=value)
+                return SimpleNamespace(capture=capture)
+            env = {'PATH': '/selected/native/bin'}
+            self.assertEqual(producer.native_package_database(
+                '/selected/native/sbin/pkg_admin', reply(str(database).encode() + b'\n'), env),
+                str(database))
+            self.assertEqual(calls[0], (['/selected/native/sbin/pkg_admin', 'config-var', 'PKG_DBDIR'], env))
+            (root / 'link').symlink_to(database)
+            (root / 'parent').symlink_to(root)
+            for value in (b'pkgdb\n', str(root / 'missing').encode(), str(root / 'link').encode(),
+                          str(root / 'link').encode() + b'/', str(root / 'link').encode() + b'/.',
+                          str(root / 'parent/pkgdb').encode(), b'', str(database).encode() + b' x'):
+                with self.assertRaisesRegex(ValueError, 'invalid package database'):
+                    producer.native_package_database('/selected/native/sbin/pkg_admin', reply(value), env)
+            self.assertEqual(producer.package_database_conf('/selected/native/pkgdb'),
+                             ['HOST_PKG_DBDIR=/selected/native/pkgdb', 'PKG_DBDIR=/selected/native/pkgdb'])
 
     def test_clang_runtime_uses_foundation_only_for_explicit_stage(self):
         paths = SimpleNamespace(canonical_existing=lambda p: p)
