@@ -1,0 +1,169 @@
+Honor documented stage paths for package script metadata.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/pkgtools/pkg_install/files/add/perform.c
++++ b/pkgtools/pkg_install/files/add/perform.c
+@@ -1010,22 +1010,26 @@
+ run_install_script(struct pkg_task *pkg, const char *argument)
+ {
+ 	int ret;
+-	char *filename;
++	char *filename, *refcount_dir;
+ 
+ 	if (pkg->meta_data.meta_install == NULL || NoInstall)
+ 		return 0;
+ 
++	refcount_dir = pkgdb_stage_path(Destdir, config_pkg_refcount_dbdir);
+ 	if (Destdir != NULL)
+ 		setenv(PKG_DESTDIR_VNAME, Destdir, 1);
+ 	setenv(PKG_PREFIX_VNAME, pkg->prefix, 1);
+-	setenv(PKG_METADATA_DIR_VNAME, pkg->logdir, 1);
+-	setenv(PKG_REFCOUNT_DBDIR_VNAME, config_pkg_refcount_dbdir, 1);
++	setenv(PKG_METADATA_DIR_VNAME, pkg->install_logdir, 1);
++	setenv(PKG_REFCOUNT_DBDIR_VNAME, refcount_dir, 1);
++	free(refcount_dir);
+ 
+ 	if (Verbose)
+ 		printf("Running install with %s for %s.\n", argument,
+ 		    pkg->pkgname);
+-	if (Fake)
+-		return 0;
++	if (Fake) {
++		setenv(PKG_REFCOUNT_DBDIR_VNAME, config_pkg_refcount_dbdir, 1);
++		return 0;
++	}
+ 
+ 	filename = pkgdb_pkg_file(pkg->pkgname, INSTALL_FNAME);
+ 
+@@ -1040,6 +1044,7 @@
+ 		ret = -1;
+ 	}
+ 	free(filename);
++	setenv(PKG_REFCOUNT_DBDIR_VNAME, config_pkg_refcount_dbdir, 1);
+ 
+ 	return ret;
+ }
+--- a/pkgtools/pkg_install/files/lib/lib.h
++++ b/pkgtools/pkg_install/files/lib/lib.h
+@@ -369,6 +369,7 @@
+ int     pkgdb_remove(const char *);
+ int	pkgdb_remove_pkg(const char *);
+ char   *pkgdb_refcount_dir(void);
++char   *pkgdb_stage_path(const char *, const char *);
+ char   *pkgdb_get_database(void);
+ const char   *pkgdb_get_dir(void);
+ /*
+@@ -454,6 +455,7 @@
+ extern const char *config_pkg_dbdir;
+ extern const char *config_pkg_path;
+ extern const char *config_pkg_refcount_dbdir;
++extern int config_pkg_refcount_from_env;
+ extern const char *do_license_check;
+ extern const char *verified_installation;
+ extern const char *gpg_cmd;
+--- a/pkgtools/pkg_install/files/lib/pkgdb.c
++++ b/pkgtools/pkg_install/files/lib/pkgdb.c
+@@ -278,6 +278,35 @@
+ 	return ret;
+ }
+ 
++/* Keep a nested -P invocation from prefixing an already rooted path twice. */
++char *
++pkgdb_stage_path(const char *root, const char *path)
++{
++	static int initialized;
++	static char *inherited_root;
++	size_t len;
++	const char *value;
++
++	if (!initialized) {
++		value = getenv(PKG_DESTDIR_VNAME);
++		if (value != NULL)
++			inherited_root = xstrdup(value);
++		initialized = 1;
++	}
++	if (root == NULL)
++		return xstrdup(path);
++	len = strlen(root);
++	while (len > 1 && root[len - 1] == '/')
++		len--;
++	if (config_pkg_refcount_from_env && inherited_root != NULL &&
++	    strcmp(inherited_root, root) == 0 &&
++	    ((len == 1 && root[0] == '/' && path[0] == '/') ||
++	    (strncmp(path, root, len) == 0 &&
++	    (path[len] == '/' || path[len] == '\0'))))
++		return xstrdup(path);
++	return xasprintf("%.*s/%s", (int)len, root, path);
++}
++
+ /*
+  *  Return the location of the package reference counts database directory.
+  */
+--- a/pkgtools/pkg_install/files/lib/parse-config.c
++++ b/pkgtools/pkg_install/files/lib/parse-config.c
+@@ -73,6 +73,7 @@
+ const char *config_pkg_dbdir;
+ const char *config_pkg_path;
+ const char *config_pkg_refcount_dbdir;
++int config_pkg_refcount_from_env;
+ const char *do_license_check;
+ const char *verified_installation;
+ const char *gpg_cmd;
+@@ -185,8 +186,10 @@
+ 		pkgdb_set_dir(config_pkg_dbdir, 1);
+ 	config_pkg_dbdir = xstrdup(pkgdb_get_dir());
+ 
+-	if ((value = getenv("PKG_REFCOUNT_DBDIR")) != NULL)
+-		config_pkg_refcount_dbdir = value;
++	value = getenv("PKG_REFCOUNT_DBDIR");
++	config_pkg_refcount_from_env = value != NULL;
++	if (value != NULL)
++		config_pkg_refcount_dbdir = xstrdup(value);
+ 	else if (config_pkg_refcount_dbdir == NULL)
+ 		config_pkg_refcount_dbdir = xasprintf("%s.refcount", 
+ 		    pkgdb_get_dir());
+--- a/pkgtools/pkg_install/files/delete/pkg_delete.c
++++ b/pkgtools/pkg_install/files/delete/pkg_delete.c
+@@ -565,7 +565,13 @@
+ 		add_plist_top(&plist, PLIST_NAME, pkg);
+ 	}
+ 
+-	setenv(PKG_REFCOUNT_DBDIR_VNAME, config_pkg_refcount_dbdir, 1);
++	if (destdir != NULL) {
++		fname = pkgdb_stage_path(destdir, config_pkg_refcount_dbdir);
++		setenv(PKG_DESTDIR_VNAME, destdir, 1);
++	} else
++		fname = xstrdup(config_pkg_refcount_dbdir);
++	setenv(PKG_REFCOUNT_DBDIR_VNAME, fname, 1);
++	free(fname);
+ 	fname = pkgdb_pkg_dir(pkg);
+ 	setenv(PKG_METADATA_DIR_VNAME, fname, 1);
+ 	free(fname);
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -7,7 +7,7 @@
+ # change in the pkg_* tools that pkgsrc relies on for proper operation.
+ 
+ PKGNAME=		pkg_install-${VERSION}
+-PKGREVISION=		14
++PKGREVISION=		15
+ CATEGORIES=		pkgtools
+ 
+ MAINTAINER=		agc@NetBSD.org
+--- a/pkgtools/pkg_install/files/add/pkg_add.1
++++ b/pkgtools/pkg_install/files/add/pkg_add.1
+@@ -378,6 +378,13 @@
+ .Ev PKG_REFCOUNT_DBDIR
+ are prefixed with
+ .Ar destdir .
++A nested invocation that inherits
++.Ev PKG_DESTDIR
++and
++.Ev PKG_REFCOUNT_DBDIR
++from a package script and uses the same destination treats the inherited
++reference-count directory as already rooted.
++Package scripts can perform arbitrary actions; this option does not isolate them.
+ .Sh ENVIRONMENT
+ See
+ .Xr pkg_install.conf 5
