@@ -48,7 +48,12 @@ while IFS= read -r recipe; do
     esac
     (cd "$work" && "$make" -r -m / FAMILY="$family" PKGPATH="$recipe") < /dev/null
 done < "$work/recipes.txt"
-for recipe in www/qt6-qtwebengine databases/qt6-odbc databases/qt6-psql; do
+# Upstream qtbase SQL driver recipes share the prepared qtbase source.
+for recipe in databases/qt6-odbc databases/qt6-psql; do
+    (cd "$work" && "$make" -r -m / FAMILY=qt PKGPATH="$recipe") < /dev/null ||
+        { echo "Prepared recipe rejected: $recipe" >&2; exit 1; }
+done
+for recipe in www/qt6-qtwebengine x11/qt6-unprepared; do
     if (cd "$work" && "$make" -r -m / FAMILY=qt PKGPATH="$recipe") > "$work/unprepared-${recipe##*/}.log" 2>&1; then
         echo "Unprepared recipe accepted: $recipe" >&2; exit 1
     fi

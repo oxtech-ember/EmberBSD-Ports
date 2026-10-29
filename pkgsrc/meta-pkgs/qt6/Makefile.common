@@ -11,6 +11,8 @@ QTVERSION=	6.12.0
 _EMBERBSD_QTVERSION_RECIPES= \
     audio/qt6-qtspeech \
     comms/qt6-qtconnectivity \
+    databases/qt6-odbc \
+    databases/qt6-psql \
     devel/qt6-qt5compat \
     devel/qt6-qttools \
     devel/qt6-qtwayland \
