@@ -1,0 +1,840 @@
+Preserve NetBSD compatibility, optional PF and native policy.
+Origin: NetBSD tcpdump 4.99.5 integration, adapted for tcpdump 4.99.7.
+Upstream-Status: EmberBSD integration; not submitted.
+
+--- parsenfsfh.c.orig
++++ parsenfsfh.c
+@@ -77,6 +77,7 @@
+ #define	FHT_AIX32	10
+ #define	FHT_HPUX9	11
+ #define	FHT_BSD44	12
++#define	FHT_NETBSD	13
+ 
+ static int is_UCX(netdissect_options *, const unsigned char *, u_int);
+ 
+@@ -122,9 +123,11 @@
+ #if	defined(__osf__)
+ 		    fhtype = FHT_DECOSF;
+ #endif
+-#if	defined(__NetBSD__) || defined(__FreeBSD__) || defined(__DragonFly__) \
+-     || defined(__OpenBSD__)
++#if	defined(__FreeBSD__) || defined(__DragonFly__) || defined(__OpenBSD__)
+ 		    fhtype = FHT_BSD44;
++#endif
++#if	defined(__NetBSD__)
++		    fhtype = len >= 5 ? FHT_NETBSD : FHT_UNKNOWN;
+ #endif
+ 		}
+ 		/*
+@@ -236,11 +239,12 @@
+ 	    break;
+ 
+ 	case FHT_BSD44:
++	case FHT_NETBSD:
+ 	    fsidp->Fsid_dev.Minor = GET_U_1(fhp);
+ 	    fsidp->Fsid_dev.Major = GET_U_1(fhp + 1);
+ 	    fsidp->fsid_code = 0;
+ 
+-	    *inop = GET_LE_U_4(fhp + 12);
++	    *inop = GET_LE_U_4(fhp + (fhtype == FHT_NETBSD ? 16 : 12));
+ 
+ 	    if (osnamep)
+ 		*osnamep = "BSD 4.4";
+@@ -254,7 +258,7 @@
+ 	    fsidp->Fsid_dev.Minor = temp & 0xFFFFF;
+ 	    fsidp->Fsid_dev.Major = (temp>>20) & 0xFFF;
+ 
+-	    *inop = GET_LE_U_4(fhp + 12);
++	    *inop = GET_LE_U_4(fhp + (fhtype == FHT_NETBSD ? 16 : 12));
+ 	    if (osnamep)
+ 		*osnamep = "OSF";
+ 	    break;
+--- netdissect-stdinc.h.orig
++++ netdissect-stdinc.h
+@@ -273,13 +273,13 @@
+  * avoid the bswap instruction, as macOS only supports machines that
+  * have it.)
+  */
+-#if defined(__GNUC__) && defined(__i386__) && !defined(__APPLE__) && !defined(__ntohl)
++#if defined(__GNUC__) && defined(__i386__) && !defined(__APPLE__) && !defined(__ntohl) && !defined(ntohl)
+   #undef ntohl
+   #undef ntohs
+   #undef htonl
+   #undef htons
+ 
+-  static __inline__ unsigned long __ntohl (unsigned long x);
++  static __inline__ unsigned int __ntohl (unsigned int x);
+   static __inline__ unsigned short __ntohs (unsigned short x);
+ 
+   #define ntohl(x)  __ntohl(x)
+@@ -287,7 +287,7 @@
+   #define htonl(x)  __ntohl(x)
+   #define htons(x)  __ntohs(x)
+ 
+-  static __inline__ unsigned long __ntohl (unsigned long x)
++  static __inline__ unsigned int __ntohl (unsigned int x)
+   {
+     __asm__ ("xchgb %b0, %h0\n\t"   /* swap lower bytes  */
+              "rorl  $16, %0\n\t"    /* swap words        */
+--- ipproto.c.orig
++++ ipproto.c
+@@ -50,6 +50,12 @@
+     { IPPROTO_SCTP, "SCTP" },
+     { IPPROTO_MOBILITY, "Mobility" },
+     { IPPROTO_ETHERNET, "Ethernet" },
++#ifdef IPPROTO_PFSYNC
++    { IPPROTO_PFSYNC, "PFSYNC" },
++#endif
++#ifdef IPPROTO_CARP
++    { IPPROTO_CARP, "CARP" },
++#endif
+     { 0, NULL }
+ };
+ 
+--- print.c.orig
++++ print.c
+@@ -240,6 +240,9 @@
+ #endif /* DLT_USB_LINUX_MMAPPED */
+ #ifdef DLT_VSOCK
+ 	{ vsock_if_print,	DLT_VSOCK },
++#endif
++#ifdef EMBER_TCPDUMP_PFSYNC
++	{ pfsync_if_print, DLT_PFSYNC },
+ #endif
+ 	{ NULL,                 0 },
+ };
+--- netdissect.h.orig
++++ netdissect.h
+@@ -812,4 +812,9 @@
+ 					     const u_char spir[8],
+ 					     const u_char *, const u_char *);
+ 
++#ifdef EMBER_TCPDUMP_PFSYNC
++extern void pfsync_if_print IF_PRINTER_ARGS;
++extern void pfsync_ip_print(netdissect_options *, const u_char *, u_int, const u_char *);
++#endif
++
+ #endif  /* netdissect_h */
+--- tcpdump.c.orig
++++ tcpdump.c
+@@ -115,6 +115,9 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <limits.h>
++#ifdef TCPDUMP_NETBSD_POLICY
++#include <resolv.h>
++#endif
+ #ifdef _WIN32
+ #include <windows.h>
+ #else
+@@ -813,7 +816,15 @@
+ 
+ 	pw = getpwnam(username);
+ 	if (pw) {
++#ifdef TCPDUMP_NETBSD_POLICY
++		if (initgroups(pw->pw_name, pw->pw_gid) != 0)
++			error("Could not initialize supplementary groups: %s", pcap_strerror(errno));
++#endif
+ 		if (chroot_dir) {
++#ifdef TCPDUMP_NETBSD_POLICY
++			setprotoent(1);
++			res_init();
++#endif
+ 			if (chroot(chroot_dir) != 0 || chdir ("/") != 0)
+ 				error("Couldn't chroot/chdir to '%.64s': %s",
+ 				      chroot_dir, pcap_strerror(errno));
+@@ -827,16 +838,22 @@
+ 				fprintf(stderr, "dropped privs to %s\n", username);
+ 		}
+ #else
++#ifndef TCPDUMP_NETBSD_POLICY
+ 		if (initgroups(pw->pw_name, pw->pw_gid) != 0 ||
+ 		    setgid(pw->pw_gid) != 0 || setuid(pw->pw_uid) != 0)
++#else
++		if (setgid(pw->pw_gid) != 0 || setuid(pw->pw_uid) != 0)
++#endif
+ 			error("Couldn't change to '%.32s' uid=%lu gid=%lu: %s",
+ 				username,
+ 				(unsigned long)pw->pw_uid,
+ 				(unsigned long)pw->pw_gid,
+ 				pcap_strerror(errno));
++#ifndef TCPDUMP_NETBSD_POLICY
+ 		else {
+ 			fprintf(stderr, "dropped privs to %s\n", username);
+ 		}
++#endif
+ #endif /* HAVE_LIBCAP_NG */
+ 	} else
+ 		error("Couldn't find user '%.32s'", username);
+@@ -2648,7 +2665,11 @@
+ 		}
+ 		capng_apply(CAPNG_SELECT_BOTH);
+ #endif /* HAVE_LIBCAP_NG */
++#ifdef TCPDUMP_NETBSD_POLICY
++		if ((username || chroot_dir) && !WFileName)
++#else
+ 		if (username || chroot_dir)
++#endif
+ 			droproot(username, chroot_dir);
+ 
+ 	}
+@@ -2883,6 +2904,11 @@
+ 		(void)fflush(stderr);
+ 	}
+ 
++#ifdef TCPDUMP_NETBSD_POLICY
++	if ((getuid() == 0 || geteuid() == 0) && WFileName && (username || chroot_dir))
++		droproot(username, chroot_dir);
++#endif
++
+ #ifdef HAVE_CAPSICUM
+ 	cansandbox = (VFileName == NULL && zflag == NULL);
+ #ifdef HAVE_CASPER
+--- /dev/null
++++ print-pfsync.c
+@@ -0,0 +1,232 @@
++/*	$NetBSD: print-pfsync.c,v 1.5 2023/08/17 20:19:40 christos Exp $	*/
++/*	$OpenBSD: print-pfsync.c,v 1.30 2007/05/31 04:16:26 mcbride Exp $	*/
++
++/*
++ * Copyright (c) 2002 Michael Shalayeff
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
++ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
++ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE AUTHOR OR HIS RELATIVES BE LIABLE FOR ANY DIRECT,
++ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
++ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
++ * SERVICES; LOSS OF MIND, USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
++ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
++ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
++ * THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include <sys/cdefs.h>
++#ifndef lint
++#if 0
++static const char rcsid[] =
++    "@(#) $Header: /cvsroot/src/external/bsd/tcpdump/dist/print-pfsync.c,v 1.5 2023/08/17 20:19:40 christos Exp $";
++#else
++__RCSID("$NetBSD: print-pfsync.c,v 1.5 2023/08/17 20:19:40 christos Exp $");
++#endif
++#endif
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++
++#include <sys/types.h>
++#include <sys/socket.h>
++#include <net/if.h>
++#include <net/pfvar.h>
++#include <net/if_pflog.h>
++
++#include <netdissect-stdinc.h>
++
++#include <sys/param.h>
++#include <sys/time.h>
++#include <sys/socket.h>
++#include <sys/file.h>
++#include <sys/ioctl.h>
++
++#ifdef __STDC__
++struct rtentry;
++#endif
++#include <net/if.h>
++
++#if 0
++#include <netinet/in.h>
++#include <netinet/in_systm.h>
++#include <netinet/ip.h>
++#endif
++
++#include <net/pfvar.h>
++#include <net/if_pfsync.h>
++
++#include <ctype.h>
++#include <netdb.h>
++#include <pcap.h>
++#include <signal.h>
++#include <stdio.h>
++#include <string.h>
++
++#include "interface.h"
++#include "netdissect.h"
++#include "pfctl_parser.h"
++#include "pfctl.h"
++
++const char *pfsync_acts[] = { PFSYNC_ACTIONS };
++
++static void pfsync_print(netdissect_options *, struct pfsync_header *, int);
++
++void
++pfsync_if_print(netdissect_options *ndo, const struct pcap_pkthdr *h, const u_char *p)
++{
++	u_int caplen = h->caplen;
++
++	ts_print(ndo, &h->ts);
++
++	if (caplen < PFSYNC_HDRLEN) {
++		ND_PRINT("[|pfsync]");
++		goto out;
++	}
++
++	pfsync_print(ndo, (struct pfsync_header *)p,
++	    caplen - sizeof(struct pfsync_header));
++out:
++	if (ndo->ndo_suppress_default_print)
++	    ND_DEFAULTPRINT((const u_char *)h, caplen);
++	//putchar('\n');
++}
++
++void
++pfsync_ip_print(netdissect_options *ndo, const u_char *bp, u_int len, const u_char *bp2 __unused)
++{
++	struct pfsync_header *hdr = (struct pfsync_header *)bp;
++
++	if (len < PFSYNC_HDRLEN)
++		printf("[|pfsync]");
++	else
++		pfsync_print(ndo, hdr, (len - sizeof(struct pfsync_header)));
++	//putchar('\n');
++}
++
++static void
++pfsync_print(netdissect_options *ndo, struct pfsync_header *hdr, int len)
++{
++	struct pfsync_state *s;
++	struct pfsync_state_upd *u;
++	struct pfsync_state_del *d;
++	struct pfsync_state_clr *c;
++	struct pfsync_state_upd_req *r;
++	struct pfsync_state_bus *b;
++	struct pfsync_tdb *t;
++	int i, flags = 0, min, sec;
++	u_int64_t id;
++
++	if (ndo->ndo_eflag)
++		printf("PFSYNCv%d count %d: ",
++		    hdr->version, hdr->count);
++
++	if (hdr->action < PFSYNC_ACT_MAX)
++		printf("%s %s:", (ndo->ndo_vflag == 0) ? "PFSYNC" : "", 
++				pfsync_acts[hdr->action]);
++	else
++		printf("%s %d?:", (ndo->ndo_vflag == 0) ? "PFSYNC" : "",
++				hdr->action);
++
++	if (!ndo->ndo_vflag) 
++		return;
++	if (ndo->ndo_vflag)
++		flags |= PF_OPT_VERBOSE;
++	if (ndo->ndo_vflag > 1)
++		flags |= PF_OPT_VERBOSE2;
++	if (!ndo->ndo_nflag)
++		flags |= PF_OPT_USEDNS;
++
++	switch (hdr->action) {
++	case PFSYNC_ACT_CLR:
++		if (sizeof(*c) <= len) {
++			c = (void *)((char *)hdr + PFSYNC_HDRLEN);
++			printf("\n\tcreatorid: %08x", htonl(c->creatorid));
++			if (c->ifname[0] != '\0')
++				printf(" interface: %s", c->ifname);
++		}
++	case PFSYNC_ACT_INS:
++	case PFSYNC_ACT_UPD:
++	case PFSYNC_ACT_DEL:
++		for (i = 1, s = (void *)((char *)hdr + PFSYNC_HDRLEN);
++		    i <= hdr->count && i * sizeof(*s) <= len; i++, s++) {
++
++			putchar('\n');
++			print_state(s, flags);
++			if (ndo->ndo_vflag > 1 && hdr->action == PFSYNC_ACT_UPD)
++				printf(" updates: %d", s->updates);
++		}
++		break;
++	case PFSYNC_ACT_UPD_C:
++		for (i = 1, u = (void *)((char *)hdr + PFSYNC_HDRLEN);
++		    i <= hdr->count && i * sizeof(*u) <= len; i++, u++) {
++			memcpy(&id, &u->id, sizeof(id));
++			printf("\n\tid: %" PRIu64 " creatorid: %08x",
++			    be64toh(id), ntohl(u->creatorid));
++			if (ndo->ndo_vflag > 1)
++				printf(" updates: %d", u->updates);
++		}
++		break;
++	case PFSYNC_ACT_DEL_C:
++		for (i = 1, d = (void *)((char *)hdr + PFSYNC_HDRLEN);
++		    i <= hdr->count && i * sizeof(*d) <= len; i++, d++) {
++			memcpy(&id, &d->id, sizeof(id));
++			printf("\n\tid: %" PRIu64 " creatorid: %08x",
++			    be64toh(id), ntohl(d->creatorid));
++		}
++		break;
++	case PFSYNC_ACT_UREQ:
++		for (i = 1, r = (void *)((char *)hdr + PFSYNC_HDRLEN);
++		    i <= hdr->count && i * sizeof(*r) <= len; i++, r++) {
++			memcpy(&id, &r->id, sizeof(id));
++			printf("\n\tid: %" PRIu64 " creatorid: %08x",
++			    be64toh(id), ntohl(r->creatorid));
++		}
++		break;
++	case PFSYNC_ACT_BUS:
++		if (sizeof(*b) <= len) {
++			b = (void *)((char *)hdr + PFSYNC_HDRLEN);
++			printf("\n\tcreatorid: %08x", htonl(b->creatorid));
++			sec = b->endtime % 60;
++			b->endtime /= 60;
++			min = b->endtime % 60;
++			b->endtime /= 60;
++			printf(" age %.2u:%.2u:%.2u", b->endtime, min, sec);
++			switch (b->status) {
++			case PFSYNC_BUS_START:
++				printf(" status: start");
++				break;
++			case PFSYNC_BUS_END:
++				printf(" status: end");
++				break;
++			default:
++				printf(" status: ?");
++				break;
++			}
++		}
++		break;
++	case PFSYNC_ACT_TDB_UPD:
++		for (i = 1, t = (void *)((char *)hdr + PFSYNC_HDRLEN);
++		    i <= hdr->count && i * sizeof(*t) <= len; i++, t++)
++			printf("\n\tspi: %08x rpl: %u cur_bytes: %" PRIu64,
++			    htonl(t->spi), htonl(t->rpl),
++			    be64toh(t->cur_bytes));
++			/* XXX add dst and sproto? */
++		break;
++	default:
++		break;
++	}
++}
+--- /dev/null
++++ pf_print_state.c
+@@ -0,0 +1,329 @@
++/*	$NetBSD: pf_print_state.c,v 1.1 2010/12/05 05:11:30 christos Exp $	*/
++/*	$OpenBSD: pf_print_state.c,v 1.45 2007/05/31 04:13:37 mcbride Exp $	*/
++
++/*
++ * Copyright (c) 2001 Daniel Hartmeier
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ *    - Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer.
++ *    - Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
++ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
++ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
++ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ *
++ */
++
++#include <sys/cdefs.h>
++#ifndef lint
++__RCSID("$NetBSD: pf_print_state.c,v 1.1 2010/12/05 05:11:30 christos Exp $");
++#endif
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++
++#include <sys/types.h>
++#include <sys/socket.h>
++#include <net/if.h>
++#define TCPSTATES
++#include <netinet/tcp_fsm.h>
++#include <net/pfvar.h>
++#include <arpa/inet.h>
++#include <netdb.h>
++
++#include <stdio.h>
++#include <string.h>
++
++#include "pfctl_parser.h"
++#include "pfctl.h"
++
++void	print_name(struct pf_addr *, sa_family_t);
++
++void
++print_addr(struct pf_addr_wrap *addr, sa_family_t af, int verbose)
++{
++	switch (addr->type) {
++	case PF_ADDR_DYNIFTL:
++		printf("(%s", addr->v.ifname);
++		if (addr->iflags & PFI_AFLAG_NETWORK)
++			printf(":network");
++		if (addr->iflags & PFI_AFLAG_BROADCAST)
++			printf(":broadcast");
++		if (addr->iflags & PFI_AFLAG_PEER)
++			printf(":peer");
++		if (addr->iflags & PFI_AFLAG_NOALIAS)
++			printf(":0");
++		if (verbose) {
++			if (addr->p.dyncnt <= 0)
++				printf(":*");
++			else
++				printf(":%d", addr->p.dyncnt);
++		}
++		printf(")");
++		break;
++	case PF_ADDR_TABLE:
++		if (verbose)
++			if (addr->p.tblcnt == -1)
++				printf("<%s:*>", addr->v.tblname);
++			else
++				printf("<%s:%d>", addr->v.tblname,
++				    addr->p.tblcnt);
++		else
++			printf("<%s>", addr->v.tblname);
++		return;
++	case PF_ADDR_ADDRMASK:
++		if (PF_AZERO(&addr->v.a.addr, AF_INET6) &&
++		    PF_AZERO(&addr->v.a.mask, AF_INET6))
++			printf("any");
++		else {
++			char buf[48];
++
++			if (inet_ntop(af, &addr->v.a.addr, buf,
++			    sizeof(buf)) == NULL)
++				printf("?");
++			else
++				printf("%s", buf);
++		}
++		break;
++	case PF_ADDR_NOROUTE:
++		printf("no-route");
++		return;
++	case PF_ADDR_URPFFAILED:
++		printf("urpf-failed");
++		return;
++	case PF_ADDR_RTLABEL:
++		printf("route \"%s\"", addr->v.rtlabelname);
++		return;
++	default:
++		printf("?");
++		return;
++	}
++
++	/* mask if not _both_ address and mask are zero */
++	if (!(PF_AZERO(&addr->v.a.addr, AF_INET6) &&
++	    PF_AZERO(&addr->v.a.mask, AF_INET6))) {
++		int bits = unmask(&addr->v.a.mask, af);
++
++		if (bits != (af == AF_INET ? 32 : 128))
++			printf("/%d", bits);
++	}
++}
++
++void
++print_name(struct pf_addr *addr, sa_family_t af)
++{
++	char host[NI_MAXHOST];
++
++	strlcpy(host, "?", sizeof(host));
++	switch (af) {
++	case AF_INET: {
++		struct sockaddr_in sin;
++
++		memset(&sin, 0, sizeof(sin));
++		sin.sin_len = sizeof(sin);
++		sin.sin_family = AF_INET;
++		sin.sin_addr = addr->v4;
++		getnameinfo((struct sockaddr *)&sin, sin.sin_len,
++		    host, sizeof(host), NULL, 0, NI_NOFQDN);
++		break;
++	}
++	case AF_INET6: {
++		struct sockaddr_in6 sin6;
++
++		memset(&sin6, 0, sizeof(sin6));
++		sin6.sin6_len = sizeof(sin6);
++		sin6.sin6_family = AF_INET6;
++		sin6.sin6_addr = addr->v6;
++		getnameinfo((struct sockaddr *)&sin6, sin6.sin6_len,
++		    host, sizeof(host), NULL, 0, NI_NOFQDN);
++		break;
++	}
++	}
++	printf("%s", host);
++}
++
++void
++print_host(struct pfsync_state_host *h, sa_family_t af, int opts)
++{
++	u_int16_t p = ntohs(h->port);
++
++	if (opts & PF_OPT_USEDNS)
++		print_name(&h->addr, af);
++	else {
++		struct pf_addr_wrap aw;
++
++		memset(&aw, 0, sizeof(aw));
++		aw.v.a.addr = h->addr;
++		if (af == AF_INET)
++			aw.v.a.mask.addr32[0] = 0xffffffff;
++		else {
++			memset(&aw.v.a.mask, 0xff, sizeof(aw.v.a.mask));
++			af = AF_INET6;
++		}
++		print_addr(&aw, af, opts & PF_OPT_VERBOSE2);
++	}
++
++	if (p) {
++		if (af == AF_INET)
++			printf(":%u", p);
++		else
++			printf("[%u]", p);
++	}
++}
++
++void
++print_seq(struct pfsync_state_peer *p)
++{
++	if (p->seqdiff)
++		printf("[%u + %u](+%u)", p->seqlo, p->seqhi - p->seqlo,
++		    p->seqdiff);
++	else
++		printf("[%u + %u]", p->seqlo, p->seqhi - p->seqlo);
++}
++
++void
++print_state(struct pfsync_state *s, int opts)
++{
++	struct pfsync_state_peer *src, *dst;
++	struct protoent *p;
++	int min, sec;
++
++	if (s->direction == PF_OUT) {
++		src = &s->src;
++		dst = &s->dst;
++	} else {
++		src = &s->dst;
++		dst = &s->src;
++	}
++	printf("%s ", s->ifname);
++	if ((p = getprotobynumber(s->proto)) != NULL)
++		printf("%s ", p->p_name);
++	else
++		printf("%u ", s->proto);
++	if (PF_ANEQ(&s->lan.addr, &s->gwy.addr, s->af) ||
++	    (s->lan.port != s->gwy.port)) {
++		print_host(&s->lan, s->af, opts);
++		if (s->direction == PF_OUT)
++			printf(" -> ");
++		else
++			printf(" <- ");
++	}
++	print_host(&s->gwy, s->af, opts);
++	if (s->direction == PF_OUT)
++		printf(" -> ");
++	else
++		printf(" <- ");
++	print_host(&s->ext, s->af, opts);
++
++	printf("    ");
++	if (s->proto == IPPROTO_TCP) {
++		if (src->state <= TCPS_TIME_WAIT &&
++		    dst->state <= TCPS_TIME_WAIT)
++			printf("   %s:%s\n", tcpstates[src->state],
++			    tcpstates[dst->state]);
++		else if (src->state == PF_TCPS_PROXY_SRC ||
++		    dst->state == PF_TCPS_PROXY_SRC)
++			printf("   PROXY:SRC\n");
++		else if (src->state == PF_TCPS_PROXY_DST ||
++		    dst->state == PF_TCPS_PROXY_DST)
++			printf("   PROXY:DST\n");
++		else
++			printf("   <BAD STATE LEVELS %u:%u>\n",
++			    src->state, dst->state);
++		if (opts & PF_OPT_VERBOSE) {
++			printf("   ");
++			print_seq(src);
++			if (src->wscale && dst->wscale)
++				printf(" wscale %u",
++				    src->wscale & PF_WSCALE_MASK);
++			printf("  ");
++			print_seq(dst);
++			if (src->wscale && dst->wscale)
++				printf(" wscale %u",
++				    dst->wscale & PF_WSCALE_MASK);
++			printf("\n");
++		}
++	} else if (s->proto == IPPROTO_UDP && src->state < PFUDPS_NSTATES &&
++	    dst->state < PFUDPS_NSTATES) {
++		const char *states[] = PFUDPS_NAMES;
++
++		printf("   %s:%s\n", states[src->state], states[dst->state]);
++	} else if (s->proto != IPPROTO_ICMP && src->state < PFOTHERS_NSTATES &&
++	    dst->state < PFOTHERS_NSTATES) {
++		/* XXX ICMP doesn't really have state levels */
++		const char *states[] = PFOTHERS_NAMES;
++
++		printf("   %s:%s\n", states[src->state], states[dst->state]);
++	} else {
++		printf("   %u:%u\n", src->state, dst->state);
++	}
++
++	if (opts & PF_OPT_VERBOSE) {
++		sec = s->creation % 60;
++		s->creation /= 60;
++		min = s->creation % 60;
++		s->creation /= 60;
++		printf("   age %.2u:%.2u:%.2u", s->creation, min, sec);
++		sec = s->expire % 60;
++		s->expire /= 60;
++		min = s->expire % 60;
++		s->expire /= 60;
++		printf(", expires in %.2u:%.2u:%.2u", s->expire, min, sec);
++		printf(", %llu:%llu pkts, %llu:%llu bytes",
++		    (unsigned long long)pf_state_counter_from_pfsync(s->packets[0]),
++		    (unsigned long long)pf_state_counter_from_pfsync(s->packets[1]),
++		    (unsigned long long)pf_state_counter_from_pfsync(s->bytes[0]),
++		    (unsigned long long)pf_state_counter_from_pfsync(s->bytes[1]));
++		if (s->anchor != -1)
++			printf(", anchor %u", s->anchor);
++		if (s->rule != -1)
++			printf(", rule %u", s->rule);
++		if (s->sync_flags & PFSYNC_FLAG_SRCNODE)
++			printf(", source-track");
++		if (s->sync_flags & PFSYNC_FLAG_NATSRCNODE)
++			printf(", sticky-address");
++		printf("\n");
++	}
++	if (opts & PF_OPT_VERBOSE2) {
++		printf("   id: %016llx creatorid: %08x%s\n",
++		    (unsigned long long int)pf_state_counter_from_pfsync(s->id),
++		    ntohl(s->creatorid),
++		    ((s->sync_flags & PFSTATE_NOSYNC) ? " (no-sync)" : ""));
++	}
++}
++
++int
++unmask(struct pf_addr *m, sa_family_t af)
++{
++	int i = 31, j = 0, b = 0;
++	u_int32_t tmp;
++
++	while (j < 4 && m->addr32[j] == 0xffffffff) {
++		b += 32;
++		j++;
++	}
++	if (j < 4) {
++		tmp = ntohl(m->addr32[j]);
++		for (i = 31; tmp & (1 << i); --i)
++			b++;
++	}
++	return (b);
++}
+--- /dev/null
++++ pf.h
+@@ -0,0 +1,78 @@
++
++/*
++ * Copyright (c) 2001 Daniel Hartmeier
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ *    - Redistributions of source code must retain the above copyright
++ *      notice, this list of conditions and the following disclaimer. 
++ *    - Redistributions in binary form must reproduce the above
++ *      copyright notice, this list of conditions and the following
++ *      disclaimer in the documentation and/or other materials provided
++ *      with the distribution. 
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
++ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
++ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
++ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
++ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
++ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ *
++ * @(#) Header: /tcpdump/master/tcpdump/pf.h,v 1.2 2004/04/02 06:36:25 guy Exp (LBL)
++ */
++
++/*	from $OpenBSD: pfvar.h,v 1.170 2003/08/22 21:50:34 david Exp $ */
++
++enum	{ PF_INOUT=0, PF_IN=1, PF_OUT=2 };
++enum	{ PF_PASS=0, PF_DROP=1, PF_SCRUB=2, PF_NAT=3, PF_NONAT=4,
++	  PF_BINAT=5, PF_NOBINAT=6, PF_RDR=7, PF_NORDR=8, PF_SYNPROXY_DROP=9 };
++
++/* Reasons code for passing/dropping a packet */
++#define PFRES_MATCH	0		/* Explicit match of a rule */
++#define PFRES_BADOFF	1		/* Bad offset for pull_hdr */
++#define PFRES_FRAG	2		/* Dropping following fragment */
++#define PFRES_SHORT	3		/* Dropping short packet */
++#define PFRES_NORM	4		/* Dropping by normalizer */
++#define PFRES_MEMORY	5		/* Dropped due to lacking mem */
++#define PFRES_MAX	6		/* total+1 */
++
++#define PFRES_NAMES { \
++	"match", \
++	"bad-offset", \
++	"fragment", \
++	"short", \
++	"normalize", \
++	"memory", \
++	NULL \
++}
++
++#define PF_RULESET_NAME_SIZE	16
++
++/*	from $OpenBSD: if_pflog.h,v 1.9 2003/07/15 20:27:27 dhartmei Exp $ */
++
++#ifndef IFNAMSIZ
++#define	IFNAMSIZ	16
++#endif
++
++struct pfloghdr {
++	u_int8_t	length;
++	u_int8_t	af;
++	u_int8_t	action;
++	u_int8_t	reason;
++	char		ifname[IFNAMSIZ];
++	char		ruleset[PF_RULESET_NAME_SIZE];
++	u_int32_t	rulenr;
++	u_int32_t	subrulenr;
++	u_int8_t	dir;
++	u_int8_t	pad[3];
++};
++#define PFLOG_HDRLEN		sizeof(struct pfloghdr)
