@@ -568,19 +568,27 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  .endif
 --- a/mk/pkginstall/bsd.pkginstall.mk
 +++ b/mk/pkginstall/bsd.pkginstall.mk
-@@ -1092,7 +1092,20 @@
+@@ -1092,7 +1092,28 @@
  FILES_SUBST+=		USERADD=${USERADD:Q}
  FILES_SUBST+=		XARGS=${XARGS:Q}
- 
+
 -FILES_SUBST_SED=	${FILES_SUBST:S/=/@!/:S/$/!g/:S/^/ -e s!@/}
 +# Package and rc.d scripts execute on the target, not under host bootstrap tools.
++# A native toolset selects host prefix tools for the build; use the base tools.
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
++_CROSS_MKDIR=	/bin/mkdir -p
 +_CROSS_FILES_SUBST= AWK=/usr/bin/awk SH=/bin/sh SED=/usr/bin/sed SORT=/usr/bin/sort \
 +	CHOWN=/usr/sbin/chown CHGRP=/usr/bin/chgrp \
 +	PKG_ADMIN=/usr/sbin/pkg_admin PKG_INFO=/usr/sbin/pkg_info \
 +	LINKFARM=/usr/sbin/linkfarm PERL5=${PREFIX}/bin/perl \
 +	GROUPADD=/usr/sbin/groupadd USERADD=/usr/sbin/useradd \
-+	RCD_SCRIPTS_SHELL=/bin/sh
++	RCD_SCRIPTS_SHELL=/bin/sh \
++	BASENAME=/usr/bin/basename CAT=/bin/cat CHMOD=/bin/chmod CMP=/usr/bin/cmp \
++	CP=/bin/cp DIRNAME=/usr/bin/dirname EGREP=/usr/bin/egrep EXPR=/bin/expr \
++	FIND=/usr/bin/find GREP=/usr/bin/grep HEAD=/usr/bin/head ID=/usr/bin/id \
++	LN=/bin/ln LS=/bin/ls MKDIR=${_CROSS_MKDIR:Q} MV=/bin/mv PWD_CMD=/bin/pwd \
++	RM=/bin/rm RMDIR=/bin/rmdir SETENV=/usr/bin/env TOUCH=/usr/bin/touch \
++	TR=/usr/bin/tr XARGS=/usr/bin/xargs
 +.else
 +_CROSS_FILES_SUBST=
 +.endif

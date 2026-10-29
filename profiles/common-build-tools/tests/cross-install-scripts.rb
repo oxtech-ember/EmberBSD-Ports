@@ -1,11 +1,13 @@
 #!/usr/bin/env ruby
 # SPDX-License-Identifier: BSD-2-Clause
-# Origin: EmberBSD (AI-assisted). Check serialized attr install helpers.
+# Origin: EmberBSD (AI-assisted). Check serialized package install helpers.
+# Every package: target tool paths in the scripts and their unpacked helpers.
+# attr: also the directory and configuration helper lifecycle.
 require 'digest'
 require 'fileutils'
 require 'open3'
 require 'shellwords'
-abort 'Usage: cross-install-scripts.rb ATTR_ARCHIVE NEW_OUTPUT' unless ARGV.length == 2
+abort 'Usage: cross-install-scripts.rb PACKAGE_ARCHIVE NEW_OUTPUT' unless ARGV.length == 2
 archive, output = ARGV.map { |path| File.expand_path(path) }
 File.umask(0o077)
 Dir.mkdir(output)
@@ -30,7 +32,7 @@ def target_script!(path)
 end
 begin
   contents = run!(tar, '-xOf', archive, '+CONTENTS').first
-  package = contents[/^@name (attr-\S+)$/, 1] or raise 'Expected an attr package'
+  package = contents[/^@name (\S+)$/, 1] or raise 'Expected a package name'
   raise 'Unexpected package prefix' unless contents.include?("@cwd /usr/pkg\n")
   metadata = File.join(output, 'pkgdb', package)
   prefix = File.join(output, 'prefix')
@@ -47,7 +49,16 @@ begin
           'PKG_REFCOUNT_DBDIR' => File.join(output, 'refcount'), 'LC_ALL' => 'C' }
   run!(env, '/bin/sh', './+INSTALL', package, 'UNPACK', '+DIRS', chdir: metadata)
   run!(env, '/bin/sh', './+INSTALL', package, 'UNPACK', '+FILES', chdir: metadata)
-  %w[+DIRS +FILES].each { |name| target_script!(File.join(metadata, name)) }
+  attr = package.start_with?('attr-')
+  %w[+DIRS +FILES].each do |name|
+    path = File.join(metadata, name)
+    # attr carries both helpers; another package unpacks only those it uses.
+    target_script!(path) if attr || File.exist?(path)
+  end
+  unless attr
+    puts "PASS: serialized target tools in #{package}"
+    exit
+  end
   dirs = File.readlines(File.join(metadata, '+DIRS')).grep(/^# DIR: /).map { |line| line.delete_prefix('# DIR: ').split }
   files = File.readlines(File.join(metadata, '+FILES')).grep(/^# FILE: /).map { |line| line.delete_prefix('# FILE: ').split }
   # Restrict this host execution to the known fixture's relative, unprivileged data.
