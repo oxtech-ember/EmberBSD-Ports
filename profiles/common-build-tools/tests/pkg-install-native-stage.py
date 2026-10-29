@@ -42,16 +42,19 @@ with tempfile.TemporaryDirectory(prefix='pkg-add-native-stage-', dir=args.work_d
         path = work / (name + '.tgz')
         run([args.archive_tool, '-czf', path, '-C', source, '-T', listing])
         return path
+    framework = archive('framework', original +
+                        'REQUIRES=/System/Library/Frameworks/Foundation.framework/Versions/C/Foundation\n')
     foreign = archive('foreign', original.replace('OPSYS=Darwin\n', 'OPSYS=NetBSD\n')
                       .replace(match.group(0), 'MACHINE_ARCH=x86_64'))
     missing = archive('missing', original.replace(match.group(0) + '\n', ''))
-    for name in ('plain', 'native', 'foreign', 'missing'):
+    for name in ('plain', 'native', 'framework', 'foreign', 'missing'):
         (work / name).mkdir()
     common = ['-K', args.host_prefix / 'pkgdb']
     assert 'missing required library' in run([args.pkg_add, *common, '-P', work / 'plain', args.package], False)
     run([args.pkg_add, *common, '-S', '-P', work / 'native', args.package])
     assert (work / 'native' / str(args.host_prefix).lstrip('/') /
             'lib/libc++/libc++_ember1.1.dylib').exists()
+    run([args.pkg_add, *common, '-S', '-P', work / 'framework', framework])
     foreign_platform = 'NetBSD/x86_64 27.0.0'
     assert 'missing required library' in run([args.pkg_add, *common, '-S', '-P', work / 'foreign',
                                               '-m', foreign_platform, foreign], False)
