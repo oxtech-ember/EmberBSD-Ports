@@ -15,5 +15,6 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 [ -z "$(git -C "$root" status --porcelain --untracked-files=no -- pkgsrc profiles scripts)" ] ||
     { echo "pre-push: commit or stash tracked changes first; the export uses the checkout" >&2; exit 1; }
 "$PY" -B "$root/scripts/tests/export-conf-history.py" --root "$root" "$1" HEAD
+sh "$root/scripts/tests/recipe-host-variables.sh"
 sh "$root/scripts/tests/export-composition.sh" "$2"
 echo "PASS: pre-push export checks"
