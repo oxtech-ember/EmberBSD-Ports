@@ -14,6 +14,11 @@ TEST_TARGET= test
 # CMake discovers tests from the build tree before installation.
 BUILDLINK_PASSTHRU_RPATHDIRS+= ${WRKDIR}/${DISTNAME}/cmake-pkgsrc-build/src
 .include "../../mk/bsd.prefs.mk"
+.include "../../mk/emberbsd-native-cxx-runtime.mk"
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
+PKGREVISION= 2
+.endif
+
 .if ${OPSYS} == "Darwin"
 NBYTES_LIB= libnbytes.dylib
 .else
