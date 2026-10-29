@@ -1,0 +1,33 @@
+$NetBSD: patch-af,v 1.2 2025/04/29 14:18:00 tnn Exp $
+
+--- scaffold.c.orig	1999-10-27 13:27:22.000000000 +0000
++++ scaffold.c
+@@ -20,13 +20,12 @@ static char sccs_id[] = "@(#) scaffold.c
+ #include <syslog.h>
+ #include <setjmp.h>
+ #include <string.h>
++#include <stdlib.h>
+ 
+ #ifndef INADDR_NONE
+ #define	INADDR_NONE	(-1)		/* XXX should be 0xffffffff */
+ #endif
+ 
+-extern char *malloc();
+-
+ /* Application-specific. */
+ 
+ #include "tcpd.h"
+@@ -180,11 +179,13 @@ struct request_info *request;
+ 
+ /* ARGSUSED */
+ 
++#if 0
+ void    rfc931(request)
+ struct request_info *request;
+ {
+     strcpy(request->user, unknown);
+ }
++#endif
+ 
+ /* check_path - examine accessibility */
+ 

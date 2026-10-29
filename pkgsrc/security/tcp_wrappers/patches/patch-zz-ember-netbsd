@@ -1,0 +1,5694 @@
+Preserve the maintained NetBSD implementation for both native and package consumers.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- Makefile.orig
++++ Makefile
+@@ -130,6 +130,12 @@
+ 	LIBS= RANLIB=ranlib ARFLAGS=rv AUX_OBJ=environ.o \
+ 	NETGROUP=-DNETGROUP TLI= SYSTYPE="-systype bsd43" all
+ 
++# NetBSD uses the maintained native implementation for base and pkgsrc.
++emberbsd_netbsd:
++	@$(MAKE) REAL_DAEMON_DIR=$(REAL_DAEMON_DIR) STYLE=$(STYLE) \
++	LIBS=-lblocklist LIBWRAP_LIBS=-lblocklist LIBWRAP_VERSION=8:0:0 RANLIB=ranlib ARFLAGS=rv \
++	AUX_OBJ=expandm.o NETGROUP= TLI= EXTRA_CFLAGS="-DUSE_STRERROR -DSYS_ERRLIST_DEFINED" VSYSLOG= all
++
+ # Freebsd and linux by default have no NIS.
+ 386bsd netbsd bsdos:
+ 	@make REAL_DAEMON_DIR=$(REAL_DAEMON_DIR) STYLE=$(STYLE) \
+@@ -698,6 +704,7 @@
+ 	scaffold.h tcpdmatch.8 README.NIS
+ 
+ LIB	= libwrap.la
++LIBWRAP_VERSION = 7:6
+ 
+ all other: config-check tcpd tcpdmatch try-from safe_finger tcpdchk
+ 
+@@ -714,7 +721,7 @@
+ cflags: config-check
+ 
+ $(LIB):	$(LIB_OBJ)
+-	${LIBTOOL} --mode=link $(CC) $(LDFLAGS) -o $@ $(LIB_OBJ:.o=.lo) -rpath $(PREFIX)/lib -version-info 7:6
++	${LIBTOOL} --mode=link $(CC) $(LDFLAGS) -o $@ $(LIB_OBJ:.o=.lo) -rpath $(PREFIX)/lib -version-info $(LIBWRAP_VERSION) $(LIBWRAP_LIBS)
+ 
+ tcpd:	tcpd.o $(LIB)
+ 	$(LIBTOOL) --mode=link $(CC) $(CFLAGS) $(LDFLAGS) -o $@ tcpd.o $(LIB) $(LIBS)
+--- clean_exit.c.orig
++++ clean_exit.c
+@@ -1,3 +1,55 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: clean_exit.c,v 1.5 2012/03/21 10:10:37 matt Exp $	*/
++
++ /*
++  * clean_exit() cleans up and terminates the program. It should be called
++  * instead of exit() when for some reason the real network daemon will not or
++  * cannot be run. Reason: in the case of a datagram-oriented service we must
++  * discard the not-yet received data from the client. Otherwise, inetd will
++  * see the same datagram again and again, and go into a loop.
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#include <sys/cdefs.h>
++#ifndef lint
++#if 0
++static char sccsid[] = "@(#) clean_exit.c 1.4 94/12/28 17:42:19";
++#else
++__RCSID("$NetBSD: clean_exit.c,v 1.5 2012/03/21 10:10:37 matt Exp $");
++#endif
++#endif
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <unistd.h>
++
++#include "tcpd.h"
++
++/* clean_exit - clean up and exit */
++
++void
++clean_exit(struct request_info *request)
++{
++
++    /*
++     * In case of unconnected protocols we must eat up the not-yet received
++     * data or inetd will loop.
++     */
++
++    if (request->sink)
++	request->sink(request->fd);
++
++    /*
++     * Be kind to the inetd. We already reported the problem via the syslogd,
++     * and there is no need for additional garbage in the logfile.
++     */
++
++    sleep(5);
++    exit(0);
++}
++
++#else /* non-NetBSD pkgsrc implementations */
+  /*
+   * clean_exit() cleans up and terminates the program. It should be called
+   * instead of exit() when for some reason the real network daemon will not or
+@@ -41,3 +93,5 @@
+     sleep(5);
+     exit(0);
+ }
++
++#endif
+--- diag.c.orig
++++ diag.c
+@@ -1,3 +1,95 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: diag.c,v 1.18 2024/02/09 22:08:31 andvar Exp $	*/
++
++ /*
++  * Routines to report various classes of problems. Each report is decorated
++  * with the current context (file name and line number), if available.
++  * 
++  * tcpd_warn() reports a problem and proceeds.
++  * 
++  * tcpd_jump() reports a problem and jumps.
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#include <sys/cdefs.h>
++#ifndef lint
++#if 0
++static char sccsid[] = "@(#) diag.c 1.1 94/12/28 17:42:20";
++#else
++__RCSID("$NetBSD: diag.c,v 1.18 2024/02/09 22:08:31 andvar Exp $");
++#endif
++#endif
++
++/* System libraries */
++
++#include <syslog.h>
++#include <stdarg.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <setjmp.h>
++#include <string.h>
++#include <errno.h>
++
++/* Local stuff */
++
++#include "tcpd.h"
++#include "expandm.h"
++
++struct tcpd_context tcpd_context;
++jmp_buf tcpd_buf;
++
++static void tcpd_diag(int, const char *, const char *, va_list)
++    __sysloglike(3,0);
++
++/* tcpd_diag - centralize error reporter */
++
++static void
++tcpd_diag(int severity, const char *tag, const char *fmt, va_list ap)
++{
++    char *buf, *bufx;
++
++    if (vasprintf(&buf, expandm(fmt, NULL, &bufx), ap) == -1)
++	buf = __UNCONST(fmt);
++    free(bufx);
++
++    /* construct the tag for the log entry */
++    if (tcpd_context.file)
++	syslog(severity, "%s: %s, line %d: %s",
++	    tag, tcpd_context.file, tcpd_context.line, buf);
++    else
++	syslog(severity, "%s: %s", tag, buf);
++
++    if (buf != fmt)
++	free(buf);
++}
++
++/* tcpd_warn - report problem of some sort and proceed */
++
++void
++tcpd_warn(const char *format, ...)
++{
++    va_list ap;
++
++    va_start(ap, format);
++    tcpd_diag(LOG_ERR, "warning", format, ap);
++    va_end(ap);
++}
++
++/* tcpd_jump - report serious problem and jump */
++
++void
++tcpd_jump(const char *format, ...)
++{
++    va_list ap;
++
++    va_start(ap, format);
++    tcpd_diag(LOG_ERR, "error", format, ap);
++    va_end(ap);
++    longjmp(tcpd_buf, AC_ERROR);
++}
++
++#else /* non-NetBSD pkgsrc implementations */
+  /*
+   * Routines to report various classes of problems. Each report is decorated
+   * with the current context (file name and line number), if available.
+@@ -71,3 +163,5 @@
+     VAEND(ap);
+     longjmp(tcpd_buf, AC_ERROR);
+ }
++
++#endif
+--- eval.c.orig
++++ eval.c
+@@ -1,3 +1,6 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: eval.c,v 1.7 2012/03/21 10:10:37 matt Exp $	*/
++
+  /*
+   * Routines for controlled evaluation of host names, user names, and so on.
+   * They are, in fact, wrappers around the functions that are specific for
+@@ -18,8 +21,13 @@
+   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
+   */
+ 
++#include <sys/cdefs.h>
+ #ifndef lint
++#if 0
+ static char sccsid[] = "@(#) eval.c 1.3 95/01/30 19:51:45";
++#else
++__RCSID("$NetBSD: eval.c,v 1.7 2012/03/21 10:10:37 matt Exp $");
++#endif
+ #endif
+ 
+ /* System libraries. */
+@@ -42,6 +50,144 @@
+ 
+ /* eval_user - look up user name */
+ 
++char   *
++eval_user(struct request_info *request)
++{
++    if (request->user[0] == 0) {
++	(void)strlcpy(request->user, unknown, sizeof(request->user));
++	if (request->sink == 0 && request->client->sin && request->server->sin)
++	    rfc931(request->client->sin, request->server->sin, request->user);
++    }
++    return (request->user);
++}
++
++/* eval_hostaddr - look up printable address */
++
++char   *
++eval_hostaddr(struct host_info *host)
++{
++    if (host->addr[0] == 0) {
++	(void)strlcpy(host->addr, unknown, sizeof(host->addr));
++	if (host->request->hostaddr != 0)
++	    host->request->hostaddr(host);
++    }
++    return (host->addr);
++}
++
++/* eval_hostname - look up host name */
++
++char   *
++eval_hostname(struct host_info *host)
++{
++    if (host->name[0] == 0) {
++	(void)strlcpy(host->name, unknown, sizeof(host->name));
++	if (host->request->hostname != 0)
++	    host->request->hostname(host);
++    }
++    return (host->name);
++}
++
++/* eval_hostinfo - return string with host name (preferred) or address */
++
++char   *
++eval_hostinfo(struct host_info *host)
++{
++    char   *hostname;
++
++#ifndef ALWAYS_HOSTNAME				/* no implicit host lookups */
++    if (host->name[0] == 0)
++	return (eval_hostaddr(host));
++#endif
++    hostname = eval_hostname(host);
++    if (HOSTNAME_KNOWN(hostname)) {
++	return (host->name);
++    } else {
++	return (eval_hostaddr(host));
++    }
++}
++
++/* eval_client - return string with as much about the client as we know */
++
++char   *
++eval_client(struct request_info *request)
++{
++    static char both[2 * STRING_LENGTH];
++    char   *hostinfo = eval_hostinfo(request->client);
++
++#ifndef ALWAYS_RFC931				/* no implicit user lookups */
++    if (request->user[0] == 0)
++	return (hostinfo);
++#endif
++    if (STR_NE(eval_user(request), unknown)) {
++	(void)snprintf(both, sizeof both, "%s@%s", request->user, hostinfo);
++	return (both);
++    } else {
++	return (hostinfo);
++    }
++}
++
++/* eval_server - return string with as much about the server as we know */
++
++char   *
++eval_server(struct request_info *request)
++{
++    static char both[2 * STRING_LENGTH];
++    char   *host = eval_hostinfo(request->server);
++    char   *daemon = eval_daemon(request);
++
++    if (STR_NE(host, unknown)) {
++	(void)snprintf(both, sizeof both, "%s@%s", daemon, host);
++	return (both);
++    } else {
++	return (daemon);
++    }
++}
++
++#else /* non-NetBSD pkgsrc implementations */
++ /*
++  * Routines for controlled evaluation of host names, user names, and so on.
++  * They are, in fact, wrappers around the functions that are specific for
++  * the sockets or TLI programming interfaces. The request_info and host_info
++  * structures are used for result cacheing.
++  * 
++  * These routines allows us to postpone expensive operations until their
++  * results are really needed. Examples are hostname lookups and double
++  * checks, or username lookups. Information that cannot be retrieved is
++  * given the value "unknown" ("paranoid" in case of hostname problems).
++  * 
++  * When ALWAYS_HOSTNAME is off, hostname lookup is done only when required by
++  * tcpd paranoid mode, by access control patterns, or by %letter expansions.
++  * 
++  * When ALWAYS_RFC931 mode is off, user lookup is done only when required by
++  * access control patterns or %letter expansions.
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#ifndef lint
++static char sccsid[] = "@(#) eval.c 1.3 95/01/30 19:51:45";
++#endif
++
++/* System libraries. */
++
++#include <stdio.h>
++#include <string.h>
++
++/* Local stuff. */
++
++#include "tcpd.h"
++
++ /*
++  * When a string has the value STRING_UNKNOWN, it means: don't bother, I
++  * tried to look up the data but it was unavailable for some reason. When a
++  * host name has the value STRING_PARANOID it means there was a name/address
++  * conflict.
++  */
++char    unknown[] = STRING_UNKNOWN;
++char    paranoid[] = STRING_PARANOID;
++
++/* eval_user - look up user name */
++
+ char   *eval_user(request)
+ struct request_info *request;
+ {
+@@ -134,3 +280,5 @@
+ 	return (daemon);
+     }
+ }
++
++#endif
+--- /dev/null
++++ expandm.c
+@@ -0,0 +1,129 @@
++/*	$NetBSD: expandm.c,v 1.13 2024/10/04 08:37:20 rillig Exp $	*/
++
++/*-
++ * Copyright (c) 2019 The NetBSD Foundation, Inc.
++ * All rights reserved.
++ *
++ * This code is derived from software contributed to The NetBSD Foundation
++ * by Christos Zoulas.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
++ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
++ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
++ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ */
++#include <sys/cdefs.h>
++__RCSID("$NetBSD: expandm.c,v 1.13 2024/10/04 08:37:20 rillig Exp $");
++
++#include <limits.h>
++#include <stdio.h>
++#include <string.h>
++#include <stdlib.h>
++#include <errno.h>
++
++#include "expandm.h"
++
++#ifdef TEST
++#undef INT_MAX
++#define INT_MAX 31
++#endif
++
++
++const char * __attribute__((__format_arg__(1)))
++expandm(const char *fmt, const char *sf, char **rbuf)
++{
++	const int err = errno;
++	const char *e = NULL;
++	char *buf, *nbuf;
++	const char *ptr, *m;
++
++	buf = NULL;
++	for (ptr = fmt; (m = strstr(ptr, "%m")) != NULL; ptr = m + 2) {
++		size_t cnt = 0;
++		size_t nlen;
++
++		for (const char *p = m; p >= ptr && *p == '%'; p--)
++			cnt++;
++
++		nlen = (size_t)(m - ptr);
++		/*
++		 * we can't exceed INT_MAX because int is used as 
++		 * a format width
++		 */
++		if (__predict_false(nlen >= INT_MAX)) {
++			size_t blen = buf ? strlen(buf) : 0;
++			size_t tlen;
++
++			/*
++			 * if we would overflow a ptrdiff_t when computing
++			 * tlen, then don't bother.  The format string is
++			 * simply too large to be converted.
++			 */
++			if (blen >= PTRDIFF_MAX ||
++			    nlen >= PTRDIFF_MAX - blen ||
++			    nlen >= SIZE_T_MAX - blen)
++				goto out;
++
++			tlen = nlen + blen;
++
++			nbuf = realloc(buf, tlen + 1);
++			if (nbuf == NULL)
++				goto out;
++
++			memcpy(nbuf + blen, ptr, nlen);
++			nbuf[tlen] = '\0';
++			ptr += nlen;
++			buf = nbuf;
++		}
++
++		if (__predict_true(e == NULL && (cnt & 1) != 0))
++			e = strerror(err);
++		if (asprintf(&nbuf, "%s%.*s%s", buf ? buf : "",
++		    (int)(m - ptr), ptr, (cnt & 1) ? e : "%m") == -1)
++			goto out;
++		free(buf);
++		buf = nbuf;
++	}
++
++	if (asprintf(&nbuf, "%s%s%s", buf ? buf : "", ptr, sf ? sf : "") == -1)
++		goto out;
++
++	free(buf);
++	if (rbuf)
++		*rbuf = nbuf;
++	errno = err;
++	return nbuf;
++out:
++	free(buf);
++	if (rbuf)
++		*rbuf = NULL;
++	errno = err;
++	return fmt;
++}
++
++#ifdef TEST
++int
++main(int argc, char *argv[])
++{
++	errno = ERANGE;
++	printf("%s\n", expandm(argc > 1 ? argv[1] : "Message %%m=%m: %%%m%%",
++	    "...", NULL));
++	return 0;
++}
++#endif
+--- /dev/null
++++ expandm.h
+@@ -0,0 +1,36 @@
++/*	$NetBSD: expandm.h,v 1.3 2019/01/12 22:14:08 kre Exp $	*/
++
++/*-
++ * Copyright (c) 2018 The NetBSD Foundation, Inc.
++ * All rights reserved.
++ *
++ * This code is derived from software contributed to The NetBSD Foundation
++ * by Christos Zoulas.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
++ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
++ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
++ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ */
++#include <sys/cdefs.h>
++
++__BEGIN_DECLS
++const char * __attribute__((__format_arg__(1))) expandm(const char *,
++    const char *, char **);
++__END_DECLS
+--- fix_options.c.orig
++++ fix_options.c
+@@ -1,3 +1,152 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: fix_options.c,v 1.11 2012/03/21 10:10:37 matt Exp $	*/
++
++ /*
++  * Routine to disable IP-level socket options. This code was taken from 4.4BSD
++  * rlogind and kernel source, but all mistakes in it are my fault.
++  *
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#include <sys/cdefs.h>
++#ifndef lint
++#if 0
++static char sccsid[] = "@(#) fix_options.c 1.6 97/04/08 02:29:19";
++#else
++__RCSID("$NetBSD: fix_options.c,v 1.11 2012/03/21 10:10:37 matt Exp $");
++#endif
++#endif
++
++#include <sys/types.h>
++#include <sys/param.h>
++#include <sys/socket.h>
++#include <netinet/in.h>
++#include <netinet/in_systm.h>
++#include <netinet/ip.h>
++#include <netdb.h>
++#include <stdio.h>
++#include <syslog.h>
++#include <stdlib.h>
++#include <unistd.h>
++
++#ifndef IPOPT_OPTVAL
++#define IPOPT_OPTVAL	0
++#define IPOPT_OLEN	1
++#endif
++
++#include "tcpd.h"
++
++#define BUFFER_SIZE	512		/* Was: BUFSIZ */
++
++/* fix_options - get rid of IP-level socket options */
++
++void
++fix_options(struct request_info *request)
++{
++#ifdef IP_OPTIONS
++    unsigned char optbuf[BUFFER_SIZE / 3], *cp;
++    char    lbuf[BUFFER_SIZE], *lp;
++    int     ipproto;
++    socklen_t optsize = sizeof(optbuf);
++    struct protoent *ip;
++    int     fd = request->fd;
++    int     len = sizeof lbuf;
++    unsigned int opt;
++    int     optlen;
++    struct in_addr dummy;
++    struct sockaddr_storage ss;
++    socklen_t sslen;
++
++    /*
++     * check if this is AF_INET socket
++     * XXX IPv6 support?
++     */
++    sslen = sizeof(ss);
++    if (getsockname(fd, (struct sockaddr *)(void *)&ss, &sslen) < 0) {
++	syslog(LOG_ERR, "getsockname: %m");
++	clean_exit(request);
++    }
++    if (ss.ss_family != AF_INET)
++	return;
++  
++    if ((ip = getprotobyname("ip")) != 0)
++	ipproto = ip->p_proto;
++    else
++	ipproto = IPPROTO_IP;
++
++    if (getsockopt(fd, ipproto, IP_OPTIONS, optbuf, &optsize) == 0
++	&& optsize != 0) {
++
++	/*
++	 * Horror! 4.[34] BSD getsockopt() prepends the first-hop destination
++	 * address to the result IP options list when source routing options
++	 * are present (see <netinet/ip_var.h>), but produces no output for
++	 * other IP options. Solaris 2.x getsockopt() does produce output for
++	 * non-routing IP options, and uses the same format as BSD even when
++	 * the space for the destination address is unused. The code below
++	 * does the right thing with 4.[34]BSD derivatives and Solaris 2, but
++	 * may occasionally miss source routing options on incompatible
++	 * systems such as Linux. Their choice.
++	 * 
++	 * Look for source routing options. Drop the connection when one is
++	 * found. Just wiping the IP options is insufficient: we would still
++	 * help the attacker by providing a real TCP sequence number, and the
++	 * attacker would still be able to send packets (blind spoofing). I
++	 * discussed this attack with Niels Provos, half a year before the
++	 * attack was described in open mailing lists.
++	 * 
++	 * It would be cleaner to just return a yes/no reply and let the caller
++	 * decide how to deal with it. Resident servers should not terminate.
++	 * However I am not prepared to make changes to internal interfaces
++	 * on short notice.
++	 */
++#define ADDR_LEN sizeof(dummy.s_addr)
++
++	for (cp = optbuf + ADDR_LEN; cp < optbuf + optsize; cp += optlen) {
++	    opt = cp[IPOPT_OPTVAL];
++	    if (opt == IPOPT_LSRR || opt == IPOPT_SSRR) {
++		syslog(LOG_WARNING,
++		   "refused connect from %s with IP source routing options",
++		       eval_client(request));
++		shutdown(fd, 2);
++		return;
++	    }
++	    if (opt == IPOPT_EOL)
++		break;
++	    if (opt == IPOPT_NOP) {
++		optlen = 1;
++	    } else if (&cp[IPOPT_OLEN] < optbuf + optsize) {
++		optlen = cp[IPOPT_OLEN];
++		if (optlen < 2 || cp + optlen >= optbuf + optsize) {
++		    syslog(LOG_WARNING,
++		       "refused connect from %s with malformed IP options",
++			   eval_client(request));
++		    shutdown(fd, 2);
++		    return;
++		}
++	    } else {
++		syslog(LOG_WARNING,
++		   "refused connect from %s with malformed IP options",
++		       eval_client(request));
++		shutdown(fd, 2);
++		return;
++	    }
++	}
++	lp = lbuf;
++	for (cp = optbuf; optsize > 0; cp++, optsize--, lp += 3)
++	    len -= snprintf(lp, len, " %2.2x", *cp);
++	syslog(LOG_NOTICE,
++	       "connect from %s with IP options (ignored):%s",
++	       eval_client(request), lbuf);
++	if (setsockopt(fd, ipproto, IP_OPTIONS, (char *) 0, optsize) != 0) {
++	    syslog(LOG_ERR, "setsockopt IP_OPTIONS NULL: %m");
++	    shutdown(fd, 2);
++	}
++    }
++#endif
++}
++
++#else /* non-NetBSD pkgsrc implementations */
+  /*
+   * Routine to disable IP-level socket options. This code was taken from 4.4BSD
+   * rlogind and kernel source, but all mistakes in it are my fault.
+@@ -107,3 +256,5 @@
+     }
+ #endif
+ }
++
++#endif
+--- hosts_access.c.orig
++++ hosts_access.c
+@@ -1,3 +1,6 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: hosts_access.c,v 1.24 2021/03/18 01:49:09 christos Exp $	*/
++
+  /*
+   * This module implements a simple access control language that is based on
+   * host (or domain) names, NIS (host) netgroup names, IP addresses (or
+@@ -17,6 +20,602 @@
+   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
+   */
+ 
++#include <sys/cdefs.h>
++#ifndef lint
++#if 0
++static char sccsid[] = "@(#) hosts_access.c 1.21 97/02/12 02:13:22";
++#else
++__RCSID("$NetBSD: hosts_access.c,v 1.24 2021/03/18 01:49:09 christos Exp $");
++#endif
++#endif
++
++/* System libraries. */
++
++#include <sys/types.h>
++#include <sys/param.h>
++#ifdef INET6
++#include <sys/socket.h>
++#endif
++#include <netinet/in.h>
++#include <arpa/inet.h>
++#include <blocklist.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <syslog.h>
++#include <ctype.h>
++#include <errno.h>
++#include <setjmp.h>
++#include <string.h>
++#include <netdb.h>
++#ifdef  NETGROUP
++#include <netgroup.h>
++#include <rpcsvc/ypclnt.h>
++#endif
++
++/* Local stuff. */
++
++#include "tcpd.h"
++
++/* Error handling. */
++
++extern jmp_buf tcpd_buf;
++
++/* Delimiters for lists of daemons or clients. */
++
++static char sep[] = ", \t\r\n";
++
++/* Constants to be used in assignments only, not in comparisons... */
++
++#define	YES		1
++#define	NO		0
++
++ /*
++  * These variables are globally visible so that they can be redirected in
++  * verification mode.
++  */
++
++const char   *hosts_allow_table = HOSTS_ALLOW;
++const char   *hosts_deny_table = HOSTS_DENY;
++int     hosts_access_verbose = 0;
++
++ /*
++  * In a long-running process, we are not at liberty to just go away.
++  */
++
++int     resident = (-1);		/* -1, 0: unknown; +1: yes */
++
++/* Forward declarations. */
++
++static int table_match(const char *, struct request_info *);
++static int list_match(char *, struct request_info *,
++    int (*)(char *, struct request_info *));
++static int server_match(char *, struct request_info *);
++static int client_match(char *, struct request_info *);
++static int host_match(char *, struct host_info *);
++static int hostfile_match(char *, struct host_info *);
++static int rbl_match(char *, char *);
++static int string_match(char *, char *);
++static int masked_match(char *, char *, char *);
++static int masked_match4(char *, char *, char *);
++#ifdef INET6
++static int masked_match6(char *, char *, char *);
++#endif
++
++/* Size of logical line buffer. */
++
++#define	BUFLEN 2048
++
++static void
++pfilter_notify(struct request_info *request, int b)
++{
++    static struct blocklist *blstate;
++    int fd = request->fd != -1 ? request->fd : 3;
++
++    if (blstate == NULL) {
++	blstate = blocklist_open();
++    }
++    if (request->client->sin != NULL) {
++	    blocklist_sa_r(blstate, b, fd, request->client->sin,
++		request->client->sin->sa_len, request->daemon);
++    } else {
++	    blocklist_r(blstate, b, fd, request->daemon);
++    }
++}
++
++/* hosts_access - host access control facility */
++
++int
++hosts_access(struct request_info *request)
++{
++    int     verdict;
++
++    /*
++     * If the (daemon, client) pair is matched by an entry in the file
++     * /etc/hosts.allow, access is granted. Otherwise, if the (daemon,
++     * client) pair is matched by an entry in the file /etc/hosts.deny,
++     * access is denied. Otherwise, access is granted. A non-existent
++     * access-control file is treated as an empty file.
++     * 
++     * After a rule has been matched, the optional language extensions may
++     * decide to grant or refuse service anyway. Or, while a rule is being
++     * processed, a serious error is found, and it seems better to play safe
++     * and deny service. All this is done by jumping back into the
++     * hosts_access() routine, bypassing the regular return from the
++     * table_match() function calls below.
++     */
++
++    if (resident <= 0)
++	resident++;
++    verdict = setjmp(tcpd_buf);
++    if (verdict != 0) {
++	if (verdict != AC_PERMIT)
++	    pfilter_notify(request, BLOCKLIST_AUTH_FAIL);
++	/* XXX pfilter_notify(0)??? */
++	return (verdict == AC_PERMIT);
++    }
++    if (table_match(hosts_allow_table, request)) {
++	/* XXX pfilter_notify(0)??? */
++	return (YES);
++    }
++    if (table_match(hosts_deny_table, request)) {
++	pfilter_notify(request, BLOCKLIST_AUTH_FAIL);
++	return (NO);
++    }
++    /* XXX pfilter_notify(0)??? */
++    return (YES);
++}
++
++/* table_match - match table entries with (daemon, client) pair */
++
++static int
++table_match(const char *table, struct request_info *request)
++{
++    FILE   *fp;
++    char    sv_list[BUFLEN];		/* becomes list of daemons */
++    char   *cl_list;			/* becomes list of clients */
++    char   *sh_cmd = NULL;		/* becomes optional shell command */
++    int     match = NO;
++    struct tcpd_context saved_context;
++
++    saved_context = tcpd_context;		/* stupid compilers */
++
++    /*
++     * Between the fopen() and fclose() calls, avoid jumps that may cause
++     * file descriptor leaks.
++     */
++
++    if ((fp = fopen(table, "r")) != 0) {
++	tcpd_context.file = table;
++	tcpd_context.line = 0;
++	while (match == NO && xgets(sv_list, sizeof(sv_list), fp) != 0) {
++	    if (sv_list[strlen(sv_list) - 1] != '\n') {
++		tcpd_warn("missing newline or line too long");
++		continue;
++	    }
++	    if (sv_list[0] == '#' || sv_list[strspn(sv_list, " \t\r\n")] == 0)
++		continue;
++	    if ((cl_list = split_at(sv_list, ':')) == 0) {
++		tcpd_warn("missing \":\" separator");
++		continue;
++	    }
++	    sh_cmd = split_at(cl_list, ':');
++	    match = list_match(sv_list, request, server_match)
++		&& list_match(cl_list, request, client_match);
++	}
++	(void) fclose(fp);
++    } else if (errno != ENOENT) {
++	tcpd_warn("cannot open %s: %m", table);
++    }
++    if (match) {
++	if (hosts_access_verbose > 1)
++	    syslog(LOG_DEBUG, "matched:  %s line %d",
++		   tcpd_context.file, tcpd_context.line);
++	if (sh_cmd) {
++#ifdef PROCESS_OPTIONS
++	    process_options(sh_cmd, request);
++#else
++	    char    cmd[BUFSIZ];
++	    shell_cmd(percent_x(cmd, sizeof(cmd), sh_cmd, request));
++#endif
++	}
++    }
++    tcpd_context = saved_context;
++    return (match);
++}
++
++/* list_match - match a request against a list of patterns with exceptions */
++
++static int
++list_match(char *list, struct request_info *request,
++    int (*match_fn)(char *, struct request_info *))
++{
++    char   *tok;
++    static char *last;
++    int l;
++
++    /*
++     * Process tokens one at a time. We have exhausted all possible matches
++     * when we reach an "EXCEPT" token or the end of the list. If we do find
++     * a match, look for an "EXCEPT" list and recurse to determine whether
++     * the match is affected by any exceptions.
++     */
++
++    for (tok = strtok_r(list, sep, &last); tok != 0;
++      tok = strtok_r(NULL, sep, &last)) {
++	if (STR_EQ(tok, "EXCEPT"))		/* EXCEPT: give up */
++	    return (NO);
++	l = strlen(tok);
++	if (*tok == '[' && tok[l - 1] == ']') {
++	    tok[l - 1] = '\0';
++	    tok++;
++	}
++	if (match_fn(tok, request)) {		/* YES: look for exceptions */
++	    while ((tok = strtok_r(NULL, sep, &last)) && STR_NE(tok, "EXCEPT"))
++		 /* VOID */ ;
++	    return (tok == 0 || list_match(NULL, request, match_fn) == 0);
++	}
++    }
++    return (NO);
++}
++
++/* server_match - match server information */
++
++static int
++server_match(char *tok, struct request_info *request)
++{
++    char   *host;
++
++    if ((host = split_at(tok + 1, '@')) == 0) {	/* plain daemon */
++	return (string_match(tok, eval_daemon(request)));
++    } else {					/* daemon@host */
++	return (string_match(tok, eval_daemon(request))
++		&& host_match(host, request->server));
++    }
++}
++
++/* client_match - match client information */
++
++static int
++client_match(char *tok, struct request_info *request)
++{
++    char   *host;
++
++    if ((host = split_at(tok + 1, '@')) == 0) {	/* plain host */
++	return (host_match(tok, request->client));
++    } else {					/* user@host */
++	return (host_match(host, request->client)
++		&& string_match(tok, eval_user(request)));
++    }
++}
++
++/* host_match - match host name and/or address against pattern */
++
++static int
++host_match(char *tok, struct host_info *host)
++{
++    char   *mask;
++
++    /*
++     * This code looks a little hairy because we want to avoid unnecessary
++     * hostname lookups.
++     * 
++     * The KNOWN pattern requires that both address AND name be known; some
++     * patterns are specific to host names or to host addresses; all other
++     * patterns are satisfied when either the address OR the name match.
++     */
++
++    if (tok[0] == '@') {			/* netgroup: look it up */
++#ifdef  NETGROUP
++	static char *mydomain = 0;
++	if (mydomain == 0)
++	    yp_get_default_domain(&mydomain);
++	return (innetgr(tok + 1, eval_hostname(host), NULL, mydomain));
++#else
++	tcpd_warn("netgroup support is disabled");	/* not tcpd_jump() */
++	return (NO);
++#endif
++    } else if (tok[0] == '/') {			/* /file hack */
++	return (hostfile_match(tok, host));
++    } else if (STR_EQ(tok, "KNOWN")) {		/* check address and name */
++	char   *name = eval_hostname(host);
++	return (STR_NE(eval_hostaddr(host), unknown) && HOSTNAME_KNOWN(name));
++    } else if (STR_EQ(tok, "LOCAL")) {		/* local: no dots in name */
++	char   *name = eval_hostname(host);
++	return (strchr(name, '.') == 0 && HOSTNAME_KNOWN(name));
++    } else if (strncmp(tok, "{RBL}.", 6) == 0) { /* RBL lookup in domain */
++	return rbl_match(tok+6, eval_hostaddr(host));
++    } else if ((mask = split_at(tok, '/')) != 0) {	/* net/mask */
++	return (masked_match(tok, mask, eval_hostaddr(host)));
++    } else {					/* anything else */
++	return (string_match(tok, eval_hostaddr(host))
++	    || (NOT_INADDR(tok) && string_match(tok, eval_hostname(host))));
++    }
++}
++
++/* hostfile_match - look up host patterns from file */
++
++static int
++hostfile_match(char *path, struct host_info *host)
++{
++    char    tok[512];
++    int     match = NO;
++    FILE   *fp;
++
++    if ((fp = fopen(path, "r")) != 0) {
++	while (fscanf(fp, "%511s", tok) == 1 && !(match = host_match(tok, host)))
++	     /* void */ ;
++	fclose(fp);
++    } else if (errno != ENOENT) {
++	tcpd_warn("open %s: %m", path);
++    }
++    return (match);
++}
++
++/* rbl_match() - match host by looking up in RBL domain */
++
++static int
++rbl_match(
++    char   *rbl_domain,			/* RBL domain */
++    char   *rbl_hostaddr)		/* hostaddr */
++{
++    char *rbl_name;
++    unsigned long host_address;
++    int ret = NO;
++    size_t len = strlen(rbl_domain) + (4 * 4) + 2;
++ 
++    if (dot_quad_addr(rbl_hostaddr, &host_address) != 0) {
++	tcpd_warn("unable to convert %s to address", rbl_hostaddr);
++	return (NO);
++    }
++    host_address = ntohl(host_address);
++    /*  construct the rbl name to look up */
++    if ((rbl_name = malloc(len)) == NULL) {
++	tcpd_jump("not enough memory to build RBL name for %s in %s", rbl_hostaddr, rbl_domain);
++	/* NOTREACHED */
++    }
++    snprintf(rbl_name, len, "%u.%u.%u.%u.%s",
++	    (unsigned int) ((host_address) & 0xff),
++	    (unsigned int) ((host_address >> 8) & 0xff),
++	    (unsigned int) ((host_address >> 16) & 0xff),
++	    (unsigned int) ((host_address >> 24) & 0xff),
++	    rbl_domain);
++    /* look it up */
++    if (gethostbyname(rbl_name) != NULL) {
++	/* successful lookup - they're on the RBL list */
++	ret = YES;
++    }
++    free(rbl_name);
++
++    return ret;
++}
++
++/* string_match - match string against pattern */
++
++static int
++string_match(char *tok, char *string)
++{
++    int     n;
++
++    if (tok[0] == '.') {			/* suffix */
++	n = strlen(string) - strlen(tok);
++	return (n > 0 && STR_EQ(tok, string + n));
++    } else if (STR_EQ(tok, "ALL")) {		/* all: match any */
++	return (YES);
++    } else if (STR_EQ(tok, "KNOWN")) {		/* not unknown */
++	return (STR_NE(string, unknown));
++    } else if (tok[(n = strlen(tok)) - 1] == '.') {	/* prefix */
++	return (STRN_EQ(tok, string, n));
++    } else {					/* exact match */
++	return (STR_EQ(tok, string));
++    }
++}
++
++/* masked_match - match address against netnumber/netmask */
++
++static int
++masked_match(char *net_tok, char *mask_tok, char *string)
++{
++#ifndef INET6
++    return masked_match4(net_tok, mask_tok, string);
++#else
++    /*
++     * masked_match4() is kept just for supporting shortened IPv4 address form.
++     * If we could get rid of shortened IPv4 form, we could just always use
++     * masked_match6().
++     */
++    if (dot_quad_addr(net_tok, NULL) != -1 &&
++        dot_quad_addr(mask_tok, NULL) != -1 &&
++        dot_quad_addr(string, NULL) != -1) {
++	return masked_match4(net_tok, mask_tok, string);
++    } else
++	return masked_match6(net_tok, mask_tok, string);
++#endif
++}
++
++static int
++masked_match4(char *net_tok, char *mask_tok, char *string)
++{
++    unsigned long net;
++    unsigned long mask;
++    unsigned long addr;
++
++    /*
++     * Disallow forms other than dotted quad: the treatment that inet_addr()
++     * gives to forms with less than four components is inconsistent with the
++     * access control language. John P. Rouillard <rouilj@cs.umb.edu>.
++     */
++
++    if (dot_quad_addr(string, &addr) != 0)
++	return (NO);
++    if (dot_quad_addr(net_tok, &net) != 0 ||
++        dot_quad_addr(mask_tok, &mask) != 0) {
++	tcpd_warn("bad net/mask expression: %s/%s", net_tok, mask_tok);
++	return (NO);				/* not tcpd_jump() */
++    }
++
++    if ((net & ~mask) != 0)
++	tcpd_warn("host bits not all zero in %s/%s", net_tok, mask_tok);
++
++    return ((addr & mask) == net);
++}
++
++#ifdef INET6
++static int
++masked_match6(char *net_tok, char *mask_tok, char *string)
++{
++    union {
++	struct sockaddr sa;
++	struct sockaddr_in sin;
++	struct sockaddr_in6 sin6;
++    } net, mask, addr;
++    struct addrinfo hints, *res;
++    unsigned long masklen;
++    char *ep;
++    size_t i;
++    char *np, *mp, *ap;
++    size_t alen;
++
++    memset(&hints, 0, sizeof(hints));
++    hints.ai_family = PF_UNSPEC;
++    hints.ai_socktype = SOCK_DGRAM;	/*dummy*/
++    hints.ai_flags = AI_NUMERICHOST;
++    if (getaddrinfo(net_tok, "0", &hints, &res) == 0) {
++	if (res->ai_addrlen > sizeof(net) || res->ai_next) {
++	    freeaddrinfo(res);
++	    return NO;
++	}
++	memcpy(&net, res->ai_addr, res->ai_addrlen);
++	freeaddrinfo(res);
++    } else
++	return NO;
++
++    memset(&hints, 0, sizeof(hints));
++    hints.ai_family = net.sa.sa_family;
++    hints.ai_socktype = SOCK_DGRAM;	/*dummy*/
++    hints.ai_flags = AI_NUMERICHOST;
++    ep = NULL;
++    if (getaddrinfo(mask_tok, "0", &hints, &res) == 0) {
++	if (res->ai_family == AF_INET6 &&
++	    ((struct sockaddr_in6 *)res->ai_addr)->sin6_scope_id) {
++	    freeaddrinfo(res);
++	    return NO;
++	}
++	if (res->ai_addrlen > sizeof(mask) || res->ai_next) {
++	    freeaddrinfo(res);
++	    return NO;
++	}
++	memcpy(&mask, res->ai_addr, res->ai_addrlen);
++	freeaddrinfo(res);
++    } else {
++	ep = NULL;
++	masklen = strtoul(mask_tok, &ep, 10);
++	if (ep && !*ep) {
++	    memset(&mask, 0, sizeof(mask));
++	    mask.sa.sa_family = net.sa.sa_family;
++	    mask.sa.sa_len = net.sa.sa_len;
++	    switch (mask.sa.sa_family) {
++	    case AF_INET:
++		mp = (char *)&mask.sin.sin_addr;
++		alen = sizeof(mask.sin.sin_addr);
++		break;
++	    case AF_INET6:
++		mp = (char *)&mask.sin6.sin6_addr;
++		alen = sizeof(mask.sin6.sin6_addr);
++		break;
++	    default:
++		return NO;
++	    }
++	    if (masklen / 8 > alen)
++		return NO;
++	    memset(mp, 0xff, masklen / 8);
++	    if (masklen % 8)
++		mp[masklen / 8] = 0xff00 >> (masklen % 8);
++	} else
++	    return NO;
++    }
++
++    memset(&hints, 0, sizeof(hints));
++    hints.ai_family = PF_UNSPEC;
++    hints.ai_socktype = SOCK_DGRAM;	/*dummy*/
++    hints.ai_flags = AI_NUMERICHOST;
++    if (getaddrinfo(string, "0", &hints, &res) == 0) {
++	if (res->ai_addrlen > sizeof(addr) || res->ai_next) {
++	    freeaddrinfo(res);
++	    return NO;
++	}
++	/* special case - IPv4 mapped address */
++	if (net.sa.sa_family == AF_INET && res->ai_family == AF_INET6 && 
++	    IN6_IS_ADDR_V4MAPPED(&((struct sockaddr_in6 *)res->ai_addr)->sin6_addr)) {
++	    memset(&addr, 0, sizeof(addr));
++	    addr.sa.sa_family = net.sa.sa_family;
++	    addr.sa.sa_len = net.sa.sa_len;
++	    memcpy(&addr.sin.sin_addr,
++	        &((struct sockaddr_in6 *)res->ai_addr)->sin6_addr.s6_addr[12],
++		sizeof(addr.sin.sin_addr));
++	} else
++	    memcpy(&addr, res->ai_addr, res->ai_addrlen);
++	freeaddrinfo(res);
++    } else
++	return NO;
++
++    if (net.sa.sa_family != mask.sa.sa_family ||
++        net.sa.sa_family != addr.sa.sa_family) {
++	return NO;
++    }
++     
++    switch (net.sa.sa_family) {
++    case AF_INET:
++	np = (char *)&net.sin.sin_addr;
++	mp = (char *)&mask.sin.sin_addr;
++	ap = (char *)&addr.sin.sin_addr;
++	alen = sizeof(net.sin.sin_addr);
++	break;
++    case AF_INET6:
++	np = (char *)&net.sin6.sin6_addr;
++	mp = (char *)&mask.sin6.sin6_addr;
++	ap = (char *)&addr.sin6.sin6_addr;
++	alen = sizeof(net.sin6.sin6_addr);
++	break;
++    default:
++	return NO;
++    }
++
++    for (i = 0; i < alen; i++)
++	if (np[i] & ~mp[i]) {
++	    tcpd_warn("host bits not all zero in %s/%s", net_tok, mask_tok);
++	    break;
++	}
++
++    for (i = 0; i < alen; i++)
++	ap[i] &= mp[i];
++
++    if (addr.sa.sa_family == AF_INET6 && net.sin6.sin6_scope_id &&
++        addr.sin6.sin6_scope_id != net.sin6.sin6_scope_id)
++	return NO;
++    return (memcmp(ap, np, alen) == 0);
++}
++#endif
++
++#else /* non-NetBSD pkgsrc implementations */
++ /*
++  * This module implements a simple access control language that is based on
++  * host (or domain) names, NIS (host) netgroup names, IP addresses (or
++  * network numbers) and daemon process names. When a match is found the
++  * search is terminated, and depending on whether PROCESS_OPTIONS is defined,
++  * a list of options is executed or an optional shell command is executed.
++  * 
++  * Host and user names are looked up on demand, provided that suitable endpoint
++  * information is available as sockaddr_in structures or TLI netbufs. As a
++  * side effect, the pattern matching process may change the contents of
++  * request structure fields.
++  * 
++  * Diagnostics are reported through syslog(3).
++  * 
++  * Compile with -DNETGROUP if your library provides support for netgroups.
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
+ #ifndef lint
+ static char sccsid[] = "@(#) hosts_access.c 1.21 97/02/12 02:13:22";
+ #endif
+@@ -418,3 +1017,5 @@
+ 	*p++ = 0;
+ }
+ #endif
++
++#endif
+--- hosts_ctl.c.orig
++++ hosts_ctl.c
+@@ -1,3 +1,48 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: hosts_ctl.c,v 1.5 2012/03/21 10:10:37 matt Exp $	*/
++
++ /*
++  * hosts_ctl() combines common applications of the host access control
++  * library routines. It bundles its arguments then calls the hosts_access()
++  * access control checker. The host name and user name arguments should be
++  * empty strings, STRING_UNKNOWN or real data. If a match is found, the
++  * optional shell command is executed.
++  * 
++  * Restriction: this interface does not pass enough information to support
++  * selective remote username lookups or selective hostname double checks.
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#include <sys/cdefs.h>
++#ifndef lint
++#if 0
++static char sccsid[] = "@(#) hosts_ctl.c 1.4 94/12/28 17:42:27";
++#else
++__RCSID("$NetBSD: hosts_ctl.c,v 1.5 2012/03/21 10:10:37 matt Exp $");
++#endif
++#endif
++
++#include <stdio.h>
++
++#include "tcpd.h"
++
++/* hosts_ctl - limited interface to the hosts_access() routine */
++
++int
++hosts_ctl(char *daemon, char *name, char *addr, char *user)
++{
++    struct request_info request;
++
++    return (hosts_access(request_init(&request,
++				      RQ_DAEMON, daemon,
++				      RQ_CLIENT_NAME, name,
++				      RQ_CLIENT_ADDR, addr,
++				      RQ_USER, user,
++				      0)));
++}
++
++#else /* non-NetBSD pkgsrc implementations */
+  /*
+   * hosts_ctl() combines common applications of the host access control
+   * library routines. It bundles its arguments then calls the hosts_access()
+@@ -36,3 +81,5 @@
+ 				      RQ_USER, user,
+ 				      0)));
+ }
++
++#endif
+--- misc.c.orig
++++ misc.c
+@@ -1,3 +1,98 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: misc.c,v 1.10 2012/03/21 10:10:37 matt Exp $	*/
++
++ /*
++  * Misc routines that are used by tcpd and by tcpdchk.
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#include <sys/cdefs.h>
++#ifndef lint
++#if 0
++static char sccsic[] = "@(#) misc.c 1.2 96/02/11 17:01:29";
++#else
++__RCSID("$NetBSD: misc.c,v 1.10 2012/03/21 10:10:37 matt Exp $");
++#endif
++#endif
++
++#include <sys/types.h>
++#include <sys/param.h>
++#include <netinet/in.h>
++#include <arpa/inet.h>
++#include <stdio.h>
++#include <string.h>
++
++#include "tcpd.h"
++
++/* xgets - fgets() with backslash-newline stripping */
++
++char *
++xgets(char *ptr, int len, FILE   *fp)
++{
++    int     got;
++    char   *start = ptr;
++
++    while (len > 1 && fgets(ptr, len, fp)) {
++	got = strlen(ptr);
++	if (got >= 1 && ptr[got - 1] == '\n') {
++	    tcpd_context.line++;
++	    if (got >= 2 && ptr[got - 2] == '\\') {
++		got -= 2;
++	    } else {
++		return (start);
++	    }
++	}
++	ptr += got;
++	len -= got;
++	ptr[0] = 0;
++    }
++    return (ptr > start ? start : 0);
++}
++
++/* split_at - break string at delimiter or return NULL */
++
++char *
++split_at(char *string, int delimiter)
++{
++    char *cp;
++    int bracket;
++
++    bracket = 0;
++    for (cp = string; cp && *cp; cp++) {
++	switch (*cp) {
++	case '[':
++	    bracket++;
++	    break;
++	case ']':
++	    bracket--;
++	    break;
++	default:
++	    if (bracket == 0 && *cp == delimiter) {
++		*cp++ = 0;
++		return cp;
++	    }
++	    break;
++	}
++    }
++    return NULL;
++}
++
++/* dot_quad_addr - convert dotted quad to internal form */
++
++int
++dot_quad_addr(char *str, unsigned long *addr)
++{
++    struct in_addr a;
++
++    if (!inet_aton(str, &a))
++	return -1;
++    if (addr)
++	*addr = a.s_addr;
++    return 0;
++}
++
++#else /* non-NetBSD pkgsrc implementations */
+  /*
+   * Misc routines that are used by tcpd and by tcpdchk.
+   * 
+@@ -190,3 +285,5 @@
+     }
+ }
+ #endif /* HAVE_IPV6 */
++
++#endif
+--- mystdarg.h.orig
++++ mystdarg.h
+@@ -1,3 +1,24 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: mystdarg.h,v 1.2 1997/10/09 21:20:37 christos Exp $	*/
++
++ /*
++  * What follows is an attempt to unify varargs.h and stdarg.h. I'd rather
++  * have this than #ifdefs all over the code.
++  */
++
++#ifdef __STDC__
++#include <stdarg.h>
++#define VARARGS(func,type,arg) func(type arg, ...)
++#define VASTART(ap,type,name)  va_start(ap,name)
++#define VAEND(ap)              va_end(ap)
++#else
++#include <varargs.h>
++#define VARARGS(func,type,arg) func(va_alist) va_dcl
++#define VASTART(ap,type,name)  {type name; va_start(ap); name = va_arg(ap, type)
++#define VAEND(ap)              va_end(ap);}
++#endif
++
++#else /* non-NetBSD pkgsrc implementations */
+ 
+  /*
+   * What follows is an attempt to unify varargs.h and stdarg.h. I'd rather
+@@ -17,3 +38,5 @@
+ #endif
+ 
+ extern char *percent_m(char *, char *);
++
++#endif
+--- options.c.orig
++++ options.c
+@@ -1,3 +1,6 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: options.c,v 1.16 2012/03/22 22:59:43 joerg Exp $	*/
++
+  /*
+   * General skeleton for adding options to the access control language. The
+   * features offered by this module are documented in the hosts_options(5)
+@@ -28,8 +31,13 @@
+   * course of action.
+   */
+ 
++#include <sys/cdefs.h>
+ #ifndef lint
++#if 0
+ static char sccsid[] = "@(#) options.c 1.17 96/02/11 17:01:31";
++#else
++__RCSID("$NetBSD: options.c,v 1.16 2012/03/22 22:59:43 joerg Exp $");
++#endif
+ #endif
+ 
+ /* System libraries. */
+@@ -42,17 +50,13 @@
+ #include <netdb.h>
+ #include <stdio.h>
+ #include <syslog.h>
++#include <unistd.h>
++#include <stdlib.h>
+ #include <pwd.h>
+ #include <grp.h>
+ #include <ctype.h>
+ #include <setjmp.h>
+ #include <string.h>
+-#include <unistd.h>
+-#include <stdlib.h>
+-
+-#ifndef MAXPATHNAMELEN
+-#define MAXPATHNAMELEN  BUFSIZ
+-#endif
+ 
+ /* Local stuff. */
+ 
+@@ -68,31 +72,51 @@
+ static char whitespace_eq[] = "= \t\r\n";
+ #define whitespace (whitespace_eq + 1)
+ 
+-static char *get_field(char *);		/* chew :-delimited field off string */
+-static char *chop_string(char *);		/* strip leading and trailing blanks */
++static char *get_field			/* chew :-delimited field off string */
++		(char *);
++static char *chop_string		/* strip leading and trailing blanks */
++		(char *);
++struct syslog_names;
++static int severity_map 
++		(const struct syslog_names *, char *);
+ 
+ /* List of functions that implement the options. Add yours here. */
+ 
+-static void user_option(char *, struct request_info *);		/* execute "user name.group" option */
+-static void group_option(char *, struct request_info *);		/* execute "group name" option */
+-static void umask_option(char *, struct request_info *);		/* execute "umask mask" option */
+-static void linger_option(char *, struct request_info *);		/* execute "linger time" option */
+-static void keepalive_option(char *, struct request_info *);		/* execute "keepalive" option */
+-static void spawn_option(char *, struct request_info *);		/* execute "spawn command" option */
+-static void twist_option(char *, struct request_info *);		/* execute "twist command" option */
+-static void rfc931_option(char *, struct request_info *);		/* execute "rfc931" option */
+-static void setenv_option(char *, struct request_info *);		/* execute "setenv name value" */
+-static void nice_option(char *, struct request_info *);		/* execute "nice" option */
+-static void severity_option(char *, struct request_info *);		/* execute "severity value" */
+-static void allow_option(char *, struct request_info *);		/* execute "allow" option */
+-static void deny_option(char *, struct request_info *);		/* execute "deny" option */
+-static void banners_option(char *, struct request_info *);		/* execute "banners path" option */
++static void user_option			/* execute "user name.group" option */
++		(char *, struct request_info *);
++static void group_option		/* execute "group name" option */
++		(char *, struct request_info *);
++static void umask_option		/* execute "umask mask" option */
++		(char *, struct request_info *);
++static void linger_option		/* execute "linger time" option */
++		(char *, struct request_info *);
++static void keepalive_option		/* execute "keepalive" option */
++		(char *, struct request_info *);
++static void spawn_option		/* execute "spawn command" option */
++		(char *, struct request_info *);
++static void twist_option		/* execute "twist command" option */
++		(char *, struct request_info *);
++static void rfc931_option		/* execute "rfc931" option */
++		(char *, struct request_info *);
++static void setenv_option		/* execute "setenv name value" */
++		(char *, struct request_info *);
++static void nice_option			/* execute "nice" option */
++		(char *, struct request_info *);
++static void severity_option		/* execute "severity value" */
++		(char *, struct request_info *);
++__dead static void allow_option		/* execute "allow" option */
++		(char *, struct request_info *);
++__dead static void deny_option			/* execute "deny" option */
++		(char *, struct request_info *);
++static void banners_option		/* execute "banners path" option */
++		(char *, struct request_info *);
+ 
+ /* Structure of the options table. */
+ 
+ struct option {
+-    char   *name;			/* keyword name, case is ignored */
+-    void  (*func) (char *, struct request_info *);			/* function that does the real work */
++    const char *name;			/* keyword name, case is ignored */
++    void  (*func)			/* function that does the real work */
++		(char *, struct request_info *);
+     int     flags;			/* see below... */
+ };
+ 
+@@ -110,28 +134,27 @@
+ /* List of known keywords. Add yours here. */
+ 
+ static struct option option_table[] = {
+-    "user", user_option, NEED_ARG,
+-    "group", group_option, NEED_ARG,
+-    "umask", umask_option, NEED_ARG,
+-    "linger", linger_option, NEED_ARG,
+-    "keepalive", keepalive_option, 0,
+-    "spawn", spawn_option, NEED_ARG | EXPAND_ARG,
+-    "twist", twist_option, NEED_ARG | EXPAND_ARG | USE_LAST,
+-    "rfc931", rfc931_option, OPT_ARG,
+-    "setenv", setenv_option, NEED_ARG | EXPAND_ARG,
+-    "nice", nice_option, OPT_ARG,
+-    "severity", severity_option, NEED_ARG,
+-    "allow", allow_option, USE_LAST,
+-    "deny", deny_option, USE_LAST,
+-    "banners", banners_option, NEED_ARG,
+-    0,
++    { "user", user_option, NEED_ARG },
++    { "group", group_option, NEED_ARG },
++    { "umask", umask_option, NEED_ARG },
++    { "linger", linger_option, NEED_ARG },
++    { "keepalive", keepalive_option, 0 },
++    { "spawn", spawn_option, NEED_ARG | EXPAND_ARG },
++    { "twist", twist_option, NEED_ARG | EXPAND_ARG | USE_LAST },
++    { "rfc931", rfc931_option, OPT_ARG },
++    { "setenv", setenv_option, NEED_ARG | EXPAND_ARG },
++    { "nice", nice_option, OPT_ARG },
++    { "severity", severity_option, NEED_ARG },
++    { "allow", allow_option, USE_LAST },
++    { "deny", deny_option, USE_LAST },
++    { "banners", banners_option, NEED_ARG },
++    { NULL, NULL, 0 }
+ };
+ 
+ /* process_options - process access control options */
+ 
+-void    process_options(options, request)
+-char   *options;
+-struct request_info *request;
++void
++process_options(char *options, struct request_info *request)
+ {
+     char   *key;
+     char   *value;
+@@ -195,6 +218,620 @@
+ 
+ /* ARGSUSED */
+ 
++static void
++allow_option(char *value, struct request_info *request)
++{
++    longjmp(tcpd_buf, AC_PERMIT);
++}
++
++/* deny_option - deny access */
++
++/* ARGSUSED */
++
++static void
++deny_option(char *value, struct request_info *request)
++{
++    longjmp(tcpd_buf, AC_DENY);
++}
++
++/* banners_option - expand %<char>, terminate each line with CRLF */
++
++static void
++banners_option(char *value, struct request_info *request)
++{
++    char    path[MAXPATHLEN];
++    char    ibuf[BUFSIZ];
++    char    obuf[2 * BUFSIZ];
++    struct stat st;
++    int     ch;
++    FILE   *fp;
++
++    (void)snprintf(path, sizeof path, "%s/%s", value, eval_daemon(request));
++    if ((fp = fopen(path, "r")) != 0) {
++	while ((ch = fgetc(fp)) == 0)
++	    write(request->fd, "", 1);
++	ungetc(ch, fp);
++	while (fgets(ibuf, sizeof(ibuf) - 2, fp)) {
++	    if (split_at(ibuf, '\n'))
++		strcat(ibuf, "\r\n");	/* XXX strcat is safe */
++	    percent_x(obuf, sizeof(obuf), ibuf, request);
++	    write(request->fd, obuf, strlen(obuf));
++	}
++	fclose(fp);
++    } else if (stat(value, &st) < 0) {
++	tcpd_warn("%s: %m", value);
++    }
++}
++
++/* group_option - switch group id */
++
++/* ARGSUSED */
++
++static void
++group_option(char *value, struct request_info *request)
++{
++    struct group grs, *grp;
++    char grbuf[1024];
++
++    (void)getgrnam_r(value, &grs, grbuf, sizeof(grbuf), &grp);
++    if (grp == NULL)
++	tcpd_jump("unknown group: \"%s\"", value);
++
++    if (dry_run == 0 && setgid(grp->gr_gid))
++	tcpd_jump("setgid(%s): %m", value);
++}
++
++/* user_option - switch user id */
++
++/* ARGSUSED */
++
++static void
++user_option(char *value, struct request_info *request)
++{
++    struct passwd *pwd, pws;
++    char   *group;
++    char   pwbuf[1024];
++
++    if ((group = split_at(value, '.')) != 0)
++	group_option(group, request);
++    (void)getpwnam_r(value, &pws, pwbuf, sizeof(pwbuf), &pwd);
++    if (pwd == NULL)
++	tcpd_jump("unknown user: \"%s\"", value);
++
++    if (dry_run == 0 && setuid(pwd->pw_uid))
++	tcpd_jump("setuid(%s): %m", value);
++}
++
++/* umask_option - set file creation mask */
++
++/* ARGSUSED */
++
++static void
++umask_option(char *value, struct request_info *request)
++{
++    unsigned mask;
++    char    junk;
++
++    if (sscanf(value, "%o%c", &mask, &junk) != 1 || (mask & 0777) != mask)
++	tcpd_jump("bad umask value: \"%s\"", value);
++    (void) umask(mask);
++}
++
++/* spawn_option - spawn a shell command and wait */
++
++/* ARGSUSED */
++
++static void
++spawn_option(char *value, struct request_info *request)
++{
++    if (dry_run == 0)
++	shell_cmd(value);
++}
++
++/* linger_option - set the socket linger time (Marc Boucher <marc@cam.org>) */
++
++/* ARGSUSED */
++
++static void
++linger_option(char *value, struct request_info *request)
++{
++    struct linger linger;
++    char    junk;
++
++    if (sscanf(value, "%d%c", &linger.l_linger, &junk) != 1
++	|| linger.l_linger < 0)
++	tcpd_jump("bad linger value: \"%s\"", value);
++    if (dry_run == 0) {
++	linger.l_onoff = (linger.l_linger != 0);
++	if (setsockopt(request->fd, SOL_SOCKET, SO_LINGER, (char *) &linger,
++		       sizeof(linger)) < 0)
++	    tcpd_warn("setsockopt SO_LINGER %d: %m", linger.l_linger);
++    }
++}
++
++/* keepalive_option - set the socket keepalive option */
++
++/* ARGSUSED */
++
++static void
++keepalive_option(char *value, struct request_info *request)
++{
++    static int on = 1;
++
++    if (dry_run == 0 && setsockopt(request->fd, SOL_SOCKET, SO_KEEPALIVE,
++				   (char *) &on, sizeof(on)) < 0)
++	tcpd_warn("setsockopt SO_KEEPALIVE: %m");
++}
++
++/* nice_option - set nice value */
++
++/* ARGSUSED */
++
++static void
++nice_option(char *value, struct request_info *request)
++{
++    int     niceval = 10;
++    char    junk;
++
++    if (value != 0 && sscanf(value, "%d%c", &niceval, &junk) != 1)
++	tcpd_jump("bad nice value: \"%s\"", value);
++    if (dry_run == 0 && nice(niceval) < 0)
++	tcpd_warn("nice(%d): %m", niceval);
++}
++
++/* twist_option - replace process by shell command */
++
++static void
++twist_option(char *value, struct request_info *request)
++{
++    if (dry_run != 0) {
++	dry_run = 0;
++    } else {
++	if (resident > 0)
++	    tcpd_jump("twist option in resident process");
++
++	syslog(deny_severity, "twist %s to %s", eval_client(request), value);
++
++	/* Before switching to the shell, set up stdin, stdout and stderr. */
++
++#define maybe_dup2(from, to) ((from == to) ? to : (close(to), dup(from)))
++
++	if (maybe_dup2(request->fd, 0) != 0 ||
++	    maybe_dup2(request->fd, 1) != 1 ||
++	    maybe_dup2(request->fd, 2) != 2) {
++	    tcpd_warn("twist_option: dup: %m");
++	} else {
++	    if (request->fd > 2)
++		close(request->fd);
++	    (void) execl("/bin/sh", "sh", "-c", value, (char *) 0);
++	    tcpd_warn("twist_option: /bin/sh: %m");
++	}
++
++	/* Something went wrong: we MUST terminate the process. */
++	clean_exit(request);
++    }
++}
++
++/* rfc931_option - look up remote user name */
++
++static void
++rfc931_option(char *value, struct request_info *request)
++{
++    int     timeout;
++    char    junk;
++
++    if (value != 0) {
++	if (sscanf(value, "%d%c", &timeout, &junk) != 1 || timeout <= 0)
++	    tcpd_jump("bad rfc931 timeout: \"%s\"", value);
++	rfc931_timeout = timeout;
++    }
++    (void) eval_user(request);
++}
++
++/* setenv_option - set environment variable */
++
++/* ARGSUSED */
++
++static void
++setenv_option(char *value, struct request_info *request)
++{
++    char   *var_value;
++
++    if (*(var_value = value + strcspn(value, whitespace)))
++	*var_value++ = 0;
++    if (setenv(chop_string(value), chop_string(var_value), 1))
++	tcpd_jump("memory allocation failure");
++}
++
++ /*
++  * The severity option goes last because it comes with a huge amount of ugly
++  * #ifdefs and tables.
++  */
++
++struct syslog_names {
++    const char *name;
++    int value;
++};
++
++static const struct syslog_names log_fac[] = {
++#ifdef LOG_KERN
++    { "kern", LOG_KERN },
++#endif
++#ifdef LOG_USER
++    { "user", LOG_USER },
++#endif
++#ifdef LOG_MAIL
++    { "mail", LOG_MAIL },
++#endif
++#ifdef LOG_DAEMON
++    { "daemon", LOG_DAEMON },
++#endif
++#ifdef LOG_AUTH
++    { "auth", LOG_AUTH },
++#endif
++#ifdef LOG_LPR
++    { "lpr", LOG_LPR },
++#endif
++#ifdef LOG_NEWS
++    { "news", LOG_NEWS },
++#endif
++#ifdef LOG_UUCP
++    { "uucp", LOG_UUCP },
++#endif
++#ifdef LOG_CRON
++    { "cron", LOG_CRON },
++#endif
++#ifdef LOG_AUTHPRIV
++    { "authpriv", LOG_AUTHPRIV },
++#endif
++#ifdef LOG_FTP
++    { "ftp", LOG_FTP },
++#endif
++#ifdef LOG_LOCAL0
++    { "local0", LOG_LOCAL0 },
++#endif
++#ifdef LOG_LOCAL1
++    { "local1", LOG_LOCAL1 },
++#endif
++#ifdef LOG_LOCAL2
++    { "local2", LOG_LOCAL2 },
++#endif
++#ifdef LOG_LOCAL3
++    { "local3", LOG_LOCAL3 },
++#endif
++#ifdef LOG_LOCAL4
++    { "local4", LOG_LOCAL4 },
++#endif
++#ifdef LOG_LOCAL5
++    { "local5", LOG_LOCAL5 },
++#endif
++#ifdef LOG_LOCAL6
++    { "local6", LOG_LOCAL6 },
++#endif
++#ifdef LOG_LOCAL7
++    { "local7", LOG_LOCAL7 },
++#endif
++    { NULL, 0 }
++};
++
++static const struct syslog_names log_sev[] = {
++#ifdef LOG_EMERG
++    { "emerg", LOG_EMERG },
++#endif
++#ifdef LOG_ALERT
++    { "alert", LOG_ALERT },
++#endif
++#ifdef LOG_CRIT
++    { "crit", LOG_CRIT },
++#endif
++#ifdef LOG_ERR
++    { "err", LOG_ERR },
++#endif
++#ifdef LOG_WARNING
++    { "warning", LOG_WARNING },
++#endif
++#ifdef LOG_NOTICE
++    { "notice", LOG_NOTICE },
++#endif
++#ifdef LOG_INFO
++    { "info", LOG_INFO },
++#endif
++#ifdef LOG_DEBUG
++    { "debug", LOG_DEBUG },
++#endif
++    { NULL, 0 }
++};
++
++/* severity_map - lookup facility or severity value */
++
++static int
++severity_map(const struct syslog_names *table, char *name)
++{
++    const struct syslog_names *t;
++
++    for (t = table; t->name; t++)
++	if (STR_EQ(t->name, name))
++	    return (t->value);
++    tcpd_jump("bad syslog facility or severity: \"%s\"", name);
++    /* NOTREACHED */
++    return -1;
++}
++
++/* severity_option - change logging severity for this event (Dave Mitchell) */
++
++/* ARGSUSED */
++
++static void
++severity_option(char *value, struct request_info *request)
++{
++    char   *level = split_at(value, '.');
++
++    allow_severity = deny_severity = level ?
++	severity_map(log_fac, value) | severity_map(log_sev, level) :
++	severity_map(log_sev, value);
++}
++
++/* get_field - return pointer to next field in string */
++
++static char *
++get_field(char *string)
++{
++    static char nul = '\0';
++    static char *last = &nul;
++    char   *src;
++    char   *dst;
++    char   *ret;
++    int     ch;
++
++    /*
++     * This function returns pointers to successive fields within a given
++     * string. ":" is the field separator; warn if the rule ends in one. It
++     * replaces a "\:" sequence by ":", without treating the result of
++     * substitution as field terminator. A null argument means resume search
++     * where the previous call terminated. This function destroys its
++     * argument.
++     * 
++     * Work from explicit source or from memory. While processing \: we
++     * overwrite the input. This way we do not have to maintain buffers for
++     * copies of input fields.
++     */
++
++    src = dst = ret = (string ? string : last);
++    if (src[0] == 0)
++	return (0);
++
++    while ((ch = *src) != '\0') {
++	if (ch == ':') {
++	    if (*++src == 0)
++		tcpd_warn("rule ends in \":\"");
++	    break;
++	}
++	if (ch == '\\' && src[1] == ':')
++	    src++;
++	*dst++ = *src++;
++    }
++    last = src;
++    *dst = 0;
++    return (ret);
++}
++
++/* chop_string - strip leading and trailing blanks from string */
++
++static char *
++chop_string(register char *string)
++{
++    char   *start = NULL;
++    char   *end = NULL;
++    char   *cp;
++
++    for (cp = string; *cp; cp++) {
++	if (!isspace((unsigned char) *cp)) {
++	    if (start == 0)
++		start = cp;
++	    end = cp;
++	}
++    }
++    return (start ? (end[1] = 0, start) : cp);
++}
++
++#else /* non-NetBSD pkgsrc implementations */
++ /*
++  * General skeleton for adding options to the access control language. The
++  * features offered by this module are documented in the hosts_options(5)
++  * manual page (source file: hosts_options.5, "nroff -man" format).
++  * 
++  * Notes and warnings for those who want to add features:
++  * 
++  * In case of errors, abort options processing and deny access. There are too
++  * many irreversible side effects to make error recovery feasible. For
++  * example, it makes no sense to continue after we have already changed the
++  * userid.
++  * 
++  * In case of errors, do not terminate the process: the routines might be
++  * called from a long-running daemon that should run forever. Instead, call
++  * tcpd_jump() which does a non-local goto back into the hosts_access()
++  * routine.
++  * 
++  * In case of severe errors, use clean_exit() instead of directly calling
++  * exit(), or the inetd may loop on an UDP request.
++  * 
++  * In verification mode (for example, with the "tcpdmatch" command) the
++  * "dry_run" flag is set. In this mode, an option function should just "say"
++  * what it is going to do instead of really doing it.
++  * 
++  * Some option functions do not return (for example, the twist option passes
++  * control to another program). In verification mode (dry_run flag is set)
++  * such options should clear the "dry_run" flag to inform the caller of this
++  * course of action.
++  */
++
++#ifndef lint
++static char sccsid[] = "@(#) options.c 1.17 96/02/11 17:01:31";
++#endif
++
++/* System libraries. */
++
++#include <sys/types.h>
++#include <sys/param.h>
++#include <sys/socket.h>
++#include <sys/stat.h>
++#include <netinet/in.h>
++#include <netdb.h>
++#include <stdio.h>
++#include <syslog.h>
++#include <pwd.h>
++#include <grp.h>
++#include <ctype.h>
++#include <setjmp.h>
++#include <string.h>
++#include <unistd.h>
++#include <stdlib.h>
++
++#ifndef MAXPATHNAMELEN
++#define MAXPATHNAMELEN  BUFSIZ
++#endif
++
++/* Local stuff. */
++
++#include "tcpd.h"
++
++/* Options runtime support. */
++
++int     dry_run = 0;			/* flag set in verification mode */
++extern jmp_buf tcpd_buf;		/* tcpd_jump() support */
++
++/* Options parser support. */
++
++static char whitespace_eq[] = "= \t\r\n";
++#define whitespace (whitespace_eq + 1)
++
++static char *get_field(char *);		/* chew :-delimited field off string */
++static char *chop_string(char *);		/* strip leading and trailing blanks */
++
++/* List of functions that implement the options. Add yours here. */
++
++static void user_option(char *, struct request_info *);		/* execute "user name.group" option */
++static void group_option(char *, struct request_info *);		/* execute "group name" option */
++static void umask_option(char *, struct request_info *);		/* execute "umask mask" option */
++static void linger_option(char *, struct request_info *);		/* execute "linger time" option */
++static void keepalive_option(char *, struct request_info *);		/* execute "keepalive" option */
++static void spawn_option(char *, struct request_info *);		/* execute "spawn command" option */
++static void twist_option(char *, struct request_info *);		/* execute "twist command" option */
++static void rfc931_option(char *, struct request_info *);		/* execute "rfc931" option */
++static void setenv_option(char *, struct request_info *);		/* execute "setenv name value" */
++static void nice_option(char *, struct request_info *);		/* execute "nice" option */
++static void severity_option(char *, struct request_info *);		/* execute "severity value" */
++static void allow_option(char *, struct request_info *);		/* execute "allow" option */
++static void deny_option(char *, struct request_info *);		/* execute "deny" option */
++static void banners_option(char *, struct request_info *);		/* execute "banners path" option */
++
++/* Structure of the options table. */
++
++struct option {
++    char   *name;			/* keyword name, case is ignored */
++    void  (*func) (char *, struct request_info *);			/* function that does the real work */
++    int     flags;			/* see below... */
++};
++
++#define NEED_ARG	(1<<1)		/* option requires argument */
++#define USE_LAST	(1<<2)		/* option must be last */
++#define OPT_ARG		(1<<3)		/* option has optional argument */
++#define EXPAND_ARG	(1<<4)		/* do %x expansion on argument */
++
++#define need_arg(o)	((o)->flags & NEED_ARG)
++#define opt_arg(o)	((o)->flags & OPT_ARG)
++#define permit_arg(o)	((o)->flags & (NEED_ARG | OPT_ARG))
++#define use_last(o)	((o)->flags & USE_LAST)
++#define expand_arg(o)	((o)->flags & EXPAND_ARG)
++
++/* List of known keywords. Add yours here. */
++
++static struct option option_table[] = {
++    "user", user_option, NEED_ARG,
++    "group", group_option, NEED_ARG,
++    "umask", umask_option, NEED_ARG,
++    "linger", linger_option, NEED_ARG,
++    "keepalive", keepalive_option, 0,
++    "spawn", spawn_option, NEED_ARG | EXPAND_ARG,
++    "twist", twist_option, NEED_ARG | EXPAND_ARG | USE_LAST,
++    "rfc931", rfc931_option, OPT_ARG,
++    "setenv", setenv_option, NEED_ARG | EXPAND_ARG,
++    "nice", nice_option, OPT_ARG,
++    "severity", severity_option, NEED_ARG,
++    "allow", allow_option, USE_LAST,
++    "deny", deny_option, USE_LAST,
++    "banners", banners_option, NEED_ARG,
++    0,
++};
++
++/* process_options - process access control options */
++
++void    process_options(options, request)
++char   *options;
++struct request_info *request;
++{
++    char   *key;
++    char   *value;
++    char   *curr_opt;
++    char   *next_opt;
++    struct option *op;
++    char    bf[BUFSIZ];
++
++    for (curr_opt = get_field(options); curr_opt; curr_opt = next_opt) {
++	next_opt = get_field((char *) 0);
++
++	/*
++	 * Separate the option into name and value parts. For backwards
++	 * compatibility we ignore exactly one '=' between name and value.
++	 */
++	curr_opt = chop_string(curr_opt);
++	if (*(value = curr_opt + strcspn(curr_opt, whitespace_eq))) {
++	    if (*value != '=') {
++		*value++ = 0;
++		value += strspn(value, whitespace);
++	    }
++	    if (*value == '=') {
++		*value++ = 0;
++		value += strspn(value, whitespace);
++	    }
++	}
++	if (*value == 0)
++	    value = 0;
++	key = curr_opt;
++
++	/*
++	 * Disallow missing option names (and empty option fields).
++	 */
++	if (*key == 0)
++	    tcpd_jump("missing option name");
++
++	/*
++	 * Lookup the option-specific info and do some common error checks.
++	 * Delegate option-specific processing to the specific functions.
++	 */
++
++	for (op = option_table; op->name && STR_NE(op->name, key); op++)
++	     /* VOID */ ;
++	if (op->name == 0)
++	    tcpd_jump("bad option name: \"%s\"", key);
++	if (!value && need_arg(op))
++	    tcpd_jump("option \"%s\" requires value", key);
++	if (value && !permit_arg(op))
++	    tcpd_jump("option \"%s\" requires no value", key);
++	if (next_opt && use_last(op))
++	    tcpd_jump("option \"%s\" must be at end", key);
++	if (value && expand_arg(op))
++	    value = chop_string(percent_x(bf, sizeof(bf), value, request));
++	if (hosts_access_verbose)
++	    syslog(LOG_DEBUG, "option:   %s %s", key, value ? value : "");
++	(*(op->func)) (value, request);
++    }
++}
++
++/* allow_option - grant access */
++
++/* ARGSUSED */
++
+ static void allow_option(value, request)
+ char   *value;
+ struct request_info *request;
+@@ -621,3 +1258,5 @@
+     }
+     return (start ? (end[1] = 0, start) : cp);
+ }
++
++#endif
+--- percent_x.c.orig
++++ percent_x.c
+@@ -1,3 +1,98 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: percent_x.c,v 1.5 2012/03/21 10:10:37 matt Exp $	*/
++
++ /*
++  * percent_x() takes a string and performs %<char> expansions. It aborts the
++  * program when the expansion would overflow the output buffer. The result
++  * of %<char> expansion may be passed on to a shell process. For this
++  * reason, characters with a special meaning to shells are replaced by
++  * underscores.
++  * 
++  * Diagnostics are reported through syslog(3).
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#include <sys/cdefs.h>
++#ifndef lint
++#if 0
++static char sccsid[] = "@(#) percent_x.c 1.4 94/12/28 17:42:37";
++#else
++__RCSID("$NetBSD: percent_x.c,v 1.5 2012/03/21 10:10:37 matt Exp $");
++#endif
++#endif
++
++/* System libraries. */
++
++#include <stdio.h>
++#include <syslog.h>
++#include <stdlib.h>
++#include <unistd.h>
++#include <string.h>
++
++/* Local stuff. */
++
++#include "tcpd.h"
++
++/* percent_x - do %<char> expansion, abort if result buffer is too small */
++
++char *
++percent_x(char *result, int result_len, char *string,
++    struct request_info *request)
++{
++    char   *bp = result;
++    char   *end = result + result_len - 1;	/* end of result buffer */
++    char   *expansion;
++    size_t  expansion_len;
++    static const char ok_chars[] = "1234567890!@%-_=+:,./"
++	"abcdefghijklmnopqrstuvwxyz"
++	"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
++    char   *str = string;
++    char   *cp;
++    int     ch;
++
++    /*
++     * Warning: we may be called from a child process or after pattern
++     * matching, so we cannot use clean_exit() or tcpd_jump().
++     */
++
++    while (*str) {
++	if (*str == '%' && (ch = str[1]) != 0) {
++	    str += 2;
++	    expansion =
++		ch == 'a' ? eval_hostaddr(request->client) :
++		ch == 'A' ? eval_hostaddr(request->server) :
++		ch == 'c' ? eval_client(request) :
++		ch == 'd' ? eval_daemon(request) :
++		ch == 'h' ? eval_hostinfo(request->client) :
++		ch == 'H' ? eval_hostinfo(request->server) :
++		ch == 'n' ? eval_hostname(request->client) :
++		ch == 'N' ? eval_hostname(request->server) :
++		ch == 'p' ? eval_pid(request) :
++		ch == 's' ? eval_server(request) :
++		ch == 'u' ? eval_user(request) :
++		ch == '%' ? __UNCONST("%")
++		          : (tcpd_warn("unrecognized %%%c", ch), __UNCONST(""));
++	    for (cp = expansion; *(cp += strspn(cp, ok_chars)); /* */ )
++		*cp = '_';
++	    expansion_len = cp - expansion;
++	} else {
++	    expansion = str++;
++	    expansion_len = 1;
++	}
++	if (bp + expansion_len >= end) {
++	    tcpd_warn("percent_x: expansion too long: %.30s...", result);
++	    sleep(5);
++	    exit(0);
++	}
++	memcpy(bp, expansion, expansion_len);
++	bp += expansion_len;
++    }
++    *bp = 0;
++    return (result);
++}
++
++#else /* non-NetBSD pkgsrc implementations */
+  /*
+   * percent_x() takes a string and performs %<char> expansions. It aborts the
+   * program when the expansion would overflow the output buffer. The result
+@@ -85,3 +180,5 @@
+     *bp = 0;
+     return (result);
+ }
++
++#endif
+--- refuse.c.orig
++++ refuse.c
+@@ -1,3 +1,45 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: refuse.c,v 1.5 2012/03/21 10:10:37 matt Exp $	*/
++
++ /*
++  * refuse() reports a refused connection, and takes the consequences: in
++  * case of a datagram-oriented service, the unread datagram is taken from
++  * the input queue (or inetd would see the same datagram again and again);
++  * the program is terminated.
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#include <sys/cdefs.h>
++#ifndef lint
++#if 0
++static char sccsid[] = "@(#) refuse.c 1.5 94/12/28 17:42:39";
++#else
++__RCSID("$NetBSD: refuse.c,v 1.5 2012/03/21 10:10:37 matt Exp $");
++#endif
++#endif
++
++/* System libraries. */
++
++#include <stdio.h>
++#include <syslog.h>
++
++/* Local stuff. */
++
++#include "tcpd.h"
++
++/* refuse - refuse request */
++
++void
++refuse(struct request_info *request)
++{
++    syslog(deny_severity, "refused connect from %s", eval_client(request));
++    clean_exit(request);
++    /* NOTREACHED */
++}
++
++
++#else /* non-NetBSD pkgsrc implementations */
+  /*
+   * refuse() reports a refused connection, and takes the consequences: in
+   * case of a datagram-oriented service, the unread datagram is taken from
+@@ -30,3 +72,5 @@
+     /* NOTREACHED */
+ }
+ 
++
++#endif
+--- rfc931.c.orig
++++ rfc931.c
+@@ -1,3 +1,238 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: rfc931.c,v 1.12 2016/03/16 22:32:32 christos Exp $	*/
++
++ /*
++  * rfc931() speaks a common subset of the RFC 931, AUTH, TAP, IDENT and RFC
++  * 1413 protocols. It queries an RFC 931 etc. compatible daemon on a remote
++  * host to look up the owner of a connection. The information should not be
++  * used for authentication purposes. This routine intercepts alarm signals.
++  * 
++  * Diagnostics are reported through syslog(3).
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#include <sys/cdefs.h>
++#ifndef lint
++#if 0
++static char sccsid[] = "@(#) rfc931.c 1.10 95/01/02 16:11:34";
++#else
++__RCSID("$NetBSD: rfc931.c,v 1.12 2016/03/16 22:32:32 christos Exp $");
++#endif
++#endif
++
++/* System libraries. */
++
++#include <stdio.h>
++#include <syslog.h>
++#include <sys/types.h>
++#include <sys/socket.h>
++#include <netinet/in.h>
++#include <stdlib.h>
++#include <unistd.h>
++#include <setjmp.h>
++#include <signal.h>
++#include <string.h>
++
++/* Local stuff. */
++
++#include "tcpd.h"
++
++#define	RFC931_PORT	113		/* Semi-well-known port */
++#define	ANY_PORT	0		/* Any old port will do */
++
++int     rfc931_timeout = RFC931_TIMEOUT;/* Global so it can be changed */
++
++static jmp_buf timebuf;
++
++static FILE *fsocket(int, int, int);
++static void timeout(int) __dead;
++
++/* fsocket - open stdio stream on top of socket */
++
++static FILE *
++fsocket(int domain, int type, int protocol)
++{
++    int     s;
++    FILE   *fp;
++
++    if ((s = socket(domain, type, protocol)) < 0) {
++	tcpd_warn("socket: %m");
++	return (0);
++    } else {
++	if ((fp = fdopen(s, "r+")) == 0) {
++	    tcpd_warn("fdopen: %m");
++	    close(s);
++	}
++	return (fp);
++    }
++}
++
++/* timeout - handle timeouts */
++
++static void
++timeout(int sig)
++{
++    longjmp(timebuf, sig);
++}
++
++/* rfc931 - return remote user name, given socket structures */
++
++void
++rfc931(struct sockaddr *rmt_sin, struct sockaddr *our_sin, char *dest)
++{
++    unsigned rmt_port;
++    unsigned our_port;
++    struct sockaddr_storage rmt_query_sin;
++    struct sockaddr_storage our_query_sin;
++    char    user[256];			/* XXX */
++    char    buffer[512];		/* XXX */
++    char   *cp;
++    char   * volatile result = unknown;
++    FILE   *fp;
++    volatile int salen;
++    u_short * volatile rmt_portp;
++    u_short * volatile our_portp;
++
++    /* address family must be the same */
++    if (rmt_sin->sa_family != our_sin->sa_family) {
++	strlcpy(dest, unknown, STRING_LENGTH);
++	return;
++    }
++    switch (rmt_sin->sa_family) {
++    case AF_INET:
++	salen = sizeof(struct sockaddr_in);
++	rmt_portp = &(((struct sockaddr_in *)rmt_sin)->sin_port);
++	break;
++#ifdef INET6
++    case AF_INET6:
++	salen = sizeof(struct sockaddr_in6);
++	rmt_portp = &(((struct sockaddr_in6 *)rmt_sin)->sin6_port);
++	break;
++#endif
++    default:
++	strlcpy(dest, unknown, STRING_LENGTH);
++	return;
++    }
++    switch (our_sin->sa_family) {
++    case AF_INET:
++	our_portp = &(((struct sockaddr_in *)our_sin)->sin_port);
++	break;
++#ifdef INET6
++    case AF_INET6:
++	our_portp = &(((struct sockaddr_in6 *)our_sin)->sin6_port);
++	break;
++#endif
++    default:
++	strlcpy(dest, unknown, STRING_LENGTH);
++	return;
++    }
++
++    /*
++     * Use one unbuffered stdio stream for writing to and for reading from
++     * the RFC931 etc. server. This is done because of a bug in the SunOS
++     * 4.1.x stdio library. The bug may live in other stdio implementations,
++     * too. When we use a single, buffered, bidirectional stdio stream ("r+"
++     * or "w+" mode) we read our own output. Such behaviour would make sense
++     * with resources that support random-access operations, but not with
++     * sockets.
++     */
++
++    if ((fp = fsocket(rmt_sin->sa_family, SOCK_STREAM, 0)) != 0) {
++	setbuf(fp, (char *) 0);
++
++	/*
++	 * Set up a timer so we won't get stuck while waiting for the server.
++	 */
++
++	if (setjmp(timebuf) == 0) {
++	    signal(SIGALRM, timeout);
++	    alarm(rfc931_timeout);
++
++	    /*
++	     * Bind the local and remote ends of the query socket to the same
++	     * IP addresses as the connection under investigation. We go
++	     * through all this trouble because the local or remote system
++	     * might have more than one network address. The RFC931 etc.
++	     * client sends only port numbers; the server takes the IP
++	     * addresses from the query socket.
++	     */
++
++	    memcpy(&our_query_sin, our_sin, salen);
++	    switch (our_query_sin.ss_family) {
++	    case AF_INET:
++		((struct sockaddr_in *)&our_query_sin)->sin_port =
++			htons(ANY_PORT);
++		break;
++#ifdef INET6
++	    case AF_INET6:
++		((struct sockaddr_in6 *)&our_query_sin)->sin6_port =
++			htons(ANY_PORT);
++		break;
++#endif
++	    }
++	    memcpy(&rmt_query_sin, rmt_sin, salen);
++	    switch (rmt_query_sin.ss_family) {
++	    case AF_INET:
++		((struct sockaddr_in *)&rmt_query_sin)->sin_port =
++			htons(RFC931_PORT);
++		break;
++#ifdef INET6
++	    case AF_INET6:
++		((struct sockaddr_in6 *)&rmt_query_sin)->sin6_port = 
++			htons(RFC931_PORT);
++		break;
++#endif
++	    }
++
++	    if (bind(fileno(fp), (struct sockaddr *) & our_query_sin,
++		     salen) >= 0 &&
++		connect(fileno(fp), (struct sockaddr *) & rmt_query_sin,
++			salen) >= 0) {
++
++		/*
++		 * Send query to server. Neglect the risk that a 13-byte
++		 * write would have to be fragmented by the local system and
++		 * cause trouble with buggy System V stdio libraries.
++		 */
++
++		fprintf(fp, "%u,%u\r\n",
++			ntohs(*rmt_portp),
++			ntohs(*our_portp));
++		fflush(fp);
++
++		/*
++		 * Read response from server. Use fgets()/sscanf() so we can
++		 * work around System V stdio libraries that incorrectly
++		 * assume EOF when a read from a socket returns less than
++		 * requested.
++		 */
++
++		if (fgets(buffer, sizeof(buffer), fp) != 0
++		    && ferror(fp) == 0 && feof(fp) == 0
++		    && sscanf(buffer, "%u , %u : USERID :%*[^:]:%255s",
++			      &rmt_port, &our_port, user) == 3
++		    && ntohs(*rmt_portp) == rmt_port
++		    && ntohs(*our_portp) == our_port) {
++
++		    /*
++		     * Strip trailing carriage return. It is part of the
++		     * protocol, not part of the data.
++		     */
++
++		    if ((cp = strchr(user, '\r')) != NULL)
++			*cp = '\0';
++		    result = user;
++		}
++	    }
++	    alarm(0);
++	}
++	fclose(fp);
++    }
++    strlcpy(dest, result, STRING_LENGTH);
++}
++
++#else /* non-NetBSD pkgsrc implementations */
+  /*
+   * rfc931() speaks a common subset of the RFC 931, AUTH, TAP, IDENT and RFC
+   * 1413 protocols. It queries an RFC 931 etc. compatible daemon on a remote
+@@ -175,3 +410,5 @@
+     }
+     STRN_CPY(dest, result, STRING_LENGTH);
+ }
++
++#endif
+--- shell_cmd.c.orig
++++ shell_cmd.c
+@@ -1,3 +1,104 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: shell_cmd.c,v 1.7 2012/03/22 22:59:43 joerg Exp $	*/
++
++ /*
++  * shell_cmd() takes a shell command after %<character> substitutions. The
++  * command is executed by a /bin/sh child process, with standard input,
++  * standard output and standard error connected to /dev/null.
++  * 
++  * Diagnostics are reported through syslog(3).
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#include <sys/cdefs.h>
++#ifndef lint
++#if 0
++static char sccsid[] = "@(#) shell_cmd.c 1.5 94/12/28 17:42:44";
++#else
++__RCSID("$NetBSD: shell_cmd.c,v 1.7 2012/03/22 22:59:43 joerg Exp $");
++#endif
++#endif
++
++/* System libraries. */
++
++#include <sys/types.h>
++#include <sys/param.h>
++#include <sys/wait.h>
++#include <signal.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <unistd.h>
++#include <fcntl.h>
++#include <syslog.h>
++#include <string.h>
++
++/* Local stuff. */
++
++#include "tcpd.h"
++
++/* Forward declarations. */
++
++static void do_child(char *) __dead;
++
++/* shell_cmd - execute shell command */
++
++void
++shell_cmd(char *command)
++{
++    int     child_pid;
++    int     wait_pid;
++
++    /*
++     * Most of the work is done within the child process, to minimize the
++     * risk of damage to the parent.
++     */
++
++    switch (child_pid = fork()) {
++    case -1:					/* error */
++	tcpd_warn("cannot fork: %m");
++	break;
++    case 00:					/* child */
++	do_child(command);
++	/* NOTREACHED */
++    default:					/* parent */
++	while ((wait_pid = wait((int *) 0)) != -1 && wait_pid != child_pid)
++	     /* void */ ;
++    }
++}
++
++/* do_child - exec command with { stdin, stdout, stderr } to /dev/null */
++
++static void
++do_child(char *command)
++{
++    int     tmp_fd;
++
++    /*
++     * Systems with POSIX sessions may send a SIGHUP to grandchildren if the
++     * child exits first. This is sick, sessions were invented for terminals.
++     */
++
++    signal(SIGHUP, SIG_IGN);
++
++    /* Set up new stdin, stdout, stderr, and exec the shell command. */
++
++    for (tmp_fd = 0; tmp_fd < 3; tmp_fd++)
++	(void) close(tmp_fd);
++    if (open("/dev/null", 2) != 0) {
++	tcpd_warn("open /dev/null: %m");
++    } else if (dup(0) != 1 || dup(0) != 2) {
++	tcpd_warn("dup: %m");
++    } else {
++	(void) execl("/bin/sh", "sh", "-c", command, (char *) 0);
++	tcpd_warn("execl /bin/sh: %m");
++    }
++
++    /* Something went wrong. We MUST terminate the child process. */
++    _exit(0);
++}
++
++#else /* non-NetBSD pkgsrc implementations */
+  /*
+   * shell_cmd() takes a shell command after %<character> substitutions. The
+   * command is executed by a /bin/sh child process, with standard input,
+@@ -93,3 +194,5 @@
+     tcpd_warn(error);
+     _exit(0);
+ }
++
++#endif
+--- socket.c.orig
++++ socket.c
+@@ -1,3 +1,297 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: socket.c,v 1.19 2012/03/21 10:10:37 matt Exp $	*/
++
++ /*
++  * This module determines the type of socket (datagram, stream), the client
++  * socket address and port, the server socket address and port. In addition,
++  * it provides methods to map a transport address to a printable host name
++  * or address. Socket address information results are in static memory.
++  * 
++  * The result from the hostname lookup method is STRING_PARANOID when a host
++  * pretends to have someone elses name, or when a host name is available but
++  * could not be verified.
++  * 
++  * When lookup or conversion fails the result is set to STRING_UNKNOWN.
++  * 
++  * Diagnostics are reported through syslog(3).
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#include <sys/cdefs.h>
++#ifndef lint
++#if 0
++static char sccsid[] = "@(#) socket.c 1.15 97/03/21 19:27:24";
++#else
++__RCSID("$NetBSD: socket.c,v 1.19 2012/03/21 10:10:37 matt Exp $");
++#endif
++#endif
++
++/* System libraries. */
++
++#include <sys/types.h>
++#include <sys/param.h>
++#include <sys/socket.h>
++#include <netinet/in.h>
++#include <netdb.h>
++#include <stdio.h>
++#include <syslog.h>
++#include <string.h>
++#include <arpa/inet.h>
++
++/* Local stuff. */
++
++#include "tcpd.h"
++
++/* Forward declarations. */
++
++#ifdef APPEND_DOT
++static const char *append_dot __P((const char *));
++#endif
++static void sock_sink __P((int));
++
++#ifdef APPEND_DOT
++ /*
++  * Speed up DNS lookups by terminating the host name with a dot. Should be
++  * done with care. The speedup can give problems with lookups from sources
++  * that lack DNS-style trailing dot magic, such as local files or NIS maps.
++  */
++
++static const char *
++append_dot(name)
++const char *name;
++{
++    static char hbuf[MAXHOSTNAMELEN + 1];
++
++    /*
++     * Don't append dots to unqualified names. Such names are likely to come
++     * from local hosts files or from NIS.
++     */
++
++    if (strchr(name, '.') == 0 || strlen(name) + 2 > sizeof(hbuf))
++	strlcpy(hbuf, name, sizeof(hbuf));
++    else
++	(void)snprintf(hbuf, sizeof(hbuf), "%s.", name);
++    return hbuf;
++}
++#endif
++
++/* sock_host - look up endpoint addresses and install conversion methods */
++
++void
++sock_host(struct request_info *request)
++{
++    static struct sockaddr_storage client;
++    static struct sockaddr_storage server;
++    socklen_t     len;
++    char    buf[BUFSIZ];
++    int     fd = request->fd;
++
++    sock_methods(request);
++
++    /*
++     * Look up the client host address. Hal R. Brand <BRAND@addvax.llnl.gov>
++     * suggested how to get the client host info in case of UDP connections:
++     * peek at the first message without actually looking at its contents. We
++     * really should verify that client.sin_family gets the value AF_INET,
++     * but this program has already caused too much grief on systems with
++     * broken library code.
++     *
++     * XXX the last sentence is untrue as we support AF_INET6 as well :-)
++     */
++
++    if (request->client->sin == NULL) {
++        len = sizeof(client);
++        if (getpeername(fd, (struct sockaddr *)(void *)& client, &len) < 0) {
++	    request->sink = sock_sink;
++	    len = sizeof(client);
++	    if (recvfrom(fd, buf, sizeof(buf), MSG_PEEK,
++		         (struct sockaddr *) & client, &len) < 0) {
++	        tcpd_warn("can't get client address: %m");
++	        return;				/* give up */
++	    }
++#ifdef really_paranoid
++	    memset(buf, 0, sizeof(buf));
++#endif
++        }
++        request->client->sin = (struct sockaddr *)&client;
++    }
++
++    /*
++     * Determine the server binding. This is used for client username
++     * lookups, and for access control rules that trigger on the server
++     * address or name.
++     */
++
++    if (request->server->sin == NULL) {
++        len = sizeof(server);
++        if (getsockname(fd, (struct sockaddr *) & server, &len) < 0) {
++	    tcpd_warn("getsockname: %m");
++	    return;
++        }
++        request->server->sin = (struct sockaddr *)&server;
++    }
++}
++
++/* sock_hostaddr - map endpoint address to printable form */
++
++void
++sock_hostaddr(struct host_info *host)
++{
++    struct sockaddr *sa = host->sin;
++
++    if (!sa)
++	return;
++    host->addr[0] = '\0';
++    getnameinfo(sa, sa->sa_len, host->addr, sizeof(host->addr),
++	NULL, 0, NI_NUMERICHOST);
++}
++
++/* sock_hostname - map endpoint address to host name */
++
++void
++sock_hostname(struct host_info *host)
++{
++    struct sockaddr *sa = host->sin;
++    char h1[NI_MAXHOST], h2[NI_MAXHOST];
++    struct addrinfo hints, *res, *res0;
++#ifdef INET6
++    struct sockaddr_in tmp;
++#endif
++
++    if (!sa)
++	return;
++#ifdef INET6
++    /* special case on reverse lookup: mapped addr.  I hate it */
++    if (sa->sa_family == AF_INET6 &&
++        IN6_IS_ADDR_V4MAPPED(&((struct sockaddr_in6 *)sa)->sin6_addr)) {
++	memset(&tmp, 0, sizeof(tmp));
++	tmp.sin_family = AF_INET;
++	tmp.sin_len = sizeof(struct sockaddr_in);
++	memcpy(&tmp.sin_addr,
++	    &((struct sockaddr_in6 *)sa)->sin6_addr.s6_addr[12], 4);
++	sa = (struct sockaddr *)&tmp;
++    }
++#endif
++    if (getnameinfo(sa, sa->sa_len, h1, sizeof(h1), NULL, 0,
++        NI_NUMERICHOST) != 0) {
++	return;
++    }
++    if (getnameinfo(sa, sa->sa_len, host->name, sizeof(host->name), NULL, 0,
++        NI_NAMEREQD) == 0) {
++	/*
++	 * if reverse lookup result looks like a numeric hostname,
++	 * someone is trying to trick us by PTR record like following:
++	 *	1.1.1.10.in-addr.arpa.  IN PTR  2.3.4.5
++	 */
++	memset(&hints, 0, sizeof(hints));
++	hints.ai_socktype = SOCK_DGRAM;	/*dummy*/
++	hints.ai_flags = AI_NUMERICHOST;
++#ifdef APPEND_DOT
++	if (getaddrinfo(append_dot(host->name), "0", &hints, &res0) == 0)
++#else
++	if (getaddrinfo(host->name, "0", &hints, &res0) == 0)
++#endif
++	{
++	    tcpd_warn("Nasty PTR record is configured");
++	    freeaddrinfo(res0);
++	    /* name is bad, clobber it */
++	    (void)strlcpy(host->name, paranoid, sizeof(host->name));
++	    return;
++	}
++	 
++	/*
++	 * Verify that the address is a member of the address list returned
++	 * by getaddrinfo(hostname).
++	 * 
++	 * Verify also that getnameinfo() and getaddrinfo() return the same
++	 * hostname, or rshd and rlogind may still end up being spoofed.
++	 * 
++	 * On some sites, getaddrinfo("localhost") returns "localhost.domain".
++	 * This is a DNS artefact. We treat it as a special case. When we
++	 * can't believe the address list from getaddrinfo("localhost")
++	 * we're in big trouble anyway.
++	 */
++	memset(&hints, 0, sizeof(hints));
++	hints.ai_family = sa->sa_family;
++	hints.ai_socktype = SOCK_DGRAM;	/*dummy*/
++	hints.ai_flags = AI_CANONNAME;
++#ifdef APPEND_DOT
++	if (getaddrinfo(append_dot(host->name), "0", &hints, &res0) != 0)
++#else
++	if (getaddrinfo(host->name, "0", &hints, &res0) != 0)
++#endif
++	{
++	    /*
++	     * Unable to verify that the host name matches the address. This
++	     * may be a transient problem or a botched name server setup.
++	     */
++
++	    tcpd_warn("can't verify hostname: getaddrinfo(%s, %d) failed",
++	        host->name, hints.ai_family);
++	} else if (res0->ai_canonname &&
++	    STR_NE(host->name, res0->ai_canonname) &&
++	    STR_NE(host->name, "localhost")) {
++	    /*
++	     * The getnameinfo() and getaddrinfo() calls did not return
++	     * the same hostname. This could be a nameserver configuration
++	     * problem. It could also be that someone is trying to spoof us.
++	     */
++
++	    tcpd_warn("host name/name mismatch: %s != %s",
++		host->name, res0->ai_canonname);
++	    freeaddrinfo(res0);
++	} else {
++	    /*
++	     * The address should be a member of the address list returned by
++	     * getaddrinfo().
++	     */
++
++	    for (res = res0; res; res = res->ai_next) {
++		if (getnameinfo(res->ai_addr, res->ai_addrlen, h2, sizeof(h2),
++		    NULL, 0, NI_NUMERICHOST) != 0) {
++		    continue;
++		}
++		if (STR_EQ(h1, h2)) {
++		    freeaddrinfo(res0);
++		    return;
++		}
++	    }
++
++	    /*
++	     * The host name does not map to the initial address. Perhaps
++	     * someone has messed up. Perhaps someone compromised a name
++	     * server.
++	     */
++
++	    tcpd_warn("host name/address mismatch: %s != %s", h1,
++		res0->ai_canonname ? res0->ai_canonname : "?");
++
++	    freeaddrinfo(res0);
++	}
++	/* name is bad, clobber it */
++	(void)strlcpy(host->name, paranoid, sizeof(host->name));
++    }
++}
++
++/* sock_sink - absorb unreceived IP datagram */
++
++static void
++sock_sink(int fd)
++{
++    char    buf[BUFSIZ];
++    struct sockaddr_storage ss;
++    socklen_t size = sizeof(ss);
++
++    /*
++     * Eat up the not-yet received datagram. Some systems insist on a
++     * non-zero source address argument in the recvfrom() call below.
++     */
++
++    (void) recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr *) & ss, &size);
++}
++
++#else /* non-NetBSD pkgsrc implementations */
+  /*
+   * This module determines the type of socket (datagram, stream), the client
+   * socket address and port, the server socket address and port. In addition,
+@@ -277,3 +571,5 @@
+     return;
+ #endif /* HAVE_IPV6 */
+ }
++
++#endif
+--- tcpd.h.orig
++++ tcpd.h
+@@ -1,3 +1,215 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: tcpd.h,v 1.15 2015/10/14 15:54:21 christos Exp $	*/
++ /*
++  * @(#) tcpd.h 1.5 96/03/19 16:22:24
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#include <sys/cdefs.h>
++#include <stdio.h>
++
++/* Structure to describe one communications endpoint. */
++
++#define STRING_LENGTH	128		/* hosts, users, processes */
++
++struct host_info {
++    char    name[STRING_LENGTH];	/* access via eval_hostname(host) */
++    char    addr[STRING_LENGTH];	/* access via eval_hostaddr(host) */
++    struct sockaddr *sin;		/* socket address or 0 */
++    struct t_unitdata *unit;		/* TLI transport address or 0 */
++    struct request_info *request;	/* for shared information */
++};
++
++/* Structure to describe what we know about a service request. */
++
++struct request_info {
++    int     fd;				/* socket handle */
++    char    user[STRING_LENGTH];	/* access via eval_user(request) */
++    char    daemon[STRING_LENGTH];	/* access via eval_daemon(request) */
++    char    pid[10];			/* access via eval_pid(request) */
++    struct host_info client[1];		/* client endpoint info */
++    struct host_info server[1];		/* server endpoint info */
++    void (*sink)(int);			/* datagram sink function or 0 */
++    void (*hostname)(struct host_info *); /* address to printable hostname */
++    void (*hostaddr)(struct host_info *); /* address to printable address */
++    void (*cleanup)(void);		/* cleanup function or 0 */
++    struct netconfig *config;		/* netdir handle */
++};
++
++/* Common string operations. Less clutter should be more readable. */
++
++#define STRN_CPY(d,s,l)	{ strncpy((d),(s),(l)); (d)[(l)-1] = 0; }
++
++#define STRN_EQ(x,y,l)	(strncasecmp((x),(y),(l)) == 0)
++#define STRN_NE(x,y,l)	(strncasecmp((x),(y),(l)) != 0)
++#define STR_EQ(x,y)	(strcasecmp((x),(y)) == 0)
++#define STR_NE(x,y)	(strcasecmp((x),(y)) != 0)
++
++ /*
++  * Initially, all above strings have the empty value. Information that
++  * cannot be determined at runtime is set to "unknown", so that we can
++  * distinguish between `unavailable' and `not yet looked up'. A hostname
++  * that we do not believe in is set to "paranoid".
++  */
++
++#define STRING_UNKNOWN	"unknown"	/* lookup failed */
++#define STRING_PARANOID	"paranoid"	/* hostname conflict */
++
++__BEGIN_DECLS
++extern char unknown[];
++extern char paranoid[];
++__END_DECLS
++
++#define HOSTNAME_KNOWN(s) (STR_NE((s),unknown) && STR_NE((s),paranoid))
++
++#define NOT_INADDR(s) (s[strspn(s,"01234567890./")] != 0)
++
++/* Global functions. */
++
++__BEGIN_DECLS
++#define fromhost sock_host		/* no TLI support needed */
++
++extern int hosts_access			/* access control */
++		(struct request_info *);
++extern int hosts_ctl			/* limited interface to hosts_access */
++		(char *, char *, char *, char *);
++extern void shell_cmd			/* execute shell command */
++		(char *);
++extern char *percent_x			/* do %<char> expansion */
++		(char *, int, char *, struct request_info *);
++extern void rfc931			/* client name from RFC 931 daemon */
++		(struct sockaddr *, struct sockaddr *, char *);
++__dead extern void clean_exit		/* clean up and exit */
++		(struct request_info *);
++__dead extern void refuse		/* clean up and exit */
++		(struct request_info *);
++extern char *xgets			/* fgets() on steroids */
++		(char *, int, FILE *);
++extern char *split_at			/* strchr() and split */
++		(char *, int);
++extern int dot_quad_addr	/* restricted inet_aton() */
++		(char *, unsigned long *);
++
++/* Global variables. */
++
++extern int allow_severity;		/* for connection logging */
++extern int deny_severity;		/* for connection logging */
++extern const char *hosts_allow_table;	/* for verification mode redirection */
++extern const char *hosts_deny_table;	/* for verification mode redirection */
++extern int hosts_access_verbose;	/* for verbose matching mode */
++extern int rfc931_timeout;		/* user lookup timeout */
++extern int resident;			/* > 0 if resident process */
++
++ /*
++  * Routines for controlled initialization and update of request structure
++  * attributes. Each attribute has its own key.
++  */
++
++extern struct request_info *request_init	/* initialize request */
++		(struct request_info *,...);
++extern struct request_info *request_set		/* update request structure */
++		(struct request_info *,...);
++
++#define RQ_FILE		1		/* file descriptor */
++#define RQ_DAEMON	2		/* server process (argv[0]) */
++#define RQ_USER		3		/* client user name */
++#define RQ_CLIENT_NAME	4		/* client host name */
++#define RQ_CLIENT_ADDR	5		/* client host address */
++#define RQ_CLIENT_SIN	6		/* client endpoint (internal) */
++#define RQ_SERVER_NAME	7		/* server host name */
++#define RQ_SERVER_ADDR	8		/* server host address */
++#define RQ_SERVER_SIN	9		/* server endpoint (internal) */
++
++ /*
++  * Routines for delayed evaluation of request attributes. Each attribute
++  * type has its own access method. The trivial ones are implemented by
++  * macros. The other ones are wrappers around the transport-specific host
++  * name, address, and client user lookup methods. The request_info and
++  * host_info structures serve as caches for the lookup results.
++  */
++
++extern char *eval_user			/* client user */
++		(struct request_info *);
++extern char *eval_hostname		/* printable hostname */
++		(struct host_info *);
++extern char *eval_hostaddr		/* printable host address */
++		(struct host_info *);
++extern char *eval_hostinfo		/* host name or address */
++		(struct host_info *);
++extern char *eval_client		/* whatever is available */
++		(struct request_info *);
++extern char *eval_server		/* whatever is available */
++		(struct request_info *);
++#define eval_daemon(r)	((r)->daemon)	/* daemon process name */
++#define eval_pid(r)	((r)->pid)	/* process id */
++
++/* Socket-specific methods, including DNS hostname lookups. */
++
++extern void sock_host			/* look up endpoint addresses */
++		(struct request_info *);
++extern void sock_hostname		/* translate address to hostname */
++		(struct host_info *);
++extern void sock_hostaddr		/* address to printable address */
++		(struct host_info *);
++#define sock_methods(r) \
++	{ (r)->hostname = sock_hostname; (r)->hostaddr = sock_hostaddr; }
++
++/* The System V Transport-Level Interface (TLI) interface. */
++
++#if defined(TLI) || defined(PTX) || defined(TLI_SEQUENT)
++extern void tli_host			/* look up endpoint addresses etc. */
++		(struct request_info *);
++#endif
++
++ /*
++  * Problem reporting interface. Additional file/line context is reported
++  * when available. The jump buffer (tcpd_buf) is not declared here, or
++  * everyone would have to include <setjmp.h>.
++  */
++
++/* Report problem and proceed */
++void tcpd_warn(const char *, ...) __sysloglike(1, 2);
++
++/* Report problem and jump */
++void tcpd_jump(const char *, ...) __dead __sysloglike(1, 2);
++__END_DECLS
++
++struct tcpd_context {
++    const char *file;			/* current file */
++    int     line;			/* current line */
++};
++__BEGIN_DECLS
++extern struct tcpd_context tcpd_context;
++__END_DECLS
++
++ /*
++  * While processing access control rules, error conditions are handled by
++  * jumping back into the hosts_access() routine. This is cleaner than
++  * checking the return value of each and every silly little function. The
++  * (-1) returns are here because zero is already taken by longjmp().
++  */
++
++#define AC_PERMIT	1		/* permit access */
++#define AC_DENY		(-1)		/* deny_access */
++#define AC_ERROR	AC_DENY		/* XXX */
++
++ /*
++  * In verification mode an option function should just say what it would do,
++  * instead of really doing it. An option function that would not return
++  * should clear the dry_run flag to inform the caller of this unusual
++  * behavior.
++  */
++
++__BEGIN_DECLS
++extern void process_options		/* execute options */
++		(char *, struct request_info *);
++extern int dry_run;			/* verification flag */
++extern void fix_options			/* get rid of IP-level socket options */
++		(struct request_info *);
++__END_DECLS
++
++#else /* non-NetBSD pkgsrc implementations */
+  /*
+   * @(#) tcpd.h 1.5 96/03/19 16:22:24
+   * 
+@@ -319,3 +531,5 @@
+ #define strtok	my_strtok
+ extern char *my_strtok(char *, char *);
+ #endif
++
++#endif
+--- update.c.orig
++++ update.c
+@@ -1,3 +1,6 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: update.c,v 1.9 2012/03/21 10:10:37 matt Exp $	*/
++
+  /*
+   * Routines for controlled update/initialization of request structures.
+   * 
+@@ -13,8 +16,13 @@
+   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
+   */
+ 
++#include <sys/cdefs.h>
+ #ifndef lint
++#if 0
+ static char sccsid[] = "@(#) update.c 1.1 94/12/28 17:42:56";
++#else
++__RCSID("$NetBSD: update.c,v 1.9 2012/03/21 10:10:37 matt Exp $");
++#endif
+ #endif
+ 
+ /* System libraries */
+@@ -29,11 +37,12 @@
+ #include "mystdarg.h"
+ #include "tcpd.h"
+ 
++static struct request_info *request_fill(struct request_info *, va_list);
++
+ /* request_fill - request update engine */
+ 
+-static struct request_info *request_fill(request, ap)
+-struct request_info *request;
+-va_list ap;
++static struct request_info *
++request_fill(struct request_info *request, va_list ap)
+ {
+     int     key;
+     char   *ptr;
+@@ -47,6 +56,128 @@
+ 	    request->fd = va_arg(ap, int);
+ 	    continue;
+ 	case RQ_CLIENT_SIN:
++	    request->client->sin = va_arg(ap, struct sockaddr *);
++	    continue;
++	case RQ_SERVER_SIN:
++	    request->server->sin = va_arg(ap, struct sockaddr *);
++	    continue;
++
++	    /*
++	     * All other fields are strings with the same maximal length.
++	     */
++
++	case RQ_DAEMON:
++	    ptr = request->daemon;
++	    break;
++	case RQ_USER:
++	    ptr = request->user;
++	    break;
++	case RQ_CLIENT_NAME:
++	    ptr = request->client->name;
++	    break;
++	case RQ_CLIENT_ADDR:
++	    ptr = request->client->addr;
++	    break;
++	case RQ_SERVER_NAME:
++	    ptr = request->server->name;
++	    break;
++	case RQ_SERVER_ADDR:
++	    ptr = request->server->addr;
++	    break;
++	}
++	strlcpy(ptr, va_arg(ap, char *), STRING_LENGTH);
++    }
++    return (request);
++}
++
++/* request_init - initialize request structure */
++
++struct request_info *VARARGS(request_init, struct request_info *, request)
++{
++    static struct request_info default_info;
++    struct request_info *r;
++    va_list ap;
++
++    /*
++     * Initialize data members. We do not assign default function pointer
++     * members, to avoid pulling in the whole socket module when it is not
++     * really needed.
++     */
++    VASTART(ap, struct request_info *, request);
++    *request = default_info;
++    request->fd = -1;
++    (void)strlcpy(request->daemon, unknown, sizeof(request->daemon));
++    (void)snprintf(request->pid, sizeof(request->pid), "%d", getpid());
++    request->client->request = request;
++    request->server->request = request;
++    r = request_fill(request, ap);
++    VAEND(ap);
++    return (r);
++}
++
++/* request_set - update request structure */
++
++struct request_info *VARARGS(request_set, struct request_info *, request)
++{
++    struct request_info *r;
++    va_list ap;
++
++    VASTART(ap, struct request_info *, request);
++    r = request_fill(request, ap);
++    VAEND(ap);
++    return (r);
++}
++
++#else /* non-NetBSD pkgsrc implementations */
++ /*
++  * Routines for controlled update/initialization of request structures.
++  * 
++  * request_init() initializes its argument. Pointers and string-valued members
++  * are initialized to zero, to indicate that no lookup has been attempted.
++  * 
++  * request_set() adds information to an already initialized request structure.
++  * 
++  * Both functions take a variable-length name-value list.
++  * 
++  * Diagnostics are reported through syslog(3).
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#ifndef lint
++static char sccsid[] = "@(#) update.c 1.1 94/12/28 17:42:56";
++#endif
++
++/* System libraries */
++
++#include <stdio.h>
++#include <syslog.h>
++#include <string.h>
++#include <unistd.h>
++
++/* Local stuff. */
++
++#include "mystdarg.h"
++#include "tcpd.h"
++
++/* request_fill - request update engine */
++
++static struct request_info *request_fill(request, ap)
++struct request_info *request;
++va_list ap;
++{
++    int     key;
++    char   *ptr;
++
++    while ((key = va_arg(ap, int)) > 0) {
++	switch (key) {
++	default:
++	    tcpd_warn("request_fill: invalid key: %d", key);
++	    return (request);
++	case RQ_FILE:
++	    request->fd = va_arg(ap, int);
++	    continue;
++	case RQ_CLIENT_SIN:
+ 	    request->client->sin = va_arg(ap, struct sockaddr_gen *);
+ 	    continue;
+ 	case RQ_SERVER_SIN:
+@@ -118,3 +249,5 @@
+     VAEND(ap);
+     return (r);
+ }
++
++#endif
+--- fakelog.c.orig
++++ fakelog.c
+@@ -1,3 +1,73 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: fakelog.c,v 1.7 2018/01/23 21:06:26 sevan Exp $	*/
++
++ /*
++  * This module intercepts syslog() library calls and redirects their output
++  * to the standard output stream. For interactive testing.
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#include <sys/cdefs.h>
++#ifndef lint
++#if 0
++static char sccsid[] = "@(#) fakelog.c 1.3 94/12/28 17:42:21";
++#else
++__RCSID("$NetBSD: fakelog.c,v 1.7 2018/01/23 21:06:26 sevan Exp $");
++#endif
++#endif
++
++#include <stdio.h>
++#include <syslog.h>
++
++#include "mystdarg.h"
++#include "percent_m.h"
++
++/* openlog - dummy */
++
++/* ARGSUSED */
++
++void
++openlog(const char *name, int logopt, int facility)
++{
++    /* void */
++}
++
++/* vsyslog - format one record */
++
++void
++vsyslog(int severity, const char *fmt, va_list ap)
++{
++    char    buf[BUFSIZ];
++
++    vprintf(percent_m(buf, fmt), ap);
++    printf("\n");
++    fflush(stdout);
++}
++
++/* syslog - format one record */
++
++/* VARARGS */
++
++void
++syslog(int severity, const char *fmt, ...)
++{
++    va_list ap;
++
++    va_start(ap, fmt);
++    vsyslog(severity, fmt, ap);
++    va_end(ap);
++}
++
++/* closelog - dummy */
++
++void
++closelog(void)
++{
++    /* void */
++}
++
++#else /* non-NetBSD pkgsrc implementations */
+  /*
+   * This module intercepts syslog() library calls and redirects their output
+   * to the standard output stream. For interactive testing.
+@@ -64,3 +134,5 @@
+ {
+     /* void */
+ }
++
++#endif
+--- inetcf.c.orig
++++ inetcf.c
+@@ -1,3 +1,6 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: inetcf.c,v 1.11 2018/01/23 21:06:26 sevan Exp $	*/
++
+  /*
+   * Routines to parse an inetd.conf or tlid.conf file. This would be a great
+   * job for a PERL script.
+@@ -5,20 +8,45 @@
+   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
+   */
+ 
++#include <sys/cdefs.h>
+ #ifndef lint
++#if 0
+ static char sccsid[] = "@(#) inetcf.c 1.7 97/02/12 02:13:23";
++#else
++__RCSID("$NetBSD: inetcf.c,v 1.11 2018/01/23 21:06:26 sevan Exp $");
++#endif
+ #endif
+ 
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <stdio.h>
+-#include <stdlib.h>
+ #include <errno.h>
+ #include <string.h>
++#include <stdlib.h>
+ 
+ #include "tcpd.h"
+ #include "inetcf.h"
++#include "percent_m.h"
+ #include "scaffold.h"
++
++static void inet_chk(char *, char *, char *, char *);
++static char *base_name(char *);
++
++ /*
++  * Programs that use libwrap directly are not in inetd.conf, and so must
++  * be added here in a similar format. (We pretend we found them in
++  * /etc/inetd.conf.) Each one is a set of three strings that correspond
++  * to fields in /etc/inetd.conf:
++  *    protocol (field 3),  path (field 6), arg0 (field 7)
++  * The last entry should be a NULL.
++  */
++char   *uses_libwrap[] = {
++    "tcp", "/usr/sbin/sendmail",	"sendmail",
++    "tcp", "/usr/sbin/sshd",		"sshd",
++    "udp", "/usr/sbin/syslogd",		"syslogd",
++    "udp", "/usr/sbin/rpcbind",		"rpcbind",
++    NULL
++};
+ 
+  /*
+   * Network configuration files may live in unusual places. Here are some
+@@ -35,6 +63,325 @@
+     0,
+ };
+ 
++ /*
++  * Structure with everything we know about a service.
++  */
++struct inet_ent {
++    struct inet_ent *next;
++    int     type;
++    char    name[1];
++};
++
++static struct inet_ent *inet_list = 0;
++
++static char whitespace[] = " \t\r\n";
++
++/* inet_conf - read in and examine inetd.conf (or tlid.conf) entries */
++
++char   *inet_cfg(char *conf)
++{
++    char    buf[BUFSIZ];
++    FILE   *fp = NULL;
++    char   **wrapped;
++    char   *service;
++    char   *protocol;
++    char   *user;
++    char   *path;
++    char   *arg0;
++    char   *arg1;
++    struct tcpd_context saved_context;
++    int     i;
++    struct stat st;
++
++    saved_context = tcpd_context;
++
++    /*
++     * The inetd.conf (or tlid.conf) information is so useful that we insist
++     * on its availability. When no file is given run a series of educated
++     * guesses.
++     */
++    if (conf != 0) {
++	if ((fp = fopen(conf, "r")) == 0) {
++	    fprintf(stderr, "open %s: %s\n", conf, strerror(errno));
++	    exit(1);
++	}
++    } else {
++	for (i = 0; inet_files[i] && (fp = fopen(inet_files[i], "r")) == 0; i++)
++	     /* void */ ;
++	if (fp == 0) {
++	    fprintf(stderr, "Cannot find your inetd.conf or tlid.conf file.\n");
++	    fprintf(stderr, "Please specify its location.\n");
++	    exit(1);
++	}
++	conf = inet_files[i];
++	check_path(conf, &st);
++    }
++
++    /*
++     * Process the list of programs that use libwrap directly.
++     */
++    wrapped = uses_libwrap;
++    while (*wrapped != NULL)  {
++	inet_chk(wrapped[0], wrapped[1], wrapped[2], "");
++	wrapped += 3;
++    }
++
++    /*
++     * Process the file. After the 7.0 wrapper release it became clear that
++     * there are many more inetd.conf formats than the 8 systems that I had
++     * studied. EP/IX uses a two-line specification for rpc services; HP-UX
++     * permits long lines to be broken with backslash-newline.
++     */
++    tcpd_context.file = conf;
++    tcpd_context.line = 0;
++    while (xgets(buf, sizeof(buf), fp)) {
++	service = strtok(buf, whitespace);	/* service */
++	if (service == 0 || *service == '#')
++	    continue;
++	if (STR_NE(service, "stream") && STR_NE(service, "dgram"))
++	    strtok((char *) 0, whitespace);	/* endpoint */
++	protocol = strtok((char *) 0, whitespace);
++	(void) strtok((char *) 0, whitespace);	/* wait */
++	if ((user = strtok((char *) 0, whitespace)) == 0)
++	    continue;
++	if (user[0] == '/') {			/* user */
++	    path = user;
++	} else {				/* path */
++	    if ((path = strtok((char *) 0, whitespace)) == 0)
++		continue;
++	}
++	if (path[0] == '?')			/* IRIX optional service */
++	    path++;
++	if (STR_EQ(path, "internal"))
++	    continue;
++	if (path[strspn(path, "-0123456789")] == 0) {
++
++	    /*
++	     * ConvexOS puts RPC version numbers before path names. Jukka
++	     * Ukkonen <ukkonen@csc.fi>.
++	     */
++	    if ((path = strtok((char *) 0, whitespace)) == 0)
++		continue;
++	}
++	if ((arg0 = strtok((char *) 0, whitespace)) == 0) {
++	    tcpd_warn("incomplete line");
++	    continue;
++	}
++	if (arg0[strspn(arg0, "0123456789")] == 0) {
++
++	    /*
++	     * We're reading a tlid.conf file, the format is:
++	     * 
++	     * ...stuff... path arg_count arguments mod_count modules
++	     */
++	    if ((arg0 = strtok((char *) 0, whitespace)) == 0) {
++		tcpd_warn("incomplete line");
++		continue;
++	    }
++	}
++	if ((arg1 = strtok((char *) 0, whitespace)) == 0)
++	    arg1 = "";
++
++	inet_chk(protocol, path, arg0, arg1);
++    }
++    fclose(fp);
++    tcpd_context = saved_context;
++    return (conf);
++}
++
++/* inet_chk - examine one inetd.conf (tlid.conf?) entry */
++
++static void inet_chk(char *protocol, char *path, char *arg0, char *arg1)
++{
++    char    daemon[BUFSIZ];
++    struct stat st;
++    int     wrap_status = WR_MAYBE;
++    char   *base_name_path = base_name(path);
++    char   *tcpd_proc_name = (arg0[0] == '/' ? base_name(arg0) : arg0);
++
++    /*
++     * Always warn when the executable does not exist or when it is not
++     * executable.
++     */
++    if (check_path(path, &st) < 0) {
++	tcpd_warn("%s: not found: %m", path);
++    } else if ((st.st_mode & 0100) == 0) {
++	tcpd_warn("%s: not executable", path);
++    }
++
++    /*
++     * Cheat on the miscd tests, nobody uses it anymore.
++     */
++    if (STR_EQ(base_name_path, "miscd")) {
++	inet_set(arg0, WR_YES);
++	return;
++    }
++
++    /*
++     * While we are here...
++     */
++    if (STR_EQ(tcpd_proc_name, "rexd") || STR_EQ(tcpd_proc_name, "rpc.rexd"))
++	tcpd_warn("%s may be an insecure service", tcpd_proc_name);
++
++    /*
++     * The tcpd program gets most of the attention.
++     */
++    if (STR_EQ(base_name_path, "tcpd")) {
++
++	if (STR_EQ(tcpd_proc_name, "tcpd"))
++	    tcpd_warn("%s is recursively calling itself", tcpd_proc_name);
++
++	wrap_status = WR_YES;
++
++	/*
++	 * Check: some sites install the wrapper set-uid.
++	 */
++	if ((st.st_mode & 06000) != 0)
++	    tcpd_warn("%s: file is set-uid or set-gid", path);
++
++	/*
++	 * Check: some sites insert tcpd in inetd.conf, instead of replacing
++	 * the daemon pathname.
++	 */
++	if (arg0[0] == '/' && STR_EQ(tcpd_proc_name, base_name(arg1)))
++	    tcpd_warn("%s inserted before %s", path, arg0);
++
++	/*
++	 * Check: make sure files exist and are executable. On some systems
++	 * the network daemons are set-uid so we cannot complain. Note that
++	 * tcpd takes the basename only in case of absolute pathnames.
++	 */
++	if (arg0[0] == '/') {			/* absolute path */
++	    if (check_path(arg0, &st) < 0) {
++		tcpd_warn("%s: not found: %m", arg0);
++	    } else if ((st.st_mode & 0100) == 0) {
++		tcpd_warn("%s: not executable", arg0);
++	    }
++	} else {				/* look in REAL_DAEMON_DIR */
++	    snprintf(daemon, sizeof(daemon), "%s/%s", REAL_DAEMON_DIR, arg0);
++	    if (check_path(daemon, &st) < 0) {
++		tcpd_warn("%s: not found in %s: %m",
++			  arg0, REAL_DAEMON_DIR);
++	    } else if ((st.st_mode & 0100) == 0) {
++		tcpd_warn("%s: not executable", daemon);
++	    }
++	}
++
++    } else {
++
++	/*
++	 * No tcpd program found. Perhaps they used the "simple installation"
++	 * recipe. Look for a file with the same basename in REAL_DAEMON_DIR.
++	 * Draw some conservative conclusions when a distinct file is found.
++	 */
++	snprintf(daemon, sizeof(daemon), "%s/%s", REAL_DAEMON_DIR, arg0);
++	if (STR_EQ(path, daemon)) {
++	    wrap_status = WR_NOT;
++	} else if (check_path(daemon, &st) >= 0) {
++	    wrap_status = WR_MAYBE;
++	} else if (errno == ENOENT) {
++	    wrap_status = WR_NOT;
++	} else {
++	    tcpd_warn("%s: file lookup: %m", daemon);
++	    wrap_status = WR_MAYBE;
++	}
++    }
++
++    /*
++     * Alas, we cannot wrap rpc/tcp services.
++     */
++    if (wrap_status == WR_YES && STR_EQ(protocol, "rpc/tcp"))
++	tcpd_warn("%s: cannot wrap rpc/tcp services", tcpd_proc_name);
++
++    /* NetBSD inetd wraps all programs */
++    if (! STR_EQ(protocol, "rpc/tcp"))
++	wrap_status = WR_YES;
++
++    inet_set(tcpd_proc_name, wrap_status);
++}
++
++/* inet_set - remember service status */
++
++void inet_set(char *name, int type)
++{
++    struct inet_ent *ip =
++    (struct inet_ent *) malloc(sizeof(struct inet_ent) + strlen(name));
++
++    if (ip == 0) {
++	fprintf(stderr, "out of memory\n");
++	exit(1);
++    }
++    ip->next = inet_list;
++    strcpy(ip->name, name);
++    ip->type = type;
++    inet_list = ip;
++}
++
++/* inet_get - look up service status */
++
++int inet_get(char *name)
++{
++    struct inet_ent *ip;
++
++    if (inet_list == 0)
++	return (WR_MAYBE);
++
++    for (ip = inet_list; ip; ip = ip->next)
++	if (STR_EQ(ip->name, name))
++	    return (ip->type);
++
++    return (-1);
++}
++
++/* base_name - compute last pathname component */
++
++static char *base_name(char *path)
++{
++    char   *cp;
++
++    if ((cp = strrchr(path, '/')) != 0)
++	path = cp + 1;
++    return (path);
++}
++
++#else /* non-NetBSD pkgsrc implementations */
++ /*
++  * Routines to parse an inetd.conf or tlid.conf file. This would be a great
++  * job for a PERL script.
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#ifndef lint
++static char sccsid[] = "@(#) inetcf.c 1.7 97/02/12 02:13:23";
++#endif
++
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <errno.h>
++#include <string.h>
++
++#include "tcpd.h"
++#include "inetcf.h"
++#include "scaffold.h"
++
++ /*
++  * Network configuration files may live in unusual places. Here are some
++  * guesses. Shorter names follow longer ones.
++  */
++char   *inet_files[] = {
++    "/private/etc/inetd.conf",		/* NEXT */
++    "/etc/inet/inetd.conf",		/* SYSV4 */
++    "/usr/etc/inetd.conf",		/* IRIX?? */
++    "/etc/inetd.conf",			/* BSD */
++    "/etc/net/tlid.conf",		/* SYSV4?? */
++    "/etc/saf/tlid.conf",		/* SYSV4?? */
++    "/etc/tlid.conf",			/* SYSV4?? */
++    0,
++};
++
+ static void inet_chk(char *, char *, char *, char *);
+ static char *base_name(char *);
+ 
+@@ -314,3 +661,5 @@
+ 	path = cp + 1;
+     return (path);
+ }
++
++#endif
+--- inetcf.h.orig
++++ inetcf.h
+@@ -1,3 +1,22 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: inetcf.h,v 1.4 2018/01/23 21:06:26 sevan Exp $	*/
++
++ /*
++  * @(#) inetcf.h 1.1 94/12/28 17:42:30
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++char *inet_cfg(char *);		/* read inetd.conf file */
++void inet_set(char *, int);	/* remember internet service */
++int inet_get(char *);		/* look up internet service */
++
++#define WR_UNKNOWN	(-1)		/* service unknown */
++#define WR_NOT		1		/* may not be wrapped */
++#define WR_MAYBE	2		/* may be wrapped */
++#define	WR_YES		3		/* service is wrapped */
++
++#else /* non-NetBSD pkgsrc implementations */
+  /*
+   * @(#) inetcf.h 1.1 94/12/28 17:42:30
+   * 
+@@ -12,3 +31,5 @@
+ #define WR_NOT		1		/* may not be wrapped */
+ #define WR_MAYBE	2		/* may be wrapped */
+ #define	WR_YES		3		/* service is wrapped */
++
++#endif
+--- percent_m.c.orig
++++ percent_m.c
+@@ -1,3 +1,50 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: percent_m.c,v 1.5 2018/01/23 21:06:26 sevan Exp $	*/
++
++ /*
++  * Replace %m by system error message.
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#include <sys/cdefs.h>
++#ifndef lint
++#if 0
++static char sccsid[] = "@(#) percent_m.c 1.1 94/12/28 17:42:37";
++#else
++__RCSID("$NetBSD: percent_m.c,v 1.5 2018/01/23 21:06:26 sevan Exp $");
++#endif
++#endif
++
++#include <stdio.h>
++#include <errno.h>
++#include <string.h>
++
++#ifndef SYS_ERRLIST_DEFINED
++extern char *sys_errlist[];
++extern int sys_nerr;
++#endif
++
++#include "mystdarg.h"
++#include "percent_m.h"
++
++char *percent_m(char *obuf, const char *ibuf)
++{
++    char   *bp = obuf;
++    const char   *cp = ibuf;
++
++    while ((*bp = *cp) != '\0')
++	if (*cp == '%' && cp[1] == 'm') {
++	    strcpy(bp, strerror(errno));
++	    bp += strlen(bp);
++	    cp += 2;
++	} else {
++	    bp++, cp++;
++	}
++    return (obuf);
++}
++
++#else /* non-NetBSD pkgsrc implementations */
+  /*
+   * Replace %m by system error message.
+   * 
+@@ -47,3 +94,5 @@
+ 	}
+     return (obuf);
+ }
++
++#endif
+--- /dev/null
++++ percent_m.h
+@@ -0,0 +1,4 @@
++/*	$NetBSD: percent_m.h,v 1.3 2018/01/23 21:06:26 sevan Exp $	*/
++
++char *percent_m(char *, const char *)
++	__attribute__((__format_arg__(2)));
+--- scaffold.c.orig
++++ scaffold.c
+@@ -1,11 +1,19 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: scaffold.c,v 1.12 2018/01/23 21:06:26 sevan Exp $	*/
++
+  /*
+   * Routines for testing only. Not really industrial strength.
+   * 
+   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
+   */
+ 
++#include <sys/cdefs.h>
+ #ifndef lint
++#if 0
+ static char sccs_id[] = "@(#) scaffold.c 1.6 97/03/21 19:27:24";
++#else
++__RCSID("$NetBSD: scaffold.c,v 1.12 2018/01/23 21:06:26 sevan Exp $");
++#endif
+ #endif
+ 
+ /* System libraries. */
+@@ -36,108 +44,52 @@
+   */
+ int     allow_severity = SEVERITY;
+ int     deny_severity = LOG_WARNING;
+-int     rfc931_timeout = RFC931_TIMEOUT;
+-
+-/* dup_hostent - create hostent in one memory block */
+-
+-static struct hostent *dup_hostent(hp)
+-struct hostent *hp;
+-{
+-    struct hostent_block {
+-	struct hostent host;
+-	char   *addr_list[1];
+-    };
+-    struct hostent_block *hb;
++extern int rfc931_timeout; /* = RFC931_TIMEOUT; */
++
++/* find_inet_addr - find all addresses for this host, result to free() */
++
++struct addrinfo *find_inet_addr(char *host, int flags)
++{
++    struct addrinfo hints, *res;
++    int error;
++
++    memset(&hints, 0, sizeof(hints));
++    hints.ai_socktype = SOCK_DGRAM;
++    hints.ai_flags = AI_CANONNAME | flags;
++    error = getaddrinfo(host, "0", &hints, &res);
++    if (error) {
++	tcpd_warn("%s: %s", host, gai_strerror(error));
++	return (0);
++    }
++
++    if (res->ai_canonname && STR_NE(host, res->ai_canonname)) {
++	tcpd_warn("%s: hostname alias", host);
++	tcpd_warn("(official name: %.*s)", STRING_LENGTH, res->ai_canonname);
++    }
++    return (res);
++}
++
++/* check_dns - give each address thorough workout, return address count */
++
++int check_dns(char *host)
++{
++    struct request_info request;
++    struct sockaddr_storage ss;
++    struct addrinfo *res0, *res;
+     int     count;
+-    char   *data;
+-    char   *addr;
+-
+-    for (count = 0; hp->h_addr_list[count] != 0; count++)
+-	 /* void */ ;
+-
+-    if ((hb = (struct hostent_block *) malloc(sizeof(struct hostent_block)
+-			 + (hp->h_length + sizeof(char *)) * count)) == 0) {
+-	fprintf(stderr, "Sorry, out of memory\n");
+-	exit(1);
+-    }
+-    memset((char *) &hb->host, 0, sizeof(hb->host));
+-    hb->host.h_addrtype = hp->h_addrtype;;
+-    hb->host.h_length = hp->h_length;
+-    hb->host.h_addr_list = hb->addr_list;
+-    hb->host.h_addr_list[count] = 0;
+-    data = (char *) (hb->host.h_addr_list + count + 1);
+-
+-    for (count = 0; (addr = hp->h_addr_list[count]) != 0; count++) {
+-	hb->host.h_addr_list[count] = data + hp->h_length * count;
+-	memcpy(hb->host.h_addr_list[count], addr, hp->h_length);
+-    }
+-    return (&hb->host);
+-}
+-
+-/* find_inet_addr - find all addresses for this host, result to free() */
+-
+-struct hostent *find_inet_addr(host)
+-char   *host;
+-{
+-    union gen_addr addr;
+-    struct hostent *hp;
+-    static struct hostent h;
+-    static char *addr_list[2];
+-
+-    /*
+-     * Host address: translate it to internal form.
+-     */
+-    if (numeric_addr(host, &addr, &h.h_addrtype, &h.h_length) != -1) {
+-	h.h_addr_list = addr_list;
+-	h.h_addr_list[0] = (char *) &addr;
+-	return (dup_hostent(&h));
+-    }
+-
+-    /*
+-     * Map host name to a series of addresses. Watch out for non-internet
+-     * forms or aliases. The NOT_INADDR() is here in case gethostbyname() has
+-     * been "enhanced" to accept numeric addresses. Make a copy of the
+-     * address list so that later gethostbyXXX() calls will not clobber it.
+-     */
+-    if (NOT_INADDR(host) == 0) {
+-	tcpd_warn("%s: not an internet address", host);
+-	return (0);
+-    }
+-    if ((hp = tcpd_gethostbyname(host, 0)) == 0) {
+-	tcpd_warn("%s: host not found", host);
+-	return (0);
+-    }
+-    if (!VALID_ADDRTYPE(hp->h_addrtype)) {
+-	tcpd_warn("%d: not an internet host", hp->h_addrtype);
+-	return (0);
+-    }
+-    if (STR_NE(host, hp->h_name)) {
+-	tcpd_warn("%s: hostname alias", host);
+-	tcpd_warn("(official name: %.*s)", STRING_LENGTH, hp->h_name);
+-    }
+-    return (dup_hostent(hp));
+-}
+-
+-/* check_dns - give each address thorough workout, return address count */
+-
+-int     check_dns(host)
+-char   *host;
+-{
+-    struct request_info request;
+-    struct sockaddr_gen sin;
+-    struct hostent *hp;
+-    int     count;
+-    char   *addr;
+-
+-    if ((hp = find_inet_addr(host)) == 0)
+-	return (0);
+-    request_init(&request, RQ_CLIENT_SIN, &sin, 0);
++
++    if ((res0 = find_inet_addr(host, 0)) == NULL)
++	return (0);
++    memset(&ss, 0, sizeof(ss));
++    request_init(&request, RQ_CLIENT_SIN, &ss, 0);
+     sock_methods(&request);
+-    memset((char *) &sin, 0, sizeof(sin));
+-    sin.sg_family = hp->h_addrtype;
+-
+-    for (count = 0; (addr = hp->h_addr_list[count]) != 0; count++) {
+-	memcpy((char *) SGADDRP(&sin), addr, SGADDRSZ(&sin));
++
++    count = 0;
++    for (res = res0; res; res = res->ai_next) {
++	count++;
++	if (res->ai_addrlen > sizeof(ss))
++	    continue;
++	memcpy(&ss, res->ai_addr, res->ai_addrlen);
+ 
+ 	/*
+ 	 * Force host name and address conversions. Use the request structure
+@@ -150,7 +102,7 @@
+ 	    tcpd_warn("host address %s->name lookup failed",
+ 		      eval_hostaddr(request.client));
+     }
+-    free((char *) hp);
++    freeaddrinfo(res0);
+     return (count);
+ }
+ 
+@@ -158,8 +110,7 @@
+ 
+ /* ARGSUSED */
+ 
+-void    shell_cmd(command)
+-char   *command;
++void shell_cmd(char *command)
+ {
+     if (hosts_access_verbose)
+ 	printf("command: %s", command);
+@@ -169,29 +120,27 @@
+ 
+ /* ARGSUSED */
+ 
+-void    clean_exit(request)
+-struct request_info *request;
++void clean_exit(struct request_info *request)
+ {
+     exit(0);
+ }
+ 
++#if 0
+ /* dummy function  to intercept the real rfc931() */
+ 
+ /* ARGSUSED */
+ 
+-#if 0
+-void    rfc931(request)
+-struct request_info *request;
+-{
+-    strcpy(request->user, unknown);
++void
++rfc931(struct request_info *request)
++{
++    strlcpy(request->user, unknown, sizeof(request->user));
+ }
+ #endif
+ 
+ /* check_path - examine accessibility */
+ 
+-int     check_path(path, st)
+-char   *path;
+-struct stat *st;
++int
++check_path(const char *path, struct stat *st)
+ {
+     struct stat stbuf;
+     char    buf[BUFSIZ];
+@@ -207,8 +156,227 @@
+     if (st->st_mode & 002)
+ 	tcpd_warn("%s: world writable", path);
+     if (path[0] == '/' && path[1] != 0) {
++	strlcpy(buf, path, sizeof(buf));
++	strrchr(buf, '/')[0] = 0;
++	(void) check_path(buf[0] ? buf : "/", &stbuf);
++    }
++    return (0);
++}
++
++#else /* non-NetBSD pkgsrc implementations */
++ /*
++  * Routines for testing only. Not really industrial strength.
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#ifndef lint
++static char sccs_id[] = "@(#) scaffold.c 1.6 97/03/21 19:27:24";
++#endif
++
++/* System libraries. */
++
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <sys/socket.h>
++#include <netinet/in.h>
++#include <arpa/inet.h>
++#include <netdb.h>
++#include <stdio.h>
++#include <syslog.h>
++#include <setjmp.h>
++#include <string.h>
++#include <stdlib.h>
++
++#ifndef INADDR_NONE
++#define	INADDR_NONE	(-1)		/* XXX should be 0xffffffff */
++#endif
++
++/* Application-specific. */
++
++#include "tcpd.h"
++#include "scaffold.h"
++
++ /*
++  * These are referenced by the options module and by rfc931.c.
++  */
++int     allow_severity = SEVERITY;
++int     deny_severity = LOG_WARNING;
++int     rfc931_timeout = RFC931_TIMEOUT;
++
++/* dup_hostent - create hostent in one memory block */
++
++static struct hostent *dup_hostent(hp)
++struct hostent *hp;
++{
++    struct hostent_block {
++	struct hostent host;
++	char   *addr_list[1];
++    };
++    struct hostent_block *hb;
++    int     count;
++    char   *data;
++    char   *addr;
++
++    for (count = 0; hp->h_addr_list[count] != 0; count++)
++	 /* void */ ;
++
++    if ((hb = (struct hostent_block *) malloc(sizeof(struct hostent_block)
++			 + (hp->h_length + sizeof(char *)) * count)) == 0) {
++	fprintf(stderr, "Sorry, out of memory\n");
++	exit(1);
++    }
++    memset((char *) &hb->host, 0, sizeof(hb->host));
++    hb->host.h_addrtype = hp->h_addrtype;;
++    hb->host.h_length = hp->h_length;
++    hb->host.h_addr_list = hb->addr_list;
++    hb->host.h_addr_list[count] = 0;
++    data = (char *) (hb->host.h_addr_list + count + 1);
++
++    for (count = 0; (addr = hp->h_addr_list[count]) != 0; count++) {
++	hb->host.h_addr_list[count] = data + hp->h_length * count;
++	memcpy(hb->host.h_addr_list[count], addr, hp->h_length);
++    }
++    return (&hb->host);
++}
++
++/* find_inet_addr - find all addresses for this host, result to free() */
++
++struct hostent *find_inet_addr(host)
++char   *host;
++{
++    union gen_addr addr;
++    struct hostent *hp;
++    static struct hostent h;
++    static char *addr_list[2];
++
++    /*
++     * Host address: translate it to internal form.
++     */
++    if (numeric_addr(host, &addr, &h.h_addrtype, &h.h_length) != -1) {
++	h.h_addr_list = addr_list;
++	h.h_addr_list[0] = (char *) &addr;
++	return (dup_hostent(&h));
++    }
++
++    /*
++     * Map host name to a series of addresses. Watch out for non-internet
++     * forms or aliases. The NOT_INADDR() is here in case gethostbyname() has
++     * been "enhanced" to accept numeric addresses. Make a copy of the
++     * address list so that later gethostbyXXX() calls will not clobber it.
++     */
++    if (NOT_INADDR(host) == 0) {
++	tcpd_warn("%s: not an internet address", host);
++	return (0);
++    }
++    if ((hp = tcpd_gethostbyname(host, 0)) == 0) {
++	tcpd_warn("%s: host not found", host);
++	return (0);
++    }
++    if (!VALID_ADDRTYPE(hp->h_addrtype)) {
++	tcpd_warn("%d: not an internet host", hp->h_addrtype);
++	return (0);
++    }
++    if (STR_NE(host, hp->h_name)) {
++	tcpd_warn("%s: hostname alias", host);
++	tcpd_warn("(official name: %.*s)", STRING_LENGTH, hp->h_name);
++    }
++    return (dup_hostent(hp));
++}
++
++/* check_dns - give each address thorough workout, return address count */
++
++int     check_dns(host)
++char   *host;
++{
++    struct request_info request;
++    struct sockaddr_gen sin;
++    struct hostent *hp;
++    int     count;
++    char   *addr;
++
++    if ((hp = find_inet_addr(host)) == 0)
++	return (0);
++    request_init(&request, RQ_CLIENT_SIN, &sin, 0);
++    sock_methods(&request);
++    memset((char *) &sin, 0, sizeof(sin));
++    sin.sg_family = hp->h_addrtype;
++
++    for (count = 0; (addr = hp->h_addr_list[count]) != 0; count++) {
++	memcpy((char *) SGADDRP(&sin), addr, SGADDRSZ(&sin));
++
++	/*
++	 * Force host name and address conversions. Use the request structure
++	 * as a cache. Detect hostname lookup problems. Any name/name or
++	 * name/address conflicts will be reported while eval_hostname() does
++	 * its job.
++	 */
++	request_set(&request, RQ_CLIENT_ADDR, "", RQ_CLIENT_NAME, "", 0);
++	if (STR_EQ(eval_hostname(request.client), unknown))
++	    tcpd_warn("host address %s->name lookup failed",
++		      eval_hostaddr(request.client));
++    }
++    free((char *) hp);
++    return (count);
++}
++
++/* dummy function to intercept the real shell_cmd() */
++
++/* ARGSUSED */
++
++void    shell_cmd(command)
++char   *command;
++{
++    if (hosts_access_verbose)
++	printf("command: %s", command);
++}
++
++/* dummy function  to intercept the real clean_exit() */
++
++/* ARGSUSED */
++
++void    clean_exit(request)
++struct request_info *request;
++{
++    exit(0);
++}
++
++/* dummy function  to intercept the real rfc931() */
++
++/* ARGSUSED */
++
++#if 0
++void    rfc931(request)
++struct request_info *request;
++{
++    strcpy(request->user, unknown);
++}
++#endif
++
++/* check_path - examine accessibility */
++
++int     check_path(path, st)
++char   *path;
++struct stat *st;
++{
++    struct stat stbuf;
++    char    buf[BUFSIZ];
++
++    if (stat(path, st) < 0)
++	return (-1);
++#ifdef notdef
++    if (st->st_uid != 0)
++	tcpd_warn("%s: not owned by root", path);
++    if (st->st_mode & 020)
++	tcpd_warn("%s: group writable", path);
++#endif
++    if (st->st_mode & 002)
++	tcpd_warn("%s: world writable", path);
++    if (path[0] == '/' && path[1] != 0) {
+ 	strrchr(strcpy(buf, path), '/')[0] = 0;
+ 	(void) check_path(buf[0] ? buf : "/", &stbuf);
+     }
+     return (0);
+ }
++
++#endif
+--- scaffold.h.orig
++++ scaffold.h
+@@ -1,3 +1,22 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: scaffold.h,v 1.5 2012/03/21 10:11:34 matt Exp $	*/
++
++ /*
++  * @(#) scaffold.h 1.3 94/12/31 18:19:19
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++struct addrinfo *find_inet_addr(char *, int);
++int check_dns(char *);
++void shell_cmd(char *);
++void clean_exit(struct request_info *);
++#if 0
++void rfc931(struct request_info *);
++#endif
++int check_path(const char *, struct stat *);
++
++#else /* non-NetBSD pkgsrc implementations */
+  /*
+   * @(#) scaffold.h 1.3 94/12/31 18:19:19
+   * 
+@@ -7,3 +26,5 @@
+ extern struct hostent *find_inet_addr(char *);
+ extern int check_dns(char *);
+ extern int check_path(char *, struct stat *);
++
++#endif
+--- tcpdchk.c.orig
++++ tcpdchk.c
+@@ -1,3 +1,6 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: tcpdchk.c,v 1.13 2018/01/23 21:06:26 sevan Exp $	*/
++
+  /*
+   * tcpdchk - examine all tcpd access control rules and inetd.conf entries
+   * 
+@@ -14,8 +17,13 @@
+   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
+   */
+ 
++#include <sys/cdefs.h>
+ #ifndef lint
++#if 0
+ static char sccsid[] = "@(#) tcpdchk.c 1.8 97/02/12 02:13:25";
++#else
++__RCSID("$NetBSD: tcpdchk.c,v 1.13 2018/01/23 21:06:26 sevan Exp $");
++#endif
+ #endif
+ 
+ /* System libraries. */
+@@ -25,16 +33,13 @@
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
+ #include <stdio.h>
+-#include <stdlib.h>
+ #include <syslog.h>
+ #include <setjmp.h>
+ #include <errno.h>
+ #include <netdb.h>
+ #include <string.h>
++#include <stdlib.h>
+ #include <unistd.h>
+-
+-extern int optind;
+-extern char *optarg;
+ 
+ #ifndef INADDR_NONE
+ #define INADDR_NONE     (-1)		/* XXX should be 0xffffffff */
+@@ -50,29 +55,40 @@
+ #include "inetcf.h"
+ #include "scaffold.h"
+ 
++#ifdef NO_NETGRENT
++	/* SCO has no *netgrent() support */
++#else
++# ifdef NETGROUP
++#  include <netgroup.h>
++# endif
++#endif
++
+  /*
+   * Stolen from hosts_access.c...
+   */
+-static char sep[] = ", \t\n";
++static const char sep[] = ", \t\n";
+ 
+ #define	BUFLEN 2048
+ 
+ int     resident = 0;
+ int     hosts_access_verbose = 0;
+-char   *hosts_allow_table = HOSTS_ALLOW;
+-char   *hosts_deny_table = HOSTS_DENY;
++const char *hosts_allow_table = HOSTS_ALLOW;
++const char *hosts_deny_table = HOSTS_DENY;
+ extern jmp_buf tcpd_buf;
+ 
+  /*
+   * Local stuff.
+   */
+-static void usage();
+-static void parse_table(char *, struct request_info *);
++static void usage(void);
++static void parse_table(const char *, struct request_info *);
+ static void print_list(char *, char *);
+ static void check_daemon_list(char *);
+ static void check_client_list(char *);
+ static void check_daemon(char *);
+ static void check_user(char *);
++#ifdef INET6
++static int check_inet_addr(char *);
++#endif
+ static int check_host(char *);
+ static int reserved_name(char *);
+ 
+@@ -87,9 +103,8 @@
+ static int allow_check;
+ static char *inetcf;
+ 
+-int     main(argc, argv)
+-int     argc;
+-char  **argv;
++int
++main(int argc, char **argv)
+ {
+     struct request_info request;
+     struct stat st;
+@@ -100,7 +115,7 @@
+     /*
+      * Parse the JCL.
+      */
+-    while ((c = getopt(argc, argv, "adi:v")) != EOF) {
++    while ((c = getopt(argc, argv, "adi:v")) != -1) {
+ 	switch (c) {
+ 	case 'a':
+ 	    allow_check = 1;
+@@ -178,7 +193,8 @@
+ 
+ /* usage - explain */
+ 
+-static void usage()
++static void
++usage(void)
+ {
+     fprintf(stderr, "usage: %s [-a] [-d] [-i inet_conf] [-v]\n", myname);
+     fprintf(stderr, "	-a: report rules with implicit \"ALLOW\" at end\n");
+@@ -190,22 +206,23 @@
+ 
+ /* parse_table - like table_match(), but examines _all_ entries */
+ 
+-static void parse_table(table, request)
+-char   *table;
+-struct request_info *request;
++static void
++parse_table(const char *table, struct request_info *request)
+ {
+     FILE   *fp;
+-    int     real_verdict;
++    volatile int     real_verdict;
+     char    sv_list[BUFLEN];		/* becomes list of daemons */
++#ifndef PROCESS_OPTIONS
++    char    buf[BUFSIZ];
++#endif
+     char   *cl_list;			/* becomes list of requests */
+     char   *sh_cmd;			/* becomes optional shell command */
+-    char    buf[BUFSIZ];
+     int     verdict;
+-    struct tcpd_context saved_context;
++    volatile struct tcpd_context saved_context;
+ 
+     saved_context = tcpd_context;		/* stupid compilers */
+ 
+-    if (fp = fopen(table, "r")) {
++    if ((fp = fopen(table, "r")) != NULL) {
+ 	tcpd_context.file = table;
+ 	tcpd_context.line = 0;
+ 	while (xgets(sv_list, sizeof(sv_list), fp)) {
+@@ -219,7 +236,7 @@
+ 		tcpd_warn("missing \":\" separator");
+ 		continue;
+ 	    }
+-	    sh_cmd = split_at(skip_ipv6_addrs(cl_list), ':');
++	    sh_cmd = split_at(cl_list, ':');
+ 
+ 	    if (hosts_access_verbose)
+ 		printf("\n>>> Rule %s line %d:\n",
+@@ -266,16 +283,14 @@
+ 
+ /* print_list - pretty-print a list */
+ 
+-static void print_list(title, list)
+-char   *title;
+-char   *list;
++static void print_list(char *title, char *list)
+ {
+     char    buf[BUFLEN];
+     char   *cp;
+     char   *next;
+ 
+     fputs(title, stdout);
+-    strcpy(buf, list);
++    strlcpy(buf, list, sizeof(buf));
+ 
+     for (cp = strtok(buf, sep); cp != 0; cp = next) {
+ 	fputs(cp, stdout);
+@@ -288,15 +303,14 @@
+ 
+ /* check_daemon_list - criticize daemon list */
+ 
+-static void check_daemon_list(list)
+-char   *list;
++static void check_daemon_list(char *list)
+ {
+     char    buf[BUFLEN];
+     char   *cp;
+     char   *host;
+     int     daemons = 0;
+ 
+-    strcpy(buf, list);
++    strlcpy(buf, list, sizeof(buf));
+ 
+     for (cp = strtok(buf, sep); cp != 0; cp = strtok((char *) 0, sep)) {
+ 	if (STR_EQ(cp, "EXCEPT")) {
+@@ -316,22 +330,31 @@
+ 
+ /* check_client_list - criticize client list */
+ 
+-static void check_client_list(list)
+-char   *list;
++static void check_client_list(char *list)
+ {
+     char    buf[BUFLEN];
+     char   *cp;
+     char   *host;
+     int     clients = 0;
+-
+-    strcpy(buf, list);
++#ifdef INET6
++    int l;
++#endif
++
++    strlcpy(buf, list, sizeof(buf));
+ 
+     for (cp = strtok(buf, sep); cp != 0; cp = strtok((char *) 0, sep)) {
++#ifdef INET6
++	l = strlen(cp);
++	if (cp[0] == '[' && cp[l - 1] == ']') {
++	    cp[l - 1] = '\0';
++	    cp++;
++	}
++#endif
+ 	if (STR_EQ(cp, "EXCEPT")) {
+ 	    clients = 0;
+ 	} else {
+ 	    clients++;
+-	    if (host = split_at(cp + 1, '@')) {	/* user@host */
++	    if ((host = split_at(cp + 1, '@')) != NULL) {	/* user@host */
+ 		check_user(cp);
+ 		check_host(host);
+ 	    } else {
+@@ -345,8 +368,7 @@
+ 
+ /* check_daemon - criticize daemon pattern */
+ 
+-static void check_daemon(pat)
+-char   *pat;
++static void check_daemon(char *pat)
+ {
+     if (pat[0] == '@') {
+ 	tcpd_warn("%s: daemon name begins with \"@\"", pat);
+@@ -377,8 +399,7 @@
+ 
+ /* check_user - criticize user pattern */
+ 
+-static void check_user(pat)
+-char   *pat;
++static void check_user(char *pat)
+ {
+     if (pat[0] == '@') {			/* @netgroup */
+ 	tcpd_warn("%s: user name begins with \"@\"", pat);
+@@ -397,6 +418,493 @@
+     }
+ }
+ 
++#ifdef INET6
++static int check_inet_addr(char *pat)
++{
++	struct addrinfo *res;
++
++	res = find_inet_addr(pat, AI_NUMERICHOST);
++	if (res) {
++		freeaddrinfo(res);
++		return 1;
++	} else
++		return 0;
++}
++#endif
++
++/* check_host - criticize host pattern */
++static int check_host(char *pat)
++{
++    char   *mask;
++    int     addr_count = 1;
++
++    if (pat[0] == '@') {			/* @netgroup */
++#ifdef NO_NETGRENT
++	/* SCO has no *netgrent() support */
++#else
++#ifdef NETGROUP
++	const char   *machinep;
++	const char   *userp;
++	const char   *domainp;
++
++	setnetgrent(pat + 1);
++	if (getnetgrent(&machinep, &userp, &domainp) == 0)
++	    tcpd_warn("%s: unknown or empty netgroup", pat + 1);
++	endnetgrent();
++#else
++	tcpd_warn("netgroup support disabled");
++#endif
++#endif
++    } else if ((mask = split_at(pat, '/')) != NULL) {	/* network/netmask */
++#ifdef INET6
++	char *ep;
++#endif
++	if (dot_quad_addr(pat, NULL) != INADDR_NONE
++	    || dot_quad_addr(mask, NULL) != INADDR_NONE)
++	    ; /*okay*/
++#ifdef INET6
++	else if (check_inet_addr(pat) && check_inet_addr(mask))
++	    ; /*okay*/
++	else if (check_inet_addr(pat) &&
++	    (ep = NULL, strtoul(mask, &ep, 10), ep && !*ep))
++	    ; /*okay*/
++#endif
++	else
++	    tcpd_warn("%s/%s: bad net/mask pattern", pat, mask);
++    } else if (STR_EQ(pat, "FAIL")) {		/* obsolete */
++	tcpd_warn("FAIL is no longer recognized");
++	tcpd_warn("(use EXCEPT or DENY instead)");
++    } else if (reserved_name(pat)) {		/* other reserved */
++	 /* void */ ;
++    } else if (NOT_INADDR(pat)) {		/* internet name */
++	if (pat[strlen(pat) - 1] == '.') {
++	    tcpd_warn("%s: domain or host name ends in dot", pat);
++	} else if (pat[0] != '.') {
++	    addr_count = check_dns(pat);
++	}
++    } else {					/* numeric form */
++	if (STR_EQ(pat, "0.0.0.0") || STR_EQ(pat, "255.255.255.255")) {
++	    /* void */ ;
++	} else if (pat[0] == '.') {
++	    tcpd_warn("%s: network number begins with dot", pat);
++	} else if (pat[strlen(pat) - 1] != '.') {
++	    check_dns(pat);
++	}
++    }
++    return (addr_count);
++}
++
++/* reserved_name - determine if name is reserved */
++
++static int reserved_name(char *pat)
++{
++    return (STR_EQ(pat, unknown)
++	    || STR_EQ(pat, "KNOWN")
++	    || STR_EQ(pat, paranoid)
++	    || STR_EQ(pat, "ALL")
++	    || STR_EQ(pat, "LOCAL"));
++}
++
++#else /* non-NetBSD pkgsrc implementations */
++ /*
++  * tcpdchk - examine all tcpd access control rules and inetd.conf entries
++  * 
++  * Usage: tcpdchk [-a] [-d] [-i inet_conf] [-v]
++  * 
++  * -a: complain about implicit "allow" at end of rule.
++  * 
++  * -d: rules in current directory.
++  * 
++  * -i: location of inetd.conf file.
++  * 
++  * -v: show all rules.
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#ifndef lint
++static char sccsid[] = "@(#) tcpdchk.c 1.8 97/02/12 02:13:25";
++#endif
++
++/* System libraries. */
++
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <netinet/in.h>
++#include <arpa/inet.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <syslog.h>
++#include <setjmp.h>
++#include <errno.h>
++#include <netdb.h>
++#include <string.h>
++#include <unistd.h>
++
++extern int optind;
++extern char *optarg;
++
++#ifndef INADDR_NONE
++#define INADDR_NONE     (-1)		/* XXX should be 0xffffffff */
++#endif
++
++#ifndef S_ISDIR
++#define S_ISDIR(m)	(((m) & S_IFMT) == S_IFDIR)
++#endif
++
++/* Application-specific. */
++
++#include "tcpd.h"
++#include "inetcf.h"
++#include "scaffold.h"
++
++ /*
++  * Stolen from hosts_access.c...
++  */
++static char sep[] = ", \t\n";
++
++#define	BUFLEN 2048
++
++int     resident = 0;
++int     hosts_access_verbose = 0;
++char   *hosts_allow_table = HOSTS_ALLOW;
++char   *hosts_deny_table = HOSTS_DENY;
++extern jmp_buf tcpd_buf;
++
++ /*
++  * Local stuff.
++  */
++static void usage();
++static void parse_table(char *, struct request_info *);
++static void print_list(char *, char *);
++static void check_daemon_list(char *);
++static void check_client_list(char *);
++static void check_daemon(char *);
++static void check_user(char *);
++static int check_host(char *);
++static int reserved_name(char *);
++
++#define PERMIT	1
++#define DENY	0
++
++#define YES	1
++#define	NO	0
++
++static int defl_verdict;
++static char *myname;
++static int allow_check;
++static char *inetcf;
++
++int     main(argc, argv)
++int     argc;
++char  **argv;
++{
++    struct request_info request;
++    struct stat st;
++    int     c;
++
++    myname = argv[0];
++
++    /*
++     * Parse the JCL.
++     */
++    while ((c = getopt(argc, argv, "adi:v")) != EOF) {
++	switch (c) {
++	case 'a':
++	    allow_check = 1;
++	    break;
++	case 'd':
++	    hosts_allow_table = "hosts.allow";
++	    hosts_deny_table = "hosts.deny";
++	    break;
++	case 'i':
++	    inetcf = optarg;
++	    break;
++	case 'v':
++	    hosts_access_verbose++;
++	    break;
++	default:
++	    usage();
++	    /* NOTREACHED */
++	}
++    }
++    if (argc != optind)
++	usage();
++
++    /*
++     * When confusion really strikes...
++     */
++    if (check_path(REAL_DAEMON_DIR, &st) < 0) {
++	tcpd_warn("REAL_DAEMON_DIR %s: %m", REAL_DAEMON_DIR);
++    } else if (!S_ISDIR(st.st_mode)) {
++	tcpd_warn("REAL_DAEMON_DIR %s is not a directory", REAL_DAEMON_DIR);
++    }
++
++    /*
++     * Process the inet configuration file (or its moral equivalent). This
++     * information is used later to find references in hosts.allow/deny to
++     * unwrapped services, and other possible problems.
++     */
++    inetcf = inet_cfg(inetcf);
++    if (hosts_access_verbose)
++	printf("Using network configuration file: %s\n", inetcf);
++
++    /*
++     * These are not run from inetd but may have built-in access control.
++     */
++    inet_set("portmap", WR_NOT);
++    inet_set("rpcbind", WR_NOT);
++
++    /*
++     * Check accessibility of access control files.
++     */
++    (void) check_path(hosts_allow_table, &st);
++    (void) check_path(hosts_deny_table, &st);
++
++    /*
++     * Fake up an arbitrary service request.
++     */
++    request_init(&request,
++		 RQ_DAEMON, "daemon_name",
++		 RQ_SERVER_NAME, "server_hostname",
++		 RQ_SERVER_ADDR, "server_addr",
++		 RQ_USER, "user_name",
++		 RQ_CLIENT_NAME, "client_hostname",
++		 RQ_CLIENT_ADDR, "client_addr",
++		 RQ_FILE, 1,
++		 0);
++
++    /*
++     * Examine all access-control rules.
++     */
++    defl_verdict = PERMIT;
++    parse_table(hosts_allow_table, &request);
++    defl_verdict = DENY;
++    parse_table(hosts_deny_table, &request);
++    return (0);
++}
++
++/* usage - explain */
++
++static void usage()
++{
++    fprintf(stderr, "usage: %s [-a] [-d] [-i inet_conf] [-v]\n", myname);
++    fprintf(stderr, "	-a: report rules with implicit \"ALLOW\" at end\n");
++    fprintf(stderr, "	-d: use allow/deny files in current directory\n");
++    fprintf(stderr, "	-i: location of inetd.conf file\n");
++    fprintf(stderr, "	-v: list all rules\n");
++    exit(1);
++}
++
++/* parse_table - like table_match(), but examines _all_ entries */
++
++static void parse_table(table, request)
++char   *table;
++struct request_info *request;
++{
++    FILE   *fp;
++    int     real_verdict;
++    char    sv_list[BUFLEN];		/* becomes list of daemons */
++    char   *cl_list;			/* becomes list of requests */
++    char   *sh_cmd;			/* becomes optional shell command */
++    char    buf[BUFSIZ];
++    int     verdict;
++    struct tcpd_context saved_context;
++
++    saved_context = tcpd_context;		/* stupid compilers */
++
++    if (fp = fopen(table, "r")) {
++	tcpd_context.file = table;
++	tcpd_context.line = 0;
++	while (xgets(sv_list, sizeof(sv_list), fp)) {
++	    if (sv_list[strlen(sv_list) - 1] != '\n') {
++		tcpd_warn("missing newline or line too long");
++		continue;
++	    }
++	    if (sv_list[0] == '#' || sv_list[strspn(sv_list, " \t\r\n")] == 0)
++		continue;
++	    if ((cl_list = split_at(sv_list, ':')) == 0) {
++		tcpd_warn("missing \":\" separator");
++		continue;
++	    }
++	    sh_cmd = split_at(skip_ipv6_addrs(cl_list), ':');
++
++	    if (hosts_access_verbose)
++		printf("\n>>> Rule %s line %d:\n",
++		       tcpd_context.file, tcpd_context.line);
++
++	    if (hosts_access_verbose)
++		print_list("daemons:  ", sv_list);
++	    check_daemon_list(sv_list);
++
++	    if (hosts_access_verbose)
++		print_list("clients:  ", cl_list);
++	    check_client_list(cl_list);
++
++#ifdef PROCESS_OPTIONS
++	    real_verdict = defl_verdict;
++	    if (sh_cmd) {
++		verdict = setjmp(tcpd_buf);
++		if (verdict != 0) {
++		    real_verdict = (verdict == AC_PERMIT);
++		} else {
++		    dry_run = 1;
++		    process_options(sh_cmd, request);
++		    if (dry_run == 1 && real_verdict && allow_check)
++			tcpd_warn("implicit \"allow\" at end of rule");
++		}
++	    } else if (defl_verdict && allow_check) {
++		tcpd_warn("implicit \"allow\" at end of rule");
++	    }
++	    if (hosts_access_verbose)
++		printf("access:   %s\n", real_verdict ? "granted" : "denied");
++#else
++	    if (sh_cmd)
++		shell_cmd(percent_x(buf, sizeof(buf), sh_cmd, request));
++	    if (hosts_access_verbose)
++		printf("access:   %s\n", defl_verdict ? "granted" : "denied");
++#endif
++	}
++	(void) fclose(fp);
++    } else if (errno != ENOENT) {
++	tcpd_warn("cannot open %s: %m", table);
++    }
++    tcpd_context = saved_context;
++}
++
++/* print_list - pretty-print a list */
++
++static void print_list(title, list)
++char   *title;
++char   *list;
++{
++    char    buf[BUFLEN];
++    char   *cp;
++    char   *next;
++
++    fputs(title, stdout);
++    strcpy(buf, list);
++
++    for (cp = strtok(buf, sep); cp != 0; cp = next) {
++	fputs(cp, stdout);
++	next = strtok((char *) 0, sep);
++	if (next != 0)
++	    fputs(" ", stdout);
++    }
++    fputs("\n", stdout);
++}
++
++/* check_daemon_list - criticize daemon list */
++
++static void check_daemon_list(list)
++char   *list;
++{
++    char    buf[BUFLEN];
++    char   *cp;
++    char   *host;
++    int     daemons = 0;
++
++    strcpy(buf, list);
++
++    for (cp = strtok(buf, sep); cp != 0; cp = strtok((char *) 0, sep)) {
++	if (STR_EQ(cp, "EXCEPT")) {
++	    daemons = 0;
++	} else {
++	    daemons++;
++	    if ((host = split_at(cp + 1, '@')) != 0 && check_host(host) > 1) {
++		tcpd_warn("host %s has more than one address", host);
++		tcpd_warn("(consider using an address instead)");
++	    }
++	    check_daemon(cp);
++	}
++    }
++    if (daemons == 0)
++	tcpd_warn("daemon list is empty or ends in EXCEPT");
++}
++
++/* check_client_list - criticize client list */
++
++static void check_client_list(list)
++char   *list;
++{
++    char    buf[BUFLEN];
++    char   *cp;
++    char   *host;
++    int     clients = 0;
++
++    strcpy(buf, list);
++
++    for (cp = strtok(buf, sep); cp != 0; cp = strtok((char *) 0, sep)) {
++	if (STR_EQ(cp, "EXCEPT")) {
++	    clients = 0;
++	} else {
++	    clients++;
++	    if (host = split_at(cp + 1, '@')) {	/* user@host */
++		check_user(cp);
++		check_host(host);
++	    } else {
++		check_host(cp);
++	    }
++	}
++    }
++    if (clients == 0)
++	tcpd_warn("client list is empty or ends in EXCEPT");
++}
++
++/* check_daemon - criticize daemon pattern */
++
++static void check_daemon(pat)
++char   *pat;
++{
++    if (pat[0] == '@') {
++	tcpd_warn("%s: daemon name begins with \"@\"", pat);
++    } else if (pat[0] == '.') {
++	tcpd_warn("%s: daemon name begins with dot", pat);
++    } else if (pat[strlen(pat) - 1] == '.') {
++	tcpd_warn("%s: daemon name ends in dot", pat);
++    } else if (STR_EQ(pat, "ALL") || STR_EQ(pat, unknown)) {
++	 /* void */ ;
++    } else if (STR_EQ(pat, "FAIL")) {		/* obsolete */
++	tcpd_warn("FAIL is no longer recognized");
++	tcpd_warn("(use EXCEPT or DENY instead)");
++    } else if (reserved_name(pat)) {
++	tcpd_warn("%s: daemon name may be reserved word", pat);
++    } else {
++	switch (inet_get(pat)) {
++	case WR_UNKNOWN:
++	    tcpd_warn("%s: no such process name in %s", pat, inetcf);
++	    inet_set(pat, WR_YES);		/* shut up next time */
++	    break;
++	case WR_NOT:
++	    tcpd_warn("%s: service possibly not wrapped", pat);
++	    inet_set(pat, WR_YES);
++	    break;
++	}
++    }
++}
++
++/* check_user - criticize user pattern */
++
++static void check_user(pat)
++char   *pat;
++{
++    if (pat[0] == '@') {			/* @netgroup */
++	tcpd_warn("%s: user name begins with \"@\"", pat);
++    } else if (pat[0] == '.') {
++	tcpd_warn("%s: user name begins with dot", pat);
++    } else if (pat[strlen(pat) - 1] == '.') {
++	tcpd_warn("%s: user name ends in dot", pat);
++    } else if (STR_EQ(pat, "ALL") || STR_EQ(pat, unknown)
++	       || STR_EQ(pat, "KNOWN")) {
++	 /* void */ ;
++    } else if (STR_EQ(pat, "FAIL")) {		/* obsolete */
++	tcpd_warn("FAIL is no longer recognized");
++	tcpd_warn("(use EXCEPT or DENY instead)");
++    } else if (reserved_name(pat)) {
++	tcpd_warn("%s: user name may be reserved word", pat);
++    }
++}
++
+ /* check_host - criticize host pattern */
+ 
+ static int check_host(pat)
+@@ -484,3 +992,5 @@
+ 	    || STR_EQ(pat, "ALL")
+ 	    || STR_EQ(pat, "LOCAL"));
+ }
++
++#endif
+--- tcpdmatch.c.orig
++++ tcpdmatch.c
+@@ -1,3 +1,340 @@
++#if defined(__NetBSD__)
++/*	$NetBSD: tcpdmatch.c,v 1.9 2018/01/23 21:06:26 sevan Exp $	*/
++
++ /*
++  * tcpdmatch - explain what tcpd would do in a specific case
++  * 
++  * usage: tcpdmatch [-d] [-i inet_conf] daemon[@host] [user@]host
++  * 
++  * -d: use the access control tables in the current directory.
++  * 
++  * -i: location of inetd.conf file.
++  * 
++  * All errors are reported to the standard error stream, including the errors
++  * that would normally be reported via the syslog daemon.
++  * 
++  * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
++  */
++
++#include <sys/cdefs.h>
++#ifndef lint
++#if 0
++static char sccsid[] = "@(#) tcpdmatch.c 1.5 96/02/11 17:01:36";
++#else
++__RCSID("$NetBSD: tcpdmatch.c,v 1.9 2018/01/23 21:06:26 sevan Exp $");
++#endif
++#endif
++
++/* System libraries. */
++
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <sys/socket.h>
++#include <netinet/in.h>
++#include <arpa/inet.h>
++#include <netdb.h>
++#include <stdio.h>
++#include <syslog.h>
++#include <setjmp.h>
++#include <string.h>
++#include <stdlib.h>
++#include <unistd.h>
++
++#ifndef	INADDR_NONE
++#define	INADDR_NONE	(-1)		/* XXX should be 0xffffffff */
++#endif
++
++#ifndef S_ISDIR
++#define S_ISDIR(m)	(((m) & S_IFMT) == S_IFDIR)
++#endif
++
++/* Application-specific. */
++
++#include "tcpd.h"
++#include "inetcf.h"
++#include "scaffold.h"
++
++static void usage(char *);
++static void expand(char *, char *, struct request_info *);
++static void tcpdmatch(struct request_info *);
++
++/* The main program */
++
++int main(int argc, char *argv[])
++{
++    struct addrinfo *res, *res0;
++    char   *myname = argv[0];
++    char   *client;
++    char   *server;
++    char   *user;
++    char   *daemon;
++    struct request_info request;
++    int     ch;
++    char   *inetcf = 0;
++    int     count;
++    struct sockaddr_storage server_ss;
++    struct sockaddr_storage client_ss;
++    struct stat st;
++
++    /*
++     * Show what rule actually matched.
++     */
++    hosts_access_verbose = 2;
++
++    /*
++     * Parse the JCL.
++     */
++    while ((ch = getopt(argc, argv, "di:")) != -1) {
++	switch (ch) {
++	case 'd':
++	    hosts_allow_table = "hosts.allow";
++	    hosts_deny_table = "hosts.deny";
++	    break;
++	case 'i':
++	    inetcf = optarg;
++	    break;
++	default:
++	    usage(myname);
++	    /* NOTREACHED */
++	}
++    }
++    if (argc != optind + 2)
++	usage(myname);
++
++    /*
++     * When confusion really strikes...
++     */
++    if (check_path(REAL_DAEMON_DIR, &st) < 0) {
++	tcpd_warn("REAL_DAEMON_DIR %s: %m", REAL_DAEMON_DIR);
++    } else if (!S_ISDIR(st.st_mode)) {
++	tcpd_warn("REAL_DAEMON_DIR %s is not a directory", REAL_DAEMON_DIR);
++    }
++
++    /*
++     * Default is to specify a daemon process name. When daemon@host is
++     * specified, separate the two parts.
++     */
++    if ((server = split_at(argv[optind], '@')) == 0)
++	server = unknown;
++    if (argv[optind][0] == '/') {
++	daemon = strrchr(argv[optind], '/') + 1;
++	tcpd_warn("%s: daemon name normalized to: %s", argv[optind], daemon);
++    } else {
++	daemon = argv[optind];
++    }
++
++    /*
++     * Default is to specify a client hostname or address. When user@host is
++     * specified, separate the two parts.
++     */
++    if ((client = split_at(argv[optind + 1], '@')) != 0) {
++	user = argv[optind + 1];
++    } else {
++	client = argv[optind + 1];
++	user = unknown;
++    }
++
++    /*
++     * Analyze the inetd (or tlid) configuration file, so that we can warn
++     * the user about services that may not be wrapped, services that are not
++     * configured, or services that are wrapped in an incorrect manner. Allow
++     * for services that are not run from inetd, or that have tcpd access
++     * control built into them.
++     */
++    inetcf = inet_cfg(inetcf);
++    inet_set("portmap", WR_NOT);
++    inet_set("rpcbind", WR_NOT);
++    switch (inet_get(daemon)) {
++    case WR_UNKNOWN:
++	tcpd_warn("%s: no such process name in %s", daemon, inetcf);
++	break;
++    case WR_NOT:
++	tcpd_warn("%s: service possibly not wrapped", daemon);
++	break;
++    }
++
++    /*
++     * Check accessibility of access control files.
++     */
++    (void) check_path(hosts_allow_table, &st);
++    (void) check_path(hosts_deny_table, &st);
++
++    /*
++     * Fill in what we have figured out sofar. Use socket and DNS routines
++     * for address and name conversions. We attach stdout to the request so
++     * that banner messages will become visible.
++     */
++    request_init(&request, RQ_DAEMON, daemon, RQ_USER, user, RQ_FILE, 1, 0);
++    sock_methods(&request);
++
++    /*
++     * If a server hostname is specified, insist that the name maps to at
++     * most one address. eval_hostname() warns the user about name server
++     * problems, while using the request.server structure as a cache for host
++     * address and name conversion results.
++     */
++    if (NOT_INADDR(server) == 0 || HOSTNAME_KNOWN(server)) {
++	if ((res0 = find_inet_addr(server, 0)) == NULL)
++	    exit(1);
++	memset((char *) &server_ss, 0, sizeof(server_ss));
++	request_set(&request, RQ_SERVER_SIN, &server_ss, 0);
++
++	count = 0;
++	for (res = res0; res; res = res->ai_next) {
++	    count++;
++	    if (res->ai_addrlen > sizeof(server_ss))
++		continue;
++	    memcpy(&server_ss, res->ai_addr, res->ai_addrlen);
++
++	    /*
++	     * Force evaluation of server host name and address. Host name
++	     * conflicts will be reported while eval_hostname() does its job.
++	     */
++	    request_set(&request, RQ_SERVER_NAME, "", RQ_SERVER_ADDR, "", 0);
++	    if (STR_EQ(eval_hostname(request.server), unknown))
++		tcpd_warn("host address %s->name lookup failed",
++			  eval_hostaddr(request.server));
++	}
++	if (count > 1) {
++	    fprintf(stderr, "Error: %s has more than one address\n", server);
++	    fprintf(stderr, "Please specify an address instead\n");
++	    exit(1);
++	}
++	freeaddrinfo(res0);
++    } else {
++	request_set(&request, RQ_SERVER_NAME, server, 0);
++    }
++
++    /*
++     * If a client address is specified, we simulate the effect of client
++     * hostname lookup failure.
++     */
++    res0 = find_inet_addr(client, AI_NUMERICHOST);
++    if (res0 && !res0->ai_next) {
++	request_set(&request, RQ_CLIENT_SIN, res0->ai_addr);
++	tcpdmatch(&request);
++	freeaddrinfo(res0);
++	exit(0);
++    }
++    if (res0)
++	freeaddrinfo(res0);
++
++    /*
++     * Perhaps they are testing special client hostname patterns that aren't
++     * really host names at all.
++     */
++    if (NOT_INADDR(client) && HOSTNAME_KNOWN(client) == 0) {
++	request_set(&request, RQ_CLIENT_NAME, client, 0);
++	tcpdmatch(&request);
++	exit(0);
++    }
++
++    /*
++     * Otherwise, assume that a client hostname is specified, and insist that
++     * the address can be looked up. The reason for this requirement is that
++     * in real life the client address is available (at least with IP). Let
++     * eval_hostname() figure out if this host is properly registered, while
++     * using the request.client structure as a cache for host name and
++     * address conversion results.
++     */
++    if ((res0 = find_inet_addr(client, 0)) == NULL)
++	exit(1);
++    memset((char *) &client_ss, 0, sizeof(client_ss));
++    request_set(&request, RQ_CLIENT_SIN, &client_ss, 0);
++
++    count = 0;
++    for (res = res0; res; res = res->ai_next) {
++	count++;
++	if (res->ai_addrlen > sizeof(client_ss))
++	    continue;
++	memcpy(&client_ss, res->ai_addr, res->ai_addrlen);
++
++	/*
++	 * Force evaluation of client host name and address. Host name
++	 * conflicts will be reported while eval_hostname() does its job.
++	 */
++	request_set(&request, RQ_CLIENT_NAME, "", RQ_CLIENT_ADDR, "", 0);
++	if (STR_EQ(eval_hostname(request.client), unknown))
++	    tcpd_warn("host address %s->name lookup failed",
++		      eval_hostaddr(request.client));
++	tcpdmatch(&request);
++	if (res->ai_next)
++	    printf("\n");
++    }
++    freeaddrinfo(res0);
++    exit(0);
++}
++
++/* Explain how to use this program */
++
++static void usage(char *myname)
++{
++    fprintf(stderr, "usage: %s [-d] [-i inet_conf] daemon[@host] [user@]host\n",
++	    myname);
++    fprintf(stderr, "	-d: use allow/deny files in current directory\n");
++    fprintf(stderr, "	-i: location of inetd.conf file\n");
++    exit(1);
++}
++
++/* Print interesting expansions */
++
++static void expand(char *text, char *pattern, struct request_info *request)
++{
++    char    buf[BUFSIZ];
++
++    if (STR_NE(percent_x(buf, sizeof(buf), pattern, request), unknown))
++	printf("%s %s\n", text, buf);
++}
++
++/* Try out a (server,client) pair */
++
++static void tcpdmatch(struct request_info *request)
++{
++    int     verdict;
++
++    /*
++     * Show what we really know. Suppress uninteresting noise.
++     */
++    expand("client:   hostname", "%n", request);
++    expand("client:   address ", "%a", request);
++    expand("client:   username", "%u", request);
++    expand("server:   hostname", "%N", request);
++    expand("server:   address ", "%A", request);
++    expand("server:   process ", "%d", request);
++
++    /*
++     * Reset stuff that might be changed by options handlers. In dry-run
++     * mode, extension language routines that would not return should inform
++     * us of their plan, by clearing the dry_run flag. This is a bit clumsy
++     * but we must be able to verify hosts with more than one network
++     * address.
++     */
++    rfc931_timeout = RFC931_TIMEOUT;
++    allow_severity = SEVERITY;
++    deny_severity = LOG_WARNING;
++    dry_run = 1;
++
++    /*
++     * When paranoid mode is enabled, access is rejected no matter what the
++     * access control rules say.
++     */
++#ifdef PARANOID
++    if (STR_EQ(eval_hostname(request->client), paranoid)) {
++	printf("access:   denied (PARANOID mode)\n\n");
++	return;
++    }
++#endif
++
++    /*
++     * Report the access control verdict.
++     */
++    verdict = hosts_access(request);
++    printf("access:   %s\n",
++	   dry_run == 0 ? "delegated" :
++	   verdict ? "granted" : "denied");
++}
++
++#else /* non-NetBSD pkgsrc implementations */
+  /*
+   * tcpdmatch - explain what tcpd would do in a specific case
+   * 
+@@ -325,3 +662,5 @@
+ 	   dry_run == 0 ? "delegated" :
+ 	   verdict ? "granted" : "denied");
+ }
++
++#endif

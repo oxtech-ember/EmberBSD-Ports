@@ -1,0 +1,87 @@
+# $NetBSD: Makefile,v 1.48 2025/04/30 11:58:04 tnn Exp $
+
+DISTNAME=	tcp_wrappers_7.6-ipv6.4
+PKGNAME=	${DISTNAME:S/_7.6-ipv6/-7.6/}
+PKGREVISION=	4
+CATEGORIES=	security net
+MASTER_SITES=	ftp://ftp.porcupine.org/pub/security/
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	ftp://ftp.porcupine.org/pub/security/index.html
+COMMENT=	Monitor and filter incoming requests for network services
+LICENSE=	tcp-wrappers AND 2-clause-bsd AND original-bsd
+
+USE_LIBTOOL=		yes
+
+PKG_OPTIONS_VAR=	PKG_OPTIONS.tcp_wrappers
+PKG_SUPPORTED_OPTIONS=	inet6
+PKG_SUGGESTED_OPTIONS=	inet6
+
+.include "../../mk/bsd.options.mk"
+
+BUILD_TARGET.${OPSYS}?=	generic		# good luck!
+BUILD_TARGET.Darwin=	netbsd
+BUILD_TARGET.Haiku=	netbsd
+BUILD_TARGET.Linux=	${LOWER_OPSYS}
+.if ${OPSYS:M*BSD}
+BUILD_TARGET.${OPSYS}=	netbsd
+.endif
+BUILD_TARGET.NetBSD=	emberbsd_netbsd
+BUILD_TARGET.SunOS=	sunos5
+BUILD_TARGET.IRIX=	irix5
+.if ${OS_VARIANT} == "SCOOSR5"
+BUILD_TARGET.SCO_SV=	sco-os5
+LDFLAGS.SCO_SV+=	-lsocket
+.endif
+BUILD_TARGET=		${BUILD_TARGET.${OPSYS}}
+
+.if !empty(PKG_OPTIONS:Minet6)
+.  if ${OPSYS} == "NetBSD"
+MAKE_ENV+=	IPV6="-DINET6"
+.  elif ${OPSYS:M*BSD} || ${OPSYS} == "DragonFly"
+MAKE_ENV+=	IPV6="-DHAVE_IPV6 -DUSE_GETHOSTBYNAME2 -DUSE_STRERROR"
+.  elif ${OPSYS} != "Linux"
+MAKE_ENV+=	IPV6=-DHAVE_IPV6
+.  endif
+.endif
+
+CFLAGS.Linux+=	-D_POSIX_C_SOURCE=200809L	# popen(3)
+CFLAGS.Linux+=	-D_XOPEN_SOURCE=500		# endgrent(3)
+CFLAGS.Darwin+=	-D_DARWIN_C_SOURCE
+
+# Default to /etc/hosts.{allow,deny} for the configuration files to match
+# the historic location of these files.  This may be changed by setting
+# PKG_SYSCONFDIR.tcp_wrappers to a different value in /etc/mk.conf.
+#
+PKG_SYSCONFDIR.tcp_wrappers?=	/etc
+MAKE_ENV+=	PKGSYSCONFDIR=${PKG_SYSCONFDIR}
+
+INSTALLATION_DIRS=	bin include lib libexec ${PKGMANDIR}/man3 ${PKGMANDIR}/man5 ${PKGMANDIR}/man8
+
+SUBST_CLASSES+=		man
+SUBST_MESSAGE.man=	Fixing ${PKG_SYSCONFDIR} in manpages.
+SUBST_STAGE.man=	pre-configure
+SUBST_FILES.man=	*.[0-9]
+SUBST_SED.man=		-e 's|/etc/hosts\.|${PKG_SYSCONFDIR}/hosts.|g'
+
+DOCDIR=			${PREFIX}/share/doc/tcp_wrappers
+INSTALLATION_DIRS+=	${DOCDIR}
+
+do-install:
+	${LIBTOOL} --mode=install ${INSTALL_LIB} \
+		${WRKSRC}/libwrap.la ${DESTDIR}${PREFIX}/lib
+	${LIBTOOL} --mode=install ${INSTALL_PROGRAM} \
+		${WRKSRC}/tcpdchk ${WRKSRC}/tcpdmatch ${WRKSRC}/try-from \
+		${WRKSRC}/safe_finger ${DESTDIR}${PREFIX}/bin
+	${INSTALL_DATA} ${WRKSRC}/tcpd.h ${DESTDIR}${PREFIX}/include
+	${LIBTOOL} --mode=install ${INSTALL_PROGRAM} \
+		${WRKSRC}/tcpd ${DESTDIR}${PREFIX}/libexec
+	${INSTALL_DATA} ${WRKSRC}/*.3 ${DESTDIR}${PREFIX}/${PKGMANDIR}/man3
+	${INSTALL_DATA} ${WRKSRC}/*.5 ${DESTDIR}${PREFIX}/${PKGMANDIR}/man5
+	${INSTALL_DATA} ${WRKSRC}/*.8 ${DESTDIR}${PREFIX}/${PKGMANDIR}/man8
+	${INSTALL_DATA} ${WRKSRC}/DISCLAIMER ${WRKSRC}/README ${WRKSRC}/README.NIS \
+		${WRKSRC}/README.ipv6 ${DESTDIR}${DOCDIR}
+	${INSTALL_DATA} ${FILESDIR}/berkeley-notice ${FILESDIR}/netbsd-notices \
+		${DESTDIR}${DOCDIR}
+
+.include "../../mk/bsd.pkg.mk"

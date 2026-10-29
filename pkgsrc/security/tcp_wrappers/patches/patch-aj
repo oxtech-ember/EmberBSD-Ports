@@ -1,0 +1,44 @@
+$NetBSD: patch-aj,v 1.3 2025/04/29 14:18:00 tnn Exp $
+
+--- tcpdchk.c.orig	1999-10-28 06:38:06.000000000 +0000
++++ tcpdchk.c
+@@ -25,14 +25,14 @@ static char sccsid[] = "@(#) tcpdchk.c 1
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
+ #include <stdio.h>
++#include <stdlib.h>
+ #include <syslog.h>
+ #include <setjmp.h>
+ #include <errno.h>
+ #include <netdb.h>
+ #include <string.h>
++#include <unistd.h>
+ 
+-extern int errno;
+-extern void exit();
+ extern int optind;
+ extern char *optarg;
+ 
+@@ -67,14 +67,14 @@ extern jmp_buf tcpd_buf;
+   * Local stuff.
+   */
+ static void usage();
+-static void parse_table();
+-static void print_list();
+-static void check_daemon_list();
+-static void check_client_list();
+-static void check_daemon();
+-static void check_user();
+-static int check_host();
+-static int reserved_name();
++static void parse_table(char *, struct request_info *);
++static void print_list(char *, char *);
++static void check_daemon_list(char *);
++static void check_client_list(char *);
++static void check_daemon(char *);
++static void check_user(char *);
++static int check_host(char *);
++static int reserved_name(char *);
+ 
+ #define PERMIT	1
+ #define DENY	0
