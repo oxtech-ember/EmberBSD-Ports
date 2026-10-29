@@ -7,8 +7,8 @@ publishes the matching source SHA256.
 The complete `lang/perl5` recipe supplies Perl 5.44.0nb9, its shared library,
 threaded interpreter, XS modules, development headers and manuals. Clang's
 installed scan-build programs depend on this target package. The build uses
-macOS for compilation and an EmberBSD/AArch64 device for Configure probes.
-It does not compile Perl on the device.
+macOS for compilation and a stored, target-measured Configure result for each
+platform. An ordinary package build needs no target device.
 
 ## Reproducible inputs
 
@@ -28,6 +28,47 @@ EMBERBSD_PERL_HOST_MINIPERL=/absolute/host-perl-source/miniperl
 EMBERBSD_PERL_HOST_GENERATE=/absolute/host-perl-source/generate_uudmap
 EMBERBSD_CROSS_BUILD_PERL=/absolute/host/bin/perl
 EMBERBSD_PERL_HOST_PYTHON=/absolute/native/python3
+```
+
+These are build-host tools only. No target address, account or SSH tool is
+needed.
+
+## Stored Configure answers
+
+Perl's Configure must run its feature probes on the target. They were run once
+per platform on a real target, and the resulting `config.sh` is stored in
+`pkgsrc/lang/perl5/files/config/${MACHINE_PLATFORM}.sh`. Every build-specific path
+in it is an `@NAME@` placeholder (`WRKSRC`, `WRKDIR`, `SYSROOT`, `TOOLDIR`,
+`TOOLBASE`, `HOST_MINIPERL`, `HOST_GENERATE`, `CROSS_BUILD_PERL`). Build-host
+identity, configuration time and the probe target's address are removed.
+The probe runner variables name `Cross/no-target`, which only reports an error.
+
+For a cross build, `do-configure` fills the placeholders with the current
+paths ([config-template.py](../../../pkgsrc/lang/perl5/files/config-template.py)
+`fill`), runs `Configure -S` to extract the `.SH` files from those answers and
+then `make depend`. No probe runs and no SSH or SCP is started.
+
+The second line of each stored file names the recipe it was measured with:
+
+```text
+# pkgsrc recipe: perl-5.44.0 PKG_OPTIONS=perl-64bitauto,threads
+```
+
+The recipe refuses to build when the platform has no stored file or when the
+recorded `DISTNAME` or sorted `PKG_OPTIONS` differ from the current build. Both
+reasons appear in `PKG_FAIL_REASON` and point to this document.
+
+| Platform | Measured on |
+| --- | --- |
+| `NetBSD-11.0-aarch64` | EmberBSD AArch64 board, Perl 5.44.0, 2026-10-29 |
+
+### Capturing a new platform or Perl version
+
+Capture again for each new `MACHINE_PLATFORM`, Perl version or option set.
+This is the only step that uses a target. Add to a separate private MAKECONF:
+
+```make
+EMBERBSD_PERL_CAPTURE_CONFIG=yes
 EMBERBSD_PERL_SSH=/absolute/host/ssh
 EMBERBSD_PERL_SCP=/absolute/host/scp
 # Optional dedicated configuration, e.g. for a disposable VM:
@@ -37,6 +78,13 @@ EMBERBSD_PERL_TARGET_HOST=private-ssh-alias
 EMBERBSD_PERL_TARGET_USER=build-user
 EMBERBSD_PERL_TARGET_DIR=/absolute/private-probe-directory
 ```
+
+Run `bmake configure` in `lang/perl5`. Configure then runs every probe on the
+target, and post-configure writes the normalized template to
+`${WRKDIR}/${MACHINE_PLATFORM}.sh` (`config-template.py capture`). Capture
+refuses output that still contains a build-host path. Review it, copy it to
+`files/config/`, add the platform to the table above and run the
+[stored-config regression](../tests/perl-stored-config.py).
 
 Use a connected target, an existing SSH account and a new private probe
 location. Configure compiles each probe with the target compiler on the host.
@@ -64,9 +112,11 @@ The nonblocking-I/O shell fixture uses target-relative executable paths and
 copies its output files back before Configure reads them. It does not embed
 the build-host runner path in a script executed on the target.
 
+## Building
+
 Run ordinary `bmake package` in the exported `lang/perl5` directory with the
 private MAKECONF. Keep host and target package databases separate. Do not run
-the target's ELF interpreter on macOS or replace failed target probes with host
+the target's ELF interpreter on macOS or replace target answers with host
 answers. The target triplet and `osname=netbsd` retain the fork's ABI naming.
 
 ## Portability fixes
@@ -164,6 +214,18 @@ space-containing and symbolic-link values on Darwin, and no assignment on
 NetBSD. It executes neither Perl nor the install-name tool.
 
 ## Checks
+
+The stored-config regression checks every stored file for neutral values and
+its recipe identity, the capture/fill round trip, and refusal of unmapped
+host paths and unknown placeholders. With `--bmake`, it also evaluates the
+recipe: a cross build has no target requirement, a missing platform file or
+identity mismatch fails with an explicit reason, and capture still requires
+the target settings:
+
+```sh
+python3 profiles/common-build-tools/tests/perl-stored-config.py \
+    --bmake /absolute/cross-bmake-wrapper -v
+```
 
 The transport regression uses fake process results and makes no SSH connection:
 
