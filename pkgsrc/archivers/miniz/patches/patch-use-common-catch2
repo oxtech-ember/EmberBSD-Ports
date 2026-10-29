@@ -1,0 +1,29 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Use the common Catch2 provider for upstream tests.
+--- CMakeLists.txt
++++ CMakeLists.txt
+@@ -314,11 +314,12 @@
+   set(CMAKE_CXX_STANDARD 20)
+   set(CMAKE_CXX_STANDARD_REQUIRED YES)
+ 
+-  add_executable(catch_tests tests/main.cpp tests/catch_amalgamated.cpp)
++  find_package(Catch2 3 CONFIG REQUIRED)
++  add_executable(catch_tests tests/main.cpp)
+   if(BUILD_NO_STDIO)
+     target_compile_definitions(catch_tests PRIVATE -DMINIZ_NO_STDIO)
+   endif()
+-  target_link_libraries(catch_tests miniz)
++  target_link_libraries(catch_tests miniz Catch2::Catch2WithMain)
+ 
+   enable_testing()
+ 
+--- tests/main.cpp
++++ tests/main.cpp
+@@ -1,4 +1,4 @@
+-#include "catch_amalgamated.hpp"
++#include <catch2/catch_all.hpp>
+ #include "../miniz.h"
+ #include "miniz_zip.h"
+ #include <assert.h>

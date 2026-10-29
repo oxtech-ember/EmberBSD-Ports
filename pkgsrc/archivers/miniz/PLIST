@@ -1,0 +1,15 @@
+@comment $NetBSD$
+include/miniz/miniz.h
+include/miniz/miniz_common.h
+include/miniz/miniz_export.h
+include/miniz/miniz_tdef.h
+include/miniz/miniz_tinfl.h
+include/miniz/miniz_zip.h
+lib/cmake/miniz/minizConfig.cmake
+lib/cmake/miniz/minizConfigVersion.cmake
+lib/cmake/miniz/minizTargets-release.cmake
+lib/cmake/miniz/minizTargets.cmake
+lib/libminiz.so
+lib/libminiz.so.3
+lib/libminiz.so.3.1.2
+lib/pkgconfig/miniz.pc
