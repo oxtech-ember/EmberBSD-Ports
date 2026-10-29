@@ -114,6 +114,7 @@ same explicit SDK binding record used by the native MAKECONF:
 
 Set `EMBERBSD_NATIVE_CXX_BINDING_RECORD` to that record before including the
 native mapping. Its verifier checks the selected host compiler and runtime;
-`HOST_CXX`, `EMBERBSD_CROSS_BUILD_CXX`, native C++ commands and optional host
-aliases then use the same SDK adapter. Target compiler commands and sysroot
+`HOST_CC`, `HOST_CXX`, `HOST_CPP`, the cross-build host compiler commands and
+optional host aliases then use the same SDK binding. Its selected ABI flags are
+applied once by the adapters. Target compiler commands and sysroot
 remain independent. Omit this selection to keep the previous native mapping.
