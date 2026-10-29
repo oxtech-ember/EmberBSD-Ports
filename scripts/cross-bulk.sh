@@ -4,6 +4,9 @@
 # Build a list of pkgsrc packages in dependency order with the cross MAKECONF.
 #
 #   order  Find all dependencies of the list and sort them. Writes STATE/order.
+#          List entries the profile skips (PKG_SKIP_REASON) go to
+#          STATE/skipped. A graph in which a package reaches a skipped
+#          package is refused: no order is written.
 #   fetch  Get the distfiles for STATE/order. Only network and DISTDIR.
 #   build  Build and install each package in STATE/order.
 #
@@ -52,17 +55,22 @@ var()
     mk -C "$PKGSRCDIR/$1" show-var VARNAME="$2" < /dev/null
 }
 
-# Print the target dependency paths of one package. Tool dependencies are
-# native host packages; pkgsrc builds them itself.
+# Print the target dependency paths of one package and write its
+# PKG_SKIP_REASON to STATE/skip. Tool dependencies are native host
+# packages; pkgsrc builds them itself.
 target_deps()
 {
-    mk -C "$PKGSRCDIR/$1" show-vars VARNAMES='DEPENDS BUILD_DEPENDS' < /dev/null |
+    mk -C "$PKGSRCDIR/$1" show-vars VARNAMES='PKG_SKIP_REASON DEPENDS BUILD_DEPENDS' \
+        < /dev/null > "$state/vars" || return 1
+    sed -n '1p' "$state/vars" > "$state/skip"
+    sed '1d' "$state/vars" |
         tr ' ' '\n' | sed -n 's|^.*:\.\./\.\./\([^/]*/[^/]*\)$|\1|p' | sort -u
 }
 
 order()
 {
     : > "$state/edges.new"
+    : > "$state/skipped.new"
     sort -u "$list" > "$state/queue"
     : > "$state/seen"
     while [ -s "$state/queue" ]; do
@@ -70,11 +78,16 @@ order()
         while read -r path; do
             grep -qFx "$path" "$state/seen" && continue
             echo "$path" >> "$state/seen"
-            echo "$path $path" >> "$state/edges.new"
             target_deps "$path" > "$state/deps" 2>> "$state/logs/order.err" || {
+                echo "$path $path" >> "$state/edges.new"
                 echo "$path order" >> "$state/failed"
                 continue
             }
+            if [ -n "$(cat "$state/skip")" ]; then
+                echo "$path $(cat "$state/skip")" >> "$state/skipped.new"
+                continue
+            fi
+            echo "$path $path" >> "$state/edges.new"
             while read -r dep; do
                 [ -n "$dep" ] || continue
                 echo "$dep $path" >> "$state/edges.new"
@@ -83,11 +96,21 @@ order()
         done < "$state/queue"
         sort -u "$state/next" > "$state/queue"
     done
+    rm -f "$state/vars" "$state/skip"
+    # A skipped package is outside this profile; nothing may depend on it.
+    refused=$(awk 'FILENAME == ARGV[1] { skip[$1] = 1; next } ($1 in skip) && $1 != $2 { print $2 " -> " $1 }' \
+        "$state/skipped.new" "$state/edges.new")
+    if [ -n "$refused" ]; then
+        echo 'Refused: these packages depend on packages the profile skips:' >&2
+        echo "$refused" >&2
+        return 1
+    fi
+    mv "$state/skipped.new" "$state/skipped"
     tsort "$state/edges.new" > "$state/order.new"
     mv "$state/edges.new" "$state/edges"
     mv "$state/order.new" "$state/order"
     rm -f "$state/queue" "$state/next" "$state/deps"
-    echo "Ordered $(wc -l < "$state/order") packages: $state/order"
+    echo "Ordered $(wc -l < "$state/order") packages: $state/order; skipped $(wc -l < "$state/skipped")"
 }
 
 fetch()

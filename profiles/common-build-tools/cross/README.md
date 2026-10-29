@@ -484,6 +484,12 @@ pkgsrc parsing, native dependency recursion, ELF metadata and failure cases.
 recurses from `math/py-numpy` into `devel/py-meson_python` as a native tool
 dependency. It requires the host prefix compiler and no GCC16 dependency, and
 checks that `math/blas` keeps the cross compiler.
+The Clang family skips every `lang/gcc16*` package (`PKG_SKIP_REASON`).
+`scripts/cross-bulk.sh order` records skipped list entries in `STATE/skipped`
+and refuses a graph in which any package reaches a skipped one, so a Clang
+bulk never orders a GCC16 compiler or runtime.
+`scripts/tests/cross-bulk-gcc16-guard.sh PKGPATH NEW_OUTPUT` checks both with
+a list that names the GCC16 recipes and with an injected GCC16 dependency.
 `tests/cross-tools.py` explicitly selects the GCC profile and checks GCC tool
 composition, refusal of existing output,
 missing host tools, target Info utility routing and the pkgsrc runtime
