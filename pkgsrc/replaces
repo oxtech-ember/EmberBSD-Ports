@@ -410,3 +410,5 @@ devel/ruby-redmine_work_time
 net/ruby-winrm
 net/ruby-winrm-elevated
 net/ruby-winrm-fs
+
+graphics/glslang

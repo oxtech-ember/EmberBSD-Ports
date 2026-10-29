@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (glslang-16.6.0.tar.gz) = adb896f4a1a9bce81d5a775988795705cad768b03b02800ff1243d86dc1b6462
+SHA512 (glslang-16.6.0.tar.gz) = 00abbf97dfb17dab530f17acb4d3cd66c5c4f88d265c5e8a7fa3fcbd37f02ced6a9435874fdf68ba0f0c7a0b6f5ddb84f3f19a217ba3230e5504b95048b3da24
+Size (glslang-16.6.0.tar.gz) = 4632787 bytes
