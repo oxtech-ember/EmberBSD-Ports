@@ -845,6 +845,10 @@ recipe only if `pkgsrc/replaces` names its path, one path on each line.
 `pkgsrc/defaults.mk.conf` holds package defaults for every build. The export
 copies it to `EMBERBSD-DEFAULTS-MK.CONF`; the common tools `mk.conf` files
 and the Darwin bootstrap profile include it.
+The make environment runs with `LC_ALL=C`; the defaults give archive
+extraction alone `LC_ALL=C.UTF-8`, so bsdtar can write UTF-8 member names.
+`profiles/common-build-tools/tests/extract-locale.py EXPORTED_PKGSRC MAKECONF`
+runs the real recipe extract command on such an archive.
 
 The export keeps one version of each versioned package family, as EmberBSD
 does for LLVM. `pkgsrc/versions.mk` lists each family as `FAMILY=KEPT`
