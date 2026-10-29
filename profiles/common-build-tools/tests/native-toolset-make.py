@@ -46,7 +46,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
     selected = types.SimpleNamespace(
         tool=lambda role: tools[role], tools=tools, path=str(root), abi_flags=flags,
         command=lambda role: (tools[role], '-c', '-x', 'assembler') if role == 'as' else (tools[role],),
-        compiler_family='clang',
+        compiler_family='clang', host={'os': 'NetBSD'},
         as_dict=lambda: {'format': 'emberbsd-native-toolset-selection',
                          'version': 1, 'api': 1, 'tools': dict(tools),
                          'abi_flags': {key: list(value) for key, value in flags.items()}})
@@ -286,6 +286,32 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         refused(adapter.main, ['write', *pins, '--output', str(destination)])
         for path in (mlir_bin / 'flang', mlir_bin / 'flang-23', root / 'foreign-flang'):
             path.unlink()
+        # Native Darwin CMake recursion takes install_name_tool and TAPI from
+        # the prefix; both are required.
+        assert b'EMBERBSD_DARWIN' not in include.read_bytes()
+        selected.host = {'os': 'Darwin'}
+        darwin_tools = [mlir_bin / 'llvm-install-name-tool', mlir_bin / 'llvm-readtapi']
+        for tool in darwin_tools:
+            refused(adapter.main, ['write', *pins, '--output', str(destination)])
+            tool.write_text('#!/bin/sh\n')
+            tool.chmod(0o755)
+        with contextlib.redirect_stdout(io.StringIO()):
+            adapter.main(['write', *pins, '--output', str(destination)])
+        darwin = include.read_bytes()
+        for variable, value in (('EMBERBSD_DARWIN_INSTALL_NAME_TOOL', str(darwin_tools[0])),
+                                ('EMBERBSD_DARWIN_TAPI', str(darwin_tools[1])),
+                                ('EMBERBSD_DARWIN_TAPI_KIND', 'llvm-readtapi')):
+            assert ('.if "${' + variable + '}" != "' + value + '"').encode() in darwin
+        assert b'OSX_SDK_PATH' not in darwin
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            adapter.main(['verify', *pins, '--makeconf', str(include)])
+        assert output.getvalue() == 'VERIFIED\n'
+        darwin_tools[1].chmod(0o644)
+        refused(adapter.main, ['write', *pins, '--output', str(destination)])
+        assert include.read_bytes() == darwin
+        for path in darwin_tools:
+            path.unlink()
+        selected.host = {'os': 'NetBSD'}
         answer_qt(qt_answers)
         adapter.write(selected, str(destination), qt)
         assert include.read_bytes() == before
@@ -323,4 +349,4 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         refused(adapter.render, selected)
         assert not list(root.glob('.native-tools-*'))
 
-print('PASS: native make role/ABI argv, prefix selection, qtpaths Qt directories or none, complete native MLIR generators or none, the real native flang file or none, stale/foreign mapping refusals and atomic rewrite; no compiler or bmake build')
+print('PASS: native make role/ABI argv, prefix selection, qtpaths Qt directories or none, complete native MLIR generators or none, the real native flang file or none, Darwin Mach-O tools, stale/foreign mapping refusals and atomic rewrite; no compiler or bmake build')

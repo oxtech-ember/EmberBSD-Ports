@@ -97,7 +97,9 @@ Native Darwin also requires `EMBERBSD_DARWIN_INSTALL_NAME_TOOL` and
 selects and qualifies these tools. Recipes do not duplicate its provenance
 or acceptance policy. An initial scoped bootstrap can select copied Apple
 tools. The final SDK can select its own `llvm-install-name-tool` and
-`llvm-readtapi` from the common LLVM recipe.
+`llvm-readtapi` from the common LLVM recipe. For native recursion from a
+Ports host prefix, the generated host toolset include selects those prefix
+tools ([native toolset](cross/native-toolset.md)).
 
 CMake 4.4.4nb4 retains its text-stub feature. The common Darwin rule uses
 fixed Apple or LLVM arguments. Apple TAPI receives `stubify -isysroot`;

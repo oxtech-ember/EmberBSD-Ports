@@ -118,6 +118,28 @@ def flang_host_tool(prefix):
         raise SDKError('The host prefix has an invalid native flang: ' + str(driver))
     return (('flang', 'EMBERBSD_FLANG', str(real)),)
 
+# Native Darwin CMake recursion needs the Mach-O tools that cmake-binutils.mk
+# requires. The common LLVM recipe installs both in the prefix. OSX_SDK_PATH
+# keeps the pkgsrc Darwin platform default, which runs /usr/bin/xcrun.
+DARWIN_HOST_TOOLS = (('install-name-tool', 'EMBERBSD_DARWIN_INSTALL_NAME_TOOL', 'llvm-install-name-tool'),
+                     ('tapi', 'EMBERBSD_DARWIN_TAPI', 'llvm-readtapi'))
+
+
+def darwin_host_tools(prefix, toolset):
+    from emberbsd_sdk.errors import SDKError
+    if toolset.host.get('os') != 'Darwin':
+        return ()
+    bindir = Path(prefix).resolve(strict=True) / 'bin'
+    values = []
+    for role, variable, name in DARWIN_HOST_TOOLS:
+        # Keep the link: llvm-install-name-tool selects its mode by name.
+        path = bindir / name
+        if not path.is_file() or not os.access(path, os.X_OK):
+            raise SDKError('The host prefix has no native ' + name + ': ' + str(path))
+        values.append((role, variable, str(path)))
+    return tuple(values) + (('tapi-kind', 'EMBERBSD_DARWIN_TAPI_KIND', 'llvm-readtapi'),)
+
+
 def sdk_loader():
     here = Path(__file__).resolve()
     candidates = [here.parent / 'lang/llvm/files/sdk_source.py']
@@ -432,7 +454,7 @@ def main(arguments):
         print(json.dumps(write_aliases(toolset, args.output, native_cxx)))
         return
     qt = qt_host_paths(args.host_prefix, toolset.path) + mlir_host_tools(args.host_prefix) + \
-        flang_host_tool(args.host_prefix)
+        flang_host_tool(args.host_prefix) + darwin_host_tools(args.host_prefix, toolset)
     if args.operation == 'write':
         print(json.dumps(write(toolset, args.output, qt, args.fetch_mode, native_cxx)))
         return

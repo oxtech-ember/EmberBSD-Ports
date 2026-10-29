@@ -50,6 +50,14 @@ A `qtpaths` that cannot run, or that names a directory outside the prefix,
 is refused. Without `qtpaths` the file has no Qt variables. Cross Qt modules
 then stop in `x11/qt6-qtbase/host-tools.mk`; other cross packages build.
 
+On a Darwin host the file also sets the Mach-O tools that native CMake
+recursion needs (see `../README.md`). `EMBERBSD_DARWIN_INSTALL_NAME_TOOL` and
+`EMBERBSD_DARWIN_TAPI` select `bin/llvm-install-name-tool` and
+`bin/llvm-readtapi` from the prefix, and `EMBERBSD_DARWIN_TAPI_KIND` is
+`llvm-readtapi`. A prefix without either tool is refused. `OSX_SDK_PATH`
+keeps the pkgsrc Darwin default from `/usr/bin/xcrun`; set it in MAKECONF
+to select another SDK.
+
 Set these values before including the common native or cross profile:
 
 ```make
@@ -96,7 +104,8 @@ Source archive checksums, package checks and target ABI checks remain enabled.
 
 `tests/native-toolset-selection.py` checks the LLVM command and environment
 with API doubles. `tests/native-toolset-make.py` checks the make mapping,
-atomic rewrites, the optional Qt mapping and rejection of stale or conflicting inputs.
+atomic rewrites, the optional Qt mapping, the Darwin Mach-O tool mapping
+and rejection of stale or conflicting inputs.
 These tests do not build a compiler or establish target runtime behavior.
 
 For a nested host phase that must search command names without target wrappers,
