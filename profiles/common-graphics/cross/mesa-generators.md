@@ -63,6 +63,12 @@ The work directory must be absent. A failed build retains its partial work.
 The command checks the source archive checksum and uses existing native packages.
 It does not install dependencies or modify the selected host prefix.
 Set `LOCK_DIRECTORY` to the same SDK lock namespace as the package writer.
+When the native LLVM C++ ABI uses an SDK binding, pass
+`--native-cxx-binding-record /absolute/commands.json`; the common native
+tool selector validates and uses its compiler adapters. The native LLVM and
+CLC dependencies must use that same ABI. Without the option the selected
+host toolchain retains its existing default route.
+
 The producer holds shared leases for the prefix and package database until sealing finishes.
 An active package writer prevents this read lease; no second installer is started.
 The sealed result is in `WORK/sealed`.

@@ -80,6 +80,25 @@ class ProducerTests(unittest.TestCase):
             self.assertNotIn('libc++', flags)
             self.assertNotIn('/target', flags)
 
+    def test_selected_sdk_binding_routes_host_compilers(self):
+        binding = {'adapters': {'cc': '/binding/cc', 'cxx': '/binding/cxx', 'cpp': '/binding/cpp'}}
+        env = producer.native_environment(self.native, '/source/sdk', Path('/work/tmp'), binding)
+        self.assertEqual((env['CC'], env['CXX'], env['CPP']), ('/binding/cc', '/binding/cxx', '/binding/cpp'))
+        config = configparser.ConfigParser(interpolation=None)
+        config.read_string(producer.native_file(self.native, binding))
+        self.assertEqual(ast.literal_eval(config['binaries']['c']), ['/binding/cc'])
+        self.assertEqual(ast.literal_eval(config['binaries']['cpp']), ['/binding/cxx'])
+        with tempfile.TemporaryDirectory(prefix='mesa-bound-compiler-') as temporary:
+            build = Path(temporary)
+            (build / 'meson-info').mkdir()
+            metadata = {'host': {language: {'id': self.native.compiler_family,
+                        'version': self.native.compiler['version'], 'exelist': [binding['adapters'][role]]}
+                        for language, role in (('c', 'cc'), ('cpp', 'cxx'))}}
+            (build / 'meson-info/intro-compilers.json').write_text(json.dumps(metadata))
+            producer.check_compilers(self.native, build, binding)
+            with self.assertRaises(ValueError):
+                producer.check_compilers(self.native, build)
+
     def test_llvm_rtti_and_required_upstream_checks(self):
         for rtti, enabled in (('YES', 'true'), ('NO', 'false')):
             with self.subTest(rtti=rtti):

@@ -71,7 +71,7 @@ print(json.dumps({name:str(pathlib.Path(module.__file__).resolve()) for name,mod
 '''
 
 
-def native_environment(native, sdk_root, temporary):
+def native_environment(native, sdk_root, temporary, binding=None):
     from emberbsd_sdk.process import sanitized_environment
     environment = sanitized_environment()
     # A target SDK or an ambient toolchain must not affect the native build.
@@ -87,7 +87,7 @@ def native_environment(native, sdk_root, temporary):
                            ('AR', 'ar'), ('RANLIB', 'ranlib'), ('NM', 'nm'),
                            ('STRIP', 'strip'), ('SHELL', 'sh'), ('CMAKE', 'cmake'),
                            ('PKG_CONFIG', 'pkg-config'), ('LLVM_CONFIG', 'llvm-config')):
-        environment[variable] = native.tool(role)
+        environment[variable] = binding['adapters'][role] if binding and role in ('cc', 'cxx', 'cpp') else native.tool(role)
     host = Path(native.bundle_root)
     environment.update(PATH=native.path, HOST_PYTHON=native.tool('python'),
                        EMBERBSD_SDK_SOURCE=sdk_root, PYTHONDONTWRITEBYTECODE='1',
@@ -98,7 +98,7 @@ def native_environment(native, sdk_root, temporary):
     return environment
 
 
-def native_file(native):
+def native_file(native, binding=None):
     # Meson accepts single-quoted Python-style strings and arrays.
     def value(words):
         return '[' + ', '.join(repr(str(word)) for word in words) + ']'
@@ -106,7 +106,9 @@ def native_file(native):
              'pkg-config': 'pkg-config', 'llvm-config': 'llvm-config',
              'cmake': 'cmake', 'ninja': 'ninja', 'flex': 'flex', 'bison': 'bison',
              'python': 'python', 'python3': 'python', 'python3.15': 'python'}
-    rows = ['[binaries]'] + [name + ' = ' + value(native.command(role))
+    def selected(role):
+        return (binding['adapters'][role],) if binding and role in ('cc', 'cxx', 'cpp') else native.command(role)
+    rows = ['[binaries]'] + [name + ' = ' + value(selected(role))
                             for name, role in names.items()]
     host = Path(native.bundle_root)
     compile_flags = ['-I' + str(host / 'include')]
@@ -142,12 +144,13 @@ def mesa_commands(native, source, work, jobs, rtti):
             ('install-mesa', [*meson, 'install', '-C', str(destination), '--no-rebuild'])]
 
 
-def check_compilers(native, build):
+def check_compilers(native, build, binding=None):
     metadata = json.loads((build / 'meson-info/intro-compilers.json').read_text())
     for language, role in (('c', 'cc'), ('cpp', 'cxx')):
         compiler = metadata['host'][language]
+        expected = [binding['adapters'][role]] if binding else list(native.command(role))
         require(compiler['id'] == native.compiler_family and
-                compiler['exelist'] == list(native.command(role)),
+                compiler['exelist'] == expected,
                 'Meson selected a different native compiler: ' + language)
         require(compiler['version'] == native.compiler['version'],
                 'Meson selected a different native compiler version: ' + language)
@@ -166,6 +169,7 @@ def build(arguments, sdk_root):
     parser.add_argument('--profile', choices=('intel', 'powervr', 'all'), default='powervr')
     parser.add_argument('--host-prefix', required=True)
     parser.add_argument('--host-compiler-family', choices=('clang', 'gcc'), default='clang')
+    parser.add_argument('--native-cxx-binding-record', help='SDK native C++ compiler binding record')
     parser.add_argument('--pkgdb', required=True, help='Package database used by the native prefix')
     parser.add_argument('--lock-directory', required=True, help='Shared SDK producer lock namespace')
     parser.add_argument('--jobs', type=int, default=4)
@@ -194,6 +198,8 @@ def build(arguments, sdk_root):
     with ContextLocks([str(host), str(pkgdb)], str(lock_directory), shared=True):
         native = load_host_prefix(host, required_roles=HOST_ROLES,
                                   compiler_family=args.host_compiler_family)
+        selector_path = PORTS / 'profiles/common-build-tools/cross/prepare-native-tools.py'
+        binding = load(selector_path, 'mesa_native_tool_selector').select_native_cxx(native, args.native_cxx_binding_record)
         python = Path(native.tool('python'))
         require(python.resolve(strict=True) == Path(sys.executable).resolve(strict=True),
                 'Run this command with Python 3.15 from the selected host prefix')
@@ -207,6 +213,9 @@ def build(arguments, sdk_root):
                    helpers / 'mesa-26.2.4-pco-bvnc.patch', objc_patch, gtest_patch, gtest_provider_patch,
                    PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h',
                    graphics / 'sources.tsv']
+        scripts.append(selector_path)
+        if binding:
+            scripts.extend([Path(binding['record']), *map(Path, binding['adapters'].values())])
         scripts.append(Path(sdk_source.__file__).resolve())
         scripts.extend(sorted((Path(sdk_root) / 'src/emberbsd_sdk').rglob('*.py')))
         source_hashes = {str(path): sha256_file(str(path)) for path in scripts}
@@ -215,7 +224,7 @@ def build(arguments, sdk_root):
             work.mkdir()
             (work / 'tmp').mkdir()
             (work / 'logs').mkdir()
-            environment = native_environment(native, sdk_root, work / 'tmp')
+            environment = native_environment(native, sdk_root, work / 'tmp', binding)
 
             def query(argv):
                 result = capture_streamed(list(map(str, argv)), env=environment, timeout=120,
@@ -237,7 +246,7 @@ def build(arguments, sdk_root):
             write_json(str(work / 'inputs.json'), dict(source=source_hashes, providers=providers, modules=modules,
                        provider_paths=provider_paths, native_tools=native.as_dict(),
                        python=str(python.resolve(strict=True)), jobs=args.jobs, profile=args.profile,
-                       native_compiler='Ports host ' + native.compiler_family + '; no target objects'))
+                       native_cxx_binding=binding, native_compiler='Ports host ' + native.compiler_family + '; no target objects'))
 
             def fetch(name, table):
                 digest, url = archive_pin(table, name)
@@ -276,11 +285,11 @@ def build(arguments, sdk_root):
             extract.rmdir()
             native_work = work / 'native'
             native_work.mkdir()
-            (native_work / 'native.ini').write_text(native_file(native))
+            (native_work / 'native.ini').write_text(native_file(native, binding))
             for name, command in mesa_commands(native, work / 'mesa-source', native_work, args.jobs, rtti):
                 run(command, name)
                 if name == 'configure-mesa':
-                    check_compilers(native, native_work / 'mesa')
+                    check_compilers(native, native_work / 'mesa', binding)
             sealer = load(graphics / 'cross/seal-mesa-generators.py', 'mesa_native_sealer')
             sealer.seal(['--profile', args.profile, '--host-prefix', str(host), '--pkgdb', str(pkgdb),
                          '--lock-directory', str(lock_directory), str(mesa_archive), str(work / 'mesa-source'),
