@@ -2,7 +2,7 @@ Blanc 1.25.0 is a desktop browser application built with Electron 44.
 This package stages only the upstream tracked application files named by its
 release allowlist and its lockfile-pinned production dependencies in an ASAR
 archive. The build controller uses the EmberBSD SDK host API and host Node.js
-24.22.1. Node.js runs upstream tests, the upstream adblock seed generator, and
+26.12.1. Node.js runs upstream tests, the upstream adblock seed generator, and
 the pinned @electron/asar tool. The application uses the separately installed
 Electron 44.9.3 package. The Electron NPM package and electron-builder are not
 installed or run.

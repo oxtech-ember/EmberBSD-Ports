@@ -102,3 +102,4 @@ EMBERBSD_VERSION_DEPENDENTS+=	meta-pkgs/bulk-medium
 EMBERBSD_VERSION_DEPENDENTS+=	meta-pkgs/bulk-small
 EMBERBSD_VERSION_DEPENDENTS+=	meta-pkgs/bulk-test-icu
 EMBERBSD_VERSION_DEPENDENTS+=	meta-pkgs/bulk-test-python27
+EMBERBSD_VERSION_FAMILIES+=	lang/nodejs[0-9]*=lang/nodejs

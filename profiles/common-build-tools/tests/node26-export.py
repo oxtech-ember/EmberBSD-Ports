@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted).
-"""Exercise the common pkgsrc exporter with the Node.js 24 Python patch."""
+"""Exercise the common pkgsrc exporter with the Node.js 26 recipe overlay."""
 import argparse
 import importlib.util
 import os
@@ -13,7 +13,7 @@ SPEC = importlib.util.spec_from_file_location(
     'ports_exporter', ROOT / 'scripts/prepare-pkgsrc.py')
 EXPORTER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(EXPORTER)
-PATCH = Path('profiles/common-build-tools/patches/pkgsrc-nodejs24-python315.patch')
+PATCH = Path('profiles/common-build-tools/patches/pkgsrc-nodejs-current.patch')
 EXPORT_LINE = 'patch\t' + PATCH.as_posix() + '\n'
 
 
@@ -31,6 +31,8 @@ def run(command, *, cwd=None, input=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--pkgsrc', type=Path, required=True)
+    parser.add_argument('--expected-recipe', type=Path, required=True)
     parser.add_argument('--git', type=Path, required=True)
     parser.add_argument('--patch', type=Path, required=True)
     parser.add_argument('--work', type=Path, required=True)
@@ -47,24 +49,16 @@ def main():
 
     ports = args.work / 'ports'
     upstream = ports / 'upstream/pkgsrc'
-    package = upstream / 'lang/nodejs24'
+    package = upstream / 'lang/nodejs'
     (ports / 'pkgsrc').mkdir(parents=True)
-    package.mkdir(parents=True)
+    import shutil
+    shutil.copytree(args.pkgsrc / 'lang/nodejs', package)
     (ports / 'profiles/common-build-tools/patches').mkdir(parents=True)
     (ports / 'profiles/common-build-tools/patches' / PATCH.name).write_bytes(
         (ROOT / PATCH).read_bytes())
     (ports / 'pkgsrc/export.conf').write_text(EXPORT_LINE)
-    (package / 'Makefile').write_text(
-        '# $NetBSD: Makefile,v 1.17 2026/09/09 07:30:58 adam Exp $\n\n'
-        'DISTNAME=\tnode-v24.22.1\nPKGREVISION=\t2\nEXTRACT_SUFX=\t.tar.xz\n\n'
-        'USE_LANGUAGES=\tc c++\n')
-    (package / 'distinfo').write_text(
-        'SHA1 (patch-tools_gyp_pylib_gyp_xcode__emulation.py) = 4ee24115f5e97ffbd23aaa6dc62f408d381d4e22\n'
-        'SHA1 (patch-tools_install.py) = ac296123fa498c7edee3a5735f2e24c862037813\n'
-        'SHA1 (patch-tools_v8_gypfiles_v8.gyp) = 112aa21cb2c2c4609cba96f41ae306d6e60ae797\n')
-
     subprocess.run([str(args.git), '-C', str(upstream), 'init', '-q'], check=True)
-    subprocess.run([str(args.git), '-C', str(upstream), 'add', 'lang/nodejs24'], check=True)
+    subprocess.run([str(args.git), '-C', str(upstream), 'add', '-f', 'lang/nodejs'], check=True)
     subprocess.run([str(args.git), '-C', str(upstream), '-c', 'user.name=Fixture',
                     '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture'],
                    check=True)
@@ -83,13 +77,13 @@ def main():
     exported_revision = EXPORTER.export_pkgsrc(
         ports, destination, selection=selected, runner=run, scratch=scratch)
     assert exported_revision == revision
-    recipe = destination / 'lang/nodejs24'
-    assert (recipe / 'patches/patch-configure').is_file()
-    assert (recipe / 'patches/patch-tools_gyp_pylib_gyp_input.py').is_file()
-    assert 'PKGREVISION=\t3\n' in (recipe / 'Makefile').read_text()
-    assert 'SHA1 (patch-configure) = fa89560fffeebf7c6b9bc07bb9327cc7d837388c' in (recipe / 'distinfo').read_text()
+    recipe = destination / 'lang/nodejs'
+    actual = {p.relative_to(recipe): p.read_bytes() for p in recipe.rglob('*') if p.is_file()}
+    expected = {p.relative_to(args.expected_recipe): p.read_bytes()
+                for p in args.expected_recipe.rglob('*') if p.is_file()}
+    assert actual == expected, (actual.keys() ^ expected.keys())
     assert not list(destination.rglob('*.~[0-9]*~'))
-    print('PASS: common exporter applied Node.js Python 3.15 patch with selected patch tool')
+    print('PASS: common exporter applied Node.js 26 recipe overlay with selected patch tool')
 
 
 if __name__ == '__main__':

@@ -1,0 +1,77 @@
+$NetBSD$
+
+Keep the inspector watchdog shared state alive for the process lifetime.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- src/inspector_agent.cc.orig
++++ src/inspector_agent.cc
+@@ -76,13 +76,23 @@
+ // Agents that asked for the debug signal handler; SIGUSR1 (or the Windows
+ // remote thread) starts the io thread of each. The mutex also guards the
+ // once-per-process watchdog setup.
+-static Mutex start_io_thread_agents_mutex;
+-static std::vector<Agent*> start_io_thread_agents;
++// The signal watchdog may outlive all agents and run until process exit.
++// Keep its shared state alive until the operating system tears down the process.
++struct DebugSignalAgents {
++  Mutex mutex;
++  std::vector<Agent*> agents;
++};
++
++static DebugSignalAgents& GetDebugSignalAgents() {
++  static DebugSignalAgents* const state = new DebugSignalAgents();
++  return *state;
++}
+ static bool debug_signal_handler_started = false;
+ 
+ static void RequestIoThreadStartOnAgents() {
+-  Mutex::ScopedLock lock(start_io_thread_agents_mutex);
+-  for (Agent* agent : start_io_thread_agents) agent->RequestIoThreadStart();
++  auto& state = GetDebugSignalAgents();
++  Mutex::ScopedLock lock(state.mutex);
++  for (Agent* agent : state.agents) agent->RequestIoThreadStart();
+ }
+ 
+ #ifdef __POSIX__
+@@ -144,7 +154,7 @@
+ 
+ static int StartDebugSignalHandler() {
+   {
+-    Mutex::ScopedLock lock(start_io_thread_agents_mutex);
++    Mutex::ScopedLock lock(GetDebugSignalAgents().mutex);
+     if (!debug_signal_handler_started) {
+       // Leave SIGUSR1 blocked on failure. We don't install a signal handler,
+       // receiving the signal would terminate the process.
+@@ -175,7 +185,7 @@
+ }
+ 
+ static int StartDebugSignalHandler() {
+-  Mutex::ScopedLock lock(start_io_thread_agents_mutex);
++  Mutex::ScopedLock lock(GetDebugSignalAgents().mutex);
+   if (debug_signal_handler_started) return 0;
+   debug_signal_handler_started = true;
+   wchar_t mapping_name[32];
+@@ -862,8 +872,9 @@
+ void Agent::StopAcceptingIoThreadStarts() {
+   if (start_io_thread_async_ == nullptr) return;
+   {
+-    Mutex::ScopedLock lock(start_io_thread_agents_mutex);
+-    std::erase(start_io_thread_agents, this);
++    auto& state = GetDebugSignalAgents();
++    Mutex::ScopedLock lock(state.mutex);
++    std::erase(state.agents, this);
+   }
+   parent_env_->RemoveCleanupHook(StopAcceptingIoThreadStartsHook, this);
+   parent_env_->CloseHandle(start_io_thread_async_,
+@@ -893,8 +904,9 @@
+                            }));
+     uv_unref(reinterpret_cast<uv_handle_t*>(start_io_thread_async_));
+     {
+-      Mutex::ScopedLock lock(start_io_thread_agents_mutex);
+-      start_io_thread_agents.push_back(this);
++      auto& state = GetDebugSignalAgents();
++      Mutex::ScopedLock lock(state.mutex);
++      state.agents.push_back(this);
+     }
+     parent_env_->AddCleanupHook(StopAcceptingIoThreadStartsHook, this);
+     // Ignore failure, SIGUSR1 won't work, but that should not block node

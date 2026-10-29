@@ -229,9 +229,9 @@ Its native macOS build renders the three Enchant manual pages as HTML.
 The focused source check passes ASan/UBSan and preserves all errno cases.
 The complete target package and graphical HTML pipeline remain unaccepted.
 
-The common [Node24 recipe](node.md) uses Node.js 24.22.1 LTS. It retains the
-existing shared-library configuration and portability patches. Native and cross
-package acceptance remain separate.
+The common [Node recipe](node.md) uses Node.js 26.12.1 with shared dependencies
+and the existing portability patches. Native and cross package acceptance remain
+separate.
 
 The shared [Rust 1.99 host package](rust.md) keeps upstream runpaths and gives
 its bundled Darwin LLVM a private name. It checks actual Mach-O imports for

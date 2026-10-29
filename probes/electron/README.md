@@ -10,7 +10,7 @@ engine abstraction, so this port needs the native Electron runtime.
 | Electron | 44.9.3 (`c542df1ecbc2c2978e8f53f8c7baf602404d166f`) | GitHub tag `v44.9.3` |
 | Chromium | 152.0.7977.167 (`dd78960ccd8a03a2fe1f629543d27783885b78e9`) | Electron `DEPS` |
 | Embedded Node.js | 24.22.1 | Patched Electron `DEPS` |
-| Chromium host Node.js | 24.22.1 | Common Node24 provider |
+| Chromium host Node.js | 26.12.1 | Common Node provider |
 | Blanc | 1.25.0 (`ff55d5948f5c71e802ba2ac464659ef96e055ca9`) | GitHub tag `v1.25.0` |
 
 Electron's `DEPS` graph is the Chromium source of record. Do not substitute the
@@ -81,7 +81,7 @@ and build acceptance.
 - The Blanc application recipe creates an ASAR from an explicit source
   allowlist and 32 lockfile-pinned runtime packages. Eight separate packages
   provide the upstream ASAR build tool. The host controller uses CPython 3.15
-  and SDK API 1. Host Node.js 24.22.1 runs required upstream JavaScript tools.
+  and SDK API 1. Host Node.js 26.12.1 runs required upstream JavaScript tools.
   This application archive does not contain an Electron executable.
 - The Blanc source patches select an explicit NetBSD capture descriptor. It
   uses the existing generic Electron/DOM/WebRTC broker, preload and helper.
@@ -131,7 +131,7 @@ GCC platform profile. Fetch and checksum need no selected Node, Python or SDK
 source. Extraction requires `EMBERBSD_CROSS_BUILD_PYTHON` set to the selected
 host CPython 3.15 executable and `EMBERBSD_SDK_SOURCE` set to an absolute SDK
 API 1 source directory. Build and test additionally require `EMBERBSD_HOST_NODE`
-set to the absolute host Node.js 24.22.1 executable and `EMBERBSD_HOST_PREFIX`
+set to the absolute host Node.js 26.12.1 executable and `EMBERBSD_HOST_PREFIX`
 set to the installed native Ports prefix. The shared SDK `load_host_prefix`
 selects Node and Python without requiring a compiler, checks native CPU,
 symlink containment and script interpreters, and supplies the prefix-only child
@@ -357,7 +357,7 @@ Node executable in both generic and TypeScript runtime inputs.
 
 The patch restores the production exact version check removed by pkgsrc's
 `www/chromium/patches/patch-third__party_node_check__version.py` (revision1.23).
-An explicit selection uses the source-owned common Node24.22.1 version input.
+An explicit selection uses the source-owned common Node26.12.1 version input.
 The unchanged JavaScript equality check runs before its success marker is written.
 The unset selector keeps the upstream executable and Node24.12.0 version input.
 This path check does not qualify a provider. Native SDK and JavaScript action

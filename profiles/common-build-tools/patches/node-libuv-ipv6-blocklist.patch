@@ -1,0 +1,81 @@
+--- src/node_sockaddr.cc
++++ src/node_sockaddr.cc
+@@ -10,6 +10,7 @@
+ #include "uv.h"
+ #include "v8-fast-api-calls.h"
+ 
++#include <algorithm>
+ #include <cstring>
+ 
+ #include <memory>
+@@ -1046,7 +1047,7 @@
+   // FastOneByteString is not NUL-terminated. Copy onto the stack
+   // before any other work: a GC would invalidate `address`.
+   //
+-  // uv_ip6_addr only needs the address part (≤39 chars) plus an
++  // uv_ip6_addr only needs the address part (up to INET6_ADDRSTRLEN - 1) plus an
+   // optional %zone. A zone longer than UV_IF_NAMESIZE is unknown
+   // (scope_id 0), same as omitting it. Keep that behavior when the
+   // full string does not fit so Fast API and CheckString agree.
+@@ -1058,14 +1059,14 @@
+   } else if (family == AF_INET6) {
+     // uv_ip4_addr rejects %zone. Only IPv6 may drop an overlong zone
+     // (unknown zone → scope_id 0, same as uv_ip6_addr).
+-    // uv_ip6_addr copies the address part into a 40-byte buffer
+-    // (39 chars + NUL). A 40+ char prefix (mixed notation) is
+-    // truncated and fails inet_pton — do not keep the full prefix.
++    // Match uv_ip6_addr: truncate the address part to the buffer
++    // size before parsing, including IPv4-mapped IPv6 addresses.
+     const char* percent =
+         static_cast<const char*>(memchr(address.data, '%', address.length));
+     if (percent == nullptr) return false;
+-    const size_t addr_len = static_cast<size_t>(percent - address.data);
+-    if (addr_len >= 40) return false;
++    const size_t addr_len = std::min(
++        static_cast<size_t>(percent - address.data),
++        static_cast<size_t>(INET6_ADDRSTRLEN - 1));
+     memcpy(buf, address.data, addr_len);
+     buf[addr_len] = '\0';
+   } else {
+--- test/parallel/test-blocklist.js
++++ test/parallel/test-blocklist.js
+@@ -883,12 +883,13 @@
+   blockList.addAddress('1.1.1.1');
+   assert.strictEqual(blockList.check(`1.1.1.1%${'z'.repeat(200)}`), false);
+ 
+-  // Mixed-notation IPv6 is 45 chars. uv_ip6_addr truncates the
+-  // address part to 39 when a zone is present, so this is a miss.
++  // The common libuv accepts mixed-notation IPv6 with a zone.
+   const mixed = 'ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255';
+   blockList.addAddress(mixed, 'ipv6');
+   assert.strictEqual(blockList.check(mixed, 'ipv6'), true);
+-  assert.strictEqual(blockList.check(`${mixed}%${'z'.repeat(200)}`, 'ipv6'), false);
++  assert.strictEqual(blockList.check(`${mixed}%${'z'.repeat(200)}`, 'ipv6'), true);
++  assert.strictEqual(blockList.check(`${mixed}X%${'z'.repeat(200)}`, 'ipv6'), true);
++  assert.strictEqual(blockList.check(`not-an-ip%${'z'.repeat(200)}`, 'ipv6'), false);
+ }
+ 
+ // check() family parameter is case-insensitive.
+--- test/parallel/test-blocklist-fast-api.js
++++ test/parallel/test-blocklist-fast-api.js
+@@ -51,3 +51,20 @@
+   assert.strictEqual(getV8FastApiCallCount('blocklist.check'), 3);
+   assert.strictEqual(getV8FastApiCallCount('blocklist.checkString'), 3);
+ }
++
++// The selected libuv accepts full-length mixed IPv6 addresses with zones.
++const { AF_INET6 } = internalBinding('block_list');
++const mixed = 'ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255';
++blockList.addAddress(mixed, 'ipv6');
++const longZone = `${mixed}%${'z'.repeat(200)}`;
++function checkMixed(address) {
++  return handle.checkString(address, AF_INET6);
++}
++eval('%PrepareFunctionForOptimization(checkMixed)');
++assert.strictEqual(checkMixed(longZone), true);
++assert.strictEqual(checkMixed(`${mixed}X%${'z'.repeat(200)}`), true);
++assert.strictEqual(checkMixed(`not-an-ip%${'z'.repeat(200)}`), false);
++eval('%OptimizeFunctionOnNextCall(checkMixed)');
++assert.strictEqual(checkMixed(longZone), true);
++assert.strictEqual(checkMixed(`${mixed}X%${'z'.repeat(200)}`), true);
++assert.strictEqual(checkMixed(`not-an-ip%${'z'.repeat(200)}`), false);

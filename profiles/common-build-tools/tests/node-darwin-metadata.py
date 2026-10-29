@@ -20,7 +20,7 @@ import sys
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ('pkgsrc', 'distfile', 'patch', 'work', 'host-prefix', 'sdk-root',
+    for name in ('pkgsrc', 'build-pkgsrc', 'distfile', 'patch', 'work', 'host-prefix', 'sdk-root',
                  'xcode-version-plist', 'utility-path', 'makeconf', 'git'):
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--arch', choices=('arm64', 'x86_64'), required=True)
@@ -45,16 +45,17 @@ def main():
     args.work.mkdir()
     owner = Path(__file__).resolve().parents[1]
     view = args.work/'view'
-    recipe = view/'lang/nodejs24'
+    recipe = view/'lang/nodejs'
     view.mkdir()
     (view/'lang').mkdir()
-    for path in args.pkgsrc.iterdir():
+    for path in args.build_pkgsrc.iterdir():
         if path.name != 'lang':
             (view/path.name).symlink_to(path.resolve(), target_is_directory=path.is_dir())
-    for path in (args.pkgsrc/'lang').iterdir():
-        if path.name != 'nodejs24':
+    for path in (args.build_pkgsrc/'lang').iterdir():
+        if path.name != 'nodejs':
             (view/'lang'/path.name).symlink_to(path.resolve(), target_is_directory=path.is_dir())
-    env = dict(os.environ, PATH=str(args.utility_path), PYTHONDONTWRITEBYTECODE='1')
+    env = dict(os.environ, PATH=str(args.utility_path), PYTHONDONTWRITEBYTECODE='1',
+               TOOLS_WRAPPER_LOG=str(args.work/'tools.log'))
     for name in ('PYTHONPATH', 'PYTHONHOME', 'GYP_GENERATORS', 'GYP_DEFINES'):
         env.pop(name, None)
 
@@ -70,17 +71,11 @@ def main():
         parser.error('select an absolute executable source-control Git')
     ports = args.work/'export-fixture/ports'
     upstream = ports/'upstream/pkgsrc'
-    initial = upstream/'lang/nodejs24'
-    shutil.copytree(args.pkgsrc/'lang/nodejs24', initial)
+    initial = upstream/'lang/nodejs'
+    shutil.copytree(args.pkgsrc/'lang/nodejs', initial)
     patch_name = 'patch-tools_gyp_pylib_gyp_xcode__emulation.py'
-    outer = owner/'patches/pkgsrc-nodejs24-darwin-metadata.patch'
-    selected_patches = []
-    if not (initial/'patches/patch-tools_gyp_pylib_gyp_input.py').is_file():
-        selected_patches.append(owner/'patches/pkgsrc-nodejs24-python315.patch')
-    if 'GYP_MACOS_SDK_PATH' not in (initial/'patches'/patch_name).read_text():
-        selected_patches.append(outer)
-    if not (initial/'patches/patch-tools_v8_gypfiles_abseil.gyp').is_file():
-        selected_patches.append(owner/'patches/pkgsrc-nodejs24-corefoundation.patch')
+    outer = owner/'patches/pkgsrc-nodejs-current.patch'
+    selected_patches = [outer]
     (ports/'pkgsrc').mkdir()
     lines = []
     for path in selected_patches:
@@ -104,7 +99,7 @@ def main():
 
     for location in (upstream, ports):
         control([str(args.git), '-C', str(location), 'init', '-q'])
-    control([str(args.git), '-C', str(upstream), 'add', 'lang/nodejs24'])
+    control([str(args.git), '-C', str(upstream), 'add', '-f', 'lang/nodejs'])
     control([str(args.git), '-C', str(upstream), '-c', 'user.name=Fixture',
              '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture'])
     revision = control([str(args.git), '-C', str(upstream), 'rev-parse', 'HEAD']).decode().strip()
@@ -119,7 +114,7 @@ def main():
     exported = args.work/'exported-recipe'
     assert exporter.export_pkgsrc(ports, exported, selection=selected, runner=control,
                                   scratch=args.work/'export-scratch') == revision
-    shutil.copytree(exported/'lang/nodejs24', recipe)
+    shutil.copytree(exported/'lang/nodejs', recipe)
     expected = re.search(r'^\+SHA1 \(' + re.escape(patch_name) + r'\) = ([0-9a-f]{40})$',
                          outer.read_text(), re.MULTILINE).group(1)
     payload = b''.join(line for line in (recipe/'patches'/patch_name).read_bytes().splitlines(keepends=True)
@@ -128,11 +123,11 @@ def main():
     # Reuse the real checksum/patch/configure/GYP source regression. It extracts
     # the scripts and all patch targets, not Node's unrelated large test tree.
     result = run('source', [sys.executable, '-B', '-I', '-S',
-                 str(owner/'tests/node-python315.py'), '--pkgsrc', str(view),
-                 '--distfile', str(args.distfile), '--patch', str(args.patch),
+                 str(owner/'tests/node26-source.py'), '--archive', str(args.distfile),
+                 '--recipe', str(recipe), '--patch', str(args.patch),
                  '--work', str(args.work/'source-check')], args.work)
     assert not result.returncode, result.stdout+result.stderr
-    source = args.work/'source-check/node-v24.22.1'
+    source = args.work/'source-check/node-v26.12.1'
     env.update(GYP_MACOS_SDK_PATH=str(args.sdk_root),
                GYP_XCODE_VERSION_PLIST=str(args.xcode_version_plist),
                GYP_LIBTOOL=str(prefix/'bin/llvm-libtool-darwin'))
@@ -190,6 +185,49 @@ runpy.run_path(script,run_name="__main__")
         assignments = shlex.split(line)
         assert 'GYP_MACOS_SDK_PATH='+str(args.sdk_root) in assignments
         assert 'GYP_XCODE_VERSION_PLIST='+str(quoted_plist) in assignments
+    # GYP's install target depends on all; both phases must carry the same
+    # selected native compiler wrapper and shared heavy-link launcher.
+    link_words = [str(args.work/'tools with spaces/python3.15'),
+                str(args.work/'SDK with spaces/scripts/link-launcher.py'),
+                '--lock-root', str(args.work/'lock root'),
+                '--context', str(args.work/'heavy link'), '--']
+    wrapper = args.work/'compiler wrapper/bin'
+    link_bmake = bmake + ['EMBERBSD_DARWIN_LINKER_LAUNCHER='+shlex.join(link_words),
+                          'EMBERBSD_GCC16_LINKER_LAUNCHER=/legacy/not-selected',
+                          'WRAPPER_BINDIR='+str(wrapper)]
+    result = run('recipe-link-flags', link_bmake+['-V', '${MAKE_FLAGS}'], args.work)
+    assert not result.returncode, result.stdout+result.stderr
+    flags = shlex.split(result.stdout)
+    selected_links = [word for word in flags if word.startswith(('LINK.target=', 'LINK.host='))]
+    assert len(selected_links) == 2, selected_links
+    commands = [shlex.split(word.split('=', 1)[1]) for word in selected_links]
+    assert commands == [link_words + [str(wrapper/'clang++')]] * 2, commands
+    for phase in ('do-build', 'do-install'):
+        result = run('recipe-link-'+phase, link_bmake+['-n', phase], args.work)
+        assert not result.returncode, result.stdout+result.stderr
+        assert 'LINK.target=' in result.stdout and 'LINK.host=' in result.stdout
+        assert 'scripts/link-launcher.py' in result.stdout
+    legacy_bmake = bmake + ['EMBERBSD_DARWIN_LINKER_LAUNCHER=',
+                            'EMBERBSD_GCC16_LINKER_LAUNCHER='+shlex.join(link_words),
+                            'WRAPPER_BINDIR='+str(wrapper)]
+    result = run('recipe-link-legacy', legacy_bmake+['-V', '${MAKE_FLAGS}'], args.work)
+    assert not result.returncode, result.stdout+result.stderr
+    legacy_flags = shlex.split(result.stdout)
+    legacy_links = [word for word in legacy_flags if word.startswith(('LINK.target=', 'LINK.host='))]
+    assert [shlex.split(word.split('=', 1)[1]) for word in legacy_links] == [link_words + [str(wrapper/'clang++')]] * 2
+    incomplete = bmake + ['EMBERBSD_DARWIN_LINKER_LAUNCHER=', 'EMBERBSD_GCC16_LINKER_LAUNCHER=',
+                           'node-check-link-launcher']
+    result = run('recipe-link-incomplete', incomplete, args.work)
+    assert result.returncode and 'update the native configuration' in result.stdout+result.stderr
+    for phase in ('pre-build', 'pre-install'):
+        result = run('recipe-link-incomplete-'+phase, incomplete[:-1]+['-n', phase], args.work)
+        assert not result.returncode and 'update the native configuration' in result.stdout
+    no_control = bmake + ['EMBERBSD_DARWIN_JOBS=1', 'EMBERBSD_DARWIN_CMAKE_LINKER_LAUNCHER=',
+                          'EMBERBSD_DARWIN_LINKER_LAUNCHER=', 'EMBERBSD_GCC16_LINKER_LAUNCHER=',
+                          '-V', '${MAKE_FLAGS}']
+    result = run('recipe-link-no-control', no_control, args.work)
+    assert not result.returncode, result.stdout+result.stderr
+    assert 'LINK.target=' not in result.stdout and 'update the native configuration' not in result.stdout
     unselected_makeconf = args.work/'unselected.mk.conf'
     unselected_makeconf.write_text('LOCALBASE='+str(prefix)+'\nPKGSRC_COMPILER=clang\n'
                                   'PYTHON_VERSION_DEFAULT=315\nOSX_SDK_PATH='+str(args.sdk_root)+'\n'
@@ -201,6 +239,10 @@ runpy.run_path(script,run_name="__main__")
     unselected = [word for word in bmake if not word.startswith(
                   ('EMBERBSD_DARWIN_BOOTSTRAP=', 'NODE_GYP_XCODE_VERSION_PLIST=', 'MAKECONF='))]
     unselected += ['MAKECONF='+str(unselected_makeconf), '-V', '${_NODE_GYP_METADATA_ENV:U}']
+    unselected_link = unselected[:-2] + ['-V', '${MAKE_FLAGS}']
+    result = run('recipe-link-unselected', unselected_link, args.work, unselected_env)
+    assert not result.returncode, result.stdout+result.stderr
+    assert 'LINK.target=' not in result.stdout and 'LINK.host=' not in result.stdout
     result = run('recipe-unselected-metadata', unselected, args.work, unselected_env)
     assert not result.returncode and not result.stdout.strip(), result.stdout+result.stderr
     source_only = [word if not word.startswith('NODE_GYP_XCODE_VERSION_PLIST=') else
@@ -320,7 +362,7 @@ runpy.run_path(script,run_name="__main__")
     assert 'CoreFoundation' not in (directory/'framework_probe.target.mk').read_text()
     assert 'CoreFoundation' not in (directory/'bridge.target.mk').read_text()
     framework_results['non-mac'] = 'generated dependency metadata excludes Darwin framework; no non-Darwin compile claimed'
-    summary = {'source': 'Node24.22.1', 'metadata_negative_cases': negatives,
+    summary = {'source': 'Node26.12.1', 'metadata_negative_cases': negatives,
                'legacy_metadata_search_refused': ['xcrun', 'xcodebuild'],
                'actual_common_exporter': True,
                'actual_pkgsrc_configure_and_make_metadata_quoting': True,

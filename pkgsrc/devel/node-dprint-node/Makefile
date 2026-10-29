@@ -1,5 +1,6 @@
 # Origin: EmberBSD contributors (AI-assisted); source-built Node formatter.
 DISTNAME= dprint-node-1.0.8
+PKGREVISION= 1
 CATEGORIES= devel
 DPRINT_NODE_REV= f21bd38ae8e3239ffe07c941c938349eebdb2c5e
 DPRINT_TS_REV= 98525274ee276fb61709c77f791b212a48c59dd6
@@ -11,7 +12,7 @@ TS_SOURCE= ${WRKDIR}/dprint-plugin-typescript-${DPRINT_TS_REV}
 HOMEPAGE= https://github.com/devongovett/dprint-node
 COMMENT= Source-built N-API TypeScript and JavaScript formatter
 LICENSE= mit AND apache-2.0 AND modified-bsd AND isc AND unicode-v3 AND 0-clause-bsd
-DEPENDS+= nodejs>=24.22.1<25:../../lang/nodejs24
+DEPENDS+= nodejs>=26.12.1<27:../../lang/nodejs
 USE_LANGUAGES= c c++
 USE_TOOLS+= pax
 RUST_REQ= 1.99.1

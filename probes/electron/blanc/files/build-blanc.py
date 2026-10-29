@@ -26,7 +26,7 @@ MAX_MEMBER_BYTES = 128 * 1024 * 1024
 MAX_TOOL_OUTPUT = 8 * 1024 * 1024
 NPM_NAME = re.compile(r'^(?:@[a-z0-9._~-]+/)?[a-z0-9._~-]+$')
 VERSION = re.compile(r'^[0-9]+\.[0-9]+\.[0-9]+$')
-HOST_NODE_VERSION = '24.22.1'
+HOST_NODE_VERSION = '26.12.1'
 SOURCE_ARCHIVE_SHA256 = 'b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971'
 
 

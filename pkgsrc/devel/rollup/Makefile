@@ -1,7 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	rollup-4.65.1
-PKGREVISION=	3
+PKGREVISION=	4
 CATEGORIES=	devel
 ROLLUP_REVISION=	7879c65994dd591d287b177b8d0b88d7d76c2a49
 DISTFILES=	rollup-${ROLLUP_REVISION}.tar.gz ${DISTNAME}.tgz
@@ -18,7 +18,7 @@ LICENSE=	mit AND apache-2.0 AND boost-license AND unicode-v3 AND zlib AND \
 		modified-bsd AND isc AND 0-clause-bsd
 
 DEPENDS+=	node-types-estree>=1.0.9:../../devel/node-types-estree
-DEPENDS+=	nodejs>=24.22.1<25:../../lang/nodejs24
+DEPENDS+=	nodejs>=26.12.1<27:../../lang/nodejs
 
 USE_LANGUAGES=	c c++
 USE_TOOLS+=	pax pkg-config

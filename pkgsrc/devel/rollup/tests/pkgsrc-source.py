@@ -50,7 +50,7 @@ def main():
         runtime=run('rollup','-V','${DEPENDS}')
         assert 'rust-bin>=' in tools and 'python315' in tools,tools
         assert 'rust-bin' not in build,build
-        assert all(name in runtime for name in ('mimalloc>=3.6.0','node-types-estree>=1.0.9','nodejs>=24.22.1')),runtime
+        assert all(name in runtime for name in ('mimalloc>=3.6.0','node-types-estree>=1.0.9','nodejs>=26.12.1')),runtime
         native_target=run('rollup','-V','${EMBER_CARGO_TARGET}');native_base=run('rollup','-V','${ROLLUP_NAPI_BASE}')
         assert native_target in ('aarch64-apple-darwin','x86_64-apple-darwin'),native_target
         assert native_base in ('darwin-arm64','darwin-x64'),native_base
