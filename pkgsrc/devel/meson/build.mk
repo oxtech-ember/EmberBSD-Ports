@@ -145,6 +145,15 @@ MESON_CPU_FAMILY=	${MESON_CPU_FAMILY.${MACHINE_ARCH}:U${MACHINE_ARCH}}
 MESON_CPU=		${MACHINE_ARCH}
 MESON_CPU_ENDIAN=	${MESON_CPU_ENDIAN.${MACHINE_ARCH}:Ulittle}
 
+# Select the host-executable SDK target archiver explicitly. Otherwise Meson
+# may discover a target llvm-ar in the buildlink PATH and try to execute it.
+.if !empty(EMBERBSD_CROSS_COMPILER_FAMILY:U)
+.  if empty(MESON_BINARIES:Mar)
+MESON_BINARIES+=	ar
+.  endif
+MESON_BINARY.ar?=	${TOOLS_PATH.ar}
+.endif
+
 MESON_CROSS_VARS+=	sys_root
 MESON_CROSS.sys_root=	'${_CROSS_DESTDIR}'
 
@@ -153,6 +162,10 @@ MESON_CROSS_ARGS+=	--cross-file ${MESON_CROSS_FILE:Q}
 meson-configure: ${MESON_CROSS_FILE}
 ${MESON_CROSS_FILE}:
 	@${STEP_MSG} Creating meson cross file
+.if !empty(EMBERBSD_CROSS_COMPILER_FAMILY:U)
+	${RUN}case ${MESON_BINARY.ar:Q}"" in /*) ;; *) ${ERROR_MSG} "Select an absolute cross archiver"; exit 1;; esac; \
+	    ${TEST} -x ${MESON_BINARY.ar:Q}"" || { ${ERROR_MSG} "Cross archiver is not executable"; exit 1; }
+.endif
 	${RUN}${RM} -f ${.TARGET}.tmp
 	${RUN}${ECHO} '[properties]' >${.TARGET}.tmp
 .  for _v_ in ${MESON_CROSS_VARS}
@@ -178,7 +191,7 @@ ${MESON_CROSS_FILE}:
 	${RUN}${ECHO} "cpu = '${MESON_CPU}'" >>${.TARGET}.tmp
 	${RUN}${ECHO} "endian = '${MESON_CPU_ENDIAN}'" >>${.TARGET}.tmp
 	${RUN}${ECHO} '[binaries]' >>${.TARGET}.tmp
-.  for _v_ in ${MESON_BINARIES}
+.  for _v_ in ${MESON_BINARIES:O:u}
 .    if !defined(MESON_BINARY.${_v_})
 .      error MESON_BINARIES lists ${_v_} but MESON_BINARY.${_v_} is undefined
 .    endif
