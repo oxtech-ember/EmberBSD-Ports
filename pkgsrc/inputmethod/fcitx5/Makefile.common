@@ -1,0 +1,31 @@
+# $NetBSD$
+#
+# Shared source of inputmethod/fcitx5 and inputmethod/fcitx5-comp-spell-dict.
+
+DISTNAME=	fcitx5-5.1.23
+CATEGORIES=	inputmethod
+MASTER_SITES=	https://download.fcitx-im.org/fcitx5/fcitx5/
+EXTRACT_SUFX=	.tar.zst
+
+HOMEPAGE=	https://github.com/fcitx/fcitx5
+LICENSE=	gnu-lgpl-v2.1
+
+DATAFILES+=	en_dict-20121020.tar.gz
+EXTRACT_ONLY=	${DEFAULT_DISTFILES}
+DISTFILES+=	${DISTNAME}${EXTRACT_SUFX}
+
+.for f in ${DATAFILES}
+SITES.${f}=	https://download.fcitx-im.org/data/
+DISTFILES+=	${f}
+.endfor
+
+EMBERBSD_FCITX5_PKGDIR:=	${.PARSEDIR:tA}
+DISTINFO_FILE=		${EMBERBSD_FCITX5_PKGDIR}/distinfo
+PATCHDIR=		${EMBERBSD_FCITX5_PKGDIR}/patches
+
+# The spell module uses this archive instead of downloading it.
+pre-configure: emberbsd-fcitx5-spell-data
+.PHONY: emberbsd-fcitx5-spell-data
+emberbsd-fcitx5-spell-data:
+	${LN} -s ${DISTDIR}/en_dict-20121020.tar.gz \
+		${WRKSRC}/src/modules/spell/

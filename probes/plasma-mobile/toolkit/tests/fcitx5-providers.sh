@@ -64,10 +64,7 @@ for mode in no yes; do
         awk 'BEGIN { split("name args qt kf tree errors", labels) }
             { print labels[NR] "=" $0 }' "$log.raw" > "$log"
         errors=$(sed -n 's/^errors=//p' "$log")
-        if [ "$recipe:$mode" = fcitx5:yes ] &&
-            [ "$errors" = '"Cross Fcitx5 requires a native 5.1.23 EMBERBSD_FCITX5_COMP_SPELL_DICT"' ]; then
-            : # The source candidate explicitly reports this unprepared tool.
-        elif [ -n "$errors" ]; then
+        if [ -n "$errors" ]; then
             echo "FAIL: unexpected metadata error in $recipe (cross=$mode): $errors" >&2
             failed=1
         fi
@@ -106,11 +103,16 @@ for mode in no yes; do
         fi
     done
 done
-# Force the missing-path case even if the caller has prepared a native tool.
+# The native dictionary compiler is a Ports TOOL_DEPENDS package; the former
+# path variable selects nothing.
 env MAKECONF="$makeconf" "$bmake" -C "$pkgsrc/inputmethod/fcitx5" \
     USE_CROSS_COMPILE=yes EMBERBSD_FCITX5_COMP_SPELL_DICT="$out/not-present" \
-    -v PKG_FAIL_REASON > "$out/missing-generator.log"
-require "$out/missing-generator.log" \
-    'Cross Fcitx5 requires a native 5.1.23 EMBERBSD_FCITX5_COMP_SPELL_DICT'
+    -v PKG_FAIL_REASON -v TOOL_DEPENDS > "$out/native-generator.log"
+require "$out/native-generator.log" \
+    'fcitx5-comp-spell-dict-5.1.23{,nb[0-9]*}:../../inputmethod/fcitx5-comp-spell-dict'
+if grep -F -q -e "$out/not-present" -e COMP_SPELL_DICT "$out/native-generator.log"; then
+    echo "FAIL: the former native-generator path is still used" >&2
+    failed=1
+fi
 [ "$failed" = 0 ] || exit 1
 echo 'PASS: source/patch hashes and current Fcitx5 Qt6/KF6 providers, features and native-generator guard'

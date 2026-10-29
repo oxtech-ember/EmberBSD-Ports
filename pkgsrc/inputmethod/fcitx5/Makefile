@@ -1,24 +1,11 @@
 # $NetBSD: Makefile,v 1.32 2026/09/02 19:03:02 wiz Exp $
 
-DISTNAME=	fcitx5-5.1.23
-PKGREVISION=	5
-CATEGORIES=	inputmethod
-MASTER_SITES=	https://download.fcitx-im.org/fcitx5/fcitx5/
-EXTRACT_SUFX=	.tar.zst
+PKGREVISION=	6
+
+.include "Makefile.common"
 
 MAINTAINER=	ryoon@NetBSD.org
-HOMEPAGE=	https://github.com/fcitx/fcitx5
 COMMENT=	Input method framework with extension support
-LICENSE=	gnu-lgpl-v2.1
-
-DATAFILES+=	en_dict-20121020.tar.gz
-EXTRACT_ONLY=	${DEFAULT_DISTFILES}
-DISTFILES+=	${DISTNAME}${EXTRACT_SUFX}
-
-.for f in ${DATAFILES}
-SITES.${f}=	https://download.fcitx-im.org/data/
-DISTFILES+=	${f}
-.endfor
 
 SUBST_CLASSES+=			fix-machine-id
 SUBST_STAGE.fix-machine-id=	pre-configure
@@ -81,25 +68,18 @@ CONF_FILES+=	${PREFIX}/share/examples/fcitx5/org.fcitx.Fcitx5.desktop \
 CONF_FILES+=	${PREFIX}/share/examples/fcitx5/20-fcitx-x11 \
 		${PKG_SYSCONFDIR}/xdg/Xwayland-session.d/20-fcitx-x11
 
-# The target spell compiler remains installed. A matching native compiler
-# generates build data during cross compilation.
+# The target spell compiler remains installed. A native Ports package of the
+# same release generates build data during cross compilation.
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-.if !defined(EMBERBSD_FCITX5_COMP_SPELL_DICT) || empty(EMBERBSD_FCITX5_COMP_SPELL_DICT:M/*) || !exists(${EMBERBSD_FCITX5_COMP_SPELL_DICT})
-PKG_FAIL_REASON+= "Cross Fcitx5 requires a native 5.1.23 EMBERBSD_FCITX5_COMP_SPELL_DICT"
-.else
-CMAKE_CONFIGURE_ARGS+= -DFCITX5_HOST_COMP_SPELL_DICT:FILEPATH=${EMBERBSD_FCITX5_COMP_SPELL_DICT:Q}
-.endif
+TOOL_DEPENDS+=	fcitx5-comp-spell-dict-5.1.23{,nb[0-9]*}:../../inputmethod/fcitx5-comp-spell-dict
+CMAKE_CONFIGURE_ARGS+= -DFCITX5_HOST_COMP_SPELL_DICT:FILEPATH=${TOOLBASE:Q}/bin/fcitx5-comp-spell-dict
 .if !defined(EMBERBSD_WAYLAND_SCANNER) || empty(EMBERBSD_WAYLAND_SCANNER:M/*) || !exists(${EMBERBSD_WAYLAND_SCANNER})
 PKG_FAIL_REASON+= "Cross Fcitx5 requires the current native EMBERBSD_WAYLAND_SCANNER"
 .else
 CMAKE_CONFIGURE_ARGS+= -DWaylandScanner_EXECUTABLE:FILEPATH=${EMBERBSD_WAYLAND_SCANNER:Q}
 .endif
 .endif
-
-pre-configure:
-	${LN} -s ${DISTDIR}/en_dict-20121020.tar.gz \
-		${WRKSRC}/src/modules/spell/
 
 .include "../../devel/cmake/build.mk"
 

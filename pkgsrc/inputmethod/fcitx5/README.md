@@ -48,12 +48,13 @@ recorded archives. The target spell compiler remains built and installed.
 
 ## Cross requirements and validation
 
-Set `EMBERBSD_FCITX5_COMP_SPELL_DICT` to a native executable built from Fcitx5
-5.1.23. Build it with [the native helper](../../../probes/plasma-mobile/toolkit/cross/build-fcitx5-host.sh).
-The helper verifies both input archives and exact dictionary output bytes.
-Pass the distfiles directory, native dependency prefix, ECM CMake directory
-and a new work directory. Set absolute CMAKE, NINJA, HOST_CC and HOST_CXX paths.
-The named host generator does not need desktop backends; the target retains them.
+A cross build takes the native dictionary compiler from the
+`inputmethod/fcitx5-comp-spell-dict` package, a `TOOL_DEPENDS` built from the
+same 5.1.23 source, distinfo and patches (shared `Makefile.common`). No
+build-host setting is needed. The generator does not need desktop backends;
+the target retains them. [The native helper](../../../probes/plasma-mobile/toolkit/cross/build-fcitx5-host.sh)
+still builds the same tool standalone and verifies exact dictionary output
+bytes; `tests/fcitx5-native-package.sh` checks the package wiring.
 A Mac run passes all 122905 entries, malformed inputs and an ASan/UBSan repeat.
 Clang analysis retains one inherited unconfirmed StandardPath warning.
 Cppcheck cannot parse the actual Apple SDK headers; its coverage remains incomplete.

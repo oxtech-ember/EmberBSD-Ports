@@ -1,0 +1,3 @@
+comp-spell-dict from the Fcitx5 release, built for the build host and
+installed as fcitx5-comp-spell-dict. Cross builds of inputmethod/fcitx5 run
+it to compile the English spell dictionary. It is a build dependency only.

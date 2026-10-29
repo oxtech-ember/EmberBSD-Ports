@@ -10,3 +10,4 @@ x11/qt6-qtbase-devel	x11/qt6-qtbase	package	-
 sysutils/ember-plasma-session	sysutils/ember-plasma-session	local	-
 devel/kf6-kdoctools-generators	devel/kf6-kdoctools	package	-
 graphics/breeze-icons-generators	graphics/breeze-icons	package	-
+inputmethod/fcitx5-comp-spell-dict	inputmethod/fcitx5	package	-
