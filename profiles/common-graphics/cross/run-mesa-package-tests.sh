@@ -105,8 +105,17 @@ $(awk '$2 == "=>" { print $3 }' "$logs/$loader_name.ldd.log")
 EOF
 }
 check_loader "$bundle/bin/mesa-render" mesa-render
-env -i PATH=/bin:/usr/bin:/sbin:/usr/sbin:/usr/pkg/bin MESA_SHADER_CACHE_DISABLE=true "$timeout" 60 \
-    "$bundle/bin/mesa-render" surfaceless "$renderer" > "$logs/mesa-render.log" 2>&1
+run_render() {
+    if [ "$renderer" = llvmpipe ]; then
+        env -i PATH=/bin:/usr/bin:/sbin:/usr/sbin:/usr/pkg/bin MESA_SHADER_CACHE_DISABLE=true \
+            LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe "$timeout" 60 \
+            "$bundle/bin/mesa-render" surfaceless "$renderer"
+    else
+        env -i PATH=/bin:/usr/bin:/sbin:/usr/sbin:/usr/pkg/bin MESA_SHADER_CACHE_DISABLE=true "$timeout" 60 \
+            "$bundle/bin/mesa-render" surfaceless "$renderer"
+    fi
+}
+run_render > "$logs/mesa-render.log" 2>&1
 echo "PASS: installed $renderer shader rejection, triangle and four EGL lifecycles"
 failures=0
 while IFS="$(printf '\t')" read -r name executable limit; do

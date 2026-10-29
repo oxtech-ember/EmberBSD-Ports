@@ -128,7 +128,7 @@ the fixture replaces its config link before writing, preserving the sysroot.
 ```sh
 ruby ../tests/mesa-package-bundle.rb /absolute/new-acceptance-work/bundle /absolute/sysroot \
     /absolute/new-integrity-work
-ruby ../tests/mesa-package-loop.rb ./run-mesa-package-tests.sh \
+/absolute/native-prefix/bin/python3.15 -B ../tests/mesa-package-loop.py ./run-mesa-package-tests.sh \
     /absolute/new-loop-test-work
 ```
 
@@ -155,7 +155,8 @@ exact Mesa symlink targets and installed library hashes before
 executing target code. `ldd` must resolve package dependencies to recorded
 `/usr/pkg` files; only base `/usr/lib` and `/lib` are allowed otherwise.
 Loader and driver overrides are rejected. Each test child receives a clean
-environment. Only the XML test receives `HOME` pointing to upstream's actual
+environment. For the llvmpipe renderer, the runner explicitly sets
+`LIBGL_ALWAYS_SOFTWARE=1` and `GALLIUM_DRIVER=llvmpipe` in its child. Only the XML test receives `HOME` pointing to upstream's actual
 fixture home and `DRIRC_CONFIGDIR`; the user's home is neither changed nor
 used as a temporary variable. Process-name tests receive the relocated
 absolute executable path matching their upstream contract.
