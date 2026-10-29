@@ -1,0 +1,15 @@
+Bump pkg_install for the shared libfetch source incorporated into its tools.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -7,7 +7,7 @@
+ # change in the pkg_* tools that pkgsrc relies on for proper operation.
+ 
+ PKGNAME=		pkg_install-${VERSION}
+-PKGREVISION=		15
++PKGREVISION=		16
+ CATEGORIES=		pkgtools
+ 
+ MAINTAINER=		agc@NetBSD.org
