@@ -3,6 +3,16 @@
 PKGREVISION= 3
 .include "../../lang/llvm/version.mk"
 
+# Native Darwin LLDB crosses the LLVM and Clang C++ interfaces.
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
+    ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
+PKGREVISION= 4
+DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
+DEPENDS+= llvm>=23.1.4nb5:../../lang/llvm
+DEPENDS+= clang>=23.1.4nb11:../../lang/clang
+BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
+.endif
+
 PKGNAME=	lldb-${LLVM_VERSION}
 CATEGORIES=	devel lang
 
