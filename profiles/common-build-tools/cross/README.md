@@ -496,6 +496,9 @@ the same order as without the cache, and that fetch reuses the cache only
 while the MAKECONF is unchanged.
 `scripts/tests/cross-bulk-build-queries.sh NEW_OUTPUT PKGPATH...` counts
 the bmake runs of the build: three for a new package, one for a done one.
+`scripts/tests/cross-bulk-fetch-present.sh NEW_OUTPUT PKGPATH` checks that
+fetch skips a package only when DISTDIR has each distinfo file at its
+recorded size. The build still verifies the checksums.
 `tests/cross-tools.py` explicitly selects the GCC profile and checks GCC tool
 composition, refusal of existing output,
 missing host tools, target Info utility routing and the pkgsrc runtime

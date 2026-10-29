@@ -8,6 +8,9 @@
 #          STATE/skipped. A graph in which a package reaches a skipped
 #          package is refused: no order is written.
 #   fetch  Get the distfiles for STATE/order. Only network and DISTDIR.
+#          A package whose distinfo distfiles are all in DISTDIR with
+#          their recorded sizes is not queried; the build verifies the
+#          checksums.
 #   build  Build and install each package in STATE/order.
 #
 # The build options of target dependencies that are not installed come
@@ -161,14 +164,30 @@ order()
     echo "Ordered $(wc -l < "$state/order") packages: $state/order; skipped $(wc -l < "$state/skipped")"
 }
 
+# True if the distinfo of a package lists distfiles and DISTDIR has each
+# with its recorded size. A package without distinfo asks bmake.
+have_distfiles()
+{
+    [ -f "$PKGSRCDIR/$1/distinfo" ] || return 1
+    awk '$1 == "Size" && $3 == "=" && NF == 5 { sub(/^\(/, "", $2); sub(/\)$/, "", $2); print $2, $4; n++ }
+        END { exit !n }' "$PKGSRCDIR/$1/distinfo" > "$state/sizes" || return 1
+    while read -r file size; do
+        [ -f "$distdir/$file" ] && [ "$(wc -c < "$distdir/$file" | tr -d ' ')" = "$size" ] || return 1
+    done < "$state/sizes"
+}
+
 fetch()
 {
     reuse_cache
+    distdir=$(var pkgtools/pkg_install DISTDIR)
+    case "$distdir" in /*) ;; *) echo "DISTDIR is not absolute: $distdir" >&2; return 1 ;; esac
     while read -r path; do
+        have_distfiles "$path" && continue
         log=$state/logs/fetch-$(echo "$path" | tr / _).log
         mk -C "$PKGSRCDIR/$path" fetch < /dev/null > "$log" 2>&1 ||
             echo "$path fetch" >> "$state/failed-fetch"
     done < "$state/order"
+    rm -f "$state/sizes"
 }
 
 build()
