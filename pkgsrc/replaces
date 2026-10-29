@@ -79,6 +79,7 @@ devel/pcre2
 devel/wayland
 devel/wayland-protocols
 devel/xxhash
+fonts/fontconfig
 fonts/harfbuzz
 graphics/MesaLib
 graphics/OpenJPH
