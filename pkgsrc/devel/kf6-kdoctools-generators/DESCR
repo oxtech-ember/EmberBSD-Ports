@@ -1,0 +1,4 @@
+Native KDocTools generators (meinproc6, checkXML6 and docbookl10nhelper)
+with their DocBook customization data and CMake import. Cross builds of
+KDE Frameworks and applications run them on the build host to generate
+documentation. The target package is devel/kf6-kdoctools.

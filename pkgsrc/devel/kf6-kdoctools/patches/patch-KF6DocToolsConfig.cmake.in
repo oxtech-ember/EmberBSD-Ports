@@ -1,15 +1,17 @@
 $NetBSD$
 
 Origin: EmberBSD (AI-assisted). Native generators live outside the target sysroot.
-Do not re-root the explicit KF6_HOST_TOOLING search in cross consumers.
+A cross consumer selects their import with KF6_HOST_TOOLING or with
+KDOCTOOLS_TARGETSFILE. Do not re-root the explicit search.
 
 --- KF6DocToolsConfig.cmake.in.orig
 +++ KF6DocToolsConfig.cmake.in
 @@ -8,7 +8,7 @@
  include("${CMAKE_CURRENT_LIST_DIR}/KF6DocToolsTargets.cmake")
  
-     if (CMAKE_CROSSCOMPILING AND KF6_HOST_TOOLING)
+-    if (CMAKE_CROSSCOMPILING AND KF6_HOST_TOOLING)
 -    find_file(KDOCTOOLS_TARGETSFILE KF6DocTools/KF6DocToolsToolsTargets.cmake PATHS ${KF6_HOST_TOOLING} ${CMAKE_CURRENT_LIST_DIR} NO_DEFAULT_PATH)
++    if (CMAKE_CROSSCOMPILING AND (KF6_HOST_TOOLING OR KDOCTOOLS_TARGETSFILE))
 +    find_file(KDOCTOOLS_TARGETSFILE KF6DocTools/KF6DocToolsToolsTargets.cmake PATHS ${KF6_HOST_TOOLING} ${CMAKE_CURRENT_LIST_DIR} NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
      include("${KDOCTOOLS_TARGETSFILE}")
  else()

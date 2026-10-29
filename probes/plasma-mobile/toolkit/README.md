@@ -171,9 +171,10 @@ cross packages and focused installed CM5 tests; the complete desktop is pending.
 Their focused source checks, curl metadata regression and CM5 API tests pass;
 complete installed desktop acceptance remains pending.
 
-[Native KDocTools](cross/doctools.md) generates documentation without a second
-host QtTools/LLVM dependency tree. Its full target package and DocBook recipe
-checks pass; target execution remains pending.
+[Native KDocTools](cross/doctools.md) generators come from the native Ports
+package `devel/kf6-kdoctools-generators`; a cross bulk needs no host setting.
+The full target package and DocBook recipe checks pass; target execution
+remains pending.
 
 [Plasma 6.8.0 prerequisites](cross/plasma-prerequisites.md) now include complete
 KWayland, KDecoration, layer-shell-qt and KNightTime cross packages. The installed

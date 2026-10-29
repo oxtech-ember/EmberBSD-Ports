@@ -83,6 +83,7 @@ _EMBERBSD_KF6VER_RECIPES= \
     devel/kf6-kcrash \
     devel/kf6-kdeclarative \
     devel/kf6-kdoctools \
+    devel/kf6-kdoctools-generators \
     devel/kf6-ki18n \
     devel/kf6-kidletime \
     devel/kf6-kio \

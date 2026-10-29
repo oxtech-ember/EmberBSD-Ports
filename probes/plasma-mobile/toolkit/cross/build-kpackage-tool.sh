@@ -11,7 +11,8 @@ for item in "$distfiles" "$qt" "$native" "$ecm" "$doctools" "$work" "$CMAKE" "$N
     case "$item" in *[!a-zA-Z0-9_./+-]*) echo 'Use paths without shell/CMake metacharacters' >&2; exit 2;; esac
 done
 [ "$("$qt/bin/qmake" -query QT_VERSION)" = 6.12.0 ]
-[ "$(cat "$doctools/share/ember-doctools-version")" = 6.31.0 ]
+# HOST_DOCTOOLS is a prefix with devel/kf6-kdoctools-generators installed.
+grep -q 'set(PACKAGE_VERSION "6.31.0")' "$doctools/lib/cmake/KF6DocTools/KF6DocToolsConfigVersion.cmake"
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 mkdir "$work"
 mkdir "$work/source" "$work/tooling" "$work/tooling/KF6Package"

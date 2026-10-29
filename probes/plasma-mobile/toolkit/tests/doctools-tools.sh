@@ -2,35 +2,38 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted), native DocBook execution and cross input checks.
 set -eu
-[ "$#" = 4 ] || { echo 'Usage: doctools-tools.sh PKGSRC HOST_DOCTOOLS KDOCTOOLS_SOURCE NEW_WORK' >&2; exit 2; }
+[ "$#" = 4 ] || { echo 'Usage: doctools-tools.sh PKGSRC TOOLBASE KDOCTOOLS_SOURCE NEW_WORK' >&2; exit 2; }
 pkgsrc=$1 host=$2 source=$3 work=$4
 : "${BMAKE:?Set native bmake}" "${MAKECONF:?Set the cross-package MAKECONF}"
 mkdir "$work"
 recipe=$pkgsrc/devel/kf6-kdoctools
-"$BMAKE" -C "$recipe" "EMBERBSD_KF6_DOCTOOLS_HOST=$host" emberbsd-native-doctools-check > "$work/valid.log" 2>&1
-for bad in old missing-tool; do
-    mkdir -p "$work/$bad/bin" "$work/$bad/share"
-    printf '6.31.0\n' > "$work/$bad/share/ember-doctools-version"
+imports=lib/cmake/KF6DocTools
+"$BMAKE" -C "$recipe" "TOOLBASE=$host" emberbsd-native-doctools-check > "$work/valid.log" 2>&1
+for bad in old missing-tool missing-imports; do
+    mkdir -p "$work/$bad/bin" "$work/$bad/$imports"
     for program in meinproc6 checkXML6 docbookl10nhelper; do
         ln -s "$host/bin/$program" "$work/$bad/bin/$program"
     done
+    for import in "$host/$imports"/*; do
+        ln -s "$import" "$work/$bad/$imports/${import##*/}"
+    done
 done
-printf '6.30.0\n' > "$work/old/share/ember-doctools-version"
+rm "$work/old/$imports/KF6DocToolsConfigVersion.cmake"
+sed 's/PACKAGE_VERSION "6\.31\.0"/PACKAGE_VERSION "6.30.0"/' \
+    "$host/$imports/KF6DocToolsConfigVersion.cmake" > "$work/old/$imports/KF6DocToolsConfigVersion.cmake"
 rm "$work/missing-tool/bin/checkXML6"
-for bad in old missing-tool absent; do
-    if "$BMAKE" -C "$recipe" "EMBERBSD_KF6_DOCTOOLS_HOST=$work/$bad" emberbsd-native-doctools-check > "$work/$bad.log" 2>&1; then
+rm "$work/missing-imports/$imports/KF6DocToolsToolsTargets.cmake"
+for bad in old missing-tool missing-imports absent; do
+    if "$BMAKE" -C "$recipe" "TOOLBASE=$work/$bad" emberbsd-native-doctools-check > "$work/$bad.log" 2>&1; then
         echo "Invalid native DocTools accepted: $bad" >&2; exit 1
     fi
     grep -q 'Matching native KDocTools 6.31 generators are required' "$work/$bad.log"
 done
-if "$BMAKE" -C "$recipe" "EMBERBSD_KF6_HOST_TOOLING=$work/absent" emberbsd-native-doctools-check > "$work/missing-imports.log" 2>&1; then
-    echo 'Missing native CMake imports accepted' >&2; exit 1
-fi
-grep -q 'Matching native KDocTools 6.31 generators are required' "$work/missing-imports.log"
 for consumer in x11/kf6-kconfigwidgets devel/kf6-kservice security/kf6-kwallet; do
     name=${consumer##*/}
-    "$BMAKE" -C "$pkgsrc/$consumer" -V '${TOOL_DEPENDS}' > "$work/$name-tools.txt"
-    ! grep -q 'kf6-kdoctools' "$work/$name-tools.txt"
+    "$BMAKE" -C "$pkgsrc/$consumer" -V '${TOOL_DEPENDS}' | tr -s ' ' '\n' > "$work/$name-tools.txt"
+    grep -q '^kf6-kdoctools-generators-6\.31\.0' "$work/$name-tools.txt"
+    if grep -q '^kf6-kdoctools[>-][0-9]' "$work/$name-tools.txt"; then exit 1; fi
     "$BMAKE" -C "$pkgsrc/$consumer" -V '${BUILD_DEPENDS}' > "$work/$name-build.txt"
     grep -q 'kf6-kdoctools>=6.31.0' "$work/$name-build.txt"
 done

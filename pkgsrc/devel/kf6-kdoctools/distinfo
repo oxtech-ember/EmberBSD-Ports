@@ -3,4 +3,4 @@ $NetBSD: distinfo,v 1.5 2026/09/06 10:05:12 markd Exp $
 BLAKE2s (kdoctools-6.31.0.tar.xz) = de00a3b08d91216b03c6568a888f328e05ef41fcfb92bbef8286268133a7b743
 SHA512 (kdoctools-6.31.0.tar.xz) = 58002f02df02456ba41b09b1131bb6e2e586ef646823511c3883ee1e25736e75ddbf90f720f683858a48cc0b9e4ac2817b128f227b7e3329075d42a5d5601921
 Size (kdoctools-6.31.0.tar.xz) = 463648 bytes
-SHA1 (patch-KF6DocToolsConfig.cmake.in) = 56a6d2f283554f09e556a19ab4b7bc4579eff9ce
+SHA1 (patch-KF6DocToolsConfig.cmake.in) = 5aed6ee22b8b8e1605183f496640cf57ca850751

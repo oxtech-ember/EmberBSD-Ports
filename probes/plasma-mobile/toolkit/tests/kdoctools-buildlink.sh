@@ -20,7 +20,7 @@ default=$(sed -n '/^BUILDLINK_CONTENTS_FILTER\.\${_pkg_}?=/{n;p;}' \
 filter=$(run -V '${BUILDLINK_CONTENTS_FILTER.kf6-kdoctools}' | sed "s/^[^']*'//; s/'.*//")
 [ -n "$default" ]
 [ "$filter" = "${default%)}|^share/kf6/kdoctools/customization/)" ]
-host=$(run -V '${EMBERBSD_KF6_DOCTOOLS_HOST}')
+host=$(run -V '${TOOLBASE}')
 run wrapper > "$work/wrapper.log" 2>&1 || { tail -20 "$work/wrapper.log" >&2; exit 1; }
 wrkdir=$(run -V '${WRKDIR}')
 wrksrc=$(run -V '${WRKSRC}')
