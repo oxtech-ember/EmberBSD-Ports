@@ -1,0 +1,42 @@
+$NetBSD$
+
+Test the serialization revision with the existing source salt.
+Origin: EmberBSD (AI-assisted).
+
+--- test/unittests/utils/version-unittest.cc
++++ test/unittests/utils/version-unittest.cc
+@@ -25,7 +25,11 @@
+ // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 
++#include "include/v8-version-string.h"
++#include "src/base/hashing.h"
++#include "src/base/vector.h"
+ #include "src/utils/version.h"
++#include "src/utils/version-hash-salt.inc"
+ 
+ #include "src/init/v8.h"
+ #include "test/unittests/test-utils.h"
+@@ -95,7 +99,10 @@
+ 
+ TEST_F(VersionTest, VersionHash) {
+   SetVersion(1, 2, 3, 4, "", false, "");
+-  uint32_t default_hash = static_cast<uint32_t>(base::hash_combine(1, 2, 3, 4));
++  base::Hasher hasher;
++  hasher.Add(1).Add(2).Add(3).Add(4);
++  hasher.AddRange(base::OneByteVector(V8_VERSION_HASH_SALT));
++  uint32_t default_hash = static_cast<uint32_t>(hasher.hash());
+   EXPECT_EQ(default_hash, Version::Hash());
+ 
+   SetVersion(1, 2, 3, 4, "-emb.1", false, "");
+@@ -108,6 +115,10 @@
+ 
+   SetVersion(1, 2, 3, 4, "-emb.2", false, "");
+   EXPECT_NE(embedder_hash, Version::Hash());
++
++  SetVersion(1, 2, 3, 4, "-emb.1" V8_EMBERBSD_SERIALIZATION_REVISION,
++             false, "");
++  EXPECT_NE(embedder_hash, Version::Hash());
+ }
+ 
+ }  // namespace internal

@@ -19,3 +19,17 @@ consumer build outputs must supply their actual loader paths.
 
 The source producer and verification interface are documented in
 [`scripts/source-inputs/v8`](../../../scripts/source-inputs/v8/README.md).
+
+The downstream serialization revision `-emberbsd.s1` is part of both the
+public V8 version string and the serialized-code version hash. It accompanies
+changes to the Unicode backreference external-reference calling convention;
+pre-revision snapshots and code caches are rejected. The source-derived hash
+salt remains in use. `tests/serialization-revision.py` checks old artifacts
+and new roundtrips with explicitly supplied Node binaries and artifacts.
+
+For GN metagen, the optional selected Darwin runtime accepts an SDK launcher,
+Python, runtime view and declared inputs, plus explicit GN and compiler flags.
+The host and snapshot toolchains use the selected host flags; the default
+target toolchain uses target flags. An unsupported toolchain or conflicting
+selection fails during generation. Without this selection, upstream behavior
+is retained.

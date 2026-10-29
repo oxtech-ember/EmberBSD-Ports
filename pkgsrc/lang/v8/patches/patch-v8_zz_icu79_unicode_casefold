@@ -1,0 +1,184 @@
+$NetBSD$
+
+Use ICU case-fold data while preserving ECMA-262 UTF-16 and Unicode matching.
+Origin: EmberBSD (AI-assisted); https://tc39.es/ecma262/multipage/text-processing.html#sec-runtime-semantics-canonicalize-ch
+
+--- src/regexp/gen-regexp-special-case.cc
++++ src/regexp/gen-regexp-special-case.cc
+@@ -85,6 +85,7 @@
+ void PrintSpecial(std::ofstream& out) {
+   icu::UnicodeSet current;
+   icu::UnicodeSet special_add;
++  icu::UnicodeSet bmp_with_non_bmp_fold;
+   icu::UnicodeSet ignore;
+   UErrorCode status = U_ZERO_ERROR;
+   icu::UnicodeSet upper("[\\p{Lu}]", status);
+@@ -98,6 +99,10 @@
+     }
+     current.set(i, i);
+     current.closeOver(USET_SIMPLE_CASE_INSENSITIVE);
++    if (current.containsSome(kNonBmpStart, 0x10ffff)) {
++      bmp_with_non_bmp_fold.add(i);
++    }
++    current.remove(kNonBmpStart, 0x10ffff);
+ 
+     // Check to see if all characters in the case-folding equivalence
+     // class as defined by UnicodeSet::closeOver all map to the same
+@@ -134,12 +139,11 @@
+     }
+   }
+ 
+-  // Verify that no Unicode equivalence class contains two non-trivial
+-  // JS equivalence classes. Every character in special_add has the
++  // Verify that no BMP subset of a Unicode equivalence class contains two
++  // non-trivial JS equivalence classes. Every character in special_add has the
+   // same canonical value as every other non-IgnoreSet character in
+-  // its Unicode equivalence class. Therefore, if we call closeOver on
+-  // a set containing no IgnoreSet characters, the only characters
+-  // that must be removed from the result are in IgnoreSet. This fact
++  // its BMP Unicode equivalence class. Therefore, after restricting closeOver
++  // to UTF-16 code units, the only further removals are in IgnoreSet. This fact
+   // is used in CaseFolding::CloseOver.
+   for (int32_t i = 0; i < special_add.getRangeCount(); i++) {
+     for (UChar32 c = special_add.getRangeStart(i);
+@@ -147,6 +151,7 @@
+       UChar32 canonical = Canonicalize(c);
+       current.set(c, c);
+       current.closeOver(USET_SIMPLE_CASE_INSENSITIVE);
++      current.remove(kNonBmpStart, 0x10ffff);
+       current.removeAll(ignore);
+       for (int32_t j = 0; j < current.getRangeCount(); j++) {
+         for (UChar32 c2 = current.getRangeStart(j);
+@@ -158,6 +163,7 @@
+   }
+ 
+   PrintSet(out, "IgnoreSet", ignore);
++  PrintSet(out, "BmpWithNonBmpFold", bmp_with_non_bmp_fold);
+ }
+ 
+ void WriteHeader(const char* header_filename) {
+--- src/regexp/special-case.h
++++ src/regexp/special-case.h
+@@ -41,9 +41,10 @@
+ // canonicalizes to itself and must not match U+1E9E LATIN CAPITAL
+ // LETTER SHARP S, even though Unicode case closure connects them.
+ //
+-// Otherwise, closeOver produces the correct characters after removing
+-// IgnoreSet. For example, closing over 'k' adds U+212A KELVIN SIGN,
+-// which is in IgnoreSet and must not match 'k' in non-unicode mode.
++// Otherwise, closeOver produces the correct characters after retaining
++// UTF-16 code units and removing IgnoreSet. For example, closing over 'k'
++// adds U+212A KELVIN SIGN, which is in IgnoreSet and must not match 'k'
++// in non-unicode mode.
+ //
+ // The contents of IgnoreSet are calculated at build time by
+ // src/regexp/gen-regexp-special-case.cc, which generates
+@@ -52,11 +53,15 @@
+ // which at least one character has a different canonical value than
+ // another character. Characters that match no other characters in
+ // their equivalence class are added to IgnoreSet. The generator verifies
+-// that each Unicode class has at most one non-trivial JS class.
++// that each BMP subset of a Unicode class has at most one non-trivial JS class.
+ 
+ class V8_EXPORT_PRIVATE CaseFolding final : public AllStatic {
+  public:
+   enum class Mode { kNonUnicode, kUnicode };
++
++  static bool BmpHasNonBmpFold(UChar32 c) {
++    return BmpWithNonBmpFold().contains(c);
++  }
+ 
+   // Equal keys denote matching characters, but can diverge from the
+   // specification's Canonicalize operation. Non-unicode inputs are UTF-16 code
+@@ -77,6 +82,7 @@
+     }
+     if (IgnoreSet().containsNone(set)) {
+       set.closeOver(USET_SIMPLE_CASE_INSENSITIVE);
++      set.remove(0x10000, 0x10ffff);
+       set.removeAll(IgnoreSet());
+       return;
+     }
+@@ -87,12 +93,14 @@
+     ignored.retainAll(IgnoreSet());
+     set.removeAll(IgnoreSet());
+     set.closeOver(USET_SIMPLE_CASE_INSENSITIVE);
++    set.remove(0x10000, 0x10ffff);
+     set.removeAll(IgnoreSet());
+     set.addAll(ignored);
+   }
+ 
+  private:
+   static const icu::UnicodeSet& IgnoreSet();
++  static const icu::UnicodeSet& BmpWithNonBmpFold();
+ };
+ 
+ }  // namespace regexp
+--- src/regexp/regexp-parser.cc
++++ src/regexp/regexp-parser.cc
+@@ -19,6 +19,7 @@
+ #include "src/zone/zone-list-inl.h"
+ 
+ #ifdef V8_INTL_SUPPORT
++#include "src/regexp/special-case.h"
+ #include "unicode/uniset.h"
+ #include "unicode/unistr.h"
+ #include "unicode/usetiter.h"
+@@ -188,6 +189,12 @@
+ template <ParseMode mode>
+ void TextBuilder<mode>::AddCharacter(base::uc16 c) {
+   FlushPendingSurrogate();
++#ifdef V8_INTL_SUPPORT
++  if (IsUnicodeMode() && ignore_case() && CaseFolding::BmpHasNonBmpFold(c)) {
++    AddClassRangesForDesugaring(c);
++    return;
++  }
++#endif
+   if (characters_ == nullptr) {
+     characters_ = zone()->template New<ZoneList<base::uc16>>(4, zone());
+   }
+--- /dev/null
++++ test/mjsunit/regress/regress-icu79-casefold.js
+@@ -0,0 +1,43 @@
++// Copyright 2026 the V8 project authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++// Unicode 18 simple folding relates a BMP character to a supplementary one.
++const bmp = '\u00df';
++const supplementary = '\u{1df95}';
++for (const legacy of [/^\u00df$/i, /^[\u00df]$/i, /^[s\u00df]$/i]) {
++  assertFalse(legacy.test(supplementary));
++  assertTrue(legacy.test(bmp));
++}
++assertFalse(new RegExp('^' + supplementary + '$', 'i').test(bmp));
++assertFalse(/^(\u00df)\1$/i.test(bmp + supplementary));
++for (const unicode of [/^\u00df$/iu, /^[\u00df]$/iu, /^\u00df$/iv,
++                       /^[\u00df]$/iv]) {
++  assertTrue(unicode.test(supplementary));
++}
++assertTrue(/^\u{1df95}$/iu.test(bmp));
++assertTrue(/^[\u{1df95}]$/iu.test(bmp));
++assertTrue(/^(\u00df)\1$/iu.test(bmp + supplementary));
++assertTrue(/^\xDF$/iu.test(supplementary));
++assertTrue(/^\u00df+$/iu.test(supplementary + supplementary));
++assertTrue(/^(\u00df)+$/iv.test(supplementary + supplementary));
++assertTrue(/^A\u00dfZ$/iu.test('A' + supplementary + 'Z'));
++const capture = /^(\u00df)$/iu.exec(supplementary);
++assertNotNull(capture);
++assertEquals(supplementary, capture[1]);
++assertTrue(/^(\u{1df95})\1$/iu.test(supplementary + bmp));
++assertTrue(/(?<=(\u00df))\1$/iu.test(bmp + supplementary));
++assertTrue(/(?<=(\u{1df95}))\1$/iu.test(supplementary + bmp));
++assertFalse(/^(\u00df)\1$/i.test(bmp + supplementary));
++// Inside lookbehind, the capture is evaluated before the backwards backreference.
++assertTrue(/(?<=\1(\u00df))$/iu.test(supplementary + bmp));
++assertTrue(/(?<=\1(\u{1df95}))$/iu.test(bmp + supplementary));
++assertFalse(/^([\u00df])\1$/iu.test(bmp + 'x'));
++assertFalse(/^([\u00df])\1$/iu.test(bmp));
++assertFalse(/(?<=\1([\u00df]))$/iu.test('x' + bmp));
++assertTrue(/^(\u00df?)\1$/iu.test(''));
++assertFalse(/^([\u00df])\1$/iu.test(bmp + '\ud837'));
++assertTrue(/^(\u00df)\1$/iv.test(bmp + supplementary));
++assertTrue(/^(\u{1df95})\1$/iv.test(supplementary + bmp));
++assertTrue(/(?<=\1(\u00df))$/iv.test(supplementary + bmp));
++assertTrue(/(?<=\1(\u{1df95}))$/iv.test(bmp + supplementary));

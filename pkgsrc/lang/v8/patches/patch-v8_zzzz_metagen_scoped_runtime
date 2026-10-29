@@ -1,0 +1,270 @@
+$NetBSD$
+
+Select the SDK runtime and target compiler flags for GN metagen.
+Origin: EmberBSD (AI-assisted).
+
+--- BUILD.gn
++++ BUILD.gn
+@@ -55,6 +55,17 @@
+   #                                     dir that contains the clang/ package).
+   v8_metagen_libclang_so = ""
+   v8_metagen_libclang_bindings_dir = ""
++
++  # Run the selected metagen Python in an explicit native runtime view.
++  v8_metagen_runtime_python = ""
++  v8_metagen_runtime_launcher = ""
++  v8_metagen_runtime_view = ""
++  v8_metagen_runtime_inputs = []
++  v8_metagen_extra_flags = []
++  v8_metagen_host_extra_flags = []
++  v8_metagen_gn_executable = ""
++  v8_metagen_gn_root_target = ""
++  v8_metagen_gn_root_pattern = ""
+ 
+   # Dynamically set an additional dependency from v8/custom_deps.
+   v8_custom_deps = ""
+@@ -569,6 +580,28 @@
+ assert(v8_metagen_libclang_so == "" == (v8_metagen_libclang_bindings_dir == ""),
+        "v8_metagen_libclang_so and v8_metagen_libclang_bindings_dir must be " +
+            "set together or left empty together.")
++
++assert((v8_metagen_runtime_python == "") == (v8_metagen_runtime_launcher == "") &&
++       (v8_metagen_runtime_python == "") == (v8_metagen_runtime_view == ""),
++       "Select metagen runtime Python, launcher and view together")
++if (v8_metagen_runtime_launcher != "") {
++  assert((host_toolchain != default_toolchain &&
++          v8_snapshot_toolchain != default_toolchain) ||
++         v8_metagen_host_extra_flags == v8_metagen_extra_flags,
++         "One metagen toolchain requires matching host and target flags")
++  assert(v8_metagen_libclang_so != "" && v8_metagen_runtime_inputs != [] &&
++         v8_metagen_gn_executable != "",
++         "Scoped metagen needs the selected libclang and runtime inputs")
++  assert(get_path_info(v8_metagen_gn_executable, "abspath") == v8_metagen_gn_executable &&
++         get_path_info(v8_metagen_runtime_python, "abspath") == v8_metagen_runtime_python &&
++         get_path_info(v8_metagen_runtime_launcher, "abspath") == v8_metagen_runtime_launcher &&
++         get_path_info(v8_metagen_runtime_view, "abspath") == v8_metagen_runtime_view,
++         "Metagen runtime paths must be absolute")
++} else {
++  assert(v8_metagen_gn_executable == "" && v8_metagen_gn_root_target == "" &&
++         v8_metagen_gn_root_pattern == "",
++         "Metagen GN selection requires a scoped runtime")
++}
+ 
+ # Derived defaults.
+ if (v8_logging_level == "") {
+@@ -2493,7 +2526,11 @@
+   if (v8_metagen_libclang_so != "") {
+     # System libclang + separately-staged bindings: the bundled package files
+     # do not exist on this platform, so declare none of them as inputs.
+-    _metagen_libclang_files = []
++    _metagen_libclang_files = [
++      v8_metagen_libclang_so,
++      "$v8_metagen_libclang_bindings_dir/clang/cindex.py",
++      "$v8_metagen_libclang_bindings_dir/clang/__init__.py",
++    ]
+   } else {
+     _metagen_libclang_files = [
+       "//third_party/llvm-libclang/bindings/python/clang/cindex.py",
+@@ -2525,7 +2562,11 @@
+       "tools/debug_helper/:*",
+     ]
+ 
+-    script = "tools/metagen/metagen.py"
++    if (v8_metagen_runtime_launcher == "") {
++      script = "tools/metagen/metagen.py"
++    } else {
++      script = v8_metagen_runtime_launcher
++    }
+ 
+     # The script obtains the parse flags through `gn desc`, so make the build
+     # configuration an explicit input. In particular, changing a feature define
+@@ -2567,6 +2608,12 @@
+                # rest, and the harvest cannot parse without it.
+                "$_metagen_clang_resource_dir/include/stddef.h",
+              ] + _metagen_libclang_files
++    if (v8_metagen_runtime_launcher != "") {
++      inputs += v8_metagen_runtime_inputs + [
++        v8_metagen_gn_executable,
++        v8_metagen_runtime_python,
++      ]
++    }
+ 
+     outputs = [ "$_metagen_out_dir/instance-types.h" ]
+ 
+@@ -2577,7 +2624,18 @@
+     # Binds to the first output, so output order matters if one is added.
+     depfile = "$_metagen_out_dir/instance-types.h.d"
+ 
+-    args = [
++    args = []
++    if (v8_metagen_runtime_launcher != "") {
++      args += [
++        "--runtime-view",
++        v8_metagen_runtime_view,
++        "--",
++        v8_metagen_runtime_python,
++        "-B",
++        rebase_path("tools/metagen/metagen.py", root_build_dir),
++      ]
++    }
++    args += [
+       "--depfile",
+       rebase_path(depfile, root_build_dir),
+       "--driver",
+@@ -2617,6 +2675,34 @@
+       "--clang-resource-dir",
+       rebase_path(_metagen_clang_resource_dir, root_build_dir),
+     ]
++
++    if (v8_metagen_runtime_launcher != "") {
++      assert(current_toolchain == host_toolchain ||
++             current_toolchain == v8_snapshot_toolchain ||
++             current_toolchain == default_toolchain,
++             "No metagen compiler selection for this toolchain")
++    }
++    if (current_toolchain == host_toolchain ||
++        current_toolchain == v8_snapshot_toolchain) {
++      _metagen_extra_flags = v8_metagen_host_extra_flags
++    } else {
++      _metagen_extra_flags = v8_metagen_extra_flags
++    }
++    foreach(flag, _metagen_extra_flags) {
++      args += [ "--extra-flag=$flag" ]
++    }
++
++    if (v8_metagen_runtime_launcher != "") {
++      args += [ "--gn-executable", v8_metagen_gn_executable,
++                "--gn-script-executable", v8_metagen_runtime_python,
++                "--gn-clean-runtime" ]
++      if (v8_metagen_gn_root_target != "") {
++        args += [ "--gn-root-target", v8_metagen_gn_root_target ]
++      }
++      if (v8_metagen_gn_root_pattern != "") {
++        args += [ "--gn-root-pattern", v8_metagen_gn_root_pattern ]
++      }
++    }
+ 
+     if (v8_metagen_libclang_so != "") {
+       # No prebuilt llvm-libclang for this platform: point metagen at the
+--- tools/metagen/metagen.py
++++ tools/metagen/metagen.py
+@@ -170,6 +170,11 @@
+       "(e.g. //build/toolchain/linux:clang_x64). Defaults to the build's "
+       "default toolchain, which is only right when the action and the "
+       "target it queries share it.")
++  p.add_argument("--gn-executable", default=None)
++  p.add_argument("--gn-script-executable", default=None)
++  p.add_argument("--gn-root-target", default=None)
++  p.add_argument("--gn-root-pattern", default=None)
++  p.add_argument("--gn-clean-runtime", action="store_true")
+   p.add_argument(
+       "--flags-dependency",
+       default=None,
+@@ -269,7 +274,11 @@
+     if args.flags_toolchain:
+       flags_target = f"{flags_target}({args.flags_toolchain})"
+     raw_flags, parse_cwd, cl_mode = compile_flags.get_compile_args_from_gn_desc(
+-        build_dir, flags_target, os.path.abspath(args.source_root))
++        build_dir, flags_target, os.path.abspath(args.source_root),
++        gn_executable=args.gn_executable,
++        script_executable=args.gn_script_executable,
++        root_target=args.gn_root_target, root_pattern=args.gn_root_pattern,
++        clean_runtime=args.gn_clean_runtime)
+     flags_source = f"build_dir={build_dir} (gn desc {flags_target})"
+   else:
+     cc_json = os.path.abspath(args.compile_commands)
+--- tools/metagen/compile_flags.py
++++ tools/metagen/compile_flags.py
+@@ -159,7 +159,10 @@
+ 
+ def get_compile_args_from_gn_desc(
+     build_dir: str, target_label: str,
+-    source_root: str) -> tuple[list[str], str, bool]:
++    source_root: str, *, gn_executable: str | None = None,
++    script_executable: str | None = None,
++    root_target: str | None = None, root_pattern: str | None = None,
++    clean_runtime: bool = False) -> tuple[list[str], str, bool]:
+   """GN path: reconstruct one target's compile flags via `gn desc`.
+ 
+   `source_root` is the directory holding the build's `.gn` marker. The
+@@ -177,7 +180,7 @@
+   source-absolute `//...` and rebased against `source_root` here.
+   """
+   source_root = os.path.abspath(source_root)
+-  gn = _find_gn(source_root)
++  gn = gn_executable or _find_gn(source_root)
+   if not gn:
+     raise RuntimeError(
+         "[metagen] gn not found under <source-root>/buildtools or on PATH.")
+@@ -187,19 +190,27 @@
+     # Without it gn prepends any build-file warning to the document -- an
+     # arm_float_abi that no declare_args() claims on the arm64 bots, say --
+     # and the parse below fails. A gn that actually fails still reports.
++    command = [gn, "desc", "-q", out_rel, target_label, "--format=json"]
++    for option, value in (("--script-executable=", script_executable),
++                          ("--root-target=", root_target),
++                          ("--root-pattern=", root_pattern)):
++      if value:
++        command.append(option + value)
++    gn_env = None
++    if clean_runtime:
++      gn_env = os.environ.copy()
++      gn_env.pop("DYLD_LIBRARY_PATH", None)
++      gn_env["PYTHONDONTWRITEBYTECODE"] = "1"
+     proc = subprocess.run(
+-        [gn, "desc", "-q", out_rel, target_label, "--format=json"],
+-        cwd=source_root,
+-        capture_output=True,
+-        text=True,
+-        check=True,
++        command, cwd=source_root, env=gn_env,
++        capture_output=True, text=True, check=True,
+     )
+   except FileNotFoundError:
+     raise RuntimeError(f"[metagen] gn binary not found: {gn}")
+   except subprocess.CalledProcessError as e:
+     raise RuntimeError(f"[metagen] `gn desc {out_rel} {target_label}` failed "
+                        f"(exit {e.returncode}). Has `gn gen` run there?\n"
+-                       f"{(e.stderr or '').strip()}")
++                       f"{(e.stderr or e.stdout or '').strip()}")
+   try:
+     desc = json.loads(proc.stdout)
+   except json.JSONDecodeError as e:
+--- tools/metagen/compile_flags_test.py
++++ tools/metagen/compile_flags_test.py
+@@ -66,6 +66,35 @@
+       self.assertFalse(cl_mode)
+ 
+ 
++  def test_selected_gn_and_scoped_runtime(self):
++    with tempfile.TemporaryDirectory() as tmp:
++      root = Path(tmp) / 'src'
++      out = Path(tmp) / 'out'
++      root.mkdir()
++      out.mkdir()
++      target = '//v8:probe'
++      desc = {target: {'defines': [], 'include_dirs': [], 'cflags_cc': []}}
++      with mock.patch.dict(os.environ, {'DYLD_LIBRARY_PATH': '/private/view',
++                                       'PROBE_ENV': 'kept'}), \
++           mock.patch.object(compile_flags, '_find_gn', return_value='gn'), \
++           mock.patch.object(compile_flags.subprocess, 'run',
++                             return_value=subprocess.CompletedProcess(
++                                 [], 0, json.dumps(desc))) as run:
++        compile_flags.get_compile_args_from_gn_desc(
++            str(out), target, str(root), gn_executable='/selected/gn',
++            script_executable='/selected/python',
++            root_target='//electron', root_pattern='//electron:electron',
++            clean_runtime=True)
++      argv, kwargs = run.call_args
++      self.assertEqual(argv[0][0], '/selected/gn')
++      self.assertIn('--script-executable=/selected/python', argv[0])
++      self.assertIn('--root-target=//electron', argv[0])
++      self.assertIn('--root-pattern=//electron:electron', argv[0])
++      self.assertNotIn('DYLD_LIBRARY_PATH', kwargs['env'])
++      self.assertEqual(kwargs['env']['PROBE_ENV'], 'kept')
++      self.assertEqual(kwargs['env']['PYTHONDONTWRITEBYTECODE'], '1')
++
++
+ class FilterTest(unittest.TestCase):
+ 
+   def test_drops_clang_modules_family(self):
