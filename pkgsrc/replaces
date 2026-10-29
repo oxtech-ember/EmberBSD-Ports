@@ -380,3 +380,5 @@ devel/netbsd-iscsi-lib
 net/netbsd-iscsi-initiator
 net/netbsd-iscsi-target
 net/ntp4
+
+net/libpcap

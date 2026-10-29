@@ -1,0 +1,14 @@
+$NetBSD: distinfo,v 1.45 2026/09/30 18:58:34 adam Exp $
+
+BLAKE2s (libpcap-1.11.0.tar.gz) = 1410083494fd28872b4e7bead58ab50e07e168212ea43b66b5c3db1d14f0ad00
+SHA512 (libpcap-1.11.0.tar.gz) = 6a29b24afe8fc5fe7761871b2067dba1df69624c4eb263765e4da0c6a5a8915e0b32ec6767e190b2459f8b2a691b1ac5d9867c3a2a9c8234ff9b623b5a84414b
+Size (libpcap-1.11.0.tar.gz) = 1052416 bytes
+SHA1 (patch-Makefile.in) = 0b696fe8930025ca6f5863f427dfa81499f94eac
+SHA1 (patch-configure) = 04e2918dda48d0c37df08a12ca25dcf9dc5302ee
+SHA1 (patch-fad-getad.c) = b88f2f258d01b8215cd3e778c1c213c26cb7cf8d
+SHA1 (patch-pcap_pcap.h) = 6ed59a94988a959bf405da768311da396a87a553
+SHA1 (patch-pcap-usb-linux.c) = f08eb3b10ed5f24e76f158fbecc8390cca3b58ba
+SHA1 (patch-gencode.c) = 0575932a82af2bac1ff782cacdfcca0beea7f7a8
+SHA1 (patch-pcap-rpcap.c) = daba1d7246fe8147ec601017834d7843b82954cc
+SHA1 (patch-pcap.c) = 2e9ec14ffad42427f4b1adc6b0dc70684d66417e
+SHA1 (patch-sockutils.c) = a233c383c4d1681f5166fcffb26d7c8826a9b70a
