@@ -1,0 +1,9 @@
+# $NetBSD$
+
+BUILDLINK_TREE+= rang
+.if !defined(RANG_BUILDLINK3_MK)
+RANG_BUILDLINK3_MK:=
+BUILDLINK_API_DEPENDS.rang+= rang>=3.3
+BUILDLINK_PKGSRCDIR.rang?= ../../devel/rang
+.endif
+BUILDLINK_TREE+= -rang

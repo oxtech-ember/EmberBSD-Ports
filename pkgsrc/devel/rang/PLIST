@@ -1,0 +1,3 @@
+@comment $NetBSD$
+include/rang.hpp
+share/licenses/rang/LICENSE
