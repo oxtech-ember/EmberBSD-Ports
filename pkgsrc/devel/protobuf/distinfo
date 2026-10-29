@@ -13,3 +13,4 @@ SHA1 (patch-absl-mutex-reference) = ed90fa5501b27172a5b0b352501ea6848ffc1799
 SHA1 (patch-message-lite-string-resize) = 68d8d268558914296279aa59b774b998ee4e75ca
 SHA1 (patch-absl-rw-lock-reference) = 3c2c717ad0326164a8006011b535821e2dda9471
 SHA1 (patch-unknown-fields-string-resize) = add2946e88f8bcf6d9ad9054ff984c4c4158c3c0
+SHA1 (patch-enum-reflection-compat) = 84eb15faec1ff89813bde4950057c03e72bc7f50

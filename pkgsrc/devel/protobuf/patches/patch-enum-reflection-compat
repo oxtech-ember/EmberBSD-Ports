@@ -1,0 +1,270 @@
+Preserve enum reflection behavior without deprecated descriptor getters.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- src/google/protobuf/message.h
++++ src/google/protobuf/message.h
+@@ -1478,6 +1478,12 @@
+ 
+   int GetExtensionNumberOrDie(const Descriptor* type) const;
+ 
++  // Preserve descriptor identity for legacy closed-enum copy operations.
++  const EnumValueDescriptor* GetEnumDescriptor(
++      const Message& message, const FieldDescriptor* field) const;
++  const EnumValueDescriptor* GetRepeatedEnumDescriptor(
++      const Message& message, const FieldDescriptor* field, int index) const;
++
+   // Internal versions of EnumValue API perform no checking. Called after checks
+   // by public methods.
+   void SetEnumValueInternal(Message* message, const FieldDescriptor* field,
+--- src/google/protobuf/generated_message_reflection.cc
++++ src/google/protobuf/generated_message_reflection.cc
+@@ -2424,6 +2424,11 @@
+ 
+ const EnumValueDescriptor* Reflection::GetEnum(
+     const Message& message, const FieldDescriptor* field) const {
++  return GetEnumDescriptor(message, field);
++}
++
++const EnumValueDescriptor* Reflection::GetEnumDescriptor(
++    const Message& message, const FieldDescriptor* field) const {
+   // Usage checked by GetEnumValue.
+   int value = GetEnumValue(message, field);
+   return field->enum_type()->FindValueByNumberCreatingIfUnknown(value);
+@@ -2481,6 +2486,11 @@
+ 
+ const EnumValueDescriptor* Reflection::GetRepeatedEnum(
+     const Message& message, const FieldDescriptor* field, int index) const {
++  return GetRepeatedEnumDescriptor(message, field, index);
++}
++
++const EnumValueDescriptor* Reflection::GetRepeatedEnumDescriptor(
++    const Message& message, const FieldDescriptor* field, int index) const {
+   // Usage checked by GetRepeatedEnumValue.
+   int value = GetRepeatedEnumValue(message, field, index);
+   return field->enum_type()->FindValueByNumberCreatingIfUnknown(value);
+--- src/google/protobuf/reflection_ops.h
++++ src/google/protobuf/reflection_ops.h
+@@ -42,6 +42,14 @@
+  public:
+   ReflectionOps() = delete;
+ 
++  // Internal descriptor compatibility for enum-copy operations.
++  static const EnumValueDescriptor* GetEnumDescriptor(
++      const Reflection& reflection, const Message& message,
++      const FieldDescriptor* field);
++  static const EnumValueDescriptor* GetRepeatedEnumDescriptor(
++      const Reflection& reflection, const Message& message,
++      const FieldDescriptor* field, int index);
++
+   static void Copy(const Message& from, Message* to);
+   static void Merge(const Message& from, Message* to);
+   static void Clear(Message* message);
+--- src/google/protobuf/reflection_ops.cc
++++ src/google/protobuf/reflection_ops.cc
+@@ -43,6 +43,18 @@
+   return r;
+ }
+ 
++const EnumValueDescriptor* ReflectionOps::GetEnumDescriptor(
++    const Reflection& reflection, const Message& message,
++    const FieldDescriptor* field) {
++  return reflection.GetEnumDescriptor(message, field);
++}
++
++const EnumValueDescriptor* ReflectionOps::GetRepeatedEnumDescriptor(
++    const Reflection& reflection, const Message& message,
++    const FieldDescriptor* field, int index) {
++  return reflection.GetRepeatedEnumDescriptor(message, field, index);
++}
++
+ void ReflectionOps::Copy(const Message& from, Message* to) {
+   if (&from == to) return;
+   Clear(to);
+@@ -100,7 +112,11 @@
+           HANDLE_TYPE(DOUBLE, Double);
+           HANDLE_TYPE(BOOL, Bool);
+           HANDLE_TYPE(STRING, String);
+-          HANDLE_TYPE(ENUM, Enum);
++          case FieldDescriptor::CPPTYPE_ENUM:
++            to_reflection->AddEnum(
++                to, field,
++                GetRepeatedEnumDescriptor(*from_reflection, from, field, j));
++            break;
+ #undef HANDLE_TYPE
+ 
+           case FieldDescriptor::CPPTYPE_MESSAGE:
+@@ -133,7 +149,10 @@
+         HANDLE_TYPE(DOUBLE, Double);
+         HANDLE_TYPE(BOOL, Bool);
+         HANDLE_TYPE(STRING, String);
+-        HANDLE_TYPE(ENUM, Enum);
++        case FieldDescriptor::CPPTYPE_ENUM:
++          to_reflection->SetEnum(
++              to, field, GetEnumDescriptor(*from_reflection, from, field));
++          break;
+ #undef HANDLE_TYPE
+ 
+         case FieldDescriptor::CPPTYPE_MESSAGE:
+--- src/google/protobuf/util/field_mask_util.cc
++++ src/google/protobuf/util/field_mask_util.cc
+@@ -26,6 +26,7 @@
+ #include "absl/strings/strip.h"
+ #include "google/protobuf/descriptor.h"
+ #include "google/protobuf/message.h"
++#include "google/protobuf/reflection_ops.h"
+ 
+ // Must be included last.
+ #include "google/protobuf/port_def.inc"
+@@ -522,7 +523,16 @@
+         COPY_VALUE(UINT64, UInt64)
+         COPY_VALUE(FLOAT, Float)
+         COPY_VALUE(DOUBLE, Double)
+-        COPY_VALUE(ENUM, Enum)
++        case FieldDescriptor::CPPTYPE_ENUM: {
++          if (source_reflection->HasField(source, field)) {
++            destination_reflection->SetEnum(
++                destination, field, internal::ReflectionOps::GetEnumDescriptor(
++                                        *source_reflection, source, field));
++          } else {
++            destination_reflection->ClearField(destination, field);
++          }
++          break;
++        }
+         COPY_VALUE(STRING, String)
+ #undef COPY_VALUE
+         case FieldDescriptor::CPPTYPE_MESSAGE: {
+@@ -558,7 +568,16 @@
+         COPY_REPEATED_VALUE(UINT64, UInt64)
+         COPY_REPEATED_VALUE(FLOAT, Float)
+         COPY_REPEATED_VALUE(DOUBLE, Double)
+-        COPY_REPEATED_VALUE(ENUM, Enum)
++        case FieldDescriptor::CPPTYPE_ENUM: {
++          int size = source_reflection->FieldSize(source, field);
++          for (int i = 0; i < size; ++i) {
++            destination_reflection->AddEnum(
++                destination, field,
++                internal::ReflectionOps::GetRepeatedEnumDescriptor(
++                    *source_reflection, source, field, i));
++          }
++          break;
++        }
+         COPY_REPEATED_VALUE(STRING, String)
+ #undef COPY_REPEATED_VALUE
+         case FieldDescriptor::CPPTYPE_MESSAGE: {
+--- src/google/protobuf/wire_format.cc
++++ src/google/protobuf/wire_format.cc
+@@ -1372,12 +1372,11 @@
+       } break;
+ 
+       case FieldDescriptor::TYPE_ENUM: {
+-        const EnumValueDescriptor* value =
++        const int value =
+             field->is_repeated()
+-                ? message_reflection->GetRepeatedEnum(message, field, j)
+-                : message_reflection->GetEnum(message, field);
+-        target = WireFormatLite::WriteEnumToArray(field->number(),
+-                                                  value->number(), target);
++                ? message_reflection->GetRepeatedEnumValue(message, field, j)
++                : message_reflection->GetEnumValue(message, field);
++        target = WireFormatLite::WriteEnumToArray(field->number(), value, target);
+         break;
+       }
+ 
+@@ -1711,11 +1710,11 @@
+       if (field->is_repeated()) {
+         for (size_t j = 0; j < count; j++) {
+           data_size += WireFormatLite::EnumSize(
+-              message_reflection->GetRepeatedEnum(message, field, j)->number());
++              message_reflection->GetRepeatedEnumValue(message, field, j));
+         }
+       } else {
+         data_size += WireFormatLite::EnumSize(
+-            message_reflection->GetEnum(message, field)->number());
++            message_reflection->GetEnumValue(message, field));
+       }
+       break;
+     }
+--- src/google/protobuf/util/type_resolver_util.cc
++++ src/google/protobuf/util/type_resolver_util.cc
+@@ -133,12 +133,11 @@
+       return;
+     }
+     case FieldDescriptor::CPPTYPE_ENUM: {
+-      const EnumValueDescriptor* val =
+-          field->is_repeated()
+-              ? reflection->GetRepeatedEnum(options, field, index)
+-              : reflection->GetEnum(options, field);
++      const int val = field->is_repeated()
++                          ? reflection->GetRepeatedEnumValue(options, field, index)
++                          : reflection->GetEnumValue(options, field);
+       // TODO: Remove this suppression.
+-      (void)value->PackFrom(WrapValue<Int32Value>(val->number()));
++      (void)value->PackFrom(WrapValue<Int32Value>(val));
+       return;
+     }
+   }
+--- src/google/protobuf/util/field_comparator.cc
++++ src/google/protobuf/util/field_comparator.cc
+@@ -88,7 +88,13 @@
+     case FieldDescriptor::CPPTYPE_DOUBLE:
+       COMPARE_FIELD(Double);
+     case FieldDescriptor::CPPTYPE_ENUM:
+-      COMPARE_FIELD(Enum);
++      if (field->is_repeated()) {
++        return ResultFromBoolean(
++            reflection_1->GetRepeatedEnumValue(message_1, field, index_1) ==
++            reflection_2->GetRepeatedEnumValue(message_2, field, index_2));
++      }
++      return ResultFromBoolean(reflection_1->GetEnumValue(message_1, field) ==
++                               reflection_2->GetEnumValue(message_2, field));
+     case FieldDescriptor::CPPTYPE_FLOAT:
+       COMPARE_FIELD(Float);
+     case FieldDescriptor::CPPTYPE_INT32:
+--- src/google/protobuf/text_format.cc
++++ src/google/protobuf/text_format.cc
+@@ -957,13 +957,13 @@
+ // the message and the new value are the default. If the existing field value is
+ // not the default, setting it to the default should not be treated as a no-op.
+ // The pointer of this is kept in no_op_fields_ for bookkeeping.
+-#define SET_FIELD(CPPTYPE, CPPTYPELCASE, VALUE)                    \
++#define SET_FIELD_IMPL(CPPTYPE, CPPTYPELCASE, VALUE, CURRENT)      \
+   if (field->is_repeated()) {                                      \
+     reflection->Add##CPPTYPE(message, field, VALUE);               \
+   } else {                                                         \
+     if (no_op_fields_ && !field->has_presence() &&                 \
+         field->default_value_##CPPTYPELCASE() ==                   \
+-            reflection->Get##CPPTYPE(*message, field) &&           \
++            CURRENT &&                                             \
+         field->default_value_##CPPTYPELCASE() == VALUE) {          \
+       no_op_fields_->ids_.insert(                                  \
+           UnsetFieldsMetadata::GetUnsetFieldId(*message, *field)); \
+@@ -971,6 +971,9 @@
+       reflection->Set##CPPTYPE(message, field, std::move(VALUE));  \
+     }                                                              \
+   }
++#define SET_FIELD(CPPTYPE, CPPTYPELCASE, VALUE) \
++  SET_FIELD_IMPL(CPPTYPE, CPPTYPELCASE, VALUE, \
++                 reflection->Get##CPPTYPE(*message, field))
+ 
+     switch (field->cpp_type()) {
+       case FieldDescriptor::CPPTYPE_INT32: {
+@@ -1083,7 +1086,9 @@
+           }
+         }
+ 
+-        SET_FIELD(Enum, enum, enum_value);
++        SET_FIELD_IMPL(Enum, enum, enum_value,
++                       enum_type->FindValueByNumber(
++                           reflection->GetEnumValue(*message, field)));
+         break;
+       }
+ 
+@@ -1095,6 +1100,7 @@
+       }
+     }
+ #undef SET_FIELD
++#undef SET_FIELD_IMPL
+     return true;
+   }
+ 
