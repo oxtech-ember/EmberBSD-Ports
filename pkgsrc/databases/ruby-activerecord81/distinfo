@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (activerecord-8.1.4.gem) = ab12570b5cbbdcced4ea0689837281775c551183b033edb949e1fdc006ddef21
+SHA512 (activerecord-8.1.4.gem) = a1339d96879646eb765e61292f95f85284f2224d71b4574208519acee295b67449fe30f895a91ad683adf7aef728edcbff6b195de2f4a31bd4eaaeddf4e0d699
+Size (activerecord-8.1.4.gem) = 579072 bytes

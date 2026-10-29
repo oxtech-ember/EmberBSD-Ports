@@ -33,6 +33,22 @@ EMBERBSD_VERSION_FAMILIES+=	www/ruby-faraday-rack1=www/ruby-faraday-rack
 EMBERBSD_VERSION_FAMILIES+=	www/ruby-faraday-retry1=www/ruby-faraday-retry
 EMBERBSD_VERSION_FAMILIES+=	www/ruby-faraday_middleware=www/ruby-faraday
 EMBERBSD_VERSION_FAMILIES+=	devel/ruby-octokit4=devel/ruby-octokit
+# Rails 8.1; roadie-rails 3.2/3.3 and propshaft 1.1 do not allow it.
+EMBERBSD_VERSION_FAMILIES+=	devel/ruby-activesupport[0-9]*=devel/ruby-activesupport81
+EMBERBSD_VERSION_FAMILIES+=	devel/ruby-activemodel[0-9]*=devel/ruby-activemodel81
+EMBERBSD_VERSION_FAMILIES+=	devel/ruby-activejob[0-9]*=devel/ruby-activejob81
+EMBERBSD_VERSION_FAMILIES+=	databases/ruby-activerecord[0-9]*=databases/ruby-activerecord81
+EMBERBSD_VERSION_FAMILIES+=	www/ruby-actionview[0-9]*=www/ruby-actionview81
+EMBERBSD_VERSION_FAMILIES+=	www/ruby-actionpack[0-9]*=www/ruby-actionpack81
+EMBERBSD_VERSION_FAMILIES+=	www/ruby-actioncable[0-9]*=www/ruby-actioncable81
+EMBERBSD_VERSION_FAMILIES+=	devel/ruby-railties[0-9]*=devel/ruby-railties81
+EMBERBSD_VERSION_FAMILIES+=	devel/ruby-activestorage[0-9]*=devel/ruby-activestorage81
+EMBERBSD_VERSION_FAMILIES+=	mail/ruby-actionmailer[0-9]*=mail/ruby-actionmailer81
+EMBERBSD_VERSION_FAMILIES+=	mail/ruby-actionmailbox[0-9]*=mail/ruby-actionmailbox81
+EMBERBSD_VERSION_FAMILIES+=	textproc/ruby-actiontext[0-9]*=textproc/ruby-actiontext81
+EMBERBSD_VERSION_FAMILIES+=	www/ruby-rails[0-9]*=www/ruby-rails81
+EMBERBSD_VERSION_FAMILIES+=	mail/ruby-roadie-rails3[0-9]=mail/ruby-roadie-rails
+EMBERBSD_VERSION_FAMILIES+=	www/ruby-propshaft1[0-9]=www/ruby-propshaft
 EMBERBSD_VERSION_FAMILIES+=	lang/openjdk[0-9]*=lang/openjdk21
 # One Berkeley DB, db18; db1 is the libc one.
 EMBERBSD_VERSION_FAMILIES+=	databases/db=databases/db18
