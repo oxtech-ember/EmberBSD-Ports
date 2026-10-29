@@ -343,7 +343,8 @@ It does not infer a filter from the `.tgz` filename or call an ambient compresso
 The ordinary configuration retains its existing compression default.
 
 Bind the complete canonical source trees, the bootstrap script, the ordered
-`pkgsrc-pkg-install-dyld-cache.patch` and the source owner evidence before
+`pkgsrc-pkg-install-dyld-cache.patch`, `pkgsrc-pkg-install-native-stage.patch`
+and the source owner evidence before
 execution. Only literal owner files have Ports Git membership. Composed C
 sources have their separate canonical export and content derivation. Keep
 source file modes and mtimes in that proof. No release bytes become Git members
@@ -372,3 +373,8 @@ Compile `scripts/tests/pkg_install_cache_fixture.c` with the selected GCC16
 driver and ABI tuple, `-I<fresh-work> -std=gnu99 -Wall -Wextra -Werror`, and
 `-DTEST_DYLD_CACHE=0`, then `-DTEST_DYLD_CACHE=1`. The fixture checks both
 source branches. It does not replace the real package runtime cases above.
+
+For a native Darwin replacement stage, `pkg_add -S -P <stage>` permits only
+shared-cache system libraries from the running host when the package OS and
+architecture match it. Without `-S`, separate target roots retain their own
+library checks. `-S` requires `-P` and does not override package ABI checks.

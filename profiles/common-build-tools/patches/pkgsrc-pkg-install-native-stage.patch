@@ -1,0 +1,144 @@
+Allow explicit same-ABI Darwin staging to use confirmed host shared-cache libraries.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/pkgtools/pkg_install/files/add/add.h
++++ b/pkgtools/pkg_install/files/add/add.h
+@@ -33,6 +33,7 @@
+ extern char *View;
+ extern char *Viewbase;
+ extern Boolean NoView;
++extern Boolean NativeStage;
+ extern Boolean NoInstall;
+ extern Boolean NoRecord;
+ extern Boolean Force;
+--- a/pkgtools/pkg_install/files/add/main.c
++++ b/pkgtools/pkg_install/files/add/main.c
+@@ -36,13 +36,14 @@
+ #include "lib.h"
+ #include "add.h"
+ 
+-static char Options[] = "AC:DIK:P:RVfhm:np:t:Uuv";
++static char Options[] = "AC:DIK:P:RSVfhm:np:t:Uuv";
+ 
+ char   *Destdir = NULL;
+ char   *OverrideMachine = NULL;
+ char   *OverrideOpsys = NULL;
+ char   *OverrideOSVersion = NULL;
+ char   *Prefix = NULL;
++Boolean NativeStage = FALSE;
+ Boolean NoInstall = FALSE;
+ Boolean NoRecord = FALSE;
+ Boolean Automatic = FALSE;
+@@ -62,7 +63,7 @@
+ usage(void)
+ {
+ 	(void) fprintf(stderr, "%s\n%s\n%s\n",
+-	    "usage: pkg_add [-AfhInRuVv] [-C config] [-P destdir] [-K pkg_dbdir]",
++	    "usage: pkg_add [-AfhInRSuVv] [-C config] [-P destdir] [-K pkg_dbdir]",
+ 	    "               [-m machine] [-p prefix]",
+ 	    "               [[ftp|http]://[user[:password]@]host[:port]][/path/]pkg-name ...");
+ 	exit(1);
+@@ -89,6 +90,10 @@
+ 			ForceDepending = TRUE;
+ 			break;
+ 			
++		case 'S':
++			NativeStage = TRUE;
++			break;
++
+ 		case 'P':
+ 			Destdir = optarg;
+ 			break;
+@@ -154,6 +159,9 @@
+ 
+ 	pkg_install_config();
+ 
++	if (NativeStage && Destdir == NULL)
++		errx(1, "-S requires -P");
++
+ 	if (Destdir != NULL) {
+ 		char *pkgdbdir;
+ 
+--- a/pkgtools/pkg_install/files/add/perform.c
++++ b/pkgtools/pkg_install/files/add/perform.c
+@@ -1146,14 +1146,35 @@
+ 	return status;
+ }
+ 
+-/* The active dyld cache describes this root, not a separate target root. */
++/* A separate native stage may explicitly use the active host dyld cache. */
+ static int
+-required_library_in_shared_cache(const char *libpath)
++required_library_in_shared_cache(const struct pkg_task *pkg, const char *libpath)
+ {
+ #ifdef PKG_INSTALL_DYLD_SHARED_CACHE
+-	if (libpath[0] != '/' ||
+-	    (Destdir != NULL && strcmp(Destdir, "/") != 0))
++	if (libpath[0] != '/')
+ 		return 0;
++	if (NativeStage) {
++		struct utsname host;
++		const char *arch;
++
++		if ((strncmp(libpath, "/usr/lib/", 9) != 0 &&
++		     strncmp(libpath, "/System/Library/Frameworks/", 27) != 0) ||
++		    uname(&host) != 0 || strcmp(host.sysname, "Darwin") != 0 ||
++		    (pkg->buildinfo[BI_OPSYS] == NULL ||
++		     pkg->buildinfo[BI_MACHINE_ARCH] == NULL) ||
++		    strcmp(pkg->buildinfo[BI_OPSYS], "Darwin") != 0)
++			return 0;
++		if (strcmp(host.machine, "arm64") == 0)
++			arch = "aarch64";
++		else if (strcmp(host.machine, "x86_64") == 0)
++			arch = "x86_64";
++		else
++			return 0;
++		if (strcmp(pkg->buildinfo[BI_MACHINE_ARCH], arch) != 0)
++			return 0;
++	} else if (Destdir != NULL && strcmp(Destdir, "/") != 0) {
++		return 0;
++	}
+ #ifdef __clang__
+ 	if (__builtin_available(macOS 11.0, *)) {
+ #endif
+@@ -1163,6 +1184,7 @@
+ 	}
+ #endif
+ #else
++	(void)pkg;
+ 	(void)libpath;
+ #endif
+ 	return 0;
+@@ -1202,7 +1224,7 @@
+ 				free(p);
+ 			}
+ 
+-			if (!found && required_library_in_shared_cache(libpath))
++			if (!found && required_library_in_shared_cache(pkg, libpath))
+ 				found = 1;
+ 
+ 			if (!found) {
+--- a/pkgtools/pkg_install/files/add/pkg_add.1
++++ b/pkgtools/pkg_install/files/add/pkg_add.1
+@@ -30,6 +30,7 @@
+ .Op Fl K Ar pkg_dbdir
+ .Op Fl m Ar machine
+ .Op Fl P Ar destdir
++.Op Fl S
+ .Op Fl p Ar prefix
+ .Ar Oo Oo Li ftp|http Oc Ns Li :// Ns Oo Ar user Oc Ns \
+ Oo Li \&: Ns Ar password Oc \
+@@ -158,6 +159,12 @@
+ For packages without install scripts this has the same behavior as
+ using
+ .Xr chroot 8 .
++.It Fl S
++For a native Darwin staging root selected with
++.Fl P ,
++allow required system libraries present in the active dyld cache only when
++the package operating system and architecture match the running host.
++This does not enable host libraries for foreign targets.
+ .It Fl p Ar prefix
+ Override the prefix stored in the package with
+ .Ar prefix .

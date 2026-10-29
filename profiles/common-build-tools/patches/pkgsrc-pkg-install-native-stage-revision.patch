@@ -1,0 +1,13 @@
+Bump pkg_install for the native staging option.
+
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -7,7 +7,7 @@
+ # change in the pkg_* tools that pkgsrc relies on for proper operation.
+ 
+ PKGNAME=		pkg_install-${VERSION}
+-PKGREVISION=		11
++PKGREVISION=		12
+ CATEGORIES=		pkgtools
+ 
+ MAINTAINER=		agc@NetBSD.org

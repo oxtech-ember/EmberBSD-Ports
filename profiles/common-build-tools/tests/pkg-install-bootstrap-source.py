@@ -20,6 +20,7 @@ MANIFEST = ROOT / 'profiles/common-build-tools/bootstrap/pkg-install.json'
 POLICY = ROOT / 'profiles/development-toolchain/darwin-bootstrap.mk.conf'
 PATCH_RELATIVE = 'profiles/common-build-tools/patches/pkgsrc-pkg-install-dyld-cache.patch'
 PATCH = ROOT / PATCH_RELATIVE
+NATIVE_STAGE_PATCH_RELATIVE = 'profiles/common-build-tools/patches/pkgsrc-pkg-install-native-stage.patch'
 
 
 def original(relative):
@@ -51,7 +52,7 @@ def check_manifest(value, bootstrap):
     if value['components'] != components:
         raise ValueError('Supported canonical bootstrap components differ')
     if value['bootstrap_script'] != 'bootstrap/bootstrap' or \
-            value['infrastructure_patches'] != [PATCH_RELATIVE] or \
+            value['infrastructure_patches'] != [PATCH_RELATIVE, NATIVE_STAGE_PATCH_RELATIVE] or \
             value['compat'] != dict(recipe='pkgtools/libnbcompat', include_dir='include',
                                     static_library='lib/libnbcompat.a'):
         raise ValueError('Canonical source and library provenance differ')

@@ -418,6 +418,7 @@
     }
   ],
   "infrastructure_patches": [
-    "profiles/common-build-tools/patches/pkgsrc-pkg-install-dyld-cache.patch"
+    "profiles/common-build-tools/patches/pkgsrc-pkg-install-dyld-cache.patch",
+    "profiles/common-build-tools/patches/pkgsrc-pkg-install-native-stage.patch"
   ]
 }
