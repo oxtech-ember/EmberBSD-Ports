@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.48 2026/08/17 15:27:47 ryoon Exp $
 
 DISTNAME=	libjpeg-turbo-3.2.1
+PKGREVISION=	1
 CATEGORIES=	graphics
 MASTER_SITES=	-https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/${PKGVERSION_NOREV}/${DISTNAME}${EXTRACT_SUFX}
 
@@ -18,6 +19,11 @@ USE_LANGUAGES=		c c++
 PKGCONFIG_OVERRIDE=	release/libturbojpeg.pc.in release/libjpeg.pc.in
 
 .include "../../mk/bsd.prefs.mk"
+
+# Resolve Mach-O runpaths and same-package providers structurally.
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+MACHO_USE_LOAD_COMMANDS=	yes
+.endif
 
 .if ${MACHINE_ARCH} == x86_64 || ${MACHINE_ARCH} == i386
 TOOL_DEPENDS+=	nasm-[0-9]*:../../devel/nasm
