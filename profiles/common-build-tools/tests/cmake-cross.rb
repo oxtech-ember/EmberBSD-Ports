@@ -6,6 +6,8 @@ require 'fileutils'
 require 'json'
 require 'open3'
 require 'shellwords'
+# Recipes are UTF-8; a clean environment has no locale to say so.
+Encoding.default_external = Encoding::UTF_8
 abort 'Usage: cmake-cross.rb EXPORTED_PKGSRC MAKECONF NEW_WORK' unless ARGV.length == 3
 tree, makeconf = ARGV.take(2).map { |p| File.realpath(p) }
 work = File.expand_path(ARGV[2])
