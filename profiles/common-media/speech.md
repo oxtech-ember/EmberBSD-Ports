@@ -1,6 +1,6 @@
 # Complete speech packages on EmberBSD
 
-Sonic, eSpeak NG 1.52.0nb5, Flite 2.2nb3 and speech-dispatcher 0.12.1nb6
+Sonic, eSpeak NG 1.52.0nb6, Flite 2.2nb3 and speech-dispatcher 0.12.1nb6
 cross-build on macOS for EmberBSD/AArch64 and pass bounded CM5 tests.
 They provide the speech dependency chain for Qt TextToSpeech and KDE.
 Ports owns the complete recipes, source pins and portability patches.
@@ -25,9 +25,11 @@ or submission is claimed.
   `uname` previously selected Darwin shared-library flags for an ELF link.
   The full CLI, header, static library and shared library remain packaged.
 - eSpeak builds its target executables and all language/phoneme/MBROLA data.
-  A private native compiler of exactly the same version generates the data;
-  the target ELF executable is never run on the Mac. The native builder
-  checks the source hash and records its compiler, tools and output hashes.
+  The native `audio/espeak-ng-generator` package of exactly the same release
+  generates the data; the target ELF executable is never run on the build
+  host. Cross builds declare it as a tool dependency, use
+  `${TOOLBASE}/libexec/espeak-ng-generator` and check its version before
+  configure. It uses the same distfile and checksums as `audio/espeak-ng`.
 - Flite retains its existing programs, headers and static archives, and adds
   shared voice libraries and PIC archives on the target BSD ABI. Its
   buildlink dependency now includes runtime installation. Qt discovers the
@@ -40,15 +42,15 @@ or submission is claimed.
   module also checks semaphore creation and retries interrupted waits.
   This does not disable or remove the fallback module.
 
-Build the native eSpeak compiler first:
+The cross build installs the native eSpeak data compiler into the tool
+prefix by itself; the MAKECONF needs no generator setting. Check the recipe
+selection with:
 
 ```sh
-AUTORECONF=/absolute/native-autoreconf GMAKE=/absolute/native-gmake \
-  CC=/absolute/native-cc CXX=/absolute/native-c++ JOBS=4 \
-  sh profiles/common-media/cross/build-espeak-host.sh DISTFILES NEW_WORK
+BMAKE=/path/to/bmake MAKECONF=/path/to/cross-mk.conf \
+  sh profiles/common-media/tests/espeak-generator.sh EXPORTED_PKGSRC NEW_WORK
 ```
 
-Set `EMBERBSD_ESPEAK_HOST=NEW_WORK/build/src/espeak-ng` in the cross MAKECONF.
 eSpeak NG depends on MBROLA 3.3, which uses the `gnu-agpl-v3` licence.
 pkgsrc builds it only after `ACCEPTABLE_LICENSES+= gnu-agpl-v3` in the
 MAKECONF. Without that line, the MBROLA, eSpeak NG, speech-dispatcher and

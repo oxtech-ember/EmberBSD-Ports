@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (espeak-ng-1.52.0.tar.gz) = 84417ee04860dd7242871a7df724e547641bfd6d128df493cb7f1051d8b12fd7
+SHA512 (espeak-ng-1.52.0.tar.gz) = 28793503f2be00505c3fe1dada8197a4e2d3af0d143e31ef883130fe2685d048ae9dee8efab637cdbe972461d95e210d2277b8e8fed4ae580d0cca8b505b0662
+Size (espeak-ng-1.52.0.tar.gz) = 17739803 bytes

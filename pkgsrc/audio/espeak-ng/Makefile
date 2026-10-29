@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.9 2026/09/02 19:00:46 wiz Exp $
 
 DISTNAME=	espeak-ng-1.52.0
-PKGREVISION=	5
+PKGREVISION=	6
 CATEGORIES=	audio
 MASTER_SITES=	${MASTER_SITE_GITHUB:=espeak-ng/}
 GITHUB_TAG=	${PKGVERSION_NOREV}
@@ -23,15 +23,19 @@ TEST_TARGET=	check
 .include "../../mk/bsd.prefs.mk"
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-.if empty(EMBERBSD_ESPEAK_HOST:M/*) || !empty(EMBERBSD_ESPEAK_HOST:C/[A-Za-z0-9_.\/-]//g) || !exists(${EMBERBSD_ESPEAK_HOST})
-PKG_FAIL_REASON+= "EMBERBSD_ESPEAK_HOST must name the verified native eSpeak NG 1.52.0 generator"
-.endif
-MAKE_FLAGS+= ESPEAK_GEN=${EMBERBSD_ESPEAK_HOST:Q}
-pre-configure: emberbsd-espeak-host-check
-.PHONY: emberbsd-espeak-host-check
-emberbsd-espeak-host-check:
-	${RUN}${EMBERBSD_ESPEAK_HOST} --version > ${WRKDIR}/.espeak-host-version 2>&1
-	${RUN}${GREP} '^eSpeak NG text-to-speech: 1[.]52[.]0 ' ${WRKDIR}/.espeak-host-version
+# Origin: EmberBSD (AI-assisted). The target espeak-ng cannot compile the
+# phoneme and dictionary data on the build host. The native data compiler
+# comes from audio/espeak-ng-generator and must be the same release.
+ESPEAK_GENERATOR_VERSION=	${PKGVERSION_NOREV}
+TOOL_DEPENDS+=	espeak-ng-generator-${ESPEAK_GENERATOR_VERSION}{,nb[0-9]*}:../../audio/espeak-ng-generator
+ESPEAK_GENERATOR=	${TOOLBASE}/libexec/espeak-ng-generator
+MAKE_FLAGS+=	ESPEAK_GEN=${ESPEAK_GENERATOR:Q}
+pre-configure: emberbsd-espeak-generator-check
+.PHONY: emberbsd-espeak-generator-check
+emberbsd-espeak-generator-check:
+	${RUN}${ESPEAK_GENERATOR:Q} --version > ${WRKDIR}/.espeak-generator-version 2>&1
+	${RUN}${GREP} '^eSpeak NG text-to-speech: ${ESPEAK_GENERATOR_VERSION:S/./[.]/g} ' \
+	    ${WRKDIR}/.espeak-generator-version
 .endif
 
 

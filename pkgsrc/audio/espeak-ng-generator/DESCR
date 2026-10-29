@@ -1,0 +1,5 @@
+The eSpeak NG data compiler, built for the build host. Cross builds of
+audio/espeak-ng run it to compile the phoneme, intonation, MBROLA and
+language dictionary tables, because the target espeak-ng program cannot
+run on the build host. The package installs only this program, without
+the speech library, voices or data.
