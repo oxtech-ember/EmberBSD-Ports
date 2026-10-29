@@ -1,0 +1,7 @@
+$NetBSD$
+
+BLAKE2s (ts-poet-6.12.0.tgz) = d61dd471694f8cee7393ee60567366826f3827456f8d706f32421984be41ac03
+SHA512 (ts-poet-6.12.0.tgz) = c68fa244d316ab2bd7a454da380bcb3c0e500163ba4d9ad252ce6ce0e75ac9addea6aa1f06efdf30b1c45a5f233e68e1034b3db208fdb0dbc5d4199a42599090
+Size (ts-poet-6.12.0.tgz) = 28417 bytes
+SHA1 (patch-build_Code.js) = cea7bc90f1b7e09b38bbdc464f7a8fe6563816c4
+SHA1 (patch-package.json) = ba164a94515b0af324bd3b8d0409cd7078944ca2
