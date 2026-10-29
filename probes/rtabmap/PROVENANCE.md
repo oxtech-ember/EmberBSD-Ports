@@ -137,8 +137,8 @@ concurrent joiners and a real Linux child-only creation failure exercise the fix
 
 ## Host tool and validation boundary
 
-The [resource-tool helper](build-resource-tool.sh) builds genuine upstream
-`rtabmap-res_tool` with native GCC16 through the upstream resource-only branch.
+The native `local-robotics/rtabmap-res-tool` package builds genuine upstream
+`rtabmap-res_tool` from Ports through the upstream resource-only branch.
 `ANDROID_PREBUILD` names that branch; it does not set the Android target.
 Cross code generation executes this native program. Native full builds retain
 build-tree RPATHs so the generator can load the new utilite before installation.

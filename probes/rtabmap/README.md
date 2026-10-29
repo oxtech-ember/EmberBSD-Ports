@@ -26,14 +26,14 @@ The PCL provider adds `surface`, `segmentation` and `ml` to the earlier profile;
 `geometry` and `2d` are header-only. [Codec helpers](codecs/README.md) reuse the
 canonical PNG and pinned pkgsrc JPEG recipes. Base zlib remains the provider.
 
-RTAB-Map generates database schema resources while building. Build the real
-upstream resource generator for the host first; an AArch64 executable cannot
-perform that step on the Linux host.
+RTAB-Map generates database schema resources while building. An AArch64
+executable cannot perform that step on the Linux host, so install the native
+`local-robotics/rtabmap-res-tool` package from Ports first and pass its
+`bin/rtabmap-res_tool`.
 
 ```sh
-sh probes/rtabmap/build-resource-tool.sh /absolute/rtabmap-0.23.8.tar.gz /absolute/new-host-tool
 CROSS_JOBS=2 sh probes/rtabmap/cross-build.sh /absolute/gcc-prefix /absolute/sysroot \
-  /absolute/rtabmap-0.23.8.tar.gz /absolute/new-host-tool/build/bin/rtabmap-res_tool \
+  /absolute/rtabmap-0.23.8.tar.gz /absolute/native-prefix/bin/rtabmap-res_tool \
   /absolute/new-cross-work
 ```
 
