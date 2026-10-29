@@ -32,16 +32,23 @@ def check(name)
 end
 
 base = [make, '-C', "#{tree}/devel/libepoll-shim", "MAKECONF=#{work}/mk.conf"]
-%w[missing 2].each do |value|
-  extra = value == 'missing' ? [] : ["EMBERBSD_EPOLL_ZERO_TIMER_EXITCODE=#{value}"]
-  out = run("#{work}/probe-#{value}.log", *base, *extra, 'show-var', 'VARNAME=PKG_FAIL_REASON')
-  check("rejects #{value} target zero-timer status") { out.include?('requires the measured EMBERBSD_EPOLL_ZERO_TIMER_EXITCODE=0 or 1') }
+refusal = 'requires the measured EMBERBSD_EPOLL_ZERO_TIMER_EXITCODE=0 or 1'
+forward = '-DALLOWS_ONESHOT_TIMERS_WITH_TIMEOUT_ZERO_EXITCODE:STRING='
+out = run("#{work}/probe-2.log", *base, 'EMBERBSD_EPOLL_ZERO_TIMER_EXITCODE=2', 'show-var', 'VARNAME=PKG_FAIL_REASON')
+check('rejects 2 target zero-timer status') { out.include?(refusal) }
+# Only AArch64 has a recorded target measurement (exit status 1).
+out = run("#{work}/probe-x86_64.log", *base, 'CROSS_MACHINE_ARCH=x86_64', 'show-var', 'VARNAME=PKG_FAIL_REASON')
+check('rejects a platform without a recorded zero-timer status') { out.include?(refusal) }
+out = run("#{work}/probe-aarch64.log", *base, 'CROSS_MACHINE_ARCH=aarch64', 'show-vars', 'VARNAMES=PKG_FAIL_REASON CMAKE_CONFIGURE_ARGS')
+lines = out.lines.map(&:chomp)
+check('uses the recorded AArch64 zero-timer status 1') do
+  !lines[0].to_s.include?(refusal) && Shellwords.split(lines[1].to_s).include?("#{forward}1")
 end
 %w[0 1].each do |value|
   out = run("#{work}/probe-#{value}.log", *base, "EMBERBSD_EPOLL_ZERO_TIMER_EXITCODE=#{value}", 'show-vars', 'VARNAMES=PKG_FAIL_REASON CMAKE_CONFIGURE_ARGS CROSS_DESTDIR')
   lines = out.lines.map(&:chomp)
   abort 'unexpected pkgsrc diagnostic lines' unless lines.length == 3
-  check("accepts and forwards explicit target zero-timer status #{value}") { lines[0].empty? && Shellwords.split(lines[1]).include?("-DALLOWS_ONESHOT_TIMERS_WITH_TIMEOUT_ZERO_EXITCODE:STRING=#{value}") }
+  check("accepts and forwards explicit target zero-timer status #{value}") { lines[0].empty? && Shellwords.split(lines[1]).include?("#{forward}#{value}") }
 end
 raw = File.readlines("#{work}/probe-1.log").map(&:chomp)
 sysroot = raw.fetch(2)

@@ -64,10 +64,13 @@ Their library, include and package searches are confined to the sysroot and
 buildlink tree; program searches use the build host. This prevents packages
 such as libepoll-shim from configuring as Darwin and adding `-arch arm64` to
 the NetBSD compiler command. The common cross-tools profile remains unchanged.
-libepoll-shim also runs a zero-timeout kqueue probe. Supply
+libepoll-shim also runs a zero-timeout kqueue probe. The profile uses the
+status recorded for `CROSS_MACHINE_ARCH` from target measurements (currently
+`1` on `aarch64`, see [Wayland](wayland.md)). Other platforms must supply
 `EMBERBSD_EPOLL_ZERO_TIMER_EXITCODE=0` or `1` from that probe on the selected
-target; absence or another value fails. The profile forwards the measured
-status to CMake and never guesses the target's kernel behavior.
+target; absence or another value fails, and an explicit value overrides the
+record. The profile forwards the status to CMake and never infers the
+target's kernel behavior from the build host.
 
 Build the [LLVM metadata helper](llvm-config.md) only after LLVM's target
 metadata is free of build-path leaks. For complete Mesa configuration, its

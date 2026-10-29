@@ -99,13 +99,22 @@ The current epoll-shim release performs a target `kqueue` timer probe in
 CMake. Cross configuration cannot infer the result from the build host.
 Execute the generated
 `ALLOWS_ONESHOT_TIMERS_WITH_TIMEOUT_ZERO_EXITCODE` probe on the target and
-record its hash, kernel identity and exit status. Set the measured
-`EMBERBSD_EPOLL_ZERO_TIMER_EXITCODE` to `0` or `1` in the private MAKECONF.
-Other values and an omitted measurement are rejected by the cross profile.
+record its hash, kernel identity and exit status. The cross profile keeps
+one recorded status per `CROSS_MACHINE_ARCH`; a platform without a record
+requires the measured `EMBERBSD_EPOLL_ZERO_TIMER_EXITCODE` (`0` or `1`) in
+the private MAKECONF. An explicit MAKECONF value overrides the record. Other
+values and an omitted measurement on an unrecorded platform are rejected.
 
-On the A733 NetBSD 11 target checked on 2026-10-08 the actual generated
-probe returned `1`, selecting the upstream zero-timer workaround. This
-result does not authorize hard-coding that answer for another target.
+Recorded measurements:
+
+| Platform | Target and date | Probe SHA-256 | Exit status |
+| --- | --- | --- | --- |
+| `aarch64` | A733, NetBSD 11, 2026-10-08 | not recorded | `1` |
+| `aarch64` | Zero 3W, NetBSD 11.0 `EMBER64` kernel of 2026-10-23, 2026-10-29 | `0122558a7ea57e5ce0983480cc1a945cb275fc391c5a703ad33f1f412bdff871` | `1` |
+
+Status `1` selects the upstream zero-timer workaround. Add a record for
+another platform only after the probe has been executed on that platform's
+target kernel.
 
 ## NetBSD adaptations
 
