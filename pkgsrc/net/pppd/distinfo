@@ -3,4 +3,4 @@ $NetBSD$
 BLAKE2s (ppp-2.5.4.tar.gz) = cc6c63ba9375d9817f91f0784230c8bacdc34addac14990f495f64acc4e99b72
 SHA512 (ppp-2.5.4.tar.gz) = 078075fc4f9fab07d44fab626d87def8f73c76a50d2bd52e7f84ad874a4bf6e9530d5f59fc77a20857f0049f58f84c3f6af0a17ccc60e0ffe6a34ddaf90159f4
 Size (ppp-2.5.4.tar.gz) = 1013028 bytes
-SHA1 (patch-ember_bsd) = 8f4cda3fb17778025a55c50571ecdc9827a71424
+SHA1 (patch-ember_bsd) = 26a9a64c617fbe826a264155b7438051204990c2

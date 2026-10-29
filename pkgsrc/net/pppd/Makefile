@@ -1,6 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	ppp-2.5.4
+PKGREVISION=	1
 PKGNAME=	${DISTNAME:S/ppp/pppd/}
 CATEGORIES=	net
 MASTER_SITES=	https://www.samba.org/ftp/ppp/

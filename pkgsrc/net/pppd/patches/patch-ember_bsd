@@ -1282,6 +1282,35 @@ Upstream status: not submitted.
  /*
   * chap_ms.h - Challenge Handshake Authentication Protocol definitions.
   *
+--- a/pppd/crypto.c
++++ b/pppd/crypto.c
+@@ -54,7 +54,7 @@
+ #endif
+ #endif
+ 
+-PPP_MD_CTX *PPP_MD_CTX_new()
++PPP_MD_CTX *PPP_MD_CTX_new(void)
+ {
+     return (PPP_MD_CTX*) calloc(1, sizeof(PPP_MD_CTX));
+ }
+@@ -196,7 +196,7 @@
+ }
+ 
+ 
+-int PPP_crypto_init()
++int PPP_crypto_init(void)
+ {
+     int retval = 0;
+ 
+@@ -225,7 +225,7 @@
+     return retval;
+ }
+ 
+-int PPP_crypto_deinit()
++int PPP_crypto_deinit(void)
+ {
+ #ifdef PPP_WITH_OPENSSL
+ #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 --- a/pppd/crypto.h
 +++ b/pppd/crypto.h
 @@ -55,7 +55,7 @@
@@ -2595,6 +2624,19 @@ Upstream status: not submitted.
  #include <sys/types.h>
  #include <sys/stat.h>
  #include <fcntl.h>
+--- a/pppd/ppp-md4.c
++++ b/pppd/ppp-md4.c
+@@ -336,8 +336,8 @@
+     byte = count >> 3;
+     bit =  count & 7;
+     /* Copy X into XX since we need to modify it */
+-    if (count)
+-      for (i=0;i<=byte;i++) XX[i] = X[i];
++    for (i=0;i<byte;i++) XX[i] = X[i];
++    XX[byte] = bit ? X[byte] : 0;
+     for (i=byte+1;i<64;i++) XX[i] = 0;
+     /* Add padding '1' bit and low-order zeros in last byte */
+     mask = 1 << (7 - bit);
 --- a/pppd/pppd-private.h
 +++ b/pppd/pppd-private.h
 @@ -46,10 +46,10 @@
