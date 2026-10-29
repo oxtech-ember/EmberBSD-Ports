@@ -12,7 +12,19 @@ COMMENT=	GNU Standards-compliant Makefile generator
 LICENSE=	gnu-gpl-v2
 
 AUTOCONF_REQD+=	2.73
+
+.include "../../mk/bsd.prefs.mk"
+
+# Origin: EmberBSD (AI-assisted). aclocal and automake neither run m4 nor
+# record its path; GNU m4 is a runtime dependency for the autoconf they
+# drive. pkgsrc refuses the build-host m4 as a target runtime tool, so a
+# cross build depends on the target m4 package instead.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+USE_TOOLS+=	autoconf gm4 perl:run
+DEPENDS+=	m4>=1.4:../../devel/m4
+.else
 USE_TOOLS+=	autoconf gm4:run perl:run
+.endif
 
 PLIST_SUBST+=		PKG_DIR_VERSION=1.19
 GNU_CONFIGURE=		yes

@@ -16,7 +16,7 @@ DEPENDS+=	urw-fonts-[0-9]*:../../fonts/urw-fonts
 
 USE_FEATURES=		getopt_long
 USE_LANGUAGES=		c c++
-USE_TOOLS+=		awk:run gmake perl pkg-config sed:run yacc
+USE_TOOLS+=		gmake perl pkg-config yacc
 GNU_CONFIGURE=		yes
 CONFIGURE_ARGS+=	--with-compatibility-wrappers=manual
 CONFIGURE_ARGS+=	--with-urw-fonts-dir=${PREFIX}/share/fonts/urw
@@ -33,6 +33,16 @@ TEST_TARGET=	check
 PLIST_SRC+=	${WRKDIR}/PLIST-local PLIST
 
 .include "../../mk/bsd.prefs.mk"
+
+# Origin: EmberBSD (AI-assisted). Of the installed programs, only gdiffmk runs
+# sed, and it runs "sed" from PATH; none runs or records awk. A NetBSD target
+# has both in its base system, so a cross build needs them on the build host
+# only. pkgsrc refuses the build-host awk and sed as target runtime tools.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
+USE_TOOLS+=	awk sed
+.else
+USE_TOOLS+=	awk:run sed:run
+.endif
 
 BUILD_DEFS+=	PAPERSIZE
 .if defined(PAPERSIZE)
