@@ -109,4 +109,9 @@ with tempfile.TemporaryDirectory() as tmp:
     nonmeson = fixture('.include "../../mk/bsd.prefs.mk"\n'
         '.include "../../devel/gobject-introspection/buildlink3.mk"\n', 'MESON_NATIVE_ARGS')
     assert '.meson-emberbsd-native-gi' not in nonmeson
+    glib_only = fixture('USE_TOOLS+= pkg-config\n.include "../../devel/meson/build.mk"\n'
+        '.include "../../devel/glib2/buildlink3.mk"\n', 'MESON_NATIVE_ARGS')
+    assert '.meson-emberbsd-native-glib' in glib_only
+    assert '.meson-emberbsd-native-gi' not in glib_only
+    assert '.meson-emberbsd-native-glib' not in minimal
 print('Native GLib stage loader environment PASS')

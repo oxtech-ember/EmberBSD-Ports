@@ -48,6 +48,7 @@ MESON_NATIVE_ARGS+=	${MESON_NATIVE_EXTRA_ARGS:U}
 # Relocate queries to the buildlink view for this stage only.
 .if ${OPSYS} == "Darwin" && !empty(EMBERBSD_NATIVE_STAGE_ROOT:U)
 .include "../../devel/gobject-introspection/native-stage-meson.mk"
+.include "../../devel/glib2/native-stage-meson-tools.mk"
 _MESON_STAGE_PKGCONF_ARG= --native-file ${WRKDIR:Q}/.meson-native-stage-pkgconf
 MESON_NATIVE_EXTRA_ARGS+= ${USE_TOOLS:Mpkg-config*:C,^.+$,${_MESON_STAGE_PKGCONF_ARG},}
 pre-configure: emberbsd-native-stage-pkgconf
