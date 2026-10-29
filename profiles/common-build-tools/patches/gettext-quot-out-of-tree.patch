@@ -1,0 +1,21 @@
+$NetBSD$
+
+Generate quotation catalogs in the GNU build directory.
+Origin: EmberBSD (AI-assisted).
+Upstream status: not submitted.
+
+--- gettext-tools/po/Rules-quot.orig
++++ gettext-tools/po/Rules-quot
+@@ -40,10 +40,10 @@
+ 	       ;; \
+ 	     esac } 2>/dev/null > $$tmpdir/$$lang.new.po \
+ 	     ; then \
+-	  if cmp $$lang.po $$tmpdir/$$lang.new.po >/dev/null 2>&1; then \
++	  if cmp "$$tmpdir/$$lang.po" "$$tmpdir/$$lang.new.po" >/dev/null 2>&1; then \
+ 	    rm -f $$tmpdir/$$lang.new.po; \
+ 	  else \
+-	    if mv -f $$tmpdir/$$lang.new.po $$lang.po; then \
++	    if mv -f "$$tmpdir/$$lang.new.po" "$$tmpdir/$$lang.po"; then \
+ 	      :; \
+ 	    else \
+ 	      echo "creation of $$lang.po failed: cannot move $$tmpdir/$$lang.new.po to $$lang.po" 1>&2; \

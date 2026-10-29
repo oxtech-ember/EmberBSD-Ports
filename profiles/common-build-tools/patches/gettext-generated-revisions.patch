@@ -20,7 +20,7 @@ Origin: EmberBSD (AI-assisted).
  
  PKGNAME=	${DISTNAME:S/-/-tools-/}
 -PKGREVISION=	3
-+PKGREVISION=	4
++PKGREVISION=	5
  COMMENT=	Tools for providing messages in different languages
  
  DISTINFO_FILE=	${.CURDIR}/../../devel/gettext/distinfo
