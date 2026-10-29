@@ -31,3 +31,4 @@ SHA1 (patch-src_gallium_winsys_sw_kms-dri_kms__dri__sw__winsys.c) = 2ecc18fe0f53
 SHA1 (patch-src_gtest_include_mesa-gtest-extras.h) = bc8524f8ed895b349b87641a577db2a479015752
 SHA1 (patch-src_gtest_meson.build) = d484234bfabba09c35f1f987f3527e38916e7351
 SHA1 (patch-src_util_u__dynarray.h) = 1a305aa5eb8d7b84482ab55362fa59d368289c14
+SHA1 (patch-src_intel_decoder_tests_genxml__test.c) = cdd7a5d525a38d7dba4d7bd95877d2aece404995

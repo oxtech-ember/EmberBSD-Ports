@@ -128,7 +128,7 @@ while IFS="$(printf '\t')" read -r name executable limit; do
     result=0
     case "$name" in
         genxml_test)
-            env -i PATH=/bin:/usr/bin:/sbin:/usr/sbin:/usr/pkg/bin "$timeout" "$limit" "$bundle/bin/$executable" -quiet \
+            env -i PATH=/bin:/usr/bin:/sbin:/usr/sbin:/usr/pkg/bin MESA_GENXML_TEST_DIR="$bundle/fixtures/genxml" "$timeout" "$limit" "$bundle/bin/$executable" -quiet \
                 > "$logs/$name.log" 2>&1 || result=$?;;
         xmlconfig)
             # Upstream's real fixture home belongs only to this child process.

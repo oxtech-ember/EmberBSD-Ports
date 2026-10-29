@@ -67,11 +67,12 @@ def target_matches(machine, arch):
 
 
 def main(argv):
-    require(len(argv) == 6, 'usage: prepare-mesa-package-tests.py CROSS_TOOLS SYSROOT MESA_SOURCE MESA_BUILD MESA_PACKAGE NEW_WORK')
+    require(len(argv) in (6, 7), 'usage: prepare-mesa-package-tests.py CROSS_TOOLS SYSROOT MESA_SOURCE MESA_BUILD MESA_PACKAGE NEW_WORK [LIBDRM_PACKAGE]')
     tools, sysroot, source, build, package = [Path(p).resolve(strict=True) for p in argv[:5]]
     work = Path(argv[5]); require(work.is_absolute() and not work.exists(), 'NEW_WORK must be a new absolute path')
     arch = os.environ.get('EMBERBSD_CROSS_ARCH', 'aarch64')
     require(arch in ('aarch64', 'x86_64'), 'unsupported Mesa target CPU')
+    libdrm_package = Path(argv[6]).resolve(strict=True) if len(argv) == 7 else None
     machine = {'aarch64': 183, 'x86_64': 62}[arch]
     owner = Path(__file__).resolve().parent; prefix = sysroot / 'usr/pkg'; bundle = work / 'bundle'
     family, cc, readelf, runtime_dir, command = render_command(tools, sysroot, arch, bundle / 'source/mesa-render.c', bundle / 'bin/mesa-render')
@@ -83,11 +84,16 @@ def main(argv):
         require(options[key] == value, f'unexpected Mesa option {key}')
     drivers = sorted(options['gallium-drivers']); zink = 'zink' in drivers; iris = 'iris' in drivers; radeon = 'radeonsi' in drivers
     require(not (iris or radeon) or arch == 'x86_64', 'Intel/Radeon require amd64')
+    require(bool(libdrm_package) == radeon, 'Radeon requires its libdrm package')
     expected = ['llvmpipe','softpipe','virgl'] + (['v3d'] if arch == 'aarch64' else []) + (['zink'] if zink else []) + (['iris'] if iris else []) + (['radeonsi'] if radeon else [])
     require(drivers == sorted(expected) and sorted(options['platforms']) == ['wayland','x11'], 'unexpected drivers/platforms')
     ninja = (build/'build.ninja').read_text()
     require(all(x in ninja for x in ('-DGALLIVM_USE_ORCJIT=1','-DLLVM_IS_SHARED=1','23.1.4')), 'shared LLVM ORC build required')
     inputs = [Path(__file__), owner/'mesa-render.c', owner/'run-mesa-package-tests.sh', cc, readelf, package, source/'VERSION', build/'build.ninja', build/'compile_commands.json'] + [info/n for n in ('intro-projectinfo.json','intro-buildoptions.json','intro-tests.json')]
+    if iris:
+        inputs.append(source / 'src/intel/decoder/tests/gentest.xml')
+    if radeon:
+        inputs.append(libdrm_package)
     initial = {str(p):digest(p) for p in inputs}
     for name in ('bin','source','fixtures'): (bundle/name).mkdir(parents=True, exist_ok=True)
     (work/'elf').mkdir(); (bundle/'target-arch.txt').write_text(arch+'\n')
@@ -142,6 +148,8 @@ def main(argv):
         cmd=test['cmd']; name=test['name']; executable=Path(cmd[0]).name
         if not cmd[0].startswith(str(build)+'/'): continue
         require(elf(cmd[0]), f'missing target test ELF: {name}')
+        if name == 'genxml_test':
+            require(b'MESA_GENXML_TEST_DIR\0' in Path(cmd[0]).read_bytes(), 'genxml test lacks relocated fixture support')
         require(cmd[1:] == (['-quiet'] if name == 'genxml_test' and iris else []), f'unhandled test arguments: {name}')
         require(all(re.fullmatch(r'[A-Za-z0-9_-]+', x) for x in (name,executable)) and test['workdir'] is None and test['protocol'] in ('exitcode','gtest'), f'unsupported test: {name}')
         expected_env = {'HOME':str(source/'src/util/tests/drirc_home'),'DRIRC_CONFIGDIR':str(source/'src/util/tests/drirc_configdir')} if name == 'xmlconfig' else ({'BUILD_FULL_PATH':cmd[0]} if name == 'process' else ({'BUILD_FULL_PATH':cmd[0],'MESA_PROCESS_NAME':'hello'} if name == 'process_with_overrides' else {}))
@@ -156,7 +164,27 @@ def main(argv):
     require(len(tests)>=37+(arch=='aarch64')+zink+(len(iris_tests) if iris else 0) and ('zink_format_test' in names)==zink and ('qpu_disasm' in names)==(arch=='aarch64') and sum(n.startswith('lp_test_') for n in names)==7 and 'xmlconfig' in names, 'missing expected upstream tests')
     (bundle/'upstream-tests.tsv').write_text(''.join('\t'.join(map(str,row))+'\n' for row in tests))
     for name in ('drirc_home','drirc_configdir'): shutil.copytree(source/'src/util/tests'/name,bundle/'fixtures'/name)
+    if iris:
+        (bundle/'fixtures/genxml').mkdir()
+        shutil.copy2(source/'src/intel/decoder/tests/gentest.xml', bundle/'fixtures/genxml/gentest.xml')
     runtime={}; seen=set(); queue=mesa_elfs+list((bundle/'bin').iterdir())
+    if radeon:
+        with tarfile.open(libdrm_package, 'r:gz') as tar:
+            members = tar.getmembers()
+            contents = [m for m in members if m.name == '+CONTENTS' and m.isfile()]
+            ids = [m for m in members if m.name.removeprefix('./') == 'share/libdrm/amdgpu.ids' and m.isfile()]
+            require(len(contents) == len(ids) == 1, 'invalid libdrm package inventory')
+            metadata = tar.extractfile(contents[0]).read().decode()
+            require(re.findall(r'^@name (.*)$', metadata, re.M) == ['libdrm-2.4.134nb8'] and
+                    set(re.findall(r'^@cwd (.*)$', metadata, re.M)) == {'/usr/pkg'}, 'unexpected libdrm package identity')
+            data = tar.extractfile(ids[0]).read()
+        installed_ids = prefix / 'share/libdrm/amdgpu.ids'
+        require(installed_ids.is_file() and not installed_ids.is_symlink() and
+                hashlib.sha256(data).hexdigest() == digest(installed_ids), 'installed amdgpu.ids differs from libdrm package')
+        require('share/libdrm/amdgpu.ids' in metadata.splitlines(), 'libdrm package does not register amdgpu.ids')
+        runtime['/usr/pkg/share/libdrm/amdgpu.ids'] = digest(installed_ids)
+        (bundle/'source/libdrm.CONTENTS').write_text(metadata)
+
     if zink:
         loader=prefix/'lib/libvulkan.so.1'; require(loader.is_file(), 'missing Zink loader'); queue.append(loader)
     while queue:

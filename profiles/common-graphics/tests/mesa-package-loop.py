@@ -29,14 +29,17 @@ def executable(path, body):
     path.chmod(0o755)
 probe = work / 'bundle/bin/test-probe'
 executable(probe, "printf 'executed actual fixture path\\n'\n")
-(work / 'bundle/upstream-tests.tsv').write_text('fixture\ttest-probe\t30\n')
+(work / 'bundle/fixtures/genxml').mkdir(parents=True)
+(work / 'bundle/fixtures/genxml/gentest.xml').write_text('fixture XML')
+executable(work / 'bundle/bin/genxml-test', '[ "$1" = -quiet ] && [ "$MESA_GENXML_TEST_DIR" = ' + shlex.quote(str(work / 'bundle/fixtures/genxml')) + ' ] && [ -f "$MESA_GENXML_TEST_DIR/gentest.xml" ]\n')
+(work / 'bundle/upstream-tests.tsv').write_text('fixture\ttest-probe\t30\ngenxml_test\tgenxml-test\t30\n')
 executable(work / 'tools/ldd', "printf 'libc.so.12 => /usr/lib/libc.so.12\\n'\n")
 timeout = work / 'timeout'
-executable(timeout, '[ "$1" = 30 ] || exit 91\nshift\n[ "$1" = ' + shlex.quote(str(probe)) + ' ] || exit 92\nexec "$@"\n')
+executable(timeout, '[ "$1" = 30 ] || exit 91\nshift\ncase "$1" in ' + shlex.quote(str(probe)) + '|' + shlex.quote(str(work / 'bundle/bin/genxml-test')) + ') ;; *) exit 92;; esac\nexec "$@"\n')
 setup = f'set -eu\nbundle={shlex.quote(str(work / "bundle"))}\nlogs={shlex.quote(str(work / "logs"))}\ntimeout={shlex.quote(str(timeout))}\n'
 result = subprocess.run(['sh', '-c', setup + loader + '\n' + loop], env={**os.environ, 'PATH': str(work / 'tools') + ':' + os.environ['PATH']}, capture_output=True, text=True)
 (work / 'loop.log').write_text('Host shell fixture only; no target runtime tested.\n' + result.stdout + result.stderr)
-if result.returncode or 'START fixture' not in result.stdout or 'executed actual fixture path' not in (work / 'logs/fixture.log').read_text():
+if result.returncode or ('START fixture' not in result.stdout or 'PASS genxml_test' not in result.stdout) or 'executed actual fixture path' not in (work / 'logs/fixture.log').read_text():
     raise ValueError('production loop failed or lost executable name')
 print('PASS: production loader and test loop')
 render_timeout = work / 'render-timeout'

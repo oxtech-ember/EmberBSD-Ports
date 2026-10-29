@@ -95,11 +95,16 @@ After installing the real package into the matching sysroot, run:
 ```sh
 /absolute/native-prefix/bin/python3.15 -B prepare-mesa-package-tests.py /absolute/cross-tools /absolute/sysroot \
     /absolute/prepared-mesa-26.2.5 /absolute/mesa-build \
-    /absolute/MesaLib-26.2.5nb8.tgz /absolute/new-acceptance-work
+    /absolute/MesaLib-26.2.5nb9.tgz /absolute/new-acceptance-work \
+    /absolute/libdrm-2.4.134nb8.tgz
 ```
 
 The helper compiles the existing EGL/GLES pixel consumer against installed
 headers and libraries. It copies target ELF invocations from the actual Meson build.
+For RadeonSI, pass the exact libdrm package as the final argument. The helper
+checks its identity, registered amdgpu.ids and installed bytes, then records
+that data file in the runtime manifest. Omit that argument for non-Radeon builds.
+The Intel `genxml_test` receives its bundled, hashed XML fixture directory.
 Set `EMBERBSD_CROSS_ARCH=x86_64` for the amd64 build;
 the default remains AArch64. The nb8 AArch64 configuration has 39 invocations,
 including seven llvmpipe JIT tests, the V3D QPU disassembler, and the Zink format
