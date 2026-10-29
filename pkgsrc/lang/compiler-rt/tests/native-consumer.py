@@ -39,6 +39,13 @@ if args.stage:
     installed = Path(args.stage) / str(host).lstrip('/')
     common += ['-nostdinc++', '-isystem', str(installed / 'include/libc++/v1'),
                '-L' + str(installed / 'lib/libc++'), '-stdlib=libc++']
+    # The Darwin ABI view contains only the selected SDK's two ABI headers;
+    # it must not expose a second full standard-library header tree.
+    abi_view = work / 'darwin-cxxabi'
+    abi_view.mkdir()
+    for name in ('cxxabi.h', '__cxxabi_config.h'):
+        (abi_view / name).symlink_to(Path(args.macos_sdk) / 'usr/include/c++/v1' / name)
+    common += ['-idirafter', str(abi_view)]
     env['DYLD_LIBRARY_PATH'] = str(installed / 'lib/libc++')
 else:
     installed = host
@@ -51,6 +58,12 @@ process.run_logged(common + [str(files / 'native-consumer.cc'), '-L' + str(work)
     '-Wl,-rpath,' + str(work), '-o', str(main)], str(work / 'main.log'), env=env)
 env['DYLD_PRINT_LIBRARIES'] = '1'
 process.run_logged([str(main)], str(work / 'run.log'), env=env)
-if str((installed / 'lib/libc++/libc++.1.dylib').resolve()) not in (work / 'run.log').read_text():
+if str((installed / 'lib/libc++/libc++_ember1.1.dylib').resolve()) not in (work / 'run.log').read_text():
     raise SystemExit('expected selected libc++ was not loaded')
-print('native filesystem, locale, thread and cross-DSO exception consumer PASS')
+objc = work / 'objc-consumer'
+process.run_logged(common + ['-fobjc-arc', str(files / 'native-consumer-objc.mm'),
+    '-framework', 'Foundation', '-o', str(objc)], str(work / 'objc-build.log'), env=env)
+process.run_logged([str(objc)], str(work / 'objc-run.log'), env=env)
+if str((installed / 'lib/libc++/libc++_ember1.1.dylib').resolve()) not in (work / 'objc-run.log').read_text():
+    raise SystemExit('Objective-C consumer did not load selected libc++')
+print('native filesystem, streams, locale, threads, demangle, Objective-C and cross-DSO exceptions PASS')

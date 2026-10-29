@@ -45,6 +45,7 @@ def cmake_arguments(source, work, prefix, sdk, minimum, native, bindings):
         LLVM_INCLUDE_BENCHMARKS='OFF', LIBCXX_INCLUDE_TESTS='OFF',
         LIBCXX_INCLUDE_BENCHMARKS='OFF', LIBCXX_INCLUDE_DOCS='OFF',
         LIBCXX_HARDENING_MODE='extensive', LIBCXX_ABI_VERSION='1',
+        LIBCXX_ABI_NAMESPACE='__ember1', LIBCXX_SHARED_OUTPUT_NAME='c++_ember1',
         LIBCXX_INSTALL_INCLUDE_DIR='include/libc++/v1',
         LIBCXX_INSTALL_INCLUDE_TARGET_DIR='include/libc++/v1',
         LIBCXX_INSTALL_LIBRARY_DIR='lib/libc++',
@@ -66,7 +67,7 @@ def validate_darwin_load_commands(text, prefix):
         name = re.search(r'(?m)^\s*name (.+?) \(offset [0-9]+\)\s*$', block)
         if command and name:
             commands.append((command.group(1), name.group(1)))
-    expected = str(prefix / 'lib/libc++/libc++.1.dylib')
+    expected = str(prefix / 'lib/libc++/libc++_ember1.1.dylib')
     owner.require([name for kind, name in commands if kind == 'LC_ID_DYLIB'] == [expected],
                   'native libc++ install name differs from selected prefix')
     owner.require(('LC_REEXPORT_DYLIB', '/usr/lib/libc++abi.dylib') in commands,
@@ -130,11 +131,20 @@ def main(arguments):
         owner.require(owner.verify_source(source, args.git) == prepared, 'runtime source changed during build')
         installed = stage / str(prefix).lstrip('/')
         config = installed / 'include/libc++/v1/__config_site'
-        owner.require(config.is_file() and '#define _LIBCPP_ABI_NAMESPACE __1' in config.read_text() and
+        owner.require(config.is_file() and '#define _LIBCPP_ABI_NAMESPACE __ember1' in config.read_text() and
                       '#define _LIBCPP_HARDENING_MODE_DEFAULT 16' in config.read_text(),
                       'installed libc++ does not expose the selected ABI/hardening')
-        dylib = installed / 'lib/libc++/libc++.1.dylib'
-        owner.require(dylib.is_file(), 'installed libc++ dylib missing')
+        library = installed / 'lib/libc++'
+        dylib = library / 'libc++_ember1.1.dylib'
+        generated_link = library / 'libc++_ember1.dylib'
+        linker_link = library / 'libc++.dylib'
+        owner.require(dylib.is_file() and generated_link.is_symlink() and
+                      os.readlink(generated_link) == dylib.name and
+                      not os.path.lexists(linker_link) and
+                      not os.path.lexists(library / 'libc++.1.dylib'),
+                      'unexpected native libc++ library layout')
+        generated_link.unlink()
+        linker_link.symlink_to(dylib.name)
         load_commands = owner.process.capture([native.tool('objdump'), '--macho', '--private-headers',
                                                str(dylib)], env=env).stdout.decode('utf-8', 'strict')
         validate_darwin_load_commands(load_commands, prefix)

@@ -40,6 +40,8 @@ assert options['LIBCXX_CXX_ABI'] == 'system-libcxxabi'
 assert options['LIBCXX_CXX_ABI_INCLUDE_PATHS'] == '/sdk/usr/include/c++/v1'
 assert options['LIBCXX_HARDENING_MODE'] == 'extensive'
 assert options['LIBCXX_ABI_VERSION'] == '1'
+assert options['LIBCXX_ABI_NAMESPACE'] == '__ember1'
+assert options['LIBCXX_SHARED_OUTPUT_NAME'] == 'c++_ember1'
 assert options['LIBCXX_INSTALL_INCLUDE_DIR'] == 'include/libc++/v1'
 assert options['LIBCXX_INSTALL_INCLUDE_TARGET_DIR'] == 'include/libc++/v1'
 assert options['LIBCXX_INSTALL_LIBRARY_DIR'] == 'lib/libc++'
@@ -52,7 +54,7 @@ class SDKError(Exception):
 mod.owner.require = lambda condition, message: None if condition else (_ for _ in ()).throw(SDKError(message))
 fixture = '''Load command 1
           cmd LC_ID_DYLIB
-         name /host/lib/libc++/libc++.1.dylib (offset 24)
+         name /host/lib/libc++/libc++_ember1.1.dylib (offset 24)
 Load command 2
           cmd LC_REEXPORT_DYLIB
          name /usr/lib/libc++abi.dylib (offset 24)
@@ -61,7 +63,7 @@ Load command 3
          name /usr/lib/libSystem.B.dylib (offset 24)
 '''
 mod.validate_darwin_load_commands(fixture, Path('/host'))
-for invalid in (fixture.replace('/host/lib/libc++/libc++.1.dylib', '@rpath/libc++.1.dylib'),
+for invalid in (fixture.replace('/host/lib/libc++/libc++_ember1.1.dylib', '@rpath/libc++_ember1.1.dylib'),
                 fixture.replace('LC_REEXPORT_DYLIB', 'LC_LOAD_DYLIB'),
                 fixture.replace('/usr/lib/libSystem.B.dylib', '/tmp/foreign.dylib')):
     try:
