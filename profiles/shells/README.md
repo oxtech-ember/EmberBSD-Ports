@@ -25,7 +25,7 @@ bytes and is not substituted for the release distfile.
 Initialize the pinned pkgsrc submodule, then prepare the standard export:
 
 ```sh
-git submodule update --init upstream/pkgsrc
+git submodule update --init --depth 1 upstream/pkgsrc
 # Provide a verified source-data export at /absolute/new-pkgsrc. See the root README.
 ```
 

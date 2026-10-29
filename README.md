@@ -881,10 +881,14 @@ tabs between the fields. The export uses them in the order of the file:
 - `file SOURCE DEST` copies a configuration file or helper into the export.
 
 Source preparation needs Python, Git and patch. It does not compile code
-or require an existing SDK or host GCC16 installation:
+or require an existing SDK or host GCC16 installation. It reads only the
+pinned pkgsrc commit, so `--depth 1` skips the pkgsrc history. A `shallow`
+setting in `.gitmodules` or `clone --shallow-submodules` would still fetch
+the history below a pin that is not the upstream branch tip
+(`scripts/tests/test_pkgsrc_submodule_depth.py`):
 
 ```sh
-git submodule update --init upstream/pkgsrc
+git submodule update --init --depth 1 upstream/pkgsrc
 python3 -B scripts/prepare-pkgsrc.py /absolute/new-pkgsrc \
     --git /absolute/git --patch /absolute/patch
 ```

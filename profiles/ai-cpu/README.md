@@ -48,9 +48,9 @@ build dependencies normally and may request administrator access to install
 them. Keep enough disk space for the full pkgsrc checkout and working copy.
 
 ```sh
-git clone --recurse-submodules --shallow-submodules \
-  https://github.com/oxtech-ember/EmberBSD-Ports.git
+git clone https://github.com/oxtech-ember/EmberBSD-Ports.git
 cd EmberBSD-Ports
+git submodule update --init --depth 1 upstream/pkgsrc
 work=/var/tmp/emberbsd-ai-build
 mkdir "$work"
 # Provide a verified source-data export at "$work/pkgsrc". See the root README.

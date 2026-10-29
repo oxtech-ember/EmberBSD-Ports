@@ -453,7 +453,7 @@ def export_pkgsrc(root, destination, *, selection, runner, scratch):
             raise
         actual = b''
     require(len(pins) == 1 and pins[0] == actual,
-            'Initialize the pinned submodule with git submodule update --init upstream/pkgsrc.')
+            'Initialize the pinned submodule with git submodule update --init --depth 1 upstream/pkgsrc.')
     revision = pins[0].decode('ascii')
     scratch.mkdir(mode=0o700)
     archive = Path(scratch) / 'pkgsrc.tar'
