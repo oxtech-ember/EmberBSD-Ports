@@ -1,0 +1,16 @@
+# $NetBSD$
+# Origin: EmberBSD (AI-assisted). One KDocTools source for the target
+# framework and its native generators.
+#
+# used by devel/kf6-kdoctools/Makefile
+# used by devel/kf6-kdoctools-generators/Makefile
+
+DISTNAME=	kdoctools-${KF6VER}
+CATEGORIES=	devel
+
+HOMEPAGE=	https://community.kde.org/Frameworks
+LICENSE=	gnu-lgpl-v2.1
+
+EMBERBSD_KDOCTOOLS_PKGDIR:=	${.PARSEDIR:tA}
+DISTINFO_FILE=	${EMBERBSD_KDOCTOOLS_PKGDIR}/distinfo
+PATCHDIR=	${EMBERBSD_KDOCTOOLS_PKGDIR}/patches

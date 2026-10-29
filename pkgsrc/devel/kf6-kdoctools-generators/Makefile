@@ -1,17 +1,12 @@
 # $NetBSD$
 # Origin: EmberBSD (AI-assisted). Native KDocTools generators for cross builds.
 
-DISTNAME=	kdoctools-${KF6VER}
 PKGNAME=	kf6-kdoctools-generators-${KF6VER}
-CATEGORIES=	devel
 
-HOMEPAGE=	https://community.kde.org/Frameworks
 COMMENT=	Native KDocTools generators for cross-built KDE documentation
-LICENSE=	gnu-lgpl-v2.1
 
 # The same release, distfile and patches as the target devel/kf6-kdoctools.
-DISTINFO_FILE=	${.CURDIR}/../../devel/kf6-kdoctools/distinfo
-PATCHDIR=	${.CURDIR}/../../devel/kf6-kdoctools/patches
+.include "../../devel/kf6-kdoctools/Makefile.common"
 
 .include "../../meta-pkgs/kde/kf6.mk"
 
