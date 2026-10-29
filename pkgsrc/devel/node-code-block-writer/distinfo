@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (code-block-writer-13.0.3.tgz) = 2011827c99ed59da0de23ef202575f22ac2d7e9280546a7e5b9560f7c7329e68
+SHA512 (code-block-writer-13.0.3.tgz) = 3a87e8d29ab720a9ec16db87a9217b4ea05fafbd5a7b2643549d07a66a81ec504cdaa12280bd223ce35209948ef6913d7594c0c4035ee571c6f54cb460cbfc72
+Size (code-block-writer-13.0.3.tgz) = 13916 bytes
