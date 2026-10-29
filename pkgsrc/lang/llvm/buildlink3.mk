@@ -10,8 +10,8 @@ BUILDLINK_API_DEPENDS.llvm+=	llvm>=23.1.4
 BUILDLINK_PKGSRCDIR.llvm?=	../../lang/llvm
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
-BUILDLINK_API_DEPENDS.llvm+= llvm>=23.1.4nb1
-BUILDLINK_ABI_DEPENDS.llvm+= llvm>=23.1.4nb1
+BUILDLINK_API_DEPENDS.llvm+= llvm>=23.1.4nb2
+BUILDLINK_ABI_DEPENDS.llvm+= llvm>=23.1.4nb2
 .include "../../lang/llvm-devel/buildlink3.mk"
 .endif
 

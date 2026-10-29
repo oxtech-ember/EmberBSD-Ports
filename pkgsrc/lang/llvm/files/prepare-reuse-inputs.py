@@ -90,7 +90,7 @@ def prepare(template, output, bmake, package, receipt, sdk_source):
     files['native_tools'] = sorted(set(files['native_tools'] + [canonical_existing(path) for path in native]))
     files['sdk_api'] = sorted(str(p) for p in Path(sdk_source, 'src', 'emberbsd_sdk').rglob('*.py'))
     makefiles = [canonical_existing(os.path.join(package, path)) for path in shlex.split(row['.MAKE.MAKEFILES'])]
-    files['pkgsrc'] = sorted({path for path in makefiles if not any(path.startswith(root + '/') for root in (recipe, sdk_recipe))})
+    files['pkgsrc'] = sorted({path for path in makefiles if not any(path.startswith(root + '/') for root in (recipe, sdk_recipe))} | {canonical_existing(recipe + '/../compiler-rt/application-runtime.mk')})
     reuse.check(os.path.isabs(output) and os.path.isdir(os.path.dirname(output)) and not os.path.islink(output), 'Regular context output path required')
     output = canonical_new(output)
     reuse.reject_overlaps(output, reuse.input_roots(value), 'Context output overlaps LLVM inputs')

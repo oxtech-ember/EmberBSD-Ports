@@ -2,7 +2,7 @@
 
 `pkgsrc/lang/llvm/files/reuse-package-stage.py` validates a repeat installation
 from one accepted LLVM 23.1.4 cross build. It does not build LLVM, install a
-package into a sysroot, or create a package identity. The opt-in pkgsrc adapter retains ordinary SDK package checks.
+package into a sysroot, or create a package identity. The opt-in pkgsrc adapter retains ordinary package checks.
 Acceptance of an actual runtime/SDK pair remains a separate build result.
 
 Before recording a reference, complete the ordinary runtime package checks and
@@ -138,7 +138,7 @@ Use the generated context with `record`. Pin the accepted receipt hash. Check
 that the ordinary SDK target dependencies are already installed before starting
 its package phase. Coordinate any provider replacement separately.
 
-For the SDK package, set the explicit SDK source and all four reuse variables:
+For either the runtime or SDK package, set the explicit SDK source and all four reuse variables:
 
 ```sh
 bmake package \
@@ -149,11 +149,11 @@ bmake package \
   EMBERBSD_LLVM_REUSE_SHA256=ACCEPTED_SHA256
 ```
 
-This opt-in is valid only for the separate NetBSD cross SDK. Its private WRKSRC
+This opt-in is valid for the NetBSD cross runtime and separate SDK. Its private WRKSRC
 holds pkgsrc state. `NO_BUILD` and `NO_CONFIGURE` prevent another LLVM compile.
 The extract and patch overrides verify the accepted context; pkgsrc creates its
 normal phase cookies. The install override repeats CMake installation into the
-private SDK DESTDIR. The full-stage equality gate runs before the existing SDK
+private package DESTDIR. The full-stage equality gate runs before the selected
 partition selector and ordinary package checks. Source and object trees stay at
 the accepted common location. Native full LLVM and default cross builds retain
 their existing path.

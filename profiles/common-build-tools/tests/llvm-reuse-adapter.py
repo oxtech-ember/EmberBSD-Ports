@@ -52,7 +52,7 @@ for key in fields:
 result = invoke(command)
 assert result.returncode == 0, result.stdout
 row = dict(zip(fields, result.stdout.splitlines()))
-value = fixture(work, sdk_source, row['CMAKE'], source, build, tree / 'lang/llvm', tree / 'lang/llvm-devel', wrapper=False, include_empty=False)
+value = fixture(work, sdk_source, row['CMAKE'], source, build, tree / 'lang/llvm', tree / 'lang/llvm-devel', wrapper=False, include_empty=False, arch=row['MACHINE_ARCH'])
 value['runtime_work'] = str(common)
 value['flags'] = {'obsolete': 'must not be copied'}
 family = row['EMBERBSD_CROSS_COMPILER_FAMILY']
@@ -151,8 +151,8 @@ for target in ('do-extract', 'do-patch', 'do-install'):
     assert not (work / 'reuse-sdk/.destdir').exists() or not reuse.tree(str(work / 'reuse-sdk/.destdir'))
     checks.append(target + ' refuses unaccepted receipt before writes')
 result = invoke(base + ['-C', str(tree / 'lang/llvm'), '-v', 'PKG_FAIL_REASON'])
-assert result.returncode == 0 and 'requires the separate NetBSD cross SDK' in result.stdout
-checks.append('runtime rejects SDK reuse')
+assert result.returncode == 0 and not result.stdout.strip(), result.stdout
+checks.append('runtime accepts cross reuse')
 reference = work / 'reference'
 reference.mkdir()
 accepted = work / 'accepted.json'
@@ -167,6 +167,14 @@ for target in ('do-extract', 'do-patch', 'do-install'):
     assert reuse.snapshot(runtime) == before
 assert reuse.tree(str(work / 'reuse-sdk/.destdir/usr/pkg')) == json.loads(accepted.read_text())['stage']
 checks.append('actual make hooks install exact stage without object writes')
+runtime_args = [arg.replace(str(tree / 'lang/llvm-devel'), str(tree / 'lang/llvm')).replace(str(work / 'reuse-sdk'), str(work / 'reuse-runtime')) for arg in accepted_args]
+(work / 'reuse-runtime').mkdir()
+for target in ('do-extract', 'do-patch', 'do-install'):
+    result = invoke(runtime_args + [target], 'runtime-' + target)
+    assert result.returncode == 0, result.stdout
+    assert reuse.snapshot(runtime) == before
+assert reuse.tree(str(work / 'reuse-runtime/.destdir/usr/pkg')) == json.loads(accepted.read_text())['stage']
+checks.append('runtime make hooks install exact stage without object writes')
 result = invoke(accepted_args + ['llvm-select-stage'], 'ordinary-selector')
 assert result.returncode and 'missing complete-stage file:' in result.stdout, result.stdout
 checks.append('ordinary PLIST check rejects incomplete LLVM fixture')

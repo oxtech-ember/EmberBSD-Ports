@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Explicit reuse of accepted cross LLVM objects.
 .if defined(EMBERBSD_LLVM_REUSE_RECEIPT) && ${EMBERBSD_LLVM_REUSE_QUERY:Uno} != "yes"
-.if !defined(EMBERBSD_LLVM_DEVEL) || ${USE_CROSS_COMPILE:Uno:tl} != "yes" || ${OPSYS} != "NetBSD"
-PKG_FAIL_REASON+= "LLVM object reuse requires the separate NetBSD cross SDK"
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes" || ${OPSYS} != "NetBSD" || \
+    (${PKGPATH} != "lang/llvm" && ${PKGPATH} != "lang/llvm-devel")
+PKG_FAIL_REASON+= "LLVM object reuse requires a NetBSD cross runtime or SDK"
 .endif
 .for _llvm_input in EMBERBSD_LLVM_REUSE_INPUTS EMBERBSD_LLVM_REUSE_RECEIPT EMBERBSD_LLVM_REUSE_PYTHON
 .if empty(${_llvm_input}:M/*) || !exists(${${_llvm_input}})
