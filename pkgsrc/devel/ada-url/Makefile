@@ -1,9 +1,11 @@
 # $NetBSD$
 DISTNAME= ada-4.0.0
+PKGREVISION= 1
 PKGNAME= ada-url-4.0.0
 WRKSRC= ${WRKDIR}/${DISTNAME}
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=ada-url/}
+GITHUB_PROJECT= ada
 GITHUB_TAG= v4.0.0
 HOMEPAGE= https://github.com/ada-url/ada
 COMMENT= WHATWG URL parser and URLPattern library
@@ -15,6 +17,7 @@ CMAKE_CONFIGURE_ARGS+= -DBUILD_SHARED_LIBS=ON -DADA_TESTING=${ADA_PORTS_TESTING}
 BUILDLINK_PASSTHRU_RPATHDIRS+= ${WRKDIR}/${DISTNAME}/cmake-pkgsrc-build/src
 TEST_TARGET= test
 .include "../../mk/bsd.prefs.mk"
+.include "../../mk/emberbsd-native-cxx-runtime.mk"
 .if ${OPSYS} == "Darwin"
 ADA_LIB= libada.dylib
 ADA_SOVERSION= libada.4.dylib

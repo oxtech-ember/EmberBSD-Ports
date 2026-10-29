@@ -1,9 +1,11 @@
 # $NetBSD$
 DISTNAME= idna-0.7.0
+PKGREVISION= 1
 PKGNAME= ada-${DISTNAME}
 WRKSRC= ${WRKDIR}/${DISTNAME}
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=ada-url/}
+GITHUB_PROJECT= idna
 GITHUB_TAG= v${PKGVERSION_NOREV}
 HOMEPAGE= https://github.com/ada-url/idna
 COMMENT= Unicode IDNA processing library
@@ -14,6 +16,7 @@ CMAKE_CONFIGURE_ARGS+= -DBUILD_SHARED_LIBS=ON -DBUILD_TESTING=ON -DADA_USE_SIMDU
 BUILDLINK_PASSTHRU_RPATHDIRS+= ${WRKDIR}/${DISTNAME}/cmake-pkgsrc-build/src
 TEST_TARGET= test
 .include "../../mk/bsd.prefs.mk"
+.include "../../mk/emberbsd-native-cxx-runtime.mk"
 .if ${OPSYS} == "Darwin"
 IDNA_LIB= libada-idna.dylib
 IDNA_SOVERSION= libada-idna.0.dylib
