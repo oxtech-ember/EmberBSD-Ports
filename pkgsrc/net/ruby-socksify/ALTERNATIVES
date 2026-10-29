@@ -1,0 +1,1 @@
+bin/socksify_ruby @PREFIX@/bin/socksify_ruby@RUBY_SUFFIX@

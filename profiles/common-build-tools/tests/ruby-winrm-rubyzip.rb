@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # SPDX-License-Identifier: BSD-2-Clause
-# Origin: EmberBSD (AI-assisted); WinRM gems load and zip files with the one kept rubyzip.
+# Origin: EmberBSD (AI-assisted); the chef-winrm gems load and zip files with the one kept rubyzip.
 require 'open3'
 require 'fileutils'
 require 'rubygems/package'
@@ -20,6 +20,10 @@ def vars(tree, makeconf, pkgpath, *names)
 end
 
 KEPT_ZIP = 'archivers/ruby-zip'
+# train-winrm 0.4 uses the chef-winrm forks; the original gems are versions.mk redirects.
+%w[net/ruby-winrm net/ruby-winrm-fs net/ruby-winrm-elevated textproc/ruby-gyoku].each do |old|
+  abort "the export still has #{old}" if File.exist?("#{tree}/#{old}/Makefile")
+end
 zip = vars(tree, makeconf, KEPT_ZIP, 'PKGNAME', 'PKG_FAIL_REASON')
 abort "#{KEPT_ZIP}: #{zip['PKG_FAIL_REASON']}" unless zip['PKG_FAIL_REASON'].empty?
 zip_version = zip['PKGNAME'][/-([0-9][^-]*)\z/, 1].sub(/nb\d+\z/, '')
@@ -47,7 +51,8 @@ until queue.empty?
     queue << dep_path
   end
 end
-%w[net/ruby-winrm net/ruby-winrm-fs net/ruby-winrm-elevated].each do |pkgpath|
+%w[net/ruby-chef-winrm net/ruby-chef-winrm-fs net/ruby-chef-winrm-elevated textproc/ruby-chef-gyoku
+   net/ruby-socksify].each do |pkgpath|
   abort "train-winrm does not pull in #{pkgpath}" unless seen[pkgpath]
 end
 abort "train-winrm does not pull in #{KEPT_ZIP}" unless seen[KEPT_ZIP]
@@ -84,11 +89,13 @@ File.write("#{src}/sub/charlie.txt", "charlie\n" * 100)
 env = { 'GEM_HOME' => home, 'GEM_PATH' => [home, Gem.default_dir].join(File::PATH_SEPARATOR) }
 code = <<~'RUBY'
   gem 'train-winrm'
-  require 'winrm'
-  require 'winrm-fs'
-  require 'winrm-fs/core/tmp_zip'
-  require 'winrm-elevated'
-  puts Gem.loaded_specs.values_at('rubyzip', 'winrm', 'winrm-fs', 'winrm-elevated', 'train-winrm')
+  require 'chef-winrm'
+  require 'chef-winrm-fs'
+  require 'chef-winrm-fs/core/tmp_zip'
+  require 'chef-winrm-elevated'
+  require 'socksify'
+  puts Gem.loaded_specs.values_at('rubyzip', 'chef-winrm', 'chef-winrm-fs', 'chef-winrm-elevated', 'chef-gyoku',
+                            'socksify', 'train-winrm')
           .map { |s| s&.full_name }.join(' ')
   tmp = WinRM::FS::Core::TmpZip.new(ARGV[0])
   Zip::File.open(tmp.path.to_s) do |z|
@@ -106,4 +113,4 @@ abort "WinRM did not load rubyzip #{zip_version}:\n#{out}" unless lines.first.st
   abort "TmpZip output lacks #{line}:\n#{out}" unless lines.include?(line)
 end
 puts lines.first
-puts "PASS: winrm, winrm-fs, winrm-elevated and train-winrm load with rubyzip #{zip_version} and TmpZip writes a deflated zip"
+puts "PASS: chef-winrm, chef-winrm-fs, chef-winrm-elevated, socksify and train-winrm load with rubyzip #{zip_version} and TmpZip writes a deflated zip"

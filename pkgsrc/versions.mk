@@ -33,8 +33,13 @@ EMBERBSD_VERSION_FAMILIES+=	www/ruby-faraday-rack1=www/ruby-faraday-rack
 EMBERBSD_VERSION_FAMILIES+=	www/ruby-faraday-retry1=www/ruby-faraday-retry
 EMBERBSD_VERSION_FAMILIES+=	www/ruby-faraday_middleware=www/ruby-faraday
 EMBERBSD_VERSION_FAMILIES+=	devel/ruby-octokit4=devel/ruby-octokit
-# rubyzip 3; winrm-fs 1.3.7 needs it.
+# rubyzip 3; chef-winrm-fs 1.4.4 needs it.
 EMBERBSD_VERSION_FAMILIES+=	archivers/ruby-zip24=archivers/ruby-zip
+# train-winrm 0.4 uses the chef-winrm forks of winrm, winrm-fs, winrm-elevated and gyoku.
+EMBERBSD_VERSION_FAMILIES+=	net/ruby-winrm=net/ruby-chef-winrm
+EMBERBSD_VERSION_FAMILIES+=	net/ruby-winrm-fs=net/ruby-chef-winrm-fs
+EMBERBSD_VERSION_FAMILIES+=	net/ruby-winrm-elevated=net/ruby-chef-winrm-elevated
+EMBERBSD_VERSION_FAMILIES+=	textproc/ruby-gyoku=textproc/ruby-chef-gyoku
 # OpenVox and OpenFact; puppet 7 and facter 4 need Ruby < 4.0.
 EMBERBSD_VERSION_FAMILIES+=	sysutils/puppet=sysutils/openvox
 EMBERBSD_VERSION_FAMILIES+=	sysutils/ruby-facter=sysutils/ruby-openfact

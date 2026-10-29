@@ -1,0 +1,3 @@
+Socksify redirects all TCPSocket connections of a Ruby program through
+a SOCKS5 proxy.  It can also resolve host names through the proxy and
+provides a SOCKS-aware Net::HTTP.

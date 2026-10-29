@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (chef-winrm-2.5.0.gem) = 693dd1bf918a80dd8d2e7aa604461aba5a1df906b0f9d72babf8a35d87ee00e0
+SHA512 (chef-winrm-2.5.0.gem) = d226ffd60057817f1d91b303ac2a635266d20a279ea244f9ba8ce5137030256949bcf5c0c0531ad86e3077fc42dcea0048da0d836e821bd42532b2505af71240
+Size (chef-winrm-2.5.0.gem) = 43008 bytes

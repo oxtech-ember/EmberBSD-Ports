@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (chef-winrm-fs-1.4.4.gem) = 766f1cb545a6676e95f728cef0ea0c1ad97791e2b8cd2e56990ba851be9988e1
+SHA512 (chef-winrm-fs-1.4.4.gem) = e99372e39cbc53cf6909e8bb21224260e453a8c9bec4f91539549d17835ab0b70237a98419fa15427b7b8e12ec39e75a74c3280da6814336c93d86ccc5e2ff16
+Size (chef-winrm-fs-1.4.4.gem) = 22016 bytes

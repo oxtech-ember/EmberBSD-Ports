@@ -406,10 +406,8 @@ www/ruby-crass
 devel/ruby-redmine_lightbox2
 devel/ruby-redmine_work_time
 
-# WinRM with rubyzip 3: winrm-fs 1.3.7 drops zip24.
-net/ruby-winrm
-net/ruby-winrm-elevated
-net/ruby-winrm-fs
+# train-winrm 0.4.3 uses the chef-winrm forks with rubyzip 3.
+net/ruby-train-winrm
 
 graphics/glslang
 
