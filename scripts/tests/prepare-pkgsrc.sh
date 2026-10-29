@@ -95,6 +95,9 @@ run "$work/export" > "$work/export.log"
 export=$work/export
 grep -Fx 'PKGNAME=alpha-2' "$export/devel/alpha/Makefile" >/dev/null
 grep -Fx 'PKGNAME=gamma-1' "$export/devel/gamma/Makefile" >/dev/null
+grep -Fx "SUBDIR+=${tab}gamma" "$export/devel/Makefile" >/dev/null
+grep -Fx "SUBDIR+=${tab}epsilon" "$export/devel/Makefile" >/dev/null
+[ "$(grep -c '^SUBDIR.*alpha$' "$export/devel/Makefile")" -eq 1 ]
 grep -Fx 'SUBDIR+=delta' "$export/local-test/Makefile" >/dev/null
 [ -f "$export/local-test/delta/Makefile" ]
 [ -f "$export/devel/epsilon/patches/patch-x.c" ] && [ ! -L "$export/devel/epsilon/patches/patch-x.c" ]

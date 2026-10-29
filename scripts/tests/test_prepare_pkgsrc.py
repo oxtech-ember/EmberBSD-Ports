@@ -434,6 +434,60 @@ class ExportTests(unittest.TestCase):
             self.fake_export()
         self.assertFalse((self.work / 'export').exists())
 
+    def test_new_packages_are_indexed_in_existing_categories(self):
+        category = self.upstream / 'devel'
+        category.mkdir()
+        (category / 'Makefile').write_text('COMMENT= fixtures\nSUBDIR+=\talpha\nSUBDIR+=\tzeta\n.include "../mk/misc/category.mk"\n')
+        (category / 'alpha').mkdir()
+        (category / 'alpha/Makefile').write_text('PKGNAME=alpha-1\n')
+        overlay = self.root / 'pkgsrc/devel'
+        for name in ('beta', 'gamma'):
+            (overlay / name).mkdir(parents=True)
+            (overlay / name / 'Makefile').write_text('PKGNAME=' + name + '-1\n')
+        self.fake_export()
+        index = (self.work / 'export/devel/Makefile').read_text()
+        self.assertEqual(index, 'COMMENT= fixtures\nSUBDIR+=\talpha\nSUBDIR+=\tbeta\nSUBDIR+=\tgamma\nSUBDIR+=\tzeta\n.include "../mk/misc/category.mk"\n')
+
+    def test_empty_and_conditional_categories_are_visible_at_include_time(self):
+        category = self.upstream / 'devel'
+        category.mkdir()
+        (category / 'Makefile').write_text(
+            'COMMENT= fixtures\n.if 0\nSUBDIR+=\talpha\n.endif\n'
+            '.include "../mk/misc/category.mk"\n')
+        include = self.upstream / 'mk/misc/category.mk'
+        include.parent.mkdir(parents=True)
+        include.write_text('SEEN_AT_INCLUDE:= ${SUBDIR}\nall:\n\t@echo ${SEEN_AT_INCLUDE}\n')
+        overlay = self.root / 'pkgsrc/devel/beta'
+        overlay.mkdir(parents=True)
+        (overlay / 'Makefile').write_text('PKGNAME=beta-1\n')
+        self.fake_export()
+        make = os.environ.get('EXPORT_TEST_BMAKE')
+        if not make:
+            self.skipTest('Set EXPORT_TEST_BMAKE to the selected bmake executable.')
+        result = subprocess.run([make, '-f', 'Makefile'], cwd=self.work / 'export/devel',
+                                capture_output=True, text=True, check=True)
+        self.assertEqual(result.stdout.strip(), 'beta')
+        index = (self.work / 'export/devel/Makefile').read_text()
+        self.assertIn('.endif\nSUBDIR+=\tbeta\n.include', index)
+
+    def test_empty_category_is_visible_at_include_time(self):
+        category = self.upstream / 'devel'
+        category.mkdir()
+        (category / 'Makefile').write_text('COMMENT= fixtures\n.include "../mk/misc/category.mk"\n')
+        include = self.upstream / 'mk/misc/category.mk'
+        include.parent.mkdir(parents=True)
+        include.write_text('SEEN_AT_INCLUDE:= ${SUBDIR}\nall:\n\t@echo ${SEEN_AT_INCLUDE}\n')
+        overlay = self.root / 'pkgsrc/devel/beta'
+        overlay.mkdir(parents=True)
+        (overlay / 'Makefile').write_text('PKGNAME=beta-1\n')
+        self.fake_export()
+        make = os.environ.get('EXPORT_TEST_BMAKE')
+        if not make:
+            self.skipTest('Set EXPORT_TEST_BMAKE to the selected bmake executable.')
+        result = subprocess.run([make, '-f', 'Makefile'],
+                                cwd=self.work / 'export/devel', capture_output=True, text=True, check=True)
+        self.assertEqual(result.stdout.strip(), 'beta')
+
     def test_shell_globs_skip_hidden_recipes_but_copy_new_category_data(self):
         (self.root / 'pkgsrc/.ignored').mkdir()
         existing = self.root / 'pkgsrc/devel'

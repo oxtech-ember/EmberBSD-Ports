@@ -476,6 +476,13 @@ def export_pkgsrc(root, destination, *, selection, runner, scratch):
         upstream_recipe = destination_parent(destination, name)
         require(not os.path.lexists(upstream_recipe) or name in replaces,
                 f'Upstream already has {name}; add it to pkgsrc/replaces or remove it.')
+    # New packages in an existing upstream category must be discoverable by
+    # its normal SUBDIR traversal as well as by their direct paths.
+    added_by_category = {}
+    for name, source in recipes:
+        if not os.path.lexists(destination_parent(destination, name)):
+            category, package = name.split('/')
+            added_by_category.setdefault(category, set()).add(package)
     new_categories = set()
     for category in categories:
         target = destination_parent(destination, category.name)
@@ -504,6 +511,53 @@ def export_pkgsrc(root, destination, *, selection, runner, scratch):
             shutil.rmtree(target)
         ensure_destination_directory(destination, name.rpartition('/')[0])
         shutil.copytree(source, target, copy_function=copy_file)
+    for category, added in added_by_category.items():
+        if category in new_categories:
+            continue
+        makefile = destination_parent(destination, category + '/Makefile')
+        require(makefile.is_file(), f'Missing category Makefile: {category}')
+        lines = makefile.read_bytes().decode('utf-8').splitlines(keepends=True)
+        entries = []
+        depth = 0
+        include_index = None
+        conditional_entries = False
+        for index, line in enumerate(lines):
+            directive = re.match(r'^\s*\.(if|ifdef|ifndef|for|endif|endfor)\b', line)
+            if directive:
+                if directive.group(1) in ('endif', 'endfor'):
+                    depth -= 1
+                    require(depth >= 0, f'Unbalanced category Makefile: {category}')
+                else:
+                    depth += 1
+            match = re.match(r'^SUBDIR\+=\s*([^\s#]+)', line)
+            if match:
+                conditional_entries |= depth != 0
+                entries.append((index, match.group(1), depth))
+            if re.match(r'^\s*\.include\s+["<][^">]*/category\.mk[">]', line):
+                require(depth == 0 and include_index is None,
+                        f'Conditional or duplicate category include: {category}')
+                include_index = index
+        require(depth == 0 and include_index is not None,
+                f'Missing category include or unbalanced Makefile: {category}')
+        require(all(index < include_index for index, _, _ in entries),
+                f'SUBDIR after category include: {category}')
+        conditional_names = {name for _, name, entry_depth in entries if entry_depth}
+        require(not (added & conditional_names),
+                f'New package already has a conditional category entry: {category}')
+        existing = {name for _, name, entry_depth in entries if not entry_depth}
+        for package in sorted(added - existing):
+            if conditional_entries:
+                index = include_index
+            else:
+                later = [position for position, current, _ in entries if current > package]
+                index = min(later) if later else (entries[-1][0] + 1 if entries else include_index)
+            lines.insert(index, 'SUBDIR+=\t' + package + '\n')
+            entries = [(position + (position >= index), current, entry_depth)
+                       for position, current, entry_depth in entries]
+            entries.append((index, package, 0))
+            entries.sort()
+            include_index += 1
+        makefile.write_bytes(''.join(lines).encode('utf-8'))
     # Only directories of patched files can receive patch backups.
     backup_directories = patched_directories(patches)
     backup_baseline = numbered_backup_paths(destination, backup_directories)
