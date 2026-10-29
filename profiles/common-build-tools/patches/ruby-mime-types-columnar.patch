@@ -1,0 +1,20 @@
+$NetBSD$
+
+A setter such as extensions= (add_extensions) clears the sort priority.
+Before the registry is fully loaded, update_sort_priority then read the
+priority bits of nil, so the priority stayed nil and sorting the result
+of type_for failed with "comparison of MIME::Type::Columnar with
+MIME::Type::Columnar failed". Recompute it in that case.
+https://github.com/mime-types/ruby-mime-types/pull/274
+
+--- lib/mime/type/columnar.rb.orig
++++ lib/mime/type/columnar.rb
+@@ -54,7 +54,7 @@
+   end
+ 
+   def update_sort_priority
+-    if @container.__fully_loaded?
++    if @container.__fully_loaded? || @__sort_priority.nil?
+       super
+     else
+       obsolete = (@__sort_priority & (1 << 7)) != 0
