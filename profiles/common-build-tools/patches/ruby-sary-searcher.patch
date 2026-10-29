@@ -1,0 +1,191 @@
+$NetBSD$
+
+Ruby 4.0: allocate Sary::Searcher as typed data (NEWOBJ and OBJSETUP are
+gone), pass the error text as an argument, not as the format, drop
+SafeStringValue, take the tag lengths from the Ruby strings rather than
+from char pointers, and check lengths and offsets for int range.
+
+--- searcher.c.orig
++++ searcher.c
+@@ -28,13 +28,24 @@
+ #include "sary.h"
+ #include "ruby.h"
+ 
+-#define GET_Searcher(obj, dat) Data_Get_Struct(obj, SarySearcher, dat)
++static void rsearcher_free(void *ptr);
+ 
++static const rb_data_type_t rsearcher_type = {
++    "Sary::Searcher",
++    { 0, rsearcher_free, 0, },
++    0, 0, RUBY_TYPED_FREE_IMMEDIATELY,
++};
++
++#define GET_Searcher(obj, dat) do { \
++    TypedData_Get_Struct(obj, SarySearcher, &rsearcher_type, dat); \
++    if ((dat) == NULL) \
++        rb_raise(rb_eArgError, "uninitialized Sary::Searcher"); \
++} while (0)
++
+ static VALUE SearcherClass;
+ 
+ /* For Searcher class. */
+-static VALUE rsearcher_s_new(int argc, VALUE *argv, VALUE klass);
+-static void  rsearcher_destroy(SarySearcher *searcher);
++static VALUE rsearcher_alloc(VALUE klass);
+ static VALUE rsearcher_search(VALUE klass, VALUE pattern);
+ static VALUE rsearcher_multi_search(VALUE klass, VALUE pattern_array);
+ static VALUE rsearcher_isearch(VALUE klass, VALUE pattern, VALUE len);
+@@ -60,14 +71,9 @@
+  * Initilize Searcher class instance.
+  */
+ static VALUE
+-rsearcher_s_new(int argc, VALUE *argv, VALUE klass)
++rsearcher_alloc(VALUE klass)
+ {
+-    NEWOBJ(data, struct RData);
+-    OBJSETUP(data, klass, T_DATA);
+-
+-    rb_obj_call_init((VALUE)data, argc, argv);
+-
+-    return (VALUE)data;
++    return TypedData_Wrap_Struct(klass, &rsearcher_type, NULL);
+ }
+ 
+ static VALUE
+@@ -80,22 +86,22 @@
+   
+     rb_scan_args(argc, argv, "11", &file_name, &array_name);
+ 
+-    SafeStringValue(file_name);
++    StringValue(file_name);
+     file_name_ptr = StringValuePtr(file_name);
+ 
+     if (array_name == Qnil)
+         searcher = sary_searcher_new(file_name_ptr);
+     else {
+-        SafeStringValue(array_name);
++        StringValue(array_name);
+         array_name_ptr = StringValuePtr(array_name);
+         searcher = sary_searcher_new2(file_name_ptr, array_name_ptr);
+     }
+     if (searcher == NULL)
+-	rb_raise(rb_eIOError, g_strerror(errno));
++	rb_raise(rb_eIOError, "%s", g_strerror(errno));
+ 
+-    Check_Type(klass, T_DATA);
+-    RDATA(klass)->dfree = (RUBY_DATA_FUNC)rsearcher_destroy;
+-    RDATA(klass)->dmark = (RUBY_DATA_FUNC)0;
++    Check_TypedStruct(klass, &rsearcher_type);
++    if (DATA_PTR(klass) != NULL)
++        rsearcher_free(DATA_PTR(klass));
+     DATA_PTR(klass) = searcher;
+ 
+     return klass;
+@@ -105,9 +111,10 @@
+  * Destroy instance.
+  */
+ static void
+-rsearcher_destroy(SarySearcher *searcher)
++rsearcher_free(void *ptr)
+ {
+-    sary_searcher_destroy(searcher);
++    if (ptr != NULL)
++        sary_searcher_destroy(ptr);
+ }
+ 
+ /*
+@@ -123,9 +130,9 @@
+ 
+     GET_Searcher(klass, searcher);
+ 
+-    SafeStringValue(pattern);
++    StringValue(pattern);
+     pat = StringValuePtr(pattern);
+-    len = RSTRING_LEN(pattern);
++    len = RSTRING_LENINT(pattern);
+ 
+     if (sary_searcher_search2(searcher, pat, len))
+ 	return Qtrue;
+@@ -144,7 +151,7 @@
+ 
+     GET_Searcher(klass, searcher);
+ 
+-    len = RARRAY_LEN(pattern_array);
++    len = RARRAY_LENINT(pattern_array);
+     if (len == 0) {
+       return Qfalse;
+     }
+@@ -152,7 +159,7 @@
+     pat = ALLOCA_N(char*, len);
+     for (i = 0; i < len; i++) {
+ 	pattern = rb_ary_entry(pattern_array, (long)i);
+-	SafeStringValue(pattern);
++	StringValue(pattern);
+         pat[i] = StringValuePtr(pattern);
+     }
+ 
+@@ -171,7 +178,7 @@
+ 
+     GET_Searcher(klass, searcher);
+ 
+-    SafeStringValue(pattern);
++    StringValue(pattern);
+     pat = StringValuePtr(pattern);
+ 
+     if (sary_searcher_isearch(searcher, pat, NUM2INT(len)))
+@@ -202,9 +209,9 @@
+ 
+     GET_Searcher(klass, searcher);
+ 
+-    SafeStringValue(pattern);
++    StringValue(pattern);
+     pat = StringValuePtr(pattern);
+-    len = RSTRING_LEN(pattern);
++    len = RSTRING_LENINT(pattern);
+ 
+     if (sary_searcher_icase_search2(searcher, pat, len))
+ 	return Qtrue;
+@@ -248,12 +255,12 @@
+     if (sary_searcher_count_occurrences(searcher) == 0)
+   	return Qnil;
+ 
+-    SafeStringValue(start_tag);
+-    SafeStringValue(end_tag);
++    StringValue(start_tag);
++    StringValue(end_tag);
+     stag = StringValuePtr(start_tag);
+     etag = StringValuePtr(end_tag);
+-    slen = RSTRING_LEN(stag);
+-    elen = RSTRING_LEN(etag);
++    slen = RSTRING_LENINT(start_tag);
++    elen = RSTRING_LENINT(end_tag);
+ 
+     region = sary_searcher_get_next_tagged_region2(searcher, stag, slen,
+ 					    etag, elen, &rlen);
+@@ -317,7 +324,7 @@
+     bof = text->bof;
+     for (l = 0; l < len; l ++) {
+         cur = sary_searcher_get_next_context_lines2(searcher, 0, 0, &tmp);
+-        rb_ary_store(ary, l, INT2NUM(cur - bof));
++        rb_ary_store(ary, l, LONG2NUM(cur - bof));
+     }
+     return ary;
+ }
+@@ -360,7 +367,7 @@
+     for (l = 0; l < len; l ++) {
+         VALUE range;
+         cur = sary_searcher_get_next_context_lines2(searcher, 0, 0, &tmp);
+-	range = rb_range_new(INT2NUM(cur - bof), INT2NUM(cur - bof + tmp + 1), 1);
++	range = rb_range_new(LONG2NUM(cur - bof), LONG2NUM(cur - bof + tmp + 1), 1);
+         rb_ary_store(ary, l, range);
+     }
+     return ary;
+@@ -421,7 +428,7 @@
+ {
+     SearcherClass = rb_define_class_under(module, "Searcher", rb_cObject);
+ 
+-    rb_define_singleton_method(SearcherClass, "new", rsearcher_s_new, -1);
++    rb_define_alloc_func(SearcherClass, rsearcher_alloc);
+     rb_define_method(SearcherClass, "initialize", rsearcher_initialize, -1);
+     rb_define_method(SearcherClass, "search", rsearcher_search, 1);
+     rb_define_method(SearcherClass, "multi_search", rsearcher_multi_search, 1);

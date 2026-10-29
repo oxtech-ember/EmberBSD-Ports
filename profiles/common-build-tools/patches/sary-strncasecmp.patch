@@ -1,0 +1,17 @@
+$NetBSD$
+
+Use g_ascii_strncasecmp, which takes a gsize like StrncmpFunc;
+g_strncasecmp takes a guint and is deprecated. Clang and GCC 14 and
+later reject the mismatched function pointer.
+
+--- src/sary.c.orig
++++ src/sary.c
+@@ -223,7 +223,7 @@
+ static void
+ print_highlight_icase (const gchar *text, int len, const gchar *pattern)
+ {
+-    print_highlight_internal(text, len, pattern, g_strncasecmp);
++    print_highlight_internal(text, len, pattern, g_ascii_strncasecmp);
+ }
+ 
+ static void

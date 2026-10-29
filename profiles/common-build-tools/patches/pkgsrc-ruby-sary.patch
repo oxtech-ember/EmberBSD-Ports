@@ -1,0 +1,37 @@
+Origin: EmberBSD, AI-assisted.
+Ruby 4.0 is the only Ruby: port the sary binding to it instead of
+pinning Ruby 3.3 (patch-builder.c, patch-searcher.c), and let the sary
+tool build with clang and GCC 14 and later (patch-src_sary.c).
+Not submitted upstream.
+
+--- a/textproc/ruby-sary/Makefile
++++ b/textproc/ruby-sary/Makefile
+@@ -3,7 +3,7 @@
+ 
+ DISTNAME=	sary-ruby-1.2.0
+ PKGNAME=	${RUBY_PKGPREFIX}-${DISTNAME:S/-ruby-/-/}
+-PKGREVISION=	10
++PKGREVISION=	11
+ CATEGORIES=	textproc ruby
+ MASTER_SITES=	http://sary.sourceforge.net/
+ 
+@@ -11,8 +11,6 @@
+ HOMEPAGE=	https://sary.sourceforge.net/
+ COMMENT=	Ruby Binding of Sary
+ LICENSE=	gnu-lgpl-v2.1
+-
+-RUBY_VERSIONS_ACCEPTED=	33
+ 
+ USE_RUBY_EXTCONF=	yes
+ USE_TOOLS+=		pkg-config
+--- a/textproc/sary/Makefile
++++ b/textproc/sary/Makefile
+@@ -2,7 +2,7 @@
+ #
+ 
+ DISTNAME=	sary-1.2.0
+-PKGREVISION=	8
++PKGREVISION=	9
+ CATEGORIES=	textproc
+ MASTER_SITES=	http://sary.sourceforge.net/
+ 

@@ -1,0 +1,111 @@
+$NetBSD$
+
+Ruby 4.0: allocate Sary::Builder as typed data (NEWOBJ and OBJSETUP are
+gone), pass the error text as an argument, not as the format, and drop
+SafeStringValue.
+
+--- builder.c.orig
++++ builder.c
+@@ -27,13 +27,24 @@
+ #include "sary.h"
+ #include "ruby.h"
+ 
+-#define GET_Builder(obj, dat) Data_Get_Struct(obj, SaryBuilder, dat)
++static void rsbuilder_free(void *ptr);
+ 
++static const rb_data_type_t rsbuilder_type = {
++    "Sary::Builder",
++    { 0, rsbuilder_free, 0, },
++    0, 0, RUBY_TYPED_FREE_IMMEDIATELY,
++};
++
++#define GET_Builder(obj, dat) do { \
++    TypedData_Get_Struct(obj, SaryBuilder, &rsbuilder_type, dat); \
++    if ((dat) == NULL) \
++        rb_raise(rb_eArgError, "uninitialized Sary::Builder"); \
++} while (0)
++
+ static VALUE BuilderClass;
+ 
+ /* For SaryBuilder class. */
+-static VALUE rsbuilder_s_new(int argc, VALUE *argv, VALUE klass);
+-static void  rsbuilder_destroy(SaryBuilder *builder);
++static VALUE rsbuilder_alloc(VALUE klass);
+ static VALUE rsbuilder_sort(int argc, VALUE *argv, VALUE klass);
+ static VALUE rsbuilder_block_sort(int argc, VALUE *argv, VALUE klass);
+ static VALUE rsbuilder_set_block_size(VALUE klass, VALUE size);
+@@ -42,14 +53,9 @@
+ static void dummy_progress(SaryProgress *progress);
+ static void progress(SaryProgress *progress);
+ 
+-static VALUE rsbuilder_s_new(int argc, VALUE *argv, VALUE klass)
++static VALUE rsbuilder_alloc(VALUE klass)
+ {
+-    NEWOBJ(data, struct RData);
+-    OBJSETUP(data, klass, T_DATA);
+-
+-    rb_obj_call_init((VALUE)data, argc, argv);
+-
+-    return (VALUE)data;
++    return TypedData_Wrap_Struct(klass, &rsbuilder_type, NULL);
+ }
+ 
+ static VALUE rsbuilder_initialize(int argc, VALUE *argv, VALUE klass)
+@@ -61,30 +67,31 @@
+   
+     rb_scan_args(argc, argv, "11", &file_name, &array_name);
+ 
+-    SafeStringValue(file_name);
++    StringValue(file_name);
+     file_name_ptr = StringValuePtr(file_name);
+ 
+     if (array_name == Qnil)
+         builder = sary_builder_new(file_name_ptr);
+     else {
+-        SafeStringValue(array_name);
++        StringValue(array_name);
+         array_name_ptr = StringValuePtr(array_name);
+         builder = sary_builder_new2(file_name_ptr, array_name_ptr);
+     }
+     if (builder == NULL)
+-	rb_raise(rb_eIOError, g_strerror(errno));
++	rb_raise(rb_eIOError, "%s", g_strerror(errno));
+ 
+-    Check_Type(klass, T_DATA);
+-    RDATA(klass)->dfree = (RUBY_DATA_FUNC)rsbuilder_destroy;
+-    RDATA(klass)->dmark = (RUBY_DATA_FUNC)0;
++    Check_TypedStruct(klass, &rsbuilder_type);
++    if (DATA_PTR(klass) != NULL)
++        rsbuilder_free(DATA_PTR(klass));
+     DATA_PTR(klass) = builder;
+ 
+     return klass;
+ }
+ 
+-static void rsbuilder_destroy(SaryBuilder *builder)
++static void rsbuilder_free(void *ptr)
+ {
+-    sary_builder_destroy(builder);
++    if (ptr != NULL)
++        sary_builder_destroy(ptr);
+ }
+ 
+ static VALUE rsb_sort(int argc, VALUE *argv, VALUE klass,
+@@ -104,7 +111,7 @@
+     }
+ 
+     if (func(builder) == FALSE) {
+-	rb_raise(rb_eRuntimeError, g_strerror(errno));
++	rb_raise(rb_eRuntimeError, "%s", g_strerror(errno));
+     }
+ 
+     return klass;
+@@ -173,7 +180,7 @@
+     BuilderClass
+ 	= rb_define_class_under(module, "Builder", rb_cObject);
+ 
+-    rb_define_singleton_method(BuilderClass, "new", rsbuilder_s_new, -1);
++    rb_define_alloc_func(BuilderClass, rsbuilder_alloc);
+ 
+     rb_define_method(BuilderClass, "initialize", rsbuilder_initialize, -1);
+     rb_define_method(BuilderClass, "sort", rsbuilder_sort, -1);
