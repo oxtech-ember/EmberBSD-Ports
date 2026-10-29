@@ -1,0 +1,126 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted); not yet submitted upstream.
+Preserve scalar trailing matrix padding while retaining standard-layout alignment.
+--- source/val/validate_explicit_layout.cpp
++++ source/val/validate_explicit_layout.cpp
+@@ -691,7 +691,9 @@
+       case spv::Op::OpTypeMatrix: {
+         const auto num_cols = type_inst->GetOperandAs<uint32_t>(2u);
+         if (matrix_constraints.col_major) {
+-          return num_cols * matrix_constraints.stride;
++          const auto col_type = type_inst->GetOperandAs<uint32_t>(1u);
++          return (num_cols - 1) * matrix_constraints.stride +
++                 GetSize(col_type, {});
+         } else {
+           const auto* col_inst =
+               vstate.FindDef(type_inst->GetOperandAs<uint32_t>(1u));
+@@ -928,6 +930,7 @@
+       next_offset = size + offset;
+       if (mode != LayoutMode::kScalar &&
+           (member_inst->opcode() == spv::Op::OpTypeArray ||
++           member_inst->opcode() == spv::Op::OpTypeMatrix ||
+            member_inst->opcode() == spv::Op::OpTypeStruct)) {
+         next_offset = AlignTo(next_offset, align);
+       }
+--- test/val/val_explicit_layout_test.cpp
++++ test/val/val_explicit_layout_test.cpp
+@@ -14,8 +14,10 @@
+ 
+ // Validation tests for explicit layout
+ 
++#include <cstring>
+ #include <string>
+ #include <tuple>
++#include <utility>
+ #include <vector>
+ 
+ #include "gmock/gmock.h"
+@@ -36,6 +38,87 @@
+ 
+ using ValidateExplicitLayout = spvtest::ValidateBase<bool>;
+ 
++// A nested column-major mat2x3 has bytes 0..11 and 16..27.
++// Scalar layout may place a float immediately after the final vector.
++static std::string NestedColumnMatrix(uint32_t offset) {
++  return R"(
++               OpCapability Shader
++               OpMemoryModel Logical GLSL450
++               OpEntryPoint Vertex %main "main"
++               OpMemberDecorate %inner 0 ColMajor
++               OpMemberDecorate %inner 0 MatrixStride 16
++               OpMemberDecorate %inner 0 Offset 0
++               OpMemberDecorate %outer 0 Offset 0
++               OpMemberDecorate %outer 1 Offset )" +
++         std::to_string(offset) + R"(
++               OpDecorate %outer Block
++               OpDecorate %buffer DescriptorSet 0
++               OpDecorate %buffer Binding 0
++       %void = OpTypeVoid
++         %fn = OpTypeFunction %void
++      %float = OpTypeFloat 32
++       %vec3 = OpTypeVector %float 3
++       %mat2 = OpTypeMatrix %vec3 2
++      %inner = OpTypeStruct %mat2
++      %outer = OpTypeStruct %inner %float
++        %ptr = OpTypePointer Uniform %outer
++     %buffer = OpVariable %ptr Uniform
++       %main = OpFunction %void None %fn
++         %bb = OpLabel
++               OpReturn
++               OpFunctionEnd
++  )";
++}
++
++TEST_F(ValidateExplicitLayout, NestedColumnMatrixScalarTrailingMember) {
++  CompileSuccessfully(NestedColumnMatrix(28));
++  spvValidatorOptionsSetScalarBlockLayout(getValidatorOptions(), true);
++  EXPECT_EQ(SPV_SUCCESS,
++            ValidateAndRetrieveValidationState(SPV_ENV_VULKAN_1_1));
++}
++
++TEST_F(ValidateExplicitLayout, NestedColumnMatrixScalarOverlap) {
++  CompileSuccessfully(NestedColumnMatrix(24));
++  spvValidatorOptionsSetScalarBlockLayout(getValidatorOptions(), true);
++  EXPECT_EQ(SPV_ERROR_INVALID_ID,
++            ValidateAndRetrieveValidationState(SPV_ENV_VULKAN_1_1));
++  EXPECT_THAT(getDiagnosticString(), HasSubstr("overlaps previous member"));
++}
++
++TEST_F(ValidateExplicitLayout, NestedColumnMatrixStandardPadding) {
++  CompileSuccessfully(NestedColumnMatrix(28));
++  EXPECT_EQ(SPV_ERROR_INVALID_ID,
++            ValidateAndRetrieveValidationState(SPV_ENV_VULKAN_1_1));
++  EXPECT_THAT(getDiagnosticString(), HasSubstr("overlaps previous member"));
++}
++
++static std::string DirectColumnMatrix(uint32_t offset) {
++  auto text = NestedColumnMatrix(offset);
++  for (const auto &change :
++       {std::make_pair("%inner 0 ColMajor", "%outer 0 ColMajor"),
++        std::make_pair("%inner 0 MatrixStride", "%outer 0 MatrixStride"),
++        std::make_pair("%outer = OpTypeStruct %inner %float",
++                       "%outer = OpTypeStruct %mat2 %float")}) {
++    const auto at = text.find(change.first);
++    text.replace(at, std::strlen(change.first), change.second);
++  }
++  return text;
++}
++
++TEST_F(ValidateExplicitLayout, DirectColumnMatrixScalarTrailingMember) {
++  CompileSuccessfully(DirectColumnMatrix(28));
++  spvValidatorOptionsSetScalarBlockLayout(getValidatorOptions(), true);
++  EXPECT_EQ(SPV_SUCCESS,
++            ValidateAndRetrieveValidationState(SPV_ENV_VULKAN_1_1));
++}
++
++TEST_F(ValidateExplicitLayout, DirectColumnMatrixStandardPadding) {
++  CompileSuccessfully(DirectColumnMatrix(28));
++  EXPECT_EQ(SPV_ERROR_INVALID_ID,
++            ValidateAndRetrieveValidationState(SPV_ENV_VULKAN_1_1));
++  EXPECT_THAT(getDiagnosticString(), HasSubstr("overlaps previous member"));
++}
++
+ TEST_F(ValidateExplicitLayout, BlockMissingOffsetBad) {
+   std::string spirv = R"(
+                OpCapability Shader

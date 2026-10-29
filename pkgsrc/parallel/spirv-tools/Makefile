@@ -3,8 +3,8 @@
 # Origin: EmberBSD contributors (AI-assisted); current component release.
 DISTNAME=	SPIRV-Tools-2026.4
 PKGNAME=	${DISTNAME:tl}
-# nb2 rebuilds the native Darwin C++ ABI closure.
-PKGREVISION=	2
+# nb3 fixes scalar-layout column-major matrix extent.
+PKGREVISION=	3
 CATEGORIES=	parallel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=KhronosGroup/}
 GITHUB_PROJECT=	SPIRV-Tools

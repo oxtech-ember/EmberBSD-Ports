@@ -3,6 +3,7 @@ $NetBSD: distinfo,v 1.8 2026/07/29 13:56:56 kikadf Exp $
 BLAKE2s (SPIRV-Tools-2026.4.tar.gz) = 91747861ee56d84d044e7ebaf85463c13d43e0616f52351895e6676ce9e5abf8
 SHA512 (SPIRV-Tools-2026.4.tar.gz) = c9f71c01f382b6a73211241f0f9e48de34e3e3355e1f1ad3cf864ad7b3a76326e88c7fad0d8e509e09592dbc03e678cf0a267cec61cc4b7e33f206de59b2d7f7
 Size (SPIRV-Tools-2026.4.tar.gz) = 3554324 bytes
-SHA1 (patch-source_link_linker.cpp) = 5f99c025cd141e481edf8cbe185c6e7e783a91a7
-SHA1 (patch-installed-gtest) = 13bd83d1fbbbb7df5e5cd2f20792926a79c3390d
 SHA1 (patch-check-copyright-cmake-pkgsrc-build) = 7fa781613345ce226d9fc4db02d9394987f5a4a0
+SHA1 (patch-installed-gtest) = 13bd83d1fbbbb7df5e5cd2f20792926a79c3390d
+SHA1 (patch-source_link_linker.cpp) = 5f99c025cd141e481edf8cbe185c6e7e783a91a7
+SHA1 (patch-source_val_scalar-matrix-extent) = 681061d0e18544d2edf5c219f912f0b63d64a7c8
