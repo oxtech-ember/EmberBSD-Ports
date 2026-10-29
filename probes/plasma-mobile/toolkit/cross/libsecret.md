@@ -14,37 +14,18 @@ remain enabled. The option applies to native and cross builds.
 
 ## Native generators
 
-Use native Vala 0.56.19 (`valac`, `vapigen`). The `doc` option also needs gi-docgen 2026.1.
-They generate C, VAPI and documentation on the build host. Target libraries and GLib metadata
-come from the common EmberBSD sysroot. Native builds retain selected pkgsrc
-tool dependencies. Missing selected native prefixes fail configuration.
-
-The optional helper builds the original [gi-docgen archive](https://pypi.org/project/gi-docgen/2026.1/)
-with the existing host Python. Upstream gi-docgen requires Python; the helper
-adds no Python source. Install its native `build`, `installer`, `setuptools`,
-Markdown, MarkupSafe, Pygments, Jinja2, packaging and typogrify dependencies.
-For Python older than 3.11, upstream also requires tomli.
-Provide native Graphviz `dot`; the helper checks actual SVG generation.
-
-```sh
-sh build-gi-docgen-host.sh /absolute/distfiles /absolute/native-python \
-    /absolute/dot /absolute/new-work
-```
-
-The helper verifies the archive SHA256 before extraction. It builds without
-isolated dependency downloads, records native tool hashes and wraps the
-installed entry point with its private module path. This private build helper
-is not a second target runtime provider. Set these private MAKECONF inputs:
-
-```make
-EMBERBSD_VALA_HOST=/absolute/native-vala-prefix
-# Only with the doc option:
-EMBERBSD_GI_DOCGEN_HOST=/absolute/new-work/prefix
-```
+Vala 0.56.19 (`valac`, `vapigen`) and, with the `doc` option, gi-docgen 2026.1
+generate C, VAPI and documentation on the build host. Cross builds declare
+them as native tool dependencies (`lang/vala`, `devel/py-gi-docgen`), so they
+are built from Ports into `${TOOLBASE}` like the other build-host tools; there
+is no separately configured prefix. Configure checks the exact versions that
+`${TOOLBASE}/bin/valac`, `vapigen` and `gi-docgen` report and names the tool
+that differs. Target libraries and GLib metadata come from the common
+EmberBSD sysroot. Native builds keep the pkgsrc tool dependencies.
 
 The common GI transport inputs are also required. `libsecret-tools.sh` queries
 the native/cross recipes with default and disabled documentation. It checks
-the retained runtime inventory and absent-generator refusals:
+the retained runtime inventory and the native generator selection:
 
 ```sh
 BMAKE=/absolute/bmake sh ../tests/libsecret-tools.sh \

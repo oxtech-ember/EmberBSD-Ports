@@ -74,13 +74,29 @@ for path in bin/secret-tool man/man1/secret-tool.1 lib/libsecret-1.so \
     grep -Fqx "$path" "$plist"
 done
 if [ "$complete_cross" = yes ]; then
-    for variable in EMBERBSD_GI_DOCGEN_HOST EMBERBSD_VALA_HOST; do
-        query USE_CROSS_COMPILE=yes "$variable=/nonexistent-ember-generator" -V '${PKG_FAIL_REASON}' > "$work/missing-$variable.txt"
-        grep -q "$variable must name" "$work/missing-$variable.txt"
+    # Cross generators are native TOOLBASE packages, not configured prefixes.
+    tr -s ' ' '\n' < "$work/yes-default-TOOL_DEPENDS.txt" > "$work/cross-tools.txt"
+    grep -qx 'vala>=0.56.19:../../lang/vala' "$work/cross-tools.txt"
+    grep -qx 'py[0-9]*-gi-docgen>=2026.1:../../devel/py-gi-docgen' "$work/cross-tools.txt"
+    tr -s ' ' '\n' < "$work/yes-disabled-TOOL_DEPENDS.txt" | grep -qx 'vala>=0.56.19:../../lang/vala'
+    toolbase=$(query USE_CROSS_COMPILE=yes -V '${TOOLBASE}')
+    query USE_CROSS_COMPILE=yes EMBERBSD_VALA_HOST=/nonexistent-ember-generator \
+        EMBERBSD_GI_DOCGEN_HOST=/nonexistent-ember-generator \
+        -V '${PKG_FAIL_REASON}' -V '${MESON_BINARY.vapigen}' -V '${MESON_BINARY.vala}' \
+        -V '${MESON_BINARY.gi-docgen}' > "$work/legacy-host-variables.txt"
+    printf '%s\n' '' "$toolbase/bin/vapigen" "$toolbase/bin/valac" "$toolbase/bin/gi-docgen" |
+        cmp -s - "$work/legacy-host-variables.txt"
+    query USE_CROSS_COMPILE=yes -n emberbsd-secret-native > "$work/native-plan.txt"
+    for check in "$toolbase/bin/valac --version" "'Vala 0.56.19'" "$toolbase/bin/vapigen --version" \
+        "'Vala API Generator 0.56.19'" "$toolbase/bin/gi-docgen --version" "'2026.1'"; do
+        grep -Fq -- "$check" "$work/native-plan.txt"
     done
-    query USE_CROSS_COMPILE=yes PKG_OPTIONS.libsecret=-doc \
-        EMBERBSD_GI_DOCGEN_HOST=/nonexistent-ember-generator -V '${PKG_FAIL_REASON}' > "$work/disabled-missing-docgen.txt"
-    [ "$(cat "$work/disabled-missing-docgen.txt")" = '' ]
+    if grep -q '_HOST' "$work/native-plan.txt"; then exit 1; fi
+    # libproxy shares the generators and has no configured prefixes either.
+    MAKECONF="$config" "$BMAKE" -C "$pkgsrc/www/libproxy" USE_CROSS_COMPILE=yes \
+        EMBERBSD_VALA_HOST=/nonexistent-ember-generator EMBERBSD_GI_DOCGEN_HOST=/nonexistent-ember-generator \
+        -V '${PKG_FAIL_REASON}' -V '${TOOLS_PATH.vapigen}' -V '${TOOLS_PATH.gi-docgen}' > "$work/libproxy-tools.txt"
+    printf '%s\n' '' "$toolbase/bin/vapigen" "$toolbase/bin/gi-docgen" | cmp -s - "$work/libproxy-tools.txt"
     query USE_CROSS_COMPILE=yes PKG_OPTIONS.libsecret=-doc -n emberbsd-secret-native > "$work/disabled-native-plan.txt"
     grep -q vapigen "$work/disabled-native-plan.txt"
     if grep -q gi-docgen "$work/disabled-native-plan.txt"; then exit 1; fi
