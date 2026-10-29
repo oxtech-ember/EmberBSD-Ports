@@ -1,0 +1,20 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+KDSoap_CODEGENERATOR_ONLY builds kdwsdl2cpp alone against QtCore and QtXml,
+for a build host whose Qt has no QtNetwork. Remote WSDL downloads are then
+refused; local files and -import-path work as before. The default build is
+unchanged.
+
+--- kdwsdl2cpp/CMakeLists.txt.orig
++++ kdwsdl2cpp/CMakeLists.txt
+@@ -85,6 +85,9 @@
+ target_link_libraries(
+     kdwsdl2cpp_lib ${QT_LIBRARIES}
+ )
++if(${PROJECT_NAME}_CODEGENERATOR_ONLY)
++    target_compile_definitions(kdwsdl2cpp_lib PUBLIC KDWSDL2CPP_NO_NETWORK)
++endif()
+ 
+ add_executable(
+     kdwsdl2cpp

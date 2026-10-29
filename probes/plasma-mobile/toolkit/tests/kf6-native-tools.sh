@@ -16,6 +16,7 @@ query() { # MAKECONF PKGPATH ARGS...
 cat > "$work/table" <<'TABLE'
 textproc/kf6-sonnet|textproc/kf6-sonnet-parsetrigrams|textproc/kf6-sonnet|-DPARSETRIGRAMS_EXECUTABLE=@TOOLBASE@/bin/parsetrigrams6
 textproc/kf6-syntax-highlighting|textproc/kf6-syntax-highlighting-indexer|textproc/kf6-syntax-highlighting|-DKATEHIGHLIGHTINGINDEXER_EXECUTABLE=@TOOLBASE@/bin/katehighlightingindexer
+net/kdsoap-ws-discovery-client|net/kdsoap-kdwsdl2cpp|net/kdsoap|-DKDSOAP_KDWSDL2CPP_COMPILER=@TOOLBASE@/bin/kdwsdl2cpp-qt6
 TABLE
 # A native CMake framework build in the same configuration fails for no
 # reason of the generator packages.

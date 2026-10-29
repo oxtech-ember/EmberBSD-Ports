@@ -1,0 +1,55 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+KDSoap_CODEGENERATOR_ONLY builds kdwsdl2cpp alone against QtCore and QtXml,
+for a build host whose Qt has no QtNetwork. Remote WSDL downloads are then
+refused; local files and -import-path work as before. The default build is
+unchanged.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -74,6 +74,7 @@
+ option(${PROJECT_NAME}_EXAMPLES "Build the examples" ON)
+ option(${PROJECT_NAME}_DOCS "Build the API documentation" OFF)
+ option(${PROJECT_NAME}_QT6 "Build against Qt 6" OFF)
++option(${PROJECT_NAME}_CODEGENERATOR_ONLY "Only build kdwsdl2cpp, which needs no QtNetwork" OFF)
+ 
+ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ECM/modules")
+ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/KDAB/modules")
+@@ -103,8 +104,13 @@
+ if(${PROJECT_NAME}_QT6)
+     set(QT_VERSION_MAJOR 6)
+     set(QT_MIN_VERSION "6.0.0")
+-    find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS Core Network)
+-    list(APPEND QT_LIBRARIES Qt6::Core Qt6::Network)
++    if(${PROJECT_NAME}_CODEGENERATOR_ONLY)
++        find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS Core)
++        list(APPEND QT_LIBRARIES Qt6::Core)
++    else()
++        find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS Core Network)
++        list(APPEND QT_LIBRARIES Qt6::Core Qt6::Network)
++    endif()
+     set(${PROJECT_NAME}_LIBRARY_QTID "-qt6")
+     set(libkode_QT6 ON)
+ else()
+@@ -284,10 +290,18 @@
+     enable_testing()
+ endif()
+ 
+-add_subdirectory(src)
++if(NOT ${PROJECT_NAME}_CODEGENERATOR_ONLY)
++    add_subdirectory(src)
++endif()
+ add_subdirectory(kdwsdl2cpp)
+ 
+-if(${PROJECT_NAME}_IS_ROOT_PROJECT)
++if(${PROJECT_NAME}_CODEGENERATOR_ONLY)
++    export(
++        TARGETS kdwsdl2cpp
++        NAMESPACE KDSoap::
++        FILE "${CMAKE_CURRENT_BINARY_DIR}/KDSoap/KDSoapTargets.cmake"
++    )
++elseif(${PROJECT_NAME}_IS_ROOT_PROJECT)
+     export(
+         TARGETS kdsoap kdsoap-server kdwsdl2cpp
+         NAMESPACE KDSoap::

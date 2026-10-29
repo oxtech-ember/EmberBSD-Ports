@@ -1,0 +1,3 @@
+The native kdwsdl2cpp-qt6 WSDL to C++ compiler of KDSoap, built against
+QtCore and QtXml only. Cross builds of KDSoap consumers run it on the build
+host; it reads local WSDL files and refuses remote downloads.

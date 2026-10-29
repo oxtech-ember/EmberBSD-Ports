@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.6 2026/09/02 19:03:57 wiz Exp $
 
 DISTNAME=	kdsoap-ws-discovery-client-0.4.0
-PKGREVISION=	4
+PKGREVISION=	5
 CATEGORIES=	net kde
 MASTER_SITES=	${MASTER_SITE_KDE:=kdsoap-ws-discovery-client/}
 EXTRACT_SUFX=	.tar.xz
@@ -25,11 +25,11 @@ BUILDLINK_TRANSFORM+=	rm:-Wl,--fatal-warnings
 .include "../../net/kdsoap/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 
-# Cross builds generate WSDL code with the native tool from
-# cross/build-kdsoap-wsdl-host.sh through the upstream override knob.
+# Cross builds generate the WSDL code with the native kdwsdl2cpp from
+# net/kdsoap-kdwsdl2cpp (same KDSoap release), through the upstream override
+# knob.
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-CMAKE_CONFIGURE_ARGS+=	-DKDSOAP_KDWSDL2CPP_COMPILER=${EMBERBSD_KF6_HOST_TOOLING}/bin/kdwsdl2cpp-qt6
-pre-configure:
-	${TEST} -x ${EMBERBSD_KF6_HOST_TOOLING}/bin/kdwsdl2cpp-qt6
+TOOL_DEPENDS+=	kdsoap-kdwsdl2cpp-2.2.0{,nb[0-9]*}:../../net/kdsoap-kdwsdl2cpp
+CMAKE_CONFIGURE_ARGS+=	-DKDSOAP_KDWSDL2CPP_COMPILER=${TOOLBASE}/bin/kdwsdl2cpp-qt6
 .endif
 .include "../../mk/bsd.pkg.mk"

@@ -1,0 +1,26 @@
+# $NetBSD$
+# Origin: EmberBSD (AI-assisted). One KDSoap source for the target library
+# and its native WSDL code generator.
+#
+# used by net/kdsoap/Makefile
+# used by net/kdsoap-kdwsdl2cpp/Makefile
+
+DISTNAME=	kdsoap-2.2.0
+CATEGORIES=	net
+MASTER_SITES=	${MASTER_SITE_GITHUB:=KDAB/}
+GITHUB_PROJECT=	KDSoap
+GITHUB_RELEASE=	${DISTNAME}
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://github.com/KDAB/KDSoap
+LICENSE=	gnu-agpl-v3
+
+EMBERBSD_KDSOAP_PKGDIR:=	${.PARSEDIR:tA}
+DISTINFO_FILE=	${EMBERBSD_KDSOAP_PKGDIR}/distinfo
+PATCHDIR=	${EMBERBSD_KDSOAP_PKGDIR}/patches
+
+USE_LANGUAGES=	c c++
+
+CMAKE_CONFIGURE_ARGS+=	-DKDSoap_QT6=ON
+
+BUILDLINK_TRANSFORM+=	rm:-Wl,--fatal-warnings
