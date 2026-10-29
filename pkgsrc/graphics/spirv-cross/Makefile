@@ -2,6 +2,8 @@
 # Origin: EmberBSD contributors (AI-assisted).
 
 DISTNAME= spirv-cross-1.4.363.0
+# Descriptor-heap fixes and changed C++ metadata apply to every target.
+PKGREVISION= 2
 CATEGORIES= graphics
 MASTER_SITES= ${MASTER_SITE_GITHUB:=KhronosGroup/}
 GITHUB_PROJECT= SPIRV-Cross
@@ -16,7 +18,6 @@ LICENSE= apache-2.0 AND mit
 .include "../../mk/bsd.prefs.mk"
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
     ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
-PKGREVISION= 2
 DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
 BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
 .endif
