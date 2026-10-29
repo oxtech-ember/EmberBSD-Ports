@@ -33,6 +33,12 @@ GENERATE_PLIST+= cd ${DESTDIR}${PREFIX} && ${FIND} include/LIEF lib/cmake/LIEF \
 post-install:
 	${INSTALL_DATA} ${WRKSRC}/LICENSE ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}/LICENSE
 
+.include "../../mk/bsd.prefs.mk"
+.include "../../mk/emberbsd-native-cxx-runtime.mk"
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
+PKGREVISION= 2
+.endif
+
 .include "../../devel/cmake/build.mk"
 .include "../../security/mbedtls4/buildlink3.mk"
 .include "../../devel/spdlog/buildlink3.mk"
