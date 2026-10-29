@@ -21,8 +21,11 @@ USE_LANGUAGES= c c++
 USE_CXX_FEATURES= c++17
 CMAKE_CONFIGURE_ARGS+= -DALLOW_EXTERNAL_SPIRV_TOOLS=ON
 CMAKE_CONFIGURE_ARGS+= -DENABLE_OPT=ON
+CMAKE_CONFIGURE_ARGS+= -DALLOW_EXTERNAL_GTEST=ON
 .include "../../devel/cmake/build.mk"
 .include "../../lang/python/tool.mk"
+BUILDLINK_DEPMETHOD.googletest= build
+.include "../../devel/googletest/buildlink3.mk"
 BUILDLINK_API_DEPENDS.spirv-tools+= spirv-tools>=2026.4nb1
 .include "../../parallel/spirv-tools/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
