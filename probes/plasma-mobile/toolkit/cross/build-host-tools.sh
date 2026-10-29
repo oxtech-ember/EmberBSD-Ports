@@ -17,6 +17,7 @@ scanner_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_tools_qt
 syncqt_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_tools_syncqt_CMakeLists.txt
 zlib_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-cmake_FindWrapSystemZLIB.cmake
 widgets_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_widgets_CMakeLists.txt
+shader_patches="$toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_CMakeLists.txt $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_CMakeLists.txt $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_qspirvcompiler.cpp $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_qspirvshaderremap.cpp $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_qspirvshaderremap_p.h"
 RESUME=${RESUME:-0}
 HOST_SH=${HOST_SH:-/bin/sh}
 HOST_RUNTIME_VIEW=${HOST_RUNTIME_VIEW:-}
@@ -87,6 +88,14 @@ if [ "$RESUME" = 1 ] && [ -d "$work/source/qtbase-everywhere-src-6.12.0" ]; then
         echo 'Missing patched Qt scanner proof; use a new work directory.' >&2; exit 2;
     }
 fi
+if [ "$RESUME" = 1 ] && [ -d "$work/source/qtshadertools-everywhere-src-6.12.0" ]; then
+    [ -f "$work/qtshadertools-source.sha256" ] || {
+        echo 'Missing patched Qt ShaderTools proof; use a new work directory.' >&2; exit 2;
+    }
+    (cd "$work/source/qtshadertools-everywhere-src-6.12.0" && shasum -a 256 -c "$work/qtshadertools-source.sha256") || {
+        echo 'Patched Qt ShaderTools source proof failed; use a new work directory.' >&2; exit 2;
+    }
+fi
 [ "$("$WAYLAND_SCANNER" --version 2>&1)" = 'wayland-scanner 1.26.0' ]
 # QtCore uses the CMake archive API with Zstandard. Check before work starts.
 zstd_probe=$(mktemp -d "${TMPDIR:-/tmp}/ember-cmake-zstd.XXXXXXXX")
@@ -138,7 +147,7 @@ if [ -e "$work" ] || [ -L "$work" ]; then
     grep -q -x "profile=$profile" "$work/inputs.txt" || {
         echo 'Host profile changed; use a new work directory' >&2; exit 2;
     }
-    for tool in "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" $host_dbus_inputs $runtime_inputs; do
+    for tool in "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" $shader_patches $host_dbus_inputs $runtime_inputs; do
         shasum -a 256 "$tool" | grep -F -x -f - "$work/inputs.txt" >/dev/null || {
             echo "Host input changed; use a new work directory: $tool" >&2; exit 2;
         }
@@ -165,7 +174,7 @@ ln -sf "$NINJA" "$work/bin/ninja"
 PATH="$work/bin:$PATH"
 export PATH
 {
-    shasum -a 256 "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" $host_dbus_inputs $runtime_inputs
+    shasum -a 256 "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" $shader_patches $host_dbus_inputs $runtime_inputs
     "$CMAKE" --version
     "$NINJA" --version
     printf 'profile=%s\n' "$profile"
@@ -192,6 +201,12 @@ for module in $modules; do
             "$PATCH" -d "$work/source/$module-everywhere-src-6.12.0" -p0 -F0 -i "$widgets_patch"
             (cd "$work/source/$module-everywhere-src-6.12.0" &&
                 shasum -a 256 src/tools/qtwaylandscanner/qtwaylandscanner.cpp src/tools/syncqt/CMakeLists.txt cmake/FindWrapSystemZLIB.cmake src/widgets/CMakeLists.txt > "$work/qtbase-scanner-source.sha256")
+        elif [ "$module" = qtshadertools ]; then
+            for patch in $shader_patches; do
+                "$PATCH" -d "$work/source/$module-everywhere-src-6.12.0" -p0 -F0 -i "$patch"
+            done
+            (cd "$work/source/$module-everywhere-src-6.12.0" &&
+                shasum -a 256 src/CMakeLists.txt src/shadertools/CMakeLists.txt src/shadertools/qspirvcompiler.cpp src/shadertools/qspirvshaderremap.cpp src/shadertools/qspirvshaderremap_p.h > "$work/qtshadertools-source.sha256")
         fi
     fi
     mkdir -p "$work/$module"
