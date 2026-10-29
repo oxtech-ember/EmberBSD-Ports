@@ -20,7 +20,7 @@ pkgsrc recipe in both configurations. A causal recipe without the runtime
 loader must fail the dependency oracle. The native recipe check is
 [selection.sh](../tests/selection.sh).
 
-The [installed-package preparation helper](prepare-mesa-package-tests.rb)
+The [installed-package preparation helper](prepare-mesa-package-tests.py)
 includes the upstream `zink_format_test` from the selected build. It checks
 the installed Zink files and recorded loader dependency. The ELF closure
 includes the dynamically loaded Vulkan loader. This format test

@@ -19,7 +19,7 @@ The earlier [CM5 render-target checks](mesa-cm5.md) and CPU receipts below retai
 their original package and hardware scope.
 
 Build `graphics/MesaLib` with the [complete cross composition](profile.md),
-the accepted GCC16 toolchain and installed shared LLVM23. Use normal pkgsrc
+the selected Clang/LLVM or explicit GCC16 toolchain and installed shared LLVM23. Use normal pkgsrc
 `package` and `install` targets. Keep the source, recipes, MAKECONF and tools
 unchanged while a build is running. Preserve compiler output, Meson metadata,
 the final package and their input hashes; do not replace a complete build log
@@ -93,9 +93,9 @@ is a separate, temporary uninstalled result.
 After installing the real package into the matching sysroot, run:
 
 ```sh
-ruby prepare-mesa-package-tests.rb /absolute/cross-tools /absolute/sysroot \
-    /absolute/prepared-mesa-26.2.4 /absolute/mesa-build \
-    /absolute/MesaLib-26.2.4nb9.tgz /absolute/new-acceptance-work
+/absolute/native-prefix/bin/python3.15 -B prepare-mesa-package-tests.py /absolute/cross-tools /absolute/sysroot \
+    /absolute/prepared-mesa-26.2.5 /absolute/mesa-build \
+    /absolute/MesaLib-26.2.5nb8.tgz /absolute/new-acceptance-work
 ```
 
 The helper compiles the existing EGL/GLES pixel consumer against installed
