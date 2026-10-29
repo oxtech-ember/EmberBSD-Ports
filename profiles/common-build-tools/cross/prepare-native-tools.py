@@ -5,6 +5,7 @@
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import shlex
 import subprocess
@@ -139,9 +140,13 @@ def literal(value):
     return value
 
 
-def render(toolset, qt=(), fetch_mode='fetch'):
+def render(toolset, qt=(), fetch_mode='fetch', native_cxx=None):
     lines = ['# Generated from the selected Ports host prefix. Do not edit.']
     family = toolset.compiler_family
+    if native_cxx and any(list(toolset.abi_flags[name]) != native_cxx['flags'][name]
+                          for name in ('cppflags', 'cflags', 'cxxflags', 'ldflags')):
+        from emberbsd_sdk.errors import SDKError
+        raise SDKError('Native compiler binding differs from selected ABI flags')
     if family not in ('clang', 'gcc'):
         from emberbsd_sdk.errors import SDKError
         raise SDKError('The native compiler family must be clang or gcc')
@@ -153,7 +158,8 @@ def render(toolset, qt=(), fetch_mode='fetch'):
     lines += ['PATH:= ' + search, '.if "${PATH}" != "' + search + '"',
               '.error PATH differs from the selected host prefix', '.endif', '.export PATH']
     selected = [(role, variable, shlex.join((*toolset.command(role), '-p')) if role == 'gmkdir' else
-                 shlex.join(toolset.command(role)) if role == 'as' else toolset.tool(role))
+                 shlex.join(toolset.command(role)) if role == 'as' else
+                 native_cxx['adapters'][role] if native_cxx and role in ('cc', 'cxx', 'cpp') else toolset.tool(role))
                 for role, variable in ROLE_VARIABLES.items()]
     selected += [(role, variable, toolset.tool(role))
                  for role, variable in OPTIONAL_ROLES.items() if role in toolset.tools]
@@ -213,6 +219,11 @@ def render(toolset, qt=(), fetch_mode='fetch'):
     lines += ['FETCH_USING?= ' + fetch_mode,
               '.if "${FETCH_USING}" != "' + fetch_mode + '"',
               '.error FETCH_USING differs from the selected fetch mode', '.endif']
+    if native_cxx:
+        value = literal(native_cxx['record'])
+        lines += ['EMBERBSD_NATIVE_CXX_BINDING_RECORD?= ' + value,
+                  '.if "${EMBERBSD_NATIVE_CXX_BINDING_RECORD}" != "' + value + '"',
+                  '.error Native C++ binding record differs from selected host runtime', '.endif']
     # Native platform probes can run before the child's MAKECONF include.
     lines += ['.export EMBERBSD_NATIVE_AWK']
     flags = toolset.abi_flags
@@ -221,12 +232,13 @@ def render(toolset, qt=(), fetch_mode='fetch'):
             ('cxx', 'CXX', flags['cppflags'] + flags['cxxflags'] + flags['ldflags']),
             ('cpp', 'CPP', flags['cppflags'])):
         pinned = '_EMBER_NATIVE_' + name + '_COMMAND'
-        value = literal(shlex.join([toolset.tool(role), *arguments]))
+        executable = native_cxx['adapters'][role] if native_cxx and role in ('cc', 'cxx', 'cpp') else toolset.tool(role)
+        value = literal(shlex.join([executable, *([] if native_cxx else arguments)]))
         lines += [pinned + ':= ' + value,
                   '.if "${' + pinned + '}" != "' + value + '"',
                   '.error ' + pinned + ' differs from the selected native ABI command', '.endif']
     for name in ('cppflags', 'cflags', 'cxxflags', 'ldflags'):
-        value = literal(shlex.join(toolset.abi_flags[name]))
+        value = literal(shlex.join(()) if native_cxx else shlex.join(toolset.abi_flags[name]))
         pinned = '_EMBER_SDK_' + name.upper()
         lines += [pinned + ':= ' + value,
                   '.if "${' + pinned + '}" != "' + value + '"',
@@ -238,7 +250,7 @@ def render(toolset, qt=(), fetch_mode='fetch'):
                       '.error ' + variable + ' differs from the selected native ABI flags', '.endif']
     for role, variable in (('cc', 'HOST_CC'), ('cxx', 'HOST_CXX'), ('cpp', 'HOST_CPP')):
         pinned = '_EMBER_SDK_' + role.upper()
-        value = literal(toolset.tool(role))
+        value = literal(native_cxx['adapters'][role] if native_cxx and role in ('cc', 'cxx', 'cpp') else toolset.tool(role))
         lines += [variable + '?= ${' + pinned + '}',
                   '.if "${' + variable + '}" != "' + value + '"',
                   '.error ' + variable + ' differs from the selected Ports compiler', '.endif']
@@ -260,13 +272,75 @@ def selection(arguments):
     return toolset
 
 
-def write(toolset, destination, qt=(), fetch_mode='fetch'):
+def select_native_cxx(toolset, selected_record):
+    """Use one explicit SDK binding for native C++, retaining raw tool selection."""
+    if selected_record is None:
+        return None
+    from emberbsd_sdk import compiler_bindings, paths
+    from emberbsd_sdk.errors import SDKError
+    if (toolset.compiler_family != 'clang' or toolset.host.get('os') != 'Darwin' or
+            not Path(selected_record).is_absolute()):
+        raise SDKError('Native C++ binding requires selected Darwin Clang and absolute record')
+    record_path = Path(paths.canonical_existing(selected_record))
+    paths.regular_file(str(record_path))
+    if (record_path.name != 'commands.json' or compiler_bindings.NATIVE_CXX_RUNTIME_BINDING_API != 1 or
+            getattr(compiler_bindings, 'NATIVE_COMPILER_CONTEXT_API', None) != 1):
+        raise SDKError('Unsupported native C++ binding record')
+    record = json.loads(record_path.read_text(encoding='utf-8'))
+    if record.get('version') not in (2, 3) or record.get('format') != 'emberbsd-compiler-binding':
+        raise SDKError('Native C++ runtime requires an SDK native binding')
+    if record['version'] == 3 and getattr(compiler_bindings, 'NATIVE_CXX_PLATFORM_ABI_API', None) != 1:
+        raise SDKError('Selected SDK cannot use platform C++ ABI headers')
+    runtime = record.get('native_cxx_runtime')
+    if not isinstance(runtime, dict) or not isinstance(runtime.get('targets'), list):
+        raise SDKError('Incomplete native C++ runtime selection')
+    cpu = toolset.host.get('cpu')
+    arch = {'arm64':r'(?:arm64|aarch64)', 'aarch64':r'(?:arm64|aarch64)',
+            'x86_64':'x86_64', 'amd64':'x86_64'}.get(cpu)
+    if (not arch or toolset.compiler.get('triplet') not in runtime['targets'] or
+            any(not isinstance(target, str) or not re.fullmatch(
+                arch + r'-apple-(?:darwin|macosx?)[0-9.]*', target)
+                for target in runtime['targets'])):
+        raise SDKError('Native C++ runtime targets differ from selected host')
+    prefix = Path(toolset.bundle_root).resolve(strict=True)
+    for key in ('include_dir', 'library_dir'):
+        selected = Path(runtime.get(key, '')).resolve(strict=True)
+        if not selected.is_relative_to(prefix) or selected == prefix:
+            raise SDKError('Native C++ runtime must be selected from the host prefix')
+    commands = {}
+    for role, spec in record.get('commands', {}).items():
+        if not isinstance(spec, dict) or set(spec) != {'argv'}:
+            raise SDKError('Invalid native compiler command')
+        commands[role] = spec['argv']
+    for role in ('cc', 'cxx', 'cpp'):
+        if not commands.get(role):
+            raise SDKError('Native binding is missing a selected compiler')
+        actual = Path(commands[role][0]).resolve(strict=True)
+        allowed = {Path(toolset.tool(role)).resolve(strict=True)}
+        if role == 'cpp':
+            allowed.add(Path(toolset.tool('cc')).resolve(strict=True))
+        if actual not in allowed:
+            raise SDKError('Native binding differs from the selected compiler')
+    selected_flags = {name:list(toolset.abi_flags[name])
+                      for name in ('cppflags', 'cflags', 'cxxflags', 'ldflags')}
+    if record.get('flags') != selected_flags:
+        raise SDKError('Native compiler binding differs from selected ABI flags')
+    compiler_bindings.validate_native_compiler_context(record)
+    # The existing SDK-owned binding directory is verified byte-for-byte.
+    adapters = compiler_bindings.bind_compilers(str(record_path.parent), commands=commands,
+        flags=record['flags'], python=toolset.tool('python'), aliases=record.get('aliases'),
+        link_flags=record.get('link_flags'), runtime_rpath=record.get('runtime_rpath'),
+        native_cxx_runtime=runtime)
+    return {'record':str(record_path), 'adapters':adapters, 'flags':record['flags']}
+
+
+def write(toolset, destination, qt=(), fetch_mode='fetch', native_cxx=None):
     from emberbsd_sdk import paths
     from emberbsd_sdk.errors import SDKError
     if not Path(destination).is_absolute():
         raise SDKError('Use an absolute native include destination')
     output = Path(paths.canonical_new(destination))
-    data = render(toolset, qt, fetch_mode)
+    data = render(toolset, qt, fetch_mode, native_cxx)
     # Replace only the requested configuration file, after a complete write.
     with tempfile.NamedTemporaryFile(prefix='.native-tools-', dir=output.parent,
                                      delete=False) as temporary:
@@ -287,14 +361,15 @@ HOST_PHASE_ALIASES = {'awk': 'nawk', 'make': 'gmake', 'ar': 'ar',
                       'c++': 'cxx', 'sh': 'sh'}
 
 
-def write_aliases(toolset, destination):
+def write_aliases(toolset, destination, native_cxx=None):
     from emberbsd_sdk.errors import SDKError
     from emberbsd_sdk import paths
     output = Path(destination)
     if not output.is_absolute():
         raise SDKError('Use an absolute host alias directory')
     paths.reject_overlap(str(output), toolset.bundle_root)
-    members = {name: toolset.tool(role) for name, role in HOST_PHASE_ALIASES.items()}
+    members = {name: (native_cxx['adapters'][role] if native_cxx and role in ('cc', 'cxx', 'cpp') else toolset.tool(role))
+               for name, role in HOST_PHASE_ALIASES.items()}
     if output.exists():
         if output.is_symlink() or not output.is_dir() or set(os.listdir(output)) != set(members):
             raise SDKError('Host alias directory does not match the selected tools')
@@ -320,6 +395,7 @@ def main(arguments):
     parser.add_argument('--fetch-mode', choices=('fetch', 'manual'), default='fetch')
     parser.add_argument('--output')
     parser.add_argument('--makeconf')
+    parser.add_argument('--native-cxx-binding-record')
     args = parser.parse_args(arguments)
     if args.operation in ('write', 'aliases'):
         if not args.output or args.makeconf:
@@ -327,13 +403,14 @@ def main(arguments):
     elif not args.makeconf or args.output:
         parser.error('verify requires only --makeconf')
     toolset = selection(args)
+    native_cxx = select_native_cxx(toolset, args.native_cxx_binding_record)
     if args.operation == 'aliases':
-        print(json.dumps(write_aliases(toolset, args.output)))
+        print(json.dumps(write_aliases(toolset, args.output, native_cxx)))
         return
     qt = qt_host_paths(args.host_prefix, toolset.path) + mlir_host_tools(args.host_prefix) + \
         flang_host_tool(args.host_prefix)
     if args.operation == 'write':
-        print(json.dumps(write(toolset, args.output, qt, args.fetch_mode)))
+        print(json.dumps(write(toolset, args.output, qt, args.fetch_mode, native_cxx)))
         return
     from emberbsd_sdk import paths
     from emberbsd_sdk.errors import SDKError
@@ -342,7 +419,7 @@ def main(arguments):
     path = Path(paths.canonical_existing(args.makeconf))
     paths.regular_file(str(path))
     data = path.read_bytes()
-    if data != render(toolset, qt, args.fetch_mode):
+    if data != render(toolset, qt, args.fetch_mode, native_cxx):
         raise SDKError('Regenerate the native include for the selected host prefix')
     print('VERIFIED')
 

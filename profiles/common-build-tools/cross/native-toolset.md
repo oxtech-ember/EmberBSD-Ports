@@ -99,3 +99,21 @@ creates aliases to the checked native roles. Its `make` alias selects GNU make;
 `awk`, `ar`, `ranlib`, `ld`, `cc`, `c++` and `sh` select their native roles.
 The returned path consists of that directory and the selected prefix paths.
 Select the SDK source as for `write`; the caller owns the output directory.
+
+To use the selected native Darwin libc++ for cross-build host tools, pass the
+same explicit SDK binding record used by the native MAKECONF:
+
+```sh
+/absolute/host-pkg-llvm/bin/python3.15 -B -E -S \
+    profiles/common-build-tools/cross/prepare-native-tools.py \
+    --sdk-source /absolute/EmberBSD-SDK write \
+    --host-prefix /absolute/host-pkg-llvm \
+    --native-cxx-binding-record /absolute/native-binding/commands.json \
+    --output /absolute/host-tools.mk
+```
+
+Set `EMBERBSD_NATIVE_CXX_BINDING_RECORD` to that record before including the
+native mapping. Its verifier checks the selected host compiler and runtime;
+`HOST_CXX`, `EMBERBSD_CROSS_BUILD_CXX`, native C++ commands and optional host
+aliases then use the same SDK adapter. Target compiler commands and sysroot
+remain independent. Omit this selection to keep the previous native mapping.

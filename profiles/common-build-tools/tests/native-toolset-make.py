@@ -50,6 +50,18 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         as_dict=lambda: {'format': 'emberbsd-native-toolset-selection',
                          'version': 1, 'api': 1, 'tools': dict(tools),
                          'abi_flags': {key: list(value) for key, value in flags.items()}})
+    # SDK-bound flags are retained in the record, not duplicated in host args.
+    chosen = {'adapters': {role:str(root / ('binding/' + role)) for role in ('cc', 'cxx', 'cpp')},
+              'record': str(root / 'binding/commands.json'),
+              'flags': {name:list(value) for name, value in flags.items()}}
+    routed = adapter.render(selected, native_cxx=chosen).decode()
+    for role in ('cc', 'cxx', 'cpp'):
+        assert '_EMBER_SDK_' + role.upper() + ':= ' + chosen['adapters'][role] in routed
+        assert '_EMBER_NATIVE_' + role.upper() + '_COMMAND:= ' + chosen['adapters'][role] + '\n' in routed
+    assert 'EMBERBSD_NATIVE_CXX_BINDING_RECORD?= ' + chosen['record'] in routed
+    assert '_EMBER_SDK_CXXFLAGS:= \n' in routed
+    changed = dict(chosen, flags=dict(chosen['flags'], cxxflags=['-wrong']))
+    refused(lambda: adapter.render(selected, native_cxx=changed))
     api = types.ModuleType('emberbsd_sdk.native_toolset')
     api.load_host_prefix = mock.Mock(return_value=selected)
     del tools['rpcgen']
