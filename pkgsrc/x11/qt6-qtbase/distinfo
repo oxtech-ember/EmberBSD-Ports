@@ -42,3 +42,4 @@ SHA1 (patch-src_corelib_io_qprocess__unix.cpp-detached) = b374a3c3f03a63f4851804
 SHA1 (patch-src_tools_qtwaylandscanner_qtwaylandscanner.cpp) = 2586cd28c2a06b8a80fcf6b151a49c42de5f3efa
 SHA1 (patch-src_gui_kernel_qguiapplication.cpp-theme-init) = 2e486ebbad246886b0e42df2a46d0442c5434636
 SHA1 (patch-src_tools_syncqt_CMakeLists.txt) = ab3d7f0dbfc8566ebaec45d1242b33c4ae326c44
+SHA1 (patch-src_gui_text_qtextmarkdownimporter.cpp) = 1af80f3908309dec26ef173c18d2fd2aae23a9ba

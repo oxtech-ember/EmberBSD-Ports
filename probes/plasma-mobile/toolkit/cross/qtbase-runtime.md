@@ -56,14 +56,16 @@ accepting the image closure.
 Run these commands from the toolkit directory with real native pkgsrc tools:
 
 ```sh
-ruby tests/qtbase-package-split.rb \
+QT_SPLIT_HOST_MAKECONF=/absolute/native-mk.conf \
+    /absolute/native-prefix/bin/python3 -B tests/qtbase-package-split.py \
     /absolute/pkgsrc /absolute/native-prefix /absolute/cross-tools \
     /absolute/sysroot /absolute/native-qtbase /absolute/new-split-fixture
-ruby tests/qtbase-package-lifecycle.rb \
+/absolute/native-prefix/bin/python3 -B tests/qtbase-package-lifecycle.py \
     /absolute/native-prefix /absolute/new-split-fixture /absolute/new-lifecycle
 ```
 
-The first check uses real bmake to expand all manifests, inspect dependency roles
+Select the installed prefix make configuration with `QT_SPLIT_HOST_MAKECONF`;
+when unset, the first check uses `native-prefix/etc/mk.conf`. The first check uses real bmake to expand all manifests, inspect dependency roles
 and run the actual normalization and stage-selection targets. It supplies explicit
 native Clang for the native manifest check and bounds each bmake process group.
 Seven invalid-stage cases must fail before pruning. The second check uses native

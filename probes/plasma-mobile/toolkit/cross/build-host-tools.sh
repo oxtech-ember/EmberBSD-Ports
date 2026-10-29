@@ -17,6 +17,7 @@ scanner_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_tools_qt
 syncqt_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_tools_syncqt_CMakeLists.txt
 zlib_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-cmake_FindWrapSystemZLIB.cmake
 widgets_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_widgets_CMakeLists.txt
+markdown_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_gui_text_qtextmarkdownimporter.cpp
 shader_patches="$toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_CMakeLists.txt $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_CMakeLists.txt $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_qspirvcompiler.cpp $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_qspirvshaderremap.cpp $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_qspirvshaderremap_p.h"
 RESUME=${RESUME:-0}
 HOST_SH=${HOST_SH:-/bin/sh}
@@ -153,7 +154,7 @@ if [ -e "$work" ] || [ -L "$work" ]; then
     grep -q -x "profile=$profile" "$work/inputs.txt" || {
         echo 'Host profile changed; use a new work directory' >&2; exit 2;
     }
-    for tool in "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" $shader_patches $host_dbus_inputs $runtime_inputs $host_codesign; do
+    for tool in "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" "$markdown_patch" $shader_patches $host_dbus_inputs $runtime_inputs $host_codesign; do
         shasum -a 256 "$tool" | grep -F -x -f - "$work/inputs.txt" >/dev/null || {
             echo "Host input changed; use a new work directory: $tool" >&2; exit 2;
         }
@@ -181,7 +182,7 @@ ln -sf "$NINJA" "$work/bin/ninja"
 PATH="$work/bin:$PATH"
 export PATH
 {
-    shasum -a 256 "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" $shader_patches $host_dbus_inputs $runtime_inputs $host_codesign
+    shasum -a 256 "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" "$markdown_patch" $shader_patches $host_dbus_inputs $runtime_inputs $host_codesign
     "$CMAKE" --version
     "$NINJA" --version
     printf 'profile=%s\n' "$profile"
@@ -206,8 +207,9 @@ for module in $modules; do
             "$PATCH" -d "$work/source/$module-everywhere-src-6.12.0" -p0 -F0 -i "$syncqt_patch"
             "$PATCH" -d "$work/source/$module-everywhere-src-6.12.0" -p0 -F0 -i "$zlib_patch"
             "$PATCH" -d "$work/source/$module-everywhere-src-6.12.0" -p0 -F0 -i "$widgets_patch"
+            "$PATCH" -d "$work/source/$module-everywhere-src-6.12.0" -p0 -F0 -i "$markdown_patch"
             (cd "$work/source/$module-everywhere-src-6.12.0" &&
-                shasum -a 256 src/tools/qtwaylandscanner/qtwaylandscanner.cpp src/tools/syncqt/CMakeLists.txt cmake/FindWrapSystemZLIB.cmake src/widgets/CMakeLists.txt > "$work/qtbase-scanner-source.sha256")
+                shasum -a 256 src/tools/qtwaylandscanner/qtwaylandscanner.cpp src/tools/syncqt/CMakeLists.txt cmake/FindWrapSystemZLIB.cmake src/widgets/CMakeLists.txt src/gui/text/qtextmarkdownimporter.cpp > "$work/qtbase-scanner-source.sha256")
         elif [ "$module" = qtshadertools ]; then
             for patch in $shader_patches; do
                 "$PATCH" -d "$work/source/$module-everywhere-src-6.12.0" -p0 -F0 -i "$patch"
