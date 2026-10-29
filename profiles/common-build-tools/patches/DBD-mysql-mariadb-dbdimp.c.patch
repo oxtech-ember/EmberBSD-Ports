@@ -1,0 +1,173 @@
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+Build DBD::mysql 5 against MariaDB Connector/C, the one MySQL client
+library in EmberBSD.  Map mysql_real_escape_string_quote() to
+mysql_real_escape_string(), keep the MySQL 8 compression and named-bind
+calls for MySQL only, and translate the SSL modes to MYSQL_OPT_SSL_ENFORCE
+and MYSQL_OPT_SSL_VERIFY_SERVER_CERT.  A connection that requires TLS is
+refused if the server did not negotiate it, as with SSL_MODE_REQUIRED.
+mysql_ssl=0 turns TLS off, which Connector/C 3.4 otherwise enables.
+Size server-side prepared ZEROFILL result buffers to the display width,
+because Connector/C pads only when the padded value fits.
+
+--- dbdimp.c.orig
++++ dbdimp.c
+@@ -13,6 +13,17 @@
+  */
+ 
+ #include "dbdimp.h"
++
++#ifdef MARIADB_PACKAGE_VERSION_ID
++/*
++ * MariaDB Connector/C has no mysql_real_escape_string_quote().  Every
++ * caller here quotes with a single quote, and mysql_real_escape_string()
++ * already escapes single quotes (by doubling them when the server runs
++ * with NO_BACKSLASH_ESCAPES), so the result is the same.
++ */
++#define mysql_real_escape_string_quote(mysql, to, from, length, quote) \
++  mysql_real_escape_string((mysql), (to), (from), (length))
++#endif
+ 
+ #ifdef _WIN32
+ #define MIN min
+@@ -1182,6 +1193,9 @@
+   int portNr;
+   unsigned int client_flag;
+   MYSQL* result;
++#ifdef MARIADB_PACKAGE_VERSION_ID
++  bool require_tls = FALSE;
++#endif
+   dTHX;
+   D_imp_xxh(dbh);
+ 
+@@ -1240,7 +1254,7 @@
+             PerlIO_printf(DBIc_LOGPIO(imp_xxh),
+                           "imp_dbh->mysql_dr_connect: Enabling" \
+                           " compression algorithms: %s\n", calg);
+-#if MYSQL_VERSION_ID >= 80018
++#if MYSQL_VERSION_ID >= 80018 && !defined(MARIADB_PACKAGE_VERSION_ID)
+           mysql_options(sock, MYSQL_OPT_COMPRESSION_ALGORITHMS, calg);
+ #else
+           mysql_options(sock, MYSQL_OPT_COMPRESS, NULL);
+@@ -1411,8 +1425,13 @@
+         }
+ 
+         if ((svp = hv_fetch(hv, "mysql_get_server_pubkey", 23, FALSE)) && *svp && SvTRUE(*svp)) {
++#ifdef MARIADB_PACKAGE_VERSION_ID
++          /* MariaDB Connector/C requests the RSA public key from the
++             server on its own when no key file is given. */
++#else
+           bool server_get_pubkey = 1;
+           mysql_options(sock, MYSQL_OPT_GET_SERVER_PUBLIC_KEY, &server_get_pubkey);
++#endif
+         }
+ 
+         if ((svp = hv_fetch(hv, "mysql_server_pubkey", 19, FALSE)) && *svp) {
+@@ -1430,7 +1449,9 @@
+ 	    char *ca_path = NULL;
+ 	    char *cipher = NULL;
+ 	    STRLEN lna;
++#ifndef MARIADB_PACKAGE_VERSION_ID
+ 	    unsigned int ssl_mode;
++#endif
+ 	    bool ssl_verify = 0;
+ 
+             /* Verify if the hostname we connect to matches the hostname in the certificate */
+@@ -1475,6 +1496,26 @@
+ 	    }
+ 
+ 
++#ifdef MARIADB_PACKAGE_VERSION_ID
++	    /*
++	     * MariaDB Connector/C has no MYSQL_OPT_SSL_MODE.  TLS is requested
++	     * with MYSQL_OPT_SSL_ENFORCE; certificate checks are switched with
++	     * MYSQL_OPT_SSL_VERIFY_SERVER_CERT, which checks both the CA and
++	     * the host name.  Without verification the library falls back to
++	     * plain text when the server has no TLS, so a required connection
++	     * is checked after connecting (see require_tls below).
++	     */
++	    {
++	      my_bool enforce = 1;
++	      my_bool verify = (ssl_verify || ca_file || ca_path) ? 1 : 0;
++	      if (mysql_options(sock, MYSQL_OPT_SSL_ENFORCE, &enforce) != 0 ||
++	          mysql_options(sock, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &verify) != 0) {
++	        set_ssl_error(sock, "Enforcing SSL encryption is not supported");
++	        return NULL;
++	      }
++	      require_tls = ssl_enforce;
++	    }
++#else
+         if (!ssl_enforce)
+           ssl_mode = SSL_MODE_PREFERRED;
+         else if (ssl_verify)
+@@ -1487,13 +1528,22 @@
+ 	      set_ssl_error(sock, "Enforcing SSL encryption is not supported");
+ 	      return NULL;
+ 	    }
++#endif
+ 
+ 	    client_flag |= CLIENT_SSL;
+ 	  }
+ 	else
+ 	  {
++#ifdef MARIADB_PACKAGE_VERSION_ID
++	    /* Connector/C 3.4 starts TLS by default while server certificate
++	       verification is on; mysql_ssl=0 means no TLS, as with MySQL. */
++	    my_bool off = 0;
++	    mysql_options(sock, MYSQL_OPT_SSL_ENFORCE, &off);
++	    mysql_options(sock, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &off);
++#else
+ 	    unsigned int ssl_mode = SSL_MODE_DISABLED;
+ 	    mysql_options(sock, MYSQL_OPT_SSL_MODE, &ssl_mode);
++#endif
+ 	  }
+ 	/*
+ 	 * MySQL 3.23.49 disables LOAD DATA LOCAL by default. Use
+@@ -1519,6 +1569,16 @@
+ 				portNr, mysql_socket, client_flag);
+     if (DBIc_TRACE_LEVEL(imp_xxh) >= 2)
+       PerlIO_printf(DBIc_LOGPIO(imp_xxh), "imp_dbh->mysql_dr_connect: <-");
++
++#ifdef MARIADB_PACKAGE_VERSION_ID
++    if (result && require_tls && mysql_get_ssl_cipher(result) == NULL)
++    {
++      /* MySQL's SSL_MODE_REQUIRED refuses a plain-text connection. */
++      mysql_close(result);
++      result = NULL;
++      set_ssl_error(sock, "SSL is required, but the server does not support it");
++    }
++#endif
+ 
+     if (result)
+     {
+@@ -2852,7 +2912,7 @@
+ 
+   if (num_params > 0 && !(*has_been_bound))
+   {
+-#if MYSQL_VERSION_ID >= 80300
++#if MYSQL_VERSION_ID >= 80300 && !defined(MARIADB_PACKAGE_VERSION_ID)
+     if (mysql_stmt_bind_named_param(stmt,bind,num_params, NULL))
+ #else
+     if (mysql_stmt_bind_param(stmt,bind))
+@@ -3168,7 +3228,7 @@
+                       col_type);
+       buffer->length= &(fbh->length);
+       buffer->is_null= &(fbh->is_null);
+-      buffer->error= (bool*) &(fbh->error);
++      buffer->error= &(fbh->error);
+ 
+       if (fields[i].flags & ZEROFILL_FLAG)
+         buffer->buffer_type = MYSQL_TYPE_STRING;
+@@ -3194,6 +3254,13 @@
+ 
+       default:
+         buffer->buffer_length= fields[i].max_length ? fields[i].max_length : 1;
++#ifdef MARIADB_PACKAGE_VERSION_ID
++        /* Connector/C pads ZEROFILL values only when the whole display
++           width (plus a terminator) fits in the bound buffer. */
++        if ((fields[i].flags & ZEROFILL_FLAG) &&
++            buffer->buffer_length <= fields[i].length)
++          buffer->buffer_length= fields[i].length + 1;
++#endif
+         Newz(908, fbh->data, buffer->buffer_length, char);
+         buffer->buffer= (char *) fbh->data;
+       }

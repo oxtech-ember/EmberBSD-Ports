@@ -1,0 +1,53 @@
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+MYSQL_BIND points at bool flags in MySQL 8 but at my_bool (char) flags in
+MariaDB Connector/C.  Declare the bound is_null and error fields with the
+client library's type so the pointers match.
+
+--- dbdimp.h.orig
++++ dbdimp.h
+@@ -22,6 +22,16 @@
+ #include <mysql.h>  /* Comes with MySQL-devel */
+ #include <mysqld_error.h>  /* Comes MySQL */
+ #include <errmsg.h> /* Comes with MySQL-devel */
++
++/*
++ * MYSQL_BIND points at bool flags in MySQL 8 and at my_bool (char) flags
++ * in MariaDB Connector/C; use the client library's type for those fields.
++ */
++#ifdef MARIADB_PACKAGE_VERSION_ID
++typedef my_bool dbd_bind_bool;
++#else
++typedef bool dbd_bind_bool;
++#endif
+ 
+ 
+ #define true 1
+@@ -156,7 +166,7 @@
+       double dval;
+     } numeric_val;
+     unsigned long   length;
+-    bool         is_null;
++    dbd_bind_bool is_null;
+ } imp_sth_phb_t;
+ 
+ /*
+@@ -168,8 +178,8 @@
+  */
+ typedef struct imp_sth_fbh_st {
+     unsigned long  length;
+-    bool        is_null;
+-    bool           error;
++    dbd_bind_bool is_null;
++    dbd_bind_bool error;
+     char           *data;
+     int            charsetnr;
+     double         ddata;
+@@ -179,7 +189,7 @@
+ 
+ typedef struct imp_sth_fbind_st {
+    unsigned long   * length;
+-   bool         * is_null;
++   dbd_bind_bool * is_null;
+ } imp_sth_fbind_t;
+ 
+ 
