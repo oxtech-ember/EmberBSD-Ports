@@ -1,0 +1,2 @@
+json-schema is a Ruby library for validating JSON documents and Ruby
+data structures against JSON Schema drafts 1 to 6.

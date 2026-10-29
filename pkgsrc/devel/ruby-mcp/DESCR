@@ -1,0 +1,3 @@
+The official Ruby SDK for the Model Context Protocol (MCP). It
+implements MCP servers and clients, with tools, prompts and resources
+over stdio and HTTP transports.

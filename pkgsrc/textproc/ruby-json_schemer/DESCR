@@ -1,0 +1,2 @@
+json_schemer validates JSON documents against JSON Schema drafts 4, 6,
+7, 2019-09 and 2020-12, and against OpenAPI 3.0 and 3.1 documents.

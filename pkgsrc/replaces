@@ -412,3 +412,7 @@ net/ruby-winrm-elevated
 net/ruby-winrm-fs
 
 graphics/glslang
+
+# thor 1.5.0; jirametrics 3.5 accepts it (2.20.1 pinned thor ~> 1.2.2).
+devel/ruby-jirametrics
+devel/ruby-thor

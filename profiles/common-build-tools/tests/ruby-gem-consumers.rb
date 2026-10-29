@@ -34,7 +34,10 @@ end
 
 kept = {
   'www/ruby-rouge' => %w[rouge 5.1.0 www/heel www/ruby-jekyll textproc/ruby-review graphics/rabbit www/motyl],
-  'mail/ruby-mail' => %w[mail 2.9.1 mail/ruby-actionmailer81 mail/ruby-actionmailbox81 www/ruby-padrino-mailer]
+  'mail/ruby-mail' => %w[mail 2.9.1 mail/ruby-actionmailer81 mail/ruby-actionmailbox81 www/ruby-padrino-mailer],
+  'devel/ruby-thor' => %w[thor 1.5.0 devel/ruby-approvaltests devel/ruby-jirametrics devel/ruby-protobuf-cucumber
+                          devel/ruby-railties81 sysutils/ruby-inspec-core textproc/ruby-haml www/ruby-jquery-rails
+                          www/ruby-padrino-core]
 }
 kept.each do |kept_path, (gem, wanted, *consumers)|
   kept_vars = vars(tree, makeconf, kept_path, 'PKGNAME', 'PKG_FAIL_REASON')
@@ -63,4 +66,4 @@ abort "www/heel: #{mime} accepts mime-types 3.7.0 without the sort fix" if statu
 mt = vars(tree, makeconf, 'mail/ruby-mime-types', 'PKGNAME')['PKGNAME']
 _, status = Open3.capture2e(ENV['PKG_ADMIN'], 'pmatch', mime, mt)
 abort "www/heel: #{mime} rejects #{mt}" unless status.success?
-puts 'PASS: the consumers of rouge and mail accept the kept versions'
+puts 'PASS: the consumers of rouge, mail and thor accept the kept versions'

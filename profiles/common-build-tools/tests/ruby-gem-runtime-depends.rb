@@ -11,7 +11,7 @@ work = File.expand_path(ARGV[3])
 abort 'NEW_WORK must be new' if File.exist?(work) || File.symlink?(work)
 Dir.mkdir(work)
 
-ROOTS = %w[net/ruby-train-winrm].freeze
+ROOTS = %w[net/ruby-train-winrm devel/ruby-jirametrics].freeze
 
 def vars(tree, makeconf, pkgpath, *names)
   out, err, status = Open3.capture3({ 'MAKECONF' => makeconf }, ENV['BMAKE'],
