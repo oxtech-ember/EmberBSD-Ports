@@ -1,0 +1,67 @@
+Run selected host generators with an explicit scoped runtime launcher.
+Origin: EmberBSD contributors (AI-assisted); upstream status: not submitted.
+
+--- gn/perfetto.gni
++++ gn/perfetto.gni
+@@ -51,6 +51,20 @@
+ #    perfetto_build_standalone = false
+ #    perfetto_build_with_android = false
+ #    perfetto_build_with_embedder = true
++
++# An embedder may run native generators using one explicit runtime view.
++declare_args() {
++  perfetto_host_runtime_launcher = ""
++  perfetto_host_runtime_view = ""
++  perfetto_host_runtime_inputs = []
++}
++assert((perfetto_host_runtime_launcher == "") ==
++       (perfetto_host_runtime_view == ""),
++       "Select the host runtime launcher and view together")
++if (perfetto_host_runtime_launcher != "") {
++  assert(perfetto_host_runtime_inputs != [],
++         "The host runtime launcher requires its actual inputs")
++}
+ 
+ # +----------------------------------------------------------------------------+
+ # | Toolchain / environment related configuration                              |
+--- gn/protozero_descriptor_diff.gni
++++ gn/protozero_descriptor_diff.gni
+@@ -59,6 +59,18 @@
+       "--subtrahend",
+       rebase_path(subtrahend_descriptor_file_path, root_build_dir),
+     ]
++    if (perfetto_host_runtime_launcher != "") {
++      inputs = perfetto_host_runtime_inputs
++      original_args = args
++      args = []
++      args = [
++        "--runtime-launcher",
++        rebase_path(perfetto_host_runtime_launcher, root_build_dir),
++        "--runtime-view",
++        rebase_path(perfetto_host_runtime_view, root_build_dir),
++        "--",
++      ] + original_args
++    }
+     metadata = {
+       perfetto_action_type_for_generator = [ "protozero_descriptor_diff" ]
+       perfetto_minuend_descriptor =
+--- gn/run_binary.py
++++ gn/run_binary.py
+@@ -15,8 +15,16 @@
+ 
+ This script exists because GN action only works with python scripts."""
+ 
++import os
+ import sys
+ import subprocess
+ 
+ if __name__ == '__main__':
+-  sys.exit(subprocess.call(sys.argv[1:]))
++  command = sys.argv[1:]
++  if command[:1] == ['--runtime-launcher']:
++    if (len(command) < 6 or command[2] != '--runtime-view' or
++        command[4] != '--' or not command[1] or not command[3]):
++      sys.exit('expected --runtime-launcher PATH --runtime-view PATH -- COMMAND')
++    command = [sys.executable, command[1], '--runtime-view',
++               os.path.abspath(command[3]), '--'] + command[5:]
++  sys.exit(subprocess.call(command))

@@ -1,0 +1,29 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted E12 portability fix).
+Upstream: Chromium source 0f678fa0d9c6e21f26b16c3a6c43aebefc86caaa.
+Status: local GCC16 fix; not submitted upstream.
+
+Keep unsupported-schema rejection dependent and avoid GCC tautological warnings.
+
+--- src/trace_processor/importers/proto/typed_proto_field.h
++++ src/trace_processor/importers/proto/typed_proto_field.h
+@@ -38,6 +38,9 @@
+ // so the returned type always matches the field's schema and casting to the
+ // wrong field id is a programming error (DCHECK).
+ class TypedProtoField {
++  template <auto>
++  inline static constexpr bool kAlwaysFalse = false;
++
+  public:
+   explicit TypedProtoField(protozero::Field field) : field_(field) {}
+ 
+@@ -80,7 +83,7 @@
+     } else if constexpr (kType == ST::kDouble) {
+       return field_.as_double();
+     } else {
+-      static_assert(kType != kType, "Unsupported proto schema type");
++      static_assert(kAlwaysFalse<kType>, "Unsupported proto schema type");
+     }
+   }
+ 

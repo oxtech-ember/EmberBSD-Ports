@@ -1,0 +1,33 @@
+$NetBSD$
+
+BLAKE2s (perfetto-59.1.tar.gz) = cf0c5a536d6d8a2cf671f839da2ddb5e53d068a2a7a2175b10cc5b3c1c1106b7
+SHA512 (perfetto-59.1.tar.gz) = 9223d446fddf83ebf0bf2a9553a77493939dca651ea70d58cebe2b9b57026e24ac9e2d5af0b12689dfeaf6bd01e3f6e411305b3b2158d043e2377bdbaf3b5b42
+Size (perfetto-59.1.tar.gz) = 64238964 bytes
+SHA1 (patch-bsd-include_perfetto_base_build__config.h) = eb3c8b868dbf0502e871e68f9f37d723886cf195
+SHA1 (patch-bsd-include_perfetto_base_thread__utils.h) = eb83ab04bbcd54cfac124868b14c219b7f2492f0
+SHA1 (patch-bsd-include_perfetto_base_time.h) = 29a06262ab232691a9d52df15f8d5bf8ba93d25d
+SHA1 (patch-bsd-include_perfetto_ext_base_event__fd.h) = 66b1fe8d08a36a7aae4f29e286144473df3312c7
+SHA1 (patch-bsd-include_perfetto_ext_base_thread__utils.h) = 8ee44d9b433cd92777b1ea453283970fd1ff5014
+SHA1 (patch-bsd-include_perfetto_tracing_internal_track__event__legacy.h) = b14b4ad2fd204f9c56c5939a14f8c0286eca37c6
+SHA1 (patch-bsd-include_perfetto_ext_base_futex.h) = a7829d1a429d5e80844994185fac34f8e477f64a
+SHA1 (patch-bsd-protos_perfetto_trace_ftrace_v4l2.proto) = f40b14eacabc96515a1614364a6f4b92b1f241ad
+SHA1 (patch-bsd-src_base_android__utils.cc) = 6a1c8b0c9e4046b89319b3f228b3021899e28fa1
+SHA1 (patch-bsd-src_base_clock__snapshots.cc) = 711de0ae169101ee068409c42735458b4a5a4148
+SHA1 (patch-bsd-src_base_event__fd.cc) = c11cfcf7a030482d5a1041628d837bb5ceb1fa8b
+SHA1 (patch-bsd-src_base_file__utils.cc) = 85316afa21793c26856dcb5f5bd1e1d7c9efbcba
+SHA1 (patch-bsd-src_base_periodic__task.cc) = 2788ea2bd0215a3f805b5ccb17c3cf367c4e8b34
+SHA1 (patch-bsd-src_base_scoped__sched__boost.cc) = b4f01f313a518c32158851339f21fc503371b6c5
+SHA1 (patch-bsd-src_base_string__utils.cc) = 3d08567d7bfa8367ed3156766f610d1cf8dcae95
+SHA1 (patch-bsd-src_base_subprocess__posix.cc) = 6bd19e4209eea99a2820b9fca6bb89a75a199b29
+SHA1 (patch-bsd-src_base_test_vm__test__utils.cc) = cf4e4a9c49b5ebedc6ced26c4bee4a5830e441c9
+SHA1 (patch-bsd-src_base_thread__task__runner.cc) = 307dee2b2edf2cb10188784a51eaae80256ed371
+SHA1 (patch-bsd-src_base_unix__socket.cc) = d8c3e41f8f182936185a151917810c66834a58c5
+SHA1 (patch-bsd-src_trace__processor_importers_ftrace_v4l2__tracker.cc) = 02477cc43d563cc33504898f242e49c358b02513
+SHA1 (patch-bsd-src_tracing_platform__posix.cc) = a2db87b408ec98ac97fb788c9aa6b002eb94668a
+SHA1 (patch-bsd-src_tracing_track.cc) = df11c04592375dd4231ec8569ac054ef71424ce4
+SHA1 (patch-bsd-platform-defaults) = f066071f3e9721c76e14b33f2a6205bad816a276
+SHA1 (patch-bsd-memfd-guard) = ad6d845cfe29a8d884aef479f1fe6c5e215fa86e
+SHA1 (patch-perfetto-gcc16-warning-cleanups) = c6874d0c2d0bb6823aaa2773a3de4c980177c9e7
+SHA1 (patch-perfetto-typed-proto-gcc16-dependent-false) = e1e35c80719ce569ec64c413a569146d407bf0b7
+SHA1 (patch-bsd-src_base_utils.cc) = dd7af078b395e91d480a04e5682388731e2d3cfc
+SHA1 (patch-gn-scoped-host-runtime) = 1d691eb18fd35d5eb120df954e57d7bfe5139311

@@ -1,0 +1,62 @@
+$NetBSD: patch-third__party_perfetto_src_trace__processor_importers_ftrace_v4l2__tracker.cc,v 1.31 2026/10/23 15:05:36 kikadf Exp $
+
+* Part of patchset to build chromium on NetBSD
+* Based on OpenBSD's chromium patches, and
+  pkgsrc's qt5-qtwebengine patches
+
+--- src/trace_processor/importers/ftrace/v4l2_tracker.cc.orig	2026-10-19 20:07:21.000000000 +0000
++++ src/trace_processor/importers/ftrace/v4l2_tracker.cc
+@@ -65,7 +65,7 @@ void V4l2Tracker::ParseV4l2Event(uint64_
+     case FtraceEvent::kV4l2QbufFieldNumber: {
+       V4l2QbufFtraceEvent::Decoder pb_evt(bytes);
+       BufferEvent evt;
+-      evt.device_minor = pb_evt.minor();
++      evt.device_minor = pb_evt.gminor();
+       evt.index = pb_evt.index();
+       evt.type = pb_evt.type();
+       evt.bytesused = pb_evt.bytesused();
+@@ -106,7 +106,7 @@ void V4l2Tracker::ParseV4l2Event(uint64_
+     case FtraceEvent::kV4l2DqbufFieldNumber: {
+       V4l2DqbufFtraceEvent::Decoder pb_evt(bytes);
+       BufferEvent evt;
+-      evt.device_minor = pb_evt.minor();
++      evt.device_minor = pb_evt.gminor();
+       evt.index = pb_evt.index();
+       evt.type = pb_evt.type();
+       evt.bytesused = pb_evt.bytesused();
+@@ -152,7 +152,7 @@ void V4l2Tracker::ParseV4l2Event(uint64_
+     case FtraceEvent::kVb2V4l2BufQueueFieldNumber: {
+       Vb2V4l2BufQueueFtraceEvent::Decoder pb_evt(bytes);
+       BufferEvent evt;
+-      evt.device_minor = pb_evt.minor();
++      evt.device_minor = pb_evt.gminor();
+       evt.index = std::nullopt;
+       evt.type = std::nullopt;
+       evt.bytesused = std::nullopt;
+@@ -183,7 +183,7 @@ void V4l2Tracker::ParseV4l2Event(uint64_
+     case FtraceEvent::kVb2V4l2BufDoneFieldNumber: {
+       Vb2V4l2BufDoneFtraceEvent::Decoder pb_evt(bytes);
+       BufferEvent evt;
+-      evt.device_minor = pb_evt.minor();
++      evt.device_minor = pb_evt.gminor();
+       evt.index = std::nullopt;
+       evt.type = std::nullopt;
+       evt.bytesused = std::nullopt;
+@@ -214,7 +214,7 @@ void V4l2Tracker::ParseV4l2Event(uint64_
+     case FtraceEvent::kVb2V4l2QbufFieldNumber: {
+       Vb2V4l2QbufFtraceEvent::Decoder pb_evt(bytes);
+       BufferEvent evt;
+-      evt.device_minor = pb_evt.minor();
++      evt.device_minor = pb_evt.gminor();
+       evt.index = std::nullopt;
+       evt.type = std::nullopt;
+       evt.bytesused = std::nullopt;
+@@ -245,7 +245,7 @@ void V4l2Tracker::ParseV4l2Event(uint64_
+     case FtraceEvent::kVb2V4l2DqbufFieldNumber: {
+       Vb2V4l2DqbufFtraceEvent::Decoder pb_evt(bytes);
+       BufferEvent evt;
+-      evt.device_minor = pb_evt.minor();
++      evt.device_minor = pb_evt.gminor();
+       evt.index = std::nullopt;
+       evt.type = std::nullopt;
+       evt.bytesused = std::nullopt;

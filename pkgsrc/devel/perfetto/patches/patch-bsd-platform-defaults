@@ -1,0 +1,28 @@
+$NetBSD$
+
+Preserve BSD flag defaults on non-BSD host toolchains.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- include/perfetto/base/build_config.h.orig
++++ include/perfetto/base/build_config.h
+@@ -203,6 +203,20 @@
+ #error OS not supported (see build_config.h)
+ #endif
+ 
++/* BSD flags are off on other supported host operating systems. */
++#ifndef PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_BSD
++#define PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_BSD() 0
++#endif
++#ifndef PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_OPENBSD
++#define PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_OPENBSD() 0
++#endif
++#ifndef PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_NETBSD
++#define PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_NETBSD() 0
++#endif
++#ifndef PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_FREEBSD
++#define PERFETTO_BUILDFLAG_DEFINE_PERFETTO_OS_FREEBSD() 0
++#endif
++
+ #if defined(__clang__)
+ #define PERFETTO_BUILDFLAG_DEFINE_PERFETTO_COMPILER_CLANG() 1
+ #define PERFETTO_BUILDFLAG_DEFINE_PERFETTO_COMPILER_GCC() 0
