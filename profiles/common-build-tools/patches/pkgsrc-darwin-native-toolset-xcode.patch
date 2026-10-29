@@ -1,0 +1,65 @@
+# Origin: EmberBSD (AI-assisted), not submitted upstream.
+# A selected Ports native toolset supplies yacc and m4. Skip the uncached
+# Xcode lookups that every bmake parse otherwise runs (xcrun --no-cache).
+
+--- a/mk/tools/tools.Darwin.mk
++++ b/mk/tools/tools.Darwin.mk
+@@ -35,6 +35,14 @@
+ TOOLS_PLATFORM.ggrep?= ${TOOLS_PLATFORM.grep}
+ .else
+ OSX_XCRUN=			${SETENV} PATH= /usr/bin/xcrun --no-cache
++# A selected Ports native toolset supplies the host tools. Do not ask
++# Xcode for yacc and m4 then: pkgsrc takes them from the toolset or
++# from Ports, and no parse pays for an uncached xcrun lookup.
++.if !empty(EMBERBSD_NATIVE_TOOLSET_MAKECONF:U)
++_EMBER_XCODE_TOOLS=		no
++.else
++_EMBER_XCODE_TOOLS=		yes
++.endif
+ 
+ TOOLS_PLATFORM.[?=		[			# shell builtin
+ TOOLS_PLATFORM.od?=		/usr/bin/od
+@@ -56,6 +64,7 @@
+ .endif
+ # CLT 15.3.0.0.1.1708646388 does not provide yacc. Check whether the
+ # /usr/bin/yacc xcode-select stub's target exists before defaulting to it.
++.if ${_EMBER_XCODE_TOOLS} == "yes"
+ .if !defined(OSX_PATH_TO_YACC)
+ OSX_PATH_TO_YACC_cmd=		${OSX_XCRUN} --find yacc 2>/dev/null | \
+ 				sed -e 's|^/Library/Developer/CommandLineTools||'
+@@ -65,6 +74,7 @@
+ .if ${OSX_PATH_TO_YACC} != ""
+ TOOLS_PLATFORM.byacc?=		${OSX_PATH_TO_YACC}
+ .endif
++.endif
+ .if exists(/usr/bin/bzcat)
+ TOOLS_PLATFORM.bzcat?=		/usr/bin/bzcat
+ .endif
+@@ -143,6 +153,7 @@
+ TOOLS_PLATFORM.ls?=		/bin/ls
+ # CLT 15.3.0.0.1.1708646388 does not provide m4. Check whether the
+ # /usr/bin/m4 xcode-select stub's target exists before defaulting to it.
++.if ${_EMBER_XCODE_TOOLS} == "yes"
+ .if !defined(OSX_PATH_TO_M4)
+ OSX_PATH_TO_M4_cmd=		${OSX_XCRUN} --find m4 2>/dev/null | \
+ 				sed -e 's|^/Library/Developer/CommandLineTools||'
+@@ -155,6 +166,7 @@
+ OSX_TOOLS_FORCE_NOOP+=		m4
+ OSX_TOOLS_FORCE_NOOP+=		gm4
+ .endif
++.endif
+ TOOLS_PLATFORM.mail?=		/usr/bin/mail
+ .if exists(/usr/bin/makeinfo)
+ TOOLS_PLATFORM.makeinfo?=	/usr/bin/makeinfo
+@@ -208,9 +220,11 @@
+ TOOLS_PLATFORM.wish?=		/usr/bin/wish
+ .endif
+ TOOLS_PLATFORM.xargs?=		/usr/bin/xargs
++.if ${_EMBER_XCODE_TOOLS} == "yes"
+ .if ${OSX_PATH_TO_YACC} != ""
+ TOOLS_PLATFORM.yacc?=		${OSX_PATH_TO_YACC}
+ .else
+ OSX_TOOLS_FORCE_NOOP+=		yacc
+ .endif
++.endif
+ .endif # EMBERBSD_DARWIN_BOOTSTRAP

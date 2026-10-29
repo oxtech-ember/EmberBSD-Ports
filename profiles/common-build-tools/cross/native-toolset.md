@@ -78,6 +78,12 @@ verifier. `scripts/cross-bulk.sh` verifies once at the start of a run and
 passes the result to each of its bmake calls. Rerun the helper after
 changing the prefix or the generated include.
 
+With a selected toolset, the exported `mk/tools/tools.Darwin.mk` does not
+ask Xcode (`xcrun`) for `yacc` and `m4`. The include supplies `yacc`, and
+pkgsrc takes a declared `m4` from the host prefix. Without a selection, the
+Darwin lookups are unchanged. `tests/darwin-native-toolset-xcode.sh
+EXPORTED_PKGSRC BMAKE NEW_WORK` counts the lookups with a stub.
+
 The generated include retains the selected host compiler family. A conflicting
 family fails. `clang-as` supplies the integrated assembler where a producer
 accepts only one executable path. Native compiler commands retain host ABI flags. Target flags and sysroot
