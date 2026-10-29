@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: MIT
+# Origin: EmberBSD (AI-assisted), based on the official RTAB-Map release.
+# Shared source of local-robotics/rtabmap and local-robotics/rtabmap-res-tool.
+DISTNAME=	rtabmap-0.23.8
+CATEGORIES=	geography
+MASTER_SITES=	${MASTER_SITE_GITHUB:=introlab/}
+GITHUB_PROJECT=	rtabmap
+GITHUB_TAG=	d069becc724905d6465a8758c40dae88e13bb9e8
+WRKSRC=		${WRKDIR}/rtabmap-${GITHUB_TAG}
+
+HOMEPAGE=	https://introlab.github.io/rtabmap/
+LICENSE=	modified-bsd AND 2-clause-bsd AND mit AND gnu-lgpl-v3
+PATCH_STRIP=	-p1
+
+USE_LANGUAGES=		c c++
+USE_CXX_FEATURES=	c++17
+CMAKE_REQD+=		3.22
+
+EMBERBSD_RTABMAP_PKGDIR:=	${.PARSEDIR:tA}
+DISTINFO_FILE=		${EMBERBSD_RTABMAP_PKGDIR}/distinfo
+PATCHDIR=		${EMBERBSD_RTABMAP_PKGDIR}/patches

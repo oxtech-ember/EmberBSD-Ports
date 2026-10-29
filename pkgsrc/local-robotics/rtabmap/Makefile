@@ -1,34 +1,28 @@
 # SPDX-License-Identifier: MIT
 # Origin: EmberBSD (AI-assisted), based on the official RTAB-Map release.
-DISTNAME=	rtabmap-0.23.8
-PKGREVISION=	1
-CATEGORIES=	geography
-MASTER_SITES=	${MASTER_SITE_GITHUB:=introlab/}
-GITHUB_PROJECT=	rtabmap
-GITHUB_TAG=	d069becc724905d6465a8758c40dae88e13bb9e8
-WRKSRC=		${WRKDIR}/rtabmap-${GITHUB_TAG}
+PKGREVISION=	2
 
-HOMEPAGE=	https://introlab.github.io/rtabmap/
+.include "Makefile.common"
+
 COMMENT=	Shared headless recorded-data mapping and localization core
-LICENSE=	modified-bsd AND 2-clause-bsd AND mit AND gnu-lgpl-v3
-PATCH_STRIP=	-p1
 
-USE_LANGUAGES=		c c++
-USE_CXX_FEATURES=	c++17
-CMAKE_REQD+=		3.22
 CMAKE_CONFIGURE_ARGS+=	-C ${.CURDIR}/features.cmake
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_PREFIX=${PREFIX}
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_LIBDIR=lib
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_RPATH=${PREFIX}/lib
 
-# Build this host tool with probes/rtabmap/build-resource-tool.sh first.
 .include "../../mk/bsd.prefs.mk"
-.if !empty(USE_CROSS_COMPILE:M[yY][eE][sS])
-.if !defined(RTABMAP_NATIVE_RES_TOOL)
-PKG_FAIL_REASON+=	"Set RTABMAP_NATIVE_RES_TOOL to the genuine native rtabmap-res_tool"
-.else
-CMAKE_CONFIGURE_ARGS+=	-DRTABMAP_RES_TOOL=${RTABMAP_NATIVE_RES_TOOL}
-.endif
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# The build runs rtabmap-res_tool on the build host to generate resources.
+# A native Ports package of the same release provides it in TOOLBASE.
+TOOL_DEPENDS+=	rtabmap-res-tool-0.23.8{,nb[0-9]*}:../../local-robotics/rtabmap-res-tool
+CMAKE_CONFIGURE_ARGS+=	-DRTABMAP_RES_TOOL=${TOOLBASE:Q}/bin/rtabmap-res_tool
+pre-configure: emberbsd-native-rtabmap-res-tool-check
+.PHONY: emberbsd-native-rtabmap-res-tool-check
+emberbsd-native-rtabmap-res-tool-check:
+	${RUN}${TEST} -x ${TOOLBASE:Q}/bin/rtabmap-res_tool || { \
+	    echo 'The native rtabmap-res_tool 0.23.8 is required' >&2; exit 1; \
+	}
 .endif
 
 post-install:

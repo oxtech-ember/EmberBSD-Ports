@@ -1,0 +1,3 @@
+rtabmap-res_tool from the RTAB-Map release, built for the build host.
+Cross builds of local-robotics/rtabmap run it to generate the database
+schema resources. It is a build dependency only.

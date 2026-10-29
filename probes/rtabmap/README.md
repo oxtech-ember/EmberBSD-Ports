@@ -41,8 +41,10 @@ The cross builder verifies the archive, applies every canonical patch without
 fuzz, records the actual compilation database, and checks the two AArch64 DSOs
 and installed CMake exports for build-host paths. It stages under `/usr/pkg`.
 The native resource generator is a build dependency and is not installed in
-the selected library package. `RTABMAP_NATIVE_RES_TOOL` supplies it to pkgsrc
-when `USE_CROSS_COMPILE=yes`.
+the selected library package. In pkgsrc, `local-robotics/rtabmap-res-tool`
+builds it natively from the same source, distinfo and patches; a cross
+`local-robotics/rtabmap` build takes it as a `TOOL_DEPENDS` package and needs
+no build-host setting. `tests/res-tool-package.sh` checks that wiring.
 
 ## Native control and target acceptance
 
