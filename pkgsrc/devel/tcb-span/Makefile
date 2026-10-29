@@ -1,5 +1,6 @@
 # Origin: EmberBSD contributors (AI-assisted).
 DISTNAME= tcb-span-20220615
+PKGREVISION= 1
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=tcbrindle/}
 GITHUB_PROJECT= span
