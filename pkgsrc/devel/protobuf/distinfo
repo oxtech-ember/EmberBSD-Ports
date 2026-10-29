@@ -11,3 +11,5 @@ SHA1 (patch-upb_message_copy.c) = 03245837ddeca66de800a0fb2ed346965baf8254
 SHA1 (patch-upb_message_string_oom) = a0bef25f81c13cdf403e85060b3b72e7c872233f
 SHA1 (patch-absl-mutex-reference) = ed90fa5501b27172a5b0b352501ea6848ffc1799
 SHA1 (patch-message-lite-string-resize) = 68d8d268558914296279aa59b774b998ee4e75ca
+SHA1 (patch-absl-rw-lock-reference) = 3c2c717ad0326164a8006011b535821e2dda9471
+SHA1 (patch-unknown-fields-string-resize) = add2946e88f8bcf6d9ad9054ff984c4c4158c3c0

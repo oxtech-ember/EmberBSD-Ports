@@ -1,0 +1,116 @@
+Adapt Abseil mutex APIs without changing lock scopes.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- src/google/protobuf/arenastring.cc
++++ src/google/protobuf/arenastring.cc
+@@ -57,7 +57,7 @@
+ 
+ const std::string& LazyString::Init() const {
+   static absl::Mutex mu{absl::kConstInit};
+-  mu.Lock();
++  mu.lock();
+   const std::string* res = inited_.load(std::memory_order_acquire);
+   if (res == nullptr) {
+     auto init_value = init_value_;
+@@ -65,7 +65,7 @@
+         std::string(init_value.ptr, init_value.size);
+     inited_.store(res, std::memory_order_release);
+   }
+-  mu.Unlock();
++  mu.unlock();
+   return *res;
+ }
+ 
+--- src/google/protobuf/descriptor.cc
++++ src/google/protobuf/descriptor.cc
+@@ -1793,7 +1793,7 @@
+                                                 absl::string_view name) {
+   if (pool->mutex_ != nullptr) {
+     // Fast path: the Symbol is already cached.  This is just a hash lookup.
+-    absl::ReaderMutexLock lock(pool->mutex_);
++    absl::ReaderMutexLock lock(*pool->mutex_);
+     if (known_bad_symbols_.empty() && known_bad_files_.empty()) {
+       Symbol result = FindSymbol(name);
+       if (!result.IsNull()) return result;
+@@ -1949,7 +1949,7 @@
+ 
+   // Second try, with reader lock held on unknown enum values: common case.
+   {
+-    absl::ReaderMutexLock l(&unknown_enum_values_mu_);
++    absl::ReaderMutexLock l(unknown_enum_values_mu_);
+     auto it = unknown_enum_values_by_number_.find(query);
+     if (it != unknown_enum_values_by_number_.end()) {
+       return *it;
+@@ -1958,7 +1958,7 @@
+   // If not found, try again with writer lock held, and create new descriptor if
+   // necessary.
+   {
+-    absl::WriterMutexLock l(&unknown_enum_values_mu_);
++    absl::WriterMutexLock l(unknown_enum_values_mu_);
+     auto it = unknown_enum_values_by_number_.find(query);
+     if (it != unknown_enum_values_by_number_.end()) {
+       return *it;
+@@ -2474,7 +2474,7 @@
+   // A faster path to reduce lock contention in finding extensions, assuming
+   // most extensions will be cache hit.
+   if (mutex_ != nullptr) {
+-    absl::ReaderMutexLock lock(mutex_);
++    absl::ReaderMutexLock lock(*mutex_);
+     const FieldDescriptor* result = tables_->FindExtension(extendee, number);
+     if (result != nullptr) {
+       return result;
+--- src/google/protobuf/descriptor.h
++++ src/google/protobuf/descriptor.h
+@@ -2739,7 +2739,7 @@
+     }
+     auto key = std::pair<const void*, const void*>(descriptor, secondary_key);
+     {
+-      absl::ReaderMutexLock lock(&pool->field_memo_table_mutex_);
++      absl::ReaderMutexLock lock(pool->field_memo_table_mutex_);
+       auto it = pool->field_memo_table_->find(key);
+       if (it != pool->field_memo_table_->end()) {
+         return internal::DownCast<const MemoData<ResultT>&>(*it->second).value;
+--- src/google/protobuf/message.cc
++++ src/google/protobuf/message.cc
+@@ -613,7 +613,7 @@
+     result = dropped_defaults_factory_.GetPrototype(type);
+ 
+     {
+-      absl::WriterMutexLock lock(&mutex_);
++      absl::WriterMutexLock lock(mutex_);
+       // And update the main map to make the next lookup faster.
+       // We don't need to recheck here. Even if someone raced us here the result
+       // is the same, so we can just write it.
+@@ -628,7 +628,7 @@
+     const Descriptor* type) {
+   absl::optional<const Message*> result;
+   {
+-    absl::ReaderMutexLock lock(&mutex_);
++    absl::ReaderMutexLock lock(mutex_);
+     result = FindInTypeMap(type);
+     if (result.has_value() && *result != nullptr) {
+       return *result;
+@@ -650,7 +650,7 @@
+   }
+ 
+   {
+-    absl::WriterMutexLock lock(&mutex_);
++    absl::WriterMutexLock lock(mutex_);
+ 
+     // Check if another thread preempted us.
+     result = FindInTypeMap(type);
+--- src/google/protobuf/generated_message_reflection.cc
++++ src/google/protobuf/generated_message_reflection.cc
+@@ -3990,9 +3990,9 @@
+     // This only happens once per proto file. So a global mutex to serialize
+     // calls to AddDescriptors.
+     static absl::Mutex mu{absl::kConstInit};
+-    mu.Lock();
++    mu.lock();
+     internal::AddDescriptors(table);
+-    mu.Unlock();
++    mu.unlock();
+   }
+   if (eager) {
+     // Normally we do not want to eagerly build descriptors of our deps.

@@ -40,6 +40,7 @@ with tempfile.TemporaryDirectory(prefix='protobuf-native-roundtrip-', dir=args.w
     (work / 'test.proto').write_text('syntax = "proto3"; package ember_probe; '
                                      'message Sample { string text = 1; int32 value = 2; }\n')
     (work / 'test.cc').write_text('''#include "test.pb.h"
+#include <google/protobuf/unknown_field_set.h>
 #include <cassert>
 #include <string>
 int main() {
@@ -56,6 +57,16 @@ int main() {
   ember_probe::Sample empty;
   std::string empty_out = "prefix";
   assert(empty.AppendToString(&empty_out) && empty_out == "prefix");
+  google::protobuf::UnknownFieldSet unknown;
+  unknown.AddVarint(3, 150);
+  std::string unknown_bytes = "old contents";
+  assert(unknown.SerializeToString(&unknown_bytes));
+  google::protobuf::UnknownFieldSet parsed_unknown;
+  assert(parsed_unknown.ParseFromString(unknown_bytes));
+  assert(parsed_unknown.field_count() == 1 && parsed_unknown.field(0).number() == 3);
+  assert(parsed_unknown.field(0).varint() == 150);
+  unknown.Clear();
+  assert(unknown.SerializeToString(&unknown_bytes) && unknown_bytes.empty());
 }
 ''')
     run([package / 'bin/protoc', '--proto_path=' + str(work), '--cpp_out=' + str(work),
@@ -71,4 +82,4 @@ int main() {
                     (package / 'lib/libprotobuf.dylib').resolve(strict=True).name, 'libabsl_'):
         if library not in result.stderr:
             raise AssertionError('expected staged library not loaded: ' + library)
-print('native Protobuf prefix append, empty, roundtrip and staged ABI PASS')
+print('native Protobuf prefix append, unknown fields, roundtrip and staged ABI PASS')

@@ -42,7 +42,7 @@ metadata = %w[PKGNAME PKG_FAIL_REASON WRKSRC CONFIGURE_ARGS CMAKE_CONFIGURE_ARGS
   [name, run.call('metadata-' + name, make + ['show-var', "VARNAME=#{name}"]).strip]
 end
 cross_split = metadata['USE_CROSS_COMPILE'].downcase == 'yes' && metadata['OPSYS'] == 'NetBSD'
-expected_name = cross_split ? 'protobuf-36.2nb2' : 'protobuf-36.2nb1'
+expected_name = cross_split ? 'protobuf-36.2nb3' : 'protobuf-36.2nb2'
 abort 'Wrong recipe metadata.' unless metadata['PKGNAME'] == expected_name && metadata['PKG_FAIL_REASON'].empty?
 abort 'Non-private source path.' unless metadata['WRKSRC'] == work + '/package/protobuf-36.2'
 %w[-Dprotobuf_LOCAL_DEPENDENCIES_ONLY=ON -Dprotobuf_BUILD_SHARED_LIBS=ON].each do |flag|
