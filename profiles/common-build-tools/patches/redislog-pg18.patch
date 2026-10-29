@@ -1,0 +1,91 @@
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+Port redislog to PostgreSQL 18: rename its static error_severity(), which
+clashes with the exported elog.c function, include utils/varlena.h for
+SplitIdentifierString(), replace the removed pg_atoi() with
+pg_strtoint32(), and read the virtual transaction id from
+MyProc->vxid. Also check MyProcPort before reading remote_port, as the
+remote_host field already does; background processes have no port.
+
+--- redislog.c.orig
++++ redislog.c
+@@ -45,6 +45,7 @@
+ #include "utils/memutils.h"
+ #include "utils/json.h"
+ #include "utils/ps_status.h"
++#include "utils/varlena.h"
+ 
+ #include "hiredis/hiredis.h"
+ 
+@@ -182,7 +183,7 @@
+ static int lastPid = 0;
+ 
+ /* String mapper for error severity */
+-static const char *error_severity(int elevel);
++static const char *redislog_error_severity(int elevel);
+ 
+ /* Configuration options management */
+ static bool guc_check_hosts_list(char **newvalue, void **extra, GucSource source);
+@@ -598,7 +599,7 @@
+ 		return true;
+ 	}
+ 
+-	port = pg_atoi(p_colon+1, sizeof(int32), '\0');
++	port = pg_strtoint32(p_colon+1);
+ 	if (port==0)
+ 	{
+ 		/* port is not valid */
+@@ -609,12 +610,12 @@
+ }
+ 
+ /*
+- * error_severity
++ * redislog_error_severity
+  * Print string showing error severity based on integer level.
+  * Taken from elog.c.
+  */
+ static const char *
+-error_severity(int elevel)
++redislog_error_severity(int elevel)
+ {
+ 	const char *prefix;
+ 
+@@ -862,7 +863,7 @@
+ 	}
+ 	else
+ 	{
+-		*port = pg_atoi(colon+1, sizeof(int32), '\0');
++		*port = pg_strtoint32(colon+1);
+ 		*colon = '\x0';
+ 	}
+ }
+@@ -1075,7 +1076,7 @@
+ 
+ 		case FIELD_REMOTE_PORT:
+ 			/* Remote port */
+-			if(MyProcPort->remote_port && MyProcPort->remote_port[0] != '\0')
++			if (MyProcPort && MyProcPort->remote_port && MyProcPort->remote_port[0] != '\0')
+ 			{
+ 				append_json_literal(&buf, Redislog_json_field_mapping[i].custom_field_name,
+ 									MyProcPort->remote_port, true);
+@@ -1128,10 +1129,10 @@
+ 		case FIELD_VIRTUAL_TRANSACTION_ID:
+ 			/* Virtual transaction id */
+ 			/* keep VXID format in sync with lockfuncs.c */
+-			if (MyProc != NULL && MyProc->backendId != InvalidBackendId)
++			if (MyProc != NULL && MyProc->vxid.procNumber != INVALID_PROC_NUMBER)
+ 				appendStringInfo(&buf, "\"%s\":\"%d/%u\",",
+ 								 Redislog_json_field_mapping[i].custom_field_name,
+-								 MyProc->backendId, MyProc->lxid);
++								 MyProc->vxid.procNumber, MyProc->vxid.lxid);
+ 			break;
+ 
+ 		case FIELD_TRANSACTION_ID:
+@@ -1145,7 +1146,7 @@
+ 		case FIELD_ERROR_SEVERITY:
+ 			/* Error severity */
+ 			append_json_literal(&buf, Redislog_json_field_mapping[i].custom_field_name,
+-								(char *) error_severity(edata->elevel), true);
++								(char *) redislog_error_severity(edata->elevel), true);
+ 			break;
+ 
+ 		case FIELD_SQL_STATE_CODE:

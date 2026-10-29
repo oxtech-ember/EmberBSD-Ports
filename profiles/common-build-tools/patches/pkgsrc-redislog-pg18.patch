@@ -1,0 +1,18 @@
+Origin: EmberBSD, AI-assisted.
+redislog was limited to PostgreSQL 14, which EmberBSD no longer has.
+Build it with the one PostgreSQL, 18; the recipe patch
+patch-ember_redislog_pg18 ports the source to the PostgreSQL 18 API.
+Not submitted upstream.
+
+--- a/databases/postgresql-redislog/Makefile
++++ b/databases/postgresql-redislog/Makefile
+@@ -15,9 +15,6 @@
+ 
+ DEPENDS+=	postgresql${PGSQL_VERSION}-server>=0:../../databases/postgresql${PGSQL_VERSION}-server
+ 
+-# redislog.c:185:20: error: static declaration of 'error_severity' follows non-static declaration
+-PGSQL_VERSIONS_ACCEPTED=	14
+-
+ USE_TOOLS+=	gmake
+ 
+ INSTALLATION_DIRS+=	share/doc/redislog
