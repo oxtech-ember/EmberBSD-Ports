@@ -12,6 +12,11 @@ CMAKE_CONFIGURE_ARGS+= -DBUILD_SHARED_LIBS=ON -DMERVE_TESTING=ON -DMERVE_USE_SIM
 BUILDLINK_PASSTHRU_RPATHDIRS+= ${WRKDIR}/${DISTNAME}/cmake-pkgsrc-build/src
 TEST_TARGET= test
 .include "../../mk/bsd.prefs.mk"
+.include "../../mk/emberbsd-native-cxx-runtime.mk"
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
+PKGREVISION= 1
+.endif
+
 .if ${OPSYS} == "Darwin"
 MERVE_LIB= libmerve.dylib
 MERVE_SOVERSION= libmerve.1.dylib
