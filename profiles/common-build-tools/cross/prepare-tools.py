@@ -94,7 +94,10 @@ def prepare_clang(options):
             (binaries/name).symlink_to(path)
         values = {'FAMILY':'clang', 'TARGET':options.target, 'TRIPLET':triplet,
                   'SYSROOT':sysroot, 'TOOLS':str(output), 'RUNTIME_PREFIX':runtime_prefix,
-                  'RUNTIME_ROOT':runtime_root,
+                  'RUNTIME_ROOT':runtime_root, 'RUNTIME_KIND':('stage' if options.runtime_stage else 'sysroot'),
+                  'RUNTIME_VERSION':runtime['llvm_version'], 'RUNTIME_BASE':sysroot,
+                  'SDK_SOURCE':str(Path(__import__('emberbsd_sdk').__file__).resolve().parents[2]),
+                  'NATIVE_PYTHON':native.tool('python'),
                   'RUNTIME_LIBRARY_PATHS':';'.join(str(Path(runtime_root, name)) for name in libraries)}
         text = '# Generated from the selected SDK compiler and runtime.\n'
         text += ''.join('_EMBER_TARGET_' + key + ':= ' + value + '\n'

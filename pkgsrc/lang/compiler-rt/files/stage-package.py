@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "llvm/files"))
 import sdk_source
 
 sdk_source.load_sdk()
-from emberbsd_sdk import llvm_runtime, inventory
+from emberbsd_sdk import llvm_runtime, inventory, application_toolchain
 from emberbsd_sdk.elf import read_elf_dynamic
 
 NAMES = {'libcxx': 'libc++', 'libcxxabi': 'libc++abi', 'libunwind': 'libunwind'}
@@ -42,15 +42,23 @@ def select(record, component, role):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('operation', choices=('plist', 'install'))
-    parser.add_argument('--stage', required=True); parser.add_argument('--base', required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument('--stage'); source.add_argument('--sysroot')
+    parser.add_argument('--base')
     parser.add_argument('--pkgsrc-root', required=True)
     parser.add_argument('--target', choices=('amd64','aarch64'), required=True)
     parser.add_argument('--component', choices=tuple(NAMES), required=True)
     parser.add_argument('--role', choices=('runtime','devel'), required=True)
     parser.add_argument('--destdir')
     args = parser.parse_args()
-    record = llvm_runtime.validate_stage(args.stage, target=args.target,
-        required_components=llvm_runtime.FULL_COMPONENTS, base=args.base)
+    if args.stage:
+        if not args.base: raise ValueError('stage requires --base')
+        runtime_root = args.stage
+        record = llvm_runtime.validate_stage(args.stage, target=args.target,
+            required_components=llvm_runtime.FULL_COMPONENTS, base=args.base)
+    else:
+        runtime_root = args.sysroot
+        record = application_toolchain.load_clang_runtime(args.sysroot, target=args.target)
     ports = Path(args.pkgsrc_root).resolve(strict=True)
     version = re.search(r'^LLVM_VERSION=\s*(\S+)', (ports / 'lang/llvm/version.mk').read_text(), re.M)
     if not version or record['compiler_family'] != 'clang' or record['llvm_version'] != version.group(1):
@@ -76,7 +84,7 @@ def main():
                 if '/patches/' in name and name in relevant}
     if relevant != recorded:
         raise ValueError('runtime-relevant source patches differ')
-    dynamic = read_elf_dynamic(str(Path(args.stage) / record['artifacts'][args.component]['shared']), machine=record['elf_machine'])
+    dynamic = read_elf_dynamic(str(Path(runtime_root) / record['artifacts'][args.component]['shared']), machine=record['elf_machine'])
     allowed = {'libc.so.12', 'libm.so.0', 'libpthread.so.1', 'librt.so.1',
                'libc++.so.1', 'libc++abi.so.1', 'libunwind.so.1'}
     required = {'libcxx': {'libc++abi.so.1', 'libunwind.so.1'},
@@ -92,7 +100,7 @@ def main():
         raise ValueError('absolute DESTDIR required')
     root = Path(args.destdir) / 'usr/pkg'
     for path in files:
-        source = Path(args.stage) / 'usr/pkg' / path
+        source = Path(runtime_root) / 'usr/pkg' / path
         dest = root / path
         dest.parent.mkdir(parents=True, exist_ok=True)
         if os.path.lexists(dest): raise ValueError('destination exists: ' + str(dest))

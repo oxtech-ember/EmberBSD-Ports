@@ -49,7 +49,7 @@ env['PATH'] = str(prefix / 'bin')
 def profile_setup():
     profile = work / 'profile'
     profile.mkdir()
-    for name in ('mk.conf', 'native-tools.mk', 'prepare-native-tools.py', 'fortran.mk',
+    for name in ('mk.conf', 'native-tools.mk', 'prepare-native-tools.py', 'fortran.mk', 'compiler-policy.mk',
                  'gcc16-external-runtime.sh'):
         shutil.copy2(cross / 'cross' / name, profile / name)
     shutil.copy2(ports / 'pkgsrc/defaults.mk.conf', profile / 'EMBERBSD-DEFAULTS-MK.CONF')

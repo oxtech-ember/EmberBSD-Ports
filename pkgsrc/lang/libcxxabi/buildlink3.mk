@@ -3,7 +3,7 @@
 BUILDLINK_TREE+= libcxxabi
 .if !defined(LIBCXXABI_BUILDLINK3_MK)
 LIBCXXABI_BUILDLINK3_MK:=
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && !empty(EMBER_LLVM_CXX_STAGE:U)
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && (!empty(EMBER_LLVM_CXX_STAGE:U) || !empty(EMBER_LLVM_CXX_SYSROOT:U))
 BUILDLINK_API_DEPENDS.libcxxabi+= libcxxabi-devel>=23.1.4nb1
 BUILDLINK_PKGSRCDIR.libcxxabi?= ../../lang/libcxxabi-devel
 BUILDLINK_INCDIRS.libcxxabi+= llvm/include/c++/v1 llvm/include

@@ -15,6 +15,7 @@ USE_LANGUAGES= # none; the stage producer already selected the compiler
 WRKSRC= ${WRKDIR}
 PLIST_SRC= ${.CURDIR}/PLIST
 EMBER_LLVM_CXX_STAGE?=
+EMBER_LLVM_CXX_SYSROOT?=
 EMBER_LLVM_CXX_BASE?=
 EMBERBSD_SDK_SOURCE?=
 EMBER_LLVM_CXX_PYTHON?=
@@ -24,7 +25,7 @@ EMBER_LLVM_CXX_PYTHON?=
     (${MACHINE_ARCH} != "x86_64" && ${MACHINE_ARCH} != "aarch64")
 PKG_FAIL_REASON+= "LLVM C++ stage packages require NetBSD amd64 or aarch64 cross build"
 .endif
-.for _input in EMBER_LLVM_CXX_STAGE EMBER_LLVM_CXX_BASE EMBERBSD_SDK_SOURCE EMBER_LLVM_CXX_PYTHON
+.for _input in EMBERBSD_SDK_SOURCE EMBER_LLVM_CXX_PYTHON
 .if empty(${_input}:M/*)
 PKG_FAIL_REASON+= "Set ${_input} to an absolute selected input"
 .endif
@@ -32,7 +33,11 @@ PKG_FAIL_REASON+= "Set ${_input} to an absolute selected input"
 _LLVM_CXX_TARGET= ${MACHINE_ARCH:S/x86_64/amd64/}
 _LLVM_CXX_ROLE= ${EMBER_LLVM_CXX_DEVEL:Ddevel:Uruntime}
 _LLVM_CXX_CMD= ${SETENV} EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q} ${EMBER_LLVM_CXX_PYTHON:Q} -B ${PKGSRCDIR}/lang/compiler-rt/files/stage-package.py
-_LLVM_CXX_ARGS= --stage ${EMBER_LLVM_CXX_STAGE:Q} --base ${EMBER_LLVM_CXX_BASE:Q} --pkgsrc-root ${PKGSRCDIR:Q} --target ${_LLVM_CXX_TARGET:Q} --component ${EMBER_LLVM_CXX_COMPONENT:Q} --role ${_LLVM_CXX_ROLE:Q}
+_LLVM_CXX_SOURCE_ARGS= --stage ${EMBER_LLVM_CXX_STAGE:Q} --base ${EMBER_LLVM_CXX_BASE:Q}
+.if !empty(EMBER_LLVM_CXX_SYSROOT:U)
+_LLVM_CXX_SOURCE_ARGS= --sysroot ${EMBER_LLVM_CXX_SYSROOT:Q}
+.endif
+_LLVM_CXX_ARGS= ${_LLVM_CXX_SOURCE_ARGS} --pkgsrc-root ${PKGSRCDIR:Q} --target ${_LLVM_CXX_TARGET:Q} --component ${EMBER_LLVM_CXX_COMPONENT:Q} --role ${_LLVM_CXX_ROLE:Q}
 .if ${EMBER_LLVM_CXX_COMPONENT} == "libcxxabi"
 DEPENDS+= libunwind>=${LLVM_VERSION}nb${LLVM_CXX_RUNTIME_REVISION}:../../lang/libunwind
 .elif ${EMBER_LLVM_CXX_COMPONENT} == "libcxx"
