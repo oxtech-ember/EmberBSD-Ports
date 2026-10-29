@@ -1,0 +1,9 @@
+$NetBSD$
+
+BLAKE2s (ruby-redmine_lightbox2/v0.5.1.tar.gz) = fe1000ab715ff172c1bb26d21c673ef53c9ac295860a177084e85a43e487c26b
+SHA512 (ruby-redmine_lightbox2/v0.5.1.tar.gz) = 4cbabd8d77418a1882d4f6679be85cf4a1d12c8a5912d6f1ad88757ca3fa7a2148c5fc3995451280953e82b5a8e301b63a610a6f8b8845873429e3299560bc1f
+Size (ruby-redmine_lightbox2/v0.5.1.tar.gz) = 59312 bytes
+SHA1 (patch-app_views_attachments___links.html.erb) = 551de46eacaeb7bee3059f564f564ee2b4ebfe7e
+SHA1 (patch-init.rb) = 0809bd1da9779171cbcdf905a8366ac00a130fe1
+SHA1 (patch-lib_redmine__lightbox2_attachments__patch.rb) = f69c2aa72bc0c6115a8e9921712d90bd6dc42bb1
+SHA1 (patch-lib_redmine__lightbox2_hooks_view__layouts__base__html__head__hook.rb) = 6b545a6995932c0f8af5817b30bc042778476784

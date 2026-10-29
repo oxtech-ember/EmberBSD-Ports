@@ -401,3 +401,7 @@ mail/ruby-mail
 www/ruby-rouge
 textproc/ruby-sanitize
 www/ruby-crass
+
+# Redmine plugins that load on Redmine 7.
+devel/ruby-redmine_lightbox2
+devel/ruby-redmine_work_time

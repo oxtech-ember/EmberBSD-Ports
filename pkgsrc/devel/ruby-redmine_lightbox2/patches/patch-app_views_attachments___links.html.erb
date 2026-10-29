@@ -1,0 +1,156 @@
+$NetBSD$
+
+Base the attachment list on the Redmine 7 partial (SVG icons, download
+all) and keep the lightbox preview links.
+
+--- app/views/attachments/_links.html.erb.orig
++++ app/views/attachments/_links.html.erb
+@@ -1,56 +1,36 @@
+ <div class="attachments">
+-
+ <div class="contextual">
+-  <%= link_to(l(:label_edit_attachments),
++  <%= link_to(sprite_icon('edit', l(:label_edit_attachments)),
+               container_attachments_edit_path(container),
+               :title => l(:label_edit_attachments),
+-              :class => 'icon-only icon-edit'
++              :class => 'icon-only icon-edit '
+              ) if options[:editable] %>
++  <%= link_to(sprite_icon('download', l(:label_download_all_attachments)),
++              container_attachments_download_path(container),
++              :title => l(:label_download_all_attachments),
++              :class => 'icon-only icon-download '
++             ) if attachments.size > 1 %>
+ </div>
+-
+ <table>
+ <% for attachment in attachments %>
+ <% caption = "#{attachment.filename}#{ (' - ' + attachment.description) unless attachment.description.blank? }" %>
+ <tr>
+   <td>
+-    <% if attachment.is_image? %>
+-      <%= link_to_attachment attachment, :class => 'icon icon-attachment lightbox_preview', :download => true -%>
+-      </td>
+-      <td class="alignrigth">
+-      <%= link_to l(:button_view),
+-                  { :controller => 'attachments', :action => 'download', :id => attachment, :filename => attachment.filename },
+-                  :class => 'icon-only icon-magnifier lightbox_preview ' + attachment.filename.split('.').last.downcase,
++    <%= link_to_attachment attachment, class: 'icon icon-attachment ', icon: icon_for_mime_type(attachment.content_type) -%>
++    <span class="size">(<%= number_to_human_size attachment.filesize %>)</span>
++    <% if attachment.is_image? || attachment.is_pdf? %>
++      <%= link_to sprite_icon('zoom-in', l(:label_preview)),
++                  { :controller => 'attachments', :action => (attachment.is_pdf? ? 'download_inline' : 'download'), :id => attachment, :filename => attachment.filename },
++                  :class => 'icon-only icon-zoom-in lightbox_preview' + (attachment.is_pdf? ? ' pdf' : ''),
+                   :rel => 'attachments', :title => l(:label_preview),
+-                  :data  => {
+-                    :type => 'image',
++                  :data => {
++                    :type => attachment.is_pdf? ? 'iframe' : 'image',
+                     :fancybox => 'attachments',
+                     :caption => caption
+                   } %>
+-
+-    <% elsif attachment.is_pdf? %>
+-      <%= link_to_attachment attachment, :class => 'icon icon-attachment lightbox_preview pdf', :download => true -%>
+-      </td>
+-      <td class="alignrigth">
+-      <%= link_to l(:button_view),
+-                  { :controller => 'attachments', :action => 'download_inline', :id => attachment, :filename => attachment.filename },
+-                  :class => 'icon-only icon-magnifier lightbox_preview pdf',
+-                  :rel => 'attachments', :title => l(:label_preview),
+-                  :data  => {
+-                    :type => 'iframe',
+-                    :fancybox => 'attachments',
+-                    :caption => caption
+-                  } %>
+-
+-    <% else %>
+-      <%= link_to_attachment attachment, :class => 'icon icon-attachment' -%>
+-      </td>
+-      <td class="alignrigth">
+     <% end %>
+-    <%= link_to_attachment attachment, class: 'icon-only icon-download', title: l(:button_download), download: true -%>
++    <%= link_to_attachment attachment, class: 'icon-only icon-download ', title: l(:button_download), download: true, icon: 'download' -%>
+   </td>
+-  <td class="alignrigth">
+-    <span class="size"><%= number_to_human_size attachment.filesize %></span>
+-  </td>
+   <td><%= attachment.description unless attachment.description.blank? %></td>
+   <td>
+     <% if options[:author] %>
+@@ -59,56 +39,40 @@
+   </td>
+   <td>
+     <% if options[:deletable] %>
+-      <%= link_to l(:button_delete), attachment_path(attachment),
++      <%= link_to sprite_icon('del', l(:button_delete)), attachment_path(attachment),
+                   :data => {:confirm => l(:text_are_you_sure)},
+                   :method => :delete,
+-                  :class => 'delete icon-only icon-del',
++                  :class => 'delete icon-only icon-del ',
+                   :title => l(:button_delete) %>
+     <% end %>
+   </td>
+ </tr>
+ <% end %>
+ </table>
+-
+ <% if defined?(thumbnails) && thumbnails %>
+   <% images = attachments.select(&:thumbnailable?) %>
+   <% if images.any? %>
+-  <div class="thumbnails images">
++  <div class="thumbnails">
+     <% images.each do |attachment| %>
+       <% caption = "#{attachment.filename}#{ (' - ' + attachment.description) unless attachment.description.blank? }" %>
+-      <div>
+-        <%=
+-          link_to image_tag(url_for(:controller => 'attachments', :action => 'thumbnail', :id => attachment)),
+-          { :controller => 'attachments', :action => 'download', :id => attachment, :filename => attachment.filename },
+-          :class => ('lightbox' + (attachment.is_pdf? ? ' pdf' : '')) , :rel => 'thumbnails', :title => l(:label_preview) + ': ' + caption,
+-          :data  => {
+-            :type => attachment.is_pdf? ? 'iframe' : 'image',
+-            :fancybox => 'thumbnails',
+-            :caption => caption
+-          }
+-        %>
+-      </div>
++      <% thumbnail_size = Setting.thumbnails_size.to_i %>
++      <% thumbnail_path = thumbnail_path(attachment, :size => thumbnail_size * 2) %>
++      <%= tag.div class: "thumbnail", title: attachment.filename do %>
++        <%= link_to image_tag(thumbnail_path,
++                              :srcset => "#{thumbnail_path} 2x",
++                              :style => "max-width: #{thumbnail_size}px; max-height: #{thumbnail_size}px;",
++                              :alt => attachment.filename,
++                              :loading => "lazy"),
++                    { :controller => "attachments", :action => (attachment.is_pdf? ? "download_inline" : "download"), :id => attachment, :filename => attachment.filename },
++                    :class => "lightbox" + (attachment.is_pdf? ? " pdf" : ""), :rel => "thumbnails", :title => l(:label_preview) + ": " + caption,
++                    :data => {
++                      :type => attachment.is_pdf? ? "iframe" : "image",
++                      :fancybox => "thumbnails",
++                      :caption => caption
++                    } %>
++      <% end %>
+     <% end %>
+   </div>
+   <% end %>
+-<% else %>
+-  <% images = attachments.select { |a| a.image? } %>
+-  <% unless images.empty? %>
+-    <div class='images'>
+-      <% images.each do |attachment| %>
+-        <% caption = "#{attachment.filename}#{ (' - ' + attachment.description) unless attachment.description.blank? }" %>
+-        <%= link_to image_tag(url_for({:controller => 'attachments', :action => 'download', :id => attachment, :filename => attachment.filename }), :width => Setting.thumbnails_size),
+-          { :controller => 'attachments', :action => 'download', :id => attachment, :filename => attachment.filename },
+-          :class => 'lightbox', :rel => 'thumbnails', :title => l(:label_preview) + ': ' + caption,
+-          :data  => {
+-            :type => attachment.is_pdf? ? 'iframe' : 'image',
+-            :fancybox => 'thumbnails',
+-            :caption => caption
+-          }
+-        %>
+-      <% end -%>
+-    </div>
+-  <% end -%>
+ <% end %>
+-
+ </div>
