@@ -7,7 +7,7 @@ Origin: EmberBSD (AI-assisted). Upstream status: not submitted.
  
  DISTNAME=	autogen-5.18.16
 -PKGREVISION=	18
-+PKGREVISION=	19
++PKGREVISION=	20
  CATEGORIES=	devel
  MASTER_SITES=	${MASTER_SITE_GNU:=autogen/rel${PKGVERSION_NOREV}/}
  EXTRACT_SUFX=	.tar.xz

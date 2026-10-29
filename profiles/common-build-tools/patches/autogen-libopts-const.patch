@@ -1,0 +1,421 @@
+$NetBSD$
+
+Preserve NetBSD ctype fixes and make libopts runtime initialization const-correct.
+Origin: NetBSD NTP libopts (2024), adapted by EmberBSD (AI-assisted).
+Upstream status: not submitted.
+
+--- autoopts/autoopts.h.orig
++++ autoopts/autoopts.h
+@@ -455,7 +455,7 @@
+ #undef  _aof_
+ 
+ static char const   zNil[] = "";
+-static arg_types_t  argTypes             = { NULL };
++static arg_types_t  argTypes             = { .pzStr = NULL };
+ static char         line_fmt_buf[32];
+ static bool         displayEnum          = false;
+ static char const   pkgdatadir_default[] = PKGDATADIR;
+--- autoopts/makeshell.c.orig
++++ autoopts/makeshell.c
+@@ -363,7 +363,7 @@
+ 
+         /* Copy the program name into the time/name buffer */
+         for (;;) {
+-            if ((*pzPN++ = (char)tolower(*pz++)) == NUL)
++            if ((*pzPN++ = (char)tolower((unsigned char)*pz++)) == NUL)
+                 break;
+         }
+ 
+@@ -633,8 +633,8 @@
+                 continue;
+ 
+             match_ct = 0;
+-            while (  toupper(od->pz_DisableName[match_ct])
+-                  == toupper(name[match_ct]))
++            while (  toupper((unsigned char)od->pz_DisableName[match_ct])
++                  == toupper((unsigned char)name[match_ct]))
+                 match_ct++;
+             if (match_ct > min_match_ct)
+                 min_match_ct = match_ct;
+--- autoopts/parse-duration.c.orig
++++ autoopts/parse-duration.c
+@@ -60,14 +60,20 @@
+ static unsigned long
+ str_const_to_ul (cch_t * str, cch_t ** ppz, int base)
+ {
+-  return strtoul (str, (char **)ppz, base);
++  char *end;
++  unsigned long value = strtoul (str, &end, base);
++  if (ppz != NULL) *ppz = end;
++  return value;
+ }
+ 
+ /* Wrapper around strtol that does not require a cast.  */
+ static long
+ str_const_to_l (cch_t * str, cch_t ** ppz, int base)
+ {
+-  return strtol (str, (char **)ppz, base);
++  char *end;
++  long value = strtol (str, &end, base);
++  if (ppz != NULL) *ppz = end;
++  return value;
+ }
+ 
+ /* Returns BASE + VAL * SCALE, interpreting BASE = BAD_TIME
+--- autoopts/enum.c.orig
++++ autoopts/enum.c
+@@ -165,7 +165,7 @@
+      *  The result gets stashed in a char * pointer.
+      */
+     uintptr_t   res = name_ct;
+-    size_t      len = strlen((char *)name);
++    size_t      len = strlen(name);
+     uintptr_t   idx;
+ 
+     if (IS_DEC_DIGIT_CHAR(*name)) {
+@@ -191,7 +191,7 @@
+      *  Multiple partial matches means we have an ambiguous match.
+      */
+     for (idx = 0; idx < name_ct; idx++) {
+-        if (strncmp((char *)paz_names[idx], (char *)name, len) == 0) {
++        if (strncmp(paz_names[idx], name, len) == 0) {
+             if (paz_names[idx][len] == NUL)
+                 return idx;  /* full match */
+ 
+--- autoopts/load.c.orig
++++ autoopts/load.c
+@@ -207,7 +207,7 @@
+     if (strchr(prg_path, DIRCH) != NULL)
+         path = prg_path;
+     else {
+-        path = pathfind(getenv("PATH"), (char *)prg_path, "rx");
++        path = pathfind(getenv("PATH"), prg_path, "rx");
+ 
+         if (path == NULL)
+             return false;
+--- autoopts/reset.c.orig
++++ autoopts/reset.c
+@@ -113,7 +113,7 @@
+             assert(0 == 1);
+         }
+     } else {
+-        succ = opt_find_long(pOpts, (char *)pzArg, &opt_state);
++        succ = opt_find_long(pOpts, pzArg, &opt_state);
+         if (! SUCCESSFUL(succ)) {
+             fprintf(stderr, zIllOptStr, pOpts->pzProgPath, pzArg);
+             pOpts->pUsageProc(pOpts, EXIT_FAILURE);
+--- autoopts/tokenize.c.orig
++++ autoopts/tokenize.c
+@@ -40,7 +40,7 @@
+         case NUL:   *ppSrc = NULL; return;
+         case '"':   goto done;
+         case '\\':
+-            pSrc += ao_string_cook_escape_char((char *)pSrc, (char *)&ch, 0x7F);
++            pSrc += ao_string_cook_escape_char((char const *)pSrc, (char *)&ch, 0x7F);
+             if (ch == 0x7F)
+                 break;
+             /* FALLTHROUGH */
+--- autoopts/nested.c.orig
++++ autoopts/nested.c
+@@ -841,7 +841,9 @@
+             base = 16;
+             pz++;
+         }
+-        retch = (int)strtoul(pz, (char **)&pz, base);
++        char *end;
++        retch = (int)strtoul(pz, &end, base);
++        pz = end;
+         if (*pz != ';')
+             return '&';
+         base = (int)(++pz - *ppz);
+--- autoopts/init.c.orig
++++ autoopts/init.c
+@@ -92,20 +92,16 @@
+      */
+     if (opts->pzProgName == NULL) {
+         char const *  pz = strrchr(pname, DIRCH);
+-        char const ** pp =
+-            (char const **)(void **)&(opts->pzProgName);
+-
+         if (pz != NULL)
+-            *pp = pz+1;
++            opts->pzProgName = pz+1;
+         else
+-            *pp = pname;
+-
+-        pz = pathfind(getenv("PATH"), (char *)pname, "rx");
++            opts->pzProgName = pname;
++
++        pz = pathfind(getenv("PATH"), pname, "rx");
+         if (pz != NULL)
+             pname = VOIDP(pz);
+ 
+-        pp  = (char const **)VOIDP(&(opts->pzProgPath));
+-        *pp = pname;
++        opts->pzProgPath = pname;
+ 
+         /*
+          *  when comparing long names, these are equivalent
+--- autoopts/configfile.c.orig
++++ autoopts/configfile.c
+@@ -140,7 +140,7 @@
+     else do {
+         tArgList * argl  = odesc->optCookie;
+         int        argct = argl->useCt;
+-        void **    poptv = (void **)(argl->apzArgs);
++        char const ** poptv = argl->apzArgs;
+ 
+         if (argct == 0) {
+             errno = ENOENT;
+@@ -148,12 +148,12 @@
+         }
+ 
+         if (name == NULL) {
+-            res = (tOptionValue *)*poptv;
++            res = (tOptionValue const *)(void const *)*poptv;
+             break;
+         }
+ 
+         while (--argct >= 0) {
+-            const tOptionValue * ov = *(poptv++);
++            const tOptionValue * ov = (void const *)*(poptv++);
+             const tOptionValue * rv = optionGetValue(ov, name);
+ 
+             if (rv == NULL)
+@@ -205,7 +205,7 @@
+                     char const * pzName, char const * pzVal)
+ {
+     bool old_found = false;
+-    tOptionValue * res = NULL;
++    tOptionValue const * res = NULL;
+ 
+     (void)pzName;
+     (void)pzVal;
+@@ -222,10 +222,10 @@
+     else do {
+         tArgList * argl = odesc->optCookie;
+         int        ct   = argl->useCt;
+-        void **   poptv = (void **)argl->apzArgs;
++        char const ** poptv = argl->apzArgs;
+ 
+         while (--ct >= 0) {
+-            tOptionValue * pOV = *(poptv++);
++            tOptionValue const * pOV = (void const *)*(poptv++);
+             if (old_found) {
+                 res = pOV;
+                 break;
+@@ -272,7 +272,7 @@
+ optionGetValue(tOptionValue const * oov, char const * vname)
+ {
+     tArgList *     arg_list;
+-    tOptionValue * res = NULL;
++    tOptionValue const * res = NULL;
+ 
+     if ((oov == NULL) || (oov->valType != OPARG_TYPE_HIERARCHY)) {
+         errno = EINVAL;
+@@ -282,13 +282,13 @@
+ 
+     if (arg_list->useCt > 0) {
+         int     ct     = arg_list->useCt;
+-        void ** ovlist = (void **)(arg_list->apzArgs);
++        char const ** ovlist = arg_list->apzArgs;
+ 
+         if (vname == NULL) {
+-            res = (tOptionValue *)*ovlist;
++            res = (tOptionValue const *)(void const *)*ovlist;
+ 
+         } else do {
+-            tOptionValue * opt_val = *(ovlist++);
++            tOptionValue const * opt_val = (void const *)*(ovlist++);
+             if (strcmp(opt_val->pzName, vname) == 0) {
+                 res = opt_val;
+                 break;
+@@ -331,7 +331,7 @@
+ optionNextValue(tOptionValue const * ov_list,tOptionValue const * oov )
+ {
+     tArgList *     arg_list;
+-    tOptionValue * res = NULL;
++    tOptionValue const * res = NULL;
+     int            err = EINVAL;
+ 
+     if ((ov_list == NULL) || (ov_list->valType != OPARG_TYPE_HIERARCHY)) {
+@@ -341,17 +341,17 @@
+     arg_list = ov_list->v.nestVal;
+     {
+         int     ct    = arg_list->useCt;
+-        void ** o_list = (void **)(arg_list->apzArgs);
++        char const ** o_list = arg_list->apzArgs;
+ 
+         while (ct-- > 0) {
+-            tOptionValue * nov = *(o_list++);
++            tOptionValue const * nov = (void const *)*(o_list++);
+             if (nov == oov) {
+                 if (ct == 0) {
+                     err = ENOENT;
+ 
+                 } else {
+                     err = 0;
+-                    res = (tOptionValue *)*o_list;
++                    res = (tOptionValue const *)(void const *)*o_list;
+                 }
+                 break;
+             }
+--- autoopts/save.c.orig
++++ autoopts/save.c
+@@ -405,12 +405,12 @@
+ 
+     int sp_ct;
+     int opt_ct;
+-    void ** opt_list;
++    char const ** opt_list;
+ 
+     if (al == NULL)
+         return;
+     opt_ct   = al->useCt;
+-    opt_list = (void **)al->apzArgs;
++    opt_list = al->apzArgs;
+ 
+     if (opt_ct <= 0) {
+         fprintf(fp, OPEN_CLOSE_FMT, name);
+@@ -421,7 +421,7 @@
+ 
+     depth++;
+     while (--opt_ct >= 0) {
+-        tOptionValue const * ovp = *(opt_list++);
++        tOptionValue const * ovp = (void const *)*(opt_list++);
+ 
+         prt_value(fp, depth, NULL, ovp);
+     }
+@@ -444,7 +444,7 @@
+ {
+     int opt_ct;
+     tArgList * al = od->optCookie;
+-    void ** opt_list;
++    char const ** opt_list;
+ 
+     if (save_fl & SVFL_USAGE)
+         fprintf(fp, ao_name_use_fmt, od->pz_Name, od->pzText);
+@@ -456,13 +456,13 @@
+         return;
+ 
+     opt_ct   = al->useCt;
+-    opt_list = (void **)al->apzArgs;
++    opt_list = al->apzArgs;
+ 
+     if (opt_ct <= 0)
+         return;
+ 
+     do  {
+-        tOptionValue const * base = *(opt_list++);
++        tOptionValue const * base = (void const *)*(opt_list++);
+         tOptionValue const * ovp = optionGetValue(base, NULL);
+ 
+         if (ovp == NULL)
+--- autoopts/find.c.orig
++++ autoopts/find.c
+@@ -35,7 +35,7 @@
+  * find the name and name length we are looking for
+  */
+ static int
+-parse_opt(char const ** nm_pp, char ** arg_pp, char * buf, size_t bufsz)
++parse_opt(char const ** nm_pp, char const ** arg_pp, char * buf, size_t bufsz)
+ {
+     int  res = 0;
+     char const * p = *nm_pp;
+@@ -50,7 +50,7 @@
+ 
+             buf[res] = NUL;
+             *nm_pp   = buf;
+-            *arg_pp  = (char *)p;
++            *arg_pp  = p;
+             return res;
+ 
+         default:
+@@ -176,7 +176,7 @@
+  * @param st        state about current option
+  */
+ static tSuccess
+-opt_set(tOptions * opts, char * arg, int idx, bool disable, tOptState * st)
++opt_set(tOptions * opts, char const * arg, int idx, bool disable, tOptState * st)
+ {
+     tOptDesc * pOD = opts->pOptDesc + idx;
+ 
+@@ -219,7 +219,7 @@
+  * @return success status
+  */
+ static tSuccess
+-opt_unknown(tOptions * opts, char const * name, char * arg, tOptState * st)
++opt_unknown(tOptions * opts, char const * name, char const * arg, tOptState * st)
+ {
+     /*
+      *  IF there is no equal sign
+@@ -341,7 +341,7 @@
+ opt_find_long(tOptions * opts, char const * opt_name, tOptState * state)
+ {
+     char    name_buf[128];
+-    char *  opt_arg;
++    char const * opt_arg;
+     int     nm_len = parse_opt(&opt_name, &opt_arg, name_buf, sizeof(name_buf));
+ 
+     int     idx = 0;
+--- autoopts/proto.h.orig
++++ autoopts/proto.h
+@@ -162,7 +162,7 @@
+  * Static declarations from find.c
+  */
+ static int
+-parse_opt(char const ** nm_pp, char ** arg_pp, char * buf, size_t bufsz);
++parse_opt(char const ** nm_pp, char const ** arg_pp, char * buf, size_t bufsz);
+ 
+ static void
+ opt_ambiguities(tOptions * opts, char const * name, int nm_len);
+@@ -172,10 +172,10 @@
+              int * ixp, bool * disable);
+ 
+ static tSuccess
+-opt_set(tOptions * opts, char * arg, int idx, bool disable, tOptState * st);
+-
+-static tSuccess
+-opt_unknown(tOptions * opts, char const * name, char * arg, tOptState * st);
++opt_set(tOptions * opts, char const * arg, int idx, bool disable, tOptState * st);
++
++static tSuccess
++opt_unknown(tOptions * opts, char const * name, char const * arg, tOptState * st);
+ 
+ static tSuccess
+ opt_ambiguous(tOptions * opts, char const * name, int match_ct);
+--- autoopts/autoopts/options.h.orig
++++ autoopts/autoopts/options.h
+@@ -609,9 +609,9 @@
+     char *                      pzCurOpt;      ///< current option text
+ 
+     /// Public, the full path of the program
+-    char const * const          pzProgPath;
++    char const *                pzProgPath;
+     /// Public, the name of the executable, without any path
+-    char const * const          pzProgName;
++    char const *                pzProgName;
+     /// Public, the upper-cased, shell variable syntax-ed program name
+     char const * const          pzPROGNAME;
+     /// the name of the "rc file" (configuration file)
+--- autoopts/tpl/getopt.tpl.orig
++++ autoopts/tpl/getopt.tpl
+@@ -370,17 +370,11 @@
+ {
+   {
+     char * pz_prog = strrchr (argv[0], DIRCH);
+-    /*
+-     * This violates the const-ness of the pzProgName field.
+-     * The const-ness is to prevent accidents.  This is not accidental.
+-     */
+-    char ** pp = VOIDP(&([+ (. prog-name) +]Options.pzProgName));
+-
+     if (pz_prog != NULL)
+       pz_prog++;
+     else
+       pz_prog = argv[0];
+-    *pp = pz_prog;
++    [+ (. prog-name) +]Options.pzProgName = pz_prog;
+   }
+ 
+   for (;;) {
