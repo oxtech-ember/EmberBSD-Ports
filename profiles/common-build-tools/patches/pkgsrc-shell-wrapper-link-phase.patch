@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: BSD-2-Clause
+# Origin: EmberBSD contributors (AI-assisted); adapt the pkgsrc shell wrapper.
+--- a/mk/buildlink3/bsd.buildlink3.mk
++++ b/mk/buildlink3/bsd.buildlink3.mk
+@@ -1347,8 +1347,15 @@
+ #
+ _BLNK_CPPFLAGS=			-I${BUILDLINK_DIR}/include
+ _BLNK_LDFLAGS=			-L${BUILDLINK_DIR}/lib
++.if ${USE_CWRAPPERS:Uno:tl} == "no"
++_WRAP_EXTRA_ARGS.CC+=		${_BLNK_CPPFLAGS}
++_WRAP_EXTRA_ARGS.CXX+=		${_BLNK_CPPFLAGS}
++_WRAP_EXTRA_LINK_ARGS.CC+=	${_BLNK_LDFLAGS}
++_WRAP_EXTRA_LINK_ARGS.CXX+=	${_BLNK_LDFLAGS}
++.else
+ _WRAP_EXTRA_ARGS.CC+=		${_BLNK_CPPFLAGS} ${_BLNK_LDFLAGS}
+ _WRAP_EXTRA_ARGS.CXX+=		${_BLNK_CPPFLAGS} ${_BLNK_LDFLAGS}
++.endif
+ _WRAP_EXTRA_ARGS.CPP+=		${_BLNK_CPPFLAGS}
+ _WRAP_EXTRA_ARGS.FC+=		${_BLNK_CPPFLAGS} ${_BLNK_LDFLAGS}
+ _WRAP_EXTRA_ARGS.LD+=		${_BLNK_LDFLAGS}
+--- a/mk/wrapper/bsd.wrapper.mk
++++ b/mk/wrapper/bsd.wrapper.mk
+@@ -208,6 +208,7 @@
+ _WRAPPER_SH.${_wrappee_}=		${WRAPPER_SRCDIR}/wrapper.sh
+ _WRAP_ENV.${_wrappee_}?=		${_WRAP_ENV}
+ _WRAP_EXTRA_ARGS.${_wrappee_}?=		# empty
++_WRAP_EXTRA_LINK_ARGS.${_wrappee_}?=	# empty
+ _WRAP_ARG_PP.${_wrappee_}?=		${_WRAP_ARG_PP}
+ _WRAP_ARG_PP_MAIN.${_wrappee_}?=	${_WRAP_ARG_PP_MAIN}
+ _WRAP_ARG_SOURCE.${_wrappee_}?=		${_WRAP_ARG_SOURCE}
+@@ -393,6 +394,7 @@
+ 	-e "s|@_WRAP_EMPTY_FILE@|${_WRAP_EMPTY_FILEQ}|g"		\
+ 	-e "s|@_WRAP_ENV@|${_WRAP_ENV.${_wrappee_}:Q}|g"		\
+ 	-e "s|@_WRAP_EXTRA_ARGS@|${_WRAP_EXTRA_ARGS.${_wrappee_}:Q}|g"	\
++	-e "s|@_WRAP_EXTRA_LINK_ARGS@|${_WRAP_EXTRA_LINK_ARGS.${_wrappee_}:Q}|g" \
+ 	-e "s|@_WRAP_ARG_PP@|${_WRAP_ARG_PP.${_wrappee_}:Q}|g"		\
+ 	-e "s|@_WRAP_ARG_PP_MAIN@|${_WRAP_ARG_PP_MAIN.${_wrappee_}:Q}|g" \
+ 	-e "s|@_WRAP_ARG_SOURCE@|${_WRAP_ARG_SOURCE.${_wrappee_}:Q}|g"	\
+--- a/mk/wrapper/scan
++++ b/mk/wrapper/scan
+@@ -29,8 +29,20 @@
+ #
+ 
+ # Optional argument processing.
++scan_operand=no
+ for arg do
++	if [ "$scan_operand" = yes ]; then
++		scan_operand=no
++		continue
++	fi
+ 	case $arg in
++	--)	break ;;
++	-o|-I|-L|-l|-D|-U|-x|-arch|-isystem|-idirafter|-iquote|-include|-imacros|\
++	-isysroot|--sysroot|-target|--target|-B|-MF|-MT|-MQ|-Xclang|-Xlinker|\
++	-Xpreprocessor|-Xassembler|-resource-dir|-gcc-toolchain|--gcc-toolchain|\
++	-stdlib++-isystem|-iframework|-F|-isystem-after|--dynamic-linker)
++		scan_operand=yes ;;
++	-c|-E|-S|-fsyntax-only|-M|-MM) append_link_args=no ;;
+ 	*)	;;
+ 	esac
+ done
+--- a/mk/wrapper/wrapper.sh
++++ b/mk/wrapper/wrapper.sh
+@@ -94,12 +94,16 @@
+ init_queue cmdbuf
+ 
+ append_extra_args=yes
++append_link_args=yes
+ . $scan
+ 
+ case $append_extra_args in
+ yes)
+ 	$debug_log $wrapperlog "    (wrapper.sh) append args: @_WRAP_EXTRA_ARGS@"
+ 	set -- "$@" @_WRAP_EXTRA_ARGS@
++	if [ "$append_link_args" = yes ]; then
++		set -- "$@" @_WRAP_EXTRA_LINK_ARGS@
++	fi
+ 	;;
+ *)
+ 	;;
