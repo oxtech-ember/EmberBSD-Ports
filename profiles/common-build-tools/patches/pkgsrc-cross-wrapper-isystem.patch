@@ -1,0 +1,101 @@
+# Origin: EmberBSD (AI-assisted); preserve pkgsrc system include arguments
+# and separators in cross compiler and preprocessor wrappers.
+
+--- a/mk/wrapper/cmd-sink-cross-gcc
++++ b/mk/wrapper/cmd-sink-cross-gcc
+@@ -1,6 +1,9 @@
+ # $NetBSD: cmd-sink-cross-gcc,v 1.3 2013/05/09 23:35:29 riastradh Exp $
+ #
+ # Copyright (c) 2007 Joerg Sonnenberger <joerg@NetBSD.org>.
++# Copyright (c) 2004 The NetBSD Foundation, Inc.
++# Portions derived from software contributed to The NetBSD Foundation
++# by Johnny C. Lam.
+ # All rights reserved.
+ #
+ # This code was developed as part of Google's Summer of Code 2007 program.
+@@ -37,6 +40,13 @@
+ while ! queue_is_empty cmdbuf; do
+ 	pop_queue cmdbuf arg
+ 	case $arg in
++	-isystem,*)
++		dir="${arg#-isystem,}"
++		arg="-isystem"
++		. $buildcmd
++		arg="$dir"
++		. $buildcmd
++		;;
+ 	-R*|-Wl,-R*|-Wl,-rpath,*|-Wl,--rpath,*)
+ 		# First, push the option out again.
+ 		$debug_log $wrapperlog "    (cmd-sink-native-cc) pop: $arg"
+--- a/mk/wrapper/cmd-sink-cross-gxx
++++ b/mk/wrapper/cmd-sink-cross-gxx
+@@ -1,6 +1,9 @@
+ # $NetBSD: cmd-sink-cross-gxx,v 1.2 2013/05/09 23:35:29 riastradh Exp $
+ #
+ # Copyright (c) 2007 Joerg Sonnenberger <joerg@NetBSD.org>.
++# Copyright (c) 2004 The NetBSD Foundation, Inc.
++# Portions derived from software contributed to The NetBSD Foundation
++# by Johnny C. Lam.
+ # All rights reserved.
+ #
+ # This code was developed as part of Google's Summer of Code 2007 program.
+@@ -37,6 +40,13 @@
+ while ! queue_is_empty cmdbuf; do
+ 	pop_queue cmdbuf arg
+ 	case $arg in
++	-isystem,*)
++		dir="${arg#-isystem,}"
++		arg="-isystem"
++		. $buildcmd
++		arg="$dir"
++		. $buildcmd
++		;;
+ 	-R*|-Wl,-R*|-Wl,-rpath,*|-Wl,--rpath,*)
+ 		# First, push the option out again.
+ 		$debug_log $wrapperlog "    (cmd-sink-native-cxx) pop: $arg"
+--- a/mk/wrapper/cmd-sink-cross-cpp
++++ b/mk/wrapper/cmd-sink-cross-cpp
+@@ -1,6 +1,9 @@
+ # $NetBSD: cmd-sink-cross-cpp,v 1.2 2013/05/09 23:35:29 riastradh Exp $
+ #
+ # Copyright (c) 2007 Joerg Sonnenberger <joerg@NetBSD.org>.
++# Copyright (c) 2004 The NetBSD Foundation, Inc.
++# Portions derived from software contributed to The NetBSD Foundation
++# by Johnny C. Lam.
+ # All rights reserved.
+ #
+ # This code was developed as part of Google's Summer of Code 2007 program.
+@@ -37,5 +40,13 @@
+ while ! queue_is_empty cmdbuf; do
+ 	pop_queue cmdbuf arg
+ 	$debug_log $wrapperlog "    (cmd-sink-native-cc) pop:  $arg"
++	case $arg in
++	-isystem,*)
++		dir="${arg#-isystem,}"
++		arg="-isystem"
++		. $buildcmd
++		arg="$dir"
++		;;
++	esac
+ 	. $buildcmd
+ done
+--- a/mk/wrapper/gen-transform.sh
++++ b/mk/wrapper/gen-transform.sh
+@@ -226,7 +226,7 @@
+ 		case $_action in
+ 		transform)
+ 			$debug_log $wrapperlog "   (gen-transform) $_cmd: $@"
+-			printf "%s\n" "s|^$1\(/[^$_sep]*\)$2\([$_sep]\)|$3\1$4|g"
++			printf "%s\n" "s|^$1\(/[^$_sep]*\)$2\([$_sep]\)|$3\1$4\2|g"
+ 			printf "%s\n" "s|^$1\(/[^$_sep]*\)$2$|$3\1$4|g"
+ 			;;
+ 		untransform)
+@@ -234,7 +234,7 @@
+ 			printf "%s\n" "s|\([$_sep]\)$1\(/[^$_sep]*\)$2\([$_sep]\)|\1$3\2$4\3|g"
+ 			printf "%s\n" "s|\([$_sep]\)$1\(/[^$_sep]*\)$2\([$_sep]\)|\1$3\2$4\3|g"
+ 			printf "%s\n" "s|\([$_sep]\)$1\(/[^$_sep]*\)$2$|\1$3\2$4|g"
+-			printf "%s\n" "s|^$1\(/[^$_sep]*\)$2\([$_sep]\)|$3\1$4|g"
++			printf "%s\n" "s|^$1\(/[^$_sep]*\)$2\([$_sep]\)|$3\1$4\2|g"
+ 			printf "%s\n" "s|^$1\(/[^$_sep]*\)$2$|$3\1$4|g"
+ 			;;
+ 		esac
