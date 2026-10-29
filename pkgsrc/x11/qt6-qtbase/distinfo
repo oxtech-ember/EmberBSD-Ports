@@ -1,5 +1,8 @@
 $NetBSD: distinfo,v 1.35 2026/09/08 20:34:46 markd Exp $
 
+SHA1 (patch-cmake_FindWrapSystemZLIB.cmake) = b1e6196265e8f3b780b8e7b29a15c3e99a3b4a3f
+SHA1 (patch-src_widgets_CMakeLists.txt) = b07665f016f2a4e5e8119bcc837b6f13b2036679
+
 BLAKE2s (qtbase-everywhere-src-6.12.0.tar.xz) = cae6f10dabf3c772060c369dc6f681cb1b928b73e3d21e722bd37b85afeca175
 SHA512 (qtbase-everywhere-src-6.12.0.tar.xz) = 87b3bd96244e03ea6145e00d088cb1e0cfaa64a575bfe32c4ec5f0227bc7872a3777ccf29c8e54e567a6ea809a8ee894e88e659d14d96655b0730455d9869d7a
 Size (qtbase-everywhere-src-6.12.0.tar.xz) = 51220268 bytes

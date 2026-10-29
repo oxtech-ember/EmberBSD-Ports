@@ -129,7 +129,7 @@ abort 'runtime qtpaths missing' unless %w[qt6/bin/qtpaths qt6/bin/qtpaths6].all?
 abort 'runtime package identity was not revised' unless run.call('runtime-name', 'qt6-qtbase', *cross, '-V', '${PKGNAME}').strip == 'qt6-qtbase-6.12.0nb3'
 abort 'SDK recipe missing' unless File.directory?(tree + '/x11/qt6-qtbase-devel')
 sdk = plist.call('devel', 'qt6-qtbase-devel', *cross)
-abort 'SDK scanner fix lacks a revised identity' unless run.call('devel-name', 'qt6-qtbase-devel', *cross, '-V', '${PKGNAME}').strip == 'qt6-qtbase-devel-6.12.0nb4'
+abort 'SDK scanner fix lacks a revised identity' unless run.call('devel-name', 'qt6-qtbase-devel', *cross, '-V', '${PKGNAME}').strip == 'qt6-qtbase-devel-6.12.0nb5'
 abort 'SDK PLIST lost the CMake/generator contract' unless %w[qt6/bin/qmake qt6/libexec/moc qt6/libexec/rcc qt6/libexec/uic qt6/lib/cmake/Qt6/Qt6Config.cmake].all? { |path| sdk.include?(path) }
 abort 'partition overlaps' unless (runtime & sdk).empty?
 owner = tree + '/x11/qt6-qtbase'

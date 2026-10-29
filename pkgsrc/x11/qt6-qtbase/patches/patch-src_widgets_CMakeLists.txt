@@ -1,0 +1,15 @@
+$NetBSD$
+
+Use the same selected zlib provider as the rest of Qt on macOS.
+
+--- src/widgets/CMakeLists.txt.orig
++++ src/widgets/CMakeLists.txt
+@@ -374,7 +374,7 @@
+         kernel/qmacgesturerecognizer.cpp kernel/qmacgesturerecognizer_p.h
+     LIBRARIES
+         ${FWAppKit}
+-        z
++        WrapZLIB::WrapZLIB
+ )
+ 
+ qt_internal_extend_target(Widgets CONDITION OHOS

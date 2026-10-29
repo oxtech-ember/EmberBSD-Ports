@@ -15,6 +15,8 @@ case "$plan_only" in 0|1) ;; *) echo 'QT_HOST_TOOLS_PLAN_ONLY must be 0 or 1' >&
 toolkit=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 scanner_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_tools_qtwaylandscanner_qtwaylandscanner.cpp
 syncqt_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_tools_syncqt_CMakeLists.txt
+zlib_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-cmake_FindWrapSystemZLIB.cmake
+widgets_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_widgets_CMakeLists.txt
 RESUME=${RESUME:-0}
 HOST_SH=${HOST_SH:-/bin/sh}
 HOST_RUNTIME_VIEW=${HOST_RUNTIME_VIEW:-}
@@ -57,15 +59,17 @@ if [ "$profile" = full ]; then
     qdoc_paths="$HOST_LLVM_BUILD $HOST_CLANG_BUILD"
 fi
 : "${HOST_DBUS_PREFIX:?Set the native D-Bus prefix with headers, library and DBus1 CMake exports}"
+: "${HOST_PACKAGE_PREFIX:?Set the selected native dependency prefix}"
+: "${HOST_PKG_CONFIG:?Set the selected native pkg-config executable}"
 : "${HOST_CC:?Set the selected native C compiler}"
 : "${HOST_CXX:?Set the selected native C++ compiler}"
 JOBS=${JOBS:-2}
 case "$JOBS" in ''|*[!0-9]*|0) echo 'JOBS must be positive' >&2; exit 2;; esac
-for path in "$distfiles" "$work" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_DBUS_PREFIX" $qdoc_paths; do
+for path in "$distfiles" "$work" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_DBUS_PREFIX" "$HOST_PACKAGE_PREFIX" "$HOST_PKG_CONFIG" $qdoc_paths; do
     case "$path" in /*) ;; *) echo 'Absolute paths required' >&2; exit 2;; esac
     case "$path" in *[!a-zA-Z0-9_./+-]*) echo 'Use paths without shell metacharacters' >&2; exit 2;; esac
 done
-for tool in "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX"; do
+for tool in "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG"; do
     [ -x "$tool" ] || { echo "Missing executable: $tool" >&2; exit 2; }
 done
 host_deployment_target=
@@ -128,10 +132,13 @@ if [ -e "$work" ] || [ -L "$work" ]; then
     grep -F -x "host_runtime_view_identity=$runtime_view_identity" "$work/inputs.txt" >/dev/null || {
         echo 'Host runtime view contents changed; use a new work directory' >&2; exit 2;
     }
+    grep -F -x "host_package_prefix=$HOST_PACKAGE_PREFIX" "$work/inputs.txt" >/dev/null || {
+        echo 'Host package prefix changed; use a new work directory' >&2; exit 2;
+    }
     grep -q -x "profile=$profile" "$work/inputs.txt" || {
         echo 'Host profile changed; use a new work directory' >&2; exit 2;
     }
-    for tool in "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$scanner_patch" "$syncqt_patch" $host_dbus_inputs $runtime_inputs; do
+    for tool in "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" $host_dbus_inputs $runtime_inputs; do
         shasum -a 256 "$tool" | grep -F -x -f - "$work/inputs.txt" >/dev/null || {
             echo "Host input changed; use a new work directory: $tool" >&2; exit 2;
         }
@@ -158,10 +165,11 @@ ln -sf "$NINJA" "$work/bin/ninja"
 PATH="$work/bin:$PATH"
 export PATH
 {
-    shasum -a 256 "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$scanner_patch" "$syncqt_patch" $host_dbus_inputs $runtime_inputs
+    shasum -a 256 "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" $host_dbus_inputs $runtime_inputs
     "$CMAKE" --version
     "$NINJA" --version
     printf 'profile=%s\n' "$profile"
+    printf 'host_package_prefix=%s\n' "$HOST_PACKAGE_PREFIX"
     printf 'host_runtime_view=%s\n' "$HOST_RUNTIME_VIEW"
     printf 'host_runtime_view_identity=%s\n' "$runtime_view_identity"
     printf 'host_deployment_target=%s\n' "$host_deployment_target"
@@ -180,8 +188,10 @@ for module in $modules; do
         if [ "$module" = qtbase ]; then
             "$PATCH" -d "$work/source/$module-everywhere-src-6.12.0" -p0 -F0 -i "$scanner_patch"
             "$PATCH" -d "$work/source/$module-everywhere-src-6.12.0" -p0 -F0 -i "$syncqt_patch"
+            "$PATCH" -d "$work/source/$module-everywhere-src-6.12.0" -p0 -F0 -i "$zlib_patch"
+            "$PATCH" -d "$work/source/$module-everywhere-src-6.12.0" -p0 -F0 -i "$widgets_patch"
             (cd "$work/source/$module-everywhere-src-6.12.0" &&
-                shasum -a 256 src/tools/qtwaylandscanner/qtwaylandscanner.cpp src/tools/syncqt/CMakeLists.txt > "$work/qtbase-scanner-source.sha256")
+                shasum -a 256 src/tools/qtwaylandscanner/qtwaylandscanner.cpp src/tools/syncqt/CMakeLists.txt cmake/FindWrapSystemZLIB.cmake src/widgets/CMakeLists.txt > "$work/qtbase-scanner-source.sha256")
         fi
     fi
     mkdir -p "$work/$module"
@@ -202,10 +212,15 @@ for module in $modules; do
         [ -z "$host_deployment_target" ] || set -- "-DCMAKE_OSX_DEPLOYMENT_TARGET:STRING=$host_deployment_target"
         [ -z "$HOST_RUNTIME_VIEW" ] || set -- "$@" "-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES:FILEPATH=$runtime_cmake"
         (cd "$work/$module" && CC="$HOST_CC" CXX="$HOST_CXX" \
+            PKG_CONFIG_LIBDIR="$HOST_PACKAGE_PREFIX/lib/pkgconfig:$HOST_PACKAGE_PREFIX/share/pkgconfig" PKG_CONFIG_PATH= \
             "$HOST_SH" "$work/source/$module-everywhere-src-6.12.0/configure" \
             -developer-build -opensource -confirm-license -release \
             -nomake tests -nomake examples -- \
             -DCMAKE_MAKE_PROGRAM="$NINJA" -DPython3_EXECUTABLE:FILEPATH="$HOST_PYTHON" -DQT_FIND_ALL_PACKAGES_ALWAYS=ON \
+            -DCMAKE_PREFIX_PATH:PATH="$HOST_PACKAGE_PREFIX" -DZLIB_ROOT:PATH="$HOST_PACKAGE_PREFIX" -DPKG_CONFIG_EXECUTABLE:FILEPATH="$HOST_PKG_CONFIG" -DPKG_CONFIG_ARGN=--define-prefix \
+            -DFEATURE_system_doubleconversion=ON -DFEATURE_system_freetype=ON -DFEATURE_system_harfbuzz=ON \
+            -DFEATURE_system_jpeg=ON -DFEATURE_system_libb2=ON -DFEATURE_system_pcre2=ON \
+            -DFEATURE_system_png=ON -DFEATURE_system_sqlite=ON -DFEATURE_system_textmarkdownreader=ON -DFEATURE_system_zlib=ON \
             -UQT_INTERNAL_PREVIOUSLY_FOUND_PACKAGES \
             -UQT_INTERNAL_PREVIOUSLY_SEARCHED_PACKAGES \
             -DDBus1_DIR="$HOST_DBUS_PREFIX/lib/cmake/DBus1" \
@@ -219,6 +234,19 @@ for module in $modules; do
         # Reject that result before an XML generator can emit empty signatures.
         grep -q -x 'FEATURE_dbus_linked:BOOL=ON' "$work/$module/CMakeCache.txt"
         grep -q -x 'QT_FEATURE_dbus_linked:INTERNAL=ON' "$work/$module/CMakeCache.txt"
+        grep -F -x "ZLIB_ROOT:PATH=$HOST_PACKAGE_PREFIX" "$work/$module/CMakeCache.txt" >/dev/null || {
+            echo 'Qt did not retain the selected zlib root' >&2; exit 1;
+        }
+        for feature in doubleconversion freetype harfbuzz jpeg libb2 pcre2 png sqlite textmarkdownreader zlib; do
+            grep -F -x "QT_FEATURE_system_${feature}:INTERNAL=ON" "$work/$module/CMakeCache.txt" >/dev/null || {
+                echo "Qt system dependency was not selected: $feature" >&2; exit 1;
+            }
+        done
+        for variable in FREETYPE_LIBRARY_RELEASE HARFBUZZ_LIBRARIES JPEG_LIBRARY_RELEASE LIBB2_LIBRARY PCRE2_LIBRARY_RELEASE PNG_LIBRARY_RELEASE SQLite3_LIBRARY ZLIB_LIBRARY_RELEASE double-conversion_DIR md4c_DIR; do
+            value=$(sed -n -e "s/^${variable}:FILEPATH=//p" -e "s/^${variable}:PATH=//p" "$work/$module/CMakeCache.txt")
+            case "$value" in "$HOST_PACKAGE_PREFIX"/*) ;; *)
+                echo "Qt dependency is outside selected native prefix: $variable" >&2; exit 1;; esac
+        done
         # Other modules' host generators link these libraries. Their metadata
         # alone is insufficient when the modules are built independently.
         "$CMAKE" --build "$work/$module" --parallel "$JOBS" \
@@ -227,6 +255,8 @@ for module in $modules; do
     else
         set --
         [ "$module" != qtdeclarative ] || set -- -DFEATURE_quick_vectorimage=ON
+        set -- "$@" "-DCMAKE_PREFIX_PATH:PATH=$HOST_PACKAGE_PREFIX"
+        set -- "$@" "-DZLIB_ROOT:PATH=$HOST_PACKAGE_PREFIX"
         [ -z "$HOST_RUNTIME_VIEW" ] || set -- "$@" "-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES:FILEPATH=$runtime_cmake"
         if [ "$module" = qttools ]; then
             set -- "$@" -DLLVM_DIR="$HOST_LLVM_BUILD/lib/cmake/llvm" \
@@ -242,6 +272,9 @@ for module in $modules; do
         (cd "$work/$module" && "$HOST_SH" "$work/qtbase/bin/qt-configure-module" \
             "$work/source/$module-everywhere-src-6.12.0" \
             -- -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF -DPython3_EXECUTABLE:FILEPATH="$HOST_PYTHON" "$@") > "$work/$module/configure.log" 2>&1
+        grep -F -x "ZLIB_ROOT:PATH=$HOST_PACKAGE_PREFIX" "$work/$module/CMakeCache.txt" >/dev/null || {
+            echo 'Qt module did not retain the selected zlib root' >&2; exit 1;
+        }
         target=host_tools
         [ "$module" != qtsvg ] || target=Svg
         [ "$module" != qtquicktimeline ] || target=QuickTimeline

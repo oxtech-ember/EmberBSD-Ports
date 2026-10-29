@@ -23,6 +23,7 @@ HOST_PYTHON=/absolute/native/python3 \
 WAYLAND_SCANNER=/absolute/wayland-1.26/bin/wayland-scanner \
 HOST_LLVM_BUILD=/absolute/native-llvm23 HOST_CLANG_BUILD=/absolute/native-clang23 \
 HOST_DBUS_PREFIX=/absolute/native-dbus \
+HOST_PACKAGE_PREFIX=/absolute/native-dependencies HOST_PKG_CONFIG=/absolute/native/pkg-config \
 HOST_CC=/absolute/native/cc HOST_CXX=/absolute/native/c++ JOBS=4 \
 /absolute/native/sh probes/plasma-mobile/toolkit/cross/build-host-tools.sh \
     /absolute/verified-distfiles /absolute/new-host-qt
