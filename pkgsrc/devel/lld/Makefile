@@ -29,6 +29,11 @@ post-install:
 
 .include "options.mk"
 .include "../../devel/cmake/build.mk"
+.include "../../mk/emberbsd-native-cxx-runtime.mk"
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
+PKGREVISION= 6
+BUILDLINK_ABI_DEPENDS.llvm+= llvm>=23.1.4nb5
+.endif
 BUILDLINK_API_DEPENDS.llvm+=	llvm-${LLVM_VERSION}{,nb*}
 .include "../../lang/llvm/buildlink3.mk"
 .include "../../devel/py-llvm-lit/buildlink3.mk"
