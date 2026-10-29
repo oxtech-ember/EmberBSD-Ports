@@ -113,6 +113,21 @@ class TargetToolchainTests(unittest.TestCase):
         self.assertIsNone(options.os_source)
         self.assertEqual(remaining, ['/compiler', '/sysroot', '/output'])
 
+    def test_floating_fixture_and_inventory_follow_compiler_family(self):
+        for family, chosen, excluded in (
+                ('clang', 'float-constexpr-clang.cc', 'float-constexpr.cc'),
+                ('gcc', 'float-constexpr.cc', 'float-constexpr-clang.cc')):
+            with self.subTest(family=family):
+                selected = pipeline.float_constexpr_source(CROSS, family)
+                self.assertEqual(selected.name, chosen)
+                rows = pipeline.target_test_source_inventory(
+                    PROFILE, CROSS, Path(sdk_source.load()), compiler_family=family)
+                names = [name for name, _ in rows]
+                self.assertTrue(any(name.endswith('/' + chosen) for name in names))
+                self.assertFalse(any(name.endswith('/' + excluded) for name in names))
+        with self.assertRaises(SDKError):
+            pipeline.float_constexpr_source(CROSS, 'other')
+
     def test_os_target_sources_are_included_in_deterministic_source_inventory(self):
         os_source = self.root / 'os'
         test_dir = os_source / 'ember/tests/target-acceptance'

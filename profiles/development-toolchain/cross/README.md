@@ -527,8 +527,11 @@ the test programs.
 
 This reuses the native C11 atomics/TLS and C++20 DSO test sources. It compiles
 C with and without LTO, and C++ with threads, TLS, strings and exceptions
-crossing a shared-library boundary. A floating constant-evaluation regression
-includes `_Float32` limits and target long-double exponentiation.
+crossing a shared-library boundary. GCC checks `_Float32` limits and
+long-double exponentiation using its GMP/MPFR support. Clang instead compiles
+a standard C++20 constant-evaluation test for float, double and long double
+limits, finite arithmetic and rounding. The source inventory records the
+fixture selected for the compiler family.
 It checks dynamic dependencies for host path leakage. The guest runner uses
 target shell/base utilities and verifies loaded runtime paths and hashes from
 the non-executable runtime data receipt. It does not install host development

@@ -387,6 +387,11 @@ def os_test_source_revision(source, git):
     return revision
 
 
+def float_constexpr_source(cross, family):
+    require(family in ('clang', 'gcc'), 'Invalid target compiler family')
+    return Path(cross) / 'tests' / ('float-constexpr-clang.cc' if family == 'clang' else 'float-constexpr.cc')
+
+
 def os_runtime_programs(os_source, cc_link, output):
     """Build the OS-owned runtime regressions with the already selected SDK C route."""
     source = Path(os_source) / 'ember/tests/target-acceptance'
@@ -429,7 +434,7 @@ def compile_tests_main(args):
     sdk_root = Path(sdk_source.load())
     (out / 'source-sha256.tsv').write_text(''.join(
         path + '\t' + digest + '\n' for path, digest in
-        target_test_source_inventory(PROFILE, HERE, sdk_root, os_source=os_source)))
+        target_test_source_inventory(PROFILE, HERE, sdk_root, os_source=os_source, compiler_family=family)))
     if os_source is not None:
         os_commit = os_test_source_revision(os_source, options.git)
         (out / 'os-source-commit.txt').write_text(os_commit + '\n')
@@ -438,7 +443,7 @@ def compile_tests_main(args):
         jsonio.write_json(out / 'sysroot-identity.json', selected['sysroot_identity'])
     for suffix in ('', '-lto'):
         logged(cc_link + ['-std=c11', '-O2'] + (['-flto'] if suffix else []) + ['-Wall', '-Wextra', '-Werror', '-pthread', source / 'atomic-tls.c', '-o', out / ('atomic-tls' + suffix)], out / ('atomic-tls' + suffix + '-build.log'))
-    programs = [('float-constexpr.o', cxx + ['-std=c++20', '-O3', '-Wall', '-Wextra', '-Werror', '-c', HERE / 'tests/float-constexpr.cc']), ('libboundary.so', cxx_link + ['-std=c++20', '-O2', '-Wall', '-Wextra', '-Werror', '-fPIC', '-shared', source / 'boundary.cc', '-Wl,-soname,libboundary.so']), ('boundary', cxx_link + ['-std=c++20', '-O2', '-Wall', '-Wextra', '-Werror', '-pthread', source / 'boundary-main.cc', '-L' + str(out), '-Wl,-rpath,$ORIGIN', '-lboundary'])]
+    programs = [('float-constexpr.o', cxx + ['-std=c++20', '-O3', '-Wall', '-Wextra', '-Werror', '-c', float_constexpr_source(HERE, family)]), ('libboundary.so', cxx_link + ['-std=c++20', '-O2', '-Wall', '-Wextra', '-Werror', '-fPIC', '-shared', source / 'boundary.cc', '-Wl,-soname,libboundary.so']), ('boundary', cxx_link + ['-std=c++20', '-O2', '-Wall', '-Wextra', '-Werror', '-pthread', source / 'boundary-main.cc', '-L' + str(out), '-Wl,-rpath,$ORIGIN', '-lboundary'])]
     for name, arguments in programs:
         logged(arguments + ['-o', out / name], out / (name + '-build.log'))
     for name, arguments in os_programs:
@@ -548,12 +553,12 @@ def gcc_sysroot_identity(sysroot, target):
         runtime_provenance_sha256=runtime_digest)
 
 
-def target_test_source_inventory(profile, cross, sdk_root, *, os_source=None):
+def target_test_source_inventory(profile, cross, sdk_root, *, os_source=None, compiler_family='clang'):
     """Return deterministic hashes for test inputs and selected source controllers."""
     ports_root = profile.parents[1]
     explicit = [profile / 'tests/atomic-tls.c', profile / 'tests/boundary.cc',
         profile / 'tests/boundary-main.cc', profile / 'tests/boundary.h',
-        cross / 'tests/float-constexpr.cc', cross / 'tests/target/run-target.sh',
+        float_constexpr_source(cross, compiler_family), cross / 'tests/target/run-target.sh',
         cross / 'tests/target/check-runtime.sh', cross / 'tests/target/target-options.sh']
     selected = []
     if os_source is not None:
