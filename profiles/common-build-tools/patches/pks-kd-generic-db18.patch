@@ -1,0 +1,281 @@
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+Port the Berkeley DB 2 environment, open, transaction, checkpoint and
+log archive calls to the current Berkeley DB API (db18), and give the
+error callback and duplicate comparison the db18 signatures. Also stop
+calling feof() on num_keydb after it has been closed.
+
+--- kd_generic.c.orig
++++ kd_generic.c
+@@ -34,7 +34,8 @@
+    create-time, written out, and then learned at run-time by reading
+    the file from the dbdir. */
+ 
+-static DB_ENV dbenv;
++static DB_ENV *dbenv = NULL;
++static int dbenv_txn = 0;
+ 
+ int num_keydb;
+ DB **keydb_files = NULL;
+@@ -220,10 +221,10 @@
+ 
+     *tid = NULL;
+ 
+-    if (! dbenv.tx_info)
++    if (! dbenv_txn)
+ 	return(1);
+ 
+-    if ((ret = txn_begin(dbenv.tx_info, NULL, tid))) {
++    if ((ret = dbenv->txn_begin(dbenv, NULL, tid, 0))) {
+ 	err->fatal = 0;
+ 	err->str = "Failed beginning transaction";
+ 	return(0);
+@@ -240,7 +241,7 @@
+     if (! tid)
+ 	return(1);
+ 
+-    if ((ret = txn_commit(tid))) {
++    if ((ret = tid->commit(tid, 0))) {
+ 	err->fatal = 0;
+ 	err->str = "Failed committing transaction";
+ 	return(0);
+@@ -248,16 +249,9 @@
+  
+      txn_count++;
+      if (txn_count > KD_MAX_TXN_WO_CKPT) {
+-       int count;
+-       for (count=0; count<10; count++) {
+-          if ((ret = txn_checkpoint(dbenv.tx_info, 0, 0)) == DB_INCOMPLETE) {
+-             sleep(1);
+-             continue;
+-          }
+-         /* Only reset if successful */
++       /* Only reset if successful */
++       if (dbenv->txn_checkpoint(dbenv, 0, 0, 0) == 0)
+          txn_count = 0;
+-         break;
+-       }
+       }
+   
+       return(1);
+@@ -271,7 +265,7 @@
+     if (! tid)
+ 	return(1);
+ 
+-    if ((ret = txn_abort(tid))) {
++    if ((ret = tid->abort(tid))) {
+ 	if (err) {
+ 	    err->fatal = 0;
+ 	    err->str = "Failed aborting transaction";
+@@ -284,16 +278,52 @@
+ 
+ /* create/open/close/sync */
+ 
+-static int kd_worddata_compare(const DBT *a, const DBT *b)
++static int kd_worddata_compare(DB *db, const DBT *a, const DBT *b,
++				size_t *locp)
+ {
++   (void) db;
++   (void) locp;
+    return(memcmp(b->data, a->data, 12));
+ }
+ 
+-static void kd_errcall(const char *db_errpfx, char *buffer)
++static void kd_errcall(const DB_ENV *env, const char *db_errpfx,
++		       const char *buffer)
+ {
++   (void) env;
+    log_error(db_errpfx?db_errpfx:"db_errcall", buffer);
+ }
+ 
++/* open one database file in dbenv, as db_open() did in Berkeley DB 2.
++   DB_TRUNCATE is not allowed in a transactional environment, so a
++   database being created is removed first. */
++static int kd_db_open(const char *name, DBTYPE type, u_int32_t flags,
++		      u_int32_t dbflags,
++		      int (*dupcmp)(DB *, const DBT *, const DBT *, size_t *),
++		      DB **dbp)
++{
++   int ret;
++   u_int32_t txnflag = dbenv_txn ? DB_AUTO_COMMIT : 0;
++
++   *dbp = NULL;
++   if (flags & DB_TRUNCATE) {
++      flags &= ~DB_TRUNCATE;
++      ret = dbenv->dbremove(dbenv, NULL, name, NULL, txnflag);
++      if (ret && ret != ENOENT)
++	 return(ret);
++   }
++   if ((ret = db_create(dbp, dbenv, 0)))
++      return(ret);
++   if ((ret = (*dbp)->set_pagesize(*dbp, 8192)) ||
++       (dbflags && (ret = (*dbp)->set_flags(*dbp, dbflags))) ||
++       (dupcmp && (ret = (*dbp)->set_dup_compare(*dbp, dupcmp))) ||
++       (ret = (*dbp)->open(*dbp, NULL, name, NULL, type, flags | txnflag,
++			   0644))) {
++      (*dbp)->close(*dbp, 0);
++      *dbp = NULL;
++   }
++   return(ret);
++}
++
+ /* if create is non-zero, it specifies the number of database
+    files to use.  if it is zero, then the code will read a file
+    containing the number of database files to use */
+@@ -301,9 +331,6 @@
+ {
+    int i, appflags, flags, db_err, fd;
+    char keydbname[20];
+-   DB_INFO keyinfo, wordinfo, timeinfo;
+-
+-   memset(&dbenv, 0, sizeof(dbenv));
+ 
+    if ((oflags & (KD_OPEN_READONLY|KD_OPEN_RECOVER)) && create) {
+        err->fatal = 1;
+@@ -311,11 +338,18 @@
+        fail();
+    }
+ 
+-   dbenv.db_errcall = kd_errcall;
++   if ((db_err = db_env_create(&dbenv, 0))) {
++      dbenv = NULL;
++      err->fatal = 1;
++      sprintf(err->buf, "Error initializing db (errno = %d)", db_err);
++      fail();
++   }
++
++   dbenv->set_errcall(dbenv, kd_errcall);
+    /* This is a tunable parameter.  Making it bigger improves
+       performance at the expense of memory use.  Making it bigger
+       than available physical memory will not help. */
+-   dbenv.mp_size = 20*1024*1024;
++   dbenv->set_cachesize(dbenv, 0, 20*1024*1024, 0);
+ 
+    appflags = DB_INIT_MPOOL|DB_INIT_LOCK|DB_CREATE;
+ 
+@@ -323,11 +357,16 @@
+        appflags |= DB_INIT_LOG|DB_INIT_TXN;
+ 
+    if (oflags & KD_OPEN_RECOVER) {
+-       appflags |= DB_INIT_LOG|DB_RECOVER;
+-       dbenv.db_verbose = 1;
++       /* recovery needs the transaction subsystem */
++       appflags |= DB_INIT_LOG|DB_INIT_TXN|DB_RECOVER;
++       dbenv->set_verbose(dbenv, DB_VERB_RECOVERY, 1);
+    }
+ 
+-   if ((db_err = db_appinit(dbdir, NULL, &dbenv, appflags))) {
++   dbenv_txn = (appflags & DB_INIT_TXN) != 0;
++
++   if ((db_err = dbenv->open(dbenv, dbdir, appflags, 0))) {
++      dbenv->close(dbenv, 0);
++      dbenv = NULL;
+       err->fatal = 1;
+       sprintf(err->buf, "Error initializing db (errno = %d)", db_err);
+       fail();
+@@ -399,12 +438,12 @@
+       }
+ 
+       if (fgets(line, sizeof(line), nkdb) == NULL) {
+-	 fclose(nkdb);
+ 	 err->fatal = 1;
+ 	 if (feof(nkdb))
+ 	    sprintf(err->buf, "End of file reading num_keydb");
+ 	 else
+ 	    sprintf(err->buf, "Error reading num_keydb (errno = %d)", errno);
++	 fclose(nkdb);
+ 	 fail();
+       }
+ 
+@@ -433,14 +472,11 @@
+    for (i=0; i<num_keydb; i++)
+        keydb_files[i] = 0;
+ 
+-   memset(&keyinfo, 0, sizeof(keyinfo));
+-   keyinfo.db_pagesize = 8192;
+-
+    for (i=0; i<num_keydb; i++) {
+       sprintf(keydbname, "keydb%03d", i);
+ 
+-      if ((db_err = db_open(keydbname, DB_HASH, flags, 0644, &dbenv, &keyinfo,
+-			    &keydb_files[i]))) {
++      if ((db_err = kd_db_open(keydbname, DB_HASH, flags, 0, NULL,
++			       &keydb_files[i]))) {
+ 	 err->fatal = 1;
+ 	 sprintf(err->buf, "Error opening %s (errno = %d)", keydbname, db_err);
+ 	 fail();
+@@ -459,13 +495,8 @@
+       }
+    }
+ 
+-   memset(&wordinfo, 0, sizeof(wordinfo));
+-   wordinfo.db_pagesize = 8192;
+-   wordinfo.dup_compare = kd_worddata_compare;
+-   wordinfo.flags = DB_DUP | DB_DUPSORT;
+-   
+-   if ((db_err = db_open("worddb", DB_BTREE, flags,
+-			 0644, &dbenv, &wordinfo, &worddb))) {
++   if ((db_err = kd_db_open("worddb", DB_BTREE, flags, DB_DUP | DB_DUPSORT,
++			    kd_worddata_compare, &worddb))) {
+       err->fatal = 1;
+       sprintf(err->buf, "Error opening worddb (errno = %d)", db_err);
+       fail();
+@@ -483,11 +514,7 @@
+       fail();
+    }
+ 
+-   memset(&timeinfo, 0, sizeof(timeinfo));
+-   keyinfo.db_pagesize = 8192;
+-
+-   if ((db_err = db_open("timedb", DB_BTREE, flags, 0644, &dbenv, &timeinfo,
+-			 &timedb))) {
++   if ((db_err = kd_db_open("timedb", DB_BTREE, flags, 0, NULL, &timedb))) {
+       err->fatal = 1;
+       sprintf(err->buf, "Error opening timedb (errno = %d)", db_err);
+       fail();
+@@ -693,12 +720,15 @@
+       if (keydb_files[i])
+ 	 (*(keydb_files[i]->close))(keydb_files[i], 0);
+ 
+-   if (dbenv.tx_info) {
++   if (!dbenv)
++      return;
++
++   if (dbenv_txn) {
+       /* I don't know why I need to do this twice, but if I don't,
+ 	 log_archive() returns no files */
+ 
+       for (count=0; count<10; count++) {
+-	 if ((ret = txn_checkpoint(dbenv.tx_info, 0, 0)) == DB_INCOMPLETE) {
++	 if ((ret = dbenv->txn_checkpoint(dbenv, 0, 0, DB_FORCE))) {
+ 	    sleep(1);
+ 	    continue;
+ 	 }
+@@ -713,7 +743,7 @@
+       }
+ 
+       for (count=0; count<10; count++) {
+-	 if ((ret = txn_checkpoint(dbenv.tx_info, 0, 0)) == DB_INCOMPLETE) {
++	 if ((ret = dbenv->txn_checkpoint(dbenv, 0, 0, DB_FORCE))) {
+ 	    sleep(1);
+ 	    continue;
+ 	 }
+@@ -727,7 +757,7 @@
+ 	 return;
+       }
+ 
+-      if ((ret = log_archive(dbenv.lg_info, &loglist, DB_ARCH_ABS, NULL))) {
++      if ((ret = dbenv->log_archive(dbenv, &loglist, DB_ARCH_ABS))) {
+ 	 sprintf(buf, "failed listing unneeded log files: errno = %d", ret);
+ 	 log_error("kd_close_1", buf);
+ 	 return;
+@@ -748,7 +778,9 @@
+       }
+    }
+ 
+-   if ((ret = db_appexit(&dbenv))) {
++   ret = dbenv->close(dbenv, 0);
++   dbenv = NULL;
++   if (ret) {
+        sprintf(buf, "failed closing db subsystems: errno = %d", ret);
+        log_error("kd_close_1", buf);
+    }

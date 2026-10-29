@@ -1,0 +1,36 @@
+Origin: EmberBSD, AI-assisted.
+Build pks against the one Berkeley DB, db18, instead of the removed
+Berkeley DB 2 package. The recipe patches patch-kd__generic.c and
+patch-pkscheck.c port the DB 2 calls to the current API.
+Not submitted upstream.
+
+--- a/security/pks/Makefile
++++ b/security/pks/Makefile
+@@ -30,7 +30,7 @@
+ PKG_GECOS.${PKS_USER}=	PGP Key Server
+ PKG_HOME.${PKS_USER}=	${PKS_HOME}
+ 
+-BDB_ACCEPTED=	db2
++BDB_ACCEPTED=	db18
+ 
+ BUILD_DEFS+=	PKS_SERVER
+ 
+@@ -60,6 +60,9 @@
+ SUBST_FILES.paths=	pks-commands.html
+ SUBST_SED.paths=	-e "s|localhost|${PKS_SERVER}|g"
+ 
++MAKE_FLAGS+=		DBDIR=${BUILDLINK_DIR}/include/${BDB_TYPE}
++MAKE_FLAGS+=		LIBDB=${BDB_LIBS:Q}
++
+ INSTALL_MAKE_FLAGS+=	prefix=${DESTDIR}${PREFIX}
+ INSTALL_MAKE_FLAGS+=	datadir=${DESTDIR}${PREFIX}/share/pks
+ INSTALL_MAKE_FLAGS+=	localstatedir=${DESTDIR}${PKS_HOME}
+@@ -67,7 +70,7 @@
+ INSTALL_MAKE_FLAGS+=	man8dir=${DESTDIR}${PREFIX}/${PKGMANDIR}/man8
+ INSTALL_MAKE_FLAGS+=	sysconfdir=${DESTDIR}${EGDIR:Q}
+ 
+-.include "../../databases/db/buildlink3.mk"
++.include "../../mk/bdb.buildlink3.mk"
+ 
+ post-install:
+ 	${INSTALL_DATA} ${WRKSRC}/pks-commands.html ${DESTDIR}${EGDIR}

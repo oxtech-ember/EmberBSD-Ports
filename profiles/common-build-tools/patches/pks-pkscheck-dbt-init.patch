@@ -1,0 +1,26 @@
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+Zero the DBTs before use: the db18 get call rejects garbage in the
+flags member of an uninitialized key.
+
+--- pkscheck.c.orig
++++ pkscheck.c
+@@ -7,6 +7,7 @@
+ 
+ 
+ #include <db.h>
++#include <string.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ 
+@@ -36,6 +37,11 @@
+    dir = argv[1];
+    log_terminal = 1;
+ 
++   memset(&ikey, 0, sizeof(ikey));
++   memset(&idata, 0, sizeof(idata));
++   memset(&kkey, 0, sizeof(kkey));
++   memset(&kdata, 0, sizeof(kdata));
++
+    if (!kd_open(dir, KD_OPEN_READONLY, &str)) {
+       fprintf(stderr, "database open failed: %s\n", str);
+       free(str);
