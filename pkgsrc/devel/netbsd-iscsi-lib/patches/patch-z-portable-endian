@@ -1,0 +1,61 @@
+Provide ordinary big-endian accessors when the OS does not provide BSD ones.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- include/compat.h.orig
++++ include/compat.h
+@@ -46,6 +46,55 @@
+ #define __UNCONST(a)    ((void *)(unsigned long)(const void *)(a))
+ #endif
+ 
++/* BSD endian accessors are unavailable on some package hosts. */
++#if !defined(__NetBSD__) && !defined(__FreeBSD__) && \
++	!defined(__OpenBSD__) && !defined(__DragonFly__)
++static inline uint16_t
++iscsi_be16dec(const void *ptr)
++{
++	const uint8_t *p = ptr;
++	return ((uint16_t)p[0] << 8) | p[1];
++}
++
++static inline uint32_t
++iscsi_be32dec(const void *ptr)
++{
++	const uint8_t *p = ptr;
++	return ((uint32_t)iscsi_be16dec(p) << 16) | iscsi_be16dec(p + 2);
++}
++
++static inline uint64_t
++iscsi_be64dec(const void *ptr)
++{
++	const uint8_t *p = ptr;
++	return ((uint64_t)iscsi_be32dec(p) << 32) | iscsi_be32dec(p + 4);
++}
++
++static inline void
++iscsi_be32enc(void *ptr, uint32_t value)
++{
++	uint8_t *p = ptr;
++	p[0] = (uint8_t)(value >> 24);
++	p[1] = (uint8_t)(value >> 16);
++	p[2] = (uint8_t)(value >> 8);
++	p[3] = (uint8_t)value;
++}
++
++static inline void
++iscsi_be64enc(void *ptr, uint64_t value)
++{
++	uint8_t *p = ptr;
++	iscsi_be32enc(p, (uint32_t)(value >> 32));
++	iscsi_be32enc(p + 4, (uint32_t)value);
++}
++
++#define be16dec iscsi_be16dec
++#define be32dec iscsi_be32dec
++#define be64dec iscsi_be64dec
++#define be32enc iscsi_be32enc
++#define be64enc iscsi_be64enc
++#endif
++
+ #ifdef HAVE_HTOBE64
+ #  define ISCSI_HTOBE64(x)	htobe64(x)
+ #  define ISCSI_BE64TOH(x)	be64toh(x)

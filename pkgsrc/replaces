@@ -375,3 +375,7 @@ devel/libuv
 devel/lldb
 net/pppd
 sysutils/top
+
+devel/netbsd-iscsi-lib
+net/netbsd-iscsi-initiator
+net/netbsd-iscsi-target

@@ -1,0 +1,25 @@
+Bump package library ABI for the changed exported send helper signature.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- src/lib/Makefile.am.orig
++++ src/lib/Makefile.am
+@@ -2,7 +2,7 @@
+ 
+ AM_CFLAGS		= $(WARNCFLAGS)
+ 
+-AM_LDFLAGS		= -version-info 0:2:0
++AM_LDFLAGS		= -version-info 1:0:0
+ 
+ lib_LTLIBRARIES		= libiscsi.la
+ 
+--- src/lib/Makefile.in.orig
++++ src/lib/Makefile.in
+@@ -211,7 +211,7 @@
+ top_builddir = @top_builddir@
+ top_srcdir = @top_srcdir@
+ AM_CFLAGS = $(WARNCFLAGS)
+-AM_LDFLAGS = -version-info 0:2:0
++AM_LDFLAGS = -version-info 1:0:0
+ lib_LTLIBRARIES = libiscsi.la
+ libiscsi_la_CPPFLAGS = -I$(top_srcdir)/include
+ libiscsi_la_SOURCES = \
