@@ -1,0 +1,71 @@
+$NetBSD$
+
+Keep released configure scripts aligned with the common gettext.m4 patch.
+Origin: EmberBSD (AI-assisted).
+
+--- gettext-runtime/configure.orig
++++ gettext-runtime/configure
+@@ -25929,8 +25929,7 @@
+ #ifdef __cplusplus
+ "C"
+ #endif
+-const char *_nl_expand_alias (const char *);
+-#define __GNU_GETTEXT_SYMBOL_EXPRESSION (_nl_msg_cat_cntr + *_nl_expand_alias (""))
++#define __GNU_GETTEXT_SYMBOL_EXPRESSION (_nl_msg_cat_cntr)
+ #else
+ #define __GNU_GETTEXT_SYMBOL_EXPRESSION 0
+ #endif
+@@ -25979,8 +25978,7 @@
+ #ifdef __cplusplus
+ "C"
+ #endif
+-const char *_nl_expand_alias (const char *);
+-#define __GNU_GETTEXT_SYMBOL_EXPRESSION (_nl_msg_cat_cntr + *_nl_expand_alias (""))
++#define __GNU_GETTEXT_SYMBOL_EXPRESSION (_nl_msg_cat_cntr)
+ #else
+ #define __GNU_GETTEXT_SYMBOL_EXPRESSION 0
+ #endif
+--- gettext-runtime/intl/configure.orig
++++ gettext-runtime/intl/configure
+@@ -20032,8 +20032,7 @@
+ #ifdef __cplusplus
+ "C"
+ #endif
+-const char *_nl_expand_alias (const char *);
+-#define __GNU_GETTEXT_SYMBOL_EXPRESSION (_nl_msg_cat_cntr + *_nl_expand_alias (""))
++#define __GNU_GETTEXT_SYMBOL_EXPRESSION (_nl_msg_cat_cntr)
+ #else
+ #define __GNU_GETTEXT_SYMBOL_EXPRESSION 0
+ #endif
+@@ -20082,8 +20081,7 @@
+ #ifdef __cplusplus
+ "C"
+ #endif
+-const char *_nl_expand_alias (const char *);
+-#define __GNU_GETTEXT_SYMBOL_EXPRESSION (_nl_msg_cat_cntr + *_nl_expand_alias (""))
++#define __GNU_GETTEXT_SYMBOL_EXPRESSION (_nl_msg_cat_cntr)
+ #else
+ #define __GNU_GETTEXT_SYMBOL_EXPRESSION 0
+ #endif
+--- gettext-tools/configure.orig
++++ gettext-tools/configure
+@@ -29852,8 +29852,7 @@
+ #ifdef __cplusplus
+ "C"
+ #endif
+-const char *_nl_expand_alias (const char *);
+-#define __GNU_GETTEXT_SYMBOL_EXPRESSION (_nl_msg_cat_cntr + *_nl_expand_alias (""))
++#define __GNU_GETTEXT_SYMBOL_EXPRESSION (_nl_msg_cat_cntr)
+ #else
+ #define __GNU_GETTEXT_SYMBOL_EXPRESSION 0
+ #endif
+@@ -29902,8 +29901,7 @@
+ #ifdef __cplusplus
+ "C"
+ #endif
+-const char *_nl_expand_alias (const char *);
+-#define __GNU_GETTEXT_SYMBOL_EXPRESSION (_nl_msg_cat_cntr + *_nl_expand_alias (""))
++#define __GNU_GETTEXT_SYMBOL_EXPRESSION (_nl_msg_cat_cntr)
+ #else
+ #define __GNU_GETTEXT_SYMBOL_EXPRESSION 0
+ #endif

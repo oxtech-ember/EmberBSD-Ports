@@ -1,0 +1,22 @@
+$NetBSD$
+
+Use GNU make syntax for the existing SCO host conditional.
+Origin: EmberBSD (AI-assisted).
+
+--- gettext-tools/tests/Makefile.in.orig
++++ gettext-tools/tests/Makefile.in
+@@ -4645,11 +4645,10 @@
+ # INTL_MACOSX_LIBS is needed because the programs depend on libintl.la
+ # but libtool doesn't put -Wl,-framework options into .la files.
+-OS != uname -s
+-.if ${OS} == SCO_SV
++ifeq ($(shell uname -s),SCO_SV)
+ LDADD = # empty
+-.else
++else
+ LDADD = $(LDADD_@USE_INCLUDED_LIBINTL@) @INTL_MACOSX_LIBS@
+-.endif
++endif
+ LDADD_yes = ../../gettext-runtime/intl/libintl.la @LTLIBTHREAD@
+ LDADD_no = ../../gettext-runtime/intl/libgnuintl.la @LTLIBTHREAD@ @LTLIBINTL@
+ tstgettext_SOURCES = \

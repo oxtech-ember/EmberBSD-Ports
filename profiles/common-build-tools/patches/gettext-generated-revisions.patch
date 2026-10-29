@@ -1,0 +1,36 @@
+$NetBSD$
+
+Bump consumers of the updated common generated configure scripts.
+Origin: EmberBSD (AI-assisted).
+
+--- a/devel/gettext/Makefile.orig
++++ b/devel/gettext/Makefile
+@@ -2,6 +2,7 @@
+ 
+ .include "../../devel/gettext/Makefile.common"
+ 
++PKGREVISION=	1
+ COMMENT=	Tools for providing messages in different languages
+ 
+ DEPENDS+=	gettext-m4-${PKGVERSION_NOREV}{,nb[0-9]*}:../../devel/gettext-m4
+--- a/devel/gettext-tools/Makefile.orig
++++ b/devel/gettext-tools/Makefile
+@@ -3,7 +3,7 @@
+ .include "../../devel/gettext/Makefile.common"
+ 
+ PKGNAME=	${DISTNAME:S/-/-tools-/}
+-PKGREVISION=	3
++PKGREVISION=	4
+ COMMENT=	Tools for providing messages in different languages
+ 
+ DISTINFO_FILE=	${.CURDIR}/../../devel/gettext/distinfo
+--- a/devel/gettext-asprintf/Makefile.orig
++++ b/devel/gettext-asprintf/Makefile
+@@ -3,6 +3,7 @@
+ .include "../../devel/gettext/Makefile.common"
+ 
+ PKGNAME=	${DISTNAME:S/-/-asprintf-/}
++PKGREVISION=	1
+ COMMENT=	Provides a printf-like interface for C++
+ 
+ DISTINFO_FILE=	${.CURDIR}/../../devel/gettext/distinfo

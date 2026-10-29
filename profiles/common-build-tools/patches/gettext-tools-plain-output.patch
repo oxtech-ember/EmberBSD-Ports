@@ -1,0 +1,233 @@
+$NetBSD$
+
+Select the upstream unstyled stream API for the native base profile.
+Origin: EmberBSD (AI-assisted).
+
+--- gettext-tools/configure.ac.orig
++++ gettext-tools/configure.ac
+@@ -243,21 +243,29 @@
+   MSGMERGE_FOR_MSGFMT_OPTION='--for-msgfmt'
+ fi
+ 
++dnl The base profile reuses the upstream unstyled libgettextpo stream API.
++AC_ARG_VAR([EMBER_GETTEXT_PLAIN_STYLE], [set to yes for plain-output tools])
++AS_CASE([$EMBER_GETTEXT_PLAIN_STYLE],
++  [yes], [AC_DEFINE([EMBER_GETTEXT_PLAIN_STYLE], [1], [Build without color and CSS support.])],
++  [no|''], [],
++  [AC_MSG_ERROR([EMBER_GETTEXT_PLAIN_STYLE must be yes or no])])
++AM_CONDITIONAL([EMBER_GETTEXT_PLAIN_STYLE], [test "$EMBER_GETTEXT_PLAIN_STYLE" = yes])
++
+ dnl This option allows to build gettext-tools without (re)building libtextstyle.
+ AC_ARG_WITH([installed-libtextstyle],
+   [AS_HELP_STRING([[--with-installed-libtextstyle]],
+      [Use an already installed libtextstyle.])],
+   [gt_use_installed_libtextstyle=$withval],
+   [gt_use_installed_libtextstyle=no])
+-if test "$gt_use_installed_libtextstyle" != no; then
++if test "$gt_use_installed_libtextstyle" != no && test "$EMBER_GETTEXT_PLAIN_STYLE" != yes; then
+   gl_LIBTEXTSTYLE
+-else
++elif test "$EMBER_GETTEXT_PLAIN_STYLE" != yes; then
+   test -f ../libtextstyle/Makefile || {
+     AC_MSG_WARN([When building the gettext-tools package without building the entire gettext package, you need to pass the --with-installed-libtextstyle option to configure.])
+   }
+ fi
+ AM_CONDITIONAL([USE_INSTALLED_LIBTEXTSTYLE],
+-  [test "$gt_use_installed_libtextstyle" != no])
++  [test "$gt_use_installed_libtextstyle" != no || test "$EMBER_GETTEXT_PLAIN_STYLE" = yes])
+ 
+ dnl This option allows to build gettext-tools without (re)building GNU.Gettext.dll.
+ AC_ARG_WITH([installed-csharp-dll],
+@@ -325,6 +333,11 @@
+ grgl_INIT
+ gtpo_INIT
+ gttgl_INIT
++
++dnl The base profile consumes the selected common XML library.
++if test "$EMBER_GETTEXT_PLAIN_STYLE" = yes && test "$gl_cv_libxml_use_included" = yes; then
++  AC_MSG_ERROR([plain-output tools require an external libxml2])
++fi
+ 
+ dnl Allow libgrep/locale.h to use setlocale_null.h from gnulib-lib/.
+ GL_GRGL_GNULIB_SETLOCALE_NULL=1
+--- gettext-tools/configure.orig
++++ gettext-tools/configure
+@@ -663,7 +663,10 @@
+ gl_log10_required=plain
+ enable_option_checking=no
+ enable_year2038=no
+-ac_subst_vars='gttgltests_libtestsgnu_LIBOBJDEPS
++ac_subst_vars='EMBER_GETTEXT_PLAIN_STYLE_FALSE
++EMBER_GETTEXT_PLAIN_STYLE_TRUE
++EMBER_GETTEXT_PLAIN_STYLE
++gttgltests_libtestsgnu_LIBOBJDEPS
+ gttgltests_libtestsgnu_LTLIBOBJS
+ gttgltests_libtestsgnu_LIBOBJS
+ gttgltests_LIBOBJDEPS
+@@ -4685,7 +4688,8 @@
+ with_xz
+ enable_year2038
+ '
+-      ac_precious_vars='build_alias
++      ac_precious_vars='EMBER_GETTEXT_PLAIN_STYLE
++build_alias
+ host_alias
+ target_alias
+ CC
+@@ -5419,6 +5423,8 @@
+   --without-xz            don't use xz to compress the infrastructure archive
+ 
+ Some influential environment variables:
++  EMBER_GETTEXT_PLAIN_STYLE
++              set to yes for plain-output tools
+   CC          C compiler command
+   CFLAGS      C compiler flags
+   LDFLAGS     linker flags, e.g. -L<lib dir> if you have libraries in a
+@@ -30121,6 +30127,19 @@
+ fi
+ 
+ 
++case "$EMBER_GETTEXT_PLAIN_STYLE" in
++  yes) printf '%s\n' '#define EMBER_GETTEXT_PLAIN_STYLE 1' >>confdefs.h ;;
++  no|'') ;;
++  *) as_fn_error $? "EMBER_GETTEXT_PLAIN_STYLE must be yes or no" "$LINENO" 5 ;;
++esac
++if test "$EMBER_GETTEXT_PLAIN_STYLE" = yes; then
++  EMBER_GETTEXT_PLAIN_STYLE_TRUE=
++  EMBER_GETTEXT_PLAIN_STYLE_FALSE='#'
++else
++  EMBER_GETTEXT_PLAIN_STYLE_TRUE='#'
++  EMBER_GETTEXT_PLAIN_STYLE_FALSE=
++fi
++
+ # Check whether --with-installed-libtextstyle was given.
+ if test ${with_installed_libtextstyle+y}
+ then :
+@@ -30130,7 +30149,7 @@
+ esac
+ fi
+ 
+-if test "$gt_use_installed_libtextstyle" != no; then
++if test "$gt_use_installed_libtextstyle" != no && test "$EMBER_GETTEXT_PLAIN_STYLE" != yes; then
+ 
+ 
+ 
+@@ -30737,13 +30756,13 @@
+ 
+ 
+ 
+-else
++elif test "$EMBER_GETTEXT_PLAIN_STYLE" != yes; then
+   test -f ../libtextstyle/Makefile || {
+     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: When building the gettext-tools package without building the entire gettext package, you need to pass the --with-installed-libtextstyle option to configure." >&5
+ printf "%s\n" "$as_me: WARNING: When building the gettext-tools package without building the entire gettext package, you need to pass the --with-installed-libtextstyle option to configure." >&2;}
+   }
+ fi
+- if test "$gt_use_installed_libtextstyle" != no; then
++ if test "$gt_use_installed_libtextstyle" != no || test "$EMBER_GETTEXT_PLAIN_STYLE" = yes; then
+   USE_INSTALLED_LIBTEXTSTYLE_TRUE=
+   USE_INSTALLED_LIBTEXTSTYLE_FALSE='#'
+ else
+@@ -123055,6 +123074,10 @@
+   LIBTESTSGNU_LTLIBDEPS="$gl_ltlibdeps"
+ 
+ 
++
++if test "$EMBER_GETTEXT_PLAIN_STYLE" = yes && test "$gl_cv_libxml_use_included" = yes; then
++  as_fn_error $? "plain-output tools require an external libxml2" "$LINENO" 5
++fi
+ 
+ GL_GRGL_GNULIB_SETLOCALE_NULL=1
+ 
+--- gettext-tools/config.h.in.orig
++++ gettext-tools/config.h.in
+@@ -93,6 +93,9 @@
+ 
+ /* Define if struct dirent has a member d_ino that actually works. */
+ #undef D_INO_IN_DIRENT
++
++/* Define to 1 for plain output without color or CSS. */
++#undef EMBER_GETTEXT_PLAIN_STYLE
+ 
+ /* Define to 1 if translation of program messages to the user's native
+    language is requested. */
+--- gettext-tools/src/Makefile.am.orig
++++ gettext-tools/src/Makefile.am
+@@ -429,6 +429,12 @@
+ cldr_plurals_CFLAGS = $(AM_CFLAGS) $(INCXML)
+ cldr_plurals_LDADD = libgettextsrc.la $(LDADD)
+ 
++if EMBER_GETTEXT_PLAIN_STYLE
++textstyle.h: $(top_srcdir)/libgettextpo/textstyle.in.h
++	cp $(top_srcdir)/libgettextpo/textstyle.in.h $@
++BUILT_SOURCES += textstyle.h
++MOSTLYCLEANFILES += textstyle.h
++endif
+ if USE_INSTALLED_LIBTEXTSTYLE
+ LT_LIBTEXTSTYLE = @LTLIBTEXTSTYLE@
+ else
+--- gettext-tools/src/Makefile.in.orig
++++ gettext-tools/src/Makefile.in
+@@ -104,6 +104,7 @@
+ @WOE32DLL_FALSE@am__append_3 = xerror-handler.c
+ @WOE32DLL_TRUE@am__append_4 = ../woe32dll/c++xerror-handler.cc
+ @USE_INSTALLED_LIBTEXTSTYLE_FALSE@am__append_5 = textstyle.h textstyle/version.h textstyle/woe32dll.h
++@EMBER_GETTEXT_PLAIN_STYLE_TRUE@am__append_plain_built = textstyle.h
+ @USE_INSTALLED_LIBTEXTSTYLE_FALSE@am__append_6 = textstyle.h textstyle/version.h textstyle/woe32dll.h
+ @WOE32_TRUE@am__append_7 = libgettextsrc.res.lo
+ 
+@@ -4640,9 +4641,9 @@
+ 	read-po-gram.h cldr-plural.c cldr-plural.h \
+ 	gnu/gettext/DumpResource.java gnu/gettext/GetURL.java \
+ 	msgfmt.cs msgunfmt.cs msgunfmt.tcl $(schema_DATA)
+-BUILT_SOURCES = $(am__append_5) read-po-gram.c read-po-gram.h \
++BUILT_SOURCES = $(am__append_plain_built) $(am__append_5) read-po-gram.c read-po-gram.h \
+ 	cldr-plural.c cldr-plural.h $(am__append_12)
+-MOSTLYCLEANFILES = core *.stackdump $(am__append_6) $(am__append_7) \
++MOSTLYCLEANFILES = $(am__append_plain_built) core *.stackdump $(am__append_6) $(am__append_7) \
+ 	read-po-gram.tab.c read-po-gram.tab.h read-po-gram.c-tmp \
+ 	read-po-gram.h-tmp cldr-plural.tab.c cldr-plural.tab.h \
+ 	cldr-plural.c-tmp cldr-plural.h-tmp $(am__append_13) \
+@@ -8588,6 +8589,8 @@
+ 
+ .PRECIOUS: Makefile
+ 
++@EMBER_GETTEXT_PLAIN_STYLE_TRUE@textstyle.h: $(top_srcdir)/libgettextpo/textstyle.in.h
++@EMBER_GETTEXT_PLAIN_STYLE_TRUE@	cp $(top_srcdir)/libgettextpo/textstyle.in.h $@
+ # How to get the include files of libtextstyle.
+ @USE_INSTALLED_LIBTEXTSTYLE_FALSE@textstyle.h textstyle/version.h textstyle/woe32dll.h:
+ @USE_INSTALLED_LIBTEXTSTYLE_FALSE@	here=`pwd`; \
+--- gettext-tools/src/write-catalog.c.orig
++++ gettext-tools/src/write-catalog.c
+@@ -46,7 +46,7 @@
+ 
+ /* When compiled in src, enable color support.
+    When compiled in libgettextpo, don't enable color support.  */
+-#ifdef GETTEXTDATADIR
++#if defined GETTEXTDATADIR && !defined EMBER_GETTEXT_PLAIN_STYLE
+ 
+ # define ENABLE_COLOR 1
+ 
+--- gettext-tools/libgettextpo/textstyle.in.h.orig
++++ gettext-tools/libgettextpo/textstyle.in.h
+@@ -696,12 +696,20 @@
+ static inline bool
+ handle_color_option (const char *_GL_UNNAMED (option))
+ {
++#ifdef EMBER_GETTEXT_PLAIN_STYLE
++  fputs ("color output is not supported in this build\n", stderr);
++  exit (1);
++#endif
+   return false;
+ }
+ 
+ static inline void
+ handle_style_option (const char *_GL_UNNAMED (option))
+ {
++#ifdef EMBER_GETTEXT_PLAIN_STYLE
++  fputs ("CSS styles are not supported in this build\n", stderr);
++  exit (1);
++#endif
+ }
+ 
+ static inline void
