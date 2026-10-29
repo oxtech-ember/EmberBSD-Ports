@@ -1,0 +1,59 @@
+Origin: EmberBSD, AI-assisted.
+ZoneMinder offered a mysql database option pinned to MySQL 8.0, which
+EmberBSD no longer has, and which could not build because the bundled
+CMakeLists patch drops DBD::mysql.  Use the one MySQL-family database,
+MariaDB, unconditionally, as the suggested option already did.
+Not submitted upstream.
+
+--- a/security/zoneminder/Makefile
++++ b/security/zoneminder/Makefile
+@@ -8,7 +8,7 @@
+ NAME_DIST=	ZoneMinder
+ NAME_LOWER=	zoneminder
+ PKGNAME=	${DISTNAME:S/${NAME_DIST}-/${NAME_LOWER}-/}
+-PKGREVISION=	4
++PKGREVISION=	5
+ DISTNAME=	${NAME_DIST}-${VERSION}
+ WRKSRC=		${WRKDIR}/${NAME_LOWER}-${GITHUB_TAG}
+ CATEGORIES=	security
+@@ -42,14 +42,10 @@
+ PKG_OPTIONS_GROUP.webserver=	apache nginx
+ PKG_SUGGESTED_OPTIONS=		apache
+ 
+-# ZoneMinder requires a database, historically mysql only.  This
+-# package supports mysql and MariaDB, which must be handled separately
+-# because p5-DBD-mysql is (2026-01) mysql only, with p5-DBD-MariaDB
+-# for MariaDB.
++# ZoneMinder requires a database, historically mysql only.  EmberBSD
++# has one MySQL-family database, MariaDB, so the package always uses it
++# through p5-DBD-MariaDB.
+ #   https://github.com/ZoneMinder/zoneminder/issues/5008
+-PKG_OPTIONS_REQUIRED_GROUPS+=	database
+-PKG_OPTIONS_GROUP.database=	mysql mariadb
+-PKG_SUGGESTED_OPTIONS+=		mariadb
+ 
+ .include "../../mk/bsd.options.mk"
+ 
+@@ -256,22 +252,12 @@
+ 
+ # There is no reason to suspect that any MariaDB version in pkgsrc is
+ # problematic, but most have not been tested.
+-.if !empty(PKG_OPTIONS:Mmariadb)
+ # 2026-01: 1.36 works with mariadb 10.6 on NetBSD
+ # 2024-01: 1.36 works with mariadb 11.2 on GNU/Linux
+ # 2026-07: 1.38 works with mariadb 10.6 on NetBSD
+ DEPENDS+=			p5-DBD-MariaDB-[0-9]*:../../databases/p5-DBD-MariaDB
+ MYSQL_VERSIONS_ACCEPTED=	mariadb118
+ CMAKE_CONFIGURE_ARGS+=		-DZM_DB_TYPE=MariaDB
+-.endif
+-.if !empty(PKG_OPTIONS:Mmysql)
+-DEPENDS+=			p5-DBD-mysql-[0-9]*:../../databases/p5-DBD-mysql
+-MYSQL_VERSIONS_ACCEPTED=	80
+-CMAKE_CONFIGURE_ARGS+=		-DZM_DB_TYPE=mysql
+-# WARNING: Omit the mysql hunk in the CMakeLists patch, if wanting to
+-# use mysql, and feel free to send in a cleaner solution -- omitted
+-# for now because there appear to be zero mysql users.
+-.endif
+ 
+ .include "../../mk/mysql.buildlink3.mk"
+ 
