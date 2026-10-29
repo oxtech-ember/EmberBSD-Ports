@@ -1,0 +1,41 @@
+# $NetBSD: Makefile,v 1.44 2026/04/10 14:32:30 wiz Exp $
+
+DISTNAME=	hwloc-2.14.0
+CATEGORIES=	parallel
+MASTER_SITES=	http://www.open-mpi.org/software/hwloc/v${PKGVERSION_NOREV:R}/downloads/
+EXTRACT_SUFX=	.tar.bz2
+
+MAINTAINER=	asau@inbox.ru
+HOMEPAGE=	https://www.open-mpi.org/projects/hwloc/
+COMMENT=	Portable Hardware Locality
+LICENSE=	modified-bsd
+
+USE_LIBTOOL=		yes
+USE_TOOLS+=		gmake pkg-config
+GNU_CONFIGURE=		yes
+CONFIGURE_ARGS+=	--enable-picky
+CONFIGURE_ARGS+=	--disable-opencl
+TEST_TARGET=		check
+
+# bash completion script
+CHECK_PORTABILITY_SKIP+=	contrib/completion/test-bash-completion.sh.in
+
+.include "../../mk/bsd.prefs.mk"
+
+PLIST_VARS+=	i386
+.if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
+PLIST.i386=	yes
+.endif
+
+#.include "../../graphics/cairo/buildlink3.mk" # optional
+.if ${OPSYS} != "Darwin"
+# libpciaccess is marked as broken on Darwin
+.include "../../sysutils/libpciaccess/buildlink3.mk"
+.endif
+PREFER.iconv=	pkgsrc
+.include "../../textproc/libxml2/buildlink3.mk"
+.include "../../converters/libiconv/buildlink3.mk"
+.include "../../devel/zlib/buildlink3.mk"
+.include "../../mk/curses.buildlink3.mk"
+.include "../../mk/pthread.buildlink3.mk"
+.include "../../mk/bsd.pkg.mk"

@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.17 2026/01/07 18:25:45 adam Exp $
+
+BLAKE2s (hwloc-2.14.0.tar.bz2) = 1e73eff37c702010d7b3c1dbe7dc95abe2739db4125c9d4a87e1c5995dd006bd
+SHA512 (hwloc-2.14.0.tar.bz2) = 547a9ed3c6af399de9617fe675bd6d16db300cc98213d6c71b2f1b41dd4a1706c7f2cf0dd1feb0d9f8a546b1976740c7a959dca0c23a4f52eac0b25cc403d087
+Size (hwloc-2.14.0.tar.bz2) = 5707694 bytes
