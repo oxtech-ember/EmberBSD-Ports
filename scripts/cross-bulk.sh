@@ -181,7 +181,10 @@ build()
     touch "$state/done" "$state/failed" "$state/blocked"
     packages=$(var pkgtools/pkg_install PACKAGES)/All
     while read -r path; do
-        name=$(var "$path" PKGNAME) || { echo "$path vars" >> "$state/failed"; continue; }
+        vars=$(mk -C "$PKGSRCDIR/$path" show-vars VARNAMES='PKGNAME WRKDIR' < /dev/null) ||
+            { echo "$path vars" >> "$state/failed"; continue; }
+        name=$(printf '%s\n' "$vars" | sed -n 1p)
+        wrkdir=$(printf '%s\n' "$vars" | sed -n 2p)
         file=$packages/$name.tgz
         if [ -f "$file" ] && grep -qFx "$path $name $(shasum -a 256 "$file" | cut -d ' ' -f 1)" "$state/done"; then
             continue
@@ -197,7 +200,6 @@ build()
         log=$state/logs/$(echo "$path" | tr / _).log
         echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name" >> "$state/progress"
         # Go module caches are read-only; make an old WRKDIR removable first.
-        wrkdir=$(mk -C "$PKGSRCDIR/$path" show-var VARNAME=WRKDIR < /dev/null 2>/dev/null) || wrkdir=
         case "$wrkdir" in /*) [ ! -d "$wrkdir" ] || chmod -R u+w "$wrkdir" ;; esac
         if mk -C "$PKGSRCDIR/$path" clean < /dev/null > "$log" 2>&1 &&
             mk -C "$PKGSRCDIR/$path" package-install < /dev/null >> "$log" 2>&1; then

@@ -494,6 +494,8 @@ a list that names the GCC16 recipes and with an injected GCC16 dependency.
 that order asks for the build options of each dependency once and writes
 the same order as without the cache, and that fetch reuses the cache only
 while the MAKECONF is unchanged.
+`scripts/tests/cross-bulk-build-queries.sh NEW_OUTPUT PKGPATH...` counts
+the bmake runs of the build: three for a new package, one for a done one.
 `tests/cross-tools.py` explicitly selects the GCC profile and checks GCC tool
 composition, refusal of existing output,
 missing host tools, target Info utility routing and the pkgsrc runtime
