@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (node-bufbuild-protobuf/protobuf-2.16.0.tgz) = 7d5631b4debad91e82338be2eee8a78c5f3f3d43ee713c68e300fbd06cde9e33
+SHA512 (node-bufbuild-protobuf/protobuf-2.16.0.tgz) = 1566b4b0f96a606260a53b3a3b105170bfc05b8253d0e20ef96d5a8deae5ba84d587c095d01ed7335aac3424609e44829110a038808a1d1425635ee3aec9b4f9
+Size (node-bufbuild-protobuf/protobuf-2.16.0.tgz) = 253369 bytes
