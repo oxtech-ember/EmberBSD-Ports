@@ -6,7 +6,7 @@ PKGREVISION=	1
 CATEGORIES=	math
 MASTER_SITES=	https://codeload.github.com/flann-lib/flann/tar.gz/
 DISTFILES=	${DISTNAME}${EXTRACT_SUFX}
-SITES.${DISTNAME}${EXTRACT_SUFX}= -https://codeload.github.com/flann-lib/flann/tar.gz/c50f296b0b27e14667d272b37acc63f949b305c4
+SITES.${DISTNAME}.tar.gz= -https://codeload.github.com/flann-lib/flann/tar.gz/c50f296b0b27e14667d272b37acc63f949b305c4
 WRKSRC=	${WRKDIR}/flann-c50f296b0b27e14667d272b37acc63f949b305c4
 
 HOMEPAGE=	https://github.com/flann-lib/flann
