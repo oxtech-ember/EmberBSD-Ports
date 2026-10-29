@@ -32,6 +32,16 @@ metadata and linker inputs are still checked against the original build. The
 original CMake cache is read without modification. The default remains strict
 about the build sysroot.
 
+On Darwin, an SDK native C++ binding version 4 can be selected with both
+`--native-cxx-binding /absolute/commands.json` and `--runtime-view /absolute/view`
+on `build-llvm-config.py`. The view must contain only the declared libraries;
+the helper retains the selected C++ runtime and the sealed bundle runs without
+the original COW paths. Other native libraries must match the selected prefix
+and the LLVM build’s declared system libraries. Without these options the
+existing system-only Darwin route remains unchanged. `adapt-llvm-config.py`
+accepts the retained bundle via `--sealed-darwin-bundle`; use
+`--relocated-installed-prefix` there only for a sealed relocated helper.
+
 Each producer holds the SDK context lock and owns its child session.
 Preflight compiler reads and metadata queries also use owned sessions.
 They refuse output above 16 MiB on stdout or 1 MiB on stderr, and stop

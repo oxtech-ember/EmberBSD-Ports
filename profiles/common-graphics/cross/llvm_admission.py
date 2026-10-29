@@ -11,6 +11,7 @@ import sys
 
 import llvm_native as native
 import llvm_target as target
+import llvm_sdk as sdk
 
 
 def definitions(path):
@@ -38,7 +39,7 @@ def string(values, key):
     return value
 
 
-def validate(real, target_build, sysroot, native_build, runtime=None):
+def validate(real, target_build, sysroot, native_build, runtime=None, sealed_darwin_bundle=None, relocated_installed_prefix=False):
     real = Path(real).resolve(strict=True)
     target_build = Path(target_build).resolve(strict=True)
     sysroot = Path(sysroot).resolve(strict=True)
@@ -54,8 +55,37 @@ def validate(real, target_build, sysroot, native_build, runtime=None):
     triple = subprocess.check_output([str(native_config), '--host-target'], env=env, text=True).strip()
     platform = native.platform(triple)
     if platform == 'darwin':
-        native.darwin(str(real), triple)
-        command = [str(real)]
+        if sealed_darwin_bundle:
+            bundle = Path(sealed_darwin_bundle).resolve(strict=True)
+            if real != bundle / 'bin/llvm-config.real':
+                raise ValueError('native helper differs from selected sealed bundle')
+            entries = {}
+            for line in (bundle / 'inputs.sha256').read_text().splitlines():
+                value, path = line.split('  ', 1)
+                if path in entries:
+                    raise ValueError('duplicate sealed helper input')
+                entries[path] = value
+            receipt_path = bundle / 'provenance/receipt.json'
+            if sdk.digest(receipt_path) != entries.get('provenance/receipt.json'):
+                raise ValueError('sealed Darwin receipt mismatch')
+            receipt = json.loads(receipt_path.read_text())
+            selected = receipt.get('native_darwin_runtime')
+            if not selected or receipt['target_build'] != str(target_build) or receipt['sysroot'] != str(sysroot):
+                raise ValueError('sealed helper target or runtime mismatch')
+            name = selected.get('linker_target', '')
+            library = selected.get('library', '')
+            if not re.fullmatch(r'libc\+\+[A-Za-z0-9_.-]*\.dylib', name) or library != 'native-darwin/lib/' + name:
+                raise ValueError('invalid sealed Darwin runtime path')
+            if not (bundle / library).resolve(strict=True).is_relative_to(bundle):
+                raise ValueError('sealed Darwin runtime escapes bundle')
+            for path in ('bin/llvm-config.real', 'bin/llvm-config', library):
+                if sdk.digest(bundle / path) != entries.get(path):
+                    raise ValueError('sealed Darwin helper input mismatch')
+            native.darwin(str(real), triple, allowed=selected['allowed'])
+            command = [str(bundle / 'bin/llvm-config')]
+        else:
+            native.darwin(str(real), triple)
+            command = [str(real)]
     else:
         bundle = real.parent.parent
         libs = (bundle / 'native/lib').resolve(strict=True)
@@ -88,8 +118,13 @@ def validate(real, target_build, sysroot, native_build, runtime=None):
     prefix = sysroot / 'usr/pkg'
     if not prefix.resolve(strict=True).is_relative_to(sysroot):
         raise ValueError('target LLVM prefix escapes sysroot')
+    if sealed_darwin_bundle and target.installed_headers(prefix) != receipt.get('installed_headers_proof'):
+        raise ValueError('installed LLVM header tree changed')
     if Path(cache_values['CMAKE_SYSROOT']).resolve(strict=True) != sysroot:
-        raise ValueError('target sysroot mismatch')
+        if not relocated_installed_prefix or not sealed_darwin_bundle:
+            raise ValueError('target sysroot mismatch')
+        if sysroot == target_build or receipt['library_proof']['staged_library'] != str(prefix / 'lib/libLLVM-23.so') or sdk.digest(prefix / 'lib/libLLVM-23.so') != receipt['staged_library_sha256']:
+            raise ValueError('relocated target library differs from sealed proof')
     if string(defs, 'LLVM_VERSION_STRING') != '23.1.4' or string(config, 'PACKAGE_VERSION') != '23.1.4':
         raise ValueError('target LLVM version mismatch')
     if string(variables, 'LLVM_OBJ_ROOT') != str(target_build) or cache_values.get('CMAKE_INSTALL_PREFIX') != '/usr/pkg':

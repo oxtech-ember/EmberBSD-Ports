@@ -18,6 +18,12 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def output_argument(command):
+    outputs = [i for i, arg in enumerate(command) if arg == '-o']
+    require(len(outputs) == 1 and outputs[0] + 1 < len(command), 'unsupported recorded helper output argument')
+    return command[outputs[0] + 1]
+
+
 def digest(path):
     return sdk.digest(path) if Path(path).is_file() else None
 
@@ -51,12 +57,15 @@ def seal_locked(old, expected, destination):
         keys.append('native_sdk')
     for key in keys:
         require(sdk.safe_absolute(r[key]), 'unsupported receipt path ' + key)
-    native_roots = [r['native_sdk']] if native_platform == 'darwin' else r['native_header_roots']
+    darwin_runtime = r.get('native_darwin_runtime') if native_platform == 'darwin' else None
+    native_roots = r['native_header_roots'] if darwin_runtime or native_platform != 'darwin' else [r['native_sdk']]
     require(isinstance(native_roots, list) and native_roots and all(sdk.safe_absolute(p) and p != '/' for p in native_roots), 'unsupported native header search roots')
     runtime = r['native_runtime'] if native_platform == 'linux-gnu' else None
     require(native_platform != 'linux-gnu' or isinstance(runtime, dict), 'missing native Linux runtime receipt')
     source, target, native, prefix = [r[k] for k in ('source', 'target_build', 'native_build', 'target_prefix')]
     require(r.get('version') == '23.1.4' and prefix == r['sysroot'] + '/usr/pkg', 'requires an accepted installed LLVM 23.1.4 helper')
+    if r.get('installed_headers_proof'):
+        require(target_api.installed_headers(prefix) == r['installed_headers_proof'], 'installed LLVM header tree changed')
     spec = target_api.for_triple(r['target_triple'])
     proof = r['library_proof']
     require(proof['method'] in ('identical', 'cmake-install-strip') and proof['built_library'] == target + '/lib/libLLVM.so' and proof['staged_library'] == prefix + '/lib/libLLVM-23.so' and proof['staged_sha256'] == r['staged_library_sha256'] and proof['built_sha256' if proof['method'] == 'identical' else 'reproduced_sha256'] == proof['staged_sha256'], 'unsupported historical library proof')
@@ -65,6 +74,8 @@ def seal_locked(old, expected, destination):
     # No old executable is invoked by this producer.
     if 'build-llvm-config.py' in manifest:
         local += ['build-llvm-config.py', 'llvm_target.py', 'llvm_native.py', 'llvm_sdk.py', 'dependencies.log', 'compile.log']
+        if 'llvm_darwin_binding.py' in manifest:
+            local.append('llvm_darwin_binding.py')
     else:
         local.append('build-llvm-config.rb')
         local += [p for p in ('llvm-target.rb', 'llvm-native.rb') if p in manifest]
@@ -75,6 +86,12 @@ def seal_locked(old, expected, destination):
         require(runtime['triple'] == r['native_triple'], 'native receipt triples differ')
         native_api.verify(old + '/bin/llvm-config.real', old, runtime)
         local += native_files
+    if darwin_runtime:
+        library_path = darwin_runtime['library']
+        target_name = darwin_runtime['linker_target']
+        require(re.fullmatch(r'libc\+\+[A-Za-z0-9_.-]*\.dylib', target_name) and library_path == 'native-darwin/lib/' + target_name, 'unsupported Darwin runtime path')
+        require(darwin_runtime['library_sha256'] == manifest.get(library_path), 'Darwin runtime hash differs from manifest')
+        local.append(library_path)
     if proof['method'] == 'cmake-install-strip':
         local += ['strip.command', 'strip.log']
     for p in local:
@@ -97,6 +114,10 @@ def seal_locked(old, expected, destination):
         for p, value in sources.items():
             require(sdk.safe_absolute(p) and manifest.get(p) == value, 'native runtime/tool source hash differs from original manifest')
             historical.append(p)
+    if r.get('installed_headers_proof'):
+        historical.append(target + '/install_manifest.txt')
+    if darwin_runtime:
+        historical += [darwin_runtime['binding'], *darwin_runtime['sources']]
     if proof['method'] == 'cmake-install-strip':
         require(sdk.safe_absolute(proof['strip']) and proof['install_script'] == target + '/tools/llvm-shlib/cmake_install.cmake', 'unsupported strip proof paths')
         historical += [proof['strip'], proof['install_script']]
@@ -105,7 +126,7 @@ def seal_locked(old, expected, destination):
     compile_sources = [a for a in r['command'] if a.endswith('/llvm-config.cpp')]
     require(len(compile_sources) == 1, 'unsupported recorded helper compile command')
     compile_work = str(Path(compile_sources[0]).parent)
-    require(sdk.safe_absolute(compile_work) and '-I' + compile_work + '/metadata' in r['command'] and r['command'][-1] == compile_work + '/bin/llvm-config.real', 'unsupported recorded helper work path')
+    require(sdk.safe_absolute(compile_work) and '-I' + compile_work + '/metadata' in r['command'] and output_argument(r['command']) == compile_work + '/bin/llvm-config.real', 'unsupported recorded helper work path')
     for p in shlex.split(re.sub(r'^llvm-config:\s*', '', depfile)):
         if p.startswith(compile_work + '/'):
             require(sdk.safe_absolute(p), 'unsafe local compile dependency: ' + p)
@@ -134,7 +155,17 @@ def seal_locked(old, expected, destination):
     library = proof['staged_library']
     require(str(Path(library).resolve(strict=True)).startswith(prefix + '/lib/'), 'installed shared LLVM resolves outside the target prefix')
     target_api.validate_elf(library, spec)
-    linked = native_api.verify(old + '/bin/llvm-config.real', old, runtime) if runtime else native_api.darwin(old + '/bin/llvm-config.real', r['native_triple'])
+    allowed = []
+    if darwin_runtime:
+        canonical = Path(darwin_runtime['canonical_lib'])
+        require(canonical.is_absolute() and canonical.name == 'lib', 'invalid selected Darwin library prefix')
+        allowed = darwin_runtime['allowed']
+        flags = [flag for flag in r['native_system_libraries'] if flag != '-lm']
+        require(len(allowed) == len(darwin_runtime['sources']) == 1 + len(flags) and allowed[0] == str(canonical / 'libc++' / target_name), 'invalid selected Darwin runtime closure')
+        for flag, name, source_path in zip(flags, allowed[1:], darwin_runtime['sources'][1:]):
+            require(re.fullmatch(r'-l[A-Za-z0-9_+.-]+', flag) and Path(name).parent == canonical and re.fullmatch(re.escape('lib' + flag[2:]) + r'(?:\.[0-9]+)*\.dylib', Path(name).name), 'invalid selected Darwin dependency')
+            require(digest(name) == manifest.get(source_path), 'installed Darwin dependency differs from selected input')
+    linked = native_api.verify(old + '/bin/llvm-config.real', old, runtime) if runtime else native_api.darwin(old + '/bin/llvm-config.real', r['native_triple'], allowed=allowed)
     work = sdk.stage_for(destination)
     print('Retained partial work on failure: ' + work, file=sys.stderr, flush=True)
     (Path(work) / 'provenance').mkdir()
@@ -161,7 +192,12 @@ def seal_locked(old, expected, destination):
     sdk.write_json(Path(work) / 'seal.json', dict(format='ember-llvm-config-seal-v1', original_manifest_sha256=expected,
         accepted_executable_sha256=manifest['bin/llvm-config.real'], original_work=old,
         historical_proof='Original strip/build proof is retained as accepted provenance; it is not reproduced by sealing.', observed_inputs=rows))
-    launcher = '#!/bin/sh\n# SPDX-License-Identifier: BSD-2-Clause\n# Run the selected native query tool.\nset -eu\nbase=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)\ncd "$base"\n' + native_api.launcher(runtime) + '\n'
+    launch = native_api.launcher(runtime)
+    if darwin_runtime:
+        launch = ('exec /usr/bin/env -i PATH=\"$PATH\" HOME=\"${HOME:-/}\" TMPDIR=\"${TMPDIR:-/tmp}\" ' +
+                  shlex.join([darwin_runtime['python'], '-B', darwin_runtime['sdk_source'] + '/scripts/run-darwin-with-runtime.py']) +
+                  ' --runtime-view \"$base/native-darwin/lib\" -- \"$base/bin/llvm-config.real\" \"$@\"')
+    launcher = '#!/bin/sh\n# SPDX-License-Identifier: BSD-2-Clause\n# Run the selected native query tool.\nset -eu\nbase=$(CDPATH= cd -- "$(/usr/bin/dirname -- "$0")/.." && pwd -P)\ncd "$base"\n' + launch + '\n'
     (Path(work) / 'bin/llvm-config').write_text(launcher)
     (Path(work) / 'bin/llvm-config').chmod(0o755)
     files = sorted(p for p in Path(work).rglob('*') if p.is_file())

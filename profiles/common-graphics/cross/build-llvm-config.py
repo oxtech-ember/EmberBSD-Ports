@@ -12,11 +12,12 @@ sys.dont_write_bytecode = True
 import llvm_sdk as sdk
 import llvm_target as target_api
 import llvm_native as native_api
+import llvm_darwin_binding as darwin_binding
 
 UPSTREAM_SHA256 = '7c54727d9deda1689a7e6c9096f6627d73659da04a6ac88c3e0a0595f26e74bb'
 VERSION = '23.1.4'
 LOCAL = ['metadata/BuildVariables.inc', 'metadata/LibraryDependencies.inc', 'metadata/ExtensionDependencies.inc',
-         'llvm-config.cpp', 'build-llvm-config.py', 'llvm_target.py', 'llvm_native.py', 'llvm_sdk.py',
+         'llvm-config.cpp', 'build-llvm-config.py', 'llvm_target.py', 'llvm_native.py', 'llvm_sdk.py', 'llvm_darwin_binding.py',
          'llvm-config.d', 'dependencies.command', 'compile.command', 'receipt.json', 'bin/llvm-config.real', 'bin/llvm-config']
 
 
@@ -83,6 +84,16 @@ def target_flags(values, source, target, native, sysroot, original_sysroot):
 
 def build(args):
     from emberbsd_sdk.process import ContextLocks
+    binding = view = None
+    for option in ('--native-cxx-binding', '--runtime-view'):
+        if option in args:
+            index = args.index(option)
+            require(index + 1 < len(args), 'missing value for ' + option)
+            value = args[index + 1]
+            del args[index:index + 2]
+            if option == '--native-cxx-binding': binding = value
+            else: view = value
+    require(bool(binding) == bool(view), 'native C++ binding and runtime view must be selected together')
     relocated = '--relocated-installed-prefix' in args
     if relocated:
         args = [arg for arg in args if arg != '--relocated-installed-prefix']
@@ -92,12 +103,12 @@ def build(args):
     # The lock covers preflight, every producer, stable input verification and publication.
     with ContextLocks([destination], str(Path(destination).parent)):
         sdk.new_destination(destination, (source, target, native, sysroot, prefix))
-        return build_locked(source, target, native, sysroot, prefix, destination, relocated=relocated)
+        return build_locked(source, target, native, sysroot, prefix, destination, relocated=relocated, binding=binding, view=view)
 
 
-def build_locked(source, target, native, sysroot, prefix, destination, *, relocated=False):
+def build_locked(source, target, native, sysroot, prefix, destination, *, relocated=False, binding=None, view=None):
     sdk_root = sdk.sdk_source.load()
-    producer_inputs = {name: sdk.digest(Path(__file__).parent / name) for name in ('build-llvm-config.py', 'llvm_target.py', 'llvm_native.py', 'llvm_sdk.py')}
+    producer_inputs = {name: sdk.digest(Path(__file__).parent / name) for name in ('build-llvm-config.py', 'llvm_target.py', 'llvm_native.py', 'llvm_sdk.py', 'llvm_darwin_binding.py')}
     cpp = source + '/tools/llvm-config/llvm-config.cpp'
     require(Path(cpp).is_file() and sdk.digest(cpp) == UPSTREAM_SHA256, 'upstream llvm-config.cpp differs from LLVM 23.1.4')
     required = [cpp]
@@ -129,8 +140,12 @@ def build_locked(source, target, native, sysroot, prefix, destination, *, reloca
     require(tc.get('LLVM_ENABLE_ASSERTIONS') in ('ON', 'OFF'), 'unsupported target assertion mode')
     require(nc.get('LLVM_ENABLE_ASSERTIONS') in ('ON', 'OFF'), 'native assertion mode must be explicit')
     spec = target_api.validate(tc, td, Path(target + '/tools/llvm-config/LibraryDependencies.inc').read_text())
-    library_hash = proof = None
+    library_hash = proof = headers_proof = None
     if prefix != target:
+        install_manifest = target + '/install_manifest.txt'
+        headers_proof = target_api.installed_headers(prefix, tc['CMAKE_HOME_DIRECTORY'], target, install_manifest)
+        required.append(install_manifest)
+        hashes[install_manifest] = sdk.digest(install_manifest)
         for name in ('llvm-config.h', 'abi-breaking.h'):
             staged = prefix + '/include/llvm/Config/' + name
             generated = target + '/include/llvm/Config/' + name
@@ -159,24 +174,35 @@ def build_locked(source, target, native, sysroot, prefix, destination, *, reloca
         required += [library, built_library]
         for p in required:
             hashes.setdefault(p, sdk.digest(p))
+    selection = darwin_binding.select(binding, view) if binding else None
+    if selection:
+        require(native_api.platform(sdk.capture(*[sys.executable, '-B', sdk_root + '/scripts/run-darwin-with-runtime.py', '--runtime-view', selection['view'], '--'], native + '/bin/llvm-config', '--host-target')) == 'darwin', 'binding selection requires Darwin')
+        runner = [sys.executable, '-B', sdk_root + '/scripts/run-darwin-with-runtime.py', '--runtime-view', selection['view'], '--']
+    else:
+        runner = []
     host_config = native + '/bin/llvm-config'
     require(os.access(host_config, os.X_OK), 'missing runnable native llvm-config')
     hashes[host_config] = sdk.digest(host_config)
-    require(sdk.capture(host_config, '--version') == VERSION, 'native llvm-config version mismatch')
-    native_triple = sdk.capture(host_config, '--host-target')
+    require(sdk.capture(*runner, host_config, '--version') == VERSION, 'native llvm-config version mismatch')
+    native_triple = sdk.capture(*runner, host_config, '--host-target')
     native_platform = native_api.platform(native_triple)
-    host_flags = shlex.split(sdk.capture(host_config, '--cxxflags'))
-    host_ldflags = shlex.split(sdk.capture(host_config, '--ldflags'))
-    host_libs = shlex.split(sdk.capture(host_config, '--link-static', '--libfiles', 'support', 'targetparser'))
+    host_flags = shlex.split(sdk.capture(*runner, host_config, '--cxxflags'))
+    host_ldflags = shlex.split(sdk.capture(*runner, host_config, '--ldflags'))
+    host_libs = shlex.split(sdk.capture(*runner, host_config, '--link-static', '--libfiles', 'support', 'targetparser'))
     expected_libs = [native + '/lib/lib' + name + '.a' for name in ('LLVMSupport', 'LLVMTargetParser', 'LLVMDemangle')]
     require(sorted(host_libs) == sorted(expected_libs), 'native Support library closure differs from the supported minimal closure')
-    host_system = shlex.split(sdk.capture(host_config, '--link-static', '--system-libs', 'support', 'targetparser'))
-    if native_platform == 'darwin':
+    host_system = shlex.split(sdk.capture(*runner, host_config, '--link-static', '--system-libs', 'support', 'targetparser'))
+    if native_platform == 'darwin' and not selection:
         require(host_system == ['-lm'], 'unexpected native system library requirements')
+    elif native_platform == 'darwin':
+        selected_files, selected_names = darwin_binding.declared_system_libraries(
+            selection, host_system, lambda *args: sdk.capture(*runner, *args))
+        required += selected_files + [selection['binding']]
+        host_ldflags.insert(0, '-L' + selection['cow_prefix'] + '/lib')
     else:
         for arg in host_system:
             require((re.fullmatch(r'-l[A-Za-z0-9_+.-]+', arg) and not arg.startswith('-lLLVM')) or (arg.startswith('/') and Path(arg).is_file() and re.search(r'\.(?:a|so(?:\.[0-9]+)*)$', arg) and not Path(arg).name.startswith('libLLVM')), 'unsupported native system library argument')
-    cxx = os.environ.get('NATIVE_CXX') or nc['CMAKE_CXX_COMPILER']
+    cxx = selection['record']['commands']['cxx']['argv'][0] if selection else (os.environ.get('NATIVE_CXX') or nc['CMAKE_CXX_COMPILER'])
     require(cxx.startswith('/') and os.access(cxx, os.X_OK), 'native C++ compiler must be an existing absolute executable')
     native_sdk, native_headers, compiler_runtime = None, [], []
     if native_platform == 'darwin':
@@ -184,7 +210,7 @@ def build_locked(source, target, native, sysroot, prefix, destination, *, reloca
         host_flags += ['-isysroot', native_sdk]
         if nc.get('CMAKE_OSX_DEPLOYMENT_TARGET'):
             host_flags.append('-mmacosx-version-min=' + nc['CMAKE_OSX_DEPLOYMENT_TARGET'])
-        native_headers = [native_sdk]
+        native_headers = [native_sdk] + ([selection['include_dir'], selection['abi_view']] if selection else [])
     else:
         measured = native_api.compiler(cxx, native_triple, host_flags)
         native_headers, compiler_runtime = measured['header_roots'], measured['compiler_libraries']
@@ -221,7 +247,7 @@ def build_locked(source, target, native, sysroot, prefix, destination, *, reloca
     text = replace_once(text, 'CurrentExecPrefix =\n      sys::path::parent_path(sys::path::parent_path(CurrentPath)).str();', 'CurrentExecPrefix = ' + json.dumps(prefix) + '; // EmberBSD target prefix')
     text = replace_once(text, '#if defined(NDEBUG)', '#if !EMBER_TARGET_ASSERTIONS')
     (Path(work) / 'llvm-config.cpp').write_text(text)
-    for name in ('build-llvm-config.py', 'llvm_target.py', 'llvm_native.py', 'llvm_sdk.py'):
+    for name in ('build-llvm-config.py', 'llvm_target.py', 'llvm_native.py', 'llvm_sdk.py', 'llvm_darwin_binding.py'):
         shutil.copyfile(Path(__file__).parent / name, Path(work) / name)
         require(sdk.digest(Path(work) / name) == producer_inputs[name], 'producer source changed while copying: ' + name)
     compile_args = [cxx, *host_flags, '-DLLVM_BUILD_STATIC', '-O2', '-DNDEBUG' if nc['LLVM_ENABLE_ASSERTIONS'] == 'OFF' else '-UNDEBUG', '-I' + work + '/metadata', work + '/llvm-config.cpp']
@@ -229,6 +255,8 @@ def build_locked(source, target, native, sysroot, prefix, destination, *, reloca
     if native_platform == 'linux-gnu' and measured['family'] == 'gcc':
         mode.insert(0, '-fno-canonical-system-headers')
     dependency_command = [*compile_args, *mode, '-MT', 'llvm-config', '-MF', work + '/llvm-config.d']
+    if selection:
+        dependency_command = runner + darwin_binding.argv(selection, dependency_command[1:])
     sdk.command_file(Path(work) / 'dependencies.command', dependency_command)
     sdk.produce(dependency_command, Path(work) / 'dependencies.log')
     dependencies = shlex.split(re.sub(r'^llvm-config:\s*', '', (Path(work) / 'llvm-config.d').read_text().replace('\\\n', ' ')))
@@ -239,6 +267,8 @@ def build_locked(source, target, native, sysroot, prefix, destination, *, reloca
         required.append(path)
         hashes.setdefault(path, sdk.digest(path))
     command = [*compile_args, *host_ldflags, *host_libs, *host_system, '-o', work + '/bin/llvm-config.real']
+    if selection:
+        command = runner + darwin_binding.argv(selection, command[1:])
     sdk.command_file(Path(work) / 'compile.command', command)
     sdk.produce(command, Path(work) / 'compile.log')
     runtime = None
@@ -251,18 +281,40 @@ def build_locked(source, target, native, sysroot, prefix, destination, *, reloca
             required.append(p)
             hashes[p] = value
     else:
-        native_api.darwin(work + '/bin/llvm-config.real', native_triple)
-    triple_query = [work + '/bin/llvm-config.real', '--host-target']
+        native_api.darwin(work + '/bin/llvm-config.real', native_triple,
+                          allowed=selected_names if selection else (),
+                          otool=selection['cow_prefix'] + '/bin/otool' if selection else '/usr/bin/otool',
+                          capture_fn=(lambda *args: sdk.capture(*runner, *args)) if selection else None)
+    triple_query = runner + [work + '/bin/llvm-config.real', '--host-target']
     if runtime:
         triple_query = [work + '/' + runtime['loader'], '--inhibit-cache', '--library-path', work + '/native/lib', *triple_query]
     reported = native_api.capture(*triple_query)
     require(target_api.for_triple(reported) == spec, 'upstream reported target disagrees with generated target metadata')
-    receipt = dict(version=VERSION, source=source, target_build=target, native_build=native, native_sdk=native_sdk, native_platform=native_platform, native_triple=native_triple, native_header_roots=native_headers, native_system_libraries=host_system, native_linker_flags=host_ldflags, native_runtime=runtime, sysroot=sysroot, target_prefix=prefix, configured_target_triple=string(td, 'LLVM_HOST_TRIPLE'), target_triple=reported, target_triple_query=triple_query, target_assertions=tc['LLVM_ENABLE_ASSERTIONS'], staged_library_sha256=library_hash, library_proof=proof, compiler=cxx, compiler_version=sdk.capture(cxx, '--version'), original_ldflags=original_ldflags, mapped_ldflags=mapped_ldflags, command=command, host_api=1, sdk_source=sdk_root, host_python=sys.version)
+    darwin_runtime = None
+    if selection:
+        runtime_dir = Path(work) / 'native-darwin/lib'
+        runtime_dir.mkdir(parents=True)
+        runtime_file = runtime_dir / selection['linker_target']
+        shutil.copy2(selection['library'], runtime_file)
+        require(sdk.digest(runtime_file) == sdk.digest(selection['library']), 'copied native C++ runtime differs')
+        darwin_runtime = dict(binding=selection['binding'], view=selection['view'], library_source=selection['library'],
+                              library='native-darwin/lib/' + selection['linker_target'],
+                              library_sha256=sdk.digest(runtime_file), linker_target=selection['linker_target'], allowed=selected_names,
+                              sources=selected_files, canonical_lib=str(Path(selected_names[0]).parent.parent),
+                              sdk_source=sdk_root, python=sys.executable)
+    receipt = dict(relocated_installed_prefix=relocated, installed_headers_proof=headers_proof, native_darwin_runtime=darwin_runtime, version=VERSION, source=source, target_build=target, native_build=native, native_sdk=native_sdk, native_platform=native_platform, native_triple=native_triple, native_header_roots=native_headers, native_system_libraries=host_system, native_linker_flags=host_ldflags, native_runtime=runtime, sysroot=sysroot, target_prefix=prefix, configured_target_triple=string(td, 'LLVM_HOST_TRIPLE'), target_triple=reported, target_triple_query=triple_query, target_assertions=tc['LLVM_ENABLE_ASSERTIONS'], staged_library_sha256=library_hash, library_proof=proof, compiler=cxx, compiler_version=sdk.capture(*runner, cxx, '--version'), original_ldflags=original_ldflags, mapped_ldflags=mapped_ldflags, command=command, host_api=1, sdk_source=sdk_root, host_python=sys.version)
     sdk.write_json(Path(work) / 'receipt.json', receipt)
-    launcher = '#!/bin/sh\n# SPDX-License-Identifier: BSD-2-Clause\n# Run the selected native query tool.\nset -eu\nbase=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)\ncd "$base"\n' + native_api.launcher(runtime) + '\n'
+    launch = native_api.launcher(runtime)
+    if darwin_runtime:
+        launch = ('exec /usr/bin/env -i PATH=\"$PATH\" HOME=\"${HOME:-/}\" TMPDIR=\"${TMPDIR:-/tmp}\" ' +
+                  shlex.join([sys.executable, '-B', sdk_root + '/scripts/run-darwin-with-runtime.py']) +
+                  ' --runtime-view \"$base/native-darwin/lib\" -- \"$base/bin/llvm-config.real\" \"$@\"')
+    launcher = '#!/bin/sh\n# SPDX-License-Identifier: BSD-2-Clause\n# Run the selected native query tool.\nset -eu\nbase=$(CDPATH= cd -- "$(/usr/bin/dirname -- "$0")/.." && pwd -P)\ncd "$base"\n' + launch + '\n'
     (Path(work) / 'bin/llvm-config').write_text(launcher)
     (Path(work) / 'bin/llvm-config').chmod(0o755)
     local = LOCAL + ['dependencies.log', 'compile.log']
+    if darwin_runtime:
+        local += [darwin_runtime['library']]
     if runtime:
         local += [f['path'] for f in runtime['files']]
     if proof and proof['method'] == 'cmake-install-strip':

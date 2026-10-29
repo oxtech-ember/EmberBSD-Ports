@@ -4,6 +4,8 @@
 from pathlib import Path
 import shutil
 import re
+import os
+import subprocess
 import sys
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'cross'))
@@ -48,8 +50,21 @@ def test(args):
     check('caller anchor agrees with original manifest', sdk.digest(old + '/inputs.sha256') == anchor)
     r = sdk.read_json(old + '/receipt.json')
     native_files = [f['path'] for f in r['native_runtime']['files']] if r.get('native_runtime') else []
+    darwin_file = r.get('native_darwin_runtime', {}).get('library') if r.get('native_darwin_runtime') else None
     pairs = {'bin/llvm-config.real': 'bin/llvm-config.real', 'receipt.json': 'receipt.json', 'provenance/receipt.json': 'receipt.json', 'provenance/inputs.sha256': 'inputs.sha256', 'provenance/original-launcher': 'bin/llvm-config'}
     check('unchanged compiled executable, historical receipt, manifest and launcher', all(Path(sealed, p).read_bytes() == Path(old, q).read_bytes() for p, q in pairs.items()))
+    if darwin_file:
+        check('Darwin sealer preserves selected C++ runtime byte for byte', Path(old, darwin_file).read_bytes() == Path(sealed, darwin_file).read_bytes())
+        fake_bin = work / 'hostile-path'
+        fake_bin.mkdir()
+        fake_dirname = fake_bin / 'dirname'
+        fake_dirname.write_text('#!/bin/sh\nexit 99\n')
+        fake_dirname.chmod(0o755)
+        hostile = os.environ.copy()
+        hostile['PATH'] = str(fake_bin)
+        hostile.update(DYLD_IMAGE_SUFFIX='_no_such_image', DYLD_VERSIONED_LIBRARY_PATH='/nonexistent', DYLD_PRINT_LIBRARIES='1')
+        query = subprocess.run([str(Path(sealed) / 'bin/llvm-config'), '--version'], env=hostile, text=True, capture_output=True)
+        check('Darwin launcher rejects PATH and DYLD injection', query.returncode == 0 and query.stdout.strip() == '23.1.4' and not query.stderr)
     if native_files:
         check('Linux sealer preserves every native loader/runtime file byte for byte', all(Path(old, p).read_bytes() == Path(sealed, p).read_bytes() for p in native_files))
     if host_baseline:
@@ -73,7 +88,7 @@ def test(args):
     check('all original inputs have explicit classes and observations', len(rows) == len(Path(old, 'inputs.sha256').read_text().splitlines()) and all(row['classification'] in ('accepted-local-artifact', 'target-report-metadata', 'installed-target-input', 'historical-build-input') for row in rows) and all(row['classification'] == 'historical-build-input' for row in rows if row['state'] != 'match'))
     paths = [line.split('  ', 1)[1] for line in Path(sealed, 'inputs.sha256').read_text().splitlines()]
     check('sealed runtime receipt has no temporary source/build dependency', all(p.startswith(r['target_prefix'] + '/') for p in paths if p.startswith('/')))
-    for i, path in enumerate(['metadata/BuildVariables.inc', 'bin/llvm-config.real', 'receipt.json', *native_files]):
+    for i, path in enumerate(['metadata/BuildVariables.inc', 'bin/llvm-config.real', 'receipt.json', *native_files, *([darwin_file] if darwin_file else [])]):
         fixture = work / ('original-drift-' + str(i))
         shutil.copytree(old, fixture)
         with (fixture / path).open('ab') as stream:

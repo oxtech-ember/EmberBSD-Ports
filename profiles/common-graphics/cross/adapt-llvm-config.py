@@ -19,11 +19,13 @@ def main(arguments):
     parser.add_argument('--sysroot', required=True)
     parser.add_argument('--native-build', required=True)
     parser.add_argument('--output', required=True)
+    parser.add_argument('--sealed-darwin-bundle')
+    parser.add_argument('--relocated-installed-prefix', action='store_true')
     args = parser.parse_args(arguments)
     output = Path(args.output)
     if not output.is_absolute() or os.path.lexists(output):
         raise ValueError('output must be an absent absolute path')
-    command = llvm_admission.validate(args.real, args.target_build, args.sysroot, args.native_build)
+    command = llvm_admission.validate(args.real, args.target_build, args.sysroot, args.native_build, sealed_darwin_bundle=args.sealed_darwin_bundle, relocated_installed_prefix=args.relocated_installed_prefix)
     output.parent.mkdir(parents=True, exist_ok=True)
     runner = ('import os,sys; env={k:v for k,v in os.environ.items() ' +
               'if not k.startswith((\"LD_\",\"DYLD_\"))}; ' +

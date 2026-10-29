@@ -59,8 +59,13 @@ def test(args):
         checks.append(name)
         print('PASS: ' + name, flush=True)
 
+    options = ['--relocated-installed-prefix'] if r.get('relocated_installed_prefix') else []
+    if r.get('native_darwin_runtime'):
+        selected = r['native_darwin_runtime']
+        options += ['--native-cxx-binding', selected['binding'], '--runtime-view', selected['view']]
+
     def refusal(name, inputs, output, message):
-        command = [sys.executable, builder, '--sdk-source', sdk.sdk_source.load(), *inputs, str(output)]
+        command = [sys.executable, builder, '--sdk-source', sdk.sdk_source.load(), *options, *inputs, str(output)]
         out, err, status = sdk.query(*command, env={'NATIVE_CXX': r['compiler']})
         sdk.write_json(tmp / (output.name + '.json'), dict(command=command, stdout=out, stderr=err, exit=status))
         check(name, status != 0 and message in err and (output == work or not output.exists()))
@@ -90,21 +95,22 @@ def test(args):
     check('unrelated historical SDK input does not block queries', status == 0 and out.strip() == '23.1.4')
     inputs = [r[k] for k in ('source', 'target_build', 'native_build', 'sysroot', 'target_prefix')]
     refusal('rejects native metadata as target input', [r['source'], r['native_build'], r['native_build'], r['sysroot'], r['target_prefix']], tmp / 'wrong-target', 'target must be configured for NetBSD/aarch64')
-    refusal('rejects a native prefix substituted for the target payload', [*inputs[:4], r['native_build']], tmp / 'wrong-prefix', 'staged target header missing or mismatched')
+    refusal('rejects a native prefix substituted for the target payload', [*inputs[:4], r['native_build']], tmp / 'wrong-prefix', 'relocated mode requires an installed /usr/pkg prefix' if r.get('relocated_installed_prefix') else 'staged target header missing or mismatched')
     refusal('rejects an existing destination before edits', inputs, work, 'NEW_WORK must be absolute and absent')
     if r['target_prefix'] != r['target_build']:
         proof = r['library_proof']
         actual = sdk.digest(proof['staged_library'])
         check('staged shared library has a reproducible build-output identity', actual == proof['staged_sha256'] == proof['built_sha256' if proof['method'] == 'identical' else 'reproduced_sha256'])
-        changed = tmp / 'changed-prefix'
-        (changed / 'include/llvm/Config').mkdir(parents=True)
+        changed_root = tmp / 'changed-sysroot'
+        changed = changed_root / 'usr/pkg'
+        (changed / 'include').mkdir(parents=True)
         (changed / 'lib').mkdir()
-        for name in ('llvm-config.h', 'abi-breaking.h'):
-            shutil.copyfile(r['target_prefix'] + '/include/llvm/Config/' + name, changed / 'include/llvm/Config' / name)
+        for name in ('llvm', 'llvm-c'):
+            shutil.copytree(Path(r['target_prefix']) / 'include' / name, changed / 'include' / name)
         shutil.copyfile(proof['staged_library'], changed / 'lib/libLLVM-23.so')
         with (changed / 'lib/libLLVM-23.so').open('ab') as stream:
             stream.write(b'changed staged payload')
-        refusal('rejects a changed staged shared library after exact strip reproduction', [*inputs[:4], str(changed)], tmp / 'wrong-library', 'differs from the reproduced CMake install-strip output')
+        refusal('rejects a changed staged shared library after exact strip reproduction', [*inputs[:3], str(changed_root), str(changed)], tmp / 'wrong-library', 'differs from the reproduced CMake install-strip output')
     changed_source = tmp / 'source'
     (changed_source / 'tools/llvm-config').mkdir(parents=True)
     (changed_source / 'tools/llvm-config/llvm-config.cpp').write_text(Path(r['source'] + '/tools/llvm-config/llvm-config.cpp').read_text() + '\n// changed upstream input\n')
@@ -120,7 +126,16 @@ def test(args):
     contents = re.sub(r'^#define LLVM_OBJ_ROOT .*$', '#define LLVM_OBJ_ROOT ' + json.dumps(str(changed)), variables.read_text(), flags=re.M)
     contents = re.sub(r'^#define LLVM_LDFLAGS .*$', '#define LLVM_LDFLAGS ' + json.dumps('-L' + r['sysroot'] + '/usr/pkg/lib'), contents, flags=re.M)
     variables.write_text(contents)
-    refusal('rejects private sysroot leaked into target metadata', [r['source'], str(changed), *inputs[2:4], str(changed)], tmp / 'wrong-metadata', 'LLVM_LDFLAGS leaks CMAKE_SYSROOT')
+    if r.get('relocated_installed_prefix'):
+        values = builder_module.definitions(str(variables))
+        try:
+            builder_module.target_flags(values, r['source'], str(changed), r['native_build'], r['sysroot'], r['sysroot'])
+        except ValueError as exc:
+            check('rejects private sysroot leaked into target metadata', 'LLVM_LDFLAGS leaks CMAKE_SYSROOT' in str(exc))
+        else:
+            check('rejects private sysroot leaked into target metadata', False)
+    else:
+        refusal('rejects private sysroot leaked into target metadata', [r['source'], str(changed), *inputs[2:4], str(changed)], tmp / 'wrong-metadata', 'LLVM_LDFLAGS leaks CMAKE_SYSROOT')
     if r.get('library_proof', {}).get('method') == 'cmake-install-strip':
         contents = re.sub(r'^#define LLVM_LDFLAGS .*$', '#define LLVM_LDFLAGS ' + json.dumps(r['original_ldflags']), contents, flags=re.M)
         variables.write_text(contents)
@@ -130,7 +145,12 @@ def test(args):
         shutil.copyfile(r['library_proof']['install_script'], changed / 'tools/llvm-shlib/cmake_install.cmake')
         (changed / 'lib').mkdir()
         (changed / 'lib/libLLVM.so').symlink_to(Path(r['library_proof']['built_library']).resolve(strict=True))
-        refusal('rejects strip metadata inconsistent with actual install script', [r['source'], str(changed), *inputs[2:]], tmp / 'wrong-strip', 'unsupported shared LLVM install/strip transformation')
+        if r.get('relocated_installed_prefix'):
+            shutil.copyfile(Path(r['target_build']) / 'install_manifest.txt', changed / 'install_manifest.txt')
+            shutil.copytree(Path(r['target_build']) / 'include/llvm', changed / 'include/llvm', dirs_exist_ok=True)
+            refusal('rejects strip metadata inconsistent with actual install script', [r['source'], str(changed), r['native_build'], str(changed_root), str(changed_root / 'usr/pkg')], tmp / 'wrong-strip', 'unsupported shared LLVM install/strip transformation')
+        else:
+            refusal('rejects strip metadata inconsistent with actual install script', [r['source'], str(changed), *inputs[2:]], tmp / 'wrong-strip', 'unsupported shared LLVM install/strip transformation')
     out, err, status = sdk.query(tool, '--link-shared', '--shared-mode', 'core', 'executionengine', 'orcjit', 'native')
     check('upstream accepts the available shared LLVM library' if Path(r['target_prefix'] + '/lib/libLLVM-23.so').exists() else 'upstream refuses a missing shared LLVM library', (status == 0 and out == 'shared\n') if Path(r['target_prefix'] + '/lib/libLLVM-23.so').exists() else (status != 0 and 'libLLVM-23.so is missing' in err))
     sdk.write_json(tmp / 'result.json', dict(checks=checks, scope='Real native upstream metadata queries and deliberate input refusals; no target execution'))

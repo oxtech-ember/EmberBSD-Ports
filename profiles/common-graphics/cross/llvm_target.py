@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Validate generated LLVM target facts. Never supply query answers.
 import json
+import hashlib
+from pathlib import Path
 import re
 
 
@@ -43,3 +45,38 @@ def validate_elf(path, spec):
     if read_elf_header(str(__import__('pathlib').Path(path).resolve(strict=True)), spec['machine'], 3) is None:
         raise ValueError('LLVM library is not shared little-endian ELF64 for the selected target')
     return True
+
+
+def installed_headers(prefix, source=None, build=None, install_manifest=None):
+    """Hash installed LLVM headers; optionally compare each with its build input."""
+    include = (Path(prefix) / 'include').resolve(strict=True)
+    result = hashlib.sha256()
+    count = 0
+    installed = set()
+    for group in ('llvm', 'llvm-c'):
+        root = include / group
+        if not root.is_dir() or not root.resolve(strict=True).is_relative_to(include):
+            raise ValueError('installed LLVM headers missing or outside prefix')
+        for path in sorted(root.rglob('*')):
+            if not path.is_file():
+                continue
+            if not path.resolve(strict=True).is_relative_to(include):
+                raise ValueError('installed LLVM header escapes prefix')
+            relative = path.relative_to(include)
+            installed.add(str(relative))
+            content = path.read_bytes()
+            if source is not None:
+                candidates = (Path(source) / 'include' / relative, Path(build) / 'include' / relative)
+                if not any(candidate.is_file() and candidate.read_bytes() == content for candidate in candidates):
+                    raise ValueError('installed LLVM header differs from build: ' + str(relative))
+            result.update(str(relative).encode() + b'\0' + hashlib.sha256(content).digest())
+            count += 1
+    if not count:
+        raise ValueError('installed LLVM headers are empty')
+    if install_manifest is not None:
+        lines = Path(install_manifest).read_text().splitlines()
+        expected = {line.removeprefix('/usr/pkg/include/') for line in lines
+                    if line.startswith(('/usr/pkg/include/llvm/', '/usr/pkg/include/llvm-c/'))}
+        if not expected or installed != expected:
+            raise ValueError('installed LLVM header set differs from CMake install manifest')
+    return {'count': count, 'sha256': result.hexdigest()}

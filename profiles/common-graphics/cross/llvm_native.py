@@ -86,16 +86,16 @@ def elf(path, expected_machine):
         raise ValueError('wrong native ELF architecture: ' + str(path)) from error
 
 
-def darwin(binary, triple):
+def darwin(binary, triple, *, allowed=(), otool='/usr/bin/otool', capture_fn=None):
     with open(binary, 'rb') as stream:
         header = stream.read(32)
     expected = 0x100000c if triple.startswith(('arm64-', 'aarch64-')) else 0x1000007
     if len(header) != 32 or struct.unpack_from('<III', header)[:2] != (0xfeedfacf, expected) or struct.unpack_from('<I', header, 12)[0] != 2:
         raise ValueError('wrong native Mach-O executable architecture')
-    linked = capture('/usr/bin/otool', '-L', binary)
+    linked = (capture_fn or capture)(otool, '-L', binary)
     for line in linked.splitlines()[1:]:
         fields = line.split()
-        if not fields or not fields[0].startswith(('/usr/lib/', '/System/Library/')):
+        if not fields or not (fields[0].startswith(('/usr/lib/', '/System/Library/')) or fields[0] in allowed):
             raise ValueError('unexpected native runtime dependency: ' + line.strip())
     return linked + '\n'
 
