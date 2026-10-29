@@ -25,5 +25,11 @@ CMAKE_CONFIGURE_ARGS+=	-DFMT_TEST=OFF
 
 PKGCONFIG_OVERRIDE+=	support/cmake/fmt.pc.in
 
+.include "../../mk/bsd.prefs.mk"
+.include "../../mk/emberbsd-native-cxx-runtime.mk"
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
+PKGREVISION= 1
+.endif
+
 .include "../../devel/cmake/build.mk"
 .include "../../mk/bsd.pkg.mk"
