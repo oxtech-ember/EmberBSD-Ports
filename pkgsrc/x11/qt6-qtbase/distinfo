@@ -38,4 +38,4 @@ SHA1 (patch-src_plugins_platforms_vnc_qvncscreen.cpp) = 7a793488140d3c1185cbb604
 SHA1 (patch-src_corelib_io_qprocess__unix.cpp-detached) = b374a3c3f03a63f48518046b11b5fc165ba78493
 SHA1 (patch-src_tools_qtwaylandscanner_qtwaylandscanner.cpp) = 2586cd28c2a06b8a80fcf6b151a49c42de5f3efa
 SHA1 (patch-src_gui_kernel_qguiapplication.cpp-theme-init) = 2e486ebbad246886b0e42df2a46d0442c5434636
-SHA1 (patch-src_tools_syncqt_CMakeLists.txt) = c575a5a6d49a8b264564d14793eb56bef3bb08f2
+SHA1 (patch-src_tools_syncqt_CMakeLists.txt) = ab3d7f0dbfc8566ebaec45d1242b33c4ae326c44
