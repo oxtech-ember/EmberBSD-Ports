@@ -484,6 +484,11 @@ pkgsrc parsing, native dependency recursion, ELF metadata and failure cases.
 recurses from `math/py-numpy` into `devel/py-meson_python` as a native tool
 dependency. It requires the host prefix compiler and no GCC16 dependency, and
 checks that `math/blas` keeps the cross compiler.
+`tests/native-recursion-fortran.sh EXPORTED_PKGSRC CROSS_MAKECONF NEW_WORK`
+evaluates `math/blas` as native recursion of the Clang profile. Native Fortran
+uses the host Flang with the native prefix Flang-RT and no pkgsrc Fortran
+module. Without that Flang-RT the recipe refuses with a reason; it never falls
+back to GCC.
 The Clang family skips every `lang/gcc16*` package (`PKG_SKIP_REASON`).
 `scripts/cross-bulk.sh order` records skipped list entries in `STATE/skipped`
 and refuses a graph in which any package reaches a skipped one, so a Clang
