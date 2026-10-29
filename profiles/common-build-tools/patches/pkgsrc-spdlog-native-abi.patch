@@ -1,0 +1,33 @@
+# Record the selected native C++ ABI for shared spdlog.
+# Origin: EmberBSD contributors (AI-assisted).
+
+--- a/devel/spdlog/Makefile
++++ b/devel/spdlog/Makefile
+@@ -23,6 +23,12 @@
+ post-install:
+ 	${FIND} ${DESTDIR} -name '*.orig' -exec rm -f '{}' ';'
+ 
++.include "../../mk/bsd.prefs.mk"
++.include "../../mk/emberbsd-native-cxx-runtime.mk"
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
++PKGREVISION=	1
++.endif
++
+ .include "../../devel/cmake/build.mk"
+ .include "../../lang/python/tool.mk"
+ .include "../../textproc/fmtlib/buildlink3.mk"
+
+--- a/devel/spdlog/buildlink3.mk
++++ b/devel/spdlog/buildlink3.mk
+@@ -5,7 +5,11 @@
+ .if !defined(SPDLOG_BUILDLINK3_MK)
+ SPDLOG_BUILDLINK3_MK:=
+ 
++.include "../../mk/bsd.fast.prefs.mk"
+ BUILDLINK_API_DEPENDS.spdlog+=	spdlog>=1.8.5nb1
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
++BUILDLINK_ABI_DEPENDS.spdlog+=	spdlog>=1.17.0nb1
++.endif
+ BUILDLINK_ABI_DEPENDS.spdlog+=	spdlog>=1.15.3nb1
+ BUILDLINK_PKGSRCDIR.spdlog?=	../../devel/spdlog
+ 
