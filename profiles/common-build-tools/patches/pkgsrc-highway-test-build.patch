@@ -1,4 +1,4 @@
-# Preserve native test execution and cross-build behavior.
+# Preserve native test execution and record the selected native C++ ABI.
 # Origin: EmberBSD (AI-assisted).
 
 --- a/graphics/libhighway/Makefile
@@ -20,4 +20,32 @@
 +BUILDLINK_PASSTHRU_RPATHDIRS+= ${WRKSRC}/${CMAKE_BUILD_DIR}
  USE_LANGUAGES=	c c++
  GCC_REQD+=	8 # -latomic and gcc 7 gives internal compiler error
+ 
+@@ -29,6 +33,12 @@
+ MAKE_ENV+=	LD_LIBRARY_PATH=${WRKSRC}
+ #TEST_TARGET=	test
+ 
++.include "../../mk/bsd.prefs.mk"
++.include "../../mk/emberbsd-native-cxx-runtime.mk"
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
++PKGREVISION=	2
++.endif
++
+ .include "../../devel/cmake/build.mk"
+ .include "options.mk"
+ .include "../../mk/atomic64.mk"
+
+--- a/graphics/libhighway/buildlink3.mk
++++ b/graphics/libhighway/buildlink3.mk
+@@ -5,7 +5,11 @@
+ .if !defined(LIBHIGHWAY_BUILDLINK3_MK)
+ LIBHIGHWAY_BUILDLINK3_MK:=
+ 
++.include "../../mk/bsd.fast.prefs.mk"
+ BUILDLINK_API_DEPENDS.libhighway+=	libhighway>=1.0.7
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
++BUILDLINK_ABI_DEPENDS.libhighway+=	libhighway>=1.4.0nb2
++.endif
+ BUILDLINK_PKGSRCDIR.libhighway?=	../../graphics/libhighway
+ .endif	# LIBHIGHWAY_BUILDLINK3_MK
  
