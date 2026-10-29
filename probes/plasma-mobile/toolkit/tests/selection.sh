@@ -31,7 +31,8 @@ sh "$toolkit/validate.sh" --recipes "$toolkit" "$recipes" > "$work/recipes.txt"
 # These modules must remain selectable even if a manifest row is removed.
 # Their upstream recipes use the same Qt version and cannot keep older inputs.
 for recipe in lang/qt6-qtscxml www/qt6-qthttpserver graphics/qt6-qtlottie \
-    net/qt6-qtgrpc net/qt6-qtremoteobjects; do
+    net/qt6-qtgrpc net/qt6-qtremoteobjects www/qt6-qtwebchannel \
+    graphics/qt6-qtdatavis3d graphics/qt6-qt3d; do
     grep -qxF "$recipe" "$work/recipes.txt"
     for cross in yes no; do
         (cd "$work" && "$make" -r -m / FAMILY=qt PKGPATH="$recipe" \
@@ -47,7 +48,7 @@ while IFS= read -r recipe; do
     esac
     (cd "$work" && "$make" -r -m / FAMILY="$family" PKGPATH="$recipe") < /dev/null
 done < "$work/recipes.txt"
-for recipe in www/qt6-qtwebengine graphics/qt6-qt3d databases/qt6-psql; do
+for recipe in www/qt6-qtwebengine databases/qt6-odbc databases/qt6-psql; do
     if (cd "$work" && "$make" -r -m / FAMILY=qt PKGPATH="$recipe") > "$work/unprepared-${recipe##*/}.log" 2>&1; then
         echo "Unprepared recipe accepted: $recipe" >&2; exit 1
     fi

@@ -201,7 +201,9 @@ graphics/kf6-prison
 graphics/libkexiv2
 graphics/plasma6-aurorae
 graphics/plasma6-breeze
+graphics/qt6-qt3d
 graphics/qt6-qtcharts
+graphics/qt6-qtdatavis3d
 graphics/qt6-qtimageformats
 graphics/qt6-qtlottie
 graphics/qt6-qtquick3d
@@ -293,6 +295,7 @@ x11/plasma6-plasma-activities-stats
 x11/plasma6-plasma-desktop
 x11/plasma6-plasma-workspace
 www/qt6-qthttpserver
+www/qt6-qtwebchannel
 x11/qt6-qtbase
 x11/qt6-qtserialport
 x11/qt6-qttranslations

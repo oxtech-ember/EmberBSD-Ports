@@ -1,0 +1,8 @@
+$NetBSD: distinfo,v 1.25 2026/08/18 18:26:02 adam Exp $
+
+BLAKE2s (qt3d-everywhere-src-6.12.0.tar.xz) = 23e5ed20dadac3320c06757e434612095321d437d6bd6826a1f27ec8ed38b654
+SHA512 (qt3d-everywhere-src-6.12.0.tar.xz) = 7a5f4048e8d0b8601b63692ec5ff3d709bb712666be9025bb52eae7d82c17488271b011c5a212ddccca00364cf1766c3cd15d56df4fb91b9ee7f95f6219cbbad
+Size (qt3d-everywhere-src-6.12.0.tar.xz) = 141875208 bytes
+SHA1 (patch-src_plugins_geometryloaders_configure.cmake) = 02401ea3019229fdc448fe2b31c17ebeca69ca76
+SHA1 (patch-src_plugins_geometryloaders_qt__cmdline.cmake) = fce24f88847deab0100ced7b5dc64c129caa30ee
+SHA1 (patch-src_plugins_renderers_opengl_CMakeLists.txt) = 0a94746a8767cd9244ae394d95872b15b6eaefb0
