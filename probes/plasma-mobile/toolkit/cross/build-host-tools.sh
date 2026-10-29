@@ -14,6 +14,7 @@ esac
 case "$plan_only" in 0|1) ;; *) echo 'QT_HOST_TOOLS_PLAN_ONLY must be 0 or 1' >&2; exit 2;; esac
 toolkit=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 scanner_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_tools_qtwaylandscanner_qtwaylandscanner.cpp
+syncqt_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_tools_syncqt_CMakeLists.txt
 RESUME=${RESUME:-0}
 : "${CMAKE:?Set an absolute native CMake executable}"
 : "${NINJA:?Set an absolute native Ninja executable}"
@@ -39,6 +40,15 @@ done
 for tool in "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX"; do
     [ -x "$tool" ] || { echo "Missing executable: $tool" >&2; exit 2; }
 done
+host_deployment_target=
+if [ "$(uname -s)" = Darwin ]; then
+    : "${HOST_MACOSX_DEPLOYMENT_TARGET:?Set the deployment target selected by the native compiler binding}"
+    host_deployment_target=$HOST_MACOSX_DEPLOYMENT_TARGET
+    case "$host_deployment_target" in *[!0-9.]*|.*|*.|*..*|'') echo 'Invalid native deployment target' >&2; exit 2;; esac
+    printf 'int main() { return 0; }\n' | "$HOST_CXX" "-mmacosx-version-min=$host_deployment_target" -x c++ -fsyntax-only - || {
+        echo 'Native compiler rejects deployment target' >&2; exit 2;
+    }
+fi
 # Interrupted extraction must not make an unpatched tree resumable.
 if [ "$RESUME" = 1 ] && [ -d "$work/source/qtbase-everywhere-src-6.12.0" ]; then
     [ -f "$work/qtbase-scanner-source.sha256" ] || {
@@ -79,10 +89,15 @@ if [ -e "$work" ] || [ -L "$work" ]; then
     [ "$RESUME" = 1 ] && [ ! -L "$work" ] && [ -f "$work/inputs.txt" ] || {
         echo 'Output already exists; resume only a build created by this recipe' >&2; exit 2;
     }
+    if [ -n "$host_deployment_target" ]; then
+        grep -F -x "host_deployment_target=$host_deployment_target" "$work/inputs.txt" >/dev/null || {
+            echo 'Host deployment target changed; use a new work directory' >&2; exit 2;
+        }
+    fi
     grep -q -x "profile=$profile" "$work/inputs.txt" || {
         echo 'Host profile changed; use a new work directory' >&2; exit 2;
     }
-    for tool in "$0" "$toolkit/sources.tsv" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$scanner_patch" $host_dbus_inputs; do
+    for tool in "$0" "$toolkit/sources.tsv" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$scanner_patch" "$syncqt_patch" $host_dbus_inputs; do
         shasum -a 256 "$tool" | grep -F -x -f - "$work/inputs.txt" >/dev/null || {
             echo "Host input changed; use a new work directory: $tool" >&2; exit 2;
         }
@@ -109,10 +124,11 @@ ln -sf "$NINJA" "$work/bin/ninja"
 PATH="$work/bin:$PATH"
 export PATH
 {
-    shasum -a 256 "$0" "$toolkit/sources.tsv" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$scanner_patch" $host_dbus_inputs
+    shasum -a 256 "$0" "$toolkit/sources.tsv" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$scanner_patch" "$syncqt_patch" $host_dbus_inputs
     "$CMAKE" --version
     "$NINJA" --version
     printf 'profile=%s\n' "$profile"
+    printf 'host_deployment_target=%s\n' "$host_deployment_target"
     if [ "$profile" = full ]; then
         shasum -a 256 "$HOST_LLVM_BUILD/lib/cmake/llvm/LLVMConfig.cmake" \
             "$HOST_CLANG_BUILD/lib/cmake/clang/ClangConfig.cmake" \
@@ -127,8 +143,9 @@ for module in $modules; do
         "$TAR" -xf "$distfiles/$archive" -C "$work/source"
         if [ "$module" = qtbase ]; then
             "$PATCH" -d "$work/source/$module-everywhere-src-6.12.0" -p0 -F0 -i "$scanner_patch"
+            "$PATCH" -d "$work/source/$module-everywhere-src-6.12.0" -p0 -F0 -i "$syncqt_patch"
             (cd "$work/source/$module-everywhere-src-6.12.0" &&
-                shasum -a 256 src/tools/qtwaylandscanner/qtwaylandscanner.cpp > "$work/qtbase-scanner-source.sha256")
+                shasum -a 256 src/tools/qtwaylandscanner/qtwaylandscanner.cpp src/tools/syncqt/CMakeLists.txt > "$work/qtbase-scanner-source.sha256")
         fi
     fi
     mkdir -p "$work/$module"
@@ -145,6 +162,8 @@ for module in $modules; do
         }
         # Find the portable XML generator on macOS too. Do this at initial
         # configure: developer builds cache failed package searches.
+        set --
+        [ -z "$host_deployment_target" ] || set -- "-DCMAKE_OSX_DEPLOYMENT_TARGET:STRING=$host_deployment_target"
         (cd "$work/$module" && CC="$HOST_CC" CXX="$HOST_CXX" \
             "$work/source/$module-everywhere-src-6.12.0/configure" \
             -developer-build -opensource -confirm-license -release \
@@ -158,7 +177,7 @@ for module in $modules; do
             -DDBus1_ARCH_INCLUDE_DIR:PATH="$HOST_DBUS_PREFIX/lib/dbus-1.0/include" \
             -DFEATURE_dbus=ON -DFEATURE_dbus_linked=ON \
             -DWaylandScanner_EXECUTABLE="$WAYLAND_SCANNER" \
-            -DFEATURE_qtwaylandscanner=ON) > "$work/$module/configure.log" 2>&1
+            -DFEATURE_qtwaylandscanner=ON "$@") > "$work/$module/configure.log" 2>&1
         # Qt can reset a requested feature when a dependency search was cached.
         # Reject that result before an XML generator can emit empty signatures.
         grep -q -x 'FEATURE_dbus_linked:BOOL=ON' "$work/$module/CMakeCache.txt"

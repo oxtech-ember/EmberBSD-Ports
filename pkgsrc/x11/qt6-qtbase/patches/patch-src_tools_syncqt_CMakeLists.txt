@@ -1,0 +1,27 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+Propagate native deployment target while preserving cross-build behavior.
+
+--- src/tools/syncqt/CMakeLists.txt.orig
++++ src/tools/syncqt/CMakeLists.txt
+@@ -55,6 +55,10 @@
+     if(CMAKE_OSX_SYSROOT)
+         set(osx_sysroot "-DCMAKE_OSX_SYSROOT:STRING=${CMAKE_OSX_SYSROOT}")
+     endif()
++    set(syncqt_macos_target "${QT_SUPPORTED_MIN_MACOS_VERSION}")
++    if(NOT CMAKE_CROSSCOMPILING AND CMAKE_OSX_DEPLOYMENT_TARGET)
++        set(syncqt_macos_target "${CMAKE_OSX_DEPLOYMENT_TARGET}")
++    endif()
+     # Note: configure-time tools reserve the original tool name for the imported executable.
+     # To re-build syncqt use 'syncqt_build' target.
+     qt_internal_add_configure_time_tool(${target_name}
+@@ -66,7 +70,7 @@
+             -DCMAKE_CXX_STANDARD:STRING=17
+             # The nested CMake build does not read .cmake.conf, so pass on the
+             # deployment target that the rest of Qt uses.
+-            "-DCMAKE_OSX_DEPLOYMENT_TARGET:STRING=${QT_SUPPORTED_MIN_MACOS_VERSION}"
++            "-DCMAKE_OSX_DEPLOYMENT_TARGET:STRING=${syncqt_macos_target}"
+             "${osx_architectures}"
+             "${osx_sysroot}"
+         SOURCES

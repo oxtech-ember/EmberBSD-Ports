@@ -32,7 +32,7 @@ Set `QT_HOST_TOOLS_PROFILE=quick` for the Core/Quick/QML generator subset.
 It uses qtbase, qtsvg, qtshadertools and qtdeclarative. It does not require
 qttools, Quick3D, QuickTimeline or the qdoc Clang inputs. The default remains
 `full`. `QT_HOST_TOOLS_PLAN_ONLY=1` checks the selected inputs without building.
-Select native compilers explicitly; the producer has no system compiler fallback.
+Select native compilers explicitly; the producer has no system compiler fallback. On macOS set `HOST_MACOSX_DEPLOYMENT_TARGET` to the deployment target selected by the native compiler binding (for example `26.0`). The producer checks that the compiler accepts it, passes it to Qt’s initial CMake configure, and rejects a changed value on resume.
 
 `CMAKE` must support Zstandard archives. Qt uses the CMake archive API for its
 MIME database. Without this support, Qt stops with `CMake was not built with
