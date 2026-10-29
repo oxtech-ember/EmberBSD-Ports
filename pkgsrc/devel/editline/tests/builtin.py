@@ -30,7 +30,7 @@ with tempfile.TemporaryDirectory(prefix='editline-builtin-', dir=a.work_parent) 
     (tree / 'mk/bsd.fast.prefs.mk').write_text('')
     (tree / 'mk/termcap.buildlink3.mk').write_text('BUILTIN_LIBNAME.termcap=terminfo\nTERM_PROVIDER=base\n')
     (tree / 'devel/ncurses').mkdir()
-    (tree / 'devel/ncurses/buildlink3.mk').write_text('TERM_PROVIDER=package\n')
+    (tree / 'devel/ncurses/buildlink3.mk').write_text('TERM_PROVIDER=package\nBUILDLINK_LIBNAME.ncurses=ncurses\n')
     consumer = tree / 'tests/consumer'
     consumer.mkdir(parents=True)
     sysroot = root / 'sysroot'
@@ -68,22 +68,26 @@ PKG_FAIL_REASON=
         if repeat or targets:
             text += '.include "../../devel/editline/builtin.mk"\n'
         text += f'BUILDLINK_DIR={root}/build link\nBUILDLINK_PREFIX.editline=/usr\nMKDIR=mkdir -p\nLN=ln\nBASENAME=basename\nDIRNAME=dirname\nECHO_BUILDLINK_MSG=echo\n'
-        text += 'all:\n\t@echo "use=${USE_BUILTIN.editline}"\n\t@echo fail=${PKG_FAIL_REASON:Q}\n\t@echo "version=${BUILTIN_PKG.editline:U}"\n\t@echo "term=${TERM_PROVIDER:U}"\n'
+        text += 'all:\n\t@echo "use=${USE_BUILTIN.editline}"\n\t@echo fail=${PKG_FAIL_REASON:Q}\n\t@echo "version=${BUILTIN_PKG.editline:U}"\n\t@echo "term=${TERM_PROVIDER:U}"\n\t@echo "transforms=${BUILDLINK_TRANSFORM:U}"\n'
         (consumer / 'Makefile').write_text(text)
         done = subprocess.run([str(a.bmake), '-r', '-f', 'Makefile', 'all', *targets], cwd=consumer, text=True, capture_output=True, timeout=30)
         if done.returncode:
             raise AssertionError(f'{name}: {done.stderr}')
-        values = dict(line.split('=', 1) for line in done.stdout.splitlines() if line.startswith(('use=', 'fail=', 'version=', 'term=')))
+        values = dict(line.split('=', 1) for line in done.stdout.splitlines() if line.startswith(('use=', 'fail=', 'version=', 'term=', 'transforms=')))
         assert values['use'] == expected, (name, values)
         assert bool(values['fail']) == fail, (name, values)
         if expected == 'yes' and not fail:
             assert values['version'] == 'editline-3.1.20260512', (name, values)
             assert values['term'] == 'base', (name, values)
+        if generic and repeat and expected == 'no' and not fail:
+            assert 'l:history:edit:ncurses' in values['transforms'], (name, values)
+            assert 'l:readline:edit:ncurses' in values['transforms'], (name, values)
         checks += 1
     for generic in (False, True):
         suffix = 'generic' if generic else 'direct'
         run('accepted-' + suffix, generic=generic)
         run('repeated-' + suffix, generic=generic, repeat=True)
+        run('package-readline-' + suffix, generic=generic, marker_state='missing', expected='no', repeat=True)
         run('unmarked-external-' + suffix, generic=generic, marker_state='missing', expected='no')
         run('unmarked-emberbsd-' + suffix, generic=generic, marker_state='missing', overrides='EMBERBSD_PORTS=yes\n', expected='no', fail=True)
         run('changed-patch-' + suffix, generic=generic, marker_state='stale', expected='no', fail=True)

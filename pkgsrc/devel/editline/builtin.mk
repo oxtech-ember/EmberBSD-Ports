@@ -76,8 +76,13 @@ CHECK_BUILTIN.editline?=	no
 .if ${CHECK_BUILTIN.editline:tl} == no
 
 .  if !empty(_PKG_USE_READLINE:U:M[yY][eE][sS])
-BUILDLINK_TRANSFORM+=	l:history:edit:${BUILTIN_LIBNAME.termcap}
-BUILDLINK_TRANSFORM+=	l:readline:edit:${BUILTIN_LIBNAME.termcap}
+.    if ${USE_BUILTIN.editline:tl} == yes
+_EDITLINE_TERMCAP_LIB= ${BUILTIN_LIBNAME.termcap}
+.    else
+_EDITLINE_TERMCAP_LIB= ${BUILDLINK_LIBNAME.ncurses}
+.    endif
+BUILDLINK_TRANSFORM+=	l:history:edit:${_EDITLINE_TERMCAP_LIB}
+BUILDLINK_TRANSFORM+=	l:readline:edit:${_EDITLINE_TERMCAP_LIB}
 .  endif
 
 .  if ${USE_BUILTIN.editline:tl} == yes
