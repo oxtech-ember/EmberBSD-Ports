@@ -1,0 +1,38 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Keep optional internal compiler symbols local when absent under LLD.
+--- src/tbbmalloc/def/lin64-tbbmalloc.def
++++ src/tbbmalloc/def/lin64-tbbmalloc.def
+@@ -54,20 +54,20 @@
+ *3tbb*;
+ *__TBB*;
+ __itt_*;
+-ITT_DoOneTimeInitialization;
+-TBB_runtime_interface_version;
++ITT_DoOneTimeInitialization*;
++TBB_runtime_interface_version*;
+ 
+ /* Intel Compiler (libirc) symbols */
+ __intel_*;
+ _intel_*;
+-get_memcpy_largest_cachelinesize;
+-get_memcpy_largest_cache_size;
+-get_mem_ops_method;
+-init_mem_ops_method;
+-irc__get_msg;
+-irc__print;
+-override_mem_ops_method;
+-set_memcpy_largest_cachelinesize;
+-set_memcpy_largest_cache_size;
++get_memcpy_largest_cachelinesize*;
++get_memcpy_largest_cache_size*;
++get_mem_ops_method*;
++init_mem_ops_method*;
++irc__get_msg*;
++irc__print*;
++override_mem_ops_method*;
++set_memcpy_largest_cachelinesize*;
++set_memcpy_largest_cache_size*;
+ 
+ };

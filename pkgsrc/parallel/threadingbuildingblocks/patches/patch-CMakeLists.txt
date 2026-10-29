@@ -1,0 +1,17 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Reject the unimplemented NetBSD malloc proxy explicitly.
+--- CMakeLists.txt
++++ CMakeLists.txt
+@@ -120,6 +120,10 @@
+ option(TBB_BUILD "Enable tbb build" ON)
+ option(TBBMALLOC_BUILD "Enable tbbmalloc build" ON)
+ cmake_dependent_option(TBBMALLOC_PROXY_BUILD "Enable tbbmalloc_proxy build" ON "TBBMALLOC_BUILD" OFF)
++
++if(CMAKE_SYSTEM_NAME STREQUAL "NetBSD" AND TBBMALLOC_PROXY_BUILD)
++    message(FATAL_ERROR "oneTBB malloc proxy is not implemented for NetBSD")
++endif()
+ option(TBB_FIND_PACKAGE "Enable search for external oneTBB using find_package instead of build from sources" OFF)
+ option(TBB_DISABLE_HWLOC_AUTOMATIC_SEARCH "Disable HWLOC automatic search by pkg-config tool" ${CMAKE_CROSSCOMPILING})
+ option(TBB_ENABLE_IPO "Enable Interprocedural Optimization (IPO) during the compilation" ON)
