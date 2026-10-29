@@ -6,4 +6,4 @@ Size (llvm-project-23.1.4.src.tar.xz) = 179272572 bytes
 SHA1 (patch-tools_debugserver_source_JSONGenerator.h) = 0e31bc914fc3b309b37712a7053c30353461f306
 SHA1 (patch-tools_debugserver_source_MacOSX_MachThreadList.h) = ec16e149f60c8d582f5ae8fb5cd27309a4f0d777
 SHA1 (patch-tools_debugserver_source_MacOSX_MachVMMemory.cpp) = d599885f03a6c1e04167da2f894d63599db11dfd
-SHA1 (patch-source_Core_PluginManager.cpp) = 12ca62efbd0a620ea25cd2289bee3f3781cdc23f
+SHA1 (patch-source_Core_PluginManager.cpp) = 0fcdff0596ed94c1e9eabe0d5a73187a11506c8d
