@@ -1,5 +1,9 @@
 # Current common build tools
 
+Pkgsrc `repackage` re-enters its build barrier after cleaning a work directory
+for a changed package revision. `tests/pkgsrc-repackage-revision.py` checks a
+real package rebuild, selected make settings and the new package payload.
+
 The [Mach-O metadata resolver](macho-metadata.md) uses selected structural tools.
 It does not require libmagic or create a file/libtool bootstrap cycle.
 

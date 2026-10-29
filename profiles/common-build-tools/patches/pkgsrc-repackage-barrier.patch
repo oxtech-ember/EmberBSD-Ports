@@ -1,0 +1,14 @@
+# Origin: EmberBSD contributors (AI-assisted).
+# The version-mismatch cleanup removes WRKDIR/.barrier_cookie. Re-enter the
+# normal barrier before rebuilding instead of inheriting the completed barrier.
+--- a/mk/install/install.mk
++++ b/mk/install/install.mk
+@@ -159,6 +159,8 @@
+ 		${WARNING_MSG} "Current version $$pkgname in ${PKGPATH}"; \
+ 		${WARNING_MSG} "Cleaning and rebuilding $$pkgname...";	\
+ 		${RECURSIVE_MAKE} ${MAKEFLAGS} clean;			\
++		unset _PKGSRC_BARRIER;					\
++		MAKEFLAGS=${.MAKEFLAGS:Q} 				\
+ 		${RECURSIVE_MAKE} ${MAKEFLAGS} build ;;			\
+ 	esac
+ 
