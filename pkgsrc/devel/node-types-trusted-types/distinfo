@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (trusted-types-2.0.7.tgz) = 69d8d970caba8abb6a11005623c1ee0460875a8e389c32a523b40b88c3be86e9
+SHA512 (trusted-types-2.0.7.tgz) = 49c68f767d5d41cce06e5d101537933a65471542eddfde17260390368c95859eabdaf2e730b25f04f779dd2079d93ff71b7e95235fe0d8c65a5f47300ee5ec7f
+Size (trusted-types-2.0.7.tgz) = 2997 bytes
