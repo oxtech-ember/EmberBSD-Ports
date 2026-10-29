@@ -55,13 +55,14 @@ python3 -B profiles/common-build-tools/cross/fetch-sysroot.py \
 
 The importer verifies the manifest pin, repository, architecture, source
 identity, set hashes, build profile, and required target qualification.
-It accepts historical `emberbsd.aarch64.sysroot.v1` and current
-`emberbsd.aarch64.sysroot.v2`. Version 1 keeps its existing source, set and
-qualification checks. Version 2 additionally uses the selected SDK's schema-2
-build validator: exact GCC16 command plan, compiler/runtime identities, source
-export and output bindings. Its qualification binds the kernel and evidence
-hashes, GCC16 consumers and the recorded target execution platform. An older
-SDK without these validators cannot import version 2.
+It accepts historical `emberbsd.aarch64.sysroot.v1` and modern v2 and v3.
+Version 1 keeps its original checks. Version 2 selects GCC build profiles 2/3;
+version 3 selects Clang build profiles 4/5. Both modern versions use the
+selected SDK build and qualification validators, including compiler and runtime
+identity, source and output bindings, target execution and evidence hashes.
+The v2 target corpus additionally identifies its test sources and verifies
+ordinary libm and setjmp checks. An older SDK lacking these validators cannot
+import a newer profile.
 
 It extracts `base.tar.xz` and `comp.tar.xz` into `new-sdk-work/sysroot`.
 It records the selected inputs in `receipt.json` and file identities in
@@ -76,7 +77,10 @@ marker fail the import. This is an isolated compiler
 sysroot. Do not extract these sets over the host or a running target.
 
 The OS sets supply headers, startup objects, link libraries, and runtime
-providers from one fork build. They do not supply a Linux cross compiler or
+providers from one fork build. The selected host cross compiler and application
+runtime remain separate inputs. This importer does not create an SDK application
+sysroot build or transfer record. Clang profile 5 includes base C++ runtime;
+profile 4 requires its selected runtime separately. They do not supply a Linux cross compiler or
 the Ports GCC16 package. For the GCC16 override, add its target headers and
 runtime through the [cross compiler profile](../../development-toolchain/cross/README.md)
 and record their separate provenance. Keep the original OS snapshot intact.

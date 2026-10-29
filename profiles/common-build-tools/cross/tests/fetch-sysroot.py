@@ -173,30 +173,16 @@ shutil.copyfile(pathlib.Path(os.environ['FIXTURE_SERVED']) / name, path)
 
     # Schema 2 delegates its build-receipt contract to the selected SDK. Construct
     # synthetic provenance and real archives; no compiler or target is executed.
-    from emberbsd_sdk.os_release_builder import producer_commands
-    from emberbsd_sdk.targets import target_definition
-    paths = {name: '/fixture/' + name for name in ('os', 'ports', 'sdk-source', 'compiler', 'runtime-prefix', 'objects', 'tools', 'destination')}
-    host = {'cc': {'path': '/fixture/host/cc'}, 'c++': {'path': '/fixture/host/c++'}}
-    flags, argv = producer_commands('aarch64', paths, host, revision, 1, '1', '/bin/sh')
-    binary_names = ('gcc g++ cpp ar as ld nm objcopy objdump ranlib readelf strip '
-                    'resolved-cc1 resolved-cc1plus resolved-collect2 resolved-lto1 resolved-as resolved-ld').split()
+    modern_profile = json.loads((HERE / 'tests/fetch-sysroot-v2-profile.json').read_text())
+    revision = modern_profile['source_commit']
+    tag = 'build-' + revision + '-aarch64-sysroot'
+    prefix = 'https://github.com/oxtech-ember/EmberBSD/releases/download/' + tag + '/'
     outputs = dict(profile['output_sha256'], **{'netbsd-EMBER64.gz': 'f' * 64})
-    signature = dict(product_version='2.7+dev', target=target_definition('aarch64'), flags=flags, host_tools=host,
-        environment={'LC_ALL': 'C', 'MAKECONF': '/dev/null'},
-        compiler=dict(version='16.2.0', threads='posix', triplet='aarch64--netbsd',
-                      binaries={name: {'sha256': '1' * 64} for name in binary_names}),
-        runtime={'report': {'metadata': dict(GCC_VERSION='16.2.0', GCC_RUNTIME_TRIPLET='aarch64--netbsd',
-            GCC_RUNTIME_TARGET='aarch64', EMBERBSD_SEED_SOURCE='b' * 40,
-            GCC_RUNTIME_INPUTS_SHA256='2' * 64, GCC_RUNTIME_STAGE_SHA256='3' * 64, GCC_RUNTIME_LINKS_SHA256='4' * 64)}})
-    modern_profile = dict(profile, schema=2, product_version='2.7+dev', architecture='aarch64', machine='evbarm',
-        source_sha256='d' * 64, source_timestamp=1, jobs='1', shell='/bin/sh', commands=argv, output_sha256=outputs,
-        sdk_receipt=dict(format='emberbsd-os-release-build', version=2, qualification='built-and-inspected',
-            execution_acceptance='not-run', sources={name: {'commit': revision} for name in ('os', 'ports', 'sdk')},
-            signature=signature, paths=paths, outputs=outputs,
-            commands=[dict(argv=a, status='passed', exit_status=0) for a in argv]))
+    modern_profile['output_sha256'] = outputs
+    modern_profile['sdk_receipt']['outputs'] = copy.deepcopy(outputs)
     modern_manifest = copy.deepcopy(manifest)
-    modern_manifest.update(schema='emberbsd.aarch64.sysroot.v2', product_version='2.7+dev', source_archive_sha256='d' * 64,
-                           build_profile=modern_profile)
+    modern_manifest.update(schema='emberbsd.aarch64.sysroot.v2', source_commit=revision, release_tag=tag, product_version=modern_profile['product_version'], source_archive_sha256=modern_profile['source_sha256'], build_profile=modern_profile)
+    modern_manifest['qualification']['source_commit'] = revision
     modern_manifest['files'] += [dict(name='netbsd-EMBER64.gz', size=64, sha256='f' * 64),
                                  dict(name='target-acceptance.log', size=64, sha256='e' * 64)]
     modern_manifest['qualification'].update(kernel_gzip_sha256='f' * 64, consumer_compiler='fixture GCC 16.2.0',
@@ -223,7 +209,7 @@ shutil.copyfile(pathlib.Path(os.environ['FIXTURE_SERVED']) / name, path)
             p['output_sha256']['netbsd-EMBER64.gz'] = '0' * 64
             p['sdk_receipt']['outputs']['netbsd-EMBER64.gz'] = '0' * 64
         elif label == 'v2-source': m['repository'] = 'foreign/OS'
-        elif label == 'unknown-schema': m['schema'] = 'emberbsd.aarch64.sysroot.v3'
+        elif label == 'unknown-schema': m['schema'] = 'emberbsd.aarch64.sysroot.v4'
         elif label == 'v2-changed-set':
             with (served / 'base.tar.xz').open('ab') as out: out.write(b'changed')
         write_json(served / 'build-profile.json', p)
@@ -239,7 +225,7 @@ shutil.copyfile(pathlib.Path(os.environ['FIXTURE_SERVED']) / name, path)
             assert json.loads((work / 'receipt.json').read_text())['manifest_schema'] == 'emberbsd.aarch64.sysroot.v2'
         else:
             reason = {
-                'v2-profile-schema': 'Incomplete release build profile',
+                'v2-profile-schema': 'Manifest and build profile schema differ',
                 'v2-compiler': 'Unverified common GCC16 compiler',
                 'v2-runtime': 'Mixed GCC16 runtime receipt',
                 'v2-command': 'Build command does not select the exact required profile',
@@ -250,11 +236,51 @@ shutil.copyfile(pathlib.Path(os.environ['FIXTURE_SERVED']) / name, path)
                 'v2-missing-check': 'Incomplete target qualification',
                 'v2-changed-set': 'Downloaded asset differs',
                 'v2-manifest-pin': 'Pinned manifest SHA256 differs',
-                'v2-profile-set': 'Mixed set provenance',
+                'v2-profile-set': 'Mixed output receipts',
                 'v2-product-version': 'Product version provenance differs',
                 'v2-profile-kernel': 'Mixed kernel provenance',
                 'v2-source': 'Wrong source',
                 'unknown-schema': 'Wrong source',
             }[label]
             assert result.returncode and reason in result.stdout and not (work / 'receipt.json').exists(), label + ': ' + result.stdout
-print('PASS: 14 legacy and 17 schema-v2 importer CLI contracts; HTTPS and target execution remain outside the fixture')
+    # Real SDK validators consume frozen synthetic profile data: no compiler or VM.
+    profiles = json.loads((HERE / 'tests/fetch-sysroot-v3-profiles.json').read_text())
+    for original in profiles:
+        revision = original['source_commit']
+        tag = 'build-' + revision + '-aarch64-sysroot'
+        prefix = 'https://github.com/oxtech-ember/EmberBSD/releases/download/' + tag + '/'
+        for label in ('valid', 'outer', 'profile', 'runtime', 'compiler', 'set', 'kernel', 'missing', 'corpus'):
+            served = root / ('v3-' + str(original['schema']) + '-' + label)
+            shutil.copytree(template, served)
+            p = copy.deepcopy(original)
+            p['output_sha256'].update(profile['output_sha256'])
+            p['output_sha256']['netbsd-EMBER64.gz'] = 'f' * 64
+            p['sdk_receipt']['outputs'] = copy.deepcopy(p['output_sha256'])
+            m = copy.deepcopy(modern_manifest)
+            m.update(schema='emberbsd.aarch64.sysroot.v3', source_commit=revision,
+                     release_tag=tag, source_archive_sha256=p['source_sha256'], build_profile=p)
+            q = m['qualification']
+            q.update(source_commit=revision, consumer_compiler_family='clang',
+                     consumer_compiler='fixture clang version 23.1.4', corpus='target-runtime-v2',
+                     os_test_source_commit=revision, ports_source_commit='b' * 40,
+                     test_source_inventory_sha256='c' * 64)
+            q['checks'].update(libm_valid=True, setjmp_valid=True)
+            if label == 'outer': m['schema'] = 'emberbsd.aarch64.sysroot.v2'
+            elif label == 'profile': p['schema'] = 2
+            elif label == 'runtime': p['sdk_receipt']['signature']['runtime']['manifest']['llvm_version'] = '22.1.0'
+            elif label == 'compiler': q['consumer_compiler'] = 'fixture clang version 22.1.0'
+            elif label == 'set': q['base_sha256'] = '0' * 64
+            elif label == 'kernel': q['kernel_gzip_sha256'] = '0' * 64
+            elif label == 'missing': del q['checks']['setjmp_valid']
+            elif label == 'corpus': del q['test_source_inventory_sha256']
+            write_json(served / 'build-profile.json', p)
+            m['files'] = [record(served, 'build-profile.json') if f['name'] == 'build-profile.json' else f for f in m['files']]
+            write_json(served / 'manifest.json', m)
+            work = root / ('import-v3-' + str(original['schema']) + '-' + label)
+            result = invoke(served, work, digest(served / 'manifest.json'))
+            if label == 'valid':
+                assert result.returncode == 0, label + ': ' + result.stdout
+                assert json.loads((work / 'receipt.json').read_text())['manifest_schema'] == 'emberbsd.aarch64.sysroot.v3'
+            else:
+                assert result.returncode and not (work / 'receipt.json').exists(), label + ': ' + result.stdout
+print('PASS: v1/v2/v3 importer CLI fixtures; HTTPS and target execution remain outside the fixture')

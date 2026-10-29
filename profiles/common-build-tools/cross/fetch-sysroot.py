@@ -42,8 +42,8 @@ def fetch_sysroot(revision, expected_manifest, work):
     check(sha256_file(manifest_path) == expected_manifest, 'Pinned manifest SHA256 differs')
     manifest = read_json(manifest_path)
     schema = manifest.get('schema')
-    modern = schema == 'emberbsd.aarch64.sysroot.v2'
-    check(schema in ('emberbsd.aarch64.sysroot.v1', 'emberbsd.aarch64.sysroot.v2') and
+    modern = schema in ('emberbsd.aarch64.sysroot.v2', 'emberbsd.aarch64.sysroot.v3')
+    check(schema in ('emberbsd.aarch64.sysroot.v1', 'emberbsd.aarch64.sysroot.v2', 'emberbsd.aarch64.sysroot.v3') and
           [manifest.get(k) for k in ('repository', 'source_commit', 'release_tag', 'architecture', 'machine')] ==
           ['oxtech-ember/EmberBSD', revision, tag, 'aarch64', 'evbarm'], 'Wrong source, schema or architecture')
     qualification = manifest['qualification']
@@ -71,6 +71,9 @@ def fetch_sysroot(revision, expected_manifest, work):
     check(profile == manifest['build_profile'] and profile['source_commit'] == revision and profile['status'] == 'built' and profile['source_repository'] == 'https://github.com/oxtech-ember/EmberBSD', 'Build provenance differs')
     if modern:
         from emberbsd_sdk.os_release_builder import validate_profile
+        check(type(profile.get('schema')) is int and profile['schema'] in
+              ((2, 3) if schema == 'emberbsd.aarch64.sysroot.v2' else (4, 5)),
+              'Manifest and build profile schema differ')
         validate_profile(profile, revision, 'aarch64')
         check(manifest.get('product_version') == profile['product_version'], 'Product version provenance differs')
         check(manifest.get('source_archive_sha256') == profile['source_sha256'], 'Source export provenance differs')
@@ -96,7 +99,7 @@ def fetch_sysroot(revision, expected_manifest, work):
     write_json(work + '/sysroot-files.json', inventory)
     write_json(work + '/receipt.json', dict(source_commit=revision, manifest_schema=schema, manifest_sha256=expected_manifest, release_url=base, libc_aliases=aliases, entries=len(inventory),
         links='Absolute archive symlinks are normalized to relative paths inside this target snapshot. Regular file bytes are unchanged.',
-        scope='OS base/comp only. Cross compiler and GCC16 package headers/runtime are separate inputs.'))
+        scope='OS base/comp only. The selected cross compiler and application runtime are separate inputs.'))
     print('PASS: verified AArch64 OS sysroot at ' + root)
 
 
