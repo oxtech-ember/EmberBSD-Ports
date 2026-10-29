@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Copyright (c) 2026 EmberBSD contributors.
 # Origin: EmberBSD (AI-assisted).
-"""Prepare libopts from an installed common AutoGen package."""
+"""Prepare libopts from the common AutoGen distfile or an installed package."""
 import argparse
 import hashlib
 import importlib.util
@@ -20,6 +20,7 @@ PORTS = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PORTS / 'pkgsrc/lang/llvm/files'))
 import sdk_source
 from recipe import generation_recipe
+import tearoff
 
 
 def main():
@@ -30,6 +31,8 @@ def main():
     from emberbsd_sdk.publication import publish_directory_noreplace
     if 'verify-source' in argv:
         return verify_source(argv, sdk, jsonio, paths, process, sourceprep, SDKError)
+    if '--archive' in argv:
+        return prepare_distfile(argv, sdk, jsonio, paths, sourceprep, SDKError, publish_directory_noreplace)
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('export', 'host-prefix', 'pkg-admin', 'make', 'makeconf', 'git', 'patch'):
         parser.add_argument('--' + name, required=True)
@@ -132,6 +135,128 @@ def main():
         result = sourceprep.write_prepared_tree_receipt(root, package='devel/autogen', identity=identity)
         sourceprep.validate_prepared_tree(root, package='devel/autogen', identity=identity)
         publish_directory_noreplace(root, output)
+    sys.stdout.buffer.write(jsonio.json_bytes(result))
+
+
+def prepare_distfile(argv, sdk, jsonio, paths, sourceprep, SDKError, publish_directory_noreplace):
+    """Prepare or check the tearoff from the checksummed AutoGen distfile.
+
+    No AutoGen, Guile or configure step runs: the distfile is checked against
+    the recipe distinfo, the complete recipe patchset is applied and the
+    tearoff is assembled as mklibsrc.sh does. The identity keeps the
+    installed-package schema; configure_args and options are empty because
+    no configuration contributes to the payload.
+    """
+    parser = argparse.ArgumentParser(description=prepare_distfile.__doc__)
+    for name in ('export', 'git', 'patch', 'archive'):
+        parser.add_argument('--' + name, required=True)
+    selection = parser.add_mutually_exclusive_group(required=True)
+    selection.add_argument('--output')
+    selection.add_argument('--source')
+    args = parser.parse_args(argv)
+
+    def need(ok, message):
+        if not ok:
+            raise SDKError(message)
+
+    def read(path):
+        handle, before = paths.open_regular(str(path))
+        with handle:
+            data = handle.read()
+        paths.verify_stable(str(path), before)
+        return data
+
+    for value in (args.export, args.git, args.patch, args.archive, args.output or args.source):
+        need(os.path.isabs(value), 'select absolute input and output paths')
+    spec = importlib.util.spec_from_file_location('pkgsrc_source_identity', PORTS / 'scripts/pkgsrc-source-identity.py')
+    selector = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(selector)
+    current = selector.identity(PORTS, 'devel/autogen', args.git, sdk)
+    exported = selector.shared_export(args.export, PORTS, args.git, sdk, args.patch)
+    recipe = Path(paths.canonical_existing(exported / 'devel/autogen'))
+    makefile = read(recipe / 'Makefile').decode('utf-8')
+    distnames = re.findall(r'^DISTNAME=\s*(autogen-[0-9]+(?:\.[0-9]+)+)\s*$', makefile, re.M)
+    revisions = re.findall(r'^PKGREVISION=\s*([0-9]+)\s*$', makefile, re.M)
+    need(len(distnames) == 1 and len(revisions) <= 1 and
+         not re.search(r'^(?:PKGNAME|EXTRACT_SUFX)\s*[+?:!]?=(?!\s*\.tar\.xz\s*$)', makefile, re.M),
+         'cannot identify the common AutoGen distfile from its recipe')
+    distname = distnames[0]
+    name = distname + ('nb' + revisions[0] if revisions and revisions[0] != '0' else '')
+    archive_name = distname + '.tar.xz'
+    info = read(recipe / 'distinfo').decode('utf-8')
+    wanted = {}
+    for label, key in (('SHA512', 'sha512'), ('BLAKE2s', 'blake2s'), ('Size', 'size')):
+        values = re.findall(r'^' + label + r' \(' + re.escape(archive_name) + r'\) = (\S+)(?: bytes)?$', info, re.M)
+        need(len(values) == 1, 'ambiguous AutoGen distfile ' + label)
+        wanted[key] = int(values[0]) if key == 'size' else values[0]
+    declared = dict(re.findall(r'^SHA1 \((patch-[^)]+)\) = ([0-9a-f]{40})$', info, re.M))
+    patches = sorted((recipe / 'patches').glob('patch-*'))
+    need(sorted(declared) == [p.name for p in patches], 'AutoGen patch inventory differs from distinfo')
+    expected = {'devel/autogen/distinfo': hashlib.sha256(read(recipe / 'distinfo')).hexdigest()}
+    deltas = []
+    for path in patches:
+        delta = read(path)
+        filtered = b''.join(line for line in delta.splitlines(keepends=True) if b'$NetBSD' not in line)
+        need(hashlib.sha1(filtered).hexdigest() == declared[path.name], 'AutoGen patch checksum differs: ' + path.name)
+        expected['devel/autogen/patches/' + path.name] = hashlib.sha256(delta).hexdigest()
+        deltas.append((path, delta))
+    archive = Path(paths.canonical_existing(args.archive))
+    need(archive.name == archive_name, 'AutoGen distfile name differs from recipe')
+    data = read(archive)
+    hashes = sourceprep.archive_hashes(data)
+    need(all(hashes[key] == wanted[key] for key in ('sha512', 'blake2s', 'size')),
+         'AutoGen distfile checksum differs from recipe')
+    identity = {'package': name, 'recipe': expected, 'configure_args': [],
+                'archive_sha256': hashes['sha256'], 'options': '',
+                'generation_recipe': generation_recipe(recipe)}
+    if args.source:
+        need(os.path.isdir(args.source), 'prepared AutoGen libopts source is missing')
+        work_parent = None
+    else:
+        output = Path(args.output)
+        output = Path(paths.canonical_existing(str(output.parent)), output.name)
+        need(not os.path.lexists(output), 'prepared source output already exists')
+        paths.reject_overlap(str(output), str(PORTS))
+        work_parent = output.parent
+    with tempfile.TemporaryDirectory(prefix='.autogen-libopts-', dir=work_parent) as tmp:
+        tmp = Path(tmp)
+        packed = tmp / archive_name
+        packed.write_bytes(data)
+        (tmp / 'src').mkdir()
+        sourceprep.extract_archive(packed, tmp / 'src', distname, 'AutoGen')
+        root = tmp / 'src' / distname
+        for index, (path, delta) in enumerate(deltas):
+            # pkgsrc headers may name './dir/file' (patch-ae); patch -p0 treats
+            # that as 'dir/file'. Apply a copy with only that prefix removed so
+            # the SDK's strict header check still guards every other path.
+            local = re.sub(rb'^(---|\+\+\+) \./', rb'\1 ', delta, flags=re.M)
+            if local != delta:
+                path = tmp / ('normalized-' + path.name)
+                path.write_bytes(local)
+            sourceprep.apply_patch(args.patch, path, local, root, 'AutoGen',
+                patch_args=('-p0', '-f', '-N', '-F0', '-V', 'none'),
+                backup_directory=tmp / ('patch-backups-' + str(index)), allow_dev_null=True)
+        need(not any(p.name.endswith(('.orig', '.rej')) for p in root.rglob('*')),
+             'AutoGen patch left a backup or reject')
+        (tmp / 'out').mkdir()
+        try:
+            result_root = tearoff.assemble(root, tmp / 'out')
+        except (OSError, ValueError) as error:
+            raise SDKError('cannot assemble AutoGen libopts tearoff: ' + str(error)) from error
+        need((result_root / 'libopts.c').is_file() and (result_root / 'autoopts/options.h').is_file(),
+             'AutoGen tearoff lacks expected libopts source')
+        need(sourceprep.archive_hashes(read(archive)) == hashes, 'AutoGen distfile changed while preparing')
+        need(current == selector.identity(PORTS, 'devel/autogen', args.git, sdk),
+             'common AutoGen export inputs changed during preparation')
+        result = sourceprep.write_prepared_tree_receipt(result_root, package='devel/autogen', identity=identity)
+        sourceprep.validate_prepared_tree(result_root, package='devel/autogen', identity=identity)
+        if args.source:
+            existing = sourceprep.validate_prepared_tree(args.source, package='devel/autogen', identity=identity)
+            need(existing['tree_sha256'] == result['tree_sha256'],
+                 'prepared AutoGen libopts differs from the checksummed distfile and patchset')
+            result = existing
+        else:
+            publish_directory_noreplace(result_root, output)
     sys.stdout.buffer.write(jsonio.json_bytes(result))
 
 
