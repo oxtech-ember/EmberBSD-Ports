@@ -47,11 +47,14 @@ for package in ('lang/clang-python-bindings', 'devel/rust-bindgen', 'parallel/sp
     for conf, cross, extra in ((a.native_makeconf, False, ('EMBERBSD_NATIVE_CXX_ABI_NAMESPACE=',)),
                                (a.cross_makeconf, True, ())):
         assert variables(a.pkgsrc, package, conf, 'PKGNAME', cross=cross, extra=extra) == variables(a.baseline_pkgsrc, package, conf, 'PKGNAME', cross=cross, extra=extra)
-expected = '-DCMAKE_INSTALL_RPATH:STRING=@loader_path/../lib;'+str(a.prefix/'lib')
+expected = '-DCMAKE_INSTALL_RPATH:STRING=@loader_path/../lib'
 for package in ('lang/clang', 'devel/lld', 'devel/lldb'):
     values = query(a.pkgsrc, package, a.stage_makeconf)
     assert values == [expected], (package, values)
-    args, passthru = variables(a.pkgsrc, package, a.stage_makeconf, 'CMAKE_CONFIGURE_ARGS', 'BUILDLINK_PASSTHRU_RPATHDIRS')
+    no_flags = query(a.pkgsrc, package, a.stage_makeconf, 'LDFLAGS=')
+    assert no_flags == [expected+';'+str(a.prefix/'lib')], (package, no_flags)
+    args, passthru, ldflags = variables(a.pkgsrc, package, a.stage_makeconf, 'CMAKE_CONFIGURE_ARGS', 'BUILDLINK_PASSTHRU_RPATHDIRS', 'LDFLAGS')
+    assert '-Wl,-rpath,'+str(a.prefix/'lib') in shlex.split(ldflags), ldflags
     assert '-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON' in shlex.split(args), args
     assert '@loader_path/../lib' in passthru.split(), passthru
     with tempfile.TemporaryDirectory() as temporary:

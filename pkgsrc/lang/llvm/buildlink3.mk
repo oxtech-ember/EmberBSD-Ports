@@ -18,8 +18,8 @@ BUILDLINK_ABI_DEPENDS.llvm+= llvm>=23.1.4nb2
 LLVM_CONFIG_PATH?=		${BUILDLINK_PREFIX.llvm}/bin/llvm-config
 
 # LLVM consumers must not install the physical replacement-stage path in
-# Mach-O LC_RPATH. Keep LLVM's loader-relative path and the logical prefix.
-# A consumer's explicit CMake RPATH remains authoritative.
+# Mach-O LC_RPATH. Add the logical prefix only when pkgsrc linker flags
+# do not already carry it. Explicit CMake RPATH stays authoritative.
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
     defined(EMBERBSD_NATIVE_STAGE_ROOT) && defined(EMBERBSD_NATIVE_STAGE_PREFIX) && \
     ${LLVM_USES_SETUP_RPATH:Uno:tl} == "yes"
@@ -28,7 +28,8 @@ BUILDLINK_PASSTHRU_RPATHDIRS+= @loader_path/../lib
     empty(CMAKE_CONFIGURE_ARGS:M-DCMAKE_INSTALL_RPATH\:*=*) && \
     empty(CMAKE_CONFIGURE_ARGS.Darwin:M-DCMAKE_INSTALL_RPATH=*) && \
     empty(CMAKE_CONFIGURE_ARGS.Darwin:M-DCMAKE_INSTALL_RPATH\:*=*)
-LLVM_NATIVE_STAGE_INSTALL_RPATH?= @loader_path/../lib;${PREFIX}/lib
+_LLVM_STAGE_LOGICAL_RPATH= ${LDFLAGS:M${COMPILER_RPATH_FLAG}${PREFIX}/lib}
+LLVM_NATIVE_STAGE_INSTALL_RPATH?= @loader_path/../lib${empty(_LLVM_STAGE_LOGICAL_RPATH):?;${PREFIX}/lib:}
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_INSTALL_RPATH:STRING=${LLVM_NATIVE_STAGE_INSTALL_RPATH:Q}
 .endif
 .if empty(CMAKE_CONFIGURE_ARGS:M-DCMAKE_BUILD_WITH_INSTALL_RPATH=*) && \
