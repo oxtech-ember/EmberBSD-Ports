@@ -1,0 +1,30 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Upstream status: not submitted.
+
+Declare the plugin entry point before its definition for strict native builds.
+
+--- a/pppd/plugins/minconn.c
++++ b/pppd/plugins/minconn.c
+@@ -34,6 +34,8 @@
+ #include <pppd/pppd.h>
+ #include <pppd/options.h>
+ 
++void plugin_init(void);
++
+ #ifdef __linux__
+ #include <linux/ppp_defs.h>
+ #else
+--- a/pppd/plugins/passwordfd.c
++++ b/pppd/plugins/passwordfd.c
+@@ -22,7 +22,9 @@
+ #include <pppd/eap.h>
+ #include <pppd/options.h>
+ 
++void plugin_init(void);
++
+ char pppd_version[] = PPPD_VERSION;
+ 
+ static char save_passwd[MAXSECRETLEN];
+ 
