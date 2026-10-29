@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (embree-4.4.1.tar.gz) = 35e881d3cbc7a76ffbc9999a7eb3697ce0c3d145945ad4d2bc0b58e8fa24905b
+SHA512 (embree-4.4.1.tar.gz) = 5700d6e16b3e9e5f0d087e421c831e14f054769dfa30edb45791fee3ab33c698355d8fad86791cea6bf200ebe7ce64f0394063d29dd927afe93d345c2cd6897a
+Size (embree-4.4.1.tar.gz) = 70605063 bytes
+SHA1 (patch-common_sys_sysinfo.cpp) = c85645ec39151a8874f7fdec2423bedaf8e4e82e
+SHA1 (patch-common_sys_thread.cpp) = ee8fb5c36810867c78671cb36378d5086a2f9bee
+SHA1 (patch-common_sys_vector.h) = aa3ea33b550791f52949af15ba5392a02a8b2876
