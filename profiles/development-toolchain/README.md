@@ -323,6 +323,16 @@ requires current libxml2 for paired ID cleanup. Fresh-document registration
 failures release their document and report the operation error. Functional, allocation-error and upstream tests
 pass; normal package and dynamic memory acceptance remain separate.
 
+## Prepared Darwin toolchain replacement
+
+A complete Darwin bootstrap builds its full native foundation by default.
+When rebuilding only the compiler package in an already prepared prefix, set
+`EMBERBSD_DARWIN_TOOLCHAIN_ONLY=yes` with `EMBERBSD_DARWIN_BOOTSTRAP=yes`.
+This retains the selected compiler and tool routing, and pkgsrc still resolves
+the package's declared dependencies; it does not assemble unrelated foundation
+packages. Use the full default for a first bootstrap or complete bundle.
+`tests/darwin-toolchain-only.py` queries the real Clang recipe in both modes.
+
 ## Perl DTrace selection
 
 The Darwin bootstrap profile uses Perl as a build interpreter. It selects
