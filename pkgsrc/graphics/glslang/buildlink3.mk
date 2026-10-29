@@ -6,10 +6,10 @@ BUILDLINK_TREE+=	glslang
 GLSLANG_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.glslang+=	glslang>=16.6.0
-BUILDLINK_ABI_DEPENDS.glslang+=	glslang>=16.6.0
+BUILDLINK_ABI_DEPENDS.glslang+=	glslang>=16.6.0nb1
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
     ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
-BUILDLINK_ABI_DEPENDS.glslang+=	glslang>=16.6.0nb1
+BUILDLINK_ABI_DEPENDS.glslang+=	glslang>=16.6.0nb2
 .endif
 BUILDLINK_PKGSRCDIR.glslang?=	../../graphics/glslang
 

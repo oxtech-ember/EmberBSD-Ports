@@ -271,6 +271,10 @@ for module in $modules; do
         set --
         [ "$module" != qtdeclarative ] || set -- -DFEATURE_quick_vectorimage=ON
         [ "$module" != qtquick3d ] || set -- "$@" -DINPUT_quick3d_assimp:STRING=system -DFEATURE_system_assimp:BOOL=ON
+        if [ "$module" = qtshadertools ]; then
+            set -- "$@" "-DSPIRV-Tools_DIR:PATH=$HOST_PACKAGE_PREFIX/lib/cmake/SPIRV-Tools" \
+                "-DSPIRV-Tools-opt_DIR:PATH=$HOST_PACKAGE_PREFIX/lib/cmake/SPIRV-Tools-opt"
+        fi
         set -- "$@" "-DCMAKE_PREFIX_PATH:PATH=$HOST_PACKAGE_PREFIX"
         set -- "$@" "-DZLIB_ROOT:PATH=$HOST_PACKAGE_PREFIX"
         [ -z "$HOST_RUNTIME_VIEW" ] || set -- "$@" "-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES:FILEPATH=$runtime_cmake"
@@ -291,6 +295,13 @@ for module in $modules; do
         grep -F -x "ZLIB_ROOT:PATH=$HOST_PACKAGE_PREFIX" "$work/$module/CMakeCache.txt" >/dev/null || {
             echo 'Qt module did not retain the selected zlib root' >&2; exit 1;
         }
+        if [ "$module" = qtshadertools ]; then
+            for provider in SPIRV-Tools SPIRV-Tools-opt; do
+                grep -F -x "${provider}_DIR:PATH=$HOST_PACKAGE_PREFIX/lib/cmake/$provider" "$work/$module/CMakeCache.txt" >/dev/null || {
+                    echo "Qt ShaderTools dependency is outside selected native prefix: $provider" >&2; exit 1;
+                }
+            done
+        fi
         if [ "$module" = qtquick3d ]; then
             grep -F -x "QT_FEATURE_system_assimp:INTERNAL=ON" "$work/$module/CMakeCache.txt" >/dev/null || {
                 echo 'QtQuick3D did not select system Assimp' >&2; exit 1;
