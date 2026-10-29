@@ -42,6 +42,25 @@ TOOLS_PATH.otool=	${_MESON_INSTALL_NAME_TOOL:H}/otool
 
 MESON_NATIVE_FILE=	${WRKDIR}/.meson_native
 MESON_NATIVE_ARGS+=	--native-file ${MESON_NATIVE_FILE:Q}
+MESON_NATIVE_ARGS+=	${MESON_NATIVE_EXTRA_ARGS:U}
+
+# A prepared native stage keeps logical .pc prefixes in installed metadata.
+# Relocate queries to the buildlink view for this stage only.
+.if ${OPSYS} == "Darwin" && !empty(EMBERBSD_NATIVE_STAGE_ROOT:U)
+.include "../../devel/gobject-introspection/native-stage-meson.mk"
+_MESON_STAGE_PKGCONF_ARG= --native-file ${WRKDIR:Q}/.meson-native-stage-pkgconf
+MESON_NATIVE_EXTRA_ARGS+= ${USE_TOOLS:Mpkg-config*:C,^.+$,${_MESON_STAGE_PKGCONF_ARG},}
+pre-configure: emberbsd-native-stage-pkgconf
+.PHONY: emberbsd-native-stage-pkgconf
+emberbsd-native-stage-pkgconf:
+	${RUN}if ${TEST} -n "${USE_TOOLS:Mpkg-config*}"; then \
+	    case ${TOOLS_CMD.pkg-config:Q} in /*) ;; *) ${ERROR_MSG} "Select an absolute pkg-config tool"; exit 1;; esac; \
+	    case ${TOOLS_CMD.pkg-config:Q} in *[!A-Za-z0-9_./+@%=-]*) ${ERROR_MSG} "Unsafe pkg-config path"; exit 1;; esac; \
+	    ${TEST} -x ${TOOLS_CMD.pkg-config:Q} || { ${ERROR_MSG} "pkg-config is not executable"; exit 1; }; \
+	    ${PRINTF} '%s\n' '[binaries]' \
+	    "pkg-config = ['${TOOLS_CMD.pkg-config}', '--define-prefix']" > ${WRKDIR:Q}/.meson-native-stage-pkgconf; \
+	fi
+.endif
 
 # pass CFLAGS/LDFLAGS/CXXFLAGS the recommended way
 # https://mesonbuild.com/Reference-tables.html#language-arguments-parameter-names

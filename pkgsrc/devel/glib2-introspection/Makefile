@@ -50,7 +50,8 @@ MESON_ARGS+=	-Duse_cocoa=true
 
 MAKE_ENV+=	LD_LIBRARY_PATH=${WRKSRC}/output/girepository:${WRKSRC}/output/gio:${WRKSRC}/output/glib:${WRKSRC}/output/gobject:${WRKSRC}/output/gmodule:${WRKSRC}/output/gthread
 # For Darwin
-MAKE_ENV+=	DYLD_LIBRARY_PATH=${WRKSRC}/output/girepository:${WRKSRC}/output/gio:${WRKSRC}/output/glib:${WRKSRC}/output/gobject:${WRKSRC}/output/gmodule:${WRKSRC}/output/gthread
+.include "../../devel/gobject-introspection/native-stage-loader.mk"
+MAKE_ENV+=	DYLD_LIBRARY_PATH=${WRKSRC}/output/girepository:${WRKSRC}/output/gio:${WRKSRC}/output/glib:${WRKSRC}/output/gobject:${WRKSRC}/output/gmodule:${WRKSRC}/output/gthread${_EMBERBSD_NATIVE_RUNTIME_SUFFIX}
 
 PATCHDIR=	${.CURDIR}/../../devel/glib2/patches
 DISTINFO_FILE=	${.CURDIR}/../../devel/glib2/distinfo

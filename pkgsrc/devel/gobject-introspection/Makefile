@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.103 2026/09/02 19:01:26 wiz Exp $
 
 DISTNAME=	gobject-introspection-1.86.0
-PKGREVISION=	8
+PKGREVISION=	9
 CATEGORIES=	devel gnome
 MASTER_SITES=	${MASTER_SITE_GNOME:=sources/gobject-introspection/${PKGVERSION_NOREV:R}/}
 EXTRACT_SUFX=	.tar.xz
@@ -46,7 +46,8 @@ SUBST_VARS.libdirs+=	PREFIX
 MAKE_ENV+=	LD_LIBRARY_PATH=${WRKSRC}/output/girepository
 .if ${USE_CROSS_COMPILE:Uno:tl} == "no"
 # For native Darwin builds.
-MAKE_ENV+=	DYLD_LIBRARY_PATH=${WRKSRC}/output/girepository
+.include "../../devel/gobject-introspection/native-stage-loader.mk"
+MAKE_ENV+=	DYLD_LIBRARY_PATH=${WRKSRC}/output/girepository${_EMBERBSD_NATIVE_RUNTIME_SUFFIX}
 .endif
 
 # Disable cache to keep fake homedir clean
