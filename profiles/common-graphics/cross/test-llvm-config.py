@@ -36,6 +36,10 @@ def target_cxxflags_fixture_contract():
                for _, actual, expected, accepted in cases)
 
 
+def fixture_sysroot(receipt, changed_root):
+    return str(changed_root) if receipt.get('relocated_installed_prefix') else receipt['sysroot']
+
+
 def test(args):
     if len(args) != 2:
         raise ValueError('usage: test-llvm-config.py --sdk-source SDK COMPLETED_WORK NEW_TEST_WORK')
@@ -68,7 +72,8 @@ def test(args):
         command = [sys.executable, builder, '--sdk-source', sdk.sdk_source.load(), *options, *inputs, str(output)]
         out, err, status = sdk.query(*command, env={'NATIVE_CXX': r['compiler']})
         sdk.write_json(tmp / (output.name + '.json'), dict(command=command, stdout=out, stderr=err, exit=status))
-        check(name, status != 0 and message in err and (output == work or not output.exists()))
+        messages = (message,) if isinstance(message, str) else message
+        check(name, status != 0 and any(value in err for value in messages) and (output == work or not output.exists()))
 
     check('C++ ABI fixtures follow declared target metadata exactly', target_cxxflags_fixture_contract())
     out, _, status = sdk.query(tool, '--version', '--host-target', '--has-rtti', '--assertion-mode')
@@ -95,7 +100,7 @@ def test(args):
     check('unrelated historical SDK input does not block queries', status == 0 and out.strip() == '23.1.4')
     inputs = [r[k] for k in ('source', 'target_build', 'native_build', 'sysroot', 'target_prefix')]
     refusal('rejects native metadata as target input', [r['source'], r['native_build'], r['native_build'], r['sysroot'], r['target_prefix']], tmp / 'wrong-target', 'target must be configured for NetBSD/aarch64')
-    refusal('rejects a native prefix substituted for the target payload', [*inputs[:4], r['native_build']], tmp / 'wrong-prefix', 'relocated mode requires an installed /usr/pkg prefix' if r.get('relocated_installed_prefix') else 'staged target header missing or mismatched')
+    refusal('rejects a native prefix substituted for the target payload', [*inputs[:4], r['native_build']], tmp / 'wrong-prefix', 'relocated mode requires an installed /usr/pkg prefix' if r.get('relocated_installed_prefix') else ('installed LLVM header differs from build', 'installed LLVM headers missing or outside prefix', 'installed LLVM header set differs from CMake install manifest', 'staged target header missing or mismatched'))
     refusal('rejects an existing destination before edits', inputs, work, 'NEW_WORK must be absolute and absent')
     if r['target_prefix'] != r['target_build']:
         proof = r['library_proof']
@@ -110,7 +115,8 @@ def test(args):
         shutil.copyfile(proof['staged_library'], changed / 'lib/libLLVM-23.so')
         with (changed / 'lib/libLLVM-23.so').open('ab') as stream:
             stream.write(b'changed staged payload')
-        refusal('rejects a changed staged shared library after exact strip reproduction', [*inputs[:3], str(changed_root), str(changed)], tmp / 'wrong-library', 'differs from the reproduced CMake install-strip output')
+        fixture_root = fixture_sysroot(r, changed_root)
+        refusal('rejects a changed staged shared library after exact strip reproduction', [*inputs[:3], fixture_root, str(changed)], tmp / 'wrong-library', 'differs from the reproduced CMake install-strip output')
     changed_source = tmp / 'source'
     (changed_source / 'tools/llvm-config').mkdir(parents=True)
     (changed_source / 'tools/llvm-config/llvm-config.cpp').write_text(Path(r['source'] + '/tools/llvm-config/llvm-config.cpp').read_text() + '\n// changed upstream input\n')
@@ -145,9 +151,9 @@ def test(args):
         shutil.copyfile(r['library_proof']['install_script'], changed / 'tools/llvm-shlib/cmake_install.cmake')
         (changed / 'lib').mkdir()
         (changed / 'lib/libLLVM.so').symlink_to(Path(r['library_proof']['built_library']).resolve(strict=True))
+        shutil.copyfile(Path(r['target_build']) / 'install_manifest.txt', changed / 'install_manifest.txt')
+        shutil.copytree(Path(r['target_build']) / 'include/llvm', changed / 'include/llvm', dirs_exist_ok=True)
         if r.get('relocated_installed_prefix'):
-            shutil.copyfile(Path(r['target_build']) / 'install_manifest.txt', changed / 'install_manifest.txt')
-            shutil.copytree(Path(r['target_build']) / 'include/llvm', changed / 'include/llvm', dirs_exist_ok=True)
             refusal('rejects strip metadata inconsistent with actual install script', [r['source'], str(changed), r['native_build'], str(changed_root), str(changed_root / 'usr/pkg')], tmp / 'wrong-strip', 'unsupported shared LLVM install/strip transformation')
         else:
             refusal('rejects strip metadata inconsistent with actual install script', [r['source'], str(changed), *inputs[2:]], tmp / 'wrong-strip', 'unsupported shared LLVM install/strip transformation')
