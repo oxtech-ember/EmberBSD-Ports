@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.316 2026/09/02 19:01:25 wiz Exp $
 
-PKGREVISION=	1
+PKGREVISION=	2
 .include "Makefile.common"
 
 CATEGORIES=	devel gnome
@@ -112,6 +112,9 @@ BUILDLINK_TRANSFORM+=	rm:-Werror=missing-prototypes
 
 post-extract:
 	${CHMOD} +x ${WRKSRC}/gio/tests/gengiotypefuncs.py
+
+PREFER.gettext=	pkgsrc
+PREFER.iconv=	pkgsrc
 
 .include "../../converters/libiconv/buildlink3.mk"
 .include "../../devel/gettext-lib/buildlink3.mk"
