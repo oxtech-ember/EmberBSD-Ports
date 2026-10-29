@@ -1,0 +1,102 @@
+Support native Darwin runtime paths and route selected stage providers.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/mk/platform/Darwin.mk
++++ b/mk/platform/Darwin.mk
+@@ -171,12 +171,22 @@
+ _OPSYS_HAS_JAVA=	yes	# Java is standard
+ _OPSYS_HAS_MANZ=	yes	# MANZ controls gzipping of man pages
+ _OPSYS_PTHREAD_AUTO=	yes	# -lpthread not needed for pthreads
+-_OPSYS_LINKER_RPATH_FLAG=	-L	# darwin has no rpath, use -L instead
+-_OPSYS_COMPILER_RPATH_FLAG=	-L	# compiler flag to pass rpaths to linker
++.if ${OPSYS_VERSION} >= 100500 && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++# Modern native Darwin supports LC_RPATH and @rpath install names.
++_OPSYS_LINKER_RPATH_FLAG=	-rpath
++_OPSYS_COMPILER_RPATH_FLAG=	-Wl,-rpath,
++.else
++_OPSYS_LINKER_RPATH_FLAG=	-L
++_OPSYS_COMPILER_RPATH_FLAG=	-L
++.endif
+ _OPSYS_SHLIB_TYPE=	dylib	# shared lib type
+ _PATCH_CAN_BACKUP=	yes	# native patch(1) can make backups
+ _PATCH_BACKUP_ARG?=	-V simple -b -z	# switch to patch(1) for backup suffix
+-_USE_RPATH=		no	# don't add rpath to LDFLAGS
++.if ${OPSYS_VERSION} >= 100500 && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++_USE_RPATH=		yes
++.else
++_USE_RPATH=		no
++.endif
+ 
+ #
+ # Builtin overrides.
+--- a/mk/buildlink3/bsd.buildlink3.mk
++++ b/mk/buildlink3/bsd.buildlink3.mk
+@@ -527,7 +527,11 @@
+ BUILDLINK_AUTO_DIRS.${_pkg_}?=	yes
+ BUILDLINK_INCDIRS.${_pkg_}?=	include
+ BUILDLINK_LIBDIRS.${_pkg_}?=	lib
+-.  if !empty(BUILDLINK_DEPMETHOD.${_pkg_}:Mfull)
++.  if ${OPSYS} == "Darwin" && ${OPSYS_VERSION} >= 100500 && \
++      ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${USE_BUILTIN.${_pkg_}:Uno:tl} == "yes"
++# Host SDK builtin paths are build inputs, not installed runtime search paths.
++BUILDLINK_RPATHDIRS.${_pkg_}?=	# empty
++.  elif !empty(BUILDLINK_DEPMETHOD.${_pkg_}:Mfull)
+ BUILDLINK_RPATHDIRS.${_pkg_}?=	${BUILDLINK_LIBDIRS.${_pkg_}}
+ .  else
+ BUILDLINK_RPATHDIRS.${_pkg_}?=	# empty
+@@ -592,7 +596,12 @@
+ .  if !empty(BUILDLINK_RPATHDIRS.${_pkg_})
+ .    for _dir_ in ${BUILDLINK_RPATHDIRS.${_pkg_}:S/^/${BUILDLINK_PREFIX.${_pkg_}}\//}
+ .      if exists(${TOOLS_CROSS_DESTDIR}${_dir_})
+-.        if empty(BUILDLINK_LDFLAGS:M${COMPILER_RPATH_FLAG}${_dir_})
++.        if ${OPSYS} == "Darwin" && ${OPSYS_VERSION} >= 100500 && \
++            ${USE_CROSS_COMPILE:Uno:tl} != "yes" && defined(EMBERBSD_NATIVE_STAGE_ROOT) && defined(EMBERBSD_NATIVE_STAGE_PREFIX)
++.          if empty(BUILDLINK_LDFLAGS:M${COMPILER_RPATH_FLAG}${_dir_:S,^${EMBERBSD_NATIVE_STAGE_ROOT}${EMBERBSD_NATIVE_STAGE_PREFIX}/,${EMBERBSD_NATIVE_STAGE_PREFIX}/,})
++BUILDLINK_LDFLAGS+=	${COMPILER_RPATH_FLAG}${_dir_:S,^${EMBERBSD_NATIVE_STAGE_ROOT}${EMBERBSD_NATIVE_STAGE_PREFIX}/,${EMBERBSD_NATIVE_STAGE_PREFIX}/,}
++.          endif
++.        elif empty(BUILDLINK_LDFLAGS:M${COMPILER_RPATH_FLAG}${_dir_})
+ BUILDLINK_LDFLAGS+=	${COMPILER_RPATH_FLAG}${_dir_}
+ .        endif
+ .      endif
+@@ -1172,6 +1181,12 @@
+ _CWRAPPERS_TRANSFORM+=	R:${_dir_}:${_dir_:S,^${CROSS_DESTDIR},,}
+ # The same distinction applies to installed .la dependency_libs entries.
+ _CWRAPPERS_UNWRAP+=	${_dir_}:${_dir_:S,^${CROSS_DESTDIR},,}
++.  elif ${OPSYS} == "Darwin" && ${OPSYS_VERSION} >= 100500 && \
++        ${USE_CROSS_COMPILE:Uno:tl} != "yes" && defined(EMBERBSD_NATIVE_STAGE_ROOT) && defined(EMBERBSD_NATIVE_STAGE_PREFIX)
++_CWRAPPERS_TRANSFORM+=	R:${_dir_}:${_dir_:S,^${EMBERBSD_NATIVE_STAGE_ROOT}${EMBERBSD_NATIVE_STAGE_PREFIX}/,${EMBERBSD_NATIVE_STAGE_PREFIX}/,}
++.    if "${_dir_:S,^${EMBERBSD_NATIVE_STAGE_ROOT}${EMBERBSD_NATIVE_STAGE_PREFIX}/,${EMBERBSD_NATIVE_STAGE_PREFIX}/,}" != "${_dir_}"
++_CWRAPPERS_UNWRAP+=	${_dir_}:${_dir_:S,^${EMBERBSD_NATIVE_STAGE_ROOT}${EMBERBSD_NATIVE_STAGE_PREFIX}/,${EMBERBSD_NATIVE_STAGE_PREFIX}/,}
++.    endif
+ .  else
+ _CWRAPPERS_TRANSFORM+=	R:${_dir_}:${_dir_}
+ .  endif
+@@ -1202,6 +1217,28 @@
+ _BLNK_TRANSFORM+=       L:${X11BASE}:${_BLNK_MANGLE_DIR.${BUILDLINK_X11_DIR}}
+ _CWRAPPERS_TRANSFORM+=       I:${X11BASE}:${BUILDLINK_X11_DIR}
+ _CWRAPPERS_TRANSFORM+=       L:${X11BASE}:${BUILDLINK_X11_DIR}
++.endif
++#
++# Transform registered replacement-stage providers into their shared buildlink
++# view. More-specific prefixes must precede their parents in cwrappers.
++#
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && defined(EMBERBSD_NATIVE_STAGE_ROOT)
++_EMBERBSD_STAGE_PHYSICAL_PREFIXES= # empty
++.  for _pkg_ in ${_BLNK_PACKAGES}
++.    if defined(BUILDLINK_PREFIX.${_pkg_}) && defined(EMBERBSD_NATIVE_STAGE_PREFIX) && \
++        ("${BUILDLINK_PREFIX.${_pkg_}}" == "${EMBERBSD_NATIVE_STAGE_ROOT}${EMBERBSD_NATIVE_STAGE_PREFIX}" || \
++         "${BUILDLINK_PREFIX.${_pkg_}:S,^${EMBERBSD_NATIVE_STAGE_ROOT}${EMBERBSD_NATIVE_STAGE_PREFIX}/,,}" != "${BUILDLINK_PREFIX.${_pkg_}}")
++_EMBERBSD_STAGE_PHYSICAL_PREFIXES+= ${BUILDLINK_PREFIX.${_pkg_}}
++.    endif
++.  endfor
++.  for _stage_prefix_ in ${_EMBERBSD_STAGE_PHYSICAL_PREFIXES:O:u:Or}
++_BLNK_TRANSFORM+= I:${_stage_prefix_}:${_BLNK_MANGLE_DIR.${BUILDLINK_DIR}}
++_BLNK_TRANSFORM+= L:${_stage_prefix_}:${_BLNK_MANGLE_DIR.${BUILDLINK_DIR}}
++_BLNK_TRANSFORM+= P:${_stage_prefix_}:${_BLNK_MANGLE_DIR.${BUILDLINK_DIR}}
++_CWRAPPERS_TRANSFORM+= I:${_stage_prefix_}:${BUILDLINK_DIR}
++_CWRAPPERS_TRANSFORM+= L:${_stage_prefix_}:${BUILDLINK_DIR}
++_CWRAPPERS_TRANSFORM+= P:${_stage_prefix_}:${BUILDLINK_DIR}
++.  endfor
+ .endif
+ #
+ # Transform references to ${LOCALBASE} into ${BUILDLINK_DIR}.

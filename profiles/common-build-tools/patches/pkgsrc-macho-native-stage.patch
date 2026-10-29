@@ -1,0 +1,79 @@
+Resolve selected native-stage Mach-O providers without active-prefix fallback.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/mk/check/check-shlibs-macho.awk
++++ b/mk/check/check-shlibs-macho.awk
+@@ -116,18 +116,22 @@
+ 	return ""
+ }
+ 
+-function present(path) {
+-	if (destdir != "" && exists(destdir path)) return 1
+-	if (cross_destdir != "") return exists(cross_destdir path)
+-	return exists(path)
+-}
+-
+-function compatible(path, arch,    provider) {
++# Select the physical provider while preserving the logical installed name.
++# An explicitly selected replacement stage must not fall back to active H.
++function provider_path(path) {
++	if (destdir != "" && exists(destdir path)) return destdir path
++	if (cross_destdir != "") return cross_destdir path
++	if (native_stage_root != "" && native_stage_prefix != "" &&
++	    (path == native_stage_prefix || index(path, native_stage_prefix "/") == 1))
++		return native_stage_root path
++	return path
++}
++
++function present(path) { return exists(provider_path(path)) }
++
++function compatible(path, arch) {
+ 	if (!present(path)) return 0
+-	provider = path
+-	if (destdir != "" && exists(destdir path)) provider = destdir path
+-	else if (cross_destdir != "") provider = cross_destdir path
+-	return system(lipo_cmd " " shquote(provider) " -verify_arch " shquote(arch) " >/dev/null 2>&1") == 0
++	return system(lipo_cmd " " shquote(provider_path(path)) " -verify_arch " shquote(arch) " >/dev/null 2>&1") == 0
+ }
+ 
+ function checkshlib(DSO,    physical, header, magic, lines, count, archline, archs, n, i) {
+@@ -303,6 +307,8 @@
+ 	lipo_cmd = ENVIRON["MACHO_LIPO"]
+ 	otool_cmd = ENVIRON["MACHO_OTOOL"]
+ 	cross_destdir = ENVIRON["CROSS_DESTDIR"]
++	native_stage_root = ENVIRON["EMBERBSD_NATIVE_STAGE_ROOT"]
++	native_stage_prefix = ENVIRON["EMBERBSD_NATIVE_STAGE_PREFIX"]
+ 	destdir = ENVIRON["DESTDIR"]
+ 	prefix = ENVIRON["PREFIX"]
+ 	requires_file = ENVIRON["REQUIRES_FILE"]
+--- a/mk/check/check-shlibs.mk
++++ b/mk/check/check-shlibs.mk
+@@ -76,6 +76,8 @@
+ .    endif
+ .  endif
+ CHECK_SHLIBS_NATIVE_ENV+=	CROSS_DESTDIR=${_CROSS_DESTDIR:Q}
++CHECK_SHLIBS_NATIVE_ENV+=	EMBERBSD_NATIVE_STAGE_ROOT=${EMBERBSD_NATIVE_STAGE_ROOT:U:Q}
++CHECK_SHLIBS_NATIVE_ENV+=	EMBERBSD_NATIVE_STAGE_PREFIX=${EMBERBSD_NATIVE_STAGE_PREFIX:U:Q}
+ CHECK_SHLIBS_NATIVE_ENV+=	PKG_INFO_CMD=${PKG_INFO:Q}
+ CHECK_SHLIBS_NATIVE_ENV+=	DEPENDS_FILE=${_RRDEPENDS_FILE:Q}
+ CHECK_SHLIBS_NATIVE_ENV+=	MACHO_USE_LOAD_COMMANDS=${MACHO_USE_LOAD_COMMANDS:U:Q}
+--- a/mk/pkgformat/pkg/metadata.mk
++++ b/mk/pkgformat/pkg/metadata.mk
+@@ -91,6 +91,8 @@
+ 				${PKGSRC_SETENV} REQUIRES_FILE=${WRKDIR}/.elf-requires \
+ 				    PLATFORM_RPATH=${_OPSYS_SYSTEM_RPATH:Q} \
+ 				    CROSS_DESTDIR=${_CROSS_DESTDIR:Q} DESTDIR=${DESTDIR:Q} \
++			    EMBERBSD_NATIVE_STAGE_ROOT=${EMBERBSD_NATIVE_STAGE_ROOT:U:Q} \
++			    EMBERBSD_NATIVE_STAGE_PREFIX=${EMBERBSD_NATIVE_STAGE_PREFIX:U:Q} \
+ 				    WRKDIR=${WRKDIR:Q} READELF=${TOOLS_PATH.readelf:Q} \
+ 				    PKG_INFO_CMD=${PKG_INFO:Q} DEPENDS_FILE=${_RRDEPENDS_FILE:Q} \
+ 				    ${AWK} -f ${PKGSRCDIR}/mk/check/check-shlibs-elf.awk \
+@@ -127,6 +129,8 @@
+ 			for image in $$bins $$libs; do ${ECHO} "$$image"; done | \
+ 			${PKGSRC_SETENV} MACHO_USE_LOAD_COMMANDS=yes REQUIRES_FILE=${WRKDIR}/.macho-requires \
+ 			    CROSS_DESTDIR=${_CROSS_DESTDIR:Q} DESTDIR=${DESTDIR:Q} \
++			    EMBERBSD_NATIVE_STAGE_ROOT=${EMBERBSD_NATIVE_STAGE_ROOT:U:Q} \
++			    EMBERBSD_NATIVE_STAGE_PREFIX=${EMBERBSD_NATIVE_STAGE_PREFIX:U:Q} \
+ 			    PREFIX=${PREFIX:Q} WRKDIR=${WRKDIR:Q} \
+ 			    MACHO_OD=${MACHO_OD:Q} MACHO_LIPO=${MACHO_LIPO:Q} \
+ 			    MACHO_OTOOL=${MACHO_OTOOL:Q} \

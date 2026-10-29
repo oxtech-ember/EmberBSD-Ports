@@ -51,8 +51,56 @@ The profile remains native-only and does not change cross host/target selection.
 no inherited SDKROOT, a deliberately conflicting inherited value, and removing
 only the binding must reproduce rustc's attempted `xcrun` discovery.
 
-The common [gettext bootstrap composition](../common-build-tools/gettext-bootstrap.md)
-uses the same prefix for its initial plain tools and final full package.
+When the native dependency closure needs gettext tools and the prefix does not
+already contain a compatible full `style` package, prepare gettext before
+building the remaining closure. Use the same selected bmake, MAKECONF, PATH,
+prefix and package database as the rest of the bootstrap. The common
+[gettext bootstrap composition](../common-build-tools/gettext-bootstrap.md)
+keeps the plain and full variants at the same package identity. For a fresh
+prefix, the concrete sequence is:
+
+```sh
+PKGSRC_MAKE=/absolute/host-prefix/bin/bmake
+PKGSRC_MKCONF=/absolute/bootstrap-work/mk.conf
+PKGSRC_ADD=/absolute/selected-pkg-add
+"$PKGSRC_MAKE" -m /absolute/host-prefix/share/mk \
+  MAKECONF="$PKGSRC_MKCONF" EMBERBSD_DARWIN_BOOTSTRAP=yes \
+  -C /absolute/pkgsrc/devel/gettext-tools \
+  WRKOBJDIR=/absolute/common-objects/gettext-plain \
+  PACKAGES=/absolute/common-objects/gettext-plain-packages \
+  PKG_OPTIONS.gettext-tools=-style package
+"$PKGSRC_ADD" -K /absolute/host-prefix/pkgdb -u \
+  /absolute/common-objects/gettext-plain-packages/All/gettext-tools-1.0nb7.tgz
+"$PKGSRC_MAKE" -m /absolute/host-prefix/share/mk \
+  MAKECONF="$PKGSRC_MKCONF" EMBERBSD_DARWIN_BOOTSTRAP=yes \
+  -C /absolute/pkgsrc/devel/glib2 \
+  EMBERBSD_BUILD_MSGFMT=/absolute/host-prefix/bin/msgfmt \
+  TOOLS_PLATFORM.xgettext=/absolute/host-prefix/bin/xgettext build install
+"$PKGSRC_MAKE" -m /absolute/host-prefix/share/mk \
+  MAKECONF="$PKGSRC_MKCONF" EMBERBSD_DARWIN_BOOTSTRAP=yes \
+  -C /absolute/pkgsrc/textproc/libcroco \
+  EMBERBSD_BUILD_MSGFMT=/absolute/host-prefix/bin/msgfmt \
+  TOOLS_PLATFORM.xgettext=/absolute/host-prefix/bin/xgettext build install
+"$PKGSRC_MAKE" -m /absolute/host-prefix/share/mk \
+  MAKECONF="$PKGSRC_MKCONF" EMBERBSD_DARWIN_BOOTSTRAP=yes \
+  -C /absolute/pkgsrc/devel/gettext-tools \
+  WRKOBJDIR=/absolute/common-objects/gettext-full \
+  PACKAGES=/absolute/common-objects/gettext-full-packages \
+  EMBERBSD_BUILD_MSGFMT=/absolute/host-prefix/bin/msgfmt \
+  TOOLS_PLATFORM.xgettext=/absolute/host-prefix/bin/xgettext \
+  PKG_OPTIONS.gettext-tools=style package
+"$PKGSRC_ADD" -K /absolute/host-prefix/pkgdb -U \
+  /absolute/common-objects/gettext-full-packages/All/gettext-tools-1.0nb7.tgz
+```
+
+The selected `PKGSRC_ADD` is the explicit `pkg_add` tool supplied to the SDK
+renderer; it can come from the initial tool roots before the final package tools
+are installed. The ordinary pkgsrc dependency handling prepares any missing prerequisites. Verify the final
+package with the selected `pkg_info -Q PKG_OPTIONS` and reuse the installed
+full package when its version and `style` option already satisfy the recipe.
+An existing prefix whose consumers use libtextstyle must keep its full package:
+reuse its compatible gettext tools while preparing GLib and libcroco, then build
+and install the full package directly. Do not replace it with the plain variant.
 
 ## Explicit Darwin package profile
 

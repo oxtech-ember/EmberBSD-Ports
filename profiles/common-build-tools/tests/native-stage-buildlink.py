@@ -47,6 +47,22 @@ def main():
             prefix, failure, selected = query(logical)
             assert prefix == str(expected) and not failure, (prefix, failure)
             assert Path(selected).parent == db, selected
+        # The compiler wrapper chooses the first matching prefix. A provider
+        # installed below another provider must therefore be listed first.
+        info.write_text('LOCALBASE='+str(host/'nested')+'\n')
+        transformed = subprocess.check_output(common+[
+            'BUILDLINK_PREFIX.simdjson='+str(staged),
+            '-V', '${_CWRAPPERS_TRANSFORM}'], text=True).split()
+        for kind in ('I', 'L', 'P'):
+            nested = next(i for i, value in enumerate(transformed)
+                          if value.startswith(kind+':'+str(staged/'nested')+':'))
+            parent = next(i for i, value in enumerate(transformed)
+                          if value.startswith(kind+':'+str(staged)+':'))
+            assert nested < parent, (kind, transformed)
+        unwrap = subprocess.check_output(common+[
+            'BUILDLINK_PREFIX.simdjson='+str(staged),
+            '-V', '${_CWRAPPERS_UNWRAP}'], text=True).split()
+        assert all(src != dst for src, dst in (item.split(':', 1) for item in unwrap)), unwrap
         prefix, failure, _ = query(host, 'BUILDLINK_PREFIX.simdutf=/explicit/override')
         assert prefix == '/explicit/override' and not failure
         prefix, failure, _ = query(host, 'USE_BUILTIN.simdutf=yes')

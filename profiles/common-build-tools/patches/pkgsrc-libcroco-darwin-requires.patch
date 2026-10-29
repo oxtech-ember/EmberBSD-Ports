@@ -1,0 +1,31 @@
+Record direct native Darwin imports in the common package.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/textproc/libcroco/Makefile
++++ b/textproc/libcroco/Makefile
+@@ -24,4 +24,13 @@
+ 
+ .include "../../devel/glib2/buildlink3.mk"
+ .include "../../textproc/libxml2/buildlink3.mk"
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++PKGREVISION= 19
++.  if ${USE_BUILTIN.gettext:Uno:tl} != "yes"
++DEPENDS+= gettext-lib>=1.0nb1:../../devel/gettext-lib
++.  endif
++.  if ${USE_BUILTIN.zlib:Uno:tl} != "yes"
++DEPENDS+= zlib>=1.3.2nb1:../../devel/zlib
++.  endif
++.endif
+ .include "../../mk/bsd.pkg.mk"
+--- a/textproc/libcroco/buildlink3.mk
++++ b/textproc/libcroco/buildlink3.mk
+@@ -7,6 +7,9 @@
+ 
+ BUILDLINK_API_DEPENDS.libcroco+=	libcroco>=0.6.0
+ BUILDLINK_ABI_DEPENDS.libcroco+=	libcroco>=0.6.13nb18
++.if ${OPSYS:U} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++BUILDLINK_ABI_DEPENDS.libcroco+= libcroco>=0.6.13nb19
++.endif
+ BUILDLINK_PKGSRCDIR.libcroco?=		../../textproc/libcroco
+ 
+ .include "../../devel/glib2/buildlink3.mk"
