@@ -12,7 +12,7 @@ PKGNAME=	${DISTNAME:tl}
 PKGREVISION= 1
 DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
 DEPENDS+= llvm>=23.1.4nb5:../../lang/llvm
-BUILD_DEPENDS+= clang>=23.1.4nb11<23.2:../../lang/clang
+BUILD_DEPENDS+= clang>=23.1.4nb12<23.2:../../lang/clang
 BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
 .endif
 CATEGORIES=	parallel

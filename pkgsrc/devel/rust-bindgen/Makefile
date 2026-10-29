@@ -13,7 +13,6 @@ COMMENT=	Automatically generate Rust FFI bindings to C and C++ libraries
 LICENSE=	modified-bsd AND mit AND apache-2.0 AND isc AND unicode-v3
 
 # The CLI loads libclang at runtime and uses rustfmt by default.
-DEPENDS+=	clang>=23.1.4:../../lang/clang
 DEPENDS+=	rust-bin>=1.99.1:../../lang/rust-bin
 USE_LANGUAGES=	c c++
 USE_TOOLS+=	pax
@@ -28,6 +27,14 @@ INSTALLATION_DIRS= bin share/licenses/rust-bindgen
 GENERATE_PLIST+=	cd ${DESTDIR}${PREFIX}; ${FIND} share/licenses/rust-bindgen -type f -print | ${SORT};
 
 .include "../../mk/bsd.prefs.mk"
+
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
+    ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
+PKGREVISION= 3
+DEPENDS+= clang>=23.1.4nb12:../../lang/clang
+.else
+DEPENDS+= clang>=23.1.4:../../lang/clang
+.endif
 
 do-test:
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"

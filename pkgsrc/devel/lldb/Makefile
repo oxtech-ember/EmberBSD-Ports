@@ -6,10 +6,10 @@ PKGREVISION= 3
 # Native Darwin LLDB crosses the LLVM and Clang C++ interfaces.
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
     ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
-PKGREVISION= 4
+PKGREVISION= 5
 DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
 DEPENDS+= llvm>=23.1.4nb5:../../lang/llvm
-DEPENDS+= clang>=23.1.4nb11:../../lang/clang
+DEPENDS+= clang>=23.1.4nb12:../../lang/clang
 BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
 .endif
 
@@ -117,6 +117,8 @@ CMAKE_GENERATORS_INCOMPATIBLE+= make
 .include "../../devel/editline/buildlink3.mk"
 .include "../../devel/swig4/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
+# Set before clang buildlink, which includes LLVM transitively.
+LLVM_USES_SETUP_RPATH= yes
 .include "../../lang/clang/buildlink3.mk"
 #.include "../../lang/libcxx/buildlink3.mk"
 .include "../../lang/llvm/buildlink3.mk"

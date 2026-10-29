@@ -160,6 +160,8 @@ CMAKE_CONFIGURE_ARGS+=		-DLLVM_INCLUDE_TESTS=OFF
 CMAKE_CONFIGURE_ARGS+=		-DCLANG_INCLUDE_TESTS=OFF
 .endif
 
+# This consumer uses LLVM llvm_setup_rpath for installed targets.
+LLVM_USES_SETUP_RPATH= yes
 .include "../../lang/llvm/buildlink3.mk"
 .include "../../devel/py-llvm-lit/buildlink3.mk"
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_LIT=${BUILDLINK_PREFIX.py-llvm-lit:Q}/bin/llvm-lit

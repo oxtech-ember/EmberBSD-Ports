@@ -8,10 +8,10 @@ PKGREVISION=	10
 # Native Darwin LLVM C++ interfaces share the selected runtime ABI.
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
     ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
-PKGREVISION= 11
+PKGREVISION= 12
 DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
 DEPENDS+= llvm>=23.1.4nb5:../../lang/llvm
-DEPENDS+= lld>=23.1.4nb6:../../devel/lld
+DEPENDS+= lld>=23.1.4nb7:../../devel/lld
 BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
 .endif
 
