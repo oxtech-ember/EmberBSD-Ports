@@ -74,7 +74,13 @@ for tool in "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAN
     [ -x "$tool" ] || { echo "Missing executable: $tool" >&2; exit 2; }
 done
 host_deployment_target=
+host_codesign=
 if [ "$(uname -s)" = Darwin ]; then
+    # Qt's macOS test runner uses the operating system signing service.
+    host_codesign=${HOST_CODESIGN:-/usr/bin/codesign}
+    case "$host_codesign" in /*) ;; *) echo 'Absolute paths required' >&2; exit 2;; esac
+    case "$host_codesign" in *[!a-zA-Z0-9_./+-]*) echo 'Use paths without shell metacharacters' >&2; exit 2;; esac
+    [ -x "$host_codesign" ] || { echo "Missing executable: $host_codesign" >&2; exit 2; }
     : "${HOST_MACOSX_DEPLOYMENT_TARGET:?Set the deployment target selected by the native compiler binding}"
     host_deployment_target=$HOST_MACOSX_DEPLOYMENT_TARGET
     case "$host_deployment_target" in *[!0-9.]*|.*|*.|*..*|'') echo 'Invalid native deployment target' >&2; exit 2;; esac
@@ -147,7 +153,7 @@ if [ -e "$work" ] || [ -L "$work" ]; then
     grep -q -x "profile=$profile" "$work/inputs.txt" || {
         echo 'Host profile changed; use a new work directory' >&2; exit 2;
     }
-    for tool in "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" $shader_patches $host_dbus_inputs $runtime_inputs; do
+    for tool in "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" $shader_patches $host_dbus_inputs $runtime_inputs $host_codesign; do
         shasum -a 256 "$tool" | grep -F -x -f - "$work/inputs.txt" >/dev/null || {
             echo "Host input changed; use a new work directory: $tool" >&2; exit 2;
         }
@@ -171,10 +177,11 @@ mkdir -p "$work"
 mkdir -p "$work/source" "$work/bin"
 ln -sf "$CMAKE" "$work/bin/cmake"
 ln -sf "$NINJA" "$work/bin/ninja"
+[ -z "$host_codesign" ] || ln -sf "$host_codesign" "$work/bin/codesign"
 PATH="$work/bin:$PATH"
 export PATH
 {
-    shasum -a 256 "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" $shader_patches $host_dbus_inputs $runtime_inputs
+    shasum -a 256 "$0" "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" $shader_patches $host_dbus_inputs $runtime_inputs $host_codesign
     "$CMAKE" --version
     "$NINJA" --version
     printf 'profile=%s\n' "$profile"
