@@ -1,0 +1,34 @@
+--- a/mk/buildlink3/bsd.buildlink3.mk
++++ b/mk/buildlink3/bsd.buildlink3.mk
+@@ -481,6 +481,31 @@
+ .    if empty(BUILDLINK_PKGNAME.${_pkg_}:M*not_found)
+ BUILDLINK_PREFIX.${_pkg_}!=						\
+ 	${_BLNK_PKG_INFO.${_pkg_}} -Q LOCALBASE ${BUILDLINK_PKGNAME.${_pkg_}}
++# A native replacement stage holds the registered package payload at the
++# same logical prefix below its root. Builtins and explicit overrides bypass
++# this block; only metadata selected from the stage database is considered.
++.      if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
++          defined(EMBERBSD_NATIVE_STAGE_ROOT) && defined(EMBERBSD_NATIVE_STAGE_PREFIX) && \
++          "${_BLNK_PKG_DBDIR.${_pkg_}:H}" == "${EMBERBSD_NATIVE_STAGE_ROOT}${EMBERBSD_NATIVE_STAGE_PREFIX}/pkgdb"
++_EMBERBSD_STAGE_BUILDLINK.${_pkg_}!= \
++	logical=${BUILDLINK_PREFIX.${_pkg_}:Q}; \
++	host=${EMBERBSD_NATIVE_STAGE_PREFIX:Q}; stage=${EMBERBSD_NATIVE_STAGE_ROOT:Q}; \
++	case "$$logical" in \
++	"$$host"|"$$host"/*) \
++		candidate="$$stage$$logical"; \
++		stagehost=$$(cd "$$stage$$host" 2>/dev/null && pwd -P) || stagehost=; \
++		physical=$$(cd "$$candidate" 2>/dev/null && pwd -P) || physical=; \
++		case "$$stagehost/" in "$$stage/"*) ;; *) stagehost= ;; esac; \
++		case "$$physical/" in "$$stagehost/"*) \
++			[ -n "$$stagehost" ] && printf '%s\n' "$$candidate" || printf '%s\n' __EMBERBSD_STAGE_INVALID__ ;; \
++		*) printf '%s\n' __EMBERBSD_STAGE_INVALID__ ;; esac ;; \
++	*) printf '%s\n' "$$logical" ;; esac
++.        if "${_EMBERBSD_STAGE_BUILDLINK.${_pkg_}}" == "__EMBERBSD_STAGE_INVALID__"
++PKG_FAIL_REASON+= "Staged buildlink prefix for ${_pkg_} is missing or escapes the selected stage"
++.        else
++BUILDLINK_PREFIX.${_pkg_}:= ${_EMBERBSD_STAGE_BUILDLINK.${_pkg_}}
++.        endif
++.      endif
+ .    else
+ BUILDLINK_PREFIX.${_pkg_}=	BUILDLINK_PREFIX.${_pkg_}_not_found
+ .    endif
