@@ -1,0 +1,21 @@
+Origin: EmberBSD, AI-assisted.
+with_advisory_lock 7.6.0 requires Ruby >= 3.3 and Active Record >= 7.2,
+but the recipe accepted only Ruby 3.3 and 3.4, so with Ruby 4.0 alone it
+failed with "Unknown Ruby version specified: 33". Drop the Ruby version
+pin. The package is for Redmine, not only for Redmine 6.0 and 6.1.
+Not submitted upstream.
+
+--- a/databases/ruby-with_advisory_lock/Makefile
++++ b/databases/ruby-with_advisory_lock/Makefile
+@@ -11,10 +11,8 @@
+ 
+ DEPENDS+=	${RUBY_ACTIVERECORD_DEPENDS}
+ 
+-RUBY_VERSIONS_ACCEPTED=	33 34
+-
+ #
+-# This pacakge is for redmine60 and redmine61
++# This package is for Redmine.
+ #
+ RUBY_RAILS_ACCEPTED=	81
+ 

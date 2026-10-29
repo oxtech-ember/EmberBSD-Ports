@@ -86,6 +86,11 @@ done
     { echo "lang/ruby/rails.mk offers an old Rails" >&2; exit 1; }
 grep -Fq 'SHA512 (rails-8.1.4.gem) = ' "$pkgsrc/www/ruby-rails81/distinfo" ||
     { echo "www/ruby-rails81 is not Rails 8.1.4" >&2; exit 1; }
+# with_advisory_lock 7.6.0 runs on Ruby 4.0; its recipe accepted only 3.3 and 3.4.
+wal=databases/ruby-with_advisory_lock
+! grep -q "^RUBY_VERSIONS_ACCEPTED=" "$pkgsrc/$wal/Makefile" ||
+    { echo "$wal accepts only some Ruby versions" >&2; exit 1; }
+[ -z "$(reason "$wal")" ] || { echo "Guard rejected $wal" >&2; exit 1; }
 # Redmine 6.0 and 6.1 accept only Ruby 3.3 and Rails 7.2; Redmine 7 replaces them.
 old_rails=$(find "$pkgsrc" -mindepth 3 -maxdepth 3 -name Makefile \
     ! -path '*/devel/ruby-redmine6[01]/*' \
