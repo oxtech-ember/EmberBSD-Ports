@@ -16,6 +16,8 @@ COMMENT= C library for WebAssembly WASI preview1
 LICENSE= mit AND apache-2.0
 USE_LANGUAGES= c
 USE_TOOLS+= find sed sort
+# The unused upstream POSIX test-suite scripts use "==" in test(1).
+CHECK_PORTABILITY_SKIP+= test/open-posix-test-suite/*
 SSP_SUPPORTED= no
 PKGSRC_USE_STACK_CHECK= no
 RELRO_SUPPORTED= no
