@@ -1,3 +1,4 @@
+.include "../../x11/qt6-qtbase/native-runtime.mk"
 # Origin: EmberBSD (AI-assisted). Keep native Qt paths independent of layout.
 # Installed Qt exposes this directory through qtpaths --query QT_INSTALL_LIBEXECS.
 EMBERBSD_QT_HOST_LIBEXECS?= ${EMBERBSD_QT_HOST_PATH}/libexec

@@ -4,6 +4,7 @@
 .if !defined(EMBERBSD_QT_LINGUIST_MK)
 EMBERBSD_QT_LINGUIST_MK= yes
 .include "../../mk/bsd.prefs.mk"
+.include "../../x11/qt6-qtbase/native-runtime.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .if !defined(EMBERBSD_QT_HOST_PATH)
 PKG_FAIL_REASON+= "Cross Linguist consumers require matching EMBERBSD_QT_HOST_PATH"
@@ -13,7 +14,7 @@ pre-configure: emberbsd-native-linguist-check
 .PHONY: emberbsd-native-linguist-check
 emberbsd-native-linguist-check:
 	${RUN}${TEST} -x ${EMBERBSD_QT_HOST_PATH:Q}/bin/lconvert && \
-	    ${TEST} "`${EMBERBSD_QT_HOST_PATH:Q}/bin/lrelease -version`" = "lrelease version 6.12.0" || { \
+	    ${TEST} "`${_EMBERBSD_QT_RUNTIME_EXEC} ${EMBERBSD_QT_HOST_PATH:Q}/bin/lrelease -version`" = "lrelease version 6.12.0" || { \
 	        echo 'Matching native Qt 6.12 Linguist tools are required' >&2; exit 1; \
 	    }
 .endif

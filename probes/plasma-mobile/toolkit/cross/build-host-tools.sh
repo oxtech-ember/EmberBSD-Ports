@@ -20,6 +20,7 @@ widgets_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_widgets_
 markdown_patch=$toolkit/../../../pkgsrc/x11/qt6-qtbase/patches/patch-src_gui_text_qtextmarkdownimporter.cpp
 shader_patches="$toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_CMakeLists.txt $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_CMakeLists.txt $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_qspirvcompiler.cpp $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_qspirvshaderremap.cpp $toolkit/../../../pkgsrc/graphics/qt6-qtshadertools/patches/patch-src_shadertools_qspirvshaderremap_p.h"
 quick3d_patches="$toolkit/../../../pkgsrc/graphics/qt6-qtquick3d/patches/patch-src_3rdparty_CMakeLists.txt $toolkit/../../../pkgsrc/graphics/qt6-qtquick3d/patches/patch-src_runtimerender_CMakeLists.txt $toolkit/../../../pkgsrc/graphics/qt6-qtquick3d/patches/patch-src_runtimerender_rendererimpl_qssglightmapper.cpp $toolkit/../../../pkgsrc/graphics/qt6-qtquick3d/patches/patch-src_runtimerender_resourcemanager_qssgrenderloadedtexture.cpp $toolkit/../../../pkgsrc/graphics/qt6-qtquick3d/patches/patch-src_utils_CMakeLists.txt"
+qttools_patch=$toolkit/../../../pkgsrc/devel/qt6-qttools/patches/patch-src_linguist_Qt6LinguistToolsMacros.cmake
 quick3d_transition=$toolkit/cross/quick3d-source-transition.py
 quick3d_inputs=
 [ "$profile" != full ] || quick3d_inputs="$quick3d_patches $quick3d_transition $toolkit/cross/check-quick3d-cache.py"
@@ -36,8 +37,8 @@ QT_HOST_RESUME_FROM=${QT_HOST_RESUME_FROM:-}
 HOST_QT_QUICK3D_BUILD_DIR=${HOST_QT_QUICK3D_BUILD_DIR:-$work/qtquick3d}
 case "$QT_HOST_RESUME_FROM" in
 '') ;;
-qtquick3d) [ "$RESUME" = 1 ] && [ "$HOST_INCREMENTAL_RECONFIGURE" = 1 ] && [ "$profile" = full ] || {
-    echo 'Quick3D resume requires full incremental reconfigure' >&2; exit 2; } ;;
+qtquick3d|qttools) [ "$RESUME" = 1 ] && [ "$HOST_INCREMENTAL_RECONFIGURE" = 1 ] && [ "$profile" = full ] || {
+    echo 'Selected module resume requires full incremental reconfigure' >&2; exit 2; } ;;
 *) echo 'Unsupported Qt host resume starting module' >&2; exit 2 ;;
 esac
 : "${HOST_PYTHON:?Set an absolute native Python 3 executable}"
@@ -179,6 +180,11 @@ if [ -e "$work" ] || [ -L "$work" ]; then
         resume_full_inputs=
     fi
     for tool in "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" "$markdown_patch" $shader_patches $host_dbus_inputs $runtime_inputs $host_codesign $resume_full_inputs $resume_extra_inputs; do
+        # Incremental mode validates each selected Qt archive against both
+        # the current manifest and the previous input block below.
+        if [ "$HOST_INCREMENTAL_RECONFIGURE" = 1 ] && [ "$tool" = "$toolkit/sources.tsv" ]; then
+            continue
+        fi
         # The runtime view is compared by basename and digest by the checker.
         if [ -n "$HOST_RUNTIME_VIEW" ]; then
             case "$tool" in "$HOST_RUNTIME_VIEW"/*) continue ;; esac
@@ -223,6 +229,25 @@ if [ "$QT_HOST_RESUME_FROM" = qtquick3d ]; then
         }
     done
 fi
+if [ "$QT_HOST_RESUME_FROM" = qttools ]; then
+    for tool in libexec/moc libexec/rcc libexec/uic bin/qsb; do
+        [ -x "$work/qtbase/$tool" ] || { echo "Missing previous Qt host tool: $tool" >&2; exit 2; }
+    done
+    for module in Core CoreTools Svg ShaderTools Qml; do
+        [ -s "$work/qtbase/lib/cmake/Qt6$module/Qt6${module}Config.cmake" ] || { echo "Missing previous Qt CMake package: $module" >&2; exit 2; }
+    done
+fi
+if [ "$profile" = full ] && [ -d "$work/source/qttools-everywhere-src-6.12.0" ]; then
+    if [ ! -f "$work/qttools-source.sha256" ] && [ "$HOST_INCREMENTAL_RECONFIGURE" != 1 ]; then
+        echo "QtTools owner patch requires explicit incremental reconfigure" >&2; exit 2
+    fi
+    qttools_action=apply
+    [ "$plan_only" != 1 ] || qttools_action=plan
+    "$HOST_PYTHON" -I "$quick3d_transition" "$qttools_action" \
+        "$work/source/qttools-everywhere-src-6.12.0" \
+        "$distfiles/qttools-everywhere-src-6.12.0.tar.xz" \
+        "$work/qttools-source.sha256" "$PATCH" "$qttools_patch"
+fi
 if [ "$profile" = full ] && [ -d "$work/source/qtquick3d-everywhere-src-6.12.0" ]; then
     if [ ! -f "$work/qtquick3d-source.sha256" ] && [ "$HOST_INCREMENTAL_RECONFIGURE" != 1 ]; then
         echo 'Quick3D owner patches require explicit incremental reconfigure' >&2; exit 2
@@ -247,7 +272,7 @@ ln -sf "$NINJA" "$work/bin/ninja"
 PATH="$work/bin:$PATH"
 export PATH
 {
-    shasum -a 256 "$toolkit/cross/build-host-tools.sh" "$toolkit/cross/host-resume-inputs.py" $resume_otool_input "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" "$markdown_patch" $shader_patches $quick3d_inputs $host_dbus_inputs $runtime_inputs $host_codesign
+    shasum -a 256 "$toolkit/cross/build-host-tools.sh" "$toolkit/cross/host-resume-inputs.py" $resume_otool_input "$toolkit/sources.tsv" "$HOST_SH" "$CMAKE" "$NINJA" "$TAR" "$PATCH" "$HOST_PYTHON" "$WAYLAND_SCANNER" "$HOST_CC" "$HOST_CXX" "$HOST_PKG_CONFIG" "$scanner_patch" "$syncqt_patch" "$zlib_patch" "$widgets_patch" "$markdown_patch" $shader_patches "$qttools_patch" $quick3d_inputs $host_dbus_inputs $runtime_inputs $host_codesign
     "$CMAKE" --version
     "$NINJA" --version
     printf 'profile=%s\n' "$profile"
@@ -269,7 +294,7 @@ for module in $modules; do
     module_work=$work/$module
     [ "$module" != qtquick3d ] || module_work=$HOST_QT_QUICK3D_BUILD_DIR
     shasum -a 256 "$distfiles/$archive" >> "$work/inputs.txt"
-    if [ "$QT_HOST_RESUME_FROM" = qtquick3d ] && [ "$module" != qtquick3d ]; then
+    if [ -n "$QT_HOST_RESUME_FROM" ] && [ "$module" != "$QT_HOST_RESUME_FROM" ]; then
         continue
     fi
     if [ ! -d "$work/source/$module-everywhere-src-6.12.0" ]; then
@@ -288,6 +313,10 @@ for module in $modules; do
             done
             (cd "$work/source/$module-everywhere-src-6.12.0" &&
                 shasum -a 256 src/CMakeLists.txt src/shadertools/CMakeLists.txt src/shadertools/qspirvcompiler.cpp src/shadertools/qspirvshaderremap.cpp src/shadertools/qspirvshaderremap_p.h > "$work/qtshadertools-source.sha256")
+        elif [ "$module" = qttools ]; then
+            "$HOST_PYTHON" -I "$quick3d_transition" apply \
+                "$work/source/$module-everywhere-src-6.12.0" "$distfiles/$archive" \
+                "$work/qttools-source.sha256" "$PATCH" "$qttools_patch"
         elif [ "$module" = qtquick3d ]; then
             "$HOST_PYTHON" -I "$quick3d_transition" apply \
                 "$work/source/$module-everywhere-src-6.12.0" "$distfiles/$archive" \
