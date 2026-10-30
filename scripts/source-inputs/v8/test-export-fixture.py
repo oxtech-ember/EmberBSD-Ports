@@ -49,7 +49,7 @@ with tempfile.TemporaryDirectory(prefix='v8-export-test-', dir=a.work_dir) as di
     run([a.git, '-C', root, 'add', 'pkgsrc/export.conf'])
     run([a.git, '-C', root, 'update-index', '--add', '--cacheinfo',
          f'160000,{revision},upstream/pkgsrc'])
-    archive = work / 'v8-15.6.75.27-c9b3cfcab30ace06c21f9b48a0f0a34805e81e9d.tar.gz'
+    archive = work / 'v8-15.6.75.31-5467f0a017e04ff016021a01687868c90af198e5.tar.gz'
     shutil.copyfile(a.archive, archive)
     owner = root / 'scripts/source-inputs/v8/source.py'
     command = [sys.executable, '-B', '-I', '-S', owner, '--sdk-source', a.sdk_source,

@@ -13,7 +13,7 @@ The output directory must not exist.
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/v8/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
-  --archive "$DISTFILES/v8-15.6.75.27-c9b3cfcab30ace06c21f9b48a0f0a34805e81e9d.tar.gz" \
+  --archive "$DISTFILES/v8-15.6.75.31-5467f0a017e04ff016021a01687868c90af198e5.tar.gz" \
   --patch "$HOST_PREFIX/bin/gpatch" --output "$WORK/v8-source"
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/v8/source.py \
   --sdk-source "$SDK_SOURCE" verify-source --source "$WORK/v8-source" \
