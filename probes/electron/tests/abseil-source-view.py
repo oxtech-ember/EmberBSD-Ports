@@ -22,6 +22,8 @@ with tempfile.TemporaryDirectory() as tmp:
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_text('original')
         (f.parent / 'example.h').write_text('original header')
+        (f.parent / 'internal').mkdir()
+        (f.parent / 'internal/only_bundled.inc').write_text('bundled only')
     for name in ('absl_base.gn', 'absl_log_internal.gn'):
         (unbundle / name).write_text('shim_headers("check") { root_path = "." headers = [ "example.h" ] }\n')
     original = source / 'third_party/abseil-cpp/absl/base/BUILD.gn'
@@ -35,6 +37,8 @@ with tempfile.TemporaryDirectory() as tmp:
     assert original.read_text() == 'original'
     masked = target / 'third_party/abseil-cpp/absl/base/example.h'
     assert not masked.exists() and (original.parent / 'example.h').read_text() == 'original header'
+    assert not (target / 'third_party/abseil-cpp/absl/base/internal/only_bundled.inc').exists()
+    assert (original.parent / 'internal/only_bundled.inc').read_text() == 'bundled only'
     masked.write_text('unexpected bundled header')
     try:
         view.verify(source, None, root / 'selected', system_abseil=True)

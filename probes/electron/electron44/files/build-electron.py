@@ -676,7 +676,7 @@ def common_embedder_sources(options, sdk, native, environment):
 
 def common_abseil(options, sdk, native, environment, buildlink):
     if not getattr(options, 'shared_abseil', False):
-        return
+        return {}
     require(buildlink, 'shared Abseil requires the selected native buildlink')
     versions = []
     for prefix, host in ((Path(buildlink), True), (options.sysroot / 'usr/pkg', False)):
@@ -708,6 +708,30 @@ def common_abseil(options, sdk, native, environment, buildlink):
                       for path in host_packages + target_packages]
     environment['EMBERBSD_SHARED_ABSEIL_VERSION'] = versions[0]
     environment['EMBERBSD_SHARED_ABSEIL_SOURCE_SHA256'] = ':'.join(source_records)
+    values = {}
+    for role, package, prefix in (('host', host_packages[0], Path(buildlink)),
+                                  ('target', target_packages[0], options.sysroot / 'usr/pkg')):
+        result = sdk['process'].capture([native.tool('pkg_info'), '-K', str(package.parent),
+                                         '-qL', package.name], env=environment).stdout.decode('utf-8', 'strict')
+        headers = []
+        for line in result.splitlines():
+            marker = '/include/absl/'
+            if marker not in line:
+                continue
+            relative = Path('absl') / line.split(marker, 1)[1]
+            require(not relative.is_absolute() and '..' not in relative.parts and
+                    re.fullmatch(r'absl/[A-Za-z0-9_./+-]+', str(relative)) is not None,
+                    'unsafe Abseil package path')
+            headers.append(relative)
+        require(headers and len(headers) == len(set(headers)), 'invalid Abseil include inventory')
+        headers.sort()
+        files = [(prefix / 'include' / path).resolve(strict=True) for path in headers]
+        require(all(path.is_file() for path in files), 'selected Abseil include is missing')
+        values['emberbsd_abseil_' + role + '_headers'] = [str(path) for path in headers]
+        values['emberbsd_abseil_' + role + '_inputs'] = sorted(set(str(path) for path in files) |
+            {str((package / '+CONTENTS').resolve(strict=True)), str((package / '+BUILD_INFO').resolve(strict=True)),
+             str((package / '+BUILD_VERSION').resolve(strict=True))})
+    return values
 
 
 
@@ -919,7 +943,7 @@ def producer_inputs(options, sdk):
         values.update(emberbsd_pkg_config_role='explicit',
                       emberbsd_native_pkg_config_prefix=buildlink,
                       emberbsd_native_pkg_config_buildlink=True)
-    common_abseil(options, sdk, native, environment, buildlink)
+    values.update(common_abseil(options, sdk, native, environment, buildlink))
     values.update(common_icu(options, sdk, native, environment, buildlink))
     runtime_view = getattr(options, 'protoc_runtime_view', None)
     if runtime_view:

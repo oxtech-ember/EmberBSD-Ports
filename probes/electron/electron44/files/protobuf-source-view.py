@@ -89,6 +89,17 @@ def shim_masks(replacements):
     return masks
 
 
+def abseil_masks(source, replacements):
+    """Remove every bundled Abseil non-GN file from the selected view."""
+    root = source / 'third_party/abseil-cpp'
+    masks = shim_masks(replacements)
+    for path in (root / 'absl').rglob('*'):
+        require(not path.is_symlink(), 'Abseil source contains a symlink: ' + str(path))
+        if path.is_file() and path.suffix not in ('.gn', '.gni'):
+            masks.add(path.relative_to(root))
+    return masks
+
+
 def dependency_view(origin, dest, replacements, masks, *, verify=False, current=Path()):
     expected = {p.name for p in origin.iterdir() if current / p.name not in masks}
     if verify:
@@ -160,7 +171,7 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     if system_abseil:
         replacements = abseil_replacements(source)
         dependency_view(third_party / 'abseil-cpp', destination / 'src/third_party/abseil-cpp',
-                        replacements, shim_masks(replacements))
+                        replacements, abseil_masks(source, replacements))
     if system_icu:
         replacements = icu_replacements(source)
         dependency_view(third_party / 'icu', destination / 'src/third_party/icu',
@@ -206,7 +217,7 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     if system_abseil:
         replacements = abseil_replacements(source)
         dependency_view(source / 'third_party/abseil-cpp', root / 'third_party/abseil-cpp',
-                        replacements, shim_masks(replacements), verify=True)
+                        replacements, abseil_masks(source, replacements), verify=True)
     if system_icu:
         replacements = icu_replacements(source)
         dependency_view(source / 'third_party/icu', root / 'third_party/icu',

@@ -1,0 +1,1019 @@
+# Origin: EmberBSD contributors (AI-assisted). Complete shared Abseil header shims.
+--- a/build/shim_headers.gni
++++ b/build/shim_headers.gni
+@@ -37,6 +37,9 @@
+ 
+   group(target_name) {
+     deps = [ ":${action_name}" ]
++    if (defined(invoker.extra_deps)) {
++      deps += invoker.extra_deps
++    }
+     all_dependent_configs = [ ":${config_name}" ]
+   }
+ }
+--- a/tools/generate_shim_headers/generate_shim_headers.py
++++ b/tools/generate_shim_headers/generate_shim_headers.py
+@@ -65,9 +65,6 @@
+       if options.outputs:
+         yield os.path.join(target_directory, header_filename)
+       if options.generate:
+-        source_file = os.path.join(root, header_filename)
+-        if os.path.exists(source_file):
+-          os.unlink(source_file)
+         header_path = os.path.join(target_directory, header_filename)
+         header_dir = os.path.dirname(header_path)
+         if not os.path.exists(header_dir):
+--- a/build/ember_absl_shim.gni
++++ b/build/ember_absl_shim.gni
+@@ -0,0 +1,15 @@
++import("//build/shim_headers.gni")
++
++declare_args() {
++  emberbsd_abseil_host_headers = []
++  emberbsd_abseil_target_headers = []
++  emberbsd_abseil_host_inputs = []
++  emberbsd_abseil_target_inputs = []
++}
++
++template("absl_shim_headers") {
++  shim_headers(target_name) {
++    forward_variables_from(invoker, "*")
++    extra_deps = [ "//build/config/ember_abseil:complete" ]
++  }
++}
+--- a/build/config/ember_abseil/BUILD.gn
++++ b/build/config/ember_abseil/BUILD.gn
+@@ -0,0 +1,30 @@
++import("//build/ember_absl_shim.gni")
++
++assert(emberbsd_pkg_config_role != "upstream", "Select an explicit Abseil package role")
++if (emberbsd_pkg_config_role == "native") {
++  _headers = emberbsd_abseil_host_headers
++  _inputs = emberbsd_abseil_host_inputs
++} else {
++  assert(emberbsd_pkg_config_role == "explicit" || emberbsd_pkg_config_role == "target")
++  _headers = emberbsd_abseil_target_headers
++  _inputs = emberbsd_abseil_target_inputs
++}
++assert(_headers != [], "Selected Abseil package inventory is empty")
++_root = "$root_gen_dir/shim_headers/complete_abseil"
++config("config") {
++  include_dirs = [ _root ]
++}
++action("headers") {
++  script = "//tools/generate_shim_headers/generate_shim_headers.py"
++  inputs = _inputs
++  args = [ "--generate", "--headers-root", rebase_path("//third_party/abseil-cpp"),
++           "--output-directory", rebase_path(_root) ] + _headers
++  outputs = []
++  foreach(_header, _headers) {
++    outputs += [ "$_root/third_party/abseil-cpp/$_header" ]
++  }
++}
++group("complete") {
++  deps = [ ":headers" ]
++  all_dependent_configs = [ ":config" ]
++}
+--- a/build/linux/unbundle/absl_algorithm.gn
++++ b/build/linux/unbundle/absl_algorithm.gn
+@@ -1,11 +1,11 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_algorithm_container") {
+   packages = [ "absl_algorithm_container" ]
+ }
+ 
+-shim_headers("container_shim") {
++absl_shim_headers("container_shim") {
+   root_path = "."
+   prefix = "absl/algorithm/"
+   headers = [ "container.h" ]
+@@ -26,7 +26,7 @@
+   packages = [ "absl_algorithm" ]
+ }
+ 
+-shim_headers("algorithm_ember_shim") {
++absl_shim_headers("algorithm_ember_shim") {
+   root_path = "."
+   prefix = "absl/algorithm/"
+   headers = [ "algorithm.h" ]
+--- a/build/linux/unbundle/absl_base.gn
++++ b/build/linux/unbundle/absl_base.gn
+@@ -1,5 +1,5 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_base") {
+   packages = [ "absl_base" ]
+@@ -21,7 +21,7 @@
+   packages = [ "absl_prefetch" ]
+ }
+ 
+-shim_headers("base_shim") {
++absl_shim_headers("base_shim") {
+   root_path = "."
+   prefix = "absl/base/"
+   headers = [
+@@ -36,7 +36,7 @@
+   public_configs = [ ":system_absl_base" ]
+ }
+ 
+-shim_headers("config_shim") {
++absl_shim_headers("config_shim") {
+   root_path = "."
+   prefix = "absl/base/"
+   headers = [
+@@ -51,7 +51,7 @@
+   public_configs = [ ":system_absl_config" ]
+ }
+ 
+-shim_headers("core_headers_shim") {
++absl_shim_headers("core_headers_shim") {
+   root_path = "."
+   prefix = "absl/base/"
+   headers = [
+@@ -69,7 +69,7 @@
+   public_configs = [ ":system_absl_core_headers" ]
+ }
+ 
+-shim_headers("nullability_shim") {
++absl_shim_headers("nullability_shim") {
+   root_path = "."
+   prefix = "absl/base/"
+   headers = [ "nullability.h" ]
+@@ -80,7 +80,7 @@
+   public_configs = [ ":system_absl_nullability" ]
+ }
+ 
+-shim_headers("prefetch_shim") {
++absl_shim_headers("prefetch_shim") {
+   root_path = "."
+   prefix = "absl/base/"
+   headers = [ "prefetch.h" ]
+@@ -111,7 +111,7 @@
+   packages = [ "absl_dynamic_annotations" ]
+ }
+ 
+-shim_headers("dynamic_annotations_ember_shim") {
++absl_shim_headers("dynamic_annotations_ember_shim") {
+   root_path = "."
+   prefix = "absl/base/"
+   headers = [ "dynamic_annotations.h" ]
+@@ -126,7 +126,7 @@
+   packages = [ "absl_fast_type_id" ]
+ }
+ 
+-shim_headers("fast_type_id_ember_shim") {
++absl_shim_headers("fast_type_id_ember_shim") {
+   root_path = "."
+   prefix = "absl/base/"
+   headers = [ "fast_type_id.h" ]
+@@ -141,7 +141,7 @@
+   packages = [ "absl_log_severity" ]
+ }
+ 
+-shim_headers("log_severity_ember_shim") {
++absl_shim_headers("log_severity_ember_shim") {
+   root_path = "."
+   prefix = "absl/base/"
+   headers = [ "log_severity.h" ]
+@@ -156,7 +156,7 @@
+   packages = [ "absl_raw_logging_internal" ]
+ }
+ 
+-shim_headers("raw_logging_internal_ember_shim") {
++absl_shim_headers("raw_logging_internal_ember_shim") {
+   root_path = "."
+   prefix = "absl/base/"
+   headers = [ "internal/raw_logging.h" ]
+@@ -171,7 +171,7 @@
+   packages = [ "absl_throw_delegate" ]
+ }
+ 
+-shim_headers("throw_delegate_ember_shim") {
++absl_shim_headers("throw_delegate_ember_shim") {
+   root_path = "."
+   prefix = "absl/base/"
+   headers = [ "throw_delegate.h" ]
+--- a/build/linux/unbundle/absl_cleanup.gn
++++ b/build/linux/unbundle/absl_cleanup.gn
+@@ -1,11 +1,11 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_cleanup") {
+   packages = [ "absl_cleanup" ]
+ }
+ 
+-shim_headers("cleanup_shim") {
++absl_shim_headers("cleanup_shim") {
+   root_path = "."
+   prefix = "absl/cleanup/"
+   headers = [ "cleanup.h" ]
+--- a/build/linux/unbundle/absl_container.gn
++++ b/build/linux/unbundle/absl_container.gn
+@@ -1,5 +1,5 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_btree") {
+   packages = [ "absl_btree" ]
+@@ -29,7 +29,7 @@
+   packages = [ "absl_node_hash_set" ]
+ }
+ 
+-shim_headers("btree_shim") {
++absl_shim_headers("btree_shim") {
+   root_path = "."
+   prefix = "absl/container/"
+   headers = [
+@@ -43,7 +43,7 @@
+   public_configs = [ ":system_absl_btree" ]
+ }
+ 
+-shim_headers("fixed_array_shim") {
++absl_shim_headers("fixed_array_shim") {
+   root_path = "."
+   prefix = "absl/container/"
+   headers = [ "fixed_array.h" ]
+@@ -54,7 +54,7 @@
+   public_configs = [ ":system_absl_fixed_array" ]
+ }
+ 
+-shim_headers("flat_hash_map_shim") {
++absl_shim_headers("flat_hash_map_shim") {
+   root_path = "."
+   prefix = "absl/container/"
+   headers = [ "flat_hash_map.h" ]
+@@ -65,7 +65,7 @@
+   public_configs = [ ":system_absl_flat_hash_map" ]
+ }
+ 
+-shim_headers("flat_hash_set_shim") {
++absl_shim_headers("flat_hash_set_shim") {
+   root_path = "."
+   prefix = "absl/container/"
+   headers = [ "flat_hash_set.h" ]
+@@ -76,7 +76,7 @@
+   public_configs = [ ":system_absl_flat_hash_set" ]
+ }
+ 
+-shim_headers("inlined_vector_shim") {
++absl_shim_headers("inlined_vector_shim") {
+   root_path = "."
+   prefix = "absl/container/"
+   headers = [ "inlined_vector.h" ]
+@@ -87,7 +87,7 @@
+   public_configs = [ ":system_absl_inlined_vector" ]
+ }
+ 
+-shim_headers("node_hash_map_shim") {
++absl_shim_headers("node_hash_map_shim") {
+   root_path = "."
+   prefix = "absl/container/"
+   headers = [ "node_hash_map.h" ]
+@@ -98,7 +98,7 @@
+   public_configs = [ ":system_absl_node_hash_map" ]
+ }
+ 
+-shim_headers("node_hash_set_shim") {
++absl_shim_headers("node_hash_set_shim") {
+   root_path = "."
+   prefix = "absl/container/"
+   headers = [ "node_hash_set.h" ]
+@@ -143,7 +143,7 @@
+   packages = [ "absl_chunked_queue" ]
+ }
+ 
+-shim_headers("chunked_queue_ember_shim") {
++absl_shim_headers("chunked_queue_ember_shim") {
+   root_path = "."
+   prefix = "absl/container/"
+   headers = [ "chunked_queue.h" ]
+@@ -158,7 +158,7 @@
+   packages = [ "absl_hash_container_defaults" ]
+ }
+ 
+-shim_headers("hash_container_defaults_ember_shim") {
++absl_shim_headers("hash_container_defaults_ember_shim") {
+   root_path = "."
+   prefix = "absl/container/"
+   headers = [ "hash_container_defaults.h" ]
+@@ -173,7 +173,7 @@
+   packages = [ "absl_layout" ]
+ }
+ 
+-shim_headers("layout_ember_shim") {
++absl_shim_headers("layout_ember_shim") {
+   root_path = "."
+   prefix = "absl/container/"
+   headers = [ "internal/layout.h" ]
+@@ -188,7 +188,7 @@
+   packages = [ "absl_linked_hash_map" ]
+ }
+ 
+-shim_headers("linked_hash_map_ember_shim") {
++absl_shim_headers("linked_hash_map_ember_shim") {
+   root_path = "."
+   prefix = "absl/container/"
+   headers = [ "linked_hash_map.h" ]
+@@ -203,7 +203,7 @@
+   packages = [ "absl_linked_hash_set" ]
+ }
+ 
+-shim_headers("linked_hash_set_ember_shim") {
++absl_shim_headers("linked_hash_set_ember_shim") {
+   root_path = "."
+   prefix = "absl/container/"
+   headers = [ "linked_hash_set.h" ]
+--- a/build/linux/unbundle/absl_crc.gn
++++ b/build/linux/unbundle/absl_crc.gn
+@@ -1,5 +1,5 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ source_set("crc32c_test") {
+ }
+ 
+@@ -16,7 +16,7 @@
+   packages = [ "absl_crc32c" ]
+ }
+ 
+-shim_headers("crc32c_ember_shim") {
++absl_shim_headers("crc32c_ember_shim") {
+   root_path = "."
+   prefix = "absl/crc/"
+   headers = [ "crc32c.h", "internal/crc32c.h", "internal/crc_memcpy.h" ]
+--- a/build/linux/unbundle/absl_debugging.gn
++++ b/build/linux/unbundle/absl_debugging.gn
+@@ -1,5 +1,5 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_failure_signal_handler") {
+   packages = [ "absl_failure_signal_handler" ]
+@@ -13,7 +13,7 @@
+   packages = [ "absl_symbolize" ]
+ }
+ 
+-shim_headers("failure_signal_handler_shim") {
++absl_shim_headers("failure_signal_handler_shim") {
+   root_path = "."
+   prefix = "absl/debugging/"
+   headers = [ "failure_signal_handler.h" ]
+@@ -24,7 +24,7 @@
+   public_configs = [ ":system_absl_failure_signal_handler" ]
+ }
+ 
+-shim_headers("stacktrace_shim") {
++absl_shim_headers("stacktrace_shim") {
+   root_path = "."
+   prefix = "absl/debugging/"
+   headers = [ "stacktrace.h" ]
+@@ -35,7 +35,7 @@
+   public_configs = [ ":system_absl_stacktrace" ]
+ }
+ 
+-shim_headers("symbolize_shim") {
++absl_shim_headers("symbolize_shim") {
+   root_path = "."
+   prefix = "absl/debugging/"
+   headers = [ "symbolize.h" ]
+@@ -56,7 +56,7 @@
+   packages = [ "absl_leak_check" ]
+ }
+ 
+-shim_headers("leak_check_ember_shim") {
++absl_shim_headers("leak_check_ember_shim") {
+   root_path = "."
+   prefix = "absl/debugging/"
+   headers = [ "leak_check.h" ]
+--- a/build/linux/unbundle/absl_flags.gn
++++ b/build/linux/unbundle/absl_flags.gn
+@@ -1,5 +1,5 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("absl_flags_config") {
+   # This target is referenced by //third_party/abseil-cpp:absl_full_deps
+@@ -23,7 +23,7 @@
+   packages = [ "absl_flags_usage" ]
+ }
+ 
+-shim_headers("flags_config_shim") {
++absl_shim_headers("flags_config_shim") {
+   root_path = "."
+   prefix = "absl/flags/"
+   headers = [
+@@ -37,7 +37,7 @@
+   public_configs = [ ":absl_flags_config" ]
+ }
+ 
+-shim_headers("flag_shim") {
++absl_shim_headers("flag_shim") {
+   root_path = "."
+   prefix = "absl/flags/"
+   headers = [
+@@ -51,7 +51,7 @@
+   public_configs = [ ":system_absl_flags" ]
+ }
+ 
+-shim_headers("parse_shim") {
++absl_shim_headers("parse_shim") {
+   root_path = "."
+   prefix = "absl/flags/"
+   headers = [ "parse.h" ]
+@@ -62,7 +62,7 @@
+   public_configs = [ ":system_absl_flags_parse" ]
+ }
+ 
+-shim_headers("flags_reflection_shim") {
++absl_shim_headers("flags_reflection_shim") {
+   root_path = "."
+   prefix = "absl/flags/"
+   headers = [
+@@ -76,7 +76,7 @@
+   public_configs = [ ":system_absl_flags_reflection" ]
+ }
+ 
+-shim_headers("usage_shim") {
++absl_shim_headers("usage_shim") {
+   root_path = "."
+   prefix = "absl/flags/"
+   headers = [ "usage.h" ]
+--- a/build/linux/unbundle/absl_functional.gn
++++ b/build/linux/unbundle/absl_functional.gn
+@@ -1,11 +1,11 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_any_invocable") {
+   packages = [ "absl_any_invocable" ]
+ }
+ 
+-shim_headers("any_invocable_shim") {
++absl_shim_headers("any_invocable_shim") {
+   root_path = "."
+   prefix = "absl/functional/"
+   headers = [ "any_invocable.h" ]
+@@ -20,7 +20,7 @@
+   packages = [ "absl_bind_front" ]
+ }
+ 
+-shim_headers("bind_front_shim") {
++absl_shim_headers("bind_front_shim") {
+   root_path = "."
+   prefix = "absl/functional/"
+   headers = [ "bind_front.h" ]
+@@ -35,7 +35,7 @@
+   packages = [ "absl_function_ref" ]
+ }
+ 
+-shim_headers("function_ref_shim") {
++absl_shim_headers("function_ref_shim") {
+   root_path = "."
+   prefix = "absl/functional/"
+   headers = [ "function_ref.h" ]
+@@ -63,7 +63,7 @@
+   packages = [ "absl_bind_back" ]
+ }
+ 
+-shim_headers("bind_back_ember_shim") {
++absl_shim_headers("bind_back_ember_shim") {
+   root_path = "."
+   prefix = "absl/functional/"
+   headers = [ "bind_back.h" ]
+--- a/build/linux/unbundle/absl_hash.gn
++++ b/build/linux/unbundle/absl_hash.gn
+@@ -1,11 +1,11 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_hash") {
+   packages = [ "absl_hash" ]
+ }
+ 
+-shim_headers("hash_shim") {
++absl_shim_headers("hash_shim") {
+   root_path = "."
+   prefix = "absl/hash/"
+   headers = [ "hash.h" ]
+--- a/build/linux/unbundle/absl_log.gn
++++ b/build/linux/unbundle/absl_log.gn
+@@ -1,5 +1,5 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_absl_check") {
+   packages = [ "absl_absl_check" ]
+@@ -29,7 +29,7 @@
+   packages = [ "absl_log_initialize" ]
+ }
+ 
+-shim_headers("absl_check_shim") {
++absl_shim_headers("absl_check_shim") {
+   root_path = "."
+   prefix = "absl/log/"
+   headers = [ "absl_check.h" ]
+@@ -40,7 +40,7 @@
+   public_configs = [ ":system_absl_absl_check" ]
+ }
+ 
+-shim_headers("absl_log_shim") {
++absl_shim_headers("absl_log_shim") {
+   root_path = "."
+   prefix = "absl/log/"
+   headers = [ "absl_log.h" ]
+@@ -51,7 +51,7 @@
+   public_configs = [ ":system_absl_absl_log" ]
+ }
+ 
+-shim_headers("check_shim") {
++absl_shim_headers("check_shim") {
+   root_path = "."
+   prefix = "absl/log/"
+   headers = [ "check.h" ]
+@@ -62,7 +62,7 @@
+   public_configs = [ ":system_absl_check" ]
+ }
+ 
+-shim_headers("die_if_null_shim") {
++absl_shim_headers("die_if_null_shim") {
+   root_path = "."
+   prefix = "absl/log/"
+   headers = [ "die_if_null.h" ]
+@@ -73,7 +73,7 @@
+   public_configs = [ ":system_absl_die_if_null" ]
+ }
+ 
+-shim_headers("globals_shim") {
++absl_shim_headers("globals_shim") {
+   root_path = "."
+   prefix = "absl/log/"
+   headers = [ "globals.h" ]
+@@ -84,7 +84,7 @@
+   public_configs = [ ":system_absl_log_globals" ]
+ }
+ 
+-shim_headers("initialize_shim") {
++absl_shim_headers("initialize_shim") {
+   root_path = "."
+   prefix = "absl/log/"
+   headers = [ "initialize.h" ]
+@@ -95,7 +95,7 @@
+   public_configs = [ ":system_absl_log_initialize" ]
+ }
+ 
+-shim_headers("log_shim") {
++absl_shim_headers("log_shim") {
+   root_path = "."
+   prefix = "absl/log/"
+   headers = [ "log.h" ]
+@@ -158,7 +158,7 @@
+   packages = [ "absl_absl_vlog_is_on" ]
+ }
+ 
+-shim_headers("absl_vlog_is_on_ember_shim") {
++absl_shim_headers("absl_vlog_is_on_ember_shim") {
+   root_path = "."
+   prefix = "absl/log/"
+   headers = [ "absl_vlog_is_on.h" ]
+@@ -173,7 +173,7 @@
+   packages = [ "absl_log_entry" ]
+ }
+ 
+-shim_headers("log_entry_ember_shim") {
++absl_shim_headers("log_entry_ember_shim") {
+   root_path = "."
+   prefix = "absl/log/"
+   headers = [ "log_entry.h" ]
+@@ -188,7 +188,7 @@
+   packages = [ "absl_log_sink" ]
+ }
+ 
+-shim_headers("log_sink_ember_shim") {
++absl_shim_headers("log_sink_ember_shim") {
+   root_path = "."
+   prefix = "absl/log/"
+   headers = [ "log_sink.h" ]
+@@ -203,7 +203,7 @@
+   packages = [ "absl_log_sink_registry" ]
+ }
+ 
+-shim_headers("log_sink_registry_ember_shim") {
++absl_shim_headers("log_sink_registry_ember_shim") {
+   root_path = "."
+   prefix = "absl/log/"
+   headers = [ "log_sink_registry.h" ]
+@@ -218,7 +218,7 @@
+   packages = [ "absl_log_streamer" ]
+ }
+ 
+-shim_headers("log_streamer_ember_shim") {
++absl_shim_headers("log_streamer_ember_shim") {
+   root_path = "."
+   prefix = "absl/log/"
+   headers = [ "log_streamer.h" ]
+@@ -233,7 +233,7 @@
+   packages = [ "absl_log_structured" ]
+ }
+ 
+-shim_headers("structured_ember_shim") {
++absl_shim_headers("structured_ember_shim") {
+   root_path = "."
+   prefix = "absl/log/"
+   headers = [ "structured.h" ]
+--- a/build/linux/unbundle/absl_memory.gn
++++ b/build/linux/unbundle/absl_memory.gn
+@@ -1,11 +1,11 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_memory") {
+   packages = [ "absl_memory" ]
+ }
+ 
+-shim_headers("memory_shim") {
++absl_shim_headers("memory_shim") {
+   root_path = "."
+   prefix = "absl/memory/"
+   headers = [ "memory.h" ]
+--- a/build/linux/unbundle/absl_meta.gn
++++ b/build/linux/unbundle/absl_meta.gn
+@@ -1,11 +1,11 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_type_traits") {
+   packages = [ "absl_type_traits" ]
+ }
+ 
+-shim_headers("type_traits_shim") {
++absl_shim_headers("type_traits_shim") {
+   root_path = "."
+   prefix = "absl/meta/"
+   headers = [ "type_traits.h" ]
+--- a/build/linux/unbundle/absl_numeric.gn
++++ b/build/linux/unbundle/absl_numeric.gn
+@@ -1,5 +1,5 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_bits") {
+   packages = [ "absl_bits" ]
+@@ -9,7 +9,7 @@
+   packages = [ "absl_int128" ]
+ }
+ 
+-shim_headers("bits_shim") {
++absl_shim_headers("bits_shim") {
+   root_path = "."
+   prefix = "absl/numeric/"
+   headers = [ "bits.h" ]
+@@ -20,7 +20,7 @@
+   public_configs = [ ":system_absl_bits" ]
+ }
+ 
+-shim_headers("int128_shim") {
++absl_shim_headers("int128_shim") {
+   root_path = "."
+   prefix = "absl/numeric/"
+   headers = [ "int128.h" ]
+--- a/build/linux/unbundle/absl_random.gn
++++ b/build/linux/unbundle/absl_random.gn
+@@ -1,11 +1,11 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_random_bit_gen_ref") {
+   packages = [ "absl_random_bit_gen_ref" ]
+ }
+ 
+-shim_headers("bit_gen_ref_shim") {
++absl_shim_headers("bit_gen_ref_shim") {
+   root_path = "."
+   prefix = "absl/random/"
+   headers = [ "bit_gen_ref.h" ]
+@@ -20,7 +20,7 @@
+   packages = [ "absl_random_distributions" ]
+ }
+ 
+-shim_headers("distributions_shim") {
++absl_shim_headers("distributions_shim") {
+   root_path = "."
+   prefix = "absl/random/"
+   headers = [
+@@ -47,7 +47,7 @@
+   packages = [ "absl_random_random" ]
+ }
+ 
+-shim_headers("random_shim") {
++absl_shim_headers("random_shim") {
+   root_path = "."
+   prefix = "absl/random/"
+   headers = [ "random.h" ]
+@@ -68,7 +68,7 @@
+   packages = [ "absl_random_mocking_access" ]
+ }
+ 
+-shim_headers("mocking_access_ember_shim") {
++absl_shim_headers("mocking_access_ember_shim") {
+   root_path = "."
+   prefix = "absl/random/"
+   headers = [ "mocking_access.h" ]
+@@ -83,7 +83,7 @@
+   packages = [ "absl_random_seed_gen_exception" ]
+ }
+ 
+-shim_headers("seed_gen_exception_ember_shim") {
++absl_shim_headers("seed_gen_exception_ember_shim") {
+   root_path = "."
+   prefix = "absl/random/"
+   headers = [ "seed_gen_exception.h" ]
+@@ -98,7 +98,7 @@
+   packages = [ "absl_random_seed_sequences" ]
+ }
+ 
+-shim_headers("seed_sequences_ember_shim") {
++absl_shim_headers("seed_sequences_ember_shim") {
+   root_path = "."
+   prefix = "absl/random/"
+   headers = [ "seed_sequences.h" ]
+--- a/build/linux/unbundle/absl_status.gn
++++ b/build/linux/unbundle/absl_status.gn
+@@ -1,5 +1,5 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_status") {
+   packages = [ "absl_status" ]
+@@ -9,7 +9,7 @@
+   packages = [ "absl_statusor" ]
+ }
+ 
+-shim_headers("status_shim") {
++absl_shim_headers("status_shim") {
+   root_path = "."
+   prefix = "absl/status/"
+   headers = [
+@@ -23,7 +23,7 @@
+   public_configs = [ ":system_absl_status" ]
+ }
+ 
+-shim_headers("statusor_shim") {
++absl_shim_headers("statusor_shim") {
+   root_path = "."
+   prefix = "absl/status/"
+   headers = [ "statusor.h" ]
+@@ -47,7 +47,7 @@
+   packages = [ "absl_status_builder" ]
+ }
+ 
+-shim_headers("status_builder_ember_shim") {
++absl_shim_headers("status_builder_ember_shim") {
+   root_path = "."
+   prefix = "absl/status/"
+   headers = [ "status_builder.h" ]
+@@ -62,7 +62,7 @@
+   packages = [ "absl_status_macros" ]
+ }
+ 
+-shim_headers("status_macros_ember_shim") {
++absl_shim_headers("status_macros_ember_shim") {
+   root_path = "."
+   prefix = "absl/status/"
+   headers = [ "status_macros.h" ]
+--- a/build/linux/unbundle/absl_strings.gn
++++ b/build/linux/unbundle/absl_strings.gn
+@@ -1,5 +1,5 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_cord") {
+   packages = [ "absl_cord" ]
+@@ -17,7 +17,7 @@
+   packages = [ "absl_str_format" ]
+ }
+ 
+-shim_headers("cord_shim") {
++absl_shim_headers("cord_shim") {
+   root_path = "."
+   prefix = "absl/strings/"
+   headers = [ "cord.h" ]
+@@ -28,7 +28,7 @@
+   public_configs = [ ":system_absl_cord" ]
+ }
+ 
+-shim_headers("strings_shim") {
++absl_shim_headers("strings_shim") {
+   root_path = "."
+   prefix = "absl/strings/"
+   headers = [
+@@ -52,7 +52,7 @@
+   public_configs = [ ":system_absl_strings" ]
+ }
+ 
+-shim_headers("str_format_shim") {
++absl_shim_headers("str_format_shim") {
+   root_path = "."
+   prefix = "absl/strings/"
+   headers = [ "str_format.h" ]
+@@ -63,7 +63,7 @@
+   public_configs = [ ":system_absl_str_format" ]
+ }
+ 
+-shim_headers("string_view_shim") {
++absl_shim_headers("string_view_shim") {
+   root_path = "."
+   prefix = "absl/strings/"
+   headers = [ "string_view.h" ]
+@@ -169,7 +169,7 @@
+   packages = [ "absl_charset" ]
+ }
+ 
+-shim_headers("charset_ember_shim") {
++absl_shim_headers("charset_ember_shim") {
+   root_path = "."
+   prefix = "absl/strings/"
+   headers = [ "charset.h" ]
+@@ -184,7 +184,7 @@
+   packages = [ "absl_strings_resize_and_overwrite" ]
+ }
+ 
+-shim_headers("resize_and_overwrite_ember_shim") {
++absl_shim_headers("resize_and_overwrite_ember_shim") {
+   root_path = "."
+   prefix = "absl/strings/"
+   headers = [ "resize_and_overwrite.h" ]
+--- a/build/linux/unbundle/absl_synchronization.gn
++++ b/build/linux/unbundle/absl_synchronization.gn
+@@ -1,11 +1,11 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_synchronization") {
+   packages = [ "absl_synchronization" ]
+ }
+ 
+-shim_headers("synchronization_shim") {
++absl_shim_headers("synchronization_shim") {
+   root_path = "."
+   prefix = "absl/synchronization/"
+   headers = [
+--- a/build/linux/unbundle/absl_time.gn
++++ b/build/linux/unbundle/absl_time.gn
+@@ -1,11 +1,11 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_time") {
+   packages = [ "absl_time" ]
+ }
+ 
+-shim_headers("time_shim") {
++absl_shim_headers("time_shim") {
+   root_path = "."
+   prefix = "absl/time/"
+   headers = [
+@@ -27,7 +27,7 @@
+   packages = [ "absl_clock_interface" ]
+ }
+ 
+-shim_headers("clock_interface_ember_shim") {
++absl_shim_headers("clock_interface_ember_shim") {
+   root_path = "."
+   prefix = "absl/time/"
+   headers = [ "clock_interface.h" ]
+--- a/build/linux/unbundle/absl_types.gn
++++ b/build/linux/unbundle/absl_types.gn
+@@ -1,5 +1,5 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_any") {
+   packages = [ "absl_any" ]
+@@ -25,7 +25,7 @@
+   packages = [ "absl_variant" ]
+ }
+ 
+-shim_headers("any_shim") {
++absl_shim_headers("any_shim") {
+   root_path = "."
+   prefix = "absl/types/"
+   headers = [ "any.h" ]
+@@ -36,7 +36,7 @@
+   public_configs = [ ":system_absl_any" ]
+ }
+ 
+-shim_headers("bad_any_cast_shim") {
++absl_shim_headers("bad_any_cast_shim") {
+   root_path = "."
+   prefix = "absl/types/"
+   headers = [ "bad_any_cast.h" ]
+@@ -47,7 +47,7 @@
+   public_configs = [ ":system_absl_bad_any_cast" ]
+ }
+ 
+-shim_headers("bad_optional_access_shim") {
++absl_shim_headers("bad_optional_access_shim") {
+   root_path = "."
+   prefix = "absl/types/"
+   headers = [ "bad_optional_access.h" ]
+@@ -58,7 +58,7 @@
+   public_configs = [ ":system_absl_bad_optional_access" ]
+ }
+ 
+-shim_headers("optional_shim") {
++absl_shim_headers("optional_shim") {
+   root_path = "."
+   prefix = "absl/types/"
+   headers = [ "optional.h" ]
+@@ -69,7 +69,7 @@
+   public_configs = [ ":system_absl_optional" ]
+ }
+ 
+-shim_headers("span_shim") {
++absl_shim_headers("span_shim") {
+   root_path = "."
+   prefix = "absl/types/"
+   headers = [ "span.h" ]
+@@ -80,7 +80,7 @@
+   public_configs = [ ":system_absl_span" ]
+ }
+ 
+-shim_headers("variant_shim") {
++absl_shim_headers("variant_shim") {
+   root_path = "."
+   prefix = "absl/types/"
+   headers = [ "variant.h" ]
+@@ -104,7 +104,7 @@
+   packages = [ "absl_any_span" ]
+ }
+ 
+-shim_headers("any_span_ember_shim") {
++absl_shim_headers("any_span_ember_shim") {
+   root_path = "."
+   prefix = "absl/types/"
+   headers = [ "any_span.h" ]
+@@ -119,7 +119,7 @@
+   packages = [ "absl_compare" ]
+ }
+ 
+-shim_headers("compare_ember_shim") {
++absl_shim_headers("compare_ember_shim") {
+   root_path = "."
+   prefix = "absl/types/"
+   headers = [ "compare.h" ]
+@@ -134,7 +134,7 @@
+   packages = [ "absl_internal_optional_ref" ]
+ }
+ 
+-shim_headers("optional_ref_ember_shim") {
++absl_shim_headers("optional_ref_ember_shim") {
+   root_path = "."
+   prefix = "absl/types/"
+   headers = [ "optional_ref.h" ]
+@@ -149,7 +149,7 @@
+   packages = [ "absl_source_location" ]
+ }
+ 
+-shim_headers("source_location_ember_shim") {
++absl_shim_headers("source_location_ember_shim") {
+   root_path = "."
+   prefix = "absl/types/"
+   headers = [ "source_location.h" ]
+--- a/build/linux/unbundle/absl_utility.gn
++++ b/build/linux/unbundle/absl_utility.gn
+@@ -1,11 +1,11 @@
+ import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++import("//build/ember_absl_shim.gni")
+ 
+ pkg_config("system_absl_utility") {
+   packages = [ "absl_utility" ]
+ }
+ 
+-shim_headers("utility_shim") {
++absl_shim_headers("utility_shim") {
+   root_path = "."
+   prefix = "absl/utility/"
+   headers = [ "utility.h" ]

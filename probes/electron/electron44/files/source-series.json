@@ -752,6 +752,11 @@
       "file": "chromium-integration.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-abseil-complete-shims.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {
