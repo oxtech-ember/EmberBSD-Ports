@@ -87,10 +87,12 @@ case "\$target" in
             chmod -R u+w "\$w"; rm -rf "\$w"
         fi ;;
     depends) ;;
-    package)
-        [ ! -e "\$w/old" ] || echo "OLD WRKDIR of \$pkg at build" >> \$out/errors
-        mkdir -p "\$w"; : > "\$w/new"; sleep 2 ;;
-    package-install)
+    package|package-install)
+        if [ ! -e "\$w/new" ]; then
+            [ ! -e "\$w/old" ] || echo "OLD WRKDIR of \$pkg at build" >> \$out/errors
+            mkdir -p "\$w"; : > "\$w/new"; sleep 2
+        fi
+        [ "\$target" = package-install ] || exit 0
         \$add -K \$out/target-db \$pkg; : > \$out/packages/All/\$pkg-1.0.tgz ;;
     *) echo "UNKNOWN \$target" >> \$out/errors; exit 1 ;;
 esac

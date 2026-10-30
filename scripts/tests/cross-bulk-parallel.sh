@@ -6,7 +6,8 @@
 # installed, installs into one package database never overlap, a failure
 # blocks its dependents transitively, a skipped dependency blocks too,
 # MAKE_JOBS is split over the packages, a second run builds only the failure
-# again, and SIGTERM lets the running packages finish but starts no new one.
+# again, SIGTERM lets the running packages finish but starts no new one, and
+# a package gets one build run (package-install) after show-vars and clean.
 # Usage: cross-bulk-parallel.sh NEW_OUTPUT
 set -eu
 [ "$#" = 1 ] || { echo 'Usage: cross-bulk-parallel.sh NEW_OUTPUT' >&2; exit 2; }
@@ -120,6 +121,7 @@ newstate
 bulk || fail "first build: $(cat "$out/bulk.log")"
 [ ! -s "$out/errors" ] || fail "$(cat "$out/errors")"
 max=$(sort -n "$out/concurrency" | tail -n 1)
+[ "$(calls a)" = 3 ] || fail "package a ran bmake $(calls a) times, expected show-vars, clean, package-install"
 [ "$max" -ge 2 ] || fail "at most $max package built at a time"
 [ "$max" -le 3 ] || fail "$max packages at once, more than CROSS_BULK_JOBS=3"
 grep -q 'MAKE_JOBS=3 ' "$out/calls" || fail 'MAKE_JOBS is not 1.5 x 6 CPUs / 3 packages'
@@ -139,7 +141,7 @@ bulk || fail "second build: $(cat "$out/bulk.log")"
 for pkg in a b c d j; do
     [ "$(calls $pkg)" = 1 ] || fail "done package $pkg ran bmake $(calls $pkg) times"
 done
-[ "$(calls f)" = 4 ] || fail "failed package f ran bmake $(calls f) times, expected 4"
+[ "$(calls f)" = 3 ] || fail "failed package f ran bmake $(calls f) times, expected 3"
 [ "$(calls e)" = 0 ] || fail 'blocked package e ran bmake'
 
 # SIGTERM: the running packages finish, nothing new starts.

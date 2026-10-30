@@ -555,6 +555,8 @@ left. Without a `WRKOBJDIR`, for a `WRKDIR` on another file system, or with
 `CROSS_BULK_TRASH=no`, the clean step removes the old `WRKDIR` as before.
 A package whose `WRKDIR` went to the trash gets no clean step: every
 target-mode bmake run parses the package again, which takes seconds.
+For the same reason each target package gets one `package-install` run,
+which does the depends, package and install steps.
 `scripts/tests/cross-bulk-trash.sh NEW_OUTPUT` checks with a slow clean step
 that no package waits for a removal.
 `scripts/tests/cross-bulk-fetch-present.sh NEW_OUTPUT PKGPATH` checks that

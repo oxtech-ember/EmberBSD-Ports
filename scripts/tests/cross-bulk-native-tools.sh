@@ -117,14 +117,15 @@ case "\$target" in
             esac
         done ;;
     clean) rm -f \$out/work/\$kind-\$pkg.built ;;
-    depends)
+    depends) needs ;;
+    package) work ;;
+    package-install)
         needs
         if [ "\$pkg" = b ]; then
             sleep 6
             [ -e \$out/target-db/c ] || echo 'WAIT c was not installed during the long depends step of b' >> \$out/errors
-        fi ;;
-    package) work ;;
-    package-install) work; \$add -K \$out/target-db \$pkg; : > \$out/packages/All/\$pkg-1.0.tgz ;;
+        fi
+        work; \$add -K \$out/target-db \$pkg; : > \$out/packages/All/\$pkg-1.0.tgz ;;
     install)
         [ -n "\$native" ] || { echo "target install of \$pkg" >> \$out/errors; exit 1; }
         echo "\$pkg \${settings:-native}" >> \$out/native-builds

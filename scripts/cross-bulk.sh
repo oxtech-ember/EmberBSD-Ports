@@ -546,15 +546,11 @@ build_one()
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name" >> "$state/progress"
     prepare_wrkdir "$wrkdir" "$job.$key"
     : > "$log"
-    if [ "$workers" -eq 1 ]; then
-        { [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" clean < /dev/null >> "$log" 2>&1; } &&
-            bmk -C "$PKGSRCDIR/$path" package-install < /dev/null >> "$log" 2>&1
-    else
-        { [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" clean < /dev/null >> "$log" 2>&1; } &&
-            bmk -C "$PKGSRCDIR/$path" depends < /dev/null >> "$log" 2>&1 &&
-            bmk -C "$PKGSRCDIR/$path" package < /dev/null >> "$log" 2>&1 &&
-            bmk -C "$PKGSRCDIR/$path" package-install < /dev/null >> "$log" 2>&1
-    fi && {
+    # One package-install run does depends, package and the install: each
+    # target-mode bmake run parses the package again, and the pkg_add wrapper
+    # already keeps installs into one database apart.
+    { [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" clean < /dev/null >> "$log" 2>&1; } &&
+        bmk -C "$PKGSRCDIR/$path" package-install < /dev/null >> "$log" 2>&1 && {
         echo "$(date '+%Y-%m-%d %H:%M:%S') done $path" >> "$state/progress"
         result "$key" "built $path $name $(shasum -a 256 "$file" | cut -d ' ' -f 1)"
         return 0
