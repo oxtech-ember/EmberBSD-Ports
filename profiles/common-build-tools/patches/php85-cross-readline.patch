@@ -1,0 +1,25 @@
+Cross php85 finds the target readline headers.
+
+configure looks for DIR/include/readline/readline.h with test -f on the
+build host. A cross build passed the target prefix /usr/pkg, which is not
+installed on the build host, so configure stopped with "Please reinstall
+readline". The buildlink tree holds the target readline.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/lang/php85/options.mk
++++ b/lang/php85/options.mk
+@@ -38,7 +38,14 @@
+ 
+ .if !empty(PKG_OPTIONS:Mreadline)
+ .include "../../devel/readline/buildlink3.mk"
++.  if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# configure looks for DIR/include/readline/readline.h with test -f on the
++# build host, where the target prefix is not installed. The buildlink tree
++# holds the target readline; the wrappers record the target rpath.
++CONFIGURE_ARGS+=	--with-readline=${BUILDLINK_DIR}
++.  else
+ CONFIGURE_ARGS+=	--with-readline=${BUILDLINK_PREFIX.readline}
++.  endif
+ .else
+ CONFIGURE_ARGS+=	--without-readline
+ .endif
