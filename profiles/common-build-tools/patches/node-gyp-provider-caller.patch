@@ -1,0 +1,35 @@
+--- tools/gyp_node.py.orig
++++ tools/gyp_node.py
+@@ -6,7 +6,16 @@
+ script_dir = os.path.dirname(__file__)
+ node_root  = os.path.normpath(os.path.join(script_dir, os.pardir))
+ 
+-sys.path.insert(0, os.path.join(node_root, 'tools', 'gyp', 'pylib'))
++gyp_source = os.environ.get('NODE_GYP_SOURCE')
++if gyp_source is not None:
++  if not os.path.isabs(gyp_source):
++    raise ValueError('NODE_GYP_SOURCE must be absolute')
++  gyp_source = os.path.realpath(gyp_source)
++  if not os.path.isfile(os.path.join(gyp_source, 'gyp_main.py')):
++    raise ValueError('NODE_GYP_SOURCE does not contain gyp_main.py')
++else:
++  gyp_source = os.path.join(node_root, 'tools', 'gyp')
++sys.path.insert(0, os.path.join(gyp_source, 'pylib'))
+ import gyp
+ 
+ # Add search path for `pymod_do_main` first to avoid depending on
+@@ -45,7 +54,13 @@
+   args.append('-Dcomponent=static_library')
+   args.append('-Dlibrary=static_library')
+ 
+-  rc = gyp.main(args)
++  # Regeneration must invoke the same selected source provider.
++  previous_argv0 = sys.argv[0]
++  try:
++    sys.argv[0] = os.path.join(gyp_source, 'gyp_main.py')
++    rc = gyp.main(args)
++  finally:
++    sys.argv[0] = previous_argv0
+   if rc != 0:
+     print('Error running GYP')
+     sys.exit(rc)

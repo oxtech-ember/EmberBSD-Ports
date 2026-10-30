@@ -1,0 +1,402 @@
+--- a/lang/nodejs/Makefile
++++ b/lang/nodejs/Makefile
+@@ -23,6 +23,12 @@
+ CPPFLAGS+= -I${NODE_COMMON_INCLUDES:Q} -I${NODE_COMMON_INCLUDES:Q}/third_party/fp16/src/include -I${NODE_COMMON_INCLUDES:Q}/third_party/llvm-libc/src -DLIBC_NAMESPACE=${NODE_LLVM_LIBC_NAMESPACE}
+ BUILDLINK_PASSTHRU_DIRS+= ${INSPECTOR_PROTOCOL_SOURCE}
+ MAKE_ENV+= PYTHONDONTWRITEBYTECODE=1
++TOOL_DEPENDS+= ${PYPKGPREFIX}-gyp>=0.22.4:../../devel/gyp
++GYP_SOURCE_DIR?= ${TOOLBASE}/share/gyp
++CONFIGURE_ENV+= NODE_GYP_SOURCE=${GYP_SOURCE_DIR:Q}
++
++pre-configure:
++	${TOOL_PYTHONBIN:Q} -B -I -S ${_PKGSRCDIR:Q}/devel/gyp/files/verify-source.py --sdk-source ${EMBERBSD_SDK_SOURCE:Q} --source ${GYP_SOURCE_DIR:Q} --pkgsrc-root ${_PKGSRCDIR:Q}
+ CONFIGURE_ENV+= PYTHONDONTWRITEBYTECODE=1
+ 
+ # The Node owner helper prepares the selected shared inputs and invokes the
+--- a/lang/nodejs/distinfo
++++ b/lang/nodejs/distinfo
+@@ -22,9 +22,6 @@
+ SHA1 (patch-src_inspector__agent.cc) = 13eaf437341feab3f481c09eff19b59255f769c8
+ SHA1 (patch-src_inspector_node__inspector.gypi) = 9321e32861920414444a427bc818a066eec5d083
+ SHA1 (patch-src_node__postmortem__metadata.cc) = 9938482d724ad6636af5dc3fa719ec26ed8539ff
+-SHA1 (patch-tools_gyp_pylib_gyp_generator_make.py) = 180fd01e17846afc2c060599881a4426dc59b32c
+-SHA1 (patch-tools_gyp_pylib_gyp_input.py) = be36e92ad0d9d9dac87fbce3ffebca7513b0f961
+-SHA1 (patch-tools_gyp_pylib_gyp_xcode__emulation.py) = e787fa1b95e1f4996f0673fdcfc043565ad58e95
+ SHA1 (patch-tools_inspector__protocol.gyp) = c6beec4944ba02d23ee1815367759589afa0be45
+ SHA1 (patch-tools_install.py) = ac296123fa498c7edee3a5735f2e24c862037813
+ SHA1 (patch-tools_v8__gypfiles_ember__inspector__inputs.py) = 1d70c0a44dadd278ac6a4ad16f8349ae64356e16
+@@ -56,7 +53,6 @@
+ SHA1 (patch-node_gn__zzzz_js2c__runtime) = 8fe8862f659b1c38fd54b9657bd86a04459b9c38
+ SHA1 (patch-node_gn__zzzzz_shared__undici) = b208fe927132ee6f6171424e7ede787105b2329f
+ SHA1 (patch-node_gn__zzzzzz_perfetto__public) = 19ff5a1a0db961fe17dbe3574bc917ebeef2a5e1
+-SHA1 (patch-tools_gyp_pylib_gyp_generator_zz__host__link) = 5934c90200e216eeacb6c8a20dcbafb162b675f9
+ SHA1 (patch-zzzzz-node__torque__producer) = 24d5361e23eb76e4aad94e68073455db98bc9da4
+ SHA1 (patch-zzzzzz-ember-module-abi) = 54c70ca681d84f71e6b5bbf33f093f0540f69610
+ SHA1 (patch-zzzzzzz-inspector-watchdog-lifetime) = c3e1fb4391dfc6608bb66cabf68afb1debcf0c85
+--- a/lang/nodejs/patches/patch-tools_gyp_pylib_gyp_generator_make.py
++++ /dev/null
+@@ -1,156 +0,0 @@
+-$NetBSD: patch-tools_gyp_pylib_gyp_generator_make.py,v 1.1 2025/11/13 19:00:14 adam Exp $
+-
+-Use the selected Darwin libtool. Keep the system default when unset.
+-Add support for NetBSD and DragonFly.
+-
+-
+-Support absolute common-provider sources and opt-in action C++ flags.
+---- tools/gyp/pylib/gyp/generator/make.py.orig
+-+++ tools/gyp/pylib/gyp/generator/make.py
+-@@ -57,7 +57,7 @@
+- generator_wants_sorted_dependencies = False
+- 
+- # Placates pylint.
+--generator_additional_non_configuration_keys = []
+-+generator_additional_non_configuration_keys = ["gyp_generated_order_only"]
+- generator_additional_path_sections = []
+- generator_extra_sources_for_rules = []
+- generator_filelist_paths = None
+-@@ -81,9 +81,9 @@
+-         import gyp.generator.xcode as xcode_generator  # noqa: PLC0415
+- 
+-         global generator_additional_non_configuration_keys
+--        generator_additional_non_configuration_keys = getattr(
+-+        generator_additional_non_configuration_keys = list(getattr(
+-             xcode_generator, "generator_additional_non_configuration_keys", []
+--        )
+-+        )) + ["gyp_generated_order_only"]
+-         global generator_additional_path_sections
+-         generator_additional_path_sections = getattr(
+-             xcode_generator, "generator_additional_path_sections", []
+-@@ -208,7 +208,8 @@
+- 
+- LINK_COMMANDS_MAC = """\
+- quiet_cmd_alink = LIBTOOL-STATIC $@
+--cmd_alink = rm -f $@ && %(python)s gyp-mac-tool filter-libtool libtool $(GYP_LIBTOOLFLAGS) -static -o $@ $(filter %%.o,$^)
+-+GYP_LIBTOOL ?= /usr/bin/libtool
+-+cmd_alink = rm -f $@ && %(python)s gyp-mac-tool filter-libtool "$(GYP_LIBTOOL)" $(GYP_LIBTOOLFLAGS) -static -o $@ $(filter %%.o,$^)
+- 
+- quiet_cmd_link = LINK($(TOOLSET)) $@
+- cmd_link = $(LINK.$(TOOLSET)) $(GYP_LDFLAGS) $(LDFLAGS.$(TOOLSET)) -o "$@" $(LD_INPUTS) $(LIBS)
+-@@ -856,6 +857,9 @@
+-         self.qualified_target = qualified_target
+-         self.path = base_path
+-         self.target = spec["target_name"]
+-+        self.action_cxxflags_outputs = []
+-+        self.independent_action_outputs = []
+-+        self.generated_order_only = spec.get("gyp_generated_order_only", [])
+-         self.type = spec["type"]
+-         self.toolset = spec["toolset"]
+- 
+-@@ -1134,8 +1138,22 @@
+- 
+-             # Stuff the outputs in a variable so we can refer to them later.
+-             outputs_variable = "action_%s_outputs" % name
+-+            if action.get("gyp_action_cxxflags"):
+-+                self.action_cxxflags_outputs.append("$(%s)" % outputs_variable)
+-+            if action.get("gyp_action_independent"):
+-+                self.independent_action_outputs.append("$(%s)" % outputs_variable)
+-             self.WriteLn("{} := {}".format(outputs_variable, " ".join(outputs)))
+-+            companion = action.get("gyp_action_companion")
+-+            if companion:
+-+                companion = self.Absolutify(companion)
+-+                missing = "gyp_missing_" + name
+-+                self.WriteLn("ifeq ($(wildcard %s),)" % companion)
+-+                self.WriteLn(".PHONY: %s" % missing)
+-+                self.WriteLn("$(%s): %s" % (outputs_variable, missing))
+-+                self.WriteLn("endif")
+-             extra_outputs.append("$(%s)" % outputs_variable)
+-+            if action.get("gyp_action_include_depfile"):
+-+                self.WriteLn("-include $(%s).d" % outputs_variable)
+-             self.WriteLn()
+- 
+-         self.WriteLn()
+-@@ -1442,8 +1460,25 @@
+-             self.WriteList(includes, "INCS_%s" % configname, prefix="-I")
+- 
+-         compilable = list(filter(Compilable, sources))
+--        objs = [self.Objectify(self.Absolutify(Target(c))) for c in compilable]
+-+        objs = []
+-+        for source in compilable:
+-+            path = self.Absolutify(source)
+-+            if os.path.isabs(path):
+-+                if any(character.isspace() for character in path):
+-+                    raise ValueError("GYP absolute source path contains whitespace: %s" % path)
+-+                # Absolute common-provider paths cannot match srcdir suffix rules.
+-+                digest = hashlib.sha256(path.encode("utf-8")).hexdigest()
+-+                obj = self.Objectify("_gyp_absolute/" + digest + ".o")
+-+            else:
+-+                obj = self.Objectify(self.Absolutify(Target(source)))
+-+            objs.append(obj)
+-         self.WriteList(objs, "OBJS")
+-+        for source, obj in zip(compilable, objs):
+-+            path = self.Absolutify(source)
+-+            if os.path.isabs(path):
+-+                kind = COMPILABLE_EXTENSIONS[os.path.splitext(path)[1]]
+-+                self.WriteMakeRule([obj], [path],
+-+                    actions=["@$(call do_cmd,%s,1)" % kind], force=True)
+- 
+-         for obj in objs:
+-             assert " " not in obj, "Spaces in object filenames not supported (%s)" % obj
+-@@ -1460,6 +1495,11 @@
+-                 order_only=True,
+-             )
+- 
+-+        if self.generated_order_only:
+-+            self.WriteMakeRule(["$(OBJS)"], self.generated_order_only,
+-+                               comment="Generated headers required before compilation.",
+-+                               order_only=True)
+-+
+-         # Make sure the actions and rules run first.
+-         # If they generate any extra headers etc., the per-.o file dep tracking
+-         # will catch the proper rebuilds, so order only is still ok here.
+-@@ -1485,6 +1525,12 @@
+- # See "Target-specific Variable Values" in the GNU Make manual."""
+-             )
+-             self.WriteLn("$(OBJS): TOOLSET := $(TOOLSET)")
+-+            for output in self.action_cxxflags_outputs:
+-+                self.WriteLn(
+-+                    output + ": GYP_CXXFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE)) "
+-+                    + precompiled_header.GetInclude("cc") + " $(CFLAGS_$(BUILDTYPE)) "
+-+                    + "$(CFLAGS_CC_$(BUILDTYPE))"
+-+                )
+-             self.WriteLn(
+-                 "$(OBJS): GYP_CFLAGS := "
+-                 "$(DEFS_$(BUILDTYPE)) "
+-@@ -1702,12 +1748,15 @@
+- 
+-         if extra_outputs:
+-             self.WriteDependencyOnExtraOutputs(self.output_binary, extra_outputs)
+--            self.WriteMakeRule(
+--                extra_outputs,
+--                deps,
+--                comment=("Preserve order dependency of special output on deps."),
+--                order_only=True,
+--            )
+-+            dependent_outputs = [output for output in extra_outputs
+-+                                 if output not in self.independent_action_outputs]
+-+            if dependent_outputs:
+-+                self.WriteMakeRule(
+-+                    dependent_outputs,
+-+                    deps,
+-+                    comment=("Preserve order dependency of special output on deps."),
+-+                    order_only=True,
+-+                )
+- 
+-         target_postbuilds = {}
+-         if self.type != "none":
+-@@ -2562,7 +2611,7 @@
+-                 "flock_index": 2,
+-             }
+-         )
+--    elif flavor == "freebsd":
+-+    elif flavor == "freebsd" or flavor == 'dragonflybsd' or flavor == 'netbsd':
+-         # Note: OpenBSD has sysutils/flock. lockf seems to be FreeBSD specific.
+-         header_params.update({"flock": "lockf"})
+-     elif flavor == "openbsd":
+--- a/lang/nodejs/patches/patch-tools_gyp_pylib_gyp_generator_zz__host__link
++++ /dev/null
+@@ -1,32 +0,0 @@
+-$NetBSD$
+-
+-Select host linker commands for Darwin when cross-building for a GNU target.
+-Origin: EmberBSD (AI-assisted).
+-
+---- tools/gyp/pylib/gyp/generator/make.py
+-+++ tools/gyp/pylib/gyp/generator/make.py
+-@@ -2638,6 +2638,24 @@
+-             }
+-         )
+- 
+-+    # The target flavor does not determine the executable format of host tools.
+-+    # Keep target commands intact while selecting Darwin commands for host links.
+-+    if sys.platform == "darwin" and header_params["link_commands"] == LINK_COMMANDS_LINUX:
+-+        commands = header_params["link_commands"]
+-+        mac_lines = LINK_COMMANDS_MAC.splitlines()
+-+        for name in ("link", "solink", "solink_module"):
+-+            prefix = "cmd_" + name + " = "
+-+            target_line = next(line for line in commands.splitlines() if line.startswith(prefix))
+-+            host_line = next(line for line in mac_lines if line.startswith(prefix))
+-+            commands = commands.replace(
+-+                target_line,
+-+                target_line.replace(prefix, "cmd_" + name + "_target = ", 1)
+-+                + "\n" + host_line.replace(prefix, "cmd_" + name + "_host = ", 1)
+-+                + "\n" + prefix + "$(cmd_" + name + "_$(TOOLSET))",
+-+                1,
+-+            )
+-+        header_params["link_commands"] = commands
+-+
+-     build_file, _, _ = gyp.common.ParseQualifiedTarget(target_list[0])
+-     make_global_settings_array = data[build_file].get("make_global_settings", [])
+-     wrappers = {}
+--- a/lang/nodejs/patches/patch-tools_gyp_pylib_gyp_input.py
++++ /dev/null
+@@ -1,30 +0,0 @@
+-$NetBSD$
+-
+-Python 3.15 removed ast.Str. Keep checked GYP input restricted to strings,
+-lists and dictionaries, with the original duplicate-key/type diagnostics.
+-Origin: EmberBSD (AI-assisted); not submitted upstream.
+-
+---- tools/gyp/pylib/gyp/input.py.orig
+-+++ tools/gyp/pylib/gyp/input.py
+-@@ -189,8 +189,8 @@
+-     if isinstance(node, ast.Dict):
+-         dict = {}
+-         for key, value in zip(node.keys, node.values):
+--            assert isinstance(key, ast.Str)
+--            key = key.s
+-+            assert isinstance(key, ast.Constant) and isinstance(key.value, str)
+-+            key = key.value
+-             if key in dict:
+-                 raise GypError(
+-                     "Key '"
+-@@ -212,8 +212,8 @@
+-             kp.append(repr(index))
+-             children.append(CheckNode(child, kp))
+-         return children
+--    elif isinstance(node, ast.Str):
+--        return node.s
+-+    elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+-+        return node.value
+-     else:
+-         raise TypeError(
+-             "Unknown AST node at key path '" + ".".join(keypath) + "': " + repr(node)
+--- a/lang/nodejs/patches/patch-tools_gyp_pylib_gyp_xcode__emulation.py
++++ /dev/null
+@@ -1,137 +0,0 @@
+-$NetBSD: patch-tools_gyp_pylib_gyp_xcode__emulation.py,v 1.1 2025/11/13 19:00:14 adam Exp $
+-
+-Do not generate debugging symbols by default (pkgsrc).
+-Read selected macOS SDK/Xcode metadata without searching for host tools.
+-Origin of metadata selection: EmberBSD (AI-assisted), not submitted upstream.
+-
+---- tools/gyp/pylib/gyp/xcode_emulation.py.orig
+-+++ tools/gyp/pylib/gyp/xcode_emulation.py
+-@@ -10,6 +10,7 @@
+- import copy
+- import os
+- import os.path
+-+import plistlib
+- import re
+- import shlex
+- import subprocess
+-@@ -26,6 +27,56 @@
+- # Populated lazily by GetXcodeArchsDefault, to an |XcodeArchsDefault| instance
+- # corresponding to the installed version of Xcode.
+- XCODE_ARCHS_DEFAULT_CACHE = None
+-+
+-+
+-+SELECTED_MACOS_CACHE = None
+-+
+-+
+-+def _SelectedMacOSMetadata():
+-+    """Read explicitly selected host ABI metadata without tool discovery."""
+-+    global SELECTED_MACOS_CACHE
+-+    sdk = os.environ.get("GYP_MACOS_SDK_PATH", "")
+-+    xcode_plist = os.environ.get("GYP_XCODE_VERSION_PLIST", "")
+-+    if not sdk and not xcode_plist:
+-+        return None
+-+    inputs = (sdk, xcode_plist)
+-+    if SELECTED_MACOS_CACHE and SELECTED_MACOS_CACHE["inputs"] == inputs:
+-+        return SELECTED_MACOS_CACHE
+-+    if not all(os.path.isabs(path) for path in inputs):
+-+        raise GypError("GYP_MACOS_SDK_PATH and GYP_XCODE_VERSION_PLIST must both be absolute paths")
+-+    try:
+-+        with open(os.path.join(sdk, "SDKSettings.plist"), "rb") as stream:
+-+            settings = plistlib.load(stream)
+-+        with open(xcode_plist, "rb") as stream:
+-+            xcode = plistlib.load(stream)
+-+        version = settings["Version"]
+-+        name = settings["CanonicalName"]
+-+        xcode_version = xcode["CFBundleShortVersionString"]
+-+        xcode_build = xcode["ProductBuildVersion"]
+-+        if (not isinstance(version, str) or not re.fullmatch(r"[0-9]+(?:\.[0-9]+){0,2}", version)
+-+                or name != "macosx" + version
+-+                or not isinstance(xcode_version, str)
+-+                or not re.fullmatch(r"[0-9]+(?:\.[0-9]+){0,2}", xcode_version)
+-+                or not isinstance(xcode_build, str)
+-+                or not re.fullmatch(r"[A-Za-z0-9]+", xcode_build)):
+-+            raise ValueError("invalid macOS SDK or Xcode version metadata")
+-+    except (OSError, ValueError, KeyError, TypeError) as error:
+-+        raise GypError("Cannot read selected macOS metadata: " + str(error)) from error
+-+    parts = xcode_version.split(".")
+-+    parts[0] = parts[0].zfill(2)
+-+    SELECTED_MACOS_CACHE = {
+-+        "inputs": inputs, "path": sdk, "name": name, "version": version,
+-+        "xcode_version": ("".join(parts) + "00")[:4], "xcode_build": xcode_build,
+-+    }
+-+    return SELECTED_MACOS_CACHE
+-+
+-+
+-+def _CheckSelectedMacOSSDK(metadata, sdk):
+-+    if sdk in ("", "macosx", metadata["name"], metadata["path"]):
+-+        return
+-+    if os.path.isabs(sdk) and os.path.realpath(sdk) == os.path.realpath(metadata["path"]):
+-+        return
+-+    raise GypError("SDKROOT does not match GYP_MACOS_SDK_PATH: " + sdk)
+- 
+- 
+- def XcodeArchsVariableMapping(archs, archs_including_64_bit=None):
+-@@ -514,6 +565,14 @@
+-         )
+- 
+-     def _GetSdkVersionInfoItem(self, sdk, infoitem):
+-+        metadata = _SelectedMacOSMetadata()
+-+        if metadata:
+-+            _CheckSelectedMacOSSDK(metadata, sdk)
+-+            if infoitem == "--show-sdk-path":
+-+                return metadata["path"]
+-+            if infoitem == "--show-sdk-version":
+-+                return metadata["version"]
+-+            raise GypError("Selected macOS metadata does not provide " + infoitem)
+-         # xcodebuild requires Xcode and can't run on Command Line Tools-only
+-         # systems from 10.7 onward.
+-         # Since the CLT has no SDK paths anyway, returning None is the
+-@@ -539,6 +598,10 @@
+- 
+-     def _SdkPath(self, configname=None):
+-         sdk_root = self._SdkRoot(configname)
+-+        metadata = _SelectedMacOSMetadata()
+-+        if metadata:
+-+            _CheckSelectedMacOSSDK(metadata, sdk_root)
+-+            return metadata["path"]
+-         if sdk_root.startswith("/"):
+-             return sdk_root
+-         return self._XcodeSdkPath(sdk_root)
+-@@ -605,7 +668,7 @@
+- 
+-         self._Appendf(cflags, "GCC_OPTIMIZATION_LEVEL", "-O%s", default="s")
+- 
+--        if self._Test("GCC_GENERATE_DEBUGGING_SYMBOLS", "YES", default="YES"):
+-+        if self._Test("GCC_GENERATE_DEBUGGING_SYMBOLS", "YES", default="NO"):
+-             dbg_format = self._Settings().get("DEBUG_INFORMATION_FORMAT", "dwarf")
+-             if dbg_format == "dwarf":
+-                 cflags.append("-gdwarf-2")
+-@@ -1097,7 +1160,7 @@
+-         # For static libraries, no dSYMs are created.
+-         result = []
+-         if (
+--            self._Test("GCC_GENERATE_DEBUGGING_SYMBOLS", "YES", default="YES")
+-+            self._Test("GCC_GENERATE_DEBUGGING_SYMBOLS", "YES", default="NO")
+-             and self._Test(
+-                 "DEBUG_INFORMATION_FORMAT", "dwarf-with-dsym", default="dwarf"
+-             )
+-@@ -1343,6 +1406,9 @@
+-         project, then the environment variable was empty. Starting with this
+-         version, Xcode uses the name of the newest SDK installed.
+-         """
+-+        metadata = _SelectedMacOSMetadata()
+-+        if metadata:
+-+            return metadata["name"]
+-         xcode_version, _ = XcodeVersion()
+-         if xcode_version < "0500":
+-             return ""
+-@@ -1481,6 +1547,9 @@
+- 
+- def XcodeVersion():
+-     """Returns a tuple of version and build version of installed Xcode."""
+-+    metadata = _SelectedMacOSMetadata()
+-+    if metadata:
+-+        return metadata["xcode_version"], metadata["xcode_build"]
+-     # `xcodebuild -version` output looks like
+-     #    Xcode 4.6.3
+-     #    Build version 4H1503

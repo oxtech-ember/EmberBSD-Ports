@@ -1,5 +1,6 @@
 # Local recipes that replace the upstream recipe with the same path.
 devel/gdb
+devel/gyp
 devel/automake
 devel/patch
 

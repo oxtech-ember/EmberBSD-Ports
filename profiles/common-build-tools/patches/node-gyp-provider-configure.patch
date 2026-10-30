@@ -1,0 +1,23 @@
+--- configure.py.orig
++++ configure.py
+@@ -26,7 +26,8 @@
+ 
+ tools_path = Path('tools')
+ 
+-sys.path.insert(0, str(tools_path / 'gyp' / 'pylib'))
++sys.path.insert(0, 'tools')
++from gyp_node import run_gyp
+ from gyp.common import GetFlavor
+ from packaging.version import Version
+ 
+@@ -35,10 +36,8 @@
+ import nodedownload
+ 
+ # imports in tools/
+-sys.path.insert(0, 'tools')
+ import getmoduleversion
+ import getnapibuildversion
+-from gyp_node import run_gyp
+ from utils import SearchFiles
+ 
+ # parse our options

@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (gyp-next-0.22.4.tar.gz) = 18607d7211ce563690b7c3d51411f9a0f33b83421a3a7252f25d118bf2e48562
+SHA512 (gyp-next-0.22.4.tar.gz) = 3dcbad748080e6bdddfa49c570698584558d20457d68f58c09091696bdef257bf57371e0064b6ae6391f1159cb693feff71f3a6cc4ca118193691cb21acec895
+Size (gyp-next-0.22.4.tar.gz) = 458466 bytes
+SHA1 (patch-emberbsd-common) = 43a4e83f8b3785b2cacfda856afcd4ff3ba064f9
