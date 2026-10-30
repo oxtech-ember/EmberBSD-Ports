@@ -448,3 +448,9 @@ Target runtime packages and their development counterparts require revision nb2
 of the matching LLVM 23.1.4 runtime closure, including libunwind. Repackage the
 affected runtime components after updating their dependency metadata; the LLVM
 source version does not change.
+
+The common runtime producer also accepts `--target riscv32` for the bootstrap
+builtins and static libunwind stages, using `riscv32--netbsd`, RV32IMAC and
+`ilp32` soft-float. These stages supply an intermediate C foundation, not a
+complete SDK or target execution result. The SDK validates ELF class and
+floating-point ABI flags on each installed runtime archive member.

@@ -41,7 +41,7 @@ def main():
         headers = [flags[i + 1] for i, value in enumerate(flags) if value == '-isystem']
         assert headers == ([cxx_header, builtin_header] if role == 'cxx' else [builtin_header])
 
-    for target in ('aarch64', 'amd64'):
+    for target in ('aarch64', 'amd64', 'riscv32'):
         definition = target_definition(target)
         for phase in ('builtins', 'bootstrap', 'full'):
             command = producer.cmake_arguments(Path('/source'), Path('/work'), Path('/stage'),
@@ -59,6 +59,9 @@ def main():
             for language in ('C', 'CXX', 'ASM'):
                 flags = shlex.split(options['CMAKE_' + language + '_FLAGS'])
                 assert '--no-default-config' in flags
+                if target == 'riscv32':
+                    assert '-march=rv32imac_zicsr_zifencei' in flags
+                    assert '-mabi=ilp32' in flags
                 linker = flags.index('--ld-path=/target/bin/ld.lld')
                 assert flags.index('--start-no-unused-arguments') < linker < flags.index('--end-no-unused-arguments')
                 maps = [flag for flag in flags if flag.startswith('-ffile-prefix-map=')]

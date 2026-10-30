@@ -44,7 +44,7 @@ def main(arguments):
     verify.add_argument('--source', help='currently selected prepared LLVM source')
     verify.add_argument('--original-source', help='prepared source used by the existing runtime')
     for parser in (build, verify):
-        parser.add_argument('--target', choices=('aarch64', 'amd64'), required=True)
+        parser.add_argument('--target', choices=('aarch64', 'amd64', 'riscv32'), required=True)
         parser.add_argument('--phase', choices=('builtins', 'bootstrap', 'full'), default='full')
     for parser in (prepare, verify_source, build):
         parser.add_argument('--source', required=True)

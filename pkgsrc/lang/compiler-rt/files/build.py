@@ -110,6 +110,8 @@ def cmake_arguments(source, work, stage, base, native, compiler, definition, ver
     # Scope unused-argument suppression to link options, never all diagnostics.
     driver_flags = ['--no-default-config', '--start-no-unused-arguments',
                     linker, '--end-no-unused-arguments']
+    if definition['arch'] == 'riscv32':
+        driver_flags += ['-march=rv32imac_zicsr_zifencei', '-mabi=ilp32']
     # Map build-host roots to the canonical paths that the OS MKREPRO build
     # uses. __FILE__ strings and debug records are then host-independent.
     driver_flags += ['-ffile-prefix-map=' + str(path) + '=' + canonical for path, canonical in (
