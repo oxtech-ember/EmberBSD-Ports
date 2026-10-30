@@ -31,11 +31,13 @@ MAKE_ENV+=	CMAKE=${TOOLS_PATH.false}
 
 .if ${OPSYS} == "Darwin"
 # Meson install rewrites Mach-O rpaths with otool and install_name_tool.
-# Use the otool from the toolchain of the selected install_name_tool.
+# Use the otool from the toolchain of the selected install_name_tool; LLVM
+# names them llvm-install-name-tool and llvm-otool.
 _MESON_INSTALL_NAME_TOOL=	${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:U/usr/bin/install_name_tool}
+_MESON_OTOOL=	${_MESON_INSTALL_NAME_TOOL:H}/${_MESON_INSTALL_NAME_TOOL:T:S/install-name-tool$/otool/:S/install_name_tool$/otool/}
 TOOLS_CREATE+=		install_name_tool otool
 TOOLS_PATH.install_name_tool=	${_MESON_INSTALL_NAME_TOOL}
-TOOLS_PATH.otool=	${_MESON_INSTALL_NAME_TOOL:H}/otool
+TOOLS_PATH.otool=	${_MESON_OTOOL}
 .endif
 
 .if ${USE_CROSS_COMPILE:tl} == no

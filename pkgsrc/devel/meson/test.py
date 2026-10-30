@@ -16,8 +16,12 @@ def main():
     parser.add_argument('--make', required=True,
                         help='host Ports make command that takes PKGPATH and then bmake arguments')
     parser.add_argument('--pkgpath', default='devel/wayland', help='Meson consumer recipe')
+    parser.add_argument('--install-name-tool',
+                        help='EMBERBSD_DARWIN_INSTALL_NAME_TOOL to select, such as an LLVM one')
     args = parser.parse_args()
     query = [args.make, args.pkgpath, '-v', 'TOOLS_CREATE']
+    if args.install_name_tool:
+        query.append('EMBERBSD_DARWIN_INSTALL_NAME_TOOL=' + args.install_name_tool)
     for name in NAMES:
         query += ['-v', 'TOOLS_PATH.' + name]
     lines = subprocess.run(query, capture_output=True, text=True, check=True).stdout.splitlines()
