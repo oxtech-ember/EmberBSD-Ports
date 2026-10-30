@@ -478,3 +478,6 @@ archivers/lzip
 # Select common gettext and iconv providers for libpsl.
 www/libpsl
 www/curl
+
+# Keep the shared Perl URI module current.
+www/p5-URI
