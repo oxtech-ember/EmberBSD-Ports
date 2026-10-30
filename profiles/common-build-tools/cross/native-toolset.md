@@ -107,6 +107,15 @@ Source archive checksums, package checks and target ABI checks remain enabled.
 
 ## Checks
 
+In the native dependency recursion the include also creates `ar`, `ranlib`
+and `nm` commands in the package tools directory for the selected
+`TOOLS_PLATFORM` tools. The prefix has only the `llvm-` names, while upstream
+configure scripts and Makefiles call these by name; without them
+`AC_CHECK_TOOL(AR, ar, false)` selects `false`. Cross builds get the target
+commands from `mk/tools/cross.NetBSD.mk`.
+`tests/native-archiver-commands.py` builds a native recipe that calls `ar`
+by name.
+
 `tests/native-toolset-selection.py` checks the LLVM command and environment
 with API doubles. `tests/native-toolset-make.py` checks the make mapping,
 atomic rewrites, the optional Qt mapping, the Darwin Mach-O tool mapping

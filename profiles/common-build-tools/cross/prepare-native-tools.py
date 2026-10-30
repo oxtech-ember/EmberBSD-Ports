@@ -169,6 +169,10 @@ def sdk_loader():
     return sdk_source
 
 
+# Binary tools that native builds call by name; see render().
+NATIVE_COMMAND_TOOLS = ('ar', 'ranlib', 'nm')
+
+
 def literal(value):
     from emberbsd_sdk.errors import SDKError
     if not isinstance(value, str) or any(c in value for c in '\0\r\n\\"$#'):
@@ -232,6 +236,19 @@ def render(toolset, qt=(), fetch_mode='fetch', native_cxx=None):
             lines += ['.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"', *mapping, '.endif']
         else:
             lines += mapping
+    # A Ports host prefix has llvm-ar, llvm-ranlib and llvm-nm but no "ar",
+    # "ranlib" or "nm" command. Upstream configure scripts and Makefiles call
+    # them by name (AC_CHECK_TOOL(AR, ar, false) then gives AR=false), as on a
+    # base system that ships them. Create the commands in the tools directory
+    # of the native dependency recursion, as mk/tools/cross.NetBSD.mk does for
+    # cross builds.
+    lines += ['.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"']
+    for name in NATIVE_COMMAND_TOOLS:
+        lines += ['TOOLS_CREATE+= ' + name,
+                  'TOOLS_PATH.' + name + '?= ${TOOLS_PLATFORM.' + name + '}',
+                  '.if "${TOOLS_PATH.' + name + '}" != "' + literal(toolset.tool(name)) + '"',
+                  '.error TOOLS_PATH.' + name + ' differs from the selected Ports tool', '.endif']
+    lines += ['.endif']
     # Empty platform mappings make pkgsrc resolve these build tools through
     # the native package dependency rather than /usr/bin when absent.
     for role, variable in OPTIONAL_ROLES.items():

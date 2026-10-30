@@ -126,6 +126,14 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
                                ('ranlib', 'ranlib'), ('nm', 'nm'), ('strip', 'strip')):
             value = tools[role]
             assert ('.if "${TOOLS_PLATFORM.' + variable + '}" != "' + value + '"').encode() in before
+        # Native configure scripts call ar, ranlib and nm by name, and the
+        # Ports prefix has only the llvm- names.
+        for name in ('ar', 'ranlib', 'nm'):
+            for line in ('TOOLS_CREATE+= ' + name, 'TOOLS_PATH.' + name + '?= ${TOOLS_PLATFORM.' + name + '}'):
+                assert (line + '\n').encode() in before, line
+            assert ('.if "${TOOLS_PATH.' + name + '}" != "' + tools[name] + '"').encode() in before
+        guarded = before.split(b'.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"\nTOOLS_CREATE+= ar\n', 1)
+        assert len(guarded) == 2 and b'TOOLS_CREATE+=' not in guarded[0]
         # A make command-line assignment can replace even := variables.
         # Expected values must be literals, not aliases to another variable.
         assert b'TOOLS_PLATFORM.lex?= ${_EMBER_SDK_LEX}' in before
