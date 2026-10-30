@@ -1,0 +1,23 @@
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+Cross builds gave every REPLACE_BASH script the target Bash. A recipe that
+names only bash:build or bash:pkgsrc runs these scripts during the build
+(libvpx build/make/version.sh), where the target /usr/pkg/bin/bash does not
+exist on the build host. Such scripts keep the host BASH.
+
+--- a/mk/configure/replace-interpreter.mk
++++ b/mk/configure/replace-interpreter.mk
+@@ -64,9 +64,13 @@
+ REPLACE.sys-bash.old=	.*sh
+ REPLACE.sys-bash.new=	${BASH}
+ .  if ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} == "NetBSD" && \
+-      ${OPSYS} != ${NATIVE_OPSYS}
++      ${OPSYS} != ${NATIVE_OPSYS} && \
++      (!empty(USE_TOOLS:Mbash\:run) || \
++       (empty(USE_TOOLS:Mbash\:build) && empty(USE_TOOLS:Mbash\:pkgsrc)))
+ # Installed scripts need the target interpreter; BASH remains a host tool.
+ # The scripts run on the target, so the package needs the target Bash.
++# A recipe that names only bash:build or bash:pkgsrc runs its REPLACE_BASH
++# scripts during the build, so they keep the host BASH.
+ REPLACE.sys-bash.new=	${CROSS_LOCALBASE}/bin/bash
+ .    if empty(USE_TOOLS:Mbash\:run)
+ DEPENDS+=		bash-[0-9]*:../../shells/bash

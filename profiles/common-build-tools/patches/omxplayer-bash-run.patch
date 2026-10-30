@@ -1,0 +1,18 @@
+omxplayer runs its installed launcher with Bash.
+
+REPLACE_BASH gives the installed omxplayer script a Bash interpreter, so
+the package needs Bash at run time, not only during the build. A cross
+build gives build-only (bash:build) Bash scripts the host Bash.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/multimedia/omxplayer/Makefile
++++ b/multimedia/omxplayer/Makefile
+@@ -13,7 +13,7 @@
+ LICENSE=	gnu-gpl-v2
+ 
+ USE_LANGUAGES=		c++
+-USE_TOOLS+=		gmake bash:build
++USE_TOOLS+=		gmake bash:run
+ BUILD_TARGET=		omxplayer.bin
+ INSTALLATION_DIRS+=	bin share/docs/omxplayer
+ REPLACE_BASH=		omxplayer
