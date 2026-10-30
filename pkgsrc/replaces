@@ -439,3 +439,7 @@ x11/xcb-util
 
 # Prefer the common iconv provider.
 textproc/libunistring
+
+# Keep Mozilla trust data and its OpenSSL wedge in sync.
+security/mozilla-rootcerts
+security/mozilla-rootcerts-openssl

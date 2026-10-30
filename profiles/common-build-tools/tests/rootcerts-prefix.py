@@ -28,7 +28,7 @@ ARGS = None
 
 
 def sources():
-    originals = {name: (ROOT / 'upstream/pkgsrc' / name).read_text()
+    originals = {name: (ROOT / 'pkgsrc' / name).read_text()
                  for name in (RECIPE,)}
     return originals, model.replay(originals, PATCH.read_text())
 
@@ -43,7 +43,7 @@ class PrefixTests(unittest.TestCase):
         self.assertIn('${DESTDIR}${OPENSSLDIR}', install(result[RECIPE]))
         self.assertIn('${SCRIPT} -d ${DESTDIR} install', install(result[RECIPE]))
         # Existing CA payloads remain under the ordinary package packing list.
-        plist = (ROOT / 'upstream/pkgsrc' / PLIST).read_text().splitlines()
+        plist = (ROOT / 'pkgsrc' / PLIST).read_text().splitlines()
         self.assertIn('${MYETCDIR}/openssl/certs/ca-certificates.crt', plist)
         self.assertGreater(len([line for line in plist if line.endswith('.pem')]), 100)
         self.assertFalse(any(line.endswith('/cert.pem') for line in plist))
@@ -54,8 +54,9 @@ class PrefixTests(unittest.TestCase):
         record = 'patch\t' + PATCH.relative_to(ROOT).as_posix() + '\n'
         self.assertEqual((ROOT / 'pkgsrc/export.conf').read_text().count(record), 1)
         for name in ('mozilla-rootcerts', 'mozilla-rootcerts-openssl'):
-            self.assertFalse((ROOT / 'pkgsrc/security' / name).exists())
-        self.assertIn('mozilla-rootcerts>=1.1.20260715:', result[RECIPE])
+            self.assertTrue((ROOT / 'pkgsrc/security' / name).is_dir())
+            self.assertIn('security/' + name, (ROOT / 'pkgsrc/replaces').read_text().splitlines())
+        self.assertIn('mozilla-rootcerts>=1.1.20261020:', result[RECIPE])
 
     def test_foundation_selects_trust_in_final_prefix(self):
         policy = (ROOT / 'profiles/development-toolchain/darwin-bootstrap.mk.conf').read_text()

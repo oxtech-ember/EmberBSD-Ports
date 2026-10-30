@@ -99,8 +99,8 @@ def main():
     data = args.certdata.read_bytes()
     for label, value in [('SHA512', hashlib.sha512(data).hexdigest()),
                          ('BLAKE2s', hashlib.blake2s(data).hexdigest())]:
-        assert f'{label} (certdata-20260715.txt) = {value}' in distinfo
-    assert f'Size (certdata-20260715.txt) = {len(data)} bytes' in distinfo
+        assert f'{label} (certdata-20261020.txt) = {value}' in distinfo
+    assert f'Size (certdata-20261020.txt) = {len(data)} bytes' in distinfo
     script = args.staged_script.read_text()
     assert script.startswith('#!/bin/sh\n')
     for variable, path in BASE.items():

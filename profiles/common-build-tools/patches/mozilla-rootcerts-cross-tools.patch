@@ -8,7 +8,7 @@
  DISTNAME=	mozilla-rootcerts-1.1.${CERTDATA_DATE}
 +PKGREVISION=	2
  CATEGORIES=	security
- MASTER_SITES=	-https://hg.mozilla.org/mozilla-central/raw-file/${CERTDATA_COMMIT}/security/nss/lib/ckfw/builtins/certdata.txt
+ MASTER_SITES=	-https://raw.githubusercontent.com/nss-dev/nss/${CERTDATA_COMMIT}/lib/ckfw/builtins/certdata.txt
  EXTRACT_SUFX=	# empty
 @@ -49,6 +50,35 @@
  SUBST_VARS.paths=	AWK DATADIR ECHO EXPR LN LS MKDIR PREFIX RM SH SSLDIR
