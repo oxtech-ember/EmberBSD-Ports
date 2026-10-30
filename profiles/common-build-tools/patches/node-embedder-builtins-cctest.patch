@@ -1,0 +1,91 @@
+--- test/cctest/test_environment.cc.orig
++++ test/cctest/test_environment.cc
+@@ -1711,3 +1711,88 @@
+   }
+ }
+ 
++
++#if defined(NODE_EMBEDDER_BUILTINS)
++// This exercises Node's real preload callback and synchronous module hooks.
++// The embedder: URL is a synthetic module, loaded by the real js2c fixture.
++TEST_F(EnvironmentTest, EmbedderPreloadOrdinaryESMMainOnly) {
++  v8::HandleScope scope(isolate_);
++  auto context = node::NewContext(isolate_);
++  v8::Context::Scope context_scope(context);
++  node::EmbedderPreloadCallback preload = [](node::Environment* env,
++                                              v8::Local<v8::Value> process,
++                                              v8::Local<v8::Value> require) {
++    auto* isolate = env->isolate();
++    auto context = isolate->GetCurrentContext();
++    v8::LocalVector<v8::String> parameters(isolate);
++    parameters.push_back(v8::String::NewFromUtf8Literal(isolate, "process"));
++    parameters.push_back(v8::String::NewFromUtf8Literal(isolate, "require"));
++    v8::Local<v8::Function> function;
++    if (!env->builtin_loader()->LookupAndCompileFunction(
++            context, "internal/electron/js2c/node_init", &parameters,
++            env->principal_realm()).ToLocal(&function)) return;
++    v8::Local<v8::Value> args[] = {process, require};
++    if (function->Call(context, v8::Undefined(isolate), 2, args).IsEmpty()) return;
++  };
++  std::unique_ptr<node::Environment, decltype(&node::FreeEnvironment)> env(
++      node::CreateEnvironment(isolate_data_, context, {}, {}), node::FreeEnvironment);
++  ASSERT_NE(env, nullptr);
++  const char* entry = R"JS(
++    const Module = require('module');
++    const m = new Module('/tmp/ember-preload-entry.cjs');
++    m.filename = '/tmp/ember-preload-entry.cjs';
++    m._compile(String.raw`
++    const { Worker } = require('node:worker_threads');
++    const esm = "import value, {answer} from 'embedder-test'; if (value !== 42 || answer !== 42) throw Error('bad export');";
++    const url = 'data:text/javascript,' + encodeURIComponent(esm);
++    import(url).catch(e => { console.error(e); process.exitCode = 1; });
++    `, m.filename);
++  )JS";
++  ASSERT_FALSE(node::LoadEnvironment(env.get(), entry, preload).IsEmpty());
++  ASSERT_EQ(node::SpinEventLoop(env.get()).FromJust(), 0);
++}
++
++// This exercises Node's real preload callback and synchronous module hooks.
++// The embedder: URL is a synthetic module, loaded by the real js2c fixture.
++TEST_F(EnvironmentTest, EmbedderPreloadOrdinaryESMAndWorker) {
++  v8::HandleScope scope(isolate_);
++  auto context = node::NewContext(isolate_);
++  v8::Context::Scope context_scope(context);
++  node::EmbedderPreloadCallback preload = [](node::Environment* env,
++                                              v8::Local<v8::Value> process,
++                                              v8::Local<v8::Value> require) {
++    auto* isolate = env->isolate();
++    auto context = isolate->GetCurrentContext();
++    v8::LocalVector<v8::String> parameters(isolate);
++    parameters.push_back(v8::String::NewFromUtf8Literal(isolate, "process"));
++    parameters.push_back(v8::String::NewFromUtf8Literal(isolate, "require"));
++    v8::Local<v8::Function> function;
++    if (!env->builtin_loader()->LookupAndCompileFunction(
++            context, "internal/electron/js2c/node_init", &parameters,
++            env->principal_realm()).ToLocal(&function)) return;
++    v8::Local<v8::Value> args[] = {process, require};
++    if (function->Call(context, v8::Undefined(isolate), 2, args).IsEmpty()) return;
++  };
++  std::unique_ptr<node::Environment, decltype(&node::FreeEnvironment)> env(
++      node::CreateEnvironment(isolate_data_, context, {"cctest"}, {}), node::FreeEnvironment);
++  ASSERT_NE(env, nullptr);
++  const char* entry = R"JS(
++    const Module = require('module');
++    const m = new Module('/tmp/ember-preload-entry.cjs');
++    m.filename = '/tmp/ember-preload-entry.cjs';
++    m._compile(String.raw`
++    const { Worker } = require('node:worker_threads');
++    const esm = "import value, {answer} from 'embedder-test'; if (value !== 42 || answer !== 42) throw Error('bad export');";
++    const url = 'data:text/javascript,' + encodeURIComponent(esm);
++    import(url).then(() => {
++      const worker = new Worker('import(' + JSON.stringify(url) + ').catch(e => { console.error(e); process.exitCode = 1; });', {eval:true});
++      worker.on('exit', code => { if (code) process.exitCode = code; });
++      worker.on('error', e => { console.error(e); process.exitCode = 1; });
++    }).catch(e => { console.error(e); process.exitCode = 1; });
++    `, m.filename);
++  )JS";
++  ASSERT_FALSE(node::LoadEnvironment(env.get(), entry, preload).IsEmpty());
++  ASSERT_EQ(node::SpinEventLoop(env.get()).FromJust(), 0);
++}
++
++#endif
