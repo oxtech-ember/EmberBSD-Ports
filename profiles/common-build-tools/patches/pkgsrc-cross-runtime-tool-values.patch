@@ -1,0 +1,45 @@
+# Origin: EmberBSD (AI-assisted). Configure records the tool commands it is
+# given in installed scripts: libgcrypt-config keeps "$GREP -F", smistrip keeps
+# AWK, and automake keeps #!@PERL@. A cross build passed build-host paths, so
+# the target packages named build-host tools. Pass bare awk, grep, egrep and
+# sed, which the tools directory resolves at build time and the target base
+# system at run time, and rewrite perl:run shebangs that name the build-host
+# Perl to the target Perl after installation.
+
+--- a/mk/tools/replace.mk
++++ b/mk/tools/replace.mk
+@@ -1112,6 +1112,17 @@
+ # Build steps run the host Perl through the tools wrapper. Installed
+ # scripts (REPLACE_PERL) name the target Perl from lang/perl5.
+ PERL5=	${PREFIX}/bin/perl
++# Configure substitutes the build-host Perl into the scripts it generates
++# (#!@PERL@); after installation those scripts name the target Perl.
++post-install: ember-cross-perl-interpreter
++.PHONY: ember-cross-perl-interpreter
++ember-cross-perl-interpreter:
++	${RUN} ${FIND} ${DESTDIR}${PREFIX} -type f -print | while IFS= read -r f; do \
++	    IFS= read -r line < "$$f" 2>/dev/null || continue; \
++	    case "$$line" in "#!"${TOOLS_PATH.perl:Q}|"#!"${TOOLS_PATH.perl:Q}" "*) ;; *) continue ;; esac; \
++	    ${SED} -e '1s|^#!${TOOLS_PATH.perl}|#!${PERL5}|' "$$f" > "$$f.ember-perl" && \
++	    ${CAT} "$$f.ember-perl" > "$$f" && ${RM} -f "$$f.ember-perl"; \
++	done
+ .    endif
+ .    endif
+ .  endif
+@@ -1590,6 +1601,16 @@
+ # TOOLS_VALUE_GNU.<tool>, which defaults to the full command line of
+ # the tool.
+ #
++# Configure records these commands in installed scripts (libgcrypt-config,
++# libtool). A cross build passes a command that the tools directory resolves
++# at build time and the target base system at run time; a build-host path
++# would be recorded in the target package.
++.if ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} != ${NATIVE_OPSYS}
++TOOLS_VALUE_GNU.awk?=	awk
++TOOLS_VALUE_GNU.grep?=	grep
++TOOLS_VALUE_GNU.egrep?=	grep -E
++TOOLS_VALUE_GNU.sed?=	sed
++.endif
+ .if defined(GNU_CONFIGURE)
+ .  for _t_ in ${_USE_TOOLS}
+ .    if defined(_TOOLS_VARNAME.${_t_}) && defined(TOOLS_${_TOOLS_VARNAME.${_t_}})
