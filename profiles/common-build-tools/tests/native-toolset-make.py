@@ -286,20 +286,37 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         refused(adapter.main, ['write', *pins, '--output', str(destination)])
         for path in (mlir_bin / 'flang', mlir_bin / 'flang-23', root / 'foreign-flang'):
             path.unlink()
-        # Native Darwin CMake recursion takes install_name_tool and TAPI from
-        # the prefix; both are required.
+        # Native Darwin recursion takes install_name_tool, TAPI and the
+        # Mach-O metadata lipo/otool from the prefix; all are required. The
+        # signature verification service is the macOS one.
         assert b'EMBERBSD_DARWIN' not in include.read_bytes()
+        assert b'MACHO_' not in include.read_bytes()
         selected.host = {'os': 'Darwin'}
-        darwin_tools = [mlir_bin / 'llvm-install-name-tool', mlir_bin / 'llvm-readtapi']
+        darwin_tools = [mlir_bin / 'llvm-install-name-tool', mlir_bin / 'llvm-readtapi',
+                        mlir_bin / 'llvm-lipo', mlir_bin / 'llvm-otool']
         for tool in darwin_tools:
             refused(adapter.main, ['write', *pins, '--output', str(destination)])
             tool.write_text('#!/bin/sh\n')
             tool.chmod(0o755)
+        service = root / 'codesign'
+        with mock.patch.object(adapter, 'DARWIN_SYSTEM_SERVICES',
+                               (('codesign', 'EMBERBSD_DARWIN_TOOL.codesign', str(service)),)):
+            refused(adapter.main, ['write', *pins, '--output', str(destination)])
+            service.write_text('#!/bin/sh\n')
+            service.chmod(0o755)
+            with contextlib.redirect_stdout(io.StringIO()):
+                adapter.main(['write', *pins, '--output', str(destination)])
+            assert ('.if "${EMBERBSD_DARWIN_TOOL.codesign}" != "' + str(service) + '"').encode() \
+                in include.read_bytes()
+            service.unlink()
         with contextlib.redirect_stdout(io.StringIO()):
             adapter.main(['write', *pins, '--output', str(destination)])
         darwin = include.read_bytes()
         for variable, value in (('EMBERBSD_DARWIN_INSTALL_NAME_TOOL', str(darwin_tools[0])),
                                 ('EMBERBSD_DARWIN_TAPI', str(darwin_tools[1])),
+                                ('MACHO_LIPO', str(darwin_tools[2])),
+                                ('MACHO_OTOOL', str(darwin_tools[3])),
+                                ('EMBERBSD_DARWIN_TOOL.codesign', '/usr/bin/codesign'),
                                 ('EMBERBSD_DARWIN_TAPI_KIND', 'llvm-readtapi')):
             assert ('.if "${' + variable + '}" != "' + value + '"').encode() in darwin
         assert b'OSX_SDK_PATH' not in darwin

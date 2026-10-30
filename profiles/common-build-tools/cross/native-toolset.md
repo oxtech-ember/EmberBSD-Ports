@@ -54,7 +54,12 @@ On a Darwin host the file also sets the Mach-O tools that native CMake
 recursion needs (see `../README.md`). `EMBERBSD_DARWIN_INSTALL_NAME_TOOL` and
 `EMBERBSD_DARWIN_TAPI` select `bin/llvm-install-name-tool` and
 `bin/llvm-readtapi` from the prefix, and `EMBERBSD_DARWIN_TAPI_KIND` is
-`llvm-readtapi`. A prefix without either tool is refused. `OSX_SDK_PATH`
+`llvm-readtapi`. `MACHO_LIPO` and `MACHO_OTOOL`, used by Mach-O package
+metadata and by `lang/rust-bin`, select `bin/llvm-lipo` and `bin/llvm-otool`
+(see `../macho-metadata.md`). A prefix without any of these tools is refused.
+`EMBERBSD_DARWIN_TOOL.codesign` names the macOS signature verification
+service `/usr/bin/codesign`, which `lang/rust-bin` uses to check the ad hoc
+signatures it rewrites; a host without it is refused. `OSX_SDK_PATH`
 keeps the pkgsrc Darwin default from `/usr/bin/xcrun`; set it in MAKECONF
 to select another SDK.
 

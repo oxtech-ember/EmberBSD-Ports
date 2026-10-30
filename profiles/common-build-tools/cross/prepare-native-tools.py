@@ -126,7 +126,13 @@ def flang_host_tool(prefix):
 # requires. The common LLVM recipe installs both in the prefix. OSX_SDK_PATH
 # keeps the pkgsrc Darwin platform default, which runs /usr/bin/xcrun.
 DARWIN_HOST_TOOLS = (('install-name-tool', 'EMBERBSD_DARWIN_INSTALL_NAME_TOOL', 'llvm-install-name-tool'),
-                     ('tapi', 'EMBERBSD_DARWIN_TAPI', 'llvm-readtapi'))
+                     ('tapi', 'EMBERBSD_DARWIN_TAPI', 'llvm-readtapi'),
+                     ('macho-lipo', 'MACHO_LIPO', 'llvm-lipo'),
+                     ('macho-otool', 'MACHO_OTOOL', 'llvm-otool'))
+# Package steps that verify ad hoc signatures, such as lang/rust-bin, use the
+# macOS code signing verification service. It is part of the OS, not a build
+# tool, and has no Ports provider.
+DARWIN_SYSTEM_SERVICES = (('codesign', 'EMBERBSD_DARWIN_TOOL.codesign', '/usr/bin/codesign'),)
 
 
 def darwin_host_tools(prefix, toolset):
@@ -141,6 +147,10 @@ def darwin_host_tools(prefix, toolset):
         if not path.is_file() or not os.access(path, os.X_OK):
             raise SDKError('The host prefix has no native ' + name + ': ' + str(path))
         values.append((role, variable, str(path)))
+    for role, variable, path in DARWIN_SYSTEM_SERVICES:
+        if not os.path.isfile(path) or not os.access(path, os.X_OK):
+            raise SDKError('The macOS host has no ' + role + ' service: ' + path)
+        values.append((role, variable, path))
     return tuple(values) + (('tapi-kind', 'EMBERBSD_DARWIN_TAPI_KIND', 'llvm-readtapi'),)
 
 
