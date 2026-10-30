@@ -1,0 +1,24 @@
+$NetBSD$
+
+Export the release version and an ABI-major shared-library name.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -156,7 +156,7 @@
+ 
+ add_library(PFFFT ${FLOAT_SOURCES} ${DOUBLE_SOURCES} src/pffft_common.c src/pffft_priv_impl.h include/pffft/pffft.hpp )
+ add_library(PFFFT::PFFFT ALIAS PFFFT)
+-set_target_properties(PFFFT PROPERTIES OUTPUT_NAME "pffft")
++set_target_properties(PFFFT PROPERTIES OUTPUT_NAME "pffft" VERSION 1.1.0 SOVERSION 1)
+ target_compile_definitions(PFFFT PRIVATE _USE_MATH_DEFINES)
+ target_activate_c_compiler_warnings(PFFFT)
+ if (PFFFT_USE_SCALAR_VECT)
+@@ -312,7 +312,7 @@
+ 
+ write_basic_package_version_file(
+   "${CMAKE_CURRENT_BINARY_DIR}/pffft-config-version.cmake"
+-  VERSION 1.0
++  VERSION 1.1.0
+   COMPATIBILITY SameMajorVersion
+ )
+ 

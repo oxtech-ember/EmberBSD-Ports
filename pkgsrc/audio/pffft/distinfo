@@ -1,0 +1,9 @@
+$NetBSD$
+
+BLAKE2s (pffft-1.1.0.tar.gz) = c5730a99415bc236e97b32090f2b5f149233c409918e453c77715f49a1f83b0b
+SHA512 (pffft-1.1.0.tar.gz) = adfe85fc0e2da728464b37d7f11eef2aa5df19c38f9065307821770542a6e2e20948dd94be679063ed165a3c64092350ef76cac71841579a62929428798a9a82
+Size (pffft-1.1.0.tar.gz) = 162455 bytes
+SHA1 (patch-aarch64-neon) = bfc76d0fba95cd42cbeb3cb57bc0e39335973783
+SHA1 (patch-cmake-version) = e9cc57242989d291ca7924c8eede37ea4823de88
+SHA1 (patch-neon-alignment) = 3abf158d002248739a46093762a3d23391ba33a5
+SHA1 (patch-netbsd-alloca) = cab9b3a8a016afb81753ebacaeddeb9f6f0bd554

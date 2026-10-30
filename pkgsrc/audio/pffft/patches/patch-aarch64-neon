@@ -1,0 +1,27 @@
+$NetBSD$
+
+Enable NEON on AArch64, when the compiler advertises it, without
+selecting host-specific architecture flags. Honor PFFFT_SIMD_DISABLE.
+
+--- src/simd/pf_neon_float.h.orig
++++ src/simd/pf_neon_float.h
+@@ -36,7 +36,7 @@
+ /*
+   ARM NEON support macros
+ */
+-#if !defined(PFFFT_SIMD_DISABLE) && defined(PFFFT_ENABLE_NEON) && (defined(__arm__) || defined(__aarch64__) || defined(__arm64__) || defined(__wasm_simd128__))
++#if !defined(PFFFT_SIMD_DISABLE) && (defined(PFFFT_ENABLE_NEON) || ((defined(__aarch64__) || defined(__arm64__)) && (defined(__ARM_NEON) || defined(__ARM_NEON__)))) && (defined(__arm__) || defined(__aarch64__) || defined(__arm64__) || defined(__wasm_simd128__))
+ #pragma message( __FILE__ ": ARM NEON macros are defined" )
+ 
+ #  include <arm_neon.h>
+--- src/simd/pf_neon_double.h.orig
++++ src/simd/pf_neon_double.h
+@@ -39,7 +39,7 @@
+ /*
+   NEON 64bit support macros
+ */
+-#if !defined(PFFFT_SIMD_DISABLE) && defined(PFFFT_ENABLE_NEON) && (defined(__aarch64__) || defined(__arm64__) || defined(__wasm_simd128__))
++#if !defined(PFFFT_SIMD_DISABLE) && (defined(PFFFT_ENABLE_NEON) || ((defined(__aarch64__) || defined(__arm64__)) && (defined(__ARM_NEON) || defined(__ARM_NEON__)))) && (defined(__aarch64__) || defined(__arm64__) || defined(__wasm_simd128__))
+ 
+ #pragma message (__FILE__ ": NEON (from AVX) macros are defined" )
+ 

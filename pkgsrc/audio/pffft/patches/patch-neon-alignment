@@ -1,0 +1,48 @@
+$NetBSD$
+
+Match the NEON FFT alignment check to vector pointer access and use NEON
+load intrinsics for aligned and unaligned float pointers.
+
+--- src/simd/pf_neon_float.h.orig
++++ src/simd/pf_neon_float.h
+@@ -50,15 +50,15 @@
+ } v4sf_union;
+ 
+ #  define VARCH "NEON"
+-#  define VREQUIRES_ALIGN 0  /* usually no alignment required */
++#  define VREQUIRES_ALIGN 1  /* FFT vector pointers require 16-byte alignment */
+ #  define VZERO() vdupq_n_f32(0)
+ #  define VMUL(a,b) vmulq_f32(a,b)
+ #  define VADD(a,b) vaddq_f32(a,b)
+ #  define VMADD(a,b,c) vmlaq_f32(c,a,b)
+ #  define VSUB(a,b) vsubq_f32(a,b)
+ #  define LD_PS1(p) vld1q_dup_f32(&(p))
+-#  define VLOAD_UNALIGNED(ptr)  (*((v4sf*)(ptr)))
+-#  define VLOAD_ALIGNED(ptr)    (*((v4sf*)(ptr)))
++#  define VLOAD_UNALIGNED(ptr)  vld1q_f32(ptr)
++#  define VLOAD_ALIGNED(ptr)    vld1q_f32(ptr)
+ #  define INTERLEAVE2(in1, in2, out1, out2) { float32x4x2_t tmp__ = vzipq_f32(in1,in2); out1=tmp__.val[0]; out2=tmp__.val[1]; }
+ #  define UNINTERLEAVE2(in1, in2, out1, out2) { float32x4x2_t tmp__ = vuzpq_f32(in1,in2); out1=tmp__.val[0]; out2=tmp__.val[1]; }
+ #  define VTRANSPOSE4(x0,x1,x2,x3) {                                    \
+@@ -77,7 +77,7 @@
+ /* reverse/flip complex floats */
+ #  define VREV_C(a)    vextq_f32(a, a, 2)
+ 
+-#  define VALIGNED(ptr) ((((uintptr_t)(ptr)) & 0x3) == 0)
++#  define VALIGNED(ptr) ((((uintptr_t)(ptr)) & 0xF) == 0)
+ 
+ #else
+ /* #pragma message( __FILE__ ": ARM NEON macros are not defined" ) */
+--- include/pffft/pffft.h.orig
++++ include/pffft/pffft.h
+@@ -65,8 +65,8 @@
+    128<=N<=8192.
+ 
+    - all (float*) pointers in the functions below are expected to
+-   have an "simd-compatible" alignment, that is 16 bytes on x86 and
+-   powerpc CPUs.
++   have a "simd-compatible" alignment, that is 16 bytes for x86,
++   powerpc and ARM NEON float transforms.
+   
+    You can allocate such buffers with the functions
+    pffft_aligned_malloc / pffft_aligned_free (or with stuff like
