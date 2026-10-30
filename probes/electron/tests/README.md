@@ -74,11 +74,16 @@ python3.15 -E -S probes/electron/tests/gn-rust-bindgen.py \
   --patch /absolute/Ports/probes/electron/patches/gn-rust-bindgen-host-tools.patch \
   --x64-patch /absolute/Ports/probes/electron/patches/gn-netbsd-x64-targets.patch \
   /absolute/NEW_BINDGEN_WORK
+python3.15 -E -S probes/electron/tests/selected-clang-resource.py \
+  --host-prefix /absolute/host-prefix
 python3.15 -E -S probes/electron/tests/gn-clang-resource-version.py \
   --sdk-source /absolute/EmberBSD-SDK \
   --source /absolute/chromium/src --gn /absolute/host-gn \
   --patch /absolute/Ports/probes/electron/patches/gn-clang-resource-version.patch \
   /absolute/NEW_CLANG_RESOURCE_WORK
+python3.15 -E -S probes/electron/tests/gn-bindgen-gcc-filter.py \
+  --source /absolute/chromium/src --patch-tool /absolute/host-gpatch \
+  --patch /absolute/Ports/probes/electron/patches/gn-bindgen-gcc-warnings.patch
 python3.15 -E -S probes/electron/tests/gn-bindgen-gcc-args.py \
   --sdk-source /absolute/EmberBSD-SDK --source /absolute/chromium/src \
   --out /absolute/EXISTING_NETBSD_GN_OUT \
@@ -143,8 +148,10 @@ and the Darwin compiler runtime archive. It does not compile target objects.
 The GCC argument test replays the actual generated allocator bindgen action
 before and after the parser patch. It requires the macOS ARM64 host graph
 and NetBSD ARM64 unbundle target. The host argument projection stays unchanged.
-An unmapped warning option and an intentional header warning still fail with
-`-Werror`. The tested allocator header has no system header dependencies.
+Chromium 156 filters warnings in libclang-based tools; the ordinary compiler
+flags remain outside that filter. The independent filter test runs upstream
+unit tests, checks GCC parameter removal and both callers. The tested allocator
+header has no system header dependencies.
 
 The host-Node test covers fifteen GN cases, including actual Mac/NetBSD and
 simulated BSD/Linux/Windows selectors. It checks the bundled Mac Node against
@@ -427,6 +434,13 @@ This runs real GN generation on a small graph and checks refusal of changed
 compiler bindings, retained objects, a failed generation, build refusal, and
 subsequent recovery. It does not build Electron or execute target code.
 
+The native binding identity test checks that changing a selected platform ABI
+header's path or contents produces a new adapter identity:
+
+```sh
+/absolute/native/bin/python3.15 -B -S probes/electron/tests/native-cxx-binding-identity.py
+```
+
 ## Explicit control Git for metadata
 
 ```sh
@@ -518,3 +532,66 @@ a new version, and checks refusal of stale configured versions. Chromium `node`,
 DevTools Python actions and DevTools JavaScript actions rerun and use the new
 selections; unchanged invocations are no-ops. Standalone GN generation is
 checked separately. This does not execute the complete Electron target.
+
+The DevTools native TypeScript version regression runs real GN/Ninja actions
+with Chromium's `run_with_restat.py`. It verifies both declaration and JS
+outputs rebuild after a version change even when the compiler path and mtime
+are unchanged. Run it against the prepared Chromium source with the selected
+native prefix:
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B probes/electron/tests/devtools-ts-version.py \
+  --source /absolute/prepared/chromium/src --work /absolute/NEW_TS_VERSION_WORK \
+  --host-prefix "$HOST_PREFIX"
+```
+
+The DevTools esbuild regression applies the shared-provider patch to the real
+Chromium bundle template and script in an isolated fixture. It uses real GN,
+Ninja, Node and installed esbuild; verifies module, binary and package metadata
+are Ninja inputs; and checks the action reruns and rejects a changed configured
+version. A minimal Node action adapter supplies the fixture; this is not a
+complete Electron graph or target runtime test.
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B -I -S probes/electron/tests/devtools-esbuild-select.py
+"$HOST_PREFIX/bin/python3.15" -B -I -S probes/electron/tests/devtools-esbuild-provider.py \
+  --source /absolute/prepared/chromium/src --work /absolute/NEW_ESBUILD_WORK \
+  --host-prefix "$HOST_PREFIX" --node /absolute/selected/node --git /absolute/git
+```
+
+## Common Lit provider invalidation
+
+With a prepared diagnostic Electron GN graph and its saved controller
+configuration, exercise the real Lit TypeScript and Rollup actions on isolated
+copies of the selected module inputs:
+
+```sh
+/absolute/native/bin/python3.15 -B -S probes/electron/tests/lit-provider-invalidation.py \
+  --graph /absolute/electron-graph --host-prefix /absolute/native \
+  --sdk-source /absolute/EmberBSD-SDK \
+  --environment-json /absolute/electron-graph/configuration.json \
+  --work /absolute/new-test-work --lock-root /absolute/shared-obj
+```
+
+The test checks no-op, changed-version and declaration-input rebuilds. It does
+not execute Electron or modify installed packages.
+
+For a browser smoke check, serve the actual generated GN bundle:
+
+```sh
+/absolute/native/bin/python3.15 -B -S probes/electron/tests/lit-browser/server.py \
+  --bundle /absolute/electron-graph/out/gen/third_party/lit/v3_0/bundled/lit.rollup.js
+```
+
+Open the printed loopback port in a Trusted Types-capable browser. The body
+`data-result` should contain `items` as `["one", "two"]`, `blocked` as `true`,
+`property` as `"ready"` and `shadow` as `"ready"`. Stop the server afterward.
+This is a host browser smoke check, not an Electron target runtime test.
+
+The trusted-types selection is also tested against the real TS backend with
+competing roots, implicit ambient types and the unsupported bundled-root case:
+
+```sh
+/absolute/native/bin/python3.15 -B -S probes/electron/tests/trusted-types-provider.py \
+  --source /absolute/prepared-electron/src --host-prefix /absolute/native
+```

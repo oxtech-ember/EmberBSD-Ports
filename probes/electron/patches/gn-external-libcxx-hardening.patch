@@ -1,0 +1,30 @@
+$NetBSD$
+
+Allow an explicitly selected external libc++ to supply extensive hardening.
+The build controller must verify the runtime for every selected toolchain.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- a/build/config/c++/c++.gni
++++ b/build/config/c++/c++.gni
+@@ -27,6 +27,10 @@
+   # be supported in the future. This flag will be removed.
+   use_custom_libcxx_for_host = true
+ 
++  # The selected external libc++ is built with extensive hardening.
++  # The embedding build must verify this capability for each toolchain.
++  external_libcxx_has_extensive_hardening = false
++
+   # Builds libcxx Natvis into the symbols for type visualization.
+   # Set to false to workaround http://crbug.com/966676 and
+   # http://crbug.com/966687.
+@@ -112,7 +116,9 @@
+ # The saigo libc++ is distinct from the custom hermetic libc++. However, since
+ # the Chrome team controls the saigo toolchain, it is safe to unconditionally
+ # enable libc++ hardening there as well.
+-use_safe_libcxx = use_custom_libcxx && enable_safe_libcxx
++use_safe_libcxx =
++    (use_custom_libcxx || external_libcxx_has_extensive_hardening) &&
++    enable_safe_libcxx
+ 
+ # libc++abi needs to be exported from executables to be picked up by shared
+ # libraries on certain instrumented builds.

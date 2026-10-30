@@ -1,0 +1,80 @@
+$NetBSD$
+
+Run protoc-gen-ts_proto from the selected common ts-proto providers.
+The protoc actions track the provider package files as inputs.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/third_party/node/node_modules.py
++++ b/third_party/node/node_modules.py
+@@ -49,4 +49,5 @@
+ 
+ 
+ def PathToTsProto():
+-  return _path_in_node_modules('ts-proto', 'protoc-gen-ts_proto')
++  return _selected_tool('EMBERBSD_HOST_TS_PROTO', 'ts-proto',
++                        'protoc-gen-ts_proto')
+--- a/third_party/protobuf/proto_library.gni
++++ b/third_party/protobuf/proto_library.gni
+@@ -151,6 +151,7 @@
+ import("//build/config/cronet/config.gni")
+ import("//build/config/sanitizers/sanitizers.gni")
+ import("//build/toolchain/kythe.gni")
++import("//third_party/node/node.gni")
+ 
+ declare_args() {
+   # Allows subprojects to omit javascript dependencies (e.g.) closure_compiler
+@@ -280,6 +281,18 @@
+   "//third_party/node/node_modules/ts-proto/protoc-gen-ts_proto",
+ ]
+ 
++if (emberbsd_node_modules != "") {
++  # Use the selected common ts-proto providers instead of the archive.
++  _protoc_gen_ts_runtime_deps = []
++  _protoc_gen_ts_runtime_deps = [
++    "//third_party/node/node.py",
++    "//third_party/node/node_modules.py",
++    emberbsd_node_modules + "/ts-proto/protoc-gen-ts_proto",
++  ]
++  assert(emberbsd_ts_proto_inputs != [], "common ts-proto needs provider inputs")
++  _protoc_gen_ts_runtime_deps += emberbsd_ts_proto_inputs
++}
++
+ _emberbsd_host_node = getenv("EMBERBSD_HOST_NODE")
+ if (_emberbsd_host_node != "") {
+   assert(!use_remoteexec,
+@@ -641,6 +663,12 @@
+         "--protoc-gen-ts",
+         "./" + rebase_path(_protoc_gen_ts_path, root_build_dir),
+       ]
++      if (emberbsd_node_modules != "") {
++        args += [
++          "--ts-proto-plugin",
++          emberbsd_node_modules + "/ts-proto/protoc-gen-ts_proto",
++        ]
++      }
+       inputs += [
+                   _protoc_gen_ts_path,
+                   "//tools/protoc_wrapper/protoc-gen-ts_proto.py",
+--- a/tools/protoc_wrapper/protoc_wrapper.py
++++ b/tools/protoc_wrapper/protoc_wrapper.py
+@@ -132,6 +132,10 @@
+   parser.add_argument(
+     "--protoc-gen-ts", help="Relative path to typescript compiler."
+   )
++  parser.add_argument(
++    "--ts-proto-plugin",
++    help="Absolute path to the selected common ts-proto plugin entry file."
++  )
+ 
+   parser.add_argument(
+     "--plugin-out-dir", help="Output directory for custom generator plugin."
+@@ -269,6 +273,8 @@
+   nenv = os.environ.copy()
+ #  nenv["PATH"] = "${WRKOBJDIR}/bin:" + nenv["PATH"]
+   nenv["LD_LIBRARY_PATH"] = "@WRKSRC@/out/Release"
++  if options.ts_proto_plugin:
++    nenv["EMBERBSD_HOST_TS_PROTO"] = options.ts_proto_plugin
+ 
+   dependency_file_data = None
+   if options.descriptor_set_out and options.descriptor_set_dependency_file:

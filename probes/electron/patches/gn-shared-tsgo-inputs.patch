@@ -1,0 +1,46 @@
+$NetBSD$
+
+Route Chromium TypeScript native actions to the selected shared provider.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- a/third_party/typescript/tsgo.gni
++++ b/third_party/typescript/tsgo.gni
+@@ -3,6 +3,7 @@
+ # found in the LICENSE file.
+ 
+ import("//build/toolchain/rbe.gni")
++import("//third_party/node/node.gni")
+ 
+ if (host_os == "linux" || use_remoteexec || host_os == "openbsd" || host_os == "freebsd" || host_os == "netbsd") {
+   _platform_dir = "linux-amd64"
+@@ -140,3 +141,14 @@
+ foreach(file, _tsgo_lib_files) {
+   tsgo_inputs += [ "//third_party/typescript/$_platform_dir/src/lib/$file" ]
+ }
++
++if (emberbsd_host_node != "") {
++  assert(emberbsd_typescript_native_binary != "" &&
++             emberbsd_typescript_definitions != [],
++         "selected TypeScript native binary and declarations are required")
++  tsgo_inputs = []
++  tsgo_inputs = [
++    "//third_party/typescript/typescript.py",
++    emberbsd_typescript_native_binary,
++  ] + emberbsd_typescript_definitions
++}
+--- a/third_party/typescript/typescript.py
++++ b/third_party/typescript/typescript.py
+@@ -11,6 +11,13 @@
+ 
+ 
+ def GetBinaryPath():
++  selected = os.environ.get('EMBERBSD_TYPESCRIPT_NATIVE_BINARY')
++  if os.environ.get('EMBERBSD_HOST_NODE'):
++    if not selected:
++      raise RuntimeError('Selected TypeScript native binary is required')
++    if not os_path.isabs(selected) or not os_path.isfile(selected) or not os.access(selected, os.X_OK):
++      raise RuntimeError('Selected TypeScript native binary is invalid')
++    return selected
+   if platform.machine() == 'arm64':
+     darwin_path = 'mac-arm64'
+   else:

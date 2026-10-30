@@ -23,6 +23,13 @@ require = upstream.require
 DATA = Path(__file__).with_name("bsd-overlay")
 
 
+def validate_common_source(name, target, content, entry):
+    require(target.startswith("v8/") and entry.get("provider") == "pkgsrc/lang/v8",
+            "unsupported common source overlay: " + name)
+    require(entry.get("mapping") and hashlib.sha256(content).hexdigest() == entry.get("patch_sha256"),
+            "common source donor patch differs: " + name)
+
+
 def relative(name):
     path = PurePosixPath(name)
     require(name and path.parts and not path.is_absolute() and str(path) == name and
@@ -213,9 +220,14 @@ def audit(workspace, pkgsrc, archive, destination, git, patch):
             "duplicate or case-colliding patch target")
     external = manifest["external_host_tools"]
     superseded = manifest["superseded"]
-    require(set(external) | set(superseded) <= set(patches) and not set(external) & set(superseded),
+    common_sources = manifest.get("common_sources", {})
+    require(set(common_sources) == {name for name, target in targets.items() if target.startswith("v8/")},
+            "common V8 overlay inventory differs from the archive")
+    require(set(external) | set(superseded) | set(common_sources) <= set(patches) and
+            not (set(external) & set(superseded) or set(external) & set(common_sources) or
+                 set(superseded) & set(common_sources)),
             "invalid overlay classification")
-    for name, entry in [(entry["patch"], entry) for entry in manifest["adapted"]] + list(superseded.items()):
+    for name, entry in [(entry["patch"], entry) for entry in manifest["adapted"]] + list(superseded.items()) + list(common_sources.items()):
         require(targets.get(name) == entry["target"], f"classified patch target differs: {name}")
     sources, revisions = committed_sources(workspace, git, list(targets.values()))
     require(not set(sources) & set(overlay), "chromium-nb overwrites a committed source file")
@@ -237,6 +249,10 @@ def audit(workspace, pkgsrc, archive, destination, git, patch):
         if name in external:
             require(target not in sources, f"external host source unexpectedly exists: {target}")
             row.update(status="external-host-tool", **external[name])
+        elif name in common_sources:
+            validate_common_source(name, target, (series / name).read_bytes(), common_sources[name])
+            row.update(status="common-source", provider=common_sources[name]["provider"],
+                       mapping=common_sources[name]["mapping"])
         elif name in superseded:
             row.update(status="superseded", reason=superseded[name]["reason"])
         else:
@@ -266,7 +282,7 @@ def main():
     except (ValueError, OSError, KeyError, tarfile.TarError) as exc:
         parser.exit(1, f"BSD overlay audit failed: {exc}\n")
     counts = {status: sum(row["status"] == status for row in result["rows"])
-              for status in ("applied", "superseded", "external-host-tool")}
+              for status in ("applied", "superseded", "external-host-tool", "common-source")}
     print(json.dumps(counts, sort_keys=True))
     print("External host inputs, other Electron adaptations and target compilation remain separate work.")
 

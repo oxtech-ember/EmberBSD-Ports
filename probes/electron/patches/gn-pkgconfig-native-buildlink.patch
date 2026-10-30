@@ -1,0 +1,93 @@
+Use pkgconf relocation for the selected pkgsrc host buildlink view.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- a/build/config/BUILDCONFIG.gn
++++ b/build/config/BUILDCONFIG.gn
+@@ -127,6 +127,7 @@
+ declare_args() {
+   emberbsd_pkg_config_role = "upstream"
+   emberbsd_native_pkg_config_prefix = ""
++  emberbsd_native_pkg_config_buildlink = false
+ }
+ 
+ declare_args() {
+--- a/build/config/linux/pkg_config.gni
++++ b/build/config/linux/pkg_config.gni
+@@ -145,6 +145,9 @@
+     "--emberbsd-native-prefix",
+     emberbsd_native_pkg_config_prefix,
+   ]
++  if (emberbsd_native_pkg_config_buildlink) {
++    common_pkg_config_args += [ "--emberbsd-native-buildlink" ]
++  }
+ }
+ 
+ if (pkg_config != "") {
+--- a/build/config/linux/pkg-config.py
++++ b/build/config/linux/pkg-config.py
+@@ -124,6 +124,7 @@
+     parser.add_option('--allow-cross-sysroot', action='store_true',
+                       dest='allow_cross_sysroot', default=False)
+     parser.add_option('--emberbsd-native-prefix', dest='emberbsd_native_prefix')
++    parser.add_option('--emberbsd-native-buildlink', action='store_true', default=False)
+     parser.add_option(
+         '--system_libdir',
+         action='store',
+@@ -148,6 +149,12 @@
+     )
+     (options, args) = parser.parse_args()
+ 
++    if options.emberbsd_native_buildlink and options.emberbsd_native_prefix is None:
++        parser.error('native buildlink requires a selected prefix')
++    pkg_config_command = [options.pkg_config]
++    if options.emberbsd_native_buildlink:
++        pkg_config_command.append('--define-prefix')
++
+     if options.emberbsd_native_prefix is not None:
+         if not os.path.isabs(options.emberbsd_native_prefix):
+             parser.error('native pkg-config prefix must be absolute')
+@@ -195,7 +202,7 @@
+         # When asking for the return value, just run pkg-config and print the return
+         # value, no need to do other work.
+         if not subprocess.call(
+-            [options.pkg_config, "--atleast-version=" + options.atleast_version]
++            [*pkg_config_command, "--atleast-version=" + options.atleast_version]
+             + args
+         ):
+             print("true")
+@@ -204,7 +211,7 @@
+         return 0
+ 
+     if options.version_as_components:
+-        cmd = [options.pkg_config, "--modversion"] + args
++        cmd = [*pkg_config_command, "--modversion"] + args
+         try:
+             version_string = subprocess.check_output(cmd).decode('utf-8')
+         except:
+@@ -214,7 +221,7 @@
+         return 0
+ 
+     if options.libdir:
+-        cmd = [options.pkg_config, "--variable=libdir"] + args
++        cmd = [*pkg_config_command, "--variable=libdir"] + args
+         if options.debug:
+             sys.stderr.write('Running: %s\n' % cmd)
+         try:
+@@ -226,7 +233,7 @@
+         return 0
+ 
+     if options.dridriverdir:
+-        cmd = [options.pkg_config, "--variable=dridriverdir"] + args
++        cmd = [*pkg_config_command, "--variable=dridriverdir"] + args
+         if options.debug:
+             sys.stderr.write('Running: %s\n' % cmd)
+         try:
+@@ -237,7 +244,7 @@
+         sys.stdout.write(dridriverdir.strip())
+         return
+ 
+-    cmd = [options.pkg_config, "--cflags", "--libs"] + args
++    cmd = [*pkg_config_command, "--cflags", "--libs"] + args
+     if options.debug:
+         sys.stderr.write('Running: %s\n' % ' '.join(cmd))
+ 

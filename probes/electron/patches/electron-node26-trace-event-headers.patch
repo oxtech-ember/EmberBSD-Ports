@@ -1,0 +1,21 @@
+$NetBSD$
+
+Read the Node 26 trace event macro headers. Node 26 replaced
+trace_event_common.h with the legacy and Perfetto headers.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/electron/BUILD.gn
++++ b/electron/BUILD.gn
+@@ -481,8 +481,10 @@
+   script = "build/generate_node_defines.py"
+ 
+   inputs = [
+-    "//third_party/electron_node/src/tracing/trace_event_common.h",
+     "//third_party/electron_node/src/tracing/trace_event.h",
++    "//third_party/electron_node/src/tracing/trace_event_legacy.h",
++    "//third_party/electron_node/src/tracing/trace_event_legacy_inl.h",
++    "//third_party/electron_node/src/tracing/trace_event_perfetto.h",
+     "//third_party/electron_node/src/util.h",
+   ]
+ 

@@ -1,0 +1,14 @@
+Apply the GCC-only warning option only to the selected GCC toolchain.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- a/build/config/compiler/BUILD.gn
++++ b/build/config/compiler/BUILD.gn
+@@ -2014,7 +2014,7 @@
+       "-Wno-psabi",
+     ]
+ 
+-    if (!is_wasm && !is_bsd) {
++    if (!is_wasm && !is_bsd && !is_clang) {
+       cflags += [
+         # TODO(crbug.com/526996813): Figure out what to do about this.
+         "-Wno-stringop-overread",

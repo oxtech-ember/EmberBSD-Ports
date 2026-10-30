@@ -53,8 +53,8 @@
          return 'windows'
 --- a/third_party/dawn/scripts/dawn_features.gni
 +++ b/third_party/dawn/scripts/dawn_features.gni
-@@ -28,6 +28,12 @@
- import("//build/config/clang/clang.gni")
+@@ -29,6 +29,12 @@
+ import("//build/config/sanitizers/sanitizers.gni")
  import("//build_overrides/build.gni")
  import("dawn_overrides_with_defaults.gni")
 +

@@ -170,15 +170,15 @@
  base::DictValue CreateEndHostResolutionNetLogParams(
 --- a/net/quic/dedicated_web_transport_http3_client.cc
 +++ b/net/quic/dedicated_web_transport_http3_client.cc
-@@ -12,6 +12,7 @@
+@@ -13,6 +13,7 @@
  #include "base/memory/raw_ptr.h"
  #include "base/metrics/field_trial_params.h"
  #include "base/metrics/histogram_functions.h"
 +#include "base/notreached.h"
+ #include "base/strings/string_util.h"
  #include "base/task/single_thread_task_runner.h"
  #include "net/base/address_list.h"
- #include "net/base/port_util.h"
-@@ -327,6 +328,7 @@
+@@ -392,6 +393,7 @@
      case quic::WebTransportHttp3Version::kDraft07:
        return "draft-07";
    }

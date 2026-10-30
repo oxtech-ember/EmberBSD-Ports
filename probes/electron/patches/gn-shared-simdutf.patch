@@ -1,0 +1,102 @@
+Select the common simdutf provider for Chromium GN consumers.
+
+Origin: EmberBSD contributors (AI-assisted); upstream status: not submitted.
+
+--- a/third_party/simdutf/BUILD.gn
++++ b/third_party/simdutf/BUILD.gn
+@@ -4,40 +4,55 @@
+ 
+ import("//build/config/avx512.gni")
+ 
+-source_set("header") {
+-  sources = [ "simdutf.h" ]
+-}
++import("//third_party/simdutf/simdutf.gni")
+ 
+-config("simdutf_config") {
+-  include_dirs = [ "." ]
+-}
++if (use_system_simdutf) {
++  import("//build/config/linux/pkg_config.gni")
++  pkg_config("simdutf_external_config") {
++    packages = [ "simdutf" ]
++  }
++  group("header") {
++    public_configs = [ ":simdutf_external_config" ]
++  }
++  group("simdutf") {
++    public_configs = [ ":simdutf_external_config" ]
++  }
++} else {
++  source_set("header") {
++    sources = [ "simdutf.h" ]
++  }
++
++  config("simdutf_config") {
++    include_dirs = [ "." ]
++  }
+ 
+-source_set("simdutf") {
+-  sources = [ "simdutf.cpp" ]
+-  public_deps = [ ":header" ]
+-  public_configs = [ ":simdutf_config" ]
+-  cflags_cc = [
+-    "-Wno-unused-const-variable",
+-    "-Wno-unused-function",
+-  ]
+-
+-  # TODO(crbug.com/483020951): Replace this with `-Wno-array-bounds-member` if
+-  # that gets implemented. Then patch simdutf and remove this completely.
+-  # Upstream issue: https://github.com/simdutf/simdutf/issues/938
+-  cflags = [ "-Wno-array-bounds" ]
+-
+-  defines = []
+-  if (!allow_avx512) {
+-    defines += [ "SIMDUTF_IMPLEMENTATION_ICELAKE=0" ]
+-  }
+-  if (is_win) {
+-    # Supress dllexports when included in chrome.exe.
+-    defines += [ "SIMDUTF_DLLIMPORTEXPORT=" ]
+-  }
+-  configs -= [ "//build/config/compiler:chromium_code" ]
+-  configs += [ "//build/config/compiler:no_chromium_code" ]
+-  if (!is_debug) {
+-    configs -= [ "//build/config/compiler:default_optimization" ]
+-    configs += [ "//build/config/compiler:optimize_speed" ]
++  source_set("simdutf") {
++    sources = [ "simdutf.cpp" ]
++    public_deps = [ ":header" ]
++    public_configs = [ ":simdutf_config" ]
++    cflags_cc = [
++      "-Wno-unused-const-variable",
++      "-Wno-unused-function",
++    ]
++
++    # TODO(crbug.com/483020951): Replace this with `-Wno-array-bounds-member` if
++    # that gets implemented. Then patch simdutf and remove this completely.
++    # Upstream issue: https://github.com/simdutf/simdutf/issues/938
++    cflags = [ "-Wno-array-bounds" ]
++
++    defines = []
++    if (!allow_avx512) {
++      defines += [ "SIMDUTF_IMPLEMENTATION_ICELAKE=0" ]
++    }
++    if (is_win) {
++      # Supress dllexports when included in chrome.exe.
++      defines += [ "SIMDUTF_DLLIMPORTEXPORT=" ]
++    }
++    configs -= [ "//build/config/compiler:chromium_code" ]
++    configs += [ "//build/config/compiler:no_chromium_code" ]
++    if (!is_debug) {
++      configs -= [ "//build/config/compiler:default_optimization" ]
++      configs += [ "//build/config/compiler:optimize_speed" ]
++    }
+   }
+ }
+--- /dev/null
++++ b/third_party/simdutf/simdutf.gni
+@@ -0,0 +1,4 @@
++# Select the shared simdutf provider for all GN consumers.
++declare_args() {
++  use_system_simdutf = false
++}

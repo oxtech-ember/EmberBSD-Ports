@@ -4,33 +4,42 @@ Origin: EmberBSD (AI-assisted); upstream defaults remain unchanged.
 
 --- a/build/util/lastchange.py
 +++ b/build/util/lastchange.py
-@@ -46,7 +46,7 @@
-   Returns:
-     A process object or None.
-   """
--  command = ['git'] + command
-+  command = [os.environ.get('EMBERBSD_CONTROL_GIT', 'git')] + command
-   # Force shell usage under cygwin. This is a workaround for
-   # mysterious loss of cwd while invoking cygwin's git.
-   # We can't just pass shell=True to Popen, as under win32 this will
-@@ -107,7 +107,7 @@
-   Raises:
-     RuntimeError on failure, including a nonzero return code.
-   """
--  command = ['git'] + command
-+  command = [os.environ.get('EMBERBSD_CONTROL_GIT', 'git')] + command
-   # Force shell usage under cygwin. This is a workaround for
-   # mysterious loss of cwd while invoking cygwin's git.
-   # We can't just pass shell=True to Popen, as under win32 this will
-@@ -408,6 +408,8 @@
-       return None
+@@ -48,7 +48,7 @@
+     Returns:
+       A process object or None.
+     """
+-    command = ['git'] + command
++    command = [os.environ.get('EMBERBSD_CONTROL_GIT', 'git')] + command
+     # Force shell usage under cygwin. This is a workaround for
+     # mysterious loss of cwd while invoking cygwin's git.
+     # We can't just pass shell=True to Popen, as under win32 this will
+@@ -123,7 +123,7 @@
+     Raises:
+       RuntimeError on failure, including a nonzero return code.
+     """
+-    command = ['git'] + command
++    command = [os.environ.get('EMBERBSD_CONTROL_GIT', 'git')] + command
+     # Force shell usage under cygwin. This is a workaround for
+     # mysterious loss of cwd while invoking cygwin's git.
+     # We can't just pass shell=True to Popen, as under win32 this will
+@@ -422,6 +422,8 @@
+     try:
+         version_info = GetGitVersion(source_dir, commit_filter, merge_base_ref)
+     except RuntimeError as e:
++        if 'EMBERBSD_CONTROL_GIT' in os.environ:
++            raise
+         # If we're not in a Git working tree, maybe we're in a JJ workspace.
+         try:
+             version_info = GetJjVersion(
+@@ -433,6 +435,8 @@
+             return None
  
-   if not version_info:
-+    if 'EMBERBSD_CONTROL_GIT' in os.environ:
-+      raise RuntimeError('selected Git did not provide source revision')
-     logging.warning(
-         "Falling back to a version of 0.0.0 to allow script to finish. This is"
-         "normal if you are bootstrapping a new environment or do not have a "
+     if not version_info:
++        if 'EMBERBSD_CONTROL_GIT' in os.environ:
++            raise RuntimeError('selected Git did not provide source revision')
+         logging.warning(
+             "Falling back to a version of 0.0.0 to allow script to finish. This is"
+             "normal if you are bootstrapping a new environment or do not have a "
 --- a/electron/script/get-git-ref-paths.py
 +++ b/electron/script/get-git-ref-paths.py
 @@ -15,7 +15,7 @@

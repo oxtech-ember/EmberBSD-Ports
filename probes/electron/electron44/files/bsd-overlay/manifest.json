@@ -2,23 +2,18 @@
   "adapted": [
     {
       "patch": "patch-chrome_browser_file__system__access_chrome__file__system__access__permission__context.cc",
-      "source_sha256": "30998a905543954135fcb827b50814fb8735bc4d5063e1bfaf92bd56ea06223e",
+      "source_sha256": "3d78f528aeb4590ec3dc6bd19e98650c9b62462a043403d275c1ae0dfa9da93e",
       "target": "chrome/browser/file_system_access/chrome_file_system_access_permission_context.h"
     },
     {
       "patch": "patch-content_browser_child__process__launcher__helper__linux.cc",
-      "source_sha256": "94851b12d368ece1572afd817cc7fa51701a81189466733b610a0328a6a1ae27",
+      "source_sha256": "681446bc7ec324c85898003c02ff380c40186a56227733a17589a406a65ea627",
       "target": "content/browser/child_process_launcher_helper_linux.cc"
     },
     {
       "patch": "patch-net_dns_dns__config__service__posix.cc",
-      "source_sha256": "63fc0b95ea53b0dc362282de8b629e310f87f374398c2974819b495a856cf6c6",
+      "source_sha256": "69d788424515381d944d5e72716811afeead9bd7f2a12a7309d6c0f2e4f0468a",
       "target": "net/dns/dns_config_service_posix.cc"
-    },
-    {
-      "patch": "patch-ui_gfx_font__util.cc",
-      "source_sha256": "a7b3ca65cbac3dfb0a09b153ada86eae7b245dd9e24a338382bf251c351481bd",
-      "target": "ui/gfx/font_util.cc"
     },
     {
       "patch": "patch-ui_gtk_gtk__compat.cc",
@@ -26,18 +21,198 @@
       "target": "ui/gtk/gtk_compat.cc"
     }
   ],
-  "archive_root": "chromium-nb-151.1",
-  "archive_sha512": "1b0917bfe37ae6b861f9b6bd7ea71c520933d6332b0e703e122d37c681edcb0be526aa398ad1944ee93e54bd03695c9f22cb1e8e1e6f4591efd5600561017bae",
-  "archive_url": "https://github.com/kikadf/chromium-nb/archive/refs/tags/v151.1.tar.gz",
+  "archive_root": "chromium-nb-154.0",
+  "archive_sha512": "fa2949c8f6eb93d5c1cceacdeada54c60c1b2994429079523de41e6d00cfe70fbd4185354d30dddbeff4698a17ad59c904fdd047ee9cd4cf50fa2fc9194992e7",
+  "archive_url": "https://github.com/kikadf/chromium-nb/archive/refs/tags/v154.0.tar.gz",
+  "common_sources": {
+    "patch-v8_BUILD.gn": {
+      "mapping": "Common V8 sets BSD target flags and uses selected host paxctl and validated metagen resources; it avoids target-host confusion.",
+      "patch_sha256": "d62dc1b59bbed2b6609cc628d32284523d9b9e446d102295f8fafd8a4e7b84a6",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/BUILD.gn"
+    },
+    "patch-v8_gni_v8.gni": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "54a6c2d52458aab3ebfe1168c9384e4130fcfa18c2a0bc31157b0f5a7a2ddccb",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/gni/v8.gni"
+    },
+    "patch-v8_include_v8-internal.h": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "1217e963cd52ce4ae89e15de8e03514e8760f9cddd34eff117bc0e374cd2541a",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/include/v8-internal.h"
+    },
+    "patch-v8_include_v8config.h": {
+      "mapping": "Common V8 supplies BSD target definitions with target-specific guards, including cross builds.",
+      "patch_sha256": "73a246739a294eb36240bf182a589b004963fdf3ff6046785b6fcc6c76c4b870",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/include/v8config.h"
+    },
+    "patch-v8_src_api_api.cc": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "73e79d46a2c963c5309389e2d94cd2b7e21e39583c51d53c537ea0c93df881fe",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/api/api.cc"
+    },
+    "patch-v8_src_base_atomicops.h": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "05468d690dfc467af0ab09d4a233af309571cd725af01a85c25d34eac2917847",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/base/atomicops.h"
+    },
+    "patch-v8_src_base_macros.h": {
+      "mapping": "Common V8 preserves UBSan diagnostics instead of suppressing them on BSD.",
+      "patch_sha256": "8cc6e2a3635ba538996fb9901ebff589c5a5a2c88c01feddd938d83c679ac319",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/base/macros.h"
+    },
+    "patch-v8_src_base_platform_memory.h": {
+      "mapping": "Common V8 keeps FreeBSD malloc_usable_size support and selects the BSD-specific platform interfaces.",
+      "patch_sha256": "50d39755c44c1c08c16cc6c13a08def4913dc99a6866bfb970f75307bd4b5ef3",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/base/platform/memory.h"
+    },
+    "patch-v8_src_base_platform_platform-freebsd.cc": {
+      "mapping": "Common V8 adapts BSD map types; i386 profiling behavior differs and is not exercised by NetBSD amd64.",
+      "patch_sha256": "54b3160334028aad08a4f1bdcbe6a5819bafc4ae93a7d09dbf9e34683f474fa6",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/base/platform/platform-freebsd.cc"
+    },
+    "patch-v8_src_base_platform_platform-openbsd.cc": {
+      "mapping": "Common BSD platform uses pthread_getattr_np and pthread_attr_getstack for NetBSD; libc implements get_np via this interface.",
+      "patch_sha256": "d7528be708c256a2519f212bd773b9bb3dd285f7fc5ebe5987ff7ff9af16108c",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/base/platform/platform-openbsd.cc"
+    },
+    "patch-v8_src_base_platform_platform-posix.cc": {
+      "mapping": "Common BSD platform handles NetBSD thread naming and stack attributes; its reserved-limit handling uses the actual thread attributes.",
+      "patch_sha256": "4992275396d0445a2bbc6a7b561d6f40486ce4b67f8d4d0cfcd31dff5eb31bb0",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/base/platform/platform-posix.cc"
+    },
+    "patch-v8_src_base_strings.h": {
+      "mapping": "Common V8 includes stdarg.h for the global va_list used by this source.",
+      "patch_sha256": "5444bd26bea7643b2b004311ad423ecf9d2d95fb5890c4e5baca511c862ee139",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/base/strings.h"
+    },
+    "patch-v8_src_base_sys-info.cc": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "582ce670ca2ceeb0912fde87768ea6b277df4ed1f6c7479e8915f0cee30b38ca",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/base/sys-info.cc"
+    },
+    "patch-v8_src_base_utils_random-number-generator.cc": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "b3231ef4be2aad39ea1cc08b69e9fd1e4a976bc4c5ba5b8020156fbb01d40371",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/base/utils/random-number-generator.cc"
+    },
+    "patch-v8_src_diagnostics_perf-jit.cc": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "312338bffc74148815db07fc388c5362c0f3708b051c5bf6e57eda344394966e",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/diagnostics/perf-jit.cc"
+    },
+    "patch-v8_src_diagnostics_perf-jit.h": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "5d21372c0e129dacf9141bd1c225dc09d2efa58e6738a298dd2a364f5b48ddcf",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/diagnostics/perf-jit.h"
+    },
+    "patch-v8_src_execution_isolate.cc": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "240d3b90e107011db11b1ed255be5f30c754f0a619c951475a3b033b78fb26fd",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/execution/isolate.cc"
+    },
+    "patch-v8_src_flags_flags.cc": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "32b8bebd3270a2adfa478329ae97e3d88f00a090c3b447a99fa128e79303c8d6",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/flags/flags.cc"
+    },
+    "patch-v8_src_libsampler_sampler.cc": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "5d9b1a9a5e8ccc6d2f87d42f97b68663a3f05db4302973d755c97698bb61e8dd",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/libsampler/sampler.cc"
+    },
+    "patch-v8_src_objects_simd.cc": {
+      "mapping": "Common V8 excludes SVE for the selected OpenBSD target, including cross compilation.",
+      "patch_sha256": "b75d30a1ac8c1f8f88c42a955b8a03ee2afc04e041559dcb8b1e690db2fab20a",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/objects/simd.cc"
+    },
+    "patch-v8_src_sandbox_sandbox.cc": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "07b4ad668cfa035f33cdcfab26f6f0078552e1ce879ea19c46498729e19584bc",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/sandbox/sandbox.cc"
+    },
+    "patch-v8_src_snapshot_embedded_platform-embedded-file-writer-base.cc": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "86d89918ca0a85e3b67d7d537fda3a920531b6f0d03178049ecffa55ed7f35d4",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/snapshot/embedded/platform-embedded-file-writer-base.cc"
+    },
+    "patch-v8_src_snapshot_embedded_platform-embedded-file-writer-base.h": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "a675248f07168e05d5b4f0560b38b29971939e3d7dc75ad1b3b6da4f4d8b0e2e",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/snapshot/embedded/platform-embedded-file-writer-base.h"
+    },
+    "patch-v8_src_snapshot_embedded_platform-embedded-file-writer-generic.cc": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "e30cc358400ea71d2deae840389fcfadf60b3889d43c41097e97616c8d27b770",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/snapshot/embedded/platform-embedded-file-writer-generic.cc"
+    },
+    "patch-v8_src_trap-handler_handler-inside-posix.cc": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "b80a353d994b20b903278e82d80be8c1c64ebbef5fe6f6b427da419145ddfbdd",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/trap-handler/handler-inside-posix.cc"
+    },
+    "patch-v8_src_trap-handler_handler-inside-posix.h": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "6229115cc97ab15c4836fef10f1e2efacb1839e854d7d08aa921744c07810b52",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/trap-handler/handler-inside-posix.h"
+    },
+    "patch-v8_src_trap-handler_trap-handler.h": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "f257677256d6bdb5dc3ac3f3dd3ab29cf230e636abbae8ee17a00166d5e6747e",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/trap-handler/trap-handler.h"
+    },
+    "patch-v8_src_wasm_stacks.cc": {
+      "mapping": "Matching shared V8 patch carries the same donor hunk.",
+      "patch_sha256": "d083942afa651c86912027060d44edbbb07c65a80a8f96dd74f2d328dc0dcc4d",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/src/wasm/stacks.cc"
+    },
+    "patch-v8_tools_metagen_metagen.py": {
+      "mapping": "Common V8 preserves validation of the selected Clang builtin headers.",
+      "patch_sha256": "efc97d61451ec643632abee08451a011f4bf1570522b9fdbbe53622bee64ea4a",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/tools/metagen/metagen.py"
+    },
+    "patch-v8_tools_run-paxctl.py": {
+      "mapping": "Common V8 runs the explicitly selected host paxctl and writes its stamp only on success.",
+      "patch_sha256": "5fa5cb9606f02bb04b5ae980b018114e040de7d44f5c5c500e49754265341560",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/tools/run-paxctl.py"
+    },
+    "patch-v8_tools_run.py": {
+      "mapping": "Common V8 inherits the selected build environment rather than forcing a private LD_LIBRARY_PATH.",
+      "patch_sha256": "ecbf63c2ebb044a73f0a88e30ea817182f3cca6b3e6096e2b4ad70825b881a5d",
+      "provider": "pkgsrc/lang/v8",
+      "target": "v8/tools/run.py"
+    }
+  },
   "external_host_tools": {
-    "patch-rollup_rust_bindings__napi_Cargo.toml": {
-      "provider": "shared Rollup recipe (not implemented)",
-      "reason": "Electron selects Rollup through DevTools CIPD; pkgsrc Chromium extra rollup source is not in this Git graph."
-    },
-    "patch-rollup_rust_bindings__napi_src_lib.rs": {
-      "provider": "shared Rollup recipe (not implemented)",
-      "reason": "Electron selects Rollup through DevTools CIPD; pkgsrc Chromium extra rollup source is not in this Git graph."
-    },
     "patch-tools_gn_build_build__linux.ninja.template": {
       "provider": "pkgsrc/devel/gn",
       "reason": "Do not remove thin archives for the selected LLVM archiver; actual native package archive/link tests remain required."
@@ -63,12 +238,12 @@
       "reason": "Legacy kvm implementation is OpenBSD-only. Pinned common GN already provides the NetBSD sysctl executable-path implementation."
     }
   },
-  "patch_count": 1641,
-  "pkgsrc_revision": "fff4deb639a1a640476203c80f752fb77b6cb14b",
+  "patch_count": 1739,
+  "pkgsrc_revision": "8b58eb6f903a2788be97e48a5743c25f5432941d",
   "superseded": {
     "patch-chrome_browser_process__singleton__posix.cc": {
       "reason": "Both BSD hunks affect dialog code disabled by Electron upstream patches; retain Electron behavior.",
-      "source_sha256": "8afc23b53d0c84095ec2b783e95270e0563b24a8bc35536780d749475e4d884e",
+      "source_sha256": "ea93d09583e1871e2dd0580b4c25883c1fff9cf41654cd8aaa77a3797ddd6b2b",
       "target": "chrome/browser/process_singleton_posix.cc"
     }
   }

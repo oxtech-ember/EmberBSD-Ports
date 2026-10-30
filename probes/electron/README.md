@@ -781,3 +781,70 @@ Electron selects the common target `libdrm` with `use_system_libdrm`. Direct
 Chromium references to `//third_party/libdrm` forward to the same target
 pkg-config provider. The shared Ports recipe owns the implementation and NetBSD
 PCI support; target link and GPU runtime acceptance remain separate checks.
+
+Chromium 156 removed the legacy pointer-based AudioBus conversions; its span
+implementation checks sizes before conversion. The current NetBSD Chromium
+overlay also keeps mobile cross-device sign-in declarations under their matching
+Android/iOS guards. The former AudioBus and sign-in guard patches are superseded.
+
+### Native host buildlink view
+
+`electron44/host-dependencies.mk` is the host dependency declaration shared by
+Electron's pkgsrc consumer and its GN integration. `electron44/files/host-buildlink.py`
+creates a separate native pkgsrc consumer using the selected SDK, package source
+export, native binding and replacement stage. It runs pkgsrc's normal `wrapper`
+phase with dependency installation disabled and prints the resulting `.buildlink`
+path. All paths passed to the script are absolute; run it with the selected host
+Python. Its `--help` lists the required paths. Use a new `--work` directory for
+an updated selection, retaining prior outputs while they are in use.
+
+For native GN pkg-config queries using this view, the selected pkgconf's
+`--define-prefix` derives include and library paths from each `.pc` file's
+location in the view. Target and upstream pkg-config selection remains separate.
+The view selects the dependencies named by the declaration and their existing
+pkgsrc buildlink dependencies; it does not establish target runtime acceptance.
+
+The Electron controller accepts `--host-buildlink-pkgsrc`,
+`--host-buildlink-stage-root`, `--host-buildlink-base-makeconf`, and
+`--host-buildlink-bmake-mk` together with the native C++ runtime binding. It
+creates the view in its work directory and checks actual bmake includes,
+selected package metadata and view links before reuse. Reconfigure creates a
+new view when these inputs change; build refuses a stale selection. For host
+protocol generators, `--protoc-runtime-view` selects the SDK's scoped Darwin
+launcher. The launcher and actual runtime files are declared as GN action
+inputs, and only its child process receives the runtime search path.
+
+The optional `--protobuf-source`, `--protobuf-ports-source`,
+`--protobuf-archive`, and `--protobuf-patch` select one prepared common
+Protobuf tree. The controller verifies it with its existing source producer,
+checks the selected host and target package source metadata and versions, and
+runs the selected host `protoc` through the scoped runtime. A local GN source
+view connects Chromium's existing Protobuf build files to that tree. Changed
+prepared-source identity requires a fresh output.
+
+`--shared-abseil` and `--shared-icu` select the common installed host and
+target packages through Chromium's existing unbundle shims. The controller
+checks the selected package source metadata; the source view masks exactly the
+headers replaced by the generated shims before any build action runs. For
+system ICU, data comes from the shared ICU data library rather than a bundled
+`icudtl.dat`; V8 startup snapshots are unchanged.
+
+`--v8-source`, `--v8-ports-source`, and `--v8-pkgsrc` select and verify a
+prepared common V8 tree. For its native libclang metagen, select
+`--v8-metagen-libclang-so`, `--v8-metagen-bindings-dir`, and
+`--v8-metagen-runtime-view` together. The files must belong to the selected
+host stage, and its runtime view must resolve within that stage. The SDK
+launcher scopes the runtime to the generator; the selected host, snapshot,
+and target compiler arguments are passed according to the GN toolchain.
+
+`--node-source` and `--node-pkgsrc` select a prepared common Node tree and its
+export; `--perfetto-source`, `--perfetto-ports-source`, `--perfetto-archive`,
+and `--perfetto-patch` select common Perfetto. Each producer verifies its own
+source and recipe inputs; the local source view only connects the selected
+trees. Native generator actions may select the same runtime with
+`--node-scoped-runtime` and `--perfetto-scoped-runtime` alongside
+`--protoc-runtime-view`. `--shared-undici` selects the installed target Undici
+loader after checking its package ownership, source metadata and bytes; the
+compiled runtime path remains `/usr/pkg`. These options do not install packages
+or validate a target Electron runtime. The Electron runtime package must itself
+declare its common target dependencies, including Undici.

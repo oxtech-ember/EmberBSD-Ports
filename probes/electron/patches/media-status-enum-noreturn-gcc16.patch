@@ -1,3 +1,5 @@
+# EmberBSD (AI-assisted): Chromium 156 removed FromReadStatus; its former
+# post-switch hunk is obsolete, while status-string handling remains patched.
 diff --git a/media/base/media_serializers.h b/media/base/media_serializers.h
 --- a/media/base/media_serializers.h
 +++ b/media/base/media_serializers.h
@@ -101,14 +103,6 @@ diff --git a/media/filters/hls_demuxer_status.h b/media/filters/hls_demuxer_stat
 @@ -123,6 +124,7 @@
        case Codes::kNoDataEverAppended:
          return "Segment queue never had any data";
-     }
-+    NOTREACHED();
-   }
- 
-   static TypedStatus<HlsDemuxerStatusTraits> FromReadStatus(
-@@ -135,6 +137,7 @@
-       case HlsDataSourceProvider::ReadStatus::Codes::kStopped:
-         return {Codes::kNetworkReadStopped, std::move(s)};
      }
 +    NOTREACHED();
    }

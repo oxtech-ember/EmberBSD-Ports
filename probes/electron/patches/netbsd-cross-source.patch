@@ -1,3 +1,5 @@
+# EmberBSD (AI-assisted): Chromium 156 rvalue DictValue::Set delegates to
+# the lvalue overload carrying this patch; its former conversion is superseded.
 Chromium/Electron: preserve the additional NetBSD and explicit cross-build changes.
 
 Origin: EmberBSD (AI-assisted), derived from e12-cross-adaptations.patch at
@@ -10,14 +12,11 @@ is completed by the following patches in source-series.json.
 diff --git a/base/BUILD.gn b/base/BUILD.gn
 --- a/base/BUILD.gn
 +++ b/base/BUILD.gn
-@@ -1207,6 +1207,15 @@
-       "kvm",
+@@ -1221,6 +1221,12 @@
+     libs += [
        "epoll-shim",
      ]
-+
-+    # EmberBSD cross profile (E12): epoll-shim headers live under the pkg
-+    # prefix inside the cross sysroot; native NetBSD resolves them through
-+    # the pkgsrc buildlink include path.
++    # The cross sysroot carries the package headers under usr/pkg.
 +    if (is_netbsd && host_os == "mac") {
 +      cflags = [
 +        "-isystem${emberbsd_target_sysroot}/usr/pkg/include/libepoll-shim",
@@ -29,19 +28,19 @@ diff --git a/base/BUILD.gn b/base/BUILD.gn
 diff --git a/base/base_paths_posix.cc b/base/base_paths_posix.cc
 --- a/base/base_paths_posix.cc
 +++ b/base/base_paths_posix.cc
-@@ -128,7 +128,7 @@
-         if ((cpath = getenv("CHROME_EXE_PATH")) != NULL)
-           *result = FilePath(cpath);
-         else
--          *result = FilePath("@PREFIX@/lib/chromium/chrome");
-+          *result = FilePath("/usr/pkg/lib/chromium/chrome");
-         return true;
- #if !BUILDFLAG(IS_AIX)
+@@ -82,7 +82,7 @@
+       if ((cpath = getenv("CHROME_EXE_PATH")) != NULL) {
+         *result = FilePath(cpath);
+       } else {
+-        *result = FilePath("@PREFIX@/lib/chromium/chrome");
++        *result = FilePath("/usr/pkg/lib/chromium/chrome");
        }
+       return true;
+ #endif
 diff --git a/base/containers/flat_tree.h b/base/containers/flat_tree.h
 --- a/base/containers/flat_tree.h
 +++ b/base/containers/flat_tree.h
-@@ -328,7 +328,7 @@
+@@ -333,7 +333,7 @@
    iterator erase(const_iterator first, const_iterator last);
    template <typename K = Key>
      requires(!std::convertible_to<K, const_iterator>)
@@ -50,7 +49,7 @@ diff --git a/base/containers/flat_tree.h b/base/containers/flat_tree.h
  
    // --------------------------------------------------------------------------
    // Comparators.
-@@ -336,37 +336,42 @@
+@@ -341,37 +341,42 @@
    constexpr key_compare key_comp() const;
    constexpr value_compare value_comp() const;
  
@@ -104,7 +103,7 @@ diff --git a/base/containers/flat_tree.h b/base/containers/flat_tree.h
  
    // --------------------------------------------------------------------------
    // General operations.
-@@ -928,7 +933,7 @@
+@@ -935,7 +940,7 @@
             typename flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::
                 const_iterator>)
  auto flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::erase(
@@ -113,7 +112,7 @@ diff --git a/base/containers/flat_tree.h b/base/containers/flat_tree.h
    auto eq_range = equal_range(val);
    auto res =
        static_cast<size_type>(std::distance(eq_range.first, eq_range.second));
-@@ -959,7 +964,7 @@
+@@ -966,7 +971,7 @@
  template <class Key, class GetKeyFromValue, class KeyCompare, class Container>
  template <typename K>
  auto flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::count(
@@ -122,7 +121,7 @@ diff --git a/base/containers/flat_tree.h b/base/containers/flat_tree.h
    auto eq_range = equal_range(key);
    return static_cast<size_type>(std::distance(eq_range.first, eq_range.second));
  }
-@@ -967,14 +972,14 @@
+@@ -974,14 +979,14 @@
  template <class Key, class GetKeyFromValue, class KeyCompare, class Container>
  template <typename K>
  constexpr auto flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::find(
@@ -139,7 +138,7 @@ diff --git a/base/containers/flat_tree.h b/base/containers/flat_tree.h
    auto eq_range = equal_range(key);
    return (eq_range.first == eq_range.second) ? end() : eq_range.first;
  }
-@@ -982,7 +987,7 @@
+@@ -989,7 +994,7 @@
  template <class Key, class GetKeyFromValue, class KeyCompare, class Container>
  template <typename K>
  constexpr bool flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::contains(
@@ -148,7 +147,7 @@ diff --git a/base/containers/flat_tree.h b/base/containers/flat_tree.h
    auto lower = lower_bound(key);
    return lower != end() && !comp_(key, GetKeyFromValue()(*lower));
  }
-@@ -991,7 +996,7 @@
+@@ -998,7 +1003,7 @@
  template <typename K>
  constexpr auto
  flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::equal_range(
@@ -157,7 +156,7 @@ diff --git a/base/containers/flat_tree.h b/base/containers/flat_tree.h
    auto res = std::as_const(*this).equal_range(key);
    return {const_cast_it(res.first), const_cast_it(res.second)};
  }
-@@ -1000,7 +1005,7 @@
+@@ -1007,7 +1012,7 @@
  template <typename K>
  constexpr auto
  flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::equal_range(
@@ -166,7 +165,7 @@ diff --git a/base/containers/flat_tree.h b/base/containers/flat_tree.h
    auto lower = lower_bound(key);
  
    KeyValueCompare comp(comp_);
-@@ -1015,7 +1020,7 @@
+@@ -1022,7 +1027,7 @@
  template <typename K>
  constexpr auto
  flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::lower_bound(
@@ -175,16 +174,16 @@ diff --git a/base/containers/flat_tree.h b/base/containers/flat_tree.h
    return const_cast_it(std::as_const(*this).lower_bound(key));
  }
  
-@@ -1023,7 +1028,7 @@
+@@ -1030,7 +1035,7 @@
  template <typename K>
  constexpr auto
  flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::lower_bound(
 -    const KeyT<K>& key) const -> const_iterator {
 +    const K& key) const -> const_iterator {
-   return std::ranges::lower_bound(*this, key, KeyValueCompare(comp_));
+   return std::lower_bound(begin(), end(), key, KeyValueCompare(comp_));
  }
  
-@@ -1031,7 +1036,7 @@
+@@ -1038,7 +1043,7 @@
  template <typename K>
  constexpr auto
  flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::upper_bound(
@@ -193,13 +192,13 @@ diff --git a/base/containers/flat_tree.h b/base/containers/flat_tree.h
    return const_cast_it(std::as_const(*this).upper_bound(key));
  }
  
-@@ -1039,7 +1044,7 @@
+@@ -1046,7 +1051,7 @@
  template <typename K>
  constexpr auto
  flat_tree<Key, GetKeyFromValue, KeyCompare, Container>::upper_bound(
 -    const KeyT<K>& key) const -> const_iterator {
 +    const K& key) const -> const_iterator {
-   return std::ranges::upper_bound(*this, key, KeyValueCompare(comp_));
+   return std::upper_bound(begin(), end(), key, KeyValueCompare(comp_));
  }
  
 diff --git a/base/feature_list.cc b/base/feature_list.cc
@@ -217,63 +216,24 @@ diff --git a/base/feature_list.cc b/base/feature_list.cc
 diff --git a/base/i18n/internal/immutable_string.h b/base/i18n/internal/immutable_string.h
 --- a/base/i18n/internal/immutable_string.h
 +++ b/base/i18n/internal/immutable_string.h
-@@ -18,6 +18,16 @@
- #include "base/i18n/base_i18n_export.h"
- #include "base/numerics/safe_conversions.h"
+@@ -94,7 +94,7 @@
  
-+// EmberBSD cross (E12): GCC with the bundled libc++ rejects the defaulted
-+// constexpr move constructors below, while Clang needs them constexpr for
-+// consteval base::MakeFixedFlatSet<LanguageTag> tables. Keep upstream
-+// constexpr for Clang and a plain inline default for GCC.
-+#if defined(__clang__)
-+#define EMBERBSD_I18N_MOVE_CONSTEXPR constexpr
-+#else
-+#define EMBERBSD_I18N_MOVE_CONSTEXPR inline
-+#endif
-+
- namespace base::i18n_internal {
- 
- constexpr size_t TotalSize(base::span<const std::string_view> parts) {
-@@ -78,7 +88,7 @@
-     explicit HeapString(base::span<const std::string_view> parts);
-     HeapString(const HeapString& other);
-     HeapString& operator=(const HeapString& other);
--    constexpr HeapString(HeapString&& other) noexcept;
-+    EMBERBSD_I18N_MOVE_CONSTEXPR HeapString(HeapString&& other) noexcept;
-     HeapString& operator=(HeapString&&);
-     inline constexpr ~HeapString() = default;
- 
-@@ -115,7 +125,7 @@
- 
-   constexpr ImmutableString(const ImmutableString& other);
-   constexpr ImmutableString& operator=(const ImmutableString& other);
--  constexpr ImmutableString(ImmutableString&& other) noexcept;
-+  EMBERBSD_I18N_MOVE_CONSTEXPR ImmutableString(ImmutableString&& other) noexcept;
-   constexpr ImmutableString& operator=(ImmutableString&&) noexcept;
+   inline constexpr ImmutableString(const ImmutableString& other);
+   inline constexpr ImmutableString& operator=(const ImmutableString& other);
+-  inline constexpr ImmutableString(ImmutableString&& other) noexcept;
++  ImmutableString(ImmutableString&& other) noexcept = default;
+   inline constexpr ImmutableString& operator=(ImmutableString&& other) noexcept;
  
    // Returns the string as a std::string_view.
-@@ -131,10 +141,10 @@
-   StorageVariantType storage_;
- };
+@@ -171,8 +171,6 @@
+   return *this;
+ }
  
--constexpr ImmutableString::HeapString::HeapString(HeapString&& other) noexcept =
--    default;
--constexpr ImmutableString::ImmutableString(ImmutableString&& other) noexcept =
--    default;
-+EMBERBSD_I18N_MOVE_CONSTEXPR ImmutableString::HeapString::HeapString(
-+    HeapString&& other) noexcept = default;
-+EMBERBSD_I18N_MOVE_CONSTEXPR ImmutableString::ImmutableString(
-+    ImmutableString&& other) noexcept = default;
+-inline constexpr ImmutableString::ImmutableString(
+-    ImmutableString&& other) noexcept = default;
  inline constexpr ImmutableString& ImmutableString::operator=(
-     ImmutableString&&) noexcept = default;
- constexpr ImmutableString::ImmutableString(const ImmutableString& other) =
-@@ -144,4 +154,6 @@
+     ImmutableString&& other) noexcept = default;
  
- }  // namespace base::i18n_internal
- 
-+#undef EMBERBSD_I18N_MOVE_CONSTEXPR
-+
- #endif  // BASE_I18N_INTERNAL_IMMUTABLE_STRING_H_
 diff --git a/base/i18n/language_tag.h b/base/i18n/language_tag.h
 --- a/base/i18n/language_tag.h
 +++ b/base/i18n/language_tag.h
@@ -289,7 +249,7 @@ diff --git a/base/i18n/language_tag.h b/base/i18n/language_tag.h
 diff --git a/base/metrics/runtime_field_trial_overrides.cc b/base/metrics/runtime_field_trial_overrides.cc
 --- a/base/metrics/runtime_field_trial_overrides.cc
 +++ b/base/metrics/runtime_field_trial_overrides.cc
-@@ -26,7 +26,7 @@
+@@ -24,7 +24,7 @@
  
    // If this override is replacing a previous override, remove it first.
    if (!previous_override_trial_name.empty()) {
@@ -298,27 +258,27 @@ diff --git a/base/metrics/runtime_field_trial_overrides.cc b/base/metrics/runtim
      if (previous_override == overrides_.end()) {
        return false;
      }
-@@ -82,7 +82,7 @@
- RuntimeFieldTrialOverrides::GetRuntimeOverride(
+@@ -75,7 +75,7 @@
+ const RuntimeFieldTrialInfo* RuntimeFieldTrialOverrides::GetRuntimeOverride(
      std::string_view trial_name) const {
    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 -  auto it = overrides_.find(trial_name);
 +  auto it = overrides_.find(std::string(trial_name));
    if (it == overrides_.end()) {
-     return std::nullopt;
+     return nullptr;
    }
 diff --git a/base/process/process_handle_openbsd.cc b/base/process/process_handle_openbsd.cc
 --- a/base/process/process_handle_openbsd.cc
 +++ b/base/process/process_handle_openbsd.cc
-@@ -62,7 +62,7 @@
-   if ((cpath = getenv("CHROME_EXE_PATH")) != NULL)
+@@ -57,7 +57,7 @@
+   if ((cpath = getenv("CHROME_EXE_PATH")) != NULL) {
      result = FilePath(cpath);
-   else
+   } else {
 -    result = FilePath("@PREFIX@/lib/chromium/chrome");
 +    result = FilePath("/usr/pkg/lib/chromium/chrome");
- 
-   if (sysctl(mib, std::size(mib), NULL, &len, NULL, 0) != -1) {
-     retvalargs = static_cast<char**>(malloc(len));
+   }
+ #endif
+   return result;
 diff --git a/base/process/process_posix.cc b/base/process/process_posix.cc
 --- a/base/process/process_posix.cc
 +++ b/base/process/process_posix.cc
@@ -440,7 +400,7 @@ diff --git a/base/values.cc b/base/values.cc
  }
  
  void DictValue::clear() {
-@@ -553,7 +553,7 @@
+@@ -563,7 +563,7 @@
  
    auto wrapped_value = std::make_unique<Value>(std::move(value));
    auto* raw_value = wrapped_value.get();
@@ -449,7 +409,7 @@ diff --git a/base/values.cc b/base/values.cc
    return raw_value;
  }
  
-@@ -611,7 +611,7 @@
+@@ -621,7 +621,7 @@
  
    auto wrapped_value = std::make_unique<Value>(std::move(value));
    auto* raw_value = wrapped_value.get();
@@ -458,16 +418,7 @@ diff --git a/base/values.cc b/base/values.cc
    return raw_value;
  }
  
-@@ -622,7 +622,7 @@
-   // DictValue&& DictValue::Set(std::string_view key, Value&& value) &&
- 
-   DCHECK(IsStringUTF8AllowingNoncharacters(key));
--  storage_.insert_or_assign(key, std::make_unique<Value>(std::move(value)));
-+  storage_.insert_or_assign(std::string(key), std::make_unique<Value>(std::move(value)));
-   return std::move(*this);
- }
- 
-@@ -673,13 +673,13 @@
+@@ -682,13 +682,13 @@
  bool DictValue::Remove(std::string_view key) {
    DCHECK(IsStringUTF8AllowingNoncharacters(key));
  
@@ -572,32 +523,32 @@ diff --git a/build/config/linux/pkg-config.py b/build/config/linux/pkg-config.py
 +++ b/build/config/linux/pkg-config.py
 @@ -60,6 +60,8 @@
  
-   libdir = sysroot + '/usr/' + options.system_libdir + '/pkgconfig'
-   libdir += ':' + sysroot + '/usr/share/pkgconfig'
-+  if options.system_libdir == 'pkg/lib':
-+    libdir += ':' + sysroot + '/usr/pkg/share/pkgconfig'
-   os.environ['PKG_CONFIG_LIBDIR'] = libdir
-   return libdir
+     libdir = sysroot + '/usr/' + options.system_libdir + '/pkgconfig'
+     libdir += ':' + sysroot + '/usr/share/pkgconfig'
++    if options.system_libdir == 'pkg/lib':
++        libdir += ':' + sysroot + '/usr/pkg/share/pkgconfig'
+     os.environ['PKG_CONFIG_LIBDIR'] = libdir
+     return libdir
  
-@@ -112,6 +114,8 @@
-   parser.add_option('-v', action='append', dest='strip_out', type='string')
-   parser.add_option('-s', action='store', dest='sysroot', type='string')
-   parser.add_option('-a', action='store', dest='arch', type='string')
-+  parser.add_option('--allow-cross-sysroot', action='store_true',
-+                    dest='allow_cross_sysroot', default=False)
-   parser.add_option('--system_libdir', action='store', dest='system_libdir',
-                     type='string', default='lib')
-   parser.add_option('--atleast-version', action='store',
-@@ -125,7 +129,8 @@
-   # If this is run on non-Linux platforms, just return nothing and indicate
-   # success. This allows us to "kind of emulate" a Linux build from other
-   # platforms.
--  if not sys.platform.startswith(tuple(['linux', 'openbsd', 'freebsd', 'netbsd'])):
-+  if (not options.allow_cross_sysroot and
-+      not sys.platform.startswith(tuple(['linux', 'openbsd', 'freebsd', 'netbsd']))):
-     if options.dridriverdir or options.libdir:
-       sys.stdout.write("")
-       return 0
+@@ -118,6 +120,8 @@
+     parser.add_option('-v', action='append', dest='strip_out', type='string')
+     parser.add_option('-s', action='store', dest='sysroot', type='string')
+     parser.add_option('-a', action='store', dest='arch', type='string')
++    parser.add_option('--allow-cross-sysroot', action='store_true',
++                      dest='allow_cross_sysroot', default=False)
+     parser.add_option(
+         '--system_libdir',
+         action='store',
+@@ -145,7 +149,8 @@
+     # If this is run on non-Linux platforms, just return nothing and indicate
+     # success. This allows us to "kind of emulate" a Linux build from other
+     # platforms.
+-    if not sys.platform.startswith(tuple(['linux', 'openbsd', 'freebsd', 'netbsd'])):
++    if (not options.allow_cross_sysroot and
++        not sys.platform.startswith(tuple(['linux', 'openbsd', 'freebsd', 'netbsd']))):
+         if options.dridriverdir or options.libdir:
+             sys.stdout.write("")
+             return 0
 diff --git a/build/config/linux/pkg_config.gni b/build/config/linux/pkg_config.gni
 --- a/build/config/linux/pkg_config.gni
 +++ b/build/config/linux/pkg_config.gni
@@ -990,10 +941,10 @@ diff --git a/net/ntlm/ntlm_buffer_writer.cc b/net/ntlm/ntlm_buffer_writer.cc
 diff --git a/remoting/host/linux/BUILD.gn b/remoting/host/linux/BUILD.gn
 --- a/remoting/host/linux/BUILD.gn
 +++ b/remoting/host/linux/BUILD.gn
-@@ -104,53 +104,55 @@
-     "//remoting/host/base",
+@@ -117,53 +117,55 @@
    ]
  }
+ 
 -pkg_config("pipewire_config") {
 -  packages = [ "libpipewire-0.3" ]
 -
@@ -1093,10 +1044,10 @@ diff --git a/remoting/host/linux/BUILD.gn b/remoting/host/linux/BUILD.gn
  }
  
  source_set("utils") {
-@@ -274,22 +276,6 @@
-     "login_session_manager.h",
-     "login_session_server.cc",
+@@ -297,22 +299,6 @@
      "login_session_server.h",
+     "peer_connection_bpf_policy_linux.cc",
+     "peer_connection_bpf_policy_linux.h",
 -    "pipewire_audio_capturer.cc",
 -    "pipewire_audio_capturer.h",
 -    "pipewire_audio_injector.cc",
@@ -1116,7 +1067,7 @@ diff --git a/remoting/host/linux/BUILD.gn b/remoting/host/linux/BUILD.gn
      "portal_capture_stream_manager.cc",
      "portal_capture_stream_manager.h",
      "portal_curtain_mode.cc",
-@@ -320,7 +306,6 @@
+@@ -349,7 +335,6 @@
    ]
    deps = [
      ":gvariant",
@@ -1124,7 +1075,7 @@ diff --git a/remoting/host/linux/BUILD.gn b/remoting/host/linux/BUILD.gn
      ":remote_session_info_main_headers",
      ":utils",
      ":x11",
-@@ -355,6 +340,27 @@
+@@ -386,6 +371,27 @@
      "//ui/events/keycodes:xkb",
      "//ui/gfx/x",
    ]
@@ -1152,16 +1103,16 @@ diff --git a/remoting/host/linux/BUILD.gn b/remoting/host/linux/BUILD.gn
    libs = [ "systemd" ]
  }
  
-@@ -435,8 +441,6 @@
-     "gnome_display_config_unittest.cc",
+@@ -468,8 +474,6 @@
      "gvariant_ref_unittest.cc",
      "gvariant_type_unittest.cc",
+     "peer_connection_bpf_policy_linux_unittest.cc",
 -    "pipewire_audio_capturer_unittest.cc",
 -    "pipewire_mouse_cursor_capturer_unittest.cc",
-     "test_util.cc",
-     "test_util.h",
-     "unicode_to_keysym_unittest.cc",
-@@ -444,6 +448,12 @@
+     "remote_display_session_manager_unittest.cc",
+     "session_routing_config_unittest.cc",
+     "systemd_utils_unittest.cc",
+@@ -481,6 +485,12 @@
      "x11_display_util_unittest.cc",
      "x_server_clipboard_unittest.cc",
    ]
@@ -1412,9 +1363,9 @@ diff --git a/third_party/perfetto/include/perfetto/base/build_config.h b/third_p
 diff --git a/third_party/perfetto/src/base/utils.cc b/third_party/perfetto/src/base/utils.cc
 --- a/third_party/perfetto/src/base/utils.cc
 +++ b/third_party/perfetto/src/base/utils.cc
-@@ -256,7 +256,7 @@
-   self_path = std::string(buf, static_cast<size_t>(size));
- #elif PERFETTO_BUILDFLAG(PERFETTO_OS_BSD)
+@@ -267,7 +267,7 @@
+   self_path = std::string(execpath);
+ #else
    char *buf;
 -  const char *cpath = "@PREFIX@/lib/chromium/chrome";
 +  const char *cpath = "/usr/pkg/lib/chromium/chrome";

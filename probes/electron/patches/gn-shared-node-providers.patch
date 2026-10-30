@@ -4,6 +4,7 @@ Bind Chromium and DevTools CLI consumers to selected shared host providers.
 Preserve upstream defaults, Node execution and selected tools as Ninja inputs.
 Origin: EmberBSD (AI-assisted), Chromium 152.0.7977.167.
 Status: local dependency integration; not submitted upstream.
+Chromium 156 DevTools removed rollup_path; its old override is obsolete.
 
 --- a/third_party/node/node_modules.py
 +++ b/third_party/node/node_modules.py
@@ -85,31 +86,6 @@ Status: local dependency integration; not submitted upstream.
      if (emberbsd_host_node != "") {
        inputs += [ emberbsd_host_node ]
      } else {
---- a/third_party/devtools-frontend/src/scripts/devtools_paths.py
-+++ b/third_party/devtools-frontend/src/scripts/devtools_paths.py
-@@ -6,6 +6,7 @@
- """
- 
- from os import path
-+import os
- import sys
- import platform
- 
-@@ -64,6 +65,14 @@
- 
- 
- def rollup_path():
-+    if 'EMBERBSD_HOST_ROLLUP' in os.environ:
-+        try:
-+            old_sys_path = sys.path[:]
-+            sys.path.insert(0, path.join(third_party_path(), 'node'))
-+            import node_modules
-+        finally:
-+            sys.path = old_sys_path
-+        return node_modules.PathToRollup()
-     return path.join(
-         node_modules_path(),
-         'rollup',
 --- a/tools/typescript/ts_library.gni
 +++ b/tools/typescript/ts_library.gni
 @@ -105,6 +105,15 @@
@@ -130,20 +106,20 @@ Status: local dependency integration; not submitted upstream.
        definitions = []
 --- a/tools/typescript/ts_library.py
 +++ b/tools/typescript/ts_library.py
-@@ -56,6 +56,7 @@
+@@ -64,6 +64,7 @@
    parser.add_argument('--in_files', nargs='*')
    parser.add_argument('--manifest_excludes', nargs='*')
    parser.add_argument('--definitions', nargs='*')
 +  parser.add_argument('--toolchain_definitions', nargs='*')
    parser.add_argument('--composite', action='store_true')
-   parser.add_argument('--platform',
-                       choices=['other', 'ios', 'chromeos_ash'],
-@@ -315,7 +316,7 @@
-   ])
+   parser.add_argument(
+     '--platform', choices=['other', 'ios', 'chromeos_ash'], default='other'
+@@ -337,7 +338,7 @@
+ 
    files_list = out.split('\n')
    definitions_files = list(filter(lambda f: f.endswith('.d.ts'), files_list))
 -  definitions = args.definitions if args.definitions is not None else []
 +  definitions = (args.definitions or []) + (args.toolchain_definitions or [])
-   list_valid, error_msg = validateDefinitionDeps(definitions_files, target_path,
-                                                  args.gen_dir,
-                                                  args.root_gen_dir, definitions)
+   list_valid, error_msg = validateDefinitionDeps(
+     definitions_files, target_path, args.gen_dir, args.root_gen_dir, definitions
+   )

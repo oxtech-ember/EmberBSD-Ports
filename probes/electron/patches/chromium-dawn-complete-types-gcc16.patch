@@ -44,8 +44,8 @@
  }  // namespace dawn::native
  
  #endif  // SRC_DAWN_NATIVE_TEXTURE_H_
---- a/third_party/dawn/src/dawn/native/utils/WGPUHelpers.h
-+++ b/third_party/dawn/src/dawn/native/utils/WGPUHelpers.h
+--- a/third_party/dawn/src/dawn/native/utils/NativeHelpers.h
++++ b/third_party/dawn/src/dawn/native/utils/NativeHelpers.h
 @@ -34,6 +34,7 @@
  #include <vector>
  

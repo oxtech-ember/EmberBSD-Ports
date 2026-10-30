@@ -1,0 +1,59 @@
+$NetBSD$
+
+Select the explicit native compiler binding only for its host CPU.
+The external hardening capability follows the selected native toolchain.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- a/build/toolchain/mac/BUILD.gn
++++ b/build/toolchain/mac/BUILD.gn
+@@ -10,6 +10,9 @@
+ # Explicit paths and ordered compiler arguments from an accepted native SDK.
+ # Empty inputs preserve the existing toolchains. They do not qualify a compiler.
+ declare_args() {
++  emberbsd_native_cpu = ""
++  emberbsd_native_cc = ""
++  emberbsd_native_cxx = ""
+   mac_gcc_cc = ""
+   mac_gcc_cxx = ""
+   mac_gcc_cc_args = []
+@@ -17,6 +20,11 @@
+   mac_gcc_llvm_bin_path = ""
+ }
+ 
++assert((emberbsd_native_cc == "") == (emberbsd_native_cpu == ""),
++       "Native Clang binding needs its selected host CPU")
++assert((emberbsd_native_cc == "") == (emberbsd_native_cxx == ""),
++       "Native Clang needs both compiler bindings")
++
+ assert((mac_gcc_cc == "") == (mac_gcc_cxx == ""),
+        "Native GCC needs both qualified compiler paths")
+ assert((mac_gcc_cc == "") == (mac_gcc_llvm_bin_path == ""),
+@@ -33,11 +41,18 @@
+          "Toolchains must declare toolchain_args")
+   _invoker_toolchain_args = invoker.toolchain_args
+   _explicit_pkg_config_role = emberbsd_pkg_config_role != "upstream"
++  _selected_native_binding = emberbsd_native_cc != "" && !defined(invoker.cc) &&
++                             _invoker_toolchain_args.current_cpu == emberbsd_native_cpu
+ 
+   apple_toolchain(target_name) {
+     forward_variables_from(invoker, "*", [ "toolchain_args" ])
+ 
+     bin_path = mac_bin_path
++    if (_selected_native_binding) {
++      cc = emberbsd_native_cc
++      cxx = emberbsd_native_cxx
++      llvm_bin_path = emberbsd_mac_toolchain_bin
++    }
+ 
+     toolchain_args = {
+       if (_explicit_pkg_config_role) {
+@@ -46,6 +61,9 @@
+       } else {
+         forward_variables_from(_invoker_toolchain_args, "*")
+       }
++      if (emberbsd_native_cc != "") {
++        external_libcxx_has_extensive_hardening = _selected_native_binding
++      }
+       current_os = "mac"
+ 
+       # Keep compiler selection local to this toolchain.

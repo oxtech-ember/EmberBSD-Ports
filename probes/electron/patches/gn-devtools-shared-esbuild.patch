@@ -1,0 +1,115 @@
+# Origin: EmberBSD (AI-assisted), Chromium 156 shared esbuild provider.
+--- a/third_party/devtools-frontend/src/scripts/build/ninja/vars.gni
++++ b/third_party/devtools-frontend/src/scripts/build/ninja/vars.gni
+@@ -6,6 +6,11 @@
+ import("//build/toolchain/kythe.gni")
+ 
+ declare_args() {
++  # Selected native esbuild provider for Chromium builds.
++  emberbsd_devtools_esbuild_module = ""
++  emberbsd_devtools_esbuild_binary = ""
++  emberbsd_devtools_esbuild_metadata = ""
++  emberbsd_devtools_esbuild_version = ""
+   # Whether we bundle module entrypoints into a single file or not.
+   # The arg is declared here and not in "devtools_entrypoint.gni" because various
+   # templates need to read it, as it affects the "grd_files" metadata field.
+--- a/third_party/devtools-frontend/src/scripts/build/ninja/bundle.gni
++++ b/third_party/devtools-frontend/src/scripts/build/ninja/bundle.gni
+@@ -58,11 +58,24 @@
+       inputs += [ _entrypoints_file ]
+     }
+ 
+-    _esbuild = devtools_location_prepend + "third_party/esbuild/esbuild"
+-    if (host_os == "win") {
+-      inputs += [ _esbuild + ".exe" ]
++    if (build_with_chromium && emberbsd_host_node != "") {
++      assert(emberbsd_devtools_esbuild_module != "" &&
++                 emberbsd_devtools_esbuild_binary != "" &&
++                 emberbsd_devtools_esbuild_metadata != "" &&
++                 emberbsd_devtools_esbuild_version != "",
++             "selected native esbuild provider is required")
++      inputs += [
++        emberbsd_devtools_esbuild_module,
++        emberbsd_devtools_esbuild_binary,
++        emberbsd_devtools_esbuild_metadata,
++      ]
+     } else {
+-      inputs += [ _esbuild ]
++      _esbuild = devtools_location_prepend + "third_party/esbuild/esbuild"
++      if (host_os == "win") {
++        inputs += [ _esbuild + ".exe" ]
++      } else {
++        inputs += [ _esbuild ]
++      }
+     }
+ 
+     _depfile = "$target_gen_dir/$target_name.d"
+@@ -81,6 +94,14 @@
+ 
+     if (_sourcemap) {
+       args += [ "--configSourcemaps" ]
++    }
++
++    if (build_with_chromium && emberbsd_host_node != "") {
++      args += [
++        "--emberbsdEsbuildModule", emberbsd_devtools_esbuild_module,
++        "--emberbsdEsbuildBinary", emberbsd_devtools_esbuild_binary,
++        "--emberbsdEsbuildVersion", emberbsd_devtools_esbuild_version,
++      ]
+     }
+ 
+     if (!_bundle_all) {
+--- a/third_party/devtools-frontend/src/scripts/build/esbuild.js
++++ b/third_party/devtools-frontend/src/scripts/build/esbuild.js
+@@ -7,6 +7,7 @@
+ import fs from 'node:fs';
+ import os from 'node:os';
+ import path from 'node:path';
++import {pathToFileURL} from 'node:url';
+ 
+ import {devtoolsRootPath} from '../devtools_paths.js';
+ 
+@@ -16,17 +17,32 @@
+ // See crbug.com/478754070
+ process.env.GODEBUG = 'asyncpreemptoff=1';
+ 
+-// esbuild module uses binary in this path.
+-const binaryName = os.type() === 'Windows_NT' ? 'esbuild.exe' : 'esbuild';
+-process.env.ESBUILD_BINARY_PATH = path.join(
+-    devtoolsRootPath(),
+-    'third_party',
+-    'esbuild',
+-    binaryName,
+-);
+-// This needs to be after the ESBUILD_BINARY_PATH is set
+-
+-const esbuild = await import('esbuild');
++// The selected shared provider is explicit for Chromium; standalone DevTools
++// retains upstream package discovery and its checkout binary.
++const providerArgs = process.argv.slice(4);
++const providerFlag = name => {
++  const index = providerArgs.indexOf(name);
++  return index < 0 ? undefined : providerArgs[index + 1];
++};
++const sharedModule = providerFlag('--emberbsdEsbuildModule');
++const sharedBinary = providerFlag('--emberbsdEsbuildBinary');
++const sharedVersion = providerFlag('--emberbsdEsbuildVersion');
++let esbuild;
++if (sharedModule || sharedBinary || sharedVersion) {
++  if (!sharedModule || !sharedBinary || !sharedVersion ||
++      !path.isAbsolute(sharedModule) || !path.isAbsolute(sharedBinary)) {
++    throw new Error('Selected esbuild module, binary and version are required');
++  }
++  process.env.ESBUILD_BINARY_PATH = sharedBinary;
++  esbuild = await import(pathToFileURL(sharedModule).href);
++  if (esbuild.version !== sharedVersion) {
++    throw new Error('Selected esbuild version changed; regenerate GN');
++  }
++} else {
++  const binaryName = os.type() === 'Windows_NT' ? 'esbuild.exe' : 'esbuild';
++  process.env.ESBUILD_BINARY_PATH = path.join(devtoolsRootPath(), 'third_party', 'esbuild', binaryName);
++  esbuild = await import('esbuild');
++}
+ 
+ const entryPoints = [process.argv[2]];
+ const outfile = process.argv[3];

@@ -64,19 +64,21 @@ Boolean preserves the previous truthiness of the hidden attribute.
          basename = path.splitext(path.basename(in_file))[0]
 --- a/tools/polymer/html_to_wrapper_test.py
 +++ b/tools/polymer/html_to_wrapper_test.py
-@@ -119,6 +119,12 @@
-                    'html_to_wrapper/cr_icons.html.ts',
-                    'html_to_wrapper/expected/cr_icons.html.ts')
+@@ -145,6 +145,14 @@
+       'html_to_wrapper/expected/cr_icons.html.ts',
+     )
  
 +  def testHtmlToWrapperIconsLit_UseJs(self):
-+    self._run_test('html_to_wrapper/cr_icons.html',
-+                   'html_to_wrapper/cr_icons.html.js',
-+                   'html_to_wrapper/expected/cr_icons.html.js',
-+                   use_js=True)
++    self._run_test(
++      'html_to_wrapper/cr_icons.html',
++      'html_to_wrapper/cr_icons.html.js',
++      'html_to_wrapper/expected/cr_icons.html.js',
++      use_js=True,
++    )
 +
    def testHtmlToWrapperIconsLit_Detect(self):
-     self._run_test('html_to_wrapper/cr_icons.html',
-                    'html_to_wrapper/cr_icons.html.ts',
+     self._run_test(
+       'html_to_wrapper/cr_icons.html',
 --- a/tools/polymer/tests/html_to_wrapper/expected/cr_icons.html.ts
 +++ b/tools/polymer/tests/html_to_wrapper/expected/cr_icons.html.ts
 @@ -2,6 +2,7 @@

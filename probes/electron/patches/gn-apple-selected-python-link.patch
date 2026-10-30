@@ -1,0 +1,50 @@
+Run the Apple C/C++ link driver with the selected Python interpreter.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- a/build/toolchain/apple/toolchain.gni
++++ b/build/toolchain/apple/toolchain.gni
+@@ -266,6 +266,7 @@
+     linker_driver_env = "TOOL_VERSION=${tool_versions.linker_driver}"
+     linker_driver =
+         rebase_path("//build/toolchain/apple/linker_driver.py", root_build_dir)
++    linker_driver_command = "\"$python_path\" \"$linker_driver\""
+     linker_driver_args = "-Wcrl,driver,$ld"
+     rust_macro_linker = "-Clinker=\"${_cxx}\""
+     if (explicit_compilers) {
+@@ -705,7 +706,7 @@
+       nm = "${prefix}llvm-nm"
+       otool = "${prefix}llvm-otool"
+ 
+-      link_command = "$linker_driver_env $linker_prefix$linker_driver"
++      link_command = "$linker_driver_env $linker_prefix$linker_driver_command"
+       link_command += " -Wcrl,otoolpath,$otool -Wcrl,nmpath,$nm"
+       link_command += " -Wcrl,tocname,\"$tocname\""
+       link_command += " $linker_driver_args -shared "
+@@ -759,7 +760,7 @@
+       rspfile = sofile + ".rsp"
+       pool = "//build/toolchain:link_pool($default_toolchain)"
+ 
+-      link_command = "$linker_driver_env $linker_prefix$linker_driver $linker_driver_args -bundle $bin_flag {{ldflags}} -o \"$sofile\" \"@$rspfile\" {{rlibs}}"
++      link_command = "$linker_driver_env $linker_prefix$linker_driver_command $linker_driver_args -bundle $bin_flag {{ldflags}} -o \"$sofile\" \"@$rspfile\" {{rlibs}}"
+       link_command += dsym_switch
+       command = link_command
+ 
+@@ -789,7 +790,7 @@
+       rspfile = "$outfile.rsp"
+       pool = "//build/toolchain:link_pool($default_toolchain)"
+ 
+-      command = "$linker_driver_env $linker_prefix$linker_driver $linker_driver_args $bin_flag $dsym_switch {{ldflags}} -o \"$outfile\" \"@$rspfile\" {{rlibs}}"
++      command = "$linker_driver_env $linker_prefix$linker_driver_command $linker_driver_args $bin_flag $dsym_switch {{ldflags}} -o \"$outfile\" \"@$rspfile\" {{rlibs}}"
+       description = "LINK $outfile"
+       rspfile_content =
+           "{{inputs}} {{frameworks}} {{swiftmodules}} {{solibs}} {{libs}}"
+--- a/build/toolchain/apple/linker_driver.py
++++ b/build/toolchain/apple/linker_driver.py
+@@ -1,4 +1,6 @@
+-#!/usr/bin/env python3
++#!/bin/sh
++'''exec' "${EMBERBSD_HOST_PYTHON:?selected host Python is required}" "$0" "$@"
++' '''
+ 
+ # Copyright 2016 The Chromium Authors
+ # Use of this source code is governed by a BSD-style license that can be

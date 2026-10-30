@@ -7,20 +7,20 @@ are independent inputs; this adapter never invokes Apple discovery services.
 
 --- a/build/config/mac/mac_sdk.gni
 +++ b/build/config/mac/mac_sdk.gni
-@@ -42,6 +42,12 @@
+@@ -41,6 +41,12 @@
+   # If empty, the path to the lowest version greater than or equal to
    # `mac_sdk_min` is used.
    mac_sdk_path = ""
- 
++
 +  # Explicit EmberBSD host ABI metadata. Empty inputs keep upstream discovery.
 +  # Compiler and utilities are selected independently from the macOS SDK.
 +  emberbsd_sdk_source = ""
 +  emberbsd_xcode_version_plist = ""
 +  emberbsd_mac_toolchain_bin = ""
-+
+ 
    # The SDK name as accepted by `xcodebuild`.
    mac_sdk_name = "macosx"
- 
-@@ -83,67 +89,104 @@
+@@ -88,75 +94,113 @@
    _hermetic_xcode_path = "//build/mac_files/xcode_binaries"
  }
  
@@ -32,6 +32,25 @@ are independent inputs; this adapter never invokes Apple discovery services.
 -    rebase_path(_hermetic_xcode_path, "", root_build_dir),
 -  ]
 -}
+-
+-# RBE requires paths relative to source directory. When using system
+-# Xcode, this is done by creating symbolic links in root_build_dir.
+-if (use_system_xcode) {
+-  sdk_info_args += [
+-    "--get_sdk_info",
+-    "--create_symlink_at",
+-    "sdk/xcode_links",
+-    "--root_build_dir",
+-    root_build_dir,
+-  ]
+-}
+-sdk_info_args += [ mac_sdk_name ]
+-
+-_mac_sdk_result = exec_script(script_name, sdk_info_args, "scope")
+-xcode_version = _mac_sdk_result.xcode_version
+-xcode_version_int = _mac_sdk_result.xcode_version_int
+-xcode_build = _mac_sdk_result.xcode_build
+-if (mac_sdk_path == "" && use_system_xcode) {
 +_emberbsd_sdk_explicit = emberbsd_sdk_source != "" ||
 +                        emberbsd_xcode_version_plist != "" ||
 +                        emberbsd_mac_toolchain_bin != ""
@@ -60,63 +79,9 @@ are independent inputs; this adapter never invokes Apple discovery services.
 +            emberbsd_xcode_version_plist,
 +            emberbsd_sdk_source + "/src/emberbsd_sdk/darwin_sdk.py",
 +          ])
-+  mac_sdk_path = _mac_sdk_result.sdk_path
-+  mac_sdk_version = _mac_sdk_result.sdk_version
-+  mac_sdk_build_version = _mac_sdk_result.sdk_build
-+  mac_bin_path = _mac_sdk_result.bin_path
-+  xcode_version = _mac_sdk_result.xcode_version
-+  xcode_version_int = _mac_sdk_result.xcode_version_int
-+  xcode_build = _mac_sdk_result.xcode_build
-+} else {
-+  script_name = "//build/config/apple/sdk_info.py"
-+  sdk_info_args = []
-+  if (!use_system_xcode) {
-+    sdk_info_args += [
-+      "--developer_dir",
-+      rebase_path(_hermetic_xcode_path, "", root_build_dir),
-+    ]
-+  }
- 
--# RBE requires paths relative to source directory. When using system
--# Xcode, this is done by creating symbolic links in root_build_dir.
--if (use_system_xcode) {
--  sdk_info_args += [
--    "--get_sdk_info",
--    "--create_symlink_at",
--    "sdk/xcode_links",
--    "--root_build_dir",
--    root_build_dir,
--  ]
+   mac_sdk_path = _mac_sdk_result.sdk_path
 -}
--sdk_info_args += [ mac_sdk_name ]
-+  # RBE requires paths relative to source directory. When using system
-+  # Xcode, this is done by creating symbolic links in root_build_dir.
-+  if (use_system_xcode) {
-+    sdk_info_args += [
-+      "--get_sdk_info",
-+      "--create_symlink_at",
-+      "sdk/xcode_links",
-+      "--root_build_dir",
-+      root_build_dir,
-+    ]
-+  }
-+  sdk_info_args += [ mac_sdk_name ]
- 
--_mac_sdk_result = exec_script(script_name, sdk_info_args, "scope")
--xcode_version = _mac_sdk_result.xcode_version
--xcode_version_int = _mac_sdk_result.xcode_version_int
--xcode_build = _mac_sdk_result.xcode_build
--if (mac_sdk_path == "" && use_system_xcode) {
--  mac_sdk_path = _mac_sdk_result.sdk_path
--}
-+  _mac_sdk_result = exec_script(script_name, sdk_info_args, "scope")
-+  xcode_version = _mac_sdk_result.xcode_version
-+  xcode_version_int = _mac_sdk_result.xcode_version_int
-+  xcode_build = _mac_sdk_result.xcode_build
-+  if (mac_sdk_path == "" && use_system_xcode) {
-+    mac_sdk_path = _mac_sdk_result.sdk_path
-+  }
- 
+-
 -if (use_system_xcode) {
 -  # The tool will print the SDK path on the first line, and the version on the
 -  # second line.
@@ -133,6 +98,43 @@ are independent inputs; this adapter never invokes Apple discovery services.
 -  if (mac_sdk_path == "") {
 -    mac_sdk_path = find_sdk_lines[0]
 -    mac_bin_path = find_sdk_lines[1]
++  mac_sdk_version = _mac_sdk_result.sdk_version
++  mac_sdk_build_version = _mac_sdk_result.sdk_build
++  mac_bin_path = _mac_sdk_result.bin_path
++  xcode_version = _mac_sdk_result.xcode_version
++  xcode_version_int = _mac_sdk_result.xcode_version_int
++  xcode_build = _mac_sdk_result.xcode_build
++} else {
++  script_name = "//build/config/apple/sdk_info.py"
++  sdk_info_args = []
++  if (!use_system_xcode) {
++    sdk_info_args += [
++      "--developer_dir",
++      rebase_path(_hermetic_xcode_path, "", root_build_dir),
++    ]
++  }
++
++  # RBE requires paths relative to source directory. When using system
++  # Xcode, this is done by creating symbolic links in root_build_dir.
++  if (use_system_xcode) {
++    sdk_info_args += [
++      "--get_sdk_info",
++      "--create_symlink_at",
++      "sdk/xcode_links",
++      "--root_build_dir",
++      root_build_dir,
++    ]
++  }
++  sdk_info_args += [ mac_sdk_name ]
++
++  _mac_sdk_result = exec_script(script_name, sdk_info_args, "scope")
++  xcode_version = _mac_sdk_result.xcode_version
++  xcode_version_int = _mac_sdk_result.xcode_version_int
++  xcode_build = _mac_sdk_result.xcode_build
++  if (mac_sdk_path == "" && use_system_xcode) {
++    mac_sdk_path = _mac_sdk_result.sdk_path
++  }
++
 +  if (use_system_xcode) {
 +    # The tool will print the SDK path on the first line, and the version on the
 +    # second line.
@@ -154,21 +156,18 @@ are independent inputs; this adapter never invokes Apple discovery services.
 +    }
    } else {
 -    mac_bin_path = find_sdk_lines[1]
-+    mac_sdk_version = mac_sdk_official_version
-+    mac_sdk_build_version = mac_sdk_official_build_version
-+    _dev = _hermetic_xcode_path + "/Contents/Developer"
-+    _sdk = "MacOSX${mac_sdk_version}.sdk"
-+    mac_sdk_path = _dev + "/Platforms/MacOSX.platform/Developer/SDKs/$_sdk"
-+    mac_bin_path = _dev + "/Toolchains/XcodeDefault.xctoolchain/usr/bin/"
-+
-+    # If we're using hermetic Xcode, then we want the paths to be relative so that
-+    # generated ninja files are independent of the directory location.
-+    # TODO(thakis): Do this at the uses of this variable instead.
-+    mac_bin_path = rebase_path(mac_bin_path, root_build_dir)
-   }
+-  }
 -} else {
--  mac_sdk_version = mac_sdk_official_version
--  mac_sdk_build_version = mac_sdk_official_build_version
+-  # When universal Xcode 26.6 is used (Xcode version < 27.0 / 2700), select the
+-  # corresponding universal SDK version. This occurs on Intel x86 hosts, as
+-  # Xcode 27+ is ARM-only.
+-  if (xcode_version_int < 2700) {
+-    mac_sdk_version = mac_sdk_official_universal_version
+-    mac_sdk_build_version = mac_sdk_official_universal_build_version
+-  } else {
+-    mac_sdk_version = mac_sdk_official_version
+-    mac_sdk_build_version = mac_sdk_official_build_version
+-  }
 -  _dev = _hermetic_xcode_path + "/Contents/Developer"
 -  _sdk = "MacOSX${mac_sdk_version}.sdk"
 -  mac_sdk_path = _dev + "/Platforms/MacOSX.platform/Developer/SDKs/$_sdk"
@@ -178,6 +177,27 @@ are independent inputs; this adapter never invokes Apple discovery services.
 -  # generated ninja files are independent of the directory location.
 -  # TODO(thakis): Do this at the uses of this variable instead.
 -  mac_bin_path = rebase_path(mac_bin_path, root_build_dir)
++    # When universal Xcode 26.6 is used (Xcode version < 27.0 / 2700), select the
++    # corresponding universal SDK version. This occurs on Intel x86 hosts, as
++    # Xcode 27+ is ARM-only.
++    if (xcode_version_int < 2700) {
++      mac_sdk_version = mac_sdk_official_universal_version
++      mac_sdk_build_version = mac_sdk_official_universal_build_version
++    } else {
++      mac_sdk_version = mac_sdk_official_version
++      mac_sdk_build_version = mac_sdk_official_build_version
++    }
++    _dev = _hermetic_xcode_path + "/Contents/Developer"
++    _sdk = "MacOSX${mac_sdk_version}.sdk"
++    mac_sdk_path = _dev + "/Platforms/MacOSX.platform/Developer/SDKs/$_sdk"
++    mac_bin_path = _dev + "/Toolchains/XcodeDefault.xctoolchain/usr/bin/"
++
++    # If we're using hermetic Xcode, then we want the paths to be relative so that
++    # generated ninja files are independent of the directory location.
++    # TODO(thakis): Do this at the uses of this variable instead.
++    mac_bin_path = rebase_path(mac_bin_path, root_build_dir)
++  }
++
  }
  
  _sdk_root = rebase_path(mac_sdk_path, root_build_dir)

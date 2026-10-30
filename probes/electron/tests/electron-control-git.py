@@ -54,4 +54,10 @@ with tempfile.TemporaryDirectory(prefix='electron-control-git-') as temp:
         output=run([sys.executable,script,'--print-only','--revision-id-only','-s',src],src,env)
         assert output==rev, (output,rev)
     run([sys.executable,script,'--print-only','--revision-id-only','-s',src],src,missing,success=False)
+    fakebin=Path(temp)/'fakebin';fakebin.mkdir()
+    badgit=fakebin/'git'; badgit.write_text('#!/bin/sh\nexit 1\n');badgit.chmod(0o755)
+    jj=fakebin/'jj'; marker=Path(temp)/'jj-called';jj.write_text('#!/bin/sh\necho called > "'+str(marker)+'"\nexit 0\n');jj.chmod(0o755)
+    strict=dict(selected,EMBERBSD_CONTROL_GIT=str(badgit),PATH=str(fakebin))
+    run([sys.executable,script,'--print-only','--revision-id-only','-s',src],src,strict,success=False)
+    assert not marker.exists(), 'selected Git failure incorrectly fell back to JJ'
     print('selected and fallback Git, unavailable Git, checkout, worktree and lastchange passed')

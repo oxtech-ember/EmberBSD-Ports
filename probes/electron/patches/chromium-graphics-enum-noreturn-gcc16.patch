@@ -248,29 +248,29 @@
  }
  
  #undef TYPES
---- a/ui/gfx/shadow_util.cc
-+++ b/ui/gfx/shadow_util.cc
-@@ -9,6 +9,7 @@
+--- a/ui/decoration/shadow.cc
++++ b/ui/decoration/shadow.cc
+@@ -6,6 +6,7 @@
  
- #include "base/lazy_instance.h"
- #include "base/memory/ptr_util.h"
+ #include "base/check.h"
+ #include "base/check_op.h"
 +#include "base/notreached.h"
- #include "third_party/skia/include/core/SkRRect.h"
- #include "ui/gfx/canvas.h"
- #include "ui/gfx/geometry/insets.h"
-@@ -114,6 +115,7 @@
-                  ShadowValue::MakeChromeOSSystemUIShadowValues(elevation));
+ #include "ui/base/resource/resource_bundle.h"
+ #include "ui/compositor/layer_nine_patch.h"
+ #include "ui/compositor/layer_not_drawn.h"
+@@ -42,6 +43,7 @@
+       return kDefaultChromeOSSystemUIShadowColors;
  #endif
    }
 +  NOTREACHED();
  }
  
- const ShadowDetails& ShadowDetails::Get(int elevation,
-@@ -131,6 +133,7 @@
-                              elevation, key_color, ambient_color));
+ bool IsValidRoundedCorners(const gfx::RoundedCornersF& radii) {
+@@ -72,6 +74,7 @@
+           is_pill_shaped);
  #endif
    }
 +  NOTREACHED();
  }
  
- const ShadowDetails& ShadowDetails::Get(int radius,
+ Shadow::Shadow() : shadow_layer_owner_(this) {}

@@ -2,17 +2,22 @@ Track and select Node providers in actual Chromium and DevTools actions.
 
 Origin: EmberBSD (AI-assisted), not submitted upstream.
 
+
+# Chromium 156 DevTools uses direct native tsc actions; bind their selected
+# version in each command while preserving upstream standalone behavior.
 --- a/third_party/node/node.gni
 +++ b/third_party/node/node.gni
-@@ -18,6 +18,7 @@
+@@ -18,6 +18,9 @@
    # The caller enumerates the selected common provider's actual package files.
    emberbsd_node_provider_inputs = []
    emberbsd_typescript_definitions = []
 +  emberbsd_node_provider_versions = []
++  emberbsd_typescript_native_binary = ""
++  emberbsd_typescript_host_python = ""
  }
  
  # Shared host providers remain explicit action inputs. The caller selects
-@@ -36,8 +37,32 @@
+@@ -36,8 +39,32 @@
  
  template("node") {
    action(target_name) {
@@ -124,6 +129,22 @@ Origin: EmberBSD (AI-assisted), not submitted upstream.
 +  console.error("selected Node provider version changed; regenerate GN");
 +  process.exit(1);
 +}
+--- /dev/null
++++ b/third_party/node/run_selected_tsc.py
+@@ -0,0 +1,13 @@
++#!/usr/bin/env python3
++# Copyright 2026 EmberBSD contributors. BSD-2-Clause.
++# Origin: EmberBSD (AI-assisted).
++"""Bind native TypeScript action to the version selected at GN generation."""
++import os
++import subprocess
++import sys
++
++expected, executable, *arguments = sys.argv[1:]
++actual = subprocess.check_output([executable, "--version"], text=True).strip()
++if actual != "Version " + expected:
++    raise SystemExit("selected TypeScript version changed; regenerate GN")
++os.execv(executable, [executable, *arguments])
 --- a/third_party/devtools-frontend/src/scripts/build/ninja/node.gni
 +++ b/third_party/devtools-frontend/src/scripts/build/ninja/node.gni
 @@ -4,11 +4,28 @@
@@ -167,74 +188,95 @@ Origin: EmberBSD (AI-assisted), not submitted upstream.
        inputs += [ "//third_party/node/linux/node-linux-x64/bin/node" ]
      } else if (host_os == "win") {
        inputs += [ "//third_party/node/win/node.exe" ]
+--- a/third_party/devtools-frontend/src/scripts/build/typescript/typescript_vars.gni
++++ b/third_party/devtools-frontend/src/scripts/build/typescript/typescript_vars.gni
+@@ -5,7 +5,19 @@
+ import("//build/toolchain/rbe.gni")
+ import("../ninja/vars.gni")
+ 
+-if (host_os == "linux" || host_os == "openbsd" || host_os == "freebsd" || host_os == "netbsd") {
++if (build_with_chromium) {
++  import("//third_party/node/node.gni")
++}
++
++if (build_with_chromium && emberbsd_host_node != "") {
++  assert(emberbsd_typescript_native_binary != "" &&
++             get_path_info(emberbsd_typescript_native_binary, "abspath") ==
++                 emberbsd_typescript_native_binary,
++         "selected TypeScript native backend must be an absolute path")
++  assert(emberbsd_typescript_definitions != [],
++         "selected TypeScript declarations must be supplied")
++  tsc_binary = emberbsd_typescript_native_binary
++} else if (host_os == "linux" || host_os == "openbsd" || host_os == "freebsd" || host_os == "netbsd") {
+   tsc_binary = "//third_party/typescript/linux-amd64/src/lib/tsc"
+ } else if (host_os == "win") {
+   tsc_binary = "//third_party/typescript/windows-amd64/src/lib/tsc.exe"
+@@ -132,6 +144,26 @@
+ ]
+ 
+ typescript_base_inputs = [ tsc_binary ]
++typescript_command = [ rebase_path(tsc_binary, root_build_dir) ]
++if (build_with_chromium && emberbsd_host_node != "") {
++  assert(emberbsd_typescript_host_python != "" &&
++             get_path_info(emberbsd_typescript_host_python, "abspath") ==
++                 emberbsd_typescript_host_python,
++         "selected host Python must be an absolute path")
++  assert(len(emberbsd_node_provider_versions) == 3 &&
++             emberbsd_node_provider_versions[1] != "",
++         "selected TypeScript version must be supplied")
++  _ts_wrapper = "//third_party/node/run_selected_tsc.py"
++  typescript_base_inputs += emberbsd_typescript_definitions +
++                            [ emberbsd_typescript_host_python, _ts_wrapper ]
++  typescript_command = []
++  typescript_command = [
++    rebase_path(emberbsd_typescript_host_python, root_build_dir),
++    rebase_path(_ts_wrapper, root_build_dir),
++    emberbsd_node_provider_versions[1],
++    rebase_path(tsc_binary, root_build_dir),
++  ]
++}
+ if (use_remoteexec) {
+   typescript_base_inputs += typescript_standard_lib_dts_inputs
+ }
 --- a/third_party/devtools-frontend/src/scripts/build/typescript/typescript.gni
 +++ b/third_party/devtools-frontend/src/scripts/build/typescript/typescript.gni
-@@ -9,6 +9,7 @@
- import("//build/toolchain/rbe.gni")
- import("//build/toolchain/siso.gni")
- import("../ninja/vars.gni")
-+import("../ninja/node.gni")
+@@ -288,8 +288,7 @@
+     outputs = _dts_outputs
  
- declare_args() {
-   devtools_skip_typecheck = build_with_chromium && !is_official_build
-@@ -47,7 +48,7 @@
- #   }
- #
- template("ts_library") {
--  action(target_name) {
-+  devtools_provider_action(target_name) {
-     script =
-         devtools_location_prepend + "scripts/build/typescript/ts_library.py"
- 
-@@ -73,11 +74,14 @@
-       "//third_party/node/node.py",
-       devtools_location_prepend + "scripts/devtools_paths.py",
-       devtools_location_prepend + "config/typescript/tsconfig.base.json",
--      devtools_location_prepend + "node_modules/typescript/lib/tsc.js",
-       devtools_location_prepend + "front_end/legacy/legacy-defs.d.ts",
-       devtools_location_prepend + "front_end/global_typings/global_defs.d.ts",
-       devtools_location_prepend + "node_modules/@types/filesystem/index.d.ts",
+     response_file_contents =
+-        rebase_path(_dts_outputs, root_build_dir) + [ "--" ] + [
+-          rebase_path(tsc_binary, root_build_dir),
++        rebase_path(_dts_outputs, root_build_dir) + [ "--" ] + typescript_command + [
+           "--ignoreConfig",
+           "--declaration",
+           "--emitDeclarationOnly",
+@@ -418,7 +417,7 @@
+         "--stamp",
+         rebase_path(_stamp_file, root_build_dir),
+         "--",
+-        rebase_path(tsc_binary, root_build_dir),
++      ] + typescript_command + [
+         "-p",
+         rebase_path(_tsconfig_file, root_build_dir),
+       ]
+@@ -426,8 +425,7 @@
+       script = devtools_location_prepend + "scripts/build/run_with_restat.py"
+       outputs = _js_outputs
+       response_file_contents =
+-          rebase_path(_js_outputs, root_build_dir) + [ "--" ] + [
+-            rebase_path(tsc_binary, root_build_dir),
++          rebase_path(_js_outputs, root_build_dir) + [ "--" ] + typescript_command + [
+             "-p",
+             rebase_path(_tsconfig_file, root_build_dir),
+           ]
+--- a/third_party/devtools-frontend/src/scripts/build/typescript/ts_type_check.gni
++++ b/third_party/devtools-frontend/src/scripts/build/typescript/ts_type_check.gni
+@@ -155,7 +155,7 @@
+       "--stamp",
+       rebase_path(_stamp_file, root_build_dir),
+       "--",
+-      rebase_path(tsc_binary, root_build_dir),
++    ] + typescript_command + [
+       "-p",
+       rebase_path(_tsconfig_file, root_build_dir),
      ]
-+
-+    if (!build_with_chromium || emberbsd_host_node == "") {
-+      inputs += [ devtools_location_prepend + "node_modules/typescript/lib/tsc.js" ]
-+    }
- 
-     # When use_remoteexec=true, node actions run on remote Linux worker.
-     # So it should include linux node binary in inputs.
---- a/third_party/devtools-frontend/src/scripts/build/typescript/ts_library.py
-+++ b/third_party/devtools-frontend/src/scripts/build/typescript/ts_library.py
-@@ -19,7 +19,8 @@
- ROOT_DIRECTORY_OF_REPOSITORY = path.join(_CURRENT_DIR, '..', '..', '..')
- NODE_MODULES_DIRECTORY = path.join(ROOT_DIRECTORY_OF_REPOSITORY,
-                                    'node_modules')
--TSC_LOCATION = path.join(NODE_MODULES_DIRECTORY, 'typescript', 'bin', 'tsc')
-+TSC_LOCATION = os.environ.get('EMBERBSD_HOST_TYPESCRIPT',
-+                              path.join(NODE_MODULES_DIRECTORY, 'typescript', 'bin', 'tsc'))
- 
- # Assuming a full chromium checkout.
- TSGO_BASE_LOCATION = path.join(ROOT_DIRECTORY_OF_REPOSITORY, '..', '..',
---- a/third_party/devtools-frontend/src/inspector_overlay/BUILD.gn
-+++ b/third_party/devtools-frontend/src/inspector_overlay/BUILD.gn
-@@ -7,7 +7,7 @@
- 
- resources_out_dir = "$root_out_dir/resources/inspector_overlay"
- 
--action("build_inspector_overlay") {
-+devtools_provider_action("build_inspector_overlay") {
-   script = "../scripts/build/build_inspector_overlay.py"
- 
-   inputs = [
-@@ -38,8 +38,11 @@
-     "$target_gen_dir/tool_window_controls.css",
-     "$target_gen_dir/main.js",
-     devtools_location_prepend + "inspector_overlay/loadCSS.rollup.js",
--    devtools_location_prepend + "node_modules/rollup/dist/bin/rollup",
-   ]
-+
-+  if (!build_with_chromium || emberbsd_host_node == "") {
-+    inputs += [ devtools_location_prepend + "node_modules/rollup/dist/bin/rollup" ]
-+  }
- 
-   outputs = [ "$resources_out_dir/main.js" ]
- 

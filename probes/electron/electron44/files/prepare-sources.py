@@ -10,16 +10,16 @@ import subprocess
 import sys
 
 ELECTRON_URL = "https://github.com/electron/electron.git"
-ELECTRON_REVISION = "c542df1ecbc2c2978e8f53f8c7baf602404d166f"
+ELECTRON_REVISION = "45d20ec03000aac41e73b2abdb707936b4f98ed0"
 CHROMIUM_URL = "https://chromium.googlesource.com/chromium/src.git"
-CHROMIUM_VERSION = "152.0.7977.167"
-CHROMIUM_REVISION = "dd78960ccd8a03a2fe1f629543d27783885b78e9"
+CHROMIUM_VERSION = "156.0.8078.49"
+CHROMIUM_REVISION = "29eb03535d5f2f4f899b95f22a92413ffde5284e"
 NODE_URL = "https://github.com/nodejs/node.git"
-NODE_BEFORE = "v24.22.0"
+NODE_BEFORE = "v24.22.1"
 NODE_VERSION = "v24.22.1"
 NODE_REVISION = "ce7aaf1cee78b8cf0ce17364260535c418d3ed26"
-# Apply the recipe's security roll before gclient reads DEPS or Node patches.
-PATCHES = ("patch-node24_22_1_security_roll",)
+# Electron 45.1.0 already contains the current Node security roll.
+PATCHES = ()
 
 
 def require(condition, message):
@@ -101,7 +101,12 @@ def gclient_config(target_cpu):
 
 
 def ordered_patches(patch_dir):
-    patch_dir = Path(patch_dir).resolve(strict=True)
+    patch_dir = Path(patch_dir)
+    # Git does not preserve an empty patch directory when a roll lands upstream.
+    if not PATCHES and not patch_dir.exists():
+        return []
+    patch_dir = patch_dir.resolve(strict=True)
+    require(patch_dir.is_dir(), "recipe patch path must be a directory")
     patches = [patch_dir / name for name in PATCHES]
     require(all(path.is_file() for path in patches), "recipe patch is missing")
     require(len(set(PATCHES)) == len(PATCHES), "recipe patch order contains a duplicate")

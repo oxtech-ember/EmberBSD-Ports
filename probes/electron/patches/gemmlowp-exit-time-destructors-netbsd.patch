@@ -13,7 +13,7 @@
 +    ]
    }
  }
- source_set("gemmlowp") {
+ 
 --- a/src/profiling/instrumentation.h
 +++ b/src/profiling/instrumentation.h
 @@ -80,12 +80,26 @@

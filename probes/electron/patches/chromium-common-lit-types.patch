@@ -1,0 +1,42 @@
+$NetBSD$
+
+Keep Chromium Lit property declarations strict without modifying the shared Lit module.
+
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- a/third_party/lit/v3_0/cr_lit_element.ts
++++ b/third_party/lit/v3_0/cr_lit_element.ts
+@@ -2,7 +2,13 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
+-import {LitElement, PropertyValues} from 'lit/index.js';
++import {LitElement, PropertyValues} from 'lit';
++import type {PropertyDeclaration} from '@lit/reactive-element';
++
++type ChromiumProperty = Omit<PropertyDeclaration, 'type'> & {
++  readonly type: StringConstructor|NumberConstructor|BooleanConstructor|
++      ArrayConstructor|ObjectConstructor,
++};
+ 
+ type ElementCache = Record<string, HTMLElement|SVGElement>;
+ 
+@@ -12,6 +18,7 @@
+ }
+ 
+ export class CrLitElement extends LitElement {
++  declare static properties: Record<PropertyKey, ChromiumProperty>;
+   // Change default ShadowRoot|null type to ShadowRoot to avoid forcing all
+   // client code having to use `this.shadowRoot!` given that CrLitElement is
+   // used with a ShadowRoot in the vast majority of cases (possibly all).
+--- a/third_party/lit/v3_0/lit.ts
++++ b/third_party/lit/v3_0/lit.ts
+@@ -2,7 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
+-export {css, CSSResultGroup, html, LitElement, nothing, render, PropertyValues, TemplateResult} from 'lit/index.js';
++export {css, CSSResultGroup, html, LitElement, nothing, render, PropertyValues, TemplateResult} from 'lit';
+ export {directive, PartInfo, PartType} from 'lit-html/directive.js';
+ export {AsyncDirective} from 'lit-html/async-directive.js';
+ export {CrLitElement} from './cr_lit_element.js';

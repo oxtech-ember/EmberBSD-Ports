@@ -44,21 +44,28 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                               'cxx':['--ld-path=/ld','--rtlib=compiler-rt','--unwindlib=libunwind','-stdlib=libc++']})
     binding.write_text(json.dumps(commands))
     (src/'.gn').write_text('buildconfig="//BUILDCONFIG.gn"\n')
-    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n feature=false\n}\nset_default_toolchain("//:tools")\n')
+    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n feature=false\n clang_version=""\n}\nset_default_toolchain("//:tools")\n')
     (src/'BUILD.gn').write_text('toolchain("tools") {\n tool("stamp") { command="touch {{output}}" }\n}\n')
     (src/'electron/build/args').mkdir(parents=True)
     (src/'electron/build/args/release.gn').write_text('')
     gnfile = src/'electron/BUILD.gn'; gnfile.write_text('group("electron_dist_zip") {}\n')
-    old = dict(emberbsd_node_provider_inputs=['old'], emberbsd_typescript_definitions=['old'], feature=False, target_cpu='x64')
-    new = dict(emberbsd_node_provider_inputs=['new'], emberbsd_typescript_definitions=['new'], feature=True, target_cpu='x64')
+    old = dict(emberbsd_node_provider_inputs=['old'], emberbsd_typescript_definitions=['old'], feature=False, target_cpu='x64', clang_version='23')
+    new = dict(emberbsd_node_provider_inputs=['new'], emberbsd_typescript_definitions=['new'], feature=True, target_cpu='x64', clang_version='23')
     env = {'PATH':str(host/'bin') + ':/usr/bin', 'EMBERBSD_HOST_TYPESCRIPT':'/old', 'EMBERBSD_HOST_NODE':'/old-node', 'CC':str(work/'target-commands/cc'), 'CXX':str(work/'target-commands/cxx')}
     opt = SimpleNamespace(workspace=src.parent, ports_source=root, sdk_source=root, host_prefix=host, target='amd64', compiler_family='clang', work=work, git=Path('/usr/bin/git'))
+    try: b.require_common_v8(opt); raise AssertionError('accepted missing common V8')
+    except ValueError: pass
+    opt.v8_source = root/'v8'; opt.v8_ports_source = root/'owner'; opt.v8_pkgsrc = root/'pkgsrc'
+    try: b.require_common_node(opt); raise AssertionError('accepted missing common Node')
+    except ValueError: pass
+    opt.node_source = root/'node'; opt.node_pkgsrc = root/'node-pkgsrc'
     saved = dict(arguments=old, environment=env, source=str(src.parent), sdk=str(root), host_prefix=str(host), target='amd64')
     config = work/'configuration.json'; config.write_text(json.dumps(saved)); before = config.read_bytes()
     (out/'args.gn').write_text(b.gn_arguments(old)); (out/'build.ninja').write_text('old graph')
     obj=out/'retained.o'; obj.write_bytes(b'object')
     sdk=b.load_sdk(args.sdk_source); sdk['process']=Process()
     b.load_sdk=lambda _: sdk; b.verify_source=lambda *args: None
+    b.gn_source=lambda _: src  # Composition is tested separately.
     local=b.local_module; b.local_module=lambda name, file: Source if file == 'prepare-build-sources.py' else local(name,file)
     state={'commands':commands, 'values':new}
     def inputs(candidate, sdk):
@@ -79,6 +86,13 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     try: b.reconfigure(opt); raise AssertionError('accepted unrelated old PATH')
     except ValueError as e: assert 'old build PATH' in str(e)
     config.write_bytes(before)
+    with_identity = json.loads(before)
+    with_identity['environment']['EMBERBSD_PROTOBUF_SOURCE_SHA256'] = 'old'
+    config.write_text(json.dumps(with_identity))
+    state['extra'] = {'EMBERBSD_PROTOBUF_SOURCE_SHA256': 'new'}
+    try: b.reconfigure(opt); raise AssertionError('accepted changed common protobuf identity')
+    except ValueError as e: assert 'producer input changed: EMBERBSD_PROTOBUF_SOURCE_SHA256' in str(e)
+    state.pop('extra'); config.write_bytes(before)
     try: b.selected_control_git(root/'missing-git'); raise AssertionError('accepted missing Git')
     except FileNotFoundError: pass
     nonexec=root/'not-executable'; nonexec.write_text('file')
@@ -99,6 +113,10 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     state['values']=dict(new, target_cpu='arm64')
     try: b.reconfigure(opt); raise AssertionError('accepted changed target CPU')
     except ValueError as e: assert 'GN identity changed: target_cpu' in str(e)
+    assert config.read_bytes()==before and not (work/'reconfigure-incomplete').exists()
+    state['values']=dict(new, clang_version='24')
+    try: b.reconfigure(opt); raise AssertionError('accepted changed Clang resource version')
+    except ValueError as e: assert 'GN identity changed: clang_version' in str(e)
     assert config.read_bytes()==before and not (work/'reconfigure-incomplete').exists()
     state['values']=dict(new, unbundle_linker_launcher='different')
     try: b.reconfigure(opt); raise AssertionError('accepted changed linker launcher')

@@ -125,6 +125,16 @@ class OverlayAudit(unittest.TestCase):
         self.manifest["archive_sha512"] = hashlib.sha512(self.archive.read_bytes()).hexdigest()
         return helper.overlay_files(self.archive, self.manifest)
 
+    def test_common_v8_mapping_rejects_changed_or_unknown_donor(self):
+        content = b"reviewed donor patch"
+        entry = {"provider": "pkgsrc/lang/v8", "mapping": "reviewed shared hunk",
+                 "patch_sha256": hashlib.sha256(content).hexdigest()}
+        helper.validate_common_source("patch-v8_example", "v8/example", content, entry)
+        with self.assertRaises(ValueError):
+            helper.validate_common_source("patch-v8_example", "v8/example", content + b"changed", entry)
+        with self.assertRaises(ValueError):
+            helper.validate_common_source("patch-v8_unknown", "v8/example", content, {})
+
     def test_ordered_real_git_and_patch_with_explicit_classification(self):
         result = self.audit()
         self.assertEqual([r["status"] for r in result["rows"]],

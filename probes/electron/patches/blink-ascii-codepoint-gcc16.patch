@@ -39,15 +39,15 @@
    // Unpaired surrogates are encoded using the standard UTF-8 encoding scheme,
 --- a/third_party/blink/renderer/platform/wtf/text/atomic_string_table.cc
 +++ b/third_party/blink/renderer/platform/wtf/text/atomic_string_table.cc
-@@ -221,6 +221,7 @@
-         return StringHasher::ComputeHashAndMaskTop8Bits(bytes.data(),
-                                                         bytes.size());
+@@ -190,6 +190,7 @@
+       case AtomicStringUCharEncoding::kIs16Bit:
+         return blink::HashString24(bytes);
      }
 +    NOTREACHED();
    }
  
    ALWAYS_INLINE UCharBuffer(base::span<const UChar> chars,
-@@ -258,6 +259,7 @@
+@@ -227,6 +228,7 @@
        case AtomicStringUCharEncoding::kIs16Bit:
          return StringImpl::Create(characters_);
      }

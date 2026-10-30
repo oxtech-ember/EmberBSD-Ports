@@ -32,6 +32,9 @@ def main():
     spec=importlib.util.spec_from_file_location('node_providers',owner/'electron44/files/node-providers.py')
     providers=importlib.util.module_from_spec(spec);spec.loader.exec_module(providers)
     selected=providers.select(native)
+    assert selected['arguments']['emberbsd_devtools_esbuild_module'] == str(args.host_prefix/'lib/node_modules/esbuild/lib/main.js')
+    assert selected['arguments']['emberbsd_devtools_esbuild_binary'] == str(args.host_prefix/'bin/esbuild')
+    assert selected['arguments']['emberbsd_devtools_esbuild_version']
     env=sanitized_environment();env.update(PATH=native.path,EMBERBSD_HOST_NODE=native.tool('node'),PYTHONDONTWRITEBYTECODE='1')
     env.update(selected['environment'])
     commands=[]

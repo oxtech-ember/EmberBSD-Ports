@@ -4,9 +4,9 @@
  * Based on OpenBSD's chromium patches, and
    pkgsrc's qt5-qtwebengine patches
  
----- chrome/browser/file_system_access/chrome_file_system_access_permission_context.cc.orig	2026-08-31 22:47:51.000000000 +0000
+---- chrome/browser/file_system_access/chrome_file_system_access_permission_context.cc.orig	2026-10-19 20:07:21.000000000 +0000
 -+++ chrome/browser/file_system_access/chrome_file_system_access_permission_context.cc
--@@ -457,7 +457,7 @@ GenerateBlockPaths(bool should_normalize
+-@@ -510,7 +510,7 @@ GenerateBlockPaths(bool should_normalize
 -           FILE_PATH_LITERAL("Library/Mobile Documents/com~apple~CloudDocs"),
 -           BlockType::kDontBlockChildren),
 - #endif
@@ -15,7 +15,7 @@
 -       // On Linux also block access to devices via /dev.
 -       BlockPath::CreateAbsolute(FILE_PATH_LITERAL("/dev"),
 -                                 BlockType::kBlockAllChildren),
-+* Adapted to Electron 44.9.3 Chromium patches, retaining their behavior.
++* Adapted to Electron 45.1.0 Chromium patches, retaining their behavior.
 +* Origin: EmberBSD (AI-assisted), not submitted upstream.
 +
 +--- chrome/browser/file_system_access/chrome_file_system_access_permission_context.h.orig
@@ -35,8 +35,8 @@
  * Based on OpenBSD's chromium patches, and
    pkgsrc's qt5-qtwebengine patches
  
----- content/browser/child_process_launcher_helper_linux.cc.orig	2026-08-31 22:47:51.000000000 +0000
-+* Adapted to Electron 44.9.3 Chromium patches, retaining their behavior.
+---- content/browser/child_process_launcher_helper_linux.cc.orig	2026-10-19 20:07:21.000000000 +0000
++* Adapted to Electron 45.1.0 Chromium patches, retaining their behavior.
 +* Origin: EmberBSD (AI-assisted), not submitted upstream.
 +
 +--- content/browser/child_process_launcher_helper_linux.cc.orig
@@ -47,7 +47,7 @@
   #include "sandbox/policy/linux/sandbox_linux.h"
   
   namespace content {
--@@ -48,14 +50,20 @@ ChildProcessLauncherHelper::GetFilesToMa
+-@@ -49,14 +51,20 @@ ChildProcessLauncherHelper::GetFilesToMa
 +@@ -48,14 +50,20 @@
   }
   
@@ -56,7 +56,7 @@
       // Convert FD mapping to FileHandleMappingVector
       options->fds_to_remap = files_to_register.GetMappingWithIDAdjustment(
           base::GlobalDescriptors::kBaseDescriptor);
--@@ -67,7 +75,9 @@ bool ChildProcessLauncherHelper::BeforeL
+-@@ -68,7 +76,9 @@ bool ChildProcessLauncherHelper::BeforeL
 +@@ -70,6 +78,7 @@
 +                                          remapped_fd.first);
 +     }
@@ -76,12 +76,12 @@
 +     options->clear_environment = !delegate_->ShouldInheritEnvironment();
     } else {
  +#if !BUILDFLAG(IS_BSD)
-      DCHECK(GetZygoteForLaunch());
+      CHECK(GetZygoteForLaunch(), base::NotFatalUntil::M159);
 @@ -47,7 +64,7 @@
       // Environment variables could be supported in the future, but are not
       // currently supported when launching with the zygote.
-      DCHECK(delegate_->GetEnvironment().empty());
--@@ -84,6 +94,7 @@ ChildProcessLauncherHelper::LaunchProces
+      CHECK(delegate_->GetEnvironment().empty(), base::NotFatalUntil::M159);
+-@@ -85,6 +95,7 @@ ChildProcessLauncherHelper::LaunchProces
 +@@ -100,6 +112,7 @@
       int* launch_result) {
     *is_synchronous_launch = true;
@@ -90,7 +90,7 @@
     ZygoteCommunication* zygote_handle = GetZygoteForLaunch();
     if (zygote_handle) {
       // TODO(crbug.com/40448989): If chrome supported multiple zygotes they could
--@@ -94,7 +105,6 @@ ChildProcessLauncherHelper::LaunchProces
+-@@ -95,7 +106,6 @@ ChildProcessLauncherHelper::LaunchProces
 +@@ -110,7 +123,6 @@
           GetProcessType());
       *launch_result = LAUNCH_RESULT_SUCCESS;
@@ -99,7 +99,7 @@
       if (handle) {
         // It could be a renderer process or an utility process.
         int oom_score = content::kMiscOomScore;
--@@ -103,15 +113,17 @@ ChildProcessLauncherHelper::LaunchProces
+-@@ -104,15 +114,17 @@ ChildProcessLauncherHelper::LaunchProces
 +@@ -119,15 +131,17 @@
           oom_score = content::kLowestRendererOomScore;
         ZygoteHostImpl::GetInstance()->AdjustRendererOOMScore(handle, oom_score);
@@ -116,7 +116,7 @@
   
   #if BUILDFLAG(IS_CHROMEOS)
     process_id_ = process.process.Pid();
--@@ -135,10 +147,14 @@ ChildProcessTerminationInfo ChildProcess
+-@@ -136,10 +148,14 @@ ChildProcessTerminationInfo ChildProcess
 +@@ -151,10 +165,14 @@
       const ChildProcessLauncherHelper::Process& process,
       bool known_dead) {
@@ -125,12 +125,12 @@
       info.status = base::GetKnownDeadTerminationStatus(process.process.Handle(),
                                                         &info.exit_code);
     } else {
--@@ -164,13 +180,17 @@ void ChildProcessLauncherHelper::ForceNo
-+@@ -180,13 +198,17 @@
-    DCHECK(CurrentlyOnProcessLauncherTaskRunner());
+-@@ -165,13 +181,17 @@ void ChildProcessLauncherHelper::ForceNo
++@@ -180,14 +198,18 @@
+    CHECK(CurrentlyOnProcessLauncherTaskRunner(), base::NotFatalUntil::M159);
     process.process.Terminate(RESULT_CODE_NORMAL_EXIT, false);
     // On POSIX, we must additionally reap the child.
-@@ -109,13 +127,14 @@
+@@ -109,13 +127,15 @@
     } else {
  +#endif
       base::EnsureProcessTerminated(std::move(process.process));
@@ -141,34 +141,32 @@
  +#endif
   }
   
-  void ChildProcessLauncherHelper::SetProcessPriorityOnLauncherThread(
--@@ -182,11 +202,13 @@ void ChildProcessLauncherHelper::SetProc
+  // static
+-@@ -184,11 +204,13 @@ void ChildProcessLauncherHelper::ApplyPr
++ void ChildProcessLauncherHelper::ApplyProcessPriorityOnLauncherThread(
 +@@ -198,11 +220,13 @@
     }
   }
   
 --- a/patch-net_dns_dns__config__service__posix.cc
 +++ b/patch-net_dns_dns__config__service__posix.cc
-@@ -4,9 +4,12 @@
+@@ -4,7 +4,10 @@
  * Based on OpenBSD's chromium patches, and
    pkgsrc's qt5-qtwebengine patches
  
----- net/dns/dns_config_service_posix.cc.orig	2026-08-31 22:47:51.000000000 +0000
-+* Adapted to Electron 44.9.3 Chromium patches, retaining their behavior.
+---- net/dns/dns_config_service_posix.cc.orig	2026-10-19 20:07:21.000000000 +0000
++* Adapted to Electron 45.1.0 Chromium patches, retaining their behavior.
 +* Origin: EmberBSD (AI-assisted), not submitted upstream.
 +
 +--- net/dns/dns_config_service_posix.cc.orig
  +++ net/dns/dns_config_service_posix.cc
--@@ -35,6 +35,11 @@
-+@@ -36,6 +36,11 @@
+ @@ -36,6 +36,11 @@
   #include "net/dns/dns_config_watcher_mac.h"
-  #endif
-  
 @@ -18,10 +21,11 @@
   namespace net {
   
   namespace internal {
--@@ -132,6 +137,13 @@ class DnsConfigServicePosix::Watcher : p
+-@@ -133,6 +138,13 @@ class DnsConfigServicePosix::Watcher : p
 +@@ -132,6 +137,14 @@
 + 
     bool Watch() override {
@@ -185,45 +183,14 @@
 + #if !IS_MAS_BUILD()
       if (!config_watcher_.Watch(base::BindRepeating(&Watcher::OnConfigChanged,
 -                                                    base::Unretained(this)))) {
---- a/patch-ui_gfx_font__util.cc
-+++ b/patch-ui_gfx_font__util.cc
-@@ -4,7 +4,10 @@
- * Based on OpenBSD's chromium patches, and
-   pkgsrc's qt5-qtwebengine patches
- 
----- ui/gfx/font_util.cc.orig	2026-08-31 22:47:51.000000000 +0000
-+* Adapted to Electron 44.9.3 Chromium patches, retaining their behavior.
-+* Origin: EmberBSD (AI-assisted), not submitted upstream.
-+
-+--- ui/gfx/font_util.cc.orig
- +++ ui/gfx/font_util.cc
- @@ -7,7 +7,7 @@
-  #include "build/build_config.h"
-@@ -15,12 +18,12 @@
-  #include <fontconfig/fontconfig.h>
-  #include "ui/gfx/linux/fontconfig_util.h"
-  #endif
--@@ -25,7 +25,7 @@ void InitializeFonts() {
-+@@ -25,7 +25,7 @@
-    // background (resources have not yet been granted to cast) since it prevents
-    // the long delay the user would have seen on first rendering.
-  
- -#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
- +#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_BSD)
--   // Early initialize FontConfig.
--   InitializeGlobalFontConfigAsync();
-- #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-+   // Ensures the config is created on this thread. It's generally safe to send
-+   // concurrent match requests to fontconfig, but it's unsafe to send match
-+   // requests concurrently to fontconfig initialization.
 --- a/patch-ui_gtk_gtk__compat.cc
 +++ b/patch-ui_gtk_gtk__compat.cc
 @@ -4,9 +4,12 @@
  * Based on OpenBSD's chromium patches, and
    pkgsrc's qt5-qtwebengine patches
  
----- ui/gtk/gtk_compat.cc.orig	2026-08-31 22:47:51.000000000 +0000
-+* Adapted to Electron 44.9.3 Chromium patches, retaining their behavior.
+---- ui/gtk/gtk_compat.cc.orig	2026-10-19 20:07:21.000000000 +0000
++* Adapted to Electron 45.1.0 Chromium patches, retaining their behavior.
 +* Origin: EmberBSD (AI-assisted), not submitted upstream.
 +
 +--- ui/gtk/gtk_compat.cc.orig

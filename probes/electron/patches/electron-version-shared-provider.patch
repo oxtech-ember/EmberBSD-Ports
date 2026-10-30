@@ -1,0 +1,89 @@
+--- a/electron/build/npm.gni
++++ b/electron/build/npm.gni
+@@ -1,8 +1,51 @@
++declare_args() {
++  emberbsd_electron_node = ""
++  emberbsd_electron_version_provider = ""
++  emberbsd_electron_provider_selector = ""
++  emberbsd_electron_sdk_source = ""
++  emberbsd_electron_host_prefix = ""
++  emberbsd_electron_semver_inputs = []
++}
++
+ template("npm_action") {
+   assert(defined(invoker.script),
+          "Need script name to run (must be defined in package.json)")
+   assert(defined(invoker.args), "Need script arguments")
+ 
++  if (invoker.script == "generate-version-json" && emberbsd_electron_version_provider != "") {
++    action(target_name) {
++      forward_variables_from(invoker, [ "deps", "public_deps", "sources", "inputs", "outputs" ])
++      assert(defined(outputs) && outputs != [])
++      _version_args = invoker.args
++      assert(_version_args == [ _version_args[0], _version_args[1] ],
++             "version generator requires exactly two arguments")
++      assert(outputs == [ outputs[0] ], "version generator requires one output")
++      if (!defined(inputs)) {
++        inputs = []
++      }
++      inputs += emberbsd_electron_semver_inputs + [
++        "//electron/package.json",
++        emberbsd_electron_provider_selector,
++        emberbsd_electron_node,
++      ]
++      _provider_stamp = "$target_gen_dir/electron_version_provider/" + target_name + ".stamp"
++      outputs += [ _provider_stamp ]
++      script = emberbsd_electron_version_provider
++      args = [
++        "--sdk-source", emberbsd_electron_sdk_source,
++        "--host-prefix", emberbsd_electron_host_prefix,
++        "--node-provider", emberbsd_electron_provider_selector,
++        "--node", emberbsd_electron_node,
++        "--source", rebase_path("//electron/script/generate-version-json.js"),
++        "--output", _version_args[0],
++        "--version", _version_args[1],
++        "--stamp", rebase_path(_provider_stamp),
++      ]
++      foreach(provider, emberbsd_electron_semver_inputs) {
++        args += [ "--provider-input", provider ]
++      }
++    }
++  } else {
+   action("npm_pre_flight_" + target_name) {
+     inputs = [
+       "//electron/package.json",
+@@ -42,4 +85,5 @@
+              "--",
+            ] + invoker.args
+   }
++  }
+ }
+--- a/electron/BUILD.gn
++++ b/electron/BUILD.gn
+@@ -428,7 +428,7 @@
+   template = "build/templates/electron_version.tmpl"
+   output = "$target_gen_dir/electron_version.h"
+ 
+-  args_files = get_target_outputs(":electron_version_args")
++  args_files = [ "$target_gen_dir/electron_version.args" ]
+ }
+ 
+ templated_file("electron_win_rc") {
+@@ -437,7 +437,7 @@
+   template = "build/templates/electron_rc.tmpl"
+   output = "$target_gen_dir/win-resources/electron.rc"
+ 
+-  args_files = get_target_outputs(":electron_version_args")
++  args_files = [ "$target_gen_dir/electron_version.args" ]
+ }
+ 
+ copy("electron_win_resource_files") {
+@@ -454,7 +454,7 @@
+   template = "build/templates/version_string.tmpl"
+   output = "$root_build_dir/version"
+ 
+-  args_files = get_target_outputs(":electron_version_args")
++  args_files = [ "$target_gen_dir/electron_version.args" ]
+ }
+ 
+ group("electron_win32_resources") {

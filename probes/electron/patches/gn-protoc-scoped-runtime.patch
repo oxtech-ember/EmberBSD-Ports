@@ -1,0 +1,120 @@
+Run selected native protoc with the SDK scoped runtime launcher.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- a/third_party/protobuf/proto_library.gni
++++ b/third_party/protobuf/proto_library.gni
+@@ -187,6 +187,19 @@
+ # case crbug.com/338008085 is resolved.
+ _this_dir = get_path_info(".", "abspath")
+ 
++declare_args() {
++  emberbsd_protoc_runtime_launcher = ""
++  emberbsd_protoc_runtime_view = ""
++  emberbsd_protoc_runtime_inputs = []
++}
++assert((emberbsd_protoc_runtime_launcher == "") ==
++       (emberbsd_protoc_runtime_view == ""),
++       "A scoped protoc launcher and runtime view must be selected together")
++if (emberbsd_protoc_runtime_launcher != "") {
++  assert(emberbsd_protoc_runtime_inputs != [],
++         "The scoped protoc launcher requires its actual inputs")
++}
++
+ _protoc_label = "$_this_dir:protoc($host_toolchain)"
+ _protoc_path = get_label_info(_protoc_label, "root_out_dir") + "/protoc" +
+                _host_executable_suffix
+@@ -567,6 +580,16 @@
+            ]
+ 
+     # TODO(crbug.com/409484308): Enable in fuzzer builds too.
++    if (emberbsd_protoc_runtime_launcher != "") {
++      inputs += emberbsd_protoc_runtime_inputs
++      args += [
++        "--protoc-runtime-launcher",
++        rebase_path(emberbsd_protoc_runtime_launcher, root_build_dir),
++        "--protoc-runtime-view",
++        rebase_path(emberbsd_protoc_runtime_view, root_build_dir),
++      ]
++    }
++
+     if (treat_warnings_as_errors && !fuzzing_engine_supports_custom_main) {
+       args += [ "--fatal_warnings" ]
+     }
+@@ -920,6 +943,16 @@
+       rebase_path(invoker.output_pattern, root_build_dir),
+     ]
+ 
++    if (emberbsd_protoc_runtime_launcher != "") {
++      inputs += emberbsd_protoc_runtime_inputs
++      args += [
++        "--protoc-runtime-launcher",
++        rebase_path(emberbsd_protoc_runtime_launcher, root_build_dir),
++        "--protoc-runtime-view",
++        rebase_path(emberbsd_protoc_runtime_view, root_build_dir),
++      ]
++    }
++
+     if (treat_warnings_as_errors) {
+       args += [ "--fatal_warnings" ]
+     }
+--- a/tools/protoc_wrapper/protoc_wrapper.py
++++ b/tools/protoc_wrapper/protoc_wrapper.py
+@@ -108,6 +108,8 @@
+   parser.add_argument(
+     "--protoc", required=True, help="Relative path to compiler."
+   )
++  parser.add_argument("--protoc-runtime-launcher")
++  parser.add_argument("--protoc-runtime-view")
+ 
+   parser.add_argument(
+     "--proto-in-dir", required=True, help="Base directory with source protos."
+@@ -181,7 +183,13 @@
+   options = parser.parse_args(argv)
+ 
+   proto_dir = os.path.relpath(options.proto_in_dir)
++  if bool(options.protoc_runtime_launcher) != bool(options.protoc_runtime_view):
++    parser.error("protoc runtime launcher and view must be selected together")
+   protoc_cmd = [os.path.realpath(options.protoc)]
++  if options.protoc_runtime_launcher:
++    protoc_cmd = [sys.executable, options.protoc_runtime_launcher,
++                  "--runtime-view", os.path.abspath(options.protoc_runtime_view),
++                  "--"] + protoc_cmd
+ 
+   protos = options.protos
+   headers = []
+--- a/tools/protoc_wrapper/protoc_convert.py
++++ b/tools/protoc_wrapper/protoc_convert.py
+@@ -8,12 +8,16 @@
+ """
+ 
+ import argparse
++import os
+ import subprocess
++import sys
+ 
+ 
+ def Main():
+   parser = argparse.ArgumentParser()
+   parser.add_argument('--protoc', help='Path to protoc compiler.')
++  parser.add_argument('--protoc-runtime-launcher')
++  parser.add_argument('--protoc-runtime-view')
+   parser.add_argument(
+     '--infile',
+     required=True,
+@@ -29,9 +33,13 @@
+   stdin = open(args.infile, 'r')
+   stdout = open(args.outfile, 'w')
+ 
+-  subprocess.check_call(
+-    [args.protoc] + passthrough_args, stdin=stdin, stdout=stdout
+-  )
++  if bool(args.protoc_runtime_launcher) != bool(args.protoc_runtime_view):
++    parser.error('protoc runtime launcher and view must be selected together')
++  command = [args.protoc] + passthrough_args
++  if args.protoc_runtime_launcher:
++    command = [sys.executable, args.protoc_runtime_launcher,
++               '--runtime-view', os.path.abspath(args.protoc_runtime_view), '--'] + command
++  subprocess.check_call(command, stdin=stdin, stdout=stdout)
+ 
+ 
+ if __name__ == '__main__':

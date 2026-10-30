@@ -1,0 +1,146 @@
+$NetBSD$
+
+Use the selected shared Lit Trusted Types policy without expanding CSP.
+
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- a/ui/webui/webui_util.h
++++ b/ui/webui/webui_util.h
+@@ -6,6 +6,7 @@
+ #define UI_WEBUI_WEBUI_UTIL_H_
+ 
+ #include "base/containers/span.h"
++#include "third_party/lit/v3_0/lit_buildflags.h"
+ #include "build/build_config.h"
+ #include "ui/base/webui/resource_path.h"
+ 
+@@ -24,7 +25,11 @@
+     // Add TrustedTypes policies necessary for using Polymer.
+     "polymer-html-literal polymer-template-event-attribute-policy "
+     // Add TrustedTypes policies necessary for using Desktop's Lit bundle.
++#if BUILDFLAG(USE_COMMON_LIT)
++    "lit-html";
++#else
+     "lit-html-desktop";
++#endif
+ 
+ // Performs common setup steps for a |source| using JS modules: enable i18n
+ // string replacements, adding test resources, and configuring script-src CSP
+--- a/content/browser/indexed_db/indexed_db_internals_ui.cc
++++ b/content/browser/indexed_db/indexed_db_internals_ui.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/indexed_db/indexed_db_internals_ui.h"
++#include "third_party/lit/v3_0/lit_buildflags.h"
+ 
+ #include <cstdint>
+ #include <memory>
+@@ -112,7 +113,11 @@
+       "script-src chrome://resources 'self';");
+   source->OverrideContentSecurityPolicy(
+       network::mojom::CSPDirectiveName::TrustedTypes,
++#if BUILDFLAG(USE_COMMON_LIT)
++      "trusted-types static-types lit-html;");
++#else
+       "trusted-types static-types lit-html-desktop;");
++#endif
+   source->UseStringsJs();
+   source->AddResourcePaths(kIndexedDbResources);
+   source->SetDefaultResource(IDR_INDEXED_DB_INDEXEDDB_INTERNALS_HTML);
+--- a/content/browser/service_worker/service_worker_internals_ui.cc
++++ b/content/browser/service_worker/service_worker_internals_ui.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/service_worker/service_worker_internals_ui.h"
++#include "third_party/lit/v3_0/lit_buildflags.h"
+ 
+ #include <stdint.h>
+ 
+@@ -384,7 +385,11 @@
+       "script-src chrome://resources 'self';");
+   source->OverrideContentSecurityPolicy(
+       network::mojom::CSPDirectiveName::TrustedTypes,
++#if BUILDFLAG(USE_COMMON_LIT)
++      "trusted-types lit-html;");
++#else
+       "trusted-types lit-html-desktop;");
++#endif
+   source->UseStringsJs();
+   source->AddResourcePaths(kServiceWorkerResources);
+   source->SetDefaultResource(IDR_SERVICE_WORKER_SERVICEWORKER_INTERNALS_HTML);
+--- a/content/browser/tracing/traces_internals/traces_internals_ui.cc
++++ b/content/browser/tracing/traces_internals/traces_internals_ui.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/tracing/traces_internals/traces_internals_ui.h"
++#include "third_party/lit/v3_0/lit_buildflags.h"
+ 
+ #include "content/browser/renderer_host/render_frame_host_impl.h"
+ #include "content/browser/tracing/traces_internals/traces_internals.mojom.h"
+@@ -33,7 +34,11 @@
+       "trusted-types static-types polymer-html-literal "
+       "polymer-template-event-attribute-policy "
+       // Add TrustedTypes policies necessary for using Lit.
++#if BUILDFLAG(USE_COMMON_LIT)
++      "lit-html;");
++#else
+       "lit-html-desktop;");
++#endif
+ }
+ 
+ TracesInternalsUI::~TracesInternalsUI() = default;
+--- a/ui/webui/examples/browser/ui/web/webui.cc
++++ b/ui/webui/examples/browser/ui/web/webui.cc
+@@ -4,6 +4,7 @@
+ 
+ 
+ #include "ui/webui/examples/browser/ui/web/webui.h"
++#include "third_party/lit/v3_0/lit_buildflags.h"
+ 
+ #include "chrome/grit/webui_gallery_resources.h"
+ #include "chrome/grit/webui_gallery_resources_map.h"
+@@ -32,7 +33,11 @@
+       // Add TrustedTypes policies necessary for using Polymer.
+       "polymer-html-literal polymer-template-event-attribute-policy "
+       // Add TrustedTypes policies necessary for using Desktop's Lit bundle.
++#if BUILDFLAG(USE_COMMON_LIT)
++      "lit-html;");
++#else
+       "lit-html-desktop;");
++#endif
+ }
+ 
+ void SetJSModuleDefaults(content::WebUIDataSource* source) {
+--- a/ui/webui/BUILD.gn
++++ b/ui/webui/BUILD.gn
+@@ -33,6 +33,7 @@
+     ]
+ 
+     public_deps = [
++      "//third_party/lit/v3_0:lit_buildflags",
+       "//ui/base",
+       "//ui/webui/resources/js/browser_command:mojo_bindings",
+       "//ui/webui/resources/js/metrics_reporter:mojo_bindings",
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -131,6 +131,7 @@
+   ldflags = []
+ 
+   deps = [
++    "//third_party/lit/v3_0:lit_buildflags",
+     ":child_process_security_policy_impl",
+     "//base",
+     "//base:base_static",
+--- a/ui/webui/examples/BUILD.gn
++++ b/ui/webui/examples/BUILD.gn
+@@ -45,6 +45,7 @@
+   ]
+ 
+   deps = [
++    "//third_party/lit/v3_0:lit_buildflags",
+     ":browser_mojo_bindings",
+     ":pak",
+     ":resources_grit",

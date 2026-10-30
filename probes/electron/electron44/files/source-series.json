@@ -3,7 +3,22 @@
   "stage": "after-pinned-electron-upstream-and-bsd-patches",
   "patches": [
     {
+      "path": "electron-version-shared-provider.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "netbsd-cross-source.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "perfetto-openbsd-getexecpath.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gn-external-libcxx-hardening.patch",
       "strip": 1,
       "root": ""
     },
@@ -403,6 +418,46 @@
       "root": ""
     },
     {
+      "path": "gn-pkgconfig-explicit-roles.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-apple-selected-python-link.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-gcc-stringop-warning.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-pkgconfig-native-buildlink.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-shared-simdutf.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gn-common-protobuf.patch",
+      "root": "",
+      "strip": 0
+    },
+    {
+      "path": "gn-protoc-scoped-runtime.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-mac-selected-native-binding.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
       "path": "base-apple-cxx-platform.patch",
       "strip": 1,
       "root": ""
@@ -411,11 +466,6 @@
       "path": "electron-snapshot-checksum-input.patch",
       "strip": 1,
       "root": "electron"
-    },
-    {
-      "path": "v8-host-paxctl.patch",
-      "strip": 1,
-      "root": "v8"
     },
     {
       "path": "libcxx-gcc16-maxsize-function-sbo.patch",
@@ -483,11 +533,6 @@
       "root": "third_party/perfetto"
     },
     {
-      "path": "v8-gcc16-netbsd.patch",
-      "strip": 1,
-      "root": "v8"
-    },
-    {
       "path": "gn-darwin-sdk-metadata.patch",
       "strip": 1,
       "root": ""
@@ -501,6 +546,11 @@
       "path": "gn-electron-drop-unused-linux-installer-arg.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "electron-node-abi-provider.patch",
+      "root": "",
+      "strip": 1
     },
     {
       "path": "perfetto-typed-proto-gcc16-dependent-false.patch",
@@ -533,9 +583,19 @@
       "root": ""
     },
     {
+      "path": "typescript-restore-definition-validation.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "gn-shared-node-providers.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-shared-tsgo-inputs.patch",
+      "strip": 1,
+      "root": ""
     },
     {
       "path": "webui-trusted-html-ts7-compat.patch",
@@ -588,11 +648,6 @@
       "strip": 1
     },
     {
-      "path": "v8-stack-reserved-limit-darwin-dup.patch",
-      "root": "v8",
-      "strip": 1
-    },
-    {
       "path": "ui-accessibility-atspi-check-version-redef.patch",
       "root": "",
       "strip": 1
@@ -604,16 +659,6 @@
     },
     {
       "path": "libsync-etime-redef.patch",
-      "root": "",
-      "strip": 1
-    },
-    {
-      "path": "media-base-audio-bus-frames-size-t.patch",
-      "root": "",
-      "strip": 1
-    },
-    {
-      "path": "components-signin-cross-device-signin-bsd-guard.patch",
       "root": "",
       "strip": 1
     },
@@ -656,6 +701,51 @@
       "path": "gn-node-provider-commands.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-devtools-shared-esbuild.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-common-lit-providers.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "chromium-common-lit-types.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "chromium-common-lit-csp.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-abseil-unbundle-current.patch",
+      "strip": 0,
+      "root": ""
+    },
+    {
+      "path": "gn-icu-system-data.patch",
+      "strip": 0,
+      "root": ""
+    },
+    {
+      "path": "electron-common-octicons.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gn-common-ts-proto-providers.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "electron-node26-trace-event-headers.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

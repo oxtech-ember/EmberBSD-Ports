@@ -56,7 +56,7 @@ def main():
             assert proc.returncode == 0, name + ':\n' + output
         else:
             assert proc.returncode != 0 and error in output, name + ':\n' + output
-        return output
+        return proc.stdout if error is None else output
 
     spec = importlib.util.spec_from_file_location('source_prepare', PROBE / 'electron44/files/prepare-sources.py')
     prepare = importlib.util.module_from_spec(spec); spec.loader.exec_module(prepare)

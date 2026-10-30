@@ -54,6 +54,23 @@ class Preparation(unittest.TestCase):
         patches = patch.object(preparer, "PATCHES", ("patch-security",))
         patches.start()
         self.addCleanup(patches.stop)
+        # Keep the synthetic roll fixture independent of production versions.
+        for name, value in (("CHROMIUM_VERSION", "152.0.7977.167"),
+                            ("CHROMIUM_REVISION", "dd78960ccd8a03a2fe1f629543d27783885b78e9"),
+                            ("NODE_BEFORE", "v24.22.0"),
+                            ("NODE_VERSION", "v24.22.1")):
+            setting = patch.object(preparer, name, value)
+            setting.start()
+            self.addCleanup(setting.stop)
+
+    def test_upstream_roll_needs_no_patch_directory(self):
+        self.change_pinned_deps(DEPS.replace("v24.22.0", "v24.22.1"))
+        (self.patches / "patch-security").unlink()
+        self.patches.rmdir()
+        preparer.PATCHES = ()
+        preparer.NODE_BEFORE = preparer.NODE_VERSION
+        electron = self.prepare()
+        self.assertFalse(self.git("status", "--porcelain", cwd=electron))
 
     def git(self, *args, cwd=None):
         result = subprocess.run([str(options.git), "-C", str(cwd or self.source),

@@ -1,0 +1,215 @@
+Origin: EmberBSD (AI-assisted). Select native and target pkg-config by explicit GN toolchain role.
+
+--- a/build/config/BUILDCONFIG.gn
++++ b/build/config/BUILDCONFIG.gn
+@@ -122,6 +122,13 @@
+ # - Don't call exec_script inside declare_args. This will execute the script
+ #   even if the value is overridden, which is wasteful. See first bullet.
+ 
++# Explicit pkg-config routing for cross-build toolchains. Ordinary Chromium
++# builds retain upstream behavior unless the caller selects explicit roles.
++declare_args() {
++  emberbsd_pkg_config_role = "upstream"
++  emberbsd_native_pkg_config_prefix = ""
++}
++
+ declare_args() {
+   is_electron_build = false
+   is_mas_build = false
+--- a/build/config/linux/pkg_config.gni
++++ b/build/config/linux/pkg_config.gni
+@@ -38,6 +38,7 @@
+   # A optional pkg-config wrapper to use for tools built on the host.
+   host_pkg_config = ""
+ 
++
+   # CrOS systemroots place pkgconfig files at <systemroot>/usr/share/pkgconfig
+   # and one of <systemroot>/usr/lib/pkgconfig or
+   # <systemroot>/usr/lib64/pkgconfig depending on whether the systemroot is for
+@@ -61,12 +62,33 @@
+ 
+ # EmberBSD cross builds run GN on macOS and use a pkgsrc sysroot. Keep this
+ # separate from `sysroot`, which controls Chromium's host and target SDKs.
++assert(emberbsd_pkg_config_role == "upstream" ||
++       emberbsd_pkg_config_role == "explicit" ||
++       emberbsd_pkg_config_role == "target" ||
++       emberbsd_pkg_config_role == "native", "Unknown pkg-config role")
++_emberbsd_pkg_config_role = emberbsd_pkg_config_role
++if (_emberbsd_pkg_config_role == "explicit") {
++  assert(current_toolchain == default_toolchain,
++         "Every secondary toolchain must declare its pkg-config role")
++  _emberbsd_pkg_config_role = "target"
++}
++if (_emberbsd_pkg_config_role == "native") {
++  assert(emberbsd_native_pkg_config_prefix != "",
++         "Native pkg-config requires the selected Ports prefix")
++  assert(host_pkg_config != "",
++         "Native pkg-config requires the selected host executable")
++}
+ _pkg_config_sysroot = sysroot
++if (_emberbsd_pkg_config_role == "native") {
++  _pkg_config_sysroot = ""
++}
+ _pkg_config_system_libdir = system_libdir
+ _emberbsd_cross_pkg_config = host_os == "mac" && current_os == "netbsd" &&
+                              (current_cpu == "arm64" || current_cpu == "x64") &&
+                              emberbsd_target_sysroot != ""
+ if (_emberbsd_cross_pkg_config) {
++  assert(_emberbsd_pkg_config_role != "native",
++         "A target toolchain cannot use native pkg-config")
+   _pkg_config_sysroot = emberbsd_target_sysroot
+   _pkg_config_system_libdir = "pkg/lib"
+ }
+@@ -118,6 +140,13 @@
+   }
+ }
+ 
++if (_emberbsd_pkg_config_role == "native") {
++  common_pkg_config_args += [
++    "--emberbsd-native-prefix",
++    emberbsd_native_pkg_config_prefix,
++  ]
++}
++
+ if (pkg_config != "") {
+   pkg_config_args += [
+     "-p",
+@@ -149,7 +178,8 @@
+          "Variable |packages| must be defined to be a list in pkg_config.")
+ 
+   config(target_name) {
+-    if (current_toolchain == host_toolchain) {
++    if (_emberbsd_pkg_config_role == "native" ||
++        current_toolchain == host_toolchain) {
+       _cache_args = host_pkg_config_args + invoker.packages
+     } else {
+       _cache_args = pkg_config_args + invoker.packages
+--- a/build/config/linux/pkg-config.py
++++ b/build/config/linux/pkg-config.py
+@@ -6,6 +6,7 @@
+ 
+ import json
+ import os
++import shlex
+ import subprocess
+ import sys
+ import re
+@@ -122,6 +123,7 @@
+     parser.add_option('-a', action='store', dest='arch', type='string')
+     parser.add_option('--allow-cross-sysroot', action='store_true',
+                       dest='allow_cross_sysroot', default=False)
++    parser.add_option('--emberbsd-native-prefix', dest='emberbsd_native_prefix')
+     parser.add_option(
+         '--system_libdir',
+         action='store',
+@@ -146,10 +148,28 @@
+     )
+     (options, args) = parser.parse_args()
+ 
++    if options.emberbsd_native_prefix is not None:
++        if not os.path.isabs(options.emberbsd_native_prefix):
++            parser.error('native pkg-config prefix must be absolute')
++        if options.sysroot or options.allow_cross_sysroot:
++            parser.error('native pkg-config cannot use a target sysroot')
++        os.environ.pop('PKG_CONFIG_PATH', None)
++        os.environ.pop('PKG_CONFIG_SYSROOT_DIR', None)
++        os.environ['PKG_CONFIG_LIBDIR'] = os.pathsep.join([
++            os.path.join(options.emberbsd_native_prefix, 'lib', 'pkgconfig'),
++            os.path.join(options.emberbsd_native_prefix, 'share', 'pkgconfig'),
++        ])
++    elif options.allow_cross_sysroot:
++        if not options.sysroot or not options.arch:
++            parser.error('cross pkg-config requires a sysroot and architecture')
++        os.environ.pop('PKG_CONFIG_PATH', None)
++        os.environ.pop('PKG_CONFIG_SYSROOT_DIR', None)
++        os.environ.pop('PKG_CONFIG_LIBDIR', None)
++
+     # If this is run on non-Linux platforms, just return nothing and indicate
+     # success. This allows us to "kind of emulate" a Linux build from other
+     # platforms.
+-    if (not options.allow_cross_sysroot and
++    if (not options.allow_cross_sysroot and options.emberbsd_native_prefix is None and
+         not sys.platform.startswith(tuple(['linux', 'openbsd', 'freebsd', 'netbsd']))):
+         if options.dridriverdir or options.libdir:
+             sys.stdout.write("")
+@@ -227,10 +247,8 @@
+         sys.stderr.write('Could not run pkg-config.\n')
+         return 1
+ 
+-    # For now just split on spaces to get the args out. This will break if
+-    # pkgconfig returns quoted things with spaces in them, but that doesn't seem
+-    # to happen in practice.
+-    all_flags = flag_string.strip().split(' ')
++    # pkg-config emits shell-escaped fragments; keep spaces inside a fragment.
++    all_flags = shlex.split(flag_string)
+ 
+     sysroot = options.sysroot
+     if not sysroot:
+--- a/build/toolchain/mac/BUILD.gn
++++ b/build/toolchain/mac/BUILD.gn
+@@ -32,6 +32,7 @@
+   assert(defined(invoker.toolchain_args),
+          "Toolchains must declare toolchain_args")
+   _invoker_toolchain_args = invoker.toolchain_args
++  _explicit_pkg_config_role = emberbsd_pkg_config_role != "upstream"
+ 
+   apple_toolchain(target_name) {
+     forward_variables_from(invoker, "*", [ "toolchain_args" ])
+@@ -39,7 +40,12 @@
+     bin_path = mac_bin_path
+ 
+     toolchain_args = {
+-      forward_variables_from(_invoker_toolchain_args, "*")
++      if (_explicit_pkg_config_role) {
++        forward_variables_from(_invoker_toolchain_args, "*", [ "emberbsd_pkg_config_role" ])
++        emberbsd_pkg_config_role = "native"
++      } else {
++        forward_variables_from(_invoker_toolchain_args, "*")
++      }
+       current_os = "mac"
+ 
+       # Keep compiler selection local to this toolchain.
+--- a/build/toolchain/linux/unbundle/BUILD.gn
++++ b/build/toolchain/linux/unbundle/BUILD.gn
+@@ -40,6 +40,7 @@
+   }
+ }
+ 
++_explicit_pkg_config_role = emberbsd_pkg_config_role != "upstream"
+ gcc_toolchain("host") {
+   cc = getenv("BUILD_CC")
+   cxx = getenv("BUILD_CXX")
+@@ -54,6 +55,9 @@
+   extra_ldflags = getenv("BUILD_LDFLAGS")
+ 
+   toolchain_args = {
++    if (_explicit_pkg_config_role) {
++      emberbsd_pkg_config_role = "native"
++    }
+     is_clang = unbundle_host_is_clang
+     current_cpu = current_cpu
+     current_os = current_os
+--- a/build/toolchain/gcc_toolchain.gni
++++ b/build/toolchain/gcc_toolchain.gni
+@@ -949,6 +949,7 @@
+ # used to compile build scripts that are part of the stdlib that is built
+ # for the default toolchain.
+ template("gcc_rust_host_build_tools_toolchain") {
++  _explicit_pkg_config_role = emberbsd_pkg_config_role != "upstream"
+   single_gcc_toolchain(target_name) {
+     assert(defined(invoker.toolchain_args),
+            "Toolchains must declare toolchain_args")
+@@ -957,7 +958,12 @@
+                            TESTONLY_AND_VISIBILITY + [ "toolchain_args" ])
+     toolchain_args = {
+       # Populate toolchain args from the invoker.
+-      forward_variables_from(invoker.toolchain_args, "*")
++      if (_explicit_pkg_config_role) {
++        forward_variables_from(invoker.toolchain_args, "*", [ "emberbsd_pkg_config_role" ])
++        emberbsd_pkg_config_role = "native"
++      } else {
++        forward_variables_from(invoker.toolchain_args, "*")
++      }
+       toolchain_for_rust_host_build_tools = true
+ 
+       # The host build tools are static release builds to make the Chromium

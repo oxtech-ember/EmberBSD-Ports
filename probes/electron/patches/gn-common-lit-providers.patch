@@ -1,0 +1,339 @@
+$NetBSD$
+
+Route Chromium Lit and TypeScript trusted-types to selected common providers.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/third_party/node/node.gni
++++ b/third_party/node/node.gni
+@@ -17,6 +17,16 @@
+ declare_args() {
+   # The caller enumerates the selected common provider's actual package files.
+   emberbsd_node_provider_inputs = []
++  emberbsd_node_modules = ""
++  emberbsd_node_source_identity = ""
++  emberbsd_node_configure_helper = ""
++  emberbsd_node_configure_inputs = []
++  emberbsd_node_configure_dependencies = []
++  emberbsd_ts_proto_inputs = []
++  emberbsd_lit_versions = []
++  emberbsd_lit_inputs = []
++  emberbsd_trusted_types_inputs = []
++  emberbsd_trusted_types_version = ""
+   emberbsd_typescript_definitions = []
+   emberbsd_node_provider_versions = []
+   emberbsd_typescript_native_binary = ""
+--- /dev/null
++++ b/third_party/node/lit_provider.py
+@@ -0,0 +1,16 @@
++# Copyright 2026 EmberBSD contributors. BSD-2-Clause.
++# Origin: EmberBSD (AI-assisted).
++"""Validate the selected Lit module versions before a build action."""
++import json
++import os
++
++
++def validate(root, versions):
++    if not os.path.isabs(root) or not versions:
++        raise ValueError('common Lit needs an absolute path and versions')
++    for item in versions:
++        name, version = item.rsplit('@', 1)
++        with open(os.path.join(root, name, 'package.json'), encoding='utf-8') as f:
++            metadata = json.load(f)
++        if metadata.get('name') != name or metadata.get('version') != version:
++            raise ValueError('common Lit provider identity changed: ' + name)
+--- a/third_party/lit/v3_0/BUILD.gn
++++ b/third_party/lit/v3_0/BUILD.gn
+@@ -2,12 +2,29 @@
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+ 
++import("//build/buildflag_header.gni")
++import("//third_party/node/node.gni")
+ import("//tools/typescript/ts_library.gni")
+ import("//ui/webui/resources/tools/bundle_js.gni")
+ import("//ui/webui/resources/tools/generate_code_cache.gni")
+ import("//ui/webui/resources/tools/generate_grd.gni")
+ import("//ui/webui/resources/tools/minify_js.gni")
+ import("//ui/webui/webui_features.gni")
++
++buildflag_header("lit_buildflags") {
++  header = "lit_buildflags.h"
++  _use_common_lit = emberbsd_node_modules != ""
++  if (_use_common_lit) {
++    assert(emberbsd_host_node != "" && emberbsd_lit_versions != [] &&
++               emberbsd_lit_inputs != [] &&
++               get_path_info(emberbsd_node_modules, "abspath") == emberbsd_node_modules,
++           "common Lit requires an absolute selected host provider and inputs")
++    foreach(_item, emberbsd_lit_versions + emberbsd_lit_inputs) {
++      assert(_item != "", "common Lit provider entries must not be empty")
++    }
++  }
++  flags = [ "USE_COMMON_LIT=$_use_common_lit" ]
++}
+ 
+ ts_library("build_ts") {
+   visibility = [
+@@ -194,6 +211,15 @@
+   ]
+ 
+   node_modules = "//third_party/node/node_modules"
++  if (emberbsd_node_modules != "") {
++    assert(emberbsd_host_node != "" && emberbsd_lit_versions != [] &&
++               emberbsd_lit_inputs != [],
++           "common Lit needs selected provider inputs")
++    node_modules = emberbsd_node_modules
++    lit_modules = emberbsd_node_modules
++    lit_versions = emberbsd_lit_versions
++    lit_inputs = emberbsd_lit_inputs
++  }
+   definitions = [
+     "${node_modules}/lit-html/directives/repeat.d.ts",
+     "${node_modules}/lit-html/directives/when.d.ts",
+@@ -255,7 +281,12 @@
+     "${node_modules}/@lit/reactive-element/reactive-element.d.ts",
+   ]
+ 
++  if (emberbsd_node_modules != "") {
++    definitions += filter_include(emberbsd_lit_inputs, [ "*.d.ts" ])
++  }
++
+   path_mappings = [
++    "lit|" + rebase_path("${node_modules}/lit/index.d.ts", target_gen_dir),
+     "lit/directives/repeat.js|" +
+         rebase_path("${node_modules}/lit/directives/repeat.d.ts",
+                     target_gen_dir),
+@@ -284,6 +315,11 @@
+   input = rebase_path(target_gen_dir, root_build_dir)
+   js_module_in_files = [ "lit.js" ]
+   rollup_config = "rollup.config.mjs"
++  if (emberbsd_node_modules != "") {
++    lit_modules = emberbsd_node_modules
++    lit_versions = emberbsd_lit_versions
++    lit_inputs = emberbsd_lit_inputs
++  }
+   out_folder = "$target_gen_dir/bundled"
+   deps = [ ":build_ts" ]
+ }
+--- a/third_party/lit/v3_0/rollup.config.mjs
++++ b/third_party/lit/v3_0/rollup.config.mjs
+@@ -15,7 +15,8 @@
+   const hereDir = url.fileURLToPath(new URL('.', import.meta.url));
+ 
+   // The absolute path to third_party/node/node_modules/.
+-  const nodeModulesDir = path.join(hereDir, '../../node/node_modules');
++  const nodeModulesDir = process.env.EMBERBSD_LIT_NODE_MODULES ||
++      path.join(hereDir, '../../node/node_modules');
+ 
+   // Relative path from the current working directory to
+   // third_party/node/node_modules/.
+@@ -26,6 +27,7 @@
+     ['lit/directives/repeat.js',
+       path.join(pathToNodeModules, 'lit/directives/repeat.js')],
+     ['lit/index.js', path.join(pathToNodeModules, 'lit/index.js')],
++    ['lit', path.join(pathToNodeModules, 'lit/index.js')],
+     ['lit-html/async-directive.js',
+       path.join(pathToNodeModules, 'lit-html/async-directive.js')],
+     ['lit-html/directive.js',
+--- a/tools/typescript/ts_library.gni
++++ b/tools/typescript/ts_library.gni
+@@ -77,6 +77,20 @@
+       target_name,
+     ]
+ 
++    if (emberbsd_node_modules != "") {
++      assert(emberbsd_trusted_types_inputs != [] && emberbsd_trusted_types_version != "",
++             "selected trusted-types input and version required")
++      inputs += emberbsd_trusted_types_inputs
++      args += [ "--common-node-modules", emberbsd_node_modules,
++                "--trusted-types-version", emberbsd_trusted_types_version ]
++    }
++
++    if (defined(invoker.lit_modules)) {
++      inputs += invoker.lit_inputs + [ "//third_party/node/lit_provider.py" ]
++      args += [ "--lit-node-modules", invoker.lit_modules,
++                "--lit-provider-versions" ] + invoker.lit_versions
++    }
++
+     if (defined(in_files)) {
+       args += [ "--in_files" ] + in_files
+     }
+@@ -94,12 +108,20 @@
+       args += [ "--manifest_excludes" ] + manifest_excludes
+     }
+ 
++    _toolchain_definitions = []
+     if (emberbsd_typescript_definitions != []) {
+       inputs += emberbsd_typescript_definitions
+-      _toolchain_definitions = []
+       foreach(_definition, emberbsd_typescript_definitions) {
+         _toolchain_definitions += [ rebase_path(_definition, target_gen_dir) ]
+       }
++    }
++    if (emberbsd_node_modules != "") {
++      _trusted_declarations = filter_include(emberbsd_trusted_types_inputs, [ "*.d.ts" ])
++      foreach(_definition, _trusted_declarations) {
++        _toolchain_definitions += [ rebase_path(_definition, target_gen_dir) ]
++      }
++    }
++    if (_toolchain_definitions != []) {
+       args += [ "--toolchain_definitions" ] + _toolchain_definitions
+     }
+ 
+--- a/tools/typescript/ts_library.py
++++ b/tools/typescript/ts_library.py
+@@ -65,13 +65,35 @@
+   parser.add_argument('--manifest_excludes', nargs='*')
+   parser.add_argument('--definitions', nargs='*')
+   parser.add_argument('--toolchain_definitions', nargs='*')
++  parser.add_argument('--common-node-modules')
++  parser.add_argument('--trusted-types-version')
+   parser.add_argument('--composite', action='store_true')
+   parser.add_argument(
+     '--platform', choices=['other', 'ios', 'chromeos_ash'], default='other'
+   )
+   parser.add_argument('--enable_source_maps', action='store_true')
+   parser.add_argument('--output_suffix', required=True)
++  parser.add_argument('--lit-node-modules')
++  parser.add_argument('--lit-provider-versions', nargs='*')
+   args = parser.parse_args(argv)
++  if args.lit_node_modules:
++    sys.path.append(os.path.join(_SRC_DIR, 'third_party', 'node'))
++    import lit_provider
++    lit_provider.validate(args.lit_node_modules, args.lit_provider_versions)
++  common_types = None
++  if args.common_node_modules is not None:
++    if not os.path.isabs(args.common_node_modules) or not args.trusted_types_version:
++      raise ValueError('common node_modules and trusted-types version are required')
++    common_types = os.path.join(args.common_node_modules, '@types')
++    trusted_types = os.path.join(common_types, 'trusted-types')
++    if not os.path.isfile(os.path.join(trusted_types, 'index.d.ts')):
++      raise ValueError('common trusted-types provider is missing')
++    with open(os.path.join(trusted_types, 'package.json'), encoding='utf-8') as f:
++      metadata = json.load(f)
++    if metadata.get('name') != '@types/trusted-types' or metadata.get('version') != args.trusted_types_version:
++      raise ValueError('common trusted-types provider version differs')
++  elif args.trusted_types_version is not None:
++    raise ValueError('trusted-types version requires common node_modules')
+ 
+   root_dir = os.path.relpath(args.root_dir, args.gen_dir)
+   out_dir = os.path.relpath(args.out_dir, args.gen_dir)
+@@ -103,6 +125,12 @@
+   parent_tsconfig_file = tsconfig_base_file
+   parent_tsconfig_counter = 0
+   has_skip_lib_check = False
++  selected_type_roots = None
++  effective_types = None
++  bundled_root_selected = False
++  source_type_root = os.path.abspath(
++    os.path.join(_SRC_DIR, 'third_party/node/node_modules/@types')
++  )
+   while parent_tsconfig_file != None:
+     with io.open(parent_tsconfig_file, encoding='utf-8', mode='r') as f:
+       parent_tsconfig = json.loads(f.read())
+@@ -126,6 +154,21 @@
+           'compilerOptions' in parent_tsconfig
+           and 'skipLibCheck' in parent_tsconfig['compilerOptions']
+         )
++
++      # Preserve the closest inherited roots and replace only the bundled root.
++      compiler_options = parent_tsconfig.get('compilerOptions', {})
++      if effective_types is None and 'types' in compiler_options:
++        effective_types = compiler_options['types']
++      if common_types is not None and selected_type_roots is None and 'typeRoots' in compiler_options:
++        selected_type_roots = []
++        for path in compiler_options['typeRoots']:
++          resolved = os.path.abspath(os.path.join(os.path.dirname(parent_tsconfig_file), path))
++          if resolved == source_type_root:
++            bundled_root_selected = True
++          selected_type_roots.append(common_types if resolved == source_type_root else resolved)
++        selected_type_roots = [common_types] + [
++          root for root in selected_type_roots if root != common_types
++        ]
+ 
+       # Work-around for https://github.com/microsoft/TypeScript/issues/30024.
+       # Need to append 'trusted-types' in cases where the default
+@@ -148,13 +191,15 @@
+               'Need to include \'third_party/node/node_modules/@types\' '
+               'when overriding the default typeRoots'
+             )
+-            assert 'typeRoots' in parent_tsconfig['compilerOptions'], ERROR_MSG
+-            type_roots = parent_tsconfig['compilerOptions']['typeRoots']
++            assert 'typeRoots' in parent_tsconfig['compilerOptions'] or common_types is not None, ERROR_MSG
++            type_roots = parent_tsconfig['compilerOptions'].get('typeRoots', [])
+             has_type_root = any(
+-              r.endswith('third_party/node/node_modules/@types')
++              r.endswith('third_party/node/node_modules/@types') or
++              (common_types is not None and
++               os.path.abspath(os.path.join(os.path.dirname(parent_tsconfig_file), r)) == common_types)
+               for r in type_roots
+             )
+-            assert has_type_root, ERROR_MSG
++            assert has_type_root or common_types is not None, ERROR_MSG
+ 
+             augmented_types = types.copy()
+             augmented_types.append('trusted-types')
+@@ -169,6 +214,28 @@
+         parent_tsconfig_counter += 1
+       else:
+         parent_tsconfig_file = None
++
++  if common_types is not None and effective_types is None:
++    # An implicit ambient set cannot replace only one bundled package.
++    if bundled_root_selected:
++      raise ValueError('common trusted-types with bundled typeRoots requires explicit types')
++    # Preserve TypeScript's implicit ambient package discovery.
++    selected_type_roots = None
++  if common_types is not None and effective_types is not None and selected_type_roots is None:
++    # With no explicit typeRoots, TypeScript searches each enclosing
++    # node_modules/@types directory from the generated tsconfig upwards.
++    selected_type_roots = [common_types]
++    directory = os.path.abspath(args.gen_dir)
++    while True:
++      default_root = os.path.join(directory, 'node_modules', '@types')
++      if default_root not in selected_type_roots:
++        selected_type_roots.append(default_root)
++      parent = os.path.dirname(directory)
++      if parent == directory:
++        break
++      directory = parent
++  if selected_type_roots is not None:
++    tsconfig['compilerOptions']['typeRoots'] = selected_type_roots
+ 
+   tsconfig['compilerOptions']['rootDir'] = root_dir
+   tsconfig['compilerOptions']['outDir'] = out_dir
+--- a/ui/webui/resources/tools/bundle_js.gni
++++ b/ui/webui/resources/tools/bundle_js.gni
+@@ -59,6 +59,14 @@
+     ]
+ 
+     inputs = []
++    if (defined(invoker.lit_modules)) {
++      inputs += invoker.lit_inputs + [ "//third_party/node/lit_provider.py" ]
++      args += [
++                "--lit-node-modules",
++                invoker.lit_modules,
++                "--lit-provider-versions",
++              ] + invoker.lit_versions
++    }
+     if (defined(invoker.rollup_config)) {
+       inputs += [ invoker.rollup_config ]
+       args += [
+--- a/ui/webui/resources/tools/bundle_js.py
++++ b/ui/webui/resources/tools/bundle_js.py
+@@ -280,7 +280,15 @@
+   parser.add_argument('--js_module_in_files', nargs='*', required=True)
+   parser.add_argument('--out-manifest')
+   parser.add_argument('--rollup_config')
++  parser.add_argument('--lit-node-modules')
++  parser.add_argument('--lit-provider-versions', nargs='*')
+   args = parser.parse_args(argv)
++  if args.lit_node_modules:
++    import lit_provider
++    lit_provider.validate(args.lit_node_modules, args.lit_provider_versions)
++    os.environ['EMBERBSD_LIT_NODE_MODULES'] = args.lit_node_modules
++  else:
++    os.environ.pop('EMBERBSD_LIT_NODE_MODULES', None)
+ 
+   # NOTE(dbeam): on Windows, GN can send dirs/like/this. When joined, you might
+   # get dirs/like/this\file.txt. This looks odd to windows. Normalize to right

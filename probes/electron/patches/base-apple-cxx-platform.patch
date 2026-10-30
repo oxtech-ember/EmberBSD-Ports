@@ -455,7 +455,7 @@
 +}  // namespace base
 --- /dev/null
 +++ b/base/system/sys_info_apple.cc
-@@ -0,0 +1,83 @@
+@@ -0,0 +1,69 @@
 +// Copyright 2023 The Chromium Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -464,30 +464,11 @@
 +
 +#include <sys/sysctl.h>
 +
-+#include "base/apple/scoped_mach_port.h"
++#include "base/posix/sysctl.h"
 +#include "base/strings/stringprintf.h"
 +#include "base/system/sys_info_internal.h"
 +
 +namespace base {
-+
-+namespace {
-+
-+// Implementation of AmountOfPhysicalMemoryImpl before https://crrev.com/c/6274964.
-+// See Electron patch adding this fallback for more details.
-+ByteSize AmountOfPhysicalMemoryFallback() {
-+  struct host_basic_info hostinfo;
-+  mach_msg_type_number_t count = HOST_BASIC_INFO_COUNT;
-+  base::apple::ScopedMachSendRight host(mach_host_self());
-+  int result = host_info(host.get(), HOST_BASIC_INFO,
-+                         reinterpret_cast<host_info_t>(&hostinfo), &count);
-+  if (result != KERN_SUCCESS) {
-+    NOTREACHED();
-+  }
-+  DCHECK_EQ(HOST_BASIC_INFO_COUNT, count);
-+  return ByteSize(hostinfo.max_mem);
-+}
-+
-+}
 +
 +namespace internal {
 +
@@ -532,16 +513,21 @@
 +  uint64_t physical_memory;
 +  size_t size = sizeof(physical_memory);
 +  int rv = sysctlbyname("hw.memsize", &physical_memory, &size, nullptr, 0);
-+  // Instead of crashing, fallback to the old implementation.
-+  if (rv != 0) {
-+    return AmountOfPhysicalMemoryFallback();
-+  }
-+  return ByteSize(physical_memory);}
++  PCHECK(rv == 0) << "sysctlbyname(\"hw.memsize\")";
++  return ByteSize(physical_memory);
++}
++
++// static
++std::string SysInfo::OperatingSystemBuildVersion() {
++  std::optional<std::string> build_number =
++      StringSysctl({CTL_KERN, KERN_OSVERSION});
++  return build_number.value();
++}
 +
 +}  // namespace base
 --- a/base/system/sys_info_apple.mm
 +++ /dev/null
-@@ -1,83 +0,0 @@
+@@ -1,69 +0,0 @@
 -// Copyright 2023 The Chromium Authors
 -// Use of this source code is governed by a BSD-style license that can be
 -// found in the LICENSE file.
@@ -550,30 +536,11 @@
 -
 -#include <sys/sysctl.h>
 -
--#include "base/apple/scoped_mach_port.h"
+-#include "base/posix/sysctl.h"
 -#include "base/strings/stringprintf.h"
 -#include "base/system/sys_info_internal.h"
 -
 -namespace base {
--
--namespace {
--
--// Implementation of AmountOfPhysicalMemoryImpl before https://crrev.com/c/6274964.
--// See Electron patch adding this fallback for more details.
--ByteSize AmountOfPhysicalMemoryFallback() {
--  struct host_basic_info hostinfo;
--  mach_msg_type_number_t count = HOST_BASIC_INFO_COUNT;
--  base::apple::ScopedMachSendRight host(mach_host_self());
--  int result = host_info(host.get(), HOST_BASIC_INFO,
--                         reinterpret_cast<host_info_t>(&hostinfo), &count);
--  if (result != KERN_SUCCESS) {
--    NOTREACHED();
--  }
--  DCHECK_EQ(HOST_BASIC_INFO_COUNT, count);
--  return ByteSize(hostinfo.max_mem);
--}
--
--}
 -
 -namespace internal {
 -
@@ -618,11 +585,16 @@
 -  uint64_t physical_memory;
 -  size_t size = sizeof(physical_memory);
 -  int rv = sysctlbyname("hw.memsize", &physical_memory, &size, nullptr, 0);
--  // Instead of crashing, fallback to the old implementation.
--  if (rv != 0) {
--    return AmountOfPhysicalMemoryFallback();
--  }
--  return ByteSize(physical_memory);}
+-  PCHECK(rv == 0) << "sysctlbyname(\"hw.memsize\")";
+-  return ByteSize(physical_memory);
+-}
+-
+-// static
+-std::string SysInfo::OperatingSystemBuildVersion() {
+-  std::optional<std::string> build_number =
+-      StringSysctl({CTL_KERN, KERN_OSVERSION});
+-  return build_number.value();
+-}
 -
 -}  // namespace base
 --- a/base/threading/platform_thread_apple.mm

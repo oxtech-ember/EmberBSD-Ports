@@ -1,0 +1,133 @@
+Use one selected common protobuf provider in the active toolchain.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- third_party/protobuf/BUILD.gn
++++ third_party/protobuf/BUILD.gn
+@@ -9,6 +9,36 @@
+ import("proto_library.gni")
+ import("proto_sources.gni")
+ import("proto_wkt.gni")
++
++declare_args() {
++  emberbsd_common_protobuf = false
++  emberbsd_protobuf_native_prefix = ""
++  emberbsd_protobuf_target_prefix = ""
++  emberbsd_protoc = ""
++}
++
++if (emberbsd_common_protobuf) {
++  import("//build/config/linux/pkg_config.gni")
++  if (emberbsd_pkg_config_role == "native") {
++    assert(current_os == host_os, "Native protobuf requires a native toolchain")
++    assert(current_cpu == host_cpu, "Common native protobuf does not cover this host CPU")
++    _common_protobuf_prefix = emberbsd_protobuf_native_prefix
++  } else {
++    assert(emberbsd_pkg_config_role == "target" ||
++           (emberbsd_pkg_config_role == "explicit" && current_toolchain == default_toolchain),
++           "Common protobuf requires an explicit toolchain role")
++    assert(current_os == target_os && current_cpu == target_cpu,
++           "Common target protobuf does not cover this toolchain ABI")
++    _common_protobuf_prefix = emberbsd_protobuf_target_prefix
++  }
++  assert(_common_protobuf_prefix != "", "Common protobuf requires a selected prefix")
++  config("common_protobuf_config") {
++    include_dirs = [ "$_common_protobuf_prefix/include" ]
++    lib_dirs = [ "$_common_protobuf_prefix/lib" ]
++    libs = [ "protobuf" ]
++    defines = [ "PROTOBUF_USE_DLLS" ]
++  }
++}
+ if (enable_js_protobuf) {
+   import("//third_party/closure_compiler/compile_js.gni")
+ }
+@@ -79,6 +109,7 @@
+ # Remove coverage and Sanitizers other than ASan for a performance boost when
+ # fuzzing. ASan can't be removed here because of a bug preventing unsanitized
+ # code from using libc++, which protobuf_full uses.
++if (!emberbsd_common_protobuf) {
+ protobuf_library_configs_to_remove =
+     [ "//build/config/compiler:chromium_code" ] + not_fuzzed_remove_configs
+ 
+@@ -100,6 +131,23 @@
+   protobuf_library_configs_to_add += [ "//build/config/compiler:optimize_max" ]
+ }
+ 
++}
++
++if (emberbsd_common_protobuf) {
++  group("protobuf_headers_source_set") {
++    public_configs = [ ":common_protobuf_config" ]
++    public_deps = [ ":absl" ]
++  }
++  group("protobuf_lite_library") {
++    public_deps = [ ":protobuf_headers_source_set" ]
++  }
++  group("protobuf_full_library") {
++    public_deps = [ ":protobuf_headers_source_set" ]
++  }
++  group("protobuf_full_and_lite_library") {
++    public_deps = [ ":protobuf_headers_source_set" ]
++  }
++} else {
+ source_set("protobuf_headers_source_set") {
+   visibility = [ ":*" ]
+   public = protobuf_headers
+@@ -153,6 +201,8 @@
+   }
+ }
+ 
++}
++
+ group("protobuf_lite") {
+   if (is_component_build) {
+     public_deps = [ ":protobuf_full_and_lite_library" ]
+@@ -243,7 +293,7 @@
+ }
+ 
+ # Only compile the compiler for the host architecture.
+-if (current_toolchain == host_toolchain) {
++if (current_toolchain == host_toolchain && !emberbsd_common_protobuf) {
+   # Code for compiling bindings for individual languages are pulled into
+   # separate build targets for two reasons:
+   # 1. To avoid naming collisions between files in the same source set.
+@@ -400,6 +450,31 @@
+   }
+ }
+ 
++if (current_toolchain == host_toolchain && emberbsd_common_protobuf) {
++  assert(emberbsd_protoc != "", "Common protobuf requires selected host protoc")
++  config("common_protoc_config") {
++    lib_dirs = [ "$_common_protobuf_prefix/lib" ]
++    libs = [ "protoc" ]
++  }
++  group("protoc_lib") {
++    public_deps = [ ":protobuf_full" ]
++    public_configs = [ ":common_protoc_config" ]
++  }
++  group("protoc_cpp") {
++    public_deps = [ ":protoc_lib" ]
++  }
++  copy("protoc") {
++    sources = [ emberbsd_protoc ]
++    outputs = [ "$root_out_dir/protoc" ]
++  }
++}
++
++if (emberbsd_common_protobuf) {
++  group("utf8_range") {
++    public_configs = [ ":common_protobuf_config" ]
++  }
++} else {
++
+ source_set("utf8_range") {
+   sources = [
+     "third_party/utf8_range/utf8_range.c",
+@@ -414,6 +489,8 @@
+   deps = [ ":absl" ]
+ }
+ 
++}
++
+ copy("copy_google_protobuf") {
+   # See README.chromium for how this file is generated.
+   sources = pyproto_sources + [ "python/google/protobuf/descriptor_pb2.py" ]

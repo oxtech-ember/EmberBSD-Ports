@@ -2,16 +2,14 @@ Chromium bindgen: preserve system dylib precedence on Darwin.
 
 Origin: EmberBSD (AI-assisted), not submitted upstream.
 
-diff --git a/build/rust/gni_impl/run_bindgen.py b/build/rust/gni_impl/run_bindgen.py
-index 80f81ffbbc..c90be54ff3 100755
 --- a/build/rust/gni_impl/run_bindgen.py
 +++ b/build/rust/gni_impl/run_bindgen.py
-@@ -115,7 +115,7 @@ def main():
-     env = os.environ
-     if args.ld_library_path:
-       if sys.platform == 'darwin':
--        env["DYLD_LIBRARY_PATH"] = args.ld_library_path
-+        env["DYLD_FALLBACK_LIBRARY_PATH"] = args.ld_library_path
-       else:
-         env["LD_LIBRARY_PATH"] = args.ld_library_path
-     if args.libclang_path:
+@@ -138,7 +138,7 @@
+         env = os.environ
+         if args.ld_library_path:
+             if sys.platform == 'darwin':
+-                env["DYLD_LIBRARY_PATH"] = args.ld_library_path
++                env["DYLD_FALLBACK_LIBRARY_PATH"] = args.ld_library_path
+             else:
+                 env["LD_LIBRARY_PATH"] = args.ld_library_path
+         if args.libclang_path:

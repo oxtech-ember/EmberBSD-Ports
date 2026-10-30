@@ -239,11 +239,10 @@ index 3b88727c3b..529a7e0397 100644
  
  }  // namespace base::trace_event
 diff --git a/components/cbor/writer.cc b/components/cbor/writer.cc
-index 8b020116c0..d273e65ebb 100644
 --- a/components/cbor/writer.cc
 +++ b/components/cbor/writer.cc
-@@ -180,6 +180,7 @@ bool Writer::EncodeCBOR(const Value& node,
-       }
+@@ -331,6 +331,7 @@
+       return true;
      }
    }
 +  NOTREACHED();
@@ -271,7 +270,6 @@ index e41850ff97..95142a4174 100644
  
  }  // namespace
 diff --git a/crypto/sign.cc b/crypto/sign.cc
-index 8b912fbea2..70a407a379 100644
 --- a/crypto/sign.cc
 +++ b/crypto/sign.cc
 @@ -5,6 +5,7 @@
@@ -282,8 +280,8 @@ index 8b912fbea2..70a407a379 100644
  #include "base/check_op.h"
  #include "crypto/openssl_util.h"
  #include "third_party/boringssl/src/include/openssl/evp.h"
-@@ -71,6 +72,7 @@ const EVP_MD* DigestForSignatureKind(SignatureKind kind) {
-     case MLDSA_44:
+@@ -77,6 +78,7 @@
+     case MLDSA_87:
        return nullptr;
    }
 +  NOTREACHED();
@@ -291,18 +289,17 @@ index 8b912fbea2..70a407a379 100644
  
  void ConfigurePkeyCtx(EVP_PKEY_CTX* pkctx, SignatureKind kind) {
 diff --git a/crypto/unexportable_key_metrics.cc b/crypto/unexportable_key_metrics.cc
-index 53421c75ce..e81cfa64ba 100644
 --- a/crypto/unexportable_key_metrics.cc
 +++ b/crypto/unexportable_key_metrics.cc
-@@ -7,6 +7,7 @@
- #include <memory>
+@@ -10,6 +10,7 @@
+ #include <string>
  
  #include "base/feature_list.h"
 +#include "base/notreached.h"
  #include "base/metrics/histogram_functions.h"
  #include "base/task/task_traits.h"
  #include "base/task/thread_pool.h"
-@@ -37,6 +38,7 @@ std::string GetHistogramPrefixForKeyType(KeyType type) {
+@@ -42,6 +43,7 @@
      case KeyType::kVirtualizedKey:
        return "Virtual.";
    }
@@ -310,17 +307,17 @@ index 53421c75ce..e81cfa64ba 100644
  }
  
  std::string GetHistogramSuffixForAlgo(internal::TPMSupport algo) {
-@@ -335,6 +337,7 @@ std::string OperationToString(TPMOperation operation) {
-     case TPMOperation::kWrappedAttestationKeyExport:
-       return "WrappedAttestationKeyExport";
+@@ -381,6 +383,7 @@
+     case TPMOperation::kRestrictedMessageVerify:
+       return "RestrictedMessageVerify";
    }
 +  NOTREACHED();
  }
  
- std::string AlgorithmToString(SignatureVerifier::SignatureAlgorithm algorithm) {
-@@ -346,6 +349,7 @@ std::string AlgorithmToString(SignatureVerifier::SignatureAlgorithm algorithm) {
-     case SignatureVerifier::SignatureAlgorithm::ECDSA_SHA256:
-       return "ECDSA";
+ std::string AlgorithmToString(sign::SignatureKind algorithm) {
+@@ -405,6 +408,7 @@
+     case sign::MLDSA_87:
+       return "MLDSA";
    }
 +  NOTREACHED();
  }

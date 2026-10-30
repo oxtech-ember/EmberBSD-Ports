@@ -16,3 +16,4 @@
 .include "../../devel/ada-url/buildlink3.mk"
 .include "../../archivers/zstd/buildlink3.mk"
 .include "../../net/libcares/buildlink3.mk"
+.include "../../textproc/icu/buildlink3.mk"

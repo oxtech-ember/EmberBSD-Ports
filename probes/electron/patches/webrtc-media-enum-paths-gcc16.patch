@@ -1,3 +1,5 @@
+# EmberBSD (AI-assisted): Chromium 156 removed the combined GoogCC/SCReAM
+# controller and its mode switch; its two former hunks are obsolete.
 --- a/third_party/webrtc/call/rtp_payload_params.cc
 +++ b/third_party/webrtc/call/rtp_payload_params.cc
 @@ -425,7 +425,7 @@
@@ -81,35 +83,6 @@
  }
  
  }  // namespace
---- a/third_party/webrtc/modules/congestion_controller/goog_cc_scream_network_controller/BUILD.gn
-+++ b/third_party/webrtc/modules/congestion_controller/goog_cc_scream_network_controller/BUILD.gn
-@@ -21,6 +21,8 @@
-     "../scream:scream_network_controller",
-     "//third_party/abseil-cpp/absl/functional:any_invocable",
-   ]
-+
-+  public_deps += [ "../../../rtc_base:checks" ]
- }
- 
- if (rtc_include_tests) {
---- a/third_party/webrtc/modules/congestion_controller/goog_cc_scream_network_controller/goog_cc_scream_network_controller.h
-+++ b/third_party/webrtc/modules/congestion_controller/goog_cc_scream_network_controller/goog_cc_scream_network_controller.h
-@@ -19,6 +19,7 @@
- #include "api/transport/network_types.h"
- #include "modules/congestion_controller/goog_cc/goog_cc_network_control.h"
- #include "modules/congestion_controller/scream/scream_network_controller.h"
-+#include "rtc_base/checks.h"
- 
- namespace webrtc {
- 
-@@ -63,6 +64,7 @@
-       case Mode::kScreamAfterCe:
-         return true;
-     }
-+    RTC_CHECK_NOTREACHED();
-   }
- 
-  private:
 --- a/third_party/webrtc/modules/pacing/bitrate_prober.cc
 +++ b/third_party/webrtc/modules/pacing/bitrate_prober.cc
 @@ -91,6 +91,7 @@

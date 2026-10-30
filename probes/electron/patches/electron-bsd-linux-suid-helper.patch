@@ -59,7 +59,7 @@
      sources = [
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -476,6 +476,9 @@
+@@ -491,6 +491,9 @@
          "//sandbox/linux:chrome_sandbox",
          "//sandbox/linux:sandbox_linux_unittests",
        ]
@@ -67,5 +67,5 @@
 +        deps -= [ "//sandbox/linux:chrome_sandbox" ]
 +      }
  
-       # TODO(crbug.com/359926651): move these tests to ChromeOS only.
-       if (is_linux) {
+       if (is_chromeos) {
+         deps += [

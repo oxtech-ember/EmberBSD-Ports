@@ -81,7 +81,7 @@ def prepare(workspace, pkgsrc, archive, destination, git, patch, patch_root, man
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(content)
     overlay = bsd.overlay_files(archive, json.loads((bsd.DATA / 'manifest.json').read_text()))
-    targets.update(overlay)
+    targets.update(name for name in overlay if not name.startswith('v8/'))
     targets.update(row['target'] for row in result['rows'] if row['status'] == 'applied')
     # These are the bytes permitted in the live workspace before materialization,
     # including paths created by the BSD layer and by the ordered source patches.

@@ -1,16 +1,21 @@
+# EmberBSD (AI-assisted): retain ObjectHandle field assignment within
+# Chromium 156 TryAssign same-type branch; upstream conversion checks remain.
 --- a/third_party/dawn/generator/templates/dawn/wire/WireCmd.cpp
 +++ b/third_party/dawn/generator/templates/dawn/wire/WireCmd.cpp
-@@ -84,6 +84,10 @@
-         WIRE_TRY({{as_cType(type.name)}}Serialize({{in}}, &{{out}}, buffer{{Provider}}));
-     {%- elif not is_wire_serializable(type) -%}
-         if ({{in}} != nullptr) return WireResult::FatalError;
-+    {%- elif type.dict_name == "ObjectHandle" -%}
-+        //* Write both fields without discarding a volatile assignment reference.
-+        {{out}}.id = {{in}}.id;
-+        {{out}}.generation = {{in}}.generation;
-     {%- else -%}
-         {{out}} = {{in}};
-     {%- endif -%}
+@@ -669,7 +669,12 @@
+     using CleanDst = std::remove_cvref_t<Dst>;
+     using CleanSrc = std::remove_cvref_t<Src>;
+     if constexpr (std::is_same_v<CleanDst, CleanSrc>) {
+-        dst = src;
++        if constexpr (std::is_same_v<CleanDst, ObjectHandle>) {
++            dst.id = src.id;
++            dst.generation = src.generation;
++        } else {
++            dst = src;
++        }
+         return WireResult::Success;
+     } else if constexpr (std::integral<CleanDst> && std::integral<CleanSrc>) {
+         if (!std::in_range<CleanDst>(src)) {
 --- a/third_party/dawn/src/dawn/common/BitSetRangeIterator.h
 +++ b/third_party/dawn/src/dawn/common/BitSetRangeIterator.h
 @@ -132,6 +132,19 @@

@@ -1,0 +1,15 @@
+# Origin: EmberBSD (AI-assisted). Restore Chromium 156 definition validation
+# disabled by pkgsrc patch-tools_typescript_ts__library.py.
+--- a/tools/typescript/ts_library.py
++++ b/tools/typescript/ts_library.py
+@@ -341,8 +341,8 @@
+   list_valid, error_msg = validateDefinitionDeps(
+     definitions_files, target_path, args.gen_dir, args.root_gen_dir, definitions
+   )
+-  #if not list_valid:
+-  #  raise AssertionError(error_msg)
++  if not list_valid:
++    raise AssertionError(error_msg)
+ 
+   if args.in_files is not None:
+     manifest_path = os.path.join(

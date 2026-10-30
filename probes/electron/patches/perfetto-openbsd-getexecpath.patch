@@ -1,0 +1,19 @@
+Perfetto: check the successful OpenBSD getexecpath return value.
+
+OpenBSD getexecpath(3) returns 0 on success and -1 on error. Preserve the
+existing separate NetBSD sysctl path. OpenBSD runtime execution remains
+unverified; this fix is based on the documented API contract.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+
+--- a/third_party/perfetto/src/base/utils.cc
++++ b/third_party/perfetto/src/base/utils.cc
+@@ -263,7 +263,7 @@
+ #if (OpenBSD >= 202610)
+   char execpath[PATH_MAX];
+   int ret = getexecpath(execpath, sizeof(execpath));
+-  PERFETTO_CHECK(ret != 0);
++  PERFETTO_CHECK(ret == 0);
+   self_path = std::string(execpath);
+ #else
+   char *buf;

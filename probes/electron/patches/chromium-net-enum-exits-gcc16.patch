@@ -1,6 +1,6 @@
 --- a/net/shared_dictionary/shared_dictionary_header_checker_source_stream.cc
 +++ b/net/shared_dictionary/shared_dictionary_header_checker_source_stream.cc
-@@ -7,6 +7,7 @@
+@@ -9,6 +9,7 @@
  #include "base/check_op.h"
  #include "base/containers/span.h"
  #include "base/functional/callback_helpers.h"
@@ -8,15 +8,15 @@
  #include "base/strings/string_number_conversions.h"
  #include "net/base/hash_value.h"
  #include "net/base/io_buffer.h"
-@@ -41,6 +42,7 @@
+@@ -39,6 +40,7 @@
          kDictionaryCompressedZstd:
-       return kCompressionTypeZstdSignatureSize;
+       return kCompressionTypeZstdSignature.size();
    }
 +  NOTREACHED();
  }
  
  size_t GetHeaderSize(SharedDictionaryHeaderCheckerSourceStream::Type type) {
-@@ -52,6 +54,7 @@
+@@ -50,6 +52,7 @@
          kDictionaryCompressedZstd:
        return kCompressionTypeZstdHeaderSize;
    }
@@ -24,7 +24,7 @@
  }
  
  base::span<const unsigned char> GetExpectedSignature(
-@@ -64,6 +67,7 @@
+@@ -62,6 +65,7 @@
          kDictionaryCompressedZstd:
        return kCompressionTypeZstdSignature;
    }
@@ -44,15 +44,7 @@
  void SharedDictionaryNetworkTransaction::StopCaching() {
 --- a/net/quic/web_transport_client.cc
 +++ b/net/quic/web_transport_client.cc
-@@ -7,6 +7,7 @@
- #include <string_view>
- 
- #include "base/memory/raw_ptr.h"
-+#include "base/notreached.h"
- #include "net/quic/dedicated_web_transport_http3_client.h"
- 
- namespace net {
-@@ -58,6 +59,7 @@
+@@ -76,6 +76,7 @@
      case WebTransportState::NUM_STATES:
        return "UNKNOWN";
    }
@@ -193,8 +185,8 @@
 +  NOTREACHED();
  }
  
- TlsStreamAttempt::TlsStreamAttempt(const StreamAttemptParams* params,
-@@ -78,6 +80,7 @@
+ namespace {
+@@ -86,6 +88,7 @@
      case State::kTlsAttemptComplete:
        return LOAD_STATE_SSL_HANDSHAKE;
    }
@@ -214,22 +206,14 @@
  bool TransportConnectJob::HasEstablishedConnection() const {
 --- a/net/device_bound_sessions/session_binding_utils.cc
 +++ b/net/device_bound_sessions/session_binding_utils.cc
-@@ -11,6 +11,7 @@
- #include "base/containers/span.h"
- #include "base/json/json_writer.h"
- #include "base/logging.h"
-+#include "base/notreached.h"
- #include "base/strings/strcat.h"
- #include "base/strings/string_view_util.h"
- #include "base/time/time.h"
-@@ -43,6 +44,7 @@
-     case crypto::SignatureVerifier::RSA_PKCS1_SHA1:
-       return "RS1";
+@@ -72,6 +72,7 @@
+     case crypto::sign::MLDSA_87:
+       return "ML-DSA-87";
    }
 +  NOTREACHED();
  }
  
- std::string Base64UrlEncode(std::string_view data) {
+ std::string Base64UrlEncode(base::span<const uint8_t> data) {
 --- a/net/device_bound_sessions/cookie_craving.cc
 +++ b/net/device_bound_sessions/cookie_craving.cc
 @@ -10,6 +10,7 @@
@@ -274,24 +258,24 @@
  }  // namespace
 --- a/net/device_bound_sessions/session_error.cc
 +++ b/net/device_bound_sessions/session_error.cc
-@@ -102,6 +102,7 @@
-     case kPreProvisionedKeyNotFound:
+@@ -104,6 +104,7 @@
+     case kAttestationSigningError:
        NOTREACHED();
    }
 +  NOTREACHED();
  }
  
  bool SessionError::IsServerError() const {
-@@ -185,6 +186,7 @@
-     case kPreProvisionedKeyNotFound:
+@@ -189,6 +190,7 @@
+     case kAttestationSigningError:
        NOTREACHED();
    }
 +  NOTREACHED();
  }
  
  std::optional<RefreshResult> SessionError::GetRefreshResult() const {
-@@ -280,6 +282,7 @@
-     case kPreProvisionedKeyNotFound:
+@@ -286,6 +288,7 @@
+     case kAttestationSigningError:
        NOTREACHED();
    }
 +  NOTREACHED();

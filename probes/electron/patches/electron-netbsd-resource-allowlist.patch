@@ -18,16 +18,15 @@ completeness check on NetBSD using the existing ELF path.
  
 --- a/electron/BUILD.gn
 +++ b/electron/BUILD.gn
-@@ -1112,10 +1112,10 @@
+@@ -1119,9 +1119,9 @@
  }
  
- # Resource allowlisting (slimmed locale paks + the completeness check) is only
--# wired up for Linux so far: Windows needs PDB-based extraction and macOS needs
-+# wired up for ELF on Linux and NetBSD. Windows needs PDB-based extraction; macOS needs
- # Mach-O support in tools/resources/generate_resource_allowlist.py.
+ # Resource allowlisting (slimmed locale paks + the completeness check) is
+-# wired up for Linux and macOS: Windows still needs PDB-based extraction.
++# wired up for Linux, NetBSD and macOS: Windows still needs PDB-based extraction.
  electron_use_resource_allowlist =
--    enable_resource_allowlist_generation && is_linux
-+    enable_resource_allowlist_generation && (is_linux || is_netbsd)
+-    enable_resource_allowlist_generation && (is_linux || is_mac)
++    enable_resource_allowlist_generation && (is_linux || is_netbsd || is_mac)
  
  if (electron_use_resource_allowlist) {
-   # The list of grit resource IDs actually referenced by the electron
+   # The list of grit resource IDs actually referenced by the link inputs of
