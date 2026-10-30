@@ -2,6 +2,7 @@
 
 DISTNAME=	qtdeclarative-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qtdeclarative-${QTVERSION}
+PKGREVISION=	1
 COMMENT=	Qt6 module for the QML language
 CATEGORIES=	lang x11
 
@@ -61,5 +62,7 @@ post-install:
 .include "../../graphics/qt6-qtsvg/buildlink3.mk"
 .include "../../lang/python/tool.mk"
 .include "../../lang/qt6-qtlanguageserver/buildlink3.mk"
+BUILDLINK_DEPMETHOD.yoga=	build
+.include "../../devel/yoga/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
