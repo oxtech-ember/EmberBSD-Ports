@@ -1,0 +1,4 @@
+@comment Python bindings for the common libfdt library
+${PYSITELIB}/_libfdt.so
+${PYSITELIB}/libfdt.py
+${PYSITELIB}/libfdt.pyc
