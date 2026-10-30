@@ -1,0 +1,294 @@
+# Origin: Electron contributors; adapted for shared Node by EmberBSD (AI-assisted).
+--- src/node_modules.cc
++++ src/node_modules.cc
+@@ -3,6 +3,7 @@
+ #include "base_object-inl.h"
+ #include "compile_cache.h"
+ #include "node_errors.h"
++#include "node_buffer.h"
+ #include "node_external_reference.h"
+ #include "node_url.h"
+ #include "path.h"
+@@ -23,6 +24,7 @@
+ using v8::Array;
+ using v8::Context;
+ using v8::External;
++using v8::Function;
+ using v8::FunctionCallbackInfo;
+ using v8::HandleScope;
+ using v8::Integer;
+@@ -38,6 +40,8 @@
+ using v8::String;
+ using v8::Undefined;
+ using v8::Value;
++
++
+ 
+ void BindingData::MemoryInfo(MemoryTracker* tracker) const {
+   // Do nothing
+@@ -246,8 +250,47 @@
+ 
+   PackageConfig package_config{};
+   package_config.file_path = path;
++  // The callback is installed per realm, before package lookups. Existing
++  // package cache entries retain the normal Node cache semantics.
++  int read_error = 0;
++  Local<Function> read_callback = realm->modules_read_file_sync();
++  Local<Value> result;
++  bool use_native_read = read_callback.IsEmpty() || !realm->env()->can_call_into_js();
++  if (!use_native_read) {
++    THROW_IF_INSUFFICIENT_PERMISSIONS(
++        realm->env(), permission::PermissionScope::kFileSystemRead, path, nullptr);
++    Local<String> filename;
++    if (!String::NewFromUtf8(realm->isolate(), path.data(), NewStringType::kNormal,
++                             static_cast<int>(path.size())).ToLocal(&filename)) {
++      return nullptr;
++    }
++    Local<Value> argv[] = {filename};
++    if (!read_callback->Call(realm->context(), Undefined(realm->isolate()),
++                             1, argv).ToLocal(&result)) {
++      return nullptr;
++    }
++    if (result->IsUndefined()) {
++      use_native_read = true;
++    } else if (result->IsFalse()) {
++      read_error = UV_ENOENT;
++    } else {
++      if (!result->IsUint8Array()) {
++        THROW_ERR_INVALID_ARG_TYPE(realm->env(),
++            "package read callback must return a Buffer or Uint8Array, false, or undefined");
++        return nullptr;
++      }
++      const size_t length = Buffer::Length(result);
++      if (length == 0) {
++        package_config.raw_json.clear();
++      } else {
++        package_config.raw_json.assign(Buffer::Data(result), length);
++      }
++    }
++  }
+   // No need to exclude BOM since simdjson will skip it.
+-  int read_error = ReadFileSync(&package_config.raw_json, path.data());
++  if (use_native_read) {
++    read_error = ReadFileSync(&package_config.raw_json, path.data());
++  }
+   if (read_error < 0) {
+     // No file at this path, a path component that is not a directory, or a
+     // "package.json" that is itself a directory all mean there is no package
+@@ -282,6 +325,19 @@
+   return &*cached.first->second;
+ }
+ 
++void BindingData::OverrideReadFileSync(const FunctionCallbackInfo<Value>& args) {
++  Realm* realm = Realm::GetCurrent(args);
++  if (args.Length() == 0 || args[0]->IsUndefined()) {
++    realm->set_modules_read_file_sync(Local<Function>());
++    return;
++  }
++  if (!args[0]->IsFunction()) {
++    THROW_ERR_INVALID_ARG_TYPE(realm->env(), "package read override must be a function");
++    return;
++  }
++  realm->set_modules_read_file_sync(args[0].As<Function>());
++}
++
+ void BindingData::ReadPackageJSON(const FunctionCallbackInfo<Value>& args) {
+   CHECK_GE(args.Length(), 1);  // path, [is_esm, base, specifier]
+   CHECK(args[0]->IsString());  // path
+@@ -395,8 +451,13 @@
+ 
+     auto package_json_path = current_path / "package.json";
+ 
++    v8::TryCatch try_catch(realm->isolate());
+     auto package_json =
+         GetPackageJSON(realm, ConvertPathToUTF8(package_json_path), nullptr);
++    if (try_catch.HasCaught()) {
++      try_catch.ReThrow();
++      return nullptr;
++    }
+     if (package_json != nullptr) {
+       return package_json;
+     }
+@@ -505,8 +566,13 @@
+                                   .ToLocalChecked());
+     ToNamespacedPath(realm->env(), &file_path_buf);
+     error_context.specifier = resolved.ToString();
++    v8::TryCatch try_catch(realm->isolate());
+     auto package_json =
+         GetPackageJSON(realm, file_path_buf.ToStringView(), &error_context);
++    if (try_catch.HasCaught()) {
++      try_catch.ReThrow();
++      return;
++    }
+     if (package_json != nullptr) {
+       if constexpr (return_only_type) {
+         Local<Value> value;
+@@ -687,6 +753,7 @@
+                                              Local<ObjectTemplate> target) {
+   Isolate* isolate = isolate_data->isolate();
+   SetMethod(isolate, target, "readPackageJSON", ReadPackageJSON);
++  SetMethod(isolate, target, "overrideReadFileSync", OverrideReadFileSync);
+   SetMethod(isolate, target, "parsePackageJSON", ParsePackageJSONBinding);
+   SetMethod(isolate,
+             target,
+@@ -766,6 +833,7 @@
+ void BindingData::RegisterExternalReferences(
+     ExternalReferenceRegistry* registry) {
+   registry->Register(ReadPackageJSON);
++  registry->Register(OverrideReadFileSync);
+   registry->Register(ParsePackageJSONBinding);
+   registry->Register(GetNearestParentPackageJSONType);
+   registry->Register(GetNearestParentPackageJSON);
+--- src/node_modules.h
++++ src/node_modules.h
+@@ -55,6 +55,7 @@
+   SET_MEMORY_INFO_NAME(BindingData)
+ 
+   static void ReadPackageJSON(const v8::FunctionCallbackInfo<v8::Value>& args);
++  static void OverrideReadFileSync(const v8::FunctionCallbackInfo<v8::Value>& args);
+   // Like ReadPackageJSON but the caller supplies the raw JSON body.
+   // Does not populate the C++ `package_configs_` cache.
+   // Signature: parsePackageJSON(source, jsonPath, isESM, base, specifier)
+--- src/node_file.cc
++++ src/node_file.cc
+@@ -69,6 +69,7 @@
+ using v8::BigInt;
+ using v8::Context;
+ using v8::EscapableHandleScope;
++using v8::Function;
+ using v8::FunctionCallbackInfo;
+ using v8::FunctionTemplate;
+ using v8::HandleScope;
+@@ -5316,12 +5317,29 @@
+ };
+ 
+ BindingData::FilePathIsFileReturnType BindingData::FilePathIsFile(
+-    Environment* env, const std::string& file_path) {
++    Environment* env, const std::string& file_path,
++    Local<Function> is_file_callback) {
+   THROW_IF_INSUFFICIENT_PERMISSIONS(
+       env,
+       permission::PermissionScope::kFileSystemRead,
+       file_path,
+       BindingData::FilePathIsFileReturnType::kThrowInsufficientPermissions);
++
++  if (!is_file_callback.IsEmpty()) {
++    Local<String> path;
++    if (!String::NewFromUtf8(env->isolate(), file_path.c_str()).ToLocal(&path)) {
++      return BindingData::FilePathIsFileReturnType::kThrowCallbackException;
++    }
++    Local<Value> result;
++    Local<Value> argv[] = {path};
++    if (!is_file_callback->Call(env->context(), Undefined(env->isolate()),
++                                1, argv).ToLocal(&result)) {
++      return BindingData::FilePathIsFileReturnType::kThrowCallbackException;
++    }
++    return result->BooleanValue(env->isolate())
++               ? BindingData::FilePathIsFileReturnType::kIsFile
++               : BindingData::FilePathIsFileReturnType::kIsNotFile;
++  }
+ 
+   uv_fs_t req;
+ 
+@@ -5372,6 +5390,14 @@
+ 
+   Environment* env = Environment::GetCurrent(args);
+   auto isolate = env->isolate();
++  Local<Function> is_file_callback;
++  if (args.Length() > 3 && !args[3]->IsUndefined()) {
++    if (!args[3]->IsFunction()) {
++      THROW_ERR_INVALID_ARG_TYPE(env, "isFile callback must be a function");
++      return;
++    }
++    is_file_callback = args[3].As<Function>();
++  }
+ 
+   auto utf8_package_path = Utf8Value(isolate, args[0]).ToString();
+ 
+@@ -5400,11 +5426,12 @@
+       BufferValue buff_file_path(isolate, local_file_path);
+       ToNamespacedPath(env, &buff_file_path);
+ 
+-      switch (FilePathIsFile(env, buff_file_path.ToString())) {
++      switch (FilePathIsFile(env, buff_file_path.ToString(), is_file_callback)) {
+         case BindingData::FilePathIsFileReturnType::kIsFile:
+           return args.GetReturnValue().Set(i);
+         case BindingData::FilePathIsFileReturnType::kIsNotFile:
+           continue;
++        case BindingData::FilePathIsFileReturnType::kThrowCallbackException:
+         case BindingData::FilePathIsFileReturnType::
+             kThrowInsufficientPermissions:
+           // the default behavior when do not have permission is to return
+@@ -5437,11 +5464,12 @@
+     BufferValue buff_file_path(isolate, local_file_path);
+     ToNamespacedPath(env, &buff_file_path);
+ 
+-    switch (FilePathIsFile(env, buff_file_path.ToString())) {
++    switch (FilePathIsFile(env, buff_file_path.ToString(), is_file_callback)) {
+       case BindingData::FilePathIsFileReturnType::kIsFile:
+         return args.GetReturnValue().Set(i);
+       case BindingData::FilePathIsFileReturnType::kIsNotFile:
+         continue;
++      case BindingData::FilePathIsFileReturnType::kThrowCallbackException:
+       case BindingData::FilePathIsFileReturnType::kThrowInsufficientPermissions:
+         // the default behavior when do not have permission is to return
+         // and exit the execution of the method as soon as possible
+--- src/node_file.h
++++ src/node_file.h
+@@ -68,7 +68,8 @@
+   enum class FilePathIsFileReturnType {
+     kIsFile = 0,
+     kIsNotFile,
+-    kThrowInsufficientPermissions
++    kThrowInsufficientPermissions,
++    kThrowCallbackException
+   };
+ 
+   explicit BindingData(Realm* realm,
+@@ -100,8 +101,9 @@
+  private:
+   InternalFieldInfo* internal_field_info_ = nullptr;
+ 
+-  static FilePathIsFileReturnType FilePathIsFile(Environment* env,
+-                                                 const std::string& file_path);
++  static FilePathIsFileReturnType FilePathIsFile(
++      Environment* env, const std::string& file_path,
++      v8::Local<v8::Function> is_file_callback);
+ };
+ 
+ // structure used to store state during a complex operation, e.g., mkdirp.
+--- src/env_properties.h
++++ src/env_properties.h
+@@ -490,6 +490,7 @@
+   V(enhance_fatal_stack_after_inspector, v8::Function)                         \
+   V(enhance_fatal_stack_before_inspector, v8::Function)                        \
+   V(get_source_map_error_source, v8::Function)                                 \
++  V(modules_read_file_sync, v8::Function)                                      \
+   V(host_import_module_dynamically_callback, v8::Function)                     \
+   V(host_import_meta_resolve_initializer, v8::Function)                        \
+   V(host_initialize_import_meta_object_callback, v8::Function)                 \
+--- lib/internal/modules/esm/resolve.js
++++ lib/internal/modules/esm/resolve.js
+@@ -168,7 +168,8 @@
+ 
+   const baseStringified = isURL(base) ? base.href : base;
+ 
+-  const resolvedOption = loaderMethods.legacyMainResolve(pkgPath, packageConfig.main, baseStringified);
++  const isFile = (filename) => loaderMethods.internalModuleStat(filename) === 0;
++  const resolvedOption = loaderMethods.legacyMainResolve(pkgPath, packageConfig.main, baseStringified, isFile);
+ 
+   const maybeMain = resolvedOption <= legacyMainResolveExtensionsIndexes.kResolvedByMainIndexNode ?
+     packageConfig.main || './' : '';
+--- lib/internal/modules/helpers.js
++++ lib/internal/modules/helpers.js
+@@ -82,8 +82,8 @@
+   realpathSync: (requestPath) => fs.realpathSync(requestPath, {
+     [internalFS.realpathCacheKey]: realpathCache,
+   }),
+-  legacyMainResolve: (pkgPath, main, base) =>
+-    internalFsBinding.legacyMainResolve(pkgPath, main, base),
++  legacyMainResolve: (pkgPath, main, base, isFile) =>
++    internalFsBinding.legacyMainResolve(pkgPath, main, base, isFile),
+   getFormatOfExtensionlessFile: (filePath) =>
+     internalFsBinding.getFormatOfExtensionlessFile(filePath),
+   readPackageJSON: (jsonPath, isESM, base, specifier) =>
