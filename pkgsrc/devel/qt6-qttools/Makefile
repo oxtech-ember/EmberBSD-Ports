@@ -22,10 +22,9 @@ CMAKE_CONFIGURE_ARGS+= -DFEATURE_clang=OFF -DFEATURE_qdoc=OFF
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_DISABLE_FIND_PACKAGE_WrapLibClang=ON
 
 .include "options.mk"
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && defined(EMBERBSD_QT_HOST_PATH)
-# Cross builds import the matching host Linguist and Tools tool packages.
-CMAKE_CONFIGURE_ARGS+= -DQt6LinguistTools_DIR=${EMBERBSD_QT_HOST_PATH:Q}/lib/cmake/Qt6LinguistTools
-CMAKE_CONFIGURE_ARGS+= -DQt6ToolsTools_DIR=${EMBERBSD_QT_HOST_PATH:Q}/lib/cmake/Qt6ToolsTools
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# Cross builds import the native Linguist and Tools tool packages.
+.include "host-tools.mk"
 .endif
 
 # The host Qt has tools only, so it has no qhelpgenerator. A cross build
