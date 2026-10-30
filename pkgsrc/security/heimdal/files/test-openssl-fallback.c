@@ -10,7 +10,7 @@ extern const void *hc_EVP_ossl_md4(void);
 extern const void *hc_EVP_hcrypto_md4(void);
 static void *run(void *unused) { (void)unused; for (int i=0;i<1000;i++) if (hc_EVP_ossl_rc2_cbc()!=hc_EVP_hcrypto_rc2_cbc()) return (void *)1; return NULL; }
 int main(void) {
- pthread_t t[2]; void *result; unsigned long before;
+ pthread_t t[2]; void *result; unsigned long before; OSSL_PROVIDER *def, *legacy;
  ERR_raise(ERR_LIB_USER, 123); before=ERR_peek_last_error();
  if (hc_EVP_ossl_rc2_cbc()!=hc_EVP_hcrypto_rc2_cbc() || ERR_peek_last_error()!=before) return 1;
  if (hc_EVP_ossl_md4()!=hc_EVP_hcrypto_md4() || ERR_peek_last_error()!=before) return 2;
@@ -19,8 +19,11 @@ int main(void) {
  if (!EVP_set_default_properties(NULL,"fips=yes") || hc_EVP_ossl_rc2_cbc()!=NULL || hc_EVP_ossl_md4()!=NULL) return 5;
  if (!EVP_set_default_properties(NULL,"provider=nonexistent") || hc_EVP_ossl_rc2_cbc()!=NULL) return 6;
  if (!EVP_set_default_properties(NULL,"") || hc_EVP_ossl_rc2_cbc()!=hc_EVP_hcrypto_rc2_cbc()) return 7;
- if (!OSSL_PROVIDER_load(NULL,"default") || !OSSL_PROVIDER_load(NULL,"legacy")) return 8;
+ def=OSSL_PROVIDER_load(NULL,"default"); legacy=OSSL_PROVIDER_load(NULL,"legacy");
+ if (!def || !legacy) return 8;
  if (hc_EVP_ossl_rc2_cbc()==NULL || hc_EVP_ossl_rc2_cbc()==hc_EVP_hcrypto_rc2_cbc()) return 9;
  if (hc_EVP_ossl_md4()==NULL || hc_EVP_ossl_md4()==hc_EVP_hcrypto_md4()) return 10;
+ if (!OSSL_PROVIDER_unload(legacy) || !OSSL_PROVIDER_unload(def)) return 11;
+ OPENSSL_cleanup();
  puts("fallback/properties/provider/concurrency PASS"); return 0;
 }
