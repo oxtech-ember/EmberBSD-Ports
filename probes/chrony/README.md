@@ -132,7 +132,8 @@ tmpfs and is lost on reboot.
   500 ppm (`sys_netbsd.c`: `MAX_FREQ`, `MIN_FASTSLEW_OFFSET`). The offset fell
   by about 0.8 ms per second, so it would have taken about 20 minutes, while
   `chronyc` reported leap status Normal. `chronyc makestep` removed the rest.
-  A smaller `makestep` threshold for the board removes such offsets at start.
+  Since then the board configuration uses `makestep 0.01 3`, so such offsets
+  are stepped at start; it takes effect at the next `chronyd` start.
 
 ## Remaining
 
