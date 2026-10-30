@@ -482,3 +482,4 @@ www/curl
 # Keep the shared Perl URI module current.
 www/p5-URI
 lang/go-bin
+multimedia/openh264
