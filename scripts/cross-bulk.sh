@@ -36,6 +36,15 @@
 # selection are those of that order run. Build does not use it: there
 # the installed dependencies answer the query.
 #
+# Each pass checks every done package by its PKGNAME, and a target-mode
+# parse costs seconds. Build keeps the show-vars answers in STATE/vars with
+# the makefiles that parse read (.MAKE.MAKEFILES) and the device, inode,
+# size and modification time of each of them and of their directories. A
+# change to any of them, such as a PKGREVISION in an included .mk, an
+# edited MAKECONF, a replaced tree or a file added next to a makefile,
+# parses again; so does a makefile changed while it was parsed.
+# CROSS_BULK_VARS_CACHE=no turns the cache off.
+#
 # Before a package builds, build renames its old WRKDIR into a trash
 # directory on the same file system (WRKOBJDIR/.cross-bulk-trash), so the
 # WRKDIR path is free at once and pkgsrc's clean step has nothing left to
@@ -472,6 +481,69 @@ bmk()
     fi
 }
 
+# Print device, inode, size, modification time and name of each path.
+sigs()
+{
+    if [ "$gnu_stat" = yes ]; then
+        stat -c '%d %i %s %.9Y %n' "$@" 2> /dev/null || :
+    else
+        stat -f '%d %i %z %Fm %N' "$@" 2> /dev/null || :
+    fi
+}
+
+# The signatures of the makefiles $2 that a parse in package directory $1
+# read, and of their directories.
+makefile_sigs()
+{
+    (
+        cd "$PKGSRCDIR/$1" || exit 0
+        set -f
+        set -- $(printf '%s\n' $2 | awk '{ print; d = $0
+            if (!sub("/[^/]*$", "", d)) d = "."
+            if (d == "") d = "/"
+            print d }' | sort -u)
+        sigs "$@"
+    )
+}
+
+# The values of the variables $2 of package directory $1, one per line, as
+# show-vars prints them; further arguments go to bmake. See STATE/vars above.
+pkg_vars()
+{
+    vdir=$1 vnames=$2
+    shift 2
+    ventry=
+    if [ -n "$vars_cache" ]; then
+        ventry=$vars_cache/$(printf '%s\n' "$vdir $vnames $*" | cksum | tr ' ' _)
+        if [ -f "$ventry" ] && [ -f "$ventry.sig" ] &&
+            makefile_sigs "$vdir" "$(sed -n 1p "$ventry")" | cmp -s - "$ventry.sig"; then
+            sed 1d "$ventry"
+            return 0
+        fi
+        : > "$ventry.start"
+    fi
+    vout=$(bmk -C "$PKGSRCDIR/$vdir" "$@" show-vars VARNAMES="$vnames .MAKE.MAKEFILES .CURDIR" < /dev/null) ||
+        return 1
+    vn=$(set -f; set -- $vnames; echo $#)
+    if [ "$(printf '%s\n' "$vout" | wc -l | tr -d ' ')" != $((vn + 2)) ]; then
+        # Not one line per variable: use it as it is, keep nothing.
+        printf '%s\n' "$vout"
+        return 0
+    fi
+    printf '%s\n' "$vout" | sed -n "1,${vn}p"
+    vfiles=$(printf '%s\n' "$vout" | sed -n "$((vn + 1))p")
+    [ -n "$ventry" ] && [ -n "$vfiles" ] || return 0
+    # A makefile changed during the parse may not be what it read.
+    (
+        cd "$PKGSRCDIR/$vdir" || exit 1
+        set -f
+        [ -z "$(find $vfiles -prune -newer "$ventry.start" 2> /dev/null)" ]
+    ) || return 0
+    makefile_sigs "$vdir" "$vfiles" > "$ventry.sig.tmp" &&
+        { printf '%s\n' "$vfiles"; printf '%s\n' "$vout" | sed -n "1,${vn}p"; } > "$ventry.tmp" &&
+        mv "$ventry.sig.tmp" "$ventry.sig" && mv "$ventry.tmp" "$ventry" || :
+}
+
 result()
 {
     printf '%s\n' "$2" > "$run/$1.tmp"
@@ -490,7 +562,7 @@ build_native()
     set -- USE_CROSS_COMPILE=no
     ! grep -qFx "$nnode" "$run/crossfed" || set -- "$@" $target_settings
     set +f
-    vars=$(bmk -C "$PKGSRCDIR/$path" "$@" show-vars VARNAMES='PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE' < /dev/null) ||
+    vars=$(pkg_vars "$path" 'PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE' "$@") ||
         { result "$key" "failed $nnode vars"; return 0; }
     name=$(printf '%s\n' "$vars" | sed -n 1p)
     wrkdir=$(printf '%s\n' "$vars" | sed -n 2p)
@@ -527,7 +599,7 @@ build_one()
     path=$1
     key=$(echo "$path" | tr / _)
     case "$path" in *@native) build_native "$path" "$key"; return 0 ;; esac
-    vars=$(bmk -C "$PKGSRCDIR/$path" show-vars VARNAMES='PKGNAME WRKDIR PKG_SKIP_REASON' < /dev/null) ||
+    vars=$(pkg_vars "$path" 'PKGNAME WRKDIR PKG_SKIP_REASON') ||
         { result "$key" "failed $path vars"; return 0; }
     name=$(printf '%s\n' "$vars" | sed -n 1p)
     wrkdir=$(printf '%s\n' "$vars" | sed -n 2p)
@@ -615,6 +687,13 @@ build()
     native_info
     target_settings=$(var pkgtools/pkg_install CROSSTARGETSETTINGS)
     stamp=$(date '+%Y%m%d%H%M%S')
+    vars_cache=
+    if [ "${CROSS_BULK_VARS_CACHE:-yes}" != no ]; then
+        vars_cache=$state/vars
+        mkdir -p "$vars_cache"
+        gnu_stat=no
+        ! stat -c %i / > /dev/null 2>&1 || gnu_stat=yes
+    fi
     trash_init
     deleter_pid=
     if [ -n "$trash" ]; then

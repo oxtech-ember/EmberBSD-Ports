@@ -557,6 +557,14 @@ A package whose `WRKDIR` went to the trash gets no clean step: every
 target-mode bmake run parses the package again, which takes seconds.
 For the same reason each target package gets one `package-install` run,
 which does the depends, package and install steps.
+Every pass checks each done package by its `PKGNAME`. The build keeps the
+show-vars answers in `STATE/vars` together with the makefiles that parse read
+(`.MAKE.MAKEFILES`) and the device, inode, size and modification time of each
+of them and of their directories, and parses again when any of them changed:
+a `PKGREVISION` in an included `.mk`, an edited MAKECONF, a replaced tree or a
+new file such as `hacks.mk` next to a makefile. This holds for a Git checkout
+and for an exported or hand-edited tree alike. `CROSS_BULK_VARS_CACHE=no`
+turns the cache off.
 `scripts/tests/cross-bulk-trash.sh NEW_OUTPUT` checks with a slow clean step
 that no package waits for a removal.
 `scripts/tests/cross-bulk-fetch-present.sh NEW_OUTPUT PKGPATH` checks that
