@@ -42,10 +42,8 @@ do-install:
 	  ${DESTDIR}${PREFIX}/share/doc/libhfs
 	${INSTALL_DATA} ${WRKSRC}/COPYING ${WRKSRC}/COPYRIGHT ${DESTDIR}${PREFIX}/share/doc/libhfs
 
-# FIXME: replace by proper LDFLAGS handling
-_WRAP_EXTRA_ARGS.CC+=	${_RELRO_LDFLAGS}
-_WRAP_EXTRA_ARGS.CXX+=	${_RELRO_LDFLAGS}
-CWRAPPERS_PREPEND.cc+=	${_RELRO_LDFLAGS}
-CWRAPPERS_PREPEND.cxx+=	${_RELRO_LDFLAGS}
+# The compiler wrappers add the RELRO flags to links themselves. Adding them
+# to every compiler run makes Clang warn on preprocessor runs, and the old
+# configure script then rejects the preprocessor and every header check.
 
 .include "../../mk/bsd.pkg.mk"
