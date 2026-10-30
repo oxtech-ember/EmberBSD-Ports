@@ -45,15 +45,18 @@ for tool, binary in (('m4', 'gm4'), ('yacc', 'yacc')):
 cross = ['USE_CROSS_COMPILE=yes','CROSS_OPSYS=NetBSD','CROSS_OS_VERSION=11.0','CROSS_OPSYS_VERSION=110000','CROSS_MACHINE_ARCH=x86_64','CROSS_LOWER_OPSYS=netbsd','CROSS_LOWER_OPSYS_VERSUFFIX=','CROSS_LOWER_OS_VARIANT=','CROSS_LOWER_VARIANT_VERSION=','CROSS_LOWER_VENDOR=','CROSS_OBJECT_FMT=ELF','CROSS_LOCALBASE=/usr/pkg','CROSS_DESTDIR='+str(sysroot),'TOOLDIR='+str(tools),'CROSS_PKG_TOOLS_BIN='+str(host/'sbin'),'USE_PKGSRC_GCC_RUNTIME=no']
 def run(label, package, *args):
     cmd = common + ['-C', str(tree/'x11'/package)] + list(map(str,args))
-    process = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True)
-    try: output, _ = process.communicate(timeout=30)
+    process = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
+    try: stdout, stderr = process.communicate(timeout=30)
     except subprocess.TimeoutExpired:
-        os.killpg(process.pid, signal.SIGKILL); output, _ = process.communicate()
-        (work/(label+'.log')).write_text(output)
-        raise SystemExit(label+': bounded source query exceeded 30 seconds')
-    (work/(label+'.log')).write_text(output)
-    if process.returncode: raise SystemExit(label+': '+output)
-    return output
+        os.killpg(process.pid, signal.SIGKILL)
+        stdout, stderr = process.communicate()
+        (work/(label+'.log')).write_text(stdout)
+        (work/(label+'.stderr.log')).write_text(stderr)
+        raise SystemExit(label+': bounded source query exceeded 30 seconds\n'+stdout+'\n'+stderr)
+    (work/(label+'.log')).write_text(stdout)
+    (work/(label+'.stderr.log')).write_text(stderr)
+    if process.returncode: raise SystemExit(label+': '+stdout+'\n'+stderr)
+    return stdout
 header = work/'eglext.h'; header.write_text('#define EGL_DRM_MASTER_FD_EXT 0x333C\n')
 for phase in ('early','late'):
     directory = work/('egldevice-'+phase); directory.mkdir()
@@ -72,10 +75,10 @@ def plist(label, package, *mode):
 runtime=plist('runtime','qt6-qtbase',*cross)
 if any(p.startswith('qt6/include/') or p.endswith('.cmake') or p in ('qt6/bin/qmake','qt6/libexec/moc','qt6/libexec/rcc','qt6/libexec/uic') for p in runtime): raise SystemExit('runtime PLIST still contains target SDK or generators')
 if not all(p in runtime for p in ('qt6/bin/qtpaths','qt6/bin/qtpaths6')): raise SystemExit('runtime qtpaths missing')
-if run('runtime-name','qt6-qtbase',*cross,'-V','${PKGNAME}').strip() != 'qt6-qtbase-6.12.0nb5': raise SystemExit('runtime package identity was not revised')
+if run('runtime-name','qt6-qtbase',*cross,'-V','${PKGNAME}').strip() != 'qt6-qtbase-6.12.0nb6': raise SystemExit('runtime package identity was not revised')
 if not (tree/'x11/qt6-qtbase-devel').is_dir(): raise SystemExit('SDK recipe missing')
 sdk=plist('devel','qt6-qtbase-devel',*cross)
-if run('devel-name','qt6-qtbase-devel',*cross,'-V','${PKGNAME}').strip() != 'qt6-qtbase-devel-6.12.0nb7': raise SystemExit('SDK revision differs')
+if run('devel-name','qt6-qtbase-devel',*cross,'-V','${PKGNAME}').strip() != 'qt6-qtbase-devel-6.12.0nb8': raise SystemExit('SDK revision differs')
 if not all(p in sdk for p in ('qt6/bin/qmake','qt6/libexec/moc','qt6/libexec/rcc','qt6/libexec/uic','qt6/lib/cmake/Qt6/Qt6Config.cmake')): raise SystemExit('SDK PLIST lost the CMake/generator contract')
 if set(runtime)&set(sdk): raise SystemExit('partition overlaps')
 owner=tree/'x11/qt6-qtbase'; full_dir=work/'full'
@@ -87,11 +90,11 @@ if not helper.is_file(): raise SystemExit('stage partition helper missing')
 native=plist('native','qt6-qtbase','USE_CROSS_COMPILE=no','PKGSRC_COMPILER=clang','CC='+str(host/'bin/clang'),'CXX='+str(host/'bin/clang++'),'USE_NATIVE_GCC=no','USE_PKGSRC_GCC=no')
 if 'qt6/bin/qmake' not in native or not any(p.startswith('qt6/include/') for p in native): raise SystemExit('native full SDK behavior changed')
 reasons=run('devel-metadata','qt6-qtbase-devel',*cross,'-V','${PKG_FAIL_REASON}','-V','${DEPENDS}','-V','${DISTINFO_FILE}','-V','${PATCHDIR}')
-if reasons.splitlines()[0].strip() or 'qt6-qtbase-6.12.0nb5:' not in reasons or str(owner/'distinfo') not in reasons or str(owner/'patches') not in reasons: raise SystemExit('SDK source owner, exact runtime or platform contract differs')
+if reasons.splitlines()[0].strip() or 'qt6-qtbase-6.12.0nb6:' not in reasons or str(owner/'distinfo') not in reasons or str(owner/'patches') not in reasons: raise SystemExit('SDK source owner, exact runtime or platform contract differs')
 consumer=tree/'devel/qtbase-split-consumer'; consumer.mkdir()
 (consumer/'Makefile').write_text('DISTNAME= qtbase-split-contract-1\nCATEGORIES= devel\nCOMMENT= Qtbase buildlink source contract fixture\nLICENSE= 2-clause-bsd\nMETA_PACKAGE= yes\n.include "../../mk/bsd.prefs.mk"\n.include "../../x11/qt6-qtbase/buildlink3.mk"\n.include "../../mk/bsd.pkg.mk"\n')
 out=run('buildlink','../devel/qtbase-split-consumer',*cross,'-V','${BUILD_DEPENDS}','-V','${DEPENDS}').splitlines()
-if 'qt6-qtbase-devel>=6.12.0nb7:' not in out[0] or 'qt6-qtbase-devel' in out[1] or 'qt6-qtbase>=6.12.0nb5:' not in out[1]: raise SystemExit('SDK was not a separate target build-only dependency')
+if 'qt6-qtbase-devel>=6.12.0nb8:' not in out[0] or 'qt6-qtbase-devel' in out[1] or 'qt6-qtbase>=6.12.0nb6:' not in out[1]: raise SystemExit('SDK was not a separate target build-only dependency')
 original=work/'normalized-full'; prefix=original/'usr/pkg'
 for path in full:
     dest=prefix/path; dest.parent.mkdir(parents=True,exist_ok=True); dest.write_text('source-contract fixture: '+path+'\n')

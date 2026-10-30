@@ -3,8 +3,8 @@
 BUILDLINK_TREE+= qt6-qtbase-devel
 .if !defined(QT6_QTBASE_DEVEL_BUILDLINK3_MK)
 QT6_QTBASE_DEVEL_BUILDLINK3_MK:=
-BUILDLINK_API_DEPENDS.qt6-qtbase-devel+= qt6-qtbase-devel>=6.12.0nb7
-BUILDLINK_ABI_DEPENDS.qt6-qtbase-devel+= qt6-qtbase-devel>=6.12.0nb7
+BUILDLINK_API_DEPENDS.qt6-qtbase-devel+= qt6-qtbase-devel>=6.12.0nb8
+BUILDLINK_ABI_DEPENDS.qt6-qtbase-devel+= qt6-qtbase-devel>=6.12.0nb8
 BUILDLINK_PKGSRCDIR.qt6-qtbase-devel?= ../../x11/qt6-qtbase-devel
 BUILDLINK_DEPMETHOD.qt6-qtbase-devel= build
 BUILDLINK_INCDIRS.qt6-qtbase-devel+= qt6/include
