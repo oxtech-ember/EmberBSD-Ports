@@ -1,0 +1,21 @@
+--- a/www/curl/Makefile
++++ b/www/curl/Makefile
+@@ -3,7 +3,7 @@
+ PREFER.openssl=	pkgsrc
+ 
+ .include "Makefile.common"
+-PKGREVISION=	2
++PKGREVISION=	3
+ 
+ CONFIGURE_ARGS+=	--with-ssl=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.openssl}
+ 
+--- a/www/curl/options.mk
++++ b/www/curl/options.mk
+@@ -50,6 +50,7 @@
+ .endif
+ 
+ .if !empty(PKG_OPTIONS:Midn)
++.include "../../textproc/libunistring/buildlink3.mk"
+ .include "../../devel/libidn2/buildlink3.mk"
+ CONFIGURE_ARGS+=	--with-libidn2
+ .else
