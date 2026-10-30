@@ -467,3 +467,6 @@ lang/libduktape
 
 # Select common gettext and iconv providers for libcups.
 print/libcups
+
+# Use the current shared calculator runtime.
+math/qalculate

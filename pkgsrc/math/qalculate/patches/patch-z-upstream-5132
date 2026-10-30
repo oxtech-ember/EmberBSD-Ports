@@ -1,0 +1,194 @@
+$NetBSD$
+
+Origin: upstream commit d3672af9cf6e05a39bd4206b7b7d6b1e0d194caa (v5.13.2).
+Apply the complete source delta to the v5.13.1 distribution tarball.
+
+diff --git a/libqalculate/BuiltinFunctions-explog.cc b/libqalculate/BuiltinFunctions-explog.cc
+index edbbc3b54..7612e8519 100644
+--- libqalculate/BuiltinFunctions-explog.cc
++++ libqalculate/BuiltinFunctions-explog.cc
+@@ -1056,7 +1056,7 @@ int PowerTowerFunction::calculate(MathStructure &mstruct, const MathStructure &v
+ 				continue;
+ 			}
+ 		}
+-		if((mstruct.isNumber() || i == 1) && vargs[1].number() - i >= 1000) {
++		if((mstruct.isNumber() || i == 1) && vargs[1].number() - i >= 500) {
+ 			CALCULATOR->error(true, _("Maximum recursive depth reached."), NULL);
+ 			return 0;
+ 		}
+diff --git a/libqalculate/MathStructure-calculate.cc b/libqalculate/MathStructure-calculate.cc
+index 395f57af7..e76235278 100644
+--- libqalculate/MathStructure-calculate.cc
++++ libqalculate/MathStructure-calculate.cc
+@@ -7126,7 +7126,7 @@ bool MathStructure::calculateFunctions(const EvaluationOptions &eo, bool recursi
+ }
+ 
+ bool check_recursive_function_depth(size_t depth, bool show_error) {
+-	if(depth > 3000) {
++	if(depth > 1500) {
+ 		if(show_error) CALCULATOR->error(true, _("Maximum recursive depth reached."), NULL);
+ 		return false;
+ 	}
+diff --git a/libqalculate/MathStructure-print.cc b/libqalculate/MathStructure-print.cc
+index 729b32731..25964cf3f 100644
+--- libqalculate/MathStructure-print.cc
++++ libqalculate/MathStructure-print.cc
+@@ -2305,7 +2305,7 @@ void MathStructure::format(const PrintOptions &po) {
+ 		// 1*a=a
+ 		remove_multi_one(*this);
+ 	}
+-	formatsub(po, NULL, 0, true, this);
++	if(check_recursive_depth(*this)) formatsub(po, NULL, 0, true, this);
+ 	if(!po.preserve_format) {
+ 		postFormatUnits(po);
+ 		if(po.sort_options.prefix_currencies) {
+@@ -3901,7 +3901,7 @@ string get_latex_units(const MathStructure &m, size_t first_unit, const PrintOpt
+ 	}
+ 
+ string MathStructure::print(const PrintOptions &po, bool format, int colorize, int tagtype, const InternalPrintStruct &ips) const {
+-	if(ips.depth > 1000) {
++	if(ips.depth > 500) {
+ 		CALCULATOR->error(true, _("Maximum recursive depth reached."), NULL);
+ 		if(po.use_unicode_signs && (!po.can_display_unicode_string_function || (*po.can_display_unicode_string_function) ("…", po.can_display_unicode_string_arg))) return "…";
+ 		return "...";
+diff --git a/libqalculate/MathStructure-support.h b/libqalculate/MathStructure-support.h
+index 9ad4aab60..6b422ba62 100644
+--- libqalculate/MathStructure-support.h
++++ libqalculate/MathStructure-support.h
+@@ -257,7 +257,7 @@ void add_fraction_of_turn(MathStructure &mstruct, const EvaluationOptions &eo, l
+ void multiply_by_fraction_of_radian(MathStructure &mstruct, const EvaluationOptions &eo, long int num, long int den);
+ Unit *default_angle_unit(const EvaluationOptions &eo, bool return_rad_if_none = false);
+ 
+-bool check_recursive_depth(const MathStructure &m, size_t max_depth = 1000, bool show_error = true);
++bool check_recursive_depth(const MathStructure &m, size_t max_depth = 500, bool show_error = true);
+ bool check_recursive_function_depth(size_t depth, bool show_error = true);
+ 
+ bool sub_suffix_unicode(std::string &name, int n);
+diff --git a/libqalculate/Number.cc b/libqalculate/Number.cc
+index 7622ad8cd..7069be33b 100644
+--- libqalculate/Number.cc
++++ libqalculate/Number.cc
+@@ -10087,6 +10087,9 @@ bool Number::factorial() {
+ 	}
+ 	if(!mpz_fits_slong_p(mpq_numref(r_value))) return false;
+ 	long int n = mpz_get_si(mpq_numref(r_value));
++#ifdef _WIN32
++	if(n > 50000000) return false;
++#endif
+ 	if(!recfact(mpq_numref(r_value), 1, n)) {
+ 		mpz_set_si(mpq_numref(r_value), n);
+ 		return false;
+diff --git a/libqalculate/util.h b/libqalculate/util.h
+index d96c6febd..804d95354 100644
+--- libqalculate/util.h
++++ libqalculate/util.h
+@@ -141,7 +141,7 @@ class Thread {
+ 	template <class T> T read() {
+ #ifdef _WIN32
+ 		MSG msg;
+-		int ret = GetMessage(&msg, NULL, WM_USER, WM_USER);
++		GetMessage(&msg, NULL, WM_USER, WM_USER);
+ 		return (T) msg.wParam;
+ #else
+ 		T x;
+diff --git a/src/defs2doc.cc b/src/defs2doc.cc
+index 998881d68..024162a18 100644
+--- src/defs2doc.cc
++++ src/defs2doc.cc
+@@ -101,7 +101,7 @@ struct tree_struct {
+ 			it->sort();
+ 		}
+ 	}
+-	bool operator < (tree_struct &s1) const {
++	bool operator < (const tree_struct &s1) const {
+ 		return item < s1.item;
+ 	}
+ };
+diff --git a/src/qalc.cc b/src/qalc.cc
+index 792b17a71..e6b4a8b28 100644
+--- src/qalc.cc
++++ src/qalc.cc
+@@ -4466,13 +4466,14 @@ int main(int argc, char *argv[]) {
+ 	if(!ignore_locale) setlocale(LC_ALL, "");
+ 	else setlocale(LC_CTYPE, "");
+ 
++#ifdef _WIN32
++	utf8_encoding = true;
++#else
+ 	char *gstr = locale_from_utf8(SIGN_MULTIPLICATION);
+ 	if(gstr) {
+ 		utf8_encoding = !strcmp(gstr, SIGN_MULTIPLICATION);
+ 		free(gstr);
+-	}
+-#ifndef _WIN32
+-	else {
++	} else {
+ 		utf8_encoding = true;
+ 	}
+ #endif
+@@ -7666,6 +7667,9 @@ void setResult(Prefix *prefix, bool update_parse, bool goto_input, size_t stack_
+ 		int c = 0;
+ #else
+ 		char c = 0;
++#endif
++#ifdef _WIN32
++		if(b_busy && !result_only && view_thread->running) {PREPARE_TIMECHECK_TIME(60000);}
+ #endif
+ 		while(b_busy && view_thread->running) {
+ 			if(cfile || auto_calculate) {
+@@ -7701,7 +7705,10 @@ void setResult(Prefix *prefix, bool update_parse, bool goto_input, size_t stack_
+ 					sleep_ms(10);
+ 					i++;
+ #ifdef _WIN32
+-					if(i == 10000 && !result_only) on_abort_display();
++					if(!result_only) {
++						DO_TIMECHECK {on_abort_display();}
++						else if(i >= 10000) on_abort_display();
++					}
+ #endif
+ 				}
+ 			}
+@@ -8203,6 +8210,9 @@ void execute_command(int command_type, bool show_result, bool auto_calculate) {
+ 		int c = 0;
+ #else
+ 		char c = 0;
++#endif
++#ifdef _WIN32
++		if(b_busy && !result_only && command_thread->running) {PREPARE_TIMECHECK_TIME(60000);}
+ #endif
+ 		while(b_busy && command_thread->running) {
+ 			if(cfile || auto_calculate) {
+@@ -8229,7 +8239,10 @@ void execute_command(int command_type, bool show_result, bool auto_calculate) {
+ 					sleep_ms(10);
+ 					i++;
+ #ifdef _WIN32
+-					if(i == 10000 && !result_only) on_abort_display();
++					if(!result_only) {
++						DO_TIMECHECK {on_abort_command();}
++						else if(i >= 10000) on_abort_command();
++					}
+ #endif
+ 				}
+ 			}
+@@ -9524,6 +9537,9 @@ void execute_expression(bool do_mathoperation, MathOperation op, MathFunction *f
+ 		int c = 0;
+ #else
+ 		char c = 0;
++#endif
++#ifdef _WIN32
++		if(!result_only && CALCULATOR->busy()) {PREPARE_TIMECHECK_TIME(60000);}
+ #endif
+ 		while(CALCULATOR->busy()) {
+ 			if(cfile || auto_calculate) {
+@@ -9561,7 +9577,10 @@ void execute_expression(bool do_mathoperation, MathOperation op, MathFunction *f
+ 					sleep_ms(10);
+ 					i++;
+ #ifdef _WIN32
+-					if(i == 10000 && !result_only) on_abort_display();
++					if(!result_only) {
++						DO_TIMECHECK {CALCULATOR->abort(); avoid_recalculation = true;}
++						else if(i >= 10000) {CALCULATOR->abort(); avoid_recalculation = true;}
++					}
+ #endif
+ 				}
+ 			}

@@ -98,7 +98,6 @@ CONF_FILES+=	${PREFIX}/share/examples/kde-xdg/plasmanotifyrc \
 .include "../../graphics/kf6-ksvg/buildlink3.mk"
 .include "../../graphics/kf6-prison/buildlink3.mk"
 .include "../../graphics/plasma6-breeze/buildlink3.mk"
-.include "../../math/cln/buildlink3.mk"
 .include "../../math/qalculate/buildlink3.mk"
 .include "../../misc/kf6-kquickcharts/buildlink3.mk"
 .include "../../misc/kf6-kstatusnotifieritem/buildlink3.mk"
