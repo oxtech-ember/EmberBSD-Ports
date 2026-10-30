@@ -21,3 +21,8 @@ from this recipe directory with the two actual patched source catalogs.
 The test checks the two-rule delta and unconditional provider and consumer floors.
 It does not evaluate package metadata, run XSLT or install catalog entries.
 Check both package modes and offline DocBook 5 transformations separately.
+
+Cross packages install `fo/pdf2index` with the target Perl from `lang/perl5`.
+The catalog rewrite in `post-install` runs the build host Perl through the tools wrapper.
+Run `BMAKE=bmake sh tests/cross-perl.sh PKGSRC MAKECONF NEW_OUTPUT` with absolute paths.
+It runs the real `REPLACE_PERL` edit and `post-install` in cross mode and builds nothing.

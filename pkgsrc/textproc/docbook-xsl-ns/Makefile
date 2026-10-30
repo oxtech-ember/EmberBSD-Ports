@@ -19,6 +19,12 @@ DEPENDS+=	docbook-xml>=4.2:../../textproc/docbook-xml
 USE_LANGUAGES=	# empty
 USE_TOOLS+=	pax perl
 
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# pdf2index is an installed target script: REPLACE_PERL must name the target
+# Perl from lang/perl5, not the build host Perl.
+USE_TOOLS+=	perl:run
+.endif
 REPLACE_PERL+=	fo/pdf2index
 
 EGDIR=		${PREFIX}/share/examples/docbook-xsl-ns
@@ -76,7 +82,7 @@ do-install:
 
 post-install:
 	@${STEP_MSG} "Redirecting XML catalog entries to ${XSLDIR}"
-	${RUN}${PERL5} -pi -e 's#rewritePrefix=\".*?\"#rewritePrefix="${XSLDIR}/"#g' \
+	${RUN}${TOOLS_CMD.perl} -pi -e 's#rewritePrefix=\".*?\"#rewritePrefix="${XSLDIR}/"#g' \
 		${DESTDIR}${XML_CATALOGS}
 
 .include "../../textproc/xmlcatmgr/catalogs.mk"
