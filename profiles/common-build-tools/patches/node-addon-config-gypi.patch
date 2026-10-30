@@ -1,0 +1,46 @@
+Require the selected runtime config for native addons.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- common.gypi.orig
++++ common.gypi
+@@ -375,7 +375,8 @@
+       '_GLIBCXX_USE_CXX11_ABI=1',
+       # This help forks when building Node.js on a 32-bit arch as
+       # libuv is always compiled with _FILE_OFFSET_BITS=64
+-      '_FILE_OFFSET_BITS=64'
++      '_FILE_OFFSET_BITS=64',
++      'NODE_ENSURE_CONFIG_GYPI',
+     ],
+ 
+     # Forcibly disable -Werror.  We support a wide range of compilers, it's
+@@ -530,6 +531,12 @@
+           ['_type!="static_library"', {
+             'xcode_settings': {'OTHER_LDFLAGS': ['-fsanitize=undefined']},
+           }],
++        ],
++      }],
++      # Native addons must use the configuration for the selected runtime.
++      ['node_module_version != ""', {
++        'defines': [
++          'NODE_CONFIG_MODULE_VERSION=<(node_module_version)',
+         ],
+       }],
+       # The defines bellow must include all things from the external_v8_defines
+--- src/node.h.orig
++++ src/node.h
+@@ -75,6 +75,14 @@
+ 
+ #include "v8-platform.h"  // NOLINT(build/include_order)
+ #include "node_version.h"  // NODE_MODULE_VERSION
++
++#ifdef NODE_ENSURE_CONFIG_GYPI
++#ifndef NODE_CONFIG_MODULE_VERSION
++#error "Native modules require the selected runtime's config.gypi. Configure node-gyp with its headers directory."
++#elif NODE_CONFIG_MODULE_VERSION != NODE_MODULE_VERSION
++#error "The config.gypi module ABI does not match the selected Node headers. Use the same runtime for both."
++#endif
++#endif
+ 
+ #include "node_api_types.h"  //  napi_addon_register_func
+ 
