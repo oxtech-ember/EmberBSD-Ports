@@ -4,9 +4,9 @@ Adapted for EmberBSD (AI-assisted): use mutable pointers for allocated strings.
 ConsoleKit 2.0 database/session IDs differ from D-Bus object paths.
 Not submitted upstream.
 
---- src/polkitbackend/polkitbackendsessionmonitor.c.orig	2023-07-28 12:34:38 UTC
+--- src/polkitbackend/polkitbackendsessionmonitor.c.orig
 +++ src/polkitbackend/polkitbackendsessionmonitor.c
-@@ -385,7 +385,8 @@ polkit_backend_session_monitor_get_session_for_subject
+@@ -384,7 +384,8 @@
  
    if (POLKIT_IS_UNIX_PROCESS (subject))
      {
@@ -16,7 +16,7 @@ Not submitted upstream.
        GVariant *result;
        result = g_dbus_connection_call_sync (monitor->system_bus,
                                              "org.freedesktop.ConsoleKit",
-@@ -400,14 +401,17 @@ polkit_backend_session_monitor_get_session_for_subject
+@@ -399,14 +400,17 @@
                                              error);
        if (result == NULL)
          goto out;
@@ -36,7 +36,7 @@ Not submitted upstream.
        GVariant *result;
  
        result = g_dbus_connection_call_sync (monitor->system_bus,
-@@ -439,8 +443,10 @@ polkit_backend_session_monitor_get_session_for_subject
+@@ -438,8 +442,10 @@
                                              error);
        if (result == NULL)
          goto out;

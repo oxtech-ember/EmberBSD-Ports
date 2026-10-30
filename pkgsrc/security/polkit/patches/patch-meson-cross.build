@@ -26,7 +26,7 @@ Link the agent query to both in-tree libraries.
 @@ -124,7 +124,8 @@
    libpolkit_gobject_gir = gnome.generate_gir(
      libpolkit_gobject,
-     sources: sources + headers,
+     sources: sources + headers + files('polkittypes.h'),
 -    extra_args: c_flags,
 +    extra_args: [c_flags] + emberbsd_gir_args,
 +    env: emberbsd_gir_env,

@@ -49,6 +49,7 @@ man/man1/pkexec.1
 man/man1/pkttyagent.1
 man/man5/polkitd.conf.5
 man/man8/polkit.8
+man/man8/polkit-agent-helper.8
 man/man8/polkitd.8
 share/dbus-1/system-services/org.freedesktop.PolicyKit1.service
 share/dbus-1/system.d/org.freedesktop.PolicyKit1.conf

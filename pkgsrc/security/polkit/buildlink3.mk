@@ -8,7 +8,7 @@ POLKIT_BUILDLINK3_MK:=
 USE_CXX_FEATURES+=		c++17
 
 BUILDLINK_API_DEPENDS.polkit+=	polkit>=0.103
-BUILDLINK_ABI_DEPENDS.polkit+=	polkit>=127nb2
+BUILDLINK_ABI_DEPENDS.polkit+=	polkit>=128
 BUILDLINK_PKGSRCDIR.polkit?=	../../security/polkit
 
 #.include "../../devel/gettext-lib/buildlink3.mk"

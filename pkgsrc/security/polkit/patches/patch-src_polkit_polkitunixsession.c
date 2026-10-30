@@ -4,9 +4,9 @@ Adapted for EmberBSD (AI-assisted): use mutable pointers for allocated strings.
 ConsoleKit 2.0 database/session IDs differ from D-Bus object paths.
 Not submitted upstream.
 
---- src/polkit/polkitunixsession.c.orig	2023-07-28 12:34:38 UTC
+--- src/polkit/polkitunixsession.c.orig
 +++ src/polkit/polkitunixsession.c
-@@ -364,6 +364,7 @@ polkit_unix_session_exists_sync (PolkitSubject   *subj
+@@ -360,6 +360,7 @@
    PolkitUnixSession *session = POLKIT_UNIX_SESSION (subject);
    GDBusConnection *connection;
    GVariant *result;
@@ -14,7 +14,7 @@ Not submitted upstream.
    gboolean ret;
  
    ret = FALSE;
-@@ -372,9 +373,12 @@ polkit_unix_session_exists_sync (PolkitSubject   *subj
+@@ -368,9 +369,12 @@
    if (connection == NULL)
      goto out;
  
@@ -28,7 +28,7 @@ Not submitted upstream.
                                          "org.freedesktop.ConsoleKit.Session",   /* interface name */
                                          "GetUser",                              /* method */
                                          NULL, /* parameters */
-@@ -383,6 +387,7 @@ polkit_unix_session_exists_sync (PolkitSubject   *subj
+@@ -379,6 +383,7 @@
                                          -1,
                                          cancellable,
                                          error);
@@ -36,7 +36,7 @@ Not submitted upstream.
    if (result == NULL)
      goto out;
  
-@@ -472,6 +477,7 @@ polkit_unix_session_initable_init (GInitable     *init
+@@ -468,6 +473,7 @@
    PolkitUnixSession *session = POLKIT_UNIX_SESSION (initable);
    GDBusConnection *connection;
    GVariant *result;
@@ -44,7 +44,7 @@ Not submitted upstream.
    gboolean ret;
  
    connection = NULL;
-@@ -502,7 +508,8 @@ polkit_unix_session_initable_init (GInitable     *init
+@@ -498,7 +504,8 @@
    if (result == NULL)
      goto out;
  
