@@ -1,0 +1,17 @@
+# Origin: EmberBSD (AI-assisted). Select the GTK 4 backends for the target.
+# The Quartz framework test looks at the build host, so a cross build from
+# macOS offers quartz and refuses wayland for a NetBSD target. Require OPSYS
+# Darwin as x11/gtk3 does; options.mk precedes bsd.prefs.mk, so include it.
+--- a/x11/gtk4/options.mk
++++ b/x11/gtk4/options.mk
+@@ -6,7 +6,9 @@
+ PKG_OPTIONS_REQUIRED_GROUPS=	gui
+ PKG_OPTIONS_GROUP.gui=		x11
+ 
+-.if exists(/System/Library/Frameworks/Quartz.framework)
++.include "../../mk/bsd.prefs.mk"
++
++.if ${OPSYS} == "Darwin" && exists(/System/Library/Frameworks/Quartz.framework)
+ PKG_OPTIONS_GROUP.gui+=	quartz
+ PKG_SUGGESTED_OPTIONS+=	quartz
+ .else
