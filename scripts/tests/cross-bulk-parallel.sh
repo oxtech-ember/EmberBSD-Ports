@@ -84,6 +84,7 @@ case "\$target" in
         case "\$varname" in
             EMBERBSD_NATIVE_TOOLSET_VERIFIED) echo fake ;;
             PACKAGES) echo \$out/packages ;;
+            PKG_INFO) echo false ;;
             NATIVE_PKG_ADD_CMD) echo \$out/pkg_add ;;
             *) echo ;;
         esac ;;

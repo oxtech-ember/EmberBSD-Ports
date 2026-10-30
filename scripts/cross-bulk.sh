@@ -128,8 +128,23 @@ var()
     mk -C "$PKGSRCDIR/$1" show-var VARNAME="$2" < /dev/null
 }
 
+# The pkg_info of the native prefix, for the tools it already has.
+native_info()
+{
+    [ -z "${native_pkg_info:-}" ] || return 0
+    native_pkg_info=
+    [ "$mode" != deps ] || native_pkg_info=${CROSS_BULK_PKG_INFO:-}
+    [ -n "$native_pkg_info" ] ||
+        native_pkg_info=$(mk -C "$PKGSRCDIR/pkgtools/pkg_install" USE_CROSS_COMPILE=no \
+            show-var VARNAME=PKG_INFO < /dev/null)
+    [ -n "$native_pkg_info" ] || { echo 'The native PKG_INFO is empty' >&2; exit 2; }
+}
+
 # Print the PKG_SKIP_REASON of a node on the first line, then its
-# dependency nodes, one per line.
+# dependency nodes, one per line. A native node that the native prefix
+# already has is a leaf: the build does not build it again, so its own
+# tools do not matter. This is what breaks the cycles among the bootstrap
+# tools (coreutils and gettext-tools need each other, python needs both).
 node_deps()
 {
     case "$1" in
@@ -139,11 +154,15 @@ node_deps()
     dir=$1 suffix=$2
     shift 2
     vars=$(mk -C "$PKGSRCDIR/$dir" "$@" show-vars \
-        VARNAMES='PKG_SKIP_REASON DEPENDS BUILD_DEPENDS TOOL_DEPENDS BOOTSTRAP_DEPENDS' < /dev/null) ||
+        VARNAMES='PKG_SKIP_REASON DEPENDS BUILD_DEPENDS TOOL_DEPENDS BOOTSTRAP_DEPENDS PKGBASE' < /dev/null) ||
         return 1
     printf '%s\n' "$vars" | sed -n 1p
+    if [ -n "$suffix" ]; then
+        base=$(printf '%s\n' "$vars" | sed -n 6p)
+        [ -z "$base" ] || ! $native_pkg_info -e "$base" > /dev/null 2>&1 || return 0
+    fi
     printf '%s\n' "$vars" | awk -v suffix="$suffix" '
-        NR == 1 { next }
+        NR == 1 || NR > 5 { next }
         { s = NR <= 3 ? suffix : "@native"; n = split($0, w, " ")
           for (i = 1; i <= n; i++)
               if (match(w[i], /:\.\.\/\.\.\/[^\/:]+\/[^\/:]+$/)) print substr(w[i], RSTART + 7) s }' |
@@ -158,8 +177,20 @@ skipped_deps()
     awk 'FILENAME == ARGV[1] { skip[$1] = 1; next } ($1 in skip) && $1 != $2 { print $2 " -> " $1 }' "$1" "$2"
 }
 
+# Sort the edges $1 into $2. A cycle is refused: tsort would still print
+# an order, with some package before its dependency.
+sort_edges()
+{
+    tsort "$1" > "$2" 2> "$state/tsort.err" && [ ! -s "$state/tsort.err" ] && return 0
+    echo 'Refused: the dependency graph has a cycle:' >&2
+    cat "$state/tsort.err" >&2
+    rm -f "$2"
+    return 1
+}
+
 order()
 {
+    native_info
     new_cache
     : > "$state/edges.new"
     : > "$state/skipped.new"
@@ -195,8 +226,8 @@ order()
         echo "$refused" >&2
         return 1
     fi
+    sort_edges "$state/edges.new" "$state/order.new" || return 1
     mv "$state/skipped.new" "$state/skipped"
-    tsort "$state/edges.new" > "$state/order.new"
     mv "$state/edges.new" "$state/edges"
     mv "$state/order.new" "$state/order"
     rm -f "$state/queue" "$state/next" "$state/deps"
@@ -208,6 +239,7 @@ order()
 # of this script in the deps mode.
 tools()
 {
+    native_info
     q=$state/tools.d
     jobs=${CROSS_BULK_JOBS:-$(host_cpus)}
     count CROSS_BULK_JOBS "$jobs"
@@ -222,7 +254,7 @@ tools()
     : > "$q/failed"
     while [ -s "$q/queue" ]; do
         cat "$q/queue" >> "$q/seen"
-        CROSS_BULK_NATIVE=$native xargs -P "$jobs" -I '{}' sh "$0" deps '{}' "$q" < "$q/queue"
+        CROSS_BULK_NATIVE=$native CROSS_BULK_PKG_INFO=$native_pkg_info xargs -P "$jobs" -I '{}' sh "$0" deps '{}' "$q" < "$q/queue"
         : > "$q/next"
         while read -r node; do
             key=$(echo "$node" | tr / _)
@@ -256,7 +288,7 @@ tools()
         return 1
     fi
     sort -u "$q/edges" > "$q/edges.sorted"
-    tsort "$q/edges.sorted" > "$q/order"
+    sort_edges "$q/edges.sorted" "$q/order" || return 1
     stamp=$(date '+%Y%m%d%H%M%S')
     cp "$state/order" "$state/order.pre-tools-$stamp"
     cp "$state/edges" "$state/edges.pre-tools-$stamp"
@@ -500,8 +532,7 @@ build()
     [ -n "$real_pkg_add" ] || { echo 'NATIVE_PKG_ADD_CMD is empty' >&2; exit 2; }
     pkg_add_wrapper "$real_pkg_add" > "$run/pkg_add"
     chmod +x "$run/pkg_add"
-    native_pkg_info=$(mk -C "$PKGSRCDIR/pkgtools/pkg_install" USE_CROSS_COMPILE=no \
-        show-var VARNAME=PKG_INFO < /dev/null)
+    native_info
     target_settings=$(var pkgtools/pkg_install CROSSTARGETSETTINGS)
     # The native nodes that a target package needs as a tool.
     awk '$1 ~ /@native$/ && $2 !~ /@native$/ { print $1 }' "$state/edges" | sort -u > "$run/crossfed"
@@ -573,6 +604,7 @@ case "$mode" in
     order) order ;;
     tools) tools ;;
     deps)
+        native_info
         key=$(echo "$list" | tr / _)
         node_deps "$list" > "$state/$key.tmp" 2> "$state/$key.err" &&
             mv "$state/$key.tmp" "$state/$key.deps" ;;

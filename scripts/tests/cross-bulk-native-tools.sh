@@ -10,6 +10,9 @@
 # prefix has, never builds a dependency in a package's depends step, lets
 # other packages build and install while one package spends long in its
 # depends step, and never runs two installs into one package database.
+# A tool the native prefix has is a leaf, so the cycle between it and a
+# tool it needs (n/old and n/cyc) does not reach the graph; a cycle among
+# tools to build is refused.
 # Usage: cross-bulk-native-tools.sh NEW_OUTPUT
 set -eu
 [ "$#" = 1 ] || { echo 'Usage: cross-bulk-native-tools.sh NEW_OUTPUT' >&2; exit 2; }
@@ -21,7 +24,8 @@ ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
 mkdir -p "$out/tree" "$out/packages/All" "$out/work" "$out/target-db" "$out/native-db"
 : > "$out/errors"
 # DIR DEPENDS TOOL_DEPENDS: t/ are target packages, n/ native tools. Every
-# target package needs n/old to bootstrap; the native prefix has it.
+# target package needs n/old to bootstrap; the native prefix has it. n/old
+# and n/cyc need each other, as the bootstrap tools of pkgsrc do.
 while read -r dir deps tools; do
     mkdir -p "$out/tree/$dir"
     [ "$deps" = - ] || echo "$deps" | tr , '\n' > "$out/tree/$dir/deps"
@@ -33,7 +37,8 @@ t/c - -
 t/d a -
 n/gen - base
 n/base - -
-n/old - -
+n/old - cyc
+n/cyc - old
 TREE
 : > "$out/native-db/old"
 cat > "$out/pkg_add" <<WRAP
@@ -146,6 +151,7 @@ done
 grep -q '^n/base@native n/old@native$' "$out/state/edges" && fail 'a native node got a target bootstrap'
 before n/gen@native "$out/state/order" t/a || fail 'n/gen@native is not ordered before t/a'
 before n/base@native "$out/state/order" n/gen@native || fail 'n/base@native is not ordered before n/gen@native'
+grep -q 'n/cyc' "$out/state/edges" && fail 'the installed n/old@native was asked for its tools'
 
 # tools: an order without native nodes, in which t/c is done.
 mkdir "$out/old"
@@ -167,4 +173,16 @@ bulk build state
     fail "native builds: $(cat "$out/native-builds")"
 grep -q ' n/old' "$out/state/progress" && fail 'the installed native tool n/old was built again'
 [ "$(ls "$out/target-db" | tr '\n' ' ')" = 'a b c d ' ] || fail "target installs: $(ls "$out/target-db")"
-echo 'PASS: native tools are graph nodes, a long depends step blocks nobody, installs into one database never overlap'
+# A cycle among tools that the native prefix lacks is refused.
+mkdir -p "$out/tree/t/e" "$out/tree/n/x" "$out/tree/n/y" "$out/state2"
+echo x > "$out/tree/t/e/tools"
+echo y > "$out/tree/n/x/tools"
+echo x > "$out/tree/n/y/tools"
+echo t/e > "$out/list2"
+if BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=8 \
+    sh "$ports/scripts/cross-bulk.sh" order "$out/list2" "$out/state2" > "$out/cycle.log" 2>&1; then
+    fail 'order accepted a cycle among tools to build'
+fi
+grep -q 'cycle' "$out/cycle.log" || fail "cycle refusal: $(cat "$out/cycle.log")"
+[ ! -e "$out/state2/order" ] || fail 'order wrote an order with a cycle'
+echo 'PASS: native tools are graph nodes, a long depends step blocks nobody, installs into one database never overlap, installed tools are leaves, a tool cycle is refused'

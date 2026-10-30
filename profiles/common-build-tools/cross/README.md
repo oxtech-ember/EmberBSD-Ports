@@ -524,7 +524,10 @@ writes the native tools as graph nodes `PKGPATH@native`: `TOOL_DEPENDS` and
 `BOOTSTRAP_DEPENDS` of a target package, and every dependency of a native
 node. A native node is a job of its own, built with `USE_CROSS_COMPILE=no`
 and done once its package is in the native package database, so no package
-compiles a tool inside its dependency step. `cross-bulk.sh tools LIST STATE`
+compiles a tool inside its dependency step. A native node that the native
+database already has is a leaf: its own tools are not asked, which keeps
+the bootstrap tools that need each other (coreutils, gettext-tools, python)
+out of the graph. Order and tools refuse a graph with a cycle. `cross-bulk.sh tools LIST STATE`
 adds these nodes to an existing order for the packages not yet done, keeps
 the old order and edges as `*.pre-tools-STAMP`, and refuses when a query
 fails or a reachable node is skipped. Nothing is locked while a package
@@ -537,8 +540,9 @@ running ones finish and exits with 143; the next run skips the done packages.
 `scripts/tests/cross-bulk-parallel.sh NEW_OUTPUT` checks this on a small graph
 with a recording bmake. `scripts/tests/cross-bulk-native-tools.sh NEW_OUTPUT`
 checks the native nodes, the tools mode, that a long dependency step of one
-package does not hold back the others and that installs into one database
-never overlap.
+package does not hold back the others, that installs into one database
+never overlap, that an installed tool is a leaf and that a tool cycle is
+refused.
 `scripts/tests/cross-bulk-fetch-present.sh NEW_OUTPUT PKGPATH` checks that
 fetch skips a package only when DISTDIR has each distinfo file at its
 recorded size. The build still verifies the checksums.
