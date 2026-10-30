@@ -36,7 +36,9 @@ def refused(function, *arguments):
 
 
 with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
-    root = Path(temporary)
+    # The adapter records resolved prefix paths; on macOS the temporary
+    # directory is under the /var -> /private/var link.
+    root = Path(temporary).resolve()
     directories = getattr(adapter, 'ROLE_DIRECTORIES', {})
     tools = {role: str(root / ('sdk-' + role)) for role in (*adapter.ROLE_VARIABLES, *directories, *adapter.OPTIONAL_ROLES, 'fetch')}
     tools['llvm-tblgen'] = str(root / 'llvm/bin/llvm-tblgen')
@@ -298,7 +300,10 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         # Mach-O metadata lipo/otool from the prefix; all are required. The
         # signature verification service is the macOS one.
         assert b'EMBERBSD_DARWIN' not in include.read_bytes()
-        assert b'MACHO_' not in include.read_bytes()
+        # MACHO_READLINK is an optional role on every host; the lipo/otool
+        # selection is Darwin only.
+        for variable in (b'MACHO_LIPO', b'MACHO_OTOOL'):
+            assert variable not in include.read_bytes(), variable
         selected.host = {'os': 'Darwin'}
         darwin_tools = [mlir_bin / 'llvm-install-name-tool', mlir_bin / 'llvm-readtapi',
                         mlir_bin / 'llvm-lipo', mlir_bin / 'llvm-otool']
