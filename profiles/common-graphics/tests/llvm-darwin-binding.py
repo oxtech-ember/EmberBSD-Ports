@@ -24,7 +24,8 @@ def fake_otool(tool, option, path):
                 aliases = list((Path(selected['cow_prefix']) / 'lib').glob(stem + '.*.dylib'))
                 name = next((p.name for p in aliases if p.is_symlink() and p.resolve() == Path(path)), name)
                 break
-    base = '/Volumes/DATA/EmberBSD/host-tools/llvm/lib/'
+    # Any canonical absolute library directory; the check compares only its shape.
+    base = str(Path(tempfile.gettempdir()) / 'install-names' / 'lib') + '/'
     return path + '\n' + base + ('libc++/' if name.startswith('libc++_') else '') + name
 files, names = binding.declared_system_libraries(selected, ['-lm', '-lz', '-lzstd', '-lxml2'], fake_otool)
 assert len(files) == 4 and names[0].endswith('/libc++/libc++_ember1.1.dylib')
