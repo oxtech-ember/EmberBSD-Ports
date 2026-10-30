@@ -519,13 +519,26 @@ CPUs. A package starts when every target dependency in `STATE/edges` is
 done; a failed, blocked or skipped dependency blocks it. Each package gets
 `MAKE_JOBS` on the command line, by default 1.5 times the CPUs split over the
 packages and at most the CPUs; `CROSS_BULK_MAKE_JOBS` sets it, or `makeconf`
-leaves it to the MAKECONF. `MAKE_JOBS_SAFE=no` recipes stay serial. With more
-than one package at once, the dependency step (which may build native tools
-into the shared host prefix) and the package install run one at a time under
-`STATE/install.lock`. Only the scheduler writes the state lists. SIGTERM
-starts no new package, lets the running ones finish and exits with 143; the
-next run skips the done packages. `scripts/tests/cross-bulk-parallel.sh
-NEW_OUTPUT` checks this on a small graph with a recording bmake.
+leaves it to the MAKECONF. `MAKE_JOBS_SAFE=no` recipes stay serial. Order
+writes the native tools as graph nodes `PKGPATH@native`: `TOOL_DEPENDS` and
+`BOOTSTRAP_DEPENDS` of a target package, and every dependency of a native
+node. A native node is a job of its own, built with `USE_CROSS_COMPILE=no`
+and done once its package is in the native package database, so no package
+compiles a tool inside its dependency step. `cross-bulk.sh tools LIST STATE`
+adds these nodes to an existing order for the packages not yet done, keeps
+the old order and edges as `*.pre-tools-STAMP`, and refuses when a query
+fails or a reachable node is skipped. Nothing is locked while a package
+compiles: the build passes a `pkg_add` wrapper as `NATIVE_PKG_ADD_CMD`,
+which takes a lock in `STATE/locks` for the package database it
+installs into, so installs into one prefix never overlap and installs into
+the target sysroot and the native prefix run independently. Only the
+scheduler writes the state lists. SIGTERM starts no new package, lets the
+running ones finish and exits with 143; the next run skips the done packages.
+`scripts/tests/cross-bulk-parallel.sh NEW_OUTPUT` checks this on a small graph
+with a recording bmake. `scripts/tests/cross-bulk-native-tools.sh NEW_OUTPUT`
+checks the native nodes, the tools mode, that a long dependency step of one
+package does not hold back the others and that installs into one database
+never overlap.
 `scripts/tests/cross-bulk-fetch-present.sh NEW_OUTPUT PKGPATH` checks that
 fetch skips a package only when DISTDIR has each distinfo file at its
 recorded size. The build still verifies the checksums.
