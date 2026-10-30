@@ -543,6 +543,18 @@ checks the native nodes, the tools mode, that a long dependency step of one
 package does not hold back the others, that installs into one database
 never overlap, that an installed tool is a leaf and that a tool cycle is
 refused.
+Removing an old work directory is not on a package's path either: before a
+package builds, the build renames its old `WRKDIR` into
+`WRKOBJDIR/.cross-bulk-trash`, one rename on the same file system, so the
+path is free at once and the clean step has nothing left to remove. One
+background deleter per build removes the trash, one tree at a time with
+`nice -n 19` and the host background I/O policy (`taskpolicy -b` on macOS,
+`ionice -c 3` where present), never follows a symbolic link out of it and
+stops with the build; the next build removes what a stopped or crashed run
+left. Without a `WRKOBJDIR`, for a `WRKDIR` on another file system, or with
+`CROSS_BULK_TRASH=no`, the clean step removes the old `WRKDIR` as before.
+`scripts/tests/cross-bulk-trash.sh NEW_OUTPUT` checks with a slow clean step
+that no package waits for a removal.
 `scripts/tests/cross-bulk-fetch-present.sh NEW_OUTPUT PKGPATH` checks that
 fetch skips a package only when DISTDIR has each distinfo file at its
 recorded size. The build still verifies the checksums.

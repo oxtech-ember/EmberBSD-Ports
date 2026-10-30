@@ -36,6 +36,15 @@
 # selection are those of that order run. Build does not use it: there
 # the installed dependencies answer the query.
 #
+# Before a package builds, build renames its old WRKDIR into a trash
+# directory on the same file system (WRKOBJDIR/.cross-bulk-trash), so the
+# WRKDIR path is free at once and pkgsrc's clean step has nothing left to
+# remove. One deleter per build removes the trash in the background, one
+# tree at a time and at the lowest priority, and stops with the build; the
+# next build removes what a stopped or crashed run left there. Without a
+# WRKOBJDIR, or for a WRKDIR on another file system, the clean step removes
+# the WRKDIR as before (CROSS_BULK_TRASH=no forces that).
+#
 # A built package is recorded in STATE/done with its PKGNAME and SHA256.
 # The build skips a package if the record and the package file agree.
 # Failures go to STATE/failed. Packages with a failed dependency go to
@@ -380,6 +389,66 @@ exit "\$rc"
 WRAPPER
 }
 
+dev_of()
+{
+    stat -c %d "$1" 2> /dev/null || stat -f %d "$1" 2> /dev/null
+}
+
+# The trash directory: WRKOBJDIR/.cross-bulk-trash, or none.
+trash_init()
+{
+    trash=
+    [ "${CROSS_BULK_TRASH:-yes}" != no ] || return 0
+    wrkobj=$(var pkgtools/pkg_install WRKOBJDIR)
+    case "$wrkobj" in /?*) ;; *) return 0 ;; esac
+    mkdir -p "$wrkobj/.cross-bulk-trash" 2> /dev/null || return 0
+    trash=$(CDPATH= cd -- "$wrkobj/.cross-bulk-trash" && pwd -P) || trash=
+    case "$trash" in */.cross-bulk-trash) ;; *) trash= ; return 0 ;; esac
+    trash_dev=$(dev_of "$trash") || trash=
+}
+
+# Rename an old WRKDIR ($1) of job $2 into the trash: one rename on the
+# same file system. Fails (and the clean step removes it) when there is
+# no trash or the WRKDIR is on another file system.
+retire()
+{
+    [ -n "$trash" ] || return 1
+    case "$1" in /?*) ;; *) return 1 ;; esac
+    [ -d "$1" ] && [ ! -L "$1" ] || return 0
+    [ "$(dev_of "$(dirname "$1")")" = "$trash_dev" ] || return 1
+    mv "$1" "$trash/$stamp.$2" 2> /dev/null && [ ! -e "$1" ]
+}
+
+# Remove the entries of the trash one at a time at the lowest priority,
+# without following symbolic links, until the build ($1) is gone. Only
+# this directory's own entries are removed.
+deleter()
+{
+    set +e
+    lowprio='nice -n 19'
+    if [ -x /usr/sbin/taskpolicy ]; then
+        lowprio="/usr/sbin/taskpolicy -b $lowprio"
+    elif command -v ionice > /dev/null 2>&1; then
+        lowprio="ionice -c 3 $lowprio"
+    fi
+    while kill -0 "$1" 2> /dev/null; do
+        busy=
+        for entry in "$trash"/* "$trash"/.[!.]*; do
+            [ -e "$entry" ] || [ -L "$entry" ] || continue
+            case "${entry#"$trash"/}" in ''|*/*) continue ;; esac
+            if [ -d "$entry" ] && [ ! -L "$entry" ]; then
+                $lowprio chmod -R u+w "$entry" 2> /dev/null || :
+                $lowprio rm -rf "$entry" 2> /dev/null || :
+            else
+                rm -f "$entry" 2> /dev/null || :
+            fi
+            busy=1
+            kill -0 "$1" 2> /dev/null || return 0
+        done
+        [ -n "$busy" ] || sleep 2
+    done
+}
+
 bmk()
 {
     if [ "$make_jobs" = makeconf ]; then
@@ -427,7 +496,8 @@ build_native()
     fi
     log=$state/logs/$key.log
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $nnode $name" >> "$state/progress"
-    case "$wrkdir" in /*) [ ! -d "$wrkdir" ] || chmod -R u+w "$wrkdir" ;; esac
+    retire "$wrkdir" "$job.$key" ||
+        case "$wrkdir" in /*) [ ! -d "$wrkdir" ] || chmod -R u+w "$wrkdir" ;; esac
     if bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null > "$log" 2>&1 &&
         bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes install < /dev/null >> "$log" 2>&1; then
         echo "$(date '+%Y-%m-%d %H:%M:%S') done $nnode" >> "$state/progress"
@@ -460,8 +530,10 @@ build_one()
     log=$state/logs/$key.log
     # One short line per append: O_APPEND keeps concurrent lines whole.
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name" >> "$state/progress"
-    # Go module caches are read-only; make an old WRKDIR removable first.
-    case "$wrkdir" in /*) [ ! -d "$wrkdir" ] || chmod -R u+w "$wrkdir" ;; esac
+    # The old WRKDIR goes to the trash. Where it cannot, make it removable
+    # for the clean step: Go module caches are read-only.
+    retire "$wrkdir" "$job.$key" ||
+        case "$wrkdir" in /*) [ ! -d "$wrkdir" ] || chmod -R u+w "$wrkdir" ;; esac
     if [ "$workers" -eq 1 ]; then
         bmk -C "$PKGSRCDIR/$path" clean < /dev/null > "$log" 2>&1 &&
             bmk -C "$PKGSRCDIR/$path" package-install < /dev/null >> "$log" 2>&1
@@ -534,10 +606,17 @@ build()
     chmod +x "$run/pkg_add"
     native_info
     target_settings=$(var pkgtools/pkg_install CROSSTARGETSETTINGS)
+    stamp=$(date '+%Y%m%d%H%M%S')
+    trash_init
+    deleter_pid=
+    if [ -n "$trash" ]; then
+        deleter $$ < /dev/null > /dev/null 2>&1 &
+        deleter_pid=$!
+    fi
+    job=0
     # The native nodes that a target package needs as a tool.
     awk '$1 ~ /@native$/ && $2 !~ /@native$/ { print $1 }' "$state/edges" | sort -u > "$run/crossfed"
     # Keep the results of an earlier run, but try its failures again.
-    stamp=$(date '+%Y%m%d%H%M%S')
     for list_name in failed blocked; do
         [ -s "$state/$list_name" ] && mv "$state/$list_name" "$state/$list_name.$stamp"
     done
@@ -567,7 +646,7 @@ build()
             changed=1
         done
         if [ "$stop" = 1 ]; then
-            [ "$running" -gt 0 ] || { echo 'Stopped; the running packages finished' >&2; trap - TERM INT HUP; rm -rf "$state/build.lock"; return 143; }
+            [ "$running" -gt 0 ] || { echo 'Stopped; the running packages finished' >&2; trap - TERM INT HUP; stop_deleter; rm -rf "$state/build.lock"; return 143; }
         elif [ "$changed" = 1 ] && [ "$running" -lt "$workers" ]; then
             changed=0
             ready $((workers - running)) > "$run/ready"
@@ -579,6 +658,7 @@ build()
                 else
                     echo "$path running" >> "$run/status"
                     running=$((running + 1))
+                    job=$((job + 1))
                     # Without errexit: every package reports a result.
                     # The scheduler may take the result at once, so the
                     # check is a flag, not the file; build_one changes $path.
@@ -597,7 +677,18 @@ build()
         sleep 1
     done
     trap - TERM INT HUP
+    stop_deleter
     rm -rf "$run" "$state/locks" "$state/build.lock"
+}
+
+# The deleter stops with the build (a tree it is removing is finished);
+# the next build removes the rest.
+stop_deleter()
+{
+    [ -n "$deleter_pid" ] || return 0
+    kill "$deleter_pid" 2> /dev/null || :
+    wait "$deleter_pid" 2> /dev/null || :
+    deleter_pid=
 }
 
 case "$mode" in
