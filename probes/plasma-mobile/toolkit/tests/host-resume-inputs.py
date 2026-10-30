@@ -79,6 +79,8 @@ with tempfile.TemporaryDirectory(prefix='qt-host-resume-') as temp:
         return (None, [])
     with patch.object(m, 'inspect_loads', side_effect=inspect_incremental):
         assert m.check(*args, '1')[0] == 'f'*64
+        assert m.check(inputs, str(script)+'-other', *args[2:], '1')[0] == 'f'*64
+        require_failure(lambda:m.check(inputs, str(script)+'-other', *args[2:]), 'producer path changed')
         require_failure(lambda:m.check(*args), 'unsupported previous producer')
         (new/'b.dylib').unlink()
         require_failure(lambda:m.check(*args, '1'), 'previous runtime entry changed')

@@ -174,6 +174,8 @@ if [ -e "$work" ] || [ -L "$work" ]; then
     set -- $resume_record
     [ "$#" = 2 ] || { echo 'Invalid Qt host resume result' >&2; exit 2; }
     old_producer_identity=$1 resume_start=$2
+    old_producer_path=$(sed -n "${resume_start}p" "$work/inputs.txt" | cut -c 67-)
+    old_toolkit=${old_producer_path%/cross/build-host-tools.sh}
     # The predecessor did not record this checker. Later builds must retain it.
     resume_extra_inputs=
     case "$old_producer_identity" in
@@ -204,6 +206,11 @@ if [ -e "$work" ] || [ -L "$work" ]; then
             case "$tool" in "$HOST_RUNTIME_VIEW"/*) continue ;; esac
         fi
         old_path=$tool
+        # A different checkout is allowed only for an explicit incremental
+        # reconfigure; the previous owner input must still match byte for byte.
+        if [ "$HOST_INCREMENTAL_RECONFIGURE" = 1 ]; then
+            case "$tool" in "$toolkit/"*) old_path=$old_toolkit/${tool#"$toolkit/"} ;; esac
+        fi
         hash=$(shasum -a 256 "$tool" | cut -d ' ' -f 1)
         sed -n "${resume_start},\$p" "$work/inputs.txt" | grep -F -x "$hash  $old_path" >/dev/null || {
             echo "Host input changed; use a new work directory: $tool" >&2; exit 2;

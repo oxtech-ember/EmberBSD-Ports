@@ -127,7 +127,7 @@ def check(inputs, script, view, profile, prefix, deployment, work, native_prefix
     start, match = starts[-1]
     block = lines[start:]
     old_script = match.group(2)
-    if os.path.abspath(old_script) != os.path.abspath(script):
+    if not incremental and os.path.abspath(old_script) != os.path.abspath(script):
         fail('producer path changed')
     if not incremental and match.group(1) not in (PREDECESSOR, PREDECESSOR_CMAKE, digest(script)):
         fail('unsupported previous producer identity')

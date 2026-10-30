@@ -96,7 +96,9 @@ those extracted sources. To reconfigure against an updated selected native
 runtime view, set `HOST_INCREMENTAL_RECONFIGURE=1` together with `RESUME=1`.
 This records a new input block and permits changed or added runtime providers
 only after checking their selected prefixes and existing Mach-O load names;
-compiler, ABI, core tools and archived Qt sources remain fixed. Validate the
+compiler, ABI, core tools and archived Qt sources remain fixed. An explicit
+incremental reconfigure may use another owner checkout when the recorded
+source patches match byte for byte; the new producer path is recorded. Validate the
 reconfigured modules and their actual consumers after changing dependencies.
 For a completed set of earlier modules, `QT_HOST_RESUME_FROM=qtquick3d`
 selects that module only. `HOST_QT_QUICK3D_BUILD_DIR` may point to its existing
