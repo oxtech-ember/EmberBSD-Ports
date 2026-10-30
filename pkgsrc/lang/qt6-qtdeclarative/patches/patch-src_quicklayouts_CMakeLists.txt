@@ -1,0 +1,42 @@
+$NetBSD$
+
+Origin: EmberBSD; AI-assisted, not submitted upstream.
+
+Build the Flexbox layout with the shared pkgsrc Yoga instead of
+the bundled Yoga 2.0.1 copy.
+
+--- src/quicklayouts/CMakeLists.txt.orig
++++ src/quicklayouts/CMakeLists.txt
+@@ -27,27 +27,14 @@
+         Qt::Qml
+     )
+ 
++find_package(yoga 3.2.1 CONFIG REQUIRED)
++
+ qt_internal_extend_target(QuickLayouts CONDITION NOT INTEGRITY
+-    INCLUDE_DIRECTORIES
+-        ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty
+     SOURCES
+-        # Qt flexbox layout (uses inernally yoga engine to layout quick items)
++        # Qt flexbox layout (uses the shared Yoga engine to layout quick items)
+         qquickflexboxlayout.cpp qquickflexboxlayout_p.h
+         qquickflexboxlayoutengine.cpp qquickflexboxlayoutengine_p.h
+         qquickflexboxlayoutitem_p.h qquickflexboxlayoutitem.cpp
+-        # Yoga library source
+-        ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/yoga/Yoga.cpp
+-        ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/yoga/event/event.cpp
+-        ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/yoga/YGValue.cpp
+-        ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/yoga/YGStyle.cpp
+-        ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/yoga/YGEnums.cpp
+-        ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/yoga/YGNodePrint.cpp
+-        ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/yoga/YGNode.cpp
+-        ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/yoga/YGLayout.cpp
+-        ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/yoga/YGEnums.cpp
+-        ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/yoga/YGConfig.cpp
+-        ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/yoga/Utils.cpp
+-        ${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/yoga/log.cpp
+-    ATTRIBUTION_FILE_DIR_PATHS
+-        "${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/yoga"
++    LIBRARIES
++        yoga::yogacore
+     )
