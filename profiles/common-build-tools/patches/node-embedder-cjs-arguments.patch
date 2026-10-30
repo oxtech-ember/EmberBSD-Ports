@@ -1,0 +1,107 @@
+# Origin: Electron contributors; adapted for shared Node by EmberBSD (AI-assisted).
+--- src/node.h
++++ src/node.h
+@@ -657,7 +657,10 @@
+   // model's addon scope (--allow-addons): linked bindings are compiled into
+   // the executable by the embedder, unlike addons loaded from the file system
+   // through process.dlopen(), which stays gated. Inherited by worker threads.
+-  kNoAddonPermissionForLinkedBindings = 1 << 12
++  kNoAddonPermissionForLinkedBindings = 1 << 12,
++  // Pass process, global and Buffer as additional CommonJS call arguments.
++  // Embedders must select this per Environment; CJS formal parameters remain unchanged.
++  kEmbedderCJSExtraArguments = 1 << 13
+ };
+ }  // namespace EnvironmentFlags
+ 
+--- src/env.h
++++ src/env.h
+@@ -935,6 +935,7 @@
+   inline bool no_global_search_paths() const;
+   inline bool should_start_debug_signal_handler() const;
+   inline bool no_browser_globals() const;
++  inline bool embedder_cjs_extra_arguments() const;
+   inline bool no_addon_permission_for_linked_bindings() const;
+   inline uint64_t thread_id() const;
+   inline std::string_view thread_name() const;
+--- src/env-inl.h
++++ src/env-inl.h
+@@ -696,6 +696,10 @@
+          !options_->disable_sigusr1;
+ }
+ 
++inline bool Environment::embedder_cjs_extra_arguments() const {
++  return flags_ & EnvironmentFlags::kEmbedderCJSExtraArguments;
++}
++
+ inline bool Environment::no_browser_globals() const {
+   // configure --no-browser-globals
+ #ifdef NODE_NO_BROWSER_GLOBALS
+--- src/node_options.cc
++++ src/node_options.cc
+@@ -2196,18 +2196,20 @@
+   }
+   Isolate* isolate = args.GetIsolate();
+ 
+-  constexpr size_t kOptionsSize = 4;
++  constexpr size_t kOptionsSize = 5;
+   std::array<Local<Name>, kOptionsSize> names = {
+       FIXED_ONE_BYTE_STRING(env->isolate(), "shouldNotRegisterESMLoader"),
+       FIXED_ONE_BYTE_STRING(env->isolate(), "noGlobalSearchPaths"),
+       FIXED_ONE_BYTE_STRING(env->isolate(), "noBrowserGlobals"),
+-      FIXED_ONE_BYTE_STRING(env->isolate(), "hasEmbedderPreload")};
++      FIXED_ONE_BYTE_STRING(env->isolate(), "hasEmbedderPreload"),
++      FIXED_ONE_BYTE_STRING(env->isolate(), "cjsExtraArguments")};
+ 
+   std::array<Local<Value>, kOptionsSize> values = {
+       Boolean::New(isolate, env->should_not_register_esm_loader()),
+       Boolean::New(isolate, env->no_global_search_paths()),
+       Boolean::New(isolate, env->no_browser_globals()),
+-      Boolean::New(isolate, env->embedder_preload() != nullptr)};
++      Boolean::New(isolate, env->embedder_preload() != nullptr),
++      Boolean::New(isolate, env->embedder_cjs_extra_arguments())};
+ 
+   Local<Object> ret = Object::New(
+       isolate, Null(isolate), names.data(), values.data(), kOptionsSize);
+--- lib/internal/modules/cjs/loader.js
++++ lib/internal/modules/cjs/loader.js
+@@ -183,6 +183,9 @@
+ const lazyTypeScript = getLazy(() => require('internal/modules/typescript'));
+ const packageJsonReader = require('internal/modules/package_json_reader');
+ const { getOptionValue, getEmbedderOptions } = require('internal/options');
++let cjsEmbedderProcess;
++let cjsEmbedderGlobal;
++let cjsEmbedderBuffer;
+ const shouldReportRequiredModules = getLazy(() => process.env.WATCH_REPORT_DEPENDENCIES);
+ 
+ const {
+@@ -506,6 +509,12 @@
+  * @returns {void}
+  */
+ function initializeCJS() {
++  // Capture before an embedder preload removes the renderer globals.
++  if (getEmbedderOptions().cjsExtraArguments && cjsEmbedderProcess === undefined) {
++    cjsEmbedderProcess = process;
++    cjsEmbedderGlobal = globalThis;
++    cjsEmbedderBuffer = globalThis.Buffer;
++  }
+   // This need to be done at runtime in case --expose-internals is set.
+ 
+   Module.builtinModules = ObjectFreeze(BuiltinModule.getAllBuiltinModuleIds());
+@@ -1962,8 +1971,15 @@
+   this[kIsExecuting] = true;
+   if (this[kIsMainSymbol] && getOptionValue('--inspect-brk')) {
+     const { callAndPauseOnStart } = internalBinding('inspector');
+-    result = callAndPauseOnStart(compiledWrapper, thisValue, exports,
+-                                 require, module, filename, dirname);
++    if (getEmbedderOptions().cjsExtraArguments) {
++      result = callAndPauseOnStart(compiledWrapper, thisValue, exports, require, module, filename, dirname,
++                                   cjsEmbedderProcess, cjsEmbedderGlobal, cjsEmbedderBuffer);
++    } else {
++      result = callAndPauseOnStart(compiledWrapper, thisValue, exports, require, module, filename, dirname);
++    }
++  } else if (getEmbedderOptions().cjsExtraArguments) {
++    result = FunctionPrototypeCall(compiledWrapper, thisValue, exports, require, module, filename, dirname,
++                                   cjsEmbedderProcess, cjsEmbedderGlobal, cjsEmbedderBuffer);
+   } else {
+     result = FunctionPrototypeCall(compiledWrapper, thisValue, exports, require, module, filename, dirname);
+   }

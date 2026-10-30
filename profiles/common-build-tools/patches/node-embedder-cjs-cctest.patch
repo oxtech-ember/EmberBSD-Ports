@@ -1,0 +1,61 @@
+--- test/cctest/test_environment.cc.orig
++++ test/cctest/test_environment.cc
+@@ -1656,3 +1656,58 @@
+   isolate_->SetHostImportModuleWithPhaseDynamicallyCallback(nullptr);
+   isolate_->SetHostInitializeImportMetaObjectCallback(nullptr);
+ }
++
++// Requires <cstdlib>, <fstream>, and <iterator>.
++TEST_F(EnvironmentTest, EmbedderCJSExtraArguments) {
++  const std::string script = R"NODE_CJS(
++'use strict';
++const assert = require('node:assert/strict');
++const Module = require('node:module');
++const vm = require('node:vm');
++const savedProcess = process;
++const savedGlobal = globalThis;
++const SavedBuffer = Buffer;
++const optedIn = globalThis.__cjsExtraExpected === true;
++const run = (source) => { const m = new Module('/tmp/embedder-cjs-test.js'); m.filename = '/tmp/embedder-cjs-test.js'; m.paths = []; m._compile(source, m.filename); return m.exports; };
++// The native wrapper keeps five formals even when the embedder enables extra args.
++assert.deepEqual(run('const Buffer = 17; let process = 19; module.exports = [Buffer, process, arguments.length]'), [17, 19, optedIn ? 8 : 5]);
++assert.equal(vm.runInNewContext('typeof process + ":" + typeof Buffer'), 'undefined:undefined');
++Module.wrapper = [
++  '(function(exports, require, module, __filename, __dirname, process, global, Buffer) { return function(exports, require, module, __filename, __dirname) { ',
++  '\n}.call(this, exports, require, module, __filename, __dirname); })'
++];
++const result = run('module.exports = [process, global, Buffer, arguments.length]');
++assert.equal(result[0], optedIn ? savedProcess : undefined);
++assert.equal(result[1], optedIn ? savedGlobal : undefined);
++assert.equal(result[2], optedIn ? SavedBuffer : undefined);
++assert.equal(result[3], 5);
++assert.deepEqual(run('const Buffer = 17; let process = 19; module.exports = [Buffer, process]'), [17, 19]);
++if (optedIn) {
++  try {
++    delete globalThis.process; delete globalThis.global; delete globalThis.Buffer;
++    const retained = run('module.exports = [process, global, Buffer]');
++    assert.equal(retained[0], savedProcess); assert.equal(retained[1], savedGlobal);
++    assert.equal(retained[2], SavedBuffer);
++  } finally {
++    globalThis.process = savedProcess; globalThis.global = savedGlobal; globalThis.Buffer = SavedBuffer;
++  }
++}
++console.log(`CJS extra arguments ${optedIn ? 'enabled' : 'disabled'}: PASS`);
++)NODE_CJS";
++  for (const bool enabled : {false, true}) {
++    v8::HandleScope handle_scope(isolate_);
++    v8::Local<v8::Context> context = node::NewContext(isolate_);
++    v8::Context::Scope context_scope(context);
++    auto flags = enabled ? node::EnvironmentFlags::kEmbedderCJSExtraArguments
++                         : node::EnvironmentFlags::kNoFlags;
++    std::unique_ptr<node::Environment, decltype(&node::FreeEnvironment)> env(
++        node::CreateEnvironment(isolate_data_, context, {}, {}, flags),
++        node::FreeEnvironment);
++    ASSERT_NE(env, nullptr);
++    std::string source = std::string("globalThis.__cjsExtraExpected = ") +
++                         (enabled ? "true;\n" : "false;\n") + script;
++    EXPECT_FALSE(node::LoadEnvironment(env.get(), source.c_str()).IsEmpty())
++        << "enabled=" << enabled;
++  }
++}
++

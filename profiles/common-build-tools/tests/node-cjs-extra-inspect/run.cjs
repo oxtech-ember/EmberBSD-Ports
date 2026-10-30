@@ -1,0 +1,24 @@
+'use strict';
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const childProcess = require('node:child_process');
+const binary = process.argv[2];
+const nodeSource = process.argv[3];
+if (!binary || !nodeSource) throw new Error('Usage: run.cjs <embedtest> <node-source>');
+const originalSpawn = childProcess.spawn;
+childProcess.spawn = (command, args, options) => originalSpawn(command === process.execPath ? binary : command, args, options);
+const { NodeInstance } = require(path.join(nodeSource, 'test/common/inspector-helper.js'));
+childProcess.spawn = originalSpawn;
+(async () => {
+  const child = new NodeInstance(['--inspect-brk=0', '--require', path.join(__dirname, 'preload.cjs')], '', path.join(__dirname, 'main.cjs'));
+  const session = await child.connectInspectorSession();
+  await session.send({ method: 'NodeRuntime.enable' });
+  await session.waitForNotification('NodeRuntime.waitingForDebugger');
+  await session.send([{ method: 'Runtime.enable' }, { method: 'Debugger.enable' }, { method: 'Runtime.runIfWaitingForDebugger' }]);
+  await session.waitForBreakOnLine(0, session.scriptURL());
+  await session.runToCompletion();
+  const result = await child.expectShutdown();
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.signal, null);
+  console.log('actual inspector resume and opt-in CJS main: PASS');
+})().catch(error => { console.error(error); process.exitCode = 1; });
