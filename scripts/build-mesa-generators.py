@@ -111,6 +111,8 @@ def native_file(native, binding=None):
              'python': 'python', 'python3': 'python', 'python3.15': 'python'}
     def selected(role):
         return (binding['adapters'][role],) if binding and role in ('cc', 'cxx', 'cpp') else native.command(role)
+    if 'llvm-lipo' in native.tools:
+        names['lipo'] = 'llvm-lipo'
     rows = ['[binaries]'] + [name + ' = ' + value(selected(role))
                             for name, role in names.items()]
     host = Path(native.bundle_root)

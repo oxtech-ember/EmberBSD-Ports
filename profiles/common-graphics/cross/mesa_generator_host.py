@@ -30,7 +30,7 @@ def host_policy(host_os=None, host_cpu=None, compiler_family='clang'):
 def required_roles(base_roles, policy):
     roles = list(base_roles)
     if policy['os'] == 'Darwin':
-        roles.append('otool')
+        roles.extend(('otool', 'llvm-lipo'))
     return tuple(dict.fromkeys(roles))
 
 

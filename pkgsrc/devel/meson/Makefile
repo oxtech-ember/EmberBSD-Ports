@@ -4,6 +4,7 @@
 # https://github.com/mesonbuild/meson/tree/master/docs/markdown/
 
 DISTNAME=	meson-1.12.1
+PKGREVISION=	1
 CATEGORIES=	devel python
 #MASTER_SITES=	${MASTER_SITE_PYPI:=m/meson/}
 MASTER_SITES=	${MASTER_SITE_GITHUB:=mesonbuild/}

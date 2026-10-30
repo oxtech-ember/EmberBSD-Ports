@@ -45,6 +45,10 @@ TOOLS_PATH.otool=	${_MESON_OTOOL}
 MESON_NATIVE_FILE=	${WRKDIR}/.meson_native
 MESON_NATIVE_ARGS+=	--native-file ${MESON_NATIVE_FILE:Q}
 MESON_NATIVE_ARGS+=	${MESON_NATIVE_EXTRA_ARGS:U}
+.if ${OPSYS} == "Darwin" && defined(MACHO_LIPO)
+MESON_BINARIES+=	lipo
+MESON_BINARY.lipo?=	${MACHO_LIPO}
+.endif
 
 # A prepared native stage keeps logical .pc prefixes in installed metadata.
 # Relocate queries to the buildlink view for this stage only.

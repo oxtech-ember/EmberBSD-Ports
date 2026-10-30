@@ -8,3 +8,5 @@ SHA1 (patch-mesonbuild_compilers_mixins_gnu.py) = 34c2f6f215d5aed1d6c422187f733d
 SHA1 (patch-mesonbuild_dependencies_dev.py) = 1eb649831c5e9e8e13f468ba91d9e02acc890a57
 SHA1 (patch-mesonbuild_linkers_linkers.py) = 4d3b775d871882e0026e65a4bd82cfec64e468c4
 SHA1 (patch-mesonbuild_modules_pkgconfig.py) = df5c55ed97c78e397be07a234e99d2707ff10808
+SHA1 (patch-mesonbuild_compilers_mixins_clike.py) = cc46c682af90232cb545b11dc597e1c97ceb8282
+SHA1 (patch-mesonbuild_utils_universal.py) = 877f5c738cfaffcbf2c095e32ea78045fdadadc9
