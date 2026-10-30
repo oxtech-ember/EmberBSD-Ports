@@ -14,10 +14,18 @@ LICENSE=	modified-bsd
 
 USE_LANGUAGES=		c++
 USE_CXX_FEATURES=	c++17
+# The unit tests and examples are target programs that a cross build cannot
+# run and the package does not install. Their CMake subdirectories also
+# include CTest, whose host query runs the build host's sw_vers and ps.
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+CMAKE_CONFIGURE_ARGS+=		-DRAPIDJSON_BUILD_TESTS=OFF
+CMAKE_CONFIGURE_ARGS+=		-DRAPIDJSON_BUILD_EXAMPLES=OFF
+.else
 TEST_TARGET=		test
-
 CMAKE_CONFIGURE_ARGS+=		-DRAPIDJSON_BUILD_TESTS=ON
 CMAKE_CONFIGURE_ARGS+=		-DRAPIDJSON_USE_SYSTEM_GTEST=ON
+.endif
 CMAKE_CONFIGURE_ARGS+=		-DRAPIDJSON_BUILD_CXX11=OFF
 CMAKE_CONFIGURE_ARGS+=		-DRAPIDJSON_BUILD_CXX17=ON
 CMAKE_CONFIGURE_ARGS+=		-DCMAKE_CXX_STANDARD=17
@@ -40,7 +48,9 @@ post-install:
 	    ${DESTDIR}${PREFIX}/include/rapidjson/pointer.h.orig
 
 .include "../../devel/cmake/build.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 BUILDLINK_DEPMETHOD.googletest=	build
 BUILDLINK_API_DEPENDS.googletest+=	googletest>=1.18.0
 .include "../../devel/googletest/buildlink3.mk"
+.endif
 .include "../../mk/bsd.pkg.mk"
