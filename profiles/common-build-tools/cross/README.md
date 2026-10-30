@@ -522,7 +522,11 @@ composition, refusal of existing output,
 missing host tools, target Info utility routing and the pkgsrc runtime
 dependency. It does not execute target binaries on the host.
 `tests/cross-runtime-perl.py` checks staged target Perl dependency and shebang
-selection, refusal when Perl is absent, and unchanged native behavior.
+selection, refusal when Perl is absent and the platform has no stored Perl
+config.sh, and unchanged native behavior.
+`tests/cross-perl-run-unstaged.py` checks that six real `perl:run` recipes are
+accepted before the target Perl is staged when the platform has a stored Perl
+config.sh, with a target `PERL5` and a host build Perl, and refused without it.
 `tests/cross-runtime-bash.py` uses the real OCCT recipe. It reproduces the
 unpatched refusal, checks target runtime and host generator dependencies,
 executes a host generator, and runs the real interpreter replacement target.

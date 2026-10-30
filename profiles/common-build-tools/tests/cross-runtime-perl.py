@@ -11,7 +11,7 @@ import subprocess
 VARIABLES = ("PKG_FAIL_REASON", "DEPENDS", "PERL5")
 
 
-def query(bmake, recipe, makeconf, sysroot, mode):
+def query(bmake, recipe, makeconf, sysroot, mode, extra=()):
     argv = [
         bmake,
         "-C",
@@ -20,6 +20,7 @@ def query(bmake, recipe, makeconf, sysroot, mode):
         "USE_CROSS_COMPILE=" + mode,
         "EMBERBSD_CROSS_SYSROOT=" + str(sysroot),
     ]
+    argv.extend(extra)
     for variable in VARIABLES:
         argv.extend(("-v", variable))
     result = subprocess.run(
@@ -63,7 +64,12 @@ def main():
 
     empty_sysroot = work / "empty-sysroot"
     empty_sysroot.mkdir()
-    without_perl = query(args.bmake, recipe, makeconf, empty_sysroot, "yes")
+    # Without a staged Perl, lang/perl5 must be buildable for the platform
+    # (stored config.sh); tests/cross-perl-run-unstaged.py covers that case.
+    without_perl = query(
+        args.bmake, recipe, makeconf, empty_sysroot, "yes",
+        ("EMBERBSD_PERL_STORED_CONFIG=" + str(work / "absent-config.sh"),),
+    )
     (work / "missing-target-perl.log").write_text(
         "\n".join(without_perl.values()) + "\n"
     )
@@ -75,7 +81,7 @@ def main():
     if "not supported in cross-compilation" in native["PKG_FAIL_REASON"]:
         raise RuntimeError("Native Perl selection changed: " + native["PKG_FAIL_REASON"])
 
-    print("PASS: staged Perl is a target runtime dependency; absent target Perl is refused")
+    print("PASS: staged Perl is a target runtime dependency; absent target Perl without a stored config is refused")
 
 
 if __name__ == "__main__":

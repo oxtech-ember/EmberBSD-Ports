@@ -440,9 +440,24 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  _TOOLS_USE_PKGSRC.msgfmt?=	no
 --- a/mk/tools/replace.mk
 +++ b/mk/tools/replace.mk
-@@ -140,10 +140,58 @@
+@@ -140,10 +140,73 @@
  _TOOLS_DEPMETHOD.${_t_:C/:.*//}=	TOOL_DEPENDS
  .endfor
++# A cross target Perl is the lang/perl5 package. It builds from the config.sh
++# stored for each platform (profiles/common-build-tools/cross/perl.md), or from
++# answers captured on a target in capture mode. perl:run recipes depend on it,
++# so the decision must not depend on a Perl already staged in the sysroot:
++# fetch and the first parse of a build run before the dependency is installed.
++_EMBERBSD_TARGET_PERL=	no
++.if ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} == "NetBSD" && \
++    ${OPSYS} != ${NATIVE_OPSYS}
++_EMBERBSD_PERL_CONFIG=	${EMBERBSD_PERL_STORED_CONFIG:U${PKGSRCDIR}/lang/perl5/files/config/${MACHINE_PLATFORM}.sh}
++.  if exists(${_EMBERBSD_PERL_CONFIG}) || \
++      ${EMBERBSD_PERL_CAPTURE_CONFIG:Uno:tl} == "yes" || \
++      exists(${CROSS_DESTDIR}/usr/pkg/bin/perl)
++_EMBERBSD_TARGET_PERL=	yes
++.  endif
++.endif
  .for _t_ in ${USE_TOOLS:M*\:run}
 +# install-info is never executed during the build: its wrapper is a no-op.
 +# Standard NetBSD base utilities get the same treatment for packages whose
@@ -480,9 +495,9 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
 +EMBER_CROSS_RUN_OK=	yes
 +DEPENDS+=		bash-[0-9]*:../../shells/bash
 +.    endif
-+# The staged target Perl package supports scripts with a Perl runtime.
-+.    if ${_t_} == "perl:run" && ${OPSYS} == "NetBSD" && \
-+        exists(${CROSS_DESTDIR}/usr/pkg/bin/perl)
++# The target Perl package (lang/perl5, a run dependency) supports scripts
++# with a Perl runtime.
++.    if ${_t_} == "perl:run" && ${_EMBERBSD_TARGET_PERL} == "yes"
 +EMBER_CROSS_RUN_OK=	yes
 +.    endif
 +.    if ${EMBER_CROSS_RUN_OK:tl} != "yes"
@@ -500,7 +515,7 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  .endfor
  .for _t_ in ${USE_TOOLS:M*\:test}
  _TOOLS_DEPMETHOD.${_t_:C/:.*//}=	TEST_DEPENDS
-@@ -535,6 +583,12 @@
+@@ -535,6 +598,12 @@
  TOOLS_DEPENDS.install-info?=	pkg_install-info-[0-9]*:../../pkgtools/pkg_install-info
  TOOLS_CREATE+=			install-info
  TOOLS_PATH.install-info=	${TOOLBASE}/bin/pkg_install-info
@@ -513,15 +528,14 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  .  endif
  .endif
  #
-@@ -978,6 +1031,13 @@
+@@ -978,6 +1046,12 @@
  TOOLS_DEPENDS.${_t_}?=		perl>=${PERL5_REQD}:../../lang/perl5
  TOOLS_CREATE+=			${_t_}
  TOOLS_PATH.${_t_}=		${TOOLBASE}/bin/${_t_}
-+.    if ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} != ${NATIVE_OPSYS} && \
-+        ${_t_} == "perl" && !empty(USE_TOOLS:Mperl\:run) && \
-+        exists(${CROSS_DESTDIR}/usr/pkg/bin/perl)
++.    if ${_t_} == "perl" && !empty(USE_TOOLS:Mperl\:run) && \
++        ${_EMBERBSD_TARGET_PERL} == "yes"
 +# Build steps run the host Perl through the tools wrapper. Installed
-+# scripts (REPLACE_PERL) name the staged target Perl.
++# scripts (REPLACE_PERL) name the target Perl from lang/perl5.
 +PERL5=	${PREFIX}/bin/perl
 +.    endif
  .    endif

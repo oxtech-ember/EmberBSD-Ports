@@ -294,7 +294,24 @@ Valgrind and the complete QtTools/Plasma consumers remain unaccepted.
 
 ## Perl in other cross recipes
 
-When a `perl:run` cross recipe finds the target Perl staged in the sysroot, the
+A `perl:run` cross recipe gets the target Perl as a run dependency on
+`lang/perl5`. It is accepted when `lang/perl5` can build for the platform: a
+stored `files/config/${MACHINE_PLATFORM}.sh` exists (or
+`EMBERBSD_PERL_STORED_CONFIG` names one), capture mode is on, or a target Perl
+is already staged in the sysroot. The decision does not wait for the staged
+Perl, because a bulk fetch and the first parse of a build run before the
+dependency is installed. Without any of these the recipe is refused with
+`USE_TOOLS+=perl:run not supported in cross-compilation`.
+[`tests/cross-perl-run-unstaged.py`](../tests/cross-perl-run-unstaged.py)
+checks both cases on six real recipes against a sysroot without a staged Perl:
+
+```sh
+/absolute/ports-python3 -B profiles/common-build-tools/tests/cross-perl-run-unstaged.py \
+    --pkgsrc /absolute/pkgsrc --makeconf /absolute/cross-mk.conf \
+    --sysroot /absolute/sysroot --work /absolute/new-test-dir --bmake /absolute/bmake-command
+```
+
+For such a recipe the
 tools wrapper, `TOOLS_PERL5` and configure `PERL` still run the build host's
 Perl. Only `PERL5`, and so `REPLACE_PERL`, names the target `/usr/pkg/bin/perl`
 for installed scripts. The [evaluation test](../tests/cross-perl-tools.sh)
