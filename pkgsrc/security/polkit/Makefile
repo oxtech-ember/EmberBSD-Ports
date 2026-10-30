@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.62 2026/09/02 19:04:19 wiz Exp $
 
 DISTNAME=	polkit-127
-PKGREVISION=	4
+PKGREVISION=	5
 CATEGORIES=	security
 MASTER_SITES=	${MASTER_SITE_GITHUB:=polkit-org/}
 
@@ -44,7 +44,7 @@ MESON_BINARY.glib-mkenums= ${TOOLBASE}/bin/glib-mkenums
 MESON_BINARY.glib-genmarshal= ${TOOLBASE}/bin/glib-genmarshal
 MESON_BINARY.gdbus-codegen= ${TOOLBASE}/bin/gdbus-codegen
 MESON_BINARY.g-ir-scanner= ${TOOLBASE}/bin/g-ir-scanner
-MESON_BINARY.g-ir-compiler= ${TOOLBASE}/bin/g-ir-compiler
+MESON_BINARY.g-ir-compiler= ${_EMBER_GI_COMPILER}
 MESON_CROSS_VARS+= emberbsd_gi_cross emberbsd_gi_ldd_wrapper
 MESON_CROSS.emberbsd_gi_cross= true
 MESON_CROSS.emberbsd_gi_ldd_wrapper= '${EMBERBSD_GI_FILESDIR}/elf-needed.sh'
