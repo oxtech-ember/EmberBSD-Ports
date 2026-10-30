@@ -24,10 +24,16 @@ the fetched archives. The seed must execute on the build host; Go 1.27 requires
 at least 1.24.6. No older `go-bin` or compiler chain is selected.
 
 The recipe passes pkgsrc's `MAKE_ENV` and `TEST_ENV` to upstream build/test
-scripts, preserving the selected `SDKROOT`. Native builds use `CC` and `CXX`;
-cross builds use `NATIVE_CC` and `NATIVE_CXX` for host programs and `CC`/`CXX`
-for `CC_FOR_TARGET`/`CXX_FOR_TARGET`. These are full commands, preserving
-explicit compiler, linker, ABI, and sysroot arguments. Select native and target
+scripts, preserving the selected `SDKROOT`. Native builds use `CC` and `CXX`
+as full commands, preserving explicit compiler, linker, ABI, and sysroot
+arguments. Cross builds use `NATIVE_CC` and `NATIVE_CXX` for host programs.
+`cmd/dist` records `CC_FOR_TARGET`, `CXX_FOR_TARGET` and `PKG_CONFIG` in
+`zdefaultcc.go` as the installed toolchain's defaults, and target cgo is not
+run during a cross build, so cross builds pass the command names on the
+target: `CC`/`CXX` without directory, cross prefix, or arguments (`clang`,
+`clang++`) and `pkg-config`. `patch-src_cmd_dist_buildgo.go` also leaves the
+build host's compiler out of those defaults when the toolchain is built for
+another platform, unless `CC_FOR_<goos>_<goarch>` names one explicitly. Select native and target
 inputs independently through the existing pkgsrc configuration. `GOENV=off`
 and `GOTOOLCHAIN=local` prevent persistent user settings or automatic Go
 toolchain downloads from changing the build.
@@ -54,6 +60,16 @@ python3 -B pkgsrc/lang/go127/tests/native-routing.py \
     --pkgsrc /absolute/export --makeconf /absolute/native.mk.conf \
     --bmake /absolute/prefix/bin/bmake --shell /absolute/prefix/bin/mksh \
     --seed /absolute/native-go-tree --pkg-admin /absolute/prefix/sbin/pkg_admin
+```
+
+`tests/cross-default-compilers.py` patches the real source and runs the
+patched `cmd/dist` code that writes `zdefaultcc.go` for a cross-built,
+an explicitly configured, and a native toolchain. Pass the cross Ports make
+command and a Go command for the build host:
+
+```sh
+python3 -B pkgsrc/lang/go127/tests/cross-default-compilers.py \
+    --make /absolute/cross-make --go /absolute/native-go-tree/bin/go
 ```
 
 Consumers compile Go source against this common provider. Version updates
