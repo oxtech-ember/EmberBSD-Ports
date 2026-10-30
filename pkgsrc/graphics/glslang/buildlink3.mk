@@ -12,6 +12,8 @@ BUILDLINK_ABI_DEPENDS.glslang+=	glslang>=16.6.0nb1
 BUILDLINK_ABI_DEPENDS.glslang+=	glslang>=16.6.0nb2
 .endif
 BUILDLINK_PKGSRCDIR.glslang?=	../../graphics/glslang
+# The upstream CMake export validates its installed standalone target.
+BUILDLINK_FILES.glslang+=	bin/glslang
 
 .endif	# GLSLANG_BUILDLINK3_MK
 
