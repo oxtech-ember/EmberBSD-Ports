@@ -61,6 +61,7 @@ reasons appear in `PKG_FAIL_REASON` and point to this document.
 | Platform | Measured on |
 | --- | --- |
 | `NetBSD-11.0-aarch64` | EmberBSD AArch64 board, Perl 5.44.0, 2026-10-29 |
+| `NetBSD-11.0-x86_64` | EmberBSD amd64 laptop (Ninkear), Perl 5.44.0, 2026-10-30 |
 
 ### Capturing a new platform or Perl version
 
