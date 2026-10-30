@@ -7,9 +7,29 @@ A compiler selection does not change the target C or C++ runtime ABI.
 
 ## First tools
 
-Export the pinned pkgsrc tree with the root [source command](../../README.md#package-integration).
 Source preparation needs an existing control Python, Git, and patch.
 It does not require a completed SDK.
+
+For an SDK build or another run that also prepares common sources, create one
+shared export from the Ports checkout and use its `pkgsrc` child for bootstrap
+and packages:
+
+```sh
+python3 -B scripts/pkgsrc-shared-export.py /absolute/new-shared-export \
+    --sdk-source /absolute/EmberBSD-SDK --git /absolute/git --patch /absolute/patch
+# Bootstrap: /absolute/new-shared-export/pkgsrc/bootstrap/bootstrap ...
+# Common source producers: --pkgsrc-export /absolute/new-shared-export
+```
+
+Keep the exported recipes unchanged while they are used. Select workspace paths
+outside the export for bootstrap `--workdir` and `--prefix`, and for subsequent
+package builds' `WRKOBJDIR`, `DISTDIR`, `PACKAGES`, and `PKG_DBDIR`. The shared
+export is bound to the selected Ports and pkgsrc inputs and patch tool; create
+a fresh one when those inputs change. Coordinate writers to the package prefix
+and object directories.
+
+For standalone bootstrap without common source preparation, use the root
+[source command](../../README.md#package-integration) to export pkgsrc instead.
 
 The exported `bootstrap/bootstrap` supports `--compiler clang`,
 `--unprivileged`, `--prefix`, `--pkgdbdir`, `--workdir`, and `--mk-fragment`.
