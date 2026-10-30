@@ -74,7 +74,7 @@ Prepare these separate directories, outside Git:
   Existing native predicates do not remove the required native version floor.
   `tests/host-libtool.sh` (in the parent profile) checks the registered native
   packages, regular provider files and a native shared-library consumer.
-  The bootstrap must also own native `cmake-4.4.4nb1` built from the same export
+  The bootstrap must also own native `cmake-4.4.5nb9` built from the same export
   (`bmake -C export/devel/cmake MAKECONF=`*host*`/etc/mk.conf package-install`).
   Ports recipes set `CMAKE_REQD` to 4.4.4, and the native Mesa generator build
   requires this package. The registered native package then satisfies the

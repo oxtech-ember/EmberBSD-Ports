@@ -105,7 +105,7 @@ tools. The final SDK can select its own `llvm-install-name-tool` and
 Ports host prefix, the generated host toolset include selects those prefix
 tools ([native toolset](cross/native-toolset.md)).
 
-CMake 4.4.4nb4 retains its text-stub feature. The common Darwin rule uses
+The common CMake recipe retains its text-stub feature. The common Darwin rule uses
 fixed Apple or LLVM arguments. Apple TAPI receives `stubify -isysroot`;
 `llvm-readtapi` receives `--stubify`. Both receive the explicit output and
 input paths. The selected cache entries prevent implicit TAPI or install-name
@@ -314,13 +314,14 @@ packages use a separate cross profile and sysroot. The retained
 [GCC cross-package configuration](cross/README.md) is an explicit target route;
 it does not change the native default or establish a Clang application runtime.
 
-The common CMake provider uses stable 4.4.4 from [NetBSD pkgsrc commit
+The common CMake provider uses stable 4.4.5, adapting [NetBSD pkgsrc commit
 `5cd745c4794fcf99c8a789dfc750df5b89be35c8`](https://github.com/NetBSD/pkgsrc/commit/5cd745c4794fcf99c8a789dfc750df5b89be35c8).
 The release, checksums and module file list apply to native and cross builds.
-The uniform nb1 revision repairs GCC16 compilation of the Mach-O architecture
-reader. Header and API selection use the same macOS deployment-target guard.
-The [module regression](tests/cmake-macho/README.md) checks both deployment
-branches and independent Mach-O fixtures. Full packaging remains a separate gate.
+The recipe retains the Mach-O architecture reader repair introduced for GCC16:
+header and API selection use the same macOS deployment-target guard. The
+[module regression](tests/cmake-macho/README.md) documents its earlier checks
+of both deployment branches and independent Mach-O fixtures; those results do
+not establish GCC16 validation of CMake 4.4.5.
 
 Native Darwin defaults use the common Mach-O load-command checker for package
 requirements. It resolves each image's own runpaths to concrete providers.
