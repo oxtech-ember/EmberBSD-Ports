@@ -1,0 +1,17 @@
+$NetBSD$
+
+The top-level targets are commands, not files. On a case-insensitive
+build filesystem the distributed INSTALL file satisfies "install", so
+make reports it up to date and stages nothing.
+
+--- Makefile.in.orig
++++ Makefile.in
+@@ -4,6 +4,8 @@ PACKAGE_VERSION = @PACKAGE_VERSION@
+ PACKAGE_TARNAME = @PACKAGE_TARNAME@
+ tardir=${PACKAGE_TARNAME}-${PACKAGE_VERSION}
+ 
++.PHONY: all install clean distclean dist
++
+ all:
+ 	for i in src doc charsets; do\
+ 	   (cd $$i; $(MAKE) all);\
