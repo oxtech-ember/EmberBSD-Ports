@@ -368,7 +368,15 @@ count()
 }
 
 # A node starts only when every dependency node in STATE/edges is done, so
-# a package never builds a dependency itself. Only the scheduler writes the
+# a package never builds a dependency itself. pkgsrc's depends step would
+# still build one in place (DEPENDS_TARGET in the dependency's directory and
+# WRKDIR) when the installed package does not match the required pattern,
+# such as a buildlink pin older than the built PKGREVISION; two dependents
+# would then build in one WRKDIR at once. So every build run gets a
+# DEPENDS_TARGET that no makefile defines: such a dependent fails at once,
+# and its log names the dependency ("Verifying
+# emberbsd-refuse-unpreflighted-dependency for ...").
+# Only the scheduler writes the
 # state files; a node reports its result in STATE/run/KEY.result, written to
 # a temporary name and renamed. Compiles never wait for a lock; only the
 # installs into a shared prefix do. pkgsrc runs every pkg_add as
@@ -472,12 +480,14 @@ deleter()
     done
 }
 
+# Build runs: see the DEPENDS_TARGET note above.
 bmk()
 {
     if [ "$make_jobs" = makeconf ]; then
-        mk NATIVE_PKG_ADD_CMD="$run/pkg_add" "$@"
+        mk NATIVE_PKG_ADD_CMD="$run/pkg_add" DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency "$@"
     else
-        mk MAKE_JOBS="$make_jobs" NATIVE_PKG_ADD_CMD="$run/pkg_add" "$@"
+        mk MAKE_JOBS="$make_jobs" NATIVE_PKG_ADD_CMD="$run/pkg_add" \
+            DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency "$@"
     fi
 }
 
