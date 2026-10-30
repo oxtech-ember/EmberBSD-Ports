@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.19 2026/09/21 18:55:36 adam Exp $
 
 DISTNAME=	libidn2-2.3.8
+PKGREVISION=	1
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GNU:=libidn/}
 
@@ -23,6 +24,8 @@ CONFIGURE_ENV+=	ac_cv_path_GTKDOC_CHECK_PATH=
 CONFIGURE_ENV+=	ac_cv_path_GTKDOC_REBASE=
 CONFIGURE_ENV+=	ac_cv_path_GTKDOC_MKPDF=
 
+PREFER.iconv=	pkgsrc
+PREFER.gettext=	pkgsrc
 .include "../../mk/bsd.prefs.mk"
 
 .if ${PKGSRC_COMPILER:Msunpro}
