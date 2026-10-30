@@ -1,0 +1,16 @@
+$NetBSD$
+
+value.cpp calls std::mktime without <ctime>; libc++ headers do not include it
+transitively, so a clang build fails.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- src/value.cpp.orig
++++ src/value.cpp
+@@ -10,6 +10,7 @@
+ 
+ // + standard includes
+ #include <sstream>
++#include <ctime>
+ 
+ // *****************************************************************************
+ // class member definitions
