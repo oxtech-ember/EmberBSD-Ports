@@ -1,0 +1,27 @@
+--- a/textproc/xmlcatmgr/catalogs.mk
++++ b/textproc/xmlcatmgr/catalogs.mk
+@@ -32,14 +32,22 @@
+ # Convert SGML_CATALOGS files into arguments for SGML_ENTRIES.
+ .if !empty(SGML_CATALOGS)
+ .  for c in ${SGML_CATALOGS}
+-SGML_ENTRIES+=	CATALOG ${PREFIX:=${c}} --
++.    if ${c:M/*}
++SGML_ENTRIES+=	CATALOG ${c} --
++.    else
++SGML_ENTRIES+=	CATALOG ${PREFIX}/${c} --
++.    endif
+ .  endfor
+ .endif
+ 
+ # Convert XML_CATALOGS files into arguments for XML_ENTRIES.
+ .if !empty(XML_CATALOGS)
+ .  for c in ${XML_CATALOGS}
+-XML_ENTRIES+=	nextCatalog ${PREFIX:=${c}} --
++.    if ${c:M/*}
++XML_ENTRIES+=	nextCatalog ${c} --
++.    else
++XML_ENTRIES+=	nextCatalog ${PREFIX}/${c} --
++.    endif
+ .  endfor
+ .endif
+ 
