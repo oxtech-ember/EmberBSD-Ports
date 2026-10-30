@@ -54,8 +54,8 @@ def shim_masks(replacements):
     masks = set()
     for destination, shim in replacements.items():
         text = re.sub(r'(?m)#.*$', '', shim.read_text())
-        blocks = re.findall(r'shim_headers\("[^"\n]+"\)\s*\{([^{}]*)\}', text, re.S)
-        require(len(blocks) == len(re.findall(r'\bshim_headers\s*\(', text)),
+        blocks = re.findall(r'\b(?:absl_)?shim_headers\("[^"\n]+"\)\s*\{([^{}]*)\}', text, re.S)
+        require(len(blocks) == len(re.findall(r'\b(?:absl_)?shim_headers\s*\(', text)),
                 'unsupported Chromium shim_headers block: ' + str(shim))
         for block in blocks:
             roots = re.findall(r'\broot_path\s*=\s*"([^"\n]+)"', block)

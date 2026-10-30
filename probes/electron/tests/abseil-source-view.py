@@ -24,8 +24,10 @@ with tempfile.TemporaryDirectory() as tmp:
         (f.parent / 'example.h').write_text('original header')
         (f.parent / 'internal').mkdir()
         (f.parent / 'internal/only_bundled.inc').write_text('bundled only')
-    for name in ('absl_base.gn', 'absl_log_internal.gn'):
-        (unbundle / name).write_text('shim_headers("check") { root_path = "." headers = [ "example.h" ] }\n')
+    (unbundle / 'absl_base.gn').write_text('shim_headers("check") { root_path = "." headers = [ "example.h" ] }\n')
+    # The complete-inventory series wraps Chromium's shims in absl_shim_headers.
+    (unbundle / 'absl_log_internal.gn').write_text('import("//build/ember_absl_shim.gni")\n'
+                                                  'absl_shim_headers("check") { root_path = "." headers = [ "example.h" ] }\n')
     original = source / 'third_party/abseil-cpp/absl/base/BUILD.gn'
     normal = view.create(source, None, root / 'normal')
     assert (normal / 'third_party/abseil-cpp').is_symlink()
