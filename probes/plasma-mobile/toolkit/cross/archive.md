@@ -24,8 +24,8 @@ sh probes/plasma-mobile/toolkit/tests/archive-pkgconfig.sh \
 
 The regression reproduces the original failure with the real target `.pc`,
 then configures the same CMake imported target with the recipe's sysroot.
-`tests/linguist-tools.sh` additionally checks current, outdated and missing
-native generators and the retained target dependency.
+`tests/linguist-tools.sh` additionally checks that Linguist comes from the
+native `qt6-qttools` TOOL_DEPENDS and that the target dependency is retained.
 
 ## CM5 runtime, 2026-10-12
 

@@ -36,7 +36,7 @@ not replace the full QtTools target package acceptance.
 ```sh
 BMAKE=/absolute/native/bmake MAKECONF=/absolute/cross-mk.conf \
 sh probes/plasma-mobile/toolkit/tests/linguist-tools.sh \
-    /absolute/prepared-pkgsrc /absolute/host-qt/qtbase /absolute/new-check
+    /absolute/prepared-pkgsrc /absolute/new-check
 ```
 
 [KDocTools](doctools.md) and [Breeze](breeze.md) also use matching native generators.
