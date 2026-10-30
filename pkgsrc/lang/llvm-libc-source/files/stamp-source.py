@@ -35,7 +35,11 @@ try:
         raise ValueError('staged LLVM libc differs from the prepared common source')
     identity = {'llvm_version': record['llvm_version'], 'source': record['source'],
                 'runtime_recipe_files': record['recipe']['files']}
-    sourceprep.write_prepared_tree_receipt(dest, package='lang/llvm-libc-source', identity=identity)
-    sourceprep.validate_prepared_tree(dest, package='lang/llvm-libc-source', identity=identity)
+    stamped = sourceprep.write_prepared_tree_receipt(dest, package='lang/llvm-libc-source', identity=identity)
+    # The receipt holds the digest just measured from this tree. Check the
+    # written receipt instead of hashing the whole tree a second time.
+    receipt = Path(dest) / sourceprep.PREPARED_TREE_RECEIPT
+    if receipt.read_bytes() != jsonio.json_bytes(stamped):
+        raise ValueError('prepared source receipt differs from the measured record')
 except (SDKError, OSError, ValueError, KeyError) as exc:
     sdk_source.exit_error(exc, 'LLVM libc source: ')

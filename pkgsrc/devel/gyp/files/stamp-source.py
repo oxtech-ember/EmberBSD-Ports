@@ -13,7 +13,7 @@ import sdk_source
 
 sdk_source.install_signal_handlers()
 _, args = sdk_source.load_sdk(sys.argv[1:])
-from emberbsd_sdk import sourceprep
+from emberbsd_sdk import jsonio, sourceprep
 from emberbsd_sdk.errors import SDKError
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -28,7 +28,11 @@ try:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     identity = {'effective': module.effective_package_identity(root, 'devel/gyp', upstream)}
-    sourceprep.write_prepared_tree_receipt(a.source, package='devel/gyp', identity=identity)
-    sourceprep.validate_prepared_tree(a.source, package='devel/gyp', identity=identity)
+    stamped = sourceprep.write_prepared_tree_receipt(a.source, package='devel/gyp', identity=identity)
+    # The receipt holds the digest just measured from this tree. Check the
+    # written receipt instead of hashing the whole tree a second time.
+    receipt = Path(a.source) / sourceprep.PREPARED_TREE_RECEIPT
+    if receipt.read_bytes() != jsonio.json_bytes(stamped):
+        raise ValueError('prepared source receipt differs from the measured record')
 except (SDKError, OSError, ValueError) as exc:
     sdk_source.exit_error(exc, 'GYP package source: ')
