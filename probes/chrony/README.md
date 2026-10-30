@@ -110,13 +110,37 @@ packages. The disk ran in snapshot mode.
 The chrony package is a later 28 October rebuild of the package above, so its
 hash differs. The other dependencies are the 28 October packages listed above.
 
+## On the CIX P1 board
+
+Target: the Orange Pi 6 Plus on 30 October 2026, with the
+`EMBER64_CIX_PERIPHERALS` kernel from OS `6373585bb9a`. Its root is the reduced
+static cohort; it was not written. The test tree lives in a separate 1 GB
+tmpfs and is lost on reboot.
+
+- The `6dd5714` base set and the `c5d396f` etc set were unpacked into the
+  tmpfs (280 MB). The board root has no `tar`, `pax`, `chroot` or `xz`, so the
+  sets were decompressed on the build host and unpacked with static `pax`;
+  the packages run under a static `chroot`. Both tools were built from OS
+  `7cd7fe340fe`.
+- In the chroot, `pkg_add chrony-4.9.tgz` installed chrony and the same
+  packages as in the VM, 15 in total, without `-f`; `pkg_admin check` passed.
+- With `server 192.168.10.1 iburst` (the ARM) and `makestep 1.0 3`, `chronyd`
+  selected the ARM after 4 s: stratum 5, leap status Normal. Two polls later,
+  the system time was 0.15 us from NTP time and the last offset +67 us.
+- The board clock started 0.906 s slow, below the `makestep` threshold. On
+  NetBSD, chrony slews offsets below 1 s through the frequency, at most
+  500 ppm (`sys_netbsd.c`: `MAX_FREQ`, `MIN_FASTSLEW_OFFSET`). The offset fell
+  by about 0.8 ms per second, so it would have taken about 20 minutes, while
+  `chronyc` reported leap status Normal. `chronyc makestep` removed the rest.
+  A smaller `makestep` threshold for the board removes such offsets at start.
+
 ## Remaining
 
 - AArch64 execution on the base sets of OS `c93e0f475bf`, which also supply
   the runtime packages above. The VM used the older `6dd5714` base.
-- The CIX P1 board root is a reduced static C cohort without shared libraries
-  or pkgsrc; the package cannot run there until the board root comes from the
-  common base sets.
+- A persistent CIX P1 board root from the common base sets. The test above
+  ran in a tmpfs tree; the board root itself is still the reduced static
+  cohort without shared libraries or pkgsrc.
 - PPS through RFC 2783 and `gpiopps` waits for GPIO017 interrupts (N36).
 - An installable amd64 set needs the `gmp` and `gcc16` rebuilds above and a
   runtime-only GCC16 provider.
