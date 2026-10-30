@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (xmlstarlet-1.7.0.tar.gz) = 1d73da6bd7a7d530b136923fd8b75f7ae555117cc90f6896342a7d544cace54d
+SHA512 (xmlstarlet-1.7.0.tar.gz) = 6a7b2ab504048d3465ff422f40749ed3df046c3f4ba119de666090d5bc6018b6288df7ea7952d484e0e46534d2e721ad87b80fa2a507562b371c908fc8a3b3a7
+Size (xmlstarlet-1.7.0.tar.gz) = 372956 bytes
