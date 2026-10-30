@@ -1,0 +1,15 @@
+--- a/devel/gobject-introspection/Makefile
++++ b/devel/gobject-introspection/Makefile
+@@ -50,6 +50,12 @@
+ MAKE_ENV+=	DYLD_LIBRARY_PATH=${WRKSRC}/output/girepository${_EMBERBSD_NATIVE_RUNTIME_SUFFIX}
+ .endif
+ 
++# The native scanner must retain pkgsrc's selected buildlink context.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "no"
++NO_EXPORT_CPP= yes
++MAKE_ENV+= CPP=${WRAPPER_BINDIR:Q}/cpp
++.endif
++
+ # Disable cache to keep fake homedir clean
+ MAKE_ENV+=	GI_SCANNER_DISABLE_CACHE=yes
+ 
