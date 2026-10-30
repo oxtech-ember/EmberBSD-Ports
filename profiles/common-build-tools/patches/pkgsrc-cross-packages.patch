@@ -863,16 +863,6 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
 +.endif
 --- a/security/openssl/Makefile
 +++ b/security/openssl/Makefile
-@@ -109,6 +109,9 @@
- .include "options.mk"
- 
- CONFIGURE_ENV+=		PERL=${PERL5:Q}
-+# Configure must use the selected native or target archive tools.
-+CONFIGURE_ENV+=		AR=${AR:Q}
-+CONFIGURE_ENV+=		RANLIB=${RANLIB:Q}
- 
- # If the config script cannot guess the host system correctly then we need to
- # specify it manually and call the Configure script directly.
 @@ -140,6 +140,16 @@
  .endif
  OPENSSL_HOST.Darwin-aarch64=	darwin64-arm64-cc
@@ -908,3 +898,17 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  REPLACE_FILES.sys-bash=	${REPLACE_BASH}
  .endif
  
+--- a/mk/configure/configure.mk
++++ b/mk/configure/configure.mk
+@@ -207,6 +207,11 @@
+ _CONFIGURE_SCRIPT_ENV+=	INSTALL_DATA=${INSTALL_DATA:Q}
+ _CONFIGURE_SCRIPT_ENV+=	INSTALL_GAME=${INSTALL_GAME:Q}
+ _CONFIGURE_SCRIPT_ENV+=	INSTALL_GAME_DATA=${INSTALL_GAME_DATA:Q}
++.if !empty(EMBERBSD_NATIVE_TOOLSET_MAKECONF:U)
++# Use the selected native or target archive tools, before recipe overrides.
++_CONFIGURE_SCRIPT_ENV+=	AR=${AR:Q}
++_CONFIGURE_SCRIPT_ENV+=	RANLIB=${RANLIB:Q}
++.endif
+ _CONFIGURE_SCRIPT_ENV+=	${CONFIGURE_ENV}
+ 
+ .PHONY: do-configure-script
