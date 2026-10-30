@@ -92,14 +92,16 @@ CONFIGURE_ENV.SunOS+=	ac_cv_header_vis_h=no
 
 PLIST_VARS+=		glob vis afskauth native_tools
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-EMBERBSD_HEIMDAL_HOST_TOOLS_DIR?= ${TOOLBASE}/libexec/heimdal
-.  if empty(EMBERBSD_HEIMDAL_HOST_TOOLS_DIR:M${TOOLBASE}/*) || \
-    !exists(${EMBERBSD_HEIMDAL_HOST_TOOLS_DIR}/asn1_compile) || \
-    !exists(${EMBERBSD_HEIMDAL_HOST_TOOLS_DIR}/slc) || \
-    !exists(${EMBERBSD_HEIMDAL_HOST_TOOLS_DIR}/compile_et)
+# Only the native heimdal build (native_tools below) installs these tools into
+# the tool prefix; they are not a build-host path setting.
+_EMBERBSD_HEIMDAL_TOOLS_DIR= ${TOOLBASE}/libexec/heimdal
+.  if empty(_EMBERBSD_HEIMDAL_TOOLS_DIR:M${TOOLBASE}/*) || \
+    !exists(${_EMBERBSD_HEIMDAL_TOOLS_DIR}/asn1_compile) || \
+    !exists(${_EMBERBSD_HEIMDAL_TOOLS_DIR}/slc) || \
+    !exists(${_EMBERBSD_HEIMDAL_TOOLS_DIR}/compile_et)
 PKG_FAIL_REASON+= Select\ the\ native\ Heimdal\ cross-tools\ directory
 .  endif
-CONFIGURE_ARGS+= --with-cross-tools=${EMBERBSD_HEIMDAL_HOST_TOOLS_DIR:Q}
+CONFIGURE_ARGS+= --with-cross-tools=${_EMBERBSD_HEIMDAL_TOOLS_DIR:Q}
 .else
 PLIST.native_tools= yes
 post-install:
