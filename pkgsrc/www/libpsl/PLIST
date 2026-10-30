@@ -1,0 +1,8 @@
+@comment $NetBSD: PLIST,v 1.2 2024/01/14 20:12:08 wiz Exp $
+bin/psl
+bin/psl-make-dafsa
+include/libpsl.h
+lib/libpsl.la
+lib/pkgconfig/libpsl.pc
+man/man1/psl-make-dafsa.1
+man/man1/psl.1

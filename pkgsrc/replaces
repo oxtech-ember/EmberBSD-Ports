@@ -473,3 +473,6 @@ math/qalculate
 
 # Record the native C++ ABI for lzip.
 archivers/lzip
+
+# Select common gettext and iconv providers for libpsl.
+www/libpsl
