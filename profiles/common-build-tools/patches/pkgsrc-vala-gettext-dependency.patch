@@ -1,0 +1,23 @@
+Origin: EmberBSD contributors (AI-assisted).
+Declare the direct gettext dependency of Vala's native tools and library.
+
+--- a/lang/vala/Makefile
++++ b/lang/vala/Makefile
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.111 2026/09/02 19:03:14 wiz Exp $
+ 
+ DISTNAME=	vala-0.56.19
+-PKGREVISION=	2
++PKGREVISION=	3
+ CATEGORIES=	lang gnome
+ MASTER_SITES=	${MASTER_SITE_GNOME:=sources/vala/${PKGVERSION_NOREV:R}/}
+ EXTRACT_SUFX=	.tar.xz
+@@ -26,6 +26,8 @@
+ TEST_TARGET=		check
+ 
+ BUILDLINK_API_DEPENDS.glib2+=	glib2>=2.48.0
++PREFER.gettext=	pkgsrc
++.include "../../devel/gettext-lib/buildlink3.mk"
+ .include "../../devel/glib2/buildlink3.mk"
+ .include "../../devel/gobject-introspection/buildlink3.mk"
+ .include "../../devel/libltdl/buildlink3.mk"
