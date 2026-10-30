@@ -19,9 +19,7 @@
 LLVM_VERSION=	23.1.4
 
 DISTNAME=	llvm-project-${LLVM_VERSION}.src
-MASTER_SITES=	${MASTER_SITE_GITHUB:=llvm/}
-GITHUB_PROJECT=	llvm-project
-GITHUB_RELEASE=	llvmorg-${PKGVERSION_NOREV}
+MASTER_SITES=	https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/
 EXTRACT_SUFX=	.tar.xz
 
 WRKSRC=		${WRKDIR}/${DISTNAME}/${PKGBASE:S/wasi-//:S/llvm-devel/llvm/}
