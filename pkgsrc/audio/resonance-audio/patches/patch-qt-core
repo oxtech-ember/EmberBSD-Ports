@@ -1,0 +1,153 @@
+$NetBSD$
+
+Preserve Qt 6.12 Spatial Audio extensions and portability fixes.
+Origin: Qt Multimedia 6.12.0, The Qt Company and contributors.
+The namespace and istream fixes are by Tim Blechmann (61b4bffdb187 and
+cf3b6c8ea2b0). Qt source attribution: Google Inc., Apache-2.0.
+
+--- resonance_audio/base/logging.h.orig
++++ resonance_audio/base/logging.h
+@@ -40,6 +40,8 @@
+ #undef CHECK_NOTNULL
+ #undef LOG
+ 
++namespace vraudio {
++
+ // This class is used to disable logging, while still allowing for log messages
+ // to contain '<<' expressions.
+ class NullLogger {
+@@ -105,4 +107,6 @@
+ 
+ #define LOG(severity) NullLogger().GetStream()
+ 
++} // namespace vraudio
++
+ #endif  // RESONANCE_AUDIO_PLATFORM_LOGGING_H_
+--- resonance_audio/base/misc_math.h.orig
++++ resonance_audio/base/misc_math.h
+@@ -320,9 +320,11 @@
+   const uint32_t kMagicNumber = 0x5f3759df;
+ 
+   // Approximate a logarithm by aliasing to an integer.
+-  uint32_t integer = *reinterpret_cast<uint32_t*>(&input);
++  uint32_t integer;
++  memcpy(&integer, &input, sizeof(float));
+   integer = kMagicNumber - (integer >> 1);
+-  float approximation = *reinterpret_cast<float*>(&integer);
++  float approximation;
++  memcpy(&approximation, &integer, sizeof(float));
+   const float half_input = input * 0.5f;
+   // One iteration of Newton's method.
+   return approximation *
+--- resonance_audio/base/simd_macros.h.orig
++++ resonance_audio/base/simd_macros.h
+@@ -32,7 +32,8 @@
+ #define SIMD_RECIPROCAL_SQRT(a) _mm_rsqrt_ps(a)
+ #define SIMD_LOAD_ONE_FLOAT(p) _mm_set1_ps(p)
+ #elif !defined(DISABLE_SIMD) && \
+-    (defined(__aarch64__) || (defined(__arm__) && defined(__ARM_NEON__)))
++    (((defined(__arm__) || defined(__TARGET_ARCH_ARM) || defined(_M_ARM)) && defined(__ARM_NEON__)) || \
++     defined(_M_ARM64) || defined(__aarch64__) || defined(__ARM64__))
+ // ARM NEON is enabled.
+ #include <arm_neon.h>
+ typedef float32x4_t SimdVector;
+--- resonance_audio/graph/graph_manager.cc.orig
++++ resonance_audio/graph/graph_manager.cc
+@@ -164,9 +164,14 @@
+ }
+ 
+ const AudioBuffer* GraphManager::GetStereoBuffer() const {
+-  return stereo_mixer_node_->GetOutputBuffer();
++    return stereo_mixer_node_->GetOutputBuffer();
+ }
+ 
++const AudioBuffer *GraphManager::GetReverbBuffer() const
++{
++    return reverb_node_->GetOutputBuffer();
++}
++
+ size_t GraphManager::GetNumMaxAmbisonicChannels() const {
+   return GetNumPeriphonicComponents(config_.max_ambisonic_order);
+ }
+--- resonance_audio/graph/graph_manager.h.orig
++++ resonance_audio/graph/graph_manager.h
+@@ -227,6 +227,15 @@
+   // @return Output audio buffer of the stereo mix, or nullptr if no output.
+   const AudioBuffer* GetStereoBuffer() const;
+ 
++  // Returns the last processed buffer containing the reverb data for the room.
++  // The buffer contains stereo data.
++  // Note that, this method will *not* trigger the processing of the audio
++  // graph. |GraphManager::Process| must be called prior to this method call to
++  // ensure that the buffer is up-to-date.
++  //
++  // @return Room reverb audio buffer, or nullptr if no output.
++  const AudioBuffer* GetReverbBuffer() const;
++
+   // Returns the maximum allowed number of ambisonic channels.
+   //
+   // @return Number of channels based on Ambisonic order in the global config.
+--- resonance_audio/graph/resonance_audio_api_impl.cc.orig
++++ resonance_audio/graph/resonance_audio_api_impl.cc
+@@ -448,7 +448,11 @@
+ }
+ 
+ const AudioBuffer* ResonanceAudioApiImpl::GetStereoOutputBuffer() const {
+-  return graph_manager_->GetStereoBuffer();
++    return graph_manager_->GetStereoBuffer();
++}
++
++const AudioBuffer *ResonanceAudioApiImpl::GetReverbBuffer() const {
++    return graph_manager_->GetReverbBuffer();
+ }
+ 
+ void ResonanceAudioApiImpl::ProcessNextBuffer() {
+--- resonance_audio/graph/resonance_audio_api_impl.h.orig
++++ resonance_audio/graph/resonance_audio_api_impl.h
+@@ -124,6 +124,11 @@
+   // @return Pointer to stereo output buffer.
+   const AudioBuffer* GetStereoOutputBuffer() const;
+ 
++  // Returns the last processed buffer containing stereo data for the room reverb
++  //
++  // @return Pointer to room reverb stereo buffer.
++  const AudioBuffer* GetReverbBuffer() const;
++
+   // Triggers processing of the audio graph with the updated system properties.
+   void ProcessNextBuffer();
+ 
+--- resonance_audio/graph/reverb_node.cc.orig
++++ resonance_audio/graph/reverb_node.cc
+@@ -95,6 +95,11 @@
+   }
+ }
+ 
++const AudioBuffer* ReverbNode::GetOutputBuffer() const
++{
++    return &output_buffer_;
++}
++
+ const AudioBuffer* ReverbNode::AudioProcess(const NodeInput& input) {
+   if (rt60_updating_) {
+     for (size_t i = 0; i < kNumReverbOctaveBands; ++i) {
+--- resonance_audio/graph/reverb_node.h.orig
++++ resonance_audio/graph/reverb_node.h
+@@ -41,6 +41,8 @@
+   // values depending on the system settings.
+   void Update();
+ 
++  const AudioBuffer *GetOutputBuffer() const;
++
+  protected:
+   // Implements ProcessingNode.
+   const AudioBuffer* AudioProcess(const NodeInput& input) override;
+--- resonance_audio/utils/wav.h.orig
++++ resonance_audio/utils/wav.h
+@@ -18,6 +18,7 @@
+ #define RESONANCE_AUDIO_UTILS_WAV_H_
+ 
+ #include <cstdint>
++#include <istream>
+ #include <memory>
+ #include <vector>
+ 

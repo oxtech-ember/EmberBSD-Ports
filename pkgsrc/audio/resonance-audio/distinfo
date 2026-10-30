@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (resonance-audio-20220908-4556a46afd4ffae092aa281bfd072eb0279d3a29.tar.gz) = c65528163b8fdd417eda6ce180752e92f0469768c477a534cd3405131300af8c
+SHA512 (resonance-audio-20220908-4556a46afd4ffae092aa281bfd072eb0279d3a29.tar.gz) = ca66cde6b8979e76a83a346f3ccecec9af5284bc9a645b8b249cab82ec880ef69b04bf44e56f2aec92343669f59d541dc25ec226b30ecdcb2d22e81bf5412b8c
+Size (resonance-audio-20220908-4556a46afd4ffae092aa281bfd072eb0279d3a29.tar.gz) = 32866260 bytes
+SHA1 (patch-qt-core) = 9becef55c6d13231eb0f38e861bf13327d8c1ed5
+SHA1 (patch-resonance__audio_dsp_fft__manager.h) = 5b1c90871c2d6ce7e965014fca36e320874cabf3
+SHA1 (patch-resonance__audio_dsp_partitioned__fft__filter.cc) = 000455f9d10ba4adc3ae9bba33a7266b16907970
