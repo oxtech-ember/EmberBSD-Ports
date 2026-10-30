@@ -37,6 +37,7 @@ def main(arguments):
     for name in ('source', 'stage'):
         wasi_verify.add_argument('--' + name, required=True)
     wasi_verify.add_argument('--git')
+    freestanding_cli(commands)
     verify = commands.add_parser('verify')
     verify.add_argument('--stage', required=True)
     verify.add_argument('--base')
@@ -61,6 +62,10 @@ def main(arguments):
     elif args.command in ('wasi-builtins', 'wasi-verify'):
         import wasi
         record = wasi.build(owner, args) if args.command == 'wasi-builtins' else wasi.verify(owner, args)
+    elif args.command in ('freestanding-builtins', 'freestanding-verify'):
+        import freestanding
+        record = (freestanding.build(owner, args, args.target) if args.command == 'freestanding-builtins'
+                  else freestanding.verify(owner, args, args.target))
     else:
         from emberbsd_sdk import llvm_runtime
         import build as producer
@@ -76,6 +81,20 @@ def main(arguments):
         if record['recipe']['files'] != expected['files']:
             compatible_source(owner, record, expected, args.source, args.original_source, args.git)
     print(owner.jsonio.json_bytes(record).decode(), end='')
+
+
+def freestanding_cli(commands):
+    import freestanding
+    for name in ('freestanding-builtins', 'freestanding-verify'):
+        parser = commands.add_parser(name)
+        parser.add_argument('--target', choices=tuple(freestanding.PROFILES), required=True)
+        for argument in ('source', 'stage'):
+            parser.add_argument('--' + argument, required=True)
+        parser.add_argument('--git')
+        if name == 'freestanding-builtins':
+            for argument in ('host-prefix', 'work'):
+                parser.add_argument('--' + argument, required=True)
+            parser.add_argument('--jobs', type=int, default=1)
 
 
 def compatible_source(owner, stage, expected, source, original_source, git):
@@ -115,6 +134,7 @@ def build_cli(data):
     main = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main')
     additions = """
 cli.add_argument('--pkgsrc-root', help='explicit exported pkgsrc root')
+freestanding_cli(commands)
 wasi_build = commands.add_parser('wasi-builtins')
 for name in ('source', 'host-prefix', 'work', 'stage'):
     wasi_build.add_argument('--' + name, required=True)

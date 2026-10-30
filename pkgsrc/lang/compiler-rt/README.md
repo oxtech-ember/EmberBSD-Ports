@@ -368,15 +368,62 @@ requires the patched function to reject the nonexistent library, checks that
 its caller still uses static probes, and links the native C library. Target
 runtime configuration and execution remain separate checks.
 
+### Freestanding firmware builtins
+
+`files/freestanding.py` is the common builtins producer for WASI preview1 and
+`riscv32-unknown-elf`. The RV32 profile selects RV32IMAC with Zicsr and Zifencei,
+the ILP32 soft-float ABI, and an empty work sysroot. It uses the selected native
+Clang/LLVM tools and the same prepared source and patches as other compiler-rt
+consumers. No application sysroot, target libc or separate compiler is needed.
+The ISA and ABI are fixed by the profile, rather than inherited compiler flags.
+RV32 builtins use PIC so firmware can link a PIE and relocate it. The SDK's
+`elf-ld` role selects the prefix's `ld.lld`, independently of the native host
+linker. WASI retains its existing non-PIC policy.
+
+```sh
+python3.15 -B pkgsrc/lang/compiler-rt/files/runtime.py --sdk-source /absolute/EmberBSD-SDK freestanding-builtins \
+    --target riscv32-unknown-elf --source /absolute/prepared-llvm \
+    --host-prefix /absolute/host-pkg-llvm --work /absolute/objects/rv32-builtins \
+    --stage /absolute/stages/rv32-builtins --git /absolute/git --jobs 4
+python3.15 -B pkgsrc/lang/compiler-rt/files/runtime.py --sdk-source /absolute/EmberBSD-SDK freestanding-verify \
+    --target riscv32-unknown-elf --source /absolute/prepared-llvm \
+    --stage /absolute/stages/rv32-builtins --git /absolute/git
+```
+
+The RV32 stage contains `lib/riscv32-unknown-unknown-elf/libclang_rt.builtins.a`,
+the common licenses and `freestanding-builtins.json`. The manifest binds the
+target profile, LLVM source, recipe, shared producer and staged bytes.
+The ordinary `lang/riscv32-elf-compiler-rt` package uses this same producer and
+installs the archive below `lib/clang/${LLVM_MAJOR_VERSION}/lib/` in the package
+prefix. Select `EMBERBSD_SDK_SOURCE` and `EMBERBSD_FREESTANDING_HOST_PREFIX` as
+absolute paths; the latter defaults to the native `TOOLBASE`. Firmware consumers
+can explicitly link the installed archive. This package does not provide an
+EmberBSD application SDK, libc, C++ runtime or firmware image.
+
+`tests/freestanding-contract.py --sdk-source PATH` checks WASI/RV32 tool and
+ABI routing, the empty sysroot, changed/missing archive and changed-target
+refusals, propagation of process ownership failures and the existing OS CLI.
+`tests/riscv32-freestanding.py --sdk-source PATH --host-prefix PREFIX
+--archive PATH --work NEW_PATH` inspects every real archive member for ELF32,
+RISC-V ISA and soft-float ABI, checks `__ashldi3`, and links a real `-Oz` consumer
+that requires it without libc. A second PIE consumer also calls `__absvsi2`,
+whose abort path references data, and requires an ELF32 ET_DYN output without
+undefined symbols or text relocations. `--build-dir PATH` additionally checks
+the actual CMake linker/PIC selection and every Ninja compile command for
+`-fPIC`; `--nonpic-archive PATH` requires the previous archive to fail the PIE
+link on its data-address relocations. These checks do not execute target code.
+
 ### WASI preview1 builtins
 
 The same source owner supports `wasi-builtins` and `wasi-verify` for the
 `wasm32-wasip1` ABI. It builds freestanding compiler-rt with an empty sysroot
 using the selected native LLVM; wasi-libc is not needed for this first phase.
 The stage contains the archive and the common compiler-rt licenses. A separate
-`lang/wasi-compiler-rt` package invokes this producer and supplies the legacy
+`lang/wasi-compiler-rt` package shares `freestanding.mk` with the RV32 package
+and supplies the legacy
 `wasm32-wasi` resource-directory alias. The target build does not install a
 second compiler or compiler-rt source.
+The existing `EMBERBSD_WASI_HOST_PREFIX` package input remains supported.
 
 For an ordinary exported pkgsrc tree, invoke its `lang/compiler-rt/files/runtime.py`
 with `--pkgsrc-root /absolute/export`. Source preparation uses the exported

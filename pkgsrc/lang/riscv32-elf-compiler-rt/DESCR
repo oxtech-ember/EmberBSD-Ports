@@ -1,0 +1,8 @@
+Position-independent compiler-rt builtins for riscv32-unknown-elf, RV32IMAC
+with Zicsr and Zifencei, using the ILP32 soft-float ABI. The common freestanding
+producer builds the archive from the shared LLVM version and complete runtime
+patch set, without an application sysroot or target libc.
+
+The package installs the archive in Clang's canonical target resource
+directory. Firmware consumers explicitly link this archive; the package
+does not provide a libc, C++ runtime, operating system SDK, or firmware.

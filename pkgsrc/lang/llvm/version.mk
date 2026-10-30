@@ -44,7 +44,7 @@ EXTRACT_ELEMENTS+=	${DISTNAME}/libc
     ${PKGPATH} != "lang/libcxx" && ${PKGPATH} != "lang/libcxx-devel" && \
     ${PKGPATH} != "lang/libcxxabi" && ${PKGPATH} != "lang/libcxxabi-devel" && \
     ${PKGPATH} != "lang/libunwind" && ${PKGPATH} != "lang/libunwind-devel" && ${PKGPATH} != "lang/wasi-compiler-rt" && \
-    ${PKGPATH} != "lang/wasi-libc" && \
+    ${PKGPATH} != "lang/wasi-libc" && ${PKGPATH} != "lang/riscv32-elf-compiler-rt" && \
     ${PKGPATH} != "lang/llvm-libc-source" && \
     ${PKGPATH} != "lang/clang-python-bindings" && \
     ${PKGPATH} != "devel/lldb"
