@@ -133,6 +133,10 @@ LDFLAGS+=			-lexecinfo
 .elif ${OPSYS} == "Darwin"
 CONFIGURE_ARGS+=		-platform macx-clang
 CONFIGURE_ARGS+=		-no-framework
+# Origin: EmberBSD (AI-assisted). Qt otherwise forces its own minimum macOS.
+.  if defined(MACOSX_DEPLOYMENT_TARGET)
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_OSX_DEPLOYMENT_TARGET:STRING=${MACOSX_DEPLOYMENT_TARGET}
+.  endif
 # pkgsrc has a patch to avoid using SDK, but the configure
 # logic gets confused if it can't find the header files
 # so give it a direct path to them if they aren't installed
