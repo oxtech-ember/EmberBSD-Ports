@@ -1,0 +1,24 @@
+# Origin: EmberBSD (AI-assisted).
+# Update pkgconf to the latest upstream stable release 3.0.10.
+
+--- a/devel/pkgconf/Makefile	2026-10-30 17:51:15.700157076 +0300
++++ b/devel/pkgconf/Makefile	2026-10-30 17:51:15.702874552 +0300
+@@ -1,6 +1,6 @@
+ # $NetBSD: Makefile,v 1.43 2026/09/07 05:15:17 adam Exp $
+ 
+-DISTNAME=	pkgconf-3.0.7
++DISTNAME=	pkgconf-3.0.10
+ CATEGORIES=	devel
+ MASTER_SITES=	https://distfiles.dereferenced.org/pkgconf/
+ 
+--- a/devel/pkgconf/distinfo	2026-10-30 17:51:15.702435007 +0300
++++ b/devel/pkgconf/distinfo	2026-10-30 17:51:15.704120768 +0300
+@@ -1,5 +1,5 @@
+ $NetBSD: distinfo,v 1.38 2026/09/07 05:15:17 adam Exp $
+ 
+-BLAKE2s (pkgconf-3.0.7.tar.gz) = 74902624ce7ee0c5f8c282c9927db56c927b6a8ca6a74eb779fbea4c0ef41ab2
+-SHA512 (pkgconf-3.0.7.tar.gz) = 5e87e26530e479b48ce1557b80b132e87d527a803617ef51c7585788e58e170bfb6c86972d198f602e60614c396ef6f7aa340af43120c77a2a014b89145468cb
+-Size (pkgconf-3.0.7.tar.gz) = 627077 bytes
++BLAKE2s (pkgconf-3.0.10.tar.gz) = 9ed1f453f7a3c0a7260b0da17936343dc8279bb7e433936eec006ac2af99c534
++SHA512 (pkgconf-3.0.10.tar.gz) = a4b837341fa5d7422575765a44c4a316c53f79b938f603c1ed3c162d3d079d933676eed6e52ac59f669e2e9dd81f6caec146d86b94e8a0a73e25e041c49ffef3
++Size (pkgconf-3.0.10.tar.gz) = 626550 bytes
