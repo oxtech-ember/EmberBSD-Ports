@@ -48,7 +48,10 @@ def main():
             actual = json.loads(result.read_text())
             expected = dict(CC=cc, CXX=cxx, CC_FOR_TARGET=cc, CXX_FOR_TARGET=cxx,
                             SDKROOT=sdk, GOROOT_BOOTSTRAP=str(args.seed),
-                            GOTOOLCHAIN='local', GOENV='off', GOMAXPROCS='3')
+                            GOTOOLCHAIN='local', GOENV='off', GOMAXPROCS='3',
+                            # cmd/dist records PKG_CONFIG in zdefaultcc.go; the
+                            # work-directory wrapper is gone after the build.
+                            PKG_CONFIG='pkg-config')
             for key, value in expected.items():
                 assert actual[key] == value, (target, key, actual[key], value)
 

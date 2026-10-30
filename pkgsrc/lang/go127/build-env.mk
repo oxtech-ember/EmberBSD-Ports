@@ -16,14 +16,15 @@ _GO_BUILD_ENV+=	CC=${_GO_HOST_CC:Q} CXX=${_GO_HOST_CXX:Q}
 # zdefaultcc.go as the installed toolchain's defaults. A cross-built
 # toolchain does not run cgo for the target during the build, so record the
 # command names on the target: the compiler without its directory, cross
-# prefix and sysroot arguments, and pkg-config instead of the work-directory
-# tool wrapper.
+# prefix and sysroot arguments.
 _GO_BUILD_ENV+=	CC_FOR_TARGET=${CC:[1]:T:S/^${MACHINE_GNU_PLATFORM:U}-//:Q}
 _GO_BUILD_ENV+=	CXX_FOR_TARGET=${CXX:[1]:T:S/^${MACHINE_GNU_PLATFORM:U}-//:Q}
-_GO_BUILD_ENV+=	PKG_CONFIG=pkg-config
 .else
 _GO_BUILD_ENV+=	CC_FOR_TARGET=${CC:Q} CXX_FOR_TARGET=${CXX:Q}
 .endif
+# Native and cross builds both record pkg-config by name: the work-directory
+# tool wrapper that pkgsrc puts in the environment is gone after the build.
+_GO_BUILD_ENV+=	PKG_CONFIG=pkg-config
 _GO_BUILD_ENV+=	GOROOT_BOOTSTRAP=${GOROOT_BOOTSTRAP:Q}
 _GO_BUILD_ENV+=	GOTOOLCHAIN=local GOENV=off
 _GO_BUILD_ENV+=	GOMAXPROCS=${MAKE_JOBS:U1}

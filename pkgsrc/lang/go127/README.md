@@ -31,7 +31,9 @@ arguments. Cross builds use `NATIVE_CC` and `NATIVE_CXX` for host programs.
 `zdefaultcc.go` as the installed toolchain's defaults, and target cgo is not
 run during a cross build, so cross builds pass the command names on the
 target: `CC`/`CXX` without directory, cross prefix, or arguments (`clang`,
-`clang++`) and `pkg-config`. `patch-src_cmd_dist_buildgo.go` also leaves the
+`clang++`) and `pkg-config`. Native builds also pass `pkg-config` by name,
+because the pkgsrc work-directory wrapper in the build environment does not
+exist after installation. `patch-src_cmd_dist_buildgo.go` also leaves the
 build host's compiler out of those defaults when the toolchain is built for
 another platform, unless `CC_FOR_<goos>_<goarch>` names one explicitly. Select native and target
 inputs independently through the existing pkgsrc configuration. `GOENV=off`
