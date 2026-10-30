@@ -13,12 +13,13 @@ Quotes are not interchangeable: LLD retains them in the version identifier.
 Run the cross regression from a clean Ports checkout:
 
 ```sh
-ruby profiles/common-graphics/tests/mesa-symbol-version/run.rb \
-  "$mesa_archive" "$gcc_tools" "$sysroot" "$lld_specs" \
+PATCH="$HOST_PREFIX/bin/gpatch" "$HOST_PYTHON315" \
+  profiles/common-graphics/tests/mesa-symbol-version/run.py \
+  "$mesa_archive" "$clang" "$target_binutils" "$sysroot" "$lld" \
   "$meson" "$ninja" "$new_output"
 ```
 
-Use GCC16, the current LLD23 specs, and the EmberBSD sysroot.
+Use the selected native Clang and LLD, target GNU binutils, and the EmberBSD sysroot.
 The test extracts the pinned upstream Meson prefix and symbol map.
 It applies the checked recipe patches and configures them with real Meson.
 Small target libraries exercise GNU and LLD before and after the change.

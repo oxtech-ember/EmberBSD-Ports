@@ -12,7 +12,7 @@ checks = 0
 Dir.mktmpdir('mesa-generator-profiles-', '/tmp') do |d|
   tools = d + '/tools'; source = d + '/source'
   FileUtils.mkdir_p([tools + '/bin', source + '/src/compiler/nir', source + '/src/util'])
-  File.write(source + '/VERSION', "26.2.5\n")
+  File.write(source + '/VERSION', "26.2.6\n")
   File.write(source + '/src/compiler/nir/nir.h', 'interface fixture')
   File.write(source + '/src/util/u_dynarray.h', 'shared generator interface')
   File.write(tools + '/FORMAT', "ember-mesa-generators-2\n")

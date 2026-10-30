@@ -58,8 +58,8 @@ def main():
                     if (changed_mesa / name).is_file())
     original_contents, original_manifest = contents.read_text(), manifest.read_text()
     relative = str(contents.relative_to(changed_mesa))
-    for name, replacement in (("wrong-mesa-identity", original_contents.replace("@name MesaLib-26.2.4nb9\n", "@name MesaLib-26.2.4nb3\n")),
-                              ("duplicate-mesa-identity", original_contents + "@name MesaLib-26.2.4nb9\n")):
+    for name, replacement in (("wrong-mesa-identity", original_contents.replace("@name MesaLib-26.2.6nb10\n", "@name MesaLib-26.2.4nb3\n")),
+                              ("duplicate-mesa-identity", original_contents + "@name MesaLib-26.2.6nb10\n")):
         if replacement == original_contents:
             raise SystemExit("current genuine Mesa identity was not exercised")
         contents.write_text(replacement)
@@ -67,7 +67,7 @@ def main():
         # Rehash only the explicit parser fixture so the identity guard causes the refusal.
         manifest.write_text("".join((checksum + "  " + relative if line.split("  ", 1)[1] == relative else line) + "\n"
                                     for line in original_manifest.splitlines()))
-        check(name, "require the accepted Mesa package: MesaLib-26.2.4nb9", changed_mesa)
+        check(name, "require the accepted Mesa package: MesaLib-26.2.6nb10", changed_mesa)
     shutil.rmtree(changed_mesa)
     for name, value in (("zero-timeout", 0), ("boolean-timeout", True), ("oversized-timeout", 121)):
         changed = copy.deepcopy(tests)

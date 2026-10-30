@@ -17,7 +17,7 @@ prefix = "#{sysroot}/usr/pkg"
 verify = "#{mesa}/run-mesa-package-tests.sh"
 abort 'installed Mesa input verification failed' unless system('sh', verify, '--verify-sysroot', mesa, sysroot)
 contents = ["#{mesa}/source/MesaLib.CONTENTS", "#{mesa}/MesaLib.CONTENTS"].find { |p| File.file?(p) }
-abort 'require accepted canonical MesaLib 26.2.4nb3' unless contents && File.read(contents).include?("@name MesaLib-26.2.4nb3\n")
+abort 'require accepted canonical MesaLib 26.2.6nb10' unless contents && File.read(contents).include?("@name MesaLib-26.2.6nb10\n")
 inputs = [__FILE__, "#{owner}/mesa-dmabuf.c", "#{owner}/run-mesa-dmabuf.sh", cc, readelf, pkgconfig, verify, contents,
           "#{mesa}/artifacts.sha256"] +
          %w[mesa-package-files.sha256 mesa-package-links.tsv runtime-libraries.sha256].map { |p| "#{mesa}/#{p}" } +
@@ -43,7 +43,7 @@ end
 environment = {'PKG_CONFIG_PATH'=>'', 'PKG_CONFIG_LIBDIR'=>"#{prefix}/lib/pkgconfig:#{prefix}/share/pkgconfig",
                'PKG_CONFIG_SYSROOT_DIR'=>sysroot}
 %w[egl glesv2 gbm].each do |mod|
-  abort "wrong #{mod} provider" unless run("#{bundle}/source/#{mod}-version.log", environment, pkgconfig, '--modversion', mod) == '26.2.4'
+  abort "wrong #{mod} provider" unless run("#{bundle}/source/#{mod}-version.log", environment, pkgconfig, '--modversion', mod) == '26.2.6'
 end
 flags = Shellwords.split(run("#{bundle}/source/pkgconfig.log", environment, pkgconfig, '--cflags', '--libs', 'egl', 'glesv2', 'gbm'))
 abort 'wrong compiler target' unless run("#{bundle}/source/target.log", {}, cc, '-dumpmachine') == 'aarch64--netbsd'

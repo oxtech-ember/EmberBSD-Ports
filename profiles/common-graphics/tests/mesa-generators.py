@@ -33,7 +33,7 @@ def test(arguments):
     verifier = PORTS / 'pkgsrc/graphics/MesaLib/verify-mesa-generators.sh'
     source = work / 'source'
     source.mkdir()
-    (source / 'VERSION').write_text('26.2.5\n')
+    (source / 'VERSION').write_text('26.2.6\n')
     origin = Path(json.loads((sealed / 'receipt.json').read_text())['source'])
     for line in (sealed / 'interface.sha256').read_text().splitlines():
         _, name = line.split()

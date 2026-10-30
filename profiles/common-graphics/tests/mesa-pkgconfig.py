@@ -47,7 +47,7 @@ def main():
         modules.append("epoxy")
     for module in modules:
         version = run(environment, module + "-version.log", [pkgconfig, "--modversion", module])
-        if version != ("1.5.10" if module == "epoxy" else "26.2.5"):
+        if version != ("1.5.10" if module == "epoxy" else "26.2.6"):
             raise SystemExit(f"wrong {module} provider")
         run(environment, module + "-shared.log", [pkgconfig, "--cflags", "--libs", module])
         run(environment, module + "-static-metadata.log", [pkgconfig, "--static", "--cflags", "--libs", module])

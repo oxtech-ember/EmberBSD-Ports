@@ -19,7 +19,7 @@ sys.path.insert(0, str(PORTS / 'profiles/common-graphics/cross'))
 import sdk_source
 import mesa_generator_host
 
-MESA_SHA256 = '794b3d1729075dae7ebd47c7283b7ca0cdb5dec668f7f11cc0a5d82f6138a0a5'
+MESA_SHA256 = 'b9436b3e1a8be76fbd4823dc884f90596ab7c6ac5e1867a305e66ffccfb31a92'
 
 
 def sha(path):
@@ -352,13 +352,13 @@ def seal_locked(args):
             'Validator must be the selected host-prefix spirv-val')
     profiles = profiles_for(args.profile)
     require(sha(archive) == MESA_SHA256, 'Wrong Mesa source archive')
-    require((source / 'VERSION').read_text().strip() == '26.2.5', 'Wrong Mesa source version')
+    require((source / 'VERSION').read_text().strip() == '26.2.6', 'Wrong Mesa source version')
     metadata = build / 'meson-info'
     info = json.loads((metadata / 'meson-info.json').read_text())
     require(Path(info['directories']['source']).resolve(strict=True) == source,
             'Native build uses another source tree')
     project = json.loads((metadata / 'intro-projectinfo.json').read_text())
-    require(project['version'] == '26.2.5', 'Wrong Mesa build version')
+    require(project['version'] == '26.2.6', 'Wrong Mesa build version')
     options = {row['name']: row['value'] for row in json.loads((metadata / 'intro-buildoptions.json').read_text())}
     require(options['b_ndebug'] == 'false', 'Native tools must retain assertions')
     require('23.1.4' in (build / 'build.ninja').read_text(), 'Native tools must use LLVM23')
@@ -537,7 +537,7 @@ def seal_locked(args):
             scope += ' Intel shader interfaces are bound; full Intel shader generation is a separate target build gate.'
         scope += ' No target execution.'
         host_record = '/'.join((host_policy['os'], host_policy['cpu'], host_policy['compiler_family']))
-        write_json(work / 'receipt.json', dict(schema='ember-mesa-generators-2', mesa='26.2.5', llvm='23.1.4',
+        write_json(work / 'receipt.json', dict(schema='ember-mesa-generators-2', mesa='26.2.6', llvm='23.1.4',
                    source=str(source), build=str(build), archive_sha256=MESA_SHA256, profiles=profiles,
                    host=host_record, host_prefix=str(prefix),
                    commands=commands, inputs=input_hashes, directory_inputs=directory_inputs,
@@ -548,7 +548,7 @@ def seal_locked(args):
         shutil.rmtree(reference)
         files = [path for path in sorted(work.rglob('*')) if path.is_file()]
         (work / 'installed.sha256').write_text(''.join(f'{sha(path)}  {path.relative_to(work)}\n' for path in files))
-    print('PASS: sealed native Mesa 26.2.5 generators: ' + str(work))
+    print('PASS: sealed native Mesa 26.2.6 generators: ' + str(work))
 
 
 if __name__ == '__main__':

@@ -5,13 +5,13 @@ python3.15 -B -E -S profiles/common-graphics/tests/mesa-sealer-prefix.py \
     --sdk-source /absolute/EmberBSD-SDK --work-parent /absolute/private-work-parent
 ```
 
-Add `--host-prefix /absolute/host-pkg-llvm --archive /absolute/mesa-26.2.5.tar.xz`
+Add `--host-prefix /absolute/host-pkg-llvm --archive /absolute/mesa-26.2.6.tar.xz`
 to run the source-patch check. It selects only bsdtar and patch from that prefix.
 It extracts five pinned archive files. The production BSD-compatible patch
 argv applies the canonical BVNC, host Objective-C and sampler-layout patches
 with zero fuzz and no backup or reject files. BVNC and Objective-C use no
 offsets. The unchanged sampler-layout patch has one expected offset of 84 lines
-in the pinned 26.2.5 archive. Any other offset fails. It compiles nothing.
+in the pinned 26.2.6 archive. Any other offset fails. It compiles nothing.
 
 The check imports the real sealer. It uses the current SDK `load_host_prefix`
 on native-header byte fixtures. It requests only bsdtar, patch, otool and spirv-val.

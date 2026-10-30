@@ -6,7 +6,7 @@ require 'fileutils'
 require 'open3'
 abort 'Usage: iris-clc-configure.rb HOST_PYTHON MESON_PY MESA_SOURCE' unless ARGV.length == 3
 python, meson, source = ARGV.map { |p| File.realpath(p) }
-abort 'Expected pinned Mesa 26.2.5 source' unless File.read(source + '/VERSION').strip == '26.2.5'
+abort 'Expected pinned Mesa 26.2.6 source' unless File.read(source + '/VERSION').strip == '26.2.6'
 upstream = File.read(source + '/meson.build')
 start = upstream.index("if get_option('precomp-compiler') != 'system'") or abort 'Missing upstream generator selection'
 finish = upstream.index('\nwith_llvm = with_llvm'.gsub('\\n', "\n"), start) or abort 'Missing upstream CLC boundary'

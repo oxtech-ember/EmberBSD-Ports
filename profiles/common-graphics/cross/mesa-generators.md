@@ -1,6 +1,6 @@
 # Native shader generators for Iris and PowerVR
 
-Mesa 26.2.5 uses CLC for Iris shaders even when Rusticl is disabled.
+Mesa 26.2.6 uses CLC for Iris shaders even when Rusticl is disabled.
 The default `mesa-clc=auto` selects the target CLC dependency closure.
 Cross builds instead use `mesa-clc=system` and `precomp-compiler=system`.
 Mesa runs native `mesa_clc` and `vtn_bindgen2` through its native file.
@@ -28,7 +28,7 @@ Do not download a binary compiler or build a private dependency stack.
 The native LLVM and Clang libraries and the generators need a compatible host
 C++ runtime. GCC16 remains an explicit host compiler alternative.
 
-The current inputs are Mesa 26.2.5, LLVM/Clang 23.1.4, Translator 23.1.2,
+The current inputs are Mesa 26.2.6, LLVM/Clang 23.1.4, Translator 23.1.2,
 SPIRV-Tools 2026.4, SPIRV-Headers 1.4.363.0 and GoogleTest 1.18.0.
 Use the common Ports patches and the external GoogleTest provider for tests.
 The producer checks package predicates, Python module origins and the libyaml extension.
@@ -90,7 +90,7 @@ pass `--host-compiler-family gcc`; the default is `clang`.
 python3.15 seal-mesa-generators.py --sdk-source "$SDK_SOURCE" \
     --host-prefix "$HOST_PREFIX" --profile intel \
     --pkgdb "$HOST_PKGDB" --lock-directory "$LOCK_DIRECTORY" \
-    /absolute/mesa-26.2.5.tar.xz /absolute/native-mesa-source \
+    /absolute/mesa-26.2.6.tar.xz /absolute/native-mesa-source \
     /absolute/native-mesa-build /absolute/spirv-val /absolute/new-intel-tools
 ```
 
@@ -123,7 +123,7 @@ BMAKE=/absolute/native/bmake python3 ../tests/amd64-targets.py \
 python3 ../tests/amd64-targets.py --skip-bmake \
     --distfiles /absolute/verified/distfiles
 ruby ../tests/iris-clc-configure.rb /absolute/native/python3.15 \
-    /absolute/meson-1.12.1/meson.py /absolute/mesa-26.2.5
+    /absolute/meson-1.12.1/meson.py /absolute/mesa-26.2.6
 ```
 
 The profile fixture runs the production shell verifier and native-file target.

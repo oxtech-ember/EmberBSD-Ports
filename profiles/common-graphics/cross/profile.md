@@ -238,7 +238,7 @@ For scanner consumers, supply the verified patched upstream source trees:
     --llvm-config /absolute/llvm-metadata-tool/bin/llvm-config \
     --scanner /absolute/native-prefix/bin/wayland-scanner \
     --protocols-source /absolute/wayland-protocols-1.49 \
-    --mesa-source /absolute/mesa-26.2.5 --utility-path /absolute/native-tools \
+    --mesa-source /absolute/mesa-26.2.6 --utility-path /absolute/native-tools \
     --work /absolute/new-scanner-tests
 ```
 

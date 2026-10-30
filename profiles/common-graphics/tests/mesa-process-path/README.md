@@ -13,7 +13,7 @@ This host boundary is separate from target execution.
 
 ```sh
 CC=/absolute/native-gcc16 "$HOST_PYTHON315" tests/mesa-process-path/run.py \
-  /absolute/mesa-26.2.4.tar.xz /absolute/sysroot \
+  /absolute/mesa-26.2.6.tar.xz /absolute/sysroot \
   /absolute/aarch64--netbsd-gcc /absolute/new-work
 ```
 

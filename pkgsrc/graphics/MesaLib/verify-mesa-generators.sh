@@ -23,7 +23,7 @@ case "$format" in
         esac;;
     *) fail 'wrong format';;
 esac
-[ "$(cat "$source/VERSION")" = 26.2.5 ] || fail 'wrong source version'
+[ "$(cat "$source/VERSION")" = 26.2.6 ] || fail 'wrong source version'
 case "$requested" in intel|powervr|intel,powervr) ;; *) fail 'unsupported generator profile';; esac
 profiles=powervr
 if [ -f "$tools/PROFILES" ]; then profiles=$(cat "$tools/PROFILES"); fi
@@ -66,4 +66,4 @@ for name in $required; do
 done
 [ "$(awk '$2 == "src/util/u_dynarray.h" { n++ } END { print n+0 }' "$tools/interface.sha256")" = 1 ] || fail 'missing or duplicate shared generator source: src/util/u_dynarray.h'
 verify "$source" "$tools/interface.sha256"
-echo 'PASS: Mesa 26.2.5 native generator bytes and target interfaces'
+echo 'PASS: Mesa 26.2.6 native generator bytes and target interfaces'

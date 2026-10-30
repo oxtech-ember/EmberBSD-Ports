@@ -84,7 +84,7 @@ lib/libGLESv1_CM.so.1.1.0
 lib/libGLESv2.so
 lib/libGLESv2.so.2
 lib/libGLESv2.so.2.0.0
-lib/libgallium-26.2.5.so
+lib/libgallium-26.2.6.so
 lib/libgbm.so
 lib/libgbm.so.1
 lib/libgbm.so.1.0.0

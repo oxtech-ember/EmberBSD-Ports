@@ -13,7 +13,7 @@ import tarfile
 
 
 # Exact currently accepted package; changing it requires matching Mesa acceptance.
-MESA_PACKAGE = "MesaLib-26.2.4nb9"
+MESA_PACKAGE = "MesaLib-26.2.6nb10"
 
 
 def digest(path):
@@ -116,7 +116,7 @@ def main():
     contents = (bundle / "source/libepoxy.CONTENTS").read_text()
     if ([line for line in contents.splitlines() if line.startswith("@name ")] != ["@name libepoxy-1.5.10nb2"]
             or "@blddep " + MESA_PACKAGE not in contents.splitlines()
-            or "@pkgdep MesaLib>=26.2.4nb4" not in contents.splitlines()):
+            or "@pkgdep MesaLib>=26.2.6nb10" not in contents.splitlines()):
         raise SystemExit("wrong package identity/dependency")
     selected = ("header_guards", "misc_defines", "khronos_typedefs", "gl_version")
     tests = [test for test in json.loads((build / "meson-info/intro-tests.json").read_text()) if test["name"] in selected]

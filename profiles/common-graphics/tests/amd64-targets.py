@@ -90,7 +90,7 @@ USE_PKGSRC_GCC_RUNTIME=no
 _TOOLS_USE_PKGSRC.flex=no
 PKGPATH?=graphics/MesaLib
 PKG_OPTIONS=llvm x11 wayland
-DISTNAME=mesa-26.2.5
+DISTNAME=mesa-26.2.6
 PKGREVISION=10
 .if ${{USE_CROSS_COMPILE:Uno:tl}} == "yes"
 EMBERBSD_GRAPHICS_LLVM_CONFIG={work}/helper/bin/llvm-config
@@ -155,8 +155,8 @@ def static_profile_checks():
         "libdrm>=2.4.134nb8" in profile and 'PKGREVISION:U} != "8"' in profile,
     )
     check(
-        "common profile enforces MesaLib 26.2.5nb10",
-        "MesaLib>=26.2.5nb10" in profile,
+        "common profile enforces MesaLib 26.2.6nb10",
+        "MesaLib>=26.2.6nb10" in profile,
     )
 
 
@@ -281,12 +281,12 @@ def source_checks(distfiles):
             except (KeyError, AttributeError) as error:
                 raise SystemExit(f"missing source member {member}: {error}") from error
 
-    mesa_top = source_text("mesa-26.2.5.tar.xz", "mesa-26.2.5/meson.build")
+    mesa_top = source_text("mesa-26.2.6.tar.xz", "mesa-26.2.6/meson.build")
     mesa_dri = source_text(
-        "mesa-26.2.5.tar.xz", "mesa-26.2.5/src/gallium/targets/dril/meson.build"
+        "mesa-26.2.6.tar.xz", "mesa-26.2.6/src/gallium/targets/dril/meson.build"
     )
     mesa_amd = source_text(
-        "mesa-26.2.5.tar.xz", "mesa-26.2.5/src/amd/common/ac_gpu_info.c"
+        "mesa-26.2.6.tar.xz", "mesa-26.2.6/src/amd/common/ac_gpu_info.c"
     )
     drm_amdgpu = source_text(
         "libdrm-2.4.134.tar.xz", "libdrm-2.4.134/amdgpu/meson.build"

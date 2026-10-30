@@ -13,7 +13,8 @@ EmberBSD's pthread implementation rejects a mutex without its initialized magic 
 This patch does not alter GPU allocation limits or kernel buffer handling.
 
 ```sh
-ruby run.rb /absolute/mesa-26.2.4.tar.xz /absolute/new-output
+CC="$HOST_PREFIX/bin/clang" PATCH="$HOST_PREFIX/bin/gpatch" "$HOST_PYTHON315" run.py \
+  /absolute/mesa-26.2.6.tar.xz /absolute/new-output
 ```
 
 The runner verifies the archive SHA512 and the pkgsrc patch SHA1.

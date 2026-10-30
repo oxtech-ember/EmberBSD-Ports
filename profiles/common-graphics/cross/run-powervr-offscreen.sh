@@ -17,8 +17,8 @@ mkdir "$2"
 logs=$(CDPATH= cd -- "$2" && pwd)
 mesa=$("$pkg_info" -e 'MesaLib-[0-9]*')
 case "$mesa" in
-    MesaLib-26.2.4nb5) ;;
-    *) echo "Require reviewed MesaLib-26.2.4nb5; found: $mesa" >&2; exit 2 ;;
+    MesaLib-26.2.6nb10) ;;
+    *) echo "Require MesaLib-26.2.6nb10; found: $mesa" >&2; exit 2 ;;
 esac
 printf '%s\n' "$mesa" > "$logs/mesa-package.txt"
 "$pkg_info" -e 'libdrm-2.4.134nb2' > "$logs/libdrm-package.txt"

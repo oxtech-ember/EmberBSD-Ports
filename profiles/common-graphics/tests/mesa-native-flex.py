@@ -122,7 +122,7 @@ PKG_FAIL_REASON+= "Mesa cross builds require installed native Flex satisfying FL
             if not member.isfile() or not member.name.endswith((".l", ".ll")):
                 continue
             relative = Path(member.name)
-            if relative.parts[0] != "mesa-26.2.5" or ".." in relative.parts:
+            if relative.parts[0] != "mesa-26.2.6" or ".." in relative.parts:
                 raise AssertionError("Unexpected source member")
             path = source_dir / relative
             path.parent.mkdir(parents=True, exist_ok=True)

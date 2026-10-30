@@ -33,10 +33,10 @@ with tempfile.TemporaryDirectory() as tmp:
     sysroot=root/'sysroot'; prefix=sysroot/'usr/pkg'; (prefix/'lib/dri').mkdir(parents=True)
     source=root/'source'; build=root/'build'; info=build/'meson-info'; info.mkdir(parents=True)
     for name in ('drirc_home','drirc_configdir'): (source/'src/util/tests'/name).mkdir(parents=True)
-    (source/'VERSION').write_text('26.2.5\n')
+    (source/'VERSION').write_text('26.2.6\n')
     (build/'build.ninja').write_text('-DGALLIVM_USE_ORCJIT=1 -DLLVM_IS_SHARED=1 23.1.4')
     (build/'compile_commands.json').write_text('[]')
-    (info/'intro-projectinfo.json').write_text(json.dumps({'version':'26.2.5'}))
+    (info/'intro-projectinfo.json').write_text(json.dumps({'version':'26.2.6'}))
     opts={'prefix':'/usr/pkg','llvm':'enabled','shared-llvm':'enabled','build-tests':True,'egl':'enabled','gles2':'enabled','glx':'dri','gallium-drivers':['llvmpipe','softpipe','virgl','radeonsi'],'platforms':['wayland','x11']}
     (info/'intro-buildoptions.json').write_text(json.dumps([{'name':k,'value':v} for k,v in opts.items()]))
     names=['lp_test_'+str(i) for i in range(7)]+['xmlconfig']+['case'+str(i) for i in range(29)]+['ac_surface_modifier_test','ac_surface_meta_address_test','ac_nir_tests']
@@ -67,11 +67,11 @@ with tempfile.TemporaryDirectory() as tmp:
             if iris:
                 tar.add(prefix/'lib/dri/iris_dri.so', arcname='lib/dri/iris_dri.so')
                 tar.add(prefix/'share/drirc.d/00-iris-defaults.conf', arcname='share/drirc.d/00-iris-defaults.conf')
-    valid='@name MesaLib-26.2.5nb8\n@cwd /usr/pkg\n'
+    valid='@name MesaLib-26.2.6nb10\n@cwd /usr/pkg\n'
     os.environ['EMBERBSD_CROSS_ARCH']='x86_64'
     with patch.object(m,'query',side_effect=fake_query), patch.object(m.subprocess,'run',side_effect=fake_run):
         archive(valid+'@cwd /usr/pkg\n'); m.main([str(tools),str(sysroot),str(source),str(build),str(package),str(root/'ok'),str(libdrm)])
-        for index,contents,duplicate in ((1,valid,True),(2,valid+'@cwd /elsewhere\n',False),(3,valid.replace('26.2.5','26.2.4'),False),(4,valid+'@name Other-1\n',False)):
+        for index,contents,duplicate in ((1,valid,True),(2,valid+'@cwd /elsewhere\n',False),(3,valid.replace('26.2.6','26.2.4'),False),(4,valid+'@name Other-1\n',False)):
             archive(contents,duplicate)
             try: m.main([str(tools),str(sysroot),str(source),str(build),str(package),str(root/f'bad{index}'),str(libdrm)])
             except ValueError: pass

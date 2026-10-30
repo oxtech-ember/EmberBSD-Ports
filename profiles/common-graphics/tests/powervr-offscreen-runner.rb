@@ -13,7 +13,7 @@ Dir.mktmpdir('ember-pvr-offscreen-runner-') do |root|
   write.call(bin + '/uname', "#!/bin/sh\ncase \"$1\" in -s) echo NetBSD;; -p) echo aarch64;; *) echo EmberBSD-test;; esac\n")
   write.call(bin + '/pkg_info', <<'SH')
 #!/bin/sh
-case "$2" in MesaLib-*) echo "${TEST_MESA:-MesaLib-26.2.4nb5}";; libdrm-2.4.134nb2) echo libdrm-2.4.134nb2;; *) exit 9;; esac
+case "$2" in MesaLib-*) echo "${TEST_MESA:-MesaLib-26.2.6nb10}";; libdrm-2.4.134nb2) echo libdrm-2.4.134nb2;; *) exit 9;; esac
 SH
   write.call(bin + '/ldd', "#!/bin/sh\nprintf '%s\\n' \"$1: modeled installed closure\"\n")
   write.call(bin + '/timeout', "#!/bin/sh\n[ \"$1\" = 60 ] || exit 8\nshift\nexec \"$@\"\n")
@@ -47,13 +47,13 @@ SH
   end
   dir, out, = run.call('accepted', {}, 0)
   abort 'Consumer was not called' unless out.include?('MODELED OFFSCREEN RUN')
-  abort 'Wrong recorded identity' unless File.read(dir + '/mesa-package.txt') == "MesaLib-26.2.4nb5\n"
+  abort 'Wrong recorded identity' unless File.read(dir + '/mesa-package.txt') == "MesaLib-26.2.6nb10\n"
   abort 'Wrong exit record' unless File.read(dir + '/exit-status.txt') == "0\n"
   dir, = run.call('pending', {'TEST_STATUS' => '3'}, 3)
   abort 'Lost uncertain completion status' unless File.read(dir + '/exit-status.txt') == "3\n"
-  _, out, err = run.call('wrong-version', {'TEST_MESA' => 'MesaLib-26.2.4nb6'}, 2)
+  _, out, err = run.call('wrong-version', {'TEST_MESA' => 'MesaLib-26.2.5nb10'}, 2)
   abort 'Wrong package was executed' if out.include?('MODELED OFFSCREEN RUN')
-  abort 'Missing version diagnostic' unless err.include?('Require reviewed MesaLib-26.2.4nb5')
+  abort 'Missing version diagnostic' unless err.include?('Require MesaLib-26.2.6nb10')
   run.call('no-opt-in', {'PVR_I_WANT_A_BROKEN_VULKAN_DRIVER' => nil}, 2)
   File.unlink(manifest)
   _, out, = run.call('missing-manifest', {}, 1)

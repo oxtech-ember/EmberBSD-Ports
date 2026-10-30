@@ -41,6 +41,11 @@ def main():
             raise AssertionError(f"{label}: status {result.returncode}: {result.stderr}")
         return result.stdout
 
+    match = re.search(r"^DISTNAME=\s*(mesa-[0-9]+\.[0-9]+\.[0-9]+)$",
+                      (recipe / "Makefile").read_text(), re.MULTILINE)
+    if match is None or archive.name != match[1] + ".tar.xz":
+        raise AssertionError("Archive name differs from selected Mesa recipe")
+    distname = match[1]
     expected = re.search(r"^SHA512 \(" + re.escape(archive.name) + r"\) = ([0-9a-f]{128})$",
                          (recipe / "distinfo").read_text(), re.MULTILINE)
     if expected is None or digest(archive, "sha512") != expected[1]:
@@ -56,7 +61,7 @@ def main():
         for name in ("src/util/u_process.c", "src/util/detect_os.h"):
             path = tree / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(bundle.extractfile("mesa-26.2.4/" + name).read())
+            path.write_bytes(bundle.extractfile(distname + "/" + name).read())
     source = tree / "src/util/u_process.c"
     before = source.read_text()
     run("apply-production-patch", ["patch", "--batch", "--fuzz=0", "-p0", "-i", patch], cwd=tree)

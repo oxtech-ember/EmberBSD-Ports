@@ -247,7 +247,7 @@ def main():
                      'src/imagination/common/pvr_device_info.h', 'src/imagination/pco/uscgen/pco_clc.c',
                      'src/imagination/common/pvr_iface.h']
             command = [selected.tool('bsdtar'), '-xf', str(args.archive), '--strip-components=1',
-                       '-C', str(reference), *['mesa-26.2.5/' + name for name in files]]
+                       '-C', str(reference), *['mesa-26.2.6/' + name for name in files]]
             subprocess.run(command, check=True, capture_output=True, env=env, timeout=60)
             original = {name: sealer.sha(reference / name) for name in files}
             patches = [(PORTS / 'probes/a733-accelerators/host-tools/mesa-26.2.4-pco-bvnc.patch', 1, []),

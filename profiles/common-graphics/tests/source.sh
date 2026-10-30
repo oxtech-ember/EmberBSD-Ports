@@ -47,7 +47,7 @@ if verify_archive "$work/altered-$archive" > "$work/archive-negative.log" 2>&1; 
 # Failed extraction must retain failure.
 printf 'not an xz archive\n' > "$work/corrupt.tar.xz"
 if tar -xf "$work/corrupt.tar.xz" -C "$work" > "$work/extraction-negative.log" 2>&1; then exit 1; fi
-if patch -f -N -F 0 -p0 -d "$work/mesa-26.2.4" < "$profile/../../pkgsrc/graphics/MesaLib/patches/patch-meson-python-selection" > "$work/repeated.log" 2>&1; then exit 1; fi
+if patch -f -N -F 0 -p0 -d "$work/graphics/MesaLib" < "$profile/../../pkgsrc/graphics/MesaLib/patches/patch-meson-python-selection" > "$work/repeated.log" 2>&1; then exit 1; fi
 # Accepted probe source deltas remain byte-identical; do not repeat their contracts.
 root=$(CDPATH= cd -- "$profile/../.." && pwd)
 for name in patch-dso-lifetime patch-src_util_half__float.c patch-bin_symbols-check.py patch-include_c99__alloca.h; do
