@@ -34,13 +34,32 @@ def extract(archives, root):
             raise SDKError('Truncated archive member')
         return data
 
+    def long_value(item, stream):
+        # NetBSD maketars writes sets with pax --gnu. A GNU record carries the
+        # complete name or link target of the next member.
+        if item.name != '././@LongLink' or not 0 < item.size <= 1024:
+            raise SDKError('Invalid GNU long name or link record')
+        data = exact(stream, item.size)
+        exact(stream, (-item.size) % 512)
+        value = data.removesuffix(b'\0')
+        if not value or b'\0' in value:
+            raise SDKError('Invalid GNU long name or link record')
+        try:
+            value.decode('utf-8', 'strict')
+        except UnicodeDecodeError as error:
+            raise SDKError('Invalid GNU long name or link record') from error
+        return value
+
     for archive in archives:
         members = set()
+        pending = {}
         try:
             with lzma.open(archive, 'rb') as stream:
                 while True:
                     header = exact(stream, 512)
                     if header == bytes(512):
+                        if pending:
+                            raise SDKError('GNU long name or link record has no member')
                         if exact(stream, 512) != bytes(512):
                             raise SDKError('Nonzero data after tar end marker')
                         padding = 0
@@ -51,7 +70,31 @@ def extract(archives, root):
                             if any(block):
                                 raise SDKError('Nonzero data after tar end marker')
                         break
-                    item = tarfile.TarInfo.frombuf(header, 'utf-8', 'strict')
+                    # A truncated header field can split a UTF-8 character.
+                    item = tarfile.TarInfo.frombuf(header, 'utf-8', 'surrogateescape' if pending else 'strict')
+                    if item.type in (tarfile.GNUTYPE_LONGNAME, tarfile.GNUTYPE_LONGLINK):
+                        if item.type in pending:
+                            raise SDKError('Invalid GNU long name or link record')
+                        pending[item.type] = long_value(item, stream)
+                        continue
+                    if pending:
+                        if tarfile.GNUTYPE_LONGLINK in pending and item.type not in (tarfile.LNKTYPE, tarfile.SYMTYPE):
+                            raise SDKError('GNU long link record precedes a non-link member')
+                        # tarfile takes the type of an old-style member from its truncated name.
+                        if tarfile.GNUTYPE_LONGNAME in pending and header[156:157] == tarfile.AREGTYPE:
+                            raise SDKError('GNU long name record precedes an old-style member')
+                        for kind, field in ((tarfile.GNUTYPE_LONGNAME, 'name'), (tarfile.GNUTYPE_LONGLINK, 'linkname')):
+                            if kind in pending:
+                                value = pending.pop(kind)
+                                # The header keeps the truncated start of the same value.
+                                if not value.startswith(getattr(item, field).encode('utf-8', 'surrogateescape')):
+                                    raise SDKError('GNU long name or link record does not match its member')
+                                setattr(item, field, value.decode('utf-8'))
+                        try:
+                            item.name.encode('utf-8')
+                            item.linkname.encode('utf-8')
+                        except UnicodeEncodeError as error:
+                            raise SDKError('Invalid archive member name') from error
                     path = member_path(item.name)
                     if path == root:
                         if item.type != tarfile.DIRTYPE or item.size:

@@ -76,6 +76,17 @@ one archive, unsupported entry types, corrupt xz, and data after the tar end
 marker fail the import. This is an isolated compiler
 sysroot. Do not extract these sets over the host or a running target.
 
+NetBSD `maketars` writes the sets with `pax --gnu`. A name or link target
+of 100 bytes or more then has a GNU `L` or `K` record named
+`././@LongLink`. The header field keeps only the start of the value.
+The importer applies the record to the next member and checks the complete
+value like a normal name or target. The Clang comp set of OS `2e5ec0754fdc`
+has such a link for a libc++ `__cxx03` header. A record must hold one UTF-8
+value of at most 1024 bytes (`MAXPATHLEN`), and the value must start with the
+header field. A long link record must precede a link. A long name record
+cannot precede an old-style type 0 member. Repeated or unused records and pax
+extended headers fail the import.
+
 The OS sets supply headers, startup objects, link libraries, and runtime
 providers from one fork build. The selected host cross compiler and application
 runtime remain separate inputs. This importer does not create an SDK application
