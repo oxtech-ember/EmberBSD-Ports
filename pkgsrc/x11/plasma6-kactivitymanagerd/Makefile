@@ -2,6 +2,7 @@
 # Origin: pkgsrc, adapted by EmberBSD (AI-assisted).
 
 DISTNAME=	kactivitymanagerd-${PLASMAVER}
+PKGREVISION=	1
 CATEGORIES=	x11
 
 HOMEPAGE=	https://www.kde.org/workspaces/plasmadesktop/
@@ -21,7 +22,7 @@ SUBST_FILES.fix-moc+=	_KDE_build/src/service/plugins/*/CMakeFiles/*_autogen.dir/
 SUBST_NOOP_OK.fix-moc=	yes
 SUBST_SED.fix-moc=	-e 's;"${PREFIX}/include",;;g'
 
-.include "../../devel/boost-libs/buildlink3.mk"
+.include "../../devel/boost-headers/buildlink3.mk"
 .include "../../devel/kf6-kconfig/buildlink3.mk"
 .include "../../devel/kf6-kcoreaddons/buildlink3.mk"
 .include "../../devel/kf6-kcrash/buildlink3.mk"
