@@ -7,6 +7,7 @@ EIGEN3_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.eigen3+=	eigen3>=5.0.1
 BUILDLINK_PKGSRCDIR.eigen3?=	../../math/eigen3
+BUILDLINK_FILES.eigen3+=	share/eigen3/cmake/*
 BUILDLINK_DEPMETHOD.eigen3?=	build
 .endif # EIGEN3_BUILDLINK3_MK
 
