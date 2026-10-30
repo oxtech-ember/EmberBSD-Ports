@@ -50,7 +50,12 @@ PKG_FAIL_REASON+= "Qt 6 recipe ${PKGPATH} is not prepared in the Plasma toolkit"
 PKG_FAIL_REASON+= "The common toolkit requires QTVERSION=6.12.0"
 .endif
 
-MASTER_SITES=	https://download.qt.io/archive/qt/${QTVERSION:R}/${QTVERSION}/submodules/
+# download.qt.io stalls; list official Qt mirrors so fetch fails over.
+_QT6_SITE_PATH=	archive/qt/${QTVERSION:R}/${QTVERSION}/submodules/
+MASTER_SITES=	https://download.qt.io/${_QT6_SITE_PATH}
+MASTER_SITES+=	https://ftp.fau.de/qtproject/${_QT6_SITE_PATH}
+MASTER_SITES+=	https://qt.mirror.constant.com/${_QT6_SITE_PATH}
+MASTER_SITES+=	https://mirrors.ocf.berkeley.edu/qt/${_QT6_SITE_PATH}
 
 EXTRACT_SUFX=	.tar.xz
 EXTRACT_USING=	bsdtar
