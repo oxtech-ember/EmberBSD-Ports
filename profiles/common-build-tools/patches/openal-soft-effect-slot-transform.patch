@@ -1,0 +1,18 @@
+$NetBSD$
+
+Transform effect slot clusters with a lambda: taking the address of a
+std::unique_ptr member function is not portable and fails with LLVM libc++.
+Upstream replaced it with al::dereference.
+
+--- alc/alc.cpp.orig
++++ alc/alc.cpp
+@@ -1781,7 +1781,8 @@
+          * configuration in aluInitEffectPanning.
+          */
+         std::ranges::for_each(context->mEffectSlotClusters
+-            | std::views::transform(&ContextBase::EffectSlotCluster::operator*)
++            | std::views::transform([](ContextBase::EffectSlotCluster const &cluster)
++                -> auto& { return *cluster; })
+             | std::views::join, [](EffectSlotBase &slot)
+         {
+             slot.mWetBuffer.clear();
