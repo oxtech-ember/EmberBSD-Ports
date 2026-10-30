@@ -1,0 +1,16 @@
+--- a/mk/bsd.pkg.use.mk
++++ b/mk/bsd.pkg.use.mk
+@@ -22,6 +22,13 @@
+ 
+ .if defined(USE_BSD_MAKEFILE)
+ MAKE_ENV+=		${BSD_MAKE_ENV} INSTALL=${TOOLS_INSTALL:Q}
++.  if !empty(EMBERBSD_NATIVE_TOOLSET_MAKECONF:U)
++.    for _ember_archive_tool in AR RANLIB NM
++.      if empty(MAKE_ENV:M${_ember_archive_tool}=*)
++MAKE_ENV+=		${_ember_archive_tool}=${${_ember_archive_tool}:Q}
++.      endif
++.    endfor
++.  endif
+ .  if !defined(TOOLS_PLATFORM.ctfconvert) && !defined(TOOLS_PLATFORM.ctfmerge)
+ MAKE_ENV+=		NOCTF=yes
+ .  endif
