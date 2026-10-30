@@ -4,6 +4,7 @@
 # This recipe and its local portability patches were prepared with AI assistance.
 
 DISTNAME=	blanc-1.25.0
+PKGREVISION=	1
 CATEGORIES=	www
 BLANC_SOURCE=	v1.25.0${EXTRACT_SUFX}
 MASTER_SITES=	https://github.com/bnfy/blanc/archive/refs/tags/
@@ -110,7 +111,7 @@ NO_BIN_ON_CDROM=	${RESTRICTED}
 BLANC_ELECTRON_RUNTIME_VERSION=	44.9.3
 BLANC_ELECTRON_PKGDIR=	../../devel/electron44
 BLANC_ELECTRON_DEPENDS=	electron>=${BLANC_ELECTRON_RUNTIME_VERSION}<44.9.4:${BLANC_ELECTRON_PKGDIR}
-BLANC_NODE_VERSION=	26.12.1
+BLANC_NODE_VERSION=	26.13.0
 BLANC_SOURCE_SHA256=	b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971
 BLANC_SOURCE_FILES_SHA256=	89932ab7cb1966bf5a00fe114945acad393f14493d0bcd3157c43d5c697a20c7
 BLANC_NPM_MANIFEST_SHA256=	f4b8db0e788ff5be1c448440d9c94cd4a543241fa8d8b44d7e10ce2ff0c68462
@@ -137,7 +138,7 @@ blanc-check-source-tools:
 
 blanc-check-build-tools: blanc-check-source-tools
 .if !defined(EMBERBSD_HOST_NODE) || empty(EMBERBSD_HOST_NODE:M/*) || !exists(${EMBERBSD_HOST_NODE})
-	${FAIL_MSG} "Blanc requires the selected host Node.js 26.12.1 in EMBERBSD_HOST_NODE"
+	${FAIL_MSG} "Blanc requires the selected host Node.js 26.13.0 in EMBERBSD_HOST_NODE"
 .endif
 .if !defined(EMBERBSD_HOST_PREFIX) || empty(EMBERBSD_HOST_PREFIX:M/*) || !exists(${EMBERBSD_HOST_PREFIX})
 	${FAIL_MSG} "Blanc requires the selected native EMBERBSD_HOST_PREFIX"

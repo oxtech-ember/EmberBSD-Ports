@@ -1,7 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	typescript-7.0.2
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	lang
 TYPESCRIPT_REVISION=	2bd066d87f5bafd315be9f40889d0a60b9e58e0b
 DISTFILES=	typescript-go-${TYPESCRIPT_REVISION}.tar.gz ${DISTNAME}.tgz
@@ -16,7 +16,7 @@ HOMEPAGE=	https://www.typescriptlang.org/
 COMMENT=	TypeScript compiler with a source-built native backend
 LICENSE=	apache-2.0 AND modified-bsd AND 2-clause-bsd AND mit AND unicode AND w3c AND cc-by-v4.0
 
-DEPENDS+=	nodejs>=26.12.1<27:../../lang/nodejs
+DEPENDS+=	nodejs>=26.13.0<27:../../lang/nodejs
 USE_LANGUAGES=	# none
 REPLACE_NODEJS=	npm/package/bin/tsc
 GO_BUILD_PATTERN=	./cmd/tsgo

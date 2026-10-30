@@ -1,8 +1,8 @@
 # Zigbee2MQTT 2.14.2 candidate
 
 The recipe uses the original release archive, upstream frozen pnpm lock,
-the selected common Node 26.12.1 and upstream-selected pnpm11.26.0.
-Node 26.12.1 is outside upstream's declared engine range; the application
+the selected common Node 26.13.0 and upstream-selected pnpm11.26.0.
+Node 26.13.0 is outside upstream's declared engine range; the application
 retains its own startup warning. pnpm's bootstrap archive
 is separately pinned in [sources/pnpm.tsv](sources/pnpm.tsv).
 

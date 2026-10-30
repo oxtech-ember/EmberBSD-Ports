@@ -233,7 +233,7 @@ Its native macOS build renders the three Enchant manual pages as HTML.
 The focused source check passes ASan/UBSan and preserves all errno cases.
 The complete target package and graphical HTML pipeline remain unaccepted.
 
-The common [Node recipe](node.md) uses Node.js 26.12.1 with shared dependencies
+The common [Node recipe](node.md) uses Node.js 26.13.0 with shared dependencies
 and the existing portability patches. Native and cross package acceptance remain
 separate.
 

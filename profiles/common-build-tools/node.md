@@ -1,6 +1,6 @@
 # Common Node provider
 
-The prepared pkgsrc tree uses `lang/nodejs` with [Node.js 26.12.1](https://nodejs.org/en/blog/release/v26.12.1). The official archive SHA256 is recorded in `sources.tsv`; recipe `distinfo` records BLAKE2s, SHA512, size and portability patch checksums. `pkgsrc-nodejs-current.patch` updates the common upstream recipe and `node-gc-net-timeout.patch` adjusts only the upstream test. The version family removes replaced versioned recipes from the prepared catalog.
+The prepared pkgsrc tree uses `lang/nodejs` with [Node.js 26.13.0](https://nodejs.org/en/blog/release/v26.13.0). The official archive SHA256 is recorded in `sources.tsv`; recipe `distinfo` records BLAKE2s, SHA512, size and portability patch checksums. `pkgsrc-nodejs-current.patch` updates the common upstream recipe and `node-gc-net-timeout.patch` adjusts only the upstream test. The version family removes replaced versioned recipes from the prepared catalog.
 
 The source-owned `src/node_version.h` defines EmberBSD's unregistered native-addon module ABI revisions: 1162674177 for standalone Node and 1162674178 for Electron. These values identify separately built EmberBSD runtimes; they are not upstream registrations or compatibility claims for other distributions. Rebuild V8/Node C++ addons against the matching runtime headers and configuration, rather than using foreign prebuilt binaries. Node-API has its separate ABI contract and remains subject to its documented API and external-library limits. Advance the affected revision when its native-addon ABI changes. `tools/getmoduleversion.py` reads this header for standalone configuration; `--electron` selects the Electron value for its GN arguments, headers and config.
 
@@ -18,8 +18,9 @@ The source regression verifies the release checksum, applies the complete pkgsrc
 
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B -I -S profiles/common-build-tools/tests/node26-source.py \
-  --archive "$DISTDIR/node-v26.12.1.tar.xz" --recipe "$PREPARED_PKGSRC/lang/nodejs" \
-  --patch "$HOST_PREFIX/bin/gpatch" --work "$NEW_WORK_DIRECTORY"
+  --archive "$DISTDIR/node-v26.13.0.tar.xz" --recipe "$PREPARED_PKGSRC/lang/nodejs" \
+  --patch "$HOST_PREFIX/bin/gpatch" --work "$NEW_WORK_DIRECTORY" \
+  --gyp-source "$GYP_SOURCE" --gyp-pkgsrc "$PREPARED_PKGSRC" --sdk-source "$SDK_SOURCE"
 ```
 
 `tests/node26-torque-producer.py` takes the prepared Node source, selected host

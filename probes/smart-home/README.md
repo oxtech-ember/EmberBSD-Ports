@@ -52,9 +52,9 @@ interpreter alongside the common stack to make an application build.
 - GCC 16.2 is the current C/C++ compiler candidate. C++ dependencies must use
   its runtime; the existing VM's older Boost build cannot silently be mixed
   into a GCC 16 Domoticz executable.
-- Node 26.12.1 is the common `lang/nodejs` selection. Zigbee2MQTT 2.14.2
+- Node 26.13.0 is the common `lang/nodejs` selection. Zigbee2MQTT 2.14.2
   declares Node `^22.2.0 || ^24 || <=26.2`, so its upstream startup warning
-  remains visible on Node 26.12.1. This is not a claim of upstream support.
+  remains visible on Node 26.13.0. This is not a claim of upstream support.
 - Python 3.14.8 comes from the [common build tools](../../profiles/common-build-tools/README.md)
   selection. Home Assistant requires at least 3.14.2. The VM's current 3.13
   is not an acceptable application runtime. Upstream Python build generators

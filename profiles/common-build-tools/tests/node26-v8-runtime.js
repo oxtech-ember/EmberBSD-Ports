@@ -3,7 +3,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
-assert.equal(process.versions.node, '26.12.1');
+assert.equal(process.versions.node, '26.13.0');
 let calls = [];
 const ctx = vm.createContext({calls}, {microtaskMode: 'afterEvaluate'});
 vm.runInContext('Promise.resolve().then(() => calls.push(42))', ctx);

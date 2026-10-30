@@ -8,12 +8,12 @@ Source preparation does not build or install Node or establish runtime ABI.
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/node/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
-  --archive "$DISTFILES/node-v26.12.1.tar.xz" --patch "$HOST_PREFIX/bin/gpatch" \
+  --archive "$DISTFILES/node-v26.13.0.tar.xz" --patch "$HOST_PREFIX/bin/gpatch" \
   --output "$WORK/node-source"
 # Alternatively, prepare from an already exported pkgsrc tree without Git:
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/node/source.py \
   --sdk-source "$SDK_SOURCE" prepare --pkgsrc-root "$EXPORTED_PKGSRC" \
-  --archive "$DISTFILES/node-v26.12.1.tar.xz" --patch "$HOST_PREFIX/bin/gpatch" \
+  --archive "$DISTFILES/node-v26.13.0.tar.xz" --patch "$HOST_PREFIX/bin/gpatch" \
   --output "$WORK/node-source"
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/node/source.py \
   --sdk-source "$SDK_SOURCE" verify-source --source "$WORK/node-source" \

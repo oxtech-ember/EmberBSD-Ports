@@ -40,9 +40,9 @@ class BlancPackageTests(unittest.TestCase):
         cls.sdk_root, cls.jsonio, cls.inventory, cls.stream, cls.native_api = builder.load_sdk(cls.sdk_source)
 
     def test_host_node_version_is_exact(self):
-        self.assertEqual(builder.HOST_NODE_VERSION, '26.12.1')
-        builder.validate_host_node_version(b'v26.12.1\n')
-        for value in (b'v24.22.0\n', b'v24.12.0\n', b'v24.22.1\n', b'', b'26.12.1'):
+        self.assertEqual(builder.HOST_NODE_VERSION, '26.13.0')
+        builder.validate_host_node_version(b'v26.13.0\n')
+        for value in (b'v24.22.0\n', b'v24.12.0\n', b'v24.22.1\n', b'', b'26.13.0'):
             with self.subTest(value=value), self.assertRaises(builder.BuildError):
                 builder.validate_host_node_version(value)
 
@@ -270,7 +270,7 @@ class BlancPackageTests(unittest.TestCase):
                     'node_modules/electron': {'version': '44.5.1'},
                 }}, selected, roles,
                 {'node_modules/@ghostery/adblocker-electron': set(), 'node_modules/@electron/asar': set()},
-                rows, metadata, asar, '26.12.1', '44.9.3', '../../devel/electron44',
+                rows, metadata, asar, '26.13.0', '44.9.3', '../../devel/electron44',
                 'electron>=44.9.3<44.9.4:../../devel/electron44', '4.3.0', 'f' * 64,
                 '3.15.0', '1' * 64)
             electron = next(item for item in bom['components'] if item['name'] == 'Electron')
@@ -287,7 +287,7 @@ class BlancPackageTests(unittest.TestCase):
             self.assertEqual(bom['metadata']['component']['hashes'][0]['content'], hashlib.sha256(b'fixture ASAR').hexdigest())
             tools = {item['name']: item for item in bom['metadata']['tools']['components']}
             self.assertEqual(tools['CPython']['version'], '3.15.0')
-            self.assertEqual(tools['Node.js']['version'], '26.12.1')
+            self.assertEqual(tools['Node.js']['version'], '26.13.0')
 
     def test_sbom_does_not_misrepresent_electron_as_bundled_npm(self):
         lock_path = self.source / 'package-lock.json'

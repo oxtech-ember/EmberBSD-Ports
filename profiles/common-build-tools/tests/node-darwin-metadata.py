@@ -127,7 +127,7 @@ def main():
                  '--recipe', str(recipe), '--patch', str(args.patch),
                  '--work', str(args.work/'source-check')], args.work)
     assert not result.returncode, result.stdout+result.stderr
-    source = args.work/'source-check/node-v26.12.1'
+    source = args.work/'source-check/node-v26.13.0'
     env.update(GYP_MACOS_SDK_PATH=str(args.sdk_root),
                GYP_XCODE_VERSION_PLIST=str(args.xcode_version_plist),
                GYP_LIBTOOL=str(prefix/'bin/llvm-libtool-darwin'))
@@ -362,7 +362,7 @@ runpy.run_path(script,run_name="__main__")
     assert 'CoreFoundation' not in (directory/'framework_probe.target.mk').read_text()
     assert 'CoreFoundation' not in (directory/'bridge.target.mk').read_text()
     framework_results['non-mac'] = 'generated dependency metadata excludes Darwin framework; no non-Darwin compile claimed'
-    summary = {'source': 'Node26.12.1', 'metadata_negative_cases': negatives,
+    summary = {'source': 'Node26.13.0', 'metadata_negative_cases': negatives,
                'legacy_metadata_search_refused': ['xcrun', 'xcodebuild'],
                'actual_common_exporter': True,
                'actual_pkgsrc_configure_and_make_metadata_quoting': True,

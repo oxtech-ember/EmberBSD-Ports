@@ -51,18 +51,18 @@ def run(label, argv, *, cwd=a.work, success=True, timeout=30):
     return status, stdout, stderr
 
 version = run('version', [native.tool('node'), '--version'])[1].strip()
-assert version == b'v26.12.1', version
+assert version == b'v26.13.0', version
 sources = [line.split('\t') for line in (PROFILE / 'sources.tsv').read_text().splitlines()
            if line.startswith(a.archive.name + '\t')]
-assert len(sources) == 1 and a.archive.name == 'node-v26.12.1.tar.xz'
+assert len(sources) == 1 and a.archive.name == 'node-v26.13.0.tar.xz'
 assert hashlib.sha256(a.archive.read_bytes()).hexdigest() == sources[0][1]
 entry = ('recipe-patch\t' + PATCH.relative_to(PORTS).as_posix() +
          '\tlang/nodejs\tpatch-test_parallel_test-gc-net-timeout.js\n')
 assert (PORTS / 'pkgsrc/export.conf').read_text().count(entry) == 1
 source = a.work / 'source'; source.mkdir()
-sourceprep.extract_archive(a.archive, source, 'node-v26.12.1', 'Node GC test',
+sourceprep.extract_archive(a.archive, source, 'node-v26.13.0', 'Node GC test',
                           components=('test/common', TEST.as_posix()))
-baseline = source / 'node-v26.12.1'
+baseline = source / 'node-v26.13.0'
 candidate = a.work / 'candidate'
 shutil.copytree(baseline, candidate)
 run('patch', [native.tool('patch'), '-f', '-F0', '-p0', '-V', 'none', '-i', PATCH],
