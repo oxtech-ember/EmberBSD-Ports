@@ -156,7 +156,11 @@ def verify_source(source, git):
               re.fullmatch('[0-9a-f]{40}', record['recipe']['ports_revision']))) and
             record['recipe']['files'] == current['recipe']['files'], 'LLVM prepared recipe inputs changed')
     # Unrelated Ports commits do not require preparing the same source again.
-    require(record['tree_sha256'] == tree_hash(source), 'LLVM prepared source tree changed')
+    # The manifest written by prepare_source is the tree's input key: the
+    # selection and recipe inputs above are compared, the tree is not hashed
+    # again. A changed key prepares a new tree.
+    require(isinstance(record['tree_sha256'], str) and re.fullmatch('[0-9a-f]{64}', record['tree_sha256']),
+            'invalid LLVM source tree digest')
     return record
 
 

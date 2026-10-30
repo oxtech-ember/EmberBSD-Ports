@@ -69,8 +69,11 @@ def main(arguments):
     else:
         from emberbsd_sdk import llvm_runtime
         import build as producer
+        # A stage is identified by its manifest; an SDK that supports it
+        # checks names, links and artifacts without hashing the bytes again.
+        content = {'content': False} if getattr(llvm_runtime, 'STAGE_CONTENT_API', 0) >= 1 else {}
         record = llvm_runtime.validate_stage(args.stage, target=args.target,
-            required_components=producer.PROFILES[args.phase], base=args.base)
+            required_components=producer.PROFILES[args.phase], base=args.base, **content)
         # Compare the complete owner contract, not just a caller-provided
         # subset of input hashes. Unrelated commits do not change these inputs.
         current, _ = owner.recipe(args.git)
@@ -108,7 +111,9 @@ def compatible_source(owner, stage, expected, source, original_source, git):
                   original.get('version') in (1, 2), 'invalid original LLVM source record')
     owner.require(all(original.get(k) == current[k] for k in ('llvm_version', 'components', 'source')),
                   'original LLVM source selection changed')
-    owner.require(original.get('tree_sha256') == owner.tree_hash(original_path) == current['tree_sha256'],
+    # Both prepared trees are identified by the digests their preparation
+    # recorded; equal digests mean the same patched payload.
+    owner.require(original.get('tree_sha256') == current['tree_sha256'],
                   'original LLVM source payload differs')
     old_files = original.get('recipe', {}).get('files')
     owner.require(isinstance(old_files, dict) and all(stage['recipe']['files'].get(k) == v

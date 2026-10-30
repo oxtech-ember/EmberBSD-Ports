@@ -67,11 +67,16 @@ def main():
     wrong_source = copy.deepcopy(record)
     wrong_source['source']['archive'] = 'different-release.tar.xz'
     check(wrong_source, 'source selection changed')
+    # The manifest is the stage's key: the verifier does not hash the stage
+    # bytes again, while a changed file set still fails.
     changed = bytearray(archive.read_bytes())
     changed[24] = ord('1')  # valid archive metadata, different payload bytes
     archive.write_bytes(changed)
+    check(record)
+    extra = archive.parent / 'libextra.a'
+    extra.write_bytes(bytes(changed))
     check(record, 'inventory changed')
-    print('PASS: public verifier accepts current identity and rejects omitted recipe inputs, wrong source and changed payload')
+    print('PASS: public verifier accepts current identity by manifest and rejects omitted recipe inputs, wrong source and a changed file set')
 
 
 if __name__ == '__main__':

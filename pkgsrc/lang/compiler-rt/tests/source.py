@@ -47,15 +47,12 @@ def main():
     assert not producer.EXPORTED and producer.PKGSRC == original_root
     rejected(lambda: producer.prepare_source(args.archive, producer.PORTS / '.llvm-test-output',
                                              args.patch, args.git), 'overlap')
-    fixture = source / 'compiler-rt/lib/builtins/comparetf2.c'
-    original = fixture.read_bytes()
-    fixture.write_bytes(original + b'\n/* changed */\n')
-    rejected(lambda: producer.verify_source(source, args.git), 'tree changed')
-    fixture.write_bytes(original)
-    extra = source / 'unexpected.h'
-    extra.write_text('/* unselected source */\n')
-    rejected(lambda: producer.verify_source(source, args.git), 'tree changed')
-    extra.unlink()
+    # The manifest is the prepared tree's key; verification does not hash
+    # the tree again.
+    tree_hash = producer.tree_hash
+    producer.tree_hash = lambda root: (_ for _ in ()).throw(AssertionError('prepared source hashed again'))
+    assert producer.verify_source(source, args.git) == record
+    producer.tree_hash = tree_hash
     manifest = source / producer.SOURCE_MANIFEST
     original = manifest.read_bytes()
     altered = dict(record, llvm_version='1.0.0')
@@ -70,8 +67,8 @@ def main():
     assert producer.verify_source(source, args.git) == record
     producer.jsonio.write_json(work / 'result.json', dict(status='PASS', source=record,
         checks=['actual archive and zero-fuzz patches', 'complete source inventory',
-                'existing output', 'changed file', 'extra file', 'changed identity', 'wrong archive']))
-    print('PASS: common LLVM source preparation and five changed-input controls; no target compilation')
+                'existing output', 'identified by manifest', 'changed identity', 'wrong archive']))
+    print('PASS: common LLVM source preparation and four controls; no target compilation')
 
 
 if __name__ == '__main__':

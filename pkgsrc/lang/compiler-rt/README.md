@@ -26,8 +26,10 @@ stored as `llvm-source.json` inside the source root. Its format is
 `emberbsd-llvm-source`, version 1. It records the LLVM version, selected
 components, archive basename/checksums/size, Ports revision, exact recipe input
 hashes and a hash of the complete prepared tree. The manifest excludes itself
-from that inventory. Verification compares relevant recipe inputs; unrelated
-Ports commits do not invalidate the same prepared source.
+from that inventory. The manifest is the prepared tree's input key:
+verification compares the selection and relevant recipe inputs and does not
+hash the tree again; unrelated Ports commits do not invalidate the same
+prepared source. A changed key prepares a new tree.
 
 The OS consumes this root through `EMBER_LLVM_SOURCE`. Its own native makefiles
 retain libc ABI integration, CRT objects and installation paths. The runtime
@@ -321,7 +323,9 @@ exception and does not change the LLVM target runtime.
 
 Each successful phase emits the bare `runtime.json` record, with payload under
 `stage/usr/pkg/llvm`. `verify --stage PATH --target aarch64 --phase bootstrap
---git /absolute/git` verifies the component profile, complete payload and current
+--git /absolute/git` verifies the component profile, the payload's file set,
+links and artifacts against the manifest (with an SDK that provides
+`STAGE_CONTENT_API`, without hashing the bytes again) and current
 source/recipe inputs; optional `--base PATH` verifies the recorded base input
 subset. The format is the SDK `emberbsd-llvm-runtime`, version 1. The base
 identity records actual headers/libraries and every contained symlink hop and

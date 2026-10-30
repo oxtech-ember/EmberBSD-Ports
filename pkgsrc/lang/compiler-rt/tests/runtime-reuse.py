@@ -63,11 +63,14 @@ with tempfile.TemporaryDirectory() as tmp:
     altered = copy.deepcopy(stage)
     altered['recipe']['files']['pkgsrc/lang/compiler-rt/files/build.py'] = 'changed'
     check(altered, True)
-    owner.tree_hash = lambda p: 'tampered'
+    # The recorded digests identify both trees; neither is hashed again.
+    owner.tree_hash = lambda p: (_ for _ in ()).throw(AssertionError('prepared source hashed again'))
+    check(stage)
+    tampered = dict(source, tree_sha256='tampered')
+    (root / 'llvm-source.json').write_text(json.dumps(tampered))
     check(stage, True)
-    owner.tree_hash = lambda p: 'payload'
     changed = copy.deepcopy(source)
     changed['source']['sha512'] = 'different'
     (root / 'llvm-source.json').write_text(json.dumps(changed))
     check(stage, True)
-print('runtime source reuse and CLI: 8 checks passed')
+print('runtime source reuse and CLI: 9 checks passed')
