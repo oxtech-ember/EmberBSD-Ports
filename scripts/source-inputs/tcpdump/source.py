@@ -97,6 +97,10 @@ def recipe(exported):
 
 
 def verify(source, git, archive=None, patch=None, pkgsrc_export=None):
+    # Check a caller's shared export before any early return: an unchanged
+    # Git-identified receipt needs no export, but a broken one must not pass.
+    shared = (identity_module().shared_export(pkgsrc_export, PORTS, git, SDK_SOURCE, patch)
+              if pkgsrc_export else None)
     identity = source_identity(git)
     record = jsonio.read_json(str(Path(source) / sourceprep.PREPARED_TREE_RECEIPT))
     old = record.get('identity') if isinstance(record, dict) else None
@@ -115,7 +119,7 @@ def verify(source, git, archive=None, patch=None, pkgsrc_export=None):
             selector = identity_module()
             if pkgsrc_export:
                 # The run's single export, bound to the current Ports inputs.
-                exported = selector.shared_export(pkgsrc_export, PORTS, git, SDK_SOURCE, patch)
+                exported = shared
             else:
                 exported = Path(tmp) / 'pkgsrc'
                 process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),

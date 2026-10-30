@@ -97,6 +97,10 @@ def recipe(exported):
 
 
 def verify(source, git, archive=None, patch=None, pkgsrc_export=None):
+    # Check a caller's shared export before any early return: an unchanged
+    # Git-identified receipt needs no export, but a broken one must not pass.
+    shared = (identity_module().shared_export(pkgsrc_export, PORTS, git, SDK_SOURCE, patch)
+              if pkgsrc_export else None)
     identity = source_identity(git)
     record = jsonio.read_json(str(Path(source) / sourceprep.PREPARED_TREE_RECEIPT))
     old = record.get('identity') if isinstance(record, dict) else None
@@ -114,7 +118,7 @@ def verify(source, git, archive=None, patch=None, pkgsrc_export=None):
         with tempfile.TemporaryDirectory(prefix='.ppp-verify-') as tmp:
             selector = identity_module()
             if pkgsrc_export:
-                exported = selector.shared_export(pkgsrc_export, PORTS, git, SDK_SOURCE, patch)
+                exported = shared
             else:
                 exported = Path(tmp) / 'pkgsrc'
                 process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
@@ -146,8 +150,7 @@ def verify(source, git, archive=None, patch=None, pkgsrc_export=None):
             'changed export requires an explicit archive and patch to compare ppp')
     with tempfile.TemporaryDirectory(prefix='.ppp-verify-') as tmp:
         expected = Path(tmp) / 'expected'
-        exported = (identity_module().shared_export(pkgsrc_export, PORTS, git, SDK_SOURCE, patch)
-                    if pkgsrc_export else None)
+        exported = shared
         prepared = prepare(archive, expected, patch, git, exported=exported)
         require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
         require(prepared['tree_sha256'] == record['tree_sha256'],

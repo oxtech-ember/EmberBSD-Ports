@@ -216,7 +216,9 @@ class OwnerTest(unittest.TestCase):
                     shared_args = {'pkgsrc_export': '/export'} if 'pkgsrc_export' in accepted else {}
                     self.assertEqual(owner.verify('/source', sys.executable, **shared_args), record)
                     git_identity.assert_called_once_with(sys.executable)
-                    self.assertEqual((capture.call_count, shared.call_count, prepare.call_count), (0, 0, 0))
+                    # A given shared export is still checked, once; nothing is exported or prepared.
+                    self.assertEqual((capture.call_count, shared.call_count, prepare.call_count),
+                                     (0, len(shared_args), 0))
                     # A changed dependent Git object falls back to the payload comparison.
                     git_identity.return_value = dict(effective, effective_package_sha256='6' * 64)
                     owner.verify('/source', sys.executable, archive='/archive', patch='/patch', **extra)
@@ -226,6 +228,36 @@ class OwnerTest(unittest.TestCase):
                     current['owner_sha256'] = '7' * 64
                     owner.verify('/source', sys.executable, archive='/archive', patch='/patch', **extra)
                     self.assertEqual((capture.call_count, prepare.call_count), (2, 2))
+
+    def test_git_identity_receipts_refuse_a_broken_shared_export(self):
+        """An unchanged API 2 receipt does not let a broken shared export pass."""
+        owners = [name for name in GIT_OWNERS
+                  if 'pkgsrc_export' in inspect.signature(self.owner(name).verify).parameters]
+        self.assertGreaterEqual(len(owners), 18)
+        for name in owners:
+            with self.subTest(owner=name):
+                owner = self.owner(name)
+                selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')
+                effective = {'api': 2, 'package': owner.PACKAGE,
+                             'effective_package_sha256': '4' * 64, 'upstream': '1' * 40}
+                old = {'effective': effective, 'owner_sha256': '3' * 64}
+                current = {'export': {'upstream': '1' * 40}, 'owner_sha256': '3' * 64}
+                with patch.object(owner, 'source_identity', return_value=current), \
+                     patch.object(owner.jsonio, 'read_json', return_value={'identity': old}), \
+                     patch.object(owner.sourceprep, 'validate_prepared_tree', return_value={'tree_sha256': '5' * 64}), \
+                     patch.object(owner, 'identity_module', return_value=selector), \
+                     patch.object(owner, 'git_effective_identity', return_value=effective), \
+                     patch.object(selector, 'shared_export',
+                                  side_effect=ValueError('invalid shared pkgsrc export receipt')):
+                    with self.assertRaisesRegex(ValueError, 'invalid shared pkgsrc export receipt'):
+                        owner.verify('/source', sys.executable, patch='/patch', pkgsrc_export='/export')
+        libarchive = load(ROOT / 'scripts/libarchive-source.py', 'libarchive_owner')
+        selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')
+        with patch.object(libarchive, 'module', return_value=selector), \
+             patch.object(selector, 'shared_export', side_effect=ValueError('invalid shared pkgsrc export receipt')), \
+             patch.object(libarchive, 'selected_identity', side_effect=AssertionError('export checked too late')):
+            with self.assertRaisesRegex(ValueError, 'invalid shared pkgsrc export receipt'):
+                libarchive.verify('/source', str(SDK), sys.executable, '/patch', '/export')
 
     def test_prepare_uses_the_selected_shared_export(self):
         for name in GIT_OWNERS:

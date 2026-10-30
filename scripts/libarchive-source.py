@@ -38,6 +38,10 @@ def selected_identity(sdk_source, git):
 
 
 def verify(source, sdk_source, git, patch=None, pkgsrc_export=None):
+    # Check a caller's shared export before any early return: an unchanged
+    # Git-identified receipt needs no export, but a broken one must not pass.
+    shared = (module(ROOT / 'scripts/pkgsrc-source-identity.py', 'pkgsrc_identity').shared_export(
+        pkgsrc_export, ROOT, git, sdk_source, patch) if pkgsrc_export else None)
     identity = selected_identity(sdk_source, git)
     from emberbsd_sdk import jsonio, process, sourceprep
     record = jsonio.read_json(str(Path(source) / sourceprep.PREPARED_TREE_RECEIPT))
@@ -68,8 +72,7 @@ def verify(source, sdk_source, git, patch=None, pkgsrc_export=None):
     with tempfile.TemporaryDirectory(prefix='.libarchive-verify-') as work:
         if pkgsrc_export:
             # The run's single export, bound to the current Ports inputs.
-            selector = module(ROOT / 'scripts/pkgsrc-source-identity.py', 'pkgsrc_identity')
-            export = selector.shared_export(pkgsrc_export, ROOT, git, sdk_source, patch)
+            export = shared
         else:
             export = Path(work) / 'pkgsrc'
             command = [sys.executable, '-B', str(ROOT / 'scripts/prepare-pkgsrc.py'),
