@@ -1,0 +1,42 @@
+$NetBSD$
+
+AArch64 compilers define __aarch64__; only Apple compilers also define
+__arm64__. Without the ARM64 test result, systems whose pthread mutexes
+cannot be shared between processes, such as NetBSD, fell through to the
+removed fcntl mutexes and configure failed.
+
+--- dist/aclocal/mutex.m4.orig
++++ dist/aclocal/mutex.m4
+@@ -493,10 +493,10 @@
+ ], [db_cv_mutex=ARM/gcc-assembly])
+ fi
+ 
+-# ARM64/gcc: Linux
++# ARM64/gcc: macOS, and AArch64 systems without shared POSIX mutexes
+ if test "$db_cv_mutex" = no; then
+ AC_TRY_COMPILE(,[
+-#if defined(__arm64__) && defined(__GNUC__)
++#if (defined(__arm64__) || defined(__aarch64__)) && defined(__GNUC__)
+ 	return (0);
+ #else
+ 	FAIL TO COMPILE/LINK
+--- dist/configure.orig
++++ dist/configure
+@@ -21794,7 +21794,7 @@
+ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+ fi
+ 
+-# ARM64/gcc: Linux
++# ARM64/gcc: macOS, and AArch64 systems without shared POSIX mutexes
+ if test "$db_cv_mutex" = no; then
+ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+@@ -21803,7 +21803,7 @@
+ main ()
+ {
+ 
+-#if defined(__arm64__) && defined(__GNUC__)
++#if (defined(__arm64__) || defined(__aarch64__)) && defined(__GNUC__)
+ 	return (0);
+ #else
+ 	FAIL TO COMPILE/LINK
