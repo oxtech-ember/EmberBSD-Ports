@@ -1,0 +1,19 @@
+Build gettext-tools without the style option in the Darwin bootstrap.
+The style option pulls libcroco and GLib; GLib needs msgfmt from
+gettext-tools, so the bootstrap path had a dependency cycle.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/devel/gettext-tools/Makefile
++++ b/devel/gettext-tools/Makefile
+@@ -8,7 +8,11 @@
+ 
+ PKG_OPTIONS_VAR=	PKG_OPTIONS.gettext-tools
+ PKG_SUPPORTED_OPTIONS=	style
++# The Darwin bootstrap builds plain gettext-tools: style needs libcroco and
++# GLib, and GLib needs msgfmt from gettext-tools (circular dependency).
++.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes"
+ PKG_SUGGESTED_OPTIONS=	style
++.endif
+ .include "../../mk/bsd.options.mk"
+ 
+ PLIST_VARS+=	style
