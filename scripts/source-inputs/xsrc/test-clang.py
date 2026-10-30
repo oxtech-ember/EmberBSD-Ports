@@ -68,6 +68,19 @@ CASES = {
                                           '-I', str(mesa / 'src/glx'),
                                           '-I', str(root / 'MesaLib/src/mapi/glapi/gen'),
                                           '-I', str(x11), str(mesa / 'src/glx/glxcmds.c')], None),
+    # GLU's NURBS varray used the C++17-removed register storage class.
+    'GLU varray register': (['-x', 'c++', '-std=c++17', '-DNDEBUG', '-DLIBRARYBUILD',
+                             '-I', str(root / 'glu/dist/include'),
+                             '-I', str(root / 'glu/dist/src/include'),
+                             '-I', str(root / 'glu/dist/src/libnurbs/internals'),
+                             '-I', str(root / 'glu/dist/src/libnurbs/interface'),
+                             '-I', str(root / 'glu/dist/src/libnurbs/nurbtess'), '-I', str(x11),
+                             str(root / 'glu/dist/src/libnurbs/internals/varray.cc')], None),
+    # xedit's regex compiler compared values of two different enumerations.
+    'xedit re string list type': (['-std=gnu11', '-I', str(root / 'xedit/dist/lisp/re'),
+                                   str(root / 'xedit/dist/lisp/re/re.c')], None),
+    'xedit rec repetition type': (['-std=gnu11', '-I', str(root / 'xedit/dist/lisp/re'),
+                                   str(root / 'xedit/dist/lisp/re/rec.c')], None),
 }
 
 failed = []

@@ -1,0 +1,22 @@
+--- external/mit/xedit/dist/lisp/re/re.c
++++ external/mit/xedit/dist/lisp/re/re.c
+@@ -2081,7 +2081,7 @@
+ 
+     if (stl->nstrs >= LARGE_STL_COUNT) {
+ 	rlen += 511;		/* Don't write number of strings */
+-	code = stl->type == Rep_StringList ?
++	code = stl->type == Resl_StringList ?
+ 		Re_LargeStringList : Re_LargeCaseStringList;
+     }
+     else
+--- external/mit/xedit/dist/lisp/re/rec.c
++++ external/mit/xedit/dist/lisp/re/rec.c
+@@ -843,7 +843,7 @@
+ 	rec_pat *any;
+ 	rec_grp *grp = inf->pgrp;
+ 
+-	if (rept == Rer_AnyTimes || rept == Rer_Maybe || rept == Re_AtLeast) {
++	if (rept == Rer_AnyTimes || rept == Rer_Maybe || rept == Rer_AtLeast) {
+ 	    /* Convert (.)* to (.*), ((.))* not handled and may not match */
+ 	    any = NULL;
+ 

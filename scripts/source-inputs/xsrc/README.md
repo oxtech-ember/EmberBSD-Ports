@@ -45,6 +45,15 @@ patch's SHA256 is part of the identity. They fix code that the OS build's
   to `glXChooseFBConfig` instead of being an alias of it. The SGIX
   prototype takes a non-const attribute list, and Clang rejects an alias
   whose type differs from the aliased function.
+- `glu-varray-register.patch`: the NURBS `Varray::update` drops the
+  `register` storage class, as upstream GLU did; C++17 removed it and
+  Clang rejects it (`-Wregister`), which `-Wno-deprecated-register` does
+  not cover.
+- `xedit-re-enum-compare.patch`: the xedit regex compiler compares a
+  string list type with `Resl_StringList` and a repetition type with
+  `Rer_AtLeast`, the constants of their own enumerations with the same
+  values (`-Wenum-compare`).
+
 The identity covers the pin and this owner; verification refuses a changed
 receipt or payload. `pin` prints the identity without reading an archive.
 This prepares source only; it does not build X11 or any set.
