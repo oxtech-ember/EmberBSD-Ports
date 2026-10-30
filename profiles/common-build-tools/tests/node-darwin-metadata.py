@@ -55,7 +55,11 @@ def main():
     for path in (args.build_pkgsrc/'lang').iterdir():
         if path.name != 'nodejs':
             (view/'lang'/path.name).symlink_to(path.resolve(), target_is_directory=path.is_dir())
-    env = dict(os.environ, PATH=str(args.utility_path), PYTHONDONTWRITEBYTECODE='1',
+    # The prefix installs GNU utilities such as printf under gnu/bin; keep them after the map.
+    utility_path = [str(args.utility_path)]
+    if (prefix/'gnu/bin').is_dir():
+        utility_path.append(str(prefix/'gnu/bin'))
+    env = dict(os.environ, PATH=os.pathsep.join(utility_path), PYTHONDONTWRITEBYTECODE='1',
                TOOLS_WRAPPER_LOG=str(args.work/'tools.log'))
     for name in ('PYTHONPATH', 'PYTHONHOME', 'GYP_GENERATORS', 'GYP_DEFINES'):
         env.pop(name, None)
