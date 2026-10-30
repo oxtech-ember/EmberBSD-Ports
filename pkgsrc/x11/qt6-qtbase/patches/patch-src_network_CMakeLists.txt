@@ -1,0 +1,52 @@
+$NetBSD$
+
+Use the common libpsl rule data and preserve Qt suffix policy.
+
+--- src/network/CMakeLists.txt.orig
++++ src/network/CMakeLists.txt
+@@ -181,12 +181,39 @@
+ qt_internal_extend_target(Network CONDITION QT_FEATURE_topleveldomain
+     SOURCES
+         kernel/qtldurl.cpp kernel/qtldurl_p.h
+-        ../3rdparty/libpsl/src/lookup_string_in_fixed_set.c
+-    INCLUDE_DIRECTORIES
+-        ../3rdparty/libpsl
+-    ATTRIBUTION_FILE_DIR_PATHS
+-        ../3rdparty/libpsl
+-)
++)
++
++if(QT_FEATURE_publicsuffix_libpsl AND (QT_FEATURE_publicsuffix_qt OR QT_FEATURE_publicsuffix_system))
++    message(FATAL_ERROR "publicsuffix-libpsl cannot be combined with other publicsuffix backends")
++endif()
++
++if(QT_FEATURE_publicsuffix_libpsl)
++    find_package(PkgConfig REQUIRED)
++    unset(__pkg_config_checked_EmberLibPSL CACHE)
++    unset(pkgcfg_lib_EmberLibPSL_psl CACHE)
++    pkg_check_modules(EmberLibPSL REQUIRED IMPORTED_TARGET libpsl)
++    include(CheckCXXSourceCompiles)
++    include(CMakePushCheckState)
++    cmake_push_check_state(RESET)
++    set(CMAKE_REQUIRED_LIBRARIES PkgConfig::EmberLibPSL)
++    unset(QT_LIBPSL_HAS_EXACT_RULE CACHE)
++    check_cxx_source_compiles("#include <libpsl.h>
++int main() {
++    return psl_lookup_rule(psl_builtin(), \"com\", 3) &
++        (PSL_RULE_EXCEPTION | PSL_RULE_WILDCARD | PSL_RULE_ICANN | PSL_RULE_PRIVATE);
++}" QT_LIBPSL_HAS_EXACT_RULE)
++    cmake_pop_check_state()
++    if(NOT QT_LIBPSL_HAS_EXACT_RULE)
++        message(FATAL_ERROR "Selected libpsl lacks the exact-rule API")
++    endif()
++    qt_internal_extend_target(Network LIBRARIES PkgConfig::EmberLibPSL)
++else()
++    qt_internal_extend_target(Network CONDITION QT_FEATURE_topleveldomain
++        SOURCES ../3rdparty/libpsl/src/lookup_string_in_fixed_set.c
++        INCLUDE_DIRECTORIES ../3rdparty/libpsl
++        ATTRIBUTION_FILE_DIR_PATHS ../3rdparty/libpsl
++    )
++endif()
+ 
+ qt_internal_extend_target(Network CONDITION QT_FEATURE_dnslookup
+     SOURCES

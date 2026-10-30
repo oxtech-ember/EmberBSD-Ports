@@ -40,7 +40,7 @@ for my $path (@files) {
     close $in or die "$path: $!\n";
     my $text = $old;
     $text =~ s{\Q$sysroot\E(?=/)}{}g;
-    $text =~ s{\Q$work\E/\.buildlink(?=/)}{$prefix}g;
+    $text =~ s{\Q$work\E/\.buildlink(?=/|["\s)])}{$prefix}g;
     # CMake does not sysroot absolute include directories on imported targets.
     # Qt's exported platform flags refer to the common prefix beside qt6.
     if ($path eq "$root/lib/cmake/Qt6/Qt6Targets.cmake") {

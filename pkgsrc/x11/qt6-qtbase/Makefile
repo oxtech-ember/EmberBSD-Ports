@@ -2,7 +2,7 @@
 
 DISTNAME=	qtbase-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qtbase-${QTVERSION}
-PKGREVISION=	10
+PKGREVISION=	11
 COMMENT=	C++ X GUI toolkit
 CATEGORIES=	x11
 
@@ -26,25 +26,25 @@ PKG_FAIL_REASON+= "The separate Qtbase SDK requires a NetBSD cross build; native
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The Qtbase runtime/SDK split requires the common aarch64 or amd64 cross target"
 .endif
-PKGREVISION= 4
+PKGREVISION= 5
 QTBASE_FULL_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.NetBSD ${EMBERBSD_QTBASE_PKGDIR}/PLIST
 QTBASE_RUNTIME_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.runtime
 QTBASE_DEVEL_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.NetBSD ${EMBERBSD_QTBASE_PKGDIR}/../qt6-qtbase-devel/PLIST
 .if defined(EMBERBSD_QTBASE_DEVEL)
-PKGREVISION= 6
-.if ${PKGREVISION} != 6
-PKG_FAIL_REASON+= "The Qtbase SDK requires package revision 6"
+PKGREVISION= 7
+.if ${PKGREVISION} != 7
+PKG_FAIL_REASON+= "The Qtbase SDK requires package revision 7"
 .endif
 QTBASE_PACKAGE_PART= devel
 .if ${QTBASE_PACKAGE_PART} != "devel"
 PKG_FAIL_REASON+= "The Qtbase SDK recipe must select the devel partition"
 .endif
 PLIST_SRC= ${QTBASE_DEVEL_PLIST_SRC}
-DEPENDS+= qt6-qtbase-${QTVERSION}nb4:../../x11/qt6-qtbase
-CONFLICTS+= qt6-qtbase<${QTVERSION}nb4
+DEPENDS+= qt6-qtbase-${QTVERSION}nb5:../../x11/qt6-qtbase
+CONFLICTS+= qt6-qtbase<${QTVERSION}nb5
 .else
-.if ${PKGREVISION} != 4
-PKG_FAIL_REASON+= "The Qtbase runtime requires package revision 4"
+.if ${PKGREVISION} != 5
+PKG_FAIL_REASON+= "The Qtbase runtime requires package revision 5"
 .endif
 QTBASE_PACKAGE_PART= runtime
 .if ${QTBASE_PACKAGE_PART} != "runtime"
@@ -92,12 +92,19 @@ CONFIGURE_ARGS+=	-system-zlib
 CONFIGURE_ARGS+=	-avoid_cmake_archiving_api
 CONFIGURE_ARGS+=	-no-bundled-xcb-xinput
 
+PREFER.openssl=	pkgsrc
+
 # Keep target script dependencies separate from executable build-host tools.
 # pkgsrc rejects :run tools in a Darwin-to-NetBSD cross build.
-USE_TOOLS+=		bash:build
+USE_TOOLS+=		bash:build pkg-config
 DEPENDS+=		bash-[0-9]*:../../shells/bash
 
 .include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
+    ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
+DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
+BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
+.endif
 
 .if ${OPSYS} != "Darwin"
 CONFIGURE_ARGS+=	-fontconfig
@@ -252,6 +259,15 @@ qt-target-metadata:
 
 .include "options.mk"
 
+.if empty(PKG_OPTIONS:Mhost-tools)
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+CMAKE_CONFIGURE_ARGS+=	-DOPENSSL_ROOT_DIR:PATH=${BUILDLINK_DIR}
+.endif
+CMAKE_CONFIGURE_ARGS+=	-DFEATURE_pkg_config:BOOL=ON
+CMAKE_CONFIGURE_ARGS+=	-DFEATURE_publicsuffix_libpsl:BOOL=ON
+CMAKE_CONFIGURE_ARGS+=	-DFEATURE_publicsuffix_qt:BOOL=OFF
+CMAKE_CONFIGURE_ARGS+=	-DFEATURE_publicsuffix_system:BOOL=OFF
+.endif
 CMAKE_CONFIGURE_ARGS+=	-DQT_DISABLE_RPATH:BOOL=ON
 
 .include "../../devel/cmake/configure-settings.mk"
@@ -301,6 +317,8 @@ PLIST.wayland=	yes
 .include "../../textproc/icu/buildlink3.mk"
 .include "../../textproc/md4c/buildlink3.mk"
 .include "../../www/libproxy/buildlink3.mk"
+BUILDLINK_API_DEPENDS.libpsl+= libpsl>=0.23.3nb2
+.include "../../www/libpsl/buildlink3.mk"
 .if ${OPSYS} != "Darwin"
 PLIST.x11=	yes
 .include "../../fonts/fontconfig/buildlink3.mk"

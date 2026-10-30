@@ -31,13 +31,13 @@ if not re.fullmatch(r'[0-9]{8}', version):
 (work / 'BUILD_INFO').write_text('OPSYS=NetBSD\nOS_VERSION=11.0\nMACHINE_ARCH=x86_64\nOBJECT_FMT=ELF\nLICENSE=2-clause-bsd\nPKGTOOLS_VERSION=' + version + '\nEMBERBSD_TEST_FIXTURE=yes\n')
 (work / 'COMMENT').write_text('Labelled Qtbase package partition fixture')
 (work / 'DESCR').write_text('Synthetic text payloads for pkgtools contracts. This is not a Qt binary package.\n')
-old, runtime, sdk = 'qt6-qtbase-6.12.0', 'qt6-qtbase-6.12.0nb4', 'qt6-qtbase-devel-6.12.0nb6'
+old, runtime, sdk = 'qt6-qtbase-6.12.0', 'qt6-qtbase-6.12.0nb5', 'qt6-qtbase-devel-6.12.0nb7'
 packages = {}
 for name, stage, manifest, dep in ((old,'normalized-full','full',None), (runtime,'runtime-stage','runtime',None), (sdk,'devel-stage','devel',runtime)):
     prefix = fixture / stage / 'usr/pkg'
     if not prefix.is_dir(): raise SystemExit('prepared source-contract fixture required')
     text = '@name ' + name + '\n@cwd /usr/pkg\n'
-    if dep: text += '@pkgdep ' + dep + '\n@pkgcfl qt6-qtbase<6.12.0nb4\n'
+    if dep: text += '@pkgdep ' + dep + '\n@pkgcfl qt6-qtbase<6.12.0nb5\n'
     text += (fixture / manifest / '.PLIST_nokeywords').read_text()
     plist, archive = work / (name + '.plist'), work / (name + '.tgz')
     plist.write_text(text)

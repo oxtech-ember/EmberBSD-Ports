@@ -1,0 +1,27 @@
+Use the selected target PCRE2 for cross-built target tools.
+
+--- src/tools/bootstrap/CMakeLists.txt.orig
++++ src/tools/bootstrap/CMakeLists.txt
+@@ -153,7 +153,7 @@
+         ${FWUIKit}
+ )
+ 
+-qt_internal_extend_target(Bootstrap CONDITION CMAKE_CROSSCOMPILING OR NOT QT_FEATURE_system_pcre2
++qt_internal_extend_target(Bootstrap CONDITION NOT QT_FEATURE_system_pcre2
+     SOURCES
+         ../../3rdparty/pcre2/src/config.h
+         ../../3rdparty/pcre2/src/pcre2.h
+@@ -201,11 +201,11 @@
+ )
+ 
+ qt_internal_extend_target(Bootstrap
+-    CONDITION WIN32 AND (CMAKE_CROSSCOMPILING OR NOT QT_FEATURE_system_pcre2)
++    CONDITION WIN32 AND NOT QT_FEATURE_system_pcre2
+     PUBLIC_DEFINES PCRE2_STATIC
+ )
+ 
+-qt_internal_extend_target(Bootstrap CONDITION QT_FEATURE_system_pcre2 AND NOT CMAKE_CROSSCOMPILING
++qt_internal_extend_target(Bootstrap CONDITION QT_FEATURE_system_pcre2
+     LIBRARIES
+         WrapPCRE2::WrapPCRE2
+ )
