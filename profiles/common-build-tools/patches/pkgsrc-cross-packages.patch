@@ -863,6 +863,16 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
 +.endif
 --- a/security/openssl/Makefile
 +++ b/security/openssl/Makefile
+@@ -109,6 +109,9 @@
+ .include "options.mk"
+ 
+ CONFIGURE_ENV+=		PERL=${PERL5:Q}
++# Configure must use the selected native or target archive tools.
++CONFIGURE_ENV+=		AR=${AR:Q}
++CONFIGURE_ENV+=		RANLIB=${RANLIB:Q}
+ 
+ # If the config script cannot guess the host system correctly then we need to
+ # specify it manually and call the Configure script directly.
 @@ -140,6 +140,16 @@
  .endif
  OPENSSL_HOST.Darwin-aarch64=	darwin64-arm64-cc
