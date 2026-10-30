@@ -16,6 +16,7 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
     { echo "pre-push: commit or stash tracked changes first; the export uses the checkout" >&2; exit 1; }
 "$PY" -B "$root/scripts/tests/export-conf-history.py" --root "$root" "$1" HEAD
 sh "$root/scripts/tests/recipe-host-variables.sh"
+sh "$root/scripts/tests/github-commit-distfiles.sh"
 sh "$root/scripts/tests/qt-host-tool-depends.sh" "${BMAKE:-bmake}"
 sh "$root/scripts/tests/export-composition.sh" "$2"
 sh "$root/scripts/tests/native-profile-jobs.sh" "${BMAKE:-bmake}" "$2/export"
