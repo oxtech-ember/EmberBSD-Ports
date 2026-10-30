@@ -1,7 +1,7 @@
 $NetBSD$
 
-BLAKE2s (plasma-mobile-6.8.0.tar.xz) = 7ef50d117586f08459a4361ef621c6bc11e1dae7c81e87e19ae07346aa1bae19
-SHA512 (plasma-mobile-6.8.0.tar.xz) = ba216fe6ae75a9f211df2c1ae13ba316eaf763d62c4870d8fe5369c2a796661ee10cfd01b84fa1aef484dae54d999fd868c11c6af4883fcd9286c9c6d87c4eae
-Size (plasma-mobile-6.8.0.tar.xz) = 6558628 bytes
+BLAKE2s (plasma-mobile-6.8.2.tar.xz) = 27e082e96d89c8211762b09f40ba6391a2e4ab4288a8d3d574ad541e720fec5c
+SHA512 (plasma-mobile-6.8.2.tar.xz) = 03ab68dd5e32b8d9dc2d48d1071f061f08ad11ac50d8141089081e00d91bca289f63002b48deafa4ad0b50f7bdb6d0c2da3382d5e1a2ff0dc822f016ff8ab099
+Size (plasma-mobile-6.8.2.tar.xz) = 6560280 bytes
 SHA1 (patch-CMakeLists.txt) = dbefbad35d001a456749a1a2f52200bc960c984b
 SHA1 (patch-quicksettings_CMakeLists.txt) = b1dca278dab46654e7a7ea3a855b8d10863e39c8

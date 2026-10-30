@@ -50,7 +50,7 @@ check(record, 'Workspace source manifest is missing')
 archive = "#{distfiles}/#{record[1]}"
 check(Digest::SHA256.file(archive).hexdigest == record[2], 'Workspace archive checksum differs')
 consumer = capture('tar', '-xOf', archive,
-  'plasma-workspace-6.8.0/applets/notifications/global/PulseAudio.qml')
+  'plasma-workspace-6.8.2/applets/notifications/global/PulseAudio.qml')
 check(consumer.match?(/^import org\.kde\.plasma\.private\.volume\b/), 'Expected notifications volume import is missing')
 bmake = ENV.fetch('BMAKE', 'bmake')
 %w[x11/plasma6-plasma-workspace audio/pulseaudio-qt audio/plasma6-plasma-pa].each do |recipe|
@@ -68,7 +68,7 @@ reverse = capture(bmake, '-C', "#{pkgsrc}/audio/plasma6-plasma-pa", '-V', '${DEP
 check(!reverse.include?(':../../x11/plasma6-plasma-workspace'), 'Volume dependency creates a Workspace cycle')
 # A stale pkgsrc +CONTENTS must not produce a metadata-only archive.
 {'pulseaudio-qt' => 'pulseaudio-qt-1.9.0',
- 'plasma6-plasma-pa' => 'plasma6-plasma-pa-6.8.0'}.each do |recipe, package|
+ 'plasma6-plasma-pa' => 'plasma6-plasma-pa-6.8.2'}.each do |recipe, package|
   plist = File.readlines("#{pkgsrc}/audio/#{recipe}/PLIST", chomp: true)
   expected = plist.reject { |line| line.empty? || line.start_with?('@') }.sort
   archived = capture('tar', '-tzf', "#{packages}/#{package}.tgz").lines.map(&:chomp)
@@ -96,6 +96,6 @@ check(plugin, 'Volume plugin entry is missing')
 check(File.file?("#{module_dir}/lib#{plugin}.so"), 'Volume plugin file is missing')
 target_elf(File.binread("#{module_dir}/lib#{plugin}.so", 64), target, 'staged volume plugin')
 member = "qt6/qml/org/kde/plasma/private/volume/lib#{plugin}.so"
-target_elf(capture('tar', '-xOzf', "#{packages}/plasma6-plasma-pa-6.8.0.tgz", member).b,
+target_elf(capture('tar', '-xOzf', "#{packages}/plasma6-plasma-pa-6.8.2.tgz", member).b,
   target, 'archived volume plugin')
 puts "PASS: #{target_name} metadata, real notifications import, runtime dependency, no cycle, installed headers, QML module and target ELF"

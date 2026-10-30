@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	plasma6-libplasma
 .if !defined(PLASMA6_LIBPLASMA_BUILDLINK3_MK)
 PLASMA6_LIBPLASMA_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.plasma6-libplasma+=	plasma6-libplasma>=6.8.0
-BUILDLINK_ABI_DEPENDS.plasma6-libplasma?=		plasma6-libplasma>=6.8.0nb2
+BUILDLINK_API_DEPENDS.plasma6-libplasma+=	plasma6-libplasma>=6.8.2
+BUILDLINK_ABI_DEPENDS.plasma6-libplasma?=		plasma6-libplasma>=6.8.2nb2
 BUILDLINK_PKGSRCDIR.plasma6-libplasma?=		../../x11/plasma6-libplasma
 # Cross KDE builds name these files relative to the buildlink prefix.
 BUILDLINK_FILES.plasma6-libplasma+=	qt6/metatypes/qt6plasma_metatypes.json

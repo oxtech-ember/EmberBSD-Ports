@@ -69,7 +69,7 @@ No board-native compilation or target executable on macOS is required.
 The scanner helper selects the exact version from the common `plasma6.mk`,
 then requires one matching `x11/plasma6-kwin` source-manifest entry and verifies
 its SHA256. It does not keep a separate old scanner version or accept an
-archive from another Plasma release. The current 6.8.0 upstream standalone
+archive from another Plasma release. The current 6.8.2 upstream standalone
 scanner uses C++20, Qt Core and ECM; its full compositor dependencies are
 not required for this private host generator. Use the same native compiler
 ABI as the host Qt libraries.

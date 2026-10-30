@@ -1,5 +1,5 @@
 $NetBSD: distinfo,v 1.2 2026/09/06 10:23:32 markd Exp $
 
-BLAKE2s (kglobalacceld-6.8.0.tar.xz) = aef4e4ac4887f8bf4a5658e26fd0afd8587c65000858b7e902e733e15046061e
-SHA512 (kglobalacceld-6.8.0.tar.xz) = b6ec5c48313c8b53beddadca8b5c7d8aaa8717b6c01ae12ddc38932d2da275f3098fe6047851d02e2c216f83e663873350d242d1f6a4377d5a89d7fa0bb6b7d7
-Size (kglobalacceld-6.8.0.tar.xz) = 52064 bytes
+BLAKE2s (kglobalacceld-6.8.2.tar.xz) = 5b1d10563e8ed94378dc34250d12bf19df5669d1cb19575c0d57fc46c2ff4506
+SHA512 (kglobalacceld-6.8.2.tar.xz) = 4e9192be26c690c3a171117f2748ac220de73bbd83349ea17c7a10ff312c50206bf05066848e198d8cd6216a5acd765eae4df0f4905effe7c2dfb4a573509b81
+Size (kglobalacceld-6.8.2.tar.xz) = 52052 bytes

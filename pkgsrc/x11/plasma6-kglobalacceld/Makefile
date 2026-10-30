@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.10 2026/09/06 10:23:32 markd Exp $
 
-PLASMAVER=	6.8.0
+PLASMAVER=	6.8.2
 
 DISTNAME=	kglobalacceld-${PLASMAVER}
 CATEGORIES=	x11

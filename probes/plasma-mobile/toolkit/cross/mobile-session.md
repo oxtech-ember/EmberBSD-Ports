@@ -1,4 +1,4 @@
-# Plasma Mobile 6.8.0 session entry points
+# Plasma Mobile 6.8.2 session entry points
 
 All packages install into the common cross sysroot. Nothing here was
 accepted on a board yet; the acceptance targets are the VirGL VM first,

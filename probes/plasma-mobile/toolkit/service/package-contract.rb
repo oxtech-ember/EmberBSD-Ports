@@ -48,8 +48,8 @@ hooks = %w[+INSTALL +DEINSTALL].to_h do |file|
   [file, path]
 end
 minimum = {
-  'plasma6-plasma-desktop'=>'6.8.0', 'plasma6-plasma-workspace'=>'6.8.0nb3',
-  'plasma6-kwin'=>'6.8.0nb2', 'qt6-qtbase'=>'6.12.0nb3', 'perl'=>'5.44.0',
+  'plasma6-plasma-desktop'=>'6.8.2', 'plasma6-plasma-workspace'=>'6.8.2nb3',
+  'plasma6-kwin'=>'6.8.2nb2', 'qt6-qtbase'=>'6.12.0nb3', 'perl'=>'5.44.0',
   'dbus'=>'1.16.2', 'xwayland'=>'24.1.14nb3'
 }
 dependencies = {}
@@ -70,7 +70,7 @@ create = lambda do |name, source, paths, deps: {}, scripts: false|
   run.call('create-' + name, argv + [archive])
   archive
 end
-name = 'ember-plasma-session-1.0'
+name = 'ember-plasma-session-1.0nb1'
 archive = create.call(name, staged, files, deps:dependencies, scripts:true)
 install = [tools['pkg_add'], '-I', '-C', config, '-K', database, '-p', prefix, '-m', 'NetBSD/aarch64 11.0']
 remove = [tools['pkg_delete'], '-D', '-K', database]

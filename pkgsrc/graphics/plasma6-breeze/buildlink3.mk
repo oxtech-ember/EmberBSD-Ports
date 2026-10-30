@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	plasma6-breeze
 .if !defined(PLASMA6_BREEZE_BUILDLINK3_MK)
 PLASMA6_BREEZE_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.plasma6-breeze+=	plasma6-breeze>=6.8.0
+BUILDLINK_API_DEPENDS.plasma6-breeze+=	plasma6-breeze>=6.8.2
 BUILDLINK_PKGSRCDIR.plasma6-breeze?=	../../graphics/plasma6-breeze
 
 .endif	# PLASMA6_BREEZE_BUILDLINK3_MK

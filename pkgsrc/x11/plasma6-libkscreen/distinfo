@@ -1,5 +1,5 @@
 $NetBSD: distinfo,v 1.4 2026/09/06 10:23:33 markd Exp $
 
-BLAKE2s (libkscreen-6.8.0.tar.xz) = 2963d0a794d5388d0a10338318c768aac0fc394eb982ff54ec59e426aee50e8c
-SHA512 (libkscreen-6.8.0.tar.xz) = 341dc765ca75db688fe65de596c60cdfe0b893741f50127cbc4d01388e442a4f9a46c4249e515a7bd221df7c1b5fd4c35d6ed56410ba62fe9c073e0bc00bb9df
-Size (libkscreen-6.8.0.tar.xz) = 81432 bytes
+BLAKE2s (libkscreen-6.8.2.tar.xz) = b7a7104c9e36fbb4bd3af843722a34004de5e593331720e4810f83c9a3613a9f
+SHA512 (libkscreen-6.8.2.tar.xz) = ea275964787ef9e5fa2ca5d32f6c5f9cdc155948747501e6971f67a3610a84e840e208cf000982611ac1cdaa501d1e2d1a2c54432ffc69ce342fe187a25ef66d
+Size (libkscreen-6.8.2.tar.xz) = 81444 bytes

@@ -1,5 +1,5 @@
 $NetBSD: distinfo,v 1.2 2026/09/06 10:23:33 markd Exp $
 
-BLAKE2s (libplasma-6.8.0.tar.xz) = 530d8ba3102caa9bbec5332e60786b9eefb3c3f9809c4d32a8fbe74afefea416
-SHA512 (libplasma-6.8.0.tar.xz) = 4561365cccdb86f38afc819add2495cd89099dddcf3b1ea1f9ae6ce92da2c9ac2bf3b54f474ab73834d49a194eae062a2d6f5299ee5178d3d89fdc5a256b50a6
-Size (libplasma-6.8.0.tar.xz) = 1957864 bytes
+BLAKE2s (libplasma-6.8.2.tar.xz) = 173d167febc3e5830f43eee65589eb89f6b45ac28055921ae0a2444b5d71aee4
+SHA512 (libplasma-6.8.2.tar.xz) = 05a4be9313538a042bb2bf63b388b9d412e388be574710243601faf5f7e431a8417a72a4ab7f031307af82cd597fc7382987d38e9505827e716494881a8149d0
+Size (libplasma-6.8.2.tar.xz) = 1958052 bytes

@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted).
 
-BLAKE2s (plasma-pa-6.8.0.tar.xz) = 099edea9e271c8fc440ece1d09f73875e310bd2001cd8a74f0a5a16ea36e16db
-SHA512 (plasma-pa-6.8.0.tar.xz) = 363be1dca1b22d60b39d0f4594af88208205c4ad3ab351ec120ca592ac3ce9c1b7098aa05b35e7a60d0bc418bc743615487fb2349d861851e87cddec25c2ab43
-Size (plasma-pa-6.8.0.tar.xz) = 225504 bytes
+BLAKE2s (plasma-pa-6.8.2.tar.xz) = 4e32f0d94694545a228ef41873196e0ee867fce9ccf6aa1fd97e7dbf896874fb
+SHA512 (plasma-pa-6.8.2.tar.xz) = 278874a26a0c5e0054e48ff648fed1789fc503a7d1eb79e2c04b8054beeabc6fd05355e46fd654e4d4e430788cfc2e092000daa01376e99522a2ca6e922788e6
+Size (plasma-pa-6.8.2.tar.xz) = 226468 bytes
 SHA1 (patch-src_speakertest.cpp) = c1740f7d975edf56654cfac3d6e1fe33662e6818

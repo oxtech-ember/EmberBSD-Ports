@@ -71,11 +71,11 @@ Dir.mktmpdir('plasma-volume-targets-') do |work|
     File.write(File.join(qml,'qmldir'),"module org.kde.plasma.private.volume\nplugin volumeplugin\n")
     plugin = File.join(qml,'libvolumeplugin.so')
     File.binwrite(plugin,modifications.fetch(:elf,elf(arch=='aarch64' ? 183 : 62)))
-    packagespec = {'pulseaudio-qt'=>'pulseaudio-qt-1.9.0','plasma6-plasma-pa'=>'plasma6-plasma-pa-6.8.0'}
+    packagespec = {'pulseaudio-qt'=>'pulseaudio-qt-1.9.0','plasma6-plasma-pa'=>'plasma6-plasma-pa-6.8.2'}
     %w[x11/plasma6-plasma-workspace audio/pulseaudio-qt audio/plasma6-plasma-pa].each do |recipe|
       path = File.join(pkgsrc,recipe); FileUtils.mkdir_p(path)
       values = metadata(arch).merge(modifications.fetch(:make,{}).fetch(recipe,{}))
-      depends = recipe=='x11/plasma6-plasma-workspace' ? 'plasma6-plasma-pa>=6.8.0:../../audio/plasma6-plasma-pa' : ''
+      depends = recipe=='x11/plasma6-plasma-workspace' ? 'plasma6-plasma-pa>=6.8.2:../../audio/plasma6-plasma-pa' : ''
       File.write(File.join(path,'Makefile'),values.map { |k,v| "#{k}=#{v}\n" }.join+"DEPENDS=#{depends}\n")
     end
     packagespec.each do |recipe,package|

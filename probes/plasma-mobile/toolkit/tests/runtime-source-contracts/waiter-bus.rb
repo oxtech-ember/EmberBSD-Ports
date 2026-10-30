@@ -10,7 +10,7 @@ archives, work, qt = ARGV.map { |path| File.expand_path(path) }
 abort 'Output exists' if File.exist?(work)
 FileUtils.mkdir_p(work)
 recipe = File.expand_path('../../../../../pkgsrc/x11/plasma6-plasma-workspace', __dir__)
-archive = File.join(archives, 'plasma-workspace-6.8.0.tar.xz')
+archive = File.join(archives, 'plasma-workspace-6.8.2.tar.xz')
 expected = File.read(recipe+'/distinfo')[/^SHA512 \(plasma-workspace-6\.8\.0\.tar\.xz\) = (\h+)$/, 1]
 abort 'Archive hash mismatch' unless expected && Digest::SHA512.file(archive).hexdigest == expected
 %w[patch-startkde_waitforname_argc patch-startkde_waitforname_bus].each do |name|
@@ -27,7 +27,7 @@ def run(command, log, expected = 0, env = {}, **options)
 end
 FileUtils.mkdir_p(work+'/baseline/startkde/waitforname')
 %w[waiter.h waiter.cpp main.cpp].each do |name|
-  text, status = Open3.capture2('tar','-xOf',archive,'plasma-workspace-6.8.0/startkde/waitforname/'+name)
+  text, status = Open3.capture2('tar','-xOf',archive,'plasma-workspace-6.8.2/startkde/waitforname/'+name)
   abort 'Archive extraction failed' unless status.success?
   File.write(work+'/baseline/startkde/waitforname/'+name,text)
 end

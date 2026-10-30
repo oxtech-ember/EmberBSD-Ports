@@ -1,9 +1,9 @@
 # $NetBSD: plasma6.mk,v 1.4 2026/09/06 10:23:28 markd Exp $
 # Origin: pkgsrc, adapted by EmberBSD (AI-assisted).
 .include "../../mk/bsd.prefs.mk"
-PLASMAVER?= 6.8.0
-.if ${PLASMAVER} != "6.8.0"
-PKG_FAIL_REASON+= "The common toolkit requires PLASMAVER=6.8.0"
+PLASMAVER?= 6.8.2
+.if ${PLASMAVER} != "6.8.2"
+PKG_FAIL_REASON+= "The common toolkit requires PLASMAVER=6.8.2"
 .endif
 _EMBERBSD_PLASMA6_RECIPES= audio/plasma6-plasma-pa devel/plasma6-kwayland time/plasma6-knighttime \
     x11/plasma6-kdecoration x11/plasma6-kglobalacceld x11/plasma6-layer-shell-qt \

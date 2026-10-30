@@ -31,8 +31,8 @@ the staged QML module and exact archive payloads. Both staged and archived plugi
 must have a complete ELF64 little-endian header for the selected machine.
 It does not execute QML or establish complete ELF dependency closure.
 A missing dependency, wrong include directory, empty archive or missing plugin must fail.
-The package names remain `pulseaudio-qt-1.9.0.tgz` and `plasma6-plasma-pa-6.8.0.tgz`.
-The pinned Workspace source and its checksum remain unchanged.
+The package names are `pulseaudio-qt-1.9.0.tgz` and `plasma6-plasma-pa-6.8.2.tgz`.
+The Workspace source and checksum follow the selected Plasma release.
 
 ### Test the host auditor with fixtures
 

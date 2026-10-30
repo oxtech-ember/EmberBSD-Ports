@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	plasma6-layer-shell-qt
 .if !defined(PLASMA6_LAYER_SHELL_QT_BUILDLINK3_MK)
 PLASMA6_LAYER_SHELL_QT_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.plasma6-layer-shell-qt+=	plasma6-layer-shell-qt>=6.8.0
-BUILDLINK_ABI_DEPENDS.plasma6-layer-shell-qt?=	plasma6-layer-shell-qt>=6.8.0
+BUILDLINK_API_DEPENDS.plasma6-layer-shell-qt+=	plasma6-layer-shell-qt>=6.8.2
+BUILDLINK_ABI_DEPENDS.plasma6-layer-shell-qt?=	plasma6-layer-shell-qt>=6.8.2
 BUILDLINK_PKGSRCDIR.plasma6-layer-shell-qt?=	../../x11/plasma6-layer-shell-qt
 
 .include "../../devel/wayland-protocols/buildlink3.mk"

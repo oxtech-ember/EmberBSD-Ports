@@ -13,7 +13,7 @@ They do not require GTK or a compiler on the target device.
 ## Sources and adaptation
 
 [sources.tsv](../sources.tsv) pins both original KDE archives and SHA256 values.
-The Plasma PA hash matches the KDE 6.8.0 release checksum page.
+The Plasma PA hash matches the KDE 6.8.2 release checksum page.
 The PulseAudioQt hash matches the KDE download mirror metadata.
 Release signatures were not verified.
 

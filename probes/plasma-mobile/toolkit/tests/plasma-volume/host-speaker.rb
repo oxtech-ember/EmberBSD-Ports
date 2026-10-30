@@ -7,18 +7,18 @@ require 'open3'
 abort "Usage: #{$PROGRAM_NAME} DISTFILES NEW_WORK QT_PREFIX CANBERRA_INCLUDE" unless ARGV.length == 4
 archives, work, qt, canberra = ARGV.map { |p| File.expand_path(p) }
 toolkit = File.expand_path('../..', __dir__)
-archive = "#{archives}/plasma-pa-6.8.0.tar.xz"
+archive = "#{archives}/plasma-pa-6.8.2.tar.xz"
 record = File.readlines("#{toolkit}/sources.tsv").map { |l| l.split("\t") }.find { |r| r[0] == 'audio/plasma6-plasma-pa' }
 abort 'Source SHA256 differs' unless record && Digest::SHA256.file(archive).hexdigest == record[2]
 Dir.mkdir(work)
 def run!(*args)
   abort "Command failed: #{args.inspect}" unless system(*args)
 end
-run!('tar', '-xJf', archive, '-C', work, 'plasma-pa-6.8.0/src/speakertest.cpp')
-source = "#{work}/plasma-pa-6.8.0/src/speakertest.cpp"
+run!('tar', '-xJf', archive, '-C', work, 'plasma-pa-6.8.2/src/speakertest.cpp')
+source = "#{work}/plasma-pa-6.8.2/src/speakertest.cpp"
 original = File.read(source)
 patch = File.expand_path("../../../pkgsrc/audio/plasma6-plasma-pa/patches/patch-src_speakertest.cpp", toolkit)
-Dir.chdir("#{work}/plasma-pa-6.8.0") { run!('patch', '-p0', '-i', patch) }
+Dir.chdir("#{work}/plasma-pa-6.8.2") { run!('patch', '-p0', '-i', patch) }
 fixed = File.read(source)
 %w[baseline fixed].each do |variant|
   directory = "#{work}/#{variant}"

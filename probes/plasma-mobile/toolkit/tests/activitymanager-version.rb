@@ -45,7 +45,7 @@ FileUtils.cp(protocol, File.join(shadow, 'version.h'))
 version = %w[kactivitymanagerd_version.h version.h].map { |name| File.join(build, name) }.find { |path| File.file?(path) }
 abort 'No generated package version header' unless version
 version_text = File.read(version)
-abort 'Wrong package version header' unless version_text.include?('#define KACTIVITYMANAGERD_VERSION_STRING "6.8.0"')
+abort 'Wrong package version header' unless version_text.include?('#define KACTIVITYMANAGERD_VERSION_STRING "6.8.2"')
 FileUtils.cp(version, File.join(generated, 'kactivitymanagerd_version.h'))
 # The generated include name must match the production CMake declaration.
 cmake = File.read(File.join(output, 'patched', 'CMakeLists.txt'))

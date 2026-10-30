@@ -1,5 +1,5 @@
 $NetBSD: distinfo,v 1.3 2026/09/06 10:23:28 markd Exp $
 
-BLAKE2s (kwayland-6.8.0.tar.xz) = 9d7ba3ba3ad98b59514c55454e8fbbbe3fc7cb8f9db8d87ecbc2d0e9086fae0e
-SHA512 (kwayland-6.8.0.tar.xz) = 6d371ab87a083c0e99a64ed57afabbcff107d002ca475d729c743065676d32263386dd0a68df308e960f4bf2a8a79ebae0f9184213eb710cd1dc5a956f2a6e50
-Size (kwayland-6.8.0.tar.xz) = 133188 bytes
+BLAKE2s (kwayland-6.8.2.tar.xz) = d1f924fc4a2f8fdc872800b56159b78d5e80c036c1e72c38f97566d256e0fca8
+SHA512 (kwayland-6.8.2.tar.xz) = e0b60ffe97c8d958d72f5f9523a84b5e485455d06b0d093c741c543e73aa6f2c2a18eca71a17a9d55509235e03419e2b5783b0442b0f92b418f5cfce9b2feaf6
+Size (kwayland-6.8.2.tar.xz) = 133204 bytes

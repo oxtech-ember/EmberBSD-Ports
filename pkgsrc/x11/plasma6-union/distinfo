@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (union-6.8.0.tar.xz) = acfa933e64d339fd86d8634ab406bd5baf4d4e55ce7cfc6bd6ecb0ed767e9ec1
-SHA512 (union-6.8.0.tar.xz) = b9b5026bd1f1d674a4a2b5a170a57feb036c8215cef7afcc549b437ae0beffce83af8e0abb47ef1dbe4adbc25266bbd45ad15a29e189758a8917d43bb8424d05
-Size (union-6.8.0.tar.xz) = 289352 bytes
+BLAKE2s (union-6.8.2.tar.xz) = 410fbf1f2ed8d0ed65bad86e4f95c7754460efb59591b566a7fa8ec4f89f28bb
+SHA512 (union-6.8.2.tar.xz) = 9e00bdf59d6fb122d8df5273f3941ad7f9a5400e4c88cdafe3f60446eec0d73abdfbc0fbac704711a0b77012abbc071c78a660b00f6d141372924bc1de1abe9b
+Size (union-6.8.2.tar.xz) = 291108 bytes

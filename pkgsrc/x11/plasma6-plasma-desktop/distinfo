@@ -1,8 +1,8 @@
 $NetBSD: distinfo,v 1.2 2026/09/06 10:23:33 markd Exp $
 
-BLAKE2s (plasma-desktop-6.8.0.tar.xz) = 18423ad305ff270c1a643b6a50eff3023822dc094ab17c7e273b402c845cad21
-SHA512 (plasma-desktop-6.8.0.tar.xz) = b262c682d08d2994fe578ef471f4021be56140257f27c9125949dc26c99aa709f5967da5b2731b085a3dd9ba6dbbcdf324c81e7c1347579479dd9673e2ff9312
-Size (plasma-desktop-6.8.0.tar.xz) = 17901792 bytes
+BLAKE2s (plasma-desktop-6.8.2.tar.xz) = f25e818cf9384f958f4becc8e8b77054878b811be2daf4c7417498ee809d74e9
+SHA512 (plasma-desktop-6.8.2.tar.xz) = cab452533bf48f0e670853136c3cc8d49a15ecf0c90aff4ae4c2a846f644f7a695782fb7b4a3ea524d795ce07fecf0adb994130d763c709362809967842c75df
+Size (plasma-desktop-6.8.2.tar.xz) = 17903812 bytes
 SHA1 (patch-CMakeLists.txt) = 168a5edc6da3906cdd4d3b0637fbab64a971af46
 SHA1 (patch-ConfigureChecks.cmake) = 2f126ef8909147404b24f035fe1bcf797dc72eff
 SHA1 (patch-applets_kimpanel_backend_ibus_CMakeLists.txt) = e7c3a29380fcea9542f99d9328398c73c3d65de8

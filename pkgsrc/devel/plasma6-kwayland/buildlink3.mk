@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	plasma6-kwayland
 .if !defined(PLASMA6_KWAYLAND_BUILDLINK3_MK)
 PLASMA6_KWAYLAND_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.plasma6-kwayland+=	plasma6-kwayland>=6.8.0
-BUILDLINK_ABI_DEPENDS.plasma6-kwayland?=	plasma6-kwayland>=6.8.0
+BUILDLINK_API_DEPENDS.plasma6-kwayland+=	plasma6-kwayland>=6.8.2
+BUILDLINK_ABI_DEPENDS.plasma6-kwayland?=	plasma6-kwayland>=6.8.2
 BUILDLINK_PKGSRCDIR.plasma6-kwayland?=		../../devel/plasma6-kwayland
 
 .include "../../devel/plasma-wayland-protocols/buildlink3.mk"

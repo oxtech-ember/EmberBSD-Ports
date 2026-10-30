@@ -1,6 +1,6 @@
 # KDE runtime source contracts
 
-These small host tests use the pinned Workspace 6.8.0 and KCoreAddons 6.31.0 archives.
+These small host tests use the pinned Workspace 6.8.2 and KCoreAddons 6.31.0 archives.
 They verify archive SHA512 values from the recipes before extracting source.
 They verify patch SHA1 values with pkgsrc canonicalization, excluding RCS ID lines.
 They do not run a desktop or accept GPU rendering.

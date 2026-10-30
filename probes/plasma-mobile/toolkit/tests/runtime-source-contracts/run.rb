@@ -24,7 +24,7 @@ def extract(archives, archive, member)
 end
 {
   'kcoreaddons-6.31.0.tar.xz' => ['devel/kf6-kcoreaddons', 'kcoreaddons-6.31.0/src/lib/io/kdirwatch.cpp'],
-  'plasma-workspace-6.8.0.tar.xz' => ['x11/plasma6-plasma-workspace', 'plasma-workspace-6.8.0/startkde/waitforname/waiter.cpp']
+  'plasma-workspace-6.8.2.tar.xz' => ['x11/plasma6-plasma-workspace', 'plasma-workspace-6.8.2/startkde/waitforname/waiter.cpp']
 }.each do |archive, (recipe, _)|
   distinfo = File.read(File.join(recipes, recipe, 'distinfo'))
   expected = distinfo[/^SHA512 \(#{Regexp.escape(archive)}\) = (\h+)$/, 1]
@@ -34,7 +34,7 @@ FileUtils.mkdir_p(work+'/baseline/startkde/waitforname')
 FileUtils.mkdir_p(work+'/baseline/src/lib/io')
 %w[waiter.cpp waiter.h main.cpp].each do |name|
   File.write(work+'/baseline/startkde/waitforname/'+name,
-    extract(archives,'plasma-workspace-6.8.0.tar.xz','plasma-workspace-6.8.0/startkde/waitforname/'+name))
+    extract(archives,'plasma-workspace-6.8.2.tar.xz','plasma-workspace-6.8.2/startkde/waitforname/'+name))
 end
 File.write(work+'/baseline/src/lib/io/kdirwatch.cpp',extract(archives,'kcoreaddons-6.31.0.tar.xz','kcoreaddons-6.31.0/src/lib/io/kdirwatch.cpp'))
 FileUtils.cp_r(work+'/baseline',work+'/patched')

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Package the canonical ordinary-user service.
 DISTNAME=	ember-plasma-session-1.0
+PKGREVISION=	1
 CATEGORIES=	sysutils
 MASTER_SITES=
 DISTFILES=
@@ -15,9 +16,9 @@ NO_BUILD=	yes
 USE_LANGUAGES=	# none
 ONLY_FOR_PLATFORM=	NetBSD-*-*
 
-DEPENDS+=	plasma6-plasma-desktop>=6.8.0:../../x11/plasma6-plasma-desktop
-DEPENDS+=	plasma6-plasma-workspace>=6.8.0nb3:../../x11/plasma6-plasma-workspace
-DEPENDS+=	plasma6-kwin>=6.8.0nb2:../../x11/plasma6-kwin
+DEPENDS+=	plasma6-plasma-desktop>=6.8.2:../../x11/plasma6-plasma-desktop
+DEPENDS+=	plasma6-plasma-workspace>=6.8.2nb3:../../x11/plasma6-plasma-workspace
+DEPENDS+=	plasma6-kwin>=6.8.2nb2:../../x11/plasma6-kwin
 DEPENDS+=	qt6-qtbase>=6.12.0nb3:../../x11/qt6-qtbase
 DEPENDS+=	perl>=5.44.0:../../lang/perl5
 DEPENDS+=	dbus>=1.16.2:../../sysutils/dbus

@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	plasma6-kglobalacceld
 .if !defined(PLASMA6_KGLOBALACCELD_BUILDLINK3_MK)
 PLASMA6_KGLOBALACCELD_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.plasma6-kglobalacceld+=	plasma6-kglobalacceld>=6.8.0
-BUILDLINK_ABI_DEPENDS.plasma6-kglobalacceld?=	plasma6-kglobalacceld>=6.8.0
+BUILDLINK_API_DEPENDS.plasma6-kglobalacceld+=	plasma6-kglobalacceld>=6.8.2
+BUILDLINK_ABI_DEPENDS.plasma6-kglobalacceld?=	plasma6-kglobalacceld>=6.8.2
 BUILDLINK_PKGSRCDIR.plasma6-kglobalacceld?=	../../x11/plasma6-kglobalacceld
 
 .include "../../devel/kf6-kconfig/buildlink3.mk"

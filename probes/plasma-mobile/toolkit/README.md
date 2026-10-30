@@ -75,7 +75,7 @@ native KPackage tooling and the non-GLVND EGL provider are checked separately.
 locker and KCMs. ConsoleKit's real session launcher passes CM5 regressions;
 complete desktop, ordinary-user login and device ownership remain pending.
 [KWin 6.8 on CM5](cross/cm5-kwin.md) selects OpenGL ES/V3D on a virtual output.
-Desktop 6.8.0 and Workspace 6.8.0nb3 are cross-packaged and installed.
+Desktop 6.8.0 and Workspace 6.8.0nb3 were cross-packaged and installed for the earlier CM5 check. Plasma 6.8.2 is the current source selection and still requires target package acceptance.
 The shell selects desktop OpenGL/V3D. Its current pixel test fails after GPU buffer allocation errors.
 The earlier KWin 6.7.5 acceptance covered two Qt Quick client pixel lifecycles.
 HDMI presentation and the complete Plasma session remain unaccepted.
@@ -176,12 +176,12 @@ package `devel/kf6-kdoctools-generators`; a cross bulk needs no host setting.
 The full target package and DocBook recipe checks pass; target execution
 remains pending.
 
-[Plasma 6.8.0 prerequisites](cross/plasma-prerequisites.md) now include complete
+[The earlier Plasma 6.8.0 prerequisites](cross/plasma-prerequisites.md) included complete
 KWayland, KDecoration, layer-shell-qt and KNightTime cross packages. The installed
 KWayland mouse-button wire regression passes on CM5. KWin selects V3D;
 the complete Plasma session is not yet accepted.
 
-[Plasma volume controls](cross/plasma-volume.md) add Plasma PA 6.8.0 and
+[The earlier Plasma volume controls check](cross/plasma-volume.md) used Plasma PA 6.8.0 and
 PulseAudioQt 1.9.0. The Workspace recipe declares its notifications QML provider.
 Seven installed component tests and a real QML import pass on CM5.
 Actual sound output and full-session integration remain separate requirements.

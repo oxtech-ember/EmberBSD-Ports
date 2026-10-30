@@ -7,8 +7,8 @@ The full accelerated KWin/Plasma session remains unaccepted.
 
 ## Package metadata consistency
 
-The 6.8.0 recipe uses SONAME 8 for libPlasma and libPlasmaQuick.
-The nb1 package revision rebuilds metadata with the complete current PLIST.
+The previously tested 6.8.0 recipe used SONAME 8 for libPlasma and libPlasmaQuick.
+That nb1 package revision rebuilt metadata with the complete current PLIST.
 A stale `+BUILD_INFO` can still advertise SONAME 7 and require its own
 SONAME 8 libraries. `pkg_add` checks those requirements before extraction.
 Regenerate metadata through the normal pkgsrc package target; do not remove

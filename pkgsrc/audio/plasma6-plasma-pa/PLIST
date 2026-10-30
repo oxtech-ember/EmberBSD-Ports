@@ -1,6 +1,6 @@
 @comment Origin: EmberBSD (AI-assisted).
 lib/libplasma-volume.so.6
-lib/libplasma-volume.so.6.8.0
+lib/libplasma-volume.so.6.8.2
 qt6/plugins/kf6/kded/audioshortcutsservice.so
 qt6/plugins/plasma/applets/org.kde.plasma.volume.so
 qt6/plugins/plasma/kcms/systemsettings/kcm_pulseaudio.so

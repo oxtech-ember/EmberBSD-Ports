@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	plasma6-kwin
 .if !defined(PLASMA6_KWIN_BUILDLINK3_MK)
 PLASMA6_KWIN_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.plasma6-kwin+=	plasma6-kwin>=6.8.0
+BUILDLINK_API_DEPENDS.plasma6-kwin+=	plasma6-kwin>=6.8.2
 BUILDLINK_PKGSRCDIR.plasma6-kwin?=	../../x11/plasma6-kwin
 # The KWin CMake package and headers are not under a versioned include dir.
 BUILDLINK_FILES.plasma6-kwin+=	include/kwin/*

@@ -1,6 +1,6 @@
 $NetBSD: distinfo,v 1.2 2026/09/06 10:23:31 markd Exp $
 
-BLAKE2s (milou-6.8.0.tar.xz) = a6fb25d0390c338f03cabf12c542799ea9d22ace1b828ac07e4865c2da996ea2
-SHA512 (milou-6.8.0.tar.xz) = 0adbd633f0d438b57d6ee23f60a59f3b80cde2bf8d40ba2fc2732a3a02db2a702c96d0e9b79d97d4244e008eaa9b2ed0b45d381b200409e2cf1226052a35c521
-Size (milou-6.8.0.tar.xz) = 50412 bytes
+BLAKE2s (milou-6.8.2.tar.xz) = d79d2a36a7faf47c0afdbc1df3d2effb99db4898df698e2d30873761ee29b92c
+SHA512 (milou-6.8.2.tar.xz) = 354dad7ee135991ada1d9989de918accb8c9fd6c4cfd79b88b6cd9d91aec4a12afb18a3a7266b378a148bf103abe8936a03efc5373c7823a4cda274a7e070c53
+Size (milou-6.8.2.tar.xz) = 50376 bytes
 SHA1 (patch-lib_mousehelper.cpp) = eb476598eadb5178a7d634b0145ac57ed77b6581

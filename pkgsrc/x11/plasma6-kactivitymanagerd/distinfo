@@ -1,7 +1,7 @@
 $NetBSD: distinfo,v 1.2 2026/09/06 10:23:31 markd Exp $
 
-BLAKE2s (kactivitymanagerd-6.8.0.tar.xz) = d47efab61178207a9dffd43ff94f8c3366983fab00d94eee7fe3fcb72b3778bf
-SHA512 (kactivitymanagerd-6.8.0.tar.xz) = 15c64eb1f51895f8786677c4f4978471580eeb35809b523d7e85cae0ed53c382a396524c57c81ca45fa4641e3f8311f1627970230d93e32e1a5f69a11bc61789
-Size (kactivitymanagerd-6.8.0.tar.xz) = 99296 bytes
+BLAKE2s (kactivitymanagerd-6.8.2.tar.xz) = 255b7e62b7c47876955af979d8c6f46c74f7fe49dbb02b7a6a3065284a57004a
+SHA512 (kactivitymanagerd-6.8.2.tar.xz) = 7d31b9083f3f5c6a5bde8fd522692a8583fb230b4c14969ed299e4d449f46a553b0017518506595db00a3479ae52b94a9e598b86d45915d4e2d611e6e78668a4
+Size (kactivitymanagerd-6.8.2.tar.xz) = 99292 bytes
 SHA1 (patch-CMakeLists.txt) = ecad99b4b9caea0a4e5e47acc8eaec5088f0b64d
 SHA1 (patch-src_service_Application.cpp) = 51e744038515497be28d82739388889279ec2f02
