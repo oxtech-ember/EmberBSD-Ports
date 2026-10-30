@@ -1,0 +1,21 @@
+partition_alloc: keep forced-hidden global new/delete only with bundled libc++.
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+With use_custom_libcxx=false the selected libc++ headers declare global
+operator new/delete with default visibility; -fvisibility-global-new-delete=
+force-hidden then fails with "visibility does not match previous declaration".
+
+--- a/base/allocator/partition_allocator/src/partition_alloc/BUILD.gn
++++ b/base/allocator/partition_allocator/src/partition_alloc/BUILD.gn
+@@ -357,7 +357,10 @@
+   }
+ 
+   config("mac_no_default_new_delete_symbols") {
+-    if (!is_component_build) {
++    # EmberBSD: forcing hidden global new/delete is only coherent with the
++    # bundled libc++, which is compiled the same way. The selected shared
++    # libc++ declares them with default visibility (_LIBCPP_OVERRIDABLE_FUNC_VIS).
++    if (!is_component_build && use_custom_libcxx) {
+       # This is already set when we compile libc++, see
+       # buildtools/third_party/libc++/BUILD.gn. But it needs to be set here as
+       # well, since the shim defines the symbols, to prevent them being

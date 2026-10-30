@@ -757,6 +757,11 @@
       "path": "gn-abseil-complete-shims.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "partition-alloc-system-libcxx-new-delete-visibility.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {
