@@ -1,0 +1,3 @@
+The native kconfig_compiler_kf6 and kconf_update programs of KConfig with
+their CMake import. Cross-built KDE packages run them on the build host to
+generate configuration classes and to check update scripts.

@@ -14,3 +14,4 @@ textproc/kf6-sonnet-parsetrigrams	textproc/kf6-sonnet	package	-
 textproc/kf6-syntax-highlighting-indexer	textproc/kf6-syntax-highlighting	package	-
 inputmethod/fcitx5-comp-spell-dict	inputmethod/fcitx5	package	-
 net/kdsoap-kdwsdl2cpp	net/kdsoap	package	-
+devel/kf6-kconfig-compiler	devel/kf6-kconfig	package	-

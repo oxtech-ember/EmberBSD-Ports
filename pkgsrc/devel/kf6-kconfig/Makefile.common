@@ -1,0 +1,16 @@
+# $NetBSD$
+# Origin: EmberBSD (AI-assisted). One KConfig source for the target framework
+# and its native code generators.
+#
+# used by devel/kf6-kconfig/Makefile
+# used by devel/kf6-kconfig-compiler/Makefile
+
+DISTNAME=	kconfig-${KF6VER}
+CATEGORIES=	devel
+
+HOMEPAGE=	https://community.kde.org/Frameworks
+LICENSE=	gnu-lgpl-v2.1
+
+EMBERBSD_KCONFIG_PKGDIR:=	${.PARSEDIR:tA}
+DISTINFO_FILE=	${EMBERBSD_KCONFIG_PKGDIR}/distinfo
+PATCHDIR=	${EMBERBSD_KCONFIG_PKGDIR}/patches

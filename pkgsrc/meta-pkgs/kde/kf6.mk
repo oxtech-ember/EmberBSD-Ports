@@ -4,6 +4,7 @@
 # used by devel/kf6-kcmutils/Makefile
 # used by devel/kf6-kcolorscheme/Makefile
 # used by devel/kf6-kconfig/Makefile
+# used by devel/kf6-kconfig-compiler/Makefile
 # used by devel/kf6-kcoreaddons/Makefile
 # used by devel/kf6-kcrash/Makefile
 # used by devel/kf6-kdeclarative/Makefile
@@ -82,6 +83,7 @@ _EMBERBSD_KF6VER_RECIPES= \
     devel/kf6-kcmutils \
     devel/kf6-kcolorscheme \
     devel/kf6-kconfig \
+    devel/kf6-kconfig-compiler \
     devel/kf6-kcoreaddons \
     devel/kf6-kcrash \
     devel/kf6-kdeclarative \

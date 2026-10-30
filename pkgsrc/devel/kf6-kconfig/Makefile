@@ -1,12 +1,9 @@
 # $NetBSD: Makefile,v 1.17 2026/09/06 10:05:11 markd Exp $
 
-DISTNAME=	kconfig-${KF6VER}
+.include "Makefile.common"
 PKGREVISION=	1
-CATEGORIES=	devel
 
-HOMEPAGE=	https://community.kde.org/Frameworks
 COMMENT=	Configuration system
-LICENSE=	gnu-lgpl-v2.1
 
 .include "../../meta-pkgs/kde/kf6.mk"
 
