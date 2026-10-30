@@ -477,3 +477,4 @@ archivers/lzip
 
 # Select common gettext and iconv providers for libpsl.
 www/libpsl
+www/curl

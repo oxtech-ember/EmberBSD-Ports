@@ -64,13 +64,13 @@ def check_metadata(recipe, mode, values, plist):
                     "Native GSettings selected the cross runner or failed prerequisites")
     else:
         require(recipe == "www/libproxy", "Unknown recipe")
-        require(values["PKGNAME"] == "libproxy-0.5.12nb7", "Wrong libproxy identity")
+        require(values["PKGNAME"] == "libproxy-0.5.12nb8", "Wrong libproxy identity")
         require(not introspection, "The complete toolkit changed libproxy GI defaults")
         for name in ("lib/girepository-1.0/Libproxy-1.0.typelib", "share/gir-1.0/Libproxy-1.0.gir"):
             require(name in plist.splitlines(), "Missing unconditional binding: " + name)
         selected = set(values["PKG_OPTIONS"].split())
         require(selected <= {"doc", "vala"}, "Unexpected libproxy option")
-        expected_options = ["-Ddocs=" + str("doc" in selected).lower(),
+        expected_options = ["-Drelease=true", "-Ddocs=" + str("doc" in selected).lower(),
                             "-Dvapi=" + str("vala" in selected).lower()]
         compiler_options = ("-Dc_args=", "-Dc_link_args=", "-Dcpp_args=", "-Dcpp_link_args=")
         feature_options = [value for value in options if not value.startswith(compiler_options)]
@@ -146,10 +146,8 @@ def main():
         run(["tar", "-xf", str(archive), "-C", str(fixture)])
         for recipe in RECIPES:
             receipt["canonical_recipes"][recipe] = copy_canonical_recipe(ports, fixture, recipe, hash_file)
-        for relative in ("profiles/common-build-tools/patches/pkgsrc-curl-security.patch",):
-            patch = ports / relative
-            receipt["patches"][relative] = hash_file(patch)
-            run(["patch", "-f", "-N", "-F", "0", "-p1", "-d", str(fixture)], input=patch.read_bytes())
+        receipt["canonical_recipes"]["www/curl"] = copy_canonical_recipe(
+            ports, fixture, "www/curl", hash_file)
         for recipe in RECIPES:
             names = tuple(receipt["canonical_recipes"][recipe])
             prepared_names = tuple(sorted(str(p.relative_to(prepared / recipe))

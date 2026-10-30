@@ -17,15 +17,9 @@ for recipe in devel/libidn2 sysutils/gsettings-desktop-schemas www/libproxy; do
     [ "$(grep -cxF "$recipe" "$root/pkgsrc/replaces")" = 1 ]
     cp -R "$root/pkgsrc/$recipe" "$work/pkgsrc/$recipe"
 done
-patch -f -N -F 0 -p1 -d "$work/pkgsrc" < \
-    "$root/profiles/common-build-tools/patches/pkgsrc-curl-security.patch"
-# The curl cross Makefile delta is owned by the common profile.
-cross_patch=$root/profiles/common-build-tools/patches/pkgsrc-cross-packages.patch
-awk '/^--- a\/www\/curl\/Makefile$/ { copying=1 } \
-    copying && /^--- a\// && $0 != "--- a/www/curl/Makefile" { exit } copying { print }' \
-    "$cross_patch" > "$work/curl-cross.patch"
-[ -s "$work/curl-cross.patch" ]
-patch -f -N -F 0 -p1 -d "$work/pkgsrc" < "$work/curl-cross.patch"
+[ "$(grep -cxF 'www/curl' "$root/pkgsrc/replaces")" = 1 ]
+rm -rf "$work/pkgsrc/www/curl"
+cp -R "$root/pkgsrc/www/curl" "$work/pkgsrc/www/curl"
 cmp "$work/pkgsrc/www/curl/Makefile" "$prepared/www/curl/Makefile"
 cmp "$work/pkgsrc/www/curl/Makefile.common" "$prepared/www/curl/Makefile.common"
 cmp "$work/pkgsrc/www/curl/distinfo" "$prepared/www/curl/distinfo"
