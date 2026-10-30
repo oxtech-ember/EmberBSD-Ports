@@ -1,8 +1,8 @@
 # EmberBSD: verified official source and canonical port patches
 
-BLAKE2s (rtabmap-0.23.8.tar.gz) = 45e0aad158fa00e7e4d49a3d20ad55b4d00c9937540e50c7e2a7f300bdb0de4b
-SHA512 (rtabmap-0.23.8.tar.gz) = eae290284a5b17aed8f987a6e5813f8404b65452581a61eb3e2ebd05c22ff4754fc77e0bc9895b9a8fca04810d956a98f77211db3e9c6e41f010d2a9ef90724a
-Size (rtabmap-0.23.8.tar.gz) = 22276030 bytes
+BLAKE2s (rtabmap-0.23.8-d069becc724905d6465a8758c40dae88e13bb9e8.tar.gz) = 45e0aad158fa00e7e4d49a3d20ad55b4d00c9937540e50c7e2a7f300bdb0de4b
+SHA512 (rtabmap-0.23.8-d069becc724905d6465a8758c40dae88e13bb9e8.tar.gz) = eae290284a5b17aed8f987a6e5813f8404b65452581a61eb3e2ebd05c22ff4754fc77e0bc9895b9a8fca04810d956a98f77211db3e9c6e41f010d2a9ef90724a
+Size (rtabmap-0.23.8-d069becc724905d6465a8758c40dae88e13bb9e8.tar.gz) = 22276030 bytes
 SHA1 (patch-compression-alignment-rvl) = cbb819af4fb74f3201a82c802f9eeda2c16fcc6a
 SHA1 (patch-gtsam-optional) = 17cdf37bf8936adcef0f2ae90114e3a9ef84e7e3
 SHA1 (patch-gtsam4-dependencies) = 8d47361cd8ba8b1c7fe335e168a3a1eb8d022efc
