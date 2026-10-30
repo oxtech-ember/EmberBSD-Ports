@@ -7,6 +7,8 @@
 # a removal and the WRKDIR path is free when the package builds; one
 # background deleter removes the trash, including what a crashed run left,
 # never follows a symbolic link out of the trash, and stops with the build.
+# No clean step runs for a WRKDIR that went to the trash: it would only
+# parse the package again.
 # Usage: cross-bulk-trash.sh NEW_OUTPUT
 set -eu
 [ "$#" = 1 ] || { echo 'Usage: cross-bulk-trash.sh NEW_OUTPUT' >&2; exit 2; }
@@ -56,6 +58,7 @@ while [ "\$#" -gt 0 ]; do
     esac
 done
 pkg=\${dir##*/}
+[ "\$target" = show-var ] || echo "\$pkg \$target" >> \$out/calls
 w=\$out/work/t-\$pkg
 case "\$target" in
     show-var)
@@ -105,6 +108,7 @@ BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=4 CRO
 [ ! -s "$out/slow-rm" ] 2> /dev/null || fail "a worker waited for the removal of an old WRKDIR: $(cat "$out/slow-rm" | tr '\n' ' ')"
 [ "$(cut -d ' ' -f 1 "$out/state/done" | sort | tr '\n' ' ')" = 't/a t/b t/c ' ] || fail "done: $(cat "$out/state/done")"
 for p in a b c; do [ -f "$out/work/t-$p/new" ] || fail "t/$p has no new WRKDIR"; done
+grep -q ' clean$' "$out/calls" && fail "a clean step ran for a WRKDIR in the trash: $(grep ' clean$' "$out/calls" | tr '\n' ' ')"
 # The build ran its deleter: the trash, also what a crashed run left, is
 # gone, nothing outside it is, and no deleter outlives the build.
 [ -z "$(ls -A "$out/work/.cross-bulk-trash")" ] || fail "trash not removed: $(ls -A "$out/work/.cross-bulk-trash" | tr '\n' ' ')"

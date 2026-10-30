@@ -419,6 +419,20 @@ retire()
     mv "$1" "$trash/$stamp.$2" 2> /dev/null && [ ! -e "$1" ]
 }
 
+# Set clean to the clean target, or to nothing when the WRKDIR ($1) went to
+# the trash: each target-mode bmake run parses the whole package again
+# (seconds each), and the clean step would have nothing to remove.
+prepare_wrkdir()
+{
+    clean=clean
+    if retire "$1" "$2"; then
+        [ -e "$1" ] || [ -L "$1" ] || clean=
+    else
+        # Make it removable for the clean step: Go module caches are read-only.
+        case "$1" in /*) [ ! -d "$1" ] || chmod -R u+w "$1" ;; esac
+    fi
+}
+
 # Remove the entries of the trash one at a time at the lowest priority,
 # without following symbolic links, until the build ($1) is gone. Only
 # this directory's own entries are removed.
@@ -496,9 +510,9 @@ build_native()
     fi
     log=$state/logs/$key.log
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $nnode $name" >> "$state/progress"
-    retire "$wrkdir" "$job.$key" ||
-        case "$wrkdir" in /*) [ ! -d "$wrkdir" ] || chmod -R u+w "$wrkdir" ;; esac
-    if bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null > "$log" 2>&1 &&
+    prepare_wrkdir "$wrkdir" "$job.$key"
+    : > "$log"
+    if { [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; } &&
         bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes install < /dev/null >> "$log" 2>&1; then
         echo "$(date '+%Y-%m-%d %H:%M:%S') done $nnode" >> "$state/progress"
         result "$key" "built $nnode $name native"
@@ -530,15 +544,13 @@ build_one()
     log=$state/logs/$key.log
     # One short line per append: O_APPEND keeps concurrent lines whole.
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name" >> "$state/progress"
-    # The old WRKDIR goes to the trash. Where it cannot, make it removable
-    # for the clean step: Go module caches are read-only.
-    retire "$wrkdir" "$job.$key" ||
-        case "$wrkdir" in /*) [ ! -d "$wrkdir" ] || chmod -R u+w "$wrkdir" ;; esac
+    prepare_wrkdir "$wrkdir" "$job.$key"
+    : > "$log"
     if [ "$workers" -eq 1 ]; then
-        bmk -C "$PKGSRCDIR/$path" clean < /dev/null > "$log" 2>&1 &&
+        { [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" clean < /dev/null >> "$log" 2>&1; } &&
             bmk -C "$PKGSRCDIR/$path" package-install < /dev/null >> "$log" 2>&1
     else
-        bmk -C "$PKGSRCDIR/$path" clean < /dev/null > "$log" 2>&1 &&
+        { [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" clean < /dev/null >> "$log" 2>&1; } &&
             bmk -C "$PKGSRCDIR/$path" depends < /dev/null >> "$log" 2>&1 &&
             bmk -C "$PKGSRCDIR/$path" package < /dev/null >> "$log" 2>&1 &&
             bmk -C "$PKGSRCDIR/$path" package-install < /dev/null >> "$log" 2>&1
