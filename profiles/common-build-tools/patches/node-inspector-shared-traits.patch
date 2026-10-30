@@ -1,0 +1,84 @@
+# Origin: EmberBSD (AI-assisted). Allow the selected inspector provider to own string traits.
+--- src/inspector/node_string.h.orig
++++ src/inspector/node_string.h
+@@ -7,6 +7,9 @@
+ #include <sstream>
+ #include <string>
+ #include "crdtp/protocol_core.h"
++#if defined(NODE_INSPECTOR_STRING_TRAITS_HEADER)
++#include NODE_INSPECTOR_STRING_TRAITS_HEADER
++#endif
+ #include "util.h"
+ #include "v8-inspector.h"
+ 
+@@ -16,11 +19,13 @@
+ 
+ namespace crdtp {
+ 
++#if !defined(NODE_INSPECTOR_STRING_TRAITS_HEADER)
+ template <>
+ struct ProtocolTypeTraits<std::string> {
+   static bool Deserialize(DeserializerState* state, std::string* value);
+   static void Serialize(const std::string& value, std::vector<uint8_t>* bytes);
+ };
++#endif
+ 
+ template <>
+ struct ProtocolTypeTraits<node::inspector::protocol::Binary> {
+--- src/inspector/node_string.cc.orig
++++ src/inspector/node_string.cc
+@@ -6,6 +6,7 @@
+ 
+ namespace crdtp {
+ 
++#if !defined(NODE_INSPECTOR_STRING_TRAITS_HEADER)
+ bool ProtocolTypeTraits<std::string>::Deserialize(DeserializerState* state,
+                                                   std::string* value) {
+   if (state->tokenizer()->TokenTag() == cbor::CBORTokenTag::STRING8) {
+@@ -27,6 +28,7 @@
+                                                 std::vector<uint8_t>* bytes) {
+   cbor::EncodeString8(SpanFrom(value), bytes);
+ }
++#endif
+ 
+ bool ProtocolTypeTraits<node::inspector::protocol::Binary>::Deserialize(
+     DeserializerState* state, node::inspector::protocol::Binary* value) {
+--- node.gni.orig
++++ node.gni
+@@ -65,6 +65,10 @@
+ 
+   # The location of inspector_protocol - use the one from node's deps by default.
+   node_inspector_protocol_path = "//third_party/inspector_protocol"
++
++  # Optional canonical std::string traits header supplied by the selected
++  # inspector_protocol target. Empty keeps the standalone Node implementation.
++  node_inspector_string_traits_header = ""
+ 
+   # The NODE_MODULE_VERSION defined in node_version.h.
+   node_module_version = exec_script("$node_path/tools/getmoduleversion.py", [], "value")
+--- unofficial.gni.orig
++++ unofficial.gni
+@@ -88,6 +88,13 @@
+     ]
+     if (node_builtin_cache_status) {
+       defines += [ "NODE_BUILTIN_CACHE_STATUS=1" ]
++    }
++    if (node_inspector_string_traits_header != "") {
++      assert(node_enable_inspector, "External string traits require inspector")
++      defines += [ "NODE_INSPECTOR_STRING_TRAITS_HEADER=\"$node_inspector_string_traits_header\"" ]
++    }
++    if (node_enable_inspector) {
++      include_dirs += [ node_inspector_protocol_path ]
+     }
+     if (node_embedder_cppheap_pointer_tag != "") {
+       defines += [ "EMBEDDER_CPPHEAP_POINTER_TAG=$node_embedder_cppheap_pointer_tag" ]
+@@ -268,8 +275,8 @@
+       sources += gypi_values.node_sqlite_sources
+     }
+     if (node_enable_inspector) {
++      public_deps += [ "$node_inspector_protocol_path:crdtp" ]
+       deps += [
+-        "$node_inspector_protocol_path:crdtp",
+         "src/inspector:node_protocol_generated_sources",
+         "src/inspector:v8_inspector_compress_protocol_json",
+       ]
