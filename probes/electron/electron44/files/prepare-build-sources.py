@@ -30,13 +30,37 @@ def read_series(manifest, patch_root):
     require(isinstance(value.get('patches'), list) and value['patches'], 'source series is empty')
     rows, seen = [], set()
     for entry in value['patches']:
-        require(set(entry) == {'path', 'root', 'strip'}, 'invalid source patch entry')
-        name = bsd.relative(entry['path'])
-        require(len(name.parts) == 1 and entry['path'] not in seen, 'duplicate or nested source patch')
-        seen.add(entry['path'])
+        local = set(entry) == {'path', 'root', 'strip'}
+        owner = set(entry) == {'owner', 'file', 'root', 'strip'}
+        require(local or owner, 'invalid source patch entry')
+        if local:
+            name = bsd.relative(entry['path'])
+            require(len(name.parts) == 1, 'nested source patch')
+            filename = patch_root / name
+            identity = entry['path']
+        else:
+            package = bsd.relative(entry['owner'])
+            name = bsd.relative(entry['file'])
+            require(len(package.parts) == 2 and len(name.parts) == 1,
+                    'invalid shared owner or file')
+            require(patch_root.name == 'patches' and patch_root.parent.name == 'electron' and
+                    patch_root.parent.parent.name == 'probes', 'unexpected Electron patch root')
+            ports = patch_root.parent.parent.parent.resolve(strict=True)
+            base = ports / 'pkgsrc'
+            require(not base.is_symlink() and base.resolve(strict=True).is_relative_to(ports),
+                    'pkgsrc escapes selected Ports')
+            filename = base / package / 'files' / name
+            current = base
+            for part in (*package.parts, 'files', *name.parts):
+                current = current / part
+                require(not current.is_symlink(), 'shared source patch path contains symlink')
+            require(filename.resolve(strict=True).is_relative_to(base.resolve(strict=True)),
+                    'shared source patch escapes selected Ports')
+            identity = f"pkgsrc/{package}/files/{name}"
+        require(identity not in seen, 'duplicate source patch')
+        seen.add(identity)
         directory = bsd.relative(entry['root']) if entry['root'] else PurePosixPath()
         require(type(entry['strip']) is int and entry['strip'] in (0, 1), 'unsupported patch strip level')
-        filename = patch_root / name
         require(filename.is_file() and not filename.is_symlink(), 'source patch must be a regular recipe file')
         data = filename.read_bytes()
         targets = set()
@@ -61,8 +85,13 @@ def read_series(manifest, patch_root):
                 path = PurePosixPath(str(path).removesuffix('.orig'))
             targets.add(str(directory / path))
         require(targets, 'source patch has no regular-file targets')
-        rows.append(dict(entry, filename=filename, targets=targets, sha256=digest(data)))
+        rows.append(dict(entry, path=identity, filename=filename, targets=targets, sha256=digest(data)))
     return rows
+
+
+def series_record(row):
+    keys = ('owner', 'file', 'root', 'strip', 'sha256') if 'owner' in row else ('path', 'root', 'strip', 'sha256')
+    return {key: row[key] for key in keys}
 
 
 def prepare(workspace, pkgsrc, archive, destination, git, patch, patch_root, manifest):
@@ -109,9 +138,9 @@ def prepare(workspace, pkgsrc, archive, destination, git, patch, patch_root, man
             env['GIT_CEILING_DIRECTORIES'] = str(fixture.parent)
             process = subprocess.run(argv, cwd=directory, env=env, capture_output=True, text=True)
             output += process.stdout + process.stderr
-            (log_root / (row['path'] + '.log')).write_text(output)
+            (log_root / (str(len(applied)) + '.log')).write_text(output)
             require(process.returncode == 0, 'ordered source patch failed: ' + row['path'])
-        applied.append({key: row[key] for key in ('path', 'root', 'strip', 'sha256')})
+        applied.append(series_record(row))
     paths = {}
     for name in sorted(targets):
         path = fixture / name

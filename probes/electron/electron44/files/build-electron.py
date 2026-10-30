@@ -69,7 +69,7 @@ def verify_source(workspace, ports, git):
     source = local_module('electron_build_source', 'prepare-build-sources.py')
     record = json.loads((workspace / 'source-inputs/ports-build-sources.json').read_text())
     rows = source.read_series(Path(__file__).with_name('source-series.json'), ports / 'probes/electron/patches')
-    expected = [{key: row[key] for key in ('path', 'root', 'strip', 'sha256')} for row in rows]
+    expected = [source.series_record(row) for row in rows]
     require(record.get('version') == 1 and record.get('patches') == expected,
             'prepare sources with the current complete ordered recipe series')
     for name, revision in record['source_revisions'].items():

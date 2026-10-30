@@ -28,8 +28,9 @@ class BuildSources(unittest.TestCase):
         self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
         self.root = self.fixture.root
-        self.patch_root = self.root / 'ports-patches'
-        self.patch_root.mkdir()
+        self.ports = self.root / 'ports'
+        self.patch_root = self.ports / 'probes/electron/patches'
+        self.patch_root.mkdir(parents=True)
         (self.patch_root / 'first.patch').write_text(delta('BSD support\n', 'BSD support\nfirst\n', 'alpha.cc'))
         (self.patch_root / 'second.patch').write_text(
             delta('BSD support\nfirst\n', 'BSD support\nfirst\nsecond\n', 'alpha.cc') +
@@ -132,6 +133,28 @@ class BuildSources(unittest.TestCase):
         self.series['patches'].append(self.series['patches'][0]); self.write_series()
         with self.assertRaisesRegex(ValueError, 'duplicate'):
             helper.read_series(self.manifest, self.patch_root)
+
+    def test_shared_owner_and_escape_rejection(self):
+        owner = self.ports / 'pkgsrc/devel/inspector-protocol/files'
+        owner.mkdir(parents=True)
+        shared = owner / 'shared.patch'
+        shared.write_text(delta('BSD support\nfirst\nsecond\n', 'BSD support\nfirst\nsecond\nshared\n', 'alpha.cc'))
+        entry = dict(owner='devel/inspector-protocol', file='shared.patch', root='', strip=1)
+        self.series['patches'].append(entry); self.write_series()
+        result = self.prepare()
+        self.assertEqual(result['patches'][-1]['owner'], 'devel/inspector-protocol')
+        self.assertEqual(result['patches'][-1]['file'], 'shared.patch')
+        for key, value in (('owner', '../outside'), ('file', '../shared.patch')):
+            old = entry[key]; entry[key] = value; self.write_series()
+            with self.assertRaises(ValueError): helper.read_series(self.manifest, self.patch_root)
+            entry[key] = old
+        self.write_series()
+        shared.unlink(); shared.symlink_to(self.patch_root / 'first.patch')
+        with self.assertRaisesRegex(ValueError, 'symlink'): helper.read_series(self.manifest, self.patch_root)
+        shared.unlink(); shared.write_text('placeholder')
+        base = self.ports / 'pkgsrc'; outside = self.root / 'outside-pkgsrc'
+        base.rename(outside); base.symlink_to(outside, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, 'pkgsrc escapes'): helper.read_series(self.manifest, self.patch_root)
 
     def test_rename_patch_refused(self):
         filename = self.patch_root / 'first.patch'

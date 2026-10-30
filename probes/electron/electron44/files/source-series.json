@@ -746,6 +746,12 @@
       "path": "electron-node26-trace-event-headers.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "owner": "devel/inspector-protocol",
+      "file": "chromium-integration.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
