@@ -1,0 +1,12 @@
+@comment $NetBSD$
+include/tommath.h
+${PLIST.darwin}lib/libtommath.1.3.0.dylib
+${PLIST.darwin}lib/libtommath.1.dylib
+${PLIST.darwin}lib/libtommath.dylib
+${PLIST.unix}lib/libtommath.so
+${PLIST.unix}lib/libtommath.so.1
+${PLIST.unix}lib/libtommath.so.1.3.0
+lib/cmake/libtommath/libtommath-config-version.cmake
+lib/cmake/libtommath/libtommath-config.cmake
+lib/cmake/libtommath/libtommath-config-release.cmake
+lib/pkgconfig/libtommath.pc
