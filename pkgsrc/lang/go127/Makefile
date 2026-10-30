@@ -1,10 +1,6 @@
 # $NetBSD: Makefile,v 1.1 2026/08/22 18:49:07 bsiegert Exp $
 
 .include "../../lang/go/version.mk"
-# Reuse a selected native Go or declare an upstream seed for the first build.
-# Do not pull an obsolete compiler chain into the normal dependency graph.
-GOROOT_BOOTSTRAP?=	${TOOLBASE}/go127
-
 GOVERSSUFFIX=	127
 
 DISTNAME=	go${GO${GOVERSSUFFIX}_VERSION}.src
@@ -22,6 +18,19 @@ USE_LANGUAGES=	c c++
 USE_TOOLS+=	bash perl pax
 
 .include "build-env.mk"
+.include "../../mk/bsd.prefs.mk"
+
+# Reuse an installed native go127. Otherwise build with lang/go-bin, the
+# official binary release of the same version for the build host. Never
+# select an older compiler chain.
+.if !defined(GOROOT_BOOTSTRAP)
+.  if exists(${TOOLBASE}/go127/bin/go)
+GOROOT_BOOTSTRAP=	${TOOLBASE}/go127
+.  else
+TOOL_DEPENDS+=		go-bin>=${GO127_VERSION}:../../lang/go-bin
+GOROOT_BOOTSTRAP=	${TOOLBASE}/go-bin
+.  endif
+.endif
 
 # cgo compiles under TMPDIR
 TMPDIR?=	/tmp

@@ -1,0 +1,26 @@
+$NetBSD: distinfo,v 1.14 2025/12/23 19:19:36 bsiegert Exp $
+
+BLAKE2s (go1.27.3.darwin-amd64.tar.gz) = 5b9d0a23ae4384fc621009c26f526622360ab3caf0b34a8038aa6891c07a8e00
+SHA512 (go1.27.3.darwin-amd64.tar.gz) = 1344066231477f7078350fa354c1bf5a6b8b7884fe8f15c014916e7d192a1085fb1d4ba9c7e6dc94aeccb1c95d34e2f266552873ea3fb60783b82f6f837eb186
+Size (go1.27.3.darwin-amd64.tar.gz) = 71697771 bytes
+BLAKE2s (go1.27.3.darwin-arm64.tar.gz) = 2c39d9b8d8e002447f1b8f27e55dfe4ee8ec903b4bf73be60a724ba07deeb596
+SHA512 (go1.27.3.darwin-arm64.tar.gz) = af5859d4f42e579221421ddbbdf62cc4b6c80b98dd68545bbb96d0a6bfabb7c425a5fa1f83f18ee0a4b46fee05a29f8ed7bb824b7b850348b0befe79341bc713
+Size (go1.27.3.darwin-arm64.tar.gz) = 68196737 bytes
+BLAKE2s (go1.27.3.freebsd-amd64.tar.gz) = 31a6eb0c9fdb71ef84c8cd21d47327de174427aa53041e8036e8a66d6d43da2b
+SHA512 (go1.27.3.freebsd-amd64.tar.gz) = 3e2d36db7501949fb68b02f61228f08f8c658ac88b92f71b2f6a9a386ff422157e45f9f8c2eeae9f873a3c02641241e0feb7af37acabc17bad7e8e5c7ed02362
+Size (go1.27.3.freebsd-amd64.tar.gz) = 70293305 bytes
+BLAKE2s (go1.27.3.freebsd-arm64.tar.gz) = b9e32b948b04cbef0c50eccc9a046003ed85632728ce8f036ce9323fb0fe60b1
+SHA512 (go1.27.3.freebsd-arm64.tar.gz) = a76d21756d42e713bedabf12e4ecc77ceef0d91f5147fabe7a16c2f18caa572dd91fe3ebc36e875213323d8ff33fdc185ba16bc7e310f7cefcce161d44e63399
+Size (go1.27.3.freebsd-arm64.tar.gz) = 66759652 bytes
+BLAKE2s (go1.27.3.linux-amd64.tar.gz) = f674255eb8b26dc63e883fe092f9a071d8b118c89c5ce32ea6e638df3c483bb6
+SHA512 (go1.27.3.linux-amd64.tar.gz) = 1270262f20a6ef23f5901c146c5e2a18225be92ccf63d03543cdb4ff17f1165c2e7ead97b7164f50ced861f8cbef93f76a7552614a257d66e5d1e9357c1b34e0
+Size (go1.27.3.linux-amd64.tar.gz) = 70588678 bytes
+BLAKE2s (go1.27.3.linux-arm64.tar.gz) = 695a395ad714e5afd544e7901b69def1fcd9d0621a2bf78ef98b82ef45c28071
+SHA512 (go1.27.3.linux-arm64.tar.gz) = 75caaff42ec918db37d087d397270b63c40191065abb56db15564e246a4728667d54dd9f1432dfd38e5db490a4bf1737d86f4ca920517007c2c97810dc06b7a2
+Size (go1.27.3.linux-arm64.tar.gz) = 67076044 bytes
+BLAKE2s (go1.27.3.netbsd-amd64.tar.gz) = c74b3a2cdc466b7332217614b398b3c741082039e40eb300b6f4e15d609995c9
+SHA512 (go1.27.3.netbsd-amd64.tar.gz) = 128a936a7070b8643998bd753326cc5e07c3872601ab3767c3e222043903df732f9759c806aec804ebd155c417d2a8c9fb1ed1f3030b641e57966b8b4cc62a1d
+Size (go1.27.3.netbsd-amd64.tar.gz) = 70222919 bytes
+BLAKE2s (go1.27.3.netbsd-arm64.tar.gz) = be31e07a2a6628cd81079705050d3b18b5d16ba11df8e012a9ddc9e5d982ba3a
+SHA512 (go1.27.3.netbsd-arm64.tar.gz) = 5f5076c05a32b884d1e97e122968ec6ec895596fa19745e35895068d6de97db7e250f9bc9d7de0ebe5777855da09d1545b783c09e44a480fa42f96681e4b77dc
+Size (go1.27.3.netbsd-arm64.tar.gz) = 66698157 bytes

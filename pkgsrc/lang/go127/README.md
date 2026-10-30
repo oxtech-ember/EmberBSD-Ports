@@ -14,15 +14,14 @@ local, AI-assisted EmberBSD work; they have not been submitted upstream.
 ## Native bootstrap and compiler selection
 
 Pass `GOROOT_BOOTSTRAP=/absolute/native-go-tree` to the ordinary pkgsrc build.
-An installed `${TOOLBASE}/go127` is reused by default. If no compatible native
-Go is installed, fetch the current stable upstream archive for the host,
-verify its published SHA256, and extract it into a temporary bootstrap directory.
-This is an explicit initial input, not a second maintained toolchain or a
-runtime dependency. Remove the seed after the source-built package is accepted.
-For Go 1.27.3, the official Darwin arm64 seed SHA256 is
-`dd3908cf20959d798c1e06ebe5b72213f0505ce01373b40ce3110975a6cd99c2`.
-The seed must execute on the build host; Go 1.27 requires at least 1.24.6.
-No older `go-bin` or compiler chain is selected automatically.
+An installed `${TOOLBASE}/go127` is reused by default. Otherwise the recipe
+adds a tool dependency on `lang/go-bin` and builds with `${TOOLBASE}/go-bin`.
+That recipe installs the official upstream binary release of the same Go
+version for the build host. Its `distinfo` records each supported host
+platform, so the seed is fetched and verified through the ordinary pkgsrc
+fetch. The SHA-256 values published at https://go.dev/dl/ were compared with
+the fetched archives. The seed must execute on the build host; Go 1.27 requires
+at least 1.24.6. No older `go-bin` or compiler chain is selected.
 
 The recipe passes pkgsrc's `MAKE_ENV` and `TEST_ENV` to upstream build/test
 scripts, preserving the selected `SDKROOT`. Native builds use `CC` and `CXX`;
