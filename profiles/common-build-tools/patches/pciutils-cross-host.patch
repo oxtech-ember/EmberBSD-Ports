@@ -1,0 +1,25 @@
+Cross pciutils describes the target to lib/configure.
+
+lib/configure takes the system, release and CPU from uname when HOST is
+empty, so a cross build on macOS selected the Darwin access methods and a
+.dylib library. Pass the target and the target archiver.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/sysutils/pciutils/Makefile
++++ b/sysutils/pciutils/Makefile
+@@ -22,6 +22,15 @@
+ MAKE_FLAGS+=		LDFLAGS=${LDFLAGS:Q}
+ MAKE_FLAGS+=		SHARED=yes
+ 
++.include "../../mk/bsd.prefs.mk"
++
++# lib/configure otherwise describes the build host with uname.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++MAKE_FLAGS+=		HOST=${MACHINE_ARCH}-${LOWER_OPSYS}
++MAKE_FLAGS+=		RELEASE=${OS_VERSION}
++MAKE_FLAGS+=		AR=${AR:Q} RANLIB=${RANLIB:Q}
++.endif
++
+ INSTALL_TARGET=		install install-lib
+ USE_TOOLS+=		gmake
+ REPLACE_SH=		*.sh
