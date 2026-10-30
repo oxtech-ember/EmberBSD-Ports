@@ -491,3 +491,5 @@ sysutils/dtc
 
 # Shared OpenSBI with ESP32-S31 support.
 sysutils/opensbi
+
+www/py-websockets
