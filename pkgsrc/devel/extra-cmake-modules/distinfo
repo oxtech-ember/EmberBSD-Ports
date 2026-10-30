@@ -7,3 +7,4 @@ SHA1 (patch-find-modules_FindFFmpeg.cmake) = 9ba72e92cbc850592aa1cda03bc8f9a093e
 SHA1 (patch-find-modules_FindWaylandProtocols.cmake) = 5c45bcaa4f1ea37aac380783668a767c1bddbf80
 SHA1 (patch-kde-modules_KDECompilerSettings.cmake) = 0d0c33df8d3207841d48ad2dc51ebe1533866ca1
 SHA1 (patch-kde-modules_KDEMetaInfoPlatformCheck.cmake) = 74a714c25f7c73c2e2d38ae22144cf52574009ae
+SHA1 (patch-modules_ECMPoQmTools.cmake) = 9d4351984add2ac0ac33d1ce2168907db0bbc6a9
