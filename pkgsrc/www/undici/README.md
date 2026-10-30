@@ -10,7 +10,7 @@ not depend on Node, allowing Node to select this provider without a cycle.
 For a native package the loader uses `${PREFIX}`. Cross package builds must set
 `EMBERBSD_UNDICI_RUNTIME_PREFIX` to the absolute prefix visible on the target
 (for example `/usr/pkg`); the target loader must not contain a host sysroot or
-host tool prefix. `EMBERBSD_UNDICI_HOST_PREFIX` selects the native prefix with
+host tool prefix. The EmberBSD cross profile sets it to `CROSS_LOCALBASE`. `EMBERBSD_UNDICI_HOST_PREFIX` selects the native prefix with
 `llhttp-wasi` and defaults to `TOOLBASE`.
 
 A Node build selects this loader using upstream

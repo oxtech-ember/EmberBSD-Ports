@@ -9,8 +9,10 @@ llhttp WASM wrappers and a distinct target runtime path. It reads the common
 wrappers byte-for-byte with the upstream Undici generator using the same
 selected llhttp files. Run it with the selected Node interpreter.
 
-For a cross pkgsrc configuration, `bmake do-build` without
-`EMBERBSD_UNDICI_RUNTIME_PREFIX` must fail before generating a loader. With an
+For a cross pkgsrc configuration, `bmake do-build` with an empty
+`EMBERBSD_UNDICI_RUNTIME_PREFIX=` must fail before generating a loader.
+`profiles/common-build-tools/tests/undici-cross-runtime-prefix.sh` checks the
+loader the EmberBSD cross profile selects. With an
 explicit target prefix, check the staged loader contains that target path and
 does not contain the native host prefix or the cross sysroot path.
 
