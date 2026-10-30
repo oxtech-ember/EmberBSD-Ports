@@ -1,0 +1,21 @@
+--- a/textproc/libxslt/Makefile
++++ b/textproc/libxslt/Makefile
+@@ -2,7 +2,7 @@
+ 
+ .include "Makefile.common"
+ 
+-PKGREVISION=	1
++PKGREVISION=	2
+ 
+ TOOL_DEPENDS+=	docbook-xml-[0-9]*:../../textproc/docbook-xml
+ TOOL_DEPENDS+=	docbook-xsl-[0-9]*:../../textproc/docbook-xsl
+@@ -37,6 +37,9 @@
+ CONFIGURE_ARGS+=	--with-crypto
+ CONFIGURE_ARGS+=	--with-plugins
+ 
++.include "../../devel/gettext-lib/buildlink3.mk"
++.include "../../devel/zlib/buildlink3.mk"
++.include "../../security/libgpg-error/buildlink3.mk"
+ .include "../../security/libgcrypt/buildlink3.mk"
+ BUILDLINK_API_DEPENDS.libxml2+=	libxml2>=2.15.4
+ .include "../../textproc/libxml2/buildlink3.mk"
