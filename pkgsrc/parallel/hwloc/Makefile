@@ -1,8 +1,8 @@
 # $NetBSD: Makefile,v 1.44 2026/04/10 14:32:30 wiz Exp $
 
-DISTNAME=	hwloc-2.14.0
+DISTNAME=	hwloc-2.15.0
 CATEGORIES=	parallel
-MASTER_SITES=	http://www.open-mpi.org/software/hwloc/v${PKGVERSION_NOREV:R}/downloads/
+MASTER_SITES=	https://www.open-mpi.org/software/hwloc/v${PKGVERSION_NOREV:R}/downloads/
 EXTRACT_SUFX=	.tar.bz2
 
 MAINTAINER=	asau@inbox.ru

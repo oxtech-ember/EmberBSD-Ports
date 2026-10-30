@@ -1,8 +1,8 @@
 $NetBSD: distinfo,v 1.17 2026/07/23 12:28:40 prlw1 Exp $
 
-BLAKE2s (oneTBB-2023.1.0.tar.gz) = 648e0a7ee5beab3befb9e3fd7cf4a25cc548d0178092005a8db19245b285d868
-SHA512 (oneTBB-2023.1.0.tar.gz) = c8e9b9100873d6f8514da18ca700165466a9c042d24a6ce9e8901c8996c348f2e58f0251b1eca47d33cc5f382783bfc7693bc6c451716540d4caa57339b3b535
-Size (oneTBB-2023.1.0.tar.gz) = 7722887 bytes
+BLAKE2s (oneTBB-2023.2.0.tar.gz) = 5148292a95bdb3f63b452f6227b1607fc2390fe18777559b37411e3e966790fe
+SHA512 (oneTBB-2023.2.0.tar.gz) = 4a960b9a8011e30887c71ce6bc7be429d57bc0de22435b5d6c3247e6b3d783c0a053adc6fa189a41076c6e913733bab417456a21d98633cc2f33283e1be58c87
+Size (oneTBB-2023.2.0.tar.gz) = 8043540 bytes
 SHA1 (patch-CMakeLists.txt) = 1367d87f06f0425cc0b4fcc048266442afc51cf0
 SHA1 (patch-cmake_compilers_Clang.cmake) = af19f76c02f544ef7ec2c5a394da77523d3ab058
 SHA1 (patch-cmake_compilers_GNU.cmake) = c39f4a724f83631430175ea061c9dcbef6cdedb1

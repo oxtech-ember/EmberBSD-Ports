@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	hwloc
 .if !defined(HWLOC_BUILDLINK3_MK)
 HWLOC_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.hwloc+=	hwloc>=1.4
-BUILDLINK_ABI_DEPENDS.hwloc+=	hwloc>=2.12
+BUILDLINK_API_DEPENDS.hwloc+=	hwloc>=2.15.0
+BUILDLINK_ABI_DEPENDS.hwloc+=	hwloc>=2.15.0
 BUILDLINK_PKGSRCDIR.hwloc?=	../../parallel/hwloc
 
 .include "../../mk/bsd.fast.prefs.mk"

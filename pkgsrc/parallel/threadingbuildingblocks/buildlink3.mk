@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	threadingbuildingblocks
 .if !defined(THREADINGBUILDINGBLOCKS_BUILDLINK3_MK)
 THREADINGBUILDINGBLOCKS_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.threadingbuildingblocks+=	threadingbuildingblocks>=2020.3
+BUILDLINK_API_DEPENDS.threadingbuildingblocks+=	threadingbuildingblocks>=2023.2.0
 BUILDLINK_PKGSRCDIR.threadingbuildingblocks?=	../../parallel/threadingbuildingblocks
 .endif	# THREADINGBUILDINGBLOCKS_BUILDLINK3_MK
 

@@ -1,7 +1,6 @@
 # $NetBSD: Makefile,v 1.22 2026/07/23 12:28:40 prlw1 Exp $
 
-DISTNAME=	oneTBB-2023.1.0
-PKGREVISION=	1
+DISTNAME=	oneTBB-2023.2.0
 PKGNAME=	${DISTNAME:S/oneTBB-/threadingbuildingblocks-/}
 CATEGORIES=	parallel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=uxlfoundation/}
