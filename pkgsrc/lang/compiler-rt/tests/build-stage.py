@@ -102,12 +102,18 @@ class BuildStage(unittest.TestCase):
     def test_riscv_full_runtime_is_refused_before_stage_access(self):
         import emberbsd_sdk
         sdk = str(Path(emberbsd_sdk.__file__).resolve().parents[2])
-        command = [sys.executable, '-B', str(FILES / 'runtime.py'), '--sdk-source', sdk,
-                   'verify', '--stage', '/missing-rv32-stage', '--target', 'riscv32']
-        for extra in ([], ['--phase', 'full']):
-            result = subprocess.run(command + extra, capture_output=True, text=True)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn('riscv32 supports only builtins and bootstrap', result.stderr)
+        common = [sys.executable, '-B', str(FILES / 'runtime.py'), '--sdk-source', sdk]
+        commands = [
+            ['verify', '--stage', '/missing-rv32-stage', '--target', 'riscv32'],
+            ['build', '--source', '/missing', '--sysroot', '/missing', '--os-source', '/missing',
+             '--host-prefix', '/missing', '--target-prefix', '/missing', '--work', '/missing-work',
+             '--stage', '/missing-stage', '--target', 'riscv32'],
+        ]
+        for command in commands:
+            for extra in ([], ['--phase', 'full']):
+                result = subprocess.run(common + command + extra, capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('riscv32 supports only builtins and bootstrap', result.stderr)
 
     def test_installed_builtins_have_actual_inventory_and_no_full_runtime_claim(self):
         result = self.run_build()
