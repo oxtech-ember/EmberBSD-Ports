@@ -446,3 +446,6 @@ security/mozilla-rootcerts-openssl
 
 # Common native XML generator.
 textproc/xmlstarlet
+
+# Use the shared gettext provider for p11-kit.
+security/p11-kit
