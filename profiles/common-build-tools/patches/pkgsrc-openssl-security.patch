@@ -1,10 +1,11 @@
 From: EmberBSD (AI-assisted)
-Subject: Update OpenSSL to the release that fixes CVE-2026-84782
+Subject: Update OpenSSL to 4.1.0
 
-https://openssl-library.org/news/vulnerabilities/#CVE-2026-84782
-https://github.com/openssl/openssl/releases/download/openssl-3.6.5/openssl-3.6.5.tar.gz
-SHA256: a2157c2830efdec3788939b00c9b0638306d3f0bbb76dc4832ee503bb397df98
+https://github.com/openssl/openssl/releases/download/openssl-4.1.0/openssl-4.1.0.tar.gz
+SHA256 50c17baf54cb008f6ce42d50deb4b28050a1aad711636cabd4b241c7e90cc2fd
 
+diff --git a/security/openssl/Makefile b/security/openssl/Makefile
+index de2de33..abe85b6 100644
 --- a/security/openssl/Makefile
 +++ b/security/openssl/Makefile
 @@ -3,8 +3,7 @@
@@ -13,25 +14,69 @@ SHA256: a2157c2830efdec3788939b00c9b0638306d3f0bbb76dc4832ee503bb397df98
  # to install it and enable HTTPS fetching.
 -DISTNAME=	openssl-3.6.4
 -PKGREVISION=	1
-+DISTNAME=	openssl-3.6.5
++DISTNAME=	openssl-4.1.0
  CATEGORIES=	security
  MASTER_SITES=	${MASTER_SITE_GITHUB:=openssl/}
  GITHUB_RELEASE=	${DISTNAME}
---- a/security/openssl/distinfo
-+++ b/security/openssl/distinfo
-@@ -3,3 +3,3 @@
--BLAKE2s (openssl-3.6.4.tar.gz) = a53beb887698b14996f8a98efb813a7e91b19d304c7b83e7ebfb1aa1ddcebbf2
--SHA512 (openssl-3.6.4.tar.gz) = 9e7f4039082880357969c0857f33b20a6a4306d1b5e4f8fcbd7ec8dc41edc96e87c526a1db0b8259f5000c4ced84149b03547562ce4f9df35194634a7576dac0
--Size (openssl-3.6.4.tar.gz) = 55003802 bytes
-+BLAKE2s (openssl-3.6.5.tar.gz) = d08a63cc272d055412eb67e2e906c31e7067cc64d37ed5443a696e42f77cc7bd
-+SHA512 (openssl-3.6.5.tar.gz) = 1243d8ef75be54d38233251a06609eef1f1f1085999bfd85d509cc298498d2820956465eed7bba094d940f08c0f7cf9c5247eca78bb978d12a3c3ea16f2afa4e
-+Size (openssl-3.6.5.tar.gz) = 55078161 bytes
+diff --git a/security/openssl/PLIST b/security/openssl/PLIST
+index ddef82e..9d5847f 100644
 --- a/security/openssl/PLIST
 +++ b/security/openssl/PLIST
-@@ -5259,4 +5259,6 @@
+@@ -5258,6 +5258,8 @@ man/man3/USERNOTICE_free.3
+ man/man3/USERNOTICE_new.3
  man/man3/X509V3_EXT_d2i.3
  man/man3/X509V3_EXT_i2d.3
 +man/man3/X509V3_EXT_nconf.3
 +man/man3/X509V3_EXT_nconf_nid.3
  man/man3/X509V3_EXT_print.3
  man/man3/X509V3_EXT_print_fp.3
+ man/man3/X509V3_add1_i2d.3
+diff --git a/security/openssl/distinfo b/security/openssl/distinfo
+index 29e3fa8..b4cf444 100644
+--- a/security/openssl/distinfo
++++ b/security/openssl/distinfo
+@@ -1,7 +1,7 @@
+ $NetBSD: distinfo,v 1.190 2026/08/25 12:57:01 adam Exp $
+ 
+-BLAKE2s (openssl-3.6.4.tar.gz) = a53beb887698b14996f8a98efb813a7e91b19d304c7b83e7ebfb1aa1ddcebbf2
+-SHA512 (openssl-3.6.4.tar.gz) = 9e7f4039082880357969c0857f33b20a6a4306d1b5e4f8fcbd7ec8dc41edc96e87c526a1db0b8259f5000c4ced84149b03547562ce4f9df35194634a7576dac0
+-Size (openssl-3.6.4.tar.gz) = 55003802 bytes
+-SHA1 (patch-Configurations_unix-Makefile.tmpl) = ea9b0a0c8de810362813d84a4f85c5ebdedf9fc6
++BLAKE2s (openssl-4.1.0.tar.gz) = 2cd563796909379a598eb8874b44d258f5193d83a7e0b130aa2b929732001825
++SHA512 (openssl-4.1.0.tar.gz) = bb8f3c47955735253c161b412bd916401afa713736ebe38f12419a1cac0af6ea6db3523853dbd3073b90ab1beec8e0465355801b228386f2027b4ba47adf4869
++Size (openssl-4.1.0.tar.gz) = 55738000 bytes
++SHA1 (patch-Configurations_unix-Makefile.tmpl) = 499134197500952e033bdfad5ffe97616b403a8d
+ SHA1 (patch-util_perl_OpenSSL_config.pm) = 3ba3c23046bf69c7d348b4c1c8c8269d83cfa2b4
+diff --git a/security/openssl/patches/patch-Configurations_unix-Makefile.tmpl b/security/openssl/patches/patch-Configurations_unix-Makefile.tmpl
+index 3dfbb6c..62a3fac 100644
+--- a/security/openssl/patches/patch-Configurations_unix-Makefile.tmpl
++++ b/security/openssl/patches/patch-Configurations_unix-Makefile.tmpl
+@@ -1,21 +1,21 @@
+-$NetBSD: patch-Configurations_unix-Makefile.tmpl,v 1.7 2024/04/09 17:16:45 wiz Exp $
++$NetBSD$
+ 
+ Do not build or install HTML documentation.
+ 
+---- Configurations/unix-Makefile.tmpl.orig	2024-04-09 12:12:22.000000000 +0000
++--- Configurations/unix-Makefile.tmpl.orig
+ +++ Configurations/unix-Makefile.tmpl
+-@@ -536,7 +536,7 @@ all: build_sw {- "build_docs" if !$disab
++@@ -577,7 +577,7 @@
+  
+  ##@ Documentation
+  build_generated_pods: $(GENERATED_PODS)
+ -build_docs: build_man_docs build_html_docs ## Create documentation
+ +build_docs: build_man_docs ## Create documentation
+- build_man_docs: $(MANDOCS1) $(MANDOCS3) $(MANDOCS5) $(MANDOCS7) ## Create manpages
+- build_html_docs: $(HTMLDOCS1) $(HTMLDOCS3) $(HTMLDOCS5) $(HTMLDOCS7) ## Create HTML documentation
++ build_man_docs: doc/man/.mandocs.stamp ## Create manpages
+  
+-@@ -652,7 +652,7 @@ install_sw: install_dev install_engines 
++ # The whole manual is formatted in one run.  pod2man is a perl program that
++@@ -763,7 +763,7 @@
+  
+- uninstall_sw: uninstall_runtime uninstall_modules uninstall_engines uninstall_dev ## Uninstall the software and libraries
++ uninstall_sw: uninstall_runtime uninstall_modules uninstall_dev ## Uninstall the software and libraries
+  
+ -install_docs: install_man_docs install_html_docs ## Install manpages and HTML documentation
+ +install_docs: install_man_docs ## Install manpages and HTML documentation
