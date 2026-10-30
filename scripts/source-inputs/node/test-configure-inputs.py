@@ -29,7 +29,9 @@ for key in ('node_source', 'work', 'v8_source', 'inspector_source', 'sdk_source'
 
 def call(action, opts, extra=(), expected=0):
     cmd = [sys.executable, '-B', str(helper), action, *opts, *extra]
-    result = subprocess.run(cmd, text=True, capture_output=True, timeout=600)
+    env = os.environ.copy()
+    env.pop('PYTHONDONTWRITEBYTECODE', None)
+    result = subprocess.run(cmd, text=True, capture_output=True, timeout=600, env=env)
     if (result.returncode == 0) != (expected == 0):
         raise RuntimeError(f'{action} exit {result.returncode}: {result.stdout[-1500:]}{result.stderr[-1500:]}')
     return result
@@ -57,6 +59,9 @@ call('configure', options, ['--', '--dest-cpu', 'x64', '--dest-os', 'netbsd',
                            '--openssl-no-asm'])
 if sentinel.exists() or (work / 'node-bundled-v8/ember-obsolete-v8-fixture').read_text() != 'bundled only\n':
     raise AssertionError('bundled V8 was not cleanly replaced and preserved')
+subprocess.run([sys.executable, '-B', '-I', '-S', str(a.gyp_pkgsrc / 'devel/gyp/files/verify-source.py'),
+                '--sdk-source', str(a.sdk_source), '--source', str(a.gyp_source),
+                '--pkgsrc-root', str(a.gyp_pkgsrc)], check=True)
 regen = (node / 'out/Makefile').read_text()
 if str(a.gyp_source.resolve() / 'gyp_main.py') not in regen:
     raise AssertionError('configure did not select the common GYP source')

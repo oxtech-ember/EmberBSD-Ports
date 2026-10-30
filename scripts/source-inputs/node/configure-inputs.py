@@ -119,7 +119,8 @@ def main():
             print(json.dumps({'gyp_args': defines, 'environment': {'NODE_GYP_SOURCE': str(directory(a.gyp_source))}}))
         else:
             subprocess.run([sys.executable, '-B', str(Path(a.node_source) / 'configure'), *rest, *defines],
-                           cwd=a.node_source, env={**os.environ, 'NODE_GYP_SOURCE': str(directory(a.gyp_source))}, check=True)
+                           cwd=a.node_source, env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1',
+                                            'NODE_GYP_SOURCE': str(directory(a.gyp_source))}, check=True)
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
         p.exit(1, f'node configure inputs: {error}\n')
 
