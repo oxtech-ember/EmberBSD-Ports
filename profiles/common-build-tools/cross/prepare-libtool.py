@@ -7,6 +7,7 @@ import argparse
 import contextlib
 import copy
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -166,6 +167,8 @@ def main():
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--distdir')
     parser.add_argument('--lock-directory', help='shared prefix/pkgdb lock directory')
+    parser.add_argument('--pkgsrc-export',
+                        help='read-only stage from scripts/pkgsrc-export-stage.py prepare')
     parser.add_argument('--runtime-stage')
     parser.add_argument('--runtime-base')
     parser.add_argument('--target', choices=('aarch64', 'amd64'), required=True)
@@ -180,7 +183,8 @@ def main():
     if a.runtime_base and not a.runtime_stage:
         raise SDKError('--runtime-base requires --runtime-stage')
     for value in (sdk, a.host_prefix, a.compiler, a.os_tools, a.sysroot,
-                  a.output, a.work_parent, a.git, a.distdir, a.runtime_stage, a.runtime_base, a.lock_directory):
+                  a.output, a.work_parent, a.git, a.distdir, a.runtime_stage, a.runtime_base, a.lock_directory,
+                  a.pkgsrc_export):
         if value is None:
             continue
         if not os.path.isabs(value) or any(c.isspace() or c in '\\"\'`$#;:' for c in value):
@@ -219,11 +223,24 @@ def main():
         python = native.tool('python')
         with tempfile.TemporaryDirectory(prefix='.cross-libtool-', dir=work) as temporary:
             tmp = Path(temporary)
-            exported = tmp / 'pkgsrc'
             native_conf = tmp / 'native.mk'
-            command = [python, '-B', str(ports / 'scripts/prepare-pkgsrc.py'), str(exported),
-                       '--git', git, '--patch', native.tool('gpatch')]
-            process.capture(command, env=env)
+            if a.pkgsrc_export:
+                # A stage keyed by the Git fingerprint of the export inputs.
+                # It is verified against the current inputs and only read.
+                spec = importlib.util.spec_from_file_location(
+                    'emberbsd_pkgsrc_export_stage', ports / 'scripts/pkgsrc-export-stage.py')
+                stage = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(stage)
+                try:
+                    exported = stage.verify(paths.canonical_existing(a.pkgsrc_export), git,
+                                            native.tool('gpatch'), ports)
+                except ValueError as error:
+                    raise SDKError(str(error)) from error
+            else:
+                exported = tmp / 'pkgsrc'
+                command = [python, '-B', str(ports / 'scripts/prepare-pkgsrc.py'), str(exported),
+                           '--git', git, '--patch', native.tool('gpatch')]
+                process.capture(command, env=env)
             command = [python, '-B', str(cross / 'prepare-tools.py'), '--sdk-source', sdk,
                        '--target', a.target, '--compiler-family', a.compiler_family,
                        '--host-compiler-family', a.host_compiler_family, '--host-prefix', prefix,
@@ -290,7 +307,8 @@ def main():
                 'EMBERBSD_CROSS_HOST_PREFIX=' + prefix, 'EMBERBSD_CROSS_TARGET=' + a.target,
                 'EMBERBSD_CROSS_COMPILER_FAMILY=' + a.compiler_family,
                 'EMBERBSD_HOST_COMPILER_FAMILY=' + a.host_compiler_family,
-                'WRKOBJDIR=' + str(tmp / 'obj'), 'DISTDIR=' + chosen_distdir,
+                # Keep a shared export unchanged: no work links in package dirs.
+                'WRKOBJDIR=' + str(tmp / 'obj'), 'CREATE_WRKDIR_SYMLINK=no', 'DISTDIR=' + chosen_distdir,
                 'PACKAGES=' + str(tmp / 'packages'), 'MAKE_JOBS=' + str(a.jobs),
                 '.include "' + str(exported / 'EMBERBSD-CROSS-MK.CONF') + '"', '.endif', '']))
             arch = {'aarch64': 'aarch64', 'amd64': 'x86_64'}[a.target]
