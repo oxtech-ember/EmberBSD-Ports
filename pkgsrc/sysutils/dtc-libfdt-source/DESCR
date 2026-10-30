@@ -1,0 +1,3 @@
+Patched libfdt source from the shared Device Tree Compiler recipe, for
+consumers that integrate libfdt into a freestanding runtime with their own
+environment header. This package does not provide a compiled library.

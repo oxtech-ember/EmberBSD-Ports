@@ -1,0 +1,8 @@
+$NetBSD: distinfo,v 1.11 2026/06/09 07:57:07 adam Exp $
+
+BLAKE2s (dtc-1.8.1.tar.xz) = 2c72fd6bf5aafee1eaf84e2c5e35059eb52fec6be6f59a39357c6d4411b52e47
+SHA512 (dtc-1.8.1.tar.xz) = 9a2987aab1e3be91b71a72e5aea7a4e3f88e66521e68fea25345f5e1f86189c0ed82668e31d4ce7869cb0e0277289ffa3b62bc2a002f2d18849be84aa4fab757
+Size (dtc-1.8.1.tar.xz) = 178152 bytes
+SHA1 (patch-Makefile) = 58dc051d48598c0afb8307d88d98ae20605e13fe
+SHA1 (patch-libfdt_Makefile.libfdt) = 68dc458a5ec9aca4f0da6758988338ec254e6d98
+SHA1 (patch-pylibfdt_libfdt.i) = b77eea87d34802fb5c9f6e7cd8768efe706d649a

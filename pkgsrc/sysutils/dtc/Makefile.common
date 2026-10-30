@@ -1,0 +1,2 @@
+# Shared dtc and pylibfdt source version.
+DTC_VERSION=	1.8.1

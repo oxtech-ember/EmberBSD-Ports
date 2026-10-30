@@ -486,3 +486,5 @@ lang/go-bin
 multimedia/openh264
 misc/py-installer
 graphics/jbig2dec
+
+sysutils/dtc

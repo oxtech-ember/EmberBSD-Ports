@@ -1,0 +1,15 @@
+@comment $NetBSD: PLIST,v 1.3 2024/09/09 19:18:13 adam Exp $
+bin/convert-dtsv0
+bin/dtc
+bin/dtdiff
+bin/fdtdump
+bin/fdtget
+bin/fdtoverlay
+bin/fdtput
+include/fdt.h
+include/libfdt.h
+include/libfdt_env.h
+lib/libfdt.a
+lib/libfdt.so
+lib/libfdt.so.1
+lib/libfdt.so.${PKGVERSION}

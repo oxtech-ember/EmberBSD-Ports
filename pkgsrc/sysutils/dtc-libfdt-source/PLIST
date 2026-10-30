@@ -1,0 +1,22 @@
+@comment libfdt source from the common dtc recipe
+share/dtc/libfdt/BSD-2-Clause
+share/dtc/libfdt/GPL
+share/dtc/libfdt/Makefile.libfdt
+share/dtc/libfdt/TODO
+share/dtc/libfdt/fdt.c
+share/dtc/libfdt/fdt.h
+share/dtc/libfdt/fdt_addresses.c
+share/dtc/libfdt/fdt_check.c
+share/dtc/libfdt/fdt_empty_tree.c
+share/dtc/libfdt/fdt_overlay.c
+share/dtc/libfdt/fdt_ro.c
+share/dtc/libfdt/fdt_rw.c
+share/dtc/libfdt/fdt_strerror.c
+share/dtc/libfdt/fdt_sw.c
+share/dtc/libfdt/fdt_wip.c
+share/dtc/libfdt/libfdt.h
+share/dtc/libfdt/libfdt_env.h
+share/dtc/libfdt/libfdt_internal.h
+share/dtc/libfdt/meson.build
+share/dtc/libfdt/sbom.cdx.json
+share/dtc/libfdt/version.lds
