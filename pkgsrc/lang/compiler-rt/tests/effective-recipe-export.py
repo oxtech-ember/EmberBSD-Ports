@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: BSD-2-Clause
+"""Check runtime recipe receipts in checkout and exported pkgsrc layouts."""
+import hashlib
+import importlib.util
+from pathlib import Path
+from types import SimpleNamespace
+
+root = Path(__file__).resolve().parents[4]
+pkgsrc = root / 'pkgsrc'
+owner_root = pkgsrc / 'lang/compiler-rt'
+spec = importlib.util.spec_from_file_location('runtime_build', owner_root / 'files/build.py')
+build = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(build)
+
+def digest(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+def receipt(exported):
+    calls = []
+    def revision(git, path):
+        calls.append((git, Path(path)))
+        return 'a' * 40
+    selected = SimpleNamespace(
+        OWNER=owner_root, PORTS=root if not exported else root.parent,
+        PKGSRC=pkgsrc, EXPORTED=exported,
+        input_name=lambda path: 'pkgsrc/' + str(Path(path).relative_to(pkgsrc)),
+        inventory=SimpleNamespace(sha256_file=digest), git_revision=revision,
+    )
+    result = build.effective_recipe(selected, {'recipe': {'files': {}}}, '/usr/bin/git')
+    expected = {
+        'pkgsrc/lang/compiler-rt/files/build.py',
+        'pkgsrc/lang/compiler-rt/files/runtime.py',
+        'pkgsrc/lang/compiler-rt/tests/runtime-c.c',
+        'pkgsrc/lang/compiler-rt/tests/runtime-cxx.cpp',
+    }
+    assert set(result['files']) == expected, result['files']
+    assert result['ports_revision'] == (None if exported else 'a' * 40)
+    assert len(calls) == (0 if exported else 1), calls
+    if calls:
+        assert calls[0] == ('/usr/bin/git', root)
+
+receipt(False)
+receipt(True)
+print('PASS: checkout and exported recipe receipts preserve revision and pkgsrc paths')

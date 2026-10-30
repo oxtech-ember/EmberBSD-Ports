@@ -323,8 +323,9 @@ def effective_recipe(owner, prepared, git):
     files = dict(prepared['recipe']['files'])
     for path in (Path(__file__).resolve(), Path(__file__).with_name('runtime.py').resolve(),
                  owner.OWNER / 'tests/runtime-c.c', owner.OWNER / 'tests/runtime-cxx.cpp'):
-        files[str(path.relative_to(owner.PORTS))] = owner.inventory.sha256_file(path)
-    return dict(ports_revision=owner.git_revision(git, owner.PORTS), files=files)
+        files[owner.input_name(path)] = owner.inventory.sha256_file(path)
+    revision = None if owner.EXPORTED else owner.git_revision(git, owner.PORTS)
+    return dict(ports_revision=revision, files=files)
 
 
 def install_licenses(source, stage, phase):
