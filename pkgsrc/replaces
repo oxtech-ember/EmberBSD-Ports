@@ -461,3 +461,6 @@ graphics/tiff
 
 # Record the selected native C++ ABI for GMP.
 devel/gmp
+
+# Link the common Duktape runtime to its mathematical functions.
+lang/libduktape
