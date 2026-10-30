@@ -1,0 +1,1227 @@
+--- a/security/openssl/Makefile
++++ b/security/openssl/Makefile
+@@ -67,18 +67,6 @@
+ CFLAGS+=		-DUSE_TIMEGM=1
+ .endif
+ 
+-PLIST_VARS+=		devcrypto afalg
+-# the AF_ALG engine is supported only on Linux, where it
+-# is used instead of the BSD /dev/crypto engine.
+-.if ${OPSYS} == "Linux"
+-PLIST.afalg=		yes
+-.endif
+-.if exists(/dev/crypto) && ${OPSYS} != "SunOS"
+-PLIST.devcrypto=	yes
+-.else
+-CONFIGURE_ARGS+=	no-devcryptoeng
+-.endif
+-
+ # Fix 64-bit build on at least Mac OS X Snow Leopard
+ .if ${OPSYS} == "Darwin" && ${MACHINE_ARCH} == "x86_64"
+ CONFIGURE_ENV+=		KERNEL_BITS=${ABI}
+@@ -98,11 +86,9 @@
+ SUBST_CLASSES+=			perlcross
+ SUBST_MESSAGE.perlcross=	Fixing Perl interpreter path for cross-build
+ SUBST_STAGE.perlcross=		pre-install
+-SUBST_FILES.perlcross+=		tools/c_rehash
+ SUBST_FILES.perlcross+=		apps/CA.pl
+ SUBST_FILES.perlcross+=		apps/tsget.pl
+ SUBST_SED.perlcross=		-e s,${PERL5:Q},${LOCALBASE}/bin/perl5,g
+-CHECK_INTERPRETER_SKIP+=	bin/c_rehash
+ 
+ .endif                         # USE_CROSS_COMPILE
+ 
+--- a/security/openssl/PLIST
++++ b/security/openssl/PLIST
+@@ -1,5 +1,4 @@
+ @comment $NetBSD: PLIST,v 1.28 2026/08/25 12:57:01 adam Exp $
+-bin/c_rehash
+ bin/openssl
+ include/openssl/aes.h
+ include/openssl/asn1.h
+@@ -56,6 +55,7 @@
+ include/openssl/ecdh.h
+ include/openssl/ecdsa.h
+ include/openssl/ecerr.h
++include/openssl/ech.h
+ include/openssl/encoder.h
+ include/openssl/encodererr.h
+ include/openssl/engine.h
+@@ -100,6 +100,7 @@
+ include/openssl/pkcs12err.h
+ include/openssl/pkcs7.h
+ include/openssl/pkcs7err.h
++include/openssl/posix_time.h
+ include/openssl/prov_ssl.h
+ include/openssl/proverr.h
+ include/openssl/provider.h
+@@ -145,17 +146,12 @@
+ include/openssl/x509v3err.h
+ lib/cmake/OpenSSL/OpenSSLConfig.cmake
+ lib/cmake/OpenSSL/OpenSSLConfigVersion.cmake
+-${PLIST.afalg}lib/engines-3/afalg.${SHLIB_EXT}
+-lib/engines-3/capi.${SHLIB_EXT}
+-${PLIST.devcrypto}lib/engines-3/devcrypto.${SHLIB_EXT}
+-lib/engines-3/loader_attic.${SHLIB_EXT}
+-lib/engines-3/padlock.${SHLIB_EXT}
++lib/libcrypto.so.4
+ lib/libcrypto.a
+ lib/libcrypto.so
+-lib/libcrypto.so.3
++lib/libssl.so.4
+ lib/libssl.a
+ lib/libssl.so
+-lib/libssl.so.3
+ lib/ossl-modules/legacy.${SHLIB_EXT}
+ lib/pkgconfig/libcrypto.pc
+ lib/pkgconfig/libssl.pc
+@@ -176,9 +172,9 @@
+ man/man1/openssl-dsa.1
+ man/man1/openssl-dsaparam.1
+ man/man1/openssl-ec.1
++man/man1/openssl-ech.1
+ man/man1/openssl-ecparam.1
+ man/man1/openssl-enc.1
+-man/man1/openssl-engine.1
+ man/man1/openssl-errstr.1
+ man/man1/openssl-fipsinstall.1
+ man/man1/openssl-format-options.1
+@@ -248,6 +244,17 @@
+ man/man3/ASIdentifiers_free.3
+ man/man3/ASIdentifiers_new.3
+ man/man3/ASN1_AUX.3
++man/man3/ASN1_BIT_STRING_check.3
++man/man3/ASN1_BIT_STRING_free.3
++man/man3/ASN1_BIT_STRING_get_bit.3
++man/man3/ASN1_BIT_STRING_get_length.3
++man/man3/ASN1_BIT_STRING_name_print.3
++man/man3/ASN1_BIT_STRING_new.3
++man/man3/ASN1_BIT_STRING_num_asc.3
++man/man3/ASN1_BIT_STRING_set.3
++man/man3/ASN1_BIT_STRING_set1.3
++man/man3/ASN1_BIT_STRING_set_asc.3
++man/man3/ASN1_BIT_STRING_set_bit.3
+ man/man3/ASN1_ENUMERATED_get.3
+ man/man3/ASN1_ENUMERATED_get_int64.3
+ man/man3/ASN1_ENUMERATED_set.3
+@@ -281,16 +288,19 @@
+ man/man3/ASN1_STRING_TABLE_cleanup.3
+ man/man3/ASN1_STRING_TABLE_get.3
+ man/man3/ASN1_STRING_cmp.3
+-man/man3/ASN1_STRING_data.3
+ man/man3/ASN1_STRING_dup.3
+ man/man3/ASN1_STRING_free.3
+ man/man3/ASN1_STRING_get0_data.3
++man/man3/ASN1_STRING_get_length.3
+ man/man3/ASN1_STRING_length.3
+ man/man3/ASN1_STRING_new.3
++man/man3/ASN1_STRING_new_not_owned.3
+ man/man3/ASN1_STRING_print.3
+ man/man3/ASN1_STRING_print_ex.3
+ man/man3/ASN1_STRING_print_ex_fp.3
+ man/man3/ASN1_STRING_set.3
++man/man3/ASN1_STRING_set1_data.3
++man/man3/ASN1_STRING_set1_string.3
+ man/man3/ASN1_STRING_to_UTF8.3
+ man/man3/ASN1_STRING_type.3
+ man/man3/ASN1_STRING_type_new.3
+@@ -650,6 +660,7 @@
+ man/man3/BIO_set_retry_reason.3
+ man/man3/BIO_set_retry_special.3
+ man/man3/BIO_set_retry_write.3
++man/man3/BIO_set_send_flags.3
+ man/man3/BIO_set_shutdown.3
+ man/man3/BIO_set_sock_type.3
+ man/man3/BIO_set_ssl.3
+@@ -667,6 +678,7 @@
+ man/man3/BIO_shutdown_wr.3
+ man/man3/BIO_snprintf.3
+ man/man3/BIO_socket.3
++man/man3/BIO_socket_ready.3
+ man/man3/BIO_socket_wait.3
+ man/man3/BIO_ssl_copy_session_id.3
+ man/man3/BIO_ssl_shutdown.3
+@@ -893,9 +905,14 @@
+ man/man3/CMS_SignedData_verify.3
+ man/man3/CMS_SignerInfo_cert_cmp.3
+ man/man3/CMS_SignerInfo_get0_signature.3
++man/man3/CMS_SignerInfo_get0_signer_cert.3
+ man/man3/CMS_SignerInfo_get0_signer_id.3
++man/man3/CMS_SignerInfo_get_verification_result.3
+ man/man3/CMS_SignerInfo_set1_signer_cert.3
+ man/man3/CMS_SignerInfo_sign.3
++man/man3/CMS_SignerInfo_verify.3
++man/man3/CMS_SignerInfo_verify_content.3
++man/man3/CMS_SignerInfo_verify_ex.3
+ man/man3/CMS_add0_cert.3
+ man/man3/CMS_add0_crl.3
+ man/man3/CMS_add0_recipient_key.3
+@@ -905,7 +922,13 @@
+ man/man3/CMS_add1_recipient.3
+ man/man3/CMS_add1_recipient_cert.3
+ man/man3/CMS_add1_signer.3
++man/man3/CMS_add_simple_smimecap.3
++man/man3/CMS_add_smimecap.3
++man/man3/CMS_add_standard_smimecap.3
++man/man3/CMS_add_standard_smimecap_ex.3
+ man/man3/CMS_compress.3
++man/man3/CMS_dataFinal.3
++man/man3/CMS_dataFinal_ex.3
+ man/man3/CMS_data_create.3
+ man/man3/CMS_data_create_ex.3
+ man/man3/CMS_decrypt.3
+@@ -992,10 +1015,14 @@
+ man/man3/CRYPTO_atomic_add.3
+ man/man3/CRYPTO_atomic_add64.3
+ man/man3/CRYPTO_atomic_and.3
++man/man3/CRYPTO_atomic_cmp_exch_ptr.3
+ man/man3/CRYPTO_atomic_load.3
+ man/man3/CRYPTO_atomic_load_int.3
++man/man3/CRYPTO_atomic_load_ptr.3
+ man/man3/CRYPTO_atomic_or.3
+ man/man3/CRYPTO_atomic_store.3
++man/man3/CRYPTO_atomic_store_int.3
++man/man3/CRYPTO_atomic_store_ptr.3
+ man/man3/CRYPTO_calloc.3
+ man/man3/CRYPTO_clear_free.3
+ man/man3/CRYPTO_clear_realloc.3
+@@ -1041,6 +1068,7 @@
+ man/man3/CRYPTO_strdup.3
+ man/man3/CRYPTO_strndup.3
+ man/man3/CRYPTO_zalloc.3
++man/man3/CTLOG_STORE_add0_log.3
+ man/man3/CTLOG_STORE_free.3
+ man/man3/CTLOG_STORE_get0_log_by_id.3
+ man/man3/CTLOG_STORE_load_default_file.3
+@@ -1109,6 +1137,7 @@
+ man/man3/DH_check_ex.3
+ man/man3/DH_check_params.3
+ man/man3/DH_check_params_ex.3
++man/man3/DH_check_pub_key.3
+ man/man3/DH_check_pub_key_ex.3
+ man/man3/DH_clear_flags.3
+ man/man3/DH_compute_key.3
+@@ -1117,7 +1146,6 @@
+ man/man3/DH_generate_key.3
+ man/man3/DH_generate_parameters.3
+ man/man3/DH_generate_parameters_ex.3
+-man/man3/DH_get0_engine.3
+ man/man3/DH_get0_g.3
+ man/man3/DH_get0_key.3
+ man/man3/DH_get0_p.3
+@@ -1192,7 +1220,6 @@
+ man/man3/DSA_generate_key.3
+ man/man3/DSA_generate_parameters.3
+ man/man3/DSA_generate_parameters_ex.3
+-man/man3/DSA_get0_engine.3
+ man/man3/DSA_get0_g.3
+ man/man3/DSA_get0_key.3
+ man/man3/DSA_get0_p.3
+@@ -1251,19 +1278,15 @@
+ man/man3/DSAparams_print_fp.3
+ man/man3/DTLS_client_method.3
+ man/man3/DTLS_get_data_mtu.3
++man/man3/DTLS_get_link_min_mtu.3
+ man/man3/DTLS_method.3
+ man/man3/DTLS_server_method.3
++man/man3/DTLS_set_link_mtu.3
+ man/man3/DTLS_set_timer_cb.3
+ man/man3/DTLS_timer_cb.3
+-man/man3/DTLSv1_2_client_method.3
+-man/man3/DTLSv1_2_method.3
+-man/man3/DTLSv1_2_server_method.3
+-man/man3/DTLSv1_client_method.3
+ man/man3/DTLSv1_get_timeout.3
+ man/man3/DTLSv1_handle_timeout.3
+ man/man3/DTLSv1_listen.3
+-man/man3/DTLSv1_method.3
+-man/man3/DTLSv1_server_method.3
+ man/man3/ECDSA_SIG_free.3
+ man/man3/ECDSA_SIG_get0.3
+ man/man3/ECDSA_SIG_get0_r.3
+@@ -1332,6 +1355,7 @@
+ man/man3/EC_GROUP_new_from_params.3
+ man/man3/EC_GROUP_order_bits.3
+ man/man3/EC_GROUP_precompute_mult.3
++man/man3/EC_GROUP_security_bits.3
+ man/man3/EC_GROUP_set_asn1_flag.3
+ man/man3/EC_GROUP_set_curve.3
+ man/man3/EC_GROUP_set_curve_GF2m.3
+@@ -1348,7 +1372,6 @@
+ man/man3/EC_KEY_dup.3
+ man/man3/EC_KEY_free.3
+ man/man3/EC_KEY_generate_key.3
+-man/man3/EC_KEY_get0_engine.3
+ man/man3/EC_KEY_get0_group.3
+ man/man3/EC_KEY_get0_private_key.3
+ man/man3/EC_KEY_get0_public_key.3
+@@ -1415,6 +1438,8 @@
+ man/man3/EC_POINT_set_to_infinity.3
+ man/man3/EC_POINTs_make_affine.3
+ man/man3/EC_POINTs_mul.3
++man/man3/EC_curve_nid2nist.3
++man/man3/EC_curve_nist2nid.3
+ man/man3/EC_get_builtin_curves.3
+ man/man3/EDIPARTYNAME_free.3
+ man/man3/EDIPARTYNAME_new.3
+@@ -1557,8 +1582,6 @@
+ man/man3/ERR_raise.3
+ man/man3/ERR_raise_data.3
+ man/man3/ERR_reason_error_string.3
+-man/man3/ERR_remove_state.3
+-man/man3/ERR_remove_thread_state.3
+ man/man3/ERR_set_debug.3
+ man/man3/ERR_set_error.3
+ man/man3/ERR_set_mark.3
+@@ -1666,24 +1689,6 @@
+ man/man3/EVP_CIPHER_is_a.3
+ man/man3/EVP_CIPHER_iv_length.3
+ man/man3/EVP_CIPHER_key_length.3
+-man/man3/EVP_CIPHER_meth_dup.3
+-man/man3/EVP_CIPHER_meth_free.3
+-man/man3/EVP_CIPHER_meth_get_cleanup.3
+-man/man3/EVP_CIPHER_meth_get_ctrl.3
+-man/man3/EVP_CIPHER_meth_get_do_cipher.3
+-man/man3/EVP_CIPHER_meth_get_get_asn1_params.3
+-man/man3/EVP_CIPHER_meth_get_init.3
+-man/man3/EVP_CIPHER_meth_get_set_asn1_params.3
+-man/man3/EVP_CIPHER_meth_new.3
+-man/man3/EVP_CIPHER_meth_set_cleanup.3
+-man/man3/EVP_CIPHER_meth_set_ctrl.3
+-man/man3/EVP_CIPHER_meth_set_do_cipher.3
+-man/man3/EVP_CIPHER_meth_set_flags.3
+-man/man3/EVP_CIPHER_meth_set_get_asn1_params.3
+-man/man3/EVP_CIPHER_meth_set_impl_ctx_size.3
+-man/man3/EVP_CIPHER_meth_set_init.3
+-man/man3/EVP_CIPHER_meth_set_iv_length.3
+-man/man3/EVP_CIPHER_meth_set_set_asn1_params.3
+ man/man3/EVP_CIPHER_mode.3
+ man/man3/EVP_CIPHER_name.3
+ man/man3/EVP_CIPHER_names_do_all.3
+@@ -1733,6 +1738,7 @@
+ man/man3/EVP_DigestVerifyInit.3
+ man/man3/EVP_DigestVerifyInit_ex.3
+ man/man3/EVP_DigestVerifyUpdate.3
++man/man3/EVP_EC_affine2oct.3
+ man/man3/EVP_EC_gen.3
+ man/man3/EVP_ENCODE_CTX_copy.3
+ man/man3/EVP_ENCODE_CTX_free.3
+@@ -1752,6 +1758,8 @@
+ man/man3/EVP_KDF_CTX.3
+ man/man3/EVP_KDF_CTX_dup.3
+ man/man3/EVP_KDF_CTX_free.3
++man/man3/EVP_KDF_CTX_get0_kdf.3
++man/man3/EVP_KDF_CTX_get1_kdf.3
+ man/man3/EVP_KDF_CTX_get_kdf_size.3
+ man/man3/EVP_KDF_CTX_get_params.3
+ man/man3/EVP_KDF_CTX_gettable_params.3
+@@ -1847,6 +1855,7 @@
+ man/man3/EVP_MD_CTX_copy.3
+ man/man3/EVP_MD_CTX_copy_ex.3
+ man/man3/EVP_MD_CTX_ctrl.3
++man/man3/EVP_MD_CTX_deserialize.3
+ man/man3/EVP_MD_CTX_dup.3
+ man/man3/EVP_MD_CTX_free.3
+ man/man3/EVP_MD_CTX_get0_md.3
+@@ -1865,15 +1874,14 @@
+ man/man3/EVP_MD_CTX_new.3
+ man/man3/EVP_MD_CTX_pkey_ctx.3
+ man/man3/EVP_MD_CTX_reset.3
++man/man3/EVP_MD_CTX_serialize.3
+ man/man3/EVP_MD_CTX_set_flags.3
+ man/man3/EVP_MD_CTX_set_params.3
+ man/man3/EVP_MD_CTX_set_pkey_ctx.3
+-man/man3/EVP_MD_CTX_set_update_fn.3
+ man/man3/EVP_MD_CTX_settable_params.3
+ man/man3/EVP_MD_CTX_size.3
+ man/man3/EVP_MD_CTX_test_flags.3
+ man/man3/EVP_MD_CTX_type.3
+-man/man3/EVP_MD_CTX_update_fn.3
+ man/man3/EVP_MD_block_size.3
+ man/man3/EVP_MD_do_all_provided.3
+ man/man3/EVP_MD_fetch.3
+@@ -1891,29 +1899,6 @@
+ man/man3/EVP_MD_gettable_ctx_params.3
+ man/man3/EVP_MD_gettable_params.3
+ man/man3/EVP_MD_is_a.3
+-man/man3/EVP_MD_meth_dup.3
+-man/man3/EVP_MD_meth_free.3
+-man/man3/EVP_MD_meth_get_app_datasize.3
+-man/man3/EVP_MD_meth_get_cleanup.3
+-man/man3/EVP_MD_meth_get_copy.3
+-man/man3/EVP_MD_meth_get_ctrl.3
+-man/man3/EVP_MD_meth_get_final.3
+-man/man3/EVP_MD_meth_get_flags.3
+-man/man3/EVP_MD_meth_get_init.3
+-man/man3/EVP_MD_meth_get_input_blocksize.3
+-man/man3/EVP_MD_meth_get_result_size.3
+-man/man3/EVP_MD_meth_get_update.3
+-man/man3/EVP_MD_meth_new.3
+-man/man3/EVP_MD_meth_set_app_datasize.3
+-man/man3/EVP_MD_meth_set_cleanup.3
+-man/man3/EVP_MD_meth_set_copy.3
+-man/man3/EVP_MD_meth_set_ctrl.3
+-man/man3/EVP_MD_meth_set_final.3
+-man/man3/EVP_MD_meth_set_flags.3
+-man/man3/EVP_MD_meth_set_init.3
+-man/man3/EVP_MD_meth_set_input_blocksize.3
+-man/man3/EVP_MD_meth_set_result_size.3
+-man/man3/EVP_MD_meth_set_update.3
+ man/man3/EVP_MD_name.3
+ man/man3/EVP_MD_names_do_all.3
+ man/man3/EVP_MD_nid.3
+@@ -1938,7 +1923,6 @@
+ man/man3/EVP_PKCS82PKEY_ex.3
+ man/man3/EVP_PKEY.3
+ man/man3/EVP_PKEY2PKCS8.3
+-man/man3/EVP_PKEY_ASN1_METHOD.3
+ man/man3/EVP_PKEY_CTX_add1_hkdf_info.3
+ man/man3/EVP_PKEY_CTX_add1_tls1_prf_seed.3
+ man/man3/EVP_PKEY_CTX_ctrl.3
+@@ -2053,37 +2037,11 @@
+ man/man3/EVP_PKEY_CTX_set_signature_md.3
+ man/man3/EVP_PKEY_CTX_set_tls1_prf_md.3
+ man/man3/EVP_PKEY_CTX_settable_params.3
+-man/man3/EVP_PKEY_METHOD.3
+ man/man3/EVP_PKEY_Q_keygen.3
+ man/man3/EVP_PKEY_add1_attr.3
+ man/man3/EVP_PKEY_add1_attr_by_NID.3
+ man/man3/EVP_PKEY_add1_attr_by_OBJ.3
+ man/man3/EVP_PKEY_add1_attr_by_txt.3
+-man/man3/EVP_PKEY_asn1_add0.3
+-man/man3/EVP_PKEY_asn1_add_alias.3
+-man/man3/EVP_PKEY_asn1_copy.3
+-man/man3/EVP_PKEY_asn1_find.3
+-man/man3/EVP_PKEY_asn1_find_str.3
+-man/man3/EVP_PKEY_asn1_free.3
+-man/man3/EVP_PKEY_asn1_get0.3
+-man/man3/EVP_PKEY_asn1_get0_info.3
+-man/man3/EVP_PKEY_asn1_get_count.3
+-man/man3/EVP_PKEY_asn1_new.3
+-man/man3/EVP_PKEY_asn1_set_check.3
+-man/man3/EVP_PKEY_asn1_set_ctrl.3
+-man/man3/EVP_PKEY_asn1_set_free.3
+-man/man3/EVP_PKEY_asn1_set_get_priv_key.3
+-man/man3/EVP_PKEY_asn1_set_get_pub_key.3
+-man/man3/EVP_PKEY_asn1_set_item.3
+-man/man3/EVP_PKEY_asn1_set_param.3
+-man/man3/EVP_PKEY_asn1_set_param_check.3
+-man/man3/EVP_PKEY_asn1_set_private.3
+-man/man3/EVP_PKEY_asn1_set_public.3
+-man/man3/EVP_PKEY_asn1_set_public_check.3
+-man/man3/EVP_PKEY_asn1_set_security_bits.3
+-man/man3/EVP_PKEY_asn1_set_set_priv_key.3
+-man/man3/EVP_PKEY_asn1_set_set_pub_key.3
+-man/man3/EVP_PKEY_asn1_set_siginf.3
+ man/man3/EVP_PKEY_assign_DH.3
+ man/man3/EVP_PKEY_assign_DSA.3
+ man/man3/EVP_PKEY_assign_EC_KEY.3
+@@ -2131,9 +2089,7 @@
+ man/man3/EVP_PKEY_get0_DSA.3
+ man/man3/EVP_PKEY_get0_EC_KEY.3
+ man/man3/EVP_PKEY_get0_RSA.3
+-man/man3/EVP_PKEY_get0_asn1.3
+ man/man3/EVP_PKEY_get0_description.3
+-man/man3/EVP_PKEY_get0_engine.3
+ man/man3/EVP_PKEY_get0_hmac.3
+ man/man3/EVP_PKEY_get0_poly1305.3
+ man/man3/EVP_PKEY_get0_provider.3
+@@ -2175,55 +2131,6 @@
+ man/man3/EVP_PKEY_is_a.3
+ man/man3/EVP_PKEY_keygen.3
+ man/man3/EVP_PKEY_keygen_init.3
+-man/man3/EVP_PKEY_meth_add0.3
+-man/man3/EVP_PKEY_meth_copy.3
+-man/man3/EVP_PKEY_meth_find.3
+-man/man3/EVP_PKEY_meth_free.3
+-man/man3/EVP_PKEY_meth_get0.3
+-man/man3/EVP_PKEY_meth_get0_info.3
+-man/man3/EVP_PKEY_meth_get_check.3
+-man/man3/EVP_PKEY_meth_get_cleanup.3
+-man/man3/EVP_PKEY_meth_get_copy.3
+-man/man3/EVP_PKEY_meth_get_count.3
+-man/man3/EVP_PKEY_meth_get_ctrl.3
+-man/man3/EVP_PKEY_meth_get_decrypt.3
+-man/man3/EVP_PKEY_meth_get_derive.3
+-man/man3/EVP_PKEY_meth_get_digest_custom.3
+-man/man3/EVP_PKEY_meth_get_digestsign.3
+-man/man3/EVP_PKEY_meth_get_digestverify.3
+-man/man3/EVP_PKEY_meth_get_encrypt.3
+-man/man3/EVP_PKEY_meth_get_init.3
+-man/man3/EVP_PKEY_meth_get_keygen.3
+-man/man3/EVP_PKEY_meth_get_param_check.3
+-man/man3/EVP_PKEY_meth_get_paramgen.3
+-man/man3/EVP_PKEY_meth_get_public_check.3
+-man/man3/EVP_PKEY_meth_get_sign.3
+-man/man3/EVP_PKEY_meth_get_signctx.3
+-man/man3/EVP_PKEY_meth_get_verify.3
+-man/man3/EVP_PKEY_meth_get_verify_recover.3
+-man/man3/EVP_PKEY_meth_get_verifyctx.3
+-man/man3/EVP_PKEY_meth_new.3
+-man/man3/EVP_PKEY_meth_remove.3
+-man/man3/EVP_PKEY_meth_set_check.3
+-man/man3/EVP_PKEY_meth_set_cleanup.3
+-man/man3/EVP_PKEY_meth_set_copy.3
+-man/man3/EVP_PKEY_meth_set_ctrl.3
+-man/man3/EVP_PKEY_meth_set_decrypt.3
+-man/man3/EVP_PKEY_meth_set_derive.3
+-man/man3/EVP_PKEY_meth_set_digest_custom.3
+-man/man3/EVP_PKEY_meth_set_digestsign.3
+-man/man3/EVP_PKEY_meth_set_digestverify.3
+-man/man3/EVP_PKEY_meth_set_encrypt.3
+-man/man3/EVP_PKEY_meth_set_init.3
+-man/man3/EVP_PKEY_meth_set_keygen.3
+-man/man3/EVP_PKEY_meth_set_param_check.3
+-man/man3/EVP_PKEY_meth_set_paramgen.3
+-man/man3/EVP_PKEY_meth_set_public_check.3
+-man/man3/EVP_PKEY_meth_set_sign.3
+-man/man3/EVP_PKEY_meth_set_signctx.3
+-man/man3/EVP_PKEY_meth_set_verify.3
+-man/man3/EVP_PKEY_meth_set_verify_recover.3
+-man/man3/EVP_PKEY_meth_set_verifyctx.3
+ man/man3/EVP_PKEY_missing_parameters.3
+ man/man3/EVP_PKEY_new.3
+ man/man3/EVP_PKEY_new_CMAC_key.3
+@@ -2253,7 +2160,6 @@
+ man/man3/EVP_PKEY_set1_EC_KEY.3
+ man/man3/EVP_PKEY_set1_RSA.3
+ man/man3/EVP_PKEY_set1_encoded_public_key.3
+-man/man3/EVP_PKEY_set1_engine.3
+ man/man3/EVP_PKEY_set1_tls_encodedpoint.3
+ man/man3/EVP_PKEY_set_bn_param.3
+ man/man3/EVP_PKEY_set_ex_data.3
+@@ -2335,6 +2241,7 @@
+ man/man3/EVP_SIGNATURE_get0_name.3
+ man/man3/EVP_SIGNATURE_get0_provider.3
+ man/man3/EVP_SIGNATURE_gettable_ctx_params.3
++man/man3/EVP_SIGNATURE_has_message_update.3
+ man/man3/EVP_SIGNATURE_is_a.3
+ man/man3/EVP_SIGNATURE_names_do_all.3
+ man/man3/EVP_SIGNATURE_settable_ctx_params.3
+@@ -2355,7 +2262,9 @@
+ man/man3/EVP_SKEY_export.3
+ man/man3/EVP_SKEY_free.3
+ man/man3/EVP_SKEY_generate.3
++man/man3/EVP_SKEY_get0_algorithm_id.3
+ man/man3/EVP_SKEY_get0_key_id.3
++man/man3/EVP_SKEY_get0_local_keyid.3
+ man/man3/EVP_SKEY_get0_provider_name.3
+ man/man3/EVP_SKEY_get0_raw_key.3
+ man/man3/EVP_SKEY_get0_skeymgmt_name.3
+@@ -2582,6 +2491,7 @@
+ man/man3/EXTENDED_KEY_USAGE_free.3
+ man/man3/EXTENDED_KEY_USAGE_new.3
+ man/man3/EXT_UTF8STRING.3
++man/man3/FIPS_mode.3
+ man/man3/GENERAL_NAME.3
+ man/man3/GENERAL_NAMES_free.3
+ man/man3/GENERAL_NAMES_new.3
+@@ -2814,7 +2724,6 @@
+ man/man3/OPENSSL_aligned_alloc.3
+ man/man3/OPENSSL_aligned_alloc_array.3
+ man/man3/OPENSSL_armcap.3
+-man/man3/OPENSSL_atexit.3
+ man/man3/OPENSSL_buf2hexstr.3
+ man/man3/OPENSSL_buf2hexstr_ex.3
+ man/man3/OPENSSL_calloc.3
+@@ -2855,6 +2764,7 @@
+ man/man3/OPENSSL_mem_debug_push.3
+ man/man3/OPENSSL_memdup.3
+ man/man3/OPENSSL_no_config.3
++man/man3/OPENSSL_posix_to_tm.3
+ man/man3/OPENSSL_ppccap.3
+ man/man3/OPENSSL_realloc.3
+ man/man3/OPENSSL_realloc_array.3
+@@ -2887,6 +2797,8 @@
+ man/man3/OPENSSL_sk_reserve.3
+ man/man3/OPENSSL_sk_set.3
+ man/man3/OPENSSL_sk_set_cmp_func.3
++man/man3/OPENSSL_sk_set_cmp_thunks.3
++man/man3/OPENSSL_sk_set_copy_thunks.3
+ man/man3/OPENSSL_sk_set_thunks.3
+ man/man3/OPENSSL_sk_shift.3
+ man/man3/OPENSSL_sk_sort.3
+@@ -2908,11 +2820,8 @@
+ man/man3/OPENSSL_strtoul.3
+ man/man3/OPENSSL_thread_stop.3
+ man/man3/OPENSSL_thread_stop_ex.3
+-man/man3/OPENSSL_version_build_metadata.3
+-man/man3/OPENSSL_version_major.3
+-man/man3/OPENSSL_version_minor.3
+-man/man3/OPENSSL_version_patch.3
+-man/man3/OPENSSL_version_pre_release.3
++man/man3/OPENSSL_timegm.3
++man/man3/OPENSSL_tm_to_posix.3
+ man/man3/OPENSSL_zalloc.3
+ man/man3/OSSL_AA_DIST_POINT_free.3
+ man/man3/OSSL_AA_DIST_POINT_it.3
+@@ -2954,6 +2863,7 @@
+ man/man3/OSSL_BASIC_ATTR_CONSTRAINTS_free.3
+ man/man3/OSSL_BASIC_ATTR_CONSTRAINTS_it.3
+ man/man3/OSSL_BASIC_ATTR_CONSTRAINTS_new.3
++man/man3/OSSL_BEGIN_ALLOW_DEPRECATED.3
+ man/man3/OSSL_CALLBACK.3
+ man/man3/OSSL_CMP_ATAV.3
+ man/man3/OSSL_CMP_ATAVS.3
+@@ -3270,6 +3180,18 @@
+ man/man3/OSSL_DECODER_up_ref.3
+ man/man3/OSSL_DISPATCH.3
+ man/man3/OSSL_DISPATCH_END.3
++man/man3/OSSL_ECHSTORE_downselect.3
++man/man3/OSSL_ECHSTORE_flush_keys.3
++man/man3/OSSL_ECHSTORE_free.3
++man/man3/OSSL_ECHSTORE_get1_info.3
++man/man3/OSSL_ECHSTORE_new.3
++man/man3/OSSL_ECHSTORE_new_config.3
++man/man3/OSSL_ECHSTORE_num_entries.3
++man/man3/OSSL_ECHSTORE_num_keys.3
++man/man3/OSSL_ECHSTORE_read_echconfiglist.3
++man/man3/OSSL_ECHSTORE_read_pem.3
++man/man3/OSSL_ECHSTORE_set1_key_and_read_pem.3
++man/man3/OSSL_ECHSTORE_write_pem.3
+ man/man3/OSSL_EC_curve_nid2name.3
+ man/man3/OSSL_ENCODER.3
+ man/man3/OSSL_ENCODER_CLEANUP.3
+@@ -3277,6 +3199,7 @@
+ man/man3/OSSL_ENCODER_CTX.3
+ man/man3/OSSL_ENCODER_CTX_add_encoder.3
+ man/man3/OSSL_ENCODER_CTX_add_extra.3
++man/man3/OSSL_ENCODER_CTX_ctrl_string.3
+ man/man3/OSSL_ENCODER_CTX_free.3
+ man/man3/OSSL_ENCODER_CTX_get_num_encoders.3
+ man/man3/OSSL_ENCODER_CTX_new.3
+@@ -3314,12 +3237,14 @@
+ man/man3/OSSL_ENCODER_to_data.3
+ man/man3/OSSL_ENCODER_to_fp.3
+ man/man3/OSSL_ENCODER_up_ref.3
++man/man3/OSSL_END_ALLOW_DEPRECATED.3
+ man/man3/OSSL_ERR_STATE_free.3
+ man/man3/OSSL_ERR_STATE_new.3
+ man/man3/OSSL_ERR_STATE_restore.3
+ man/man3/OSSL_ERR_STATE_save.3
+ man/man3/OSSL_ERR_STATE_save_to_mark.3
+ man/man3/OSSL_ESS_check_signing_certs.3
++man/man3/OSSL_ESS_check_signing_certs_ex.3
+ man/man3/OSSL_ESS_signing_cert_new_init.3
+ man/man3/OSSL_ESS_signing_cert_v2_new_init.3
+ man/man3/OSSL_FUNC_SSL_QUIC_TLS_alert_fn.3
+@@ -3452,6 +3377,7 @@
+ man/man3/OSSL_PARAM_END.3
+ man/man3/OSSL_PARAM_UNMODIFIED.3
+ man/man3/OSSL_PARAM_allocate_from_text.3
++man/man3/OSSL_PARAM_clear_free.3
+ man/man3/OSSL_PARAM_construct_BN.3
+ man/man3/OSSL_PARAM_construct_double.3
+ man/man3/OSSL_PARAM_construct_end.3
+@@ -3577,6 +3503,7 @@
+ man/man3/OSSL_QUIC_LOCAL_ERR_IDLE_TIMEOUT.3
+ man/man3/OSSL_QUIC_client_method.3
+ man/man3/OSSL_QUIC_client_thread_method.3
++man/man3/OSSL_QUIC_method.3
+ man/man3/OSSL_QUIC_server_method.3
+ man/man3/OSSL_ROLE_SPEC_CERT_ID_SYNTAX_free.3
+ man/man3/OSSL_ROLE_SPEC_CERT_ID_SYNTAX_it.3
+@@ -3602,6 +3529,7 @@
+ man/man3/OSSL_STORE_INFO_get0_PARAMS.3
+ man/man3/OSSL_STORE_INFO_get0_PKEY.3
+ man/man3/OSSL_STORE_INFO_get0_PUBKEY.3
++man/man3/OSSL_STORE_INFO_get0_SKEY.3
+ man/man3/OSSL_STORE_INFO_get0_data.3
+ man/man3/OSSL_STORE_INFO_get1_CERT.3
+ man/man3/OSSL_STORE_INFO_get1_CRL.3
+@@ -3610,6 +3538,7 @@
+ man/man3/OSSL_STORE_INFO_get1_PARAMS.3
+ man/man3/OSSL_STORE_INFO_get1_PKEY.3
+ man/man3/OSSL_STORE_INFO_get1_PUBKEY.3
++man/man3/OSSL_STORE_INFO_get1_SKEY.3
+ man/man3/OSSL_STORE_INFO_get_type.3
+ man/man3/OSSL_STORE_INFO_new.3
+ man/man3/OSSL_STORE_INFO_new_CERT.3
+@@ -3618,6 +3547,7 @@
+ man/man3/OSSL_STORE_INFO_new_PARAMS.3
+ man/man3/OSSL_STORE_INFO_new_PKEY.3
+ man/man3/OSSL_STORE_INFO_new_PUBKEY.3
++man/man3/OSSL_STORE_INFO_new_SKEY.3
+ man/man3/OSSL_STORE_INFO_set0_NAME_description.3
+ man/man3/OSSL_STORE_INFO_type_string.3
+ man/man3/OSSL_STORE_LOADER.3
+@@ -3626,7 +3556,6 @@
+ man/man3/OSSL_STORE_LOADER_fetch.3
+ man/man3/OSSL_STORE_LOADER_free.3
+ man/man3/OSSL_STORE_LOADER_get0_description.3
+-man/man3/OSSL_STORE_LOADER_get0_engine.3
+ man/man3/OSSL_STORE_LOADER_get0_properties.3
+ man/man3/OSSL_STORE_LOADER_get0_provider.3
+ man/man3/OSSL_STORE_LOADER_get0_scheme.3
+@@ -3731,10 +3660,7 @@
+ man/man3/OSSL_TRACE8.3
+ man/man3/OSSL_TRACE9.3
+ man/man3/OSSL_TRACEV.3
+-man/man3/OSSL_TRACE_BEGIN.3
+ man/man3/OSSL_TRACE_CANCEL.3
+-man/man3/OSSL_TRACE_ENABLED.3
+-man/man3/OSSL_TRACE_END.3
+ man/man3/OSSL_TRACE_STRING.3
+ man/man3/OSSL_TRACE_STRING_MAX.3
+ man/man3/OSSL_USER_NOTICE_SYNTAX_free.3
+@@ -3757,7 +3683,6 @@
+ man/man3/OSSL_trace_set_channel.3
+ man/man3/OSSL_trace_set_prefix.3
+ man/man3/OSSL_trace_set_suffix.3
+-man/man3/OSSL_trace_string.3
+ man/man3/OTHERNAME_free.3
+ man/man3/OTHERNAME_new.3
+ man/man3/OpenSSL_add_all_algorithms.3
+@@ -4030,6 +3955,7 @@
+ man/man3/PKCS7_SIGN_ENVELOPE_new.3
+ man/man3/PKCS7_add_certificate.3
+ man/man3/PKCS7_add_crl.3
++man/man3/PKCS7_dataVerify.3
+ man/man3/PKCS7_decrypt.3
+ man/man3/PKCS7_dup.3
+ man/man3/PKCS7_encrypt.3
+@@ -4147,7 +4073,6 @@
+ man/man3/RSA_get0_dmp1.3
+ man/man3/RSA_get0_dmq1.3
+ man/man3/RSA_get0_e.3
+-man/man3/RSA_get0_engine.3
+ man/man3/RSA_get0_factors.3
+ man/man3/RSA_get0_iqmp.3
+ man/man3/RSA_get0_key.3
+@@ -4381,12 +4306,15 @@
+ man/man3/SSL_CTX_dane_set_flags.3
+ man/man3/SSL_CTX_decrypt_session_ticket_fn.3
+ man/man3/SSL_CTX_disable_ct.3
++man/man3/SSL_CTX_ech_set1_outer_alpn_protos.3
++man/man3/SSL_CTX_ech_set_callback.3
+ man/man3/SSL_CTX_enable_ct.3
+ man/man3/SSL_CTX_flush_sessions.3
+ man/man3/SSL_CTX_flush_sessions_ex.3
+ man/man3/SSL_CTX_free.3
+ man/man3/SSL_CTX_generate_session_ticket_fn.3
+ man/man3/SSL_CTX_get0_CA_list.3
++man/man3/SSL_CTX_get0_alpn_protos.3
+ man/man3/SSL_CTX_get0_chain_cert_store.3
+ man/man3/SSL_CTX_get0_chain_certs.3
+ man/man3/SSL_CTX_get0_client_cert_type.3
+@@ -4396,6 +4324,7 @@
+ man/man3/SSL_CTX_get0_server_cert_type.3
+ man/man3/SSL_CTX_get0_verify_cert_store.3
+ man/man3/SSL_CTX_get1_compressed_cert.3
++man/man3/SSL_CTX_get1_echstore.3
+ man/man3/SSL_CTX_get_app_data.3
+ man/man3/SSL_CTX_get_cert_store.3
+ man/man3/SSL_CTX_get_ciphers.3
+@@ -4434,6 +4363,8 @@
+ man/man3/SSL_CTX_get_verify_depth.3
+ man/man3/SSL_CTX_get_verify_mode.3
+ man/man3/SSL_CTX_has_client_custom_ext.3
++man/man3/SSL_CTX_is_quic.3
++man/man3/SSL_CTX_is_server.3
+ man/man3/SSL_CTX_keylog_cb_func.3
+ man/man3/SSL_CTX_load_verify_dir.3
+ man/man3/SSL_CTX_load_verify_file.3
+@@ -4480,6 +4411,7 @@
+ man/man3/SSL_CTX_set1_compressed_cert.3
+ man/man3/SSL_CTX_set1_curves.3
+ man/man3/SSL_CTX_set1_curves_list.3
++man/man3/SSL_CTX_set1_echstore.3
+ man/man3/SSL_CTX_set1_groups.3
+ man/man3/SSL_CTX_set1_groups_list.3
+ man/man3/SSL_CTX_set1_param.3
+@@ -4607,6 +4539,9 @@
+ man/man3/SSL_INCOMING_STREAM_POLICY_ACCEPT.3
+ man/man3/SSL_INCOMING_STREAM_POLICY_AUTO.3
+ man/man3/SSL_INCOMING_STREAM_POLICY_REJECT.3
++man/man3/SSL_LISTENER_FLAG_ADDRESS_VALIDATION.3
++man/man3/SSL_LISTENER_FLAG_NO_VALIDATE.3
++man/man3/SSL_LISTENER_FLAG_SINGLE_THREAD.3
+ man/man3/SSL_OP_BIT.3
+ man/man3/SSL_POLL_EVENT_E.3
+ man/man3/SSL_POLL_EVENT_EC.3
+@@ -4695,16 +4630,25 @@
+ man/man3/SSL_VALUE_CLASS_FEATURE_PEER_REQUEST.3
+ man/man3/SSL_VALUE_CLASS_FEATURE_REQUEST.3
+ man/man3/SSL_VALUE_CLASS_GENERIC.3
++man/man3/SSL_VALUE_DTLS_LISTENER_MAX_DGRAM_SIZE.3
++man/man3/SSL_VALUE_DTLS_LISTENER_MAX_PENDING_CONNS.3
++man/man3/SSL_VALUE_DTLS_LISTENER_PENDING_TIMEOUT.3
+ man/man3/SSL_VALUE_EVENT_HANDLING_MODE.3
+ man/man3/SSL_VALUE_EVENT_HANDLING_MODE_EXPLICIT.3
+ man/man3/SSL_VALUE_EVENT_HANDLING_MODE_IMPLICIT.3
+ man/man3/SSL_VALUE_EVENT_HANDLING_MODE_INHERIT.3
++man/man3/SSL_VALUE_QUIC_ACK_DELAY_EXPONENT.3
++man/man3/SSL_VALUE_QUIC_ACK_DELAY_MAX.3
+ man/man3/SSL_VALUE_QUIC_IDLE_TIMEOUT.3
+ man/man3/SSL_VALUE_QUIC_MAX_PENDING_CONNS.3
+ man/man3/SSL_VALUE_QUIC_STREAM_BIDI_LOCAL_AVAIL.3
+ man/man3/SSL_VALUE_QUIC_STREAM_BIDI_REMOTE_AVAIL.3
+ man/man3/SSL_VALUE_QUIC_STREAM_UNI_LOCAL_AVAIL.3
+ man/man3/SSL_VALUE_QUIC_STREAM_UNI_REMOTE_AVAIL.3
++man/man3/SSL_VALUE_QUIC_UDP_PAYLOAD_SIZE_MAX.3
++man/man3/SSL_VALUE_QUIC_WINDOWBSTR.3
++man/man3/SSL_VALUE_QUIC_WINDOWCON.3
++man/man3/SSL_VALUE_QUIC_WINDOWUSTR.3
+ man/man3/SSL_VALUE_STREAM_WRITE_BUF_AVAIL.3
+ man/man3/SSL_VALUE_STREAM_WRITE_BUF_SIZE.3
+ man/man3/SSL_VALUE_STREAM_WRITE_BUF_USED.3
+@@ -4714,7 +4658,9 @@
+ man/man3/SSL_accept_stream.3
+ man/man3/SSL_add0_chain_cert.3
+ man/man3/SSL_add1_chain_cert.3
++man/man3/SSL_add1_dnsname.3
+ man/man3/SSL_add1_host.3
++man/man3/SSL_add1_ipaddr.3
+ man/man3/SSL_add1_to_CA_list.3
+ man/man3/SSL_add_client_CA.3
+ man/man3/SSL_add_dir_cert_subjects_to_stack.3
+@@ -4763,6 +4709,14 @@
+ man/man3/SSL_disable_ct.3
+ man/man3/SSL_do_handshake.3
+ man/man3/SSL_dup.3
++man/man3/SSL_ech_get1_retry_config.3
++man/man3/SSL_ech_get1_status.3
++man/man3/SSL_ech_set1_grease_suite.3
++man/man3/SSL_ech_set1_outer_alpn_protos.3
++man/man3/SSL_ech_set1_outer_server_name.3
++man/man3/SSL_ech_set1_server_names.3
++man/man3/SSL_ech_set_callback.3
++man/man3/SSL_ech_set_grease_type.3
+ man/man3/SSL_enable_ct.3
+ man/man3/SSL_export_keying_material.3
+ man/man3/SSL_export_keying_material_early.3
+@@ -4770,6 +4724,7 @@
+ man/man3/SSL_free.3
+ man/man3/SSL_free_buffers.3
+ man/man3/SSL_get0_CA_list.3
++man/man3/SSL_get0_alpn_protos.3
+ man/man3/SSL_get0_alpn_selected.3
+ man/man3/SSL_get0_chain_cert_store.3
+ man/man3/SSL_get0_chain_certs.3
+@@ -4778,6 +4733,7 @@
+ man/man3/SSL_get0_dane_authority.3
+ man/man3/SSL_get0_dane_tlsa.3
+ man/man3/SSL_get0_domain.3
++man/man3/SSL_get0_ec_point_formats.3
+ man/man3/SSL_get0_group_name.3
+ man/man3/SSL_get0_iana_groups.3
+ man/man3/SSL_get0_listener.3
+@@ -4792,6 +4748,8 @@
+ man/man3/SSL_get0_security_ex_data.3
+ man/man3/SSL_get0_server_cert_type.3
+ man/man3/SSL_get0_session.3
++man/man3/SSL_get0_shared_sigalg.3
++man/man3/SSL_get0_sigalg.3
+ man/man3/SSL_get0_signature_name.3
+ man/man3/SSL_get0_tlsext_status_ocsp_resp_ex.3
+ man/man3/SSL_get0_verified_chain.3
+@@ -4799,6 +4757,7 @@
+ man/man3/SSL_get1_builtin_sigalgs.3
+ man/man3/SSL_get1_compressed_cert.3
+ man/man3/SSL_get1_curves.3
++man/man3/SSL_get1_echstore.3
+ man/man3/SSL_get1_groups.3
+ man/man3/SSL_get1_peer_certificate.3
+ man/man3/SSL_get1_session.3
+@@ -4853,6 +4812,7 @@
+ man/man3/SSL_get_negotiated_server_cert_type.3
+ man/man3/SSL_get_num_tickets.3
+ man/man3/SSL_get_options.3
++man/man3/SSL_get_peer_addr.3
+ man/man3/SSL_get_peer_cert_chain.3
+ man/man3/SSL_get_peer_certificate.3
+ man/man3/SSL_get_peer_signature_nid.3
+@@ -4941,6 +4901,7 @@
+ man/man3/SSL_key_update.3
+ man/man3/SSL_library_init.3
+ man/man3/SSL_listen.3
++man/man3/SSL_listen_ex.3
+ man/man3/SSL_load_client_CA_file.3
+ man/man3/SSL_load_client_CA_file_ex.3
+ man/man3/SSL_load_error_strings.3
+@@ -4991,10 +4952,14 @@
+ man/man3/SSL_set1_compressed_cert.3
+ man/man3/SSL_set1_curves.3
+ man/man3/SSL_set1_curves_list.3
++man/man3/SSL_set1_dnsname.3
++man/man3/SSL_set1_ech_config_list.3
++man/man3/SSL_set1_echstore.3
+ man/man3/SSL_set1_groups.3
+ man/man3/SSL_set1_groups_list.3
+ man/man3/SSL_set1_host.3
+ man/man3/SSL_set1_initial_peer_addr.3
++man/man3/SSL_set1_ipaddr.3
+ man/man3/SSL_set1_param.3
+ man/man3/SSL_set1_server_cert_type.3
+ man/man3/SSL_set1_sigalgs.3
+@@ -5041,6 +5006,7 @@
+ man/man3/SSL_set_mode.3
+ man/man3/SSL_set_msg_callback.3
+ man/man3/SSL_set_msg_callback_arg.3
++man/man3/SSL_set_mtu.3
+ man/man3/SSL_set_new_pending_conn_cb_fn.3
+ man/man3/SSL_set_num_tickets.3
+ man/man3/SSL_set_options.3
+@@ -5065,6 +5031,8 @@
+ man/man3/SSL_set_session.3
+ man/man3/SSL_set_session_id_context.3
+ man/man3/SSL_set_session_secret_cb.3
++man/man3/SSL_set_session_ticket_ext.3
++man/man3/SSL_set_session_ticket_ext_cb.3
+ man/man3/SSL_set_shutdown.3
+ man/man3/SSL_set_split_send_fragment.3
+ man/man3/SSL_set_srp_server_param.3
+@@ -5127,9 +5095,6 @@
+ man/man3/SSLv23_client_method.3
+ man/man3/SSLv23_method.3
+ man/man3/SSLv23_server_method.3
+-man/man3/SSLv3_client_method.3
+-man/man3/SSLv3_method.3
+-man/man3/SSLv3_server_method.3
+ man/man3/SXNETID_free.3
+ man/man3/SXNETID_new.3
+ man/man3/SXNET_free.3
+@@ -5139,15 +5104,6 @@
+ man/man3/TLS_client_method.3
+ man/man3/TLS_method.3
+ man/man3/TLS_server_method.3
+-man/man3/TLSv1_1_client_method.3
+-man/man3/TLSv1_1_method.3
+-man/man3/TLSv1_1_server_method.3
+-man/man3/TLSv1_2_client_method.3
+-man/man3/TLSv1_2_method.3
+-man/man3/TLSv1_2_server_method.3
+-man/man3/TLSv1_client_method.3
+-man/man3/TLSv1_method.3
+-man/man3/TLSv1_server_method.3
+ man/man3/TS_ACCURACY_dup.3
+ man/man3/TS_ACCURACY_free.3
+ man/man3/TS_ACCURACY_new.3
+@@ -5573,6 +5529,7 @@
+ man/man3/X509_STORE_CTX_free.3
+ man/man3/X509_STORE_CTX_get0_cert.3
+ man/man3/X509_STORE_CTX_get0_chain.3
++man/man3/X509_STORE_CTX_get0_current_crl.3
+ man/man3/X509_STORE_CTX_get0_param.3
+ man/man3/X509_STORE_CTX_get0_rpk.3
+ man/man3/X509_STORE_CTX_get0_untrusted.3
+@@ -5626,6 +5583,7 @@
+ man/man3/X509_STORE_CTX_set_get_crl.3
+ man/man3/X509_STORE_CTX_set_ocsp_resp.3
+ man/man3/X509_STORE_CTX_set_purpose.3
++man/man3/X509_STORE_CTX_set_time.3
+ man/man3/X509_STORE_CTX_set_trust.3
+ man/man3/X509_STORE_CTX_set_verify.3
+ man/man3/X509_STORE_CTX_set_verify_cb.3
+@@ -5691,6 +5649,10 @@
+ man/man3/X509_VAL_new.3
+ man/man3/X509_VERIFY_PARAM_add0_policy.3
+ man/man3/X509_VERIFY_PARAM_add1_host.3
++man/man3/X509_VERIFY_PARAM_add1_ip.3
++man/man3/X509_VERIFY_PARAM_add1_ip_asc.3
++man/man3/X509_VERIFY_PARAM_add1_rfc822.3
++man/man3/X509_VERIFY_PARAM_add1_smtputf8.3
+ man/man3/X509_VERIFY_PARAM_clear_flags.3
+ man/man3/X509_VERIFY_PARAM_get0_email.3
+ man/man3/X509_VERIFY_PARAM_get0_host.3
+@@ -5705,9 +5667,15 @@
+ man/man3/X509_VERIFY_PARAM_get_time.3
+ man/man3/X509_VERIFY_PARAM_set1_email.3
+ man/man3/X509_VERIFY_PARAM_set1_host.3
++man/man3/X509_VERIFY_PARAM_set1_host_input_validation.3
+ man/man3/X509_VERIFY_PARAM_set1_ip.3
+ man/man3/X509_VERIFY_PARAM_set1_ip_asc.3
++man/man3/X509_VERIFY_PARAM_set1_ip_input_validation.3
+ man/man3/X509_VERIFY_PARAM_set1_policies.3
++man/man3/X509_VERIFY_PARAM_set1_rfc822.3
++man/man3/X509_VERIFY_PARAM_set1_rfc822_input_validation.3
++man/man3/X509_VERIFY_PARAM_set1_smtputf8.3
++man/man3/X509_VERIFY_PARAM_set1_smtputf8_input_validation.3
+ man/man3/X509_VERIFY_PARAM_set_auth_level.3
+ man/man3/X509_VERIFY_PARAM_set_depth.3
+ man/man3/X509_VERIFY_PARAM_set_flags.3
+@@ -5722,7 +5690,9 @@
+ man/man3/X509_add_ext.3
+ man/man3/X509_build_chain.3
+ man/man3/X509_chain_up_ref.3
++man/man3/X509_check_akid.3
+ man/man3/X509_check_ca.3
++man/man3/X509_check_certificate_times.3
+ man/man3/X509_check_email.3
+ man/man3/X509_check_host.3
+ man/man3/X509_check_ip.3
+@@ -5828,6 +5798,7 @@
+ man/man3/X509v3_add_ext.3
+ man/man3/X509v3_add_extensions.3
+ man/man3/X509v3_delete_ext.3
++man/man3/X509v3_delete_extension.3
+ man/man3/X509v3_get_ext.3
+ man/man3/X509v3_get_ext_by_NID.3
+ man/man3/X509v3_get_ext_by_OBJ.3
+@@ -6427,9 +6398,21 @@
+ man/man3/sk_TYPE_zero.3
+ man/man3/ssl_ct_validation_cb.3
+ man/man3/tls_session_secret_cb_fn.3
++man/man3/tls_session_ticket_ext_cb_fn.3
+ man/man5/config.5
+ man/man5/fips_config.5
+ man/man5/x509v3_config.5
++man/man7/ASN1_STRING_data.7
++man/man7/BIO_f_reliable.7
++man/man7/DTLSv1_2_client_method.7
++man/man7/DTLSv1_2_method.7
++man/man7/DTLSv1_2_server_method.7
++man/man7/DTLSv1_client_method.7
++man/man7/DTLSv1_method.7
++man/man7/DTLSv1_server_method.7
++man/man7/ERR_get_state.7
++man/man7/ERR_remove_state.7
++man/man7/ERR_remove_thread_state.7
+ man/man7/EVP_ASYM_CIPHER-RSA.7
+ man/man7/EVP_ASYM_CIPHER-SM2.7
+ man/man7/EVP_CIPHER-AES.7
+@@ -6446,9 +6429,28 @@
+ man/man7/EVP_CIPHER-RC5.7
+ man/man7/EVP_CIPHER-SEED.7
+ man/man7/EVP_CIPHER-SM4.7
++man/man7/EVP_CIPHER_meth_dup.7
++man/man7/EVP_CIPHER_meth_free.7
++man/man7/EVP_CIPHER_meth_get_cleanup.7
++man/man7/EVP_CIPHER_meth_get_ctrl.7
++man/man7/EVP_CIPHER_meth_get_do_cipher.7
++man/man7/EVP_CIPHER_meth_get_get_asn1_params.7
++man/man7/EVP_CIPHER_meth_get_init.7
++man/man7/EVP_CIPHER_meth_get_set_asn1_params.7
++man/man7/EVP_CIPHER_meth_new.7
++man/man7/EVP_CIPHER_meth_set_cleanup.7
++man/man7/EVP_CIPHER_meth_set_ctrl.7
++man/man7/EVP_CIPHER_meth_set_do_cipher.7
++man/man7/EVP_CIPHER_meth_set_flags.7
++man/man7/EVP_CIPHER_meth_set_get_asn1_params.7
++man/man7/EVP_CIPHER_meth_set_impl_ctx_size.7
++man/man7/EVP_CIPHER_meth_set_init.7
++man/man7/EVP_CIPHER_meth_set_iv_length.7
++man/man7/EVP_CIPHER_meth_set_set_asn1_params.7
+ man/man7/EVP_KDF-ARGON2.7
+ man/man7/EVP_KDF-HKDF.7
+ man/man7/EVP_KDF-HMAC-DRBG.7
++man/man7/EVP_KDF-IKEV2KDF.7
+ man/man7/EVP_KDF-KB.7
+ man/man7/EVP_KDF-KRB5KDF.7
+ man/man7/EVP_KDF-PBKDF1.7
+@@ -6456,6 +6458,8 @@
+ man/man7/EVP_KDF-PKCS12KDF.7
+ man/man7/EVP_KDF-PVKKDF.7
+ man/man7/EVP_KDF-SCRYPT.7
++man/man7/EVP_KDF-SNMPKDF.7
++man/man7/EVP_KDF-SRTPKDF.7
+ man/man7/EVP_KDF-SS.7
+ man/man7/EVP_KDF-SSHKDF.7
+ man/man7/EVP_KDF-TLS13_KDF.7
+@@ -6489,6 +6493,7 @@
+ man/man7/EVP_KEYMGMT-ML-KEM-512.7
+ man/man7/EVP_KEYMGMT-ML-KEM-768.7
+ man/man7/EVP_KEYMGMT-ML-KEM.7
++man/man7/EVP_KEYMGMT-MLX-KEM.7
+ man/man7/EVP_KEYMGMT-Poly1305.7
+ man/man7/EVP_KEYMGMT-RSA.7
+ man/man7/EVP_KEYMGMT-SLH-DSA.7
+@@ -6508,13 +6513,15 @@
+ man/man7/EVP_MAC-Poly1305.7
+ man/man7/EVP_MAC-Siphash.7
+ man/man7/EVP_MD-BLAKE2.7
+-man/man7/EVP_MD-KECCAK-KMAC.7
++man/man7/EVP_MD-CSHAKE-KECCAK.7
++man/man7/EVP_MD-CSHAKE.7
+ man/man7/EVP_MD-KECCAK.7
+ man/man7/EVP_MD-MD2.7
+ man/man7/EVP_MD-MD4.7
+ man/man7/EVP_MD-MD5-SHA1.7
+ man/man7/EVP_MD-MD5.7
+ man/man7/EVP_MD-MDC2.7
++man/man7/EVP_MD-ML-DSA-MU.7
+ man/man7/EVP_MD-NULL.7
+ man/man7/EVP_MD-RIPEMD160.7
+ man/man7/EVP_MD-SHA1.7
+@@ -6524,6 +6531,31 @@
+ man/man7/EVP_MD-SM3.7
+ man/man7/EVP_MD-WHIRLPOOL.7
+ man/man7/EVP_MD-common.7
++man/man7/EVP_MD_CTX_set_update_fn.7
++man/man7/EVP_MD_CTX_update_fn.7
++man/man7/EVP_MD_meth_dup.7
++man/man7/EVP_MD_meth_free.7
++man/man7/EVP_MD_meth_get_app_datasize.7
++man/man7/EVP_MD_meth_get_cleanup.7
++man/man7/EVP_MD_meth_get_copy.7
++man/man7/EVP_MD_meth_get_ctrl.7
++man/man7/EVP_MD_meth_get_final.7
++man/man7/EVP_MD_meth_get_flags.7
++man/man7/EVP_MD_meth_get_init.7
++man/man7/EVP_MD_meth_get_input_blocksize.7
++man/man7/EVP_MD_meth_get_result_size.7
++man/man7/EVP_MD_meth_get_update.7
++man/man7/EVP_MD_meth_new.7
++man/man7/EVP_MD_meth_set_app_datasize.7
++man/man7/EVP_MD_meth_set_cleanup.7
++man/man7/EVP_MD_meth_set_copy.7
++man/man7/EVP_MD_meth_set_ctrl.7
++man/man7/EVP_MD_meth_set_final.7
++man/man7/EVP_MD_meth_set_flags.7
++man/man7/EVP_MD_meth_set_init.7
++man/man7/EVP_MD_meth_set_input_blocksize.7
++man/man7/EVP_MD_meth_set_result_size.7
++man/man7/EVP_MD_meth_set_update.7
+ man/man7/EVP_PKEY-CMAC.7
+ man/man7/EVP_PKEY-DH.7
+ man/man7/EVP_PKEY-DHX.7
+@@ -6542,6 +6574,7 @@
+ man/man7/EVP_PKEY-ML-KEM-512.7
+ man/man7/EVP_PKEY-ML-KEM-768.7
+ man/man7/EVP_PKEY-ML-KEM.7
++man/man7/EVP_PKEY-MLX-KEM.7
+ man/man7/EVP_PKEY-Poly1305.7
+ man/man7/EVP_PKEY-RSA.7
+ man/man7/EVP_PKEY-SLH-DSA-SHA2-128f.7
+@@ -6561,6 +6594,81 @@
+ man/man7/EVP_PKEY-Siphash.7
+ man/man7/EVP_PKEY-X25519.7
+ man/man7/EVP_PKEY-X448.7
++man/man7/EVP_PKEY_asn1_add0.7
++man/man7/EVP_PKEY_asn1_add_alias.7
++man/man7/EVP_PKEY_asn1_copy.7
++man/man7/EVP_PKEY_asn1_find.7
++man/man7/EVP_PKEY_asn1_find_str.7
++man/man7/EVP_PKEY_asn1_free.7
++man/man7/EVP_PKEY_asn1_get0.7
++man/man7/EVP_PKEY_asn1_get0_info.7
++man/man7/EVP_PKEY_asn1_get_count.7
++man/man7/EVP_PKEY_asn1_new.7
++man/man7/EVP_PKEY_asn1_set_check.7
++man/man7/EVP_PKEY_asn1_set_ctrl.7
++man/man7/EVP_PKEY_asn1_set_free.7
++man/man7/EVP_PKEY_asn1_set_get_priv_key.7
++man/man7/EVP_PKEY_asn1_set_get_pub_key.7
++man/man7/EVP_PKEY_asn1_set_item.7
++man/man7/EVP_PKEY_asn1_set_param.7
++man/man7/EVP_PKEY_asn1_set_param_check.7
++man/man7/EVP_PKEY_asn1_set_private.7
++man/man7/EVP_PKEY_asn1_set_public.7
++man/man7/EVP_PKEY_asn1_set_public_check.7
++man/man7/EVP_PKEY_asn1_set_security_bits.7
++man/man7/EVP_PKEY_asn1_set_set_priv_key.7
++man/man7/EVP_PKEY_asn1_set_set_pub_key.7
++man/man7/EVP_PKEY_asn1_set_siginf.7
++man/man7/EVP_PKEY_get0_asn1.7
++man/man7/EVP_PKEY_meth_add0.7
++man/man7/EVP_PKEY_meth_copy.7
++man/man7/EVP_PKEY_meth_find.7
++man/man7/EVP_PKEY_meth_free.7
++man/man7/EVP_PKEY_meth_get0.7
++man/man7/EVP_PKEY_meth_get0_info.7
++man/man7/EVP_PKEY_meth_get_check.7
++man/man7/EVP_PKEY_meth_get_cleanup.7
++man/man7/EVP_PKEY_meth_get_copy.7
++man/man7/EVP_PKEY_meth_get_count.7
++man/man7/EVP_PKEY_meth_get_ctrl.7
++man/man7/EVP_PKEY_meth_get_decrypt.7
++man/man7/EVP_PKEY_meth_get_derive.7
++man/man7/EVP_PKEY_meth_get_digest_custom.7
++man/man7/EVP_PKEY_meth_get_digestsign.7
++man/man7/EVP_PKEY_meth_get_digestverify.7
++man/man7/EVP_PKEY_meth_get_encrypt.7
++man/man7/EVP_PKEY_meth_get_init.7
++man/man7/EVP_PKEY_meth_get_keygen.7
++man/man7/EVP_PKEY_meth_get_param_check.7
++man/man7/EVP_PKEY_meth_get_paramgen.7
++man/man7/EVP_PKEY_meth_get_public_check.7
++man/man7/EVP_PKEY_meth_get_sign.7
++man/man7/EVP_PKEY_meth_get_signctx.7
++man/man7/EVP_PKEY_meth_get_verify.7
++man/man7/EVP_PKEY_meth_get_verify_recover.7
++man/man7/EVP_PKEY_meth_get_verifyctx.7
++man/man7/EVP_PKEY_meth_new.7
++man/man7/EVP_PKEY_meth_remove.7
++man/man7/EVP_PKEY_meth_set_check.7
++man/man7/EVP_PKEY_meth_set_cleanup.7
++man/man7/EVP_PKEY_meth_set_copy.7
++man/man7/EVP_PKEY_meth_set_ctrl.7
++man/man7/EVP_PKEY_meth_set_decrypt.7
++man/man7/EVP_PKEY_meth_set_derive.7
++man/man7/EVP_PKEY_meth_set_digest_custom.7
++man/man7/EVP_PKEY_meth_set_digestsign.7
++man/man7/EVP_PKEY_meth_set_digestverify.7
++man/man7/EVP_PKEY_meth_set_encrypt.7
++man/man7/EVP_PKEY_meth_set_init.7
++man/man7/EVP_PKEY_meth_set_keygen.7
++man/man7/EVP_PKEY_meth_set_param_check.7
++man/man7/EVP_PKEY_meth_set_paramgen.7
++man/man7/EVP_PKEY_meth_set_public_check.7
++man/man7/EVP_PKEY_meth_set_sign.7
++man/man7/EVP_PKEY_meth_set_signctx.7
++man/man7/EVP_PKEY_meth_set_verify.7
++man/man7/EVP_PKEY_meth_set_verify_recover.7
++man/man7/EVP_PKEY_meth_set_verifyctx.7
+ man/man7/EVP_RAND-CRNG-TEST.7
+ man/man7/EVP_RAND-CTR-DRBG.7
+ man/man7/EVP_RAND-HASH-DRBG.7
+@@ -6595,12 +6703,16 @@
+ man/man7/EVP_SIGNATURE-SLH-DSA-SHAKE-256f.7
+ man/man7/EVP_SIGNATURE-SLH-DSA-SHAKE-256s.7
+ man/man7/EVP_SIGNATURE-SLH-DSA.7
++man/man7/EVP_SIGNATURE-SM2.7
+ man/man7/EVP_SIGNATURE-Siphash.7
+ man/man7/Ed25519.7
+ man/man7/Ed448.7
+ man/man7/LMS.7
+ man/man7/OPENSSL_API_COMPAT.7
++man/man7/OPENSSL_ENGINE_STUBS.7
+ man/man7/OPENSSL_NO_DEPRECATED.7
++man/man7/OPENSSL_SUPPRESS_DEPRECATED.7
++man/man7/OPENSSL_atexit.7
+ man/man7/OSSL_PROVIDER-FIPS.7
+ man/man7/OSSL_PROVIDER-base.7
+ man/man7/OSSL_PROVIDER-default.7
+@@ -6611,6 +6723,18 @@
+ man/man7/RSA-PSS.7
+ man/man7/RSA.7
+ man/man7/SM2.7
++man/man7/SSLv3_client_method.7
++man/man7/SSLv3_method.7
++man/man7/SSLv3_server_method.7
++man/man7/TLSv1_1_client_method.7
++man/man7/TLSv1_1_method.7
++man/man7/TLSv1_1_server_method.7
++man/man7/TLSv1_2_client_method.7
++man/man7/TLSv1_2_method.7
++man/man7/TLSv1_2_server_method.7
++man/man7/TLSv1_client_method.7
++man/man7/TLSv1_method.7
++man/man7/TLSv1_server_method.7
+ man/man7/X25519.7
+ man/man7/X448.7
+ man/man7/bio.7
+@@ -6636,6 +6760,7 @@
+ man/man7/openssl-quic.7
+ man/man7/openssl-threads.7
+ man/man7/openssl_user_macros.7
++man/man7/ossl-guide-dtlsv13.7
+ man/man7/ossl-guide-introduction.7
+ man/man7/ossl-guide-libcrypto-introduction.7
+ man/man7/ossl-guide-libraries-introduction.7
+@@ -6651,6 +6776,8 @@
+ man/man7/ossl-guide-tls-client-non-block.7
+ man/man7/ossl-guide-tls-introduction.7
+ man/man7/ossl-guide-tls-server-block.7
++man/man7/ossl-migration-guide.7
++man/man7/ossl-removed-api.7
+ man/man7/ossl_store-file.7
+ man/man7/ossl_store.7
+ man/man7/passphrase-encoding.7
+@@ -6682,3 +6809,6 @@
+ share/examples/openssl/misc/tsget.pl
+ share/examples/openssl/openssl.cnf
+ share/examples/openssl/openssl.cnf.dist
++@pkgdir share/examples/openssl/private
++@pkgdir share/examples/openssl/certs
++@pkgdir etc/openssl
