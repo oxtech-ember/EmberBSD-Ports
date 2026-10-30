@@ -6,9 +6,13 @@ Origin: EmberBSD (AI-assisted).
 
 --- test/lit.cfg.py.orig
 +++ test/lit.cfg.py
-@@ -16,2 +16,5 @@
+@@ -16,6 +16,9 @@
  # name: The name of this test suite.
  config.name = "lld"
-+
+ 
 +# Keep diagnostics and timestamps stable across host locale settings.
 +config.environment["LC_ALL"] = "C"
++
+ # TODO: Consolidate the logic for turning on the internal shell by default for all LLVM test suites.
+ # See https://github.com/llvm/llvm-project/issues/106636 for more details.
+ #

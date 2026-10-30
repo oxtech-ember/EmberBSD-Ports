@@ -6,6 +6,6 @@ Size (llvm-project-23.1.4.src.tar.xz) = 179272572 bytes
 SHA1 (patch-ELF_Symbols.h) = b9d3926fc6e281272f6a7e3cc5ba30619d21dbd9
 SHA1 (patch-ELF_Symbols.cpp) = 8ee53eb119d2b6531cc751b503a015e780e882ad
 SHA1 (patch-ELF_InputFiles.cpp) = fd050a9f5cf8523ebc10806fcf1feba28126b07d
-SHA1 (patch-test_lit.cfg.py) = f29690fe1040f882ea9d96abb890e0d58ac63072
+SHA1 (patch-test_lit.cfg.py) = b55e06250768628f97d9f827201d1aff73d990de
 SHA1 (patch-MachO_InputFiles.cpp) = a38454d32bf4bd9f2e1aa348953ce23c014aeb1e
 SHA1 (patch-unittests_CMakeLists.txt) = b3080a05c8179401bdbeaa16529e5e60ec108e05
