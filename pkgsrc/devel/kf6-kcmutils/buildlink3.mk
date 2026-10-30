@@ -9,6 +9,7 @@ BUILDLINK_API_DEPENDS.kf6-kcmutils+=	kf6-kcmutils>=6.31.0
 BUILDLINK_ABI_DEPENDS.kf6-kcmutils+=	kf6-kcmutils>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-kcmutils?=	../../devel/kf6-kcmutils
 
+.include "../../devel/kf6-kcmutils/cross-tools.mk"
 .include "../../devel/kf6-kcoreaddons/buildlink3.mk"
 .include "../../devel/kf6-ki18n/buildlink3.mk"
 .include "../../devel/kf6-kio/buildlink3.mk"

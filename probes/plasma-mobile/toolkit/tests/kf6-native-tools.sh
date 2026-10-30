@@ -19,6 +19,8 @@ textproc/kf6-syntax-highlighting|textproc/kf6-syntax-highlighting-indexer|textpr
 net/kdsoap-ws-discovery-client|net/kdsoap-kdwsdl2cpp|net/kdsoap|-DKDSOAP_KDWSDL2CPP_COMPILER=@TOOLBASE@/bin/kdwsdl2cpp-qt6
 x11/kf6-kded|devel/kf6-kconfig-compiler|devel/kf6-kconfig|-DKF6_HOST_TOOLING=@TOOLBASE@/lib/cmake
 devel/kf6-kio|security/kf6-kauth-policy-gen|security/kf6-kauth|-DKF6_HOST_TOOLING=@TOOLBASE@/lib/cmake
+devel/kf6-kcmutils|devel/kf6-kcmutils-tools|devel/kf6-kcmutils|-DKF6_HOST_TOOLING=@TOOLBASE@/lib/cmake
+audio/plasma6-plasma-pa|devel/kf6-kcmutils-tools|devel/kf6-kcmutils|-DKF6_HOST_TOOLING=@TOOLBASE@/lib/cmake
 TABLE
 # A native CMake framework build in the same configuration fails for no
 # reason of the generator packages.

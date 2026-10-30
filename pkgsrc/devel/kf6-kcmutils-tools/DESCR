@@ -1,0 +1,3 @@
+The native kcmdesktopfilegenerator program of KDE Frameworks KCMUtils with
+its CMake import. Cross builds of KCMUtils and its consumers run it on the
+build host.

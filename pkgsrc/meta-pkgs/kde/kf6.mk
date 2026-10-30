@@ -2,6 +2,7 @@
 # used by archivers/kf6-karchive/Makefile
 # used by devel/kf6-kbookmarks/Makefile
 # used by devel/kf6-kcmutils/Makefile
+# used by devel/kf6-kcmutils-tools/Makefile
 # used by devel/kf6-kcolorscheme/Makefile
 # used by devel/kf6-kconfig/Makefile
 # used by devel/kf6-kconfig-compiler/Makefile
@@ -82,6 +83,7 @@ _EMBERBSD_KF6VER_RECIPES= \
     archivers/kf6-karchive \
     devel/kf6-kbookmarks \
     devel/kf6-kcmutils \
+    devel/kf6-kcmutils-tools \
     devel/kf6-kcolorscheme \
     devel/kf6-kconfig \
     devel/kf6-kconfig-compiler \

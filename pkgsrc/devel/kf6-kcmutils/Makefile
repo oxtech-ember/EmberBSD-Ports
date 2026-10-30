@@ -1,16 +1,17 @@
 # $NetBSD: Makefile,v 1.26 2026/09/06 10:05:11 markd Exp $
 
-DISTNAME=	kcmutils-${KF6VER}
-PKGREVISION=	1
-CATEGORIES=	devel
+PKGREVISION=	2
 
-HOMEPAGE=	https://community.kde.org/Frameworks
+.include "Makefile.common"
+
 COMMENT=	Utilities for interacting with KCModules
-LICENSE=	gnu-lgpl-v2.1
 
 USE_TOOLS+=	msgmerge
 
 .include "../../meta-pkgs/kde/kf6.mk"
+
+# patch-tools_CMakeLists.txt imports the native generator in cross builds.
+.include "cross-tools.mk"
 
 .include "../../devel/kf6-kcoreaddons/buildlink3.mk"
 .include "../../devel/kf6-ki18n/buildlink3.mk"
