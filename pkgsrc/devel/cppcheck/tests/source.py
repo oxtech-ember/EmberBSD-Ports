@@ -59,7 +59,7 @@ for field in ('devel/pcre2/buildlink3.mk', 'devel/simplecpp/buildlink3.mk', 'dev
     assert field in recipe, field
 assert 'USE_Z3' not in recipe and 'math/z3' not in recipe
 assert 'qt5:qt6' in options and 'devel/qt6-qttools/buildlink3.mk' in options
-assert 'x11/qt6-qtbase/host-tools.mk' in options and 'QT_HOST_PATH' in options
+assert 'x11/qt6-qtbase/host-tools.mk' in options and 'EMBERBSD_QT_HOST_PATH' not in options
 assert (s / 'lib/token.cpp').read_bytes() == token and b'Token::astStringZ3()' in token
 regex = (s / 'lib/regex.cpp').read_text()
 assert '#include "regex.h"' in regex and regex.index('#include "regex.h"') < regex.index('class PcreRegex')

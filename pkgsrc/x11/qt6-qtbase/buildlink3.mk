@@ -21,6 +21,8 @@ BUILDLINK_ABI_DEPENDS.qt6-qtbase+= qt6-qtbase>=6.12.0nb5
 # The cross GNU ld has no sysroot, so it resolves them only through
 # rpath-link.
 LDFLAGS+=	-Wl,-rpath-link,${CROSS_DESTDIR}/usr/pkg/qt6/lib
+# Consumers run moc and rcc from the native package selected there.
+.include "../../x11/qt6-qtbase/host-tools.mk"
 .else
 BUILDLINK_API_DEPENDS.qt6-qtbase+= qt6-qtbase>=6.12.0nb12
 BUILDLINK_ABI_DEPENDS.qt6-qtbase+= qt6-qtbase>=6.12.0nb12

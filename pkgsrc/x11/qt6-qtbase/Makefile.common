@@ -59,7 +59,6 @@ USE_TOOLS+=		cmake gmake perl:build pkg-config
 # Origin: EmberBSD (AI-assisted). Generators run on the development host.
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .include "host-tools.mk"
-CMAKE_CONFIGURE_ARGS+= -DQT_HOST_PATH:PATH=${EMBERBSD_QT_HOST_PATH}
 CMAKE_CONFIGURE_ARGS+= -DQT_FORCE_BUILD_TOOLS:BOOL=ON
 .if !empty(PLATFORM_SUPPORTS_WAYLAND:Myes)
 .if empty(EMBERBSD_WAYLAND_SCANNER:M/*) || !exists(${EMBERBSD_WAYLAND_SCANNER})

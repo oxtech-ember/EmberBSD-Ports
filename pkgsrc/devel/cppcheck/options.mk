@@ -14,6 +14,5 @@ CMAKE_CONFIGURE_ARGS+= -DBUILD_GUI:BOOL=ON
 .include "../../sysutils/desktop-file-utils/desktopdb.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .include "../../x11/qt6-qtbase/host-tools.mk"
-CMAKE_CONFIGURE_ARGS+= -DQT_HOST_PATH:PATH=${EMBERBSD_QT_HOST_PATH}
 .endif
 .endif
