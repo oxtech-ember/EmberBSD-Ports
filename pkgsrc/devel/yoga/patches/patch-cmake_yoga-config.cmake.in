@@ -1,0 +1,13 @@
+$NetBSD$
+
+Export the public Yoga target alias.
+--- cmake/yoga-config.cmake.in.orig
++++ cmake/yoga-config.cmake.in
+@@ -7,4 +7,6 @@
+ 
+ include("${CMAKE_CURRENT_LIST_DIR}/yogaTargets.cmake")
+ 
++add_library(yoga::yoga ALIAS yoga::yogacore)
++
+ check_required_components(yoga)
+\ No newline at end of file

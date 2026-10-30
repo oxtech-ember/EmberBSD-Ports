@@ -1,0 +1,40 @@
+$NetBSD$
+
+Keep optional tests offline and expose a versioned package.
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -4,13 +4,16 @@
+ # LICENSE file in the root directory of this source tree.
+ 
+ cmake_minimum_required(VERSION 3.13...3.26)
+-project(yoga-all)
++project(yoga-all VERSION 3.2.1)
+ set(CMAKE_VERBOSE_MAKEFILE on)
+ 
+ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/project-defaults.cmake)
+ 
+ add_subdirectory(yoga)
+-add_subdirectory(tests)
++option(YOGA_BUILD_TESTS "Build upstream tests" OFF)
++if(YOGA_BUILD_TESTS)
++    add_subdirectory(tests)
++endif()
+ 
+ option(BUILD_FUZZ_TESTS "Build fuzz tests" OFF)
+ 
+@@ -51,8 +54,15 @@
+     INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/yoga
+ )
+ 
++write_basic_package_version_file(
++    ${CMAKE_CURRENT_BINARY_DIR}/yogaConfigVersion.cmake
++    VERSION ${PROJECT_VERSION}
++    COMPATIBILITY SameMajorVersion
++)
++
+ # install config file
+ install(FILES
+     ${CMAKE_CURRENT_BINARY_DIR}/yogaConfig.cmake
++    ${CMAKE_CURRENT_BINARY_DIR}/yogaConfigVersion.cmake
+     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/yoga
+ )

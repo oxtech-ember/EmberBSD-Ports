@@ -1,0 +1,8 @@
+# $NetBSD$
+BUILDLINK_TREE+= yoga
+.if !defined(YOGA_BUILDLINK3_MK)
+YOGA_BUILDLINK3_MK:=
+BUILDLINK_API_DEPENDS.yoga+= yoga>=3.2.1
+BUILDLINK_PKGSRCDIR.yoga?= ../../devel/yoga
+.endif
+BUILDLINK_TREE+= -yoga

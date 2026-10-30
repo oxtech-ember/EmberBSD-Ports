@@ -1,0 +1,26 @@
+$NetBSD$
+
+Use the selected common GTest when upstream tests are enabled.
+--- tests/CMakeLists.txt.orig
++++ tests/CMakeLists.txt
+@@ -8,19 +8,11 @@
+ project(tests)
+ set(CMAKE_VERBOSE_MAKEFILE on)
+ 
+-include(FetchContent)
+ include(GoogleTest)
+-
++find_package(GTest CONFIG REQUIRED)
+ set(YOGA_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)
+ include(${YOGA_ROOT}/cmake/project-defaults.cmake)
+ 
+-# Fetch GTest
+-FetchContent_Declare(
+-  googletest
+-  URL https://github.com/google/googletest/archive/refs/tags/release-1.12.1.zip
+-)
+-FetchContent_MakeAvailable(googletest)
+-
+ add_subdirectory(${YOGA_ROOT}/yoga ${CMAKE_CURRENT_BINARY_DIR}/yoga)
+ 
+ file(GLOB SOURCES CONFIGURE_DEPENDS

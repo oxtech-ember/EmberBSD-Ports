@@ -1,0 +1,11 @@
+$NetBSD$
+
+Expose the parent include directory for yoga headers.
+--- yoga/CMakeLists.txt.orig
++++ yoga/CMakeLists.txt
+@@ -38,4 +38,4 @@
+ target_include_directories(yogacore
+     PUBLIC
+     $<BUILD_INTERFACE:${YOGA_ROOT}>
+-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/include/yoga>)
++    $<INSTALL_INTERFACE:include>)

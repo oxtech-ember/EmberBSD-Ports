@@ -1,0 +1,9 @@
+$NetBSD$
+
+BLAKE2s (yoga-3.2.1.tar.gz) = 472f921bdf1304e8dd24f11bffa6339c7b563c81bc5f9f372a5101c0a6892ff3
+SHA512 (yoga-3.2.1.tar.gz) = 41ca044dcc7e404d5d3b052a85a650713bd31950a010a14658e25b1d065fffa16239cb93d2b00845d4e8443169ae50a91ad36080305f1be93e53ed481603a78b
+Size (yoga-3.2.1.tar.gz) = 2172950 bytes
+SHA1 (patch-CMakeLists.txt) = b1b492bfd13285e2eca0461545c090102c3d3824
+SHA1 (patch-cmake_yoga-config.cmake.in) = 7356a53507b9d8159c6f72adf2bb76e9358c9dbd
+SHA1 (patch-tests_CMakeLists.txt) = cec17d2e52df6863fac7241a91fbf9e382b9688d
+SHA1 (patch-yoga_CMakeLists.txt) = f3a64ce5b9d1f7e2444a6d2b28cc66f670fc9803
