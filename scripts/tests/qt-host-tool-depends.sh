@@ -14,7 +14,7 @@ q() { "$bmake" -f "$work/case.mk" TOOLBASE=/tool EMBERBSD_QT_HOST_PATH=/wrong -V
 fail() { echo "FAIL: $*" >&2; exit 1; }
 [ "$(q QT_HOST_PATH)" = /tool/qt6 ] || fail "QT_HOST_PATH is not TOOLBASE/qt6"
 case " $(q TOOL_DEPENDS) " in
-*' qt6-qtbase>=6.12.0nb12:../../x11/qt6-qtbase '*) ;;
+*' qt6-qtbase>=6.12.0nb13:../../x11/qt6-qtbase '*) ;;
 *) fail 'no native qt6-qtbase TOOL_DEPENDS' ;;
 esac
 args=$(q CMAKE_CONFIGURE_ARGS)
