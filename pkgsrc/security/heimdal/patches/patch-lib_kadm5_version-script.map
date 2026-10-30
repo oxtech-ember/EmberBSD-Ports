@@ -1,0 +1,13 @@
+Remove names absent from this library; AD functions remain in the client map.
+
+--- lib/kadm5/version-script.map.orig
++++ lib/kadm5/version-script.map
+@@ -2,8 +2,6 @@
+ 
+ HEIMDAL_KAMD5_SERVER_1.0 {
+ 	global:
+-		kadm5_ad_init_with_password;
+-		kadm5_ad_init_with_password_ctx;
+ 		kadm5_all_keys_are_bogus;
+ 		kadm5_add_passwd_quality_verifier;
+ 		kadm5_check_password_quality;

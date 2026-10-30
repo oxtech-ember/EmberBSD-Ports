@@ -1,0 +1,287 @@
+$NetBSD$
+
+Use the shared LibTomMath provider.
+
+--- lib/hcrypto/Makefile.in.orig
++++ lib/hcrypto/Makefile.in
+@@ -198,127 +198,7 @@
+ 	$(am__DEPENDENCIES_1) $(LIB_heimbase) $(am__DEPENDENCIES_1) \
+ 	$(am__DEPENDENCIES_2)
+ am__dirstamp = $(am__leading_dot)dirstamp
+-am__objects_1 = libtommath/libhcrypto_la-bncore.lo \
+-	libtommath/libhcrypto_la-bn_mp_init.lo \
+-	libtommath/libhcrypto_la-bn_mp_clear.lo \
+-	libtommath/libhcrypto_la-bn_mp_exch.lo \
+-	libtommath/libhcrypto_la-bn_mp_grow.lo \
+-	libtommath/libhcrypto_la-bn_mp_shrink.lo \
+-	libtommath/libhcrypto_la-bn_mp_clamp.lo \
+-	libtommath/libhcrypto_la-bn_mp_zero.lo \
+-	libtommath/libhcrypto_la-bn_mp_zero_multi.lo \
+-	libtommath/libhcrypto_la-bn_mp_set.lo \
+-	libtommath/libhcrypto_la-bn_mp_set_int.lo \
+-	libtommath/libhcrypto_la-bn_mp_init_size.lo \
+-	libtommath/libhcrypto_la-bn_mp_copy.lo \
+-	libtommath/libhcrypto_la-bn_mp_init_copy.lo \
+-	libtommath/libhcrypto_la-bn_mp_abs.lo \
+-	libtommath/libhcrypto_la-bn_mp_neg.lo \
+-	libtommath/libhcrypto_la-bn_mp_cmp_mag.lo \
+-	libtommath/libhcrypto_la-bn_mp_cmp.lo \
+-	libtommath/libhcrypto_la-bn_mp_cmp_d.lo \
+-	libtommath/libhcrypto_la-bn_mp_rshd.lo \
+-	libtommath/libhcrypto_la-bn_mp_lshd.lo \
+-	libtommath/libhcrypto_la-bn_mp_mod_2d.lo \
+-	libtommath/libhcrypto_la-bn_mp_div_2d.lo \
+-	libtommath/libhcrypto_la-bn_mp_mul_2d.lo \
+-	libtommath/libhcrypto_la-bn_mp_div_2.lo \
+-	libtommath/libhcrypto_la-bn_mp_mul_2.lo \
+-	libtommath/libhcrypto_la-bn_s_mp_add.lo \
+-	libtommath/libhcrypto_la-bn_s_mp_sub.lo \
+-	libtommath/libhcrypto_la-bn_fast_s_mp_mul_digs.lo \
+-	libtommath/libhcrypto_la-bn_s_mp_mul_digs.lo \
+-	libtommath/libhcrypto_la-bn_fast_s_mp_mul_high_digs.lo \
+-	libtommath/libhcrypto_la-bn_s_mp_mul_high_digs.lo \
+-	libtommath/libhcrypto_la-bn_fast_s_mp_sqr.lo \
+-	libtommath/libhcrypto_la-bn_s_mp_sqr.lo \
+-	libtommath/libhcrypto_la-bn_mp_add.lo \
+-	libtommath/libhcrypto_la-bn_mp_sub.lo \
+-	libtommath/libhcrypto_la-bn_mp_karatsuba_mul.lo \
+-	libtommath/libhcrypto_la-bn_mp_mul.lo \
+-	libtommath/libhcrypto_la-bn_mp_karatsuba_sqr.lo \
+-	libtommath/libhcrypto_la-bn_mp_sqr.lo \
+-	libtommath/libhcrypto_la-bn_mp_div.lo \
+-	libtommath/libhcrypto_la-bn_mp_mod.lo \
+-	libtommath/libhcrypto_la-bn_mp_add_d.lo \
+-	libtommath/libhcrypto_la-bn_mp_sub_d.lo \
+-	libtommath/libhcrypto_la-bn_mp_mul_d.lo \
+-	libtommath/libhcrypto_la-bn_mp_div_d.lo \
+-	libtommath/libhcrypto_la-bn_mp_mod_d.lo \
+-	libtommath/libhcrypto_la-bn_mp_expt_d.lo \
+-	libtommath/libhcrypto_la-bn_mp_addmod.lo \
+-	libtommath/libhcrypto_la-bn_mp_submod.lo \
+-	libtommath/libhcrypto_la-bn_mp_mulmod.lo \
+-	libtommath/libhcrypto_la-bn_mp_sqrmod.lo \
+-	libtommath/libhcrypto_la-bn_mp_gcd.lo \
+-	libtommath/libhcrypto_la-bn_mp_lcm.lo \
+-	libtommath/libhcrypto_la-bn_fast_mp_invmod.lo \
+-	libtommath/libhcrypto_la-bn_mp_invmod.lo \
+-	libtommath/libhcrypto_la-bn_mp_reduce.lo \
+-	libtommath/libhcrypto_la-bn_mp_montgomery_setup.lo \
+-	libtommath/libhcrypto_la-bn_fast_mp_montgomery_reduce.lo \
+-	libtommath/libhcrypto_la-bn_mp_montgomery_reduce.lo \
+-	libtommath/libhcrypto_la-bn_mp_exptmod_fast.lo \
+-	libtommath/libhcrypto_la-bn_mp_exptmod.lo \
+-	libtommath/libhcrypto_la-bn_mp_2expt.lo \
+-	libtommath/libhcrypto_la-bn_mp_n_root.lo \
+-	libtommath/libhcrypto_la-bn_mp_jacobi.lo \
+-	libtommath/libhcrypto_la-bn_reverse.lo \
+-	libtommath/libhcrypto_la-bn_mp_count_bits.lo \
+-	libtommath/libhcrypto_la-bn_mp_read_unsigned_bin.lo \
+-	libtommath/libhcrypto_la-bn_mp_read_signed_bin.lo \
+-	libtommath/libhcrypto_la-bn_mp_to_unsigned_bin.lo \
+-	libtommath/libhcrypto_la-bn_mp_to_signed_bin.lo \
+-	libtommath/libhcrypto_la-bn_mp_unsigned_bin_size.lo \
+-	libtommath/libhcrypto_la-bn_mp_signed_bin_size.lo \
+-	libtommath/libhcrypto_la-bn_mp_xor.lo \
+-	libtommath/libhcrypto_la-bn_mp_and.lo \
+-	libtommath/libhcrypto_la-bn_mp_or.lo \
+-	libtommath/libhcrypto_la-bn_mp_rand.lo \
+-	libtommath/libhcrypto_la-bn_mp_montgomery_calc_normalization.lo \
+-	libtommath/libhcrypto_la-bn_mp_prime_is_divisible.lo \
+-	libtommath/libhcrypto_la-bn_prime_tab.lo \
+-	libtommath/libhcrypto_la-bn_mp_prime_fermat.lo \
+-	libtommath/libhcrypto_la-bn_mp_prime_miller_rabin.lo \
+-	libtommath/libhcrypto_la-bn_mp_prime_is_prime.lo \
+-	libtommath/libhcrypto_la-bn_mp_prime_next_prime.lo \
+-	libtommath/libhcrypto_la-bn_mp_find_prime.lo \
+-	libtommath/libhcrypto_la-bn_mp_dr_reduce.lo \
+-	libtommath/libhcrypto_la-bn_mp_dr_is_modulus.lo \
+-	libtommath/libhcrypto_la-bn_mp_dr_setup.lo \
+-	libtommath/libhcrypto_la-bn_mp_reduce_setup.lo \
+-	libtommath/libhcrypto_la-bn_mp_toom_mul.lo \
+-	libtommath/libhcrypto_la-bn_mp_toom_sqr.lo \
+-	libtommath/libhcrypto_la-bn_mp_div_3.lo \
+-	libtommath/libhcrypto_la-bn_s_mp_exptmod.lo \
+-	libtommath/libhcrypto_la-bn_mp_reduce_2k.lo \
+-	libtommath/libhcrypto_la-bn_mp_reduce_is_2k.lo \
+-	libtommath/libhcrypto_la-bn_mp_reduce_2k_setup.lo \
+-	libtommath/libhcrypto_la-bn_mp_reduce_2k_l.lo \
+-	libtommath/libhcrypto_la-bn_mp_reduce_is_2k_l.lo \
+-	libtommath/libhcrypto_la-bn_mp_reduce_2k_setup_l.lo \
+-	libtommath/libhcrypto_la-bn_mp_radix_smap.lo \
+-	libtommath/libhcrypto_la-bn_mp_read_radix.lo \
+-	libtommath/libhcrypto_la-bn_mp_toradix.lo \
+-	libtommath/libhcrypto_la-bn_mp_radix_size.lo \
+-	libtommath/libhcrypto_la-bn_mp_fread.lo \
+-	libtommath/libhcrypto_la-bn_mp_fwrite.lo \
+-	libtommath/libhcrypto_la-bn_mp_cnt_lsb.lo \
+-	libtommath/libhcrypto_la-bn_error.lo \
+-	libtommath/libhcrypto_la-bn_mp_init_multi.lo \
+-	libtommath/libhcrypto_la-bn_mp_clear_multi.lo \
+-	libtommath/libhcrypto_la-bn_mp_exteuclid.lo \
+-	libtommath/libhcrypto_la-bn_mp_toradix_n.lo \
+-	libtommath/libhcrypto_la-bn_mp_prime_random_ex.lo \
+-	libtommath/libhcrypto_la-bn_mp_get_int.lo \
+-	libtommath/libhcrypto_la-bn_mp_sqrt.lo \
+-	libtommath/libhcrypto_la-bn_mp_is_square.lo \
+-	libtommath/libhcrypto_la-bn_mp_init_set.lo \
+-	libtommath/libhcrypto_la-bn_mp_init_set_int.lo \
+-	libtommath/libhcrypto_la-bn_mp_invmod_slow.lo \
+-	libtommath/libhcrypto_la-bn_mp_prime_rabin_miller_trials.lo \
+-	libtommath/libhcrypto_la-bn_mp_to_signed_bin_n.lo \
+-	libtommath/libhcrypto_la-bn_mp_to_unsigned_bin_n.lo
++am__objects_1 =
+ am_libhcrypto_la_OBJECTS = $(am__objects_1) libhcrypto_la-aes.lo \
+ 	libhcrypto_la-bn.lo libhcrypto_la-common.lo \
+ 	libhcrypto_la-camellia.lo libhcrypto_la-camellia-ntt.lo \
+@@ -1077,8 +957,7 @@
+ 	.cat5 .cat7 .cat8
+ DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)/include -I$(top_srcdir)/include
+ AM_CPPFLAGS = $(INCLUDES_roken) $(am__append_1) \
+-	-I$(top_srcdir)/lib/hx509 -I$(srcdir)/libtommath \
+-	-DUSE_HCRYPTO_LTM=1
++	-I$(top_srcdir)/lib/hx509 -DUSE_HCRYPTO_LTM=1
+ @do_roken_rename_TRUE@ROKEN_RENAME = -DROKEN_RENAME
+ AM_CFLAGS = $(WFLAGS)
+ CP = cp
+@@ -1111,7 +990,7 @@
+ check_LTLIBRARIES = libhctest.la
+ libhcrypto_la_LDFLAGS = -version-info 5:0:1 $(am__append_3)
+ libhcrypto_la_LIBADD = $(top_builddir)/lib/asn1/libasn1.la \
+-	$(LIB_dlopen) $(LIB_heimbase) $(LIBADD_roken) $(am__append_2)
++	$(LIB_dlopen) $(LIB_heimbase) $(LIBADD_roken) $(am__append_2) -ltommath
+ hcryptoincludedir = $(includedir)/hcrypto
+ buildhcryptoinclude = $(buildinclude)/hcrypto
+ hcryptoinclude_HEADERS = \
+@@ -1232,131 +1111,7 @@
+ 	ui.h		\
+ 	undef.h
+ 
+-ltmsources = \
+-	libtommath/tommath.h \
+-	libtommath/tommath_class.h \
+-	libtommath/tommath_superclass.h \
+-	libtommath/bncore.c \
+-	libtommath/bn_mp_init.c \
+-	libtommath/bn_mp_clear.c \
+-	libtommath/bn_mp_exch.c \
+-	libtommath/bn_mp_grow.c \
+-	libtommath/bn_mp_shrink.c \
+-	libtommath/bn_mp_clamp.c \
+-	libtommath/bn_mp_zero.c \
+-	libtommath/bn_mp_zero_multi.c \
+-	libtommath/bn_mp_set.c \
+-	libtommath/bn_mp_set_int.c \
+-	libtommath/bn_mp_init_size.c \
+-	libtommath/bn_mp_copy.c \
+-	libtommath/bn_mp_init_copy.c \
+-	libtommath/bn_mp_abs.c \
+-	libtommath/bn_mp_neg.c \
+-	libtommath/bn_mp_cmp_mag.c \
+-	libtommath/bn_mp_cmp.c \
+-	libtommath/bn_mp_cmp_d.c \
+-	libtommath/bn_mp_rshd.c \
+-	libtommath/bn_mp_lshd.c \
+-	libtommath/bn_mp_mod_2d.c \
+-	libtommath/bn_mp_div_2d.c \
+-	libtommath/bn_mp_mul_2d.c \
+-	libtommath/bn_mp_div_2.c \
+-	libtommath/bn_mp_mul_2.c \
+-	libtommath/bn_s_mp_add.c \
+-	libtommath/bn_s_mp_sub.c \
+-	libtommath/bn_fast_s_mp_mul_digs.c \
+-	libtommath/bn_s_mp_mul_digs.c \
+-	libtommath/bn_fast_s_mp_mul_high_digs.c \
+-	libtommath/bn_s_mp_mul_high_digs.c \
+-	libtommath/bn_fast_s_mp_sqr.c \
+-	libtommath/bn_s_mp_sqr.c \
+-	libtommath/bn_mp_add.c \
+-	libtommath/bn_mp_sub.c \
+-	libtommath/bn_mp_karatsuba_mul.c \
+-	libtommath/bn_mp_mul.c \
+-	libtommath/bn_mp_karatsuba_sqr.c \
+-	libtommath/bn_mp_sqr.c \
+-	libtommath/bn_mp_div.c \
+-	libtommath/bn_mp_mod.c \
+-	libtommath/bn_mp_add_d.c \
+-	libtommath/bn_mp_sub_d.c \
+-	libtommath/bn_mp_mul_d.c \
+-	libtommath/bn_mp_div_d.c \
+-	libtommath/bn_mp_mod_d.c \
+-	libtommath/bn_mp_expt_d.c \
+-	libtommath/bn_mp_addmod.c \
+-	libtommath/bn_mp_submod.c \
+-	libtommath/bn_mp_mulmod.c \
+-	libtommath/bn_mp_sqrmod.c \
+-	libtommath/bn_mp_gcd.c \
+-	libtommath/bn_mp_lcm.c \
+-	libtommath/bn_fast_mp_invmod.c \
+-	libtommath/bn_mp_invmod.c \
+-	libtommath/bn_mp_reduce.c \
+-	libtommath/bn_mp_montgomery_setup.c \
+-	libtommath/bn_fast_mp_montgomery_reduce.c \
+-	libtommath/bn_mp_montgomery_reduce.c \
+-	libtommath/bn_mp_exptmod_fast.c \
+-	libtommath/bn_mp_exptmod.c \
+-	libtommath/bn_mp_2expt.c \
+-	libtommath/bn_mp_n_root.c \
+-	libtommath/bn_mp_jacobi.c \
+-	libtommath/bn_reverse.c \
+-	libtommath/bn_mp_count_bits.c \
+-	libtommath/bn_mp_read_unsigned_bin.c \
+-	libtommath/bn_mp_read_signed_bin.c \
+-	libtommath/bn_mp_to_unsigned_bin.c \
+-	libtommath/bn_mp_to_signed_bin.c \
+-	libtommath/bn_mp_unsigned_bin_size.c \
+-	libtommath/bn_mp_signed_bin_size.c \
+-	libtommath/bn_mp_xor.c \
+-	libtommath/bn_mp_and.c \
+-	libtommath/bn_mp_or.c \
+-	libtommath/bn_mp_rand.c \
+-	libtommath/bn_mp_montgomery_calc_normalization.c \
+-	libtommath/bn_mp_prime_is_divisible.c \
+-	libtommath/bn_prime_tab.c \
+-	libtommath/bn_mp_prime_fermat.c \
+-	libtommath/bn_mp_prime_miller_rabin.c \
+-	libtommath/bn_mp_prime_is_prime.c \
+-	libtommath/bn_mp_prime_next_prime.c \
+-	libtommath/bn_mp_find_prime.c \
+-	libtommath/bn_mp_dr_reduce.c \
+-	libtommath/bn_mp_dr_is_modulus.c \
+-	libtommath/bn_mp_dr_setup.c \
+-	libtommath/bn_mp_reduce_setup.c \
+-	libtommath/bn_mp_toom_mul.c \
+-	libtommath/bn_mp_toom_sqr.c \
+-	libtommath/bn_mp_div_3.c \
+-	libtommath/bn_s_mp_exptmod.c \
+-	libtommath/bn_mp_reduce_2k.c \
+-	libtommath/bn_mp_reduce_is_2k.c \
+-	libtommath/bn_mp_reduce_2k_setup.c \
+-	libtommath/bn_mp_reduce_2k_l.c \
+-	libtommath/bn_mp_reduce_is_2k_l.c \
+-	libtommath/bn_mp_reduce_2k_setup_l.c \
+-	libtommath/bn_mp_radix_smap.c \
+-	libtommath/bn_mp_read_radix.c \
+-	libtommath/bn_mp_toradix.c \
+-	libtommath/bn_mp_radix_size.c \
+-	libtommath/bn_mp_fread.c \
+-	libtommath/bn_mp_fwrite.c \
+-	libtommath/bn_mp_cnt_lsb.c \
+-	libtommath/bn_error.c \
+-	libtommath/bn_mp_init_multi.c \
+-	libtommath/bn_mp_clear_multi.c \
+-	libtommath/bn_mp_exteuclid.c \
+-	libtommath/bn_mp_toradix_n.c \
+-	libtommath/bn_mp_prime_random_ex.c \
+-	libtommath/bn_mp_get_int.c \
+-	libtommath/bn_mp_sqrt.c \
+-	libtommath/bn_mp_is_square.c \
+-	libtommath/bn_mp_init_set.c \
+-	libtommath/bn_mp_init_set_int.c \
+-	libtommath/bn_mp_invmod_slow.c \
+-	libtommath/bn_mp_prime_rabin_miller_trials.c \
+-	libtommath/bn_mp_to_signed_bin_n.c \
+-	libtommath/bn_mp_to_unsigned_bin_n.c
++ltmsources =
+ 
+ libhcrypto_la_CPPFLAGS = -DBUILD_HCRYPTO_LIB $(AM_CPPFLAGS)
+ do_subst = sed -e 's,[@]srcdir[@],$(srcdir),g' -e 's,[@]exeext[@],$(exeext),g'

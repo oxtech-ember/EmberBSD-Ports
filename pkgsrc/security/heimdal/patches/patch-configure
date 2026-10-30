@@ -1,0 +1,25 @@
+$NetBSD$
+
+Reject missing explicitly selected external SQLite.
+
+--- configure.orig
++++ configure
+@@ -16827,6 +16827,7 @@
+ 
+ 
+ 
++heimdal_requested_sqlite3=$with_sqlite3
+ { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for sqlite3" >&5
+ printf %s "checking for sqlite3... " >&6; }
+ 
+@@ -16995,6 +16996,10 @@
+ 
+ 
+ 
++
++if test -n "$heimdal_requested_sqlite3" && test "X$heimdal_requested_sqlite3" != Xno && test "X$with_sqlite3" != Xyes; then
++   as_fn_error $? "requested external SQLite provider was not found" "$LINENO" 5
++fi
+ 
+ if test "X$with_sqlite3" != Xyes ; then
+    INCLUDE_sqlite3="-I\$(top_srcdir)/lib/sqlite"

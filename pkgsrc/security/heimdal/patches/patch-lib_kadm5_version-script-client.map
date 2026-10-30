@@ -1,0 +1,11 @@
+Remove names absent from this library; AD functions remain in the client map.
+
+--- lib/kadm5/version-script-client.map.orig
++++ lib/kadm5/version-script-client.map
+@@ -1,6 +1,5 @@
+ HEIMDAL_KADM5_CLIENT_1.0 {
+ 	global:
+-		et_kadm5_error_table;
+ 		initialize_kadm5_error_table;
+ 		initialize_kadm5_error_table_r;
+ 		kadm5_ad_init_with_password;

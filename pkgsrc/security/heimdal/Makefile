@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.172 2026/01/07 08:48:40 wiz Exp $
 
 DISTNAME=	heimdal-7.8.0
-PKGREVISION=	14
+PKGREVISION=	15
 CATEGORIES=	security
 MASTER_SITES=	${MASTER_SITE_GITHUB:=heimdal/}
 GITHUB_RELEASE=	${DISTNAME}
@@ -19,7 +19,7 @@ CONFLICTS+=	gss-[0-9]*
 CONFLICTS+=	kth-krb4-[0-9]*
 
 USE_LIBTOOL=		yes
-USE_TOOLS+=		bison flex:run perl
+USE_TOOLS+=		bison flex:run perl pkg-config
 PKGCONFIG_OVERRIDE+=	tools/heimdal-gssapi.pc.in
 MAKE_ENV+=		INSTALL_CATPAGES=no
 
@@ -50,8 +50,22 @@ CONFIGURE_ARGS+=	--enable-pthread-support
 CONFIGURE_ARGS+=	--includedir=${PREFIX}/include/krb5
 CONFIGURE_ARGS+=	--sysconfdir=${PKG_SYSCONFDIR}
 CONFIGURE_ARGS+=	--with-hdbdir=${HEIMDAL_HDB_DIR}
-CONFIGURE_ARGS+=	--with-readline=${BUILDLINK_PREFIX.editlinereadline}
-CONFIGURE_ARGS+=	--with-sqlite3=${BUILDLINK_PREFIX.sqlite3}
+# Resolve target readline against the physical buildlink tree on a cross host.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+READLINE_DEFAULT= readline
+PREFER.readline= pkgsrc
+PREFER.openssl= pkgsrc
+CONFIGURE_ARGS+= --with-openssl=${BUILDLINK_DIR}
+CONFIGURE_ARGS+= --with-readline=${BUILDLINK_DIR}
+.else
+CONFIGURE_ARGS+= --with-readline=${BUILDLINK_PREFIX.editlinereadline}
+.endif
+# The target prefix is logical on a cross host; configure tests host paths.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+CONFIGURE_ARGS+= --with-sqlite3=${BUILDLINK_DIR}
+.else
+CONFIGURE_ARGS+= --with-sqlite3=${BUILDLINK_PREFIX.sqlite3}
+.endif
 CONFIGURE_ARGS+=	--without-x
 CONFIGURE_ARGS+=	${ABI:D--with-mips-abi=${ABI}}
 CONFIGURE_ENV+=		COMPILE_ET=no	# build Heimdal's compile_et(1)
@@ -76,7 +90,21 @@ CONFIGURE_ENV.SunOS+=	ac_cv_func_glob_working=no
 # to the BSD <vis.h> header.
 CONFIGURE_ENV.SunOS+=	ac_cv_header_vis_h=no
 
-PLIST_VARS+=		glob vis afskauth
+PLIST_VARS+=		glob vis afskauth native_tools
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+EMBERBSD_HEIMDAL_HOST_TOOLS_DIR?= ${TOOLBASE}/libexec/heimdal
+.  if empty(EMBERBSD_HEIMDAL_HOST_TOOLS_DIR:M${TOOLBASE}/*) || \
+    !exists(${EMBERBSD_HEIMDAL_HOST_TOOLS_DIR}/asn1_compile) || \
+    !exists(${EMBERBSD_HEIMDAL_HOST_TOOLS_DIR}/slc) || \
+    !exists(${EMBERBSD_HEIMDAL_HOST_TOOLS_DIR}/compile_et)
+PKG_FAIL_REASON+= Select\ the\ native\ Heimdal\ cross-tools\ directory
+.  endif
+CONFIGURE_ARGS+= --with-cross-tools=${EMBERBSD_HEIMDAL_HOST_TOOLS_DIR:Q}
+.else
+PLIST.native_tools= yes
+post-install:
+	${LIBTOOL} --mode=install ${INSTALL_PROGRAM} ${WRKSRC}/lib/com_err/compile_et ${DESTDIR}${PREFIX}/libexec/heimdal/compile_et
+.endif
 
 .if ${OPSYS} == "SunOS"
 PLIST.vis=	yes
@@ -96,11 +124,19 @@ INFO_FILES=		yes
 TEST_TARGET=		check
 
 # remove manpages conficting with OpenSSL keeping only the important ones
+post-extract:
+	${CP} ${FILESDIR}/heim_find_prime.h ${WRKSRC}/lib/hcrypto/heim_find_prime.h
+
 pre-configure:
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+	${TEST} -f ${BUILDLINK_DIR}/lib/libcrypto.so || \
+	    { ${ECHO} "Selected OpenSSL is missing from the buildlink tree"; exit 1; }
+.endif
 	cd ${WRKSRC}/doc/doxyout/hcrypto && \
 	${GREP} -e /hcrypto_ -e /page_ manpages > manpages.new && \
 	mv manpages.new manpages
 
+.include "../../math/libtommath/buildlink3.mk"
 .include "../../databases/sqlite3/buildlink3.mk"
 
 # Linux does not have include/vis.h and expected include/glob.h.

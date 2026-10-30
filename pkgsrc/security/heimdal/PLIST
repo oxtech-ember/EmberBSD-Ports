@@ -156,6 +156,7 @@ lib/pkgconfig/krb5.pc
 lib/windc.la
 libexec/digest-service
 libexec/heimdal/asn1_compile
+${PLIST.native_tools}libexec/heimdal/compile_et
 libexec/heimdal/asn1_print
 libexec/heimdal/slc
 libexec/hprop

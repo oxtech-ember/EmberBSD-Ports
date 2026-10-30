@@ -1,0 +1,12 @@
+Remove an obsolete entry with no implementation in libwind.
+
+--- lib/wind/version-script.map.orig
++++ lib/wind/version-script.map
+@@ -23,7 +23,6 @@
+ 		_wind_stringprep_map;
+ 		_wind_stringprep_normalize;
+ 		_wind_ldap_case_exact_attribute;
+-		_wind_ucs2read;
+ 	local:
+ 		*;
+ };

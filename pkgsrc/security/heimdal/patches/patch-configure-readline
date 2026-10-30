@@ -1,0 +1,25 @@
+$NetBSD$
+
+Reject missing explicitly selected external readline.
+
+--- configure.orig
++++ configure
+@@ -27504,6 +27504,7 @@
+ 
+ 
+ 
++heimdal_requested_readline=$with_readline
+ { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for readline" >&5
+ printf %s "checking for readline... " >&6; }
+ 
+@@ -27707,6 +27708,10 @@
+ 
+ 
+ 
++
++if test -n "$heimdal_requested_readline" && test "X$heimdal_requested_readline" != Xno && test "X$with_readline" != Xyes; then
++   as_fn_error $? "requested external readline provider was not found" "$LINENO" 5
++fi
+ 
+ # Check whether --with-libedit was given.
+ if test ${with_libedit+y}

@@ -1,0 +1,21 @@
+Keep the Windows entry point optional and remove the stale data-ref name.
+
+--- lib/base/version-script.map.orig
++++ lib/base/version-script.map
+@@ -7,7 +7,7 @@
+ 		_bsearch_file_open;
+ 		_bsearch_text;
+ 		__heim_string_constant;
+-                DllMain;
++                [D]llMain;
+ 		heim_abort;
+ 		heim_abortv;
+ 		heim_alloc;
+@@ -36,7 +36,6 @@
+ 		heim_data_get_length;
+ 		heim_data_get_ptr;
+ 		heim_data_get_type_id;
+-		heim_data_ref_get_type_id;
+ 		heim_db_begin;
+ 		heim_db_clone;
+ 		heim_db_commit;

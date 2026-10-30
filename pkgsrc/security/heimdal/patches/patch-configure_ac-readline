@@ -1,0 +1,25 @@
+$NetBSD$
+
+Reject missing explicitly selected external readline.
+
+--- configure.ac.orig
++++ configure.ac
+@@ -291,6 +291,7 @@
+ 
+ rk_CHECK_MAN
+ 
++heimdal_requested_readline=$with_readline
+ rk_TEST_PACKAGE(readline,
+ [#include <stdio.h>
+ #if defined(HAVE_READLINE_READLINE_H)
+@@ -299,6 +300,10 @@
+ #include <readline.h>
+ #endif
+ ],-lreadline,,, READLINE,, [readline.h readline/readline.h])
++
++if test -n "$heimdal_requested_readline" && test "X$heimdal_requested_readline" != Xno && test "X$with_readline" != Xyes; then
++   AC_MSG_ERROR([requested external readline provider was not found])
++fi
+ 
+ rk_TEST_PACKAGE(libedit,
+ [#include <stdio.h>

@@ -1,0 +1,24 @@
+$NetBSD$
+
+Reject missing explicitly selected external SQLite.
+
+--- configure.ac.orig
++++ configure.ac
+@@ -176,12 +176,17 @@
+ AC_SUBST([CAPNG_LIBS])
+ 
+ dnl Check for sqlite
++heimdal_requested_sqlite3=$with_sqlite3
+ rk_TEST_PACKAGE(sqlite3,
+ [#include <sqlite3.h>
+ #ifndef SQLITE_OPEN_CREATE
+ #error "old version"
+ #endif],
+ [-lsqlite3],,,SQLITE3)
++
++if test -n "$heimdal_requested_sqlite3" && test "X$heimdal_requested_sqlite3" != Xno && test "X$with_sqlite3" != Xyes; then
++   AC_MSG_ERROR([requested external SQLite provider was not found])
++fi
+ 
+ if test "X$with_sqlite3" != Xyes ; then
+    INCLUDE_sqlite3="-I\$(top_srcdir)/lib/sqlite"

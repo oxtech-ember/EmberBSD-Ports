@@ -1,0 +1,28 @@
+$NetBSD$
+
+Configure bundled libedit only when selected.
+
+--- configure.orig
++++ configure
+@@ -27968,7 +27968,7 @@
+ 
+ 
+ 
+-subdirs="$subdirs lib/libedit"
++
+ 
+ 
+ 
+@@ -30530,7 +30530,11 @@
+ 	build_libedit=yes
+ 	LIB_readline="\$(top_builddir)/lib/libedit/src/libheimedit.la \$(LIB_tgetent)"
+ fi
+- if test "$build_libedit" = yes; then
++ if test "X$build_libedit" = Xyes; then
++  subdirs="$subdirs lib/libedit"
++fi
++
++if test "$build_libedit" = yes; then
+   LIBEDIT_TRUE=
+   LIBEDIT_FALSE='#'
+ else
