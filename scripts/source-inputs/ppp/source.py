@@ -183,7 +183,7 @@ def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
             delta = read(path)
             require(digest(delta) == metadata['recipe']['patches/' + path.name], 'ppp patch changed')
             sourceprep.apply_patch(patch, path, delta, root, 'ppp',
-                patch_args=('-p1', '-f', '-N', '-F0', '-V', 'none'),
+                patch_args=('-p1', '-f', '-N', '-F0', '-E', '-V', 'none'),
                 backup_directory=tmp / ('patch-backups-' + str(index)), allow_dev_null=True)
         require(not any(p.name.endswith(('.orig', '.rej')) for p in root.rglob('*')),
                 'ppp patch left a backup or reject')
