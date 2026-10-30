@@ -17,3 +17,4 @@
 .include "../../archivers/zstd/buildlink3.mk"
 .include "../../net/libcares/buildlink3.mk"
 .include "../../textproc/icu/buildlink3.mk"
+.include "../../devel/re2/buildlink3.mk"

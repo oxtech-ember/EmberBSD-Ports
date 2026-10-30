@@ -133,7 +133,15 @@ def icu_replacements(source):
     return {Path('BUILD.gn'): shim}
 
 
-def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False):
+def re2_replacements(source):
+    require(chromium_replacements(source).get('re2') == 'third_party/re2/BUILD.gn',
+            'invalid Chromium RE2 replacement mapping')
+    shim = source / 'build/linux/unbundle/re2.gn'
+    require(shim.is_file(), 'missing Chromium RE2 shim')
+    return {Path('BUILD.gn'): shim}
+
+
+def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False):
     source = Path(source).resolve(strict=True)
     protobuf = Path(protobuf).resolve(strict=True) if protobuf is not None else None
     v8 = Path(v8).resolve(strict=True) if v8 is not None else None
@@ -167,7 +175,7 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     if v8:
         (destination / 'src/v8').symlink_to(v8, target_is_directory=True)
     (destination / 'src/out').mkdir()
-    links(third_party, destination / 'src/third_party', ({'protobuf'} if protobuf else set()) | set(providers) | ({'abseil-cpp'} if system_abseil else set()) | ({'icu'} if system_icu else set()))
+    links(third_party, destination / 'src/third_party', ({'protobuf'} if protobuf else set()) | set(providers) | ({'abseil-cpp'} if system_abseil else set()) | ({'icu'} if system_icu else set()) | ({'re2'} if system_re2 else set()))
     if system_abseil:
         replacements = abseil_replacements(source)
         dependency_view(third_party / 'abseil-cpp', destination / 'src/third_party/abseil-cpp',
@@ -175,6 +183,10 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     if system_icu:
         replacements = icu_replacements(source)
         dependency_view(third_party / 'icu', destination / 'src/third_party/icu',
+                        replacements, shim_masks(replacements))
+    if system_re2:
+        replacements = re2_replacements(source)
+        dependency_view(third_party / 're2', destination / 'src/third_party/re2',
                         replacements, shim_masks(replacements))
     for name, path in providers.items():
         (destination / 'src/third_party' / name).symlink_to(path, target_is_directory=True)
@@ -186,7 +198,7 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     return destination / 'src'
 
 
-def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False):
+def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False):
     source = Path(source).resolve(strict=True)
     protobuf = Path(protobuf).resolve(strict=True) if protobuf is not None else None
     providers = {name: Path(value).resolve(strict=True) for name, value in
@@ -212,7 +224,7 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
                 'common V8 source link changed')
     require((root / 'out').is_dir() and not (root / 'out').is_symlink(),
             'source view out must be local')
-    replaced = ({'protobuf'} if protobuf else set()) | set(providers) | ({'abseil-cpp'} if system_abseil else set()) | ({'icu'} if system_icu else set())
+    replaced = ({'protobuf'} if protobuf else set()) | set(providers) | ({'abseil-cpp'} if system_abseil else set()) | ({'icu'} if system_icu else set()) | ({'re2'} if system_re2 else set())
     check(source / 'third_party', root / 'third_party', replaced, replaced)
     if system_abseil:
         replacements = abseil_replacements(source)
@@ -221,6 +233,10 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     if system_icu:
         replacements = icu_replacements(source)
         dependency_view(source / 'third_party/icu', root / 'third_party/icu',
+                        replacements, shim_masks(replacements), verify=True)
+    if system_re2:
+        replacements = re2_replacements(source)
+        dependency_view(source / 'third_party/re2', root / 'third_party/re2',
                         replacements, shim_masks(replacements), verify=True)
     for name, path in providers.items():
         link = root / 'third_party' / name

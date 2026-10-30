@@ -776,6 +776,41 @@ def common_icu(options, sdk, native, environment, buildlink):
     return {'icu_use_data_file': False}
 
 
+def common_re2(options, sdk, native, environment, buildlink):
+    if not getattr(options, 'shared_re2', False):
+        return {}
+    require(buildlink, 'shared RE2 requires the selected native buildlink')
+    versions = []
+    for prefix, host in ((Path(buildlink), True), (options.sysroot / 'usr/pkg', False)):
+        env = dict(environment, PKG_CONFIG_LIBDIR=str(prefix / 'lib/pkgconfig'))
+        env.pop('PKG_CONFIG_PATH', None)
+        env.pop('PKG_CONFIG_SYSROOT_DIR', None)
+        command = [native.tool('pkg-config')] + (['--define-prefix'] if host else [])
+        version = sdk['process'].capture(command + ['--modversion', 're2'], env=env).stdout.decode().strip()
+        require(version, 'selected RE2 package has no version')
+        versions.append(version)
+    require(len(set(versions)) == 1, 'selected RE2 package versions differ')
+    selection_work = environment.get('EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK')
+    require(selection_work, 'shared RE2 needs host buildlink metadata')
+    selection = json.loads((Path(selection_work) / 'selection.json').read_text())['identity']['inputs']
+    hosts = [Path(name).resolve(strict=True).parent for name in selection
+             if Path(name).name == '+BUILD_INFO' and
+             'PKGPATH=devel/re2' in Path(name).read_text().splitlines()]
+    require(len(hosts) == 1, 'ambiguous selected host RE2 package')
+    db = options.sysroot / 'usr/pkg/pkgdb'
+    targets = [path for path in db.iterdir() if (path / '+BUILD_INFO').is_file() and
+               'PKGPATH=devel/re2' in (path / '+BUILD_INFO').read_text().splitlines()]
+    require(len(targets) == 1, 'ambiguous selected target RE2 package')
+    records = [(path / '+BUILD_VERSION').read_bytes() for path in hosts + targets]
+    require(records[0] == records[1], 'host and target RE2 packages come from different recipes')
+    distinfo = hashlib.sha256((options.host_buildlink_pkgsrc / 'devel/re2/distinfo').read_bytes()).hexdigest()
+    require(('devel/re2/distinfo: ' + distinfo) in records[0].decode().splitlines(),
+            'selected RE2 package distinfo differs from the shared recipe')
+    environment['EMBERBSD_SHARED_RE2_VERSION'] = versions[0]
+    environment['EMBERBSD_SHARED_RE2_SOURCE_SHA256'] = hashlib.sha256(records[0]).hexdigest()
+    return {}
+
+
 def common_v8_metagen(options, sdk, native, environment, tools):
     selected = (getattr(options, 'v8_metagen_libclang_so', None),
                 getattr(options, 'v8_metagen_bindings_dir', None),
@@ -945,6 +980,7 @@ def producer_inputs(options, sdk):
                       emberbsd_native_pkg_config_buildlink=True)
     values.update(common_abseil(options, sdk, native, environment, buildlink))
     values.update(common_icu(options, sdk, native, environment, buildlink))
+    values.update(common_re2(options, sdk, native, environment, buildlink))
     runtime_view = getattr(options, 'protoc_runtime_view', None)
     if runtime_view:
         require(native.host['os'] == 'Darwin', 'protoc runtime view requires a Darwin host')
@@ -1098,13 +1134,14 @@ def ensure_lastchange(workspace, native, environment, sdk):
 
 def gn_source(options):
     common = getattr(options, 'protobuf_source', None)
-    if not (common or getattr(options, 'node_source', None) or getattr(options, 'perfetto_source', None) or getattr(options, 'v8_source', None) or getattr(options, 'shared_abseil', False) or getattr(options, 'shared_icu', False)):
+    if not (common or getattr(options, 'node_source', None) or getattr(options, 'perfetto_source', None) or getattr(options, 'v8_source', None) or getattr(options, 'shared_abseil', False) or getattr(options, 'shared_icu', False) or getattr(options, 'shared_re2', False)):
         return options.workspace / 'src'
     view = local_module('electron_protobuf_source_view', 'protobuf-source-view.py')
     sources = dict(node=getattr(options, 'node_source', None), perfetto=getattr(options, 'perfetto_source', None),
                    v8=getattr(options, 'v8_source', None),
                    system_abseil=getattr(options, 'shared_abseil', False),
-                   system_icu=getattr(options, 'shared_icu', False))
+                   system_icu=getattr(options, 'shared_icu', False),
+                   system_re2=getattr(options, 'shared_re2', False))
     destination = options.work / 'source-view'
     if not os.path.lexists(destination):
         require(getattr(options, 'phase', '') == 'configure',
@@ -1332,6 +1369,7 @@ def main():
         command.add_argument('--shared-undici', action='store_true')
         command.add_argument('--shared-abseil', action='store_true')
         command.add_argument('--shared-icu', action='store_true')
+        command.add_argument('--shared-re2', action='store_true')
         command.add_argument('--macos-minimum')
         command.add_argument('--gcc-platform-reason')
         command.add_argument('--jobs', type=int, default=1)
