@@ -3,11 +3,12 @@ $NetBSD$
 Origin: EmberBSD; AI-assisted, not submitted upstream.
 
 Build the Flexbox layout with the shared pkgsrc Yoga instead of
-the bundled Yoga 2.0.1 copy.
+the bundled Yoga 2.0.1 copy, and keep the statically linked
+Yoga symbols out of the QuickLayouts ABI.
 
 --- src/quicklayouts/CMakeLists.txt.orig
 +++ src/quicklayouts/CMakeLists.txt
-@@ -27,27 +27,14 @@
+@@ -27,27 +27,24 @@
          Qt::Qml
      )
  
@@ -40,3 +41,13 @@ the bundled Yoga 2.0.1 copy.
 +    LIBRARIES
 +        yoga::yogacore
      )
++
++# Keep the statically linked Yoga engine private to QuickLayouts.
++if(APPLE)
++    target_link_options(QuickLayouts PRIVATE
++        "LINKER:-unexported_symbol,_YG*"
++        "LINKER:-unexported_symbol,__ZN8facebook4yoga*"
++        "LINKER:-unexported_symbol,__ZNK8facebook4yoga*")
++elseif(UNIX)
++    target_link_options(QuickLayouts PRIVATE "LINKER:--exclude-libs,libyogacore.a")
++endif()
