@@ -5,6 +5,10 @@ Backported from the Capstone change by Sevan Janiyan, commit
 1c238b64915c3379c7f0fd835896c9a5e39ff3a2 (Makefile: Improve Apple detection).
 https://github.com/capstone-engine/capstone/commit/1c238b64915c3379c7f0fd835896c9a5e39ff3a2
 
+LIBARCHS defaults from the build host `uname`. A non-Apple compiler target
+does not accept the Apple driver option -arch, so a cross build on macOS
+must not add it. Universal builds stay in the Apple branch.
+
 --- Makefile.orig
 +++ Makefile
 @@ -344,7 +344,7 @@
@@ -16,3 +20,12 @@ https://github.com/capstone-engine/capstone/commit/1c238b64915c3379c7f0fd835896c
  ifeq ($(IS_APPLE),1)
  # on MacOS, do not build in Universal format by default
  MACOS_UNIVERSAL ?= no
+@@ -365,8 +365,6 @@
+ endif
+ endif
+ else
+-CFLAGS += $(foreach arch,$(LIBARCHS),-arch $(arch))
+-LDFLAGS += $(foreach arch,$(LIBARCHS),-arch $(arch))
+ ifeq ($(OS), AIX)
+ $(LIBNAME)_LDFLAGS += -qmkshrobj
+ else

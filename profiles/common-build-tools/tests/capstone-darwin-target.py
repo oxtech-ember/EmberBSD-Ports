@@ -6,6 +6,7 @@ from pathlib import Path
 import shlex
 import shutil
 import subprocess
+import tempfile
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--source', required=True)
@@ -21,7 +22,12 @@ for role in ('grep', 'awk', 'wc', 'tr', 'echo', 'sh'):
     selected = shutil.which(role, path=str(args.utility_path))
     assert selected and Path(selected).resolve(strict=True).is_relative_to(prefix), role
 shell = str(Path(shutil.which('sh', path=str(args.utility_path))).resolve(strict=True))
-env = {'PATH': str(args.utility_path), 'LC_ALL': 'C', 'HOME': os.devnull}
+# The build host is macOS: the Makefile's `uname` reports Darwin, which sets
+# the LIBARCHS default, independently of the compiler target.
+host = Path(tempfile.mkdtemp(prefix='capstone-darwin-host-'))
+(host / 'uname').write_text('#!' + shell + '\necho Darwin\n')
+(host / 'uname').chmod(0o755)
+env = {'PATH': str(host) + os.pathsep + str(args.utility_path), 'LC_ALL': 'C', 'HOME': os.devnull}
 
 
 def flags(target, universal=None):
@@ -40,6 +46,9 @@ for target in ('arm64-apple-darwin27', 'x86_64-apple-darwin27'):
     assert '-dynamiclib' in output and '-arch ' not in output and ' -shared' not in output, output
     output = flags(target, 'yes')
     assert '-arch x86_64' in output and '-arch arm64' in output, output
+# A cross build on macOS: a non-Apple target accepts no Apple -arch option.
 output = flags('aarch64-unknown-netbsd')
 assert 'EMBER_FLAGS 0 so ' in output and ' -shared' in output and ' -dynamiclib' not in output, output
+assert '-arch' not in output, output
+shutil.rmtree(host)
 print('Capstone target flags: 5 cases passed')
