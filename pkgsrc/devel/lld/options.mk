@@ -8,7 +8,6 @@ PKG_SUGGESTED_OPTIONS+=	tests
 
 .if !empty(PKG_OPTIONS:Mtests)
 EXTRACT_ELEMENTS+=	${DISTNAME}/llvm
-EXTRACT_ELEMENTS+=	${DISTNAME}/third-party/unittest/UnitTestMain/TestMain.cpp
 BUILDLINK_DEPMETHOD.googletest= build
 .include "../../devel/googletest/buildlink3.mk"
 CMAKE_CONFIGURE_ARGS+=		-DLLVM_INCLUDE_TESTS=ON
