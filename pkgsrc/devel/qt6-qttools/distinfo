@@ -9,4 +9,4 @@ SHA1 (patch-src_designer_src_designer_CMakeLists.txt) = bb97261b0190cb81efd5e161
 SHA1 (patch-src_linguist_linguist_CMakeLists.txt) = 3e426895de3164a3fc1e579cfac8f56a4294fa8f
 SHA1 (patch-src_pixeltool_CMakeLists.txt) = a530c8ac7a9c9b2fd0d259d42d766e44916640d8
 SHA1 (patch-src_qdbus_qdbusviewer_CMakeLists.txt) = 38d5681bed22c47564b6b3659463967769497184
-SHA1 (patch-src_linguist_Qt6LinguistToolsMacros.cmake) = 7896a5598ec1d5102e68a11aef9b58686fa71fc8
+SHA1 (patch-src_linguist_Qt6LinguistToolsMacros.cmake) = a4dc9825f21a9bd6ccbc79eb4797517d42937e0c
