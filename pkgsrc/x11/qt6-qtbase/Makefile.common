@@ -60,6 +60,8 @@ USE_TOOLS+=		cmake gmake perl:build pkg-config
 .if ${OPSYS} == "Darwin" && defined(MACOSX_DEPLOYMENT_TARGET)
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_OSX_DEPLOYMENT_TARGET:STRING=${MACOSX_DEPLOYMENT_TARGET}
 .endif
+# Origin: EmberBSD (AI-assisted). Record the native C++ runtime of every module.
+.include "../../mk/emberbsd-native-cxx-runtime.mk"
 # Origin: EmberBSD (AI-assisted). Generators run on the development host.
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .include "host-tools.mk"
