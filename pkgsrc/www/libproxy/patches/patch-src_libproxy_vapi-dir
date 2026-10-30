@@ -1,0 +1,24 @@
+$NetBSD$
+
+Use the selected native Vala API files when cross compiling.
+
+--- src/libproxy/meson.build.orig
++++ src/libproxy/meson.build
+@@ -112,11 +112,17 @@
+   )
+ 
+   if get_option('vapi')
++    emberbsd_vapi_dir = meson.get_external_property('emberbsd_vapi_dir', '')
++    emberbsd_vapi_dirs = []
++    if emberbsd_vapi_dir != ''
++      emberbsd_vapi_dirs += [emberbsd_vapi_dir]
++    endif
+     libproxy_vapi = gnome.generate_vapi(package_api_name,
+          sources: libproxy_gir[0],
+         packages: [ 'gio-2.0' ],
+          install: true,
+      install_dir: vapidir,
++       vapi_dirs: emberbsd_vapi_dirs,
+     metadata_dirs: [ meson.current_source_dir() ],
+     )
+   endif

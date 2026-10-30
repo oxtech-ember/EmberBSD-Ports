@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.73 2026/09/02 19:04:59 wiz Exp $
 
 DISTNAME=	libproxy-0.5.12
-PKGREVISION=	7
+PKGREVISION=	8
 CATEGORIES=	www gnome
 MASTER_SITES=	${MASTER_SITE_GITHUB:=libproxy/}
 GITHUB_TAG=	${PKGVERSION_NOREV}
@@ -17,6 +17,9 @@ USE_CC_FEATURES=	c99
 USE_CXX_FEATURES=	c++11
 USE_LANGUAGES=		c c++
 USE_TOOLS+=		bash:build pkg-config
+
+# Release tarballs must not try to install a developer Git hook.
+MESON_ARGS+=	-Drelease=true
 
 PKGCONFIG_OVERRIDE+=		output/meson-private/libproxy-1.0.pc
 PKGCONFIG_OVERRIDE_STAGE=	post-configure
@@ -39,7 +42,8 @@ LDFLAGS+=	${COMPILER_RPATH_FLAG}${PREFIX}/lib/libproxy
 EMBERBSD_GI_MESON_OPTIONS= no
 MAKE_ENV+= XDG_DATA_DIRS=${CROSS_DESTDIR:Q}${PREFIX:Q}/share
 .include "../../devel/gobject-introspection/cross.mk"
-MESON_CROSS_VARS+= emberbsd_gi_cross emberbsd_gi_ldd_wrapper
+MESON_CROSS_VARS+= emberbsd_gi_cross emberbsd_gi_ldd_wrapper emberbsd_vapi_dir
+MESON_CROSS.emberbsd_vapi_dir= '${TOOLBASE}/share/vala-0.56/vapi'
 MESON_CROSS.emberbsd_gi_cross= true
 MESON_CROSS.emberbsd_gi_ldd_wrapper= '${EMBERBSD_GI_FILESDIR}/elf-needed.sh'
 EMBERBSD_LIBPROXY_REAL_SYSROOT!= cd ${CROSS_DESTDIR:Q} && pwd -P
