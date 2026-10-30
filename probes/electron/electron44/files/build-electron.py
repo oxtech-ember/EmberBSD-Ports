@@ -818,6 +818,7 @@ def common_v8_metagen(options, sdk, native, environment, tools):
 def common_node_configure(options, native, sdk, environment, resource_text):
     if not getattr(options, 'node_source', None):
         return {}
+    require(options.gyp_source and options.gyp_pkgsrc, 'Node configure needs the selected common GYP source and pkgsrc export')
     require(options.v8_source and options.v8_metagen_libclang_so and options.v8_metagen_bindings_dir,
             'Node configure needs selected V8 and V8 metagen providers')
     prefix = Path(options.host_prefix).resolve(strict=True)
@@ -829,6 +830,8 @@ def common_node_configure(options, native, sdk, environment, resource_text):
     resource = Path(resource_text).resolve(strict=True)
     helper = (options.ports_source / 'scripts/source-inputs/node/configure-inputs.py').resolve(strict=True)
     paths = {
+        'gyp-source': Path(options.gyp_source).resolve(strict=True),
+        'gyp-pkgsrc': Path(options.gyp_pkgsrc).resolve(strict=True),
         'v8-source': Path(options.v8_source).resolve(strict=True),
         'inspector-source': (prefix / 'share/inspector-protocol').resolve(strict=True),
         'sdk-source': Path(options.sdk_source).resolve(strict=True),
@@ -846,10 +849,19 @@ def common_node_configure(options, native, sdk, environment, resource_text):
                 ('inspector-source', 'jinja-root', 'zlib-source', 'v8-cxx-wrapper',
                  'v8-selected-clang', 'v8-clang-resource')),
             'Node configure host input is outside selected host prefix')
-    dependencies = [helper, paths['v8-source'] / 'emberbsd-prepared-source.json',
+    dependencies = [helper, paths['gyp-source'] / 'emberbsd-prepared-source.json',
+                    paths['gyp-pkgsrc'] / 'devel/gyp/files/verify-source.py',
+                    paths['gyp-pkgsrc'] / 'EMBERBSD-PKGSRC-REVISION',
+                    paths['gyp-pkgsrc'] / 'EMBERBSD-SOURCE-IDENTITY/pkgsrc-source-identity.py',
+                    paths['v8-source'] / 'emberbsd-prepared-source.json',
                     paths['inspector-source'] / 'emberbsd-prepared-source.json', jinja,
                     paths['v8-cxx-wrapper'], paths['v8-selected-clang'], paths['v8-libclang'],
                     paths['v8-python-bindings'] / 'clang/cindex.py']
+    gyp_dependencies = [p for p in paths['gyp-source'].rglob('*') if p.is_file()]
+    require(all(p.resolve(strict=True).is_relative_to(paths['gyp-source']) for p in gyp_dependencies),
+            'Node configure GYP dependency escapes selected source')
+    dependencies += gyp_dependencies
+    dependencies += [p for p in (paths['gyp-pkgsrc'] / 'devel/gyp').rglob('*') if p.is_file()]
     host_dependencies = [p for p in paths['zlib-source'].rglob('*') if p.is_file()]
     for package in (jinja.parent, jinja.parent.parent / 'markupsafe'):
         require(package.is_dir(), 'Node configure Jinja dependency is missing')
@@ -1287,7 +1299,7 @@ def main():
                      'host-buildlink-pkgsrc', 'host-buildlink-stage-root',
                      'host-buildlink-base-makeconf', 'host-buildlink-bmake-mk',
                      'protobuf-source', 'protobuf-ports-source', 'protobuf-archive', 'protobuf-patch',
-                     'node-source', 'node-pkgsrc', 'perfetto-source', 'perfetto-ports-source',
+                     'node-source', 'node-pkgsrc', 'gyp-source', 'gyp-pkgsrc', 'perfetto-source', 'perfetto-ports-source',
                      'perfetto-archive', 'perfetto-patch', 'v8-source', 'v8-ports-source', 'v8-pkgsrc',
                      'v8-metagen-libclang-so', 'v8-metagen-bindings-dir', 'v8-metagen-runtime-view'):
             command.add_argument('--' + name, type=Path)
@@ -1312,7 +1324,7 @@ def main():
                 exclusive = {Path(value).resolve() for value in (options.workspace, options.work)}
                 selected = (options.ports_source, options.sdk_source, options.protobuf_source,
                             options.protobuf_ports_source, options.protobuf_archive, options.protobuf_patch,
-                            options.node_source, options.node_pkgsrc, options.perfetto_source,
+                            options.node_source, options.node_pkgsrc, options.gyp_source, options.gyp_pkgsrc, options.perfetto_source,
                             options.perfetto_ports_source, options.perfetto_archive, options.perfetto_patch,
                             options.v8_source, options.v8_ports_source, options.v8_pkgsrc,
                             options.v8_metagen_libclang_so, options.v8_metagen_bindings_dir, options.v8_metagen_runtime_view,

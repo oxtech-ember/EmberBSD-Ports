@@ -39,6 +39,8 @@ def prepare(args):
     sdk = directory(args.sdk_source)
     jinja = directory(args.jinja_root)
     zlib = directory(args.zlib_source)
+    gyp = directory(args.gyp_source)
+    gyp_pkgsrc = directory(args.gyp_pkgsrc)
     bindings = directory(args.v8_python_bindings)
     resource = directory(args.v8_clang_resource)
     wrapper = Path(args.v8_cxx_wrapper)
@@ -47,7 +49,7 @@ def prepare(args):
     for item in (wrapper, clang, libclang):
         if not item.is_absolute() or not item.is_file():
             raise ValueError(f'missing absolute V8 host tool: {item}')
-    for provider in (v8, inspector, sdk, jinja, zlib, bindings, resource):
+    for provider in (v8, inspector, sdk, jinja, zlib, bindings, resource, gyp, gyp_pkgsrc):
         if overlaps(node, provider) or overlaps(work, provider):
             raise ValueError(f'work or Node source overlaps provider: {provider}')
     if work == node or node in work.parents:
@@ -62,6 +64,9 @@ def prepare(args):
     from emberbsd_sdk import sourceprep
     prepared(v8, 'lang/v8', sourceprep)
     prepared(inspector, 'devel/inspector-protocol', sourceprep)
+    verifier = gyp_pkgsrc / 'devel/gyp/files/verify-source.py'
+    subprocess.run([sys.executable, '-B', '-I', '-S', str(verifier), '--sdk-source', str(sdk),
+                    '--source', str(gyp), '--pkgsrc-root', str(gyp_pkgsrc)], check=True)
     backup = work / 'node-bundled-v8'
     if backup.exists() or backup.is_symlink():
         if backup.is_symlink() or not backup.is_dir():
@@ -97,7 +102,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('action', choices=('prepare', 'configure'))
     for option in ('node-source', 'work', 'v8-source', 'inspector-source', 'sdk-source', 'jinja-root', 'zlib-source', 'v8-cxx-wrapper', 'v8-selected-clang',
-                   'v8-libclang', 'v8-python-bindings', 'v8-clang-resource'):
+                   'v8-libclang', 'v8-python-bindings', 'v8-clang-resource', 'gyp-source', 'gyp-pkgsrc'):
         p.add_argument('--' + option, required=True)
     raw = sys.argv[1:]
     if '--' in raw:
@@ -111,10 +116,10 @@ def main():
         if a.action == 'prepare':
             if rest:
                 p.error('prepare does not accept configure arguments')
-            print(json.dumps({'gyp_args': defines}))
+            print(json.dumps({'gyp_args': defines, 'environment': {'NODE_GYP_SOURCE': str(directory(a.gyp_source))}}))
         else:
             subprocess.run([sys.executable, '-B', str(Path(a.node_source) / 'configure'), *rest, *defines],
-                           cwd=a.node_source, check=True)
+                           cwd=a.node_source, env={**os.environ, 'NODE_GYP_SOURCE': str(directory(a.gyp_source))}, check=True)
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
         p.exit(1, f'node configure inputs: {error}\n')
 

@@ -838,7 +838,8 @@ launcher scopes the runtime to the generator; the selected host, snapshot,
 and target compiler arguments are passed according to the GN toolchain.
 
 `--node-source` and `--node-pkgsrc` select a prepared common Node tree and its
-export; `--perfetto-source`, `--perfetto-ports-source`, `--perfetto-archive`,
+export; `--gyp-source` and `--gyp-pkgsrc` select the verified common GYP
+source and its export for Node configure and regeneration. `--perfetto-source`, `--perfetto-ports-source`, `--perfetto-archive`,
 and `--perfetto-patch` select common Perfetto. Each producer verifies its own
 source and recipe inputs; the local source view only connects the selected
 trees. Native generator actions may select the same runtime with
