@@ -22,6 +22,14 @@ AUTOCONF_REQD+=	2.73
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 USE_TOOLS+=	autoconf gm4 perl:run
 DEPENDS+=	m4>=1.4:../../devel/m4
+# Configure substitutes its own shell, the build-host CONFIG_SHELL, for
+# @SHELL@ in the DJGPP-only SHELL assignment of automake. The
+# target runs /bin/sh, as a native build records.
+SUBST_CLASSES+=		target-sh
+SUBST_STAGE.target-sh=	post-build
+SUBST_MESSAGE.target-sh=	Recording the target shell in automake.
+SUBST_FILES.target-sh=	bin/automake
+SUBST_SED.target-sh=	-e "s|'${CONFIG_SHELL}'|'/bin/sh'|"
 .else
 USE_TOOLS+=	autoconf gm4:run perl:run
 .endif
