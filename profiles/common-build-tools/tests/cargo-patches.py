@@ -48,4 +48,32 @@ with tempfile.TemporaryDirectory(prefix='cargo-patch-test-') as tmp:
     (registry/'example.patch').write_text('--- a/../../escape\n+++ b/../../escape\n@@ -1 +1 @@\n-x\n+y\n')
     try: run(); raise AssertionError('unsafe patch header accepted')
     except ValueError: pass
+with tempfile.TemporaryDirectory(prefix='cargo-create-delete-test-') as tmp:
+    base=Path(tmp); vendor=base/'vendor'; vendor.mkdir(); registry=base/'registry'; registry.mkdir()
+    root=vendor/'example-1.2.3'; root.mkdir(); (root/'src').mkdir()
+    (root/'Cargo.toml').write_text('[package]\nname = "example"\nversion = "1.2.3"\n')
+    (root/'src/old.rs').write_text('old\n')
+    (root/'.cargo-checksum.json').write_text(json.dumps({'package':'archive-sha','files':{'src/old.rs':h('old\n')}}))
+    (registry/'example.patch').write_text('--- a/src/old.rs\n+++ /dev/null\n@@ -1 +0,0 @@\n-old\n--- /dev/null\n+++ b/src/new.rs\n@@ -0,0 +1 @@\n+new\n')
+    manifest={'example-1.2.3':{'patch':'example.patch','files':{'src/old.rs':{'before':h('old\n'),'after':None},'src/new.rs':{'before':None,'after':h('new\n')}}}}
+    (registry/'registry.json').write_text(json.dumps(manifest))
+    def run(): module.apply(vendor,registry,a.patch,a.prefix)
+    run(); run()
+    assert not (root/'src/old.rs').exists() and (root/'src/new.rs').read_text()=='new\n'
+    assert json.loads((root/'.cargo-checksum.json').read_text())['files']=={'src/new.rs':h('new\n')}
+    (root/'src/old.rs').write_text('old\n')
+    try: run(); raise AssertionError('partial state accepted')
+    except ValueError: pass
+    (root/'src/old.rs').unlink(); (root/'src/new.rs').unlink(); (root/'src/old.rs').symlink_to('/etc/passwd')
+    try: run(); raise AssertionError('symlink accepted')
+    except ValueError: pass
+    (root/'src/old.rs').unlink(); (root/'src/old.rs').write_text('old\n'); (root/'src/new.rs').symlink_to('/etc/passwd')
+    try: run(); raise AssertionError('created file symlink accepted')
+    except ValueError: pass
+    manifest['example-1.2.3']['files']['src/new.rs']['before']=h('fake\n')
+    (registry/'registry.json').write_text(json.dumps(manifest))
+    (root/'src/new.rs').unlink()
+    try: run(); raise AssertionError('mismatched operation accepted')
+    except ValueError: pass
+print('Cargo patch create/delete, checksums, idempotence and rejection: PASS')
 print('Cargo patch exact inputs, checksums, idempotence and rejection: PASS')

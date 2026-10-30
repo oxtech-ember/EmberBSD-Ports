@@ -19,7 +19,7 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def checked_file(root, relative):
+def checked_path(root, relative):
     p = Path(relative)
     if p.is_absolute() or not p.parts or any(x in ('..', '.') for x in p.parts):
         raise ValueError('unsafe patch path: ' + relative)
@@ -29,6 +29,13 @@ def checked_file(root, relative):
             break
         if item.is_symlink():
             raise ValueError('symlink in patched path: ' + str(item))
+    if target.exists() and not target.is_file():
+        raise ValueError('not a regular patch file: ' + str(target))
+    return target
+
+
+def checked_file(root, relative):
+    target = checked_path(root, relative)
     if not target.is_file():
         raise ValueError('missing patch file: ' + str(target))
     return target
@@ -67,14 +74,31 @@ def apply(vendor, registry_dir, patch_tool, prefix):
             if index + 1 >= len(lines) or not lines[index + 1].startswith('+++ '):
                 raise ValueError('malformed patch header: ' + name)
             old, new = line[4:], lines[index + 1][4:]
-            if not old.startswith('a/') or new != 'b/' + old[2:]:
+            if old == '/dev/null' and new.startswith('b/'):
+                relative, operation = new[2:], 'create'
+            elif new == '/dev/null' and old.startswith('a/'):
+                relative, operation = old[2:], 'delete'
+            elif old.startswith('a/') and new == 'b/' + old[2:]:
+                relative, operation = old[2:], 'modify'
+            else:
                 raise ValueError('unsafe patch header: ' + name)
-            headers.append(old[2:])
+            checked_path(root, relative)
+            expected = files.get(relative)
+            if not isinstance(expected, dict) or set(expected) != {'before', 'after'}:
+                raise ValueError('invalid patch file metadata: ' + name + '/' + relative)
+            before, after = expected['before'], expected['after']
+            for value in (before, after):
+                if value is not None and (not isinstance(value, str) or not re.fullmatch(r'[0-9a-f]{64}', value)):
+                    raise ValueError('invalid patch file hash: ' + name + '/' + relative)
+            if (operation == 'create') != (before is None) or (operation == 'delete') != (after is None) or before == after:
+                raise ValueError('patch operation differs from metadata: ' + name + '/' + relative)
+            headers.append(relative)
         if len(headers) != len(set(headers)) or set(headers) != set(files):
             raise ValueError('patch files differ from registry: ' + name)
         state = set()
         for relative, expected in files.items():
-            current = digest(checked_file(root, relative))
+            path = checked_path(root, relative)
+            current = digest(path) if path.is_file() else None
             if current == expected['before']:
                 state.add('before')
             elif current == expected['after']:
@@ -100,17 +124,28 @@ def apply(vendor, registry_dir, patch_tool, prefix):
                 for relative in files:
                     destination = staged / relative
                     destination.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copyfile(root / relative, destination)
+                    source = checked_path(root, relative)
+                    if source.is_file():
+                        shutil.copyfile(source, destination)
                 subprocess.run([str(patch_tool), '--batch', '--forward', '--fuzz=0',
                                 '--no-backup-if-mismatch', '-p1', '-i', str(patch)],
                                cwd=staged, check=True, stdout=subprocess.DEVNULL)
                 for relative, expected in files.items():
-                    if digest(checked_file(staged, relative)) != expected['after']:
+                    result = checked_path(staged, relative)
+                    actual = digest(result) if result.is_file() else None
+                    if actual != expected['after']:
                         raise ValueError('patched bytes differ: ' + name + '/' + relative)
-                for relative in files:
-                    shutil.copyfile(staged / relative, root / relative)
+                for relative, expected in files.items():
+                    target = checked_path(root, relative)
+                    if expected['after'] is None:
+                        target.unlink()
+                    else:
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copyfile(staged / relative, target)
         for relative, expected in files.items():
-            if relative in checksum['files']:
+            if expected['after'] is None:
+                checksum['files'].pop(relative, None)
+            elif relative in checksum['files'] or expected['before'] is None:
                 checksum['files'][relative] = expected['after']
         try:
             with temp.open('x') as out:

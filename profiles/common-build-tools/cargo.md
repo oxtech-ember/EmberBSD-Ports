@@ -93,6 +93,11 @@ those together with any direct dependency constraints; the patch set does not
 by itself upgrade a lockfile or establish macro compatibility. Run
 `tests/cargo-patches.py --prefix /absolute/host-prefix --patch /absolute/host-prefix/bin/gpatch`
 and the affected package's actual consumer tests when extending the registry.
+File creation and removal use `/dev/null` patch headers and a null `before` or
+`after` hash respectively. The helper validates absent paths, symlinks and the
+complete staged result before writing. A failed write can leave a partial state;
+the next invocation rejects it rather than assuming it is valid.
+
 `tests/cargo-patch-hook.py` checks the common bmake pre-configure hook with a
 real selected-prefix patch tool and a checksum-preserved crate fixture.
 `tests/cargo-syn3.py` runs named offline macro consumers against a prepared
