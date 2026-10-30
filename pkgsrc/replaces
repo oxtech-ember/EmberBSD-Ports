@@ -470,3 +470,6 @@ print/libcups
 
 # Use the current shared calculator runtime.
 math/qalculate
+
+# Record the native C++ ABI for lzip.
+archivers/lzip
