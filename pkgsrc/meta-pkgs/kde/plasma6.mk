@@ -12,7 +12,7 @@ _EMBERBSD_PLASMA6_RECIPES= audio/plasma6-plasma-pa devel/plasma6-kwayland time/p
     x11/plasma6-kscreenlocker \
     x11/plasma6-libkscreen \
     x11/plasma6-libplasma \
-    x11/plasma6-plasma-activities x11/plasma6-kwin sysutils/plasma6-milou \
+    x11/plasma6-plasma-activities x11/plasma6-kwin x11/plasma6-kwin-qtwaylandscanner sysutils/plasma6-milou \
     sysutils/plasma6-libksysguard devel/plasma6-plasma5support \
     x11/plasma6-plasma-activities-stats x11/plasma6-union x11/plasma6-plasma-nano x11/plasma6-plasma-mobile \
     x11/plasma6-plasma-workspace \

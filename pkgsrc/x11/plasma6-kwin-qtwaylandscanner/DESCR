@@ -1,0 +1,2 @@
+The native qtwaylandscanner_kde program of KWin. It generates the Wayland
+protocol server code that a cross-built x11/plasma6-kwin compiles.

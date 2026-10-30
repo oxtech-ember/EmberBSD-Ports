@@ -1,0 +1,16 @@
+# $NetBSD$
+# Origin: EmberBSD (AI-assisted). One KWin source for the target compositor
+# and its native Wayland protocol code generator.
+#
+# used by x11/plasma6-kwin/Makefile
+# used by x11/plasma6-kwin-qtwaylandscanner/Makefile
+
+DISTNAME=	kwin-${PLASMAVER}
+CATEGORIES=	x11
+
+HOMEPAGE=	https://kde.org/plasma-desktop/
+LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2
+
+EMBERBSD_KWIN_PKGDIR:=	${.PARSEDIR:tA}
+DISTINFO_FILE=	${EMBERBSD_KWIN_PKGDIR}/distinfo
+PATCHDIR=	${EMBERBSD_KWIN_PKGDIR}/patches

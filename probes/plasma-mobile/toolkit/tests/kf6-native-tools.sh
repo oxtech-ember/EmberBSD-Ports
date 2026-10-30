@@ -21,6 +21,7 @@ x11/kf6-kded|devel/kf6-kconfig-compiler|devel/kf6-kconfig|-DKF6_HOST_TOOLING=@TO
 devel/kf6-kio|security/kf6-kauth-policy-gen|security/kf6-kauth|-DKF6_HOST_TOOLING=@TOOLBASE@/lib/cmake
 devel/kf6-kcmutils|devel/kf6-kcmutils-tools|devel/kf6-kcmutils|-DKF6_HOST_TOOLING=@TOOLBASE@/lib/cmake
 audio/plasma6-plasma-pa|devel/kf6-kcmutils-tools|devel/kf6-kcmutils|-DKF6_HOST_TOOLING=@TOOLBASE@/lib/cmake
+x11/plasma6-kwin|x11/plasma6-kwin-qtwaylandscanner|x11/plasma6-kwin|-DQTWAYLANDSCANNER_KDE_EXECUTABLE=@TOOLBASE@/bin/qtwaylandscanner_kde
 TABLE
 # A native CMake framework build in the same configuration fails for no
 # reason of the generator packages.
