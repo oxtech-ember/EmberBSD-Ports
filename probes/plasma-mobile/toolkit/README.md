@@ -91,9 +91,10 @@ For an alternative native build, a private MAKECONF includes the exported
 `EMBERBSD-COMMON-TOOLS-MK.CONF`, then
 `EMBERBSD-COMMON-GRAPHICS-MK.CONF`,
 `EMBERBSD-COMMON-MEDIA-MK.CONF` and finally
-`EMBERBSD-PLASMA-TOOLKIT-MK.CONF`. The latter selects GCC 16.2, one worker and
-release compiler flags without changing `/etc/mk.conf`. The migrated
-Qt Multimedia/KFileMetadata recipes use the
+`EMBERBSD-PLASMA-TOOLKIT-MK.CONF`. The latter selects GCC 16.2 and release
+compiler flags without changing `/etc/mk.conf`. Native builds default to one
+worker and retain an explicit `MAKE_JOBS` resource limit from the caller.
+The migrated Qt Multimedia/KFileMetadata recipes use the
 [common FFmpeg9 profile](../../../profiles/common-media/README.md).
 The toolkit requires the [common graphics source profile](../../../profiles/common-graphics/README.md)
 with Mesa26.2.4nb4/libdrm2.4.134nb2 and disables native GL/GLU/DRM providers.

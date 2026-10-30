@@ -19,10 +19,11 @@ TOOL_DEPENDS+= clang-${LLVM_VERSION}*:../../lang/clang
 TOOL_DEPENDS+= llvm-${LLVM_VERSION}*:../../lang/llvm
 TOOL_DEPENDS+= lld-${LLVM_VERSION}*:../../devel/lld
 
-EMBERBSD_FREESTANDING_HOST_PREFIX?= ${TOOLBASE}
-BUILD_DEFS+= EMBERBSD_SDK_SOURCE EMBERBSD_FREESTANDING_HOST_PREFIX
-.if empty(EMBERBSD_SDK_SOURCE:M/*) || empty(EMBERBSD_FREESTANDING_HOST_PREFIX:M/*)
-PKG_FAIL_REASON+= "Select EMBERBSD_SDK_SOURCE and EMBERBSD_FREESTANDING_HOST_PREFIX as absolute paths."
+# Tools come from native dependencies. WASI retains its existing prefix input.
+_FREESTANDING_TOOL_PREFIX?= ${TOOLBASE}
+BUILD_DEFS+= EMBERBSD_SDK_SOURCE
+.if empty(EMBERBSD_SDK_SOURCE:M/*) || empty(_FREESTANDING_TOOL_PREFIX:M/*)
+PKG_FAIL_REASON+= "Select an absolute EMBERBSD_SDK_SOURCE and native tool prefix."
 .endif
 _FREESTANDING_OWNER= ${.CURDIR}/../../lang/compiler-rt/files/runtime.py
 _FREESTANDING_PY= ${TOOL_PYTHONBIN} -B -S ${_FREESTANDING_OWNER:Q} --sdk-source ${EMBERBSD_SDK_SOURCE:Q} --pkgsrc-root ${_PKGSRCDIR:Q}
@@ -35,9 +36,9 @@ INSTALLATION_DIRS+= lib/clang/${LLVM_MAJOR_VERSION} share/licenses/${FREESTANDIN
 
 do-build:
 	${_FREESTANDING_PY} prepare --archive ${DISTDIR:Q}/${DISTNAME:Q}${EXTRACT_SUFX:Q} \
-	    --source ${_FREESTANDING_SOURCE:Q} --patch ${EMBERBSD_FREESTANDING_HOST_PREFIX:Q}/bin/gpatch
+	    --source ${_FREESTANDING_SOURCE:Q} --patch ${_FREESTANDING_TOOL_PREFIX:Q}/bin/gpatch
 	${_FREESTANDING_PY} freestanding-builtins --target ${FREESTANDING_TARGET:Q} --source ${_FREESTANDING_SOURCE:Q} \
-	    --host-prefix ${EMBERBSD_FREESTANDING_HOST_PREFIX:Q} --work ${_FREESTANDING_WORK:Q} \
+	    --host-prefix ${_FREESTANDING_TOOL_PREFIX:Q} --work ${_FREESTANDING_WORK:Q} \
 	    --stage ${_FREESTANDING_STAGE:Q} --jobs ${MAKE_JOBS:U1}
 
 do-install:

@@ -395,8 +395,8 @@ the common licenses and `freestanding-builtins.json`. The manifest binds the
 target profile, LLVM source, recipe, shared producer and staged bytes.
 The ordinary `lang/riscv32-elf-compiler-rt` package uses this same producer and
 installs the archive below `lib/clang/${LLVM_MAJOR_VERSION}/lib/` in the package
-prefix. Select `EMBERBSD_SDK_SOURCE` and `EMBERBSD_FREESTANDING_HOST_PREFIX` as
-absolute paths; the latter defaults to the native `TOOLBASE`. Firmware consumers
+prefix. Select `EMBERBSD_SDK_SOURCE` as an absolute path. The package takes its
+native tools from its `TOOL_DEPENDS` packages under `TOOLBASE`. Firmware consumers
 can explicitly link the installed archive. This package does not provide an
 EmberBSD application SDK, libc, C++ runtime or firmware image.
 
@@ -423,7 +423,11 @@ The stage contains the archive and the common compiler-rt licenses. A separate
 and supplies the legacy
 `wasm32-wasi` resource-directory alias. The target build does not install a
 second compiler or compiler-rt source.
-The existing `EMBERBSD_WASI_HOST_PREFIX` package input remains supported.
+The existing `EMBERBSD_WASI_HOST_PREFIX` package input remains supported and
+defaults to `TOOLBASE`. Among these freestanding packages, only WASI uses that
+compatibility input; RV32 always uses its native `TOOLBASE` dependencies. A custom
+WASI prefix must match the selected `TOOL_PYTHONBIN` interpreter. Standalone
+producer invocations retain the explicit `--host-prefix` argument shown above.
 
 For an ordinary exported pkgsrc tree, invoke its `lang/compiler-rt/files/runtime.py`
 with `--pkgsrc-root /absolute/export`. Source preparation uses the exported
