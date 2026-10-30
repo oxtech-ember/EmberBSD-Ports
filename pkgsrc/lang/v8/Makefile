@@ -23,6 +23,10 @@ PYTHON_FOR_BUILD_ONLY= tool
 # stamp-source.py runs on the build host, not from the target LOCALBASE.
 V8_STAMP_PYTHON= ${TOOL_PYTHONBIN}
 GENERATE_PLIST= cd ${DESTDIR:Q}${PREFIX:Q} && ${FIND} share/v8-source \( -type f -o -type l \) -print | ${SORT};
+# The payload is source for consumers that run its scripts with their own
+# selected interpreters; nothing executes it from ${PREFIX}. pkgsrc skips
+# share/doc and share/examples for the same reason.
+CHECK_INTERPRETER_SKIP+= share/v8-source/*
 INSTALLATION_DIRS= share/v8-source
 
 post-extract:

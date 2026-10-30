@@ -41,5 +41,9 @@ do-install:
 	    --source ${DESTDIR:Q}${PREFIX:Q}/share/inspector-protocol --pkgsrc-root ${_PKGSRCDIR:Q}
 
 GENERATE_PLIST+= cd ${DESTDIR:Q}${PREFIX:Q}; ${FIND} share/inspector-protocol \( -type f -o -type l \) -print | ${SORT};
+# The payload is source for consumers that run its scripts with their own
+# selected interpreters; nothing executes it from ${PREFIX}. pkgsrc skips
+# share/doc and share/examples for the same reason.
+CHECK_INTERPRETER_SKIP+= share/inspector-protocol/*
 .include "../../lang/python/tool.mk"
 .include "../../mk/bsd.pkg.mk"
