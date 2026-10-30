@@ -35,3 +35,11 @@ is recreated in place. An incompatible or foreign entry is left untouched.
 After installation and package validation, the stable `TOOLDIR/bin/target-libtool`
 alias and returned target-tools directory select that context. These paths must
 stay within their TOOLDIR because libtool records its compiler and tool paths.
+
+The contexts and their compiler bindings name the sysroot only through the
+`sysroot` link in the context directory, never the stage directory. Every run
+points this link at its selected stage before it selects a context, while the
+SDK holds the TOOLDIR for the whole run, so a reused context reaches the
+current stage and renaming a stage does not force a rebuild. The real headers
+and libraries the context was configured with (`lib`, `usr/include`,
+`usr/lib`) remain part of its key.

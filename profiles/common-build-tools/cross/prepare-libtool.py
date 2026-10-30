@@ -48,8 +48,8 @@ def context_name(identity):
     return 'context-' + hashlib.sha256(data).hexdigest()
 
 
-def claim_context(root, identity):
-    """Reuse a matching complete context or recreate only its own partial output."""
+def context_root(root):
+    """Create or check the owned directory of all cross-libtool contexts."""
     root = Path(root)
     owner = root / '.cross-libtool-owner'
     if os.path.lexists(root):
@@ -63,6 +63,41 @@ def claim_context(root, identity):
     else:
         root.mkdir()
         owner.write_text('cross-libtool-context-v1\n')
+    return root
+
+
+SYSROOT_ALIAS = 'sysroot'
+
+
+def bind_sysroot(root, sysroot):
+    """Point the stable sysroot alias of the context root at the selected stage.
+
+    Contexts, their compiler bindings and the configured libtool name only
+    this alias, so renaming or replacing the stage does not change a context
+    key. The caller holds the OS TOOLDIR for the whole run, and the alias is
+    repointed before any context is selected or used, so a reused context
+    always reaches the stage selected by this run. The headers and libraries
+    it was configured with stay in the key through sysroot_inputs.
+    """
+    root = context_root(root)
+    alias = root / SYSROOT_ALIAS
+    if os.path.lexists(alias) and not alias.is_symlink():
+        raise ValueError('incompatible cross-libtool sysroot alias')
+    if not os.path.isabs(sysroot) or os.path.realpath(sysroot) != sysroot:
+        raise ValueError('select the real sysroot directory for the cross-libtool alias')
+    fd, temp = tempfile.mkstemp(prefix='.sysroot-', dir=root)
+    os.close(fd)
+    os.unlink(temp)
+    os.symlink(sysroot, temp)
+    os.replace(temp, alias)
+    if os.path.realpath(alias) != sysroot:
+        raise ValueError('cross-libtool sysroot alias does not reach the selected sysroot')
+    return str(alias)
+
+
+def claim_context(root, identity):
+    """Reuse a matching complete context or recreate only its own partial output."""
+    root = context_root(root)
     context = root / context_name(identity)
     if os.path.lexists(context):
         config = context / 'configure-inputs.json'
@@ -212,7 +247,7 @@ def main():
                 raise SDKError('incompatible cross-libtool output')
         work = paths.canonical_existing(a.work_parent)
         distdir = paths.canonical_existing(a.distdir) if a.distdir else None
-        sysroot = paths.canonical_existing(a.sysroot)
+        stage_sysroot = paths.canonical_existing(a.sysroot)
         compiler = paths.canonical_existing(a.compiler)
         git = paths.canonical_existing(a.git)
         ports = Path(__file__).resolve().parents[3]
@@ -221,6 +256,10 @@ def main():
         env['PATH'] = os.pathsep.join((prefix + '/bin', prefix + '/gnu/bin', prefix + '/sbin'))
         env['TMPDIR'] = work
         python = native.tool('python')
+        try:
+            sysroot = bind_sysroot(output, stage_sysroot)
+        except (OSError, ValueError) as error:
+            raise SDKError(str(error)) from error
         with tempfile.TemporaryDirectory(prefix='.cross-libtool-', dir=work) as temporary:
             tmp = Path(temporary)
             native_conf = tmp / 'native.mk'
@@ -253,13 +292,13 @@ def main():
             triplet = {'aarch64': 'aarch64--netbsd', 'amd64': 'x86_64--netbsd'}[a.target]
             if a.compiler_family == 'clang':
                 compiler_record = target_toolchain.clang_compiler(compiler, triplet, host=native.host, env=env)
-                runtime_record = clang_runtime(sysroot, a.target, a.runtime_stage, a.runtime_base,
+                runtime_record = clang_runtime(stage_sysroot, a.target, a.runtime_stage, a.runtime_base,
                                                paths, llvm_runtime, application_toolchain)
             else:
                 # GCC's selected foundation lacks an LLVM manifest; its ABI inputs
                 # are the installed headers and libraries used by configure.
                 compiler_record = {'prefix': compiler}
-                runtime_record = {name: inventory.snapshot_tree(os.path.join(sysroot, name))
+                runtime_record = {name: inventory.snapshot_tree(os.path.join(stage_sysroot, name))
                                   for name in ('usr/include', 'usr/lib')}
             runtime_record = copy.deepcopy(runtime_record)
             if isinstance(runtime_record.get('recipe'), dict):
@@ -281,7 +320,7 @@ def main():
             identity = {'version': 1, 'target': a.target, 'compiler_family': a.compiler_family,
                         'host': native.as_dict(), 'native_tool_hashes': selected_tools,
                         'compiler': compiler_record, 'sysroot': sysroot, 'runtime': runtime_record,
-                        'sysroot_inputs': sysroot_inputs(sysroot, inventory),
+                        'sysroot_inputs': sysroot_inputs(stage_sysroot, inventory),
                         'wrapper_binding': json.loads(binding.read_text()) if binding.exists() else None,
                         'recipe': recipe_digest(exported),
                         'cross_config': {name: inventory.sha256_file(str(exported / name)) for name in

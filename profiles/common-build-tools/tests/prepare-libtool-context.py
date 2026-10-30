@@ -110,6 +110,59 @@ class ContextTest(unittest.TestCase):
             header.write_text('second')
             self.assertNotEqual(before, producer.sysroot_inputs(str(root), inventory))
 
+    def test_stage_rename_keeps_the_context_key_and_reaches_the_new_stage(self):
+        sys.path.insert(0, os.path.join(os.environ['EMBERBSD_SDK_SOURCE'], 'src'))
+        from emberbsd_sdk import inventory, paths
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp).resolve()
+            stage = tmp / 'stages/s8/dest'
+            for name in ('lib', 'usr/lib', 'usr/include'):
+                (stage / name).mkdir(parents=True)
+            (stage / 'lib/libc.so.12').write_text('libc')
+            (stage / 'usr/include/stdio.h').write_text('stdio')
+            recipe = tmp / 'pkgsrc'
+            for directory in ('cross/cross-libtool-base', 'devel/libtool-base', 'devel/libtool'):
+                (recipe / directory).mkdir(parents=True)
+                (recipe / directory / 'Makefile').write_text('recipe')
+            output = tmp / 'tools/gettext-libtool'
+            output.parent.mkdir()
+
+            def key(sysroot):
+                # The parts of the producer key that read the stage: the
+                # spelling given to the tools, and the real stage contents.
+                return producer.context_name({'sysroot': sysroot,
+                    'sysroot_inputs': producer.sysroot_inputs(os.path.realpath(sysroot), inventory),
+                    'recipe': producer.recipe_digest(recipe)})
+
+            def old(selected):
+                return paths.canonical_existing(selected)
+
+            def new(selected):
+                return producer.bind_sysroot(output, paths.canonical_existing(selected))
+
+            old_key, new_key = key(old(stage)), key(new(stage))
+            renamed = tmp / 'stages/s8b/dest'
+            renamed.parent.mkdir()
+            stage.rename(renamed)
+            self.assertNotEqual(key(old(renamed)), old_key)
+            alias = new(renamed)
+            self.assertEqual(key(alias), new_key)
+            self.assertEqual(alias, str(output / 'sysroot'))
+            self.assertEqual(os.readlink(alias), str(renamed))
+            self.assertEqual((Path(alias) / 'usr/include/stdio.h').read_text(), 'stdio')
+            # Other headers, libraries or recipe still select another context.
+            (renamed / 'usr/include/stdio.h').write_text('other stdio')
+            self.assertNotEqual(key(new(renamed)), new_key)
+            (renamed / 'usr/include/stdio.h').write_text('stdio')
+            self.assertEqual(key(new(renamed)), new_key)
+            (recipe / 'devel/libtool/Makefile').write_text('changed recipe')
+            self.assertNotEqual(key(new(renamed)), new_key)
+            # Only an alias link is ever replaced.
+            (output / 'sysroot').unlink()
+            (output / 'sysroot').mkdir()
+            with self.assertRaisesRegex(ValueError, 'incompatible cross-libtool sysroot alias'):
+                new(renamed)
+
     def test_recipe_identity_tracks_patch_inventory_but_not_unrelated_metadata(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

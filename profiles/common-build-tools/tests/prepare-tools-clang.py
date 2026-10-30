@@ -291,6 +291,25 @@ for target, triple, machine, instruction in (
         ready = work / ('tools-ready-distinct-base-' + target)
         invoke(target, final_root, ready, accept=True)
         assert '_EMBER_TARGET_SYSROOT:= ' + str(final_root) in (ready / 'target.mk').read_text()
+        # A stable alias keeps the bound commands independent of the stage
+        # directory: repointing it from one stage to another leaves them
+        # unchanged, while the real stage paths change them.
+        stage_alias = work / ('stage-alias-' + target)
+        stage_alias.symlink_to(sysroot)
+        via_first = work / ('tools-alias-first-' + target)
+        invoke(target, stage_alias, via_first, accept=True)
+        stage_alias.unlink()
+        stage_alias.symlink_to(final_root)
+        via_final = work / ('tools-alias-final-' + target)
+        invoke(target, stage_alias, via_final, accept=True)
+        bound = (via_final / 'commands/commands.json').read_text()
+        assert bound == (via_first / 'commands/commands.json').read_text()
+        assert (output / 'commands/commands.json').read_text() != (ready / 'commands/commands.json').read_text()
+        alias_mk = (via_final / 'target.mk').read_text()
+        assert '_EMBER_TARGET_SYSROOT:= ' + str(stage_alias) + '\n' in alias_mk, alias_mk
+        for real in (sysroot, final_root):
+            assert str(real) not in bound and str(real) not in alias_mk, real
+        stage_alias.unlink()
         library = final_root / 'usr/pkg/llvm/lib/libc++.so.1'
         saved_library = library.read_bytes()
         library.write_bytes(saved_library + b'damaged')

@@ -57,15 +57,23 @@ def prepare_clang(options):
     triplet = {'aarch64':'aarch64--netbsd', 'amd64':'x86_64--netbsd'}[options.target]
     compiler = target_toolchain.clang_compiler(options.compiler, triplet,
         host=native.host, env=env)
-    sysroot = paths.canonical_existing(options.sysroot)
+    # Keep the selected spelling of the sysroot. A caller-owned alias (for
+    # example a link repointed to the current stage) stays in every generated
+    # command, so these tools do not name the stage directory. The SDK still
+    # validates the real directory it resolves to now.
+    real_sysroot = paths.canonical_existing(options.sysroot)
+    sysroot = os.path.normpath(options.sysroot)
+    sysroot_alias = None if sysroot == real_sysroot else sysroot
+    if sysroot_alias and getattr(application_toolchain, 'SYSROOT_ALIAS', 0) < 1:
+        raise ValueError('The selected SDK cannot bind commands through a sysroot alias')
     if options.runtime_stage:
         runtime_root = paths.canonical_existing(options.runtime_stage)
-        runtime_base = paths.canonical_existing(options.runtime_base or sysroot)
+        runtime_base = paths.canonical_existing(options.runtime_base) if options.runtime_base else sysroot
         runtime = llvm_runtime.validate_stage(runtime_root, target=options.target,
-            required_components=llvm_runtime.FULL_COMPONENTS, base=runtime_base)
+            required_components=llvm_runtime.FULL_COMPONENTS, base=paths.canonical_existing(runtime_base))
     else:
         runtime_root = runtime_base = sysroot
-        runtime = application_toolchain.load_clang_runtime(sysroot, target=options.target)
+        runtime = application_toolchain.load_clang_runtime(real_sysroot, target=options.target)
     os_tools = paths.canonical_existing(options.os_tools)
     install = str(Path(os_tools, 'bin', triplet + '-install'))
     _member(install, os_tools, native.host, search_path=native.path)
@@ -81,8 +89,9 @@ def prepare_clang(options):
     output.mkdir()
     try:
         bound = application_toolchain.bind_clang_application_commands(
-            output/'commands', compiler, sysroot, runtime,
-            python=native.tool('python'), include_auxiliary=True, runtime_root=runtime_root)
+            output/'commands', compiler, real_sysroot, runtime,
+            python=native.tool('python'), include_auxiliary=True, runtime_root=runtime_root,
+            **({'sysroot_alias': sysroot_alias} if sysroot_alias else {}))
         binaries = output/'bin'; binaries.mkdir()
         aliases = {'clang':bound['cc'], 'clang++':bound['cxx'], 'clang-cpp':bound['cpp']}
         aliases.update({triplet+'-'+name:path for name,path in aliases.copy().items()})
