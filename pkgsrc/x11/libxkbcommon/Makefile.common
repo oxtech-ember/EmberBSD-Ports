@@ -65,7 +65,7 @@ BUILDLINK_TRANSFORM+=	rm:-Wl,--version-script=./xkbcommon.map
 BUILDLINK_TRANSFORM+=	rm:-Wl,--version-script=./xkbcommon-x11.map
 .endif
 
-.include "../../devel/xorg-util-macros/buildlink3.mk"
+# Upstream Meson build does not use xorg-util-macros.
 BUILDLINK_API_DEPENDS.libxcb+=	libxcb>=1.10
 .include "../../x11/libxcb/buildlink3.mk"
 .include "../../x11/xkeyboard-config/buildlink3.mk"
