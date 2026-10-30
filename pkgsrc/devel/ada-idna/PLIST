@@ -1,4 +1,5 @@
 @comment $NetBSD$
+include/ada/idna.h
 include/ada/idna/identifier.h
 include/ada/idna/limits.h
 include/ada/idna/mapping.h
@@ -8,7 +9,6 @@ include/ada/idna/to_ascii.h
 include/ada/idna/to_unicode.h
 include/ada/idna/unicode_transcoding.h
 include/ada/idna/validity.h
-include/idna.h
 lib/${IDNA_VERSIONED}
 lib/${IDNA_SOVERSION}
 lib/${IDNA_LIB}

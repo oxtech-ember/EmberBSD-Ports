@@ -9,7 +9,7 @@ Use shared ada-idna and shared test dependencies.
  
  #include "ada/common_defs.h"
 -#include "ada/ada_idna.h"
-+#include <idna.h>
++#include "ada/idna.h"
  
  #include <string>
  #include <string_view>

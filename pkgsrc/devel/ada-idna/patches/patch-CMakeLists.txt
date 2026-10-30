@@ -1,6 +1,7 @@
 # $NetBSD$
 
 Use common dependencies and defer target test discovery.
+Install idna.h as ada/idna.h: GNU libidn owns include/idna.h.
 
 --- CMakeLists.txt.orig
 +++ CMakeLists.txt
@@ -59,3 +60,12 @@ Use common dependencies and defer target test discovery.
    add_subdirectory(tests)
  else()
    if(is_top_project)
+@@ -76,7 +53,7 @@
+ 
+ install(
+   FILES include/idna.h
+-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
++  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ada
+   COMPONENT ada-idna_development
+ )
+ 

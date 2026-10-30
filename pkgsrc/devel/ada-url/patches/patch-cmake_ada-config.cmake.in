@@ -6,7 +6,7 @@ Expose the shared IDNA dependency to Ada consumers.
 +++ cmake/ada-config.cmake.in
 @@ -1 +1,9 @@
 +if(NOT TARGET ada-idna::ada-idna)
-+  find_path(ADA_IDNA_INCLUDE_DIR idna.h REQUIRED)
++  find_path(ADA_IDNA_INCLUDE_DIR ada/idna.h REQUIRED)
 +  find_library(ADA_IDNA_LIBRARY NAMES ada-idna REQUIRED)
 +  add_library(ada-idna::ada-idna UNKNOWN IMPORTED)
 +  set_target_properties(ada-idna::ada-idna PROPERTIES

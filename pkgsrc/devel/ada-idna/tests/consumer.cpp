@@ -1,4 +1,4 @@
-#include <idna.h>
+#include <ada/idna.h>
 #include <string>
 int main() {
   if (ada::idna::to_ascii("b\xC3\xBC" "cher.de") != "xn--bcher-kva.de") return 1;

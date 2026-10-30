@@ -9,7 +9,7 @@ Use shared ada-idna and shared test dependencies.
  #define ADA_H
  
 -#include "ada/ada_idna.h"
-+#include <idna.h>
++#include "ada/idna.h"
  #include "ada/character_sets.h"
  #include "ada/character_sets-inl.h"
  #include "ada/checkers-inl.h"
