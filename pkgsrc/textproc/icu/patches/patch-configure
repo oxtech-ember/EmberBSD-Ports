@@ -1,6 +1,7 @@
 $NetBSD$
 
 Preserve SCO host selection and the NetBSD atomic feature check.
+Let genccode write assembly for every NetBSD target, not only i386.
 
 --- configure.orig
 +++ configure
@@ -12,11 +13,10 @@ Preserve SCO host selection and the NetBSD atomic feature check.
  *-wasi*)	icu_cv_host_frag=mh-wasi ;;
  *) 		icu_cv_host_frag=mh-unknown ;;
  esac
-@@ -6460,6 +6461,29 @@
-    UCONFIG_CPPFLAGS="$UCONFIG_CPPFLAGS -DUCONFIG_ENABLE_PLUGINS=1"
+@@ -6461,6 +6462,29 @@
  fi
  
-+
+ 
 +# check if sys/atomic.h is present.
 +for ac_header in sys/atomic.h
 +do :
@@ -39,6 +39,16 @@ Preserve SCO host selection and the NetBSD atomic feature check.
 +*)
 +;;
 +esac
- 
++
  U_ENABLE_DYLOAD=1
  enable=yes
+ { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether to enable dynamic loading of plugins. Ignored if plugins disabled." >&5
+@@ -7009,7 +7033,7 @@
+ # Check to see if genccode can generate simple assembly.
+ GENCCODE_ASSEMBLY=
+ case "${host}" in
+-*-linux*|*-kfreebsd*-gnu*|i*86-*-*bsd*|*-pc-gnu)
++*-linux*|*-netbsd*|*-kfreebsd*-gnu*|i*86-*-*bsd*|*-pc-gnu)
+     if test "$GCC" = yes; then
+         # We're using gcc, and the simple -a gcc command line works for genccode
+         GENCCODE_ASSEMBLY="-a gcc"
