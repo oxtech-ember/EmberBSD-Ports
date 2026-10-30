@@ -100,3 +100,19 @@ python3 profiles/common-build-tools/tests/bootstrap-mk-files-darwin-archive.py \
 The test configures the recipe, builds a two-object library without
 `lorder` on PATH, then links and runs a program that needs both members.
 It fails on an export without the patch.
+
+## Archive installation with LLVM
+
+The shared `bootstrap-mk-files` templates rebuild the installed static
+archive index with portable `ranlib ARCHIVE`. They do not pass the BSD/GNU
+symbol-map timestamp option `-t`, which LLVM ranlib does not support.
+The generic template and its platform overrides use the same operation.
+The package revision is 20250601nb6.
+
+Run `tests/bootstrap-archive-install.py --host-prefix PREFIX --mk-dir MK_DIR
+--work-parent WORK` with SDK Python. Use the exported package files
+directory for all templates and `PREFIX/share/mk` for the installed package.
+The test installs an archive without a symbol index through `bsd.lib.mk`.
+It checks the new index, members, permissions and ownership, then links and
+runs a symbol consumer. Linux LLVM execution also exercises the platform
+templates; it does not establish native execution on each named platform.
