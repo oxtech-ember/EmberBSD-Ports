@@ -6,7 +6,7 @@ BUILDLINK_TREE+=	libunistring
 LIBUNISTRING_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.libunistring+=	libunistring>=0.9.3
-BUILDLINK_ABI_DEPENDS.libunistring+=	libunistring>=1.1
+BUILDLINK_ABI_DEPENDS.libunistring+=	libunistring>=1.4.2nb1
 BUILDLINK_PKGSRCDIR.libunistring?=	../../textproc/libunistring
 
 .endif	# LIBUNISTRING_BUILDLINK3_MK

@@ -7,7 +7,7 @@ P11_KIT_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.p11-kit+=	p11-kit>=0.10
 BUILDLINK_API_DEPENDS.p11-kit+=	p11-kit>=0.23
-BUILDLINK_ABI_DEPENDS.p11-kit+=	p11-kit>=0.24.0nb3
+BUILDLINK_ABI_DEPENDS.p11-kit+=	p11-kit>=0.26.5nb1
 BUILDLINK_PKGSRCDIR.p11-kit?=	../../security/p11-kit
 .include "../../devel/libffi/buildlink3.mk"
 .include "../../devel/gettext-lib/buildlink3.mk"

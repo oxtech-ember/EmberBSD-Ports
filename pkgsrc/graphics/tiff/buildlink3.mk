@@ -6,7 +6,7 @@ BUILDLINK_TREE+=	tiff
 TIFF_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.tiff+=	tiff>=3.6.1
-BUILDLINK_ABI_DEPENDS.tiff+=	tiff>=4.7.0nb3
+BUILDLINK_ABI_DEPENDS.tiff+=	tiff>=4.7.2nb1
 BUILDLINK_PKGSRCDIR.tiff?=	../../graphics/tiff
 
 .include "../../devel/zlib/buildlink3.mk"

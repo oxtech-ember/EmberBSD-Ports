@@ -6,7 +6,7 @@ BUILDLINK_TREE+=	gnutls
 GNUTLS_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.gnutls+=	gnutls>=3.3.0
-BUILDLINK_ABI_DEPENDS.gnutls+=	gnutls>=3.8.13nb1
+BUILDLINK_ABI_DEPENDS.gnutls+=	gnutls>=3.8.13nb2
 BUILDLINK_PKGSRCDIR.gnutls?=	../../security/gnutls
 
 .include "../../devel/gettext-lib/buildlink3.mk"
