@@ -20,6 +20,8 @@ NO_ARCH= yes
 USE_LANGUAGES= # source-only
 USE_TOOLS+= find sort tar
 PYTHON_FOR_BUILD_ONLY= tool
+# stamp-source.py runs on the build host, not from the target LOCALBASE.
+V8_STAMP_PYTHON= ${TOOL_PYTHONBIN}
 GENERATE_PLIST= cd ${DESTDIR:Q}${PREFIX:Q} && ${FIND} share/v8-source \( -type f -o -type l \) -print | ${SORT};
 INSTALLATION_DIRS= share/v8-source
 
@@ -30,7 +32,7 @@ post-extract:
 do-install:
 	${TAR} --exclude '*.orig' --exclude '*.rej' -cf ${WRKDIR:Q}/v8-source-copy.tar -C ${WRKSRC:Q} .
 	${TAR} -xf ${WRKDIR:Q}/v8-source-copy.tar -C ${DESTDIR:Q}${PREFIX:Q}/share/v8-source
-	${PYTHONBIN:Q} ${FILESDIR:Q}/stamp-source.py --sdk-source ${EMBERBSD_SDK_SOURCE:Q} \
+	${V8_STAMP_PYTHON:Q} ${FILESDIR:Q}/stamp-source.py --sdk-source ${EMBERBSD_SDK_SOURCE:Q} \
 	    --source ${DESTDIR:Q}${PREFIX:Q}/share/v8-source --pkgsrc-root ${PKGSRCDIR:Q}
 
 .include "../../lang/python/tool.mk"
