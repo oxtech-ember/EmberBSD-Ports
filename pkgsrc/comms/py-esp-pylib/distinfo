@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (esp_pylib-1.2.0.tar.gz) = b55802133a6ecc5f37b89d02d086c62b59af03b5ace797b59f38839df97b1950
+SHA512 (esp_pylib-1.2.0.tar.gz) = 2c11ecc228b8879897559309820d774be6830f1ded6b1f813a404e79e811fc86b25510df2c46d43d063cd15e66240d611e8f0b24ae08c77e9456f7e476be111a
+Size (esp_pylib-1.2.0.tar.gz) = 100301 bytes
