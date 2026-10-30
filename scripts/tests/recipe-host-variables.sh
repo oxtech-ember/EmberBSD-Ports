@@ -15,7 +15,6 @@ EMBERBSD_CROSS_HOST_PREFIX
 EMBERBSD_HOST_COMPILER_FAMILY
 EMBERBSD_HOST_PREFIX
 EMBERBSD_HOST_PYTHON
-EMBERBSD_KF6_HOST_TOOLING
 EMBERBSD_LLVM_LIBC_HOST_PREFIX
 EMBERBSD_PERL_HOST_GENERATE
 EMBERBSD_PERL_HOST_MINIPERL
@@ -26,7 +25,7 @@ EMBERBSD_QT_HOST_PATH
 EMBERBSD_UNDICI_HOST_PREFIX
 EMBERBSD_WASI_HOST_PREFIX'
 # Lower this number with every removed name; it guards against additions.
-max=15
+max=14
 [ "$(printf '%s\n' "$allowed" | wc -l | tr -d ' ')" -le "$max" ] ||
     { echo 'FAIL: the allowed EMBERBSD_*HOST* list grew' >&2; exit 1; }
 found=$(grep -rhoE 'EMBERBSD_[A-Z0-9_]*HOST[A-Z0-9_]*' "$tree" | sort -u)

@@ -30,8 +30,11 @@ EXTRA_HOST_PREFIX=/absolute/native-gettext \
 ```
 
 `HOST_DOCTOOLS` is the matching [native KDocTools prefix](doctools.md), which
-already provides KArchive. Copy `NEW_WORK/tooling/KF6Package` into the common
-`EMBERBSD_KF6_HOST_TOOLING` directory. The imported executable is global, so
+already provides KArchive. Recipes no longer read a build-host tooling path,
+and no native Ports package provides `kpackagetool6` yet. Without one,
+`KF6PackageConfig` falls back to the target import, and only the AppStream
+metadata step reports a warning. With `NEW_WORK/tooling` passed as
+`-DKF6_HOST_TOOLING` in a probe build, the imported executable is global, so
 sibling CMake directories resolve it. The host libraries stay private;
 all target KPackage components remain installed. Upstream's CLI reports
 version `2.0`; the helper checks the real Frameworks version header, `6.31.0`.

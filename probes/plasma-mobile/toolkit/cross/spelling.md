@@ -45,8 +45,10 @@ HOST_CC=/absolute/native/cc HOST_CXX=/absolute/native/c++ \
 sh cross/build-sonnet-tool.sh DISTFILES HOST_QT ECM_CMAKE_DIR NEW_WORK
 ```
 
-Expose `NEW_WORK/bin/parsetrigrams6` as
-`${EMBERBSD_KF6_HOST_TOOLING}/bin/parsetrigrams6` before building Sonnet.
+Package builds use the native Ports package `textproc/kf6-sonnet-
+parsetrigrams`, built from the same Sonnet source, distinfo and patches; a
+cross `textproc/kf6-sonnet` build takes it as a `TOOL_DEPENDS` package and
+passes `-DPARSETRIGRAMS_EXECUTABLE=${TOOLBASE}/bin/parsetrigrams6`.
 Use the same Qt 6.12 generators and common EmberBSD sysroot as the other modules.
 
 ## CM5 acceptance

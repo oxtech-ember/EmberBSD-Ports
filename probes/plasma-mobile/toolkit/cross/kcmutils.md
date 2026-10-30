@@ -19,11 +19,12 @@ CMAKE=/absolute/native-cmake NINJA=/absolute/native-ninja \
   sh build-kcmutils-tool.sh DISTFILES HOST_QT ECM_CMAKE_DIR NEW_WORK
 ```
 
-Copy `NEW_WORK/tooling/KF6KCMUtils` into the common `EMBERBSD_KF6_HOST_TOOLING`
-directory. The helper uses upstream `TOOLS_ONLY`, tests a localized JSON
-fixture and refuses a missing input. It records archive, script and executable
-hashes. This is a private build tool; target package features remain enabled.
-Then build the ordinary `devel/kf6-kcmutils` package from the toolkit export.
+The helper uses upstream `TOOLS_ONLY`, tests a localized JSON fixture and
+refuses a missing input. It records archive, script and executable hashes. This
+is a private build tool; target package features remain enabled. Package builds
+use the native Ports package `devel/kf6-kcmutils-tools`, which builds the same
+`TOOLS_ONLY` mode from the KCMUtils source, distinfo and patches; a cross build
+of `devel/kf6-kcmutils` or a consumer takes it as a `TOOL_DEPENDS` package.
 
 On 2026-10-12 all ordinary package checks pass. The complete three-package
 payload matches the common sysroot; installed checks cover 506 regular files

@@ -88,15 +88,13 @@ accept the complete Qt build-tree lifecycle. No upstream C++ source changes.
 The private native build produces only the generator and its Qt Xml
 prerequisite. GUI/QML/DBus remain enabled in the separate target package.
 The generated `tooling/KF6Config` import contains only a native executable,
-never host libraries. Add to the private MAKECONF:
-
-```make
-EMBERBSD_KF6_HOST_TOOLING=/absolute/kconfig-host/tooling
-```
-
-The toolkit forwards both Qt and KF host paths even when assigned after
-including the profile. `tests/consumer-host-tools.sh` checks both include
-orders, paths containing spaces, unset variables and native-tool sub-builds.
+never host libraries. Package builds do not read it: the native Ports package
+`devel/kf6-kconfig-compiler` builds `kconfig_compiler_kf6` and `kconf_update`
+from the KConfig source, distinfo and patches and installs them with their
+`KF6ConfigCompilerTargets` import below `TOOLBASE`. A cross build of any
+KConfig consumer takes it as a `TOOL_DEPENDS` package through the KConfig
+`buildlink3.mk` and passes `-DKF6_HOST_TOOLING=${TOOLBASE}/lib/cmake`.
+`tests/kf6-native-tools.sh` checks this wiring.
 The [KConfig consumer](../tests/kconfig-consumer/README.md) exercises actual
 CMake generation and compiles generated code against the target package.
 

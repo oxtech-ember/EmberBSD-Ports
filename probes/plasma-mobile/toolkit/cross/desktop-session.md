@@ -47,23 +47,27 @@ HOST_CC=/absolute/cc HOST_CXX=/absolute/c++ JOBS=2 \
 ```
 
 `HOST_COREADDONS` can use the matching prefix produced by
-`build-kpackage-tool.sh`. Copy `NEW_WORK/tooling/KF6Auth` into the common
-`EMBERBSD_KF6_HOST_TOOLING` directory. The helper produces the exact upstream
-`foo.policy` fixture and rejects a missing argument. Target KAuth remains a
-complete package with its own policy generator and backend. Its exported
-configuration now searches for native tools outside the target sysroot.
+`build-kpackage-tool.sh`. The helper produces the exact upstream `foo.policy`
+fixture and rejects a missing argument. Package builds do not use it: the
+native Ports package `security/kf6-kauth-policy-gen` builds the same mode from
+the KAuth source, distinfo and patches, and a cross build of KAuth or a
+consumer takes it as a `TOOL_DEPENDS` package. Target KAuth remains a complete
+package with its own policy generator and backend. Its exported configuration
+now searches for native tools outside the target sysroot.
 
 KWin's protocol scanner is also a native build tool. Its nested build previously
-inherited the target compiler and failed on macOS `-arch`. Build the unchanged
-upstream standalone scanner and copy its `bin/qtwaylandscanner_kde` into the
-common host-tooling `bin` directory:
+inherited the target compiler and failed on macOS `-arch`. The helper below builds the
+unchanged upstream standalone scanner for probe work:
 
 ```sh
 CMAKE=/absolute/cmake NINJA=/absolute/ninja HOST_CXX=/absolute/c++ \
   sh build-kwin-scanner.sh DISTFILES HOST_QT ECM_CMAKE_DIR NEW_WORK
 ```
 
-The recipe uses upstream's explicit `QTWAYLANDSCANNER_KDE_EXECUTABLE` interface.
+The recipe uses upstream's explicit `QTWAYLANDSCANNER_KDE_EXECUTABLE` interface
+with the native Ports package `x11/plasma6-kwin-qtwaylandscanner`, which builds
+the same standalone scanner from the KWin source and distinfo; a cross
+`x11/plasma6-kwin` build takes it as a `TOOL_DEPENDS` package.
 No board-native compilation or target executable on macOS is required.
 
 The scanner helper selects the exact version from the common `plasma6.mk`,
