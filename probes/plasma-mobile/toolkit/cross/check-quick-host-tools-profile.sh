@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Check the real native Qt quick profile without building.
 set -eu
+# These isolated input/PLAN fixtures exercise the lower-level producer.
+QT_HOST_LOCKED=1
+export QT_HOST_LOCKED
 
 [ "$#" -eq 6 ] || {
     echo "Usage: check-quick-host-tools-profile.sh DISTFILES SDK_PREFIX WAYLAND_SCANNER DBUS_PREFIX NATIVE_TOOLS NEW_WORK" >&2

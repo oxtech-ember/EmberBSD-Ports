@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Reject invalid host-build inputs before work.
 set -eu
+# These isolated input/PLAN fixtures exercise the lower-level producer.
+QT_HOST_LOCKED=1
+export QT_HOST_LOCKED
 [ "$#" = 2 ] || { echo "Usage: $0 VERIFIED_DISTFILES NEW_WORK" >&2; exit 2; }
 distfiles=$1 work=$2
 recipe=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/build-host-tools.sh

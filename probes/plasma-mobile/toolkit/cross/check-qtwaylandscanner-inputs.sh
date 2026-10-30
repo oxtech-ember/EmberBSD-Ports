@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Reject invalid scanner bootstrap inputs.
 set -eu
+# These isolated input/PLAN fixtures exercise the lower-level producer.
+QT_HOST_LOCKED=1
+export QT_HOST_LOCKED
 [ "$#" = 3 ] || { echo "Usage: $0 DISTFILES HOST_QT NEW_WORK" >&2; exit 2; }
 dist=$1 host=$2 work=$3
 [ ! -e "$work" ] && [ ! -L "$work" ]

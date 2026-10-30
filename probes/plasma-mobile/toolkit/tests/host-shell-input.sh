@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Validate selected host shell before any configure or output creation.
 set -eu
+# These isolated input/PLAN fixtures exercise the lower-level producer.
+QT_HOST_LOCKED=1
+export QT_HOST_LOCKED
 cross=$(CDPATH= cd -- "$(dirname -- "$0")/../cross" && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/ember-host-shell-test.XXXXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM

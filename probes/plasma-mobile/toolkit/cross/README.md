@@ -19,17 +19,25 @@ cannot generate a Qt 6.12 build. See the
 ```sh
 HOST_SH=/absolute/native/sh CMAKE=/absolute/native/cmake NINJA=/absolute/native/ninja \
 TAR=/absolute/native/bsdtar PATCH=/absolute/native/patch \
-HOST_PYTHON=/absolute/native/python3 \
+HOST_PYTHON=/absolute/native/python3 HOST_SDK_SOURCE=/absolute/sdk-source \
+QT_HOST_LOCK_ROOT=/absolute/shared-object-root \
 WAYLAND_SCANNER=/absolute/wayland-1.26/bin/wayland-scanner \
 HOST_LLVM_BUILD=/absolute/native-llvm23 HOST_CLANG_BUILD=/absolute/native-clang23 \
 HOST_DBUS_PREFIX=/absolute/native-dbus \
 HOST_PACKAGE_PREFIX=/absolute/native-dependencies HOST_PKG_CONFIG=/absolute/native/pkg-config \
 HOST_CC=/absolute/native/cc HOST_CXX=/absolute/native/c++ JOBS=4 \
-/absolute/native/sh probes/plasma-mobile/toolkit/cross/build-host-tools.sh \
+/absolute/native/python3 -I -S probes/plasma-mobile/toolkit/cross/run-host-tools.py \
     /absolute/verified-distfiles /absolute/new-host-qt
 ```
 
-On Darwin, a native stage with libraries outside their installed paths can set
+The entrypoint holds an exclusive SDK context lock for the canonical Qt work
+directory and its qtbase child; target readers hold the exact selected Qt host
+prefix context shared while using its tools. The lower-level shell producer
+requires this entrypoint.
+
+On Darwin, set `HOST_DARWIN_SDK` to the system SDK selected by the native
+compiler. The Qt producer uses its frameworks and system printing ABI explicitly.
+A native stage with libraries outside their installed paths can set
 `HOST_RUNTIME_VIEW` to a directory containing the selected runtime libraries and
 `HOST_SDK_SOURCE` to the SDK source. The selected native Python runs the SDK
 runtime launcher for Qt's custom build commands. The producer records the view
@@ -94,6 +102,9 @@ For a completed set of earlier modules, `QT_HOST_RESUME_FROM=qtquick3d`
 selects that module only. `HOST_QT_QUICK3D_BUILD_DIR` may point to its existing
 CMake build directory; its source, Qtbase, compilers, ABI flags, runtime and
 provider locations must match the selected inputs. The actual path is recorded.
+`QT_HOST_RESUME_FROM=qtbase-network` instead reconfigures Qtbase with the
+common libpsl backend and builds only its Network target; the source transition
+records the owner patches separately and preserves existing objects.
 
 On macOS, Qt's portable `qtwaylandscanner` requires an explicit native
 Wayland scanner and `QT_FIND_ALL_PACKAGES_ALWAYS=ON` during the initial

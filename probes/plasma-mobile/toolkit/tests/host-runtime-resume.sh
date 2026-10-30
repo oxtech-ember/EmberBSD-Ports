@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Reject removal of an input from a previously recorded native runtime view.
 set -eu
+# These isolated input/PLAN fixtures exercise the lower-level producer.
+QT_HOST_LOCKED=1
+export QT_HOST_LOCKED
 [ "$#" = 1 ] || { echo 'Usage: host-runtime-resume.sh DISTFILES' >&2; exit 2; }
 : "${HOST_MACOSX_DEPLOYMENT_TARGET:?Set the selected Darwin deployment target}"
 : "${HOST_SDK_SOURCE:?Set the SDK source}"

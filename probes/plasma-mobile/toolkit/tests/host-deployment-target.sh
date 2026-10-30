@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Check a real Darwin host Qt configure and its resume guard.
 set -eu
+# These isolated input/PLAN fixtures exercise the lower-level producer.
+QT_HOST_LOCKED=1
+export QT_HOST_LOCKED
 [ "$#" = 3 ] || { echo 'Usage: host-deployment-target.sh DISTFILES WORK EXPECTED_TARGET' >&2; exit 2; }
 distfiles=$1 work=$2 expected=$3
 HOST_SH=${HOST_SH:-/bin/sh}

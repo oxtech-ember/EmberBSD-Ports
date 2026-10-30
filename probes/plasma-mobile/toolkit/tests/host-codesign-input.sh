@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Darwin signing service is explicit and validated before writing work.
 set -eu
+# These isolated input/PLAN fixtures exercise the lower-level producer.
+QT_HOST_LOCKED=1
+export QT_HOST_LOCKED
 [ "$(uname -s)" = Darwin ] || { echo 'SKIP: Darwin signing service'; exit 0; }
 cross=$(CDPATH= cd -- "$(dirname -- "$0")/../cross" && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/ember-codesign-test.XXXXXXXX")

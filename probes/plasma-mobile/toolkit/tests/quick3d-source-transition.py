@@ -8,7 +8,7 @@ import tempfile
 import sys
 
 root = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('quick3d_transition', root/'cross/quick3d-source-transition.py')
+spec = importlib.util.spec_from_file_location('quick3d_transition', root/'cross/qt-source-transition.py')
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 if len(sys.argv) != 2 or not Path(sys.argv[1]).is_absolute():
     raise SystemExit('usage: quick3d-source-transition.py ABSOLUTE_PATCH')
@@ -44,6 +44,18 @@ with tempfile.TemporaryDirectory(prefix='qt-source-transition-') as tmp:
     m.transition(*args)
     f.write_text('changed after patch\n')
     try: m.transition(*args)
-    except ValueError as e: assert 'patched source changed' in str(e)
+    except ValueError as e: assert 'differs from upstream' in str(e)
     else: raise AssertionError('modified patched source accepted')
+    f.write_text('one\nthree\n')
+    old_marker = marker.read_bytes()
+    patchfile.write_text('--- src/test.txt.orig\n+++ src/test.txt\n@@ -1,2 +1,2 @@\n one\n-two\n+four\n')
+    m.transition(*args, plan=True)
+    assert f.read_text() == 'one\nthree\n' and marker.read_bytes() == old_marker
+    m.transition(*args)
+    assert f.read_text() == 'one\nfour\n'
+    assert any(x.read_bytes() == old_marker for x in p.glob('proof.previous-*'))
+    # An interrupted upgrade has new source but old marker; retry safely.
+    marker.write_bytes(old_marker)
+    m.transition(*args)
+    assert f.read_text() == 'one\nfour\n'
 print('PASS: dry run, local edit preservation, apply and resume integrity')
