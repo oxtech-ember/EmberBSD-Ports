@@ -61,6 +61,15 @@ class EnvironmentTest(unittest.TestCase):
             host.logged([sys.executable, '-c', child], log)
             self.assertEqual(log.read_text(), str(self.sdk) + '\n')
 
+    def test_logged_uses_build_drain_budget_and_preserves_ownership_failure(self):
+        failure = host.ProcessOwnershipError(123, 'incomplete snapshot')
+        with patch.object(host.process, 'run_logged', side_effect=failure) as runner:
+            with self.assertRaises(host.ProcessOwnershipError) as caught:
+                host.logged([sys.executable, '-c', 'pass'], self.root / 'log')
+        self.assertIs(caught.exception, failure)
+        self.assertEqual(runner.call_args.kwargs['empty_snapshot_timeout'], 120)
+        self.assertEqual(runner.call_args.args[0], [sys.executable, '-c', 'pass'])
+
     @unittest.skipUnless(sys.platform == 'darwin', 'Darwin SDK and GCC16 link contract')
     def test_real_gcc16_links_through_capture_and_logged(self):
         cc = shutil.which('gcc-16')

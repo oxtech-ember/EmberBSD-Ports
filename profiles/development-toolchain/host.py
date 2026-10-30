@@ -130,7 +130,11 @@ def logged(argv, log, env=None, cwd=None, append=False, quarantine=None):
         os.close(descriptor)
         log.replace(previous)
     try:
-        return process.run_logged([str(arg) for arg in argv], log, cwd=cwd, env=environment(env), append=append)
+        # Match SDK native OS producers: unrelated process churn on a busy
+        # host can prevent a complete empty-session snapshot for several
+        # seconds. Keep the ownership proof and its bounded refusal intact.
+        return process.run_logged([str(arg) for arg in argv], log, cwd=cwd,
+            env=environment(env), append=append, empty_snapshot_timeout=120)
     except ProcessOwnershipError as error:
         if quarantine is not None:
             marker = Path(quarantine) / QUARANTINE
