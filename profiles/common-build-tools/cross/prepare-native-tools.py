@@ -53,7 +53,11 @@ OPTIONAL_ROLES = {'clang-tblgen': 'EMBERBSD_CLANG_TABLEGEN',
                   'zcat': 'TOOLS_PLATFORM.gzcat', 'gdate': 'TOOLS_PLATFORM.date',
                   'ghostname': 'TOOLS_PLATFORM.hostname', 'gls': 'TOOLS_PLATFORM.ls',
                   'gpwd': 'TOOLS_PLATFORM.pwd', 'grmdir': 'TOOLS_PLATFORM.rmdir',
-                  'gsleep': 'TOOLS_PLATFORM.sleep', 'gtee': 'TOOLS_PLATFORM.tee'}
+                  'gsleep': 'TOOLS_PLATFORM.sleep', 'gtee': 'TOOLS_PLATFORM.tee',
+                  # Native ELF package metadata needs an SDK reader. Keep it
+                  # optional so Mach-O prefixes do not acquire an ELF-tool
+                  # requirement.
+                  'readelf': 'TOOLS_PATH.readelf'}
 # These variables select the directory of the role tool.
 ROLE_DIRECTORIES = {
     # Native LLVM TableGen tools for the lld and clang cross recipes.
@@ -202,12 +206,22 @@ def render(toolset, qt=(), fetch_mode='fetch', native_cxx=None):
             from emberbsd_sdk.errors import SDKError
             raise SDKError('The native make mapping does not support quotes in tool paths')
         pinned = '_EMBER_SDK_' + role.upper().replace('-', '_')
-        lines += [pinned + ':= ' + value,
-                  '.if "${' + pinned + '}" != "' + value + '"',
-                  '.error ' + pinned + ' differs from the selected Ports tool', '.endif',
-                  variable + '?= ${' + pinned + '}',
-                  '.if "${' + variable + '}" != "' + value + '"',
-                  '.error ' + variable + ' differs from the selected Ports tool', '.endif']
+        assignment = variable + '?= ${' + pinned + '}'
+        if role == 'readelf':
+            # bsd.tools.mk may define this variable empty before MAKECONF.
+            assignment = variable + ':= ${' + pinned + '}'
+        mapping = [pinned + ':= ' + value,
+                   '.if "${' + pinned + '}" != "' + value + '"',
+                   '.error ' + pinned + ' differs from the selected Ports tool', '.endif',
+                   assignment,
+                   '.if "${' + variable + '}" != "' + value + '"',
+                   '.error ' + variable + ' differs from the selected Ports tool', '.endif']
+        if role == 'readelf':
+            # native-tools.mk is shared with cross profiles; only pin the host
+            # executable in the native dependency recursion.
+            lines += ['.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"', *mapping, '.endif']
+        else:
+            lines += mapping
     # Empty platform mappings make pkgsrc resolve these build tools through
     # the native package dependency rather than /usr/bin when absent.
     for role, variable in OPTIONAL_ROLES.items():
@@ -288,8 +302,9 @@ def selection(arguments):
     from emberbsd_sdk.errors import SDKError
     from emberbsd_sdk.native_toolset import load_host_prefix
     optional = tuple(role for role in OPTIONAL_ROLES
-                     if any(os.path.lexists(Path(arguments.host_prefix) / directory / role)
-                            for directory in ('bin', 'gnu/bin')))
+                     if any(os.path.lexists(Path(arguments.host_prefix) / directory / name)
+                            for directory in ('bin', 'gnu/bin')
+                            for name in (('readelf', 'llvm-readelf') if role == 'readelf' else (role,))))
     toolset = load_host_prefix(arguments.host_prefix,
                               required_roles=tuple(ROLE_VARIABLES) + tuple(ROLE_DIRECTORIES) + optional +
                               (('fetch',) if arguments.fetch_mode == 'fetch' else ()),
