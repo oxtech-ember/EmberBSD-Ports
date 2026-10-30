@@ -1,7 +1,7 @@
 # GNU gettext locale declarations
 
 This recipe preserves the NetBSD pkgsrc recipe and the upstream licenses.
-The installed package has revision 1 on native and cross builds.
+The installed package has revision 2 on native and cross builds.
 The API floor stays at 0.22. The package ABI floor selects the corrected package.
 The built-in provider keeps its API contract.
 
@@ -30,3 +30,16 @@ The baseline must fail with `-Werror=redundant-decls`. The fixed header must
 pass with the same diagnostics. Both objects must reference the same libintl
 symbols. Real calls through function pointers must produce the same result.
 The native C++ preprocessed tokens must remain identical.
+
+## Runtime-only configuration
+
+The recipe configures `gettext-runtime` rather than the full gettext tree.
+It retains the runtime and intl configure checks and the parent configuration
+header required by intl, without configuring unrelated tools and text styling.
+The package revision is unchanged; compatible existing packages remain reusable.
+
+A Darwin arm64 bootstrap build using Clang produced an identical installed
+header and shared library compared with the full-tree configuration. Static
+archive members matched; archive timestamps differed. A native locale consumer
+passed against the staged candidate library. AArch64 cross-package and target execution remain
+unverified for this configuration change.

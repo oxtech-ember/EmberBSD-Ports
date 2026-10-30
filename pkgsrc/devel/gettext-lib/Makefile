@@ -21,6 +21,8 @@ CFLAGS.gnu-iconv+=	-DHAVE_GNU_ICONV
 INSTALL_MAKE_FLAGS=	${MAKE_FLAGS} localedir=${EGDIR}
 INSTALL_MAKE_FLAGS+=	includedir=${PREFIX}/include/gettext
 
+# The intl make dependencies also require gettext-runtime/config.h.
+CONFIGURE_DIRS=		gettext-runtime
 BUILD_DIRS=		gettext-runtime/intl
 
 .include "../../converters/libiconv/buildlink3.mk"
