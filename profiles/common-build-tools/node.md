@@ -35,3 +35,12 @@ remain separate checks.
 The GC regression retains the timeout callback and complete collection condition while permitting peer `ECONNRESET`, including aggregate errors only when every child matches. Run `tests/node-gc-net-timeout.py --help` with the installed selected host Node and the release archive. The Electron 44 to 45 transition is in progress: its target runtime and host tools are being moved to this common Node26 source and provider; the existing Electron 44 source pin remains until that transition is complete.
 
 On macOS, Node’s `--build-sea` produces an unsigned executable. The host OS signing service must ad-hoc sign it (`codesign --sign -`) before execution, as documented in [Node SEA instructions](https://nodejs.org/api/single-executable-applications.html); the signer does not select the compiler or linker.
+
+The Node GN integration accepts an optional `node_embedder_cppheap_pointer_tag`
+selected by the embedder. With no selection, standalone Node retains V8's
+default tag. Sandboxed embedders must select a non-overlapping tag and check
+their own wrapper ranges. The internal embedder ESM callbacks retain Node's
+per-realm handlers even when the embedder owns isolate callbacks. The native
+regression `tests/node-embedder-runtime.py` requires the selected Node and
+cctest binaries and their build work, and exercises both default and
+embedder-owned ESM callbacks and concurrent worker teardown.

@@ -1,0 +1,60 @@
+# Origin: EmberBSD contributors (AI-assisted). Exercise embedder ESM callbacks.
+--- test/cctest/test_environment.cc.orig
++++ test/cctest/test_environment.cc
+@@ -1603,3 +1603,56 @@
+ 
+   node::SetAbortHandler(old);
+ }
++
++namespace {
++int embedder_dynamic_calls = 0;
++int embedder_meta_calls = 0;
++v8::MaybeLocal<v8::Promise> EmbedderDynamicImport(
++    v8::Local<v8::Context> context, v8::Local<v8::Data>,
++    v8::Local<v8::Value>, v8::Local<v8::String>,
++    v8::ModuleImportPhase, v8::Local<v8::FixedArray>) {
++  ++embedder_dynamic_calls;
++  auto resolver = v8::Promise::Resolver::New(context).ToLocalChecked();
++  resolver->Resolve(context, v8::Integer::New(v8::Isolate::GetCurrent(), 42)).Check();
++  return resolver->GetPromise();
++}
++void EmbedderImportMeta(v8::Local<v8::Context> context,
++                        v8::Local<v8::Module>, v8::Local<v8::Object> meta) {
++  ++embedder_meta_calls;
++  meta->CreateDataProperty(context,
++      v8::String::NewFromUtf8Literal(v8::Isolate::GetCurrent(), "marker"),
++      v8::Integer::New(v8::Isolate::GetCurrent(), 17)).Check();
++}
++}  // namespace
++
++TEST_F(EnvironmentTest, NoRegisterESMLoaderPreservesEmbedderCallbacks) {
++  v8::HandleScope handle_scope(isolate_);
++  v8::Local<v8::Context> context = node::NewContext(isolate_);
++  v8::Context::Scope context_scope(context);
++  embedder_dynamic_calls = embedder_meta_calls = 0;
++  isolate_->SetHostImportModuleWithPhaseDynamicallyCallback(EmbedderDynamicImport);
++  isolate_->SetHostInitializeImportMetaObjectCallback(EmbedderImportMeta);
++  auto flags = static_cast<node::EnvironmentFlags::Flags>(
++      node::EnvironmentFlags::kDefaultFlags | node::EnvironmentFlags::kNoRegisterESMLoader);
++  std::unique_ptr<node::Environment, decltype(&node::FreeEnvironment)> env(
++      node::CreateEnvironment(isolate_data_, context, {}, {}, flags), node::FreeEnvironment);
++  node::ModuleData entry;
++  entry.set_source("export const marker = import.meta.marker; export const pending = import('embedder-test');");
++  entry.set_format(node::ModuleFormat::kModule);
++  entry.set_resource_name("embedded:no-register-test.mjs");
++  v8::Local<v8::Value> result = node::LoadEnvironment(env.get(), &entry).ToLocalChecked();
++  EXPECT_FALSE(env->principal_realm()->host_import_module_dynamically_callback().IsEmpty());
++  EXPECT_FALSE(env->principal_realm()->host_initialize_import_meta_object_callback().IsEmpty());
++  auto exports = result.As<v8::Object>();
++  auto marker = exports->Get(context, v8::String::NewFromUtf8Literal(isolate_, "marker")).ToLocalChecked();
++  EXPECT_EQ(marker.As<v8::Int32>()->Value(), 17);
++  auto pending = exports->Get(context, v8::String::NewFromUtf8Literal(isolate_, "pending")).ToLocalChecked().As<v8::Promise>();
++  isolate_->PerformMicrotaskCheckpoint();
++  EXPECT_EQ(pending->State(), v8::Promise::kFulfilled);
++  EXPECT_EQ(pending->Result().As<v8::Int32>()->Value(), 42);
++  EXPECT_EQ(embedder_dynamic_calls, 1);
++  EXPECT_EQ(embedder_meta_calls, 1);
++  env.reset();
++  isolate_->SetHostImportModuleWithPhaseDynamicallyCallback(nullptr);
++  isolate_->SetHostInitializeImportMetaObjectCallback(nullptr);
++}

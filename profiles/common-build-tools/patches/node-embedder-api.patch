@@ -1,0 +1,240 @@
+# Origin: Electron contributors Samuel Attard and Calvin Watford; adapted for
+# common Node 26 by EmberBSD (AI-assisted). Preserve Node and embedder behavior.
+--- src/module_wrap.h.orig
++++ src/module_wrap.h
+@@ -21,6 +21,10 @@
+ }
+ 
+ namespace loader {
++
++NODE_EXTERN_PRIVATE v8::MaybeLocal<v8::Promise> ImportModuleDynamicallyWithPhase(
++    v8::Local<v8::Context>, v8::Local<v8::Data>, v8::Local<v8::Value>,
++    v8::Local<v8::String>, v8::ModuleImportPhase, v8::Local<v8::FixedArray>);
+ 
+ enum ScriptType : int {
+   kScript,
+@@ -93,6 +97,8 @@
+ 
+ class ModuleWrap : public BaseObject {
+  public:
++  static NODE_EXTERN_PRIVATE bool IsNodeModule(
++      node::Environment*, v8::Local<v8::Module>);
+   enum InternalFields {
+     kModuleSlot = BaseObject::kInternalFieldCount,
+     kModuleSourceObjectSlot,
+--- src/module_wrap.cc.orig
++++ src/module_wrap.cc
+@@ -184,6 +184,10 @@
+   return obj.As<Object>()->GetCreationContextChecked();
+ }
+ 
++bool ModuleWrap::IsNodeModule(Environment* env, Local<Module> module) {
++  return GetFromModule(env, module) != nullptr;
++}
++
+ ModuleWrap* ModuleWrap::GetFromModule(Environment* env,
+                                       Local<Module> module) {
+   auto range = env->hash_to_module_map.equal_range(module->GetIdentityHash());
+@@ -1123,7 +1127,7 @@
+   return Just(dependent->linked_module_wraps_[module_request_index]);
+ }
+ 
+-static MaybeLocal<Promise> ImportModuleDynamicallyWithPhase(
++MaybeLocal<Promise> ImportModuleDynamicallyWithPhase(
+     Local<Context> context,
+     Local<Data> host_defined_options,
+     Local<Value> resource_name,
+@@ -1211,14 +1215,16 @@
+   Realm* realm = Realm::GetCurrent(args);
+   HandleScope handle_scope(isolate);
+ 
+-  CHECK_EQ(args.Length(), 1);
++  CHECK_EQ(args.Length(), 2);
+   CHECK(args[0]->IsFunction());
+   Local<Function> import_callback = args[0].As<Function>();
+   realm->set_host_import_module_dynamically_callback(import_callback);
+ 
+-  isolate->SetHostImportModuleDynamicallyCallback(ImportModuleDynamically);
+-  isolate->SetHostImportModuleWithPhaseDynamicallyCallback(
+-      ImportModuleDynamicallyWithPhase);
++  if (args[1]->IsBoolean() && args[1]->BooleanValue(isolate)) {
++    isolate->SetHostImportModuleDynamicallyCallback(ImportModuleDynamically);
++    isolate->SetHostImportModuleWithPhaseDynamicallyCallback(
++        ImportModuleDynamicallyWithPhase);
++  }
+ }
+ 
+ void ModuleWrap::SetImportMetaResolveInitializer(
+@@ -1433,13 +1439,14 @@
+   Realm* realm = Realm::GetCurrent(args);
+   Isolate* isolate = realm->isolate();
+ 
+-  CHECK_EQ(args.Length(), 1);
++  CHECK_EQ(args.Length(), 2);
+   CHECK(args[0]->IsFunction());
+   Local<Function> import_meta_callback = args[0].As<Function>();
+   realm->set_host_initialize_import_meta_object_callback(import_meta_callback);
+ 
+-  isolate->SetHostInitializeImportMetaObjectCallback(
+-      HostInitializeImportMetaObjectCallback);
++  if (args[1]->IsBoolean() && args[1]->BooleanValue(isolate))
++    isolate->SetHostInitializeImportMetaObjectCallback(
++        HostInitializeImportMetaObjectCallback);
+ }
+ 
+ MaybeLocal<Value> ModuleWrap::SyntheticModuleEvaluationStepsCallback(
+--- src/tracing/trace_event_perfetto.h.orig
++++ src/tracing/trace_event_perfetto.h
+@@ -47,7 +47,9 @@
+   );  // NOLINT(whitespace/parens)
+ // clang-format on
+ 
++#if !defined(NODE_PERFETTO_NO_GLOBAL_CATEGORY_IMPORT)
+ PERFETTO_USE_CATEGORIES_FROM_NAMESPACE(node);
++#endif
+ 
+ namespace node::tracing {
+ void RegisterPerfettoTrackEvent();
+--- src/cppgc_helpers.h.orig
++++ src/cppgc_helpers.h
+@@ -14,6 +14,16 @@
+ #include "v8.h"
+ 
+ namespace node {
++
++#if defined(EMBEDDER_CPPHEAP_POINTER_TAG)
++constexpr v8::CppHeapPointerTag kNodeCppHeapPointerTag =
++    static_cast<v8::CppHeapPointerTag>(EMBEDDER_CPPHEAP_POINTER_TAG);
++static_assert(v8::kEmbedderWrappableTagRange.Contains(kNodeCppHeapPointerTag));
++#else
++constexpr v8::CppHeapPointerTag kNodeCppHeapPointerTag =
++    v8::CppHeapPointerTag::kDefaultTag;
++#endif
++
+ 
+ class Environment;
+ class Realm;
+--- src/cppgc_helpers-inl.h.orig
++++ src/cppgc_helpers-inl.h
+@@ -15,7 +15,7 @@
+   ptr->traced_reference_ = v8::TracedReference<v8::Object>(isolate, obj);
+   // Note that ptr must be of concrete type T in Wrap.
+   auto* wrappable = static_cast<v8::Object::Wrappable*>(ptr);
+-  v8::Object::Wrap<v8::CppHeapPointerTag::kDefaultTag>(isolate, obj, wrappable);
++  v8::Object::Wrap<kNodeCppHeapPointerTag>(isolate, obj, wrappable);
+   // Keep the layout consistent with BaseObjects.
+   obj->SetAlignedPointerInInternalField(
+       kEmbedderType,
+--- src/env.h.orig
++++ src/env.h
+@@ -296,9 +296,6 @@
+   size_t environment_count_ = 0;
+   PerIsolateWrapperData* wrapper_data_;
+ 
+-  static Mutex isolate_data_mutex_;
+-  static std::unordered_map<uint16_t, std::unique_ptr<PerIsolateWrapperData>>
+-      wrapper_data_map_;
+ };
+ 
+ struct ContextInfo {
+--- src/env.cc.orig
++++ src/env.cc
+@@ -592,9 +592,19 @@
+ // this layout only to distinguish internally how the memory of a Node.js
+ // wrapper is managed or whether a wrapper is managed by Node.js.
+ constexpr uint16_t kDefaultCppGCEmbedderID = 0x90de;
+-Mutex IsolateData::isolate_data_mutex_;
+-std::unordered_map<uint16_t, std::unique_ptr<PerIsolateWrapperData>>
+-    IsolateData::wrapper_data_map_;
++namespace {
++struct WrapperDataState {
++  Mutex mutex;
++  std::unordered_map<uint16_t, std::unique_ptr<PerIsolateWrapperData>> data;
++};
++
++// V8 may retain pointers to wrapper IDs after IsolateData is destroyed.
++// Keep the IDs and their lock alive until process exit.
++WrapperDataState& GetWrapperDataState() {
++  static WrapperDataState* const state = new WrapperDataState;
++  return *state;
++}
++}  // namespace
+ 
+ IsolateData* IsolateData::CreateIsolateData(
+     Isolate* isolate,
+@@ -633,10 +643,11 @@
+     // the ids in a static map to ensure pointers to them are still valid
+     // then. In practice there should be very few variants of the cppgc id
+     // in one process so the size of this map should be very small.
+-    node::Mutex::ScopedLock lock(isolate_data_mutex_);
+-    auto it = wrapper_data_map_.find(cppgc_id);
+-    if (it == wrapper_data_map_.end()) {
+-      auto pair = wrapper_data_map_.emplace(
++    auto& state = GetWrapperDataState();
++    node::Mutex::ScopedLock lock(state.mutex);
++    auto it = state.data.find(cppgc_id);
++    if (it == state.data.end()) {
++      auto pair = state.data.emplace(
+           cppgc_id, new PerIsolateWrapperData{cppgc_id, non_cppgc_id});
+       it = pair.first;
+     }
+@@ -659,7 +670,7 @@
+ void SetCppgcReference(Isolate* isolate,
+                        Local<Object> object,
+                        v8::Object::Wrappable* wrappable) {
+-  v8::Object::Wrap<v8::CppHeapPointerTag::kDefaultTag>(
++  v8::Object::Wrap<kNodeCppHeapPointerTag>(
+       isolate, object, wrappable);
+ }
+ 
+--- lib/internal/modules/esm/utils.js.orig
++++ lib/internal/modules/esm/utils.js
+@@ -37,7 +37,7 @@
+   ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING,
+   ERR_INVALID_ARG_VALUE,
+ } = require('internal/errors').codes;
+-const { getOptionValue } = require('internal/options');
++const { getOptionValue, getEmbedderOptions } = require('internal/options');
+ const {
+   emitExperimentalWarning,
+   kEmptyObject,
+@@ -302,12 +302,13 @@
+  *   should be spawned later.
+  */
+ function initializeESM(shouldSpawnLoaderHookWorker = true) {
++  const shouldSetOnIsolate = !getEmbedderOptions().shouldNotRegisterESMLoader;
+   _shouldSpawnLoaderHookWorker = shouldSpawnLoaderHookWorker;
+   initializeDefaultConditions();
+   // Setup per-realm callbacks that locate data or callbacks that we keep
+   // track of for different ESM modules.
+-  setInitializeImportMetaObjectCallback(initializeImportMetaObject);
+-  setImportModuleDynamicallyCallback(importModuleDynamicallyCallback);
++  setInitializeImportMetaObjectCallback(initializeImportMetaObject, shouldSetOnIsolate);
++  setImportModuleDynamicallyCallback(importModuleDynamicallyCallback, shouldSetOnIsolate);
+ }
+ 
+ /**
+--- node.gni.orig
++++ node.gni
+@@ -16,6 +16,9 @@
+   node_host_runtime_launcher = ""
+   node_host_runtime_view = ""
+   node_host_runtime_inputs = []
++
++  # Embedders may reserve a CppHeap pointer tag in the V8 embedder range.
++  node_embedder_cppheap_pointer_tag = ""
+ 
+   # Logical target loader and its selected sysroot input.
+   node_shared_undici_path = ""
+--- unofficial.gni.orig
++++ unofficial.gni
+@@ -86,6 +86,9 @@
+       "NODE_WANT_INTERNALS=1",
+       "NODE_EMBEDDER_MODULE_VERSION=$node_module_version",
+     ]
++    if (node_embedder_cppheap_pointer_tag != "") {
++      defines += [ "EMBEDDER_CPPHEAP_POINTER_TAG=$node_embedder_cppheap_pointer_tag" ]
++    }
+     configs = [
+       ":node_features",
+       "$node_v8_path:external_config",
