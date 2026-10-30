@@ -8,10 +8,10 @@ include/lz4file.h
 include/lz4frame.h
 include/lz4frame_static.h
 include/lz4hc.h
-lib/cmake/lz4/lz4Config.cmake
-lib/cmake/lz4/lz4ConfigVersion.cmake
-lib/cmake/lz4/lz4Targets-release.cmake
-lib/cmake/lz4/lz4Targets.cmake
+${PLIST.cmake}lib/cmake/lz4/lz4Config.cmake
+${PLIST.cmake}lib/cmake/lz4/lz4ConfigVersion.cmake
+${PLIST.cmake}lib/cmake/lz4/lz4Targets-release.cmake
+${PLIST.cmake}lib/cmake/lz4/lz4Targets.cmake
 lib/liblz4.a
 lib/liblz4.so
 lib/liblz4.so.1
