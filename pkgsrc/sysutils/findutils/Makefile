@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.41 2022/02/17 15:42:00 wiz Exp $
 
 DISTNAME=	findutils-4.11.0
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	sysutils
 MASTER_SITES=	${MASTER_SITE_GNU:=findutils/}
 EXTRACT_SUFX=	.tar.xz
@@ -22,6 +22,13 @@ CONFIGURE_ARGS+=	--program-prefix=g
 CONFIGURE_ARGS+=	--localstatedir=/var/run
 
 AUTO_MKDIRS=		yes
+
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
+# The installed updatedb runs sort on the target, while configure finds the
+# build tools directory copy.
+CONFIGURE_ENV+=		ac_cv_path_SORT=/usr/bin/sort
+.endif
 
 .if defined(EMBERBSD_DARWIN_UNAME)
 CONFIGURE_ENV+=		EMBERBSD_CONFIGURE_SDK=yes
