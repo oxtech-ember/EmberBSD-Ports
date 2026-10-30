@@ -1,0 +1,88 @@
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -11,12 +11,11 @@
+ use core::str::{Utf8Error, self};
+ use libc::{c_char, c_void};
+ 
+-const DUMMY_PTR: *mut c_void = 0x1 as *mut c_void;
+-
+ /// A type that represents a `malloc`'d chunk of memory.
+ /// When dropped, a `Malloc` will `free` that memory.
+ pub struct Malloc<T: ?Sized> {
+     ptr: *mut T,
++    owned: bool,
+ }
+ 
+ impl<T> Malloc<T> {
+@@ -26,7 +25,7 @@
+     Unsafe because there must be a valid instance of `T` at `ptr`.
+     */
+     pub unsafe fn from_ptr(ptr: *mut T) -> Malloc<T> {
+-        Malloc { ptr: ptr }
++        Malloc { ptr: ptr, owned: true }
+     }
+ }
+ 
+@@ -42,11 +41,12 @@
+     will specially handle null, 0-length buffers safely.
+     */
+     pub unsafe fn from_array(ptr: *mut T, len: usize) -> Malloc<[T]> {
+-        // Even a 0-size slice cannot be null, so just use another pointer
+-        let ptr = if ptr.is_null() && len == 0 { DUMMY_PTR as *mut T }
+-                  else { ptr };
++        // A zero-length slice still needs a non-null, properly aligned pointer.
++        let owned = !ptr.is_null();
++        assert!(owned || len == 0);
++        let ptr = if owned { ptr } else { ptr::NonNull::<T>::dangling().as_ptr() };
+         let slice = slice::from_raw_parts(ptr, len);
+-        Malloc { ptr: slice as *const [T] as *mut [T] }
++        Malloc { ptr: slice as *const [T] as *mut [T], owned }
+     }
+ }
+ 
+@@ -65,7 +65,7 @@
+         let len = libc::strlen(ptr);
+         let slice = slice::from_raw_parts(ptr as *mut u8, len);
+         str::from_utf8(slice).map(|s| {
+-            Malloc { ptr: s as *const str as *mut str }
++            Malloc { ptr: s as *const str as *mut str, owned: true }
+         })
+     }
+ }
+@@ -80,7 +80,7 @@
+ 
+ impl<T: ?Sized> Drop for Malloc<T> {
+     fn drop(&mut self) {
+-        if (self.ptr as *mut c_void) != DUMMY_PTR {
++        if self.owned {
+             unsafe {
+                 ptr::drop_in_place(self.ptr);
+                 libc::free(self.ptr as *mut c_void);
+@@ -172,3 +172,27 @@
+         assert_eq!(Rc::strong_count(&num), 1);
+     }
+ }
++
++#[cfg(test)]
++mod alignment_regression {
++    use super::Malloc;
++    use core::{mem, ptr};
++    use std::rc::Rc;
++    #[repr(align(64))] struct Aligned(u8);
++    #[test] fn null_empty_is_aligned_and_nonowned() {
++        let empty = unsafe { Malloc::<[Aligned]>::from_array(ptr::null_mut(), 0) };
++        assert_eq!(empty.as_ptr() as usize % mem::align_of::<Aligned>(), 0);
++        assert!(!empty.owned); assert!(empty.is_empty()); drop(empty);
++    }
++    #[test] fn nonnull_empty_keeps_ownership() {
++        let ptr = unsafe { libc::malloc(mem::size_of::<u64>()) as *mut u64 }; assert!(!ptr.is_null());
++        let empty = unsafe { Malloc::<[u64]>::from_array(ptr, 0) };
++        assert!(empty.owned); drop(empty);
++    }
++    #[test] fn nonempty_drops_elements() {
++        let value=Rc::new(7); let ptr=unsafe { libc::malloc(mem::size_of::<Rc<i32>>()) as *mut Rc<i32> }; assert!(!ptr.is_null());
++        unsafe { ptr::write(ptr,value.clone()); }
++        let buf=unsafe { Malloc::from_array(ptr,1) }; assert_eq!(Rc::strong_count(&value),2);
++        drop(buf); assert_eq!(Rc::strong_count(&value),1);
++    }
++}

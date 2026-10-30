@@ -170,6 +170,15 @@
     },
     "patch": "libloading-0.9.0.patch"
   },
+  "malloc_buf-1.0.0": {
+    "files": {
+      "src/lib.rs": {
+        "before": "b7d7e024791f77f33d9a95423b004b5751391e2c2d8fe3c90c989b5ae3a85cb5",
+        "after": "a024abc4b0979867eaf714811f351d6246c0015e1825033545959b811b1c9c43"
+      }
+    },
+    "patch": "malloc_buf-1.0.0.patch"
+  },
   "miette-7.6.0": {
     "files": {
       "Cargo.toml": {

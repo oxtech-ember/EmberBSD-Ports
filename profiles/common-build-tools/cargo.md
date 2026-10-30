@@ -98,6 +98,10 @@ File creation and removal use `/dev/null` patch headers and a null `before` or
 complete staged result before writing. A failed write can leave a partial state;
 the next invocation rejects it rather than assuming it is valid.
 
+The `malloc_buf` 1.0 patch uses an aligned pointer for a null, empty array and
+tracks whether its storage is owned before dropping and freeing it. Its Rust
+layout changes; rebuild consumers when selecting this patched crate.
+
 `tests/cargo-patch-hook.py` checks the common bmake pre-configure hook with a
 real selected-prefix patch tool and a checksum-preserved crate fixture.
 `tests/cargo-syn3.py` runs named offline macro consumers against a prepared
