@@ -17,10 +17,6 @@ BUILDLINK_ABI_DEPENDS.qt6-qtbase+= qt6-qtbase>=6.12.0nb5
 # The installed image needs the runtime; CMake consumers also need the SDK
 # in the build-host sysroot. BUILD_DEPENDS remains a target cross dependency.
 .include "../../x11/qt6-qtbase-devel/buildlink3.mk"
-# Target Qt CMake packages locate moc, rcc and other generators only through
-# QT_HOST_PATH; consumers must select the same native Qt as the Qt modules.
-.include "../../x11/qt6-qtbase/host-tools.mk"
-CMAKE_CONFIGURE_ARGS+= -DQT_HOST_PATH:PATH=${EMBERBSD_QT_HOST_PATH}
 # Qt libraries need other Qt libraries from qt6/lib through their RPATH.
 # The cross GNU ld has no sysroot, so it resolves them only through
 # rpath-link.
