@@ -2,7 +2,7 @@
 
 DISTNAME=	qtbase-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qtbase-${QTVERSION}
-PKGREVISION=	11
+PKGREVISION=	12
 COMMENT=	C++ X GUI toolkit
 CATEGORIES=	x11
 
@@ -258,6 +258,11 @@ qt-target-metadata:
 .endif
 
 .include "options.mk"
+
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && !empty(PKG_OPTIONS:Mhost-tools)
+# CMake removes this build-tree rpath during installation.
+BUILDLINK_PASSTHRU_RPATHDIRS+= ${WRKSRC}/lib
+.endif
 
 .if empty(PKG_OPTIONS:Mhost-tools)
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"

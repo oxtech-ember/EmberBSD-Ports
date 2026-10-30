@@ -22,8 +22,8 @@ BUILDLINK_ABI_DEPENDS.qt6-qtbase+= qt6-qtbase>=6.12.0nb5
 # rpath-link.
 LDFLAGS+=	-Wl,-rpath-link,${CROSS_DESTDIR}/usr/pkg/qt6/lib
 .else
-BUILDLINK_API_DEPENDS.qt6-qtbase+= qt6-qtbase>=6.12.0nb11
-BUILDLINK_ABI_DEPENDS.qt6-qtbase+= qt6-qtbase>=6.12.0nb11
+BUILDLINK_API_DEPENDS.qt6-qtbase+= qt6-qtbase>=6.12.0nb12
+BUILDLINK_ABI_DEPENDS.qt6-qtbase+= qt6-qtbase>=6.12.0nb12
 .endif
 
 BUILDLINK_INCDIRS.qt6-qtbase+=	qt6/include
