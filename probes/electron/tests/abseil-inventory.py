@@ -24,10 +24,11 @@ with TemporaryDirectory() as temporary:
     class Process:
         def capture(self,args,env):
             if args[0]=='pkg-config':return SimpleNamespace(stdout=b'20260817.0\n')
+            assert args[0]==str(root/'tools/sbin/pkg_info'),args[0]
             pkg=Path(args[args.index('-K')+1]);name='host.inc' if pkg==host_pkg.parent else 'target.h'
             return SimpleNamespace(stdout=('/prefix/include/absl/strings/'+name+'\n').encode())
     controller.protobuf_package_source=lambda *args,**kwargs:None
-    options=SimpleNamespace(shared_abseil=True,sysroot=sysroot,ports_source=ports,host_buildlink_pkgsrc=export)
+    options=SimpleNamespace(shared_abseil=True,host_prefix=root/'tools',sysroot=sysroot,ports_source=ports,host_buildlink_pkgsrc=export)
     env={'EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK':str(work)}
     result=controller.common_abseil(options,{'process':Process()},Native(),env,host)
     assert result['emberbsd_abseil_host_headers']==['absl/strings/host.inc']

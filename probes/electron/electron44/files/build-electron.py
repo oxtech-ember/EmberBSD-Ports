@@ -711,7 +711,7 @@ def common_abseil(options, sdk, native, environment, buildlink):
     values = {}
     for role, package, prefix in (('host', host_packages[0], Path(buildlink)),
                                   ('target', target_packages[0], options.sysroot / 'usr/pkg')):
-        result = sdk['process'].capture([native.tool('pkg_info'), '-K', str(package.parent),
+        result = sdk['process'].capture([str(options.host_prefix / 'sbin/pkg_info'), '-K', str(package.parent),
                                          '-qL', package.name], env=environment).stdout.decode('utf-8', 'strict')
         headers = []
         for line in result.splitlines():
