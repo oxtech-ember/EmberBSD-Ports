@@ -81,3 +81,14 @@ This is a short graphics regression, not a cooling, HDMI or Plasma acceptance.
 Sources: [QQuickView](https://doc.qt.io/qt-6/qquickview.html),
 [QQuickWindow](https://doc.qt.io/qt-6/qquickwindow.html), and
 [the migration sequence](../../MIGRATION.md).
+
+## EGLFS/KMS selection
+
+The runner defaults to the original Wayland/V3D path. For an EGLFS session,
+set `EMBER_QTQUICK_QPA=eglfs`, `EMBER_QTQUICK_EXPECTED_RENDERER` to the
+expected renderer prefix, and `EMBER_QTQUICK_KMS_CONFIG` to an absolute Qt
+EGLFS KMS configuration selecting the intended DRM card and output. The
+caller must arrange an exclusive, recoverable DRM/VT session. The test uses
+fullscreen geometry and checks the same scene and layer samples for all 16
+phases. Renderer selection and pixel validation do not themselves prove DRM
+master release or console restoration; verify both after the process exits.

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
-// Origin: EmberBSD (AI-assisted). Compiled QML module with real V3D scene graph.
+// Origin: EmberBSD (AI-assisted). Compiled QML module with a real EGL scene graph.
+#include "image-check.h"
 #include <QDebug>
 #include <QGuiApplication>
 #include <QImage>
@@ -33,8 +34,11 @@ int main(int argc, char **argv)
     QSurfaceFormat::setDefaultFormat(format);
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
     QGuiApplication app(argc, argv);
-    if (QGuiApplication::platformName() != QStringLiteral("wayland")) {
-        qCritical() << "FAIL: actual Wayland QPA required";
+    const char *requested = std::getenv("EMBER_QTQUICK_EXPECTED_QPA");
+    const QString expectedQpa = requested && *requested ? QString::fromLatin1(requested) : QStringLiteral("wayland");
+    if ((expectedQpa != QStringLiteral("wayland") && expectedQpa != QStringLiteral("eglfs")) ||
+        QGuiApplication::platformName() != expectedQpa) {
+        qCritical() << "FAIL: actual selected QPA required";
         return 2;
     }
     const bool wrongPixel = app.arguments().contains(QStringLiteral("--wrong-pixel"));
@@ -45,7 +49,9 @@ int main(int argc, char **argv)
     {
         bool pending = false;
         QQuickView view;
-        view.setTitle(QStringLiteral("EmberBSD Qt Quick V3D check"));
+        if (expectedQpa == QStringLiteral("eglfs"))
+            view.setResizeMode(QQuickView::SizeRootObjectToView);
+        view.setTitle(QStringLiteral("EmberBSD Qt Quick GPU check"));
         QObject::connect(&view, &QQuickWindow::beforeRendering, &view, [&] {
             if (renderer.load() != 0)
                 return;
@@ -74,27 +80,17 @@ int main(int argc, char **argv)
             pending = true;
             QTimer::singleShot(100, &view, [&] {
                 if (renderer.load() != 1) {
-                    qCritical() << "FAIL: Qt Quick did not use EGL/V3D";
+                    qCritical() << "FAIL: Qt Quick did not use the selected EGL renderer";
                     app.exit(3);
                     return;
                 }
                 const QImage image = view.grabWindow();
                 const std::array<QColor, 4> colors = {Qt::red, Qt::blue, Qt::magenta, Qt::cyan};
                 const QColor expected = wrongPixel ? QColor(17, 17, 17) : colors[phase % 4];
-                if (image.size() != QSize(640, 400)) {
-                    qCritical() << "FAIL: Qt Quick image geometry" << image.size();
+                if (!scenePixelsMatch(image, expected)) {
+                    qCritical() << "FAIL: Qt Quick pixel mismatch";
                     app.exit(3);
                     return;
-                }
-                for (int y = 0; y < 32; ++y) {
-                    for (int x = 0; x < 32; ++x) {
-                        if (image.pixelColor(304 + x, 184 + y) != expected
-                            || image.pixelColor(32 + x, 32 + y) != QColor(Qt::green)) {
-                            qCritical() << "FAIL: Qt Quick pixel mismatch";
-                            app.exit(3);
-                            return;
-                        }
-                    }
                 }
                 std::printf("phase=%u scene-pixels=1024 layer-pixels=1024\n", ++phase);
                 if (phase == 16) {
@@ -118,11 +114,16 @@ int main(int argc, char **argv)
             app.exit(4);
         });
         deadline.start(20000);
-        view.show();
+        if (expectedQpa == QStringLiteral("eglfs"))
+            view.showFullScreen();
+        else
+            view.show();
         status = app.exec();
     }
     if (status == 0 && phase == 16)
-        std::puts("PASS: Qt Quick V3D QML scene/layer pixels and window destruction");
+        std::puts(expectedQpa == QStringLiteral("wayland")
+                  ? "PASS: Qt Quick V3D QML scene/layer pixels and window destruction"
+                  : "PASS: Qt Quick EGLFS QML scene/layer pixels and window destruction");
     else if (status == 0)
         status = 5;
     return status;

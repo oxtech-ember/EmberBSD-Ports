@@ -5,8 +5,13 @@ set -eu
 [ "$#" = 2 ] || { echo "Usage: $0 ABSOLUTE_BINARY NEW_LOG_DIRECTORY" >&2; exit 2; }
 binary=$1 logs=$2
 case "$binary:$logs" in /*:/*) ;; *) echo 'Absolute paths required' >&2; exit 2;; esac
-: "${XDG_RUNTIME_DIR:?An existing private Wayland runtime directory is required}"
-: "${WAYLAND_DISPLAY:?An existing Wayland display is required}"
+qpa=${EMBER_QTQUICK_QPA:-wayland}
+renderer=${EMBER_QTQUICK_EXPECTED_RENDERER:-V3D }
+case "$qpa" in
+    wayland) : "${XDG_RUNTIME_DIR:?An existing private Wayland runtime directory is required}"; : "${WAYLAND_DISPLAY:?An existing Wayland display is required}" ;;
+    eglfs) : "${EMBER_QTQUICK_KMS_CONFIG:?An absolute EGLFS KMS configuration is required}"; case "$EMBER_QTQUICK_KMS_CONFIG" in /*) ;; *) exit 2;; esac ;;
+    *) echo 'Expected wayland or eglfs QPA' >&2; exit 2;;
+esac
 mkdir "$logs"
 run()
 {
@@ -14,30 +19,33 @@ run()
     shift
     /usr/bin/timeout -k 5 30 /usr/bin/env -i \
         PATH=/usr/pkg/bin:/usr/bin:/bin HOME="$HOME" \
-        XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" WAYLAND_DISPLAY="$WAYLAND_DISPLAY" \
+        XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-}" WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-}" \
+        EMBER_QTQUICK_EXPECTED_QPA="$qpa" EMBER_QTQUICK_EXPECTED_RENDERER="$renderer" \
+        QT_QPA_EGLFS_KMS_CONFIG="${EMBER_QTQUICK_KMS_CONFIG:-}" \
         QT_QPA_PLATFORM="$platform" QT_WAYLAND_CLIENT_BUFFER_INTEGRATION=wayland-egl \
         QT_WAYLAND_DISABLE_WINDOWDECORATION=1 \
         "$binary" "$@"
 }
 for name in normal restart; do
-    run wayland > "$logs/$name.log" 2>&1
-    grep -q '^renderer=V3D ' "$logs/$name.log"
-    grep -q '^PASS: Qt Quick V3D QML scene/layer pixels and window destruction$' "$logs/$name.log"
+    run "$qpa" > "$logs/$name.log" 2>&1
+    grep -F "renderer=$renderer" "$logs/$name.log" >/dev/null
+    if [ "$qpa" = wayland ]; then result=V3D; else result=EGLFS; fi
+    grep -F -x "PASS: Qt Quick $result QML scene/layer pixels and window destruction" "$logs/$name.log" >/dev/null
     awk '/^phase=/ { n++; if ($0 != "phase=" n " scene-pixels=1024 layer-pixels=1024") exit 1 }
         END { if (n != 16) exit 1 }' "$logs/$name.log"
 done
 status=0
-run wayland --wrong-pixel > "$logs/wrong-pixel.log" 2>&1 || status=$?
+run "$qpa" --wrong-pixel > "$logs/wrong-pixel.log" 2>&1 || status=$?
 [ "$status" = 3 ]
 grep -q 'FAIL: Qt Quick pixel mismatch' "$logs/wrong-pixel.log"
 ! grep -q '^PASS:' "$logs/wrong-pixel.log"
 status=0
 run minimal > "$logs/wrong-platform.log" 2>&1 || status=$?
 [ "$status" = 2 ]
-grep -q 'FAIL: actual Wayland QPA required' "$logs/wrong-platform.log"
+grep -q 'FAIL: actual selected QPA required' "$logs/wrong-platform.log"
 ! grep -q '^PASS:' "$logs/wrong-platform.log"
 status=0
-run wayland --missing-module > "$logs/missing-module.log" 2>&1 || status=$?
+run "$qpa" --missing-module > "$logs/missing-module.log" 2>&1 || status=$?
 [ "$status" = 2 ]
 grep -q 'FAIL: QML module load' "$logs/missing-module.log"
 ! grep -q '^PASS:' "$logs/missing-module.log"
