@@ -1,0 +1,50 @@
+# Origin: EmberBSD (AI-assisted). Preserve V8 compilation cache observations for wrapped functions.
+--- src/api/api.cc.orig
++++ src/api/api.cc
+@@ -2677,7 +2677,8 @@
+   bool has_exception =
+       !i::Compiler::GetWrappedFunction(
+            i_isolate, Utils::OpenHandle(*source->source_string), context,
+-           script_details, cached_data.get(), options, no_cache_reason)
++           script_details, cached_data.get(), options, no_cache_reason,
++           &source->compilation_details)
+            .ToHandle(&result);
+   if (options & kConsumeCodeCache) {
+     source->cached_data->rejected = cached_data->rejected();
+--- src/codegen/compiler.cc.orig
++++ src/codegen/compiler.cc
+@@ -4166,10 +4166,10 @@
+     Isolate* isolate, Handle<String> source, DirectHandle<Context> context,
+     const ScriptDetails& script_details, AlignedCachedData* cached_data,
+     v8::ScriptCompiler::CompileOptions compile_options,
+-    v8::ScriptCompiler::NoCacheReason no_cache_reason) {
+-  ScriptCompiler::CompilationDetails compilation_details;
++    v8::ScriptCompiler::NoCacheReason no_cache_reason,
++    v8::ScriptCompiler::CompilationDetails* compilation_details) {
+   ScriptCompileTimerScope compile_timer(isolate, no_cache_reason,
+-                                        &compilation_details);
++                                        compilation_details);
+ 
+   if (compile_options & ScriptCompiler::kConsumeCodeCache) {
+     DCHECK(cached_data);
+@@ -4191,6 +4191,8 @@
+   CompilationCacheScript::LookupResult lookup_result =
+       compilation_cache->LookupScript(source, script_details, language_mode);
+   maybe_result = lookup_result.toplevel_sfi();
++  compilation_details->in_memory_cache_result =
++      CategorizeLookupResult(lookup_result);
+   if (maybe_result.ToHandle(&result)) {
+     is_compiled_scope = result->is_compiled_scope(isolate);
+     compile_timer.set_hit_isolate_cache();
+--- src/codegen/compiler.h.orig
++++ src/codegen/compiler.h
+@@ -178,7 +178,8 @@
+       Isolate* isolate, Handle<String> source, DirectHandle<Context> context,
+       const ScriptDetails& script_details, AlignedCachedData* cached_data,
+       v8::ScriptCompiler::CompileOptions compile_options,
+-      v8::ScriptCompiler::NoCacheReason no_cache_reason);
++      v8::ScriptCompiler::NoCacheReason no_cache_reason,
++      v8::ScriptCompiler::CompilationDetails* compilation_details);
+ 
+   // Create a (bound) function for a String source within a context for eval.
+   V8_WARN_UNUSED_RESULT static MaybeDirectHandle<JSFunction>

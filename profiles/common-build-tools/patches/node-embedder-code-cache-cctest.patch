@@ -1,0 +1,163 @@
+--- test/cctest/test_per_process.cc.orig
++++ test/cctest/test_per_process.cc
+@@ -199,3 +199,78 @@
+ }
+ 
+ }  // end namespace
++
++#if (!defined(NDEBUG) || defined(DCHECK_ALWAYS_ON) || defined(NODE_BUILTIN_CACHE_STATUS)) && \
++    (defined(NODE_EMBEDDER_BUILTINS) || defined(NODE_BUILTIN_CACHE_STATUS))
++TEST_F(BuiltinCacheTest, CustomParametersCacheStatus) {
++  RestoreBuiltinCache restore;
++  node::builtins::TearDownExternalizedBuiltinCache();
++  node::builtins::InitializeExternalizedBuiltinCache();
++  v8::HandleScope scope(isolate_);
++  v8::Local<v8::Context> context = v8::Context::New(isolate_);
++  v8::Context::Scope context_scope(context);
++  const char* id = "internal/test/cache_probe";
++  TemporaryBuiltin valid("return parameter + 1;\n");
++  BuiltinLoader loader;
++  Load(loader, id, valid.path());
++  v8::LocalVector<v8::String> params(isolate_);
++  params.push_back(v8::String::NewFromUtf8Literal(isolate_, "parameter"));
++  v8::Local<v8::Function> compiled;
++  ASSERT_TRUE(loader.LookupAndCompileFunction(context, id, &params, nullptr)
++                  .ToLocal(&compiled));
++  EXPECT_FALSE(node::builtins::GetBuiltinCodeCacheStatus().at(id));
++  std::shared_ptr<v8::ScriptCompiler::CachedData> valid_cache(
++      v8::ScriptCompiler::CreateCodeCacheForFunction(compiled));
++  ASSERT_TRUE(valid_cache && valid_cache->length > 0);
++  loader.RefreshCodeCache({{id, BuiltinCodeCacheData(valid_cache)}});
++  isolate_->ClearCachesForTesting();
++  ASSERT_TRUE(loader.LookupAndCompileFunction(context, id, &params, nullptr)
++                  .ToLocal(&compiled));
++  EXPECT_TRUE(node::builtins::GetBuiltinCodeCacheStatus().at(id));
++  BuiltinLoader follower;
++  follower.CopySourceAndCodeCacheReferenceFrom(&loader);
++  ASSERT_TRUE(follower.LookupAndCompileFunction(context, id, &params, nullptr)
++                  .ToLocal(&compiled));
++  EXPECT_FALSE(node::builtins::GetBuiltinCodeCacheStatus().at(id));
++  // A fresh external-source cache is required to load distinct source under
++  // the same ID; loaders retain their original shared source after reset.
++  node::builtins::TearDownExternalizedBuiltinCache();
++  node::builtins::InitializeExternalizedBuiltinCache();
++  TemporaryBuiltin bad_source("return );\n");
++  BuiltinLoader malformed;
++  Load(malformed, id, bad_source.path());
++  {
++    v8::TryCatch caught(isolate_);
++    EXPECT_TRUE(malformed.LookupAndCompileFunction(context, id, &params, nullptr).IsEmpty());
++    EXPECT_TRUE(caught.HasCaught());
++    EXPECT_FALSE(node::builtins::GetBuiltinCodeCacheStatus().at(id));
++  }
++  ASSERT_TRUE(loader.LookupAndCompileFunction(context, id, &params, nullptr)
++                  .ToLocal(&compiled));
++  EXPECT_FALSE(node::builtins::GetBuiltinCodeCacheStatus().at(id));
++  {
++    v8::TryCatch caught(isolate_);
++    EXPECT_TRUE(malformed.LookupAndCompileFunction(context, id, nullptr).IsEmpty());
++    EXPECT_TRUE(caught.HasCaught());
++    EXPECT_FALSE(node::builtins::GetBuiltinCodeCacheStatus().at(id));
++  }
++  auto invalid_bytes = std::make_unique<uint8_t[]>(64);
++  std::fill_n(invalid_bytes.get(), 64, 0);
++  auto invalid = std::make_shared<v8::ScriptCompiler::CachedData>(
++      invalid_bytes.release(), 64, v8::ScriptCompiler::CachedData::BufferOwned);
++  loader.RefreshCodeCache({{id, BuiltinCodeCacheData(invalid)}});
++  isolate_->ClearCachesForTesting();
++  ASSERT_TRUE(loader.LookupAndCompileFunction(context, id, &params, nullptr)
++                  .ToLocal(&compiled));
++  EXPECT_FALSE(node::builtins::GetBuiltinCodeCacheStatus().at(id));
++  ASSERT_TRUE(follower.LookupAndCompileFunction(context, id, &params, nullptr)
++                  .ToLocal(&compiled));
++  EXPECT_FALSE(node::builtins::GetBuiltinCodeCacheStatus().at(id));
++  loader.RefreshCodeCache({{id, BuiltinCodeCacheData(valid_cache)}});
++  loader.SetEagerCompile();
++  ASSERT_TRUE(loader.LookupAndCompileFunction(context, id, &params, nullptr)
++                  .ToLocal(&compiled));
++  EXPECT_FALSE(node::builtins::GetBuiltinCodeCacheStatus().at(id));
++  node::builtins::TearDownExternalizedBuiltinCache();
++}
++#endif
+--- test/cctest/test_environment.cc.orig
++++ test/cctest/test_environment.cc
+@@ -1796,3 +1796,79 @@
+ }
+ 
+ #endif
++
++#if (!defined(NDEBUG) || defined(DCHECK_ALWAYS_ON) || defined(NODE_BUILTIN_CACHE_STATUS)) && \
++    (defined(NODE_EMBEDDER_BUILTINS) || defined(NODE_BUILTIN_CACHE_STATUS))
++TEST_F(EnvironmentTest, WorkerBuiltinCacheHitAndReject) {
++  v8::HandleScope scope(isolate_);
++  auto context = node::NewContext(isolate_);
++  v8::Context::Scope context_scope(context);
++  auto entries = node::EmbedderBuiltinCodeCache::Generate(context);
++  ASSERT_GT(entries.size(), 100u);
++  node::EmbedderBuiltinCodeCache cache(std::move(entries));
++  ASSERT_EQ(node::SetBuiltinCodeCache(isolate_data_, &cache),
++            v8::ScriptCompiler::CachedData::kSuccess);
++  const Argv argv;
++  const char* worker_script =
++      "const { Worker } = require('worker_threads');"
++      "const w = new Worker(`require('node:punycode');`, { eval: true });"
++      "w.on('exit', code => { process.exitCode = code; });";
++  {
++    Env env{scope, argv};
++    ASSERT_FALSE(node::LoadEnvironment(*env, worker_script).IsEmpty());
++    ASSERT_EQ(node::SpinEventLoop(*env).FromJust(), 0);
++    EXPECT_EQ((*env)->principal_realm()->builtins_with_cache.count("punycode"), 0u);
++    EXPECT_EQ((*env)->principal_realm()->builtins_without_cache.count("punycode"), 0u);
++    const auto status = node::builtins::GetBuiltinCodeCacheStatus();
++    ASSERT_NE(status.find("punycode"), status.end());
++    EXPECT_TRUE(status.at("punycode"));
++  }
++  {
++    Env env{scope, argv};
++    auto* bytes = new uint8_t[64]();
++    auto invalid = std::make_shared<v8::ScriptCompiler::CachedData>(
++        bytes, 64, v8::ScriptCompiler::CachedData::BufferOwned);
++    (*env)->builtin_loader()->RefreshCodeCache(
++        {{"punycode", node::builtins::BuiltinCodeCacheData(invalid)}});
++    ASSERT_FALSE(node::LoadEnvironment(*env, worker_script).IsEmpty());
++    ASSERT_EQ(node::SpinEventLoop(*env).FromJust(), 0);
++    EXPECT_EQ((*env)->principal_realm()->builtins_with_cache.count("punycode"), 0u);
++    EXPECT_EQ((*env)->principal_realm()->builtins_without_cache.count("punycode"), 0u);
++    const auto status = node::builtins::GetBuiltinCodeCacheStatus();
++    ASSERT_NE(status.find("punycode"), status.end());
++    EXPECT_FALSE(status.at("punycode"));
++  }
++  node::SetBuiltinCodeCache(isolate_data_, nullptr);
++}
++#endif
++
++TEST_F(EnvironmentTest, V8WrappedFunctionCacheDetails) {
++  v8::HandleScope scope(isolate_);
++  auto context = node::NewContext(isolate_);
++  v8::Context::Scope context_scope(context);
++  isolate_->ClearCachesForTesting();
++  using SC = v8::ScriptCompiler;
++  v8::ScriptOrigin origin(v8::String::NewFromUtf8Literal(isolate_, "embedder-cache-result.js"));
++  auto code = v8::String::NewFromUtf8Literal(isolate_, "return parameter + 4917;");
++  v8::Local<v8::String> args[] = {v8::String::NewFromUtf8Literal(isolate_, "parameter")};
++  auto invalid = [] { return new SC::CachedData(new uint8_t[64](), 64, SC::CachedData::BufferOwned); };
++  {
++    SC::Source source(code, origin, invalid());
++    v8::Local<v8::Function> function;
++    ASSERT_TRUE(SC::CompileFunction(context, &source, 1, args, 0, nullptr,
++                                    SC::kConsumeCodeCache).ToLocal(&function));
++    EXPECT_EQ(source.GetCompilationDetails().in_memory_cache_result, SC::InMemoryCacheResult::kMiss);
++    EXPECT_TRUE(source.GetCachedData()->rejected);
++  }
++  {
++    SC::Source source(code, origin, invalid());
++    v8::Local<v8::Function> function;
++    ASSERT_TRUE(SC::CompileFunction(context, &source, 1, args, 0, nullptr,
++                                    SC::kConsumeCodeCache).ToLocal(&function));
++    EXPECT_EQ(source.GetCompilationDetails().in_memory_cache_result, SC::InMemoryCacheResult::kHit);
++    EXPECT_FALSE(source.GetCachedData()->rejected);
++    v8::Local<v8::Value> argv[] = {v8::Integer::New(isolate_, 3)};
++    EXPECT_EQ(function->Call(context, v8::Undefined(isolate_), 1, argv)
++                  .ToLocalChecked()->Int32Value(context).FromJust(), 4920);
++  }
++}

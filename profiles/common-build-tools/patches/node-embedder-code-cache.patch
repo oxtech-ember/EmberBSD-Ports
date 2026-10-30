@@ -1,0 +1,200 @@
+# Origin: Electron contributors; adapted for shared Node by EmberBSD (AI-assisted).
+--- src/node_builtins.cc.orig
++++ src/node_builtins.cc
+@@ -47,6 +47,43 @@
+ using v8::Value;
+ 
+ namespace builtins {
++
++static bool ExternalCodeCacheConsumed(
++    const ScriptCompiler::Source& source,
++    ScriptCompiler::CompileOptions options) {
++  if (options != ScriptCompiler::kConsumeCodeCache ||
++      source.GetCachedData() == nullptr || source.GetCachedData()->rejected) {
++    return false;
++  }
++  const auto result = source.GetCompilationDetails().in_memory_cache_result;
++  return result == ScriptCompiler::InMemoryCacheResult::kMiss ||
++         result == ScriptCompiler::InMemoryCacheResult::kPartial;
++}
++
++#if !defined(NDEBUG) || defined(DCHECK_ALWAYS_ON) || defined(NODE_BUILTIN_CACHE_STATUS)
++static Mutex& EmbedderCacheStatusMutex() {
++  static auto* mu = new Mutex();
++  return *mu;
++}
++static std::map<std::string, bool>& EmbedderCacheStatusMap() {
++  static auto* map = new std::map<std::string, bool>();
++  return *map;
++}
++std::map<std::string, bool> GetBuiltinCodeCacheStatus() {
++  Mutex::ScopedLock lock(EmbedderCacheStatusMutex());
++  return EmbedderCacheStatusMap();
++}
++#if defined(NODE_EMBEDDER_BUILTINS) || defined(NODE_BUILTIN_CACHE_STATUS)
++static void RecordEmbedderCacheStatus(const std::string& id, bool accepted) {
++  Mutex::ScopedLock lock(EmbedderCacheStatusMutex());
++  EmbedderCacheStatusMap()[id] = accepted;
++}
++#else
++static inline void RecordEmbedderCacheStatus(const std::string&, bool) {}
++#endif
++#else
++static inline void RecordEmbedderCacheStatus(const std::string&, bool) {}
++#endif
+ 
+ namespace {
+ std::atomic<bool> harvest_code_cache{true};
+@@ -380,6 +417,7 @@
+   // This needs to be retrieved after compilation, as the ownership of
+   // cached data will be transferred to script source.
+   bool is_cache_accepted = false;
++  bool external_cache_consumed = false;
+   bool is_buffer_owned = cached_data_ptr
+                              ? (cached_data_ptr->buffer_policy ==
+                                 ScriptCompiler::CachedData::BufferOwned)
+@@ -408,12 +446,14 @@
+     MaybeLocal<Module> maybe_mod =
+         ScriptCompiler::CompileModule(isolate, &script_source, options);
+     if (maybe_mod.IsEmpty()) {
++      RecordEmbedderCacheStatus(builtin_source->id, false);
+       // In the case of early errors, v8 is already capable of
+       // decorating the stack for us.
+       return MaybeLocal<Data>();
+     }
+     compiled_result = maybe_mod.ToLocalChecked();
+     is_cache_accepted = has_cache && !script_source.GetCachedData()->rejected;
++    external_cache_consumed = ExternalCodeCacheConsumed(script_source, options);
+   } else {
+     ScriptOrigin origin(filename, 0, 0, true);
+     ScriptCompiler::Source script_source(source, origin, cached_data_ptr);
+@@ -436,6 +476,7 @@
+     // e.g. the syntax errors
+     Local<Function> fun;
+     if (!maybe_fun.ToLocal(&fun)) {
++      RecordEmbedderCacheStatus(builtin_source->id, false);
+       // In the case of early errors, v8 is already capable of
+       // decorating the stack for us - note that we use CompileFunction
+       // so there is no need to worry about wrappers.
+@@ -444,6 +485,7 @@
+ 
+     compiled_result = fun;
+     is_cache_accepted = has_cache && !script_source.GetCachedData()->rejected;
++    external_cache_consumed = ExternalCodeCacheConsumed(script_source, options);
+   }
+ 
+   // XXX(joyeecheung): this bookkeeping is not exactly accurate because
+@@ -456,6 +498,8 @@
+     DCHECK_EQ(this, optional_realm->env()->builtin_loader());
+     RecordResult(builtin_source->id, result, optional_realm);
+   }
++  RecordEmbedderCacheStatus(builtin_source->id,
++      external_cache_consumed);
+ 
+   if (has_cache) {
+     per_process::Debug(DebugCategory::CODE_CACHE,
+@@ -530,13 +574,28 @@
+   Local<String> filename = OneByteString(isolate, filename_s);
+   Local<String> source = builtin_source->source.ToStringChecked(isolate);
+   ScriptOrigin origin(filename, 0, 0, true);
+-  ScriptCompiler::Source script_source(source, origin);
+-  return ScriptCompiler::CompileFunction(context,
+-                                         &script_source,
+-                                         parameters->size(),
+-                                         parameters->data(),
+-                                         0,
+-                                         nullptr);
++  BuiltinCodeCacheData cached_data{};
++  {
++    RwLock::ScopedLock lock(code_cache_->mutex);
++    auto it = code_cache_->map.find(builtin_source->id);
++    if (it != code_cache_->map.end()) cached_data = it->second;
++  }
++  const bool has_cache = cached_data.data != nullptr;
++  auto* data = has_cache ? cached_data.AsCachedData().release() : nullptr;
++  ScriptCompiler::Source script_source(source, origin, data);
++  ScriptCompiler::CompileOptions options = has_cache
++      ? ScriptCompiler::kConsumeCodeCache : ScriptCompiler::kNoCompileOptions;
++  if (should_eager_compile_ ||
++      (!to_eager_compile_.empty() && to_eager_compile_.contains(builtin_source->id))) {
++    options = ScriptCompiler::kEagerCompile;
++  }
++  MaybeLocal<Function> compiled = ScriptCompiler::CompileFunction(
++      context, &script_source, parameters->size(), parameters->data(),
++      0, nullptr, options);
++  const bool accepted = !compiled.IsEmpty() &&
++      ExternalCodeCacheConsumed(script_source, options);
++  RecordEmbedderCacheStatus(builtin_source->id, accepted);
++  return compiled;
+ }
+ 
+ 
+--- src/node_builtins.h.orig
++++ src/node_builtins.h
+@@ -256,6 +256,12 @@
+   friend class ::BuiltinCacheTest;
+ };
+ 
++#if !defined(NDEBUG) || defined(DCHECK_ALWAYS_ON) || defined(NODE_BUILTIN_CACHE_STATUS)
++// Process-wide debug observation: the latest compilation result for each ID
++// across loaders and isolates, not an aggregate coverage or hit guarantee.
++NODE_EXTERN_PRIVATE std::map<std::string, bool> GetBuiltinCodeCacheStatus();
++#endif
++
+ }  // namespace builtins
+ 
+ }  // namespace node
+--- node.gni.orig
++++ node.gni
+@@ -19,6 +19,9 @@
+ 
+   # Embedders may reserve a CppHeap pointer tag in the V8 embedder range.
+   node_embedder_cppheap_pointer_tag = ""
++
++  # Enable cache acceptance observations independently of V8 debug settings.
++  node_builtin_cache_status = false
+ 
+   # Logical target loader and its selected sysroot input.
+   node_shared_undici_path = ""
+--- node.gyp.orig
++++ node.gyp
+@@ -6,6 +6,7 @@
+     'v8_enable_31bit_smis_on_64bit_arch%': 0,
+     'force_dynamic_crt%': 0,
+     'node_builtin_modules_path%': '',
++    'node_builtin_cache_status%': 'false',
+     # `node` executable target name.
+     'node_core_target_name%': 'node',
+     # `libnode` target type, `static_library` if `node_shared` is false and `shared_library` if `node_shared` is true.
+@@ -887,6 +888,9 @@
+       'msvs_disabled_warnings!': [4244],
+ 
+       'conditions': [
++        [ 'node_builtin_cache_status=="true"', {
++          'defines': [ 'NODE_BUILTIN_CACHE_STATUS=1' ],
++        }],
+         [ 'openssl_default_cipher_list!=""', {
+           'defines': [
+             'NODE_OPENSSL_DEFAULT_CIPHER_LIST="<(openssl_default_cipher_list)"'
+@@ -1382,6 +1386,9 @@
+       'sources': [ '<@(node_cctest_sources)' ],
+ 
+       'conditions': [
++        [ 'node_builtin_cache_status=="true"', {
++          'defines': [ 'NODE_BUILTIN_CACHE_STATUS=1' ],
++        }],
+         [ 'node_shared_gtest=="false"', {
+           'dependencies': [
+             'deps/googletest/googletest.gyp:gtest',
+--- unofficial.gni.orig
++++ unofficial.gni
+@@ -86,6 +86,9 @@
+       "NODE_WANT_INTERNALS=1",
+       "NODE_EMBEDDER_MODULE_VERSION=$node_module_version",
+     ]
++    if (node_builtin_cache_status) {
++      defines += [ "NODE_BUILTIN_CACHE_STATUS=1" ]
++    }
+     if (node_embedder_cppheap_pointer_tag != "") {
+       defines += [ "EMBEDDER_CPPHEAP_POINTER_TAG=$node_embedder_cppheap_pointer_tag" ]
+     }

@@ -13,7 +13,7 @@
  USE_CXX_FEATURES=	c++20 charconv
  USE_LANGUAGES=		c c++
 +TOOL_DEPENDS+=		bsdtar-[0-9]*:../../archivers/bsdtar
-+TOOL_DEPENDS+=		v8-source-15.6.75.25nb7:../../lang/v8
++TOOL_DEPENDS+=		v8-source-15.6.75.25nb8:../../lang/v8
 +TOOL_DEPENDS+=		inspector-protocol-[0-9]*:../../devel/inspector-protocol
 +TOOL_DEPENDS+=		llvm-libc-source>=23.1.4:../../lang/llvm-libc-source
 +TOOL_DEPENDS+=		clang-python-bindings>=23.1.4:../../lang/clang-python-bindings
