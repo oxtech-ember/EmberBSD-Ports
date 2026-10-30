@@ -1,0 +1,19 @@
+dtc takes the shared library format from the target.
+
+The dtc Makefile sets HOSTOS from the build host uname. A cross build from
+macOS chose the Mach-O dylib rules and ld.lld rejected -install_name. pkgsrc
+names the target system in LOWER_OPSYS; on a native build it matches uname.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/sysutils/dtc/Makefile
++++ b/sysutils/dtc/Makefile
+@@ -18,6 +18,9 @@
+ MAKE_FLAGS+=	DESTDIR=${DESTDIR}
+ MAKE_FLAGS+=	INSTALL=${INSTALL:Q}
+ MAKE_FLAGS+=	NO_PYTHON=1
++# The Makefile otherwise takes the shared library format from the build
++# host uname, and a cross build from macOS links a Mach-O dylib.
++MAKE_FLAGS+=	HOSTOS=${LOWER_OPSYS}
+ 
+ TEST_TARGET=	check
+ 
