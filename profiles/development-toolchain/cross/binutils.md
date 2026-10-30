@@ -2,7 +2,11 @@
 
 `build-binutils.py` builds the common `devel/binutils` 2.47 source and its
 complete Ports patch set. It supports the application targets `aarch64` and
-`amd64`, and the existing kernel-only `earmv7hf` target. The host libraries
+`amd64`, the existing kernel-only `earmv7hf` target, and `riscv32` object tools.
+The RV32 selection uses `riscv32--netbsd` and requires BFD's
+`elf32-littleriscv` vector. It supplies the host BFD inputs for the OS's
+RV32 Clang kernel build; it does not enable the GCC compiler, application,
+or runtime producers for RV32. The host libraries
 and programs execute on the development host; the BFD target vector describes
 the EmberBSD objects they read. No application sysroot or target runtime is needed.
 

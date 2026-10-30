@@ -19,6 +19,7 @@ for directory in (PROFILE, PROFILE / 'cross'):
     sys.path.insert(0, str(directory))
 import binutils_host
 import pipeline
+from target_options import parse
 from emberbsd_sdk.errors import SDKError
 from emberbsd_sdk.host_prefix import HostPrefix
 
@@ -116,11 +117,27 @@ class BinutilsHostTests(unittest.TestCase):
             select.assert_called_once_with('/native', 'clang')
             build.assert_called_with('amd64', str(self.work), None, native='native')
             select.reset_mock()
+            pipeline.binutils_main(['--target', 'riscv32', '--host-prefix', '/native', str(self.work)])
+            select.assert_called_once_with('/native', 'clang')
+            build.assert_called_with('riscv32', str(self.work), None, native='native')
+            select.reset_mock()
             pipeline.binutils_main(['--target', 'earmv7hf', str(self.work)], make_override='/gcc/nbgmake')
             select.assert_not_called()
             build.assert_called_with('earmv7hf', str(self.work), '/gcc/nbgmake', native=None)
         self.assertRaisesRegex(SDKError, 'Duplicate', pipeline.binutils_main,
             ['--host-prefix', '/one', '--host-prefix', '/two', str(self.work)])
+
+    def test_rv32_tools_do_not_enable_compiler_or_runtime_producers(self):
+        for options, flags in (({}, []), ({'kernel_allowed': True}, ['--kernel']),
+                               ({'kernel_target_allowed': True}, [])):
+            with self.subTest(options=options):
+                self.assertRaisesRegex(SDKError, 'Unsupported target', parse,
+                    ['--target', 'riscv32', *flags], **options)
+
+    def test_rv32_bfd_rejects_a_64_bit_only_vector(self):
+        bfd_tree(self.work, 'riscv32--netbsd')
+        self.assertRaises(SDKError, self.emit, 'riscv32--netbsd', 'elf64-littleriscv\n')
+        self.assertFalse((self.work / 'host-bfd.mk').exists())
 
     def emit(self, triplet='x86_64--netbsd', vector=None):
         def capture(argv, env):
@@ -187,6 +204,12 @@ class BinutilsHostTests(unittest.TestCase):
             self.assertFalse((self.work / 'host-bfd.mk').exists())
 
     def test_real_producer_uses_selected_commands_and_exports_bfd(self):
+        self.check_real_producer('amd64', 'x86_64--netbsd', 'elf64-x86-64')
+
+    def test_real_rv32_producer_configures_and_exports_matching_bfd(self):
+        self.check_real_producer('riscv32', 'riscv32--netbsd', 'elf32-littleriscv')
+
+    def check_real_producer(self, target, triplet, vector):
         ports = self.root / 'ports'
         archive = file(self.root / 'binutils-2.47.tar.xz', 'verified fixture archive')
         data = archive.read_bytes()
@@ -204,18 +227,18 @@ class BinutilsHostTests(unittest.TestCase):
             file(log)
             if str(argv[0]) == self.tools['gmake'] and argv[-1] == 'install':
                 if native_mode:
-                    bfd_tree(self.work)
+                    bfd_tree(self.work, triplet)
                 for name in pipeline.BINUTILS:
-                    file(self.work / 'prefix/bin' / ('x86_64--netbsd-' + name)).chmod(0o755)
-                file(self.work / 'prefix/x86_64--netbsd/lib/ldscripts/elf.x')
+                    file(self.work / 'prefix/bin' / (triplet + '-' + name)).chmod(0o755)
+                file(self.work / 'prefix' / triplet / 'lib/ldscripts/elf.x')
         def capture(argv, env):
-            return 'elf64-x86-64\n' if argv[-1] == '-i' else 'GNU fixture 2.47\n'
+            return vector + '\n' if argv[-1] == '-i' else 'GNU fixture 2.47\n'
         with patch.dict(os.environ, {'EMBER_BINUTILS_ARCHIVE': str(archive), 'CROSS_JOBS': '2'}), \
                 patch.object(pipeline, 'PORTS', ports), patch.object(pipeline, 'audit_patches', return_value=['patch-fixture']), \
                 patch.object(pipeline, 'host_compilers', side_effect=AssertionError('legacy compiler selection')), \
                 patch.object(pipeline, 'logged', logged), patch.object(pipeline, 'capture', capture), \
                 patch.object(pipeline, 'policy_sources', return_value=[]):
-            pipeline._build_binutils('amd64', str(self.work), native=(selected, env))
+            pipeline._build_binutils(target, str(self.work), native=(selected, env))
         # NetBSD pax/nbtar does not implement --strip-components. The native
         # producer must request the libarchive frontend explicitly.
         self.assertEqual(calls[0][0][0], str(Path(selected.bundle_root) / 'bin/bsdtar'))
@@ -223,7 +246,7 @@ class BinutilsHostTests(unittest.TestCase):
         self.assertEqual(calls[2][0][:2], [self.tools['sh'], str(self.work / 'src/configure')])
         self.assertTrue(all(row[1]['PATH'].split(os.pathsep)[0] == str(self.work / 'native-tools') for row in calls))
         self.assertEqual(env['PATH'], selected.path)
-        self.assertIn('--target=x86_64--netbsd', calls[2][0])
+        self.assertIn('--target=' + triplet, calls[2][0])
         self.assertIn('--with-system-zlib', calls[2][0])
         self.assertTrue((self.work / 'host-bfd.mk').is_file())
         # The existing enclosing GCC producer never promised BFD developer
@@ -235,7 +258,7 @@ class BinutilsHostTests(unittest.TestCase):
                 patch.object(pipeline, 'host_compilers', return_value=(self.tools['cc'], self.tools['cxx'])), \
                 patch.object(pipeline, 'logged', logged), patch.object(pipeline, 'capture', capture), \
                 patch.object(pipeline, 'policy_sources', return_value=[]):
-            pipeline._build_binutils('amd64', str(self.work), make_override=self.tools['gmake'])
+            pipeline._build_binutils(target, str(self.work), make_override=self.tools['gmake'])
         self.assertTrue((self.work / 'inputs.txt').is_file())
         self.assertFalse((self.work / 'host-bfd.mk').exists())
 

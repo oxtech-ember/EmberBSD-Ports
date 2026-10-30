@@ -14,7 +14,7 @@ import sdk_source
 from emberbsd_sdk import (application_toolchain, inventory, jsonio, native_toolset, paths,
                           sysroot_transfer, target_toolchain)
 from host import *
-from target_options import FIRMWARE_TARGETS, parse
+from target_options import BINUTILS_TARGETS, FIRMWARE_TARGETS, parse
 from bootstrap_libgcc import build as build_bootstrap_libgcc, headers as bootstrap_headers
 
 HERE = PROFILE / 'cross'
@@ -83,7 +83,7 @@ def binutils_main(args, make_override=None):
     options, args = parser.parse_known_args(args)
     for values in (options.host_prefix, options.host_compiler_family):
         require(values is None or len(values) == 1, 'Duplicate native Binutils selection')
-    target, _, args = parse(args, kernel_target_allowed=True)
+    target, _, args = parse(args, kernel_target_allowed=True, binutils_target_allowed=True)
     require(len(args) == 1, 'Usage: build-binutils.py [--target TARGET] --host-prefix PREFIX '
             '[--host-compiler-family clang|gcc] NEW_WORK --sdk-source SOURCE')
     native = None
@@ -98,9 +98,15 @@ def binutils_main(args, make_override=None):
 
 
 def _build_binutils(target, new_work, make_override=None, native=None):
-    require(target in TARGETS or target in KERNEL_TARGETS or target in FIRMWARE_TARGETS,
+    require(target in TARGETS or target in KERNEL_TARGETS or target in FIRMWARE_TARGETS
+            or target in BINUTILS_TARGETS,
             'Unsupported Binutils target: ' + target)
-    triplet = target_triplet(target) if target in TARGETS or target in KERNEL_TARGETS else FIRMWARE_TARGETS[target]
+    if target in BINUTILS_TARGETS:
+        triplet = BINUTILS_TARGETS[target]
+    elif target in FIRMWARE_TARGETS:
+        triplet = FIRMWARE_TARGETS[target]
+    else:
+        triplet = target_triplet(target)
     work, count = new_path(new_work), jobs()
     if native is None:
         make = str(make_override) if make_override else os.environ.get('GMAKE', 'gmake')

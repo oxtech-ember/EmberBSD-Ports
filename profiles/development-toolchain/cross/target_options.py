@@ -2,9 +2,12 @@
 # Origin: EmberBSD; target and build mode policy for Python host controllers.
 from host import KERNEL_TARGETS, TARGETS, require
 
+# Object tools do not imply a GCC compiler or application/runtime producer.
+BINUTILS_TARGETS = {'riscv32': 'riscv32--netbsd'}
+
 
 def parse(args, kernel_allowed=False, bootstrap_allowed=False, fortran_allowed=False,
-          kernel_target_allowed=False):
+          kernel_target_allowed=False, binutils_target_allowed=False):
     args = list(args)
     target, mode, seen = 'aarch64', 'applications', False
     bootstrap = False
@@ -26,7 +29,8 @@ def parse(args, kernel_allowed=False, bootstrap_allowed=False, fortran_allowed=F
             require(False, 'Unknown build mode: ' + option)
     supported = target in TARGETS or (
         target in KERNEL_TARGETS and
-        (kernel_target_allowed or (kernel_allowed and mode == 'kernel')))
+        (kernel_target_allowed or (kernel_allowed and mode == 'kernel'))) or (
+        binutils_target_allowed and target in BINUTILS_TARGETS)
     require(supported, 'Unsupported target: ' + target)
     require(not bootstrap or mode == 'kernel', '--bootstrap-libgcc requires --kernel')
     if bootstrap:

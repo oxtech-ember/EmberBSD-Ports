@@ -18,6 +18,7 @@ CONTRACT_SHA256 = hashlib.sha256(CONTRACT.read_bytes()).hexdigest()
 _, _, ROLES = read_native_os_contract(CONTRACT, sha256=CONTRACT_SHA256)
 VECTORS = {'aarch64--netbsd': 'elf64-littleaarch64',
            'x86_64--netbsd': 'elf64-x86-64',
+           'riscv32--netbsd': 'elf32-littleriscv',
            'armv7--netbsdelf-eabihf': 'elf32-littlearm',
            'arm-none-eabi': 'elf32-littlearm'}
 SAFE = re.compile(r'[A-Za-z0-9_./+@%=:,\-]+\Z')
