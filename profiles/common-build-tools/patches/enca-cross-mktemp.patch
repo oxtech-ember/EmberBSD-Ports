@@ -1,0 +1,21 @@
+Cross enca records the target mktemp.
+
+configure stores the absolute mktemp found on PATH in the installed
+extconv scripts. A cross build found the build host tool. NetBSD has
+mktemp in /usr/bin (mk/tools/tools.NetBSD.mk).
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/textproc/enca/Makefile
++++ b/textproc/enca/Makefile
+@@ -17,4 +17,11 @@
+ 
+ CHECK_PORTABILITY_SKIP+=	test/*
+ 
++.include "../../mk/bsd.prefs.mk"
++
++# The installed extconv scripts run mktemp on the target.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
++CONFIGURE_ENV+=		ac_cv_path_MKTEMP_PROG=/usr/bin/mktemp
++.endif
++
+ .include "../../mk/bsd.pkg.mk"
