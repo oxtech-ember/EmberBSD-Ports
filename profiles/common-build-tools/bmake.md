@@ -116,3 +116,17 @@ The test installs an archive without a symbol index through `bsd.lib.mk`.
 It checks the new index, members, permissions and ownership, then links and
 runs a symbol consumer. Linux LLVM execution also exercises the platform
 templates; it does not establish native execution on each named platform.
+
+## Deterministic archive freshness
+
+The shared export applies `pkgsrc-bmake-deterministic-archive.patch` after
+importing the upstream release. It carries [EmberBSD make fix d996774d467](https://github.com/oxtech-ember/EmberBSD/commit/d996774d467):
+zero-valued deterministic table-of-contents timestamps use the archive's
+already-checked container timestamp, while a missing table still rebuilds.
+The package revision changes so installed bmake can be updated.
+
+The regression `tests/bmake-deterministic-archive.py` accepts explicit
+`--make`, `--cc`, `--ar`, `--ranlib`, and `--work` paths. It builds a real
+indexed archive, checks an unchanged consumer, changes an object, and checks a
+missing index. The upstream bmake source and deterministic archive format are
+retained; this is an EmberBSD fix.
