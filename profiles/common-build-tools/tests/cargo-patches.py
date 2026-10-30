@@ -75,5 +75,21 @@ with tempfile.TemporaryDirectory(prefix='cargo-create-delete-test-') as tmp:
     (root/'src/new.rs').unlink()
     try: run(); raise AssertionError('mismatched operation accepted')
     except ValueError: pass
+with tempfile.TemporaryDirectory(prefix="cargo-semver-test-") as tmp:
+    base = Path(tmp); vendor = base / "vendor"; vendor.mkdir(); registry = base / "registry"; registry.mkdir()
+    for version in ("0.4.0-alpha.12", "5.3.1+1.23.1", "1.2.3-alpha--nightly.1+build--tag"):
+        name = "example-" + version; root = vendor / name; root.mkdir()
+        (root / "Cargo.toml").write_text('[package]\nname = "example"\nversion = "' + version + '"\n')
+        (root / "value").write_text("old\n")
+        (root / ".cargo-checksum.json").write_text(json.dumps({"package": "archive", "files": {"value": h("old\n")}}))
+        (registry / "example.patch").write_text("--- a/value\n+++ b/value\n@@ -1 +1 @@\n-old\n+new\n")
+        spec = {name: {"patch": "example.patch", "files": {"value": {"before": h("old\n"), "after": h("new\n")}}}}
+        (registry / "registry.json").write_text(json.dumps(spec))
+        module.apply(vendor, registry, a.patch, a.prefix)
+        assert (root / "value").read_text() == "new\n"
+    for unsafe in ("../escape-1.2.3", "example-1.2.3+../escape", "example-1.2.3-alpha/escape"):
+        (registry / "registry.json").write_text(json.dumps({unsafe: {}}))
+        try: module.apply(vendor, registry, a.patch, a.prefix); raise AssertionError("unsafe crate identifier accepted")
+        except ValueError as error: assert "invalid exact crate identifier" in str(error)
 print('Cargo patch create/delete, checksums, idempotence and rejection: PASS')
 print('Cargo patch exact inputs, checksums, idempotence and rejection: PASS')

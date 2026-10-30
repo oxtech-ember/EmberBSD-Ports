@@ -50,7 +50,7 @@ def apply(vendor, registry_dir, patch_tool, prefix):
         raise ValueError('patch tool must resolve inside selected host prefix')
     registry = json.loads((registry_dir / 'registry.json').read_text())
     for name, spec in sorted(registry.items()):
-        if not re.fullmatch(r'[a-zA-Z0-9_-]+-[0-9]+\.[0-9]+\.[0-9]+', name):
+        if not re.fullmatch(r'[a-zA-Z0-9_-]+-[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?', name):
             raise ValueError('invalid exact crate identifier: ' + name)
         root = vendor / name
         if root.is_symlink():
