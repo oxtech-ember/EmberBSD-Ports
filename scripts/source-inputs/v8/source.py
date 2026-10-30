@@ -17,6 +17,8 @@ PORTS = Path(__file__).resolve().parents[3]
 PACKAGE = 'lang/v8'
 sys.path.insert(0, str(PORTS / 'pkgsrc/lang/llvm/files'))
 import sdk_source
+sys.path.append(str(PORTS / 'scripts'))
+import prepared_receipt
 
 
 def read(path):
@@ -117,8 +119,7 @@ def prepare(archive, output, patch, git):
         require(before == identity(git), 'source inputs changed during preparation')
         scoped = {'effective': selector().effective_package_identity(exported, PACKAGE, before['export']['upstream']),
                   'owner_sha256': before['owner_sha256']}
-        record = sourceprep.write_prepared_tree_receipt(root, package=PACKAGE, identity=scoped)
-        sourceprep.validate_prepared_tree(root, package=PACKAGE, identity=scoped)
+        record = prepared_receipt.write(root, package=PACKAGE, identity=scoped)
         require(sourceprep.archive_hashes(read(archive)) == hashes, 'archive changed during preparation')
         publish_directory_noreplace(root, output)
     return record

@@ -19,6 +19,8 @@ sys.dont_write_bytecode = True
 PORTS = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PORTS / 'pkgsrc/lang/llvm/files'))
 import sdk_source
+sys.path.append(str(PORTS / 'scripts'))
+import prepared_receipt
 from recipe import generation_recipe
 import tearoff
 
@@ -132,8 +134,7 @@ def main():
         need((root / 'libopts.c').is_file() and (root / 'autoopts/options.h').is_file(),
              'AutoGen tearoff lacks expected libopts source')
         need(digest(archive) == archive_hash, 'AutoGen tearoff changed while preparing')
-        result = sourceprep.write_prepared_tree_receipt(root, package='devel/autogen', identity=identity)
-        sourceprep.validate_prepared_tree(root, package='devel/autogen', identity=identity)
+        result = prepared_receipt.write(root, package='devel/autogen', identity=identity)
         publish_directory_noreplace(root, output)
     sys.stdout.buffer.write(jsonio.json_bytes(result))
 
@@ -248,8 +249,7 @@ def prepare_distfile(argv, sdk, jsonio, paths, sourceprep, SDKError, publish_dir
         need(sourceprep.archive_hashes(read(archive)) == hashes, 'AutoGen distfile changed while preparing')
         need(current == selector.identity(PORTS, 'devel/autogen', args.git, sdk),
              'common AutoGen export inputs changed during preparation')
-        result = sourceprep.write_prepared_tree_receipt(result_root, package='devel/autogen', identity=identity)
-        sourceprep.validate_prepared_tree(result_root, package='devel/autogen', identity=identity)
+        result = prepared_receipt.write(result_root, package='devel/autogen', identity=identity)
         if args.source:
             existing = sourceprep.validate_prepared_tree(args.source, package='devel/autogen', identity=identity)
             need(existing['tree_sha256'] == result['tree_sha256'],

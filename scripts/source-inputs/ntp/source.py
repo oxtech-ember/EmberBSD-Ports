@@ -17,6 +17,8 @@ PORTS = Path(__file__).resolve().parents[3]
 PACKAGE = 'net/ntp4'
 sys.path.insert(0, str(PORTS / 'pkgsrc/lang/llvm/files'))
 import sdk_source
+sys.path.append(str(PORTS / 'scripts'))
+import prepared_receipt
 
 
 def load_sdk(argv):
@@ -198,8 +200,7 @@ def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
         if scoped_identity:
             identity = {'effective': git_effective_identity(git),
                         'owner_sha256': identity['owner_sha256']}
-        record = sourceprep.write_prepared_tree_receipt(root, package=PACKAGE, identity=identity)
-        sourceprep.validate_prepared_tree(root, package=PACKAGE, identity=identity)
+        record = prepared_receipt.write(root, package=PACKAGE, identity=identity)
         require(sourceprep.archive_hashes(read(archive)) == hashes, 'ntp archive changed during preparation')
         publish_directory_noreplace(root, output)
     return record

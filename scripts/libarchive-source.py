@@ -17,6 +17,8 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT / 'scripts'))
+import prepared_receipt
 PACKAGE = 'archivers/libarchive'
 
 
@@ -114,8 +116,7 @@ def prepare(destination, sdk_source, git, patch, scoped_identity=False, pkgsrc_e
         if scoped_identity:
             identity = {'effective': selector.git_package_identity(ROOT, PACKAGE, git),
                         'owner_sha256': identity['owner_sha256']}
-        record = sourceprep.write_prepared_tree_receipt(payload, package=PACKAGE, identity=identity)
-        sourceprep.validate_prepared_tree(payload, package=PACKAGE, identity=identity)
+        record = prepared_receipt.write(payload, package=PACKAGE, identity=identity)
         publication.publish_directory_noreplace(payload, destination)
     return record
 

@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
-"""Check that each package stamp-source.py hashes its staged tree once.
+"""Check that prepared source receipts hash their tree once.
 
 The stamp helpers wrote the SDK prepared-tree receipt, which measures the
 whole tree, and then validated it at once, which measured the whole tree
 again. For lang/v8 that is a second full read of a large source tree in
 every build. The test runs every helper against a copy of the selected SDK
 whose tree digest logs each call, requires exactly one call, and then
-checks the receipt with the SDK's own validation.
+checks the receipt with the SDK's own validation. The source owners under
+scripts/ write their receipts through scripts/prepared_receipt.py; the test
+runs that helper the same way, and scans every receipt writer for a full
+validation right after the write.
 """
+
+import ast
 
 import argparse
 import json
@@ -43,6 +48,32 @@ def populate(path):
     (path / 'src').mkdir(parents=True)
     (path / 'src/a.cc').write_text('int a;\n')
     (path / 'README').write_text('payload\n')
+
+
+def revalidations(ports):
+    """Name each write of a receipt that the next statement validates again."""
+    found = []
+    files = sorted(ports.glob('scripts/**/*.py')) + sorted(ports.glob('pkgsrc/*/*/files/**/*.py'))
+    for path in files:
+        text = path.read_text(errors='replace')
+        if 'write_prepared_tree_receipt' not in text:
+            continue
+        for node in ast.walk(ast.parse(text, str(path))):
+            body = getattr(node, 'body', None)
+            if not isinstance(body, list):
+                continue
+            for first, second in zip(body, body[1:]):
+                calls = []
+                for statement in (first, second):
+                    value = getattr(statement, 'value', None)
+                    calls.append(value if isinstance(value, ast.Call) and
+                                 isinstance(value.func, ast.Attribute) and value.args else None)
+                if (calls[0] is not None and calls[1] is not None and
+                        calls[0].func.attr == 'write_prepared_tree_receipt' and
+                        calls[1].func.attr == 'validate_prepared_tree' and
+                        ast.dump(calls[0].args[0]) == ast.dump(calls[1].args[0])):
+                    found.append(f'{path.relative_to(ports)}:{second.lineno}')
+    return found
 
 
 def main():
@@ -104,7 +135,24 @@ def main():
     run('lang/llvm-libc-source', ['--runtime-source', str(runtime)], source,
         {'llvm_version': '22.1.0', 'source': record['source'],
          'runtime_recipe_files': record['recipe']['files']})
-    print('PASS: every stamp-source.py hashes its tree once and writes a valid receipt')
+    source = work / 'staged/owner'
+    populate(source)
+    log.write_text('')
+    owner = ('import sys; sys.path.insert(0, sys.argv[1]); sys.path.append(sys.argv[2]); '
+             'import prepared_receipt; '
+             "prepared_receipt.write(sys.argv[3], package='archivers/example', identity={'owner': 'test'})")
+    result = subprocess.run([sys.executable, '-B', '-I', '-S', '-c', owner, str(counted / 'src'),
+                             str(ports / 'scripts'), str(source)], env=env, stdin=subprocess.DEVNULL,
+                            text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.returncode != 0:
+        fail('scripts/prepared_receipt.py failed: ' + result.stderr.strip())
+    if len(log.read_text().splitlines()) != 1:
+        fail('scripts/prepared_receipt.py hashed its tree more than once')
+    sourceprep.validate_prepared_tree(str(source), package='archivers/example', identity={'owner': 'test'})
+    found = revalidations(ports)
+    if found:
+        fail(f'{len(found)} receipt writers hash the tree again at once: ' + ' '.join(found))
+    print('PASS: every receipt writer hashes its tree once and writes a valid receipt')
 
 
 if __name__ == '__main__':
