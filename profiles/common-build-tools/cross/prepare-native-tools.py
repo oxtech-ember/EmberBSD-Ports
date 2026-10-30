@@ -54,6 +54,7 @@ OPTIONAL_ROLES = {'clang-tblgen': 'EMBERBSD_CLANG_TABLEGEN',
                   'ghostname': 'TOOLS_PLATFORM.hostname', 'gls': 'TOOLS_PLATFORM.ls',
                   'gpwd': 'TOOLS_PLATFORM.pwd', 'grmdir': 'TOOLS_PLATFORM.rmdir',
                   'gsleep': 'TOOLS_PLATFORM.sleep', 'gtee': 'TOOLS_PLATFORM.tee',
+                  'readlink': 'MACHO_READLINK',
                   # Native ELF package metadata needs an SDK reader. Keep it
                   # optional so Mach-O prefixes do not acquire an ELF-tool
                   # requirement.

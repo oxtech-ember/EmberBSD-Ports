@@ -1,0 +1,70 @@
+--- a/mk/check/check-shlibs-macho.awk
++++ b/mk/check/check-shlibs-macho.awk
+@@ -134,10 +134,39 @@
+ 	return system(lipo_cmd " " shquote(provider_path(path)) " -verify_arch " shquote(arch) " >/dev/null 2>&1") == 0
+ }
+ 
++# Follow package input links in the staging tree before looking at an image.
++# A package-owned target must never be satisfied by an older installed file.
++function input_image(DSO,    path, logical, parent, link, seen, lines, count, depth) {
++	path = DSO
++	if (path !~ /^\//) path = destdir prefix "/" path
++	path = normalize(path)
++	for (depth = 0; depth < 40; depth++) {
++		if (path in seen) { print DSO ": symbolic link cycle"; return "" }
++		seen[path] = 1
++		if (system("test -L " shquote(path)) != 0) return path
++		if (readlink_cmd == "") { print DSO ": missing selected readlink"; return "" }
++		count = tool_lines(readlink_cmd " " shquote(path), lines)
++		if (count != 1) { print DSO ": cannot read symbolic link"; return "" }
++		link = lines[1]
++		logical = path
++		if (destdir != "" && index(logical, destdir "/") == 1)
++			logical = substr(logical, length(destdir) + 1)
++		if (link ~ /^\//) logical = normalize(link)
++		else {
++			parent = logical; sub(/\/[^\/]*$/, "", parent)
++			logical = normalize(parent "/" link)
++		}
++		if ((logical in owned_paths) || system("test -L " shquote(destdir logical)) == 0 || exists(destdir logical))
++			path = destdir logical
++		else path = logical
++	}
++	print DSO ": symbolic link depth exceeded"
++	return ""
++}
++
+ function checkshlib(DSO,    physical, header, magic, lines, count, archline, archs, n, i) {
+-	physical = DSO
+-	if (physical !~ /^\//) physical = destdir prefix "/" physical
+-	physical = normalize(physical)
++	physical = input_image(DSO)
++	if (physical == "") return
+ 	if (!exists(physical)) { print DSO ": missing input image"; return }
+ 	if (od_cmd == "" || lipo_cmd == "" || otool_cmd == "") {
+ 		print DSO ": missing Mach-O tool selection"
+@@ -316,6 +345,14 @@
+ 	wrkdir = ENVIRON["WRKDIR"]
+ 	pkg_info_cmd = ENVIRON["PKG_INFO_CMD"]
+ 	depends_file = ENVIRON["DEPENDS_FILE"]
++	readlink_cmd = ENVIRON["MACHO_READLINK"]
++	plist_file = ENVIRON["PACKAGE_PLIST"]
++	if (plist_file != "") {
++		while ((plist_status = (getline line < plist_file)) > 0)
++			if (line != "" && line !~ /^@/) owned_paths[normalize(prefix "/" line)] = 1
++		close(plist_file)
++		if (plist_status < 0) { print plist_file ": cannot read package list"; exit }
++	}
+ 	skip_system_libs = ENVIRON["SKIP_SYSTEM_LIBS"]
+ }
+ 
+--- a/mk/pkgformat/pkg/metadata.mk
++++ b/mk/pkgformat/pkg/metadata.mk
+@@ -136,6 +136,7 @@
+ 			    PREFIX=${PREFIX:Q} WRKDIR=${WRKDIR:Q} \
+ 			    MACHO_OD=${MACHO_OD:Q} MACHO_LIPO=${MACHO_LIPO:Q} \
+ 			    MACHO_OTOOL=${MACHO_OTOOL:Q} \
++			    MACHO_READLINK=${MACHO_READLINK:U:Q} PACKAGE_PLIST=${_PLIST_NOKEYWORDS:Q} \
+ 			    SKIP_SYSTEM_LIBS=${DARWIN_NO_SYSTEM_LIBS:D1:U:Q} \
+ 			    PKG_INFO_CMD=${PKG_INFO:Q} DEPENDS_FILE=${_RRDEPENDS_FILE:Q} \
+ 			    ${AWK} -f ${PKGSRCDIR}/mk/check/check-shlibs-macho.awk \
