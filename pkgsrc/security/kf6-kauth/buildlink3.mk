@@ -12,6 +12,7 @@ BUILDLINK_PKGSRCDIR.kf6-kauth?=		../../security/kf6-kauth
 BUILDLINK_FILES.kf6-kauth+=	libexec/kf6/kauth/*
 BUILDLINK_FILES.kf6-kauth+=	share/kf6/kauth/dbus*.stub
 
+.include "../../security/kf6-kauth/cross-tools.mk"
 .include "../../devel/kf6-kcoreaddons/buildlink3.mk"
 .include "../../security/polkit-qt6/buildlink3.mk"
 .include "../../x11/kf6-kwindowsystem/buildlink3.mk"

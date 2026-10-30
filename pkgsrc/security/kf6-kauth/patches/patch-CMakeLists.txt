@@ -1,0 +1,37 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), not submitted upstream.
+KAUTH_BUILD_CODEGENERATOR_ONLY builds kauth-policy-gen, which links only
+QtCore. Do not require KF6CoreAddons there, nor QtDBus when the D-Bus helper
+backend is off, so the generator builds against a QtCore-only build host Qt.
+The default build is unchanged.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -33,8 +33,13 @@
+ option(KAUTH_BUILD_CODEGENERATOR_ONLY "Only build the kauth-policy-gen code generator." OFF)
+ if(NOT KAUTH_BUILD_CODEGENERATOR_ONLY)
+     find_package(Qt6 ${REQUIRED_QT_VERSION} CONFIG REQUIRED Gui)
+-elseif(NOT "${KAUTH_BACKEND_NAME}" STREQUAL "FAKE")
+-    find_package(Qt6DBus ${REQUIRED_QT_VERSION} CONFIG REQUIRED)
++else()
++    # The generator itself needs only QtCore; QtDBus serves the D-Bus helper
++    # backend.
++    string(TOUPPER "${KAUTH_HELPER_BACKEND_NAME}" _kauth_helper_backend)
++    if(NOT "${KAUTH_BACKEND_NAME}" STREQUAL "FAKE" AND NOT _kauth_helper_backend STREQUAL "FAKE")
++        find_package(Qt6DBus ${REQUIRED_QT_VERSION} CONFIG REQUIRED)
++    endif()
+ endif()
+ 
+ set(EXCLUDE_DEPRECATED_BEFORE_AND_AT 0 CACHE STRING "Control the range of deprecated API excluded from the build [default=0].")
+@@ -45,7 +50,9 @@
+                         PACKAGE_VERSION_FILE "${CMAKE_CURRENT_BINARY_DIR}/KF6AuthConfigVersion.cmake"
+                         SOVERSION 6)
+ 
+-find_package(KF6CoreAddons ${KF_DEP_VERSION} REQUIRED)
++if(NOT KAUTH_BUILD_CODEGENERATOR_ONLY)
++    find_package(KF6CoreAddons ${KF_DEP_VERSION} REQUIRED)
++endif()
+ 
+ set(KAUTH_HELPER_INSTALL_DIR "${KDE_INSTALL_LIBEXECDIR_KF}/kauth")
+ 

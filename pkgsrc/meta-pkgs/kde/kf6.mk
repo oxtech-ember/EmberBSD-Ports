@@ -42,6 +42,7 @@
 # used by net/kf6-kdnssd/Makefile
 # used by net/kf6-knewstuff/Makefile
 # used by security/kf6-kauth/Makefile
+# used by security/kf6-kauth-policy-gen/Makefile
 # used by security/kf6-kdesu/Makefile
 # used by security/kf6-kwallet/Makefile
 # used by sysutils/kf6-baloo/Makefile
@@ -122,6 +123,7 @@ _EMBERBSD_KF6VER_RECIPES= \
     net/kf6-kdnssd \
     net/kf6-knewstuff \
     security/kf6-kauth \
+    security/kf6-kauth-policy-gen \
     security/kf6-kdesu \
     security/kf6-kwallet \
     sysutils/kf6-baloo \

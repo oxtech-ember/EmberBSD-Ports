@@ -1,0 +1,3 @@
+The native kauth-policy-gen program of KDE Frameworks KAuth with its CMake
+import. Cross builds of KAuth consumers run it on the build host to generate
+Polkit policy files.

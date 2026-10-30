@@ -1,0 +1,16 @@
+# $NetBSD$
+# Origin: EmberBSD (AI-assisted). One KAuth source for the target framework
+# and its native policy generator.
+#
+# used by security/kf6-kauth/Makefile
+# used by security/kf6-kauth-policy-gen/Makefile
+
+DISTNAME=	kauth-${KF6VER}
+CATEGORIES=	security
+
+HOMEPAGE=	https://community.kde.org/Frameworks
+LICENSE=	gnu-lgpl-v2.1
+
+EMBERBSD_KAUTH_PKGDIR:=	${.PARSEDIR:tA}
+DISTINFO_FILE=	${EMBERBSD_KAUTH_PKGDIR}/distinfo
+PATCHDIR=	${EMBERBSD_KAUTH_PKGDIR}/patches
