@@ -51,6 +51,8 @@ def main(arguments):
     for parser in (prepare, verify_source, build, verify):
         parser.add_argument('--git')
     args = cli.parse_args(arguments)
+    if args.command in ('build', 'verify') and args.target == 'riscv32' and args.phase == 'full':
+        cli.error('riscv32 supports only builtins and bootstrap')
     owner.select_recipe_root(args.pkgsrc_root)
     if args.command == 'prepare':
         record = owner.prepare_source(args.archive, args.source, args.patch, args.git)
@@ -152,6 +154,8 @@ wasi_verify.add_argument('--git')
 verify.add_argument('--source', help='currently selected prepared LLVM source')
 verify.add_argument('--original-source', help='prepared source used by the existing runtime')
 owner.select_recipe_root(args.pkgsrc_root)
+if args.command in ('build', 'verify') and args.target == 'riscv32' and args.phase == 'full':
+    cli.error('riscv32 supports only builtins and bootstrap')
 """
     ignored = {ast.dump(n, include_attributes=False) for n in ast.parse(additions).body}
     selected = []

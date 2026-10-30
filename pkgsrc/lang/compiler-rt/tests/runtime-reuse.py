@@ -54,6 +54,9 @@ with tempfile.TemporaryDirectory() as tmp:
         else:
             assert not want_error
     check(stage)
+    guard = b"    if args.command in ('build', 'verify') and args.target == 'riscv32' and args.phase == 'full':\n        cli.error('riscv32 supports only builtins and bootstrap')\n"
+    assert guard in cli_bytes
+    assert runtime.build_cli(cli_bytes) == runtime.build_cli(cli_bytes.replace(guard, b''))
     assert runtime.build_cli(cli_bytes) != runtime.build_cli(cli_bytes.replace(b"default='clang'", b"default='gcc'"))
     assert runtime.build_cli(cli_bytes) != runtime.build_cli(cli_bytes.replace(b"args.command == 'build'", b"args.command == 'other'"))
     assert runtime.build_cli(cli_bytes) != runtime.build_cli(cli_bytes.replace(b"    if args.command == 'prepare':", b"    args.host_compiler_family = 'gcc'\n    if args.command == 'prepare':"))
