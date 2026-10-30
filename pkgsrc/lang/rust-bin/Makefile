@@ -228,6 +228,8 @@ post-install:
 
 
 TOOL_DEPENDS+=		patchelf-[0-9]*:../../devel/patchelf
+# patchelf runs on the build host: take it from TOOLBASE, not the target PREFIX.
+PATCHELF=		${TOOLBASE}/bin/patchelf
 
 RUST_LLVM_RPATH=	${PREFIX}/lib
 FORCE_RPATH=		--force-rpath
@@ -257,7 +259,7 @@ fix-relative-rpath:
 	bin/rustfmt \
 	libexec/rust-analyzer-proc-macro-srv
 	if [ -f ${DESTDIR}${PREFIX}/${bin} ]; then \
-		${PREFIX}/bin/patchelf ${FORCE_RPATH} --set-rpath \
+		${PATCHELF} ${FORCE_RPATH} --set-rpath \
 		    ${PREFIX}/lib ${DESTDIR}${PREFIX}/${bin} ; \
 	fi
 .  endfor
@@ -267,7 +269,7 @@ fix-relative-rpath:
 	   llvm-objdump llvm-profdata llvm-readobj llvm-size llvm-strip opt \
 	   rust-lld gcc-ld/ld64.lld gcc-ld/ld.lld gcc-ld/lld-link gcc-ld/wasm-ld \
 	   self-contained/llvm-bitcode-linker wasm-component-ld
-	 ${PREFIX}/bin/patchelf ${FORCE_RPATH} --set-rpath ${RUST_LLVM_RPATH} \
+	 ${PATCHELF} ${FORCE_RPATH} --set-rpath ${RUST_LLVM_RPATH} \
 	   ${DESTDIR}${PREFIX}/lib/rustlib/${RUST_ARCH}/bin/${bin}
 .    endfor
 .  endif
@@ -275,7 +277,7 @@ fix-relative-rpath:
 		lib/rustlib/${RUST_ARCH}/codegen-backends
 	for f in ${DESTDIR}${PREFIX}/${lib}/lib*.so; do			\
 		[ ! -f $$f ] && continue;				\
-		${PREFIX}/bin/patchelf ${FORCE_RPATH} --set-rpath ${PREFIX}/lib $$f;	\
+		${PATCHELF} ${FORCE_RPATH} --set-rpath ${PREFIX}/lib $$f;	\
 	done
 .  endfor
 # wrong architecture binary distributed, unused except on macOS
