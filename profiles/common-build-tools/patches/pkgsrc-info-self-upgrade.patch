@@ -1,0 +1,39 @@
+--- a/mk/pkginstall/header
++++ b/mk/pkginstall/header
+@@ -48,7 +48,7 @@
+ TRUE="@TRUE@"
+ XARGS="@XARGS@"
+ 
+-CURDIR=`${PWD_CMD}`
++CURDIR=`pwd -P`
+ : ${PKG_METADATA_DIR=${CURDIR}}
+ PKGBASE="@PKGBASE@"
+ 
+--- a/mk/pkginstall/info-files
++++ b/mk/pkginstall/info-files
+@@ -5,6 +5,12 @@
+ #
+ case "${STAGE},$1" in
+ UNPACK,|UNPACK,+INFO_FILES)
++	if ! ${TEST} -x "${CAT}" || ! ${TEST} -x "${CHMOD}"; then
++		if ${TEST} "$1" = "+INFO_FILES"; then
++			printf '%s\n' "selected tools for +INFO_FILES are unavailable" >&2
++			exit 1
++		fi
++	else
+ 	${CAT} > ./+INFO_FILES << 'EOF'
+ #!@SH@
+ #
+@@ -107,6 +113,12 @@
+ EOF
+ 	${SED} -n "/^\# INFO: /p" ${SELF} >> ./+INFO_FILES
+ 	${CHMOD} +x ./+INFO_FILES
++	fi
++	;;
++POST-INSTALL,)
++	if ! ${TEST} -x ./+INFO_FILES; then
++		${SH} ${SELF} ${PKGNAME} UNPACK +INFO_FILES || exit 1
++	fi
+ 	;;
+ esac
+ 
