@@ -1,0 +1,58 @@
+# $NetBSD: Makefile,v 1.174 2026/07/03 11:41:35 gdt Exp $
+
+VERSION_BASE=	4.7.2
+# Accomodate testing unreleased versions.
+#VERSION_RC=	rc4
+DISTNAME=	tiff-${VERSION_BASE}${VERSION_RC}
+PKGREVISION=	1
+CATEGORIES=	graphics
+MASTER_SITES=	https://download.osgeo.org/libtiff/
+EXTRACT_SUFX=	.tar.xz
+
+MAINTAINER=	gdt@NetBSD.org
+HOMEPAGE=	http://simplesystems.org/libtiff/
+COMMENT=	Library and tools for reading and writing TIFF data files
+LICENSE=	mit
+
+WRKSRC=		${WRKDIR}/tiff-${VERSION_BASE}
+
+EXTRACT_ONLY=	${DISTNAME}${EXTRACT_SUFX}
+
+USE_LANGUAGES=		c c++
+USE_CC_FEATURES=	c99
+USE_TOOLS=		gmake pkg-config
+USE_LIBTOOL=		yes
+GNU_CONFIGURE=		yes
+
+CONFIGURE_ARGS+=	--enable-rpath
+CONFIGURE_ARGS+=	--enable-cxx
+CONFIGURE_ARGS+=	--with-docdir=${PREFIX}/share/doc/tiff
+CONFIGURE_ARGS+=	--disable-libdeflate
+CONFIGURE_ARGS+=	--disable-sphinx
+CONFIGURE_ARGS+=	--disable-webp
+CONFIGURE_ARGS+=	--disable-zstd
+CONFIGURE_ARGS+=	--disable-opengl
+CONFIGURE_ARGS+=	--enable-lerc
+
+PKGCONFIG_OVERRIDE=	libtiff-4.pc.in
+
+# NetBSD 10 amd64: pass except 4 cases, because it uses non-POSIX diff -Z
+# NetBSD 11.99.2/amd64: all tests pass
+TEST_TARGET=		check
+
+post-install:
+	cd ${DESTDIR}${PREFIX}/${PKGMANDIR}/man3 && for file in *.3tiff; do\
+		target=`${ECHO} $$file | sed "s/3tiff/3/"`; \
+		${MV} $$file $$target; \
+	done
+
+PREFER.xz=	pkgsrc
+.include "options.mk"
+
+.include "../../devel/zlib/buildlink3.mk"
+# XXX for liblzma; there are more potential suppliers
+.include "../../archivers/xz/buildlink3.mk"
+.include "../../graphics/jbigkit/buildlink3.mk"
+.include "../../graphics/lerc/buildlink3.mk"
+.include "../../mk/jpeg.buildlink3.mk"
+.include "../../mk/bsd.pkg.mk"

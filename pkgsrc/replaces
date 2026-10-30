@@ -455,3 +455,6 @@ security/gnutls
 
 # Native Heimdal generators use the selected Darwin tools.
 security/heimdal
+
+# Use the common xz provider for TIFF.
+graphics/tiff

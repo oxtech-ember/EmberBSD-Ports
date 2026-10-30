@@ -1,0 +1,6 @@
+$NetBSD: distinfo,v 1.111 2026/07/03 11:27:07 gdt Exp $
+
+BLAKE2s (tiff-4.7.2.tar.xz) = 8e53dd3ee36b5d66ebd73c3cbe3666cae364b18ce3da6a48b473804349a8d3c6
+SHA512 (tiff-4.7.2.tar.xz) = 884dbd26f9eebcff4676696757ac315836c460696d403609a3f804368be3571f5f0e99a96dd7cc9fedc5dc2adfc087175d5d6823dca9eba10c733aa1676d78de
+Size (tiff-4.7.2.tar.xz) = 2409652 bytes
+SHA1 (patch-configure) = 48c3f6103e35049e0bd4a5f32a508cd9439c1f3f
