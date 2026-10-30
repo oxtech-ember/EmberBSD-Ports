@@ -1,0 +1,2 @@
+@comment $NetBSD$
+share/opensbi/esp32s31/fw_dynamic.bin

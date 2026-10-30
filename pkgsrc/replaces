@@ -488,3 +488,6 @@ misc/py-installer
 graphics/jbig2dec
 
 sysutils/dtc
+
+# Shared OpenSBI with ESP32-S31 support.
+sysutils/opensbi

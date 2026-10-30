@@ -1,0 +1,1632 @@
+# $NetBSD$
+# ESP32-S31 support from Espressif OpenSBI 5395e03e1cb295257142cfdeaade6334f1543bcb,
+# adapted to OpenSBI 1.9, plus Clang/RV32 correctness fixes.
+# Original source retains BSD-2-Clause licensing.
+
+diff --git a/Makefile b/Makefile
+index 37793aa..aaf7eb2 100644
+--- a/Makefile
++++ b/Makefile
+@@ -453,7 +453,8 @@ ifneq ($(DEBUG),)
+ CFLAGS		+=	-O0
+ CPPFLAGS	+=	-DOPENSBI_DEBUG
+ else
+-CFLAGS		+=	-O2
++OPENSBI_OPTIMIZE ?= -O2
++CFLAGS		+=	$(OPENSBI_OPTIMIZE)
+ endif
+ 
+ ifeq ($(UBSAN),y)
+diff --git a/firmware/fw_base.S b/firmware/fw_base.S
+index 0c5c65c..7c243bc 100644
+--- a/firmware/fw_base.S
++++ b/firmware/fw_base.S
+@@ -32,6 +32,7 @@
+ .endm
+ 
+ .macro CLEAR_MDT tmp
++#ifdef CONFIG_SMDBLTRP
+ #if __riscv_xlen == 32
+ 	li 	\tmp, MSTATUSH_MDT
+ 	csrc	CSR_MSTATUSH, \tmp
+@@ -39,6 +40,7 @@
+ 	li 	\tmp, MSTATUS_MDT
+ 	csrc	CSR_MSTATUS, \tmp
+ #endif
++#endif
+ .endm
+ 
+ 	.section .entry, "ax", %progbits
+@@ -422,7 +424,11 @@ _hartid_to_scratch:
+ 	ret
+ 
+ 	.section .entry, "ax", %progbits
++#ifdef CONFIG_SMCLIC
++	.align 6
++#else
+ 	.align 3
++#endif
+ 	.globl _start_hang
+ _start_hang:
+ 	wfi
+@@ -608,6 +614,16 @@ memcmp:
+ 
+ .macro	TRAP_SAVE_INFO have_mstatush have_h_extension
+ 	csrr	t0, CSR_MCAUSE
++#ifdef CONFIG_SMCLIC
++	/* CLIC mcause carries previous-mode/interrupt-level state in
++	 * bits [30:12]. Keep only the interrupt bit (MSB) and the 12-bit
++	 * exception code so trap->cause holds a standard cause value. */
++	li	t2, 0xfff
++	srli	t1, t0, (__riscv_xlen - 1)
++	slli	t1, t1, (__riscv_xlen - 1)
++	and	t0, t0, t2
++	or	t0, t0, t1
++#endif
+ 	REG_S	t0, (SBI_TRAP_REGS_SIZE + SBI_TRAP_INFO_OFFSET(cause))(sp)
+ 	csrr	t0, CSR_MTVAL
+ 	REG_S	t0, (SBI_TRAP_REGS_SIZE + SBI_TRAP_INFO_OFFSET(tval))(sp)
+@@ -735,7 +751,11 @@ memcmp:
+ .endm
+ 
+ 	.section .entry, "ax", %progbits
++#ifdef CONFIG_SMCLIC
++	.align 6
++#else
+ 	.align 3
++#endif
+ 	.globl _trap_handler
+ _trap_handler:
+ 	TRAP_SAVE_AND_SETUP_SP_T0
+diff --git a/include/sbi_utils/fdt/fdt_helper.h b/include/sbi_utils/fdt/fdt_helper.h
+index 75a564d..e3cd0b5 100644
+--- a/include/sbi_utils/fdt/fdt_helper.h
++++ b/include/sbi_utils/fdt/fdt_helper.h
+@@ -13,6 +13,11 @@
+ #include <sbi/sbi_types.h>
+ #include <sbi/sbi_domain.h>
+ 
++/* Bound in-place fixup growth to a caller-owned writable buffer. */
++void fdt_fixup_buffer_begin(void *buffer, int capacity);
++bool fdt_fixup_buffer_end(void);
++int fdt_fixup_open_into(const void *fdt, void *buf, int size);
++
+ struct fdt_match {
+ 	const char *compatible;
+ 	const void *data;
+diff --git a/include/sbi_utils/irqchip/clic.h b/include/sbi_utils/irqchip/clic.h
+new file mode 100644
+index 0000000..4bae594
+--- /dev/null
++++ b/include/sbi_utils/irqchip/clic.h
+@@ -0,0 +1,60 @@
++/*
++ * SPDX-License-Identifier: BSD-2-Clause
++ *
++ * RISC-V CLIC v0.9 register layout: a memory-mapped per-source byte
++ * array within each CLIC instance (bank). Consumed by both the CLIC FDT
++ * irqchip driver and the CLINT-backed S-timer driver.
++ */
++
++#ifndef __IRQCHIP_CLIC_H__
++#define __IRQCHIP_CLIC_H__
++
++#include <sbi/riscv_io.h>
++#include <sbi/sbi_types.h>
++
++/*
++ * Spec-fixed offset of the per-source control array within a CLIC
++ * instance; each source is 4 bytes:
++ *   +0 clicintip  +1 clicintie  +2 clicintattr  +3 clicintctl
++ */
++#define CLIC_CTRL_OFFSET        0x1000U
++
++/* ESP32-S31 rev0.0 measured CLIC layout (BSD-2-Clause):
++ * Marco Müller, annoyedmilk/esp32-s31-linux 086e52a6,
++ * opensbi/platform/esp32s31/platform.c.
++ * nmbits[5:4]=2 enables S-mode; mnlbits[3:0]=3, snlbits=0.
++ * ESP-IDF d445e947 describes a different, older register layout.
++ */
++#define CLICCFG_NMBITS_MASK     0x00000030U
++#define CLICCFG_S31_VALUE       0x00000023U
++#define CLIC_ATTR_MODE_MASK     0xc0U
++
++#define CLIC_INTIP_OFF(s)       (CLIC_CTRL_OFFSET + (s) * 4 + 0)
++#define CLIC_INTIE_OFF(s)       (CLIC_CTRL_OFFSET + (s) * 4 + 1)
++#define CLIC_INTATTR_OFF(s)     (CLIC_CTRL_OFFSET + (s) * 4 + 2)
++#define CLIC_INTCTL_OFF(s)      (CLIC_CTRL_OFFSET + (s) * 4 + 3)
++
++/* clicintattr byte: bits[7:6]=mode (0x40 = Supervisor), bits[2:1]=trigger
++ * (00 = level), bit 0 = SHV (0 = no hardware vectoring). */
++#define CLIC_ATTR_S_LEVEL       0x40U
++/* clicintctl byte: high level/priority (ctlbits=3). A source left at 0 may
++ * sit below the S-mode delivery threshold and never be taken. */
++#define CLIC_CTL_MAX_PRIO       0xE0U
++
++/*
++ * Program one CLIC source on the given bank: clear pending, set the
++ * mode/trigger attr and the priority ctl, then set the enable LAST so the
++ * source never goes live with a stale attr/ctl. nmbits=2 must already be
++ * set for the mode field to be writable. Pass ie=0 to delegate a source
++ * while leaving it masked.
++ */
++static inline void clic_set_source(u8 *bank, unsigned int id,
++				   u8 attr, u8 ctl, u8 ie)
++{
++	writeb(0,    bank + CLIC_INTIP_OFF(id));
++	writeb(attr, bank + CLIC_INTATTR_OFF(id));
++	writeb(ctl,  bank + CLIC_INTCTL_OFF(id));
++	writeb(ie,   bank + CLIC_INTIE_OFF(id));
++}
++
++#endif
+diff --git a/include/sbi_utils/serial/esp_uart.h b/include/sbi_utils/serial/esp_uart.h
+new file mode 100644
+index 0000000..4e61b65
+--- /dev/null
++++ b/include/sbi_utils/serial/esp_uart.h
+@@ -0,0 +1,21 @@
++// SPDX-License-Identifier: BSD-2-Clause
++
++#ifndef __SERIAL_ESPRESSIF_H__
++#define __SERIAL_ESPRESSIF_H__
++
++#define UART_FIFO_OFF     0
++#define UART_STATUS_OFF   0x1C
++#define UART_STATUS_RX_CNT_M 0xFF
++#define UART_STATUS_RX_CNT_S 0
++#define UART_STATUS_TX_CNT_M 0xFF
++#define UART_STATUS_TX_CNT_S 16
++
++#define UART_FIFO_FULL_CNT 128
++
++void esp_uart_putc(char ch);
++
++int esp_uart_getc(void);
++
++int esp_uart_init(unsigned long base);
++
++#endif
+diff --git a/lib/sbi/Kconfig b/lib/sbi/Kconfig
+index e76aecc..36ee284 100644
+--- a/lib/sbi/Kconfig
++++ b/lib/sbi/Kconfig
+@@ -75,6 +75,26 @@ config SBI_ECALL_DBTR
+ 	bool "Debug Trigger Extension"
+ 	default y
+ 
++config SMDBLTRP
++	bool "Smdbltrp (double-trap) MDT clearing in trap paths"
++	default y
++	help
++	  Clear mstatus.MDT (RV32: mstatush.MDT) at firmware entry and on
++	  every trap entry, so a trap taken while MDT is set is handled
++	  normally instead of escalating to the double-trap critical-error
++	  state.
++
++config SMCLIC
++	bool "Smclic (CLIC interrupt controller) trap handling"
++	default n
++	help
++	  Adjust the machine trap path for harts running in CLIC mode:
++	  64-byte-align the trap vectors, strip the CLIC state bits
++	  (mcause[30:12]) so trap->cause holds the standard RISC-V cause
++	  value, skip the S-mode handoff write to the CLIC-inactive sie
++	  CSR, and emulate S-mode sie/sip accesses with a software cache
++	  (only engaged on harts where those accesses trap).
++
+ config SBIUNIT
+ 	bool "Enable SBIUNIT tests"
+ 	default n
+diff --git a/lib/sbi/sbi_emulate_csr.c b/lib/sbi/sbi_emulate_csr.c
+index c2253c8..eef5d8a 100644
+--- a/lib/sbi/sbi_emulate_csr.c
++++ b/lib/sbi/sbi_emulate_csr.c
+@@ -17,6 +17,16 @@
+ #include <sbi/sbi_timer.h>
+ #include <sbi/sbi_trap.h>
+ 
++#ifdef CONFIG_SMCLIC
++#include <sbi/sbi_hartmask.h>
++/*
++ * sie/sip are inactive in CLIC mode; on SoCs where S-mode access to them
++ * raises illegal-instruction, emulate them here instead.
++ */
++static unsigned long sie_cache[SBI_HARTMASK_MAX_BITS];
++static unsigned long sip_cache[SBI_HARTMASK_MAX_BITS];
++#endif /* CONFIG_SMCLIC */
++
+ static bool hpm_allowed(int hpm_num, ulong prev_mode, bool virt)
+ {
+ 	ulong cen = -1UL;
+@@ -50,6 +60,20 @@ int sbi_emulate_csr_read(int csr_num, struct sbi_trap_regs *regs,
+ 	bool virt = sbi_regs_from_virt(regs);
+ 
+ 	switch (csr_num) {
++#ifdef CONFIG_SMCLIC
++	case CSR_SIE:
++		if (prev_mode == PRV_S && !virt)
++			*csr_val = sie_cache[current_hartid()];
++		else
++			ret = SBI_ENOTSUPP;
++		break;
++	case CSR_SIP:
++		if (prev_mode == PRV_S && !virt)
++			*csr_val = sip_cache[current_hartid()];
++		else
++			ret = SBI_ENOTSUPP;
++		break;
++#endif
+ 	case CSR_HTIMEDELTA:
+ 		if (prev_mode == PRV_S && !virt)
+ 			*csr_val = sbi_timer_get_delta();
+@@ -103,7 +127,7 @@ int sbi_emulate_csr_read(int csr_num, struct sbi_trap_regs *regs,
+ 
+ #define switchcase_hpm(__uref, __mref, __csr)				\
+ 	case __csr:							\
+-		if (sbi_hart_mhpm_mask(scratch) & (1 << (__csr - __uref)))\
++		if (sbi_hart_mhpm_mask(scratch) & (1U << (__csr - __uref)))\
+ 			return SBI_ENOTSUPP;				\
+ 		if (!hpm_allowed(__csr - __uref, prev_mode, virt))	\
+ 			return SBI_ENOTSUPP;				\
+@@ -156,6 +180,20 @@ int sbi_emulate_csr_write(int csr_num, struct sbi_trap_regs *regs,
+ 	bool virt = sbi_regs_from_virt(regs);
+ 
+ 	switch (csr_num) {
++#ifdef CONFIG_SMCLIC
++	case CSR_SIE:
++		if (prev_mode == PRV_S && !virt)
++			sie_cache[current_hartid()] = csr_val;
++		else
++			ret = SBI_ENOTSUPP;
++		break;
++	case CSR_SIP:
++		if (prev_mode == PRV_S && !virt)
++			sip_cache[current_hartid()] = csr_val;
++		else
++			ret = SBI_ENOTSUPP;
++		break;
++#endif
+ 	case CSR_HTIMEDELTA:
+ 		if (prev_mode == PRV_S && !virt)
+ 			sbi_timer_set_delta(csr_val);
+diff --git a/lib/sbi/sbi_expected_trap.S b/lib/sbi/sbi_expected_trap.S
+index f85a008..57d503c 100644
+--- a/lib/sbi/sbi_expected_trap.S
++++ b/lib/sbi/sbi_expected_trap.S
+@@ -19,13 +19,21 @@
+ 	 * A4 <- temporary
+ 	 */
+ 
++#ifdef CONFIG_SMCLIC
++	.align 6
++#else
+ 	.align 3
++#endif
+ 	.global __sbi_expected_trap
+ __sbi_expected_trap:
+ 	/* Without H-extension so, MTVAL2 and MTINST CSRs and GVA not available */
+ 	li	a4, MSTATUS_MPRV
+ 	csrc	CSR_MSTATUS, a4
+ 	csrr	a4, CSR_MCAUSE
++#ifdef CONFIG_SMCLIC
++	slli	a4, a4, (__riscv_xlen - 12)
++	srli	a4, a4, (__riscv_xlen - 12)
++#endif
+ 	REG_S	a4, SBI_TRAP_INFO_OFFSET(cause)(a3)
+ 	csrr	a4, CSR_MTVAL
+ 	REG_S	a4, SBI_TRAP_INFO_OFFSET(tval)(a3)
+@@ -37,13 +45,21 @@ __sbi_expected_trap:
+ 	csrw	CSR_MEPC, a4
+ 	mret
+ 
++#ifdef CONFIG_SMCLIC
++	.align 6
++#else
+ 	.align 3
++#endif
+ 	.global __sbi_expected_trap_hext
+ __sbi_expected_trap_hext:
+ 	/* With H-extension so, MTVAL2 and MTINST CSRs and GVA available */
+ 	li	a4, MSTATUS_MPRV
+ 	csrc	CSR_MSTATUS, a4
+ 	csrr	a4, CSR_MCAUSE
++#ifdef CONFIG_SMCLIC
++	slli	a4, a4, (__riscv_xlen - 12)
++	srli	a4, a4, (__riscv_xlen - 12)
++#endif
+ 	REG_S	a4, SBI_TRAP_INFO_OFFSET(cause)(a3)
+ 	csrr	a4, CSR_MTVAL
+ 	REG_S	a4, SBI_TRAP_INFO_OFFSET(tval)(a3)
+diff --git a/lib/sbi/sbi_fwft.c b/lib/sbi/sbi_fwft.c
+index 574b875..d5e84c1 100644
+--- a/lib/sbi/sbi_fwft.c
++++ b/lib/sbi/sbi_fwft.c
+@@ -78,17 +78,19 @@ static bool fwft_is_defined_feature(enum sbi_fwft_feature_t feature)
+ 
+ static int fwft_menvcfg_set_bit(unsigned long value, unsigned long bit)
+ {
++	if (bit >= 64)
++		return SBI_EINVAL;
+ 	if (value == 1) {
+ 		if (bit >= 32 && __riscv_xlen == 32)
+-			csr_set(CSR_MENVCFGH, _ULL(1) << (bit - 32));
++			csr_set(CSR_MENVCFGH, _UL(1) << (bit - 32));
+ 		else
+-			csr_set(CSR_MENVCFG, _ULL(1) << bit);
++			csr_set(CSR_MENVCFG, _UL(1) << bit);
+ 
+ 	} else if (value == 0) {
+ 		if (bit >= 32 && __riscv_xlen == 32)
+-			csr_clear(CSR_MENVCFGH, _ULL(1) << (bit - 32));
++			csr_clear(CSR_MENVCFGH, _UL(1) << (bit - 32));
+ 		else
+-			csr_clear(CSR_MENVCFG, _ULL(1) << bit);
++			csr_clear(CSR_MENVCFG, _UL(1) << bit);
+ 	} else {
+ 		return SBI_EINVAL;
+ 	}
+@@ -100,10 +102,13 @@ static int fwft_menvcfg_read_bit(unsigned long *value, unsigned long bit)
+ {
+ 	unsigned long cfg;
+ 
++	if (bit >= 64)
++		return SBI_EINVAL;
++
+ 	if (bit >= 32 && __riscv_xlen == 32)
+-		cfg = csr_read(CSR_MENVCFGH) & (_ULL(1) << (bit - 32));
++		cfg = csr_read(CSR_MENVCFGH) & (_UL(1) << (bit - 32));
+ 	else
+-		cfg = csr_read(CSR_MENVCFG) & (_ULL(1) << bit);
++		cfg = csr_read(CSR_MENVCFG) & (_UL(1) << bit);
+ 
+ 	*value = cfg != 0;
+ 
+diff --git a/lib/sbi/sbi_hart.c b/lib/sbi/sbi_hart.c
+index 2171381..df3d835 100644
+--- a/lib/sbi/sbi_hart.c
++++ b/lib/sbi/sbi_hart.c
+@@ -554,7 +554,7 @@ static int hart_detect_features(struct sbi_scratch *scratch, bool cold_boot)
+ 	if (!trap.cause) {						  \
+ 		csr_write_allowed(__csr, &trap, 1UL);			  \
+ 		if (!trap.cause && csr_swap(__csr, oldval) == 1UL) {	  \
+-			(hfeatures->__mask) |= 1 << (__csr - CSR_MCYCLE); \
++			(hfeatures->__mask) |= 1U << (__csr - CSR_MCYCLE); \
+ 		}							  \
+ 	}
+ 
+@@ -838,7 +838,9 @@ sbi_hart_switch_mode(unsigned long arg0, unsigned long arg1,
+ 		} else {
+ 			csr_write(CSR_STVEC, next_addr);
+ 			csr_write(CSR_SSCRATCH, 0);
++#ifndef CONFIG_SMCLIC
+ 			csr_write(CSR_SIE, 0);
++#endif
+ 			csr_write(CSR_SATP, 0);
+ 		}
+ 	} else if (next_mode == PRV_U) {
+diff --git a/lib/sbi/sbi_trap_ldst.c b/lib/sbi/sbi_trap_ldst.c
+index e726520..08205d6 100644
+--- a/lib/sbi/sbi_trap_ldst.c
++++ b/lib/sbi/sbi_trap_ldst.c
+@@ -286,7 +286,7 @@ static int sbi_trap_emulate_store(struct sbi_trap_context *tcntx,
+ 	const struct sbi_trap_info *orig_trap = &tcntx->trap;
+ 	struct sbi_trap_regs *regs = &tcntx->regs;
+ 	ulong insn, insn_len, imm = 0, off = 0;
+-	union sbi_ldst_data val;
++	union sbi_ldst_data val = { 0 };
+ 	struct sbi_trap_info uptrap;
+ 	bool xform = false, fp = false, c_store = false, c_stsp = false;
+ 	int rc, len = 0, prev_xlen = 0;
+diff --git a/lib/utils/fdt/fdt_domain.c b/lib/utils/fdt/fdt_domain.c
+index 61627db..604542e 100644
+--- a/lib/utils/fdt/fdt_domain.c
++++ b/lib/utils/fdt/fdt_domain.c
+@@ -19,6 +19,7 @@
+ #include <sbi_utils/fdt/fdt_domain.h>
+ #include <sbi_utils/fdt/fdt_helper.h>
+ 
++
+ int fdt_iterate_each_domain(void *fdt, void *opaque,
+ 			    int (*fn)(void *fdt, int domain_offset,
+ 				       void *opaque))
+@@ -210,7 +211,7 @@ void fdt_domain_fixup(void *fdt)
+ 		goto skip_device_disable;
+ 
+ 	/* Expand FDT based on device DT nodes to be disabled */
+-	err = fdt_open_into(fdt, fdt, fdt_totalsize(fdt) + dcount * 32);
++	err = fdt_fixup_open_into(fdt, fdt, fdt_totalsize(fdt) + dcount * 32);
+ 	if (err < 0)
+ 		return;
+ 
+@@ -434,7 +435,6 @@ static int __fdt_parse_domain(const void *fdt, int domain_offset, void *opaque)
+ 	dom->boot_hartid = val32;
+ 
+ 	/* Read "next-arg1" DT property */
+-	val64 = 0;
+ 	val = fdt_getprop(fdt, domain_offset, "next-arg1", &len);
+ 	if (val && len >= 8) {
+ 		val64 = fdt32_to_cpu(val[0]);
+diff --git a/lib/utils/fdt/fdt_fixup.c b/lib/utils/fdt/fdt_fixup.c
+index b0ed20c..4410a6f 100644
+--- a/lib/utils/fdt/fdt_fixup.c
++++ b/lib/utils/fdt/fdt_fixup.c
+@@ -21,12 +21,13 @@
+ #include <sbi_utils/fdt/fdt_pmu.h>
+ #include <sbi_utils/fdt/fdt_helper.h>
+ 
++
+ int fdt_add_cpu_idle_states(void *fdt, const struct sbi_cpu_idle_state *state)
+ {
+ 	int cpu_node, cpus_node, err, idle_states_node;
+ 	uint32_t count, phandle;
+ 
+-	err = fdt_open_into(fdt, fdt, fdt_totalsize(fdt) + 1024);
++	err = fdt_fixup_open_into(fdt, fdt, fdt_totalsize(fdt) + 1024);
+ 	if (err < 0)
+ 		return err;
+ 
+@@ -124,7 +125,7 @@ void fdt_cpu_fixup(void *fdt)
+ 			  sbi_hart_has_csr(scratch, SBI_HART_CSR_CYCLE) &&
+ 			  sbi_hart_has_csr(scratch, SBI_HART_CSR_INSTRET);
+ 
+-	err = fdt_open_into(fdt, fdt, fdt_totalsize(fdt) + 32);
++	err = fdt_fixup_open_into(fdt, fdt, fdt_totalsize(fdt) + 32);
+ 	if (err < 0)
+ 		return;
+ 
+@@ -164,7 +165,7 @@ void fdt_cpu_fixup(void *fdt)
+ 		 */
+ 		if (extensions &&
+ 		    !fdt_stringlist_contains(extensions, len, "zicntr")) {
+-			err = fdt_open_into(fdt, fdt, fdt_totalsize(fdt) + 16);
++			err = fdt_fixup_open_into(fdt, fdt, fdt_totalsize(fdt) + 16);
+ 			if (err)
+ 				continue;
+ 
+@@ -186,7 +187,7 @@ static void fdt_domain_based_fixup_one(void *fdt, int nodeoff)
+ 
+ 	if (!sbi_domain_check_addr(dom, reg_addr, dom->next_mode,
+ 				    SBI_DOMAIN_READ | SBI_DOMAIN_WRITE | SBI_DOMAIN_MMIO)) {
+-		rc = fdt_open_into(fdt, fdt, fdt_totalsize(fdt) + 32);
++		rc = fdt_fixup_open_into(fdt, fdt, fdt_totalsize(fdt) + 32);
+ 		if (rc < 0)
+ 			return;
+ 		fdt_setprop_string(fdt, nodeoff, "status", "disabled");
+@@ -330,7 +331,7 @@ int fdt_reserved_memory_fixup(void *fdt)
+ 	 * Each PMP memory region entry occupies 64 bytes.
+ 	 * With 16 PMP memory regions we need 64 * 16 = 1024 bytes.
+ 	 */
+-	err = fdt_open_into(fdt, fdt, fdt_totalsize(fdt) + 1024);
++	err = fdt_fixup_open_into(fdt, fdt, fdt_totalsize(fdt) + 1024);
+ 	if (err < 0)
+ 		return err;
+ 
+diff --git a/lib/utils/fdt/fdt_helper.c b/lib/utils/fdt/fdt_helper.c
+index ad4efaa..2735551 100644
+--- a/lib/utils/fdt/fdt_helper.c
++++ b/lib/utils/fdt/fdt_helper.c
+@@ -18,6 +18,43 @@
+ #include <sbi_utils/irqchip/imsic.h>
+ #include <sbi_utils/irqchip/plic.h>
+ 
++/* Optional bounds for the single cold-boot FDT fixup transaction. */
++static void *fixup_buffer;
++static int fixup_capacity;
++static bool fixup_failed;
++
++void fdt_fixup_buffer_begin(void *buffer, int capacity)
++{
++	fixup_buffer = buffer;
++	fixup_capacity = capacity;
++	fixup_failed = false;
++}
++
++bool fdt_fixup_buffer_end(void)
++{
++	bool failed = fixup_failed;
++
++	fixup_buffer = NULL;
++	fixup_capacity = 0;
++	fixup_failed = false;
++	return failed;
++}
++
++int fdt_fixup_open_into(const void *fdt, void *buf, int size)
++{
++	int rc;
++
++	if (fixup_buffer && buf == fixup_buffer &&
++	    (size < 0 || size > fixup_capacity)) {
++		fixup_failed = true;
++		return -FDT_ERR_NOSPACE;
++	}
++	rc = fdt_open_into(fdt, buf, size);
++	if (fixup_buffer && buf == fixup_buffer && rc)
++		fixup_failed = true;
++	return rc;
++}
++
+ #define DEFAULT_UART_FREQ		0
+ #define DEFAULT_UART_BAUD		115200
+ #define DEFAULT_UART_REG_SHIFT		0
+diff --git a/lib/utils/irqchip/Kconfig b/lib/utils/irqchip/Kconfig
+index 7a71388..435daef 100644
+--- a/lib/utils/irqchip/Kconfig
++++ b/lib/utils/irqchip/Kconfig
+@@ -14,6 +14,10 @@ config FDT_IRQCHIP_APLIC
+ 	select IRQCHIP_APLIC
+ 	default n
+ 
++config FDT_IRQCHIP_CLIC
++	bool "Core-Local Interrupt Controller (CLIC) v0.9 FDT driver"
++	default n
++
+ config FDT_IRQCHIP_IMSIC
+ 	bool "Incoming Message Signalled Interrupt Controller (IMSIC) FDT driver"
+ 	select IRQCHIP_IMSIC
+diff --git a/lib/utils/irqchip/fdt_irqchip_clic.c b/lib/utils/irqchip/fdt_irqchip_clic.c
+new file mode 100644
+index 0000000..5a341b0
+--- /dev/null
++++ b/lib/utils/irqchip/fdt_irqchip_clic.c
+@@ -0,0 +1,98 @@
++/*
++ * SPDX-License-Identifier: BSD-2-Clause
++ *
++ * CLIC v0.9 FDT irqchip driver: enables S-mode privilege selection
++ * (cliccfg.nmbits=2 on S31 rev0.0) and delegates selected sources to S-mode.
++ * Per-chip source policy comes from match-table quirks data.
++ */
++
++#include <sbi/riscv_io.h>
++#include <sbi/sbi_error.h>
++#include <sbi/sbi_irqchip.h>
++#include <sbi/sbi_scratch.h>
++#include <sbi_utils/fdt/fdt_helper.h>
++#include <sbi_utils/irqchip/clic.h>
++#include <sbi_utils/irqchip/fdt_irqchip.h>
++
++struct clic_quirks {
++	u32 smode_src_first;	/* first/last CLIC source delegated to S-mode */
++	u32 smode_src_last;
++};
++
++static const struct clic_quirks esp_clic_quirks = {
++	.smode_src_first = 16,	/* INTMTX-routed external slots */
++	.smode_src_last  = 47,
++};
++
++static unsigned long clic_base;
++static const struct clic_quirks *clic_quirks;
++
++static int irqchip_clic_warm_init(struct sbi_irqchip_device *dev)
++{
++	u32 cfg, i;
++
++	if (!clic_base || !clic_quirks)
++		return SBI_EINVAL;
++
++	/* The measured rev0.0 layout enables M/S/U routing with nmbits=2.
++	 * Check actual readback; ESP-IDF's register description differs. */
++	writel(CLICCFG_S31_VALUE, (void *)clic_base);
++	cfg = readl((void *)clic_base);
++	if ((cfg & (CLICCFG_NMBITS_MASK | 0x0fU)) != CLICCFG_S31_VALUE)
++		return SBI_ENOTSUPP;
++
++	/* Delegate the platform's peripheral sources: S-mode at max
++	 * priority but masked (ie=0), left for S-mode to enable. */
++	for (i = clic_quirks->smode_src_first;
++	     i <= clic_quirks->smode_src_last; i++) {
++		clic_set_source((void *)clic_base, i,
++				CLIC_ATTR_S_LEVEL, CLIC_CTL_MAX_PRIO, 0);
++		/* S31 documentation describes mode as read-only on some revisions. */
++		if ((readb((u8 *)clic_base + CLIC_INTATTR_OFF(i)) &
++		    CLIC_ATTR_MODE_MASK) != CLIC_ATTR_S_LEVEL)
++			return SBI_ENOTSUPP;
++	}
++
++	return 0;
++}
++
++static struct sbi_irqchip_device clic_device = {
++	.warm_init = irqchip_clic_warm_init,
++};
++
++/*
++ * Discovery only. sbi_irqchip_init() calls the warm_init hooks straight after
++ * this on the same hart, so the boot hart's bank is still programmed during
++ * cold boot.
++ */
++static int irqchip_clic_cold_init(const void *fdt, int nodeoff,
++				  const struct fdt_match *match)
++{
++	uint64_t addr;
++	int rc;
++
++	if (!match->data)
++		return SBI_EINVAL;
++
++	rc = fdt_get_node_addr_size(fdt, nodeoff, 0, &addr, NULL);
++	if (rc)
++		return rc;
++
++	clic_base = addr;
++	clic_quirks = match->data;
++
++	clic_device.num_hwirq = clic_quirks->smode_src_last + 1;
++	sbi_for_each_hartindex(i)
++		sbi_hartmask_set_hartindex(i, &clic_device.target_harts);
++	return sbi_irqchip_add_device(&clic_device);
++}
++
++static const struct fdt_match irqchip_clic_match[] = {
++	{ .compatible = "espressif,esp-clic", .data = &esp_clic_quirks },
++	{ /* sentinel */ }
++};
++
++const struct fdt_driver fdt_irqchip_clic = {
++	.match_table = irqchip_clic_match,
++	.init = irqchip_clic_cold_init,
++};
+diff --git a/lib/utils/irqchip/objects.mk b/lib/utils/irqchip/objects.mk
+index a13b384..1d6ab4a 100644
+--- a/lib/utils/irqchip/objects.mk
++++ b/lib/utils/irqchip/objects.mk
+@@ -13,6 +13,9 @@ libsbiutils-objs-$(CONFIG_FDT_IRQCHIP) += irqchip/fdt_irqchip_drivers.carray.o
+ carray-fdt_irqchip_drivers-$(CONFIG_FDT_IRQCHIP_APLIC) += fdt_irqchip_aplic
+ libsbiutils-objs-$(CONFIG_FDT_IRQCHIP_APLIC) += irqchip/fdt_irqchip_aplic.o
+ 
++carray-fdt_irqchip_drivers-$(CONFIG_FDT_IRQCHIP_CLIC) += fdt_irqchip_clic
++libsbiutils-objs-$(CONFIG_FDT_IRQCHIP_CLIC) += irqchip/fdt_irqchip_clic.o
++
+ carray-fdt_irqchip_drivers-$(CONFIG_FDT_IRQCHIP_IMSIC) += fdt_irqchip_imsic
+ libsbiutils-objs-$(CONFIG_FDT_IRQCHIP_IMSIC) += irqchip/fdt_irqchip_imsic.o
+ 
+diff --git a/lib/utils/serial/Kconfig b/lib/utils/serial/Kconfig
+index 21619d0..c98429a 100644
+--- a/lib/utils/serial/Kconfig
++++ b/lib/utils/serial/Kconfig
+@@ -54,6 +54,11 @@ config FDT_SERIAL_UART8250
+ 	select SERIAL_UART8250
+ 	default n
+ 
++config FDT_SERIAL_ESPRESSIF
++	bool "Espressif UART FDT driver"
++	select SERIAL_ESPRESSIF
++	default n
++
+ config FDT_SERIAL_XILINX_UARTLITE
+ 	bool "Xilinx UART Lite FDT driver"
+ 	select SERIAL_XILINX_UARTLITE
+@@ -93,6 +98,10 @@ config SERIAL_UART8250
+ 	bool "8250 UART support"
+ 	default n
+ 
++config SERIAL_ESPRESSIF
++	bool "Espressif UART support"
++	default n
++
+ config SERIAL_XILINX_UARTLITE
+ 	bool "Xilinx UART Lite support"
+ 	default n
+diff --git a/lib/utils/serial/cadence-uart.c b/lib/utils/serial/cadence-uart.c
+index 30fbb95..80dc429 100644
+--- a/lib/utils/serial/cadence-uart.c
++++ b/lib/utils/serial/cadence-uart.c
+@@ -39,8 +39,6 @@
+ /* clang-format on */
+ 
+ static volatile void *uart_base;
+-static u32 uart_in_freq;
+-static u32 uart_baudrate;
+ 
+ /*
+  * Find minimum divisor divides in_freq to max_target_hz;
+@@ -95,8 +93,6 @@ static struct sbi_console_device cadence_console = {
+ int cadence_uart_init(unsigned long base, u32 in_freq, u32 baudrate)
+ {
+ 	uart_base     = (volatile void *)base;
+-	uart_in_freq  = in_freq;
+-	uart_baudrate = baudrate;
+ 
+ 	/* Disable interrupts */
+ 	set_reg(UART_REG_IDR, 0xFFFFFFFF);
+diff --git a/lib/utils/serial/esp_uart.c b/lib/utils/serial/esp_uart.c
+new file mode 100644
+index 0000000..a3c17f5
+--- /dev/null
++++ b/lib/utils/serial/esp_uart.c
+@@ -0,0 +1,37 @@
++// SPDX-License-Identifier: BSD-2-Clause
++#include <sbi/riscv_io.h>
++#include <sbi/sbi_console.h>
++#include <sbi_utils/serial/esp_uart.h>
++
++static unsigned long esp_uart_base;
++
++void esp_uart_putc(char ch)
++{
++    while (((readl((unsigned int *)(esp_uart_base + UART_STATUS_OFF)) >> UART_STATUS_TX_CNT_S) & UART_STATUS_TX_CNT_M) >= UART_FIFO_FULL_CNT) {}
++    writel(ch, (unsigned int *)(esp_uart_base + UART_FIFO_OFF));
++}
++
++int esp_uart_getc(void)
++{
++    /* Check the RX FIFO count first: reading the FIFO when it is empty
++     * returns undefined data, indistinguishable from a real received NUL. */
++    unsigned int status = readl((unsigned int *)(esp_uart_base + UART_STATUS_OFF));
++
++    if (((status >> UART_STATUS_RX_CNT_S) & UART_STATUS_RX_CNT_M) == 0)
++        return -1;
++
++    return readl((unsigned int *)(esp_uart_base + UART_FIFO_OFF)) & 0xFF;
++}
++
++static struct sbi_console_device esp_console = {
++    .name = "espressif uart",
++    .console_putc = esp_uart_putc,
++    .console_getc = esp_uart_getc
++};
++
++int esp_uart_init(unsigned long base)
++{
++    esp_uart_base = base;
++    sbi_console_set_device(&esp_console);
++    return 0;
++}
+diff --git a/lib/utils/serial/fdt_serial_espressif.c b/lib/utils/serial/fdt_serial_espressif.c
+new file mode 100644
+index 0000000..6e2ca8f
+--- /dev/null
++++ b/lib/utils/serial/fdt_serial_espressif.c
+@@ -0,0 +1,38 @@
++/*
++ * SPDX-License-Identifier: BSD-2-Clause
++ *
++ * FDT serial driver for the Espressif RISC-V UART.
++ *
++ * The actual register-level driver lives in lib/utils/serial/esp_uart.c
++ * and is exposed via <sbi_utils/serial/esp_uart.h>. This file is the
++ * thin glue that lets `platform/generic/`'s fdt_serial_init() pick the
++ * UART up from the device tree, the same way fdt_serial_uart8250.c
++ * does it for the 8250.
++ */
++
++#include <sbi_utils/fdt/fdt_helper.h>
++#include <sbi_utils/serial/esp_uart.h>
++#include <sbi_utils/serial/fdt_serial.h>
++
++static int serial_espressif_init(const void *fdt, int nodeoff,
++				 const struct fdt_match *match)
++{
++	struct platform_uart_data uart = { 0 };
++	int rc;
++
++	rc = fdt_parse_uart_node(fdt, nodeoff, &uart);
++	if (rc)
++		return rc;
++
++	return esp_uart_init(uart.addr);
++}
++
++static const struct fdt_match serial_espressif_match[] = {
++	{ .compatible = "esp,uart0" },
++	{ /* sentinel */ }
++};
++
++const struct fdt_driver fdt_serial_espressif = {
++	.match_table = serial_espressif_match,
++	.init = serial_espressif_init,
++};
+diff --git a/lib/utils/serial/objects.mk b/lib/utils/serial/objects.mk
+index 94cf3a4..4423796 100644
+--- a/lib/utils/serial/objects.mk
++++ b/lib/utils/serial/objects.mk
+@@ -37,6 +37,9 @@ libsbiutils-objs-$(CONFIG_FDT_SERIAL_LITEX) += serial/fdt_serial_litex.o
+ carray-fdt_serial_drivers-$(CONFIG_FDT_SERIAL_UART8250) += fdt_serial_uart8250
+ libsbiutils-objs-$(CONFIG_FDT_SERIAL_UART8250) += serial/fdt_serial_uart8250.o
+ 
++carray-fdt_serial_drivers-$(CONFIG_FDT_SERIAL_ESPRESSIF) += fdt_serial_espressif
++libsbiutils-objs-$(CONFIG_FDT_SERIAL_ESPRESSIF) += serial/fdt_serial_espressif.o
++
+ carray-fdt_serial_drivers-$(CONFIG_FDT_SERIAL_XILINX_UARTLITE) += fdt_serial_xlnx_uartlite
+ libsbiutils-objs-$(CONFIG_FDT_SERIAL_XILINX_UARTLITE) += serial/fdt_serial_xlnx_uartlite.o
+ 
+@@ -48,5 +51,6 @@ libsbiutils-objs-$(CONFIG_SERIAL_SHAKTI) += serial/shakti-uart.o
+ libsbiutils-objs-$(CONFIG_SERIAL_SIFIVE) += serial/sifive-uart.o
+ libsbiutils-objs-$(CONFIG_SERIAL_LITEX) += serial/litex-uart.o
+ libsbiutils-objs-$(CONFIG_SERIAL_UART8250) += serial/uart8250.o
++libsbiutils-objs-$(CONFIG_SERIAL_ESPRESSIF) += serial/esp_uart.o
+ libsbiutils-objs-$(CONFIG_SERIAL_XILINX_UARTLITE) += serial/xlnx-uartlite.o
+ libsbiutils-objs-$(CONFIG_SERIAL_SEMIHOSTING) += serial/semihosting.o
+diff --git a/lib/utils/serial/sifive-uart.c b/lib/utils/serial/sifive-uart.c
+index 5563713..235976e 100644
+--- a/lib/utils/serial/sifive-uart.c
++++ b/lib/utils/serial/sifive-uart.c
+@@ -31,8 +31,6 @@
+ /* clang-format on */
+ 
+ static volatile char *uart_base;
+-static u32 uart_in_freq;
+-static u32 uart_baudrate;
+ 
+ /**
+  * Find minimum divisor divides in_freq to max_target_hz;
+@@ -94,8 +92,6 @@ static struct sbi_console_device sifive_console = {
+ int sifive_uart_init(unsigned long base, u32 in_freq, u32 baudrate)
+ {
+ 	uart_base     = (volatile char *)base;
+-	uart_in_freq  = in_freq;
+-	uart_baudrate = baudrate;
+ 
+ 	/* Configure baudrate */
+ 	if (in_freq && baudrate)
+diff --git a/platform/generic/Kconfig b/platform/generic/Kconfig
+index d594b14..877d956 100644
+--- a/platform/generic/Kconfig
++++ b/platform/generic/Kconfig
+@@ -47,6 +47,13 @@ config PLATFORM_ANDES_QILAI
+ 	select ANDES_SBI
+ 	default n
+ 
++config PLATFORM_ESPRESSIF_ESP32S31
++	bool "Espressif ESP32-S31 (RV32 CLIC) support"
++	select FDT_SERIAL_ESPRESSIF
++	select FDT_IRQCHIP_CLIC
++	select SMCLIC
++	default n
++
+ config PLATFORM_ESWIN_EIC770X
+ 	bool "ESWIN EIC770X support"
+ 	default n
+diff --git a/platform/generic/configs/esp32s31_defconfig b/platform/generic/configs/esp32s31_defconfig
+new file mode 100644
+index 0000000..3ceb075
+--- /dev/null
++++ b/platform/generic/configs/esp32s31_defconfig
+@@ -0,0 +1,21 @@
++# SPDX-License-Identifier: BSD-2-Clause
++
++CONFIG_PLATFORM_ESPRESSIF_ESP32S31=y
++CONFIG_SMCLIC=y
++# Harts without the mstatush CSR trap on the MDT clear
++# CONFIG_SMDBLTRP is not set
++
++CONFIG_FDT_IRQCHIP=y
++CONFIG_FDT_IRQCHIP_CLIC=y
++
++CONFIG_FDT_SERIAL=y
++CONFIG_FDT_SERIAL_ESPRESSIF=y
++
++# Experimental SBI extensions disabled — not exercised by RV32 Linux boot.
++# CONFIG_SBI_ECALL_FWFT is not set
++# CONFIG_SBI_ECALL_DBTR is not set
++# CONFIG_SBI_ECALL_SSE is not set
++
++# This platform registers no CPPC device or MPXY channel.
++# CONFIG_SBI_ECALL_CPPC is not set
++# CONFIG_SBI_ECALL_MPXY is not set
+diff --git a/platform/generic/espressif/esp32s31/apm.c b/platform/generic/espressif/esp32s31/apm.c
+new file mode 100644
+index 0000000..c14eb9f
+--- /dev/null
++++ b/platform/generic/espressif/esp32s31/apm.c
+@@ -0,0 +1,111 @@
++/*
++ * SPDX-License-Identifier: BSD-2-Clause
++ *
++ * ESP32-S31 APM (Access Permission Manager).
++ */
++
++#include <sbi/riscv_io.h>
++
++#include "platform.h"
++
++/* APM controller bases:
++ *   TEE       @ 0x20504000  master security-mode router
++ *   HP_APM    @ 0x20504400  HP-bus peripheral filter, 16 regions, 7 paths
++ *   HP_MEM_APM@ 0x20504800  HP-mem (HP RAM / cache) filter, 8 regions, 6 paths
++ *   CPU_APM   @ 0x20504C00  HP-CPU filter (covers 0x40000000-0x5FFFFFFF
++ *                            Flash+PSRAM XIP window), 8 regions, 4 paths
++ *   LP_TEE    @ 0x20706800
++ *   LP_APM    @ 0x20706C00  LP-bus filter, 8 regions, 4 paths
++ *
++ * Per-controller register offsets are uniform:
++ *   +0x00  REGION_FILTER_EN  (one bit per region, default 0x01)
++ *   +0x04  REGION0_ADDR_START
++ *   +0x08  REGION0_ADDR_END
++ *   +0x0C  REGION0_ATTR (LOCK@16, TEE_RWX@[14:12], REE2_RWX@[10:8],
++ *                       REE1_RWX@[6:4], REE0_RWX@[2:0])
++ *   stride 0xC for further regions
++ *   +0xC4  FUNC_CTRL (per-master/path enable; defaults all 1)
++ *   (LP_APM FUNC_CTRL is at +0xBC; only LP_APM is irregular.)
++ */
++#define ESP32S31_TEE_BASE                0x20504000U
++#define ESP32S31_HP_APM_BASE             0x20504400U
++#define ESP32S31_HP_MEM_APM_BASE         0x20504800U
++#define ESP32S31_CPU_APM_BASE            0x20504C00U
++#define ESP32S31_LP_APM_BASE             0x20706C00U
++
++#define ESP32S31_APM_REGION_FILTER_EN_OFF    0x00
++#define ESP32S31_APM_REGION0_ATTR_OFF        0x0C
++#define ESP32S31_APM_REGION_STRIDE           0x0C
++/* Signed offsets from REGION_ATTR to START/END for the same region. */
++#define ESP32S31_APM_REGION_START_REL        (-0x08)
++#define ESP32S31_APM_REGION_END_REL          (-0x04)
++#define ESP32S31_APM_FUNC_CTRL_OFF           0xC4
++#define ESP32S31_LP_APM_FUNC_CTRL_OFF        0xBC
++
++/* ATTR field layout: a 3-bit RWX nibble per sec-mode at bits
++ * [2:0]=REE0, [6:4]=REE1, [10:8]=REE2, [14:12]=TEE. 0x7 = R|W|X. */
++#define ESP32S31_APM_ATTR_ALL_RWX        0x7777U
++
++/* TEE supervisor-mode privilege mapping. Maps
++ * each HP core's S-mode to the TEE access-path of U-mode (reset value)
++ * or M-mode. With the reset default, mret-to-S silently hangs on real
++ * silicon — the CPU does not resume at next_addr. Setting bit-per-core
++ * unblocks S-mode at the cost of TEE/REE isolation against S-mode
++ * payloads, acceptable for our single-tenant OpenSBI -> S-mode flow. */
++#define ESP32S31_TEE_SUPERVISOR_PRIV_SEL_REG  (ESP32S31_TEE_BASE + 0x200)
++#define ESP32S31_TEE_CORE0_SUPER_AS_M         (1U << 0)
++#define ESP32S31_TEE_CORE1_SUPER_AS_M         (1U << 1)
++
++#define APM_ALLOW_ADDR_START_MAX     0x00000000U
++#define APM_ALLOW_ADDR_END_MAX       0xFFFFFFFFU
++
++/* APM_LL_*_MAX_REGION / MAX_ACCESS_PATH from the ROM HAL. */
++static const struct apm_ctrl {
++	u32 base;
++	u32 n_regions;
++	u32 path_mask;
++	u32 func_ctrl_off;
++} apm_ctrls[] = {
++	{ ESP32S31_CPU_APM_BASE,    8,  0x0F, ESP32S31_APM_FUNC_CTRL_OFF },
++	{ ESP32S31_HP_APM_BASE,     16, 0x7F, ESP32S31_APM_FUNC_CTRL_OFF },
++	{ ESP32S31_HP_MEM_APM_BASE, 8,  0x3F, ESP32S31_APM_FUNC_CTRL_OFF },
++	{ ESP32S31_LP_APM_BASE,     8,  0x0F, ESP32S31_LP_APM_FUNC_CTRL_OFF },
++};
++
++static void apm_grant_all(const struct apm_ctrl *c)
++{
++	u32 i, attr_reg;
++
++	for (i = 0; i < c->n_regions; i++) {
++		attr_reg = c->base + ESP32S31_APM_REGION0_ATTR_OFF +
++			   ESP32S31_APM_REGION_STRIDE * i;
++		writel(APM_ALLOW_ADDR_START_MAX,
++		       (void *)(attr_reg + ESP32S31_APM_REGION_START_REL));
++		writel(APM_ALLOW_ADDR_END_MAX,
++		       (void *)(attr_reg + ESP32S31_APM_REGION_END_REL));
++		writel(ESP32S31_APM_ATTR_ALL_RWX, (void *)attr_reg);
++	}
++
++	writel((1U << c->n_regions) - 1U,
++	       (void *)(c->base + ESP32S31_APM_REGION_FILTER_EN_OFF));
++	writel(c->path_mask, (void *)(c->base + c->func_ctrl_off));
++}
++
++void s31_apm_init(void)
++{
++	u32 i;
++
++	for (i = 0; i < array_size(apm_ctrls); i++)
++		apm_grant_all(&apm_ctrls[i]);
++}
++
++/* TEE_SUPERVISOR_PRIV_SEL: empirically must be flipped AFTER OpenSBI's
++ * banner prints. Setting it during s31_early_init wedges subsequent
++ * M-mode UART output (TEE module appears to pulse peripheral-access
++ * plumbing on this bit's edge; the UART status read in esp_uart_putc
++ * then spins). Banner-then-flip works reliably. */
++void s31_tee_supervisor_priv_sel_to_m(void)
++{
++	writel(ESP32S31_TEE_CORE0_SUPER_AS_M | ESP32S31_TEE_CORE1_SUPER_AS_M,
++	       (void *)ESP32S31_TEE_SUPERVISOR_PRIV_SEL_REG);
++}
+diff --git a/platform/generic/espressif/esp32s31/cache_mmu.c b/platform/generic/espressif/esp32s31/cache_mmu.c
+new file mode 100644
+index 0000000..64d0b23
+--- /dev/null
++++ b/platform/generic/espressif/esp32s31/cache_mmu.c
+@@ -0,0 +1,89 @@
++/*
++ * SPDX-License-Identifier: BSD-2-Clause
++ *
++ * ESP32-S31 DMA cache maintenance for the external-memory (flash/PSRAM)
++ * L1 cache, exposed to S-mode via the platform vendor SBI ecall.
++ *
++ * The flash and PSRAM share one cache controller with no fence.i/Zicbom
++ * reach, so S-mode (Linux, U-Boot) delegates writeback/invalidate to these
++ * M-mode helpers. The cache/flash-MMU *bring-up* is done earlier by the
++ * U-Boot SPL, not here. Entry-point addresses come from the chip ROM
++ * link map.
++ */
++
++#include <sbi/riscv_io.h>
++#include <sbi/sbi_console.h>
++#include <sbi/sbi_types.h>
++
++#include "cache_mmu.h"
++#include "config.h"
++#include "rom.h"
++
++/* True iff [vaddr, vaddr+size) lies wholly within the flash XIP window or
++ * wholly within the PSRAM window (overflow-safe, no straddle). The ROM
++ * Cache_*_Addr helpers fault M-mode on an out-of-window address, so the
++ * vendor ecall provider must reject S-mode-supplied ranges that fail this
++ * before dispatching any cache op. */
++bool s31_cache_range_valid(u32 vaddr, u32 size)
++{
++	if (size == 0)
++		return false;
++	if (vaddr >= FLASH_START && size <= FLASH_SIZE &&
++	    vaddr - FLASH_START <= FLASH_SIZE - size)
++		return true;
++	if (vaddr >= PSRAM_START && size <= PSRAM_SIZE &&
++	    vaddr - PSRAM_START <= PSRAM_SIZE - size)
++		return true;
++	return false;
++}
++
++/* DMA cache maintenance over the external-memory (flash/PSRAM) L1 D-cache,
++ * exposed to S-mode via the platform vendor SBI ecall (see platform.c). */
++void s31_dcache_writeback(u32 vaddr, u32 size)
++{
++	if (size)
++		ROM_Cache_WriteBack_Addr(CACHE_MAP_L1_DCACHE, vaddr, size);
++}
++
++void s31_dcache_invalidate(u32 vaddr, u32 size)
++{
++	if (size)
++		ROM_Cache_Invalidate_Addr(CACHE_MAP_L1_DCACHE, vaddr, size);
++}
++
++void s31_dcache_writeback_invalidate(u32 vaddr, u32 size)
++{
++	if (!size)
++		return;
++	ROM_Cache_WriteBack_Addr(CACHE_MAP_L1_DCACHE, vaddr, size);
++	ROM_Cache_Invalidate_Addr(CACHE_MAP_L1_DCACHE, vaddr, size);
++}
++
++/* Whole-cache D writeback (no invalidate), e.g. U-Boot's flush_dcache_all. */
++void s31_dcache_writeback_all(void)
++{
++	ROM_Cache_WriteBack_All(CACHE_MAP_L1_DCACHE);
++}
++
++/* Whole-cache writeback-D + invalidate-I, for Linux flush_icache_all (no range). */
++void s31_icache_sync_all(void)
++{
++	ROM_Cache_WriteBack_All(CACHE_MAP_L1_DCACHE);
++	ROM_Cache_Invalidate_All(CACHE_MAP_L1_ICACHE);
++}
++
++/* Range variant, per exec page from flush_icache_pte. Flash is read-only (no
++ * dirty DCache) so it only needs ICache invalidated; PSRAM exec pages need
++ * writeback-D first. Skip vaddrs outside the windows (a bad ROM Cache_*_Addr
++ * faults M-mode); per-page calls don't straddle the flash/PSRAM boundary. */
++void s31_icache_sync_range(u32 vaddr, u32 size)
++{
++	bool in_flash = vaddr >= FLASH_START && vaddr - FLASH_START < FLASH_SIZE;
++	bool in_psram = vaddr >= PSRAM_START && vaddr - PSRAM_START < PSRAM_SIZE;
++
++	if (!size || (!in_flash && !in_psram))
++		return;
++	if (in_psram)
++		s31_dcache_writeback(vaddr, size);
++	ROM_Cache_Invalidate_Addr(CACHE_MAP_L1_ICACHE, vaddr, size);
++}
+diff --git a/platform/generic/espressif/esp32s31/cache_mmu.h b/platform/generic/espressif/esp32s31/cache_mmu.h
+new file mode 100644
+index 0000000..0dd47e0
+--- /dev/null
++++ b/platform/generic/espressif/esp32s31/cache_mmu.h
+@@ -0,0 +1,27 @@
++/*
++ * SPDX-License-Identifier: BSD-2-Clause
++ *
++ * ESP32-S31 DMA cache maintenance for the flash/PSRAM L1 cache, exposed
++ * to S-mode via the platform vendor SBI ecall.
++ */
++
++#ifndef _ESP32S31_CACHE_MMU_H_
++#define _ESP32S31_CACHE_MMU_H_
++
++#include <sbi/sbi_types.h>
++
++/* True iff [vaddr, vaddr+size) lies wholly inside the flash or PSRAM window. */
++bool s31_cache_range_valid(u32 vaddr, u32 size);
++
++void s31_dcache_writeback(u32 vaddr, u32 size);
++void s31_dcache_invalidate(u32 vaddr, u32 size);
++void s31_dcache_writeback_invalidate(u32 vaddr, u32 size);
++
++/* Whole-cache writeback, e.g. before U-Boot jumps to a kernel. */
++void s31_dcache_writeback_all(void);
++
++/* I-cache sync for Linux flush_icache. */
++void s31_icache_sync_all(void);
++void s31_icache_sync_range(u32 vaddr, u32 size);
++
++#endif /* _ESP32S31_CACHE_MMU_H_ */
+diff --git a/platform/generic/espressif/esp32s31/config.h b/platform/generic/espressif/esp32s31/config.h
+new file mode 100644
+index 0000000..64b5292
+--- /dev/null
++++ b/platform/generic/espressif/esp32s31/config.h
+@@ -0,0 +1,19 @@
++/*
++ * SPDX-License-Identifier: BSD-2-Clause
++ *
++ * ESP32-S31 memory map.
++ */
++
++#ifndef _ESP32S31_CONFIG_H_
++#define _ESP32S31_CONFIG_H_
++
++#define HP_RAM_START   (0x2F000000U)
++#define HP_RAM_SIZE    (0x80000U)        /* 512 KB unified IRAM/DRAM */
++
++#define PSRAM_START    (0x50000000U)
++#define PSRAM_SIZE     (0x04000000U)     /* 64 MB virtual window */
++
++#define FLASH_START    (0x40000000U)
++#define FLASH_SIZE     (0x04000000U)     /* 64 MB virtual cache window */
++
++#endif /* _ESP32S31_CONFIG_H_ */
+diff --git a/platform/generic/espressif/esp32s31/esp32s31.c b/platform/generic/espressif/esp32s31/esp32s31.c
+new file mode 100644
+index 0000000..8460862
+--- /dev/null
++++ b/platform/generic/espressif/esp32s31/esp32s31.c
+@@ -0,0 +1,247 @@
++/*
++ * SPDX-License-Identifier: BSD-2-Clause
++ *
++ * ESP32-S31 platform_override module.
++ *
++ */
++
++#include <sbi/riscv_asm.h>
++#include <sbi/riscv_io.h>
++#include <sbi/sbi_console.h>
++#include <sbi/sbi_domain.h>
++#include <sbi/sbi_ecall.h>
++#include <sbi/sbi_ecall_interface.h>
++#include <sbi/sbi_error.h>
++#include <sbi/sbi_heap.h>
++#include <sbi/sbi_scratch.h>
++#include <sbi/sbi_system.h>
++#include <libfdt.h>
++#include <platform_override.h>
++#include <sbi_utils/fdt/fdt_helper.h>
++#include <sbi_utils/serial/esp_uart.h>
++
++#include "cache_mmu.h"
++#include "platform.h"
++
++/* Espressif PMA (Physical Memory Attributes) CSR base addresses — custom
++ * extension on top of standard PMP. 16 entries each: bit 0 = EN, bit 2 =
++ * X, bit 3 = W, bit 4 = R, bit 29 = L, bits 30-31 = address-mode A
++ * field. */
++#define ESP32S31_PMACFG0_CSR         0xBC0
++#define ESP32S31_PMAADDR0_CSR        0xBD0
++
++#define ESP32S31_PMA_EN              (1U << 0)
++#define ESP32S31_PMA_X               (1U << 2)
++#define ESP32S31_PMA_W               (1U << 3)
++#define ESP32S31_PMA_R               (1U << 4)
++#define ESP32S31_PMA_NAPOT           0xC0000000U
++
++/* PSRAM XIP window. Size is power-of-2 and the base is naturally
++ * aligned, so the range is NAPOT-encodable. */
++#define ESP32S31_PMA_PSRAM_BASE      0x50000000U
++#define ESP32S31_PMA_PSRAM_SIZE      0x04000000U
++#define ESP32S31_PMA_PSRAM_NAPOT_ADDR \
++	((ESP32S31_PMA_PSRAM_BASE | ((ESP32S31_PMA_PSRAM_SIZE >> 1) - 1U)) >> 2)
++#define ESP32S31_PMA_PSRAM_CFG \
++	(ESP32S31_PMA_NAPOT | ESP32S31_PMA_R | ESP32S31_PMA_W | \
++	 ESP32S31_PMA_X | ESP32S31_PMA_EN)
++
++/* Entry index used for the PSRAM overlay. */
++#define ESP32S31_PMA_PSRAM_ENTRY     7
++
++/* Slack over the source dtb for the generic platform's in-place fixups. */
++#define S31_FIXUP_FDT_SIZE	0x3000
++
++/* LP_AONCLKRST_HPCORE0_RESET_CTRL_REG @ 0x2070103C — bit 20 is the
++ * write-to-trigger HP core 0 software reset, used to service SBI
++ * shutdown / reboot requests. */
++#define LP_AONCLKRST_HPCORE0_RESET_CTRL_REG  0x2070103CU
++#define HPCORE_SW_RESET                      (1U << 20)
++
++static int s31_system_reset_check(u32 type, u32 reason)
++{
++	switch (type) {
++	case SBI_SRST_RESET_TYPE_COLD_REBOOT:
++	case SBI_SRST_RESET_TYPE_WARM_REBOOT:
++	case SBI_SRST_RESET_TYPE_SHUTDOWN:
++		return 1;
++	}
++	return 0;
++}
++
++static void s31_system_reset(u32 type, u32 reason)
++{
++	writel(HPCORE_SW_RESET, (void *)LP_AONCLKRST_HPCORE0_RESET_CTRL_REG);
++
++	/* If the reset doesn't take effect (e.g. shutdown on a chip with no
++	 * power-down path), spin in WFI so we don't return into garbage. */
++	while (1)
++		__asm__ __volatile__("wfi");
++}
++
++static struct sbi_system_reset_device s31_reset = {
++	.name               = "esp32s31-reset",
++	.system_reset_check = s31_system_reset_check,
++	.system_reset       = s31_system_reset,
++};
++
++/* Add higher-priority PMA entry 7 (NAPOT, RWX) over the PSRAM XIP window. */
++static void s31_pma_init(void)
++{
++	csr_write(ESP32S31_PMAADDR0_CSR + ESP32S31_PMA_PSRAM_ENTRY,
++		  ESP32S31_PMA_PSRAM_NAPOT_ADDR);
++	csr_write(ESP32S31_PMACFG0_CSR + ESP32S31_PMA_PSRAM_ENTRY,
++		  ESP32S31_PMA_PSRAM_CFG);
++}
++
++/* The SPL supplies a writable PSRAM FDT; its header declares its capacity.
++ * Generic fixups use a temporary M-only buffer and may expand it in-place.
++ */
++static unsigned long s31_uboot_dtb;
++static unsigned int s31_uboot_dtb_size;
++static void *s31_fdt_buffer;
++static int esp32s31_early_init(bool cold_boot)
++{
++	void *fbuf;
++	int rc;
++
++	s31_pma_init();
++	if (!cold_boot)
++		return generic_early_init(false);
++	rc = generic_early_init(true);
++	if (rc)
++		return rc;
++	sbi_printf("OpenSBI: ESP32-S31 firmware active\n");
++
++	s31_uboot_dtb = root.next_arg1;
++	if (fdt_check_header((void *)s31_uboot_dtb))
++		return SBI_EINVAL;
++	s31_uboot_dtb_size = fdt_totalsize((void *)s31_uboot_dtb);
++	if (s31_uboot_dtb_size > S31_FIXUP_FDT_SIZE)
++		return SBI_ENOSPC;
++	if (fdt_check_full((void *)s31_uboot_dtb, s31_uboot_dtb_size))
++		return SBI_EINVAL;
++	fbuf = sbi_malloc(S31_FIXUP_FDT_SIZE);
++	if (!fbuf)
++		return SBI_ENOMEM;
++	if (fdt_open_into((void *)s31_uboot_dtb, fbuf, s31_uboot_dtb_size) ||
++	    fdt_pack(fbuf)) {
++		sbi_free(fbuf);
++		return SBI_EINVAL;
++	}
++	s31_fdt_buffer = fbuf;
++	fdt_fixup_buffer_begin(fbuf, S31_FIXUP_FDT_SIZE);
++	root.next_arg1 = (unsigned long)fbuf;
++	s31_apm_init();
++	sbi_system_reset_add_device(&s31_reset);
++	s31_hsm_register();
++	return 0;
++}
++
++static int esp32s31_final_init(bool cold_boot)
++{
++	int rc = generic_final_init(cold_boot);
++	bool fixup_failed;
++
++	if (!cold_boot)
++		return rc;
++	fixup_failed = fdt_fixup_buffer_end();
++	if (rc || fixup_failed) {
++		if (!rc)
++			rc = SBI_ENOSPC;
++		goto fail;
++	}
++	/* Compact the fixed-up tree and copy it back only within the capacity
++	 * declared by the SPL. The SPL must provide padding for fixups. */
++	if (fdt_pack(s31_fdt_buffer) ||
++	    fdt_open_into(s31_fdt_buffer, (void *)s31_uboot_dtb,
++			  s31_uboot_dtb_size)) {
++		rc = SBI_ENOSPC;
++		goto fail;
++	}
++	s31_tee_supervisor_priv_sel_to_m();
++	root.next_arg1 = s31_uboot_dtb;
++	sbi_scratch_thishart_ptr()->next_arg1 = s31_uboot_dtb;
++	sbi_free(s31_fdt_buffer);
++	s31_fdt_buffer = NULL;
++	return 0;
++fail:
++	root.next_arg1 = s31_uboot_dtb;
++	sbi_free(s31_fdt_buffer);
++	s31_fdt_buffer = NULL;
++	return rc;
++}
++
++/* Vendor SBI extension: DMA cache maintenance. */
++#define S31_SBI_CACHE_WBACK        0
++#define S31_SBI_CACHE_INVAL        1
++#define S31_SBI_CACHE_WBACK_INVAL  2
++#define S31_SBI_ICACHE_SYNC        3
++#define S31_SBI_ICACHE_SYNC_RANGE  4
++#define S31_SBI_DCACHE_WBACK_ALL   5
++
++static int esp32s31_vendor_ext_provider(long funcid,
++					struct sbi_trap_regs *regs,
++					struct sbi_ecall_return *out)
++{
++	u32 vaddr = (u32)regs->a0;
++	u32 size  = (u32)regs->a1;
++
++	/* Reject out-of-window ranges from S-mode: an address outside the
++	 * flash/PSRAM windows faults M-mode inside the ROM Cache_*_Addr
++	 * helpers. The whole-cache sync (funcid 3) takes no address. */
++	switch (funcid) {
++	case S31_SBI_CACHE_WBACK:
++	case S31_SBI_CACHE_INVAL:
++	case S31_SBI_CACHE_WBACK_INVAL:
++	case S31_SBI_ICACHE_SYNC_RANGE:
++		if (!s31_cache_range_valid(vaddr, size))
++			return SBI_ERR_INVALID_PARAM;
++		break;
++	}
++
++	switch (funcid) {
++	case S31_SBI_CACHE_WBACK:
++		s31_dcache_writeback(vaddr, size);
++		break;
++	case S31_SBI_CACHE_INVAL:
++		s31_dcache_invalidate(vaddr, size);
++		break;
++	case S31_SBI_CACHE_WBACK_INVAL:
++		s31_dcache_writeback_invalidate(vaddr, size);
++		break;
++	case S31_SBI_ICACHE_SYNC:
++		s31_icache_sync_all();
++		break;
++	case S31_SBI_ICACHE_SYNC_RANGE:
++		s31_icache_sync_range(vaddr, size);
++		break;
++	case S31_SBI_DCACHE_WBACK_ALL:
++		s31_dcache_writeback_all();
++		break;
++	default:
++		return SBI_ENOTSUPP;
++	}
++
++	out->value = 0;
++	return 0;
++}
++
++static const struct fdt_match esp32s31_match[] = {
++	{ .compatible = "espressif,esp32s31" },
++	{ /* sentinel */ }
++};
++
++static int esp32s31_platform_init(const void *fdt, int nodeoff,
++				   const struct fdt_match *match)
++{
++	generic_platform_ops.early_init = esp32s31_early_init;
++	generic_platform_ops.final_init = esp32s31_final_init;
++	generic_platform_ops.vendor_ext_provider = esp32s31_vendor_ext_provider;
++	return 0;
++}
++
++const struct fdt_driver esp32s31 = {
++	.match_table = esp32s31_match,
++	.init = esp32s31_platform_init,
++};
+diff --git a/platform/generic/espressif/esp32s31/hsm.c b/platform/generic/espressif/esp32s31/hsm.c
+new file mode 100644
+index 0000000..5e364d3
+--- /dev/null
++++ b/platform/generic/espressif/esp32s31/hsm.c
+@@ -0,0 +1,81 @@
++/*
++ * SPDX-License-Identifier: BSD-2-Clause
++ */
++
++#include <sbi/riscv_asm.h>
++#include <sbi/riscv_io.h>
++#include <sbi/sbi_error.h>
++#include <sbi/sbi_hsm.h>
++
++#include "platform.h"
++
++#include "rom.h"
++
++/* HP_SYS_CLKRST_HPCORE1_CTRL0 */
++#define S31_HPCORE1_CTRL0_REG		0x20587020U
++#define S31_HPCORE1_CLIC_CLK_EN		(1U << 0)
++#define S31_HPCORE1_CPU_CLK_EN		(1U << 1)
++#define S31_HPCORE1_GLOBAL_RST_EN	(1U << 2)
++
++/*
++ * PMU_CPU_STALL_SW_REG (DR_REG_PMU_BASE + 0x1ec). HPCORE1's stall code is
++ * bits[23:16] (core0's is bits[31:24]). Magic values per IDF
++ * hal/cpu_utility_ll.h: 0x86 stalls, 0xFF releases. Note this is NOT
++ * LP_AONCLKRST_HPCORE1_RESET_CTRL_REG
++ */
++#define S31_PMU_CPU_STALL_SW_REG	0x207041ECU
++#define S31_HART1_STALL_SHIFT		16
++#define S31_HART1_STALL_MASK		(0xFFU << S31_HART1_STALL_SHIFT)
++#define S31_HART1_UNSTALL_CODE		(0xFFU << S31_HART1_STALL_SHIFT)
++
++static int s31_hart_start(u32 hartid, ulong saddr)
++{
++	u32 v;
++
++	if (hartid != 1)
++		return SBI_EINVAL;
++
++	ROM_Ets_Set_Cpu_Boot_Addr(0);
++
++	/* Release the software stall (RMW: core0's code shares this word). */
++	v = readl((void *)S31_PMU_CPU_STALL_SW_REG);
++	v = (v & ~S31_HART1_STALL_MASK) | S31_HART1_UNSTALL_CODE;
++	writel(v, (void *)S31_PMU_CPU_STALL_SW_REG);
++
++	/* Clocks on, then reset off. RMW to preserve sticky bits. */
++	v = readl((void *)S31_HPCORE1_CTRL0_REG);
++	v |= S31_HPCORE1_CLIC_CLK_EN | S31_HPCORE1_CPU_CLK_EN;
++	v &= ~S31_HPCORE1_GLOBAL_RST_EN;
++	writel(v, (void *)S31_HPCORE1_CTRL0_REG);
++
++	ROM_Ets_Set_Cpu_Boot_Addr(saddr);
++
++	return 0;
++}
++
++static int s31_hart_stop(void)
++{
++	u32 v;
++
++	if (current_hartid() != 1)
++		return SBI_ENOTSUPP;
++
++	v = readl((void *)S31_HPCORE1_CTRL0_REG);
++	v &= ~(S31_HPCORE1_CLIC_CLK_EN | S31_HPCORE1_CPU_CLK_EN);
++	v |= S31_HPCORE1_GLOBAL_RST_EN;
++	writel(v, (void *)S31_HPCORE1_CTRL0_REG);
++
++	while (1)
++		wfi();
++}
++
++static const struct sbi_hsm_device s31_hsm = {
++	.name		= "esp32s31-hsm",
++	.hart_start	= s31_hart_start,
++	.hart_stop	= s31_hart_stop,
++};
++
++void s31_hsm_register(void)
++{
++	sbi_hsm_set_device(&s31_hsm);
++}
+diff --git a/platform/generic/espressif/esp32s31/objects.mk b/platform/generic/espressif/esp32s31/objects.mk
+new file mode 100644
+index 0000000..80d81cc
+--- /dev/null
++++ b/platform/generic/espressif/esp32s31/objects.mk
+@@ -0,0 +1,19 @@
++#
++# SPDX-License-Identifier: BSD-2-Clause
++#
++# ESP32-S31 (RV32 CLIC) generic platform_override module + boot layout.
++# Everything here is gated on CONFIG_PLATFORM_ESPRESSIF_ESP32S31 because
++# the generic build discovers every objects.mk unconditionally.
++#
++
++ifeq ($(CONFIG_PLATFORM_ESPRESSIF_ESP32S31),y)
++
++carray-platform_override_modules-y += esp32s31
++platform-objs-y += espressif/esp32s31/esp32s31.o
++platform-objs-y += espressif/esp32s31/cache_mmu.o
++platform-objs-y += espressif/esp32s31/apm.o
++platform-objs-y += espressif/esp32s31/hsm.o
++
++FW_TEXT_START    = 0x2F000000
++
++endif
+diff --git a/platform/generic/espressif/esp32s31/platform.h b/platform/generic/espressif/esp32s31/platform.h
+new file mode 100644
+index 0000000..bc0ee1f
+--- /dev/null
++++ b/platform/generic/espressif/esp32s31/platform.h
+@@ -0,0 +1,16 @@
++/*
++ * SPDX-License-Identifier: BSD-2-Clause
++ *
++ * ESP32-S31 platform_override module declarations.
++ */
++
++#ifndef _ESP32S31_PLATFORM_H_
++#define _ESP32S31_PLATFORM_H_
++
++void s31_apm_init(void);
++void s31_tee_supervisor_priv_sel_to_m(void);
++
++/* hsm.c -- hart 1 (CPU1) start and stop for SMP. */
++void s31_hsm_register(void);
++
++#endif /* _ESP32S31_PLATFORM_H_ */
+diff --git a/platform/generic/espressif/esp32s31/rom.h b/platform/generic/espressif/esp32s31/rom.h
+new file mode 100644
+index 0000000..5e54b5e
+--- /dev/null
++++ b/platform/generic/espressif/esp32s31/rom.h
+@@ -0,0 +1,39 @@
++/*
++ * SPDX-License-Identifier: BSD-2-Clause
++ *
++ * ESP32-S31 mask-ROM entry points used from M-mode.
++ *
++ * The chip ROM exports a fixed function table; addresses are chip
++ * constants from the ROM's own linker map. Only the cache-maintenance
++ * helpers and CPU1's boot-address setter are needed here — the SPL owns
++ * cache/flash-MMU bring-up and any other ROM entry points it needs (see
++ * esp-uboot's own rom.h).
++ */
++
++#ifndef _ESP32S31_ROM_H_
++#define _ESP32S31_ROM_H_
++
++#include <sbi/sbi_bitops.h>
++#include <sbi/sbi_types.h>
++
++/* Range cache maintenance (map, vaddr, size). */
++typedef int (*rom_cache_range_fn_t)(uint32_t map, uint32_t vaddr, uint32_t size);
++#define ROM_Cache_Invalidate_Addr          ((rom_cache_range_fn_t)0x2F8005E8U)
++#define ROM_Cache_WriteBack_Addr           ((rom_cache_range_fn_t)0x2F8005F0U)
++
++/* Whole-cache maintenance (map arg). */
++typedef int (*rom_cache_all_fn_t)(uint32_t map);
++#define ROM_Cache_WriteBack_All            ((rom_cache_all_fn_t)0x2F800600U)
++#define ROM_Cache_Invalidate_All           ((rom_cache_all_fn_t)0x2F8005F8U)
++
++/* The map argument selects the L1 caches to act on. */
++#define CACHE_MAP_L1_ICACHE_0               BIT(0)
++#define CACHE_MAP_L1_ICACHE_1               BIT(1)
++#define CACHE_MAP_L1_ICACHE                 (CACHE_MAP_L1_ICACHE_0 | CACHE_MAP_L1_ICACHE_1)
++#define CACHE_MAP_L1_DCACHE                  BIT(4)
++
++/* Set the address CPU1's ROM jumps to once it leaves reset. */
++typedef void (*rom_set_cpu_boot_addr_fn_t)(uint32_t addr);
++#define ROM_Ets_Set_Cpu_Boot_Addr          ((rom_set_cpu_boot_addr_fn_t)0x2F8000A8U)
++
++#endif /* _ESP32S31_ROM_H_ */
+diff --git a/platform/generic/platform.c b/platform/generic/platform.c
+index 1df0280..e501c12 100644
+--- a/platform/generic/platform.c
++++ b/platform/generic/platform.c
+@@ -22,6 +22,7 @@
+ #include <sbi_utils/fdt/fdt_driver.h>
+ #include <sbi_utils/fdt/fdt_fixup.h>
+ #include <sbi_utils/fdt/fdt_helper.h>
++
+ #include <sbi_utils/fdt/fdt_pmu.h>
+ #include <sbi_utils/irqchip/fdt_irqchip.h>
+ #include <sbi_utils/irqchip/imsic.h>
+@@ -247,7 +248,7 @@ int generic_final_init(bool cold_boot)
+ 
+ 	/* Set the empty space in FDT based on kconfig option */
+ 	fdt_pack(fdt);
+-	fdt_open_into(fdt, fdt, fdt_totalsize(fdt) +
++	fdt_fixup_open_into(fdt, fdt, fdt_totalsize(fdt) +
+ 		      CONFIG_PLATFORM_GENERIC_FDT_EMPTY_SPACE * 1024);
+ 
+ 	return 0;

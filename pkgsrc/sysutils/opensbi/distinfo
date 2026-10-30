@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (opensbi/opensbi-1.9.tar.gz) = 004391bbf73fefce073510e26808625edf979e7371acda7517a064d08491d25b
+SHA512 (opensbi/opensbi-1.9.tar.gz) = dbefd522516a63fae91a0ddad13a5230e65888f4171361ebc8d84d21649ea2000a96e3cbd5f862a91962c92e254d27b62ee2ffd27f33ae8fc88a6f0cb93e37d6
+Size (opensbi/opensbi-1.9.tar.gz) = 551157 bytes
+SHA1 (patch-emberbsd-s31) = b66778a5f0407950f6a4b45985b4a4ff51f66f7a
