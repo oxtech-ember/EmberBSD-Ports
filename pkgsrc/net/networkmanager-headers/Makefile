@@ -20,6 +20,9 @@ CHECK_PORTABILITY_SKIP=	contrib/scripts/*
 
 # The public headers carry a generated version-macros header and a
 # glib-mkenums enum-types header; both are produced on the build host.
+# glib-mkenums is a Python script from the native glib2-tools package.
+TOOL_DEPENDS+=	glib2-tools>=0:../../devel/glib2-tools
+
 do-install:
 	${INSTALL_DATA_DIR} ${DESTDIR}${PREFIX}/include/libnm
 	${INSTALL_DATA} ${WRKSRC}/src/libnm-client-public/*.h \
@@ -31,7 +34,7 @@ do-install:
 		-e 's|@NM_MICRO_VERSION@|0|' -e 's|@NM_VERSION@|15200|' \
 		${WRKSRC}/src/libnm-core-public/nm-version-macros.h.in > \
 		${DESTDIR}${PREFIX}/include/libnm/nm-version-macros.h
-	/opt/homebrew/bin/glib-mkenums --identifier-prefix NM --symbol-prefix nm \
+	${TOOLBASE}/bin/glib-mkenums --identifier-prefix NM --symbol-prefix nm \
 		--template ${WRKSRC}/src/libnm-client-public/nm-enum-types.h.template \
 		${WRKSRC}/src/libnm-client-public/*.h ${WRKSRC}/src/libnm-core-public/*.h \
 		> ${DESTDIR}${PREFIX}/include/libnm/nm-core-enum-types.h
