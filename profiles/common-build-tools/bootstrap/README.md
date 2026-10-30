@@ -261,9 +261,10 @@ installed by these recipes do not name the initial shell. They also set
 exported helper. Their `[`, `echo`, `false`, `test` and `true` commands then
 name no exported pkgsrc tree, so substituted files such as perl's
 `Config_heavy.pl` do not either. A prefix with an older `bootstrap-mk-files`
-has no helper, and those recipes stop when their makefiles are read. The initial gmake
-stays. The profile appends `SHELL=${LOCALBASE}/bin/mksh` to its tuple, and GNU
-make uses the last `SHELL=` word. The SDK keeps no recipe list. It starts a
+has no helper, and those recipes stop when their makefiles are read. The initial
+gmake remains the default; pkgsrc selects the common gmake when a recipe requires
+a newer version. The profile appends `SHELL=${LOCALBASE}/bin/mksh` to the
+initial tuple, and GNU make uses the last `SHELL=` word. The SDK keeps no recipe list. It starts a
 recipe with the Ports bmake and `SHELL=` the Ports mksh when the recipe has a
 direct `devel/bmake` edge. bmake passes `-m` to child makes through `MAKEFLAGS`,
 and a `SHELL=` word on the command line overrides the profile, so the initial
