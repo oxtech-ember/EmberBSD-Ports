@@ -11,7 +11,8 @@
 #          A package whose distinfo distfiles are all in DISTDIR with
 #          their recorded sizes is not queried; the build verifies the
 #          checksums.
-#   build  Build and install each package in STATE/order.
+#   build  Build and install each package in STATE/order, several at once
+#          (CROSS_BULK_JOBS, see build below).
 #
 # Fetch and build check PKG_SKIP_REASON again before they act on a package:
 # an order written by an older tree or by hand may name a package that the
@@ -200,8 +201,145 @@ fetch()
     rm -f "$state/sizes"
 }
 
+# Package-level parallelism. CROSS_BULK_JOBS packages build at once (default:
+# half the host CPUs). Each gets MAKE_JOBS=CROSS_BULK_MAKE_JOBS on the command
+# line (default: 1.5 x CPUs split over the packages, at most the CPUs), which
+# also reaches pkgsrc's dependency recursion; MAKE_JOBS_SAFE=no recipes stay
+# serial. CROSS_BULK_MAKE_JOBS=makeconf leaves MAKE_JOBS to the MAKECONF.
+# CROSS_BULK_CPUS overrides the detected CPU count.
+host_cpus()
+{
+    n=${CROSS_BULK_CPUS:-$(sysctl -n hw.ncpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)}
+    case "$n" in ''|*[!0-9]*|0) n=1 ;; esac
+    echo "$n"
+}
+
+count()
+{
+    case "$2" in ''|*[!0-9]*|0) echo "$1 must be a positive number: $2" >&2; exit 2 ;; esac
+}
+
+# A package starts only when every target dependency in STATE/edges is done.
+# Only the scheduler writes the state files; a package reports its result in
+# STATE/run/KEY.result, written to a temporary name and renamed. Dependency
+# installs (pkgsrc depends, which may build native tools into the shared host
+# prefix) and the final package install run under STATE/install.lock, a
+# directory lock, which works on macOS, NetBSD and Linux alike.
+locked()
+{
+    until mkdir "$state/install.lock" 2> /dev/null; do
+        sleep 1
+    done
+    rc=0
+    "$@" || rc=$?
+    rmdir "$state/install.lock"
+    return "$rc"
+}
+
+bmk()
+{
+    if [ "$make_jobs" = makeconf ]; then
+        mk "$@"
+    else
+        mk MAKE_JOBS="$make_jobs" "$@"
+    fi
+}
+
+result()
+{
+    printf '%s\n' "$2" > "$run/$1.tmp"
+    mv "$run/$1.tmp" "$run/$1.result"
+}
+
+build_one()
+{
+    path=$1
+    key=$(echo "$path" | tr / _)
+    vars=$(bmk -C "$PKGSRCDIR/$path" show-vars VARNAMES='PKGNAME WRKDIR PKG_SKIP_REASON' < /dev/null) ||
+        { result "$key" "failed $path vars"; return 0; }
+    name=$(printf '%s\n' "$vars" | sed -n 1p)
+    wrkdir=$(printf '%s\n' "$vars" | sed -n 2p)
+    skip=$(printf '%s\n' "$vars" | sed -n 3p)
+    if [ -n "$skip" ]; then
+        result "$key" "skipped $path $skip"
+        return 0
+    fi
+    file=$packages/$name.tgz
+    if [ -f "$file" ] && grep -qFx "$path $name $(shasum -a 256 "$file" | cut -d ' ' -f 1)" "$state/done"; then
+        result "$key" "done $path"
+        return 0
+    fi
+    log=$state/logs/$key.log
+    # One short line per append: O_APPEND keeps concurrent lines whole.
+    echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name" >> "$state/progress"
+    # Go module caches are read-only; make an old WRKDIR removable first.
+    case "$wrkdir" in /*) [ ! -d "$wrkdir" ] || chmod -R u+w "$wrkdir" ;; esac
+    if [ "$workers" -eq 1 ]; then
+        bmk -C "$PKGSRCDIR/$path" clean < /dev/null > "$log" 2>&1 &&
+            bmk -C "$PKGSRCDIR/$path" package-install < /dev/null >> "$log" 2>&1
+    else
+        bmk -C "$PKGSRCDIR/$path" clean < /dev/null > "$log" 2>&1 &&
+            locked bmk -C "$PKGSRCDIR/$path" depends < /dev/null >> "$log" 2>&1 &&
+            bmk -C "$PKGSRCDIR/$path" package < /dev/null >> "$log" 2>&1 &&
+            locked bmk -C "$PKGSRCDIR/$path" package-install < /dev/null >> "$log" 2>&1
+    fi && {
+        echo "$(date '+%Y-%m-%d %H:%M:%S') done $path" >> "$state/progress"
+        result "$key" "built $path $name $(shasum -a 256 "$file" | cut -d ' ' -f 1)"
+        return 0
+    }
+    echo "$(date '+%Y-%m-%d %H:%M:%S') FAILED $path" >> "$state/progress"
+    result "$key" "failed $path build"
+}
+
+# Print "R PATH" for up to $1 packages whose dependencies are all done and
+# "B PATH DEP" for packages with a failed, blocked or skipped dependency.
+ready()
+{
+    awk -v max="$1" '
+        FILENAME == ARGV[1] { st[$1] = $2; next }
+        FILENAME == ARGV[2] { if ($1 != $2) deps[$2] = deps[$2] " " $1; next }
+        { order[++n] = $1; listed[$1] = 1 }
+        END {
+            for (i = 1; i <= n; i++) {
+                p = order[i]
+                if (p in st) continue
+                k = split(deps[p], d, " ")
+                bad = ""; wait = 0
+                for (j = 1; j <= k; j++) {
+                    s = st[d[j]]
+                    if (s == "failed" || s == "blocked" || s == "skipped") { bad = d[j]; break }
+                    if (s != "done" && (d[j] in listed)) wait = 1
+                }
+                if (bad != "") { print "B", p, bad; st[p] = "blocked"; continue }
+                if (!wait && started < max) { print "R", p; started++; st[p] = "running" }
+            }
+        }' "$run/status" "$state/edges" "$state/order"
+}
+
 build()
 {
+    cpus=$(host_cpus)
+    workers=${CROSS_BULK_JOBS:-$(( (cpus + 1) / 2 ))}
+    count CROSS_BULK_JOBS "$workers"
+    make_jobs=${CROSS_BULK_MAKE_JOBS:-$(( (3 * cpus + 2 * workers - 1) / (2 * workers) ))}
+    if [ "$make_jobs" != makeconf ]; then
+        count CROSS_BULK_MAKE_JOBS "$make_jobs"
+        [ -n "${CROSS_BULK_MAKE_JOBS:-}" ] || [ "$make_jobs" -le "$cpus" ] || make_jobs=$cpus
+    fi
+    run=$state/run
+    # One scheduler per state directory.
+    if ! mkdir "$state/build.lock" 2> /dev/null; then
+        other=$(cat "$state/build.lock/pid" 2> /dev/null || :)
+        if [ -n "$other" ] && kill -0 "$other" 2> /dev/null; then
+            echo "Another build ($other) uses $state" >&2
+            exit 2
+        fi
+    fi
+    echo $$ > "$state/build.lock/pid"
+    # Locks and results of an interrupted run; its packages are rebuilt.
+    rm -rf "$run" "$state/install.lock"
+    mkdir "$run"
+    : > "$run/status"
     # Keep the results of an earlier run, but try its failures again.
     stamp=$(date '+%Y%m%d%H%M%S')
     for list_name in failed blocked; do
@@ -209,41 +347,58 @@ build()
     done
     touch "$state/done" "$state/failed" "$state/blocked" "$state/skipped"
     packages=$(var pkgtools/pkg_install PACKAGES)/All
-    while read -r path; do
-        vars=$(mk -C "$PKGSRCDIR/$path" show-vars VARNAMES='PKGNAME WRKDIR PKG_SKIP_REASON' < /dev/null) ||
-            { echo "$path vars" >> "$state/failed"; continue; }
-        name=$(printf '%s\n' "$vars" | sed -n 1p)
-        wrkdir=$(printf '%s\n' "$vars" | sed -n 2p)
-        skip=$(printf '%s\n' "$vars" | sed -n 3p)
-        if [ -n "$skip" ]; then
-            echo "$path $skip" >> "$state/skipped"
-            continue
+    echo "Building with $workers packages at once, MAKE_JOBS=$make_jobs ($cpus CPUs)"
+    stop=0
+    trap 'stop=1' TERM INT HUP
+    running=0
+    changed=1
+    while :; do
+        for res in "$run"/*.result; do
+            [ -f "$res" ] || continue
+            set -f
+            set -- $(sed -n 1p "$res")
+            set +f
+            what=$1 path=$2
+            shift 2
+            case "$what" in
+                built) echo "$path $*" >> "$state/done"; echo "$path done" >> "$run/status" ;;
+                done) echo "$path done" >> "$run/status" ;;
+                skipped) echo "$path $*" >> "$state/skipped"; echo "$path skipped" >> "$run/status" ;;
+                *) echo "$path $*" >> "$state/failed"; echo "$path failed" >> "$run/status" ;;
+            esac
+            rm -f "$res"
+            running=$((running - 1))
+            changed=1
+        done
+        if [ "$stop" = 1 ]; then
+            [ "$running" -gt 0 ] || { echo 'Stopped; the running packages finished' >&2; trap - TERM INT HUP; rm -rf "$state/build.lock"; return 143; }
+        elif [ "$changed" = 1 ] && [ "$running" -lt "$workers" ]; then
+            changed=0
+            ready $((workers - running)) > "$run/ready"
+            while read -r kind path dep; do
+                if [ "$kind" = B ]; then
+                    echo "$path $dep" >> "$state/blocked"
+                    echo "$path blocked" >> "$run/status"
+                    changed=1
+                else
+                    echo "$path running" >> "$run/status"
+                    running=$((running + 1))
+                    # Without errexit: every package reports a result.
+                    (
+                        set +e
+                        build_one "$path"
+                        key=$(echo "$path" | tr / _)
+                        [ -f "$run/$key.result" ] || result "$key" "failed $path build"
+                    ) < /dev/null > /dev/null 2>&1 &
+                fi
+            done < "$run/ready"
+            [ "$running" -gt 0 ] || [ "$changed" = 1 ] || break
         fi
-        file=$packages/$name.tgz
-        if [ -f "$file" ] && grep -qFx "$path $name $(shasum -a 256 "$file" | cut -d ' ' -f 1)" "$state/done"; then
-            continue
-        fi
-        bad=$(awk -v p="$path" '$2 == p && $1 != p { print $1 }' "$state/edges" |
-            while read -r dep; do
-                cat "$state/failed" "$state/blocked" "$state/skipped" | awk -v d="$dep" '$1 == d { found = 1 } END { exit !found }' && echo "$dep"
-            done | head -n 1)
-        if [ -n "$bad" ]; then
-            echo "$path $bad" >> "$state/blocked"
-            continue
-        fi
-        log=$state/logs/$(echo "$path" | tr / _).log
-        echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name" >> "$state/progress"
-        # Go module caches are read-only; make an old WRKDIR removable first.
-        case "$wrkdir" in /*) [ ! -d "$wrkdir" ] || chmod -R u+w "$wrkdir" ;; esac
-        if mk -C "$PKGSRCDIR/$path" clean < /dev/null > "$log" 2>&1 &&
-            mk -C "$PKGSRCDIR/$path" package-install < /dev/null >> "$log" 2>&1; then
-            echo "$path $name $(shasum -a 256 "$file" | cut -d ' ' -f 1)" >> "$state/done"
-            echo "$(date '+%Y-%m-%d %H:%M:%S') done $path" >> "$state/progress"
-        else
-            echo "$path build" >> "$state/failed"
-            echo "$(date '+%Y-%m-%d %H:%M:%S') FAILED $path" >> "$state/progress"
-        fi
-    done < "$state/order"
+        [ "$running" -gt 0 ] || [ "$changed" = 1 ] || break
+        sleep 1
+    done
+    trap - TERM INT HUP
+    rm -rf "$run" "$state/build.lock"
 }
 
 case "$mode" in

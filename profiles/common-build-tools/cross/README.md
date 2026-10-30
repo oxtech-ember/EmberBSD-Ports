@@ -513,7 +513,19 @@ that order asks for the build options of each dependency once and writes
 the same order as without the cache, and that fetch reuses the cache only
 while the MAKECONF is unchanged.
 `scripts/tests/cross-bulk-build-queries.sh NEW_OUTPUT PKGPATH...` counts
-the bmake runs of the build: three for a new package, one for a done one.
+the bmake runs of a serial build: three for a new package, one for a done one.
+The build runs `CROSS_BULK_JOBS` packages at once, by default half the host
+CPUs. A package starts when every target dependency in `STATE/edges` is
+done; a failed, blocked or skipped dependency blocks it. Each package gets
+`MAKE_JOBS` on the command line, by default 1.5 times the CPUs split over the
+packages and at most the CPUs; `CROSS_BULK_MAKE_JOBS` sets it, or `makeconf`
+leaves it to the MAKECONF. `MAKE_JOBS_SAFE=no` recipes stay serial. With more
+than one package at once, the dependency step (which may build native tools
+into the shared host prefix) and the package install run one at a time under
+`STATE/install.lock`. Only the scheduler writes the state lists. SIGTERM
+starts no new package, lets the running ones finish and exits with 143; the
+next run skips the done packages. `scripts/tests/cross-bulk-parallel.sh
+NEW_OUTPUT` checks this on a small graph with a recording bmake.
 `scripts/tests/cross-bulk-fetch-present.sh NEW_OUTPUT PKGPATH` checks that
 fetch skips a package only when DISTDIR has each distinfo file at its
 recorded size. The build still verifies the checksums.

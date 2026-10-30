@@ -3,7 +3,8 @@
 # Origin: EmberBSD (AI-assisted). The build parses each package once for
 # its PKGNAME and WRKDIR, then runs clean and package-install. A package
 # recorded as done costs one parse. Clean and package-install are recorded,
-# not run; package-install leaves an empty package file.
+# not run; package-install leaves an empty package file. One package at a
+# time (CROSS_BULK_JOBS=1): the parallel steps are in cross-bulk-parallel.sh.
 # BMAKE, MAKECONF and PKGSRCDIR select a prepared cross tree as for
 # scripts/cross-bulk.sh.
 set -eu
@@ -43,7 +44,7 @@ run()
     expected=$1
     shift
     : > "$out/calls"
-    BMAKE=$out/bmake sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" ||
+    BMAKE=$out/bmake CROSS_BULK_JOBS=1 sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" ||
         { echo 'FAIL: build' >&2; exit 1; }
     for path do
         calls=$(($(grep -c -- "-C $PKGSRCDIR/$path " "$out/calls" || :)))
