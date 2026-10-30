@@ -1,0 +1,13 @@
+--- a/archivers/gzip/Makefile
++++ b/archivers/gzip/Makefile
+@@ -20,5 +20,10 @@
+ MAKE_FLAGS+=	manlinks=so
+ INFO_FILES=	yes
+ CHECK_PERMS=	no	# can't depend on checkperms; its distfile is gzipped
++# pkg_install-info is extracted with this gzip in the Darwin bootstrap.
++# Install gzip.info there without the install-info dependency cycle.
++.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
++TOOLS_IGNORE.install-info=
++.endif
+ 
+ .include "../../mk/bsd.pkg.mk"
