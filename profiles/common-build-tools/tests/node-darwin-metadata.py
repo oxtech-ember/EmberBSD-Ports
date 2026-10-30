@@ -21,7 +21,8 @@ import sys
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('pkgsrc', 'build-pkgsrc', 'distfile', 'patch', 'work', 'host-prefix', 'sdk-root',
-                 'xcode-version-plist', 'utility-path', 'makeconf', 'git'):
+                 'xcode-version-plist', 'utility-path', 'makeconf', 'git',
+                 'gyp-source', 'gyp-pkgsrc', 'sdk-source'):
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--arch', choices=('arm64', 'x86_64'), required=True)
     parser.add_argument('--deployment-target', required=True)
@@ -122,10 +123,14 @@ def main():
     assert hashlib.sha1(payload).hexdigest() == expected
     # Reuse the real checksum/patch/configure/GYP source regression. It extracts
     # the scripts and all patch targets, not Node's unrelated large test tree.
-    result = run('source', [sys.executable, '-B', '-I', '-S',
+    # GYP imports the declared py-packaging dependency from the selected
+    # prefix Python's site-packages, so keep site enabled (-I only).
+    result = run('source', [sys.executable, '-B', '-I',
                  str(owner/'tests/node26-source.py'), '--archive', str(args.distfile),
                  '--recipe', str(recipe), '--patch', str(args.patch),
-                 '--work', str(args.work/'source-check')], args.work)
+                 '--work', str(args.work/'source-check'),
+                 '--gyp-source', str(args.gyp_source), '--gyp-pkgsrc', str(args.gyp_pkgsrc),
+                 '--sdk-source', str(args.sdk_source)], args.work)
     assert not result.returncode, result.stdout+result.stderr
     source = args.work/'source-check/node-v26.13.0'
     env.update(GYP_MACOS_SDK_PATH=str(args.sdk_root),
@@ -201,7 +206,12 @@ runpy.run_path(script,run_name="__main__")
     selected_links = [word for word in flags if word.startswith(('LINK.target=', 'LINK.host='))]
     assert len(selected_links) == 2, selected_links
     commands = [shlex.split(word.split('=', 1)[1]) for word in selected_links]
-    assert commands == [link_words + [str(wrapper/'clang++')]] * 2, commands
+    # The recipe links through the wrapper named after the selected CXX
+    # (cxx, clang++, ...) from MAKECONF; do not assume one driver name.
+    result = run('recipe-cxx', link_bmake+['-V', '${CXX:T}'], args.work)
+    assert not result.returncode and result.stdout.strip(), result.stdout+result.stderr
+    cxx_name = result.stdout.strip()
+    assert commands == [link_words + [str(wrapper/cxx_name)]] * 2, commands
     for phase in ('do-build', 'do-install'):
         result = run('recipe-link-'+phase, link_bmake+['-n', phase], args.work)
         assert not result.returncode, result.stdout+result.stderr
@@ -214,7 +224,7 @@ runpy.run_path(script,run_name="__main__")
     assert not result.returncode, result.stdout+result.stderr
     legacy_flags = shlex.split(result.stdout)
     legacy_links = [word for word in legacy_flags if word.startswith(('LINK.target=', 'LINK.host='))]
-    assert [shlex.split(word.split('=', 1)[1]) for word in legacy_links] == [link_words + [str(wrapper/'clang++')]] * 2
+    assert [shlex.split(word.split('=', 1)[1]) for word in legacy_links] == [link_words + [str(wrapper/cxx_name)]] * 2, legacy_links
     incomplete = bmake + ['EMBERBSD_DARWIN_LINKER_LAUNCHER=', 'EMBERBSD_GCC16_LINKER_LAUNCHER=',
                            'node-check-link-launcher']
     result = run('recipe-link-incomplete', incomplete, args.work)
