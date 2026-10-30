@@ -452,3 +452,6 @@ security/p11-kit
 
 # Select shared gettext and iconv for GnuTLS.
 security/gnutls
+
+# Native Heimdal generators use the selected Darwin tools.
+security/heimdal

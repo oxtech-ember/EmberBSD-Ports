@@ -1,0 +1,37 @@
+$NetBSD$
+
+Select MIG and serialize only the multi-output Darwin IPC generation.
+
+--- lib/ipc/Makefile.in.orig
++++ lib/ipc/Makefile.in
+@@ -749,6 +749,8 @@
+ ts_LDADD = libheim-ipcs.la $(LIB_roken)
+ ts_http_LDADD = $(ts_LDADD)
+ tc_LDADD = libheim-ipcc.la $(LIB_roken)
++MIG ?= mig
++@have_gcd_TRUE@.NOTPARALLEL:
+ EXTRA_DIST = heim_ipc.defs heim_ipc_async.defs heim_ipc_reply.defs
+ @have_gcd_TRUE@built_ipcc = heim_ipc.h heim_ipcUser.c \
+ @have_gcd_TRUE@	heim_ipc_asyncServer.c heim_ipc_asyncServer.h
+@@ -1511,16 +1513,18 @@
+ 	done
+ 
+ @have_gcd_TRUE@heim_ipc.h heim_ipcUser.c heim_ipcServer.c heim_ipcServer.h: heim_ipc.defs
+-@have_gcd_TRUE@	mig -header heim_ipc.h -user heim_ipcUser.c -sheader heim_ipcServer.h -server heim_ipcServer.c -I$(srcdir) $(srcdir)/heim_ipc.defs
++@have_gcd_TRUE@	$(MIG) -header heim_ipc.h -user heim_ipcUser.c -sheader heim_ipcServer.h -server heim_ipcServer.c -I$(srcdir) $(srcdir)/heim_ipc.defs
+ 
+ @have_gcd_TRUE@heim_ipc_async.h heim_ipc_asyncUser.c heim_ipc_asyncServer.c heim_ipc_asyncServer.h: heim_ipc_async.defs
+-@have_gcd_TRUE@	mig -header heim_ipc_async.h -user heim_ipc_asyncUser.c -sheader heim_ipc_asyncServer.h -server heim_ipc_asyncServer.c -I$(srcdir) $(srcdir)/heim_ipc_async.defs
++@have_gcd_TRUE@	$(MIG) -header heim_ipc_async.h -user heim_ipc_asyncUser.c -sheader heim_ipc_asyncServer.h -server heim_ipc_asyncServer.c -I$(srcdir) $(srcdir)/heim_ipc_async.defs
+ 
+ @have_gcd_TRUE@heim_ipc_reply.h heim_ipc_replyUser.c: heim_ipc_reply.defs
+-@have_gcd_TRUE@	mig -header heim_ipc_reply.h -user heim_ipc_replyUser.c -sheader /dev/null -server /dev/null -I$(srcdir) $(srcdir)/heim_ipc_reply.defs
++@have_gcd_TRUE@	$(MIG) -header heim_ipc_reply.h -user heim_ipc_replyUser.c -sheader /dev/null -server /dev/null -I$(srcdir) $(srcdir)/heim_ipc_reply.defs
+ 
+ @have_gcd_TRUE@$(srcdir)/client.c: $(built_ipcc)
+ @have_gcd_TRUE@$(srcdir)/server.c: $(built_ipcs)
++@have_gcd_TRUE@server.lo: $(built_ipcs)
++@have_gcd_TRUE@client.lo: $(built_ipcc)
+ 
+ # Tell versions [3.59,3.63) of GNU make to not export all variables.
+ # Otherwise a system limit (for SysV at least) may be exceeded.
