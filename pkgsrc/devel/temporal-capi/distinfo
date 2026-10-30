@@ -144,5 +144,5 @@ Size (zerovec-derive-0.11.7.crate) = 23232 bytes
 BLAKE2s (zoneinfo64-0.3.0.crate) = 71461a4a51cf35a12a5c4ca2fe793c63c6e8ce1461823a51e75c63e04e0468fd
 SHA512 (zoneinfo64-0.3.0.crate) = cf4766637c0be023956f38ebe98fd72d41b00f8f94873cb8c9da1622b5a05e8bd9dd7974b56a005f6c3cc772fde7987fbdd4a0e9431259d70869864aa310934f
 Size (zoneinfo64-0.3.0.crate) = 81655 bytes
-SHA1 (patch-Cargo.toml) = 1021faad34b03db8356c91769df5832002aebe06
+SHA1 (patch-Cargo.toml) = 46fbf356189981f4ee1d829e7d7de0cd75695c0d
 SHA1 (patch-src_lib.rs) = 88532b75e3b3b2530f061edd9f7a011b868defa7
