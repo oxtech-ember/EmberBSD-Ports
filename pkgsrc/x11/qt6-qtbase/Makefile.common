@@ -37,8 +37,10 @@
 .if !defined(EMBERBSD_QT_MAKEFILE_COMMON)
 EMBERBSD_QT_MAKEFILE_COMMON= yes
 EMBERBSD_QTBASE_PKGDIR:= ${.PARSEDIR:tA}
-# The SDK recipe shares this exact source owner, including every patch.
-.if defined(EMBERBSD_QTBASE_DEVEL)
+# The SDK recipe and the SQL driver recipes build from this exact qtbase
+# source, so they share its checksums and every patch.
+.if defined(EMBERBSD_QTBASE_DEVEL) || ${.CURDIR:M*/databases/qt6-psql} || \
+    ${.CURDIR:M*/databases/qt6-odbc}
 DISTINFO_FILE= ${EMBERBSD_QTBASE_PKGDIR}/distinfo
 PATCHDIR= ${EMBERBSD_QTBASE_PKGDIR}/patches
 FILESDIR= ${EMBERBSD_QTBASE_PKGDIR}/files
