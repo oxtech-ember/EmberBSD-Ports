@@ -458,3 +458,6 @@ security/heimdal
 
 # Use the common xz provider for TIFF.
 graphics/tiff
+
+# Record the selected native C++ ABI for GMP.
+devel/gmp
