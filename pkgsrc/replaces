@@ -16,6 +16,7 @@ devel/editline
 devel/elftoolchain
 textproc/docbook-xsl-ns
 devel/jq
+devel/git
 devel/git-base
 net/arp-scan
 net/tcpreplay

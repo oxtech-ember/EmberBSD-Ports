@@ -13,7 +13,7 @@ packages or static binaries on the board.
 | SQLite CLI | 3.54.1 | databases/sqlite3 (common-build-tools) |
 | rsync | 3.5.0 | pkgsrc net/rsync |
 | libarchive (bsdtar) | 3.8.9 | pkgsrc archivers/libarchive |
-| git | 2.55.0nb1 | pkgsrc devel/git-base |
+| git | 2.56.0 | pkgsrc devel/git-base |
 | yq | 4.54.1 | Go cross-build (pkgsrc has 4.1.2 — stale, forward-only rule) |
 | shfmt | 3.14.1 | Go cross-build |
 | miller (mlr) | 6.9.0 | Go cross-build |
