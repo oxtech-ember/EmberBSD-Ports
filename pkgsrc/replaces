@@ -464,3 +464,6 @@ devel/gmp
 
 # Link the common Duktape runtime to its mathematical functions.
 lang/libduktape
+
+# Select common gettext and iconv providers for libcups.
+print/libcups
