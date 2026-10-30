@@ -3,7 +3,7 @@
 CONSOLEKIT_VER=	2.0.0
 DISTNAME=	ConsoleKit2-${CONSOLEKIT_VER}
 PKGNAME=	consolekit-${CONSOLEKIT_VER}
-PKGREVISION=	6
+PKGREVISION=	7
 CATEGORIES=	sysutils
 GITHUB_TAG=	${CONSOLEKIT_VER}
 GITHUB_PROJECT=	ConsoleKit2
@@ -40,9 +40,12 @@ CONF_FILES+=	${EGDIR}/ConsoleKit/seats.d/00-primary.seat		\
 		${EGDIR}/X11/xinit/xinitrc.d/90-consolekit		\
 		${PKG_SYSCONFBASE}/X11/xinit/xinitrc.d/90-consolekit
 
+PREFER.gettext=	pkgsrc
+PREFER.iconv=	pkgsrc
+
 GNU_CONFIGURE=	YES
 USE_TOOLS+=	gmake msgfmt perl pkg-config
-USE_TOOLS+=	autoconf automake autoreconf autopoint
+USE_TOOLS+=	autoconf automake autoreconf autopoint tar
 USE_TOOLS+=	gdbus-codegen
 USE_LIBTOOL=	YES
 
@@ -69,6 +72,7 @@ post-install:
 pre-configure:
 	cd ${WRKSRC} && NOCONFIGURE=1 ${SH} autogen.sh
 
+.include "../../devel/gettext-lib/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
 # ConsoleKit 2.0 uses short session IDs; keep its policy consumer compatible.
 BUILDLINK_API_DEPENDS.polkit+=	polkit>=127nb4
