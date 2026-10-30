@@ -29,6 +29,12 @@ select `--fetch-mode manual` when generating the include and set
 instead of using a system downloader. After installing fetch, regenerate the
 normal include and omit the manual selection.
 
+For HTTPS acquisition, install the common `security/mozilla-rootcerts-openssl`
+package with its `security/mozilla-rootcerts` input into the prefix. This
+populates the selected OpenSSL trust store used by the Ports fetch client.
+The full Darwin bootstrap includes these packages; a compiler-only bootstrap
+needs them when completing the native tools manually.
+
 ## Configure pkgsrc
 
 Generate the ordinary make-variable include with the selected Python:
