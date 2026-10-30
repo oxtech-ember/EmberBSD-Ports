@@ -3,3 +3,4 @@ $NetBSD: distinfo,v 1.5 2026/09/06 10:05:11 markd Exp $
 BLAKE2s (kconfig-6.31.0.tar.xz) = 8650ca8c1f84500e53c1e5259f46adf0282ffd8595d118c4f6d0cabdf81c6ec5
 SHA512 (kconfig-6.31.0.tar.xz) = e336a85d679751bcd17ade0960ab372ca37c997dfe1a65e74200780226d38b87c000b2ac30d2daa123f97efc3e7d2d73f6cf81784b680fdd8790829a71954ef1
 Size (kconfig-6.31.0.tar.xz) = 394396 bytes
+SHA1 (patch-KF6ConfigMacros.cmake) = 8d24673ce68262059c90342e59bfda2593db31d0

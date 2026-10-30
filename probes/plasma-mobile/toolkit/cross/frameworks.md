@@ -47,17 +47,23 @@ native generator from the manifest's original KConfig archive:
 
 ```sh
 CMAKE=/absolute/native/cmake NINJA=/absolute/native/ninja \
+TAR=/absolute/native/bsdtar HOST_READOBJ=/absolute/native/llvm-readobj \
+HOST_OBJECT_ARCH=aarch64 HOST_PYTHON=/absolute/native/python3 \
+HOST_PACKAGE_PREFIX=/absolute/native-dependencies \
 HOST_CC=/absolute/native/cc HOST_CXX=/absolute/native/c++ JOBS=2 \
 sh probes/plasma-mobile/toolkit/cross/build-kconfig-tool.sh \
     /absolute/verified-distfiles /absolute/host-qt/qtbase \
-    /absolute/sysroot/usr/pkg/share/ECM/cmake /absolute/new-kconfig-host
+    /absolute/native-dependencies/share/ECM/cmake /absolute/new-kconfig-host
 ```
 
 `HOST_QT` can also name an installed Qt 6.12.0 prefix. The builder requires
 its Core, Xml and LinguistTools CMake modules and selects their exact paths.
-It builds the Xml target only when the prefix contains a CMake build cache.
-An installed prefix is not modified. Missing selected modules fail before
-CMake can find another host Qt.
+The Qt Xml library must already exist; build a missing Xml target separately
+under the Qt producer exclusive lock. The caller holds the canonical Qt host
+prefix SDK context lock shared throughout this generator build. On Darwin, set
+`HOST_RUNTIME_VIEW` and `HOST_SDK_SOURCE` and run the producer through the SDK
+runtime launcher so its native build tools use the selected view. Missing
+selected modules fail before CMake can find another host Qt.
 
 The installed-prefix regression builds the real native tools and generates a
 configuration class with an integer default. It rejects malformed XML and a
@@ -66,6 +72,9 @@ build-tree path to request Xml and propagate build failure:
 
 ```sh
 CMAKE=/absolute/native/cmake NINJA=/absolute/native/ninja \
+TAR=/absolute/native/bsdtar HOST_READOBJ=/absolute/native/llvm-readobj \
+HOST_OBJECT_ARCH=aarch64 HOST_PYTHON=/absolute/native/python3 \
+HOST_PACKAGE_PREFIX=/absolute/native-dependencies \
 HOST_CC=/absolute/native/cc HOST_CXX=/absolute/native/c++ JOBS=2 \
 ruby probes/plasma-mobile/toolkit/tests/kconfig-host.rb \
     /absolute/verified-distfiles /absolute/installed-qt \
