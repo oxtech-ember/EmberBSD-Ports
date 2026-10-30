@@ -105,7 +105,7 @@ DISTFILES:=	${DISTFILES} ${DISTNAME}-${RUST_ARCH}.tar.gz
 
 NBSUF=
 
-.if ${MACHINE_PLATFORM:MNetBSD-*-aarch64}
+.if ${MACHINE_PLATFORM:MNetBSD-*-aarch64} || make(distinfo) || make(makesum) || make(mdi)
 RUST_ARCH:=	aarch64-unknown-netbsd
 DN:=		${DISTNAME}${NBSUF}
 EXTRACT_SUFX=	.tar.xz
@@ -113,7 +113,7 @@ DF:=		${DN}-${RUST_ARCH}${EXTRACT_SUFX}
 DISTFILES:=	${DISTFILES} ${DF}
 SITES.${DF}=	${NETBSD_REPO}
 .endif
-.if ${MACHINE_PLATFORM:MNetBSD-*-aarch64eb}
+.if ${MACHINE_PLATFORM:MNetBSD-*-aarch64eb} || make(distinfo) || make(makesum) || make(mdi)
 RUST_ARCH:=	aarch64_be-unknown-netbsd
 DN:=		${DISTNAME}${NBSUF}
 EXTRACT_SUFX=	.tar.xz
@@ -121,7 +121,7 @@ DF:=		${DN}-${RUST_ARCH}${EXTRACT_SUFX}
 DISTFILES:=	${DISTFILES} ${DF}
 SITES.${DF}=	${NETBSD_REPO}
 .endif
-.if ${MACHINE_PLATFORM:MNetBSD-*-earmv6hf}
+.if ${MACHINE_PLATFORM:MNetBSD-*-earmv6hf} || make(distinfo) || make(makesum) || make(mdi)
 RUST_ARCH:=	armv6-unknown-netbsd-eabihf
 DN:=		${DISTNAME}${NBSUF}
 EXTRACT_SUFX=	.tar.xz
@@ -129,7 +129,7 @@ DF:=		${DN}-${RUST_ARCH}${EXTRACT_SUFX}
 DISTFILES:=	${DISTFILES} ${DF}
 SITES.${DF}=	${NETBSD_REPO}
 .endif
-.if ${MACHINE_PLATFORM:MNetBSD-*-earmv7hf}
+.if ${MACHINE_PLATFORM:MNetBSD-*-earmv7hf} || make(distinfo) || make(makesum) || make(mdi)
 RUST_ARCH:=	armv7-unknown-netbsd-eabihf
 DN:=		${DISTNAME}${NBSUF}
 EXTRACT_SUFX=	.tar.xz
@@ -145,7 +145,7 @@ SITES.${DF}=	${NETBSD_REPO}
 #DISTFILES:=	${DISTFILES} ${DF}
 #SITES.${DF}=	${NETBSD_REPO}
 #.endif
-.if ${MACHINE_PLATFORM:MNetBSD-*-powerpc}
+.if ${MACHINE_PLATFORM:MNetBSD-*-powerpc} || make(distinfo) || make(makesum) || make(mdi)
 RUST_ARCH:=	powerpc-unknown-netbsd
 DN:=		${DISTNAME}${NBSUF}
 EXTRACT_SUFX=	.tar.xz
@@ -153,7 +153,7 @@ DF:=		${DN}-${RUST_ARCH}${EXTRACT_SUFX}
 DISTFILES:=	${DISTFILES} ${DF}
 SITES.${DF}=	${NETBSD_REPO}
 .endif
-.if ${MACHINE_PLATFORM:MNetBSD-*-sparc64}
+.if ${MACHINE_PLATFORM:MNetBSD-*-sparc64} || make(distinfo) || make(makesum) || make(mdi)
 RUST_ARCH:=	sparc64-unknown-netbsd
 DN:=		${DISTNAME}${NBSUF}
 EXTRACT_SUFX=	.tar.xz
@@ -169,7 +169,7 @@ SITES.${DF}=	${NETBSD_REPO}
 #DISTFILES:=	${DISTFILES} ${DF}
 #SITES.${DF}=	${NETBSD_REPO}
 #.endif
-.if ${MACHINE_PLATFORM:MNetBSD-*-riscv64}
+.if ${MACHINE_PLATFORM:MNetBSD-*-riscv64} || make(distinfo) || make(makesum) || make(mdi)
 RUST_ARCH:=	riscv64gc-unknown-netbsd
 DN:=		${DISTNAME}${NBSUF}
 EXTRACT_SUFX=	.tar.xz
@@ -193,7 +193,11 @@ SITES.${DF}=	${NETBSD_REPO}
 WRKSRC:=	${WRKSRC:C/nb[0-9]*//}
 WRKSRC:=	${WRKSRC:C/-$//}
 
+# The installer refuses a DESTDIR whose rustlib lists components without
+# manifests, which a previous interrupted install leaves (manifests are
+# removed below). Start every install from an empty rustlib.
 do-install:
+	${RM} -rf ${DESTDIR}${PREFIX}/lib/rustlib
 	cd ${.CURDIR}/files; pax -rw install.sh ${WRKSRC}
 	cd ${WRKSRC} && env PKGMANDIR=${PKGMANDIR} bash ./install.sh \
 	--destdir=${DESTDIR} --prefix=${PREFIX}
