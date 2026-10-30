@@ -1,0 +1,25 @@
+# Origin: EmberBSD (AI-assisted). Configure scripts call strings by name or
+# with the cross prefix (x264 reads the endianness of a compiled object with
+# it). The selected SDK tool directory has the target strings; create both
+# names like ar, ranlib and readelf.
+
+--- a/mk/tools/cross.NetBSD.mk
++++ b/mk/tools/cross.NetBSD.mk
+@@ -7,7 +7,7 @@
+ TOOLS_PLATFORM.readelf?=	${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-readelf
+ TOOLS_PLATFORM.strip?=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-strip
+ 
+-.for _t_ in ar as ld nm objcopy objdump ranlib readelf strip
++.for _t_ in ar as ld nm objcopy objdump ranlib readelf strings strip
+ TOOLS_PATH.${MACHINE_GNU_PLATFORM}-${_t_}?=	\
+ 	${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-${_t_}
+ TOOLS_CREATE+=	${MACHINE_GNU_PLATFORM}-${_t_}
+@@ -19,6 +19,8 @@
+ TOOLS_CREATE+=			ranlib
+ TOOLS_PATH.readelf?=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-readelf
+ TOOLS_CREATE+=			readelf
++TOOLS_PATH.strings?=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-strings
++TOOLS_CREATE+=			strings
+ 
+ .if !empty(PKGSRC_COMPILER:Mclang)
+ CC=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-clang
