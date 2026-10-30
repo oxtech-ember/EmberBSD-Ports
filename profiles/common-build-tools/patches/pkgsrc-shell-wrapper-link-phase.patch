@@ -36,6 +36,13 @@
  	-e "s|@_WRAP_ARG_PP@|${_WRAP_ARG_PP.${_wrappee_}:Q}|g"		\
  	-e "s|@_WRAP_ARG_PP_MAIN@|${_WRAP_ARG_PP_MAIN.${_wrappee_}:Q}|g" \
  	-e "s|@_WRAP_ARG_SOURCE@|${_WRAP_ARG_SOURCE.${_wrappee_}:Q}|g"	\
+@@ -493,4 +495,4 @@
+-	if [ ! -x ${.TARGET} -a -x $$wrapper ]; then			\
++	if [ ! -x "${.TARGET}" -a -f "$$wrapper" -a -x "$$wrapper" ]; then	\
+ 		${ECHO_BUILDLINK_MSG} "=> Linking ${_wrappee_} wrapper: ${.TARGET}"; \
+-		${LN} -f${WRAPPER_USE_SYMLINK:Ds} $$wrapper ${.TARGET};	\
++		${LN} -f${WRAPPER_USE_SYMLINK:Ds} "$$wrapper" "${.TARGET}";\
+ 	fi
 --- a/mk/wrapper/scan
 +++ b/mk/wrapper/scan
 @@ -29,8 +29,20 @@
