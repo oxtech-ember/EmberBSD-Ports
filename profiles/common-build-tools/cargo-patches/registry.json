@@ -330,6 +330,15 @@
     },
     "patch": "swc_macros_common-1.0.1.patch"
   },
+  "timezone_provider-0.2.6": {
+    "files": {
+      "Cargo.toml": {
+        "before": "aae8acfd2c669cbe3016c1f17a9c1702c453069011e4882f47a8d12d29161721",
+        "after": "8bd6516ba19a507f6d325ba1ac3297c832b6a376a6a05bff3b11e147f880c046"
+      }
+    },
+    "patch": "timezone_provider-0.2.6.patch"
+  },
   "tracing-attributes-0.1.31": {
     "files": {
       "Cargo.toml": {
@@ -391,5 +400,22 @@
       }
     },
     "patch": "zerocopy-derive-0.8.63.patch"
+  },
+  "zoneinfo64-0.3.0": {
+    "files": {
+      "Cargo.toml": {
+        "before": "17e03a2a126a5de5290bf02bd55f05595cae1cebbf45b5e8c895b1b11c13cff8",
+        "after": "692364080cb043e21fd7f154a3f765be1774644cbd2c1be89b957e7ccae9f3f2"
+      },
+      "src/deserialize.rs": {
+        "before": "05b316a67be81ac9c1096dcc48936fe92d13d500240c6d2211e539be53a51114",
+        "after": "3c5890b0912c17c87290690ec80697e3959f5d70a425c0cc7822f725320008ed"
+      },
+      "src/lib.rs": {
+        "before": "8786de12e4a3a9e996ba023ab214fd24dc48aaf30beda315e77b9025c6175112",
+        "after": "a9bd944b4ea8d88ff9a62fd79a013384f88cec236564ea39183663b22cce63cf"
+      }
+    },
+    "patch": "zoneinfo64-0.3.0.patch"
   }
 }

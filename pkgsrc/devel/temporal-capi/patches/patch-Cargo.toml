@@ -1,11 +1,11 @@
 $NetBSD$
 
-Build the common shared C API.
+Build the common shared C API and use the current Diplomat macro.
 Origin: EmberBSD (AI-assisted).
 
 --- Cargo.toml.orig
 +++ Cargo.toml
-@@ -46,6 +46,7 @@
+@@ -46,11 +46,12 @@
  ]
  
  [lib]
@@ -13,3 +13,9 @@ Origin: EmberBSD (AI-assisted).
  name = "temporal_capi"
  path = "src/lib.rs"
  
+ [dependencies.diplomat]
+-version = "0.16.0"
++version = "0.17.0"
+ default-features = false
+ 
+ [dependencies.diplomat-runtime]

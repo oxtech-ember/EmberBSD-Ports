@@ -45,9 +45,9 @@ dependencies = [
 
 [[package]]
 name = "diplomat"
-version = "0.16.1"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8b37a6cea72eb6df5143d3e091d4c34cb0cf4046dd1ddcc082988886fe1f809"
+checksum = "61a80510e6103d35c5cd031c0e3f21165b32742c301ee3dafdbb5904c6dca46a"
 dependencies = [
  "diplomat_core",
  "proc-macro2",
@@ -63,9 +63,9 @@ checksum = "d9d981121ba76150987fda68185b37853c0b928a55dfdc28897348cd068440be"
 
 [[package]]
 name = "diplomat_core"
-version = "0.16.1"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73b18e806f9ecb92df828d080efe47984ae1193958295d4a84fb8b32c9a1aa1b"
+checksum = "bfa5c594efd1d097105255fc325c430a517c97b7b7c69f8727f653593e1ce726"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -229,9 +229,9 @@ dependencies = [
 
 [[package]]
 name = "resb"
-version = "0.1.2"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22d392791f3c6802a1905a509e9d1a6039cbbcb5e9e00e5a6d3661f7c874f390"
+checksum = "a2f7917f0f33da724259d953c49b5d751cb3bf6b58fbdaf59b217aebffde9673"
 dependencies = [
  "potential_utf",
  "serde_core",
@@ -370,9 +370,9 @@ dependencies = [
 
 [[package]]
 name = "tzif"
-version = "0.4.1"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0376dfa52cce372f3b095010fd064fb850a5d8fbfd5be8b0ffa3d64eeab5a5d"
+checksum = "5e83eef8d3cdd0e8712556ca0a6c0692c3f7b4b7cd808070aa0184bd8c499864"
 dependencies = [
  "combine",
 ]

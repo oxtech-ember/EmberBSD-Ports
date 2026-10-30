@@ -1,6 +1,7 @@
 # $NetBSD$
 DISTNAME= temporal_capi-0.2.6
 PKGNAME= temporal-capi-0.2.6
+PKGREVISION= 1
 CATEGORIES= devel
 MASTER_SITES= https://static.crates.io/crates/temporal_capi/
 EXTRACT_SUFX= .crate
@@ -74,5 +75,6 @@ do-install:
 	${TOOL_PYTHONBIN} -B -I -S ${FILESDIR}/install-notices.py --lock ${WRKSRC}/Cargo.lock --vendor ${CARGO_VENDOR_DIR} --output ${DESTDIR}${PREFIX}/share/licenses/temporal-capi/crates
 
 .include "cargo-depends.mk"
+EMBER_CARGO_PATCH_SET= yes
 .include "../../lang/rust/emberbsd-cargo.mk"
 .include "../../mk/bsd.pkg.mk"

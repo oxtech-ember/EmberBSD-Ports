@@ -1,0 +1,11 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -99,7 +99,7 @@
+ features = ["zerovec"]
+ 
+ [dependencies.tzif]
+-version = "0.4.0"
++version = "0.5.0"
+ optional = true
+ 
+ [dependencies.yoke]
