@@ -1,0 +1,18 @@
+Cross builds keep the target configuration base.
+
+A mk.conf shared with the native bootstrap sets PKG_SYSCONFBASE to the build
+host prefix. LOCALBASE, VARBASE and SYSCONFBASE already switch to the target
+in a cross build; PKG_SYSCONFBASE did not, so --sysconfdir and every
+PKG_SYSCONFDIR default named a build host directory inside target packages.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/mk/bsd.prefs.mk
++++ b/mk/bsd.prefs.mk
+@@ -717,6 +717,7 @@
+ LOCALBASE=		${CROSS_LOCALBASE:U/usr/pkg}
+ VARBASE=		${CROSS_VARBASE:U/var}
+ SYSCONFBASE=		${CROSS_SYSCONFBASE:U/etc}
++PKG_SYSCONFBASE=	${CROSS_PKG_SYSCONFBASE:U${PREFIX}/etc}
+ .endif
+ .if ${TOOLS_USE_CROSS_COMPILE:tl} == "yes"
+ .  if defined(CROSS_ABI)
