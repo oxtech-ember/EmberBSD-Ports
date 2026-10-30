@@ -3,6 +3,7 @@
 # Origin: EmberBSD (AI-assisted).
 """Check paired Rollup inputs and write the standard Cargo native-library override."""
 import argparse
+import importlib.util
 import json
 from pathlib import Path
 import re
@@ -25,12 +26,12 @@ def prepare(source, version, rust_target, napi_base, mimalloc_libdir, output):
                   if 'mimalloc-safe' in table.get('dependencies',{})]
     if not dependencies or not all('v3' in dependency.get('features',[]) for dependency in dependencies):
         raise ValueError('Rollup must explicitly select the shared mimalloc v3 ABI')
-    if not mimalloc_libdir.is_absolute() or not mimalloc_libdir.is_dir():
-        raise ValueError('mimalloc library search must be the prepared buildlink directory')
-    if not any(path.is_file() for pattern in ('libmimalloc.so*','libmimalloc*.dylib') for path in mimalloc_libdir.glob(pattern)):
-        raise ValueError('selected shared mimalloc library is missing from buildlink')
-    output.write_text('[mimalloc_sys2]\nrustc-link-lib = ["dylib=mimalloc"]\nrustc-link-search = '+
-                      json.dumps([str(mimalloc_libdir)],ensure_ascii=False)+'\n')
+    helper = Path(__file__).resolve().parents[2] / 'mimalloc/files/cargo-overrides.py'
+    spec = importlib.util.spec_from_file_location('mimalloc_cargo_overrides', helper)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.write_override(mimalloc_libdir, output)
+
 
 
 def main():

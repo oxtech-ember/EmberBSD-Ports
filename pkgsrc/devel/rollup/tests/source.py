@@ -35,7 +35,7 @@ class InputsTest(unittest.TestCase):
         for name in ('package.json','npm/package/package.json'):
             (self.source/name).write_text(json.dumps({'name':'rollup','version':'4.65.1'}))
         (self.source/'rust/bindings_napi/Cargo.toml').write_text('[target.test.dependencies]\nmimalloc-safe={version="0.1.67",features=["v3"]}\n')
-        library=self.root/'buildlink/lib';library.mkdir(parents=True);(library/'libmimalloc.so.3').touch()
+        library=self.root/'buildlink/lib';library.mkdir(parents=True);(library/'libmimalloc.so.3').touch();(library/'libmimalloc.so').symlink_to('libmimalloc.so.3')
         self.args=dict(source=self.source,version='4.65.1',rust_target='aarch64-apple-darwin',napi_base='darwin-arm64',mimalloc_libdir=library,output=self.root/'links.toml')
 
     def test_shared_override(self):
@@ -60,7 +60,7 @@ class InputsTest(unittest.TestCase):
             prepare.prepare(**self.args)
 
     def test_missing_shared_library_rejected(self):
-        (self.args['mimalloc_libdir']/'libmimalloc.so.3').unlink()
+        (self.args['mimalloc_libdir']/'libmimalloc.so').unlink()
         with self.assertRaisesRegex(ValueError,'shared mimalloc'):
             prepare.prepare(**self.args)
 
@@ -179,7 +179,7 @@ def actual_sources(distdir,patch,license_root,work):
         if dependency:
             actual=after['target'][target]['dependencies']['mimalloc-safe']
             assert set(actual['features'])==set(dependency.get('features',[]))|{'v3'}
-    library=work/'fixture-buildlink/lib';library.mkdir(parents=True);(library/'libmimalloc.so.3').touch()
+    library=work/'fixture-buildlink/lib';library.mkdir(parents=True);(library/'libmimalloc.so.3').touch();(library/'libmimalloc.so').symlink_to('libmimalloc.so.3')
     prepare.prepare(source,'4.65.1','aarch64-apple-darwin','darwin-arm64',library,work/'links.toml')
     vendor=work/'vendor';vendor.mkdir()
     lock=tomllib.loads((source/'rust/Cargo.lock').read_text())
