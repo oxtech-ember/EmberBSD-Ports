@@ -883,7 +883,8 @@ Chromium type-checks WebUI against its edited `lib.dom.d.ts`
 (`third_party/node/patches/typescript.patch`: `innerHTML`/`src` setters accept
 Trusted Types, `hidden` is `boolean`). The shared `lang/typescript` package stays
 unmodified. The source view hard-links the `typescript` wrapper and its native backend into
-`third_party/node/typescript-chromium/node_modules` (the wrapper resolves the
+`typescript-chromium/node_modules` beside the view `src` (GN rewrites in-root
+absolute paths to `//` form, which the provider check rejects) (the wrapper resolves the
 backend beside it and keeps its package version) and replaces only the backend
 `lib.dom.d.ts` with those exact edits; configure selects that wrapper `bin/tsc` as
 `EMBERBSD_HOST_TYPESCRIPT`.

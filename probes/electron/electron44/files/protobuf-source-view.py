@@ -217,12 +217,12 @@ def typescript_backend(modules):
     return backends[0].resolve(strict=True)
 
 
-def chromium_typescript(node_view, modules, *, verify=False):
+def chromium_typescript(view, modules, *, verify=False):
     """Mirror the typescript wrapper and native backend as one private module
     tree; only the backend lib.dom.d.ts receives Chromium's typing edits."""
     backend = typescript_backend(modules)
     wrapper = (Path(modules) / 'typescript').resolve(strict=True)
-    root = node_view / 'typescript-chromium'
+    root = view / 'typescript-chromium'
     target = root / 'node_modules/@typescript' / backend.name
     dom = Path('lib/lib.dom.d.ts')
     expected = chromium_lib_dom((backend / dom).read_text('utf-8'))
@@ -292,7 +292,7 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
         node_view = destination / 'src/third_party/node'
         require(node_view.is_dir() and not node_view.is_symlink(), 'third_party/node must be mirrored')
         (node_view / 'node_modules').symlink_to(modules, target_is_directory=True)
-        chromium_typescript(node_view, modules)
+        chromium_typescript(destination, modules)
     if system_abseil:
         replacements = abseil_replacements(source)
         dependency_view(third_party / 'abseil-cpp', destination / 'src/third_party/abseil-cpp',
@@ -346,12 +346,12 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     check(source / 'third_party', root / 'third_party', replaced, replaced)
     for name in mirrored(source / 'third_party'):
         mirror(source / 'third_party' / name, root / 'third_party' / name, verify=True,
-               omit={'node_modules', 'typescript-chromium'} if name == 'node' and node_modules is not None else frozenset())
+               omit={'node_modules'} if name == 'node' and node_modules is not None else frozenset())
     if node_modules is not None:
         link = root / 'third_party/node/node_modules'
         require(link.is_symlink() and os.readlink(link) == str(Path(node_modules).resolve(strict=True)),
                 'common node_modules link changed')
-        chromium_typescript(root / 'third_party/node', node_modules, verify=True)
+        chromium_typescript(destination, node_modules, verify=True)
     if system_abseil:
         replacements = abseil_replacements(source)
         dependency_view(source / 'third_party/abseil-cpp', root / 'third_party/abseil-cpp',

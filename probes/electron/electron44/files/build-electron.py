@@ -1028,7 +1028,8 @@ def producer_inputs(options, sdk):
     values.update(common_node_configure(options, native, sdk, environment, resource_text))
     if getattr(options, 'phase', '') == 'configure':
         # Chromium type-checks against its own lib.dom edits; use the view copy.
-        tsc = gn_source(options) / 'third_party/node/typescript-chromium/node_modules/typescript/bin/tsc'
+        # It lives beside src: GN rewrites in-root paths to //-form.
+        tsc = gn_source(options).parent / 'typescript-chromium/node_modules/typescript/bin/tsc'
         require(os.access(tsc, os.X_OK), 'Chromium TypeScript backend is missing')
         environment['EMBERBSD_HOST_TYPESCRIPT'] = str(tsc)
     provider_check = options.workspace / 'src/third_party/node/run_selected_providers.py'
