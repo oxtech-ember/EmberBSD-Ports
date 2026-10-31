@@ -8,6 +8,11 @@ PKGNAME=	plasma6-kwin-qtwaylandscanner-${PLASMAVER}
 
 COMMENT=	Native KWin Wayland protocol code generator for cross builds
 
+do-install:
+	${INSTALL_PROGRAM} \
+	    ${WRKSRC}/${CONFIGURE_DIR}/${CMAKE_BUILD_DIR}/qtwaylandscanner_kde \
+	    ${DESTDIR}${PREFIX}/bin/qtwaylandscanner_kde
+
 .include "../../meta-pkgs/kde/plasma6.mk"
 
 .include "../../mk/bsd.prefs.mk"
@@ -20,11 +25,6 @@ CONFIGURE_DIR=	src/wayland/tools
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTING=OFF
 
 INSTALLATION_DIRS=	bin
-
-do-install:
-	${INSTALL_PROGRAM} \
-	    ${WRKSRC}/${CONFIGURE_DIR}/${CMAKE_BUILD_DIR}/qtwaylandscanner_kde \
-	    ${DESTDIR}${PREFIX}/bin/qtwaylandscanner_kde
 
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
