@@ -96,6 +96,29 @@ checks. `tests/test-s31-nor-integration.py` accepts the same input options as
 the producer except `--output` and checks two complete images for equality
 and their NOR offsets.
 
+## ESP32-S31 NOR profiles
+
+`espressif_esp32s31_nor_probe_defconfig` maps the 16 MiB unencrypted NOR
+and prints CRC-32 values for 4 KiB regions at offsets `0x2000` and `0x20000`
+while retaining UART FIT boot. It invokes the ROM flash attach routine for
+strapped pins and the documented slow-read setup; it does not issue flash
+write commands. Run the probe from RAM and compare against an independently
+saved flash image before using the persistent profile. The hardware cache and
+controller state depends on the ROM boot path and must be verified on device.
+
+`espressif_esp32s31_nor_defconfig` tries the FIT at NOR offset `0x20000`,
+then UART on ordinary loading failure. A bus stall may prevent fallback. The
+bounded NOR callback covers the normal SPL loader;
+the upstream Falcon direct-access path is outside that contract and is not
+enabled in this S31 profile. The profile uses ESP ROM image offset `0x2000`
+and a 16 MiB NOR range. A producer must validate the complete ROM image,
+FIT bounds and hashes, the memory map, a 4 MiB root image, and the selected
+kernel FIT. Autostart is enabled only when the verified firmware FDT records
+root and kernel at the profile addresses. The console can interrupt boot.
+Neither configuration supports encrypted flash; hashes provide integrity,
+not authentication. Preparing source or an image does not itself establish
+successful persistent boot.
+
 ## Host regression checks
 
 The scripts in `tests/` use an explicitly prepared U-Boot source tree and a
@@ -106,7 +129,9 @@ and `HOST_PREFIX` set to those directories:
 ```sh
 for check in test-sha256.py test-spl-strings.py test-fit-flow.py \
     test-fit-read.py test-fit-hash.py test-psram-layout.py test-reserve.py test-s31-mpll.py \
-    test-mips-endian.py test-prof-align.py test-env-awk.py; do
+    test-mips-endian.py test-prof-align.py test-env-awk.py \
+    test-spl-nor-bounds.py test-s31-nor-map.py test-s31-nor-order.py \
+    test-s31-nor-bootcmd.py test-s31-nor-attach.py; do
     "$HOST_PREFIX/bin/python3.15" "tests/$check" \
         --source "$SOURCE" --host-prefix "$HOST_PREFIX" || exit 1
 done

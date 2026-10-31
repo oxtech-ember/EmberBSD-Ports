@@ -7,6 +7,7 @@
  */
 
 #include <stdio.h>
+#include <linux/kconfig.h>
 #include <asm/io.h>
 #include <linux/types.h>
 #include <asm/arch-esp32s31/rom.h>
@@ -16,6 +17,10 @@
 #define DR_REG_FLASH_SPI0_BASE         0x20500000U
 #define DR_REG_PSRAM_MSPI0_BASE        0x20502000U
 #define DR_REG_HP_SYS_CLKRST_BASE      0x20587000U
+
+#define SPI_MEM_C_CACHE_FCTRL_REG      (DR_REG_FLASH_SPI0_BASE + 0x3CU)
+#define SPI_MEM_C_AXI_REQ_EN           BIT(0)
+#define SPI_CLOSE_AXI_INF_EN           BIT(31)
 
 #define SPI_MEM_C_MMU_ITEM_CONTENT_REG (DR_REG_FLASH_SPI0_BASE + 0x37CU)
 #define SPI_MEM_C_MMU_ITEM_INDEX_REG   (DR_REG_FLASH_SPI0_BASE + 0x380U)
@@ -32,6 +37,7 @@
 #define CACHE_CTRL0_FORCE_ON_MASK      ((1U << 1) | (1U << 4) | (1U << 7) | (1U << 10))
 
 #define S31_MMU_ENTRY_NUM              1024U
+#define S31_NOR_PAGES                  (0x1000000U / 0x10000U)
 
 static void reg_set_bits(u32 reg, u32 mask)
 {
@@ -84,8 +90,20 @@ void s31_spl_cache_mmu_init(void)
 	reg_write_field(SPI_MEM_S_MMU_POWER_CTRL_REG, SPI_MMU_PAGE_SIZE_M,
 			SPI_MMU_PAGE_SIZE_PSRAM_64K);
 	puts("spl: cache invalidate flash mappings\n");
-	for (i = 0; i < S31_MMU_ENTRY_NUM; i++)
-		mmu_write_flash_entry(i, SOC_MMU_FLASH_INVALID);
+	for (i = 0; i < S31_MMU_ENTRY_NUM; i++) {
+		u32 entry = SOC_MMU_FLASH_INVALID;
+
+		/* Flash uses its own C-MMU; PSRAM uses the separate S-MMU. */
+		if (IS_ENABLED(CONFIG_ESP32S31_NOR_MAP) && i < S31_NOR_PAGES)
+			entry = SOC_MMU_FLASH_VALID | SOC_MMU_ACCESS_FLASH | i;
+		mmu_write_flash_entry(i, entry);
+	}
+	if (IS_ENABLED(CONFIG_ESP32S31_NOR_MAP)) {
+		/* Open the flash AXI path while the external caches are off. */
+		reg_write_field(SPI_MEM_C_CACHE_FCTRL_REG,
+				SPI_MEM_C_AXI_REQ_EN | SPI_CLOSE_AXI_INF_EN,
+				SPI_MEM_C_AXI_REQ_EN);
+	}
 	cache_enable_all();
 }
 

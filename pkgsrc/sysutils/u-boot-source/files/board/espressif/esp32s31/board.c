@@ -6,6 +6,7 @@
  */
 
 #include <init.h>
+#include <env.h>
 #include <hang.h>
 #include <errno.h>
 #include <stdio.h>
@@ -63,9 +64,45 @@ int board_init(void)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_ESP32S31_NOR_BOOT)
+/* SPL records verified loadables in the firmware DT passed by OpenSBI. */
+static bool s31_fit_payload_ready(const void *fdt, const char *path,
+				 u32 address, u32 min_size, u32 max_size)
+{
+	const fdt32_t *load, *size;
+	int node, len;
+	u32 bytes;
+
+	if (!fdt || fdt_check_header(fdt))
+		return false;
+	node = fdt_path_offset(fdt, path);
+	if (node < 0)
+		return false;
+	load = fdt_getprop(fdt, node, "load", &len);
+	if (!load || len != 2 * sizeof(*load) || fdt32_to_cpu(load[0]) ||
+	    fdt32_to_cpu(load[1]) != address)
+		return false;
+	size = fdt_getprop(fdt, node, "size", &len);
+	if (!size || len != sizeof(*size))
+		return false;
+	bytes = fdt32_to_cpu(*size);
+	return bytes >= min_size && bytes <= max_size;
+}
+#endif
+
 int board_late_init(void)
 {
 	puts("ESP32-S31 U-Boot active\n");
 
+#if IS_ENABLED(CONFIG_ESP32S31_NOR_BOOT)
+	/* A UART recovery FIT need not contain the persistent payloads. */
+	if (s31_fit_payload_ready(gd->fdt_blob, "/fit-images/root",
+				  0x50000000, 0x400000, 0x400000) &&
+	    s31_fit_payload_ready(gd->fdt_blob, "/fit-images/kernel",
+				  0x50c00000, 1, 0x370000))
+		return env_set("bootcmd", "setenv initrd_high ffffffff; "
+			       "setenv fdt_high 50500000; setenv bootargs -s; "
+			       "setenv verify yes; bootm 50c00000 50000000:400000");
+#endif
 	return 0;
 }

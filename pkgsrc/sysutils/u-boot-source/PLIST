@@ -11970,6 +11970,8 @@ share/u-boot-source/configs/emsdp_defconfig
 share/u-boot-source/configs/en7523_evb_defconfig
 share/u-boot-source/configs/endeavoru_defconfig
 share/u-boot-source/configs/espressif_esp32s31_defconfig
+share/u-boot-source/configs/espressif_esp32s31_nor_defconfig
+share/u-boot-source/configs/espressif_esp32s31_nor_probe_defconfig
 share/u-boot-source/configs/espresso7420_defconfig
 share/u-boot-source/configs/ev-imx280-nano-x-mb_defconfig
 share/u-boot-source/configs/evb-ast2500_defconfig

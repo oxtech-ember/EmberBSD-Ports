@@ -10,7 +10,9 @@
 #include <spl.h>
 #include <hang.h>
 #include <stdio.h>
+#include <u-boot/crc.h>
 #include <asm/io.h>
+#include <asm/arch-esp32s31/rom.h>
 #include <linux/libfdt.h>
 #include <asm/sections.h>
 #include <linux/bitops.h>
@@ -61,6 +63,13 @@ void spl_board_init(void)
 {
 	puts("ESP32-S31 SPL active\n");
 
+#if IS_ENABLED(CONFIG_ESP32S31_NOR_MAP)
+	/* ROM slow-read setup with the strapped flash pads. */
+	puts("spl: ROM flash attach begin\n");
+	esp_rom_spiflash_attach(0, false);
+	puts("spl: ROM flash attach done\n");
+#endif
+
 	/* RAM-only trial: initialise PSRAM before receiving a FIT over UART. */
 	puts("spl: cache/mmu begin\n");
 	s31_spl_cache_mmu_init();
@@ -82,12 +91,51 @@ void spl_board_init(void)
 	 */
 	s31_spl_cpu_switch_to_cpll();
 	s31_spl_systimer_clk_init();
+#if IS_ENABLED(CONFIG_ESP32S31_NOR_PROBE)
+	/* This probe reads mapped NOR only; it never changes flash state. */
+	printf("NOR read probe: offset 00002000 length 00001000 crc32 %08x\n",
+	       crc32(0, (const unsigned char *)0x40002000UL, 0x1000));
+	printf("NOR read probe: offset 00020000 length 00001000 crc32 %08x\n",
+	       crc32(0, (const unsigned char *)0x40020000UL, 0x1000));
+#endif
+#if IS_ENABLED(CONFIG_ESP32S31_NOR_BOOT)
+	puts("ESP32-S31 PSRAM ready; trying NOR then UART FIT\n");
+#else
 	puts("ESP32-S31 PSRAM ready; waiting for UART FIT\n");
+#endif
 }
 
 u32 spl_boot_device(void)
 {
 	return BOOT_DEVICE_UART;
+}
+
+#if CONFIG_IS_ENABLED(NOR_SUPPORT)
+#define S31_NOR_WINDOW 0x40000000UL
+#define S31_NOR_SIZE   0x01000000UL
+#define S31_NOR_FIT    0x00020000UL
+
+unsigned long spl_nor_get_uboot_base(void)
+{
+	return S31_NOR_WINDOW + S31_NOR_FIT;
+}
+
+bool spl_nor_get_bounds(ulong *start, ulong *size)
+{
+	*start = S31_NOR_WINDOW;
+	*size = S31_NOR_SIZE;
+	return true;
+}
+#endif
+
+void board_boot_order(u32 *boot_list)
+{
+#if CONFIG_IS_ENABLED(NOR_SUPPORT) && IS_ENABLED(CONFIG_ESP32S31_NOR_BOOT)
+	boot_list[0] = BOOT_DEVICE_NOR;
+	boot_list[1] = BOOT_DEVICE_UART;
+#else
+	boot_list[0] = BOOT_DEVICE_UART;
+#endif
 }
 
 /* SPL's control dtb is appended to the SPL image at _end. */

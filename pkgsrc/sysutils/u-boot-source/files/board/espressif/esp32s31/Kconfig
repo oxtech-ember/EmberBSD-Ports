@@ -17,4 +17,24 @@ config BOARD_SPECIFIC_OPTIONS
 	select GENERIC_RISCV
 	select SUPPORT_SPL
 
+config ESP32S31_NOR_MAP
+	bool "Map unencrypted 16 MiB NOR for SPL reads"
+	depends on SPL
+	help
+	  Map the flash-side MMU before PSRAM initialization. Flash
+	  encryption is not supported by this profile.
+
+config ESP32S31_NOR_PROBE
+	bool "Print a read-only checksum of mapped NOR"
+	depends on ESP32S31_NOR_MAP
+	depends on !ESP32S31_NOR_BOOT
+	select SPL_CRC32
+	help
+	  For RAM-launched diagnostics, checksum two 4 KiB regions before
+	  receiving the next firmware image over UART.
+
+config ESP32S31_NOR_BOOT
+	bool "Boot the mapped NOR FIT before UART recovery"
+	depends on ESP32S31_NOR_MAP && SPL_NOR_SUPPORT
+
 endif
