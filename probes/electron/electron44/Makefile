@@ -1,15 +1,15 @@
-# EmberBSD probe: Electron 44.9.3 runtime for NetBSD/aarch64.
+# EmberBSD probe: Electron 45.2.1 runtime for NetBSD/aarch64.
 # Not buildable yet; see ../README.md for the plan and boundaries.
 
-DISTNAME=	electron-44.9.3
+DISTNAME=	electron-45.2.1
 PKGREVISION=	1
 CATEGORIES=	devel
 MASTER_SITES=	https://github.com/electron/electron/archive/refs/tags/
-DISTFILES=	v44.9.3${EXTRACT_SUFX}
+DISTFILES=	v45.2.1${EXTRACT_SUFX}
 DIST_SUBDIR=	e12-electron
 PATCH_STRIP=	-p1
 
-CHROMIUM_VERSION=	152.0.7977.167
+CHROMIUM_VERSION=	156.0.8078.75
 # Backport Electron PR55162 in the recipe-local security patch below.
 NODE_VERSION=		24.22.1
 DISTFILES+=	node-v${NODE_VERSION}.tar.xz
@@ -30,7 +30,7 @@ USE_TOOLS+=		pkg-config
 BUILD_HOST_NODE=	${EMBERBSD_HOST_NODE}
 BUILD_HOST_NPM=		${EMBERBSD_HOST_NPM}
 
-# Electron v44.9.3 pins Chromium ${CHROMIUM_VERSION} in DEPS.  The Chromium
+# Electron v45.2.1 pins Chromium ${CHROMIUM_VERSION} in DEPS.  The Chromium
 # source preparation starts with files/prepare-sources.py and its pinned
 # gclient dependency graph, not a mismatched
 # chromium-browser-official tarball.  Keep its DEPS revision and the NetBSD

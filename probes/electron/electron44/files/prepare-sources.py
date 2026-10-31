@@ -10,15 +10,15 @@ import subprocess
 import sys
 
 ELECTRON_URL = "https://github.com/electron/electron.git"
-ELECTRON_REVISION = "45d20ec03000aac41e73b2abdb707936b4f98ed0"
+ELECTRON_REVISION = "f81ca3d4f09f57667238120adacb01239d5ecd89"
 CHROMIUM_URL = "https://chromium.googlesource.com/chromium/src.git"
-CHROMIUM_VERSION = "156.0.8078.49"
-CHROMIUM_REVISION = "29eb03535d5f2f4f899b95f22a92413ffde5284e"
+CHROMIUM_VERSION = "156.0.8078.75"
+CHROMIUM_REVISION = "861389936bf33ea77529ee5dcc0605e68f6bb620"
 NODE_URL = "https://github.com/nodejs/node.git"
 NODE_BEFORE = "v24.22.1"
 NODE_VERSION = "v24.22.1"
 NODE_REVISION = "ce7aaf1cee78b8cf0ce17364260535c418d3ed26"
-# Electron 45.1.0 already contains the current Node security roll.
+# Electron 45.2.1 already contains the current Node security roll.
 PATCHES = ()
 
 
