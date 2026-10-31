@@ -866,3 +866,13 @@ accepted as extra entries.
 The bundled fontconfig carries Linux `config.h` values (GNU `strerror_r`) that
 do not hold on NetBSD. The build selects the target sysroot fontconfig package
 (`use_bundled_fontconfig = false`, Chromium's unbundle shim), like libdrm.
+
+### WebUI node_modules
+
+Chromium WebUI scripts (`tools/polymer/css_minifier.js`,
+`ui/webui/resources/tools/minify_js.js`) import
+`third_party/node/node_modules/<module>` statically. The source view mirrors
+`third_party/node` and links its `node_modules` to the selected host prefix
+`lib/node_modules`, which contains only Ports `devel/node-*` packages
+(`postcss`, `postcss-minify`, `terser` and their runtime dependencies), one
+recipe per module.

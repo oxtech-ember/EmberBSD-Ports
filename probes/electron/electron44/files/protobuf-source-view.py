@@ -131,7 +131,7 @@ def dependency_view(origin, dest, replacements, masks, *, verify=False, current=
 # mirrored as local directories of hard links (copies across devices).  The
 # Chromium root outside third_party is mirrored as a whole because its build
 # scripts locate the source root from their own module paths.
-MATERIALIZED_THIRD_PARTY = ('blink', 'dawn', 'devtools-frontend')
+MATERIALIZED_THIRD_PARTY = ('blink', 'dawn', 'devtools-frontend', 'node')
 
 
 def mirror(origin, dest, *, verify=False, omit=frozenset()):
@@ -191,7 +191,7 @@ def re2_replacements(source):
     return {Path('BUILD.gn'): shim}
 
 
-def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False):
+def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None):
     source = Path(source).resolve(strict=True)
     protobuf = Path(protobuf).resolve(strict=True) if protobuf is not None else None
     v8 = Path(v8).resolve(strict=True) if v8 is not None else None
@@ -228,6 +228,15 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     links(third_party, destination / 'src/third_party', ({'protobuf'} if protobuf else set()) | set(providers) | ({'abseil-cpp'} if system_abseil else set()) | ({'icu'} if system_icu else set()) | ({'re2'} if system_re2 else set()) | mirrored(third_party))
     for name in mirrored(third_party):
         mirror(third_party / name, destination / 'src/third_party' / name)
+    if node_modules is not None:
+        # WebUI scripts import third_party/node/node_modules statically; bind
+        # it to the selected common Ports module prefix.
+        modules = Path(node_modules).resolve(strict=True)
+        require((third_party / 'node').is_dir() and not (third_party / 'node/node_modules').exists(),
+                'Chromium third_party/node must not carry node_modules')
+        node_view = destination / 'src/third_party/node'
+        require(node_view.is_dir() and not node_view.is_symlink(), 'third_party/node must be mirrored')
+        (node_view / 'node_modules').symlink_to(modules, target_is_directory=True)
     if system_abseil:
         replacements = abseil_replacements(source)
         dependency_view(third_party / 'abseil-cpp', destination / 'src/third_party/abseil-cpp',
@@ -250,7 +259,7 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     return destination / 'src'
 
 
-def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False):
+def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None):
     source = Path(source).resolve(strict=True)
     protobuf = Path(protobuf).resolve(strict=True) if protobuf is not None else None
     providers = {name: Path(value).resolve(strict=True) for name, value in
@@ -280,7 +289,12 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     replaced = ({'protobuf'} if protobuf else set()) | set(providers) | ({'abseil-cpp'} if system_abseil else set()) | ({'icu'} if system_icu else set()) | ({'re2'} if system_re2 else set()) | mirrored(source / 'third_party')
     check(source / 'third_party', root / 'third_party', replaced, replaced)
     for name in mirrored(source / 'third_party'):
-        mirror(source / 'third_party' / name, root / 'third_party' / name, verify=True)
+        mirror(source / 'third_party' / name, root / 'third_party' / name, verify=True,
+               omit={'node_modules'} if name == 'node' and node_modules is not None else frozenset())
+    if node_modules is not None:
+        link = root / 'third_party/node/node_modules'
+        require(link.is_symlink() and os.readlink(link) == str(Path(node_modules).resolve(strict=True)),
+                'common node_modules link changed')
     if system_abseil:
         replacements = abseil_replacements(source)
         dependency_view(source / 'third_party/abseil-cpp', root / 'third_party/abseil-cpp',

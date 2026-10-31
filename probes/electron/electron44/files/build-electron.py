@@ -1141,7 +1141,8 @@ def gn_source(options):
                    v8=getattr(options, 'v8_source', None),
                    system_abseil=getattr(options, 'shared_abseil', False),
                    system_icu=getattr(options, 'shared_icu', False),
-                   system_re2=getattr(options, 'shared_re2', False))
+                   system_re2=getattr(options, 'shared_re2', False),
+                   node_modules=Path(options.host_prefix) / 'lib/node_modules')
     destination = options.work / 'source-view'
     if not os.path.lexists(destination):
         require(getattr(options, 'phase', '') == 'configure',
