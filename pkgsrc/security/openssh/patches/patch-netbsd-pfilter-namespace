@@ -1,0 +1,12 @@
+$NetBSD$
+
+Use the base namespace hook supplied by includes.h.
+
+--- pfilter.c
++++ pfilter.c
+@@ -1,5 +1,4 @@
+ /*	$NetBSD: pfilter.c,v 1.9 2024/08/02 17:13:02 christos Exp $	*/
+-#include "namespace.h"
+ #include "includes.h"
+ #include "ssh.h"
+ #include "packet.h"
