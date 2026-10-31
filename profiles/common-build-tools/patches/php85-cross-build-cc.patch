@@ -1,0 +1,27 @@
+Cross php85 builds minilua for the build machine.
+
+The opcache JIT generates ir_emit_<arch>.h by running minilua, which the
+Makefile builds with BUILD_CC. configure defaults BUILD_CC to "gcc", which
+in a cross build is the target compiler wrapper, so the build ran an
+aarch64 NetBSD executable on the build host. Pass the build machine
+compiler.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/lang/php85/Makefile
++++ b/lang/php85/Makefile
+@@ -22,6 +22,15 @@
+ CGIDIR=			${PREFIX}/libexec/cgi-bin
+ 
+ CONFIGURE_ENV+=		lt_cv_path_SED=${SED:Q}
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# The opcache JIT runs minilua, built with BUILD_CC, on the build machine.
++# configure's default "gcc" is the target compiler wrapper in a cross build.
++.  if defined(EMBERBSD_CROSS_BUILD_CC)
++CONFIGURE_ENV+=		BUILD_CC=${EMBERBSD_CROSS_BUILD_CC:Q}
++.  else
++CONFIGURE_ENV+=		BUILD_CC=${NATIVE_CC:Q}
++.  endif
++.endif
+ MAKE_ENV+=		INSTALL_ROOT=${DESTDIR}
+ 
+ CONF_FILES=		${PHP_EGDIR}/php.ini-production ${PKG_SYSCONFDIR}/php.ini
