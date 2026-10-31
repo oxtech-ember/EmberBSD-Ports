@@ -1,0 +1,26 @@
+$NetBSD$
+
+Keep the fork-based PAM shim independent of libc pthread aliases.
+
+--- auth-pam.c
++++ auth-pam.c
+@@ -126,6 +126,10 @@
+ typedef pthread_t sp_pthread_t;
+ #else
+ typedef pid_t sp_pthread_t;
++#undef pthread_exit
++#undef pthread_create
++#undef pthread_cancel
++#undef pthread_join
+ #define pthread_exit	fake_pthread_exit
+ #define pthread_create	fake_pthread_create
+ #define pthread_cancel	fake_pthread_cancel
+@@ -183,7 +187,7 @@
+ }
+ 
+ /* ARGSUSED */
+-static void
++static void __attribute__((noreturn))
+ pthread_exit(void *value)
+ {
+ 	_exit(0);
