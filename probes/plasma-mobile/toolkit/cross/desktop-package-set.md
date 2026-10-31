@@ -1,7 +1,8 @@
 # Prepare Plasma packages for CM5 acceptance
 
 Build on the development host. The board installs packages and runs tests.
-The target is EmberBSD AArch64 with the common GCC16, Qt6, Mesa and LLVM stack.
+The target is EmberBSD AArch64 with the common Clang/LLVM, Qt6 and Mesa stack.
+GCC is an explicit platform alternative where its profile records the reason.
 The upstream `NetBSD 11.0` package identifiers describe the compatible ABI.
 They do not establish the origin of the installed base system.
 The package auditor and installer also accept `--target amd64`, with
@@ -13,13 +14,16 @@ amd64 package closure. Host fixtures do not qualify an amd64 desktop session.
 Use the [cross workflow](README.md) and normal pkgsrc package checks.
 Prepare these complete roots in the same audited sysroot:
 
-- Plasma Desktop 6.8.0, including its compiled plugins and desktop resources.
-- Plasma Workspace 6.8.0nb3, with KWin 6.8.0nb1, KCoreAddons 6.31.0nb2 and Xwayland 24.1.14nb1.
-- Fcitx Configtool 5.1.16nb2, with the common Fcitx5/Qt6 providers.
-- Common Perl 5.44 for the full-session process supervisor.
+- Plasma Desktop, including its compiled plugins and desktop resources.
+- Plasma Workspace, with KWin, KCoreAddons and Xwayland.
+- Fcitx Configtool, with the common Fcitx5/Qt6 providers.
+- Common Perl for the full-session process supervisor.
+
+Use the current versions and package revisions from the exported common recipes.
+The Plasma recipes share the version selected by [plasma6.mk](../../../../pkgsrc/meta-pkgs/kde/plasma6.mk).
 
 Desktop requires the Activities service, not only its client library.
-The KActivityManagerD 6.8.0 recipe separates its generated package-version header from
+The KActivityManagerD recipe separates its generated package-version header from
 upstream's protocol-version header. This fixes an APFS filename collision.
 It preserves both the package version and the protocol version.
 
@@ -35,8 +39,8 @@ It retains registered error maps under LLD section collection and handles
 failed POSIX error-string conversion. These repairs belong to the recipes.
 
 The [scoped GCC16/LLD selection](../../../../profiles/common-build-tools/tests/gcc16-lld.md)
-sets `/libexec/ld.elf_so` for new executable links.
-Keep its generated specs and compiler/sysroot receipt with the build.
+sets `/libexec/ld.elf_so` for new executable links when that explicit alternative is used.
+Keep its generated specs and compiler/sysroot receipt with that build.
 The existing accepted package set also uses `/usr/libexec/ld.elf_so`.
 The full-session preflight requires both target paths and creates no aliases.
 
