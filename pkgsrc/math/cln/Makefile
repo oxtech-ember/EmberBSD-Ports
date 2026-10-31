@@ -22,5 +22,10 @@ TEST_TARGET=		check
 # Work around broken configure test
 CONFIGURE_ENV.SunOS+=	cl_cv_proto_perror=yes
 
+# patch-m4_intparam.m4 must not look newer than aclocal.m4, or make would
+# try to rerun aclocal.
+pre-configure:
+	${TOUCH} -r ${WRKSRC}/aclocal.m4 ${WRKSRC}/m4/intparam.m4
+
 .include "../../devel/gmp/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

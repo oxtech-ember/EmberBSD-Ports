@@ -1,0 +1,139 @@
+$NetBSD$
+
+Probe integer sizes with unsigned arithmetic. A signed overflow made
+the cross bound non-constant; clang++ accepted it as a variable length
+array and reported int_bitsize 31, so intparam.h stopped the build:
+"int and unsigned int have different sizes".
+
+--- configure.orig
++++ configure
+@@ -18937,7 +18937,7 @@
+   cl_machine_file_h=include/cln/intparam.h
+   {
+ 
+-  n=1; x="(signed char)2"
++  n=1; x="(unsigned long long)2"
+   while true; do
+     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+@@ -18957,11 +18957,11 @@
+   if test $n = 1000; then char_bitsize=; break; fi;
+ fi
+ rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+-    n=`expr $n + 1`; x="$x * (signed char)2"
++    n=`expr $n + 1`; x="$x * (unsigned long long)2"
+   done
+ 
+ 
+-  n=1; x="(short)2"
++  n=1; x="(unsigned long long)2"
+   while true; do
+     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+@@ -18981,11 +18981,11 @@
+   if test $n = 1000; then short_bitsize=; break; fi;
+ fi
+ rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+-    n=`expr $n + 1`; x="$x * (short)2"
++    n=`expr $n + 1`; x="$x * (unsigned long long)2"
+   done
+ 
+ 
+-  n=1; x="(int)2"
++  n=1; x="(unsigned long long)2"
+   while true; do
+     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+@@ -19005,11 +19005,11 @@
+   if test $n = 1000; then int_bitsize=; break; fi;
+ fi
+ rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+-    n=`expr $n + 1`; x="$x * (int)2"
++    n=`expr $n + 1`; x="$x * (unsigned long long)2"
+   done
+ 
+ 
+-  n=1; x="(long)2"
++  n=1; x="(unsigned long long)2"
+   while true; do
+     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+@@ -19029,11 +19029,11 @@
+   if test $n = 1000; then long_bitsize=; break; fi;
+ fi
+ rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+-    n=`expr $n + 1`; x="$x * (long)2"
++    n=`expr $n + 1`; x="$x * (unsigned long long)2"
+   done
+ 
+ 
+-  n=1; x="(long long)2"
++  n=1; x="(unsigned long long)2"
+   while true; do
+     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+@@ -19053,11 +19053,11 @@
+   if test $n = 1000; then longlong_bitsize=; break; fi;
+ fi
+ rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+-    n=`expr $n + 1`; x="$x * (long long)2"
++    n=`expr $n + 1`; x="$x * (unsigned long long)2"
+   done
+ 
+ 
+-  n=1; x="(unsigned char)2"
++  n=1; x="(unsigned long long)2"
+   while true; do
+     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+@@ -19077,11 +19077,11 @@
+   if test $n = 1000; then uchar_bitsize=; break; fi;
+ fi
+ rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+-    n=`expr $n + 1`; x="$x * (unsigned char)2"
++    n=`expr $n + 1`; x="$x * (unsigned long long)2"
+   done
+ 
+ 
+-  n=1; x="(unsigned short)2"
++  n=1; x="(unsigned long long)2"
+   while true; do
+     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+@@ -19101,11 +19101,11 @@
+   if test $n = 1000; then ushort_bitsize=; break; fi;
+ fi
+ rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+-    n=`expr $n + 1`; x="$x * (unsigned short)2"
++    n=`expr $n + 1`; x="$x * (unsigned long long)2"
+   done
+ 
+ 
+-  n=1; x="(unsigned int)2"
++  n=1; x="(unsigned long long)2"
+   while true; do
+     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+@@ -19125,11 +19125,11 @@
+   if test $n = 1000; then uint_bitsize=; break; fi;
+ fi
+ rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+-    n=`expr $n + 1`; x="$x * (unsigned int)2"
++    n=`expr $n + 1`; x="$x * (unsigned long long)2"
+   done
+ 
+ 
+-  n=1; x="(unsigned long)2"
++  n=1; x="(unsigned long long)2"
+   while true; do
+     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+@@ -19149,7 +19149,7 @@
+   if test $n = 1000; then ulong_bitsize=; break; fi;
+ fi
+ rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+-    n=`expr $n + 1`; x="$x * (unsigned long)2"
++    n=`expr $n + 1`; x="$x * (unsigned long long)2"
+   done
+ 
+ 
