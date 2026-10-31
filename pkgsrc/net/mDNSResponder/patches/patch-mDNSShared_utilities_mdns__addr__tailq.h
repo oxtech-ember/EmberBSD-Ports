@@ -4,7 +4,7 @@ the annotated public API without weakening compiler diagnostics.
 
 --- mDNSShared/utilities/mdns_addr_tailq.h.orig
 +++ mDNSShared/utilities/mdns_addr_tailq.h
-@@ -34,11 +34,16 @@
+@@ -34,14 +34,19 @@
  
  typedef struct mdns_addr_with_port mdns_addr_with_port_t;
  struct mdns_addr_with_port {
@@ -23,3 +23,6 @@ the annotated public API without weakening compiler diagnostics.
 +	mdns_addr_with_port_t * NULLABLE stqh_first;
 +	mdns_addr_with_port_t * NULLABLE * NULLABLE stqh_last;
 +};
+ 
+ //======================================================================================================================
+ // MARK: - Function Declarations
