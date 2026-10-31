@@ -1,0 +1,5 @@
+# ESP-IDF and binary submodules are one upstream release input.
+ESP_IDF_VERSION= 6.1
+ESP_IDF_WIFI_REVISION= 7cd4d7b2b4acc38aead43b029ac9409c3eba9c54
+ESP_IDF_PHY_REVISION= 5695f4f38108658bc4a33e4712c1ebcb34911434
+ESP_IDF_SOURCE_DIR?= ${EMBERBSD_HOST_PREFIX:U${TOOLBASE}}/share/esp-idf-source

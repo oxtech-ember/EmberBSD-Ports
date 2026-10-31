@@ -1,0 +1,2 @@
+ESP-IDF sources and the matching upstream Wi-Fi and PHY binary library
+submodules. Consumers select their required components and target ABI.
