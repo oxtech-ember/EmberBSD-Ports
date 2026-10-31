@@ -143,6 +143,7 @@ ${PYSITELIB}/mtkclient/Library/Exploit/kamakiri2.pyo
 ${PYSITELIB}/mtkclient/Library/Exploit/kamakiripl.py
 ${PYSITELIB}/mtkclient/Library/Exploit/kamakiripl.pyc
 ${PYSITELIB}/mtkclient/Library/Exploit/kamakiripl.pyo
+${PYSITELIB}/mtkclient/Library/Exploit/test/DA_BR.bin
 ${PYSITELIB}/mtkclient/Library/Exploit/test/MT6886_NOTHING_0.bin
 ${PYSITELIB}/mtkclient/Library/Filesystem/__init__.py
 ${PYSITELIB}/mtkclient/Library/Filesystem/__init__.pyc
