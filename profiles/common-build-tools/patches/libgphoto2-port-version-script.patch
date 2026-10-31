@@ -1,0 +1,17 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted); FreeBSD Ports dee420703ee1, gphoto/libgphoto2#970.
+gpi_gphoto_port_type_map was removed from libgphoto2_port, but the
+version script still listed it, and lld rejects version script entries
+for undefined symbols.
+
+--- libgphoto2_port/libgphoto2_port/libgphoto2_port.ver.orig
++++ libgphoto2_port/libgphoto2_port/libgphoto2_port.ver
+@@ -71,7 +71,6 @@
+ 
+ # These are only supposed to be used by libgphoto2 internally.
+ LIBGPHOTO2_INTERNAL {
+-	gpi_gphoto_port_type_map;
+ 	gpi_enum_to_string;
+ 	gpi_string_to_enum;
+ 	gpi_string_to_flag;
