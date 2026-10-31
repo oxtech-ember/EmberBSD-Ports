@@ -49,6 +49,11 @@ pipewire-native-file:
 	    '[built-in options]' > ${WRKDIR}/.meson-pipewire-native
 MESON_NATIVE_ARGS+=	--native-file ${WRKDIR}/.meson-pipewire-native
 
+# The modules have install_rpath ${PREFIX}/lib/pipewire-0.3. The wrappers drop
+# meson's build-tree rpath, so meson's install-time rewrite has no room for the
+# longer rpath unless the directory is already in the link-time rpath.
+LDFLAGS+=	${COMPILER_RPATH_FLAG}${PREFIX}/lib/pipewire-0.3
+
 .include "../../devel/meson/build.mk"
 .if ${OPSYS} == "NetBSD"
 # epoll and signalfd for spa/plugins/support/system.c, as on FreeBSD.
