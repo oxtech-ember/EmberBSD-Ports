@@ -1,0 +1,12 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-x86_64
+recipe: devel/gobject-introspection
+package: gobject-introspection-1.86.0
+program: GModule-2.0
+types-sha256: ea11df9632b04a079c0e19ed09ad93b30537089b23b67a0715f1335698b18cc9
+dump-sha256: 27d5c5012450aa030edf993af45ae3ec30ecea8b6ae840918498f9450343b787
+-->
+<?xml version="1.0"?>
+<dump>
+  <error-quark function="g_module_error_quark" domain="g-module-error-quark"/>
+</dump>

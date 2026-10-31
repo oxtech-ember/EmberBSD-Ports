@@ -1,0 +1,16 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-x86_64
+recipe: devel/gobject-introspection
+package: gobject-introspection-1.86.0
+program: GIRepository-2.0
+types-sha256: 3b5da47df91fe595f450e2742e63adbb7f5858791ea742fd25244f72121c3260
+dump-sha256: 260a47db3f777f2239e79a34ad425aa6c51684c9ae833b0548c911e791d05581
+-->
+<?xml version="1.0"?>
+<dump>
+  <boxed name="GIBaseInfo" get-type="g_base_info_gtype_get_type"/>
+  <class name="GIRepository" get-type="g_irepository_get_type" parents="GObject">
+  </class>
+  <error-quark function="g_invoke_error_quark" domain="g-invoke-error-quark"/>
+  <error-quark function="g_irepository_error_quark" domain="g-irepository-error-quark"/>
+</dump>
