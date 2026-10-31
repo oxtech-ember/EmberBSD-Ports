@@ -36,6 +36,7 @@ OWNERS = {
     'libevent': ('scripts/source-inputs/libevent/source.py', 'devel/libevent'),
     'openssl': ('scripts/source-inputs/openssl/source.py', 'security/openssl'),
     'libfido2': ('scripts/source-inputs/libfido2/source.py', 'security/libfido2'),
+    'libcbor': ('scripts/source-inputs/libcbor/source.py', 'devel/libcbor'),
     'byacc': ('scripts/source-inputs/byacc/source.py', 'devel/byacc'),
     'texinfo': ('scripts/source-inputs/texinfo/source.py', 'devel/gtexinfo'),
     'rcs': ('scripts/source-inputs/rcs/source.py', 'devel/rcs'),
