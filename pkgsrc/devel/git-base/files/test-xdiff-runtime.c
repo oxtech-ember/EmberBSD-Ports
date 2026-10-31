@@ -2,9 +2,6 @@
 #include "xdiff.h"
 
 #ifdef NDEBUG
-#error "xdiff regression requires assertions"
-#endif
-#ifdef NDEBUG
 #error "test-xdiff-runtime requires assertions"
 #endif
 
