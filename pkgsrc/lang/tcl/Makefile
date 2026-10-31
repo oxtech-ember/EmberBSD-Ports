@@ -120,10 +120,10 @@ post-build:
 	      tdbcmysql${TDBC_VERSION}/libtcl9tdbcmysql${TDBC_VERSION}.dylib \
 	      tdbcodbc${TDBC_VERSION}/libtcl9tdbcodbc${TDBC_VERSION}.dylib \
 	      tdbcpostgres${TDBC_VERSION}/libtcl9tdbcpostgres${TDBC_VERSION}.dylib
-	install_name_tool -id ${TCL_PREFIX}/lib/${lib} ${WRKSRC}/unix/pkgs/${lib}
+	''${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:Uinstall_name_tool:Q} -id ${TCL_PREFIX}/lib/${lib} ${WRKSRC}/unix/pkgs/${lib}
 .  endfor
 # Thread appends its ZipFS payload after linking. Verify its link-time identity.
-	identity=$$(otool -D ${WRKSRC}/unix/pkgs/thread${THREAD_VERSION}/libtcl9thread${THREAD_VERSION}.dylib) && \
+	identity=$$(${MACHO_OTOOL:Q} -D ${WRKSRC}/unix/pkgs/thread${THREAD_VERSION}/libtcl9thread${THREAD_VERSION}.dylib) && \
 	    printf '%s\n' "$$identity" | ${GREP} -Fx '${TCL_PREFIX}/lib/thread${THREAD_VERSION}/libtcl9thread${THREAD_VERSION}.dylib'
 .endif
 
