@@ -1,0 +1,31 @@
+$NetBSD$
+
+Run the Darwin sw_vers by its system path. pkgsrc builds run CMake with a
+prefix-only PATH, where a bare sw_vers is not found: kwsys printed
+"Error: Could not run sw_vers" for every host query and left the OS name,
+release and build unknown, and Darwin-Initialize lost the host version.
+
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- Source/kwsys/SystemInformation.cxx
++++ Source/kwsys/SystemInformation.cxx
+@@ -5511,7 +5511,7 @@
+ {
+ #ifdef __APPLE__
+   std::vector<char const*> args;
+-  args.push_back("sw_vers");
++  args.push_back("/usr/bin/sw_vers");
+   args.push_back(arg);
+   args.push_back(nullptr);
+   ver = this->RunProcess(args);
+--- Modules/Platform/Darwin-Initialize.cmake
++++ Modules/Platform/Darwin-Initialize.cmake
+@@ -290,7 +290,7 @@
+ # CMAKE_OSX_DEPLOYMENT_TARGET
+ 
+ if(NOT CMAKE_CROSSCOMPILING)
+-  execute_process(COMMAND sw_vers -productVersion
++  execute_process(COMMAND /usr/bin/sw_vers -productVersion
+     OUTPUT_VARIABLE _CMAKE_HOST_OSX_VERSION
+     OUTPUT_STRIP_TRAILING_WHITESPACE
+     RESULT_VARIABLE _result)

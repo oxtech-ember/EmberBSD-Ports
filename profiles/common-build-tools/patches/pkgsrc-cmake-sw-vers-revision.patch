@@ -1,0 +1,13 @@
+# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+# Revision 11: kwsys and Darwin-Initialize run /usr/bin/sw_vers.
+--- a/devel/cmake/Makefile
++++ b/devel/cmake/Makefile
+@@ -2,7 +2,7 @@
+ 
+ .include "Makefile.common"
+ 
+-PKGREVISION=	10
++PKGREVISION=	11
+ 
+ COMMENT=	Cross platform make
+ 
