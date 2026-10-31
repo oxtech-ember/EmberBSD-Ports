@@ -22,7 +22,11 @@ CMAKE_CONFIGURE_ARGS+=	-DTOOLS_ONLY=ON
 CONFLICTS+=	kf6-kcmutils-[0-9]*
 
 post-install:
+.if ${OPSYS} == "Darwin"
+	${RUN}${TEST} -x ${DESTDIR}${PREFIX}/libexec/kf6/kcmdesktopfilegenerator.app/Contents/MacOS/kcmdesktopfilegenerator
+.else
 	${RUN}${TEST} -x ${DESTDIR}${PREFIX}/libexec/kf6/kcmdesktopfilegenerator
+.endif
 	${RUN}${GREP} -q 'KF6::kcmdesktopfilegenerator' \
 	    ${DESTDIR}${PREFIX}/lib/cmake/KF6KCMUtils/KF6KCMUtilsToolingTargets.cmake
 
