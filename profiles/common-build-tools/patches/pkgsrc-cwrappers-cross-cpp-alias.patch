@@ -1,0 +1,16 @@
+# Origin: EmberBSD (AI-assisted). A cross profile names its target
+# preprocessor, like CC and CXX; make that name an alias of the cpp wrapper.
+
+--- a/mk/cwrappers.mk
++++ b/mk/cwrappers.mk
+@@ -40,6 +40,10 @@
+ CWRAPPERS_ALIASES.cc+=		${CC:T}
+ CWRAPPERS_ALIASES.cxx+=		${CXX:T}
+ CWRAPPERS_ALIASES.ld+=		${LD:T}
++# A cross profile may name its preprocessor after the target, like CC.
++.  if ${CPP:U:[#]} == 1 && empty(CWRAPPERS_ALIASES.cpp:M${CPP:T})
++CWRAPPERS_ALIASES.cpp+=		${CPP:T}
++.  endif
+ .else
+ # Native versioned compiler names must enter the same wrappers.
+ .  if empty(CWRAPPERS_ALIASES.cc:M${CC:[1]:T})

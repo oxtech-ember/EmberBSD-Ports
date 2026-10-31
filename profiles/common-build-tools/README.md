@@ -423,6 +423,19 @@ sh profiles/common-build-tools/tests/cpp-wrapper-link-flags.sh \
     /absolute/bmake /absolute/cross.mk.conf /absolute/pkgsrc /absolute/new-work
 ```
 
+The Clang cross profile and `mk/tools/cross.NetBSD.mk` name the target
+preprocessor, `<triplet>-clang-cpp`, instead of its absolute path, and
+`patches/pkgsrc-cwrappers-cross-cpp-alias.patch` makes that name an alias of
+the cpp wrapper. The absolute path ran past the wrapper and its buildlink
+include transforms, so `$CPP` did not find dependency headers such as
+`pcre2.h`. Check it with the Clang cross MAKECONF for an AArch64 NetBSD
+target whose sysroot has the target dependencies of devel/glib2:
+
+```sh
+sh profiles/common-build-tools/tests/cross-cpp-wrapper.sh \
+    /absolute/bmake /absolute/cross.mk.conf /absolute/pkgsrc /absolute/new-work
+```
+
 The [Vala array copy contract](cross/vala.md) repairs a missing NULL slot
 for copied nullable value arrays. Paired host GCC16 generators and the
 unchanged upstream regression pass ASan/UBSan after the repair. Cross package

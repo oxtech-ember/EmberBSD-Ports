@@ -4,14 +4,17 @@
 
 --- a/mk/tools/cross.NetBSD.mk
 +++ b/mk/tools/cross.NetBSD.mk
-@@ -20,6 +20,12 @@
+@@ -20,6 +20,15 @@
  TOOLS_PATH.readelf?=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-readelf
  TOOLS_CREATE+=			readelf
  
 +.if !empty(PKGSRC_COMPILER:Mclang)
 +CC=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-clang
 +CXX=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-clang++
-+CPP=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-clang-cpp
++# pkgsrc reduces CC and CXX to their wrapper names, not CPP. Name the
++# preprocessor so that it runs the cpp wrapper with its buildlink include
++# transforms, not past it; cwrappers.mk makes the name a cpp wrapper alias.
++CPP=		${MACHINE_GNU_PLATFORM}-clang-cpp
 +.else
  CC=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-gcc
  CXX=		${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-g++
