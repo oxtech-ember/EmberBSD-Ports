@@ -20,6 +20,8 @@ DISTINFO_FILE=	${.CURDIR}/../../databases/openldap/distinfo
 PATCHDIR=	${.CURDIR}/../../databases/openldap/patches
 
 USE_LIBTOOL=	yes
+# OpenLDAP compiles its libraries as C; do not infer the tag from CC text.
+MAKE_FLAGS+=	LIBTOOL=${LIBTOOL:Q}\ --tag=CC
 USE_TOOLS+=	gmake soelim
 GNU_CONFIGURE=	yes
 
