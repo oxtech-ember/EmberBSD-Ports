@@ -5,7 +5,7 @@ EMBERBSD_MIT_KRB5_PKGDIR:= ${.PARSEDIR:tA}
 BRANCHNAME=	1.22
 DISTNAME=	krb5-${BRANCHNAME}.2
 PKGNAME=	mit-${DISTNAME}
-PKGREVISION=	7
+PKGREVISION=	8
 CATEGORIES=	security
 # It is not clear how stable this URL scheme is.
 MASTER_SITES=	http://web.mit.edu/kerberos/dist/krb5/${BRANCHNAME}/
@@ -29,7 +29,11 @@ MAKE_JOBS_SAFE=	no
 
 WRKSRC=		${WRKDIR}/${DISTNAME}/src
 
-BUILD_TARGET=	generate-files-mac all
+BUILD_TARGET=	all
+
+# Generate the platform inputs before compiling consumers.
+pre-build:
+	${RUN}${_ULIMIT_CMD} cd ${WRKSRC} && ${BUILD_MAKE_CMD} generate-files-mac
 
 .include "../../mk/bsd.prefs.mk"
 
@@ -46,7 +50,7 @@ FORCE_C_STD=		gnu99
 
 USE_LIBTOOL=		yes
 GNU_CONFIGURE=		yes
-USE_TOOLS+=		autoconf bison gzip m4 msgfmt perl
+USE_TOOLS+=		autoconf bison gmake gzip m4 msgfmt perl
 
 # The actual KDC databases are stored in ${MIT_KRB5_STATEDIR}/krb5kdc.
 MIT_KRB5_STATEDIR?=	${VARBASE}
