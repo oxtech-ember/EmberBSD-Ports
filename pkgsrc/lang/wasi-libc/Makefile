@@ -36,6 +36,8 @@ PKG_FAIL_REASON+= "Select EMBERBSD_WASI_HOST_PREFIX as an absolute path."
 WASI_BUILTINS_LIB?= ${EMBERBSD_WASI_HOST_PREFIX}/lib/clang/${LLVM_MAJOR_VERSION}/lib/wasm32-unknown-wasip1/libclang_rt.builtins.a
 _WASI_BUILD= ${WRKDIR}/wasi-build
 
+# CMake reads the package LDFLAGS from the environment, but those name the
+# package platform's linker (-zrelro, -R) and wasm-ld rejects them.
 do-configure:
 	${TEST} -f ${WASI_BUILTINS_LIB:Q}
 	${MKDIR} ${WRKDIR:Q}/wasi-empty-sysroot
@@ -44,6 +46,7 @@ do-configure:
 	    -DBINDINGS_TARGET=OFF -DUSE_WASM_COMPONENT_LD=OFF -DBUILTINS_LIB=${WASI_BUILTINS_LIB:Q} \
 	    -DCMAKE_INSTALL_PREFIX=${PREFIX:Q}/wasi -DCMAKE_SYSROOT=${WRKDIR:Q}/wasi-empty-sysroot \
 	    -DCMAKE_C_FLAGS:STRING= -DCMAKE_ASM_FLAGS:STRING= -DCMAKE_ASM_COMPILER_TARGET=wasm32-wasip1 \
+	    -DCMAKE_EXE_LINKER_FLAGS:STRING= -DCMAKE_SHARED_LINKER_FLAGS:STRING= -DCMAKE_MODULE_LINKER_FLAGS:STRING= \
 	    -DCMAKE_C_COMPILER=${EMBERBSD_WASI_HOST_PREFIX:Q}/bin/clang -DCMAKE_ASM_COMPILER=${EMBERBSD_WASI_HOST_PREFIX:Q}/bin/clang \
 	    -DCMAKE_AR=${EMBERBSD_WASI_HOST_PREFIX:Q}/bin/llvm-ar -DCMAKE_RANLIB=${EMBERBSD_WASI_HOST_PREFIX:Q}/bin/llvm-ranlib \
 	    -DCMAKE_NM=${EMBERBSD_WASI_HOST_PREFIX:Q}/bin/llvm-nm -DCMAKE_LINKER=${EMBERBSD_WASI_HOST_PREFIX:Q}/bin/wasm-ld \

@@ -17,3 +17,6 @@ This exercises allocation and reactor initialization, not the entire WASI API.
 distinct host and install prefixes. Run it with the selected host Python,
 `--recipe` pointing to the exported `lang/wasi-libc`, `--host-prefix`, a
 different absolute `--target-prefix`, and the native `--makeconf`.
+
+`link-flags.sh PKGSRC MAKECONF` configures the recipe and checks that the wasm
+links do not take the package `LDFLAGS` that CMake reads from the environment.
