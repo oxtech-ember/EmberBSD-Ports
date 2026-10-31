@@ -54,6 +54,9 @@ TOOL_DEPENDS+=	p5-XML-Parser>=2.31nb1:../../textproc/p5-XML-Parser
 REPLACE_BASH+= git-version-gen
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 USE_TOOLS+= bash:build
+# One map.ver serves libpulse, libpulse-simple and libpulse-mainloop-glib;
+# ld.lld rejects its entries for symbols in the other libraries.
+LDFLAGS+= -Wl,--undefined-version
 DEPENDS+= bash>=5.3:../../shells/bash
 REPLACE_INTERPRETER+= target-bash
 REPLACE.target-bash.old= .*bash[^[:space:]]*
