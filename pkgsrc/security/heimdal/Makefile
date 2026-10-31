@@ -94,11 +94,11 @@ PLIST_VARS+=		glob vis afskauth native_tools
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # Only the native heimdal build (native_tools below) installs these tools into
 # the tool prefix; they are not a build-host path setting.
+# The native build is a tool dependency, so the tools exist only after the
+# depends step: check them before configure, not at parse time (fetch).
+TOOL_DEPENDS+= heimdal-[0-9]*:../../security/heimdal
 _EMBERBSD_HEIMDAL_TOOLS_DIR= ${TOOLBASE}/libexec/heimdal
-.  if empty(_EMBERBSD_HEIMDAL_TOOLS_DIR:M${TOOLBASE}/*) || \
-    !exists(${_EMBERBSD_HEIMDAL_TOOLS_DIR}/asn1_compile) || \
-    !exists(${_EMBERBSD_HEIMDAL_TOOLS_DIR}/slc) || \
-    !exists(${_EMBERBSD_HEIMDAL_TOOLS_DIR}/compile_et)
+.  if empty(_EMBERBSD_HEIMDAL_TOOLS_DIR:M${TOOLBASE}/*)
 PKG_FAIL_REASON+= Select\ the\ native\ Heimdal\ cross-tools\ directory
 .  endif
 CONFIGURE_ARGS+= --with-cross-tools=${_EMBERBSD_HEIMDAL_TOOLS_DIR:Q}
@@ -133,6 +133,10 @@ pre-configure:
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 	${TEST} -f ${BUILDLINK_DIR}/lib/libcrypto.so || \
 	    { ${ECHO} "Selected OpenSSL is missing from the buildlink tree"; exit 1; }
+	for t in asn1_compile slc compile_et; do \
+		${TEST} -x ${_EMBERBSD_HEIMDAL_TOOLS_DIR:Q}/$$t || \
+		{ ${ECHO} "Native Heimdal tool $$t is missing"; exit 1; }; \
+	done
 .endif
 	cd ${WRKSRC}/doc/doxyout/hcrypto && \
 	${GREP} -e /hcrypto_ -e /page_ manpages > manpages.new && \
