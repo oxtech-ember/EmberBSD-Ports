@@ -1,0 +1,35 @@
+$NetBSD$
+
+Correct client read-only and terminating routine declarations.
+
+--- ssh.c
++++ ssh.c
+@@ -164,7 +164,7 @@
+ 
+ /* Prints a help message to the user.  This function never returns. */
+ 
+-static void
++static void __attribute__((noreturn))
+ usage(void)
+ {
+ 	fprintf(stderr,
+@@ -1989,7 +1989,7 @@
+ 	forwarding_success();
+ }
+ 
+-static void
++static void __attribute__((noreturn))
+ client_cleanup_stdio_fwd(struct ssh *ssh, int id, int force, void *arg)
+ {
+ 	debug("stdio forwarding: done");
+--- clientloop.c
++++ clientloop.c
+@@ -579,7 +579,7 @@
+ 	struct timespec now, tmp;
+ 	int just_started = 0, had_keystroke = 0;
+ 	static unsigned long long nchaff;
+-	char *stop_reason = NULL;
++	const char *stop_reason = NULL;
+ 	long long n;
+ 
+ 	monotime_ts(&now);
