@@ -1,0 +1,15 @@
+# Run the Node configure script with the build machine Python.
+# Origin: EmberBSD (AI-assisted).
+
+--- a/lang/nodejs/Makefile.common
++++ b/lang/nodejs/Makefile.common
+@@ -22,7 +22,8 @@
+ 
+ GCC_REQD+=		5
+ 
+-CONFIG_SHELL=		${PYTHONBIN}
++# configure is a Python script that runs on the build machine.
++CONFIG_SHELL=		${TOOL_PYTHONBIN}
+ CONFIGURE_ARGS+=	--prefix=${PREFIX}
+ CONFIGURE_ARGS+=	--shared-brotli
+ CONFIGURE_ARGS+=	--shared-cares
