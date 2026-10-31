@@ -1,0 +1,11 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-x86_64
+recipe: graphics/gdk-pixbuf2
+package: gdk-pixbuf2-2.44.8
+program: GdkPixdata-2.0
+types-sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+dump-sha256: dbfa193470b423db3c7ce439a0a447fe03f43f33fa1d1fdcf4a99a6b768ec340
+-->
+<?xml version="1.0"?>
+<dump>
+</dump>
