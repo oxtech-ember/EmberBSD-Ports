@@ -44,7 +44,7 @@ def fixture(path, kind):
     files = {
         'LICENSE': b'electron-license\n',
         'LICENSES.chromium.html': b'chromium-licenses\n',
-        'version': b'44.9.3\n',
+        'version': b'45.2.1\n',
         'resources/default_app.asar': b'asar-data',
         'locales/en-US.pak': b'locale-data',
         'debug/symbols.debug': b'excluded-debug',
@@ -115,7 +115,7 @@ def require_elf_target(result):
         'libffmpeg.so': b'stripped-ffmpeg',
         'LICENSE': b'electron-license\n',
         'LICENSES.chromium.html': b'chromium-licenses\n',
-        'version': b'44.9.3\n',
+        'version': b'45.2.1\n',
         'resources/default_app.asar': b'asar-data',
         'locales/en-US.pak': b'locale-data',
     }

@@ -19,7 +19,7 @@ import tempfile
 import unicodedata
 import zipfile
 
-VERSION = b'44.9.3'
+VERSION = b'45.2.1'
 MAX_ENTRIES = 65536
 MAX_MEMBER = 2 * 1024 ** 3
 MAX_TOTAL = 8 * 1024 ** 3

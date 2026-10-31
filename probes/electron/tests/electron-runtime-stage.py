@@ -34,7 +34,7 @@ class RuntimeStageTests(unittest.TestCase):
         self.archive = self.work / 'dist.zip'
         self.output = self.work / 'payload'
 
-    def write_archive(self, extra=(), *, image=None, omit=(), version=b'44.9.3\n'):
+    def write_archive(self, extra=(), *, image=None, omit=(), version=b'45.2.1\n'):
         entries = [('electron', elf_image() if image is None else image, stat.S_IFREG | 0o755),
                    ('LICENSE', b'Electron MIT notice\n', stat.S_IFREG | 0o644),
                    ('LICENSES.chromium.html', b'<html>Full generated notices</html>\n', stat.S_IFREG | 0o644),
