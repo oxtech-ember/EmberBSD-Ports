@@ -19,6 +19,15 @@ USE_TOOLS+=	autoconf automake autoreconf
 
 .include "../../mk/compiler.mk"
 
+# configure runs kqueue and path-descriptor test programs, which a cross
+# build cannot execute. These are the results of the EmberBSD target probe
+# (probes/plasma-mobile/toolkit/tests/libinotify) on NetBSD 11.0 aarch64.
+# Other cross targets fail in configure until they are measured.
+.if ${USE_CROSS_COMPILE:tl} == "yes" && ${MACHINE_PLATFORM} == "NetBSD-11.0-aarch64"
+CONFIGURE_ENV+=	ember_cv_note_extend_to=yes ember_cv_note_extend_from=no
+CONFIGURE_ENV+=	ember_cv_o_path=no ember_cv_o_empty_path=no ember_cv_at_empty_path=no
+.endif
+
 # Avoid error due to use of ATOMIC_VAR_INIT.
 .if ${CC_VERSION:Mclang-1[5-9].*}
 CFLAGS+=	-Wno-deprecated-pragma

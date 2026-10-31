@@ -171,7 +171,7 @@ CONFIGURE_ENV+= ember_cv_o_path=no ember_cv_o_empty_path=no ember_cv_at_empty_pa
 .endif
 ```
 
-Keep these values in the private MAKECONF with the measured kernel identity.
+devel/libinotify stores these values for its NetBSD-11.0-aarch64 cross target.
 Recheck after a relevant kernel/libc change. The measurement does not certify
 all inotify semantics; symlink-only watches remain limited without O_PATH or
 O_SYMLINK. Configure still uses the original runtime probes for native builds.
