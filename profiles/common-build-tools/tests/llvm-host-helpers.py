@@ -52,6 +52,9 @@ cmake = executable(work / 'cmake', '''import pathlib,sys
 if '--version' in sys.argv: print('cmake fixture'); sys.exit(0)
 out=pathlib.Path(sys.argv[sys.argv.index('-B')+1]); out.mkdir(parents=True)
 (out/'cmake-argv.json').write_text(__import__('json').dumps(sys.argv[1:]))
+import os,shutil
+(out/'cmake-env.json').write_text(__import__('json').dumps(
+    {'sh': shutil.which('sh'), 'CC_FOR_BUILD': os.environ.get('CC_FOR_BUILD')}))
 ''')
 ninja = executable(work / 'ninja', f'''import pathlib,sys
 if '--version' in sys.argv: print('ninja fixture'); sys.exit(0)
@@ -87,6 +90,10 @@ llvm_host.native('llvm', [str(archive), str(work / 'llvm'), cmake, ninja])
 flags = json.loads((work / 'llvm/native/cmake-argv.json').read_text())
 guess = work / 'llvm/source' / llvm_host.SOURCE / 'llvm/cmake/config.guess'
 assert os.access(guess, os.X_OK), 'CMake cannot run the extracted config.guess'
+# GetHostTriple runs "sh config.guess" through PATH; the SDK PATH has no sh.
+seen = json.loads((work / 'llvm/native/cmake-env.json').read_text())
+assert seen['sh'] and os.path.realpath(seen['sh']) == os.path.realpath(native_tools['sh']), 'CMake cannot find sh'
+assert seen['CC_FOR_BUILD'] == native_tools['cc'], 'config.guess has no build compiler'
 assert '-DLLVM_TARGETS_TO_BUILD=Native' in flags and '-DLLVM_INCLUDE_TESTS=OFF' in flags
 assert '-DPython3_EXECUTABLE=' + sys.executable in flags
 assert set(json.loads((work / 'llvm/outputs.json').read_text())) == {'llvm-tblgen', 'llvm-min-tblgen', 'llvm-config'}

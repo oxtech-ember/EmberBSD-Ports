@@ -108,6 +108,13 @@ def native(kind, arguments):
     if llvm and (not Path(llvm, 'lib/cmake/llvm/LLVMConfig.cmake').is_file() or query([llvm + '/bin/llvm-config', '--version'], env=env) != '23.1.4'):
         raise SDKError('Matching native LLVM build required')
     os.mkdir(work)
+    # CMake's GetHostTriple runs "sh config.guess" through PATH, and on Darwin
+    # config.guess needs CC_FOR_BUILD to tell arm64 from 32-bit arm. The SDK
+    # PATH has no "sh", so name the selected shell and compiler.
+    os.makedirs(work + '/tools/bin')
+    os.symlink(toolset.tool('sh'), work + '/tools/bin/sh')
+    env['PATH'] = work + '/tools/bin' + os.pathsep + toolset.path
+    env['CC_FOR_BUILD'] = toolset.tool('cc')
     os.mkdir(work + '/source')
     extract_source(archive, work + '/source', ['llvm', 'cmake', 'third-party', 'libc'] if kind == 'llvm' else ['clang', 'cmake'])
     command = [cmake, '-S', work + '/source/' + SOURCE + '/' + kind, '-B', work + '/native', '-G', 'Ninja',
