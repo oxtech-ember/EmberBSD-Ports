@@ -116,6 +116,12 @@ def native_inputs(options, sdk):
                        npm_config_script_shell=native.tool('sh'),
                        CLANG_PATH=native.tool('clang'), RUSTFMT=native.tool('rustfmt'),
                        LIBCLANG_PATH=str(options.host_prefix / 'lib'))
+    # Dawn runs its Tint source generator with the Ports lang/go127 toolchain;
+    # it uses only the standard library, so module and toolchain downloads
+    # stay off and the build cache lives in the work tree.
+    environment.update(GOTOOLCHAIN='local', GOPROXY='off', GOFLAGS='-mod=readonly',
+                       GOCACHE=str(Path(options.work) / 'go-cache'),
+                       GOPATH=str(Path(options.work) / 'go-path'))
     providers = local_module('electron_node_providers', 'node-providers.py').select(native, electron=True)
     environment.update(providers['environment'])
     if native.host['os'] == 'Darwin':
@@ -317,6 +323,9 @@ def arguments(options, native, tools, rust_version, launcher):
         # Type-aware ESLint/Stylelint WebUI checks ship no output and need the
         # eslint/stylelint npm stack, which Ports does not package yet.
         enable_webui_lint=False)
+    go = Path(options.host_prefix) / 'go127' / 'bin' / 'go'
+    require(go.is_file() and os.access(go, os.X_OK), 'selected host prefix has no lang/go127')
+    values['dawn_host_go_path'] = str(go)
     if native.host['os'] == 'Darwin':
         family = options.host_compiler_family
         values.update(host_toolchain='//build/toolchain/mac:' + family + '_' + host_cpu,
