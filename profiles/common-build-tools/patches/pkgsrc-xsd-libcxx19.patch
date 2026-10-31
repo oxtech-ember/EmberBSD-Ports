@@ -1,0 +1,149 @@
+xsd: build the bundled libxsd-frontend with libc++ 19.
+
+The build passes -I libxsd-frontend, which holds a plain-text file named
+version. libc++ <limits> includes <version>, so the compiler read
+"2.0.0" as C++ and every xsd source failed. post-patch already removes
+version files for this reason, but at paths that do not exist in the
++dep source layout. Nothing reads libxsd-frontend/version.
+
+With the file gone, two libc++ 19 removals remain: the generic
+std::char_traits (types.hxx, fix based on FreeBSD ports c1c4aae6) and
+the public __wrap_iter::base() (state-processor.cxx).
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/devel/xsd/Makefile
++++ b/devel/xsd/Makefile
+@@ -29,6 +29,8 @@
+ 	# Avoid conflict with C++20 <version>
+ 	${RM} -f ${WRKSRC}/version
+ 	${RM} -f ${WRKSRC}/build/import/lib*/version
++	# libxsd-frontend is on the include path; its version file is not read.
++	${RM} -f ${WRKSRC}/libxsd-frontend/version
+ 
+ .include "../../devel/libcutl/buildlink3.mk"
+ .include "../../textproc/xerces-c/buildlink3.mk"
+--- a/devel/xsd/distinfo
++++ b/devel/xsd/distinfo
+@@ -4,8 +4,10 @@
+ SHA512 (xsd-4.0.0+dep.tar.bz2) = 1b7f5f7a50007e0c739e23c46cf34657845038c3c58f2da4f9978a9486a30674d829e4dfe428af32669207af79375eb8d413ac471c4ffd1c2bc842411f454ae9
+ Size (xsd-4.0.0+dep.tar.bz2) = 1642625 bytes
+ SHA1 (patch-libxsd-frontend_xsd-frontend_semantic-graph_elements.cxx) = a4af6f1f10167577df591edc252a48c228979a43
++SHA1 (patch-libxsd-frontend_xsd-frontend_types.hxx) = c181c905937c58f17ffc1b79d34d128d23a17a80
+ SHA1 (patch-xsd_doc_makefile) = 2440ca86fbcbe040e45a1859d76d0cad1b8c3865
+ SHA1 (patch-xsd_doc_xsd.1) = 1660f480c8410133ae490b64c9a0fb52b5b3466f
+ SHA1 (patch-xsd_doc_xsd.xhtml) = 52e4bcdcccf16cc32fffb3e81688a73558bf0a1b
+ SHA1 (patch-xsd_libxsd_makefile) = 16dee6ed96f7840cf2ae42e1c46b319b195f66a9
++SHA1 (patch-xsd_xsd_cxx_parser_state-processor.cxx) = 27872ba8183eeae0abcd170274325ee5a6f0ddba
+ SHA1 (patch-xsd_xsd_makefile) = 165b76f812069b7924c6f4422de7575031b095f6
+--- /dev/null
++++ b/devel/xsd/patches/patch-libxsd-frontend_xsd-frontend_types.hxx
+@@ -0,0 +1,78 @@
++$NetBSD$
++
++libc++ 19 removed the generic std::char_traits, so StringTemplate<C> with
++the placeholder narrower type Bits::None no longer compiles.  Default the
++narrower type to char and enable the narrow conversions only for wchar_t.
++Based on FreeBSD ports commit c1c4aae6 (devel/libxsd-frontend), in C++11.
++
++--- libxsd-frontend/xsd-frontend/types.hxx.orig
+++++ libxsd-frontend/xsd-frontend/types.hxx
++@@ -7,43 +7,22 @@
++ 
++ #include <string>
++ #include <cstddef> // std::size_t
+++#include <type_traits>
++ 
++ namespace XSDFrontend
++ {
++   using std::size_t;
++ 
++-  namespace Bits
++-  {
++-    struct None {};
++-
++-    template <typename C>
++-    struct NarrowerChar
++-    {
++-      typedef None Type;
++-    };
++-
++-    template <>
++-    struct NarrowerChar<wchar_t>
++-    {
++-      typedef char Type;
++-    };
++-  }
++-
++   struct NonRepresentable: std::exception
++   {
++     virtual char const*
++     what () const throw ();
++   };
++ 
++-  template <typename C, typename NC = typename Bits::NarrowerChar<C>::Type>
++-  class StringTemplate;
++-
++-  template <>
++-  class StringTemplate<Bits::None, Bits::None>
++-  {
++-  };
++-
++-  template <typename C, typename NC>
+++  // The conversions from the narrower type exist only for wchar_t strings.
+++  // libc++ 19 has no std::char_traits for other types, so a placeholder
+++  // narrower character type cannot disable them.
+++  template <typename C, typename NC = char>
++   class StringTemplate : public std::basic_string<C>
++   {
++     typedef std::basic_string<C> Base;
++@@ -113,16 +92,19 @@
++ 
++     // Conversion from the Narrower type. Experimental.
++     //
+++    template <typename WC = C, typename = typename std::enable_if<std::is_same<WC, wchar_t>::value>::type>
++     StringTemplate (NC const* s)
++     {
++       from_narrow (s);
++     }
++ 
+++    template <typename WC = C, typename = typename std::enable_if<std::is_same<WC, wchar_t>::value>::type>
++     StringTemplate (StringTemplate<NC> const& other)
++     {
++       from_narrow (other.c_str ());
++     }
++ 
+++    template <typename WC = C, typename = typename std::enable_if<std::is_same<WC, wchar_t>::value>::type>
++     StringTemplate (NarrowerBase const& other)
++     {
++       from_narrow (other.c_str ());
+--- /dev/null
++++ b/devel/xsd/patches/patch-xsd_xsd_cxx_parser_state-processor.cxx
+@@ -0,0 +1,28 @@
++$NetBSD$
++
++libc++ 19 made __wrap_iter::base() private; insert the iterator range.
++
++--- xsd/xsd/cxx/parser/state-processor.cxx.orig
+++++ xsd/xsd/cxx/parser/state-processor.cxx
++@@ -157,8 +157,8 @@
++                 depth_ = depth;
++ 
++               prefixes_.insert (prefixes_.end (),
++-                                t.prefixes_.begin ().base (),
++-                                t.prefixes_.end ().base ());
+++                                t.prefixes_.begin (),
+++                                t.prefixes_.end ());
++ 
++               if (min == 1 &&
++                   p.context ().get<size_t> ("effective-min") == 0)
++@@ -232,8 +232,8 @@
++               if (prefix)
++               {
++                 prefixes_.insert (prefixes_.end (),
++-                                  t.prefixes_.begin ().base (),
++-                                  t.prefixes_.end ().base ());
+++                                  t.prefixes_.begin (),
+++                                  t.prefixes_.end ());
++ 
++                 if (p.context ().get<size_t> ("effective-min") != 0)
++                   min = 1;
