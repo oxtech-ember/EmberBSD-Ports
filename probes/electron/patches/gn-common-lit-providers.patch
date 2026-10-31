@@ -158,7 +158,7 @@ Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
      if (defined(in_files)) {
        args += [ "--in_files" ] + in_files
      }
-@@ -94,12 +108,20 @@
+@@ -94,12 +108,25 @@
        args += [ "--manifest_excludes" ] + manifest_excludes
      }
  
@@ -175,6 +175,11 @@ Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
 +      foreach(_definition, _trusted_declarations) {
 +        _toolchain_definitions += [ rebase_path(_definition, target_gen_dir) ]
 +      }
++    }
++    _lit_declarations = filter_include(emberbsd_lit_inputs, [ "*.d.ts" ])
++    inputs += _lit_declarations
++    foreach(_definition, _lit_declarations) {
++      _toolchain_definitions += [ rebase_path(_definition, target_gen_dir) ]
 +    }
 +    if (_toolchain_definitions != []) {
        args += [ "--toolchain_definitions" ] + _toolchain_definitions
