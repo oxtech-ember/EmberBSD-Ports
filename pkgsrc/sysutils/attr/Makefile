@@ -26,6 +26,19 @@ INSTALLATION_DIRS+=	share/examples/attr
 
 CONFIGURE_ARGS+=	--sysconfdir=${PKG_SYSCONFDIR}
 
+.include "../../mk/bsd.prefs.mk"
+
+.if ${OPSYS} != "Linux"
+# Only Linux builds the *xattr wrappers in libattr/syscalls.c; elsewhere
+# they come from libc, and ld.lld rejects version script entries for
+# symbols that are not defined. The tests/version-script.sh check covers it.
+SUBST_CLASSES+=		exports
+SUBST_STAGE.exports=	pre-configure
+SUBST_MESSAGE.exports=	Keeping only the libattr API in the version script.
+SUBST_FILES.exports=	exports
+SUBST_SED.exports=	-e '/^[[:space:]]*\# System calls/,/^[[:space:]]*setxattr;$$/d'
+.endif
+
 CONF_FILES+=	share/examples/attr/xattr.conf ${PKG_SYSCONFDIR}/xattr.conf
 
 post-install:
