@@ -31,3 +31,7 @@ FETCH_BEFORE_ARGS=	--fail --location --remote-time --connect-timeout 60 --speed-
 FETCH_RESUME_ARGS=	-C -
 FETCH_OUTPUT_ARGS=	-o
 MK
+# rust-bin darwin-llvm.py: macOS verification service ONLY (--display/--verify,
+# never signs), per profiles/common-build-tools/rust.md. The SDK forbids host
+# paths in tool roles, so set the recipe variable explicitly.
+echo "RUST_DARWIN_CODESIGN=	/usr/bin/codesign" >> $W/mk.conf
