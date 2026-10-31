@@ -40,3 +40,4 @@ SHA1 (patch-lib_krb5_crypto-des3.c) = c3608e63f7aec7b6b535027243a4826b896a2bc7
 SHA1 (patch-lib_krb5_crypto-evp.c) = 959e79c93260a04ddaeee57a106763982dc23632
 SHA1 (patch-lib_krb5_crypto.c) = 7ccab53b52654f0d65e9233f1714f71bcd0a773e
 SHA1 (patch-lib_krb5_crypto.h) = c9583e0421d2627a64d34a3ccef8785e18b56cfd
+SHA1 (patch-lib_hx509_pkcs11-openssl) = 0b70da6d4addbc8a069065f53595187f494d8d16
