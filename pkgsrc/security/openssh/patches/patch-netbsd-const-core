@@ -1,0 +1,84 @@
+$NetBSD$
+
+Preserve read-only names and owned nlist storage with strict C warnings.
+Adapted from NetBSD OpenSSH integration, with an equivalent empty-path fix.
+
+--- compat.c.orig
++++ compat.c
+@@ -43,7 +43,7 @@
+ {
+ 	int i;
+ 	static struct {
+-		char	*pat;
++		const char	*pat;
+ 		uint32_t bugs;
+ 	} check[] = {
+ 		{ "OpenSSH_2.*,"
+--- mac.c.orig
++++ mac.c
+@@ -46,7 +46,7 @@
+ #define SSH_UMAC128	3
+ 
+ struct macalg {
+-	char		*name;
++	const char	*name;
+ 	int		type;
+ 	int		alg;
+ 	int		truncatebits;	/* truncate digest if != 0 */
+--- misc.c.orig
++++ misc.c
+@@ -932,9 +932,7 @@
+ 
+ 	/* Extract optional path */
+ 	*tmp++ = '\0';
+-	if (*tmp == '\0')
+-		tmp = ".";
+-	path = xstrdup(tmp);
++	path = xstrdup(*tmp == '\0' ? "." : tmp);
+ 
+ 	/* Extract optional user and mandatory host */
+ 	tmp = strrchr(sdup, '@');
+@@ -2558,8 +2556,8 @@
+ {
+ 	struct tm tm;
+ 	time_t tt;
+-	char buf[32], *fmt;
+-	const char *cp;
++	char buf[32];
++	const char *fmt, *cp;
+ 	size_t l;
+ 	int is_utc = 0;
+ 
+@@ -3171,10 +3169,11 @@
+ {
+ #ifdef HAVE_NLIST
+ 	struct nlist nl[2];
++	char *name;
+ 	int ret = -1, r;
+ 
+ 	memset(nl, 0, sizeof(nl));
+-	nl[0].n_name = xstrdup(s);
++	nl[0].n_name = name = xstrdup(s);
+ 	nl[1].n_name = NULL;
+ 	if ((r = nlist(path, nl)) == -1) {
+ 		error_f("nlist failed for %s", path);
+@@ -3187,7 +3186,7 @@
+ 	/* success */
+ 	ret = 0;
+  out:
+-	free(nl[0].n_name);
++	free(name);
+ 	return ret;
+ #else /* HAVE_NLIST */
+ 	int fd, ret = -1;
+--- log.c.orig
++++ log.c
+@@ -342,7 +342,7 @@
+ #endif
+ 	char msgbuf[MSGBUFSIZ];
+ 	char fmtbuf[MSGBUFSIZ];
+-	char *txt = NULL;
++	const char *txt = NULL;
+ 	int pri = LOG_INFO;
+ 	int saved_errno = errno;
+ 	log_handler_fn *tmp_handler;
