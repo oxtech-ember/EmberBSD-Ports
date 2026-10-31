@@ -1,0 +1,31 @@
+Origin: EmberBSD (AI-assisted). Upstream status: not submitted.
+
+--- a/devel/p5-Term-ReadKey/Makefile
++++ b/devel/p5-Term-ReadKey/Makefile
+@@ -3,7 +3,7 @@
+ VERS=		2.38
+ DISTNAME=	TermReadKey-${VERS}
+ PKGNAME=	p5-Term-ReadKey-${VERS}
+-PKGREVISION=	8
++PKGREVISION=	9
+ CATEGORIES=	devel perl5
+ MASTER_SITES=	${MASTER_SITE_PERL_CPAN:=Term/}
+ 
+@@ -15,5 +15,17 @@
+ USE_LANGUAGES=		c
+ PERL5_PACKLIST=		auto/Term/ReadKey/.packlist
+ 
++.include "../../mk/bsd.prefs.mk"
++
++# Origin: EmberBSD (AI-assisted). ReadKey.pm.PL loads the new XS for its
++# compile-time blockoptions(). A cross build reads them from the XS that
++# the target preprocessor expands; the target Config names a target cpp.
++.if ${USE_CROSS_COMPILE:tl} == "yes"
++MAKE_ENV+=	TERMREADKEY_PREPROCESSED_XS=ReadKey.i
++pre-build:
++	cd ${WRKSRC} && ${BUILD_MAKE_CMD} cchars.h ReadKey.c
++	cd ${WRKSRC} && ${BUILD_MAKE_CMD} CPPRUN=${CC:Q}\ -E ReadKey.i
++.endif
++
+ .include "../../lang/perl5/module.mk"
+ .include "../../mk/bsd.pkg.mk"
