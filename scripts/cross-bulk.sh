@@ -505,9 +505,37 @@ deleter()
     done
 }
 
+# Heavy links. CROSS_BULK_LINK_LAUNCHER is the SDK heavy-link launcher
+# prefix, as in the bootstrap mk.conf: "PYTHON SDK/scripts/link-launcher.py
+# --lock-root LOCKS --context CONTEXT --", absolute words without spaces.
+# Every build make gets it as EMBERBSD_DARWIN_LINKER_LAUNCHER and
+# EMBERBSD_GCC16_LINKER_LAUNCHER, and as the CMake list
+# EMBERBSD_DARWIN_CMAKE_LINKER_LAUNCHER, so the recipes that honour them
+# link one heavy group at a time across all CROSS_BULK_JOBS packages and
+# every other build that shares CONTEXT. Unset: no launcher, as before.
+link_args= link_list=
+link_launcher_args()
+{
+    link_args=
+    [ -n "${CROSS_BULK_LINK_LAUNCHER:-}" ] || return 0
+    set -f
+    set -- $CROSS_BULK_LINK_LAUNCHER
+    set +f
+    case "$1" in /*) ;; *) echo "CROSS_BULK_LINK_LAUNCHER must start with an absolute path" >&2; exit 2 ;; esac
+    eval "last=\${$#}"
+    [ "$last" = -- ] || { echo "CROSS_BULK_LINK_LAUNCHER must end with --" >&2; exit 2; }
+    link_list=$(printf '%s;' "$@"); link_list=${link_list%;}
+    link_args=yes
+}
+
 # Build runs: see the DEPENDS_TARGET note above.
 bmk()
 {
+    if [ -n "$link_args" ]; then
+        set -- EMBERBSD_DARWIN_LINKER_LAUNCHER="$CROSS_BULK_LINK_LAUNCHER" \
+            EMBERBSD_GCC16_LINKER_LAUNCHER="$CROSS_BULK_LINK_LAUNCHER" \
+            EMBERBSD_DARWIN_CMAKE_LINKER_LAUNCHER="$link_list" "$@"
+    fi
     if [ "$make_jobs" = makeconf ]; then
         mk NATIVE_PKG_ADD_CMD="$run/pkg_add" DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency "$@"
     else
@@ -799,7 +827,9 @@ build()
     touch "$state/done" "$state/failed" "$state/blocked" "$state/skipped"
     packages=$(var pkgtools/pkg_install PACKAGES)/All
     native_packages=${packages%/All}-native
+    link_launcher_args
     echo "Building with $workers packages at once, MAKE_JOBS=$make_jobs ($cpus CPUs)"
+    [ -z "$link_args" ] || echo "Heavy links through $CROSS_BULK_LINK_LAUNCHER"
     stop=0
     trap 'stop=1' TERM INT HUP
     running=0
