@@ -1,0 +1,22 @@
+$NetBSD$
+
+--- a/arch/riscv/Kconfig
++++ b/arch/riscv/Kconfig
+@@ -66,6 +66,9 @@
+ 
+ config TARGET_ASPEED_AST2700_IBEX
+ 	bool "Support Ibex RISC-V cores on Aspeed AST2700 SoC"
++
++config ARCH_ESPRESSIF
++	bool "Support Espressif RISC-V SoCs"
+ 
+ endchoice
+ 
+@@ -127,6 +130,7 @@
+ source "board/starfive/visionfive2/Kconfig"
+ source "board/thead/th1520_lpi4a/Kconfig"
+ source "board/xilinx/mbv/Kconfig"
++source "board/espressif/Kconfig"
+ 
+ # platform-specific options below
+ source "arch/riscv/cpu/andes/Kconfig"

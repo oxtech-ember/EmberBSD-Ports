@@ -1,0 +1,23 @@
+$NetBSD$
+
+--- a/lib/Kconfig
++++ b/lib/Kconfig
+@@ -608,6 +608,18 @@
+ 	  The SHA256 algorithm produces a 256-bit (32-byte) hash value
+ 	  (digest).
+ 
++config SHA256_SMALL
++	bool "Compact legacy SHA256 implementation"
++	depends on SHA256_LEGACY
++	help
++	  Iterate the SHA256 rounds to reduce code size at the cost of speed.
++
++config SPL_SHA256_SMALL
++	bool "Compact legacy SHA256 implementation in SPL"
++	depends on SPL_SHA256_LEGACY
++	help
++	  Iterate the SHA256 rounds to reduce SPL size at the cost of speed.
++
+ config SHA512
+ 	bool "Enable SHA512 support"
+ 	default y if TI_SECURE_DEVICE && FIT_SIGNATURE

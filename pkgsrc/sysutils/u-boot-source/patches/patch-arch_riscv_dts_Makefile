@@ -1,0 +1,13 @@
+$NetBSD$
+
+--- a/arch/riscv/dts/Makefile
++++ b/arch/riscv/dts/Makefile
+@@ -15,6 +15,8 @@
+ dtb-$(CONFIG_TARGET_XILINX_MBV) += xilinx-binman.dtb
+ dtb-$(CONFIG_TARGET_ASPEED_AST2700_IBEX) += ast2700-ibex.dtb
+ 
++dtb-$(CONFIG_TARGET_ESP32S31) += esp32s31.dtb
++
+ include $(srctree)/scripts/Makefile.dts
+ 
+ # Add any required device tree compiler flags here

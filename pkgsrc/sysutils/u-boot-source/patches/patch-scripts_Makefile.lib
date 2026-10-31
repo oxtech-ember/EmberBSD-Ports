@@ -1,0 +1,12 @@
+$NetBSD$
+
+--- a/scripts/Makefile.lib
++++ b/scripts/Makefile.lib
+@@ -357,7 +357,6 @@
+ 	-Wno-unit_address_format \
+ 	-Wno-avoid_unnecessary_addr_size \
+ 	-Wno-alias_paths \
+-	-Wno-graph_child_address \
+ 	-Wno-simple_bus_reg \
+ 	-Wno-unique_unit_address \
+ 	-Wno-pci_device_reg

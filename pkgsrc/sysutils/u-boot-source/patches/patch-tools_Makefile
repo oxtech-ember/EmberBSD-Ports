@@ -1,0 +1,40 @@
+$NetBSD$
+
+--- a/tools/Makefile
++++ b/tools/Makefile
+@@ -79,11 +79,13 @@
+ HOSTCFLAGS_image-host.o += \
+ 	$(shell pkg-config --cflags libssl libcrypto 2> /dev/null || echo "")
+ 
+-# The following files are synced with upstream DTC.
+-# Use synced versions from scripts/dtc/libfdt/.
+-LIBFDT_OBJS := $(addprefix libfdt/, fdt.o fdt_ro.o fdt_wip.o fdt_sw.o fdt_rw.o \
+-		fdt_strerror.o fdt_empty_tree.o fdt_addresses.o fdt_overlay.o \
+-		fdt_check.o)
++# Host tools consume the common Ports libfdt.
++LIBFDT_OBJS :=
++HOSTLDLIBS_mkimage += -lfdt
++HOSTLDLIBS_ifdtool += -lfdt
++HOSTLDLIBS_fdtgrep += -lfdt
++HOSTCFLAGS_fdtgrep.o += -I$(srctree)/scripts/dtc/libfdt
++HOSTLDLIBS_mkeficapsule += -lfdt
+ 
+ RSA_OBJS-$(CONFIG_TOOLS_LIBCRYPTO) := $(addprefix generated/lib/rsa/, \
+ 					rsa-sign.o rsa-verify.o \
+@@ -252,7 +254,7 @@
+ update_octeon_header-objs := update_octeon_header.o generated/lib/crc32.o
+ 
+ hostprogs-always-y += fdtgrep
+-fdtgrep-objs += $(LIBFDT_OBJS) generated/boot/fdt_region.o fdtgrep.o
++fdtgrep-objs += $(LIBFDT_OBJS) libfdt/fdt_rw.o generated/boot/fdt_region.o fdtgrep.o
+ 
+ ifneq ($(TOOLS_ONLY),y)
+ hostprogs-always-y += spl_size_limit
+@@ -325,7 +327,6 @@
+ #
+ HOST_EXTRACFLAGS += -include $(srctree)/include/compiler.h \
+ 		$(patsubst -I%,-idirafter%, $(filter -I%, $(UBOOTINCLUDE))) \
+-		-I$(srctree)/scripts/dtc/libfdt \
+ 		-I$(srctree)/tools \
+ 		-DUSE_HOSTCC \
+ 		-D__KERNEL_STRICT_NAMES \

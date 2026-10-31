@@ -1,0 +1,21 @@
+$NetBSD$
+
+--- a/boot/Kconfig
++++ b/boot/Kconfig
+@@ -235,6 +235,16 @@
+ 	  valid. This helps to protect against carefully crafted FITs which take
+ 	  advantage of bugs or omissions in the code. This includes a bad
+ 	  structure, multiple root nodes and the like.
++
++config SPL_FIT_HASH_VERIFY
++	bool "Require FIT image hashes in SPL"
++	depends on SPL_LOAD_FIT
++	select SPL_FIT
++	select SPL_HASH
++	select SPL_FIT_FULL_CHECK
++	help
++	  Require at least one supported, valid hash for each FIT image loaded
++	  by SPL. Hashes detect corruption but do not authenticate an image.
+ 
+ config SPL_FIT_SIGNATURE
+ 	bool "Enable signature verification of FIT firmware within SPL"

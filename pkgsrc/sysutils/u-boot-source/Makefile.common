@@ -1,0 +1,3 @@
+# Shared release and installed source path for U-Boot consumers.
+UBOOT_SOURCE_VERSION= 2026.10
+UBOOT_SOURCE_DIR?= ${EMBERBSD_HOST_PREFIX:U${TOOLBASE}}/share/u-boot-source

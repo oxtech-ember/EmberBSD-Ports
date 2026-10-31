@@ -1,0 +1,17 @@
+$NetBSD$
+
+--- a/lib/mbedtls/Makefile
++++ b/lib/mbedtls/Makefile
+@@ -2,6 +2,12 @@
+ #
+ # Copyright (c) 2024 Linaro Limited
+ # Author: Raymond Mao <raymond.mao@linaro.org>
++
++# A consumer selecting this backend must first stage the shared source and
++# its complete patch set at the upstream integration path.
++ifeq ($(wildcard $(srctree)/lib/mbedtls/external/mbedtls/library/version.c),)
++$(error Mbed TLS selected: stage the common patched Mbed TLS source at lib/mbedtls/external/mbedtls)
++endif
+ 
+ MBEDTLS_LIB_DIR = external/mbedtls/library
+ 

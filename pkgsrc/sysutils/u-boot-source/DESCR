@@ -1,0 +1,2 @@
+Common patched U-Boot sources for target firmware consumers.
+The package contains source and licenses; it does not build target firmware.

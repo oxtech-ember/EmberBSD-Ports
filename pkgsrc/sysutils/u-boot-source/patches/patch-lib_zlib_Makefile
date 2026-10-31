@@ -1,0 +1,17 @@
+$NetBSD$
+
+--- a/lib/zlib/Makefile
++++ b/lib/zlib/Makefile
+@@ -1,6 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0+
+-#
+-# (C) Copyright 2000-2006
+-# Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+-
+-obj-y += zlib.o
++# Build common patched zlib without colliding with U-Boot's CRC32 symbol.
++ccflags-y += -DZ_SOLO -Dcrc32=uboot_zlib_crc32
++obj-y += adler32.o crc32.o inffast.o inflate.o inftrees.o zutil.o uboot-zalloc.o
++obj-$(CONFIG_GZIP_COMPRESSED) += deflate.o trees.o
++obj-$(CONFIG_ZLIB_UNCOMPRESS) += uncompr.o
++CFLAGS_uncompr.o += -include $(srctree)/lib/zlib/uboot-uncompr.h

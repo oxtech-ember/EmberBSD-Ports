@@ -1,0 +1,17 @@
+$NetBSD$
+
+--- a/drivers/serial/Kconfig
++++ b/drivers/serial/Kconfig
+@@ -1154,6 +1154,12 @@
+ 	  If built without DM support, then requires Xen
+ 	  to be built with CONFIG_VERBOSE_DEBUG.
+ 
++config ESP_SERIAL
++	bool "Espressif serial support"
++	depends on DM_SERIAL
++	help
++	  This driver supports the Espressif UART.
++
+ config XTENSA_SEMIHOSTING_SERIAL
+ 	bool "Xtensa Semihosting UART support"
+ 	depends on DM_SERIAL

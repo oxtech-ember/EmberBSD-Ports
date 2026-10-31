@@ -1,0 +1,10 @@
+$NetBSD$
+
+--- a/drivers/serial/Makefile
++++ b/drivers/serial/Makefile
+@@ -64,3 +64,5 @@
+ 
+ obj-$(CONFIG_UART4_SERIAL) += serial_adi_uart4.o
+ obj-$(CONFIG_SERIAL_GOLDFISH) += serial_goldfish.o
++
++obj-$(CONFIG_ESP_SERIAL) += serial_esp.o

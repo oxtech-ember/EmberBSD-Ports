@@ -1,0 +1,19 @@
+$NetBSD$
+
+--- a/cmd/Kconfig
++++ b/cmd/Kconfig
+@@ -412,11 +412,12 @@
+ 	  or booti or bootz.
+ 
+ config BOOTM_NETBSD
+-	bool "Support booting NetBSD (legacy, non-EFI) loader images"
++	bool "Support booting NetBSD images"
+ 	depends on CMD_BOOTM
+ 	help
+ 	  Support booting NetBSD via the bootm command. This is for NetBSD
+-	  images that are neither EFI nor using a device tree.
++	  legacy images via their stage-2 loader. On RISC-V, FIT kernels
++	  instead use the hart ID and device tree boot ABI.
+ 
+ config BOOTM_OPENRTOS
+ 	bool "Support booting OPENRTOS / FreeRTOS images"
