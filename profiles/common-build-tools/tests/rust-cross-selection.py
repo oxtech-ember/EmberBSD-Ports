@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted).
-"""Check that cross pkgsrc selects the shared build-host Rust provider."""
+"""Check that cross Cargo uses the host rust-bin and the target std as tools."""
 
 import json
 import os
@@ -21,9 +21,12 @@ def main():
     makeconf = Path(sys.argv[2]).resolve(strict=True)
     bmake = Path(sys.argv[3]).resolve(strict=True)
     work = Path(sys.argv[4]).absolute()
-    cargo_c = pkgsrc / "devel/cargo-c/Makefile"
-    if not cargo_c.is_file():
-        raise SystemExit(f"missing pkgsrc consumer: {cargo_c}")
+    cargo = pkgsrc / "graphics/libimagequant/Makefile"
+    if not cargo.is_file():
+        raise SystemExit(f"missing pkgsrc consumer: {cargo}")
+    rust_bin = pkgsrc / "lang/rust-bin/Makefile"
+    if not rust_bin.is_file():
+        raise SystemExit(f"missing pkgsrc provider: {rust_bin}")
     librsvg = pkgsrc / "graphics/librsvg/Makefile"
     if not librsvg.is_file():
         raise SystemExit(f"missing pkgsrc consumer: {librsvg}")
@@ -65,25 +68,39 @@ def main():
 
     for variable in (
         "RUST_TYPE",
+        "EMBERBSD_CROSS_RUST_STD",
         "BUILDLINK_PKGSRCDIR.rust-bin",
         "BUILDLINK_PKGSRCDIR.rust",
+        "TOOL_DEPENDS",
+        "BUILD_DEPENDS",
+        "DEPENDS",
     ):
-        query(cargo_c, variable, env, variable)
+        query(cargo, variable, env, variable)
 
     query(librsvg, "RUST_TYPE", env, "graphics/librsvg RUST_TYPE")
+    query(rust_bin, "PKG_FAIL_REASON", env, "lang/rust-bin PKG_FAIL_REASON")
 
-    expected = {
-        "RUST_TYPE": "bin",
-        "BUILDLINK_PKGSRCDIR.rust-bin": "../../lang/rust-bin",
-        "BUILDLINK_PKGSRCDIR.rust": "",
-        "graphics/librsvg RUST_TYPE": "native",
+    std = result["EMBERBSD_CROSS_RUST_STD"]
+    tools = result["TOOL_DEPENDS"].split()
+    target = (result["BUILD_DEPENDS"] + " " + result["DEPENDS"]).split()
+    checks = {
+        "native Cargo mode": result["RUST_TYPE"] == "native",
+        "target std package": re.fullmatch(r"rust-std-(aarch64|x86_64)-netbsd", std) is not None,
+        "no rust-bin buildlink": result["BUILDLINK_PKGSRCDIR.rust-bin"] == "",
+        "no rust buildlink": result["BUILDLINK_PKGSRCDIR.rust"] == "",
+        "host rust-bin tool": any(d.startswith("rust-bin>=") and d.endswith(":../../lang/rust-bin") for d in tools),
+        "target std tool": f"{std}-[0-9]*:../../lang/{std}" in tools,
+        "no target Rust compiler": not any(re.search(r":\.\./\.\./lang/rust(-bin)?$", d) for d in target),
+        "librsvg native override": result["graphics/librsvg RUST_TYPE"] == "native",
+        "rust-bin refused for the target": "build-host compiler" in result["lang/rust-bin PKG_FAIL_REASON"],
     }
-    if result != expected:
+    failed = [name for name, ok in checks.items() if not ok]
+    if failed:
         (work / "result.json").write_text(
             json.dumps(result, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
-        raise SystemExit(f"unexpected Rust provider selection: {result!r}")
+        raise SystemExit(f"unexpected Rust provider selection: {failed!r}")
 
     result["pkgsrc"] = str(pkgsrc)
     result["makeconf"] = str(makeconf)
@@ -92,7 +109,7 @@ def main():
         json.dumps(result, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    print("PASS: cross Cargo selects rust-bin and librsvg keeps its native override")
+    print("PASS: cross Cargo uses the host rust-bin and target std; rust-bin is not built for the target")
 
 
 if __name__ == "__main__":

@@ -56,6 +56,12 @@ INSTALLATION_DIRS=	bin ${PKGMANDIR} share/doc/cargo/bash_completion.d
 
 .include "../../mk/bsd.prefs.mk"
 
+# This is the build-host compiler. Cross builds use it as a tool dependency
+# with a target std package; the target gets no prebuilt Rust compiler.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+PKG_FAIL_REASON+=	"rust-bin is a build-host compiler; it is not built for the target"
+.endif
+
 .if ${OPSYS} == "NetBSD" && ${OPSYS_VERSION} < 080000
 BROKEN+=		"Bootstrap unavailable for old NetBSD version"
 .endif

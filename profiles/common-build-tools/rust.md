@@ -200,11 +200,14 @@ source compiler. Do not install a separate compiler for cargo-c or librsvg.
 The existing `devel/cargo-c` 0.10.25 recipe supplies its checksummed crate closure
 and uses the installed host OpenSSL provider.
 
-The common cross profile also defaults to `RUST_TYPE=bin`. Cargo build tools
-then use the shared build-host provider instead of requesting pkgsrc's
-source-built Rust and LLVM runtime. Package recipes can select another mode
-when they have a tested host/target contract. Verify the exported selection
-against the real pkgsrc consumer:
+The common cross profile defaults to `RUST_TYPE=native` and names the target
+std package in `EMBERBSD_CROSS_RUST_STD` (for example
+`rust-std-aarch64-netbsd`). The exported `lang/rust/rust.mk` patch then adds
+the build-host `rust-bin` and that std package as tool dependencies, so Cargo
+runs the host compiler with the target std. No target Rust compiler is
+selected: `lang/rust-bin` refuses cross builds. Package recipes can select
+another mode when they have a tested host/target contract. Verify the exported
+selection against the real pkgsrc consumer:
 
 ```sh
 python3 tests/rust-cross-selection.py /absolute/pkgsrc \
@@ -213,9 +216,11 @@ python3 tests/rust-cross-selection.py /absolute/pkgsrc \
 ```
 
 The check removes any explicit `RUST_TYPE` assignment from the supplied
-MAKECONF, then queries `devel/cargo-c` and the explicit `graphics/librsvg`
-override. It requires the `rust-bin` provider for Cargo and preserves
-`librsvg`'s native-tool selection.
+MAKECONF, then queries `graphics/libimagequant`, the explicit
+`graphics/librsvg` override and `lang/rust-bin`. It requires native Cargo mode,
+the host `rust-bin` and target std in `TOOL_DEPENDS`, no Rust compiler in
+`BUILD_DEPENDS`, `DEPENDS` or buildlink, `librsvg`'s native-tool selection, and
+the `rust-bin` refusal for the target.
 
 It builds and installs with the shared Rust on macOS/Apple Silicon, with
 `CHECK_SHLIBS=yes` and OpenSSL 3.6.5. The source archive does not ship

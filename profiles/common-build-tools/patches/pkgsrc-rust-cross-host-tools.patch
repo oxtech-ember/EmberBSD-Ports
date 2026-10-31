@@ -1,0 +1,23 @@
+Origin: EmberBSD, AI-assisted.
+Cross builds run Cargo with the build-host compiler (RUST_TYPE=native).
+Add the host rust-bin and the target std package named by the cross
+profile as tool dependencies, so no target Rust compiler is selected.
+Not submitted upstream.
+
+--- a/lang/rust/rust.mk
++++ b/lang/rust/rust.mk
+@@ -63,6 +63,14 @@
+ .  include "${RUST_DIR}/buildlink3.mk"
+ .endif
+ 
++# A cross build runs the build-host compiler in native mode. It needs
++# the host rust-bin and the std of the target, both as tool dependencies.
++.if ${RUST_TYPE} == "native" && ${USE_CROSS_COMPILE:Uno:tl} == "yes" && \
++    !empty(EMBERBSD_CROSS_RUST_STD)
++TOOL_DEPENDS+=	rust-bin>=${RUST_REQ}:../../lang/rust-bin
++TOOL_DEPENDS+=	${EMBERBSD_CROSS_RUST_STD}-[0-9]*:../../lang/${EMBERBSD_CROSS_RUST_STD}
++.endif
++
+ .if ${OPSYS} == "NetBSD"
+ ALL_ENV+=	PTHREAD_KEYS_MAX=512
+ .endif
