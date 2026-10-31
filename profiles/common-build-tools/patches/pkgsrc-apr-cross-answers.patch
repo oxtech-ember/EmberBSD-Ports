@@ -1,0 +1,28 @@
+# Answer apr's configure run and file checks for NetBSD cross builds.
+# Origin: EmberBSD (AI-assisted).
+
+--- a/devel/apr/Makefile
++++ b/devel/apr/Makefile
+@@ -30,6 +30,22 @@
+ REPLACE_SH+=		apr-config.in
+ .endif
+ 
++.if ${USE_CROSS_COMPILE:tl} == "yes" && ${OPSYS} == "NetBSD"
++# configure runs test programs and checks for /dev/zero, which a cross
++# build cannot do. These are the results of a native NetBSD 11 build.
++CONFIGURE_ENV+=		apr_cv_pthreads_cflags=-pthread apr_cv_pthreads_lib=-lpthread
++CONFIGURE_ENV+=		ac_cv_file__dev_zero=yes ac_cv_mmap__dev_zero=yes
++CONFIGURE_ENV+=		ap_cv_atomic_builtins=yes ap_cv__atomic_builtins=yes
++CONFIGURE_ENV+=		ap_cv_atomic_builtins64=yes ap_cv__atomic_builtins64=yes
++CONFIGURE_ENV+=		apr_cv_mutex_recursive=yes
++CONFIGURE_ENV+=		apr_cv_dup3=yes apr_cv_accept4=yes apr_cv_sock_cloexec=yes
++CONFIGURE_ENV+=		ac_cv_strerror_r_rc_int=yes
++CONFIGURE_ENV+=		ac_cv_struct_rlimit=yes
++CONFIGURE_ENV+=		ac_cv_func_sem_open=yes
++CONFIGURE_ENV+=		apr_cv_tcp_nodelay_with_cork=no
++CONFIGURE_ENV+=		apr_cv_gai_addrconfig=yes
++.endif
++
+ post-install:
+ 	${RM} ${DESTDIR}${PREFIX}/libexec/apr/libtool
+ 	${INSTALL_SCRIPT} ${PKG_LIBTOOL} ${DESTDIR}${PREFIX}/libexec/apr/libtool
