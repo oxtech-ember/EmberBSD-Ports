@@ -1,0 +1,69 @@
+$NetBSD$
+
+Do not search Homebrew, Fink or MacPorts in the Find modules. FindPython and
+CMakeFindFrameworks searched /opt/homebrew/Frameworks and /usr/local/Frameworks
+before the search path, so a cross build with only the Ports prefix on its
+search path used a Homebrew Python. FindRuby ran brew, and FindGTK2 searched
+the Fink, MacPorts and Homebrew library directories.
+
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- Modules/CMakeFindFrameworks.cmake
++++ Modules/CMakeFindFrameworks.cmake
+@@ -39,19 +39,11 @@
+   macro(CMAKE_FIND_FRAMEWORKS fwk)
+     set(${fwk}_FRAMEWORKS)
+     if(APPLE)
+-      # 'Frameworks' directory from Brew (Apple Silicon and Intel)
+-      if(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+-        set(_brew_framework_path /opt/homebrew/Frameworks)
+-      else()
+-        set(_brew_framework_path /usr/local/Frameworks)
+-      endif()
+-
+       file(TO_CMAKE_PATH "$ENV{CMAKE_FRAMEWORK_PATH}" _cmff_CMAKE_FRAMEWORK_PATH)
+       set(_cmff_search_paths
+             ${CMAKE_FRAMEWORK_PATH}
+             ${_cmff_CMAKE_FRAMEWORK_PATH}
+             ~/Library/Frameworks
+-            ${_brew_framework_path}
+             /Library/Frameworks
+             /System/Library/Frameworks
+             /Network/Library/Frameworks
+--- Modules/FindGTK2.cmake
++++ Modules/FindGTK2.cmake
+@@ -405,9 +405,6 @@
+             /opt/gnome/lib
+             /opt/openwin/include
+             /usr/openwin/lib
+-            /sw/lib
+-            /opt/local/lib
+-            /opt/homebrew/lib
+             /usr/pkg/lib
+             /usr/pkg/include/glib
+             $ENV{GTKMM_BASEPATH}/include
+--- Modules/FindPython/Support.cmake
++++ Modules/FindPython/Support.cmake
+@@ -165,8 +165,6 @@
+     set (_pff_frameworks ${CMAKE_FRAMEWORK_PATH}
+                          ${_pff_CMAKE_FRAMEWORK_PATH}
+                          ~/Library/Frameworks
+-                         /usr/local/Frameworks
+-                         /opt/homebrew/Frameworks
+                          ${CMAKE_SYSTEM_FRAMEWORK_PATH})
+     list (REMOVE_DUPLICATES _pff_frameworks)
+     foreach (_pff_implementation IN LISTS _${_PYTHON_PREFIX}_FIND_IMPLEMENTATIONS)
+--- Modules/FindRuby.cmake
++++ Modules/FindRuby.cmake
+@@ -366,11 +366,6 @@
+   endif ()
+ endif ()
+ 
+-# Check for Homebrew Ruby (non-virtualenv, common on MacOS)
+-if (NOT Ruby_EXECUTABLE AND NOT Ruby_FIND_VIRTUALENV STREQUAL "ONLY")
+-  _RUBY_CHECK_BREW()
+-endif ()
+-
+ # Fallback to system installed Ruby
+ if (NOT Ruby_EXECUTABLE AND NOT Ruby_FIND_VIRTUALENV STREQUAL "ONLY")
+   _RUBY_CHECK_SYSTEM()

@@ -1,0 +1,13 @@
+# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+# Revision 12: the Find modules no longer search Homebrew, Fink or MacPorts.
+--- a/devel/cmake/Makefile
++++ b/devel/cmake/Makefile
+@@ -2,7 +2,7 @@
+ 
+ .include "Makefile.common"
+ 
+-PKGREVISION=	11
++PKGREVISION=	12
+ 
+ COMMENT=	Cross platform make
+ 
