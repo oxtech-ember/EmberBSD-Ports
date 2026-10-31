@@ -220,7 +220,8 @@ MAKECONF, then queries `graphics/libimagequant`, the explicit
 `graphics/librsvg` override and `lang/rust-bin`. It requires native Cargo mode,
 the host `rust-bin` and target std in `TOOL_DEPENDS`, no Rust compiler in
 `BUILD_DEPENDS`, `DEPENDS` or buildlink, `librsvg`'s native-tool selection, and
-the `rust-bin` refusal for the target.
+the `rust-bin` refusal for the target. It also requires that the cross
+`devel/rust-bindgen` has no Rust compiler runtime dependency.
 
 It builds and installs with the shared Rust on macOS/Apple Silicon, with
 `CHECK_SHLIBS=yes` and OpenSSL 3.6.5. The source archive does not ship

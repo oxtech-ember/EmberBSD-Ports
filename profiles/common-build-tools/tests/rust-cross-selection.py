@@ -28,6 +28,9 @@ def main():
     if not rust_bin.is_file():
         raise SystemExit(f"missing pkgsrc provider: {rust_bin}")
     librsvg = pkgsrc / "graphics/librsvg/Makefile"
+    bindgen = pkgsrc / "devel/rust-bindgen/Makefile"
+    if not bindgen.is_file():
+        raise SystemExit(f"missing pkgsrc consumer: {bindgen}")
     if not librsvg.is_file():
         raise SystemExit(f"missing pkgsrc consumer: {librsvg}")
     if not (pkgsrc / "EMBERBSD-CROSS-MK.CONF").is_file():
@@ -79,6 +82,7 @@ def main():
 
     query(librsvg, "RUST_TYPE", env, "graphics/librsvg RUST_TYPE")
     query(rust_bin, "PKG_FAIL_REASON", env, "lang/rust-bin PKG_FAIL_REASON")
+    query(bindgen, "DEPENDS", env, "devel/rust-bindgen DEPENDS")
 
     std = result["EMBERBSD_CROSS_RUST_STD"]
     tools = result["TOOL_DEPENDS"].split()
@@ -93,6 +97,7 @@ def main():
         "no target Rust compiler": not any(re.search(r":\.\./\.\./lang/rust(-bin)?$", d) for d in target),
         "librsvg native override": result["graphics/librsvg RUST_TYPE"] == "native",
         "rust-bin refused for the target": "build-host compiler" in result["lang/rust-bin PKG_FAIL_REASON"],
+        "no Rust runtime for target bindgen": not any(re.search(r":\.\./\.\./lang/rust(-bin)?$", d) for d in result["devel/rust-bindgen DEPENDS"].split()),
     }
     failed = [name for name, ok in checks.items() if not ok]
     if failed:
