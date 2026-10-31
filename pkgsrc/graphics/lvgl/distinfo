@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (lvgl-v9.6.0-lite.zip) = 50045fcdb48a7686c4edde3fc6ab6311272acfa2ffe97ed8fc1db6b0c6717c91
+SHA512 (lvgl-v9.6.0-lite.zip) = 1fb39483972a618dffdc27f8837824f0a4a937de94ed0bdde9518b1439dd3192fd7fa0fca9c02b21d7f39be5ce6ed3d7d07de54634555724c7fef38c47144ffb
+Size (lvgl-v9.6.0-lite.zip) = 16036644 bytes
+SHA1 (patch-CMakeLists.txt) = 042ba7904992190fe5c2614df0352a4828080e74
+SHA1 (patch-env_support_cmake_dependencies.cmake) = 0a6b41e9d704276dfa16f44cde3ec6806c69751d
+SHA1 (patch-env_support_cmake_main.cmake) = 19623421f706fae7d9e42fa4aba76c74eb84c693

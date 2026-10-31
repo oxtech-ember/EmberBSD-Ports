@@ -1,0 +1,3 @@
+LVGL is a portable C user-interface library with a software renderer.
+This package uses the C library allocator and a software RGB565 default;
+display and input integration are supplied by consumers.

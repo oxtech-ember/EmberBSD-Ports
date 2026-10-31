@@ -1,0 +1,29 @@
+$NetBSD$
+
+Allow the C-only software renderer without a target C++ SDK.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -3,14 +3,20 @@
+ set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+ 
++option(LV_BUILD_C_ONLY "Build the C-only core without C++ modules" OFF)
++set(LVGL_LANGUAGES C)
++if(NOT LV_BUILD_C_ONLY)
++  list(APPEND LVGL_LANGUAGES CXX)
++endif()
++
+ if(NOT ESP_PLATFORM)
+   if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_LIST_DIR)
+     project(
+       lvgl
+-      LANGUAGES C CXX
++      LANGUAGES ${LVGL_LANGUAGES}
+       HOMEPAGE_URL https://github.com/lvgl/lvgl)
+   else()
+-    enable_language(C CXX)
++    enable_language(${LVGL_LANGUAGES})
+   endif()
+   if(NOT (CMAKE_C_COMPILER_ID STREQUAL "MSVC"))
+     enable_language(ASM)
