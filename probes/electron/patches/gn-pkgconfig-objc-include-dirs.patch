@@ -1,0 +1,24 @@
+Pass pkg-config system include directories to Objective-C and Objective-C++.
+Origin: EmberBSD contributors (AI-assisted). The macOS host toolchain compiles
+base *_apple.mm sources that include shimmed abseil headers from the host buildlink view.
+
+--- a/build/config/linux/pkg_config.gni
++++ b/build/config/linux/pkg_config.gni
+@@ -243,6 +243,8 @@
+     cflags = pkgresult[1]
+     cflags_c = []
+     cflags_cc = []
++    cflags_objc = []
++    cflags_objcc = []
+ 
+     foreach(_path, pkgresult[0]) {
+       if (_pkg_config_requires_abs_path && (use_sysroot || use_remoteexec)) {
+@@ -255,6 +257,8 @@
+       # take priority over them in the include paths.
+       cflags_c += [ "-isystem$_path" ]
+       cflags_cc += [ "-isystem$_path" ]
++      cflags_objc += [ "-isystem$_path" ]
++      cflags_objcc += [ "-isystem$_path" ]
+     }
+ 
+     if (!defined(invoker.ignore_libs) || !invoker.ignore_libs) {

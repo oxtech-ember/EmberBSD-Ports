@@ -777,6 +777,11 @@
       "path": "base-rand-util-bsd-conditionals.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "gn-pkgconfig-objc-include-dirs.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {
