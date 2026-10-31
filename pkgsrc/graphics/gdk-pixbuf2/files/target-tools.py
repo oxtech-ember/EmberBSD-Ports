@@ -77,8 +77,25 @@ def query(arguments):
     host = config['ssh']
     require(isinstance(host, str) and re.fullmatch(r'(?:[A-Za-z0-9_][A-Za-z0-9_.-]*@)?[A-Za-z0-9][A-Za-z0-9_.-]*', host),
             'invalid SSH destination')
-    ssh = ['ssh', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',
+    command = 'ssh'
+    if 'ssh_executable' in config:
+        selected = config['ssh_executable']
+        require(isinstance(selected, str) and os.path.isabs(selected), 'SSH executable must be absolute')
+        command = canonical_existing(selected)
+        regular_file(command)
+        require(os.access(command, os.X_OK), 'SSH executable is not executable')
+    ssh = [command, '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',
            '-o', 'ConnectTimeout=5', '-o', 'ServerAliveInterval=10', '-o', 'ServerAliveCountMax=3']
+    if 'ssh_config' in config:
+        selected = config['ssh_config']
+        require(isinstance(selected, str) and os.path.isabs(selected), 'SSH config must be absolute')
+        selected = canonical_existing(selected)
+        regular_file(selected)
+        ssh += ['-F', selected]
+    if 'ssh_port' in config:
+        port = config['ssh_port']
+        require(type(port) is int and 1 <= port <= 65535, 'invalid SSH port')
+        ssh += ['-p', str(port)]
     if 'host_key_alias' in config:
         alias = config['host_key_alias']
         require(isinstance(alias, str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*', alias),
