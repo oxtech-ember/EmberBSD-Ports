@@ -190,7 +190,12 @@ node_deps()
     esac
     dir=$1 suffix=$2
     shift 2
-    vars=$(mk -C "$PKGSRCDIR/$dir" "$@" show-vars \
+    # The dependencies come from the makefiles alone. A WRKDIR left by an
+    # earlier build has the saved MAKEVARS of its phases
+    # (WRKDIR/.PHASE_makevars.mk), and a parse includes the latest of them
+    # unless _MAKEVARS_MK is defined: a USE_BUILTIN.openssl=yes saved before
+    # security/heimdal chose PREFER.openssl=pkgsrc dropped its openssl edge.
+    vars=$(mk -C "$PKGSRCDIR/$dir" "$@" _MAKEVARS_MK=defined show-vars \
         VARNAMES='PKG_SKIP_REASON DEPENDS BUILD_DEPENDS TOOL_DEPENDS BOOTSTRAP_DEPENDS PKGBASE PKGNAME' < /dev/null) ||
         return 1
     printf '%s\n' "$vars" | sed -n 1p
