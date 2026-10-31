@@ -3,6 +3,7 @@
 .include "../../devel/git/Makefile.common"
 
 PKGNAME=	git-base-${GIT_VERSION}
+PKGREVISION=	1
 COMMENT=	GIT Tree History Storage Tool (base package)
 
 CONFLICTS+=	scmgit-base-[0-9]*
@@ -66,6 +67,7 @@ MAKE_FLAGS+=		INSTALL=${INSTALL:Q}
 MAKE_FLAGS+=		CC_LD_DYNPATH=${COMPILER_RPATH_FLAG}
 MAKE_ENV+=		NO_GITWEB=1
 MAKE_ENV+=		NO_PERL=1
+MAKE_FLAGS+=		DC_SHA1_EXTERNAL=YesPlease
 
 GIT_TEMPLATE_INSTDIR=	${EGDIR}/${GIT_TEMPLATEDIR}
 MAKE_ENV+=		GIT_TEMPLATE_INSTDIR=${GIT_TEMPLATE_INSTDIR}
@@ -75,6 +77,11 @@ SUBST_CLASSES+=		paths
 SUBST_FILES.paths=	contrib/completion/git-completion.zsh
 SUBST_STAGE.paths=	pre-configure
 SUBST_VARS.paths=	PREFIX
+
+# Git's -I. would otherwise select the embedded header even in external mode.
+# Removing it also makes any accidental embedded fallback fail at compile time.
+post-patch:
+	${RM} ${WRKSRC}/sha1dc/sha1.h
 
 .include "../../mk/bsd.prefs.mk"
 
@@ -153,6 +160,7 @@ post-install:
 .include "../../devel/gettext-lib/buildlink3.mk"
 BUILDLINK_API_DEPENDS.pcre2+=	pcre2>=10.34
 .include "../../devel/pcre2/buildlink3.mk"
+.include "../../devel/sha1collisiondetection/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../textproc/expat/buildlink3.mk"
 .include "../../www/curl/buildlink3.mk"
