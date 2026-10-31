@@ -626,16 +626,27 @@ build_native()
     result "$key" "failed $nnode build"
 }
 
+# Run the install targets $2... of target package $1, one bmake run each.
+target_install()
+{
+    tpath=$1
+    shift
+    for target do
+        bmk -C "$PKGSRCDIR/$tpath" "$target" < /dev/null || return 1
+    done
+}
+
 build_one()
 {
     path=$1
     key=$(echo "$path" | tr / _)
     case "$path" in *@native) build_native "$path" "$key"; return 0 ;; esac
-    vars=$(pkg_vars "$path" 'PKGNAME WRKDIR PKG_SKIP_REASON') ||
+    vars=$(pkg_vars "$path" 'PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE') ||
         { result "$key" "failed $path vars"; return 0; }
     name=$(printf '%s\n' "$vars" | sed -n 1p)
     wrkdir=$(printf '%s\n' "$vars" | sed -n 2p)
     skip=$(printf '%s\n' "$vars" | sed -n 3p)
+    base=$(printf '%s\n' "$vars" | sed -n 4p)
     if [ -n "$skip" ]; then
         result "$key" "skipped $path $skip"
         return 0
@@ -652,9 +663,17 @@ build_one()
     : > "$log"
     # One package-install run does depends, package and the install: each
     # target-mode bmake run parses the package again, and the pkg_add wrapper
-    # already keeps installs into one database apart.
+    # already keeps installs into one database apart. The sysroot may
+    # already have another version of the package, such as one from an
+    # earlier pass before a PKGREVISION bump; pkg_add refuses to install
+    # over it, so the package is built and then replaced (pkgsrc replace,
+    # pkg_add -U), which keeps the packages that depend on it registered.
+    install=package-install
+    set -f
+    [ -z "$base" ] || ! $target_pkg_info -e "$base" > /dev/null 2>&1 || install='package replace'
+    set +f
     { [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" clean < /dev/null >> "$log" 2>&1; } &&
-        bmk -C "$PKGSRCDIR/$path" package-install < /dev/null >> "$log" 2>&1 && {
+        target_install "$path" $install >> "$log" 2>&1 && {
         echo "$(date '+%Y-%m-%d %H:%M:%S') done $path" >> "$state/progress"
         result "$key" "built $path $name $(shasum -a 256 "$file" | cut -d ' ' -f 1)"
         return 0
@@ -717,6 +736,8 @@ build()
     pkg_add_wrapper "$real_pkg_add" > "$run/pkg_add"
     chmod +x "$run/pkg_add"
     native_info
+    target_pkg_info=$(var pkgtools/pkg_install PKG_INFO)
+    [ -n "$target_pkg_info" ] || { echo 'The target PKG_INFO is empty' >&2; exit 2; }
     target_settings=$(var pkgtools/pkg_install CROSSTARGETSETTINGS)
     stamp=$(date '+%Y%m%d%H%M%S')
     vars_cache=

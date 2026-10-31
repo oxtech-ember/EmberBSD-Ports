@@ -562,7 +562,12 @@ left. Without a `WRKOBJDIR`, for a `WRKDIR` on another file system, or with
 A package whose `WRKDIR` went to the trash gets no clean step: every
 target-mode bmake run parses the package again, which takes seconds.
 For the same reason each target package gets one `package-install` run,
-which does the depends, package and install steps.
+which does the depends, package and install steps. When the sysroot already
+has another version of the package (pkg_info -e PKGBASE), for example one
+from an earlier pass before a `PKGREVISION` bump, `pkg_add` would refuse to
+install over it, so the build runs `package` and then the pkgsrc `replace`
+target (`pkg_add -U`), which keeps its dependents registered.
+`scripts/tests/cross-bulk-target-replace.sh NEW_OUTPUT` checks this.
 Every pass checks each done package by its `PKGNAME`. The build keeps the
 show-vars answers in `STATE/vars` together with the makefiles that parse read
 (`.MAKE.MAKEFILES`) and the device, inode, size and modification time of each
