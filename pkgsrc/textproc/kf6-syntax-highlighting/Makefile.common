@@ -14,3 +14,7 @@ LICENSE=	gnu-lgpl-v2.1
 EMBERBSD_SYNTAX_HIGHLIGHTING_PKGDIR:=	${.PARSEDIR:tA}
 DISTINFO_FILE=	${EMBERBSD_SYNTAX_HIGHLIGHTING_PKGDIR}/distinfo
 PATCHDIR=	${EMBERBSD_SYNTAX_HIGHLIGHTING_PKGDIR}/patches
+
+# Shell test inputs in the shared source use == on purpose; they are data.
+CHECK_PORTABILITY_SKIP+=	autotests/input/highlight.sh
+CHECK_PORTABILITY_SKIP+=	autotests/folding/highlight.sh.fold

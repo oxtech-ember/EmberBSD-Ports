@@ -18,9 +18,6 @@ CMAKE_CONFIGURE_ARGS+=	-DKATEHIGHLIGHTINGINDEXER_EXECUTABLE=${TOOLBASE}/bin/kate
 
 USE_TOOLS+=	perl pkg-config
 
-CHECK_PORTABILITY_SKIP+=	autotests/input/highlight.sh
-CHECK_PORTABILITY_SKIP+=	autotests/folding/highlight.sh.fold
-
 .include "../../devel/qt6-qttools/buildlink3.mk"
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../textproc/xerces-c/buildlink3.mk"
