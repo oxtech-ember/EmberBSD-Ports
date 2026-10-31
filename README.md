@@ -970,6 +970,16 @@ each query reuses the build-host facts (`OSX_*` and `NATIVE_*`) from
 missing provider or a failed query makes it exit 1.
 `python3 scripts/tests/test_check_export_depends.py` tests it on a fixture.
 
+Some packages set `PKGREVISION` only for the cross build or only for the
+native build, and some `buildlink3.mk` pins name such a revision. A pin that
+the build cannot satisfy makes the pkgsrc depends step rebuild the provider
+inside the consumer's build. `python3 scripts/check-cross-revisions.py
+pkgsrc` checks these pins without bmake: an exact pin on a package with a
+conditional revision is an error, and a `>=` pin may not name a higher
+revision than the cross or native build that it applies to sets for the same
+version. It also checks an export when given its path.
+`python3 scripts/tests/test_check_cross_revisions.py` tests it.
+
 Experimental probes remain under `probes/`
 until their package integration and runtime are validated. No signed binary
 package repository is provided yet.
