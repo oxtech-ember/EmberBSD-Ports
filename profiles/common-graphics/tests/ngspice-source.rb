@@ -42,7 +42,7 @@ metadata = {}
   query = lambda do |name|
     run.call(package + '-' + name, make + ['show-var', "VARNAME=#{name}"]).strip
   end
-  values = %w[PKGNAME PKG_FAIL_REASON WRKDIR WRKSRC ERROR_DIR CONFIGURE_ARGS CONFIGURE_ENV DEPENDS PATCHDIR DISTINFO_FILE MAKE_FLAGS OPSYS USE_CROSS_COMPILE].to_h { |name| [name, query.call(name)] }
+  values = %w[PKGNAME PKG_FAIL_REASON WRKDIR WRKSRC ERROR_DIR CONFIGURE_ARGS CONFIGURE_ENV DEPENDS PATCHDIR DISTINFO_FILE MAKE_FLAGS OPSYS USE_CROSS_COMPILE PKGSRC_COMPILER].to_h { |name| [name, query.call(name)] }
   abort 'Package metadata failed.' unless values['PKG_FAIL_REASON'].empty? && values['PKGNAME'] == package + '-47nb1'
   if values['USE_CROSS_COMPILE'] == 'yes'
     target_system_flag = 'uname=' + values['OPSYS']
@@ -55,7 +55,10 @@ metadata = {}
   abort 'Wrong patch provider.' unless File.realpath(values['PATCHDIR']) == tree + '/cad/ng-spice/patches'
   abort 'Wrong archive metadata.' unless File.realpath(values['DISTINFO_FILE']) == tree + '/cad/ng-spice/distinfo'
   options = Shellwords.split(values['CONFIGURE_ARGS'])
-  %w[--enable-cider --enable-xspice --enable-osdi --enable-klu --enable-openmp --with-fftw3=yes --enable-shared --disable-static].each do |option|
+  # Clang has no LLVM OpenMP runtime of its own version in Ports.
+  openmp = values['PKGSRC_COMPILER'].split.include?('clang') ? '--disable-openmp' : '--enable-openmp'
+  abort 'Configure enables OpenMP without a runtime.' if openmp == '--disable-openmp' && options.include?('--enable-openmp')
+  %W[--enable-cider --enable-xspice --enable-osdi --enable-klu #{openmp} --with-fftw3=yes --enable-shared --disable-static].each do |option|
     abort "Missing #{option}" unless options.include?(option)
   end
   if package == 'ng-spice'

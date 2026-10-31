@@ -22,12 +22,26 @@ USE_LANGUAGES=	c c++
 GNU_CONFIGURE=	yes
 CONFIGURE_HAS_LIBDIR=	yes
 CONFIGURE_ARGS+=	--enable-cider --enable-xspice --enable-osdi --enable-klu
-CONFIGURE_ARGS+=	--enable-openmp --with-fftw3=yes
+CONFIGURE_ARGS+=	--with-fftw3=yes
 CONFIGURE_ARGS+=	--enable-shared --disable-static --disable-maintainer-mode
 CONFIGURE_ARGS+=	--disable-silent-rules
 PKGCONFIG_OVERRIDE+=	ngspice.pc.in
 
 .include "../../mk/bsd.prefs.mk"
+# GCC provides OpenMP through its libgomp runtime. Clang needs the LLVM
+# OpenMP runtime of its own LLVM version, and Ports has none for LLVM 23
+# (parallel/openmp is LLVM 21). A Clang build disables OpenMP rather than
+# mixing LLVM versions. Configure defines USE_OMP unless OpenMP is disabled,
+# even when the compiler has no OpenMP support.
+_NGSPICE_FEATURES=	CIDER XSPICE OSDI KLU HAVE_LIBFFTW3
+.if ${PKGSRC_COMPILER:Mclang}
+CONFIGURE_ARGS+=	--disable-openmp
+_NGSPICE_ABSENT=	USE_OMP
+.else
+CONFIGURE_ARGS+=	--enable-openmp
+_NGSPICE_FEATURES+=	USE_OMP
+_NGSPICE_ABSENT=	# none
+.endif
 .if ${USE_CROSS_COMPILE:U:tl} == "yes"
 # XSPICE selects module linker flags from uname; pass the target through
 # recursive gmake calls so a Darwin host does not select Darwin flags.
@@ -44,8 +58,11 @@ pre-configure:
 post-configure: ngspice-feature-check
 .PHONY: ngspice-feature-check
 ngspice-feature-check:
-	${RUN} for feature in CIDER XSPICE OSDI KLU USE_OMP HAVE_LIBFFTW3; do \
+	${RUN} for feature in ${_NGSPICE_FEATURES}; do \
 		${GREP} "^\#define $$feature " ${WRKSRC}/src/include/ngspice/config.h > /dev/null || exit 1; \
+	done; \
+	for feature in ${_NGSPICE_ABSENT}; do \
+		! ${GREP} "^\#define $$feature " ${WRKSRC}/src/include/ngspice/config.h > /dev/null || exit 1; \
 	done
 
 BUILDLINK_API_DEPENDS.fftw+=	fftw>=3.3.11
