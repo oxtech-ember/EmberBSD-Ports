@@ -812,7 +812,10 @@ selected package metadata and view links before reuse. Reconfigure creates a
 new view when these inputs change; build refuses a stale selection. For host
 protocol generators, `--protoc-runtime-view` selects the SDK's scoped Darwin
 launcher. The launcher and actual runtime files are declared as GN action
-inputs, and only its child process receives the runtime search path.
+inputs, and only its child process receives the runtime search path. Protoc's
+plugins (protozero, cppgen, ipc) inherit that path, so the view must hold
+their closure too, including every stage Abseil library; a partial view lets
+the loader mix stage and installed libraries.
 
 The optional `--protobuf-source`, `--protobuf-ports-source`,
 `--protobuf-archive`, and `--protobuf-patch` select one prepared common
