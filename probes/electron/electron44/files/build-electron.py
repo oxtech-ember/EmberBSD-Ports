@@ -1026,7 +1026,7 @@ def producer_inputs(options, sdk):
         [native.tool('clang'), '-print-resource-dir'], env=environment).stdout.decode('utf-8', 'strict').strip()
     values['clang_version'] = clang_resource_version(options.host_prefix, resource_text)
     values.update(common_node_configure(options, native, sdk, environment, resource_text))
-    if getattr(options, 'phase', '') == 'configure':
+    if getattr(options, 'phase', '') in ('configure', 'build'):
         # Chromium type-checks against its own lib.dom edits; use the view copy.
         # It lives beside src: GN rewrites in-root paths to //-form.
         tsc = gn_source(options).parent / 'typescript-chromium/node_modules/typescript/bin/tsc'
