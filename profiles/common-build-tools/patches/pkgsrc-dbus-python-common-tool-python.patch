@@ -1,0 +1,15 @@
+# Run the dbus-python-common configure checks with the build machine Python.
+# Origin: EmberBSD (AI-assisted).
+
+--- a/sysutils/dbus-python-common/Makefile
++++ b/sysutils/dbus-python-common/Makefile
+@@ -19,7 +19,8 @@
+ USE_TOOLS+=		pkg-config gmake
+ GNU_CONFIGURE=		yes
+ CONFIGURE_ARGS+=	--disable-documentation
+-CONFIGURE_ARGS+=	PYTHON=${PYTHONBIN}
++# configure only runs Python on the build machine; tool.mk provides it.
++CONFIGURE_ARGS+=	PYTHON=${TOOL_PYTHONBIN}
+ 
+ BUILDLINK_TRANSFORM.SunOS+=	rm:-std=c9x
+ 
