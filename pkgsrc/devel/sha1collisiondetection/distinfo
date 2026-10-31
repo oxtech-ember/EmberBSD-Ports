@@ -1,0 +1,10 @@
+$NetBSD$
+
+BLAKE2s (sha1collisiondetection-1.0.3.tar.gz) = 11d23ebbe70bfbb5a1263acc51967b309842be5b5a36c0f8aa7a8de29678b859
+SHA512 (sha1collisiondetection-1.0.3.tar.gz) = cc3f56cd8af4d0e5d5273b0c18df719c0a2f6dfd5dd7b5cc47325af800c05e1eeae24e4edf53705dfe1bfa3e88469a2405cbd7a513b25d45dc2bf4284b49bea5
+Size (sha1collisiondetection-1.0.3.tar.gz) = 780306 bytes
+SHA1 (patch-lib_sha1.c) = 5611cacde87bf5fe02867b3a3b2e7a0f8ed90a97
+SHA1 (patch-lib_sha1.h) = c1d84795e634719d9a53cb30208f73de65207692
+SHA1 (patch-lib_ubc_check.c) = 3fb77f37a2f25835f11373957498b35793f78daf
+SHA1 (patch-lib_ubc_check.h) = d445bd0b2e115e228a1c080a67716e37de8933c5
+SHA1 (patch-src_main.c) = 8fe3e4cba001cb76d6a1f26ad53e537ab42f69e9

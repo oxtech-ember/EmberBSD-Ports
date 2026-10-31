@@ -1,0 +1,10 @@
+prefix=@PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: sha1detectcoll
+Description: SHA-1 collision detection
+Version: @VERSION@
+Libs: -L${libdir} -lsha1detectcoll
+Cflags: -I${includedir}

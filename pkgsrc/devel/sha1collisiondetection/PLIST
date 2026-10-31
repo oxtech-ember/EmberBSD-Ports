@@ -1,0 +1,6 @@
+@comment $NetBSD$
+bin/sha1dcsum
+bin/sha1dcsum_partialcoll
+include/sha1dc/sha1.h
+lib/libsha1detectcoll.la
+lib/pkgconfig/sha1detectcoll.pc

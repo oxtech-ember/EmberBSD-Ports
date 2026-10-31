@@ -1,0 +1,2 @@
+SHA-1 implementation with cryptanalytic collision detection by Marc Stevens
+and Dan Shumow. It provides the SHA1DC API used by Git and libgit2.
