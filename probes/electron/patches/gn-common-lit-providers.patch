@@ -6,7 +6,7 @@ Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
 
 --- a/third_party/node/node.gni
 +++ b/third_party/node/node.gni
-@@ -17,6 +17,16 @@
+@@ -17,6 +17,17 @@
  declare_args() {
    # The caller enumerates the selected common provider's actual package files.
    emberbsd_node_provider_inputs = []
@@ -20,6 +20,7 @@ Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
 +  emberbsd_lit_inputs = []
 +  emberbsd_trusted_types_inputs = []
 +  emberbsd_trusted_types_version = ""
++  emberbsd_common_type_inputs = []
    emberbsd_typescript_definitions = []
    emberbsd_node_provider_versions = []
    emberbsd_typescript_native_binary = ""
@@ -158,7 +159,7 @@ Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
      if (defined(in_files)) {
        args += [ "--in_files" ] + in_files
      }
-@@ -94,12 +108,25 @@
+@@ -94,12 +108,31 @@
        args += [ "--manifest_excludes" ] + manifest_excludes
      }
  
@@ -173,6 +174,12 @@ Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
 +    if (emberbsd_node_modules != "") {
 +      _trusted_declarations = filter_include(emberbsd_trusted_types_inputs, [ "*.d.ts" ])
 +      foreach(_definition, _trusted_declarations) {
++        _toolchain_definitions += [ rebase_path(_definition, target_gen_dir) ]
++      }
++      _common_type_declarations =
++          filter_include(emberbsd_common_type_inputs, [ "*.d.ts" ])
++      inputs += _common_type_declarations
++      foreach(_definition, _common_type_declarations) {
 +        _toolchain_definitions += [ rebase_path(_definition, target_gen_dir) ]
 +      }
 +    }

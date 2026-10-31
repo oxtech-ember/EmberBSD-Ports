@@ -113,6 +113,20 @@ def select(native, *, electron=False):
                     trusted_types_inputs.append(str(path))
                 else:
                     lit_inputs.append(str(path))
+    # Declaration packages named by Chromium tsconfig "types" lists.
+    common_type_inputs = []
+    for name in ('@types/dom-speech-recognition',):
+        root = modules / name
+        metadata = json.loads((root / 'package.json').read_text())
+        version = metadata.get('version')
+        if (metadata.get('name') != name or not isinstance(version, str) or
+                not version or any(ord(c) < 32 for c in version)):
+            raise ValueError('invalid selected type provider: ' + name)
+        for path in sorted(root.rglob('*')):
+            if not path.resolve(strict=True).is_relative_to(prefix):
+                raise ValueError('type provider escapes native prefix')
+            if path.is_file():
+                common_type_inputs.append(str(path))
     semver_inputs = select_electron_semver(native) if electron else []
     ts_proto_inputs = select_ts_proto(modules, prefix)
     return dict(environment={'EMBERBSD_HOST_ROLLUP': native.tool('rollup'),
@@ -125,6 +139,7 @@ def select(native, *, electron=False):
                            'emberbsd_lit_inputs': lit_inputs,
                            'emberbsd_trusted_types_inputs': trusted_types_inputs,
                            'emberbsd_trusted_types_version': trusted_types_version,
+                           'emberbsd_common_type_inputs': common_type_inputs,
                            'emberbsd_devtools_esbuild_module': str(esbuild_module),
                            'emberbsd_devtools_esbuild_binary': str(esbuild_binary),
                            'emberbsd_devtools_esbuild_metadata': str(esbuild_metadata),
