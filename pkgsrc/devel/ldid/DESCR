@@ -1,0 +1,2 @@
+ldid signs and inspects Mach-O binaries, including ad-hoc signatures and
+embedded entitlements.

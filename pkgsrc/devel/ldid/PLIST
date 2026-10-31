@@ -1,0 +1,6 @@
+@comment $NetBSD$
+bin/ldid
+bin/ldid2
+share/man/man1/ldid.1
+share/man/zh_CN/man1/ldid.1
+share/man/zh_TW/man1/ldid.1
