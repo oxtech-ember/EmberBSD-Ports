@@ -1,0 +1,20 @@
+--- a/devel/cmake/Makefile
++++ b/devel/cmake/Makefile
+@@ -2,7 +2,7 @@
+ 
+ .include "Makefile.common"
+ 
+-PKGREVISION=	9
++PKGREVISION=	10
+ 
+ COMMENT=	Cross platform make
+ 
+@@ -75,7 +75,7 @@ pre-configure:
+ 	${CP} ${FILESDIR}/Source_Checks_cm_cxx_cbegin.cxx ${WRKSRC}/Source/Checks/cm_cxx_cbegin.cxx
+ 	${CP} ${FILESDIR}/Source_Checks_cm_cxx_cend.cxx ${WRKSRC}/Source/Checks/cm_cxx_cend.cxx
+ 	${CP} ${FILESDIR}/Source_Checks_cm_cxx_size_t.cxx ${WRKSRC}/Source/Checks/cm_cxx_size_t.cxx
+-	${FIND} ${WRKSRC}/Modules -type f -a -name "*.orig" -print | ${XARGS} ${RM}
++	${FIND} ${WRKSRC}/Modules -type f -a -name "*.orig" -exec ${RM} {} +
+ .for lang in C CXX Fortran
+ 	${LN} -f ${WRKSRC}/Modules/Platform/SunOS-GNU-${lang}.cmake \
+ 	    ${WRKSRC}/Modules/Platform/SunOS-Clang-${lang}.cmake

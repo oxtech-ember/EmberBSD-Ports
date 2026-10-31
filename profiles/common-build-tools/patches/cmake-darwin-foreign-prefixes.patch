@@ -2,10 +2,15 @@
 # Do not search Homebrew, Fink or MacPorts prefixes and do not run brew.
 --- Modules/Platform/Darwin.cmake.orig
 +++ Modules/Platform/Darwin.cmake
-@@ -250,27 +250,7 @@
+@@ -250,27 +250,12 @@
  
  include(Platform/UnixPaths)
  
++if(EMBERBSD_CMAKE_NATIVE_TOOLS AND NOT _CMAKE_INSTALL_DIR STREQUAL "/usr/local")
++  # Keep explicit user-selected prefixes while excluding the ambient default.
++  list(REMOVE_ITEM CMAKE_SYSTEM_PREFIX_PATH "/usr/local")
++endif()
++
 -if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 -  execute_process(
 -    COMMAND brew --prefix
@@ -31,7 +36,7 @@
  
  if(_CMAKE_OSX_SYSROOT_PATH)
    if(EXISTS ${_CMAKE_OSX_SYSROOT_PATH}/usr/include)
-@@ -286,7 +266,3 @@
+@@ -286,7 +271,3 @@
      endforeach()
    endif()
  endif()

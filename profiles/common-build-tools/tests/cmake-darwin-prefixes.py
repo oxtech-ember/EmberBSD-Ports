@@ -3,6 +3,7 @@
 # Origin: EmberBSD contributors (AI-assisted).
 """Check that Darwin CMake does not search Homebrew, Fink or MacPorts."""
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -45,8 +46,9 @@ def main():
         (work / 'source/CMakeLists.txt').write_text(
             'cmake_minimum_required(VERSION 3.20)\nproject(prefixes NONE)\n'
             'message(STATUS "EMBERBSD_PREFIXES=${CMAKE_SYSTEM_PREFIX_PATH}")\n')
-        environment = {'HOME': str(work), 'LC_ALL': 'C', 'PATH': str(work / 'bin') + ':/usr/bin:/bin'}
-        result = subprocess.run([str(cmake), '-S', str(work / 'source'), '-B', str(work / 'build')],
+        environment = dict(os.environ, LC_ALL='C', PATH=str(work / 'bin') + ':' + str(args.cmake.resolve().parent))
+        generator = ['-G', 'Ninja', '-DCMAKE_MAKE_PROGRAM=' + str(args.cmake.resolve().parent / 'ninja')]
+        result = subprocess.run([str(cmake), '-S', str(work / 'source'), '-B', str(work / 'build')] + generator,
                                 capture_output=True, text=True, env=environment)
         lines = [line for line in result.stdout.splitlines() if 'EMBERBSD_PREFIXES=' in line]
         if result.returncode != 0 or len(lines) != 1:
@@ -57,7 +59,40 @@ def main():
         if marker.exists() or found:
             print('FAIL: Darwin CMake ran brew or searches ' + ' '.join(found))
             return 1
-    print('PASS: Darwin CMake searches no Homebrew, Fink or MacPorts prefix')
+        decoy = work / 'root/usr/local/lib/cmake/EmberDecoy'
+        decoy.mkdir(parents=True)
+        (decoy / 'EmberDecoyConfig.cmake').write_text('set(EmberDecoy_FOUND TRUE)\n')
+        (work / 'source/CMakeLists.txt').write_text(
+            'cmake_minimum_required(VERSION 3.20)\nproject(prefixes NONE)\n'
+            'find_package(EmberDecoy CONFIG QUIET)\n'
+            'message(STATUS "DECOY=${EmberDecoy_FOUND}")\n')
+        common = [str(cmake), '-S', str(work / 'source'),
+                  '-DEMBERBSD_CMAKE_NATIVE_TOOLS=ON',
+                  '-DCMAKE_FIND_ROOT_PATH=' + str(work / 'root')] + generator
+        for explicit, expected in ((False, '0'), (True, '1')):
+            command = common + ['-B', str(work / ('explicit' if explicit else 'native'))]
+            if explicit:
+                command.append('-DCMAKE_PREFIX_PATH=/usr/local')
+            result = subprocess.run(command, capture_output=True, text=True, env=environment)
+            if result.returncode or ('DECOY=' + expected) not in result.stdout:
+                print('FAIL: native or explicit prefix routing\n' + result.stdout + result.stderr)
+                return 1
+        if args.platform_file:
+            # Model a CMake installation deliberately rooted at /usr/local.
+            unix_paths = work / 'cmake/share' / roots[0].name / 'Modules/Platform/UnixPaths.cmake'
+            original = unix_paths.read_text()
+            marker_line = 'unset(_cmake_running_in_build_tree)'
+            if marker_line not in original:
+                print('FAIL: cannot model selected CMake installation prefix')
+                return 1
+            unix_paths.write_text(original.replace(marker_line, marker_line +
+                                                  '\nset(_CMAKE_INSTALL_DIR "/usr/local")', 1))
+            result = subprocess.run(common + ['-B', str(work / 'selected')],
+                                    capture_output=True, text=True, env=environment)
+            if result.returncode or 'DECOY=1' not in result.stdout:
+                print('FAIL: selected /usr/local CMake prefix\n' + result.stdout + result.stderr)
+                return 1
+    print('PASS: Darwin CMake excludes ambient foreign prefixes and honors explicit paths')
     return 0
 
 
