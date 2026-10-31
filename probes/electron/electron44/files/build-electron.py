@@ -290,7 +290,7 @@ def arguments(options, native, tools, rust_version, launcher):
                                    getattr(options, 'target_runtime_stage', None)),
         use_custom_libcxx_for_host=False, use_custom_libunwind=False,
         use_lld=options.compiler_family == 'clang', use_thin_lto=False,
-        use_system_libdrm=True,
+        use_system_libdrm=True, use_bundled_fontconfig=False,
         rust_sysroot_absolute=str(options.host_prefix), rust_bindgen_root=str(options.host_prefix),
         rustc_version=rust_version, emberbsd_rust_unstable_features=True, wayland_scanner_executable=native.tool('wayland-scanner'),
         emberbsd_target_strip=tools['strip'], emberbsd_target_objcopy=tools['objcopy'],

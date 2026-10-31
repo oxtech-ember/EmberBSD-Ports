@@ -858,3 +858,9 @@ in `source-view` as local directories of hard links (copies across devices)
 instead of directory symlinks. Verification compares entries and inodes (or
 contents); only interpreter `__pycache__` directories created in the mirror are
 accepted as extra entries.
+
+### Target fontconfig
+
+The bundled fontconfig carries Linux `config.h` values (GNU `strerror_r`) that
+do not hold on NetBSD. The build selects the target sysroot fontconfig package
+(`use_bundled_fontconfig = false`, Chromium's unbundle shim), like libdrm.
