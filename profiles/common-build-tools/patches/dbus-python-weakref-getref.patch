@@ -1,0 +1,118 @@
+$NetBSD$
+
+Python 3.15 removed PyWeakref_GetObject. Use PyWeakref_GetRef, with a
+fallback for Python versions before 3.13 that lack it.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- dbus_bindings/dbus_bindings-internal.h.orig
++++ dbus_bindings/dbus_bindings-internal.h
+@@ -33,6 +33,27 @@
+ 
+ #include <Python.h>
+ 
++/* Python 3.15 removed PyWeakref_GetObject; PyWeakref_GetRef is new in 3.13. */
++#if PY_VERSION_HEX < 0x030D0000
++static inline int
++PyWeakref_GetRef(PyObject *ref, PyObject **pobj)
++{
++    PyObject *obj = PyWeakref_GetObject(ref);
++
++    if (obj == NULL) {
++        *pobj = NULL;
++        return -1;
++    }
++    if (obj == Py_None) {
++        *pobj = NULL;
++        return 0;
++    }
++    Py_INCREF(obj);
++    *pobj = obj;
++    return 1;
++}
++#endif
++
+ #define INSIDE_DBUS_PYTHON_BINDINGS
+ #include "dbus/dbus-python.h"
+ 
+--- dbus_bindings/conn.c.orig
++++ dbus_bindings/conn.c
+@@ -158,15 +158,16 @@
+     Py_END_ALLOW_THREADS
+     if (ref) {
+         DBG("(DBusConnection *)%p has weak reference at %p", conn, ref);
+-        self = PyWeakref_GetObject(ref);   /* still a borrowed ref */
+-        if (self && self != Py_None && DBusPyConnection_Check(self)) {
++        if (PyWeakref_GetRef(ref, &self) < 0)
++            return NULL;
++        /* self is a new reference or NULL */
++        if (self && DBusPyConnection_Check(self)) {
+             DBG("(DBusConnection *)%p has weak reference at %p pointing to %p",
+                 conn, ref, self);
+             TRACE(self);
+-            Py_INCREF(self);
+-            TRACE(self);
+             return self;
+         }
++        Py_XDECREF(self);
+     }
+ 
+     PyErr_SetString(PyExc_AssertionError,
+@@ -198,10 +199,14 @@
+                                                _connection_python_slot);
+     Py_END_ALLOW_THREADS
+     if (ref) {
+-        self = (Connection *)PyWeakref_GetObject(ref);
++        PyObject *existing;
++        int alive = PyWeakref_GetRef(ref, &existing);
++
+         ref = NULL;
+-        if (self && (PyObject *)self != Py_None) {
+-            self = NULL;
++        if (alive < 0)
++            return NULL;
++        if (alive) {
++            Py_DECREF(existing);
+             PyErr_SetString(PyExc_AssertionError,
+                             "Newly created D-Bus connection already has a "
+                             "Connection instance associated with it");
+--- dbus_bindings/server.c.orig
++++ dbus_bindings/server.c
+@@ -167,15 +167,16 @@
+     Py_END_ALLOW_THREADS
+     if (ref) {
+         DBG("(DBusServer *)%p has weak reference at %p", server, ref);
+-        self = PyWeakref_GetObject(ref);   /* still a borrowed ref */
+-        if (self && self != Py_None && DBusPyServer_Check(self)) {
++        if (PyWeakref_GetRef(ref, &self) < 0)
++            return NULL;
++        /* self is a new reference or NULL */
++        if (self && DBusPyServer_Check(self)) {
+             DBG("(DBusServer *)%p has weak reference at %p pointing to %p",
+                 server, ref, self);
+             TRACE(self);
+-            Py_INCREF(self);
+-            TRACE(self);
+             return self;
+         }
++        Py_XDECREF(self);
+     }
+ 
+     PyErr_SetString(PyExc_AssertionError,
+@@ -262,10 +263,14 @@
+                                            _server_python_slot);
+     Py_END_ALLOW_THREADS
+     if (ref) {
+-        self = (Server *)PyWeakref_GetObject(ref);
++        PyObject *existing;
++        int alive = PyWeakref_GetRef(ref, &existing);
++
+         ref = NULL;
+-        if (self && (PyObject *)self != Py_None) {
+-            self = NULL;
++        if (alive < 0)
++            return NULL;
++        if (alive) {
++            Py_DECREF(existing);
+             PyErr_SetString(PyExc_AssertionError,
+                             "Newly created D-Bus server already has a "
+                             "Server instance associated with it");
