@@ -103,6 +103,13 @@ SUBST_FILES.buildpy=	numpy/_build_utils/*.py
 SUBST_FILES.buildpy+=	numpy/_core/code_generators/verify_c_api_version.py
 SUBST_SED.buildpy=	-e '1s,^\#!${PYTHONBIN},\#!${TOOL_PYTHONBIN},'
 SUBST_NOOP_OK.buildpy=	yes
+# numpy/_core/meson.build runs a target program to learn the long double
+# format unless the cross file names it. The values are those of the
+# psABIs: IEEE binary128 on AArch64 and RISC-V, x87 extended on x86_64.
+MESON_CROSS_ARCH_VARS+=			longdouble_format
+MESON_CROSS.aarch64.longdouble_format=	'IEEE_QUAD_LE'
+MESON_CROSS.riscv64.longdouble_format=	'IEEE_QUAD_LE'
+MESON_CROSS.x86_64.longdouble_format=	'INTEL_EXTENDED_16_BYTES_LE'
 .endif
 
 # as of 2.5.1
