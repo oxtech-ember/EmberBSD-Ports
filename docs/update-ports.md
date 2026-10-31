@@ -157,6 +157,10 @@ A failed producer never justifies a success receipt for an older artifact.
 A compatibility patch requires a fresh export, lock, and plan. Follow the
 [SDK evidence and resume contract](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/docs/ports-plan.md#validate-results-and-resume)
 for unchanged dependencies and reusable artifacts.
+Reuse follows the common [input key rule](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/docs/input-keys.md). A matching key means reuse
+without rereading, rehashing or re-archiving sources, stages or outputs. Do not
+add checks that reread or rehash inputs that a git hash or input key already
+identifies.
 
 ## Checks and limits
 
