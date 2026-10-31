@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.294 2026/08/11 07:16:40 wiz Exp $
 
 DISTNAME=		openssh-10.6p1
-PKGREVISION=		12
+PKGREVISION=		13
 CATEGORIES=		security
 MASTER_SITES=		${MASTER_SITE_OPENBSD:=OpenSSH/portable/}
 
