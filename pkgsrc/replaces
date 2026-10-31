@@ -508,3 +508,6 @@ comms/lrzsz
 
 # Current shared Unbound.
 net/unbound
+
+# Current common OpenSSH.
+security/openssh

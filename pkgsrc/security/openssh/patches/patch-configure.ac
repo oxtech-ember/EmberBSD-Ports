@@ -1,0 +1,43 @@
+$NetBSD: patch-configure.ac,v 1.11 2025/02/18 09:33:07 wiz Exp $
+
+--- configure.ac.orig	2024-07-01 04:36:28.000000000 +0000
++++ configure.ac
+@@ -380,6 +380,9 @@ AC_ARG_WITH([rpath],
+ 	]
+ )
+ 
++# pkgsrc handles any rpath settings this package needs
++need_dash_r=
++
+ # Allow user to specify flags
+ AC_ARG_WITH([cflags],
+ 	[  --with-cflags           Specify additional flags to pass to compiler],
+@@ -5568,9 +5571,17 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+ ])
+ if test -z "$conf_wtmpx_location"; then
+ 	if test x"$system_wtmpx_path" = x"no" ; then
+-		AC_DEFINE([DISABLE_WTMPX])
++		for f in /var/log/wtmpx; do
++			if test -f $f ; then
++				conf_wtmpx_location=$f
++			fi
++		done
++		if test -z "$conf_wtmpx_location"; then
++			AC_DEFINE(DISABLE_WTMPX)
++		fi
+ 	fi
+-else
++fi
++if test -n "$conf_wtmpx_location"; then
+ 	AC_DEFINE_UNQUOTED([CONF_WTMPX_FILE], ["$conf_wtmpx_location"],
+ 		[Define if you want to specify the path to your wtmpx file])
+ fi
+@@ -5677,7 +5688,7 @@ echo "OpenSSH has been configured with t
+ echo "                     User binaries: $B"
+ echo "                   System binaries: $C"
+ echo "               Configuration files: $D"
+-echo "                   Askpass program: $E"
++echo "                   Askpass program: ${ASKPASS_PROGRAM}"
+ echo "                      Manual pages: $F"
+ echo "                          PID file: $G"
+ echo "  Privilege separation chroot path: $H"
