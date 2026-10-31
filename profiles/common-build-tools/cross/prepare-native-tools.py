@@ -204,6 +204,8 @@ def render(toolset, qt=(), fetch_mode='fetch', native_cxx=None):
                 for role, variable in ROLE_VARIABLES.items()]
     selected += [(role, variable, toolset.tool(role))
                  for role, variable in OPTIONAL_ROLES.items() if role in toolset.tools]
+    if 'bsdtar' in toolset.tools:
+        selected.append(('tar', 'TOOLS_PLATFORM.tar', toolset.tool('bsdtar')))
     if 'flex' in toolset.tools:
         selected.append(('lex', 'TOOLS_PLATFORM.lex', toolset.tool('flex')))
     selected += [(role + '-dir', variable, os.path.dirname(toolset.tool(role)))
