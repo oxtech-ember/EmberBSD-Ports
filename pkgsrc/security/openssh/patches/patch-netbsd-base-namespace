@@ -1,0 +1,20 @@
+$NetBSD$
+
+Allow the native base integration to retain its established namespace.
+
+--- includes.h.orig
++++ includes.h
+@@ -23,6 +23,13 @@
+ #endif
+ 
+ #include <sys/types.h>
++
++#ifdef EMBERBSD_BASE_OPENSSH
++/* Match the native base namespace after the standard declarations. */
++#include <stdio.h>
++#include <stdlib.h>
++#include <emberbsd-openssh-namespace.h>
++#endif
+ #include <sys/socket.h> /* For CMSG_* */
+ 
+ #ifdef HAVE_LIMITS_H
