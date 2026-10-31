@@ -1,0 +1,32 @@
+# Origin: EmberBSD (AI-assisted), not submitted upstream.
+# SCRIPTS= on the make command line reached every subdirectory, so the
+# cross package lost anytopnm, pnmflip and the other scripts in its PLIST.
+# Omit only the top-level manweb script and its manual page.
+
+--- a/graphics/netpbm/Makefile
++++ b/graphics/netpbm/Makefile
+@@ -33,7 +33,13 @@
+ PLIST_VARS+=	manweb
+ .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+ # The optional Perl browser helper cannot run in a minimal cross sysroot.
+-MAKE_FLAGS+=	SCRIPTS=
++# SCRIPTS on the make command line would also empty the script lists of
++# every subdirectory, so drop manweb from the top-level list only.
++SUBST_CLASSES+=		manweb
++SUBST_STAGE.manweb=	pre-configure
++SUBST_MESSAGE.manweb=	Omitting manweb from the cross build.
++SUBST_FILES.manweb=	GNUmakefile
++SUBST_SED.manweb=	-e 's/^SCRIPTS = manweb$$/SCRIPTS =/'
+ .else
+ PLIST.manweb=	yes
+ .endif
+@@ -144,6 +150,9 @@
+ 	${INSTALL_DATA} ${WRKDIR}/userguide/*.1 ${DESTDIR}${PREFIX}/${PKGMANDIR}/man1
+ 	${INSTALL_DATA} ${WRKDIR}/userguide/*.3 ${DESTDIR}${PREFIX}/${PKGMANDIR}/man3
+ 	${INSTALL_DATA} ${WRKDIR}/userguide/*.5 ${DESTDIR}${PREFIX}/${PKGMANDIR}/man5
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++	${RM} -f ${DESTDIR}${PREFIX}/${PKGMANDIR}/man1/manweb.1
++.endif
+ 
+ .include "../../devel/zlib/buildlink3.mk"
+ .include "../../graphics/png/buildlink3.mk"
