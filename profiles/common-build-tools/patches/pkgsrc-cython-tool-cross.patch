@@ -1,0 +1,24 @@
+# Origin: EmberBSD (AI-assisted), not submitted upstream.
+# tool.mk linked cython from PREFIX, which names the target prefix in a
+# cross build, so configure found no cython and built no Python bindings.
+# Take cython from TOOLBASE and depend on it as a tool.
+
+--- a/devel/py-cython/tool.mk
++++ b/devel/py-cython/tool.mk
+@@ -13,13 +13,15 @@
+ .include "../../lang/python/pyversion.mk"
+ .endif
+ 
++# cython runs on the build machine; in a cross build PREFIX names the target.
++TOOL_DEPENDS+=		${PYPKGPREFIX}-cython-[0-9]*:../../devel/py-cython
+ BUILDLINK_TARGETS+=	buildlink-bin-cython
+ 
+ .PHONY: buildlink-bin-cython
+ buildlink-bin-cython:
+ .for cythontool in cython cythonize
+ 	${RUN} \
+-	f="${PREFIX}/bin/${cythontool}-${PYVERSSUFFIX}"; \
++	f="${TOOLBASE}/bin/${cythontool}-${PYVERSSUFFIX}"; \
+ 	t="${BUILDLINK_DIR}/bin/${cythontool}"; \
+ 	if ${TEST} -f $$f -a ! -f $$t ; then \
+ 		${LN} -sf $$f $$t; \
