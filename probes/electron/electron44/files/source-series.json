@@ -782,6 +782,11 @@
       "path": "gn-pkgconfig-objc-include-dirs.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "protobuf-nodiscard-call-sites.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

@@ -1,0 +1,3977 @@
+Consume protobuf [[nodiscard]] parse and serialize results.
+Origin: EmberBSD contributors (AI-assisted). Shared protobuf 36 enables
+PROTOBUF_FUTURE_ADD_EARLY_NODISCARD, which Chromium bundled protobuf leaves
+empty; mark existing best-effort call sites with std::ignore.
+
+--- a/chrome/browser/actor/actor_proto_conversion.cc
++++ b/chrome/browser/actor/actor_proto_conversion.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/actor/actor_proto_conversion.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <cstdint>
+ #include <map>
+@@ -1700,7 +1701,7 @@
+ std::string ToBase64(const google::protobuf::MessageLite& proto) {
+   TRACE_EVENT0("actor", "ProtoToBase64");
+   std::string buffer;
+-  proto.SerializeToString(&buffer);
++  std::ignore = proto.SerializeToString(&buffer);
+   return base::Base64Encode(buffer);
+ }
+ 
+--- a/chrome/browser/ai/ai_language_model.cc
++++ b/chrome/browser/ai/ai_language_model.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ai/ai_language_model.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <cstdint>
+ #include <iterator>
+@@ -749,7 +750,7 @@
+   PromptApiMetadata metadata;
+   if (any.type_url() ==
+       base::StrCat({"type.googleapis.com/", metadata.GetTypeName()})) {
+-    metadata.ParseFromString(any.value());
++    std::ignore = metadata.ParseFromString(any.value());
+   }
+   return metadata;
+ }
+--- a/chrome/browser/apps/app_discovery_service/recommended_arc_apps/recommend_apps_fetcher_impl.cc
++++ b/chrome/browser/apps/app_discovery_service/recommended_arc_apps/recommend_apps_fetcher_impl.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/apps/app_discovery_service/recommended_arc_apps/recommend_apps_fetcher_impl.h"
+ 
++#include <tuple>
+ #include <optional>
+ #include <string>
+ #include <string_view>
+@@ -224,7 +225,7 @@
+   std::string encoded_device_configuration_proto;
+ 
+   std::string serialized_proto;
+-  device_config.SerializeToString(&serialized_proto);
++  std::ignore = device_config.SerializeToString(&serialized_proto);
+   std::string compressed_proto;
+   compression::GzipCompress(serialized_proto, &compressed_proto);
+   base::Base64UrlEncode(compressed_proto,
+--- a/chrome/browser/ash/apps/webapk/webapk_install_task.cc
++++ b/chrome/browser/ash/apps/webapk/webapk_install_task.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ash/apps/webapk/webapk_install_task.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <optional>
+ #include <string>
+@@ -233,7 +234,7 @@
+   }
+ 
+   std::string serialized_proto;
+-  webapk->SerializeToString(&serialized_proto);
++  std::ignore = webapk->SerializeToString(&serialized_proto);
+ 
+   return serialized_proto;
+ }
+--- a/chrome/browser/ash/attestation/machine_certificate_uploader_impl.cc
++++ b/chrome/browser/ash/attestation/machine_certificate_uploader_impl.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ash/attestation/machine_certificate_uploader_impl.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <optional>
+ #include <string>
+@@ -277,7 +278,7 @@
+   }
+   AttestationKeyPayload payload_pb;
+   if (!reply.payload().empty())
+-    payload_pb.ParseFromString(reply.payload());
++    std::ignore = payload_pb.ParseFromString(reply.payload());
+   payload_pb.set_is_certificate_uploaded(true);
+   std::string new_payload;
+   if (!payload_pb.SerializeToString(&new_payload)) {
+--- a/chrome/browser/ash/attestation/soft_bind_attestation_flow_impl.cc
++++ b/chrome/browser/ash/attestation/soft_bind_attestation_flow_impl.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ash/attestation/soft_bind_attestation_flow_impl.h"
+ 
++#include <tuple>
+ #include <optional>
+ 
+ #include "base/containers/span.h"
+@@ -241,7 +242,7 @@
+ 
+   std::string user_key(session->GetUserKey());
+   securemessage::GenericPublicKey generic_public_key;
+-  generic_public_key.ParseFromString(user_key);
++  std::ignore = generic_public_key.ParseFromString(user_key);
+   std::string raw_x(generic_public_key.ec_p256_public_key().x());
+   bssl::UniquePtr<BIGNUM> x(BN_new());
+   BN_bin2bn(reinterpret_cast<const uint8_t*>(raw_x.data()), raw_x.size(),
+--- a/chrome/browser/ash/chromebox_for_meetings/artemis/local_data_source.cc
++++ b/chrome/browser/ash/chromebox_for_meetings/artemis/local_data_source.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "chrome/browser/ash/chromebox_for_meetings/artemis/local_data_source.h"
+ 
+ #include "base/hash/hash.h"
+@@ -213,7 +215,7 @@
+                              default_severity);
+ 
+     std::string serialized_data;
+-    entry.SerializeToString(&serialized_data);
++    std::ignore = entry.SerializeToString(&serialized_data);
+     buffer[i] = std::move(serialized_data);
+   }
+ }
+--- a/chrome/browser/ash/login/oobe_quick_start/connectivity/handshake_helpers.cc
++++ b/chrome/browser/ash/login/oobe_quick_start/connectivity/handshake_helpers.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "chrome/browser/ash/login/oobe_quick_start/connectivity/handshake_helpers.h"
+ 
+ #include "base/containers/span.h"
+@@ -19,7 +21,7 @@
+     base::span<const uint8_t> secret,
+     base::span<const uint8_t> nonce) {
+   std::string payload_bytes;
+-  payload.SerializeToString(&payload_bytes);
++  std::ignore = payload.SerializeToString(&payload_bytes);
+   return crypto::aead::Seal(crypto::aead::AES_256_GCM, secret,
+                             base::as_byte_span(payload_bytes), nonce,
+                             /*associated_data=*/{});
+@@ -110,7 +112,7 @@
+       std::string(encrypted_payload.begin(), encrypted_payload.end()));
+ 
+   std::string auth_message_serialized;
+-  auth_message.SerializeToString(&auth_message_serialized);
++  std::ignore = auth_message.SerializeToString(&auth_message_serialized);
+ 
+   return std::vector<uint8_t>(auth_message_serialized.begin(),
+                               auth_message_serialized.end());
+--- a/chrome/browser/ash/platform_keys/key_permissions/key_permissions_util.cc
++++ b/chrome/browser/ash/platform_keys/key_permissions/key_permissions_util.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ash/platform_keys/key_permissions/key_permissions_util.h"
+ 
++#include <tuple>
+ #include <stdint.h>
+ 
+ #include <memory>
+@@ -85,7 +86,7 @@
+     const chaps::KeyPermissions& message) {
+   std::vector<uint8_t> result;
+   result.resize(message.ByteSizeLong());
+-  message.SerializeToArray(result.data(), result.size());
++  std::ignore = message.SerializeToArray(result.data(), result.size());
+   return result;
+ }
+ 
+--- a/chrome/browser/ash/wallpaper_handlers/wallpaper_handlers.cc
++++ b/chrome/browser/ash/wallpaper_handlers/wallpaper_handlers.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ash/wallpaper_handlers/wallpaper_handlers.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <optional>
+ #include <string>
+@@ -208,7 +209,7 @@
+     request.add_filtering_label(customization_id_filter.value());
+   }
+   std::string serialized_proto;
+-  request.SerializeToString(&serialized_proto);
++  std::ignore = request.SerializeToString(&serialized_proto);
+ 
+   net::NetworkTrafficAnnotationTag traffic_annotation =
+       net::DefineNetworkTrafficAnnotation("wallpaper_backdrop_collection_names",
+@@ -296,7 +297,7 @@
+     request.add_filtering_label(customization_id_filter.value());
+   }
+   std::string serialized_proto;
+-  request.SerializeToString(&serialized_proto);
++  std::ignore = request.SerializeToString(&serialized_proto);
+ 
+   net::NetworkTrafficAnnotationTag traffic_annotation =
+       net::DefineNetworkTrafficAnnotation("wallpaper_backdrop_images_info", R"(
+@@ -391,7 +392,7 @@
+     request.set_resume_token(resume_token_);
+   }
+   std::string serialized_proto;
+-  request.SerializeToString(&serialized_proto);
++  std::ignore = request.SerializeToString(&serialized_proto);
+ 
+   const net::NetworkTrafficAnnotationTag traffic_annotation =
+       net::DefineNetworkTrafficAnnotation(
+--- a/chrome/browser/contextual_tasks/contextual_tasks_context_management_interactive_uitest.cc
++++ b/chrome/browser/contextual_tasks/contextual_tasks_context_management_interactive_uitest.cc
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
+ #include <memory>
+ #include <optional>
+ #include <set>
+@@ -131,7 +132,7 @@
+                   cluster_info.set_server_session_id("fake_server_session_id");
+                   cluster_info.set_search_session_id("fake_search_session_id");
+                   std::string response_data;
+-                  cluster_info.SerializeToString(&response_data);
++                  std::ignore = cluster_info.SerializeToString(&response_data);
+                   content::URLLoaderInterceptor::WriteResponse(
+                       "HTTP/1.1 200 OK\r\nContent-Type: "
+                       "application/x-protobuf\r\n\r\n",
+@@ -153,7 +154,7 @@
+                 }
+                 lens::LensOverlayServerResponse upload_response;
+                 std::string response_data;
+-                upload_response.SerializeToString(&response_data);
++                std::ignore = upload_response.SerializeToString(&response_data);
+                 content::URLLoaderInterceptor::WriteResponse(
+                     "HTTP/1.1 200 OK\r\nContent-Type: "
+                     "application/x-protobuf\r\n\r\n",
+--- a/chrome/browser/contextual_tasks/contextual_tasks_extension_handler.cc
++++ b/chrome/browser/contextual_tasks/contextual_tasks_extension_handler.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/contextual_tasks/contextual_tasks_extension_handler.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <iterator>
+ 
+@@ -1057,7 +1058,7 @@
+   if (contextual_tasks_page_.is_bound()) {
+     const size_t size = message.ByteSizeLong();
+     std::vector<uint8_t> serialized_message(size);
+-    message.SerializeToArray(serialized_message.data(), size);
++    std::ignore = message.SerializeToArray(serialized_message.data(), size);
+     contextual_tasks_page_->PostAimMessage(std::move(serialized_message));
+   }
+ }
+--- a/chrome/browser/contextual_tasks/contextual_tasks_utils.cc
++++ b/chrome/browser/contextual_tasks/contextual_tasks_utils.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ 
+ #include "base/feature_list.h"
+@@ -627,7 +628,7 @@
+   lens::ClientToAimMessage message = GetHandshakeMessageProto();
+   const size_t size = message.ByteSizeLong();
+   std::vector<uint8_t> serialized_message(size);
+-  message.SerializeToArray(serialized_message.data(), size);
++  std::ignore = message.SerializeToArray(serialized_message.data(), size);
+   return serialized_message;
+ }
+ 
+--- a/chrome/browser/dictation/listener_stream_provider.cc
++++ b/chrome/browser/dictation/listener_stream_provider.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/dictation/listener_stream_provider.h"
+ 
++#include <tuple>
+ #include <ostream>
+ 
+ #include "base/functional/bind.h"
+@@ -31,7 +32,7 @@
+     std::vector<uint8_t> proto_data(
+         result.annotated_page_content->ByteSizeLong());
+     if (!proto_data.empty()) {
+-      result.annotated_page_content->SerializeToArray(proto_data.data(),
++      std::ignore = result.annotated_page_content->SerializeToArray(proto_data.data(),
+                                                       proto_data.size());
+     }
+     api_context.annotated_page_content = std::move(proto_data);
+--- a/chrome/browser/extensions/api/experimental_actor/experimental_actor_api.cc
++++ b/chrome/browser/extensions/api/experimental_actor/experimental_actor_api.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/extensions/api/experimental_actor/experimental_actor_api.h"
+ 
++#include <tuple>
+ #include <cstdint>
+ #include <optional>
+ #include <vector>
+@@ -416,7 +417,7 @@
+ 
+   std::vector<uint8_t> data_buffer(response->ByteSizeLong());
+   if (!data_buffer.empty()) {
+-    response->SerializeToArray(data_buffer.data(), response->ByteSizeLong());
++    std::ignore = response->SerializeToArray(data_buffer.data(), response->ByteSizeLong());
+   }
+ 
+   Respond(ArgumentList(api::experimental_actor::PerformActions::Results::Create(
+@@ -478,7 +479,7 @@
+   actor::FillInTabObservation(**observation_result, tab_observation);
+   std::vector<uint8_t> data_buffer(tab_observation.ByteSizeLong());
+   if (!data_buffer.empty()) {
+-    tab_observation.SerializeToArray(&data_buffer[0], data_buffer.size());
++    std::ignore = tab_observation.SerializeToArray(&data_buffer[0], data_buffer.size());
+   }
+   Respond(ArgumentList(
+       api::experimental_actor::RequestTabObservation::Results::Create(
+--- a/chrome/browser/extensions/api/experimental_ai_data/experimental_ai_data_api.cc
++++ b/chrome/browser/extensions/api/experimental_ai_data/experimental_ai_data_api.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/extensions/api/experimental_ai_data/experimental_ai_data_api.h"
+ 
++#include <tuple>
+ #include <cstdint>
+ #include <optional>
+ #include <vector>
+@@ -61,7 +62,7 @@
+   const size_t size = browser_collected_data->ByteSizeLong();
+   std::vector<uint8_t> data_buffer(size);
+ 
+-  browser_collected_data->SerializeToArray(&data_buffer[0], size);
++  std::ignore = browser_collected_data->SerializeToArray(&data_buffer[0], size);
+   Respond(ArgumentList(api::experimental_ai_data::GetAiData::Results::Create(
+       std::move(data_buffer))));
+ }
+--- a/chrome/browser/nearby_sharing/certificates/nearby_share_private_certificate.cc
++++ b/chrome/browser/nearby_sharing/certificates/nearby_share_private_certificate.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/nearby_sharing/certificates/nearby_share_private_certificate.h"
+ 
++#include <tuple>
+ #include <stdint.h>
+ 
+ #include <array>
+@@ -457,7 +458,7 @@
+       DeriveNearbyShareKey<kNearbyShareNumBytesAesGcmIv>(secret_key_);
+ 
+   std::vector<uint8_t> metadata_array(unencrypted_metadata_.ByteSizeLong());
+-  unencrypted_metadata_.SerializeToArray(metadata_array.data(),
++  std::ignore = unencrypted_metadata_.SerializeToArray(metadata_array.data(),
+                                          metadata_array.size());
+ 
+   return crypto::aead::Seal(crypto::aead::AES_256_GCM, key, metadata_array,
+--- a/chrome/browser/nearby_sharing/nearby_sharing_service_impl.cc
++++ b/chrome/browser/nearby_sharing/nearby_sharing_service_impl.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/nearby_sharing/nearby_sharing_service_impl.h"
+ 
++#include <tuple>
+ #include <array>
+ #include <utility>
+ 
+@@ -3026,7 +3027,7 @@
+   v1_frame->set_allocated_introduction(introduction.release());
+ 
+   std::vector<uint8_t> data(frame.ByteSizeLong());
+-  frame.SerializeToArray(data.data(), frame.ByteSizeLong());
++  std::ignore = frame.SerializeToArray(data.data(), frame.ByteSizeLong());
+   connection->Write(std::move(data));
+ 
+   // We've successfully written the introduction, so we now have to wait for the
+@@ -3203,7 +3204,7 @@
+   v1_frame->mutable_connection_response()->set_status(status);
+ 
+   std::vector<uint8_t> data(frame.ByteSizeLong());
+-  frame.SerializeToArray(data.data(), frame.ByteSizeLong());
++  std::ignore = frame.SerializeToArray(data.data(), frame.ByteSizeLong());
+ 
+   connection.Write(std::move(data));
+ }
+@@ -3217,7 +3218,7 @@
+   v1_frame->set_type(sharing::nearby::V1Frame::CANCEL);
+ 
+   std::vector<uint8_t> data(frame.ByteSizeLong());
+-  frame.SerializeToArray(data.data(), frame.ByteSizeLong());
++  std::ignore = frame.SerializeToArray(data.data(), frame.ByteSizeLong());
+ 
+   connection.Write(std::move(data));
+ }
+--- a/chrome/browser/nearby_sharing/paired_key_verification_runner.cc
++++ b/chrome/browser/nearby_sharing/paired_key_verification_runner.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/nearby_sharing/paired_key_verification_runner.h"
+ 
++#include <tuple>
+ #include <iomanip>
+ #include <iostream>
+ 
+@@ -210,7 +211,7 @@
+   }
+ 
+   std::vector<uint8_t> data(frame.ByteSizeLong());
+-  frame.SerializeToArray(data.data(), frame.ByteSizeLong());
++  std::ignore = frame.SerializeToArray(data.data(), frame.ByteSizeLong());
+ 
+   connection_->Write(std::move(data));
+ }
+@@ -244,7 +245,7 @@
+   }
+ 
+   std::vector<uint8_t> data(frame.ByteSizeLong());
+-  frame.SerializeToArray(data.data(), frame.ByteSizeLong());
++  std::ignore = frame.SerializeToArray(data.data(), frame.ByteSizeLong());
+ 
+   connection_->Write(std::move(data));
+ }
+@@ -277,7 +278,7 @@
+                                          certificate_id_hash.size());
+   }
+   std::vector<uint8_t> data(frame.ByteSizeLong());
+-  frame.SerializeToArray(data.data(), frame.ByteSizeLong());
++  std::ignore = frame.SerializeToArray(data.data(), frame.ByteSizeLong());
+ 
+   connection_->Write(std::move(data));
+ }
+--- a/chrome/browser/net/probe_message.cc
++++ b/chrome/browser/net/probe_message.cc
+@@ -5,6 +5,7 @@
+ 
+ #include "chrome/browser/net/probe_message.h"
+ 
++#include <tuple>
+ #include <stddef.h>
+ 
+ #include <string>
+@@ -113,7 +114,7 @@
+ std::string ProbeMessage::MakeEncodedPacket(
+     const ProbePacket& probe_packet) const {
+   std::string output;
+-  probe_packet.SerializeToString(&output);
++  std::ignore = probe_packet.SerializeToString(&output);
+   return Encode(output);
+ }
+ 
+--- a/chrome/browser/push_notification/server_client/push_notification_server_client_desktop_impl.cc
++++ b/chrome/browser/push_notification/server_client/push_notification_server_client_desktop_impl.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "chrome/browser/push_notification/server_client/push_notification_server_client_desktop_impl.h"
+ 
+ #include "base/base64url.h"
+@@ -216,7 +218,7 @@
+ 
+       // Copy a new `NotificationsMultiLoginUpdateRequest` proto so we can add
+       // the access token as the oauth token.
+-      request_proto.ParseFromString(serialized_request.value());
++      std::ignore = request_proto.ParseFromString(serialized_request.value());
+       request_proto.mutable_registrations(0)
+           ->mutable_user_id()
+           ->mutable_gaia_credentials()
+--- a/chrome/browser/safe_browsing/extension_telemetry/extension_telemetry_service.cc
++++ b/chrome/browser/safe_browsing/extension_telemetry/extension_telemetry_service.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/safe_browsing/extension_telemetry/extension_telemetry_service.h"
+ 
++#include <tuple>
+ #include <sstream>
+ #include <string>
+ #include <utility>
+@@ -676,7 +677,7 @@
+     // Saving data to disk.
+     active_report_ = CreateReport();
+     std::string write_string;
+-    active_report_->SerializeToString(&write_string);
++    std::ignore = active_report_->SerializeToString(&write_string);
+     persister_.AsyncCall(&ExtensionTelemetryPersister::WriteReport)
+         .WithArgs(std::move(write_string),
+                   ExtensionTelemetryPersister::WriteReportTrigger::kAtShutdown);
+@@ -860,7 +861,7 @@
+     } else {
+       // Save report to disk on a failed upload.
+       std::string write_string;
+-      active_report_->SerializeToString(&write_string);
++      std::ignore = active_report_->SerializeToString(&write_string);
+       persister_.AsyncCall(&ExtensionTelemetryPersister::WriteReport)
+           .WithArgs(std::move(write_string),
+                     ExtensionTelemetryPersister::WriteReportTrigger::
+--- a/chrome/browser/safe_browsing/incident_reporting/platform_state_store.cc
++++ b/chrome/browser/safe_browsing/incident_reporting/platform_state_store.cc
+@@ -16,6 +16,7 @@
+ 
+ #include "chrome/browser/safe_browsing/incident_reporting/platform_state_store.h"
+ 
++#include <tuple>
+ #include <optional>
+ 
+ #include "base/values.h"
+@@ -160,7 +161,7 @@
+ 
+   IncidentsSentToProtobuf(incidents_sent,
+                           store_data.mutable_type_to_incidents());
+-  store_data.SerializeToString(data);
++  std::ignore = store_data.SerializeToString(data);
+ }
+ 
+ PlatformStateStoreLoadResult DeserializeIncidentsSent(
+--- a/chrome/browser/tab/collection_storage_package.cc
++++ b/chrome/browser/tab/collection_storage_package.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/tab/collection_storage_package.h"
+ 
++#include <tuple>
+ #include <string>
+ #include <vector>
+ 
+@@ -24,7 +25,7 @@
+ 
+ std::vector<uint8_t> CollectionStoragePackage::SerializeChildren() const {
+   std::vector<uint8_t> children_vec(children_.ByteSizeLong());
+-  children_.SerializeToArray(children_vec.data(), children_vec.size());
++  std::ignore = children_.SerializeToArray(children_vec.data(), children_vec.size());
+   return children_vec;
+ }
+ 
+--- a/chrome/browser/tab/storage_loaded_data.cc
++++ b/chrome/browser/tab/storage_loaded_data.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/tab/storage_loaded_data.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <optional>
+ #include <utility>
+@@ -216,7 +217,7 @@
+     }
+ 
+     std::vector<uint8_t> serialized_children(children_proto.ByteSizeLong());
+-    children_proto.SerializeToArray(serialized_children.data(),
++    std::ignore = children_proto.SerializeToArray(serialized_children.data(),
+                                     serialized_children.size());
+     database->SaveNodeChildren(transaction, id, std::move(serialized_children));
+ 
+--- a/chrome/browser/tab/tab_state_storage_database.cc
++++ b/chrome/browser/tab/tab_state_storage_database.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/tab/tab_state_storage_database.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <sstream>
+ #include <string>
+@@ -669,7 +670,7 @@
+     base::span<const uint8_t> children_unparsed =
+         select_statement.ColumnBlob(4);
+     tabs_pb::Children children;
+-    children.ParseFromArray(children_unparsed.data(), children_unparsed.size());
++    std::ignore = children.ParseFromArray(children_unparsed.data(), children_unparsed.size());
+     std::string children_str;
+ 
+     if (children.storage_id_size() != 0) {
+--- a/chrome/browser/tab/tab_storage_package.cc
++++ b/chrome/browser/tab/tab_storage_package.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/tab/tab_storage_package.h"
+ 
++#include <tuple>
+ #include <utility>
+ #include <vector>
+ 
+@@ -18,7 +19,7 @@
+ 
+ std::vector<uint8_t> TabStoragePackage::SerializePayload() const {
+   std::vector<uint8_t> payload_vec(tab_state_.ByteSizeLong());
+-  tab_state_.SerializeToArray(payload_vec.data(), payload_vec.size());
++  std::ignore = tab_state_.SerializeToArray(payload_vec.data(), payload_vec.size());
+   return payload_vec;
+ }
+ 
+--- a/chrome/browser/tab/tab_storage_packager.cc
++++ b/chrome/browser/tab/tab_storage_packager.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/tab/tab_storage_packager.h"
+ 
++#include <tuple>
+ #include <cstdint>
+ #include <memory>
+ #include <string>
+@@ -69,7 +70,7 @@
+ 
+   std::vector<uint8_t> SerializePayload() const override {
+     std::vector<uint8_t> payload_vec(children_.ByteSizeLong());
+-    children_.SerializeToArray(payload_vec.data(), payload_vec.size());
++    std::ignore = children_.SerializeToArray(payload_vec.data(), payload_vec.size());
+     return payload_vec;
+   }
+ 
+@@ -88,7 +89,7 @@
+ 
+   std::vector<uint8_t> SerializePayload() const override {
+     std::vector<uint8_t> payload_vec(split_collection_state_.ByteSizeLong());
+-    split_collection_state_.SerializeToArray(payload_vec.data(),
++    std::ignore = split_collection_state_.SerializeToArray(payload_vec.data(),
+                                              payload_vec.size());
+     return payload_vec;
+   }
+@@ -107,7 +108,7 @@
+ 
+   std::vector<uint8_t> SerializePayload() const override {
+     std::vector<uint8_t> payload_vec(state_.ByteSizeLong());
+-    state_.SerializeToArray(payload_vec.data(), payload_vec.size());
++    std::ignore = state_.SerializeToArray(payload_vec.data(), payload_vec.size());
+     return payload_vec;
+   }
+ 
+--- a/chrome/browser/tracing/chrome_tracing_delegate.cc
++++ b/chrome/browser/tracing/chrome_tracing_delegate.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/tracing/chrome_tracing_delegate.h"
+ 
++#include <tuple>
+ #include <optional>
+ #include <string>
+ #include <utility>
+@@ -178,7 +179,7 @@
+   }
+   recorder.Run(system_profile_proto);
+   std::string serialized_system_profile;
+-  system_profile_proto.SerializeToString(&serialized_system_profile);
++  std::ignore = system_profile_proto.SerializeToString(&serialized_system_profile);
+   return serialized_system_profile;
+ }
+ 
+--- a/chrome/browser/ui/autofill/risk_util.cc
++++ b/chrome/browser/ui/autofill/risk_util.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ui/autofill/risk_util.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <string>
+ 
+@@ -45,7 +46,7 @@
+ void PassRiskData(base::OnceCallback<void(const std::string&)> callback,
+                   std::unique_ptr<risk::Fingerprint> fingerprint) {
+   std::string proto_data;
+-  fingerprint->SerializeToString(&proto_data);
++  std::ignore = fingerprint->SerializeToString(&proto_data);
+   std::move(callback).Run(base::Base64Encode(proto_data));
+ }
+ 
+--- a/chrome/browser/ui/contextual_search/tab_contextualization_controller.cc
++++ b/chrome/browser/ui/contextual_search/tab_contextualization_controller.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
+ 
++#include <tuple>
+ #include <utility>
+ 
+ #include "base/auto_reset.h"
+@@ -340,7 +341,7 @@
+   }
+ 
+   std::string serialized_apc;
+-  result->proto.SerializeToString(&serialized_apc);
++  std::ignore = result->proto.SerializeToString(&serialized_apc);
+   data->context_input->emplace_back(
+       std::vector<uint8_t>(serialized_apc.begin(), serialized_apc.end()),
+       lens::MimeType::kAnnotatedPageContent);
+--- a/chrome/browser/ui/lens/lens_composebox_controller.cc
++++ b/chrome/browser/ui/lens/lens_composebox_controller.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "chrome/browser/ui/lens/lens_composebox_controller.h"
+ 
+ #include "base/base64url.h"
+@@ -113,7 +115,7 @@
+   // Convert Proto to bytes to send over the API channel.
+   const size_t size = submit_query_message.ByteSizeLong();
+   std::vector<uint8_t> serialized_message(size);
+-  submit_query_message.SerializeToArray(&serialized_message[0], size);
++  std::ignore = submit_query_message.SerializeToArray(&serialized_message[0], size);
+ 
+   // Send the message to the remote UI.
+   lens_search_controller_->lens_overlay_side_panel_coordinator()
+--- a/chrome/browser/ui/lens/lens_overlay_query_controller.cc
++++ b/chrome/browser/ui/lens/lens_overlay_query_controller.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ui/lens/lens_overlay_query_controller.h"
+ 
++#include <tuple>
+ #include <optional>
+ 
+ #include "base/base64.h"
+@@ -1587,7 +1588,7 @@
+   auto* content_data = content->add_content_data();
+   content_data->set_content_type(
+       lens::ContentData::CONTENT_TYPE_EARLY_PARTIAL_PDF);
+-  partial_pdf_document.SerializeToString(content_data->mutable_data());
++  std::ignore = partial_pdf_document.SerializeToString(content_data->mutable_data());
+ 
+   // Add the page url to the payload if it is available.
+   if (!page_url_.is_empty()) {
+--- a/chrome/browser/ui/lens/lens_overlay_url_builder.cc
++++ b/chrome/browser/ui/lens/lens_overlay_url_builder.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ui/lens/lens_overlay_url_builder.h"
+ 
++#include <tuple>
+ #include <string>
+ 
+ #include "base/base64url.h"
+@@ -182,7 +183,7 @@
+       query);
+ 
+   std::string serialized_proto;
+-  stickiness_signals.SerializeToString(&serialized_proto);
++  std::ignore = stickiness_signals.SerializeToString(&serialized_proto);
+   params[kSrpStickinessSignalKey] = CompressAndEncode(serialized_proto);
+ }
+ 
+@@ -196,7 +197,7 @@
+       ->set_math_input_equation(formula);
+ 
+   std::string serialized_proto;
+-  stickiness_signals.SerializeToString(&serialized_proto);
++  std::ignore = stickiness_signals.SerializeToString(&serialized_proto);
+   params[kSrpStickinessSignalKey] = CompressAndEncode(serialized_proto);
+ }
+ 
+--- a/chrome/browser/ui/lens/lens_search_contextualization_controller.cc
++++ b/chrome/browser/ui/lens/lens_search_contextualization_controller.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "chrome/browser/ui/lens/lens_search_contextualization_controller.h"
+ 
+ #include "base/functional/bind.h"
+@@ -738,7 +740,7 @@
+     page_contents.clear();
+   } else if (result) {
+     std::string serialized_apc;
+-    result->proto.SerializeToString(&serialized_apc);
++    std::ignore = result->proto.SerializeToString(&serialized_apc);
+     page_contents.emplace_back(
+         std::vector<uint8_t>(serialized_apc.begin(), serialized_apc.end()),
+         lens::MimeType::kAnnotatedPageContent);
+--- a/chrome/browser/ui/webui/omnibox/aim_eligibility/aim_eligibility_page_handler.cc
++++ b/chrome/browser/ui/webui/omnibox/aim_eligibility/aim_eligibility_page_handler.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ui/webui/omnibox/aim_eligibility/aim_eligibility_page_handler.h"
+ 
++#include <tuple>
+ #include <utility>
+ 
+ #include "base/base64.h"
+@@ -108,7 +109,7 @@
+     state->is_fusebox_eligible_by_server = response.is_fusebox_eligible();
+     state->is_cobrowse_eligible_by_server = response.is_cobrowse_eligible();
+     std::string response_string;
+-    response.SerializeToString(&response_string);
++    std::ignore = response.SerializeToString(&response_string);
+     state->eligibility_response_base64_encoded =
+         base::Base64Encode(response_string);
+     state->eligibility_response_source =
+--- a/chrome/browser/ui/webui/searchbox/full_webui_omnibox_interactive_uitest.cc
++++ b/chrome/browser/ui/webui/searchbox/full_webui_omnibox_interactive_uitest.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "base/base64.h"
+ #include "base/scoped_observation.h"
+ #include "base/strings/stringprintf.h"
+@@ -2597,7 +2599,7 @@
+       input_config3->set_input_type(omnibox::INPUT_TYPE_BROWSER_TAB);
+ 
+       std::string serialized;
+-      response.SerializeToString(&serialized);
++      std::ignore = response.SerializeToString(&serialized);
+       service->SetEligibilityResponseForDebugging(
+           base::Base64Encode(serialized));
+       ASSERT_TRUE(
+--- a/chrome/browser/ui/webui/searchbox/webui_omnibox_interactive_uitest.cc
++++ b/chrome/browser/ui/webui/searchbox/webui_omnibox_interactive_uitest.cc
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
+ #include <optional>
+ 
+ #include "base/base64.h"
+@@ -444,7 +445,7 @@
+       input_config3->set_input_type(omnibox::INPUT_TYPE_BROWSER_TAB);
+ 
+       std::string serialized;
+-      response.SerializeToString(&serialized);
++      std::ignore = response.SerializeToString(&serialized);
+       service->SetEligibilityResponseForDebugging(
+           base::Base64Encode(serialized));
+       ASSERT_TRUE(
+--- a/chrome/browser/ui/webui/side_panel/customize_chrome/wallpaper_search/wallpaper_search_interactive_uitest.cc
++++ b/chrome/browser/ui/webui/side_panel/customize_chrome/wallpaper_search/wallpaper_search_interactive_uitest.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "base/containers/span.h"
+ #include "base/feature_list.h"
+ #include "base/functional/bind.h"
+@@ -317,7 +319,7 @@
+                     std::string(base::as_string_view(encoded.value())));
+ 
+                 std::string serialized_metadata;
+-                response.SerializeToString(&serialized_metadata);
++                std::ignore = response.SerializeToString(&serialized_metadata);
+                 optimization_guide::proto::Any result;
+                 result.set_value(serialized_metadata);
+                 result.set_type_url(base::StrCat(
+--- a/chrome/browser/ui/webui/support_tool/support_tool_ui_utils.cc
++++ b/chrome/browser/ui/webui/support_tool/support_tool_ui_utils.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ui/webui/support_tool/support_tool_ui_utils.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <map>
+ #include <optional>
+@@ -123,7 +124,7 @@
+       base::Base64UrlDecode(module_query,
+                             base::Base64UrlDecodePolicy::IGNORE_PADDING,
+                             &query_decoded)) {
+-    module->ParseFromString(query_decoded);
++    std::ignore = module->ParseFromString(query_decoded);
+   }
+ }
+ 
+@@ -158,7 +159,7 @@
+     module.add_included_data_collectors(data_collector);
+   }
+   std::string module_serialized;
+-  module.SerializeToString(&module_serialized);
++  std::ignore = module.SerializeToString(&module_serialized);
+   std::string data_collection_url_query;
+   base::Base64UrlEncode(module_serialized,
+                         base::Base64UrlEncodePolicy::OMIT_PADDING,
+--- a/chrome/browser/webauthn/enclave_manager.cc
++++ b/chrome/browser/webauthn/enclave_manager.cc
+@@ -4627,7 +4627,7 @@
+ 
+   std::string serialized;
+   serialized.reserve(1024);
+-  new_state->AppendToString(&serialized);
++  std::ignore = new_state->AppendToString(&serialized);
+ 
+   if (new_state != local_state_.get()) {
+     user_ = nullptr;
+--- a/chrome/credential_provider/gaiacp/device_policies_manager.cc
++++ b/chrome/credential_provider/gaiacp/device_policies_manager.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/credential_provider/gaiacp/device_policies_manager.h"
+ 
++#include <tuple>
+ #include <limits>
+ 
+ #include "base/base64.h"
+@@ -123,7 +124,7 @@
+   }
+ 
+   OmahaSettingsClientProto omaha_settings;
+-  omaha_settings.ParseFromString(policy_data.policy_value());
++  std::ignore = omaha_settings.ParseFromString(policy_data.policy_value());
+ 
+   bool found_gcpw_settings = false;
+   for (const ApplicationSettings& app_setting :
+--- a/chrome/credential_provider/gaiacp/gaia_credential_base.cc
++++ b/chrome/credential_provider/gaiacp/gaia_credential_base.cc
+@@ -7,6 +7,7 @@
+ 
+ #include "chrome/credential_provider/gaiacp/gaia_credential_base.h"
+ 
++#include <tuple>
+ #include <ntstatus.h>
+ 
+ #include <algorithm>
+@@ -1136,7 +1137,7 @@
+     auto response = ProcessHidOpenDeviceRequest(request, logon_ui_process_);
+ 
+     std::vector<uint8_t> response_buffer(response.ByteSizeLong());
+-    response.SerializeToArray(response_buffer.data(), response_buffer.size());
++    std::ignore = response.SerializeToArray(response_buffer.data(), response_buffer.size());
+     hr = WriteMessageToPipe(named_pipe_handle, response_buffer);
+     if (FAILED(hr)) {
+       LOGFN(ERROR) << "WriteMessageToPipe failed: " << putHR(hr);
+--- a/components/actor/core/aggregated_journal.cc
++++ b/components/actor/core/aggregated_journal.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/actor/core/aggregated_journal.h"
+ 
+ #include "base/base64.h"
+@@ -34,7 +36,7 @@
+ 
+ std::string ToBase64(const google::protobuf::MessageLite& proto) {
+   std::string buffer;
+-  proto.SerializeToString(&buffer);
++  std::ignore = proto.SerializeToString(&buffer);
+   return base::Base64Encode(buffer);
+ }
+ 
+--- a/components/autofill/core/browser/ml_model/field_classification_model_handler.cc
++++ b/components/autofill/core/browser/ml_model/field_classification_model_handler.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/autofill/core/browser/ml_model/field_classification_model_handler.h"
+ 
++#include <tuple>
+ #include <stddef.h>
+ 
+ #include <algorithm>
+@@ -78,7 +79,7 @@
+       model_metadata;
+   model_metadata.set_input_version(
+       FieldClassificationModelHandler::kAutofillModelInputVersion);
+-  model_metadata.SerializeToString(any_metadata.mutable_value());
++  std::ignore = model_metadata.SerializeToString(any_metadata.mutable_value());
+   return any_metadata;
+ }
+ 
+--- a/components/autofill/core/browser/network/autofill_ai/private_pass_conversion_util.cc
++++ b/components/autofill/core/browser/network/autofill_ai/private_pass_conversion_util.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/autofill/core/browser/network/autofill_ai/private_pass_conversion_util.h"
+ 
++#include <tuple>
+ #include <optional>
+ #include <string>
+ #include <utility>
+@@ -45,7 +46,7 @@
+   Any serialised_metadata;
+   serialised_metadata.set_type_url(
+       base::StrCat({"type.googleapis.com/", metadata.GetTypeName()}));
+-  metadata.SerializeToString(serialised_metadata.mutable_value());
++  std::ignore = metadata.SerializeToString(serialised_metadata.mutable_value());
+   return serialised_metadata;
+ }
+ 
+--- a/components/autofill/core/browser/webdata/addresses/contact_info_sync_bridge.cc
++++ b/components/autofill/core/browser/webdata/addresses/contact_info_sync_bridge.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/autofill/core/browser/webdata/addresses/contact_info_sync_bridge.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <memory>
+ #include <optional>
+@@ -384,10 +385,10 @@
+     // that were cached as unknown and are known in the current browser version
+     // should be parsed correctly.
+     std::string serialized_specifics;
+-    metadata_entry.second->possibly_trimmed_base_specifics().SerializeToString(
++    std::ignore = metadata_entry.second->possibly_trimmed_base_specifics().SerializeToString(
+         &serialized_specifics);
+     sync_pb::EntitySpecifics parsed_specifics;
+-    parsed_specifics.ParseFromString(serialized_specifics);
++    std::ignore = parsed_specifics.ParseFromString(serialized_specifics);
+ 
+     // If `parsed_specifics` contain any supported fields, they would be cleared
+     // by the trimming function.
+--- a/components/autofill/core/browser/webdata/autofill_ai/entity_sync_util.cc
++++ b/components/autofill/core/browser/webdata/autofill_ai/entity_sync_util.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/autofill/core/browser/webdata/autofill_ai/entity_sync_util.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <optional>
+ #include <string>
+@@ -103,7 +104,7 @@
+ sync_pb::Any AnyWrapProto(const google::protobuf::MessageLite& m) {
+   sync_pb::Any any;
+   any.set_type_url(base::StrCat({"type.googleapis.com/", m.GetTypeName()}));
+-  m.SerializeToString(any.mutable_value());
++  std::ignore = m.SerializeToString(any.mutable_value());
+   return any;
+ }
+ 
+--- a/components/autofill/core/browser/webdata/valuables/valuable_metadata_sync_bridge.cc
++++ b/components/autofill/core/browser/webdata/valuables/valuable_metadata_sync_bridge.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/autofill/core/browser/webdata/valuables/valuable_metadata_sync_bridge.h"
+ 
++#include <tuple>
+ #include <map>
+ #include <memory>
+ #include <optional>
+@@ -636,10 +637,10 @@
+     // that were cached as unknown and are known in the current browser version
+     // should be parsed correctly.
+     std::string serialized_specifics;
+-    metadata_entry->possibly_trimmed_base_specifics().SerializeToString(
++    std::ignore = metadata_entry->possibly_trimmed_base_specifics().SerializeToString(
+         &serialized_specifics);
+     sync_pb::EntitySpecifics parsed_specifics;
+-    parsed_specifics.ParseFromString(serialized_specifics);
++    std::ignore = parsed_specifics.ParseFromString(serialized_specifics);
+ 
+     // If `parsed_specifics` contain any supported fields, they would be cleared
+     // by the trimming function.
+--- a/components/autofill/core/browser/webdata/valuables/valuable_sync_bridge.cc
++++ b/components/autofill/core/browser/webdata/valuables/valuable_sync_bridge.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/autofill/core/browser/webdata/valuables/valuable_sync_bridge.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <memory>
+ #include <optional>
+@@ -636,10 +637,10 @@
+     // that were cached as unknown and are known in the current browser version
+     // should be parsed correctly.
+     std::string serialized_specifics;
+-    metadata_entry.second->possibly_trimmed_base_specifics().SerializeToString(
++    std::ignore = metadata_entry.second->possibly_trimmed_base_specifics().SerializeToString(
+         &serialized_specifics);
+     sync_pb::EntitySpecifics parsed_specifics;
+-    parsed_specifics.ParseFromString(serialized_specifics);
++    std::ignore = parsed_specifics.ParseFromString(serialized_specifics);
+ 
+     // If `parsed_specifics` contain any supported fields, they would be cleared
+     // by the trimming function.
+--- a/components/drive/resource_metadata_storage.cc
++++ b/components/drive/resource_metadata_storage.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/drive/resource_metadata_storage.h"
+ 
++#include <tuple>
+ #include <stddef.h>
+ 
+ #include <map>
+@@ -443,7 +444,7 @@
+   header.set_start_page_token(drive::util::ConvertChangestampToStartPageToken(
+       header.largest_changestamp()));
+   std::string serialized_header;
+-  header.SerializeToString(&serialized_header);
++  std::ignore = header.SerializeToString(&serialized_header);
+   batch.Put(GetHeaderDBKey(), serialized_header);
+ 
+   for (it->Next(); it->Valid(); it->Next()) {
+--- a/components/enterprise/connectors/core/cloud_content_scanning/binary_upload_request.cc
++++ b/components/enterprise/connectors/core/cloud_content_scanning/binary_upload_request.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/enterprise/connectors/core/cloud_content_scanning/binary_upload_request.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ 
+ #include "base/command_line.h"
+@@ -373,7 +374,7 @@
+ }
+ 
+ void BinaryUploadRequest::SerializeToString(std::string* destination) const {
+-  content_analysis_request_.SerializeToString(destination);
++  std::ignore = content_analysis_request_.SerializeToString(destination);
+ }
+ 
+ GURL BinaryUploadRequest::GetUrlWithParams() const {
+--- a/components/enterprise/connectors/core/cloud_content_scanning/cloud_binary_upload_service_base.cc
++++ b/components/enterprise/connectors/core/cloud_content_scanning/cloud_binary_upload_service_base.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/enterprise/connectors/core/cloud_content_scanning/cloud_binary_upload_service_base.h"
+ 
++#include <tuple>
+ #include <string_view>
+ 
+ #include "base/base64.h"
+@@ -1012,7 +1013,7 @@
+   }
+ 
+   std::string metadata;
+-  request->SerializeToString(&metadata);
++  std::ignore = request->SerializeToString(&metadata);
+   metadata = base::Base64Encode(metadata);
+ 
+   GURL url = request->GetUrlWithParams();
+--- a/components/feed/core/v2/feed_network.h
++++ b/components/feed/core/v2/feed_network.h
+@@ -5,6 +5,7 @@
+ #ifndef COMPONENTS_FEED_CORE_V2_FEED_NETWORK_H_
+ #define COMPONENTS_FEED_CORE_V2_FEED_NETWORK_H_
+ 
++#include <tuple>
+ #include <memory>
+ #include <string_view>
+ 
+@@ -134,7 +135,7 @@
+       RequestMetadata request_metadata,
+       base::OnceCallback<void(ApiResult<typename API::Response>)> callback) {
+     std::string binary_proto;
+-    request.SerializeToString(&binary_proto);
++    std::ignore = request.SerializeToString(&binary_proto);
+     std::optional<RequestMetadata> optional_request_metadata;
+     if (API::SendRequestMetadata()) {
+       optional_request_metadata =
+--- a/components/feed/core/v2/feed_network_impl.cc
++++ b/components/feed/core/v2/feed_network_impl.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/feed/core/v2/feed_network_impl.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <optional>
+ #include <string>
+@@ -551,7 +552,7 @@
+     const AccountInfo& account_info,
+     base::OnceCallback<void(QueryRequestResult)> callback) {
+   std::string binary_proto;
+-  request.SerializeToString(&binary_proto);
++  std::ignore = request.SerializeToString(&binary_proto);
+   std::string base64proto;
+   base::Base64UrlEncode(
+       binary_proto, base::Base64UrlEncodePolicy::INCLUDE_PADDING, &base64proto);
+--- a/components/feed/core/v2/feed_stream.cc
++++ b/components/feed/core/v2/feed_stream.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/feed/core/v2/feed_stream.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <set>
+ #include <string>
+@@ -729,7 +730,7 @@
+     SurfaceId surface_id,
+     std::string_view data) {
+   feedpacking::DismissData msg;
+-  msg.ParseFromArray(data.data(), data.size());
++  std::ignore = msg.ParseFromArray(data.data(), data.size());
+   return CreateEphemeralChange(surface_id,
+                                TranslateDismissData(base::Time::Now(), msg));
+ }
+@@ -758,7 +759,7 @@
+     std::string_view data,
+     const LoggingParameters& logging_parameters) {
+   feedwire::ThereAndBackAgainData msg;
+-  msg.ParseFromArray(data.data(), data.size());
++  std::ignore = msg.ParseFromArray(data.data(), data.size());
+   if (msg.has_action_payload()) {
+     feedwire::FeedAction action_msg;
+     *action_msg.mutable_action_payload() = std::move(msg.action_payload());
+@@ -776,7 +777,7 @@
+     return;
+ 
+   feedwire::FeedAction msg;
+-  msg.ParseFromArray(data.data(), data.size());
++  std::ignore = msg.ParseFromArray(data.data(), data.size());
+   UploadAction(std::move(msg), logging_parameters,
+                /*upload_now=*/false,
+                base::BindOnce(&FeedStream::UploadActionsComplete,
+--- a/components/feed/core/v2/stream/info_card_tracker.cc
++++ b/components/feed/core/v2/stream/info_card_tracker.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/feed/core/v2/stream/info_card_tracker.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ 
+ #include "base/base64.h"
+@@ -157,7 +158,7 @@
+   // going to be compatible with UTF-8 encoding. We need to convert them to
+   // base64 before writing to the prefs store.
+   std::string serialized_state;
+-  state.SerializeToString(&serialized_state);
++  std::ignore = state.SerializeToString(&serialized_state);
+ 
+   const base::DictValue& states =
+       profile_prefs_->GetDict(prefs::kInfoCardStates);
+--- a/components/feed/core/v2/surface_updater.cc
++++ b/components/feed/core/v2/surface_updater.cc
+@@ -421,7 +421,7 @@
+   if (available_offline) {
+     std::string badge_serialized;
+     testbadge.set_available_offline(available_offline);
+-    testbadge.SerializeToString(&badge_serialized);
++    std::ignore = testbadge.SerializeToString(&badge_serialized);
+     surface_data_slice_.UpdateDatastoreEntry(badge_id, badge_serialized);
+   } else {
+     surface_data_slice_.RemoveDatastoreEntry(badge_id);
+--- a/components/feed/core/v2/user_actions_collector.cc
++++ b/components/feed/core/v2/user_actions_collector.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ #include "components/feed/core/v2/user_actions_collector.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <cmath>
+ #include <string>
+@@ -136,7 +137,7 @@
+   }
+ 
+   std::string serialized_entry;
+-  visit_metadata_proto.SerializeToString(&serialized_entry);
++  std::ignore = visit_metadata_proto.SerializeToString(&serialized_entry);
+   DCHECK(!serialized_entry.empty());
+ 
+   return base::Base64Encode(serialized_entry);
+--- a/components/feedback/feedback_data.cc
++++ b/components/feedback/feedback_data.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/feedback/feedback_data.h"
+ 
++#include <tuple>
+ #include <utility>
+ 
+ #include "base/functional/bind.h"
+@@ -158,7 +159,7 @@
+     userfeedback::ExtensionSubmit feedback_data;
+     PrepareReport(&feedback_data);
+     auto post_body = std::make_unique<std::string>();
+-    feedback_data.SerializeToString(post_body.get());
++    std::ignore = feedback_data.SerializeToString(post_body.get());
+     uploader_->QueueReport(std::move(post_body),
+                            /*has_email=*/!user_email().empty(),
+                            /*product_id=*/feedback_data.product_id());
+--- a/components/feedback/feedback_report.cc
++++ b/components/feedback/feedback_report.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/feedback/feedback_report.h"
+ 
+ #include "base/base_paths.h"
+@@ -128,7 +130,7 @@
+     auto data = std::make_unique<std::string>();
+     if (ReadFileToString(name, data.get())) {
+       userfeedback::ExtensionSubmit parsed;
+-      parsed.ParseFromString(*data);
++      std::ignore = parsed.ParseFromString(*data);
+ 
+       bool has_email = parsed.common_data().has_user_email() &&
+                        !parsed.common_data().user_email().empty();
+--- a/components/history/core/browser/web_history_service.cc
++++ b/components/history/core/browser/web_history_service.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/history/core/browser/web_history_service.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <optional>
+ #include <string>
+@@ -790,7 +791,7 @@
+   // Set the request protobuf.
+   sync_pb::HistoryStatusRequest request_proto;
+   std::string post_data;
+-  request_proto.SerializeToString(&post_data);
++  std::ignore = request_proto.SerializeToString(&post_data);
+   request_raw->SetPostDataAndType(post_data, kSyncProtoMimeType);
+ 
+   request_raw->Start();
+--- a/components/lens/lens_metadata.cc
++++ b/components/lens/lens_metadata.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/lens/lens_metadata.h"
+ 
++#include <tuple>
+ #include <map>
+ 
+ #include "base/base64.h"
+@@ -111,7 +112,7 @@
+   }
+ 
+   std::string serialized_proto;
+-  metadata.SerializeToString(&serialized_proto);
++  std::ignore = metadata.SerializeToString(&serialized_proto);
+ 
+   return base::Base64Encode(serialized_proto);
+ }
+--- a/components/manta/anchovy/anchovy_proto_helper.cc
++++ b/components/manta/anchovy/anchovy_proto_helper.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/manta/anchovy/anchovy_proto_helper.h"
+ 
+ #include "base/functional/callback.h"
+@@ -84,7 +86,7 @@
+   for (const auto& data : manta_response->output_data()) {
+     if (data.has_custom()) {
+       proto::AnchovyDescription description;
+-      description.ParseFromString(data.custom().value());
++      std::ignore = description.ParseFromString(data.custom().value());
+       results.Append(
+           base::DictValue()
+               .Set("text", description.text())
+--- a/components/manta/base_provider.cc
++++ b/components/manta/base_provider.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/manta/base_provider.h"
+ 
+ #include "base/containers/fixed_flat_map.h"
+@@ -101,7 +103,7 @@
+   }
+ 
+   std::string serialized_request;
+-  request.SerializeToString(&serialized_request);
++  std::ignore = request.SerializeToString(&serialized_request);
+ 
+   base::Time start_time = base::Time::Now();
+ 
+--- a/components/manta/manta_service_callbacks.cc
++++ b/components/manta/manta_service_callbacks.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/manta/manta_service_callbacks.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <string>
+ #include <string_view>
+@@ -193,7 +194,7 @@
+     for (const proto::Proto3Any& detail : rpc_status.details()) {
+       if (detail.type_url() == kTypeUrlRpcErrorInfo) {
+         proto::RpcErrorInfo error_info;
+-        error_info.ParseFromString(detail.value());
++        std::ignore = error_info.ParseFromString(detail.value());
+ 
+         // Tries to map ErrorInfo.reason to a more specific manta status code.
+         maybe_updated_status_code =
+@@ -204,7 +205,7 @@
+         }
+       } else if (detail.type_url() == kTypeUrlRpcLocalizedMessage) {
+         proto::RpcLocalizedMessage localize_message;
+-        localize_message.ParseFromString(detail.value());
++        std::ignore = localize_message.ParseFromString(detail.value());
+         message = localize_message.message();
+         locale = localize_message.locale();
+       }
+--- a/components/manta/scanner_provider.cc
++++ b/components/manta/scanner_provider.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/manta/scanner_provider.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <string>
+ #include <utility>
+@@ -84,7 +85,7 @@
+   const proto::Proto3Any& custom_data = output_data.custom();
+ 
+   auto scanner_output = std::make_unique<proto::ScannerOutput>();
+-  scanner_output->ParseFromString(custom_data.value());
++  std::ignore = scanner_output->ParseFromString(custom_data.value());
+ 
+   return scanner_output;
+ }
+--- a/components/media_router/common/providers/cast/channel/cast_framer.cc
++++ b/components/media_router/common/providers/cast/channel/cast_framer.cc
+@@ -5,6 +5,7 @@
+ 
+ #include "components/media_router/common/providers/cast/channel/cast_framer.h"
+ 
++#include <tuple>
+ #include <stdlib.h>
+ 
+ #include <limits>
+@@ -65,7 +66,7 @@
+ bool MessageFramer::Serialize(const CastMessage& message_proto,
+                               std::string* message_data) {
+   DCHECK(message_data);
+-  message_proto.SerializeToString(message_data);
++  std::ignore = message_proto.SerializeToString(message_data);
+   size_t message_size = message_data->size();
+   if (message_size > MessageHeader::max_body_size()) {
+     message_data->clear();
+--- a/components/media_router/common/providers/cast/channel/cast_message_util.cc
++++ b/components/media_router/common/providers/cast/channel/cast_message_util.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/media_router/common/providers/cast/channel/cast_message_util.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <string_view>
+ 
+@@ -329,7 +330,7 @@
+   challenge->set_hash_algorithm(openscreen::cast::proto::SHA256);
+ 
+   std::string auth_message_string;
+-  auth_message.SerializeToString(&auth_message_string);
++  std::ignore = auth_message.SerializeToString(&auth_message_string);
+ 
+   FillCommonCastMessageFields(message_proto, kPlatformSenderId,
+                               kPlatformReceiverId, kAuthNamespace);
+--- a/components/metrics/dwa/dwa_service.cc
++++ b/components/metrics/dwa/dwa_service.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/metrics/dwa/dwa_service.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <memory>
+ #include <string>
+@@ -423,14 +424,14 @@
+     std::string_view public_key,
+     const fcp::confidential_compute::OkpCwt& decoded_public_key) {
+   std::string serialized_log;
+-  report.SerializeToString(&serialized_log);
++  std::ignore = report.SerializeToString(&serialized_log);
+ 
+   ::private_metrics::PrivateMetricReportHeader report_header;
+   report_header.set_key_id(decoded_public_key.public_key.value().key_id);
+   report_header.set_epoch_id(report.epoch_id());
+ 
+   std::string serialized_report_header;
+-  report_header.SerializeToString(&serialized_report_header);
++  std::ignore = report_header.SerializeToString(&serialized_report_header);
+ 
+   // The messages are encrypted with AEAD using a per-message generated
+   // symmetric key and then the symmetric key is encrypted using HPKE with the
+@@ -509,7 +510,7 @@
+   report.set_timestamp(MetricsLog::GetCurrentTime());
+ 
+   std::string serialized_log;
+-  report.SerializeToString(&serialized_log);
++  std::ignore = report.SerializeToString(&serialized_log);
+ 
+   LogMetadata metadata;
+   reporting_service_.unsent_log_store()->StoreLog(serialized_log, metadata,
+--- a/components/metrics/metrics_log.cc
++++ b/components/metrics/metrics_log.cc
+@@ -5,6 +5,7 @@
+ 
+ #include "components/metrics/metrics_log.h"
+ 
++#include <tuple>
+ #include <stddef.h>
+ 
+ #include <algorithm>
+@@ -607,7 +608,7 @@
+   }
+   CloseLog();
+ 
+-  uma_proto_.SerializeToString(encoded_log);
++  std::ignore = uma_proto_.SerializeToString(encoded_log);
+ }
+ 
+ void MetricsLog::CloseLog() {
+--- a/components/omnibox/browser/aim_eligibility_service.cc
++++ b/components/omnibox/browser/aim_eligibility_service.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/omnibox/browser/aim_eligibility_service.h"
+ 
++#include <tuple>
+ #include <functional>
+ #include <memory>
+ #include <optional>
+@@ -968,7 +969,7 @@
+ 
+   // Update the prefs.
+   std::string response_string;
+-  response_proto.SerializeToString(&response_string);
++  std::ignore = response_proto.SerializeToString(&response_string);
+   std::string encoded_response = base::Base64Encode(response_string);
+   pref_service_->SetString(kResponsePrefName, encoded_response);
+ 
+@@ -1252,7 +1253,7 @@
+     omnibox::AimEligibilityClientRequest client_request;
+     client_request.set_client_locale(locale);
+     std::string request_body;
+-    client_request.SerializeToString(&request_body);
++    std::ignore = client_request.SerializeToString(&request_body);
+     active_loader_->AttachStringForUpload(request_body,
+                                           "application/x-protobuf");
+   }
+--- a/components/omnibox/browser/autocomplete_scoring_model_service.cc
++++ b/components/omnibox/browser/autocomplete_scoring_model_service.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/omnibox/browser/autocomplete_scoring_model_service.h"
+ 
++#include <tuple>
+ #include <optional>
+ #include <utility>
+ 
+@@ -46,7 +47,7 @@
+     any_metadata.set_type_url(kAutocompleteScoringModelMetadataTypeUrl);
+     optimization_guide::proto::AutocompleteScoringModelMetadata model_metadata;
+     model_metadata.set_version(kAutocompleteScoringModelVersion);
+-    model_metadata.SerializeToString(any_metadata.mutable_value());
++    std::ignore = model_metadata.SerializeToString(any_metadata.mutable_value());
+ 
+     url_scoring_model_handler_ = std::make_unique<
+         AutocompleteScoringModelHandler>(
+--- a/components/optimization_guide/core/delivery/model_util.cc
++++ b/components/optimization_guide/core/delivery/model_util.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/optimization_guide/core/delivery/model_util.h"
+ 
+ #include "base/files/file_util.h"
+@@ -270,7 +272,7 @@
+ 
+ std::string GetModelCacheKeyHash(proto::ModelCacheKey model_cache_key) {
+   std::string bytes;
+-  model_cache_key.SerializeToString(&bytes);
++  std::ignore = model_cache_key.SerializeToString(&bytes);
+   uint64_t hash = base::legacy::CityHash64(base::as_byte_span(bytes));
+   // Convert the hash to hex encoding and not as base64 and other encodings,
+   // since it will be used as filepath names.
+--- a/components/optimization_guide/core/delivery/prediction_model_fetcher_impl.cc
++++ b/components/optimization_guide/core/delivery/prediction_model_fetcher_impl.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/optimization_guide/core/delivery/prediction_model_fetcher_impl.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <optional>
+ #include <string>
+@@ -87,7 +88,7 @@
+   }
+ 
+   std::string serialized_request;
+-  pending_models_request_->SerializeToString(&serialized_request);
++  std::ignore = pending_models_request_->SerializeToString(&serialized_request);
+ 
+   net::NetworkTrafficAnnotationTag traffic_annotation =
+       net::DefineNetworkTrafficAnnotation("optimization_guide_model",
+--- a/components/optimization_guide/core/hints/hints_fetcher.cc
++++ b/components/optimization_guide/core/hints/hints_fetcher.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/optimization_guide/core/hints/hints_fetcher.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <optional>
+ #include <string>
+@@ -281,7 +282,7 @@
+   }
+ 
+   std::string serialized_request;
+-  get_hints_request.SerializeToString(&serialized_request);
++  std::ignore = get_hints_request.SerializeToString(&serialized_request);
+ 
+   net::NetworkTrafficAnnotationTag traffic_annotation =
+       net::DefineNetworkTrafficAnnotation("hintsfetcher_gethintsrequest", R"(
+--- a/components/optimization_guide/core/model_execution/model_execution_fetcher_impl.cc
++++ b/components/optimization_guide/core/model_execution/model_execution_fetcher_impl.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/optimization_guide/core/model_execution/model_execution_fetcher_impl.h"
+ 
++#include <tuple>
+ #include <optional>
+ #include <string>
+ 
+@@ -90,7 +91,7 @@
+   proto::ExecuteRequest execute_request =
+       CreateExecuteRequest(feature, request_metadata);
+   std::string serialized_request;
+-  execute_request.SerializeToString(&serialized_request);
++  std::ignore = execute_request.SerializeToString(&serialized_request);
+ 
+   HandleTokenRequestFlow(
+       IsAccessTokenRequiredForFeature(feature), identity_manager,
+--- a/components/optimization_guide/core/model_execution/on_device_model_adaptation_loader.cc
++++ b/components/optimization_guide/core/model_execution/on_device_model_adaptation_loader.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/optimization_guide/core/model_execution/on_device_model_adaptation_loader.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <memory>
+ #include <utility>
+@@ -263,7 +264,7 @@
+     model_metadata.set_base_model_name(registered_spec_->model_name);
+     model_metadata.add_supported_performance_hints(
+         registered_spec_->selected_performance_hint);
+-    model_metadata.SerializeToString(any_metadata.mutable_value());
++    std::ignore = model_metadata.SerializeToString(any_metadata.mutable_value());
+   }
+ 
+   model_provider_observation_.Observe(target_, any_metadata);
+--- a/components/optimization_guide/core/model_quality/model_quality_logs_uploader_service.cc
++++ b/components/optimization_guide/core/model_quality/model_quality_logs_uploader_service.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/optimization_guide/core/model_quality/model_quality_logs_uploader_service.h"
+ 
++#include <tuple>
+ #include <string>
+ 
+ #include "base/command_line.h"
+@@ -206,7 +207,7 @@
+     std::unique_ptr<proto::LogAiDataRequest> log,
+     proto::LogAiDataRequest::FeatureCase feature) {
+   std::string serialized_logs;
+-  log->SerializeToString(&serialized_logs);
++  std::ignore = log->SerializeToString(&serialized_logs);
+ 
+   auto resource_request = std::make_unique<network::ResourceRequest>();
+   resource_request->url = model_quality_logs_uploader_service_url_;
+--- a/components/optimization_guide/core/optimization_guide_proto_util.cc
++++ b/components/optimization_guide/core/optimization_guide_proto_util.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/optimization_guide/core/optimization_guide_proto_util.h"
+ 
+ #include "base/strings/strcat.h"
+@@ -1064,7 +1066,7 @@
+ proto::Any AnyWrapProto(const google::protobuf::MessageLite& m) {
+   optimization_guide::proto::Any any;
+   any.set_type_url(base::StrCat({"type.googleapis.com/", m.GetTypeName()}));
+-  m.SerializeToString(any.mutable_value());
++  std::ignore = m.SerializeToString(any.mutable_value());
+   return any;
+ }
+ 
+--- a/components/password_manager/core/browser/sharing/password_sharing_recipients_downloader.cc
++++ b/components/password_manager/core/browser/sharing/password_sharing_recipients_downloader.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/password_manager/core/browser/sharing/password_sharing_recipients_downloader.h"
+ 
++#include <tuple>
+ #include <optional>
+ #include <string>
+ #include <utility>
+@@ -163,7 +164,7 @@
+   // return recipients.
+   sync_pb::PasswordSharingRecipientsRequest request;
+   std::string msg;
+-  request.SerializeToString(&msg);
++  std::ignore = request.SerializeToString(&msg);
+ 
+   net::NetworkTrafficAnnotationTag traffic_annotation =
+       net::DefineNetworkTrafficAnnotation("password_sharing_recipients", R"(
+--- a/components/password_manager/core/browser/sync/password_sync_bridge.cc
++++ b/components/password_manager/core/browser/sync/password_sync_bridge.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/password_manager/core/browser/sync/password_sync_bridge.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <optional>
+ #include <utility>
+@@ -980,10 +981,10 @@
+     // that were cached as unknown and are known in the current browser version
+     // should be parsed correctly.
+     std::string serialized_specifics;
+-    metadata_entry.second->possibly_trimmed_base_specifics().SerializeToString(
++    std::ignore = metadata_entry.second->possibly_trimmed_base_specifics().SerializeToString(
+         &serialized_specifics);
+     sync_pb::EntitySpecifics parsed_specifics;
+-    parsed_specifics.ParseFromString(serialized_specifics);
++    std::ignore = parsed_specifics.ParseFromString(serialized_specifics);
+ 
+     // Skip entities without a `password` field to avoid failing the
+     // precondition in the `TrimAllSupportedFieldsFromRemoteSpecifics` function
+--- a/components/permissions/prediction_service/prediction_model_handler.cc
++++ b/components/permissions/prediction_service/prediction_model_handler.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/permissions/prediction_service/prediction_model_handler.h"
+ 
++#include <tuple>
+ #include <memory>
+ 
+ #include "base/feature_list.h"
+@@ -97,7 +98,7 @@
+     WebPermissionPredictionsClientInfo model_handshake_info;
+     model_handshake_info.set_milestone(
+         version_info::GetMajorVersionNumberAsInt());
+-    model_handshake_info.SerializeToString(any_metadata.mutable_value());
++    std::ignore = model_handshake_info.SerializeToString(any_metadata.mutable_value());
+     return any_metadata;
+   }
+   return std::nullopt;
+--- a/components/permissions/prediction_service/prediction_service.cc
++++ b/components/permissions/prediction_service/prediction_service.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/permissions/prediction_service/prediction_service.h"
+ 
++#include <tuple>
+ #include <cmath>
+ #include <memory>
+ #include <optional>
+@@ -83,7 +84,7 @@
+   auto proto_request = GetPredictionRequestProto(entity);
+   std::string request_data;
+ 
+-  proto_request->SerializeToString(&request_data);
++  std::ignore = proto_request->SerializeToString(&request_data);
+ 
+   SendRequestInternal(std::move(request), request_data, entity,
+                       std::move(response_callback));
+--- a/components/personal_context/core/network/personal_context_fetcher.cc
++++ b/components/personal_context/core/network/personal_context_fetcher.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/personal_context/core/network/personal_context_fetcher.h"
+ 
++#include <tuple>
+ #include <optional>
+ #include <string>
+ #include <string_view>
+@@ -163,7 +164,7 @@
+   proto::Any* any_metadata = request.mutable_request_metadata();
+   any_metadata->set_type_url(
+       base::StrCat({kGoogleAPITypeName, request_metadata.GetTypeName()}));
+-  request_metadata.SerializeToString(any_metadata->mutable_value());
++  std::ignore = request_metadata.SerializeToString(any_metadata->mutable_value());
+   return request;
+ }
+ 
+@@ -221,7 +222,7 @@
+   callback_ = std::move(callback);
+ 
+   std::string serialized_request;
+-  request.SerializeToString(&serialized_request);
++  std::ignore = request.SerializeToString(&serialized_request);
+ 
+   GURL endpoint_url(base::StrCat({memory_service_url_.spec(), rpc_method}));
+ 
+--- a/components/policy/core/common/cloud/realtime_reporting_job_configuration.cc
++++ b/components/policy/core/common/cloud/realtime_reporting_job_configuration.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/policy/core/common/cloud/realtime_reporting_job_configuration.h"
+ 
++#include <tuple>
+ #include <optional>
+ #include <set>
+ #include <utility>
+@@ -63,7 +64,7 @@
+ 
+ std::string RealtimeReportingJobConfiguration::GetPayload() {
+   std::string payload;
+-  upload_request_.SerializeToString(&payload);
++  std::ignore = upload_request_.SerializeToString(&payload);
+   const auto& event_case = upload_request_.events(0).event_case();
+   const std::string metric_name =
+       enterprise_connectors::GetPayloadSizeUmaMetricName(event_case);
+--- a/components/policy/core/common/cloud/user_cloud_policy_store.cc
++++ b/components/policy/core/common/cloud/user_cloud_policy_store.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/policy/core/common/cloud/user_cloud_policy_store.h"
+ 
++#include <tuple>
+ #include <stddef.h>
+ 
+ #include <utility>
+@@ -396,7 +397,7 @@
+   // TODO(crbug.com/449178423): Remove this and pass the policy type to the
+   // CloudPolicyStore::Store method.
+   em::PolicyData policy_data;
+-  policy_data.ParseFromString(policy.policy_data());
++  std::ignore = policy_data.ParseFromString(policy.policy_data());
+   Validate(std::move(policy_copy), std::unique_ptr<em::PolicySigningKey>(),
+            true,
+            base::BindOnce(&DesktopCloudPolicyStore::OnPolicyToStoreValidated,
+--- a/components/policy/core/common/remote_commands/test_support/remote_command_builders.cc
++++ b/components/policy/core/common/remote_commands/test_support/remote_command_builders.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/policy/core/common/remote_commands/test_support/remote_command_builders.h"
+ 
+ #include "components/policy/core/common/remote_commands/remote_commands_service.h"
+@@ -112,11 +114,11 @@
+   }
+ 
+   if (!policy_data.has_policy_value()) {
+-    command.SerializeToString(policy_data.mutable_policy_value());
++    std::ignore = command.SerializeToString(policy_data.mutable_policy_value());
+   }
+ 
+   if (!signed_data.has_data()) {
+-    policy_data.SerializeToString(signed_data.mutable_data());
++    std::ignore = policy_data.SerializeToString(signed_data.mutable_data());
+   }
+ 
+   if (!signed_data.has_signature()) {
+--- a/components/policy/test_support/request_handler_for_auto_enrollment.cc
++++ b/components/policy/test_support/request_handler_for_auto_enrollment.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/policy/test_support/request_handler_for_auto_enrollment.h"
+ 
+ #include "components/policy/core/common/cloud/cloud_policy_constants.h"
+@@ -45,7 +47,7 @@
+ std::unique_ptr<HttpResponse> RequestHandlerForAutoEnrollment::HandleRequest(
+     const HttpRequest& request) {
+   em::DeviceManagementRequest device_management_request;
+-  device_management_request.ParseFromString(request.content);
++  std::ignore = device_management_request.ParseFromString(request.content);
+   const em::DeviceAutoEnrollmentRequest& enrollment_request =
+       device_management_request.auto_enrollment_request();
+ 
+--- a/components/policy/test_support/request_handler_for_browser_public_key_upload.cc
++++ b/components/policy/test_support/request_handler_for_browser_public_key_upload.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/policy/test_support/request_handler_for_browser_public_key_upload.h"
+ 
+ #include "components/policy/core/common/cloud/cloud_policy_constants.h"
+@@ -75,7 +77,7 @@
+   bool is_profile = GetProfileIdFromRequest(request, &profile_id);
+ 
+   em::DeviceManagementRequest device_management_request;
+-  device_management_request.ParseFromString(request.content);
++  std::ignore = device_management_request.ParseFromString(request.content);
+   const em::BrowserPublicKeyUploadRequest& key_upload_request =
+       device_management_request.browser_public_key_upload_request();
+ 
+--- a/components/policy/test_support/request_handler_for_check_user_account.cc
++++ b/components/policy/test_support/request_handler_for_check_user_account.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/policy/test_support/request_handler_for_check_user_account.h"
+ 
+ #include "components/policy/core/common/cloud/cloud_policy_constants.h"
+@@ -30,7 +32,7 @@
+ std::unique_ptr<HttpResponse> RequestHandlerForCheckUserAccount::HandleRequest(
+     const HttpRequest& request) {
+   em::DeviceManagementRequest device_management_request;
+-  device_management_request.ParseFromString(request.content);
++  std::ignore = device_management_request.ParseFromString(request.content);
+   const em::CheckUserAccountRequest& check_user_account_request =
+       device_management_request.check_user_account_request();
+ 
+--- a/components/policy/test_support/request_handler_for_client_cert_provisioning.cc
++++ b/components/policy/test_support/request_handler_for_client_cert_provisioning.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/policy/test_support/request_handler_for_client_cert_provisioning.h"
+ 
++#include <tuple>
+ #include <stdint.h>
+ 
+ #include <memory>
+@@ -126,7 +127,7 @@
+ RequestHandlerForClientCertProvisioning::HandleRequest(
+     const HttpRequest& request) {
+   em::DeviceManagementRequest device_management_request;
+-  device_management_request.ParseFromString(request.content);
++  std::ignore = device_management_request.ParseFromString(request.content);
+   const em::ClientCertificateProvisioningRequest&
+       certificate_provisioning_request =
+           device_management_request.client_certificate_provisioning_request();
+--- a/components/policy/test_support/request_handler_for_device_initial_enrollment_state.cc
++++ b/components/policy/test_support/request_handler_for_device_initial_enrollment_state.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/policy/test_support/request_handler_for_device_initial_enrollment_state.h"
+ 
+ #include "components/policy/core/common/cloud/cloud_policy_constants.h"
+@@ -37,7 +39,7 @@
+ RequestHandlerForDeviceInitialEnrollmentState::HandleRequest(
+     const HttpRequest& request) {
+   em::DeviceManagementRequest device_management_request;
+-  device_management_request.ParseFromString(request.content);
++  std::ignore = device_management_request.ParseFromString(request.content);
+   const em::DeviceInitialEnrollmentStateRequest& state_request =
+       device_management_request.device_initial_enrollment_state_request();
+ 
+--- a/components/policy/test_support/request_handler_for_device_state_retrieval.cc
++++ b/components/policy/test_support/request_handler_for_device_state_retrieval.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/policy/test_support/request_handler_for_device_state_retrieval.h"
+ 
+ #include "base/strings/strcat.h"
+@@ -37,7 +39,7 @@
+ RequestHandlerForDeviceStateRetrieval::HandleRequest(
+     const HttpRequest& request) {
+   em::DeviceManagementRequest device_management_request;
+-  device_management_request.ParseFromString(request.content);
++  std::ignore = device_management_request.ParseFromString(request.content);
+ 
+   const em::DeviceStateRetrievalRequest& state_request =
+       device_management_request.device_state_retrieval_request();
+--- a/components/policy/test_support/request_handler_for_policy.cc
++++ b/components/policy/test_support/request_handler_for_policy.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/policy/test_support/request_handler_for_policy.h"
+ 
+ #include "base/containers/flat_set.h"
+@@ -116,7 +118,7 @@
+   }
+ 
+   em::DeviceManagementRequest device_management_request;
+-  device_management_request.ParseFromString(request.content);
++  std::ignore = device_management_request.ParseFromString(request.content);
+ 
+   // If this is a public account request, use the |settings_entity_id| from the
+   // request as the |username|. This is required to validate policy for
+@@ -313,7 +315,7 @@
+     policy_data.set_public_key_version(signing_key_version);
+   }
+ 
+-  policy_data.SerializeToString(fetch_response->mutable_policy_data());
++  std::ignore = policy_data.SerializeToString(fetch_response->mutable_policy_data());
+ 
+   if (fetch_request.signature_type() != em::PolicyFetchRequest::NONE) {
+     // Sign the serialized policy data.
+@@ -423,7 +425,7 @@
+     }
+     // Get the payload from the inner response.
+     policy_data.Clear();
+-    policy_data.ParseFromString(inner_response.policy_data());
++    std::ignore = policy_data.ParseFromString(inner_response.policy_data());
+     em::ExtensionInstallPolicies extension_install_policies;
+     if (!extension_install_policies.ParseFromString(
+             policy_data.policy_value())) {
+--- a/components/policy/test_support/request_handler_for_psm_auto_enrollment.cc
++++ b/components/policy/test_support/request_handler_for_psm_auto_enrollment.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/policy/test_support/request_handler_for_psm_auto_enrollment.h"
+ 
++#include <tuple>
+ #include <vector>
+ 
+ #include "base/files/file_path.h"
+@@ -104,7 +105,7 @@
+     test_data_ = LoadTestData();
+   }
+   em::DeviceManagementRequest device_management_request;
+-  device_management_request.ParseFromString(request.content);
++  std::ignore = device_management_request.ParseFromString(request.content);
+ 
+   em::DeviceManagementResponse device_management_response;
+   em::PrivateSetMembershipResponse* psm_response =
+--- a/components/policy/test_support/request_handler_for_register_browser.cc
++++ b/components/policy/test_support/request_handler_for_register_browser.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/policy/test_support/request_handler_for_register_browser.h"
+ 
++#include <tuple>
+ #include <iterator>
+ #include <memory>
+ #include <string>
+@@ -40,7 +41,7 @@
+   }
+ 
+   em::DeviceManagementRequest device_management_request;
+-  device_management_request.ParseFromString(request.content);
++  std::ignore = device_management_request.ParseFromString(request.content);
+   const em::RegisterBrowserRequest& register_browser_request =
+       device_management_request.register_browser_request();
+ 
+--- a/components/policy/test_support/request_handler_for_register_cert_based.cc
++++ b/components/policy/test_support/request_handler_for_register_cert_based.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/policy/test_support/request_handler_for_register_cert_based.h"
+ 
++#include <tuple>
+ #include <set>
+ #include <string>
+ 
+@@ -39,7 +40,7 @@
+ std::unique_ptr<HttpResponse> RequestHandlerForRegisterCertBased::HandleRequest(
+     const HttpRequest& request) {
+   em::DeviceManagementRequest device_management_request;
+-  device_management_request.ParseFromString(request.content);
++  std::ignore = device_management_request.ParseFromString(request.content);
+   const em::SignedData& signed_req =
+       device_management_request.certificate_based_register_request()
+           .signed_request();
+--- a/components/policy/test_support/request_handler_for_register_device_and_user.cc
++++ b/components/policy/test_support/request_handler_for_register_device_and_user.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/policy/test_support/request_handler_for_register_device_and_user.h"
+ 
++#include <tuple>
+ #include <set>
+ #include <string>
+ 
+@@ -146,7 +147,7 @@
+   }
+ 
+   em::DeviceManagementRequest device_management_request;
+-  device_management_request.ParseFromString(request.content);
++  std::ignore = device_management_request.ParseFromString(request.content);
+   const em::DeviceRegisterRequest& register_request =
+       device_management_request.register_request();
+ 
+--- a/components/policy/test_support/request_handler_for_remote_commands.cc
++++ b/components/policy/test_support/request_handler_for_remote_commands.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/policy/test_support/request_handler_for_remote_commands.h"
+ 
+ #include "components/policy/core/common/cloud/cloud_policy_constants.h"
+@@ -44,7 +46,7 @@
+   RemoteCommandsState* state = remote_commands_state();
+ 
+   em::DeviceManagementRequest device_management_request;
+-  device_management_request.ParseFromString(request.content);
++  std::ignore = device_management_request.ParseFromString(request.content);
+   const em::DeviceRemoteCommandRequest remote_command_request =
+       device_management_request.remote_command_request();
+ 
+@@ -92,9 +94,9 @@
+     policy_data.set_policy_type(dm_protocol::kChromeRemoteCommandPolicyType);
+     policy_data.set_device_id(client_info->device_id);
+ 
+-    command_copy.SerializeToString(policy_data.mutable_policy_value());
++    std::ignore = command_copy.SerializeToString(policy_data.mutable_policy_value());
+ 
+-    policy_data.SerializeToString(signed_data->mutable_data());
++    std::ignore = policy_data.SerializeToString(signed_data->mutable_data());
+     signing_key->Sign(signed_data->data(), signature_type,
+                       signed_data->mutable_signature());
+   }
+--- a/components/power_bookmarks/core/power_bookmark_utils.cc
++++ b/components/power_bookmarks/core/power_bookmark_utils.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/power_bookmarks/core/power_bookmark_utils.h"
+ 
++#include <tuple>
+ #include <string>
+ #include <vector>
+ 
+@@ -230,7 +231,7 @@
+ 
+ void EncodeMetaForStorage(const PowerBookmarkMeta& meta, std::string* out) {
+   std::string data;
+-  meta.SerializeToString(&data);
++  std::ignore = meta.SerializeToString(&data);
+   *out = base::Base64Encode(data);
+ }
+ 
+--- a/components/private_ai/connection_basic.cc
++++ b/components/private_ai/connection_basic.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/private_ai/connection_basic.h"
+ 
++#include <tuple>
+ #include <utility>
+ 
+ #include "base/check.h"
+@@ -49,7 +50,7 @@
+   pending_request_callbacks_.emplace(request_id, std::move(callback));
+ 
+   std::string serialized_request;
+-  request.SerializeToString(&serialized_request);
++  std::ignore = request.SerializeToString(&serialized_request);
+ 
+   if (!secure_channel_->Write(
+           Request(serialized_request.begin(), serialized_request.end()))) {
+--- a/components/record_replay/core/browser/task_database.cc
++++ b/components/record_replay/core/browser/task_database.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/record_replay/core/browser/task_database.h"
+ 
+ #include "base/command_line.h"
+@@ -553,7 +555,7 @@
+     param.set_type(statement.ColumnString(4));
+     param.set_description(statement.ColumnString(5));
+     if (statement.GetColumnType(6) != sql::ColumnType::kNull) {
+-      param.mutable_extraction_strategy()->ParseFromString(
++      std::ignore = param.mutable_extraction_strategy()->ParseFromString(
+           statement.ColumnBlobAsString(6));
+     }
+     step_params[step_id].push_back(std::move(param));
+--- a/components/reporting/health/health_module_files.cc
++++ b/components/reporting/health/health_module_files.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/reporting/health/health_module_files.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <memory>
+ #include <string>
+@@ -125,7 +126,7 @@
+     for (const auto& record : records) {
+       std::string bytes;
+       base::HexStringToString(record, &bytes);
+-      data->add_history()->ParseFromString(bytes);
++      std::ignore = data->add_history()->ParseFromString(bytes);
+     }
+   }
+ }
+--- a/components/reporting/storage/storage_queue.cc
++++ b/components/reporting/storage/storage_queue.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/reporting/storage/storage_queue.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <cstring>
+ #include <iterator>
+@@ -1654,7 +1655,7 @@
+     // because the record might fail to write.
+     {
+       std::string serialized_record;
+-      wrapped_record.record().SerializeToString(&serialized_record);
++      std::ignore = wrapped_record.record().SerializeToString(&serialized_record);
+       current_record_digest_ = std::string(
+           base::as_string_view(crypto::hash::Sha256(serialized_record)));
+       *wrapped_record.mutable_record_digest() = current_record_digest_;
+--- a/components/safe_browsing/core/browser/client_side_detection_service_base.cc
++++ b/components/safe_browsing/core/browser/client_side_detection_service_base.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/safe_browsing/core/browser/client_side_detection_service_base.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <memory>
+ 
+@@ -500,7 +501,7 @@
+   }
+ 
+   std::string request_data;
+-  verdict->SerializeToString(&request_data);
++  std::ignore = verdict->SerializeToString(&request_data);
+ 
+   net::NetworkTrafficAnnotationTag traffic_annotation =
+       net::DefineNetworkTrafficAnnotation(
+--- a/components/safe_browsing/core/browser/db/v4_get_hash_protocol_manager.cc
++++ b/components/safe_browsing/core/browser/db/v4_get_hash_protocol_manager.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/safe_browsing/core/browser/db/v4_get_hash_protocol_manager.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <memory>
+ #include <optional>
+@@ -542,7 +543,7 @@
+ 
+   // Serialize and Base64 encode.
+   std::string req_data, req_base64;
+-  req.SerializeToString(&req_data);
++  std::ignore = req.SerializeToString(&req_data);
+   base::Base64UrlEncode(req_data, base::Base64UrlEncodePolicy::INCLUDE_PADDING,
+                         &req_base64);
+   return req_base64;
+--- a/components/safe_browsing/core/browser/db/v4_update_protocol_manager.cc
++++ b/components/safe_browsing/core/browser/db/v4_update_protocol_manager.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/safe_browsing/core/browser/db/v4_update_protocol_manager.h"
+ 
+ #include "base/base64url.h"
+@@ -158,7 +160,7 @@
+ 
+   // Serialize and Base64 encode.
+   std::string req_data, req_base64;
+-  request.SerializeToString(&req_data);
++  std::ignore = request.SerializeToString(&req_data);
+   base::Base64UrlEncode(req_data, base::Base64UrlEncodePolicy::INCLUDE_PADDING,
+                         &req_base64);
+   return req_base64;
+--- a/components/safe_browsing/core/browser/db/v5_search_hashes_util.cc
++++ b/components/safe_browsing/core/browser/db/v5_search_hashes_util.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/safe_browsing/core/browser/db/v5_search_hashes_util.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <utility>
+ 
+@@ -225,7 +226,7 @@
+ 
+ std::string GetResourceUrl(V5::SearchHashesRequest* request) {
+   std::string request_data, request_base64;
+-  request->SerializeToString(&request_data);
++  std::ignore = request->SerializeToString(&request_data);
+   base::Base64UrlEncode(request_data,
+                         base::Base64UrlEncodePolicy::INCLUDE_PADDING,
+                         &request_base64);
+--- a/components/safe_browsing/core/browser/db/v5_update_protocol_manager.cc
++++ b/components/safe_browsing/core/browser/db/v5_update_protocol_manager.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/safe_browsing/core/browser/db/v5_update_protocol_manager.h"
+ 
++#include <tuple>
+ #include <optional>
+ #include <utility>
+ 
+@@ -235,7 +236,7 @@
+ 
+   // Serialize and Base64 encode.
+   std::string request_data, request_base64;
+-  request.SerializeToString(&request_data);
++  std::ignore = request.SerializeToString(&request_data);
+   base::Base64UrlEncode(request_data,
+                         base::Base64UrlEncodePolicy::INCLUDE_PADDING,
+                         &request_base64);
+--- a/components/safe_browsing/core/browser/password_protection/password_protection_request.cc
++++ b/components/safe_browsing/core/browser/password_protection/password_protection_request.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/safe_browsing/core/browser/password_protection/password_protection_request.h"
+ 
++#include <tuple>
+ #include <cstddef>
+ #include <optional>
+ #include <string>
+@@ -332,7 +333,7 @@
+ 
+   std::string serialized_request;
+   // TODO(crbug.com/40054172): Return early if request serialization fails.
+-  request_proto_->SerializeToString(&serialized_request);
++  std::ignore = request_proto_->SerializeToString(&serialized_request);
+ 
+   net::NetworkTrafficAnnotationTag traffic_annotation =
+       net::DefineNetworkTrafficAnnotation("password_protection_request", R"(
+--- a/components/safe_browsing/core/browser/realtime/url_lookup_service_base.cc
++++ b/components/safe_browsing/core/browser/realtime/url_lookup_service_base.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/safe_browsing/core/browser/realtime/url_lookup_service_base.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <optional>
+ #include <string>
+@@ -960,7 +961,7 @@
+                             is_sampled_report);
+ 
+   std::string req_data;
+-  request->SerializeToString(&req_data);
++  std::ignore = request->SerializeToString(&req_data);
+ 
+   auto resource_request = GetResourceRequest();
+   if (!access_token_string.empty()) {
+--- a/components/segmentation_platform/internal/database/client_result_prefs.cc
++++ b/components/segmentation_platform/internal/database/client_result_prefs.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/segmentation_platform/internal/database/client_result_prefs.h"
+ 
+ #include "components/prefs/pref_service.h"
+@@ -57,7 +59,7 @@
+                         decoded_client_results.value().end())
+           : std::string();
+ 
+-  cached_results_.ParseFromString(decoded_client_results_as_string);
++  std::ignore = cached_results_.ParseFromString(decoded_client_results_as_string);
+ }
+ 
+ }  // namespace segmentation_platform
+--- a/components/segmentation_platform/internal/execution/optimization_guide/optimization_guide_segmentation_model_provider.cc
++++ b/components/segmentation_platform/internal/execution/optimization_guide/optimization_guide_segmentation_model_provider.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/segmentation_platform/internal/execution/optimization_guide/optimization_guide_segmentation_model_provider.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <vector>
+ 
+@@ -34,7 +35,7 @@
+   proto::VersionInfo* version_info = model_metadata.mutable_version_info();
+   version_info->set_metadata_cur_version(
+       proto::CurrentVersion::METADATA_VERSION);
+-  model_metadata.SerializeToString(any_metadata.mutable_value());
++  std::ignore = model_metadata.SerializeToString(any_metadata.mutable_value());
+   return any_metadata;
+ }
+ 
+--- a/components/services/storage/indexed_db/scopes/leveldb_scope.cc
++++ b/components/services/storage/indexed_db/scopes/leveldb_scope.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/services/storage/indexed_db/scopes/leveldb_scope.h"
+ 
++#include <tuple>
+ #include <limits>
+ #include <memory>
+ #include <sstream>
+@@ -339,7 +340,7 @@
+ }
+ 
+ void LevelDBScope::AddBufferedUndoTask() {
+-  undo_task_buffer_.SerializeToString(&value_buffer_);
++  std::ignore = undo_task_buffer_.SerializeToString(&value_buffer_);
+   buffer_batch_.Put(
+       key_encoder_.UndoTaskKey(prefix_, scope_id_, undo_sequence_number_),
+       value_buffer_);
+@@ -359,7 +360,7 @@
+ }
+ 
+ void LevelDBScope::AddBufferedCleanupTask() {
+-  cleanup_task_buffer_.SerializeToString(&value_buffer_);
++  std::ignore = cleanup_task_buffer_.SerializeToString(&value_buffer_);
+   buffer_batch_.Put(
+       key_encoder_.CleanupTaskKey(prefix_, scope_id_, cleanup_sequence_number_),
+       value_buffer_);
+@@ -381,7 +382,7 @@
+     auto* key = lock_proto->mutable_key();
+     key->set_key(lock.lock_id().key);
+   }
+-  metadata.SerializeToString(&value_buffer_);
++  std::ignore = metadata.SerializeToString(&value_buffer_);
+   buffer_batch_.Put(key_encoder_.ScopeMetadataKey(prefix_, scope_id_),
+                     value_buffer_);
+   buffer_batch_empty_ = false;
+@@ -397,7 +398,7 @@
+   // Remove the lock ranges from the metadata, which is the 'commit point' and
+   // means that this scope is committed.
+   LevelDBScopesScopeMetadata metadata;
+-  metadata.SerializeToString(&value_buffer_);
++  std::ignore = metadata.SerializeToString(&value_buffer_);
+   buffer_batch_.Put(key_encoder_.ScopeMetadataKey(prefix_, scope_id_),
+                     value_buffer_);
+   buffer_batch_empty_ = false;
+--- a/components/sharing_message/sharing_channel_sender.cc
++++ b/components/sharing_message/sharing_channel_sender.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/sharing_message/sharing_channel_sender.h"
+ 
+ #include "base/check_is_test.h"
+@@ -264,7 +266,7 @@
+                                           SendMessageCallback callback,
+                                           MessageSender message_sender) {
+   std::string payload;
+-  message.SerializeToString(&payload);
++  std::ignore = message.SerializeToString(&payload);
+   gcm_driver_->EncryptMessage(
+       kSharingFCMAppID, authorized_entity, p256dh, auth_secret, payload,
+       base::BindOnce(&SharingChannelSender::OnMessageEncrypted,
+--- a/components/sqlite_proto/key_value_table.cc
++++ b/components/sqlite_proto/key_value_table.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/sqlite_proto/key_value_table.h"
+ 
++#include <tuple>
+ #include <stdint.h>
+ 
+ #include "base/strings/stringprintf.h"
+@@ -20,7 +21,7 @@
+ 
+   size_t size = data.ByteSizeLong();
+   std::vector<uint8_t> proto_buffer(size);
+-  data.SerializeToArray(proto_buffer.data(), size);
++  std::ignore = data.SerializeToArray(proto_buffer.data(), size);
+   statement->BindBlob(1, std::move(proto_buffer));
+ }
+ 
+--- a/components/sqlite_proto/key_value_table.h
++++ b/components/sqlite_proto/key_value_table.h
+@@ -5,6 +5,7 @@
+ #ifndef COMPONENTS_SQLITE_PROTO_KEY_VALUE_TABLE_H_
+ #define COMPONENTS_SQLITE_PROTO_KEY_VALUE_TABLE_H_
+ 
++#include <tuple>
+ #include <map>
+ #include <string>
+ #include <vector>
+@@ -92,7 +93,7 @@
+   while (reader.Step()) {
+     auto it = data_map->emplace(reader.ColumnString(0), T()).first;
+     base::span<const uint8_t> blob = reader.ColumnBlob(1);
+-    it->second.ParseFromArray(blob.data(), blob.size());
++    std::ignore = it->second.ParseFromArray(blob.data(), blob.size());
+   }
+ }
+ 
+--- a/components/sync/base/unique_position.cc
++++ b/components/sync/base/unique_position.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/sync/base/unique_position.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <array>
+ #include <limits>
+@@ -192,7 +193,7 @@
+ 
+ void UniquePosition::SerializeToString(std::string* blob) const {
+   DCHECK(blob);
+-  ToProto().SerializeToString(blob);
++  std::ignore = ToProto().SerializeToString(blob);
+ }
+ 
+ bool UniquePosition::IsValid() const {
+--- a/components/sync/engine/bookmark_update_preprocessing.cc
++++ b/components/sync/engine/bookmark_update_preprocessing.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/sync/engine/bookmark_update_preprocessing.h"
+ 
++#include <tuple>
+ #include <array>
+ 
+ #include "base/base64.h"
+@@ -108,7 +109,7 @@
+   sync_pb::EntitySpecifics serialized_type;
+   AddDefaultFieldValue(BOOKMARKS, &serialized_type);
+   std::string hash_input;
+-  serialized_type.AppendToString(&hash_input);
++  std::ignore = serialized_type.AppendToString(&hash_input);
+   hash_input.append(originator_cache_guid + originator_client_item_id);
+   UniquePosition::Suffix suffix;
+   std::string suffix_str =
+--- a/components/sync/engine/syncer_proto_util.cc
++++ b/components/sync/engine/syncer_proto_util.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/sync/engine/syncer_proto_util.h"
+ 
++#include <tuple>
+ #include <map>
+ #include <optional>
+ 
+@@ -406,7 +407,7 @@
+   DCHECK_EQ(msg.protocol_version(),
+             ClientToServerMessage::default_instance().protocol_version());
+   std::string buffer_in;
+-  msg.SerializeToString(&buffer_in);
++  std::ignore = msg.SerializeToString(&buffer_in);
+ 
+   UMA_HISTOGRAM_ENUMERATION("Sync.PostedClientToServerMessage",
+                             msg.message_contents(),
+@@ -494,7 +495,7 @@
+     msg->set_store_birthday(birthday);
+   }
+   DCHECK(msg->has_store_birthday() || !IsBirthdayRequired(*msg));
+-  msg->mutable_bag_of_chips()->ParseFromString(
++  std::ignore = msg->mutable_bag_of_chips()->ParseFromString(
+       cycle->context()->bag_of_chips());
+   msg->set_api_key(google_apis::GetAPIKey());
+   msg->mutable_client_status()->CopyFrom(cycle->context()->client_status());
+--- a/components/sync/service/device_statistics_request_impl.cc
++++ b/components/sync/service/device_statistics_request_impl.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/sync/service/device_statistics_request_impl.h"
+ 
++#include <tuple>
+ #include <utility>
+ 
+ #include "base/metrics/histogram_functions.h"
+@@ -163,7 +164,7 @@
+ 
+   // Serialize and gzip the message.
+   std::string serialized_msg;
+-  msg.SerializeToString(&serialized_msg);
++  std::ignore = msg.SerializeToString(&serialized_msg);
+   std::string request_to_send;
+   compression::GzipCompress(serialized_msg, &request_to_send);
+ 
+--- a/components/sync/service/sync_prefs.cc
++++ b/components/sync/service/sync_prefs.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/sync/service/sync_prefs.h"
+ 
++#include <tuple>
+ #include <utility>
+ 
+ #include "base/auto_reset.h"
+@@ -75,7 +76,7 @@
+   if (!base::Base64Decode(encoded_group, &serialized_proto)) {
+     return proto;
+   }
+-  proto.ParseFromString(serialized_proto);
++  std::ignore = proto.ParseFromString(serialized_proto);
+   return proto;
+ }
+ 
+--- a/components/sync/service/sync_service_impl.cc
++++ b/components/sync/service/sync_service_impl.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/sync/service/sync_service_impl.h"
+ 
++#include <tuple>
+ #include <cstddef>
+ #include <utility>
+ 
+@@ -2277,7 +2278,7 @@
+   const sync_pb::NigoriKey& proto = token.ToProto();
+   int32_t byte_size = proto.ByteSizeLong();
+   std::vector<uint8_t> bytes(byte_size);
+-  proto.SerializeToArray(bytes.data(), byte_size);
++  std::ignore = proto.SerializeToArray(bytes.data(), byte_size);
+   JNIEnv* env = base::android::AttachCurrentThread();
+   Java_ExplicitPassphrasePlatformClient_setExplicitDecryptionPassphrase(
+       env, GetAccountInfo(), base::android::ToJavaByteArray(env, bytes));
+--- a/components/sync/service/sync_stopped_reporter.cc
++++ b/components/sync/service/sync_stopped_reporter.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/sync/service/sync_stopped_reporter.h"
+ 
++#include <tuple>
+ #include <string>
+ #include <utility>
+ 
+@@ -87,7 +88,7 @@
+   sync_disabled_event->set_store_birthday(birthday);
+ 
+   std::string msg;
+-  event_request.SerializeToString(&msg);
++  std::ignore = event_request.SerializeToString(&msg);
+ 
+   net::NetworkTrafficAnnotationTag traffic_annotation =
+       net::DefineNetworkTrafficAnnotation("sync_stop_reporter", R"(
+--- a/components/sync_bookmarks/bookmark_data_type_processor.cc
++++ b/components/sync_bookmarks/bookmark_data_type_processor.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/sync_bookmarks/bookmark_data_type_processor.h"
+ 
++#include <tuple>
+ #include <utility>
+ #include <vector>
+ 
+@@ -432,7 +433,7 @@
+     DCHECK(
+         !model_metadata
+              .has_initial_merge_remote_updates_exceeded_limit_timestamp_windows_epoch_micros());
+-    model_metadata.SerializeToString(&metadata_str);
++    std::ignore = model_metadata.SerializeToString(&metadata_str);
+   } else if (initial_merge_remote_updates_exceeded_limit_timestamp_) {
+     sync_pb::BookmarkModelMetadata model_metadata;
+ 
+@@ -441,7 +442,7 @@
+             initial_merge_remote_updates_exceeded_limit_timestamp_
+                 ->ToDeltaSinceWindowsEpoch()
+                 .InMicroseconds());
+-    model_metadata.SerializeToString(&metadata_str);
++    std::ignore = model_metadata.SerializeToString(&metadata_str);
+   }
+   return metadata_str;
+ }
+@@ -587,7 +588,7 @@
+   }
+ 
+   sync_pb::BookmarkModelMetadata model_metadata;
+-  model_metadata.ParseFromString(metadata_str);
++  std::ignore = model_metadata.ParseFromString(metadata_str);
+ 
+   MigrateLegacyExceededLimitError(&model_metadata);
+   // Ensure that the legacy field is not set, as it should have been migrated.
+--- a/components/themes/ntp_background_service.cc
++++ b/components/themes/ntp_background_service.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/themes/ntp_background_service.h"
+ 
++#include <tuple>
+ #include <optional>
+ #include <string>
+ #include <string_view>
+@@ -154,7 +155,7 @@
+   }
+ 
+   std::string serialized_proto;
+-  request.SerializeToString(&serialized_proto);
++  std::ignore = request.SerializeToString(&serialized_proto);
+ 
+   auto resource_request = std::make_unique<network::ResourceRequest>();
+   resource_request->url = collections_api_url_;
+@@ -514,7 +515,7 @@
+   // The language field may include the country code (e.g. "en-US").
+   request.set_language(application_locale_storage_->GetTag().tag_string());
+   std::string serialized_proto;
+-  request.SerializeToString(&serialized_proto);
++  std::ignore = request.SerializeToString(&serialized_proto);
+ 
+   auto resource_request = std::make_unique<network::ResourceRequest>();
+   resource_request->url = next_image_api_url_;
+@@ -634,7 +635,7 @@
+   // The language field may include the country code (e.g. "en-US").
+   request.set_language(application_locale_storage_->GetTag().tag_string());
+   std::string serialized_proto;
+-  request.SerializeToString(&serialized_proto);
++  std::ignore = request.SerializeToString(&serialized_proto);
+   collection_image_info_loader_ptr->AttachStringForUpload(serialized_proto,
+                                                           kProtoMimeType);
+   collection_image_info_loader_ptr->DownloadToString(
+--- a/components/touch_to_search/core/browser/contextual_search_delegate_impl.cc
++++ b/components/touch_to_search/core/browser/contextual_search_delegate_impl.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/touch_to_search/core/browser/contextual_search_delegate_impl.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <memory>
+ #include <optional>
+@@ -100,7 +101,7 @@
+   selection->set_is_uri_encoded(false);
+ 
+   std::string serialized;
+-  proto.SerializeToString(&serialized);
++  std::ignore = proto.SerializeToString(&serialized);
+ 
+   std::string encoded_context = base::Base64Encode(serialized);
+   // The server memoizer expects a web-safe encoding.
+--- a/components/tracing/common/background_tracing_metrics_provider.cc
++++ b/components/tracing/common/background_tracing_metrics_provider.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
++#include <tuple>
++
+ #include "components/tracing/common/background_tracing_metrics_provider.h"
+ 
+ #include "base/barrier_closure.h"
+@@ -113,7 +115,7 @@
+             }
+             if (serialized_system_profile) {
+               metrics::SystemProfileProto system_profile;
+-              system_profile.ParsePartialFromString(*serialized_system_profile);
++              std::ignore = system_profile.ParsePartialFromString(*serialized_system_profile);
+               uma_proto->mutable_system_profile()->MergeFrom(system_profile);
+             }
+             // Serialize the log on a worker thread instead of on the main
+--- a/components/trusted_vault/trusted_vault_connection_impl.cc
++++ b/components/trusted_vault/trusted_vault_connection_impl.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/trusted_vault/trusted_vault_connection_impl.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <string>
+ #include <utility>
+@@ -57,14 +58,14 @@
+ std::optional<int> GetLastKeyVersionFromAlreadyExistsResponse(
+     const std::string& response_body) {
+   trusted_vault_pb::RPCStatus rpc_status;
+-  rpc_status.ParseFromString(response_body);
++  std::ignore = rpc_status.ParseFromString(response_body);
+   for (const trusted_vault_pb::Proto3Any& status_detail :
+        rpc_status.details()) {
+     if (status_detail.type_url() != kJoinSecurityDomainsErrorDetailTypeURL) {
+       continue;
+     }
+     trusted_vault_pb::JoinSecurityDomainsErrorDetail error_detail;
+-    error_detail.ParseFromString(status_detail.value());
++    std::ignore = error_detail.ParseFromString(status_detail.value());
+     return GetLastKeyVersionFromJoinSecurityDomainsResponse(
+         error_detail.already_exists_response());
+   }
+@@ -279,7 +280,7 @@
+         GetLastKeyVersionFromAlreadyExistsResponse(response_body);
+   } else {
+     trusted_vault_pb::JoinSecurityDomainsResponse response;
+-    response.ParseFromString(response_body);
++    std::ignore = response.ParseFromString(response_body);
+     last_key_version =
+         GetLastKeyVersionFromJoinSecurityDomainsResponse(response);
+   }
+--- a/components/ukm/ukm_reporting_service.cc
++++ b/components/ukm/ukm_reporting_service.cc
+@@ -6,6 +6,7 @@
+ 
+ #include "components/ukm/ukm_reporting_service.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <string_view>
+ 
+@@ -146,7 +147,7 @@
+       compression::GzipUncompress(staged_log, &uncompressed_log_data);
+   DCHECK(uncompress_successful);
+   Report report;
+-  report.ParseFromString(uncompressed_log_data);
++  std::ignore = report.ParseFromString(uncompressed_log_data);
+ 
+   // Log the relative size of the report with relevant UKM data omitted. This
+   // helps us to estimate the bandwidth usage of logs upload that is not
+@@ -159,7 +160,7 @@
+   report.clear_source_counts();
+   report.clear_entries();
+   report.clear_aggregates();
+-  report.SerializeToString(&log_without_ukm_data);
++  std::ignore = report.SerializeToString(&log_without_ukm_data);
+ 
+   int non_ukm_percentage =
+       log_without_ukm_data.length() * 100 / uncompressed_log_data.length();
+--- a/components/ukm/ukm_service.cc
++++ b/components/ukm/ukm_service.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/ukm/ukm_service.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <string>
+ #include <unordered_set>
+@@ -220,13 +221,13 @@
+   // Make sure the reserialized log from this |report| matches the input
+   // |serialized_data|.
+   std::string reserialized_from_report;
+-  report.SerializeToString(&reserialized_from_report);
++  std::ignore = report.SerializeToString(&reserialized_from_report);
+   return reserialized_from_report == serialized_data;
+ }
+ 
+ std::string UkmService::SerializeReportProtoToString(Report* report) {
+   std::string serialized_full_log;
+-  report->SerializeToString(&serialized_full_log);
++  std::ignore = report->SerializeToString(&serialized_full_log);
+ 
+   // This allows catching errors with bad UKM serialization we've seen before
+   // that would otherwise only be noticed on the server.
+--- a/components/variations/variations_ids_provider.cc
++++ b/components/variations/variations_ids_provider.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "components/variations/variations_ids_provider.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ 
+ #include "base/base64.h"
+@@ -523,7 +524,7 @@
+   }
+ 
+   std::string serialized;
+-  proto.SerializeToString(&serialized);
++  std::ignore = proto.SerializeToString(&serialized);
+   return base::Base64EncodeEarlyStartup(base::as_byte_span(serialized));
+ }
+ 
+--- a/content/browser/payments/payment_app_database.cc
++++ b/content/browser/payments/payment_app_database.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "content/browser/payments/payment_app_database.h"
+ 
++#include <tuple>
+ #include <map>
+ #include <utility>
+ 
+@@ -184,7 +185,7 @@
+   CHECK_LE(data.size(), 1U, base::NotFatalUntil::M160);
+   StoredPaymentAppProto app_proto;
+   if (data.size() == 1U) {
+-    app_proto.ParseFromString(data[0]);
++    std::ignore = app_proto.ParseFromString(data[0]);
+   }
+ 
+   auto supported_delegations_proto =
+@@ -262,7 +263,7 @@
+   CHECK_LE(data.size(), 1U, base::NotFatalUntil::M160);
+   StoredPaymentAppProto app_proto;
+   if (data.size() == 1U) {
+-    app_proto.ParseFromString(data[0]);
++    std::ignore = app_proto.ParseFromString(data[0]);
+   }
+   app_proto.set_user_hint(user_hint);
+ 
+--- a/electron/shell/browser/tracing/electron_tracing_delegate.cc
++++ b/electron/shell/browser/tracing/electron_tracing_delegate.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "shell/browser/tracing/electron_tracing_delegate.h"
+ 
++#include <tuple>
+ #include <string>
+ 
+ #include "base/functional/bind.h"
+@@ -32,7 +33,7 @@
+   }
+   recorder.Run(system_profile_proto);
+   std::string serialized_system_profile;
+-  system_profile_proto.SerializeToString(&serialized_system_profile);
++  std::ignore = system_profile_proto.SerializeToString(&serialized_system_profile);
+   return serialized_system_profile;
+ }
+ 
+--- a/extensions/browser/blocklist_state_fetcher.cc
++++ b/extensions/browser/blocklist_state_fetcher.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "extensions/browser/blocklist_state_fetcher.h"
+ 
++#include <tuple>
+ #include <optional>
+ #include <string>
+ 
+@@ -67,7 +68,7 @@
+   ClientCRXListInfoRequest request;
+   request.set_id(id);
+   std::string request_str;
+-  request.SerializeToString(&request_str);
++  std::ignore = request.SerializeToString(&request_str);
+ 
+   GURL request_url = GURL(safe_browsing::GetReportUrl(
+       *safe_browsing_config_, "clientreport/crx-list-info"));
+--- a/google_apis/gcm/engine/connection_handler_impl.cc
++++ b/google_apis/gcm/engine/connection_handler_impl.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "google_apis/gcm/engine/connection_handler_impl.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <utility>
+ 
+@@ -114,7 +115,7 @@
+     DCHECK_NE(tag, -1);
+     coded_output_stream.WriteRaw(&tag, 1);
+     coded_output_stream.WriteVarint32(message.ByteSizeLong());
+-    message.SerializeToCodedStream(&coded_output_stream);
++    std::ignore = message.SerializeToCodedStream(&coded_output_stream);
+   }
+ 
+   if (output_stream_->Flush(base::BindOnce(
+@@ -136,7 +137,7 @@
+     coded_output_stream.WriteRaw(version_byte, 1);
+     coded_output_stream.WriteRaw(login_request_tag, 1);
+     coded_output_stream.WriteVarint32(login_request.ByteSizeLong());
+-    login_request.SerializeToCodedStream(&coded_output_stream);
++    std::ignore = login_request.SerializeToCodedStream(&coded_output_stream);
+   }
+ 
+   if (output_stream_->Flush(base::BindOnce(
+--- a/gpu/command_buffer/service/memory_program_cache.cc
++++ b/gpu/command_buffer/service/memory_program_cache.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "gpu/command_buffer/service/memory_program_cache.h"
+ 
++#include <tuple>
+ #include <stddef.h>
+ 
+ #include <algorithm>
+@@ -208,7 +209,7 @@
+                        GpuProgramProto* proto,
+                        ProgramCache::HashView program_sha) {
+   std::string shader;
+-  proto->SerializeToString(&shader);
++  std::ignore = proto->SerializeToString(&shader);
+ 
+   std::string key = base::Base64Encode(program_sha);
+   client->CacheBlob(gpu::GpuDiskCacheType::kGlShaders, key, shader);
+--- a/remoting/signaling/ftl_messaging_client.cc
++++ b/remoting/signaling/ftl_messaging_client.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "remoting/signaling/ftl_messaging_client.h"
+ 
++#include <tuple>
+ #include <utility>
+ 
+ #include "base/functional/callback.h"
+@@ -384,7 +385,7 @@
+                << " exceeds " << kMaxStanzaSize << " limit.";
+     return;
+   }
+-  chromoting_message.ParseFromString(message.message());
++  std::ignore = chromoting_message.ParseFromString(message.message());
+ 
+   if (chromoting_message.has_xmpp() &&
+       XmlContainsDtd(chromoting_message.xmpp().stanza())) {
+--- a/services/network/sct_auditing/sct_auditing_handler.cc
++++ b/services/network/sct_auditing/sct_auditing_handler.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "services/network/sct_auditing/sct_auditing_handler.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ 
+ #include "base/base64.h"
+@@ -193,7 +194,7 @@
+     auto* reporter = kv.second.get();
+ 
+     std::string serialized_report;
+-    reporter->report()->SerializeToString(&serialized_report);
++    std::ignore = reporter->report()->SerializeToString(&serialized_report);
+     serialized_report = base::Base64Encode(serialized_report);
+ 
+     auto report_entry =
+--- a/services/passage_embeddings/passage_embedder_impl.cc
++++ b/services/passage_embeddings/passage_embedder_impl.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "services/passage_embeddings/passage_embedder_impl.h"
+ 
++#include <tuple>
+ #include <utility>
+ 
+ #include "base/check.h"
+@@ -137,7 +138,7 @@
+ 
+   std::unique_ptr<sentencepiece::ModelProto> model_proto =
+       std::make_unique<sentencepiece::ModelProto>();
+-  model_proto->ParseFromArray(sp_model.bytes().data(), sp_model.bytes().size());
++  std::ignore = model_proto->ParseFromArray(sp_model.bytes().data(), sp_model.bytes().size());
+   sp_processor_ = std::make_unique<sentencepiece::SentencePieceProcessor>();
+   if (!(sp_processor_->Load(std::move(model_proto)).ok())) {
+     sp_processor_.reset();
+--- a/services/tracing/public/cpp/perfetto/perfetto_config.cc
++++ b/services/tracing/public/cpp/perfetto/perfetto_config.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "services/tracing/public/cpp/perfetto/perfetto_config.h"
+ 
++#include <tuple>
+ #include <cstdint>
+ #include <string>
+ 
+@@ -241,7 +242,7 @@
+   if (!config->track_event_config_raw().empty()) {
+     config->set_name("track_event");
+     perfetto::protos::gen::TrackEventConfig track_event_config;
+-    track_event_config.ParseFromString(config->track_event_config_raw());
++    std::ignore = track_event_config.ParseFromString(config->track_event_config_raw());
+     AdaptTrackEventConfig(&track_event_config, privacy_filtering_enabled);
+     config->set_track_event_config_raw(track_event_config.SerializeAsString());
+   }
+--- a/third_party/blink/renderer/modules/font_access/font_access.cc
++++ b/third_party/blink/renderer/modules/font_access/font_access.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "third_party/blink/renderer/modules/font_access/font_access.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ 
+ #include "base/feature_list.h"
+@@ -149,7 +150,7 @@
+ 
+   base::span<const uint8_t> mapped_mem(mapping);
+   FontEnumerationTable table;
+-  table.ParseFromString(base::as_string_view(mapped_mem));
++  std::ignore = table.ParseFromString(base::as_string_view(mapped_mem));
+ 
+   HeapVector<Member<FontMetadata>> entries;
+   for (const auto& element : table.fonts()) {
+--- a/third_party/openscreen/src/cast/receiver/channel/device_auth_namespace_handler.cc
++++ b/third_party/openscreen/src/cast/receiver/channel/device_auth_namespace_handler.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "cast/receiver/channel/device_auth_namespace_handler.h"
+ 
++#include <tuple>
+ #include <openssl/evp.h>
+ 
+ #include <memory>
+@@ -34,7 +35,7 @@
+   AuthError* error = message.mutable_error();
+   error->set_error_type(error_type);
+   std::string payload;
+-  message.SerializeToString(&payload);
++  std::ignore = message.SerializeToString(&payload);
+ 
+   CastMessage response;
+   response.set_protocol_version(proto::CastMessage_ProtocolVersion_CASTV2_1_0);
+@@ -140,7 +141,7 @@
+   response_auth_message.set_allocated_response(auth_response.release());
+ 
+   std::string response_string;
+-  response_auth_message.SerializeToString(&response_string);
++  std::ignore = response_auth_message.SerializeToString(&response_string);
+   CastMessage response;
+   response.set_protocol_version(proto::CastMessage_ProtocolVersion_CASTV2_1_0);
+   response.set_namespace_(kAuthNamespace);
+--- a/third_party/openscreen/src/cast/sender/channel/message_util.cc
++++ b/third_party/openscreen/src/cast/sender/channel/message_util.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "cast/sender/channel/message_util.h"
+ 
++#include <tuple>
+ #include <ranges>
+ #include <string>
+ #include <utility>
+@@ -52,7 +53,7 @@
+   challenge->set_hash_algorithm(proto::SHA256);
+ 
+   std::string auth_message_string;
+-  auth_message.SerializeToString(&auth_message_string);
++  std::ignore = auth_message.SerializeToString(&auth_message_string);
+ 
+   message.set_protocol_version(CastMessage::CASTV2_1_0);
+   message.set_source_id(kPlatformSenderId);
+--- a/third_party/openscreen/src/third_party/protobuf/benchmarks/benchmark.cc
++++ b/third_party/openscreen/src/third_party/protobuf/benchmarks/benchmark.cc
+@@ -5,6 +5,7 @@
+ // license that can be found in the LICENSE file or at
+ // https://developers.google.com/open-source/licenses/bsd
+ 
++#include <tuple>
+ #include <benchmark/benchmark.h>
+ 
+ #include <math.h>
+@@ -343,9 +344,9 @@
+ 
+ static void BM_SerializeDescriptor_Proto2(benchmark::State& state) {
+   upb_benchmark::FileDescriptorProto proto;
+-  proto.ParseFromArray(descriptor.data, descriptor.size);
++  std::ignore = proto.ParseFromArray(descriptor.data, descriptor.size);
+   for (auto _ : state) {
+-    proto.SerializePartialToArray(buf, sizeof(buf));
++    std::ignore = proto.SerializePartialToArray(buf, sizeof(buf));
+   }
+   state.SetBytesProcessed(state.iterations() * descriptor.size);
+ }
+@@ -429,7 +430,7 @@
+ static void BM_JsonParse_Proto2(benchmark::State& state) {
+   protobuf::FileDescriptorProto proto;
+   absl::string_view input(descriptor.data, descriptor.size);
+-  proto.ParseFromString(input);
++  std::ignore = proto.ParseFromString(input);
+   std::string json;
+   ABSL_CHECK_OK(google::protobuf::json::MessageToJsonString(proto, &json));
+   for (auto _ : state) {
+@@ -468,7 +469,7 @@
+ static void BM_JsonSerialize_Proto2(benchmark::State& state) {
+   protobuf::FileDescriptorProto proto;
+   absl::string_view input(descriptor.data, descriptor.size);
+-  proto.ParseFromString(input);
++  std::ignore = proto.ParseFromString(input);
+   std::string json;
+   for (auto _ : state) {
+     json.clear();
+--- a/third_party/openscreen/src/third_party/protobuf/conformance/binary_json_conformance_suite.cc
++++ b/third_party/openscreen/src/third_party/protobuf/conformance/binary_json_conformance_suite.cc
+@@ -7,6 +7,7 @@
+ 
+ #include "binary_json_conformance_suite.h"
+ 
++#include <tuple>
+ #include <cassert>
+ #include <cctype>
+ #include <cstddef>
+@@ -934,7 +935,7 @@
+             ? ""
+             : absl::StrCat(tag(field->number(), wire_type), values[i].second);
+     MessageType test_message;
+-    test_message.MergeFromString(expected_proto);
++    std::ignore = test_message.MergeFromString(expected_proto);
+     std::string text;
+     TextFormat::PrintToString(test_message, &text);
+ 
+@@ -957,7 +958,7 @@
+     std::string expected_proto =
+         absl::StrCat(tag(field->number(), wire_type), values.back().second);
+     MessageType test_message;
+-    test_message.MergeFromString(expected_proto);
++    std::ignore = test_message.MergeFromString(expected_proto);
+     std::string text;
+     TextFormat::PrintToString(test_message, &text);
+ 
+@@ -1018,7 +1019,7 @@
+                      delim(unpacked_proto_packed));
+ 
+     MessageType test_message;
+-    test_message.MergeFromString(default_proto_packed_expected);
++    std::ignore = test_message.MergeFromString(default_proto_packed_expected);
+     std::string text;
+     TextFormat::PrintToString(test_message, &text);
+ 
+@@ -1069,7 +1070,7 @@
+           absl::StrCat(tag(rep_field->number(), wire_type), values[i].second);
+     }
+     MessageType test_message;
+-    test_message.MergeFromString(expected_proto);
++    std::ignore = test_message.MergeFromString(expected_proto);
+     std::string text;
+     TextFormat::PrintToString(test_message, &text);
+ 
+@@ -1149,7 +1150,7 @@
+         tag(field->number(), WireFormatLite::WIRETYPE_LENGTH_DELIMITED),
+         delim(absl::StrCat(key1_data, value1_data)));
+     MessageType test_message;
+-    test_message.MergeFromString(proto);
++    std::ignore = test_message.MergeFromString(proto);
+     std::string text;
+     TextFormat::PrintToString(test_message, &text);
+     RunValidProtobufTest(absl::StrCat("ValidDataMap", key_type_name,
+@@ -1163,7 +1164,7 @@
+         tag(field->number(), WireFormatLite::WIRETYPE_LENGTH_DELIMITED),
+         delim(""));
+     MessageType test_message;
+-    test_message.MergeFromString(proto);
++    std::ignore = test_message.MergeFromString(proto);
+     std::string text;
+     TextFormat::PrintToString(test_message, &text);
+     RunValidProtobufTest(absl::StrCat("ValidDataMap", key_type_name,
+@@ -1177,7 +1178,7 @@
+         tag(field->number(), WireFormatLite::WIRETYPE_LENGTH_DELIMITED),
+         delim(absl::StrCat(key2_data, value2_data)));
+     MessageType test_message;
+-    test_message.MergeFromString(proto);
++    std::ignore = test_message.MergeFromString(proto);
+     std::string text;
+     TextFormat::PrintToString(test_message, &text);
+     RunValidProtobufTest(absl::StrCat("ValidDataMap", key_type_name,
+@@ -1191,7 +1192,7 @@
+         tag(field->number(), WireFormatLite::WIRETYPE_LENGTH_DELIMITED),
+         delim(absl::StrCat(value2_data, key2_data)));
+     MessageType test_message;
+-    test_message.MergeFromString(proto);
++    std::ignore = test_message.MergeFromString(proto);
+     std::string text;
+     TextFormat::PrintToString(test_message, &text);
+     RunValidProtobufTest(absl::StrCat("ValidDataMap", key_type_name,
+@@ -1209,7 +1210,7 @@
+         delim(absl::StrCat(key2_data, value2_data)));
+     std::string proto = absl::StrCat(proto1, proto2);
+     MessageType test_message;
+-    test_message.MergeFromString(proto2);
++    std::ignore = test_message.MergeFromString(proto2);
+     std::string text;
+     TextFormat::PrintToString(test_message, &text);
+     RunValidProtobufTest(absl::StrCat("ValidDataMap", key_type_name,
+@@ -1223,7 +1224,7 @@
+         tag(field->number(), WireFormatLite::WIRETYPE_LENGTH_DELIMITED),
+         delim(absl::StrCat(key1_data, key2_data, value2_data)));
+     MessageType test_message;
+-    test_message.MergeFromString(proto);
++    std::ignore = test_message.MergeFromString(proto);
+     std::string text;
+     TextFormat::PrintToString(test_message, &text);
+     RunValidProtobufTest(
+@@ -1238,7 +1239,7 @@
+         tag(field->number(), WireFormatLite::WIRETYPE_LENGTH_DELIMITED),
+         delim(absl::StrCat(key2_data, value1_data, value2_data)));
+     MessageType test_message;
+-    test_message.MergeFromString(proto);
++    std::ignore = test_message.MergeFromString(proto);
+     std::string text;
+     TextFormat::PrintToString(test_message, &text);
+     RunValidProtobufTest(
+@@ -1281,7 +1282,7 @@
+       delim(absl::StrCat(key_data, value2_data)));
+   std::string proto = absl::StrCat(proto1, proto2);
+   MessageType test_message;
+-  test_message.MergeFromString(proto2);
++  std::ignore = test_message.MergeFromString(proto2);
+   std::string text;
+   TextFormat::PrintToString(test_message, &text);
+   RunValidProtobufTest("ValidDataMap.STRING.MESSAGE.MergeValue", REQUIRED,
+@@ -1306,7 +1307,7 @@
+     // Tests oneof with default value.
+     const std::string& proto = default_value;
+     MessageType test_message;
+-    test_message.MergeFromString(proto);
++    std::ignore = test_message.MergeFromString(proto);
+     std::string text;
+     TextFormat::PrintToString(test_message, &text);
+ 
+@@ -1322,7 +1323,7 @@
+     // Tests oneof with non-default value.
+     const std::string& proto = non_default_value;
+     MessageType test_message;
+-    test_message.MergeFromString(proto);
++    std::ignore = test_message.MergeFromString(proto);
+     std::string text;
+     TextFormat::PrintToString(test_message, &text);
+ 
+@@ -1339,7 +1340,7 @@
+     const std::string proto = absl::StrCat(default_value, non_default_value);
+     const std::string& expected_proto = non_default_value;
+     MessageType test_message;
+-    test_message.MergeFromString(expected_proto);
++    std::ignore = test_message.MergeFromString(expected_proto);
+     std::string text;
+     TextFormat::PrintToString(test_message, &text);
+ 
+@@ -1365,7 +1366,7 @@
+     const std::string proto = absl::StrCat(other_value, non_default_value);
+     const std::string& expected_proto = non_default_value;
+     MessageType test_message;
+-    test_message.MergeFromString(expected_proto);
++    std::ignore = test_message.MergeFromString(expected_proto);
+     std::string text;
+     TextFormat::PrintToString(test_message, &text);
+ 
+@@ -1414,7 +1415,7 @@
+       delim(merged_data));
+ 
+   MessageType test_message;
+-  test_message.MergeFromString(expected_proto);
++  std::ignore = test_message.MergeFromString(expected_proto);
+   std::string text;
+   TextFormat::PrintToString(test_message, &text);
+   RunValidProtobufTest("ValidDataOneof.MESSAGE.Merge", REQUIRED, proto, text);
+@@ -1539,7 +1540,7 @@
+ template <typename MessageType>
+ void BinaryAndJsonConformanceSuiteImpl<MessageType>::TestUnknownMessage() {
+   MessageType message;
+-  message.ParseFromString("\xA8\x1F\x01");
++  std::ignore = message.ParseFromString("\xA8\x1F\x01");
+   RunValidBinaryProtobufTest("UnknownVarint", REQUIRED,
+                              message.SerializeAsString());
+ }
+--- a/third_party/openscreen/src/third_party/protobuf/conformance/conformance_cpp.cc
++++ b/third_party/openscreen/src/third_party/protobuf/conformance/conformance_cpp.cc
+@@ -5,6 +5,7 @@
+ // license that can be found in the LICENSE file or at
+ // https://developers.google.com/open-source/licenses/bsd
+ 
++#include <tuple>
+ #include <errno.h>
+ #include <stdarg.h>
+ #include <stdlib.h>
+@@ -236,13 +237,13 @@
+   RETURN_IF_ERROR(ReadFd(STDIN_FILENO, &serialized_input[0], in_len));
+ 
+   ConformanceRequest request;
+-  ABSL_CHECK(request.ParseFromString(serialized_input));
++  std::ignore = ABSL_CHECK(request.ParseFromString(serialized_input));
+ 
+   absl::StatusOr<ConformanceResponse> response = RunTest(request);
+   RETURN_IF_ERROR(response.status());
+ 
+   std::string serialized_output;
+-  response->SerializeToString(&serialized_output);
++  std::ignore = response->SerializeToString(&serialized_output);
+ 
+   uint32_t out_len = internal::little_endian::FromHost(
+       static_cast<uint32_t>(serialized_output.size()));
+--- a/third_party/openscreen/src/third_party/protobuf/conformance/fork_pipe_runner.cc
++++ b/third_party/openscreen/src/third_party/protobuf/conformance/fork_pipe_runner.cc
+@@ -32,6 +32,7 @@
+ 
+ #include "fork_pipe_runner.h"
+ 
++#include <tuple>
+ #include <errno.h>
+ #include <signal.h>
+ #include <stdio.h>
+@@ -107,7 +108,7 @@
+     ABSL_LOG(INFO) << error_msg;
+     child_pid_ = -1;
+ 
+-    response_obj.SerializeToString(&response);
++    std::ignore = response_obj.SerializeToString(&response);
+     return response;
+   }
+ 
+--- a/third_party/openscreen/src/third_party/protobuf/conformance/testee.cc
++++ b/third_party/openscreen/src/third_party/protobuf/conformance/testee.cc
+@@ -1,5 +1,6 @@
+ #include "testee.h"
+ 
++#include <tuple>
+ #include <string>
+ #include <utility>
+ 
+@@ -57,7 +58,7 @@
+       << "Duplicated test name: " << test_name;
+ 
+   std::string serialized_request;
+-  request.SerializeToString(&serialized_request);
++  std::ignore = request.SerializeToString(&serialized_request);
+ 
+   std::string serialized_response =
+       runner_->RunTest(test_name, serialized_request);
+--- a/third_party/openscreen/src/third_party/protobuf/conformance/text_format_conformance_suite.cc
++++ b/third_party/openscreen/src/third_party/protobuf/conformance/text_format_conformance_suite.cc
+@@ -7,6 +7,7 @@
+ 
+ #include "text_format_conformance_suite.h"
+ 
++#include <tuple>
+ #include <cstddef>
+ #include <string>
+ #include <utility>
+@@ -244,7 +245,7 @@
+     MessageType>::RunValidUnknownTextFormatTest(const std::string& test_name,
+                                                 const Message& message) {
+   std::string serialized_input;
+-  message.SerializeToString(&serialized_input);
++  std::ignore = message.SerializeToString(&serialized_input);
+   MessageType prototype;
+   ConformanceRequestSetting setting1(
+       RECOMMENDED, conformance::PROTOBUF, conformance::TEXT_FORMAT,
+--- a/third_party/openscreen/src/third_party/protobuf/editions/internal_defaults_escape.cc
++++ b/third_party/openscreen/src/third_party/protobuf/editions/internal_defaults_escape.cc
+@@ -1,3 +1,4 @@
++#include <tuple>
+ #include <cstddef>
+ #include <cstdint>
+ #include <fstream>
+@@ -56,7 +57,7 @@
+   defaults_file.close();
+ 
+   std::string content = {};
+-  defaults.SerializeToString(&content);
++  std::ignore = defaults.SerializeToString(&content);
+   if (encoding == "base64") {
+     content = absl::Base64Escape(content);
+   } else if (encoding == "octal") {
+--- a/third_party/openscreen/src/third_party/protobuf/lua/upbc.cc
++++ b/third_party/openscreen/src/third_party/protobuf/lua/upbc.cc
+@@ -5,6 +5,8 @@
+ // license that can be found in the LICENSE file or at
+ // https://developers.google.com/open-source/licenses/bsd
+ 
++#include <tuple>
++
+ #include "google/protobuf/descriptor.pb.h"
+ #include "absl/strings/str_replace.h"
+ #include "absl/strings/string_view.h"
+@@ -99,7 +101,7 @@
+   protobuf::FileDescriptorProto file_proto;
+   file->CopyTo(&file_proto);
+   std::string file_data;
+-  file_proto.SerializeToString(&file_data);
++  std::ignore = file_proto.SerializeToString(&file_data);
+ 
+   printer.Print("local descriptor = table.concat({\n");
+   absl::string_view data(file_data);
+--- a/third_party/openscreen/src/third_party/protobuf/python/google/protobuf/proto_api.cc
++++ b/third_party/openscreen/src/third_party/protobuf/python/google/protobuf/proto_api.cc
+@@ -1,5 +1,6 @@
+ #include "google/protobuf/proto_api.h"
+ 
++#include <tuple>
+ #include <Python.h>
+ 
+ #include <climits>
+@@ -39,7 +40,7 @@
+   // check.
+   if (!PyErr_Occurred() && owned_msg_ != nullptr) {
+     std::string wire;
+-    message_->SerializePartialToString(&wire);
++    std::ignore = message_->SerializePartialToString(&wire);
+     PyObject* py_wire = PyBytes_FromStringAndSize(
+         wire.data(), static_cast<Py_ssize_t>(wire.size()));
+     PyObject* parse =
+@@ -106,7 +107,7 @@
+   // serialize result may still diff between languages. So parse to
+   // another c++ message for compare.
+   std::unique_ptr<google::protobuf::Message> parsed_msg(owned_msg_->New());
+-  parsed_msg->ParsePartialFromArray(data, static_cast<int>(len));
++  std::ignore = parsed_msg->ParsePartialFromArray(data, static_cast<int>(len));
+   std::string wire_other;
+   google::protobuf::io::StringOutputStream stream_other(&wire_other);
+   google::protobuf::io::CodedOutputStream output_other(&stream_other);
+--- a/third_party/openscreen/src/third_party/protobuf/python/google/protobuf/pyext/descriptor.cc
++++ b/third_party/openscreen/src/third_party/protobuf/python/google/protobuf/pyext/descriptor.cc
+@@ -10,6 +10,7 @@
+ #include "google/protobuf/pyext/descriptor.h"
+ 
+ #define PY_SSIZE_T_CLEAN
++#include <tuple>
+ #include <Python.h>
+ #include <frameobject.h>
+ 
+@@ -217,7 +218,7 @@
+              Message* to) {
+   // Reparse message.
+   std::string serialized;
+-  from.SerializeToString(&serialized);
++  std::ignore = from.SerializeToString(&serialized);
+   io::CodedInputStream input(
+       reinterpret_cast<const uint8_t*>(serialized.c_str()), serialized.size());
+   input.SetExtensionRegistry(message_factory->pool->pool,
+@@ -1468,7 +1469,7 @@
+   FileDescriptorProto file_proto;
+   _GetDescriptor(self)->CopyTo(&file_proto);
+   std::string contents;
+-  file_proto.SerializePartialToString(&contents);
++  std::ignore = file_proto.SerializePartialToString(&contents);
+   self->serialized_pb = PyBytes_FromStringAndSize(
+       contents.c_str(), static_cast<size_t>(contents.size()));
+   if (self->serialized_pb == nullptr) {
+--- a/third_party/openscreen/src/third_party/protobuf/python/google/protobuf/pyext/message_module.cc
++++ b/third_party/openscreen/src/third_party/protobuf/python/google/protobuf/pyext/message_module.cc
+@@ -4,6 +4,7 @@
+ // Use of this source code is governed by a BSD-style
+ // license that can be found in the LICENSE file or at
+ // https://developers.google.com/open-source/licenses/bsd
++#include <tuple>
+ #include <cstdint>
+ #include <string>
+ 
+@@ -285,7 +286,7 @@
+ bool CopyToOwnedMsg(google::protobuf::Message** copy, const google::protobuf::Message& message) {
+   *copy = message.New();
+   std::string wire;
+-  message.SerializePartialToString(&wire);
++  std::ignore = message.SerializePartialToString(&wire);
+   (*copy)->ParsePartialFromArray(wire.data(), wire.size());
+   return true;
+ }
+--- a/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/command_line_interface.cc
++++ b/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/command_line_interface.cc
+@@ -11,6 +11,7 @@
+ 
+ #include "google/protobuf/compiler/command_line_interface.h"
+ 
++#include <tuple>
+ #include <errno.h>
+ #include <limits.h>
+ #include <stdio.h>
+@@ -843,7 +844,7 @@
+   if (is_text_format) {
+     TextFormat::PrintToString(new_metadata, encoded_data);
+   } else {
+-    new_metadata.SerializeToString(encoded_data);
++    std::ignore = new_metadata.SerializeToString(encoded_data);
+   }
+ }
+ 
+@@ -1142,8 +1143,8 @@
+     std::unique_ptr<Message> dynamic_message(
+         factory.GetPrototype(descriptor)->New());
+     std::string serialized;
+-    ABSL_CHECK(options.SerializeToString(&serialized));
+-    ABSL_CHECK(dynamic_message->ParseFromString(serialized));
++    std::ignore = ABSL_CHECK(options.SerializeToString(&serialized));
++    std::ignore = ABSL_CHECK(dynamic_message->ParseFromString(serialized));
+     return ValidateTargetConstraintsRecursive(*dynamic_message, error_collector,
+                                               file_name, target_type);
+   }
+--- a/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/cpp/file.cc
++++ b/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/cpp/file.cc
+@@ -11,6 +11,7 @@
+ 
+ #include "google/protobuf/compiler/cpp/file.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <cstddef>
+ #include <functional>
+@@ -1242,7 +1243,7 @@
+ 
+   FileDescriptorProto file_proto = StripSourceRetentionOptions(*file_);
+   std::string file_data;
+-  file_proto.SerializeToString(&file_data);
++  std::ignore = file_proto.SerializeToString(&file_data);
+ 
+   auto desc_name = UniqueName("descriptor_table_protodef", file_, options_);
+   p->Emit(
+--- a/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/cpp/helpers.cc
++++ b/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/cpp/helpers.cc
+@@ -11,6 +11,7 @@
+ 
+ #include "google/protobuf/compiler/cpp/helpers.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <cstddef>
+ #include <cstdint>
+@@ -2109,7 +2110,7 @@
+   // are converted to extensions.
+   DynamicMessageFactory factory(pool);
+   Message* fd_proto = factory.GetPrototype(fd_proto_descriptor)->New();
+-  fd_proto->ParseFromString(linkedin_fd_proto.SerializeAsString());
++  std::ignore = fd_proto->ParseFromString(linkedin_fd_proto.SerializeAsString());
+ 
+   bool res = HasExtensionFromFile(*fd_proto, file, options,
+                                   has_opt_codesize_extension);
+--- a/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/csharp/csharp_helpers.cc
++++ b/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/csharp/csharp_helpers.cc
+@@ -11,6 +11,7 @@
+ 
+ #include "google/protobuf/compiler/csharp/csharp_helpers.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <limits>
+ #include <sstream>
+@@ -338,7 +339,7 @@
+ std::string FileDescriptorToBase64(const FileDescriptor* descriptor) {
+   std::string fdp_bytes;
+   FileDescriptorProto fdp = StripSourceRetentionOptions(*descriptor);
+-  fdp.SerializeToString(&fdp_bytes);
++  std::ignore = fdp.SerializeToString(&fdp_bytes);
+   return StringToBase64(fdp_bytes);
+ }
+ 
+--- a/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/java/file.cc
++++ b/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/java/file.cc
+@@ -11,6 +11,7 @@
+ 
+ #include "google/protobuf/compiler/java/file.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <string>
+ #include <vector>
+@@ -122,7 +123,7 @@
+                        FieldDescriptorSet* optional_extensions) {
+   FileDescriptorProto file_proto = StripSourceRetentionOptions(file);
+   std::string file_data;
+-  file_proto.SerializeToString(&file_data);
++  std::ignore = file_proto.SerializeToString(&file_data);
+   const Descriptor* file_proto_desc = file.pool()->FindMessageTypeByName(
+       file_proto.GetDescriptor()->full_name());
+ 
+@@ -134,7 +135,7 @@
+   std::unique_ptr<Message> dynamic_file_proto(
+       factory.GetPrototype(file_proto_desc)->New());
+   ABSL_CHECK(dynamic_file_proto.get() != nullptr);
+-  ABSL_CHECK(dynamic_file_proto->ParseFromString(file_data));
++  std::ignore = ABSL_CHECK(dynamic_file_proto->ParseFromString(file_data));
+ 
+   // Collect the extensions from the dynamic message.
+   extensions->clear();
+--- a/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/java/shared_code_generator.cc
++++ b/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/java/shared_code_generator.cc
+@@ -9,6 +9,7 @@
+ 
+ #include "google/protobuf/compiler/java/shared_code_generator.h"
+ 
++#include <tuple>
+ #include <memory>
+ #include <utility>
+ 
+@@ -135,7 +136,7 @@
+   }
+ 
+   std::string file_data;
+-  file_proto.SerializeToString(&file_data);
++  std::ignore = file_proto.SerializeToString(&file_data);
+ 
+   printer->Print("java.lang.String[] descriptorData = {\n");
+   printer->Indent();
+--- a/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/php/php_generator.cc
++++ b/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/php/php_generator.cc
+@@ -7,6 +7,7 @@
+ 
+ #include "google/protobuf/compiler/php/php_generator.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <sstream>
+ #include <string>
+@@ -945,7 +946,7 @@
+       }
+ 
+       std::string files_data;
+-      files.SerializeToString(&files_data);
++      std::ignore = files.SerializeToString(&files_data);
+ 
+       printer->Print("$pool->internalAddGeneratedFile(\n");
+       Indent(printer);
+@@ -1078,7 +1079,7 @@
+   }
+ 
+   std::string files_data;
+-  sorted_file_set.SerializeToString(&files_data);
++  std::ignore = sorted_file_set.SerializeToString(&files_data);
+ 
+   printer->Print("$pool->internalAddGeneratedFile(\n");
+   Indent(printer);
+@@ -1968,7 +1969,7 @@
+         absl::StrReplaceAll(metadata_classname, {{"\\", "\\\\"}});
+     FileDescriptorProto file_proto = StripSourceRetentionOptions(*file);
+     std::string serialized;
+-    file_proto.SerializeToString(&serialized);
++    std::ignore = file_proto.SerializeToString(&serialized);
+     printer.Print(
+         "/* $filename$ */\n"
+         "\n"
+--- a/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/python/generator.cc
++++ b/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/python/generator.cc
+@@ -21,6 +21,7 @@
+ 
+ #include "google/protobuf/compiler/python/generator.h"
+ 
++#include <tuple>
+ #include <cstddef>
+ #include <limits>
+ #include <memory>
+@@ -243,7 +244,7 @@
+   std::string filename = GetFileName(file, ".py");
+ 
+   proto_ = StripSourceRetentionOptions(*file_);
+-  proto_.SerializeToString(&file_descriptor_serialized_);
++  std::ignore = proto_.SerializeToString(&file_descriptor_serialized_);
+ 
+   if (!opensource_runtime_ && GeneratingDescriptorProto()) {
+     std::string bootstrap_filename =
+@@ -467,7 +468,7 @@
+   auto message_factory = absl::make_unique<DynamicMessageFactory>();
+   auto features =
+       absl::WrapUnique(message_factory->GetPrototype(feature_set)->New());
+-  features->ParseFromString(
++  std::ignore = features->ParseFromString(
+       GetResolvedSourceFeatures(descriptor).SerializeAsString());
+ 
+   // Collect all of the resolved features.
+@@ -666,7 +667,7 @@
+       "  create_key=_descriptor._internal_create_key,\n"
+       "  values=[\n";
+   std::string options_string;
+-  proto.options().SerializeToString(&options_string);
++  std::ignore = proto.options().SerializeToString(&options_string);
+   printer_->Print(m, enum_descriptor_template);
+   printer_->Indent();
+   printer_->Indent();
+@@ -822,7 +823,7 @@
+   printer_->Outdent();
+   printer_->Print("],\n");
+   std::string options_string;
+-  proto.options().SerializeToString(&options_string);
++  std::ignore = proto.options().SerializeToString(&options_string);
+   printer_->Print(
+       "serialized_options=$options_value$,\n"
+       "is_extendable=$extendable$",
+@@ -1150,7 +1151,7 @@
+   // TODO: Fix up EnumValueDescriptor "type" fields.
+   // More circular references.  ::sigh::
+   std::string options_string;
+-  proto.options().SerializeToString(&options_string);
++  std::ignore = proto.options().SerializeToString(&options_string);
+   absl::flat_hash_map<absl::string_view, std::string> m;
+   m["name"] = std::string(descriptor.name());
+   m["index"] = absl::StrCat(descriptor.index());
+@@ -1168,7 +1169,7 @@
+ void Generator::PrintFieldDescriptor(const FieldDescriptor& field,
+                                      const FieldDescriptorProto& proto) const {
+   std::string options_string;
+-  proto.options().SerializeToString(&options_string);
++  std::ignore = proto.options().SerializeToString(&options_string);
+   absl::flat_hash_map<absl::string_view, std::string> m;
+   m["name"] = std::string(field.name());
+   m["full_name"] = std::string(field.full_name());
+@@ -1313,7 +1314,7 @@
+ void Generator::PrintSerializedPbInterval(
+     const DescriptorProtoT& descriptor_proto, absl::string_view name) const {
+   std::string sp;
+-  descriptor_proto.SerializeToString(&sp);
++  std::ignore = descriptor_proto.SerializeToString(&sp);
+   size_t offset = file_descriptor_serialized_.find(sp);
+   ABSL_CHECK_GE(offset, 0);
+ 
+--- a/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/ruby/ruby_generator.cc
++++ b/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/compiler/ruby/ruby_generator.cc
+@@ -7,6 +7,7 @@
+ 
+ #include "google/protobuf/compiler/ruby/ruby_generator.h"
+ 
++#include <tuple>
+ #include <cstddef>
+ #include <memory>
+ #include <sstream>
+@@ -212,7 +213,7 @@
+ std::string SerializedDescriptor(const FileDescriptor* file) {
+   FileDescriptorProto file_proto = StripSourceRetentionOptions(*file);
+   std::string file_data;
+-  file_proto.SerializeToString(&file_data);
++  std::ignore = file_proto.SerializeToString(&file_data);
+   return file_data;
+ }
+ 
+--- a/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/descriptor.cc
++++ b/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/descriptor.cc
+@@ -9804,7 +9804,7 @@
+     switch ((*iter)->type()) {
+       case FieldDescriptor::TYPE_MESSAGE: {
+         std::string outstr;
+-        ABSL_CHECK(unknown_fields->SerializeToString(&outstr))
++        std::ignore = ABSL_CHECK(unknown_fields->SerializeToString(&outstr))
+             << "Unexpected failure while serializing option submessage "
+             << debug_msg_name << "\".";
+         parent_unknown_fields->AddLengthDelimited((*iter)->number(),
+@@ -10376,13 +10376,13 @@
+     return false;
+   } else {
+     std::string serial;
+-    dynamic->SerializeToString(&serial);  // Never fails
++    std::ignore = dynamic->SerializeToString(&serial);  // Never fails
+     if (option_field->type() == FieldDescriptor::TYPE_MESSAGE) {
+       unknown_fields->AddLengthDelimited(option_field->number(), serial);
+     } else {
+       ABSL_CHECK_EQ(option_field->type(), FieldDescriptor::TYPE_GROUP);
+       UnknownFieldSet* group = unknown_fields->AddGroup(option_field->number());
+-      group->ParseFromString(serial);
++      std::ignore = group->ParseFromString(serial);
+     }
+     return true;
+   }
+--- a/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/feature_resolver.cc
++++ b/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/feature_resolver.cc
+@@ -7,6 +7,7 @@
+ 
+ #include "google/protobuf/feature_resolver.h"
+ 
++#include <tuple>
+ #include <algorithm>
+ #include <cstddef>
+ #include <iterator>
+@@ -483,9 +484,9 @@
+     }
+     auto* edition_defaults = defaults.mutable_defaults()->Add();
+     edition_defaults->set_edition(edition);
+-    edition_defaults->mutable_fixed_features()->MergeFromString(
++    std::ignore = edition_defaults->mutable_fixed_features()->MergeFromString(
+         fixed_defaults_dynamic->SerializeAsString());
+-    edition_defaults->mutable_overridable_features()->MergeFromString(
++    std::ignore = edition_defaults->mutable_overridable_features()->MergeFromString(
+         overridable_defaults_dynamic->SerializeAsString());
+   }
+   return defaults;
+@@ -561,7 +562,7 @@
+     // extensions.
+     features_storage =
+         absl::WrapUnique(factory.GetPrototype(pool_descriptor)->New());
+-    features_storage->ParseFromString(features.SerializeAsString());
++    std::ignore = features_storage->ParseFromString(features.SerializeAsString());
+     pool_features = features_storage.get();
+   }
+   ABSL_CHECK(pool_features != nullptr);
+--- a/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/internal_feature_helper.cc
++++ b/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/internal_feature_helper.cc
+@@ -1,5 +1,6 @@
+ #include "google/protobuf/internal_feature_helper.h"
+ 
++#include <tuple>
+ #include <string>
+ 
+ #include "absl/log/absl_check.h"
+@@ -18,7 +19,7 @@
+   FeatureSetDefaults defaults;
+   std::string unescaped_data;
+   absl::Base64Unescape(data, &unescaped_data);
+-  ABSL_CHECK(defaults.ParseFromString(unescaped_data));
++  std::ignore = ABSL_CHECK(defaults.ParseFromString(unescaped_data));
+   auto edition_feature_set = GetEditionFeatureSetDefaults(edition, defaults);
+   ABSL_CHECK_OK(edition_feature_set);
+   return *edition_feature_set;
+--- a/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/io/printer.h
++++ b/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/io/printer.h
+@@ -14,6 +14,7 @@
+ #ifndef GOOGLE_PROTOBUF_IO_PRINTER_H__
+ #define GOOGLE_PROTOBUF_IO_PRINTER_H__
+ 
++#include <tuple>
+ #include <cstddef>
+ #include <functional>
+ #include <initializer_list>
+@@ -140,7 +141,7 @@
+ 
+   void AddAnnotationNew(Annotation& a) override {
+     auto* annotation = annotation_proto_->add_annotation();
+-    annotation->ParseFromString(a.second);
++    std::ignore = annotation->ParseFromString(a.second);
+     annotation->set_begin(a.first.first);
+     annotation->set_end(a.first.second);
+   }
+--- a/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/json/internal/unparser_traits.h
++++ b/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/json/internal/unparser_traits.h
+@@ -8,6 +8,7 @@
+ #ifndef GOOGLE_PROTOBUF_JSON_INTERNAL_UNPARSER_TRAITS_H__
+ #define GOOGLE_PROTOBUF_JSON_INTERNAL_UNPARSER_TRAITS_H__
+ 
++#include <tuple>
+ #include <cstddef>
+ #include <cstdint>
+ #include <memory>
+@@ -212,7 +213,7 @@
+                                          absl::string_view data, F body) {
+     DynamicMessageFactory factory;
+     std::unique_ptr<Message> unerased(factory.GetPrototype(&desc)->New());
+-    unerased->ParsePartialFromString(data);
++    std::ignore = unerased->ParsePartialFromString(data);
+ 
+     // Explicitly create a const reference, so that we do not accidentally pass
+     // a mutable reference to `body`.
+--- a/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/text_format.cc
++++ b/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/text_format.cc
+@@ -11,6 +11,7 @@
+ 
+ #include "google/protobuf/text_format.h"
+ 
++#include <tuple>
+ #include <stdio.h>
+ 
+ #include <algorithm>
+@@ -1283,7 +1284,7 @@
+     DO(ConsumeMessage(value.get(), sub_delimiter));
+ 
+     if (allow_partial_) {
+-      value->AppendPartialToString(serialized_value);
++      std::ignore = value->AppendPartialToString(serialized_value);
+     } else {
+       if (!value->IsInitialized()) {
+         std::vector<std::string> missing_fields;
+@@ -1294,7 +1295,7 @@
+             absl::StrJoin(missing_fields, ", ")));
+         return false;
+       }
+-      value->AppendToString(serialized_value);
++      std::ignore = value->AppendToString(serialized_value);
+     }
+     return true;
+   }
+@@ -2356,7 +2357,7 @@
+     {
+       std::string serialized = message.SerializeAsString();
+       io::ArrayInputStream input(serialized.data(), serialized.size());
+-      unknown_fields.ParseFromZeroCopyStream(&input);
++      std::ignore = unknown_fields.ParseFromZeroCopyStream(&input);
+     }
+     PrintUnknownFields(unknown_fields, generator, kUnknownFieldRecursionLimit);
+     return;
+--- a/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/util/python/field_mask_util_clif_aux.cc
++++ b/third_party/openscreen/src/third_party/protobuf/src/google/protobuf/util/python/field_mask_util_clif_aux.cc
+@@ -1,5 +1,6 @@
+ #include "google/protobuf/util/python/field_mask_util_clif_aux.h"
+ 
++#include <tuple>
+ #include <Python.h>
+ 
+ #include <memory>
+@@ -21,7 +22,7 @@
+   message->MergeFrom(destination);
+   FieldMaskUtil::MergeMessageTo(source, mask, options, message.get());
+   std::string wire;
+-  message->SerializeToString(&wire);
++  std::ignore = message->SerializeToString(&wire);
+   return PyBytes_FromStringAndSize(wire.data(),
+                                    static_cast<Py_ssize_t>(wire.size()));
+ }
