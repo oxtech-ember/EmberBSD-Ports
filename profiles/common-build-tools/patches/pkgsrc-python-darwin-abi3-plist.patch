@@ -1,0 +1,33 @@
+Origin: EmberBSD, AI-assisted.
+Python 3.15 on Darwin names stable-ABI extension modules *.abi3-darwin.so
+(and *.abi3t-darwin.so), so native Darwin builds of abi3 packages such as
+py-brotlicffi installed a file their PLIST does not list. Rewrite the
+portable PLIST names on Darwin with Python 3.15 or later. Other platforms,
+including cross builds for NetBSD, keep *.abi3.so. Not submitted upstream.
+
+--- a/lang/python/extension.mk
++++ b/lang/python/extension.mk
+@@ -64,6 +64,14 @@
+ PYSOABISUFFIX?=	cpython-${PYTHON_VERSION}.so
+ .endif
+ 
++# Python 3.15 on Darwin names stable-ABI modules *.abi3-darwin.so (and
++# *.abi3t-darwin.so). PLISTs list the portable *.abi3.so name.
++.if !empty(MACHINE_PLATFORM:MDarwin-*-*) && ${_PYTHON_VERSION} >= 315
++PLIST_AWK+=		-f ${PKGSRCDIR}/lang/python/plist-python-abi3-darwin.awk
++EARLY_PRINT_PLIST_AWK+=	/^[^@]/ { sub(/\.abi3-darwin\.so$$/, ".abi3.so") }
++EARLY_PRINT_PLIST_AWK+=	/^[^@]/ { sub(/\.abi3t-darwin\.so$$/, ".abi3t.so") }
++.endif
++
+ .if defined(PY_PATCHPLIST)
+ PLIST_SUBST+=	PYINC=${PYINC} PYLIB=${PYLIB} PYSITELIB=${PYSITELIB}
+ PLIST_SUBST+=	PYVERSSUFFIX=${PYVERSSUFFIX} PYSOABISUFFIX=${PYSOABISUFFIX}
+--- /dev/null
++++ b/lang/python/plist-python-abi3-darwin.awk
+@@ -0,0 +1,6 @@
++# Origin: EmberBSD. Python 3.15 on Darwin names stable-ABI extension
++# modules *.abi3-darwin.so and *.abi3t-darwin.so; PLISTs list the
++# portable names. Runs before plist-functions.awk prints the entry.
++/^[^@]/ && /\.abi3t?\.so$/ {
++	sub(/\.so$/, "-darwin.so")
++}
