@@ -1,0 +1,41 @@
+$NetBSD$
+
+Read the compile-time blockoptions() of a cross compiled XS from its
+preprocessed source instead of loading the target library.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- ReadKey.pm.PL.orig
++++ ReadKey.pm.PL
+@@ -511,9 +511,29 @@
+ require DynaLoader;
+ our @ISA = qw(DynaLoader);
+ 
+-print "Bootstrapping the XS for blockoptions: ";
+-bootstrap Term::ReadKey or die;
+-print blockoptions()."\n";
++if ( defined $ENV{TERMREADKEY_PREPROCESSED_XS} )
++{
++    # A cross build cannot load the target XS. blockoptions() is a
++    # compile-time constant, so read it from the preprocessed target XS.
++    my $i = $ENV{TERMREADKEY_PREPROCESSED_XS};
++    open my $fh, "<", $i or die "Can't read $i: $!";
++    local $/;
++    my $c = <$fh>;
++    close $fh;
++    $c =~ /\bblockoptions\s*\(\s*(?:void\s*)?\)\s*\{\s*return\s+([0-9|\s]+);/
++        or die "No blockoptions() in $i";
++    my $value = 0;
++    $value |= $_ for split /\|/, $1 =~ s/\s+//gr;
++    no warnings "redefine";
++    *blockoptions = sub { $value };
++    print "Target blockoptions from $i: $value\n";
++}
++else
++{
++    print "Bootstrapping the XS for blockoptions: ";
++    bootstrap Term::ReadKey or die;
++    print blockoptions()."\n";
++}
+ 
+ open OUT, ">>", $file or die "Can't append to $file: $!";
+ print OUT "# blockoptions: \n";

@@ -87,9 +87,17 @@ BUILDLINK_DEPMETHOD.perl+=	full
 TOOL_DEPENDS+=		p5-Module-Build>=0.42340nb5:../../devel/p5-Module-Build
 .  endif
 
-.  if ${PKGPATH} != devel/p5-Module-Build-Tiny && \
-    (${PERL5_MODULE_TYPE} == "Module::Build::Tiny")
+.  if ${PERL5_MODULE_TYPE} == "Module::Build::Tiny"
+.    if ${PKGPATH} != devel/p5-Module-Build-Tiny
 TOOL_DEPENDS+=		p5-Module-Build-Tiny>=0.23:../../devel/p5-Module-Build-Tiny
+.    elif ${USE_CROSS_COMPILE:Uno} == "yes"
+# Its own Build.PL runs with the native Perl and the native helpers.
+TOOL_DEPENDS+=		p5-ExtUtils-InstallPaths>=0.002:../../devel/p5-ExtUtils-InstallPaths
+TOOL_DEPENDS+=		p5-CPAN-Requirements-Dynamic>=0:../../devel/p5-CPAN-Requirements-Dynamic
+.    endif
+# The cross route needs the helpers that read the target Config.
+TOOL_DEPENDS+=		p5-ExtUtils-Config>=0.010nb4:../../devel/p5-ExtUtils-Config
+TOOL_DEPENDS+=		p5-ExtUtils-Helpers>=0.028nb4:../../devel/p5-ExtUtils-Helpers
 .  endif
 
 .  if ${PKGPATH} != devel/p5-Module-Install && \
@@ -109,12 +117,11 @@ PERL5_CONFIGURE_DIRS?=	${CONFIGURE_DIRS}
 MAKE_ENV+=	LC_ALL=C
 MAKE_ENV+=	PERL_MM_USE_DEFAULT=1
 
-# MakeMaker, Module::Install and the packaged Module::Build read the target
-# Config through the build context. Bundled Module::Build copies and
-# Module::Build::Tiny do not.
+# MakeMaker, Module::Install, the packaged Module::Build and Module::Build::Tiny
+# with the packaged ExtUtils::Config and ExtUtils::Helpers read the target
+# Config through the build context. Bundled Module::Build copies do not.
 .if ${USE_CROSS_COMPILE:Uno} == "yes" && \
-    (${PERL5_MODULE_TYPE} == "Module::Build::Bundled" || \
-     ${PERL5_MODULE_TYPE} == "Module::Build::Tiny")
+    ${PERL5_MODULE_TYPE} == "Module::Build::Bundled"
 PKG_FAIL_REASON+= "Cross Perl modules do not support ${PERL5_MODULE_TYPE}."
 .endif
 .include "../../lang/perl5/build-context.mk"

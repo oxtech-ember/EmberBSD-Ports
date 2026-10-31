@@ -1,0 +1,20 @@
+$NetBSD$
+
+Read the target Config from the cross build context.
+ExtUtils::MakeMaker::Config gives the target Config.pm data named by
+EMBERBSD_PERL_BUILD_CONFIG in a cross build and the running Config
+otherwise, so Module::Build::Tiny and ExtUtils::InstallPaths see the target
+layout.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- lib/ExtUtils/Config.pm.orig
++++ lib/ExtUtils/Config.pm
+@@ -2,7 +2,7 @@
+ $ExtUtils::Config::VERSION = '0.010';
+ use strict;
+ use warnings;
+-use Config;
++use ExtUtils::MakeMaker::Config;
+ 
+ sub new {
+ 	my ($pack, $args) = @_;
