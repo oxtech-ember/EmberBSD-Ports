@@ -110,3 +110,4 @@ SHA512 (golang.org_x_sys_@v_v0.49.0.zip) = 3d9415b9b64e2a26908a0142e2a76ca791eb3
 Size (golang.org_x_sys_@v_v0.49.0.zip) = 2115196 bytes
 SHA1 (patch-go.mod) = b41f3db4b07d6360dd71f39a0bbecc3df4e69f78
 SHA1 (patch-go.sum) = 734f2967fbb1d01880fb8bb46f1090d32696de2b
+SHA1 (patch-internal_bundled_libs_lib.dom.d.ts) = 3b446c5f97b5be3dc78d7563c47fe6f5faa3b7fe

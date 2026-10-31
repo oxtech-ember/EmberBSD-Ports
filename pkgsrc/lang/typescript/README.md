@@ -36,3 +36,14 @@ no output, adjacent DOM declarations, and failure when the native binary is
 missing. Cross test invocation refuses to run the target binary on the host.
 These checks do not cover the complete upstream compiler test suite or target
 runtime execution.
+
+## Chromium-compatible DOM declarations
+
+`patch-internal_bundled_libs_lib.dom.d.ts` carries Chromium's
+`third_party/node/patches/typescript.patch` edits for every consumer:
+`Element`/`ShadowRoot` `innerHTML` and `HTMLScriptElement.src` setters accept
+`TrustedHTML`/`TrustedScriptURL`, and `HTMLElement.hidden` is `boolean`.
+`lib.dom.d.ts` also declares those two interfaces with optional brands, so
+consumers without `@types/trusted-types` still compile and still reject
+primitives; `@types/trusted-types` merges its declarations into them.
+Consumers that assign `"until-found"` to `hidden` need a source fix.
