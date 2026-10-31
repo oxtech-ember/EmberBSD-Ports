@@ -19,6 +19,11 @@ USE_LANGUAGES= c c++
 USE_TOOLS+= gmake
 USE_LIBTOOL= yes
 CONFIGURE_ARGS+= --disable-shared --enable-static
+# Only ld64 uses the Blocks runtime and libdispatch; it is not built here.
+CONFIGURE_ARGS+= --disable-blocks-dispatch
+# libLTO is optional, and the llvm-config found in PATH describes the build
+# machine, not the target.
+CONFIGURE_ARGS+= --disable-lto-support
 INSTALLATION_DIRS= bin share/licenses/cctools-codesign-allocate
 
 do-build:

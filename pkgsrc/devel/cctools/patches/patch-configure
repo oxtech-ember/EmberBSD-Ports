@@ -1,10 +1,29 @@
 $NetBSD$
 
-Use only selected dependency paths.
+Use only selected dependency paths. Allow building the tools that do not
+need the Blocks runtime and libdispatch (only ld64 uses them) without them.
 
 --- configure.orig
 +++ configure
-@@ -3129,11 +3129,6 @@
+@@ -826,6 +826,7 @@
+ with_llvm_config
+ with_libblocksruntime
+ with_libdispatch
++enable_blocks_dispatch
+ enable_xar_support
+ with_libxar
+ enable_tapi_support
+@@ -1494,6 +1495,9 @@
+                           provide on AIX, [default=aix].
+   --disable-libtool-lock  avoid locking (might break parallel builds)
+   --enable-lto-support    enable link time optimization support
++  --disable-blocks-dispatch
++                          do not require the Blocks runtime and libdispatch
++                          (needed by ld64 only)
+   --enable-xar-support    enable xar support
+   --enable-tapi-support   enable tapi support
+ 
+@@ -3129,11 +3133,6 @@
  
  CXXFLAGS="$CXXFLAGS -std=c++2a"
  
@@ -16,3 +35,33 @@ Use only selected dependency paths.
  
  CWARNINGS=""
  CXXWARNINGS=""
+@@ -20475,6 +20474,20 @@
+ 
+ LDFLAGS="$LDFLAGS $LTO_RPATH"
+ 
++### Blocks and libdispatch are used only by ld64 ###
++
++# Check whether --enable-blocks-dispatch was given.
++if test ${enable_blocks_dispatch+y}
++then :
++  enableval=$enable_blocks_dispatch;
++else case e in #(
++  e) enable_blocks_dispatch=yes ;;
++esac
++fi
++
++
++if test "x$enable_blocks_dispatch" != "xno"; then
++
+ ### Check for Blocks Runtime library ###
+ 
+ 
+@@ -20791,6 +20804,8 @@
+   LDFLAGS=$ORIGLDFLAGS
+ fi
+ 
++fi
++
+ ### Check for libfts (musl) ###
+ 
+ { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for fts_open in -lfts" >&5
