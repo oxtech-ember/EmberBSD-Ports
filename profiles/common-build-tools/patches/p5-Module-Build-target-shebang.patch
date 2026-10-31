@@ -1,0 +1,22 @@
+$NetBSD$
+
+Write the target Perl into the scripts of a cross build.
+fix_shebang_line wrote the running host Perl into installed scripts, so a
+cross-built script named a build-host interpreter. A cross build selects the
+target Config in EMBERBSD_PERL_BUILD_CONFIG: use its perlpath, as
+ExtUtils::MakeMaker's fixin does with the target Config.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- lib/Module/Build/Base.pm.orig
++++ lib/Module/Build/Base.pm
+@@ -3093,7 +3093,9 @@
+ 
+     my ($cmd, $arg) = (split(' ', $line, 2), '');
+     next unless $cmd =~ /perl/i;
+-    my $interpreter = $self->{properties}{perl};
++    # Origin: EmberBSD. A cross build installs scripts for the target Perl.
++    my $interpreter = defined $ENV{EMBERBSD_PERL_BUILD_CONFIG}
++      ? $c->get('perlpath') : $self->{properties}{perl};
+ 
+     $self->log_verbose("Changing sharpbang in $file to $interpreter\n");
+     my $shb = '';

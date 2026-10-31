@@ -83,8 +83,9 @@ BUILDLINK_DEPMETHOD.perl+=	full
 
 .  if ${PKGPATH} != devel/p5-Module-Build && \
     (${PERL5_MODULE_TYPE} == "Module::Build")
-# The cross route needs the Module::Build that reads the target Config.
-TOOL_DEPENDS+=		p5-Module-Build>=0.42340nb5:../../devel/p5-Module-Build
+# The cross route needs the Module::Build that reads the target Config and
+# writes the target Perl into installed scripts.
+TOOL_DEPENDS+=		p5-Module-Build>=0.42340nb6:../../devel/p5-Module-Build
 .  endif
 
 .  if ${PERL5_MODULE_TYPE} == "Module::Build::Tiny"

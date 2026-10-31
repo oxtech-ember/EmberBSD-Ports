@@ -7,7 +7,7 @@ Origin: EmberBSD (AI-assisted). Upstream status: not submitted.
  DISTNAME=	Module-Build-0.4234
  PKGNAME=	p5-${DISTNAME}0
 -PKGREVISION=	4
-+PKGREVISION=	5
++PKGREVISION=	6
  CATEGORIES=	devel perl5
  MASTER_SITES=	${MASTER_SITE_PERL_CPAN:=Module/}
  

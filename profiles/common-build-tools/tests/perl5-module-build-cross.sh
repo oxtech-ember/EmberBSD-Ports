@@ -10,7 +10,8 @@
 # host Mach-O bundle. Require that the cross recipes accept these module
 # types and depend on the patched native Module::Build, then run Build.PL,
 # Build and Build install with the host Perl and the target build context
-# and require a target ELF module in the target vendor architecture tree.
+# and require a target ELF module in the target vendor architecture tree
+# and a script that names the target Perl.
 set -eu
 [ "$#" -eq 4 ] || { echo "Usage: $0 PKGSRC MAKECONF TARGET_CC NEW_WORK" >&2; exit 2; }
 pkgsrc=$1 makeconf=$2 cc=$3
@@ -47,15 +48,16 @@ done
 	--target-config "$target" --sysroot "$sysroot" --cc "$cc" --ld "$cc" \
 	--ar "${cc%clang}ar" --ranlib "${cc%clang}ranlib" --cflags=-O2 --ldflags= \
 	--output "$work/config.json"
-mkdir "$work/probe" "$work/probe/lib"
+mkdir "$work/probe" "$work/probe/lib" "$work/probe/bin"
 cp "$here/perl-xs/EmberProbe.xs" "$work/probe/lib/"
 cp "$here/perl-xs/EmberProbe.pm" "$work/probe/lib/"
+printf '#!/usr/bin/perl -w\nprint "probe\\n";\n' > "$work/probe/bin/ember-probe"
 cat > "$work/probe/Build.PL" <<'PL'
 use strict;
 use warnings;
 use Module::Build;
 Module::Build->new(module_name => 'EmberProbe', dist_version => '0.01',
-    license => 'bsd')->create_build_script;
+    license => 'bsd', script_files => ['bin/ember-probe'])->create_build_script;
 PL
 (
 	cd "$work/probe"
@@ -72,9 +74,20 @@ case "$(cat "$work/probe/platform.txt")" in
 "Unix Module/Build/Platform/Unix.pm") ;;
 *) echo "FAIL: Module::Build selected $(cat "$work/probe/platform.txt")"; status=1;;
 esac
-arch=$(EMBERBSD_PERL_BUILD_CONFIG=$work/config.json "$host" -e '
-	use JSON::PP; local $/; open my $f, "<", $ENV{EMBERBSD_PERL_BUILD_CONFIG} or die;
-	print decode_json(<$f>)->{installvendorarch}')
+cfg() {
+	"$host" -MJSON::PP -e 'local $/; open my $f, "<", $ARGV[0] or die;
+	    print decode_json(<$f>)->{$ARGV[1]}' "$work/config.json" "$1"
+}
+arch=$(cfg installvendorarch)
+perlpath=$(cfg perlpath)
+script=$work/dest$(cfg installvendorscript)/ember-probe
+if [ -f "$script" ]; then
+	set -- $(sed -n '1s/^#!//p' "$script")
+	[ "${1:-}" = "$perlpath" ] ||
+		{ echo "FAIL: $script names ${1:-no} interpreter, not $perlpath"; status=1; }
+else
+	echo "FAIL: no ember-probe in the target vendor script directory"; status=1
+fi
 so=$work/dest$arch/auto/EmberProbe/EmberProbe.so
 if [ -f "$so" ]; then
 	"$host" -e 'open my $f, "<:raw", $ARGV[0] or die; read $f, my $h, 20;
@@ -85,4 +98,4 @@ else
 	echo "FAIL: no EmberProbe.so in the target vendor architecture tree"; status=1
 fi
 [ "$status" -eq 0 ] || exit 1
-echo "PASS: cross Module::Build builds a target XS module with the target Config"
+echo "PASS: cross Module::Build builds a target XS module and script with the target Config"
