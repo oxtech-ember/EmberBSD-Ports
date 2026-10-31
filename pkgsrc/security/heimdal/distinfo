@@ -44,3 +44,4 @@ SHA1 (patch-lib_hx509_pkcs11-openssl) = 0b70da6d4addbc8a069065f53595187f494d8d16
 SHA1 (patch-lib_krb5_pkinit.c) = 15b987612194378de4f456ead6494dd4cfb03315
 SHA1 (patch-lib_krb5_sp800-108-kdf.c) = e65f615fc0808dfa1301f12dbde7ca6d6fad051f
 SHA1 (patch-lib_kafs_rxkad_kdf.c) = 660cef5c628143af2a451abeb78ed3cdbb9cac10
+SHA1 (patch-kdc_pkinit.c) = e2616be0e7d0b5f756e7dbac5a28c026d50aa067
