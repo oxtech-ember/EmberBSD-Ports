@@ -2,7 +2,7 @@
 
 DISTNAME=	qtbase-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qtbase-${QTVERSION}
-PKGREVISION=	16
+PKGREVISION=	17
 COMMENT=	C++ X GUI toolkit
 CATEGORIES=	x11
 
@@ -260,6 +260,14 @@ qt-target-metadata:
 	${PERL5} ${FILESDIR}/target-metadata.pl ${DESTDIR:Q}${QTPREFIX:Q} \
 	    ${CROSS_DESTDIR:Q} ${WRKDIR:Q} ${PREFIX:Q}
 
+.endif
+
+.if defined(_EMBER_SDK_CC) && defined(_EMBER_SDK_CXX) && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+post-install: qt-native-metadata
+.PHONY: qt-native-metadata
+qt-native-metadata:
+	${PERL5} ${FILESDIR}/target-metadata.pl --native ${DESTDIR:Q}${QTPREFIX:Q} \
+	    ${_EMBER_SDK_CC:Q} ${_EMBER_SDK_CXX:Q}
 .endif
 
 .include "options.mk"

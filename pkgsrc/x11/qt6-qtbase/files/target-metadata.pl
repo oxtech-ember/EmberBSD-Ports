@@ -6,6 +6,34 @@ use warnings;
 use File::Find;
 use File::Path qw(remove_tree);
 
+if (@ARGV == 4 && $ARGV[0] eq '--native') {
+    my (undef, $root, $cc, $cxx) = @ARGV;
+    for ($root, $cc, $cxx) {
+        m{^/[^\n]+[^/]$} or die "absolute, non-root paths required\n";
+    }
+    # CMake quoted arguments must retain literal path characters.
+    s/([\\"\$])/\\$1/g for ($cc, $cxx);
+    for my $item (["$root/lib/cmake/Qt6/qt.toolchain.cmake", 'compiler'],
+                  ["$root/lib/cmake/Qt6BuildInternals/QtBuildInternalsExtra.cmake", 'source']) {
+        my ($path, $kind) = @$item;
+        open my $in, '<', $path or die "$path: $!\n";
+        local $/;
+        my $text = <$in>;
+        close $in or die "$path: $!\n";
+        if ($kind eq 'compiler') {
+            $text =~ s{^(set\(__qt_initial_c_compiler )"(?:\\.|[^"\\])*"\)}{$1"$cc")}m == 1 or die "missing C compiler in $path\n";
+            $text =~ s{^(set\(__qt_initial_cxx_compiler )"(?:\\.|[^"\\])*"\)}{$1"$cxx")}m == 1 or die "missing C++ compiler in $path\n";
+        } else {
+            $text =~ s{^(set\(QT_SOURCE_TREE )"[^"]*"}{$1""}m == 1 or die "missing source tree in $path\n";
+        }
+        open my $out, '>', $path or die "$path: $!\n";
+        print {$out} $text or die "$path: $!\n";
+        close $out or die "$path: $!\n";
+    }
+    print "PASS: native Qt metadata uses selected compilers\n";
+    exit 0;
+}
+
 my $module = @ARGV == 5 && $ARGV[4] eq "--module";
 @ARGV == 4 || $module or die "usage: $0 STAGED_QT SYSROOT WORKDIR PREFIX [--module]\n";
 my ($root, $sysroot, $work, $prefix) = @ARGV;
