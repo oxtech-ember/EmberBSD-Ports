@@ -13,7 +13,9 @@ WRKSRC=		${WRKDIR}/${DISTNAME}/tea
 
 USE_TOOLS+=		gmake
 HAS_CONFIGURE=		yes
-CONFIGURE_ARGS+=	--with-tcl=${BUILDLINK_PREFIX.tcl}/lib
+# tclConfig.sh is read at configure time: in a cross build it is in the
+# target root, not at the logical prefix on the build host.
+CONFIGURE_ARGS+=	--with-tcl=${_CROSS_DESTDIR:U}${BUILDLINK_PREFIX.tcl}/lib
 # Link the one common provider, not the bundled SQLite amalgamation.
 CONFIGURE_ARGS+=	--with-system-sqlite
 CONFIGURE_ARGS+=	--override-sqlite-version=${SQLITE3_VERSION}
