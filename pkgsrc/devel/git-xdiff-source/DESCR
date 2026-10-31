@@ -1,0 +1,3 @@
+The xdiff sources from the current Git distribution and the same pkgsrc
+patch set as Git. The source is not a standalone library: consumers must
+provide the Git compatibility interface and preserve their own API semantics.

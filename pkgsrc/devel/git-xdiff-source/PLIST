@@ -1,0 +1,18 @@
+@comment $NetBSD$
+share/git-xdiff-source/COPYING.LGPL-2.1
+share/git-xdiff-source/COPYING.git
+share/git-xdiff-source/xdiff/xdiff.h
+share/git-xdiff-source/xdiff/xdiffi.c
+share/git-xdiff-source/xdiff/xdiffi.h
+share/git-xdiff-source/xdiff/xemit.c
+share/git-xdiff-source/xdiff/xemit.h
+share/git-xdiff-source/xdiff/xhistogram.c
+share/git-xdiff-source/xdiff/xinclude.h
+share/git-xdiff-source/xdiff/xmacros.h
+share/git-xdiff-source/xdiff/xmerge.c
+share/git-xdiff-source/xdiff/xpatience.c
+share/git-xdiff-source/xdiff/xprepare.c
+share/git-xdiff-source/xdiff/xprepare.h
+share/git-xdiff-source/xdiff/xtypes.h
+share/git-xdiff-source/xdiff/xutils.c
+share/git-xdiff-source/xdiff/xutils.h
