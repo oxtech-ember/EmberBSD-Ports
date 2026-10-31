@@ -83,6 +83,15 @@ SUBST_STAGE.sqllink=	pre-configure
 SUBST_FILES.sqllink=	pkgs/sqlite${TCL_SQLITE3_VERSION}/configure
 SUBST_SED.sqllink=	-e "/LIBS=/s|-lsqlite3|-L${BUILDLINK_PREFIX.sqlite3}/lib ${COMPILER_RPATH_FLAG}${BUILDLINK_PREFIX.sqlite3}/lib -lsqlite3|g"
 
+# The NetBSD case of the core and bundled-extension configure scripts adds
+# -export-dynamic to LDFLAGS. That is a GCC driver option; clang rejects it,
+# so every later link probe fails and Tcl builds its compat replacements
+# (compat/fake-rfc2553.c then redefines strlcpy). Pass it to the linker.
+SUBST_CLASSES+=		export-dynamic
+SUBST_STAGE.export-dynamic=	pre-configure
+SUBST_FILES.export-dynamic=	unix/configure pkgs/*/configure
+SUBST_SED.export-dynamic=	-e 's|LDFLAGS="$$LDFLAGS -export-dynamic"|LDFLAGS="$$LDFLAGS -Wl,-export-dynamic"|'
+
 # install-sh requires $SHELL is an extremely close match to /bin/sh
 MAKE_ENV+=		SHELL=${SH:Q}
 
