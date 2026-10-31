@@ -1,0 +1,16 @@
+Origin: EmberBSD (AI-assisted).
+Upstream status: not submitted.
+Cross builds for a target other than Darwin must not run the build
+host codesign on target programs.
+
+--- a/print/cups/Makefile.common
++++ b/print/cups/Makefile.common
+@@ -10,3 +10,8 @@
+ 
+ HOMEPAGE=	https://openprinting.github.io/projects/00-cups/
+ LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2
++
++# configure picks codesign when the build host has one, and locale/ then
++# signs the new checkpo and po2strings. A target other than Darwin has no
++# Mach-O programs to sign: use configure's own fallback, true.
++CONFIGURE_ENV+=	${"${USE_CROSS_COMPILE:U:tl}" == "yes" && "${OPSYS}" != "Darwin":?ac_cv_path_CODE_SIGN=${TRUE:Q}:}
