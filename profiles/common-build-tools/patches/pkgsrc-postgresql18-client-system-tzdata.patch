@@ -1,0 +1,35 @@
+Origin: EmberBSD (AI-assisted).
+Upstream status: not submitted.
+Without --with-system-tzdata, PostgreSQL's configure needs a zic for the
+build machine when cross-compiling and stops with "configure: error: When
+cross-compiling, either use the option --with-system-tzdata to use
+existing time-zone data, or set the environment variable ZIC". The native
+Ports prefix has no zic, and Ports does not take host tools from outside
+that prefix. The client package installs no time-zone data; only initdb
+reads the zone files to guess the local zone. NetBSD installs them in
+/usr/share/zoneinfo from the base set, so use that directory.
+
+--- a/databases/postgresql18-client/Makefile
++++ b/databases/postgresql18-client/Makefile
+@@ -1,6 +1,7 @@
+ # $NetBSD: Makefile,v 1.4 2026/02/13 10:52:25 adam Exp $
+ 
+ PKGNAME=	${DISTNAME:S/-/18-client-/}
++PKGREVISION=	1
+ COMMENT=	PostgreSQL database client programs
+ 
+ .include "../../databases/postgresql18/Makefile.common"
+@@ -19,6 +20,13 @@
+ INSTALLATION_DIRS+=	bin
+ .endif
+ 
++.if ${OPSYS} == "NetBSD"
++# The client installs no time-zone data; initdb reads the base system's
++# zone files. This also avoids running a build-machine zic when
++# cross-compiling, which configure requires otherwise.
++CONFIGURE_ARGS+=	--with-system-tzdata=/usr/share/zoneinfo
++.endif
++
+ # The thread-safety test in ${WRSRC}/src/tools/thread does not pass on
+ # NetBSD earlier than 4.0 or DragonFly.
+ .if (${OPSYS} == "NetBSD" && ${OPSYS_VERSION} < 040000) || \
