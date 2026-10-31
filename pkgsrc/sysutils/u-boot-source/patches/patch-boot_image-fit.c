@@ -104,17 +104,28 @@ $NetBSD$
  	if (noffset == -FDT_ERR_TRUNCATED || noffset == -FDT_ERR_BADSTRUCTURE) {
  		err_msg = "Corrupted or truncated tree";
  		goto error;
-@@ -1461,6 +1476,13 @@
- 	       err_msg, fit_get_name(fit, noffset, NULL),
- 	       fit_get_name(fit, image_noffset, NULL));
+@@ -1463,6 +1478,13 @@
  	return 0;
-+}
-+
+ }
+ 
 +int fit_image_verify_with_data(const void *fit, int image_noffset,
 +		const void *key_blob, const void *data, size_t size)
 +{
 +	return fit_image_verify_with_data_quiet(fit, image_noffset, key_blob,
 +					        data, size, false, NULL);
- }
- 
++}
++
  /**
+  * fit_image_verify - verify data integrity
+  * @fit: pointer to the FIT format image header
+@@ -2261,6 +2283,10 @@
+ 
+ 	os_ok = image_type == IH_TYPE_FLATDT ||
+ 		image_type == IH_TYPE_FPGA ||
++		(IS_ENABLED(CONFIG_RISCV) && image_type == IH_TYPE_KERNEL &&
++		 (fit_image_check_type(fit, noffset, IH_TYPE_KERNEL) ||
++		  fit_image_check_type(fit, noffset, IH_TYPE_KERNEL_NOLOAD)) &&
++		 fit_image_check_os(fit, noffset, IH_OS_NETBSD)) ||
+ 		fit_image_check_os(fit, noffset, IH_OS_LINUX) ||
+ 		fit_image_check_os(fit, noffset, IH_OS_U_BOOT) ||
+ 		fit_image_check_os(fit, noffset, IH_OS_TEE) ||
