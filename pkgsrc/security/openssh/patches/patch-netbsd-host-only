@@ -1,0 +1,55 @@
+$NetBSD$
+
+Origin: NetBSD OpenSSH HOST_ONLY integration, adapted to 10.6 by
+EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- auth.c
++++ auth.c
+@@ -84,6 +84,7 @@
+ /* Debugging messages */
+ static struct sshbuf *auth_debug;
+ 
++#ifndef HOST_ONLY
+ /*
+  * Check if the user is allowed to log in via ssh. If user is listed
+  * in DenyUsers or one of user's groups is listed in DenyGroups, false
+@@ -586,6 +587,8 @@
+ 	return r == 0 ? 0 : 1;
+ }
+ 
++#endif /* !HOST_ONLY */
++
+ void
+ auth_debug_add(const char *fmt,...)
+ {
+@@ -627,6 +630,7 @@
+ 		fatal_f("sshbuf_new failed");
+ }
+ 
++#ifndef HOST_ONLY
+ struct passwd *
+ fakepw(void)
+ {
+@@ -666,6 +670,8 @@
+  * several times.
+  */
+ 
++#endif /* !HOST_ONLY */
++
+ const char *
+ auth_get_canonical_hostname(struct ssh *ssh, int use_dns)
+ {
+@@ -682,6 +688,7 @@
+ /* These functions link key/cert options to the auth framework */
+ 
+ /* Log sshauthopt options locally and (optionally) for remote transmission */
++#ifndef HOST_ONLY
+ void
+ auth_log_authopts(const char *loc, const struct sshauthopt *opts, int do_remote)
+ {
+@@ -785,3 +792,5 @@
+ 		fatal_f("failed to restrict session");
+ 	sshauthopt_free(restricted);
+ }
++
++#endif /* !HOST_ONLY */
