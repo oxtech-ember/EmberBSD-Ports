@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.104 2026/09/02 19:01:36 wiz Exp $
 
 DISTNAME=	libgit2-1.9.7
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=libgit2/}
 GITHUB_TAG=	v${PKGVERSION_NOREV}
@@ -9,7 +9,11 @@ GITHUB_TAG=	v${PKGVERSION_NOREV}
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://libgit2.org/
 COMMENT=	Portable, pure C implementation of the Git core methods
-LICENSE=	gnu-gpl-v2 # linking exception (linking allowed in more ways)
+LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2.1 AND modified-bsd # libgit2 has a linking exception
+
+.include "../../devel/git/Makefile.version"
+
+TOOL_DEPENDS+=	git-xdiff-source-${GIT_XDIFF_SOURCE_VERSION}:../../devel/git-xdiff-source
 
 USE_CC_FEATURES=	c99
 USE_LANGUAGES=		c
@@ -22,6 +26,9 @@ TEST_TARGET=		test
 CMAKE_CONFIGURE_ARGS+=	-DREGEX_BACKEND="pcre2"
 CMAKE_CONFIGURE_ARGS+=	-DUSE_HTTP_PARSER=system -DUSE_SSH=libssh2
 CMAKE_CONFIGURE_ARGS+=	-DUSE_HTTPS=OpenSSL
+CMAKE_CONFIGURE_ARGS+=	-DXDIFF_SOURCE_DIR=${TOOLBASE:Q}/share/git-xdiff-source/xdiff
+
+INSTALLATION_DIRS+=	share/licenses/${PKGBASE}
 
 PKGCONFIG_OVERRIDE+=		${CMAKE_BUILD_DIR}/libgit2.pc
 PKGCONFIG_OVERRIDE_STAGE=	pre-install
@@ -31,6 +38,11 @@ SUBST_STAGE.unbl3=	post-build
 SUBST_FILES.unbl3=	${CMAKE_BUILD_DIR}/src/libgit2/CMakeFiles/Export/*/*.cmake
 SUBST_SED.unbl3=	-e 's,${BUILDLINK_DIR},${PREFIX},g'
 SUBST_MESSAGE.unbl3=	Fix paths to buildlink directories in installed files.
+
+post-install:
+	${INSTALL_DATA} ${WRKSRC}/COPYING ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}/COPYING.libgit2
+	${INSTALL_DATA} ${TOOLBASE}/share/git-xdiff-source/COPYING.LGPL-2.1 ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}/COPYING.LGPL-2.1
+	${INSTALL_DATA} ${TOOLBASE}/share/git-xdiff-source/COPYING.EDL-1.0 ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}/COPYING.EDL-1.0
 
 .include "../../devel/cmake/build.mk"
 .include "../../devel/zlib/buildlink3.mk"

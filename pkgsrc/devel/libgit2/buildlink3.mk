@@ -6,7 +6,7 @@ BUILDLINK_TREE+=	libgit2
 LIBGIT2_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.libgit2+=	libgit2>=0.28.0
-BUILDLINK_ABI_DEPENDS.libgit2+=	libgit2>=1.9.7nb2
+BUILDLINK_ABI_DEPENDS.libgit2+=	libgit2>=1.9.7nb3
 BUILDLINK_PKGSRCDIR.libgit2?=	../../devel/libgit2
 
 .include "../../devel/pcre2/buildlink3.mk"

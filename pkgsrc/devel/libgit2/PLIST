@@ -101,3 +101,6 @@ lib/libgit2.so
 lib/libgit2.so.${PKGVERSION}
 lib/libgit2.so.1.9
 lib/pkgconfig/libgit2.pc
+share/licenses/libgit2/COPYING.EDL-1.0
+share/licenses/libgit2/COPYING.LGPL-2.1
+share/licenses/libgit2/COPYING.libgit2
