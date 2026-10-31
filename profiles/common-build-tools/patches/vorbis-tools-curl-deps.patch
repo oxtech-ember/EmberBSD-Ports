@@ -1,0 +1,29 @@
+vorbis-tools declares the libraries libtool links from libcurl.la.
+
+libtool links ogg123 to every library in libcurl.la's dependency_libs.
+On macOS the linker keeps them all, and check-shlibs rejected the
+package: nghttp2, libidn2, libunistring, openssl and zlib were not
+runtime dependencies. The recipe now includes them directly, following
+curl's build options, as lcms2 does for libtiff's libraries.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/audio/vorbis-tools/Makefile
++++ b/audio/vorbis-tools/Makefile
+@@ -32,5 +32,17 @@
+ .include "../../devel/gettext-lib/buildlink3.mk"
+ .include "../../multimedia/libogg/buildlink3.mk"
+ .include "../../www/curl/buildlink3.mk"
++# libtool links ogg123 directly to the libraries listed in libcurl.la.
++.include "../../devel/zlib/buildlink3.mk"
++.if ${PKG_BUILD_OPTIONS.curl:Mopenssl}
++.include "../../security/openssl/buildlink3.mk"
++.endif
++.if ${PKG_BUILD_OPTIONS.curl:Midn}
++.include "../../devel/libidn2/buildlink3.mk"
++.include "../../textproc/libunistring/buildlink3.mk"
++.endif
++.if ${PKG_BUILD_OPTIONS.curl:Mhttp2}
++.include "../../www/nghttp2/buildlink3.mk"
++.endif
+ .include "../../mk/pthread.buildlink3.mk"
+ .include "../../mk/bsd.pkg.mk"
