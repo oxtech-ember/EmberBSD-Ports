@@ -100,9 +100,10 @@ diff --git a/media/filters/hls_demuxer_status.h b/media/filters/hls_demuxer_stat
  #include "media/base/status.h"
  
  namespace media {
-@@ -123,6 +124,7 @@
-       case Codes::kNoDataEverAppended:
+@@ -126,6 +127,7 @@
          return "Segment queue never had any data";
+       case Codes::kInvalidContentScheme:
+         return "The content scheme is disallowed in HLS.";
      }
 +    NOTREACHED();
    }
