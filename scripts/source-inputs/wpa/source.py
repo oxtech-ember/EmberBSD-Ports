@@ -71,15 +71,25 @@ def source_identity(git):
 
 def recipe(exported):
     recipe_root = Path(exported) / PACKAGE
-    common = read(recipe_root / 'Makefile')
-    matches = re.findall(rb'^DISTNAME=\s*(wpa_supplicant-[0-9]+(?:\.[0-9]+){1,2})$', common, re.M)
-    require(len(matches) == 1, 'ambiguous wpa_supplicant release')
-    distname = matches[0].decode('ascii')
+    makefile = read(recipe_root / 'Makefile')
+    require(re.search(rb'^\.include[ \t]+"../../net/wpa_supplicant/Makefile\.common"[ \t]*$', makefile, re.M),
+            'WPA recipe must include its common release inputs')
+    common = read(recipe_root / 'Makefile.common')
+    matches = re.findall(rb'^WPA_SUPPLICANT_VERSION[ \t]*([:?+!]?)=[ \t]*(.*)$', common, re.M)
+    require(len(matches) == 1 and matches[0][0] == b'' and
+            re.fullmatch(rb'[0-9]+(?:\.[0-9]+){1,2}', matches[0][1]),
+            'ambiguous wpa_supplicant release')
+    version = matches[0][1].decode('ascii')
+    distnames = re.findall(rb'^DISTNAME[ \t]*([:?+!]?)=[ \t]*(.*)$', common, re.M)
+    require(distnames == [(b'', b'wpa_supplicant-${WPA_SUPPLICANT_VERSION}')],
+            'WPA recipe must use the common release version')
+    distname = 'wpa_supplicant-' + version
     archive = distname + '.tar.gz'
-    hostapd = 'hostapd-' + distname.removeprefix('wpa_supplicant-') + '.tar.gz'
-    expected_distfiles = '${DISTNAME}${EXTRACT_SUFX} ' + hostapd.removesuffix('.tar.gz') + '${EXTRACT_SUFX}'
-    distfiles = re.findall(rb'^DISTFILES=\s*(.+)$', common, re.M)
-    require(len(distfiles) == 1 and distfiles[0].decode('ascii') == expected_distfiles,
+    hostapd = 'hostapd-' + version + '.tar.gz'
+    expected_distfiles = '${DISTNAME}${EXTRACT_SUFX} hostapd-${WPA_SUPPLICANT_VERSION}${EXTRACT_SUFX}'
+    distfiles = re.findall(rb'^DISTFILES[ \t]*([:?+!]?)=[ \t]*(.*)$', common, re.M)
+    require(len(distfiles) == 1 and distfiles[0][0] == b'' and
+            distfiles[0][1].decode('ascii') == expected_distfiles,
             'WPA recipe must select both matching upstream archives')
     info = read(recipe_root / 'distinfo').decode('utf-8')
     archives = {}
@@ -98,7 +108,8 @@ def recipe(exported):
         data = read(recipe_root / 'patches' / name)
         filtered = b''.join(line for line in data.splitlines(keepends=True) if b'$NetBSD' not in line)
         require(hashlib.sha1(filtered).hexdigest() == expected, 'wpa_supplicant patch checksum differs: ' + name)
-    inputs = [recipe_root / 'Makefile', recipe_root / 'distinfo', *patches]
+    inputs = [recipe_root / 'Makefile', recipe_root / 'Makefile.common',
+              recipe_root / 'distinfo', *patches]
     identity = dict(distname=distname, archive=archive, hostapd=hostapd, archives=archives,
                     recipe={str(path.relative_to(recipe_root)): digest(read(path)) for path in inputs})
     return identity, patches
