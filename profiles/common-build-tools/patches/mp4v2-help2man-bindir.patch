@@ -1,0 +1,17 @@
+$NetBSD$
+
+Allow help2man to run native copies of cross compiled utilities.
+
+--- doc/GNUmakefile.mk.orig
++++ doc/GNUmakefile.mk
+@@ -62,7 +62,9 @@
+ ifeq ($(FOUND_HELP2MAN),yes)
+ HELP2MAN       = help2man
+ HELP2MAN.flags = -m "$(PROJECT_name) Utilities" -N
+-HELP2MAN.cmd   = $(HELP2MAN) $(HELP2MAN.flags) ./$(1) -o $(2)
++# HELP2MAN.bindir selects runnable copies of the utilities, such as
++# native builds when the utilities are cross compiled.
++HELP2MAN.cmd   = $(HELP2MAN) $(HELP2MAN.flags) $(if $(HELP2MAN.bindir),$(HELP2MAN.bindir)/$(notdir $(1)),./$(1)) -o $(2)
+ else
+ HELP2MAN.cmd = touch $(2)
+ endif
