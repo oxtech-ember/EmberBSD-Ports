@@ -1,0 +1,32 @@
+$NetBSD$
+
+Correct client method and empty passphrase types.
+
+--- sshconnect2.c
++++ sshconnect2.c
+@@ -341,7 +341,7 @@
+ };
+ 
+ struct cauthmethod {
+-	char	*name;		/* string to compare against server's list */
++	const char *name;	/* string to compare against server's list */
+ 	int	(*userauth)(struct ssh *ssh);
+ 	void	(*cleanup)(struct ssh *ssh);
+ 	int	*enabled;	/* flag in option struct that enables method */
+@@ -1535,6 +1535,7 @@
+ {
+ 	struct sshkey *private = NULL;
+ 	char prompt[300], *passphrase, *comment;
++	char empty_passphrase[] = "";
+ 	int r, quit = 0, i;
+ 	struct stat st;
+ 
+@@ -1548,7 +1549,7 @@
+ 	    "Enter passphrase for key '%.100s': ", id->filename);
+ 	for (i = 0; i <= options.number_of_password_prompts; i++) {
+ 		if (i == 0)
+-			passphrase = "";
++			passphrase = empty_passphrase;
+ 		else {
+ 			passphrase = read_passphrase(prompt, 0);
+ 			if (*passphrase == '\0') {
