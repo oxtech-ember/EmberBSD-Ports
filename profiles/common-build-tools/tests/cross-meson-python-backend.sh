@@ -10,6 +10,8 @@
 # Run meson setup on a C project with the setup arguments of the
 # graphics/py-cairo wheel build, the Meson cross file it names, and the
 # wrapped target compiler of archivers/bzip2 (C only, no dependencies).
+# The project looks up Python as pycairo does: Meson finds the host
+# machine's python3 only in the cross file or the cross PATH, which has none.
 set -eu
 [ "$#" -eq 2 ] || { echo "Usage: $0 PKGSRC MAKECONF" >&2; exit 2; }
 pkgsrc=$1 makeconf=$2
@@ -31,7 +33,7 @@ case $setup_args in *--cross-file=*)
 	bm graphics/py-cairo WRKDIR="$tmp/w" "$tmp/w/.meson_cross" >"$tmp/cross.log" 2>&1 ||
 		{ tail -5 "$tmp/cross.log"; echo "FAIL: Meson cross file"; exit 1; };;
 esac
-printf "project('backend', 'c')\nexecutable('probe', 'probe.c')\n" >"$tmp/src/meson.build"
+printf "project('backend', 'c')\nexecutable('probe', 'probe.c')\npy = import('python').find_installation('python3', pure: false)\nmessage('python ' + py.language_version())\n" >"$tmp/src/meson.build"
 printf 'int main(void) { return 0; }\n' >"$tmp/src/probe.c"
 status=0
 eval "env $make_env \"\$meson\" setup $setup_args \"\$tmp/src\" \"\$tmp/build\"" \
@@ -40,5 +42,7 @@ grep -q '^Build type: cross build' "$tmp/setup.log" ||
 	{ echo "FAIL: $(grep -m 1 '^Build type:' "$tmp/setup.log" || echo 'no build type')"; status=1; }
 grep -q "^Host machine cpu family: $(bm graphics/py-cairo -V '${MESON_CPU_FAMILY}')\$" "$tmp/setup.log" ||
 	{ echo "FAIL: host machine is not the target"; status=1; }
+grep -q "^Message: python $(bm graphics/py-cairo -V '${PYVERSSUFFIX}')\$" "$tmp/setup.log" ||
+	{ echo "FAIL: Meson did not find the build tool Python"; status=1; }
 [ "$status" -eq 0 ] || exit 1
 echo "PASS: meson-python wheel builds configure Meson for the cross target"

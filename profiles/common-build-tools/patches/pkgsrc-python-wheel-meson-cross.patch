@@ -3,11 +3,14 @@ meson-python wheel builds of cross recipes (graphics/py-cairo) ran
 "meson setup" without a cross file, so Meson configured a native build and
 failed to run the target compiler's sanity check program on the build host.
 When the recipe uses meson-python, pass the devel/meson cross file through
--Csetup-args. Not submitted upstream.
+-Csetup-args. The cross file also names the build tool Python as the
+host Python: Meson looks up the host machine's python3 only in the cross
+file and the PATH, and the cross PATH has none, so pycairo's
+find_installation() failed with "python3 not found". Not submitted upstream.
 
 --- a/lang/python/wheel.mk
 +++ b/lang/python/wheel.mk
-@@ -60,6 +60,16 @@
+@@ -60,6 +60,23 @@
  
  .include "../../mk/bsd.fast.prefs.mk"
  
@@ -16,6 +19,12 @@ When the recipe uses meson-python, pass the devel/meson cross file through
 +# compiler's sanity check program on the build host. Give it the Meson cross
 +# file that devel/meson/build.mk uses.
 +.if ${USE_CROSS_COMPILE:tl} == "yes" && !empty(TOOL_DEPENDS:M*-meson_python[-<>=]*)
++# Meson finds the host machine's Python only in the cross file or in PATH.
++# The build tool Python runs with the cross sitecustomize in MAKE_ENV and
++# describes the target installation, as for setuptools backends. Set before
++# the include: the cross file rule lists MESON_BINARIES when it is parsed.
++MESON_BINARIES+=	python
++MESON_BINARY.python=	${TOOL_PYTHONBIN}
 +.include "../../devel/meson/cross-file.mk"
 +WHEEL_ARGS+=	-Csetup-args=--cross-file=${MESON_CROSS_FILE}
 +pre-build: ${MESON_CROSS_FILE}
