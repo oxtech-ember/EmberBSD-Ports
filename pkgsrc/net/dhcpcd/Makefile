@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.133 2026/08/17 13:09:29 roy Exp $
 
 .include "../../net/dhcpcd/Makefile.common"
+PKGREVISION=	1
 CATEGORIES=	net
 
 MAINTAINER=	roy@NetBSD.org

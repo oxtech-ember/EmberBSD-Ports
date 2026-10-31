@@ -1,4 +1,5 @@
 .include "../../net/dhcpcd/Makefile.common"
+PKGREVISION=	1
 
 PKGNAME=	dhcpcd-source-${DHCPCD_VERSION}
 CATEGORIES=	net

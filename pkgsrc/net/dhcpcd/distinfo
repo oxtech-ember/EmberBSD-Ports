@@ -3,3 +3,4 @@ $NetBSD: distinfo,v 1.127 2026/08/17 13:09:29 roy Exp $
 BLAKE2s (dhcpcd-10.5.2.tar.xz) = 7ae447606ad96276cd66ad3e94c6dcadc197b3d226b66228f38b9f525033b3b6
 SHA512 (dhcpcd-10.5.2.tar.xz) = bd131df97da668f883185c7d7bd92641678c36381f3ed0fb751709dde908ee6db871e57743c947ea50783ab1defc2d517ece9b4f2971ba6a7cba7a74f64b4e8d
 Size (dhcpcd-10.5.2.tar.xz) = 289084 bytes
+SHA1 (patch-src_dhcp.c) = 1bd9d54bebcd4815b6000357b86a1c289335b072
