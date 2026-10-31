@@ -23,7 +23,7 @@ INSTALL_TARGET=	install-gdb
 INFO_FILES=	yes
 TEST_TARGET=	check-gdb
 # The upstream ptrace probe uses pre-C23 non-prototype semantics.
-CFLAGS+=	-std=gnu17
+FORCE_C_STD=	gnu17
 CONFIGURE_ARGS+=	--disable-binutils --disable-gas --disable-ld --disable-gprof
 CONFIGURE_ARGS+=	--disable-sim --disable-gdbserver --disable-nls
 CONFIGURE_ARGS+=	--without-python --without-guile --without-debuginfod
