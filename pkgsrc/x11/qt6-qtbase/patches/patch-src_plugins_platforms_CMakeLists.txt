@@ -1,0 +1,16 @@
+$NetBSD$
+
+Enable the NetBSD framebuffer backend when Qt framebuffer support exists.
+
+--- src/plugins/platforms/CMakeLists.txt
++++ src/plugins/platforms/CMakeLists.txt
+@@ -44,6 +44,9 @@
+ if(FREEBSD)
+     # add_subdirectory(bsdfb) # TODO: QTBUG-112768
+ endif()
++if(NETBSD AND TARGET Qt::FbSupportPrivate)
++    add_subdirectory(bsdfb)
++endif()
+ if(HAIKU)
+     # add_subdirectory(haiku) # TODO: QTBUG-112768
+ endif()

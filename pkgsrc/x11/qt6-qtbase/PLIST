@@ -4445,6 +4445,7 @@ ${PLIST.egl}qt6/plugins/platforms/libqminimalegl.so
 qt6/plugins/platforms/libqoffscreen.so
 ${PLIST.x11}qt6/plugins/platforms/libqvkkhrdisplay.so
 qt6/plugins/platforms/libqvnc.so
+${PLIST.bsdfb}qt6/plugins/platforms/libqbsdfb.so
 ${PLIST.wayland}${PLIST.x11}qt6/plugins/platforms/libqwayland.so
 qt6/plugins/platforms/libqxcb.so
 ${PLIST.gtk3}qt6/plugins/platformthemes/libqgtk3.so

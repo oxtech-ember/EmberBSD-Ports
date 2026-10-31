@@ -1,0 +1,33 @@
+$NetBSD$
+
+Build the NetBSD framebuffer platform plugin.
+
+--- /dev/null
++++ src/plugins/platforms/bsdfb/CMakeLists.txt
+@@ -0,0 +1,26 @@
++# SPDX-License-Identifier: BSD-2-Clause
++# Origin: EmberBSD contributors (AI-assisted).
++
++qt_internal_add_plugin(QBsdFbIntegrationPlugin
++    OUTPUT_NAME qbsdfb
++    PLUGIN_TYPE platforms
++    DEFAULT_IF "bsdfb" IN_LIST QT_QPA_PLATFORMS
++    SOURCES
++        main.cpp
++        qbsdfbintegration.cpp qbsdfbintegration.h
++        qnetbsdfbscreen.cpp qnetbsdfbscreen.h
++        qwsconsmouse.cpp qwsconsmouse.h
++        qbsdfblayout_p.h qbsdfbframegate_p.h qbsdfbpointer_p.h
++        qbsdfbblit_p.h qbsdfbinputfailure_p.h
++        qbsdfbrecordbuffer_p.h
++    LIBRARIES
++        Qt::Core
++        Qt::CorePrivate
++        Qt::FbSupportPrivate
++        Qt::Gui
++        Qt::GuiPrivate
++)
++
++qt_internal_extend_target(QBsdFbIntegrationPlugin CONDITION TARGET Qt::InputSupportPrivate
++    LIBRARIES Qt::InputSupportPrivate
++)
