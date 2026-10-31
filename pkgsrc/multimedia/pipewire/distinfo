@@ -10,6 +10,7 @@ SHA1 (patch-spa_include_spa_utils_endian.h) = f4d034bf22fc81eaba3170e87f3f8fe6ae
 SHA1 (patch-spa_include_spa_utils_string.h) = b6554bffd9854574a2dfb56b2a9b367814077b2d
 SHA1 (patch-spa_plugins_support_cpu.c) = a573bbf009a85099e29f8a9bf076a5dd16e36fb7
 SHA1 (patch-spa_plugins_support_logger.c) = 7915ef756c3f1f1093ded3f3d70c10d7c1c934cc
+SHA1 (patch-spa_tests_stress-ringbuffer.c) = 91b75f03f3825429a480bc6751ddaae3acc9f2cd
 SHA1 (patch-src_modules_module-netjack2-manager.c) = 7238a8861ffd4fec9348e3995b3a6557fc6eb724
 SHA1 (patch-src_modules_module-protocol-pulse_utils.c) = 45a60a8b850090d381747195472c03fb6c2578a9
 SHA1 (patch-src_modules_module-rt.c) = 76fe5388bdd8b8f13cc0db3f74fc6737e9b43248
