@@ -1,0 +1,56 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-x86_64
+recipe: devel/glib2-introspection
+package: glib2-introspection-2.90.1
+program: GIRepository-3.0
+types-sha256: 3ae62fc733c491294be75692c0d4baf55f7e71d74036b69a9b223e7982df433b
+dump-sha256: d0655f934004f48c2d792284ad69611fdc1cd3e7f3f8272a810764109652b651
+-->
+<?xml version="1.0"?>
+<dump>
+  <fundamental name="GICallableInfo" get-type="gi_callable_info_get_type" abstract="1" instantiatable="1" parents="GIBaseInfo">
+  </fundamental>
+  <fundamental name="GIFunctionInfo" get-type="gi_function_info_get_type" instantiatable="1" parents="GICallableInfo,GIBaseInfo">
+  </fundamental>
+  <fundamental name="GICallbackInfo" get-type="gi_callback_info_get_type" instantiatable="1" parents="GICallableInfo,GIBaseInfo">
+  </fundamental>
+  <fundamental name="GIRegisteredTypeInfo" get-type="gi_registered_type_info_get_type" abstract="1" instantiatable="1" parents="GIBaseInfo">
+  </fundamental>
+  <fundamental name="GIStructInfo" get-type="gi_struct_info_get_type" instantiatable="1" parents="GIRegisteredTypeInfo,GIBaseInfo">
+  </fundamental>
+  <fundamental name="GIUnionInfo" get-type="gi_union_info_get_type" instantiatable="1" parents="GIRegisteredTypeInfo,GIBaseInfo">
+  </fundamental>
+  <fundamental name="GIEnumInfo" get-type="gi_enum_info_get_type" instantiatable="1" parents="GIRegisteredTypeInfo,GIBaseInfo">
+  </fundamental>
+  <fundamental name="GIFlagsInfo" get-type="gi_flags_info_get_type" instantiatable="1" parents="GIEnumInfo,GIRegisteredTypeInfo,GIBaseInfo">
+  </fundamental>
+  <fundamental name="GIObjectInfo" get-type="gi_object_info_get_type" instantiatable="1" parents="GIRegisteredTypeInfo,GIBaseInfo">
+  </fundamental>
+  <fundamental name="GIInterfaceInfo" get-type="gi_interface_info_get_type" instantiatable="1" parents="GIRegisteredTypeInfo,GIBaseInfo">
+  </fundamental>
+  <fundamental name="GIConstantInfo" get-type="gi_constant_info_get_type" instantiatable="1" parents="GIBaseInfo">
+  </fundamental>
+  <fundamental name="GIValueInfo" get-type="gi_value_info_get_type" instantiatable="1" parents="GIBaseInfo">
+  </fundamental>
+  <fundamental name="GISignalInfo" get-type="gi_signal_info_get_type" instantiatable="1" parents="GICallableInfo,GIBaseInfo">
+  </fundamental>
+  <fundamental name="GIVFuncInfo" get-type="gi_vfunc_info_get_type" instantiatable="1" parents="GICallableInfo,GIBaseInfo">
+  </fundamental>
+  <fundamental name="GIPropertyInfo" get-type="gi_property_info_get_type" instantiatable="1" parents="GIBaseInfo">
+  </fundamental>
+  <fundamental name="GIFieldInfo" get-type="gi_field_info_get_type" instantiatable="1" parents="GIBaseInfo">
+  </fundamental>
+  <fundamental name="GIArgInfo" get-type="gi_arg_info_get_type" instantiatable="1" parents="GIBaseInfo">
+  </fundamental>
+  <fundamental name="GITypeInfo" get-type="gi_type_info_get_type" instantiatable="1" parents="GIBaseInfo">
+  </fundamental>
+  <fundamental name="GIUnresolvedInfo" get-type="gi_unresolved_info_get_type" instantiatable="1" parents="GIBaseInfo">
+  </fundamental>
+  <boxed name="GITypelib" get-type="gi_typelib_get_type"/>
+  <fundamental name="GIBaseInfo" get-type="gi_base_info_get_type" abstract="1" instantiatable="1">
+  </fundamental>
+  <class name="GIRepository" get-type="gi_repository_get_type" parents="GObject">
+  </class>
+  <error-quark function="gi_invoke_error_quark" domain="gi-invoke-error-quark"/>
+  <error-quark function="gi_repository_error_quark" domain="g-irepository-error-quark"/>
+</dump>

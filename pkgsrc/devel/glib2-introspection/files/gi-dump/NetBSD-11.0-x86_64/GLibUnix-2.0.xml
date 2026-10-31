@@ -1,0 +1,12 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-x86_64
+recipe: devel/glib2-introspection
+package: glib2-introspection-2.90.1
+program: GLibUnix-2.0
+types-sha256: 777245a90fef18e1eb705c97eeeda8083f61d46035b98ac61ac9f23ccc0cb531
+dump-sha256: ae767d2ed8a9be2939d5d663e9203cb0c99b70a39c5109e82e349df13470e7ff
+-->
+<?xml version="1.0"?>
+<dump>
+  <error-quark function="g_unix_error_quark" domain="g-unix-error-quark"/>
+</dump>
