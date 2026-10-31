@@ -55,7 +55,7 @@ check_invalid_context(void)
 	bugs = 0;
 	assert(xdl_diff(&a, &b, &options, &config, &cb) == -1);
 	assert(bugs == 1 && live == 0);
-	config.hunk_func = NULL;
+	config.hunk_func = 0;
 	bugs = 0;
 	assert(xdl_diff(&a, &b, &options, &config, &cb) == -1);
 	assert(bugs == 1 && live == 0);
@@ -161,6 +161,6 @@ main(void)
 	}
 	fail_at = SIZE_MAX;
 	check_invalid_context();
-	printf("xdiff custom allocator: %zu failure points passed\n", total);
+	printf("xdiff custom allocator: %lu failure points passed\n", (unsigned long)total);
 	return 0;
 }
