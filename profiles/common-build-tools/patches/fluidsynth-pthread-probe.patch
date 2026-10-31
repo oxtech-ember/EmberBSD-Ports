@@ -1,0 +1,19 @@
+fluidsynth links its C++ thread probe with the pthread flags.
+
+With osal=cpp11, CMakeLists.txt checks that a std::thread program links.
+libc++ calls pthread_create from its headers, and NetBSD has it in
+libpthread, not libc. The probe linked without -pthread and configure
+stopped with "Your compiler does not support C++11 threading primitives".
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/audio/fluidsynth/Makefile
++++ b/audio/fluidsynth/Makefile
+@@ -51,5 +51,8 @@
+ .include "../../devel/libgetopt/buildlink3.mk"
+ .include "../../math/gcem/buildlink3.mk"
+ .include "../../mk/readline.buildlink3.mk"
++# The osal=cpp11 probe links std::thread, which calls pthread_create in
++# libc++ headers; NetBSD has it in libpthread, not libc.
++PTHREAD_AUTO_VARS=	yes
+ .include "../../mk/pthread.buildlink3.mk"
+ .include "../../mk/bsd.pkg.mk"
