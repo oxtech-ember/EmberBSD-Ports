@@ -586,7 +586,7 @@ result()
 # that pkgsrc passes to such a tool. It is done when the native prefix has
 # a package of its PKGBASE at its version or newer. An older one is
 # replaced (pkgsrc replace, pkg_add -U), which keeps the packages that
-# depend on it registered.
+# depend on it registered. The replace runs alone (see exclusive).
 build_native()
 {
     nnode=$1 key=$2 path=${1%@native}
@@ -617,13 +617,38 @@ build_native()
     prepare_wrkdir "$wrkdir" "$job.$key"
     : > "$log"
     if { [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; } &&
-        bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes "$install" < /dev/null >> "$log" 2>&1; then
+        if [ "$install" = replace ]; then
+            bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes package < /dev/null >> "$log" 2>&1 &&
+                exclusive "$key" bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes replace < /dev/null >> "$log" 2>&1
+        else
+            bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes install < /dev/null >> "$log" 2>&1
+        fi; then
         echo "$(date '+%Y-%m-%d %H:%M:%S') done $nnode" >> "$state/progress"
         result "$key" "built $nnode $name native"
         return 0
     fi
     echo "$(date '+%Y-%m-%d %H:%M:%S') FAILED $nnode" >> "$state/progress"
     result "$key" "failed $nnode build"
+}
+
+# pkgsrc replace (pkg_add -U) deletes the files of the installed package
+# before it adds those of the new one. A build that runs at that time in
+# the same prefix or sysroot misses them: a tool linked with libffi from
+# the native prefix fails with "Library not loaded" while libffi@native is
+# replaced. A job therefore builds its package first and runs the replace,
+# "$2"..., only when no other job runs: it asks with RUN/$1.replace and
+# waits for RUN/$1.replacing, which build gives it when every running job
+# waits so; build starts no job while one waits or replaces.
+exclusive()
+{
+    xkey=$1
+    shift
+    : > "$run/$xkey.replace"
+    until [ -f "$run/$xkey.replacing" ]; do sleep 1; done
+    xrc=0
+    "$@" || xrc=$?
+    rm -f "$run/$xkey.replacing"
+    return "$xrc"
 }
 
 # Run the install targets $2... of target package $1, one bmake run each.
@@ -668,12 +693,15 @@ build_one()
     # earlier pass before a PKGREVISION bump; pkg_add refuses to install
     # over it, so the package is built and then replaced (pkgsrc replace,
     # pkg_add -U), which keeps the packages that depend on it registered.
+    # The replace runs alone (see exclusive).
     install=package-install
+    replace=
     set -f
-    [ -z "$base" ] || ! $target_pkg_info -e "$base" > /dev/null 2>&1 || install='package replace'
+    [ -z "$base" ] || ! $target_pkg_info -e "$base" > /dev/null 2>&1 || { install=package; replace=replace; }
     set +f
     { [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" clean < /dev/null >> "$log" 2>&1; } &&
-        target_install "$path" $install >> "$log" 2>&1 && {
+        target_install "$path" $install >> "$log" 2>&1 &&
+        { [ -z "$replace" ] || exclusive "$key" target_install "$path" replace >> "$log" 2>&1; } && {
         echo "$(date '+%Y-%m-%d %H:%M:%S') done $path" >> "$state/progress"
         result "$key" "built $path $name $(shasum -a 256 "$file" | cut -d ' ' -f 1)"
         return 0
@@ -782,13 +810,30 @@ build()
                 skipped) echo "$path $*" >> "$state/skipped"; echo "$path skipped" >> "$run/status" ;;
                 *) echo "$path $*" >> "$state/failed"; echo "$path failed" >> "$run/status" ;;
             esac
-            rm -f "$res"
+            # A request of a job that ended without its replace.
+            res=${res%.result}
+            rm -f "$res.result" "$res.replace" "$res.replacing"
             running=$((running - 1))
             changed=1
         done
+        # Give one waiting job its replace when every running job waits
+        # (see exclusive); start no job while one waits or replaces.
+        replacing=0 waiting=0 first=
+        for req in "$run"/*.replacing; do
+            [ ! -f "$req" ] || replacing=1
+        done
+        for req in "$run"/*.replace; do
+            [ -f "$req" ] || continue
+            waiting=$((waiting + 1))
+            [ -n "$first" ] || first=$req
+        done
+        if [ "$replacing" = 0 ] && [ "$waiting" -gt 0 ] && [ "$waiting" -ge "$running" ]; then
+            mv "$first" "${first%.replace}.replacing"
+            replacing=1 waiting=$((waiting - 1))
+        fi
         if [ "$stop" = 1 ]; then
             [ "$running" -gt 0 ] || { echo 'Stopped; the running packages finished' >&2; trap - TERM INT HUP; stop_deleter; rm -rf "$state/build.lock"; return 143; }
-        elif [ "$changed" = 1 ] && [ "$running" -lt "$workers" ]; then
+        elif [ "$changed" = 1 ] && [ "$running" -lt "$workers" ] && [ "$replacing" = 0 ] && [ "$waiting" = 0 ]; then
             changed=0
             ready $((workers - running)) > "$run/ready"
             while read -r kind path dep; do

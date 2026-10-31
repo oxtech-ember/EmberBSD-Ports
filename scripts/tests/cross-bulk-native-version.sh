@@ -83,6 +83,8 @@ case "\$target" in
         esac ;;
     show-vars) for n in \$varnames; do value \$n; done ;;
     clean) ;;
+    # build makes the package of a node to replace first (see exclusive).
+    package) ;;
     install|replace)
         name=\$(value PKGNAME)
         if [ \$target = install ] && ls \$out/native-db/\$(value PKGBASE)-[0-9]* > /dev/null 2>&1; then

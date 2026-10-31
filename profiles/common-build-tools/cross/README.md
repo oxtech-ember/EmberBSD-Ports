@@ -568,6 +568,14 @@ from an earlier pass before a `PKGREVISION` bump, `pkg_add` would refuse to
 install over it, so the build runs `package` and then the pkgsrc `replace`
 target (`pkg_add -U`), which keeps its dependents registered.
 `scripts/tests/cross-bulk-target-replace.sh NEW_OUTPUT` checks this.
+A replace, native or target, deletes the files of the installed package
+before it adds the new ones, so a build that uses that prefix or sysroot
+at the time can miss them (a compiler wrapper linked with the native libffi
+fails with "Library not loaded" while libffi is replaced). The job therefore
+builds its package, writes `RUN/KEY.replace` and waits; the scheduler starts
+no job while one waits, and when every running job waits it renames one
+request to `RUN/KEY.replacing`, which runs the replace alone.
+`scripts/tests/cross-bulk-exclusive-replace.sh NEW_OUTPUT` checks this.
 Every pass checks each done package by its `PKGNAME`. The build keeps the
 show-vars answers in `STATE/vars` together with the makefiles that parse read
 (`.MAKE.MAKEFILES`) and the device, inode, size and modification time of each
