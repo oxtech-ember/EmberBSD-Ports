@@ -1,0 +1,27 @@
+Origin: EmberBSD (AI-assisted). Upstream status: not submitted.
+
+--- a/comms/p5-Device-SerialPort/Makefile
++++ b/comms/p5-Device-SerialPort/Makefile
+@@ -2,7 +2,7 @@
+ 
+ DISTNAME=	Device-SerialPort-1.04
+ PKGNAME=	p5-${DISTNAME}
+-PKGREVISION=	18
++PKGREVISION=	19
+ CATEGORIES=	comms perl5
+ MASTER_SITES=	${MASTER_SITE_PERL_CPAN:=Device/}
+ 
+@@ -17,5 +17,13 @@
+ 
+ MAKE_PARAMS=	${DEFAULT_SERIAL_DEVICE}
+ 
++# Makefile.PL runs the autoconf configure script for config.h. Give it the
++# build and host systems, so that a cross build does not run target programs.
++SUBST_CLASSES+=			configure-host
++SUBST_STAGE.configure-host=	pre-configure
++SUBST_MESSAGE.configure-host=	Passing the build and host systems to configure.
++SUBST_FILES.configure-host=	Makefile.PL
++SUBST_SED.configure-host=	-e 's|system("./configure")|system("./configure --build=${NATIVE_MACHINE_GNU_PLATFORM} --host=${MACHINE_GNU_PLATFORM}")|'
++
+ .include "../../lang/perl5/module.mk"
+ .include "../../mk/bsd.pkg.mk"
