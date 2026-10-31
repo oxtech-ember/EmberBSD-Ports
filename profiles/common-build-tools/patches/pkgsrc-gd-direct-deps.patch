@@ -1,0 +1,37 @@
+gd declares the libraries libtool links into its programs.
+
+libtool links annotate, pngtogd and the other gd programs to every
+library in libfreetype.la and libtiff.la. The macOS linker keeps them,
+and the native install stopped in check-shlibs: brotli, xz, lerc and
+jbigkit were not runtime dependencies. Include them directly, brotli
+only when freetype2 was built with it, as lcms2 does for libtiff.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/graphics/gd/Makefile
++++ b/graphics/gd/Makefile
+@@ -2,7 +2,7 @@
+ 
+ DISTNAME=	libgd-2.3.3
+ PKGNAME=	${DISTNAME:S/libgd/gd/}
+-PKGREVISION=	18
++PKGREVISION=	19
+ CATEGORIES=	graphics
+ MASTER_SITES=	${MASTER_SITE_GITHUB:=libgd/}
+ GITHUB_PROJECT=	libgd
+@@ -34,6 +34,16 @@
+ .include "../../devel/zlib/buildlink3.mk"
+ .include "../../fonts/fontconfig/buildlink3.mk"
+ .include "../../graphics/freetype2/buildlink3.mk"
++# libtool links the gd programs to the libraries in libfreetype.la and
++# libtiff.la, so they are direct dependencies.
++.if ${PKG_BUILD_OPTIONS.freetype2:Mbrotli}
++.include "../../archivers/brotli/buildlink3.mk"
++.endif
++.if ${PKG_OPTIONS:Mtiff}
++.include "../../archivers/xz/buildlink3.mk"
++.include "../../graphics/jbigkit/buildlink3.mk"
++.include "../../graphics/lerc/buildlink3.mk"
++.endif
+ .include "../../graphics/libwebp/buildlink3.mk"
+ .include "../../graphics/png/buildlink3.mk"
+ .include "../../mk/jpeg.buildlink3.mk"
