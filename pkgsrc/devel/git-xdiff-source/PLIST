@@ -1,4 +1,5 @@
 @comment $NetBSD$
+share/git-xdiff-source/COPYING.EDL-1.0
 share/git-xdiff-source/COPYING.LGPL-2.1
 share/git-xdiff-source/COPYING.git
 share/git-xdiff-source/xdiff/xdiff.h

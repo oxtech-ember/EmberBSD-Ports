@@ -4,7 +4,7 @@
 PKGNAME= git-xdiff-source-${GIT_VERSION}
 PKGREVISION= 2
 COMMENT= Patched Git xdiff sources for other source-level consumers
-LICENSE= gnu-lgpl-v2.1 AND mit
+LICENSE= gnu-lgpl-v2.1 AND modified-bsd
 
 USE_LANGUAGES= # none
 NO_CONFIGURE= yes
@@ -19,6 +19,8 @@ do-install:
 .for file in ${XDIFF_FILES}
 	${INSTALL_DATA} ${WRKSRC}/xdiff/${file} ${DESTDIR}${PREFIX}/share/git-xdiff-source/xdiff/${file}
 .endfor
+	${SED} -n '1,/^ \*\//p' ${WRKSRC}/xdiff/xhistogram.c > ${WRKDIR}/COPYING.EDL-1.0
+	${INSTALL_DATA} ${WRKDIR}/COPYING.EDL-1.0 ${DESTDIR}${PREFIX}/share/git-xdiff-source/COPYING.EDL-1.0
 	${INSTALL_DATA} ${WRKSRC}/COPYING ${DESTDIR}${PREFIX}/share/git-xdiff-source/COPYING.git
 	${INSTALL_DATA} ${PKGSRCDIR}/licenses/gnu-lgpl-v2.1 ${DESTDIR}${PREFIX}/share/git-xdiff-source/COPYING.LGPL-2.1
 
