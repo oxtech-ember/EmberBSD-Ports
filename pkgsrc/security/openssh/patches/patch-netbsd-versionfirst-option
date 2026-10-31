@@ -1,0 +1,72 @@
+$NetBSD$
+
+Retain the native SendVersionFirst configuration token and default.
+It remains inert, matching the previous native implementation.
+
+--- readconf.c.orig
++++ readconf.c
+@@ -167,6 +167,9 @@
+ 	oSecurityKeyProvider, oKnownHostsCommand, oRequiredRSASize,
+ 	oEnableEscapeCommandline, oObscureKeystrokeTiming, oChannelTimeout,
+ 	oVersionAddendum, oRefuseConnection, oWarnWeakCrypto,
++#ifdef EMBERBSD_BASE_OPENSSH
++	oSendVersionFirst,
++#endif
+ 	oIgnore, oIgnoredUnknownOption, oDeprecated, oUnsupported
+ } OpCodes;
+ 
+@@ -309,6 +312,9 @@
+ 	{ "hostbasedkeytypes", oHostbasedAcceptedAlgorithms }, /* obsolete */
+ 	{ "pubkeyacceptedalgorithms", oPubkeyAcceptedAlgorithms },
+ 	{ "pubkeyacceptedkeytypes", oPubkeyAcceptedAlgorithms }, /* obsolete */
++#ifdef EMBERBSD_BASE_OPENSSH
++	{ "sendversionfirst", oSendVersionFirst },
++#endif
+ 	{ "ignoreunknown", oIgnoreUnknown },
+ 	{ "proxyjump", oProxyJump },
+ 	{ "securitykeyprovider", oSecurityKeyProvider },
+@@ -1336,6 +1342,11 @@
+ 		intptr = &options->batch_mode;
+ 		goto parse_flag;
+ 
++#ifdef EMBERBSD_BASE_OPENSSH
++	case oSendVersionFirst:
++		intptr = &options->send_version_first;
++		goto parse_flag;
++#endif
+ 	case oCheckHostIP:
+ 		intptr = &options->check_host_ip;
+ 		goto parse_flag;
+@@ -2835,6 +2846,9 @@
+ 	options->channel_timeouts = NULL;
+ 	options->num_channel_timeouts = 0;
+ 	options->version_addendum = NULL;
++#ifdef EMBERBSD_BASE_OPENSSH
++	options->send_version_first = -1;
++#endif
+ }
+ 
+ /*
+@@ -2982,6 +2996,10 @@
+ 		options->server_alive_interval = 0;
+ 	if (options->server_alive_count_max == -1)
+ 		options->server_alive_count_max = 3;
++#ifdef EMBERBSD_BASE_OPENSSH
++	if (options->send_version_first == -1)
++		options->send_version_first = 1;
++#endif
+ 	if (options->control_master == -1)
+ 		options->control_master = 0;
+ 	if (options->control_persist == -1) {
+--- readconf.h.orig
++++ readconf.h
+@@ -49,6 +49,9 @@
+ 	int     strict_host_key_checking;	/* Strict host key checking. */
+ 	int     compression;	/* Compress packets in both directions. */
+ 	int     tcp_keep_alive;	/* Set SO_KEEPALIVE. */
++#ifdef EMBERBSD_BASE_OPENSSH
++	int	send_version_first; /* retained native configuration option */
++#endif
+ 	int	ip_qos_interactive;	/* DSCP value for interactive */
+ 	int	ip_qos_bulk;		/* DSCP value for bulk traffic */
+ 	SyslogFacility log_facility;	/* Facility for system logging. */
