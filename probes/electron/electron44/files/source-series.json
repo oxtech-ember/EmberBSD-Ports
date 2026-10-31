@@ -713,6 +713,11 @@
       "strip": 1
     },
     {
+      "path": "gn-webui-lint-selection.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "chromium-common-lit-types.patch",
       "root": "",
       "strip": 1

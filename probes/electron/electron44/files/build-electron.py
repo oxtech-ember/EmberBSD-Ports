@@ -308,7 +308,10 @@ def arguments(options, native, tools, rust_version, launcher):
         rtc_use_x11_extensions=False,
         # VA-API (media/gpu/chromeos, vaapi) needs libva headers/libs, which
         # clang-final does not provide yet; Chromium defaults it on for x64.
-        use_vaapi=False)
+        use_vaapi=False,
+        # Type-aware ESLint/Stylelint WebUI checks ship no output and need the
+        # eslint/stylelint npm stack, which Ports does not package yet.
+        enable_webui_lint=False)
     if native.host['os'] == 'Darwin':
         family = options.host_compiler_family
         values.update(host_toolchain='//build/toolchain/mac:' + family + '_' + host_cpu,
