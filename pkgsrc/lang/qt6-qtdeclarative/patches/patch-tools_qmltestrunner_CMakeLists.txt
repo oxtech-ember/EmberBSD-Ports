@@ -1,0 +1,40 @@
+$NetBSD$
+
+Select the native ad-hoc signer explicitly when provided by Ports.
+
+--- tools/qmltestrunner/CMakeLists.txt
++++ tools/qmltestrunner/CMakeLists.txt
+@@ -13,15 +13,24 @@
+         # so we can hook into the Swift crash handling.
+         set(entitlements_file
+             "${__qt_internal_cmake_apple_support_files_path}/test.entitlements.plist")
+-        add_custom_command(TARGET ${target}
+-            POST_BUILD COMMAND
+-             codesign --remove-signature
+-                "$<TARGET_FILE:${target}>"
+-             && codesign --sign -
+-                --entitlements "${entitlements_file}"
+-                "$<TARGET_FILE:${target}>"
+-
+-            )
++        if(DEFINED EMBERBSD_LDID)
++            if(NOT IS_ABSOLUTE "${EMBERBSD_LDID}")
++                message(FATAL_ERROR "EMBERBSD_LDID must be an absolute path")
++            endif()
++            add_custom_command(TARGET ${target} POST_BUILD
++                COMMAND "${EMBERBSD_LDID}" -r "$<TARGET_FILE:${target}>"
++                COMMAND "${EMBERBSD_LDID}" -Cadhoc "-S${entitlements_file}"
++                        "$<TARGET_FILE:${target}>"
++                VERBATIM)
++        else()
++            add_custom_command(TARGET ${target}
++                POST_BUILD COMMAND
++                 codesign --remove-signature
++                    "$<TARGET_FILE:${target}>"
++                 && codesign --sign -
++                    --entitlements "${entitlements_file}"
++                    "$<TARGET_FILE:${target}>")
++        endif()
+     endif()
+ endfunction()
+ 

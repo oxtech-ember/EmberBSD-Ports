@@ -2,13 +2,18 @@
 
 DISTNAME=	qtdeclarative-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qtdeclarative-${QTVERSION}
-PKGREVISION=	2
+PKGREVISION=	3
 COMMENT=	Qt6 module for the QML language
 CATEGORIES=	lang x11
 
 LICENSE=	gnu-lgpl-v3 OR gnu-gpl-v2 OR gnu-gpl-v3
 
 .include "../../x11/qt6-qtbase/Makefile.common"
+
+.if ${OPSYS} == "Darwin"
+TOOL_DEPENDS+=	ldid>=2.1.5.7:../../devel/ldid
+CMAKE_CONFIGURE_ARGS+=	-DEMBERBSD_LDID:FILEPATH=${PREFIX}/bin/ldid
+.endif
 
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6LabsAnimation.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6LabsFolderListModel.pc
