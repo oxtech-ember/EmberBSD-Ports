@@ -11,6 +11,55 @@ union allocation {
 };
 static const unsigned long magic = 0x51a42c23UL;
 static size_t attempts, fail_at, live;
+static int bugs;
+
+void
+test_report_bug(void)
+{
+	bugs++;
+}
+
+static int
+line_cb(void *payload, mmbuffer_t *line, int count)
+{
+	(void)payload; (void)line; (void)count;
+	return 0;
+}
+
+static int
+hunk_cb(long a, long b, long c, long d, void *payload)
+{
+	(void)a; (void)b; (void)c; (void)d; (void)payload;
+	return 0;
+}
+
+static void
+check_invalid_context(void)
+{
+	char old[] = "old\n", new[] = "new\n";
+	mmfile_t a = { old, sizeof(old) - 1 }, b = { new, sizeof(new) - 1 };
+	xpparam_t options = { 0 };
+	xdemitcb_t cb = { 0 };
+	xdemitconf_t config = { 0 };
+	cb.out_line = line_cb;
+	config.ctxlen = -1;
+	bugs = 0;
+	assert(xdl_diff(&a, &b, &options, &config, &cb) == -1);
+	assert(bugs == 1 && live == 0);
+	config.hunk_func = hunk_cb;
+	bugs = 0;
+	assert(xdl_diff(&a, &b, &options, &config, &cb) == -1);
+	assert(bugs == 1 && live == 0);
+	config.ctxlen = 0;
+	config.interhunkctxlen = -1;
+	bugs = 0;
+	assert(xdl_diff(&a, &b, &options, &config, &cb) == -1);
+	assert(bugs == 1 && live == 0);
+	config.hunk_func = NULL;
+	bugs = 0;
+	assert(xdl_diff(&a, &b, &options, &config, &cb) == -1);
+	assert(bugs == 1 && live == 0);
+}
 
 void *
 test_alloc(size_t size)
@@ -110,6 +159,8 @@ main(void)
 		fail_at = i;
 		assert(merge() < 0);
 	}
+	fail_at = SIZE_MAX;
+	check_invalid_context();
 	printf("xdiff custom allocator: %zu failure points passed\n", total);
 	return 0;
 }

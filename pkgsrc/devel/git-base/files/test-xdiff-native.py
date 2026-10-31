@@ -25,7 +25,7 @@ def main():
         binary = Path(tmp) / "test-xdiff"
         subprocess.run([str(cc), "-std=c11", "-Werror", "-fsanitize=address,undefined",
                         "-fno-sanitize-recover=all", "-fno-omit-frame-pointer",
-                        "-I", str(own), "-I", str(source / "xdiff"),
+                        "-DTEST_XDL_RETURNS", "-I", str(own), "-I", str(source / "xdiff"),
                         '-DXDL_COMPAT_HEADER="test-xdiff-compat.h"',
                         str(own / "test-xdiff-runtime.c"), *map(str, files),
                         "-o", str(binary)], check=True)

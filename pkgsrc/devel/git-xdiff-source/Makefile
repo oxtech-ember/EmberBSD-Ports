@@ -2,7 +2,7 @@
 .include "../../devel/git/Makefile.common"
 
 PKGNAME= git-xdiff-source-${GIT_VERSION}
-PKGREVISION= 1
+PKGREVISION= 2
 COMMENT= Patched Git xdiff sources for other source-level consumers
 LICENSE= gnu-lgpl-v2.1 AND mit
 

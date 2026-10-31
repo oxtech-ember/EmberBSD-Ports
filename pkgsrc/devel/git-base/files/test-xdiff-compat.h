@@ -23,6 +23,10 @@ void test_free(void *);
 #define XDF_DIFF_ALGORITHM_MASK (XDF_PATIENCE_DIFF | XDF_HISTOGRAM_DIFF)
 #define UNUSED __attribute__((unused))
 #define BUG(...) abort()
+#ifdef TEST_XDL_RETURNS
+void test_report_bug(void);
+#define XDL_REPORT_BUG(...) test_report_bug()
+#endif
 /* xemit calls this only with nonnegative context lengths. */
 #define signed_add_overflows(a, b) ((a) > LONG_MAX - (b))
 

@@ -13,6 +13,7 @@ and Clang. `SOURCE` is `share/git-xdiff-source` in the staged prefix:
 "$PYTHON" ../git-base/files/test-xdiff-native.py --source "$SOURCE" --cc "$CC"
 ```
 
-The check verifies policy hooks, one exact merge output and allocation-failure
-cleanup under ASan/UBSan. It does not replace a consumer's own diff and merge
-tests, target compilation or target execution.
+The check verifies policy hooks, one exact merge output, allocation-failure
+cleanup, and error returns for invalid context lengths under ASan/UBSan. It does
+not replace a consumer's own diff and merge tests, target compilation or target
+execution.
