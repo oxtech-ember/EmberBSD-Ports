@@ -34,8 +34,8 @@ def main():
     work = Path(args.work).resolve()
     require(not work.exists(), "Work directory already exists.")
     require(hashlib.sha256(archive.read_bytes()).hexdigest() ==
-            "56cad765459d5ee25a3b761f90c47d99379d28297fbfb72d908880d6b875fb96",
-            "The official libarchive 3.8.10 archive hash differs.")
+            "a3dc0872b1b39da34dc18ef1b944f0f11ffd37425d70ae04be679279f1cf43d2",
+            "The official libarchive 3.8.11 archive hash differs.")
     work.mkdir(parents=True)
     tree = work / "pkgsrc"
     # Copy only the actual shared provider and its source-copy consumers.
@@ -56,14 +56,14 @@ def main():
         return result.stdout
 
     patches = ("pkgsrc-libarchive-3.8.10-import.patch", "pkgsrc-libarchive-3.8.10.patch",
-               "pkgsrc-libarchive-bmake.patch")
+               "pkgsrc-libarchive-bmake.patch", "pkgsrc-libarchive-3.8.11.patch")
     pins = dict(line.split("\t")[:2] for line in
                 (root / "profiles/common-build-tools/sources.tsv").read_text().splitlines()
                 if line and not line.startswith("#"))
     verified = 0
     for name in patches:
         patch = root / "profiles/common-build-tools/patches" / name
-        require(hashlib.sha256(patch.read_bytes()).hexdigest() == pins[name], "NetBSD patch hash differs.")
+        require(hashlib.sha256(patch.read_bytes()).hexdigest() == pins[name], "Pinned patch hash differs.")
         run(name + "-check", ["git", "apply", "--check", patch])
         run(name, ["git", "apply", patch])
         # Git's postimage IDs cover every changed text and binary file.
@@ -87,7 +87,7 @@ def main():
     upstream_tests = 0
     with tarfile.open(archive) as package:
         for member in package:
-            relative = Path(member.name).relative_to("libarchive-3.8.10")
+            relative = Path(member.name).relative_to("libarchive-3.8.11")
             if not member.isfile():
                 continue
             if relative.parts[0] in ("libarchive", "libarchive_fe", "tar", "cpio", "cat", "unzip", "test_utils"):
@@ -97,7 +97,7 @@ def main():
                     upstream_tests += 1
     require(not absent, "Missing upstream payload: " + ", ".join(absent))
     common = (tree / "archivers/libarchive/Makefile.common").read_text()
-    require("libarchive-3.8.10" in common and "TEST_TARGET=\t\tcheck" in common,
+    require("libarchive-3.8.11" in common and "TEST_TARGET=\t\tcheck" in common,
             "Shared version or upstream test target differs.")
     for consumer in ("archivers/bsdtar", "pkgtools/pkg_install"):
         recipe = (tree / consumer / "Makefile").read_text()

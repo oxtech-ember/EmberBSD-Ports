@@ -10,6 +10,7 @@
 # MIME-tools distfile, which ships uuencoded test messages, was then an
 # unrecognized archive. Build bsdtar from LIBARCHIVE_SOURCE with the host
 # compiler and require that a tar with a uuencoded member lists as a tar.
+# libarchive 3.8.11 carries the upstream fix, so the local patch is gone.
 set -eu
 [ "$#" -eq 4 ] || { echo "Usage: $0 LIBARCHIVE_SOURCE CC PYTHON NEW_WORK" >&2; exit 2; }
 source=$1 cc=$2 python=$3 work=$4

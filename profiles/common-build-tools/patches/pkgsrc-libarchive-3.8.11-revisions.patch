@@ -1,0 +1,41 @@
+# Origin: EmberBSD (AI-assisted). libarchive 3.8.11 changes the version of
+# libarchive and bsdtar, so their revisions start again. pkg_install embeds
+# the common source; its revision passes the published 19.
+diff --git a/archivers/bsdtar/Makefile b/archivers/bsdtar/Makefile
+index b0b7a8c..a362288 100644
+--- a/archivers/bsdtar/Makefile
++++ b/archivers/bsdtar/Makefile
+@@ -4,7 +4,6 @@
+ .include "../../mk/bsd.prefs.mk"
+ 
+ PKGNAME=	${DISTNAME:S/libarchive/bsdtar/}
+-PKGREVISION=	4
+ COMMENT=	Fast multi-format tape archiver
+ 
+ # Explicitly do not depend on libtool as this can be used
+diff --git a/archivers/libarchive/Makefile b/archivers/libarchive/Makefile
+index ac1f149..d365abe 100644
+--- a/archivers/libarchive/Makefile
++++ b/archivers/libarchive/Makefile
+@@ -5,8 +5,6 @@
+ LIBARCHIVE_WITH_ZSTD=	yes
+ .include "Makefile.common"
+ 
+-PKGREVISION=	3
+-
+ COMMENT=	Library to read/create different archive formats
+ 
+ BOOTSTRAP_PKG=		yes
+diff --git a/pkgtools/pkg_install/Makefile b/pkgtools/pkg_install/Makefile
+index 6a8a92f..12c3239 100644
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -7,7 +7,7 @@
+ # change in the pkg_* tools that pkgsrc relies on for proper operation.
+ 
+ PKGNAME=		pkg_install-${VERSION}
+-PKGREVISION=		18
++PKGREVISION=		20
+ CATEGORIES=		pkgtools
+ 
+ MAINTAINER=		agc@NetBSD.org

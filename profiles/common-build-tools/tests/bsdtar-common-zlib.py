@@ -55,7 +55,7 @@ def main():
 
     results = {"bootstrap": query("bootstrap", "native", ["EMBERBSD_BSDTAR_USE_COMMON_ZLIB=no"])}
     before = results["bootstrap"]
-    require(before["PKGNAME"] == "bsdtar-3.8.10nb2" and "zlib>=1.3.2nb1" in before["DEPENDS"],
+    require(before["PKGNAME"] == "bsdtar-3.8.11" and "zlib>=1.3.2nb1" in before["DEPENDS"],
             "Default bootstrap must use the registered current zlib package.")
     require(before["USE_BUILTIN.zlib"] == "no", "Bootstrap selected host zlib.")
     require(not any(before["WRKDIR"] + "/zlib" in before[key]
@@ -69,7 +69,7 @@ def main():
         if args.native_only and config == "cross":
             continue
         row = query(name, config, extra)
-        require(row["PKGNAME"] == "bsdtar-3.8.10nb2" and "zlib>=1.3.2nb1" in row["DEPENDS"]
+        require(row["PKGNAME"] == "bsdtar-3.8.11" and "zlib>=1.3.2nb1" in row["DEPENDS"]
                 and row["USE_BUILTIN.zlib"] == "no", "Current zlib package was not selected: " + name)
         require(not any(row["WRKDIR"] + "/zlib" in row[key] for key in ("CPPFLAGS", "LDFLAGS")),
                 "Copied-source flags remain: " + name)

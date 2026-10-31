@@ -1,11 +1,11 @@
-# Shared libarchive 3.8.10 sources
+# Shared libarchive 3.8.11 sources
 
 Common profiles update the existing pkgsrc vendor owner at
 `archivers/libarchive/files`. They retain its extraction rules and bootstrap
 behavior. `archivers/libarchive`, `archivers/bsdtar`, and the bundled route in
 `pkgtools/pkg_install` use this one source tree. `archivers/pixz` keeps its
 ordinary libarchive package dependency. The bsdtar common-zlib delta remains
-in place. `pkg_install` advances to revision 4 because its static payload changes.
+in place. `pkg_install` advances to revision 20 because its static payload changes.
 
 ## Source origin
 
@@ -13,6 +13,10 @@ Libarchive [3.8.10](https://github.com/libarchive/libarchive/releases/tag/v3.8.1
 was released on 2026-10-14. It adds 7z filters and the tar `--mode` option,
 and contains security and bug repairs. The original release archive and its
 SHA256 are recorded in [sources.tsv](../sources.tsv).
+
+Libarchive [3.8.11](https://github.com/libarchive/libarchive/releases/tag/v3.8.11)
+was released on 2026-10-30 as a security and bug-fix release. Its archive and
+SHA256 are also recorded in [sources.tsv](../sources.tsv).
 
 The export applies these unmodified NetBSD patches in order:
 
@@ -23,12 +27,20 @@ The export applies these unmodified NetBSD patches in order:
 3. [318cf450](https://github.com/NetBSD/pkgsrc/commit/318cf4509f47ad80519d1905ac7673a3c516bb31)
    replaces `$^` in test-list generation for older supported bmake versions.
 
-All three patches retain original authorship and licenses. Their byte hashes
+4. `pkgsrc-libarchive-3.8.11.patch` applies the official 3.8.10 to 3.8.11
+   release difference to `archivers/libarchive/files`, takes `configure`
+   verbatim from 3.8.11, and selects version 3.8.11. It is an AI-assisted
+   EmberBSD adaptation generated from the two official release archives.
+
+The NetBSD patches retain original authorship and licenses. All four byte hashes
 are pinned in [sources.tsv](../sources.tsv) and checked before application. Git applies the
 original binary manual updates as well as source and regression data.
 `pkgsrc-libarchive-consumers.patch` carries the same bmake correction into
 `Makefile.in`, which is used with `--disable-maintainer-mode`, and bumps the
 pkg_install revision. This small companion is an AI-assisted EmberBSD adaptation.
+At the end of the export, `pkgsrc-libarchive-3.8.11-revisions.patch` drops the
+libarchive and bsdtar revisions for the new version and moves pkg_install to
+revision 20, past the published revision 19.
 
 ## Checks and remaining acceptance
 
@@ -37,7 +49,7 @@ Run the source regression against an unchanged 3.8.9 pkgsrc export:
 ```sh
 python3 profiles/common-build-tools/tests/libarchive-source.py \
   --pkgsrc /absolute/baseline-pkgsrc \
-  --archive /absolute/distfiles/libarchive-3.8.10.tar.xz \
+  --archive /absolute/distfiles/libarchive-3.8.11.tar.xz \
   --bmake /absolute/bmake --work /absolute/new-work
 ```
 
@@ -48,7 +60,7 @@ It records whether the selected bmake exposes the original `$^` defect.
 [the metadata check](../tests/bsdtar-common-zlib.py) checks native and cross dependency routing on a
 complete exported tree with qualified make configurations.
 
-The source check passes 480 Git postimages, presence of 1,135 upstream test
+The source check passes 678 Git postimages, presence of 1,160 upstream test
 and data files, and five real bmake test-list generators. The selected bmake
 already supports `$^`; this run does not reproduce the older-bmake failure.
 All five native/cross metadata variants pass with the Python check.
@@ -64,7 +76,15 @@ installed libarchive package.
 
 ## Security warning interpretation
 
-The selected 3.8.10 source includes these upstream fixes:
+The selected 3.8.11 source fixes stack exhaustion from unbounded recursion
+when reading a malformed ISO9660 Joliet name
+([PR 3736](https://github.com/libarchive/libarchive/pull/3736)). It also
+contains the uu filter fix
+([PR 3693](https://github.com/libarchive/libarchive/pull/3693)) that replaces
+the former local `pkgsrc-libarchive-uu-ascii-lines.patch`;
+[the uu regression](../tests/libarchive-uu-tar-member.sh) still applies.
+
+It retains these fixes from 3.8.10:
 
 - CVE-2025-60753: the zero-length substitution repair in
   [PR 2787](https://github.com/libarchive/libarchive/pull/2787), including its

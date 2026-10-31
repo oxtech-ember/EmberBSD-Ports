@@ -8,7 +8,7 @@ names. The legacy pkgsrc `nbtar` reader does not apply those records and can
 silently extract the 100-byte fallback names. Keep the archive and PLIST intact.
 The selected extractor is a host tool in both native and cross builds.
 
-The common bsdtar recipe uses the existing libarchive 3.8.10 sources and
+The common bsdtar recipe uses the existing libarchive 3.8.11 sources and
 registered zlib provider. It does not depend on the Python package. Keep the
 bootstrap default unchanged: making bsdtar the global extraction default would
 give its own zlib dependency an extraction edge back to bsdtar.

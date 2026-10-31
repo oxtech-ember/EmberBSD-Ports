@@ -38,7 +38,7 @@ existing vendor owner. Bootstrap and the ordinary package retain one payload,
 all upstream tests and the existing pkgsrc mode override. Source checks pass;
 builds and installed tool acceptance remain separate.
 
-The [shared libarchive source update](cross/libarchive.md) selects 3.8.10 for
+The [shared libarchive source update](cross/libarchive.md) selects 3.8.11 for
 libarchive, bsdtar and the package-tools vendor route. Original NetBSD source
 imports preserve the complete upstream tests and the existing common-zlib delta.
 Package builds and installed consumer acceptance remain separate.

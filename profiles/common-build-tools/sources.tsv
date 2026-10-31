@@ -35,6 +35,8 @@ libarchive-3.8.10.tar.xz	56cad765459d5ee25a3b761f90c47d99379d28297fbfb72d908880d
 pkgsrc-libarchive-3.8.10-import.patch	6fb33f0e6d48672efb8e3c33bf5e7528561929daa9286da8864a100d461a26d1	https://github.com/NetBSD/pkgsrc/commit/f09692cc2727cf2defd37e5331aab77679b5d1e7.patch
 pkgsrc-libarchive-3.8.10.patch	91ea356e46b95efcdc368bad07f0febe277c9b7391ad93169c89ddfe9eb24291	https://github.com/NetBSD/pkgsrc/commit/fa7406b5b9db17afe08b0ab675ee45f3121b365e.patch
 pkgsrc-libarchive-bmake.patch	a1d68e4f0ca19c7f744512cf846efc40853a192535700a8d339955bcb91ee598	https://github.com/NetBSD/pkgsrc/commit/318cf4509f47ad80519d1905ac7673a3c516bb31.patch
+libarchive-3.8.11.tar.xz	a3dc0872b1b39da34dc18ef1b944f0f11ffd37425d70ae04be679279f1cf43d2	https://github.com/libarchive/libarchive/releases/download/v3.8.11/libarchive-3.8.11.tar.xz
+pkgsrc-libarchive-3.8.11.patch	40ae1caf7d20df18abf0dcea2bfc5791ae4cdabe6bffd1f406ecbb446e934c26	https://github.com/oxtech-ember/EmberBSD-Ports/blob/main/profiles/common-build-tools/patches/pkgsrc-libarchive-3.8.11.patch
 pkgsrc-gzip-1.15.patch	e8a190434b5debfa7e045d9c65f70b0688fe2b808c15deb81627e73f45d0a3a3	https://github.com/NetBSD/pkgsrc/commit/171d7b4ad9cf6d880db6340df4e239157725afd9.patch
 sqlite-autoconf-3540100.tar.gz	926ef8d3eab93fbf6e06011901273eec076b25594a4e1cdadd50c987f4f6d64e	https://sqlite.org/2026/sqlite-autoconf-3540100.tar.gz
 sqlite-src-3540100.zip	387e7f6cad4797b17848c07d453dc6606917bb356a6cfe5a3abafd38c240c71b	https://sqlite.org/2026/sqlite-src-3540100.zip
