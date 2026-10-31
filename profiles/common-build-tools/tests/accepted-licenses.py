@@ -13,10 +13,12 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[3]
 # The bulk set accepts AGPL-3 (ghostscript-agpl) and the Realtek firmware licence (rtw88-firmware).
 # Native QEMU on macOS needs APSL 2.0 for devel/cctools codesign_allocate.
+# Native MIG (devel/mig) for the Kerberos KCM RPC stubs needs APSL 1.0 and the CMU licence.
 REQUIRED = ('esdl-license', 'gnu-agpl-v3', 'rtlwifi-firmware-license',
             'apple-public-source-license', 'uboot-BSD-2-Clause-Patent',
             'uboot-BSD-3-Clause-Clear', 'uboot-LZMA-SDK-9.22', 'uboot-Intel',
-            'uboot-eCos-2.0', 'uboot-bzip2-1.0.6')
+            'uboot-eCos-2.0', 'uboot-bzip2-1.0.6',
+            'apple-public-source-license-1.0', 'cmu-mig-license')
 
 
 def main():
