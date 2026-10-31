@@ -291,7 +291,10 @@ tools()
     : > "$q/failed"
     while [ -s "$q/queue" ]; do
         cat "$q/queue" >> "$q/seen"
-        CROSS_BULK_NATIVE=$native CROSS_BULK_PKG_INFO=$native_pkg_info xargs -P "$jobs" -I '{}' sh "$0" deps '{}' "$q" < "$q/queue"
+        # A node whose dependencies cannot be read has no .deps file and is
+        # reported below with its error; xargs fails for it, which must not
+        # stop tools here without a word.
+        CROSS_BULK_NATIVE=$native CROSS_BULK_PKG_INFO=$native_pkg_info xargs -P "$jobs" -I '{}' sh "$0" deps '{}' "$q" < "$q/queue" || :
         : > "$q/next"
         while read -r node; do
             key=$(echo "$node" | tr / _)
@@ -315,7 +318,11 @@ tools()
     done
     if [ -s "$q/failed" ]; then
         echo 'Refused: the dependencies of these packages could not be read:' >&2
-        cat "$q/failed" >&2
+        while read -r node why; do
+            echo "$node $why" >&2
+            key=$(echo "$node" | tr / _)
+            [ ! -s "$q/$key.err" ] || tail -n 5 "$q/$key.err" | sed 's/^/    /' >&2
+        done < "$q/failed"
         return 1
     fi
     refused=$(skipped_deps "$q/skipped" "$q/edges")
