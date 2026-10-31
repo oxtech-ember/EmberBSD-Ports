@@ -218,24 +218,32 @@ def typescript_backend(modules):
 
 
 def chromium_typescript(node_view, modules, *, verify=False):
-    """Hard-link the native backend; lib.dom.d.ts gets Chromium's typing edits."""
+    """Mirror the typescript wrapper and native backend as one private module
+    tree; only the backend lib.dom.d.ts receives Chromium's typing edits."""
     backend = typescript_backend(modules)
-    target = node_view / 'typescript-chromium'
+    wrapper = (Path(modules) / 'typescript').resolve(strict=True)
+    root = node_view / 'typescript-chromium'
+    target = root / 'node_modules/@typescript' / backend.name
+    dom = Path('lib/lib.dom.d.ts')
+    expected = chromium_lib_dom((backend / dom).read_text('utf-8'))
     if not verify:
-        mirror(backend, target, omit=frozenset())
-        dom = target / 'lib/lib.dom.d.ts'
-        text = chromium_lib_dom((backend / 'lib/lib.dom.d.ts').read_text('utf-8'))
-        dom.unlink()
-        dom.write_text(text, 'utf-8')
+        (root / 'node_modules/@typescript').mkdir(parents=True)
+        mirror(wrapper, root / 'node_modules/typescript')
+        mirror(backend, target)
+        (target / dom).unlink()
+        (target / dom).write_text(expected, 'utf-8')
     else:
-        require((target / 'lib/lib.dom.d.ts').read_text('utf-8') ==
-                chromium_lib_dom((backend / 'lib/lib.dom.d.ts').read_text('utf-8')),
-                'Chromium TypeScript lib.dom changed')
+        require({p.name for p in root.iterdir()} == {'node_modules'} and
+                {p.name for p in (root / 'node_modules').iterdir()} == {'typescript', '@typescript'} and
+                {p.name for p in (root / 'node_modules/@typescript').iterdir()} == {backend.name},
+                'Chromium TypeScript tree changed')
+        mirror(wrapper, root / 'node_modules/typescript', verify=True)
+        require((target / dom).read_text('utf-8') == expected, 'Chromium TypeScript lib.dom changed')
         for path in backend.rglob('*'):
-            if path.is_file() and path.relative_to(backend) != Path('lib/lib.dom.d.ts'):
+            if path.is_file() and path.relative_to(backend) != dom:
                 require(os.path.samefile(path, target / path.relative_to(backend)),
                         'Chromium TypeScript backend changed')
-    return target / 'lib/tsc'
+    return root / 'node_modules/typescript/bin/tsc'
 
 
 def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None):

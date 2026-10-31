@@ -882,7 +882,9 @@ recipe per module.
 Chromium type-checks WebUI against its edited `lib.dom.d.ts`
 (`third_party/node/patches/typescript.patch`: `innerHTML`/`src` setters accept
 Trusted Types, `hidden` is `boolean`). The shared `lang/typescript` package stays
-unmodified. The source view hard-links the native backend into
-`third_party/node/typescript-chromium` and replaces only `lib.dom.d.ts` with those
-exact edits; configure selects that `lib/tsc` as `EMBERBSD_HOST_TYPESCRIPT`.
+unmodified. The source view hard-links the `typescript` wrapper and its native backend into
+`third_party/node/typescript-chromium/node_modules` (the wrapper resolves the
+backend beside it and keeps its package version) and replaces only the backend
+`lib.dom.d.ts` with those exact edits; configure selects that wrapper `bin/tsc` as
+`EMBERBSD_HOST_TYPESCRIPT`.
 `verify` rejects any other difference from the backend.
