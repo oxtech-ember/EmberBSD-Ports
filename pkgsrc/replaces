@@ -496,3 +496,8 @@ www/py-websockets
 
 # Select shared providers in libgit2.
 devel/libgit2
+
+# Shared OpenLDAP source and consumers.
+databases/openldap
+databases/lmdb
+databases/openldap-doc

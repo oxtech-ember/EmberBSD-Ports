@@ -1,0 +1,34 @@
+$NetBSD: patch-contrib_slapd-modules_smbk5pwd_Makefile,v 1.2 2024/01/31 18:17:21 adam Exp $
+
+Link against external libraries.
+Take build options from PkgSrc.
+
+--- contrib/slapd-modules/smbk5pwd/Makefile.orig	2024-01-29 18:52:23.000000000 +0000
++++ contrib/slapd-modules/smbk5pwd/Makefile
+@@ -15,8 +15,7 @@
+ LDAP_SRC = ../../..
+ LDAP_BUILD = $(LDAP_SRC)
+ LDAP_INC = -I$(LDAP_BUILD)/include -I$(LDAP_SRC)/include -I$(LDAP_SRC)/servers/slapd
+-LDAP_LIB = $(LDAP_BUILD)/libraries/libldap/libldap.la \
+-	$(LDAP_BUILD)/libraries/liblber/liblber.la
++LDAP_LIB = -lldap -llber
+ 
+ SSL_INC = 
+ SSL_LIB = -lcrypto
+@@ -31,12 +30,11 @@ UNIX_LDFLAGS = -version-info $(LTVER)
+ 
+ LIBTOOL = $(LDAP_BUILD)/libtool
+ INSTALL = /usr/bin/install
+-CC = gcc
+-OPT = -g -O2
++OPT = ${CFLAGS} ${CPPFLAGS}
+ # Omit DO_KRB5, DO_SAMBA or DO_SHADOW if you don't want to support it.
+-DEFS = -DDO_KRB5 -DDO_SAMBA -DDO_SHADOW
+-INCS = $(LDAP_INC) $(HEIMDAL_INC) $(SSL_INC)
+-LIBS = $($(PLAT)_LIB) $(LDAP_LIB) $(HEIMDAL_LIB) $(SSL_LIB)
++DEFS = -DDO_SAMBA
++INCS = $(LDAP_INC) $(SSL_INC)
++LIBS = $($(PLAT)_LIB) $(LDAP_LIB) $(SSL_LIB) ${EXTRA_LIBS}
+ LD_FLAGS = $(LDFLAGS) $($(PLAT)_LDFLAGS) -rpath $(moduledir) -module
+ 
+ PROGRAMS = smbk5pwd.la

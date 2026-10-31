@@ -1,0 +1,19 @@
+$NetBSD: distinfo,v 1.149 2026/09/09 09:44:40 adam Exp $
+
+BLAKE2s (openldap-2.7.2.tgz) = 28b334966b4380d3edb3e1b31c23d2a98bf9e6438b56484303117665eba65127
+SHA512 (openldap-2.7.2.tgz) = 3653a97a9fb987d2015a9c9316a86a24fcc1e8f455b752e69790e4d692daaab330cf361fc1869cf089d3de6a42e0f381658cea5bea110b54841f751b04551821
+Size (openldap-2.7.2.tgz) = 6513229 bytes
+SHA1 (patch-contrib_slapd-modules_autogroup_Makefile) = ff07bf3b53abcadd9486736543862e6089ddc592
+SHA1 (patch-contrib_slapd-modules_cloak_Makefile) = 6670b53a04988a021f1eb79faf7a051d0a364b87
+SHA1 (patch-contrib_slapd-modules_nops_Makefile) = 0868e789ad3551594c16d2425676300ff0d53416
+SHA1 (patch-contrib_slapd-modules_nops_nops.c) = 72c28de4b09cbac7e793828dfcf04820643dcbec
+SHA1 (patch-contrib_slapd-modules_nops_slapo-nops.5) = f32352f19361b7e9aa5b038ae8578def7c08fa47
+SHA1 (patch-contrib_slapd-modules_smbk5pwd_Makefile) = 3070f42f863ee44856fb1aeff03e3385e714bac0
+SHA1 (patch-contrib_slapd-modules_smbk5pwd_smbk5pwd.c) = 3c8c269483678fee34c73d52164c3342f042be24
+SHA1 (patch-include_ac_unistd.h) = 7441d1d46cf91b97462dbe7ba0be351ec57032d1
+SHA1 (patch-libraries_libldap_cyrus.c) = 1e47cdf4b1f1cc4eef36cf40a6beec1bed167f85
+SHA1 (patch-libraries_libldap_ldap-int.h) = 967499db16d31cbf47deff330d97efd0a360ac7f
+SHA1 (patch-libraries_libldap_os-local.c) = 7cd4f8638456fae12499de0d36d7802e47d3d688
+SHA1 (patch-libraries_libldap_thr__posix.c) = 21f0efe8f7d2f4c4fecf0a970ce5259ae28e26cb
+SHA1 (patch-libraries_liblutil_sha1.c) = 10deca5c2f0431dd51d9137f14b5070be1264dcd
+SHA1 (patch-servers_slapd_Makefile.in) = 40043fdaecac7b591b462f7af32149a93e88eaf5

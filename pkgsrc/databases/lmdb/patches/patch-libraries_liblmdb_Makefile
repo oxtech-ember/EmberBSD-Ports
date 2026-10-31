@@ -1,0 +1,119 @@
+$NetBSD: patch-libraries_liblmdb_Makefile,v 1.11 2026/08/14 14:10:54 wiz Exp $
+
+Do not override optimizations and LDFLAGS from environment.
+Libtoolize.
+Use proper install commands.
+
+--- libraries/liblmdb/Makefile.orig	2026-08-06 17:17:48.000000000 +0000
++++ libraries/liblmdb/Makefile
+@@ -22,12 +22,11 @@ THREADS = -pthread
+ AR	= ar
+ W	= -W -Wall -Wno-unused-parameter -Wbad-function-cast -Wuninitialized
+ THREADS = -pthread
+-OPT = -O2 -g
++OPT =
+ CFLAGS	= $(THREADS) $(OPT) $(W) $(XCFLAGS)
+-LDFLAGS = $(THREADS)
+ LDLIBS	= 
+ SOLIBS	= 
+-SOEXT	= .so
++SOEXT	= .la
+ LDL		= -ldl
+ 
+ LIBVER	= 1
+@@ -42,12 +41,12 @@ datarootdir = $(prefix)/share
+ libdir = $(exec_prefix)/lib
+ includedir = $(prefix)/include
+ datarootdir = $(prefix)/share
+-mandir = $(datarootdir)/man
++mandir = $(prefix)/$(PKGMANDIR)
+ 
+ ########################################################################
+ 
+ IHDRS	= lmdb.h
+-ILIBS	= liblmdb.a
++ILIBS	= liblmdb$(SOEXT)
+ ILIBS2	= liblmdb$(SOFULL)
+ IPROGS	= mdb_stat mdb_copy mdb_dump mdb_load mdb_drop
+ IDOCS	= mdb_stat.1 mdb_copy.1 mdb_dump.1 mdb_load.1 mdb_drop.1
+@@ -58,7 +57,7 @@ VERSION_OPT	= -Wl,-soname,$(SOVER)
+ # For MacOSX:
+ #VERSION_OPT	= -Wl,-current_version,$(VEREXT)
+ 
+-all:	$(ILIBS) $(ILIBS2) $(PROGS) lmdb.pc
++all:	$(ILIBS) $(IPROGS) lmdb.pc
+ # Requires CPPFLAGS=-DMDB_VL32 and/or -DMDB_RPAGE_CACHE
+ rall:	all $(RPROGS)
+ 
+@@ -67,15 +66,10 @@ install: $(ILIBS) $(IPROGS) $(IHDRS)
+ 	mkdir -p $(DESTDIR)$(libdir)
+ 	mkdir -p $(DESTDIR)$(includedir)
+ 	mkdir -p $(DESTDIR)$(mandir)/man1
+-	for f in $(IPROGS); do cp $$f $(DESTDIR)$(bindir); done
+-	for f in $(ILIBS); do cp $$f $(DESTDIR)$(libdir); done
+-	for f in $(ILIBS2); do cp $$f $(DESTDIR)$(libdir); \
+-		i=`basename -s .$(ABIVER) $$f`; rm -f $(DESTDIR)$(libdir)/$$i; \
+-		ln -s $$f $(DESTDIR)$(libdir)/$$i; \
+-		i=`basename -s .$(LIBVER) $$i`; rm -f $(DESTDIR)$(libdir)/$$i; \
+-		ln -s $$f $(DESTDIR)$(libdir)/$$i; done
+-	for f in $(IHDRS); do cp $$f $(DESTDIR)$(includedir); done
+-	for f in $(IDOCS); do cp $$f $(DESTDIR)$(mandir)/man1; done
++	for f in $(IPROGS); do $(LIBTOOL) --mode=install $(BSD_INSTALL_PROGRAM) $$f $(DESTDIR)$(bindir); done
++	for f in $(ILIBS); do $(LIBTOOL) --mode=install $(BSD_INSTALL_LIB) $$f $(DESTDIR)$(libdir); done
++	for f in $(IHDRS); do $(BSD_INSTALL_DATA) $$f $(DESTDIR)$(includedir); done
++	for f in $(IDOCS); do $(BSD_INSTALL_MAN) $$f $(DESTDIR)$(mandir)/man1; done
+ 
+ clean:
+ 	rm -rf $(PROGS) $(RPROGS) *.[ao] *.[ls]o *.so.* *~ testdb
+@@ -87,22 +81,19 @@ liblmdb.a:	mdb.o midl.o module.o
+ liblmdb.a:	mdb.o midl.o module.o
+ 	$(AR) rs $@ mdb.o midl.o module.o
+ 
+-liblmdb$(SOFULL):	mdb.lo midl.lo module.lo
+-#	$(CC) $(LDFLAGS) -pthread -shared -Wl,-Bsymbolic -o $@ mdb.o midl.o $(SOLIBS)
+-	$(CC) $(LDFLAGS) -shared $(VERSION_OPT) -o $@ mdb.lo midl.lo module.lo $(SOLIBS) $(LDL)
+-	rm -f liblmdb$(SOEXT); ln -s $@ liblmdb$(SOEXT)
+-	rm -f $(SOVER); ln -s $@ $(SOVER)
++liblmdb$(SOEXT):	mdb.lo midl.lo module.lo
++	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) -pthread -rpath $(PREFIX)/lib -o $@ mdb.lo midl.lo module.lo $(SOLIBS)
+ 
+-mdb_stat: mdb_stat.o liblmdb.a
+-	$(CC) $(LDFLAGS) -o $@ $^ $(LDL)
+-mdb_copy: mdb_copy.o liblmdb.a
+-	$(CC) $(LDFLAGS) -o $@ $^ $(LDL)
+-mdb_dump: mdb_dump.o liblmdb.a
+-	$(CC) $(LDFLAGS) -o $@ $^ $(LDL)
+-mdb_load: mdb_load.o liblmdb.a
+-	$(CC) $(LDFLAGS) -o $@ $^ $(LDL)
+-mdb_drop: mdb_drop.o liblmdb.a
+-	$(CC) $(LDFLAGS) -o $@ $^ $(LDL)
++mdb_stat: mdb_stat.o liblmdb$(SOEXT)
++	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) $< -L. -llmdb -o $@
++mdb_copy: mdb_copy.o liblmdb$(SOEXT)
++	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) $< -L. -llmdb -o $@
++mdb_dump: mdb_dump.o liblmdb$(SOEXT)
++	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) $< -L. -llmdb -o $@
++mdb_load: mdb_load.o liblmdb$(SOEXT)
++	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) $< -L. -llmdb -o $@
++mdb_drop: mdb_drop.o liblmdb$(SOEXT)
++	$(LIBTOOL) --mode=link --tag=CC $(CC) $(LDFLAGS) $< -L. -llmdb -o $@
+ mtest:    mtest.o    liblmdb.a
+ mtest2:	mtest2.o liblmdb.a
+ mtest3:	mtest3.o liblmdb.a
+@@ -130,13 +121,13 @@ mdb.lo: mdb.c lmdb.h midl.h
+ 	$(CC) $(CFLAGS) $(CPPFLAGS) -c midl.c
+ 
+ mdb.lo: mdb.c lmdb.h midl.h
+-	$(CC) $(CFLAGS) -fPIC $(CPPFLAGS) -c mdb.c -o $@
++	$(LIBTOOL) --mode=compile --tag=CC $(CC) $(CFLAGS) $(CPPFLAGS) -c mdb.c -o $@
+ 
+ midl.lo: midl.c midl.h
+-	$(CC) $(CFLAGS) -fPIC $(CPPFLAGS) -c midl.c -o $@
++	$(LIBTOOL) --mode=compile --tag=CC $(CC) $(CFLAGS) $(CPPFLAGS) -c midl.c -o $@
+ 
+ module.lo: module.c lmdb.h
+-	$(CC) $(CFLAGS) -fPIC $(CPPFLAGS) -c module.c -o $@
++	$(LIBTOOL) --mode=compile --tag=CC $(CC) $(CFLAGS) $(CPPFLAGS) -c module.c -o $@
+ 
+ %:	%.o
+ 	$(CC) $(CFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@

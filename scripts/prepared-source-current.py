@@ -37,6 +37,7 @@ OWNERS = {
     'openssl': ('scripts/source-inputs/openssl/source.py', 'security/openssl'),
     'libfido2': ('scripts/source-inputs/libfido2/source.py', 'security/libfido2'),
     'libfetch': ('scripts/source-inputs/libfetch/source.py', 'net/libfetch'),
+    'openldap': ('scripts/source-inputs/openldap/source.py', 'databases/openldap'),
     'libcbor': ('scripts/source-inputs/libcbor/source.py', 'devel/libcbor'),
     'byacc': ('scripts/source-inputs/byacc/source.py', 'devel/byacc'),
     'texinfo': ('scripts/source-inputs/texinfo/source.py', 'devel/gtexinfo'),
@@ -176,7 +177,8 @@ def current(name, identity, git, sdk, patch=None):
     tree it prepares."""
     script, package = OWNERS[name]
     owner_path = PORTS / script
-    owner_sha256 = sha256(owner_path.read_bytes())
+    owner_sha256 = (owner_module(name, owner_path).owner_digest() if name == 'openldap'
+                    else sha256(owner_path.read_bytes()))
     selector_module = selector()
     if isinstance(identity, dict) and set(identity) == {'effective', 'owner_sha256'}:
         if name == 'libarchive':

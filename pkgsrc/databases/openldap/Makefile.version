@@ -1,0 +1,15 @@
+# $NetBSD: Makefile.version,v 1.49 2026/09/09 09:44:40 adam Exp $
+# used by databases/lmdb/Makefile
+# used by databases/openldap/Makefile
+# used by databases/openldap/Makefile.common
+# used by databases/openldap-doc/Makefile
+
+OPENLDAP_VERSION=	2.7.2
+
+DISTNAME=	openldap-${OPENLDAP_VERSION}
+MASTER_SITES+=	https://www.openldap.org/software/download/OpenLDAP/openldap-release/
+MASTER_SITES+=	ftp://ftp.ntua.gr/mirror/OpenLDAP/openldap-release/
+EXTRACT_SUFX=	.tgz
+
+HOMEPAGE=	https://www.openldap.org/
+LICENSE=	modified-bsd
