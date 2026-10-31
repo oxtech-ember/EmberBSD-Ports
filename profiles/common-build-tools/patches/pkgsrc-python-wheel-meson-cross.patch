@@ -1,0 +1,26 @@
+Origin: EmberBSD, AI-assisted.
+meson-python wheel builds of cross recipes (graphics/py-cairo) ran
+"meson setup" without a cross file, so Meson configured a native build and
+failed to run the target compiler's sanity check program on the build host.
+When the recipe uses meson-python, pass the devel/meson cross file through
+-Csetup-args. Not submitted upstream.
+
+--- a/lang/python/wheel.mk
++++ b/lang/python/wheel.mk
+@@ -60,6 +60,16 @@
+ 
+ .include "../../mk/bsd.fast.prefs.mk"
+ 
++# Origin: EmberBSD (AI-assisted). meson-python runs "meson setup" itself.
++# Without a cross file Meson configured a native build and ran the target
++# compiler's sanity check program on the build host. Give it the Meson cross
++# file that devel/meson/build.mk uses.
++.if ${USE_CROSS_COMPILE:tl} == "yes" && !empty(TOOL_DEPENDS:M*-meson_python[-<>=]*)
++.include "../../devel/meson/cross-file.mk"
++WHEEL_ARGS+=	-Csetup-args=--cross-file=${MESON_CROSS_FILE}
++pre-build: ${MESON_CROSS_FILE}
++.endif
++
+ .if !target(do-build)
+ TOOL_DEPENDS+= ${PYPKGPREFIX}-build>=0:../../devel/py-build
+ do-build:
