@@ -57,6 +57,10 @@ with tempfile.TemporaryDirectory() as tmp:
     guard = b"    if args.command in ('build', 'verify') and args.target == 'riscv32' and args.phase == 'full':\n        cli.error('riscv32 supports only builtins and bootstrap')\n"
     assert guard in cli_bytes
     assert runtime.build_cli(cli_bytes) == runtime.build_cli(cli_bytes.replace(guard, b''))
+    target_old = cli_bytes.replace(b"choices=('aarch64', 'amd64', 'riscv32')", b"choices=('aarch64', 'amd64')")
+    assert runtime.build_cli(cli_bytes, 'aarch64') == runtime.build_cli(target_old, 'aarch64')
+    assert runtime.build_cli(cli_bytes, 'riscv32') != runtime.build_cli(target_old, 'riscv32')
+    assert runtime.build_cli(cli_bytes, 'aarch64') != runtime.build_cli(cli_bytes.replace(b"default='clang'", b"default='gcc'"), 'aarch64')
     assert runtime.build_cli(cli_bytes) != runtime.build_cli(cli_bytes.replace(b"default='clang'", b"default='gcc'"))
     assert runtime.build_cli(cli_bytes) != runtime.build_cli(cli_bytes.replace(b"args.command == 'build'", b"args.command == 'other'"))
     assert runtime.build_cli(cli_bytes) != runtime.build_cli(cli_bytes.replace(b"    if args.command == 'prepare':", b"    args.host_compiler_family = 'gcc'\n    if args.command == 'prepare':"))
@@ -76,4 +80,18 @@ with tempfile.TemporaryDirectory() as tmp:
     changed['source']['sha512'] = 'different'
     (root / 'llvm-source.json').write_text(json.dumps(changed))
     check(stage, True)
-print('runtime source reuse and CLI: 9 checks passed')
+rv = b"    if definition['arch'] == 'riscv32':\n        driver_flags += ['-march=rv32imac_zicsr_zifencei', '-mabi=ilp32']\n"
+old_build = b'def cmake_arguments(definition):\n    driver_flags = []\n    return driver_flags\n'
+new_build = old_build.replace(b'    return driver_flags\n', rv + b'    return driver_flags\n')
+assert runtime.compatible_build_for_target(old_build, new_build, 'aarch64')
+assert runtime.compatible_build_for_target(old_build, new_build, 'amd64')
+assert not runtime.compatible_build_for_target(old_build, new_build, 'riscv32')
+assert not runtime.compatible_build_for_target(old_build, new_build + b'changed\n', 'aarch64')
+mutated = new_build.replace(rv, b"    definition['arch'] = 'riscv32'\n" + rv)
+assert not runtime.compatible_build_for_target(mutated, mutated, 'aarch64')
+assert not runtime.compatible_build_for_target(old_build, new_build.replace(b'riscv32', b'aarch64'), 'aarch64')
+assert not runtime.compatible_build_for_target(old_build, new_build.replace(rv, b"    if definition['arch'] == 'riscv32':\n        unrelated = 1\n"), 'aarch64')
+assert not runtime.compatible_build_for_target(old_build, new_build.replace(rv, b"    if definition['arch'] == 'riscv32':\n        yield 1\n"), 'aarch64')
+assert not runtime.compatible_build_for_target(old_build, new_build.replace(b'def cmake_arguments(definition):', b'def cmake_arguments():'), 'aarch64')
+
+print('runtime source reuse, target guards and CLI: PASS')

@@ -102,6 +102,59 @@ def freestanding_cli(commands):
             parser.add_argument('--jobs', type=int, default=1)
 
 
+def compatible_build_for_target(previous, current, machine_arch):
+    """Compare build code after removing provably false architecture guards."""
+    if not isinstance(machine_arch, str) or not machine_arch:
+        return False
+
+    def effective(data):
+        tree = ast.parse(data)
+        functions = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 'cmake_arguments']
+        if (len(functions) != 1 or
+                'definition' not in [arg.arg for arg in functions[0].args.posonlyargs + functions[0].args.args]):
+            return None
+        # The selected definition must remain read-only and cannot escape.
+        # Otherwise a preceding statement could change the tested arch.
+        parents = {child: parent for parent in ast.walk(functions[0])
+                   for child in ast.iter_child_nodes(parent)}
+        for node in ast.walk(functions[0]):
+            if isinstance(node, ast.Name) and node.id == 'definition':
+                parent = parents.get(node)
+                if (not isinstance(parent, ast.Subscript) or parent.value is not node or
+                        not isinstance(parent.ctx, ast.Load) or not isinstance(parent.slice, ast.Constant) or
+                        not isinstance(parent.slice.value, str)):
+                    return None
+        # Arbitrary dead code can change Python scope or turn this function
+        # into a generator, so only an existing list augmentation is safe.
+        def false_arch_guard(node, index):
+            if not isinstance(node, ast.If) or node.orelse or len(node.body) != 1:
+                return False
+            operation = node.body[0]
+            if not (isinstance(operation, ast.AugAssign) and isinstance(operation.op, ast.Add) and
+                    isinstance(operation.target, ast.Name) and operation.target.id == 'driver_flags' and
+                    isinstance(operation.value, ast.List) and all(isinstance(v, ast.Constant) and
+                    isinstance(v.value, str) for v in operation.value.elts)):
+                return False
+            if not any(isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and
+                       t.id == 'driver_flags' for t in n.targets) for n in functions[0].body[:index]):
+                return False
+            test = node.test
+            return (isinstance(test, ast.Compare) and len(test.ops) == 1 and
+                    isinstance(test.ops[0], ast.Eq) and len(test.comparators) == 1 and
+                    isinstance(test.left, ast.Subscript) and isinstance(test.left.value, ast.Name) and
+                    test.left.value.id == 'definition' and isinstance(test.left.slice, ast.Constant) and
+                    test.left.slice.value == 'arch' and isinstance(test.comparators[0], ast.Constant) and
+                    isinstance(test.comparators[0].value, str) and test.comparators[0].value != machine_arch)
+        functions[0].body = [n for index, n in enumerate(functions[0].body) if not false_arch_guard(n, index)]
+        return ast.dump(tree, include_attributes=False)
+
+    try:
+        left, right = effective(previous), effective(current)
+        return left is not None and left == right
+    except (SyntaxError, ValueError, UnicodeDecodeError):
+        return False
+
+
 def compatible_source(owner, stage, expected, source, original_source, git):
     """Compare prepared payloads when recipe selectors or CLI dispatch changed."""
     owner.require(source is not None and original_source is not None,
@@ -124,6 +177,22 @@ def compatible_source(owner, stage, expected, source, original_source, git):
               'pkgsrc/lang/compiler-rt/files/runtime.py'}
     old = {k: v for k, v in stage['recipe']['files'].items() if k not in exempt}
     new = {k: v for k, v in expected['files'].items() if k not in exempt}
+    build_name = 'pkgsrc/lang/compiler-rt/files/build.py'
+    if old.get(build_name) != new.get(build_name):
+        previous_build = owner.process.capture([git, '-C', str(owner.PORTS), 'show',
+            stage['recipe']['ports_revision'] + ':' + build_name],
+            env=owner.process.sanitized_environment()).stdout
+        current_build = (Path(__file__).parent / 'build.py').read_bytes()
+        owner.require(owner.digest(previous_build) == old.get(build_name) and
+                      owner.digest(current_build) == new.get(build_name),
+                      'runtime build or patch inputs changed')
+        from emberbsd_sdk import targets
+        selected_arch = targets.target_definition(stage.get('target'))['arch']
+        owner.require(stage.get('machine_arch') == selected_arch and
+                      compatible_build_for_target(previous_build, current_build, selected_arch),
+                      'runtime build or patch inputs changed')
+        old.pop(build_name)
+        new.pop(build_name)
     owner.require(old == new, 'runtime build or patch inputs changed')
     runtime_name = 'pkgsrc/lang/compiler-rt/files/runtime.py'
     previous = owner.process.capture([git, '-C', str(owner.PORTS), 'show',
@@ -131,11 +200,11 @@ def compatible_source(owner, stage, expected, source, original_source, git):
         env=owner.process.sanitized_environment()).stdout
     owner.require(owner.digest(previous) == stage['recipe']['files'][runtime_name],
                   'original runtime CLI differs from stage recipe')
-    owner.require(build_cli(previous) == build_cli(Path(__file__).read_bytes()),
+    owner.require(build_cli(previous, stage.get('target')) == build_cli(Path(__file__).read_bytes(), stage.get('target')),
                   'runtime build CLI or dispatch changed')
 
 
-def build_cli(data):
+def build_cli(data, target=None):
     """Compare the build parser and dispatch without executing historical code."""
     tree = ast.parse(data)
     main = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main')
@@ -175,6 +244,13 @@ if args.command in ('build', 'verify') and args.target == 'riscv32' and args.pha
         for call in ast.walk(clone):
             if isinstance(call, ast.Call) and call.args and isinstance(call.args[0], ast.Constant) and call.args[0].value == '--git':
                 call.keywords = [k for k in call.keywords if k.arg != 'required']
+            if (target in ('aarch64', 'amd64') and isinstance(call, ast.Call) and
+                    call.args and isinstance(call.args[0], ast.Constant) and call.args[0].value == '--target'):
+                for keyword in call.keywords:
+                    if keyword.arg == 'choices' and isinstance(keyword.value, ast.Tuple):
+                        values = keyword.value.elts
+                        if [getattr(v, 'value', None) for v in values] == ['aarch64', 'amd64', 'riscv32']:
+                            keyword.value.elts = values[:2]
         selected.append(clone)
 
     return tuple(ast.dump(n, include_attributes=False) for n in selected)
