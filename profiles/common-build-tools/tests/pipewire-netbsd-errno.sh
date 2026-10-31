@@ -22,8 +22,8 @@ wrksrc=$(bm -V '${WRKSRC}')
 make_env=$(bm -V '${MAKE_ENV}')
 path=$(bm -V '${PATH}')
 status=0
-for o in src/pipewire/libpipewire-0.3.so.0.1609.0.p/pipewire.c.o \
-	src/pipewire/libpipewire-0.3.so.0.1609.0.p/impl-port.c.o; do
+for o in src/pipewire/libpipewire-0.3.so.0.1610.0.p/pipewire.c.o \
+	src/pipewire/libpipewire-0.3.so.0.1610.0.p/impl-port.c.o; do
 	eval "env PATH=\"\$path\" $make_env ninja -C \"\$wrksrc/output\" \"\$o\"" >"$log" 2>&1 ||
 		{ grep -m 3 'error:' "$log" || tail -3 "$log"; echo "FAIL: $o"; status=1; }
 done
