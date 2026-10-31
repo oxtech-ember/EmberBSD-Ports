@@ -1,0 +1,59 @@
+$NetBSD$
+
+Correct read-only server option descriptions and terminating helper.
+
+--- servconf.c
++++ servconf.c
+@@ -555,7 +555,7 @@
+ 
+ static struct {
+ 	int val;
+-	char *text;
++	const char *text;
+ } tunmode_desc[] = {
+ 	{ SSH_TUNMODE_NO, "no" },
+ 	{ SSH_TUNMODE_POINTOPOINT, "point-to-point" },
+@@ -820,7 +820,7 @@
+ 	return result;
+ }
+ 
+-static void
++static void __attribute__((noreturn))
+ match_test_missing_fatal(const char *criteria, const char *attrib)
+ {
+ 	fatal("'Match %s' in configuration but '%s' not in connection "
+@@ -1062,7 +1062,7 @@
+ 
+ /* Multistate option parsing */
+ struct multistate {
+-	char *key;
++	const char *key;
+ 	int value;
+ };
+ static const struct multistate multistate_flag[] = {
+@@ -4298,6 +4298,7 @@
+ dump_config(ServerOptions *o)
+ {
+ 	char *s;
++	const char *tun_desc;
+ 	u_int i;
+ 
+ 	/* these are usually at the top of the config */
+@@ -4448,14 +4449,14 @@
+ 	printf("PerSourceNetBlockSize %d:%d\n", o->per_source_masklen_ipv4,
+ 	    o->per_source_masklen_ipv6);
+ 
+-	s = NULL;
++	tun_desc = NULL;
+ 	for (i = 0; tunmode_desc[i].val != -1; i++) {
+ 		if (tunmode_desc[i].val == o->permit_tun) {
+-			s = tunmode_desc[i].text;
++			tun_desc = tunmode_desc[i].text;
+ 			break;
+ 		}
+ 	}
+-	dump_cfg_string(sPermitTunnel, s);
++	dump_cfg_string(sPermitTunnel, tun_desc);
+ 
+ 	printf("IPQoS %s ", iptos2str(o->ip_qos_interactive));
+ 	printf("%s\n", iptos2str(o->ip_qos_bulk));
