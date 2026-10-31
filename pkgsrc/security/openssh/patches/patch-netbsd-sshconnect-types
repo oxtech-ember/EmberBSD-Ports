@@ -1,0 +1,82 @@
+$NetBSD$
+
+Preserve mutable exec arguments and readonly text.
+
+--- sshconnect.c
++++ sshconnect.c
+@@ -147,9 +147,10 @@
+ 	int sp[2], sock;
+ 	pid_t pid;
+ 	char *shell;
++	char default_shell[] = _PATH_BSHELL;
+ 
+ 	if ((shell = getenv("SHELL")) == NULL)
+-		shell = _PATH_BSHELL;
++		shell = default_shell;
+ 
+ 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, sp) == -1)
+ 		fatal("Could not create socketpair to communicate with "
+@@ -162,6 +163,7 @@
+ 	/* Fork and execute the proxy command. */
+ 	if ((pid = fork()) == 0) {
+ 		char *argv[10];
++		char shell_option[] = "-c";
+ 
+ 		close(sp[1]);
+ 		/* Redirect stdin and stdout. */
+@@ -185,7 +187,7 @@
+ 			error_f("stdfd_devnull failed");
+ 
+ 		argv[0] = shell;
+-		argv[1] = "-c";
++		argv[1] = shell_option;
+ 		argv[2] = command_string;
+ 		argv[3] = NULL;
+ 
+@@ -229,9 +231,10 @@
+ 	int pin[2], pout[2];
+ 	pid_t pid;
+ 	char *shell;
++	char default_shell[] = _PATH_BSHELL;
+ 
+ 	if ((shell = getenv("SHELL")) == NULL || *shell == '\0')
+-		shell = _PATH_BSHELL;
++		shell = default_shell;
+ 
+ 	/* Create pipes for communicating with the proxy. */
+ 	if (pipe(pin) == -1 || pipe(pout) == -1)
+@@ -245,6 +248,7 @@
+ 	/* Fork and execute the proxy command. */
+ 	if ((pid = fork()) == 0) {
+ 		char *argv[10];
++		char shell_option[] = "-c";
+ 
+ 		/* Redirect stdin and stdout. */
+ 		close(pin[1]);
+@@ -268,7 +272,7 @@
+ 			error_f("stdfd_devnull failed");
+ 
+ 		argv[0] = shell;
+-		argv[1] = "-c";
++		argv[1] = shell_option;
+ 		argv[2] = command_string;
+ 		argv[3] = NULL;
+ 
+@@ -1319,7 +1323,7 @@
+ 		if (readonly == ROQUIET)
+ 			goto fail;
+ 		if (options.check_host_ip && host_ip_differ) {
+-			char *key_msg;
++			const char *key_msg;
+ 			if (ip_status == HOST_NEW)
+ 				key_msg = "is unknown";
+ 			else if (ip_status == HOST_OK)
+@@ -1741,7 +1745,7 @@
+ int
+ ssh_local_cmd(const char *args)
+ {
+-	char *shell;
++	const char *shell;
+ 	pid_t pid;
+ 	int status;
+ 	void (*osighand)(int);

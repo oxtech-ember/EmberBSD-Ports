@@ -12,6 +12,7 @@ SHA1 (patch-netbsd-client-types) = 57642c6094a1e4b496d8a1545ff086c992e52bca
 SHA1 (patch-netbsd-kex-banner) = 7fbe4a739d8cfac905491753e684a4a60f9ecabd
 SHA1 (patch-netbsd-packet-types) = 6f22f63f57ad5251b63f7afe4b3cc0c515a4a3e9
 SHA1 (patch-netbsd-readconf-types) = ec30034354c35f3ef189447c10a190443e012a44
+SHA1 (patch-netbsd-sshconnect-types) = 8e0540df33a805234d79a035cbe5f7e40611d6b5
 SHA1 (patch-netbsd-versionfirst-option) = e2e7d6b857a15f45e726a8ca515bc1df6e0228d8
 SHA1 (patch-openbsd-compat_bsd-malloc.c) = 737b3aa6869e5650ff031376813f0e7e22aa2d05
 SHA1 (patch-sshkey.h) = aaaf622f377e455c49683fcc2ca42576ccd097bb
