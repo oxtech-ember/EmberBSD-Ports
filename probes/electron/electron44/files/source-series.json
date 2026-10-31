@@ -787,6 +787,11 @@
       "path": "protobuf-nodiscard-call-sites.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "gn-compiled-action-scoped-runtime.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

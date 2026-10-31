@@ -1,0 +1,101 @@
+Run compiled_action host tools with the SDK scoped runtime launcher.
+Origin: EmberBSD contributors (AI-assisted). Host tools link the staged
+__ember1 abseil/protobuf/re2 whose install names point at the installed
+native prefix; select the same scoped runtime view protoc uses.
+
+--- a/build/compiled_action.gni
++++ b/build/compiled_action.gni
+@@ -74,6 +74,27 @@
+   _host_executable_suffix = ""
+ }
+ 
++declare_args() {
++  emberbsd_host_tool_runtime_launcher = ""
++  emberbsd_host_tool_runtime_view = ""
++  emberbsd_host_tool_runtime_inputs = []
++}
++assert((emberbsd_host_tool_runtime_launcher == "") ==
++           (emberbsd_host_tool_runtime_view == ""),
++       "A scoped host tool launcher and runtime view must be selected together")
++
++_emberbsd_host_tool_runtime_args = []
++if (emberbsd_host_tool_runtime_launcher != "") {
++  assert(emberbsd_host_tool_runtime_inputs != [],
++         "The scoped host tool launcher requires its actual inputs")
++  _emberbsd_host_tool_runtime_args = [
++    "--runtime-launcher",
++    rebase_path(emberbsd_host_tool_runtime_launcher, root_build_dir),
++    "--runtime-view",
++    rebase_path(emberbsd_host_tool_runtime_view, root_build_dir),
++  ]
++}
++
+ template("compiled_action") {
+   assert(defined(invoker.tool), "tool must be defined for $target_name")
+   assert(defined(invoker.outputs), "outputs must be defined for $target_name")
+@@ -115,11 +136,12 @@
+         get_label_info(host_tool, "name") + _host_executable_suffix
+ 
+     deps += [ host_tool ]
+-    inputs += [ host_executable ]
++    inputs += [ host_executable ] + emberbsd_host_tool_runtime_inputs
+ 
+     # The script takes as arguments the binary to run, and then the arguments
+     # to pass it.
+-    args = [ rebase_path(host_executable, root_build_dir) ] + invoker.args
++    args = _emberbsd_host_tool_runtime_args +
++           [ rebase_path(host_executable, root_build_dir) ] + invoker.args
+ 
+     # Add msan instrumented libs to run the compiled binary with msan
+     # crbug.com/464092154
+@@ -178,10 +200,11 @@
+         get_label_info(host_tool, "name") + _host_executable_suffix
+ 
+     deps += [ host_tool ]
+-    inputs += [ host_executable ]
++    inputs += [ host_executable ] + emberbsd_host_tool_runtime_inputs
+ 
+     # The script takes as arguments the binary to run, and then the arguments
+     # to pass it.
+-    args = [ rebase_path(host_executable, root_build_dir) ] + invoker.args
++    args = _emberbsd_host_tool_runtime_args +
++           [ rebase_path(host_executable, root_build_dir) ] + invoker.args
+   }
+ }
+--- a/build/gn_run_binary.py
++++ b/build/gn_run_binary.py
+@@ -15,12 +15,21 @@
+ # This script is designed to run binaries produced by the current build. We
+ # may prefix it with "./" to avoid picking up system versions that might
+ # also be on the path.
+-path = sys.argv[1]
++argv = sys.argv[1:]
++launcher = []
++if argv[:1] == ['--runtime-launcher']:
++    if len(argv) < 5 or argv[2] != '--runtime-view':
++        sys.exit('gn_run_binary.py: runtime launcher and view must be selected together')
++    launcher = [sys.executable, '-B', argv[1], '--runtime-view',
++                os.path.abspath(argv[3]), '--']
++    argv = argv[4:]
++
++path = argv[0]
+ if not os.path.isabs(path):
+     path = './' + path
+ 
+ # The rest of the arguments are passed directly to the executable.
+-args = [path] + sys.argv[2:]
++args = launcher + [path] + argv[1:]
+ 
+ ret = subprocess.call(args, env={"CHROME_EXE_PATH":"@WRKSRC@/out/Release/chrome","LD_LIBRARY_PATH":"@WRKSRC@/out/Release"})
+ if ret != 0:
+@@ -29,8 +38,8 @@
+         # recognize and differentiate in hex. In order to print them as unsigned
+         # hex we need to add 4 Gig to them.
+         print(
+-            '%s failed with exit code 0x%08X' % (sys.argv[1], ret + (1 << 32))
++            '%s failed with exit code 0x%08X' % (path, ret + (1 << 32))
+         )
+     else:
+-        print('%s failed with exit code %d' % (sys.argv[1], ret))
++        print('%s failed with exit code %d' % (path, ret))
+ sys.exit(ret)

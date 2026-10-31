@@ -847,7 +847,10 @@ and `--perfetto-patch` select common Perfetto. Each producer verifies its own
 source and recipe inputs; the local source view only connects the selected
 trees. Native generator actions may select the same runtime with
 `--node-scoped-runtime` and `--perfetto-scoped-runtime` alongside
-`--protoc-runtime-view`. `--shared-undici` selects the installed target Undici
+`--protoc-runtime-view`. `--host-tool-runtime-view` selects a scoped runtime view for
+Chromium `compiled_action` host tools, run through the same SDK launcher; it
+must hold the stage libraries those tools link, and may be changed by
+`reconfigure`. `--shared-undici` selects the installed target Undici
 loader after checking its package ownership, source metadata and bytes; the
 compiled runtime path remains `/usr/pkg`. These options do not install packages
 or validate a target Electron runtime. The Electron runtime package must itself

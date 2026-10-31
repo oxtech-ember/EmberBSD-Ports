@@ -1030,6 +1030,18 @@ def producer_inputs(options, sdk):
         values.update(perfetto_host_runtime_launcher=values['emberbsd_protoc_runtime_launcher'],
                       perfetto_host_runtime_view=values['emberbsd_protoc_runtime_view'],
                       perfetto_host_runtime_inputs=values['emberbsd_protoc_runtime_inputs'])
+    host_tool_view = getattr(options, 'host_tool_runtime_view', None)
+    if host_tool_view:
+        require(runtime_view, 'Compiled host tools need the SDK launcher selected with protoc')
+        view = absolute(host_tool_view, 'host tool runtime view')
+        require(':' not in str(view), 'host tool runtime view cannot contain a colon')
+        entries = sorted(view.iterdir())
+        require(entries and all(item.is_file() for item in entries),
+                'host tool runtime view must contain only files')
+        actual = sorted({str(item.resolve(strict=True)) for item in entries})
+        values.update(emberbsd_host_tool_runtime_launcher=values['emberbsd_protoc_runtime_launcher'],
+                      emberbsd_host_tool_runtime_view=str(view),
+                      emberbsd_host_tool_runtime_inputs=sorted(set(values['emberbsd_protoc_runtime_inputs'] + actual)))
     values.update(common_protobuf(options, sdk, native, environment, buildlink, runtime_view))
     values.update(common_undici(options, sdk, environment))
     values.update(common_embedder_sources(options, sdk, native, environment))
@@ -1380,7 +1392,8 @@ def main():
                      'protobuf-source', 'protobuf-ports-source', 'protobuf-archive', 'protobuf-patch',
                      'node-source', 'node-pkgsrc', 'gyp-source', 'gyp-pkgsrc', 'perfetto-source', 'perfetto-ports-source',
                      'perfetto-archive', 'perfetto-patch', 'v8-source', 'v8-ports-source', 'v8-pkgsrc',
-                     'v8-metagen-libclang-so', 'v8-metagen-bindings-dir', 'v8-metagen-runtime-view'):
+                     'v8-metagen-libclang-so', 'v8-metagen-bindings-dir', 'v8-metagen-runtime-view',
+                     'host-tool-runtime-view'):
             command.add_argument('--' + name, type=Path)
         command.add_argument('--perfetto-scoped-runtime', action='store_true')
         command.add_argument('--node-scoped-runtime', action='store_true')
