@@ -1,7 +1,7 @@
 # Origin: EmberBSD contributors (AI-assisted).
 DISTNAME= LIEF-1.0.0
 PKGNAME= lief-1.0.0
-PKGREVISION= 1
+PKGREVISION= 2
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=lief-project/}
 GITHUB_PROJECT= LIEF
@@ -36,12 +36,14 @@ post-install:
 .include "../../mk/bsd.prefs.mk"
 .include "../../mk/emberbsd-native-cxx-runtime.mk"
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
-PKGREVISION= 2
+PKGREVISION= 3
 .endif
 
 .include "../../devel/cmake/build.mk"
 .include "../../security/mbedtls4/buildlink3.mk"
 .include "../../devel/spdlog/buildlink3.mk"
+# libLIEF calls fmt directly and links libfmt.
+.include "../../textproc/fmtlib/buildlink3.mk"
 .include "../../devel/frozen/buildlink3.mk"
 .include "../../textproc/nlohmann-json/buildlink3.mk"
 .include "../../devel/tl-expected/buildlink3.mk"
