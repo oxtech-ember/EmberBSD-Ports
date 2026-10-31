@@ -2,7 +2,7 @@
 
 DISTNAME=	qtbase-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qtbase-${QTVERSION}
-PKGREVISION=	15
+PKGREVISION=	16
 COMMENT=	C++ X GUI toolkit
 CATEGORIES=	x11
 
@@ -263,6 +263,13 @@ qt-target-metadata:
 .endif
 
 .include "options.mk"
+
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && empty(PKG_OPTIONS:Mhost-tools)
+TOOL_DEPENDS+= wayland>=1.26.0nb2:../../devel/wayland
+CMAKE_CONFIGURE_ARGS+= -DEMBERBSD_FIND_WAYLAND_SCANNER:BOOL=ON
+CMAKE_CONFIGURE_ARGS+= -DWaylandScanner_EXECUTABLE:FILEPATH=${PREFIX}/bin/wayland-scanner
+CMAKE_CONFIGURE_ARGS+= -DFEATURE_qtwaylandscanner:BOOL=ON
+.endif
 
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && !empty(PKG_OPTIONS:Mhost-tools)
 # CMake removes this build-tree rpath during installation.

@@ -109,6 +109,17 @@ qt6/lib/cmake/Qt6Network/Qt6QSecureTransportBackendPluginConfigVersionImpl.cmake
 qt6/lib/cmake/Qt6Network/Qt6QSecureTransportBackendPluginTargets-release.cmake
 qt6/lib/cmake/Qt6Network/Qt6QSecureTransportBackendPluginTargets.cmake
 qt6/lib/cmake/Qt6Network/Qt6QSecureTransportBackendPluginTargetsPrecheck.cmake
+qt6/lib/cmake/Qt6WaylandScannerTools/Qt6WaylandClientMacros.cmake
+qt6/lib/cmake/Qt6WaylandScannerTools/Qt6WaylandCompositorMacros.cmake
+qt6/lib/cmake/Qt6WaylandScannerTools/Qt6WaylandScannerToolsAdditionalTargetInfo.cmake
+qt6/lib/cmake/Qt6WaylandScannerTools/Qt6WaylandScannerToolsConfig.cmake
+qt6/lib/cmake/Qt6WaylandScannerTools/Qt6WaylandScannerToolsConfigVersion.cmake
+qt6/lib/cmake/Qt6WaylandScannerTools/Qt6WaylandScannerToolsConfigVersionImpl.cmake
+qt6/lib/cmake/Qt6WaylandScannerTools/Qt6WaylandScannerToolsDependencies.cmake
+qt6/lib/cmake/Qt6WaylandScannerTools/Qt6WaylandScannerToolsTargets-release.cmake
+qt6/lib/cmake/Qt6WaylandScannerTools/Qt6WaylandScannerToolsTargets.cmake
+qt6/lib/cmake/Qt6WaylandScannerTools/Qt6WaylandScannerToolsTargetsPrecheck.cmake
+qt6/lib/cmake/Qt6WaylandScannerTools/Qt6WaylandScannerToolsVersionlessTargets.cmake
 qt6/lib/cmake/Qt6Widgets/Qt6QMacStylePluginAdditionalTargetInfo.cmake
 qt6/lib/cmake/Qt6Widgets/Qt6QMacStylePluginConfig.cmake
 qt6/lib/cmake/Qt6Widgets/Qt6QMacStylePluginConfigVersion.cmake
@@ -116,6 +127,7 @@ qt6/lib/cmake/Qt6Widgets/Qt6QMacStylePluginConfigVersionImpl.cmake
 qt6/lib/cmake/Qt6Widgets/Qt6QMacStylePluginTargets-release.cmake
 qt6/lib/cmake/Qt6Widgets/Qt6QMacStylePluginTargets.cmake
 qt6/lib/cmake/Qt6Widgets/Qt6QMacStylePluginTargetsPrecheck.cmake
+qt6/libexec/qtwaylandscanner
 qt6/mkspecs/modules/qt_plugin_qdarwinbluetoothpermission.pri
 qt6/mkspecs/modules/qt_plugin_qdarwincalendarpermission.pri
 qt6/mkspecs/modules/qt_plugin_qdarwincamerapermission.pri

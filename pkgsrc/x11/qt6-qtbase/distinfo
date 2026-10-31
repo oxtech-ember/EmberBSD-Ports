@@ -63,3 +63,4 @@ SHA1 (patch-src_network_CMakeLists.txt) = af77a0613fc114d9d02bbf703df32ce6b14b5d
 SHA1 (patch-src_network_configure.cmake) = f57ee38821d6ea83392dd139bb2a449641bd8817
 SHA1 (patch-src_network_kernel_qtldurl.cpp) = 3110df2b8fab9c7aefabc439920af9e763a01945
 SHA1 (patch-src_corelib_serialization_qjsoncbor.cpp) = 0f1f8fff6dd5f19fe6941a31a120ae7ebaaa5948
+SHA1 (patch-src_tools_configure.cmake) = cd4a09f40dd947a6aa69c9e460ac271686304151
