@@ -3,3 +3,4 @@ $NetBSD: distinfo,v 1.7 2026/04/16 06:33:51 wiz Exp $
 BLAKE2s (llvm-project-23.1.4.src.tar.xz) = 9fd3c4efc2f039d49b78c7c17a164c3530bb026dad9479fa1555d23d6ab52f77
 SHA512 (llvm-project-23.1.4.src.tar.xz) = 1443531768d7040677302e4468b95b345511f10881a072e703814e9e10316d6ce12f56e8d1fbab5c350550380ae8d242acebb68c833fa385ea7777f05d8bde23
 Size (llvm-project-23.1.4.src.tar.xz) = 179272572 bytes
+SHA1 (patch-include_flang_Tools_TargetSetup.h) = 0d074c007087362cf2bb6d3dfabad0f2a4b8525e
