@@ -1,0 +1,42 @@
+$NetBSD$
+
+Select the platform layer from the configured osname.
+In a cross build that is the target osname, so a darwin host Perl does not
+apply Module::Build::Platform::darwin to a NetBSD module.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- lib/Module/Build.pm.orig
++++ lib/Module/Build.pm
+@@ -38,21 +38,24 @@
+   @ISA = ($mod);
+ }
+ 
+-if (grep {-e File::Spec->catfile($_, qw(Module Build Platform), $^O) . '.pm'} @INC) {
+-  __PACKAGE__->_interpose_module("Module::Build::Platform::$^O");
++# Origin: EmberBSD. Select the platform of the configuration being built
++# for, which a cross build takes from its target Config.
++my $target_os = Module::Build::Config->get('osname');
++if (grep {-e File::Spec->catfile($_, qw(Module Build Platform), $target_os) . '.pm'} @INC) {
++  __PACKAGE__->_interpose_module("Module::Build::Platform::$target_os");
+ 
+-} elsif ( my $ostype = os_type() ) {
++} elsif ( my $ostype = Perl::OSType::os_type($target_os) ) {
+   __PACKAGE__->_interpose_module("Module::Build::Platform::$ostype");
+ 
+ } else {
+-  warn "Unknown OS type '$^O' - using default settings\n";
++  warn "Unknown OS type '$target_os' - using default settings\n";
+ }
+ 
+-sub os_type { return Perl::OSType::os_type() }
++sub os_type { return Perl::OSType::os_type($target_os) }
+ 
+-sub is_vmsish { return Perl::OSType::is_os_type('VMS') }
+-sub is_windowsish { return Perl::OSType::is_os_type('Windows') }
+-sub is_unixish { return Perl::OSType::is_os_type('Unix') }
++sub is_vmsish { return Perl::OSType::is_os_type('VMS', $target_os) }
++sub is_windowsish { return Perl::OSType::is_os_type('Windows', $target_os) }
++sub is_unixish { return Perl::OSType::is_os_type('Unix', $target_os) }
+ 
+ 1;
+ 

@@ -1,0 +1,30 @@
+$NetBSD$
+
+Read the target Config from the cross build context.
+A cross build names the target Config.pm data in EMBERBSD_PERL_BUILD_CONFIG,
+as ExtUtils::MakeMaker::Config does; native builds keep the running Config.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- lib/Module/Build/Config.pm.orig
++++ lib/Module/Build/Config.pm
+@@ -4,8 +4,19 @@
+ use warnings;
+ our $VERSION = '0.4234';
+ $VERSION = eval $VERSION;
+-use Config;
++use Config ();
+ 
++# Origin: EmberBSD. A cross build names the target Config through the same
++# build context as ExtUtils::MakeMaker::Config; the host Perl stays native.
++our %Config = %Config::Config;
++if (defined $ENV{EMBERBSD_PERL_BUILD_CONFIG}) {
++  require JSON::PP;
++  open my $fh, "<", $ENV{EMBERBSD_PERL_BUILD_CONFIG}
++    or die "$ENV{EMBERBSD_PERL_BUILD_CONFIG}: $!";
++  local $/;
++  %Config = %{ JSON::PP::decode_json(<$fh>) };
++}
++
+ sub new {
+   my ($pack, %args) = @_;
+   return bless {
