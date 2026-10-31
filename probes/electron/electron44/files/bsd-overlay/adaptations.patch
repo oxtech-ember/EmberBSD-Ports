@@ -20,7 +20,7 @@
 +
 +--- chrome/browser/file_system_access/chrome_file_system_access_permission_context.h.orig
 ++++ chrome/browser/file_system_access/chrome_file_system_access_permission_context.h
-+@@ -648,7 +648,7 @@
++@@ -689,7 +689,7 @@
 +             FILE_PATH_LITERAL("Library/Mobile Documents/com~apple~CloudDocs"),
 +             BlockType::kDontBlockChildren),
 +   #endif
