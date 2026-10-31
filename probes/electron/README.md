@@ -7,19 +7,19 @@ engine abstraction, so this port needs the native Electron runtime.
 
 | Component | Pin | Source |
 |---|---|---|
-| Electron | 44.9.3 (`c542df1ecbc2c2978e8f53f8c7baf602404d166f`) | GitHub tag `v44.9.3` |
-| Chromium | 152.0.7977.167 (`dd78960ccd8a03a2fe1f629543d27783885b78e9`) | Electron `DEPS` |
+| Electron | 45.2.1 (`f81ca3d4f09f57667238120adacb01239d5ecd89`) | GitHub tag `v45.2.1` |
+| Chromium | 156.0.8078.75 (`861389936bf33ea77529ee5dcc0605e68f6bb620`) | Electron `DEPS` |
 | Embedded Node.js | 24.22.1 | Patched Electron `DEPS` |
 | Chromium host Node.js | 26.13.0 | Common Node provider |
 | Blanc | 1.25.0 (`ff55d5948f5c71e802ba2ac464659ef96e055ca9`) | GitHub tag `v1.25.0` |
 
 Electron's `DEPS` graph is the Chromium source of record. Do not substitute the
-pkgsrc `.82` archive. Chromium sources require `gclient`; the older archive does
+pkgsrc `.47` archive. Chromium sources require `gclient`; the older archive does
 not match Electron's pinned revision.
 
 | Distfile | Size | SHA256 |
 |---|---:|---|
-| `v44.9.3.tar.gz` | 20,838,185 | `e4e84b70a501c7dffec78bf037309bfe336daee6886289f94f9ac035ec54d80f` |
+| `v45.2.1.tar.gz` | 20,344,442 | `7c788efc441297679411e880898412081bd71ede37671e0c48c45322e9a1de38` |
 | `node-v24.22.1.tar.xz` | 57,669,336 | `4f5379796280cdaeb0c2f358fd04b6a16cc4fb7dfa83b5a8c91a9d963b435231` |
 | `v1.25.0.tar.gz` | 155,108,408 | `b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971` |
 
@@ -64,7 +64,7 @@ and build acceptance.
 
 - Electron and Node distfiles are pinned to the current supported Electron 44.x
   release and its exact Chromium revision.
-- The pkgsrc Chromium baseline is 152.0.7977.82 with `chromium-nb` 151.1.
+- The pkgsrc Chromium baseline is 156.0.8078.47 with `chromium-nb` 154.0.
   The [ordered BSD overlay audit](electron44/bsd-overlay.md) uses the complete
   acquired Git graph after Electron's upstream patches. Five recipe-owned
   adaptations allow 1,632 patches to apply sequentially with zero fuzz in a
@@ -145,7 +145,7 @@ The recipe fetches the source and 40 NPM archives through pkgsrc distfiles.
 The build uses verified local archives and runs no NPM installation or network
 fetch. It extracts only allowlisted source files. It keeps tests, build tools,
 the lockfile, and environment files out of the installed ASAR. The installed
-SBOM records the external Electron 44.9.3 package separately from upstream's
+SBOM records the external Electron 45.2.1 package separately from upstream's
 development lock on Electron 44.5.1. A different runtime declaration is refused.
 
 The wrapper selects Electron's packaged application policy. It leaves sandbox

@@ -6,8 +6,8 @@ a new source fixture, patch series, per-patch logs and `audit.json`. It does not
 modify the source workspace, run hooks, build tools or claim a target runtime.
 
 The baseline is the `www/chromium` recipe in pkgsrc commit
-`fff4deb639a1a640476203c80f752fb77b6cb14b`: Chromium 152.0.7977.82,
-1,641 ordered `patch-*` files and the `chromium-nb` v151.1 source overlay.
+`8b58eb6f903a2788be97e48a5743c25f5432941d`: Chromium 156.0.8078.47,
+1,739 ordered `patch-*` files and the `chromium-nb` v154.0 source overlay.
 This baseline contributes BSD changes, not a replacement Chromium source tree.
 Electron's exact Chromium revision remains the source of record.
 The manifest names the public overlay archive and its SHA512 checksum.
@@ -16,7 +16,7 @@ The manifest names the public overlay archive and its SHA512 checksum.
 /absolute/control-python -B -I -S electron44/files/audit-bsd-overlay.py \
     --workspace /absolute/electron-source \
     --pkgsrc /absolute/pinned-pkgsrc-checkout \
-    --archive /absolute/distfiles/kikadf-chromium-nb-v151.1.tar.gz \
+    --archive /absolute/distfiles/kikadf-chromium-nb-v154.0.tar.gz \
     --destination /absolute/new-bsd-audit \
     --git /absolute/source-tools/git \
     --patch /absolute/source-tools/patch

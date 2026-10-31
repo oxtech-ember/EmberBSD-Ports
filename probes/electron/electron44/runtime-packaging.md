@@ -7,7 +7,7 @@ patch series at its existing owner. Do not add a second fetch-only recipe.
 
 ## Build boundary
 
-The recipe currently fetches Electron 44.9.3 and Node 24.22.1. The
+The recipe currently fetches Electron 45.2.1 and Node 24.22.1. The
 [source preparer](source-preparation.md) creates a pinned DEPS input workspace
 and applies the recipe-local security series. Its Git-only acquisition stage
 records deferred CIPD/GCS/LFS inputs, followed by a guarded upstream patch stage.
@@ -99,8 +99,8 @@ compiler or target program. They cannot qualify an Electron artifact.
 
 The runtime dependency selection comes from Electron's `dist_zip` target and
 `build/zip.py`, including the generated Chromium credits. See the upstream
-[BUILD.gn](https://github.com/electron/electron/blob/v44.9.3/BUILD.gn) and
-[ZIP script](https://github.com/electron/electron/blob/v44.9.3/build/zip.py).
+[BUILD.gn](https://github.com/electron/electron/blob/v45.2.1/BUILD.gn) and
+[ZIP script](https://github.com/electron/electron/blob/v45.2.1/build/zip.py).
 The prepared Ports source also contains the BSD adaptations listed in the
 parent README. In particular, BSD does not select the Linux SUID helper, and
 the current ZIP script omits dummy ANGLE EGL/GLES files.

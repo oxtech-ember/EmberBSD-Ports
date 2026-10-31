@@ -1,5 +1,5 @@
-Electron 44.9.3 source probe for EmberBSD with the NetBSD ABI.
-Electron DEPS pins Chromium 152.0.7977.167 and embedded Node.js 24.22.0.
+Electron 45.2.1 source probe for EmberBSD with the NetBSD ABI.
+Electron DEPS pins Chromium 156.0.8078.75 and embedded Node.js 24.22.1.
 
 The complete source build and ordinary runtime package are not implemented.
 The runtime staging helper does not qualify a build or replace the GN/Ninja

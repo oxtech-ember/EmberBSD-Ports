@@ -11,7 +11,7 @@ explicit Git executable for this source operation.
 For example, obtain the pinned Electron source and prepare an arm64 workspace:
 
 ```sh
-/absolute/git clone --depth 1 --branch v44.9.3 \
+/absolute/git clone --depth 1 --branch v45.2.1 \
     https://github.com/electron/electron.git /absolute/electron-pristine
 /absolute/control-python -B \
     probes/electron/electron44/files/prepare-sources.py \
@@ -21,12 +21,12 @@ For example, obtain the pinned Electron source and prepare an arm64 workspace:
 ```
 
 The checkout's actual commit must equal
-`c542df1ecbc2c2978e8f53f8c7baf602404d166f`; a matching tag name is insufficient.
+`f81ca3d4f09f57667238120adacb01239d5ecd89`; a matching tag name is insufficient.
 The destination parent must exist and the destination must be new and outside
 the input checkout. `x64` is the other supported source selection. This selects
 dependency source conditions, not the compiler's target ABI.
 
-The helper checks the original Chromium 152.0.7977.167 and Node 24.22.0 DEPS
+The helper checks the original Chromium 156.0.8078.75 and Node 24.22.1 DEPS
 values and repository URLs without executing DEPS. It applies the complete
 recipe-local `patch-*` set through Git with full context and the declared
 order. The security roll must produce Node 24.22.1 while retaining the Chromium
@@ -242,7 +242,7 @@ Ports layer. It never runs gclient, hooks, configure or a compiler.
   probes/electron/electron44/files/prepare-build-sources.py \
   --workspace /absolute/electron-workspace \
   --pkgsrc /absolute/pinned-pkgsrc-checkout \
-  --archive /absolute/distfiles/kikadf-chromium-nb-v151.1.tar.gz \
+  --archive /absolute/distfiles/kikadf-chromium-nb-v154.0.tar.gz \
   --patch-root /absolute/Ports/probes/electron/patches \
   --git /absolute/git --patch /absolute/gpatch \
   --destination /absolute/new-source-preparation
