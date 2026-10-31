@@ -8,7 +8,10 @@ Usage: cross-llvm-config.py CONFIG WORK NATIVE_WORK PKGSRC SYSROOT ARCHIVE MAKE
 The producers come from the export (EMBERBSD-LLVM-CONFIG). They check the
 target build tree, the native build tree, the installed target LLVM headers
 and the installed libLLVM. This script does not remove or replace any output.
+Parallel builds (lld, mlir, clang) share CONFIG and NATIVE_WORK: one makes
+them under a lock beside NATIVE_WORK, the others wait and then use them.
 """
+import fcntl
 import os
 from pathlib import Path
 import subprocess
@@ -52,6 +55,16 @@ def main(arguments):
         return 0
     if Path(config) != work / 'helper/bin/llvm-config':
         return fail('EMBERBSD_CROSS_LLVM_CONFIG=' + config + ' does not report LLVM ' + VERSION)
+    native.parent.mkdir(parents=True, exist_ok=True)
+    with open(native.parent / (native.name + '.lock'), 'w') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        return make_config(config, work, native, pkgsrc, sysroot, archive, make)
+
+
+def make_config(config, work, native, pkgsrc, sysroot, archive, make):
+    if reports_version(config):
+        print('cross-llvm-config: use ' + config + ' made by a parallel build')
+        return 0
     if work.exists():
         return fail(str(work) + ' exists but has no working llvm-config; examine it, then remove it')
     tools = pkgsrc / 'EMBERBSD-LLVM-CONFIG'
