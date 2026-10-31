@@ -1,0 +1,161 @@
+$NetBSD$
+
+Preserve read-only channel type and forwarding names.
+Channel type storage remains borrowed, as in upstream.
+
+--- channels.c.orig
++++ channels.c
+@@ -220,12 +220,12 @@
+ };
+ 
+ /* helper */
+-static void port_open_helper(struct ssh *ssh, Channel *c, char *rtype);
++static void port_open_helper(struct ssh *ssh, Channel *c, const char *rtype);
+ static const char *channel_rfwd_bind_host(const char *listen_host);
+ 
+ /* non-blocking connect helpers */
+ static int connect_next(struct ssh *, struct channel_connect *);
+-static Channel *rdynamic_connect_prepare(struct ssh *, char *, char *);
++static Channel *rdynamic_connect_prepare(struct ssh *, const char *, const char *);
+ static int rdynamic_connect_finish(struct ssh *, Channel *);
+ 
+ /* Setup helper */
+@@ -549,7 +549,7 @@
+  * Allocate a new channel object and set its type and socket.
+  */
+ Channel *
+-channel_new(struct ssh *ssh, char *ctype, int type, int rfd, int wfd, int efd,
++channel_new(struct ssh *ssh, const char *ctype, int type, int rfd, int wfd, int efd,
+     u_int window, u_int maxpack, int extusage, const char *remote_name,
+     int nonblock)
+ {
+@@ -2005,7 +2005,7 @@
+ }
+ 
+ static void
+-port_open_helper(struct ssh *ssh, Channel *c, char *rtype)
++port_open_helper(struct ssh *ssh, Channel *c, const char *rtype)
+ {
+ 	char *local_ipaddr = get_local_ipaddr(c->sock);
+ 	int local_port = c->sock == -1 ? 65536 : get_local_port(c->sock);
+@@ -2079,7 +2079,7 @@
+ 	struct sockaddr_storage addr;
+ 	int newsock, nextstate;
+ 	socklen_t addrlen;
+-	char *rtype;
++	const char *rtype;
+ 
+ 	if ((c->io_ready & SSH_CHAN_IO_SOCK_R) == 0)
+ 		return;
+@@ -3742,7 +3742,7 @@
+ 	return 0;
+ }
+ 
+-static char *
++static const char *
+ reason2txt(int reason)
+ {
+ 	switch (reason) {
+@@ -4799,7 +4799,7 @@
+  */
+ static int
+ connect_to_helper(struct ssh *ssh, const char *name, int port, int socktype,
+-    char *ctype, char *rname, struct channel_connect *cctx,
++    const char *ctype, const char *rname, struct channel_connect *cctx,
+     int *reason, const char **errmsg)
+ {
+ 	struct addrinfo hints;
+@@ -4864,7 +4864,7 @@
+ /* Return CONNECTING channel to remote host:port or local socket path */
+ static Channel *
+ connect_to(struct ssh *ssh, const char *host, int port,
+-    char *ctype, char *rname)
++    const char *ctype, const char *rname)
+ {
+ 	struct channel_connect cctx;
+ 	Channel *c;
+@@ -4893,7 +4893,7 @@
+  */
+ Channel *
+ channel_connect_by_listen_address(struct ssh *ssh, const char *listen_host,
+-    u_short listen_port, char *ctype, char *rname)
++    u_short listen_port, const char *ctype, const char *rname)
+ {
+ 	struct ssh_channels *sc = ssh->chanctxt;
+ 	struct permission_set *pset = &sc->local_perms;
+@@ -4921,7 +4921,7 @@
+ 
+ Channel *
+ channel_connect_by_listen_path(struct ssh *ssh, const char *path,
+-    char *ctype, char *rname)
++    const char *ctype, const char *rname)
+ {
+ 	struct ssh_channels *sc = ssh->chanctxt;
+ 	struct permission_set *pset = &sc->local_perms;
+@@ -4944,7 +4944,7 @@
+ /* Check if connecting to that port is permitted and connect. */
+ Channel *
+ channel_connect_to_port(struct ssh *ssh, const char *host, u_short port,
+-    char *ctype, char *rname, int *reason, const char **errmsg)
++    const char *ctype, const char *rname, int *reason, const char **errmsg)
+ {
+ 	struct ssh_channels *sc = ssh->chanctxt;
+ 	struct permission_set *pset = &sc->local_perms;
+@@ -5006,7 +5006,7 @@
+ /* Check if connecting to that path is permitted and connect. */
+ Channel *
+ channel_connect_to_path(struct ssh *ssh, const char *path,
+-    char *ctype, char *rname)
++    const char *ctype, const char *rname)
+ {
+ 	struct ssh_channels *sc = ssh->chanctxt;
+ 	struct permission_set *pset = &sc->local_perms;
+@@ -5069,7 +5069,7 @@
+ 
+ /* Return RDYNAMIC_OPEN channel: channel allows SOCKS, but is not connected */
+ static Channel *
+-rdynamic_connect_prepare(struct ssh *ssh, char *ctype, char *rname)
++rdynamic_connect_prepare(struct ssh *ssh, const char *ctype, const char *rname)
+ {
+ 	Channel *c;
+ 	int r;
+--- channels.h.orig
++++ channels.h
+@@ -179,7 +179,7 @@
+ 	int	agent_new;	/* For agent listeners, use RFC 9987 requests */
+ 	int	single_connection;
+ 
+-	char   *ctype;		/* const type - NB. not freed on channel_free */
++	const char *ctype;	/* borrowed type - not freed on channel_free */
+ 	char   *xctype;		/* extended type */
+ 	int	bulk;		/* channel is non-interactive */
+ 
+@@ -287,7 +287,7 @@
+ Channel	*channel_by_id(struct ssh *, int);
+ Channel	*channel_by_remote_id(struct ssh *, u_int);
+ Channel	*channel_lookup(struct ssh *, int);
+-Channel *channel_new(struct ssh *, char *, int, int, int, int,
++Channel *channel_new(struct ssh *, const char *, int, int, int, int,
+ 	    u_int, u_int, int, const char *, int);
+ void	 channel_set_fds(struct ssh *, int, int, int, int, int,
+ 	    int, int, u_int);
+@@ -362,14 +362,15 @@
+ void	 channel_disable_admin(struct ssh *, int);
+ void	 channel_update_permission(struct ssh *, int, int);
+ Channel	*channel_connect_to_port(struct ssh *, const char *, u_short,
+-	    char *, char *, int *, const char **);
+-Channel *channel_connect_to_path(struct ssh *, const char *, char *, char *);
++	    const char *, const char *, int *, const char **);
++Channel *channel_connect_to_path(struct ssh *, const char *,
++    const char *, const char *);
+ Channel	*channel_connect_stdio_fwd(struct ssh *, const char*,
+ 	    int, int, int, int);
+ Channel	*channel_connect_by_listen_address(struct ssh *, const char *,
+-	    u_short, char *, char *);
++	    u_short, const char *, const char *);
+ Channel	*channel_connect_by_listen_path(struct ssh *, const char *,
+-	    char *, char *);
++	    const char *, const char *);
+ int	 channel_request_remote_forwarding(struct ssh *, struct Forward *);
+ int	 channel_setup_local_fwd_listener(struct ssh *, struct Forward *,
+ 	    struct ForwardOptions *);
