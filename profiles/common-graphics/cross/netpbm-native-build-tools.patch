@@ -9,19 +9,25 @@
  USE_TOOLS+=	gmake gdate flex pax perl
  USE_FEATURES=	snprintf
  
-@@ -30,6 +32,11 @@
+@@ -28,8 +30,17 @@
+ MAKE_ENV+=	INSTALL=${INSTALL:Q} STRIPFLAG=${_STRIPFLAG_INSTALL:Q} \
+ 		pkgdir=${STAGEDIR} MACHINE=${MACHINE:Q}
  MAKE_FLAGS+=	PKGMANDIR=${PKGMANDIR}
- MAKE_FLAGS+=	CFLAGS_FOR_BUILD=${CFLAGS:Q}
- MAKE_FLAGS+=	LDFLAGS_FOR_BUILD=${LDFLAGS:Q}
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-+# Netpbm executes these compiler-built generators during its cross build.
++# Netpbm executes these compiler-built generators during its cross build,
++# so they take the build machine compiler and flags, never the target ones.
 +MAKE_FLAGS+=	CC_FOR_BUILD=${NATIVE_CC:Q}
 +MAKE_FLAGS+=	LD_FOR_BUILD=${NATIVE_CC:Q}
++MAKE_FLAGS+=	CFLAGS_FOR_BUILD=${NATIVE_CPPFLAGS:Q}\ ${NATIVE_CFLAGS:Q}
++MAKE_FLAGS+=	LDFLAGS_FOR_BUILD=${NATIVE_LDFLAGS:Q}
++.else
+ MAKE_FLAGS+=	CFLAGS_FOR_BUILD=${CFLAGS:Q}
+ MAKE_FLAGS+=	LDFLAGS_FOR_BUILD=${LDFLAGS:Q}
 +.endif
  MAKE_FILE=	GNUmakefile
  REPLACE_PERL+=	converter/pbm/pbmtox10bm
  REPLACE_PERL+=	editor/pnmflip
-@@ -54,7 +61,6 @@
+@@ -54,7 +65,6 @@
  # needs pkg-config and x11?!
  TEST_TARGET=	test
  

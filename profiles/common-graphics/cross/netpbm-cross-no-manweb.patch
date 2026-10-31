@@ -1,18 +1,19 @@
 --- a/graphics/netpbm/Makefile
 +++ b/graphics/netpbm/Makefile
-@@ -32,6 +32,13 @@
+@@ -30,7 +30,14 @@
+ MAKE_ENV+=	INSTALL=${INSTALL:Q} STRIPFLAG=${_STRIPFLAG_INSTALL:Q} \
+ 		pkgdir=${STAGEDIR} MACHINE=${MACHINE:Q}
  MAKE_FLAGS+=	PKGMANDIR=${PKGMANDIR}
- MAKE_FLAGS+=	CFLAGS_FOR_BUILD=${CFLAGS:Q}
- MAKE_FLAGS+=	LDFLAGS_FOR_BUILD=${LDFLAGS:Q}
 +PLIST_VARS+=	manweb
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+ .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 +# The optional Perl browser helper cannot run in a minimal cross sysroot.
 +MAKE_FLAGS+=	SCRIPTS=
 +.else
 +PLIST.manweb=	yes
 +.endif
- .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
- # Netpbm executes these compiler-built generators during its cross build.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+ # Netpbm executes these compiler-built generators during its cross build,
+ # so they take the build machine compiler and flags, never the target ones.
  MAKE_FLAGS+=	CC_FOR_BUILD=${NATIVE_CC:Q}
 --- a/graphics/netpbm/PLIST
 +++ b/graphics/netpbm/PLIST
