@@ -3,7 +3,12 @@ $NetBSD: distinfo,v 1.59 2026/08/10 14:05:14 adam Exp $
 BLAKE2s (heimdal-7.8.0.tar.gz) = 3f2654141605a1f54611c887ec8a7f55e45b00696983207d5779ad830e485cb8
 SHA512 (heimdal-7.8.0.tar.gz) = 0167345aca77d65b7a1113874eee5b65ec6e1fec1f196d57e571265409fa35ef95a673a4fd4aafbb0ab5fb5b246b97412353a68d6613a8aff6393a9f1e72999e
 Size (heimdal-7.8.0.tar.gz) = 10024936 bytes
-SHA1 (patch-lib_gssapi_krb5_arcfour.c) = 7d70da6a8dfffd7f71eae70f1a6fa6fc18d0df3c
+SHA1 (patch-lib_gssapi_krb5_arcfour.c) = 139ebd662ae421c718ef55c123bebbca1bc701a3
+SHA1 (patch-lib_gssapi_krb5_get_mic.c) = 14393bb33e036dc456c9d132efd8a0ed3b222f45
+SHA1 (patch-lib_gssapi_krb5_gsskrb5_locl.h) = 1244c9407f64d00db53a6ca47b6ffafe842501a8
+SHA1 (patch-lib_gssapi_krb5_unwrap.c) = c092be488c53f2e290e271f1512ef29a0eb0fad1
+SHA1 (patch-lib_gssapi_krb5_verify_mic.c) = a7aac125236faf6e1d8b0b6703fdd3a206b705b7
+SHA1 (patch-lib_gssapi_krb5_wrap.c) = 216bc008ba418fac65b4325995f1cfd6875ae827
 SHA1 (patch-lib_krb5_store-int.c) = ba539b1cce3ac5a1e7e436dfcdcf632aa61e41e3
 SHA1 (patch-lib_hcrypto_version-script.map) = 0493a10d37b921ebbaeb39067115c902e906a755
 SHA1 (patch-lib_hx509_version-script.map) = 3dd259c0d29724160f9461dc51544fb4c5f03511
