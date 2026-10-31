@@ -1,0 +1,44 @@
+Origin: EmberBSD (AI-assisted).
+Upstream status: not submitted.
+The installed pgxs Makefile.global records the tools and flags of the
+build. In a cross build these are the build machine's: tools under
+TOOLBASE and -I/-L flags under the sysroot. check-wrkref stopped the
+package with "The above files still have references to the build
+directory", and extensions built on the target would run tools that do
+not exist there. Rewrite those paths in the installed copy only, so the
+install stage keeps the build machine's tools: drop the sysroot
+prefix, use the base install(1) on NetBSD, and use LOCALBASE for the
+other tools.
+
+--- a/databases/postgresql18-client/Makefile
++++ b/databases/postgresql18-client/Makefile
+@@ -69,6 +69,17 @@
+ SUBST_SED.pgxs+=	-e 's,${WRKDIR}/.wrapper,${PREFIX},'
+ SUBST_SED.pgxs+=	-e 's,${WRKSRC},/dev/null,'
+ 
++.if ${USE_CROSS_COMPILE:tl} == "yes"
++# The installed pgxs builds extensions on the target, so name the target's
++# paths rather than the build machine's sysroot and tools. The build tree
++# keeps the build machine's tools for the install stage.
++PGXS_CROSS_SED=	-e 's,${_CROSS_DESTDIR},,g'
++.  if ${OPSYS} == "NetBSD"
++PGXS_CROSS_SED+=	-e 's,${TOOLBASE}/bin/bsdinstall,/usr/bin/install,'
++.  endif
++PGXS_CROSS_SED+=	-e 's,${TOOLBASE}/,${LOCALBASE}/,g'
++.endif
++
+ INSTALLATION_DIRS+=	lib/postgresql/pgxs
+ INSTALLATION_DIRS+=	lib/postgresql/pgxs/config
+ INSTALLATION_DIRS+=	lib/postgresql/pgxs/src
+@@ -91,5 +102,11 @@
+ .for file in ${PGXS_FILES}
+ 	${INSTALL_DATA} ${WRKSRC}/${file} ${DEST_PGXS}/${file}
+ .endfor
++.if ${USE_CROSS_COMPILE:tl} == "yes"
++	${SED} ${PGXS_CROSS_SED} ${WRKSRC}/src/Makefile.global \
++	    > ${WRKDIR}/Makefile.global.target
++	${INSTALL_DATA} ${WRKDIR}/Makefile.global.target \
++	    ${DEST_PGXS}/src/Makefile.global
++.endif
+ 
+ .include "../../mk/bsd.pkg.mk"
