@@ -38,12 +38,15 @@ cp "$OPENSBI_BIN" "$WORK/opensbi.bin"
 cp "$UBOOT_BIN" "$WORK/u-boot.bin"
 "$HOST_PREFIX/bin/dtc" -I dtb -O dtb -S 12288 \
     -o "$WORK/firmware.dtb" "$FIRMWARE_DTB"
-(cd "$WORK" && "$MKIMAGE" -E -f firmware.its firmware.itb)
+(cd "$WORK" && PATH="$HOST_PREFIX/bin:$HOST_PREFIX/gnu/bin" && export PATH &&
+    "$MKIMAGE" -E -f firmware.its firmware.itb)
 ```
 
 The `-E` form places data externally in firmware, U-Boot, FDT order for the
 sequential SPL YMODEM reader. Each image has a SHA-256 integrity hash; it is
-not authenticated. Run `tests/test-s31-fit-selector.py` from the Ports recipe
+not authenticated. YMODEM defers FIT-owned progress until the transfer ends;
+this does not suppress output from an FPGA backend. The S31 SPL does not enable
+FPGA support. Run `tests/test-s31-fit-selector.py` from the Ports recipe
 with `--source`, `--host-prefix` and `--fit "$WORK/firmware.itb"` to exercise
 the actual SPL configuration selector. Check the generated data offsets,
 hashes, FDT capacity and memory map for the chosen inputs separately.

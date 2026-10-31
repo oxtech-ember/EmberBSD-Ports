@@ -65,8 +65,9 @@ spl_load_simple_fit_fix_load(void *f)
 	return f;
 }
 static int
-spl_simple_fit_parse(struct spl_fit_info *c)
+spl_simple_fit_parse(struct spl_fit_info *c, struct spl_load_info *i)
 {
+	(void)i;
 	c->conf_node = 0;
 	return 0;
 }
@@ -132,8 +133,10 @@ spl_fit_image_is_fpga(void *f, int n)
 	return 0;
 }
 static void
-spl_fit_upload_fpga(struct spl_fit_info *c, int n, struct spl_image_info *i)
+spl_fit_upload_fpga(struct spl_fit_info *c, int n, struct spl_image_info *i,
+                     struct spl_load_info *load)
 {
+	(void)load;
 	(void)c;
 	(void)n;
 	(void)i;

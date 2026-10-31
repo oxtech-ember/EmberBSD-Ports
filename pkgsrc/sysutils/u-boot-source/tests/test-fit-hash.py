@@ -17,9 +17,28 @@ def get(name):
 p=r'''#include <libfdt.h>
 #include <openssl/evp.h>
 #include <stdint.h>
+#include <stdbool.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+static char output[4096];
+static size_t output_len;
+static int test_printf(const char *fmt, ...)
+{
+    va_list ap;
+    int n;
+    va_start(ap, fmt);
+    n = vsnprintf(output + output_len, sizeof(output) - output_len, fmt, ap);
+    va_end(ap);
+    if (n < 0 || (size_t)n >= sizeof(output) - output_len)
+        abort();
+    output_len += n;
+    return n;
+}
+static int test_puts(const char *s) { return test_printf("%s", s); }
+#define printf test_printf
+#define puts test_puts
 #define FIT_ALGO_PROP "algo"
 #define FIT_VALUE_PROP "value"
 #define FIT_IGNORE_PROP "uboot-ignore"
@@ -33,8 +52,8 @@ p=r'''#include <libfdt.h>
 #define fit_get_name(f, n, l) fdt_get_name(f, n, l)
 #define fit_get_debug(...) ((void)0)
 #define gd_fdt_blob() NULL
-#define fit_image_verify_required_sigs(...) 0
-#define fit_image_check_sig(...) 0
+#define fit_image_verify_required_sigs_quiet(...) 0
+#define fit_image_check_sig_quiet(...) 0
 static int
 calculate_hash(const void *data, int len, const char *name, uint8_t *out,
 	       int *outlen)
@@ -48,8 +67,10 @@ calculate_hash(const void *data, int len, const char *name, uint8_t *out,
 	return 0;
 }
 '''
-for n in ('fit_image_hash_get_algo','fit_image_hash_get_value','fit_image_hash_get_ignore','fit_image_check_hash','fit_image_verify_with_data'):p+=get(n)
+for n in ('fit_image_hash_get_algo','fit_image_hash_get_value','fit_image_hash_get_ignore','fit_image_check_hash','fit_image_verify_with_data_quiet','fit_image_verify_with_data'):p+=get(n)
 p+=r'''
+#undef printf
+#undef puts
 static int
 add_image(void *tree, const char *name, const char *content)
 {
@@ -95,8 +116,14 @@ main(void)
 	node = fdt_path_offset(orig, "/images/kernel");
 	data = fdt_getprop(orig, node, "data", &len);
 	if (!data ||
-	    fit_image_verify_with_data(orig, node, NULL, data, len) != 1)
+	    fit_image_verify_with_data(orig, node, NULL, data, len) != 1 ||
+	    !strstr(output, "sha256+ "))
 		return 5;
+	output_len = 0;
+	output[0] = 0;
+	if (fit_image_verify_with_data_quiet(orig, node, NULL, data, len, true, NULL) != 1 ||
+	    output_len != 0)
+		return 17;
 	node = fdt_path_offset(orig, "/images/fdt");
 	data = fdt_getprop(orig, node, "data", &len);
 	if (!data ||
@@ -128,6 +155,11 @@ main(void)
 	data = fdt_getprop(copy, node, "data", &len);
 	if (fit_image_verify_with_data(copy, node, NULL, data, len) != 0)
 		return 13;
+	output_len = 0;
+	output[0] = 0;
+	if (fit_image_verify_with_data_quiet(copy, node, NULL, data, len, true, NULL) != 0 ||
+	    output_len == 0)
+		return 18;
 	hash = fdt_subnode_offset(copy, node, "hash-1");
 	if (fdt_setprop_u32(copy, hash, FIT_IGNORE_PROP, 1))
 		return 14;
