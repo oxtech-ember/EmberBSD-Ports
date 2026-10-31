@@ -4,9 +4,11 @@
 #
 # Usage: BMAKE=bmake cross-build-scripts.sh PKGSRC MAKECONF
 #
-# Meson runs numpy/_build_utils/*.py by their #! line. REPLACE_PYTHON gave
-# them the target interpreter, which does not exist on the build machine,
-# so a cross build stopped at "Could not execute command .../gitversion.py";
+# Meson runs numpy/_build_utils/*.py and
+# numpy/_core/code_generators/verify_c_api_version.py by their #! line.
+# REPLACE_PYTHON gave them the target interpreter, which does not exist on
+# the build machine, so a cross build stopped at "Could not execute
+# command .../gitversion.py" and later at ".../verify_c_api_version.py";
 # the cython link in pre-configure also named the target prefix. Run the
 # recipe's interpreter replacement and substitutions without the target
 # dependencies, then run the scripts as Meson does.
@@ -34,5 +36,7 @@ run_script() {
 }
 run_script numpy/_build_utils/gitversion.py
 run_script numpy/_build_utils/tempita.py --help
+run_script numpy/_core/code_generators/verify_c_api_version.py --api-version \
+	"$(sed -n "s/^C_API_VERSION = '\(.*\)'$/\1/p" "$src/numpy/_core/meson.build")"
 [ "$status" -eq 0 ] || exit 1
 echo "PASS: numpy build scripts and cython run on the build machine"

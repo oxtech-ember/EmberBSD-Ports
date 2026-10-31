@@ -100,6 +100,7 @@ SUBST_CLASSES+=		buildpy
 SUBST_STAGE.buildpy=	post-configure
 SUBST_MESSAGE.buildpy=	Running the build scripts with the build machine Python.
 SUBST_FILES.buildpy=	numpy/_build_utils/*.py
+SUBST_FILES.buildpy+=	numpy/_core/code_generators/verify_c_api_version.py
 SUBST_SED.buildpy=	-e '1s,^\#!${PYTHONBIN},\#!${TOOL_PYTHONBIN},'
 SUBST_NOOP_OK.buildpy=	yes
 .endif
