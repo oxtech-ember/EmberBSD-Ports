@@ -1,6 +1,6 @@
 --- a/devel/git-base/Makefile
 +++ b/devel/git-base/Makefile
-@@ -12,5 +12,11 @@
+@@ -12,5 +12,13 @@
  USE_CC_FEATURES=	c99
  USE_LANGUAGES=		c
 -USE_TOOLS+=		sh:run msgfmt bash:test
@@ -8,6 +8,8 @@
 +.if ${USE_CROSS_COMPILE:tl} == "yes"
 +MAKE_FLAGS+=	uname_S=${OPSYS:Q}
 +CONFIGURE_ARGS+=	--with-shell=/bin/sh
++# git-sh-setup runs DIFF on the target; the build tool is not there.
++CONFIGURE_ARGS+=	DIFF=diff
 +.else
 +USE_TOOLS+=		sh:run
 +.endif
