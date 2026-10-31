@@ -1,0 +1,43 @@
+Origin: EmberBSD (AI-assisted).
+Upstream status: not submitted.
+MPICH's configure runs Fortran programs to measure type sizes, kinds and
+the logical values. A cross build cannot run them and stops at "could not
+determine the size of a Fortran INTEGER". Give the values through MPICH's
+CROSS_F77_* and CROSS_F90_* variables. GFortran and Flang use the same
+values on NetBSD targets; only the address kind follows the pointer size.
+They match a native configure of MPICH 3.4.3 with Flang on aarch64.
+
+--- a/parallel/mpi-ch/options.mk
++++ b/parallel/mpi-ch/options.mk
+@@ -21,6 +21,31 @@
+ FFLAGS+=		${PKG_FC:T:M*gfortran*:C/.+/-fallow-argument-mismatch/}
+ CONFIGURE_ARGS+=	--enable-fortran=yes
+ PLIST.f90=		yes
++.  if ${USE_CROSS_COMPILE:tl} == "yes"
++# configure measures these by running Fortran programs, which a cross
++# build cannot do. GFortran and Flang use these values on NetBSD targets;
++# only the address kind follows the pointer size.
++.    if !empty(LP64PLATFORMS:@.PLAT.@${MACHINE_PLATFORM:M${.PLAT.}}@)
++MPICH_CROSS_ADDRESS_KIND=	8
++.    else
++MPICH_CROSS_ADDRESS_KIND=	4
++.    endif
++MPICH_CROSS_INTEGER_MODELS=	2,1,4,2,9,4,18,8,
++MPICH_CROSS_INTEGER_MODEL_MAP=	{2,1,1},{4,2,2},{9,4,4},{18,8,8},
++CONFIGURE_ENV+=		CROSS_F77_SIZEOF_INTEGER=4
++CONFIGURE_ENV+=		CROSS_F77_SIZEOF_REAL=4
++CONFIGURE_ENV+=		CROSS_F77_SIZEOF_DOUBLE_PRECISION=8
++CONFIGURE_ENV+=		CROSS_F77_TRUE_VALUE=1
++CONFIGURE_ENV+=		CROSS_F77_FALSE_VALUE=0
++CONFIGURE_ENV+=		CROSS_F90_ADDRESS_KIND=${MPICH_CROSS_ADDRESS_KIND}
++CONFIGURE_ENV+=		CROSS_F90_OFFSET_KIND=8
++CONFIGURE_ENV+=		CROSS_F90_INTEGER_KIND=4
++CONFIGURE_ENV+=		CROSS_F90_REAL_MODEL=6,37
++CONFIGURE_ENV+=		CROSS_F90_DOUBLE_MODEL=15,307
++CONFIGURE_ENV+=		CROSS_F90_INTEGER_MODEL=9
++CONFIGURE_ENV+=		CROSS_F90_ALL_INTEGER_MODELS=${MPICH_CROSS_INTEGER_MODELS:Q}
++CONFIGURE_ENV+=		CROSS_F90_INTEGER_MODEL_MAP=${MPICH_CROSS_INTEGER_MODEL_MAP:Q}
++.  endif
+ .else
+ CONFIGURE_ARGS+=	--enable-fortran=no
+ .endif
