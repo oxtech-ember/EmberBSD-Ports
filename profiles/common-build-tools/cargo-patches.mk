@@ -5,6 +5,9 @@
 EMBERBSD_CARGO_PATCHES_MK:=
 EMBER_CARGO_PATCH_SET?= no
 EMBER_CARGO_PATCH_TOOL?= ${EMBER_CARGO_PREFIX}/bin/gpatch
+.if ${EMBER_CARGO_PATCH_SET:tl} == "yes" && ${EMBER_CARGO_PATCH_TOOL} == ${EMBER_CARGO_PREFIX}/bin/gpatch
+TOOL_DEPENDS+=	patch>=2.8.1:../../devel/patch
+.endif
 _EMBER_CARGO_PATCH_HELPER:= ${.PARSEDIR:tA}/emberbsd-cargo-patches.py
 _EMBER_CARGO_PATCH_REGISTRY:= ${.PARSEDIR:tA}/emberbsd-cargo-patches
 pre-configure: ember-cargo-patches
