@@ -34,6 +34,9 @@ MESON_ARGS+=	-Droc=disabled
 MESON_ARGS+=	-Dvulkan=disabled
 MESON_ARGS+=	-Davahi=disabled
 MESON_ARGS+=	-Dsdl2=disabled
+# The V4L2 LD_PRELOAD shim needs <linux/videodev2.h> and the Linux
+# off64_t/O_TMPFILE/O_LARGEFILE file API.
+MESON_ARGS+=	-Dpipewire-v4l2=disabled
 MESON_ARGS+=	-Dbluez5-codec-aptx=disabled
 MESON_ARGS+=	-Dsession-managers=
 
