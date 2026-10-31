@@ -1,0 +1,11 @@
+--- a/net/mDNSResponder/Makefile
++++ b/net/mDNSResponder/Makefile
+@@ -137,7 +137,7 @@
+ 	${INSTALL_DATA} ${WRKSRC}/mDNSShared/dns_sd.h ${DESTDIR}${PREFIX}/include
+ 	${INSTALL_LIB} ${BUILDDIR}/libdns_sd.${SO_SUFFIX} ${DESTDIR}${PREFIX}/lib
+ .if ${OPSYS} == "Darwin"
+-	cd ${DESTDIR}${PREFIX}/lib && install_name_tool					\
++	cd ${DESTDIR}${PREFIX}/lib && ${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:Uinstall_name_tool:Q}					\
+ 		-change build/prod/libdns_sd.dylib ${PREFIX}/lib/libdns_sd.dylib	\
+ 		-id ${PREFIX}/lib/libdns_sd.dylib libdns_sd.dylib
+ .endif
