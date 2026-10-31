@@ -1,0 +1,20 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-x86_64
+recipe: devel/pango
+package: pango-1.58.2
+program: PangoFc-1.0
+types-sha256: 87da4dec598805d68657f16ed3916c431471df4019b5c75293e4a33f020329aa
+dump-sha256: c87b03e4296698b2b216d4bb9855bc3dff47ec251118129cabb6269694fac053
+-->
+<?xml version="1.0"?>
+<dump>
+  <class name="PangoFcFont" get-type="pango_fc_font_get_type" parents="PangoFont,GObject" abstract="1">
+    <property name="pattern" type="gpointer" flags="235"/>
+    <property name="fontmap" type="PangoFcFontMap" flags="227"/>
+  </class>
+  <class name="PangoFcDecoder" get-type="pango_fc_decoder_get_type" parents="GObject" abstract="1">
+  </class>
+  <class name="PangoFcFontMap" get-type="pango_fc_font_map_get_type" parents="PangoFontMap,GObject" abstract="1">
+    <implements name="GListModel"/>
+  </class>
+</dump>

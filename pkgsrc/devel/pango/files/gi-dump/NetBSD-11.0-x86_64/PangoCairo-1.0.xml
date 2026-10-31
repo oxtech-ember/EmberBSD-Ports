@@ -1,0 +1,17 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-x86_64
+recipe: devel/pango
+package: pango-1.58.2
+program: PangoCairo-1.0
+types-sha256: 64d17ed18036d3f4fa6877dbbea3109da5f8c499646376b0baea4992c3163e9f
+dump-sha256: 50b241934b198e4cbd9d98f925bc6824d68ebe71b41a387b1f260e75266985d6
+-->
+<?xml version="1.0"?>
+<dump>
+  <interface name="PangoCairoFontMap" get-type="pango_cairo_font_map_get_type">
+    <prerequisite name="PangoFontMap"/>
+  </interface>
+  <interface name="PangoCairoFont" get-type="pango_cairo_font_get_type">
+    <prerequisite name="PangoFont"/>
+  </interface>
+</dump>

@@ -1,0 +1,20 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-x86_64
+recipe: devel/pango
+package: pango-1.58.2
+program: PangoXft-1.0
+types-sha256: 31872dfc3c273465d223c88a9ff8ec7b7f32548f0a382b2a7f219f9bc3c1565e
+dump-sha256: 9a1ac63803a9046e3a8175e67bb6da63ae65b12bc16e8facb65a852376f6e2e3
+-->
+<?xml version="1.0"?>
+<dump>
+  <class name="PangoXftRenderer" get-type="pango_xft_renderer_get_type" parents="PangoRenderer,GObject">
+    <property name="display" type="gpointer" flags="10"/>
+    <property name="screen" type="gint" flags="10" default-value="0"/>
+  </class>
+  <class name="PangoXftFontMap" get-type="pango_xft_font_map_get_type" parents="PangoFcFontMap,PangoFontMap,GObject">
+    <implements name="GListModel"/>
+  </class>
+  <class name="PangoXftFont" get-type="pango_xft_font_get_type" parents="PangoFcFont,PangoFont,GObject">
+  </class>
+</dump>

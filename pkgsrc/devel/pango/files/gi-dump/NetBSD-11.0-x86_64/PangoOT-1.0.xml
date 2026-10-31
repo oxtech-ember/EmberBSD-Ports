@@ -1,0 +1,17 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-x86_64
+recipe: devel/pango
+package: pango-1.58.2
+program: PangoOT-1.0
+types-sha256: 9efae82c2d10385ba3ada803fc7495239faa4c3607d02e375422c5ef7debf46d
+dump-sha256: a5d6fe20ff7a93af85ae3bf7605331bd30a0dcadb9ff991974ba8781088e2bdc
+-->
+<?xml version="1.0"?>
+<dump>
+  <class name="PangoOTInfo" get-type="pango_ot_info_get_type" parents="GObject">
+  </class>
+  <class name="PangoOTRuleset" get-type="pango_ot_ruleset_get_type" parents="GObject">
+  </class>
+  <boxed name="PangoOTBuffer" get-type="pango_ot_buffer_get_type"/>
+  <boxed name="PangoOTRulesetDescription" get-type="pango_ot_ruleset_description_get_type"/>
+</dump>
