@@ -412,6 +412,17 @@ sh profiles/common-build-tools/tests/native-cpp-wrapper.sh \
     /absolute/bmake /absolute/native.mk.conf /absolute/pkgsrc /absolute/new-work
 ```
 
+The cpp wrapper only preprocesses, so
+`patches/pkgsrc-cwrappers-cpp-no-link.patch` gives it no MKPIE link flags;
+before, clang-cpp warned about an unused `-pie` on every wrapped run. Check it
+with a cross MAKECONF that enables MKPIE and has the target dependencies of
+devel/glib2 in its sysroot:
+
+```sh
+sh profiles/common-build-tools/tests/cpp-wrapper-link-flags.sh \
+    /absolute/bmake /absolute/cross.mk.conf /absolute/pkgsrc /absolute/new-work
+```
+
 The [Vala array copy contract](cross/vala.md) repairs a missing NULL slot
 for copied nullable value arrays. Paired host GCC16 generators and the
 unchanged upstream regression pass ASan/UBSan after the repair. Cross package

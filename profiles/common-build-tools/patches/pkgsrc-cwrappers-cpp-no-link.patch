@@ -1,0 +1,18 @@
+# Origin: EmberBSD (AI-assisted). The cpp wrapper only preprocesses.
+# cwrappers takes arguments without -E for an executable link, so the MKPIE
+# flags reached clang-cpp, which warned about the unused -pie on every run.
+
+--- a/mk/cwrappers.mk
++++ b/mk/cwrappers.mk
+@@ -113,7 +113,10 @@
+ .  for alias in ${CWRAPPERS_ALIASES.${wrappee}}
+ 	${RUN}ln -s ${CWRAPPERS_SRC_DIR}/${CWRAPPERS_CONFIG.${wrappee}}-wrapper ${WRAPPER_BINDIR}/${alias}
+ .  endfor
+-. if ${_PKGSRC_MKPIE} == "yes"
++# The cpp wrapper only preprocesses. Without -E, cwrappers takes its
++# arguments for an executable link, and Clang warned about the unused -pie
++# on every wrapped preprocessor run.
++. if ${_PKGSRC_MKPIE} == "yes" && ${wrappee} != "cpp"
+ .  if ${PKGSRC_OVERRIDE_MKPIE:tl} == "no"
+ .    for arg in ${_MKPIE_LDFLAGS}
+ 	${RUN}echo append_executable=${arg} >> ${CWRAPPERS_CONFIG_DIR}/${CWRAPPERS_CONFIG.${wrappee}}
