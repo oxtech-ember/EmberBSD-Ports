@@ -1,0 +1,25 @@
+Origin: EmberBSD (AI-assisted). Upstream status: not submitted.
+
+--- a/textproc/p5-XML-LibXML/Makefile
++++ b/textproc/p5-XML-LibXML/Makefile
+@@ -28,6 +28,20 @@
+ 
+ PERL5_PACKLIST=		auto/XML/LibXML/.packlist
+ 
++.include "../../mk/bsd.prefs.mk"
++
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# Alien::Base::Wrapper builds its compiler and linker flags from the Perl
++# configuration of the build machine, and Makefile.PL passes them over the
++# target configuration that MakeMaker reads. Take only the target libxml2
++# flags.
++SUBST_CLASSES+=			cross-libxml2
++SUBST_STAGE.cross-libxml2=	pre-configure
++SUBST_MESSAGE.cross-libxml2=	Taking the target libxml2 flags.
++SUBST_FILES.cross-libxml2=	Makefile.PL
++SUBST_SED.cross-libxml2=	-e 's|Alien::Base::Wrapper->mm_args;|(INC => "-I${BUILDLINK_DIR}/include/libxml2", LIBS => "-L${BUILDLINK_DIR}/lib -lxml2");|'
++.endif
++
+ FILES_SUBST+=		PERL5_INSTALLVENDORLIB=${PERL5_INSTALLVENDORLIB:Q}
+ 
+ .include "../../textproc/libxml2/buildlink3.mk"
