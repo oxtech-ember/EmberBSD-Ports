@@ -128,6 +128,19 @@ class CrossRevisionTest(unittest.TestCase):
             'BUILDLINK_ABI_DEPENDS.enchant2+= enchant2>=2.8.21nb2\n'
         self.assertEqual(run(files)[0], 1)
 
+    def test_revision_from_shared_makefile(self):
+        # devel/zlib takes its revision from Makefile.common.
+        files = {
+            'devel/zlib/Makefile.common': 'ZLIB_VERSION= 1.3.2\nZLIB_PATCH_REVISION= 3\n',
+            'devel/zlib/Makefile': '.include "../../devel/zlib/Makefile.common"\n'
+                                   'DISTNAME= zlib-${ZLIB_VERSION}\n'
+                                   'PKGREVISION= ${ZLIB_PATCH_REVISION}\n',
+            'devel/zlib/buildlink3.mk': 'BUILDLINK_API_DEPENDS.zlib+= zlib>=1.3.2nb3\n',
+        }
+        self.assertEqual(run(files), (0, ''))
+        files['devel/zlib/buildlink3.mk'] = 'BUILDLINK_API_DEPENDS.zlib+= zlib>=1.3.2nb4\n'
+        self.assertEqual(run(files)[0], 1)
+
     def test_ports_tree(self):
         tree = SCRIPTS.parent / 'pkgsrc'
         result = subprocess.run([sys.executable, str(SCRIPT), str(tree)],

@@ -33,7 +33,7 @@ import sys
 DEP_RE = re.compile(r'^(BUILDLINK_(?:API|ABI)_DEPENDS\.[\w.+-]+?|DEPENDS|BUILD_DEPENDS|'
                     r'TOOL_DEPENDS|TEST_DEPENDS)\s*[+?:!]?=\s*(.*)$')
 FAIL_RE = re.compile(r'^PKG_FAIL_REASON\s*\+=')
-REV_RE = re.compile(r'^PKGREVISION\s*[?:!]?=\s*(\d+)\s*(?:#.*)?$')
+REV_RE = re.compile(r'^PKGREVISION\s*[?:!]?=\s*([^#]*?)\s*(?:#.*)?$')
 SET_RE = re.compile(r'^([A-Za-z_][\w.]*)\s*[?:!]?=\s*(\S.*)?$')
 INC_RE = re.compile(r'^\.\s*include\s+"([^"$]+)"')
 COND_RE = re.compile(r'^\.\s*(if|ifdef|ifndef|elif|else|endif)\b(.*)$')
@@ -191,7 +191,7 @@ class Tree:
                     continue
                 m = REV_RE.match(line)
                 if m:
-                    found.append((context(stack), int(m.group(1))))
+                    found.append((context(stack), m.group(1)))
                     continue
                 if (FAIL_RE.match(line) and context(stack) != 'any' and
                         sum(1 for c, _ in stack if not DEFINED_RE.fullmatch(c)) == 1):
@@ -219,6 +219,9 @@ class Tree:
         walk(self.dirs[rel] / 'Makefile', [])
         # A later assignment overrides an earlier one in the same build.
         result = {'version': version_of(values), 'fails': set(), 'conditional': False}
+        if any(r is not None and not (expand(r, values) or '').isdigit() for _, r in found):
+            # A computed revision is left to scripts/check-export-depends.py.
+            result['version'] = None
         for build in ('cross', 'native'):
             result[build] = 0
         for ctx, revision in found:
@@ -228,7 +231,7 @@ class Tree:
             if ctx != 'any':
                 result['conditional'] = True
             for build in (('cross', 'native') if ctx == 'any' else (ctx,)):
-                result[build] = revision
+                result[build] = int(expand(revision, values) or 0)
         return result
 
 
