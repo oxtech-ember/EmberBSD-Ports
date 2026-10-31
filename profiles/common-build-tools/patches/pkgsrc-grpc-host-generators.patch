@@ -1,0 +1,26 @@
+Origin: EmberBSD, AI-assisted.
+A cross build of net/grpc stopped in grpc++_reflection with "don't know how
+to make _gRPC_CPP_PLUGIN-NOTFOUND": when CMAKE_CROSSCOMPILING, grpc looks up
+grpc_cpp_plugin on PATH, and it would run the target protoc from buildlink.
+Depend on the native grpc package for the plugin and use the native protoc
+from devel/protobuf/host-protoc.mk. Not submitted upstream.
+
+--- a/net/grpc/Makefile
++++ b/net/grpc/Makefile
+@@ -49,5 +49,16 @@
+ BUILDLINK_API_DEPENDS.libcares+=	libcares>=1.15.0nb1
+ .include "../../net/libcares/buildlink3.mk"
+ .include "../../security/openssl/buildlink3.mk"
++
++# Origin: EmberBSD (AI-assisted). When cross compiling, CMakeLists.txt looks
++# up grpc_cpp_plugin on PATH and finds protoc through the buildlink copy of
++# the target protoc. Both generators must run on the build host: use the
++# plugin of the native grpc package and the native protoc in TOOLBASE.
++.if ${USE_CROSS_COMPILE:tl} == "yes"
++TOOL_DEPENDS+=		grpc-${PKGVERSION_NOREV}{,nb[0-9]*}:../../net/grpc
++CMAKE_CONFIGURE_ARGS+=	-D_gRPC_CPP_PLUGIN:FILEPATH=${TOOLBASE}/bin/grpc_cpp_plugin
++.include "../../devel/protobuf/host-protoc.mk"
++CMAKE_CONFIGURE_ARGS+=	-D_gRPC_PROTOBUF_PROTOC_EXECUTABLE:FILEPATH=${PROTOC_FOR_BUILD}
++.endif
+ .include "../../mk/atomic64.mk"
+ .include "../../mk/bsd.pkg.mk"
