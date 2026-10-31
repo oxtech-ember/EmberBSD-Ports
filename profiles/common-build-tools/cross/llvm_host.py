@@ -40,6 +40,13 @@ def extract_source(archive, destination, components=None):
         if not members:
             raise ValueError('Empty selected upstream source')
         source.extractall(destination, members=members, filter='data')
+    # The release archive has llvm/cmake/config.guess and config.sub without
+    # the execute bit (lang/llvm replaces them in post-extract). CMake runs
+    # config.guess directly to find the host triple.
+    for name in ('config.guess', 'config.sub'):
+        script = Path(destination, SOURCE, 'llvm/cmake', name)
+        if script.is_file() and not script.is_symlink():
+            script.chmod(script.stat().st_mode | 0o111)
 
 
 def native(kind, arguments):

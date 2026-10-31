@@ -43,6 +43,11 @@ with tarfile.open(archive, 'w:xz', format=tarfile.USTAR_FORMAT) as output:
         entry = tarfile.TarInfo(llvm_host.SOURCE + '/' + name + '/fixture')
         entry.size = 7
         output.addfile(entry, io.BytesIO(b'fixture'))
+    # As in the release archive: CMake runs this script, which has no execute bit.
+    entry = tarfile.TarInfo(llvm_host.SOURCE + '/llvm/cmake/config.guess')
+    entry.size = 7
+    entry.mode = 0o664
+    output.addfile(entry, io.BytesIO(b'fixture'))
 cmake = executable(work / 'cmake', '''import pathlib,sys
 if '--version' in sys.argv: print('cmake fixture'); sys.exit(0)
 out=pathlib.Path(sys.argv[sys.argv.index('-B')+1]); out.mkdir(parents=True)
@@ -59,13 +64,13 @@ for name in sys.argv[sys.argv.index('-j')+2:]:
 os.environ['HOST_PYTHON'] = sys.executable
 native_tools = {'cmake': cmake, 'ninja': ninja, 'python': sys.executable}
 for role in ('cc', 'cxx', 'cpp', 'as', 'ld', 'ar', 'ranlib', 'nm', 'strip',
-             'pkg-config', 'sh'):
+             'pkg-config', 'sh', 'install_name_tool'):
     native_tools[role] = executable(work / ('native-' + role), "print('SDK tool double')\n")
 os.environ['HOST_CC'] = native_tools['cc']
 os.environ['HOST_CXX'] = native_tools['cxx']
 # This is an API double, not a descriptor, producer receipt or tool admission.
 native_selection = types.SimpleNamespace(
-    tool=lambda role: native_tools[role], path=str(work),
+    tool=lambda role: native_tools[role], command=lambda role: [native_tools[role]], path=str(work),
     abi_flags={key: () for key in ('cppflags', 'cflags', 'cxxflags', 'ldflags')},
     as_dict=lambda: {'format': 'emberbsd-native-toolset-selection', 'version': 1,
                      'api': 1, 'tools': dict(native_tools)})
@@ -80,6 +85,8 @@ assert not (work / 'wrong-pin').exists()
 llvm_host.SOURCE_SHA = hashlib.sha256(archive.read_bytes()).hexdigest()
 llvm_host.native('llvm', [str(archive), str(work / 'llvm'), cmake, ninja])
 flags = json.loads((work / 'llvm/native/cmake-argv.json').read_text())
+guess = work / 'llvm/source' / llvm_host.SOURCE / 'llvm/cmake/config.guess'
+assert os.access(guess, os.X_OK), 'CMake cannot run the extracted config.guess'
 assert '-DLLVM_TARGETS_TO_BUILD=Native' in flags and '-DLLVM_INCLUDE_TESTS=OFF' in flags
 assert '-DPython3_EXECUTABLE=' + sys.executable in flags
 assert set(json.loads((work / 'llvm/outputs.json').read_text())) == {'llvm-tblgen', 'llvm-min-tblgen', 'llvm-config'}
