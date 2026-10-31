@@ -1,10 +1,8 @@
 # $NetBSD: Makefile,v 1.21 2023/10/24 22:10:38 wiz Exp $
 #
 
-DISTNAME=	wpa_supplicant-2.12
-DISTFILES=	${DISTNAME}${EXTRACT_SUFX} hostapd-2.12${EXTRACT_SUFX}
+.include "../../net/wpa_supplicant/Makefile.common"
 CATEGORIES=	net
-MASTER_SITES=	https://w1.fi/releases/
 
 MAINTAINER=	reed@reedmedia.net
 HOMEPAGE=	https://w1.fi/wpa_supplicant/
@@ -33,7 +31,7 @@ CPPFLAGS+=	-DNEW_FREEBSD_MLME_ASSOC
 .endif
 
 post-extract:
-	${CP} -R ${WRKDIR}/hostapd-2.12/hostapd ${WRKSRC}/hostapd
+	${CP} -R ${WRKDIR}/hostapd-${WPA_SUPPLICANT_VERSION}/hostapd ${WRKSRC}/hostapd
 	${CP} ${FILESDIR}/defconfig ${WRKSRC}/wpa_supplicant/.config
 	[ ! -e ${FILESDIR}/defconfig.${OPSYS} ] || \
 		${CAT} ${FILESDIR}/defconfig.${OPSYS} >> ${WRKSRC}/wpa_supplicant/.config

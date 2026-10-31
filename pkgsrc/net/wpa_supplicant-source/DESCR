@@ -1,0 +1,2 @@
+Prepared wpa_supplicant source primitives with the shared Ports patchset.
+This source package is not a configured supplicant or crypto runtime.

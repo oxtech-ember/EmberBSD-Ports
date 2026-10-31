@@ -1,0 +1,6 @@
+# Shared release inputs for the daemon and its prepared source package.
+WPA_SUPPLICANT_VERSION= 2.12
+DISTNAME= wpa_supplicant-${WPA_SUPPLICANT_VERSION}
+DISTFILES= ${DISTNAME}${EXTRACT_SUFX} hostapd-${WPA_SUPPLICANT_VERSION}${EXTRACT_SUFX}
+MASTER_SITES= https://w1.fi/releases/
+WPA_SUPPLICANT_SOURCE_DIR?= ${EMBERBSD_HOST_PREFIX:U${TOOLBASE}}/share/wpa_supplicant-source
