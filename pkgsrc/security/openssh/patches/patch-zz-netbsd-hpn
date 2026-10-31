@@ -1,0 +1,606 @@
+$NetBSD$
+
+Preserve the native HPN configuration and transport integration from the
+NetBSD-derived base OpenSSH distribution, adapted to OpenSSH 10.6.
+
+--- channels.c
++++ channels.c
+@@ -77,6 +77,11 @@
+ #include "canohost.h"
+ #include "pathnames.h"
+ #include "match.h"
++
++#ifdef WITH_HPN
++static int hpn_disabled = 0;
++static int hpn_buffer_size = 2 * 1024 * 1024;
++#endif
+ 
+ /* XXX remove once we're satisfied there's no lurking bugs */
+ /* #define DEBUG_CHANNEL_POLL 1 */
+@@ -2490,6 +2495,22 @@
+ 	return 1;
+ }
+ 
++#ifdef WITH_HPN
++static u_int
++channel_tcpwinsz(struct ssh *ssh)
++{
++	u_int size = 0;
++	socklen_t len = sizeof(size);
++
++	if (!ssh_packet_connection_is_on_socket(ssh))
++		return 128 * 1024;
++	if (getsockopt(ssh_packet_get_connection_in(ssh), SOL_SOCKET,
++	    SO_RCVBUF, &size, &len) == 0 && size > SSHBUF_SIZE_MAX)
++		size = SSHBUF_SIZE_MAX;
++	return size;
++}
++#endif
++
+ static int
+ channel_check_window(struct ssh *ssh, Channel *c)
+ {
+@@ -2501,18 +2522,35 @@
+ 	    c->local_maxpacket*3) ||
+ 	    c->local_window < c->local_window_max/2) &&
+ 	    c->local_consumed > 0) {
++#ifdef WITH_HPN
++		u_int addition = 0, tcpwinsz = channel_tcpwinsz(ssh);
++
++		if (c->dynamic_window && tcpwinsz > c->local_window_max) {
++			u_int delta = tcpwinsz - c->local_window_max;
++			addition = delta + delta / 2;
++			c->local_window_max += addition;
++		}
++#endif
+ 		if (!c->have_remote_id)
+ 			fatal_f("channel %d: no remote id", c->self);
+ 		if ((r = sshpkt_start(ssh,
+ 		    SSH2_MSG_CHANNEL_WINDOW_ADJUST)) != 0 ||
+ 		    (r = sshpkt_put_u32(ssh, c->remote_id)) != 0 ||
++#ifdef WITH_HPN
++		    (r = sshpkt_put_u32(ssh, c->local_consumed + addition)) != 0 ||
++#else
+ 		    (r = sshpkt_put_u32(ssh, c->local_consumed)) != 0 ||
++#endif
+ 		    (r = sshpkt_send(ssh)) != 0) {
+ 			fatal_fr(r, "channel %i", c->self);
+ 		}
+ 		debug2("channel %d: window %d sent adjust %d", c->self,
+ 		    c->local_window, c->local_consumed);
++#ifdef WITH_HPN
++		c->local_window += c->local_consumed + addition;
++#else
+ 		c->local_window += c->local_consumed;
++#endif
+ 		c->local_consumed = 0;
+ 	}
+ 	return 1;
+@@ -3860,6 +3898,16 @@
+ {
+ 	ssh->chanctxt->IPv4or6 = af;
+ }
++
++#ifdef WITH_HPN
++void
++channel_set_hpn(int disabled, int buffer_size)
++{
++	hpn_disabled = disabled;
++	hpn_buffer_size = buffer_size;
++	debug("HPN Disabled: %d, HPN Buffer Size: %d", disabled, buffer_size);
++}
++#endif
+ 
+ 
+ /*
+@@ -4071,7 +4119,12 @@
+ 
+ 		/* Allocate a channel number for the socket. */
+ 		c = channel_new(ssh, "port-listener", type, sock, sock, -1,
+-		    CHAN_TCP_WINDOW_DEFAULT, CHAN_TCP_PACKET_DEFAULT,
++#ifdef WITH_HPN
++		    hpn_disabled ? CHAN_TCP_WINDOW_DEFAULT : hpn_buffer_size,
++#else
++		    CHAN_TCP_WINDOW_DEFAULT,
++#endif
++		    CHAN_TCP_PACKET_DEFAULT,
+ 		    0, "port listener", 1);
+ 		c->path = xstrdup(host);
+ 		c->host_port = fwd->connect_port;
+@@ -5229,9 +5282,19 @@
+ 	*chanids = xcalloc(num_socks + 1, sizeof(**chanids));
+ 	for (n = 0; n < num_socks; n++) {
+ 		sock = socks[n];
+-		nc = channel_new(ssh, "x11-listener",
++		nc = channel_new(ssh,
++#ifdef WITH_HPN
++		    hpn_disabled ? "x11-listener" : "x11 listener",
++#else
++		    "x11-listener",
++#endif
+ 		    SSH_CHANNEL_X11_LISTENER, sock, sock, -1,
+-		    CHAN_X11_WINDOW_DEFAULT, CHAN_X11_PACKET_DEFAULT,
++#ifdef WITH_HPN
++		    hpn_disabled ? CHAN_X11_WINDOW_DEFAULT : hpn_buffer_size,
++#else
++		    CHAN_X11_WINDOW_DEFAULT,
++#endif
++		    CHAN_X11_PACKET_DEFAULT,
+ 		    0, "X11 inet listener", 1);
+ 		nc->single_connection = single_connection;
+ 		(*chanids)[n] = nc->self;
+--- channels.h
++++ channels.h
+@@ -178,6 +178,9 @@
+ 	int     extended_usage;
+ 	int	agent_new;	/* For agent listeners, use RFC 9987 requests */
+ 	int	single_connection;
++#ifdef WITH_HPN
++	int	dynamic_window;
++#endif
+ 
+ 	const char *ctype;	/* borrowed type - not freed on channel_free */
+ 	char   *xctype;		/* extended type */
+@@ -356,6 +359,9 @@
+ struct Forward;
+ struct ForwardOptions;
+ void	 channel_set_af(struct ssh *, int af);
++#ifdef WITH_HPN
++void	 channel_set_hpn(int, int);
++#endif
+ void     channel_permit_all(struct ssh *, int);
+ void	 channel_add_permission(struct ssh *, int, int, char *, int);
+ void	 channel_clear_permission(struct ssh *, int, int);
+--- clientloop.c
++++ clientloop.c
+@@ -1831,7 +1831,12 @@
+ 		return NULL;
+ 	c = channel_new(ssh, "x11-connection",
+ 	    SSH_CHANNEL_X11_OPEN, sock, sock, -1,
+-	    CHAN_TCP_WINDOW_DEFAULT, CHAN_X11_PACKET_DEFAULT, 0, "x11", 1);
++#ifdef WITH_HPN
++	    options.hpn_disabled ? CHAN_TCP_WINDOW_DEFAULT : options.hpn_buffer_size,
++#else
++	    CHAN_TCP_WINDOW_DEFAULT,
++#endif
++	    CHAN_X11_PACKET_DEFAULT, 0, "x11", 1);
+ 	c->force_drain = 1;
+ 	return c;
+ }
+@@ -1866,8 +1871,12 @@
+ 
+ 	c = channel_new(ssh, "agent-connection",
+ 	    SSH_CHANNEL_OPEN, sock, sock, -1,
+-	    CHAN_X11_WINDOW_DEFAULT, CHAN_TCP_PACKET_DEFAULT, 0,
+-	    "authentication agent connection", 1);
++#ifdef WITH_HPN
++	    options.hpn_disabled ? CHAN_X11_WINDOW_DEFAULT : options.hpn_buffer_size,
++#else
++	    CHAN_X11_WINDOW_DEFAULT,
++#endif
++	    CHAN_TCP_PACKET_DEFAULT, 0, "authentication agent connection", 1);
+ 	c->force_drain = 1;
+ 	return c;
+ }
+@@ -1893,7 +1902,12 @@
+ 	debug("Tunnel forwarding using interface %s", ifname);
+ 
+ 	c = channel_new(ssh, "tun-connection", SSH_CHANNEL_OPENING, fd, fd, -1,
+-	    CHAN_TCP_WINDOW_DEFAULT, CHAN_TCP_PACKET_DEFAULT, 0, "tun", 1);
++#ifdef WITH_HPN
++	    options.hpn_disabled ? CHAN_TCP_WINDOW_DEFAULT : options.hpn_buffer_size,
++#else
++	    CHAN_TCP_WINDOW_DEFAULT,
++#endif
++	    CHAN_TCP_PACKET_DEFAULT, 0, "tun", 1);
+ 	c->datagram = 1;
+ 
+ #if defined(SSH_TUN_FILTER)
+--- readconf.c
++++ readconf.c
+@@ -51,6 +51,10 @@
+ #include "sshkey.h"
+ #include "misc.h"
+ #include "readconf.h"
++#ifdef WITH_HPN
++#include <limits.h>
++#include "sshbuf.h"
++#endif
+ #include "match.h"
+ #include "kex.h"
+ #include "mac.h"
+@@ -169,6 +173,10 @@
+ 	oVersionAddendum, oRefuseConnection, oWarnWeakCrypto,
+ #ifdef EMBERBSD_BASE_OPENSSH
+ 	oSendVersionFirst,
++#endif
++#ifdef WITH_HPN
++	oTcpRcvBufPoll, oTcpRcvBuf, oHPNDisabled, oHPNBufferSize,
++	oNoneEnabled, oNoneSwitch,
+ #endif
+ 	oIgnore, oIgnoredUnknownOption, oDeprecated, oUnsupported
+ } OpCodes;
+@@ -312,6 +320,14 @@
+ 	{ "hostbasedkeytypes", oHostbasedAcceptedAlgorithms }, /* obsolete */
+ 	{ "pubkeyacceptedalgorithms", oPubkeyAcceptedAlgorithms },
+ 	{ "pubkeyacceptedkeytypes", oPubkeyAcceptedAlgorithms }, /* obsolete */
++#ifdef WITH_HPN
++	{ "noneenabled", oNoneEnabled },
++	{ "noneswitch", oNoneSwitch },
++	{ "tcprcvbufpoll", oTcpRcvBufPoll },
++	{ "tcprcvbuf", oTcpRcvBuf },
++	{ "hpndisabled", oHPNDisabled },
++	{ "hpnbuffersize", oHPNBufferSize },
++#endif
+ #ifdef EMBERBSD_BASE_OPENSSH
+ 	{ "sendversionfirst", oSendVersionFirst },
+ #endif
+@@ -1345,6 +1361,30 @@
+ 		intptr = &options->batch_mode;
+ 		goto parse_flag;
+ 
++#ifdef WITH_HPN
++	case oNoneEnabled:
++		intptr = &options->none_enabled;
++		goto parse_flag;
++	case oNoneSwitch:
++		if (strcmp(filename, "command-line") != 0) {
++			error("NoneSwitch may only be used on the command line");
++			return -1;
++		}
++		intptr = &options->none_switch;
++		goto parse_flag;
++	case oHPNDisabled:
++		intptr = &options->hpn_disabled;
++		goto parse_flag;
++	case oHPNBufferSize:
++		intptr = &options->hpn_buffer_size;
++		goto parse_int;
++	case oTcpRcvBufPoll:
++		intptr = &options->tcp_rcv_buf_poll;
++		goto parse_flag;
++	case oTcpRcvBuf:
++		intptr = &options->tcp_rcv_buf;
++		goto parse_int;
++#endif
+ #ifdef EMBERBSD_BASE_OPENSSH
+ 	case oSendVersionFirst:
+ 		intptr = &options->send_version_first;
+@@ -2852,6 +2892,14 @@
+ #ifdef EMBERBSD_BASE_OPENSSH
+ 	options->send_version_first = -1;
+ #endif
++#ifdef WITH_HPN
++	options->none_enabled = -1;
++	options->none_switch = -1;
++	options->hpn_disabled = -1;
++	options->hpn_buffer_size = -1;
++	options->tcp_rcv_buf_poll = -1;
++	options->tcp_rcv_buf = -1;
++#endif
+ }
+ 
+ /*
+@@ -3002,6 +3050,28 @@
+ #ifdef EMBERBSD_BASE_OPENSSH
+ 	if (options->send_version_first == -1)
+ 		options->send_version_first = 1;
++#endif
++#ifdef WITH_HPN
++	if (options->none_switch == -1)
++		options->none_switch = 0;
++	if (options->hpn_disabled == -1)
++		options->hpn_disabled = 0;
++	if (options->hpn_buffer_size > -1) {
++		if (options->hpn_buffer_size == 0)
++			options->hpn_buffer_size = 1;
++		if (options->hpn_buffer_size > SSHBUF_SIZE_MAX / 1024)
++			options->hpn_buffer_size = SSHBUF_SIZE_MAX;
++		else
++			options->hpn_buffer_size *= 1024;
++	}
++	if (options->tcp_rcv_buf == 0)
++		options->tcp_rcv_buf = 1;
++	if (options->tcp_rcv_buf > INT_MAX / 1024)
++		options->tcp_rcv_buf = INT_MAX;
++	else if (options->tcp_rcv_buf > -1)
++		options->tcp_rcv_buf *= 1024;
++	if (options->tcp_rcv_buf_poll == -1)
++		options->tcp_rcv_buf_poll = 1;
+ #endif
+ 	if (options->control_master == -1)
+ 		options->control_master = 0;
+--- readconf.h
++++ readconf.h
+@@ -51,6 +51,14 @@
+ 	int     tcp_keep_alive;	/* Set SO_KEEPALIVE. */
+ #ifdef EMBERBSD_BASE_OPENSSH
+ 	int	send_version_first; /* retained native configuration option */
++#endif
++#ifdef WITH_HPN
++	int	tcp_rcv_buf;
++	int	tcp_rcv_buf_poll;
++	int	hpn_disabled;
++	int	hpn_buffer_size;
++	int	none_enabled;
++	int	none_switch;
+ #endif
+ 	int	ip_qos_interactive;	/* DSCP value for interactive */
+ 	int	ip_qos_bulk;		/* DSCP value for bulk traffic */
+--- servconf.c
++++ servconf.c
+@@ -356,6 +356,30 @@
+ 	/* XXX maybe use macros here too to force consistency? */
+ 
+ 	SSHD_CONFIG_ENTRIES
++
++#ifdef WITH_HPN
++	if (options->hpn_buffer_size == -1) {
++		if (options->hpn_disabled) {
++			options->hpn_buffer_size = CHAN_SES_WINDOW_DEFAULT;
++		} else {
++			int fd, size = CHAN_SES_WINDOW_DEFAULT;
++			socklen_t len = sizeof(size);
++
++			if ((fd = socket(AF_INET, SOCK_STREAM, 0)) != -1) {
++				if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &size,
++				    &len) == -1)
++					size = CHAN_SES_WINDOW_DEFAULT;
++				close(fd);
++			}
++			if (size <= 0)
++				size = CHAN_SES_WINDOW_DEFAULT;
++			options->hpn_buffer_size = size > SSHBUF_SIZE_MAX ?
++			    SSHBUF_SIZE_MAX : size;
++		}
++	} else if (options->hpn_disabled) {
++		options->hpn_buffer_size = CHAN_TCP_WINDOW_DEFAULT;
++	}
++#endif
+ 
+ #undef SSHCONF_INT
+ #undef SSHCONF_INTFLAG
+@@ -1631,6 +1655,31 @@
+ 		intptr = &options->permit_user_rc;
+ 		goto parse_flag;
+ 
++#ifdef WITH_HPN
++	case sNoneEnabled:
++		intptr = &options->none_enabled;
++		goto parse_flag;
++	case sHPNDisabled:
++		intptr = &options->hpn_disabled;
++		goto parse_flag;
++	case sHPNBufferSize:
++		arg = argv_next(&ac, &av);
++		if ((errstr = atoi_err(arg, &value)) != NULL)
++			fatal("%s line %d: %s integer value %s.",
++			    filename, linenum, keyword, errstr);
++		if (*activep && options->hpn_buffer_size == -1) {
++			if (value == 0)
++				options->hpn_buffer_size = 1024;
++			else if (value > 64 * 1024)
++				options->hpn_buffer_size = 64 * 1024 * 1024;
++			else
++				options->hpn_buffer_size = value * 1024;
++		}
++		break;
++	case sTCPRcvBufPoll:
++		intptr = &options->tcp_rcv_buf_poll;
++		goto parse_flag;
++#endif
+ 	case sStrictModes:
+ 		intptr = &options->strict_modes;
+ 		goto parse_flag;
+--- servconf.h
++++ servconf.h
+@@ -337,7 +337,18 @@
+ SSHCONF_UNSUPPORTED_INT(gss_strict_acceptor, GSSAPIStrictAcceptorCheck, SSHCFG_GLOBAL)
+ #endif /* GSSAPI */
+ 
++#ifdef WITH_HPN
++#define SSHD_CONFIG_ENTRIES_HPN \
++SSHCONF_INT(none_enabled, NoneEnabled, SSHCFG_ALL, multistate_flag, -1, SSHCFG_COPY_MATCH) \
++SSHCONF_INT(hpn_disabled, HPNDisabled, SSHCFG_ALL, multistate_flag, 0, SSHCFG_COPY_MATCH) \
++SSHCONF_INT(hpn_buffer_size, HPNBufferSize, SSHCFG_ALL, NULL, -1, SSHCFG_COPY_MATCH) \
++SSHCONF_INT(tcp_rcv_buf_poll, TCPRcvBufPoll, SSHCFG_ALL, multistate_flag, -1, SSHCFG_COPY_MATCH)
++#else
++#define SSHD_CONFIG_ENTRIES_HPN
++#endif
++
+ #define SSHD_CONFIG_ENTRIES \
++	SSHD_CONFIG_ENTRIES_HPN \
+ 	SSHD_CONFIG_ENTRIES_BASE \
+ 	SSHD_CONFIG_ENTRIES_KRB5 \
+ 	SSHD_CONFIG_ENTRIES_GSS \
+--- serverloop.c
++++ serverloop.c
+@@ -548,7 +548,12 @@
+ 	debug("Tunnel forwarding using interface %s", ifname);
+ 
+ 	c = channel_new(ssh, "tun", SSH_CHANNEL_OPEN, sock, sock, -1,
+-	    CHAN_TCP_WINDOW_DEFAULT, CHAN_TCP_PACKET_DEFAULT, 0, "tun", 1);
++#ifdef WITH_HPN
++	    options.hpn_disabled ? CHAN_TCP_WINDOW_DEFAULT : options.hpn_buffer_size,
++#else
++	    CHAN_TCP_WINDOW_DEFAULT,
++#endif
++	    CHAN_TCP_PACKET_DEFAULT, 0, "tun", 1);
+ 	c->datagram = 1;
+ #if defined(SSH_TUN_FILTER)
+ 	if (mode == SSH_TUNMODE_POINTOPOINT)
+@@ -599,6 +604,10 @@
+ 	c = channel_new(ssh, "session", SSH_CHANNEL_LARVAL,
+ 	    -1, -1, -1, /*window size*/0, CHAN_SES_PACKET_DEFAULT,
+ 	    0, "server-session", 1);
++#ifdef WITH_HPN
++	if (options.tcp_rcv_buf_poll > 0 && !options.hpn_disabled)
++		c->dynamic_window = 1;
++#endif
+ 	if (session_open(the_authctxt, c->self) != 1) {
+ 		debug("session open failed, free channel %d", c->self);
+ 		channel_free(ssh, c);
+--- session.c
++++ session.c
+@@ -2220,7 +2220,12 @@
+ 	channel_set_fds(ssh, s->chanid,
+ 	    fdout, fdin, fderr,
+ 	    ignore_fderr ? CHAN_EXTENDED_IGNORE : CHAN_EXTENDED_READ,
+-	    1, is_tty, CHAN_SES_WINDOW_DEFAULT);
++	    1, is_tty,
++#ifdef WITH_HPN
++	    options.hpn_disabled ? CHAN_SES_WINDOW_DEFAULT : options.hpn_buffer_size);
++#else
++	    CHAN_SES_WINDOW_DEFAULT);
++#endif
+ }
+ 
+ /*
+--- ssh.c
++++ ssh.c
+@@ -1035,6 +1035,9 @@
+ 			break;
+ 		case 'T':
+ 			options.request_tty = REQUEST_TTY_NO;
++#ifdef WITH_HPN
++			options.none_switch = 0;
++#endif
+ 			break;
+ 		case 'o':
+ 			line = xstrdup(optarg);
+@@ -2207,6 +2210,35 @@
+ 	    NULL, fileno(stdin), command, environ);
+ }
+ 
++#ifdef WITH_HPN
++static void
++hpn_options_init(struct ssh *ssh)
++{
++	int fd, size;
++	socklen_t len;
++
++	(void)ssh;
++	if (options.hpn_disabled || tty_flag) {
++		options.hpn_buffer_size = CHAN_SES_WINDOW_DEFAULT;
++	} else if (options.hpn_buffer_size == -1) {
++		options.hpn_buffer_size = 2 * 1024 * 1024;
++		if ((options.tcp_rcv_buf_poll <= 0 || options.tcp_rcv_buf > 0) &&
++		    (fd = socket(AF_INET, SOCK_STREAM, 0)) != -1) {
++			if (options.tcp_rcv_buf > 0)
++				(void)setsockopt(fd, SOL_SOCKET, SO_RCVBUF,
++				    &options.tcp_rcv_buf, sizeof(options.tcp_rcv_buf));
++			len = sizeof(size);
++			if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &size, &len) == 0 &&
++			    size > 0)
++				options.hpn_buffer_size = size > SSHBUF_SIZE_MAX ?
++				    SSHBUF_SIZE_MAX : size;
++			close(fd);
++		}
++	}
++	channel_set_hpn(options.hpn_disabled, options.hpn_buffer_size);
++}
++#endif
++
+ /* open new channel for a session */
+ static int
+ ssh_session2_open(struct ssh *ssh)
+@@ -2225,9 +2257,16 @@
+ 	if (in == -1 || out == -1 || err == -1)
+ 		fatal("dup() in/out/err failed");
+ 
++#ifdef WITH_HPN
++	window = options.hpn_buffer_size;
++#else
+ 	window = CHAN_SES_WINDOW_DEFAULT;
++#endif
+ 	packetmax = CHAN_SES_PACKET_DEFAULT;
+ 	if (tty_flag) {
++#ifdef WITH_HPN
++		window = 4 * CHAN_SES_PACKET_DEFAULT;
++#endif
+ 		window >>= 1;
+ 		packetmax >>= 1;
+ 	}
+@@ -2235,6 +2274,10 @@
+ 	    "session", SSH_CHANNEL_OPENING, in, out, err,
+ 	    window, packetmax, CHAN_EXTENDED_WRITE,
+ 	    "client-session", CHANNEL_NONBLOCK_STDIO);
++#ifdef WITH_HPN
++	if (options.tcp_rcv_buf_poll > 0 && !options.hpn_disabled)
++		c->dynamic_window = 1;
++#endif
+ 	if (tty_flag)
+ 		channel_set_tty(ssh, c);
+ 	debug3_f("channel_new: %d%s", c->self, tty_flag ? " (tty)" : "");
+@@ -2252,6 +2295,9 @@
+ {
+ 	int r, id = -1;
+ 	char *cp, *tun_fwd_ifname = NULL;
++#ifdef WITH_HPN
++	hpn_options_init(ssh);
++#endif
+ 
+ 	/* XXX should be pre-session */
+ 	if (!options.control_persist)
+--- sshconnect.c
++++ sshconnect.c
+@@ -398,6 +398,12 @@
+ 		return -1;
+ 	}
+ 	(void)fcntl(sock, F_SETFD, FD_CLOEXEC);
++#ifdef WITH_HPN
++	if (options.tcp_rcv_buf > 0 && setsockopt(sock, SOL_SOCKET, SO_RCVBUF,
++	    &options.tcp_rcv_buf, sizeof(options.tcp_rcv_buf)) == -1)
++		error("Couldn't set socket receive buffer to %d: %.100s",
++		    options.tcp_rcv_buf, strerror(errno));
++#endif
+ 
+ 	/* Use interactive QOS (if specified) until authentication completed */
+ 	if (options.ip_qos_interactive != INT_MAX)
+--- sshconnect2.c
++++ sshconnect2.c
+@@ -77,6 +77,9 @@
+ 
+ /* import */
+ extern Options options;
++#ifdef WITH_HPN
++extern int tty_flag;
++#endif
+ 
+ /*
+  * SSH2 key exchange
+@@ -475,6 +478,12 @@
+ 	ssh->authctxt = NULL;
+ 
+ 	ssh_dispatch_range(ssh, SSH2_MSG_USERAUTH_MIN, SSH2_MSG_USERAUTH_MAX, NULL);
++#ifdef WITH_HPN
++	if (options.none_switch == 1 && options.none_enabled == 1 && tty_flag) {
++		debug("Cannot switch to NONE cipher with tty allocated");
++		fprintf(stderr, "NONE cipher switch disabled when a TTY is allocated\n");
++	}
++#endif
+ 
+ 	if (!authctxt.success)
+ 		fatal("Authentication failed.");
+--- version.h
++++ version.h
+@@ -1,6 +1,17 @@
+ /* $OpenBSD: version.h,v 1.111 2026/10/05 09:54:05 djm Exp $ */
+ 
+-#define SSH_VERSION	"OpenSSH_10.6"
++#define SSH_VERSION_BASE	"OpenSSH_10.6"
+ 
+ #define SSH_PORTABLE	"p1"
+-#define SSH_RELEASE	SSH_VERSION SSH_PORTABLE
++#ifdef WITH_HPN
++#define SSH_HPN "-hpn13v14"
++#else
++#define SSH_HPN ""
++#endif
++#ifdef WITH_NETBSD_LPK
++#define SSH_LPK "-lpk"
++#else
++#define SSH_LPK ""
++#endif
++#define SSH_VERSION	SSH_VERSION_BASE SSH_HPN SSH_LPK
++#define SSH_RELEASE	SSH_VERSION_BASE SSH_PORTABLE SSH_HPN SSH_LPK

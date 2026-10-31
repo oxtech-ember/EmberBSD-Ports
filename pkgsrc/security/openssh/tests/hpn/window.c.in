@@ -1,0 +1,77 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#define WITH_HPN 1
+#define SSHBUF_SIZE_MAX 134217728
+#define SSH_CHANNEL_OPEN 1
+#define CHAN_CLOSE_SENT 1
+#define CHAN_CLOSE_RCVD 2
+#define SSH2_MSG_CHANNEL_WINDOW_ADJUST 93
+struct ssh {
+	int unused;
+};
+typedef struct {
+	int type, flags, dynamic_window, have_remote_id, self;
+	u_int local_window_max, local_window, local_maxpacket, local_consumed,
+	    remote_id;
+} Channel;
+static int socket_is_on = 1;
+static int ssh_packet_connection_is_on_socket(struct ssh *s)
+{
+	(void)s;
+	return socket_is_on;
+}
+static int ssh_packet_get_connection_in(struct ssh *s)
+{
+	(void)s;
+	return 1;
+}
+static int fake_getsockopt(int fd, int a, int b, void *p, socklen_t *n)
+{
+	(void)fd;
+	(void)a;
+	(void)b;
+	(void)n;
+	*(u_int *)p = 4194304;
+	return 0;
+}
+#define getsockopt fake_getsockopt
+static int sshpkt_start(struct ssh *s, int t)
+{
+	(void)s;
+	(void)t;
+	return 0;
+}
+static int sshpkt_put_u32(struct ssh *s, u_int v)
+{
+	(void)s;
+	(void)v;
+	return 0;
+}
+static int sshpkt_send(struct ssh *s)
+{
+	(void)s;
+	return 0;
+}
+#define fatal_f(...) abort()
+#define fatal_fr(...) abort()
+#define debug2(...) ((void)0)
+@@channel_tcpwinsz@@
+@@channel_check_window@@
+
+int main(void)
+{
+	struct ssh s = {0};
+	Channel c = {.type = SSH_CHANNEL_OPEN,
+		     .dynamic_window = 1,
+		     .have_remote_id = 1,
+		     .local_window_max = 2097152,
+		     .local_window = 1048576,
+		     .local_maxpacket = 32768,
+		     .local_consumed = 1048576};
+	if (!channel_check_window(&s, &c) || c.local_window_max != 5242880 ||
+	    c.local_window != 5242880 || c.local_consumed)
+		abort();
+	puts("HPN dynamic window ordinary update PASS");
+}

@@ -1,0 +1,82 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#define CHAN_SES_WINDOW_DEFAULT 2097152
+#define SSHBUF_SIZE_MAX 134217728
+struct ssh {
+	int unused;
+};
+static struct {
+	int hpn_disabled, hpn_buffer_size, tcp_rcv_buf, tcp_rcv_buf_poll;
+} options;
+static int tty_flag, calls, fail_socket, configured;
+static int fake_socket(int a, int b, int c)
+{
+	(void)a;
+	(void)b;
+	(void)c;
+	calls++;
+	return fail_socket ? -1 : 42;
+}
+static int fake_close(int fd)
+{
+	(void)fd;
+	return 0;
+}
+static int fake_setsockopt(int fd, int a, int b, const void *p, socklen_t n)
+{
+	(void)fd;
+	(void)a;
+	(void)b;
+	(void)p;
+	(void)n;
+	return 0;
+}
+static int fake_getsockopt(int fd, int a, int b, void *p, socklen_t *n)
+{
+	(void)fd;
+	(void)a;
+	(void)b;
+	(void)n;
+	*(int *)p = 131072;
+	return 0;
+}
+static void channel_set_hpn(int off, int n)
+{
+	(void)off;
+	configured = n;
+}
+#define socket fake_socket
+#define close fake_close
+#define setsockopt fake_setsockopt
+#define getsockopt fake_getsockopt
+@@hpn_options_init@@
+
+int main(void)
+{
+	struct ssh s = {0};
+	options.hpn_buffer_size = 4194304;
+	options.tcp_rcv_buf = -1;
+	options.tcp_rcv_buf_poll = 0;
+	hpn_options_init(&s);
+	if (configured != 4194304 || calls)
+		abort();
+	options.hpn_buffer_size = -1;
+	fail_socket = 1;
+	hpn_options_init(&s);
+	if (configured != 2097152 || calls != 1)
+		abort();
+	options.hpn_buffer_size = -1;
+	fail_socket = 0;
+	hpn_options_init(&s);
+	if (configured != 131072 || calls != 2)
+		abort();
+	options.hpn_disabled = 1;
+	options.hpn_buffer_size = 4194304;
+	hpn_options_init(&s);
+	if (configured != CHAN_SES_WINDOW_DEFAULT || calls != 2)
+		abort();
+	puts("HPN explicit size and socket defaults PASS");
+}
