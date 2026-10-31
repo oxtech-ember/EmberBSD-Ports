@@ -136,7 +136,12 @@ def mirror(origin, dest, *, verify=False):
     names = {item.name for item in origin.iterdir()}
     if verify:
         require(dest.is_dir() and not dest.is_symlink(), 'mirrored view component must be local: ' + str(dest))
-        require({item.name for item in dest.iterdir()} == names, 'mirrored view entries changed: ' + str(dest))
+        # Interpreter byte-code caches written into the local mirror are build
+        # products of the view, not source entries.
+        local = {item.name for item in dest.iterdir()
+                 if not (item.name == '__pycache__' and item.name not in names and
+                         item.is_dir() and not item.is_symlink())}
+        require(local == names, 'mirrored view entries changed: ' + str(dest))
     else:
         dest.mkdir()
     for item in origin.iterdir():

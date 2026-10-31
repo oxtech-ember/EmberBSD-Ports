@@ -849,3 +849,12 @@ loader after checking its package ownership, source metadata and bytes; the
 compiled runtime path remains `/usr/pkg`. These options do not install packages
 or validate a target Electron runtime. The Electron runtime package must itself
 declare its common target dependencies, including Undici.
+
+### Hard-link mirrors in the source view
+
+Script interpreters resolve symlinks (Python `sys.path[0]`, esbuild entry
+points), so `third_party/dawn` and `third_party/devtools-frontend` are mirrored
+in `source-view` as local directories of hard links (copies across devices)
+instead of directory symlinks. Verification compares entries and inodes (or
+contents); only interpreter `__pycache__` directories created in the mirror are
+accepted as extra entries.
