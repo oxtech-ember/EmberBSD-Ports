@@ -1,0 +1,39 @@
+Origin: EmberBSD (AI-assisted). Upstream status: not submitted.
+
+--- a/devel/libcutl/Makefile
++++ b/devel/libcutl/Makefile
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.13 2026/08/24 08:42:15 adam Exp $
+ 
+ DISTNAME=	libcutl-1.10.0
+-PKGREVISION=	11
++PKGREVISION=	12
+ CATEGORIES=	devel
+ MASTER_SITES=	https://www.codesynthesis.com/download/libcutl/1.10/
+ EXTRACT_SUFX=	.tar.bz2
+@@ -22,6 +22,17 @@
+ 
+ PKGCONFIG_OVERRIDE+=	libcutl.pc.in
+ 
++# The version file in the source root shadows the C++ <version> header, which
++# -I$(top_srcdir) puts first in the search order. Install it as version.txt.
++post-extract:
++	${MV} ${WRKSRC}/version ${WRKSRC}/version.txt
++
++SUBST_CLASSES+=		version
++SUBST_STAGE.version=	pre-configure
++SUBST_MESSAGE.version=	Installing the version file as version.txt.
++SUBST_FILES.version=	Makefile.in
++SUBST_SED.version=	-e '/^dist_doc_DATA =/s|INSTALL version$$|INSTALL version.txt|'
++
+ .include "../../devel/boost-headers/buildlink3.mk"
+ .include "../../devel/boost-libs/buildlink3.mk"
+ .include "../../textproc/expat/buildlink3.mk"
+--- a/devel/libcutl/PLIST
++++ b/devel/libcutl/PLIST
+@@ -61,4 +61,4 @@
+ share/doc/libcutl/LICENSE
+ share/doc/libcutl/NEWS
+ share/doc/libcutl/README
+-share/doc/libcutl/version
++share/doc/libcutl/version.txt
