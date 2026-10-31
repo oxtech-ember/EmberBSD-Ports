@@ -1,0 +1,23 @@
+Origin: EmberBSD (AI-assisted).
+Cross builds put the PYTHONPATH and _PYTHON_HOST_PLATFORM that select the
+target sysconfig only into MAKE_ENV. GNU configure scripts that use
+AX_PYTHON_DEVEL (textproc/libplist) then asked the build machine Python for
+its own include path, libraries and link flags and linked their probe with
+"-framework CoreFoundation" on macOS. Give GNU configure the same
+environment. Meson and CMake configure steps keep the plain environment:
+Meson itself runs on that interpreter. Not submitted upstream.
+
+--- a/lang/python/pyversion.mk
++++ b/lang/python/pyversion.mk
+@@ -275,6 +275,11 @@
+ # platform; it selects build directories and wheel platform tags.
+ PYTHON_CROSS_HOST_PLATFORM?=	${LOWER_OPSYS}-${OS_VERSION}-${MACHINE_ARCH}
+ MAKE_ENV+=			_PYTHON_HOST_PLATFORM=${PYTHON_CROSS_HOST_PLATFORM:Q}
++# GNU configure scripts (AX_PYTHON_DEVEL) ask this interpreter for the
++# include path, libraries and link flags of the target Python. Meson and
++# CMake are left alone: Meson itself runs on this interpreter.
++CONFIGURE_ENV+=			${GNU_CONFIGURE:DPYTHONPATH=${WRKDIR}/.pysite\:${_CROSS_DESTDIR:Q}${LOCALBASE}/${PYLIB:Q}}
++CONFIGURE_ENV+=			${GNU_CONFIGURE:D_PYTHON_HOST_PLATFORM=${PYTHON_CROSS_HOST_PLATFORM:Q}}
+ _PYTHON_CROSS_SUFFIXES:=	${.PARSEDIR:tA}/cross-extension-suffixes.py
+ pre-configure: ${WRKDIR}/.pysite/sitecustomize.py
+ .include "${PYPKGSRCDIR}/platname.mk"
