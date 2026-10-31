@@ -6,7 +6,9 @@
 # installed, installs into one package database never overlap, a failure
 # blocks its dependents transitively, a skipped dependency blocks too,
 # MAKE_JOBS is split over the packages, a second run builds only the failure
-# again, SIGTERM lets the running packages finish but starts no new one, and
+# again without hashing the done packages, a new PKGNAME or a missing
+# package file builds a done package again, SIGTERM lets the running
+# packages finish but starts no new one, and
 # a package gets one build run (package-install) after show-vars and clean.
 # Usage: cross-bulk-parallel.sh NEW_OUTPUT
 set -eu
@@ -16,7 +18,14 @@ case "$out" in /*) ;; *) echo 'NEW_OUTPUT must be absolute' >&2; exit 2 ;; esac
 case "$out" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2 ;; esac
 [ ! -e "$out" ] || exit 2
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
-mkdir -p "$out/tree/t" "$out/packages/All" "$out/active" "$out/work" "$out/target-db"
+mkdir -p "$out/tree/t" "$out/packages/All" "$out/active" "$out/work" "$out/target-db" "$out/bin"
+real_shasum=$(command -v shasum)
+cat > "$out/bin/shasum" <<WRAP
+#!/bin/sh
+echo "\$*" >> $out/shasum-calls
+exec $real_shasum "\$@"
+WRAP
+chmod +x "$out/bin/shasum"
 : > "$out/errors"
 : > "$out/edges"
 # PACKAGE DEPENDENCIES...
@@ -89,14 +98,14 @@ case "\$target" in
             NATIVE_PKG_ADD_CMD) echo \$out/pkg_add ;;
             *) echo ;;
         esac ;;
-    show-vars) echo "\$pkg-1.0"; echo "\$out/work/\$pkg"; cat \$dir/skip 2> /dev/null || echo ;;
+    show-vars) echo "\$pkg-\$(cat \$dir/version 2> /dev/null || echo 1.0)"; echo "\$out/work/\$pkg"; cat \$dir/skip 2> /dev/null || echo ;;
     clean) rm -f \$out/work/\$pkg.built ;;
     depends) ;;
     package) work ;;
     package-install)
         work
         \$add -K \$out/target-db \$pkg || exit 1
-        : > \$out/packages/All/\$pkg-1.0.tgz ;;
+        echo \$pkg > \$out/packages/All/\$pkg-\$(cat \$dir/version 2> /dev/null || echo 1.0).tgz ;;
     *) echo "UNKNOWN \$target" >> \$out/errors; exit 1 ;;
 esac
 WRAP
@@ -111,7 +120,7 @@ newstate()
 }
 bulk()
 {
-    BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=3 \
+    PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=3 \
         sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1
 }
 calls() { grep -c -- "-C $out/tree/t/$1 " "$out/calls" || :; }
@@ -137,12 +146,27 @@ grep -q '^t/h not for this profile$' "$out/state/skipped" || fail 'h is not skip
 
 # A second run parses each done package once and builds the failure again.
 : > "$out/calls"
+: > "$out/shasum-calls"
 bulk || fail "second build: $(cat "$out/bulk.log")"
 for pkg in a b c d j; do
     [ "$(calls $pkg)" = 1 ] || fail "done package $pkg ran bmake $(calls $pkg) times"
 done
 [ "$(calls f)" = 3 ] || fail "failed package f ran bmake $(calls f) times, expected 3"
 [ "$(calls e)" = 0 ] || fail 'blocked package e ran bmake'
+[ ! -s "$out/shasum-calls" ] || fail "done packages hashed again: $(cat "$out/shasum-calls")"
+
+# A done package whose PKGNAME changed, or whose package file is gone,
+# builds again; a changed package file of a done PKGNAME does not.
+echo 1.1 > "$out/tree/t/a/version"
+rm "$out/packages/All/c-1.0.tgz"
+echo changed > "$out/packages/All/b-1.0.tgz"
+: > "$out/calls"
+bulk || fail "third build: $(cat "$out/bulk.log")"
+[ "$(calls a)" = 3 ] || fail "package a with a new PKGNAME ran bmake $(calls a) times, expected 3"
+[ "$(calls c)" = 3 ] || fail "package c without its file ran bmake $(calls c) times, expected 3"
+[ "$(calls b)" = 1 ] || fail "package b with a changed file ran bmake $(calls b) times, expected 1"
+grep -q '^t/a a-1.1 ' "$out/state/done" || fail "no record of a-1.1: $(cat "$out/state/done")"
+rm "$out/tree/t/a/version"
 
 # SIGTERM: the running packages finish, nothing new starts.
 newstate

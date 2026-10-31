@@ -55,7 +55,9 @@
 # the WRKDIR as before (CROSS_BULK_TRASH=no forces that).
 #
 # A built package is recorded in STATE/done with its PKGNAME and SHA256.
-# The build skips a package if the record and the package file agree.
+# The build skips a package whose PKGPATH and PKGNAME have a record there
+# and whose package file exists; the file is not hashed again. A new
+# PKGNAME or a missing package file builds it again.
 # Failures go to STATE/failed. Packages with a failed dependency go to
 # STATE/blocked. Logs are in STATE/logs.
 set -eu
@@ -617,7 +619,7 @@ result()
 # A native node is built and installed into the native host prefix as
 # pkgsrc's depends step would do it. Its binary package goes to
 # PACKAGES-native/All, not to PACKAGES/All, where the target package of
-# the same PKGNAME is and where STATE/done has its checksum. One that a
+# the same PKGNAME is and where STATE/done has its record. One that a
 # target package needs gets the target settings (CROSSTARGETSETTINGS)
 # that pkgsrc passes to such a tool. It is done when the native prefix has
 # a package of its PKGBASE at its version or newer. An older one is
@@ -713,7 +715,7 @@ build_one()
         return 0
     fi
     file=$packages/$name.tgz
-    if [ -f "$file" ] && grep -qFx "$path $name $(shasum -a 256 "$file" | cut -d ' ' -f 1)" "$state/done"; then
+    if [ -f "$file" ] && awk -v p="$path" -v n="$name" '$1 == p && $2 == n { f = 1; exit } END { exit !f }' "$state/done"; then
         result "$key" "done $path"
         return 0
     fi
