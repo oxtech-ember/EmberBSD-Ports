@@ -14,8 +14,11 @@ python3 -B scripts/source-inputs/libfetch/source.py --sdk-source /path/to/sdk-so
 ```
 
 An existing shared export can be selected with `--pkgsrc-export` and the same
-explicit patch tool. Its validated receipt selects the existing tree directly;
-preparation and verification do not create another full pkgsrc export.
+explicit patch tool. New shared exports record a snapshot of the libfetch FILESDIR; preparation
+checks its contents and execute modes without another full pkgsrc export.
+A legacy receipt without a snapshot requires a canonical export for comparison.
+The caller owns the export; the snapshot detects accidental changes, not an
+authenticated or adversarially protected directory.
 The consumer generates error headers in its object tree;
 the prepared source remains read-only. Run `test-source.py` with the selected
 Python, SDK source, Git and prepared source paths for its focused verification.

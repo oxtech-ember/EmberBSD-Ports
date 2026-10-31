@@ -42,17 +42,7 @@ def require(condition, message):
 
 
 def payload(root):
-    root = Path(root)
-    require(root.is_dir() and not root.is_symlink(), 'missing libfetch FILESDIR')
-    rows = {}
-    for path in root.rglob('*'):
-        require(not path.is_symlink(), 'symlink in libfetch FILESDIR')
-        if path.is_file():
-            rows[str(path.relative_to(root))] = (
-                bool(path.stat().st_mode & 0o111), hashlib.sha256(path.read_bytes()).hexdigest())
-        else:
-            require(path.is_dir(), 'non-regular entry in libfetch FILESDIR')
-    return rows
+    return identity_module().material_snapshot(root)
 
 
 def copy_files(exported, root, expected):
@@ -74,12 +64,21 @@ def export_tree(tmp, git, patch, shared):
     selected = (identity_module().shared_export(shared, PORTS, git, SDK_SOURCE, patch)
                 if shared else None)
     if selected is not None:
-        return selected, payload(selected / PACKAGE / 'files')
+        snapshot = identity_module().shared_export_material(shared, PACKAGE + '/files')
+        if snapshot is not None:
+            require(payload(selected / PACKAGE / 'files') == snapshot,
+                    'shared libfetch FILESDIR differs from export snapshot')
+            return selected, snapshot
     exported = Path(tmp) / 'pkgsrc'
     process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
                      str(exported), '--git', git, '--patch', patch],
                     env=process.sanitized_environment())
-    return exported, payload(exported / PACKAGE / 'files')
+    expected = payload(exported / PACKAGE / 'files')
+    if selected is not None:
+        require(payload(selected / PACKAGE / 'files') == expected,
+                'shared libfetch FILESDIR differs from current export')
+        return selected, expected
+    return exported, expected
 
 
 def prepare(output, git, patch, shared=None):
@@ -108,7 +107,8 @@ def verify(source, git, patch, shared=None):
     current = identity(git)
     if identity_module().current_git_package(old, current['owner_sha256'], lambda: current['effective']):
         if shared:
-            identity_module().shared_export(shared, PORTS, git, SDK_SOURCE, patch)
+            with tempfile.TemporaryDirectory(prefix='.libfetch-export-verify-') as tmp:
+                export_tree(tmp, git, patch, shared)
         return record
     require(patch and os.path.isabs(patch), 'changed libfetch identity requires an explicit patch tool')
     with tempfile.TemporaryDirectory(prefix='.libfetch-verify-') as tmp:

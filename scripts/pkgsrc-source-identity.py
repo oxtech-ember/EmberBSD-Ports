@@ -359,6 +359,36 @@ def export_inputs(ports_root, git, sdk_source, package=None):
 
 SHARED_EXPORT_RECEIPT = 'pkgsrc-export.json'
 SHARED_EXPORT_FORMAT = 'emberbsd-pkgsrc-shared-export'
+# These small source directories are consumed directly from the shared export.
+SHARED_EXPORT_MATERIAL = ('net/libfetch/files',)
+
+
+def material_snapshot(root):
+    """Snapshot regular files by relative path, execute mode and SHA256."""
+    root = Path(root)
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError('missing shared export material directory')
+    rows = {}
+    for path in root.rglob('*'):
+        if path.is_symlink():
+            raise ValueError('symlink in shared export material')
+        if path.is_file():
+            rows[path.relative_to(root).as_posix()] = [
+                bool(path.stat().st_mode & 0o111), hashlib.sha256(path.read_bytes()).hexdigest()]
+        elif path.is_dir():
+            rows[path.relative_to(root).as_posix()] = ['directory']
+        else:
+            raise ValueError('non-regular shared export material')
+    return rows
+
+
+def shared_export_material(directory, relative):
+    """Return a stored snapshot, or None for a legacy v1 export."""
+    receipt = json.loads((Path(directory) / SHARED_EXPORT_RECEIPT).read_text(encoding='ascii'))
+    if receipt['version'] == 1:
+        return None
+    return receipt['material'][relative]
+
 
 
 def export_identity(ports_root, git, sdk_source, patch):
@@ -392,7 +422,9 @@ def create_shared_export(directory, ports_root, git, sdk_source, patch):
                    check=True, env=process.sanitized_environment(), stdout=sys.stderr)
     if export_identity(ports_root, git, sdk_source, patch) != before:
         raise ValueError('pkgsrc export inputs changed during the shared export')
-    receipt = {'format': SHARED_EXPORT_FORMAT, 'version': 1, 'identity': before}
+    receipt = {'format': SHARED_EXPORT_FORMAT, 'version': 2, 'identity': before,
+               'material': {name: material_snapshot(directory / 'pkgsrc' / name)
+                            for name in SHARED_EXPORT_MATERIAL}}
     with open(directory / SHARED_EXPORT_RECEIPT, 'x', encoding='ascii') as output:
         output.write(json.dumps(receipt, sort_keys=True) + '\n')
     return receipt
@@ -412,9 +444,13 @@ def shared_export(directory, ports_root, git, sdk_source, patch):
     if path.is_symlink() or not path.is_file():
         raise ValueError('shared pkgsrc export has no receipt')
     receipt = json.loads(path.read_text(encoding='ascii'))
-    if (not isinstance(receipt, dict) or set(receipt) != {'format', 'version', 'identity'} or
-            receipt['format'] != SHARED_EXPORT_FORMAT or type(receipt['version']) is not int or
-            receipt['version'] != 1):
+    if (not isinstance(receipt, dict) or receipt.get('format') != SHARED_EXPORT_FORMAT or
+            type(receipt.get('version')) is not int or receipt['version'] not in (1, 2) or
+            set(receipt) != ({'format', 'version', 'identity'} if receipt['version'] == 1 else
+                             {'format', 'version', 'identity', 'material'}) or
+            (receipt['version'] == 2 and
+             (not isinstance(receipt['material'], dict) or
+              set(receipt['material']) != set(SHARED_EXPORT_MATERIAL)))):
         raise ValueError('invalid shared pkgsrc export receipt')
     if receipt['identity'] != export_identity(ports_root, git, sdk_source, patch):
         raise ValueError('shared pkgsrc export was made from different inputs')
