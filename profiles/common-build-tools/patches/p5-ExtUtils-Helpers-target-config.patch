@@ -1,0 +1,19 @@
+$NetBSD$
+
+Name manual pages from the target Config in a cross build.
+ExtUtils::MakeMaker::Config gives the target Config.pm data named by
+EMBERBSD_PERL_BUILD_CONFIG in a cross build and the running Config
+otherwise.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- lib/ExtUtils/Helpers.pm.orig
++++ lib/ExtUtils/Helpers.pm
+@@ -4,7 +4,7 @@
+ use warnings FATAL => 'all';
+ use Exporter 5.57 'import';
+ 
+-use Config;
++use ExtUtils::MakeMaker::Config;
+ use File::Basename qw/basename/;
+ use File::Spec::Functions qw/splitpath canonpath abs2rel splitdir/;
+ 

@@ -1,0 +1,19 @@
+$NetBSD$
+
+Give installed scripts the target startperl in a cross build.
+ExtUtils::MakeMaker::Config gives the target Config.pm data named by
+EMBERBSD_PERL_BUILD_CONFIG in a cross build and the running Config
+otherwise; the host startperl named the build machine's Perl.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- lib/ExtUtils/Helpers/Unix.pm.orig
++++ lib/ExtUtils/Helpers/Unix.pm
+@@ -8,7 +8,7 @@
+ our @EXPORT = qw/make_executable split_like_shell detildefy/;
+ 
+ use Carp qw/croak/;
+-use Config;
++use ExtUtils::MakeMaker::Config;
+ use Text::ParseWords 3.24 qw/shellwords/;
+ 
+ my $layer = $] >= 5.008001 ? ":raw" : "";
