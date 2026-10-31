@@ -1,0 +1,33 @@
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+Record the selected native Darwin C++ ABI for libmpdec++.
+
+--- a/math/mpdecimal/Makefile
++++ b/math/mpdecimal/Makefile
+@@ -2,6 +2,13 @@
+ 
+ DISTNAME=	mpdecimal-4.0.1
+ CATEGORIES=	math
++
++.include "../../mk/bsd.prefs.mk"
++.include "../../mk/emberbsd-native-cxx-runtime.mk"
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
++    ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
++PKGREVISION=	1
++.endif
+ MASTER_SITES=	https://www.bytereef.org/software/mpdecimal/releases/
+ 
+ MAINTAINER=	skrah@bytereef.org
+--- a/math/mpdecimal/buildlink3.mk
++++ b/math/mpdecimal/buildlink3.mk
+@@ -6,6 +6,11 @@
+ MPDECIMAL_BUILDLINK3_MK:=
+ 
+ BUILDLINK_API_DEPENDS.mpdecimal+=	mpdecimal>=4.0.0
++.include "../../mk/bsd.fast.prefs.mk"
++.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
++    ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
++BUILDLINK_ABI_DEPENDS.mpdecimal+=	mpdecimal>=4.0.1nb1
++.endif
+ BUILDLINK_PKGSRCDIR.mpdecimal?=		../../math/mpdecimal
+ .endif	# MPDECIMAL_BUILDLINK3_MK
+ 
