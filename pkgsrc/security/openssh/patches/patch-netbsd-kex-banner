@@ -1,0 +1,73 @@
+$NetBSD$
+
+Keep banner messages writable for atomicio and preserve string constness.
+
+--- kex.c.orig
++++ kex.c
+@@ -448,7 +448,7 @@
+ 		return SSH_ERR_INVALID_FORMAT;
+ 	}
+ 	debug_f("%s=<%s>", name, val);
+-	if (strcmp(val, want_ver) == 0)
++	if (strcmp((const char *)val, want_ver) == 0)
+ 		kex->flags |= flag;
+ 	else
+ 		debug_f("unsupported version of %s extension", name);
+@@ -1257,7 +1257,7 @@
+ static void
+ send_error(struct ssh *ssh, char *msg)
+ {
+-	char *crnl = "\r\n";
++	char crnl[] = "\r\n";
+ 
+ 	if (!ssh->kex->server)
+ 		return;
+@@ -1288,6 +1288,10 @@
+ 	    ssh->kex->client_version : ssh->kex->server_version;
+ 	char *our_version_string = NULL, *peer_version_string = NULL;
+ 	char *cp, *remote_version = NULL;
++	char no_ident[] = "No SSH identification string received.";
++	char timeout_ident[] = "Timed out waiting for SSH identification string.";
++	char invalid_ident[] = "Invalid SSH identification string.";
++	char version_mismatch[] = "Protocol major versions differ.";
+ 
+ 	/* Prepare and send our banner */
+ 	sshbuf_reset(our_version);
+@@ -1326,8 +1330,7 @@
+ 	/* Read other side's version identification. */
+ 	for (n = 0; ; n++) {
+ 		if (n >= SSH_MAX_PRE_BANNER_LINES) {
+-			send_error(ssh, "No SSH identification string "
+-			    "received.");
++			send_error(ssh, no_ident);
+ 			error_f("No SSH version received in first %u lines "
+ 			    "from server", SSH_MAX_PRE_BANNER_LINES);
+ 			r = SSH_ERR_INVALID_FORMAT;
+@@ -1340,8 +1343,7 @@
+ 				r = waitrfd(ssh_packet_get_connection_in(ssh),
+ 				    &timeout_ms, NULL);
+ 				if (r == -1 && errno == ETIMEDOUT) {
+-					send_error(ssh, "Timed out waiting "
+-					    "for SSH identification string.");
++					send_error(ssh, timeout_ident);
+ 					error("Connection timed out during "
+ 					    "banner exchange");
+ 					r = SSH_ERR_CONN_TIMEOUT;
+@@ -1426,7 +1428,7 @@
+ 		error("Bad remote protocol version identification: '%.100s'",
+ 		    peer_version_string);
+  invalid:
+-		send_error(ssh, "Invalid SSH identification string.");
++		send_error(ssh, invalid_ident);
+ 		r = SSH_ERR_INVALID_FORMAT;
+ 		goto out;
+ 	}
+@@ -1449,7 +1451,7 @@
+ 	if (mismatch) {
+ 		error("Protocol major versions differ: %d vs. %d",
+ 		    PROTOCOL_MAJOR_2, remote_major);
+-		send_error(ssh, "Protocol major versions differ.");
++		send_error(ssh, version_mismatch);
+ 		r = SSH_ERR_NO_PROTOCOL_VERSION;
+ 		goto out;
+ 	}
