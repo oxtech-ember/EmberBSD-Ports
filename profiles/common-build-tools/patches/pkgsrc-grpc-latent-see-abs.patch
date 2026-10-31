@@ -1,0 +1,39 @@
+# Keep grpc's latent_see timestamps in int64_t with std::abs.
+# Origin: EmberBSD (AI-assisted).
+
+--- a/net/grpc/distinfo
++++ b/net/grpc/distinfo
+@@ -8,4 +8,4 @@
+ Size (opencensus-proto-0.3.0.tar.gz) = 163404 bytes
+ SHA1 (patch-CMakeLists.txt) = 039e65ed5258819379d7d293e83878880e9b82af
+ SHA1 (patch-include_grpc_event__engine_port.h) = ee0937d5ec59d2f0a462a64145fc63ef68564c17
+-SHA1 (patch-src_core_util_latent__see.cc) = 57aa0fa4a450b910f7de594e0869c887a9c7407d
++SHA1 (patch-src_core_util_latent__see.cc) = 32d8d502bf2016f9c55ea438d1a90af565d510bd
+--- a/net/grpc/patches/patch-src_core_util_latent__see.cc
++++ b/net/grpc/patches/patch-src_core_util_latent__see.cc
+@@ -1,18 +1,18 @@
+ $NetBSD: patch-src_core_util_latent__see.cc,v 1.1 2026/04/16 09:58:37 adam Exp $
+ 
+-Fix build on NetBSD.
++Fix build on NetBSD: unqualified abs() may resolve to abs(int), which does
++not match int64_t in std::min. Use std::abs and keep the int64_t type, so
++timestamps are not truncated and libc++ finds the same overload.
+ 
+ --- src/core/util/latent_see.cc.orig	2026-03-24 23:06:54.000000000 +0000
+ +++ src/core/util/latent_see.cc
+-@@ -186,7 +186,11 @@ void Collect(Notification* n, absl::Duration timeout, 
++@@ -186,7 +186,8 @@ void Collect(Notification* n, absl::Duration timeout, 
+              {earliest_timestamp, event.timestamp_begin, event.timestamp_end});
+        } else {
+          earliest_timestamp =
+-+#ifdef __NetBSD__
+-+            std::min(static_cast<int>(earliest_timestamp), abs(event.timestamp_end));
+-+#else
+-             std::min(earliest_timestamp, abs(event.timestamp_end));
+-+#endif
++-            std::min(earliest_timestamp, abs(event.timestamp_end));
+++            std::min(earliest_timestamp,
+++                     static_cast<int64_t>(std::abs(event.timestamp_end)));
+        }
+      }
+    }
