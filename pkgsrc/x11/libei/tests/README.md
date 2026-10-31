@@ -9,6 +9,12 @@ The previous cross configuration omitted these consumers after trying to run
 an AArch64 compiler probe on macOS. Check the real `compile_commands.json`
 for both C++ outputs and their `INCLUDE_LIBEI` / `INCLUDE_LIBEIS` definitions.
 
+`patch-test_buildtest.cc` declares `std` with `<cstddef>` after the libei
+headers. Clang rejects the upstream `using namespace std;` under `-Werror`
+when nothing has declared `std`. Run
+`BMAKE=bmake sh pkgsrc/x11/libei/tests/cxx-buildtest.sh PKGSRC MAKECONF`;
+it compiles both header checks with the recipe's C++ compiler.
+
 ## Safe arithmetic regression
 
 The protocol length helper must reject values that cannot fit after adding

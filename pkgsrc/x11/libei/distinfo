@@ -9,3 +9,4 @@ Size (munit-fbbdf1467eb0d04a6ee465def2e529e4c87f2118.tar.gz) = 27724 bytes
 SHA1 (patch-subprojects_munit_meson.build) = 26e8c4c080976b9a69e4472868adc6608f76624c
 SHA1 (patch-test_meson.build) = f39d75bd2ffa0d94e9afbcbf16a0036897b8f508
 SHA1 (patch-src_brei-shared.c) = e5d65b7c6ef4f53083e76f4b15fa26e9148d27ad
+SHA1 (patch-test_buildtest.cc) = e4552a2fc3d89223439590abfe51735b7ffd177a
