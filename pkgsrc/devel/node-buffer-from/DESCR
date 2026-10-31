@@ -1,0 +1,1 @@
+A [ponyfill](https://ponyfill.com) for `Buffer.from`, uses native implementation if available.

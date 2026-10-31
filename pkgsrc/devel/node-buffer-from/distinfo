@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (buffer-from-1.1.2.tgz) = 31b7a09cce592d5ecaeebad540180a0cffaf55cbe7ca93b36530628c65905a30
+SHA512 (buffer-from-1.1.2.tgz) = 13e5d0091c126da6a20a1b6fea4e83c2073e6f1f81b3abee2891c7979928c7f05a29b8625f3a903b02b870edb6c84946a763829a3c15853dc79b18323c69c97d
+Size (buffer-from-1.1.2.tgz) = 2313 bytes
