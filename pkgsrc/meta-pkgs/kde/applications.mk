@@ -21,4 +21,9 @@ CMAKE_CONFIGURE_ARGS+= -DKDE_INSTALL_QTPLUGINDIR=qt6/plugins
 CMAKE_CONFIGURE_ARGS+= -DKDE_INSTALL_QMLDIR=qt6/qml
 CMAKE_CONFIGURE_ARGS+= -DKDE_INSTALL_QTMETATYPESDIR=qt6/metatypes
 CMAKE_CONFIGURE_ARGS+= -DKDE_INSTALL_QTQCHDIR=qt6/doc
+# The recipes name the full kf6-kdoctools as a tool. Its native build needs
+# KI18n, QML and the Qt GUI stack, which the native host-tools Qt does not
+# provide. A cross build only runs meinproc6, checkXML6 and
+# docbookl10nhelper, so it takes them from kf6-kdoctools-generators.
+EMBERBSD_CROSS_TOOL_REPLACE+= devel/kf6-kdoctools
 .endif

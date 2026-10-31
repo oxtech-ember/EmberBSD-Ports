@@ -1,0 +1,32 @@
+A cross build can replace a recipe's native tool package.
+
+EMBERBSD_CROSS_TOOL_REPLACE names package directories. A cross build
+drops the TOOL_DEPENDS entries on such a directory and includes its
+cross-tools.mk, which names a smaller native package with the same build
+tools. KDE applications name the full kf6-kdoctools, whose native build
+needs the Qt GUI stack; their cross builds take kf6-kdoctools-generators.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/mk/bsd.pkg.mk
++++ b/mk/bsd.pkg.mk
+@@ -121,6 +121,20 @@
+ 
+ .if (defined(INSTALL_UNSTRIPPED) && !empty(INSTALL_UNSTRIPPED:M[yY][eE][sS]))
+ _INSTALL_UNSTRIPPED=	# set (flag used by platform/*.mk)
++.endif
++
++# Origin: EmberBSD (AI-assisted). A cross build can take a build tool from
++# a smaller native package than the one a recipe names. Each word of
++# EMBERBSD_CROSS_TOOL_REPLACE is a package directory such as
++# devel/kf6-kdoctools. A cross build drops the TOOL_DEPENDS entries on that
++# directory and includes its cross-tools.mk, which names the replacement.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++.  for _ember_dir_ in ${EMBERBSD_CROSS_TOOL_REPLACE:U:O:u}
++.    if !empty(TOOL_DEPENDS:M*\:../../${_ember_dir_})
++TOOL_DEPENDS:=	${TOOL_DEPENDS:N*\:../../${_ember_dir_}}
++.      include "${PKGSRCDIR}/${_ember_dir_}/cross-tools.mk"
++.    endif
++.  endfor
+ .endif
+ 
+ ##### Transform USE_* into dependencies
