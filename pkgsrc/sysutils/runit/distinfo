@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (runit-2.3.1.tar.gz) = 549730a40e73b80735b584c46fd02cb2055bef01c8ff83117587b5fa27076ea8
+SHA512 (runit-2.3.1.tar.gz) = 448fb5de516fe3fded478a7e24cc54e5bf68e465681ec911ec8988c39da17ee7bbb62cd2faeb40bdd95d439d2b6fba170a40c7f8567b0db1664f4a1a763138db
+Size (runit-2.3.1.tar.gz) = 107972 bytes

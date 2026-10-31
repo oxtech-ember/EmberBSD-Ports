@@ -12,6 +12,7 @@ textproc/expat
 devel/libidn2
 textproc/hyphen
 sysutils/libnotify
+sysutils/runit
 textproc/gspell
 devel/editline
 devel/elftoolchain
