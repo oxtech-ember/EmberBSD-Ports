@@ -1,9 +1,9 @@
 $NetBSD$
 
 NetBSD has no sys/prctl.h; the thread-name fallback keeps the
-pid-based program name.
+pid-based program name. NetBSD has no EBADFD; use EBADF.
 
---- src/pipewire/pipewire.c.orig	2026-10-13
+--- src/pipewire/pipewire.c.orig
 +++ src/pipewire/pipewire.c
 @@ -7,7 +7,7 @@
  #include <unistd.h>
@@ -14,7 +14,19 @@ pid-based program name.
  #include <sys/prctl.h>
  #endif
  #include <pwd.h>
-@@ -683,7 +683,7 @@
+@@ -15,6 +15,11 @@
+ #include <dlfcn.h>
+ #include <pthread.h>
+ 
++/* NetBSD has no EBADFD; pw_init() not called is a bad descriptor state. */
++#ifndef EBADFD
++#define EBADFD EBADF
++#endif
++
+ #include <locale.h>
+ #include <libintl.h>
+ 
+@@ -683,7 +688,7 @@
  		}
  	}
  #endif
