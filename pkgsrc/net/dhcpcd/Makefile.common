@@ -1,0 +1,7 @@
+# Source release shared by dhcpcd consumers.
+DHCPCD_VERSION=	10.5.2
+DISTNAME=	dhcpcd-${DHCPCD_VERSION}
+MASTER_SITES=	${MASTER_SITE_GITHUB:=NetworkConfiguration/}
+GITHUB_RELEASE=	v${DHCPCD_VERSION}
+EXTRACT_SUFX=	.tar.xz
+DHCPCD_SOURCE_DIR?= ${EMBERBSD_HOST_PREFIX:U${TOOLBASE}}/share/dhcpcd-source
