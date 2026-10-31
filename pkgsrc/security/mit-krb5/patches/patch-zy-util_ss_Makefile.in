@@ -1,0 +1,15 @@
+$NetBSD$
+
+Build library objects after their exported headers.
+
+--- util/ss/Makefile.in
++++ util/ss/Makefile.in
+@@ -65,6 +65,8 @@
+ HDRS =	$(HDRDIR)/ss.h \
+ 	$(HDRDIR)/ss_err.h
+ 
++$(STLIBOBJS) $(SHLIBOBJS) $(PFLIBOBJS) $(LALIBOBJS): $(HDRS)
++
+ BUILD_HDRS = ss_err.h
+ SRC_HDRS = ss.h 
+ SRC_HDRS_DEP = $(srcdir)/ss.h

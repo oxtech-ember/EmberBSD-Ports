@@ -1,0 +1,14 @@
+$NetBSD$
+
+Build library objects after their exported headers.
+
+--- lib/gssapi/generic/Makefile.in
++++ lib/gssapi/generic/Makefile.in
+@@ -104,6 +104,7 @@
+ EXPORTED_BUILT_HEADERS= gssapi.h
+ 
+ $(OBJS): $(EXPORTED_HEADERS) $(ETHDRS)
++$(STLIBOBJS) $(SHLIBOBJS) $(PFLIBOBJS) $(LALIBOBJS): $(HDRS)
+ 
+ all-unix: $(EXPORTED_HEADERS) $(ETHDRS) $(HDRS)
+ all-unix: all-libobjs

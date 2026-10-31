@@ -43,5 +43,7 @@ SHA1 (patch-z-cross-aclocal_m4) = 1e6f9b55bf16ac6d3a182167338eee11e88661ac
 SHA1 (patch-z-cross-configure_ac) = 07f879e1fd5debdaa69415864156b2f668393e6f
 SHA1 (patch-util_et_Makefile.in) = 17ab1ba30eb9720b84363d96875ed2ae854122be
 SHA1 (patch-zz-libtool-nodelete) = 284e5202a85042ded48dea7155579cd728949a80
+SHA1 (patch-zy-lib_gssapi_generic_Makefile.in) = 1f1e4d4a1c4aba158cb462deee7cc1dc1145314b
+SHA1 (patch-zy-util_ss_Makefile.in) = 7d2939ea319bac4efc44fb0db044256b9bf5e52b
 SHA1 (patch-zz-plugins__preauth__pkinit__pkinit__crypto__openssl.c) = 82d636146ed5cebc0e7fd60268e572fd810f3ede
 SHA1 (patch-zz-plugins__tls__k5tls__openssl.c) = f174db99d82f0134204959b61a4e409de22e6d05

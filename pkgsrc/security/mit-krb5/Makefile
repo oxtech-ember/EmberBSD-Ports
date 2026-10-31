@@ -5,7 +5,7 @@ EMBERBSD_MIT_KRB5_PKGDIR:= ${.PARSEDIR:tA}
 BRANCHNAME=	1.22
 DISTNAME=	krb5-${BRANCHNAME}.2
 PKGNAME=	mit-${DISTNAME}
-PKGREVISION=	8
+PKGREVISION=	9
 CATEGORIES=	security
 # It is not clear how stable this URL scheme is.
 MASTER_SITES=	http://web.mit.edu/kerberos/dist/krb5/${BRANCHNAME}/
@@ -25,7 +25,7 @@ COMMENT=	MIT Kerberos 5 authentication system
 # actively harmful when trying to run the test suite.  They should really
 # be completely deleted and we instead homogenise shared objects to have
 # the same naming across all platforms.
-MAKE_JOBS_SAFE=	no
+MAKE_JOBS_SAFE=	yes
 
 WRKSRC=		${WRKDIR}/${DISTNAME}/src
 
