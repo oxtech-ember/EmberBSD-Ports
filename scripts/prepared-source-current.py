@@ -38,6 +38,7 @@ OWNERS = {
     'libfido2': ('scripts/source-inputs/libfido2/source.py', 'security/libfido2'),
     'libfetch': ('scripts/source-inputs/libfetch/source.py', 'net/libfetch'),
     'openldap': ('scripts/source-inputs/openldap/source.py', 'databases/openldap'),
+    'unbound': ('scripts/source-inputs/unbound/source.py', 'net/unbound'),
     'libcbor': ('scripts/source-inputs/libcbor/source.py', 'devel/libcbor'),
     'byacc': ('scripts/source-inputs/byacc/source.py', 'devel/byacc'),
     'texinfo': ('scripts/source-inputs/texinfo/source.py', 'devel/gtexinfo'),

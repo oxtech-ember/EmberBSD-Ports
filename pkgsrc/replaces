@@ -504,3 +504,6 @@ databases/openldap-doc
 
 # Updated common X/Y/ZMODEM implementation.
 comms/lrzsz
+
+# Current shared Unbound.
+net/unbound
