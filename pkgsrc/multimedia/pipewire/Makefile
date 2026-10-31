@@ -47,6 +47,11 @@ pipewire-native-file:
 MESON_NATIVE_ARGS+=	--native-file ${WRKDIR}/.meson-pipewire-native
 
 .include "../../devel/meson/build.mk"
+.if ${OPSYS} == "NetBSD"
+# epoll and signalfd for spa/plugins/support/system.c, as on FreeBSD.
+.  include "../../devel/libepoll-shim/buildlink3.mk"
+CPPFLAGS+=	-I${BUILDLINK_PREFIX.libepoll-shim}/include/libepoll-shim
+.endif
 .include "../../devel/glib2/buildlink3.mk"
 .include "../../sysutils/dbus/buildlink3.mk"
 .include "../../devel/libudev-bsd/buildlink3.mk"

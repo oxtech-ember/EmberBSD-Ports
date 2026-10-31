@@ -1,0 +1,17 @@
+$NetBSD$
+
+Use epoll-shim on NetBSD for epoll() and signalfd(), as on FreeBSD.
+
+--- meson.build.orig
++++ meson.build
+@@ -488,7 +488,9 @@
+ endif
+ 
+ # On FreeBSD and MidnightBSD, epoll-shim library is required for eventfd() and timerfd()
+-epoll_shim_dep = (host_machine.system() == 'freebsd' or host_machine.system() == 'midnightbsd'
++# NetBSD has eventfd() and timerfd() natively but needs epoll-shim for
++# epoll() and signalfd().
++epoll_shim_dep = (host_machine.system() == 'freebsd' or host_machine.system() == 'midnightbsd' or host_machine.system() == 'netbsd'
+     ? dependency('epoll-shim', required: true)
+     : dependency('', required: false))
+ 
