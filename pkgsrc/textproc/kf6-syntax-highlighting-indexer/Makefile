@@ -7,6 +7,14 @@
 PKGNAME=	kf6-syntax-highlighting-indexer-${KF6VER}
 COMMENT=	Native syntax definition indexer for cross builds
 
+# Define do-install before kf6.mk includes devel/cmake/build.mk, which
+# otherwise adds its full-project cmake-install. Only the tool is installed.
+INSTALLATION_DIRS=	bin
+
+do-install:
+	${INSTALL_PROGRAM} ${WRKSRC}/${CMAKE_BUILD_DIR}/bin/katehighlightingindexer \
+	    ${DESTDIR}${PREFIX}/bin/katehighlightingindexer
+
 .include "../../meta-pkgs/kde/kf6.mk"
 
 .include "../../mk/bsd.prefs.mk"
@@ -24,12 +32,6 @@ CMAKE_CONFIGURE_ARGS+=	-DCMAKE_DISABLE_FIND_PACKAGE_Python=ON
 BUILD_TARGET=		katehighlightingindexer
 
 USE_TOOLS+=	perl
-
-INSTALLATION_DIRS=	bin
-
-do-install:
-	${INSTALL_PROGRAM} ${WRKSRC}/${CMAKE_BUILD_DIR}/bin/katehighlightingindexer \
-	    ${DESTDIR}${PREFIX}/bin/katehighlightingindexer
 
 .include "../../devel/qt6-qttools/linguist.mk"
 .include "../../textproc/xerces-c/buildlink3.mk"

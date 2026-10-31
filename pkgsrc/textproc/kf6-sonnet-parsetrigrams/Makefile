@@ -7,6 +7,14 @@
 PKGNAME=	kf6-sonnet-parsetrigrams-${KF6VER}
 COMMENT=	Native Sonnet trigram generator for cross builds
 
+# Define do-install before kf6.mk includes devel/cmake/build.mk, which
+# otherwise adds its full-project cmake-install. Only the tool is installed.
+INSTALLATION_DIRS=	bin
+
+do-install:
+	${INSTALL_PROGRAM} ${WRKSRC}/${CMAKE_BUILD_DIR}/bin/parsetrigrams6 \
+	    ${DESTDIR}${PREFIX}/bin/parsetrigrams6
+
 .include "../../meta-pkgs/kde/kf6.mk"
 
 .include "../../mk/bsd.prefs.mk"
@@ -24,12 +32,6 @@ BUILD_TARGET=		parsetrigrams
 
 # Both install bin/parsetrigrams6.
 CONFLICTS+=	kf6-sonnet-[0-9]*
-
-INSTALLATION_DIRS=	bin
-
-do-install:
-	${INSTALL_PROGRAM} ${WRKSRC}/${CMAKE_BUILD_DIR}/bin/parsetrigrams6 \
-	    ${DESTDIR}${PREFIX}/bin/parsetrigrams6
 
 .include "../../devel/qt6-qttools/linguist.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
