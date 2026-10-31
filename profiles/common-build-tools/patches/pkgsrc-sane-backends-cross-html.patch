@@ -1,0 +1,41 @@
+Origin: EmberBSD (AI-assisted).
+Upstream status: not submitted.
+sane-backends makes its HTML backend and manufacturer lists by running
+the sane-desc it builds, so configure leaves them out when
+cross-compiling. The cross package stopped with "The following files are
+in the PLIST but not in" the destination directory. List them only in
+native builds.
+
+--- a/graphics/sane-backends/Makefile
++++ b/graphics/sane-backends/Makefile
+@@ -33,6 +33,13 @@
+ PLIST.pint=		yes
+ .endif
+ 
++# The HTML backend lists are made by running the new sane-desc, which
++# configure leaves out when cross-compiling.
++PLIST_VARS+=		html
++.if ${USE_CROSS_COMPILE:tl} != "yes"
++PLIST.html=		yes
++.endif
++
+ LIBS.SunOS+=	-lresolv -lnsl -lsocket
+ 
+ OWN_DIRS+=	${PKG_SYSCONFDIR}/sane.d
+--- a/graphics/sane-backends/PLIST
++++ b/graphics/sane-backends/PLIST
+@@ -259,10 +259,10 @@
+ share/doc/sane-backends/plustek/Plustek-USB-TODO.txt
+ share/doc/sane-backends/plustek/Plustek-USB.changes
+ share/doc/sane-backends/plustek/Plustek-USB.txt
+-share/doc/sane-backends/sane-backends-external.html
+-share/doc/sane-backends/sane-backends.html
+-share/doc/sane-backends/sane-mfgs-external.html
+-share/doc/sane-backends/sane-mfgs.html
++${PLIST.html}share/doc/sane-backends/sane-backends-external.html
++${PLIST.html}share/doc/sane-backends/sane-backends.html
++${PLIST.html}share/doc/sane-backends/sane-mfgs-external.html
++${PLIST.html}share/doc/sane-backends/sane-mfgs.html
+ share/doc/sane-backends/saned/saned.install.md
+ share/doc/sane-backends/sceptre/s1200.txt
+ share/doc/sane-backends/teco/teco1.txt
