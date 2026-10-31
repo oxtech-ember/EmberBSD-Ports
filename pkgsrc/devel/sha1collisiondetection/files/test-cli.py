@@ -26,9 +26,11 @@ normal = run("sha1dcsum", "-", input=b"abc")
 assert normal.returncode == 0 and normal.stdout.startswith(
     b"a9993e364706816aba3e25717850c26c9cd0d89d "
 ), normal
-missing = run("sha1dcsum", source / "test" / "does-not-exist")
-assert missing.returncode == 1 and missing.stderr.startswith(b"cannot open file: ") \
-    and b": No such file or directory" in missing.stderr and not missing.stdout, missing
+missing_path = source / "test" / "does-not-exist"
+missing = run("sha1dcsum", missing_path)
+assert missing.returncode == 1 and not missing.stdout and missing.stderr == (
+    b"cannot open file: " + os.fsencode(missing_path) + b": No such file or directory\n"
+), missing
 collision = run("sha1dcsum", source / "test" / "shattered-1.pdf")
 assert collision.returncode == 0 and collision.stdout.startswith(
     b"16e96b70000dd1e7c85b8368ee197754400e58ec "
