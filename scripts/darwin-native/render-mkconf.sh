@@ -35,3 +35,7 @@ MK
 # never signs), per profiles/common-build-tools/rust.md. The SDK forbids host
 # paths in tool roles, so set the recipe variable explicitly.
 echo "RUST_DARWIN_CODESIGN=	/usr/bin/codesign" >> $W/mk.conf
+# GYP host ABI metadata (data, not a tool; profiles/common-build-tools/node.md).
+XV=${XCODE_VERSION_PLIST:-/Applications/Xcode.app/Contents/version.plist}
+[ -f "$XV" ] || { echo "missing Xcode version.plist $XV (set XCODE_VERSION_PLIST)" >&2; exit 1; }
+echo "EMBERBSD_DARWIN_XCODE_VERSION_PLIST=	$XV" >> $W/mk.conf
