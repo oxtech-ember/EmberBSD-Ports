@@ -1,0 +1,27 @@
+# Answer wcslib's AC_CHECK_FILE probes for cross builds.
+# Origin: EmberBSD (AI-assisted).
+
+--- a/graphics/wcslib/Makefile
++++ b/graphics/wcslib/Makefile
+@@ -25,5 +25,21 @@
+ CONFIGURE_ARGS+=	--with-cfitsiolib=${BUILDLINK_PREFIX.cfitsio}/lib
+ CONFIGURE_ARGS+=	--with-cfitsioinc=${BUILDLINK_PREFIX.cfitsio}/include
+ 
++.include "../../mk/bsd.prefs.mk"
++
++.if ${USE_CROSS_COMPILE:tl} == "yes"
++# configure looks for CFITSIO with AC_CHECK_FILE, which cannot run when
++# cross compiling. CFITSIO comes from pkgsrc and installs fitsio.h
++# directly in include; the other directories it tries are not used.
++_WCSLIB_CFITSIO=	${BUILDLINK_PREFIX.cfitsio:S,/,_,g:S,.,_,g:S,-,_,g}
++CONFIGURE_ENV+=		ac_cv_file_${_WCSLIB_CFITSIO}_lib=yes
++CONFIGURE_ENV+=		ac_cv_file_${_WCSLIB_CFITSIO}_include_cfitsio_fitsio_h=no
++CONFIGURE_ENV+=		ac_cv_file_${_WCSLIB_CFITSIO}_include_fitsio_h=yes
++.  for d in _usr_local_cfitsio_lib _local_cfitsio_lib _usr_local_lib \
++	    _local_lib _opt_local_lib _opt_SUNWspro_lib _sw_lib
++CONFIGURE_ENV+=		ac_cv_file_${d}=no
++.  endfor
++.endif
++
+ .include "../../devel/cfitsio/buildlink3.mk"
+ .include "../../mk/bsd.pkg.mk"
