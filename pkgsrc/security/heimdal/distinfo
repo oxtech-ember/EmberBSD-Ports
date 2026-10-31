@@ -26,3 +26,5 @@ SHA1 (patch-configure_ac-readline) = 028b9ff90bd0103b56c6f26991675c564758dcda
 SHA1 (patch-configure-readline) = dbbf14adf3fec4fa06c5032695b9b736ee23dc6c
 SHA1 (patch-configure_ac-libedit) = 9c95e69120cf87ea94a27437cfd2db02014fa44f
 SHA1 (patch-configure-libedit) = 93f83f189b1a9ac6ec56e34c146ef5c6432c393d
+SHA1 (patch-include_crypto-headers.h) = 2ab25820ed1dc7dd75e12174d0f639358109ffb9
+SHA1 (patch-lib_hx509_openssl4) = dd5d5e9ce18075977fcadd9f3d285e67bd6d8b30

@@ -40,6 +40,7 @@ OWNERS = {
     'openldap': ('scripts/source-inputs/openldap/source.py', 'databases/openldap'),
     'unbound': ('scripts/source-inputs/unbound/source.py', 'net/unbound'),
     'openssh': ('scripts/source-inputs/openssh/source.py', 'security/openssh'),
+    'heimdal': ('scripts/source-inputs/heimdal/source.py', 'security/heimdal'),
     'wpa': ('scripts/source-inputs/wpa/source.py', 'net/wpa_supplicant'),
     'libcbor': ('scripts/source-inputs/libcbor/source.py', 'devel/libcbor'),
     'byacc': ('scripts/source-inputs/byacc/source.py', 'devel/byacc'),
