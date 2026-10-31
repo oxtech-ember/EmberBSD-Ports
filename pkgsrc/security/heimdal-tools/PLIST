@@ -1,0 +1,4 @@
+@comment $NetBSD$
+libexec/heimdal-tools/asn1_compile
+libexec/heimdal-tools/compile_et
+libexec/heimdal-tools/slc

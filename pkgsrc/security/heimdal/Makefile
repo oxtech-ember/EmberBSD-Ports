@@ -92,12 +92,13 @@ CONFIGURE_ENV.SunOS+=	ac_cv_header_vis_h=no
 
 PLIST_VARS+=		glob vis afskauth native_tools
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-# Only the native heimdal build (native_tools below) installs these tools into
-# the tool prefix; they are not a build-host path setting.
-# The native build is a tool dependency, so the tools exist only after the
-# depends step: check them before configure, not at parse time (fetch).
-TOOL_DEPENDS+= heimdal-[0-9]*:../../security/heimdal
-_EMBERBSD_HEIMDAL_TOOLS_DIR= ${TOOLBASE}/libexec/heimdal
+# security/heimdal-tools installs only the native code generators into the
+# tool prefix; they are not a build-host path setting.  The full native
+# Heimdal would conflict with MIT Kerberos that other native tools pull in.
+# The tools exist only after the depends step: check them before configure,
+# not at parse time (fetch).
+TOOL_DEPENDS+= heimdal-tools>=7.8.0:../../security/heimdal-tools
+_EMBERBSD_HEIMDAL_TOOLS_DIR= ${TOOLBASE}/libexec/heimdal-tools
 .  if empty(_EMBERBSD_HEIMDAL_TOOLS_DIR:M${TOOLBASE}/*)
 PKG_FAIL_REASON+= Select\ the\ native\ Heimdal\ cross-tools\ directory
 .  endif

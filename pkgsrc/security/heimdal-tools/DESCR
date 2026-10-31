@@ -1,0 +1,5 @@
+The Heimdal ASN.1 compiler (asn1_compile), command table compiler (slc)
+and error table compiler (compile_et), built for the build host.  A cross
+build of security/heimdal runs them to generate sources.  The package
+installs no Kerberos libraries or headers, so it can share a tool prefix
+with MIT Kerberos.
