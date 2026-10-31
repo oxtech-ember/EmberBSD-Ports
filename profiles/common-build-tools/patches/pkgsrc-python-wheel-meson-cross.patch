@@ -10,7 +10,7 @@ find_installation() failed with "python3 not found". Not submitted upstream.
 
 --- a/lang/python/wheel.mk
 +++ b/lang/python/wheel.mk
-@@ -60,6 +60,23 @@
+@@ -60,6 +60,22 @@
  
  .include "../../mk/bsd.fast.prefs.mk"
  
