@@ -1,0 +1,49 @@
+Origin: EmberBSD (AI-assisted). Upstream status: not submitted.
+
+--- a/devel/p5-perl-headers/Makefile
++++ b/devel/p5-perl-headers/Makefile
+@@ -2,7 +2,7 @@
+ 
+ DISTNAME=		p5-perl-headers
+ PKGNAME=		${DISTNAME}-${OS_VERSION}
+-PKGREVISION=		21
++PKGREVISION=		22
+ CATEGORIES=		devel perl5
+ MASTER_SITES=		# empty
+ DISTFILES=		# empty
+@@ -21,17 +21,33 @@
+ 
+ .include "../../mk/bsd.prefs.mk"
+ 
+-.if ${OPSYS} == "Darwin" && exists(${OSX_SDK_PATH}/usr/include)
++# Origin: EmberBSD (AI-assisted). A cross build converts the sysroot
++# headers with the build Perl's h2ph. Its copy reads the target Config, so
++# _h2ph_pre.ph defines the target compiler symbols.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++USR_INCLUDE=		${EMBERBSD_CROSS_SYSROOT}/usr/include
++_P5PH_TARGET_CONFIG_SED=	s/^use Config;$$/use ExtUtils::MakeMaker::Config;/
++_P5PH_H2PH=		${SETENV} EMBERBSD_PERL_BUILD_CONFIG=${_PERL5_BUILD_CONFIG:Q} \
++			${EMBERBSD_CROSS_BUILD_PERL:Q} ${WRKDIR}/h2ph-target
++pre-build: ember-perl-build-config ember-perl-headers-h2ph
++.PHONY: ember-perl-headers-h2ph
++ember-perl-headers-h2ph:
++	${SED} -e ${_P5PH_TARGET_CONFIG_SED:Q} \
++	    ${EMBERBSD_CROSS_BUILD_PERL:H}/h2ph > ${WRKDIR}/h2ph-target.tmp
++	${GREP} -q '^use ExtUtils::MakeMaker::Config;$$' ${WRKDIR}/h2ph-target.tmp
++	${MV} -f ${WRKDIR}/h2ph-target.tmp ${WRKDIR}/h2ph-target
++.elif ${OPSYS} == "Darwin" && exists(${OSX_SDK_PATH}/usr/include)
+ USR_INCLUDE=		${OSX_SDK_PATH}/usr/include
+ .else
+ USR_INCLUDE=		/usr/include
+ .endif
++_P5PH_H2PH?=		${BUILDLINK_PREFIX.perl}/bin/h2ph
+ 
+ do-build:
+ 	${MKDIR} ${WRKSRC}/h2ph
+ 	${RM} -f ${WRKSRC}/h2ph_log ${WRKSRC}/packlist
+ 	( cd "${USR_INCLUDE}" && \
+-	  ${BUILDLINK_PREFIX.perl}/bin/h2ph -d ${WRKSRC}/h2ph -r -l . ) \
++	  ${_P5PH_H2PH} -d ${WRKSRC}/h2ph -r -l . ) \
+ 		> ${WRKSRC}/h2ph_log
+ 	( ${ECHO} "${PERL5_INSTALLVENDORARCH}/_h2ph_pre.ph" && \
+ 	  ${CAT} ${WRKSRC}/h2ph_log \
