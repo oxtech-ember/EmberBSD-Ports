@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream postcss-selector-parser module.
-DISTNAME= postcss-selector-parser-6.1.5
-PKGNAME= node-postcss-selector-parser-6.1.5
+DISTNAME= postcss-selector-parser-7.1.7
+PKGNAME= node-postcss-selector-parser-7.1.7
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/postcss-selector-parser/-/
 EXTRACT_SUFX= .tgz

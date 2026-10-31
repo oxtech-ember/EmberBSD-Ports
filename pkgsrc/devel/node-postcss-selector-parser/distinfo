@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (postcss-selector-parser-6.1.5.tgz) = 6fcd0591584e846a1476a80a6870ca2b0bdca43922fbce97f5d1c400b4152fd6
-SHA512 (postcss-selector-parser-6.1.5.tgz) = 4c41c5cdbe4a44329a3a02784d813ed23c89b456e32ef91d54ebb47d9d9be8c4d6ce8a997782defbad5a129a5692f4e561e3e0397e004cbd70b0020f30b4f0e9
-Size (postcss-selector-parser-6.1.5.tgz) = 45841 bytes
+BLAKE2s (postcss-selector-parser-7.1.7.tgz) = e55e2a454f97bbe0a14cc1c1bb1e75ccdc62e635aa0c4e488a65d54dd45d22e2
+SHA512 (postcss-selector-parser-7.1.7.tgz) = c1606ba3fee1278d327ba4cf8979144285ca0b0db7c52b23ae252fa9ded496cf52b28de82e238dd5f95cd7c7027678e00915f0e1f055a9424978e7434e1dcfde
+Size (postcss-selector-parser-7.1.7.tgz) = 47677 bytes
