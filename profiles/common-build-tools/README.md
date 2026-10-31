@@ -399,6 +399,19 @@ and compiler-query doubles, checks conflicting/foreign inputs and a stale mappin
 and performs no package build or prefix writes. Installed compiler execution,
 runtime ABI and host package acceptance remain separate checks.
 
+With the Clang family the profile sets `CPP` to the `clang-cpp` wrapper name,
+as pkgsrc does for `CC` and `CXX`; the absolute `clang-cpp` stays `PKG_CPP`,
+which the cpp wrapper runs with the buildlink include transforms. A package
+that preprocesses headers with `$CPP`, such as gobject-introspection's
+scanner, then sees `libintl.h` from gettext-lib's buildlink tree. Check it
+with a native Clang MAKECONF whose prefix has the dependencies of
+devel/gobject-introspection installed:
+
+```sh
+sh profiles/common-build-tools/tests/native-cpp-wrapper.sh \
+    /absolute/bmake /absolute/native.mk.conf /absolute/pkgsrc /absolute/new-work
+```
+
 The [Vala array copy contract](cross/vala.md) repairs a missing NULL slot
 for copied nullable value arrays. Paired host GCC16 generators and the
 unchanged upstream regression pass ASan/UBSan after the repair. Cross package
