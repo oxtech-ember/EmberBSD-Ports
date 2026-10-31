@@ -29,3 +29,4 @@ SHA1 (patch-netbsd-const-cipher) = 3a3d984ad2d9866b9b129fc14e3bc5ad307dd0d0
 SHA1 (patch-netbsd-const-core) = a5b72be765c095f92fc847fc5bf33ff022e593c2
 SHA1 (patch-netbsd-const-io) = 9c17e7b4006cf72704d433cc99941635e75cb203
 SHA1 (patch-netbsd-const-kex) = 429d157d07741e3fdd5c996aece9090ec0f294fc
+SHA1 (patch-netbsd-ldap-pubkey) = 054059ad7796ee85c2501a3dd6d4b16440c8c8ff

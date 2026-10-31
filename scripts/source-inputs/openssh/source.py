@@ -190,7 +190,8 @@ def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
             sourceprep.apply_patch(patch, path, delta, root, 'openssh',
                 patch_args=('-p0', '-f', '-N', '-F0', '-V', 'none'),
                 backup_directory=tmp / ('patch-backups-' + str(index)),
-                allow_dev_null=path.name == 'patch-netbsd-blocklist')
+                allow_dev_null=path.name in ('patch-netbsd-blocklist',
+                    'patch-netbsd-ldap-pubkey'))
         require(not any(p.name.endswith(('.orig', '.rej')) for p in root.rglob('*')),
                 'openssh patch left a backup or reject')
         require(identity == source_identity(git), 'pkgsrc export inputs changed during preparation')
