@@ -1,0 +1,27 @@
+$NetBSD$
+
+Match the serialized u32 KEX flag type and declare the fatal helper.
+
+--- kex.h.orig
++++ kex.h
+@@ -153,7 +153,7 @@
+ 	char	*server_sig_algs;
+ 	int	ext_info_c;
+ 	int	ext_info_s;
+-	int	kex_strict;
++	u_int	kex_strict;
+ 	int	ext_info_received;
+ 	struct sshbuf *my;
+ 	struct sshbuf *peer;
+--- packet.c.orig
++++ packet.c
+@@ -2062,6 +2062,9 @@
+ /*
+  * Pretty-print connection-terminating errors and exit.
+  */
++static void sshpkt_vfatal(struct ssh *, int, const char *, va_list)
++    __attribute__((noreturn));
++
+ static void
+ sshpkt_vfatal(struct ssh *ssh, int r, const char *fmt, va_list ap)
+ {
