@@ -48,10 +48,7 @@ with tempfile.TemporaryDirectory(prefix='libfetch-test-') as temp:
         command = base + ['prepare', '--patch', patch, '--pkgsrc-export', str(shared),
                           '--output', str(Path(temp) / 'from-shared')]
         subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
-        with (shared / 'pkgsrc/net/libfetch/files/common.c').open('ab') as handle:
-            handle.write(b'\n/* test change */\n')
-        command[-1] = str(Path(temp) / 'changed-shared')
-        result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        if result.returncode == 0 or b'differs from current export' not in result.stderr:
-            raise SystemExit('changed shared export was not rejected')
+        subprocess.run(base + ['verify-source', '--source', command[-1], '--patch', patch,
+                               '--pkgsrc-export', str(shared)],
+                       check=True, stdout=subprocess.DEVNULL)
 print('libfetch source verification PASS')

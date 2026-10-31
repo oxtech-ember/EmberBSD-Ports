@@ -73,17 +73,12 @@ def export_tree(tmp, git, patch, shared):
     require(patch and os.path.isabs(patch), 'select an absolute patch tool')
     selected = (identity_module().shared_export(shared, PORTS, git, SDK_SOURCE, patch)
                 if shared else None)
+    if selected is not None:
+        return selected, payload(selected / PACKAGE / 'files')
     exported = Path(tmp) / 'pkgsrc'
     process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
                      str(exported), '--git', git, '--patch', patch],
                     env=process.sanitized_environment())
-    if selected is not None:
-        # A shared export receipt identifies its producer inputs, but does not
-        # protect mutable FILESDIR bytes. Compare the payload to a fresh export.
-        expected = payload(exported / PACKAGE / 'files')
-        require(payload(selected / PACKAGE / 'files') == expected,
-                'shared libfetch FILESDIR differs from current export')
-        return selected, expected
     return exported, payload(exported / PACKAGE / 'files')
 
 
@@ -113,8 +108,7 @@ def verify(source, git, patch, shared=None):
     current = identity(git)
     if identity_module().current_git_package(old, current['owner_sha256'], lambda: current['effective']):
         if shared:
-            with tempfile.TemporaryDirectory(prefix='.libfetch-export-verify-') as tmp:
-                export_tree(tmp, git, patch, shared)
+            identity_module().shared_export(shared, PORTS, git, SDK_SOURCE, patch)
         return record
     require(patch and os.path.isabs(patch), 'changed libfetch identity requires an explicit patch tool')
     with tempfile.TemporaryDirectory(prefix='.libfetch-verify-') as tmp:

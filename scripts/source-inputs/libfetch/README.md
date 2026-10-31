@@ -14,6 +14,8 @@ python3 -B scripts/source-inputs/libfetch/source.py --sdk-source /path/to/sdk-so
 ```
 
 An existing shared export can be selected with `--pkgsrc-export` and the same
-explicit patch tool. The consumer generates error headers in its object tree;
+explicit patch tool. Its validated receipt selects the existing tree directly;
+preparation and verification do not create another full pkgsrc export.
+The consumer generates error headers in its object tree;
 the prepared source remains read-only. Run `test-source.py` with the selected
 Python, SDK source, Git and prepared source paths for its focused verification.
