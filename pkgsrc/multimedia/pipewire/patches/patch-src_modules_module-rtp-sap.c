@@ -1,0 +1,58 @@
+$NetBSD$
+
+NetBSD has no struct ip_mreqn: use ip_mreq with the RFC 1724 interface index.
+Use LOCAL_CREDS where SO_PASSCRED is missing.
+
+--- src/modules/module-rtp-sap.c.orig
++++ src/modules/module-rtp-sap.c
+@@ -412,7 +412,12 @@
+ 	}
+ 
+ 	int val = 1;
++#if defined(SO_PASSCRED)
+ 	if (setsockopt(fd, SOL_SOCKET, SO_PASSCRED, &val, sizeof(val)) < 0) {
++#else
++	/* BSD equivalent of SO_PASSCRED on a local socket. */
++	if (setsockopt(fd, SOL_LOCAL, LOCAL_CREDS, &val, sizeof(val)) < 0) {
++#endif
+ 		pw_log_warn("Failed to bind PTP management socket");
+ 		return -1;
+ 	}
+@@ -511,10 +516,18 @@
+ 		static const uint32_t ipv4_mcast_mask = 0xe0000000;
+ 		struct sockaddr_in *sa4 = (struct sockaddr_in*)sa;
+ 		if ((ntohl(sa4->sin_addr.s_addr) & ipv4_mcast_mask) == ipv4_mcast_mask) {
++#ifdef __NetBSD__
++			/* No ip_mreqn: RFC 1724 0.0.0.0/8 names the interface by index. */
++			struct ip_mreq mr4;
++			memset(&mr4, 0, sizeof(mr4));
++			mr4.imr_multiaddr = sa4->sin_addr;
++			mr4.imr_interface.s_addr = htonl((uint32_t)req.ifr_ifindex);
++#else
+ 			struct ip_mreqn mr4;
+ 			memset(&mr4, 0, sizeof(mr4));
+ 			mr4.imr_multiaddr = sa4->sin_addr;
+ 			mr4.imr_ifindex = req.ifr_ifindex;
++#endif
+ 			pw_net_get_ip(sa, addr, sizeof(addr), NULL, NULL);
+ 			pw_log_info("join IPv4 group: %s iface:%d", addr, req.ifr_ifindex);
+ 			res = setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mr4, sizeof(mr4));
+@@ -1012,10 +1025,18 @@
+ 			pw_log_debug("re-joined IPv6 multicast group successfully");
+ 		}
+ 	} else {
++#ifdef __NetBSD__
++		/* No ip_mreqn: RFC 1724 0.0.0.0/8 names the interface by index. */
++		struct ip_mreq mr4;
++		memset(&mr4, 0, sizeof(mr4));
++		mr4.imr_multiaddr = ((struct sockaddr_in*)&impl->igmp_recovery.mcast_addr)->sin_addr;
++		mr4.imr_interface.s_addr = htonl((uint32_t)impl->igmp_recovery.if_index);
++#else
+ 		struct ip_mreqn mr4;
+ 		memset(&mr4, 0, sizeof(mr4));
+ 		mr4.imr_multiaddr = ((struct sockaddr_in*)&impl->igmp_recovery.mcast_addr)->sin_addr;
+ 		mr4.imr_ifindex = impl->igmp_recovery.if_index;
++#endif
+ 
+ 		/* Leave the group first */
+ 		res = setsockopt(impl->igmp_recovery.socket_fd, IPPROTO_IP, IP_DROP_MEMBERSHIP,
