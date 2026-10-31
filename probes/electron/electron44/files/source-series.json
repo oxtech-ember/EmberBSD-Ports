@@ -767,6 +767,11 @@
       "path": "partition-alloc-system-libcxx-new-delete-visibility.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "protobuf-javascript-current-protobuf-absl.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

@@ -1,0 +1,16 @@
+# Origin: EmberBSD (AI-assisted), protobuf-javascript with current Ports protobuf and abseil.
+# Check the SerializeToString result and use the string-returning Base64Escape.
+--- a/third_party/protobuf-javascript/src/generator/js_generator.cc
++++ b/third_party/protobuf-javascript/src/generator/js_generator.cc
+@@ -1592,9 +1592,8 @@
+                           io::Printer* printer) {
+   // Serialize annotations proto into base64 string.
+   std::string meta_content;
+-  annotations.SerializeToString(&meta_content);
+-  std::string meta_64;
+-  absl::Base64Escape(meta_content, &meta_64);
++  ABSL_CHECK(annotations.SerializeToString(&meta_content));
++  std::string meta_64 = absl::Base64Escape(meta_content);
+ 
+   // Print base64 encoded annotations at the end of output file in
+   // a comment.
