@@ -111,6 +111,7 @@ Recorded measurements:
 | --- | --- | --- | --- |
 | `aarch64` | A733, NetBSD 11, 2026-10-08 | not recorded | `1` |
 | `aarch64` | Zero 3W, NetBSD 11.0 `EMBER64` kernel of 2026-10-23, 2026-10-29 | `0122558a7ea57e5ce0983480cc1a945cb275fc391c5a703ad33f1f412bdff871` | `1` |
+| `x86_64` | ember-ninkear, NetBSD 11.0 `GENERIC_AMD_DRM` kernel of 2026-10-29, 2026-10-31 | `0256d12d2eabe7376b8e7199cdf91f3358cbc6fc42fa525f8653c9fed2316a0f` | `1` |
 
 Status `1` selects the upstream zero-timer workaround. Add a record for
 another platform only after the probe has been executed on that platform's
