@@ -16,6 +16,7 @@ SHA1 (patch-boost_core_uncaught__exceptions.hpp) = 46f635adb8eb4bb7f963a62dfef55
 SHA1 (patch-boost_math_tools_config.hpp) = 1b467a38081fe5e2e3004bca9a6aec7106edb006
 SHA1 (patch-boost_math_tools_promotion.hpp) = d1079940594f7ffe7e70db6f61bba633b8fb31e5
 SHA1 (patch-boost_numeric_ublas_storage.hpp) = 282b5a3b5d09216ded14fae166169d64db72590e
+SHA1 (patch-boost_process_v2_exit__code.hpp) = 8378edff2ae81a9df05e211718ff660160a3b715
 SHA1 (patch-boost_property__tree_detail_xml__parser__read__rapidxml.hpp) = 3499fcc37e72396d23a9fce0f1c97891adf12a9f
 SHA1 (patch-boost_stacktrace_detail_collect__unwind.ipp) = a5922dffd929f596b6e7d71b11f32d17e0bbd806
 SHA1 (patch-boost_test_impl_execution__monitor.ipp) = ffd449576d00b7e6ea3081421e3e70decf5d7de8
