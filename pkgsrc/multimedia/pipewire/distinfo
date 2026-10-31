@@ -8,6 +8,7 @@ SHA1 (patch-spa_include_spa_support_log.h) = 82b2a9215d1730dbb1aae5770686852d612
 SHA1 (patch-spa_include_spa_utils_defs.h) = 0050c7526f3078b8a9d355ba192a79ca4d34be18
 SHA1 (patch-spa_include_spa_utils_endian.h) = f4d034bf22fc81eaba3170e87f3f8fe6aec6318f
 SHA1 (patch-spa_include_spa_utils_string.h) = b6554bffd9854574a2dfb56b2a9b367814077b2d
+SHA1 (patch-spa_plugins_support_cpu.c) = a573bbf009a85099e29f8a9bf076a5dd16e36fb7
 SHA1 (patch-src_pipewire_conf.c) = 168b4a085647c009622e458d1083504e6f06cba9
 SHA1 (patch-src_pipewire_context.c) = 3b6624211ff2a4b6c4cf3fb07da80f7c5ee11ab2
 SHA1 (patch-src_pipewire_mem.c) = a5e2a8b2049d4e2d6d1f888ab20994293542b159
