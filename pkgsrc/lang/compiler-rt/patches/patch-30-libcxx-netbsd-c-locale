@@ -1,0 +1,52 @@
+# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+# Preserve LLVM Apache-2.0 WITH LLVM-exception terms.
+# Name the NetBSD C locale object without the _NETBSD_SOURCE-only LC_C_LOCALE.
+
+--- a/libcxx/include/__cxx03/locale
++++ b/libcxx/include/__cxx03/locale
+@@ -244,12 +244,19 @@
+ _LIBCPP_PUSH_MACROS
+ #  include <__cxx03/__undef_macros>
+ 
++#  if defined(__NetBSD__)
++// <locale.h> declares LC_C_LOCALE only for _NETBSD_SOURCE, so it is missing
++// when a program selects _POSIX_C_SOURCE or _XOPEN_SOURCE. The libc object
++// always exists; name it directly.
++extern "C" const struct _locale _lc_C_locale;
++#  endif
++
+ _LIBCPP_BEGIN_NAMESPACE_STD
+ 
+ #  if defined(__APPLE__) || defined(__FreeBSD__)
+ #    define _LIBCPP_GET_C_LOCALE 0
+ #  elif defined(__NetBSD__)
+-#    define _LIBCPP_GET_C_LOCALE LC_C_LOCALE
++#    define _LIBCPP_GET_C_LOCALE (const_cast< ::locale_t>(&::_lc_C_locale))
+ #  else
+ #    define _LIBCPP_GET_C_LOCALE __cloc()
+ // Get the C locale object
+--- a/libcxx/include/__locale_dir/get_c_locale.h
++++ b/libcxx/include/__locale_dir/get_c_locale.h
+@@ -18,6 +18,13 @@
+ #    pragma GCC system_header
+ #  endif
+ 
++#  if defined(__NetBSD__)
++// <locale.h> declares LC_C_LOCALE only for _NETBSD_SOURCE, so it is missing
++// when a program selects _POSIX_C_SOURCE or _XOPEN_SOURCE. The libc object
++// always exists; name it directly.
++extern "C" const struct _locale _lc_C_locale;
++#  endif
++
+ _LIBCPP_BEGIN_NAMESPACE_STD
+ 
+ // FIXME: This should really be part of the locale base API
+@@ -25,7 +32,7 @@
+ #  if defined(__APPLE__) || defined(__FreeBSD__)
+ #    define _LIBCPP_GET_C_LOCALE 0
+ #  elif defined(__NetBSD__)
+-#    define _LIBCPP_GET_C_LOCALE LC_C_LOCALE
++#    define _LIBCPP_GET_C_LOCALE (const_cast< ::locale_t>(&::_lc_C_locale))
+ #  else
+ #    define _LIBCPP_GET_C_LOCALE __cloc()
+ // Get the C locale object

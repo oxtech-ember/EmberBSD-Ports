@@ -279,6 +279,12 @@ bootstrap compiler/header probes use static archives. A missing libc, libdl or
 pthread must not become a successful library check or an autolink dependency.
 The override is function-local and preserves the caller's compile-only mode.
 
+`patch-30-libcxx-netbsd-c-locale` makes libc++ name NetBSD's `_lc_C_locale`
+directly. `<locale.h>` defines `LC_C_LOCALE` only for `_NETBSD_SOURCE`, so a
+program that selects `_XOPEN_SOURCE` or `_POSIX_C_SOURCE` (indi uses
+`-D_XOPEN_SOURCE=700`) could not include `<iomanip>` or `<locale>`.
+`tests/libcxx-netbsd-c-locale.sh` links a money/time probe under each macro.
+
 ### Frame discovery and the OS boundary
 
 Both phases explicitly use `LIBUNWIND_ENABLE_FRAME_APIS=OFF` and

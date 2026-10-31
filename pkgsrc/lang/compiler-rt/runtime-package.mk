@@ -2,7 +2,7 @@
 # Compose packages from the common compiler-rt full-stage producer.
 .include "../../lang/llvm/version.mk"
 PKGNAME= ${EMBER_LLVM_CXX_COMPONENT}${EMBER_LLVM_CXX_DEVEL:D-devel}-${LLVM_VERSION}
-LLVM_CXX_RUNTIME_REVISION= 2
+LLVM_CXX_RUNTIME_REVISION= 3
 PKGREVISION= ${LLVM_CXX_RUNTIME_REVISION}
 CATEGORIES= lang devel
 COMMENT= LLVM ${EMBER_LLVM_CXX_COMPONENT} target runtime

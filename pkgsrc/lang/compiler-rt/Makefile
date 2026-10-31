@@ -4,8 +4,10 @@
 
 PKGNAME=	compiler-rt-${LLVM_VERSION}
 PKGREVISION=	9
-# The common runtime patch set also changes libunwind CMake checks.
+# The common runtime patch set also changes libunwind CMake checks and
+# libc++ headers.
 EXTRACT_ELEMENTS+=	${DISTNAME}/libunwind
+EXTRACT_ELEMENTS+=	${DISTNAME}/libcxx
 # One patch owner for native packages and the OS/SDK prepared source.
 DISTINFO_FILE=	${.CURDIR}/distinfo
 PATCHDIR=	${.CURDIR}/patches

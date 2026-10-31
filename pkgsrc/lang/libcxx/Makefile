@@ -7,7 +7,7 @@ EMBER_LLVM_CXX_COMPONENT= libcxx
 # The runtime source and complete patch set belong to lang/compiler-rt.
 .include "../../lang/llvm/version.mk"
 
-PKGREVISION=	1
+PKGREVISION=	2
 PKGNAME=	libcxx-${LLVM_VERSION}
 CATEGORIES=	lang devel
 MAINTAINER=	pkgsrc-users@NetBSD.org
