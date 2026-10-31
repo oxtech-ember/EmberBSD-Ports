@@ -51,3 +51,4 @@ SHA1 (patch-lib_ntlm_heimntlm-protos.h) = 174c07cd0bf139b66c133c57a322783bdd83a6
 SHA1 (patch-lib_ntlm_ntlm.c) = 7770e28bd4ab720a5e4994f73ddb9df099b29a87
 SHA1 (patch-kdc_kx509.c) = 01e609a5183874eef8063d586ed050731750c7d5
 SHA1 (patch-kdc_digest.c) = 7e6d15d6fcb3c2f0af622976cc8cb721dfb23044
+SHA1 (patch-lib_gssapi_ntlm_crypto.c) = ba03bd15ef384e85edaad19e8eedd04e1afb74a5
