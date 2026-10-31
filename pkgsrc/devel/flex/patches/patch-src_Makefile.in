@@ -1,0 +1,15 @@
+$NetBSD$
+
+Mark the stage1flex objects of a cross build; see patch-src_flexdef.h.
+
+--- src/Makefile.in.orig
++++ src/Makefile.in
+@@ -1683,7 +1683,7 @@
+ 
+ 
+ @CROSS_TRUE@$(stage1flex_OBJECTS): CC=$(CC_FOR_BUILD)
+-@CROSS_TRUE@$(stage1flex_OBJECTS): CFLAGS=$(CFLAGS_FOR_BUILD)
++@CROSS_TRUE@$(stage1flex_OBJECTS): CFLAGS=$(CFLAGS_FOR_BUILD) -DUSE_CONFIG_FOR_BUILD
+ @CROSS_TRUE@$(stage1flex_OBJECTS): CPP=$(CPP_FOR_BUILD)
+ @CROSS_TRUE@$(stage1flex_OBJECTS): CPPFLAGS=$(CPPFLAGS_FOR_BUILD)
+ @CROSS_TRUE@$(stage1flex_OBJECTS): LDFLAGS=$(LDFLAGS_FOR_BUILD)

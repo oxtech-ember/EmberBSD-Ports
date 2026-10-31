@@ -3,5 +3,7 @@ $NetBSD: distinfo,v 1.35 2021/10/26 10:14:38 nia Exp $
 BLAKE2s (flex-2.6.4.tar.gz) = aee613459454ddfc528df0fd667fb3b5701b9d51f9aff6ce2f6a2f0adb303043
 SHA512 (flex-2.6.4.tar.gz) = e9785f3d620a204b7d20222888917dc065c2036cae28667065bf7862dfa1b25235095a12fd04efdbd09bfd17d3452e6b9ef953a8c1137862ff671c97132a082e
 Size (flex-2.6.4.tar.gz) = 1419096 bytes
+SHA1 (patch-src_Makefile.in) = 6ae26d91d798c5aeb871aab760e231a20d57532a
+SHA1 (patch-src_flexdef.h) = a0a7a818fc51be232ee333ca1bb19db33293260a
 SHA1 (patch-src_main.c) = 00557ced2a396d53fa788704bc07e1a8f142ac4b
 SHA1 (patch-src_nfa.c) = 0acc180e2f704da2f37383d3680e663acdd3d2ff
