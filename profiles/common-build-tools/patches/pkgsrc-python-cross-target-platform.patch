@@ -1,0 +1,70 @@
+Origin: EmberBSD, AI-assisted.
+Cross builds of Python extensions run the build host interpreter with the
+target sysconfig. Its importlib extension suffixes and
+sysconfig.get_platform() still named the build host, so setuptools built
+stable-ABI modules as *.abi3-darwin.so in macosx wheels. Pass the target
+platform in _PYTHON_HOST_PLATFORM (PYTHON_CROSS_HOST_PLATFORM, defaulting to
+OPSYS-OS_VERSION-MACHINE_ARCH) and rewrite the extension suffixes in the
+cross sitecustomize.py from the host to the target SOABI and SOABI_PLATFORM.
+Not submitted upstream.
+
+--- a/lang/python/pyversion.mk
++++ b/lang/python/pyversion.mk
+@@ -271,6 +271,11 @@
+ .    if ${USE_CROSS_COMPILE:tl} == "yes"
+ TOOL_DEPENDS+=			${PYDEPENDENCY}
+ MAKE_ENV+=			PYTHONPATH=${WRKDIR}/.pysite:${_CROSS_DESTDIR:Q}${LOCALBASE}/${PYLIB:Q}
++# sysconfig.get_platform() names the build host unless told the target
++# platform; it selects build directories and wheel platform tags.
++PYTHON_CROSS_HOST_PLATFORM?=	${LOWER_OPSYS}-${OS_VERSION}-${MACHINE_ARCH}
++MAKE_ENV+=			_PYTHON_HOST_PLATFORM=${PYTHON_CROSS_HOST_PLATFORM:Q}
++_PYTHON_CROSS_SUFFIXES:=	${.PARSEDIR:tA}/cross-extension-suffixes.py
+ pre-configure: ${WRKDIR}/.pysite/sitecustomize.py
+ .include "${PYPKGSRCDIR}/platname.mk"
+ ${WRKDIR}/.pysite/sitecustomize.py:
+@@ -278,6 +283,7 @@
+ 	${RUN} ${MKDIR} ${.TARGET:H}
+ 	${RUN} ( \
+ 		${ECHO} "import sys" && \
++		${ECHO} "_ember_host_platform = sys.platform" && \
+ 		${PRINTF} "sys.platform = '%s'\\n" ${PY_PLATNAME:Q} && \
+ 		for v in \
+ 			sys.base_exec_prefix \
+@@ -287,6 +293,7 @@
+ 		; do \
+ 			${PRINTF} "%s = '%s'\\n" "$$v" ${LOCALBASE}; \
+ 		done; \
++		${CAT} ${_PYTHON_CROSS_SUFFIXES:Q}; \
+ 	) >${.TARGET}.tmp
+ 	${RUN} ${MV} -f ${.TARGET}.tmp ${.TARGET}
+ .    endif
+--- /dev/null
++++ b/lang/python/cross-extension-suffixes.py
+@@ -0,0 +1,27 @@
++# Cross builds run the build host interpreter with the target sysconfig.
++# Its importlib extension suffixes still name the host platform (such as
++# .abi3-darwin.so), and setuptools takes the stable-ABI suffix from them.
++# Rewrite them with the SOABI and SOABI_PLATFORM of the target.
++def _ember_target_extension_suffixes():
++    import importlib
++    import importlib.machinery
++
++    def config(platform):
++        return importlib.import_module('_sysconfigdata_' + platform).build_time_vars
++
++    host, target = config(_ember_host_platform), config(sys.platform)
++    host_soabi, target_soabi = host['SOABI'], target['SOABI']
++    host_plat = host.get('SOABI_PLATFORM') or ''
++    target_plat = target.get('SOABI_PLATFORM') or ''
++    suffixes = []
++    for suffix in importlib.machinery.EXTENSION_SUFFIXES:
++        suffix = suffix.replace('.' + host_soabi + '.', '.' + target_soabi + '.')
++        if host_plat:
++            suffix = suffix.replace('-' + host_plat + '.',
++                                    ('-' + target_plat if target_plat else '') + '.')
++        if suffix not in suffixes:
++            suffixes.append(suffix)
++    importlib.machinery.EXTENSION_SUFFIXES[:] = suffixes
++
++
++_ember_target_extension_suffixes()
