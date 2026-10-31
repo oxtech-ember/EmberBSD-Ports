@@ -1,12 +1,8 @@
 # $NetBSD: Makefile,v 1.50 2026/08/04 20:29:11 wiz Exp $
 # Origin: EmberBSD (AI-assisted), current Apple source and target tool roles.
 
-DISTNAME=	${GITHUB_PROJECT}-${PKGVER}
-GITHUB_PROJECT=	mDNSResponder
-PKGVER=		2881.120.11
+.include "../../net/mDNSResponder/Makefile.common"
 PKGREVISION=	1
-GITHUB_TAG=	refs/tags/${GITHUB_PROJECT}-${PKGVER}
-MASTER_SITES=	${MASTER_SITE_GITHUB:=apple-oss-distributions/}
 
 CATEGORIES=	net
 

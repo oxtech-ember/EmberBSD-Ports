@@ -1,0 +1,7 @@
+# Common source release for the mDNSResponder consumers.
+GITHUB_PROJECT=	mDNSResponder
+PKGVER=		2881.120.11
+DISTNAME=	${GITHUB_PROJECT}-${PKGVER}
+GITHUB_TAG=	refs/tags/${GITHUB_PROJECT}-${PKGVER}
+MASTER_SITES=	${MASTER_SITE_GITHUB:=apple-oss-distributions/}
+MDNSRESPONDER_SOURCE_DIR?= ${EMBERBSD_HOST_PREFIX:U${TOOLBASE}}/share/mDNSResponder-source
