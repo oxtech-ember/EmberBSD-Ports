@@ -1,0 +1,56 @@
+# Origin: EmberBSD (AI-assisted); backport of libarchive 032c0dd
+# ("uu: Do not handle non-ASCII lines anymore"). Rebuild the packages
+# that embed the common source.
+--- a/archivers/bsdtar/Makefile
++++ b/archivers/bsdtar/Makefile
+@@ -4,7 +4,7 @@
+ .include "../../mk/bsd.prefs.mk"
+ 
+ PKGNAME=	${DISTNAME:S/libarchive/bsdtar/}
+-PKGREVISION=	4
++PKGREVISION=	5
+ COMMENT=	Fast multi-format tape archiver
+ 
+ # Explicitly do not depend on libtool as this can be used
+--- a/archivers/libarchive/Makefile
++++ b/archivers/libarchive/Makefile
+@@ -5,7 +5,7 @@
+ LIBARCHIVE_WITH_ZSTD=	yes
+ .include "Makefile.common"
+ 
+-PKGREVISION=	3
++PKGREVISION=	4
+ 
+ COMMENT=	Library to read/create different archive formats
+ 
+--- a/archivers/libarchive/files/libarchive/archive_read_support_filter_uu.c
++++ b/archivers/libarchive/files/libarchive/archive_read_support_filter_uu.c
+@@ -214,6 +214,17 @@
+ 			line = b + start;
+ 			*len = p - line;
+ 			*unconsumed = *len + nl;
++
++			/* Only ASCII lines are valid. */
++			while (p > line) {
++				unsigned char c = *--p;
++
++				if (c < 0x20 || c > 0x7F) {
++					*len = 0;
++					*unconsumed = 0;
++					return (NULL);
++				}
++			}
+ 		} else {
+ 			/* Keep offset for check of possibly missing \n in \r\n. */
+ 			if (step != 1)
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -7,7 +7,7 @@
+ # change in the pkg_* tools that pkgsrc relies on for proper operation.
+ 
+ PKGNAME=		pkg_install-${VERSION}
+-PKGREVISION=		18
++PKGREVISION=		19
+ CATEGORIES=		pkgtools
+ 
+ MAINTAINER=		agc@NetBSD.org
