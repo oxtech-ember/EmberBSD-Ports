@@ -69,12 +69,22 @@ Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
  
    parser.add_argument(
      "--plugin-out-dir", help="Output directory for custom generator plugin."
-@@ -269,6 +273,8 @@
+@@ -269,6 +273,18 @@
    nenv = os.environ.copy()
  #  nenv["PATH"] = "${WRKOBJDIR}/bin:" + nenv["PATH"]
    nenv["LD_LIBRARY_PATH"] = "@WRKSRC@/out/Release"
 +  if options.ts_proto_plugin:
 +    nenv["EMBERBSD_HOST_TS_PROTO"] = options.ts_proto_plugin
++  # Directly executed Chromium plugins use `#!/usr/bin/env python3`; name
++  # the running SDK interpreter python3 for them.
++  python_dir = os.path.abspath("emberbsd-python3")
++  python3 = os.path.join(python_dir, "python3")
++  if os.path.realpath(python3) != os.path.realpath(sys.executable):
++    os.makedirs(python_dir, exist_ok=True)
++    link = tempfile.mktemp(dir=python_dir)
++    os.symlink(os.path.realpath(sys.executable), link)
++    os.replace(link, python3)
++  nenv["PATH"] = python_dir + os.pathsep + nenv.get("PATH", "")
  
    dependency_file_data = None
    if options.descriptor_set_out and options.descriptor_set_dependency_file:
