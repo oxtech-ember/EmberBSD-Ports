@@ -1,8 +1,25 @@
 $NetBSD$
 
+Declare bounded memory-mapped NOR read range.
+
 --- a/include/spl.h
 +++ b/include/spl.h
-@@ -351,6 +351,11 @@
+@@ -342,6 +342,14 @@
+ 				 ulong count, void *buf);
+ 
+ /**
++ * spl_nor_get_bounds() - Set the readable memory-mapped NOR range
++ * @start: receives the first address
++ * @size: receives the number of bytes
++ * Return: true if bounded, false for the legacy unbounded reader
++ */
++bool spl_nor_get_bounds(ulong *start, ulong *size);
++
++/**
+  * Information required to load data from a device
+  *
+  * @read: Function to call to read from the device
+@@ -351,6 +359,11 @@
   * @no_fdt_update: true to update the FDT with any loadables that are loaded
   */
  struct spl_load_info {
@@ -14,7 +31,7 @@ $NetBSD$
  	spl_load_reader read;
  	void *priv;
  #if IS_ENABLED(CONFIG_SPL_LOAD_BLOCK)
-@@ -424,6 +429,10 @@
+@@ -424,6 +437,10 @@
  {
  	load->read = h_read;
  	load->priv = priv;
