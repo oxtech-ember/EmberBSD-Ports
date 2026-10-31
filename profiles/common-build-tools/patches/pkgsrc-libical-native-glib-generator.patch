@@ -1,0 +1,25 @@
+Origin: EmberBSD, AI-assisted.
+A cross build of time/libical stopped in src/libical-glib/CMakeLists.txt:
+when CMAKE_CROSSCOMPILING it includes IMPORT_ICAL_GLIB_SRC_GENERATOR, the
+exported ical-glib-src-generator target of a native build, and the recipe
+left it unset (ICAL_GLIB_SRC_GENERATOR-NOTFOUND). The native libical
+package installs that generator and its export file. Depend on it as a
+tool and import it from TOOLBASE. Not submitted upstream.
+
+--- a/time/libical/Makefile
++++ b/time/libical/Makefile
+@@ -29,6 +29,14 @@
+ DEPENDS+=	zonetab-[0-9]*:../../time/zonetab
+ .endif
+ 
++# Origin: EmberBSD (AI-assisted). libical-glib generates its sources with
++# ical-glib-src-generator. A cross build imports the generator that the
++# native libical package installs and exports in TOOLBASE.
++.if ${USE_CROSS_COMPILE:tl} == "yes"
++TOOL_DEPENDS+=		libical>=3.0.20:../../time/libical
++CMAKE_CONFIGURE_ARGS+=	-DIMPORT_ICAL_GLIB_SRC_GENERATOR:FILEPATH=${TOOLBASE}/lib/cmake/LibIcal/IcalGlibSrcGenerator.cmake
++.endif
++
+ # C++ is only needed for test
+ USE_LANGUAGES=	c c++
+ TEST_ENV+=	LD_LIBRARY_PATH=${WRKSRC}/${CMAKE_BUILD_DIR}/lib
