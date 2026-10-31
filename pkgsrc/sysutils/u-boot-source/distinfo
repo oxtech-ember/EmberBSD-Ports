@@ -9,6 +9,7 @@ SHA1 (patch-arch_riscv_dts_Makefile) = ff485db20afd0717e172336ac19ba50899b0f495
 SHA1 (patch-arch_riscv_lib_bootm.c) = 604d8d7076c7fbe5cfd055999b5766b7714036b0
 SHA1 (patch-arch_riscv_lib_cache.c) = 07e637a4fe587d0e4fd5621c5262175cf298dfd6
 SHA1 (patch-boot_Kconfig) = 321a5b5c9d31c9bb96f2da386dfbbf7812d557dd
+SHA1 (patch-boot_bootm.c) = e4c1db7f4a7f1031dbed8ac054cd8502acbb8fdd
 SHA1 (patch-boot_bootm__os.c) = 715947b835346ea624fa9ac11bf4c52f7be6e64b
 SHA1 (patch-boot_image-fit-sig.c) = 53f6e5d4cea466f772c679e09524bd2cd9a82823
 SHA1 (patch-boot_image-fit.c) = 5ca8f314f2150013176f8917f17461d4a24c4316
