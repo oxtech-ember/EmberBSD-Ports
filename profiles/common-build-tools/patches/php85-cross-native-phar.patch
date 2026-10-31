@@ -1,0 +1,28 @@
+Cross php85 makes phar.phar with the native php.
+
+ext/phar/Makefile.frag runs PHP to generate phar.php and phar.phar and
+prefers the sapi/cli/php the build has just linked. In a cross build that
+is a target executable: the host shell could not run it ("not executable:
+64-bit ELF file"), make ignored the errors, and install stopped with
+bin/phar85.phar not installed in DESTDIR. Depend on the native php85 of
+the same version as a tool and pass its TOOLBASE path as PHP_EXECUTABLE
+and PHP_PHARCMD_EXECUTABLE, which every build-time PHP run in the
+Makefile uses. phar.phar stays in the PLIST. Native builds are unchanged.
+Applies after php85-cross-build-cc.patch.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/lang/php85/Makefile
++++ b/lang/php85/Makefile
+@@ -29,6 +29,12 @@
+ .  else
+ CONFIGURE_ENV+=		BUILD_CC=${NATIVE_CC:Q}
+ .  endif
++# ext/phar runs PHP to make phar.php and phar.phar and prefers the
++# sapi/cli/php it has just linked, a target executable in a cross build.
++# Run the native php of the same version in TOOLBASE instead.
++TOOL_DEPENDS+=		${PKGNAME}:../../lang/php85
++MAKE_FLAGS+=		PHP_EXECUTABLE=${TOOLBASE}/bin/php${PHP_VER}
++MAKE_FLAGS+=		PHP_PHARCMD_EXECUTABLE=${TOOLBASE}/bin/php${PHP_VER}
+ .endif
+ MAKE_ENV+=		INSTALL_ROOT=${DESTDIR}
+ 
