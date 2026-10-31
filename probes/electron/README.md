@@ -853,9 +853,11 @@ declare its common target dependencies, including Undici.
 ### Hard-link mirrors in the source view
 
 Script interpreters resolve symlinks (Python `sys.path[0]`, esbuild entry
-points), so `third_party/dawn` and `third_party/devtools-frontend` are mirrored
-in `source-view` as local directories of hard links (copies across devices)
-instead of directory symlinks. Verification compares entries and inodes (or
+points), so the Chromium root outside `third_party` and `third_party/blink`,
+`third_party/dawn` and `third_party/devtools-frontend` are mirrored in
+`source-view` as local directories of hard links (copies across devices)
+instead of directory symlinks. Build scripts such as `tools/typescript` derive
+the source root from their module paths and must see the view root. Verification compares entries and inodes (or
 contents); only interpreter `__pycache__` directories created in the mirror are
 accepted as extra entries.
 

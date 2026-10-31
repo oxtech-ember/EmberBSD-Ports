@@ -128,23 +128,27 @@ def dependency_view(origin, dest, replacements, masks, *, verify=False, current=
 # Script interpreters resolve symlinks (Python sys.path[0], esbuild entry
 # points), so generators under a linked directory report or import paths from
 # the prepared workspace instead of the view.  These third_party trees are
-# mirrored as local directories of hard links (copies across devices).
-MATERIALIZED_THIRD_PARTY = ('dawn', 'devtools-frontend')
+# mirrored as local directories of hard links (copies across devices).  The
+# Chromium root outside third_party is mirrored as a whole because its build
+# scripts locate the source root from their own module paths.
+MATERIALIZED_THIRD_PARTY = ('blink', 'dawn', 'devtools-frontend')
 
 
-def mirror(origin, dest, *, verify=False):
-    names = {item.name for item in origin.iterdir()}
+def mirror(origin, dest, *, verify=False, omit=frozenset()):
+    names = {item.name for item in origin.iterdir() if item.name not in omit}
     if verify:
         require(dest.is_dir() and not dest.is_symlink(), 'mirrored view component must be local: ' + str(dest))
         # Interpreter byte-code caches written into the local mirror are build
         # products of the view, not source entries.
-        local = {item.name for item in dest.iterdir()
-                 if not (item.name == '__pycache__' and item.name not in names and
+        local = {item.name for item in dest.iterdir() if item.name not in omit and
+                 not (item.name == '__pycache__' and item.name not in names and
                          item.is_dir() and not item.is_symlink())}
         require(local == names, 'mirrored view entries changed: ' + str(dest))
     else:
         dest.mkdir()
     for item in origin.iterdir():
+        if item.name in omit:
+            continue
         output = dest / item.name
         if item.is_symlink():
             if verify:
@@ -217,7 +221,7 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
         dest.mkdir()
         for name, item in entries(origin, omit).items():
             (dest / name).symlink_to(item, target_is_directory=item.is_dir())
-    links(source, destination / 'src', {'third_party', 'out'} | ({'v8'} if v8 else set()))
+    mirror(source, destination / 'src', omit={'third_party', 'out'} | ({'v8'} if v8 else set()))
     if v8:
         (destination / 'src/v8').symlink_to(v8, target_is_directory=True)
     (destination / 'src/out').mkdir()
@@ -266,7 +270,8 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
                     'source view link changed: ' + str(link))
     root = destination / 'src'
     root_special = {'third_party', 'out'} | ({'v8'} if v8 else set())
-    check(source, root, root_special, root_special)
+    mirror(source, root, verify=True, omit=root_special)
+    require({item.name for item in root.iterdir()} >= root_special, 'source view root entries changed')
     if v8:
         require((root / 'v8').is_symlink() and os.readlink(root / 'v8') == str(v8),
                 'common V8 source link changed')
