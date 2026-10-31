@@ -22,6 +22,7 @@ SHA1 (patch-drivers_serial_Makefile) = 3a404f5c2e7cbdcdc001f27c816fd36a1875871f
 SHA1 (patch-fs_btrfs_compression.c) = 0ef7918ced2c698cd8a2ca72dec296e41c171ebd
 SHA1 (patch-fs_cramfs_uncompress.c) = 20c8c3eb965b77744fa7ca7fb46ee888b80d134b
 SHA1 (patch-fs_erofs_decompress.c) = 36915308be4a46e8a81b6cc2fc8e6798ad75d310
+SHA1 (patch-lib_lmb.c) = 6dff6b09368f4496cfdbf5be3d281a2517cdadff
 SHA1 (patch-include_bootm.h) = fee2b07229872a61652aa68e80d886be8a19d09e
 SHA1 (patch-include_compiler.h) = 1d9b0a5bdb2743fc58601355a23db6bb96d8ebc7
 SHA1 (patch-include_cpu__func.h) = 46e25f40c7a38b88d66fec5ebfd2c0adcbe14e0e

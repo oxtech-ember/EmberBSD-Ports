@@ -76,3 +76,6 @@ CONFIG_SPL_SHA256_SMALL=y
 CONFIG_SPL_TINY_MEMSET=y
 
 # CONFIG_SPL_RAW_IMAGE_SUPPORT is not set
+
+# Reserve the stack budget checked by the PSRAM relocation guard.
+CONFIG_STACK_SIZE=0x20000
