@@ -19,6 +19,35 @@ prepared by the common Ports owner, including its complete patch set, before
 building. Selecting that backend without the source stops the build explicitly.
 This receiver does not establish Mbed TLS backend compatibility or support.
 
+## ESP32-S31 RAM firmware FIT
+
+The S31 board files include a `firmware.its` template for OpenSBI, U-Boot
+proper and the firmware FDT. This profile requires at least 16 MiB PSRAM.
+Supply compatible artifacts and verify their load and runtime memory ranges
+before use: the template loads OpenSBI at `0x2f000000`, U-Boot at
+`0x50400000` and the firmware FDT at `0x50430000`. The FDT must have actual
+space in its header for SPL and OpenSBI fixups. A 12 KiB padded input was
+used in the initial trial; check the result for the selected FDT and fixups.
+
+With a writable `WORK` directory and explicit `SOURCE`, `HOST_PREFIX`,
+`MKIMAGE`, `OPENSBI_BIN`, `UBOOT_BIN` and `FIRMWARE_DTB` inputs:
+
+```sh
+cp "$SOURCE/board/espressif/esp32s31/firmware.its" "$WORK/firmware.its"
+cp "$OPENSBI_BIN" "$WORK/opensbi.bin"
+cp "$UBOOT_BIN" "$WORK/u-boot.bin"
+"$HOST_PREFIX/bin/dtc" -I dtb -O dtb -S 12288 \
+    -o "$WORK/firmware.dtb" "$FIRMWARE_DTB"
+(cd "$WORK" && "$MKIMAGE" -E -f firmware.its firmware.itb)
+```
+
+The `-E` form places data externally in firmware, U-Boot, FDT order for the
+sequential SPL YMODEM reader. Each image has a SHA-256 integrity hash; it is
+not authenticated. Run `tests/test-s31-fit-selector.py` from the Ports recipe
+with `--source`, `--host-prefix` and `--fit "$WORK/firmware.itb"` to exercise
+the actual SPL configuration selector. Check the generated data offsets,
+hashes, FDT capacity and memory map for the chosen inputs separately.
+
 ## Host regression checks
 
 The scripts in `tests/` use an explicitly prepared U-Boot source tree and a

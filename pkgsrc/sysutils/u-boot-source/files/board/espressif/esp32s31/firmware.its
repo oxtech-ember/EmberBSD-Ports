@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: GPL-2.0+
+/dts-v1/;
+/ {
+    description = "ESP32-S31 RAM firmware";
+    #address-cells = <1>;
+    images {
+        firmware {
+            description = "OpenSBI dynamic";
+            data = /incbin/("opensbi.bin");
+            type = "firmware";
+            arch = "riscv";
+            os = "opensbi";
+            compression = "none";
+            load = <0x2f000000>;
+            entry = <0x2f000000>;
+            hash { algo = "sha256"; };
+        };
+        uboot {
+            description = "U-Boot proper";
+            data = /incbin/("u-boot.bin");
+            type = "firmware";
+            arch = "riscv";
+            os = "u-boot";
+            compression = "none";
+            load = <0x50400000>;
+            entry = <0x50400000>;
+            hash { algo = "sha256"; };
+        };
+        fdt {
+            description = "S31 firmware FDT";
+            data = /incbin/("firmware.dtb");
+            type = "flat_dt";
+            arch = "riscv";
+            compression = "none";
+            load = <0x50430000>;
+            hash { algo = "sha256"; };
+        };
+    };
+    configurations {
+        default = "conf";
+        conf {
+            description = "ESP32-S31 OpenSBI and U-Boot";
+            firmware = "firmware";
+            fdt = "fdt";
+            loadables = "uboot";
+        };
+    };
+};
