@@ -1245,6 +1245,8 @@ def reconfigure(options):
         candidate.work = Path(scratch)
         candidate.native_binding_root = work
         native, environment, values = producer_inputs(candidate, sdk)
+        # The Go caches belong to the real work tree, not the scratch binding.
+        environment.update(GOCACHE=str(work / 'go-cache'), GOPATH=str(work / 'go-path'))
         new_directory = saved_binding_directory(candidate.work, environment)
         new_commands = json.loads((new_directory / 'commands.json').read_text())
         require(binding_identity(new_commands) == binding_identity(old_commands),
