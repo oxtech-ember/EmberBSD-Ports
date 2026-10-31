@@ -3,3 +3,4 @@ $NetBSD: distinfo,v 1.252 2026/08/09 17:06:21 wiz Exp $
 BLAKE2s (setuptools-84.2.1.tar.gz) = fd2e8abfbcf679060685c6b2fd4c25ed0b067bce99a39bd7d68f61ef61c4d25e
 SHA512 (setuptools-84.2.1.tar.gz) = 9e4c9a9ec45c69abe6f8953b6c6490eb1ffe2aea9a666beab45bdd7d5e2acbb2dbfddf6d7797c01c3e5a47b10bee519c029587fb45000ebb5c5b72468498ef0b
 Size (setuptools-84.2.1.tar.gz) = 1230289 bytes
+SHA1 (patch-setuptools_command_build__ext.py) = 97cc690b64e4fbbbb14cba331dfb669cd78c8a0a
