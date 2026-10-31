@@ -1,0 +1,97 @@
+$NetBSD$
+
+Keep cipher inputs const and copy read-only GCM inputs for legacy ctrl.
+The current context IV length is checked before copying.
+
+--- cipher.c.orig
++++ cipher.c
+@@ -64,7 +64,7 @@
+ };
+ 
+ struct sshcipher {
+-	char	*name;
++	const char *name;
+ 	u_int	block_size;
+ 	u_int	key_len;
+ 	u_int	iv_len;		/* defaults to block_size */
+@@ -290,16 +290,32 @@
+ 		ret = SSH_ERR_ALLOC_FAIL;
+ 		goto out;
+ 	}
+-	if (EVP_CipherInit(cc->evp, type, NULL, (u_char *)iv,
++	if (EVP_CipherInit(cc->evp, type, NULL, iv,
+ 	    (do_encrypt == CIPHER_ENCRYPT)) == 0) {
+ 		ret = SSH_ERR_LIBCRYPTO_ERROR;
+ 		goto out;
+ 	}
+-	if (cipher_authlen(cipher) &&
+-	    EVP_CIPHER_CTX_ctrl(cc->evp, EVP_CTRL_GCM_SET_IV_FIXED,
+-	    -1, (u_char *)iv) <= 0) {
+-		ret = SSH_ERR_LIBCRYPTO_ERROR;
+-		goto out;
++	if (cipher_authlen(cipher)) {
++		u_char iv_copy[EVP_MAX_IV_LENGTH];
++		void *iv_arg = NULL;
++		size_t copy_len = cipher_ivlen(cipher);
++
++		if (iv != NULL) {
++			int context_ivlen = EVP_CIPHER_CTX_iv_length(cc->evp);
++
++			if (context_ivlen < 0 || (size_t)context_ivlen != copy_len ||
++			    copy_len > sizeof(iv_copy)) {
++				ret = SSH_ERR_INVALID_ARGUMENT;
++				goto out;
++			}
++			memcpy(iv_copy, iv, copy_len);
++			iv_arg = iv_copy;
++		}
++		if (EVP_CIPHER_CTX_ctrl(cc->evp, EVP_CTRL_GCM_SET_IV_FIXED,
++		    -1, iv_arg) <= 0) {
++			ret = SSH_ERR_LIBCRYPTO_ERROR;
++			goto out;
++		}
+ 	}
+ 	klen = EVP_CIPHER_CTX_key_length(cc->evp);
+ 	if (klen > 0 && keylen != (u_int)klen) {
+@@ -308,7 +324,7 @@
+ 			goto out;
+ 		}
+ 	}
+-	if (EVP_CipherInit(cc->evp, NULL, (u_char *)key, NULL, -1) == 0) {
++	if (EVP_CipherInit(cc->evp, NULL, key, NULL, -1) == 0) {
+ 		ret = SSH_ERR_LIBCRYPTO_ERROR;
+ 		goto out;
+ 	}
+@@ -371,20 +387,26 @@
+ 		    1, lastiv) <= 0)
+ 			return SSH_ERR_LIBCRYPTO_ERROR;
+ 		/* set tag on decryption */
+-		if (!cc->encrypt &&
+-		    EVP_CIPHER_CTX_ctrl(cc->evp, EVP_CTRL_GCM_SET_TAG,
+-		    authlen, (u_char *)src + aadlen + len) <= 0)
+-			return SSH_ERR_LIBCRYPTO_ERROR;
++		if (!cc->encrypt) {
++			u_char tag_copy[EVP_MAX_BLOCK_LENGTH];
++
++			if (authlen > sizeof(tag_copy))
++				return SSH_ERR_INVALID_ARGUMENT;
++			memcpy(tag_copy, src + aadlen + len, authlen);
++			if (EVP_CIPHER_CTX_ctrl(cc->evp, EVP_CTRL_GCM_SET_TAG,
++			    authlen, tag_copy) <= 0)
++				return SSH_ERR_LIBCRYPTO_ERROR;
++		}
+ 	}
+ 	if (aadlen) {
+ 		if (authlen &&
+-		    EVP_Cipher(cc->evp, NULL, (u_char *)src, aadlen) < 0)
++		    EVP_Cipher(cc->evp, NULL, src, aadlen) < 0)
+ 			return SSH_ERR_LIBCRYPTO_ERROR;
+ 		memcpy(dest, src, aadlen);
+ 	}
+ 	if (len % cc->cipher->block_size)
+ 		return SSH_ERR_INVALID_ARGUMENT;
+-	if (EVP_Cipher(cc->evp, dest + aadlen, (u_char *)src + aadlen,
++	if (EVP_Cipher(cc->evp, dest + aadlen, src + aadlen,
+ 	    len) < 0)
+ 		return SSH_ERR_LIBCRYPTO_ERROR;
+ 	if (authlen) {
