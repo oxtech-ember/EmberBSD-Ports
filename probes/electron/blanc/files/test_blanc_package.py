@@ -212,14 +212,14 @@ class BlancPackageTests(unittest.TestCase):
 
     def test_exact_runtime_dependency_is_required(self):
         path, dependency = builder.validate_runtime_dependency(
-            '44.9.3', '../../devel/electron44',
-            'electron>=44.9.3<44.9.4:../../devel/electron44')
+            '45.2.1', '../../devel/electron44',
+            'electron>=45.2.1<45.2.2:../../devel/electron44')
         self.assertEqual(path, 'devel/electron44')
-        self.assertEqual(dependency, 'electron>=44.9.3<44.9.4:../../devel/electron44')
+        self.assertEqual(dependency, 'electron>=45.2.1<45.2.2:../../devel/electron44')
         for version, package_path, depends in (
-            ('44.9.4', '../../devel/electron44', 'electron>=44.9.3<44.9.4:../../devel/electron44'),
-            ('44.9.3', '../../www/electron44', 'electron>=44.9.3<44.9.4:../../www/electron44'),
-            ('44.9.3', '../../devel/electron44', 'electron>=44.9.2<44.9.4:../../devel/electron44'),
+            ('45.2.2', '../../devel/electron44', 'electron>=45.2.1<45.2.2:../../devel/electron44'),
+            ('45.2.1', '../../www/electron44', 'electron>=45.2.1<45.2.2:../../www/electron44'),
+            ('45.2.1', '../../devel/electron44', 'electron>=45.2.0<45.2.2:../../devel/electron44'),
         ):
             with self.subTest(version=version, package_path=package_path, depends=depends):
                 with self.assertRaises(builder.BuildError):
@@ -270,18 +270,18 @@ class BlancPackageTests(unittest.TestCase):
                     'node_modules/electron': {'version': '44.5.1'},
                 }}, selected, roles,
                 {'node_modules/@ghostery/adblocker-electron': set(), 'node_modules/@electron/asar': set()},
-                rows, metadata, asar, '26.13.0', '44.9.3', '../../devel/electron44',
-                'electron>=44.9.3<44.9.4:../../devel/electron44', '4.3.0', 'f' * 64,
+                rows, metadata, asar, '26.13.0', '45.2.1', '../../devel/electron44',
+                'electron>=45.2.1<45.2.2:../../devel/electron44', '4.3.0', 'f' * 64,
                 '3.15.0', '1' * 64)
             electron = next(item for item in bom['components'] if item['name'] == 'Electron')
-            self.assertEqual(electron['version'], '44.9.3')
+            self.assertEqual(electron['version'], '45.2.1')
             self.assertEqual(electron['scope'], 'required')
             self.assertEqual(electron['properties'][1]['value'], 'false')
             self.assertFalse(any(item.get('bom-ref', '').startswith('pkg:npm/electron@') for item in bom['components']))
             properties = {item['name']: item['value'] for item in bom['metadata']['component']['properties']}
             self.assertEqual(properties['emberbsd:upstreamDevelopmentElectronVersion'], '44.5.1')
             self.assertEqual(properties['emberbsd:upstreamDevelopmentElectronRange'], '^44.5.1')
-            self.assertEqual(properties['emberbsd:systemElectron'], '44.9.3')
+            self.assertEqual(properties['emberbsd:systemElectron'], '45.2.1')
             asar_tool = next(item for item in bom['components'] if item['name'] == '@electron/asar')
             self.assertEqual(asar_tool['scope'], 'excluded')
             self.assertEqual(bom['metadata']['component']['hashes'][0]['content'], hashlib.sha256(b'fixture ASAR').hexdigest())
@@ -300,7 +300,7 @@ class BlancPackageTests(unittest.TestCase):
         # The exact external runtime requirement fails closed before SBOM emission.
         with self.assertRaises(builder.BuildError):
             builder.validate_runtime_dependency(
-                '44.9.3', '../../devel/electron44',
+                '45.2.1', '../../devel/electron44',
                 'electron>=44.5.1<45:../../devel/electron44')
 
     def test_modified_npm_archive_is_refused_before_staging(self):
@@ -318,7 +318,7 @@ class BlancPackageTests(unittest.TestCase):
                 builder.stage_dependencies(
                     self.jsonio, self.inventory, self.source, distdir,
                     distdir / 'runtime', distdir / 'build', manifest,
-                    'f4b8db0e788ff5be1c448440d9c94cd4a543241fa8d8b44d7e10ce2ff0c68462')
+                    '6f5e82b752db384b728e1d6caf357eb86d0652f0441b527d559de2f6ad396209')
 
     def test_plist_installs_the_generated_compliance_manifest(self):
         plist = (PACKAGE / 'PLIST').read_text(encoding='utf-8')

@@ -446,7 +446,7 @@ def validate_runtime_dependency(version, package_path, dependency):
     expected = f'electron>={version}<{next_patch(version)}:{package_path}'
     require(dependency == expected,
             f'SBOM runtime version and pkgsrc dependency disagree: expected {expected}')
-    require(version == '44.9.3', 'Blanc package is qualified only for Electron 44.9.3')
+    require(version == '45.2.1', 'Blanc package is qualified only for Electron 45.2.1')
     return expected_path, expected
 
 
@@ -773,7 +773,7 @@ def main():
     seed_root = work / 'seed-inputs'
     asar_path = work / 'app.asar'
     sbom_path = work / 'SBOM.json'
-    npm_manifest_sha = 'f4b8db0e788ff5be1c448440d9c94cd4a543241fa8d8b44d7e10ce2ff0c68462'
+    npm_manifest_sha = '6f5e82b752db384b728e1d6caf357eb86d0652f0441b527d559de2f6ad396209'
     lock, packages, selected, roles, edges, rows, package_metadata = stage_dependencies(
         jsonio, inventory, source_root, dist_dir, runtime_root, build_root,
         manifest_path, npm_manifest_sha)

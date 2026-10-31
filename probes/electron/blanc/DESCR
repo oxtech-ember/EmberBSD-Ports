@@ -4,17 +4,17 @@ release allowlist and its lockfile-pinned production dependencies in an ASAR
 archive. The build controller uses the EmberBSD SDK host API and host Node.js
 26.13.0. Node.js runs upstream tests, the upstream adblock seed generator, and
 the pinned @electron/asar tool. The application uses the separately installed
-Electron 44.9.3 package. The Electron NPM package and electron-builder are not
+Electron 45.2.1 package. The Electron NPM package and electron-builder are not
 installed or run.
 
 The wrapper selects Electron's packaged-app mode and leaves Chromium sandbox
 settings unchanged. NetBSD self-updates are disabled because pkgsrc owns updates.
 The installed CycloneDX SBOM records the lockfile-pinned NPM dependencies,
 their archive hashes and declared license values, plus the external Electron
-44.9.3 package. It records host Node.js and @electron/asar as build tools.
+45.2.1 package. It records host Node.js and @electron/asar as build tools.
 Upstream license and attribution files remain in the installed package. The
 package is restricted because Blanc identity artwork and trademarks do not grant
 permission to redistribute a modified build under the Blanc name.
 
-NetBSD/aarch64 runtime acceptance remains pending the Electron 44.9.3 package
+NetBSD/aarch64 runtime acceptance remains pending the Electron 45.2.1 package
 and installed application checks.

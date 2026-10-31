@@ -522,7 +522,7 @@
       "version": "2.0.1"
     }
   ],
-  "runtimeElectron": "system electron 44.9.3; Electron npm package intentionally omitted",
+  "runtimeElectron": "system electron 45.2.1; Electron npm package intentionally omitted",
   "schemaVersion": 1,
   "source": "Blanc v1.25.0 package-lock.json",
   "sourceLockSha256": "6a2ec7d70363b42c1a0d7ad4cbd03859e4a94b2bd3b20d79f9863df340090ef6"
