@@ -15,3 +15,4 @@ SHA1 (patch-lib_tokenlist.cpp) = c4cbfd164043498ca9b594fe08a9b1709196dbd2
 SHA1 (patch-lib_clangimport.cpp) = a7059ba1c0bf089c77db768d83380c3622337b84
 SHA1 (patch-test_testclangimport.cpp) = fe63c3288d1ee19f3a6e61b21eb0731b87052052
 SHA1 (patch-cmake_compileroptions.cmake) = 96f11e2046946b96c4fd28028558c3f32325ab1b
+SHA1 (patch-z-lib_clangimport.cpp) = 623bbdeac9961f31b5dfc47c97b2a34d4615d2b9

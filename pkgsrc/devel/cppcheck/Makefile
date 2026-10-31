@@ -1,6 +1,6 @@
 # Origin: EmberBSD contributors (AI-assisted).
 DISTNAME= cppcheck-2.22.0
-PKGREVISION= 5
+PKGREVISION= 6
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=cppcheck-opensource/}
 GITHUB_PROJECT= cppcheck
