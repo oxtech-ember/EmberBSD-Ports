@@ -1,0 +1,66 @@
+$NetBSD$
+
+Keep read-only configuration strings const and mutable exec buffers writable.
+
+--- readconf.c.orig
++++ readconf.c
+@@ -531,12 +531,13 @@
+ static int
+ execute_in_shell(const char *cmd)
+ {
++	char default_shell[] = _PATH_BSHELL;
+ 	char *shell;
+ 	pid_t pid;
+ 	int status;
+ 
+ 	if ((shell = getenv("SHELL")) == NULL)
+-		shell = _PATH_BSHELL;
++		shell = default_shell;
+ 
+ 	if (access(shell, X_OK) == -1) {
+ 		fatal("Shell \"%s\" is not executable: %s",
+@@ -547,6 +548,7 @@
+ 
+ 	/* Fork and execute the command. */
+ 	if ((pid = fork()) == 0) {
++		char shell_option[] = "-c";
+ 		char *argv[4];
+ 
+ 		if (stdfd_devnull(1, 1, 0) == -1)
+@@ -554,7 +556,7 @@
+ 		closefrom(STDERR_FILENO + 1);
+ 
+ 		argv[0] = shell;
+-		argv[1] = "-c";
++		argv[1] = shell_option;
+ 		argv[2] = xstrdup(cmd);
+ 		argv[3] = NULL;
+ 
+@@ -652,7 +654,8 @@
+     int final_pass, int is_include_path)
+ {
+ 	char thishost[NI_MAXHOST], shorthost[NI_MAXHOST], portstr[NI_MAXSERV];
+-	char uidstr[32], *conn_hash_hex, *keyalias, *jmphost, *ruser;
++	char uidstr[32], *conn_hash_hex, *keyalias, *ruser;
++	const char *jmphost;
+ 	char *host, *ret;
+ 	int port;
+ 
+@@ -994,7 +997,7 @@
+ 
+ /* Multistate option parsing */
+ struct multistate {
+-	char *key;
++	const char *key;
+ 	int value;
+ };
+ static const struct multistate multistate_flag[] = {
+@@ -2273,7 +2276,7 @@
+ 					    filename, linenum, keyword);
+ 					goto out;
+ 				}
+-				arg2 = "";
++				arg2 = arg + strlen(arg);
+ 			} else if (strcmp(arg, "*") == 0) {
+ 				arg2 = arg;
+ 			} else {
