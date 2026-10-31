@@ -31,7 +31,8 @@ def main():
         builds = {
             "static": [str(stage / "lib" / "libsha1detectcoll.a")],
             "shared": ["-L" + str(stage / "lib"), "-lsha1detectcoll"],
-            "asan-ubsan": ["-fsanitize=address,undefined", "-fno-omit-frame-pointer",
+            "asan-ubsan": ["-fsanitize=address,undefined", "-fno-sanitize-recover=all",
+                           "-fno-omit-frame-pointer",
                            str(source / "lib" / "sha1.c"),
                            str(source / "lib" / "ubc_check.c")],
         }
@@ -44,7 +45,8 @@ def main():
         (instrumented / "bin").mkdir(parents=True)
         (instrumented / "lib").mkdir()
         command = instrumented / "bin" / "sha1dcsum"
-        subprocess.run([str(cc), "-fsanitize=address,undefined", "-fno-omit-frame-pointer",
+        subprocess.run([str(cc), "-fsanitize=address,undefined", "-fno-sanitize-recover=all",
+                        "-fno-omit-frame-pointer",
                         "-I" + str(source / "lib"), str(source / "src" / "main.c"),
                         str(source / "lib" / "sha1.c"), str(source / "lib" / "ubc_check.c"),
                         "-o", str(command)], env=env, check=True)

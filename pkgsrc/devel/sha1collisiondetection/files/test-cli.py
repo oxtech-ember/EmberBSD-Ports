@@ -10,6 +10,7 @@ if not __debug__:
 
 stage, source = map(Path, sys.argv[1:3])
 env = os.environ.copy()
+env["LC_ALL"] = "C"
 env["DYLD_LIBRARY_PATH"] = str(stage / "lib")
 env["LD_LIBRARY_PATH"] = str(stage / "lib")
 
@@ -26,7 +27,8 @@ assert normal.returncode == 0 and normal.stdout.startswith(
     b"a9993e364706816aba3e25717850c26c9cd0d89d "
 ), normal
 missing = run("sha1dcsum", source / "test" / "does-not-exist")
-assert missing.returncode != 0 and missing.stderr and not missing.stdout, missing
+assert missing.returncode == 1 and missing.stderr.startswith(b"cannot open file: ") \
+    and b": No such file or directory" in missing.stderr and not missing.stdout, missing
 collision = run("sha1dcsum", source / "test" / "shattered-1.pdf")
 assert collision.returncode == 0 and collision.stdout.startswith(
     b"16e96b70000dd1e7c85b8368ee197754400e58ec "
