@@ -12,26 +12,39 @@ from common import arguments
 
 args = arguments('Check both SHA256 implementations and chunk boundaries')
 harness = r'''
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <u-boot/sha256.h>
-int main(int argc, char **argv) {
- sha256_context ctx; uint8_t buf[4096], out[32]; size_t n, chunk;
- if (argc != 2 || !(chunk = strtoul(argv[1], NULL, 10)) || chunk > sizeof(buf)) return 2;
- sha256_starts(&ctx);
- while ((n = fread(buf, 1, chunk, stdin)) != 0) sha256_update(&ctx, buf, n);
- if (ferror(stdin)) return 3;
- sha256_finish(&ctx, out);
- for (n = 0; n < sizeof(out); n++) printf("%02x", out[n]);
- putchar('\n'); return 0;
+int
+main(int argc, char **argv)
+{
+	sha256_context ctx;
+	uint8_t buf[4096], out[32];
+	size_t n, chunk;
+	if (argc != 2 || !(chunk = strtoul(argv[1], NULL, 10)) ||
+	    chunk > sizeof(buf))
+		return 2;
+	sha256_starts(&ctx);
+	while ((n = fread(buf, 1, chunk, stdin)) != 0)
+		sha256_update(&ctx, buf, n);
+	if (ferror(stdin))
+		return 3;
+	sha256_finish(&ctx, out);
+	for (n = 0; n < sizeof(out); n++)
+		printf("%02x", out[n]);
+	putchar('\n');
+	return 0;
 }
 '''
 header = r'''
 #include <stdint.h>
 #define SHA256_DER_LEN 19
 #define CONFIG_IS_ENABLED(x) SHA_SMALL
-typedef struct { uint32_t total[2], state[8]; uint8_t buffer[64]; } sha256_context;
+typedef struct {
+	uint32_t total[2], state[8];
+	uint8_t buffer[64];
+} sha256_context;
 void sha256_starts(sha256_context *);
 void sha256_update(sha256_context *, const uint8_t *, uint32_t);
 void sha256_finish(sha256_context *, uint8_t *);
