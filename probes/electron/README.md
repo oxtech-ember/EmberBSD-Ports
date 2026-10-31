@@ -876,3 +876,13 @@ Chromium WebUI scripts (`tools/polymer/css_minifier.js`,
 `lib/node_modules`, which contains only Ports `devel/node-*` packages
 (`postcss`, `postcss-minify`, `terser` and their runtime dependencies), one
 recipe per module.
+
+### Chromium lib.dom typing
+
+Chromium type-checks WebUI against its edited `lib.dom.d.ts`
+(`third_party/node/patches/typescript.patch`: `innerHTML`/`src` setters accept
+Trusted Types, `hidden` is `boolean`). The shared `lang/typescript` package stays
+unmodified. The source view hard-links the native backend into
+`third_party/node/typescript-chromium` and replaces only `lib.dom.d.ts` with those
+exact edits; configure selects that `lib/tsc` as `EMBERBSD_HOST_TYPESCRIPT`.
+`verify` rejects any other difference from the backend.

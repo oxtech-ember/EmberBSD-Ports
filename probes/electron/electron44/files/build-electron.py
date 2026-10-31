@@ -1026,6 +1026,11 @@ def producer_inputs(options, sdk):
         [native.tool('clang'), '-print-resource-dir'], env=environment).stdout.decode('utf-8', 'strict').strip()
     values['clang_version'] = clang_resource_version(options.host_prefix, resource_text)
     values.update(common_node_configure(options, native, sdk, environment, resource_text))
+    if getattr(options, 'phase', '') == 'configure':
+        # Chromium type-checks against its own lib.dom edits; use the view copy.
+        tsc = gn_source(options) / 'third_party/node/typescript-chromium/lib/tsc'
+        require(os.access(tsc, os.X_OK), 'Chromium TypeScript backend is missing')
+        environment['EMBERBSD_HOST_TYPESCRIPT'] = str(tsc)
     provider_check = options.workspace / 'src/third_party/node/run_selected_providers.py'
     versions = sdk['process'].capture([native.tool('python'), str(provider_check), '--inspect',
         environment['EMBERBSD_HOST_NODE'], environment['EMBERBSD_HOST_TYPESCRIPT'],

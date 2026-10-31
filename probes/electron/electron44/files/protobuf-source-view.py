@@ -191,6 +191,53 @@ def re2_replacements(source):
     return {Path('BUILD.gn'): shim}
 
 
+TYPESCRIPT_DOM_EDITS = (
+    ('    innerHTML: string;\n',
+     '    get innerHTML(): string;\n    set innerHTML(html: string|TrustedHTML);\n', 2),
+    ('    hidden: boolean | "until-found";\n', '    hidden: boolean;\n', 1),
+    ('interface HTMLScriptElement extends HTMLElement {', None, 1),
+)
+
+
+def chromium_lib_dom(text):
+    """Apply Chromium's third_party/node/patches/typescript.patch edits."""
+    for old, new, count in TYPESCRIPT_DOM_EDITS[:2]:
+        require(text.count(old) == count, 'unexpected lib.dom.d.ts: ' + old.strip())
+        text = text.replace(old, new)
+    head, marker, tail = text.partition(TYPESCRIPT_DOM_EDITS[2][0])
+    require(marker and tail.count('    src: string;\n') >= 1, 'unexpected HTMLScriptElement.src')
+    tail = tail.replace('    src: string;\n',
+                        '    get src(): string;\n    set src(url: string|TrustedScriptURL);\n', 1)
+    return head + marker + tail
+
+
+def typescript_backend(modules):
+    backends = sorted((Path(modules) / '@typescript').glob('typescript-*'))
+    require(len(backends) == 1, 'expected exactly one native TypeScript backend')
+    return backends[0].resolve(strict=True)
+
+
+def chromium_typescript(node_view, modules, *, verify=False):
+    """Hard-link the native backend; lib.dom.d.ts gets Chromium's typing edits."""
+    backend = typescript_backend(modules)
+    target = node_view / 'typescript-chromium'
+    if not verify:
+        mirror(backend, target, omit=frozenset())
+        dom = target / 'lib/lib.dom.d.ts'
+        text = chromium_lib_dom((backend / 'lib/lib.dom.d.ts').read_text('utf-8'))
+        dom.unlink()
+        dom.write_text(text, 'utf-8')
+    else:
+        require((target / 'lib/lib.dom.d.ts').read_text('utf-8') ==
+                chromium_lib_dom((backend / 'lib/lib.dom.d.ts').read_text('utf-8')),
+                'Chromium TypeScript lib.dom changed')
+        for path in backend.rglob('*'):
+            if path.is_file() and path.relative_to(backend) != Path('lib/lib.dom.d.ts'):
+                require(os.path.samefile(path, target / path.relative_to(backend)),
+                        'Chromium TypeScript backend changed')
+    return target / 'lib/tsc'
+
+
 def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None):
     source = Path(source).resolve(strict=True)
     protobuf = Path(protobuf).resolve(strict=True) if protobuf is not None else None
@@ -237,6 +284,7 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
         node_view = destination / 'src/third_party/node'
         require(node_view.is_dir() and not node_view.is_symlink(), 'third_party/node must be mirrored')
         (node_view / 'node_modules').symlink_to(modules, target_is_directory=True)
+        chromium_typescript(node_view, modules)
     if system_abseil:
         replacements = abseil_replacements(source)
         dependency_view(third_party / 'abseil-cpp', destination / 'src/third_party/abseil-cpp',
@@ -290,11 +338,12 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     check(source / 'third_party', root / 'third_party', replaced, replaced)
     for name in mirrored(source / 'third_party'):
         mirror(source / 'third_party' / name, root / 'third_party' / name, verify=True,
-               omit={'node_modules'} if name == 'node' and node_modules is not None else frozenset())
+               omit={'node_modules', 'typescript-chromium'} if name == 'node' and node_modules is not None else frozenset())
     if node_modules is not None:
         link = root / 'third_party/node/node_modules'
         require(link.is_symlink() and os.readlink(link) == str(Path(node_modules).resolve(strict=True)),
                 'common node_modules link changed')
+        chromium_typescript(root / 'third_party/node', node_modules, verify=True)
     if system_abseil:
         replacements = abseil_replacements(source)
         dependency_view(source / 'third_party/abseil-cpp', root / 'third_party/abseil-cpp',
