@@ -1,0 +1,68 @@
+$NetBSD$
+
+Correct native listener declarations and exec argument lifetime.
+
+--- sshd.c
++++ sshd.c
+@@ -105,7 +105,6 @@
+ /* Saved arguments to main(). */
+ static char execpath[PATH_MAX];
+ static char **saved_argv;
+-static int saved_argc;
+ 
+ /*
+  * The sockets that the server is listening; this is used in the SIGHUP
+@@ -511,7 +510,7 @@
+  * Called from the main program after receiving SIGHUP.
+  * Restarts the server.
+  */
+-static void
++static void __attribute__((noreturn))
+ sighup_restart(void)
+ {
+ 	logit("Received SIGHUP; restarting.");
+@@ -638,7 +637,7 @@
+ 	return 1;
+ }
+ 
+-static void
++static void __attribute__((noreturn))
+ usage(void)
+ {
+ 	fprintf(stderr, "%s, %s\n", SSH_RELEASE, SSH_OPENSSL_VERSION);
+@@ -1295,7 +1294,7 @@
+ #endif /* TIOCNOTTY */
+ }
+ 
+-static void
++static void __attribute__((noreturn))
+ print_config(struct connection_info *connection_info)
+ {
+ 	connection_info->test = 1;
+@@ -1313,7 +1312,8 @@
+ 	extern char *optarg;
+ 	extern int optind;
+ 	int log_stderr = 0, inetd_flag = 0, test_flag = 0, no_daemon_flag = 0;
+-	char *config_file_name = _PATH_SERVER_CONFIG_FILE;
++	const char *config_file_name = _PATH_SERVER_CONFIG_FILE;
++	char rexec_option[] = "-R";
+ 	int r, opt, do_dump_cfg = 0, keytype, already_daemon, have_agent = 0;
+ 	int sock_in = -1, sock_out = -1, newsock = -1, rexec_argc = 0;
+ 	int devnull, config_s[2] = { -1 , -1 }, have_connection_info = 0;
+@@ -1345,7 +1345,6 @@
+ #endif
+ 
+ 	/* Save argv. Duplicate so setproctitle emulation doesn't clobber it */
+-	saved_argc = ac;
+ 	rexec_argc = ac;
+ 	saved_argv = xcalloc(ac + 1, sizeof(*saved_argv));
+ 	for (i = 0; (int)i < ac; i++)
+@@ -1848,7 +1847,7 @@
+ #endif
+ 		rexec_argv[i] = saved_argv[i];
+ 	}
+-	rexec_argv[rexec_argc++] = "-R";
++	rexec_argv[rexec_argc++] = rexec_option;
+ 	rexec_argv[rexec_argc] = NULL;
+ 	if (stat(rexec_argv[0], &sb) != 0 || !(sb.st_mode & (S_IXOTH|S_IXUSR)))
+ 		fatal("%s does not exist or is not executable", rexec_argv[0]);
