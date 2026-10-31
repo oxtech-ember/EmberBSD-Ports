@@ -31,3 +31,4 @@ SHA1 (patch-lib_hx509_openssl4) = dd5d5e9ce18075977fcadd9f3d285e67bd6d8b30
 SHA1 (patch-lib_hx509_ks__file.c) = 37686eb8b0c742f0c1f7b0d9291d73d5cb6adeb8
 SHA1 (patch-lib_hx509_crypto.c) = dfef178bfff31759f881977d84369e9dd7baf1dc
 SHA1 (patch-lib_krb5_pkinit-ec.c) = c61b060d6ba3d57e60fc8db80bbbd2e0ffae7e2f
+SHA1 (patch-lib_hx509_collector.c) = 09f35f6fb0604e526be946559f99a15ba8d97c38
