@@ -1032,6 +1032,14 @@ def producer_inputs(options, sdk):
         tsc = gn_source(options).parent / 'typescript-chromium/node_modules/typescript/bin/tsc'
         require(os.access(tsc, os.X_OK), 'Chromium TypeScript backend is missing')
         environment['EMBERBSD_HOST_TYPESCRIPT'] = str(tsc)
+        backend = sorted((tsc.parents[2] / '@typescript').glob('typescript-*/lib/tsc'))
+        require(len(backend) == 1 and os.access(backend[0], os.X_OK),
+                'Chromium TypeScript native backend is missing')
+        environment['EMBERBSD_TYPESCRIPT_NATIVE_BINARY'] = str(backend[0])
+        require('emberbsd_typescript_definitions' in values, 'TypeScript provider values are missing')
+        values['emberbsd_typescript_native_binary'] = str(backend[0])
+        values['emberbsd_typescript_definitions'] = sorted(
+            str(path) for path in backend[0].parent.glob('*.d.ts'))
     provider_check = options.workspace / 'src/third_party/node/run_selected_providers.py'
     versions = sdk['process'].capture([native.tool('python'), str(provider_check), '--inspect',
         environment['EMBERBSD_HOST_NODE'], environment['EMBERBSD_HOST_TYPESCRIPT'],
