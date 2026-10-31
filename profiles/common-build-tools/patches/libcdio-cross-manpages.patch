@@ -1,0 +1,25 @@
+Origin: EmberBSD (AI-assisted).
+Upstream status: not submitted.
+When configure finds help2man, the build regenerates the manual pages
+that the distribution ships by running the new programs with --help.
+Cross-built programs cannot run on the build machine, so keep the
+shipped pages in cross builds.
+
+--- a/misc/libcdio/Makefile
++++ b/misc/libcdio/Makefile
+@@ -29,6 +29,15 @@
+ # fix linking of cdda_player
+ MAKE_FLAGS.NetBSD+=	CURTERMLIB=-lterminfo
+ 
++.include "../../mk/bsd.prefs.mk"
++
++.if ${USE_CROSS_COMPILE:tl} == "yes"
++# With help2man found, the build regenerates the shipped manual pages by
++# running the new programs, which cannot run on the build machine. Keep
++# the shipped pages.
++CONFIGURE_ENV+=		ac_cv_path_HELP2MAN=${TRUE:Q}
++.endif
++
+ .include "../../audio/libcddb/buildlink3.mk"
+ .include "../../devel/popt/buildlink3.mk"
+ .include "../../mk/curses.buildlink3.mk"
