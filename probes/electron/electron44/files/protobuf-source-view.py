@@ -125,6 +125,47 @@ def dependency_view(origin, dest, replacements, masks, *, verify=False, current=
                 output.symlink_to(target, target_is_directory=target.is_dir())
 
 
+# Script interpreters resolve symlinks (Python sys.path[0], esbuild entry
+# points), so generators under a linked directory report or import paths from
+# the prepared workspace instead of the view.  These third_party trees are
+# mirrored as local directories of hard links (copies across devices).
+MATERIALIZED_THIRD_PARTY = ('dawn', 'devtools-frontend')
+
+
+def mirror(origin, dest, *, verify=False):
+    names = {item.name for item in origin.iterdir()}
+    if verify:
+        require(dest.is_dir() and not dest.is_symlink(), 'mirrored view component must be local: ' + str(dest))
+        require({item.name for item in dest.iterdir()} == names, 'mirrored view entries changed: ' + str(dest))
+    else:
+        dest.mkdir()
+    for item in origin.iterdir():
+        output = dest / item.name
+        if item.is_symlink():
+            if verify:
+                require(output.is_symlink() and os.readlink(output) == os.readlink(item),
+                        'mirrored view link changed: ' + str(output))
+            else:
+                output.symlink_to(os.readlink(item))
+        elif item.is_dir():
+            mirror(item, output, verify=verify)
+        elif verify:
+            a, b = item.stat(), output.lstat()
+            require(not output.is_symlink() and (a.st_ino, a.st_dev) == (b.st_ino, b.st_dev) or
+                    (a.st_size == b.st_size and output.read_bytes() == item.read_bytes()),
+                    'mirrored view file changed: ' + str(output))
+        else:
+            try:
+                os.link(item, output)
+            except OSError:
+                import shutil
+                shutil.copy2(item, output)
+
+
+def mirrored(third_party):
+    return {name for name in MATERIALIZED_THIRD_PARTY if (third_party / name).is_dir()}
+
+
 def icu_replacements(source):
     require(chromium_replacements(source).get('icu') == 'third_party/icu/BUILD.gn',
             'invalid Chromium ICU replacement mapping')
@@ -175,7 +216,9 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     if v8:
         (destination / 'src/v8').symlink_to(v8, target_is_directory=True)
     (destination / 'src/out').mkdir()
-    links(third_party, destination / 'src/third_party', ({'protobuf'} if protobuf else set()) | set(providers) | ({'abseil-cpp'} if system_abseil else set()) | ({'icu'} if system_icu else set()) | ({'re2'} if system_re2 else set()))
+    links(third_party, destination / 'src/third_party', ({'protobuf'} if protobuf else set()) | set(providers) | ({'abseil-cpp'} if system_abseil else set()) | ({'icu'} if system_icu else set()) | ({'re2'} if system_re2 else set()) | mirrored(third_party))
+    for name in mirrored(third_party):
+        mirror(third_party / name, destination / 'src/third_party' / name)
     if system_abseil:
         replacements = abseil_replacements(source)
         dependency_view(third_party / 'abseil-cpp', destination / 'src/third_party/abseil-cpp',
@@ -224,8 +267,10 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
                 'common V8 source link changed')
     require((root / 'out').is_dir() and not (root / 'out').is_symlink(),
             'source view out must be local')
-    replaced = ({'protobuf'} if protobuf else set()) | set(providers) | ({'abseil-cpp'} if system_abseil else set()) | ({'icu'} if system_icu else set()) | ({'re2'} if system_re2 else set())
+    replaced = ({'protobuf'} if protobuf else set()) | set(providers) | ({'abseil-cpp'} if system_abseil else set()) | ({'icu'} if system_icu else set()) | ({'re2'} if system_re2 else set()) | mirrored(source / 'third_party')
     check(source / 'third_party', root / 'third_party', replaced, replaced)
+    for name in mirrored(source / 'third_party'):
+        mirror(source / 'third_party' / name, root / 'third_party' / name, verify=True)
     if system_abseil:
         replacements = abseil_replacements(source)
         dependency_view(source / 'third_party/abseil-cpp', root / 'third_party/abseil-cpp',
