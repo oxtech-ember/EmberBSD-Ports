@@ -81,7 +81,7 @@ Use native integer thread IDs to avoid truncating pthread pointers.
        priority_(options.priority()),
        start_semaphore_(nullptr) {
 +#if V8_OS_NETBSD
-+  const int min_stack_size = sysconf(_SC_THREAD_STACK_MIN);
++  const int min_stack_size = static_cast<int>(sysconf(_SC_THREAD_STACK_MIN));
 +#else
    const int min_stack_size = static_cast<int>(PTHREAD_STACK_MIN);
 +#endif
