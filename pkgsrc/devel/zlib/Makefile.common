@@ -1,0 +1,3 @@
+# Shared source release and patch revision for zlib and freestanding users.
+ZLIB_VERSION= 1.3.2
+ZLIB_PATCH_REVISION= 3

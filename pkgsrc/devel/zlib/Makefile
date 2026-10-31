@@ -1,8 +1,10 @@
 # $NetBSD: Makefile,v 1.64 2024/06/04 18:33:45 bsiegert Exp $
 # EmberBSD: use the verified upstream release, with the pkgsrc libtool ABI.
 
-DISTNAME=	zlib-1.3.2
-PKGREVISION=	3
+.include "../../devel/zlib/Makefile.common"
+
+DISTNAME=	zlib-${ZLIB_VERSION}
+PKGREVISION=	${ZLIB_PATCH_REVISION}
 CATEGORIES=	devel
 MASTER_SITES=	https://zlib.net/
 EXTRACT_SUFX=	.tar.xz

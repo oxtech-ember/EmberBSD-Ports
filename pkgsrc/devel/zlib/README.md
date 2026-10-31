@@ -148,3 +148,10 @@ from Chromium zlib commit `868f187def53b2208f7a0447c069e6ea1ecde7ae`, with
 its Chromium BSD license at `share/zlib-source/LICENSE.chromium`. Consumers
 compile this one helper with `USE_SYSTEM_ZLIB` and link the common zlib package;
 the artifact does not introduce another zlib library or C++ ABI.
+
+## Patched source for freestanding consumers
+
+`devel/zlib-source` installs the common version's patched C sources and headers
+under `share/zlib-source/core`, with its license. The source-only package shares
+the release, patch revision, distinfo and patch directory with `devel/zlib`.
+Each consumer supplies its own freestanding integration and verifies its ABI.
