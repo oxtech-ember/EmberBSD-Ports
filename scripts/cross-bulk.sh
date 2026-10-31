@@ -158,9 +158,26 @@ native_info()
     [ -n "$native_pkg_info" ] || { echo 'The native PKG_INFO is empty' >&2; exit 2; }
 }
 
+# Whether the native prefix has the package base $1 at the version of the
+# PKGNAME $2 or newer. pkg_info matches BASE>=VERSION with the version
+# order that pkgsrc uses for dependency patterns. A newer installed package
+# is current; an older one is not, and its node is built again.
+native_current()
+{
+    [ -n "$1" ] || return 1
+    case "$2" in
+        "$1"-[0-9]*) set -- "$1>=${2#"$1"-}" ;;
+        *) set -- "$1" ;;
+    esac
+    set -f
+    if $native_pkg_info -e "$1" > /dev/null 2>&1; then set +f; return 0; fi
+    set +f
+    return 1
+}
+
 # Print the PKG_SKIP_REASON of a node on the first line, then its
 # dependency nodes, one per line. A native node that the native prefix
-# already has is a leaf: the build does not build it again, so its own
+# already has at its version or newer is a leaf: the build does not build it again, so its own
 # tools do not matter. This is what breaks the cycles among the bootstrap
 # tools (coreutils and gettext-tools need each other, python needs both).
 node_deps()
@@ -172,12 +189,12 @@ node_deps()
     dir=$1 suffix=$2
     shift 2
     vars=$(mk -C "$PKGSRCDIR/$dir" "$@" show-vars \
-        VARNAMES='PKG_SKIP_REASON DEPENDS BUILD_DEPENDS TOOL_DEPENDS BOOTSTRAP_DEPENDS PKGBASE' < /dev/null) ||
+        VARNAMES='PKG_SKIP_REASON DEPENDS BUILD_DEPENDS TOOL_DEPENDS BOOTSTRAP_DEPENDS PKGBASE PKGNAME' < /dev/null) ||
         return 1
     printf '%s\n' "$vars" | sed -n 1p
     if [ -n "$suffix" ]; then
         base=$(printf '%s\n' "$vars" | sed -n 6p)
-        [ -z "$base" ] || ! $native_pkg_info -e "$base" > /dev/null 2>&1 || return 0
+        ! native_current "$base" "$(printf '%s\n' "$vars" | sed -n 7p)" || return 0
     fi
     printf '%s\n' "$vars" | awk -v suffix="$suffix" '
         NR == 1 || NR > 5 { next }
@@ -567,7 +584,9 @@ result()
 # the same PKGNAME is and where STATE/done has its checksum. One that a
 # target package needs gets the target settings (CROSSTARGETSETTINGS)
 # that pkgsrc passes to such a tool. It is done when the native prefix has
-# a package of its PKGBASE.
+# a package of its PKGBASE at its version or newer. An older one is
+# replaced (pkgsrc replace, pkg_add -U), which keeps the packages that
+# depend on it registered.
 build_native()
 {
     nnode=$1 key=$2 path=${1%@native}
@@ -585,20 +604,20 @@ build_native()
         result "$key" "skipped $nnode $skip"
         return 0
     fi
-    installed=
-    set -f
-    [ -z "$base" ] || ! $native_pkg_info -e "$base" > /dev/null 2>&1 || installed=1
-    set +f
-    if [ -n "$installed" ]; then
+    if native_current "$base" "$name"; then
         result "$key" "done $nnode"
         return 0
     fi
+    install=install
+    set -f
+    [ -z "$base" ] || ! $native_pkg_info -e "$base" > /dev/null 2>&1 || install=replace
+    set +f
     log=$state/logs/$key.log
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $nnode $name" >> "$state/progress"
     prepare_wrkdir "$wrkdir" "$job.$key"
     : > "$log"
     if { [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; } &&
-        bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes install < /dev/null >> "$log" 2>&1; then
+        bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes "$install" < /dev/null >> "$log" 2>&1; then
         echo "$(date '+%Y-%m-%d %H:%M:%S') done $nnode" >> "$state/progress"
         result "$key" "built $nnode $name native"
         return 0

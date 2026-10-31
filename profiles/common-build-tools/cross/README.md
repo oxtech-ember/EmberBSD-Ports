@@ -523,11 +523,17 @@ leaves it to the MAKECONF. `MAKE_JOBS_SAFE=no` recipes stay serial. Order
 writes the native tools as graph nodes `PKGPATH@native`: `TOOL_DEPENDS` and
 `BOOTSTRAP_DEPENDS` of a target package, and every dependency of a native
 node. A native node is a job of its own, built with `USE_CROSS_COMPILE=no`
-and done once its package is in the native package database, so no package
-compiles a tool inside its dependency step. A native node that the native
-database already has is a leaf: its own tools are not asked, which keeps
-the bootstrap tools that need each other (coreutils, gettext-tools, python)
-out of the graph. Order and tools refuse a graph with a cycle. `cross-bulk.sh tools LIST STATE`
+and done once the native package database has its PKGBASE at the tree's
+PKGNAME version or newer (`pkg_info -e 'BASE>=VERSION'`, the version order
+of pkgsrc dependency patterns), so no package compiles a tool inside its
+dependency step. A native node that the native database already has at that
+version or newer is a leaf: its own tools are not asked, which keeps the
+bootstrap tools that need each other (coreutils, gettext-tools, python) out
+of the graph. An older installed package is not current: its node is built
+again and replaces it with the pkgsrc `replace` target (`pkg_add -U`), which
+keeps the packages that depend on it registered. A newer host package, such
+as a host clang, stays current.
+`scripts/tests/cross-bulk-native-version.sh NEW_OUTPUT` checks this. Order and tools refuse a graph with a cycle. `cross-bulk.sh tools LIST STATE`
 adds these nodes to an existing order for the packages not yet done, keeps
 the old order and edges as `*.pre-tools-STAMP`, and refuses when a query
 fails or a reachable node is skipped. Nothing is locked while a package

@@ -50,9 +50,12 @@ sleep 0.5
 rmdir $out/adding-\$db
 : > "\$2/\$3"
 WRAP
+# The database names packages by PKGBASE; each is at the tree's version
+# 1.0, so it satisfies BASE>=1.0 (scripts/tests/cross-bulk-native-version.sh
+# checks older and newer versions).
 cat > "$out/pkg_info" <<WRAP
 #!/bin/sh
-[ "\$1" = -K ] && [ "\$3" = -e ] && [ -e "\$2/\$4" ]
+[ "\$1" = -K ] && [ "\$3" = -e ] && [ -e "\$2/\${4%%>=*}" ]
 WRAP
 cat > "$out/bmake" <<WRAP
 #!/bin/sh
