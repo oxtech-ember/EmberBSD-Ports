@@ -772,6 +772,11 @@
       "path": "protobuf-javascript-current-protobuf-absl.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "base-rand-util-bsd-conditionals.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

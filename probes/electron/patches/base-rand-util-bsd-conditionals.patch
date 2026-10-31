@@ -1,0 +1,25 @@
+# Origin: EmberBSD (AI-assisted), balance the pkgsrc NetBSD rand_util_posix.cc conditionals.
+# The pkgsrc patch leaves !IS_BSD open across the !IS_APPLE block, which removes
+# RandBytesInternal from the macOS host toolchain build; close it and use #else.
+--- a/base/rand_util_posix.cc
++++ b/base/rand_util_posix.cc
+@@ -67,6 +67,7 @@
+   const int fd_;
+ };
+ 
++#endif  // !BUILDFLAG(IS_BSD)
+ #endif  // !BUILDFLAG(IS_APPLE)
+ 
+ #if (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)) && !BUILDFLAG(IS_BSD)
+@@ -153,9 +154,9 @@
+   const bool success = ReadFromFD(urandom_fd, as_writable_chars(output));
+   CHECK(success);
+ #endif  // BUILDFLAG(IS_MAC)
+-#endif
++#else  // !BUILDFLAG(IS_BSD)
+   arc4random_buf(output.data(), output.size());
+-#endif
++#endif  // !BUILDFLAG(IS_BSD)
+ }
+ }  // namespace
+ 
