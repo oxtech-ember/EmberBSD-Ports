@@ -1,0 +1,96 @@
+Devel::CheckLib only links its probe program in cross builds.
+
+check_lib() runs the program it links to prove that a library works. In
+a cross build Makefile.PL gets the target Config through
+ExtUtils::MakeMaker::Config, so the program is a target executable, and
+running it on the build machine failed with "cannot execute binary
+file". textproc/p5-XML-Parser then reported that expat was missing.
+Skip the run when that Config names another system or sets
+usecrosscompile. p5-XML-Parser requires the fixed tool.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/devel/p5-Devel-CheckLib/Makefile
++++ b/devel/p5-Devel-CheckLib/Makefile
+@@ -2,7 +2,7 @@
+ 
+ DISTNAME=	Devel-CheckLib-1.16
+ PKGNAME=	p5-${DISTNAME}
+-PKGREVISION=	6
++PKGREVISION=	7
+ CATEGORIES=	devel perl5
+ MASTER_SITES=	${MASTER_SITE_PERL_CPAN:=Devel/}
+ 
+--- a/devel/p5-Devel-CheckLib/distinfo
++++ b/devel/p5-Devel-CheckLib/distinfo
+@@ -3,4 +3,4 @@
+ BLAKE2s (Devel-CheckLib-1.16.tar.gz) = 10f259b22ffe5617f60db73ee4d99f06f793164840a0d2c72ce6af1b17c62cc3
+ SHA512 (Devel-CheckLib-1.16.tar.gz) = 919da046cdd1f48e0ccd8a7734a98f3144c0005c8303b02b43aeedcd2cfc148c78f502f26a80ea2612279e2becf4948b408d8cbd4b7cc514519c5954ae4139cb
+ Size (Devel-CheckLib-1.16.tar.gz) = 15863 bytes
+-SHA1 (patch-lib_Devel_CheckLib.pm) = b5e9e74723a5b0879627570c2d779d266087a75f
++SHA1 (patch-lib_Devel_CheckLib.pm) = feb2591d0ae84ba6506dd3d5aa9ddfe21721664c
+--- a/devel/p5-Devel-CheckLib/patches/patch-lib_Devel_CheckLib.pm
++++ b/devel/p5-Devel-CheckLib/patches/patch-lib_Devel_CheckLib.pm
+@@ -4,9 +4,14 @@
+ Keeps p5-Crypt-DH-GMP building on at least NetBSD.
+ macOS doesn't use -rpath and older linkers don't recognize it.
+ 
+---- lib/Devel/CheckLib.pm.orig	2022-05-04 14:31:10.000000000 +0000
++Cross builds give Makefile.PL the target Config through
++ExtUtils::MakeMaker::Config. The probe program is then a target
++executable that cannot run on the build machine, so only compile and
++link it there. (EmberBSD, AI-assisted; not submitted upstream.)
++
++--- lib/Devel/CheckLib.pm.orig
+ +++ lib/Devel/CheckLib.pm
+-@@ -295,7 +295,6 @@ sub _compile_cmd {
++@@ -295,7 +295,6 @@
+  	    $cfile,
+  	    (!defined $lib ? () : (
+  	      (map "-L$_", @$libpaths),
+@@ -14,7 +19,33 @@
+  	      "-l$lib",
+  	    )),
+  	    @$ld,
+-@@ -454,7 +453,7 @@ sub _findcc {
++@@ -332,7 +331,7 @@
++     my @headers = @{$args{header} || []};
++     my @incpaths = @{$args{incpath} || []};
++     my $analyze_binary = $args{analyze_binary};
++-    my $execute = !$args{not_execute};
+++    my $execute = !$args{not_execute} && !_cross_build();
++ 
++     my @argv = @ARGV;
++     push @argv, _parse_line('\s+', 0, $ENV{PERL_MM_OPT}||'');
++@@ -420,6 +419,16 @@
++     die("wrong analysis: $analysis_string") if @wronganalysis;
++ }
++ 
+++# Makefile.PL runs with ExtUtils::MakeMaker::Config, which a cross build
+++# sets to the target Config. Programs built for another system cannot run
+++# here, so a cross build only compiles and links them.
+++sub _cross_build {
+++    require ExtUtils::MakeMaker::Config;
+++    my $target = \%ExtUtils::MakeMaker::Config::Config;
+++    return 1 if $target->{usecrosscompile};
+++    return defined $target->{osname} && $target->{osname} ne $^O;
+++}
+++
++ sub _cleanup_exe {
++     my ($exefile) = @_;
++     my $ofile = $exefile;
++@@ -454,7 +463,7 @@
+          push @Config_ldflags, $config_val if ( $config_val =~ /\S/ );
+      }
+      my @ccflags = grep { length } _parsewords($Config_ccflags||'', $user_ccflags||'');
+--- a/textproc/p5-XML-Parser/Makefile
++++ b/textproc/p5-XML-Parser/Makefile
+@@ -12,7 +12,8 @@
+ LICENSE=	${PERL5_LICENSE}
+ 
+ DEPENDS+=	p5-libwww-[0-9]*:../../www/p5-libwww
+-TOOL_DEPENDS+=	p5-Devel-CheckLib-[0-9]*:../../devel/p5-Devel-CheckLib
++# Devel::CheckLib that only links its probe in cross builds.
++TOOL_DEPENDS+=	p5-Devel-CheckLib>=1.16nb7:../../devel/p5-Devel-CheckLib
+ DEPENDS+=	p5-File-ShareDir-[0-9]*:../../devel/p5-File-ShareDir
+ TOOL_DEPENDS+=	p5-File-ShareDir-Install-[0-9]*:../../devel/p5-File-ShareDir-Install
+ 
