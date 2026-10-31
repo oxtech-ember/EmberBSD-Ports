@@ -1,0 +1,27 @@
+libical links libintl through glib2 and needs gettext-lib.
+
+On macOS glib-2.0.pc lists -lintl in Libs, so libical-glib and
+ical-glib-src-generator load libintl directly, and check-shlibs rejected
+the native package: gettext-lib is not a runtime dependency. On NetBSD
+libintl is built in and the dependency is not added.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/time/libical/Makefile
++++ b/time/libical/Makefile
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.64 2026/09/02 19:04:49 wiz Exp $
+ 
+ DISTNAME=	libical-3.0.20
+-PKGREVISION=	5
++PKGREVISION=	6
+ CATEGORIES=	time
+ MASTER_SITES=	${MASTER_SITE_GITHUB:=libical/}
+ GITHUB_RELEASE=	v${PKGVERSION_NOREV}
+@@ -43,6 +43,7 @@
+ TEST_TARGET=	test
+ 
+ .include "../../devel/cmake/build.mk"
++.include "../../devel/gettext-lib/buildlink3.mk"
+ .include "../../devel/glib2/buildlink3.mk"
+ .include "../../textproc/icu/buildlink3.mk"
+ .include "../../textproc/libxml2/buildlink3.mk"
