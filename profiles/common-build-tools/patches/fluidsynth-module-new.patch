@@ -1,0 +1,16 @@
+$NetBSD$
+
+fluid_module.cpp uses std::nothrow without <new>; libc++ <string> does not
+include it transitively, so a clang build fails.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- src/utils/fluid_module.cpp.orig
++++ src/utils/fluid_module.cpp
+@@ -26,6 +26,7 @@
+ #include "fluid_module.h"
+ #include "fluid_sys.h"
+ 
++#include <new>
+ #include <string>
+ 
+ #if defined(_WIN32)
