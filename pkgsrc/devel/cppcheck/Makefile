@@ -1,6 +1,6 @@
 # Origin: EmberBSD contributors (AI-assisted).
 DISTNAME= cppcheck-2.22.0
-PKGREVISION= 7
+PKGREVISION= 8
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=cppcheck-opensource/}
 GITHUB_PROJECT= cppcheck
@@ -20,6 +20,8 @@ USE_CXX_FEATURES= c++17
 USE_TOOLS+= pkg-config
 PYTHON_VERSIONS_INCOMPATIBLE= 27
 REPLACE_PYTHON+= htmlreport/cppcheck-htmlreport
+# NetBSD declares backtrace(3) in <execinfo.h> and provides it in libexecinfo.
+LDFLAGS.NetBSD+= -lexecinfo
 
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_CXX_STANDARD:STRING=17
 CMAKE_CONFIGURE_ARGS+= -DBUILD_CLI:BOOL=ON
