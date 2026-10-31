@@ -27,6 +27,8 @@ MESON_REQD+=		1.2.0
 MESON_ARGS+=		-Dcairo=enabled
 MESON_ARGS+=		-Dfontconfig=enabled
 MESON_ARGS+=		-Ddocumentation=false
+# The test suite is not installed and fails with -Werror under LLVM 23.
+MESON_ARGS+=		-Dbuild-testsuite=false
 
 .if ${USE_CROSS_COMPILE:tl} == "yes"
 TOOL_DEPENDS+=			glib2-tools>=0:../../devel/glib2-tools
