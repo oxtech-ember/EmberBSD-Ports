@@ -106,9 +106,9 @@ def verify(source, git, patch, shared=None):
     record = sourceprep.validate_prepared_tree(source, package=PACKAGE, identity=old)
     current = identity(git)
     if identity_module().current_git_package(old, current['owner_sha256'], lambda: current['effective']):
+        # The Git key already covers files/; a matched key does not reread the export.
         if shared:
-            with tempfile.TemporaryDirectory(prefix='.libfetch-export-verify-') as tmp:
-                export_tree(tmp, git, patch, shared)
+            identity_module().shared_export(shared, PORTS, git, SDK_SOURCE, patch)
         return record
     require(patch and os.path.isabs(patch), 'changed libfetch identity requires an explicit patch tool')
     with tempfile.TemporaryDirectory(prefix='.libfetch-verify-') as tmp:

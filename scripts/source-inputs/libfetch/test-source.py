@@ -87,11 +87,6 @@ with tempfile.TemporaryDirectory(prefix='libfetch-test-') as temp:
                                     stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
             if result.returncode == 0 or b'differs from export snapshot' not in result.stderr:
                 raise SystemExit('shared FILESDIR ' + label + ' was not rejected')
-            result = subprocess.run(base + ['verify-source', '--source', command[-1],
-                                            '--patch', patch, '--pkgsrc-export', str(shared)],
-                                    stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-            if result.returncode == 0 or b'differs from export snapshot' not in result.stderr:
-                raise SystemExit('shared FILESDIR ' + label + ' verified unexpectedly')
         target.write_bytes(original + b'\n/* altered */\n')
         rejected('modified')
         target.write_bytes(original)

@@ -18,7 +18,9 @@ explicit patch tool. New shared exports record a snapshot of the libfetch FILESD
 checks its contents and execute modes without another full pkgsrc export.
 A legacy receipt without a snapshot requires a canonical export for comparison.
 The caller owns the export; the snapshot detects accidental changes, not an
-authenticated or adversarially protected directory.
+authenticated or adversarially protected directory. Verification of a source
+whose Git key still matches checks only the export receipt and does not reread
+the FILESDIR.
 The consumer generates error headers in its object tree;
 the prepared source remains read-only. Run `test-source.py` with the selected
 Python, SDK source, Git and prepared source paths for its focused verification.
