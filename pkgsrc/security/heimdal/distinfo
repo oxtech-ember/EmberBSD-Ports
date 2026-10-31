@@ -49,3 +49,5 @@ SHA1 (patch-lib_ntlm_Makefile.am) = 8beeebd2629bb3cd7a3afd0887cb1af5d1b5d61c
 SHA1 (patch-lib_ntlm_Makefile.in) = 98b23f6b85f2b7dbf0de4c7250822defee1f5d3a
 SHA1 (patch-lib_ntlm_heimntlm-protos.h) = 174c07cd0bf139b66c133c57a322783bdd83a629
 SHA1 (patch-lib_ntlm_ntlm.c) = 7770e28bd4ab720a5e4994f73ddb9df099b29a87
+SHA1 (patch-kdc_kx509.c) = 01e609a5183874eef8063d586ed050731750c7d5
+SHA1 (patch-kdc_digest.c) = 7e6d15d6fcb3c2f0af622976cc8cb721dfb23044
