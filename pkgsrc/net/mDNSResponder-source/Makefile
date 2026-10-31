@@ -1,6 +1,7 @@
 .include "../../net/mDNSResponder/Makefile.common"
 
 PKGNAME=	mDNSResponder-source-${PKGVER}
+PKGREVISION=	1
 CATEGORIES=	net
 HOMEPAGE=	https://developer.apple.com/bonjour/
 COMMENT=	Prepared mDNSResponder source with the common Ports patchset

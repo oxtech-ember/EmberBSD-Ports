@@ -12,3 +12,4 @@ SHA1 (patch-mDNSShared_CommonServices.h) = afcb24b5e52886a9060b6a923691d752ccdd9
 SHA1 (patch-mDNSShared_PlatformCommon.c) = 2c40a8c1d40fc6246f2518345aefa24e3d51aeac
 SHA1 (patch-mDNSShared_dnsextd__parser.y) = dde7eca76c2b5158c2ac96764f91ce773464094a
 SHA1 (patch-mDNSShared_uds__daemon.c) = f621e785a3a5d86ab17cf88c47409529b1fe479c
+SHA1 (patch-mDNSShared_utilities_mdns__addr__tailq.h) = 3d84490319f01ebc581f02252b3dbfb50ba5dc98
