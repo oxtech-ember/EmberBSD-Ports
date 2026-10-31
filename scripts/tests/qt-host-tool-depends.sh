@@ -12,9 +12,12 @@ trap 'rm -rf "$work"' EXIT
 printf '.include "%s"\n' "$tree/x11/qt6-qtbase/host-tools.mk" > "$work/case.mk"
 q() { "$bmake" -f "$work/case.mk" TOOLBASE=/tool EMBERBSD_QT_HOST_PATH=/wrong -V "\${$1}"; }
 fail() { echo "FAIL: $*" >&2; exit 1; }
+# The native package must be at least the current revision of the recipe.
+rev() { sed -n 's/^PKGREVISION=[[:space:]]*//p' "$tree/$1/Makefile" | head -1; }
+qtbase_rev=$(rev x11/qt6-qtbase) qttools_rev=$(rev devel/qt6-qttools)
 [ "$(q QT_HOST_PATH)" = /tool/qt6 ] || fail "QT_HOST_PATH is not TOOLBASE/qt6"
 case " $(q TOOL_DEPENDS) " in
-*' qt6-qtbase>=6.12.0nb13:../../x11/qt6-qtbase '*) ;;
+*" qt6-qtbase>=6.12.0nb$qtbase_rev:../../x11/qt6-qtbase "*) ;;
 *) fail 'no native qt6-qtbase TOOL_DEPENDS' ;;
 esac
 args=$(q CMAKE_CONFIGURE_ARGS)
@@ -27,7 +30,7 @@ grep -q '^\.include "\.\./\.\./x11/qt6-qtbase/host-tools\.mk"$' "$tree/x11/qt6-q
 printf '.include "%s"\n' "$tree/devel/qt6-qttools/host-tools.mk" > "$work/case.mk"
 l() { "$bmake" -f "$work/case.mk" TOOLBASE=/tool EMBERBSD_QT_HOST_PATH=/wrong -V "\${$1}"; }
 case " $(l TOOL_DEPENDS) " in
-*' qt6-qttools>=6.12.0nb6:../../devel/qt6-qttools '*) ;;
+*" qt6-qttools>=6.12.0nb$qttools_rev:../../devel/qt6-qttools "*) ;;
 *) fail 'no native qt6-qttools TOOL_DEPENDS for Linguist consumers' ;;
 esac
 args=$(l CMAKE_CONFIGURE_ARGS)
