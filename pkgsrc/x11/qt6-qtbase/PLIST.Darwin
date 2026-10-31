@@ -24,6 +24,7 @@ qt6/include/QtGui/${PKGVERSION}/QtGui/private/qmacstyle_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qmetallayer_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qrasterbackingstore_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qrhibackingstore_p.h
+qt6/include/QtGui/${PKGVERSION}/QtGui/private/qrhimetal_icb_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qrhimetal_p.h
 qt6/include/QtGui/QUtiMimeConverter
 qt6/include/QtGui/qutimimeconverter.h

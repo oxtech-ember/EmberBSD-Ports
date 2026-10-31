@@ -15,6 +15,9 @@ lib/pkgconfig/Qt6Widgets.pc
 lib/pkgconfig/Qt6Xml.pc
 ${PLIST.androidtools}qt6/bin/androiddeployqt
 ${PLIST.androidtools}qt6/bin/androiddeployqt6
+${PLIST.androidtools}qt6/bin/harmonydeployqt
+${PLIST.androidtools}qt6/bin/harmonydeployqt6
+${PLIST.androidtools}qt6/bin/harmonyostestrunner
 ${PLIST.androidtools}qt6/bin/androidtestrunner
 ${PLIST.dbus}qt6/bin/qdbuscpp2xml
 ${PLIST.dbus}qt6/bin/qdbusxml2cpp
@@ -4500,7 +4503,7 @@ qt6/share/qt6/wayland/protocols/idle-inhibit/REUSE.toml
 qt6/share/qt6/wayland/protocols/idle-inhibit/idle-inhibit-unstable-v1.xml
 qt6/share/qt6/wayland/protocols/linux-dmabuf/REUSE.toml
 qt6/share/qt6/wayland/protocols/linux-dmabuf/linux-dmabuf-unstable-v1.xml
-${PLIST.wayland}${PLIST.x11}qt6/share/qt6/wayland/protocols/linux-dmabuf/linux-dmabuf-v1.xml
+qt6/share/qt6/wayland/protocols/linux-dmabuf/linux-dmabuf-v1.xml
 qt6/share/qt6/wayland/protocols/linux-dmabuf/qt_attribution.json
 qt6/share/qt6/wayland/protocols/pointer-gestures/REUSE.toml
 qt6/share/qt6/wayland/protocols/pointer-gestures/pointer-gestures-unstable-v1.xml
@@ -4516,7 +4519,7 @@ qt6/share/qt6/wayland/protocols/scaler/qt_attribution.json
 qt6/share/qt6/wayland/protocols/scaler/scaler.xml
 qt6/share/qt6/wayland/protocols/session-management/REUSE.toml
 qt6/share/qt6/wayland/protocols/session-management/qt_attribution.json
-${PLIST.wayland}${PLIST.x11}qt6/share/qt6/wayland/protocols/session-management/xdg-session-management-v1.xml
+qt6/share/qt6/wayland/protocols/session-management/xdg-session-management-v1.xml
 qt6/share/qt6/wayland/protocols/tablet/REUSE.toml
 qt6/share/qt6/wayland/protocols/tablet/qt_attribution.json
 qt6/share/qt6/wayland/protocols/tablet/tablet-unstable-v2.xml
