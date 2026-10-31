@@ -1,0 +1,9 @@
+$NetBSD$
+
+BLAKE2s (wpa_supplicant-2.12.tar.gz) = d7135cc3cb5cb5d8347217ec88660812434693ff9ad4718e3e1a158854a88df0
+SHA512 (wpa_supplicant-2.12.tar.gz) = 5e996323fea2a5f6fefe4f2456481b9e8409adb5bf1d7a72d4489f3db2e3a968d6d9fe5cc0959b820f5b18faa330adb1245da98aad49631009609fbd0f447901
+Size (wpa_supplicant-2.12.tar.gz) = 4247413 bytes
+BLAKE2s (hostapd-2.12.tar.gz) = efa99e2feb516a6cfb9f1619447c073dfaa14a88a3a22b65ff8ab39e0eddac2e
+SHA512 (hostapd-2.12.tar.gz) = 3d952125dc2b6868532b39264e16eae4d0bdf601b82229e6f5e7caedbd7ce3c1c2b842932b0afe33d9c3077dc4d536e04f8b47fb5d35f5e253d97ab8465eda81
+Size (hostapd-2.12.tar.gz) = 3037984 bytes
+SHA1 (patch-emberbsd-platform) = b779ccb890c404cef9a3518fadd43794339cb794

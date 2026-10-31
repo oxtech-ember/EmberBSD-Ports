@@ -39,6 +39,7 @@ OWNERS = {
     'libfetch': ('scripts/source-inputs/libfetch/source.py', 'net/libfetch'),
     'openldap': ('scripts/source-inputs/openldap/source.py', 'databases/openldap'),
     'unbound': ('scripts/source-inputs/unbound/source.py', 'net/unbound'),
+    'wpa': ('scripts/source-inputs/wpa/source.py', 'net/wpa_supplicant'),
     'libcbor': ('scripts/source-inputs/libcbor/source.py', 'devel/libcbor'),
     'byacc': ('scripts/source-inputs/byacc/source.py', 'devel/byacc'),
     'texinfo': ('scripts/source-inputs/texinfo/source.py', 'devel/gtexinfo'),
