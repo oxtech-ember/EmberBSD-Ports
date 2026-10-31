@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (postcss-minify-1.1.0.tgz) = 795f8692b279853dd705271186c38a246568a2ec64d26526e9cf1d4a7fa0288a
-SHA512 (postcss-minify-1.1.0.tgz) = f43eb8b9e216d032f615d2da8d04e55eb9d337c3b1f4d8ee5ea8a028c981f35f5185d0a534f631e59a778b9c748218e3cb7bc6acb04160462f26363fd5e30d6f
-Size (postcss-minify-1.1.0.tgz) = 5306 bytes
+BLAKE2s (postcss-minify-1.2.0.tgz) = 2fcc2244be7ba8d2330ac25a690e902bbd9c2880a10353a27e4b1fb9951f9b73
+SHA512 (postcss-minify-1.2.0.tgz) = 0afcb3fa15b97811b4a244923860debacb10cb8bfd9991d184c7af3f68f0003a834b5bf681fa0ba3de3e8387c279562d11264aaabf9588c3efdf23e459916615
+Size (postcss-minify-1.2.0.tgz) = 3776 bytes
