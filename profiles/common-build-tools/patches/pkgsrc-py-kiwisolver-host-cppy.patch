@@ -1,0 +1,27 @@
+kiwisolver's setup.py imports cppy on the build machine.
+
+The build backend runs setup.py with the build tool Python, which imports
+cppy for its headers. The cppy buildlink file installed cppy only for the
+target, so a cross build stopped with "Missing setup required
+dependencies: cppy". cppy is pure Python and its headers do not depend on
+the machine: depend on it as a tool.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/math/py-kiwisolver/Makefile
++++ b/math/py-kiwisolver/Makefile
+@@ -12,6 +12,7 @@
+ 
+ TOOL_DEPENDS+=	${PYPKGPREFIX}-setuptools>=78:../../devel/py-setuptools
+ TOOL_DEPENDS+=	${PYPKGPREFIX}-setuptools_scm>=3.4.3:../../devel/py-setuptools_scm
++TOOL_DEPENDS+=	${PYPKGPREFIX}-cppy>=1.3.0:../../devel/py-cppy
+ 
+ USE_LANGUAGES=	c c++
+ 
+@@ -19,7 +20,5 @@
+ 	${RM} -f ${DESTDIR}${PREFIX}/${PYSITELIB}/src/version.h
+ 	${RMDIR} ${DESTDIR}${PREFIX}/${PYSITELIB}/src || ${TRUE}
+ 
+-BUILDLINK_API_DEPENDS.py-cppy+=	${PYPKGPREFIX}-cppy>=1.3.0
+-.include "../../devel/py-cppy/buildlink3.mk"
+ .include "../../lang/python/wheel.mk"
+ .include "../../mk/bsd.pkg.mk"
