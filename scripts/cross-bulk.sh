@@ -133,7 +133,7 @@ reuse_cache()
 {
     if [ -f "$cache/identity" ] && cache_identity > "$state/identity" &&
         cmp -s "$state/identity" "$cache/identity" &&
-        [ -z "$(cd "$PKGSRCDIR" && find mk $(cat "$state/order") -newer "$cache/identity" -print | head -n 1)" ]; then
+        [ -z "$(cd "$PKGSRCDIR" && find mk $(sed 's/@native$//' "$state/order" | sort -u) -newer "$cache/identity" -print | head -n 1)" ]; then
         cachearg=$cache
     else
         echo 'The build options cache is not from this tree; querying without it' >&2
@@ -350,10 +350,18 @@ fetch()
     reuse_cache
     distdir=$(var pkgtools/pkg_install DISTDIR)
     case "$distdir" in /*) ;; *) echo "DISTDIR is not absolute: $distdir" >&2; return 1 ;; esac
+    # A native tool that a target package needs gets the target settings,
+    # as in build (build_native): cross-libtool refuses to parse without them.
+    target_settings=$(var pkgtools/pkg_install CROSSTARGETSETTINGS)
+    crossfed=$(awk '$1 ~ /@native$/ && $2 !~ /@native$/ { print $1 }' "$state/edges" | sort -u)
     while read -r path; do
         dir=${path%@native}
         have_distfiles "$dir" && continue
-        if [ "$dir" = "$path" ]; then set --; else set -- USE_CROSS_COMPILE=no; fi
+        set -f
+        if [ "$dir" = "$path" ]; then set --
+        elif printf '%s\n' "$crossfed" | grep -qFx "$path"; then set -- USE_CROSS_COMPILE=no $target_settings
+        else set -- USE_CROSS_COMPILE=no; fi
+        set +f
         skip=$(mk -C "$PKGSRCDIR/$dir" "$@" show-var VARNAME=PKG_SKIP_REASON < /dev/null) || skip=
         if [ -n "$skip" ]; then
             echo "$path $skip" >> "$state/skipped"
