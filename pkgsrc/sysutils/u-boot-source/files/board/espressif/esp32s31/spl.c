@@ -78,11 +78,8 @@ void spl_board_init(void)
 		hang();
 	}
 
-	/* Clock-tree bring-up. Order: MPLL (EMAC ref path; psram_init already
-	 * did the PSRAM MPLL) -> CPU 40->320 MHz CPLL -> systimer peripheral
-	 * clock for Linux's clocksource.
+	/* Complete CPU and systimer clock-tree bring-up after PSRAM.
 	 */
-	s31_spl_mpll_enable();
 	s31_spl_cpu_switch_to_cpll();
 	s31_spl_systimer_clk_init();
 	puts("ESP32-S31 PSRAM ready; waiting for UART FIT\n");

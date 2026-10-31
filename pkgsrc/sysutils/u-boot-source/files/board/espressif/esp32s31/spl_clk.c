@@ -1,5 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0+
+// SPDX-License-Identifier: GPL-2.0+ AND MIT
 /*
+ * MPLL and analog I2C sequences adapted from esp-hal esp32s31/clocks.rs and
+ * esp32s31/regi2c.rs, copyright 2021 esp-rs, MIT license. See
+ * emberbsd-licenses/esp-hal-MIT. Source revision:
+ * 41b881629e88acdf0011963eae0ffa8074c9f2b7.
+ * Hardware sequence also cross-checked against ESP-IDF revision
+ * d445e947156f276dfe0db5804e4edf6ae90fe6fb.
+ *
  * ESP32-S31 SPL clock-tree bring-up: MPLL (EMAC ref path), CPU→CPLL
  * (320 MHz), and the systimer peripheral clock. First-stage bring-up, so it
  * lives in the SPL (which runs from uncached HP-RAM), not in the OpenSBI
@@ -14,6 +21,7 @@
 #include <linux/types.h>
 
 #include "spl_clk.h"
+#include "spl_poll.h"
 
 #define ESP32S31_PMU_BASE                 0x20704000U
 #define ESP32S31_LP_AONCLKRST_BASE        0x20701000U
@@ -30,13 +38,11 @@ static void reg_set_field(void *reg, u32 mask, u32 val)
 
 /*
  * Bring up the MPLL (500 MHz) feeding MSPI/PSRAM and the EMAC reference
- * clock. psram_init() already brings MPLL up for PSRAM; this additionally
- * does the MODEM-I2C-master calibration path that the EMAC ref clock
- * depends on (power-up, configure, calibrate — same minimum sequence).
+ * clock. One initialization runs before the PSRAM controller and configures
+ * the analog I2C master and MPLL before calibration.
  */
 #define PMU_IMM_HP_CK_POWER_1_OFF         0xF4U
 #define PMU_HP_ACTIVE_HP_CK_POWER_OFF     0x1CU
-#define PMU_PSRAM_CFG_OFF                 0x1E8U
 #define HP_ALIVE_SYS_HP_CLK_CTRL_OFF      0x00U
 #define LP_AONCLKRST_MSPI_DIV_OFF         0x54U
 #define HP_SYS_CLKRST_ANA_PLL_CTRL0_OFF   0x174U
@@ -50,7 +56,8 @@ static void reg_set_field(void *reg, u32 mask, u32 val)
 #define PMU_TIE_HIGH_XPD_MPLL             BIT(30)
 #define PMU_HP_ACTIVE_XPD_MPLL_I2C        BIT(26)
 #define PMU_HP_ACTIVE_XPD_MPLL            BIT(30)
-#define PMU_PSRAM_XPD                     BIT(31)
+#define PMU_TIE_HIGH_CPLL_BITS            (BIT(19) | BIT(23) | BIT(27))
+#define PMU_HP_ACTIVE_ALL_PLL_XPD         0x5dc00000U
 #define HP_ALIVE_SYS_HP_MPLL_500M_CLK_EN  BIT(31)
 #define MSPI_FB_DIV_MASK                  (0x1FU << 3)
 #define MSPI_FB_DIV_500MHZ                (24U << 3)
@@ -61,11 +68,79 @@ static void reg_set_field(void *reg, u32 mask, u32 val)
 #define MODEM_LPCON_CLK_I2C_MST_FO        BIT(2)
 #define MODEM_SYSCON_CLK_I2C_MST_SEL_160M BIT(12)
 
-void s31_spl_mpll_enable(void)
+#define S31_ANA_I2C_BASE                  0x2010f800U
+#define S31_ANA_I2C_CONF1                 (S31_ANA_I2C_BASE + 0x1cU)
+#define S31_ANA_I2C_CONF2                 (S31_ANA_I2C_BASE + 0x20U)
+#define S31_ANA_I2C_MPLL_SELECT           BIT(12)
+#define S31_ANA_I2C_BUSY                  BIT(25)
+#define S31_ANA_I2C_WRITE                 BIT(24)
+#define S31_ANA_I2C_DATA_SHIFT            16
+#define S31_ANA_I2C_ADDR_SHIFT            8
+#define S31_ANA_I2C_MPLL                  0x0bU
+
+/* Adapted from esp-hal's regi2c_enable_block (regi2c.rs:228-274).
+ * This board path uses only the MPLL slave; clocks are enabled by the caller.
+ */
+static void *
+s31_mpll_i2c_controller(void)
+{
+	void *conf1 = (void *)S31_ANA_I2C_CONF1;
+	const void *conf2 = (const void *)S31_ANA_I2C_CONF2;
+	u32 sel;
+
+	sel = (readl(conf2) & (S31_ANA_I2C_MPLL_SELECT << 4)) ? 0 : 1;
+	writel(~(S31_ANA_I2C_MPLL_SELECT << 2) & 0x00ffffffU, conf1);
+	return (void *)(unsigned long)(S31_ANA_I2C_BASE + sel * 4);
+}
+
+/* regi2c_read (regi2c.rs:294-311), with bounded idle waits. */
+static int
+s31_mpll_i2c_read(u32 reg, u32 *value)
+{
+	void *ctrl = s31_mpll_i2c_controller();
+	u32 command = S31_ANA_I2C_MPLL | (reg << S31_ANA_I2C_ADDR_SHIFT);
+
+	if (!s31_poll_register(ctrl, S31_ANA_I2C_BUSY, 0))
+		return -1;
+	writel(command, ctrl);
+	if (!s31_poll_register(ctrl, S31_ANA_I2C_BUSY, 0))
+		return -1;
+	*value = (readl(ctrl) >> S31_ANA_I2C_DATA_SHIFT) & 0xffU;
+	return 0;
+}
+
+/* regi2c_write (regi2c.rs:313-328), with bounded idle waits. */
+static int
+s31_mpll_i2c_write(u32 reg, u32 value)
+{
+	void *ctrl = s31_mpll_i2c_controller();
+	u32 command = S31_ANA_I2C_MPLL | (reg << S31_ANA_I2C_ADDR_SHIFT) |
+	    S31_ANA_I2C_WRITE | ((value & 0xffU) << S31_ANA_I2C_DATA_SHIFT);
+
+	if (!s31_poll_register(ctrl, S31_ANA_I2C_BUSY, 0))
+		return -1;
+	writel(command, ctrl);
+	if (!s31_poll_register(ctrl, S31_ANA_I2C_BUSY, 0))
+		return -1;
+	return 0;
+}
+
+/* RegI2cField::write_field (rom/regi2c.rs:78-83). */
+static int
+s31_mpll_i2c_update(u32 reg, u32 mask, u32 value)
+{
+	u32 old;
+
+	if (s31_mpll_i2c_read(reg, &old))
+		return -1;
+	return s31_mpll_i2c_write(reg, (old & ~mask) | (value & mask));
+}
+
+int
+s31_spl_mpll_enable(void)
 {
 	void *pmu_imm    = (void *)(ESP32S31_PMU_BASE + PMU_IMM_HP_CK_POWER_1_OFF);
 	void *pmu_active = (void *)(ESP32S31_PMU_BASE + PMU_HP_ACTIVE_HP_CK_POWER_OFF);
-	void *pmu_psram  = (void *)(ESP32S31_PMU_BASE + PMU_PSRAM_CFG_OFF);
 	void *hp_alive   = (void *)(ESP32S31_HP_ALIVE_SYS_BASE + HP_ALIVE_SYS_HP_CLK_CTRL_OFF);
 	void *mspi_div   = (void *)(ESP32S31_LP_AONCLKRST_BASE + LP_AONCLKRST_MSPI_DIV_OFF);
 	void *ana_pll    = (void *)(ESP32S31_HP_SYS_CLKRST_BASE + HP_SYS_CLKRST_ANA_PLL_CTRL0_OFF);
@@ -74,6 +149,7 @@ void s31_spl_mpll_enable(void)
 	void *lpcon_fo   = (void *)(ESP32S31_MODEM_LPCON_BASE + MODEM_LPCON_CLK_CONF_FORCE_ON_OFF);
 	void *syscon_clk = (void *)(ESP32S31_MODEM_SYSCON_BASE + MODEM_SYSCON_CLK_CONF_OFF);
 	u32 v;
+	bool ready;
 
 	/* MPLL calibration uses the analog I2C master (MODEM domain). Bring up
 	 * its bus + clocks first, mirroring IDF bootloader_hardware_init().
@@ -89,31 +165,40 @@ void s31_spl_mpll_enable(void)
 
 	/* Power on the MPLL analog core + I2C interface, ungate its clock. */
 	v = readl(pmu_imm);
-	writel(v | PMU_TIE_HIGH_GLOBAL_MPLL_ICG |
+	writel(v | PMU_TIE_HIGH_CPLL_BITS | PMU_TIE_HIGH_GLOBAL_MPLL_ICG |
 		   PMU_TIE_HIGH_XPD_MPLL_I2C |
 		   PMU_TIE_HIGH_XPD_MPLL, pmu_imm);
 
 	v = readl(pmu_active);
-	writel(v | PMU_HP_ACTIVE_XPD_MPLL |
-		   PMU_HP_ACTIVE_XPD_MPLL_I2C, pmu_active);
-
-	v = readl(pmu_psram);
-	writel(v | PMU_PSRAM_XPD, pmu_psram);
+	writel(v | PMU_HP_ACTIVE_ALL_PLL_XPD, pmu_active);
 
 	v = readl(hp_alive);
 	writel(v | HP_ALIVE_SYS_HP_MPLL_500M_CLK_EN, hp_alive);
 
-	/* Start calibration, set fb_div (500 MHz), wait, stop. */
+	/* Configure analog capacitance and reference before CAL_START. */
+	if (s31_mpll_i2c_update(1, 0x03, 0x03) ||
+	    s31_mpll_i2c_update(1, 0x04, 0x04))
+		goto i2c_timeout;
+	reg_set_field(mspi_div, MSPI_FB_DIV_MASK, 9U << 3);
+	if (s31_mpll_i2c_update(3, 0x30, 0x30) ||
+	    s31_mpll_i2c_update(1, 0x04, 0))
+		goto i2c_timeout;
+
 	v = readl(ana_pll);
 	writel(v & ~MSPI_CAL_STOP, ana_pll);
-	v = readl(mspi_div);
-	writel((v & ~MSPI_FB_DIV_MASK) | MSPI_FB_DIV_500MHZ, mspi_div);
-	for (u32 i = 0; i < 1000000U; i++) {
-		if (readl(ana_pll) & MSPI_CAL_END)
-			break;
-	}
+	reg_set_field(mspi_div, MSPI_FB_DIV_MASK, MSPI_FB_DIV_500MHZ);
+	ready = s31_poll_register(ana_pll, MSPI_CAL_END, MSPI_CAL_END);
 	v = readl(ana_pll);
 	writel(v | MSPI_CAL_STOP, ana_pll);
+	if (!ready) {
+		puts("spl: MPLL calibration timeout\n");
+		return -1;
+	}
+	return 0;
+
+i2c_timeout:
+	puts("spl: MPLL analog I2C timeout\n");
+	return -1;
 }
 
 /*

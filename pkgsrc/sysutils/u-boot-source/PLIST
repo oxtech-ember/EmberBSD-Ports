@@ -31911,6 +31911,7 @@ share/u-boot-source/dts/upstream/src/xtensa/xtfpga-flash-16m.dtsi
 share/u-boot-source/dts/upstream/src/xtensa/xtfpga-flash-4m.dtsi
 share/u-boot-source/dts/upstream/src/xtensa/xtfpga.dtsi
 share/u-boot-source/emberbsd-licenses/sha256-bsd-3-clause.txt
+share/u-boot-source/emberbsd-licenses/esp-hal-MIT
 share/u-boot-source/emberbsd-licenses/uboot-BSD-2-Clause-Patent
 share/u-boot-source/emberbsd-licenses/uboot-BSD-3-Clause-Clear
 share/u-boot-source/emberbsd-licenses/uboot-Intel

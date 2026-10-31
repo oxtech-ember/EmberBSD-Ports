@@ -28,12 +28,16 @@ and `HOST_PREFIX` set to those directories:
 
 ```sh
 for check in test-sha256.py test-spl-strings.py test-fit-flow.py \
-    test-fit-read.py test-fit-hash.py test-psram-layout.py test-reserve.py \
+    test-fit-read.py test-fit-hash.py test-psram-layout.py test-reserve.py test-s31-mpll.py \
     test-mips-endian.py test-prof-align.py test-env-awk.py; do
     "$HOST_PREFIX/bin/python3.15" "tests/$check" \
         --source "$SOURCE" --host-prefix "$HOST_PREFIX" || exit 1
 done
 ```
+
+The S31 MPLL test uses a simulated MMIO bus to check both analog controller
+selections, register ordering and timeout propagation; it does not establish
+real analog clock or hardware behavior.
 
 `test-env-awk.py` also needs native `nawk`. The FIT tests construct small
 synthetic host fixtures; they do not create a board firmware image. The FIT

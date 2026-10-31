@@ -3,8 +3,7 @@
  * ESP32-S31 PSRAM bring-up.
  *
  * Bring-up sequence: LDO → MPLL → MSPI controller → mode regs →
- * ID/density readout → timing tuning → PSRAM MMU. Verified on real
- * silicon.
+ * ID/density readout → timing tuning → PSRAM MMU.
  *
  * Copyright (C) 2026, Espressif Systems (Shanghai) CO LTD
  */
@@ -16,6 +15,7 @@
 #include <linux/kernel.h>
 #include <linux/types.h>
 
+#include "spl_clk.h"
 #include "spl_psram.h"
 #include "spl_poll.h"
 
@@ -56,98 +56,9 @@ static void psram_ldo_init(void)
 	setbits_le32((void *)PMU_PSRAM_CFG_REG, PMU_PSRAM_XPD);
 }
 
-/*------------------------------------------------------------------------
- * MPLL — multiplier PLL feeding MSPI / PSRAM controller
- *
- * S31's MPLL is fully digital — no regi2c. fb_div lives in a single
- * LP_AONCLKRST register; calibration handshake via HP_SYS_CLKRST.
- *------------------------------------------------------------------------
- */
-#define PMU_IMM_HP_CK_POWER_1_REG         (DR_REG_PMU_BASE + 0xF4)
-#define PMU_TIE_HIGH_GLOBAL_MPLL_ICG      BIT(22)
-#define PMU_TIE_HIGH_XPD_MPLL_I2C         BIT(26)
-#define PMU_TIE_HIGH_XPD_MPLL             BIT(30)
-/* Our flow (ROM -> OpenSBI -> U-Boot) has no earlier stage that sets
- * the CPLL bits in PMU_IMM_HP_CK_POWER_1, so they start cleared here.
- * Without them the PMU FSM leaves MPLL in a degraded state where MDIO
- * can't drive MDC — set them alongside MPLL's own bits below.
- */
-#define PMU_TIE_HIGH_GLOBAL_CPLL_ICG      BIT(19)
-#define PMU_TIE_HIGH_XPD_CPLL_I2C         BIT(23)
-#define PMU_TIE_HIGH_XPD_CPLL             BIT(27)
-#define PMU_TIE_HIGH_CPLL_BITS            \
-	(PMU_TIE_HIGH_GLOBAL_CPLL_ICG | \
-	 PMU_TIE_HIGH_XPD_CPLL_I2C | \
-	 PMU_TIE_HIGH_XPD_CPLL)
-#define PMU_HP_ACTIVE_HP_CK_POWER_REG     (DR_REG_PMU_BASE + 0x1C)
-#define PMU_HP_ACTIVE_XPD_MPLL_I2C        BIT(26)
-#define PMU_HP_ACTIVE_XPD_MPLL            BIT(30)
-/* HP_ACTIVE_HP_CK_POWER needs bit 22 plus I2C/XPD for CPLL (23/27),
- * BBPLL (24/28), and MPLL (26/30) all set together (0x5DC00000) —
- * setting MPLL's bits alone leaves the PMU FSM in a degraded state on
- * real silicon where MPLL doesn't actually drive the EMAC REF clock
- * cleanly.
- */
-#define PMU_HP_ACTIVE_ALL_PLL_XPD         0x5DC00000U
-
-#define DR_REG_HP_ALIVE_SYS_BASE          0x20589000U
-#define HP_ALIVE_SYS_HP_CLK_CTRL_REG      (DR_REG_HP_ALIVE_SYS_BASE + 0x0)
-#define HP_ALIVE_SYS_HP_MPLL_500M_CLK_EN  BIT(31)
-
+/* The shared SPL clock setup enables MPLL before the PSRAM controller. */
 #define DR_REG_HP_SYS_CLKRST_BASE         0x20587000U
-#define HP_SYS_CLKRST_ANA_PLL_CTRL0_REG   (DR_REG_HP_SYS_CLKRST_BASE + 0x174)
-#define HP_SYS_CLKRST_REG_MSPI_CAL_END    BIT(8)
-#define HP_SYS_CLKRST_REG_MSPI_CAL_STOP   BIT(9)
-
-#define DR_REG_LP_AONCLKRST_BASE          0x20701000U
-#define LP_AONCLKRST_MSPI_DIV_REG         (DR_REG_LP_AONCLKRST_BASE + 0x54)
-#define LP_AONCLKRST_MSPI_FB_DIV_S        3
-#define LP_AONCLKRST_MSPI_FB_DIV_M        (0x1FU << LP_AONCLKRST_MSPI_FB_DIV_S)
-
 #define PSRAM_MPLL_FREQ_MHZ               500
-#define XTAL_FREQ_MHZ                     40
-
-static int psram_mpll_init(void)
-{
-	bool ready;
-	u8 ref_div = 1;
-	u8 fb_div;
-
-	/* Power-up sequence. Also brings up CPLL, since nothing earlier
-	 * in this boot flow sets those bits; without them the PMU FSM
-	 * leaves MPLL inert.
-	 */
-	setbits_le32((void *)PMU_IMM_HP_CK_POWER_1_REG,
-		     PMU_TIE_HIGH_CPLL_BITS |
-		     PMU_TIE_HIGH_GLOBAL_MPLL_ICG);
-	setbits_le32((void *)PMU_IMM_HP_CK_POWER_1_REG,
-		     PMU_TIE_HIGH_XPD_MPLL | PMU_TIE_HIGH_XPD_MPLL_I2C);
-	setbits_le32((void *)HP_ALIVE_SYS_HP_CLK_CTRL_REG,
-		     HP_ALIVE_SYS_HP_MPLL_500M_CLK_EN);
-	setbits_le32((void *)PMU_HP_ACTIVE_HP_CK_POWER_REG,
-		     PMU_HP_ACTIVE_ALL_PLL_XPD);
-
-	/* Configure + calibrate. fb_div = target_MHz * (ref_div+1) /
-	 * xtal_MHz - 1, per the MPLL's frequency formula.
-	 */
-	fb_div = PSRAM_MPLL_FREQ_MHZ * (ref_div + 1) / XTAL_FREQ_MHZ - 1;
-
-	clrbits_le32((void *)HP_SYS_CLKRST_ANA_PLL_CTRL0_REG,
-		     HP_SYS_CLKRST_REG_MSPI_CAL_STOP);
-	clrsetbits_le32((void *)LP_AONCLKRST_MSPI_DIV_REG,
-			LP_AONCLKRST_MSPI_FB_DIV_M,
-			(u32)fb_div << LP_AONCLKRST_MSPI_FB_DIV_S);
-	ready = s31_poll_register((void *)HP_SYS_CLKRST_ANA_PLL_CTRL0_REG,
-				  HP_SYS_CLKRST_REG_MSPI_CAL_END,
-				  HP_SYS_CLKRST_REG_MSPI_CAL_END);
-	setbits_le32((void *)HP_SYS_CLKRST_ANA_PLL_CTRL0_REG,
-		     HP_SYS_CLKRST_REG_MSPI_CAL_STOP);
-	if (!ready) {
-		puts("spl: PSRAM MPLL calibration timeout\n");
-		return -1;
-	}
-	return 0;
-}
 
 /*------------------------------------------------------------------------
  * MSPI controller clock
@@ -776,9 +687,12 @@ int psram_init(void)
 {
 	puts("spl: PSRAM LDO begin\n");
 	psram_ldo_init();
-	puts("spl: PSRAM MPLL begin\n");
-	if (psram_mpll_init())
+	puts("spl: MPLL init begin\n");
+	if (s31_spl_mpll_enable()) {
+		puts("spl: MPLL init failed\n");
 		return -1;
+	}
+	puts("spl: MPLL init done\n");
 	puts("spl: PSRAM clock begin\n");
 	psram_mspi_clock_init();
 	puts("spl: PSRAM pins begin\n");

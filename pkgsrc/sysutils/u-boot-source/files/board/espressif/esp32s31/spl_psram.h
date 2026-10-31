@@ -2,9 +2,7 @@
 /*
  * ESP32-S31 PSRAM bring-up. Brings up an Octal PSRAM end-to-end:
  * LDO + MPLL + MSPI controller + mode regs + AXI config + MMU map at
- * 0x50000000. Verified on real silicon to be R/W via `md.l` / `mw.l` /
- * `mtest`. Returns 0 on success, -1 if the chip didn't respond to
- * mode-register readback.
+ * 0x50000000. Returns 0 on success and -1 if initialization fails.
  */
 
 #ifndef _S31_SPL_PSRAM_H_
