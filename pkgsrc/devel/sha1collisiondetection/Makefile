@@ -1,7 +1,7 @@
 # $NetBSD$
 # Library sources are the complete upstream post-release state at a06f1ad.
 DISTNAME= sha1collisiondetection-1.0.3
-PKGREVISION= 2
+PKGREVISION= 3
 CATEGORIES= devel security
 MASTER_SITES= ${MASTER_SITE_GITHUB:=cr-marcstevens/}
 GITHUB_TAG= stable-v${PKGVERSION_NOREV}
@@ -14,7 +14,7 @@ LICENSE= mit
 WRKSRC= ${WRKDIR}/sha1collisiondetection-${GITHUB_TAG}
 USE_LIBTOOL= yes
 NO_CONFIGURE= yes
-INSTALLATION_DIRS= bin include/sha1dc lib lib/pkgconfig
+INSTALLATION_DIRS= bin include/sha1dc lib lib/pkgconfig share/doc/sha1collisiondetection
 
 do-build:
 	cd ${WRKSRC} && ${LIBTOOL} --tag=CC --mode=compile ${CC} ${CPPFLAGS} ${CFLAGS} -c lib/sha1.c -o sha1.lo
@@ -28,6 +28,8 @@ do-install:
 	${LIBTOOL} --mode=install ${INSTALL_PROGRAM} ${WRKSRC}/sha1dcsum ${DESTDIR}${PREFIX}/bin/sha1dcsum
 	${LN} -s sha1dcsum ${DESTDIR}${PREFIX}/bin/sha1dcsum_partialcoll
 	${INSTALL_DATA} ${WRKSRC}/lib/sha1.h ${DESTDIR}${PREFIX}/include/sha1dc/sha1.h
+	${INSTALL_DATA} ${WRKSRC}/LICENSE.txt ${DESTDIR}${PREFIX}/share/doc/sha1collisiondetection/LICENSE.txt
+	${INSTALL_DATA} ${WRKSRC}/README.md ${DESTDIR}${PREFIX}/share/doc/sha1collisiondetection/README.md
 	${SED} -e 's|@PREFIX@|${PREFIX}|g' -e 's|@VERSION@|${PKGVERSION_NOREV}|g' ${FILESDIR}/sha1detectcoll.pc.in > ${DESTDIR}${PREFIX}/lib/pkgconfig/sha1detectcoll.pc
 
 .include "../../mk/bsd.pkg.mk"

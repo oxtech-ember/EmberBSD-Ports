@@ -32,8 +32,11 @@ check_collision(const char *path, int safe, const unsigned char expected[20])
 	SHA1DCInit(&ctx);
 	if (safe >= 0)
 		SHA1DCSetSafeHash(&ctx, safe);
-	while ((n = fread(buffer, 1, sizeof(buffer), f)) != 0)
-		SHA1DCUpdate(&ctx, buffer, n);
+	do {
+		n = fread(buffer, 1, sizeof(buffer), f);
+		if (n != 0)
+			SHA1DCUpdate(&ctx, buffer, n);
+	} while (n == sizeof(buffer));
 	if (ferror(f)) {
 		fclose(f);
 		return 0;

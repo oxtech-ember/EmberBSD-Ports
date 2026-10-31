@@ -5,6 +5,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+if not __debug__:
+    raise SystemExit("run the test without Python optimization")
+
 stage, source = map(Path, sys.argv[1:3])
 env = os.environ.copy()
 env["DYLD_LIBRARY_PATH"] = str(stage / "lib")

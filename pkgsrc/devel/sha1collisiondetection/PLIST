@@ -4,3 +4,5 @@ bin/sha1dcsum_partialcoll
 include/sha1dc/sha1.h
 lib/libsha1detectcoll.la
 lib/pkgconfig/sha1detectcoll.pc
+share/doc/sha1collisiondetection/LICENSE.txt
+share/doc/sha1collisiondetection/README.md
