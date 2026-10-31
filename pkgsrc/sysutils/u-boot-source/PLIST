@@ -8002,6 +8002,8 @@ share/u-boot-source/board/espressif/esp32s31/Makefile
 share/u-boot-source/board/espressif/esp32s31/board.c
 share/u-boot-source/board/espressif/esp32s31/cache.c
 share/u-boot-source/board/espressif/esp32s31/firmware.its
+share/u-boot-source/board/espressif/esp32s31/make-nor-image.py
+share/u-boot-source/board/espressif/esp32s31/nor-firmware.its
 share/u-boot-source/board/espressif/esp32s31/psram-layout.h
 share/u-boot-source/board/espressif/esp32s31/spl.c
 share/u-boot-source/board/espressif/esp32s31/spl_cache.c

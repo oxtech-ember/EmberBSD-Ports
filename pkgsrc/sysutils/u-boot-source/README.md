@@ -51,6 +51,51 @@ with `--source`, `--host-prefix` and `--fit "$WORK/firmware.itb"` to exercise
 the actual SPL configuration selector. Check the generated data offsets,
 hashes, FDT capacity and memory map for the chosen inputs separately.
 
+### S31 NOR image from prepared inputs
+
+`board/espressif/esp32s31/make-nor-image.py` assembles a 16 MiB NOR image
+from an already prepared ESP32-S31 ROM-format SPL, OpenSBI, U-Boot proper
+binary and matching ELF, firmware DTB, nested kernel FIT and matching ELF,
+and exactly 4 MiB root filesystem. It checks ROM geometry, segment ranges and digest, U-Boot
+ELF load and BSS bounds, payload layout and SHA-256 integrity. External FIT
+payloads are 512-byte aligned. The output must not already exist.
+
+```sh
+"$HOST_PREFIX/bin/python3.15" "$SOURCE/board/espressif/esp32s31/make-nor-image.py" \
+    --host-prefix "$HOST_PREFIX" --mkimage "$MKIMAGE" \
+    --spl-rom "$SPL_ROM" --opensbi "$OPENSBI_BIN" \
+    --uboot "$UBOOT_BIN" --uboot-elf "$UBOOT_ELF" \
+    --firmware-dtb "$FIRMWARE_DTB" --kernel-fit "$KERNEL_FIT" \
+    --kernel-elf "$KERNEL_ELF" \
+    --root-fs "$ROOT_FS" --output "$NOR_IMAGE"
+```
+
+Use `mkimage` from the common `sysutils/u-boot-tools` package in the host
+prefix; `dtc`, `fdtget`, `llvm-objcopy`, and `llvm-readobj` also come from
+that prefix. Prepare the ROM-format SPL with the selected target BFD `nm` and
+`objcopy`, prefix Python and the official esptool. Preserve the appended DTB:
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -c 'import pathlib,sys; a,b=(pathlib.Path(x).read_bytes() for x in sys.argv[1:]); sys.exit(0 if a.endswith(b) and b else 1)' "$SPL_BIN" "$SPL_DTB"
+SPL_END=$("$TARGET_NM" -n "$SPL_ELF" | "$HOST_PREFIX/bin/nawk" '$3 == "_end" { print "0x" $1; found=1 } END { if (!found) exit 1 }')
+"$TARGET_OBJCOPY" --add-section ".spl_dtb=$SPL_DTB" \
+    --set-section-flags .spl_dtb=alloc,load,readonly,data,contents \
+    --change-section-address ".spl_dtb=$SPL_END" "$SPL_ELF" "$IMAGE_ELF"
+"$ESPTOOL" --chip esp32s31 elf2image --flash-mode dio --flash-freq 40m \
+    --flash-size 16MB --output "$SPL_ROM" "$IMAGE_ELF"
+```
+
+Set `SPL_BIN`, `SPL_DTB` and `SPL_ELF` to the matching build artifacts;
+`IMAGE_ELF` and `SPL_ROM` are separate output paths. The ROM image is an input
+to the producer above. This produces
+an image only; it does not write a device, establish a bootable NOR loader,
+authenticate FIT data, or validate target execution. OpenSBI and SPL runtime
+BSS, heap, stack and handoff need separate validation. Run
+`tests/test-s31-nor.py` with the selected host Python for the bounded input
+checks. `tests/test-s31-nor-integration.py` accepts the same input options as
+the producer except `--output` and checks two complete images for equality
+and their NOR offsets.
+
 ## Host regression checks
 
 The scripts in `tests/` use an explicitly prepared U-Boot source tree and a
