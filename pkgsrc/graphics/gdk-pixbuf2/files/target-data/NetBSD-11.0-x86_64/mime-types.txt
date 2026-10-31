@@ -1,0 +1,9 @@
+# EmberBSD GdkPixbuf target data 1
+# platform: NetBSD-11.0-x86_64
+# recipe: graphics/gdk-pixbuf2
+# package: gdk-pixbuf2-2.44.8
+# query: mime
+# modules: libpixbufloader-ani.so libpixbufloader-bmp.so libpixbufloader-gif.so libpixbufloader-icns.so libpixbufloader-ico.so libpixbufloader-pnm.so libpixbufloader-qtif.so libpixbufloader-tga.so libpixbufloader-tiff.so libpixbufloader-xbm.so libpixbufloader-xpm.so
+# data-sha256: f9298f41c0b8fb27dc8299708703622eebf3e169f5aefe8b78f8ca817d1a1561
+#
+application/ico;application/x-navi-animation;image/bmp;image/gif;image/ico;image/icon;image/jpeg;image/png;image/qtif;image/tiff;image/vnd.microsoft.icon;image/x-MS-bmp;image/x-bmp;image/x-icns;image/x-ico;image/x-icon;image/x-portable-anymap;image/x-portable-bitmap;image/x-portable-graymap;image/x-portable-pixmap;image/x-quicktime;image/x-tga;image/x-win-bitmap;image/x-xbitmap;image/x-xpixmap;text/ico;

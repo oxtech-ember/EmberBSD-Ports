@@ -1,0 +1,92 @@
+# EmberBSD GdkPixbuf target data 1
+# platform: NetBSD-11.0-x86_64
+# recipe: graphics/gdk-pixbuf2
+# package: gdk-pixbuf2-2.44.8
+# query: loaders
+# modules: libpixbufloader-ani.so libpixbufloader-bmp.so libpixbufloader-gif.so libpixbufloader-icns.so libpixbufloader-ico.so libpixbufloader-pnm.so libpixbufloader-qtif.so libpixbufloader-tga.so libpixbufloader-tiff.so libpixbufloader-xbm.so libpixbufloader-xpm.so
+# data-sha256: 86b2234e8a8ffd8e990ec11f04d9d90ba86a37eb32f6a15f67fae18ced212f28
+#
+# GdkPixbuf Image Loader Modules file
+# Automatically generated file, do not edit
+# Created by gdk-pixbuf-query-loaders from gdk-pixbuf-2.44.8
+#
+"@MODULE@/libpixbufloader-bmp.so"
+"bmp" 5 "gdk-pixbuf" "BMP" "LGPL"
+"image/bmp" "image/x-bmp" "image/x-MS-bmp" ""
+"bmp" ""
+"BM" "" 100
+
+"@MODULE@/libpixbufloader-gif.so"
+"gif" 4 "gdk-pixbuf" "GIF" "LGPL"
+"image/gif" ""
+"gif" ""
+"GIF8" "" 100
+
+"@MODULE@/libpixbufloader-ico.so"
+"ico" 5 "gdk-pixbuf" "Windows icon" "LGPL"
+"image/x-icon" "image/x-ico" "image/x-win-bitmap" "image/vnd.microsoft.icon" "application/ico" "image/ico" "image/icon" "text/ico" ""
+"ico" "cur" ""
+"  \001   " "zz znz" 100
+"  \002   " "zz znz" 100
+
+"@MODULE@/libpixbufloader-ani.so"
+"ani" 4 "gdk-pixbuf" "Windows animated cursor" "LGPL"
+"application/x-navi-animation" ""
+"ani" ""
+"RIFF    ACON" "    xxxx    " 100
+
+"@MODULE@/libpixbufloader-pnm.so"
+"pnm" 4 "gdk-pixbuf" "PNM/PBM/PGM/PPM" "LGPL"
+"image/x-portable-anymap" "image/x-portable-bitmap" "image/x-portable-graymap" "image/x-portable-pixmap" ""
+"pnm" "pbm" "pgm" "ppm" ""
+"P1" "" 100
+"P2" "" 100
+"P3" "" 100
+"P4" "" 100
+"P5" "" 100
+"P6" "" 100
+
+"@MODULE@/libpixbufloader-tiff.so"
+"tiff" 5 "gdk-pixbuf" "TIFF" "LGPL"
+"image/tiff" ""
+"tiff" "tif" ""
+"MM *" "  z " 100
+"II* " "   z" 100
+"II* \020   CR\002 " "   z zzz   z" 0
+
+"@MODULE@/libpixbufloader-xpm.so"
+"legacy-xpm" 4 "gdk-pixbuf" "XPM" "LGPL"
+"image/x-xpixmap" ""
+""
+"/* XPM */" "" 100
+
+"@MODULE@/libpixbufloader-xbm.so"
+"xbm" 4 "gdk-pixbuf" "XBM" "LGPL"
+"image/x-xbitmap" ""
+"xbm" ""
+"#define " "" 100
+"/*" "" 50
+
+"@MODULE@/libpixbufloader-tga.so"
+"tga" 4 "gdk-pixbuf" "Targa" "LGPL"
+"image/x-tga" ""
+"tga" "targa" ""
+" \001\001" "x  " 100
+" \001\t" "x  " 100
+"  \002" "xz " 99
+"  \003" "xz " 100
+"  \n" "xz " 100
+"  \v" "xz " 100
+
+"@MODULE@/libpixbufloader-icns.so"
+"icns" 4 "gdk-pixbuf" "MacOS X icon" "GPL"
+"image/x-icns" ""
+"icns" ""
+"icns" "" 100
+
+"@MODULE@/libpixbufloader-qtif.so"
+"qtif" 4 "gdk-pixbuf" "QuickTime" "LGPL"
+"image/x-quicktime" "image/qtif" ""
+"qtif" "qif" ""
+"abcdidsc" "xxxx    " 100
+"abcdidat" "xxxx    " 100
