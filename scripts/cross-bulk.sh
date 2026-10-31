@@ -562,14 +562,17 @@ result()
 }
 
 # A native node is built and installed into the native host prefix as
-# pkgsrc's depends step would do it. One that a target package needs gets
-# the target settings (CROSSTARGETSETTINGS) that pkgsrc passes to such a
-# tool. It is done when the native prefix has a package of its PKGBASE.
+# pkgsrc's depends step would do it. Its binary package goes to
+# PACKAGES-native/All, not to PACKAGES/All, where the target package of
+# the same PKGNAME is and where STATE/done has its checksum. One that a
+# target package needs gets the target settings (CROSSTARGETSETTINGS)
+# that pkgsrc passes to such a tool. It is done when the native prefix has
+# a package of its PKGBASE.
 build_native()
 {
     nnode=$1 key=$2 path=${1%@native}
     set -f
-    set -- USE_CROSS_COMPILE=no
+    set -- USE_CROSS_COMPILE=no PACKAGES="$native_packages"
     ! grep -qFx "$nnode" "$run/crossfed" || set -- "$@" $target_settings
     set +f
     vars=$(pkg_vars "$path" 'PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE' "$@") ||
@@ -719,6 +722,7 @@ build()
     done
     touch "$state/done" "$state/failed" "$state/blocked" "$state/skipped"
     packages=$(var pkgtools/pkg_install PACKAGES)/All
+    native_packages=${packages%/All}-native
     echo "Building with $workers packages at once, MAKE_JOBS=$make_jobs ($cpus CPUs)"
     stop=0
     trap 'stop=1' TERM INT HUP
