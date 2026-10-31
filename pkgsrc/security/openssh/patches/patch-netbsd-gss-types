@@ -1,0 +1,38 @@
+$NetBSD$
+
+Keep the GSS identifier input writable and use an explicit void prototype.
+
+--- gss-genr.c.orig
++++ gss-genr.c
+@@ -275,7 +275,8 @@
+ {
+ 	gss_buffer_desc token = GSS_C_EMPTY_BUFFER;
+ 	OM_uint32 major, minor;
+-	gss_OID_desc spnego_oid = {6, (void *)"\x2B\x06\x01\x05\x05\x02"};
++	unsigned char spnego_bytes[] = {0x2b, 0x06, 0x01, 0x05, 0x05, 0x02};
++	gss_OID_desc spnego_oid = {sizeof(spnego_bytes), spnego_bytes};
+ 
+ 	/* RFC 4462 says we MUST NOT do SPNEGO */
+ 	if (oid->length == spnego_oid.length &&
+--- gss-serv.c.orig
++++ gss-serv.c
+@@ -368,7 +368,7 @@
+ }
+ 
+ void
+-ssh_gssapi_cleanup_global_client()
++ssh_gssapi_cleanup_global_client(void)
+ {
+ 	OM_uint32 lmin;
+ 
+--- ssh-gss.h.orig
++++ ssh-gss.h
+@@ -133,7 +133,7 @@
+ void ssh_gssapi_cleanup_creds(void);
+ void ssh_gssapi_storecreds(void);
+ const char *ssh_gssapi_displayname(void);
+-void ssh_gssapi_cleanup_global_client();
++void ssh_gssapi_cleanup_global_client(void);
+ 
+ #endif /* GSSAPI */
+ 
