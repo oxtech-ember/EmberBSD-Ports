@@ -10,3 +10,4 @@ SHA1 (patch-sshkey.h) = aaaf622f377e455c49683fcc2ca42576ccd097bb
 SHA1 (patch-netbsd-blocklist) = 42b429ab203bab3f0d0108de6e2df74271ed8145
 SHA1 (patch-netbsd-host-only) = 1b073e47d8f28e22abb4cae27439be4ba23b9b34
 SHA1 (patch-sshkey.c) = 62a521e660b8caaea1764f23c58af705cc19fd08
+SHA1 (patch-zz-configure-ecc) = adc7892fa696cea8f603d0cbc098800a500fe47c

@@ -1,0 +1,19 @@
+$NetBSD$
+
+Use and release ECC probe objects when compiling with warning errors.
+Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+
+--- configure.ac
++++ configure.ac
+@@ -3326,6 +3326,11 @@
+ 		EC_KEY *f = EC_KEY_new_by_curve_name(NID_secp384r1);
+ 		EC_KEY *g = EC_KEY_new_by_curve_name(NID_secp521r1);
+ 		const EVP_MD *m = EVP_sha256(); /* We need this too */
++		int ok = e != NULL && f != NULL && g != NULL && m != NULL;
++		EC_KEY_free(e);
++		EC_KEY_free(f);
++		EC_KEY_free(g);
++		return !ok;
+ 		]])],
+ 		[ AC_MSG_RESULT([yes]) ],
+ 		[ AC_MSG_ERROR([libcrypto does not have required ECC support]) ]
