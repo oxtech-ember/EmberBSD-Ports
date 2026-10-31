@@ -4,6 +4,15 @@
 .if !defined(_EMBERBSD_CMAKE_BINUTILS_MK)
 _EMBERBSD_CMAKE_BINUTILS_MK= yes
 _EMBERBSD_CMAKE_BINUTILS_ARGS=
+# Fetching and checking sources do not configure or execute CMake.  Keep
+# validation for the default goal and for any mixture containing a build goal.
+_EMBERBSD_CMAKE_BUILD_GOALS:= ${.TARGETS}
+.for _source_goal in fetch checksum checksum-phase makesum makepatchsum distinfo \
+    fetch-list fetch-list-one-package fetch-list-recursive mirror-distfiles \
+    show-distfiles depends-fetch depends-checksum
+_EMBERBSD_CMAKE_BUILD_GOALS:= ${_EMBERBSD_CMAKE_BUILD_GOALS:N${_source_goal}}
+.endfor
+.if empty(.TARGETS) || !empty(_EMBERBSD_CMAKE_BUILD_GOALS)
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 _EMBERBSD_CMAKE_BINUTILS_ARGS+= -DEMBERBSD_CMAKE_NATIVE_TOOLS:BOOL=ON
 _EMBERBSD_CMAKE_BINUTILS_ARGS+= -DCMAKE_POLICY_DEFAULT_CMP0137:STRING=NEW
@@ -76,5 +85,6 @@ _EMBERBSD_CMAKE_BINUTILS_ARGS+= -DCMAKE_${_cmake_var}:FILEPATH=${${_tool_var}:Q}
 .else
 # Cross target identity and rooted lookup from the common cross profile.
 _EMBERBSD_CMAKE_BINUTILS_ARGS+= ${EMBERBSD_CROSS_CMAKE_ARGS}
+.endif
 .endif
 .endif

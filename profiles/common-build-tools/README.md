@@ -79,16 +79,22 @@ independent discovery baseline. No full-package or memory-safety claim follows.
 
 Native CMake consumers and the CMake bootstrap use the selected pkgsrc
 AR, RANLIB, NM, STRIP and LD roles. The common policy requires each real
-input to be an existing absolute executable. It preserves compiler and
+build input to be an existing absolute executable. This CMake policy skips
+tool and SDK-directory checks for source-only fetch, checksum and distinfo
+goals. Default builds and mixed goals such as `fetch configure` retain the
+checks. The policy preserves compiler and
 archive wrappers; their generated paths reach the corresponding CMake cache
 entries. Cross builds retain their existing toolchain routing.
 The AI-assisted [metadata check](tests/cmake-binutils.py) covers modern and
 legacy CMake routes, both wrapper implementations, invalid inputs, export
 patch order and bootstrap argument forwarding. It runs no compiler or CMake
 configure command. Full builds and archive execution remain separate checks.
+The [source-goal check](tests/cmake-source-goals.py) exercises that boundary
+with an explicitly selected `--bmake` and temporary `--work` directory.
 Native Darwin maps the selected `OSX_SDK_PATH` to `CMAKE_OSX_SYSROOT:PATH`.
 The input must be an existing absolute directory. The SDK producer must set
-the admitted path before pkgsrc reads metadata. Earlier raw pkgsrc SDK
+the selected path before pkgsrc configures or builds a package. Earlier raw
+pkgsrc SDK
 discovery remains outside this binding. This keeps the final CMake
 bootstrap configuration and ordinary consumers on the same selected SDK.
 Upstream forwards that value to nested `try_compile` calls. Linux, NetBSD and
