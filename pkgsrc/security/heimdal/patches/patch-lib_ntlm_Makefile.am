@@ -1,0 +1,17 @@
+$NetBSD$
+
+Use checked NTLM crypto contexts in the native NetBSD backend; propagate
+crypto errors through the checked NTLM session API. Update ABI version.
+Origin: NetBSD crypto/external/bsd/heimdal with EmberBSD lifecycle and API fixes.
+
+--- lib/ntlm/Makefile.am
++++ lib/ntlm/Makefile.am
+@@ -12,7 +12,7 @@
+ 
+ nodist_libheimntlm_la_SOURCES = ntlm_err.c
+ 
+-libheimntlm_la_LDFLAGS = -version-info 1:0:1
++libheimntlm_la_LDFLAGS = -version-info 2:0:0
+ 
+ if versionscript
+ libheimntlm_la_LDFLAGS += $(LDFLAGS_VERSION_SCRIPT)$(srcdir)/version-script.map

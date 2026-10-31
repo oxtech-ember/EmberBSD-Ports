@@ -45,3 +45,7 @@ SHA1 (patch-lib_krb5_pkinit.c) = 15b987612194378de4f456ead6494dd4cfb03315
 SHA1 (patch-lib_krb5_sp800-108-kdf.c) = e65f615fc0808dfa1301f12dbde7ca6d6fad051f
 SHA1 (patch-lib_kafs_rxkad_kdf.c) = 660cef5c628143af2a451abeb78ed3cdbb9cac10
 SHA1 (patch-kdc_pkinit.c) = e2616be0e7d0b5f756e7dbac5a28c026d50aa067
+SHA1 (patch-lib_ntlm_Makefile.am) = 8beeebd2629bb3cd7a3afd0887cb1af5d1b5d61c
+SHA1 (patch-lib_ntlm_Makefile.in) = 98b23f6b85f2b7dbf0de4c7250822defee1f5d3a
+SHA1 (patch-lib_ntlm_heimntlm-protos.h) = 174c07cd0bf139b66c133c57a322783bdd83a629
+SHA1 (patch-lib_ntlm_ntlm.c) = 7770e28bd4ab720a5e4994f73ddb9df099b29a87
