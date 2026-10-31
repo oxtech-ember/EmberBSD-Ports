@@ -81,8 +81,9 @@ WHEEL_ARGS+=		-Csetup-args=-Dcpu-dispatch="max -avx512f -avx512cd -avx512_knl -a
 # Remove invalid __STDC_VERSION__ setting
 BUILDLINK_TRANSFORM.SunOS+=	rm:-D__STDC_VERSION__=0
 
+# Cython is a tool dependency and runs on the build machine.
 pre-configure:
-	${LN} -sf ${PREFIX}/bin/cython-${PYVERSSUFFIX} ${BUILDLINK_DIR}/bin/cython
+	${LN} -sf ${TOOLBASE}/bin/cython-${PYVERSSUFFIX} ${BUILDLINK_DIR}/bin/cython
 
 PY_RENAME_BINARIES=	f2py numpy-config
 
@@ -91,6 +92,17 @@ SUBST_STAGE.paths=	pre-configure
 SUBST_MESSAGE.paths=	Fixing path to numpy-configure (for tests).
 SUBST_FILES.paths=	numpy/tests/test_configtool.py
 SUBST_SED.paths=	-e 's,'numpy-config','numpy-config-${PYVERSSUFFIX}',g'
+
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# Meson runs these build scripts by their #! line on the build machine,
+# where the target interpreter from REPLACE_PYTHON does not exist.
+SUBST_CLASSES+=		buildpy
+SUBST_STAGE.buildpy=	post-configure
+SUBST_MESSAGE.buildpy=	Running the build scripts with the build machine Python.
+SUBST_FILES.buildpy=	numpy/_build_utils/*.py
+SUBST_SED.buildpy=	-e '1s,^\#!${PYTHONBIN},\#!${TOOL_PYTHONBIN},'
+SUBST_NOOP_OK.buildpy=	yes
+.endif
 
 # as of 2.5.1
 # 35 failed, 47794 passed, 336 skipped, 3634 deselected, 33 xfailed, 1 xpassed, 14 warnings
