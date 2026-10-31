@@ -53,7 +53,7 @@ TOOL_DEPENDS+=	p5-XML-Parser>=2.31nb1:../../textproc/p5-XML-Parser
 # git-version-gen runs on the build host; installed helpers use target Bash.
 REPLACE_BASH+= git-version-gen
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-USE_TOOLS+= bash
+USE_TOOLS+= bash:build
 DEPENDS+= bash>=5.3:../../shells/bash
 REPLACE_INTERPRETER+= target-bash
 REPLACE.target-bash.old= .*bash[^[:space:]]*
