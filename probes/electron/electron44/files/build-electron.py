@@ -127,6 +127,11 @@ def native_inputs(options, sdk):
                     xcode_version_plist=str(options.xcode_version_plist))
         environment['SDKROOT'] = metadata['sdk_path']
         environment['MACOSX_DEPLOYMENT_TARGET'] = options.macos_minimum
+        # Crashpad runs the selected devel/mig frontend from PATH; it requires an
+        # explicit preprocessor and migcom (pkgsrc/devel/mig/README.md).
+        migcom = Path(options.host_prefix) / 'libexec' / 'migcom'
+        require(migcom.is_file() and os.access(migcom, os.X_OK), 'selected host prefix has no migcom')
+        environment.update(MIGCC=native.tool('clang'), MIGCOM=str(migcom))
     return native, environment
 
 
