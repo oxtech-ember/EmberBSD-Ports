@@ -13,4 +13,5 @@ SHA1 (patch-sshkey.c) = 62a521e660b8caaea1764f23c58af705cc19fd08
 SHA1 (patch-zz-configure-ecc) = adc7892fa696cea8f603d0cbc098800a500fe47c
 SHA1 (patch-openbsd-compat_bcrypt__pbkdf.c) = 07b44518e88324b0268fc422f99edc8d65ca954d
 SHA1 (patch-netbsd-const-core) = a5b72be765c095f92fc847fc5bf33ff022e593c2
+SHA1 (patch-netbsd-const-io) = 9c17e7b4006cf72704d433cc99941635e75cb203
 SHA1 (patch-netbsd-const-kex) = 429d157d07741e3fdd5c996aece9090ec0f294fc

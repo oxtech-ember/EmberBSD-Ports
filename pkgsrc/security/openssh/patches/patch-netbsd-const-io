@@ -1,0 +1,71 @@
+$NetBSD$
+
+Preserve read-only input types and pass writable storage to atomicio.
+NetBSD compatibility follows the corresponding native source.
+
+--- progressmeter.c.orig
++++ progressmeter.c
+@@ -267,6 +267,8 @@
+ void
+ stop_progress_meter(void)
+ {
++	char newline = '\n';
++
+ 	alarm(0);
+ 
+ 	if (!can_output())
+@@ -276,7 +278,7 @@
+ 	if (cur_pos != end_pos)
+ 		refresh_progress_meter(1);
+ 
+-	atomicio(vwrite, STDOUT_FILENO, "\n", 1);
++	atomicio(vwrite, STDOUT_FILENO, &newline, 1);
+ 	file = NULL;
+ }
+ 
+--- readpass.c.orig
++++ readpass.c
+@@ -45,7 +45,7 @@
+ #include "ssh.h"
+ 
+ static char *
+-ssh_askpass(char *askpass, const char *msg, const char *env_hint)
++ssh_askpass(const char *askpass, const char *msg, const char *env_hint)
+ {
+ 	pid_t pid, ret;
+ 	size_t len;
+@@ -119,9 +119,9 @@
+ char *
+ read_passphrase(const char *prompt, int flags)
+ {
+-	char cr = '\r', *askpass = NULL, *ret, buf[1024];
++	char cr = '\r', *ret, buf[1024];
+ 	int rppflags, ttyfd, use_askpass = 0, allow_askpass = 0;
+-	const char *askpass_hint = NULL;
++	const char *askpass_hint = NULL, *askpass = NULL;
+ 	const char *s;
+ 
+ 	if (((s = getenv("DISPLAY")) != NULL && *s != '\0') ||
+--- ssh-sk-client.c.orig
++++ ssh-sk-client.c
+@@ -49,7 +49,8 @@
+ 	int oerrno, pair[2], execpipe[2];
+ 	ssize_t n;
+ 	pid_t pid;
+-	char execbuf[100], *helper, *verbosity = NULL;
++	const char *helper, *verbosity = NULL;
++	char execbuf[100];
+ 
+ 	*fdp = -1;
+ 	*pidp = 0;
+--- sshbuf-getput-basic.c.orig
++++ sshbuf-getput-basic.c
+@@ -651,7 +651,7 @@
+ 	if (len > maxlen)
+ 		return SSH_ERR_INVALID_FORMAT;
+ 	/* can strdup() because it's definitely nul-terminated */
+-	if ((val = strdup(sshbuf_ptr(buf))) == NULL)
++	if ((val = strdup((const char *)sshbuf_ptr(buf))) == NULL)
+ 		return SSH_ERR_ALLOC_FAIL;
+ 	if ((r = sshbuf_consume(buf, len + 1)) != 0)
+ 		goto out;
