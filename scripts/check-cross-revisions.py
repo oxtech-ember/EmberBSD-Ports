@@ -315,7 +315,17 @@ def main(argv=None):
     parser.add_argument('tree', nargs='+', type=Path,
                         help='pkgsrc trees, the first one overriding the next')
     args = parser.parse_args(argv)
-    findings = check(Tree(args.tree))
+    tree = Tree(args.tree)
+    # A wrong path would otherwise be checked as an empty tree and pass.
+    for root in tree.roots:
+        if not root.is_dir():
+            parser.error('%s is not a directory' % root)
+        if not any('mk/misc/category.mk' not in path.read_text(errors='replace')
+                   for path in root.glob('[!.]*/*/Makefile')):
+            # A category Makefile one level down means the parent of a tree.
+            parser.error('%s has no CATEGORY/PACKAGE/Makefile; '
+                         'give the pkgsrc directory' % root)
+    findings = check(tree)
     for finding in findings:
         print(finding)
     if findings:

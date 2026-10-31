@@ -141,6 +141,24 @@ class CrossRevisionTest(unittest.TestCase):
         files['devel/zlib/buildlink3.mk'] = 'BUILDLINK_API_DEPENDS.zlib+= zlib>=1.3.2nb4\n'
         self.assertEqual(run(files)[0], 1)
 
+    def test_wrong_tree_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            stage = Path(tmp)
+            # The parent of a pkgsrc tree, as an export stage gives it.
+            package = stage / 'pkgsrc' / 'devel' / 'zlib'
+            package.mkdir(parents=True)
+            (package / 'Makefile').write_text('DISTNAME= zlib-1.3.2\n')
+            (package.parent / 'Makefile').write_text(
+                'SUBDIR+= zlib\n.include "../mk/misc/category.mk"\n')
+            for path in (stage / 'missing', stage, package / 'Makefile'):
+                result = subprocess.run([sys.executable, str(SCRIPT), str(path)],
+                                        capture_output=True, text=True)
+                self.assertEqual(result.returncode, 2, path)
+                self.assertIn(str(path), result.stderr)
+            result = subprocess.run([sys.executable, str(SCRIPT), str(stage / 'pkgsrc')],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_ports_tree(self):
         tree = SCRIPTS.parent / 'pkgsrc'
         result = subprocess.run([sys.executable, str(SCRIPT), str(tree)],
