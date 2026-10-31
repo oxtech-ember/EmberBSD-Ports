@@ -880,6 +880,20 @@ Chromium WebUI scripts (`tools/polymer/css_minifier.js`,
 (`postcss`, `postcss-minify`, `terser` and their runtime dependencies), one
 recipe per module.
 
+### WebUI lint selection
+
+Chromium runs type-aware ESLint (`eslint_ts()`) and Stylelint (`stylelint()`)
+inside every `build_webui()` grd chain. They ship no output and need the
+eslint, `@typescript-eslint/*`, `eslint-plugin-lit`, esquery and stylelint npm
+stack, which Ports does not package. Upstream has no GN argument for them, so
+[gn-webui-lint-selection.patch](patches/gn-webui-lint-selection.patch) adds
+`enable_webui_lint` (default `true`, upstream behaviour) to
+`ui/webui/webui_features.gni`; when false both templates become plain groups
+that keep their `deps`. `build-electron.py` selects `false`: applications are
+selected by configuration, and an extra check needs a concrete risk or an
+installed input. Re-enabling it after the stack is packaged is debt E50 in
+the wiki `product/dolgi.md`.
+
 ### Chromium lib.dom typing
 
 Chromium type-checks WebUI against its edited `lib.dom.d.ts`
