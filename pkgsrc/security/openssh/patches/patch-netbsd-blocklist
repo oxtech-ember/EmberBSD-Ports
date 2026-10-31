@@ -1,0 +1,214 @@
+$NetBSD$
+
+Origin: NetBSD OpenSSH base integration, ported by EmberBSD contributors
+(AI-assisted); not submitted upstream.
+
+--- auth.c
++++ auth.c
+@@ -24,6 +24,7 @@
+  */
+ 
+ #include "includes.h"
++#include "pfilter.h"
+ 
+ #include <sys/types.h>
+ #include <sys/stat.h>
+@@ -283,8 +284,11 @@
+ 		authmsg = "Postponed";
+ 	else if (partial)
+ 		authmsg = "Partial";
+-	else
++	else {
+ 		authmsg = authenticated ? "Accepted" : "Failed";
++		if (authenticated)
++			pfilter_notify(0);
++	}
+ 
+ 	if ((extra = format_method_key(authctxt)) == NULL) {
+ 		if (authctxt->auth_method_info != NULL)
+@@ -332,6 +336,7 @@
+ {
+ 	Authctxt *authctxt = (Authctxt *)ssh->authctxt;
+ 
++	pfilter_notify(1);
+ 	error("maximum authentication attempts exceeded for "
+ 	    "%s%.100s from %.200s port %d ssh2",
+ 	    authctxt->valid ? "" : "invalid user ",
+@@ -495,6 +500,7 @@
+ 	aix_restoreauthdb();
+ #endif
+ 	if (pw == NULL) {
++		pfilter_notify(1);
+ 		logit("Invalid user %.100s from %.100s port %d",
+ 		    user, ssh_remote_ipaddr(ssh), ssh_remote_port(ssh));
+ #ifdef CUSTOM_FAILED_LOGIN
+--- auth-pam.c
++++ auth-pam.c
+@@ -48,6 +48,7 @@
+ /* Based on FreeBSD: src/crypto/openssh/auth2-pam-freebsd.c,v 1.11 2003/03/31 13:48:18 des */
+ 
+ #include "includes.h"
++#include "pfilter.h"
+ 
+ #include <sys/types.h>
+ #include <sys/stat.h>
+@@ -916,6 +917,7 @@
+ 				sshbuf_free(buffer);
+ 				return (0);
+ 			}
++			pfilter_notify(1);
+ 			error("PAM: %s for %s%.100s from %.100s", msg,
+ 			    sshpam_authctxt->valid ? "" : "illegal user ",
+ 			    sshpam_authctxt->user, sshpam_rhost);
+--- sshd-auth.c
++++ sshd-auth.c
+@@ -28,6 +28,7 @@
+  */
+ 
+ #include "includes.h"
++#include "pfilter.h"
+ 
+ #include <sys/types.h>
+ #include <sys/ioctl.h>
+@@ -787,8 +788,10 @@
+ 	free(hkalgs);
+ 
+ 	if ((r = kex_exchange_identification(ssh, -1,
+-	    options.version_addendum)) != 0)
++	    options.version_addendum)) != 0) {
++		pfilter_notify(1);
+ 		sshpkt_fatal(ssh, r, "banner exchange");
++	}
+ 	mm_sshkey_setcompat(ssh); /* tell monitor */
+ 
+ 	if ((ssh->compat & SSH_BUG_NOREKEY))
+--- sshd-session.c
++++ sshd-session.c
+@@ -28,6 +28,7 @@
+  */
+ 
+ #include "includes.h"
++#include "pfilter.h"
+ 
+ #include <sys/types.h>
+ #include <sys/ioctl.h>
+@@ -203,6 +204,7 @@
+ static void
+ grace_alarm_handler(int sig)
+ {
++	pfilter_notify(1);
+ 	/*
+ 	 * Try to kill any processes that we have spawned, E.g. authorized
+ 	 * keys command helpers or privsep children.
+@@ -1351,8 +1353,10 @@
+ 		audit_event(the_active_state, SSH_CONNECTION_ABANDON);
+ #endif
+ 	/* Override default fatal exit value when auth was attempted */
+-	if (i == 255 && monitor_auth_attempted())
++	if (i == 255 && monitor_auth_attempted()) {
++		pfilter_notify(1);
+ 		_exit(EXIT_AUTH_ATTEMPTED);
++	}
+ 	if (i == 255 && monitor_invalid_user())
+ 		_exit(EXIT_INVALID_USER);
+ 	_exit(i);
+--- monitor.c
++++ monitor.c
+@@ -26,6 +26,7 @@
+  */
+ 
+ #include "includes.h"
++#include "pfilter.h"
+ 
+ #include <sys/types.h>
+ #include <sys/wait.h>
+@@ -348,16 +349,21 @@
+ 			}
+ 		}
+ 		if (authctxt->failures > options.max_authtries) {
++			pfilter_notify(1);
+ 			/* Shouldn't happen */
+ 			fatal_f("privsep child made too many authentication "
+ 			    "attempts");
+ 		}
+ 	}
+ 
+-	if (!authctxt->valid)
++	if (!authctxt->valid) {
++		pfilter_notify(1);
+ 		fatal_f("authenticated invalid user");
+-	if (strcmp(auth_method, "unknown") == 0)
++	}
++	if (strcmp(auth_method, "unknown") == 0) {
++		pfilter_notify(1);
+ 		fatal_f("authentication method name unknown");
++	}
+ 
+ 	debug_f("user %s authenticated by privileged process", authctxt->user);
+ 	auth_attempted = 0;
+--- /dev/null
++++ pfilter.c
+@@ -0,0 +1,50 @@
++/*	$NetBSD: pfilter.c,v 1.9 2024/08/02 17:13:02 christos Exp $	*/
++#include "namespace.h"
++#include "includes.h"
++#include "ssh.h"
++#include "packet.h"
++#include "log.h"
++#include "pfilter.h"
++#include <blocklist.h>
++#include <syslog.h>
++
++#ifndef SMALL
++static struct blocklist *blstate;
++#endif
++
++#include "includes.h"
++__RCSID("$NetBSD: pfilter.c,v 1.9 2024/08/02 17:13:02 christos Exp $");
++
++void
++pfilter_init(void)
++{
++#ifndef SMALL
++	blstate = blocklist_open2(vsyslog_ss);
++#endif
++}
++
++extern struct ssh *the_active_state;
++
++void
++pfilter_notify(int a)
++{
++#ifndef SMALL
++	int fd;
++	if (the_active_state == NULL)
++		return;
++	if (blstate == NULL)
++		pfilter_init();
++	if (blstate == NULL)
++		return;
++	// XXX: 3?
++ 	fd = ssh_packet_connection_is_on_socket(the_active_state) ?
++	    ssh_packet_get_connection_in(the_active_state) : 3;
++	(void)blocklist_r(blstate, a, fd, "ssh");
++	if (a == 0) {
++		blocklist_close(blstate);
++		blstate = NULL;
++	}
++#else
++	__USE(a);
++#endif
++}
+--- /dev/null
++++ pfilter.h
+@@ -0,0 +1,10 @@
++/* NetBSD blocklist interface; original integration: NetBSD Foundation. */
++#ifndef SSH_PFILTER_H
++#define SSH_PFILTER_H
++#ifdef WITH_NETBSD_BLOCKLIST
++void pfilter_notify(int);
++void pfilter_init(void);
++#else
++#define pfilter_notify(status) ((void)0)
++#endif
++#endif
