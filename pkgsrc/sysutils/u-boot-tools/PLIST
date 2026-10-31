@@ -1,0 +1,8 @@
+@comment $NetBSD$
+bin/dumpimage
+bin/mkimage
+share/doc/u-boot-tools/README
+share/doc/u-boot-tools/bsd-2-clause.txt
+share/doc/u-boot-tools/bsd-3-clause.txt
+share/doc/u-boot-tools/gpl-2.0.txt
+share/doc/u-boot-tools/mit.txt
