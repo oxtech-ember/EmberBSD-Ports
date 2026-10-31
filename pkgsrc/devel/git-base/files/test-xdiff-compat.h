@@ -21,6 +21,9 @@ void test_free(void *);
 #define xdl_realloc(p, n) test_realloc(p, n)
 #define xdl_free(p) test_free(p)
 #define XDF_DIFF_ALGORITHM_MASK (XDF_PATIENCE_DIFF | XDF_HISTOGRAM_DIFF)
+#ifndef XDL_MERGE_ALLOC_EMPTY
+#define XDL_MERGE_ALLOC_EMPTY 0
+#endif
 #define UNUSED __attribute__((unused))
 #define BUG(...) abort()
 #ifdef TEST_XDL_RETURNS

@@ -22,14 +22,16 @@ def main():
         subprocess.run([str(cc), "-std=c11", "-Werror=macro-redefined", "-I", str(source),
                         "-fsyntax-only", str(own / check)], check=True)
     with tempfile.TemporaryDirectory(prefix="git-xdiff-test-") as tmp:
-        binary = Path(tmp) / "test-xdiff"
-        subprocess.run([str(cc), "-std=c11", "-Werror", "-fsanitize=address,undefined",
-                        "-fno-sanitize-recover=all", "-fno-omit-frame-pointer",
-                        "-DTEST_XDL_RETURNS", "-I", str(own), "-I", str(source / "xdiff"),
-                        '-DXDL_COMPAT_HEADER="test-xdiff-compat.h"',
-                        str(own / "test-xdiff-runtime.c"), *map(str, files),
-                        "-o", str(binary)], check=True)
-        subprocess.run([str(binary)], check=True)
+        for empty_policy in (0, 1):
+            binary = Path(tmp) / ("test-xdiff-" + str(empty_policy))
+            subprocess.run([str(cc), "-std=c11", "-Werror", "-fsanitize=address,undefined",
+                            "-fno-sanitize-recover=all", "-fno-omit-frame-pointer",
+                            "-DTEST_XDL_RETURNS", "-DXDL_MERGE_ALLOC_EMPTY=" + str(empty_policy),
+                            "-I", str(own), "-I", str(source / "xdiff"),
+                            '-DXDL_COMPAT_HEADER="test-xdiff-compat.h"',
+                            str(own / "test-xdiff-runtime.c"), *map(str, files),
+                            "-o", str(binary)], check=True)
+            subprocess.run([str(binary)], check=True)
 
 
 if __name__ == "__main__":

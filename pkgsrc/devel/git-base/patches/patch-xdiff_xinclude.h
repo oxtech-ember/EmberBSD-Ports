@@ -1,11 +1,11 @@
 $NetBSD$
 
-Allow consumers to report invariant errors while Git keeps its BUG policy.
+Allow consumers to preserve allocation and error policy; Git defaults are unchanged.
 Origin: EmberBSD contributors (AI-assisted).
 
 --- xdiff/xinclude.h.orig
 +++ xdiff/xinclude.h
-@@ -23,7 +23,16 @@
+@@ -23,7 +23,19 @@
  #if !defined(XINCLUDE_H)
  #define XINCLUDE_H
  
@@ -13,6 +13,9 @@ Origin: EmberBSD contributors (AI-assisted).
 +#include XDL_COMPAT_HEADER
 +#else
  #include "git-compat-util.h"
++#endif
++#ifndef XDL_MERGE_ALLOC_EMPTY
++#define XDL_MERGE_ALLOC_EMPTY 1
 +#endif
 +#ifndef XDL_REPORT_BUG
 +#define XDL_REPORT_BUG(...) BUG(__VA_ARGS__)

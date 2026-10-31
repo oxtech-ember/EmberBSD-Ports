@@ -145,6 +145,50 @@ merge(void)
 	return status;
 }
 
+static void
+merge_deletions(void)
+{
+	char text[] = "base\n", empty[] = "";
+	mmfile_t base = { text, sizeof(text) - 1 }, deleted = { empty, 0 };
+	mmfile_t *left[] = { &deleted, &base, &deleted };
+	mmfile_t *right[] = { &base, &deleted, &deleted };
+	xmparam_t options = { 0 };
+	mmbuffer_t result;
+	size_t i;
+	int status;
+
+	options.level = XDL_MERGE_ZEALOUS;
+	for (i = 0; i < 3; i++) {
+		memset(&result, 0, sizeof(result));
+		status = xdl_merge(&base, left[i], right[i], &options, &result);
+		if (status != 0)
+			fprintf(stderr, "delete case %lu status %d\n", (unsigned long)i, status);
+		assert(status == 0);
+		assert(result.size == 0);
+		/* Both sides changed use the general merge, which allocates. */
+		assert((result.ptr != NULL) == (i == 2 || XDL_MERGE_ALLOC_EMPTY));
+		test_free(result.ptr);
+		assert(live == 0);
+	}
+}
+
+static void
+merge_empty(void)
+{
+	char empty[] = "";
+	char sentinel;
+	mmfile_t file = { empty, 0 };
+	xmparam_t options;
+	mmbuffer_t result = { &sentinel, 0 };
+
+	memset(&options, 0, sizeof(options));
+	assert(xdl_merge(&file, &file, &file, &options, &result) == 0);
+	assert(result.size == 0);
+	assert((result.ptr != NULL) == XDL_MERGE_ALLOC_EMPTY);
+	test_free(result.ptr);
+	assert(live == 0);
+}
+
 int
 main(void)
 {
@@ -161,6 +205,8 @@ main(void)
 	}
 	fail_at = SIZE_MAX;
 	check_invalid_context();
+	merge_empty();
+	merge_deletions();
 	printf("xdiff custom allocator: %lu failure points passed\n", (unsigned long)total);
 	return 0;
 }
