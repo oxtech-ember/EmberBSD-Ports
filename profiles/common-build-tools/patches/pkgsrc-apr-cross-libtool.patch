@@ -1,0 +1,28 @@
+# A cross build of apr copied PKG_LIBTOOL, the libtool of the build host
+# with a host shell interpreter, into the target package, and the build
+# stopped in check-interpreter. Link the target libtool from libtool-base
+# instead. Native builds keep the copy.
+# Origin: EmberBSD (AI-assisted).
+
+--- a/devel/apr/Makefile
++++ b/devel/apr/Makefile
+@@ -46,9 +46,18 @@
+ CONFIGURE_ENV+=		apr_cv_gai_addrconfig=yes
+ .endif
+ 
++.if ${USE_CROSS_COMPILE:tl} == "yes"
++# PKG_LIBTOOL is the libtool of the build host. A cross build points
++# apr-1-config --apr-libtool at the libtool of the target instead.
++DEPENDS+=		libtool-base-[0-9]*:../../devel/libtool-base
++APR_INSTALL_LIBTOOL=	${LN} -s ${PREFIX}/bin/libtool
++.else
++APR_INSTALL_LIBTOOL=	${INSTALL_SCRIPT} ${PKG_LIBTOOL}
++.endif
++
+ post-install:
+ 	${RM} ${DESTDIR}${PREFIX}/libexec/apr/libtool
+-	${INSTALL_SCRIPT} ${PKG_LIBTOOL} ${DESTDIR}${PREFIX}/libexec/apr/libtool
++	${APR_INSTALL_LIBTOOL} ${DESTDIR}${PREFIX}/libexec/apr/libtool
+ 
+ .if ${OPSYS} == "Linux" || ${OPSYS} == "SunOS"
+ .include "../../devel/libuuid/buildlink3.mk"
