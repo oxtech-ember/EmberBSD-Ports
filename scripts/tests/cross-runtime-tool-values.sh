@@ -1,10 +1,12 @@
 #!/bin/sh
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
-# Cross builds must not record build-host tool paths in installed files:
-# configure receives bare awk, grep, egrep and sed (libgcrypt-config, smistrip),
-# and perl:run scripts whose #! names the build-host Perl name the target Perl
-# after installation (aclocal, automake). Runs the exported make code on a
+# Cross builds must not record build-host tool paths in installed files.
+# Configure receives bare awk, grep, egrep and sed (libgcrypt-config,
+# smistrip), and after installation the cross tool map replaces build-host
+# tool paths with the NetBSD target programs: the configure shell (automake's
+# SHELL line), the build-host Perl (aclocal and automake shebangs), the
+# build-host grep, and the tools directory. Runs the exported make code on a
 # scratch destdir; does not build a package.
 # Usage: cross-runtime-tool-values.sh BMAKE PREPARED_PKGSRC
 set -eu
@@ -16,7 +18,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/cross-runtime-tools.XXXXXX")
 trap 'rm -rf "$scratch"' EXIT INT TERM
 
-# The configure tool values, evaluated by the exported conditional.
+# The cross block of replace.mk, evaluated by itself.
 awk '/^\.if \$\{USE_CROSS_COMPILE:tl\} == "yes" && \$\{OPSYS\} != \$\{NATIVE_OPSYS\}$/ {p=1}
     p {print} p && /^\.endif$/ {exit}' "$replace" > "$scratch/values.mk"
 grep -q 'TOOLS_VALUE_GNU.grep' "$scratch/values.mk" ||
@@ -24,30 +26,41 @@ grep -q 'TOOLS_VALUE_GNU.grep' "$scratch/values.mk" ||
 v() { "$bmake" -f "$scratch/values.mk" OPSYS=NetBSD NATIVE_OPSYS=Darwin "$@"; }
 [ "$(v USE_CROSS_COMPILE=yes -V '${TOOLS_VALUE_GNU.grep}|${TOOLS_VALUE_GNU.egrep}|${TOOLS_VALUE_GNU.awk}|${TOOLS_VALUE_GNU.sed}')" = \
     'grep|grep -E|awk|sed' ] || fail 'cross configure receives build-host tool paths'
-[ "$(v USE_CROSS_COMPILE=no -V '${TOOLS_VALUE_GNU.grep:U}${TOOLS_VALUE_GNU.awk:U}')" = '' ] ||
-    fail 'native builds lost their tool command lines'
+[ "$(v USE_CROSS_COMPILE=no -V '${TOOLS_VALUE_GNU.grep:U}${TOOLS_VALUE_GNU.awk:U}${EMBER_CROSS_TOOL_MAP:U}')" = '' ] ||
+    fail 'native builds lost their tool command lines or map tool paths'
 [ "$(v USE_CROSS_COMPILE=yes TOOLS_VALUE_GNU.grep=/pkg/grep -V '${TOOLS_VALUE_GNU.grep}')" = /pkg/grep ] ||
     fail 'a package can no longer select its grep'
 
-# The perl:run shebang rewrite, run on a scratch destdir.
-awk '/^ember-cross-perl-interpreter:/ {p=1} p {print} p && /^\tdone$/ {exit}' "$replace" > "$scratch/perl.mk"
-grep -q '^	done$' "$scratch/perl.mk" || fail 'replace.mk has no perl interpreter rewrite'
-grep -q '^post-install: ember-cross-perl-interpreter$' "$replace" ||
-    fail 'the perl interpreter rewrite does not run after installation'
+# The target Perl joins the map where a perl:run package uses it.
+grep -q '^EMBER_CROSS_TOOL_MAP+=	${TOOLS_PATH.perl}=${PERL5} ${TOOLS_DIR}/bin/perl=${PERL5}$' "$replace" ||
+    fail 'the target Perl is not in the cross tool map'
+grep -q '^post-install: ember-cross-tool-paths$' "$replace" ||
+    fail 'the cross tool map does not run after installation'
+printf '%s\n' 'EMBER_CROSS_TOOL_MAP+=	/host/bin/perl=/usr/pkg/bin/perl' \
+    ".include \"$scratch/values.mk\"" > "$scratch/map.mk"
+
 d=$scratch/destdir/usr/pkg
 mkdir -p "$d/bin" "$d/share"
 printf '#!/host/bin/perl\nprint "x";\n' > "$d/bin/plain"
-printf '#!/host/bin/perl -w\nprint "y";\n' > "$d/bin/flags"
+printf '#!/host/bin/perl -w\nprint "y";\n' > "$d/bin/flags"; chmod 755 "$d/bin/flags"
 printf '#!/host/bin/perlx\n' > "$d/bin/other"
-printf 'text #!/host/bin/perl\n' > "$d/share/doc"
-printf '#!/host/bin/perl\n' > "$d/share/keep-mode"; chmod 755 "$d/share/keep-mode"
-"$bmake" -f "$scratch/perl.mk" RUN= FIND=find SED=sed CAT=cat RM=rm \
-    DESTDIR="$scratch/destdir" PREFIX=/usr/pkg TOOLS_PATH.perl=/host/bin/perl \
-    PERL5=/usr/pkg/bin/perl ember-cross-perl-interpreter >/dev/null
+printf "%s\n" "  \$ENV{'SHELL'} = '/host/bin/mksh' if exists \$ENV{'DJDIR'};" > "$d/bin/automake"
+printf '%s\n' 'echo "$x" | /host/gnu/bin/ggrep -F y' 'SED=/w/.tools/bin/sed' > "$d/bin/config"
+printf 'a\000/host/bin/mksh\n' > "$d/share/binary"
+"$bmake" -f "$scratch/map.mk" USE_CROSS_COMPILE=yes OPSYS=NetBSD NATIVE_OPSYS=Darwin \
+    RUN= FIND=find GREP=grep SED=sed CAT=cat RM=rm \
+    DESTDIR="$scratch/destdir" PREFIX=/usr/pkg TOOLS_DIR=/w/.tools \
+    CONFIG_SHELL=/host/bin/mksh TOOLS_PATH.sh=/host/bin/mksh \
+    TOOLS_PATH.grep=/host/gnu/bin/ggrep TOOLS_PATH.sed=/host/bin/nbsed \
+    ember-cross-tool-paths >/dev/null
 [ "$(head -1 "$d/bin/plain")" = '#!/usr/pkg/bin/perl' ] || fail 'host Perl shebang kept'
 [ "$(head -1 "$d/bin/flags")" = '#!/usr/pkg/bin/perl -w' ] || fail 'Perl shebang flags lost'
 [ "$(sed -n 2p "$d/bin/plain")" = 'print "x";' ] || fail 'script body changed'
-[ "$(head -1 "$d/bin/other")" = '#!/host/bin/perlx' ] || fail 'another interpreter rewritten'
-[ "$(cat "$d/share/doc")" = 'text #!/host/bin/perl' ] || fail 'non-shebang text rewritten'
-[ -x "$d/share/keep-mode" ] || fail 'rewrite dropped the file mode'
+[ "$(head -1 "$d/bin/other")" = '#!/host/bin/perlx' ] || fail 'another program rewritten'
+[ "$(cat "$d/bin/automake")" = "  \$ENV{'SHELL'} = '/bin/sh' if exists \$ENV{'DJDIR'};" ] ||
+    fail 'automake keeps the build-host configure shell'
+[ "$(sed -n 1p "$d/bin/config")" = 'echo "$x" | /usr/bin/grep -F y' ] || fail 'build-host grep kept'
+[ "$(sed -n 2p "$d/bin/config")" = 'SED=/usr/bin/sed' ] || fail 'tools directory path kept'
+[ -x "$d/bin/flags" ] || fail 'the map dropped the file mode'
+[ "$(od -An -c "$d/share/binary" | tr -d ' \n')" = 'a\0/host/bin/mksh\n' ] || fail 'a binary file was rewritten'
 echo 'PASS: cross builds record target runtime tools, not build-host paths'

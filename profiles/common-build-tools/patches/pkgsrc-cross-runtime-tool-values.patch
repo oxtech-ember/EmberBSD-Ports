@@ -1,32 +1,25 @@
-# Origin: EmberBSD (AI-assisted). Configure records the tool commands it is
-# given in installed scripts: libgcrypt-config keeps "$GREP -F", smistrip keeps
-# AWK, and automake keeps #!@PERL@. A cross build passed build-host paths, so
-# the target packages named build-host tools. Pass bare awk, grep, egrep and
-# sed, which the tools directory resolves at build time and the target base
-# system at run time, and rewrite perl:run shebangs that name the build-host
-# Perl to the target Perl after installation.
+# Origin: EmberBSD (AI-assisted). Configure records build-host tool paths in
+# installed files: libgcrypt-config keeps "$GREP -F", smistrip keeps AWK,
+# aclocal and automake keep #!@PERL@, and automake keeps @SHELL@, the
+# configure shell. Cross builds pass bare awk, grep, egrep and sed to
+# configure, which the tools directory resolves at build time and the target
+# base system at run time. After installation, the cross tool map replaces
+# build-host paths of the configure shell, Perl, awk, grep, sed and the tools
+# directory in installed text files with the NetBSD target programs.
 
 --- a/mk/tools/replace.mk
 +++ b/mk/tools/replace.mk
-@@ -1112,6 +1112,17 @@
+@@ -1112,6 +1112,9 @@
  # Build steps run the host Perl through the tools wrapper. Installed
  # scripts (REPLACE_PERL) name the target Perl from lang/perl5.
  PERL5=	${PREFIX}/bin/perl
 +# Configure substitutes the build-host Perl into the scripts it generates
-+# (#!@PERL@); after installation those scripts name the target Perl.
-+post-install: ember-cross-perl-interpreter
-+.PHONY: ember-cross-perl-interpreter
-+ember-cross-perl-interpreter:
-+	${RUN} ${FIND} ${DESTDIR}${PREFIX} -type f -print | while IFS= read -r f; do \
-+	    IFS= read -r line < "$$f" 2>/dev/null || continue; \
-+	    case "$$line" in "#!"${TOOLS_PATH.perl:Q}|"#!"${TOOLS_PATH.perl:Q}" "*) ;; *) continue ;; esac; \
-+	    ${SED} -e '1s|^#!${TOOLS_PATH.perl}|#!${PERL5}|' "$$f" > "$$f.ember-perl" && \
-+	    ${CAT} "$$f.ember-perl" > "$$f" && ${RM} -f "$$f.ember-perl"; \
-+	done
++# (#!@PERL@); the cross tool map below records the target Perl instead.
++EMBER_CROSS_TOOL_MAP+=	${TOOLS_PATH.perl}=${PERL5} ${TOOLS_DIR}/bin/perl=${PERL5}
  .    endif
  .    endif
  .  endif
-@@ -1590,6 +1601,16 @@
+@@ -1590,6 +1593,46 @@
  # TOOLS_VALUE_GNU.<tool>, which defaults to the full command line of
  # the tool.
  #
@@ -39,6 +32,36 @@
 +TOOLS_VALUE_GNU.grep?=	grep
 +TOOLS_VALUE_GNU.egrep?=	grep -E
 +TOOLS_VALUE_GNU.sed?=	sed
++.  if ${OPSYS} == "NetBSD"
++# The cross tool map: configure also writes build-host tool paths into
++# generated files that are installed, such as the configure shell for
++# @SHELL@ (automake's DJGPP SHELL line) and the build-host Perl for
++# #!@PERL@ (aclocal, automake). After installation, each HOST=TARGET entry
++# replaces a build-host path in installed text files with the program the
++# NetBSD target runs. Entries with an empty side are ignored.
++EMBER_CROSS_TOOL_MAP+=	${CONFIG_SHELL:U}=/bin/sh ${TOOLS_PATH.sh:U}=/bin/sh
++EMBER_CROSS_TOOL_MAP+=	${TOOLS_DIR}/bin/sh=/bin/sh
++.    for _t_ in awk egrep fgrep grep sed
++EMBER_CROSS_TOOL_MAP+=	${TOOLS_PATH.${_t_}:U}=/usr/bin/${_t_}
++EMBER_CROSS_TOOL_MAP+=	${TOOLS_DIR}/bin/${_t_}=/usr/bin/${_t_}
++.    endfor
++post-install: ember-cross-tool-paths
++.PHONY: ember-cross-tool-paths
++ember-cross-tool-paths:
++	${RUN} for m in ${EMBER_CROSS_TOOL_MAP}; do \
++	    h=$${m%%=*}; t=$${m#*=}; \
++	    case "$$h" in /?*) ;; *) continue ;; esac; \
++	    case "$$t" in /?*) ;; *) continue ;; esac; \
++	    [ "$$h" != "$$t" ] || continue; \
++	    r=$$(printf '%s\n' "$$h" | LC_ALL=C ${SED} -e 's/[].[*^$$\\]/\\&/g'); \
++	    ${FIND} ${DESTDIR}${PREFIX} -type f -exec ${GREP} -lIF -e "$$h" {} + 2>/dev/null | \
++	    while IFS= read -r f; do \
++	        LC_ALL=C ${SED} -e "s|$$r\([^A-Za-z0-9._+/-]\)|$$t\1|g" -e "s|$$r\$$|$$t|" \
++	            "$$f" > "$$f.ember-tool" && \
++	        ${CAT} "$$f.ember-tool" > "$$f" && ${RM} -f "$$f.ember-tool"; \
++	    done; \
++	done
++.  endif
 +.endif
  .if defined(GNU_CONFIGURE)
  .  for _t_ in ${_USE_TOOLS}
