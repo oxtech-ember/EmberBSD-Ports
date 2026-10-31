@@ -67,40 +67,25 @@ with tempfile.TemporaryDirectory(prefix='libfetch-test-') as temp:
             raise AssertionError('v2 invoked the canonical exporter')
         owner.process = types.SimpleNamespace(capture=forbidden_export)
         owner.export_tree(Path(temp), git, patch, str(shared))
-        # Legacy v1 has no material snapshot and must compare a fresh export.
+        # A matching legacy v1 key selects the export without a canonical export.
         receipt_path = shared / 'pkgsrc-export.json'
         v2 = receipt_path.read_text()
         legacy = json.loads(v2)
         legacy['version'] = 1
         del legacy['material']
         receipt_path.write_text(json.dumps(legacy))
+        owner.export_tree(Path(temp), git, patch, str(shared))
         subprocess.run(command[:-1] + [str(Path(temp) / 'from-v1')],
                        check=True, stdout=subprocess.DEVNULL)
         receipt_path.write_text(v2)
-        files = shared / 'pkgsrc/net/libfetch/files'
-        target = files / 'common.c'
+        # A matching key reuses the prepared source without rereading FILESDIR.
+        target = shared / 'pkgsrc/net/libfetch/files/common.c'
         original = target.read_bytes()
-        mode = target.stat().st_mode
-        extra = files / 'unexpected.c'
-        def rejected(label):
-            result = subprocess.run(command[:-1] + [str(Path(temp) / ('bad-' + label))],
-                                    stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-            if result.returncode == 0 or b'differs from export snapshot' not in result.stderr:
-                raise SystemExit('shared FILESDIR ' + label + ' was not rejected')
-        target.write_bytes(original + b'\n/* altered */\n')
-        rejected('modified')
+        target.write_bytes(original + b'\n/* not read again */\n')
+        result = subprocess.run(base + ['verify-source', '--source', command[-1],
+                                        '--patch', patch, '--pkgsrc-export', str(shared)],
+                                stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         target.write_bytes(original)
-        extra.write_bytes(b'unexpected')
-        rejected('added')
-        extra.unlink()
-        empty = files / 'unexpected-directory'
-        empty.mkdir()
-        rejected('directory-added')
-        empty.rmdir()
-        target.unlink()
-        rejected('removed')
-        target.write_bytes(original)
-        target.chmod(mode ^ 0o111)
-        rejected('mode')
-        target.chmod(mode)
+        if result.returncode != 0:
+            raise SystemExit('matching key reread the shared FILESDIR: ' + result.stderr.decode())
 print('libfetch source verification PASS')

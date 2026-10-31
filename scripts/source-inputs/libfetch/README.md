@@ -14,13 +14,12 @@ python3 -B scripts/source-inputs/libfetch/source.py --sdk-source /path/to/sdk-so
 ```
 
 An existing shared export can be selected with `--pkgsrc-export` and the same
-explicit patch tool. New shared exports record a snapshot of the libfetch FILESDIR; preparation
-checks its contents and execute modes without another full pkgsrc export.
-A legacy receipt without a snapshot requires a canonical export for comparison.
-The caller owns the export; the snapshot detects accidental changes, not an
-authenticated or adversarially protected directory. Verification of a source
-whose Git key still matches checks only the export receipt and does not reread
-the FILESDIR.
+explicit patch tool. Its receipt identity is the export key: the pinned pkgsrc
+commit, the overlay inputs and the patch tool that produce the libfetch
+FILESDIR. A matching key selects the export directly; neither preparation nor
+`verify-source` reads FILESDIR again or makes another pkgsrc export. New
+exports record a FILESDIR snapshot that preparation uses as the expected copy.
+The caller owns the export; a different key is refused.
 The consumer generates error headers in its object tree;
 the prepared source remains read-only. Run `test-source.py` with the selected
 Python, SDK source, Git and prepared source paths for its focused verification.

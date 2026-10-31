@@ -64,21 +64,18 @@ def export_tree(tmp, git, patch, shared):
     selected = (identity_module().shared_export(shared, PORTS, git, SDK_SOURCE, patch)
                 if shared else None)
     if selected is not None:
+        # The receipt identity is the export key: the pinned pkgsrc commit,
+        # the overlay inputs and the patch tool that produced this FILESDIR.
+        # A matching key selects the export without reading FILESDIR again.
         snapshot = identity_module().shared_export_material(shared, PACKAGE + '/files')
-        if snapshot is not None:
-            require(payload(selected / PACKAGE / 'files') == snapshot,
-                    'shared libfetch FILESDIR differs from export snapshot')
-            return selected, snapshot
+        if snapshot is None:
+            snapshot = payload(selected / PACKAGE / 'files')
+        return selected, snapshot
     exported = Path(tmp) / 'pkgsrc'
     process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
                      str(exported), '--git', git, '--patch', patch],
                     env=process.sanitized_environment())
-    expected = payload(exported / PACKAGE / 'files')
-    if selected is not None:
-        require(payload(selected / PACKAGE / 'files') == expected,
-                'shared libfetch FILESDIR differs from current export')
-        return selected, expected
-    return exported, expected
+    return exported, payload(exported / PACKAGE / 'files')
 
 
 def prepare(output, git, patch, shared=None):
