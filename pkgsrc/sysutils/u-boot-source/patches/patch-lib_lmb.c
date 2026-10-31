@@ -2,8 +2,8 @@ $NetBSD$
 
 Reserve the U-Boot stack and relocation in its actual DRAM bank.
 
---- lib/lmb.c.orig
-+++ lib/lmb.c
+--- a/lib/lmb.c
++++ b/lib/lmb.c
 @@ -535,11 +535,11 @@
  static void lmb_reserve_uboot_region(void)
  {
