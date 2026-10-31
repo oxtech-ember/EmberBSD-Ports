@@ -1,0 +1,23 @@
+$NetBSD$
+
+Select the system source for the Config of the build, which is the
+target Config in a cross build, rather than for the running perl.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- Makefile.PL.orig
++++ Makefile.PL
+@@ -1,11 +1,13 @@
+ use 5.006;
+ use ExtUtils::MakeMaker qw(prompt WriteMakefile);
+ use File::Copy 'copy';
++# The Config of the build: the target one when cross compiling.
++use ExtUtils::MakeMaker::Config;
+ 
+ my $libs = '';
+ my $define = '';
+ 
+-for ($^O) {
++for ($Config{osname}) {
+   if (/svr/) {
+     copy ('arch/sco.xs', 'MemInfo.xs');
+     print "Sys::MemInfo for UnixWare\n";
