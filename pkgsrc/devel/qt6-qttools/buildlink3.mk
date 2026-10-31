@@ -16,7 +16,14 @@ BUILDLINK_FILES.qt6-qttools+=		qt6/libexec/lprodump
 BUILDLINK_FILES.qt6-qttools+=		qt6/libexec/lrelease-pro
 BUILDLINK_FILES.qt6-qttools+=		qt6/libexec/lupdate-pro
 
+pkgbase := qt6-qttools
+.include "../../mk/pkg-build-options.mk"
+
+# The host-tools build has only the Linguist tools and qtattributionsscanner
+# and does not use QtDeclarative (see options.mk and the Makefile).
+.if !${PKG_BUILD_OPTIONS.qt6-qttools:Mhost-tools}
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"
+.endif
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .endif	# QT6_QTTOOLS_BUILDLINK3_MK
 
