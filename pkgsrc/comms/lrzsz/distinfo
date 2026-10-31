@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (lrzsz-0.13.1.tar.gz) = 9193409e34bfa4d5741a01c7509e742ac19c1faf5f55408e0b5d7b7de580d8b5
+SHA512 (lrzsz-0.13.1.tar.gz) = 3742fed1b8d7ad78551eb55ebe5f179a7a93d8e600f74c9e8541abf1dbd48651f886e96f0307479de7b20016772533dce756329526f5dc779fc40b983357b61c
+Size (lrzsz-0.13.1.tar.gz) = 483782 bytes
+SHA1 (patch-src_lrz.c) = 9ae1ade852d4b9220bd7ee080ca15ea4e49972de
+SHA1 (patch-src_lsz.c) = 72d397b824ed8fd27844301c2057c47157805f02
+SHA1 (patch-src_zm.c) = 76f0c50d41cc1cdb3582770500e94eb83834cf20
