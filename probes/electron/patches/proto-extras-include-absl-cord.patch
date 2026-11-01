@@ -1,0 +1,18 @@
+Include absl/strings/cord.h instead of forward-declaring absl::Cord.
+Origin: EmberBSD contributors (AI-assisted). The shared Abseil puts Cord in
+an inline versioned namespace, so a plain forward declaration in namespace
+absl makes the name ambiguous.
+
+--- a/components/proto_extras/proto_extras_lib.h
++++ b/components/proto_extras/proto_extras_lib.h
+@@ -14,9 +14,7 @@
+ #include "base/strings/stringprintf.h"
+ #include "base/values.h"
+ 
+-namespace absl {
+-class Cord;
+-}  // namespace absl
++#include "absl/strings/cord.h"
+ 
+ namespace google::protobuf {
+ class MessageLite;

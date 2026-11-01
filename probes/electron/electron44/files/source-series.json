@@ -824,6 +824,11 @@
       "strip": 1
     },
     {
+      "path": "proto-extras-include-absl-cord.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "os-crypt-sync-header-bsd.patch",
       "root": "",
       "strip": 1
