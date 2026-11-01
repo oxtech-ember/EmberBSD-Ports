@@ -23,7 +23,12 @@ with tempfile.TemporaryDirectory(dir=args.work_dir) as directory:
         if (result.returncode == 0) != success:
             raise AssertionError(result.stderr)
         return result
-    run('prepare', '--archive', args.archive, '--patch', args.patch, '--output', root, '--scoped-identity')
+    run('prepare', '--archive', args.archive, '--patch', args.patch, '--output', root)
+    current = subprocess.run([
+        sys.executable, '-B', str(Path(__file__).parents[2] / 'prepared-source-current.py'),
+        '--sdk-source', str(args.sdk_source), '--git', str(args.git), '--patch', str(args.patch),
+        '--source', 'heimdal=' + str(root)], capture_output=True, text=True)
+    assert current.returncode == 0, current.stderr
     run('verify-source', '--source', root, '--patch', args.patch)
     bad = Path(directory) / args.archive.name
     shutil.copyfile(args.archive, bad)

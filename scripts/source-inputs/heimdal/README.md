@@ -4,7 +4,9 @@ Prepare `security/heimdal` from its verified release archive and the full
 pkgsrc patchset with `source.py --sdk-source SDK --git GIT prepare --archive
 ARCHIVE --patch PATCH --output NEW_DIRECTORY`. The owner also applies the
 recipe's post-extract `heim_find_prime.h` copy. `verify-source --source
-DIRECTORY` checks the prepared output and its recipe identity.
+DIRECTORY` checks the prepared output and its recipe identity. New prepared
+receipts identify the effective Git recipe and are accepted by
+`scripts/prepared-source-current.py` without an extra identity option.
 
 Native OS integration, ABI compatibility and target runtime are separate from
 source preparation.

@@ -159,7 +159,7 @@ def verify(source, git, archive=None, patch=None, pkgsrc_export=None):
     return record
 
 
-def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
+def prepare(archive, output, patch, git, exported=None):
     require(os.path.isabs(git) and os.path.isabs(patch), 'select absolute Git and patch executables')
     output = Path(output)
     require(output.is_absolute(), 'prepared source output must be absolute')
@@ -200,9 +200,8 @@ def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
         require(not any(p.name.endswith(('.orig', '.rej')) for p in root.rglob('*')),
                 'heimdal patch left a backup or reject')
         require(identity == source_identity(git), 'pkgsrc export inputs changed during preparation')
-        if scoped_identity:
-            identity = {'effective': git_effective_identity(git),
-                        'owner_sha256': identity['owner_sha256']}
+        identity = {'effective': git_effective_identity(git),
+                    'owner_sha256': identity['owner_sha256']}
         record = prepared_receipt.write(root, package=PACKAGE, identity=identity)
         require(sourceprep.archive_hashes(read(archive)) == hashes, 'heimdal archive changed during preparation')
         publish_directory_noreplace(root, output)
@@ -227,7 +226,6 @@ def main():
     produce.add_argument('--archive', required=True)
     produce.add_argument('--output', required=True)
     produce.add_argument('--patch', required=True)
-    produce.add_argument('--scoped-identity', action='store_true')
     produce.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
     check = sub.add_parser('verify-source')
     check.add_argument('--source', required=True)
@@ -237,7 +235,7 @@ def main():
     selected = parser.parse_args(args)
     try:
         if selected.action == 'prepare':
-            record = prepare(selected.archive, selected.output, selected.patch, selected.git, selected.scoped_identity,
+            record = prepare(selected.archive, selected.output, selected.patch, selected.git,
                              exported=shared_tree(selected))
         else:
             record = verify(selected.source, selected.git, selected.archive, selected.patch, pkgsrc_export=selected.pkgsrc_export)
