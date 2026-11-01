@@ -18,6 +18,7 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 sh "$root/scripts/tests/recipe-host-variables.sh"
 sh "$root/scripts/tests/github-commit-distfiles.sh"
 sh "$root/scripts/tests/qt-host-tool-depends.sh" "${BMAKE:-bmake}"
+"$PY" -B "$root/scripts/tests/qtbase-package-revisions.py"
 sh "$root/scripts/tests/export-composition.sh" "$2"
 sh "$root/scripts/tests/native-profile-jobs.sh" "${BMAKE:-bmake}" "$2/export"
 sh "$root/scripts/tests/freestanding-native-tools.sh" "${BMAKE:-bmake}" "$2/export"
