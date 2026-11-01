@@ -260,14 +260,36 @@ def python_edition_defaults(protobuf, protoc):
     return text.replace('DEFAULTS_VALUE', escaped)
 
 
+DESCRIPTOR_PB2 = 'descriptor_pb2.py'
+
+
+def python_descriptor_pb2(protobuf, protoc):
+    """Generate google/protobuf/descriptor_pb2.py with the selected protoc, as the release does."""
+    import subprocess, tempfile
+    require(not (protobuf / 'python/google/protobuf' / DESCRIPTOR_PB2).exists(),
+            'common protobuf python tree already ships descriptor_pb2.py')
+    with tempfile.TemporaryDirectory(prefix='protobuf-descriptor-pb2-') as work:
+        subprocess.run([str(protoc), '-I' + str(protobuf / 'src'), '--python_out=' + work,
+                        str(protobuf / 'src/google/protobuf/descriptor.proto')], check=True)
+        return (Path(work) / 'google/protobuf' / DESCRIPTOR_PB2).read_bytes()
+
+
 def python_view(protobuf, dest, protoc, *, verify=False):
     """Mirror the common pyproto runtime and add its generated edition defaults."""
     origin, output = protobuf / 'python', dest
     for name in EDITION_DEFAULTS:
-        mirror(origin, output, verify=verify, omit={name})
+        omit = {name} | ({DESCRIPTOR_PB2} if name == 'internal' else set())
+        mirror(origin, output, verify=verify, omit=omit)
         if name == EDITION_DEFAULTS[-1]:
             break
         origin, output = origin / name, output / name
+    generated = output.parent / DESCRIPTOR_PB2
+    descriptor = python_descriptor_pb2(protobuf, protoc)
+    if verify:
+        require(generated.is_file() and not generated.is_symlink() and generated.read_bytes() == descriptor,
+                'generated descriptor_pb2 changed: ' + str(generated))
+    else:
+        generated.write_bytes(descriptor)
     target = output / EDITION_DEFAULTS[-1]
     expected = python_edition_defaults(protobuf, protoc)
     if verify:
