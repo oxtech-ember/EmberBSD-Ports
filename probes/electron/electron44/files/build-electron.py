@@ -97,6 +97,17 @@ def selected_control_git(path):
     require(git.is_file() and os.access(git, os.X_OK), 'selected Git is not executable')
     return str(git)
 
+
+def source_owner_environment(environment):
+    captured = dict(environment)
+    source_cache = os.environ.get('EMBER_PREPARED_SOURCE_CACHE')
+    if source_cache is None:
+        captured.pop('EMBER_PREPARED_SOURCE_CACHE', None)
+    else:
+        captured['EMBER_PREPARED_SOURCE_CACHE'] = source_cache
+    return captured
+
+
 def native_inputs(options, sdk):
     roles = ('python', 'gn', 'ninja', 'node', 'rustc', 'rustfmt', 'bindgen', 'wayland-scanner',
              'pkg-config', 'rollup', 'tsc', 'clang', 'cc', 'cxx', 'cpp', 'ar', 'nm', 'strip', 'objcopy', 'readelf',
@@ -520,7 +531,8 @@ def common_protobuf(options, sdk, native, environment, buildlink, runtime_view):
         require(owner.is_file(), 'common protobuf source owner is missing')
         verified = sdk['process'].capture([native.tool('python'), '-B', str(owner), '--sdk-source', str(options.sdk_source),
             '--git', selected_control_git(options.git), 'verify-source', '--source', str(common),
-            '--archive', str(common_inputs[1]), '--patch', str(common_inputs[2])], env=environment)
+            '--archive', str(common_inputs[1]), '--patch', str(common_inputs[2])],
+            env=source_owner_environment(environment))
         source_identity = json.loads(verified.stdout.decode('utf-8', 'strict'))
         environment['EMBERBSD_PROTOBUF_SOURCE_SHA256'] = hashlib.sha256(
             json.dumps(source_identity, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
@@ -686,7 +698,7 @@ def common_embedder_sources(options, sdk, native, environment):
     if node and perfetto:
         values['node_shared_perfetto'] = True
     for name, command in commands:
-        result = sdk['process'].capture(command, env=environment)
+        result = sdk['process'].capture(command, env=source_owner_environment(environment))
         record = json.loads(result.stdout.decode('utf-8', 'strict'))
         environment['EMBERBSD_' + name + '_SOURCE_SHA256'] = hashlib.sha256(
             json.dumps(record, sort_keys=True, separators=(',', ':')).encode()).hexdigest()

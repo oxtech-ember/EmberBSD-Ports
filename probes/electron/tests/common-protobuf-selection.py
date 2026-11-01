@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
+from unittest.mock import patch
 
 owner = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('build_electron', owner / 'electron44/files/build-electron.py')
@@ -48,9 +49,11 @@ with tempfile.TemporaryDirectory(prefix='electron-protobuf-selection-') as tmp:
     state = dict(identity={'tree_sha256': 'a', 'identity': {'patches': ['first']}},
                  host='36.2.0', target='36.2.0', protoc='libprotoc 36.2')
     class Process:
+        source_environments = []
         @staticmethod
         def capture(command, *, env):
             if 'verify-source' in command:
+                Process.source_environments.append(dict(env))
                 output = json.dumps(state['identity'])
             elif '--modversion' in command:
                 output = state['host'] if '--define-prefix' in command else state['target']
@@ -65,7 +68,16 @@ with tempfile.TemporaryDirectory(prefix='electron-protobuf-selection-') as tmp:
     def selected():
         env = {'EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK': str(selection)}; args = build.common_protobuf(options, sdk, native, env, str(view), root/'runtime')
         return args, env
-    args, first = selected(); assert args['emberbsd_common_protobuf'] and args['emberbsd_protoc'] == str(protoc.resolve())
+    with patch.dict('os.environ') as clean_environment:
+        clean_environment.pop('EMBER_PREPARED_SOURCE_CACHE', None)
+        args, first = selected()
+    assert args['emberbsd_common_protobuf'] and args['emberbsd_protoc'] == str(protoc.resolve())
+    assert 'EMBER_PREPARED_SOURCE_CACHE' not in Process.source_environments[-1]
+    with patch.dict('os.environ', {'EMBER_PREPARED_SOURCE_CACHE': '/cache/fixture'}):
+        cached_args, cached = selected()
+    assert Process.source_environments[-1]['EMBER_PREPARED_SOURCE_CACHE'] == '/cache/fixture'
+    assert 'EMBER_PREPARED_SOURCE_CACHE' not in cached
+    assert cached_args == args and cached['EMBERBSD_PROTOBUF_SOURCE_SHA256'] == first['EMBERBSD_PROTOBUF_SOURCE_SHA256']
     original_time = (source / 'version.json').stat().st_mtime_ns
     state['identity']['identity']['patches'] = ['second']
     _, second = selected()

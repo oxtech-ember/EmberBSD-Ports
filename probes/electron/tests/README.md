@@ -331,6 +331,11 @@ tamper/deletion rejection for both generated modules.
   --protoc "$HOST_PREFIX/bin/protoc"
 ```
 
+Source-owner verification can opt in to the SDK prepared-tree cache API by
+setting `EMBER_PREPARED_SOURCE_CACHE` to an explicit cache directory. This
+requires `PREPARED_TREE_CACHE_API=1` in the selected SDK; it does not change the
+shared build environment or object paths.
+
 ## Linux SUID-helper selection
 
 Use CPython 3.15, an SDK source that provides Python API 1, host GN, and the
