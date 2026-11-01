@@ -16,11 +16,17 @@ case "$bmake$work" in *[!A-Za-z0-9_./+-]*) echo 'Use simple paths.' >&2; exit 2 
 case "$work" in /*) ;; *) echo 'NEW_DIRECTORY must be absolute' >&2; exit 2 ;; esac
 [ ! -e "$work" ] || { echo "$work exists" >&2; exit 2; }
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd -P)
-mkdir -p "$work/profile" "$work/tools" "$work/sysroot" "$work/host"
+mkdir -p "$work/profile" "$work/tools" "$work/sysroot" "$work/host" \
+	"$work/pkgsrc/mk" "$work/pkgsrc/devel/qt6-qttools"
 cp "$ports/profiles/common-build-tools/cross/mk.conf" "$work/profile/mk.conf"
 cp "$ports/profiles/common-build-tools/cross/host-config.mk" "$work/profile/host-config.mk"
 cp "$ports/pkgsrc/defaults.mk.conf" "$work/profile/EMBERBSD-DEFAULTS-MK.CONF"
 cp "$ports/pkgsrc/versions.mk" "$work/profile/EMBERBSD-VERSIONS.MK"
+cp "$ports/pkgsrc/devel/qt6-qttools/options.mk" "$work/pkgsrc/devel/qt6-qttools/options.mk"
+: > "$work/pkgsrc/mk/bsd.fast.prefs.mk"
+cat > "$work/pkgsrc/mk/bsd.options.mk" <<'EOF'
+PKG_OPTIONS=${${PKG_OPTIONS_VAR}:U}
+EOF
 : > "$work/profile/native-tools.mk"
 # The host profile supplies host-ABI flags. Cross builds must restore their
 # incoming target flags/defaults; native dependency builds keep host values.
@@ -67,18 +73,33 @@ _EMBER_TEST_LDFLAGS_AFTER_HOST_DEFINED=no
 .include "$work/profile/mk.conf"
 CPPFLAGS+=package-cpp
 LDFLAGS+=package-ld
+PKGDIR=$ports/pkgsrc/devel/qt6-qttools
+.include "$work/pkgsrc/devel/qt6-qttools/options.mk"
 EOF
 fail() { echo "FAIL: $*" >&2; exit 1; }
 read_vars() { "$bmake" -f "$work/Makefile" "$@" -v USE_CROSS_COMPILE -v MACHO_USE_LOAD_COMMANDS -v PKG_OPTIONS.graphviz | tr '\n' ' '; }
+getvar() { variable=$1; shift; "$bmake" -f "$work/Makefile" "$@" -v "$variable"; }
 target=$(read_vars) || fail "the target parse failed: $target"
 [ "$target" = 'yes   ' ] || fail "a target build takes the Darwin native defaults (USE_CROSS_COMPILE MACHO_USE_LOAD_COMMANDS PKG_OPTIONS.graphviz: $target)"
+target_qttools=$(getvar PKG_OPTIONS.qt6-qttools) || fail 'the target QtTools option query failed'
+[ -z "$target_qttools" ] || fail "the target QtTools package selected host-only tools: $target_qttools"
 target_rcd=$("$bmake" -f "$work/Makefile" -v RCD_SCRIPTS_DIR) || fail 'the target rc-directory query failed'
 [ "$target_rcd" = /etc/rc.d ] || fail "target rc scripts escaped the target base: $target_rcd"
 native=$(read_vars USE_CROSS_COMPILE=no) || fail "the native parse failed: $native"
 [ "$native" = 'no yes -gd ' ] || fail "a native build lost the Darwin native defaults: $native"
+native_qttools=$(getvar PKG_OPTIONS.qt6-qttools USE_CROSS_COMPILE=no) || fail 'the native QtTools option query failed'
+[ "$native_qttools" = host-tools ] || fail "a native dependency did not select QtTools host-tools: $native_qttools"
+native_qttools_args=$(getvar CMAKE_CONFIGURE_ARGS USE_CROSS_COMPILE=no) || fail 'the native QtTools CMake feature query failed'
+for feature in assistant designer; do
+    case " $native_qttools_args " in
+    *" -DFEATURE_${feature}=OFF "*) ;;
+    *) fail "QtTools host-tools did not disable ${feature}: $native_qttools_args" ;;
+    esac
+done
+case "$native_qttools_args" in *-DFEATURE_linguist=ON*) ;; *) fail "QtTools host-tools lost Linguist: $native_qttools_args" ;; esac
+case "$native_qttools_args" in *-DFEATURE_qtattributionsscanner=ON*) ;; *) fail "QtTools host-tools lost qtattributionsscanner: $native_qttools_args" ;; esac
 native_rcd=$("$bmake" -f "$work/Makefile" USE_CROSS_COMPILE=no -v RCD_SCRIPTS_DIR) || fail 'the native rc-directory query failed'
 [ "$native_rcd" = "$work/host/etc/rc.d" ] || fail "native rc scripts escaped the selected prefix: $native_rcd"
-getvar() { variable=$1; shift; "$bmake" -f "$work/Makefile" "$@" -v "$variable"; }
 target_cpp=$(getvar CPPFLAGS) || fail 'the cross CPPFLAGS query failed'
 target_c=$(getvar CFLAGS) || fail 'the cross CFLAGS query failed'
 target_cxx=$(getvar CXXFLAGS) || fail 'the cross CXXFLAGS query failed'
