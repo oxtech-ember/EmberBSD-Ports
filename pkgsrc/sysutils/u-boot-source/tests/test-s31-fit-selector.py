@@ -51,10 +51,10 @@ static int
 s31_fit_uses_external_data(const void *fit, size_t fit_size)
 {
 	static const char *const images[] = { "firmware", "uboot", "fdt" };
-	size_t fit_header_size = (fdt_totalsize(fit) + 3) & ~(size_t)3;
+	size_t fit_header_size = ((size_t)fdt_totalsize(fit) + 3) & ~(size_t)3;
 	size_t data_size;
 	int images_node = fdt_path_offset(fit, "/images");
-	uint32_t previous_end = 0;
+	size_t previous_end = 0;
 	unsigned int i;
 
 	if (fit_header_size > fit_size || images_node < 0)
@@ -80,7 +80,7 @@ s31_fit_uses_external_data(const void *fit, size_t fit_size)
 		if (offset < previous_end || offset > data_size ||
 		    size > data_size - offset)
 			return 0;
-		previous_end = offset + size;
+		previous_end = (size_t)offset + size;
 	}
 	return 1;
 }
