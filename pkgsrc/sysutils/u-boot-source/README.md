@@ -93,11 +93,20 @@ Set `SPL_BIN`, `SPL_DTB` and `SPL_ELF` to the matching build artifacts;
 to the producer above. This produces
 an image only; it does not write a device, establish a bootable NOR loader,
 authenticate FIT data, or validate target execution. OpenSBI and SPL runtime
-BSS, heap, stack and handoff need separate validation. Run
-`tests/test-s31-nor.py` with the selected host Python for the bounded input
-checks. `tests/test-s31-nor-integration.py` accepts the same input options as
-the producer except `--output` and checks two complete images for equality
-and their NOR offsets.
+BSS, heap, stack and handoff need separate validation.
+
+For a new root or kernel payload with an unchanged producer, FIT format and
+boot chain, invoke the producer once. Its input, range, layout and payload
+hash checks validate that image. The host checks cover separate code contracts:
+
+- `tests/test-s31-nor.py` checks producer input validation. Run it when that
+  implementation or contract changes.
+- `tests/test-s31-nor-bootcmd.py` checks U-Boot's boot command and loadable
+  contract. Run it when that boot-selection contract changes.
+- `tests/test-s31-nor-integration.py` deliberately builds two complete images
+  to check deterministic output and NOR offsets. Run it when the producer,
+  FIT format or boot chain changes, or for explicit image qualification; it is
+  not needed for each payload-only update.
 
 ### Opt-in Mosaico LCD command
 
