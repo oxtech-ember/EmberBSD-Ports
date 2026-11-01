@@ -2659,6 +2659,10 @@ lib/cmake/llvm/LLVMConfig.cmake
 lib/cmake/llvm/LLVMConfigExtensions.cmake
 lib/cmake/llvm/LLVMConfigVersion.cmake
 lib/cmake/llvm/LLVMDistributionSupport.cmake
+lib/cmake/llvm/emberbsd/BuildVariables.inc
+lib/cmake/llvm/emberbsd/ExtensionDependencies.inc
+lib/cmake/llvm/emberbsd/LibraryDependencies.inc
+lib/cmake/llvm/emberbsd/llvm-config.cpp
 lib/cmake/llvm/LLVMExports-${RELEASE_TYPE}.cmake
 lib/cmake/llvm/LLVMExports.cmake
 lib/cmake/llvm/LLVMExternalProjectUtils.cmake

@@ -25,9 +25,9 @@ def main():
     owner = Path(__file__).resolve().parents[3]
     tree = args.work/'pkgsrc';tree.mkdir()
     for entry in args.pkgsrc.iterdir():
-        if entry.name not in ('graphics','devel','EMBERBSD-COMMON-GRAPHICS-MK.CONF'):
+        if entry.name not in ('graphics','devel','lang','EMBERBSD-COMMON-GRAPHICS-MK.CONF'):
             (tree/entry.name).symlink_to(entry.resolve(),target_is_directory=entry.is_dir())
-    for category, changed in (('graphics',{'MesaLib'}),('devel',{'wayland','wayland-protocols'})):
+    for category, changed in (('graphics',{'MesaLib'}),('devel',{'wayland','wayland-protocols'}),('lang',{'llvm','llvm-devel'})):
         (tree/category).mkdir()
         for entry in (args.pkgsrc/category).iterdir():
             if entry.name not in changed:
@@ -63,6 +63,12 @@ CLANGBASE=@PREFIX@
 EMBERBSD_CROSS_TOOLS=@PREFIX@
 EMBERBSD_CROSS_SYSROOT=@TARGET@
 EMBERBSD_CROSS_HOST_PREFIX=@PREFIX@
+EMBERBSD_HOST_PREFIX=@PREFIX@
+EMBERBSD_CROSS_BUILD_PYTHON=@PREFIX@/bin/python3.15
+EMBERBSD_CROSS_BUILD_LD=@PREFIX@/bin/ld.lld
+NATIVE_CXX=@PREFIX@/bin/clang++
+NATIVE_LD=@PREFIX@/bin/ld.lld
+PKGSRCDIR=@TREE@
 EMBERBSD_COMMON_GRAPHICS_CROSS=yes
 .if defined(BSD_PKG_MK)
 .include "@TREE@/EMBERBSD-COMMON-GRAPHICS-MK.CONF"
@@ -75,13 +81,17 @@ EMBERBSD_COMMON_GRAPHICS_CROSS=yes
     for name in ('EMBERBSD_DARWIN_BOOTSTRAP','EMBERBSD_GRAPHICS_LLVM_CONFIG',
                  'EMBERBSD_WAYLAND_SCANNER','EMBERBSD_SDK_SOURCE','EMBERBSD_MESA_GENERATORS'):
         environment.pop(name,None)
+    environment['EMBERBSD_WAYLAND_SCANNER'] = str(prefix / 'bin/wayland-scanner')
     base=[str(prefix/'bin/bmake'),'-m',str(prefix/'share/mk'),'SHELL='+str(prefix/'bin/mksh'),
           'MAKECONF='+str(config),'WRKOBJDIR='+str(args.work/'objects'),'DISTDIR='+str(args.distdir)]
     checks={}
 
     def run(name,package,extra,expected=None):
         command=[*base,'-C',str(tree/package),*extra]
-        result=subprocess.run(command,env=environment,capture_output=True,text=True)
+        run_environment = dict(environment)
+        if name == 'protocols-missing-scanner':
+            run_environment.pop('EMBERBSD_WAYLAND_SCANNER', None)
+        result=subprocess.run(command,env=run_environment,capture_output=True,text=True)
         output=result.stdout+result.stderr
         (args.work/(name+'.log')).write_text(shlex.join(command)+'\n'+output)
         if expected:
@@ -98,14 +108,14 @@ EMBERBSD_COMMON_GRAPHICS_CROSS=yes
         failure=run(name+'-metadata',package,['-V','${PKG_FAIL_REASON}'])
         assert not failure.strip(),failure
         run(name+'-fetch-checksum',package,['fetch','checksum'])
-    run('MesaLib-missing-llvm','graphics/MesaLib',['pre-configure'],
-        'requires EMBERBSD_GRAPHICS_LLVM_CONFIG')
+    run('MesaLib-missing-llvm','graphics/MesaLib',['emberbsd-cross-llvm-config'],
+        'required llvm-config input is unavailable')
     run('MesaLib-relative-llvm','graphics/MesaLib',
-        ['EMBERBSD_GRAPHICS_LLVM_CONFIG=relative/llvm-config','pre-configure'],
-        'absolute receipt-guarded llvm-config')
+        ['EMBERBSD_GRAPHICS_LLVM_CONFIG=relative/llvm-config','emberbsd-graphics-llvm-input-check'],
+        'must be an absolute installed-metadata llvm-config')
     run('MesaLib-unprepared-llvm','graphics/MesaLib',
-        ['EMBERBSD_GRAPHICS_LLVM_CONFIG='+str(prefix/'bin/llvm-config'),'pre-configure'],
-        'absolute receipt-guarded llvm-config')
+        ['EMBERBSD_GRAPHICS_LLVM_CONFIG='+str(prefix/'bin/llvm-config'),'emberbsd-graphics-llvm-input-check'],
+        'target llvm-devel is not installed')
     # Preserve earlier MAKECONF choices, including defined-empty. No receipt
     # is fabricated: conflicts must fail before inspecting helper artifacts.
     for name, value in (('earlier-llvm', '/usr/bin/false'), ('earlier-empty-llvm', '')):
@@ -119,7 +129,7 @@ EMBERBSD_COMMON_GRAPHICS_CROSS=yes
     run('command-line-llvm','graphics/MesaLib',
         ['EMBERBSD_GRAPHICS_LLVM_CONFIG='+str(prefix/'bin/llvm-config'),
          'LLVM_CONFIG_PATH=/usr/bin/false','pre-configure'], 'overridden LLVM_CONFIG_PATH')
-    run('protocols-missing-scanner','devel/wayland-protocols',['pre-configure'],
+    run('protocols-missing-scanner','devel/wayland-protocols',['emberbsd-graphics-scanner-input-check'],
         'require EMBERBSD_WAYLAND_SCANNER')
     run('MesaLib-missing-generators','graphics/MesaLib',['emberbsd-mesa-generators-check'],
         'requires an absolute sealed EMBERBSD_MESA_GENERATORS')

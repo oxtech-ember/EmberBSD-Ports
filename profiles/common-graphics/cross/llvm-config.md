@@ -5,6 +5,19 @@ the EmberBSD LLVM package. The existing native generator build's `llvm-config`
 describes that host and must not be used as target metadata. The target
 executable cannot run directly on macOS or Linux.
 
+Normal pkgsrc builds use `lang/llvm/cross-llvm-config.mk`. It compiles the
+patched upstream `llvm-config.cpp` alongside the installed target
+`llvm-devel` component tables/configuration and uses selected native LLVM
+headers and Support archives. The target package installs these small inputs
+under `lib/cmake/llvm/emberbsd`; the helper does not need either LLVM CMake
+build tree, source archive or a native LLVM rebuild. Mesa selects this same
+helper automatically. The generated tool reports the installed target prefix
+and queries the real target library files through upstream's normal
+prefix-layout logic.
+
+The standalone `build-llvm-config.py` workflow below remains available for
+strict build-tree comparison and sealing. It is not the normal pkgsrc producer.
+
 `build-llvm-config.py` compiles the pinned upstream LLVM 23.1.4
 `tools/llvm-config/llvm-config.cpp`. It reuses the existing native Support,
 TargetParser and Demangle archives; it does not build LLVM libraries. Python 3.15,

@@ -117,9 +117,9 @@ PKG_FAIL_REASON+= "The separate LLVM SDK requires a NetBSD cross build; native L
 PKG_FAIL_REASON+= "The LLVM runtime/SDK split requires the common aarch64 or amd64 cross target"
 .endif
 .if defined(EMBERBSD_LLVM_DEVEL)
-PKGREVISION= 4
-.if ${PKGREVISION} != 4
-PKG_FAIL_REASON+= "The LLVM SDK requires package revision 4"
+PKGREVISION= 5
+.if ${PKGREVISION} != 5
+PKG_FAIL_REASON+= "The LLVM SDK requires package revision 5"
 .endif
 .else
 PKGREVISION= 3
@@ -182,6 +182,7 @@ SUBST_SED.python=	-e '1s,\#!.*python.*,\#!${PYTHONBIN},'
 .endif
 
 PLIST_VARS+=	darwin min_tblgen notdylib
+PLIST_VARS+=	targetconfig
 # Cross LLVM, Clang and LLD builds run the native llvm-min-tblgen from this
 # package. Upstream builds it but does not install it.
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
@@ -193,7 +194,9 @@ PLIST.darwin=	yes
 .if ${SHLIB_TYPE} != "dylib"
 PLIST.notdylib=	yes
 .endif
-
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
+PLIST.targetconfig=	yes
+.endif
 NOTDYLIBS=		LTO Remarks
 .for libname in ${NOTDYLIBS}
 PRINT_PLIST_AWK+=	/lib${libname}.${SHLIB_EXT}.${LLVM_MAJOR_VERSION}/ { gsub(/\.${SHLIB_EXT}\.${LLVM_MAJOR_VERSION}/, ".$${SHLIB_EXT}.$${LLVM_MAJOR_VERSION}"); print "$${PLIST.notdylib}" $$0; next }
@@ -272,6 +275,22 @@ post-extract:
 
 .if defined(_EMBERBSD_LLVM_SHARED_DEVEL)
 llvm-shared-install: ${PLIST}
+.endif
+
+# Preserve the small target-generated tables needed by the host llvm-config
+# producer before the full stage is split into runtime and devel packages.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && !defined(_EMBERBSD_LLVM_SHARED_DEVEL)
+.if !defined(EMBERBSD_LLVM_DEVEL)
+post-install: llvm-select-stage
+.endif
+.PHONY: llvm-install-config-metadata
+llvm-select-stage: llvm-install-config-metadata
+.PHONY: llvm-install-config-metadata
+llvm-install-config-metadata:
+	${TOOL_PYTHONBIN} -B ${FILESDIR}/install-config-metadata.py \
+	    ${WRKSRC}/${CMAKE_BUILD_DIR}/tools/llvm-config \
+	    ${DESTDIR}${PREFIX}/lib/cmake/llvm/emberbsd ${WRKSRC} ${WRKSRC}/${CMAKE_BUILD_DIR} \
+	    ${WRKSRC}/${CMAKE_BUILD_DIR}/CMakeCache.txt
 .endif
 
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes"

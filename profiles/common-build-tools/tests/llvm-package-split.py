@@ -89,7 +89,11 @@ runtime = plist('runtime', 'llvm', *cross)
 assert sorted(runtime) == sorted(['include/llvm/Support/LICENSE.TXT', 'lib/libLLVM.so.23.1', 'lib/libLLVM-23.so', 'lib/libLLVM.so', 'lib/libLTO.so.23.1', 'lib/libLTO.so', 'lib/libRemarks.so.23.1', 'lib/libRemarks.so'])
 assert run('runtime-name', 'llvm', *cross, '-v', 'PKGNAME').strip() == 'llvm-23.1.4nb3'
 sdk = plist('devel', 'llvm-devel', *cross)
-assert all(p in sdk for p in ('bin/llvm-config', 'bin/llvm-tblgen', 'include/llvm/IR/Module.h', 'lib/cmake/llvm/LLVMConfig.cmake', 'lib/libLLVMCore.a'))
+assert all(p in sdk for p in ('bin/llvm-config', 'bin/llvm-tblgen', 'include/llvm/IR/Module.h', 'lib/cmake/llvm/LLVMConfig.cmake', 'lib/libLLVMCore.a',
+                     'lib/cmake/llvm/emberbsd/BuildVariables.inc',
+                     'lib/cmake/llvm/emberbsd/LibraryDependencies.inc',
+                     'lib/cmake/llvm/emberbsd/ExtensionDependencies.inc',
+                     'lib/cmake/llvm/emberbsd/llvm-config.cpp'))
 assert not set(runtime) & set(sdk)
 owner, full_dir = tree / 'lang/llvm', work / 'full'
 run('full', 'llvm', *cross, 'WRKDIR=' + str(full_dir), 'PLIST=' + str(full_dir / '.PLIST'), 'PLIST_SRC=' + str(owner / 'PLIST'), 'plist')
@@ -109,9 +113,9 @@ consumer.mkdir()
 output = run('buildlink', '../devel/llvm-split-consumer', *cross, '-v', 'BUILD_DEPENDS', '-v', 'DEPENDS',
              '-v', 'BUILDLINK_API_DEPENDS.llvm-devel', '-v', 'BUILDLINK_ABI_DEPENDS.llvm-devel',
              '-v', 'BUILDLINK_API_DEPENDS.llvm', '-v', 'BUILDLINK_ABI_DEPENDS.llvm').splitlines()
-assert 'llvm-devel>=23.1.4nb4:' in output[0] and 'llvm-devel' not in output[1] and \
+assert 'llvm-devel>=23.1.4nb5:' in output[0] and 'llvm-devel' not in output[1] and \
        'llvm>=23.1.4nb2:' in output[1]
-assert 'llvm-devel>=23.1.4nb4' in output[2] and 'llvm-devel>=23.1.4nb4' in output[3]
+assert 'llvm-devel>=23.1.4nb5' in output[2] and 'llvm-devel>=23.1.4nb5' in output[3]
 assert 'llvm>=23.1.4nb2' in output[4] and 'llvm>=23.1.4nb2' in output[5]
 fields = run('runtime-dependencies', 'llvm', *cross, '-v', 'DEPENDS', '-v', 'BUILD_DEPENDS', '-v', 'TOOL_DEPENDS', '-v', 'CMAKE_CONFIGURE_ARGS', '-v', 'PKG_FAIL_REASON', '-v', 'USE_BUILTIN.zlib').splitlines()
 assert not re.search(r'llvm-devel|llvm-lit|python[0-9]', fields[0])
@@ -138,10 +142,33 @@ assert run('native-name', 'llvm', *native_args, '-v', 'PKGNAME').strip() == 'llv
 assert run('native-sdk-refused', 'llvm-devel', *native_args, '-v', 'PKG_FAIL_REASON').strip()
 original = work / 'full-stage'
 prefix = original / 'usr/pkg'
+metadata_source = work / 'llvm-metadata-source'
+metadata_build = metadata_source / 'cmake-pkgsrc-build'
+metadata_tools = metadata_build / 'tools/llvm-config'
+metadata_tools.mkdir(parents=True)
+(metadata_source / 'tools/llvm-config').mkdir(parents=True)
+(metadata_source / 'tools/llvm-config/llvm-config.cpp').write_text('// patched upstream llvm-config fixture\n')
+metadata_values = {
+    'LLVM_SRC_ROOT': str(metadata_source), 'LLVM_OBJ_ROOT': str(metadata_build),
+    'LLVM_CPPFLAGS': '-I' + str(metadata_source / 'include'),
+    'LLVM_CFLAGS': '-I' + str(metadata_build / 'include'),
+    'LLVM_CXXFLAGS': '-isystem' + str(metadata_source / 'include'),
+    'LLVM_LDFLAGS': '-L/usr/pkg/lib -Wl,-R/usr/pkg/lib',
+}
+(metadata_tools / 'BuildVariables.inc').write_text(''.join(
+    '#define ' + key + ' ' + json.dumps(value) + '\n' for key, value in metadata_values.items()))
+(metadata_tools / 'LibraryDependencies.inc').write_text('fixture libraries\n')
+(metadata_tools / 'ExtensionDependencies.inc').write_text('fixture extensions\n')
+(metadata_build.mkdir(exist_ok=True))
+(metadata_build / 'CMakeCache.txt').write_text('CMAKE_SYSROOT:PATH=/target-sysroot\n')
 for path in full:
     target = prefix / path
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text('source-contract fixture: ' + path + '\n')
+    if '/emberbsd/' not in '/' + path:
+        target.write_text('source-contract fixture: ' + path + '\n')
+subprocess.run([sys.executable, '-B', str(profile / '../../pkgsrc/lang/llvm/files/install-config-metadata.py'),
+                str(metadata_tools), str(prefix / 'lib/cmake/llvm/emberbsd'), str(metadata_source),
+                str(metadata_build), str(metadata_build / 'CMakeCache.txt')], check=True)
 for name, target in {'lib/libLLVM-23.so': 'libLLVM.so.23.1', 'lib/libLLVM.so': 'libLLVM-23.so', 'lib/libLTO.so': 'libLTO.so.23.1', 'lib/libRemarks.so': 'libRemarks.so.23.1'}.items():
     (prefix / name).unlink()
     (prefix / name).symlink_to(target)
@@ -163,7 +190,7 @@ assert sorted(before) == sorted(full)
 for part in ('runtime', 'devel'):
     destination = work / (part + '-stage')
     shutil.copytree(original, destination, symlinks=True)
-    run(part + '-select-stage', 'llvm' if part == 'runtime' else 'llvm-devel', *cross, 'WRKDIR=' + str(work / (part + '-select')), 'DESTDIR=' + str(destination), 'llvm-select-stage')
+    run(part + '-select-stage', 'llvm' if part == 'runtime' else 'llvm-devel', *cross, 'WRKDIR=' + str(work / (part + '-select')), 'DESTDIR=' + str(destination), 'WRKSRC=' + str(metadata_source), 'llvm-select-stage')
     selected = runtime if part == 'runtime' else sdk
     assert fingerprint(destination / 'usr/pkg') == {p: row for p, row in before.items() if p in selected}
 
@@ -171,7 +198,8 @@ handoff = work / 'handoff'
 shutil.copytree(original, handoff, symlinks=True)
 shared = work / 'shared-full-stage'
 run('shared-runtime-handoff', 'llvm', *cross, 'WRKDIR=' + str(work / 'shared-runtime'),
-    'DESTDIR=' + str(handoff), 'EMBERBSD_LLVM_SHARED_STAGE=' + str(shared), 'llvm-select-stage')
+    'DESTDIR=' + str(handoff), 'WRKSRC=' + str(metadata_source),
+    'EMBERBSD_LLVM_SHARED_STAGE=' + str(shared), 'llvm-select-stage')
 assert run('runtime-python-substitution', 'llvm', *cross, '-v', 'SUBST_FILES.python').strip()
 assert fingerprint(shared) == before
 assert fingerprint(handoff / 'usr/pkg') == {p: row for p, row in before.items() if p in runtime}
@@ -179,7 +207,8 @@ replace_stage = work / 'runtime-reinstall'
 shutil.copytree(original, replace_stage, symlinks=True)
 run('shared-runtime-reinstall-plist', 'llvm', *cross, 'WRKDIR=' + str(work / 'shared-runtime-reinstall'), 'plist')
 run('shared-runtime-reinstall', 'llvm', *cross, 'WRKDIR=' + str(work / 'shared-runtime-reinstall'),
-    'DESTDIR=' + str(replace_stage), 'EMBERBSD_LLVM_SHARED_STAGE=' + str(shared), 'llvm-select-stage')
+    'DESTDIR=' + str(replace_stage), 'WRKSRC=' + str(metadata_source),
+    'EMBERBSD_LLVM_SHARED_STAGE=' + str(shared), 'llvm-select-stage')
 assert fingerprint(shared) == before, 'runtime replace changed retained full stage'
 assert fingerprint(replace_stage / 'usr/pkg') == {p: row for p, row in before.items() if p in runtime}
 overlap_root = work / 'overlap-root'

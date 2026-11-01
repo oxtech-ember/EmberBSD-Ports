@@ -10,8 +10,6 @@ import argparse
 import json
 import os
 from pathlib import Path
-import re
-import shutil
 import subprocess
 import sys
 
@@ -88,7 +86,7 @@ def main():
         checks.append(name+' refused')
     # Build-only LLVM input guards now run at their first consuming phase.
     for name,override,expected in (
-        ('unprepared-helper','EMBERBSD_GRAPHICS_LLVM_CONFIG=/usr/bin/false','receipt-guarded llvm-config'),
+        ('unprepared-helper','EMBERBSD_GRAPHICS_LLVM_CONFIG=/usr/bin/false','target llvm-devel is not installed'),
         ('overridden-llvm','LLVM_CONFIG_PATH=/usr/bin/false','overridden LLVM_CONFIG_PATH')):
         run(name,[*mesa,override,'emberbsd-graphics-llvm-input-check'],success=False)
         assert expected in (args.work/(name+'.log')).read_text()
@@ -101,20 +99,6 @@ def main():
     run('drm-cross-file',[*drm,metadata['MESON_CROSS_FILE']])
     assert "python = '"+values['TOOL_PYTHONBIN']+"'" in Path(metadata['MESON_CROSS_FILE']).read_text()
     checks.append('actual libdrm native Python binding')
-    # Run the existing byte verifier independently of later library/API checks.
-    recipe=(args.pkgsrc/'graphics/MesaLib/Makefile').read_text()
-    match=re.search(r'^\tcd \$\{LLVM_CONFIG_PATH:H:H:Q\} && \\\n.*?^\tdone < inputs.sha256\n',recipe,re.M|re.S)
-    assert match,'missing production LLVM receipt verifier'
-    guard=args.work/'guard.mk'
-    guard.write_text('TEST=test\nTOOLS_DIGEST='+values['TOOLS_DIGEST']+'\nLLVM_CONFIG_PATH='+str(args.llvm_config)+'\nverify:\n'+match[0])
-    clone=args.work/'changed-helper'
-    shutil.copytree(args.llvm_config.parent.parent,clone)
-    with (clone/'bin/llvm-config.real').open('ab') as stream:stream.write(b'changed executable\n')
-    command=[*make,'-r','-f',guard,'verify']
-    run('receipt-positive',command)
-    run('receipt-negative',[*command,'LLVM_CONFIG_PATH='+str(clone/'bin/llvm-config')],success=False)
-    assert 'LLVM helper receipt mismatch: bin/llvm-config.real' in (args.work/'receipt-negative.log').read_text()
-    checks.append('unchanged production byte verifier rejects modified real helper')
     summary={'passed':checks,'scope':'actual pkgsrc and machine-file contracts; full target Mesa build/runtime remains separate'}
     (args.work/'result.json').write_text(json.dumps(summary,indent=2)+'\n')
     print(json.dumps(summary))
