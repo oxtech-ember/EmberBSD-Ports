@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (lru-cache-11.5.3.tgz) = 17fddcdffa2a371ceda5d5393ef288febcb22a116519b59c979fd48b5e363bdd
+SHA512 (lru-cache-11.5.3.tgz) = 53837c160ce65b173c935547f0aafa950835f14ec58ef6f2eb05c75515ff659ec8c166d1320ad16cfd16adbe6ae4d5629ebca9e1241a9a91ca76fb5e708b7152
+Size (lru-cache-11.5.3.tgz) = 697866 bytes
