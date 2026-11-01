@@ -812,6 +812,11 @@
       "path": "skia-expat-64bit-position-getters.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "host-tools-scoped-runtime-all-wrappers.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
