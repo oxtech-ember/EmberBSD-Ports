@@ -824,6 +824,11 @@
       "strip": 1
     },
     {
+      "path": "os-crypt-sync-header-bsd.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "xr-sandbox-hook-openxr-permissions-bsd-guard.patch",
       "root": "",
       "strip": 1
