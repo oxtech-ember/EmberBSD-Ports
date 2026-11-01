@@ -824,6 +824,11 @@
       "strip": 1
     },
     {
+      "path": "netbsd-base-epoll-shim-lib-dirs.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "client-certificates-private-key-factory-std-next.patch",
       "root": "",
       "strip": 1

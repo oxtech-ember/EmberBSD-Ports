@@ -1,0 +1,13 @@
+base: add sysroot usr/pkg/lib to lib_dirs for epoll-shim
+
+--- a/base/BUILD.gn
++++ b/base/BUILD.gn
+@@ -1226,6 +1226,8 @@
+       cflags = [
+         "-isystem${emberbsd_target_sysroot}/usr/pkg/include/libepoll-shim",
+       ]
++      # Resolve -lepoll-shim against the cross sysroot package libdir.
++      lib_dirs = [ "${emberbsd_target_sysroot}/usr/pkg/lib" ]
+     }
+   }
+ 
