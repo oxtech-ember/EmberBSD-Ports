@@ -4,7 +4,7 @@ Add checked wsdisplay framebuffer and software presentation support.
 
 --- /dev/null
 +++ src/plugins/platforms/bsdfb/qnetbsdfbscreen.cpp
-@@ -0,0 +1,270 @@
+@@ -0,0 +1,301 @@
 +// SPDX-License-Identifier: BSD-2-Clause
 +// Origin: EmberBSD contributors (AI-assisted).
 +
@@ -14,6 +14,8 @@ Add checked wsdisplay framebuffer and software presentation support.
 +
 +#include <QtCore/QFile>
 +#include <QtCore/QDebug>
++#include <QtCore/QElapsedTimer>
++#include <QtCore/QLoggingCategory>
 +#include <QtGui/QWindow>
 +#include <QtFbSupport/private/qfbbackingstore_p.h>
 +#include <QtFbSupport/private/qfbcursor_p.h>
@@ -29,6 +31,8 @@ Add checked wsdisplay framebuffer and software presentation support.
 +QT_BEGIN_NAMESPACE
 +
 +namespace {
++
++Q_LOGGING_CATEGORY(lcBsdFbFrame, "qt.qpa.bsdfb.frame", QtWarningMsg)
 +
 +class NetBsdBackingStore final : public QFbBackingStore
 +{
@@ -238,6 +242,13 @@ Add checked wsdisplay framebuffer and software presentation support.
 +
 +QRegion QNetBsdFbScreen::doRedraw()
 +{
++    const bool traceEnabled = lcBsdFbFrame().isDebugEnabled();
++    QElapsedTimer traceTimer;
++    qint64 monotonicRefMs = 0;
++    if (traceEnabled) {
++        traceTimer.start();
++        monotonicRefMs = traceTimer.msecsSinceReference();
++    }
 +    if (!m_frameGate.hasPresentedFrame() && m_frameGate.allowsRedraw()
 +        && (!m_frameWindow || !m_frameWindow->isVisible()
 +            || topWindow() != m_frameWindow || m_frameWindow->size() != m_readyFrameSize)) {
@@ -245,15 +256,35 @@ Add checked wsdisplay framebuffer and software presentation support.
 +        m_frameGate.resetForWindow(0, QSize());
 +        m_frameWindow.clear();
 +    }
++    const qint64 composeStartNs = traceEnabled ? traceTimer.nsecsElapsed() : 0;
 +    const QRegion touched = QFbScreen::doRedraw();
++    const qint64 composeUs = traceEnabled
++        ? (traceTimer.nsecsElapsed() - composeStartNs) / 1000 : 0;
 +    if (!m_frameGate.allowsRedraw() || m_onscreenImage.isNull() || touched.isEmpty())
 +        return {};
 +
++    const qint64 blitStartNs = traceEnabled ? traceTimer.nsecsElapsed() : 0;
 +    if (!QBsdFb::blit(m_onscreenImage, mScreenImage, m_layout, m_rotation, touched)) {
 +        qWarning("bsdfb: Cannot paint framebuffer image");
 +        return {};
 +    }
 +    m_frameGate.framePresented();
++    if (traceEnabled) {
++        const qint64 blitEndNs = traceTimer.nsecsElapsed();
++        const qint64 blitUs = (blitEndNs - blitStartNs) / 1000;
++        const qint64 totalUs = blitEndNs / 1000;
++        qint64 logicalPixelArea = 0;
++        for (const QRect &rect : touched)
++            logicalPixelArea += qint64(rect.width()) * rect.height();
++        qCDebug(lcBsdFbFrame).nospace()
++            << "present monotonic_ref_ms=" << monotonicRefMs
++            << " compose_us=" << composeUs
++            << " blit_us=" << blitUs
++            << " total_us=" << totalUs
++            << " rect_count=" << touched.rectCount()
++            << " logical_pixel_area=" << logicalPixelArea
++            << " rotation_degrees=" << static_cast<int>(m_rotation) * 90;
++    }
 +    return touched;
 +}
 +
