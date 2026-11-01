@@ -189,4 +189,135 @@ if BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=8 
 fi
 grep -q 'cycle' "$out/cycle.log" || fail "cycle refusal: $(cat "$out/cycle.log")"
 [ ! -e "$out/state2/order" ] || fail 'order wrote an order with a cycle'
+
+# A target and native node can share one PKGBASE. Their package options are
+# role-specific, so order must scope pkgsrc's shared cache by the existing
+# target/@native node role. Independent frontier queries must stay bounded,
+# preserve the serial graph, and retain per-node query failures.
+mkdir -p "$out/order-tree/pkgtools/pkg_install" "$out/order-tree/t/app" \
+    "$out/order-tree/t/shared" "$out/order-tree/t/skipped" "$out/order-tree/n/shared" "$out/order-tree/a_b/pkg" \
+    "$out/order-tree/a/b_pkg" "$out/order-tree/a/leaf1" "$out/order-tree/a/leaf2" \
+    "$out/order-cache"
+: > "$out/order-cache/errors"
+: > "$out/order-tree/mk.conf"
+: > "$out/order-tree/pkgtools/pkg_install/Makefile"
+printf '%s\n' t/app t/skipped > "$out/order-list"
+cat > "$out/order-bmake" <<WRAP
+#!/bin/sh
+out=$out
+dir= target= varname= varnames= native= cache=
+while [ "\$#" -gt 0 ]; do
+    case "\$1" in
+        -C) dir=\$2; shift 2 ;;
+        VARNAME=*) varname=\${1#VARNAME=}; shift ;;
+        VARNAMES=*) varnames=\${1#VARNAMES=}; shift ;;
+        PBULK_CACHE_DIRECTORY=*) cache=\${1#PBULK_CACHE_DIRECTORY=}; shift ;;
+        USE_CROSS_COMPILE=no) native=yes; shift ;;
+        *=*) shift ;;
+        *) target=\$1; shift ;;
+    esac
+done
+pkg=\${dir##*/}
+kind=\$(basename "\$(dirname "\$dir")")
+case "\$target" in
+    show-var)
+        case "\$varname" in
+            EMBERBSD_NATIVE_TOOLSET_VERIFIED) echo fake ;;
+            PKG_INFO) echo /usr/bin/false ;;
+            .MAKE.MAKEFILES) echo $out/order-tree/pkgtools/pkg_install/Makefile ;;
+            *) echo ;;
+        esac ;;
+    show-vars)
+        case " \$varnames " in
+            *" PKG_SKIP_REASON "*)
+                echo "fixture-warning \$kind/\$pkg" >&2
+                while ! mkdir $out/order-cache/query-lock 2> /dev/null; do sleep 0.01; done
+                active=\$(cat $out/order-cache/active 2> /dev/null || echo 0)
+                active=\$((active + 1)); echo \$active > $out/order-cache/active
+                max=\$(cat $out/order-cache/max 2> /dev/null || echo 0)
+                [ \$active -le \$max ] || echo \$active > $out/order-cache/max
+                rmdir $out/order-cache/query-lock
+                sleep 0.25
+                if [ "\$pkg" = shared ] && [ -n "\$cache" ]; then
+                    role=target; [ -z "\$native" ] || role=native
+                    while ! mkdir $out/order-cache/options-lock 2> /dev/null; do sleep 0.01; done
+                    mkdir -p "\$cache"
+                    option=\$cache/build-options.shared
+                    if [ -f "\$option" ]; then found=\$(cat "\$option")
+                    else echo \$role > "\$option.tmp.\$\$"; mv "\$option.tmp.\$\$" "\$option"; found=\$role
+                    fi
+                    [ "\$found" = "\$role" ] || echo "CACHE-CONTAMINATION \$role read \$found" >> $out/order-cache/errors
+                    rmdir $out/order-cache/options-lock
+                fi
+                if [ -f $out/order-cache/fail-\$kind-\$pkg ]; then
+                    while ! mkdir $out/order-cache/query-lock 2> /dev/null; do sleep 0.01; done
+                    active=\$(cat $out/order-cache/active); echo \$((active - 1)) > $out/order-cache/active
+                    rmdir $out/order-cache/query-lock; exit 1
+                fi
+                while ! mkdir $out/order-cache/query-lock 2> /dev/null; do sleep 0.01; done
+                active=\$(cat $out/order-cache/active); echo \$((active - 1)) > $out/order-cache/active
+                rmdir $out/order-cache/query-lock ;;
+        esac
+        for v in \$varnames; do
+            case "\$v" in
+                PKG_SKIP_REASON) if [ "\$pkg" = skipped ]; then echo 'outside profile'; else echo; fi ;;
+                DEPENDS)
+                    case "\$kind/\$pkg" in
+                        t/app) echo 'shared>=1.0:../../t/shared pkg>=1.0:../../a_b/pkg pkg>=1.0:../../a/b_pkg' ;;
+                        a_b/pkg) echo 'leaf1>=1.0:../../a/leaf1' ;;
+                        a/b_pkg) echo 'leaf2>=1.0:../../a/leaf2' ;;
+                        *) echo ;;
+                    esac ;;
+                TOOL_DEPENDS) if [ "\$pkg" = app ]; then echo 'shared>=1.0:../../n/shared'; else echo; fi ;;
+                PKGBASE) echo "\$pkg" ;;
+                PKGNAME) echo "\$kind-\$pkg-1.0" ;;
+                *) echo ;;
+            esac
+        done ;;
+    *) echo "unexpected order query target: \$target" >&2; exit 2 ;;
+esac
+WRAP
+chmod +x "$out/order-bmake"
+order_run()
+{
+    state=$1 jobs=$2
+    mkdir "$out/$state"
+    BMAKE=$out/order-bmake MAKECONF=$out/order-tree/mk.conf PKGSRCDIR=$out/order-tree \
+        CROSS_BULK_JOBS=$jobs sh "$ports/scripts/cross-bulk.sh" order \
+        "$out/order-list" "$out/$state" > "$out/$state.log" 2>&1
+}
+order_run order-serial 1 || fail "serial cache fixture: $(cat "$out/order-serial.log")"
+if grep -q CACHE-CONTAMINATION "$out/order-cache/errors"; then
+    fail 'native and target package options shared one PKGBASE cache entry'
+fi
+[ -f "$out/order-serial/build-options/native/build-options.shared" ] || fail 'native options cache was not role-scoped'
+[ -f "$out/order-serial/build-options/target/build-options.shared" ] || fail 'target options cache was not role-scoped'
+echo 0 > "$out/order-cache/active"
+echo 0 > "$out/order-cache/max"
+order_run order-parallel 2 || fail "parallel cache fixture: $(cat "$out/order-parallel.log")"
+[ -f "$out/order-parallel/build-options/native/build-options.shared" ] || fail 'parallel native cache escaped its state'
+[ -f "$out/order-parallel/build-options/target/build-options.shared" ] || fail 'parallel target cache escaped its state'
+for name in order edges skipped; do
+    cmp -s "$out/order-serial/$name" "$out/order-parallel/$name" ||
+        fail "parallel order changed $name"
+done
+grep -qFx 't/skipped outside profile' "$out/order-parallel/skipped" || fail 'parallel order lost skipped node'
+grep -qFx 'a/leaf1 a_b/pkg' "$out/order-parallel/edges" || fail 'first colliding node lost its dependency'
+grep -qFx 'a/leaf2 a/b_pkg' "$out/order-parallel/edges" || fail 'second colliding node lost its dependency'
+max=$(cat "$out/order-cache/max")
+[ "$max" = 2 ] || fail "frontier query concurrency was $max, expected bounded overlap at 2"
+[ ! -s "$out/order-cache/errors" ] || fail "role cache contamination: $(cat "$out/order-cache/errors")"
+cmp -s "$out/order-serial/logs/order.err" "$out/order-parallel/logs/order.err" || fail 'parallel order changed query warnings'
+echo 0 > "$out/order-cache/active"
+echo 0 > "$out/order-cache/max"
+: > "$out/order-cache/errors"
+touch "$out/order-cache/fail-t-shared"
+order_run order-serial-fail 1 || fail 'serial query failure unexpectedly aborted order command'
+echo 0 > "$out/order-cache/active"
+order_run order-parallel-fail 2 || fail 'parallel query failure unexpectedly aborted order command'
+for name in order edges skipped failed; do
+    cmp -s "$out/order-serial-fail/$name" "$out/order-parallel-fail/$name" ||
+        fail "parallel query failure changed $name"
+done
+grep -qFx 't/shared order' "$out/order-parallel-fail/failed" || fail 'parallel query failure was lost'
 echo 'PASS: native tools are graph nodes, a long depends step blocks nobody, installs into one database never overlap, installed tools are leaves, a tool cycle is refused'

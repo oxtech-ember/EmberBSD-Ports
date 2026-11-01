@@ -4,6 +4,7 @@
 # Build a list of pkgsrc packages in dependency order with the cross MAKECONF.
 #
 #   order  Find all dependencies of the list and sort them. Writes STATE/order.
+#          Independent frontier queries use CROSS_BULK_JOBS (default: CPUs).
 #          List entries the profile skips (PKG_SKIP_REASON) go to
 #          STATE/skipped. A graph in which a package reaches a skipped
 #          package is refused: no order is written.
@@ -100,11 +101,32 @@ unset CROSS_BULK_NATIVE
 
 cache=$state/build-options
 cachearg=
+if [ "$mode" = deps ] && [ -n "${CROSS_BULK_OPTIONS_CACHE:-}" ]; then
+    expected_cache=$(dirname "$state")/build-options
+    [ "$CROSS_BULK_OPTIONS_CACHE" = "$expected_cache" ] || {
+        echo 'The order query cache is outside its owning state directory' >&2
+        exit 2
+    }
+    cache=$CROSS_BULK_OPTIONS_CACHE
+    cachearg=$cache
+fi
 
 mk()
 {
     "$BMAKE" EMBERBSD_NATIVE_TOOLSET_VERIFIED="$native" \
         ${cachearg:+"PBULK_CACHE_DIRECTORY=$cachearg"} "$@"
+}
+
+# pkg-build-options.mk keys cache files by PKGBASE. One graph can contain a
+# target package and its native build tool with the same base but different
+# installed options, so keep the existing node role in the cache directory.
+option_cache_role()
+{
+    [ -n "$cachearg" ] || return 0
+    case "$1" in
+        *@native) cachearg=$cache/native ;;
+        *) cachearg=$cache/target ;;
+    esac
 }
 
 # The inputs of the cached build options: the native selection, the tree
@@ -190,6 +212,7 @@ node_deps()
     esac
     dir=$1 suffix=$2
     shift 2
+    option_cache_role "$suffix"
     # The dependencies come from the makefiles alone. A WRKDIR left by an
     # earlier build has the saved MAKEVARS of its phases
     # (WRKDIR/.PHASE_makevars.mk), and a parse includes the latest of them
@@ -234,32 +257,53 @@ order()
 {
     native_info
     new_cache
+    jobs=${CROSS_BULK_JOBS:-$(host_cpus)}
+    count CROSS_BULK_JOBS "$jobs"
+    q=$state/order-query
+    rm -rf "$q"
+    mkdir "$q"
     : > "$state/edges.new"
     : > "$state/skipped.new"
     sort -u "$list" > "$state/queue"
     : > "$state/seen"
+    query_index=0
     while [ -s "$state/queue" ]; do
         : > "$state/next"
+        : > "$q/frontier"
+        : > "$q/frontier-map"
         while read -r path; do
             grep -qFx "$path" "$state/seen" && continue
             echo "$path" >> "$state/seen"
-            node_deps "$path" > "$state/deps" 2>> "$state/logs/order.err" || {
+            key=node-$query_index
+            query_index=$((query_index + 1))
+            printf '%s|%s\n' "$key" "$path" >> "$q/frontier"
+            printf '%s %s\n' "$path" "$key" >> "$q/frontier-map"
+        done < "$state/queue"
+        if [ -s "$q/frontier" ]; then
+            CROSS_BULK_NATIVE=$native CROSS_BULK_PKG_INFO=$native_pkg_info \
+                CROSS_BULK_OPTIONS_CACHE=$cache \
+                xargs -P "$jobs" -I '{}' sh "$0" deps '{}' "$q" \
+                < "$q/frontier" || :
+        fi
+        while read -r path key; do
+            cat "$q/$key.err" >> "$state/logs/order.err" 2>/dev/null || :
+            if [ ! -f "$q/$key.deps" ]; then
                 echo "$path $path" >> "$state/edges.new"
                 echo "$path order" >> "$state/failed"
                 continue
-            }
-            skip=$(sed -n 1p "$state/deps")
+            fi
+            skip=$(sed -n 1p "$q/$key.deps")
             if [ -n "$skip" ]; then
                 echo "$path $skip" >> "$state/skipped.new"
                 continue
             fi
             echo "$path $path" >> "$state/edges.new"
-            sed 1d "$state/deps" | while read -r dep; do
+            sed 1d "$q/$key.deps" | while read -r dep; do
                 [ -n "$dep" ] || continue
                 echo "$dep $path" >> "$state/edges.new"
                 echo "$dep" >> "$state/next"
             done
-        done < "$state/queue"
+        done < "$q/frontier-map"
         sort -u "$state/next" > "$state/queue"
     done
     refused=$(skipped_deps "$state/skipped.new" "$state/edges.new")
@@ -272,7 +316,8 @@ order()
     mv "$state/skipped.new" "$state/skipped"
     mv "$state/edges.new" "$state/edges"
     mv "$state/order.new" "$state/order"
-    rm -f "$state/queue" "$state/next" "$state/deps"
+    rm -f "$state/queue" "$state/next"
+    rm -rf "$q"
     echo "Ordered $(wc -l < "$state/order") packages: $state/order; skipped $(wc -l < "$state/skipped")"
 }
 
@@ -376,6 +421,7 @@ fetch()
         elif printf '%s\n' "$crossfed" | grep -qFx "$path"; then set -- USE_CROSS_COMPILE=no $target_settings
         else set -- USE_CROSS_COMPILE=no; fi
         set +f
+        option_cache_role "$path"
         skip=$(mk -C "$PKGSRCDIR/$dir" "$@" show-var VARNAME=PKG_SKIP_REASON < /dev/null) || skip=
         if [ -n "$skip" ]; then
             echo "$path $skip" >> "$state/skipped"
@@ -1064,8 +1110,11 @@ case "$mode" in
     tools) tools ;;
     deps)
         native_info
-        key=$(echo "$list" | tr / _)
-        node_deps "$list" > "$state/$key.tmp" 2> "$state/$key.err" &&
+        case "$list" in
+            *'|'*) key=${list%%|*}; path=${list#*|} ;;
+            *) key=$(echo "$list" | tr / _); path=$list ;;
+        esac
+        node_deps "$path" > "$state/$key.tmp" 2> "$state/$key.err" &&
             mv "$state/$key.tmp" "$state/$key.deps" ;;
     fetch) fetch ;;
     build) build ;;

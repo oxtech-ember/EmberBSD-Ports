@@ -505,6 +505,10 @@ The Clang family skips every `lang/gcc16*` package (`PKG_SKIP_REASON`).
 `scripts/cross-bulk.sh order` records skipped list entries in `STATE/skipped`
 and refuses a graph in which any package reaches a skipped one, so a Clang
 bulk never orders a GCC16 compiler or runtime.
+Independent dependency queries in each order frontier run up to
+`CROSS_BULK_JOBS` at once (default: host CPU count); the graph files are merged
+in sorted order. The pkgsrc build-options cache is separated by target and
+native node role because both roles can contain the same `PKGBASE`.
 `scripts/tests/cross-bulk-gcc16-guard.sh PKGPATH NEW_OUTPUT` checks both with
 a list that names the GCC16 recipes and with an injected GCC16 dependency.
 The GCC16 recipes themselves skip under the Clang family and do not ask
