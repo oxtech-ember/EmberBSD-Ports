@@ -270,9 +270,18 @@ order()
         : > "$state/next"
         : > "$q/frontier"
         : > "$q/frontier-map"
+        awk 'function trim(s) {
+                 sub(/^[ \t]+/, "", s)
+                 sub(/[ \t]+$/, "", s)
+                 return s
+             }
+             FILENAME == ARGV[1] { seen[trim($0)] = 1; next }
+             { path = trim($0) }
+             !(path in seen) { seen[path] = 1; print path }' \
+            "$state/seen" "$state/queue" > "$state/queue.filtered"
+        cat "$state/queue.filtered" >> "$state/seen"
+        mv "$state/queue.filtered" "$state/queue"
         while read -r path; do
-            grep -qFx "$path" "$state/seen" && continue
-            echo "$path" >> "$state/seen"
             key=node-$query_index
             query_index=$((query_index + 1))
             printf '%s|%s\n' "$key" "$path" >> "$q/frontier"

@@ -12,7 +12,14 @@ case "$out" in /*) ;; *) echo 'NEW_OUTPUT must be absolute' >&2; exit 2 ;; esac
 case "$out" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2 ;; esac
 [ ! -e "$out" ] || exit 2
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
-mkdir -p "$out/tree/t/a" "$out/tree/t/bad" "$out/tree/n/gen" "$out/packages/All" "$out/native-db" "$out/state"
+mkdir -p "$out/tree/t/a" "$out/tree/t/bad" "$out/tree/n/gen" "$out/packages/All" "$out/native-db" "$out/state" "$out/bin"
+real_grep=$(command -v grep)
+cat > "$out/bin/grep" <<WRAP
+#!/bin/sh
+case "\$*" in *$out/state/seen*) echo called >> $out/seen-grep-calls ;; esac
+exec "$real_grep" "\$@"
+WRAP
+chmod +x "$out/bin/grep"
 echo gen > "$out/tree/t/a/tools"
 cat > "$out/pkg_info" <<WRAP
 #!/bin/sh
@@ -41,6 +48,7 @@ case "\$target" in
             *) echo ;;
         esac ;;
     show-vars)
+        echo "\$pkg" >> "\$out/deps-queries"
         if [ "\$pkg" = bad ]; then
             echo "bmake: \$dir/Makefile:7: Could not find ../../x/missing/buildlink3.mk" >&2
             echo 'bmake: Fatal errors encountered -- cannot continue' >&2
@@ -59,7 +67,7 @@ esac
 WRAP
 chmod +x "$out/bmake" "$out/pkg_info"
 fail() { echo "FAIL: $*" >&2; exit 1; }
-printf '%s\n' t/a t/bad > "$out/list"
+printf '%s\n' ' t/a ' t/a t/bad > "$out/list"
 printf '%s\n' 't/a t/a' 't/bad t/bad' > "$out/state/edges"
 printf '%s\n' t/a t/bad > "$out/state/order"
 cp "$out/state/edges" "$out/edges.before"
@@ -68,15 +76,17 @@ printf '%s\n' 't/old intentionally-skipped' > "$out/state/skipped"
 printf '%s\n' 't/done done-1.0 existing-digest' > "$out/state/done"
 cp "$out/state/skipped" "$out/skipped.before"
 cp "$out/state/done" "$out/done.before"
-if BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=4 CROSS_BULK_JOBS=2 \
+if PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=4 CROSS_BULK_JOBS=2 \
     sh "$ports/scripts/cross-bulk.sh" order "$out/list" "$out/state" > "$out/order.out" 2> "$out/order.err"; then
     fail 'order accepted a package whose dependencies cannot be read'
 fi
 grep -q '^t/bad order$' "$out/order.err" || fail 'order did not name the unreadable package'
+[ "$(grep -c '^a$' "$out/deps-queries")" = 1 ] || fail 'trim-equivalent queue entries were not deduplicated'
 grep -q 'Could not find ../../x/missing/buildlink3.mk' "$out/order.err" || fail 'order hid the make error'
 for file in order edges skipped done; do
     cmp -s "$out/state/$file" "$out/$file.before" || fail "order changed $file after a failed query"
 done
+[ ! -s "$out/seen-grep-calls" ] || fail 'order ran per-path grep against seen'
 # A failed dependency parser must not be hidden by the following sort.
 mkdir "$out/bad-tools"
 awk_path=$(command -v awk)
@@ -87,7 +97,7 @@ exec "$awk_path" "\$@"
 WRAP
 chmod +x "$out/bad-tools/awk"
 echo t/a > "$out/parser-list"
-if PATH="$out/bad-tools:$PATH" BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_JOBS=1 \
+if PATH="$out/bad-tools:$out/bin:$PATH" BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_JOBS=1 \
     sh "$ports/scripts/cross-bulk.sh" order "$out/parser-list" "$out/state" > "$out/parser.out" 2> "$out/parser.err"; then
     fail 'order accepted a failed dependency parser'
 fi
@@ -95,4 +105,5 @@ grep -q 'dependency parser failed' "$out/parser.err" || fail 'order hid the depe
 for file in order edges skipped done; do
     cmp -s "$out/state/$file" "$out/$file.before" || fail "parser failure changed $file"
 done
+[ ! -s "$out/seen-grep-calls" ] || fail 'order ran per-path grep against seen after parser failure'
 echo 'PASS: order refuses unreadable dependencies and retains the previous graph and done records'
