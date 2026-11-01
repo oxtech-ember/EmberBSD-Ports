@@ -166,7 +166,7 @@ def validate_kerberos_creation(delta):
             'unexpected openssh Kerberos patch creation')
 
 
-def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
+def prepare(archive, output, patch, git, scoped_identity=True, exported=None):
     require(os.path.isabs(git) and os.path.isabs(patch), 'select absolute Git and patch executables')
     output = Path(output)
     require(output.is_absolute(), 'prepared source output must be absolute')
@@ -232,7 +232,12 @@ def main():
     produce.add_argument('--archive', required=True)
     produce.add_argument('--output', required=True)
     produce.add_argument('--patch', required=True)
-    produce.add_argument('--scoped-identity', action='store_true')
+    identity_mode = produce.add_mutually_exclusive_group()
+    identity_mode.add_argument('--scoped-identity', dest='scoped_identity', action='store_true',
+                               help='write the effective Git recipe identity (default)')
+    identity_mode.add_argument('--export-identity', dest='scoped_identity', action='store_false',
+                               help='write the legacy pkgsrc export-input identity')
+    produce.set_defaults(scoped_identity=True)
     produce.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
     check = sub.add_parser('verify-source')
     check.add_argument('--source', required=True)

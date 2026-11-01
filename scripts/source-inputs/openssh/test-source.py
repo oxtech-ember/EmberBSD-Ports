@@ -4,6 +4,7 @@
 # Origin: EmberBSD (AI-assisted).
 """Exercise the real openssh owner against a caller-selected archive and SDK."""
 import argparse
+import json
 import shutil
 from pathlib import Path
 import subprocess
@@ -23,8 +24,33 @@ with tempfile.TemporaryDirectory(dir=args.work_dir) as directory:
         if (result.returncode == 0) != success:
             raise AssertionError(result.stderr)
         return result
-    run('prepare', '--archive', args.archive, '--patch', args.patch, '--output', root, '--scoped-identity')
+    run('prepare', '--archive', args.archive, '--patch', args.patch, '--output', root)
+    receipt = json.loads((root / 'emberbsd-prepared-source.json').read_text())
+    identity = receipt['identity']
+    assert set(identity) == {'effective', 'owner_sha256'}
+    assert identity['effective']['package'] == 'security/openssh'
+    assert identity['effective']['api'] == 2
+    checker = owner.parents[3] / 'scripts/prepared-source-current.py'
+    current = subprocess.run([sys.executable, '-B', str(checker),
+                              '--sdk-source', str(args.sdk_source.resolve()),
+                              '--git', str(args.git.resolve()), '--patch', str(args.patch.resolve()),
+                              '--source', 'openssh=' + str(root)],
+                             capture_output=True, text=True)
+    assert current.returncode == 0, current.stderr
     run('verify-source', '--source', root, '--patch', args.patch)
+    legacy = Path(directory) / 'legacy'
+    run('prepare', '--archive', args.archive, '--patch', args.patch,
+        '--output', legacy, '--export-identity')
+    legacy_receipt = json.loads((legacy / 'emberbsd-prepared-source.json').read_text())
+    assert set(legacy_receipt['identity']) == {'export', 'owner_sha256'}
+    run('verify-source', '--source', legacy, '--patch', args.patch)
+    legacy_current = subprocess.run([sys.executable, '-B', str(checker),
+                                     '--sdk-source', str(args.sdk_source.resolve()),
+                                     '--git', str(args.git.resolve()), '--patch', str(args.patch.resolve()),
+                                     '--source', 'openssh=' + str(legacy)],
+                                    capture_output=True, text=True)
+    assert legacy_current.returncode != 0
+    assert 'does not name its recipe' in legacy_current.stderr
     bad = Path(directory) / args.archive.name
     shutil.copyfile(args.archive, bad)
     with bad.open('r+b') as stream:
