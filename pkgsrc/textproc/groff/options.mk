@@ -40,6 +40,13 @@ CONFIGURE_ARGS+=	--with-x
 CONFIGURE_ARGS+=	--with-appresdir=${PREFIX}/lib/X11/app-defaults
 PLIST_SRC+=		PLIST.x11
 .include "../../mk/xaw.buildlink3.mk"
+# Origin: EmberBSD (AI-assisted). gxditview and xtotroff link these
+# libraries directly, not only through libXaw.
+.include "../../x11/libICE/buildlink3.mk"
+.include "../../x11/libSM/buildlink3.mk"
+.include "../../x11/libX11/buildlink3.mk"
+.include "../../x11/libXmu/buildlink3.mk"
+.include "../../x11/libXt/buildlink3.mk"
 .else
 CONFIGURE_ARGS+=	--without-x
 .endif
