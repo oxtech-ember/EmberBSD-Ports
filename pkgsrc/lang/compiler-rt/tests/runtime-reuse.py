@@ -95,3 +95,78 @@ assert not runtime.compatible_build_for_target(old_build, new_build.replace(rv, 
 assert not runtime.compatible_build_for_target(old_build, new_build.replace(b'def cmake_arguments(definition):', b'def cmake_arguments():'), 'aarch64')
 
 print('runtime source reuse, target guards and CLI: PASS')
+
+# Both sides of a changed patch must be confined to non-bootstrap libc++.
+locale_patch = b'--- a/libcxx/include/locale\n+++ b/libcxx/include/locale\n@@ -1 +1 @@\n-a\n+b\n'
+assert runtime.libcxx_only_patch(locale_patch)
+assert not runtime.libcxx_only_patch(locale_patch + b'--- a/libunwind/src/a\n+++ b/libunwind/src/a\n')
+assert not runtime.libcxx_only_patch(b'--- a/libcxx/../libunwind/a\n+++ b/libcxx/../libunwind/a\n')
+assert not runtime.libcxx_only_patch(b'--- a/libcxx/a\n+++ b/runtimes/CMakeLists.txt\n')
+assert not runtime.libcxx_only_patch(b'not a unified patch')
+assert not runtime.libcxx_only_patch(b'--- a/libcxx/CMakeLists.txt\n+++ b/libcxx/CMakeLists.txt\n')
+
+# Exercise the actual compatibility helper, including stage phase and digests.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp)
+    patch = root / 'patches' / 'patch-locale'
+    patch.parent.mkdir()
+    patch.write_bytes(locale_patch)
+    dist = root / 'distinfo'
+    old_dist = b'SHA512 (llvm.tar.xz) = fixed\n'
+    new_dist = old_dist + b'SHA1 (patch-locale) = checked\n'
+    dist.write_bytes(new_dist)
+    digest = lambda data: hashlib.sha256(data).hexdigest()
+    prefix = 'pkgsrc/lang/compiler-rt/'
+    patch_name = prefix + 'patches/patch-locale'
+    dist_name = prefix + 'distinfo'
+    old_recipe = {dist_name: digest(old_dist)}
+    original = dict(source, recipe={'files': old_recipe}, tree_sha256='old')
+    current_source = dict(original, tree_sha256='new')
+    (root / 'llvm-source.json').write_text(json.dumps(original))
+    previous = {'recipe': {'ports_revision': 'a' * 40,
+        'files': dict(old_recipe, **{prefix+'files/runtime.py': cli_hash,
+                                   prefix+'files/build.py': 'same'})},
+        'components': ['builtins', 'libunwind-static']}
+    future = {'files': dict(previous['recipe']['files'], **{dist_name: digest(new_dist),
+                                                             patch_name: digest(locale_patch)})}
+    def capture(command, **kwargs):
+        name = command[-1].split(':', 1)[-1]
+        values = {dist_name: old_dist, prefix+'files/runtime.py': cli_bytes}
+        return types.SimpleNamespace(stdout=values[name])
+    test_owner = types.SimpleNamespace(require=require, SOURCE_MANIFEST='llvm-source.json',
+        PORTS=root, OWNER=root, digest=digest, read=lambda p: p.read_bytes(),
+        process=types.SimpleNamespace(capture=capture, sanitized_environment=lambda: {}),
+        paths=types.SimpleNamespace(canonical_existing=lambda p: str(Path(p).resolve(strict=True))),
+        jsonio=types.SimpleNamespace(read_json=lambda p: json.loads(p.read_text())),
+        verify_source=lambda p, git: current_source)
+    def phase_check(record, selected, fail=False):
+        try:
+            runtime.compatible_source(test_owner, record, selected, str(root), str(root), '/git')
+        except Failure:
+            assert fail
+        else:
+            assert not fail
+    phase_check(previous, future)
+    full = copy.deepcopy(previous)
+    full['components'].append('libcxx')
+    phase_check(full, future, True)
+    missing = copy.deepcopy(future)
+    del missing['files'][dist_name]
+    phase_check(previous, missing, True)
+    dist.write_bytes(new_dist.replace(b'fixed', b'other'))
+    bad = copy.deepcopy(future)
+    bad['files'][dist_name] = digest(dist.read_bytes())
+    phase_check(previous, bad, True)
+    dist.write_bytes(new_dist)
+    for path in (b'libunwind/src/a', b'compiler-rt/lib/builtins/a', b'runtimes/CMakeLists.txt'):
+        unsafe = b'--- a/' + path + b'\n+++ b/' + path + b'\n'
+        patch.write_bytes(unsafe)
+        bad = copy.deepcopy(future)
+        bad['files'][patch_name] = digest(unsafe)
+        phase_check(previous, bad, True)
+    patch.write_bytes(locale_patch)
+
+# A changed build command cannot disappear through preflight normalization.
+assert not runtime.compatible_build_for_target(old_build, new_build.replace(
+    b'return driver_flags', b'driver_flags.append("-changed")\n    return driver_flags'), 'aarch64')
+print('runtime phase compatibility and refusals: PASS')

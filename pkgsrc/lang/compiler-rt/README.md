@@ -256,6 +256,12 @@ selected target path; no build directory is embedded in the installed tree.
   existing ABI namespace and options are unchanged. Filesystem and localization
   retain their upstream enabled behavior.
 
+When a source update changes only patches under `libcxx/include`, an existing
+builtins/libunwind bootstrap stage may still be reused if the owner verifies
+that its inputs are unchanged. Pass `--original-source` with the prepared source
+used for that stage. Build a new full stage from the current source; the old full
+stage contains the previous libc++ headers and libraries.
+
 ```sh
 /absolute/host-pkg-llvm/bin/python3.15 -B \
   pkgsrc/lang/compiler-rt/files/runtime.py --sdk-source /absolute/EmberBSD-SDK build \

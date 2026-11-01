@@ -5,6 +5,7 @@
 """Prepare, build and verify the canonical common LLVM runtime stages."""
 import argparse
 import ast
+import re
 from pathlib import Path
 import sys
 
@@ -27,6 +28,7 @@ def main(arguments):
         build.add_argument('--' + name, required=True)
     build.add_argument('--host-compiler-family', choices=('clang', 'gcc'), default='clang')
     build.add_argument('--bootstrap-stage')
+    build.add_argument('--original-source', help='prepared source used by the bootstrap stage')
     build.add_argument('--jobs', type=int, default=1)
     wasi_build = commands.add_parser('wasi-builtins')
     for name in ('source', 'host-prefix', 'work', 'stage'):
@@ -113,6 +115,21 @@ def compatible_build_for_target(previous, current, machine_arch):
         if (len(functions) != 1 or
                 'definition' not in [arg.arg for arg in functions[0].args.posonlyargs + functions[0].args.args]):
             return None
+        # Normalize only the reviewed bootstrap preflight replacement.
+        old_check = ast.parse("""owner.require(bootstrap['source'] == {k: prepared['source'][k] for k in ('archive', 'sha512')} and bootstrap['recipe']['files'] == recipe['files'], 'bootstrap runtime source or recipe inputs differ')""").body[0]
+        replacement = ast.parse("""from runtime import require_bootstrap_inputs
+require_bootstrap_inputs(owner, bootstrap, recipe, prepared, args)""").body
+        replacement_keys = [ast.dump(n, include_attributes=False) for n in replacement]
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef) and node.name == 'inspect_inputs':
+                for branch in ast.walk(node):
+                    if not isinstance(branch, ast.If):
+                        continue
+                    keys = [ast.dump(n, include_attributes=False) for n in branch.body]
+                    for pos in range(len(keys) - 1):
+                        if keys[pos:pos + 2] == replacement_keys:
+                            branch.body[pos:pos + 2] = [old_check]
+                            break
         # The selected definition must remain read-only and cannot escape.
         # Otherwise a preceding statement could change the tested arch.
         parents = {child: parent for parent in ast.walk(functions[0])
@@ -155,6 +172,35 @@ def compatible_build_for_target(previous, current, machine_arch):
         return False
 
 
+def libcxx_only_patch(data):
+    """Accept unified patch headers only inside libcxx/include after -p1."""
+    headers = re.findall(rb'^(---|\+\+\+) ([^\t\n ]+)', data, re.M)
+    if not headers or len(headers) % 2:
+        return False
+    for index in range(0, len(headers), 2):
+        before, after = headers[index:index + 2]
+        if before[0] != b'---' or after[0] != b'+++':
+            return False
+        if before[1] == after[1] == b'/dev/null':
+            return False
+        for _, path in (before, after):
+            if path == b'/dev/null':
+                continue
+            parts = path.split(b'/')
+            if (len(parts) < 3 or parts[0] not in (b'a', b'b') or
+                    parts[1:3] != [b'libcxx', b'include'] or len(parts) < 4 or any(p in (b'', b'.', b'..') for p in parts) or
+                    any(c < 32 or c == 127 or c == 92 for c in path)):
+                return False
+    return True
+
+
+def require_bootstrap_inputs(owner, bootstrap, recipe, prepared, args):
+    owner.require(bootstrap['source'] == {k: prepared['source'][k] for k in ('archive', 'sha512')},
+                  'bootstrap runtime source or recipe inputs differ')
+    if bootstrap['recipe']['files'] != recipe['files']:
+        compatible_source(owner, bootstrap, recipe, args.source, args.original_source, args.git)
+
+
 def compatible_source(owner, stage, expected, source, original_source, git):
     """Compare prepared payloads when recipe selectors or CLI dispatch changed."""
     owner.require(source is not None and original_source is not None,
@@ -168,8 +214,10 @@ def compatible_source(owner, stage, expected, source, original_source, git):
                   'original LLVM source selection changed')
     # Both prepared trees are identified by the digests their preparation
     # recorded; equal digests mean the same patched payload.
-    owner.require(original.get('tree_sha256') == current['tree_sha256'],
-                  'original LLVM source payload differs')
+    same_tree = original.get('tree_sha256') == current['tree_sha256']
+    if not same_tree:
+        owner.require(set(stage.get('components', ())) <= {'builtins', 'libunwind-static'} and
+                      bool(stage.get('components')), 'original LLVM source payload differs')
     old_files = original.get('recipe', {}).get('files')
     owner.require(isinstance(old_files, dict) and all(stage['recipe']['files'].get(k) == v
                   for k, v in old_files.items()), 'runtime original source recipe differs')
@@ -177,6 +225,42 @@ def compatible_source(owner, stage, expected, source, original_source, git):
               'pkgsrc/lang/compiler-rt/files/runtime.py'}
     old = {k: v for k, v in stage['recipe']['files'].items() if k not in exempt}
     new = {k: v for k, v in expected['files'].items() if k not in exempt}
+    if not same_tree:
+        patch_prefix = 'pkgsrc/lang/compiler-rt/patches/'
+        patch_names = {k for k in set(old) | set(new) if k.startswith(patch_prefix) and old.get(k) != new.get(k)}
+        owner.require(patch_names, 'runtime source patch delta missing')
+        for name in patch_names:
+            for files, historic in ((old, True), (new, False)):
+                if name not in files:
+                    continue
+                if historic:
+                    data = owner.process.capture([git, '-C', str(owner.PORTS), 'show',
+                        stage['recipe']['ports_revision'] + ':' + name],
+                        env=owner.process.sanitized_environment()).stdout
+                else:
+                    data = owner.read(owner.OWNER / 'patches' / Path(name).name)
+                owner.require(owner.digest(data) == files[name] and libcxx_only_patch(data),
+                              'runtime source patch affects bootstrap inputs')
+            old.pop(name, None)
+            new.pop(name, None)
+        # Permit only checksum entries for the reviewed changed patches.
+        distinfo = 'pkgsrc/lang/compiler-rt/distinfo'
+        owner.require(distinfo in old and distinfo in new, 'runtime distinfo missing')
+        previous = owner.process.capture([git, '-C', str(owner.PORTS), 'show',
+            stage['recipe']['ports_revision'] + ':' + distinfo],
+            env=owner.process.sanitized_environment()).stdout
+        current_distinfo = owner.read(owner.OWNER / 'distinfo')
+        owner.require(owner.digest(previous) == old[distinfo] and
+                      owner.digest(current_distinfo) == new[distinfo],
+                      'runtime distinfo identity differs')
+        changed = {Path(name).name.encode() for name in patch_names}
+        def unaffected(data):
+            return b''.join(line for line in data.splitlines(keepends=True)
+                if not any(line.startswith(b'SHA1 (' + name + b') = ') for name in changed))
+        owner.require(unaffected(previous) == unaffected(current_distinfo),
+                      'runtime archive or unrelated patch checksum differs')
+        old.pop(distinfo)
+        new.pop(distinfo)
     build_name = 'pkgsrc/lang/compiler-rt/files/build.py'
     if old.get(build_name) != new.get(build_name):
         previous_build = owner.process.capture([git, '-C', str(owner.PORTS), 'show',
@@ -222,6 +306,7 @@ for name in ('source', 'stage'):
 wasi_verify.add_argument('--git')
 verify.add_argument('--source', help='currently selected prepared LLVM source')
 verify.add_argument('--original-source', help='prepared source used by the existing runtime')
+build.add_argument('--original-source', help='prepared source used by the bootstrap stage')
 owner.select_recipe_root(args.pkgsrc_root)
 if args.command in ('build', 'verify') and args.target == 'riscv32' and args.phase == 'full':
     cli.error('riscv32 supports only builtins and bootstrap')

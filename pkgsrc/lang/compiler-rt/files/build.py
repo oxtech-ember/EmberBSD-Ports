@@ -228,9 +228,8 @@ def inspect_inputs(owner, args, prepared):
         bootstrap_root = Path(owner.paths.canonical_existing(args.bootstrap_stage))
         bootstrap = llvm_runtime.validate_stage(bootstrap_root, target=args.target,
             required_components=PROFILES['bootstrap'], base=base)
-        owner.require(bootstrap['source'] == {k: prepared['source'][k] for k in ('archive', 'sha512')} and
-                      bootstrap['recipe']['files'] == recipe['files'],
-                      'bootstrap runtime source or recipe inputs differ')
+        from runtime import require_bootstrap_inputs
+        require_bootstrap_inputs(owner, bootstrap, recipe, prepared, args)
     return SimpleNamespace(definition=definition, base=base, work=work, stage=stage,
         native=native, environment=environment, compiler=compiler, recipe=recipe,
         context=context, bootstrap=bootstrap, bootstrap_root=bootstrap_root)
