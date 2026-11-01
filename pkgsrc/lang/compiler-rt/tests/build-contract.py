@@ -49,6 +49,12 @@ def main():
             assert command[0] == '/native/bin/cmake'
             options = dict(item[2:].split('=', 1) for item in command if item.startswith('-D'))
             assert options['LLVM_ENABLE_PER_TARGET_RUNTIME_DIR'] == 'OFF'
+            if target == 'riscv32' and phase == 'builtins':
+                assert options.get('COMPILER_RT_EXCLUDE_ATOMIC_BUILTIN') == 'ON'
+                assert options.get('COMPILER_RT_BUILD_STANDALONE_LIBATOMIC') == 'OFF'
+            else:
+                assert 'COMPILER_RT_EXCLUDE_ATOMIC_BUILTIN' not in options
+                assert 'COMPILER_RT_BUILD_STANDALONE_LIBATOMIC' not in options
             assert options['CMAKE_C_COMPILER'] == '/target/bin/clang'
             assert options['CMAKE_CXX_COMPILER_TARGET'] == definition['triplet']
             assert options['CMAKE_MAKE_PROGRAM'] == '/native/bin/ninja'

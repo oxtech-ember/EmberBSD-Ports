@@ -130,6 +130,12 @@ def cmake_arguments(source, work, stage, base, native, compiler, definition, ver
             COMPILER_RT_BUILD_CRT='OFF',
             COMPILER_RT_INSTALL_PATH=settings['CMAKE_INSTALL_PREFIX'] + '/lib/clang/' + version.split('.')[0],
             COMPILER_RT_BUILTINS_ENABLE_PIC='ON', COMPILER_RT_INCLUDE_TESTS='OFF')
+        if definition['arch'] == 'riscv32':
+            # RV32 libc is the single provider for generic and 8-byte atomics.
+            # Keep both compiler-rt builtins and standalone libatomic from
+            # introducing a second provider or lock table.
+            settings.update(COMPILER_RT_EXCLUDE_ATOMIC_BUILTIN='ON',
+                COMPILER_RT_BUILD_STANDALONE_LIBATOMIC='OFF')
     else:
         resource = stage / 'usr/pkg/llvm/lib/clang' / version.split('.')[0]
         # Compiler queries made by the common CMake modules also use CXX_FLAGS.

@@ -220,6 +220,41 @@ accounting are not Valgrind results; no supported Darwin arm64 Valgrind run was
 available. Installed package rebuild and EmberBSD target execution remain
 separate checks.
 
+## RV32 libc atomic ABI
+
+On RV32, libc is the single provider for compiler atomic calls. Its existing
+strong `__atomic_*_1`, `__atomic_*_2` and `__atomic_*_4` exports remain in the
+RISC-V libc objects. The OS also compiles the common compiler-rt `atomic.c`
+with `COMPILER_RT_ATOMIC_BUILTIN_EXCLUDE_1_2_4`; this keeps generic operations
+and 8-byte ABI functions in one object with one hashed lock table. The target
+builtins profile explicitly excludes `atomic.c` and standalone `libatomic` so
+Clang's builtins archive or a second DSO cannot introduce another provider.
+Other target profiles retain their current runtime selection.
+
+The 8-byte fallback is a process-local spinlock implementation. It supports
+threads in one process, but it does not provide process-shared atomicity and is
+not safe to use from signal handlers. It is for regular memory only; on RV32,
+`__atomic_is_lock_free(8, p)` remains false for every address. Use a
+process-shared mutex for interprocess synchronization.
+
+`tests/atomic-rv32.py` consumes the selected prepared common LLVM source (after
+`prepare` and `verify-source`), checks that small ABI symbols are absent and
+generic/8-byte symbols are present, then runs concurrent generic and
+fixed-width operations under ASan/UBSan with the 8-byte lock path forced. It
+does not patch its input tree. `tests/build-contract.py` checks the target
+runtime configuration. The libc integration regression
+`lib/libc/compiler_rt/tests/riscv32-atomic-abi.py` cross-compiles the provider,
+checks the existing small ABI inventory, and links a focused WPA-style atomic
+consumer against the candidate object and baseline libc archive. These
+compile/link checks do not execute a target process.
+
+```sh
+python3.15 -B pkgsrc/lang/compiler-rt/tests/atomic-rv32.py \
+  --cc /absolute/host-pkg-llvm/bin/clang \
+  --nm /absolute/host-pkg-llvm/bin/llvm-nm \
+  --source /absolute/prepared-llvm --out-dir /absolute/new-check
+```
+
 ## Target runtime phases
 
 Base identity follows the selected headers, libraries and their complete link closure.

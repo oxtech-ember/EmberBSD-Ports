@@ -1,0 +1,23 @@
+--- a/compiler-rt/lib/builtins/atomic.c
++++ b/compiler-rt/lib/builtins/atomic.c
+@@ -257,7 +257,20 @@
+ // Where the size is known at compile time, the compiler may emit calls to
+ // specialised versions of the above functions.
+ ////////////////////////////////////////////////////////////////////////////////
++/* EmberBSD libc already provides the 1-, 2- and 4-byte atomic ABI on RV32.
++ * Keep generic operations and wider ABI entry points in this source so they
++ * share the same hashed lock table without defining duplicate small symbols.
++ */
++#if defined(COMPILER_RT_ATOMIC_BUILTIN_EXCLUDE_1_2_4)
+ #ifdef __SIZEOF_INT128__
++#define OPTIMISED_CASES                                                        \
++  OPTIMISED_CASE(8, IS_LOCK_FREE_8, uint64_t)                                  \
++  OPTIMISED_CASE(16, IS_LOCK_FREE_16, __uint128_t)
++#else
++#define OPTIMISED_CASES                                                        \
++  OPTIMISED_CASE(8, IS_LOCK_FREE_8, uint64_t)
++#endif
++#elif defined(__SIZEOF_INT128__)
+ #define OPTIMISED_CASES                                                        \
+   OPTIMISED_CASE(1, IS_LOCK_FREE_1, uint8_t)                                   \
+   OPTIMISED_CASE(2, IS_LOCK_FREE_2, uint16_t)                                  \
