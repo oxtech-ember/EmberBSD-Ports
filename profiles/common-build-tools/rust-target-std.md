@@ -55,6 +55,30 @@ NetBSD link declarations with and without the system feature. The adjacent
 selected host rustc. The full source build additionally exercises the actual
 bootstrap shim and target link.
 
+## Cross-profile native dependency
+
+`scripts/cross-bulk.sh` retains the cross MAKECONF while building `@native`
+dependencies and sets `USE_CROSS_COMPILE=no`; it does not switch to the host
+prefix's MAKECONF. The cross profile therefore carries its selected
+`EMBERBSD_CROSS_COMPILER_FAMILY` and `EMBERBSD_CROSS_SYSROOT` into the native
+Rust target-std dependency. For Clang it also selects
+`EMBERBSD_CROSS_HOST_PREFIX` and the host profile's `OSX_SDK_PATH` and
+`MACOSX_DEPLOYMENT_TARGET`. For GCC it selects the matching cross-tools path;
+the existing `EMBERBSD_RUST_GCC_REASON` requirement remains explicit. These
+defaults do not change native `CC` or `CXX`.
+
+Set `EMBERBSD_RUST_LOCK_ROOT` and `EMBERBSD_RUST_LINK_CONTEXT` explicitly in
+the shared MAKECONF. When cross-bulk serializes heavy links, point its launcher
+at the same lock root and context so Rust and package links share one lock:
+
+```sh
+CROSS_BULK_LINK_LAUNCHER="/absolute/host-prefix/bin/python3 /absolute/EmberBSD-SDK/scripts/link-launcher.py --lock-root /absolute/shared-object-root --context /absolute/shared-object-root/coordination/heavy-link --"
+```
+
+The Python executable is from the selected native prefix. The caller chooses
+the shared lock paths; the cross profile does not infer them from a package
+work directory.
+
 A source-built x86_64 std and a static Rust consumer were cross-linked using
 Clang/LLVM and verified for LLVM libunwind on a Darwin arm64 host. Target
 execution and the source-built LLVM AArch64 package require their own checks.
