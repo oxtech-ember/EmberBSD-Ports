@@ -4,27 +4,39 @@
 .if ${OPSYS} != "NetBSD" || (${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64")
 PKG_FAIL_REASON+= "The Perl cross recipe requires EmberBSD/aarch64 or EmberBSD/x86_64"
 .endif
-.for _perl_input in EMBERBSD_PERL_HOST_MINIPERL EMBERBSD_PERL_HOST_GENERATE EMBERBSD_CROSS_BUILD_PERL
-.if empty(${_perl_input}:M/*) || !exists(${${_perl_input}})
-PKG_FAIL_REASON+= "${_perl_input} must select a matching Perl 5.44 build-host executable"
-.endif
-.endfor
-.for _perl_interpreter in EMBERBSD_PERL_HOST_MINIPERL EMBERBSD_CROSS_BUILD_PERL
-# An unset input already fails above; do not run an empty command.
-.if !empty(${_perl_interpreter}:M/*)
-_EMBERBSD_PERL_VERSION!= if test -x ${${_perl_interpreter}:Q}; then \
-    ${${_perl_interpreter}:Q} -e 'print $$]'; fi
-.else
-_EMBERBSD_PERL_VERSION=
-.endif
-.if ${_EMBERBSD_PERL_VERSION:U} != "5.044000"
-PKG_FAIL_REASON+= "${_perl_interpreter} must execute on the host and report Perl 5.44.0"
-.endif
-.endfor
+TOOL_DEPENDS+= perl>=5.44.0nb12:../../lang/perl5
+_PERL5_HOST_TOOLDIR= ${TOOLBASE}/libexec/perl5/${PKGVERSION_NOREV}
+EMBERBSD_PERL_HOST_MINIPERL?= ${_PERL5_HOST_TOOLDIR}/miniperl
+EMBERBSD_PERL_HOST_GENERATE?= ${_PERL5_HOST_TOOLDIR}/generate_uudmap
 EMBERBSD_PERL_HOST_PYTHON?= ${EMBERBSD_CROSS_BUILD_PYTHON:U}
-.if empty(EMBERBSD_PERL_HOST_PYTHON:M/*) || !exists(${EMBERBSD_PERL_HOST_PYTHON})
-PKG_FAIL_REASON+= "Set EMBERBSD_PERL_HOST_PYTHON to the native Python 3 interpreter"
+
+# TOOL_DEPENDS installs the native helper package before this phase. Keep
+# package metadata and dependency planning independent of whether it is already
+# installed in TOOLBASE.
+.PHONY: ember-perl-host-tools-check
+pre-configure: ember-perl-host-tools-check
+.for _perl_input in EMBERBSD_PERL_HOST_MINIPERL EMBERBSD_PERL_HOST_GENERATE \
+    EMBERBSD_CROSS_BUILD_PERL EMBERBSD_PERL_HOST_PYTHON
+.PHONY: ember-perl-check-${_perl_input}
+ember-perl-host-tools-check: ember-perl-check-${_perl_input}
+ember-perl-check-${_perl_input}:
+	${RUN} tool=${${_perl_input}:U:Q}; \
+	case "$$tool" in /*) ;; \
+	*) echo "${_perl_input} must select an absolute host tool path" >&2; exit 1;; \
+	esac; \
+	if [ ! -x "$$tool" ]; then \
+	    echo "${_perl_input} must select an executable host tool: $$tool" >&2; \
+	    exit 1; \
+	fi
+.if ${_perl_input} == "EMBERBSD_PERL_HOST_MINIPERL" || \
+    ${_perl_input} == "EMBERBSD_CROSS_BUILD_PERL"
+	${RUN} version=$$(${${_perl_input}:Q} -e 'print $$]') || exit 1; \
+	if [ "$$version" != "5.044000" ]; then \
+	    echo "${_perl_input} must report Perl 5.44.0 (got $$version)" >&2; \
+	    exit 1; \
+	fi
 .endif
+.endfor
 
 USE_TOOLS+= perl gmake printf
 TOOLS_IGNORE.perl=

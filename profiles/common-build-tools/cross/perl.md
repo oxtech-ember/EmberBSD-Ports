@@ -19,19 +19,21 @@ The original CPAN archive and both patch URLs/SHA256 are in
 there is no second patch series to apply after export.
 
 Prepare the [common cross configuration](README.md) and a fork-provenance
-[sysroot](sysroot.md) with GCC 16.2. Build the same Perl 5.44.0 recipe natively
-on macOS first, retaining its `miniperl` and `generate_uudmap` executables.
-A full host Perl 5.44 is also needed for build scripts. Add to private MAKECONF:
+[sysroot](sysroot.md) with GCC 16.2. Build and install the same Perl 5.44.0
+recipe natively on macOS first. Its package installs `miniperl` and the native
+C `generate_uudmap` helper under
+`${TOOLBASE}/libexec/perl5/5.44.0/`. The cross recipe selects both by default
+from the native prefix and package version. A full host Perl 5.44 is also
+needed for build scripts. Add to private MAKECONF:
 
 ```make
-EMBERBSD_PERL_HOST_MINIPERL=/absolute/host-perl-source/miniperl
-EMBERBSD_PERL_HOST_GENERATE=/absolute/host-perl-source/generate_uudmap
 EMBERBSD_CROSS_BUILD_PERL=/absolute/host/bin/perl
 EMBERBSD_PERL_HOST_PYTHON=/absolute/native/python3
 ```
 
-These are build-host tools only. No target address, account or SSH tool is
-needed.
+The two `EMBERBSD_PERL_HOST_*` paths may still be overridden explicitly; the
+miniperl and full host Perl must report version 5.44.0. These are build-host
+tools only. No target address, account or SSH tool is needed.
 
 ## Stored Configure answers
 

@@ -3,7 +3,7 @@
 .include "license.mk"
 .include "Makefile.common"
 
-PKGREVISION=	5
+PKGREVISION=	12
 
 COMMENT=	Practical Extraction and Report Language
 
@@ -226,6 +226,7 @@ post-build:
 		${FILESDIR}/perllink.in > ${WRKDIR}/perllink.sh
 
 INSTALLATION_DIRS=	bin ${PKGMANDIR}/man1
+PLIST_SUBST+=		PKGVERSION_NOREV=${PKGVERSION_NOREV}
 PERL5_PACKLIST_DIR_cmd=	. ${WRKSRC}/config.sh;	echo $$installarchlib
 PERL5_PACKLIST_DIR=	${PERL5_PACKLIST_DIR_cmd:sh}
 PERL5_PACKLIST=		.packlist
@@ -255,5 +256,6 @@ perl5-post-install:
 
 .include "packlist.mk"
 .include "cross.mk"
+.include "host-tools.mk"
 PERLLINK_SH?= ${SH}
 .include "../../mk/bsd.pkg.mk"
