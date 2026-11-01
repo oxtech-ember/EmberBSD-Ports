@@ -824,6 +824,11 @@
       "strip": 1
     },
     {
+      "path": "xr-sandbox-hook-openxr-permissions-bsd-guard.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "search-engines-template-url-serialize-nodiscard.patch",
       "root": "",
       "strip": 1

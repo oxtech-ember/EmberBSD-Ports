@@ -1,0 +1,22 @@
+Guard GetOpenXrFilePermissions like its only caller.
+Origin: EmberBSD contributors (AI-assisted). The caller is under
+!BUILDFLAG(IS_BSD), so on BSD the function is unused and -Werror fails.
+
+--- a/content/services/isolated_xr_device/xr_sandbox_hook_linux.cc
++++ b/content/services/isolated_xr_device/xr_sandbox_hook_linux.cc
+@@ -228,6 +228,7 @@
+   permissions.push_back(BrokerFilePermission::BindOnlyRecursive("@fd-cl-"));
+ }
+ 
++#if !BUILDFLAG(IS_BSD)
+ std::vector<BrokerFilePermission> GetOpenXrFilePermissions(
+     const std::string& manifest_path,
+     const std::string& runtime_library_path,
+@@ -382,6 +383,7 @@
+ 
+   return permissions;
+ }
++#endif  // !BUILDFLAG(IS_BSD)
+ 
+ // dlopen()s the runtime and driver libraries with RTLD_NOW so their DT_NEEDED
+ // closure maps in while the filesystem is reachable. MUST run AFTER
