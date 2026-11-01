@@ -11,6 +11,10 @@ handlers. If the SDK cannot prove the producer session has stopped, it raises
 The [LLVM reuse guard](llvm-reuse.md) also blocks another installation.
 
 This profile defaults to Clang for EmberBSD/AArch64 or amd64 pkgsrc packages.
+It selects `USE_CROSS_COMPILE?=yes` before the shared package defaults,
+so their Darwin native block (Mach-O load commands, graphviz without gd)
+stays with native builds; `tests/cross-darwin-native-defaults.sh BMAKE
+NEW_DIRECTORY` checks this.
 It uses the selected native Ports prefix for host tools and the SDK's prepared
 Clang application toolchain plus completed target sysroot for target tools.
 GCC 16.2 remains an explicit profile choice documented in GCC-specific
