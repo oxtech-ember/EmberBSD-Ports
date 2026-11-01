@@ -1,0 +1,14 @@
+diff --git a/media/base/mac/video_capture_device_avfoundation_helpers.mm b/media/base/mac/video_capture_device_avfoundation_helpers.mm
+--- a/media/base/mac/video_capture_device_avfoundation_helpers.mm
++++ b/media/base/mac/video_capture_device_avfoundation_helpers.mm
+@@ -34,8 +34,10 @@
+           arrayByAddingObject:AVCaptureDeviceTypeContinuityCamera];
+     }
+   } else {
++#if __MAC_OS_X_VERSION_MIN_REQUIRED < 140000
+     captureDeviceTypes = [captureDeviceTypes
+         arrayByAddingObject:AVCaptureDeviceTypeExternalUnknown];
++#endif  // __MAC_OS_X_VERSION_MIN_REQUIRED < 140000
+   }
+ #endif  // BUILDFLAG(IS_MAC)
+ 

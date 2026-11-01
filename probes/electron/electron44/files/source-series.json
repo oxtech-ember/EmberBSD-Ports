@@ -912,6 +912,11 @@
       "path": "network-change-notifier-apple-macos14.4.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "avfoundation-external-unknown-macos14.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
