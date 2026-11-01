@@ -1,0 +1,50 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Use writable storage for fake passwd string fields.
+
+--- auth.c.orig
++++ auth.c
+@@ -642,6 +642,15 @@
+ {
+ 	static int done = 0;
+ 	static struct passwd fake;
++	static char pw_name[] = "NOUSER";
++#ifdef HAVE_STRUCT_PASSWD_PW_GECOS
++	static char pw_gecos[] = "NOUSER";
++#endif
++#ifdef HAVE_STRUCT_PASSWD_PW_CLASS
++	static char pw_class[] = "";
++#endif
++	static char pw_dir[] = "/nonexist";
++	static char pw_shell[] = "/nonexist";
+ 	const char hashchars[] = "./ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+ 	    "abcdefghijklmnopqrstuvwxyz0123456789"; /* from bcrypt.c */
+ 	char *cp;
+@@ -650,21 +659,21 @@
+ 		return (&fake);
+ 
+ 	memset(&fake, 0, sizeof(fake));
+-	fake.pw_name = "NOUSER";
++	fake.pw_name = pw_name;
+ 	fake.pw_passwd = xstrdup("$2a$10$"
+ 	    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+ 	for (cp = fake.pw_passwd + 7; *cp != '\0'; cp++)
+ 		*cp = hashchars[arc4random_uniform(sizeof(hashchars) - 1)];
+ #ifdef HAVE_STRUCT_PASSWD_PW_GECOS
+-	fake.pw_gecos = "NOUSER";
++	fake.pw_gecos = pw_gecos;
+ #endif
+ 	fake.pw_uid = privsep_pw == NULL ? (uid_t)-1 : privsep_pw->pw_uid;
+ 	fake.pw_gid = privsep_pw == NULL ? (gid_t)-1 : privsep_pw->pw_gid;
+ #ifdef HAVE_STRUCT_PASSWD_PW_CLASS
+-	fake.pw_class = "";
++	fake.pw_class = pw_class;
+ #endif
+-	fake.pw_dir = "/nonexist";
+-	fake.pw_shell = "/nonexist";
++	fake.pw_dir = pw_dir;
++	fake.pw_shell = pw_shell;
+ 	done = 1;
+ 
+ 	return (&fake);

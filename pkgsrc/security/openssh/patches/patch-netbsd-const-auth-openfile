@@ -1,0 +1,16 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Keep the OpenSSH authorized-key file label read-only.
+
+--- auth2-pubkeyfile.c.orig
++++ auth2-pubkeyfile.c
+@@ -478,7 +478,7 @@
+ 
+ static FILE *
+ auth_openfile(const char *file, struct passwd *pw, int strict_modes,
+-    int log_missing, char *file_type)
++    int log_missing, const char *file_type)
+ {
+ 	char line[1024];
+ 	struct stat st;
