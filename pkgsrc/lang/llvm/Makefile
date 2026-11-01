@@ -267,6 +267,10 @@ post-extract:
 .include "../../mk/atomic64.mk"
 .include "../../mk/bsd.pkg.mk"
 
+.if defined(_EMBERBSD_LLVM_SHARED_DEVEL)
+llvm-shared-install: ${PLIST}
+.endif
+
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 post-install: llvm-install-min-tblgen
 .PHONY: llvm-install-min-tblgen

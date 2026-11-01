@@ -58,7 +58,7 @@ llvm-verify-reuse: llvm-reuse-inputs
 .PHONY: llvm-shared-noop llvm-shared-install
 llvm-shared-noop:
 	@${DO_NADA}
-llvm-shared-install: ${PLIST}
+llvm-shared-install:
 .for _llvm_part in FULL RUNTIME DEVEL
 	${MAKE} ${WRKDIR:Q}/.llvm-${_llvm_part:tl}-plist \
 	    PLIST=${WRKDIR:Q}/.llvm-${_llvm_part:tl}-plist \
