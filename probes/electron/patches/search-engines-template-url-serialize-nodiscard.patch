@@ -1,0 +1,15 @@
+Discard the SerializeWithCachedSizesToArray result explicitly.
+Origin: EmberBSD contributors (AI-assisted). The shared protobuf marks it
+nodiscard and the build uses -Werror,-Wunused-result.
+
+--- a/components/search_engines/template_url.cc
++++ b/components/search_engines/template_url.cc
+@@ -1300,7 +1300,7 @@
+               "omnibox",
+               "TemplateURLRef::HandleReplacement:serialize_searchbox_stats");
+           std::vector<uint8_t> serialized_searchbox_stats(searchbox_stats_size);
+-          search_terms_args.searchbox_stats.SerializeWithCachedSizesToArray(
++          (void)search_terms_args.searchbox_stats.SerializeWithCachedSizesToArray(
+               &serialized_searchbox_stats[0]);
+           std::string encoded_searchbox_stats;
+           base::Base64UrlEncode(serialized_searchbox_stats,

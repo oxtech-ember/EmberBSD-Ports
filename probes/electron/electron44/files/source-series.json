@@ -824,6 +824,11 @@
       "strip": 1
     },
     {
+      "path": "search-engines-template-url-serialize-nodiscard.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "tflite-support-zip-writable-mem-file-string-include.patch",
       "root": "",
       "strip": 1
