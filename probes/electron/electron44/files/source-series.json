@@ -942,6 +942,11 @@
       "path": "electron-typescript-dom-webcrypto-arraybuffer.patch",
       "root": "electron",
       "strip": 1
+    },
+    {
+      "path": "electron-linux-bsd-unused-helpers.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

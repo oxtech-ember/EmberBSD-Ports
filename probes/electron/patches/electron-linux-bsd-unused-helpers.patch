@@ -1,0 +1,63 @@
+--- a/content/services/isolated_xr_device/xr_sandbox_hook_linux.cc
++++ b/content/services/isolated_xr_device/xr_sandbox_hook_linux.cc
+@@ -56,6 +56,7 @@
+ 
+ // Directories the dynamic loader searches for the sonames above;
+ // access()-probed at hook time so only paths that exist enter the policy.
++#if !BUILDFLAG(IS_BSD)
+ constexpr const char* kLibrarySearchDirs[] = {
+     "/usr/lib/x86_64-linux-gnu",
+     "/lib/x86_64-linux-gnu",
+@@ -64,6 +65,7 @@
+     "/lib",
+     "/usr/local/lib",
+ };
++#endif  // !BUILDFLAG(IS_BSD)
+ 
+ // The XDG config directories the OpenXR loader searches for the
+ // active-runtime manifest when $XR_RUNTIME_JSON is unset, in loader order.
+@@ -166,6 +168,7 @@
+ // is not absolute. The broker CHECK-fails on such components, and these paths
+ // come from the environment, so normalize instead of trusting them. Lexical so
+ // it also works for directories that do not exist yet (e.g. shader caches).
++#if !BUILDFLAG(IS_BSD)
+ base::FilePath NormalizePath(const std::string& path) {
+   base::FilePath input(path);
+   if (path.empty() || !input.IsAbsolute()) {
+@@ -190,6 +193,7 @@
+   }
+   return result;
+ }
++#endif  // !BUILDFLAG(IS_BSD)
+ 
+ // The AF_UNIX sockets the OpenXR runtimes connect() to, and the names they
+ // bind() their own endpoints under. Both syscalls are brokered
+@@ -198,6 +202,7 @@
+ // listed names. The endpoints are runtime-specific and not covered by the
+ // OpenXR spec, so they are listed per runtime; an abstract-namespace name is
+ // spelled with a leading '@'.
++#if !BUILDFLAG(IS_BSD)
+ void AddRuntimeSocketPermissions(
+     std::vector<BrokerFilePermission>& permissions) {
+   std::string runtime_dir = GetEnv("XDG_RUNTIME_DIR");
+@@ -227,6 +232,7 @@
+   // the shared Vulkan texture fds back with SCM_RIGHTS.
+   permissions.push_back(BrokerFilePermission::BindOnlyRecursive("@fd-cl-"));
+ }
++#endif  // !BUILDFLAG(IS_BSD)
+ 
+ #if !BUILDFLAG(IS_BSD)
+ std::vector<BrokerFilePermission> GetOpenXrFilePermissions(
+--- a/content/utility/utility_main.cc
++++ b/content/utility/utility_main.cc
+@@ -170,7 +170,9 @@
+ 
+   return dirs;
+ }
+-
++#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_BSD)
++
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+ bool ShouldUseAmdGpuPolicy(sandbox::mojom::Sandbox sandbox_type) {
+ #if BUILDFLAG(USE_LINUX_VIDEO_ACCELERATION)
+   bool obtain_gpu_info =
