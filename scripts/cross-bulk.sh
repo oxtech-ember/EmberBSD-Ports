@@ -489,6 +489,23 @@ prepare_wrkdir()
     fi
 }
 
+# Retire successful workdirs only when the caller opts in. If a rename to the
+# same-filesystem trash is unavailable, use pkgsrc's scoped clean target.
+# Cleanup trouble is diagnostic; it must not undo a completed installation.
+clean_success()
+{
+    [ "${CROSS_BULK_CLEAN_SUCCESS:-no}" = yes ] || return 0
+    if retire "$wrkdir" "$job.$key.complete" &&
+        [ ! -e "$wrkdir" ] && [ ! -L "$wrkdir" ]; then
+        return 0
+    fi
+    if ! bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; then
+        echo "WARNING: $node built successfully but WRKDIR cleanup failed: $wrkdir" >&2
+        echo "WARNING: $node built successfully but WRKDIR cleanup failed: $wrkdir" >> "$log"
+    fi
+    return 0
+}
+
 # Remove the entries of the trash one at a time at the lowest priority,
 # without following symbolic links, until the build ($1) is gone. Only
 # this directory's own entries are removed.
@@ -673,6 +690,7 @@ build_native()
         else
             bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes install < /dev/null >> "$log" 2>&1
         fi; then
+        clean_success "$@"
         echo "$(date '+%Y-%m-%d %H:%M:%S') done $nnode" >> "$state/progress"
         result "$key" "built $nnode $name native"
         return 0
@@ -752,6 +770,7 @@ build_one()
     { [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" clean < /dev/null >> "$log" 2>&1; } &&
         target_install "$path" $install >> "$log" 2>&1 &&
         { [ -z "$replace" ] || exclusive "$key" target_install "$path" replace >> "$log" 2>&1; } && {
+        clean_success
         echo "$(date '+%Y-%m-%d %H:%M:%S') done $path" >> "$state/progress"
         result "$key" "built $path $name $(shasum -a 256 "$file" | cut -d ' ' -f 1)"
         return 0

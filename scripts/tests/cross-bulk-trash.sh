@@ -117,4 +117,12 @@ grep -q ' clean$' "$out/calls" && fail "a clean step ran for a WRKDIR in the tra
 [ -e "$out/outside/keep" ] && [ -e "$out/outside2/keep" ] || fail 'the deleter removed a file outside the trash'
 ps -A -o command= | grep -F "$out/list" | grep -v grep > /dev/null && fail 'a deleter outlived the build'
 [ ! -d "$out/work/t-x" ] || fail 'unexpected WRKDIR'
+# A package reused from STATE/done must not trigger cleanup of its WRKDIR.
+mkdir -p "$out/work/t-a"
+: > "$out/work/t-a/reused"
+BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=4 CROSS_BULK_JOBS=2 \
+    CROSS_BULK_CLEAN_SUCCESS=yes \
+    sh "$ports/scripts/cross-bulk.sh" build "$out/list" "$out/state" > "$out/reuse.log" 2>&1 ||
+    fail "reuse: $(cat "$out/reuse.log")"
+[ -f "$out/work/t-a/reused" ] || fail 'cleanup removed a reused package WRKDIR'
 echo 'PASS: old WRKDIRs go to a trash on the same file system, no worker waits for a removal, the deleter removes only the trash and also what a crashed run left'

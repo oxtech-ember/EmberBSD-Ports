@@ -561,6 +561,12 @@ left. Without a `WRKOBJDIR`, for a `WRKDIR` on another file system, or with
 `CROSS_BULK_TRASH=no`, the clean step removes the old `WRKDIR` as before.
 A package whose `WRKDIR` went to the trash gets no clean step: every
 target-mode bmake run parses the package again, which takes seconds.
+By default, successful package workdirs remain for debugging. Set
+`CROSS_BULK_CLEAN_SUCCESS=yes` to retire a workdir after install/replace
+succeeds; the deleter removes it in the background, or the same scoped
+pkgsrc `clean` target is used when it cannot be moved to trash. Failed and
+reused packages are left alone. A cleanup failure warns without changing the
+package result.
 For the same reason each target package gets one `package-install` run,
 which does the depends, package and install steps. When the sysroot already
 has another version of the package (pkg_info -e PKGBASE), for example one
@@ -586,6 +592,8 @@ and for an exported or hand-edited tree alike. `CROSS_BULK_VARS_CACHE=no`
 turns the cache off.
 `scripts/tests/cross-bulk-trash.sh NEW_OUTPUT` checks with a slow clean step
 that no package waits for a removal.
+`scripts/tests/cross-bulk-clean-success-fallback.sh NEW_OUTPUT` checks native
+fallback settings and preservation of failed workdirs.
 `scripts/tests/cross-bulk-fetch-present.sh NEW_OUTPUT PKGPATH` checks that
 fetch skips a package only when DISTDIR has each distinfo file at its
 recorded size. The build still verifies the checksums.
