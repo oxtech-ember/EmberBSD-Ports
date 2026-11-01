@@ -1,0 +1,23 @@
+Cross apache24 runs a host copy of pcre2-config.
+
+In a cross build the httpd configure script looks only for
+${target_alias}-pcre2-config, and pkgsrc sets no target_alias, so it
+checked for "-pcre2-config" and stopped at "pcre(2)-config for libpcre
+not found". The installed pcre2-config is the target's, under the target
+prefix that the build host does not have. The pcre2 buildlink3 file sets
+PCRE2_CONFIG to a host copy in cross builds and to the installed script
+in native builds; apache24 passes it to configure as PCRE_CONFIG, which
+configure takes as the result of its search.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+Test: profiles/common-build-tools/tests/apache24-pcre2-config.sh
+
+--- a/www/apache24/Makefile
++++ b/www/apache24/Makefile
+@@ -31,6 +31,7 @@
+ CONFIGURE_ARGS+=	--with-port=80
+ CONFIGURE_ENV+=		perlbin=${PERL5:Q}
+ CONFIGURE_ENV+=		ac_cv_path_RSYNC=/nonexistent
++CONFIGURE_ENV+=		PCRE_CONFIG=${PCRE2_CONFIG:Q}
+ 
+ .include "../../mk/compiler.mk"
+ 
