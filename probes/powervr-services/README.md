@@ -153,4 +153,7 @@ The [first errno adapter component](ERRNO-ABI.md) has separate host and
 cross-build results. It has not been executed on the target or linked to the
 vendor userspace. The seven loader cases above are a different validation scope.
 
+The [Services DRM envelope decoder](BRIDGE-DRM.md) has host and cross-build
+checks. It does not perform device operations or establish KMD compatibility.
+
 The original probe sources use the [BSD 2-Clause license](LICENSE).

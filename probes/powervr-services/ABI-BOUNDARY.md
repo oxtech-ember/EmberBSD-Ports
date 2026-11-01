@@ -70,6 +70,10 @@ and firmware handshake remain source-derived inputs to the KMD port.
 No numeric substitute is specified here.
 Firmware with a matching BVNC alone does not satisfy this interface.
 
+The [Services DRM envelope decoder](BRIDGE-DRM.md) supplies the selected
+outer command's byte format. Host checks and AArch64 cross-linking pass.
+It does not copy payloads, perform an ioctl or implement bridge commands.
+
 ## First graphics result
 
 After the adapter and KMD work, create a native EGL pbuffer and GLES context
