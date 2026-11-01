@@ -191,6 +191,56 @@ def re2_replacements(source):
     return {Path('BUILD.gn'): shim}
 
 
+# Electron's GN npm actions resolve these modules from electron/node_modules;
+# expose only this build set from the common Ports module prefix so CI-only
+# devDependencies stay out of the build and typeRoots sees only @types/node.
+ELECTRON_BUILD_MODULES = ('@electron/asar', '@electron/docs-parser',
+                          '@electron/typescript-definitions', '@types/node',
+                          'pre-flight', 'rolldown', 'semver', 'typescript')
+
+
+def electron_module_view(modules, dest, *, verify=False):
+    import json
+    expected, bins = {}, {}
+    for name in ELECTRON_BUILD_MODULES:
+        target = modules / name
+        manifest = target / 'package.json'
+        require(manifest.is_file() and not target.is_symlink(), 'missing common JS module: ' + name)
+        data = json.loads(manifest.read_text())
+        require(data.get('name') == name, 'common JS module name differs: ' + name)
+        expected[name] = str(target)
+        declared = data.get('bin') or {}
+        if isinstance(declared, str):
+            declared = {name.rsplit('/', 1)[-1]: declared}
+        for command, relative in declared.items():
+            require('/' not in command and command not in bins, 'invalid module command: ' + command)
+            path = (target / relative).resolve(strict=True)
+            require(path.is_relative_to(target), 'module command escapes its module: ' + command)
+            bins[command] = str(path)
+    links = {**expected, **{'.bin/' + c: t for c, t in bins.items()}}
+    dirs = {str(Path(n).parent) for n in links if '/' in n}
+    if not verify:
+        dest.mkdir()
+        for d in sorted(dirs):
+            (dest / d).mkdir(parents=True, exist_ok=True)
+        for name, target in links.items():
+            (dest / name).symlink_to(target, target_is_directory=not name.startswith('.bin/'))
+        return
+    require(dest.is_dir() and not dest.is_symlink(), 'electron/node_modules must be a local view')
+    found = {}
+    for root, subdirs, files in os.walk(dest):
+        for item in subdirs + files:
+            path = Path(root) / item
+            rel = str(path.relative_to(dest))
+            if path.is_symlink():
+                found[rel] = os.readlink(path)
+                if item in subdirs:
+                    subdirs.remove(item)
+            else:
+                require(path.is_dir() and rel in dirs, 'unexpected electron/node_modules entry: ' + rel)
+    require(found == links, 'electron/node_modules view changed')
+
+
 def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None):
     source = Path(source).resolve(strict=True)
     protobuf = Path(protobuf).resolve(strict=True) if protobuf is not None else None
@@ -237,6 +287,11 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
         node_view = destination / 'src/third_party/node'
         require(node_view.is_dir() and not node_view.is_symlink(), 'third_party/node must be mirrored')
         (node_view / 'node_modules').symlink_to(modules, target_is_directory=True)
+        electron = destination / 'src/electron'
+        require(electron.is_dir() and not electron.is_symlink() and
+                not os.path.lexists(source / 'electron/node_modules'),
+                'Electron source must be mirrored without node_modules')
+        electron_module_view(modules, electron / 'node_modules')
     if system_abseil:
         replacements = abseil_replacements(source)
         dependency_view(third_party / 'abseil-cpp', destination / 'src/third_party/abseil-cpp',
@@ -279,7 +334,9 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
                     'source view link changed: ' + str(link))
     root = destination / 'src'
     root_special = {'third_party', 'out'} | ({'v8'} if v8 else set())
-    mirror(source, root, verify=True, omit=root_special)
+    mirror(source, root, verify=True, omit=root_special | ({'electron'} if node_modules is not None else set()))
+    if node_modules is not None:
+        mirror(source / 'electron', root / 'electron', verify=True, omit={'node_modules'})
     require({item.name for item in root.iterdir()} >= root_special, 'source view root entries changed')
     if v8:
         require((root / 'v8').is_symlink() and os.readlink(root / 'v8') == str(v8),
@@ -295,6 +352,7 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
         link = root / 'third_party/node/node_modules'
         require(link.is_symlink() and os.readlink(link) == str(Path(node_modules).resolve(strict=True)),
                 'common node_modules link changed')
+        electron_module_view(Path(node_modules).resolve(strict=True), root / 'electron/node_modules', verify=True)
     if system_abseil:
         replacements = abseil_replacements(source)
         dependency_view(source / 'third_party/abseil-cpp', root / 'third_party/abseil-cpp',
