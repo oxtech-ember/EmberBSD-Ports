@@ -3,10 +3,13 @@ $NetBSD$
 Backport OpenSSL 4 compatibility from upstream commit
 https://github.com/krb5/krb5/commit/5e4e8452328804948d042235bbf58ca457795857
 Adapt const propagation to the 1.22.2 certificate matcher without changing it.
+get_cert_sans() keeps the extension const, so before OpenSSL 4.0, whose
+X509V3_EXT_d2i() takes a non-const pointer, add the cast that upstream adds
+for PKINIT.
 
 --- plugins/tls/k5tls/openssl.c
 +++ plugins/tls/k5tls/openssl.c
-@@ -38,6 +38,24 @@
+@@ -38,6 +38,27 @@
  #include <openssl/x509v3.h>
  #include <dirent.h>
  
@@ -26,12 +29,15 @@ Adapt const propagation to the 1.22.2 certificate matcher without changing it.
 + */
 +#define X509_check_host(a, b, c, d, e) X509_check_host((X509 *)a, b, c, d, e)
 +#define X509_check_ip_asc(a, b, c) X509_check_ip_asc((X509 *)a, b, c)
++
++/* Make X509V3_EXT_d2i() accept a const pointer by adding a cast. */
++#define X509V3_EXT_d2i(a) X509V3_EXT_d2i((X509_EXTENSION *)a)
 +#endif
 +
  struct k5_tls_handle_st {
      SSL *ssl;
      char *servername;
-@@ -51,9 +69,11 @@
+@@ -51,9 +72,11 @@
  int
  init_openssl(void)
  {
@@ -43,7 +49,7 @@ Adapt const propagation to the 1.22.2 certificate matcher without changing it.
      ex_context_id = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
      ex_handle_id = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
      return 0;
-@@ -139,10 +159,10 @@
+@@ -139,10 +162,10 @@
  
  /* Fetch the list of subjectAltNames from a certificate. */
  static GENERAL_NAMES *
@@ -56,7 +62,7 @@ Adapt const propagation to the 1.22.2 certificate matcher without changing it.
  
      ext = X509_get_ext_by_NID(x, NID_subject_alt_name, -1);
      if (ext < 0)
-@@ -156,9 +176,9 @@
+@@ -156,9 +179,9 @@
  /* Fetch a CN value from the subjct name field, returning its length, or -1 if
   * there is no subject name or it contains no CN value. */
  static int
@@ -69,7 +75,7 @@ Adapt const propagation to the 1.22.2 certificate matcher without changing it.
  
      name = X509_get_subject_name(x);
      if (name == NULL)
-@@ -168,7 +188,7 @@
+@@ -168,7 +191,7 @@
  
  /* Return true if text matches any of the addresses we can recover from x. */
  static krb5_boolean
@@ -78,7 +84,7 @@ Adapt const propagation to the 1.22.2 certificate matcher without changing it.
  {
      char buf[1024];
      GENERAL_NAMES *sans;
-@@ -227,7 +247,7 @@
+@@ -227,7 +250,7 @@
  
  /* Return true if expected matches any of the names we can recover from x. */
  static krb5_boolean
@@ -87,7 +93,7 @@ Adapt const propagation to the 1.22.2 certificate matcher without changing it.
  {
      char buf[1024];
      GENERAL_NAMES *sans;
-@@ -272,7 +292,7 @@
+@@ -272,7 +295,7 @@
  }
  
  static krb5_boolean
@@ -96,7 +102,7 @@ Adapt const propagation to the 1.22.2 certificate matcher without changing it.
  {
      struct in_addr in;
      struct in6_addr in6;
-@@ -288,7 +308,7 @@
+@@ -288,7 +311,7 @@
  static int
  verify_callback(int preverify_ok, X509_STORE_CTX *store_ctx)
  {
@@ -105,7 +111,7 @@ Adapt const propagation to the 1.22.2 certificate matcher without changing it.
      SSL *ssl;
      BIO *bio;
      krb5_context context;
-@@ -445,7 +465,7 @@
+@@ -445,7 +468,7 @@
          return KRB5_PLUGIN_OP_NOTSUPP;
  
      /* Do general SSL library setup. */
