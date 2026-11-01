@@ -13,7 +13,7 @@ BUILDLINK_PKGSRCDIR.protobuf?=		../../devel/protobuf
 
 .include "../../mk/bsd.fast.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
-BUILDLINK_API_DEPENDS.protobuf+=	protobuf>=36.2nb4
+BUILDLINK_API_DEPENDS.protobuf+=	protobuf>=36.2nb5
 BUILDLINK_ABI_DEPENDS.protobuf+=	protobuf>=36.2nb2
 .include "../../devel/protobuf-devel/buildlink3.mk"
 .else
