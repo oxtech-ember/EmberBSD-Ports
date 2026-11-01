@@ -824,11 +824,6 @@
       "strip": 1
     },
     {
-      "path": "node-crypto-boringssl-size-t-sign-compare.patch",
-      "root": "",
-      "strip": 1
-    },
-    {
       "path": "gcm-connection-handler-check-readraw.patch",
       "root": "",
       "strip": 1
