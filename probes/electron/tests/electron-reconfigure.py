@@ -109,7 +109,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                               'cxx':['--ld-path=/ld','--rtlib=compiler-rt','--unwindlib=libunwind','-stdlib=libc++']})
     binding.write_text(json.dumps(commands))
     (src/'.gn').write_text('buildconfig="//BUILDCONFIG.gn"\n')
-    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n emberbsd_node_source_identity=""\n emberbsd_node_configure_helper=""\n emberbsd_node_configure_inputs=[]\n emberbsd_node_configure_dependencies=[]\n emberbsd_native_pkg_config_prefix=""\n emberbsd_protoc_runtime_launcher=""\n emberbsd_protoc_runtime_view=""\n emberbsd_protoc_runtime_inputs=[]\n node_host_runtime_python=""\n node_host_runtime_launcher=""\n node_host_runtime_view=""\n node_host_runtime_inputs=[]\n perfetto_host_runtime_launcher=""\n perfetto_host_runtime_view=""\n perfetto_host_runtime_inputs=[]\n v8_prepared_source_receipt=""\n v8_version_hash_salt_files=[]\n v8_version_hash_salt=""\n feature=false\n clang_version=""\n}\nset_default_toolchain("//:tools")\n')
+    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n emberbsd_node_source_identity=""\n emberbsd_node_configure_helper=""\n emberbsd_node_configure_inputs=[]\n emberbsd_node_configure_dependencies=[]\n node_module_version=0\n emberbsd_native_pkg_config_prefix=""\n emberbsd_protoc_runtime_launcher=""\n emberbsd_protoc_runtime_view=""\n emberbsd_protoc_runtime_inputs=[]\n node_host_runtime_python=""\n node_host_runtime_launcher=""\n node_host_runtime_view=""\n node_host_runtime_inputs=[]\n perfetto_host_runtime_launcher=""\n perfetto_host_runtime_view=""\n perfetto_host_runtime_inputs=[]\n v8_prepared_source_receipt=""\n v8_version_hash_salt_files=[]\n v8_version_hash_salt=""\n feature=false\n clang_version=""\n}\nset_default_toolchain("//:tools")\n')
     (src/'BUILD.gn').write_text('toolchain("tools") {\n tool("stamp") { command="touch {{output}}" }\n}\n')
     (src/'electron/build/args').mkdir(parents=True)
     (src/'electron/build/args/release.gn').write_text('')
@@ -163,8 +163,14 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     old_runtime_inputs = sorted((str(launcher.resolve()), str((runtime_lib/'libprotobuf.36.2.0.dylib').resolve()),
                                  str((runtime_lib/'libz.1.dylib').resolve())))
     new_runtime_inputs = sorted(old_runtime_inputs + [str((runtime_lib/'libre2.11.0.0.dylib').resolve())])
+    old_node_source = root/'node-old'; old_node_source.mkdir()
+    old_node_receipt = old_node_source/'emberbsd-prepared-source.json'
+    old_node_receipt.write_text('{"source":"old"}\n')
+    new_node_source = root/'node-new'; new_node_source.mkdir()
+    new_node_receipt = new_node_source/'emberbsd-prepared-source.json'
+    new_node_receipt.write_text('{"source":"new"}\n')
     old = dict(emberbsd_node_provider_inputs=['old'], emberbsd_typescript_definitions=['old'],
-               emberbsd_node_source_identity=str(root/'node/emberbsd-prepared-source.json'),
+               emberbsd_node_source_identity=str(old_node_receipt), node_module_version=130,
                emberbsd_node_configure_helper=str(root/'ports/scripts/source-inputs/node/configure-inputs.py'),
                emberbsd_node_configure_inputs=old_node_configure_inputs,
                emberbsd_node_configure_dependencies=old_node_configure_dependencies,
@@ -188,14 +194,18 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                node_host_runtime_view=str(new_view), node_host_runtime_inputs=new_runtime_inputs,
                perfetto_host_runtime_launcher=str(launcher),
                perfetto_host_runtime_view=str(new_view), perfetto_host_runtime_inputs=new_runtime_inputs,
+               node_module_version=130,
                v8_prepared_source_receipt='//v8/emberbsd-prepared-source.json',
                v8_version_hash_salt_files=[], v8_version_hash_salt='')
-    new.update(emberbsd_node_source_identity=old['emberbsd_node_source_identity'],
+    new.update(emberbsd_node_source_identity=str(new_node_receipt.resolve(strict=True)),
                emberbsd_node_configure_helper=old['emberbsd_node_configure_helper'],
                emberbsd_node_configure_inputs=new_node_configure_inputs,
                emberbsd_node_configure_dependencies=new_node_configure_dependencies)
     env = {'PATH':str(host/'bin') + ':/usr/bin', 'EMBERBSD_HOST_TYPESCRIPT':'/old', 'EMBERBSD_HOST_NODE':'/old-node',
-           'EMBERBSD_V8_SOURCE_SHA256':'a' * 64, 'CC':str(work/'target-commands/cc'), 'CXX':str(work/'target-commands/cxx')}
+           'EMBERBSD_V8_SOURCE_SHA256':'a' * 64, 'EMBERBSD_NODE_SOURCE_SHA256':'a' * 64,
+           'EMBERBSD_ELECTRON_NODE_ABI_HELPER_SHA256':'c' * 64,
+           'EMBERBSD_ELECTRON_NODE_ABI_HEADER_SHA256':'d' * 64,
+           'CC':str(work/'target-commands/cc'), 'CXX':str(work/'target-commands/cxx')}
     env.update(GOCACHE=str(work/'go-cache'), GOPATH=str(work/'go-path'))
     opt = SimpleNamespace(workspace=src.parent, ports_source=root, sdk_source=root, host_prefix=host,
                           host_runtime_root=native_runtime, target='amd64', compiler_family='clang',
@@ -205,7 +215,9 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     opt.v8_source = Path(new_v8_root); opt.v8_ports_source = root/'owner'; opt.v8_pkgsrc = root/'pkgsrc'
     try: b.require_common_node(opt); raise AssertionError('accepted missing common Node')
     except ValueError: pass
-    opt.node_source = root/'node'; opt.node_pkgsrc = root/'node-pkgsrc'
+    opt.node_source = new_node_source; opt.node_pkgsrc = root/'node-pkgsrc'
+    assert new['emberbsd_node_source_identity'] == str(
+        opt.node_source.resolve(strict=True)/'emberbsd-prepared-source.json')
     saved = dict(arguments=old, environment=env, source=str(src.parent), sdk=str(root), host_prefix=str(host), target='amd64')
     config = work/'configuration.json'; config.write_text(json.dumps(saved)); before = config.read_bytes()
     (out/'args.gn').write_text(b.gn_arguments(old)); (out/'build.ninja').write_text('old graph')
@@ -233,6 +245,9 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
         return Native(), {'PATH':state.get('path', Native.path), 'EMBERBSD_CONTROL_GIT':state.get('git', '/usr/bin/git'),
                           'EMBERBSD_HOST_TYPESCRIPT':'/new', 'EMBERBSD_HOST_NODE':str(host/'bin/node'),
                           'EMBERBSD_V8_SOURCE_SHA256':state.get('v8_sha', 'b' * 64),
+                          'EMBERBSD_NODE_SOURCE_SHA256':state.get('node_sha', 'b' * 64),
+                          'EMBERBSD_ELECTRON_NODE_ABI_HELPER_SHA256':state.get('node_abi_helper_sha', 'c' * 64),
+                          'EMBERBSD_ELECTRON_NODE_ABI_HEADER_SHA256':state.get('node_abi_header_sha', 'd' * 64),
                           'GOCACHE':str(candidate.work/'go-cache'), 'GOPATH':str(candidate.work/'go-path'),
                           'CC':bound['cc'], 'CXX':bound['cxx'], **state.get('extra', {})}, state['values']
     b.producer_inputs=inputs
@@ -292,9 +307,41 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     try: b.reconfigure(opt); raise AssertionError('accepted V8 and unrelated provider changes together')
     except ValueError as e: assert 'producer input changed: EMBERBSD_PROTOBUF_SOURCE_SHA256' in str(e)
     state.pop('extra'); config.write_bytes(before)
+    state['values'] = new; state['node_sha'] = 'invalid'
+    try: b.reconfigure(opt); raise AssertionError('accepted malformed verified Node source identity')
+    except ValueError as e: assert 'verified common Node source identities' in str(e)
+    assert config.read_bytes()==before and not (work/'reconfigure-incomplete').exists()
+    state.pop('node_sha')
+    missing_node_hash = json.loads(before)
+    missing_node_hash['environment'].pop('EMBERBSD_NODE_SOURCE_SHA256')
+    config.write_text(json.dumps(missing_node_hash))
+    try: b.reconfigure(opt); raise AssertionError('accepted missing previous Node source identity')
+    except ValueError as e: assert 'verified common Node source identities' in str(e)
+    config.write_bytes(before)
+    state['values'] = dict(new, emberbsd_node_source_identity=str(root/'wrong/emberbsd-prepared-source.json'))
+    try: b.reconfigure(opt); raise AssertionError('accepted wrong Node receipt path')
+    except ValueError as e: assert 'verified common Node receipt' in str(e)
+    state['values'] = dict(new, node_module_version=131)
+    try: b.reconfigure(opt); raise AssertionError('accepted changed Node ABI version')
+    except ValueError as e: assert 'GN identity changed: node_module_version' in str(e)
+    state['values'] = new
+    for field, state_key in (('EMBERBSD_ELECTRON_NODE_ABI_HELPER_SHA256', 'node_abi_helper_sha'),
+                             ('EMBERBSD_ELECTRON_NODE_ABI_HEADER_SHA256', 'node_abi_header_sha')):
+        state[state_key] = 'e' * 64
+        try: b.reconfigure(opt); raise AssertionError('accepted changed Node ABI input hash: ' + field)
+        except ValueError as e: assert 'producer input changed: ' + field in str(e)
+        state.pop(state_key)
+    malformed_old_node = json.loads(before)
+    malformed_old_node['arguments']['emberbsd_node_source_identity'] = str(root/'old-node.json')
+    config.write_text(json.dumps(malformed_old_node))
+    (out/'args.gn').write_text(b.gn_arguments(malformed_old_node['arguments']))
+    try: b.reconfigure(opt); raise AssertionError('accepted malformed saved Node receipt path')
+    except ValueError as e: assert 'saved Node source identity' in str(e)
+    config.write_bytes(before); (out/'args.gn').write_text(b.gn_arguments(old))
     assert old_node_configure_inputs != new_node_configure_inputs
     assert old_node_configure_dependencies != new_node_configure_dependencies
-    assert old['emberbsd_node_source_identity'] == new['emberbsd_node_source_identity']
+    assert old['emberbsd_node_source_identity'] != new['emberbsd_node_source_identity']
+    assert new['emberbsd_node_source_identity'] == str(new_node_receipt.resolve())
 
     for changed_inputs, changed_dependencies, message in (
         ([row if not row.startswith('gyp-source=') else 'gyp-source='+str(root/'other-gyp')
@@ -417,6 +464,9 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     saved_after = json.loads(config.read_text())
     assert saved_after['environment']['EMBERBSD_HOST_TYPESCRIPT']=='/new'
     assert saved_after['environment']['EMBERBSD_V8_SOURCE_SHA256']=='b' * 64
+    assert saved_after['environment']['EMBERBSD_NODE_SOURCE_SHA256']=='b' * 64
+    assert saved_after['arguments']['emberbsd_node_source_identity']==str(new_node_receipt.resolve())
+    assert saved_after['arguments']['node_module_version']==130
     assert saved_after['arguments']['emberbsd_node_configure_inputs']==new_node_configure_inputs
     assert saved_after['arguments']['emberbsd_node_configure_dependencies']==new_node_configure_dependencies
     gn_args = (out/'args.gn').read_text()
@@ -514,4 +564,24 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                      'ffmpeg':1, 'dsymutil':1, 'rust_std':1}
     assert phase_order == ['lastchange', 'ffmpeg', 'dsymutil', 'rust_std', 'source-view']
     assert obj.read_bytes()==b'object' and len(Source.stage_calls)==2
+
+    # Isolate a common Node receipt refresh from V8, runtime-view and provider changes.
+    node_refresh_source = root/'node-refresh'; node_refresh_source.mkdir()
+    node_refresh_receipt = node_refresh_source/'emberbsd-prepared-source.json'
+    node_refresh_receipt.write_text('{"source":"refreshed"}\n')
+    opt.build_after_reconfigure = False
+    opt.node_source = node_refresh_source
+    state['values'] = dict(new, emberbsd_node_source_identity=str(node_refresh_receipt.resolve(strict=True)))
+    state['node_sha'] = 'e' * 64
+    calls.update(verify=0, producer=0, gn_source=0, lastchange=0, ffmpeg=0, dsymutil=0, rust_std=0)
+    phase_order.clear()
+    prior_gn_count = Process.calls
+    b.reconfigure(opt)
+    refreshed = json.loads(config.read_text())
+    assert Process.calls==prior_gn_count+1 and Process.events[-1]=='gn'
+    assert refreshed['environment']['EMBERBSD_NODE_SOURCE_SHA256']=='e' * 64
+    assert refreshed['environment']['EMBERBSD_V8_SOURCE_SHA256']=='f' * 64
+    assert refreshed['arguments']['emberbsd_node_source_identity']==str(node_refresh_receipt.resolve())
+    assert refreshed['arguments']['node_module_version']==130
+    assert obj.read_bytes()==b'object' and not (work/'reconfigure-incomplete').exists()
     print('real GN reconfigure, combined Ninja, standalone build, failure recovery and object preservation passed')

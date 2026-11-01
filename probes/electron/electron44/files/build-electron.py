@@ -795,6 +795,27 @@ def verified_node_configure_v8_path_change(old_arguments, new_arguments, v8_sour
     return True
 
 
+def verified_node_source_refresh(old_arguments, new_arguments, old_environment, new_environment, node_source):
+    """Allow only a common-Node receipt refresh verified by producer_inputs."""
+    old_hash = old_environment.get('EMBERBSD_NODE_SOURCE_SHA256')
+    new_hash = new_environment.get('EMBERBSD_NODE_SOURCE_SHA256')
+    old_receipt = old_arguments.get('emberbsd_node_source_identity')
+    new_receipt = new_arguments.get('emberbsd_node_source_identity')
+    if all(value is None for value in (old_hash, new_hash, old_receipt, new_receipt)):
+        return False
+    require(isinstance(old_hash, str) and re.fullmatch(r'[0-9a-f]{64}', old_hash) and
+            isinstance(new_hash, str) and re.fullmatch(r'[0-9a-f]{64}', new_hash),
+            'reconfigure requires verified common Node source identities')
+    require(isinstance(old_receipt, str) and Path(old_receipt).is_absolute() and
+            Path(old_receipt).name == 'emberbsd-prepared-source.json',
+            'saved Node source identity must be an absolute prepared-source receipt')
+    require(node_source, 'reconfigure requires the verified common Node source')
+    expected_receipt = Path(node_source).resolve(strict=True) / 'emberbsd-prepared-source.json'
+    require(new_receipt == str(expected_receipt) and expected_receipt.is_file(),
+            'new Node source identity must name the verified common Node receipt')
+    return old_hash != new_hash or old_receipt != new_receipt
+
+
 def common_embedder_sources(options, sdk, native, environment):
     node = getattr(options, 'node_source', None)
     node_export = getattr(options, 'node_pkgsrc', None)
@@ -1455,6 +1476,10 @@ def reconfigure(options):
                          'EMBERBSD_HOST_TYPESCRIPT', 'EMBERBSD_HOST_ROLLUP',
                          'HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'}
         old_env = saved['environment']
+        node_source_refresh = verified_node_source_refresh(
+            saved['arguments'], values, old_env, environment, getattr(options, 'node_source', None))
+        if node_source_refresh:
+            permitted_env.add('EMBERBSD_NODE_SOURCE_SHA256')
         require(values.get('v8_prepared_source_receipt') == '//v8/emberbsd-prepared-source.json' and
                 values.get('v8_version_hash_salt_files') == [] and
                 values.get('v8_version_hash_salt') == '',
@@ -1525,6 +1550,8 @@ def reconfigure(options):
         node_v8_path_changed = verified_node_configure_v8_path_change(
             saved['arguments'], values, options.v8_source)
         for name in identity_args:
+            if node_source_refresh and name == 'emberbsd_node_source_identity':
+                continue
             if name in permitted_runtime_args:
                 continue
             if node_v8_path_changed and name in NODE_CONFIGURE_V8_PATH_KEYS:

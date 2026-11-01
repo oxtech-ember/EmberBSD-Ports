@@ -781,8 +781,11 @@ The prepared Node actions record the selected Node, TypeScript and Rollup paths
 and versions in their command lines and use those selections. After a provider
 update, reconfigure records the current versions; changing a path or version
 makes Ninja rerun the affected actions. Each action rejects a version that has
-changed since configuration. Existing objects remain for Ninja to update. A failed or interrupted
-GN generation leaves `reconfigure-incomplete` and prevents `build`; rerun
+changed since configuration. A verified common Node source refresh may update
+its prepared-source receipt and source identity; the Node ABI number and the
+selected helper/header identities remain fixed. Existing objects remain for
+Ninja to update. A failed or interrupted GN generation leaves
+`reconfigure-incomplete` and prevents `build`; rerun
 `reconfigure` successfully before building. After preparing a changed Ports
 source patch series, add `--refresh-source-view` to recompose the generated
 source view from those verified inputs. It builds and verifies a replacement
