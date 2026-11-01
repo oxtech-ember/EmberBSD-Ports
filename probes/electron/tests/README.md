@@ -62,6 +62,26 @@ python3.15 -B -I -S probes/electron/tests/ca-renderer-layer-tree-match-order.py 
   --macos-sdk /absolute/MacOSX.sdk
 ```
 
+The on-device descriptor regression imports the production generator and emits
+its public wrapper into a temporary C++ fixture. It checks successful
+serialization, serializer failure propagation through the existing
+empty-optional result, conversion failure without serialization, and unknown
+type handling. The fixture controls the message serializer and stubs only
+Chromium `base::Value` conversion and the `proto::Any` holder; it does not
+claim a protobuf runtime or Chromium integration test:
+
+```sh
+python3.15 -B -I -S probes/electron/tests/on-device-proto-serialization.py \
+  --source /absolute/prepared-chromium/src \
+  --host-prefix /absolute/native-prefix \
+  --native-cxx /absolute/native-commands/ID/cxx \
+  --ld64 /absolute/native-prefix/bin/ld64.lld \
+  --macos-sdk /absolute/MacOSX.sdk
+```
+
+Add `--sanitize` to compile and run the same fixture with ASan and UBSan. This
+checks only the emitted wrapper and fixture scaffolding.
+
 Run the remaining build regressions with host CPython 3.15 and its standard
 library. Integration
 tests select an SDK API 1 source with `--sdk-source` and check its module origin.

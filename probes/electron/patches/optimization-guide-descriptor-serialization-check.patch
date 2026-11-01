@@ -1,0 +1,14 @@
+diff --git a/components/optimization_guide/tools/gen_on_device_proto_descriptors.py b/components/optimization_guide/tools/gen_on_device_proto_descriptors.py
+--- a/components/optimization_guide/tools/gen_on_device_proto_descriptors.py
++++ b/components/optimization_guide/tools/gen_on_device_proto_descriptors.py
+@@ -896,7 +896,9 @@
+             if (type_name == "{msg.type_name}") {{
+               {msg.cpp_name} msg;
+               if (Convert{msg.iname}(object, msg)) {{
+-                msg.SerializeToString(any.mutable_value());
++                if (!msg.SerializeToString(any.mutable_value())) {{
++                  return std::nullopt;
++                }}
+                 return any;
+               }}
+             }}
