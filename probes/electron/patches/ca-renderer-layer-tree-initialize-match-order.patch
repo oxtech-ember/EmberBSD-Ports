@@ -1,0 +1,11 @@
+diff --git a/ui/accelerated_widget_mac/ca_renderer_layer_tree.mm b/ui/accelerated_widget_mac/ca_renderer_layer_tree.mm
+--- a/ui/accelerated_widget_mac/ca_renderer_layer_tree.mm
++++ b/ui/accelerated_widget_mac/ca_renderer_layer_tree.mm
+@@ -437,6 +437,6 @@ void CARendererLayerTree::MatchLayersToOldTree(CARendererLayerTree* old_tree) {
+ 
+   int layer_order = 0;
+-  int last_old_layer_order;
++  int last_old_layer_order = 0;
+   for (auto& clip_and_sorting_layer : root_layer_.clip_and_sorting_layers_) {
+     for (auto& transform_layer : clip_and_sorting_layer.transform_layers_) {
+       for (auto& content_layer : transform_layer.content_layers_) {

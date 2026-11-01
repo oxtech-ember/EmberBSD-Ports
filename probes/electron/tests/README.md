@@ -46,6 +46,22 @@ python3.15 -B -I -S probes/electron/tests/ca-renderer-layer-tree-availability.py
 python3.15 -B -I -S probes/electron/tests/darwin-renderer-minimum.py
 ```
 
+The CA layer matcher regression extracts `MatchLayersToOldTree` from the
+production source, compiles it with small layer callbacks, and uses the
+selected Clang's automatic-variable pattern initialization to prove the
+uninitialized baseline fails deterministically. The patched function passes
+first-match, skipped-first-without-IOSurface, and sequential-match cases:
+
+```sh
+python3.15 -B -I -S probes/electron/tests/ca-renderer-layer-tree-match-order.py \
+  --source /absolute/prepared-chromium/src \
+  --host-prefix /absolute/native-prefix \
+  --clangxx /absolute/native-prefix/bin/clang++ \
+  --ld64 /absolute/native-prefix/bin/ld64.lld \
+  --git /absolute/native-prefix/bin/git \
+  --macos-sdk /absolute/MacOSX.sdk
+```
+
 Run the remaining build regressions with host CPython 3.15 and its standard
 library. Integration
 tests select an SDK API 1 source with `--sdk-source` and check its module origin.

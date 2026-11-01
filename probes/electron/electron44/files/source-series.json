@@ -922,6 +922,11 @@
       "path": "ca-renderer-layer-tree-macos14-sample-buffer-renderer.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "ca-renderer-layer-tree-initialize-match-order.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
