@@ -1,0 +1,43 @@
+# Origin: Electron (chore_exclude_electron_node_folder_from_exit-time-destructors.patch, refs crbug.com/430332953); adapted for shared Node by EmberBSD (AI-assisted).
+--- unofficial.gni.orig
++++ unofficial.gni
+@@ -191,7 +191,10 @@
+                             [ "node.gyp" ])
+ 
+   source_set("libnode") {
+-    configs += [ ":node_internal_config" ]
++    configs += [
++      ":node_internal_config",
++      "//build/config/compiler:no_exit_time_destructors",
++    ]
+     public_configs = [
+       ":node_external_config",
+       "deps/googletest:googletest_config",
+@@ -424,6 +427,7 @@
+       "src/builtin_info.h",
+     ]
+     include_dirs = [ "src" ]
++    configs += [ "//build/config/compiler:no_exit_time_destructors" ]
+     if (!node_simdutf_include_from_target) {
+       include_dirs += [ get_label_info(node_simdutf_path, "dir") ]
+     }
+--- deps/ada/unofficial.gni.orig
++++ deps/ada/unofficial.gni
+@@ -30,6 +30,7 @@
+     source_set(target_name) {
+       forward_variables_from(invoker, "*")
+       public_configs = [ ":ada_config" ]
++      configs += [ "//build/config/compiler:no_exit_time_destructors" ]
+       sources = gypi_values.ada_sources
+     }
+   }
+--- deps/ncrypto/unofficial.gni.orig
++++ deps/ncrypto/unofficial.gni
+@@ -26,6 +26,7 @@
+   source_set(target_name) {
+     forward_variables_from(invoker, "*")
+     public_configs = [ ":ncrypto_config" ]
++    configs += [ "//build/config/compiler:no_exit_time_destructors" ]
+     defines = [
+       "NCRYPTO_ENGINE_COMPAT=1",
+       "OPENSSL_SUPPRESS_DEPRECATED",
