@@ -205,7 +205,9 @@ std package in `EMBERBSD_CROSS_RUST_STD` (for example
 `rust-std-aarch64-netbsd`). The exported `lang/rust/rust.mk` patch then adds
 the build-host `rust-bin` and that std package as tool dependencies, so Cargo
 runs the host compiler with the target std. No target Rust compiler is
-selected: `lang/rust-bin` refuses cross builds. Package recipes can select
+selected: cross builds skip `lang/rust-bin` (`PKG_SKIP_REASON`), so a cross
+bulk lists it as skipped and refuses a target package that depends on it
+(`scripts/tests/cross-bulk-rust-bin-target.sh`). Package recipes can select
 another mode when they have a tested host/target contract. Verify the exported
 selection against the real pkgsrc consumer:
 
@@ -220,7 +222,7 @@ MAKECONF, then queries `graphics/libimagequant`, the explicit
 `graphics/librsvg` override and `lang/rust-bin`. It requires native Cargo mode,
 the host `rust-bin` and target std in `TOOL_DEPENDS`, no Rust compiler in
 `BUILD_DEPENDS`, `DEPENDS` or buildlink, `librsvg`'s native-tool selection, and
-the `rust-bin` refusal for the target. It also requires that the cross
+the `rust-bin` skip for the target. It also requires that the cross
 `devel/rust-bindgen` has no Rust compiler runtime dependency.
 
 It builds and installs with the shared Rust on macOS/Apple Silicon, with

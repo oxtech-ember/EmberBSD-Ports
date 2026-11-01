@@ -58,8 +58,10 @@ INSTALLATION_DIRS=	bin ${PKGMANDIR} share/doc/cargo/bash_completion.d
 
 # This is the build-host compiler. Cross builds use it as a tool dependency
 # with a target std package; the target gets no prebuilt Rust compiler.
+# A skip, not a failure: a cross bulk lists it as outside the profile, and
+# refuses any target package that depends on it.
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-PKG_FAIL_REASON+=	"rust-bin is a build-host compiler; it is not built for the target"
+PKG_SKIP_REASON+=	"rust-bin is a build-host compiler; it is not built for the target"
 .endif
 
 .if ${OPSYS} == "NetBSD" && ${OPSYS_VERSION} < 080000

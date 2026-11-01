@@ -81,6 +81,7 @@ def main():
         query(cargo, variable, env, variable)
 
     query(librsvg, "RUST_TYPE", env, "graphics/librsvg RUST_TYPE")
+    query(rust_bin, "PKG_SKIP_REASON", env, "lang/rust-bin PKG_SKIP_REASON")
     query(rust_bin, "PKG_FAIL_REASON", env, "lang/rust-bin PKG_FAIL_REASON")
     query(bindgen, "DEPENDS", env, "devel/rust-bindgen DEPENDS")
 
@@ -96,7 +97,8 @@ def main():
         "target std tool": f"{std}-[0-9]*:../../lang/{std}" in tools,
         "no target Rust compiler": not any(re.search(r":\.\./\.\./lang/rust(-bin)?$", d) for d in target),
         "librsvg native override": result["graphics/librsvg RUST_TYPE"] == "native",
-        "rust-bin refused for the target": "build-host compiler" in result["lang/rust-bin PKG_FAIL_REASON"],
+        "rust-bin skipped for the target": "build-host compiler" in result["lang/rust-bin PKG_SKIP_REASON"],
+        "rust-bin not failed for the target": result["lang/rust-bin PKG_FAIL_REASON"] == "",
         "no Rust runtime for target bindgen": not any(re.search(r":\.\./\.\./lang/rust(-bin)?$", d) for d in result["devel/rust-bindgen DEPENDS"].split()),
     }
     failed = [name for name, ok in checks.items() if not ok]
