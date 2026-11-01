@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (dbus_python-1.5.1.tar.gz) = 5b523e0998485f4bc1d30bb725266cb85b43216a95241f80a6af3ee61750345e
+SHA512 (dbus_python-1.5.1.tar.gz) = af7d3fcd4b4cfb040c393ceeab217cb530b439a0117b1ca106b4fed0a3f6ca739946b27ae75fc8c3ea6f9855e445982ce301f3dd12e77fae9174e5043f0a505f
+Size (dbus_python-1.5.1.tar.gz) = 205464 bytes
