@@ -94,11 +94,38 @@ assert not runtime.compatible_build_for_target(old_build, new_build.replace(rv, 
 assert not runtime.compatible_build_for_target(old_build, new_build.replace(rv, b"    if definition['arch'] == 'riscv32':\n        yield 1\n"), 'aarch64')
 assert not runtime.compatible_build_for_target(old_build, new_build.replace(b'def cmake_arguments(definition):', b'def cmake_arguments():'), 'aarch64')
 
+old_settings = (b"def cmake_arguments(definition, phase):\n    settings = {}\n"
+                b"    if phase == 'builtins':\n"
+                b"        settings.update(COMPILER_RT_DEFAULT_TARGET_ONLY='ON')\n"
+                b"    return settings\n")
+rv_settings = (b"        if definition['arch'] == 'riscv32':\n"
+               b"            settings.update(COMPILER_RT_EXCLUDE_ATOMIC_BUILTIN='ON',\n"
+               b"                            COMPILER_RT_BUILD_STANDALONE_LIBATOMIC='OFF')\n")
+new_settings = old_settings.replace(b"        settings.update(COMPILER_RT_DEFAULT_TARGET_ONLY='ON')\n",
+    rv_settings + b"        settings.update(COMPILER_RT_DEFAULT_TARGET_ONLY='ON')\n")
+assert runtime.compatible_build_for_target(old_settings, new_settings, 'aarch64')
+assert not runtime.compatible_build_for_target(old_settings, new_settings, 'riscv32')
+assert not runtime.compatible_build_for_target(old_settings,
+    new_settings.replace(b"'riscv32'", b"'aarch64'"), 'aarch64')
+old_shadow = (b"def cmake_arguments(definition):\n    settings = {}\n"
+              b"    def helper(definition):\n        return definition['arch']\n"
+              b"    return settings\n")
+shadow_guard = (b"        if definition['arch'] == 'riscv32':\n"
+                b"            settings.update(EXAMPLE='ON')\n")
+new_shadow = old_shadow.replace(b"        return definition['arch']\n",
+    shadow_guard + b"        return definition['arch']\n")
+assert not runtime.compatible_build_for_target(old_shadow, new_shadow, 'aarch64')
+unguarded_settings = old_settings.replace(b"        settings.update(COMPILER_RT_DEFAULT_TARGET_ONLY='ON')\n",
+    b"        settings.update(COMPILER_RT_EXCLUDE_ATOMIC_BUILTIN='ON')\n"
+    b"        settings.update(COMPILER_RT_DEFAULT_TARGET_ONLY='ON')\n")
+assert not runtime.compatible_build_for_target(old_settings, unguarded_settings, 'aarch64')
+
 print('runtime source reuse, target guards and CLI: PASS')
 
 # Both sides of a changed patch must be confined to non-bootstrap libc++.
 locale_patch = b'--- a/libcxx/include/locale\n+++ b/libcxx/include/locale\n@@ -1 +1 @@\n-a\n+b\n'
 assert runtime.libcxx_only_patch(locale_patch)
+assert runtime.patch_paths(b'--- a/libcxx/include/a\n+++ b/libcxx/include/b\n') is None
 assert not runtime.libcxx_only_patch(locale_patch + b'--- a/libunwind/src/a\n+++ b/libunwind/src/a\n')
 assert not runtime.libcxx_only_patch(b'--- a/libcxx/../libunwind/a\n+++ b/libcxx/../libunwind/a\n')
 assert not runtime.libcxx_only_patch(b'--- a/libcxx/a\n+++ b/runtimes/CMakeLists.txt\n')
@@ -165,6 +192,59 @@ with tempfile.TemporaryDirectory() as tmp:
         bad['files'][patch_name] = digest(unsafe)
         phase_check(previous, bad, True)
     patch.write_bytes(locale_patch)
+
+    atomic_patch = (b'--- a/compiler-rt/lib/builtins/atomic.c\n'
+                    b'+++ b/compiler-rt/lib/builtins/atomic.c\n'
+                    b'@@ -1 +1,2 @@\n'
+                    b' unchanged\n'
+                    b'+/* RV32-only atomic selection. */\n')
+    atomic_dist = (old_dist + b'SHA1 (patch-07-atomic-width-selection) = checked\n'
+                   b'SHA1 (patch-08-atomic-rv32-libc-provider) = checked\n')
+    dist.write_bytes(atomic_dist)
+    atomic_name = 'pkgsrc/lang/compiler-rt/patches/patch-07-atomic-width-selection'
+    atomic_second_name = 'pkgsrc/lang/compiler-rt/patches/patch-08-atomic-rv32-libc-provider'
+    atomic_file = root / 'patches' / Path(atomic_name).name
+    atomic_file.write_bytes(atomic_patch)
+    atomic_second_patch = atomic_patch + b'--- a/compiler-rt/lib/builtins/atomic.c\n+++ b/compiler-rt/lib/builtins/atomic.c\n@@ -4 +5 @@\n unchanged\n+/* second selected atomic hunk */\n'
+    atomic_second_file = root / 'patches' / Path(atomic_second_name).name
+    atomic_second_file.write_bytes(atomic_second_patch)
+    atomic_dist_hash = digest(atomic_dist)
+    atomic_patch_hash = digest(atomic_patch)
+    atomic_second_hash = digest(atomic_second_patch)
+    original = dict(source, recipe={'files': {dist_name: digest(old_dist)}}, tree_sha256='old')
+    current_source = dict(original, recipe={'files': {dist_name: atomic_dist_hash,
+        atomic_name: atomic_patch_hash}}, tree_sha256='new')
+    (root / 'llvm-source.json').write_text(json.dumps(original))
+    previous = {'recipe': {'ports_revision': 'a' * 40,
+        'files': {dist_name: digest(old_dist), prefix+'files/runtime.py': cli_hash,
+                  prefix+'files/build.py': 'same'}},
+        'components': ['builtins', 'libunwind-static'], 'target': 'aarch64',
+        'machine_arch': 'aarch64'}
+    future = {'files': dict(previous['recipe']['files'], **{
+        dist_name: atomic_dist_hash, atomic_name: atomic_patch_hash,
+        atomic_second_name: atomic_second_hash})}
+    current_source['recipe']['files'][atomic_second_name] = atomic_second_hash
+    phase_check(previous, future)
+    full = copy.deepcopy(previous)
+    full['components'] = ['builtins', 'libunwind', 'libcxxabi', 'libcxx']
+    phase_check(full, future)
+    riscv = copy.deepcopy(previous)
+    riscv['target'] = 'riscv32'
+    riscv['machine_arch'] = 'riscv32'
+    phase_check(riscv, future, True)
+    other_file_patch = atomic_patch + b'--- a/compiler-rt/lib/builtins/absvdi2.c\n+++ b/compiler-rt/lib/builtins/absvdi2.c\n@@ -1 +1,2 @@\n unchanged\n+changed\n'
+    atomic_file.write_bytes(other_file_patch)
+    mixed = copy.deepcopy(future)
+    mixed['files'][atomic_name] = digest(other_file_patch)
+    current_source['recipe']['files'][atomic_name] = digest(other_file_patch)
+    phase_check(previous, mixed, True)
+    non_atomic_patch = atomic_patch.replace(b'compiler-rt/lib/builtins/atomic.c',
+        b'compiler-rt/lib/builtins/absvdi2.c')
+    atomic_file.write_bytes(non_atomic_patch)
+    rejected = copy.deepcopy(future)
+    rejected['files'][atomic_name] = digest(non_atomic_patch)
+    current_source['recipe']['files'][atomic_name] = digest(non_atomic_patch)
+    phase_check(previous, rejected, True)
 
 # A changed build command cannot disappear through preflight normalization.
 assert not runtime.compatible_build_for_target(old_build, new_build.replace(

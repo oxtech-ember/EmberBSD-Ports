@@ -142,18 +142,29 @@ require_bootstrap_inputs(owner, bootstrap, recipe, prepared, args)""").body
                         not isinstance(parent.slice.value, str)):
                     return None
         # Arbitrary dead code can change Python scope or turn this function
-        # into a generator, so only an existing list augmentation is safe.
-        def false_arch_guard(node, index):
+        # into a generator, so only known flag/settings updates are safe.
+        def false_arch_guard(node, prior):
             if not isinstance(node, ast.If) or node.orelse or len(node.body) != 1:
                 return False
             operation = node.body[0]
-            if not (isinstance(operation, ast.AugAssign) and isinstance(operation.op, ast.Add) and
+            if (isinstance(operation, ast.AugAssign) and isinstance(operation.op, ast.Add) and
                     isinstance(operation.target, ast.Name) and operation.target.id == 'driver_flags' and
                     isinstance(operation.value, ast.List) and all(isinstance(v, ast.Constant) and
                     isinstance(v.value, str) for v in operation.value.elts)):
-                return False
-            if not any(isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and
-                       t.id == 'driver_flags' for t in n.targets) for n in functions[0].body[:index]):
+                if not any(isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and
+                           t.id == 'driver_flags' for t in n.targets) for n in prior):
+                    return False
+            elif (isinstance(operation, ast.Expr) and isinstance(operation.value, ast.Call) and
+                  isinstance(operation.value.func, ast.Attribute) and
+                  isinstance(operation.value.func.value, ast.Name) and
+                  operation.value.func.value.id == 'settings' and operation.value.func.attr == 'update' and
+                  not operation.value.args and bool(operation.value.keywords) and
+                  all(k.arg is not None and isinstance(k.value, ast.Constant) and
+                      isinstance(k.value.value, str) for k in operation.value.keywords)):
+                if not any(isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and
+                           t.id == 'settings' for t in n.targets) for n in prior):
+                    return False
+            else:
                 return False
             test = node.test
             return (isinstance(test, ast.Compare) and len(test.ops) == 1 and
@@ -162,7 +173,27 @@ require_bootstrap_inputs(owner, bootstrap, recipe, prepared, args)""").body
                     test.left.value.id == 'definition' and isinstance(test.left.slice, ast.Constant) and
                     test.left.slice.value == 'arch' and isinstance(test.comparators[0], ast.Constant) and
                     isinstance(test.comparators[0].value, str) and test.comparators[0].value != machine_arch)
-        functions[0].body = [n for index, n in enumerate(functions[0].body) if not false_arch_guard(n, index)]
+        body = functions[0].body
+        for node in list(ast.walk(functions[0])):
+            if not isinstance(node, ast.If):
+                continue
+            ancestor = parents.get(node)
+            while ancestor is not functions[0] and isinstance(ancestor, ast.If):
+                ancestor = parents.get(ancestor)
+            if ancestor is not functions[0]:
+                continue
+            root = node
+            while parents.get(root) is not functions[0]:
+                root = parents[root]
+            index = body.index(root)
+            if not false_arch_guard(node, body[:index]):
+                continue
+            parent = parents[node]
+            for field in ('body', 'orelse'):
+                children = getattr(parent, field, None)
+                if isinstance(children, list) and node in children:
+                    children.remove(node)
+                    break
         return ast.dump(tree, include_attributes=False)
 
     try:
@@ -172,26 +203,45 @@ require_bootstrap_inputs(owner, bootstrap, recipe, prepared, args)""").body
         return False
 
 
-def libcxx_only_patch(data):
-    """Accept unified patch headers only inside libcxx/include after -p1."""
+def patch_paths(data):
+    """Return safe relative paths named by unified patch headers, or None."""
     headers = re.findall(rb'^(---|\+\+\+) ([^\t\n ]+)', data, re.M)
     if not headers or len(headers) % 2:
-        return False
+        return None
+    paths = set()
     for index in range(0, len(headers), 2):
         before, after = headers[index:index + 2]
         if before[0] != b'---' or after[0] != b'+++':
-            return False
+            return None
         if before[1] == after[1] == b'/dev/null':
-            return False
-        for _, path in (before, after):
+            return None
+        pair_paths = []
+        for (_, path), prefix in ((before, b'a'), (after, b'b')):
             if path == b'/dev/null':
+                pair_paths.append(None)
                 continue
             parts = path.split(b'/')
-            if (len(parts) < 3 or parts[0] not in (b'a', b'b') or
-                    parts[1:3] != [b'libcxx', b'include'] or len(parts) < 4 or any(p in (b'', b'.', b'..') for p in parts) or
+            if (len(parts) < 2 or parts[0] != prefix or
+                    any(p in (b'', b'.', b'..') for p in parts) or
                     any(c < 32 or c == 127 or c == 92 for c in path)):
-                return False
-    return True
+                return None
+            pair_paths.append(b'/'.join(parts[1:]))
+        if pair_paths[0] is not None and pair_paths[1] is not None and pair_paths[0] != pair_paths[1]:
+            return None
+        paths.update(path for path in pair_paths if path is not None)
+    return paths
+
+
+def libcxx_only_patch(data):
+    """Accept unified patch headers only inside libcxx/include after -p1."""
+    paths = patch_paths(data)
+    return bool(paths) and all(path.startswith(b'libcxx/include/') and
+                               len(path.split(b'/')) >= 3 for path in paths)
+
+
+def atomic_builtin_only_patch(data):
+    """Recognize a patch confined to the compiler-rt atomic builtin source."""
+    return patch_paths(data) == {b'compiler-rt/lib/builtins/atomic.c'}
 
 
 def require_bootstrap_inputs(owner, bootstrap, recipe, prepared, args):
@@ -215,9 +265,6 @@ def compatible_source(owner, stage, expected, source, original_source, git):
     # Both prepared trees are identified by the digests their preparation
     # recorded; equal digests mean the same patched payload.
     same_tree = original.get('tree_sha256') == current['tree_sha256']
-    if not same_tree:
-        owner.require(set(stage.get('components', ())) <= {'builtins', 'libunwind-static'} and
-                      bool(stage.get('components')), 'original LLVM source payload differs')
     old_files = original.get('recipe', {}).get('files')
     owner.require(isinstance(old_files, dict) and all(stage['recipe']['files'].get(k) == v
                   for k, v in old_files.items()), 'runtime original source recipe differs')
@@ -229,6 +276,7 @@ def compatible_source(owner, stage, expected, source, original_source, git):
         patch_prefix = 'pkgsrc/lang/compiler-rt/patches/'
         patch_names = {k for k in set(old) | set(new) if k.startswith(patch_prefix) and old.get(k) != new.get(k)}
         owner.require(patch_names, 'runtime source patch delta missing')
+        bootstrap_components = {'builtins', 'libunwind-static'}
         for name in patch_names:
             for files, historic in ((old, True), (new, False)):
                 if name not in files:
@@ -239,8 +287,19 @@ def compatible_source(owner, stage, expected, source, original_source, git):
                         env=owner.process.sanitized_environment()).stdout
                 else:
                     data = owner.read(owner.OWNER / 'patches' / Path(name).name)
-                owner.require(owner.digest(data) == files[name] and libcxx_only_patch(data),
-                              'runtime source patch affects bootstrap inputs')
+                owner.require(owner.digest(data) == files[name], 'runtime source patch identity differs')
+                if libcxx_only_patch(data):
+                    owner.require(bool(stage.get('components')) and
+                                  set(stage['components']) <= bootstrap_components,
+                                  'libc++ source patch affects selected runtime inputs')
+                elif atomic_builtin_only_patch(data):
+                    # CMake defaults COMPILER_RT_EXCLUDE_ATOMIC_BUILTIN to ON,
+                    # so this source is absent from the AArch64 builtins archive.
+                    # Exact recipe/build inputs are still compared below.
+                    owner.require(stage.get('machine_arch') == 'aarch64',
+                                  'atomic builtin source patch affects selected runtime inputs')
+                else:
+                    owner.require(False, 'runtime source patch affects selected runtime inputs')
             old.pop(name, None)
             new.pop(name, None)
         # Permit only checksum entries for the reviewed changed patches.
