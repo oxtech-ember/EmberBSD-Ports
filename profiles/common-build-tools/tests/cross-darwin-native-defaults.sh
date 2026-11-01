@@ -18,10 +18,19 @@ case "$work" in /*) ;; *) echo 'NEW_DIRECTORY must be absolute' >&2; exit 2 ;; e
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd -P)
 mkdir -p "$work/profile" "$work/tools" "$work/sysroot" "$work/host"
 cp "$ports/profiles/common-build-tools/cross/mk.conf" "$work/profile/mk.conf"
+cp "$ports/profiles/common-build-tools/cross/host-config.mk" "$work/profile/host-config.mk"
 cp "$ports/pkgsrc/defaults.mk.conf" "$work/profile/EMBERBSD-DEFAULTS-MK.CONF"
 cp "$ports/pkgsrc/versions.mk" "$work/profile/EMBERBSD-VERSIONS.MK"
 : > "$work/profile/native-tools.mk"
-# The native profile of the host prefix, included by native builds.
+# The host profile supplies host-ABI flags. Cross builds must restore their
+# incoming target flags/defaults; native dependency builds keep host values.
+mkdir -p "$work/host/etc"
+cat > "$work/host/etc/mk.conf" <<'EOF'
+CPPFLAGS=host-cpp
+CFLAGS=host-c
+CXXFLAGS=host-cxx
+LDFLAGS=host-ld
+EOF
 : > "$work/mk.conf"
 cat > "$work/tools/target.mk" <<'EOF'
 _EMBER_TARGET_FAMILY=clang
@@ -35,6 +44,7 @@ EOF
 cat > "$work/Makefile" <<EOF
 BSD_PKG_MK=yes
 OPSYS=Darwin
+EMBERBSD_HOST_PREFIX=$work/host
 EMBERBSD_CROSS_TOOLS=$work/tools
 EMBERBSD_CROSS_SYSROOT=$work/sysroot
 EMBERBSD_CROSS_HOST_PREFIX=$work/host
@@ -45,7 +55,18 @@ CC=/host/cc
 CXX=/host/cxx
 EMBERBSD_RUST_LOCK_ROOT=$work/locks
 EMBERBSD_RUST_LINK_CONTEXT=$work/locks/coordination/heavy-link
+CPPFLAGS=target-cpp
+CXXFLAGS=target-cxx
+.undef LDFLAGS
+.include "$work/profile/host-config.mk"
+.if defined(LDFLAGS)
+_EMBER_TEST_LDFLAGS_AFTER_HOST_DEFINED=yes
+.else
+_EMBER_TEST_LDFLAGS_AFTER_HOST_DEFINED=no
+.endif
 .include "$work/profile/mk.conf"
+CPPFLAGS+=package-cpp
+LDFLAGS+=package-ld
 EOF
 fail() { echo "FAIL: $*" >&2; exit 1; }
 read_vars() { "$bmake" -f "$work/Makefile" "$@" -v USE_CROSS_COMPILE -v MACHO_USE_LOAD_COMMANDS -v PKG_OPTIONS.graphviz | tr '\n' ' '; }
@@ -58,6 +79,20 @@ native=$(read_vars USE_CROSS_COMPILE=no) || fail "the native parse failed: $nati
 native_rcd=$("$bmake" -f "$work/Makefile" USE_CROSS_COMPILE=no -v RCD_SCRIPTS_DIR) || fail 'the native rc-directory query failed'
 [ "$native_rcd" = "$work/host/etc/rc.d" ] || fail "native rc scripts escaped the selected prefix: $native_rcd"
 getvar() { variable=$1; shift; "$bmake" -f "$work/Makefile" "$@" -v "$variable"; }
+target_cpp=$(getvar CPPFLAGS) || fail 'the cross CPPFLAGS query failed'
+target_c=$(getvar CFLAGS) || fail 'the cross CFLAGS query failed'
+target_cxx=$(getvar CXXFLAGS) || fail 'the cross CXXFLAGS query failed'
+target_ld=$(getvar LDFLAGS) || fail 'the cross LDFLAGS query failed'
+target_ld_after_host=$(getvar _EMBER_TEST_LDFLAGS_AFTER_HOST_DEFINED) || fail 'the cross post-host LDFLAGS query failed'
+[ "$target_cpp" = 'target-cpp package-cpp' ] || fail "cross CPPFLAGS lost target/package values: $target_cpp"
+case "$target_c" in *host-c*) fail "cross CFLAGS inherited host flags over the target default: $target_c" ;; esac
+[ "$target_c" = -O2 ] || fail "cross target CFLAGS default changed: $target_c"
+[ "$target_cxx" = target-cxx ] || fail "cross CXXFLAGS lost target value: $target_cxx"
+case "$target_ld" in *host-ld*) fail "cross LDFLAGS inherited host flags despite originally undefined: $target_ld" ;; esac
+case "$target_ld" in *package-ld*) ;; *) fail "cross package LDFLAGS assignment after helper was lost: $target_ld" ;; esac
+[ "$target_ld_after_host" = no ] || fail "cross helper did not restore originally undefined LDFLAGS: $target_ld_after_host"
+native_flags=$($bmake -f "$work/Makefile" USE_CROSS_COMPILE=no -v CPPFLAGS -v CFLAGS -v CXXFLAGS -v LDFLAGS | tr '\n' '|')
+[ "$native_flags" = 'host-cpp package-cpp|host-c|host-cxx|host-ld package-ld|' ] || fail "native build did not retain host flags/package additions: $native_flags"
 clang_family=$(getvar EMBERBSD_RUST_TARGET_COMPILER_FAMILY USE_CROSS_COMPILE=no) || fail 'the native Clang family query failed'
 clang_prefix=$(getvar EMBERBSD_RUST_COMPILER_PREFIX USE_CROSS_COMPILE=no) || fail 'the native Clang prefix query failed'
 clang_sysroot=$(getvar EMBERBSD_RUST_TARGET_SYSROOT USE_CROSS_COMPILE=no) || fail 'the native Clang sysroot query failed'
@@ -90,3 +125,4 @@ gcc_reason=$(getvar EMBERBSD_RUST_GCC_REASON USE_CROSS_COMPILE=no EMBERBSD_CROSS
 [ -z "$gcc_reason" ] || fail "GCC route silently supplied its required reason: $gcc_reason"
 echo 'PASS: the Darwin native defaults apply to native builds of the cross profile, not to target builds'
 echo 'PASS: native Rust std gets selected Clang/GCC target inputs without changing host CC/CXX or inventing lock/GCC policy'
+echo 'PASS: host configuration restores cross target flags/defaults and preserves native host flags'

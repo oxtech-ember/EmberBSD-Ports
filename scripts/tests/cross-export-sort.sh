@@ -6,6 +6,7 @@ set -eu
 exported=$(CDPATH= cd -- "$1" && pwd)
 config=$2
 [ -f "$exported/EMBERBSD-CROSS-MK.CONF" ]
+[ -f "$exported/EMBERBSD-HOST-CONFIG.MK" ]
 [ -f "$config" ]
 selected=$(MAKECONF="$config" "${BMAKE:-bmake}" -C "$exported/devel/pkgconf" -V '${TOOLS_PLATFORM.sort}')
 prefix=$(MAKECONF="$config" "${BMAKE:-bmake}" -C "$exported/devel/pkgconf" -V '${EMBERBSD_HOST_PREFIX}')

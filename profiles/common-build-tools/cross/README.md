@@ -206,14 +206,18 @@ The real-recipe regression queries LLVM and Qtbase with that restricted PATH:
     --host-prefix /absolute/native-prefix
 ```
 
-A private MAKECONF includes the host bootstrap configuration first:
+A private MAKECONF selects the host prefix, then includes its configuration
+through the exported `EMBERBSD-HOST-CONFIG.MK`. This preserves incoming target
+flags across the host configuration for cross packages; native dependencies
+(`USE_CROSS_COMPILE=no`) retain the host flags. Set
+`EMBERBSD_HOST_MAKECONF` first only when using a separate bootstrap config.
 
 ```make
-.include "/absolute/host/etc/mk.conf"
 .if defined(BSD_PKG_MK)
 # Select the native Ports prefix and its generated make mapping.
 EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK
 EMBERBSD_HOST_PREFIX=/absolute/native-ports-prefix
+.include "/absolute/export/EMBERBSD-HOST-CONFIG.MK"
 EMBERBSD_NATIVE_TOOLSET_MAKECONF=/absolute/host-tools.mk
 EMBERBSD_CROSS_TOOLS=/absolute/new-cross-tools
 EMBERBSD_CROSS_SYSROOT=/absolute/emberbsd-aarch64-sysroot
