@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). These build-host programs are native-only.
-.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 PLIST_VARS+= hosttools
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 PLIST.hosttools= yes
 INSTALLATION_DIRS+= libexec/perl5/${PKGVERSION_NOREV}
 
