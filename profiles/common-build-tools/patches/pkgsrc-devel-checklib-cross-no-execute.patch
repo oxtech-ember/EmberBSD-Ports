@@ -6,7 +6,8 @@ ExtUtils::MakeMaker::Config, so the program is a target executable, and
 running it on the build machine failed with "cannot execute binary
 file". textproc/p5-XML-Parser then reported that expat was missing.
 Skip the run when that Config names another system or sets
-usecrosscompile. p5-XML-Parser requires the fixed tool.
+usecrosscompile. p5-XML-Parser requires the fixed tool and removes the
+copy it bundles in inc/, which Makefile.PL would load first.
 Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 
 --- a/devel/p5-Devel-CheckLib/Makefile
@@ -94,3 +95,15 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
  DEPENDS+=	p5-File-ShareDir-[0-9]*:../../devel/p5-File-ShareDir
  TOOL_DEPENDS+=	p5-File-ShareDir-Install-[0-9]*:../../devel/p5-File-ShareDir-Install
  
+@@ -24,6 +25,11 @@
+ ALLOW_NETWORK_ACCESS=	yes
+ .endif
+ 
++# Makefile.PL puts ./inc first in @INC. Remove the bundled
++# Devel::CheckLib so the cross-aware TOOL_DEPENDS copy is used.
++post-extract:
++	${RM} -f ${WRKSRC}/inc/Devel/CheckLib.pm
++
+ .include "../../lang/perl5/module.mk"
+ .include "../../textproc/expat/buildlink3.mk"
+ .include "../../mk/bsd.pkg.mk"
