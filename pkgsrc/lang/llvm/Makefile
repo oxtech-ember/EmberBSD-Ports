@@ -27,7 +27,7 @@ EMBERBSD_LLVM_PKGDIR:= ${.PARSEDIR:tA}
 .include "version.mk"
 
 PKGNAME=	llvm-${LLVM_VERSION}
-PKGREVISION=	5
+PKGREVISION=	6
 CATEGORIES=	lang devel
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -114,14 +114,14 @@ PKG_FAIL_REASON+= "The separate LLVM SDK requires a NetBSD cross build; native L
 PKG_FAIL_REASON+= "The LLVM runtime/SDK split requires the common aarch64 or amd64 cross target"
 .endif
 .if defined(EMBERBSD_LLVM_DEVEL)
-PKGREVISION= 3
-.if ${PKGREVISION} != 3
-PKG_FAIL_REASON+= "The LLVM SDK requires package revision 3"
+PKGREVISION= 4
+.if ${PKGREVISION} != 4
+PKG_FAIL_REASON+= "The LLVM SDK requires package revision 4"
 .endif
 .else
-PKGREVISION= 2
-.if ${PKGREVISION} != 2
-PKG_FAIL_REASON+= "The LLVM runtime requires package revision 2"
+PKGREVISION= 3
+.if ${PKGREVISION} != 3
+PKG_FAIL_REASON+= "The LLVM runtime requires package revision 3"
 .endif
 .endif
 # Both partitions come from the same full build with native Python tools.
@@ -139,8 +139,8 @@ DEPENDS+= ${PYDEPENDENCY}
 PKG_FAIL_REASON+= "The LLVM SDK recipe must select the devel partition"
 .endif
 PLIST_SRC= ${LLVM_DEVEL_PLIST_SRC}
-DEPENDS+= llvm-${LLVM_VERSION}nb2:../../lang/llvm
-CONFLICTS+= llvm<${LLVM_VERSION}nb2
+DEPENDS+= llvm-${LLVM_VERSION}nb3:../../lang/llvm
+CONFLICTS+= llvm<${LLVM_VERSION}nb3
 .else
 LLVM_PACKAGE_PART= runtime
 .if ${LLVM_PACKAGE_PART} != "runtime"

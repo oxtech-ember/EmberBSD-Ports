@@ -1,0 +1,97 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), reject Mach-O load-command overlap.
+Linked images keep section offsets fixed. Ensure an oversized install ID
+fails before output instead of overwriting section data.
+Not submitted upstream. SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+
+--- test/tools/llvm-objcopy/MachO/install-name-tool-id.test.orig
++++ test/tools/llvm-objcopy/MachO/install-name-tool-id.test
+@@ -65,3 +65,87 @@
+   sizeofcmds:      0
+   flags:           0x00002000
+   reserved:        0x00000000
++
++## The first file-backed section starts 32 bytes after the old command table.
++## A 63-byte ID grows LC_ID_DYLIB by exactly 32 bytes and fits; a 64-byte ID
++## needs 40 bytes and must fail without changing the input.
++# RUN: yaml2obj %s --docnum=3 -o %t.headerpad-fit
++# RUN: cp %t.headerpad-fit %t.headerpad-fit.original
++# RUN: llvm-install-name-tool -id @rpath/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa %t.headerpad-fit
++# RUN: llvm-readobj --file-headers --sections --macho-segment %t.headerpad-fit | \
++# RUN:   FileCheck %s --check-prefix=HEADERPAD-FIT
++# RUN: llvm-objdump -p %t.headerpad-fit | \
++# RUN:   FileCheck %s --check-prefix=HEADERPAD-ID
++# RUN: not cmp -s %t.headerpad-fit %t.headerpad-fit.original
++
++# HEADERPAD-FIT: FileType: DynamicLibrary
++# HEADERPAD-FIT: SizeOfLoadCommands: 320
++# HEADERPAD-FIT: Name: __text
++# HEADERPAD-FIT: Offset: 352
++# HEADERPAD-ID: name @rpath/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++
++# RUN: yaml2obj %s --docnum=3 -o %t.headerpad-short
++# RUN: cp %t.headerpad-short %t.headerpad-short.original
++# RUN: not llvm-install-name-tool -id @rpath/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa %t.headerpad-short 2>&1 | \
++# RUN:   FileCheck %s --check-prefix=HEADERPAD-REFUSED
++# RUN: cmp %t.headerpad-short %t.headerpad-short.original
++
++# HEADERPAD-REFUSED: not enough space for load commands; relink with -headerpad_max_install_names
++
++--- !mach-o
++FileHeader:
++  magic:           0xFEEDFACF
++  cputype:         0x0100000C
++  cpusubtype:      0x00000000
++  filetype:        0x00000006
++  ncmds:           2
++  sizeofcmds:      288
++  flags:           0x00002000
++  reserved:        0x00000000
++LoadCommands:
++  - cmd:             LC_SEGMENT_64
++    cmdsize:         232
++    segname:         __TEXT
++    vmaddr:          0x0000000000000000
++    vmsize:          0x0000000000004000
++    fileoff:         0
++    filesize:        0x0000000000004000
++    maxprot:         7
++    initprot:        5
++    nsects:          2
++    flags:           0
++    Sections:
++      - sectname:        __text
++        segname:         __TEXT
++        addr:            0x0000000000000160
++        content:         'AABBCCDD'
++        size:            4
++        offset:          352
++        align:           2
++        reloff:          0
++        nreloc:          0
++        flags:           0x80000400
++        reserved1:       0
++        reserved2:       0
++        reserved3:       0
++      - sectname:        __pad
++        segname:         __TEXT
++        addr:            0x0000000000003FFC
++        content:         '11223344'
++        size:            4
++        offset:          16380
++        align:           2
++        reloff:          0
++        nreloc:          0
++        flags:           0x00000000
++        reserved1:       0
++        reserved2:       0
++        reserved3:       0
++  - cmd:                        LC_ID_DYLIB
++    cmdsize:                    56
++    dylib:
++        name:                   24
++        timestamp:              2
++        current_version:         82115073
++        compatibility_version:   65536
++    Content:                    '/usr/lib/A'

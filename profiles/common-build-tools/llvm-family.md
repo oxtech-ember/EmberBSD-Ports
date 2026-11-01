@@ -10,7 +10,10 @@ The [official stable 23.1.4 release](https://github.com/llvm/llvm-project/releas
 was published on 2026-10-20. All five package roles share its source version.
 The four distinfo records use the verified 179,272,572-byte monorepo archive.
 Its SHA256 is `819ecf7351f1a66f76b2d701d8942faaf5faeb324cb90c9d5b090de142434bb2`.
-The existing seven LLVM patches and one Clang patch apply with zero fuzz.
+The nine LLVM patches and one Clang patch apply with zero fuzz. One LLVM
+patch makes Mach-O linked-image rewriting fail safely when an expanded load
+command would overlap file-backed section data. Packages that choose long
+install IDs should set the final ID while linking or reserve header space.
 The DWP repair remains applied once. All normal and experimental backends,
 platform rules, options and runtime/SDK partitions remain unchanged.
 
@@ -75,8 +78,8 @@ default; recipes carry no GCC_REQD) and common Python.
 Native cache, RTTI, dependency and ELF evidence remains required.
 
 NetBSD cross builds now use the [runtime/SDK package split](cross/llvm-runtime.md).
-The execution-only image receives `llvm-23.1.4nb2`; the build-host target sysroot
-also needs `llvm-devel-23.1.4nb3`. Native LLVM remains a full package.
+The execution-only image receives `llvm-23.1.4nb3`; the build-host target sysroot
+also needs `llvm-devel-23.1.4nb4`. Native LLVM remains a full package.
 ## Inherited patch decisions
 
 NetBSD RCS identifiers, authorship and licenses are preserved. These recipes,

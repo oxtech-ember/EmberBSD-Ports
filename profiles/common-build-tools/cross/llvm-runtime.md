@@ -4,8 +4,8 @@ NetBSD cross builds for AArch64 and amd64 produce two ordinary source packages:
 
 | Package | Payload |
 | --- | --- |
-| `llvm-23.1.4nb2` | Shared libLLVM, libLTO and libRemarks, their aliases and the upstream license notice. |
-| `llvm-devel-23.1.4nb3` | Target tools, headers, static archives, CMake exports and test support. Requires the exact runtime package. |
+| `llvm-23.1.4nb3` | Shared libLLVM, libLTO and libRemarks, their aliases and the upstream license notice. |
+| `llvm-devel-23.1.4nb4` | Target tools, headers, static archives, CMake exports and test support. Requires the exact runtime package. |
 
 The runtime keeps the original name for dependency and vulnerability matching.
 Runtime revision `nb2` distinguishes it from the earlier complete package.
