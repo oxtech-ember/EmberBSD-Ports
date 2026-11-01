@@ -1,0 +1,23 @@
+Scope the deprecated transport_supports_ecn use in TransportPacketsFeedback.
+Origin: EmberBSD contributors (AI-assisted). The selected Clang reports the
+defaulted constructors and destructor as uses of the deprecated field; keep
+-Werror and silence only these defaulted members, as WebRTC does elsewhere.
+
+--- a/third_party/webrtc/api/transport/network_types.cc
++++ b/third_party/webrtc/api/transport/network_types.cc
+@@ -45,10 +45,15 @@
+   return lhs.sent_packet.sequence_number < rhs.sent_packet.sequence_number;
+ }
+ 
++// The defaulted members initialize and copy the deprecated
++// transport_supports_ecn field; that use is intended until it is removed.
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+ TransportPacketsFeedback::TransportPacketsFeedback() = default;
+ TransportPacketsFeedback::TransportPacketsFeedback(
+     const TransportPacketsFeedback& other) = default;
+ TransportPacketsFeedback::~TransportPacketsFeedback() = default;
++#pragma clang diagnostic pop
+ 
+ std::vector<PacketResult> TransportPacketsFeedback::ReceivedWithSendInfo()
+     const {
