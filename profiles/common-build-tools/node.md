@@ -6,6 +6,26 @@ The source-owned `src/node_version.h` defines EmberBSD's unregistered native-add
 
 The common recipe selects shared dependencies, including Ada, Abseil, Highway, simdjson, simdutf, llhttp, nbytes, merve, uvwasi, LIEF and Temporal. The Node configure patch preserves `pkg-config` compile definitions and other compiler flags in GYP. The host and target use their selected Ports compilers and ABI inputs independently; a target Node must not be executed on the build host.
 
+Node's X509 stack indices and digest output lengths use the selected provider's
+native types. This preserves OpenSSL's signed count behavior and compiles
+against Electron's BoringSSL `size_t` APIs without casts or changes to null and
+empty handling. The Node package revision is advanced to 1 for this shared
+source change; the native-addon ABI remains unchanged. The focused
+`tests/node-crypto-provider-types.py` regression extracts the API expressions
+from an unmodified prepared Node tree, checks the expected BoringSSL baseline
+diagnostic, applies the shared patch in a temporary copy, and compiles the
+expressions against both real header sets with signed-comparison errors enabled.
+The affected Node translation units are checked separately as the production
+consumer.
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B -I -S profiles/common-build-tools/tests/node-crypto-provider-types.py \
+  --node-source "$UNMODIFIED_NODE_SOURCE" --patch profiles/common-build-tools/patches/node-crypto-provider-types.patch \
+  --patch-tool "$HOST_PREFIX/bin/gpatch" --host-prefix "$HOST_PREFIX" \
+  --cxx "$TARGET_CXX_BINDING" --openssl-include "$TARGET_SYSROOT/usr/include" \
+  --boringssl-include "$BORINGSSL_SOURCE/include" --work "$NEW_WORK_DIRECTORY"
+```
+
 For native Darwin bootstrap, GYP build and install both use the selected SDK
 shell link launcher for host and target links. The shared launcher variable
 has priority over the legacy GCC bootstrap variable. If CMake link control is

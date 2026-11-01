@@ -1,0 +1,92 @@
+# Origin: Node.js crypto APIs support both the selected OpenSSL and Electron BoringSSL providers.
+# Preserve each provider's native stack and digest-size types. (AI-assisted.)
+--- src/crypto/crypto_common.cc.orig
++++ src/crypto/crypto_common.cc
+@@ -90,7 +90,9 @@
+   if (!peer_certs) return StackOfX509();
+   if (cert && !sk_X509_push(peer_certs.get(), cert.release()))
+     return StackOfX509();
+-  for (int i = 0; i < sk_X509_num(ssl_certs); i++) {
++  for (decltype(sk_X509_num(ssl_certs)) i = 0;
++         i < sk_X509_num(ssl_certs);
++         i++) {
+     X509Pointer cert(X509_dup(sk_X509_value(ssl_certs, i)));
+     if (!cert || !sk_X509_push(peer_certs.get(), cert.get()))
+       return StackOfX509();
+@@ -106,7 +108,7 @@
+                                           Environment* const env) {
+   cert->reset(sk_X509_delete(peer_certs.get(), 0));
+   for (;;) {
+-    int i;
++    decltype(sk_X509_num(peer_certs.get())) i;
+     for (i = 0; i < sk_X509_num(peer_certs.get()); i++) {
+       X509View ca(sk_X509_value(peer_certs.get(), i));
+       if (!cert->view().isIssuedBy(ca)) continue;
+--- src/crypto/crypto_context.cc.orig
++++ src/crypto/crypto_context.cc
+@@ -157,7 +157,9 @@
+     // the CA certificates.
+     SSL_CTX_clear_extra_chain_certs(ctx);
+ 
+-    for (int i = 0; i < sk_X509_num(extra_certs); i++) {
++    for (decltype(sk_X509_num(extra_certs)) i = 0;
++         i < sk_X509_num(extra_certs);
++         i++) {
+       X509* ca = sk_X509_value(extra_certs, i);
+ 
+       // NOTE: Increments reference count on `ca`
+@@ -1494,7 +1496,9 @@
+                      X509** offender,
+                      int* depth) {
+   if (certs == nullptr) return SpkiCheck::kAllowed;
+-  for (int i = 0; i < sk_X509_num(certs); i++) {
++  for (decltype(sk_X509_num(certs)) i = 0;
++         i < sk_X509_num(certs);
++         i++) {
+     X509* cert = sk_X509_value(certs, i);
+     SpkiCheck result = CheckSPKI(cert);
+     if (result != SpkiCheck::kAllowed) {
+@@ -2526,7 +2530,9 @@
+   }
+ 
+   // Add CA certs too
+-  for (int i = 0; i < sk_X509_num(extra_certs.get()); i++) {
++  for (decltype(sk_X509_num(extra_certs.get())) i = 0;
++         i < sk_X509_num(extra_certs.get());
++         i++) {
+     X509* ca = sk_X509_value(extra_certs.get(), i);
+ 
+     X509_STORE_add_cert(sc->GetCertStoreOwnedByThisSecureContext(), ca);
+--- src/crypto/crypto_hash.cc.orig
++++ src/crypto/crypto_hash.cc
+@@ -374,7 +374,7 @@
+   enum encoding output_enc = ParseEncoding(isolate, args[4], args[5], HEX);
+ 
+   bool is_xof = (EVP_MD_flags(md) & EVP_MD_FLAG_XOF) != 0;
+-  int output_length = EVP_MD_size(md);
++  auto output_length = EVP_MD_size(md);
+ 
+   // This is to cause hash() to fail when an incorrect
+   // outputLength option was passed for a non-XOF hash function.
+--- src/crypto/crypto_x509.cc.orig
++++ src/crypto/crypto_x509.cc
+@@ -1017,7 +1017,7 @@
+     Environment* env,
+     std::shared_ptr<ManagedX509> cert,
+     const STACK_OF(X509) * issuer_chain,
+-    int start) {
++    decltype(sk_X509_num(issuer_chain)) start) {
+   EscapableHandleScope scope(env->isolate());
+   Local<Object> obj;
+   if (!GetConstructorTemplate(env)
+--- src/crypto/crypto_x509.h.orig
++++ src/crypto/crypto_x509.h
+@@ -126,7 +126,7 @@
+       Environment* env,
+       std::shared_ptr<ManagedX509> cert,
+       const STACK_OF(X509) * issuer_chain,
+-      int start);
++      decltype(sk_X509_num(issuer_chain)) start);
+ 
+   std::shared_ptr<ManagedX509> cert_;
+   BaseObjectPtr<X509Certificate> issuer_cert_;

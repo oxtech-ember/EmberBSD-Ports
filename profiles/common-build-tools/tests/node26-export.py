@@ -6,6 +6,7 @@ import argparse
 import importlib.util
 import os
 from pathlib import Path
+import re
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -14,7 +15,10 @@ SPEC = importlib.util.spec_from_file_location(
 EXPORTER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(EXPORTER)
 PATCH = Path('profiles/common-build-tools/patches/pkgsrc-nodejs-current.patch')
-EXPORT_LINE = 'patch\t' + PATCH.as_posix() + '\n'
+CRYPTO_PATCH = Path('profiles/common-build-tools/patches/node-crypto-provider-types.patch')
+EXPORT_LINE = ('patch\t' + PATCH.as_posix() + '\n' +
+               'recipe-patch\t' + CRYPTO_PATCH.as_posix() +
+               '\tlang/nodejs\tpatch-zzzzzzzzzz-node-crypto-provider-types\n')
 
 
 def run(command, *, cwd=None, input=None):
@@ -54,8 +58,9 @@ def main():
     import shutil
     shutil.copytree(args.pkgsrc / 'lang/nodejs', package)
     (ports / 'profiles/common-build-tools/patches').mkdir(parents=True)
-    (ports / 'profiles/common-build-tools/patches' / PATCH.name).write_bytes(
-        (ROOT / PATCH).read_bytes())
+    for patch_file in (PATCH, CRYPTO_PATCH):
+        (ports / 'profiles/common-build-tools/patches' / patch_file.name).write_bytes(
+            (ROOT / patch_file).read_bytes())
     (ports / 'pkgsrc/export.conf').write_text(EXPORT_LINE)
     subprocess.run([str(args.git), '-C', str(upstream), 'init', '-q'], check=True)
     subprocess.run([str(args.git), '-C', str(upstream), 'add', '-f', 'lang/nodejs'], check=True)
@@ -82,6 +87,13 @@ def main():
     expected = {p.relative_to(args.expected_recipe): p.read_bytes()
                 for p in args.expected_recipe.rglob('*') if p.is_file()}
     assert actual == expected, (actual.keys() ^ expected.keys())
+    makefile = (recipe / 'Makefile').read_text()
+    assert re.search(r'^PKGREVISION=\s+1$', makefile, re.M)
+    crypto_patch_name = 'patch-zzzzzzzzzz-node-crypto-provider-types'
+    crypto_patch_data = (recipe / 'patches' / crypto_patch_name).read_bytes()
+    assert crypto_patch_data == (ROOT / CRYPTO_PATCH).read_bytes()
+    assert (f'SHA1 ({crypto_patch_name}) = '
+            f'{EXPORTER.patch_sha1(ROOT / CRYPTO_PATCH)}\n') in (recipe / 'distinfo').read_text()
     assert not list(destination.rglob('*.~[0-9]*~'))
     print('PASS: common exporter applied Node.js 26 recipe overlay with selected patch tool')
 
