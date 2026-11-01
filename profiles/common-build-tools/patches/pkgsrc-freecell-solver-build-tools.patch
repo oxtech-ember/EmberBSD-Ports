@@ -1,15 +1,17 @@
-freecell-solver needs its Perl modules in the build perl.
+freecell-solver needs its Perl and Python modules in the build interpreters.
 
 CMakeLists.txt checks for Moo with ${PERL_EXECUTABLE}, and the build runs
-scripts/gen-*.pl, which load Moo, Path::Tiny and Template. Upstream lists
-the modules only as DEPENDS, which in a cross build are target packages;
-the build perl is the host tools perl, so CMake stopped at
-CMakeLists.txt:246. Declare them as TOOL_DEPENDS as well.
+scripts/gen-*.pl, which load Moo, Path::Tiny and Template. It also checks
+that the build python3 can import six, pysol_cards and
+pysol_cards.gen_multi_cli. Upstream lists these modules only as DEPENDS,
+which in a cross build are target packages; the build interpreters are the
+host tools perl and python, so CMake stopped at CMakeLists.txt:246 and then
+at CMakeLists.txt:1019. Declare them as TOOL_DEPENDS as well.
 Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 
 --- a/games/freecell-solver/Makefile
 +++ b/games/freecell-solver/Makefile
-@@ -16,6 +16,11 @@
+@@ -16,6 +16,14 @@
  DEPENDS+=	p5-Moo-[0-9]*:../../devel/p5-Moo
  DEPENDS+=	p5-Path-Tiny-[0-9]*:../../filesystems/p5-Path-Tiny
  DEPENDS+=	p5-Template-Toolkit-[0-9]*:../../www/p5-Template-Toolkit
@@ -18,6 +20,9 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 +TOOL_DEPENDS+=	p5-Moo-[0-9]*:../../devel/p5-Moo
 +TOOL_DEPENDS+=	p5-Path-Tiny-[0-9]*:../../filesystems/p5-Path-Tiny
 +TOOL_DEPENDS+=	p5-Template-Toolkit-[0-9]*:../../www/p5-Template-Toolkit
++# The CMake step checks that the build python imports six and pysol_cards.
++TOOL_DEPENDS+=	${PYPKGPREFIX}-pysol_cards>=0.24.0:../../games/py-pysol_cards
++TOOL_DEPENDS+=	${PYPKGPREFIX}-six-[0-9]*:../../lang/py-six
  
  USE_LANGUAGES=	c c++
  USE_TOOLS+=	gmake perl
