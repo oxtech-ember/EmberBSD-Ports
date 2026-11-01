@@ -1,0 +1,156 @@
+$NetBSD$
+
+Run build-time V8 host tools (torque, mksnapshot, bytecode list and
+regexp generators) through the scoped native runtime view selected by
+Chromium's //build/compiled_action.gni, so they resolve the __ember1
+abseil dylibs. Standalone V8 keeps direct execution.
+Origin: EmberBSD (AI-assisted).
+
+--- BUILD.gn
++++ BUILD.gn
+@@ -4,6 +4,14 @@
+ 
+ # LINT.IfChange
+ 
++import("//build/compiled_action.gni")
++
++# EmberBSD: Chromium builds export the scoped host-tool runtime selection from
++# //build/compiled_action.gni; standalone V8 runs host tools directly.
++if (!defined(emberbsd_host_tool_runtime_args)) {
++  emberbsd_host_tool_runtime_args = []
++  emberbsd_host_tool_runtime_inputs = []
++}
+ import("//build/config/android/config.gni")
+ import("//build/config/arm.gni")
+ import("//build/config/c++/c++.gni")
+@@ -2770,6 +2778,11 @@
+ 
+       script = "tools/run.py"
+ 
++      if (defined(inputs)) {
++        inputs += emberbsd_host_tool_runtime_inputs
++      } else {
++        inputs = emberbsd_host_tool_runtime_inputs
++      }
+       sources = torque_files
+ 
+       destination_folder = "$target_gen_dir/torque-generated$suffix"
+@@ -2784,7 +2797,7 @@
+         ]
+       }
+ 
+-      args = [
++      args = emberbsd_host_tool_runtime_args + [
+         "./" + rebase_path(get_label_info(":torque($toolchain)",
+                                           "root_out_dir") + "/torque",
+                            root_build_dir),
+@@ -2841,6 +2854,11 @@
+ 
+     script = "tools/run.py"
+ 
++    if (defined(inputs)) {
++      inputs += emberbsd_host_tool_runtime_inputs
++    } else {
++      inputs = emberbsd_host_tool_runtime_inputs
++    }
+     sources = torque_files
+ 
+     destination_folder = "$target_gen_dir/torque-generated$suffix"
+@@ -2872,7 +2890,7 @@
+       ]
+     }
+ 
+-    args = [
++    args = emberbsd_host_tool_runtime_args + [
+       "./" + rebase_path(
+               get_label_info(":torque($toolchain)", "root_out_dir") + "/torque",
+               root_build_dir),
+@@ -3087,9 +3105,14 @@
+ 
+ action("generate_bytecode_builtins_list") {
+   script = "tools/run.py"
++  if (defined(inputs)) {
++    inputs += emberbsd_host_tool_runtime_inputs
++  } else {
++    inputs = emberbsd_host_tool_runtime_inputs
++  }
+   outputs = [ "$target_gen_dir/builtins-generated/bytecodes-builtins-list.h" ]
+   deps = [ ":bytecode_builtins_list_generator($v8_generator_toolchain)" ]
+-  args = [
++  args = emberbsd_host_tool_runtime_args + [
+     "./" + rebase_path(
+             get_label_info(
+                     ":bytecode_builtins_list_generator($v8_generator_toolchain)",
+@@ -3159,6 +3182,11 @@
+ 
+     script = "tools/run.py"
+ 
++    if (defined(inputs)) {
++      inputs += emberbsd_host_tool_runtime_inputs
++    } else {
++      inputs = emberbsd_host_tool_runtime_inputs
++    }
+     sources = []
+ 
+     if (v8_depend_on_icu_data_file) {
+@@ -3184,7 +3212,7 @@
+       ext = "s"
+     }
+ 
+-    args = []
++    args = emberbsd_host_tool_runtime_args
+ 
+     if (v8_verify_deterministic_mksnapshot) {
+       # Output redirection must be the first argument to run.py. We capture
+@@ -8612,13 +8640,18 @@
+ 
+     script = "tools/run.py"
+ 
++    if (defined(inputs)) {
++      inputs += emberbsd_host_tool_runtime_inputs
++    } else {
++      inputs = emberbsd_host_tool_runtime_inputs
++    }
+     deps = [ ":gen-regexp-special-case($v8_generator_toolchain)" ]
+ 
+     output_file = "$target_gen_dir/src/regexp/special-case.cc"
+ 
+     outputs = [ output_file ]
+ 
+-    args = [
++    args = emberbsd_host_tool_runtime_args + [
+       "./" + rebase_path(
+               get_label_info(
+                       ":gen-regexp-special-case($v8_generator_toolchain)",
+--- tools/run.py
++++ tools/run.py
+@@ -13,13 +13,29 @@
+ 
+ # The first two arguments can be used to specify a file to redirect the
+ # stdout to.
++
++# EmberBSD: optional scoped runtime launcher for host tools (see
++# build/gn_run_binary.py); may precede or follow --redirect-stdout.
++def _emberbsd_runtime_launcher(cmd):
++  import os
++  if cmd[:1] != ['--runtime-launcher']:
++    return [], cmd
++  if len(cmd) < 5 or cmd[2] != '--runtime-view':
++    sys.exit('runtime launcher and view must be selected together')
++  return [sys.executable, '-B', cmd[1], '--runtime-view',
++          os.path.abspath(cmd[3]), '--'], cmd[4:]
++
+ cmd = sys.argv[1:]
+ kwargs = {}
+ stdout_file = None
++launcher, cmd = _emberbsd_runtime_launcher(cmd)
+ if cmd and cmd[0] == '--redirect-stdout':
+   stdout_file = Path(cmd[1])
+   kwargs = dict(stdout=subprocess.PIPE)
+   cmd = cmd[2:]
++if not launcher:
++  launcher, cmd = _emberbsd_runtime_launcher(cmd)
++cmd = launcher + cmd
+ 
+ process = subprocess.Popen(cmd, **kwargs)
+ stdout, _ = process.communicate()
