@@ -96,6 +96,7 @@ class Exporter:
         self.pending = []
         self.test_requirements = []
         self.query_results = {}
+        self.file_digests = {}
 
     def run(self, command, **kwargs):
         completed = subprocess.run(command, text=True, capture_output=True,
@@ -163,6 +164,17 @@ class Exporter:
             raise ExportError('native pkg_admin rejected dependency ' +
                               pattern + ' for ' + name)
 
+    def file_digest(self, path):
+        path = Path(path)
+        info = path.lstat()
+        identity = (info.st_dev, info.st_ino, info.st_mode, info.st_size,
+                    info.st_mtime_ns, info.st_ctime_ns)
+        cached = self.file_digests.get(path)
+        if cached is None or cached[0] != identity:
+            cached = (identity, self.sha256_file(path))
+            self.file_digests[path] = cached
+        return cached[1]
+
     def inputs(self, package, metadata):
         directory = self.root / package
         paths = set()
@@ -203,7 +215,7 @@ class Exporter:
                             variable + '/' + path.relative_to(tree).as_posix())
         records = []
         for path in sorted(paths):
-            checksum = self.sha256_file(path)
+            checksum = self.file_digest(path)
             try:
                 name = path.relative_to(self.root).as_posix()
             except ValueError:
@@ -305,9 +317,10 @@ class Exporter:
             {'id': child, 'kind': kind} for child, kind in sorted(edges)]
 
     def prefetch(self, requests):
-        """Run one deterministic frontier of first queries for new nodes."""
+        """Run all unseen exact metadata requests for one deterministic frontier."""
         unique = []
         pending_contexts = {}
+        queued_keys = set()
         for request in requests:
             package, cross, settings, environment, pattern = request
             identity = self.node_identity(package, cross, settings)
@@ -315,19 +328,15 @@ class Exporter:
             if identity in self.contexts:
                 if self.contexts[identity] != context:
                     raise ExportError('conflicting recursive contexts for ' + identity)
-                continue
             else:
                 if identity in pending_contexts and pending_contexts[identity] != context:
                     raise ExportError('conflicting recursive contexts for ' + identity)
-                if identity in pending_contexts:
-                    # One canonical query establishes each new node. Pattern
-                    # variants are checked later by visit() on the main thread.
-                    continue
-                pending_contexts[identity] = context
+                pending_contexts.setdefault(identity, context)
                 if len(self.nodes) + len(pending_contexts) > self.args.max_nodes:
                     raise ExportError('dependency closure exceeds --max-nodes')
             key = self.query_key(package, cross, settings, environment, pattern)
-            if key not in self.query_results:
+            if key not in self.query_results and key not in queued_keys:
+                queued_keys.add(key)
                 unique.append(request)
         if not unique:
             return
@@ -382,23 +391,23 @@ class Exporter:
             node['input_sha256'] = digest(canonical({
                 'inputs': node['input_sha256'], 'query_context': self.contexts[identity],
                 'required_patterns': sorted(self.patterns[identity])}))
-        shared = {'makeconf': self.sha256_file(self.makeconf), 'bmake': self.sha256_file(self.bmake),
-                  'pkg_admin': self.sha256_file(self.pkg_admin),
+        shared = {'makeconf': self.file_digest(self.makeconf), 'bmake': self.file_digest(self.bmake),
+                  'pkg_admin': self.file_digest(self.pkg_admin),
                   'dependency-phase': digest(self.args.dependency_phase.encode()),
                   'make-variables': digest(canonical(self.make_variables)),
                   'environment': digest(canonical(self.environment)),
-                  'exporter': self.sha256_file(Path(__file__))}
+                  'exporter': self.file_digest(Path(__file__))}
         for item in self.args.shared_input:
             name, sep, path = item.partition('=')
             if not sep or not re.fullmatch(r'[a-zA-Z0-9_.-]+', name) or name in shared:
                 raise ExportError('invalid or duplicate --shared-input name')
-            shared[name] = self.sha256_file(path)
+            shared[name] = self.file_digest(path)
         make_variable_summary = ', '.join(
             key + '=' + value for key, value in self.make_variables.items()) or 'none'
         return {'schema': 'ports-graph-v1',
                 'context': {'target': self.args.target, 'triplet': self.args.triplet,
-                            'toolchain_sha256': self.sha256_file(self.args.toolchain_input),
-                            'base_sha256': self.sha256_file(self.args.base_input),
+                            'toolchain_sha256': self.file_digest(self.args.toolchain_input),
+                            'base_sha256': self.file_digest(self.args.base_input),
                             'shared_inputs': shared},
                 'provenance': {'source': 'pkgsrc native metadata (' + self.args.mode +
                                '; dependency phase ' + self.args.dependency_phase +

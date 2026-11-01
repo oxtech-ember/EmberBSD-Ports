@@ -4,11 +4,13 @@
 """Subprocess checks for the native pkgsrc metadata adapter."""
 import json
 import hashlib
+import importlib.util
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'export-build-graph.py'
@@ -56,12 +58,16 @@ directory = pathlib.Path(args[args.index('-C') + 1])
 root = directory.parents[1]
 settings = dict(arg.split('=', 1) for arg in args if '=' in arg and not arg.startswith('${'))
 tracked = settings.get('TEST_PARALLEL') == 'yes'
+package = directory.relative_to(root).as_posix()
 if tracked:
     events = root / 'events'
     events.mkdir(exist_ok=True)
-    (events / (str(__import__('os').getpid()) + '.start')).write_text(str(__import__('time').monotonic_ns()))
+    pid = str(__import__('os').getpid())
+    (events / (pid + '.query.json')).write_text(json.dumps({
+        'package': package, 'cross': settings['USE_CROSS_COMPILE'],
+        'pattern': settings.get('PKGNAME_REQD')}))
+    (events / (pid + '.start')).write_text(str(__import__('time').monotonic_ns()))
     __import__('time').sleep(0.05)
-package = directory.relative_to(root).as_posix()
 values = json.loads((root / 'metadata.json').read_text())[package]
 values = dict(values)
 options = values.pop('_options_by_required', {})
@@ -188,6 +194,33 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         self.run_export('--jobs', '3')
         calls = [json.loads(line) for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
         self.assertEqual(sum(call['package'] == 'devel/library' for call in calls), 1)
+
+    def test_parallel_frontier_prefetches_new_patterns_for_known_nodes(self):
+        self.packages['devel/app']['BUILD_DEPENDS'] = (
+            'library>=1:../../devel/library runtime>=1:../../devel/runtime')
+        self.packages['devel/runtime']['BUILD_DEPENDS'] = 'library>=2:../../devel/library'
+        self.packages['devel/library']['BUILD_DEPENDS'] = 'hostlib>=1:../../devel/hostlib'
+        self.packages['devel/library']['PKGVERSION'] = '2'
+        options = ('--make-variable', 'TEST_PARALLEL=yes')
+        serial = self.run_export('--jobs', '1', *options)
+        events = self.pkgsrc / 'events'
+        for event in events.iterdir():
+            event.unlink()
+        parallel = self.run_export('--jobs', '4', *options)
+        self.assertEqual(serial, parallel)
+
+        intervals = {}
+        for metadata in events.glob('*.query.json'):
+            query = json.loads(metadata.read_text())
+            if query['cross'] != 'yes':
+                continue
+            pid = metadata.name[:-len('.query.json')]
+            start = int((events / (pid + '.start')).read_text())
+            end = int((events / (pid + '.end')).read_text())
+            intervals[(query['package'], query['pattern'])] = (start, end)
+        variant = intervals[('devel/library', 'library>=2')]
+        new_node = intervals[('devel/hostlib', 'hostlib>=1')]
+        self.assertLess(max(variant[0], new_node[0]), min(variant[1], new_node[1]))
 
     def test_parallel_frontier_does_not_prefetch_past_node_limit(self):
         self.run_export('--jobs', '10', '--max-nodes', '1', success=False)
@@ -453,6 +486,37 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         self.packages['devel/app']['PKGSRC_MAKE_ENV'] = 'CFLAGS=-O2'
         after = self.nodes(self.run_export())
         self.assertNotEqual(before['target:devel/library']['input_sha256'], after['target:devel/library']['input_sha256'])
+
+    def test_file_digest_cache_reuses_unchanged_files_and_rehashes_stat_changes(self):
+        spec = importlib.util.spec_from_file_location('export_build_graph', SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        args = types.SimpleNamespace(make_variable=[], pkgsrc=self.pkgsrc,
+                                     makeconf=self.config, bmake=self.bmake,
+                                     pkg_admin=self.pkg_admin)
+        calls = []
+
+        def hash_file(path):
+            calls.append(path)
+            if path.is_symlink():
+                raise OSError('expected a regular file')
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+
+        exporter = module.Exporter(args, hash_file)
+        path = self.path / 'memoized-input'
+        path.write_text('first bytes\n')
+        first = exporter.file_digest(path)
+        self.assertEqual(exporter.file_digest(path), first)
+        self.assertEqual(len(calls), 1)
+        path.write_text('changed bytes with a new size\n')
+        self.assertNotEqual(exporter.file_digest(path), first)
+        self.assertEqual(len(calls), 2)
+        target = self.path / 'memoized-target'
+        path.rename(target)
+        path.symlink_to(target)
+        with self.assertRaisesRegex(OSError, 'regular file'):
+            exporter.file_digest(path)
+        self.assertEqual(len(calls), 3)
 
     def test_additional_constraint_changes_dependency_key(self):
         self.packages['devel/tests']['DEPENDS'] = 'library>=0:../../devel/library'
