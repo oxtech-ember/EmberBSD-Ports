@@ -27,6 +27,8 @@ BUILDLINK_FILES.qt6-qtdeclarative+=	qt6/qml/*/*/*/*/*/.qt/*/*
 .include "../../graphics/qt6-qtsvg/buildlink3.mk"
 .include "../../lang/qt6-qtlanguageserver/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../x11/qt6-qtbase/full-tools-required.mk"
+.include "host-tools.mk"
 .endif	# QT6_QTDECLARATIVE_BUILDLINK3_MK
 
 BUILDLINK_TREE+=	-qt6-qtdeclarative

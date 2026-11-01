@@ -55,3 +55,71 @@ if grep -rn 'EMBERBSD_QT_HOST' "$tree" --include='Makefile*' --include='*.mk' --
     fail 'a recipe still reads an EMBERBSD_QT_HOST setting'
 fi
 echo 'PASS: cross Qt consumers use the native qt6-qtbase TOOL_DEPENDS prefix'
+
+# Qt module generators are host executables, selected only in cross builds.
+for module in qtshadertools qtdeclarative; do
+	case "$module" in
+	qtshadertools)
+		path=graphics/qt6-qtshadertools
+		depends=qt6-qtshadertools
+		cmake_tool=Qt6ShaderToolsTools_DIR
+		cmake_dir=Qt6ShaderToolsTools
+		cmake_tool2=
+		;;
+	qtdeclarative)
+		path=lang/qt6-qtdeclarative
+		depends=qt6-qtdeclarative
+		cmake_tool=Qt6QmlTools_DIR
+		cmake_dir=Qt6QmlTools
+		cmake_tool2=Qt6QuickTools_DIR
+		cmake_dir2=Qt6QuickTools
+		;;
+	esac
+	revision=$(rev "$path")
+	printf '.include "%s/%s/host-tools.mk"\n' "$tree" "$path" > "$work/case.mk"
+	"$bmake" -f "$work/case.mk" USE_CROSS_COMPILE=yes TOOLBASE=/tool \
+	    -V '${TOOL_DEPENDS}' -V '${CMAKE_CONFIGURE_ARGS}' > "$work/values"
+	depends_out=$(sed -n '1p' "$work/values")
+	args=$(sed -n '2p' "$work/values")
+	case " $depends_out " in
+	*" $depends>=6.12.0nb$revision:../../$path "*) ;;
+	*) fail "cross $depends consumer has no native module TOOL_DEPENDS" ;;
+	esac
+	case "$args" in
+	*"-D$cmake_tool:PATH=/tool/qt6/lib/cmake/$cmake_dir"*) ;;
+	*) fail "cross $depends consumer does not select native CMake tools" ;;
+	esac
+	if [ -n "$cmake_tool2" ]; then
+		case "$args" in
+		*"-D$cmake_tool2:PATH=/tool/qt6/lib/cmake/$cmake_dir2"*) ;;
+		*) fail "cross $depends consumer omits $cmake_tool2" ;;
+		esac
+	fi
+	"$bmake" -f "$work/case.mk" USE_CROSS_COMPILE=no TOOLBASE=/tool \
+	    -V '${TOOL_DEPENDS}' > "$work/native-depends"
+	case "$(cat "$work/native-depends")" in
+	*"$depends>=6.12.0nb$revision:"*) fail "native $depends consumer has a self TOOL_DEPENDS" ;;
+	esac
+done
+
+# A native QtGui consumer cannot use qtbase's reduced host-tools package.
+printf '.include "%s"\n.include "%s"\n' \
+	"$tree/x11/qt6-qtbase/full-tools-required.mk" \
+	"$tree/x11/qt6-qtbase/full-tools-required.mk" > "$work/case.mk"
+failure=$("$bmake" -f "$work/case.mk" USE_CROSS_COMPILE=no \
+	PKG_BUILD_OPTIONS.qt6-qtbase=host-tools -V '${PKG_FAIL_REASON}')
+case "$failure" in
+*'requires full qt6-qtbase with QtGui'*) ;;
+*) fail 'native QtGui consumer accepts qtbase host-tools' ;;
+esac
+case "$failure" in
+*'requires full qt6-qtbase with QtGui'*'requires full qt6-qtbase with QtGui'*)
+	fail 'native full-QtBase guard reports more than once' ;;
+esac
+failure=$("$bmake" -f "$work/case.mk" USE_CROSS_COMPILE=yes \
+	PKG_BUILD_OPTIONS.qt6-qtbase=host-tools -V '${PKG_FAIL_REASON}')
+[ -z "$failure" ] || fail 'cross target QtBase option trips the native provider guard'
+failure=$("$bmake" -f "$work/case.mk" USE_CROSS_COMPILE=no \
+	PKG_BUILD_OPTIONS.qt6-qtbase=dbus -V '${PKG_FAIL_REASON}')
+[ -z "$failure" ] || fail 'native full QtBase provider is rejected'
+echo 'PASS: Qt module host tools are cross-only; native QtGui consumers require full QtBase'

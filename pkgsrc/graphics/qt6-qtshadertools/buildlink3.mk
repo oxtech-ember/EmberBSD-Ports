@@ -12,6 +12,8 @@ BUILDLINK_PKGSRCDIR.qt6-qtshadertools?=		../../graphics/qt6-qtshadertools
 BUILDLINK_FILES.qt6-qtshadertools+=	bin/qsb
 
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../x11/qt6-qtbase/full-tools-required.mk"
+.include "host-tools.mk"
 .endif	# QT6_QTSHADERTOOLS_BUILDLINK3_MK
 
 BUILDLINK_TREE+=	-qt6-qtshadertools

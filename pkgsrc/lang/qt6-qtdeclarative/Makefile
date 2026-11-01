@@ -10,6 +10,8 @@ LICENSE=	gnu-lgpl-v3 OR gnu-gpl-v2 OR gnu-gpl-v3
 
 .include "../../x11/qt6-qtbase/Makefile.common"
 
+.include "host-tools.mk"
+
 .if ${OPSYS} == "Darwin"
 TOOL_DEPENDS+=	ldid>=2.1.5.7:../../devel/ldid
 CMAKE_CONFIGURE_ARGS+=	-DEMBERBSD_LDID:FILEPATH=${PREFIX}/bin/ldid
@@ -70,4 +72,5 @@ post-install:
 BUILDLINK_DEPMETHOD.yoga=	build
 .include "../../devel/yoga/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../x11/qt6-qtbase/full-tools-required.mk"
 .include "../../mk/bsd.pkg.mk"

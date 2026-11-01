@@ -12,6 +12,8 @@ LICENSE=	gnu-gpl-v3
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6ShaderTools.pc
 
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../x11/qt6-qtbase/full-tools-required.mk"
+.include "host-tools.mk"
 .include "../../graphics/glslang/buildlink3.mk"
 .include "../../graphics/spirv-cross/buildlink3.mk"
 # Shader remapping links SPIRV-Tools statically and needs the fixed validator.
