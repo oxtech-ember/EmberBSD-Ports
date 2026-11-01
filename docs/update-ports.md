@@ -151,6 +151,26 @@ The separate `scripts/cross-bulk.sh` helper has a different resume contract.
 Its `done` records compare package names and output hashes, without binding build
 inputs. Those records cannot qualify reuse under an update plan. Use the SDK
 receipts for this workflow; do not import bulk `done` entries as success evidence.
+For a fresh control build, use cross-bulk directly; the graph exporter and SDK
+plan/receipt workflow are optional incremental-update tooling.
+
+When running cross-bulk with a prefix-only `PATH`, prepare the common native
+command aliases first and invoke the helper with the selected prefix shell. The
+aliases provide command names such as `awk` and `sh` without using host tools
+outside the selected prefix:
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B -E -S \
+  "$PORTS/profiles/common-build-tools/cross/prepare-native-tools.py" \
+  --sdk-source "$SDK_SOURCE" aliases --host-prefix "$HOST_PREFIX" \
+  --output "$NATIVE_ALIASES"
+PATH="$NATIVE_ALIASES:$HOST_PREFIX/bin:$HOST_PREFIX/gnu/bin" \
+  BMAKE="$HOST_PREFIX/bin/bmake" MAKECONF="$MAKECONF" PKGSRCDIR="$PKGSRCDIR" \
+  "$NATIVE_ALIASES/sh" "$PORTS/scripts/cross-bulk.sh" order "$PKGPATH_LIST" "$STATE"
+```
+
+Use the same environment and state for the subsequent `tools`, `fetch`, and
+`build` phases.
 
 ```sh
 python3 /absolute/EmberBSD-SDK/scripts/ports-plan.py record plan.json target:www/curl \
