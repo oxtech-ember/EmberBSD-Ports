@@ -1,0 +1,16 @@
+Use the reference-taking absl::MutexLock in ink PartitionedMesh.
+Origin: EmberBSD contributors (AI-assisted). The shared Abseil deprecates the
+MutexLock pointer constructor and ink builds with -Werror; the .cc file already
+passes cache_mutex_ by reference, so match it in the header.
+
+--- a/third_party/ink/src/ink/geometry/partitioned_mesh.h
++++ b/third_party/ink/src/ink/geometry/partitioned_mesh.h
+@@ -520,7 +520,7 @@
+ }
+ 
+ inline bool PartitionedMesh::Data::IsSpatialIndexInitialized() const {
+-  absl::MutexLock lock(&cache_mutex_);
++  absl::MutexLock lock(cache_mutex_);
+   return rtree_ != nullptr;
+ }
+ 

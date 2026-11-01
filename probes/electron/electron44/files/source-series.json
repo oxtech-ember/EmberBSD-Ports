@@ -819,6 +819,11 @@
       "strip": 1
     },
     {
+      "path": "ink-absl-mutex-reference-lock.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "skia-expat-64bit-position-getters.patch",
       "root": "",
       "strip": 1
