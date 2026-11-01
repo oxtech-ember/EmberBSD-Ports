@@ -149,4 +149,8 @@ No GPU registers, vendor libraries or firmware were used.
 The results establish the synthetic TLS and symbol-binding boundaries.
 The vendor ABI adapter, native KMD and hardware EGL/GLES remain untested.
 
+The [first errno adapter component](ERRNO-ABI.md) has separate host and
+cross-build results. It has not been executed on the target or linked to the
+vendor userspace. The seven loader cases above are a different validation scope.
+
 The original probe sources use the [BSD 2-Clause license](LICENSE).

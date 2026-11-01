@@ -46,6 +46,11 @@ The table defines responsibilities; it does not supply guessed layouts.
 | Unwind and cancellation | Define the compatible runtime and cleanup path before allowing exceptions or cancellation across the boundary. |
 | `setjmp`/`longjmp` | Keep jump buffers inside one ABI domain unless an explicit translation is implemented. |
 
+The first experimental leaf is the [errno adapter](ERRNO-ABI.md).
+It provides separate foreign TLS storage and explicit error-number translation.
+Host checks and AArch64 cross-linking pass. Target and vendor execution of this
+component remain pending; the loader does not yet route vendor imports to it.
+
 ## Native kernel interface
 
 Port the selected Services KMD through its OS abstraction layer.
