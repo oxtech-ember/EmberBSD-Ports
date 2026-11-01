@@ -104,7 +104,7 @@ def freestanding_cli(commands):
             parser.add_argument('--jobs', type=int, default=1)
 
 
-def compatible_build_for_target(previous, current, machine_arch):
+def compatible_build_for_target(previous, current, machine_arch, atomic_defaults=False):
     """Compare build code after removing provably false architecture guards."""
     if not isinstance(machine_arch, str) or not machine_arch:
         return False
@@ -147,6 +147,7 @@ require_bootstrap_inputs(owner, bootstrap, recipe, prepared, args)""").body
             if not isinstance(node, ast.If) or node.orelse or len(node.body) != 1:
                 return False
             operation = node.body[0]
+            atomic_default_update = False
             if (isinstance(operation, ast.AugAssign) and isinstance(operation.op, ast.Add) and
                     isinstance(operation.target, ast.Name) and operation.target.id == 'driver_flags' and
                     isinstance(operation.value, ast.List) and all(isinstance(v, ast.Constant) and
@@ -164,15 +165,24 @@ require_bootstrap_inputs(owner, bootstrap, recipe, prepared, args)""").body
                 if not any(isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and
                            t.id == 'settings' for t in n.targets) for n in prior):
                     return False
+                values = {item.arg: item.value.value for item in operation.value.keywords}
+                atomic_default_update = (atomic_defaults and values == {
+                    'COMPILER_RT_EXCLUDE_ATOMIC_BUILTIN': 'ON',
+                    'COMPILER_RT_BUILD_STANDALONE_LIBATOMIC': 'OFF'})
             else:
                 return False
             test = node.test
-            return (isinstance(test, ast.Compare) and len(test.ops) == 1 and
+            arch_guard = (isinstance(test, ast.Compare) and len(test.ops) == 1 and
                     isinstance(test.ops[0], ast.Eq) and len(test.comparators) == 1 and
                     isinstance(test.left, ast.Subscript) and isinstance(test.left.value, ast.Name) and
                     test.left.value.id == 'definition' and isinstance(test.left.slice, ast.Constant) and
                     test.left.slice.value == 'arch' and isinstance(test.comparators[0], ast.Constant) and
-                    isinstance(test.comparators[0].value, str) and test.comparators[0].value != machine_arch)
+                    isinstance(test.comparators[0].value, str))
+            if not arch_guard:
+                return False
+            selected_arch = test.comparators[0].value
+            return selected_arch != machine_arch or (
+                atomic_default_update and machine_arch == 'riscv32' and selected_arch == machine_arch)
         body = functions[0].body
         for node in list(ast.walk(functions[0])):
             if not isinstance(node, ast.If):
@@ -201,6 +211,36 @@ require_bootstrap_inputs(owner, bootstrap, recipe, prepared, args)""").body
         return left is not None and left == right
     except (SyntaxError, ValueError, UnicodeDecodeError):
         return False
+
+
+def atomic_builtin_cmake_defaults(source):
+    """Read the upstream defaults that make atomic.c absent from builtins."""
+    path = Path(source) / 'compiler-rt/lib/builtins/CMakeLists.txt'
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return None
+    result = {}
+    for name in ('COMPILER_RT_EXCLUDE_ATOMIC_BUILTIN',
+                 'COMPILER_RT_BUILD_STANDALONE_LIBATOMIC'):
+        pattern = rb'option\(\s*' + name.encode() + rb'\s+"[^"\n]*"\s+(ON|OFF|On|Off)\s*\)'
+        matches = re.findall(pattern, data)
+        if len(matches) != 1:
+            return None
+        result[name] = matches[0].decode().upper()
+    return result
+
+
+def atomic_builtin_excluded(stage, original_source, current_source):
+    """Prove an RV32 builtins stage omitted atomic.c and standalone libatomic."""
+    if (stage.get('machine_arch') != 'riscv32' or 'builtins' not in stage.get('components', ()) or
+            not set(stage.get('components', ())) <= {'builtins', 'libunwind-static'}):
+        return False
+    original = atomic_builtin_cmake_defaults(original_source)
+    current = atomic_builtin_cmake_defaults(current_source)
+    expected = {'COMPILER_RT_EXCLUDE_ATOMIC_BUILTIN': 'ON',
+                'COMPILER_RT_BUILD_STANDALONE_LIBATOMIC': 'OFF'}
+    return original == expected and current == expected
 
 
 def patch_paths(data):
@@ -293,10 +333,11 @@ def compatible_source(owner, stage, expected, source, original_source, git):
                                   set(stage['components']) <= bootstrap_components,
                                   'libc++ source patch affects selected runtime inputs')
                 elif atomic_builtin_only_patch(data):
-                    # CMake defaults COMPILER_RT_EXCLUDE_ATOMIC_BUILTIN to ON,
-                    # so this source is absent from the AArch64 builtins archive.
-                    # Exact recipe/build inputs are still compared below.
-                    owner.require(stage.get('machine_arch') == 'aarch64',
+                    # AArch64 has always excluded this source. RV32 may reuse
+                    # a recorded bootstrap only when both source versions
+                    # exclude atomic.c and do not build standalone libatomic.
+                    owner.require(stage.get('machine_arch') == 'aarch64' or
+                                  atomic_builtin_excluded(stage, original_path, source),
                                   'atomic builtin source patch affects selected runtime inputs')
                 else:
                     owner.require(False, 'runtime source patch affects selected runtime inputs')
@@ -331,8 +372,10 @@ def compatible_source(owner, stage, expected, source, original_source, git):
                       'runtime build or patch inputs changed')
         from emberbsd_sdk import targets
         selected_arch = targets.target_definition(stage.get('target'))['arch']
+        atomic_defaults = atomic_builtin_excluded(stage, original_path, source)
         owner.require(stage.get('machine_arch') == selected_arch and
-                      compatible_build_for_target(previous_build, current_build, selected_arch),
+                      compatible_build_for_target(previous_build, current_build, selected_arch,
+                                                  atomic_defaults=atomic_defaults),
                       'runtime build or patch inputs changed')
         old.pop(build_name)
         new.pop(build_name)

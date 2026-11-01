@@ -105,6 +105,14 @@ new_settings = old_settings.replace(b"        settings.update(COMPILER_RT_DEFAUL
     rv_settings + b"        settings.update(COMPILER_RT_DEFAULT_TARGET_ONLY='ON')\n")
 assert runtime.compatible_build_for_target(old_settings, new_settings, 'aarch64')
 assert not runtime.compatible_build_for_target(old_settings, new_settings, 'riscv32')
+assert runtime.compatible_build_for_target(old_settings, new_settings, 'riscv32',
+                                          atomic_defaults=True)
+assert not runtime.compatible_build_for_target(old_settings, new_settings.replace(
+    b"COMPILER_RT_EXCLUDE_ATOMIC_BUILTIN='ON'", b"COMPILER_RT_EXCLUDE_ATOMIC_BUILTIN='OFF'"),
+    'riscv32', atomic_defaults=True)
+assert not runtime.compatible_build_for_target(old_settings, new_settings.replace(
+    b"COMPILER_RT_BUILD_STANDALONE_LIBATOMIC='OFF'", b"COMPILER_RT_BUILD_STANDALONE_LIBATOMIC='ON'"),
+    'riscv32', atomic_defaults=True)
 assert not runtime.compatible_build_for_target(old_settings,
     new_settings.replace(b"'riscv32'", b"'aarch64'"), 'aarch64')
 old_shadow = (b"def cmake_arguments(definition):\n    settings = {}\n"
@@ -231,7 +239,27 @@ with tempfile.TemporaryDirectory() as tmp:
     riscv = copy.deepcopy(previous)
     riscv['target'] = 'riscv32'
     riscv['machine_arch'] = 'riscv32'
+    cmake_file = root / 'compiler-rt/lib/builtins/CMakeLists.txt'
+    cmake_file.parent.mkdir(parents=True, exist_ok=True)
+    cmake_defaults = (b'option(COMPILER_RT_EXCLUDE_ATOMIC_BUILTIN\n'
+                      b'  "Skip the atomic builtin"\n'
+                      b'  On)\n'
+                      b'option(COMPILER_RT_BUILD_STANDALONE_LIBATOMIC\n'
+                      b'  "Build standalone shared atomic library."\n'
+                      b'  OFF)\n')
+    cmake_file.write_bytes(cmake_defaults)
+    assert runtime.atomic_builtin_excluded(riscv, root, root)
+    phase_check(riscv, future)
+    riscv_full = copy.deepcopy(riscv)
+    riscv_full['components'].append('libcxx')
+    phase_check(riscv_full, future, True)
+    cmake_file.write_bytes(cmake_defaults.replace(b'  On)', b'  Off)'))
+    assert not runtime.atomic_builtin_excluded(riscv, root, root)
     phase_check(riscv, future, True)
+    cmake_file.write_bytes(cmake_defaults.replace(b'  OFF)', b'  ON)'))
+    assert not runtime.atomic_builtin_excluded(riscv, root, root)
+    phase_check(riscv, future, True)
+    cmake_file.write_bytes(cmake_defaults)
     other_file_patch = atomic_patch + b'--- a/compiler-rt/lib/builtins/absvdi2.c\n+++ b/compiler-rt/lib/builtins/absvdi2.c\n@@ -1 +1,2 @@\n unchanged\n+changed\n'
     atomic_file.write_bytes(other_file_patch)
     mixed = copy.deepcopy(future)
