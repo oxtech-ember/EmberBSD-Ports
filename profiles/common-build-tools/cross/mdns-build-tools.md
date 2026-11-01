@@ -43,10 +43,17 @@ The recursive `Clients/Makefile` uses a separate `SYSTEM` variable. The recipe
 passes `SYSTEM=${OPSYS}` as a make command argument. This prevents a Darwin
 cross host from selecting the implicit system-library branch for a NetBSD
 client. `mdns-client-platform.py` checks the actual recursive make graph and
-the expanded pkgsrc flags. Four cases retain native `SYSTEM=Darwin`, reproduce
-the missing client library, select `SYSTEM=NetBSD` with `-ldns_sd`, and show
-that an environment value alone is insufficient. This graph check does not
-establish a compiled package.
+expanded pkgsrc flags. It retains native `SYSTEM=Darwin`, reproduces the
+missing client library, selects `SYSTEM=NetBSD` with `-ldns_sd`, verifies the
+Darwin dylib link ID, and shows that an environment value alone is insufficient.
+These graph checks do not establish a compiled package.
+
+On Darwin, the package passes the final `libdns_sd.dylib` install ID through
+the upstream shared-library link options. The existing `-lSystem` setting
+remains on executable links; only shared-library links receive the install ID.
+Setting the final ID at link time avoids a post-link Mach-O load-command
+rewrite. The platform test checks both upstream GNU Make link commands; this
+is a command-graph check, not a compiled package.
 
 The 2881.120.11nb1 package also passes the ordinary GCC16 cross build and all
 pkgsrc package checks on a Darwin host. The 34 recorded target compile and

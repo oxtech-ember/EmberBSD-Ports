@@ -2,7 +2,7 @@
 # Origin: EmberBSD (AI-assisted), current Apple source and target tool roles.
 
 .include "../../net/mDNSResponder/Makefile.common"
-PKGREVISION=	4
+PKGREVISION=	5
 
 CATEGORIES=	net
 
@@ -38,6 +38,7 @@ MAKE_FLAGS.OpenBSD+=	os=openbsd
 MAKE_FLAGS.SunOS+=	os=solaris
 MAKE_FLAGS.Linux+=	os=linux tls=no
 MAKE_FLAGS.Darwin+=	os=x
+MAKE_FLAGS.Darwin+=	SOOPTS=${_MDNS_DARWIN_SOOPTS:Q}
 MAKE_FLAGS.*+=		os=netbsd
 # Clients/Makefile has a separate host-uname check for libdns_sd linkage.
 # Command arguments also reach the recursive client make invocation.
@@ -47,6 +48,10 @@ OPSYSVARS+=		SO_SUFFIX
 SO_SUFFIX.Darwin=	dylib
 SO_SUFFIX.*=		so
 PLIST_SUBST+=		SO_SUFFIX=${SO_SUFFIX:Q}
+
+# Set the dylib install ID while linking so no post-link load-command rewrite
+# is needed. Keep the upstream LINKOPTS=-lSystem for executable links.
+_MDNS_DARWIN_SOOPTS=	-dynamiclib -Wl,-install_name,${PREFIX}/lib/libdns_sd.dylib
 
 BINARY=			mDNSClientPosix mDNSNetMonitor \
 			mDNSProxyResponderPosix mDNSResponderPosix
@@ -132,11 +137,6 @@ do-install:
 	${INSTALL_MAN} ${WRKSRC}/mDNSShared/mDNSResponder.8 ${DESTDIR}${PREFIX}/${PKGMANDIR}/man8/mdnsd.8
 	${INSTALL_DATA} ${WRKSRC}/mDNSShared/dns_sd.h ${DESTDIR}${PREFIX}/include
 	${INSTALL_LIB} ${BUILDDIR}/libdns_sd.${SO_SUFFIX} ${DESTDIR}${PREFIX}/lib
-.if ${OPSYS} == "Darwin"
-	cd ${DESTDIR}${PREFIX}/lib && install_name_tool					\
-		-change build/prod/libdns_sd.dylib ${PREFIX}/lib/libdns_sd.dylib	\
-		-id ${PREFIX}/lib/libdns_sd.dylib libdns_sd.dylib
-.endif
 
 .include "../../mk/pthread.buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
