@@ -1,0 +1,182 @@
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdarg.h>
+
+typedef struct ctx *krb5_context;
+typedef struct ac *krb5_auth_context;
+typedef struct principal *krb5_principal;
+typedef struct {
+	krb5_principal client;
+} krb5_ticket;
+typedef struct {
+	size_t length;
+	void *data;
+} krb5_data;
+typedef int krb5_error_code;
+struct passwd {
+	char *pw_name;
+};
+typedef struct {
+	krb5_context krb5_ctx;
+	krb5_principal krb5_user;
+	struct passwd *pw;
+} Authctxt;
+struct ssh {
+	void *authctxt;
+};
+struct ctx {
+	int unused;
+};
+struct ac {
+	int unused;
+};
+struct principal {
+	int value;
+};
+static int fail_unparse, allocated, released;
+#define KRB5_NT_SRV_HST 1
+static void *alloc(void)
+{
+	void *p = calloc(1, 32);
+	if (!p)
+		abort();
+	allocated++;
+	return p;
+}
+static void release(void *p)
+{
+	if (p) {
+		released++;
+		free(p);
+	}
+}
+static int krb5_init(Authctxt *a)
+{
+	if (!a->krb5_ctx)
+		a->krb5_ctx = alloc();
+	return 0;
+}
+static int krb5_auth_con_init(krb5_context c, krb5_auth_context *a)
+{
+	(void)c;
+	*a = alloc();
+	return 0;
+}
+static int ssh_packet_get_connection_in(struct ssh *s)
+{
+	(void)s;
+	return 3;
+}
+static int krb5_auth_con_setaddrs_from_fd(krb5_context c, krb5_auth_context a,
+					  int *f)
+{
+	(void)c;
+	(void)a;
+	(void)f;
+	return 0;
+}
+static int krb5_sname_to_principal(krb5_context c, const char *x, const char *y,
+				   int k, krb5_principal *p)
+{
+	(void)c;
+	(void)x;
+	(void)y;
+	(void)k;
+	*p = alloc();
+	return 0;
+}
+static int krb5_rd_req(krb5_context c, krb5_auth_context *a, krb5_data *d,
+		       krb5_principal p, void *x, void *y, krb5_ticket **t)
+{
+	(void)c;
+	(void)a;
+	(void)p;
+	(void)x;
+	(void)y;
+	if (d->length != 3)
+		abort();
+	*t = alloc();
+	(*t)->client = alloc();
+	return 0;
+}
+static int krb5_copy_principal(krb5_context c, krb5_principal p,
+			       krb5_principal *n)
+{
+	(void)c;
+	(void)p;
+	*n = alloc();
+	return 0;
+}
+static int krb5_mk_rep(krb5_context c, krb5_auth_context a, krb5_data *d)
+{
+	(void)c;
+	(void)a;
+	d->data = malloc(3);
+	if (!d->data)
+		abort();
+	d->length = 3;
+	return 0;
+}
+static int krb5_kuserok(krb5_context c, krb5_principal p, const char *n)
+{
+	(void)c;
+	(void)p;
+	(void)n;
+	return 1;
+}
+static int krb5_unparse_name(krb5_context c, krb5_principal p, char **n)
+{
+	(void)c;
+	(void)p;
+	if (fail_unparse)
+		return 12;
+	*n = strdup("user@EXAMPLE");
+	return *n ? 0 : 12;
+}
+static void krb5_free_ticket(krb5_context c, krb5_ticket *t)
+{
+	(void)c;
+	release(t->client);
+	release(t);
+}
+static void krb5_free_principal(krb5_context c, krb5_principal p)
+{
+	(void)c;
+	release(p);
+}
+static void krb5_auth_con_free(krb5_context c, krb5_auth_context a)
+{
+	(void)c;
+	release(a);
+}
+static void debug(const char *f, ...) { (void)f; }
+@@AUTH_KRB5@@
+int main(void)
+{
+	struct passwd pw = {"user"};
+	Authctxt auth = {0};
+	struct ssh ssh = {&auth};
+	krb5_data ticket = {3, (void *)"abc"}, reply = {0};
+	krb5_principal previous = alloc();
+	char *name = NULL;
+
+	auth.pw = &pw;
+	auth.krb5_user = previous;
+	fail_unparse = 1;
+	if (auth_krb5(&ssh, &ticket, &name, &reply) != 0 ||
+	    auth.krb5_user != previous || name != NULL || reply.data != NULL)
+		abort();
+	fail_unparse = 0;
+	if (auth_krb5(&ssh, &ticket, &name, &reply) != 1 ||
+	    auth.krb5_user == previous || name == NULL || reply.length != 3)
+		abort();
+	free(name);
+	free(reply.data);
+	release(auth.krb5_user);
+	release(auth.krb5_ctx);
+	if (allocated != released)
+		abort();
+	puts("Kerberos local ownership success/failure: PASS");
+	return 0;
+}

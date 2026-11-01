@@ -1,0 +1,679 @@
+$NetBSD$
+
+Restore native Kerberos-2 integration from the NetBSD-derived base.
+Preserve donor auth2-krb5.c copyright and license.
+
+--- Makefile.in
++++ Makefile.in
+@@ -126,7 +126,7 @@
+ SSHD_SESSION_OBJS=sshd-session.o auth-rhosts.o auth-passwd.o \
+ 	audit.o audit-bsm.o audit-linux.o platform.o \
+ 	sshpty.o sshlogin.o servconf.o serverloop.o \
+-	auth.o auth2.o auth2-methods.o auth-options.o session.o \
++	auth.o auth2.o auth2-methods.o auth2-krb5.o auth-options.o session.o \
+ 	auth2-chall.o groupaccess.o \
+ 	auth-bsdauth.o auth2-hostbased.o auth2-kbdint.o \
+ 	auth2-none.o auth2-passwd.o auth2-pubkey.o auth2-pubkeyfile.o \
+@@ -137,7 +137,7 @@
+ 	uidswap.o platform-listen.o $(P11OBJS) $(SKOBJS)
+ 
+ SSHD_AUTH_OBJS=sshd-auth.o \
+-	auth2-methods.o \
++	auth2-methods.o auth2-krb5.o \
+ 	auth-rhosts.o auth-passwd.o sshpty.o sshlogin.o servconf.o \
+ 	serverloop.o auth.o auth2.o auth-options.o session.o auth2-chall.o \
+ 	groupaccess.o auth-bsdauth.o auth2-hostbased.o auth2-kbdint.o \
+--- auth-krb5.c
++++ auth-krb5.c
+@@ -44,6 +44,7 @@
+ #include "servconf.h"
+ #include "uidswap.h"
+ #include "hostfile.h"
++#include "packet.h"
+ #include "auth.h"
+ 
+ #ifdef KRB5
+@@ -67,6 +68,79 @@
+ 	}
+ 	return (0);
+ }
++
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++/* Based on NetBSD auth-krb5.c; keep intermediate ownership local. */
++int
++auth_krb5(struct ssh *ssh, krb5_data *auth, char **client, krb5_data *reply)
++{
++	Authctxt *authctxt = ssh->authctxt;
++	krb5_auth_context auth_ctx = NULL;
++	krb5_principal server = NULL, user = NULL;
++	krb5_ticket *ticket = NULL;
++	krb5_data local_reply = {0};
++	krb5_error_code problem;
++	char *local_client = NULL;
++	int fd, success = 0;
++
++	*client = NULL;
++	memset(reply, 0, sizeof(*reply));
++	problem = krb5_init(authctxt);
++	if (problem != 0)
++		goto out;
++	problem = krb5_auth_con_init(authctxt->krb5_ctx, &auth_ctx);
++	if (problem != 0)
++		goto out;
++	fd = ssh_packet_get_connection_in(ssh);
++	problem = krb5_auth_con_setaddrs_from_fd(authctxt->krb5_ctx,
++	    auth_ctx, &fd);
++	if (problem != 0)
++		goto out;
++	problem = krb5_sname_to_principal(authctxt->krb5_ctx, NULL, NULL,
++	    KRB5_NT_SRV_HST, &server);
++	if (problem != 0)
++		goto out;
++	problem = krb5_rd_req(authctxt->krb5_ctx, &auth_ctx, auth, server,
++	    NULL, NULL, &ticket);
++	if (problem != 0)
++		goto out;
++	problem = krb5_copy_principal(authctxt->krb5_ctx, ticket->client,
++	    &user);
++	if (problem != 0)
++		goto out;
++	problem = krb5_mk_rep(authctxt->krb5_ctx, auth_ctx, &local_reply);
++	if (problem != 0)
++		goto out;
++	if (!krb5_kuserok(authctxt->krb5_ctx, user, authctxt->pw->pw_name))
++		goto out;
++	problem = krb5_unparse_name(authctxt->krb5_ctx, user, &local_client);
++	if (problem != 0)
++		goto out;
++	if (authctxt->krb5_user != NULL)
++		krb5_free_principal(authctxt->krb5_ctx, authctxt->krb5_user);
++	authctxt->krb5_user = user;
++	user = NULL;
++	*client = local_client;
++	local_client = NULL;
++	*reply = local_reply;
++	memset(&local_reply, 0, sizeof(local_reply));
++	success = 1;
++out:
++	if (problem != 0)
++		debug("Kerberos v5 authentication failed: %d", problem);
++	free(local_client);
++	free(local_reply.data);
++	if (ticket != NULL)
++		krb5_free_ticket(authctxt->krb5_ctx, ticket);
++	if (user != NULL)
++		krb5_free_principal(authctxt->krb5_ctx, user);
++	if (server != NULL)
++		krb5_free_principal(authctxt->krb5_ctx, server);
++	if (auth_ctx != NULL)
++		krb5_auth_con_free(authctxt->krb5_ctx, auth_ctx);
++	return success;
++}
++#endif
+ 
+ int
+ auth_krb5_password(Authctxt *authctxt, const char *password)
+@@ -179,7 +253,7 @@
+ 		goto out;
+ #endif
+ 
+-	authctxt->krb5_ticket_file = (char *)krb5_cc_get_name(authctxt->krb5_ctx, authctxt->krb5_fwd_ccache);
++	authctxt->krb5_ticket_file = krb5_cc_get_name(authctxt->krb5_ctx, authctxt->krb5_fwd_ccache);
+ 
+ 	len = strlen(authctxt->krb5_ticket_file) + 6;
+ 	authctxt->krb5_ccname = xmalloc(len);
+--- auth.h
++++ auth.h
+@@ -82,7 +82,7 @@
+ 	krb5_context	 krb5_ctx;
+ 	krb5_ccache	 krb5_fwd_ccache;
+ 	krb5_principal	 krb5_user;
+-	char		*krb5_ticket_file;
++	const char	*krb5_ticket_file;
+ 	char		*krb5_ccname;
+ #endif
+ 	struct sshbuf	*loginmsg;
+@@ -157,6 +157,9 @@
+ void	 auth2_update_session_info(Authctxt *, const char *, const char *);
+ 
+ #ifdef KRB5
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++int	auth_krb5(struct ssh *, krb5_data *, char **, krb5_data *);
++#endif
+ int	auth_krb5_password(Authctxt *authctxt, const char *password);
+ void	krb5_cleanup_proc(Authctxt *authctxt);
+ #endif /* KRB5 */
+--- auth-pam.c
++++ auth-pam.c
+@@ -1151,7 +1151,7 @@
+  * during the ssh authentication process.
+  */
+ int
+-do_pam_putenv(char *name, char *value)
++do_pam_putenv(const char *name, const char *value)
+ {
+ 	int ret = 1;
+ 	char *compound;
+--- auth-pam.h
++++ auth-pam.h
+@@ -32,7 +32,7 @@
+ u_int do_pam_account(void);
+ void do_pam_session(struct ssh *);
+ void do_pam_setcred(void);
+-int do_pam_putenv(char *, char *);
++int do_pam_putenv(const char *, const char *);
+ char ** fetch_pam_environment(void);
+ char ** fetch_pam_child_environment(void);
+ void free_pam_environment(char **);
+--- auth2-methods.c
++++ auth2-methods.c
+@@ -72,6 +72,14 @@
+ 	&options.hostbased_authentication
+ };
+ 
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++struct authmethod_cfg methodcfg_krb5 = {
++	"kerberos-2@ssh.com",
++	NULL,
++	&options.kerberos_authentication
++};
++#endif
++
+ static struct authmethod_cfg *authmethod_cfgs[] = {
+ 	&methodcfg_none,
+ 	&methodcfg_pubkey,
+@@ -81,6 +89,9 @@
+ 	&methodcfg_passwd,
+ 	&methodcfg_kbdint,
+ 	&methodcfg_hostbased,
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++	&methodcfg_krb5,
++#endif
+ 	NULL
+ };
+ 
+--- auth2.c
++++ auth2.c
+@@ -70,6 +70,9 @@
+ extern Authmethod method_passwd;
+ extern Authmethod method_kbdint;
+ extern Authmethod method_hostbased;
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++extern Authmethod method_kerberos;
++#endif
+ #ifdef GSSAPI
+ extern Authmethod method_gssapi;
+ #endif
+@@ -83,6 +86,9 @@
+ 	&method_passwd,
+ 	&method_kbdint,
+ 	&method_hostbased,
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++	&method_kerberos,
++#endif
+ 	NULL
+ };
+ 
+@@ -416,7 +422,7 @@
+ 
+ #ifdef USE_PAM
+ 	if (options.use_pam && authenticated) {
+-		int r, success = mm_do_pam_account();
++		int success = mm_do_pam_account();
+ 
+ 		/* If PAM returned a message, send it to the user. */
+ 		if (sshbuf_len(loginmsg) > 0) {
+--- monitor.c
++++ monitor.c
+@@ -113,6 +113,9 @@
+ int mm_answer_auth2_read_banner(struct ssh *, int, struct sshbuf *);
+ int mm_answer_authserv(struct ssh *, int, struct sshbuf *);
+ int mm_answer_authpassword(struct ssh *, int, struct sshbuf *);
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++int mm_answer_krb5(struct ssh *, int, struct sshbuf *);
++#endif
+ int mm_answer_bsdauthquery(struct ssh *, int, struct sshbuf *);
+ int mm_answer_bsdauthrespond(struct ssh *, int, struct sshbuf *);
+ int mm_answer_keyallowed(struct ssh *, int, struct sshbuf *);
+@@ -152,8 +155,8 @@
+ static struct sshauthopt *key_opts = NULL;
+ static char *hostbased_cuser = NULL;
+ static char *hostbased_chost = NULL;
+-static char *auth_method = "unknown";
+-static char *auth_submethod = NULL;
++static const char *auth_method = "unknown";
++static const char *auth_submethod = NULL;
+ static u_int session_id2_len = 0;
+ static u_char *session_id2 = NULL;
+ static pid_t monitor_child_pid;
+@@ -191,6 +194,9 @@
+     {MONITOR_REQ_AUTHSERV, MON_ONCE, mm_answer_authserv},
+     {MONITOR_REQ_AUTH2_READ_BANNER, MON_ONCE, mm_answer_auth2_read_banner},
+     {MONITOR_REQ_AUTHPASSWORD, MON_AUTH, mm_answer_authpassword},
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++    {MONITOR_REQ_KRB5, MON_ONCE|MON_AUTH, mm_answer_krb5},
++#endif
+ #ifdef USE_PAM
+     {MONITOR_REQ_PAM_START, MON_ONCE, mm_answer_pam_start},
+     {MONITOR_REQ_PAM_ACCOUNT, 0, mm_answer_pam_account},
+@@ -2099,3 +2105,34 @@
+ }
+ #endif /* GSSAPI */
+ 
++
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++/* NetBSD Kerberos-2 authentication uses the privileged monitor. */
++int
++mm_answer_krb5(struct ssh *ssh, int sock, struct sshbuf *m)
++{
++	krb5_data ticket = {0}, reply = {0};
++	char *user = NULL;
++	u_char *data = NULL;
++	size_t len = 0;
++	int r, success;
++
++	if ((r = sshbuf_get_string(m, &data, &len)) != 0)
++		fatal_fr(r, "parse ticket");
++	ticket.data = data;
++	ticket.length = len;
++	success = options.kerberos_authentication && authctxt->valid &&
++	    auth_krb5(ssh, &ticket, &user, &reply);
++	free(ticket.data);
++	sshbuf_reset(m);
++	if ((r = sshbuf_put_u32(m, success)) != 0 ||
++	    (success && ((r = sshbuf_put_cstring(m, user)) != 0 ||
++	    (r = sshbuf_put_string(m, reply.data, reply.length)) != 0)))
++		fatal_fr(r, "serialize result");
++	free(user);
++	free(reply.data);
++	mm_request_send(sock, MONITOR_ANS_KRB5, m);
++	auth_method = "kerberos-2@ssh.com";
++	return success;
++}
++#endif
+--- monitor.h
++++ monitor.h
+@@ -65,6 +65,9 @@
+ 	MONITOR_REQ_PAM_FREE_CTX = 110, MONITOR_ANS_PAM_FREE_CTX = 111,
+ 	MONITOR_REQ_AUDIT_EVENT = 112, MONITOR_REQ_AUDIT_COMMAND = 113,
+ 
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++	MONITOR_REQ_KRB5 = 202, MONITOR_ANS_KRB5 = 203,
++#endif
+ };
+ 
+ struct ssh;
+@@ -84,7 +87,7 @@
+ 
+ struct Authctxt;
+ void monitor_child_preauth(struct ssh *, struct monitor *);
+-void monitor_child_postauth(struct ssh *, struct monitor *);
++void monitor_child_postauth(struct ssh *, struct monitor *) __attribute__((noreturn));
+ 
+ void monitor_clear_keystate(struct ssh *, struct monitor *);
+ void monitor_apply_keystate(struct ssh *, struct monitor *);
+--- monitor_wrap.c
++++ monitor_wrap.c
+@@ -1203,3 +1203,37 @@
+ 	return &ci;
+ }
+ 
++
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++/* NetBSD Kerberos-2 monitor bridge, with checked buffer operations. */
++int
++mm_auth_krb5(struct ssh *ssh, const void *arg, char **userp, void *response)
++{
++	const krb5_data *ticket = arg;
++	krb5_data *reply = response;
++	struct sshbuf *m;
++	u_int success;
++	u_char *data = NULL;
++	size_t len = 0;
++	int r;
++
++	(void)ssh;
++	*userp = NULL;
++	memset(reply, 0, sizeof(*reply));
++	if ((m = sshbuf_new()) == NULL)
++		fatal_f("sshbuf_new failed");
++	if ((r = sshbuf_put_string(m, ticket->data, ticket->length)) != 0)
++		fatal_fr(r, "serialize ticket");
++	mm_request_send(pmonitor->m_recvfd, MONITOR_REQ_KRB5, m);
++	mm_request_receive_expect(pmonitor->m_recvfd, MONITOR_ANS_KRB5, m);
++	if ((r = sshbuf_get_u32(m, &success)) != 0)
++		fatal_fr(r, "parse result");
++	if (success && ((r = sshbuf_get_cstring(m, userp, NULL)) != 0 ||
++	    (r = sshbuf_get_string(m, &data, &len)) != 0))
++		fatal_fr(r, "parse result details");
++	reply->data = data;
++	reply->length = len;
++	sshbuf_free(m);
++	return success != 0;
++}
++#endif
+--- monitor_wrap.h
++++ monitor_wrap.h
+@@ -54,6 +54,9 @@
+ struct passwd *mm_getpwnamallow(struct ssh *, const char *);
+ char *mm_auth2_read_banner(void);
+ int mm_auth_password(struct ssh *, char *);
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++int mm_auth_krb5(struct ssh *, const void *, char **, void *);
++#endif
+ int mm_key_allowed(enum mm_keytype, const char *, const char *, struct sshkey *,
+     int, struct sshauthopt **);
+ int mm_user_key_allowed(struct ssh *ssh, struct passwd *, struct sshkey *, int,
+--- readconf.c
++++ readconf.c
+@@ -147,6 +147,9 @@
+ 	oPubkeyAuthentication,
+ 	oKbdInteractiveAuthentication, oKbdInteractiveDevices, oHostKeyAlias,
+ 	oDynamicForward, oPreferredAuthentications, oHostbasedAuthentication,
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++	oKerberosAuthentication, oKerberosTgtPassing,
++#endif
+ 	oHostKeyAlgorithms, oBindAddress, oBindInterface, oPKCS11Provider,
+ 	oClearAllForwardings, oNoHostAuthenticationForLocalhost,
+ 	oEnableSSHKeysign, oRekeyLimit, oVerifyHostKeyDNS, oConnectTimeout,
+@@ -192,8 +195,14 @@
+ 
+ 	/* Unsupported options */
+ 	{ "afstokenpassing", oUnsupported },
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++	{ "kerberosauthentication", oKerberosAuthentication },
++	{ "kerberostgtpassing", oKerberosTgtPassing },
++	{ "kerberos4tgtpassing", oKerberosTgtPassing },
++#else
+ 	{ "kerberosauthentication", oUnsupported },
+ 	{ "kerberostgtpassing", oUnsupported },
++#endif
+ 	{ "rsaauthentication", oUnsupported },
+ 	{ "rhostsrsaauthentication", oUnsupported },
+ 	{ "compressionlevel", oUnsupported },
+@@ -1333,6 +1342,15 @@
+ 		intptr = &options->hostbased_authentication;
+ 		goto parse_flag;
+ 
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++	case oKerberosAuthentication:
++		intptr = &options->kerberos_authentication;
++		goto parse_flag;
++	case oKerberosTgtPassing:
++		intptr = &options->kerberos_tgt_passing;
++		goto parse_flag;
++#endif
++
+ 	case oGssAuthentication:
+ 		intptr = &options->gss_authentication;
+ 		goto parse_flag;
+@@ -2749,6 +2767,10 @@
+ 	options->kbd_interactive_authentication = -1;
+ 	options->kbd_interactive_devices = NULL;
+ 	options->hostbased_authentication = -1;
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++	options->kerberos_authentication = -1;
++	options->kerberos_tgt_passing = -1;
++#endif
+ 	options->batch_mode = -1;
+ 	options->check_host_ip = -1;
+ 	options->strict_host_key_checking = -1;
+@@ -2921,6 +2943,12 @@
+ 		options->kbd_interactive_authentication = 1;
+ 	if (options->hostbased_authentication == -1)
+ 		options->hostbased_authentication = 0;
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++	if (options->kerberos_authentication == -1)
++		options->kerberos_authentication = 1;
++	if (options->kerberos_tgt_passing == -1)
++		options->kerberos_tgt_passing = 1;
++#endif
+ 	if (options->batch_mode == -1)
+ 		options->batch_mode = 0;
+ 	if (options->check_host_ip == -1)
+--- readconf.h
++++ readconf.h
+@@ -38,6 +38,10 @@
+ 	struct ForwardOptions fwd_opts;	/* forwarding options */
+ 	int     pubkey_authentication;	/* Try ssh2 pubkey authentication. */
+ 	int     hostbased_authentication;	/* ssh2's rhosts_rsa */
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++	int	kerberos_authentication;
++	int	kerberos_tgt_passing;	/* accepted for native compatibility */
++#endif
+ 	int     gss_authentication;	/* Try GSS authentication */
+ 	int     gss_deleg_creds;	/* Delegate GSS credentials */
+ 	int     password_authentication;	/* Try password
+--- sshconnect2.c
++++ sshconnect2.c
+@@ -25,6 +25,10 @@
+  */
+ 
+ #include "includes.h"
++
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++#include <krb5.h>
++#endif
+ 
+ #include <sys/types.h>
+ #include <sys/socket.h>
+@@ -381,6 +385,9 @@
+ static struct sshkey *load_identity_file(Identity *);
+ 
+ static Authmethod *authmethod_get(char *authlist);
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++static int userauth_kerberos(struct ssh *);
++#endif
+ static Authmethod *authmethod_lookup(const char *name);
+ static char *authmethods_get(void);
+ 
+@@ -397,6 +404,10 @@
+ 		NULL,
+ 		&options.hostbased_authentication,
+ 		NULL},
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++	{"kerberos-2@ssh.com", userauth_kerberos, NULL,
++	    &options.kerberos_authentication, NULL},
++#endif
+ 	{"publickey",
+ 		userauth_pubkey,
+ 		NULL,
+@@ -2423,6 +2434,114 @@
+ 	return 1;
+ }
+ 
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++static int
++ssh_krb5_helper(struct ssh *ssh, krb5_data *ap)
++{
++	krb5_context xcontext = NULL;	/* XXX share with ssh1 */
++	krb5_auth_context xauth_context = NULL;
++
++	krb5_context *context;
++	krb5_auth_context *auth_context;
++	krb5_error_code problem;
++	const char *tkfile;
++	struct stat buf;
++	krb5_ccache ccache = NULL;
++	char *remotehost = NULL;
++	int ret;
++	const char *errtxt;
++
++	memset(ap, 0, sizeof(*ap));
++
++	context = &xcontext;
++	auth_context = &xauth_context;
++
++	problem = krb5_init_context(context);
++	if (problem) {
++		debug("Kerberos v5: krb5_init_context failed");
++		ret = 0;
++		goto out;
++	}
++
++	tkfile = krb5_cc_default_name(*context);
++	if (tkfile == NULL) {
++		ret = 0;
++		goto out;
++	}
++	if (strncmp(tkfile, "FILE:", 5) == 0)
++		tkfile += 5;
++
++	if (stat(tkfile, &buf) == 0 && getuid() != buf.st_uid) {
++		debug("Kerberos v5: could not get default ccache (permission denied).");
++		ret = 0;
++		goto out;
++	}
++
++	problem = krb5_cc_default(*context, &ccache);
++	if (problem) {
++		errtxt = krb5_get_error_message(*context, problem);
++		if (errtxt != NULL) {
++			debug("Kerberos v5: krb5_cc_default failed: %s",
++			    errtxt);
++			krb5_free_error_message(*context, errtxt);
++		} else
++			debug("Kerberos v5: krb5_cc_default failed: %d",
++			    problem);
++		ret = 0;
++		goto out;
++	}
++
++	remotehost = ssh_remote_hostname(ssh);
++
++	problem = krb5_mk_req(*context, auth_context, AP_OPTS_MUTUAL_REQUIRED,
++	    "host", remotehost, NULL, ccache, ap);
++	if (problem) {
++		errtxt = krb5_get_error_message(*context, problem);
++		if (errtxt != NULL) {
++			debug("Kerberos v5: krb5_mk_req failed: %s", errtxt);
++			krb5_free_error_message(*context, errtxt);
++		} else
++			debug("Kerberos v5: krb5_mk_req failed: %d", problem);
++		ret = 0;
++		goto out;
++	}
++	ret = 1;
++
++ out:
++	free(remotehost);
++	if (ccache != NULL)
++		krb5_cc_close(*context, ccache);
++	if (*auth_context)
++		krb5_auth_con_free(*context, *auth_context);
++	if (*context)
++		krb5_free_context(*context);
++	return (ret);
++}
++
++static int
++userauth_kerberos(struct ssh *ssh)
++{
++	krb5_data ap;
++	int r;
++	const Authctxt *authctxt = ssh->authctxt;
++
++	if (ssh_krb5_helper(ssh, &ap) == 0)
++		return (0);
++
++	if ((r = sshpkt_start(ssh, SSH2_MSG_USERAUTH_REQUEST)) != 0 ||
++	    (r = sshpkt_put_cstring(ssh, authctxt->server_user)) != 0 ||
++	    (r = sshpkt_put_cstring(ssh, authctxt->service)) != 0 ||
++	    (r = sshpkt_put_cstring(ssh, authctxt->method->name)) != 0 ||
++	    (r = sshpkt_put_string(ssh, ap.data, ap.length)) != 0 ||
++	    (r = sshpkt_send(ssh)) != 0 ||
++	    (r = ssh_packet_write_wait(ssh)) < 0)
++		fatal("%s: %s", __func__, ssh_err(r));
++
++	krb5_data_free(&ap);
++	return (1);
++}
++#endif
++
+ static Authmethod *
+ authmethod_lookup(const char *name)
+ {
+--- /dev/null
++++ auth2-krb5.c
+@@ -0,0 +1,81 @@
++/*	$NetBSD: auth2-krb5.c,v 1.11.2.1 2026/02/02 18:07:59 martin Exp $	*/
++/*
++ * Copyright (c) 2003 Markus Friedl.  All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
++ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
++ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
++ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
++ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
++ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
++ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
++ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include "includes.h"
++
++#if defined(EMBERBSD_BASE_OPENSSH) && defined(KRB5)
++__RCSID("$NetBSD: auth2-krb5.c,v 1.11.2.1 2026/02/02 18:07:59 martin Exp $");
++
++#include <krb5.h>
++#include <stdio.h>
++#include <stdlib.h>
++
++#include "ssh2.h"
++#include "xmalloc.h"
++#include "packet.h"
++#include "log.h"
++#include "hostfile.h"
++#include "auth.h"
++#ifdef GSSAPI
++#include "ssh-gss.h"
++#endif
++#include "ssherr.h"
++#include "monitor_wrap.h"
++#include "misc.h"
++#include "servconf.h"
++
++/* import */
++extern ServerOptions options;
++extern struct authmethod_cfg methodcfg_krb5;
++
++static int
++userauth_kerberos(struct ssh *ssh, const char *method)
++{
++	krb5_data tkt = {0}, reply = {0};
++	size_t dlen;
++	u_char *ticket = NULL;
++	char *client = NULL;
++	int authenticated = 0, r;
++
++	(void)method;
++	if ((r = sshpkt_get_string(ssh, &ticket, &dlen)) != 0 ||
++	     (r = sshpkt_get_end(ssh)) != 0)
++		 fatal("%s: %s", __func__, ssh_err(r));
++
++	tkt.data = ticket;
++	tkt.length = dlen;
++	authenticated = mm_auth_krb5(ssh, &tkt, &client, &reply);
++	free(reply.data);
++	free(client);
++	free(tkt.data);
++	return (authenticated);
++}
++
++Authmethod method_kerberos = {
++	&methodcfg_krb5,
++	userauth_kerberos,
++};
++
++#endif /* EMBERBSD_BASE_OPENSSH && KRB5 */

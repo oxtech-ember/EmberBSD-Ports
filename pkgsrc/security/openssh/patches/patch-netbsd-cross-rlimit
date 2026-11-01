@@ -1,0 +1,25 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Use the target NetBSD select/poll descriptor-limit semantics when cross compiling.
+The probe opens a descriptor before lowering RLIMIT_NOFILE to zero; NetBSD
+select preserves access to open descriptors and poll permits the one-entry probe.
+--- configure.ac.orig
++++ configure.ac
+@@ -3867,8 +3867,14 @@
+	 select_works_with_rlimit=yes],
+	[AC_MSG_RESULT([no])
+	 select_works_with_rlimit=no],
+-	[AC_MSG_WARN([cross compiling: assuming no])
+-	 select_works_with_rlimit=no]
++	[case "$host_os:$sandbox_arg" in
++	 netbsd*:rlimit)
++		AC_MSG_WARN([cross compiling: using NetBSD select/poll rlimit semantics])
++		select_works_with_rlimit=yes ;;
++	 *)
++		AC_MSG_WARN([cross compiling: assuming no])
++		select_works_with_rlimit=no ;;
++	 esac]
+     )
+ 
+     AC_MSG_CHECKING([if setrlimit(RLIMIT_NOFILE,{0,0}) works])

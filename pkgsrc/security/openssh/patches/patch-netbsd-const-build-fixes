@@ -1,0 +1,493 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Apply mechanical type fixes and restore selected daemon source behavior.
+--- auth2.c.orig
++++ auth2.c
+@@ -423,7 +423,7 @@
+ 			if ((r = sshbuf_put(loginmsg, "\0", 1)) != 0)
+ 				fatal("%s: buffer error: %s",
+ 				    __func__, ssh_err(r));
+-			userauth_send_banner(ssh, sshbuf_ptr(loginmsg));
++			userauth_send_banner(ssh, (const char *)sshbuf_ptr(loginmsg));
+ 			if ((r = ssh_packet_write_wait(ssh)) != 0) {
+ 				sshpkt_fatal(ssh, r,
+ 				    "%s: send PAM banner", __func__);
+
+--- monitor_wrap.c.orig
++++ monitor_wrap.c
+@@ -28,6 +28,7 @@
+ #include "includes.h"
+ 
+ #include <sys/types.h>
++#include <stdint.h>
+ #include <sys/uio.h>
+ #include <sys/queue.h>
+ #include <sys/wait.h>
+@@ -448,7 +449,8 @@
+ mm_auth_password(struct ssh *ssh, char *password)
+ {
+ 	struct sshbuf *m;
+-	int r, authenticated = 0;
++	int r;
++	uint32_t authenticated = 0;
+ #ifdef USE_PAM
+ 	u_int maxtries = 0;
+ #endif
+@@ -501,7 +503,8 @@
+     struct sshkey *key, int pubkey_auth_attempt, struct sshauthopt **authoptp)
+ {
+ 	struct sshbuf *m;
+-	int r, allowed = 0;
++	int r;
++	uint32_t allowed = 0;
+ 	struct sshauthopt *opts = NULL;
+ 
+ 	debug3_f("entering");
+@@ -616,7 +619,8 @@
+ {
+ 	struct sshbuf *m;
+ 	char *p, *msg;
+-	int success = 0, tmp1 = -1, tmp2 = -1, r;
++	uint32_t success = 0;
++	int tmp1 = -1, tmp2 = -1, r;
+ 
+ 	/* Kludge: ensure there are fds free to receive the pty/tty */
+ 	if ((tmp1 = dup(pmonitor->m_recvfd)) == -1 ||
+@@ -739,7 +743,8 @@
+ mm_sshpam_init_ctx(Authctxt *authctxt)
+ {
+ 	struct sshbuf *m;
+-	int r, success;
++	int r;
++	uint32_t success;
+ 
+ 	debug3_f("entering");
+ 	if ((m = sshbuf_new()) == NULL)
+@@ -766,6 +771,7 @@
+ 	struct sshbuf *m;
+ 	u_int i, n;
+ 	int r, ret;
++	uint32_t wire_ret;
+ 
+ 	debug3_f("entering");
+ 	if ((m = sshbuf_new()) == NULL)
+@@ -773,12 +779,14 @@
+ 	mm_request_send(pmonitor->m_recvfd, MONITOR_REQ_PAM_QUERY, m);
+ 	debug3_f("waiting for MONITOR_ANS_PAM_QUERY");
+ 	mm_request_receive_expect(pmonitor->m_recvfd, MONITOR_ANS_PAM_QUERY, m);
+-	if ((r = sshbuf_get_u32(m, &ret)) != 0 ||
++	if ((r = sshbuf_get_u32(m, &wire_ret)) != 0 ||
+ 	    (r = sshbuf_get_cstring(m, name, NULL)) != 0 ||
+ 	    (r = sshbuf_get_cstring(m, info, NULL)) != 0 ||
+ 	    (r = sshbuf_get_u32(m, &n)) != 0 ||
+ 	    (r = sshbuf_get_u32(m, num)) != 0)
+ 		fatal_fr(r, "buffer error");
++	ret = wire_ret <= INT32_MAX ? (int)wire_ret :
++	    -1 - (int)(UINT32_MAX - wire_ret);
+ 	debug3_f("pam_query returned %d", ret);
+ 	sshpam_set_maxtries_reached(n);
+ 	if (*num > PAM_MAX_NUM_MSG)
+@@ -955,7 +963,8 @@
+ mm_bsdauth_respond(void *ctx, u_int numresponses, char **responses)
+ {
+ 	struct sshbuf *m;
+-	int r, authok;
++	int r;
++	uint32_t authok;
+ 
+ 	debug3_f("entering");
+ 	if (numresponses != 1)
+@@ -1097,7 +1106,8 @@
+ mm_ssh_gssapi_userok(char *user)
+ {
+ 	struct sshbuf *m;
+-	int r, authenticated = 0;
++	int r;
++	uint32_t authenticated = 0;
+ 
+ 	if ((m = sshbuf_new()) == NULL)
+ 		fatal_f("sshbuf_new failed");
+
+--- session.c.orig
++++ session.c
+@@ -127,7 +127,7 @@
+ int	do_exec_no_pty(struct ssh *, Session *, const char *);
+ int	do_exec(struct ssh *, Session *, const char *);
+ void	do_login(struct ssh *, Session *, const char *);
+-void	do_child(struct ssh *, Session *, const char *);
++__dead void	do_child(struct ssh *, Session *, const char *);
+ void	do_motd(void);
+ int	check_quietlogin(Session *, const char *);
+ 
+@@ -236,7 +236,7 @@
+ 		return;
+ 	if ((r = sshbuf_put_u8(loginmsg, 0)) != 0)
+ 		fatal_fr(r, "sshbuf_put_u8");
+-	printf("%s", (char *)sshbuf_ptr(loginmsg));
++	printf("%s", (const char *)sshbuf_ptr(loginmsg));
+ 	sshbuf_reset(loginmsg);
+ }
+ 
+@@ -751,8 +751,13 @@
+ 
+ 	if (options.print_motd) {
+ #ifdef HAVE_LOGIN_CAP
+-		f = fopen(login_getcapstr(lc, "welcome", "/etc/motd",
+-		    "/etc/motd"), "r");
++		{
++			char motd_default[] = "/etc/motd";
++			char motd_error[] = "/etc/motd";
++
++			f = fopen(login_getcapstr(lc, "welcome", motd_default,
++			    motd_error), "r");
++		}
+ #else
+ 		f = fopen("/etc/motd", "r");
+ #endif
+@@ -1035,10 +1040,10 @@
+ 	 * SIA), so copy it to the child.
+ 	 */
+ 	{
+-		char *cp;
+-
+-		if ((cp = getenv("KRB5CCNAME")) != NULL)
+-			child_set_env(&env, &envsize, "KRB5CCNAME", cp);
++		char *ccname;
++
++		if ((ccname = getenv("KRB5CCNAME")) != NULL)
++			child_set_env(&env, &envsize, "KRB5CCNAME", ccname);
+ 	}
+ 
+ #ifdef _AIX
+@@ -1237,13 +1242,17 @@
+ do_nologin(struct passwd *pw)
+ {
+ 	FILE *f = NULL;
+-	char buf[1024], *nl, *def_nl = _PATH_NOLOGIN;
++	char buf[1024], *nl;
++	char def_nl[] = _PATH_NOLOGIN;
+ 	struct stat sb;
++#ifdef HAVE_LOGIN_CAP
++	char error_nl[] = _PATH_NOLOGIN;
++#endif
+ 
+ #ifdef HAVE_LOGIN_CAP
+ 	if (login_getcapbool(lc, "ignorenologin", 0) || pw->pw_uid == 0)
+ 		return;
+-	nl = login_getcapstr(lc, "nologin", def_nl, def_nl);
++	nl = login_getcapstr(lc, "nologin", def_nl, error_nl);
+ #else
+ 	if (pw->pw_uid == 0)
+ 		return;
+@@ -1400,7 +1409,7 @@
+ 		fatal("Failed to set uids to %u.", (u_int) pw->pw_uid);
+ }
+ 
+-static void
++__dead static void
+ do_pwchange(Session *s)
+ {
+ 	fflush(NULL);
+@@ -1478,7 +1487,9 @@
+ {
+ 	extern char **environ;
+ 	char **env, *argv[ARGV_MAX], remote_id[512];
+-	const char *shell, *shell0;
++	char default_shell[] = _PATH_BSHELL;
++	char *shell, *shell0;
++	char command_option[] = "-c";
+ 	struct passwd *pw = s->pw;
+ 	int r = 0;
+ 
+@@ -1529,7 +1542,7 @@
+ 	 * Get the shell from the password data.  An empty shell field is
+ 	 * legal, and means /bin/sh.
+ 	 */
+-	shell = (pw->pw_shell[0] == '\0') ? _PATH_BSHELL : pw->pw_shell;
++	shell = (pw->pw_shell[0] == '\0') ? default_shell : pw->pw_shell;
+ 
+ 	/*
+ 	 * Make sure $SHELL points to the shell from the password file,
+@@ -1538,7 +1551,7 @@
+ 	env = do_setup_env(ssh, s, shell);
+ 
+ #ifdef HAVE_LOGIN_CAP
+-	shell = login_getcapstr(lc, "shell", (char *)shell, (char *)shell);
++	shell = login_getcapstr(lc, "shell", shell, shell);
+ #endif
+ 
+ 	/*
+@@ -1669,9 +1684,9 @@
+ 	 * Execute the command using the user's shell.  This uses the -c
+ 	 * option to execute the command.
+ 	 */
+-	argv[0] = (char *) shell0;
+-	argv[1] = "-c";
+-	argv[2] = (char *) command;
++	argv[0] = shell0;
++	argv[1] = command_option;
++	argv[2] = xstrdup(command);
+ 	argv[3] = NULL;
+ 	execve(shell, argv, env);
+ 	perror(shell);
+@@ -2271,7 +2290,7 @@
+ 	mm_session_pty_cleanup2(s);
+ }
+ 
+-static char *
++static const char *
+ sig2name(int sig)
+ {
+ #define SSH_SIG(x) if (sig == SIG ## x) return #x
+
+--- auth2-none.c.orig
++++ auth2-none.c
+@@ -53,13 +53,14 @@
+ static int
+ userauth_none(struct ssh *ssh, const char *method)
+ {
++	static char empty_password[] = "";
+ 	int r;
+ 
+ 	none_enabled = 0;
+ 	if ((r = sshpkt_get_end(ssh)) != 0)
+ 		fatal_fr(r, "parse packet");
+ 	if (options.permit_empty_passwd && options.password_authentication)
+-		return mm_auth_password(ssh, "");
++		return mm_auth_password(ssh, empty_password);
+ 	return (0);
+ }
+ 
+
+--- sftp-server.c.orig
++++ sftp-server.c
+@@ -466,7 +466,7 @@
+ }
+ 
+ static void
+-handle_log_close(int handle, char *emsg)
++handle_log_close(int handle, const char *emsg)
+ {
+ 	if (handle_is_ok(handle, HANDLE_FILE)) {
+ 		logit("%s%sclose \"%s\" bytes read %llu written %llu",
+@@ -1903,7 +1903,7 @@
+ 	_exit(i);
+ }
+ 
+-static void
++__dead static void
+ sftp_server_usage(void)
+ {
+ 	extern char *__progname;
+
+--- sshd-session.c.orig
++++ sshd-session.c
+@@ -97,6 +97,13 @@
+ #include "srclimit.h"
+ #include "dh.h"
+ 
++#ifdef LIBWRAP
++#include <tcpd.h>
++#include <syslog.h>
++int allow_severity = LOG_INFO;
++int deny_severity = LOG_WARNING;
++#endif /* LIBWRAP */
++
+ /* Re-exec fds */
+ #define REEXEC_DEVCRYPTO_RESERVED_FD	(STDERR_FILENO + 1)
+ #define REEXEC_CONFIG_PASS_FD		(STDERR_FILENO + 2)
+@@ -113,7 +120,7 @@
+ ServerOptions options;
+ 
+ /* Name of the server configuration file. */
+-char *config_file_name = _PATH_SERVER_CONFIG_FILE;
++const char *config_file_name = _PATH_SERVER_CONFIG_FILE;
+ 
+ /*
+  * Debug mode flag.  This can be set on the command line.  If debug
+@@ -201,7 +208,7 @@
+  * As usual, this may only take signal-safe actions, even though it is
+  * terminal.
+  */
+-static void
++__dead static void
+ grace_alarm_handler(int sig)
+ {
+ 	pfilter_notify(1);
+@@ -595,7 +602,7 @@
+ 	sshbuf_free(buf);
+ }
+ 
+-static void
++__dead static void
+ usage(void)
+ {
+ 	fprintf(stderr, "%s, %s\n", SSH_RELEASE, SSH_OPENSSL_VERSION);
+@@ -766,6 +773,9 @@
+ }
+ 
+ /* Set the routing domain for this process */
++#if !defined(HAVE_SYS_SET_PROCESS_RDOMAIN) && !defined(__OpenBSD__)
++__dead
++#endif
+ static void
+ set_process_rdomain(struct ssh *ssh, const char *name)
+ {
+@@ -1078,7 +1088,12 @@
+ 		 * Signal parent that this child is at a point where
+ 		 * they can go away if they have a SIGHUP pending.
+ 		 */
+-		(void)atomicio(vwrite, startup_pipe, "\0", 1);
++		{
++			char startup_pipe_ready = '\0';
++
++			(void)atomicio(vwrite, startup_pipe, &startup_pipe_ready,
++			    sizeof(startup_pipe_ready));
++		}
+ 	}
+ 	/* close the fd, but keep the slot reserved */
+ 	if (dup2(devnull, REEXEC_CONFIG_PASS_FD) == -1)
+@@ -1316,7 +1331,12 @@
+ 	authctxt->authenticated = 1;
+ 	if (startup_pipe != -1) {
+ 		/* signal listener that authentication completed successfully */
+-		(void)atomicio(vwrite, startup_pipe, "\001", 1);
++		{
++			char auth_success = '\001';
++
++			(void)atomicio(vwrite, startup_pipe, &auth_success,
++			    sizeof(auth_success));
++		}
+ 		close(startup_pipe);
+ 		startup_pipe = -1;
+ 	}
+
+--- sshd-auth.c.orig
++++ sshd-auth.c
+@@ -98,6 +98,13 @@
+ #include "ssh-sandbox.h"
+ #include "dh.h"
+ 
++#ifdef LIBWRAP
++#include <tcpd.h>
++#include <syslog.h>
++int allow_severity = LOG_INFO;
++int deny_severity = LOG_WARNING;
++#endif /* LIBWRAP */
++
+ /* Privsep fds */
+ #define PRIVSEP_MONITOR_FD		(STDERR_FILENO + 1)
+ #define PRIVSEP_LOG_FD			(STDERR_FILENO + 2)
+@@ -109,7 +116,7 @@
+ ServerOptions options;
+ 
+ /* Name of the server configuration file. */
+-char *config_file_name = _PATH_SERVER_CONFIG_FILE;
++const char *config_file_name = _PATH_SERVER_CONFIG_FILE;
+ 
+ /*
+  * Debug mode flag.  This can be set on the command line.  If debug
+@@ -124,12 +131,10 @@
+ 
+ /* Saved arguments to main(). */
+ static char **saved_argv;
+-static int saved_argc;
+ 
+ 
+ /* Daemon's agent connection */
+ int auth_sock = -1;
+-static int have_agent = 0;
+ 
+ u_int		num_hostkeys;
+ struct sshkey	**host_pubkeys;		/* all public host keys */
+@@ -364,7 +369,7 @@
+ 	return (-1);
+ }
+ 
+-static void
++__dead static void
+ usage(void)
+ {
+ 	fprintf(stderr, "%s, %s\n", SSH_VERSION, SSH_OPENSSL_VERSION);
+@@ -458,7 +463,6 @@
+ 	__progname = ssh_get_progname(av[0]);
+ 
+ 	/* Save argv. Duplicate so setproctitle emulation doesn't clobber it */
+-	saved_argc = ac;
+ 	saved_argv = xcalloc(ac + 1, sizeof(*saved_argv));
+ 	for (i = 0; (int)i < ac; i++)
+ 		saved_argv[i] = xstrdup(av[i]);
+@@ -648,9 +652,7 @@
+ 		if (strcmp(options.host_key_agent, SSH_AUTHSOCKET_ENV_NAME))
+ 			setenv(SSH_AUTHSOCKET_ENV_NAME,
+ 			    options.host_key_agent, 1);
+-		if ((r = ssh_get_authentication_socket(NULL)) == 0)
+-			have_agent = 1;
+-		else
++		if ((r = ssh_get_authentication_socket(NULL)) != 0)
+ 			error_r(r, "Could not connect to agent \"%s\"",
+ 			    options.host_key_agent);
+ 	}
+
+--- utf8.h.orig
++++ utf8.h
+@@ -15,12 +15,14 @@
+  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+  */
+ 
+-int	 vasnmprintf(char **, size_t, int *, const char *, va_list);
++int	 vasnmprintf(char **, size_t, int *, const char *, va_list)
++	    __attribute__((format(printf, 4, 0)));
+ int	 mprintf(const char *, ...)
+ 	    __attribute__((format(printf, 1, 2)));
+ int	 fmprintf(FILE *, const char *, ...)
+ 	    __attribute__((format(printf, 2, 3)));
+-int	 vfmprintf(FILE *, const char *, va_list);
++int	 vfmprintf(FILE *, const char *, va_list)
++	    __attribute__((format(printf, 2, 0)));
+ int	 snmprintf(char *, size_t, int *, const char *, ...)
+ 	    __attribute__((format(printf, 4, 5)));
+ int	 asmprintf(char **, size_t, int *, const char *, ...)
+
+--- ssh-gss.h.orig
++++ ssh-gss.h
+@@ -63,7 +63,7 @@
+ 
+ typedef struct {
+ 	char *filename;
+-	char *envvar;
++	const char *envvar;
+ 	char *envval;
+ 	void *data;
+ } ssh_gssapi_ccache;
+@@ -78,8 +78,8 @@
+ } ssh_gssapi_client;
+ 
+ typedef struct ssh_gssapi_mech_struct {
+-	char *enc_name;
+-	char *name;
++	const char *enc_name;
++	const char *name;
+ 	gss_OID_desc oid;
+ 	int (*dochild) (ssh_gssapi_client *);
+ 	int (*userok) (ssh_gssapi_client *, char *);
+
+--- gss-serv-krb5.c.orig
++++ gss-serv-krb5.c
+@@ -196,10 +196,12 @@
+ 	return;
+ }
+ 
++static char kerberos_mech_oid[] = "\x2A\x86\x48\x86\xF7\x12\x01\x02\x02";
++
+ ssh_gssapi_mech gssapi_kerberos_mech = {
+ 	"toWM5Slw5Ew8Mqkay+al2g==",
+ 	"Kerberos",
+-	{9, "\x2A\x86\x48\x86\xF7\x12\x01\x02\x02"},
++	{9, kerberos_mech_oid},
+ 	NULL,
+ 	&ssh_gssapi_krb5_userok,
+ 	NULL,
+
+

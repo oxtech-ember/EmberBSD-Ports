@@ -158,6 +158,14 @@ def verify(source, git, archive=None, patch=None, pkgsrc_export=None):
     return record
 
 
+def validate_kerberos_creation(delta):
+    headers = re.findall(rb'^(?:---|\+\+\+) ([^\t\n ]+)', delta, re.M)
+    require(headers.count(b'/dev/null') == 1 and
+            any(headers[i:i + 2] == [b'/dev/null', b'auth2-krb5.c']
+                for i in range(0, len(headers), 2)),
+            'unexpected openssh Kerberos patch creation')
+
+
 def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
     require(os.path.isabs(git) and os.path.isabs(patch), 'select absolute Git and patch executables')
     output = Path(output)
@@ -187,11 +195,13 @@ def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
         for index, path in enumerate(patches):
             delta = read(path)
             require(digest(delta) == metadata['recipe']['patches/' + path.name], 'openssh patch changed')
+            if path.name == 'patch-zz-netbsd-kerberos':
+                validate_kerberos_creation(delta)
             sourceprep.apply_patch(patch, path, delta, root, 'openssh',
                 patch_args=('-p0', '-f', '-N', '-F0', '-V', 'none'),
                 backup_directory=tmp / ('patch-backups-' + str(index)),
                 allow_dev_null=path.name in ('patch-netbsd-blocklist',
-                    'patch-netbsd-ldap-pubkey'))
+                    'patch-netbsd-ldap-pubkey', 'patch-zz-netbsd-kerberos'))
         require(not any(p.name.endswith(('.orig', '.rej')) for p in root.rglob('*')),
                 'openssh patch left a backup or reject')
         require(identity == source_identity(git), 'pkgsrc export inputs changed during preparation')

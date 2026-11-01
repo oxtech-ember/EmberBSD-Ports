@@ -1,0 +1,76 @@
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <sys/types.h>
+
+typedef struct {
+	size_t length;
+	void *data;
+} krb5_data;
+struct ssh {
+	int unused;
+};
+static void *ticket_ptr, *reply_ptr, *client_ptr;
+static int released, accept;
+static int sshpkt_get_string(struct ssh *s, u_char **p, size_t *n)
+{
+	(void)s;
+	*n = 3;
+	*p = ticket_ptr = malloc(*n);
+	return *p ? 0 : -1;
+}
+static int sshpkt_get_end(struct ssh *s)
+{
+	(void)s;
+	return 0;
+}
+static int mm_auth_krb5(struct ssh *s, void *t, char **u, void *r)
+{
+	krb5_data *reply = r;
+	(void)s;
+	(void)t;
+	if (!accept)
+		return 0;
+	*u = client_ptr = strdup("user");
+	reply->data = reply_ptr = malloc(1);
+	reply->length = 0;
+	return *u && reply->data;
+}
+static const char *ssh_err(int r)
+{
+	(void)r;
+	return "error";
+}
+static void fatal(const char *f, ...)
+{
+	(void)f;
+	abort();
+}
+static void test_free(void *p)
+{
+	if (p == ticket_ptr)
+		released |= 1;
+	if (p && p == client_ptr)
+		released |= 2;
+	if (p && p == reply_ptr)
+		released |= 4;
+	free(p);
+}
+#define free test_free
+@@USERAUTH_KRB5@@
+#undef free
+int main(void)
+{
+	struct ssh ssh = {0};
+
+	accept = 1;
+	if (!userauth_kerberos(&ssh, "kerberos-2@ssh.com") || released != 7)
+		abort();
+	ticket_ptr = client_ptr = reply_ptr = NULL;
+	released = 0;
+	accept = 0;
+	if (userauth_kerberos(&ssh, "kerberos-2@ssh.com") || released != 1)
+		abort();
+	puts("Kerberos handler empty reply and refusal: PASS");
+	return 0;
+}
