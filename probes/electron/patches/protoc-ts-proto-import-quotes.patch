@@ -1,0 +1,15 @@
+--- a/tools/protoc_wrapper/protoc_wrapper.py	2026-11-01 06:00:36
++++ b/tools/protoc_wrapper/protoc_wrapper.py	2026-11-01 06:00:36
+@@ -64,9 +64,10 @@
+         modified = False
+         for i, line in enumerate(itertools.islice(lines, 50)):
+           if "@bufbuild/protobuf/" in line:
++            # Common ts-proto 2.x quotes imports with double quotes.
+             lines[i] = re.sub(
+-              r"'@bufbuild\/protobuf\/(\w+)'",
+-              r"'/@bufbuild/protobuf/\1/index.js'",
++              r"""(['"])@bufbuild\/protobuf\/(\w+)\1""",
++              r"\1/@bufbuild/protobuf/\2/index.js\1",
+               line,
+             )
+             modified = True

@@ -753,6 +753,11 @@
       "root": ""
     },
     {
+      "path": "protoc-ts-proto-import-quotes.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
       "path": "electron-node26-trace-event-headers.patch",
       "strip": 1,
       "root": ""
