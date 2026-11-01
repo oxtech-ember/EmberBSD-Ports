@@ -1,0 +1,16 @@
+$NetBSD$
+
+Drop absl/log/log.h from descriptor.h, as Chromium's bundled protobuf does,
+so its LOG/CHECK macros do not collide with Chromium's base/logging.h.
+Origin: Chromium third_party/protobuf/patches/0071-remove-log-include-from-descriptor-h.patch.
+
+--- src/google/protobuf/descriptor.h.orig
++++ src/google/protobuf/descriptor.h
+@@ -52,7 +52,6 @@
+ #include "absl/functional/function_ref.h"
+ #include "absl/log/absl_check.h"
+ #include "absl/log/absl_log.h"
+-#include "absl/log/log.h"
+ #include "absl/strings/str_format.h"
+ #include "absl/strings/string_view.h"
+ #include "absl/synchronization/mutex.h"

@@ -16,3 +16,4 @@ SHA1 (patch-unknown-fields-string-resize) = add2946e88f8bcf6d9ad9054ff984c4c4158
 SHA1 (patch-enum-reflection-compat) = 84eb15faec1ff89813bde4950057c03e72bc7f50
 SHA1 (patch-zz-chromium-allow-deprecated-fields) = e411e4272103a86027544bcce828df9f180c39ef
 SHA1 (patch-zz-chromium-get-enum-not-deprecated) = 94c150aaa3f59b2a211f37a2a163c71ceda3e143
+SHA1 (patch-zz-chromium-descriptor-no-log-include) = 8a1029bdf925a14c6c861c4d8d1a0d51da362a1b

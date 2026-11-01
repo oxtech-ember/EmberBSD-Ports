@@ -10,7 +10,7 @@
 
 # Origin: EmberBSD (AI-assisted); current common provider with reviewed fixes.
 EMBERBSD_PROTOBUF_PKGDIR:= ${.PARSEDIR:tA}
-PKGREVISION=	4
+PKGREVISION=	5
 PROTOBUF_VERSION=	36.2
 DISTNAME=	protobuf-${PROTOBUF_VERSION}
 CATEGORIES=	devel
@@ -63,9 +63,9 @@ PLIST_VARS+=	runtime_split
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The protobuf runtime/SDK split requires the common aarch64 or amd64 cross target"
 .endif
-PKGREVISION=	5
-.if ${PKGREVISION} != 5
-PKG_FAIL_REASON+= "The protobuf runtime/SDK split requires package revision 5"
+PKGREVISION=	6
+.if ${PKGREVISION} != 6
+PKG_FAIL_REASON+= "The protobuf runtime/SDK split requires package revision 6"
 .endif
 PLIST.runtime_split=	yes
 PROTOBUF_FULL_PLIST_SRC=	${EMBERBSD_PROTOBUF_PKGDIR}/PLIST
@@ -77,8 +77,8 @@ PROTOBUF_PACKAGE_PART=	devel
 PKG_FAIL_REASON+= "The protobuf SDK recipe must select the devel partition"
 .endif
 PLIST_SRC=	${PROTOBUF_DEVEL_PLIST_SRC}
-DEPENDS+=	protobuf-${PROTOBUF_VERSION}nb5:../../devel/protobuf
-CONFLICTS+=	protobuf<${PROTOBUF_VERSION}nb5
+DEPENDS+=	protobuf-${PROTOBUF_VERSION}nb6:../../devel/protobuf
+CONFLICTS+=	protobuf<${PROTOBUF_VERSION}nb6
 .else
 PROTOBUF_PACKAGE_PART=	runtime
 .if ${PROTOBUF_PACKAGE_PART} != "runtime"
