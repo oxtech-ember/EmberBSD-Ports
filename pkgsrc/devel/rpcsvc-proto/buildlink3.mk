@@ -9,6 +9,7 @@ BUILDLINK_DEPMETHOD.rpcsvc-proto?=	build
 
 BUILDLINK_API_DEPENDS.rpcsvc-proto+=	rpcsvc-proto>=1.4.4
 BUILDLINK_PKGSRCDIR.rpcsvc-proto?=	../../devel/rpcsvc-proto
+.include "../../mk/bsd.fast.prefs.mk"
 .if ${OPSYS} == "Darwin"
 BUILDLINK_INCDIRS.rpcsvc-proto=	include/rpcsvc-proto
 .endif

@@ -7,6 +7,7 @@ GLSLANG_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.glslang+=	glslang>=16.6.0
 BUILDLINK_ABI_DEPENDS.glslang+=	glslang>=16.6.0nb1
+.include "../../mk/bsd.fast.prefs.mk"
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
     ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
 BUILDLINK_ABI_DEPENDS.glslang+=	glslang>=16.6.0nb2

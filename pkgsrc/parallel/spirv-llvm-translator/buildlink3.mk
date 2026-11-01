@@ -8,6 +8,7 @@ SPIRV_LLVM_TRANSLATOR_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.spirv-llvm-translator+=	spirv-llvm-translator>=23.1.2<23.2
 BUILDLINK_ABI_DEPENDS.spirv-llvm-translator+=	spirv-llvm-translator>=23.1.2<23.2
+.include "../../mk/bsd.fast.prefs.mk"
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
     ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
 BUILDLINK_ABI_DEPENDS.spirv-llvm-translator+= spirv-llvm-translator>=23.1.2nb1<23.2
