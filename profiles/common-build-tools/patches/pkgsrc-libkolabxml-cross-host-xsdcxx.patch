@@ -1,0 +1,53 @@
+libkolabxml builds with C++14 and runs native generators in cross builds.
+
+xsdcxx 4.0 generates C++98 code that uses std::auto_ptr, and the library and
+its xsdbin helper use it too; libc++ removed auto_ptr in C++17, the clang
+default. Force C++14.
+
+Both xsdcxx and xsdbin run at build time. A cross build found no runnable
+xsdcxx, so CMake stopped with "Could NOT find LibkolabxmlDependencies
+(missing: XSDCXX)", and xsdbin was built for the target. Depend on the
+native xsd and xerces-c, build xsdbin with the native compiler, and pass
+both tools to CMake. The xsd headers and xerces-c for the library still
+come from the target packages.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+Test: profiles/common-build-tools/tests/libkolabxml-cross-host-xsdcxx.sh
+
+--- a/textproc/libkolabxml/Makefile
++++ b/textproc/libkolabxml/Makefile
+@@ -22,6 +22,35 @@
+ SUBST_STAGE.bl3=	post-build
+ SUBST_MESSAGE.bl3=	Fix paths to buildlink directories in installed files.
+ 
++# xsdcxx 4.0 generates C++98 code with std::auto_ptr by default, and the
++# library and xsdbin use it too; libc++ has no auto_ptr from C++17 on.
++FORCE_CXX_STD=		c++14
++
++.include "../../mk/bsd.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# xsdcxx generates the XML bindings and xsdbin serializes the schemas on the
++# build host, so a cross build runs native tools: xsdcxx from the native xsd,
++# and xsdbin built here with the native compiler and xerces-c. The xsd
++# headers and xerces-c for the library still come from the target packages.
++TOOL_DEPENDS+=		xsd>=4.0.0:../../devel/xsd
++TOOL_DEPENDS+=		xerces-c>=3.1.1:../../textproc/xerces-c
++_EMBER_XSDCXX?=		${TOOLBASE}/bin/xsdcxx
++_EMBER_XSDBIN=		${WRKDIR}/.ember-host/xsdbin
++CMAKE_CONFIGURE_ARGS+=	-DXSDCXX:FILEPATH=${_EMBER_XSDCXX:Q}
++CMAKE_CONFIGURE_ARGS+=	-DXSDBIN:FILEPATH=${_EMBER_XSDBIN:Q}
++pre-configure: emberbsd-host-xsdcxx-check emberbsd-host-xsdbin
++.PHONY: emberbsd-host-xsdcxx-check emberbsd-host-xsdbin
++emberbsd-host-xsdcxx-check:
++	${RUN}${TEST} -x ${_EMBER_XSDCXX:Q} || { \
++	    echo 'The native xsdcxx (devel/xsd) is required: '${_EMBER_XSDCXX:Q} >&2; \
++	    exit 1; }
++emberbsd-host-xsdbin:
++	${RUN}${MKDIR} ${_EMBER_XSDBIN:H:Q}
++	${RUN}${NATIVE_CXX} -std=c++14 -O2 -I${TOOLBASE:Q}/include \
++	    -o ${_EMBER_XSDBIN:Q} ${WRKSRC:Q}/compiled/xsdbin.cxx \
++	    -L${TOOLBASE:Q}/lib -Wl,-rpath,${TOOLBASE:Q}/lib -lxerces-c
++.endif
++
+ .include "../../devel/boost-libs/buildlink3.mk"
+ .include "../../devel/cmake/build.mk"
+ .include "../../devel/xsd/buildlink3.mk"
