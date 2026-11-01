@@ -1,0 +1,19 @@
+Iterate emoji sequence code points with U16_NEXT.
+Origin: EmberBSD contributors (AI-assisted). The shared ICU 79 headers do not
+provide icu::header::unsafeUTFStringCodePoints; the stable U16_NEXT macro
+yields the same code points.
+
+--- a/third_party/blink/renderer/platform/text/character_property_data_generator.cc
++++ b/third_party/blink/renderer/platform/text/character_property_data_generator.cc
+@@ -131,8 +131,9 @@
+     icu::UnicodeSet set(icu::UnicodeString(pattern), error);
+     CHECK_EQ(error, U_ZERO_ERROR);
+     for (auto s : set.strings()) {
+-      for (auto unit : icu::header::unsafeUTFStringCodePoints<UChar32>(s)) {
+-        UChar32 cp = unit.codePoint();
++      for (size_t i = 0; i < s.size();) {
++        UChar32 cp;
++        U16_NEXT(s.data(), i, s.size(), cp);
+         if (u_hasBinaryProperty(cp, UCHAR_EXTENDED_PICTOGRAPHIC)) {
+           values_[cp].is_cjk_ideograph_or_symbol = true;
+         }

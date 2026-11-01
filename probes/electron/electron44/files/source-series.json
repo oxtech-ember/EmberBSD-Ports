@@ -824,6 +824,11 @@
       "strip": 1
     },
     {
+      "path": "blink-character-data-generator-u16-next.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "netbsd-dev-evdev-input-headers.patch",
       "root": "",
       "strip": 1
