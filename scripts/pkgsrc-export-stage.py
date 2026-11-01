@@ -65,12 +65,9 @@ def _exporter(root):
 
 def input_paths(root):
     """Return the Ports-relative paths that the exporter reads."""
-    recipes, patches, files, _, manifests = _exporter(root).configuration(root, include_manifests=True)
+    exporter = _exporter(root)
     sources = {root / 'scripts/prepare-pkgsrc.py', root / 'pkgsrc'}
-    sources.update(source for _, source in recipes)
-    sources.update(source for _, source, _, _ in patches)
-    sources.update(source for source, _ in files)
-    sources.update(manifests)
+    sources.update(exporter.configuration_input_paths(root))
     result = set()
     for source in sources:
         relative = Path(os.path.normpath(source)).relative_to(root).as_posix()

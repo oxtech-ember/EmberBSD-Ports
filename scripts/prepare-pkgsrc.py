@@ -172,12 +172,13 @@ def check_recipe(source, label, root):
         require(path.name in declared, f'Undeclared patch: {label}/patches/{path.name}')
 
 
-def configuration(root, *, include_manifests=False):
+def configuration_records(root):
+    """Parse declared export inputs without walking or validating recipes."""
     root = Path(root).resolve(strict=True)
     source_path(root, 'pkgsrc/export.conf', 'export configuration')
     config = root / 'pkgsrc/export.conf'
     require(config.is_file(), 'Missing pkgsrc/export.conf.')
-    recipes, patches, files, manifests = [], [], [], []
+    records = []
     # POSIX read with tab IFS collapses adjacent tabs. It ignores an unfinished
     # final record. Preserve this input grammar during the migration.
     for raw in config.read_bytes().decode('utf-8').split('\n')[:-1]:
@@ -188,41 +189,65 @@ def configuration(root, *, include_manifests=False):
         require(len(fields) <= 4, f'pkgsrc/export.conf: too many fields for {method}.')
         first, second, third = (fields[1:] + ['', '', ''])[:3]
         source = source_path(root, first, 'export source')
+        manifest = None
         if method == 'recipe':
             require(second and not third, 'pkgsrc/export.conf: use recipe SOURCE PKGPATH.')
             second = package_path(second, 'PKGPATH')
-            check_recipe(source, first, root)
-            recipes.append((second, source))
         elif method == 'patch':
             require(not second, 'pkgsrc/export.conf: use patch FILE.')
-            require(source.is_file() and source.stat().st_size, f'Missing infrastructure patch: {first}')
-            patches.append((method, source, '', ''))
         elif method == 'git-apply':
             require(second and not third, 'pkgsrc/export.conf: use git-apply FILE MANIFEST.')
-            second = source_path(root, second, 'patch manifest')
-            manifests.append(second)
-            require(source.is_file() and source.stat().st_size, f'Missing infrastructure patch: {first}')
-            recorded = [line.split('\t')[1] for line in second.read_bytes().decode('utf-8').split('\n')
-                        if line.split('\t')[0] == source.name and len(line.split('\t')) > 1]
-            require(recorded == [hashlib.sha256(source.read_bytes()).hexdigest()],
-                    f'Infrastructure patch differs from {second}: {first}')
-            patches.append((method, source, '', ''))
+            manifest = source_path(root, second, 'patch manifest')
         elif method == 'recipe-patch':
             require(third, 'pkgsrc/export.conf: use recipe-patch FILE PKGPATH NAME.')
             second = package_path(second, 'PKGPATH')
             third = relative_parts(third, 'recipe patch name')
             require(len(third) == 1, 'recipe patch name must be one path component.')
             third = third[0]
-            require(source.is_file() and source.stat().st_size, f'Missing recipe patch: {first}')
             require(third.startswith('patch-'), f'Recipe patch names start with patch-: {third}')
-            patches.append((method, source, second, third))
         elif method == 'file':
             require(second and not third, 'pkgsrc/export.conf: use file SOURCE DESTINATION.')
             second = '/'.join(relative_parts(second, 'file destination'))
-            require(source.is_file(), f'Missing exported file: {first}')
-            files.append((source, second))
         else:
             raise ExportError(f'pkgsrc/export.conf: unknown method {method}.')
+        records.append((method, first, source, second, third, manifest))
+    return records
+
+
+def configuration_input_paths(root):
+    """Return referenced export inputs; exhaustive validation stays in configuration()."""
+    sources = set()
+    for method, _, source, _, _, manifest in configuration_records(root):
+        sources.add(source)
+        if manifest is not None:
+            sources.add(manifest)
+    return sources
+
+
+def configuration(root, *, include_manifests=False):
+    root = Path(root).resolve(strict=True)
+    recipes, patches, files, manifests = [], [], [], []
+    for method, first, source, second, third, manifest in configuration_records(root):
+        if method == 'recipe':
+            check_recipe(source, first, root)
+            recipes.append((second, source))
+        elif method == 'patch':
+            require(source.is_file() and source.stat().st_size, f'Missing infrastructure patch: {first}')
+            patches.append((method, source, '', ''))
+        elif method == 'git-apply':
+            manifests.append(manifest)
+            require(source.is_file() and source.stat().st_size, f'Missing infrastructure patch: {first}')
+            recorded = [line.split('\t')[1] for line in manifest.read_bytes().decode('utf-8').split('\n')
+                        if line.split('\t')[0] == source.name and len(line.split('\t')) > 1]
+            require(recorded == [hashlib.sha256(source.read_bytes()).hexdigest()],
+                    f'Infrastructure patch differs from {manifest}: {first}')
+            patches.append((method, source, '', ''))
+        elif method == 'recipe-patch':
+            require(source.is_file() and source.stat().st_size, f'Missing recipe patch: {first}')
+            patches.append((method, source, second, third))
+        elif method == 'file':
+            require(source.is_file(), f'Missing exported file: {first}')
+            files.append((source, second))
     source_path(root, 'pkgsrc', 'pkgsrc source directory')
     categories = []
     for path in (root / 'pkgsrc').iterdir():
