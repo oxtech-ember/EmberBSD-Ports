@@ -24,7 +24,6 @@ constexpr int nativeHeight = 3;
 constexpr int nativeStride = 16;
 constexpr int guardSize = 16;
 constexpr int pixelBytes = 4;
-constexpr int paddingSize = nativeStride - nativeWidth * pixelBytes;
 constexpr std::size_t framebufferBytes = nativeStride * nativeHeight;
 constexpr std::size_t storageSize = guardSize + framebufferBytes + guardSize;
 constexpr QRgb background = qRgb(193, 167, 83);
@@ -80,21 +79,32 @@ void initializeDestination(QImage &image, const QColor &color)
     }
 }
 
-bool guardsAndPaddingAre(const std::vector<unsigned char> &storage, unsigned char value)
+bool guardsAndPaddingAreFor(const std::vector<unsigned char> &storage,
+                            std::size_t offset, int width, int height, int stride,
+                            unsigned char value)
 {
     for (int i = 0; i < guardSize; ++i) {
         if (storage[static_cast<std::size_t>(i)] != value
-            || storage[guardSize + framebufferBytes + static_cast<std::size_t>(i)] != value)
+            || storage[offset + static_cast<std::size_t>(height * stride)
+                       + static_cast<std::size_t>(i)] != value)
             return false;
     }
-    for (int y = 0; y < nativeHeight; ++y) {
-        const std::size_t row = guardSize + static_cast<std::size_t>(y * nativeStride);
-        for (int i = 0; i < paddingSize; ++i) {
-            if (storage[row + nativeWidth * pixelBytes + static_cast<std::size_t>(i)] != value)
+    const int rowPadding = stride - width * pixelBytes;
+    for (int y = 0; y < height; ++y) {
+        const std::size_t row = offset + static_cast<std::size_t>(y * stride);
+        for (int i = 0; i < rowPadding; ++i) {
+            if (storage[row + static_cast<std::size_t>(width * pixelBytes)
+                        + static_cast<std::size_t>(i)] != value)
                 return false;
         }
     }
     return true;
+}
+
+bool guardsAndPaddingAre(const std::vector<unsigned char> &storage, unsigned char value)
+{
+    return guardsAndPaddingAreFor(storage, guardSize, nativeWidth, nativeHeight,
+                                  nativeStride, value);
 }
 
 void verifyPixels(const Fixture &fixture, const QImage &destination,
@@ -151,6 +161,82 @@ void testRotationAndDamage(QImage::Format format, PixelFormat pixelFormat)
     }
 }
 
+QPoint sourcePointForNative(Rotation rotation, int x, int y,
+                            int bigNativeWidth, int bigNativeHeight)
+{
+    switch (rotation) {
+    case Rotation::R0: return QPoint(x, y);
+    case Rotation::R90: return QPoint(y, bigNativeWidth - 1 - x);
+    case Rotation::R180:
+        return QPoint(bigNativeWidth - 1 - x, bigNativeHeight - 1 - y);
+    case Rotation::R270: return QPoint(bigNativeHeight - 1 - y, x);
+    }
+    return QPoint(-1, -1);
+}
+
+QColor coordinateColor(int x, int y)
+{
+    return QColor(x + 1, y + 1, (x * 131 + y * 17) & 0xff);
+}
+
+void testLargeDisjointDamage(QImage::Format format, PixelFormat pixelFormat)
+{
+    constexpr int bigNativeWidth = 97;
+    constexpr int bigNativeHeight = 83;
+    constexpr int bigNativeStride = bigNativeWidth * pixelBytes + 12;
+    constexpr int offset = 16;
+    constexpr unsigned char sentinel = 0xA7;
+    const std::array rotations{Rotation::R0, Rotation::R90,
+                               Rotation::R180, Rotation::R270};
+
+    for (Rotation rotation : rotations) {
+        const QSize logicalSize = (rotation == Rotation::R90 || rotation == Rotation::R270)
+            ? QSize(bigNativeHeight, bigNativeWidth) : QSize(bigNativeWidth, bigNativeHeight);
+        const QRect first(5, 7, 35, 39);
+        const QRect second(logicalSize.width() - 41,
+                           logicalSize.height() - 44, 36, 37);
+        QRegion damage(first);
+        damage += second;
+
+        QImage source(logicalSize, QImage::Format_RGB32);
+        for (int y = 0; y < logicalSize.height(); ++y) {
+            for (int x = 0; x < logicalSize.width(); ++x)
+                source.setPixelColor(x, y, coordinateColor(x, y));
+        }
+
+        constexpr std::size_t framebufferSize =
+            static_cast<std::size_t>(bigNativeStride) * bigNativeHeight;
+        std::vector<unsigned char> storage(
+            static_cast<std::size_t>(offset) + framebufferSize + guardSize, sentinel);
+        QImage destination(storage.data() + offset, bigNativeWidth, bigNativeHeight,
+                           bigNativeStride, format);
+        for (int y = 0; y < bigNativeHeight; ++y) {
+            for (int x = 0; x < bigNativeWidth; ++x)
+                destination.setPixelColor(x, y, QColor::fromRgb(background));
+        }
+        const Layout layout{storage.size(), offset, bigNativeWidth, bigNativeHeight,
+                            bigNativeStride, pixelFormat};
+
+        check(QBsdFb::blit(destination, source, layout, rotation, damage),
+              "large disjoint damage is blitted for every rotation");
+        for (int y = 0; y < bigNativeHeight; ++y) {
+            for (int x = 0; x < bigNativeWidth; ++x) {
+                const QPoint sourcePoint = sourcePointForNative(
+                    rotation, x, y, bigNativeWidth, bigNativeHeight);
+                const bool touched = damage.contains(sourcePoint);
+                const QColor expected = touched
+                    ? coordinateColor(sourcePoint.x(), sourcePoint.y())
+                    : QColor::fromRgb(background);
+                check(destination.pixelColor(x, y) == expected,
+                      "multi-rect blit preserves gap and maps source pixels correctly");
+            }
+        }
+        check(guardsAndPaddingAreFor(storage, offset, bigNativeWidth, bigNativeHeight,
+                                     bigNativeStride, sentinel),
+              "multi-rect blit preserves guards and padded row bytes");
+    }
+}
+
 void testInvalidInputsAreRejectedWithoutChangingPixels(QImage::Format format,
                                                         PixelFormat pixelFormat)
 {
@@ -194,6 +280,8 @@ int main()
 {
     testRotationAndDamage(QImage::Format_RGB32, PixelFormat::Xrgb8888);
     testRotationAndDamage(QImage::Format_RGBX8888, PixelFormat::Xbgr8888);
+    testLargeDisjointDamage(QImage::Format_RGB32, PixelFormat::Xrgb8888);
+    testLargeDisjointDamage(QImage::Format_RGBX8888, PixelFormat::Xbgr8888);
     testInvalidInputsAreRejectedWithoutChangingPixels(
         QImage::Format_RGB32, PixelFormat::Xrgb8888);
     testInvalidInputsAreRejectedWithoutChangingPixels(

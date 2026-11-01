@@ -4,7 +4,7 @@ Add checked RGB32 framebuffer blitting for bsdfb.
 
 --- /dev/null
 +++ src/plugins/platforms/bsdfb/qbsdfbblit_p.h
-@@ -0,0 +1,67 @@
+@@ -0,0 +1,81 @@
 +// SPDX-License-Identifier: BSD-2-Clause
 +// Origin: EmberBSD contributors (AI-assisted).
 +
@@ -50,24 +50,38 @@ Add checked RGB32 framebuffer blitting for bsdfb.
 +    Painter painter(&destination);
 +    if (!painter.isActive())
 +        return false;
-+    painter.setCompositionMode(Painter::CompositionMode_Source);
-+    painter.setClipRegion(nativeDamage);
-+    switch (rotation) {
-+    case Rotation::R0: break;
-+    case Rotation::R90:
-+        painter.translate(layout.nativeWidth, 0);
-+        painter.rotate(90);
-+        break;
-+    case Rotation::R180:
-+        painter.translate(layout.nativeWidth, layout.nativeHeight);
-+        painter.rotate(180);
-+        break;
-+    case Rotation::R270:
-+        painter.translate(0, layout.nativeHeight);
-+        painter.rotate(270);
-+        break;
++    const auto setSourceTransform = [&] {
++        switch (rotation) {
++        case Rotation::R0: break;
++        case Rotation::R90:
++            painter.translate(layout.nativeWidth, 0);
++            painter.rotate(90);
++            break;
++        case Rotation::R180:
++            painter.translate(layout.nativeWidth, layout.nativeHeight);
++            painter.rotate(180);
++            break;
++        case Rotation::R270:
++            painter.translate(0, layout.nativeHeight);
++            painter.rotate(270);
++            break;
++        }
++    };
++    if (nativeDamage.rectCount() == 1) {
++        painter.setCompositionMode(Painter::CompositionMode_Source);
++        painter.setClipRegion(nativeDamage);
++        setSourceTransform();
++        painter.drawImage(QT_PREPEND_NAMESPACE(QPoint)(0, 0), source);
++    } else {
++        for (const Rectangle &rect : nativeDamage) {
++            painter.save();
++            painter.setCompositionMode(Painter::CompositionMode_Source);
++            painter.setClipRect(rect);
++            setSourceTransform();
++            painter.drawImage(QT_PREPEND_NAMESPACE(QPoint)(0, 0), source);
++            painter.restore();
++        }
 +    }
-+    painter.drawImage(QT_PREPEND_NAMESPACE(QPoint)(0, 0), source);
 +    return painter.end();
 +}
 +
