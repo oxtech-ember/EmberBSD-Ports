@@ -55,6 +55,12 @@ args = sys.argv[1:]
 directory = pathlib.Path(args[args.index('-C') + 1])
 root = directory.parents[1]
 settings = dict(arg.split('=', 1) for arg in args if '=' in arg and not arg.startswith('${'))
+tracked = settings.get('TEST_PARALLEL') == 'yes'
+if tracked:
+    events = root / 'events'
+    events.mkdir(exist_ok=True)
+    (events / (str(__import__('os').getpid()) + '.start')).write_text(str(__import__('time').monotonic_ns()))
+    __import__('time').sleep(0.05)
 package = directory.relative_to(root).as_posix()
 values = json.loads((root / 'metadata.json').read_text())[package]
 values = dict(values)
@@ -83,10 +89,14 @@ if '-dg1' in args:
     print('#*** Command-line Variables:', file=sys.stderr)
     if values.get('_inventory_error'):
         print('PRIVATE_VALUE = ' + values['_inventory_error'], file=sys.stderr)
+        if tracked:
+            (events / (str(__import__('os').getpid()) + '.end')).write_text(str(__import__('time').monotonic_ns()))
         sys.exit(2)
 for index, arg in enumerate(args):
     if arg == '-V':
         print(values.get(args[index + 1][2:-1], ''))
+if tracked:
+    (events / (str(__import__('os').getpid()) + '.end')).write_text(str(__import__('time').monotonic_ns()))
 ''')
         self.bmake.chmod(0o755)
         self.pkg_admin = self.path / 'pkg_admin'
@@ -151,6 +161,57 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         self.assertEqual(calls['devel/tests']['USE_CROSS_COMPILE'], 'yes')
         self.assertNotIn(str(self.path), json.dumps(graph))
 
+    def test_parallel_jobs_preserve_graph_and_bound_bmake_concurrency(self):
+        common = ('--make-variable', 'TEST_PARALLEL=yes')
+        serial = self.run_export(*common)
+        parallel = self.run_export(*common, '--jobs', '2')
+        self.assertEqual(serial, parallel)
+        events = self.pkgsrc / 'events'
+        intervals = []
+        for start in events.glob('*.start'):
+            end = events / (start.name[:-6] + '.end')
+            self.assertTrue(end.is_file(), f'query process did not finish: {start.name}')
+            intervals.extend(((int(start.read_text()), 1), (int(end.read_text()), -1)))
+        active = peak = 0
+        for _, delta in sorted(intervals):
+            active += delta
+            peak = max(peak, active)
+        self.assertEqual(peak, 2)
+        serial = self.run_export(*common, '--dependency-phase', 'build')
+        serial_inventory = self.last_inventory
+        parallel = self.run_export(*common, '--jobs', '2', '--dependency-phase', 'build')
+        self.assertEqual(serial, parallel)
+        self.assertEqual(serial_inventory, self.last_inventory)
+
+    def test_parallel_frontier_coalesces_exact_requests(self):
+        self.packages['devel/app']['DEPENDS'] = 'library>=1:../../devel/library'
+        self.run_export('--jobs', '3')
+        calls = [json.loads(line) for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
+        self.assertEqual(sum(call['package'] == 'devel/library' for call in calls), 1)
+
+    def test_parallel_frontier_does_not_prefetch_past_node_limit(self):
+        self.run_export('--jobs', '10', '--max-nodes', '1', success=False)
+        calls = [json.loads(line) for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
+        self.assertEqual([call['package'] for call in calls], ['devel/app'])
+
+    def test_parallel_frontier_finishes_running_queries_after_failure(self):
+        self.packages['devel/library']['_inventory_error'] = 'provider unavailable'
+        self.run_export('--jobs', '2', '--make-variable', 'TEST_PARALLEL=yes', success=False)
+        events = self.pkgsrc / 'events'
+        starts = list(events.glob('*.start'))
+        self.assertTrue(starts)
+        self.assertTrue(all((events / (start.name[:-6] + '.end')).is_file() for start in starts))
+
+    def test_parallel_frontier_preserves_context_and_variant_refusals(self):
+        self.packages['devel/app']['PKGSRC_MAKE_ENV'] = 'CFLAGS=-O0'
+        self.assertIn('conflicting recursive contexts', self.run_export(
+            '--jobs', '2', '--root', 'devel/library', success=False))
+        self.packages['devel/app'].pop('PKGSRC_MAKE_ENV')
+        self.packages['devel/tests']['DEPENDS'] = 'library>=0:../../devel/library'
+        self.packages['devel/library']['_options_by_required'] = {
+            'library>=0': 'debug', 'library>=1': 'normal'}
+        self.assertIn('conflicting package variants', self.run_export('--jobs', '2', success=False))
+
     def test_native_context_stays_host(self):
         graph = self.run_export('--mode', 'native', '--target', 'x86_64', '--triplet', 'x86_64--linux')
         self.assertTrue(all(node['id'].startswith('host:') for node in graph['nodes']))
@@ -188,10 +249,10 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         self.assertIn('pkg_admin rejected', self.run_export(success=False))
 
     def test_target_architecture_mismatch(self):
-        self.assertIn('architecture differs', self.run_export('--target', 'amd64', success=False))
+        self.assertIn('architecture differs', self.run_export('--jobs', '2', '--target', 'amd64', success=False))
 
     def test_triplet_mismatch(self):
-        self.assertIn('triplet differs', self.run_export('--triplet', 'wrong--target', success=False))
+        self.assertIn('triplet differs', self.run_export('--jobs', '2', '--triplet', 'wrong--target', success=False))
 
     def test_failure_and_skip_reasons_remain_failures(self):
         for key in ('PKG_SKIP_REASON', 'PKG_FAIL_REASON'):
@@ -214,7 +275,7 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
 
     def test_failed_inventory_does_not_print_private_values(self):
         self.packages['devel/app']['_inventory_error'] = 'private-makeconf-secret'
-        error = self.run_export(success=False)
+        error = self.run_export('--jobs', '2', success=False)
         self.assertIn('variable inventory query failed', error)
         self.assertNotIn('private-makeconf-secret', error)
         self.assertNotIn('Global Variables', error)

@@ -4,6 +4,7 @@
 """Export a bounded pkgsrc dependency closure through native bmake metadata."""
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 import os
@@ -94,6 +95,7 @@ class Exporter:
         self.patterns = {}
         self.pending = []
         self.test_requirements = []
+        self.query_results = {}
 
     def run(self, command, **kwargs):
         completed = subprocess.run(command, text=True, capture_output=True,
@@ -213,10 +215,7 @@ class Exporter:
         return digest(canonical({'files': sorted(records), 'missing': sorted(missing), 'metadata': metadata}))
 
     def visit(self, package, cross, settings, environment, pattern=None):
-        role = 'target' if cross == 'yes' else 'host'
-        identity = role + ':' + package
-        if settings:
-            identity += '@' + digest(canonical(settings))[:16]
+        identity = self.node_identity(package, cross, settings)
         context = [cross, settings, environment, self.make_variables]
         if identity in self.nodes:
             if self.contexts[identity] != context:
@@ -224,7 +223,7 @@ class Exporter:
             if pattern:
                 self.matches(pattern, self.metadata[identity]['PKGNAME'])
                 if pattern not in self.patterns[identity]:
-                    candidate = self.query(package, cross, settings, environment, pattern)
+                    candidate = self.query_result(package, cross, settings, environment, pattern)
                     if (candidate != self.metadata[identity] or
                             self.inputs(package, candidate) != self.nodes[identity]['input_sha256']):
                         raise ExportError('conflicting package variants for ' + identity)
@@ -232,7 +231,7 @@ class Exporter:
             return identity
         if len(self.nodes) >= self.args.max_nodes:
             raise ExportError('dependency closure exceeds --max-nodes')
-        metadata = self.query(package, cross, settings, environment, pattern)
+        metadata = self.query_result(package, cross, settings, environment, pattern)
         if pattern:
             self.matches(pattern, metadata['PKGNAME'])
         expected_arch = {'amd64': 'x86_64'}.get(self.args.target, self.args.target)
@@ -252,39 +251,133 @@ class Exporter:
         self.pending.append((identity, package, cross, settings, environment, metadata))
         return identity
 
-    def export(self):
-        for root in sorted(set(self.args.root)):
-            self.visit(self.package_path(root),
-                       'yes' if self.args.mode == 'cross' else 'no', {}, self.environment)
+    def node_identity(self, package, cross, settings):
+        role = 'target' if cross == 'yes' else 'host'
+        identity = role + ':' + package
+        if settings:
+            identity += '@' + digest(canonical(settings))[:16]
+        return identity
+
+    def query_key(self, package, cross, settings, environment, pattern):
+        return (package, cross, tuple(sorted(settings.items())), tuple(sorted(environment.items())),
+                tuple(self.make_variables.items()), pattern)
+
+    def query_result(self, package, cross, settings, environment, pattern):
+        key = self.query_key(package, cross, settings, environment, pattern)
+        if key not in self.query_results:
+            return self.query(package, cross, settings, environment, pattern)
+        return self.query_results[key]
+
+    def dependency_requests(self, parent):
+        identity, package, cross, settings, environment, metadata = parent
+        recursive_env = dict(environment)
+        recursive_env.update(assignments(metadata['PKGSRC_MAKE_ENV']))
+        recursive_env['PATH'] = metadata['_PATH_ORIG']
+        for key in list(recursive_env):
+            if key in ('MAKEFLAGS', '_PKGSRC_BARRIER', 'PKGNAME_REQD', 'MAKECONF') or key.startswith('TARGET_'):
+                recursive_env.pop(key)
+        children = []
+        for variable, kind in DEPENDENCIES.items():
+            for dependency in sorted(set(shlex.split(metadata[variable]))):
+                pattern, sep, path = dependency.partition(':')
+                if not sep or not pattern or not path:
+                    raise ExportError('invalid native dependency entry')
+                child = self.package_path(path, self.root / package)
+                if kind == 'test' and self.args.dependency_phase == 'build':
+                    self.test_requirements.append({
+                        'owner': identity, 'role': 'target' if cross == 'yes' else 'host',
+                        'package_path': child, 'pattern': pattern})
+                    continue
+                child_cross = 'no' if kind == 'tool' else cross
+                # Follow pkgformat/pkg/depends.mk, including TEST_DEPENDS.
+                child_settings = assignments(metadata['CROSSTARGETSETTINGS']) if kind == 'tool' and cross == 'yes' else {}
+                if any(not key.startswith('TARGET_') for key in child_settings):
+                    raise ExportError('unexpected CROSSTARGETSETTINGS key')
+                children.append(((child, child_cross, child_settings, recursive_env, pattern), kind))
+        return children
+
+    def merge_children(self, identity, children):
+        edges = set()
+        for request, kind in children:
+            child_id = self.visit(*request)
+            edges.add((child_id, kind))
+        self.nodes[identity]['dependencies'] = [
+            {'id': child, 'kind': kind} for child, kind in sorted(edges)]
+
+    def prefetch(self, requests):
+        """Run one deterministic frontier of first queries for new nodes."""
+        unique = []
+        pending_contexts = {}
+        for request in requests:
+            package, cross, settings, environment, pattern = request
+            identity = self.node_identity(package, cross, settings)
+            context = [cross, settings, environment, self.make_variables]
+            if identity in self.contexts:
+                if self.contexts[identity] != context:
+                    raise ExportError('conflicting recursive contexts for ' + identity)
+                continue
+            else:
+                if identity in pending_contexts and pending_contexts[identity] != context:
+                    raise ExportError('conflicting recursive contexts for ' + identity)
+                if identity in pending_contexts:
+                    # One canonical query establishes each new node. Pattern
+                    # variants are checked later by visit() on the main thread.
+                    continue
+                pending_contexts[identity] = context
+                if len(self.nodes) + len(pending_contexts) > self.args.max_nodes:
+                    raise ExportError('dependency closure exceeds --max-nodes')
+            key = self.query_key(package, cross, settings, environment, pattern)
+            if key not in self.query_results:
+                unique.append(request)
+        if not unique:
+            return
+        if self.args.jobs == 1:
+            results = [self.query(*request) for request in unique]
+        else:
+            results = []
+            with ThreadPoolExecutor(max_workers=min(self.args.jobs, len(unique))) as pool:
+                futures = [pool.submit(self.query, *request) for request in unique]
+                try:
+                    # Consume in request order so graph mutation and failures stay deterministic.
+                    results = [future.result() for future in futures]
+                except BaseException:
+                    for future in futures:
+                        future.cancel()
+                    raise
+        for request, metadata in zip(unique, results):
+            self.query_results[self.query_key(*request)] = metadata
+
+    def parallel_frontier(self):
+        roots = [self.package_path(root) for root in sorted(set(self.args.root))]
+        root_requests = [(package, 'yes' if self.args.mode == 'cross' else 'no', {},
+                          self.environment, None) for package in roots]
+        self.prefetch(root_requests)
+        for request in root_requests:
+            self.visit(*request)
+
         while self.pending:
-            identity, package, cross, settings, environment, metadata = self.pending.pop(0)
-            recursive_env = dict(environment)
-            recursive_env.update(assignments(metadata['PKGSRC_MAKE_ENV']))
-            recursive_env['PATH'] = metadata['_PATH_ORIG']
-            for key in list(recursive_env):
-                if key in ('MAKEFLAGS', '_PKGSRC_BARRIER', 'PKGNAME_REQD', 'MAKECONF') or key.startswith('TARGET_'):
-                    recursive_env.pop(key)
-            edges = set()
-            for variable, kind in DEPENDENCIES.items():
-                for dependency in sorted(set(shlex.split(metadata[variable]))):
-                    pattern, sep, path = dependency.partition(':')
-                    if not sep or not pattern or not path:
-                        raise ExportError('invalid native dependency entry')
-                    child = self.package_path(path, self.root / package)
-                    if kind == 'test' and self.args.dependency_phase == 'build':
-                        self.test_requirements.append({
-                            'owner': identity, 'role': 'target' if cross == 'yes' else 'host',
-                            'package_path': child, 'pattern': pattern})
-                        continue
-                    child_cross = 'no' if kind == 'tool' else cross
-                    # Follow pkgformat/pkg/depends.mk, including TEST_DEPENDS.
-                    child_settings = assignments(metadata['CROSSTARGETSETTINGS']) if kind == 'tool' and cross == 'yes' else {}
-                    if any(not key.startswith('TARGET_') for key in child_settings):
-                        raise ExportError('unexpected CROSSTARGETSETTINGS key')
-                    child_id = self.visit(child, child_cross, child_settings, recursive_env, pattern)
-                    edges.add((child_id, kind))
-            self.nodes[identity]['dependencies'] = [
-                {'id': child, 'kind': kind} for child, kind in sorted(edges)]
+            frontier, self.pending = self.pending, []
+            plans = []
+            requests = []
+            for parent in frontier:
+                identity = parent[0]
+                children = self.dependency_requests(parent)
+                plans.append((identity, children))
+                requests.extend(request for request, _ in children)
+            self.prefetch(requests)
+            for identity, children in plans:
+                self.merge_children(identity, children)
+
+    def export(self):
+        if self.args.jobs > 1:
+            self.parallel_frontier()
+        else:
+            for root in sorted(set(self.args.root)):
+                self.visit(self.package_path(root),
+                           'yes' if self.args.mode == 'cross' else 'no', {}, self.environment)
+            while self.pending:
+                parent = self.pending.pop(0)
+                self.merge_children(parent[0], self.dependency_requests(parent))
         for identity, node in self.nodes.items():
             node['input_sha256'] = digest(canonical({
                 'inputs': node['input_sha256'], 'query_context': self.contexts[identity],
@@ -330,11 +423,13 @@ def main():
     parser.add_argument('--make-variable', action='append', default=[], metavar='NAME=VALUE',
                         help='repeatable scalar bmake assignment; does not accept targets or make flags')
     parser.add_argument('--max-nodes', type=int, default=1000)
+    parser.add_argument('--jobs', type=int, default=1,
+                        help='maximum concurrent bmake metadata queries (default: 1)')
     parser.add_argument('--timeout', type=int, default=120, help='seconds per metadata command')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     try:
-        if args.max_nodes < 1 or args.timeout < 1:
+        if args.max_nodes < 1 or args.jobs < 1 or args.timeout < 1:
             raise ExportError('limits must be positive')
         if (args.dependency_phase == 'build') != bool(args.test_requirements_output):
             raise ExportError('build phase requires --test-requirements-output; all phase forbids it')
