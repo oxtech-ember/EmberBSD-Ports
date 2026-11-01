@@ -79,7 +79,10 @@ and build acceptance.
   completion.
 - Full runtime and application package lifecycle checks remain pending.
 - The Blanc application recipe creates an ASAR from an explicit source
-  allowlist and 32 lockfile-pinned runtime packages. The common
+  allowlist and 28 lockfile-pinned runtime archives. Four pure-JavaScript
+  modules (argparse, semver, debug and ms) are copied from their common Ports
+  providers, declared as direct native `TOOL_DEPENDS`, into the self-contained
+  application after narrow consumer-range overrides. The common
   `node-electron-asar` Ports recipe supplies the build-only ASAR tool from the
   selected native prefix; it is not copied into the application. The host
   controller uses CPython 3.15 and SDK API 1. Host Node.js 26.13.0 runs the
@@ -143,10 +146,12 @@ hooks validate these inputs; direct `do-extract`, `do-build` and `do-test` calls
 retain the same checks. The controller checks the SDK API, module origin and
 interpreter versions.
 
-The recipe fetches the source and 32 runtime NPM archives through pkgsrc
+The recipe fetches the source and 28 runtime NPM archives through pkgsrc
 distfiles. The ASAR packer is provided by the common `devel/node-electron-asar`
 recipe, with its installed version and pkgsrc origin recorded as an external
-host build tool in the SBOM.
+host build tool in the SBOM. The common runtime module providers are recorded
+with their actual versions and pkgsrc provenance; no historical archive hash
+is assigned to their package files.
 The build uses verified local archives and runs no NPM installation or network
 fetch. It extracts only allowlisted source files. It keeps tests, build tools,
 the lockfile, and environment files out of the installed ASAR. The installed
@@ -163,17 +168,18 @@ restrictions for unchanged upstream artwork and marks.
 
 `probes/electron/tests/blanc-source-phases.py --help` describes the source-phase regression.
 It uses a real pkgsrc export and explicit make tools/configuration, checks that
-all 33 distfiles are exposed without build inputs, and verifies the consuming
+all 29 distfiles are exposed without build inputs, and verifies the consuming
 phases reject missing tools. With `--distdir` it runs normal cached `fetch` and
 `checksum`, including negative license and corrupted-input cases. The optional
 `--baseline-recipe` reproduces the previous global metadata failure. These
 checks do not build an ASAR or qualify the target runtime.
 The package-controller suite also uses the real SDK loader to reject missing
 or escaped tools, foreign CPU images and external script interpreters. Its
-selection fixtures use native Python binaries as Node stand-ins; they do not
-claim JavaScript execution. A real child process checks that the selected PATH
-cannot discover a system shell. Run these controls with the prepared source
-and cached archives:
+selection fixtures use native Python binaries as Node stand-ins; separate
+JavaScript cases execute the selected Node against staged common providers and
+check js-yaml CLI behavior plus semver/debug/ms APIs. A real child process
+checks that the selected PATH cannot discover a system shell. Run these
+controls with the prepared source and cached archives:
 
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B -I -S \
@@ -183,13 +189,13 @@ and cached archives:
   --node "$HOST_PREFIX/bin/node"
 ```
 
-The host checks passed 18 package-controller tests and 22 focused Node tests.
-The produced ASAR contains 1,674 entries. The production-only registry audit
-reported no advisories for the 32 installed runtime packages. This does not
-clear the separate upstream development dependency audit. Direct pkgsrc
-extraction, patch, build, test, and staged install passed. The ASAR and SBOM
-match the independent allowlist build byte-for-byte. The full pkgsrc dependency
-lifecycle, target startup, and kernel sandbox acceptance remain unverified.
+The host checks passed 21 package-controller tests and 22 focused Node tests.
+The new isolated package build produced a 1,677-entry ASAR; its SHA-256 matches
+the SBOM, which records all four common runtime module versions and contains no
+old private archive hashes. The production-only registry audit covers the 28
+archive-pinned runtime packages, not the separate upstream development
+dependency graph. Package lifecycle, target startup, and kernel sandbox
+acceptance remain unverified.
 The application package cannot be installed until the target runtime is built.
 
 ## GN and C++ target inputs

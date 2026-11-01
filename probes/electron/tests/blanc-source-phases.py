@@ -97,7 +97,7 @@ def main():
     manifest = json.loads((RECIPE / 'files/npm-mirror-manifest.json').read_text())
     expected = {'e12-electron/v1.25.0.tar.gz'} | {
         'e12-electron/' + row['distfile'] for row in manifest['packages']}
-    require(set(files) == expected and len(files) == len(expected) == 33,
+    require(set(files) == expected and len(files) == len(expected) == 29,
             'Actual pkgsrc source inventory is incomplete')
     if args.baseline_recipe:
         baseline = framework_view(args.pkgsrc, args.work / 'baseline', args.baseline_recipe)
@@ -137,9 +137,10 @@ def main():
             accepted + ['DISTDIR=' + str(args.distdir)])
         corrupted = args.work / 'corrupted-distfiles'
         (corrupted / 'e12-electron').mkdir(parents=True)
+        corrupted_archive = 'e12-electron/' + manifest['packages'][0]['distfile']
         for relative in expected:
             target = corrupted / relative
-            if relative == 'e12-electron/ms-2.1.3.tgz':
+            if relative == corrupted_archive:
                 target.write_bytes(b'corrupted input')
             else:
                 target.symlink_to(args.distdir / relative)

@@ -29,6 +29,32 @@ NPM_NAME = re.compile(r'^(?:@[a-z0-9._~-]+/)?[a-z0-9._~-]+$')
 VERSION = re.compile(r'^[0-9]+\.[0-9]+\.[0-9]+$')
 HOST_NODE_VERSION = '26.13.0'
 SOURCE_ARCHIVE_SHA256 = 'b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971'
+COMMON_RUNTIME_OVERRIDES = {
+    'node_modules/argparse': {
+        'name': 'argparse', 'lockedVersion': '2.0.1', 'providerVersion': '3.0.4',
+        'pkgsrcPath': 'devel/node-argparse',
+        'consumers': [{'lockKey': 'node_modules/js-yaml', 'dependency': 'argparse',
+                       'lockedRange': '^2.0.1', 'effectiveRange': '^3.0.4'}],
+    },
+    'node_modules/debug': {
+        'name': 'debug', 'lockedVersion': '4.4.3', 'providerVersion': '4.4.3',
+        'pkgsrcPath': 'devel/node-debug',
+        'consumers': [{'lockKey': 'node_modules/builder-util-runtime', 'dependency': 'debug',
+                       'lockedRange': '^4.3.4', 'effectiveRange': '^4.3.4'}],
+    },
+    'node_modules/electron-updater/node_modules/semver': {
+        'name': 'semver', 'lockedVersion': '7.7.4', 'providerVersion': '7.8.5',
+        'pkgsrcPath': 'devel/node-semver',
+        'consumers': [{'lockKey': 'node_modules/electron-updater', 'dependency': 'semver',
+                       'lockedRange': '~7.7.3', 'effectiveRange': '^7.8.5'}],
+    },
+    'node_modules/ms': {
+        'name': 'ms', 'lockedVersion': '2.1.3', 'providerVersion': '2.1.3',
+        'pkgsrcPath': 'devel/node-ms',
+        'consumers': [{'lockKey': 'node_modules/debug', 'dependency': 'ms',
+                       'lockedRange': '^2.1.3', 'effectiveRange': '^2.1.3'}],
+    },
+}
 
 
 class BuildError(Exception):
@@ -350,8 +376,40 @@ def extract_verified_package(jsonio, archive_path, destination, expected_name, e
         archive.close()
 
 
+def apply_consumer_range_overrides(jsonio, packages, runtime_root, package_metadata,
+                                  providers, manifest_overrides):
+    for override in manifest_overrides.values():
+        for consumer in override['consumers']:
+            parent_key = consumer['lockKey']
+            parent_entry = packages.get(parent_key)
+            require(isinstance(parent_entry, dict),
+                    f'runtime override consumer is missing from package-lock: {parent_key}')
+            dependency = consumer['dependency']
+            locked_range = parent_entry.get('dependencies', {}).get(dependency)
+            require(locked_range == consumer['lockedRange'],
+                    f'upstream dependency range changed for {parent_key} -> {dependency}: {locked_range}')
+            parent_name = parent_key.rsplit('node_modules/', 1)[1]
+            parent_metadata = package_metadata[parent_key]
+            declared = parent_metadata.get('dependencies', {}).get(dependency)
+            require(declared == locked_range,
+                    f'package metadata range differs from lock for {parent_key} -> {dependency}')
+            if consumer['effectiveRange'] == locked_range:
+                continue
+            parent_metadata['dependencies'][dependency] = consumer['effectiveRange']
+            package_file = runtime_root / parent_name / 'package.json'
+            package_file.write_bytes(jsonio.json_bytes(parent_metadata))
+            if parent_key in providers:
+                providers[parent_key]['consumerOverrides'].append({
+                    'dependency': dependency,
+                    'lockedRange': locked_range,
+                    'effectiveRange': consumer['effectiveRange'],
+                    'consumer': parent_key,
+                })
+    return providers
+
+
 def stage_dependencies(jsonio, inventory, source_root, dist_dir, runtime_root,
-                       npm_manifest, expected_manifest_sha256):
+                       npm_manifest, expected_manifest_sha256, native):
     manifest_bytes_sha = digest_file(inventory, npm_manifest, 'sha256')
     require(manifest_bytes_sha == expected_manifest_sha256,
             'NPM mirror manifest does not match its recipe checksum')
@@ -363,16 +421,34 @@ def stage_dependencies(jsonio, inventory, source_root, dist_dir, runtime_root,
     require(manifest.get('hostBuildTool') == {
         'name': '@electron/asar', 'pkgsrcPath': 'devel/node-electron-asar',
     }, 'NPM mirror manifest must identify the common external ASAR build tool')
+    runtime_overrides = manifest.get('runtimeOverrides')
+    require(isinstance(runtime_overrides, list),
+            'NPM mirror manifest must declare common runtime module overrides')
+    overrides_by_key = {row.get('lockKey'): row for row in runtime_overrides if isinstance(row, dict)}
+    require(len(overrides_by_key) == len(runtime_overrides) == len(COMMON_RUNTIME_OVERRIDES),
+            'common runtime override set is incomplete or duplicated')
+    for key, expected in COMMON_RUNTIME_OVERRIDES.items():
+        row = overrides_by_key.get(key)
+        require(row == {'lockKey': key, **expected},
+                f'common runtime override differs from the reviewed contract: {key}')
     lock = read_object(jsonio, lock_path, 'package-lock.json')
     packages, selected, roles, edges = lock_closure(lock)
     rows = manifest.get('packages')
     require(isinstance(rows, list), 'NPM manifest packages must be a list')
     rows_by_key = {row.get('lockKey'): row for row in rows if isinstance(row, dict)}
-    require(len(rows_by_key) == len(rows) == len(selected),
-            'NPM mirror manifest package count differs from the lock closure')
+    require(set(overrides_by_key).issubset(selected),
+            'common runtime override is not present in the upstream runtime closure')
+    require(len(rows_by_key) == len(rows) == len(selected) - len(overrides_by_key),
+            'NPM archive manifest package count differs from the non-overridden lock closure')
     archives = {}
     for key in sorted(selected):
         entry = selected[key]
+        override = overrides_by_key.get(key)
+        if override:
+            require(entry.get('name', override['name']) == override['name'] and
+                    entry.get('version') == override['lockedVersion'],
+                    f'upstream lock entry changed for common runtime override: {key}')
+            continue
         row = rows_by_key.get(key)
         require(row is not None, f'missing NPM mirror manifest entry: {key}')
         require(row.get('version') == entry.get('version') and
@@ -403,17 +479,33 @@ def stage_dependencies(jsonio, inventory, source_root, dist_dir, runtime_root,
     require(not runtime_root.exists(), 'refusing to reuse a nonempty runtime dependency directory')
     runtime_root.mkdir(parents=True)
     package_metadata = {}
+    providers = {}
     for key in sorted(selected):
         entry = selected[key]
         name = key.rsplit('node_modules/', 1)[1]
+        override = overrides_by_key.get(key)
+        if override:
+            provider = resolve_common_runtime_provider(native, jsonio, key, override)
+            require(provider['version'] == override['providerVersion'],
+                    f'common runtime provider version changed: {key}')
+            copy_module_tree(provider['package_dir'], runtime_root / name)
+            package_metadata[key] = provider['metadata']
+            providers[key] = {
+                key_name: provider[key_name]
+                for key_name in ('key', 'name', 'version', 'package_path', 'module_path', 'metadata', 'consumers')
+            }
+            providers[key]['consumerOverrides'] = []
+            continue
         archive_path, _row = archives[key]
         package_metadata[key] = extract_verified_package(
             jsonio, archive_path, runtime_root / name, name, entry['version'])
+    apply_consumer_range_overrides(jsonio, packages, runtime_root, package_metadata,
+                                   providers, overrides_by_key)
     require(not (runtime_root / 'electron').exists(),
             'the system Electron runtime must not be copied into Blanc')
     require(not (runtime_root / '@electron' / 'asar').exists(),
             'the external build-only ASAR packer must not be copied into Blanc')
-    return lock, packages, selected, roles, edges, rows_by_key, package_metadata
+    return lock, packages, selected, roles, edges, rows_by_key, package_metadata, providers, runtime_overrides
 
 
 def copy_module_tree(source, destination):
@@ -520,7 +612,8 @@ def package_license(metadata):
 
 def make_sbom(source_manifest, lock, selected, roles, edges, rows, package_metadata,
               app_asar, node_version, electron_version, electron_pkgpath, electron_dependency,
-              asar_tool, node_sha256, python_version, python_sha256):
+              asar_tool, node_sha256, python_version, python_sha256, runtime_providers,
+              runtime_overrides):
     runtime_path, dependency = validate_runtime_dependency(
         electron_version, electron_pkgpath, electron_dependency)
     lock_sha = source_manifest['packageLockSha256']
@@ -543,10 +636,13 @@ def make_sbom(source_manifest, lock, selected, roles, edges, rows, package_metad
     refs = {}
     for key in sorted(selected):
         entry = selected[key]
-        row = rows[key]
+        provider = runtime_providers.get(key)
+        row = rows.get(key)
         metadata = package_metadata[key]
-        name, version = row['name'], entry['version']
-        ref = make_ref(name, version)
+        name = provider['name'] if provider else row['name']
+        version = provider['version'] if provider else entry['version']
+        ref = (f"pkgsrc:{provider['package_path']}@{provider['version']}" if provider
+               else make_ref(name, version))
         refs[key] = ref
         declared_license = package_license(metadata)
         component = {
@@ -555,16 +651,25 @@ def make_sbom(source_manifest, lock, selected, roles, edges, rows, package_metad
             'name': name,
             'version': version,
             'scope': 'required' if 'runtime' in roles[key] else 'excluded',
-            'hashes': [
-                {'alg': 'SHA-512', 'content': row['sha512']},
-                {'alg': 'SHA-256', 'content': row['sha256']},
-            ],
             'properties': [
                 {'name': 'emberbsd:lockKey', 'value': key},
                 {'name': 'emberbsd:role', 'value': '+'.join(sorted(roles[key]))},
                 {'name': 'emberbsd:npmLicense', 'value': package_license(metadata)},
             ],
         }
+        if provider:
+            component['properties'].extend([
+                {'name': 'emberbsd:commonProvider', 'value': 'true'},
+                {'name': 'emberbsd:bundled', 'value': 'true'},
+                {'name': 'emberbsd:pkgsrcPath', 'value': provider['package_path']},
+                {'name': 'emberbsd:modulePath', 'value': provider['module_path']},
+                {'name': 'emberbsd:upstreamLockVersion', 'value': entry['version']},
+            ])
+        else:
+            component['hashes'] = [
+                {'alg': 'SHA-512', 'content': row['sha512']},
+                {'alg': 'SHA-256', 'content': row['sha256']},
+            ]
         if declared_license != 'NOASSERTION':
             component['licenses'] = [{'license': {'name': declared_license}}]
         components.append(component)
@@ -591,6 +696,8 @@ def make_sbom(source_manifest, lock, selected, roles, edges, rows, package_metad
             {'name': 'emberbsd:upstreamDevelopmentElectronRange',
              'value': root_dev.get('electron', 'NOASSERTION')},
             {'name': 'emberbsd:upstreamDevelopmentElectronBundled', 'value': 'false'},
+            {'name': 'emberbsd:runtimeDependencyOverrides',
+             'value': json.dumps(runtime_overrides, sort_keys=True, separators=(',', ':'))},
         ],
     }
     root_package = lock['packages']['']
@@ -641,6 +748,48 @@ def make_sbom(source_manifest, lock, selected, roles, edges, rows, package_metad
         },
         'components': components,
         'dependencies': dependencies,
+    }
+
+
+def resolve_common_runtime_provider(native, jsonio, key, specification):
+    """Resolve and validate one common pure-JS package from the selected prefix."""
+    name = specification['name']
+    try:
+        bundle_root = Path(native.bundle_root).resolve(strict=True)
+        package_dir = (bundle_root / 'lib/node_modules' / name).resolve(strict=True)
+        package_dir.relative_to(bundle_root)
+    except (OSError, ValueError) as exc:
+        raise BuildError(f'common runtime provider is missing or outside the selected prefix: {name}: {exc}') from exc
+    package_file = package_dir / 'package.json'
+    try:
+        require(stat.S_ISREG(os.lstat(package_file).st_mode),
+                f'common runtime provider package metadata is not a regular file: {name}')
+        metadata = read_object(jsonio, package_file, f'common runtime provider metadata for {name}')
+    except OSError as exc:
+        raise BuildError(f'cannot inspect common runtime provider {name}: {exc}') from exc
+    require(metadata.get('name') == name,
+            f'common runtime provider name does not match lock entry: {key}')
+    require(metadata.get('version') == specification['providerVersion'],
+            f'common runtime provider version mismatch for {name}: expected {specification["providerVersion"]}')
+    require(not metadata.get('os') and not metadata.get('cpu'),
+            f'common runtime provider is platform-specific: {name}')
+    scripts = metadata.get('scripts', {})
+    require(not any(event in scripts for event in ('install', 'preinstall', 'postinstall')),
+            f'common runtime provider has an install lifecycle: {name}')
+    for current, dirs, files in os.walk(package_dir, topdown=True, followlinks=False):
+        for item in dirs + files:
+            path = Path(current) / item
+            mode = os.lstat(path).st_mode
+            require(stat.S_ISDIR(mode) or stat.S_ISREG(mode),
+                    f'common runtime provider contains a link or special file: {name}/{path.relative_to(package_dir)}')
+            require(not (stat.S_ISREG(mode) and path.suffix == '.node'),
+                    f'common runtime provider contains a native addon: {name}/{path.relative_to(package_dir)}')
+    return {
+        'key': key, 'name': name, 'version': metadata['version'],
+        'package_path': specification['pkgsrcPath'],
+        'module_path': 'lib/node_modules/' + name,
+        'package_dir': package_dir, 'metadata': metadata,
+        'consumers': specification['consumers'],
     }
 
 
@@ -837,9 +986,9 @@ def main():
     seed_root = work / 'seed-inputs'
     asar_path = work / 'app.asar'
     sbom_path = work / 'SBOM.json'
-    npm_manifest_sha = '27a0ff98805006ad0bc96680e3a53c694be47907bee8f51b38b690bfa55b8d87'
-    lock, packages, selected, roles, edges, rows, package_metadata = stage_dependencies(
-        jsonio, inventory, source_root, dist_dir, runtime_root, manifest_path, npm_manifest_sha)
+    npm_manifest_sha = '4bf1d8a37632598f96d0c062150d2d1f4a3360a1f018b7bd35b1b5b4d180d1aa'
+    lock, packages, selected, roles, edges, rows, package_metadata, runtime_providers, runtime_overrides = stage_dependencies(
+        jsonio, inventory, source_root, dist_dir, runtime_root, manifest_path, npm_manifest_sha, native)
     require(not app_root.exists() and not seed_root.exists() and not asar_path.exists() and not sbom_path.exists(),
             'refusing to overwrite existing Blanc build output')
     copy_allowlist(source_root, source_manifest['applicationFiles'], app_root)
@@ -875,6 +1024,10 @@ def main():
             'ASAR contains an Electron NPM package')
     require(not any(name.startswith('node_modules/@electron/asar/') for name in contents),
             'ASAR contains the build-only packer')
+    for provider in runtime_providers.values():
+        package_file = 'node_modules/' + provider['name'] + '/package.json'
+        require(package_file in contents,
+                f'ASAR is missing common runtime provider {provider["name"]}')
     require(not any(name.startswith('.env') or '/.env' in name for name in contents),
             'ASAR contains a secret or environment file')
     require(asar_path.is_file(), 'upstream ASAR packer produced no app.asar')
@@ -883,7 +1036,8 @@ def main():
     bom = make_sbom(source_manifest, lock, selected, roles, edges, rows, package_metadata,
                     asar_path, HOST_NODE_VERSION, args.electron_version, args.electron_package_path,
                     args.electron_depends, asar_tool, node_sha,
-                    platform.python_version(), python_sha)
+                    platform.python_version(), python_sha, runtime_providers,
+                    runtime_overrides)
     sbom_path.write_bytes(jsonio.json_bytes(bom))
     print(f'Built Blanc 1.25.0 app.asar ({len(contents)} files) and external-runtime SBOM.')
     return 0

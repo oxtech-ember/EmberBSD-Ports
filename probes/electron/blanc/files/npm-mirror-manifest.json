@@ -3,6 +3,68 @@
     "name": "@electron/asar",
     "pkgsrcPath": "devel/node-electron-asar"
   },
+  "runtimeOverrides": [
+    {
+      "lockKey": "node_modules/argparse",
+      "name": "argparse",
+      "lockedVersion": "2.0.1",
+      "providerVersion": "3.0.4",
+      "pkgsrcPath": "devel/node-argparse",
+      "consumers": [
+        {
+          "lockKey": "node_modules/js-yaml",
+          "dependency": "argparse",
+          "lockedRange": "^2.0.1",
+          "effectiveRange": "^3.0.4"
+        }
+      ]
+    },
+    {
+      "lockKey": "node_modules/debug",
+      "name": "debug",
+      "lockedVersion": "4.4.3",
+      "providerVersion": "4.4.3",
+      "pkgsrcPath": "devel/node-debug",
+      "consumers": [
+        {
+          "lockKey": "node_modules/builder-util-runtime",
+          "dependency": "debug",
+          "lockedRange": "^4.3.4",
+          "effectiveRange": "^4.3.4"
+        }
+      ]
+    },
+    {
+      "lockKey": "node_modules/electron-updater/node_modules/semver",
+      "name": "semver",
+      "lockedVersion": "7.7.4",
+      "providerVersion": "7.8.5",
+      "pkgsrcPath": "devel/node-semver",
+      "consumers": [
+        {
+          "lockKey": "node_modules/electron-updater",
+          "dependency": "semver",
+          "lockedRange": "~7.7.3",
+          "effectiveRange": "^7.8.5"
+        }
+      ]
+    },
+    {
+      "lockKey": "node_modules/ms",
+      "name": "ms",
+      "lockedVersion": "2.1.3",
+      "providerVersion": "2.1.3",
+      "pkgsrcPath": "devel/node-ms",
+      "consumers": [
+        {
+          "lockKey": "node_modules/debug",
+          "dependency": "ms",
+          "lockedRange": "^2.1.3",
+          "effectiveRange": "^2.1.3"
+        }
+      ]
+    }
+  ],
   "packages": [
     {
       "blake2s": "541942a065669ff1e752175cf6a6dd5294334a45cb22dd1d19b8d1fb03666026",
@@ -187,19 +249,6 @@
       "version": "2.1.0"
     },
     {
-      "blake2s": "63ceb2c3bff1b924134b26f06af9a7c38f1982c590af4e97c41997db929b2f52",
-      "distfile": "argparse-2.0.1.tgz",
-      "integrity": "sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==",
-      "lockKey": "node_modules/argparse",
-      "name": "argparse",
-      "resolved": "https://registry.npmjs.org/argparse/-/argparse-2.0.1.tgz",
-      "role": "runtime",
-      "sha256": "27903847fc8215e6fc5a33e81490f7baba66403f8aade33771b988cca097728c",
-      "sha512": "f3ef56a9e6db173a57f4e47e59ae8edbd6ac22881e44ccdc1ad00835da4c1c7c80835d1fd3969215505b704a867ff3d7c35123019faadbf6c4060dc3beeacadd",
-      "size": 39740,
-      "version": "2.0.1"
-    },
-    {
       "blake2s": "8a94a21d68a5abc72bea4df23495227206dd5e3b02934ee05c004d28f56ac7ab",
       "distfile": "builder-util-runtime-9.7.0.tgz",
       "integrity": "sha512-g/kR520giAFYkSXTzcmF3kqQq7wi8F6N6SzeDgZrqTBN+VHdmgWOyTdD1yD7AATDId/yXLvuP34CxW46/BwCdw==",
@@ -213,19 +262,6 @@
       "version": "9.7.0"
     },
     {
-      "blake2s": "5ade20892dfe154186eb42253e900910bbb52977b399a93b19218e0e82052ed7",
-      "distfile": "debug-4.4.3.tgz",
-      "integrity": "sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==",
-      "lockKey": "node_modules/debug",
-      "name": "debug",
-      "resolved": "https://registry.npmjs.org/debug/-/debug-4.4.3.tgz",
-      "role": "runtime",
-      "sha256": "89c1ac9c946ee8905a875837114528e97eeae35e03be3190584b2216af43e4a7",
-      "sha512": "446c305a7c10be455f6af295b76d8518bc3ec5849dcc04709b4aeee83853540dee994e6165cdbc57790ee2cb6062bcab4e52e9baf808f468a28e5b408cd6dca8",
-      "size": 13449,
-      "version": "4.4.3"
-    },
-    {
       "blake2s": "943acdf93f9c37c1ce5ce3f6961aeee0b336635327a55e49edaa45b6728bc119",
       "distfile": "electron-updater-6.8.9.tgz",
       "integrity": "sha512-ZhVxM9iGONUpZGI1FxdMRgJjUFXi7AYGVa5PwKlO1tV1/4zDxQmfKpXOHVztKrd6L9rLcFjERvi1Mf2vxyTkig==",
@@ -237,19 +273,6 @@
       "sha512": "66157133d88638d52964623517174c4602635055e2ec060655ae4fc0a94ed6d575ff8cc3c5099f2a95ce1d5ced2ab77a2fdacb7058c446f8b531fdafc724e48a",
       "size": 136914,
       "version": "6.8.9"
-    },
-    {
-      "blake2s": "132a3b61679b26d0e658a13cfcc49ac5c7af896ac1c38d2149e81c910df8a42a",
-      "distfile": "semver-7.7.4.tgz",
-      "integrity": "sha512-vFKC2IEtQnVhpT78h1Yp8wzwrf8CM+MzKMHGJZfBtzhZNycRFnXsHk6E5TxIkkMsgNS7mdX3AGB7x2QM2di4lA==",
-      "lockKey": "node_modules/electron-updater/node_modules/semver",
-      "name": "semver",
-      "resolved": "https://registry.npmjs.org/semver/-/semver-7.7.4.tgz",
-      "role": "runtime",
-      "sha256": "09267ad08cfe300e6790c9b8dc3db079103b4700cc465a67779b15662fe9418c",
-      "sha512": "bc5282d8812d427561a53efc875629f30cf0adff0233e33328c1c62597c1b738593727111675ec1e4e84e53c4892432c80d4bb99d5f700607bc7640cd9d8b894",
-      "size": 28442,
-      "version": "7.7.4"
     },
     {
       "blake2s": "3638119f54a0552d99a0424cb961b8c94c96082e5163500e872c2d64530af2ad",
@@ -341,19 +364,6 @@
       "sha512": "a43a3796ef0985f8ea96ce8690c8296a1b05f640b26b2860ca48f22cc3454ca5aba5574042d6320789ae00c5a8cc10788a0fddb56026b0cc4b108f30bb3f8361",
       "size": 12308,
       "version": "4.5.0"
-    },
-    {
-      "blake2s": "277ceb43801b9a45343685136756d86faa35ad8f1ddb6008cfc5020a8cfc5766",
-      "distfile": "ms-2.1.3.tgz",
-      "integrity": "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==",
-      "lockKey": "node_modules/ms",
-      "name": "ms",
-      "resolved": "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz",
-      "role": "runtime",
-      "sha256": "f6616e15e530ed552f9daa2d3ce71963947c6bc7c98c9b64fd3e673fd02622c6",
-      "sha512": "e85973b9b4cb646dc9d9afcd542025784863ceae68c601f268253dc985ef70bb2fa1568726afece715c8ebf5d73fab73ed1f7100eb479d23bfb57b45dd645394",
-      "size": 2967,
-      "version": "2.1.3"
     },
     {
       "blake2s": "e2889c4fc2a74f3a0c6193a12726d52913c114723bd333b32596d88824332f05",

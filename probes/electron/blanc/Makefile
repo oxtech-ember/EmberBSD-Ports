@@ -4,7 +4,7 @@
 # This recipe and its local portability patches were prepared with AI assistance.
 
 DISTNAME=	blanc-1.25.0
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	www
 BLANC_SOURCE=	v1.25.0${EXTRACT_SUFX}
 MASTER_SITES=	https://github.com/bnfy/blanc/archive/refs/tags/
@@ -14,9 +14,7 @@ BLANC_NPM_DISTFILES= \
 	adblocker-electron-2.18.2.tgz \
 	adblocker-electron-preload-2.18.2.tgz \
 	adblocker-extended-selectors-2.18.2.tgz \
-	argparse-2.0.1.tgz \
 	builder-util-runtime-9.7.0.tgz \
-	debug-4.4.3.tgz \
 	electron-updater-6.8.9.tgz \
 	fs-extra-10.1.0.tgz \
 	graceful-fs-4.2.11.tgz \
@@ -26,11 +24,9 @@ BLANC_NPM_DISTFILES= \
 	lazy-val-1.0.5.tgz \
 	lodash.escaperegexp-4.1.2.tgz \
 	lodash.isequal-4.5.0.tgz \
-	ms-2.1.3.tgz \
 	sax-1.6.0.tgz \
 	sdk-0.5.0.tgz \
 	sdk-core-0.5.0.tgz \
-	semver-7.7.4.tgz \
 	small-2.1.0.tgz \
 	smaz-2.2.0.tgz \
 	smaz-compress-2.2.0.tgz \
@@ -51,9 +47,7 @@ SITES.adblocker-content-2.18.2.tgz=	https://registry.npmjs.org/@ghostery/adblock
 SITES.adblocker-electron-2.18.2.tgz=	https://registry.npmjs.org/@ghostery/adblocker-electron/-/
 SITES.adblocker-electron-preload-2.18.2.tgz=	https://registry.npmjs.org/@ghostery/adblocker-electron-preload/-/
 SITES.adblocker-extended-selectors-2.18.2.tgz=	https://registry.npmjs.org/@ghostery/adblocker-extended-selectors/-/
-SITES.argparse-2.0.1.tgz=	https://registry.npmjs.org/argparse/-/
 SITES.builder-util-runtime-9.7.0.tgz=	https://registry.npmjs.org/builder-util-runtime/-/
-SITES.debug-4.4.3.tgz=	https://registry.npmjs.org/debug/-/
 SITES.electron-updater-6.8.9.tgz=	https://registry.npmjs.org/electron-updater/-/
 SITES.fs-extra-10.1.0.tgz=	https://registry.npmjs.org/fs-extra/-/
 SITES.graceful-fs-4.2.11.tgz=	https://registry.npmjs.org/graceful-fs/-/
@@ -63,11 +57,9 @@ SITES.jsonfile-6.2.1.tgz=	https://registry.npmjs.org/jsonfile/-/
 SITES.lazy-val-1.0.5.tgz=	https://registry.npmjs.org/lazy-val/-/
 SITES.lodash.escaperegexp-4.1.2.tgz=	https://registry.npmjs.org/lodash.escaperegexp/-/
 SITES.lodash.isequal-4.5.0.tgz=	https://registry.npmjs.org/lodash.isequal/-/
-SITES.ms-2.1.3.tgz=	https://registry.npmjs.org/ms/-/
 SITES.sax-1.6.0.tgz=	https://registry.npmjs.org/sax/-/
 SITES.sdk-0.5.0.tgz=	https://registry.npmjs.org/@1password/sdk/-/
 SITES.sdk-core-0.5.0.tgz=	https://registry.npmjs.org/@1password/sdk-core/-/
-SITES.semver-7.7.4.tgz=	https://registry.npmjs.org/semver/-/
 SITES.small-2.1.0.tgz=	https://registry.npmjs.org/@remusao/small/-/
 SITES.smaz-2.2.0.tgz=	https://registry.npmjs.org/@remusao/smaz/-/
 SITES.smaz-compress-2.2.0.tgz=	https://registry.npmjs.org/@remusao/smaz-compress/-/
@@ -83,6 +75,10 @@ MAINTAINER=	oxtech-ember@users.noreply.github.com
 HOMEPAGE=	https://github.com/bnfy/blanc
 COMMENT=	Desktop browser application for the system Electron runtime
 TOOL_DEPENDS+=	node-electron-asar>=${BLANC_ASAR_MIN_VERSION}:../../devel/node-electron-asar
+TOOL_DEPENDS+=	node-argparse>=3.0.4:../../devel/node-argparse
+TOOL_DEPENDS+=	node-semver>=7.8.5:../../devel/node-semver
+TOOL_DEPENDS+=	node-debug>=4.4.3:../../devel/node-debug
+TOOL_DEPENDS+=	node-ms>=2.1.3:../../devel/node-ms
 LICENSE=	mit AND cc-by-sa-v3.0 AND ofl-v1.1 AND isc AND mpl-2.0 AND python-software-foundation AND blueoak-1.0.0
 # Blue Oak is not in the pinned pkgsrc license catalog. Keep its exact text
 # with the installed notices; users must explicitly accept blueoak-1.0.0.
@@ -100,7 +96,7 @@ BLANC_ELECTRON_DEPENDS=	electron>=${BLANC_ELECTRON_RUNTIME_VERSION}<45.2.2:${BLA
 BLANC_NODE_VERSION=	26.13.0
 BLANC_SOURCE_SHA256=	b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971
 BLANC_SOURCE_FILES_SHA256=	89932ab7cb1966bf5a00fe114945acad393f14493d0bcd3157c43d5c697a20c7
-BLANC_NPM_MANIFEST_SHA256=	27a0ff98805006ad0bc96680e3a53c694be47907bee8f51b38b690bfa55b8d87
+BLANC_NPM_MANIFEST_SHA256=	4bf1d8a37632598f96d0c062150d2d1f4a3360a1f018b7bd35b1b5b4d180d1aa
 BUILD_HOST_NODE=	${EMBERBSD_HOST_NODE}
 BUILD_HOST_PYTHON=	${EMBERBSD_CROSS_BUILD_PYTHON}
 DEPENDS+=	${BLANC_ELECTRON_DEPENDS}
