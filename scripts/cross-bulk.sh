@@ -8,9 +8,6 @@
 #          List entries the profile skips (PKG_SKIP_REASON) go to
 #          STATE/skipped. A graph in which a package reaches a skipped
 #          package is refused: no order is written.
-#   tools  Add the native nodes (below) to an STATE/order and STATE/edges
-#          written before order knew them. Only packages not yet done are
-#          asked. Keeps the old files as *.pre-tools-STAMP.
 #   fetch  Get the distfiles for STATE/order. Only network and DISTDIR.
 #          A package whose distinfo distfiles are all in DISTDIR with
 #          their recorded sizes is not queried; the build verifies the
@@ -65,7 +62,7 @@ set -eu
 umask 022
 
 [ "$#" -eq 3 ] || {
-    echo 'Usage: sh scripts/cross-bulk.sh order|tools|fetch|build PKGPATH_LIST ABSOLUTE_STATE' >&2
+    echo 'Usage: sh scripts/cross-bulk.sh order|fetch|build PKGPATH_LIST ABSOLUTE_STATE' >&2
     exit 2
 }
 mode=$1
@@ -84,8 +81,8 @@ mkdir -p "$state/logs"
 # Verify the selected native prefix once per run. Every later bmake call,
 # and its recursive queries, receive the verified selection on the command
 # line and skip the per-parse verifier.
-# The queries of the tools mode run as child runs of this script (mode
-# deps) and get the verified selection in CROSS_BULK_NATIVE.
+# Parallel order queries run as child runs of this script (mode deps) and
+# get the verified selection in CROSS_BULK_NATIVE.
 unset EMBERBSD_NATIVE_TOOLSET_VERIFIED
 if [ "$mode" = deps ] && [ -n "${CROSS_BULK_NATIVE:-}" ]; then
     native=$CROSS_BULK_NATIVE
@@ -329,77 +326,6 @@ order()
     rm -f "$state/queue" "$state/next"
     rm -rf "$q"
     echo "Ordered $(wc -l < "$state/order") packages: $state/order; skipped $(wc -l < "$state/skipped")"
-}
-
-# tools: the native nodes of an order written before order knew them. The
-# queries run CROSS_BULK_JOBS at a time (default: the CPUs) as child runs
-# of this script in the deps mode.
-tools()
-{
-    native_info
-    q=$state/tools.d
-    jobs=${CROSS_BULK_JOBS:-$(host_cpus)}
-    count CROSS_BULK_JOBS "$jobs"
-    rm -rf "$q"
-    mkdir "$q"
-    touch "$state/done" "$state/skipped"
-    awk 'FILENAME == ARGV[1] { done[$1] = 1; next } !/@native$/ && !($1 in done)' \
-        "$state/done" "$state/order" > "$q/queue"
-    cp "$state/edges" "$q/edges"
-    : > "$q/seen"
-    : > "$q/skipped"
-    : > "$q/failed"
-    while [ -s "$q/queue" ]; do
-        cat "$q/queue" >> "$q/seen"
-        # A node whose dependencies cannot be read has no .deps file and is
-        # reported below with its error; xargs fails for it, which must not
-        # stop tools here without a word.
-        CROSS_BULK_NATIVE=$native CROSS_BULK_PKG_INFO=$native_pkg_info xargs -P "$jobs" -I '{}' sh "$0" deps '{}' "$q" < "$q/queue" || :
-        : > "$q/next"
-        while read -r node; do
-            key=$(echo "$node" | tr / _)
-            if [ ! -f "$q/$key.deps" ]; then
-                echo "$node tools" >> "$q/failed"
-                continue
-            fi
-            skip=$(sed -n 1p "$q/$key.deps")
-            case "$node" in
-                *@native)
-                    if [ -n "$skip" ]; then echo "$node $skip" >> "$q/skipped"; continue; fi
-                    echo "$node $node" >> "$q/edges" ;;
-            esac
-            sed 1d "$q/$key.deps" | while read -r dep; do
-                case "$dep" in *@native) ;; *) continue ;; esac
-                echo "$dep $node" >> "$q/edges"
-                grep -qFx "$dep" "$q/seen" || echo "$dep" >> "$q/next"
-            done
-        done < "$q/queue"
-        sort -u "$q/next" > "$q/queue"
-    done
-    if [ -s "$q/failed" ]; then
-        echo 'Refused: the dependencies of these packages could not be read:' >&2
-        while read -r node why; do
-            echo "$node $why" >&2
-            key=$(echo "$node" | tr / _)
-            [ ! -s "$q/$key.err" ] || tail -n 5 "$q/$key.err" | sed 's/^/    /' >&2
-        done < "$q/failed"
-        return 1
-    fi
-    refused=$(skipped_deps "$q/skipped" "$q/edges")
-    if [ -n "$refused" ]; then
-        echo 'Refused: these packages depend on packages the profile skips:' >&2
-        echo "$refused" >&2
-        return 1
-    fi
-    sort -u "$q/edges" > "$q/edges.sorted"
-    sort_edges "$q/edges.sorted" "$q/order" || return 1
-    stamp=$(date '+%Y%m%d%H%M%S')
-    cp "$state/order" "$state/order.pre-tools-$stamp"
-    cp "$state/edges" "$state/edges.pre-tools-$stamp"
-    mv "$q/edges.sorted" "$state/edges"
-    mv "$q/order" "$state/order"
-    rm -rf "$q"
-    echo "Ordered $(wc -l < "$state/order") packages, $(grep -c '@native$' "$state/order") of them native: $state/order"
 }
 
 # True if the distinfo of a package lists distfiles and DISTDIR has each
@@ -1117,7 +1043,6 @@ stop_deleter()
 
 case "$mode" in
     order) order ;;
-    tools) tools ;;
     deps)
         native_info
         case "$list" in

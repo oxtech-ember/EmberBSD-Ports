@@ -555,24 +555,24 @@ node fails with reason `replace`, its log names the library and the
 packages that load it, and the package stays in `PACKAGES-native/All` for
 an install with those rebuilds between passes.
 `scripts/tests/cross-bulk-native-replace-libraries.sh NEW_OUTPUT` checks
-this. Order and tools refuse a graph with a cycle or an unreadable dependency
-query; a failed query keeps the previous order, edges, skipped list and done
-records. `cross-bulk.sh tools LIST STATE`
-adds these nodes to an existing order for the packages not yet done, keeps
-the old order and edges as `*.pre-tools-STAMP`, and refuses when a query
-fails or a reachable node is skipped. Nothing is locked while a package
-compiles: the build passes a `pkg_add` wrapper as `NATIVE_PKG_ADD_CMD`,
+this. A fresh `cross-bulk.sh order LIST STATE` includes the complete target
+and native dependency graph. Regenerate it only when dependency selection
+changes; a build resumes from its saved order and done records. Order refuses
+a graph with a cycle or unreadable dependency query; a failed query keeps the
+previous order, edges, skipped list and done records. Nothing is locked while
+a package compiles: the build passes a `pkg_add` wrapper as `NATIVE_PKG_ADD_CMD`,
 which takes a lock in `STATE/locks` for the package database it
 installs into, so installs into one prefix never overlap and installs into
 the target sysroot and the native prefix run independently. Only the
 scheduler writes the state lists. SIGTERM starts no new package, lets the
 running ones finish and exits with 143; the next run skips the done packages.
-`scripts/tests/cross-bulk-parallel.sh NEW_OUTPUT` checks this on a small graph
-with a recording bmake. `scripts/tests/cross-bulk-native-tools.sh NEW_OUTPUT`
-checks the native nodes, the tools mode, that a long dependency step of one
-package does not hold back the others, that installs into one database
-never overlap, that an installed tool is a leaf and that a tool cycle is
-refused.
+`scripts/tests/cross-bulk-native-tools.sh NEW_OUTPUT` checks all four
+dependency classes, transitive native tools, installed native leaves,
+cycles, and package scheduling with a recording bmake.
+`scripts/tests/cross-bulk-order-unreadable.sh NEW_OUTPUT` checks refusal and
+state preservation on an unreadable dependency.
+`scripts/tests/cross-bulk-parallel.sh NEW_OUTPUT` checks scheduling and
+database-install serialization on a small graph.
 Removing an old work directory is not on a package's path either: before a
 package builds, the build renames its old `WRKDIR` into
 `WRKOBJDIR/.cross-bulk-trash`, one rename on the same file system, so the
