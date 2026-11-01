@@ -18,6 +18,10 @@ case "$out" in /*) ;; *) echo 'NEW_OUTPUT must be absolute' >&2; exit 2 ;; esac
 case "$out" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2 ;; esac
 [ ! -e "$out" ] || exit 2
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
+if grep -Eq 'nproc|sysctl -n hw\.ncpu|getconf _NPROCESSORS_ONLN' "$ports/scripts/cross-bulk.sh"; then
+    echo 'FAIL: cross-bulk contains a local CPU detector' >&2
+    exit 1
+fi
 mkdir -p "$out/tree/t" "$out/packages/All" "$out/active" "$out/work" "$out/target-db" "$out/bin"
 real_shasum=$(command -v shasum)
 cat > "$out/bin/shasum" <<WRAP
@@ -25,12 +29,17 @@ cat > "$out/bin/shasum" <<WRAP
 echo "\$*" >> $out/shasum-calls
 exec $real_shasum "\$@"
 WRAP
-cat > "$out/bin/nproc" <<WRAP
+cat > "$out/bin/selected-python" <<WRAP
 #!/bin/sh
-echo called >> $out/nproc-calls
+echo "\$*" >> $out/selected-python-calls
+case "\$*" in *resolve-jobs.py*) ;; *) exit 2 ;; esac
+while [ "\$#" -gt 0 ]; do
+    case "\$1" in --jobs) echo "\$2"; exit 0 ;; esac
+    shift
+done
 echo 10
 WRAP
-chmod +x "$out/bin/shasum" "$out/bin/nproc"
+chmod +x "$out/bin/shasum" "$out/bin/selected-python"
 : > "$out/errors"
 : > "$out/edges"
 # PACKAGE DEPENDENCIES...
@@ -69,11 +78,12 @@ cat > "$out/bmake" <<WRAP
 #!/bin/sh
 out=$out
 echo "\$*" >> \$out/calls
-dir= target= varname= add=
+dir= target= varname= varnames= add=
 while [ "\$#" -gt 0 ]; do
     case "\$1" in
         -C) dir=\$2; shift 2 ;;
         VARNAME=*) varname=\${1#VARNAME=}; shift ;;
+        VARNAMES=*) varnames=\${1#VARNAMES=}; shift ;;
         NATIVE_PKG_ADD_CMD=*) add=\${1#NATIVE_PKG_ADD_CMD=}; shift ;;
         *=*) shift ;;
         *) target=\$1; shift ;;
@@ -98,12 +108,20 @@ case "\$target" in
     show-var)
         case "\$varname" in
             EMBERBSD_NATIVE_TOOLSET_VERIFIED) echo fake ;;
+            EMBERBSD_HOST_PYTHON) echo $out/bin/selected-python ;;
+            EMBERBSD_SDK_SOURCE) echo $out/sdk ;;
             PACKAGES) echo \$out/packages ;;
             PKG_INFO) echo false ;;
             NATIVE_PKG_ADD_CMD) echo \$out/pkg_add ;;
             *) echo ;;
         esac ;;
-    show-vars) echo "\$pkg-\$(cat \$dir/version 2> /dev/null || echo 1.0)"; echo "\$out/work/\$pkg"; cat \$dir/skip 2> /dev/null || echo ;;
+    show-vars)
+        if [ "\$varnames" = 'EMBERBSD_HOST_PYTHON EMBERBSD_SDK_SOURCE' ]; then
+            echo \$out/bin/selected-python
+            echo \$out/sdk
+        else
+            echo "\$pkg-\$(cat \$dir/version 2> /dev/null || echo 1.0)"; echo "\$out/work/\$pkg"; cat \$dir/skip 2> /dev/null || echo
+        fi ;;
     clean) rm -f \$out/work/\$pkg.built ;;
     depends) ;;
     package) work ;;
@@ -140,7 +158,7 @@ newstate
 bulk || fail "first build: $(cat "$out/bulk.log")"
 [ ! -s "$out/errors" ] || fail "$(cat "$out/errors")"
 grep -q 'MAKE_JOBS=3 (6 CPUs)' "$out/bulk.log" || fail 'explicit CROSS_BULK_CPUS was not preserved'
-[ ! -e "$out/nproc-calls" ] || fail 'nproc was called despite explicit CROSS_BULK_CPUS'
+[ "$(cat "$out/selected-python-calls")" = "-B -E -S $out/sdk/scripts/resolve-jobs.py --jobs 6" ] || fail 'explicit CROSS_BULK_CPUS did not use the shared resolver'
 max=$(sort -n "$out/concurrency" | tail -n 1)
 [ "$(calls a)" = 3 ] || fail "package a ran bmake $(calls a) times, expected show-vars, clean, package-install"
 [ "$max" -ge 2 ] || fail "at most $max package built at a time"
@@ -167,10 +185,11 @@ done
 [ "$(calls e)" = 0 ] || fail 'blocked package e ran bmake'
 [ ! -s "$out/shasum-calls" ] || fail "done packages hashed again: $(cat "$out/shasum-calls")"
 
-# Without an explicit override, use the selected nproc before other host probes.
+# Without an explicit override, use the selected SDK jobs resolver.
+: > "$out/selected-python-calls"
 bulk_auto_cpus || fail "automatic CPU detection: $(cat "$out/bulk.log")"
-[ "$(cat "$out/nproc-calls")" = called ] || fail 'automatic CPU detection did not use nproc'
-grep -q 'MAKE_JOBS=5 (10 CPUs)' "$out/bulk.log" || fail "nproc result was not used: $(cat "$out/bulk.log")"
+[ "$(cat "$out/selected-python-calls")" = "-B -E -S $out/sdk/scripts/resolve-jobs.py" ] || fail 'automatic CPU detection did not use the selected SDK resolver'
+grep -q 'MAKE_JOBS=5 (10 CPUs)' "$out/bulk.log" || fail "SDK resolver result was not used: $(cat "$out/bulk.log")"
 
 # A done package whose PKGNAME changed, or whose package file is gone,
 # builds again; a changed package file of a done PKGNAME does not.

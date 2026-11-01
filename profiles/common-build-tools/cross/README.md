@@ -510,9 +510,10 @@ The Clang family skips every `lang/gcc16*` package (`PKG_SKIP_REASON`).
 and refuses a graph in which any package reaches a skipped one, so a Clang
 bulk never orders a GCC16 compiler or runtime.
 Independent dependency queries in each order frontier run up to
-`CROSS_BULK_JOBS` at once (default: host CPU count); the graph files are merged
-in sorted order. The pkgsrc build-options cache is separated by target and
-native node role because both roles can contain the same `PKGBASE`.
+`CROSS_BULK_JOBS` at once (default: CPUs available to the selected SDK
+process); the graph files are merged in sorted order. The pkgsrc build-options
+cache is separated by target and native node role because both roles can
+contain the same `PKGBASE`.
 `scripts/tests/cross-bulk-gcc16-guard.sh PKGPATH NEW_OUTPUT` checks both with
 a list that names the GCC16 recipes and with an injected GCC16 dependency.
 The GCC16 recipes themselves skip under the Clang family and do not ask
@@ -528,9 +529,10 @@ the same order as without the cache, and that fetch reuses the cache only
 while the MAKECONF is unchanged.
 `scripts/tests/cross-bulk-build-queries.sh NEW_OUTPUT PKGPATH...` counts
 the bmake runs of a serial build: three for a new package, one for a done one.
-The build runs `CROSS_BULK_JOBS` packages at once, by default half the host
-CPUs. A package starts when every target dependency in `STATE/edges` is
-done; a failed, blocked or skipped dependency blocks it. Each package gets
+The build runs `CROSS_BULK_JOBS` packages at once, by default half the CPUs
+available to the selected SDK process. A package starts when every target
+dependency in `STATE/edges` is done; a failed, blocked or skipped dependency
+blocks it. Each package gets
 `MAKE_JOBS` on the command line, by default 1.5 times the CPUs split over the
 packages and at most the CPUs; `CROSS_BULK_MAKE_JOBS` sets it, or `makeconf`
 leaves it to the MAKECONF. `MAKE_JOBS_SAFE=no` recipes stay serial. Order

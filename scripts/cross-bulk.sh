@@ -375,11 +375,29 @@ fetch()
 # line (default: 1.5 x CPUs split over the packages, at most the CPUs), which
 # also reaches pkgsrc's dependency recursion; MAKE_JOBS_SAFE=no recipes stay
 # serial. CROSS_BULK_MAKE_JOBS=makeconf leaves MAKE_JOBS to the MAKECONF.
-# CROSS_BULK_CPUS overrides the detected CPU count.
+# CROSS_BULK_CPUS overrides the SDK's detected CPU count.
 host_cpus()
 {
-    n=${CROSS_BULK_CPUS:-$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)}
-    case "$n" in ''|*[!0-9]*|0) n=1 ;; esac
+    set --
+    [ -z "${CROSS_BULK_CPUS:-}" ] || set -- --jobs "$CROSS_BULK_CPUS"
+    selected=$(mk -C "$PKGSRCDIR/pkgtools/pkg_install" \
+        show-vars VARNAMES='EMBERBSD_HOST_PYTHON EMBERBSD_SDK_SOURCE' < /dev/null) || {
+        echo 'Cannot read the selected SDK source and host Python from MAKECONF' >&2
+        exit 2
+    }
+    [ "$(printf '%s\n' "$selected" | wc -l | tr -d ' ')" = 2 ] || {
+        echo 'Unexpected selected SDK source and host Python metadata' >&2
+        exit 2
+    }
+    host_python=$(printf '%s\n' "$selected" | sed -n 1p)
+    sdk_source=$(printf '%s\n' "$selected" | sed -n 2p)
+    case "$host_python" in /*) ;; *) echo 'EMBERBSD_HOST_PYTHON is not an absolute selected tool path' >&2; exit 2 ;; esac
+    case "$sdk_source" in /*) ;; *) echo 'EMBERBSD_SDK_SOURCE is not an absolute SDK source path' >&2; exit 2 ;; esac
+    n=$("$host_python" -B -E -S "$sdk_source/scripts/resolve-jobs.py" "$@") || {
+        echo 'The SDK could not resolve the available CPU count' >&2
+        exit 2
+    }
+    count SDK_CPU_COUNT "$n"
     echo "$n"
 }
 
