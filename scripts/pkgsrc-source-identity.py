@@ -363,6 +363,16 @@ SHARED_EXPORT_FORMAT = 'emberbsd-pkgsrc-shared-export'
 SHARED_EXPORT_MATERIAL = ('net/libfetch/files',)
 
 
+def _pkgsrc_export_stage(ports_root):
+    path = Path(ports_root) / 'scripts/pkgsrc-export-stage.py'
+    spec = importlib.util.spec_from_file_location('emberbsd_pkgsrc_export_stage', path)
+    if spec is None or spec.loader is None:
+        raise ValueError('cannot load pkgsrc export stage verifier')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def material_snapshot(root):
     """Snapshot regular files by relative path, execute mode and SHA256."""
     root = Path(root)
@@ -383,8 +393,14 @@ def material_snapshot(root):
 
 
 def shared_export_material(directory, relative):
-    """Return a stored snapshot, or None for a legacy v1 export."""
-    receipt = json.loads((Path(directory) / SHARED_EXPORT_RECEIPT).read_text(encoding='ascii'))
+    """Return a stored snapshot; the caller must first validate through shared_export()."""
+    directory = Path(directory)
+    stage_receipt = directory / 'pkgsrc-stage.json'
+    if os.path.lexists(stage_receipt):
+        if stage_receipt.is_symlink() or not stage_receipt.is_file():
+            raise ValueError('invalid pkgsrc export stage receipt')
+        return None
+    receipt = json.loads((directory / SHARED_EXPORT_RECEIPT).read_text(encoding='ascii'))
     if receipt['version'] == 1:
         return None
     return receipt['material'][relative]
@@ -440,6 +456,11 @@ def shared_export(directory, ports_root, git, sdk_source, patch):
     directory = Path(directory)
     if not directory.is_absolute() or directory.is_symlink() or not directory.is_dir():
         raise ValueError('shared pkgsrc export must be an absolute real directory')
+    stage_receipt = directory / 'pkgsrc-stage.json'
+    if os.path.lexists(stage_receipt):
+        if stage_receipt.is_symlink() or not stage_receipt.is_file():
+            raise ValueError('invalid pkgsrc export stage receipt')
+        return _pkgsrc_export_stage(ports_root).verify(directory, git, patch, root=ports_root)
     path = directory / SHARED_EXPORT_RECEIPT
     if path.is_symlink() or not path.is_file():
         raise ValueError('shared pkgsrc export has no receipt')

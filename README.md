@@ -914,6 +914,11 @@ arguments. The shell entry also requires explicit `PY`.
 Python uses its standard library for archives, hashes and copies.
 The subprocess PATH contains only the selected source-tool directories.
 
+The SDK `scripts/pkgsrc-export-stage.py prepare ROOT --git GIT --patch PATCH`
+publishes one stage at `ROOT/FINGERPRINT`. Source owners accept that stage via
+their `--pkgsrc-export` option; the same stage can serve source preparation and
+the OS release builder's gettext input, avoiding a second full pkgsrc export.
+
 The callable remains
 `export_pkgsrc(root, destination, selection=selection, runner=runner, scratch=scratch)`.
 The runner takes argv and optional `cwd` and bytes `input`. It returns

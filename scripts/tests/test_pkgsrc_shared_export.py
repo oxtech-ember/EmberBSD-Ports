@@ -2,6 +2,7 @@
 # Copyright (c) 2026 EmberBSD contributors.
 """One shared pkgsrc export serves every source owner of a run."""
 
+import hashlib
 import importlib.util
 import inspect
 import json
@@ -39,6 +40,7 @@ def fixture(root):
     for name in ('scripts', 'pkgsrc/cat/pkg', 'pkgsrc/lang/llvm/files', 'upstream/pkgsrc'):
         (root / name).mkdir(parents=True)
     shutil.copy(ROOT / 'scripts/prepare-pkgsrc.py', root / 'scripts')
+    shutil.copy(ROOT / 'scripts/pkgsrc-export-stage.py', root / 'scripts')
     shutil.copy(ROOT / 'pkgsrc/lang/llvm/files/sdk_source.py', root / 'pkgsrc/lang/llvm/files')
     (root / 'pkgsrc/lang/llvm/Makefile').write_text('DISTNAME=llvm\n')
     (root / 'pkgsrc/export.conf').write_text('')
@@ -136,13 +138,59 @@ class SharedExportTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'invalid shared pkgsrc export receipt'):
             self.select(directory)
 
+    def test_fingerprinted_stage_is_reused_and_ignores_unrelated_head(self):
+        stage = load(self.root / 'scripts/pkgsrc-export-stage.py', 'stage_test')
+        inputs = {'format': stage.FORMAT, 'version': stage.VERSION,
+                  'upstream': '1' * 40, 'objects': {'pkgsrc/export.conf': 'a' * 40},
+                  'patch': {'path': str(self.tool), 'sha256': 'b' * 64}}
+        with patch.object(identity, '_pkgsrc_export_stage', return_value=stage), \
+             patch.object(stage, 'fingerprint_inputs', return_value=inputs):
+            key = stage.fingerprint(inputs)
+            directory = Path(self.temp.name) / key
+            tree = directory / 'pkgsrc'
+            (tree / 'net/libfetch/files').mkdir(parents=True)
+            (tree / 'EMBERBSD-PKGSRC-REVISION').write_text('1' * 40 + '\n')
+            (directory / stage.RECEIPT).write_text(json.dumps({'fingerprint': key, 'inputs': inputs}))
+            self.assertEqual(self.select(directory), tree)
+            self.assertIsNone(identity.shared_export_material(directory, 'net/libfetch/files'))
+            self.pins['ports'] = b'c' * 40  # unrelated HEAD movement does not change Git input keys
+            self.assertEqual(self.select(directory), tree)
+            changed = dict(inputs, objects={'pkgsrc/export.conf': 'd' * 40})
+            with patch.object(stage, 'fingerprint_inputs', return_value=changed):
+                with self.assertRaisesRegex(ValueError, 'different inputs'):
+                    self.select(directory)
+        self.assertEqual(len(self.exports), 0)
+
+    def test_stage_receipt_symlink_is_rejected(self):
+        directory = Path(self.temp.name) / 'stage'
+        directory.mkdir()
+        target = Path(self.temp.name) / 'receipt'
+        target.write_text('{}')
+        (directory / 'pkgsrc-stage.json').symlink_to(target)
+        with self.assertRaisesRegex(ValueError, 'invalid pkgsrc export stage receipt'):
+            self.select(directory)
+
+    def test_corrupt_stage_receipt_is_rejected(self):
+        stage = load(self.root / 'scripts/pkgsrc-export-stage.py', 'stage_corrupt_test')
+        inputs = {'format': stage.FORMAT, 'version': stage.VERSION,
+                  'upstream': '1' * 40, 'objects': {'pkgsrc/export.conf': 'a' * 40},
+                  'patch': {'path': str(self.tool), 'sha256': 'b' * 64}}
+        directory = Path(self.temp.name) / stage.fingerprint(inputs)
+        directory.mkdir()
+        (directory / stage.RECEIPT).write_text('{broken')
+        with patch.object(identity, '_pkgsrc_export_stage', return_value=stage), \
+             patch.object(stage, 'fingerprint_inputs', return_value=inputs):
+            with self.assertRaises(ValueError):
+                self.select(directory)
+
 
 class OwnerTest(unittest.TestCase):
     """Each common source owner verifies against the shared export only."""
 
     def owner(self, name):
         module = load(ROOT / f'scripts/source-inputs/{name}/source.py', name + '_owner')
-        module.load_sdk(['--sdk-source', str(SDK)])
+        if hasattr(module, 'load_sdk'):
+            module.load_sdk(['--sdk-source', str(SDK)])
         return module
 
     def test_legacy_owners_share_selected_export_and_keep_default(self):
@@ -171,6 +219,27 @@ class OwnerTest(unittest.TestCase):
                         shared.side_effect = SDKError('invalid shared export')
                         with self.assertRaisesRegex(SDKError, 'invalid shared export'):
                             owner.verify('/source', sys.executable, archive='/archive', patch='/patch', pkgsrc_export='/invalid')
+
+    def test_libfetch_reads_small_filesdir_for_stage_without_material_snapshot(self):
+        owner = self.owner('libfetch')
+        owner.SDK_SOURCE = SDK
+        with tempfile.TemporaryDirectory(dir=WORK) as temp:
+            stage = Path(temp) / 'stage'
+            stage.mkdir()
+            inputs = {'format': 'emberbsd-pkgsrc-export-stage', 'version': 1}
+            key = hashlib.sha256(
+                json.dumps(inputs, sort_keys=True, separators=(',', ':')).encode('ascii')).hexdigest()
+            (stage / 'pkgsrc-stage.json').write_text(
+                json.dumps({'fingerprint': key, 'inputs': inputs}))
+            tree = stage / 'pkgsrc'
+            files = tree / 'net/libfetch/files'
+            files.mkdir(parents=True)
+            (files / 'fetch.c').write_text('common source')
+            with patch.object(owner, 'identity_module', return_value=identity), \
+                 patch.object(identity, 'shared_export', return_value=tree):
+                selected, snapshot = owner.export_tree(temp, sys.executable, '/patch', str(stage))
+            self.assertEqual(selected, tree)
+            self.assertEqual(snapshot, identity.material_snapshot(files))
 
     def test_scoped_owners_keep_one_default_export(self):
         for name in ('tdb', 'ppp', 'libpcap', 'tcp_wrappers'):
