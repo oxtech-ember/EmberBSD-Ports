@@ -4,6 +4,8 @@
 selected common LibTomMath. `test-roken-errno.py` runs the actual header
 generator with the selected Perl and checks the resulting target errno guards
 with the selected target Clang; pass `--help` for its input paths.
+`tests/make-proto.py` runs the patched prototype generator against conditional
+static functions and checks that a following public prototype is retained.
 
 The `test-openssl-*.c` programs exercise the OpenSSL provider bridge. Link
 `test-openssl-fallback.c` against the candidate hcrypto and OpenSSL libraries,
