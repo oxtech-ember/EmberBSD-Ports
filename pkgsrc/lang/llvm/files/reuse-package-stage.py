@@ -67,6 +67,10 @@ def context(path):
     runtime = value['runtime']
     check(re.fullmatch('[0-9a-f]{64}', runtime['sha256']), 'Expected accepted runtime SHA256 required')
     check(hash_file(runtime['archive'])['sha256'] == runtime['sha256'], 'Runtime archive drift')
+    if 'pkgname' in runtime:
+        check(isinstance(runtime['pkgname'], str) and
+              re.fullmatch(r'llvm-' + re.escape(value['version']) + r'(?:nb[0-9]+)?', runtime['pkgname']) is not None,
+              'Invalid current runtime package name')
     return value
 
 
@@ -103,7 +107,12 @@ def validate_full_stage(value, stage):
     contents = capture([value['tar'], '-xOf', archive, '+CONTENTS']).stdout.decode().splitlines()
     cwd = [line for line in contents if line.startswith('@cwd ')]
     check(cwd and all(line == '@cwd /usr/pkg' for line in cwd), 'Runtime package prefix mismatch')
-    check([line for line in contents if line.startswith('@name ')] == ['@name llvm-23.1.4nb1'], 'Runtime package identity mismatch')
+    runtime_pkgname = value['runtime'].get('pkgname')
+    if runtime_pkgname is None:
+        # Immutable contexts before the recipe-derived field used this identity.
+        runtime_pkgname = 'llvm-23.1.4nb1'
+    check(isinstance(runtime_pkgname, str) and runtime_pkgname, 'Current runtime package name required')
+    check([line for line in contents if line.startswith('@name ')] == ['@name ' + runtime_pkgname], 'Runtime package identity mismatch')
     expected = [s for s in Path(lists['runtime']).read_text().splitlines() if s and not s.startswith('@comment ')]
     actual = []
     for i, name in enumerate(contents):

@@ -19,7 +19,7 @@ if not work.is_absolute() or work.exists():
     sys.exit('new absolute work directory required')
 work.mkdir()
 reuse = module('reuse-package-stage')
-value = fixture(work, sdk_source, cmake)
+value = fixture(work, sdk_source, cmake, runtime_pkgname='llvm-23.1.4nb17')
 config, receipt = work / 'inputs.json', work / 'receipt.json'
 write_json(config, value)
 reference = work / 'reference'
@@ -188,6 +188,7 @@ reuse.verify(str(config), str(receipt), receipt_hash)
 # Authentic schema-1 data remain readable; no legacy controller is executed.
 legacy = copy.deepcopy(value)
 legacy['schema'], legacy['perl'] = 1, '/usr/bin/true'
+legacy['runtime'].pop('pkgname')
 legacy['files']['native_tools'].append('/usr/bin/true')
 write_json(work / 'legacy-inputs.json', legacy)
 write_json(work / 'legacy-receipt.json', dict(schema=1, context=legacy, inputs=reuse.snapshot(legacy), stage={}))
@@ -195,5 +196,13 @@ legacy_hash = hashlib.sha256((work / 'legacy-receipt.json').read_bytes()).hexdig
 reuse.verify(str(work / 'legacy-inputs.json'), str(work / 'legacy-receipt.json'), legacy_hash)
 assert hashlib.sha256((work / 'legacy-receipt.json').read_bytes()).hexdigest() == legacy_hash
 checks.append('immutable legacy snapshot verifies without a Ruby controller')
+previous_schema2 = fixture(work / 'previous-schema2', sdk_source, cmake)
+previous_schema2['runtime'].pop('pkgname')
+write_json(work / 'previous-schema2-inputs.json', previous_schema2)
+previous_receipt = dict(schema=2, context=previous_schema2, inputs=reuse.snapshot(previous_schema2), stage={})
+write_json(work / 'previous-schema2-receipt.json', previous_receipt)
+previous_hash = hashlib.sha256((work / 'previous-schema2-receipt.json').read_bytes()).hexdigest()
+reuse.verify(str(work / 'previous-schema2-inputs.json'), str(work / 'previous-schema2-receipt.json'), previous_hash)
+checks.append('previous schema-2 snapshot verifies without recipe-derived runtime name')
 write_json(work / 'results.json', dict(scope='CMake installation and integrity fixtures only; no LLVM package, compiler or hardware acceptance.', checks=checks))
 print(f'PASS: {len(checks)} LLVM stage reuse fixture contracts')

@@ -45,14 +45,14 @@ def invoke(arguments, label=None):
     return result
 
 
-fields = ['TOOLDIR', 'MACHINE_GNU_PLATFORM', 'MACHINE_ARCH', 'OPSYS', 'OS_VERSION', 'CMAKE', 'EMBERBSD_CROSS_COMPILER_FAMILY', 'PKGSRC_COMPILER']
+fields = ['TOOLDIR', 'MACHINE_GNU_PLATFORM', 'MACHINE_ARCH', 'OPSYS', 'OS_VERSION', 'CMAKE', 'EMBERBSD_CROSS_COMPILER_FAMILY', 'PKGSRC_COMPILER', 'PKGNAME']
 command = [bmake, '-C', str(tree / 'lang/llvm'), '_PKGSRC_BARRIER=yes', '_MAKEVARS_MK=defined', 'WRKDIR=' + str(common)]
 for key in fields:
     command.extend(['-v', key])
-result = invoke(command)
-assert result.returncode == 0, result.stdout
+result = subprocess.run(command, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+assert result.returncode == 0, result.stderr
 row = dict(zip(fields, result.stdout.splitlines()))
-value = fixture(work, sdk_source, row['CMAKE'], source, build, tree / 'lang/llvm', tree / 'lang/llvm-devel', wrapper=False, include_empty=False, arch=row['MACHINE_ARCH'])
+value = fixture(work, sdk_source, row['CMAKE'], source, build, tree / 'lang/llvm', tree / 'lang/llvm-devel', wrapper=False, include_empty=False, arch=row['MACHINE_ARCH'], runtime_pkgname=row['PKGNAME'])
 value['runtime_work'] = str(common)
 value['flags'] = {'obsolete': 'must not be copied'}
 family = row['EMBERBSD_CROSS_COMPILER_FAMILY']
@@ -79,6 +79,8 @@ def collect(role, label, *overrides):
 
 
 runtime = collect('llvm', 'runtime')
+assert runtime['runtime']['pkgname'] == row['PKGNAME']
+checks.append('runtime package identity comes from current pkgsrc PKGNAME')
 preparer = module('prepare-reuse-inputs')
 driver_cases = (
     ({'EMBERBSD_CROSS_COMPILER_FAMILY': 'clang', 'PKGSRC_COMPILER': 'clang'}, ('clang', 'clang++', 'strip')),
@@ -139,8 +141,9 @@ receipt.write_text('not an accepted receipt')
 base = [bmake, '-C', str(tree / 'lang/llvm-devel'), '_PKGSRC_BARRIER=yes', 'WRKDIR=' + str(work / 'reuse-sdk'),
     'EMBERBSD_LLVM_REUSE_INPUTS=' + str(template), 'EMBERBSD_LLVM_REUSE_PYTHON=' + sys.executable,
     'EMBERBSD_SDK_SOURCE=' + sdk_source, 'EMBERBSD_LLVM_REUSE_RECEIPT=' + str(receipt), 'EMBERBSD_LLVM_REUSE_SHA256=' + '0' * 64]
-result = invoke(base + ['-v', 'NO_BUILD', '-v', 'NO_CONFIGURE', '-v', 'WRKSRC', '-v', 'PKG_FAIL_REASON'])
-assert result.returncode == 0 and result.stdout.splitlines() == ['yes', 'yes', str(work / 'reuse-sdk/llvm-reuse'), ''], result.stdout
+result = subprocess.run(base + ['-v', 'NO_BUILD', '-v', 'NO_CONFIGURE', '-v', 'WRKSRC', '-v', 'PKG_FAIL_REASON'],
+    env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+assert result.returncode == 0 and result.stdout.splitlines() == ['yes', 'yes', str(work / 'reuse-sdk/llvm-reuse'), ''], result.stdout + result.stderr
 checks.append('opt-in private source disables second compilation')
 (work / 'reuse-sdk').mkdir()
 before = reuse.tree(str(common))
@@ -150,8 +153,9 @@ for target in ('do-extract', 'do-patch', 'do-install'):
     assert reuse.tree(str(common)) == before
     assert not (work / 'reuse-sdk/.destdir').exists() or not reuse.tree(str(work / 'reuse-sdk/.destdir'))
     checks.append(target + ' refuses unaccepted receipt before writes')
-result = invoke(base + ['-C', str(tree / 'lang/llvm'), '-v', 'PKG_FAIL_REASON'])
-assert result.returncode == 0 and not result.stdout.strip(), result.stdout
+result = subprocess.run(base + ['-C', str(tree / 'lang/llvm'), '-v', 'PKG_FAIL_REASON'], env=env,
+    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+assert result.returncode == 0 and not result.stdout.strip(), result.stdout + result.stderr
 checks.append('runtime accepts cross reuse')
 reference = work / 'reference'
 reference.mkdir()

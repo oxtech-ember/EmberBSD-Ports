@@ -4,6 +4,7 @@
 import importlib.util
 import os
 from pathlib import Path
+import re
 import shlex
 import sys
 sys.dont_write_bytecode = True
@@ -38,6 +39,19 @@ def compiler_driver_names(row):
     return ('gcc', 'g++', 'strip')
 
 
+def runtime_pkgname(bmake, recipe, work, role_row):
+    from emberbsd_sdk.process import capture
+    if role_row['PKGPATH'] == 'lang/llvm':
+        name = role_row['PKGNAME']
+    else:
+        command = [bmake, '-C', recipe, '_PKGSRC_BARRIER=yes', '_MAKEVARS_MK=defined',
+                   'EMBERBSD_LLVM_REUSE_QUERY=yes', 'WRKDIR=' + work, '-v', 'PKGNAME']
+        name = capture(command).stdout.decode().strip()
+    expected = r'llvm-' + re.escape(role_row['LLVM_VERSION']) + r'(?:nb[0-9]+)?'
+    reuse.check(re.fullmatch(expected, name) is not None, 'Current runtime LLVM package name is invalid')
+    return name
+
+
 def prepare(template, output, bmake, package, receipt, sdk_source):
     from emberbsd_sdk.jsonio import read_json, write_json
     from emberbsd_sdk.paths import canonical_existing, canonical_new, reject_overlap
@@ -68,6 +82,7 @@ def prepare(template, output, bmake, package, receipt, sdk_source):
     reuse.check(recipe == canonical_existing(value['recipe']) and sdk_recipe == canonical_existing(value['sdk_recipe']), 'Current recipe roots differ')
     value['schema'] = 2
     value['flags'] = {key: row[key] for key in FLAGS}
+    value['runtime']['pkgname'] = runtime_pkgname(bmake, recipe, work, row)
     value['install_strip'] = row['INSTALL_TARGET'] == 'install/strip'
     value['cmake'] = canonical_existing(row['CMAKE'])
     value['python'] = canonical_existing(sys.executable)

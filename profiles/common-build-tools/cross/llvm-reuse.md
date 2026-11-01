@@ -45,7 +45,9 @@ The input JSON uses schema `2` and these fields:
 - `install_strip`: the current CMake strip mode (`true` or `false`). Match
   pkgsrc `INSTALL_TARGET`. Record the actual target strip tool and wrapper in
   `files.compiler`. Use the same strip mode for the full reference stage.
-- `runtime`: the accepted `archive` path and its `sha256`.
+- `runtime`: the accepted `archive` path and its `sha256`. The current-input
+  preparer queries the runtime recipe for `PKGNAME`, including its current
+  package revision, and records it as `pkgname` for archive identity checks.
 - `manifests`: paths named `full`, `runtime`, and `devel`.
 
 Use one native Python interpreter and SDK API version 1. Set
