@@ -17,7 +17,7 @@ a = p.parse_args()
 helper = Path(__file__).with_name('target-config.pl')
 with tempfile.TemporaryDirectory(dir=a.work_dir) as temporary:
     root = Path(temporary)
-    output = root / 'target-config'
+    output = root / 'nested' / 'target-config'
     command = [str(a.perl), str(helper), str(a.source), str(a.sysroot), str(output)]
     result = subprocess.run(command, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr

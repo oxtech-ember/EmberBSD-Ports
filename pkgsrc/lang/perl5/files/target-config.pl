@@ -20,6 +20,7 @@ for (@ARGV) {
 (-e $output || -l $output) && (-l $output || !-d $output)
     and die "Output is not a directory\n";
 my $parent = dirname($output);
+make_path($parent) unless -d $parent;
 -d $parent or die "Missing output parent directory\n";
 sub read_file {
     my ($name) = @_;
