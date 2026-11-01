@@ -87,7 +87,7 @@ def plist(label, package, *mode):
 
 runtime = plist('runtime', 'llvm', *cross)
 assert sorted(runtime) == sorted(['include/llvm/Support/LICENSE.TXT', 'lib/libLLVM.so.23.1', 'lib/libLLVM-23.so', 'lib/libLLVM.so', 'lib/libLTO.so.23.1', 'lib/libLTO.so', 'lib/libRemarks.so.23.1', 'lib/libRemarks.so'])
-assert run('runtime-name', 'llvm', *cross, '-v', 'PKGNAME').strip() == 'llvm-23.1.4nb2'
+assert run('runtime-name', 'llvm', *cross, '-v', 'PKGNAME').strip() == 'llvm-23.1.4nb3'
 sdk = plist('devel', 'llvm-devel', *cross)
 assert all(p in sdk for p in ('bin/llvm-config', 'bin/llvm-tblgen', 'include/llvm/IR/Module.h', 'lib/cmake/llvm/LLVMConfig.cmake', 'lib/libLLVMCore.a'))
 assert not set(runtime) & set(sdk)
@@ -100,13 +100,19 @@ assert helper.is_file()
 native_args = ['USE_CROSS_COMPILE=no', 'PKGSRC_COMPILER=gcc', 'CC=' + HOST_CC, 'CXX=' + HOST_CXX, 'USE_NATIVE_GCC=yes', 'USE_PKGSRC_GCC=no']
 native = plist('native', 'llvm', *native_args)
 assert 'bin/llvm-config' in native and 'include/llvm/IR/Module.h' in native
-reasons = run('devel-metadata', 'llvm-devel', *cross, '-v', 'PKG_FAIL_REASON', '-v', 'DEPENDS', '-v', 'DISTINFO_FILE', '-v', 'PATCHDIR')
-assert not reasons.splitlines()[0] and 'llvm-23.1.4nb2:' in reasons and str(owner / 'distinfo') in reasons and str(owner / 'patches') in reasons
+reasons = run('devel-metadata', 'llvm-devel', *cross, '-v', 'PKG_FAIL_REASON', '-v', 'DEPENDS', '-v', 'CONFLICTS', '-v', 'DISTINFO_FILE', '-v', 'PATCHDIR').splitlines()
+assert not reasons[0] and 'llvm-23.1.4nb3:' in reasons[1] and 'llvm<23.1.4nb3' in reasons[2] and \
+       str(owner / 'distinfo') in reasons[3] and str(owner / 'patches') in reasons[4]
 consumer = tree / 'devel/llvm-split-consumer'
 consumer.mkdir()
 (consumer / 'Makefile').write_text('DISTNAME= llvm-split-contract-1\nCATEGORIES= devel\nCOMMENT= LLVM buildlink source contract fixture\nLICENSE= 2-clause-bsd\nMETA_PACKAGE= yes\n.include "../../mk/bsd.prefs.mk"\n.include "../../lang/llvm/buildlink3.mk"\n.include "../../mk/bsd.pkg.mk"\n')
-output = run('buildlink', '../devel/llvm-split-consumer', *cross, '-v', 'BUILD_DEPENDS', '-v', 'DEPENDS').splitlines()
-assert 'llvm-devel>=23.1.4nb3:' in output[0] and 'llvm-devel' not in output[1] and 'llvm>=23.1.4nb2:' in output[1]
+output = run('buildlink', '../devel/llvm-split-consumer', *cross, '-v', 'BUILD_DEPENDS', '-v', 'DEPENDS',
+             '-v', 'BUILDLINK_API_DEPENDS.llvm-devel', '-v', 'BUILDLINK_ABI_DEPENDS.llvm-devel',
+             '-v', 'BUILDLINK_API_DEPENDS.llvm', '-v', 'BUILDLINK_ABI_DEPENDS.llvm').splitlines()
+assert 'llvm-devel>=23.1.4nb4:' in output[0] and 'llvm-devel' not in output[1] and \
+       'llvm>=23.1.4nb2:' in output[1]
+assert 'llvm-devel>=23.1.4nb4' in output[2] and 'llvm-devel>=23.1.4nb4' in output[3]
+assert 'llvm>=23.1.4nb2' in output[4] and 'llvm>=23.1.4nb2' in output[5]
 fields = run('runtime-dependencies', 'llvm', *cross, '-v', 'DEPENDS', '-v', 'BUILD_DEPENDS', '-v', 'TOOL_DEPENDS', '-v', 'CMAKE_CONFIGURE_ARGS', '-v', 'PKG_FAIL_REASON', '-v', 'USE_BUILTIN.zlib').splitlines()
 assert not re.search(r'llvm-devel|llvm-lit|python[0-9]', fields[0])
 assert all(name + '>=' in fields[0] for name in ('zstd', 'libxml2'))
@@ -128,7 +134,7 @@ assert sorted(plist('runtime-arm', 'llvm', *arm)) == sorted(runtime)
 for i, bad in enumerate(('LLVM_PACKAGE_PART=devel', 'PKGREVISION=1', 'CROSS_MACHINE_ARCH=i386')):
     reasons = run('bad-contract-' + str(i), 'llvm', *[arg for arg in cross if not arg.startswith(bad.split('=')[0] + '=')], bad, '-v', 'PKG_FAIL_REASON')
     assert reasons.strip(), bad
-assert run('native-name', 'llvm', *native_args, '-v', 'PKGNAME').strip() == 'llvm-23.1.4nb5'
+assert run('native-name', 'llvm', *native_args, '-v', 'PKGNAME').strip() == 'llvm-23.1.4nb6'
 assert run('native-sdk-refused', 'llvm-devel', *native_args, '-v', 'PKG_FAIL_REASON').strip()
 original = work / 'full-stage'
 prefix = original / 'usr/pkg'
