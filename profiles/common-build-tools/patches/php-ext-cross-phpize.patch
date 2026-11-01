@@ -1,0 +1,66 @@
+Cross PHP extensions run the native phpize with the target php-config.
+
+lang/php/ext.mk ran ${PREFIX}/bin/phpize85 and configured with
+${PREFIX}/bin/php-config85. In a cross build PREFIX is the target
+/usr/pkg, which the build host does not have, and every extension
+stopped at configure: "genv: '/usr/pkg/bin/phpize85': No such file or
+directory" (status 127). phpize is a build host script: run the native
+phpize of the same version, a tool dependency like the native php85 that
+lang/php85 uses for phar.phar, and use that php for build-time PHP runs.
+configure reads the target php-config, linked into the buildlink tree
+and copied with the include directory in that tree, so the extension
+compiles against the target php85 headers and keeps the target prefix
+and extension directory. Native builds are unchanged.
+Applies after pkgsrc-php-one-version.patch and pkgsrc-php85-8.5.12.patch.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/lang/php/ext.mk
++++ b/lang/php/ext.mk
+@@ -98,6 +98,27 @@
+ SHLIB_SUFFIX=		so
+ .endif
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# phpize and build-time PHP runs (gen_stub.php, tests) use the native php
++# of the same version; the target php85 is not a build host program.
++TOOL_DEPENDS+=		${PHP_PKG_PREFIX}>=${PHP_VERSION}:${PHPPKGSRCDIR}
++MAKE_FLAGS+=		PHP_EXECUTABLE=${TOOLBASE}/bin/php${PHP_VER}
++# configure reads the target php-config from the buildlink tree, with the
++# include directory in that tree. The prefix and the extension directory
++# stay those of the target.
++BUILDLINK_FILES.${PHP_PKG_PREFIX}+=	bin/php-config${PHP_VER}
++
++phpize-module: php-cross-config
++
++.PHONY: php-cross-config
++php-cross-config:
++	${RUN}${MKDIR} ${PHP_CONFIG:H}
++	${RUN}${SED} -e 's,^include_dir=.*,include_dir="${BUILDLINK_DIR}/${PHP_INCDIR}",' \
++		${BUILDLINK_DIR}/bin/php-config${PHP_VER} > ${PHP_CONFIG}.tmp
++	${RUN}${CHMOD} +x ${PHP_CONFIG}.tmp
++	${RUN}${MV} -f ${PHP_CONFIG}.tmp ${PHP_CONFIG}
++.endif
++
+ pre-configure:	phpize-module
+ 
+ phpize-module:
+--- a/lang/php/phpversion.mk
++++ b/lang/php/phpversion.mk
+@@ -189,6 +189,17 @@
+ PHP_PKG_PREFIX=		php${PHP_VER}
+ PHP_NAME=		php${PHP_VER}
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# phpize runs on the build host. The target phpize names its build files
++# under the target prefix, which the build host does not have; run the
++# native phpize of the same version, a tool dependency of lang/php/ext.mk.
++# ext.mk makes the php-config that configure reads from the target
++# php-config in the buildlink tree.
++PHPIZE?=		${TOOLBASE}/bin/phpize${PHP_VER}
++.  if defined(PHPEXT_MK)
++PHP_CONFIG?=		${WRKDIR}/.php-cross/bin/php-config${PHP_VER}
++.  endif
++.endif
+ PHPIZE?=		${PREFIX}/bin/phpize${PHP_VER}
+ PHP_CONFIG?=		${PREFIX}/bin/php-config${PHP_VER}
+ 
