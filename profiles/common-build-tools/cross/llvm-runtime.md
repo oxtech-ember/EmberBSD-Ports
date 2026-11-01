@@ -8,8 +8,8 @@ NetBSD cross builds for AArch64 and amd64 produce two ordinary source packages:
 | `llvm-devel-23.1.4nb4` | Target tools, headers, static archives, CMake exports and test support. Requires the exact runtime package. |
 
 The runtime keeps the original name for dependency and vulnerability matching.
-Runtime revision `nb2` distinguishes it from the earlier complete package.
-SDK revision `nb3` requires the updated runtime; `nb2` added the direct Python dependency.
+The SDK requires the matching runtime revision listed above. Its direct
+Python dependency supplies the installed Python scripts.
 Both cross roles use native Python tools without Python C API build flags.
 Their lit buildlink role supplies build/test scripts without target RPATHs.
 The SDK retains explicit Python/lit runtime dependencies and conflicts with
@@ -17,10 +17,14 @@ that earlier package. Native LLVM keeps its complete manifest
 and package identity. The separate SDK requires a NetBSD cross build.
 
 Both recipes use the same LLVM 23.1.4 archive, patches and source component.
-Each performs an independent full build and installation into its own stage.
-This costs two builds. It avoids a shared build-output handoff. All normal and
-experimental backend defaults, RTTI, shared LLVM and installed gtest support
-remain unchanged. This is a packaging split, not a smaller LLVM build.
+With `CROSS_BULK_LLVM_SHARED_BUILD=yes`, cross-bulk retains the runtime
+producer's full installation stage and reuses it for the SDK package when
+both roles have matching compilation inputs. This compiles LLVM once and
+copies the two partitions into separate package stages. A cached runtime
+without that same-run full stage, or differing inputs, uses an ordinary
+independent SDK build. All normal and experimental backend defaults, RTTI,
+shared LLVM and installed gtest support remain unchanged. Selecting only
+the runtime reduces installed size; it does not reduce the LLVM build itself.
 
 Normal pkgsrc expands the full, runtime and SDK PLISTs. The partitions must be
 disjoint and cover the complete manifest. The selector checks every staged
