@@ -1,0 +1,22 @@
+graphviz selects the Quartz plugin only when it builds for Darwin.
+
+options.mk offered quartz whenever the build host had
+/System/Library/Frameworks/Quartz.framework, so a cross build for a NetBSD
+target on a Mac selected quartz instead of x11, and configure then found
+the host ApplicationServices framework and built the plugin for the target.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+Test: profiles/common-build-tools/tests/graphviz-cross-quartz.sh
+
+--- a/graphics/graphviz/options.mk
++++ b/graphics/graphviz/options.mk
+@@ -3,7 +3,9 @@
+ PKG_OPTIONS_VAR=	PKG_OPTIONS.graphviz
+ PKG_SUPPORTED_OPTIONS=	gd ghostscript lua poppler svg x11
+ PKG_SUGGESTED_OPTIONS=	gd
+-.if exists(/System/Library/Frameworks/Quartz.framework)
++# The framework test looks at the build host, so a cross build for another
++# OS must not select quartz.
++.if ${OPSYS} == "Darwin" && exists(/System/Library/Frameworks/Quartz.framework)
+ PKG_SUPPORTED_OPTIONS+=	quartz
+ PKG_SUGGESTED_OPTIONS+=	quartz
+ .else
