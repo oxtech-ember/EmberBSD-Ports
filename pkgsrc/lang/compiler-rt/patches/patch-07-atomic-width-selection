@@ -4,9 +4,9 @@
  // Where the size is known at compile time, the compiler may emit calls to
  // specialised versions of the above functions.
  ////////////////////////////////////////////////////////////////////////////////
-+/* EmberBSD libc already provides the 1-, 2- and 4-byte atomic ABI on RV32.
-+ * Keep generic operations and wider ABI entry points in this source so they
-+ * share the same hashed lock table without defining duplicate small symbols.
++/* EmberBSD libc retains its strong 1-, 2- and 4-byte RMW ABI on RV32.
++ * Its selected compiler-rt source supplies the missing load/store and CAS4
++ * entry points, while generic and wider calls share one hashed lock table.
 + */
 +#if defined(COMPILER_RT_ATOMIC_BUILTIN_EXCLUDE_1_2_4)
  #ifdef __SIZEOF_INT128__

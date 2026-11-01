@@ -78,13 +78,33 @@ TEST_TARGET=	check-compiler-rt
 
 .if ${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 PKGREVISION=	10
+.if ${MACHINE_ARCH} == "riscv32"
+# RV32 previously installed a separate libatomic lock domain.
+PKGREVISION=	11
+.endif
 # Symbol-list generators run on the build host and read target archives.
 .if !empty(EMBERBSD_CROSS_HOST_PREFIX:M/*)
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_NM:FILEPATH=${EMBERBSD_CROSS_HOST_PREFIX:Q}/bin/llvm-nm
 .endif
 .endif
 
+.if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "riscv32" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+# Native RV32 package identity follows the same libc-provider transition.
+PKGREVISION=	10
+.endif
+
 .if ${OPSYS} == "NetBSD"
+.if ${MACHINE_ARCH} == "riscv32"
+# The OS libc provides generic and 64-bit atomics in RV32 userland.
+CMAKE_CONFIGURE_ARGS+=	-DCOMPILER_RT_EXCLUDE_ATOMIC_BUILTIN=ON
+CMAKE_CONFIGURE_ARGS+=	-DCOMPILER_RT_BUILD_STANDALONE_LIBATOMIC=OFF
+INSTALLATION_DIRS+=	lib
+post-install:
+	${INSTALL_DATA} ${FILESDIR}/libatomic-libc.ldscript \
+	    ${DESTDIR}${PREFIX}/lib/libatomic.so
+	${INSTALL_DATA} ${FILESDIR}/libatomic-libc.ldscript \
+	    ${DESTDIR}${PREFIX}/lib/libatomic.a
+.else
 # The one libatomic: atomic.c as a shared library, so every object shares
 # its lock table. Link it as -latomic; no GCC libatomic is installed.
 CMAKE_CONFIGURE_ARGS+=	-DCOMPILER_RT_BUILD_STANDALONE_LIBATOMIC=ON
@@ -95,6 +115,7 @@ post-install:
 	${LN} -sf ${_COMPILER_RT_ATOMIC:S,^lib/,,} ${DESTDIR}${PREFIX}/lib/libatomic.so
 	${LN} -sf ${_COMPILER_RT_ATOMIC:S,^lib/,,} \
 	    ${DESTDIR}${PREFIX}/lib/${_COMPILER_RT_ATOMIC:T}
+.endif
 .endif
 
 GENERATE_PLIST+=	${FIND} ${DESTDIR}${PREFIX} \( -type f -o -type l \) -print | \

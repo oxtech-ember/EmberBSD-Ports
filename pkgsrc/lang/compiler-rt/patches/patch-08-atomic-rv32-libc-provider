@@ -1,0 +1,73 @@
+--- a/compiler-rt/lib/builtins/atomic.c
++++ b/compiler-rt/lib/builtins/atomic.c
+@@ -261,7 +261,8 @@
+  * Its selected compiler-rt source supplies the missing load/store and CAS4
+  * entry points, while generic and wider calls share one hashed lock table.
+  */
+-#if defined(COMPILER_RT_ATOMIC_BUILTIN_EXCLUDE_1_2_4)
++#if defined(COMPILER_RT_ATOMIC_BUILTIN_EXCLUDE_1_2_4) || \
++    defined(COMPILER_RT_ATOMIC_BUILTIN_RISCV32_LIBC)
+ #ifdef __SIZEOF_INT128__
+ #define OPTIMISED_CASES                                                        \
+   OPTIMISED_CASE(8, IS_LOCK_FREE_8, uint64_t)                                  \
+@@ -285,6 +286,33 @@
+   OPTIMISED_CASE(8, IS_LOCK_FREE_8, uint64_t)
+ #endif
+ 
++#if defined(COMPILER_RT_ATOMIC_BUILTIN_RISCV32_LIBC)
++#ifdef __SIZEOF_INT128__
++#define LOAD_STORE_CASES                                                       \
++  OPTIMISED_CASE(1, IS_LOCK_FREE_1, uint8_t)                                   \
++  OPTIMISED_CASE(2, IS_LOCK_FREE_2, uint16_t)                                  \
++  OPTIMISED_CASE(4, IS_LOCK_FREE_4, uint32_t)                                  \
++  OPTIMISED_CASE(8, IS_LOCK_FREE_8, uint64_t)                                  \
++  OPTIMISED_CASE(16, IS_LOCK_FREE_16, __uint128_t)
++#define COMPARE_EXCHANGE_CASES                                                 \
++  OPTIMISED_CASE(4, IS_LOCK_FREE_4, uint32_t)                                  \
++  OPTIMISED_CASE(8, IS_LOCK_FREE_8, uint64_t)                                  \
++  OPTIMISED_CASE(16, IS_LOCK_FREE_16, __uint128_t)
++#else
++#define LOAD_STORE_CASES                                                       \
++  OPTIMISED_CASE(1, IS_LOCK_FREE_1, uint8_t)                                   \
++  OPTIMISED_CASE(2, IS_LOCK_FREE_2, uint16_t)                                  \
++  OPTIMISED_CASE(4, IS_LOCK_FREE_4, uint32_t)                                  \
++  OPTIMISED_CASE(8, IS_LOCK_FREE_8, uint64_t)
++#define COMPARE_EXCHANGE_CASES                                                 \
++  OPTIMISED_CASE(4, IS_LOCK_FREE_4, uint32_t)                                  \
++  OPTIMISED_CASE(8, IS_LOCK_FREE_8, uint64_t)
++#endif
++#else
++#define LOAD_STORE_CASES OPTIMISED_CASES
++#define COMPARE_EXCHANGE_CASES OPTIMISED_CASES
++#endif
++
+ #define OPTIMISED_CASE(n, lockfree, type)                                      \
+   type __atomic_load_##n(type *src, int model) {                               \
+     if (lockfree(src))                                                         \
+@@ -295,7 +323,7 @@
+     unlock(l);                                                                 \
+     return val;                                                                \
+   }
+-OPTIMISED_CASES
++LOAD_STORE_CASES
+ #undef OPTIMISED_CASE
+ 
+ #define OPTIMISED_CASE(n, lockfree, type)                                      \
+@@ -310,7 +338,7 @@
+     unlock(l);                                                                 \
+     return;                                                                    \
+   }
+-OPTIMISED_CASES
++LOAD_STORE_CASES
+ #undef OPTIMISED_CASE
+ 
+ #define OPTIMISED_CASE(n, lockfree, type)                                      \
+@@ -344,7 +372,7 @@
+     unlock(l);                                                                 \
+     return false;                                                              \
+   }
+-OPTIMISED_CASES
++COMPARE_EXCHANGE_CASES
+ #undef OPTIMISED_CASE
+ 
+ ////////////////////////////////////////////////////////////////////////////////

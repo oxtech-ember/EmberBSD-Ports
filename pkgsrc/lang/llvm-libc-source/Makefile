@@ -1,7 +1,7 @@
 # Origin: EmberBSD (AI-assisted). Source is prepared by the common LLVM runtime owner.
 .include "../../lang/llvm/version.mk"
 PKGNAME= llvm-libc-source-${LLVM_VERSION}
-PKGREVISION= 1
+PKGREVISION= 2
 CATEGORIES= lang devel
 COMMENT= Shared LLVM libc source for consumers of its support headers
 HOMEPAGE= https://libc.llvm.org/

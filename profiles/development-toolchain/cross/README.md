@@ -469,9 +469,11 @@ four modules and three board DTBs. The OS wrapper's portable contracts passed
 with GCC16. Boot, the four native contracts and Linux-hosted application-mode
 runtime acceptance remain unverified.
 
-The only `libatomic` is compiler-rt's shared `clang_rt.atomic`
-([lang/compiler-rt](../../../pkgsrc/lang/compiler-rt/Makefile)), linked as
-`-latomic`; no GCC libatomic is packaged.
+NetBSD targets that need an out-of-line atomic provider use the compiler-rt
+shared `clang_rt.atomic` ([lang/compiler-rt](../../../pkgsrc/lang/compiler-rt/Makefile)),
+linked as `-latomic`; no GCC libatomic is packaged. RV32 libc supplies its
+generic and 64-bit atomic ABI directly, so compiler-rt's standalone provider
+is disabled there.
 
 ## Host controller checks
 
