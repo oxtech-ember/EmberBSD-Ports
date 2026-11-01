@@ -675,7 +675,7 @@ build_native()
         result "$key" "done $nnode"
         return 0
     fi
-    install=install
+    install=install why=build
     set -f
     [ -z "$base" ] || ! $native_pkg_info -e "$base" > /dev/null 2>&1 || install=replace
     set +f
@@ -686,6 +686,8 @@ build_native()
     if { [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; } &&
         if [ "$install" = replace ]; then
             bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes package < /dev/null >> "$log" 2>&1 &&
+                { native_replace_keeps_libraries "$base" "$native_packages/All/$name" >> "$log" 2>&1 ||
+                    { why=replace; false; }; } &&
                 exclusive "$key" bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes replace < /dev/null >> "$log" 2>&1
         else
             bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes install < /dev/null >> "$log" 2>&1
@@ -696,7 +698,45 @@ build_native()
         return 0
     fi
     echo "$(date '+%Y-%m-%d %H:%M:%S') FAILED $nnode" >> "$state/progress"
-    result "$key" "failed $nnode build"
+    result "$key" "failed $nnode $why"
+}
+
+# Whether replacing the installed native package $1 with the binary package
+# $2 (a PKGNAME under PACKAGES-native/All, without its suffix) keeps every
+# shared library that it provides now. pkgsrc replace (pkg_add -U) removes
+# the files of the installed package mid-pass. A new major version that
+# no longer has a library (OpenSSL 4 has libssl.4, not libssl.3) leaves the
+# packages that depend on it loading a missing library: the native
+# pkg_install among them, and with it every later build in the native
+# prefix. Such an update needs its dependents rebuilt with it, between
+# passes, so the build refuses the replace, names what it would break and
+# keeps the package in PACKAGES-native/All. The PROVIDES and REQUIRES
+# lines of the build information list the shared libraries.
+native_replace_keeps_libraries()
+{
+    nr_file=
+    for nr_f in "$2".t*; do [ -f "$nr_f" ] && { nr_file=$nr_f; break; }; done
+    nr_old=$($native_pkg_info -q -Q PROVIDES "$1" 2> /dev/null) || nr_old=
+    [ -n "$nr_old" ] || return 0
+    nr_new=
+    [ -z "$nr_file" ] || nr_new=$($native_pkg_info -q -Q PROVIDES "$nr_file" 2> /dev/null) || nr_new=
+    nr_gone=$(printf '%s\n' "$nr_old" | NR_NEW="$nr_new" awk '
+        BEGIN { n = split(ENVIRON["NR_NEW"], w, "\n"); for (i = 1; i <= n; i++) have[w[i]] = 1 }
+        $0 != "" && !($0 in have)')
+    [ -n "$nr_gone" ] || return 0
+    nr_deps=$($native_pkg_info -q -R "$1" 2> /dev/null | awk 'NF') || nr_deps=
+    [ -n "$nr_deps" ] || return 0
+    echo "Refusing to replace $1 in the native prefix during a pass: ${nr_file:-$2} no longer provides"
+    printf '    %s\n' $nr_gone
+    echo "and these installed packages depend on $1:"
+    for nr_d in $nr_deps; do
+        nr_req=$($native_pkg_info -q -Q REQUIRES "$nr_d" 2> /dev/null | NR_GONE="$nr_gone" awk '
+            BEGIN { n = split(ENVIRON["NR_GONE"], w, "\n"); for (i = 1; i <= n; i++) gone[w[i]] = 1 }
+            $0 in gone' | tr '\n' ' ')
+        echo "    $nr_d${nr_req:+ (loads $nr_req)}"
+    done
+    echo "Install the package and rebuild these between passes."
+    return 1
 }
 
 # pkgsrc replace (pkg_add -U) deletes the files of the installed package

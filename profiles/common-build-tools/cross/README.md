@@ -533,7 +533,15 @@ of the graph. An older installed package is not current: its node is built
 again and replaces it with the pkgsrc `replace` target (`pkg_add -U`), which
 keeps the packages that depend on it registered. A newer host package, such
 as a host clang, stays current.
-`scripts/tests/cross-bulk-native-version.sh NEW_OUTPUT` checks this. Order and tools refuse a graph with a cycle. `cross-bulk.sh tools LIST STATE`
+`scripts/tests/cross-bulk-native-version.sh NEW_OUTPUT` checks this. The
+build refuses such a replace when the new package no longer provides a
+shared library of the installed one and installed packages depend on it
+(OpenSSL 3 to 4 removed `libssl.3` under the native `pkg_install`): the
+node fails with reason `replace`, its log names the library and the
+packages that load it, and the package stays in `PACKAGES-native/All` for
+an install with those rebuilds between passes.
+`scripts/tests/cross-bulk-native-replace-libraries.sh NEW_OUTPUT` checks
+this. Order and tools refuse a graph with a cycle. `cross-bulk.sh tools LIST STATE`
 adds these nodes to an existing order for the packages not yet done, keeps
 the old order and edges as `*.pre-tools-STAMP`, and refuses when a query
 fails or a reachable node is skipped. Nothing is locked while a package
