@@ -10,6 +10,7 @@ SHA1 (patch-lib_gssapi_krb5_unwrap.c) = c092be488c53f2e290e271f1512ef29a0eb0fad1
 SHA1 (patch-lib_gssapi_krb5_verify_mic.c) = a7aac125236faf6e1d8b0b6703fdd3a206b705b7
 SHA1 (patch-lib_gssapi_krb5_wrap.c) = 216bc008ba418fac65b4325995f1cfd6875ae827
 SHA1 (patch-lib_krb5_store-int.c) = ba539b1cce3ac5a1e7e436dfcdcf632aa61e41e3
+SHA1 (patch-lib_krb5_krb5.h) = 7d0b27334fa4205054cb9b6d552d9648232ff547
 SHA1 (patch-lib_hcrypto_version-script.map) = 0493a10d37b921ebbaeb39067115c902e906a755
 SHA1 (patch-lib_hx509_version-script.map) = 3dd259c0d29724160f9461dc51544fb4c5f03511
 SHA1 (patch-lib_kadm5_version-script-client.map) = be421cdb5f81a4fc30c2372fb1684e8f253f8f41
