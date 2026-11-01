@@ -2,8 +2,10 @@
 """Keep pkgsrc export fingerprints scoped to declared source inputs."""
 
 import importlib.util
+import os
 import shutil
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -75,6 +77,34 @@ class ExportStageInputTests(unittest.TestCase):
                  mock.patch.object(stage, '_git', return_value=status):
                 with self.assertRaisesRegex(ValueError, 'uncommitted pkgsrc export inputs'):
                     stage.fingerprint_inputs('/git', str(tool), self.root)
+
+    def test_batched_tree_ids_match_individual_git_lookups_and_reject_missing_paths(self):
+        git = os.environ.get('EXPORT_TEST_GIT')
+        if not git:
+            self.skipTest('EXPORT_TEST_GIT is required for Git object identity regression')
+        (self.root / 'profiles/with space').write_text('spaced path\n')
+        subprocess.run([git, 'init', '-q', str(self.root)], check=True)
+        subprocess.run([git, '-C', str(self.root), 'add', '-A'], check=True)
+        subprocess.run([git, '-C', str(self.root), '-c', 'user.name=Test',
+                        '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'fixture'],
+                       check=True)
+        paths = ['pkgsrc', 'profiles/test-recipe',
+                 'profiles/manifests/git-apply.manifest', 'profiles/with space']
+        expected = {
+            path: subprocess.run([git, '-C', str(self.root), 'rev-parse', '--verify',
+                                  'HEAD:' + path], stdout=subprocess.PIPE,
+                                 check=True).stdout.decode('ascii').strip()
+            for path in paths}
+        calls = []
+        run = subprocess.run
+        def counted_run(*args, **kwargs):
+            calls.append(args[0])
+            return run(*args, **kwargs)
+        with mock.patch.object(stage.subprocess, 'run', side_effect=counted_run):
+            self.assertEqual(stage._object_ids(git, self.root, paths), expected)
+        self.assertEqual(len(calls), 1)
+        with self.assertRaisesRegex(ValueError, 'missing from HEAD'):
+            stage._object_ids(git, self.root, paths + ['profiles/not-present'])
 
 
 if __name__ == '__main__':

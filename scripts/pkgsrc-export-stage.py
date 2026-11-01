@@ -26,6 +26,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -79,6 +80,31 @@ def input_paths(root):
                   if not any(path.startswith(other + '/') for other in result))
 
 
+def _object_ids(git, root, paths):
+    """Resolve HEAD tree/blob ids in one Git process, preserving path order."""
+    if len(set(paths)) != len(paths) or any(any(char in path for char in '\r\n\0') for path in paths):
+        raise ValueError('invalid pkgsrc export input path list')
+    if not paths:
+        return {}
+    request = b''.join(b'HEAD:' + os.fsencode(path) + b'\n' for path in paths)
+    result = subprocess.run([git, '-C', str(root), 'cat-file', '--batch-check'],
+                            input=request, check=True, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, env=_environment(git))
+    rows = result.stdout.splitlines()
+    if len(rows) != len(paths):
+        raise ValueError('Git returned an incomplete pkgsrc export input list')
+    objects = {}
+    for path, row in zip(paths, rows):
+        fields = row.split()
+        if (len(fields) != 3 or
+                re.fullmatch(rb'(?:[0-9a-f]{40}|[0-9a-f]{64})', fields[0]) is None or
+                fields[1] not in (b'blob', b'tree', b'commit', b'tag') or
+                not fields[2].isdigit()):
+            raise ValueError('pkgsrc export input is missing from HEAD: ' + path)
+        objects[path] = fields[0].decode('ascii')
+    return objects
+
+
 def fingerprint_inputs(git, patch, root=PORTS):
     root = Path(root).resolve(strict=True)
     git, patch = _executable(git, 'git'), _executable(patch, 'patch')
@@ -93,9 +119,7 @@ def fingerprint_inputs(git, patch, root=PORTS):
     pin = _git(git, root, 'ls-files', '--stage', '--', 'upstream/pkgsrc').split()
     if len(pin) != 4 or pin[0] != b'160000' or pin[2] != b'0':
         raise ValueError('expected one pinned pkgsrc gitlink')
-    objects = {}
-    for path in paths:
-        objects[path] = _git(git, root, 'rev-parse', '--verify', 'HEAD:' + path).decode('ascii').strip()
+    objects = _object_ids(git, root, paths)
     with open(patch, 'rb') as stream:
         patch_sha256 = hashlib.sha256(stream.read()).hexdigest()
     return {'format': FORMAT, 'version': VERSION, 'upstream': pin[1].decode('ascii'),
