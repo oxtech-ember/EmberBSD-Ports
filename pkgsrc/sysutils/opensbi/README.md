@@ -21,6 +21,17 @@ S31 CLIC privilege selection uses the [rev0.0 measured layout](https://github.co
 and checks configuration and mode readback. The ESP-IDF register description
 differs; operation on a specific board remains a hardware check.
 
+S31 cold and warm reboot use the official ROM `software_reset` entry at
+`0x2f800094`, exported by ESP-IDF 6.1 as
+`esp_rom_software_reset_system()`. The S31 ROM map and wrapper are the source
+for this address: Espressif's [S31 ROM map](https://github.com/espressif/esp-idf/blob/v6.1/components/esp_rom/esp32s31/ld/esp32s31.rom.ld)
+defines the entry, the [S31 ROM API map](https://github.com/espressif/esp-idf/blob/v6.1/components/esp_rom/esp32s31/ld/esp32s31.rom.api.ld)
+exports the wrapper, and [esp_rom_sys.h](https://github.com/espressif/esp-idf/blob/v6.1/components/esp_rom/include/esp_rom_sys.h)
+declares it. The ROM implementation itself is not part of the package.
+OpenSBI does not claim shutdown support because this platform has no power-off
+path. If the ROM reset call returns, OpenSBI prints a diagnostic and parks in
+WFI. The ROM effect is not hardware-verified by the source regression.
+
 `tests/clic-check.py` runs the actual CLIC driver on fake MMIO with the selected
 SDK native compiler. It covers registration, error propagation, source routing,
 and an injected registration failure. `tests/fwft-check.py` checks real FWFT
@@ -31,4 +42,7 @@ functions to exercise fixed-up output, capacity and allocation failures.
 `tests/libfdt-source-check.py` compares the firmware's prepared sources with
 the common libfdt package and checks its environment adapter.
 `tests/s31-source-check.py` checks the upstream integration points.
+`tests/s31-reset-check.py <source>` exercises the real reset-type callback on
+host and checks the target reset call address in emitted RV32 code. `CC` and
+`RISCV_CC` select the SDK native compiler for host and target checks.
 These tests do not execute firmware on the target.

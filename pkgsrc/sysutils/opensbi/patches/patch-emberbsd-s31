@@ -1182,7 +1182,7 @@ new file mode 100644
 index 0000000..8460862
 --- /dev/null
 +++ b/platform/generic/espressif/esp32s31/esp32s31.c
-@@ -0,0 +1,247 @@
+@@ -0,0 +1,250 @@
 +/*
 + * SPDX-License-Identifier: BSD-2-Clause
 + *
@@ -1237,18 +1237,18 @@ index 0000000..8460862
 +/* Slack over the source dtb for the generic platform's in-place fixups. */
 +#define S31_FIXUP_FDT_SIZE	0x3000
 +
-+/* LP_AONCLKRST_HPCORE0_RESET_CTRL_REG @ 0x2070103C — bit 20 is the
-+ * write-to-trigger HP core 0 software reset, used to service SBI
-+ * shutdown / reboot requests. */
-+#define LP_AONCLKRST_HPCORE0_RESET_CTRL_REG  0x2070103CU
-+#define HPCORE_SW_RESET                      (1U << 20)
++/* ESP-IDF 6.1 exports esp_rom_software_reset_system() as the S31 ROM
++ * function software_reset at 0x2f800094. Keep the address tied to that
++ * public ROM map; do not substitute the HP-core-only reset register. */
++#define ESP32S31_ROM_SOFTWARE_RESET_SYSTEM 0x2f800094UL
++#define S31_ROM_SYSTEM_RESET \
++	((void (*)(void))ESP32S31_ROM_SOFTWARE_RESET_SYSTEM)
 +
 +static int s31_system_reset_check(u32 type, u32 reason)
 +{
 +	switch (type) {
 +	case SBI_SRST_RESET_TYPE_COLD_REBOOT:
 +	case SBI_SRST_RESET_TYPE_WARM_REBOOT:
-+	case SBI_SRST_RESET_TYPE_SHUTDOWN:
 +		return 1;
 +	}
 +	return 0;
@@ -1256,10 +1256,13 @@ index 0000000..8460862
 +
 +static void s31_system_reset(u32 type, u32 reason)
 +{
-+	writel(HPCORE_SW_RESET, (void *)LP_AONCLKRST_HPCORE0_RESET_CTRL_REG);
++	(void)type;
++	(void)reason;
++	S31_ROM_SYSTEM_RESET();
 +
-+	/* If the reset doesn't take effect (e.g. shutdown on a chip with no
-+	 * power-down path), spin in WFI so we don't return into garbage. */
++	/* A ROM system-reset routine must not return. If it does, stop here
++	 * rather than resuming into an invalid firmware state. */
++	sbi_printf("OpenSBI: ESP32-S31 ROM system reset returned\n");
 +	while (1)
 +		__asm__ __volatile__("wfi");
 +}
