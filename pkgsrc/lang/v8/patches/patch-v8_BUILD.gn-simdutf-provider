@@ -1,0 +1,22 @@
+$NetBSD$
+
+Let the selected simdutf provider supply its include directories.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- BUILD.gn.orig
++++ BUILD.gn
+@@ -2968,14 +2968,10 @@
+ 
+ group("v8_simdutf") {
+   public_deps = [ "//third_party/simdutf" ]
+-  public_configs = [ ":simdutf_include_config" ]
+ 
+   visibility = [ "./*" ]
+ }
+ 
+-config("simdutf_include_config") {
+-  include_dirs = [ "//third_party/simdutf" ]
+-}
+ 
+ group("zoslib") {
+   if (current_os == "zos") {

@@ -20,6 +20,13 @@ consumer build outputs must supply their actual loader paths.
 The source producer and verification interface are documented in
 [`scripts/source-inputs/v8`](../../../scripts/source-inputs/v8/README.md).
 
+V8's `v8_simdutf` target inherits its include path from the selected
+`third_party/simdutf` dependency. This lets the shared simdutf package supply
+its matching 9.3.3 API while the upstream provider continues to supply its own
+headers for standalone builds. `tests/simdutf-provider.py` checks both GN
+provider configurations and links a base64 size/invalid-input consumer against
+the common library.
+
 The downstream serialization revision `-emberbsd.s1` is part of both the
 public V8 version string and the serialized-code version hash. It accompanies
 changes to the Unicode backreference external-reference calling convention;
