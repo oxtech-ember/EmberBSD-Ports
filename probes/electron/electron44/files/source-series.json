@@ -824,6 +824,11 @@
       "strip": 1
     },
     {
+      "path": "client-certificates-private-key-factory-std-next.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "blink-character-data-generator-u16-next.patch",
       "root": "",
       "strip": 1
