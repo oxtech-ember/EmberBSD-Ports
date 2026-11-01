@@ -1,0 +1,29 @@
+Cross php85 records the target library directory in php-config.
+
+php-config records in ldflags the -L flags of the libraries configure
+found. In a cross build these were the sysroot and the buildlink tree in
+the work directory, so the target package installed a php-config85 that
+names build machine paths, and extensions built on the target read them.
+check-wrkref did not stop it: the default CHECK_WRKREF checks the tools
+and home directories and TOOLBASE, but neither the buildlink tree nor the
+sysroot. Record the target library directory and its run path instead.
+Applies after php85-cross-recorded-configure.patch.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/lang/php85/Makefile.php
++++ b/lang/php85/Makefile.php
+@@ -111,6 +111,14 @@
+ SUBST_FILES.cross-readline=	main/build-defs.h scripts/php-config
+ SUBST_SED.cross-readline=	-e 's,--with-readline=${BUILDLINK_DIR},--with-readline=${BUILDLINK_PREFIX.readline},g'
+ .  endif
++# php-config records the -L flags of the libraries configure found: the
++# sysroot and the buildlink tree in the work directory. Extensions built
++# on the target read them; record the target library directory instead.
++SUBST_CLASSES+=			cross-ldflags
++SUBST_STAGE.cross-ldflags=	post-configure
++SUBST_MESSAGE.cross-ldflags=	Recording the target library directory.
++SUBST_FILES.cross-ldflags=	scripts/php-config
++SUBST_SED.cross-ldflags=	-e 's|^ldflags=.*|ldflags="-L${LOCALBASE}/lib ${COMPILER_RPATH_FLAG}${LOCALBASE}/lib"|'
+ .endif
+ 
+ DL_AUTO_VARS=		yes
