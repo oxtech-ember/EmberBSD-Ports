@@ -25,7 +25,12 @@ cat > "$out/bin/shasum" <<WRAP
 echo "\$*" >> $out/shasum-calls
 exec $real_shasum "\$@"
 WRAP
-chmod +x "$out/bin/shasum"
+cat > "$out/bin/nproc" <<WRAP
+#!/bin/sh
+echo called >> $out/nproc-calls
+echo 10
+WRAP
+chmod +x "$out/bin/shasum" "$out/bin/nproc"
 : > "$out/errors"
 : > "$out/edges"
 # PACKAGE DEPENDENCIES...
@@ -123,12 +128,19 @@ bulk()
     PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=3 \
         sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1
 }
+bulk_auto_cpus()
+{
+    PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS= CROSS_BULK_JOBS=3 \
+        sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1
+}
 calls() { grep -c -- "-C $out/tree/t/$1 " "$out/calls" || :; }
 
 newstate
 : > "$out/calls"
 bulk || fail "first build: $(cat "$out/bulk.log")"
 [ ! -s "$out/errors" ] || fail "$(cat "$out/errors")"
+grep -q 'MAKE_JOBS=3 (6 CPUs)' "$out/bulk.log" || fail 'explicit CROSS_BULK_CPUS was not preserved'
+[ ! -e "$out/nproc-calls" ] || fail 'nproc was called despite explicit CROSS_BULK_CPUS'
 max=$(sort -n "$out/concurrency" | tail -n 1)
 [ "$(calls a)" = 3 ] || fail "package a ran bmake $(calls a) times, expected show-vars, clean, package-install"
 [ "$max" -ge 2 ] || fail "at most $max package built at a time"
@@ -154,6 +166,11 @@ done
 [ "$(calls f)" = 3 ] || fail "failed package f ran bmake $(calls f) times, expected 3"
 [ "$(calls e)" = 0 ] || fail 'blocked package e ran bmake'
 [ ! -s "$out/shasum-calls" ] || fail "done packages hashed again: $(cat "$out/shasum-calls")"
+
+# Without an explicit override, use the selected nproc before other host probes.
+bulk_auto_cpus || fail "automatic CPU detection: $(cat "$out/bulk.log")"
+[ "$(cat "$out/nproc-calls")" = called ] || fail 'automatic CPU detection did not use nproc'
+grep -q 'MAKE_JOBS=5 (10 CPUs)' "$out/bulk.log" || fail "nproc result was not used: $(cat "$out/bulk.log")"
 
 # A done package whose PKGNAME changed, or whose package file is gone,
 # builds again; a changed package file of a done PKGNAME does not.

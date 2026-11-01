@@ -442,7 +442,7 @@ fetch()
 # CROSS_BULK_CPUS overrides the detected CPU count.
 host_cpus()
 {
-    n=${CROSS_BULK_CPUS:-$(sysctl -n hw.ncpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)}
+    n=${CROSS_BULK_CPUS:-$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)}
     case "$n" in ''|*[!0-9]*|0) n=1 ;; esac
     echo "$n"
 }
