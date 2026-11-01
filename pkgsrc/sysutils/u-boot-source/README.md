@@ -48,8 +48,11 @@ not authenticated. YMODEM defers FIT-owned progress until the transfer ends;
 this does not suppress output from an FPGA backend. The S31 SPL does not enable
 FPGA support. Run `tests/test-s31-fit-selector.py` from the Ports recipe
 with `--source`, `--host-prefix` and `--fit "$WORK/firmware.itb"` to exercise
-the actual SPL configuration selector. Check the generated data offsets,
-hashes, FDT capacity and memory map for the chosen inputs separately.
+the actual SPL configuration selector and require the three ordered images to
+use bounded external data. An inline FIT makes SPL size its allocation for the
+entire payload instead of the small FIT structure and is rejected. Check the
+generated data offsets, hashes, FDT capacity and memory map for the chosen
+inputs separately.
 
 ### S31 NOR image from prepared inputs
 
