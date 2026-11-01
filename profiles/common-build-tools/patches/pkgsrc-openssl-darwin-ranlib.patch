@@ -1,0 +1,16 @@
+--- a/security/openssl/Makefile
++++ b/security/openssl/Makefile
+@@ -117,6 +117,13 @@
+ .  endif
+ .endif
+ 
++# The darwin64 targets run the cctools "ranlib -c". The native toolset selects
++# llvm-ranlib, which has no -c option and already lists common symbols in the
++# archive symbol table. Use the selected ranlib.
++.if ${OPSYS} == "Darwin" && ${TOOLS_PATH.ranlib:U:T} == "llvm-ranlib"
++CONFIGURE_ENV+=		RANLIB=ranlib
++.endif
++
+ # Ensure consistent socket interfaces are used across the codebase.
+ CPPFLAGS.SunOS+=	-D_XOPEN_SOURCE=600 -D__EXTENSIONS__
+ 

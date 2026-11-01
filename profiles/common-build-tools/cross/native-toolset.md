@@ -123,6 +123,12 @@ and `nm` commands in the package tools directory for the selected
 configure scripts and Makefiles call these by name; without them
 `AC_CHECK_TOOL(AR, ar, false)` selects `false`. Cross builds get the target
 commands from `mk/tools/cross.NetBSD.mk`.
+The `ranlib` command is `llvm-ranlib`, which accepts no cctools options.
+OpenSSL's darwin64 Configure targets call `ranlib -c`, so
+[`pkgsrc-openssl-darwin-ranlib.patch`](../patches/pkgsrc-openssl-darwin-ranlib.patch)
+passes `RANLIB=ranlib` when the selected ranlib is `llvm-ranlib`; its archive
+symbol table already lists common symbols. `scripts/tests/openssl-darwin-ranlib.sh`
+reads the exported configure environment.
 `tests/native-archiver-commands.py` builds a native recipe that calls `ar`
 by name.
 
