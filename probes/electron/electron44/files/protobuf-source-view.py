@@ -241,7 +241,43 @@ def electron_module_view(modules, dest, *, verify=False):
     require(found == links, 'electron/node_modules view changed')
 
 
-def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None):
+EDITION_DEFAULTS = ('google', 'protobuf', 'internal', 'python_edition_defaults.py')
+
+
+def python_edition_defaults(protobuf, protoc):
+    """Render python_edition_defaults.py from the common source, as Bazel does."""
+    import subprocess, tempfile
+    template = protobuf / 'python/google/protobuf/internal/python_edition_defaults.py.template'
+    text = template.read_text()
+    require(text.count('DEFAULTS_VALUE') == 1, 'unexpected python edition defaults template')
+    with tempfile.TemporaryDirectory(prefix='protobuf-edition-defaults-') as work:
+        output = Path(work) / 'defaults.bin'
+        subprocess.run([str(protoc), '-I' + str(protobuf / 'src'), '--edition_defaults_out=' + str(output),
+                        '--edition_defaults_minimum=PROTO2', '--edition_defaults_maximum=2026',
+                        str(protobuf / 'src/google/protobuf/descriptor.proto')], check=True)
+        data = output.read_bytes()
+    escaped = ''.join('\\%03o' % byte for byte in data)
+    return text.replace('DEFAULTS_VALUE', escaped)
+
+
+def python_view(protobuf, dest, protoc, *, verify=False):
+    """Mirror the common pyproto runtime and add its generated edition defaults."""
+    origin, output = protobuf / 'python', dest
+    for name in EDITION_DEFAULTS:
+        mirror(origin, output, verify=verify, omit={name})
+        if name == EDITION_DEFAULTS[-1]:
+            break
+        origin, output = origin / name, output / name
+    target = output / EDITION_DEFAULTS[-1]
+    expected = python_edition_defaults(protobuf, protoc)
+    if verify:
+        require(target.is_file() and not target.is_symlink() and target.read_text() == expected,
+                'generated python edition defaults changed: ' + str(target))
+    else:
+        target.write_text(expected)
+
+
+def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None):
     source = Path(source).resolve(strict=True)
     protobuf = Path(protobuf).resolve(strict=True) if protobuf is not None else None
     v8 = Path(v8).resolve(strict=True) if v8 is not None else None
@@ -307,14 +343,18 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     for name, path in providers.items():
         (destination / 'src/third_party' / name).symlink_to(path, target_is_directory=True)
     if protobuf:
-        links(original, destination / 'src/third_party/protobuf', {'src', 'third_party'})
+        common = ('src', 'third_party') + (('python',) if protobuf_protoc else ())
+        links(original, destination / 'src/third_party/protobuf', set(common))
         for name in ('src', 'third_party'):
             (destination / 'src/third_party/protobuf' / name).symlink_to(protobuf / name,
                                                                          target_is_directory=True)
+        if protobuf_protoc:
+            # The pyproto runtime must match the selected protoc gencode.
+            python_view(protobuf, destination / 'src/third_party/protobuf/python', protobuf_protoc)
     return destination / 'src'
 
 
-def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None):
+def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None):
     source = Path(source).resolve(strict=True)
     protobuf = Path(protobuf).resolve(strict=True) if protobuf is not None else None
     providers = {name: Path(value).resolve(strict=True) for name, value in
@@ -371,7 +411,10 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
                 'common source link changed: ' + str(link))
     if protobuf:
         path = root / 'third_party/protobuf'
-        check(source / 'third_party/protobuf', path, {'src', 'third_party'}, {'src', 'third_party'})
+        common = {'src', 'third_party'} | ({'python'} if protobuf_protoc else set())
+        check(source / 'third_party/protobuf', path, common, common)
+        if protobuf_protoc:
+            python_view(protobuf, path / 'python', protobuf_protoc, verify=True)
         for name in ('src', 'third_party'):
             link = path / name
             require(link.is_symlink() and os.readlink(link) == str(protobuf / name),

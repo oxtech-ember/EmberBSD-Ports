@@ -1175,7 +1175,8 @@ def gn_source(options):
                    system_abseil=getattr(options, 'shared_abseil', False),
                    system_icu=getattr(options, 'shared_icu', False),
                    system_re2=getattr(options, 'shared_re2', False),
-                   node_modules=Path(options.host_prefix) / 'lib/node_modules')
+                   node_modules=Path(options.host_prefix) / 'lib/node_modules',
+                   protobuf_protoc=(Path(options.host_prefix) / 'bin/protoc') if common else None)
     destination = options.work / 'source-view'
     if not os.path.lexists(destination):
         require(getattr(options, 'phase', '') == 'configure',
