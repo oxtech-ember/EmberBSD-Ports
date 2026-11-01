@@ -439,6 +439,21 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         self.packages['devel/library']['DEPENDS'] = 'app>=1:../../devel/app'
         self.assertIn('cycle', self.run_export(success=False))
 
+    def test_diagnostic_graph_is_written_on_lock_failure(self):
+        self.packages['devel/library']['DEPENDS'] = 'app>=1:../../devel/app'
+        diagnostic = self.path / 'diagnostic-cycle.json'
+        error = self.run_export('--diagnostic-graph', str(diagnostic), success=False)
+        self.assertIn('dependency cycle:', error)
+        self.assertIn('-[runtime]->', error)
+        self.assertTrue(diagnostic.is_file())
+        graph = json.loads(diagnostic.read_text())
+        self.assertEqual(graph['schema'], 'ports-graph-v1')
+
+    def test_diagnostic_graph_is_not_created_for_valid_graph(self):
+        diagnostic = self.path / 'diagnostic-success.json'
+        self.run_export('--diagnostic-graph', str(diagnostic))
+        self.assertFalse(diagnostic.exists())
+
     def test_build_phase_separates_perl_gmake_test_cycle(self):
         # Actual pkgsrc relationship: Perl builds with GNU make; GNU make
         # tests with Perl. The test dependency is not a build prerequisite.

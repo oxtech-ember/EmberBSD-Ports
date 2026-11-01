@@ -429,6 +429,8 @@ def main():
                         help='build excludes test-stage edges and requires a separate inventory')
     parser.add_argument('--test-requirements-output', type=Path,
                         help='mandatory pending TEST_DEPENDS inventory for the build phase')
+    parser.add_argument('--diagnostic-graph', type=Path,
+                        help='write the raw graph here only if SDK locking fails')
     parser.add_argument('--root', action='append', required=True, help='category/package; repeat for each root')
     parser.add_argument('--shared-input', action='append', default=[], metavar='NAME=FILE')
     parser.add_argument('--make-variable', action='append', default=[], metavar='NAME=VALUE',
@@ -445,6 +447,8 @@ def main():
         if (args.dependency_phase == 'build') != bool(args.test_requirements_output):
             raise ExportError('build phase requires --test-requirements-output; all phase forbids it')
         outputs = [args.output] + ([args.test_requirements_output] if args.test_requirements_output else [])
+        if args.diagnostic_graph:
+            outputs.append(args.diagnostic_graph)
         if len({path.resolve() for path in outputs}) != len(outputs):
             raise ExportError('output paths must be distinct')
         if any(path.exists() or path.is_symlink() for path in outputs):
@@ -462,7 +466,12 @@ def main():
         try:
             exporter = Exporter(args, sha256_file)
             graph = exporter.export()
-            sdk.lock_graph(graph)
+            try:
+                sdk.lock_graph(graph)
+            except SDKError:
+                if args.diagnostic_graph:
+                    write_json(str(args.diagnostic_graph), graph, exclusive=True)
+                raise
             if len(json_bytes(graph)) > sdk.PORTS_JSON_LIMIT:
                 raise ExportError('graph exceeds the SDK JSON size limit')
             if args.test_requirements_output:

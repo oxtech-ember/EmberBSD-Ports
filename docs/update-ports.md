@@ -77,6 +77,10 @@ It passes `PKGNAME_REQD` during dependency evaluation and uses native
 or implement a package version solver. All configured dependency kinds are
 included by default, including test dependencies and indirect dependencies.
 
+For cycle diagnosis, `--diagnostic-graph PATH` writes the evaluated raw graph
+only when SDK graph locking fails. Keep this separate scratch output distinct
+from the accepted graph and test-requirements paths.
+
 pkgsrc installs `TEST_DEPENDS` through its separate `test-depends` stage.
 This can create a cycle if all stages share one graph: Perl builds with GNU
 make, while GNU make tests with Perl. For a build plan, explicitly select
