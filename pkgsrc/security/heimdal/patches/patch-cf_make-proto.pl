@@ -5,9 +5,7 @@ it across skipped preprocessor branches into the next declaration.
 
 --- cf/make-proto.pl.orig
 +++ cf/make-proto.pl
-@@ -213,8 +213,10 @@
-     if(/\}/){
- 	$brace--;
+@@ -215,6 +215,8 @@
      }
      if(/^\}/){
  	$brace = 0;
@@ -16,4 +14,3 @@ it across skipped preprocessor branches into the next declaration.
      }
      if($brace == 0) {
  	$line = $line . " " . $_;
-     }
