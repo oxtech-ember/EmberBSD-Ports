@@ -907,6 +907,11 @@
       "path": "host-tools-scoped-runtime-all-wrappers.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "network-change-notifier-apple-macos14.4.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
