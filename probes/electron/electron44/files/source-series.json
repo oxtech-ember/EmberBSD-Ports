@@ -824,6 +824,11 @@
       "strip": 1
     },
     {
+      "path": "display-mac-cadisplaylink-at-macos15.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "proto-extras-plugin-local-camel-case.patch",
       "root": "",
       "strip": 1
