@@ -109,7 +109,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                               'cxx':['--ld-path=/ld','--rtlib=compiler-rt','--unwindlib=libunwind','-stdlib=libc++']})
     binding.write_text(json.dumps(commands))
     (src/'.gn').write_text('buildconfig="//BUILDCONFIG.gn"\n')
-    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n emberbsd_node_source_identity=""\n emberbsd_node_configure_helper=""\n emberbsd_node_configure_inputs=[]\n emberbsd_node_configure_dependencies=[]\n v8_prepared_source_receipt=""\n v8_version_hash_salt_files=[]\n v8_version_hash_salt=""\n feature=false\n clang_version=""\n}\nset_default_toolchain("//:tools")\n')
+    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n emberbsd_node_source_identity=""\n emberbsd_node_configure_helper=""\n emberbsd_node_configure_inputs=[]\n emberbsd_node_configure_dependencies=[]\n emberbsd_native_pkg_config_prefix=""\n emberbsd_protoc_runtime_launcher=""\n emberbsd_protoc_runtime_view=""\n emberbsd_protoc_runtime_inputs=[]\n node_host_runtime_python=""\n node_host_runtime_launcher=""\n node_host_runtime_view=""\n node_host_runtime_inputs=[]\n perfetto_host_runtime_launcher=""\n perfetto_host_runtime_view=""\n perfetto_host_runtime_inputs=[]\n v8_prepared_source_receipt=""\n v8_version_hash_salt_files=[]\n v8_version_hash_salt=""\n feature=false\n clang_version=""\n}\nset_default_toolchain("//:tools")\n')
     (src/'BUILD.gn').write_text('toolchain("tools") {\n tool("stamp") { command="touch {{output}}" }\n}\n')
     (src/'electron/build/args').mkdir(parents=True)
     (src/'electron/build/args/release.gn').write_text('')
@@ -142,13 +142,52 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
         str(Path(new_v8_root)/'emberbsd-prepared-source.json')
         if row == str(Path(old_v8_root)/'emberbsd-prepared-source.json') else row
         for row in old_node_configure_dependencies)
+    native_runtime = root/'native-runtime'; runtime_lib = native_runtime/'lib'; runtime_lib.mkdir(parents=True)
+    for name in ('libprotobuf.36.2.0.dylib', 'libz.1.dylib', 'libre2.11.0.0.dylib', 'libother.dylib'):
+        (runtime_lib/name).write_bytes(name.encode())
+    foreign_runtime = root/'foreign-runtime'; foreign_lib = foreign_runtime/'lib'; foreign_lib.mkdir(parents=True)
+    (foreign_lib/'libforeign.dylib').write_bytes(b'foreign provider')
+    buildlink = root/'host-buildlink'; buildlink_lib = buildlink/'lib'; buildlink_lib.mkdir(parents=True)
+    for name in ('libprotobuf.36.2.0.dylib', 'libz.1.dylib', 'libre2.11.dylib'):
+        target = {'libre2.11.dylib':'libre2.11.0.0.dylib'}.get(name, name)
+        (buildlink_lib/name).symlink_to(runtime_lib/target)
+    (buildlink_lib/'libforeign.dylib').symlink_to(foreign_lib/'libforeign.dylib')
+    old_view = root/'protoc-runtime-old'; old_view.mkdir()
+    new_view = root/'protoc-runtime-new'; new_view.mkdir()
+    for alias, target in (('libprotobuf.36.2.0.dylib', runtime_lib/'libprotobuf.36.2.0.dylib'),
+                          ('libz.1.dylib', runtime_lib/'libz.1.dylib')):
+        (old_view/alias).symlink_to(target)
+        (new_view/alias).symlink_to(target)
+    (new_view/'libre2.11.dylib').symlink_to(runtime_lib/'libre2.11.0.0.dylib')
+    launcher = root/'run-darwin-with-runtime.py'; launcher.write_text('# fixture SDK launcher input\n')
+    old_runtime_inputs = sorted((str(launcher.resolve()), str((runtime_lib/'libprotobuf.36.2.0.dylib').resolve()),
+                                 str((runtime_lib/'libz.1.dylib').resolve())))
+    new_runtime_inputs = sorted(old_runtime_inputs + [str((runtime_lib/'libre2.11.0.0.dylib').resolve())])
     old = dict(emberbsd_node_provider_inputs=['old'], emberbsd_typescript_definitions=['old'],
                emberbsd_node_source_identity=str(root/'node/emberbsd-prepared-source.json'),
                emberbsd_node_configure_helper=str(root/'ports/scripts/source-inputs/node/configure-inputs.py'),
                emberbsd_node_configure_inputs=old_node_configure_inputs,
                emberbsd_node_configure_dependencies=old_node_configure_dependencies,
-               feature=False, target_cpu='x64', clang_version='23')
+               feature=False, target_cpu='x64', clang_version='23',
+               emberbsd_native_pkg_config_prefix=str(buildlink),
+               emberbsd_protoc_runtime_launcher=str(launcher),
+               emberbsd_protoc_runtime_view=str(old_view),
+               emberbsd_protoc_runtime_inputs=old_runtime_inputs,
+               node_host_runtime_python=str(host/'bin/python3.15'),
+               node_host_runtime_launcher=str(launcher),
+               node_host_runtime_view=str(old_view), node_host_runtime_inputs=old_runtime_inputs,
+               perfetto_host_runtime_launcher=str(launcher),
+               perfetto_host_runtime_view=str(old_view), perfetto_host_runtime_inputs=old_runtime_inputs)
     new = dict(emberbsd_node_provider_inputs=['new'], emberbsd_typescript_definitions=['new'], feature=True, target_cpu='x64', clang_version='23',
+               emberbsd_native_pkg_config_prefix=str(buildlink),
+               emberbsd_protoc_runtime_launcher=str(launcher),
+               emberbsd_protoc_runtime_view=str(new_view),
+               emberbsd_protoc_runtime_inputs=new_runtime_inputs,
+               node_host_runtime_python=str(host/'bin/python3.15'),
+               node_host_runtime_launcher=str(launcher),
+               node_host_runtime_view=str(new_view), node_host_runtime_inputs=new_runtime_inputs,
+               perfetto_host_runtime_launcher=str(launcher),
+               perfetto_host_runtime_view=str(new_view), perfetto_host_runtime_inputs=new_runtime_inputs,
                v8_prepared_source_receipt='//v8/emberbsd-prepared-source.json',
                v8_version_hash_salt_files=[], v8_version_hash_salt='')
     new.update(emberbsd_node_source_identity=old['emberbsd_node_source_identity'],
@@ -158,7 +197,9 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     env = {'PATH':str(host/'bin') + ':/usr/bin', 'EMBERBSD_HOST_TYPESCRIPT':'/old', 'EMBERBSD_HOST_NODE':'/old-node',
            'EMBERBSD_V8_SOURCE_SHA256':'a' * 64, 'CC':str(work/'target-commands/cc'), 'CXX':str(work/'target-commands/cxx')}
     env.update(GOCACHE=str(work/'go-cache'), GOPATH=str(work/'go-path'))
-    opt = SimpleNamespace(workspace=src.parent, ports_source=root, sdk_source=root, host_prefix=host, target='amd64', compiler_family='clang', work=work, git=Path('/usr/bin/git'))
+    opt = SimpleNamespace(workspace=src.parent, ports_source=root, sdk_source=root, host_prefix=host,
+                          host_runtime_root=native_runtime, target='amd64', compiler_family='clang',
+                          work=work, git=Path('/usr/bin/git'))
     try: b.require_common_v8(opt); raise AssertionError('accepted missing common V8')
     except ValueError: pass
     opt.v8_source = Path(new_v8_root); opt.v8_ports_source = root/'owner'; opt.v8_pkgsrc = root/'pkgsrc'
@@ -281,6 +322,43 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
         assert not (work/'reconfigure-incomplete').exists()
 
     state['values'] = new
+    def reject_runtime_view(candidate, message):
+        state['values'] = candidate
+        try: b.reconfigure(opt); raise AssertionError('accepted invalid runtime view extension')
+        except ValueError as error: assert message in str(error), str(error)
+        assert config.read_bytes()==before and (out/'build.ninja').read_text()=='old graph'
+        assert (out/'args.gn').read_text()==b.gn_arguments(old) and obj.read_bytes()==b'object'
+        assert not (work/'reconfigure-incomplete').exists()
+        state['values'] = new
+
+    removed_alias = new_view/'libz.1.dylib'; removed_alias.unlink()
+    reject_runtime_view(new, 'removed an existing alias')
+    removed_alias.symlink_to(runtime_lib/'libz.1.dylib')
+
+    replaced_alias = new_view/'libz.1.dylib'; replaced_alias.unlink()
+    replaced_alias.symlink_to(runtime_lib/'libother.dylib')
+    reject_runtime_view(new, 'changed an existing alias')
+    replaced_alias.unlink(); replaced_alias.symlink_to(runtime_lib/'libz.1.dylib')
+
+    foreign_alias = new_view/'libforeign.dylib'; foreign_alias.symlink_to(foreign_lib/'libforeign.dylib')
+    reject_runtime_view(new, 'outside selected host runtime')
+    foreign_alias.unlink()
+
+    selected_re2 = buildlink_lib/'libre2.11.dylib'
+    selected_re2.unlink(); selected_re2.symlink_to(runtime_lib/'libother.dylib')
+    reject_runtime_view(new, 'does not match selected buildlink provider')
+    selected_re2.unlink(); selected_re2.symlink_to(runtime_lib/'libre2.11.0.0.dylib')
+
+    reject_runtime_view(dict(new, emberbsd_protoc_runtime_launcher=str(root/'different-launcher.py')),
+                        'launcher changed')
+    reject_runtime_view(dict(new, emberbsd_protoc_runtime_inputs=new_runtime_inputs +
+                             [str(root/'unselected-input.dylib')]),
+                        'changed beyond added view targets')
+    reject_runtime_view(dict(new, node_host_runtime_inputs=old_runtime_inputs),
+                        'node_host_runtime runtime selection changed independently')
+    reject_runtime_view(dict(new, perfetto_host_runtime_view=str(old_view)),
+                        'perfetto_host_runtime runtime selection changed independently')
+
     for malformed_old_inputs, message in (
         (old_node_configure_inputs + ['v8-source='+old_v8_root],
          'saved Node configure inputs contains an invalid or duplicate key'),

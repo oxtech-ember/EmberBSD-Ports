@@ -493,6 +493,94 @@ def host_buildlink(options, sdk, native, environment, host_binding):
     return result.stdout.decode('utf-8', 'strict').strip()
 
 
+def runtime_view_entries(directory, label):
+    view = Path(directory).resolve(strict=True)
+    require(view.is_dir(), label + ' is not a directory')
+    entries = sorted(view.iterdir(), key=lambda path: path.name)
+    require(entries and all(path.is_file() for path in entries),
+            label + ' must contain only files')
+    return {path.name: str(path.resolve(strict=True)) for path in entries}
+
+
+def additive_protoc_runtime_view(old_arguments, values, options):
+    """Validate a new scoped protoc view as an additive selected-provider extension."""
+    old_view_value = old_arguments.get('emberbsd_protoc_runtime_view')
+    new_view_value = values.get('emberbsd_protoc_runtime_view')
+    if not old_view_value or not new_view_value:
+        return set()
+    old_view = Path(old_view_value).resolve(strict=True)
+    new_view = Path(new_view_value).resolve(strict=True)
+    if old_view == new_view:
+        return set()
+    require(old_arguments.get('emberbsd_protoc_runtime_launcher') ==
+            values.get('emberbsd_protoc_runtime_launcher'),
+            'protoc runtime launcher changed')
+    old_entries = runtime_view_entries(old_view, 'saved protoc runtime view')
+    new_entries = runtime_view_entries(new_view, 'candidate protoc runtime view')
+    require(set(old_entries) <= set(new_entries),
+            'protoc runtime view removed an existing alias')
+    require(set(old_entries) < set(new_entries),
+            'protoc runtime view change must add at least one alias')
+    for name, target in old_entries.items():
+        require(new_entries.get(name) == target,
+                'protoc runtime view changed an existing alias: ' + name)
+
+    selected_prefix = values.get('emberbsd_native_pkg_config_prefix')
+    require(isinstance(selected_prefix, str) and selected_prefix,
+            'protoc runtime view extension needs the selected native buildlink')
+    buildlink_lib = (Path(selected_prefix) / 'lib').resolve(strict=True)
+    runtime_root = getattr(options, 'host_runtime_root', None)
+    require(runtime_root, 'protoc runtime view extension needs the selected host runtime')
+    selected_runtime = Path(runtime_root).resolve(strict=True)
+    selected_runtime_lib = (selected_runtime / 'lib').resolve(strict=True)
+    require(buildlink_lib.is_dir() and selected_runtime_lib.is_dir(),
+            'selected native buildlink or host runtime library directory is missing')
+    added_names = set(new_entries) - set(old_entries)
+    for name in sorted(added_names):
+        require(Path(name).name == name and ':' not in name,
+                'invalid new protoc runtime alias')
+        buildlink_entry = buildlink_lib / name
+        require(buildlink_entry.is_file(),
+                'new protoc runtime alias is absent from selected buildlink: ' + name)
+        target = Path(new_entries[name])
+        selected_target = buildlink_entry.resolve(strict=True)
+        require(target == selected_target,
+                'new protoc runtime alias does not match selected buildlink provider: ' + name)
+        require(target.is_relative_to(selected_runtime_lib),
+                'new protoc runtime target is outside selected host runtime: ' + name)
+
+    old_inputs = old_arguments.get('emberbsd_protoc_runtime_inputs')
+    new_inputs = values.get('emberbsd_protoc_runtime_inputs')
+    require(isinstance(old_inputs, list) and all(isinstance(item, str) for item in old_inputs) and
+            isinstance(new_inputs, list) and all(isinstance(item, str) for item in new_inputs),
+            'invalid protoc runtime input lists')
+    old_input_set, new_input_set = set(old_inputs), set(new_inputs)
+    require(len(old_input_set) == len(old_inputs) and len(new_input_set) == len(new_inputs) and
+            all(Path(item).is_absolute() for item in old_input_set | new_input_set),
+            'protoc runtime inputs must be unique absolute paths')
+    old_targets, new_targets = set(old_entries.values()), set(new_entries.values())
+    require(old_targets <= old_input_set and new_targets <= new_input_set,
+            'protoc runtime input list omits a view target')
+    added_targets = new_targets - old_targets
+    require(new_input_set == old_input_set | added_targets,
+            'protoc runtime inputs changed beyond added view targets')
+
+    permitted = {'emberbsd_protoc_runtime_view', 'emberbsd_protoc_runtime_inputs'}
+    for prefix in ('node_host_runtime', 'perfetto_host_runtime'):
+        view_key, inputs_key = prefix + '_view', prefix + '_inputs'
+        old_pair = (old_arguments.get(view_key), old_arguments.get(inputs_key))
+        new_pair = (values.get(view_key), values.get(inputs_key))
+        if old_pair == (None, None):
+            require(new_pair == old_pair,
+                    prefix + ' runtime selection was enabled during reconfigure')
+        else:
+            require(old_pair == (old_view_value, old_arguments.get('emberbsd_protoc_runtime_inputs')) and
+                    new_pair == (new_view_value, new_inputs),
+                    prefix + ' runtime selection changed independently of the protoc view')
+            permitted.update((view_key, inputs_key))
+    return permitted
+
+
 def protobuf_package_source(package, owner_recipe, export_recipe, *, distinfo, package_path="devel/protobuf"):
     """Compare the package's existing pkgsrc source metadata with its owner."""
     def inventory(recipe):
@@ -1398,6 +1486,7 @@ def reconfigure(options):
                               'EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK'))
         for name in (set(environment) | set(old_env)) - permitted_env:
             require(environment.get(name) == old_env.get(name), 'producer input changed: ' + name)
+        permitted_runtime_args = additive_protoc_runtime_view(saved['arguments'], values, options)
         identity_args = {'node_module_version', 'emberbsd_node_source_identity',
                          'emberbsd_node_configure_helper', 'emberbsd_node_configure_inputs',
                          'emberbsd_node_configure_dependencies', 'target_os', 'target_cpu', 'target_sysroot', 'emberbsd_target_sysroot',
@@ -1436,6 +1525,8 @@ def reconfigure(options):
         node_v8_path_changed = verified_node_configure_v8_path_change(
             saved['arguments'], values, options.v8_source)
         for name in identity_args:
+            if name in permitted_runtime_args:
+                continue
             if node_v8_path_changed and name in NODE_CONFIGURE_V8_PATH_KEYS:
                 continue
             require(values.get(name) == saved['arguments'].get(name), 'GN identity changed: ' + name)

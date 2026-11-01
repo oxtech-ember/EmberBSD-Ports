@@ -795,6 +795,15 @@ changes. This operation does not establish
 that changed compiler or sysroot contents at the same paths are compatible.
 Use a new output when those inputs have changed incompatibly.
 
+Reconfigure accepts one scoped runtime-view update: pass a different protoc
+runtime-view directory that preserves every existing alias and canonical target
+and only adds aliases for libraries selected by the native buildlink and staged
+under the selected host runtime. Its recorded runtime inputs may gain only those
+new targets. Keep the previous view intact while reconfiguring. Node and Perfetto
+runtime selections follow the same new view; their launchers remain unchanged.
+Other provider, compiler, runtime and ABI changes retain the existing strict
+identity checks.
+
 The Electron producer keeps its build `PATH` inside the selected native prefix.
 Source metadata commands receive the explicitly selected `--git` as
 `EMBERBSD_CONTROL_GIT`, without adding that control tool's directory to `PATH`.
