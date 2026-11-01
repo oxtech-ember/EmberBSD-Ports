@@ -678,3 +678,32 @@ competing roots, implicit ambient types and the unsupported bundled-root case:
 /absolute/native/bin/python3.15 -B -S probes/electron/tests/trusted-types-provider.py \
   --source /absolute/prepared-electron/src --host-prefix /absolute/native
 ```
+
+## Blink container annotation sentinel
+
+This regression compiles the prepared source's real Vector and container
+annotation headers against the selected Abseil dynamic annotation header. It
+checks inline-buffer layout with Abseil included before or after Blink and with
+the ASan platform predicate enabled or disabled:
+
+    python3.15 -B -I -S probes/electron/tests/blink-container-annotation-sentinel.py \
+      --command-json /absolute/diagnostics/compositor-animation-command.json \
+      --cwd /absolute/chromium-out \
+      --source-root /absolute/prepared-chromium/src \
+      --foreign-header /absolute/target-sysroot/usr/pkg/include/absl/base/internal/dynamic_annotations.h \
+      --vfs-overlay /absolute/diagnostics/blink-vector-sentinel-overlay.yaml
+
+The overlay is optional when the ordered recipe patch is already applied.
+Compile outputs are isolated in a temporary directory. All four layout cases
+pass with the patch overlay. Without it, the non-ASan case fails on the two
+unused old_capacity declarations and the size assertion (both Vector sizes are
+equal), reproducing the collision.
+
+The exact compositor_animation.o compile passes with the ordered Ports patch
+applied. Clang Static Analyzer reports one unchanged DeadStores finding for
+previous_value in string_impl.h; atomic_fetch_or still has a required side
+effect, while its return value is DCHECK-only. The finding is outside the
+changed files. Cppcheck 2.22.0 does not parse the selected C++23/libc++ input,
+so its result is incomplete rather than clean. These focused checks do not
+claim full Vector runtime or Memcheck coverage. Neither regression copies
+Vector implementation code.

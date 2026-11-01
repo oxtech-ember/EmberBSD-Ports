@@ -927,6 +927,11 @@
       "path": "ca-renderer-layer-tree-initialize-match-order.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "blink-wtf-container-annotation-sentinel.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

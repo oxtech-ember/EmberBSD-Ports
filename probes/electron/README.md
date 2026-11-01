@@ -332,6 +332,12 @@ GCC16-only scope covers the proven saved-stack false positive. See the
 The Blink declaration patch uses injected constructor names and qualifies the
 vector construction-traits alias. It preserves the constructor bodies and
 allocator behavior. See the [Blink declaration checks](tests/blink-string-vector-declarations-gcc16.md).
+The Blink container annotation sentinel has a WTF-specific name, so Abseil's
+function-like ANNOTATE_CONTIGUOUS_CONTAINER macro cannot enable Blink's
+sentinel guards when container annotations are unavailable. This preserves
+non-ASan Vector inline capacity and the ASan no-inline layout; sanitizer
+annotation predicates and calls are unchanged. See the
+[container sentinel regression](tests/README.md#blink-container-annotation-sentinel).
 The SVDF patch passes null for unused integer GEMM scratch in its existing
 null-context call. It preserves the floating result buffer and restrict
 contract. The [TFLite checks](tests/tflite-gcc16.md) include real numerical
