@@ -1178,6 +1178,9 @@ def gn_source(options):
                    node_modules=Path(options.host_prefix) / 'lib/node_modules',
                    protobuf_protoc=(Path(options.host_prefix) / 'bin/protoc') if common else None)
     destination = options.work / 'source-view'
+    if getattr(options, 'refresh_source_view', False):
+        require(options.phase == 'reconfigure', 'source refresh requires reconfigure')
+        return view.refresh(options.workspace / 'src', common, destination, **sources)
     if not os.path.lexists(destination):
         require(getattr(options, 'phase', '') == 'configure',
                 'common source view is missing; configure a new output')
@@ -1408,6 +1411,9 @@ def main():
         command.add_argument('--shared-abseil', action='store_true')
         command.add_argument('--shared-icu', action='store_true')
         command.add_argument('--shared-re2', action='store_true')
+        if phase == 'reconfigure':
+            command.add_argument('--refresh-source-view', action='store_true',
+                                 help='recompose generated sources, preserving existing Ninja objects')
         command.add_argument('--macos-minimum')
         command.add_argument('--gcc-platform-reason')
         command.add_argument('--jobs', type=int, default=1)

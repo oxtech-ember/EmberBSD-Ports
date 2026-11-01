@@ -52,6 +52,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     old = dict(emberbsd_node_provider_inputs=['old'], emberbsd_typescript_definitions=['old'], feature=False, target_cpu='x64', clang_version='23')
     new = dict(emberbsd_node_provider_inputs=['new'], emberbsd_typescript_definitions=['new'], feature=True, target_cpu='x64', clang_version='23')
     env = {'PATH':str(host/'bin') + ':/usr/bin', 'EMBERBSD_HOST_TYPESCRIPT':'/old', 'EMBERBSD_HOST_NODE':'/old-node', 'CC':str(work/'target-commands/cc'), 'CXX':str(work/'target-commands/cxx')}
+    env.update(GOCACHE=str(work/'go-cache'), GOPATH=str(work/'go-path'))
     opt = SimpleNamespace(workspace=src.parent, ports_source=root, sdk_source=root, host_prefix=host, target='amd64', compiler_family='clang', work=work, git=Path('/usr/bin/git'))
     try: b.require_common_v8(opt); raise AssertionError('accepted missing common V8')
     except ValueError: pass

@@ -455,3 +455,50 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
             require(link.is_symlink() and os.readlink(link) == str(protobuf / name),
                     'common Protobuf source link changed: ' + str(link))
     return root
+
+
+def refresh(source, protobuf, destination, **sources):
+    """Recompose generated inputs while keeping the sibling Ninja output intact.
+
+    The caller must hold the workspace/output locks and verify prepared sources
+    and compiler/provider identity before requesting this operation.
+    """
+    import tempfile
+
+    destination = Path(destination)
+    require(destination.is_absolute(), 'source view destination must be absolute')
+    resolved = destination.resolve()
+    for value in (source, protobuf, *(sources.get(name) for name in
+                  ('node', 'perfetto', 'v8', 'node_modules'))):
+        if value is not None:
+            origin = Path(value).resolve(strict=True)
+            require(not resolved.is_relative_to(origin) and
+                    not origin.is_relative_to(resolved), 'source view overlaps an input')
+    existing = os.path.lexists(destination)
+    if existing:
+        require(destination.is_dir() and not destination.is_symlink(),
+                'source view must be a local directory')
+        require({p.name for p in destination.iterdir()} == {'src'},
+                'unexpected entries outside generated source view')
+        require((destination / 'src').is_dir() and not (destination / 'src').is_symlink(),
+                'source view src must be a local directory')
+        local_out = destination / 'src/out'
+        require(local_out.is_dir() and not local_out.is_symlink() and
+                not any(local_out.iterdir()),
+                'source view contains build outputs; use the sibling work/out directory')
+    with tempfile.TemporaryDirectory(prefix='.source-view-refresh-',
+                                     dir=destination.parent) as temporary:
+        scratch = Path(temporary)
+        candidate = scratch / 'candidate'
+        create(source, protobuf, candidate, **sources)
+        verify(source, protobuf, candidate, **sources)
+        previous = scratch / 'previous'
+        if existing:
+            destination.rename(previous)
+        try:
+            candidate.rename(destination)
+        except BaseException:
+            if existing:
+                previous.rename(destination)
+            raise
+    return destination / 'src'

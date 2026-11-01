@@ -767,7 +767,15 @@ update, reconfigure records the current versions; changing a path or version
 makes Ninja rerun the affected actions. Each action rejects a version that has
 changed since configuration. Existing objects remain for Ninja to update. A failed or interrupted
 GN generation leaves `reconfigure-incomplete` and prevents `build`; rerun
-`reconfigure` successfully before building. This operation does not establish
+`reconfigure` successfully before building. After preparing a changed Ports
+source patch series, add `--refresh-source-view` to recompose the generated
+source view from those verified inputs. It builds and verifies a replacement
+before installing it at the same path; the sibling `work/out` and its Ninja
+objects remain intact. Ninja then rebuilds changed inputs and their dependents.
+This option replaces generated source-view contents, refuses nested outputs in
+`source-view/src/out`, and can recover a missing view after an interrupted
+replacement. Use the normal `reconfigure` without this option for graph-only
+changes. This operation does not establish
 that changed compiler or sysroot contents at the same paths are compatible.
 Use a new output when those inputs have changed incompatibly.
 

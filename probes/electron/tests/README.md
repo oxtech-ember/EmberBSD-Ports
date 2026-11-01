@@ -448,6 +448,18 @@ This runs real GN generation on a small graph and checks refusal of changed
 compiler bindings, retained objects, a failed generation, build refusal, and
 subsequent recovery. It does not build Electron or execute target code.
 
+Source-view refresh is checked with selected native Clang and Ninja:
+
+```sh
+/absolute/native/bin/python3.15 -B -S probes/electron/tests/source-view-refresh.py \
+  --host-prefix /absolute/native --target arm64-apple-darwin
+```
+
+Use the native host triplet for `--target`. This compiles two small C objects,
+changes one source atomically, refreshes the view and checks that only its
+object rebuilds. It also covers candidate/installation failure rollback,
+input overlap, redirected roots, nested output refusal and missing-view recovery.
+
 The native binding identity test checks that changing a selected platform ABI
 header's path or contents produces a new adapter identity:
 
