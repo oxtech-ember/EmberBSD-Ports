@@ -60,7 +60,12 @@ class BinutilsHostTests(unittest.TestCase):
                 file(Path(self.tools[role]), '#!/bin/sh\nexit 97\n').chmod(0o755)
         self.selected = HostPrefix(bundle_root=str(prefix), host={}, compiler={},
             tools=self.tools, driver_components={},
-            abi_flags={name: () for name in ('cppflags', 'cflags', 'cxxflags', 'ldflags')})
+            abi_flags={
+                'cppflags': ('-DHOST_ABI_CPP=1',),
+                'cflags': ('-fhost-abi-c',),
+                'cxxflags': ('-fhost-abi-cxx',),
+                'ldflags': ('-Wl,-host-abi',),
+            })
         environment = patch.dict(os.environ, {}, clear=True)
         environment.start(); self.addCleanup(environment.stop)
 
@@ -77,8 +82,10 @@ class BinutilsHostTests(unittest.TestCase):
             self.assertEqual(env['PATH'], selected.path)
             self.assertEqual(env['CC'], self.tools['cc'])
             self.assertEqual(env['CONFIG_SHELL'], self.tools['sh'])
-            self.assertEqual(env['CPPFLAGS'], '-I' + selected.bundle_root + '/include')
-            self.assertEqual(env['LDFLAGS'], '-L' + selected.bundle_root + '/lib')
+            self.assertEqual(env['CPPFLAGS'], '-DHOST_ABI_CPP=1 -I' + selected.bundle_root + '/include')
+            self.assertEqual(env['CFLAGS'], '-fhost-abi-c')
+            self.assertEqual(env['CXXFLAGS'], '-fhost-abi-cxx')
+            self.assertEqual(env['LDFLAGS'], '-Wl,-host-abi -L' + selected.bundle_root + '/lib')
             self.assertEqual(env['PKG_CONFIG_PATH'], '')
             self.assertEqual(env['MAKEINFO'], self.tools['true'])
 
