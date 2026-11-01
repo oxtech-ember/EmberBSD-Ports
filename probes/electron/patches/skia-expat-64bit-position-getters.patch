@@ -1,0 +1,45 @@
+Use the 64-bit Expat position getters in the Android font parser.
+Origin: EmberBSD contributors (AI-assisted). The shared Expat 2.9 deprecates
+XML_GetCurrentLineNumber/ColumnNumber; select the 64-bit getters by Expat
+version and keep the older API for earlier releases.
+
+--- a/third_party/skia/src/ports/SkFontMgr_android_parser.cpp
++++ b/third_party/skia/src/ports/SkFontMgr_android_parser.cpp
+@@ -20,6 +20,15 @@
+ 
+ #include <expat.h>
+ 
++// Expat 2.9 deprecates the XML_Size position getters in favour of 64-bit ones.
++#if XML_MAJOR_VERSION > 2 || (XML_MAJOR_VERSION == 2 && XML_MINOR_VERSION >= 9)
++#define SK_XML_GetCurrentLineNumber XML_GetCurrentLineNumber64
++#define SK_XML_GetCurrentColumnNumber XML_GetCurrentColumnNumber64
++#else
++#define SK_XML_GetCurrentLineNumber XML_GetCurrentLineNumber
++#define SK_XML_GetCurrentColumnNumber XML_GetCurrentColumnNumber
++#endif
++
+ #include <stdlib.h>
+ #include <string.h>
+ 
+@@ -138,8 +147,8 @@
+ #define SK_FONTCONFIGPARSER_WARNING(message, ...)                                 \
+     SkDebugf(SK_FONTMGR_ANDROID_PARSER_PREFIX "%s:%d:%d: warning: " message "\n", \
+              self->fFilename,                                                     \
+-             (int)XML_GetCurrentLineNumber(self->fParser),                        \
+-             (int)XML_GetCurrentColumnNumber(self->fParser),                      \
++             (int)SK_XML_GetCurrentLineNumber(self->fParser),                        \
++             (int)SK_XML_GetCurrentColumnNumber(self->fParser),                      \
+              ##__VA_ARGS__)
+ 
+ static bool is_whitespace(char c) {
+@@ -758,8 +767,8 @@
+         XML_Status status = XML_ParseBuffer(parser, len, done);
+         if (XML_STATUS_ERROR == status) {
+             XML_Error error = XML_GetErrorCode(parser);
+-            int line = XML_GetCurrentLineNumber(parser);
+-            int column = XML_GetCurrentColumnNumber(parser);
++            int line = (int)SK_XML_GetCurrentLineNumber(parser);
++            int column = (int)SK_XML_GetCurrentColumnNumber(parser);
+             const XML_LChar* errorString = XML_ErrorString(error);
+             SkDebugf(SK_FONTMGR_ANDROID_PARSER_PREFIX "%s:%d:%d error %d: %s.\n",
+                      filename, line, column, error, errorString);

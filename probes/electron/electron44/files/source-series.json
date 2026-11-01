@@ -807,6 +807,11 @@
       "path": "ipcz-absl-mutex-reference-locks.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "skia-expat-64bit-position-getters.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
