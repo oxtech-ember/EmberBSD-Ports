@@ -1,0 +1,56 @@
+Cross php-xapian reads the target php-config and xapian-config.
+
+textproc/php-xapian configured with PHP_CONFIG=${PREFIX}/bin/php-config85
+and its configure looks up xapian-config on PATH. In a cross build both
+are the target's, under the target prefix that the build host does not
+have, so configure stopped at "Can't find xapian-config". Use the php-config
+copy of lang/php/cross-config.mk, as PHP extensions do, and a copy of the
+target xapian-config from the buildlink tree with the prefix in that tree,
+for every Xapian binding. configure asks the PHP interpreter for the
+extension suffix; give it the native php of the same version, or the
+module installs as "xapian." instead of xapian.so. Native builds are
+unchanged.
+Applies after php-ext-cross-phpize.patch.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/textproc/php-xapian/Makefile
++++ b/textproc/php-xapian/Makefile
+@@ -11,5 +11,12 @@
+ 
+ .include "../../lang/php/phpversion.mk"
+ .include "${PHPPKGSRCDIR}/buildlink3.mk"
++.include "../../lang/php/cross-config.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# configure asks php-config for the PHP interpreter and asks the
++# interpreter for the extension suffix. The target php85 does not run on
++# the build host; give configure the native php of the same version.
++CONFIGURE_ENV+=		PHP=${TOOLBASE}/bin/php${PHP_VER}
++.endif
+ .include "../../textproc/xapian/module.mk"
+ .include "../../mk/bsd.pkg.mk"
+--- a/textproc/xapian/module.mk
++++ b/textproc/xapian/module.mk
+@@ -10,3 +10,23 @@
+ PATCHDIR=		${PKGDIR}/../../textproc/xapian/patches-bindings
+ 
+ .include "../../textproc/xapian/buildlink3.mk"
++
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# configure runs xapian-config for the compiler flags and libxapian.la. The
++# installed one is the target's, under the target prefix that the build
++# host does not have. Run a copy of it from the buildlink tree with the
++# prefix in that tree.
++BUILDLINK_FILES.xapian+=	bin/xapian-config
++XAPIAN_CONFIG=		${WRKDIR}/.xapian-cross/bin/xapian-config
++CONFIGURE_ENV+=		XAPIAN_CONFIG=${XAPIAN_CONFIG}
++
++pre-configure: xapian-cross-config
++
++.PHONY: xapian-cross-config
++xapian-cross-config:
++	${RUN}${MKDIR} ${XAPIAN_CONFIG:H}
++	${RUN}${SED} -e 's,^prefix=.*,prefix="${BUILDLINK_DIR}",' \
++		${BUILDLINK_DIR}/bin/xapian-config > ${XAPIAN_CONFIG}.tmp
++	${RUN}${CHMOD} +x ${XAPIAN_CONFIG}.tmp
++	${RUN}${MV} -f ${XAPIAN_CONFIG}.tmp ${XAPIAN_CONFIG}
++.endif

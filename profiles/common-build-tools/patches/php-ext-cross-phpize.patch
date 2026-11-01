@@ -10,27 +10,72 @@ lang/php85 uses for phar.phar, and use that php for build-time PHP runs.
 configure reads the target php-config, linked into the buildlink tree
 and copied with the include directory in that tree, so the extension
 compiles against the target php85 headers and keeps the target prefix
-and extension directory. Native builds are unchanged.
+and extension directory. lang/php/cross-config.mk holds the php-config
+copy and the native php tool dependency for packages that run php-config
+without ext.mk. Native builds are unchanged.
 Applies after pkgsrc-php-one-version.patch and pkgsrc-php85-8.5.12.patch.
 Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 
 --- a/lang/php/ext.mk
 +++ b/lang/php/ext.mk
-@@ -98,6 +98,27 @@
+@@ -98,6 +98,13 @@
  SHLIB_SUFFIX=		so
  .endif
  
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 +# phpize and build-time PHP runs (gen_stub.php, tests) use the native php
 +# of the same version; the target php85 is not a build host program.
-+TOOL_DEPENDS+=		${PHP_PKG_PREFIX}>=${PHP_VERSION}:${PHPPKGSRCDIR}
++.include "../../lang/php/cross-config.mk"
 +MAKE_FLAGS+=		PHP_EXECUTABLE=${TOOLBASE}/bin/php${PHP_VER}
-+# configure reads the target php-config from the buildlink tree, with the
-+# include directory in that tree. The prefix and the extension directory
-+# stay those of the target.
++.endif
++
+ pre-configure:	phpize-module
+ 
+ phpize-module:
+--- a/lang/php/phpversion.mk
++++ b/lang/php/phpversion.mk
+@@ -189,6 +189,14 @@
+ PHP_PKG_PREFIX=		php${PHP_VER}
+ PHP_NAME=		php${PHP_VER}
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# phpize runs on the build host. The target phpize names its build files
++# under the target prefix, which the build host does not have; run the
++# native phpize of the same version, a tool dependency of lang/php/ext.mk.
++# lang/php/cross-config.mk sets PHP_CONFIG for packages that run
++# php-config at configure time.
++PHPIZE?=		${TOOLBASE}/bin/phpize${PHP_VER}
++.endif
+ PHPIZE?=		${PREFIX}/bin/phpize${PHP_VER}
+ PHP_CONFIG?=		${PREFIX}/bin/php-config${PHP_VER}
+ 
+--- /dev/null
++++ b/lang/php/cross-config.mk
+@@ -0,0 +1,34 @@
++# Origin: EmberBSD (AI-assisted); upstream status: not submitted.
++#
++# Include this file after lang/php/phpversion.mk and the PHP buildlink3.mk
++# in a package that runs php-config at configure time.
++#
++# In a cross build the installed php-config is the target's, under the
++# target prefix that the build host does not have. PHP_CONFIG names a copy
++# of the target php-config from the buildlink tree, with the include
++# directory in that tree; the prefix and the extension directory stay those
++# of the target. The native php of the same version is a tool dependency,
++# ${TOOLBASE}/bin/php${PHP_VER}, for phpize and build-time PHP runs.
++# Native builds keep the installed php-config.
++#
++# lang/php/ext.mk includes this file.
++
++.if !defined(PHP_CROSS_CONFIG_MK)
++PHP_CROSS_CONFIG_MK=	# defined
++
++.  if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++TOOL_DEPENDS+=		${PHP_PKG_PREFIX}>=${PHP_VERSION}:${PHPPKGSRCDIR}
++PHP_CONFIG=		${WRKDIR}/.php-cross/bin/php-config${PHP_VER}
 +BUILDLINK_FILES.${PHP_PKG_PREFIX}+=	bin/php-config${PHP_VER}
 +
-+phpize-module: php-cross-config
++pre-configure: php-cross-config
 +
 +.PHONY: php-cross-config
 +php-cross-config:
@@ -39,28 +84,5 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 +		${BUILDLINK_DIR}/bin/php-config${PHP_VER} > ${PHP_CONFIG}.tmp
 +	${RUN}${CHMOD} +x ${PHP_CONFIG}.tmp
 +	${RUN}${MV} -f ${PHP_CONFIG}.tmp ${PHP_CONFIG}
-+.endif
-+
- pre-configure:	phpize-module
- 
- phpize-module:
---- a/lang/php/phpversion.mk
-+++ b/lang/php/phpversion.mk
-@@ -189,6 +189,17 @@
- PHP_PKG_PREFIX=		php${PHP_VER}
- PHP_NAME=		php${PHP_VER}
- 
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-+# phpize runs on the build host. The target phpize names its build files
-+# under the target prefix, which the build host does not have; run the
-+# native phpize of the same version, a tool dependency of lang/php/ext.mk.
-+# ext.mk makes the php-config that configure reads from the target
-+# php-config in the buildlink tree.
-+PHPIZE?=		${TOOLBASE}/bin/phpize${PHP_VER}
-+.  if defined(PHPEXT_MK)
-+PHP_CONFIG?=		${WRKDIR}/.php-cross/bin/php-config${PHP_VER}
 +.  endif
 +.endif
- PHPIZE?=		${PREFIX}/bin/phpize${PHP_VER}
- PHP_CONFIG?=		${PREFIX}/bin/php-config${PHP_VER}
- 

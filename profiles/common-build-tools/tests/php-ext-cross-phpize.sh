@@ -13,9 +13,15 @@
 # configures with the target php-config from the buildlink tree, with the
 # include paths in that tree and the target extension directory; a native
 # build keeps the installed phpize and php-config. Then run the real
-# phpize-module target of databases/php-pdo on ext/pdo from the distfile,
+# pre-configure target of databases/php-pdo on ext/pdo from the distfile,
 # with a native phpize stand-in under the TOOLBASE path and a target
 # php-config made from the distfile's scripts/php-config.in.
+#
+# textproc/php-xapian is no ext.mk extension but runs php-config from
+# configure as well; require that lang/php/cross-config.mk gives it the
+# same php-config and run its pre-configure target. Its configure also
+# runs xapian-config, the target's; require that textproc/xapian/module.mk
+# gives it a copy with the prefix in the buildlink tree.
 set -eu
 [ "$#" -eq 3 ] || { echo "Usage: $0 PKGSRC MAKECONF NEW_WORK" >&2; exit 2; }
 pkgsrc=$1 makeconf=$2 work=$3
@@ -101,22 +107,93 @@ case $phpize in
 "$toolbase"/*) run=$work/tool${phpize#"$toolbase"};;
 *) run=$phpize;;
 esac
-bm WRKDIR="$wrkdir" WRKSRC="$src" PHPIZE="$run" phpize-module \
+bm WRKDIR="$wrkdir" WRKSRC="$src" PHPIZE="$run" pre-configure \
 	> "$work/phpize.log" 2>&1 ||
-	{ sed 's/^/  /' "$work/phpize.log"; echo "FAIL: phpize-module stopped"; exit 1; }
+	{ sed 's/^/  /' "$work/phpize.log"; echo "FAIL: pre-configure stopped"; exit 1; }
 [ "$(cat "$work/tool/bin/runs" 2>/dev/null)" = "$src" ] ||
 	{ echo "FAIL: the native phpize did not run in $src"; exit 1; }
-[ -x "$phpconfig" ] || { echo "FAIL: no $phpconfig"; exit 1; }
-inc=$buildlink/include/php/$apivers
-[ "$("$phpconfig" --include-dir)" = "$inc" ] ||
-	fail "php-config --include-dir is not $inc"
-case " $("$phpconfig" --includes) " in
-*" -I$inc -I$inc/main -I$inc/TSRM -I$inc/Zend "*) ;;
-*) fail "php-config --includes does not name $inc";;
+check_config() { # PHP_CONFIG BUILDLINK_DIR WHO
+	[ -x "$1" ] || { fail "$3: no $1"; return; }
+	inc=$2/include/php/$apivers
+	[ "$("$1" --include-dir)" = "$inc" ] ||
+		fail "$3: php-config --include-dir is not $inc"
+	case " $("$1" --includes) " in
+	*" -I$inc -I$inc/main -I$inc/TSRM -I$inc/Zend "*) ;;
+	*) fail "$3: php-config --includes does not name $inc";;
+	esac
+	[ "$("$1" --extension-dir)" = "$prefix/$extdir" ] ||
+		fail "$3: php-config --extension-dir is not the target $prefix/$extdir"
+	[ "$("$1" --prefix)" = "$prefix" ] ||
+		fail "$3: php-config --prefix is not the target $prefix"
+}
+check_config "$phpconfig" "$buildlink" php-pdo
+
+xpkg=$pkgsrc/textproc/php-xapian
+xm() { MAKECONF=$makeconf "${BMAKE:-bmake}" -C "$xpkg" MAKECONF="$makeconf" "$@"; }
+xwrkdir=$work/xwrk
+xm WRKDIR="$xwrkdir" -V '${PHP_CONFIG}' -V '${BUILDLINK_DIR}' \
+	-V '${CONFIGURE_ENV:MPHP_CONFIG=*}' -V '${BUILDLINK_FILES.php85}' \
+	-V '${XAPIAN_CONFIG}' -V '${CONFIGURE_ENV:MXAPIAN_CONFIG=*}' \
+	-V '${BUILDLINK_FILES.xapian}' -V '${CONFIGURE_ENV:MPHP=*}' \
+	-V '${TOOL_DEPENDS}' > "$work/xvalues"
+{
+	IFS= read -r xconfig; IFS= read -r xbuildlink; IFS= read -r xenv
+	IFS= read -r xblfiles; IFS= read -r xapconfig; IFS= read -r xapenv
+	IFS= read -r xapfiles; IFS= read -r xphp; IFS= read -r xtooldeps
+} < "$work/xvalues"
+case " $xtooldeps " in
+*" $phppkg>=$phpversion:../../lang/php$phpver "*) ;;
+*) fail "php-xapian: no tool dependency on the native $phppkg>=$phpversion";;
 esac
-[ "$("$phpconfig" --extension-dir)" = "$prefix/$extdir" ] ||
-	fail "php-config --extension-dir is not the target $prefix/$extdir"
-[ "$("$phpconfig" --prefix)" = "$prefix" ] ||
-	fail "php-config --prefix is not the target $prefix"
+[ "$xphp" = "PHP=$toolbase/bin/php$phpver" ] ||
+	fail "php-xapian: configure does not get the native PHP=$toolbase/bin/php$phpver"
+case $xapconfig in
+"$xwrkdir"/*) ;;
+*) fail "php-xapian: XAPIAN_CONFIG is '$xapconfig', not made in the work directory";;
+esac
+[ "$xapenv" = "XAPIAN_CONFIG=$xapconfig" ] ||
+	fail "php-xapian: configure does not get XAPIAN_CONFIG=$xapconfig"
+case " $xapfiles " in
+*" bin/xapian-config "*) ;;
+*) fail "php-xapian: the buildlink tree lacks the target bin/xapian-config";;
+esac
+case $xconfig in
+"$xwrkdir"/*) ;;
+*) fail "php-xapian: PHP_CONFIG is $xconfig, not made in the work directory";;
+esac
+[ "$xenv" = "PHP_CONFIG=$xconfig" ] ||
+	fail "php-xapian: configure does not get PHP_CONFIG=$xconfig"
+case " $xblfiles " in
+*" bin/php-config$phpver "*) ;;
+*) fail "php-xapian: the buildlink tree lacks the target bin/php-config$phpver";;
+esac
+[ "$(xm USE_CROSS_COMPILE=no -V '${PHP_CONFIG}')" = "$nprefix/bin/php-config$phpver" ] ||
+	fail "php-xapian: a native build does not use the installed php-config"
+mkdir -p "$xbuildlink/bin"
+cp "$buildlink/bin/php-config$phpver" "$xbuildlink/bin/"
+# The target xapian-config names its files under the target prefix.
+cat > "$xbuildlink/bin/xapian-config" <<XAPIAN
+#!/bin/sh
+prefix="$prefix"
+exec_prefix="\${prefix}"
+case \$1 in
+--cxxflags) echo "-I\${prefix}/include";;
+--ltlibs) echo "\${exec_prefix}/lib/libxapian.la";;
+esac
+XAPIAN
+chmod +x "$xbuildlink/bin/xapian-config"
+if xm WRKDIR="$xwrkdir" pre-configure > "$work/xapian.log" 2>&1; then
+	check_config "$xconfig" "$xbuildlink" php-xapian
+	if [ -x "$xapconfig" ]; then
+		[ "$("$xapconfig" --cxxflags)" = "-I$xbuildlink/include" ] ||
+			fail "php-xapian: xapian-config --cxxflags does not name the buildlink tree"
+		[ "$("$xapconfig" --ltlibs)" = "$xbuildlink/lib/libxapian.la" ] ||
+			fail "php-xapian: xapian-config --ltlibs does not name the buildlink tree"
+	else
+		fail "php-xapian: no xapian-config at '$xapconfig'"
+	fi
+else
+	sed 's/^/  /' "$work/xapian.log"; fail "php-xapian: pre-configure stopped"
+fi
 [ "$status" -eq 0 ] || exit 1
 echo "PASS: cross PHP extensions run the native phpize with the target php-config"
