@@ -764,9 +764,70 @@ target_install()
 {
     tpath=$1
     shift
+    shared_arg=
+    case "$tpath" in
+        lang/llvm)
+            [ "$llvm_shared_enabled" != yes ] || shared_arg=EMBERBSD_LLVM_SHARED_STAGE=$llvm_shared_stage ;;
+        lang/llvm-devel)
+            if [ "$llvm_shared_enabled" = yes ] && [ -f "$run/llvm-runtime-ready" ] && [ -d "$llvm_shared_stage" ]; then
+                shared_arg=EMBERBSD_LLVM_SHARED_STAGE=$llvm_shared_stage
+            fi ;;
+    esac
     for target do
-        bmk -C "$PKGSRCDIR/$tpath" "$target" < /dev/null || return 1
+        if [ -n "$shared_arg" ]; then
+            bmk -C "$PKGSRCDIR/$tpath" "$shared_arg" "$target" < /dev/null || return 1
+        else
+            bmk -C "$PKGSRCDIR/$tpath" "$target" < /dev/null || return 1
+        fi
     done
+}
+
+# The LLVM runtime and SDK packages have separate PLISTs but one compiled
+# payload. Share it only when this run will build both roles and their actual
+# pkgsrc compile inputs agree. Any missing/mismatched input leaves the normal
+# package builds unchanged.
+llvm_shared_configure()
+{
+    llvm_shared_enabled=no
+    llvm_shared_stage=
+    [ "${CROSS_BULK_LLVM_SHARED_BUILD:-no}" = yes ] || return 0
+    grep -qFx lang/llvm "$state/order" && grep -qFx lang/llvm-devel "$state/order" || return 0
+    llvm_shared_fields='LLVM_VERSION WRKSRC DISTNAME PATCHDIR DISTINFO_FILE PKG_OPTIONS USE_CROSS_COMPILE OPSYS OS_VERSION MACHINE_ARCH MACHINE_GNU_PLATFORM EMBERBSD_CROSS_COMPILER_FAMILY PKGSRC_COMPILER CMAKE CFLAGS CXXFLAGS CPPFLAGS LDFLAGS CMAKE_CONFIGURE_ARGS CONFIGURE_ENV CC CXX CPP AR AS LD RANLIB STRIP CWRAPPERS_APPEND.cc CWRAPPERS_APPEND.cxx _CMAKE_BUILD_SYSTEM INSTALL_TARGET CMAKE_INSTALL_ARGS LLVM_TARGETS_TO_BUILD LLVM_EXPERIMENTAL_TARGETS_TO_BUILD CROSS_DESTDIR TOOLDIR TOOL_PYTHONBIN EMBERBSD_LLVM_NATIVE_TOOLS MAKE_ENV CMAKE_BUILD_ARGS _CMAKE_BUILD_TOOL CMAKE_GENERATOR CMAKE_BUILD_DIR BUILD_TARGET BUILD_DIRS CONFIGURE_DIR SETENV RUN INSTALL_ENV INSTALL_DIRS PREFIX'
+    llvm_runtime_wrkdir=$(pkg_vars lang/llvm WRKDIR _MAKEVARS_MK=defined) || return 0
+    case "$llvm_runtime_wrkdir" in /*) ;; *) return 0 ;; esac
+    runtime_values=$(pkg_vars lang/llvm "$llvm_shared_fields" "WRKDIR=$llvm_runtime_wrkdir" _MAKEVARS_MK=defined) || return 0
+    devel_values=$(pkg_vars lang/llvm-devel "$llvm_shared_fields" "WRKDIR=$llvm_runtime_wrkdir" _MAKEVARS_MK=defined) || return 0
+    set -f
+    set -- $llvm_shared_fields
+    llvm_shared_expected=$#
+    set +f
+    [ "$(printf '%s\n' "$runtime_values" | wc -l | tr -d ' ')" = "$llvm_shared_expected" ] || return 0
+    [ "$(printf '%s\n' "$devel_values" | wc -l | tr -d ' ')" = "$llvm_shared_expected" ] || return 0
+    runtime_flags=$runtime_values
+    devel_flags=$devel_values
+    [ "$runtime_flags" = "$devel_flags" ] || {
+        echo 'LLVM runtime and SDK compile inputs differ; using ordinary package builds' >&2
+        return 0
+    }
+    llvm_shared_stage=$llvm_runtime_wrkdir/.llvm-shared-full-stage
+    llvm_shared_enabled=yes
+    echo 'LLVM runtime and SDK compile inputs match; enabling same-run stage handoff'
+}
+
+llvm_shared_retire_runtime()
+{
+    [ "$llvm_shared_enabled" = yes ] && [ -f "$run/llvm-runtime-ready" ] || return 0
+    [ "${CROSS_BULK_CLEAN_SUCCESS:-no}" = yes ] || return 0
+    if retire "$llvm_runtime_wrkdir" "$job.llvm-runtime-after-sdk" &&
+        [ ! -e "$llvm_runtime_wrkdir" ] && [ ! -L "$llvm_runtime_wrkdir" ]; then
+        return 0
+    fi
+    if ! bmk -C "$PKGSRCDIR/lang/llvm" "WRKDIR=$llvm_runtime_wrkdir" \
+        "EMBERBSD_LLVM_SHARED_STAGE=$llvm_shared_stage" clean < /dev/null >> "$log" 2>&1; then
+        echo "WARNING: $node built successfully but LLVM runtime WRKDIR cleanup failed: $llvm_runtime_wrkdir" >&2
+        echo "WARNING: $node built successfully but LLVM runtime WRKDIR cleanup failed: $llvm_runtime_wrkdir" >> "$log"
+    fi
+    return 0
 }
 
 build_one()
@@ -774,6 +835,7 @@ build_one()
     path=$1
     key=$(echo "$path" | tr / _)
     case "$path" in *@native) build_native "$path" "$key"; return 0 ;; esac
+    log=$state/logs/$key.log
     vars=$(pkg_vars "$path" 'PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE') ||
         { result "$key" "failed $path vars"; return 0; }
     name=$(printf '%s\n' "$vars" | sed -n 1p)
@@ -781,15 +843,16 @@ build_one()
     skip=$(printf '%s\n' "$vars" | sed -n 3p)
     base=$(printf '%s\n' "$vars" | sed -n 4p)
     if [ -n "$skip" ]; then
+        [ "$path" != lang/llvm-devel ] || llvm_shared_retire_runtime
         result "$key" "skipped $path $skip"
         return 0
     fi
     file=$packages/$name.tgz
     if [ -f "$file" ] && awk -v p="$path" -v n="$name" '$1 == p && $2 == n { f = 1; exit } END { exit !f }' "$state/done"; then
+        [ "$path" != lang/llvm-devel ] || llvm_shared_retire_runtime
         result "$key" "done $path"
         return 0
     fi
-    log=$state/logs/$key.log
     # One short line per append: O_APPEND keeps concurrent lines whole.
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name" >> "$state/progress"
     prepare_wrkdir "$wrkdir" "$job.$key"
@@ -810,7 +873,14 @@ build_one()
     { [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" clean < /dev/null >> "$log" 2>&1; } &&
         target_install "$path" $install >> "$log" 2>&1 &&
         { [ -z "$replace" ] || exclusive "$key" target_install "$path" replace >> "$log" 2>&1; } && {
-        clean_success
+        if [ "$path" = lang/llvm ] && [ "$llvm_shared_enabled" = yes ] && [ -d "$llvm_shared_stage" ]; then
+            : > "$run/llvm-runtime-ready.tmp"
+            mv "$run/llvm-runtime-ready.tmp" "$run/llvm-runtime-ready"
+        fi
+        if [ "$path" != lang/llvm ] || [ ! -f "$run/llvm-runtime-ready" ]; then
+            clean_success
+        fi
+        [ "$path" != lang/llvm-devel ] || llvm_shared_retire_runtime
         echo "$(date '+%Y-%m-%d %H:%M:%S') done $path" >> "$state/progress"
         result "$key" "built $path $name $(shasum -a 256 "$file" | cut -d ' ' -f 1)"
         return 0
@@ -884,6 +954,7 @@ build()
         gnu_stat=no
         ! stat -c %i / > /dev/null 2>&1 || gnu_stat=yes
     fi
+    llvm_shared_configure
     trash_init
     deleter_pid=
     if [ -n "$trash" ]; then

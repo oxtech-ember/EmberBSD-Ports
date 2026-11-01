@@ -1,5 +1,18 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Explicit reuse of accepted cross LLVM objects.
+.if defined(_EMBERBSD_LLVM_SHARED_DEVEL)
+# Same-run handoff from the runtime package: keep one complete producer stage
+# and copy only this package's PLIST entries into its own DESTDIR.
+NO_BUILD= yes
+NO_CONFIGURE= yes
+WRKSRC= ${WRKDIR}/llvm-shared-stage
+do-extract: llvm-shared-noop
+do-patch: llvm-shared-noop
+do-configure: llvm-shared-noop
+do-build: llvm-shared-noop
+do-install: llvm-shared-install
+.endif
+
 .if defined(EMBERBSD_LLVM_REUSE_RECEIPT) && ${EMBERBSD_LLVM_REUSE_QUERY:Uno} != "yes"
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes" || ${OPSYS} != "NetBSD" || \
     (${PKGPATH} != "lang/llvm" && ${PKGPATH} != "lang/llvm-devel")
@@ -40,3 +53,19 @@ llvm-reuse-inputs:
 llvm-verify-reuse: llvm-reuse-inputs
 	${EMBERBSD_LLVM_REUSE_PYTHON:Q} -B ${FILESDIR:Q}/reuse-package-stage.py --sdk-source ${EMBERBSD_SDK_SOURCE:Q} verify \
 	    ${WRKDIR:Q}/.llvm-reuse-inputs.json ${EMBERBSD_LLVM_REUSE_RECEIPT:Q} ${EMBERBSD_LLVM_REUSE_SHA256:Q}
+
+.if defined(_EMBERBSD_LLVM_SHARED_DEVEL)
+.PHONY: llvm-shared-noop llvm-shared-install
+llvm-shared-noop:
+	@${DO_NADA}
+llvm-shared-install: ${PLIST}
+.for _llvm_part in FULL RUNTIME DEVEL
+	${MAKE} ${WRKDIR:Q}/.llvm-${_llvm_part:tl}-plist \
+	    PLIST=${WRKDIR:Q}/.llvm-${_llvm_part:tl}-plist \
+	    PLIST_SRC=${LLVM_${_llvm_part}_PLIST_SRC:Q}
+.endfor
+	${TOOL_PYTHONBIN} -B ${FILESDIR}/select-package-stage.py --sdk-source ${EMBERBSD_SDK_SOURCE:Q} copy-devel \
+	    ${EMBERBSD_LLVM_SHARED_STAGE:Q} ${DESTDIR:Q}${PREFIX:Q} \
+	    ${WRKDIR:Q}/.llvm-full-plist ${WRKDIR:Q}/.llvm-runtime-plist \
+	    ${WRKDIR:Q}/.llvm-devel-plist ${PLIST:Q}
+.endif

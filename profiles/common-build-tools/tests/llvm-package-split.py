@@ -13,11 +13,17 @@ HOST_CC, HOST_CXX = (os.environ.get(n) or sys.exit(n + ' must name the native GC
 sys.dont_write_bytecode = True
 from llvm_fixture import load_sdk
 sdk_source, args = load_sdk()
-if len(args) != 5:
-    sys.exit('Use PKGSRC HOST_PREFIX CROSS_TOOLS SYSROOT NEW_WORK')
-source, host, tools, sysroot = map(os.path.realpath, args[:4])
-work = Path(args[4]).absolute()
+if len(args) != 4:
+    sys.exit('Use PKGSRC HOST_PREFIX CROSS_TOOLS NEW_WORK')
+source, host, tools = map(os.path.realpath, args[:3])
+work = Path(args[3]).absolute()
 work.mkdir()
+# This fixture exercises pkgsrc metadata and install hooks only. Give its
+# cross profile the one header required by bsd.prefs.mk without depending on
+# a retained SDK sysroot or compiling target code.
+sysroot = work / 'cross-root'
+(sysroot / 'usr/include').mkdir(parents=True)
+(sysroot / 'usr/include/stddef.h').write_text('/* package-split test fixture */\n')
 tree = work / 'pkgsrc'
 tree.mkdir()
 profile = Path(__file__).resolve().parents[1]
@@ -49,7 +55,7 @@ assert result.returncode == 0, 'installed native libxml2 option receipt required
 common.append('PKG_BUILD_OPTIONS.libxml2=' + result.stdout.strip())
 cross = ['USE_CROSS_COMPILE=yes', 'CROSS_OPSYS=NetBSD', 'CROSS_OS_VERSION=11.0', 'CROSS_OPSYS_VERSION=110000', 'CROSS_MACHINE_ARCH=x86_64', 'CROSS_LOWER_OPSYS=netbsd',
     'CROSS_LOWER_OPSYS_VERSUFFIX=', 'CROSS_LOWER_OS_VARIANT=', 'CROSS_LOWER_VARIANT_VERSION=', 'CROSS_LOWER_VENDOR=', 'CROSS_OBJECT_FMT=ELF', 'CROSS_LOCALBASE=/usr/pkg',
-    'CROSS_DESTDIR=' + sysroot, 'TOOLDIR=' + tools, 'CROSS_PKG_TOOLS_BIN=' + host + '/sbin', 'USE_PKGSRC_GCC_RUNTIME=no']
+    'CROSS_DESTDIR=' + str(sysroot), 'TOOLDIR=' + tools, 'CROSS_PKG_TOOLS_BIN=' + host + '/sbin', 'USE_PKGSRC_GCC_RUNTIME=no']
 
 
 def run(label, package, *arguments):
@@ -154,6 +160,50 @@ for part in ('runtime', 'devel'):
     run(part + '-select-stage', 'llvm' if part == 'runtime' else 'llvm-devel', *cross, 'WRKDIR=' + str(work / (part + '-select')), 'DESTDIR=' + str(destination), 'llvm-select-stage')
     selected = runtime if part == 'runtime' else sdk
     assert fingerprint(destination / 'usr/pkg') == {p: row for p, row in before.items() if p in selected}
+
+handoff = work / 'handoff'
+shutil.copytree(original, handoff, symlinks=True)
+shared = work / 'shared-full-stage'
+run('shared-runtime-handoff', 'llvm', *cross, 'WRKDIR=' + str(work / 'shared-runtime'),
+    'DESTDIR=' + str(handoff), 'EMBERBSD_LLVM_SHARED_STAGE=' + str(shared), 'llvm-select-stage')
+assert run('runtime-python-substitution', 'llvm', *cross, '-v', 'SUBST_FILES.python').strip()
+assert fingerprint(shared) == before
+assert fingerprint(handoff / 'usr/pkg') == {p: row for p, row in before.items() if p in runtime}
+replace_stage = work / 'runtime-reinstall'
+shutil.copytree(original, replace_stage, symlinks=True)
+run('shared-runtime-reinstall-plist', 'llvm', *cross, 'WRKDIR=' + str(work / 'shared-runtime-reinstall'), 'plist')
+run('shared-runtime-reinstall', 'llvm', *cross, 'WRKDIR=' + str(work / 'shared-runtime-reinstall'),
+    'DESTDIR=' + str(replace_stage), 'EMBERBSD_LLVM_SHARED_STAGE=' + str(shared), 'llvm-select-stage')
+assert fingerprint(shared) == before, 'runtime replace changed retained full stage'
+assert fingerprint(replace_stage / 'usr/pkg') == {p: row for p, row in before.items() if p in runtime}
+overlap_root = work / 'overlap-root'
+shutil.copytree(original, overlap_root, symlinks=True)
+overlap_stage = overlap_root / 'usr/pkg'
+overlap_before = fingerprint(overlap_stage)
+result = subprocess.run([sys.executable, '-B', str(helper), '--sdk-source', sdk_source,
+    'handoff-runtime', str(overlap_stage), str(full_dir / '.PLIST'),
+    str(work / 'runtime/.PLIST'), str(work / 'devel/.PLIST'), str(work / 'runtime/.PLIST'),
+    str(overlap_stage / '.nested-shared-stage')], capture_output=True, text=True)
+assert result.returncode and fingerprint(overlap_stage) == overlap_before, 'overlapping handoff mutated its source stage'
+sdk_stage = work / 'sdk-copy/usr/pkg'
+sdk_stage.mkdir(parents=True)
+(sdk_stage / 'include/llvm/IR').mkdir(parents=True)
+shared_wrksrc = work / 'shared-sdk/llvm-shared-stage'
+shared_wrksrc.mkdir(parents=True)
+shared_vars = run('shared-sdk-vars', 'llvm-devel', *cross, 'WRKDIR=' + str(work / 'shared-sdk'),
+    'EMBERBSD_LLVM_SHARED_STAGE=' + str(shared), '-v', 'NO_BUILD', '-v', 'NO_CONFIGURE', '-v', 'WRKSRC').splitlines()
+assert shared_vars == ['yes', 'yes', str(work / 'shared-sdk/llvm-shared-stage')], shared_vars
+assert not run('shared-sdk-python-substitution', 'llvm-devel', *cross, 'WRKDIR=' + str(work / 'shared-sdk'),
+    'EMBERBSD_LLVM_SHARED_STAGE=' + str(shared), '-v', 'SUBST_FILES.python').strip()
+for phase in ('extract', 'patch', 'post-extract', 'do-configure', 'do-build'):
+    run('shared-sdk-' + phase, 'llvm-devel', *cross, '_PKGSRC_BARRIER=yes',
+        'WRKDIR=' + str(work / 'shared-sdk'), 'EMBERBSD_LLVM_SHARED_STAGE=' + str(shared), phase)
+run('shared-sdk-plist', 'llvm-devel', *cross, 'WRKDIR=' + str(work / 'shared-sdk'), 'plist')
+run('shared-sdk-install', 'llvm-devel', *cross, 'WRKDIR=' + str(work / 'shared-sdk'),
+    'DESTDIR=' + str(work / 'sdk-copy'), 'EMBERBSD_LLVM_SHARED_STAGE=' + str(shared), 'do-install')
+assert list(shared_wrksrc.iterdir()) == [], 'shared SDK source phases populated the harmless empty WRKSRC'
+assert fingerprint(sdk_stage) == {p: row for p, row in before.items() if p in sdk}
+assert fingerprint(shared) == before, 'devel copy mutated the retained complete stage'
 for case in ('missing', 'unknown', 'overlap', 'union', 'selected', 'symlink-parent', 'part'):
     destination = work / ('reject-' + case)
     shutil.copytree(original, destination, symlinks=True)

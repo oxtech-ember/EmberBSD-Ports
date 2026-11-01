@@ -4,6 +4,7 @@
 import os
 from pathlib import Path
 import re
+import shutil
 import stat
 import sys
 sys.dont_write_bytecode = True
@@ -29,6 +30,17 @@ def manifest(path):
 
 
 def select(part, stage, *lists):
+    full, runtime, devel, wanted, actual, directories = validate(part, stage, *lists)
+    if part != 'check':
+        for name in sorted(actual - wanted):
+            os.unlink(os.path.join(stage, name))
+        for directory in sorted(directories, key=lambda p: p.count('/'), reverse=True):
+            if not os.listdir(directory):
+                os.rmdir(directory)
+    print(f'PASS: complete LLVM stage has an exhaustive, disjoint {part} partition')
+
+
+def validate(part, stage, *lists):
     from emberbsd_sdk.paths import real_directory
     if part not in ('runtime', 'devel', 'check') or len(lists) != 4:
         raise ValueError('unknown LLVM package part or manifest count')
@@ -96,13 +108,83 @@ def select(part, stage, *lists):
             raise ValueError(f'LLVM stage link does not resolve to a listed file: {name}')
         if name in runtime and terminal not in runtime:
             raise ValueError(f'runtime link resolves to SDK: {name} -> {terminal}')
-    if part != 'check':
-        for name in sorted(actual - wanted):
-            os.unlink(os.path.join(stage, name))
-        for directory in sorted(directories, key=lambda p: p.count('/'), reverse=True):
-            if not os.listdir(directory):
-                os.rmdir(directory)
-    print(f'PASS: complete LLVM stage has an exhaustive, disjoint {part} partition')
+    return full, runtime, devel, wanted, actual, directories
+
+
+def copy_entries(source, destination, entries):
+    for name in sorted(entries):
+        src, dst = os.path.join(source, name), os.path.join(destination, name)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        if os.path.islink(src):
+            os.symlink(os.readlink(src), dst)
+        else:
+            shutil.copy2(src, dst)
+
+
+def check_empty_destination(destination, entries):
+    allowed = set()
+    for entry in entries:
+        parts = entry.split('/')
+        allowed.update('/'.join(parts[:index]) for index in range(1, len(parts)))
+    for parent, dirs, files in os.walk(destination, followlinks=False):
+        for name in dirs:
+            path = os.path.join(parent, name)
+            relative = os.path.relpath(path, destination)
+            if os.path.islink(path) or not os.path.isdir(path):
+                raise ValueError(f'unsafe pre-created LLVM SDK directory: {relative}')
+            if relative not in allowed:
+                raise ValueError(f'unlisted pre-created LLVM SDK directory: {relative}')
+        if files:
+            raise ValueError(f'non-empty LLVM SDK destination: {os.path.relpath(os.path.join(parent, files[0]), destination)}')
+
+
+def handoff_runtime(stage, *args):
+    from emberbsd_sdk.paths import canonical_existing, canonical_new, reject_overlap
+    if len(args) != 5:
+        raise ValueError('runtime handoff requires four manifests and a shared stage')
+    full_plist, runtime_plist, devel_plist, selected_plist, shared = args
+    full, runtime, _, _, actual, _ = validate('runtime', stage, full_plist, runtime_plist,
+                                               devel_plist, selected_plist)
+    if not os.path.isabs(shared) or shared == '/':
+        raise ValueError('absolute LLVM shared stage path required')
+    stage = canonical_existing(stage)
+    shared = canonical_new(shared)
+    reject_overlap(stage, shared)
+    if os.path.lexists(shared):
+        # pkgsrc replace reruns install after its install-clean target. Reuse
+        # the already retained same-run stage and discard that transient
+        # second install stage after validating its complete manifest.
+        validate('check', shared, full_plist, runtime_plist, devel_plist, full_plist)
+        shutil.rmtree(stage)
+        os.makedirs(stage)
+        copy_entries(shared, stage, runtime)
+        print(f'PASS: reused retained full LLVM stage for runtime reinstall ({len(actual)} files)')
+    else:
+        os.rename(stage, shared)
+        os.makedirs(stage)
+        copy_entries(shared, stage, runtime)
+        print(f'PASS: retained complete LLVM stage and copied runtime partition ({len(actual)} files)')
+
+
+def copy_devel(shared, destination, *lists):
+    from emberbsd_sdk.paths import canonical_existing, canonical_new, real_directory, reject_overlap
+    if len(lists) != 4:
+        raise ValueError('SDK copy requires four manifests')
+    full_plist, runtime_plist, devel_plist, selected_plist = lists
+    shared = canonical_existing(shared)
+    destination = canonical_new(destination)
+    reject_overlap(shared, destination)
+    _, _, devel, _, actual, _ = validate('check', shared, full_plist, runtime_plist,
+                                          devel_plist, full_plist)
+    selected = manifest(selected_plist)
+    if selected != devel:
+        raise ValueError('selected package PLIST differs from its declared partition')
+    # pkgsrc may have created empty PLIST directories before do-install.
+    os.makedirs(destination, exist_ok=True)
+    real_directory(destination)
+    check_empty_destination(destination, devel)
+    copy_entries(shared, destination, devel)
+    print(f'PASS: copied SDK partition from retained full LLVM stage ({len(actual)} source files)')
 
 
 if __name__ == '__main__':
@@ -110,8 +192,17 @@ if __name__ == '__main__':
     install_signal_handlers()
     try:
         _, args = load_sdk()
-        if len(args) != 6:
-            raise ValueError('usage: select-package-stage.py [--sdk-source SOURCE] runtime|devel|check STAGE FULL_PLIST RUNTIME_PLIST DEVEL_PLIST SELECTED_PLIST')
-        select(*args)
+        if args and args[0] == 'handoff-runtime':
+            if len(args) != 7:
+                raise ValueError('usage: select-package-stage.py handoff-runtime STAGE FULL_PLIST RUNTIME_PLIST DEVEL_PLIST SELECTED_PLIST SHARED_STAGE')
+            handoff_runtime(*args[1:])
+        elif args and args[0] == 'copy-devel':
+            if len(args) != 7:
+                raise ValueError('usage: select-package-stage.py copy-devel SHARED_STAGE DESTINATION FULL_PLIST RUNTIME_PLIST DEVEL_PLIST SELECTED_PLIST')
+            copy_devel(*args[1:])
+        elif len(args) == 6:
+            select(*args)
+        else:
+            raise ValueError('usage: select-package-stage.py runtime|devel|check STAGE FULL_PLIST RUNTIME_PLIST DEVEL_PLIST SELECTED_PLIST')
     except Exception as error:
         exit_error(error)

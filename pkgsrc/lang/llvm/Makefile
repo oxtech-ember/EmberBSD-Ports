@@ -161,7 +161,16 @@ USE_TOOLS+= perl:build
 .include "../../lang/compiler-rt/application-runtime.mk"
 .endif
 
-.if ${USE_CROSS_COMPILE:tl} == "yes"
+# Set this before package substitutions and phase hooks are declared. The
+# shared SDK package consumes the runtime's already configured full stage.
+.if defined(EMBERBSD_LLVM_SHARED_STAGE) && !defined(EMBERBSD_LLVM_REUSE_RECEIPT) && \
+    exists(${EMBERBSD_LLVM_SHARED_STAGE}) && ${USE_CROSS_COMPILE:Uno:tl} == "yes" && \
+    ${OPSYS} == "NetBSD" && ${PKGPATH} == "lang/llvm-devel" && \
+    ${LLVM_PACKAGE_PART:U} == "devel"
+_EMBERBSD_LLVM_SHARED_DEVEL= yes
+.endif
+
+.if ${USE_CROSS_COMPILE:tl} == "yes" && !defined(_EMBERBSD_LLVM_SHARED_DEVEL)
 # Fix the runtime Python path.
 SUBST_CLASSES+=		python
 SUBST_STAGE.python=	post-build
@@ -239,7 +248,7 @@ DEPENDS+= ${PYPKGPREFIX}-llvm-lit-${LLVM_VERSION}{,nb*}:../../devel/py-llvm-lit
 
 .include "reuse.mk"
 
-.if !defined(_EMBERBSD_LLVM_REUSE)
+.if !defined(_EMBERBSD_LLVM_REUSE) && !defined(_EMBERBSD_LLVM_SHARED_DEVEL)
 # replacing config.guess is required even for cmake.
 # It is used to detect correct LLVM_HOST_TRIPLE, e.g. for NetBSD/evbarm.
 post-extract:
@@ -267,7 +276,9 @@ llvm-install-min-tblgen:
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
 # Stage the full LLVM payload before selecting the package partition.
+.if !defined(_EMBERBSD_LLVM_SHARED_DEVEL)
 post-install: llvm-select-stage
+.endif
 .PHONY: llvm-select-stage
 .PHONY: ${WRKDIR}/.llvm-full-plist ${WRKDIR}/.llvm-runtime-plist ${WRKDIR}/.llvm-devel-plist
 llvm-select-stage: ${PLIST}
@@ -276,7 +287,13 @@ llvm-select-stage: ${PLIST}
 	    PLIST=${WRKDIR:Q}/.llvm-${_llvm_part:tl}-plist \
 	    PLIST_SRC=${LLVM_${_llvm_part}_PLIST_SRC:Q}
 .endfor
+.if defined(EMBERBSD_LLVM_SHARED_STAGE) && ${LLVM_PACKAGE_PART} == "runtime"
+	${TOOL_PYTHONBIN} -B ${FILESDIR}/select-package-stage.py --sdk-source ${EMBERBSD_SDK_SOURCE:Q} handoff-runtime \
+	    ${DESTDIR:Q}${PREFIX:Q} ${WRKDIR:Q}/.llvm-full-plist \
+	    ${WRKDIR:Q}/.llvm-runtime-plist ${WRKDIR:Q}/.llvm-devel-plist ${PLIST:Q} ${EMBERBSD_LLVM_SHARED_STAGE:Q}
+.else
 	${TOOL_PYTHONBIN} -B ${FILESDIR}/select-package-stage.py --sdk-source ${EMBERBSD_SDK_SOURCE:Q} ${LLVM_PACKAGE_PART:Q} \
 	    ${DESTDIR:Q}${PREFIX:Q} ${WRKDIR:Q}/.llvm-full-plist \
 	    ${WRKDIR:Q}/.llvm-runtime-plist ${WRKDIR:Q}/.llvm-devel-plist ${PLIST:Q}
+.endif
 .endif

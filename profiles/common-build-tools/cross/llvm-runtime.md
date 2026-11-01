@@ -75,12 +75,14 @@ execute target programs.
 Use the real exported pkgsrc tree and native pkgtools. The native manifest
 query requires installed native libxml2 option metadata. All writable recipe
 copies, objects, package archives and databases stay in the new test directory.
+The test creates its own minimal cross-root header fixture for metadata and
+install-hook checks; it does not require or write to an SDK sysroot.
 
 ```sh
 export EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK
 python3 -B profiles/common-build-tools/tests/llvm-package-split.py \
     /absolute/exported-pkgsrc /absolute/native-prefix \
-    /absolute/cross-tools /absolute/sysroot /absolute/new-split-check
+    /absolute/cross-tools /absolute/new-split-check
 python3 -B profiles/common-build-tools/tests/llvm-package-lifecycle.py \
     /absolute/native-prefix /absolute/new-split-check /absolute/new-lifecycle
 python3 -B profiles/common-build-tools/tests/llvm-stage-links.py \
