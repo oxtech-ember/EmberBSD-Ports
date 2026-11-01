@@ -1,6 +1,7 @@
 # Origin: EmberBSD (AI-assisted); common upstream @electron/typescript-definitions module.
 DISTNAME= typescript-definitions-10.0.0
 PKGNAME= node-electron-typescript-definitions-10.0.0
+PKGREVISION= 1
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/@electron/typescript-definitions/-/
 EXTRACT_SUFX= .tgz
@@ -17,4 +18,8 @@ JS_MODULE_DEPENDS+= pretty-ms=node-pretty-ms>=10.0.0:../../devel/node-pretty-ms
 JS_MODULE_DEPENDS+= yocto-spinner=node-yocto-spinner>=1.2.2:../../devel/node-yocto-spinner
 
 .include "../../mk/emberbsd-javascript.mk"
+# npm marks package.json bin targets executable; the tarball does not.
+post-install:
+	${CHMOD} 755 ${DESTDIR}${_JS_MODULE_DIR}/dist/bin.js
+
 .include "../../mk/bsd.pkg.mk"

@@ -1,6 +1,7 @@
 # Origin: EmberBSD (AI-assisted); common upstream @electron/docs-parser module.
 DISTNAME= docs-parser-3.0.3
 PKGNAME= node-electron-docs-parser-3.0.3
+PKGREVISION= 1
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/@electron/docs-parser/-/
 EXTRACT_SUFX= .tgz
@@ -18,4 +19,8 @@ JS_MODULE_DEPENDS+= pretty-ms=node-pretty-ms>=10.0.0:../../devel/node-pretty-ms
 JS_MODULE_DEPENDS+= yocto-spinner=node-yocto-spinner>=1.2.2:../../devel/node-yocto-spinner
 
 .include "../../mk/emberbsd-javascript.mk"
+# npm marks package.json bin targets executable; the tarball does not.
+post-install:
+	${CHMOD} 755 ${DESTDIR}${_JS_MODULE_DIR}/dist/bin.js
+
 .include "../../mk/bsd.pkg.mk"
