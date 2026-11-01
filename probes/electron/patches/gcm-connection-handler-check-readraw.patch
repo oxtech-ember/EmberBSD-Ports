@@ -1,0 +1,30 @@
+gcm: handle nodiscard CodedInputStream::ReadRaw failures
+
+--- a/google_apis/gcm/engine/connection_handler_impl.cc
++++ b/google_apis/gcm/engine/connection_handler_impl.cc
+@@ -296,7 +296,11 @@
+   uint8_t version = 0;
+   {
+     io::CodedInputStream coded_input_stream(input_stream_.get());
+-    coded_input_stream.ReadRaw(&version, 1);
++    if (!coded_input_stream.ReadRaw(&version, 1)) {
++      LOG(ERROR) << "Failed to read GCM version response.";
++      connection_callback_.Run(net::ERR_FAILED);
++      return;
++    }
+   }
+   // TODO(zea): remove this when the server is ready.
+   if (version < kMCSVersion && version != 38) {
+@@ -320,7 +324,11 @@
+ 
+   {
+     io::CodedInputStream coded_input_stream(input_stream_.get());
+-    coded_input_stream.ReadRaw(&message_tag_, 1);
++    if (!coded_input_stream.ReadRaw(&message_tag_, 1)) {
++      LOG(ERROR) << "Failed to read protobuf tag.";
++      read_callback_.Run(std::unique_ptr<google::protobuf::MessageLite>());
++      return;
++    }
+   }
+ 
+   DVLOG(1) << "Received proto of type "

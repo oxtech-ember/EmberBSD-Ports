@@ -824,6 +824,11 @@
       "strip": 1
     },
     {
+      "path": "gcm-connection-handler-check-readraw.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "webrtc-debug-dump-writer-check-serialize.patch",
       "root": "",
       "strip": 1
