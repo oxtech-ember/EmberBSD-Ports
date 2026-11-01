@@ -321,8 +321,9 @@ a release ZIP, ELF binaries, a runtime package, sandboxing or target startup.
 
 Use the selected native CPython and the `protoc` owned by the installed common
 Protobuf package. The test writes only to its temporary Python runtime view; it
-imports the generated descriptor with the pure-Python implementation and checks
-descriptor metadata, a message round trip, verification, and tamper rejection.
+imports the generated descriptor and plugin modules with the pure-Python
+implementation and checks metadata, message round trips, verification, and
+tamper/deletion rejection for both generated modules.
 
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B -I -S probes/electron/tests/protobuf-python-view.py \

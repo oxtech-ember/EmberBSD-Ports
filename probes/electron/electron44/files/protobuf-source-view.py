@@ -241,9 +241,6 @@ def electron_module_view(modules, dest, *, verify=False):
     require(found == links, 'electron/node_modules view changed')
 
 
-EDITION_DEFAULTS = ('google', 'protobuf', 'internal', 'python_edition_defaults.py')
-
-
 def python_edition_defaults(protobuf, protoc):
     """Render python_edition_defaults.py from the common source, as Bazel does."""
     import subprocess, tempfile
@@ -261,42 +258,58 @@ def python_edition_defaults(protobuf, protoc):
 
 
 DESCRIPTOR_PB2 = 'descriptor_pb2.py'
+PYTHON_PROTO_INPUTS = {
+    DESCRIPTOR_PB2: 'google/protobuf/descriptor.proto',
+    'compiler/plugin_pb2.py': 'google/protobuf/compiler/plugin.proto',
+}
 
 
-def python_descriptor_pb2(protobuf, protoc):
-    """Generate google/protobuf/descriptor_pb2.py with the selected protoc, as the release does."""
+def python_protobuf_modules(protobuf, protoc):
+    """Generate Chromium's required pyproto modules together with selected protoc."""
     import subprocess, tempfile
-    require(not (protobuf / 'python/google/protobuf' / DESCRIPTOR_PB2).exists(),
-            'common protobuf python tree already ships descriptor_pb2.py')
-    with tempfile.TemporaryDirectory(prefix='protobuf-descriptor-pb2-') as work:
-        subprocess.run([str(protoc), '-I' + str(protobuf / 'src'), '--python_out=' + work,
-                        str(protobuf / 'src/google/protobuf/descriptor.proto')], check=True)
-        return (Path(work) / 'google/protobuf' / DESCRIPTOR_PB2).read_bytes()
+    source = protobuf / 'src'
+    package = protobuf / 'python/google/protobuf'
+    for relative in PYTHON_PROTO_INPUTS:
+        require(not (package / relative).exists(),
+                'common protobuf Python tree already ships generated module: ' + relative)
+    with tempfile.TemporaryDirectory(prefix='protobuf-python-modules-') as work:
+        subprocess.run([str(protoc), '-I' + str(source), '--python_out=' + work,
+                        *(str(source / relative) for relative in PYTHON_PROTO_INPUTS.values())], check=True)
+        return {relative: (Path(work) / 'google/protobuf' / relative).read_bytes()
+                for relative in PYTHON_PROTO_INPUTS}
+
+
+def mirror_generated_python(origin, dest, generated, *, verify=False):
+    """Mirror one runtime subtree while writing or verifying generated leaves."""
+    groups = {}
+    files = {}
+    for relative, data in generated.items():
+        parts = Path(relative).parts
+        if len(parts) == 1:
+            files[parts[0]] = data
+        else:
+            groups.setdefault(parts[0], {})[Path(*parts[1:]).as_posix()] = data
+    mirror(origin, dest, verify=verify, omit=set(groups) | set(files))
+    for name, children in groups.items():
+        mirror_generated_python(origin / name, dest / name, children, verify=verify)
+    for name, data in files.items():
+        output = dest / name
+        if verify:
+            require(output.is_file() and not output.is_symlink() and output.read_bytes() == data,
+                    'generated Python module changed: ' + str(output))
+        else:
+            output.write_bytes(data)
 
 
 def python_view(protobuf, dest, protoc, *, verify=False):
-    """Mirror the common pyproto runtime and add its generated edition defaults."""
-    origin, output = protobuf / 'python', dest
-    for name in EDITION_DEFAULTS:
-        omit = {name} | ({DESCRIPTOR_PB2} if name == 'internal' else set())
-        mirror(origin, output, verify=verify, omit=omit)
-        if name == EDITION_DEFAULTS[-1]:
-            break
-        origin, output = origin / name, output / name
-    generated = output.parent / DESCRIPTOR_PB2
-    descriptor = python_descriptor_pb2(protobuf, protoc)
-    if verify:
-        require(generated.is_file() and not generated.is_symlink() and generated.read_bytes() == descriptor,
-                'generated descriptor_pb2 changed: ' + str(generated))
-    else:
-        generated.write_bytes(descriptor)
-    target = output / EDITION_DEFAULTS[-1]
-    expected = python_edition_defaults(protobuf, protoc)
-    if verify:
-        require(target.is_file() and not target.is_symlink() and target.read_text() == expected,
-                'generated python edition defaults changed: ' + str(target))
-    else:
-        target.write_text(expected)
+    """Mirror the common pyproto runtime and add Chromium's generated Python inputs."""
+    generated = {
+        'google/protobuf/' + relative: data
+        for relative, data in python_protobuf_modules(protobuf, protoc).items()
+    }
+    generated['google/protobuf/internal/python_edition_defaults.py'] = (
+        python_edition_defaults(protobuf, protoc).encode())
+    mirror_generated_python(protobuf / 'python', dest, generated, verify=verify)
 
 
 def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None):

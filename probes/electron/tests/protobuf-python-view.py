@@ -46,21 +46,31 @@ view = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(view)
 
 descriptor_proto = protobuf / 'src/google/protobuf/descriptor.proto'
+plugin_proto = protobuf / 'src/google/protobuf/compiler/plugin.proto'
 python_source = protobuf / 'python'
 source_before = (hashlib.sha256(descriptor_proto.read_bytes()).digest(),
+                 hashlib.sha256(plugin_proto.read_bytes()).digest(),
                  source_snapshot(python_source))
-source_descriptor = protobuf / 'python/google/protobuf/descriptor_pb2.py'
-require(not source_descriptor.exists(), 'common source unexpectedly contains descriptor_pb2.py')
+source_descriptors = (protobuf / 'python/google/protobuf/descriptor_pb2.py',
+                      protobuf / 'python/google/protobuf/compiler/plugin_pb2.py')
+require(not any(path.exists() for path in source_descriptors),
+        'common source unexpectedly contains a generated Protobuf Python module')
 
 with tempfile.TemporaryDirectory(prefix='electron-protobuf-python-view-') as temporary:
     runtime = Path(temporary) / 'python'
     view.python_view(protobuf, runtime, protoc)
-    generated = runtime / 'google/protobuf/descriptor_pb2.py'
-    require(generated.is_file(), 'python_view did not generate descriptor_pb2.py with selected protoc')
+    generated = {
+        runtime / 'google/protobuf/descriptor_pb2.py': 'descriptor_pb2.py',
+        runtime / 'google/protobuf/compiler/plugin_pb2.py': 'compiler/plugin_pb2.py',
+    }
+    for path, name in generated.items():
+        require(path.is_file() and not path.is_symlink(),
+                'python_view did not generate ' + name + ' with selected protoc')
 
     child = r'''import sys
 sys.path.insert(0, sys.argv[1])
 from google.protobuf import descriptor_pb2 as descriptor
+from google.protobuf.compiler import plugin_pb2 as plugin
 
 assert descriptor.DESCRIPTOR.name == "google/protobuf/descriptor.proto"
 assert descriptor.DESCRIPTOR.package == "google.protobuf"
@@ -76,7 +86,26 @@ field.type = descriptor.FieldDescriptorProto.TYPE_STRING
 round_trip = descriptor.DescriptorProto.FromString(message.SerializeToString())
 assert round_trip == message
 assert round_trip.field[0].name == "value" and round_trip.field[0].number == 7
-print("PASS: generated descriptor metadata and pure-Python message round trip")
+
+assert plugin.DESCRIPTOR.name == "google/protobuf/compiler/plugin.proto"
+assert plugin.DESCRIPTOR.package == "google.protobuf.compiler"
+request_schema = plugin.DESCRIPTOR.message_types_by_name["CodeGeneratorRequest"]
+assert request_schema.fields_by_name["proto_file"].number == 15
+response_file = plugin.DESCRIPTOR.message_types_by_name["CodeGeneratorResponse"].nested_types_by_name["File"]
+assert response_file.fields_by_name["content"].number == 15
+
+request = plugin.CodeGeneratorRequest(file_to_generate=["sample.proto"])
+request.proto_file.add(name="sample.proto", package="regression")
+request_round_trip = plugin.CodeGeneratorRequest.FromString(request.SerializeToString())
+assert request_round_trip.file_to_generate == ["sample.proto"]
+assert request_round_trip.proto_file[0].name == "sample.proto"
+
+response = plugin.CodeGeneratorResponse()
+response.file.add(name="sample.pb.h", content="generated payload")
+response_round_trip = plugin.CodeGeneratorResponse.FromString(response.SerializeToString())
+assert response_round_trip.file[0].name == "sample.pb.h"
+assert response_round_trip.file[0].content == "generated payload"
+print("PASS: generated descriptor/plugin metadata and pure-Python message round trips")
 '''
     environment = os.environ.copy()
     environment['PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION'] = 'python'
@@ -84,26 +113,32 @@ print("PASS: generated descriptor metadata and pure-Python message round trip")
                    check=True, env=environment)
 
     view.python_view(protobuf, runtime, protoc, verify=True)
-    generated.write_bytes(generated.read_bytes() + b'\n# tampered\n')
-    try:
+    generated_bytes = {path: path.read_bytes() for path in generated}
+    for path, name in generated.items():
+        path.write_bytes(generated_bytes[path] + b'\n# tampered\n')
+        try:
+            view.python_view(protobuf, runtime, protoc, verify=True)
+        except ValueError as error:
+            require(str(path) in str(error), 'tamper was rejected for an unrelated reason: ' + str(error))
+        else:
+            raise AssertionError('tampered ' + name + ' was accepted')
+        path.write_bytes(generated_bytes[path])
         view.python_view(protobuf, runtime, protoc, verify=True)
-    except ValueError as error:
-        require('generated descriptor_pb2 changed' in str(error),
-                'tamper was rejected for an unrelated reason: ' + str(error))
-    else:
-        raise AssertionError('tampered descriptor_pb2.py was accepted')
 
-    generated.unlink()
-    try:
+        path.unlink()
+        try:
+            view.python_view(protobuf, runtime, protoc, verify=True)
+        except ValueError as error:
+            require(str(path) in str(error), 'deletion was rejected for an unrelated reason: ' + str(error))
+        else:
+            raise AssertionError('deleted ' + name + ' was accepted')
+        path.write_bytes(generated_bytes[path])
         view.python_view(protobuf, runtime, protoc, verify=True)
-    except ValueError as error:
-        require('generated descriptor_pb2 changed' in str(error),
-                'deleted descriptor was rejected for an unrelated reason: ' + str(error))
-    else:
-        raise AssertionError('deleted descriptor_pb2.py was accepted')
 
 require((hashlib.sha256(descriptor_proto.read_bytes()).digest(),
+         hashlib.sha256(plugin_proto.read_bytes()).digest(),
          source_snapshot(python_source)) == source_before,
         'common Protobuf source inputs were modified')
-require(not source_descriptor.exists(), 'generated descriptor_pb2.py escaped into common source')
-print('PASS: selected-protoc Python runtime generation, verification, and source isolation')
+require(not any(path.exists() for path in source_descriptors),
+        'generated Protobuf Python modules escaped into common source')
+print('PASS: selected-protoc descriptor/plugin generation, verification, and source isolation')
