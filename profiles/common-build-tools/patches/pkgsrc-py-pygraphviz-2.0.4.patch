@@ -1,0 +1,46 @@
+pygraphviz 2.0.4 (latest stable upstream release).
+
+2.0.2 adds Python 3.15 support, 2.0.3 fixes the documentation scraper's
+path handling, and 2.0.4 builds the SWIG module against the Python stable
+ABI (Py_LIMITED_API 3.10) and generates graphviz.py at build time instead
+of shipping it. The module is now installed as _graphviz.abi3.so. The
+minimum Python (3.10) and Graphviz (2.46) versions and the build
+requirements (setuptools>=78, swig>4.1.0) are unchanged. The version
+change replaces the graphviz 16.1.0 revision bump.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+Test: profiles/common-build-tools/tests/py-pygraphviz-abi3.sh
+
+--- a/graphics/py-pygraphviz/Makefile
++++ b/graphics/py-pygraphviz/Makefile
+@@ -1,8 +1,7 @@
+ # $NetBSD: Makefile,v 1.31 2026/09/08 13:04:51 adam Exp $
+ 
+-DISTNAME=	pygraphviz-2.0.1
++DISTNAME=	pygraphviz-2.0.4
+ PKGNAME=	${PYPKGPREFIX}-${DISTNAME}
+-PKGREVISION=	1
+ CATEGORIES=	graphics python
+ MASTER_SITES=	${MASTER_SITE_PYPI:=p/pygraphviz/}
+ 
+--- a/graphics/py-pygraphviz/PLIST
++++ b/graphics/py-pygraphviz/PLIST
+@@ -8,7 +8,7 @@
+ ${PYSITELIB}/pygraphviz/__init__.py
+ ${PYSITELIB}/pygraphviz/__init__.pyc
+ ${PYSITELIB}/pygraphviz/__init__.pyo
+-${PYSITELIB}/pygraphviz/_graphviz.so
++${PYSITELIB}/pygraphviz/_graphviz.abi3.so
+ ${PYSITELIB}/pygraphviz/agraph.py
+ ${PYSITELIB}/pygraphviz/agraph.pyc
+ ${PYSITELIB}/pygraphviz/agraph.pyo
+--- a/graphics/py-pygraphviz/distinfo
++++ b/graphics/py-pygraphviz/distinfo
+@@ -1,5 +1,5 @@
+ $NetBSD: distinfo,v 1.16 2026/09/08 13:04:51 adam Exp $
+ 
+-BLAKE2s (pygraphviz-2.0.1.tar.gz) = 69c3e430b9b32cf11f22b966120a9511d024b7e7cc62c5e8969cf6780236dba8
+-SHA512 (pygraphviz-2.0.1.tar.gz) = 104e4a48135758daa12526b4f1aa9b32a39c4a1348e8df27c80dee96f49fcc9b316b8486ceabb1d93db7984aa1c4eade4fdad9788f35384855af9d9e2a9ceb40
+-Size (pygraphviz-2.0.1.tar.gz) = 81998 bytes
++BLAKE2s (pygraphviz-2.0.4.tar.gz) = 0dd268f3f23676b6b6c4519d1274296beaeaa2a63359d66c80f09301b93991fa
++SHA512 (pygraphviz-2.0.4.tar.gz) = 1d98ea5530ed54f844644a201d3787232dfb02881b46c142cf302cb4e5710b0fe071904a460e234f9ef2696f400df7979a825a568ccdfad3ccfa1636b0cc75c3
++Size (pygraphviz-2.0.4.tar.gz) = 82048 bytes
