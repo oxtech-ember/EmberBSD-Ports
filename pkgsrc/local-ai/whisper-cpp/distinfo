@@ -4,10 +4,13 @@ BLAKE2s (whisper.cpp-1.9.5-d1be6fde11ac6e0407606b4e42fe72d34add8037.tar.gz) = 37
 SHA512 (whisper.cpp-1.9.5-d1be6fde11ac6e0407606b4e42fe72d34add8037.tar.gz) = 46ce23ddf56a64b5979781097b91e10420d5f3bff490c90295ebbd1d03d43fa0de9a4b3c441a21f73b9793a9c524ca8117f0545c81a9fc2bf332626b1a6eda4e
 Size (whisper.cpp-1.9.5-d1be6fde11ac6e0407606b4e42fe72d34add8037.tar.gz) = 9631456 bytes
 
+SHA1 (patch-examples_bench_bench.cpp) = 4ab6db27ebe82c2870fc892309cb7904bc367ff8
 SHA1 (patch-examples_cli_cli.cpp) = 8b62dfdcebd1e952ae3fe55488e811b4f8d0e5ba
 SHA1 (patch-examples_cli_cli.cpp-csv-free) = 916a26dc4875e341d1f780a55f2402e0770e69d3
 SHA1 (patch-examples_cli_cli.cpp-input-indices) = 221ac389e536398ffd033f861ceccff1980911c0
 SHA1 (patch-examples_cli_cli.cpp-json-controls) = 4a11ba37dc999e00c8035e2ac2cd30985f23f1a9
 SHA1 (patch-examples_cli_cli.cpp-wts-failure) = 970396c82e344e66e6af3db53870ad02388c9343
+SHA1 (patch-examples_common.cpp) = 307092191918881348b3db51e112c74f45f6513d
+SHA1 (patch-examples_deprecation-warning_deprecation-warning.cpp) = 68ca9259d8cc2194b973e87428f7901b998ae8b7
 SHA1 (patch-ggml_src_ggml-alloc.c) = 899eeb33286b67814250aef30864172482bde860
 SHA1 (patch-src_whisper.cpp) = 9e510ab63ac5063fac3511788d64d0913037185e
