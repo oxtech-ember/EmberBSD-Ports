@@ -174,6 +174,16 @@ class GitPackageIdentityTest(unittest.TestCase):
         self.assertFalse(identity.current_git_package(
             {'effective': dict(before, api=1), 'owner_sha256': '0' * 64}, '0' * 64, self.current))
 
+    def test_mixed_case_package_identity(self):
+        self.write(self.upstream / 'net/mDNSResponder/Makefile', 'DISTNAME=example\n')
+        self.write(self.upstream / 'net/mDNSResponder/distinfo', 'archive-checksum\n')
+        self.commit_upstream('mixed case package')
+        record = self.current('net/mDNSResponder')
+        self.assertEqual(record['package'], 'net/mDNSResponder')
+        self.assertTrue(identity.equivalent_effective_package(record, record))
+        with self.assertRaises(ValueError):
+            self.current('net/../escape')
+
     def test_unrelated_upstream_change_keeps_identity(self):
         before = self.current()
         self.write(self.upstream / 'cat/other/Makefile', 'DISTNAME=changed\n')

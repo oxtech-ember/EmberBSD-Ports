@@ -31,7 +31,7 @@ def effective_package_identity(exported, package, upstream):
 
     root = Path(exported).resolve(strict=True)
     if not isinstance(package, str) or re.fullmatch(
-            r'[a-z0-9][a-z0-9+_.-]*/[a-z0-9][a-z0-9+_.-]*', package) is None:
+            r'[A-Za-z0-9][A-Za-z0-9+_.-]*/[A-Za-z0-9][A-Za-z0-9+_.-]*', package) is None:
         raise ValueError('invalid package path')
     parts = package.split('/')
     if not isinstance(upstream, str) or len(upstream) != 40 or any(c not in '0123456789abcdef' for c in upstream):
@@ -179,7 +179,7 @@ def git_package_inputs(ports_root, package, git):
     if not os.path.isabs(str(git)) or not os.path.isfile(git) or not os.access(git, os.X_OK):
         raise ValueError('git must be an absolute executable')
     if not isinstance(package, str) or re.fullmatch(
-            r'[a-z0-9][a-z0-9+_.-]*/[a-z0-9][a-z0-9+_.-]*', package) is None:
+            r'[A-Za-z0-9][A-Za-z0-9+_.-]*/[A-Za-z0-9][A-Za-z0-9+_.-]*', package) is None:
         raise ValueError('invalid package path')
     exporter = _exporter(root)
     recipes, patches, files, _ = exporter.configuration(root)
@@ -282,7 +282,7 @@ def equivalent_effective_package(left, right):
         return (isinstance(value, dict) and set(value) == keys and
                 type(value['api']) is int and value['api'] in (1, GIT_PACKAGE_API) and
                 isinstance(value['package'], str) and
-                re.fullmatch(r'[a-z0-9][a-z0-9+_.-]*/[a-z0-9][a-z0-9+_.-]*', value['package']) is not None and
+                re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9+_.-]*/[A-Za-z0-9][A-Za-z0-9+_.-]*', value['package']) is not None and
                 isinstance(value['effective_package_sha256'], str) and
                 re.fullmatch(r'[0-9a-f]{64}', value['effective_package_sha256']) is not None and
                 isinstance(value['upstream'], str) and

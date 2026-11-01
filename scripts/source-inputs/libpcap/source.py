@@ -11,12 +11,18 @@ from pathlib import Path
 import re
 import sys
 import tempfile
+from types import SimpleNamespace
 
 sys.dont_write_bytecode = True
 PORTS = Path(__file__).resolve().parents[3]
 PACKAGE = 'net/libpcap'
+LABEL = 'libpcap'
+# The pre-extraction owner has identical libpcap preparation semantics.
+compatible_owner_digests = frozenset({'b6127acef33d89d5e2c696241f72cd101e9f8860f6ae5b4bf6628d3663e971a9'})
 sys.path.insert(0, str(PORTS / 'pkgsrc/lang/llvm/files'))
 import sdk_source
+sys.path.insert(0, str(PORTS / 'scripts/source-inputs/common'))
+import tar_archive
 sys.path.append(str(PORTS / 'scripts'))
 import prepared_receipt
 
@@ -63,10 +69,15 @@ def git_effective_identity(git):
     return identity_module().git_package_identity(PORTS, PACKAGE, git)
 
 
+def owner_digest():
+    return digest(hashlib.sha256(Path(__file__).resolve().read_bytes()).digest() +
+                  hashlib.sha256(Path(tar_archive.__file__).resolve().read_bytes()).digest())
+
+
 def source_identity(git):
     module = identity_module()
     return {'export': module.identity(PORTS, PACKAGE, git, SDK_SOURCE),
-            'owner_sha256': digest(read(Path(__file__).resolve()))}
+            'owner_sha256': owner_digest()}
 
 
 def recipe(exported):
@@ -97,117 +108,16 @@ def recipe(exported):
 
 
 def verify(source, git, archive=None, patch=None, pkgsrc_export=None):
-    # Check a caller's shared export before any early return: an unchanged
-    # Git-identified receipt needs no export, but a broken one must not pass.
-    shared = (identity_module().shared_export(pkgsrc_export, PORTS, git, SDK_SOURCE, patch)
-              if pkgsrc_export else None)
-    identity = source_identity(git)
-    record = jsonio.read_json(str(Path(source) / sourceprep.PREPARED_TREE_RECEIPT))
-    old = record.get('identity') if isinstance(record, dict) else None
-    record = sourceprep.validate_prepared_tree(source, package=PACKAGE, identity=old)
-    if old == identity:
-        return record
-    if isinstance(old, dict) and set(old) == {'effective', 'owner_sha256'}:
-        require(isinstance(old['owner_sha256'], str) and re.fullmatch('[0-9a-f]{64}', old['owner_sha256']),
-                'invalid scoped libpcap owner identity')
-        if identity_module().current_git_package(old, identity['owner_sha256'], lambda: git_effective_identity(git)):
-            # The receipt names the Git objects of the current effective recipe.
-            require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
-            return record
-        require(patch and os.path.isabs(patch), 'effective libpcap verification requires an explicit patch')
-        with tempfile.TemporaryDirectory(prefix='.libpcap-verify-') as tmp:
-            selector = identity_module()
-            if pkgsrc_export:
-                exported = shared
-            else:
-                exported = Path(tmp) / 'pkgsrc'
-                process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
-                                 str(exported), '--git', git, '--patch', patch],
-                                env=process.sanitized_environment())
-            current = selector.effective_package_identity(exported, PACKAGE, identity['export']['upstream'])
-            require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
-            require(selector.equivalent_effective_package(old['effective'], old['effective']) and
-                    old['effective']['package'] == PACKAGE,
-                    'invalid scoped libpcap package identity')
-            if (not selector.equivalent_effective_package(old['effective'], current) or
-                    old['owner_sha256'] != identity['owner_sha256']):
-                require(archive and os.path.isabs(archive),
-                        'changed libpcap inputs require an explicit archive for payload comparison')
-                prepared = prepare(archive, Path(tmp) / 'expected', patch, git, exported=exported)
-                require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
-                require(prepared['tree_sha256'] == record['tree_sha256'],
-                        'prepared libpcap differs from current effective source')
-        return record
-    export = old.get('export') if isinstance(old, dict) else None
-    require(isinstance(export, dict) and set(old) == {'export', 'owner_sha256'} and
-            set(export) == {'api', 'package', 'export_inputs_sha256', 'upstream'} and
-            type(export['api']) is int and export['api'] == 1 and export['package'] == PACKAGE and
-            isinstance(export['export_inputs_sha256'], str) and re.fullmatch('[0-9a-f]{64}', export['export_inputs_sha256']) and
-            isinstance(export['upstream'], str) and re.fullmatch('[0-9a-f]{40}', export['upstream']) and
-            isinstance(old['owner_sha256'], str) and re.fullmatch('[0-9a-f]{64}', old['owner_sha256']),
-            'unrecognized legacy libpcap identity')
-    require(archive and patch and os.path.isabs(archive) and os.path.isabs(patch),
-            'changed export requires an explicit archive and patch to compare libpcap')
-    with tempfile.TemporaryDirectory(prefix='.libpcap-verify-') as tmp:
-        expected = Path(tmp) / 'expected'
-        exported = shared
-        prepared = prepare(archive, expected, patch, git, exported=exported)
-        require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
-        require(prepared['tree_sha256'] == record['tree_sha256'],
-                'prepared libpcap differs from current effective source')
-    return record
+    return tar_archive.verify(SimpleNamespace(**globals()), source, git, archive, patch, pkgsrc_export)
 
 
 def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
-    require(os.path.isabs(git) and os.path.isabs(patch), 'select absolute Git and patch executables')
-    output = Path(output)
-    require(output.is_absolute(), 'prepared source output must be absolute')
-    output = Path(paths.canonical_existing(output.parent), output.name)
-    require(not os.path.lexists(output), 'prepared source output already exists')
-    paths.reject_overlap(str(output), str(PORTS))
-    identity = source_identity(git)
-    with tempfile.TemporaryDirectory(prefix='.libpcap-source-', dir=output.parent) as tmp:
-        tmp = Path(tmp)
-        if exported is None:
-            exported = tmp / 'pkgsrc'
-            process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
-                             str(exported), '--git', git, '--patch', patch],
-                            env=process.sanitized_environment())
-        metadata, patches = recipe(exported)
-        archive = Path(paths.canonical_existing(archive))
-        require(archive.name == metadata['archive'], 'libpcap archive filename differs from recipe')
-        data = read(archive)
-        hashes = sourceprep.archive_hashes(data)
-        require(all(hashes[key] == metadata[key] for key in ('sha512', 'blake2s', 'size')),
-                'libpcap archive checksum differs from recipe')
-        packed = tmp / archive.name
-        packed.write_bytes(data)
-        sourceprep.extract_archive(packed, tmp, metadata['distname'], 'libpcap')
-        root = tmp / metadata['distname']
-        for index, path in enumerate(patches):
-            delta = read(path)
-            require(digest(delta) == metadata['recipe']['patches/' + path.name], 'libpcap patch changed')
-            sourceprep.apply_patch(patch, path, delta, root, 'libpcap',
-                patch_args=('-p0', '-f', '-N', '-F0', '-V', 'none'),
-                backup_directory=tmp / ('patch-backups-' + str(index)))
-        require(not any(p.name.endswith(('.orig', '.rej')) for p in root.rglob('*')),
-                'libpcap patch left a backup or reject')
-        require(identity == source_identity(git), 'pkgsrc export inputs changed during preparation')
-        if scoped_identity:
-            identity = {'effective': git_effective_identity(git),
-                        'owner_sha256': identity['owner_sha256']}
-        record = prepared_receipt.write(root, package=PACKAGE, identity=identity)
-        require(sourceprep.archive_hashes(read(archive)) == hashes, 'libpcap archive changed during preparation')
-        publish_directory_noreplace(root, output)
-    return record
+    return tar_archive.prepare(SimpleNamespace(**globals()), archive, output, patch, git,
+                               scoped_identity, exported)
 
 
 def shared_tree(selected):
-    """Return the run's shared pkgsrc export, bound to current inputs, if any."""
-    if not selected.pkgsrc_export:
-        return None
-    require(selected.patch and os.path.isabs(selected.patch), 'select an absolute patch executable')
-    return identity_module().shared_export(selected.pkgsrc_export, PORTS, selected.git, SDK_SOURCE, selected.patch)
+    return tar_archive.shared_tree(SimpleNamespace(**globals()), selected)
 
 
 def main():
@@ -236,11 +146,11 @@ def main():
             record = verify(selected.source, selected.git, selected.archive, selected.patch, pkgsrc_export=selected.pkgsrc_export)
         sys.stdout.buffer.write(jsonio.json_bytes(record))
     except (SDKError, OSError, ValueError) as exc:
-        sdk_source.exit_error(exc, 'libpcap source: ')
+        sdk_source.exit_error(exc, f'{LABEL} source: ')
 
 
 if __name__ == '__main__':
     try:
         main()
     except Exception as error:
-        sdk_source.exit_error(error, 'libpcap source: ')
+        sdk_source.exit_error(error, f'{LABEL} source: ')

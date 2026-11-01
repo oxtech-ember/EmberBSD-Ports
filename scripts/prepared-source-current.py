@@ -42,6 +42,8 @@ OWNERS = {
     'openssh': ('scripts/source-inputs/openssh/source.py', 'security/openssh'),
     'heimdal': ('scripts/source-inputs/heimdal/source.py', 'security/heimdal'),
     'wpa': ('scripts/source-inputs/wpa/source.py', 'net/wpa_supplicant'),
+    'mdns': ('scripts/source-inputs/mdns/source.py', 'net/mDNSResponder'),
+    'dhcpcd': ('scripts/source-inputs/dhcpcd/source.py', 'net/dhcpcd'),
     'libcbor': ('scripts/source-inputs/libcbor/source.py', 'devel/libcbor'),
     'byacc': ('scripts/source-inputs/byacc/source.py', 'devel/byacc'),
     'texinfo': ('scripts/source-inputs/texinfo/source.py', 'devel/gtexinfo'),
@@ -181,7 +183,7 @@ def current(name, identity, git, sdk, patch=None):
     tree it prepares."""
     script, package = OWNERS[name]
     owner_path = PORTS / script
-    owner_sha256 = (owner_module(name, owner_path).owner_digest() if name == 'openldap'
+    owner_sha256 = (owner_module(name, owner_path).owner_digest() if name in ('openldap', 'libpcap', 'mdns', 'dhcpcd')
                     else sha256(owner_path.read_bytes()))
     selector_module = selector()
     if isinstance(identity, dict) and set(identity) == {'effective', 'owner_sha256'}:

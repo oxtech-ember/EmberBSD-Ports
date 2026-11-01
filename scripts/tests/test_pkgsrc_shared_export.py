@@ -72,6 +72,7 @@ class SharedExportTest(unittest.TestCase):
             self.exports.append(command)
             tree = Path(command[3])
             (tree / 'cat/pkg').mkdir(parents=True)
+            (tree / 'net/libfetch/files').mkdir(parents=True)
             (tree / 'EMBERBSD-PKGSRC-REVISION').write_text(self.pins['upstream'].decode() + '\n')
         self.run = patch.object(identity.subprocess, 'run', side_effect=export)
         self.run.start()
@@ -313,7 +314,7 @@ class OwnerTest(unittest.TestCase):
         class Stop(Exception):
             pass
         names = sorted(path.parent.name for path in (ROOT / 'scripts/source-inputs').glob('*/source.py')
-                       if 'exported=exported)' in path.read_text())
+                       if 'exported=exported)' in path.read_text() or path.parent.name == 'libpcap')
         self.assertTrue(set(OWNERS) <= set(names), names)
         with tempfile.TemporaryDirectory(dir=WORK) as temp:
             temp = Path(temp).resolve()
@@ -358,6 +359,8 @@ class OwnerTest(unittest.TestCase):
                         seen.append(exported)
                         raise Stop()
                     arguments = [str(temp / 'archive'), temp / f'expected-{name}', '/selected/patch', sys.executable]
+                    if name == 'wpa':
+                        arguments.insert(1, str(temp / 'hostapd-archive'))
                     if name == 'rcs':
                         arguments.append('/selected/lzip')
                     with patch.object(owner, 'source_identity', return_value={'export': {'upstream': '1' * 40}, 'owner_sha256': '3' * 64}), \
