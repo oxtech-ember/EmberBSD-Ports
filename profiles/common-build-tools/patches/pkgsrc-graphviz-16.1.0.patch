@@ -1,0 +1,70 @@
+graphviz 16.1.0 (latest stable upstream release).
+
+16.1.0 fixes the sfdp crash that 15.1.1 introduced (upstream issue 2852)
+and the orthogonal-routing crashes. 16.0.0 removed agmemconcat, the
+postaction attribute and the gvmap -g, -l and -p options, and bumped the
+libcgraph soname to 10 and the libxdot soname to 5. The build system,
+dependencies, configure options, plugins and PLIST are unchanged, and the
+pkgsrc patches still apply (pkgsrc trunk 3c02824777 makes the same version
+change). Require the new ABI in buildlink3.mk and bump the packages that
+link graphviz: py-pygraphviz and vala (valadoc).
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+Test: profiles/common-build-tools/tests/graphviz-version-sfdp.sh
+
+--- a/graphics/graphviz/Makefile
++++ b/graphics/graphviz/Makefile
+@@ -1,7 +1,6 @@
+ # $NetBSD: Makefile,v 1.317 2026/09/02 19:02:39 wiz Exp $
+ 
+-DISTNAME=	graphviz-15.1.1
+-PKGREVISION=	1
++DISTNAME=	graphviz-16.1.0
+ CATEGORIES=	graphics
+ MASTER_SITES=	${MASTER_SITE_GITLAB:=api/v4/projects/4207231/packages/generic/graphviz-releases/${PKGVERSION_NOREV}/}
+ EXTRACT_SUFX=	.tar.xz
+--- a/graphics/graphviz/distinfo
++++ b/graphics/graphviz/distinfo
+@@ -1,8 +1,8 @@
+ $NetBSD: distinfo,v 1.94 2026/08/20 07:46:56 adam Exp $
+ 
+-BLAKE2s (graphviz-15.1.1.tar.xz) = c2e9279e5612204e36af2e604275fc2304d6eafd38d990565c06deb89c78c6db
+-SHA512 (graphviz-15.1.1.tar.xz) = af3335e30270994b9402e79a2f317ec7fc31374e612f8a58ece9a40eb7799a5f792dd12eea1d54d2e8b8f622ac3046f8be47ccebf135ffba357b1fa09da3108a
+-Size (graphviz-15.1.1.tar.xz) = 20974000 bytes
++BLAKE2s (graphviz-16.1.0.tar.xz) = 9cfdb3ba8821c8dda4497defb7363f60e5024ddc3ff73a0b4655ace5d0c924d9
++SHA512 (graphviz-16.1.0.tar.xz) = 14cc154ff914644ef2adf34b7cac36023ad3bd937947fdc02e3db9dfafc9348e835dbf75605c4794d07560f12e76d19b931662d1ed4b1f05a1c207e55d1ca417
++Size (graphviz-16.1.0.tar.xz) = 20975484 bytes
+ SHA1 (patch-config_config__perl.pl) = 430acb7d7ee3e149de0af9832c5a29602884f83e
+ SHA1 (patch-configure.ac) = dcb9fd2822d3eb5dddcda5a55746d51114f92d06
+ SHA1 (patch-lib_gvc_Makefile.am) = 8a25c16a31923fc42138773f308f3b3fc5ee662b
+--- a/graphics/graphviz/buildlink3.mk
++++ b/graphics/graphviz/buildlink3.mk
+@@ -9,7 +9,7 @@
+ USE_CXX_FEATURES+=	c++17 unique_ptr
+ 
+ BUILDLINK_API_DEPENDS.graphviz+=	graphviz>=2.26.3
+-BUILDLINK_ABI_DEPENDS.graphviz+=	graphviz>=12.0.0
++BUILDLINK_ABI_DEPENDS.graphviz+=	graphviz>=16.1.0
+ BUILDLINK_PKGSRCDIR.graphviz?=		../../graphics/graphviz
+ 
+ .include "../../converters/libiconv/buildlink3.mk"
+--- a/graphics/py-pygraphviz/Makefile
++++ b/graphics/py-pygraphviz/Makefile
+@@ -2,6 +2,7 @@
+ 
+ DISTNAME=	pygraphviz-2.0.1
+ PKGNAME=	${PYPKGPREFIX}-${DISTNAME}
++PKGREVISION=	1
+ CATEGORIES=	graphics python
+ MASTER_SITES=	${MASTER_SITE_PYPI:=p/pygraphviz/}
+ 
+--- a/lang/vala/Makefile
++++ b/lang/vala/Makefile
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.111 2026/09/02 19:03:14 wiz Exp $
+ 
+ DISTNAME=	vala-0.56.19
+-PKGREVISION=	3
++PKGREVISION=	4
+ CATEGORIES=	lang gnome
+ MASTER_SITES=	${MASTER_SITE_GNOME:=sources/vala/${PKGVERSION_NOREV:R}/}
+ EXTRACT_SUFX=	.tar.xz
