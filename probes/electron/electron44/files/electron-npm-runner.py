@@ -20,7 +20,10 @@ from pathlib import Path
 
 # The shared @types/node follows the host Node runtime major used by this
 # build; Electron's own typecheck still runs against it.
-RANGE_DEVIATIONS = {'@types/node': '^26.0.0'}
+# Host modules follow host Node 26 and the current registry: @types/node
+# tracks host Node; @electron/typescript-definitions 10.0.0 was verified to
+# generate electron.d.ts from Electron 45.2.1 docs and pass spec/ts-smoke.
+RANGE_DEVIATIONS = {'@types/node': '^26.0.0', '@electron/typescript-definitions': '^10.0.0'}
 
 
 def fail(message):
