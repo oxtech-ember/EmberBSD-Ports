@@ -346,7 +346,8 @@ def arguments(options, native, tools, rust_version, launcher):
                   emberbsd_electron_version_provider=str(Path(__file__).with_name('electron-version-provider.py').resolve()),
                   emberbsd_electron_provider_selector=str(Path(__file__).with_name('node-providers.py').resolve()),
                   emberbsd_electron_sdk_source=str(options.sdk_source),
-                  emberbsd_electron_host_prefix=str(options.host_prefix))
+                  emberbsd_electron_host_prefix=str(options.host_prefix),
+                  emberbsd_electron_npm_runner=str(Path(__file__).with_name('electron-npm-runner.py').resolve()))
     values.update(local_module('electron_node_providers', 'node-providers.py').select(native, electron=True)['arguments'])
     return values
 

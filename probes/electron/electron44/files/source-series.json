@@ -8,6 +8,11 @@
       "strip": 1
     },
     {
+      "path": "electron-npm-scoped-modules.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "netbsd-cross-source.patch",
       "strip": 1,
       "root": ""

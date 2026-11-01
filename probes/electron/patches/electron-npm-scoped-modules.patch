@@ -1,0 +1,56 @@
+--- a/electron/build/npm.gni
++++ b/electron/build/npm.gni
+@@ -5,6 +5,7 @@
+   emberbsd_electron_sdk_source = ""
+   emberbsd_electron_host_prefix = ""
+   emberbsd_electron_semver_inputs = []
++  emberbsd_electron_npm_runner = ""
+ }
+ 
+ template("npm_action") {
+@@ -45,6 +46,45 @@
+         args += [ "--provider-input", provider ]
+       }
+     }
++  } else if (emberbsd_electron_npm_runner != "") {
++    # EmberBSD: no npm in the build; run package.json scripts against the
++    # scoped electron/node_modules view of the common Ports module prefix.
++    action("npm_pre_flight_" + target_name) {
++      inputs = [
++        "//electron/package.json",
++        emberbsd_electron_node,
++      ]
++      script = emberbsd_electron_npm_runner
++      outputs = [ "$target_gen_dir/npm_pre_stamps/" + target_name + ".stamp" ]
++      args = [
++        "--node", emberbsd_electron_node,
++        "--electron", rebase_path("//electron"),
++        "--script", "pre-flight",
++        "--stamp", rebase_path(outputs[0]),
++      ]
++    }
++
++    action(target_name) {
++      forward_variables_from(invoker,
++                             [
++                               "deps",
++                               "public_deps",
++                               "sources",
++                               "inputs",
++                               "outputs",
++                             ])
++      if (!defined(deps)) {
++        deps = []
++      }
++      deps += [ ":npm_pre_flight_" + target_name ]
++      script = emberbsd_electron_npm_runner
++      args = [
++               "--node", emberbsd_electron_node,
++               "--electron", rebase_path("//electron"),
++               "--script", invoker.script,
++               "--",
++             ] + invoker.args
++    }
+   } else {
+   action("npm_pre_flight_" + target_name) {
+     inputs = [
