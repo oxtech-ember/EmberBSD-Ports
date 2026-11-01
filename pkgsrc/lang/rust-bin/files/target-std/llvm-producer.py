@@ -23,22 +23,24 @@ a = p.parse_args()
 if a.jobs < 1: p.error('jobs must be positive')
 if not re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,2}', a.macos_minimum):
     p.error('macOS deployment version must be numeric')
-for name in ('source','work','host_prefix','compiler_prefix','sysroot','sdk_source','macos_sdk','lock_root','link_context'):
+for name in ('source','work','host_prefix','compiler_prefix','sysroot','sdk_source','macos_sdk','lock_root'):
     path = getattr(a, name)
     if not path.is_absolute(): p.error(name + ' must be absolute')
     setattr(a, name, path.resolve(strict=True))
+if not a.link_context.is_absolute(): p.error('link_context must be absolute')
 for out in (a.source, a.work):
     for provider in (a.host_prefix, a.compiler_prefix, a.sysroot, a.sdk_source):
         if out.is_relative_to(provider) or provider.is_relative_to(out):
             p.error('work/source overlaps an input provider')
 sys.path.insert(0, str(a.sdk_source/'src'))
 import emberbsd_sdk
-from emberbsd_sdk import application_toolchain, compiler_bindings, host_prefix, process, target_toolchain, targets
-modules = (emberbsd_sdk, application_toolchain, compiler_bindings, host_prefix, process, target_toolchain, targets)
+from emberbsd_sdk import application_toolchain, compiler_bindings, host_prefix, paths, process, target_toolchain, targets
+modules = (emberbsd_sdk, application_toolchain, compiler_bindings, host_prefix, paths, process, target_toolchain, targets)
 if emberbsd_sdk.API_VERSION != 1 or application_toolchain.APPLICATION_TOOLCHAIN_API != 2 or compiler_bindings.COMPILER_BINDINGS_API not in (2, 3):
     raise ValueError('incompatible selected SDK API')
 if any(not Path(module.__file__).resolve().is_relative_to(a.sdk_source/'src/emberbsd_sdk') for module in modules):
     raise ValueError('SDK module origin differs from the selected source')
+a.link_context = Path(paths.canonical_new(a.link_context))
 native = host_prefix.load_host_prefix(a.host_prefix, required_roles=('python','rustc','cargo','cc','cxx','cpp','ar','sh','readelf'), compiler_family='clang')
 if Path(sys.executable).resolve() != Path(native.tool('python')).resolve(): p.error('use selected native Python')
 if native.host['os'] != 'Darwin': p.error('this producer currently supports Darwin hosts')
