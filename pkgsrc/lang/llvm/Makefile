@@ -45,6 +45,9 @@ NOT_FOR_PLATFORM+=	*-*-alpha
 NOT_FOR_PLATFORM+=	*-*-vax
 
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_CXX_LINK_FLAGS:STRING=${LDFLAGS:Q}
+# pkgsrc's build phase completes the graph before do-install. Avoid CMake's
+# default install -> all dependency repeating LLVM's full build during staging.
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_SKIP_INSTALL_ALL_DEPENDENCY=ON
 # Finite SDK tool builds can select static linkage without changing package defaults.
 LLVM_BUILD_LLVM_DYLIB?= ON
 LLVM_LINK_LLVM_DYLIB?= ON
