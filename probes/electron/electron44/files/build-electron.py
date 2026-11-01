@@ -653,6 +653,58 @@ def common_undici(options, sdk, environment):
 NODE_SHARED_FEATURES = ('ada', 'brotli', 'cares', 'ffi', 'hdr_histogram', 'http_parser',
                         'libuv', 'merve', 'nbytes', 'nghttp2', 'simdjson', 'sqlite',
                         'uvwasi', 'zstd')
+NODE_CONFIGURE_V8_PATH_KEYS = frozenset(('emberbsd_node_configure_inputs',
+                                         'emberbsd_node_configure_dependencies'))
+
+
+def verified_node_configure_v8_path_change(old_arguments, new_arguments, v8_source):
+    """Allow only the verified V8 root substitution in Node configure inputs."""
+    changed = any(old_arguments.get(name) != new_arguments.get(name)
+                  for name in NODE_CONFIGURE_V8_PATH_KEYS)
+    if not changed:
+        return False
+
+    old_inputs = old_arguments.get('emberbsd_node_configure_inputs')
+    new_inputs = new_arguments.get('emberbsd_node_configure_inputs')
+
+    def parse_inputs(rows, label):
+        require(type(rows) is list and all(type(row) is str for row in rows),
+                label + ' must be a string list')
+        parsed, seen = [], set()
+        for row in rows:
+            name, separator, value = row.partition('=')
+            require(separator and name and value and name not in seen,
+                    label + ' contains an invalid or duplicate key')
+            seen.add(name)
+            parsed.append((name, value))
+        roots = [value for name, value in parsed if name == 'v8-source']
+        require(len(roots) == 1 and Path(roots[0]).is_absolute(),
+                label + ' must contain exactly one absolute v8-source')
+        return roots[0]
+
+    old_root = parse_inputs(old_inputs, 'saved Node configure inputs')
+    parse_inputs(new_inputs, 'new Node configure inputs')
+    new_root = str(Path(v8_source).resolve())
+    expected_inputs = [row if name != 'v8-source' else 'v8-source=' + new_root
+                       for row in old_inputs
+                       for name, separator, _ in (row.partition('='),)]
+    require(new_inputs == expected_inputs,
+            'Node configure inputs changed beyond the verified V8 source path')
+
+    old_dependencies = old_arguments.get('emberbsd_node_configure_dependencies')
+    new_dependencies = new_arguments.get('emberbsd_node_configure_dependencies')
+    require(type(old_dependencies) is list and all(type(row) is str for row in old_dependencies) and
+            type(new_dependencies) is list and all(type(row) is str for row in new_dependencies),
+            'Node configure dependencies must be string lists')
+    old_receipt = str(Path(old_root) / 'emberbsd-prepared-source.json')
+    require(old_dependencies.count(old_receipt) == 1,
+            'saved Node configure dependencies must contain the V8 receipt exactly once')
+    new_receipt = str(Path(new_root) / 'emberbsd-prepared-source.json')
+    expected_dependencies = sorted(new_receipt if row == old_receipt else row
+                                   for row in old_dependencies)
+    require(new_dependencies == expected_dependencies,
+            'Node configure dependencies changed beyond the verified V8 receipt path')
+    return True
 
 
 def common_embedder_sources(options, sdk, native, environment):
@@ -1372,7 +1424,11 @@ def reconfigure(options):
                          'emberbsd_native_cc', 'emberbsd_native_cxx',
                          'use_lld', 'emberbsd_target_strip', 'emberbsd_target_objcopy'}
         identity_args.update('node_shared_' + feature for feature in NODE_SHARED_FEATURES)
+        node_v8_path_changed = verified_node_configure_v8_path_change(
+            saved['arguments'], values, options.v8_source)
         for name in identity_args:
+            if node_v8_path_changed and name in NODE_CONFIGURE_V8_PATH_KEYS:
+                continue
             require(values.get(name) == saved['arguments'].get(name), 'GN identity changed: ' + name)
 
         # Preserve previous bindings. The final path appears in GN/Ninja command

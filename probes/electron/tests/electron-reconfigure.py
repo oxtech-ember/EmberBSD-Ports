@@ -71,22 +71,59 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                               'cxx':['--ld-path=/ld','--rtlib=compiler-rt','--unwindlib=libunwind','-stdlib=libc++']})
     binding.write_text(json.dumps(commands))
     (src/'.gn').write_text('buildconfig="//BUILDCONFIG.gn"\n')
-    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n v8_prepared_source_receipt=""\n v8_version_hash_salt_files=[]\n v8_version_hash_salt=""\n feature=false\n clang_version=""\n}\nset_default_toolchain("//:tools")\n')
+    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n emberbsd_node_source_identity=""\n emberbsd_node_configure_helper=""\n emberbsd_node_configure_inputs=[]\n emberbsd_node_configure_dependencies=[]\n v8_prepared_source_receipt=""\n v8_version_hash_salt_files=[]\n v8_version_hash_salt=""\n feature=false\n clang_version=""\n}\nset_default_toolchain("//:tools")\n')
     (src/'BUILD.gn').write_text('toolchain("tools") {\n tool("stamp") { command="touch {{output}}" }\n}\n')
     (src/'electron/build/args').mkdir(parents=True)
     (src/'electron/build/args/release.gn').write_text('')
     gnfile = src/'electron/BUILD.gn'; gnfile.write_text('group("electron_dist_zip") {}\n')
-    old = dict(emberbsd_node_provider_inputs=['old'], emberbsd_typescript_definitions=['old'], feature=False, target_cpu='x64', clang_version='23')
+    old_v8_root = str((root/'work/electron45-inputs-2/v8-source').resolve())
+    new_v8_root = str((root/'work/electron45-inputs-2/v8-source-9fbbb688').resolve())
+    node_configure_paths = {
+        'gyp-source': root/'gyp-source', 'gyp-pkgsrc': root/'gyp-pkgsrc',
+        'v8-source': old_v8_root, 'inspector-source': root/'inspector-source',
+        'sdk-source': root/'sdk-source', 'jinja-root': root/'jinja-root',
+        'zlib-source': root/'zlib-source', 'v8-cxx-wrapper': root/'v8-cxx-wrapper',
+        'v8-selected-clang': root/'v8-selected-clang', 'v8-libclang': root/'v8-libclang',
+        'v8-python-bindings': root/'v8-python-bindings', 'v8-clang-resource': root/'v8-clang-resource',
+    }
+    old_node_configure_inputs = [name+'='+str(path) for name,path in node_configure_paths.items()]
+    old_node_configure_dependencies = sorted(str(path) for path in (
+        root/'ports/scripts/source-inputs/node/configure-inputs.py',
+        root/'gyp-source/emberbsd-prepared-source.json',
+        root/'gyp-pkgsrc/devel/gyp/files/verify-source.py',
+        root/'gyp-pkgsrc/EMBERBSD-PKGSRC-REVISION',
+        root/'gyp-pkgsrc/EMBERBSD-SOURCE-IDENTITY/pkgsrc-source-identity.py',
+        Path(old_v8_root)/'emberbsd-prepared-source.json',
+        root/'inspector-source/emberbsd-prepared-source.json',
+        root/'jinja-root/jinja2/__init__.py', root/'v8-cxx-wrapper', root/'v8-selected-clang',
+        root/'v8-libclang', root/'v8-python-bindings/clang/cindex.py',
+        root/'v8-python-bindings/clang/__init__.py'))
+    new_node_configure_inputs = [row if not row.startswith('v8-source=') else 'v8-source='+new_v8_root
+                                 for row in old_node_configure_inputs]
+    new_node_configure_dependencies = sorted(
+        str(Path(new_v8_root)/'emberbsd-prepared-source.json')
+        if row == str(Path(old_v8_root)/'emberbsd-prepared-source.json') else row
+        for row in old_node_configure_dependencies)
+    old = dict(emberbsd_node_provider_inputs=['old'], emberbsd_typescript_definitions=['old'],
+               emberbsd_node_source_identity=str(root/'node/emberbsd-prepared-source.json'),
+               emberbsd_node_configure_helper=str(root/'ports/scripts/source-inputs/node/configure-inputs.py'),
+               emberbsd_node_configure_inputs=old_node_configure_inputs,
+               emberbsd_node_configure_dependencies=old_node_configure_dependencies,
+               feature=False, target_cpu='x64', clang_version='23')
     new = dict(emberbsd_node_provider_inputs=['new'], emberbsd_typescript_definitions=['new'], feature=True, target_cpu='x64', clang_version='23',
                v8_prepared_source_receipt='//v8/emberbsd-prepared-source.json',
                v8_version_hash_salt_files=[], v8_version_hash_salt='')
+    new.update(emberbsd_node_source_identity=old['emberbsd_node_source_identity'],
+               emberbsd_node_configure_helper=old['emberbsd_node_configure_helper'],
+               emberbsd_node_configure_inputs=new_node_configure_inputs,
+               emberbsd_node_configure_dependencies=new_node_configure_dependencies)
     env = {'PATH':str(host/'bin') + ':/usr/bin', 'EMBERBSD_HOST_TYPESCRIPT':'/old', 'EMBERBSD_HOST_NODE':'/old-node',
            'EMBERBSD_V8_SOURCE_SHA256':'a' * 64, 'CC':str(work/'target-commands/cc'), 'CXX':str(work/'target-commands/cxx')}
     env.update(GOCACHE=str(work/'go-cache'), GOPATH=str(work/'go-path'))
     opt = SimpleNamespace(workspace=src.parent, ports_source=root, sdk_source=root, host_prefix=host, target='amd64', compiler_family='clang', work=work, git=Path('/usr/bin/git'))
     try: b.require_common_v8(opt); raise AssertionError('accepted missing common V8')
     except ValueError: pass
-    opt.v8_source = root/'v8'; opt.v8_ports_source = root/'owner'; opt.v8_pkgsrc = root/'pkgsrc'
+    opt.v8_source = Path(new_v8_root); opt.v8_ports_source = root/'owner'; opt.v8_pkgsrc = root/'pkgsrc'
     try: b.require_common_node(opt); raise AssertionError('accepted missing common Node')
     except ValueError: pass
     opt.node_source = root/'node'; opt.node_pkgsrc = root/'node-pkgsrc'
@@ -166,6 +203,54 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     try: b.reconfigure(opt); raise AssertionError('accepted V8 and unrelated provider changes together')
     except ValueError as e: assert 'producer input changed: EMBERBSD_PROTOBUF_SOURCE_SHA256' in str(e)
     state.pop('extra'); config.write_bytes(before)
+    assert old_node_configure_inputs != new_node_configure_inputs
+    assert old_node_configure_dependencies != new_node_configure_dependencies
+    assert old['emberbsd_node_source_identity'] == new['emberbsd_node_source_identity']
+
+    for changed_inputs, changed_dependencies, message in (
+        ([row if not row.startswith('gyp-source=') else 'gyp-source='+str(root/'other-gyp')
+          for row in new_node_configure_inputs], new_node_configure_dependencies,
+         'Node configure inputs changed beyond the verified V8 source path'),
+        ([row if not row.startswith('v8-selected-clang=') else 'v8-selected-clang='+str(root/'other-clang')
+          for row in new_node_configure_inputs], new_node_configure_dependencies,
+         'Node configure inputs changed beyond the verified V8 source path'),
+        (new_node_configure_inputs,
+         sorted(row.replace('gyp-source/emberbsd-prepared-source.json',
+                            'other-gyp/emberbsd-prepared-source.json')
+                for row in new_node_configure_dependencies),
+         'Node configure dependencies changed beyond the verified V8 receipt path'),
+        (new_node_configure_inputs + ['v8-source='+new_v8_root], new_node_configure_dependencies,
+         'new Node configure inputs contains an invalid or duplicate key'),
+        ([row for row in new_node_configure_inputs if not row.startswith('v8-source=')],
+         new_node_configure_dependencies,
+         'new Node configure inputs must contain exactly one absolute v8-source'),
+    ):
+        state['values'] = dict(new, emberbsd_node_configure_inputs=changed_inputs,
+                               emberbsd_node_configure_dependencies=changed_dependencies)
+        try: b.reconfigure(opt); raise AssertionError('accepted a non-V8 Node configure identity change')
+        except ValueError as e: assert message in str(e)
+        assert config.read_bytes()==before and (out/'build.ninja').read_text()=='old graph'
+        assert not (work/'reconfigure-incomplete').exists()
+
+    state['values'] = new
+    for malformed_old_inputs, message in (
+        (old_node_configure_inputs + ['v8-source='+old_v8_root],
+         'saved Node configure inputs contains an invalid or duplicate key'),
+        ([row for row in old_node_configure_inputs if not row.startswith('v8-source=')],
+         'saved Node configure inputs must contain exactly one absolute v8-source'),
+    ):
+        malformed_saved = json.loads(before)
+        malformed_saved['arguments']['emberbsd_node_configure_inputs'] = malformed_old_inputs
+        config.write_text(json.dumps(malformed_saved))
+        malformed_gn = b.gn_arguments(malformed_saved['arguments'])
+        (out/'args.gn').write_text(malformed_gn)
+        try: b.reconfigure(opt); raise AssertionError('accepted malformed saved V8 path identity')
+        except ValueError as e: assert message in str(e)
+        assert config.read_text()==json.dumps(malformed_saved)
+        assert (out/'args.gn').read_text()==malformed_gn and not (work/'reconfigure-incomplete').exists()
+        config.write_bytes(before)
+        (out/'args.gn').write_text(b.gn_arguments(old))
+
     try: b.selected_control_git(root/'missing-git'); raise AssertionError('accepted missing Git')
     except FileNotFoundError: pass
     nonexec=root/'not-executable'; nonexec.write_text('file')
@@ -206,6 +291,8 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     saved_after = json.loads(config.read_text())
     assert saved_after['environment']['EMBERBSD_HOST_TYPESCRIPT']=='/new'
     assert saved_after['environment']['EMBERBSD_V8_SOURCE_SHA256']=='b' * 64
+    assert saved_after['arguments']['emberbsd_node_configure_inputs']==new_node_configure_inputs
+    assert saved_after['arguments']['emberbsd_node_configure_dependencies']==new_node_configure_dependencies
     gn_args = (out/'args.gn').read_text()
     assert 'v8_prepared_source_receipt = "//v8/emberbsd-prepared-source.json"\n' in gn_args
     assert 'v8_version_hash_salt_files = [  ]\n' in gn_args and 'v8_version_hash_salt = ""\n' in gn_args

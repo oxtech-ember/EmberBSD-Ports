@@ -486,7 +486,10 @@ This runs real GN generation on a small graph and checks refusal of changed
 compiler bindings, retained objects, a failed generation, build refusal, and
 subsequent recovery. A verified common V8 source identity may change only when
 the GN cache salt selects `//v8/emberbsd-prepared-source.json` and clears the
-legacy bundled patch-list salt; unrelated provider changes still fail. GN
+legacy bundled patch-list salt. If the prepared V8 source root changes, the
+only permitted Node configure identity updates are the exact `v8-source` path
+and its prepared-source receipt path; GYP, selected Clang, and other dependency
+identities remain strict. Unrelated provider changes still fail. GN
 regenerates the receipt-derived cache identity while retaining the existing
 Ninja output. The regression also covers the opt-in
 `reconfigure --build-after-reconfigure --jobs 16` flow: one producer/source
