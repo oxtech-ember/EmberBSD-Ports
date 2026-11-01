@@ -1,0 +1,19 @@
+$NetBSD$
+
+Add the cctools-only ranlib option only when ranlib is not llvm-ranlib.
+llvm-ranlib rejects -no_warning_for_no_symbols and stops the build of
+every static library on Darwin hosts that use the LLVM binary tools.
+
+--- mkspecs/features/mac/no_warn_empty_obj_files.prf.orig	2026-11-02 01:10:42.641800838 +0300
++++ mkspecs/features/mac/no_warn_empty_obj_files.prf
+@@ -1,7 +1,9 @@
+ # Prevent warnings about object files without any symbols. This is a common
+ # thing in Qt as we tend to build files unconditionally, and then use ifdefs
+ # to compile out parts that are not relevant.
+-QMAKE_RANLIB += -no_warning_for_no_symbols
++# -no_warning_for_no_symbols is an option of the cctools ranlib only;
++# llvm-ranlib rejects it and does not warn about such object files.
++!contains(QMAKE_RANLIB, .*llvm-ranlib): QMAKE_RANLIB += -no_warning_for_no_symbols
+ 
+ # We have to tell 'ar' to not run ranlib by itself
+ QMAKE_AR += -S

@@ -5,6 +5,7 @@ SHA512 (qtbase-everywhere-opensource-src-5.15.19.tar.xz) = ced1141f5c8f7de26ba00
 Size (qtbase-everywhere-opensource-src-5.15.19.tar.xz) = 51588440 bytes
 SHA1 (patch-configure) = a3813cf4ead94487cfa31c459053dc0739911418
 SHA1 (patch-mkspecs_common_gcc-base.conf) = 7b461079adff516ac3957d0cdb127dee67dab7ce
+SHA1 (patch-mkspecs_features_mac_no__warn__empty__obj__files.prf) = 5f57c4551271a03d6295e8e1a51c580866a827cf
 SHA1 (patch-mkspecs_features_qt__module.prf) = a04c4b1fe80250b6b3591f5486ac0fd3b5056c26
 SHA1 (patch-mkspecs_features_toolchain.prf) = 0cf13cb6e859dd6276954239b91953e557add515
 SHA1 (patch-qmake_Makefile.unix) = 8a55d0eb30903266ce529bbfa562b492cdd359b3
