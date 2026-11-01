@@ -3,7 +3,7 @@
 
 --- a/lang/nodejs/Makefile
 +++ b/lang/nodejs/Makefile
-@@ -1,20 +1,202 @@
+@@ -1,23 +1,208 @@
  # $NetBSD: Makefile,v 1.360 2026/09/10 07:44:25 adam Exp $
  
 -DISTNAME=	node-v26.8.2
@@ -207,7 +207,13 @@
  
  CHECK_INTERPRETER_SKIP+=	lib/node_modules/corepack/shims/*.ps1
  CHECK_PORTABILITY_SKIP+=	deps/uv/autogen.sh
-@@ -36,8 +216,76 @@
++# The build does not use this V8 profiling script; the Node 26 update dropped
++# the pkgsrc patch that made its test portable.
++CHECK_PORTABILITY_SKIP+=	deps/v8/tools/profiling/run-llprof.sh
+ CHECK_PORTABILITY_SKIP+=	deps/v8/tools/cppgc/export_to_github.sh
+ CHECK_PORTABILITY_SKIP+=	deps/v8/tools/cppgc/test_cmake.sh
+ CHECK_PORTABILITY_SKIP+=	tools/macos-installer/pkgbuild/npm/scripts/preinstall
+@@ -36,8 +221,76 @@
  .include "../../devel/libatomic/buildlink3.mk"
  .endif
  
