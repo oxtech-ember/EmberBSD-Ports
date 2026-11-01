@@ -824,6 +824,11 @@
       "strip": 1
     },
     {
+      "path": "webrtc-debug-dump-writer-check-serialize.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "netbsd-base-epoll-shim-lib-dirs.patch",
       "root": "",
       "strip": 1
