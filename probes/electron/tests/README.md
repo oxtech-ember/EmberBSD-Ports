@@ -82,6 +82,21 @@ python3.15 -B -I -S probes/electron/tests/on-device-proto-serialization.py \
 Add `--sanitize` to compile and run the same fixture with ASan and UBSan. This
 checks only the emitted wrapper and fixture scaffolding.
 
+The Electron TypeScript regression applies the recipe's source patch to a
+temporary overlay, runs both Electron TypeScript projects with the selected
+Node and npm runner, then executes the production ASAR digest helper against a
+Buffer subview and a SharedArrayBuffer-backed view. TypeScript checking keeps
+`skipLibCheck` disabled; diagnostics and stamps stay in the requested local
+diagnostics directory:
+
+```sh
+python3.15 -B -I -S probes/electron/tests/electron-ts-dom-webcrypto.py \
+  --source-view /absolute/build/source-view \
+  --host-prefix /absolute/native-prefix \
+  --node /absolute/native-prefix/bin/node \
+  --diagnostics-dir /absolute/build/diagnostics/electron-ts-dom-webcrypto
+```
+
 Run the remaining build regressions with host CPython 3.15 and its standard
 library. Integration
 tests select an SDK API 1 source with `--sdk-source` and check its module origin.

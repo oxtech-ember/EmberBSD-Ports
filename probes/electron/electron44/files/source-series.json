@@ -937,6 +937,11 @@
       "path": "optimization-guide-descriptor-serialization-check.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "electron-typescript-dom-webcrypto-arraybuffer.patch",
+      "root": "electron",
+      "strip": 1
     }
   ],
   "superseded": {

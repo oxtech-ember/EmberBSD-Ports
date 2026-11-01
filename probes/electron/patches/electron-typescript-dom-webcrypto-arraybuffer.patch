@@ -1,0 +1,32 @@
+diff --git a/typings/internal-ambient.d.ts b/typings/internal-ambient.d.ts
+--- a/typings/internal-ambient.d.ts
++++ b/typings/internal-ambient.d.ts
+@@ -347,7 +347,5 @@
+ // https://w3c.github.io/webappsec-trusted-types/dist/spec/#trusted-types
+ 
+-type TrustedHTML = string;
+ type TrustedScript = string;
+-type TrustedScriptURL = string;
+ type TrustedType = TrustedHTML | TrustedScript | TrustedScriptURL;
+ type StringContext = 'TrustedHTML' | 'TrustedScript' | 'TrustedScriptURL';
+@@ -365,5 +363,5 @@
+ interface TrustedTypePolicyOptions {
+-  createHTML?: (input: string, ...arguments: any[]) => TrustedHTML;
+-  createScript?: (input: string, ...arguments: any[]) => TrustedScript;
+-  createScriptURL?: (input: string, ...arguments: any[]) => TrustedScriptURL;
++  createHTML?: (input: string, ...arguments: any[]) => string;
++  createScript?: (input: string, ...arguments: any[]) => string;
++  createScriptURL?: (input: string, ...arguments: any[]) => string;
+ }
+diff --git a/lib/node/asar-fs-wrapper.ts b/lib/node/asar-fs-wrapper.ts
+--- a/lib/node/asar-fs-wrapper.ts
++++ b/lib/node/asar-fs-wrapper.ts
+@@ -500,6 +500,7 @@
+ // Hashes off the JS thread; used by the asynchronous read paths so that
+ // validating a block never stalls the event loop.
+ const sha256HexAsync = async (buffer: Uint8Array) => {
+-  const digest = await getCrypto().webcrypto.subtle.digest('SHA-256', buffer);
++  const digest = await getCrypto().webcrypto.subtle.digest(
++    'SHA-256', new Uint8Array(buffer).buffer);
+   return Buffer.from(digest).toString('hex');
+ };
