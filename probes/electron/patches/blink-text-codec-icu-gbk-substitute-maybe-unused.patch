@@ -1,0 +1,15 @@
+Mark the system-ICU GBK substitute callback maybe_unused.
+Origin: EmberBSD contributors (AI-assisted). With USING_SYSTEM_ICU the
+callback has no caller and -Wunused-function breaks the -Werror build.
+
+--- a/third_party/blink/renderer/platform/wtf/text/text_codec_icu.cc
++++ b/third_party/blink/renderer/platform/wtf/text/text_codec_icu.cc
+@@ -644,7 +644,7 @@
+                               code_point, reason, err);
+ }
+ 
+-static void GbkCallbackSubstitute(const void* context,
++[[maybe_unused]] static void GbkCallbackSubstitute(const void* context,
+                                   UConverterFromUnicodeArgs* from_unicode_args,
+                                   const UChar* code_units,
+                                   int32_t length,

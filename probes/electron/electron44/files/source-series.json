@@ -824,6 +824,11 @@
       "strip": 1
     },
     {
+      "path": "blink-text-codec-icu-gbk-substitute-maybe-unused.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "angle-validation-query-surface-init.patch",
       "root": "",
       "strip": 1
