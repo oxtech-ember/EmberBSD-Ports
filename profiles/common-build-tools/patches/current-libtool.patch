@@ -3121,7 +3121,7 @@ native libtool-base build depend on archivers/xz, which uses Libtool.
       done
 --- a/devel/libtool-base/files/cross-target.awk
 +++ b/devel/libtool-base/files/cross-target.awk
-@@ -0,0 +1,67 @@
+@@ -0,0 +1,70 @@
 +# SPDX-License-Identifier: BSD-2-Clause
 +# Origin: EmberBSD (AI-assisted), not submitted upstream.
 +# Convert a cross-configured script into an installed NetBSD target tool.
@@ -3173,6 +3173,9 @@ native libtool-base build depend on archivers/xz, which uses Libtool.
 +        else
 +            text = replace_literal(text, sysroot, "")
 +    }
++    # Configure records the dd it found on the build-host PATH; NetBSD has /bin/dd.
++    if (text ~ /^lt_truncate_bin="[^" ]*\/dd /)
++        sub(/^lt_truncate_bin="[^" ]*\/dd /, "lt_truncate_bin=\"/bin/dd ", text)
 +    if (text ~ /^build(_alias)?=/)
 +        sub(/=.*/, "=" triplet, text)
 +    if (index(text, sysroot) || index(text, tooldir) || index(text, host_prefix)) {

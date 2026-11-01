@@ -201,6 +201,19 @@ operation uses portable `printf`. `max_cmd_len` is 196608: NetBSD 11's 256 KiB
 ARG_MAX with the upstream BSD three-quarter safety margin. Querying host
 `sysctl` during cross configure cannot establish this target value.
 
+Configure also records in `lt_truncate_bin` the `dd` it found first on the
+build-host `PATH` (for example the host GNU tools); the conversion names the
+target `/bin/dd`. The [truncate regression](tests/libtool-target-truncate-bin.sh)
+converts a configured libtool whose `lt_truncate_bin` names the host prefix
+`dd` and requires `/bin/dd` in all three scripts; the previous recipe stops on
+the unconverted build-host path.
+
+```sh
+BMAKE=/absolute/bmake sh profiles/common-build-tools/tests/libtool-target-truncate-bin.sh \
+    /absolute/export /absolute/cross-mk.conf /absolute/clang-configured/libtool \
+    /absolute/new-output
+```
+
 The [cross package profile](cross/README.md) separates host and target
 package metadata and preserves the target CRT choice through compiler
 wrappers. `run-libtool-tests.sh` exercises installed C11/C++20 shared and
