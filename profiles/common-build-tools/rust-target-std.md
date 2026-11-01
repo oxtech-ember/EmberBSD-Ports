@@ -20,7 +20,13 @@ are EmberBSD adaptations with AI assistance, not accepted upstream.
 Export the common recipes, select the native MAKECONF, and build the package
 for the target. The SDK source, installed native compiler prefix, target sysroot,
 macOS SDK, deployment target, shared lock root and heavy-link context are
-explicit inputs. The sysroot must contain the selected LLVM runtime. For example:
+explicit inputs. The sysroot must contain the selected LLVM runtime.
+
+The exporter uses pkgsrc's `show-vars` metadata goal, and source-only fetch or
+checksum goals do not require these build inputs. Default builds, mixed goals,
+configuration and package goals retain the required-input checks.
+
+For example:
 
 ```sh
 MAKECONF=/absolute/native-mk.conf bmake -C /absolute/pkgsrc/lang/rust-std-x86_64-netbsd \

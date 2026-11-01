@@ -23,6 +23,7 @@ CHECK_SHLIBS_SUPPORTED= no
 CHECK_WRKREF+= work
 
 .include "../../mk/bsd.prefs.mk"
+.include "../../lang/rust-bin/files/target-std/build-goals.mk"
 .if ${USE_CROSS_COMPILE:Uno} == "yes"
 PKG_FAIL_REASON+= "Build this target-data package with the native host MAKECONF."
 .endif
@@ -42,11 +43,13 @@ PKG_FAIL_REASON+= "The GCC producer supports Darwin/aarch64 hosts only."
 .endif
 HAS_CONFIGURE= yes
 CONFIGURE_DIRS= .
+.if ${_EMBERBSD_RUST_NEEDS_BUILD_INPUTS} == "yes"
 .for var in EMBERBSD_RUST_CROSS_TOOLS EMBERBSD_RUST_TARGET_SYSROOT
 .if empty(${var}:U)
 PKG_FAIL_REASON+= "Set ${var} to the existing verified cross provider."
 .endif
 .endfor
+.endif
 BUILD_DEFS+= EMBERBSD_RUST_CROSS_TOOLS EMBERBSD_RUST_TARGET_SYSROOT
 BUILD_DEFS+= EMBERBSD_RUST_BUILD_JOBS
 EMBERBSD_RUST_BUILD_JOBS?= ${MAKE_JOBS:U1}

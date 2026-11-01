@@ -123,6 +123,8 @@ class Exporter:
         command += [key + '=' + value for key, value in sorted(settings.items())]
         if pattern:
             command.append('PKGNAME_REQD=' + pattern)
+        # pkgsrc's phony metadata goal keeps .TARGETS out of the default build phase.
+        command.append('show-vars')
         queries = []
         for variable in VARIABLES:
             queries += ['-V', '${' + variable + '}']

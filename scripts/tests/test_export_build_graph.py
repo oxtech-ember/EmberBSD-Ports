@@ -86,7 +86,8 @@ values.setdefault('_PATH_ORIG', __import__('os').environ['PATH'])
 values.setdefault('PKGSRC_MAKE_ENV', 'MAKECONF=' + settings['MAKECONF'])
 values.setdefault('CROSSTARGETSETTINGS', 'TARGET_OPSYS=NetBSD TARGET_MACHINE_ARCH=aarch64')
 with (root / 'calls.jsonl').open('a') as stream:
-    stream.write(json.dumps({'package': package, 'settings': settings}) + '\n')
+    stream.write(json.dumps({'package': package, 'settings': settings,
+                             'targets': [arg for arg in args if arg == 'show-vars']}) + '\n')
 if '-dg1' in args:
     print('#*** Global Variables:', file=sys.stderr)
     for name in sorted(values):
@@ -194,6 +195,14 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         self.run_export('--jobs', '3')
         calls = [json.loads(line) for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
         self.assertEqual(sum(call['package'] == 'devel/library' for call in calls), 1)
+
+    def test_metadata_queries_use_pkgsrc_show_vars_target(self):
+        self.packages['devel/app']['FILESDIR.extra'] = 'patches'
+        self.run_export()
+        calls = [json.loads(line) for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
+        app_calls = [call for call in calls if call['package'] == 'devel/app']
+        self.assertEqual(len(app_calls), 2)
+        self.assertTrue(all(call['targets'] == ['show-vars'] for call in app_calls))
 
     def test_parallel_frontier_prefetches_new_patterns_for_known_nodes(self):
         self.packages['devel/app']['BUILD_DEPENDS'] = (
