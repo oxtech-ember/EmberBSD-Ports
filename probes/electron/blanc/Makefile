@@ -4,7 +4,7 @@
 # This recipe and its local portability patches were prepared with AI assistance.
 
 DISTNAME=	blanc-1.25.0
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	www
 BLANC_SOURCE=	v1.25.0${EXTRACT_SUFX}
 MASTER_SITES=	https://github.com/bnfy/blanc/archive/refs/tags/
@@ -15,14 +15,10 @@ BLANC_NPM_DISTFILES= \
 	adblocker-electron-preload-2.18.2.tgz \
 	adblocker-extended-selectors-2.18.2.tgz \
 	argparse-2.0.1.tgz \
-	asar-4.3.0.tgz \
-	balanced-match-4.0.4.tgz \
-	brace-expansion-5.0.12.tgz \
 	builder-util-runtime-9.7.0.tgz \
 	debug-4.4.3.tgz \
 	electron-updater-6.8.9.tgz \
 	fs-extra-10.1.0.tgz \
-	glob-13.0.6.tgz \
 	graceful-fs-4.2.11.tgz \
 	guess-url-type-2.1.0.tgz \
 	js-yaml-4.3.2.tgz \
@@ -30,11 +26,7 @@ BLANC_NPM_DISTFILES= \
 	lazy-val-1.0.5.tgz \
 	lodash.escaperegexp-4.1.2.tgz \
 	lodash.isequal-4.5.0.tgz \
-	lru-cache-11.5.2.tgz \
-	minimatch-10.2.5.tgz \
-	minipass-7.1.3.tgz \
 	ms-2.1.3.tgz \
-	path-scurry-2.0.2.tgz \
 	sax-1.6.0.tgz \
 	sdk-0.5.0.tgz \
 	sdk-core-0.5.0.tgz \
@@ -52,6 +44,7 @@ BLANC_NPM_DISTFILES= \
 DISTFILES=	${BLANC_SOURCE} ${BLANC_NPM_DISTFILES}
 DIST_SUBDIR=	e12-electron
 EXTRACT_ONLY=	${BLANC_SOURCE}
+BLANC_ASAR_MIN_VERSION=	4.3.1
 
 SITES.adblocker-2.18.2.tgz=	https://registry.npmjs.org/@ghostery/adblocker/-/
 SITES.adblocker-content-2.18.2.tgz=	https://registry.npmjs.org/@ghostery/adblocker-content/-/
@@ -59,14 +52,10 @@ SITES.adblocker-electron-2.18.2.tgz=	https://registry.npmjs.org/@ghostery/adbloc
 SITES.adblocker-electron-preload-2.18.2.tgz=	https://registry.npmjs.org/@ghostery/adblocker-electron-preload/-/
 SITES.adblocker-extended-selectors-2.18.2.tgz=	https://registry.npmjs.org/@ghostery/adblocker-extended-selectors/-/
 SITES.argparse-2.0.1.tgz=	https://registry.npmjs.org/argparse/-/
-SITES.asar-4.3.0.tgz=	https://registry.npmjs.org/@electron/asar/-/
-SITES.balanced-match-4.0.4.tgz=	https://registry.npmjs.org/balanced-match/-/
-SITES.brace-expansion-5.0.12.tgz=	https://registry.npmjs.org/brace-expansion/-/
 SITES.builder-util-runtime-9.7.0.tgz=	https://registry.npmjs.org/builder-util-runtime/-/
 SITES.debug-4.4.3.tgz=	https://registry.npmjs.org/debug/-/
 SITES.electron-updater-6.8.9.tgz=	https://registry.npmjs.org/electron-updater/-/
 SITES.fs-extra-10.1.0.tgz=	https://registry.npmjs.org/fs-extra/-/
-SITES.glob-13.0.6.tgz=	https://registry.npmjs.org/glob/-/
 SITES.graceful-fs-4.2.11.tgz=	https://registry.npmjs.org/graceful-fs/-/
 SITES.guess-url-type-2.1.0.tgz=	https://registry.npmjs.org/@remusao/guess-url-type/-/
 SITES.js-yaml-4.3.2.tgz=	https://registry.npmjs.org/js-yaml/-/
@@ -74,11 +63,7 @@ SITES.jsonfile-6.2.1.tgz=	https://registry.npmjs.org/jsonfile/-/
 SITES.lazy-val-1.0.5.tgz=	https://registry.npmjs.org/lazy-val/-/
 SITES.lodash.escaperegexp-4.1.2.tgz=	https://registry.npmjs.org/lodash.escaperegexp/-/
 SITES.lodash.isequal-4.5.0.tgz=	https://registry.npmjs.org/lodash.isequal/-/
-SITES.lru-cache-11.5.2.tgz=	https://registry.npmjs.org/lru-cache/-/
-SITES.minimatch-10.2.5.tgz=	https://registry.npmjs.org/minimatch/-/
-SITES.minipass-7.1.3.tgz=	https://registry.npmjs.org/minipass/-/
 SITES.ms-2.1.3.tgz=	https://registry.npmjs.org/ms/-/
-SITES.path-scurry-2.0.2.tgz=	https://registry.npmjs.org/path-scurry/-/
 SITES.sax-1.6.0.tgz=	https://registry.npmjs.org/sax/-/
 SITES.sdk-0.5.0.tgz=	https://registry.npmjs.org/@1password/sdk/-/
 SITES.sdk-core-0.5.0.tgz=	https://registry.npmjs.org/@1password/sdk-core/-/
@@ -97,6 +82,7 @@ SITES.url-parser-1.3.1.tgz=	https://registry.npmjs.org/@ghostery/url-parser/-/
 MAINTAINER=	oxtech-ember@users.noreply.github.com
 HOMEPAGE=	https://github.com/bnfy/blanc
 COMMENT=	Desktop browser application for the system Electron runtime
+TOOL_DEPENDS+=	node-electron-asar>=${BLANC_ASAR_MIN_VERSION}:../../devel/node-electron-asar
 LICENSE=	mit AND cc-by-sa-v3.0 AND ofl-v1.1 AND isc AND mpl-2.0 AND python-software-foundation AND blueoak-1.0.0
 # Blue Oak is not in the pinned pkgsrc license catalog. Keep its exact text
 # with the installed notices; users must explicitly accept blueoak-1.0.0.
@@ -114,7 +100,7 @@ BLANC_ELECTRON_DEPENDS=	electron>=${BLANC_ELECTRON_RUNTIME_VERSION}<45.2.2:${BLA
 BLANC_NODE_VERSION=	26.13.0
 BLANC_SOURCE_SHA256=	b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971
 BLANC_SOURCE_FILES_SHA256=	89932ab7cb1966bf5a00fe114945acad393f14493d0bcd3157c43d5c697a20c7
-BLANC_NPM_MANIFEST_SHA256=	6f5e82b752db384b728e1d6caf357eb86d0652f0441b527d559de2f6ad396209
+BLANC_NPM_MANIFEST_SHA256=	27a0ff98805006ad0bc96680e3a53c694be47907bee8f51b38b690bfa55b8d87
 BUILD_HOST_NODE=	${EMBERBSD_HOST_NODE}
 BUILD_HOST_PYTHON=	${EMBERBSD_CROSS_BUILD_PYTHON}
 DEPENDS+=	${BLANC_ELECTRON_DEPENDS}
@@ -165,6 +151,7 @@ do-build: blanc-check-build-tools
 	    --host-prefix ${EMBERBSD_HOST_PREFIX:Q} \
 	    --source-archive-sha256 ${BLANC_SOURCE_SHA256:Q} \
 	    --source-files-sha256 ${BLANC_SOURCE_FILES_SHA256:Q} \
+	    --asar-min-version ${BLANC_ASAR_MIN_VERSION:Q} \
 	    --electron-version ${BLANC_ELECTRON_RUNTIME_VERSION:Q} \
 	    --electron-package-path ${BLANC_ELECTRON_PKGDIR:Q} \
 	    --electron-depends ${BLANC_ELECTRON_DEPENDS:Q}
@@ -177,6 +164,7 @@ do-test: blanc-check-build-tools
 	    --host-prefix ${EMBERBSD_HOST_PREFIX:Q} \
 	    --source-archive-sha256 ${BLANC_SOURCE_SHA256:Q} \
 	    --source-files-sha256 ${BLANC_SOURCE_FILES_SHA256:Q} \
+	    --asar-min-version ${BLANC_ASAR_MIN_VERSION:Q} \
 	    --electron-version ${BLANC_ELECTRON_RUNTIME_VERSION:Q} \
 	    --electron-package-path ${BLANC_ELECTRON_PKGDIR:Q} \
 	    --electron-depends ${BLANC_ELECTRON_DEPENDS:Q}

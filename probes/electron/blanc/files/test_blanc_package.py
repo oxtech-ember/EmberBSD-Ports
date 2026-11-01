@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 import shutil
 import struct
+from types import SimpleNamespace
 from unittest import mock
 import tarfile
 import tempfile
@@ -26,6 +27,8 @@ options_parser = argparse.ArgumentParser(add_help=False)
 options_parser.add_argument('--sdk-source', required=True)
 options_parser.add_argument('--source', required=True)
 options_parser.add_argument('--distdir', required=True)
+options_parser.add_argument('--host-prefix', required=True)
+options_parser.add_argument('--node', required=True)
 BUILD_OPTIONS, remaining = options_parser.parse_known_args()
 import sys
 sys.argv = [sys.argv[0], *remaining]
@@ -38,6 +41,7 @@ class BlancPackageTests(unittest.TestCase):
         cls.source = Path(BUILD_OPTIONS.source)
         cls.distdir = Path(BUILD_OPTIONS.distdir)
         cls.sdk_root, cls.jsonio, cls.inventory, cls.stream, cls.native_api = builder.load_sdk(cls.sdk_source)
+        cls.native = builder.select_host_tools(cls.native_api, BUILD_OPTIONS.host_prefix, BUILD_OPTIONS.node)
 
     def test_host_node_version_is_exact(self):
         self.assertEqual(builder.HOST_NODE_VERSION, '26.13.0')
@@ -243,19 +247,15 @@ class BlancPackageTests(unittest.TestCase):
             asar.write_bytes(b'fixture ASAR')
             selected = {
                 'node_modules/@ghostery/adblocker-electron': {'name': '@ghostery/adblocker-electron', 'version': '2.18.2'},
-                'node_modules/@electron/asar': {'name': '@electron/asar', 'version': '4.3.0'},
             }
             roles = {
                 'node_modules/@ghostery/adblocker-electron': {'runtime'},
-                'node_modules/@electron/asar': {'build'},
             }
             rows = {
                 'node_modules/@ghostery/adblocker-electron': {'name': '@ghostery/adblocker-electron', 'sha512': 'a' * 128, 'sha256': 'a' * 64},
-                'node_modules/@electron/asar': {'name': '@electron/asar', 'sha512': 'b' * 128, 'sha256': 'b' * 64},
             }
             metadata = {
                 'node_modules/@ghostery/adblocker-electron': {'license': 'MIT'},
-                'node_modules/@electron/asar': {'license': 'MIT'},
             }
             source_manifest = {
                 'packageLockSha256': 'c' * 64,
@@ -269,9 +269,12 @@ class BlancPackageTests(unittest.TestCase):
                     '': {'dependencies': {}, 'devDependencies': {'electron': '^44.5.1'}},
                     'node_modules/electron': {'version': '44.5.1'},
                 }}, selected, roles,
-                {'node_modules/@ghostery/adblocker-electron': set(), 'node_modules/@electron/asar': set()},
+                {'node_modules/@ghostery/adblocker-electron': set()},
                 rows, metadata, asar, '26.13.0', '45.2.1', '../../devel/electron44',
-                'electron>=45.2.1<45.2.2:../../devel/electron44', '4.3.0', 'f' * 64,
+                'electron>=45.2.1<45.2.2:../../devel/electron44',
+                {'name': '@electron/asar', 'version': '4.3.1', 'package_path': 'devel/node-electron-asar',
+                 'module_path': 'lib/node_modules/@electron/asar', 'license': 'MIT'},
+                'f' * 64,
                 '3.15.0', '1' * 64)
             electron = next(item for item in bom['components'] if item['name'] == 'Electron')
             self.assertEqual(electron['version'], '45.2.1')
@@ -282,21 +285,31 @@ class BlancPackageTests(unittest.TestCase):
             self.assertEqual(properties['emberbsd:upstreamDevelopmentElectronVersion'], '44.5.1')
             self.assertEqual(properties['emberbsd:upstreamDevelopmentElectronRange'], '^44.5.1')
             self.assertEqual(properties['emberbsd:systemElectron'], '45.2.1')
-            asar_tool = next(item for item in bom['components'] if item['name'] == '@electron/asar')
-            self.assertEqual(asar_tool['scope'], 'excluded')
-            self.assertEqual(bom['metadata']['component']['hashes'][0]['content'], hashlib.sha256(b'fixture ASAR').hexdigest())
             tools = {item['name']: item for item in bom['metadata']['tools']['components']}
+            asar_tool = tools['@electron/asar']
+            self.assertEqual(asar_tool['scope'], 'excluded')
+            self.assertEqual(asar_tool['version'], '4.3.1')
+            self.assertEqual(asar_tool['bom-ref'], 'pkgsrc:devel/node-electron-asar@4.3.1')
+            self.assertNotIn('hashes', asar_tool)
+            asar_properties = {item['name']: item['value'] for item in asar_tool['properties']}
+            self.assertEqual(asar_properties['emberbsd:external'], 'true')
+            self.assertEqual(asar_properties['emberbsd:pkgsrcPath'], 'devel/node-electron-asar')
+            self.assertEqual(bom['metadata']['component']['hashes'][0]['content'], hashlib.sha256(b'fixture ASAR').hexdigest())
             self.assertEqual(tools['CPython']['version'], '3.15.0')
             self.assertEqual(tools['Node.js']['version'], '26.13.0')
 
-    def test_sbom_does_not_misrepresent_electron_as_bundled_npm(self):
+    def test_runtime_lock_closure_excludes_external_asar_build_tool(self):
         lock_path = self.source / 'package-lock.json'
         with lock_path.open('rb') as stream:
             lock = json.load(stream)
         packages, selected, roles, edges = builder.lock_closure(lock)
         self.assertNotIn('node_modules/electron', selected)
-        self.assertIn('node_modules/@electron/asar', selected)
-        self.assertEqual(roles['node_modules/@electron/asar'], {'build'})
+        self.assertNotIn('node_modules/@electron/asar', selected)
+        self.assertTrue(all(role == {'runtime'} for role in roles.values()))
+        manifest = json.loads((HERE / 'npm-mirror-manifest.json').read_text())
+        self.assertEqual(set(row['lockKey'] for row in manifest['packages']), set(selected))
+        self.assertEqual(manifest['hostBuildTool'], {
+            'name': '@electron/asar', 'pkgsrcPath': 'devel/node-electron-asar'})
         # The exact external runtime requirement fails closed before SBOM emission.
         with self.assertRaises(builder.BuildError):
             builder.validate_runtime_dependency(
@@ -317,8 +330,48 @@ class BlancPackageTests(unittest.TestCase):
             with self.assertRaises(builder.BuildError):
                 builder.stage_dependencies(
                     self.jsonio, self.inventory, self.source, distdir,
-                    distdir / 'runtime', distdir / 'build', manifest,
-                    '6f5e82b752db384b728e1d6caf357eb86d0652f0441b527d559de2f6ad396209')
+                    distdir / 'runtime', manifest,
+                    hashlib.sha256(manifest.read_bytes()).hexdigest())
+
+    def test_installed_asar_provider_rejects_missing_old_and_outside_prefix(self):
+        with tempfile.TemporaryDirectory(prefix='blanc-asar-provider-') as temporary:
+            root = Path(temporary) / 'prefix'
+            outside = Path(temporary) / 'outside'
+
+            def add_provider(prefix, version='4.3.1'):
+                package = prefix / 'lib/node_modules/@electron/asar'
+                (package / 'lib').mkdir(parents=True)
+                (package / 'package.json').write_text(json.dumps({
+                    'name': '@electron/asar', 'version': version, 'type': 'module',
+                    'exports': './lib/asar.js', 'license': 'MIT'}))
+                (package / 'lib/asar.js').write_text('export {};\n')
+
+            root.mkdir()
+            with self.assertRaisesRegex(builder.BuildError, 'missing or outside'):
+                builder.resolve_asar_provider(SimpleNamespace(bundle_root=str(root)), self.jsonio, '4.3.1')
+            add_provider(root, '4.3.0')
+            with self.assertRaisesRegex(builder.BuildError, 'older than required'):
+                builder.resolve_asar_provider(SimpleNamespace(bundle_root=str(root)), self.jsonio, '4.3.1')
+            shutil.rmtree(root / 'lib/node_modules/@electron/asar')
+            outside.mkdir()
+            add_provider(outside)
+            (root / 'lib/node_modules/@electron').mkdir(parents=True, exist_ok=True)
+            (root / 'lib/node_modules/@electron/asar').symlink_to(
+                outside / 'lib/node_modules/@electron/asar', target_is_directory=True)
+            with self.assertRaisesRegex(builder.BuildError, 'missing or outside'):
+                builder.resolve_asar_provider(SimpleNamespace(bundle_root=str(root)), self.jsonio, '4.3.1')
+
+    def test_selected_prefix_asar_pack_list_roundtrip(self):
+        provider = builder.resolve_asar_provider(self.native, self.jsonio, '4.3.1')
+        self.assertEqual(provider['name'], '@electron/asar')
+        self.assertGreaterEqual(tuple(map(int, provider['version'].split('.'))), (4, 3, 1))
+        with tempfile.TemporaryDirectory(prefix='blanc-asar-roundtrip-') as temporary:
+            work = Path(temporary)
+            (work / 'tmp').mkdir()
+            (work / 'home').mkdir()
+            builder.test_asar_pack_roundtrip(
+                self.stream, Path(self.native.tool('node')), HERE / 'asar-pack.mjs',
+                provider, self.native, work)
 
     def test_plist_installs_the_generated_compliance_manifest(self):
         plist = (PACKAGE / 'PLIST').read_text(encoding='utf-8')

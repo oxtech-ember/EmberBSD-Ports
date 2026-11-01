@@ -18,6 +18,7 @@ import stat
 import sys
 import tarfile
 import platform
+import tempfile
 from urllib.parse import urlsplit, quote
 
 
@@ -200,11 +201,69 @@ def lock_closure(lock):
         require(key is not None, f'missing runtime dependency: {name}')
         visit(key, 'runtime')
     require('@electron/asar' in root.get('devDependencies', {}),
-            'the locked @electron/asar build tool is required')
-    asar = resolve_package(packages, '', '@electron/asar')
-    require(asar is not None, 'missing locked @electron/asar package')
-    visit(asar, 'build')
+            'upstream Blanc package-lock must declare @electron/asar as a build tool')
+    require(resolve_package(packages, '', '@electron/asar') is not None,
+            'upstream package-lock has no @electron/asar build-tool entry')
     return packages, selected, roles, edges
+
+
+def resolve_asar_provider(native, jsonio, minimum_version):
+    """Select the common @electron/asar module installed in the native prefix."""
+    require(VERSION.fullmatch(minimum_version) is not None,
+            'invalid minimum @electron/asar version')
+    try:
+        bundle_root = Path(native.bundle_root).resolve(strict=True)
+        package_dir = (bundle_root / 'lib/node_modules/@electron/asar').resolve(strict=True)
+        package_dir.relative_to(bundle_root)
+    except (OSError, ValueError) as exc:
+        raise BuildError(f'@electron/asar provider is missing or outside the selected host prefix: {exc}') from exc
+    package_file = package_dir / 'package.json'
+    try:
+        require(stat.S_ISREG(os.lstat(package_file).st_mode),
+                '@electron/asar package.json must be a regular file')
+        package_file_target = package_file.resolve(strict=True)
+        package_file_target.relative_to(bundle_root)
+        require(stat.S_ISREG(package_file_target.stat().st_mode),
+                '@electron/asar package.json target must be a regular file')
+        metadata = read_object(jsonio, package_file_target, '@electron/asar package metadata')
+    except (OSError, ValueError) as exc:
+        raise BuildError(f'@electron/asar metadata escapes the selected host prefix: {exc}') from exc
+    require(metadata.get('name') == '@electron/asar',
+            'selected host-prefix ASAR package has the wrong name')
+    version = metadata.get('version', '')
+    require(VERSION.fullmatch(version) is not None,
+            'selected host-prefix ASAR package has an invalid version')
+    require(tuple(map(int, version.split('.'))) >= tuple(map(int, minimum_version.split('.'))),
+            f'host-prefix @electron/asar {version} is older than required {minimum_version}')
+    require(metadata.get('type') == 'module',
+            'host-prefix @electron/asar does not expose the supported ES module API')
+    entry = package_dir / 'lib/asar.js'
+    try:
+        entry_target = entry.resolve(strict=True)
+        entry_target.relative_to(bundle_root)
+        require(stat.S_ISREG(entry_target.stat().st_mode),
+                '@electron/asar API entry target must be a regular file')
+    except (OSError, ValueError) as exc:
+        raise BuildError(f'@electron/asar API entry is missing or outside the selected host prefix: {exc}') from exc
+    return {'name': metadata['name'], 'version': version, 'package_path': 'devel/node-electron-asar',
+            'module_path': 'lib/node_modules/@electron/asar', 'entry': str(entry_target),
+            'license': package_license(metadata)}
+
+
+def test_asar_pack_roundtrip(stream, node, wrapper, asar_tool, native, work):
+    """Exercise the selected provider's real createPackage/listPackage API."""
+    env = child_environment(native, work)
+    with tempfile.TemporaryDirectory(prefix='blanc-asar-api-', dir=work / 'tmp') as temporary:
+        root = Path(temporary)
+        app = root / 'app'
+        app.mkdir()
+        (app / 'probe.txt').write_text('Blanc ASAR API roundtrip\n', encoding='utf-8')
+        output = root / 'probe.asar'
+        result = run_host_tool(stream, [str(node), str(wrapper), asar_tool['entry'], str(app), str(output)],
+                               cwd=work, env=env, timeout=60)
+        packed = json.loads(result)
+        require(output.is_file() and 'probe.txt' in packed.get('files', []),
+                'selected @electron/asar provider failed createPackage/listPackage roundtrip')
 
 
 def digest_file(inventory, path, algorithm):
@@ -291,7 +350,7 @@ def extract_verified_package(jsonio, archive_path, destination, expected_name, e
         archive.close()
 
 
-def stage_dependencies(jsonio, inventory, source_root, dist_dir, runtime_root, build_root,
+def stage_dependencies(jsonio, inventory, source_root, dist_dir, runtime_root,
                        npm_manifest, expected_manifest_sha256):
     manifest_bytes_sha = digest_file(inventory, npm_manifest, 'sha256')
     require(manifest_bytes_sha == expected_manifest_sha256,
@@ -301,6 +360,9 @@ def stage_dependencies(jsonio, inventory, source_root, dist_dir, runtime_root, b
     manifest = read_object(jsonio, npm_manifest, 'NPM mirror manifest')
     require(manifest.get('sourceLockSha256') == lock_bytes_sha,
             'NPM mirror manifest does not match package-lock.json')
+    require(manifest.get('hostBuildTool') == {
+        'name': '@electron/asar', 'pkgsrcPath': 'devel/node-electron-asar',
+    }, 'NPM mirror manifest must identify the common external ASAR build tool')
     lock = read_object(jsonio, lock_path, 'package-lock.json')
     packages, selected, roles, edges = lock_closure(lock)
     rows = manifest.get('packages')
@@ -317,8 +379,8 @@ def stage_dependencies(jsonio, inventory, source_root, dist_dir, runtime_root, b
                 row.get('resolved') == entry.get('resolved') and
                 row.get('integrity') == entry.get('integrity'),
                 f'NPM mirror metadata differs from package-lock.json: {key}')
-        role = '+'.join(sorted(roles[key]))
-        require(row.get('role') == role, f'NPM package role mismatch: {key}')
+        require(roles[key] == {'runtime'} and row.get('role') == 'runtime',
+                f'NPM package is not part of the runtime-only archive closure: {key}')
         url = urlsplit(entry.get('resolved', ''))
         require(url.scheme == 'https' and url.hostname == 'registry.npmjs.org' and
                 not url.username and not url.password and not url.query and not url.fragment,
@@ -338,26 +400,19 @@ def stage_dependencies(jsonio, inventory, source_root, dist_dir, runtime_root, b
         require('sha512-' + base64.b64encode(bytes.fromhex(sha512)).decode('ascii') == entry.get('integrity'),
                 f'NPM lock integrity mismatch: {key}')
         archives[key] = (archive_path, row)
-    require(not runtime_root.exists() and not build_root.exists(),
-            'refusing to reuse a nonempty staged dependency directory')
+    require(not runtime_root.exists(), 'refusing to reuse a nonempty runtime dependency directory')
     runtime_root.mkdir(parents=True)
-    build_root.mkdir(parents=True)
     package_metadata = {}
     for key in sorted(selected):
         entry = selected[key]
         name = key.rsplit('node_modules/', 1)[1]
         archive_path, _row = archives[key]
-        if 'runtime' in roles[key]:
-            package_metadata[key] = extract_verified_package(
-                jsonio, archive_path, runtime_root / name, name, entry['version'])
-        if 'build' in roles[key]:
-            metadata = extract_verified_package(
-                jsonio, archive_path, build_root / name, name, entry['version'])
-            package_metadata.setdefault(key, metadata)
-    require(not (runtime_root / 'electron').exists() and not (build_root / 'electron').exists(),
+        package_metadata[key] = extract_verified_package(
+            jsonio, archive_path, runtime_root / name, name, entry['version'])
+    require(not (runtime_root / 'electron').exists(),
             'the system Electron runtime must not be copied into Blanc')
     require(not (runtime_root / '@electron' / 'asar').exists(),
-            'the build-only ASAR packer must not be copied into Blanc')
+            'the external build-only ASAR packer must not be copied into Blanc')
     return lock, packages, selected, roles, edges, rows_by_key, package_metadata
 
 
@@ -465,7 +520,7 @@ def package_license(metadata):
 
 def make_sbom(source_manifest, lock, selected, roles, edges, rows, package_metadata,
               app_asar, node_version, electron_version, electron_pkgpath, electron_dependency,
-              asar_name, node_sha256, python_version, python_sha256):
+              asar_tool, node_sha256, python_version, python_sha256):
     runtime_path, dependency = validate_runtime_dependency(
         electron_version, electron_pkgpath, electron_dependency)
     lock_sha = source_manifest['packageLockSha256']
@@ -552,7 +607,6 @@ def make_sbom(source_manifest, lock, selected, roles, edges, rows, package_metad
             continue
         child_refs = sorted(refs[child] for child in edges[key] if 'runtime' in roles[child])
         dependencies.append({'ref': refs[key], 'dependsOn': child_refs})
-    asar_row = rows['node_modules/@electron/asar']
     build_tools = [
         {'type': 'application', 'name': 'CPython', 'version': python_version,
          'scope': 'excluded', 'hashes': [{'alg': 'SHA-256', 'content': python_sha256}],
@@ -560,11 +614,16 @@ def make_sbom(source_manifest, lock, selected, roles, edges, rows, package_metad
         {'type': 'application', 'name': 'Node.js', 'version': node_version,
          'scope': 'excluded', 'hashes': [{'alg': 'SHA-256', 'content': node_sha256}],
          'properties': [{'name': 'emberbsd:role', 'value': 'host-build-only'}]},
-        {'type': 'library', 'name': '@electron/asar', 'version': asar_name,
-         'scope': 'excluded', 'hashes': [
-             {'alg': 'SHA-512', 'content': asar_row['sha512']},
-             {'alg': 'SHA-256', 'content': asar_row['sha256']}],
-         'properties': [{'name': 'emberbsd:role', 'value': 'host-build-only'}]},
+        {'type': 'library', 'bom-ref': f"pkgsrc:{asar_tool['package_path']}@{asar_tool['version']}",
+         'name': asar_tool['name'], 'version': asar_tool['version'], 'scope': 'excluded',
+         'properties': [
+             {'name': 'emberbsd:role', 'value': 'host-build-only'},
+             {'name': 'emberbsd:external', 'value': 'true'},
+             {'name': 'emberbsd:pkgsrcPath', 'value': asar_tool['package_path']},
+             {'name': 'emberbsd:modulePath', 'value': asar_tool['module_path']},
+         ],
+         **({'licenses': [{'license': {'name': asar_tool['license']}}]}
+            if asar_tool.get('license') != 'NOASSERTION' else {})},
     ]
     return {
         'bomFormat': 'CycloneDX',
@@ -703,7 +762,8 @@ def run_python_tests(stream, source_root, dist_dir, native, work, sdk_root):
     test_path = Path(__file__).parent / 'test_blanc_package.py'
     output = run_host_tool(stream, [native.tool('python'), '-B', '-I', '-S', str(test_path),
                                     '--sdk-source', str(sdk_root), '--source', str(source_root),
-                                    '--distdir', str(dist_dir)],
+                                    '--distdir', str(dist_dir), '--host-prefix', native.bundle_root,
+                                    '--node', native.tool('node')],
                            cwd=source_root, env=child_environment(native, work), timeout=300)
     sys.stdout.buffer.write(output)
 
@@ -718,6 +778,7 @@ def parse_args():
     parser.add_argument('--work')
     parser.add_argument('--node')
     parser.add_argument('--host-prefix')
+    parser.add_argument('--asar-min-version')
     parser.add_argument('--source-archive-sha256')
     parser.add_argument('--source-files-sha256')
     parser.add_argument('--electron-version')
@@ -743,10 +804,12 @@ def main():
             args.source_files_sha256, args.source_archive_sha256)
         print(f'Extracted {count} allowlisted Blanc source files.')
         return 0
-    require(args.distdir and args.work and args.node and args.host_prefix and args.source_archive_sha256 and
+    require(args.distdir and args.work and args.node and args.host_prefix and args.asar_min_version and
+            args.source_archive_sha256 and
             args.source_files_sha256 and args.electron_version and args.electron_package_path and
             args.electron_depends, 'build and test require all pinned host, source, and runtime arguments')
     native = select_host_tools(native_api, args.host_prefix, args.node)
+    asar_tool = resolve_asar_provider(native, jsonio, args.asar_min_version)
     source_root = Path(args.source).resolve(strict=True)
     dist_dir = Path(args.distdir).resolve(strict=True)
     work = Path(args.work).resolve(strict=True)
@@ -764,19 +827,19 @@ def main():
     validate_runtime_dependency(args.electron_version, args.electron_package_path, args.electron_depends)
     run_node_tests(stream, source_root, native, work)
     if args.action == 'test':
+        test_asar_pack_roundtrip(
+            stream, node, Path(__file__).parent / 'asar-pack.mjs', asar_tool, native, work)
         run_python_tests(stream, source_root, dist_dir, native, work, sdk_root)
         return 0
 
     runtime_root = work / 'runtime-node-modules'
-    build_root = work / 'asar-tools' / 'node_modules'
     app_root = work / 'app-stage'
     seed_root = work / 'seed-inputs'
     asar_path = work / 'app.asar'
     sbom_path = work / 'SBOM.json'
-    npm_manifest_sha = '6f5e82b752db384b728e1d6caf357eb86d0652f0441b527d559de2f6ad396209'
+    npm_manifest_sha = '27a0ff98805006ad0bc96680e3a53c694be47907bee8f51b38b690bfa55b8d87'
     lock, packages, selected, roles, edges, rows, package_metadata = stage_dependencies(
-        jsonio, inventory, source_root, dist_dir, runtime_root, build_root,
-        manifest_path, npm_manifest_sha)
+        jsonio, inventory, source_root, dist_dir, runtime_root, manifest_path, npm_manifest_sha)
     require(not app_root.exists() and not seed_root.exists() and not asar_path.exists() and not sbom_path.exists(),
             'refusing to overwrite existing Blanc build output')
     copy_allowlist(source_root, source_manifest['applicationFiles'], app_root)
@@ -795,7 +858,7 @@ def main():
             'the Electron runtime must remain external')
     require((app_root / 'node_modules/@electron/asar').exists() is False,
             'the ASAR build tool must remain outside the application')
-    asar_api = build_root / '@electron/asar/lib/asar.js'
+    asar_api = Path(asar_tool['entry'])
     asar_wrapper = Path(__file__).parent / 'asar-pack.mjs'
     asar_output = run_host_tool(stream, [str(node), str(asar_wrapper), str(asar_api), str(app_root), str(asar_path)],
                                 cwd=work, env=env, timeout=900)
@@ -819,7 +882,7 @@ def main():
     python_sha = digest_file(inventory, Path(native.tool('python')).resolve(strict=True), 'sha256')
     bom = make_sbom(source_manifest, lock, selected, roles, edges, rows, package_metadata,
                     asar_path, HOST_NODE_VERSION, args.electron_version, args.electron_package_path,
-                    args.electron_depends, packages['node_modules/@electron/asar']['version'], node_sha,
+                    args.electron_depends, asar_tool, node_sha,
                     platform.python_version(), python_sha)
     sbom_path.write_bytes(jsonio.json_bytes(bom))
     print(f'Built Blanc 1.25.0 app.asar ({len(contents)} files) and external-runtime SBOM.')

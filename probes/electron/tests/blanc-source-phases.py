@@ -97,7 +97,7 @@ def main():
     manifest = json.loads((RECIPE / 'files/npm-mirror-manifest.json').read_text())
     expected = {'e12-electron/v1.25.0.tar.gz'} | {
         'e12-electron/' + row['distfile'] for row in manifest['packages']}
-    require(set(files) == expected and len(files) == len(expected) == 41,
+    require(set(files) == expected and len(files) == len(expected) == 33,
             'Actual pkgsrc source inventory is incomplete')
     if args.baseline_recipe:
         baseline = framework_view(args.pkgsrc, args.work / 'baseline', args.baseline_recipe)

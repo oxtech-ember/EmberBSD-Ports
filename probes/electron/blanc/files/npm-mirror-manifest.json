@@ -1,5 +1,8 @@
 {
-  "hostBuildTool": "@electron/asar 4.3.0 from package-lock devDependencies",
+  "hostBuildTool": {
+    "name": "@electron/asar",
+    "pkgsrcPath": "devel/node-electron-asar"
+  },
   "packages": [
     {
       "blake2s": "541942a065669ff1e752175cf6a6dd5294334a45cb22dd1d19b8d1fb03666026",
@@ -26,32 +29,6 @@
       "sha512": "f60ecb58e29129d78f67ce5ebd5804f711289b70c083785123241d3b02cfbe92ff17b2a90d79941cc8bbdabb2a27129a0db580a579ab6230c4c4c48fa9483bc7",
       "size": 4195821,
       "version": "0.5.0"
-    },
-    {
-      "blake2s": "3eac43f2e7288384993f6aafeb2501c01c785663924a18f7909f5f10eb2b47b3",
-      "distfile": "asar-4.3.0.tgz",
-      "integrity": "sha512-k/FFC/NQoTykGBi/Ga4L4KorsAKDdkK0LfNVG90eUG6vPVpJaL3iR9V1ZLbzBAF3QpojK5DcaGOdQOheKZv4JQ==",
-      "lockKey": "node_modules/@electron/asar",
-      "name": "@electron/asar",
-      "resolved": "https://registry.npmjs.org/@electron/asar/-/asar-4.3.0.tgz",
-      "role": "build",
-      "sha256": "b70596d9155d11f4e2b5ec84184a813e30568fd4dbaf6ea3d0edd5530c9ac1e1",
-      "sha512": "93f1450bf350a13ca41818bf19ae0be0aa2bb002837642b42df3551bdd1e506eaf3d5a4968bde247d57564b6f3040177429a232b90dc68639d40e85e299bf825",
-      "size": 29971,
-      "version": "4.3.0"
-    },
-    {
-      "blake2s": "9d452e26372ba93e4a2adb377474c1f4908a4a901ee1eb7f5c4a1e6b34f6be75",
-      "distfile": "glob-13.0.6.tgz",
-      "integrity": "sha512-Wjlyrolmm8uDpm/ogGyXZXb1Z+Ca2B8NbJwqBVg0axK9GbBeoS7yGV6vjXnYdGm6X53iehEuxxbyiKp8QmN4Vw==",
-      "lockKey": "node_modules/@electron/asar/node_modules/glob",
-      "name": "glob",
-      "resolved": "https://registry.npmjs.org/glob/-/glob-13.0.6.tgz",
-      "role": "build",
-      "sha256": "020f184fa9c4e2905cf33c3d1dbba4b25a58e05f6f785f81cc931394e07b8970",
-      "sha512": "5a3972ae89669bcb83a66fe8806c976576f567e09ad81f0d6c9c2a0558346b12bd19b05ea12ef2195eaf8d79d87469ba5f9de27a112ec716f288aa7c42637857",
-      "size": 364690,
-      "version": "13.0.6"
     },
     {
       "blake2s": "cbcf6b3373bb1e463540b8539d822a6f01bc335e0e0503bf51a0495fdce8021e",
@@ -223,32 +200,6 @@
       "version": "2.0.1"
     },
     {
-      "blake2s": "555680d7e7aa8f07b7b5730be16ab23d8bb652f9947d6fcdadd6cfa49fc07c6d",
-      "distfile": "balanced-match-4.0.4.tgz",
-      "integrity": "sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==",
-      "lockKey": "node_modules/balanced-match",
-      "name": "balanced-match",
-      "resolved": "https://registry.npmjs.org/balanced-match/-/balanced-match-4.0.4.tgz",
-      "role": "build",
-      "sha256": "9025508d9125eee531bbc49ce3ae560183975ad595f058c378bd56af4152fb16",
-      "sha512": "04bae011c453c17da8ea01b118e08dc8cbc64a9df96287ee633c3d87520c4d198aaadb40659554ebb6dd6fd3ebdaf50703cfa3de2dad25f8cee82ebee26c864c",
-      "size": 4199,
-      "version": "4.0.4"
-    },
-    {
-      "blake2s": "e25900a87288c28a341413f54de3c359f6da643e0419d3a8e1e170f36cb56f33",
-      "distfile": "brace-expansion-5.0.12.tgz",
-      "integrity": "sha512-YovQ3rzhaLMIrDjNDMkNS01tea93qhEhG5xy8f6+R0l+dw3Ki+5sCoIoI942iuLZTHWogWktgwVDhU09iNEimQ==",
-      "lockKey": "node_modules/brace-expansion",
-      "name": "brace-expansion",
-      "resolved": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-5.0.12.tgz",
-      "role": "build",
-      "sha256": "ef8448ec78f20b692f04fa6d01f39b5ab34c66404bea3429f5a39c6c9e0be8b4",
-      "sha512": "628bd0debce168b308ac38cd0cc90d4b4d6d79af77aa11211b9c72f1febe47497e770dca8bee6c0a822823de368ae2d94c75a881692d830543854d3d88d12299",
-      "size": 12620,
-      "version": "5.0.12"
-    },
-    {
       "blake2s": "8a94a21d68a5abc72bea4df23495227206dd5e3b02934ee05c004d28f56ac7ab",
       "distfile": "builder-util-runtime-9.7.0.tgz",
       "integrity": "sha512-g/kR520giAFYkSXTzcmF3kqQq7wi8F6N6SzeDgZrqTBN+VHdmgWOyTdD1yD7AATDId/yXLvuP34CxW46/BwCdw==",
@@ -392,32 +343,6 @@
       "version": "4.5.0"
     },
     {
-      "blake2s": "7700b53354a8fab3a0cd8b329fdd381dd3aa969823d9853a7d6b0da3eb6bdd7c",
-      "distfile": "minimatch-10.2.5.tgz",
-      "integrity": "sha512-MULkVLfKGYDFYejP07QOurDLLQpcjk7Fw+7jXS2R2czRQzR56yHRveU5NDJEOviH+hETZKSkIk5c+T23GjFUMg==",
-      "lockKey": "node_modules/minimatch",
-      "name": "minimatch",
-      "resolved": "https://registry.npmjs.org/minimatch/-/minimatch-10.2.5.tgz",
-      "role": "build",
-      "sha256": "a6cea46915bfc6c3fae60f9bd003ea4f9d6a4233aa59a9ca729474d3824ca9e5",
-      "sha512": "3142e454b7ca1980c561e8cfd3b40ebab0cb2d0a5c8e4ec5c3eee35d2d91d9ccd1433479eb21d1bde5393432443af887fa111364a4a4224e5cf93db71a315432",
-      "size": 117062,
-      "version": "10.2.5"
-    },
-    {
-      "blake2s": "f4eb41ce37a217bea7fa7a24c3097ef92991be6df2fe6ecd00bc93e7f99d6415",
-      "distfile": "minipass-7.1.3.tgz",
-      "integrity": "sha512-tEBHqDnIoM/1rXME1zgka9g6Q2lcoCkxHLuc7ODJ5BxbP5d4c2Z5cGgtXAku59200Cx7diuHTOYfSBD8n6mm8A==",
-      "lockKey": "node_modules/minipass",
-      "name": "minipass",
-      "resolved": "https://registry.npmjs.org/minipass/-/minipass-7.1.3.tgz",
-      "role": "build",
-      "sha256": "52ac61be743755e3fdc98e560086d0d4a1e2c7fd3643387792db38e322d27d12",
-      "sha512": "b44047a839c8a0cff5ad7304d738246bd83a43695ca029311cbb9cece0c9e41c5b3f977873667970682d5c092ee7ddb4d02c7b762b874ce61f4810fc9fa9a6f0",
-      "size": 83605,
-      "version": "7.1.3"
-    },
-    {
       "blake2s": "277ceb43801b9a45343685136756d86faa35ad8f1ddb6008cfc5020a8cfc5766",
       "distfile": "ms-2.1.3.tgz",
       "integrity": "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==",
@@ -429,32 +354,6 @@
       "sha512": "e85973b9b4cb646dc9d9afcd542025784863ceae68c601f268253dc985ef70bb2fa1568726afece715c8ebf5d73fab73ed1f7100eb479d23bfb57b45dd645394",
       "size": 2967,
       "version": "2.1.3"
-    },
-    {
-      "blake2s": "cd7048149c146ab1854cbc3c67ccb420e118d5322bf93fe88ca48db1d396e644",
-      "distfile": "path-scurry-2.0.2.tgz",
-      "integrity": "sha512-3O/iVVsJAPsOnpwWIeD+d6z/7PmqApyQePUtCndjatj/9I5LylHvt5qluFaBT3I5h3r1ejfR056c+FCv+NnNXg==",
-      "lockKey": "node_modules/path-scurry",
-      "name": "path-scurry",
-      "resolved": "https://registry.npmjs.org/path-scurry/-/path-scurry-2.0.2.tgz",
-      "role": "build",
-      "sha256": "dea3e3dab1c00c28fcb5871b1133b02050c7e110dde2dbe31e14067922c23ec1",
-      "sha512": "dcefe2555b0900fb0e9e9c1621e0fe77acffecf9aa029c9078f52d0a77636ad8fff48e4bca51efb79aa5b856814f7239877af57a37d1d39e9cf850aff8d9cd5e",
-      "size": 101468,
-      "version": "2.0.2"
-    },
-    {
-      "blake2s": "7d016754d0ed91251b2791a99a09c4515ce34bc3493724bd2d881f2394fc08e8",
-      "distfile": "lru-cache-11.5.2.tgz",
-      "integrity": "sha512-4pfM1Ff0x50o0tQwb5ucw/RzNyD0/YJME6IVcStalZuMWxdt3sR3huStTtxz4PUmvZfRguvDejasvQ2kifR11g==",
-      "lockKey": "node_modules/path-scurry/node_modules/lru-cache",
-      "name": "lru-cache",
-      "resolved": "https://registry.npmjs.org/lru-cache/-/lru-cache-11.5.2.tgz",
-      "role": "build",
-      "sha256": "e46c8eaafc64f168603aebd39cfd0e987bec39a93ade280653e2331fd2516a22",
-      "sha512": "e297ccd457f4c79d28d2d4306f9b9cc3f4733720f4fd824c13a215712b5a959b8c5b176ddec47786e4ad4edc73e0f526bd97d182ebc37a36acbd0da489f475d6",
-      "size": 579936,
-      "version": "11.5.2"
     },
     {
       "blake2s": "e2889c4fc2a74f3a0c6193a12726d52913c114723bd333b32596d88824332f05",

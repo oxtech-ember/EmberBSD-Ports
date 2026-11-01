@@ -79,10 +79,12 @@ and build acceptance.
   completion.
 - Full runtime and application package lifecycle checks remain pending.
 - The Blanc application recipe creates an ASAR from an explicit source
-  allowlist and 32 lockfile-pinned runtime packages. Eight separate packages
-  provide the upstream ASAR build tool. The host controller uses CPython 3.15
-  and SDK API 1. Host Node.js 26.13.0 runs required upstream JavaScript tools.
-  This application archive does not contain an Electron executable.
+  allowlist and 32 lockfile-pinned runtime packages. The common
+  `node-electron-asar` Ports recipe supplies the build-only ASAR tool from the
+  selected native prefix; it is not copied into the application. The host
+  controller uses CPython 3.15 and SDK API 1. Host Node.js 26.13.0 runs the
+  required JavaScript tools. This application archive does not contain an
+  Electron executable.
 - The Blanc source patches select an explicit NetBSD capture descriptor. It
   uses the existing generic Electron/DOM/WebRTC broker, preload and helper.
   All nine runtime and fourteen shared permission hashes remain unchanged.
@@ -141,7 +143,10 @@ hooks validate these inputs; direct `do-extract`, `do-build` and `do-test` calls
 retain the same checks. The controller checks the SDK API, module origin and
 interpreter versions.
 
-The recipe fetches the source and 40 NPM archives through pkgsrc distfiles.
+The recipe fetches the source and 32 runtime NPM archives through pkgsrc
+distfiles. The ASAR packer is provided by the common `devel/node-electron-asar`
+recipe, with its installed version and pkgsrc origin recorded as an external
+host build tool in the SBOM.
 The build uses verified local archives and runs no NPM installation or network
 fetch. It extracts only allowlisted source files. It keeps tests, build tools,
 the lockfile, and environment files out of the installed ASAR. The installed
@@ -156,9 +161,9 @@ pkgsrc catalog does not include its token. Review that text before adding
 `blueoak-1.0.0` to `ACCEPTABLE_LICENSES`. Keep the recipe's redistribution
 restrictions for unchanged upstream artwork and marks.
 
-`tests/blanc-source-phases.py --help` describes the source-phase regression.
+`probes/electron/tests/blanc-source-phases.py --help` describes the source-phase regression.
 It uses a real pkgsrc export and explicit make tools/configuration, checks that
-all 41 distfiles are exposed without build inputs, and verifies the consuming
+all 33 distfiles are exposed without build inputs, and verifies the consuming
 phases reject missing tools. With `--distdir` it runs normal cached `fetch` and
 `checksum`, including negative license and corrupted-input cases. The optional
 `--baseline-recipe` reproduces the previous global metadata failure. These
@@ -174,10 +179,11 @@ and cached archives:
 "$HOST_PREFIX/bin/python3.15" -B -I -S \
   probes/electron/blanc/files/test_blanc_package.py \
   --sdk-source "$SDK_SOURCE" --source "$BLANC_SOURCE" \
-  --distdir "$DISTDIR/e12-electron"
+  --distdir "$DISTDIR/e12-electron" --host-prefix "$HOST_PREFIX" \
+  --node "$HOST_PREFIX/bin/node"
 ```
 
-The host checks passed 11 package-controller tests and 22 focused Node tests.
+The host checks passed 18 package-controller tests and 22 focused Node tests.
 The produced ASAR contains 1,674 entries. The production-only registry audit
 reported no advisories for the 32 installed runtime packages. This does not
 clear the separate upstream development dependency audit. Direct pkgsrc
