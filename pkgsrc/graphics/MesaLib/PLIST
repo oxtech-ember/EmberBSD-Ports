@@ -102,6 +102,7 @@ ${PLIST.v3d}share/drirc.d/00-v3d-defaults.conf
 share/drirc.d/00-virtio_gpu-defaults.conf
 share/drirc.d/00-zink-defaults.conf
 ${PLIST.v3d}lib/libvulkan_broadcom.so
+${PLIST.v3d}share/drirc.d/00-v3dv-defaults.conf
 ${PLIST.powervr}lib/libvulkan_powervr_mesa.so
 ${PLIST.powervr}share/drirc.d/00-pvr-defaults.conf
 ${PLIST.v3d}share/vulkan/icd.d/broadcom_icd.json
