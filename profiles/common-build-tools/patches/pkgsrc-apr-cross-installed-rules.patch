@@ -1,0 +1,28 @@
+apr installs apr_rules.mk with target tools in cross builds.
+
+configure takes RM and CC_FOR_BUILD from the pkgsrc environment, which in a
+cross build holds build-host paths, and apr installs build/apr_rules.out as
+libexec/apr/apr_rules.mk. The work-directory check rejected the package. The
+installed copy is used on the target, so give it RM=rm and
+CC_FOR_BUILD=$(CC). apr's own build keeps build/apr_rules.mk.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+Test: profiles/common-build-tools/tests/apr-cross-installed-rules.sh
+
+--- a/devel/apr/Makefile
++++ b/devel/apr/Makefile
+@@ -51,6 +51,15 @@
+ # apr-1-config --apr-libtool at the libtool of the target instead.
+ DEPENDS+=		libtool-base-[0-9]*:../../devel/libtool-base
+ APR_INSTALL_LIBTOOL=	${LN} -s ${PREFIX}/bin/libtool
++# configure records RM and CC_FOR_BUILD from the build environment in
++# apr_rules.mk. The installed copy is used on the target, where rm is
++# found in PATH and the build compiler is CC. The build keeps its copy.
++SUBST_CLASSES+=		apr-rules
++SUBST_STAGE.apr-rules=	post-build
++SUBST_MESSAGE.apr-rules=	Using target tools in the installed apr_rules.mk.
++SUBST_FILES.apr-rules=	build/apr_rules.out
++SUBST_SED.apr-rules=	-e 's,^RM=.*,RM=rm,'
++SUBST_SED.apr-rules+=	-e 's,^CC_FOR_BUILD=.*,CC_FOR_BUILD=$$(CC),'
+ .else
+ APR_INSTALL_LIBTOOL=	${INSTALL_SCRIPT} ${PKG_LIBTOOL}
+ .endif
