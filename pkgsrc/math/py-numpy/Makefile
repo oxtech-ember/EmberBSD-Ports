@@ -110,6 +110,15 @@ MESON_CROSS_ARCH_VARS+=			longdouble_format
 MESON_CROSS.aarch64.longdouble_format=	'IEEE_QUAD_LE'
 MESON_CROSS.riscv64.longdouble_format=	'IEEE_QUAD_LE'
 MESON_CROSS.x86_64.longdouble_format=	'INTEL_EXTENDED_16_BYTES_LE'
+# numpy/__config__.py records the Python that ran Meson and the BLAS and
+# LAPACK directories that pkg-config gave in the sysroot. Name the target
+# Python and the target prefix, which the installed numpy runs with.
+SUBST_CLASSES+=		crossconfig
+SUBST_STAGE.crossconfig=	post-install
+SUBST_MESSAGE.crossconfig=	Naming target paths in numpy/__config__.py.
+SUBST_FILES.crossconfig=	${DESTDIR}${PREFIX}/${PYSITELIB}/numpy/__config__.py
+SUBST_SED.crossconfig=		-e 's,${TOOL_PYTHONBIN},${PYTHONBIN},g'
+SUBST_SED.crossconfig+=		-e 's,${_CROSS_DESTDIR}/,/,g'
 .endif
 
 # as of 2.5.1
