@@ -317,6 +317,19 @@ and SHA256 receipts. Temporary archive fixtures are removed. The macOS external
 `zip` command is captured, not executed. These synthetic payloads do not qualify
 a release ZIP, ELF binaries, a runtime package, sandboxing or target startup.
 
+## Common Protobuf Python runtime
+
+Use the selected native CPython and the `protoc` owned by the installed common
+Protobuf package. The test writes only to its temporary Python runtime view; it
+imports the generated descriptor with the pure-Python implementation and checks
+descriptor metadata, a message round trip, verification, and tamper rejection.
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B -I -S probes/electron/tests/protobuf-python-view.py \
+  --protobuf-source /absolute/common/protobuf-source \
+  --protoc "$HOST_PREFIX/bin/protoc"
+```
+
 ## Linux SUID-helper selection
 
 Use CPython 3.15, an SDK source that provides Python API 1, host GN, and the
