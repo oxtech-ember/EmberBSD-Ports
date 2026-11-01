@@ -1,0 +1,21 @@
+xsd finds its libraries through LDFLAGS in cross builds.
+
+The build-0.3 makefiles list -lcutl and -lxerces-c as make prerequisites.
+GNU make resolves them through vpath entries built from the -L directories
+in LDFLAGS. Native builds also find them through GNU make's own prefix/lib;
+cross builds pass no -L there, so make stopped at -lcutl. Add the buildlink
+library directory to LDFLAGS.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/devel/xsd/Makefile
++++ b/devel/xsd/Makefile
+@@ -24,6 +24,9 @@
+ MAKE_FLAGS+=		EXTERNAL_LIBCUTL=y
+ MAKE_FLAGS+=		install_prefix=${DESTDIR}${PREFIX}
+ MAKE_FLAGS+=		install_man_dir=${DESTDIR}${PREFIX}/${PKGMANDIR}
++# The makefiles list -lcutl and -lxerces-c as prerequisites and find them
++# through the -L directories in LDFLAGS; cross builds pass none there.
++LDFLAGS+=		-L${BUILDLINK_DIR}/lib
+ 
+ post-patch:
+ 	# Avoid conflict with C++20 <version>
