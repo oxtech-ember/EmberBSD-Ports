@@ -20,6 +20,13 @@ USE_CXX_FEATURES=	c++11
 CMAKE_CONFIGURE_ARGS+=	-DTBB_OUTPUT_DIR_BASE=pkgsrc
 CMAKE_CONFIGURE_ARGS+=	-DTBB_STRICT=OFF
 CMAKE_CONFIGURE_ARGS+=	-DTBB_DISABLE_HWLOC_AUTOMATIC_SEARCH=OFF
+# TCM is enabled by upstream when hwloc is available; keep the installed
+# files deterministic with the package manifest.
+CMAKE_CONFIGURE_ARGS+=	-DTCM_BUILD:BOOL=ON
+TCM_VERSION=		1.6.0
+TCM_SOVERSION=		1
+PLIST_SUBST+=		TCM_VERSION=${TCM_VERSION}
+PLIST_SUBST+=		TCM_SOVERSION=${TCM_SOVERSION}
 
 BUILDLINK_TRANSFORM.SunOS+=	rm:-Wl,--version-script=${WRKSRC}/src/tbb/def/lin64-tbb.def
 BUILDLINK_TRANSFORM.SunOS+=	rm:-Wl,--version-script=${WRKSRC}/src/tbbmalloc/def/lin64-tbbmalloc.def
