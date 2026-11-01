@@ -1,0 +1,79 @@
+Cross apache24 and serf run host copies of apr-1-config and apu-1-config.
+
+The installed apr-1-config and apu-1-config are the target's, under the
+target prefix that the build host does not have. Cross apache24 passed
+--with-apr=/usr/pkg and --with-apr-util=/usr/pkg, where its configure
+finds no config script, and serf passed APR=/usr/pkg/bin/apr-1-config,
+APU=/usr/pkg/bin/apu-1-config and OPENSSL=/usr/pkg/lib to SCons, which
+requires OPENSSL to be a directory. In cross builds the apr-util
+buildlink3 file sets APU_CONFIG to a copy of apu-1-config next to the
+APR_CONFIG copy from the apr buildlink3 file. apache24 and serf use
+APR_CONFIG and APU_CONFIG; native builds keep the installed scripts.
+serf names the buildlink directory, which has the OpenSSL headers and
+libraries for native and cross builds, as the OpenSSL install area.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+Test: profiles/common-build-tools/tests/apu-cross-config.sh
+
+--- a/devel/apr-util/buildlink3.mk
++++ b/devel/apr-util/buildlink3.mk
+@@ -36,6 +36,28 @@
+ .include "../../devel/apr/buildlink3.mk"
+ .include "../../textproc/expat/buildlink3.mk"
+ .include "../../mk/dlopen.buildlink3.mk"
++
++# Consumers pass APU_CONFIG to configure as the apu-1-config to run.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# The installed apu-1-config is the target's, under the target prefix that
++# the build host does not have, so configure (apache24) rejects
++# --with-apr-util=${BUILDLINK_PREFIX.apr-util}. Run a copy of it next to the
++# apr-1-config copy from the apr buildlink3 file; its output names the
++# target prefix, which the compiler wrappers map to the build sysroot.
++APU_CONFIG=		${WRKDIR}/.apr-cross/bin/apu-1-config
++
++pre-configure: apu-cross-config
++
++.PHONY: apu-cross-config
++apu-cross-config:
++	${RUN}${MKDIR} ${APU_CONFIG:H}
++	${RUN}${CP} ${_CROSS_DESTDIR}${BUILDLINK_PREFIX.apr-util}/bin/apu-1-config \
++		${APU_CONFIG}.tmp
++	${RUN}${CHMOD} +x ${APU_CONFIG}.tmp
++	${RUN}${MV} -f ${APU_CONFIG}.tmp ${APU_CONFIG}
++.else
++APU_CONFIG?=		${BUILDLINK_PREFIX.apr-util}/bin/apu-1-config
++.endif
+ .endif # APR_UTIL_BUILDLINK3_MK
+ 
+ BUILDLINK_TREE+=	-apr-util
+--- a/www/apache24/Makefile
++++ b/www/apache24/Makefile
+@@ -26,8 +26,8 @@
+ CONFIGURE_ARGS+=	--enable-layout=NetBSD
+ CONFIGURE_ARGS+=	--enable-mods-shared=all
+ CONFIGURE_ARGS+=	--enable-so
+-CONFIGURE_ARGS+=	--with-apr=${BUILDLINK_PREFIX.apr}
+-CONFIGURE_ARGS+=	--with-apr-util=${BUILDLINK_PREFIX.apr-util}
++CONFIGURE_ARGS+=	--with-apr=${APR_CONFIG}
++CONFIGURE_ARGS+=	--with-apr-util=${APU_CONFIG}
+ CONFIGURE_ARGS+=	--with-port=80
+ CONFIGURE_ENV+=		perlbin=${PERL5:Q}
+ CONFIGURE_ENV+=		ac_cv_path_RSYNC=/nonexistent
+--- a/www/serf/Makefile
++++ b/www/serf/Makefile
+@@ -11,13 +11,13 @@
+ COMMENT=	High-performance asynchronous HTTP client library
+ LICENSE=	apache-2.0
+ 
+-SCONS_BUILD_ARGS+=	APR=${PREFIX}/bin/apr-1-config
+-SCONS_BUILD_ARGS+=	APU=${PREFIX}/bin/apu-1-config
++SCONS_BUILD_ARGS+=	APR=${APR_CONFIG}
++SCONS_BUILD_ARGS+=	APU=${APU_CONFIG}
+ SCONS_BUILD_ARGS+=	CC=${CC:Q}
+ SCONS_BUILD_ARGS+=	CFLAGS=${CFLAGS:Q}
+ SCONS_BUILD_ARGS+=	LDFLAGS=${LDFLAGS:Q}
+ SCONS_BUILD_ARGS+=	LINKFLAGS=${LDFLAGS:Q}
+-SCONS_BUILD_ARGS+=	OPENSSL=${PREFIX}/lib
++SCONS_BUILD_ARGS+=	OPENSSL=${BUILDLINK_DIR}
+ SCONS_INSTALL_ARGS+=	--install-sandbox=${DESTDIR}
+ 
+ .include "options.mk"
