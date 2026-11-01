@@ -12,7 +12,7 @@ HOMEPAGE=	https://www.devicetree.org/
 COMMENT=	Device Tree Compiler (dtc)
 LICENSE=	gnu-gpl-v2
 
-USE_TOOLS+=	bash:run bison flex gmake
+USE_TOOLS+=	bash:run bison flex gmake awk
 
 # Keep upstream -Werror effective through pkgsrc compiler wrappers.
 CFLAGS+=	-Werror=implicit-int -Werror=int-conversion
@@ -24,6 +24,7 @@ MAKE_FLAGS+=	PREFIX=${PREFIX}
 MAKE_FLAGS+=	DESTDIR=${DESTDIR}
 MAKE_FLAGS+=	INSTALL=${INSTALL:Q}
 MAKE_FLAGS+=	NO_PYTHON=1
+MAKE_FLAGS+=	TEST_SHELL=${SH:Q}
 
 TEST_TARGET=	check
 

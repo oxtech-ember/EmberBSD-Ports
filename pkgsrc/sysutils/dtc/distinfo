@@ -6,3 +6,4 @@ Size (dtc-1.8.1.tar.xz) = 178152 bytes
 SHA1 (patch-Makefile) = 58dc051d48598c0afb8307d88d98ae20605e13fe
 SHA1 (patch-libfdt_Makefile.libfdt) = 68dc458a5ec9aca4f0da6758988338ec254e6d98
 SHA1 (patch-pylibfdt_libfdt.i) = b77eea87d34802fb5c9f6e7cd8768efe706d649a
+SHA1 (patch-tests_portability) = fad1d5a0e9c37b643b567a4bf499f0755eaa7297

@@ -1,0 +1,1786 @@
+Origin: EmberBSD (AI-assisted); test portability backport and local Darwin adapter.
+Backport of upstream dtc test portability commits by David Gibson:
+9b53b9a4c2f953a37d8f68d72f5910b20cf5aee0, f116f4800edce6cd58f680a36fbaed656018d528,
+4df9ca4c8ddb83c40900bf13916b42914a25caf4, and 214372a27398121f8266cf9bb9592561508c4c0f.
+Upstream author: David Gibson <david@gibson.dropbear.id.au>.
+Local adaptations: propagate treegen open/write/close failures and test the error path;
+adapt DTC assembly test symbols for Darwin Mach-O and load the build-tree libfdt.
+The upstream treegen.c retains its GPL-2.0-or-later SPDX identifier.
+
+--- tests/.gitignore.orig
++++ tests/.gitignore
+@@ -69,6 +69,8 @@
+ /supernode_atdepth_offset
+ /sw_tree1
+ /sw_states
++/treegen
++/treegen-error.test.*
+ /truncated_property
+ /truncated_string
+ /truncated_memrsv
+--- tests/Makefile.tests.orig
++++ tests/Makefile.tests
+@@ -1,3 +1,5 @@
++TEST_SHELL ?= $(SHELL)
++
+ LIB_TESTS_L = get_mem_rsv \
+ 	root_node find_property subnode_offset path_offset \
+ 	get_name getprop get_prop_offset get_phandle \
+@@ -29,34 +31,32 @@
+ 	subnode_iterate \
+ 	overlay overlay_bad_fixup \
+ 	check_path check_header check_full \
+-	fs_tree1
++	fs_tree1 \
++	truncated_property truncated_string \
++	truncated_memrsv unterminated_memrsv
+ LIB_TESTS = $(LIB_TESTS_L:%=$(TESTS_PREFIX)%)
+-
+-LIBTREE_TESTS_L = truncated_property truncated_string \
+-	truncated_memrsv unterminated_memrsv
+-
+-LIBTREE_TESTS = $(LIBTREE_TESTS_L:%=$(TESTS_PREFIX)%)
+ 
+ ifneq ($(STATIC_BUILD),1)
+ 	DL_LIB_TESTS_L = asm_tree_dump value-labels
+ 	DL_LIB_TESTS = $(DL_LIB_TESTS_L:%=$(TESTS_PREFIX)%)
+ endif
+ 
+-TESTS = $(LIB_TESTS) $(LIBTREE_TESTS) $(DL_LIB_TESTS)
++TESTS = $(LIB_TESTS) $(DL_LIB_TESTS)
+ 
+ TESTS_TREES_L = test_tree1.dtb bad_node_char.dtb bad_node_format.dtb \
+ 	bad_prop_char.dtb ovf_size_strings.dtb truncated_property.dtb \
+-	truncated_string.dtb truncated_memrsv.dtb two_roots.dtb named_root.dtb
++	truncated_string.dtb truncated_memrsv.dtb unterminated_memrsv.dtb \
++	two_roots.dtb named_root.dtb
+ TESTS_TREES = $(TESTS_TREES_L:%=$(TESTS_PREFIX)%)
+ 
+ TESTS_TARGETS = $(TESTS) $(TESTS_TREES)
+ 
+ TESTS_DEPFILES = $(TESTS:%=%.d) \
+-	$(addprefix $(TESTS_PREFIX),testutils.d trees.d dumptrees.d)
++	$(addprefix $(TESTS_PREFIX),testutils.d)
+ 
+ TESTS_CLEANFILES_L = $(STD_CLEANFILES) \
+-	*.dtb *.test.dts *.test.dt.yaml *.dtsv1 tmp.* *.bak \
+-	dumptrees
++	*.dtb *.test.dts *.test.dt.yaml *.test.macho.s *.dtsv1 tmp.* *.bak \
++	treegen
+ TESTS_CLEANFILES = $(TESTS) $(TESTS_CLEANFILES_L:%=$(TESTS_PREFIX)%)
+ TESTS_CLEANDIRS_L = fs
+ TESTS_CLEANDIRS = $(TESTS_CLEANDIRS_L:%=$(TESTS_PREFIX)%)
+@@ -73,14 +73,9 @@
+ 	@$(VECHO) LD [libdl] $@
+ 	$(LINK.c) -o $@ $^ $(LIBDL)
+ 
+-$(LIBTREE_TESTS): %: $(TESTS_PREFIX)testutils.o $(TESTS_PREFIX)trees.o \
+-		util.o $(LIBFDT_dep)
+-
+-$(TESTS_PREFIX)dumptrees: $(TESTS_PREFIX)trees.o
+-
+-$(TESTS_TREES): $(TESTS_PREFIX)dumptrees
+-	@$(VECHO) DUMPTREES
+-	cd $(TESTS_PREFIX); ./dumptrees . >/dev/null
++$(TESTS_TREES): $(TESTS_PREFIX)treegen
++	@$(VECHO) TREEGEN
++	cd $(TESTS_PREFIX); ./treegen . >/dev/null
+ 
+ tests_clean:
+ 	@$(VECHO) CLEAN "(tests)"
+@@ -88,18 +83,18 @@
+ 	rm -rf $(TESTS_CLEANDIRS)
+ 
+ check:	tests ${TESTS_BIN} $(TESTS_PYLIBFDT)
+-	cd $(TESTS_PREFIX); ./run_tests.sh
++	cd $(TESTS_PREFIX); HOSTOS='$(HOSTOS)' TEST_SHELL='$(TEST_SHELL)' $(TEST_SHELL) ./run_tests.sh
+ 
+ ifeq ($(NO_VALGRIND),1)
+ checkm:
+ 	@echo "make checkm requires valgrind, but NO_VALGRIND=1"
+ else
+ checkm: tests ${TESTS_BIN} $(TESTS_PYLIBFDT)
+-	cd $(TESTS_PREFIX); ./run_tests.sh -m
++	cd $(TESTS_PREFIX); HOSTOS='$(HOSTOS)' TEST_SHELL='$(TEST_SHELL)' $(TEST_SHELL) ./run_tests.sh -m
+ endif
+ 
+ checkv:	tests ${TESTS_BIN} $(TESTS_PYLIBFDT)
+-	cd $(TESTS_PREFIX); ./run_tests.sh -v
++	cd $(TESTS_PREFIX); HOSTOS='$(HOSTOS)' TEST_SHELL='$(TEST_SHELL)' $(TEST_SHELL) ./run_tests.sh -v
+ 
+ ifneq ($(DEPTARGETS),)
+ -include $(TESTS_DEPFILES)
+--- /dev/null
++++ tests/adapt_asm_to_macho.sh
+@@ -0,0 +1,99 @@
++#!/bin/sh
++# Diagnostic-only POSIX adapter for DTC -Oasm output used by Darwin tests.
++set -eu
++if [ "$#" -ne 2 ]; then
++    echo "usage: $0 input.s output.s" >&2
++    exit 2
++fi
++input=$1
++output=$2
++tmp=${output}.tmp.$$
++trap 'rm -f "$tmp"' EXIT HUP INT TERM
++awk '
++function is_private_label(name) {
++    return name == "_dt_blob_start" || name == "_dt_header" ||
++        name == "_dt_reserve_map" || name == "_dt_struct_start" ||
++        name == "_dt_struct_end" || name == "_dt_strings_start" ||
++        name == "_dt_strings_end" || name == "_dt_blob_end" ||
++        name == "_dt_blob_abs_end"
++}
++function replace_private_refs(text, comment, pos, tail, result, i, start, ch, token) {
++    pos = index(text, "/*")
++    if (pos) {
++        comment = substr(text, pos)
++        text = substr(text, 1, pos - 1)
++    }
++    result = ""
++    i = 1
++    while (i <= length(text)) {
++        ch = substr(text, i, 1)
++        if (ch ~ /[[:alpha:]_.$]/) {
++            start = i
++            i++
++            while (i <= length(text) && substr(text, i, 1) ~ /[[:alnum:]_.$]/)
++                i++
++            token = substr(text, start, i - start)
++            if (token == "_dt_blob_start") token = "Ldt_blob_start"
++            else if (token == "_dt_header") token = "Ldt_header"
++            else if (token == "_dt_reserve_map") token = "Ldt_reserve_map"
++            else if (token == "_dt_struct_start") token = "Ldt_struct_start"
++            else if (token == "_dt_struct_end") token = "Ldt_struct_end"
++            else if (token == "_dt_strings_start") token = "Ldt_strings_start"
++            else if (token == "_dt_strings_end") token = "Ldt_strings_end"
++            else if (token == "_dt_blob_end") token = "Ldt_blob_end"
++            else if (token == "_dt_blob_abs_end") token = "Ldt_blob_abs_end"
++            result = result token
++        } else {
++            result = result ch
++            i++
++        }
++    }
++    return result comment
++}
++{
++    line = $0
++    if (line ~ /^[[:space:]]*\.data([[:space:]]|$)/)
++        has_data = 1
++    if (line ~ /^[[:space:]]*\.globl[[:space:]]+/) {
++        symbol = $2
++        sub(/,$/, "", symbol)
++        if (!(symbol in seen)) {
++            seen[symbol] = 1
++            symbols[++count] = symbol
++        }
++        indent = line
++        sub(/[^[:space:]].*$/, "", indent)
++        if (global_count++ > 0)
++            before[NR] = indent ".alt_entry " symbol
++    }
++    trimmed = line
++    sub(/^[[:space:]]*/, "", trimmed)
++    sub(/:[[:space:]]*$/, "", trimmed)
++    if (is_private_label(trimmed)) {
++        sub("_dt_", "Ldt_", line)
++    } else if (line ~ /^[[:space:]]*\.(byte|space)[[:space:]]/) {
++        line = replace_private_refs(line)
++    }
++    lines[NR] = line
++}
++END {
++    if (!has_data)
++        print "\t.data"
++    for (i = 1; i <= NR; i++) {
++        if (before[i] != "")
++            print before[i]
++        print lines[i]
++    }
++    if (count) {
++        print ""
++        print "/* Mach-O C-name aliases for DTC public assembly labels. */"
++        for (i = 1; i <= count; i++) {
++            alias = "_" symbols[i]
++            print "\t.globl\t" alias
++            print alias " = " symbols[i]
++        }
++    }
++}
++' "$input" > "$tmp"
++mv -f "$tmp" "$output"
++trap - EXIT HUP INT TERM
+--- tests/dumptrees.c
++++ /dev/null
+@@ -1,69 +0,0 @@
+-// SPDX-License-Identifier: GPL-2.0-or-later
+-/*
+- * dumptrees - utility for libfdt testing
+- *
+- * (C) Copyright David Gibson <dwg@au1.ibm.com>, IBM Corporation.  2006.
+- */
+-#include <stdio.h>
+-#include <stdlib.h>
+-#include <unistd.h>
+-#include <fcntl.h>
+-#include <stdint.h>
+-
+-#include <libfdt.h>
+-
+-#include "testdata.h"
+-
+-static struct {
+-	void *blob;
+-	const char *filename;
+-} trees[] = {
+-#define TREE(name)	{ &name, #name ".dtb" }
+-	TREE(test_tree1),
+-	TREE(bad_node_char), TREE(bad_node_format), TREE(bad_prop_char),
+-	TREE(ovf_size_strings),
+-	TREE(truncated_property), TREE(truncated_string),
+-	TREE(truncated_memrsv),
+-	TREE(two_roots),
+-	TREE(named_root)
+-};
+-
+-#define NUM_TREES	(sizeof(trees) / sizeof(trees[0]))
+-
+-int main(int argc, char *argv[])
+-{
+-	unsigned int i;
+-
+-	if (argc != 2) {
+-	    fprintf(stderr, "Missing output directory argument\n");
+-	    return 1;
+-	}
+-
+-	if (chdir(argv[1]) != 0) {
+-	    perror("chdir()");
+-	    return 1;
+-	}
+-
+-	for (i = 0; i < NUM_TREES; i++) {
+-		void *blob = trees[i].blob;
+-		const char *filename = trees[i].filename;
+-		int size;
+-		int fd;
+-		int ret;
+-
+-		size = fdt_totalsize(blob);
+-
+-		printf("Tree \"%s\", %d bytes\n", filename, size);
+-
+-		fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+-		if (fd < 0)
+-			perror("open()");
+-
+-		ret = write(fd, blob, size);
+-		if (ret != size)
+-			perror("write()");
+-
+-		close(fd);
+-	}
+-	exit(0);
+-}
+--- tests/meson.build.orig
++++ tests/meson.build
+@@ -1,14 +1,10 @@
+-trees = static_library('trees', files('trees.S'),
+-                       build_by_default: false,
+-                       include_directories: libfdt_inc)
++treegen = executable('treegen', files('treegen.c'),
++                     build_by_default: false,
++                     dependencies: [util_dep])
+ 
+-dumptrees = executable('dumptrees', files('dumptrees.c'),
+-                       build_by_default: false,
+-                       link_with: trees, dependencies: libfdt_dep)
+-
+-dumptrees_dtb = custom_target(
+-  'dumptrees',
+-  command: [dumptrees, meson.current_build_dir()],
++treegen_dtb = custom_target(
++  'treegen_dtb',
++  command: [treegen, meson.current_build_dir()],
+   output: [
+     'test_tree1.dtb',
+     'bad_node_char.dtb',
+@@ -18,10 +14,13 @@
+     'truncated_property.dtb',
+     'truncated_string.dtb',
+     'truncated_memrsv.dtb',
++    'unterminated_memrsv.dtb',
++    'two_roots.dtb',
++    'named_root.dtb',
+   ]
+ )
+ 
+-testutil_dep = declare_dependency(sources: ['testutils.c'], link_with: trees)
++testutil_dep = declare_dependency(sources: ['testutils.c'])
+ 
+ tests = [
+   'add_subnode_with_nops',
+@@ -89,14 +88,11 @@
+   'supernode_atdepth_offset',
+   'sw_states',
+   'sw_tree1',
+-  'utilfdt_test',
+-]
+-
+-tests += [
+   'truncated_memrsv',
+   'truncated_property',
+   'truncated_string',
+   'unterminated_memrsv',
++  'utilfdt_test',
+ ]
+ 
+ test_deps = [testutil_dep, util_dep, libfdt_dep]
+@@ -141,10 +137,11 @@
+   'fdtget',
+   'fdtput',
+   'fdtdump',
+-  'fdtoverlay'
++  'fdtoverlay',
++  'treegen',
+ ]
+ run_test_deps = [
+-  dtc_tools, dumptrees_dtb, tests_exe
++  dtc_tools, treegen_dtb, tests_exe, treegen,
+ ]
+ if pylibfdt_enabled
+   run_test_types += 'pylibfdt'
+--- tests/pylibfdt_tests.py.orig
++++ tests/pylibfdt_tests.py
+@@ -13,26 +13,15 @@
+ import libfdt
+ from libfdt import Fdt, FdtSw, FdtException, QUIET_NOTFOUND, QUIET_ALL
+ 
+-TEST_ADDR_1H = 0xdeadbeef
+-TEST_ADDR_1L = 0x00000000
+-TEST_ADDR_1 = (TEST_ADDR_1H << 32) | TEST_ADDR_1L
+ TEST_ADDR_1 = 0x8000000000000000
+-TEST_SIZE_1H = 0x00000000
+-TEST_SIZE_1L = 0x00100000
+-TEST_SIZE_1 = (TEST_SIZE_1H << 32) | TEST_SIZE_1L
+-TEST_ADDR_2H = 0
+-TEST_ADDR_2L = 123456789
+-TEST_ADDR_2 = (TEST_ADDR_2H << 32) | TEST_ADDR_2L
+-TEST_SIZE_2H = 0
+-TEST_SIZE_2L = 0o10000
+-TEST_SIZE_2 = (TEST_SIZE_2H << 32) | TEST_SIZE_2L
++TEST_SIZE_1 = 0x0000000000100000
++TEST_ADDR_2 = 123456789
++TEST_SIZE_2 = 0o10000
+ 
+ TEST_VALUE_1 = 0xdeadbeef
+ TEST_VALUE_2 = 123456789
+ 
+-TEST_VALUE64_1H = 0xdeadbeef
+-TEST_VALUE64_1L = 0x01abcdef
+-TEST_VALUE64_1 = (TEST_VALUE64_1H << 32) | TEST_VALUE64_1L
++TEST_VALUE64_1 = 0xdeadbeef01abcdef
+ 
+ PHANDLE_1 = 0x2000
+ PHANDLE_2 = 0x2001
+--- tests/run_tests.sh.orig
++++ tests/run_tests.sh
+@@ -58,10 +58,15 @@
+ if [ -z "$TEST_LIBDIR" ]; then
+     TEST_LIBDIR=../libfdt
+ fi
+-if [ -n "$LD_LIBRARY_PATH" ]; then
+-    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TEST_LIBDIR"
++if [ "${HOSTOS:-}" = darwin ]; then
++    TEST_LIBDIR=$(CDPATH= cd -- "$TEST_LIBDIR" && pwd) || FAIL "Cannot resolve TEST_LIBDIR"
++    export DYLD_LIBRARY_PATH="$TEST_LIBDIR${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+ else
+-    export LD_LIBRARY_PATH="$TEST_LIBDIR"
++    if [ -n "${LD_LIBRARY_PATH:-}" ]; then
++        export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$TEST_LIBDIR"
++    else
++        export LD_LIBRARY_PATH="$TEST_LIBDIR"
++    fi
+ fi
+ 
+ # Find the python module that distutils builds under a machine-specific path
+@@ -132,7 +137,7 @@
+ 
+ run_sh_test () {
+     printf "$*:	"
+-    base_run_test sh "$@"
++    base_run_test "${TEST_SHELL:-sh}" "$@"
+ }
+ 
+ wrap_test () {
+@@ -202,7 +207,15 @@
+ }
+ 
+ asm_to_so () {
+-    $CC -shared -Wl,-znoexecstack -o $1.test.so "$SRCDIR/data.S" $1.test.s
++    if [ "${HOSTOS:-}" = darwin ]; then
++        adapted="$1.test.macho.s"
++        "${TEST_SHELL:-sh}" "$SRCDIR/adapt_asm_to_macho.sh" "$1.test.s" "$adapted" || return 1
++        $CC $CFLAGS $LDFLAGS -dynamiclib -o "$1.test.so" "$SRCDIR/data.S" "$adapted"
++        ret="$?"
++        rm -f "$adapted"
++        return "$ret"
++    fi
++    $CC $LDFLAGS -shared -Wl,-znoexecstack -o "$1.test.so" "$SRCDIR/data.S" "$1.test.s"
+ }
+ 
+ asm_to_so_test () {
+@@ -213,7 +226,7 @@
+     expect="$1"
+     shift
+     printf "fdtget-runtest.sh \"%s\" $*:	" "$expect"
+-    base_run_test sh "$SRCDIR/fdtget-runtest.sh" "$expect" "$@"
++    base_run_test "${TEST_SHELL:-sh}" "$SRCDIR/fdtget-runtest.sh" "$expect" "$@"
+ }
+ 
+ run_fdtput_test () {
+@@ -221,14 +234,14 @@
+     shift
+     shorten_echo fdtput-runtest.sh "$expect" "$@"
+     printf ":	"
+-    base_run_test sh "$SRCDIR/fdtput-runtest.sh" "$expect" "$@"
++    base_run_test "${TEST_SHELL:-sh}" "$SRCDIR/fdtput-runtest.sh" "$expect" "$@"
+ }
+ 
+ run_fdtdump_test() {
+     file="$1"
+     shorten_echo fdtdump-runtest.sh "$file"
+     printf ":	"
+-    base_run_test sh "$SRCDIR/fdtdump-runtest.sh" "$file" 2>/dev/null
++    base_run_test "${TEST_SHELL:-sh}" "$SRCDIR/fdtdump-runtest.sh" "$file" 2>/dev/null
+ }
+ 
+ run_fdtoverlay_test() {
+@@ -236,7 +249,7 @@
+     shift
+     shorten_echo fdtoverlay-runtest.sh "$expect" "$@"
+     printf ":	"
+-    base_run_test sh "$SRCDIR/fdtoverlay-runtest.sh" "$expect" "$@"
++    base_run_test "${TEST_SHELL:-sh}" "$SRCDIR/fdtoverlay-runtest.sh" "$expect" "$@"
+ }
+ 
+ BAD_FIXUP_TREES="bad_index \
+@@ -492,10 +505,10 @@
+     run_test appendprop_addrrange unit-addr-without-reg.dtb 2 1 3
+ 
+     # Tests for behaviour on various sorts of corrupted trees
+-    run_test truncated_property
+-    run_test truncated_string
+-    run_test truncated_memrsv
+-    run_test unterminated_memrsv
++    run_test truncated_property truncated_property.dtb
++    run_test truncated_string truncated_string.dtb
++    run_test truncated_memrsv truncated_memrsv.dtb
++    run_test unterminated_memrsv unterminated_memrsv.dtb
+ 
+     # Check aliases support in fdt_path_offset
+     run_dtc_test -I dts -O dtb -o aliases.dtb "$SRCDIR/aliases.dts"
+@@ -1112,6 +1125,15 @@
+     tot_tests=$((tot_tests + $total_tests))
+ }
+ 
++treegen_tests () {
++    treegen_error_dir="treegen-error.test.$$"
++    [ -x ./treegen ] || FAIL "treegen executable is missing or not runnable"
++    mkdir "$treegen_error_dir" || FAIL "Could not create treegen error-test directory"
++    mkdir "$treegen_error_dir/test_tree1.dtb" || FAIL "Could not create treegen error-test target"
++    run_wrap_error_test ./treegen "$treegen_error_dir"
++    rm -rf "$treegen_error_dir" || FAIL "Could not remove treegen error-test directory"
++}
++
+ while getopts "vt:me" ARG ; do
+     case $ARG in
+ 	"v")
+@@ -1130,7 +1152,7 @@
+ done
+ 
+ if [ -z "$TESTSETS" ]; then
+-    TESTSETS="libfdt utilfdt dtc dtbs_equal fdtget fdtput fdtdump fdtoverlay"
++    TESTSETS="libfdt utilfdt dtc dtbs_equal fdtget fdtput fdtdump fdtoverlay treegen"
+ 
+     # Test pylibfdt if the libfdt Python module is available.
+     if ! $no_python; then
+@@ -1169,6 +1191,9 @@
+ 	    ;;
+         "fdtoverlay")
+ 	    fdtoverlay_tests
++	    ;;
++        "treegen")
++	    treegen_tests
+ 	    ;;
+     esac
+ done
+--- tests/testdata.h.orig
++++ tests/testdata.h
+@@ -1,28 +1,12 @@
+-#ifdef __ASSEMBLER__
+-#define ASM_CONST_LL(x)	(x)
+-#else
+-#define ASM_CONST_LL(x)	(x##ULL)
+-#endif
+-
+-#define TEST_ADDR_1H	ASM_CONST_LL(0xdeadbeef)
+-#define TEST_ADDR_1L	ASM_CONST_LL(0x00000000)
+-#define TEST_ADDR_1	((TEST_ADDR_1H << 32) | TEST_ADDR_1L)
+-#define TEST_SIZE_1H	ASM_CONST_LL(0x00000000)
+-#define TEST_SIZE_1L	ASM_CONST_LL(0x00100000)
+-#define TEST_SIZE_1	((TEST_SIZE_1H << 32) | TEST_SIZE_1L)
+-#define TEST_ADDR_2H	ASM_CONST_LL(0)
+-#define TEST_ADDR_2L	ASM_CONST_LL(123456789)
+-#define TEST_ADDR_2	((TEST_ADDR_2H << 32) | TEST_ADDR_2L)
+-#define TEST_SIZE_2H	ASM_CONST_LL(0)
+-#define TEST_SIZE_2L	ASM_CONST_LL(010000)
+-#define TEST_SIZE_2	((TEST_SIZE_2H << 32) | TEST_SIZE_2L)
++#define TEST_ADDR_1	0xdeadbeef00000000ULL
++#define TEST_SIZE_1	0x0000000000100000ULL
++#define TEST_ADDR_2	123456789ULL
++#define TEST_SIZE_2	010000ULL
+ 
+ #define TEST_VALUE_1	0xdeadbeef
+ #define TEST_VALUE_2	123456789
+ 
+-#define TEST_VALUE64_1H	ASM_CONST_LL(0xdeadbeef)
+-#define TEST_VALUE64_1L	ASM_CONST_LL(0x01abcdef)
+-#define TEST_VALUE64_1	((TEST_VALUE64_1H << 32) | TEST_VALUE64_1L)
++#define TEST_VALUE64_1	0xdeadbeef01abcdefULL
+ 
+ #define PHANDLE_1	0x2000
+ #define PHANDLE_2	0x2001
+@@ -45,17 +29,3 @@
+ #define TEST_MEMREGION_SIZE	0x9abcdef0
+ #define TEST_MEMREGION_SIZE_HI	0x0fedcba900000000
+ #define TEST_MEMREGION_SIZE_INC	0x1000
+-
+-#ifndef __ASSEMBLER__
+-extern struct fdt_header test_tree1;
+-extern struct fdt_header truncated_property;
+-extern struct fdt_header bad_node_char;
+-extern struct fdt_header bad_node_format;
+-extern struct fdt_header bad_prop_char;
+-extern struct fdt_header ovf_size_strings;
+-extern struct fdt_header truncated_string;
+-extern struct fdt_header truncated_memrsv;
+-extern struct fdt_header unterminated_memrsv;
+-extern struct fdt_header two_roots;
+-extern struct fdt_header named_root;
+-#endif /* ! __ASSEMBLER__ */
+--- /dev/null
++++ tests/treegen.c
+@@ -0,0 +1,785 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * treegen - generate test device tree blobs
++ *
++ * Build example device tree blobs for test.  Note that some of the generated
++ * blobs are deliberately malformed, in order to test error conditions.
++ */
++#include <assert.h>
++#include <errno.h>
++#include <stdarg.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <stdint.h>
++#include <unistd.h>
++#include <fcntl.h>
++
++#include <libfdt_env.h>
++#include <fdt.h>
++
++#include "tests.h"
++#include "testdata.h"
++
++/*
++ * Buffer with write cursor.  Emit helpers write at the cursor, advance it, and
++ * return the offset at which data was written.
++ */
++struct buf {
++	char *data;
++	size_t size, cursor;
++};
++
++#define CHUNKSIZE	1024
++
++static struct buf buf_init(void)
++{
++	struct buf b = { NULL, 0, 0 };
++
++	return b;
++}
++
++/* Low-level helpers */
++
++static size_t emit_bytes(struct buf *b, const void *data, int len)
++{
++	size_t off = b->cursor;
++
++	if (!len)
++		return off;
++
++	if (b->cursor + len > b->size) {
++		size_t newsize = b->cursor + len + CHUNKSIZE;
++
++		b->data = xrealloc(b->data, newsize);
++		memset(b->data + b->size, 0, newsize - b->size);
++		b->size = newsize;
++	}
++	memcpy(b->data + b->cursor, data, len);
++	b->cursor += len;
++	return off;
++}
++
++static size_t emit_u32(struct buf *b, uint32_t val)
++{
++	fdt32_t beval = cpu_to_fdt32(val);
++
++	return emit_bytes(b, &beval, sizeof(beval));
++}
++
++static size_t emit_u64(struct buf *b, uint64_t val)
++{
++	fdt64_t beval = cpu_to_fdt64(val);
++
++	return emit_bytes(b, &beval, sizeof(beval));
++}
++
++static size_t emit_string(struct buf *b, const char *str)
++{
++	return emit_bytes(b, str, strlen(str) + 1);
++}
++
++#define MAX_ALIGNMENT	8
++
++static size_t emit_align(struct buf *b, size_t alignment)
++{
++	size_t pad = ((b->cursor + alignment - 1) & ~(alignment - 1)) - b->cursor;
++	static const char zeros[MAX_ALIGNMENT];
++
++	assert(alignment <= MAX_ALIGNMENT);
++	assert(pad < alignment);
++
++	return emit_bytes(b, zeros, pad);
++}
++
++static size_t start_block(const struct buf *b)
++{
++	return b->cursor;
++}
++
++static void fill_prop_name(const struct buf *b, size_t strs, size_t prop, size_t stroff)
++{
++	struct fdt_property *fp = (struct fdt_property *)(b->data + prop);
++
++	fp->nameoff = cpu_to_fdt32(stroff - strs);
++}
++
++/* FDT structure helpers */
++
++static size_t emit_fdt_header(struct buf *b)
++{
++	size_t off = emit_u32(b, FDT_MAGIC);
++
++	emit_u32(b, 0);	/* totalsize */
++	emit_u32(b, 0);	/* off_dt_struct */
++	emit_u32(b, 0);	/* off_dt_strings */
++	emit_u32(b, 0);	/* off_mem_rsvmap */
++	emit_u32(b, 0x11);	/* version */
++	emit_u32(b, 0x10);	/* last_comp_version */
++	emit_u32(b, 0);	/* boot_cpuid_phys */
++	emit_u32(b, 0);	/* size_dt_strings */
++	emit_u32(b, 0);	/* size_dt_struct */
++	return off;
++}
++
++static void finish_rsvmap(const struct buf *b, size_t hdr, size_t rsvmap)
++{
++	struct fdt_header *fh = (struct fdt_header *)(b->data + hdr);
++
++	fh->off_mem_rsvmap = cpu_to_fdt32(rsvmap - hdr);
++}
++
++static void finish_struct_block(const struct buf *b, size_t hdr, size_t start)
++{
++	struct fdt_header *fh = (struct fdt_header *)(b->data + hdr);
++
++	fh->off_dt_struct = cpu_to_fdt32(start - hdr);
++	fh->size_dt_struct = cpu_to_fdt32(b->cursor - start);
++}
++
++static void finish_strings_block(const struct buf *b, size_t hdr, size_t start)
++{
++	struct fdt_header *fh = (struct fdt_header *)(b->data + hdr);
++
++	fh->off_dt_strings = cpu_to_fdt32(start - hdr);
++	fh->size_dt_strings = cpu_to_fdt32(b->cursor - start);
++}
++
++static void finish_totalsize(const struct buf *b, size_t hdr)
++{
++	struct fdt_header *fh = (struct fdt_header *)(b->data + hdr);
++
++	fh->totalsize = cpu_to_fdt32(b->cursor - hdr);
++}
++
++static size_t emit_rsvmap_entry(struct buf *b, uint64_t addr, uint64_t size)
++{
++	size_t off = emit_u64(b, addr);
++
++	emit_u64(b, size);
++	return off;
++}
++
++static size_t emit_rsvmap_term(struct buf *b)
++{
++	return emit_rsvmap_entry(b, 0, 0);
++}
++
++static void emit_rsvmap_empty(struct buf *b, size_t hdr)
++{
++	size_t rsvmap = start_block(b);
++
++	emit_rsvmap_term(b);
++	finish_rsvmap(b, hdr, rsvmap);
++}
++
++static size_t emit_begin_node(struct buf *b, const char *name)
++{
++	size_t off = emit_u32(b, FDT_BEGIN_NODE);
++
++	emit_string(b, name);
++	emit_align(b, FDT_TAGSIZE);
++	return off;
++}
++
++static size_t emit_end_node(struct buf *b)
++{
++	return emit_u32(b, FDT_END_NODE);
++}
++
++static size_t emit_fdt_end(struct buf *b)
++{
++	return emit_u32(b, FDT_END);
++}
++
++static size_t emit_prop_header(struct buf *b, int nameoff, int len)
++{
++	size_t off = emit_u32(b, FDT_PROP);
++
++	emit_u32(b, len);
++	emit_u32(b, nameoff);
++	return off;
++}
++
++static size_t emit_prop_nil(struct buf *b, int nameoff)
++{
++	return emit_prop_header(b, nameoff, 0);
++}
++
++static size_t emit_prop_u32(struct buf *b, int nameoff, uint32_t val)
++{
++	size_t off = emit_prop_header(b, nameoff, 4);
++
++	emit_u32(b, val);
++	return off;
++}
++
++static size_t emit_prop_u64(struct buf *b, int nameoff, uint64_t val)
++{
++	size_t off = emit_prop_header(b, nameoff, 8);
++
++	emit_u64(b, val);
++	return off;
++}
++
++static size_t emit_prop_str(struct buf *b, int nameoff, const char *str)
++{
++	int len = strlen(str) + 1;
++	size_t off = emit_prop_header(b, nameoff, len);
++
++	emit_bytes(b, str, len);
++	emit_align(b, FDT_TAGSIZE);
++	return off;
++}
++
++#define emit_prop_strings(b, nameoff, ...) \
++	emit_prop_strings_(b, nameoff, __VA_ARGS__, (const char *)NULL)
++
++static size_t emit_prop_strings_(struct buf *b, int nameoff, ...)
++{
++	size_t off = emit_prop_header(b, nameoff, 0);
++	size_t start = b->cursor;
++	va_list ap;
++	const char *s;
++
++	va_start(ap, nameoff);
++	while ((s = va_arg(ap, const char *)) != NULL)
++		emit_string(b, s);
++	va_end(ap);
++
++	((struct fdt_property *)(b->data + off))->len =
++		cpu_to_fdt32(b->cursor - start);
++	emit_align(b, FDT_TAGSIZE);
++	return off;
++}
++
++/*
++ * Tree generators
++ *
++ * Each function builds a complete DTB in a buffer.
++ */
++
++static struct buf make_test_tree1(void)
++{
++	struct buf b = buf_init();
++	size_t hdr;
++	size_t p_compatible, p_prop_int, p_prop_int64, p_prop_str,
++	       p_address_cells, p_size_cells;
++	size_t p_s1_compatible, p_s1_reg, p_s1_prop_int;
++	size_t p_s1ss_compatible, p_s1ss_placeholder, p_s1ss_prop_int;
++	size_t p_s2_reg, p_s2_linux_phandle, p_s2_prop_int,
++	       p_s2_address_cells, p_s2_size_cells;
++	size_t p_s2ss0_reg, p_s2ss0_phandle, p_s2ss0_compatible,
++	       p_s2ss0_prop_int;
++
++	hdr = emit_fdt_header(&b);
++	emit_align(&b, 8);
++
++	{
++		size_t rsvmap = start_block(&b);
++
++		emit_rsvmap_entry(&b, TEST_ADDR_1, TEST_SIZE_1);
++		emit_rsvmap_entry(&b, TEST_ADDR_2, TEST_SIZE_2);
++		emit_rsvmap_term(&b);
++		finish_rsvmap(&b, hdr, rsvmap);
++	}
++
++	{
++		size_t ss = start_block(&b);
++
++		emit_begin_node(&b, "");
++		p_compatible = emit_prop_str(&b, 0, "test_tree1");
++		p_prop_int = emit_prop_u32(&b, 0, TEST_VALUE_1);
++		p_prop_int64 = emit_prop_u64(&b, 0, TEST_VALUE64_1);
++		p_prop_str = emit_prop_str(&b, 0, TEST_STRING_1);
++		p_address_cells = emit_prop_u32(&b, 0, 1);
++		p_size_cells = emit_prop_u32(&b, 0, 0);
++
++		emit_begin_node(&b, "subnode@1");
++		p_s1_compatible = emit_prop_str(&b, 0, "subnode1");
++		p_s1_reg = emit_prop_u32(&b, 0, 1);
++		p_s1_prop_int = emit_prop_u32(&b, 0, TEST_VALUE_1);
++
++		emit_begin_node(&b, "subsubnode");
++		p_s1ss_compatible = emit_prop_strings(&b, 0,
++						     "subsubnode1", "subsubnode");
++		p_s1ss_placeholder = emit_prop_strings(&b, 0,
++						       "this is a placeholder string",
++						       "string2");
++		p_s1ss_prop_int = emit_prop_u32(&b, 0, TEST_VALUE_1);
++		emit_end_node(&b);
++
++		emit_begin_node(&b, "ss1");
++		emit_end_node(&b);
++
++		emit_end_node(&b);
++
++		emit_begin_node(&b, "subnode@2");
++		p_s2_reg = emit_prop_u32(&b, 0, 2);
++		p_s2_linux_phandle = emit_prop_u32(&b, 0, PHANDLE_1);
++		p_s2_prop_int = emit_prop_u32(&b, 0, TEST_VALUE_2);
++		p_s2_address_cells = emit_prop_u32(&b, 0, 1);
++		p_s2_size_cells = emit_prop_u32(&b, 0, 0);
++
++		emit_begin_node(&b, "subsubnode@0");
++		p_s2ss0_reg = emit_prop_u32(&b, 0, 0);
++		p_s2ss0_phandle = emit_prop_u32(&b, 0, PHANDLE_2);
++		p_s2ss0_compatible = emit_prop_strings(&b, 0,
++						      "subsubnode2", "subsubnode");
++		p_s2ss0_prop_int = emit_prop_u32(&b, 0, TEST_VALUE_2);
++		emit_end_node(&b);
++
++		emit_begin_node(&b, "ss2");
++		emit_end_node(&b);
++
++		emit_end_node(&b);
++
++		emit_end_node(&b);
++		emit_fdt_end(&b);
++		finish_struct_block(&b, hdr, ss);
++	}
++
++	{
++		size_t strs = start_block(&b);
++		size_t s;
++
++		s = emit_string(&b, "compatible");
++		fill_prop_name(&b, strs, p_compatible, s);
++		fill_prop_name(&b, strs, p_s1_compatible, s);
++		fill_prop_name(&b, strs, p_s1ss_compatible, s);
++		fill_prop_name(&b, strs, p_s2ss0_compatible, s);
++
++		s = emit_string(&b, "prop-int");
++		fill_prop_name(&b, strs, p_prop_int, s);
++		fill_prop_name(&b, strs, p_s1_prop_int, s);
++		fill_prop_name(&b, strs, p_s1ss_prop_int, s);
++		fill_prop_name(&b, strs, p_s2_prop_int, s);
++		fill_prop_name(&b, strs, p_s2ss0_prop_int, s);
++
++		fill_prop_name(&b, strs, p_prop_int64,
++			       emit_string(&b, "prop-int64"));
++
++		fill_prop_name(&b, strs, p_prop_str,
++			       emit_string(&b, "prop-str"));
++
++		fill_prop_name(&b, strs, p_s2_linux_phandle,
++			       emit_string(&b, "linux,phandle"));
++
++		fill_prop_name(&b, strs, p_s2ss0_phandle,
++			       emit_string(&b, "phandle"));
++
++		s = emit_string(&b, "reg");
++		fill_prop_name(&b, strs, p_s1_reg, s);
++		fill_prop_name(&b, strs, p_s2_reg, s);
++		fill_prop_name(&b, strs, p_s2ss0_reg, s);
++
++		fill_prop_name(&b, strs, p_s1ss_placeholder,
++			       emit_string(&b, "placeholder"));
++
++		s = emit_string(&b, "#address-cells");
++		fill_prop_name(&b, strs, p_address_cells, s);
++		fill_prop_name(&b, strs, p_s2_address_cells, s);
++
++		s = emit_string(&b, "#size-cells");
++		fill_prop_name(&b, strs, p_size_cells, s);
++		fill_prop_name(&b, strs, p_s2_size_cells, s);
++
++		finish_strings_block(&b, hdr, strs);
++	}
++
++	finish_totalsize(&b, hdr);
++
++	return b;
++}
++
++static struct buf make_truncated_property(void)
++{
++	struct buf b = buf_init();
++	size_t hdr;
++	size_t p;
++
++	hdr = emit_fdt_header(&b);
++	emit_align(&b, 8);
++
++	emit_rsvmap_empty(&b, hdr);
++
++	{
++		size_t ss = start_block(&b);
++
++		emit_begin_node(&b, "");
++		p = emit_prop_header(&b, 0, 4);
++		finish_struct_block(&b, hdr, ss);
++	}
++
++	{
++		size_t strs = start_block(&b);
++
++		emit_string(&b, "truncated");
++		fill_prop_name(&b, strs, p, strs);
++		finish_strings_block(&b, hdr, strs);
++	}
++
++	finish_totalsize(&b, hdr);
++
++	return b;
++}
++
++static struct buf make_bad_node_char(void)
++{
++	struct buf b = buf_init();
++	size_t hdr;
++
++	hdr = emit_fdt_header(&b);
++	emit_align(&b, 8);
++
++	emit_rsvmap_empty(&b, hdr);
++
++	{
++		size_t ss = start_block(&b);
++
++		emit_begin_node(&b, "");
++		emit_begin_node(&b, "sub$node");
++		emit_end_node(&b);
++		emit_end_node(&b);
++		emit_fdt_end(&b);
++		finish_struct_block(&b, hdr, ss);
++	}
++
++	finish_strings_block(&b, hdr, start_block(&b));
++
++	finish_totalsize(&b, hdr);
++
++	return b;
++}
++
++static struct buf make_bad_node_format(void)
++{
++	struct buf b = buf_init();
++	size_t hdr;
++
++	hdr = emit_fdt_header(&b);
++	emit_align(&b, 8);
++
++	emit_rsvmap_empty(&b, hdr);
++
++	{
++		size_t ss = start_block(&b);
++
++		emit_begin_node(&b, "");
++		emit_begin_node(&b, "subnode@1@2");
++		emit_end_node(&b);
++		emit_end_node(&b);
++		emit_fdt_end(&b);
++		finish_struct_block(&b, hdr, ss);
++	}
++
++	finish_strings_block(&b, hdr, start_block(&b));
++
++	finish_totalsize(&b, hdr);
++
++	return b;
++}
++
++static struct buf make_bad_prop_char(void)
++{
++	struct buf b = buf_init();
++	size_t hdr;
++	size_t p;
++
++	hdr = emit_fdt_header(&b);
++	emit_align(&b, 8);
++
++	emit_rsvmap_empty(&b, hdr);
++
++	{
++		size_t ss = start_block(&b);
++
++		emit_begin_node(&b, "");
++		p = emit_prop_u32(&b, 0, TEST_VALUE_1);
++		emit_end_node(&b);
++		emit_fdt_end(&b);
++		finish_struct_block(&b, hdr, ss);
++	}
++
++	{
++		size_t strs = start_block(&b);
++
++		fill_prop_name(&b, strs, p,
++			       emit_string(&b, "prop$erty"));
++		finish_strings_block(&b, hdr, strs);
++	}
++
++	finish_totalsize(&b, hdr);
++
++	return b;
++}
++
++static struct buf make_ovf_size_strings(void)
++{
++	struct buf b = buf_init();
++	size_t hdr;
++
++	hdr = emit_fdt_header(&b);
++	emit_align(&b, 8);
++
++	emit_rsvmap_empty(&b, hdr);
++
++	{
++		size_t ss = start_block(&b);
++
++		emit_begin_node(&b, "");
++		emit_prop_u32(&b, 0x10000000, 0);
++		emit_end_node(&b);
++		emit_fdt_end(&b);
++		finish_struct_block(&b, hdr, ss);
++	}
++
++	{
++		size_t strs = start_block(&b);
++
++		emit_string(&b, "x");
++		finish_strings_block(&b, hdr, strs);
++	}
++
++	((struct fdt_header *)(b.data + hdr))->size_dt_strings =
++		cpu_to_fdt32(0xffffffff);
++
++	finish_totalsize(&b, hdr);
++
++	return b;
++}
++
++static struct buf make_truncated_string(void)
++{
++	struct buf b = buf_init();
++	size_t hdr;
++	size_t p_good, p_bad;
++
++	hdr = emit_fdt_header(&b);
++	emit_align(&b, 8);
++
++	emit_rsvmap_empty(&b, hdr);
++
++	{
++		size_t ss = start_block(&b);
++
++		emit_begin_node(&b, "");
++		p_good = emit_prop_nil(&b, 0);
++		p_bad = emit_prop_nil(&b, 0);
++		emit_end_node(&b);
++		emit_fdt_end(&b);
++		finish_struct_block(&b, hdr, ss);
++	}
++
++	{
++		size_t strs = start_block(&b);
++
++		fill_prop_name(&b, strs, p_good, emit_string(&b, "good"));
++		fill_prop_name(&b, strs, p_bad, emit_bytes(&b, "bad", 3));
++		finish_strings_block(&b, hdr, strs);
++	}
++
++	finish_totalsize(&b, hdr);
++
++	return b;
++}
++
++static struct buf make_truncated_memrsv(void)
++{
++	struct buf b = buf_init();
++	size_t hdr;
++
++	hdr = emit_fdt_header(&b);
++
++	{
++		size_t ss = start_block(&b);
++
++		emit_begin_node(&b, "");
++		emit_end_node(&b);
++		emit_fdt_end(&b);
++		finish_struct_block(&b, hdr, ss);
++	}
++
++	finish_strings_block(&b, hdr, start_block(&b));
++
++	{
++		size_t rsvmap;
++
++		emit_align(&b, 8);
++		rsvmap = start_block(&b);
++		emit_rsvmap_entry(&b, TEST_ADDR_1, TEST_SIZE_1);
++		finish_rsvmap(&b, hdr, rsvmap);
++	}
++
++	finish_totalsize(&b, hdr);
++
++	return b;
++}
++
++static struct buf make_unterminated_memrsv(void)
++{
++	struct buf b = buf_init();
++	size_t hdr;
++
++	hdr = emit_fdt_header(&b);
++
++	{
++		size_t rsvmap;
++
++		emit_align(&b, 8);
++		rsvmap = start_block(&b);
++		emit_rsvmap_entry(&b, TEST_ADDR_1, TEST_SIZE_1);
++		finish_rsvmap(&b, hdr, rsvmap);
++	}
++
++	{
++		size_t ss = start_block(&b);
++
++		emit_begin_node(&b, "");
++		emit_end_node(&b);
++		emit_fdt_end(&b);
++		finish_struct_block(&b, hdr, ss);
++	}
++
++	finish_strings_block(&b, hdr, start_block(&b));
++
++	finish_totalsize(&b, hdr);
++
++	return b;
++}
++
++static struct buf make_two_roots(void)
++{
++	struct buf b = buf_init();
++	size_t hdr;
++
++	hdr = emit_fdt_header(&b);
++	emit_align(&b, 8);
++
++	emit_rsvmap_empty(&b, hdr);
++
++	{
++		size_t ss = start_block(&b);
++
++		emit_begin_node(&b, "");
++		emit_end_node(&b);
++		emit_begin_node(&b, "");
++		emit_end_node(&b);
++		emit_fdt_end(&b);
++		finish_struct_block(&b, hdr, ss);
++	}
++
++	finish_strings_block(&b, hdr, start_block(&b));
++
++	finish_totalsize(&b, hdr);
++
++	return b;
++}
++
++static struct buf make_named_root(void)
++{
++	struct buf b = buf_init();
++	size_t hdr;
++
++	hdr = emit_fdt_header(&b);
++	emit_align(&b, 8);
++
++	emit_rsvmap_empty(&b, hdr);
++
++	{
++		size_t ss = start_block(&b);
++
++		emit_begin_node(&b, "fake");
++		emit_end_node(&b);
++		emit_fdt_end(&b);
++		finish_struct_block(&b, hdr, ss);
++	}
++
++	finish_strings_block(&b, hdr, start_block(&b));
++
++	finish_totalsize(&b, hdr);
++
++	return b;
++}
++
++/* Tree table and main */
++
++static struct {
++	struct buf (*generator)(void);
++	const char *filename;
++} trees[] = {
++#define TREE(name)	{ make_##name, #name ".dtb" }
++	TREE(test_tree1),
++	TREE(bad_node_char), TREE(bad_node_format), TREE(bad_prop_char),
++	TREE(ovf_size_strings),
++	TREE(truncated_property), TREE(truncated_string),
++	TREE(truncated_memrsv),
++	TREE(unterminated_memrsv),
++	TREE(two_roots),
++	TREE(named_root),
++};
++
++static int write_tree(const char *filename, const struct buf *b)
++{
++	size_t offset = 0;
++	int fd;
++
++	fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0666);
++	if (fd < 0) {
++		perror("open()");
++		return -1;
++	}
++
++	while (offset < b->cursor) {
++		ssize_t ret = write(fd, b->data + offset, b->cursor - offset);
++
++		if (ret < 0) {
++			if (errno == EINTR)
++				continue;
++			perror("write()");
++			close(fd);
++			return -1;
++		}
++		if (ret == 0) {
++			fprintf(stderr, "write(): zero-length write\n");
++			close(fd);
++			return -1;
++		}
++		offset += ret;
++	}
++
++	if (close(fd) != 0) {
++		perror("close()");
++		return -1;
++	}
++	return 0;
++}
++
++int main(int argc, char *argv[])
++{
++	unsigned int i;
++
++	if (argc != 2) {
++		fprintf(stderr, "Usage: %s <output-dir>\n", argv[0]);
++		return 1;
++	}
++
++	if (chdir(argv[1]) != 0) {
++		perror("chdir()");
++		return 1;
++	}
++
++	for (i = 0; i < ARRAY_SIZE(trees); i++) {
++		struct buf b = trees[i].generator();
++		const char *filename = trees[i].filename;
++
++		printf("Tree \"%s\", %zu bytes\n", filename, b.cursor);
++		if (write_tree(filename, &b) != 0) {
++			free(b.data);
++			return 1;
++		}
++		free(b.data);
++	}
++
++	return 0;
++}
+--- tests/trees.S
++++ /dev/null
+@@ -1,343 +0,0 @@
+-#include <fdt.h>
+-#include "testdata.h"
+-
+-	.macro	fdtlong	val
+-	.byte	((\val) >> 24) & 0xff
+-	.byte	((\val) >> 16) & 0xff
+-	.byte	((\val) >> 8) & 0xff
+-	.byte	(\val) & 0xff
+-	.endm
+-
+-	.macro	treehdr	tree
+-	.balign	8
+-	.globl	\tree
+-\tree :
+-	fdtlong	FDT_MAGIC
+-	fdtlong	(\tree\()_end - \tree)
+-	fdtlong	(\tree\()_struct - \tree)
+-	fdtlong	(\tree\()_strings - \tree)
+-	fdtlong	(\tree\()_rsvmap - \tree)
+-	fdtlong	0x11
+-	fdtlong	0x10
+-	fdtlong	0
+-	fdtlong	(\tree\()_strings_end - \tree\()_strings)
+-	fdtlong	(\tree\()_struct_end - \tree\()_struct)
+-	.endm
+-
+-	.macro	rsvmape	addrh, addrl, lenh, lenl
+-	fdtlong	\addrh
+-	fdtlong	\addrl
+-	fdtlong	\lenh
+-	fdtlong	\lenl
+-	.endm
+-
+-	.macro	empty_rsvmap	tree
+-	.balign	8
+-\tree\()_rsvmap:
+-	rsvmape	0, 0, 0, 0
+-\tree\()_rsvmap_end:
+-	.endm
+-
+-	.macro prophdr	tree, name, len
+-	fdtlong	FDT_PROP
+-	fdtlong	\len
+-	fdtlong	(\tree\()_\name - \tree\()_strings)
+-	.endm
+-
+-	.macro propnil	tree, name
+-	prophdr	\tree, \name, 0
+-	.endm
+-
+-	.macro propu32	tree, name, val
+-	prophdr	\tree, \name, 4
+-	fdtlong	\val
+-	.endm
+-
+-	.macro propu64	tree, name, valh, vall
+-	prophdr	\tree, \name, 8
+-	fdtlong	\valh
+-	fdtlong	\vall
+-	.endm
+-
+-	.macro propstr	tree, name, str:vararg
+-	prophdr	\tree, \name, (55f - 54f)
+-54:
+-	.asciz	\str
+-55:
+-	.balign	4
+-	.endm
+-
+-	.macro	beginn	name:vararg
+-	fdtlong	FDT_BEGIN_NODE
+-	.asciz	\name
+-	.balign 4
+-	.endm
+-
+-	.macro	endn
+-	fdtlong	FDT_END_NODE
+-	.endm
+-
+-	.macro	string	tree, name, str:vararg
+-\tree\()_\name :
+-	.asciz	\str
+-	.endm
+-
+-
+-	.data
+-
+-	treehdr	test_tree1
+-
+-	.balign	8
+-test_tree1_rsvmap:
+-	rsvmape	TEST_ADDR_1H, TEST_ADDR_1L, TEST_SIZE_1H, TEST_SIZE_1L
+-	rsvmape	TEST_ADDR_2H, TEST_ADDR_2L, TEST_SIZE_2H, TEST_SIZE_2L
+-	rsvmape	0, 0, 0, 0
+-test_tree1_rsvmap_end:
+-
+-test_tree1_struct:
+-	beginn	""
+-	propstr	test_tree1, compatible, "test_tree1"
+-	propu32	test_tree1, prop_int, TEST_VALUE_1
+-	propu64	test_tree1, prop_int64, TEST_VALUE64_1H, TEST_VALUE64_1L
+-	propstr	test_tree1, prop_str, TEST_STRING_1
+-	propu32 test_tree1, address_cells, 1
+-	propu32	test_tree1, size_cells, 0
+-
+-	beginn	"subnode@1"
+-	propstr	test_tree1, compatible, "subnode1"
+-	propu32	test_tree1, reg, 1
+-	propu32	test_tree1, prop_int, TEST_VALUE_1
+-
+-	beginn	"subsubnode"
+-	propstr	test_tree1, compatible, "subsubnode1\0subsubnode"
+-	propstr	test_tree1, placeholder, "this is a placeholder string\0string2"
+-	propu32	test_tree1, prop_int, TEST_VALUE_1
+-	endn
+-
+-	beginn	"ss1"
+-	endn
+-
+-	endn
+-
+-	beginn	"subnode@2"
+-	propu32	test_tree1, reg, 2
+-	propu32	test_tree1, linux_phandle, PHANDLE_1
+-	propu32	test_tree1, prop_int, TEST_VALUE_2
+-	propu32	test_tree1, address_cells, 1
+-	propu32	test_tree1, size_cells, 0
+-
+-	beginn	"subsubnode@0"
+-	propu32	test_tree1, reg, 0
+-	propu32	test_tree1, phandle, PHANDLE_2
+-	propstr	test_tree1, compatible, "subsubnode2\0subsubnode"
+-	propu32	test_tree1, prop_int, TEST_VALUE_2
+-	endn
+-
+-	beginn	"ss2"
+-	endn
+-
+-	endn
+-
+-	endn
+-	fdtlong	FDT_END
+-test_tree1_struct_end:
+-
+-test_tree1_strings:
+-	string	test_tree1, compatible, "compatible"
+-	string	test_tree1, prop_int, "prop-int"
+-	string	test_tree1, prop_int64, "prop-int64"
+-	string	test_tree1, prop_str, "prop-str"
+-	string	test_tree1, linux_phandle, "linux,phandle"
+-	string	test_tree1, phandle, "phandle"
+-	string	test_tree1, reg, "reg"
+-	string	test_tree1, placeholder, "placeholder"
+-	string	test_tree1, address_cells, "#address-cells"
+-	string	test_tree1, size_cells, "#size-cells"
+-test_tree1_strings_end:
+-test_tree1_end:
+-
+-
+-	treehdr	truncated_property
+-	empty_rsvmap	truncated_property
+-
+-truncated_property_struct:
+-	beginn	""
+-	prophdr	truncated_property, prop_truncated, 4
+-	/* Oops, no actual property data here */
+-truncated_property_struct_end:
+-
+-truncated_property_strings:
+-	string	truncated_property, prop_truncated, "truncated"
+-truncated_property_strings_end:
+-
+-truncated_property_end:
+-
+-
+-	treehdr	bad_node_char
+-	empty_rsvmap	bad_node_char
+-
+-bad_node_char_struct:
+-	beginn	""
+-	beginn	"sub$node"
+-	endn
+-	endn
+-	fdtlong	FDT_END
+-bad_node_char_struct_end:
+-
+-bad_node_char_strings:
+-bad_node_char_strings_end:
+-bad_node_char_end:
+-
+-
+-	treehdr	bad_node_format
+-	empty_rsvmap	bad_node_format
+-
+-bad_node_format_struct:
+-	beginn	""
+-	beginn	"subnode@1@2"
+-	endn
+-	endn
+-	fdtlong	FDT_END
+-bad_node_format_struct_end:
+-
+-bad_node_format_strings:
+-bad_node_format_strings_end:
+-bad_node_format_end:
+-
+-
+-	treehdr	bad_prop_char
+-	empty_rsvmap	bad_prop_char
+-
+-bad_prop_char_struct:
+-	beginn	""
+-	propu32	bad_prop_char, prop, TEST_VALUE_1
+-	endn
+-	fdtlong	FDT_END
+-bad_prop_char_struct_end:
+-
+-bad_prop_char_strings:
+-	string	bad_prop_char, prop, "prop$erty"
+-bad_prop_char_strings_end:
+-bad_prop_char_end:
+-
+-
+-	/* overflow_size_strings */
+-	.balign	8
+-	.globl	ovf_size_strings
+-ovf_size_strings:
+-	fdtlong	FDT_MAGIC
+-	fdtlong	(ovf_size_strings_end - ovf_size_strings)
+-	fdtlong	(ovf_size_strings_struct - ovf_size_strings)
+-	fdtlong	(ovf_size_strings_strings - ovf_size_strings)
+-	fdtlong	(ovf_size_strings_rsvmap - ovf_size_strings)
+-	fdtlong	0x11
+-	fdtlong	0x10
+-	fdtlong	0
+-	fdtlong	0xffffffff
+-	fdtlong	(ovf_size_strings_struct_end - ovf_size_strings_struct)
+-	empty_rsvmap	ovf_size_strings
+-
+-ovf_size_strings_struct:
+-	beginn	""
+-	propu32	ovf_size_strings, bad_string, 0
+-	endn
+-	fdtlong	FDT_END
+-ovf_size_strings_struct_end:
+-
+-ovf_size_strings_strings:
+-	string	ovf_size_strings, x, "x"
+-	ovf_size_strings_bad_string = ovf_size_strings_strings + 0x10000000
+-ovf_size_strings_strings_end:
+-ovf_size_strings_end:
+-
+-
+-	/* truncated_string */
+-	treehdr	truncated_string
+-	empty_rsvmap	truncated_string
+-
+-truncated_string_struct:
+-	beginn	""
+-	propnil	truncated_string, good_string
+-	propnil	truncated_string, bad_string
+-	endn
+-	fdtlong	FDT_END
+-truncated_string_struct_end:
+-
+-truncated_string_strings:
+-	string	truncated_string, good_string, "good"
+-truncated_string_bad_string:
+-	.ascii	"bad"
+-	/* NOTE: terminating \0 deliberately missing */
+-truncated_string_strings_end:
+-truncated_string_end:
+-
+-
+-	/* truncated_memrsv */
+-	treehdr	truncated_memrsv
+-
+-truncated_memrsv_struct:
+-	beginn	""
+-	endn
+-	fdtlong	FDT_END
+-truncated_memrsv_struct_end:
+-
+-truncated_memrsv_strings:
+-truncated_memrsv_strings_end:
+-
+-	.balign	8
+-truncated_memrsv_rsvmap:
+-	rsvmape	TEST_ADDR_1H, TEST_ADDR_1L, TEST_SIZE_1H, TEST_SIZE_1L
+-truncated_memrsv_rsvmap_end:
+-
+-truncated_memrsv_end:
+-
+-	/* unterminated_memrsv */
+-	treehdr	unterminated_memrsv
+-
+-unterminated_memrsv_rsvmap:
+-	rsvmape	TEST_ADDR_1H, TEST_ADDR_1L, TEST_SIZE_1H, TEST_SIZE_1L
+-unterminated_memrsv_rsvmap_end:
+-
+-unterminated_memrsv_struct:
+-	beginn	""
+-	endn
+-	fdtlong	FDT_END
+-unterminated_memrsv_struct_end:
+-
+-unterminated_memrsv_strings:
+-unterminated_memrsv_strings_end:
+-
+-unterminated_memrsv_end:
+-
+-        /* two root nodes */
+-	treehdr	two_roots
+-	empty_rsvmap	two_roots
+-
+-two_roots_struct:
+-	beginn	""
+-	endn
+-	beginn	""
+-	endn
+-	fdtlong	FDT_END
+-two_roots_struct_end:
+-
+-two_roots_strings:
+-two_roots_strings_end:
+-
+-two_roots_end:
+-
+-
+-        /* root node with a non-empty name */
+-	treehdr	named_root
+-	empty_rsvmap	named_root
+-
+-named_root_struct:
+-	beginn	"fake"
+-	endn
+-	fdtlong	FDT_END
+-named_root_struct_end:
+-
+-named_root_strings:
+-named_root_strings_end:
+-
+-named_root_end:
+--- tests/truncated_memrsv.c.orig
++++ tests/truncated_memrsv.c
+@@ -19,12 +19,13 @@
+ 
+ int main(int argc, char *argv[])
+ {
+-	void *fdt = &truncated_memrsv;
++	void *fdt;
+ 	void *buf;
+ 	int err;
+ 	uint64_t addr, size;
+ 
+ 	test_init(argc, argv);
++	fdt = load_blob_arg(argc, argv);
+ 
+ 	err = fdt_check_header(fdt);
+ 	if (err != 0)
+--- tests/truncated_property.c.orig
++++ tests/truncated_property.c
+@@ -13,17 +13,15 @@
+ #include <libfdt.h>
+ 
+ #include "tests.h"
+-#include "testdata.h"
+ 
+ int main(int argc, char *argv[])
+ {
+-	void *fdt = &truncated_property;
++	void *fdt;
+ 	const void *prop;
+ 	int len;
+ 
+ 	test_init(argc, argv);
+-
+-	vg_prepare_blob(fdt, fdt_totalsize(fdt));
++	fdt = load_blob_arg(argc, argv);
+ 
+ 	prop = fdt_getprop(fdt, 0, "truncated", &len);
+ 	if (prop)
+--- tests/truncated_string.c.orig
++++ tests/truncated_string.c
+@@ -13,18 +13,16 @@
+ #include <libfdt.h>
+ 
+ #include "tests.h"
+-#include "testdata.h"
+ 
+ int main(int argc, char *argv[])
+ {
+-	void *fdt = &truncated_string;
++	void *fdt;
+ 	const struct fdt_property *good, *bad;
+ 	int off, len;
+ 	const char *name;
+ 
+ 	test_init(argc, argv);
+-
+-	vg_prepare_blob(fdt, fdt_totalsize(fdt));
++	fdt = load_blob_arg(argc, argv);
+ 
+ 	off = fdt_first_property_offset(fdt, 0);
+ 	good = fdt_get_property_by_offset(fdt, off, NULL);
+--- tests/unterminated_memrsv.c.orig
++++ tests/unterminated_memrsv.c
+@@ -22,12 +22,13 @@
+ 
+ int main(int argc, char *argv[])
+ {
+-	void *fdt = &unterminated_memrsv;
++	void *fdt;
+ 	void *buf;
+ 	int err;
+ 	uint64_t addr, size;
+ 
+ 	test_init(argc, argv);
++	fdt = load_blob_arg(argc, argv);
+ 
+ 	err = fdt_check_header(fdt);
+ 	if (err != 0)
