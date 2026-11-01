@@ -917,6 +917,11 @@
       "path": "avfoundation-external-unknown-macos14.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "ca-renderer-layer-tree-macos14-sample-buffer-renderer.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

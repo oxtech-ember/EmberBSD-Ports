@@ -44,6 +44,10 @@ and build acceptance.
 
 ## Target contract
 
+On Darwin the Electron CA renderer requires a macOS 14.0 or newer deployment
+target. Its source uses AVSampleBufferDisplayLayer's renderer API, introduced
+in macOS 14; the build controller rejects lower minimums.
+
 - Build on the developer host. Cross-compile all target objects for
   `aarch64--netbsd` or `x86_64--netbsd` with the shared Clang/LLVM toolchain
   and a matching EmberBSD sysroot and runtime. GN names these CPUs `arm64`

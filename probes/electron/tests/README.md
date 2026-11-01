@@ -29,6 +29,23 @@ refusals and idempotent materialization. The full pinned-source preparation is
 specified by the recipe's `source-series.json`; individual tests below select
 isolated leaf inputs and must not reapply patches to that prepared workspace.
 
+The Apple renderer regression applies the exact ordered recipe patch to a
+temporary copy of the production source block and compiles it against the
+selected macOS SDK. macOS 14 is the minimum for this renderer API. The
+unpatched macOS 15 source fails on deprecated calls; the patched source uses
+only the modern API. macOS 13 is refused by the compiler's availability check,
+while macOS 14 and 15 compile with modern selectors:
+
+```sh
+python3.15 -B -I -S probes/electron/tests/ca-renderer-layer-tree-availability.py \
+  --source /absolute/prepared-chromium/src \
+  --host-prefix /absolute/native-prefix \
+  --clangxx /absolute/native-prefix/bin/clang++ \
+  --git /absolute/native-prefix/bin/git \
+  --macos-sdk /absolute/MacOSX.sdk
+python3.15 -B -I -S probes/electron/tests/darwin-renderer-minimum.py
+```
+
 Run the remaining build regressions with host CPython 3.15 and its standard
 library. Integration
 tests select an SDK API 1 source with `--sdk-source` and check its module origin.

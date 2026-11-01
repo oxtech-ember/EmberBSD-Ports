@@ -1,0 +1,26 @@
+macOS 14 and newer use AVSampleBufferDisplayLayer.sampleBufferRenderer.
+The old AVSampleBufferDisplayLayer enqueue/status/error interface is deprecated
+in macOS 15, and this macOS-only helper has no pre-14 runtime contract.
+
+diff --git a/ui/accelerated_widget_mac/ca_renderer_layer_tree.mm b/ui/accelerated_widget_mac/ca_renderer_layer_tree.mm
+--- a/ui/accelerated_widget_mac/ca_renderer_layer_tree.mm
++++ b/ui/accelerated_widget_mac/ca_renderer_layer_tree.mm
+@@ -185,14 +185,8 @@
+   AVQueuedSampleBufferRenderingStatus status;
+   NSError* error;
+-  if (@available(macOS 14, iOS 17, *)) {
+-    AVSampleBufferVideoRenderer* renderer = av_layer.sampleBufferRenderer;
+-    [renderer enqueueSampleBuffer:sample_buffer.get()];
+-    status = renderer.status;
+-    error = renderer.error;
+-  } else {
+-    [av_layer enqueueSampleBuffer:sample_buffer.get()];
+-    status = av_layer.status;
+-    error = av_layer.error;
+-  }
++  AVSampleBufferVideoRenderer* renderer = av_layer.sampleBufferRenderer;
++  [renderer enqueueSampleBuffer:sample_buffer.get()];
++  status = renderer.status;
++  error = renderer.error;
+ 
+   switch (status) {

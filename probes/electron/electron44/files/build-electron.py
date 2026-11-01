@@ -140,6 +140,8 @@ def native_inputs(options, sdk):
                 'Darwin requires explicit SDK, Xcode version plist and deployment version')
         require(re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,2}', options.macos_minimum),
                 'invalid Darwin deployment version')
+        require(tuple(int(part) for part in options.macos_minimum.split('.')) >= (14, 0),
+                'Electron CA renderer requires macOS 14.0 or newer')
         metadata = sdk['darwin_sdk'].read_metadata(str(options.macos_sdk),
                     xcode_version_plist=str(options.xcode_version_plist))
         environment['SDKROOT'] = metadata['sdk_path']
