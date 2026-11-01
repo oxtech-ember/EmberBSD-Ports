@@ -4,12 +4,16 @@
 # Origin: EmberBSD (AI-assisted).
 """Run reconfigure/build orchestration against real GN and bounded fixtures."""
 import argparse
+from contextlib import nullcontext, redirect_stderr
 import importlib.util
+import io
 import json
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 from types import SimpleNamespace
+from unittest.mock import patch
 
 p = argparse.ArgumentParser()
 p.add_argument('--host-prefix', type=Path, required=True)
@@ -18,6 +22,40 @@ args = p.parse_args(); host = args.host_prefix
 owner = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('build', owner / 'electron44/files/build-electron.py')
 b = importlib.util.module_from_spec(spec); spec.loader.exec_module(b)
+
+class LockStub:
+    @staticmethod
+    def ContextLocks(*_args, **_kwargs): return nullcontext()
+
+selected = []
+def controller_cli(extra):
+    paths = {name: Path('/tmp/electron-cli-' + name) for name in (
+        'workspace', 'ports-source', 'sdk-source', 'host-prefix', 'compiler-prefix',
+        'sysroot', 'work', 'git', 'lock-root', 'link-context')}
+    argv = [str(owner / 'electron44/files/build-electron.py'), 'build']
+    for name, path in paths.items(): argv.extend(('--' + name, str(path)))
+    argv.extend(('--target', 'amd64', *extra))
+    with patch.object(sys, 'argv', argv), \
+         patch.object(b, 'load_sdk', return_value={'process': LockStub}), \
+         patch.object(b, 'build', side_effect=lambda options: selected.append(options)):
+        b.main()
+
+controller_cli([])
+assert selected[-1].keep_going == 1, 'CLI default must preserve Ninja -k 1 behavior'
+controller_cli(['--keep-going', '0'])
+assert selected[-1].keep_going == 0, 'CLI must accept Ninja keep-going 0'
+selected.clear(); sdk_loads = []
+with patch.object(sys, 'argv', [str(owner / 'electron44/files/build-electron.py'), 'build',
+        '--workspace', '/tmp/w', '--ports-source', '/tmp/p', '--sdk-source', '/tmp/s',
+        '--host-prefix', '/tmp/h', '--compiler-prefix', '/tmp/c', '--sysroot', '/tmp/t',
+        '--work', '/tmp/o', '--git', '/tmp/g', '--lock-root', '/tmp/l', '--link-context', '/tmp/k',
+        '--target', 'amd64', '--keep-going', '-1']), \
+     patch.object(b, 'load_sdk', side_effect=lambda *_: sdk_loads.append(True)), \
+     redirect_stderr(io.StringIO()) as stderr:
+    try: b.main(); raise AssertionError('accepted negative keep-going')
+    except SystemExit as error: assert error.code == 2
+assert not selected and not sdk_loads and 'keep-going' in stderr.getvalue()
+
 class Native:
     path = str(host / 'bin')
     def tool(self, name):
@@ -157,6 +195,16 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                           'GOCACHE':str(candidate.work/'go-cache'), 'GOPATH':str(candidate.work/'go-path'),
                           'CC':bound['cc'], 'CXX':bound['cxx'], **state.get('extra', {})}, state['values']
     b.producer_inputs=inputs
+    opt.keep_going = -1
+    for phase in (b.reconfigure, b.build):
+        before_calls = dict(calls); before_process = (Process.calls, len(Process.ninja_calls))
+        try: phase(opt); raise AssertionError('accepted negative programmatic keep-going')
+        except ValueError as error: assert 'keep-going limit' in str(error)
+        assert calls == before_calls and (Process.calls, len(Process.ninja_calls)) == before_process
+        assert config.read_bytes() == before and (out/'args.gn').read_text() == b.gn_arguments(old)
+        assert (out/'build.ninja').read_text() == 'old graph' and obj.read_bytes() == b'object'
+        assert not (work/'reconfigure-incomplete').exists()
+    del opt.keep_going
     state['path']=Native.path + ':/bin'
     try: b.reconfigure(opt); raise AssertionError('accepted external PATH')
     except ValueError as e: assert 'PATH is not prefix-only' in str(e)
@@ -348,6 +396,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     assert Process.calls==prior_gn_count+1 and Process.events[-2:]==['gn', 'ninja']
     assert len(Process.ninja_calls)==prior_ninja_count+1
     assert Process.ninja_calls[-1][Process.ninja_calls[-1].index('-j') + 1]=='16'
+    assert Process.ninja_calls[-1][Process.ninja_calls[-1].index('-k') + 1]=='1'
     assert not (work/'reconfigure-incomplete').exists()
     assert json.loads(config.read_text())['environment']['EMBERBSD_V8_SOURCE_SHA256']=='e' * 64
     assert obj.read_bytes()==b'object' and len(Source.stage_calls)==1
@@ -356,6 +405,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     assert phase_order == ['lastchange', 'ffmpeg', 'dsymutil', 'rust_std', 'source-view']
 
     state['v8_sha'] = 'f' * 64
+    opt.keep_going = 0
     Process.ninja_failure = True
     calls.update(verify=0, producer=0, gn_source=0, lastchange=0, ffmpeg=0, dsymutil=0, rust_std=0)
     phase_order.clear()
@@ -366,7 +416,9 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     assert Process.calls==prior_gn_count+1 and Process.events[-2:]==['gn', 'ninja']
     assert len(Process.ninja_calls)==prior_ninja_count+1
     assert Process.ninja_calls[-1][Process.ninja_calls[-1].index('-j') + 1]=='16'
+    assert Process.ninja_calls[-1][Process.ninja_calls[-1].index('-k') + 1]=='0'
     assert not (work/'reconfigure-incomplete').exists()
+    assert (out/'build.ninja').is_file() and (out/'args.gn').read_text()==b.gn_arguments(new)
     assert json.loads(config.read_text())['environment']['EMBERBSD_V8_SOURCE_SHA256']=='f' * 64
     assert obj.read_bytes()==b'object' and len(Source.stage_calls)==1
     assert calls == {'verify':1, 'producer':1, 'gn_source':1, 'lastchange':1,

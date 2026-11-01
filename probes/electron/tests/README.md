@@ -495,8 +495,10 @@ Ninja output. The regression also covers the opt-in
 `reconfigure --build-after-reconfigure --jobs 16` flow: one producer/source
 verification and GN generation proceed to Ninja under the same locks. GN
 failure does not start Ninja; Ninja failure preserves the valid regenerated
-configuration. The ordinary separate build path remains covered. Fixtures do
-not build Electron or execute target code.
+configuration. `--keep-going N` forwards Ninja's independent-job failure limit
+in this combined flow and ordinary `build`; it defaults to 1, while 0 removes
+the failure-count limit. The ordinary separate build path remains covered.
+Fixtures do not build Electron or execute target code.
 
 The source mirror regression checks hard-link and forced copy-fallback views,
 namespace/content changes, symlink type, and the bounded scan/stat calls:

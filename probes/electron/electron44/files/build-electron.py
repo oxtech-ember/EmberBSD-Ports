@@ -1279,9 +1279,17 @@ def prepare_build_inputs(options, native, environment, sdk):
     require_rust_std(options.host_prefix, options.target)
 
 
+def keep_going_limit(options):
+    value = getattr(options, 'keep_going', 1)
+    require(type(value) is int and value >= 0,
+            'Ninja keep-going limit must be a nonnegative integer')
+    return value
+
+
 def run_ninja_and_stage(options, sdk, native, source_root, environment):
     output = options.work / 'out'
     sdk['process'].run_logged([native.tool('ninja'), '-C', str(output), '-j', str(options.jobs),
+                              '-k', str(keep_going_limit(options)),
                               'electron_dist_zip'], str(options.work / 'build.log'),
                              cwd=str(source_root), env=environment,
                              append=(options.work / 'build.log').exists())
@@ -1318,6 +1326,7 @@ def configure(options):
 
 
 def reconfigure(options):
+    keep_going_limit(options)
     build_after_reconfigure = getattr(options, 'build_after_reconfigure', False)
     if build_after_reconfigure:
         require(options.jobs > 0, 'Ninja job count must be positive')
@@ -1465,6 +1474,7 @@ def reconfigure(options):
             run_ninja_and_stage(options, sdk, native, source_root, environment)
 
 def build(options):
+    keep_going_limit(options)
     require_common_v8(options)
     require_common_node(options)
     require(not (options.work / 'reconfigure-incomplete').exists(),
@@ -1491,6 +1501,16 @@ def build(options):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+
+    def nonnegative_integer(value):
+        try:
+            result = int(value)
+        except ValueError as error:
+            raise argparse.ArgumentTypeError('must be an integer >= 0') from error
+        if result < 0:
+            raise argparse.ArgumentTypeError('must be an integer >= 0')
+        return result
+
     sub = parser.add_subparsers(dest='phase', required=True)
     source = sub.add_parser('prepare')
     for name in ('workspace', 'ports-source', 'pkgsrc', 'archive', 'destination', 'git', 'patch'):
@@ -1526,6 +1546,9 @@ def main():
         command.add_argument('--macos-minimum')
         command.add_argument('--gcc-platform-reason')
         command.add_argument('--jobs', type=int, default=1)
+        if phase in ('reconfigure', 'build'):
+            command.add_argument('--keep-going', type=nonnegative_integer, default=1,
+                                 help='continue independent Ninja jobs until N jobs fail (0 means no failure limit)')
     options = parser.parse_args()
     try:
         for name, value in vars(options).items():
