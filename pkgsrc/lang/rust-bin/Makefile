@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.84 2026/07/03 20:58:49 he Exp $
 
 DISTNAME=	rust-1.99.1
-PKGREVISION=	3
+PKGREVISION=	4
 PKGNAME=	${DISTNAME:S/rust/rust-bin/1}
 CATEGORIES=	lang
 MASTER_SITES=	https://static.rust-lang.org/dist/
@@ -55,6 +55,7 @@ GENERATE_PLIST+=	find ${DESTDIR}${PREFIX} \( -type f -o -type l \) -print | \
 INSTALLATION_DIRS=	bin ${PKGMANDIR} share/doc/cargo/bash_completion.d
 
 .include "../../mk/bsd.prefs.mk"
+.include "options.mk"
 
 # This is the build-host compiler. Cross builds use it as a tool dependency
 # with a target std package; the target gets no prebuilt Rust compiler.
@@ -208,7 +209,7 @@ do-install:
 	${RM} -rf ${DESTDIR}${PREFIX}/lib/rustlib
 	cd ${.CURDIR}/files; pax -rw install.sh ${WRKSRC}
 	cd ${WRKSRC} && env PKGMANDIR=${PKGMANDIR} bash ./install.sh \
-	--destdir=${DESTDIR} --prefix=${PREFIX}
+	--destdir=${DESTDIR} --prefix=${PREFIX} ${RUST_INSTALLER_ARGS}
 	${RM} -f ${DESTDIR}${PREFIX}/lib/rustlib/${RUST_ARCH}/bin/rust-llvm-dwp
 	${RM} -f ${DESTDIR}${PREFIX}/lib/rustlib/install.log
 	${RM} -f ${DESTDIR}${PREFIX}/lib/rustlib/manifest-*

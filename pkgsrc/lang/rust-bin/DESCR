@@ -15,3 +15,7 @@ like a low-level language would.
 This package installs a released binary, on architectures supported by
 upstream, or a TNF-built binary, on NetBSD versions not supported by
 upstream.
+
+The large standard-library HTML and JSON documentation is omitted by default.
+Set PKG_OPTIONS.rust-bin=doc to include it. The rustdoc compiler tool and
+license files are installed either way.

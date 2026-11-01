@@ -61,18 +61,48 @@ def main():
         for name in sorted(set(netbsd) - set(regenerated)):
             failures.append('distinfo target drops ' + name)
 
-        # A minimal rust-installer image with one component.
+        # A minimal rust-installer image with the compiler/runtime and the two
+        # large optional documentation components. The names intentionally
+        # overlap: rust-docs-json-preview must be removed before rust-docs.
         source = work / 'src'
-        (source / 'rustc/bin').mkdir(parents=True)
-        (source / 'rustc/bin/rustc').write_text('#!/bin/sh\n')
-        (source / 'rustc/manifest.in').write_text('file:bin/rustc\n')
-        (source / 'components').write_text('rustc\n')
+        files = {
+            'rustc/bin/rustc': '#!/bin/sh\n',
+            'rustc/bin/rustdoc': '#!/bin/sh\n',
+            'rustc/share/doc/rust/licenses/LICENSE': 'license\n',
+            'rust-std-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/lib/libstd.rlib': 'std\n',
+            'cargo/bin/cargo': '#!/bin/sh\n',
+            'cargo/share/doc/cargo/LICENSE': 'cargo license\n',
+            'rust-docs/share/doc/rust/html/index.html': 'html docs\n',
+            'rust-docs-json-preview/share/doc/rust/json/index.json': '{}\n',
+        }
+        for relative, contents in files.items():
+            path = source / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(contents)
+        manifests = {
+            'rustc': ('file:bin/rustc\nfile:bin/rustdoc\n'
+                      'file:share/doc/rust/licenses/LICENSE\n'),
+            'rust-std-aarch64-apple-darwin':
+                'file:lib/rustlib/aarch64-apple-darwin/lib/libstd.rlib\n',
+            'cargo': 'file:bin/cargo\nfile:share/doc/cargo/LICENSE\n',
+            'rust-docs': 'dir:share/doc/rust/html\n',
+            'rust-docs-json-preview': 'dir:share/doc/rust/json\n',
+        }
+        for component, manifest in manifests.items():
+            (source / component / 'manifest.in').write_text(manifest)
+        (source / 'components').write_text('\n'.join(manifests) + '\n')
         (source / 'rust-installer-version').write_text('3\n')
         destdir = work / 'destdir'
         prefix = value('-V', '${PREFIX}')
-        installed = destdir / prefix.lstrip('/') / 'bin/rustc'
+        installed_prefix = destdir / prefix.lstrip('/')
+        installed = [installed_prefix / path for path in (
+            'bin/rustc', 'bin/rustdoc', 'bin/cargo',
+            'lib/rustlib/aarch64-apple-darwin/lib/libstd.rlib',
+            'share/doc/rust/licenses/LICENSE', 'share/doc/cargo/LICENSE')]
+        docs = [installed_prefix / 'share/doc/rust/html/index.html',
+                installed_prefix / 'share/doc/rust/json/index.json']
         install = ['WRKSRC=' + str(source), 'DESTDIR=' + str(destdir),
-                   'RUST_ARCH=none', 'do-install']
+                   'RUST_ARCH=aarch64-apple-darwin', 'do-install']
         # do-install runs pax and bash from the tools directory.
         status, output = run('WRKSRC=' + str(source), 'tools')
         if status:
@@ -80,13 +110,31 @@ def main():
         # The second run repeats the bulk build after a failed post-install.
         for attempt in ('first', 'repeated'):
             status, output = run(*install)
-            if status or not installed.is_file():
+            if status or not all(path.is_file() for path in installed):
                 failures.append('%s do-install failed:\n%s' % (attempt, output[-1500:]))
                 break
+            if any(path.exists() for path in docs):
+                failures.append('%s default install retained optional docs' % attempt)
+                break
+
+        docs_destdir = work / 'docs-destdir'
+        docs_prefix = docs_destdir / prefix.lstrip('/')
+        docs_install = ['PKG_OPTIONS.rust-bin=doc',
+                        'WRKSRC=' + str(source), 'DESTDIR=' + str(docs_destdir),
+                        'RUST_ARCH=aarch64-apple-darwin', 'do-install']
+        status, output = run(*docs_install)
+        if status or not all((docs_prefix / path).is_file() for path in (
+                'bin/rustc', 'bin/rustdoc', 'bin/cargo',
+                'lib/rustlib/aarch64-apple-darwin/lib/libstd.rlib',
+                'share/doc/rust/licenses/LICENSE', 'share/doc/cargo/LICENSE',
+                'share/doc/rust/html/index.html', 'share/doc/rust/json/index.json')):
+            failures.append('docs option install failed or omitted package payload:\n%s' %
+                            output[-1500:])
     if failures:
         print('FAIL:\n' + '\n'.join(failures))
         return 1
-    print('PASS: rust-bin %s NetBSD archives in distinfo, repeatable do-install' % version)
+    print('PASS: rust-bin %s NetBSD archives, repeatable default install without docs, '
+          'and opt-in docs payload' % version)
     return 0
 
 
