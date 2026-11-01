@@ -5,6 +5,10 @@
 # real MLIR source with the recipe's CMake arguments against an installed
 # LLVM and require the install rules to install mlir-tblgen, and the PLIST
 # to list exactly the programs that the rules and post-install install.
+# A cross build runs mlir-linalg-ods-yaml-gen from the build host, so no
+# target depends on the target one: configure again with that host-tool
+# setting and require the recipe's build targets to link every program
+# that post-install installs.
 # Usage: tblgen-install.sh CMAKE LLVM_CMAKE_DIR MLIR_SOURCE NEW_WORK
 set -eu
 [ "$#" = 4 ] || { echo 'usage: tblgen-install.sh CMAKE LLVM_CMAKE_DIR MLIR_SOURCE NEW_WORK' >&2; exit 2; }
@@ -20,6 +24,9 @@ here=$(cd "$(dirname "$0")/.." && pwd)
 args=$(awk '/^\.if/ { depth++ } /^\.endif/ { depth-- }
     depth == 0 && /^CMAKE_CONFIGURE_ARGS\+=/ {
 	for (i = 2; i <= NF; i++) if ($i ~ /^-D/ && $i !~ /\$/) print $i }' "$here/Makefile")
+build_target=$(awk '/^\.if/ { depth++ } /^\.endif/ { depth-- }
+    depth == 0 && /^BUILD_TARGET[?]?=/ { sub(/^[^=]*=[ \t]*/, ""); print }' "$here/Makefile")
+: "${build_target:=all}"
 # Programs the recipe installs itself after the CMake install.
 extra=$(awk '/INSTALL_PROGRAM.*CMAKE_BUILD_DIR}\/bin\// {
 	sub(/.*CMAKE_BUILD_DIR}\/bin\//, ""); print $1 }' "$here/Makefile")
@@ -36,6 +43,23 @@ for program in $extra; do
 	echo "bin/$program" >> "$work/rules"
 done
 sort -u "$work/rules" > "$work/installed"
+mkdir "$work/host"
+printf '#!/bin/sh\nexit 1\n' > "$work/host/mlir-linalg-ods-yaml-gen"
+chmod +x "$work/host/mlir-linalg-ods-yaml-gen"
+# shellcheck disable=SC2086
+"$cmake" -S "$src" -B "$work/c" -G Ninja -DLLVM_DIR="$llvm" \
+    -DCMAKE_INSTALL_PREFIX=/usr/pkg $args \
+    -DMLIR_LINALG_ODS_YAML_GEN="$work/host/mlir-linalg-ods-yaml-gen" \
+    > "$work/configure-cross.log" 2>&1 ||
+	{ tail -20 "$work/configure-cross.log"; echo 'FAIL: configure with host generator'; exit 1; }
+ninja=$(sed -n 's/^CMAKE_MAKE_PROGRAM:[A-Z]*=//p' "$work/c/CMakeCache.txt")
+# shellcheck disable=SC2086 # build_target is a list of targets
+"$ninja" -C "$work/c" -n $build_target > "$work/dry-run" 2>&1 ||
+	{ tail -5 "$work/dry-run"; echo "FAIL: no build plan for $build_target"; exit 1; }
+for program in $extra; do
+	grep -q "Linking CXX executable bin/$program\$" "$work/dry-run" ||
+		{ echo "FAIL: with a host generator, '$build_target' does not build $program"; exit 1; }
+done
 grep -qx 'bin/mlir-tblgen' "$work/installed" ||
 	{ echo 'FAIL: mlir-tblgen is not installed'; exit 1; }
 grep '^bin/' "$here/PLIST" | sort -u > "$work/plist"

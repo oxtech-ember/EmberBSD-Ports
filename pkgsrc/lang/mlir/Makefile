@@ -29,7 +29,9 @@ CMAKE_CONFIGURE_ARGS+=	-DMLIR_LINK_MLIR_DYLIB=OFF
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_BUILD_UTILS=ON
 
 # Linalg's generator is built for the dialect but has no install rule.
-# Cross mlir builds run it from the native package with the TableGen tools.
+# Cross mlir builds run it from the native package with the TableGen tools,
+# so no target depends on it there: build it by name for the package.
+BUILD_TARGET=	all mlir-linalg-ods-yaml-gen
 post-install:
 	${INSTALL_PROGRAM} ${WRKSRC}/${CMAKE_BUILD_DIR}/bin/mlir-linalg-ods-yaml-gen \
 	    ${DESTDIR}${PREFIX}/bin
