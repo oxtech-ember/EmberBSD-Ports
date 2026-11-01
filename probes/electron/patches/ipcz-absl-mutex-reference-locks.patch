@@ -1,0 +1,1196 @@
+Use reference-taking absl mutex locks in ipcz.
+Origin: EmberBSD contributors (AI-assisted). The shared Abseil deprecates the
+MutexLock/ReaderMutexLock/WriterMutexLock pointer constructors and
+Mutex::Lock/Unlock; ipcz builds with -Werror. Pass the mutex by reference and
+call lock()/unlock(), the replacements Abseil names, across all of ipcz.
+
+--- a/third_party/ipcz/src/ipcz/api_object.cc
++++ b/third_party/ipcz/src/ipcz/api_object.cc
+@@ -28,12 +28,12 @@
+   ~TrackedObjectSet() = default;
+ 
+   void Add(APIObject* object) {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     tracked_objects_.insert(reinterpret_cast<uintptr_t>(object));
+   }
+ 
+   void Remove(APIObject* object) {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     tracked_objects_.erase(reinterpret_cast<uintptr_t>(object));
+   }
+ 
+--- a/third_party/ipcz/src/ipcz/block_allocator_pool.cc
++++ b/third_party/ipcz/src/ipcz/block_allocator_pool.cc
+@@ -15,14 +15,14 @@
+ BlockAllocatorPool::~BlockAllocatorPool() = default;
+ 
+ size_t BlockAllocatorPool::GetCapacity() {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   return capacity_;
+ }
+ 
+ bool BlockAllocatorPool::Add(BufferId buffer_id,
+                              absl::Span<uint8_t> buffer_memory,
+                              const BlockAllocator& allocator) {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   Entry* previous_tail = nullptr;
+   Entry* new_entry;
+   if (!entries_.empty()) {
+@@ -90,7 +90,7 @@
+     }
+ 
+     // Allocation from the active allocator failed. Try another if available.
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     entry = entry->next;
+   } while (entry && entry != starting_entry);
+ 
+@@ -100,7 +100,7 @@
+ bool BlockAllocatorPool::Free(const Fragment& fragment) {
+   Entry* entry;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto it = entry_map_.find(fragment.buffer_id());
+     if (it == entry_map_.end()) {
+       DLOG(ERROR) << "Invalid Free() call on BlockAllocatorPool";
+--- a/third_party/ipcz/src/ipcz/buffer_pool.cc
++++ b/third_party/ipcz/src/ipcz/buffer_pool.cc
+@@ -24,7 +24,7 @@
+     return {};
+   }
+ 
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   auto it = mappings_.find(descriptor.buffer_id());
+   if (it == mappings_.end()) {
+     return Fragment::PendingFromDescriptor(descriptor);
+@@ -68,7 +68,7 @@
+ 
+   std::vector<WaitForBufferCallback> callbacks;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto [it, inserted] = mappings_.insert({id, std::move(mapping)});
+     if (!inserted) {
+       return false;
+@@ -103,7 +103,7 @@
+ size_t BufferPool::GetTotalBlockCapacity(size_t block_size) {
+   BlockAllocatorPool* pool;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto it = block_allocator_pools_.find(block_size);
+     if (it == block_allocator_pools_.end()) {
+       return 0;
+@@ -120,7 +120,7 @@
+ 
+   BlockAllocatorPool* pool;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto it = block_allocator_pools_.lower_bound(block_size);
+     if (it == block_allocator_pools_.end()) {
+       metrics::RecordAllocateBlockResult(
+@@ -154,7 +154,7 @@
+   BlockAllocatorPoolMap::iterator pool_iter;
+   BlockAllocatorPool* pool;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (block_allocator_pools_.empty()) {
+       return {};
+     }
+@@ -173,7 +173,7 @@
+       return fragment;
+     }
+ 
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (pool_iter == block_allocator_pools_.begin()) {
+       return {};
+     }
+@@ -188,7 +188,7 @@
+ bool BufferPool::FreeBlock(const Fragment& fragment) {
+   BlockAllocatorPool* pool;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto it = block_allocator_pools_.find(fragment.size());
+     if (it == block_allocator_pools_.end()) {
+       return false;
+@@ -203,7 +203,7 @@
+ void BufferPool::WaitForBufferAsync(BufferId id,
+                                     WaitForBufferCallback callback) {
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto it = mappings_.find(id);
+     if (it == mappings_.end()) {
+       buffer_callbacks_[id].push_back(std::move(callback));
+@@ -218,7 +218,7 @@
+   // Dropping callbacks may have side-effects, so do it outside of a lock.
+   BufferCallbackMap buffer_callbacks;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     buffer_callbacks.swap(buffer_callbacks_);
+   }
+ }
+--- a/third_party/ipcz/src/ipcz/local_router_link.cc
++++ b/third_party/ipcz/src/ipcz/local_router_link.cc
+@@ -44,7 +44,7 @@
+   // return null if the Router in question has been deactivated, for example due
+   // to the application closing the Router's controlling portal.
+   Ref<Router> GetRouter(LinkSide side) {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     switch (side.value()) {
+       case LinkSide::kA:
+         return router_a_;
+@@ -56,7 +56,7 @@
+   }
+ 
+   void Deactivate(LinkSide side) {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     switch (side.value()) {
+       case LinkSide::kA:
+         router_a_.reset();
+--- a/third_party/ipcz/src/ipcz/node.cc
++++ b/third_party/ipcz/src/ipcz/node.cc
+@@ -149,12 +149,12 @@
+ }
+ 
+ NodeName Node::GetAssignedName() {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   return assigned_name_;
+ }
+ 
+ Ref<NodeLink> Node::GetBrokerLink() {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   return broker_link_;
+ }
+ 
+@@ -162,7 +162,7 @@
+                          Connection connection) {
+   std::vector<BrokerLinkCallback> callbacks;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     for (;;) {
+       auto it = connections_.find(remote_node_name);
+       if (it == connections_.end()) {
+@@ -174,9 +174,9 @@
+       // connection to the same node and it expects the previous connection to
+       // be replaced.
+       const Ref<NodeLink> link = it->second.link;
+-      mutex_.Unlock();
++      mutex_.unlock();
+       DropConnection(*link);
+-      mutex_.Lock();
++      mutex_.lock();
+     }
+ 
+     connections_.insert({remote_node_name, connection});
+@@ -206,7 +206,7 @@
+ }
+ 
+ std::optional<Node::Connection> Node::GetConnection(const NodeName& name) {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   auto it = connections_.find(name);
+   if (it == connections_.end()) {
+     return std::nullopt;
+@@ -215,7 +215,7 @@
+ }
+ 
+ Ref<NodeLink> Node::GetLink(const NodeName& name) {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   auto it = connections_.find(name);
+   if (it == connections_.end()) {
+     return nullptr;
+@@ -232,7 +232,7 @@
+ }
+ 
+ void Node::SetAllocationDelegate(Ref<NodeLink> link) {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   allocation_delegate_link_ = std::move(link);
+ }
+ 
+@@ -240,7 +240,7 @@
+                                 AllocateSharedMemoryCallback callback) {
+   Ref<NodeLink> delegate;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     delegate = allocation_delegate_link_;
+   }
+ 
+@@ -255,7 +255,7 @@
+   Ref<NodeLink> existing_link;
+   absl::InlinedVector<Ref<NodeLink>, 2> brokers_to_query;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto it = connections_.find(name);
+     if (it != connections_.end()) {
+       existing_link = it->second.link;
+@@ -386,7 +386,7 @@
+ 
+   std::unique_ptr<PendingIntroduction> pending_introduction;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (type_ == Type::kNormal && !broker_link_) {
+       // If we've lost our broker connection, we should ignore any further
+       // introductions that arrive.
+@@ -428,7 +428,7 @@
+                                     const NodeName& name) {
+   std::unique_ptr<PendingIntroduction> failed_introduction;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto it = pending_introductions_.find(name);
+     if (it == pending_introductions_.end()) {
+       return;
+@@ -478,7 +478,7 @@
+   std::vector<NodeName> pending_introductions;
+   bool lost_broker = false;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto it = connections_.find(connection_link.remote_node_name());
+     if (it == connections_.end() || it->second.link != &connection_link) {
+       return;
+@@ -526,7 +526,7 @@
+ void Node::WaitForBrokerLinkAsync(BrokerLinkCallback callback) {
+   Ref<NodeLink> broker_link;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (!broker_link_) {
+       broker_link_callbacks_.push_back(std::move(callback));
+       return;
+@@ -588,7 +588,7 @@
+   ConnectionMap connections;
+   std::vector<BrokerLinkCallback> broker_link_callbacks;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     connections_.swap(connections);
+     broker_link_.reset();
+     broker_link_callbacks.swap(broker_link_callbacks_);
+@@ -607,7 +607,7 @@
+ void Node::CancelAllIntroductions() {
+   PendingIntroductionMap introductions;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     introductions.swap(pending_introductions_);
+   }
+   for (auto& [name, intro] : introductions) {
+@@ -623,7 +623,7 @@
+                        ? IntroductionKey(first_name, second_name)
+                        : IntroductionKey(second_name, first_name);
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto [it, inserted] = in_progress_introductions_.insert(key);
+     if (!inserted) {
+       return;
+@@ -631,7 +631,7 @@
+   }
+ 
+   const absl::Cleanup remove_intro_key = [this, &key] {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     in_progress_introductions_.erase(key);
+   };
+ 
+--- a/third_party/ipcz/src/ipcz/node_link.cc
++++ b/third_party/ipcz/src/ipcz/node_link.cc
+@@ -96,7 +96,7 @@
+ }
+ 
+ NodeLink::~NodeLink() {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   ABSL_HARDENING_ASSERT(activation_state_ != kActive);
+ }
+ 
+@@ -105,7 +105,7 @@
+   memory_->SetNodeLink(WrapRefCounted(this));
+ 
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     ABSL_ASSERT(activation_state_ == kNeverActivated);
+     activation_state_ = kActive;
+   }
+@@ -122,7 +122,7 @@
+   auto link = RemoteRouterLink::Create(WrapRefCounted(this), sublink,
+                                        std::move(link_state), type, side);
+ 
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   if (activation_state_ == kDeactivated) {
+     // We don't bind new RemoteRouterLinks once we've been deactivated, lest we
+     // incur leaky NodeLink references.
+@@ -141,14 +141,14 @@
+ }
+ 
+ void NodeLink::RemoveRemoteRouterLink(SublinkId sublink) {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   DVLOG(4) << "Removing RemoteRouterLink for sublink " << sublink;
+   sublinks_.erase(sublink);
+   deleted_sublinks_.Insert(sublink);
+ }
+ 
+ std::optional<NodeLink::Sublink> NodeLink::GetSublink(SublinkId sublink) {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   auto it = sublinks_.find(sublink);
+   if (it == sublinks_.end()) {
+     return std::nullopt;
+@@ -157,7 +157,7 @@
+ }
+ 
+ Ref<Router> NodeLink::GetRouter(SublinkId sublink) {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   auto it = sublinks_.find(sublink);
+   if (it == sublinks_.end()) {
+     return nullptr;
+@@ -221,7 +221,7 @@
+ 
+   uint64_t referral_id;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     for (;;) {
+       referral_id = next_referral_id_++;
+       auto [it, inserted] =
+@@ -259,7 +259,7 @@
+ void NodeLink::RequestMemory(size_t size, RequestMemoryCallback callback) {
+   const uint32_t size32 = checked_cast<uint32_t>(size);
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     pending_memory_requests_[size32].push_back(std::move(callback));
+   }
+ 
+@@ -318,7 +318,7 @@
+ 
+ void NodeLink::Deactivate() {
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (activation_state_ != kActive) {
+       return;
+     }
+@@ -349,19 +349,19 @@
+ }
+ 
+ size_t NodeLink::DeletedSublinkCountForTesting() {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   return deleted_sublinks_.Size();
+ }
+ 
+ size_t NodeLink::EarlyParcelCountForTesting() {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   return early_parcels_for_sublink_.size();
+ }
+ 
+ void NodeLink::AcceptEarlyParcelsForSublink(SublinkId sublink_id) {
+   std::vector<std::unique_ptr<Parcel>> early_parcels;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto it = early_parcels_for_sublink_.find(sublink_id);
+     if (it != early_parcels_for_sublink_.end()) {
+       early_parcels.swap(it->second);
+@@ -418,7 +418,7 @@
+ 
+   ReferralCallback callback;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto it = pending_referrals_.find(accepted.v0()->referral_id);
+     if (it == pending_referrals_.end()) {
+       return false;
+@@ -463,7 +463,7 @@
+ 
+   ReferralCallback callback;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto it = pending_referrals_.find(rejected.v0()->referral_id);
+     if (it == pending_referrals_.end()) {
+       return false;
+@@ -822,7 +822,7 @@
+   DriverMemory memory(provide.TakeDriverObject(provide.v0()->buffer));
+   RequestMemoryCallback callback;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto it = pending_memory_requests_.find(provide.v0()->size);
+     if (it == pending_memory_requests_.end()) {
+       return false;
+@@ -869,7 +869,7 @@
+   ReferralCallbackMap pending_referrals;
+   SublinkEarlyParcelsMap early_parcels_for_sublink;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     sublinks.swap(sublinks_);
+     deleted_sublinks_.Clear();
+     early_parcels_for_sublink_.swap(early_parcels_for_sublink);
+@@ -928,7 +928,7 @@
+   const auto key = std::make_tuple(for_sublink, parcel->sequence_number());
+   std::unique_ptr<Parcel> parcel_with_driver_objects;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+ 
+     // Note that `parcel` is not actually moved here unless try_emplace
+     // succeeds.
+@@ -950,7 +950,7 @@
+   const auto key = std::make_tuple(for_sublink, parcel->sequence_number());
+   std::unique_ptr<Parcel> parcel_without_driver_objects;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto [it, inserted] = partial_parcels_.try_emplace(key, std::move(parcel));
+     if (inserted) {
+       return true;
+@@ -1005,7 +1005,7 @@
+                                     std::unique_ptr<Parcel> parcel) {
+   const std::optional<Sublink> sublink = GetSublink(for_sublink);
+   if (!sublink) {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (!deleted_sublinks_.Contains(for_sublink)) {
+       DVLOG(4) << "Queuing " << parcel->Describe() << " at "
+                << local_node_name_.ToString() << ", arriving from "
+@@ -1022,7 +1022,7 @@
+   const size_t num_subparcels = parcel->num_subparcels();
+   if (num_subparcels > 1) {
+     auto key = std::make_tuple(for_sublink, parcel->sequence_number());
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto [it, inserted] =
+         subparcel_trackers_.try_emplace(key, SubparcelTracker{});
+     SubparcelTracker& tracker = it->second;
+--- a/third_party/ipcz/src/ipcz/node_link_memory.cc
++++ b/third_party/ipcz/src/ipcz/node_link_memory.cc
+@@ -187,7 +187,7 @@
+ void NodeLinkMemory::SetNodeLink(Ref<NodeLink> link) {
+   std::vector<size_t> block_sizes_needed;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     node_link_ = std::move(link);
+     if (!node_link_) {
+       return;
+@@ -437,7 +437,7 @@
+ 
+   Ref<NodeLink> link;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto [it, need_new_request] =
+         capacity_callbacks_.emplace(block_size, CapacityCallbackList());
+     it->second.push_back(std::move(callback));
+@@ -492,7 +492,7 @@
+                                                bool success) {
+   CapacityCallbackList callbacks;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     auto it = capacity_callbacks_.find(block_size);
+     if (it == capacity_callbacks_.end()) {
+       return;
+--- a/third_party/ipcz/src/ipcz/remote_router_link.cc
++++ b/third_party/ipcz/src/ipcz/remote_router_link.cc
+@@ -82,7 +82,7 @@
+ 
+   std::vector<std::function<void()>> callbacks;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     // This store-release is balanced by a load-acquire in GetLinkState().
+     link_state_.store(link_state_fragment_.get(), std::memory_order_release);
+     link_state_callbacks_.swap(callbacks);
+@@ -112,7 +112,7 @@
+ 
+ void RemoteRouterLink::WaitForLinkStateAsync(std::function<void()> callback) {
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (!link_state_.load(std::memory_order_relaxed)) {
+       link_state_callbacks_.push_back(std::move(callback));
+       return;
+--- a/third_party/ipcz/src/ipcz/router.cc
++++ b/third_party/ipcz/src/ipcz/router.cc
+@@ -90,7 +90,7 @@
+ Router::~Router() {
+   // A Router MUST be serialized or closed before it can be destroyed. Both
+   // operations clear `traps_` and imply that no further traps should be added.
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   ABSL_ASSERT(traps_.empty());
+   DVLOG(5) << "Deleting Router " << std::hex << this;
+ }
+@@ -118,17 +118,17 @@
+ }
+ 
+ bool Router::IsPeerClosed() {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   return (status_flags_ & IPCZ_PORTAL_STATUS_PEER_CLOSED) != 0;
+ }
+ 
+ bool Router::IsRouteDead() {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   return (status_flags_ & IPCZ_PORTAL_STATUS_DEAD) != 0;
+ }
+ 
+ bool Router::IsOnCentralRemoteLink() {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   // This may only be called on terminal Routers.
+   ABSL_ASSERT(!inward_edge_);
+   return outward_edge_.primary_link() && outward_edge_.is_stable() &&
+@@ -137,7 +137,7 @@
+ }
+ 
+ void Router::QueryStatus(IpczPortalStatus& status) {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   status.size = std::min(status.size, sizeof(IpczPortalStatus));
+   status.flags = status_flags_;
+   status.num_local_parcels = inbound_parcels_.GetNumAvailableElements();
+@@ -145,7 +145,7 @@
+ }
+ 
+ bool Router::HasLocalPeer(Router& router) {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   return outward_edge_.GetLocalPeer() == &router;
+ }
+ 
+@@ -153,7 +153,7 @@
+                                                        bool allow_partial) {
+   Ref<RouterLink> outward_link;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     outward_link = outward_edge_.primary_link();
+   }
+ 
+@@ -169,7 +169,7 @@
+ IpczResult Router::SendOutboundParcel(std::unique_ptr<Parcel> parcel) {
+   Ref<RouterLink> link;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (inbound_parcels_.final_sequence_length()) {
+       // If the inbound sequence is finalized, the peer portal must be gone.
+       return IPCZ_RESULT_NOT_FOUND;
+@@ -208,7 +208,7 @@
+   TrapEventDispatcher dispatcher;
+   Ref<RouterLink> link;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     outbound_parcels_.SetFinalSequenceLength(
+         outbound_parcels_.GetCurrentSequenceLength());
+     traps_.RemoveAll(dispatcher);
+@@ -220,7 +220,7 @@
+   ABSL_ASSERT(link);
+ 
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+ 
+     // If we have a stable inward edge (or none at all), and the outward edge
+     // is stable too, our new link can be marked stable from our side.
+@@ -247,7 +247,7 @@
+ bool Router::AcceptInboundParcel(std::unique_ptr<Parcel> parcel) {
+   TrapEventDispatcher dispatcher;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     const SequenceNumber sequence_number = parcel->sequence_number();
+     if (!inbound_parcels_.Push(sequence_number, std::move(parcel))) {
+       // Unexpected route disconnection can cut off inbound sequences, so don't
+@@ -273,7 +273,7 @@
+ 
+ bool Router::AcceptOutboundParcel(std::unique_ptr<Parcel> parcel) {
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+ 
+     // Proxied outbound parcels are always queued in a ParcelQueue even if they
+     // will be forwarded immediately. This allows us to track the full sequence
+@@ -300,7 +300,7 @@
+                                     SequenceNumber sequence_length) {
+   TrapEventDispatcher dispatcher;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (link_type.is_outward()) {
+       if (!inbound_parcels_.SetFinalSequenceLength(sequence_length)) {
+         // Ignore if and only if the sequence was terminated early.
+@@ -343,7 +343,7 @@
+     // If we have to drop any undeliverable parcels, make sure they're destroyed
+     // outside of `lock` in case they have any attached Routers.
+     std::vector<std::unique_ptr<Parcel>> dropped_parcels;
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+ 
+     DVLOG(4) << "Router " << this << " disconnected from "
+              << link_type.ToString() << "link";
+@@ -436,7 +436,7 @@
+   if (data) {
+     *data = parcel->data_view().data();
+   }
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   if (!pending_puts_) {
+     pending_puts_ = std::make_unique<PendingTransactionSet>();
+   }
+@@ -457,7 +457,7 @@
+ 
+   std::unique_ptr<Parcel> parcel;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (!pending_puts_) {
+       return IPCZ_RESULT_INVALID_ARGUMENT;
+     }
+@@ -500,7 +500,7 @@
+   TrapEventDispatcher dispatcher;
+   std::unique_ptr<Parcel> consumed_parcel;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (inbound_parcels_.IsSequenceFullyConsumed()) {
+       return IPCZ_RESULT_NOT_FOUND;
+     }
+@@ -569,7 +569,7 @@
+                             size_t* num_handles,
+                             IpczTransaction* transaction) {
+   TrapEventDispatcher dispatcher;
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   if (!transaction || inward_edge_) {
+     return IPCZ_RESULT_INVALID_ARGUMENT;
+   }
+@@ -631,7 +631,7 @@
+                           IpczEndGetFlags flags,
+                           IpczHandle* parcel_handle) {
+   TrapEventDispatcher dispatcher;
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   if (!pending_gets_) {
+     return IPCZ_RESULT_INVALID_ARGUMENT;
+   }
+@@ -666,7 +666,7 @@
+                         uint64_t context,
+                         IpczTrapConditionFlags* satisfied_condition_flags,
+                         IpczPortalStatus* status) {
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   return traps_.Add(conditions, handler, context, status_flags_,
+                     inbound_parcels_, satisfied_condition_flags, status);
+ }
+@@ -747,7 +747,7 @@
+   auto router = MakeRefCounted<Router>();
+   Ref<RemoteRouterLink> new_outward_link;
+   {
+-    absl::MutexLock lock(&router->mutex_);
++    absl::MutexLock lock(router->mutex_);
+     router->outbound_parcels_.ResetSequence(
+         descriptor.next_outgoing_sequence_number);
+     router->inbound_parcels_.ResetSequence(
+@@ -844,7 +844,7 @@
+   Ref<Router> local_peer;
+   bool initiate_proxy_bypass = false;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     traps_.RemoveAll(dispatcher);
+     local_peer = outward_edge_.GetLocalPeer();
+     initiate_proxy_bypass = outward_edge_.primary_link() &&
+@@ -945,7 +945,7 @@
+     bool initiate_proxy_bypass) {
+   const SublinkId new_sublink = to_node_link.memory().AllocateSublinkIds(1);
+ 
+-  absl::MutexLock lock(&mutex_);
++  absl::MutexLock lock(mutex_);
+   descriptor.new_sublink = new_sublink;
+   descriptor.new_link_state_fragment = FragmentDescriptor();
+   descriptor.proxy_already_bypassed = false;
+@@ -1029,7 +1029,7 @@
+   Ref<RemoteRouterLink> new_primary_link = new_sublink->router_link;
+   Ref<RemoteRouterLink> new_decaying_link;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     ABSL_ASSERT(inward_edge_);
+ 
+     if (descriptor.proxy_already_bypassed) {
+@@ -1095,7 +1095,7 @@
+   // Validate that the source of this request is actually our peripheral outward
+   // peer, and that we are therefore its inward peer.
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     const Ref<RouterLink>& outward_link = outward_edge_.primary_link();
+     if (!outward_link) {
+       // This Router may have been disconnected already due to some other
+@@ -1154,7 +1154,7 @@
+   Ref<RemoteRouterLink> old_link;
+   Ref<RemoteRouterLink> new_link;
+   {
+-    absl::ReleasableMutexLock lock(&mutex_);
++    absl::ReleasableMutexLock lock(mutex_);
+     if (is_disconnected_ || !outward_edge_.primary_link()) {
+       // We've already been unexpectedly disconnected from the proxy, so the
+       // route is dysfunctional. Don't establish new links.
+@@ -1231,7 +1231,7 @@
+                           SequenceNumber outbound_sequence_length) {
+   Ref<Router> bridge_peer;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (outward_edge_.is_stable()) {
+       // Proxies begin decaying their links before requesting to be bypassed,
+       // and they don't adopt new links after that. So if either edge is stable
+@@ -1305,7 +1305,7 @@
+ 
+ bool Router::NotifyProxyWillStop(SequenceNumber inbound_sequence_length) {
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (outward_edge_.is_stable()) {
+       // If the outward edge is already stable, either this request is invalid,
+       // or we've lost all links due to disconnection. In the latter case we
+@@ -1331,7 +1331,7 @@
+   Ref<Router> local_peer;
+   Ref<Router> bridge_peer;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (bridge_) {
+       bridge_peer = bridge_->GetDecayingLocalPeer();
+     } else if (outward_edge_.decaying_link()) {
+@@ -1381,7 +1381,7 @@
+     // router and the bridge peer serve as "the" proxy being bypassed in this
+     // case, so we'll be bypassing both of them below.
+     {
+-      absl::MutexLock lock(&bridge_peer->mutex_);
++      absl::MutexLock lock(bridge_peer->mutex_);
+       if (bridge_peer->outward_edge_.is_stable()) {
+         return false;
+       }
+@@ -1430,7 +1430,7 @@
+ 
+ void Router::NotifyLinkDisconnected(RemoteRouterLink& link) {
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (outward_edge_.primary_link() == &link) {
+       DVLOG(4) << "Primary " << link.Describe() << " disconnected";
+       outward_edge_.ReleasePrimaryLink();
+@@ -1471,7 +1471,7 @@
+   ParcelsToFlush parcels_to_flush;
+   TrapEventDispatcher dispatcher;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+ 
+     // Acquire stack references to all links we might want to use, so it's safe
+     // to acquire additional (unmanaged) references per ParcelToFlush.
+@@ -1666,7 +1666,7 @@
+   Ref<RemoteRouterLink> remote_outward_link;
+   Ref<Router> local_outward_peer;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (!inward_edge_ || !inward_edge_->primary_link() ||
+         !inward_edge_->is_stable()) {
+       // Only a proxy with stable links can be bypassed.
+@@ -1699,7 +1699,7 @@
+     // decaying our inward and outward links and ask the inward peer to bypass
+     // us ASAP.
+     {
+-      absl::MutexLock lock(&mutex_);
++      absl::MutexLock lock(mutex_);
+       if (!inward_edge_ || !inward_edge_->primary_link() ||
+           !outward_edge_.primary_link()) {
+         // We've been disconnected since leaving the block above. Nothing to do.
+@@ -1808,7 +1808,7 @@
+   Ref<Router> first_bridge = WrapRefCounted(this);
+   Ref<Router> second_bridge;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (!bridge_ || !bridge_->is_stable()) {
+       return;
+     }
+@@ -1967,7 +1967,7 @@
+   Ref<Router> local_peer;
+   Ref<Router> other_bridge;
+   {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     if (!bridge_ || !bridge_->is_stable()) {
+       return;
+     }
+@@ -1981,7 +1981,7 @@
+ 
+   Ref<RemoteRouterLink> remote_link;
+   {
+-    absl::MutexLock lock(&other_bridge->mutex_);
++    absl::MutexLock lock(other_bridge->mutex_);
+     if (!other_bridge->outward_edge_.primary_link()) {
+       return;
+     }
+@@ -2082,7 +2082,7 @@
+   Ref<RouterLink> new_link;
+   const SublinkId new_sublink = node_link.memory().AllocateSublinkIds(1);
+   {
+-    absl::ReleasableMutexLock lock(&mutex_);
++    absl::ReleasableMutexLock lock(mutex_);
+     if (!outward_edge_.primary_link() || is_disconnected_) {
+       // We've been disconnected since leaving the above block. Don't bother
+       // to request a bypass. This is not the requestor's fault, so it's not
+--- a/third_party/ipcz/src/reference_drivers/async_reference_driver.cc
++++ b/third_party/ipcz/src/reference_drivers/async_reference_driver.cc
+@@ -57,7 +57,7 @@
+   }
+ 
+   void Activate(IpczHandle transport, IpczTransportActivityHandler handler) {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     transport_ = transport;
+     handler_ = handler;
+     active_ = true;
+@@ -68,7 +68,7 @@
+   void Deactivate() {
+     std::unique_ptr<std::thread> task_thread_to_join;
+     {
+-      absl::MutexLock lock(&mutex_);
++      absl::MutexLock lock(mutex_);
+       // Join the task thread if we're not on it; otherwise detach it.
+       // Detachment is safe: the thread owns a ref to `this` as long as it's
+       // running, and it will terminate very soon after deactivation.
+@@ -127,7 +127,7 @@
+   };
+ 
+   void PostTask(Task task) {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     tasks_.push_back(std::move(task));
+     NotifyTaskThread();
+   }
+@@ -142,7 +142,7 @@
+       std::vector<Task> tasks;
+       absl::Notification* wait_for_task = nullptr;
+       {
+-        absl::MutexLock lock(&mutex_);
++        absl::MutexLock lock(mutex_);
+         if (!active_) {
+           return;
+         }
+@@ -154,7 +154,7 @@
+ 
+       if (wait_for_task) {
+         wait_for_task->WaitForNotification();
+-        absl::MutexLock lock(&mutex_);
++        absl::MutexLock lock(mutex_);
+         wait_for_task_ = std::make_unique<absl::Notification>();
+         continue;
+       }
+--- a/third_party/ipcz/src/reference_drivers/multiprocess_reference_driver.cc
++++ b/third_party/ipcz/src/reference_drivers/multiprocess_reference_driver.cc
+@@ -41,7 +41,7 @@
+     ipcz_transport_ = transport;
+     activity_handler_ = activity_handler;
+ 
+-    absl::MutexLock lock(&transport_mutex_);
++    absl::MutexLock lock(transport_mutex_);
+     transport_->Activate(
+         [transport = WrapRefCounted(this)](SocketTransport::Message message) {
+           return transport->OnMessage(message);
+@@ -52,7 +52,7 @@
+   void Deactivate() {
+     Ref<SocketTransport> transport;
+     {
+-      absl::MutexLock lock(&transport_mutex_);
++      absl::MutexLock lock(transport_mutex_);
+       transport = std::move(transport_);
+     }
+ 
+@@ -76,7 +76,7 @@
+     }
+ 
+     {
+-      absl::MutexLock lock(&transport_mutex_);
++      absl::MutexLock lock(transport_mutex_);
+       if (transport_) {
+         transport_->Send({data, absl::MakeSpan(descriptors)});
+         return IPCZ_RESULT_OK;
+@@ -88,7 +88,7 @@
+ 
+   FileDescriptor TakeDescriptor() {
+     ABSL_ASSERT(!was_activated_);
+-    absl::MutexLock lock(&transport_mutex_);
++    absl::MutexLock lock(transport_mutex_);
+     return transport_->TakeDescriptor();
+   }
+ 
+--- a/third_party/ipcz/src/reference_drivers/socket_transport.cc
++++ b/third_party/ipcz/src/reference_drivers/socket_transport.cc
+@@ -92,7 +92,7 @@
+ }
+ 
+ SocketTransport::~SocketTransport() {
+-  absl::MutexLock lock(&io_thread_mutex_);
++  absl::MutexLock lock(io_thread_mutex_);
+   ABSL_HARDENING_ASSERT(!io_thread_);
+ }
+ 
+@@ -103,7 +103,7 @@
+   message_handler_ = std::move(message_handler);
+   error_handler_ = std::move(error_handler);
+ 
+-  absl::MutexLock lock(&io_thread_mutex_);
++  absl::MutexLock lock(io_thread_mutex_);
+   ABSL_ASSERT(!io_thread_);
+   io_thread_ = std::make_unique<std::thread>(&RunIOThreadForTransport,
+                                              WrapRefCounted(this));
+@@ -112,7 +112,7 @@
+ void SocketTransport::Deactivate(std::function<void()> shutdown_callback) {
+   {
+     // Initiate asynchronous shutdown of the I/O thread.
+-    absl::MutexLock lock(&notify_mutex_);
++    absl::MutexLock lock(notify_mutex_);
+     if (!is_io_thread_done_) {
+       ABSL_ASSERT(!shutdown_callback_);
+       std::swap(shutdown_callback, shutdown_callback_);
+@@ -122,7 +122,7 @@
+ 
+   std::unique_ptr<std::thread> io_thread;
+   {
+-    absl::MutexLock lock(&io_thread_mutex_);
++    absl::MutexLock lock(io_thread_mutex_);
+     io_thread = std::move(io_thread_);
+   }
+ 
+@@ -154,7 +154,7 @@
+       absl::MakeSpan(reinterpret_cast<uint8_t*>(&header), sizeof(header));
+ 
+   {
+-    absl::MutexLock lock(&queue_mutex_);
++    absl::MutexLock lock(queue_mutex_);
+     if (!outgoing_queue_.empty()) {
+       outgoing_queue_.emplace_back(header_bytes, message);
+       return true;
+@@ -194,7 +194,7 @@
+   // Ensure the I/O loop is restarted at least once after the outgoing queue is
+   // modified, since it only watches for non-blocking writability if the queue
+   // is non-empty.
+-  absl::MutexLock lock(&notify_mutex_);
++  absl::MutexLock lock(notify_mutex_);
+   WakeIOThread();
+   return true;
+ }
+@@ -262,7 +262,7 @@
+ 
+   std::function<void()> shutdown_callback;
+   {
+-    absl::MutexLock lock(&transport->notify_mutex_);
++    absl::MutexLock lock(transport->notify_mutex_);
+     shutdown_callback = std::move(transport->shutdown_callback_);
+     transport->is_io_thread_done_ = true;
+   }
+@@ -301,7 +301,7 @@
+     }
+ 
+     if (poll_fds[kNotifyFdIndex].revents & POLLIN) {
+-      absl::MutexLock lock(&notify_mutex_);
++      absl::MutexLock lock(notify_mutex_);
+       ClearIOThreadSignal();
+       if (shutdown_callback_) {
+         return;
+@@ -365,7 +365,7 @@
+ }
+ 
+ bool SocketTransport::IsOutgoingQueueEmpty() {
+-  absl::MutexLock lock(&queue_mutex_);
++  absl::MutexLock lock(queue_mutex_);
+   return outgoing_queue_.empty();
+ }
+ 
+@@ -440,7 +440,7 @@
+     for (;; ++i) {
+       Message m;
+       {
+-        absl::MutexLock lock(&queue_mutex_);
++        absl::MutexLock lock(queue_mutex_);
+         if (i >= outgoing_queue_.size()) {
+           break;
+         }
+@@ -456,13 +456,13 @@
+ 
+       if (*bytes_sent < m.data.size()) {
+         // Still at least partially blocked.
+-        absl::MutexLock lock(&queue_mutex_);
++        absl::MutexLock lock(queue_mutex_);
+         outgoing_queue_[i] = DeferredMessage({}, m);
+         break;
+       }
+     }
+ 
+-    absl::MutexLock lock(&queue_mutex_);
++    absl::MutexLock lock(queue_mutex_);
+     if (i == outgoing_queue_.size()) {
+       // Finished!
+       outgoing_queue_.clear();
+--- a/third_party/ipcz/src/reference_drivers/sync_reference_driver.cc
++++ b/third_party/ipcz/src/reference_drivers/sync_reference_driver.cc
+@@ -63,7 +63,7 @@
+                 absl::Span<const uint8_t> data = {},
+                 absl::Span<const IpczDriverHandle> handles = {}) {
+     {
+-      absl::MutexLock lock(&mutex_);
++      absl::MutexLock lock(mutex_);
+       if (in_notification_) {
+         DeferredNotification notification = {.flags = flags};
+         if (!data.empty()) {
+@@ -88,7 +88,7 @@
+     for (;;) {
+       std::vector<DeferredNotification> notifications;
+       {
+-        absl::MutexLock lock(&mutex_);
++        absl::MutexLock lock(mutex_);
+         if (deferred_notifications_.empty()) {
+           in_notification_ = false;
+           return;
+@@ -162,7 +162,7 @@
+     Ref<InProcessTransport> peer;
+     std::vector<SavedMessage> saved_messages;
+     {
+-      absl::MutexLock lock(&mutex_);
++      absl::MutexLock lock(mutex_);
+       peer = std::move(peer_);
+       saved_messages = std::move(saved_messages_);
+     }
+@@ -182,7 +182,7 @@
+   }
+ 
+   void SetPeer(Ref<InProcessTransport> peer) {
+-    absl::MutexLock lock(&mutex_);
++    absl::MutexLock lock(mutex_);
+     ABSL_ASSERT(peer && !peer_);
+     peer_ = std::move(peer);
+   }
+@@ -193,7 +193,7 @@
+         MakeRefCounted<TransportWrapper>(transport, activity_handler);
+     Ref<InProcessTransport> peer;
+     {
+-      absl::MutexLock lock(&mutex_);
++      absl::MutexLock lock(mutex_);
+       ABSL_ASSERT(!transport_);
+       if (!peer_closed_) {
+         transport_ = std::move(new_transport);
+@@ -221,7 +221,7 @@
+   void Deactivate() {
+     Ref<TransportWrapper> transport;
+     {
+-      absl::MutexLock lock(&mutex_);
++      absl::MutexLock lock(mutex_);
+ 
+       // NOTE: Dropping this reference may in turn lead to ipcz dropping its own
+       // last reference to `this`, so we must be careful not hold `mutex_` when
+@@ -235,7 +235,7 @@
+     Ref<InProcessTransport> peer;
+     Ref<TransportWrapper> peer_transport;
+     {
+-      absl::MutexLock lock(&mutex_);
++      absl::MutexLock lock(mutex_);
+       if (!peer_active_) {
+         SavedMessage message;
+         message.data = std::vector<uint8_t>(data.begin(), data.end());
+@@ -250,7 +250,7 @@
+     }
+ 
+     {
+-      absl::MutexLock lock(&peer->mutex_);
++      absl::MutexLock lock(peer->mutex_);
+       peer_transport = peer->transport_;
+     }
+ 
+@@ -270,7 +270,7 @@
+       Ref<InProcessTransport> peer;
+       std::vector<SavedMessage> saved_messages;
+       {
+-        absl::MutexLock lock(&mutex_);
++        absl::MutexLock lock(mutex_);
+         ABSL_ASSERT(!peer_active_);
+         if (saved_messages_.empty()) {
+           peer_active_ = true;
+@@ -285,7 +285,7 @@
+ 
+       Ref<TransportWrapper> peer_transport;
+       {
+-        absl::MutexLock lock(&peer->mutex_);
++        absl::MutexLock lock(peer->mutex_);
+         peer_transport = peer->transport_;
+       }
+ 
+@@ -307,7 +307,7 @@
+   void OnPeerClosed() {
+     Ref<TransportWrapper> transport;
+     {
+-      absl::MutexLock lock(&mutex_);
++      absl::MutexLock lock(mutex_);
+       transport = std::move(transport_);
+       peer_closed_ = true;
+     }
+--- a/third_party/ipcz/src/util/multi_mutex_lock.h
++++ b/third_party/ipcz/src/util/multi_mutex_lock.h
+@@ -39,7 +39,7 @@
+ 
+   ~MultiMutexLock() ABSL_UNLOCK_FUNCTION() {
+     for (absl::Mutex* mutex : mutexes_) {
+-      mutex->Unlock();
++      mutex->unlock();
+     }
+   }
+ 
+@@ -47,7 +47,7 @@
+   void SortAndLock() ABSL_NO_THREAD_SAFETY_ANALYSIS {
+     std::sort(mutexes_.begin(), mutexes_.end());
+     for (absl::Mutex* mutex : mutexes_) {
+-      mutex->Lock();
++      mutex->lock();
+     }
+   }
+ 

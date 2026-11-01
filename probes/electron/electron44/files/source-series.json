@@ -802,6 +802,11 @@
       "path": "webrtc-network-types-deprecated-ecn-defaults.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "ipcz-absl-mutex-reference-locks.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
