@@ -1,0 +1,16 @@
+Not submitted upstream. Adds the focused software layer invalidation regression.
+
+--- tests/auto/quick/softwarerenderer/CMakeLists.txt
++++ tests/auto/quick/softwarerenderer/CMakeLists.txt
+@@ -33,3 +33,11 @@
+     DEFINES
+         QT_QMLTEST_DATADIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
+ )
++
++qt_internal_add_test(tst_qsgsoftwarelayerdirty
++    SOURCES
++        tst_qsgsoftwarelayerdirty.cpp
++    LIBRARIES
++        Qt::Quick
++        Qt::QuickPrivate
++)

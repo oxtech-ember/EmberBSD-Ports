@@ -2,7 +2,7 @@
 
 DISTNAME=	qtdeclarative-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qtdeclarative-${QTVERSION}
-PKGREVISION=	3
+PKGREVISION=	4
 COMMENT=	Qt6 module for the QML language
 CATEGORIES=	lang x11
 
