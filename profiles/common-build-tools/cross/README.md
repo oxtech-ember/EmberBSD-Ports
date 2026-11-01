@@ -254,11 +254,13 @@ The package interpreter checker still rejects host paths.
 
 The cross profile defaults `CROSS_SYSCONFBASE` to `/etc` for base `rc.subr`
 and `rc.conf`. `PKG_SYSCONFBASE` keeps pkgsrc's separate `${PREFIX}/etc` default.
-`RCD_SCRIPTS_DIR` defaults to `/etc/rc.d`. Explicit overrides remain supported.
+Target builds put rc scripts in `/etc/rc.d`; native dependencies built with
+`USE_CROSS_COMPILE=no` keep them under `${PREFIX}/etc/rc.d`. Explicit
+`RCD_SCRIPTS_DIR` overrides remain supported.
 The `../tests/cross-rcd-path.rb` check queries the actual D-Bus recipe and
 runs pkgsrc's unmodified rc-script generator. It reproduces the wrong base
 path and old service-directory path. It also checks three explicit overrides
-and unchanged native output:
+and the native-prefix service directory:
 
 ```sh
 BMAKE=/absolute/host/bin/bmake ruby ../tests/cross-rcd-path.rb \

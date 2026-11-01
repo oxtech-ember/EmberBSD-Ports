@@ -1,7 +1,6 @@
 #!/usr/bin/env ruby
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Query real pkgsrc and generate its D-Bus rc script.
-require 'fileutils'
 require 'open3'
 abort 'Usage: cross-rcd-path.rb DBUS_PACKAGE_DIRECTORY MAKECONF NEW_OUTPUT' unless ARGV.length == 3
 package, config, output = ARGV.map { |p| File.expand_path(p) }
@@ -30,6 +29,7 @@ generate = lambda do |cfg, name, sysconf, *overrides|
 end
 actual = query.call(config, 'default')
 abort "Wrong cross defaults: #{actual.inspect}" unless actual == ['/etc/rc.d', '/etc', '/usr/pkg/etc', 'rc.d', 'dbus']
+prefix = invoke.call(config, 'native-prefix', 'USE_CROSS_COMPILE=no', '-V', '${PREFIX}').strip
 fixed = generate.call(config, 'default', '/etc')
 abort 'Cross script contains a build-host path' if fixed.match?(%r{/(?:Volumes|Users|private/tmp|opt/homebrew)/})
 abort 'Wrong target interpreter' unless fixed.start_with?("#!/bin/sh\n")
@@ -52,12 +52,15 @@ baseline = query.call("#{output}/old.mk.conf", 'old')
 abort "Baseline did not expose the wrong base directory: #{baseline.inspect}" unless baseline == [actual[0], '/usr/pkg/etc', *actual[2..]]
 generate.call("#{output}/old.mk.conf", 'old', '/usr/pkg/etc')
 # Retain the original service-directory regression as a separate causal control.
-File.write("#{output}/old-rc-profile.mk", old.sub(/^RCD_SCRIPTS_DIR\?=\/etc\/rc\.d\n/, ''))
+old_rc = old.sub(/^RCD_SCRIPTS_DIR\?= \/etc\/rc\.d$/, '# No target service-directory mapping')
+abort 'No target service-directory mapping mutation point' if old_rc == old
+File.write("#{output}/old-rc-profile.mk", old_rc)
 File.write("#{output}/old-rc.mk.conf", cfg.gsub(profile, "#{output}/old-rc-profile.mk"))
 abort 'Old service-directory failure disappeared' unless query.call("#{output}/old-rc.mk.conf", 'old-rc')[0] == '/usr/pkg/etc/rc.d'
 native = query.call(config, 'native', 'USE_CROSS_COMPILE=no')
+abort "Native rc scripts escaped the selected prefix: #{native.inspect}" unless native[0] == "#{prefix}/etc/rc.d"
 old_native = query.call("#{output}/old.mk.conf", 'old-native', 'USE_CROSS_COMPILE=no')
-abort 'Native configuration changed' unless native == old_native
+abort 'Native configuration changed by the cross base-path workaround' unless native[1..] == old_native[1..]
 native_script = generate.call(config, 'native', native[1], 'USE_CROSS_COMPILE=no')
 old_native_script = generate.call("#{output}/old.mk.conf", 'old-native', old_native[1], 'USE_CROSS_COMPILE=no')
 abort 'Native rc script changed' unless native_script == old_native_script

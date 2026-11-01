@@ -38,6 +38,7 @@ OPSYS=Darwin
 EMBERBSD_CROSS_TOOLS=$work/tools
 EMBERBSD_CROSS_SYSROOT=$work/sysroot
 EMBERBSD_CROSS_HOST_PREFIX=$work/host
+PREFIX=$work/host
 OSX_SDK_PATH=$work/macos.sdk
 MACOSX_DEPLOYMENT_TARGET=15.0
 CC=/host/cc
@@ -50,8 +51,12 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 read_vars() { "$bmake" -f "$work/Makefile" "$@" -v USE_CROSS_COMPILE -v MACHO_USE_LOAD_COMMANDS -v PKG_OPTIONS.graphviz | tr '\n' ' '; }
 target=$(read_vars) || fail "the target parse failed: $target"
 [ "$target" = 'yes   ' ] || fail "a target build takes the Darwin native defaults (USE_CROSS_COMPILE MACHO_USE_LOAD_COMMANDS PKG_OPTIONS.graphviz: $target)"
+target_rcd=$("$bmake" -f "$work/Makefile" -v RCD_SCRIPTS_DIR) || fail 'the target rc-directory query failed'
+[ "$target_rcd" = /etc/rc.d ] || fail "target rc scripts escaped the target base: $target_rcd"
 native=$(read_vars USE_CROSS_COMPILE=no) || fail "the native parse failed: $native"
 [ "$native" = 'no yes -gd ' ] || fail "a native build lost the Darwin native defaults: $native"
+native_rcd=$("$bmake" -f "$work/Makefile" USE_CROSS_COMPILE=no -v RCD_SCRIPTS_DIR) || fail 'the native rc-directory query failed'
+[ "$native_rcd" = "$work/host/etc/rc.d" ] || fail "native rc scripts escaped the selected prefix: $native_rcd"
 getvar() { variable=$1; shift; "$bmake" -f "$work/Makefile" "$@" -v "$variable"; }
 clang_family=$(getvar EMBERBSD_RUST_TARGET_COMPILER_FAMILY USE_CROSS_COMPILE=no) || fail 'the native Clang family query failed'
 clang_prefix=$(getvar EMBERBSD_RUST_COMPILER_PREFIX USE_CROSS_COMPILE=no) || fail 'the native Clang prefix query failed'
