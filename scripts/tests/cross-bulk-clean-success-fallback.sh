@@ -75,7 +75,8 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 mkdir "$out/native-state"
 printf '%s\n' 't/native@native' > "$out/native-state/order"
 printf '%s\n' 't/native@native t/native' > "$out/native-state/edges"
-BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
+BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+    MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
     CROSS_BULK_VARS_CACHE=no CROSS_BULK_TRASH=no CROSS_BULK_CLEAN_SUCCESS=yes \
     sh "$ports/scripts/cross-bulk.sh" build "$out/native-state/order" "$out/native-state" \
     > "$out/native.log" 2>&1 || fail "native build: $(cat "$out/native.log")"
@@ -87,14 +88,16 @@ grep -q 'clean native=yes args=.*USE_CROSS_COMPILE=no.*TARGET_SETTING=selected' 
 mkdir "$out/default-state"
 printf '%s\n' t/default > "$out/default-state/order"
 printf '%s\n' 't/default t/default' > "$out/default-state/edges"
-BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
+BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+    MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
     CROSS_BULK_VARS_CACHE=no CROSS_BULK_CLEAN_SUCCESS=yes \
     sh "$ports/scripts/cross-bulk.sh" build "$out/default-state/order" "$out/default-state" \
     > "$out/default.log" 2>&1 || fail "default build: $(cat "$out/default.log")"
 [ ! -e "$out/work/default" ] || fail 'successful target workdir was not retired to trash'
 mkdir -p "$out/work/default"
 : > "$out/work/default/reused"
-BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
+BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+    MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
     CROSS_BULK_VARS_CACHE=no CROSS_BULK_CLEAN_SUCCESS=yes \
     sh "$ports/scripts/cross-bulk.sh" build "$out/default-state/order" "$out/default-state" \
     > "$out/reuse.log" 2>&1 || fail "reuse build: $(cat "$out/reuse.log")"
@@ -103,7 +106,8 @@ BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=1 CRO
 mkdir "$out/fail-state"
 printf '%s\n' t/fail > "$out/fail-state/order"
 printf '%s\n' 't/fail t/fail' > "$out/fail-state/edges"
-BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
+BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+    MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
     CROSS_BULK_VARS_CACHE=no CROSS_BULK_TRASH=no CROSS_BULK_CLEAN_SUCCESS=yes \
     sh "$ports/scripts/cross-bulk.sh" build "$out/fail-state/order" "$out/fail-state" \
     > "$out/fail.log" 2>&1 || fail "failed package scheduler: $(cat "$out/fail.log")"
@@ -113,7 +117,8 @@ grep -q '^t/fail ' "$out/fail-state/failed" || fail "failure was not recorded: $
 mkdir "$out/cleanup-fail-state"
 printf '%s\n' t/cleanup-fail > "$out/cleanup-fail-state/order"
 printf '%s\n' 't/cleanup-fail t/cleanup-fail' > "$out/cleanup-fail-state/edges"
-BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
+BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+    MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
     CROSS_BULK_VARS_CACHE=no CROSS_BULK_TRASH=no CROSS_BULK_CLEAN_SUCCESS=yes \
     sh "$ports/scripts/cross-bulk.sh" build "$out/cleanup-fail-state/order" "$out/cleanup-fail-state" \
     > "$out/cleanup-fail.log" 2>&1 || fail "cleanup-failure scheduler: $(cat "$out/cleanup-fail.log")"

@@ -18,7 +18,8 @@ mkdir "$out"
 # A complete local recipe list names the GCC16 packages beside ordinary ones.
 printf '%s\n' "$path" lang/gcc16 lang/gcc16-runtime lang/gcc16-fortran-runtime \
     lang/gcc16-fortran-devel > "$out/list"
-sh "$ports/scripts/cross-bulk.sh" order "$out/list" "$out/state" > "$out/order.log"
+BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$BMAKE \
+    sh "$ports/scripts/cross-bulk.sh" order "$out/list" "$out/state" > "$out/order.log"
 if grep -q '^lang/gcc16' "$out/state/order"; then
     echo 'FAIL: the Clang graph orders GCC16 packages:' >&2
     grep '^lang/gcc16' "$out/state/order" >&2; exit 1
@@ -35,7 +36,8 @@ DEPENDS+= gcc16-runtime>=16.2.0:../../lang/gcc16-runtime
 .endif
 MAKE
 echo "$path" > "$out/list-leak"
-if MAKECONF=$out/mk.conf sh "$ports/scripts/cross-bulk.sh" order "$out/list-leak" "$out/leak" \
+if BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$BMAKE \
+    MAKECONF=$out/mk.conf sh "$ports/scripts/cross-bulk.sh" order "$out/list-leak" "$out/leak" \
     > "$out/leak.log" 2> "$out/leak.err"; then
     echo 'FAIL: a Clang graph reaching GCC16 was ordered' >&2; exit 1
 fi
@@ -88,7 +90,8 @@ mkdir "$out/stale"
 printf '%s\n' lang/gcc16-runtime lang/gcc16-fortran-runtime lang/gcc16-fortran-devel > "$out/stale/order"
 : > "$out/stale/edges"
 for mode in fetch build; do
-    sh "$ports/scripts/cross-bulk.sh" "$mode" "$out/list" "$out/stale" > "$out/stale-$mode.log" 2>&1 || {
+    BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$BMAKE \
+        sh "$ports/scripts/cross-bulk.sh" "$mode" "$out/list" "$out/stale" > "$out/stale-$mode.log" 2>&1 || {
         echo "FAIL: $mode of a stale order failed" >&2; cat "$out/stale-$mode.log" >&2; exit 1; }
     for list_name in failed-fetch failed blocked; do
         if [ -s "$out/stale/$list_name" ]; then

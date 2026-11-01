@@ -103,7 +103,8 @@ printf '%s\n' t/a t/b t/c > "$out/list"
 mkdir "$out/state"
 printf '%s\n' t/a t/b t/c > "$out/state/order"
 printf '%s\n' 't/a t/a' 't/b t/b' 't/c t/c' > "$out/state/edges"
-BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=4 CROSS_BULK_JOBS=2 \
+BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+    MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=4 CROSS_BULK_JOBS=2 \
     sh "$ports/scripts/cross-bulk.sh" build "$out/list" "$out/state" > "$out/build.log" 2>&1 ||
     fail "build: $(cat "$out/build.log")"
 [ ! -s "$out/errors" ] || fail "$(cat "$out/errors")"
@@ -120,7 +121,8 @@ ps -A -o command= | grep -F "$out/list" | grep -v grep > /dev/null && fail 'a de
 # A package reused from STATE/done must not trigger cleanup of its WRKDIR.
 mkdir -p "$out/work/t-a"
 : > "$out/work/t-a/reused"
-BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=4 CROSS_BULK_JOBS=2 \
+BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+    MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=4 CROSS_BULK_JOBS=2 \
     CROSS_BULK_CLEAN_SUCCESS=yes \
     sh "$ports/scripts/cross-bulk.sh" build "$out/list" "$out/state" > "$out/reuse.log" 2>&1 ||
     fail "reuse: $(cat "$out/reuse.log")"

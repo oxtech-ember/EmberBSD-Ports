@@ -42,7 +42,8 @@ chmod +x "$out/make" "$out/bmake"
 run()
 {
     echo "$out/$1.queries" > "$out/current"
-    MAKECONF=$out/mk.conf BMAKE=$out/bmake \
+    MAKECONF=$out/mk.conf BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh \
+        CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
         sh "$ports/scripts/cross-bulk.sh" "$2" "$out/list" "$out/$3" > "$out/$1.log" 2>&1 || {
         cat "$out/$1.log" >&2
         echo "FAIL: $1" >&2

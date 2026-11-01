@@ -72,7 +72,8 @@ WRAP
 chmod +x "$out/bmake" "$out/pkg_info"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 echo t/app > "$out/list"
-BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree \
+BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+    MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree \
     sh "$ports/scripts/cross-bulk.sh" order "$out/list" "$out/state" > "$out/order.out" 2> "$out/order.err" ||
     fail "order failed: [$(cat "$out/order.err")]"
 grep -qx 't/ssl t/app' "$out/state/edges" ||

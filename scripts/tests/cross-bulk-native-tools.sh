@@ -146,7 +146,8 @@ chmod +x "$out/bmake" "$out/pkg_add" "$out/pkg_info"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 bulk()
 {
-    BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=8 CROSS_BULK_JOBS=4 \
+    BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+        MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=8 CROSS_BULK_JOBS=4 \
         sh "$ports/scripts/cross-bulk.sh" "$1" "$out/list" "$out/$2" > "$out/$1.log" 2>&1 ||
         fail "$1: $(cat "$out/$1.log")"
 }
@@ -178,7 +179,8 @@ echo x > "$out/tree/t/e/tools"
 echo y > "$out/tree/n/x/tools"
 echo x > "$out/tree/n/y/tools"
 echo t/e > "$out/list2"
-if BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=8 \
+if BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+    MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=8 \
     sh "$ports/scripts/cross-bulk.sh" order "$out/list2" "$out/state2" > "$out/cycle.log" 2>&1; then
     fail 'order accepted a cycle among tools to build'
 fi

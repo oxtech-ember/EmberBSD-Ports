@@ -68,7 +68,8 @@ mkdir "$out/state"
 printf '%s\n' 't/x t/x' 't/x@native t/x@native' > "$out/state/edges"
 printf '%s\n' t/x t/x@native > "$out/state/order"
 : > "$out/calls"
-BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
+BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+    MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
     sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1 ||
     fail "build: $(cat "$out/bulk.log")"
 grep -q '^t/x x-1.0 ' "$out/state/done" || fail "t/x not done: $(cat "$out/state/done")"

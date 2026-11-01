@@ -23,14 +23,16 @@ exec "$BMAKE" EMBERBSD_HOST_PYTHON=$out/python "\$@"
 WRAP
 chmod +x "$out/python" "$out/bmake"
 echo "$path" > "$out/list"
-BMAKE=$out/bmake sh "$ports/scripts/cross-bulk.sh" order "$out/list" "$out/state" > "$out/order.log"
+BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+    sh "$ports/scripts/cross-bulk.sh" order "$out/list" "$out/state" > "$out/order.log"
 packages=$(($(wc -l < "$out/state/order")))
 calls=$(($(wc -l < "$out/calls")))
 [ "$packages" -gt 1 ] || { echo "FAIL: $path has no target dependencies" >&2; exit 1; }
 [ "$calls" -eq 1 ] || { echo "FAIL: $calls verifier runs for $packages packages" >&2; exit 1; }
 # A broken selection still stops the run before any package query.
 printf '#!/bin/sh\nexit 1\n' > "$out/python"
-if BMAKE=$out/bmake sh "$ports/scripts/cross-bulk.sh" order "$out/list" "$out/bad" 2> "$out/bad.err"; then
+if BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+    sh "$ports/scripts/cross-bulk.sh" order "$out/list" "$out/bad" 2> "$out/bad.err"; then
     echo 'FAIL: an unverified prefix was accepted' >&2; exit 1
 fi
 grep -q 'failed verification' "$out/bad.err" || { echo 'FAIL: missing verification error' >&2; exit 1; }

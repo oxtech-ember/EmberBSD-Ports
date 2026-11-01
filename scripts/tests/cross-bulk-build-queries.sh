@@ -44,7 +44,8 @@ run()
     expected=$1
     shift
     : > "$out/calls"
-    BMAKE=$out/bmake CROSS_BULK_JOBS=1 sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" ||
+    BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+        CROSS_BULK_JOBS=1 sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" ||
         { echo 'FAIL: build' >&2; exit 1; }
     for path do
         calls=$(($(grep -c -- "-C $PKGSRCDIR/$path " "$out/calls" || :)))

@@ -125,7 +125,8 @@ WRAP
 chmod +x "$out/bmake" "$out/pkg_info"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 bulk() {
-    BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=4 CROSS_BULK_JOBS=4 \
+    BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+        MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=4 CROSS_BULK_JOBS=4 \
         CROSS_BULK_VARS_CACHE=no sh "$ports/scripts/cross-bulk.sh" "$@"
 }
 printf '%s\n' t/a t/b l/perl t/x > "$out/list"

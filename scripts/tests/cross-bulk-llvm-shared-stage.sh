@@ -104,7 +104,8 @@ run_build()
 {
     case_out=$1
     FAKE_OUT=$case_out FAKE_MISMATCH=${FAKE_MISMATCH:-no} FAKE_DEVEL_FAIL=${FAKE_DEVEL_FAIL:-no} \
-        BMAKE=$case_out/bmake MAKECONF=$case_out/mk.conf \
+        BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$case_out/bmake \
+        MAKECONF=$case_out/mk.conf \
         PKGSRCDIR=$case_out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
         CROSS_BULK_MAKE_JOBS=1 CROSS_BULK_TRASH=no CROSS_BULK_VARS_CACHE=no \
         CROSS_BULK_CLEAN_SUCCESS=${CLEAN_SUCCESS:-yes} CROSS_BULK_LLVM_SHARED_BUILD=yes \

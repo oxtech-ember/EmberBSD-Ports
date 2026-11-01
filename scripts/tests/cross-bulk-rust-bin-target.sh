@@ -19,7 +19,8 @@ mkdir "$out"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 # A package list written before the cross Rust selection names lang/rust-bin.
 printf '%s\n' "$path" lang/rust-bin > "$out/list"
-sh "$ports/scripts/cross-bulk.sh" order "$out/list" "$out/state" > "$out/order.log" 2> "$out/order.err" ||
+BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$BMAKE \
+    sh "$ports/scripts/cross-bulk.sh" order "$out/list" "$out/state" > "$out/order.log" 2> "$out/order.err" ||
     fail "order failed: [$(tail -n 5 "$out/order.err")]"
 if grep -qx lang/rust-bin "$out/state/order"; then
     fail "the cross order builds the target lang/rust-bin: [$(grep '^lang/rust-bin ' "$out/state/skipped" "$out/state/edges" | tr '\n' ';')]"
@@ -35,7 +36,8 @@ cat > "$out/mk-dep.conf" <<MAKE
 DEPENDS+= rust-bin-[0-9]*:../../lang/rust-bin
 .endif
 MAKE
-if MAKECONF=$out/mk-dep.conf sh "$ports/scripts/cross-bulk.sh" order "$out/list" "$out/dep" \
+if BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$BMAKE \
+    MAKECONF=$out/mk-dep.conf sh "$ports/scripts/cross-bulk.sh" order "$out/list" "$out/dep" \
     > "$out/dep.log" 2> "$out/dep.err"; then
     fail 'a target dependency on lang/rust-bin was ordered'
 fi
