@@ -1,0 +1,44 @@
+proto_extras_plugin: do not depend on libprotoc's internal compiler::cpp::UnderscoresToCamelCase. It has no PROTOC_EXPORT and is not exported by the shared common libprotoc 36.2, so the host plugin link fails. Use a local copy of the same algorithm.
+
+--- a/components/proto_extras/proto_extras_plugin.cc
++++ b/components/proto_extras/proto_extras_plugin.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include <string>
++#include <string_view>
+ 
+ #include "base/check.h"
+ #include "base/containers/flat_set.h"
+@@ -35,9 +36,30 @@
+ using google::protobuf::compiler::cpp::Namespace;
+ using google::protobuf::compiler::cpp::NamespaceOpener;
+ using google::protobuf::compiler::cpp::QualifiedClassName;
+-using google::protobuf::compiler::cpp::UnderscoresToCamelCase;
+ using google::protobuf::io::Printer;
+ using google::protobuf::io::ZeroCopyOutputStream;
++
++// libprotoc does not export compiler::cpp::UnderscoresToCamelCase (an
++// internal helper), so a shared libprotoc cannot satisfy it. Same algorithm.
++std::string UnderscoresToCamelCase(std::string_view input,
++                                   bool cap_next_letter) {
++  std::string result;
++  for (char c : input) {
++    if ('a' <= c && c <= 'z') {
++      result += cap_next_letter ? static_cast<char>(c + ('A' - 'a')) : c;
++      cap_next_letter = false;
++    } else if ('A' <= c && c <= 'Z') {
++      result += c;
++      cap_next_letter = false;
++    } else if ('0' <= c && c <= '9') {
++      result += c;
++      cap_next_letter = true;
++    } else {
++      cap_next_letter = true;
++    }
++  }
++  return result;
++}
+ 
+ struct ProtoExtrasGeneratorOptions {
+   bool generate_to_value_serialization = false;
