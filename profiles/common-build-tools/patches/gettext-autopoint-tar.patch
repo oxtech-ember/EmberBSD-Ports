@@ -1,0 +1,17 @@
+# Origin: EmberBSD contributors (AI-assisted). The host autopoint script uses
+# tar while extracting gettext infrastructure; declare that tool alongside
+# the selected gettext tools.
+
+--- a/mk/tools/gettext.mk
++++ b/mk/tools/gettext.mk
+@@ -35,6 +35,10 @@
+ _TOOLS.gettext-tools=		gettext msgmerge xgettext msgconv autopoint
+ _TOOLS_DEP.gettext-tools=	gettext-tools>=0.15
+ 
++.if !empty(USE_TOOLS:C/:.*//:Mautopoint)
++USE_TOOLS+=	tar
++.endif
++
+ .for _t_ in ${_TOOLS.gettext-tools}
+ .  if !defined(TOOLS_IGNORE.${_t_}) && !empty(USE_TOOLS:C/:.*//:M${_t_})
+ USE_TOOLS+=	msgfmt
