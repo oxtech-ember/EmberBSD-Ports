@@ -23,10 +23,14 @@ class Native:
     def tool(self, name):
         return str(host / 'bin' / ('python3.15' if name == 'python' else name))
 class Process:
+    calls = 0
     @staticmethod
-    def run_logged(argv, log, **kwargs):
-        r = subprocess.run(argv, cwd=kwargs['cwd'], env=kwargs['env'], capture_output=True, text=True)
-        Path(log).write_text(r.stdout + r.stderr)
+    def run_logged(argv, log, *, append=False, **kwargs):
+        Process.calls += 1
+        with Path(log).open('a' if append else 'x') as stream:
+            stream.write(f'fixture GN invocation {Process.calls}\n')
+            r = subprocess.run(argv, cwd=kwargs['cwd'], env=kwargs['env'], capture_output=True, text=True)
+            stream.write(r.stdout + r.stderr)
         if r.returncode: raise RuntimeError(r.stdout + r.stderr)
 class Source:
     @staticmethod
@@ -133,6 +137,19 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     assert not (work/'reconfigure-incomplete').exists() and json.loads(config.read_text())['arguments']==new
     assert json.loads(config.read_text())['environment']['EMBERBSD_HOST_TYPESCRIPT']=='/new'
     assert (out/'build.ninja').read_text()!='old graph' and obj.read_bytes()==b'object' and json.loads(binding.read_text())==commands
+    log = work/'reconfigure.log'
+    assert 'fixture GN invocation 1' in log.read_text() and 'fixture GN invocation 2' in log.read_text()
+    first_log = log.read_text()
     b.reconfigure(opt)  # Already migrated configurations are reusable.
+    second_log = log.read_text()
+    assert second_log.startswith(first_log) and 'fixture GN invocation 3' in second_log
+    gnfile.write_text('not valid GN\n')
+    try: b.reconfigure(opt); raise AssertionError('accepted invalid GN on reconfigure retry path')
+    except RuntimeError: pass
+    failed_log = log.read_text()
+    assert failed_log.startswith(second_log) and 'fixture GN invocation 4' in failed_log
+    gnfile.write_text('group("electron_dist_zip") {}\n'); b.reconfigure(opt)
+    recovered_log = log.read_text()
+    assert recovered_log.startswith(failed_log) and 'fixture GN invocation 5' in recovered_log
     assert not (work/'reconfigure-incomplete').exists() and obj.read_bytes()==b'object'
     print('real GN success, failure/recovery, input mismatch and object preservation passed')

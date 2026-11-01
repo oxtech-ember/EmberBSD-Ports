@@ -1335,7 +1335,8 @@ def reconfigure(options):
             sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
                 '--script-executable=' + native.tool('python'), '--ninja-executable=' + native.tool('ninja'),
                 '--root-target=//electron', '--root-pattern=//electron:electron_dist_zip', '--fail-on-unused-args'],
-                str(work / 'reconfigure.log'), cwd=str(gn_source(options)), env=environment)
+                str(work / 'reconfigure.log'), cwd=str(gn_source(options)), env=environment,
+                append=(work / 'reconfigure.log').exists())
             local_module('electron_build_source', 'prepare-build-sources.py').atomic_json(
                 work / 'configuration.json',
                 dict(arguments=values, environment=environment, source=str(options.workspace),
