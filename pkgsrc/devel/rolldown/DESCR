@@ -1,0 +1,3 @@
+Rolldown is a JavaScript/TypeScript bundler written in Rust with a
+Rollup-compatible API. This package combines upstream's JavaScript
+distribution with an N-API binding compiled from the matching Rust source.
