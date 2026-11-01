@@ -37,4 +37,12 @@ config ESP32S31_NOR_BOOT
 	bool "Boot the mapped NOR FIT before UART recovery"
 	depends on ESP32S31_NOR_MAP && SPL_NOR_SUPPORT
 
+config ESP32S31_MOSAICO_SPLASH
+	bool "Enable the opt-in Mosaico LCD splash diagnostic command"
+	depends on CMDLINE
+	default n
+	help
+	  Add the mosaicosplash command to U-Boot proper for an explicit
+	  pre-kernel LCD diagnostic. It is never run automatically.
+
 endif

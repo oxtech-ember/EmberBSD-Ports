@@ -8003,6 +8003,9 @@ share/u-boot-source/board/espressif/esp32s31/board.c
 share/u-boot-source/board/espressif/esp32s31/cache.c
 share/u-boot-source/board/espressif/esp32s31/firmware.its
 share/u-boot-source/board/espressif/esp32s31/make-nor-image.py
+share/u-boot-source/board/espressif/esp32s31/mosaico_splash.c
+share/u-boot-source/board/espressif/esp32s31/mosaico_splash_core.c
+share/u-boot-source/board/espressif/esp32s31/mosaico_splash_core.h
 share/u-boot-source/board/espressif/esp32s31/nor-firmware.its
 share/u-boot-source/board/espressif/esp32s31/psram-layout.h
 share/u-boot-source/board/espressif/esp32s31/spl.c
@@ -11970,6 +11973,7 @@ share/u-boot-source/configs/emsdp_defconfig
 share/u-boot-source/configs/en7523_evb_defconfig
 share/u-boot-source/configs/endeavoru_defconfig
 share/u-boot-source/configs/espressif_esp32s31_defconfig
+share/u-boot-source/configs/espressif_esp32s31_mosaico_splash.fragment
 share/u-boot-source/configs/espressif_esp32s31_nor_defconfig
 share/u-boot-source/configs/espressif_esp32s31_nor_probe_defconfig
 share/u-boot-source/configs/espresso7420_defconfig

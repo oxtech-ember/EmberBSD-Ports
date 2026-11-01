@@ -96,6 +96,32 @@ checks. `tests/test-s31-nor-integration.py` accepts the same input options as
 the producer except `--output` and checks two complete images for equality
 and their NOR offsets.
 
+### Opt-in Mosaico LCD command
+
+The S31 proper board has an off-by-default `ESP32S31_MOSAICO_SPLASH` option.
+The source package installs a one-symbol fragment at
+`configs/espressif_esp32s31_mosaico_splash.fragment`. Apply it to a normal S31
+configuration with U-Boot's `merge_config.sh` interface, then resolve the
+configuration before building:
+
+```sh
+make -C "$SOURCE" O="$OBJDIR" espressif_esp32s31_defconfig
+"$SOURCE/scripts/kconfig/merge_config.sh" -m -O "$OBJDIR" \
+    "$OBJDIR/.config" \
+    "$SOURCE/configs/espressif_esp32s31_mosaico_splash.fragment"
+make -C "$SOURCE" O="$OBJDIR" olddefconfig
+```
+
+The option adds the manual `mosaicosplash red` U-Boot proper command; it is
+not called by normal boot. It drives the V1.2 panel power/reset and SPI2 pins,
+replays the Claw initialization sequence, and sends a solid red RGB565 frame.
+This bounded diagnostic adaptation follows Espressif's Apache-2.0
+`mosaico_boot_splash.c` at
+[`2654a4a9f76f5d7ea108e4dff7ade7b1df4c1c5c`](https://github.com/espressif/esp-mosaico-claw/blob/2654a4a9f76f5d7ea108e4dff7ade7b1df4c1c5c/components/mosaico_boot_splash/bootloader/mosaico_boot_splash.c);
+it is not byte-identical to the Claw implementation. Its MMIO transaction
+sequence is covered by `tests/test-s31-mosaico-splash.py`; that host fixture
+does not establish panel response or visible output.
+
 ## ESP32-S31 NOR profiles
 
 `espressif_esp32s31_nor_probe_defconfig` maps the 16 MiB unencrypted NOR
@@ -131,6 +157,7 @@ for check in test-sha256.py test-spl-strings.py test-fit-flow.py \
     test-fit-read.py test-fit-hash.py test-psram-layout.py test-reserve.py test-s31-mpll.py \
     test-mips-endian.py test-prof-align.py test-env-awk.py \
     test-spl-nor-bounds.py test-s31-nor-map.py test-s31-nor-order.py \
+    test-s31-mosaico-splash.py \
     test-s31-nor-bootcmd.py test-s31-nor-attach.py; do
     "$HOST_PREFIX/bin/python3.15" "tests/$check" \
         --source "$SOURCE" --host-prefix "$HOST_PREFIX" || exit 1

@@ -18,7 +18,8 @@ COMMENT= Common patched U-Boot sources for firmware consumers
 LICENSE= gnu-gpl-v2 AND modified-bsd AND 2-clause-bsd AND zlib AND mit AND \
  gnu-lgpl-v2.1 AND isc AND unicode AND cc0-1.0-universal AND cc-by-v4.0 AND \
  cc-by-sa-v4.0 AND uboot-BSD-2-Clause-Patent AND uboot-BSD-3-Clause-Clear AND \
- uboot-LZMA-SDK-9.22 AND uboot-Intel AND uboot-eCos-2.0 AND uboot-bzip2-1.0.6
+ uboot-LZMA-SDK-9.22 AND uboot-Intel AND uboot-eCos-2.0 AND uboot-bzip2-1.0.6 AND \
+ apache-2.0
 
 USE_LANGUAGES= # none
 USE_TOOLS+= find
