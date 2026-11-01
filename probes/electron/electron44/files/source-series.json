@@ -792,6 +792,11 @@
       "path": "gn-compiled-action-scoped-runtime.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "net-cookie-util-string-view-iterators.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {
