@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-License-Identifier: BSD-2-Clause
-# Origin: EmberBSD (AI-assisted). tools refuses, with a message, an order in
+# Origin: EmberBSD (AI-assisted). order and tools refuse, with a message, a graph in
 # which the dependencies of a package cannot be read (here a makefile that
 # includes a missing buildlink3.mk): it names the package and its make error
 # on stderr, exits non-zero and keeps the old order and edges. A recording
@@ -65,6 +65,19 @@ printf '%s\n' 't/a t/a' 't/bad t/bad' > "$out/state/edges"
 printf '%s\n' t/a t/bad > "$out/state/order"
 cp "$out/state/edges" "$out/edges.before"
 cp "$out/state/order" "$out/order.before"
+printf '%s\n' 't/old intentionally-skipped' > "$out/state/skipped"
+printf '%s\n' 't/done done-1.0 existing-digest' > "$out/state/done"
+cp "$out/state/skipped" "$out/skipped.before"
+cp "$out/state/done" "$out/done.before"
+if BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=4 CROSS_BULK_JOBS=2 \
+    sh "$ports/scripts/cross-bulk.sh" order "$out/list" "$out/state" > "$out/order.out" 2> "$out/order.err"; then
+    fail 'order accepted a package whose dependencies cannot be read'
+fi
+grep -q '^t/bad order$' "$out/order.err" || fail 'order did not name the unreadable package'
+grep -q 'Could not find ../../x/missing/buildlink3.mk' "$out/order.err" || fail 'order hid the make error'
+for file in order edges skipped done; do
+    cmp -s "$out/state/$file" "$out/$file.before" || fail "order changed $file after a failed query"
+done
 if BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=4 CROSS_BULK_JOBS=2 \
     sh "$ports/scripts/cross-bulk.sh" tools "$out/list" "$out/state" > "$out/tools.out" 2> "$out/tools.err"; then
     fail 'tools accepted a package whose dependencies cannot be read'
@@ -77,4 +90,22 @@ grep -q 'Could not find ../../x/missing/buildlink3.mk' "$out/tools.err" ||
 grep -q '^t/a ' "$out/tools.err" && fail 'tools named the readable t/a'
 cmp -s "$out/state/order" "$out/order.before" && cmp -s "$out/state/edges" "$out/edges.before" ||
     fail 'tools changed the order or edges'
-echo 'PASS: tools refuses an unreadable package with its name and make error and keeps the old order'
+# A failed dependency parser must not be hidden by the following sort.
+mkdir "$out/bad-tools"
+awk_path=$(command -v awk)
+cat > "$out/bad-tools/awk" <<WRAP
+#!/bin/sh
+case "\$*" in *suffix=*) echo 'dependency parser failed' >&2; exit 17 ;; esac
+exec "$awk_path" "\$@"
+WRAP
+chmod +x "$out/bad-tools/awk"
+echo t/a > "$out/parser-list"
+if PATH="$out/bad-tools:$PATH" BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_JOBS=1 \
+    sh "$ports/scripts/cross-bulk.sh" order "$out/parser-list" "$out/state" > "$out/parser.out" 2> "$out/parser.err"; then
+    fail 'order accepted a failed dependency parser'
+fi
+grep -q 'dependency parser failed' "$out/parser.err" || fail 'order hid the dependency parser error'
+for file in order edges skipped done; do
+    cmp -s "$out/state/$file" "$out/$file.before" || fail "parser failure changed $file"
+done
+echo 'PASS: order and tools refuse unreadable dependencies and retain the previous graph and done records'

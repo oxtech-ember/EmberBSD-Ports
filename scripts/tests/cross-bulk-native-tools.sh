@@ -312,12 +312,14 @@ echo 0 > "$out/order-cache/active"
 echo 0 > "$out/order-cache/max"
 : > "$out/order-cache/errors"
 touch "$out/order-cache/fail-t-shared"
-order_run order-serial-fail 1 || fail 'serial query failure unexpectedly aborted order command'
+if order_run order-serial-fail 1; then fail 'serial order accepted an unreadable dependency'; fi
 echo 0 > "$out/order-cache/active"
-order_run order-parallel-fail 2 || fail 'parallel query failure unexpectedly aborted order command'
-for name in order edges skipped failed; do
-    cmp -s "$out/order-serial-fail/$name" "$out/order-parallel-fail/$name" ||
-        fail "parallel query failure changed $name"
+if order_run order-parallel-fail 2; then fail 'parallel order accepted an unreadable dependency'; fi
+for name in order edges skipped; do
+    [ ! -e "$out/order-serial-fail/$name" ] && [ ! -e "$out/order-parallel-fail/$name" ] ||
+        fail "failed query published an incomplete $name"
 done
+cmp -s "$out/order-serial-fail/failed" "$out/order-parallel-fail/failed" ||
+    fail 'parallel query failure changed the failed nodes'
 grep -qFx 't/shared order' "$out/order-parallel-fail/failed" || fail 'parallel query failure was lost'
 echo 'PASS: native tools are graph nodes, a long depends step blocks nobody, installs into one database never overlap, installed tools are leaves, a tool cycle is refused'

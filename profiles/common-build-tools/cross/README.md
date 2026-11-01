@@ -555,7 +555,9 @@ node fails with reason `replace`, its log names the library and the
 packages that load it, and the package stays in `PACKAGES-native/All` for
 an install with those rebuilds between passes.
 `scripts/tests/cross-bulk-native-replace-libraries.sh NEW_OUTPUT` checks
-this. Order and tools refuse a graph with a cycle. `cross-bulk.sh tools LIST STATE`
+this. Order and tools refuse a graph with a cycle or an unreadable dependency
+query; a failed query keeps the previous order, edges, skipped list and done
+records. `cross-bulk.sh tools LIST STATE`
 adds these nodes to an existing order for the packages not yet done, keeps
 the old order and edges as `*.pre-tools-STAMP`, and refuses when a query
 fails or a reachable node is skipped. Nothing is locked while a package

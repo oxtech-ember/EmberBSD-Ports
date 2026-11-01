@@ -221,17 +221,18 @@ node_deps()
     vars=$(mk -C "$PKGSRCDIR/$dir" "$@" _MAKEVARS_MK=defined show-vars \
         VARNAMES='PKG_SKIP_REASON DEPENDS BUILD_DEPENDS TOOL_DEPENDS BOOTSTRAP_DEPENDS PKGBASE PKGNAME' < /dev/null) ||
         return 1
-    printf '%s\n' "$vars" | sed -n 1p
+    printf '%s\n' "$vars" | sed -n 1p || return 1
     if [ -n "$suffix" ]; then
-        base=$(printf '%s\n' "$vars" | sed -n 6p)
-        ! native_current "$base" "$(printf '%s\n' "$vars" | sed -n 7p)" || return 0
+        base=$(printf '%s\n' "$vars" | sed -n 6p) || return 1
+        name=$(printf '%s\n' "$vars" | sed -n 7p) || return 1
+        ! native_current "$base" "$name" || return 0
     fi
-    printf '%s\n' "$vars" | awk -v suffix="$suffix" '
+    deps=$(printf '%s\n' "$vars" | awk -v suffix="$suffix" '
         NR == 1 || NR > 5 { next }
         { s = NR <= 3 ? suffix : "@native"; n = split($0, w, " ")
           for (i = 1; i <= n; i++)
-              if (match(w[i], /:\.\.\/\.\.\/[^\/:]+\/[^\/:]+$/)) print substr(w[i], RSTART + 7) s }' |
-        sort -u
+              if (match(w[i], /:\.\.\/\.\.\/[^\/:]+\/[^\/:]+$/)) print substr(w[i], RSTART + 7) s }') || return 1
+    printf '%s\n' "$deps" | sort -u
 }
 
 # Print "dependent -> skipped" for each edge in $2 that reaches a node
@@ -262,6 +263,7 @@ order()
     q=$state/order-query
     rm -rf "$q"
     mkdir "$q"
+    : > "$q/failed"
     : > "$state/edges.new"
     : > "$state/skipped.new"
     sort -u "$list" > "$state/queue"
@@ -288,7 +290,7 @@ order()
         while read -r path key; do
             cat "$q/$key.err" >> "$state/logs/order.err" 2>/dev/null || :
             if [ ! -f "$q/$key.deps" ]; then
-                echo "$path $path" >> "$state/edges.new"
+                echo "$path $key" >> "$q/failed"
                 echo "$path order" >> "$state/failed"
                 continue
             fi
@@ -304,6 +306,14 @@ order()
                 echo "$dep" >> "$state/next"
             done
         done < "$q/frontier-map"
+        if [ -s "$q/failed" ]; then
+            echo 'Refused: the dependencies of these packages could not be read:' >&2
+            while read -r path key; do
+                echo "$path order" >&2
+                [ ! -s "$q/$key.err" ] || tail -n 5 "$q/$key.err" | sed 's/^/    /' >&2
+            done < "$q/failed"
+            return 1
+        fi
         sort -u "$state/next" > "$state/queue"
     done
     refused=$(skipped_deps "$state/skipped.new" "$state/edges.new")
@@ -1111,7 +1121,7 @@ case "$mode" in
     deps)
         native_info
         case "$list" in
-            *'|'*) key=${list%%|*}; path=${list#*|} ;;
+            *'|'*) key=${list%%\|*}; path=${list#*\|} ;;
             *) key=$(echo "$list" | tr / _); path=$list ;;
         esac
         node_deps "$path" > "$state/$key.tmp" 2> "$state/$key.err" &&
