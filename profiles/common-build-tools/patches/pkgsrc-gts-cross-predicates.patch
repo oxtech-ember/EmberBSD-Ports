@@ -1,0 +1,29 @@
+gts builds its predicates_init generator for the build host when cross
+compiling.
+
+src/Makefile compiles predicates_init with the target compiler and then
+runs it to write predicates_init.h, so a cross build stopped because the
+build host could not execute the target binary. The generator only prints
+IEEE double error bounds, so build and run it with NATIVE_CC before the
+main build; the make rule then finds both files up to date.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+Test: profiles/common-build-tools/tests/gts-cross-predicates.sh
+
+--- a/graphics/gts/Makefile
++++ b/graphics/gts/Makefile
+@@ -18,6 +18,15 @@
+ 
+ CPPFLAGS+=	-I${BUILDLINK_PREFIX.netpbm}/include/netpbm
+ 
++# predicates_init prints the floating-point error bounds for the generated
++# predicates_init.h. Build and run it for the build host when cross
++# compiling; the make rule then finds both files up to date.
++.if ${USE_CROSS_COMPILE:U:tl} == yes
++pre-build:
++	cd ${WRKSRC}/src && ${NATIVE_CC} -I. -I.. -o predicates_init \
++	    predicates_init.c && ./predicates_init > predicates_init.h
++.endif
++
+ .include "../../devel/gettext-lib/buildlink3.mk"
+ .include "../../devel/glib2/buildlink3.mk"
+ .include "../../graphics/netpbm/buildlink3.mk"
