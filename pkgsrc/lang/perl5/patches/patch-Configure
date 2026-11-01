@@ -12,7 +12,50 @@ Not submitted upstream.
 
 --- Configure.orig
 +++ Configure
-@@ -3243,6 +3243,20 @@
+@@ -1295,6 +1295,17 @@
+ selectminbits=''
+ selecttype=''
+ sh=''
++# The recipe supplies this only for an explicit build/runtime shell pair.
++if test "${PERL_BUILD_SHELL+set}" = set; then
++    case "$PERL_BUILD_SHELL" in
++    /*) sh=$PERL_BUILD_SHELL ;;
++    *) echo "Configure: PERL_BUILD_SHELL must be an absolute build shell" >&2; exit 1 ;;
++    esac
++    if test ! -x "$sh"; then
++        echo "Configure: selected build shell is not executable" >&2
++        exit 1
++    fi
++fi
+ targetsh=''
+ sig_count=''
+ sig_name=''
+@@ -1582,6 +1593,16 @@
+ if `$sh -c '#' >/dev/null 2>&1`; then
+ 	shsharp=true
+ 	spitshell=cat
++	if test "${PERL_BUILD_CAT+set}" = set; then
++		case "$PERL_BUILD_CAT" in
++		/*) xcat=$PERL_BUILD_CAT ;;
++		*) echo "Configure: PERL_BUILD_CAT must be an absolute build cat" >&2; exit 1 ;;
++		esac
++		if test ! -x "$xcat"; then
++			echo "Configure: selected build cat is not executable" >&2
++			exit 1
++		fi
++	else
+ 	xcat=/bin/cat
+ 	test -f $xcat$_exe || xcat=/usr/bin/cat
+ 	if test ! -f $xcat$_exe; then
+@@ -1595,6 +1616,7 @@
+ 			echo "Can't find cat anywhere!"
+ 			exit 1
+ 		fi
++	fi
+ 	fi
+ 	echo "#!$xcat" >sharp
+ 	$eunicefix sharp
+@@ -3243,6 +3265,20 @@
  	    exit 1
  	    ;;
  	esac
@@ -33,7 +76,7 @@ Not submitted upstream.
  	if $test ! -f $run; then
  	    echo "Target 'run' script '$run' not found." >&4
  	else
-@@ -3530,7 +3544,8 @@
+@@ -3530,7 +3566,8 @@
  			osvers=`echo "$4"|sed 's/^v//'`
  			;;
  		freebsd) osname=freebsd
@@ -43,7 +86,7 @@ Not submitted upstream.
  		genix)	osname=genix ;;
  		gnu)	osname=gnu
  			osvers="$3" ;;
-@@ -3552,11 +3567,11 @@
+@@ -3552,11 +3589,11 @@
  			;;
  		MiNT)	osname=mint
  			;;
@@ -57,7 +100,7 @@ Not submitted upstream.
  			;;
  		news-os) osvers="$3"
  			case "$3" in
-@@ -3566,7 +3581,7 @@
+@@ -3566,7 +3603,7 @@
  			;;
  		nonstop-ux) osname=nonstopux ;;
  		openbsd) osname=openbsd
@@ -66,7 +109,7 @@ Not submitted upstream.
  			;;
  		os2)	osname=os2
  			osvers="$4"
-@@ -3580,6 +3595,9 @@
+@@ -3580,6 +3617,9 @@
  			;;
  		qnx) osname=qnx
  			osvers="$4"
@@ -76,7 +119,7 @@ Not submitted upstream.
  			;;
  		solaris) osname=solaris
  			case "$3" in
-@@ -4729,7 +4747,7 @@
+@@ -4729,7 +4769,7 @@
  EOCP
  c99_for=no
  for flag in '' '-std=gnu99' '-std=c99'; do
@@ -85,7 +128,7 @@ Not submitted upstream.
          c99_for="$flag"
          break;
      fi
-@@ -4958,7 +4976,7 @@
+@@ -4958,7 +4998,7 @@
  # If using gcc or clang, we can get better values for libpth, incpth
  # and usrinc directly from the compiler.
  # Note that ccname for clang is also gcc.
@@ -94,7 +137,7 @@ Not submitted upstream.
      gcc)
  	realpath=`which realpath 2>/dev/null | sed 's/no realpath in.*//'`
  	$echo 'extern int foo;' > try.c
-@@ -5042,14 +5060,14 @@
+@@ -5042,14 +5082,14 @@
  esac
  case "$libpth" in
  ' ') dlist='';;
@@ -111,7 +154,7 @@ Not submitted upstream.
  		case " $libpth " in
  		*" $xxx "*) ;;
  		*) libpth="$libpth $xxx";;
-@@ -5165,7 +5183,7 @@
+@@ -5165,7 +5205,7 @@
  obj_ext=$_o
  path_sep=$p_
  
@@ -120,7 +163,7 @@ Not submitted upstream.
  
  : Which makefile gets called first.  This is used by make depend.
  case "$firstmakefile" in
-@@ -5486,7 +5504,7 @@
+@@ -5486,7 +5526,7 @@
  	*-fno-stack-protector*)
  	    echo "Do not add -fstack-protector nor -fstack-protector-strong" 2>&1
  	    ;;
@@ -129,7 +172,7 @@ Not submitted upstream.
  	   ?*)	set stack-protector-strong -fstack-protector-strong
  		eval $checkccflag
  		case "$dflt" in
-@@ -6482,6 +6500,15 @@
+@@ -6482,6 +6522,15 @@
  		;;
  	esac
  	;;
@@ -145,7 +188,7 @@ Not submitted upstream.
  esac
  
  : Figure out where the libc is located
-@@ -7200,7 +7227,11 @@
+@@ -7200,7 +7249,11 @@
  esac
  case "$targetarch" in
  '') ;;
@@ -158,7 +201,7 @@ Not submitted upstream.
  esac
  myarchname="$tarch"
  case "$archname" in
-@@ -7685,7 +7716,9 @@
+@@ -7685,7 +7738,9 @@
  . ./getfile
  prefixvar=sitelib
  . ./setprefixvar
@@ -169,7 +212,7 @@ Not submitted upstream.
  
  : Determine list of previous versions to include in @INC
  $cat > getverlist <<EOPL
-@@ -8045,7 +8078,9 @@
+@@ -8045,7 +8100,9 @@
  	vendorlibexp="$ansexp"
  	;;
  esac
@@ -180,7 +223,7 @@ Not submitted upstream.
  prefixvar=vendorlib
  . ./installprefix
  
-@@ -8545,6 +8580,7 @@
+@@ -8545,6 +8602,7 @@
  			  esac
  			  ;;
  		    *linux*|irix*|gnu*)  dflt="-shared $optimize" ;;
@@ -188,7 +231,7 @@ Not submitted upstream.
  		    solaris) # See [perl #66604].
  			    # On Solaris 11, gcc -m64 on amd64
  			    # appears not to understand -G.  gcc versions at
-@@ -8584,7 +8620,7 @@
+@@ -8584,7 +8642,7 @@
  	esac
  	for thisflag in $ldflags; do
  	    case "$thisflag" in
@@ -197,7 +240,7 @@ Not submitted upstream.
  		    case " $dflt " in
  			*" $thisflag "*) ;;
  			*) dflt="$dflt $thisflag" ;;
-@@ -8840,7 +8876,7 @@
+@@ -8840,7 +8898,7 @@
  	freebsd|minix|mirbsd|netbsd|openbsd|interix|dragonfly|bitrig)
  		xxx="-Wl,-R$shrpdir"
  		;;
@@ -206,7 +249,7 @@ Not submitted upstream.
  		xxx="-Wl,-rpath,$shrpdir"
  		;;
  	hpux*)
-@@ -8849,6 +8885,9 @@
+@@ -8849,6 +8907,9 @@
  		;;
  	cygwin)
  		# cygwin needs only ldlibpth
@@ -216,7 +259,7 @@ Not submitted upstream.
  		;;
  	*)
  		tmp_shrpenv="env LD_RUN_PATH=$shrpdir"
-@@ -9923,6 +9962,13 @@
+@@ -9923,6 +9984,13 @@
  
  : Check if we want perlio
  useperlio="$define"
@@ -230,7 +273,7 @@ Not submitted upstream.
  
  : Set the vendorbin variables
  case "$vendorprefix" in
-@@ -13532,10 +13578,16 @@
+@@ -13532,10 +13600,16 @@
  	set try
  	if eval $compile_ok; then
  		echo "$startsh" >mtry
@@ -249,7 +292,7 @@ Not submitted upstream.
  		0) eagain=`$cat try.out`;;
  		1) echo "Could not perform non-blocking setting!";;
  		2) echo "I did a successful read() for something that was not there!";;
-@@ -16159,7 +16211,7 @@
+@@ -16159,7 +16233,7 @@
  }
  EOCP
  set try
@@ -258,7 +301,7 @@ Not submitted upstream.
      $echo "lchown() found." >&4
      val="$define"
  else
-@@ -20880,7 +20932,15 @@
+@@ -20880,7 +20954,15 @@
  ACAT(Cir,cus)
  EOCP
  $cppstdin $cppflags $cppminus <cpp_stuff.c >cpp_stuff.out 2>&1

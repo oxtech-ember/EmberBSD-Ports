@@ -3,6 +3,9 @@ $NetBSD: patch-installperl,v 1.2 2021/03/15 14:23:12 ryoon Exp $
 Haiku part: From:
 https://github.com/haikuports/haikuports/blob/master/dev-lang/perl/patches/perl-5.32.0.patchset
 
+EmberBSD: Select the Darwin install-name tool through the environment.
+Origin: EmberBSD (AI-assisted). Preserve upstream dependency rewriting.
+
 --- installperl.orig	2020-12-18 09:58:48.000000000 +0000
 +++ installperl
 @@ -336,7 +336,6 @@ $do_installprivlib = 0 if $versiononly &
@@ -26,4 +29,30 @@ https://github.com/haikuports/haikuports/blob/master/dev-lang/perl/patches/perl-
 +    }
  }
  
+ 
+@@ -752,6 +758,14 @@
+       && $Config{useshrplib}
+       or return;
+ 
++    my $install_name_tool = "install_name_tool";
++    if (exists $ENV{EMBERBSD_DARWIN_INSTALL_NAME_TOOL}) {
++        $install_name_tool = $ENV{EMBERBSD_DARWIN_INSTALL_NAME_TOOL};
++        die "EMBERBSD_DARWIN_INSTALL_NAME_TOOL must name an absolute executable file\n"
++          unless $install_name_tool =~ m{\A/}
++            && -f $install_name_tool && -x $install_name_tool;
++    }
++
+     my @opts;
+     my $so = $Config{so};
+     my $libperl = "$Config{archlibexp}/CORE/libperl.$Config{so}";
+@@ -763,8 +777,8 @@
+     }
+     push @opts, $file;
+ 
+-    $opts{verbose} and print "  install_name_tool @opts\n";
+-    system "install_name_tool", @opts
++    $opts{verbose} and print "  $install_name_tool @opts\n";
++    system { $install_name_tool } $install_name_tool, @opts
+       and die "Cannot update $file dependency paths\n";
+ }
  

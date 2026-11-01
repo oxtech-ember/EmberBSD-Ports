@@ -157,10 +157,10 @@ cross-build provenance. The converter rejects unknown remaining host paths.
 ## Selected Darwin search paths
 
 Darwin Configure receives `locincpth` and `loclibpth` from the selected prefix
-before its include/library probes. The canonical `lang/perl5/files/Policy.sh`
-owns cleanup of `/usr/local/lib` from both `ldflags` and XS `lddlflags`; the
-export infrastructure patch only supplies the Configure arguments and package
-revision. It must not add a second copy of that callback block.
+before its include/library probes. The canonical `lang/perl5` recipe owns
+those Configure arguments, while `files/Policy.sh` removes `/usr/local/lib`
+from both `ldflags` and XS `lddlflags`. Keep these changes in the same recipe;
+do not add another callback or an export-time Perl patch.
 
 The [search-path regression](../../development-toolchain/tests/perl-darwin-search-paths.py)
 accepts `CONFIGURE POLICY MAKEFILE SHELL UTILITY_BIN WORK`. Use the actual

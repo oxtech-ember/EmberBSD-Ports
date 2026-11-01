@@ -68,7 +68,15 @@ CFLAGS+=		-DDEBUGGING
 .endif
 
 .if !empty(PKG_OPTIONS:Mdtrace)
-CONFIGURE_ARGS+=	-Dusedtrace
+# Configure and Makefile.SH execute $dtrace unquoted. Keep this one path word.
+.  if !defined(DTRACE) || empty(DTRACE) || ${DTRACE:[#]} != 1 || \
+      "${DTRACE:tW:C,^/.*,/,}" != "/"
+PKG_FAIL_REASON+= "Set one absolute DTRACE executable path for the dtrace option."
+.  else
+CONFIGURE_ARGS+=	-Dusedtrace=${DTRACE:Q}
+.  endif
+.else
+CONFIGURE_ARGS+=	-Uusedtrace
 .endif
 
 .if !empty(PKG_OPTIONS:Mmstats)

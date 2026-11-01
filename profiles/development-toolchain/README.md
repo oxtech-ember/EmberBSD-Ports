@@ -349,12 +349,11 @@ fallback. The disabled option passes `-Uusedtrace` explicitly. Cross callers
 retain the same explicit provider requirement. No host tool is inferred from
 the target OS.
 
-The DTrace export patch applies after `pkgsrc-perl-explicit-shells.patch`
-and advances revision 6 to 7. The later
-`pkgsrc-perl-install-name-tool.patch` advances the effective common package
-revision to 8. Rebuild ABI-bound Perl modules and consumers when replacing an
-installed Perl package. The existing runtime shell fixture expects the final
-revision 8. The
+The Darwin shell selection, DTrace provider validation, install-name tool and
+search-path behavior are carried together by the canonical `lang/perl5`
+overlay. The package has one revision (`nb13`), rather than a sequence of
+infrastructure patch revisions. Rebuild ABI-bound Perl modules and consumers
+when replacing an installed Perl package. The
 [parser fixture](../common-build-tools/tests/perl-dtrace.py) checks selected
 and refused paths with a complete accepted bmake tuple and an empty PATH.
 Run it through the existing SDK owned-process interface. It does not configure

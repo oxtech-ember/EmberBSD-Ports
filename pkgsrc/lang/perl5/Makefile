@@ -3,7 +3,7 @@
 .include "license.mk"
 .include "Makefile.common"
 
-PKGREVISION=	12
+PKGREVISION=	13
 
 COMMENT=	Practical Extraction and Report Language
 
@@ -54,7 +54,36 @@ HAS_CONFIGURE=		yes
 CONFIGURE_SCRIPT=	./Configure
 CONFIGURE_ARGS+=	-sde
 CONFIGURE_ARGS+=	-Dldflags=${LDFLAGS:Q}
+
+.if ${OPSYS} == "Darwin"
+# Configure otherwise adds host /usr/local and optional package-manager
+# include/library directories to ccflags/lddlflags before Policy.sh runs.
+CONFIGURE_ARGS+=	-Dlocincpth=${LOCALBASE:Q}/include
+CONFIGURE_ARGS+=	-Dloclibpth=${LOCALBASE:Q}/lib
+.endif
+
+# Opt in with a build/runtime pair. Never inherit a host path for a cross target.
+# BEGIN explicit native runtime shells
+.if defined(PERL_BUILD_SHELL) || defined(PERL_RUNTIME_SHELL)
+.  if !defined(PERL_BUILD_SHELL) || !defined(PERL_RUNTIME_SHELL) || \
+      empty(PERL_BUILD_SHELL) || empty(PERL_RUNTIME_SHELL) || \
+      "${PERL_BUILD_SHELL:C,^/.*,/,}" != "/" || \
+      "${PERL_RUNTIME_SHELL:tW:C,^/.*,/,}" != "/" || ${PERL_BUILD_SHELL:[#]} != 1
+PKG_FAIL_REASON+= "Set explicit absolute PERL_BUILD_SHELL and PERL_RUNTIME_SHELL paths."
+.  else
+USE_TOOLS+= cat
+CONFIG_SHELL= ${PERL_BUILD_SHELL}
+CONFIGURE_ENV+= PERL_BUILD_SHELL=${PERL_BUILD_SHELL:Q}
+# TOOLS_CAT is TOOLS_PATH.cat, the real binary, not TOOLS_CMD.cat's wrapper.
+CONFIGURE_ENV+= PERL_BUILD_CAT=${TOOLS_CAT:Q}
+CONFIGURE_ARGS+= -Dsh=${PERL_BUILD_SHELL:Q} -Dtargetsh=${PERL_RUNTIME_SHELL:Q}
+.  endif
+.endif
+# END explicit native runtime shells
 MAKE_ENV+=		LC_ALL="C"
+.if ${OPSYS} == "Darwin" && defined(EMBERBSD_DARWIN_INSTALL_NAME_TOOL)
+MAKE_ENV+=		EMBERBSD_DARWIN_INSTALL_NAME_TOOL=${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:Q}
+.endif
 LDFLAGS.QNX+=		-lm
 
 CONFIGURE_ARGS.SunOS+=	-Aundef:csh

@@ -65,7 +65,7 @@ expected_generate=$work/prefix/libexec/perl5/$version/generate_uudmap
 [ "$(value EMBERBSD_PERL_HOST_GENERATE)" = "$expected_generate" ] ||
     { echo 'Cross Perl did not select the installed native generator' >&2; exit 1; }
 cross_tools=$(value TOOL_DEPENDS)
-case "$cross_tools" in *'perl>=5.44.0nb12:../../lang/perl5'*) ;;
+case "$cross_tools" in *'perl>=5.44.0nb13:../../lang/perl5'*) ;;
 *) echo "Cross Perl does not require the native helper package revision: $cross_tools" >&2; exit 1 ;;
 esac
 args=$(value CONFIGURE_ARGS)

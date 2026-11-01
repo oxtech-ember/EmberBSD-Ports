@@ -4,7 +4,7 @@
 .if ${OPSYS} != "NetBSD" || (${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64")
 PKG_FAIL_REASON+= "The Perl cross recipe requires EmberBSD/aarch64 or EmberBSD/x86_64"
 .endif
-TOOL_DEPENDS+= perl>=5.44.0nb12:../../lang/perl5
+TOOL_DEPENDS+= perl>=5.44.0nb13:../../lang/perl5
 _PERL5_HOST_TOOLDIR= ${TOOLBASE}/libexec/perl5/${PKGVERSION_NOREV}
 EMBERBSD_PERL_HOST_MINIPERL?= ${_PERL5_HOST_TOOLDIR}/miniperl
 EMBERBSD_PERL_HOST_GENERATE?= ${_PERL5_HOST_TOOLDIR}/generate_uudmap
