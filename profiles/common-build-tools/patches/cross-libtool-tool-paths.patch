@@ -1,0 +1,60 @@
+Stop a cross package that would use a cross libtool configured for other
+cross tools or another sysroot.
+
+cross-libtool-base and cross-libtool-fortran record the absolute LD, NM
+and RANLIB and the library search path of the TOOLDIR and CROSS_DESTDIR
+they were configured with. They install into TOOLBASE, and every
+configuration that shares one TOOLBASE takes the installed package as the
+tool dependency of its cross packages, whatever TOOLDIR and CROSS_DESTDIR
+it was configured for. A bulk build then ran ranlib through the tools
+directory of another configuration and searched its sysroot copy, and
+would break once that directory was removed.
+
+In the wrapper phase of a cross package that uses libtool, check that
+every absolute path of these lines is under TOOLDIR or CROSS_DESTDIR, and
+stop with the paths and the settings to reinstall the cross libtool with.
+Native builds are unchanged.
+
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/mk/cwrappers.mk
++++ b/mk/cwrappers.mk
+@@ -152,6 +152,38 @@
+ 
+ do-wrapper: generate-cwrappers
+ 
++# A cross libtool records the absolute linker, nm, ranlib and library
++# search path of the cross tools and sysroot it was configured with.
++# Several configurations can share one TOOLBASE, and an installed
++# cross-libtool configured for another TOOLDIR or CROSS_DESTDIR satisfies
++# the dependency all the same. Stop before the package uses it.
++.if !empty(USE_CROSS_COMPILE:M[yY][eE][sS]) && defined(USE_LIBTOOL) && \
++    !empty(TOOLDIR) && !empty(CROSS_DESTDIR)
++do-wrapper: check-cross-libtool
++.endif
++
++.PHONY: check-cross-libtool
++check-cross-libtool:
++	${RUN} lt=${PKG_LIBTOOL:Q}; bad=;				\
++	if [ ! -f "$$lt" ]; then					\
++		${ERROR_MSG} "$$lt is missing.";			\
++		exit 1;							\
++	fi;								\
++	paths=`${SED} -n -E						\
++	    -e 's/^(LD|NM|RANLIB)="(.*)"$$/\2/p'			\
++	    -e 's/^sys_lib_search_path_spec="(.*)"$$/\1/p' "$$lt"`;	\
++	for p in $$paths; do						\
++		case "$$p" in						\
++		${TOOLDIR}/*|${CROSS_DESTDIR}/*|[!/]*) ;;		\
++		*) bad="$$bad $$p" ;;					\
++		esac;							\
++	done;								\
++	if [ -n "$$bad" ]; then						\
++		${ERROR_MSG} "$$lt was configured for other cross tools or another sysroot:$$bad"; \
++		${ERROR_MSG} "Reinstall its cross-libtool package with TOOLDIR=${TOOLDIR} and CROSS_DESTDIR=${CROSS_DESTDIR}."; \
++		exit 1;							\
++	fi
++
+ .if !target(do-wrapper)
+ do-wrapper:
+ 	@${DO_NADA}
