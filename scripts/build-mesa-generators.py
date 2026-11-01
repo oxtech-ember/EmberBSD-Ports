@@ -18,8 +18,10 @@ sys.path.insert(0, str(PORTS / 'profiles/common-graphics/cross'))
 import sdk_source
 import mesa_generator_host
 
+# meson 1.12.1nb1 runs the selected native lipo for Darwin architecture
+# checks; an older one runs a bare lipo that the native PATH lacks.
 DEPENDENCIES = (
-    'meson>=1.12.1', 'ninja-build>=1.13.2', 'cmake>=4.4.4', 'pkgconf>=0',
+    'meson>=1.12.1nb1', 'ninja-build>=1.13.2', 'cmake>=4.4.4', 'pkgconf>=0',
     'py315-mako>=1.4.3', 'py315-packaging>=26.3', 'py315-yaml>=6.0.3nb1',
     'py315-lxml>=6.1.3', 'py315-rnc2rng>=2.7.0',
     'py315-rply>=0.7.8', 'py315-appdirs>=1.4.4',

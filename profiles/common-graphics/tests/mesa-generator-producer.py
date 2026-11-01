@@ -30,6 +30,7 @@ class Native:
     path = bundle_root + '/gcc16/bin:' + bundle_root + '/bin'
     compiler_family = 'gcc'
     compiler = {'version': '16.2.0'}
+    tools = {}
 
     def tool(self, role):
         return self.bundle_root + {'cc': '/gcc16/bin/gcc', 'cxx': '/gcc16/bin/g++'}.get(role, '/bin/' + role)
@@ -41,6 +42,13 @@ class Native:
 class ProducerTests(unittest.TestCase):
     def setUp(self):
         self.native = Native()
+
+    def test_meson_dependency_has_the_native_lipo_selection(self):
+        recipe = PORTS / 'pkgsrc/devel/meson'
+        self.assertTrue((recipe / 'patches/patch-mesonbuild_utils_universal.py').is_file())
+        # 1.12.1nb1 is the first meson package with that patch.
+        pins = [pattern for pattern in producer.DEPENDENCIES if pattern.startswith('meson>=')]
+        self.assertEqual(pins, ['meson>=1.12.1nb1'])
 
     def test_module_origin_query_is_executable_python(self):
         compile(producer.MODULE_QUERY, "native-module-query", "exec")
