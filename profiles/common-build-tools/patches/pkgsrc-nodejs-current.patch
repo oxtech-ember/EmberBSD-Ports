@@ -213,7 +213,7 @@
  CHECK_PORTABILITY_SKIP+=	deps/v8/tools/cppgc/export_to_github.sh
  CHECK_PORTABILITY_SKIP+=	deps/v8/tools/cppgc/test_cmake.sh
  CHECK_PORTABILITY_SKIP+=	tools/macos-installer/pkgbuild/npm/scripts/preinstall
-@@ -36,8 +221,76 @@
+@@ -36,8 +221,77 @@
  .include "../../devel/libatomic/buildlink3.mk"
  .endif
  
@@ -280,6 +280,7 @@
 +.include "../../devel/simdjson/buildlink3.mk"
 +.include "../../www/llhttp/buildlink3.mk"
 +.include "../../devel/ada-url/buildlink3.mk"
++.include "../../devel/ada-idna/buildlink3.mk"
 +.include "../../devel/merve/buildlink3.mk"
 +.include "../../devel/nbytes/buildlink3.mk"
 +.include "../../devel/simdutf/buildlink3.mk"
