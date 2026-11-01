@@ -45,6 +45,11 @@ with tempfile.TemporaryDirectory(prefix='electron-common-sources-') as tmp:
     assert values['node_path'] == '//third_party/electron_node' and values['node_shared_perfetto']
     assert values['node_config_gn_root_target'] == '//electron'
     assert values['node_config_gn_root_pattern'] == '//electron:electron_dist_zip'
+    assert values['v8_prepared_source_receipt'] == '//v8/emberbsd-prepared-source.json'
+    assert values['v8_version_hash_salt_files'] == [] and values['v8_version_hash_salt'] == ''
+    gn = build.gn_arguments(values)
+    assert 'v8_prepared_source_receipt = "//v8/emberbsd-prepared-source.json"\n' in gn
+    assert 'v8_version_hash_salt_files = [  ]\n' in gn and 'v8_version_hash_salt = ""\n' in gn
     assert all(values['node_shared_' + name] for name in build.NODE_SHARED_FEATURES)
     assert values['node_use_ffi'] and values['node_simdutf_include_from_target'] and values['use_system_simdutf']
     before = env.copy(); state['node'] = 'changed'; after = {}

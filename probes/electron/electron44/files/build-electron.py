@@ -680,6 +680,12 @@ def common_embedder_sources(options, sdk, native, environment):
         require(owner.is_file(), 'common V8 source owner is missing')
         commands.append(('V8', [native.tool('python'), '-B', str(owner), '--sdk-source', str(options.sdk_source),
                                 'verify-source', '--source', str(v8), '--pkgsrc-root', str(v8_export)]))
+        # The selected V8 tree is already the complete common prepared source,
+        # including its effective recipe patches. Key serialized caches to
+        # that verified tree receipt instead of Electron's legacy bundled V8
+        # patch-list salt, which does not describe this selected source tree.
+        values.update(v8_prepared_source_receipt='//v8/emberbsd-prepared-source.json',
+                      v8_version_hash_salt_files=[], v8_version_hash_salt='')
     if node:
         owner = options.ports_source / 'scripts/source-inputs/node/source.py'
         require(owner.is_file(), 'common Node source owner is missing')
@@ -1278,6 +1284,19 @@ def reconfigure(options):
                          'EMBERBSD_HOST_TYPESCRIPT', 'EMBERBSD_HOST_ROLLUP',
                          'HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'}
         old_env = saved['environment']
+        require(values.get('v8_prepared_source_receipt') == '//v8/emberbsd-prepared-source.json' and
+                values.get('v8_version_hash_salt_files') == [] and
+                values.get('v8_version_hash_salt') == '',
+                'reconfigure requires the verified common V8 receipt salt')
+        old_v8_identity = old_env.get('EMBERBSD_V8_SOURCE_SHA256')
+        new_v8_identity = environment.get('EMBERBSD_V8_SOURCE_SHA256')
+        require(isinstance(old_v8_identity, str) and re.fullmatch(r'[0-9a-f]{64}', old_v8_identity) and
+                isinstance(new_v8_identity, str) and re.fullmatch(r'[0-9a-f]{64}', new_v8_identity),
+                'reconfigure requires verified common V8 source identities')
+        if old_v8_identity != new_v8_identity:
+            # producer_inputs has just run the common V8 owner's verify-source;
+            # this exception is limited to that receipt-derived identity.
+            permitted_env.add('EMBERBSD_V8_SOURCE_SHA256')
         require(not old_env.get('EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK') or
                 environment.get('EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK'),
                 'reconfigure cannot remove the selected host buildlink')

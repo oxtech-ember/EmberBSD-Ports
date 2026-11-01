@@ -484,7 +484,11 @@ EmberBSD sysroot and does not substitute the build host's CUPS metadata.
 
 This runs real GN generation on a small graph and checks refusal of changed
 compiler bindings, retained objects, a failed generation, build refusal, and
-subsequent recovery. It does not build Electron or execute target code.
+subsequent recovery. A verified common V8 source identity may change only when
+the GN cache salt selects `//v8/emberbsd-prepared-source.json` and clears the
+legacy bundled patch-list salt; unrelated provider changes still fail. GN
+regenerates the receipt-derived cache identity while retaining the existing
+Ninja output. It does not build Electron or execute target code.
 
 The source mirror regression checks hard-link and forced copy-fallback views,
 namespace/content changes, symlink type, and the bounded scan/stat calls:

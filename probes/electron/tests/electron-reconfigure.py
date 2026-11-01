@@ -48,14 +48,17 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                               'cxx':['--ld-path=/ld','--rtlib=compiler-rt','--unwindlib=libunwind','-stdlib=libc++']})
     binding.write_text(json.dumps(commands))
     (src/'.gn').write_text('buildconfig="//BUILDCONFIG.gn"\n')
-    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n feature=false\n clang_version=""\n}\nset_default_toolchain("//:tools")\n')
+    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n v8_prepared_source_receipt=""\n v8_version_hash_salt_files=[]\n v8_version_hash_salt=""\n feature=false\n clang_version=""\n}\nset_default_toolchain("//:tools")\n')
     (src/'BUILD.gn').write_text('toolchain("tools") {\n tool("stamp") { command="touch {{output}}" }\n}\n')
     (src/'electron/build/args').mkdir(parents=True)
     (src/'electron/build/args/release.gn').write_text('')
     gnfile = src/'electron/BUILD.gn'; gnfile.write_text('group("electron_dist_zip") {}\n')
     old = dict(emberbsd_node_provider_inputs=['old'], emberbsd_typescript_definitions=['old'], feature=False, target_cpu='x64', clang_version='23')
-    new = dict(emberbsd_node_provider_inputs=['new'], emberbsd_typescript_definitions=['new'], feature=True, target_cpu='x64', clang_version='23')
-    env = {'PATH':str(host/'bin') + ':/usr/bin', 'EMBERBSD_HOST_TYPESCRIPT':'/old', 'EMBERBSD_HOST_NODE':'/old-node', 'CC':str(work/'target-commands/cc'), 'CXX':str(work/'target-commands/cxx')}
+    new = dict(emberbsd_node_provider_inputs=['new'], emberbsd_typescript_definitions=['new'], feature=True, target_cpu='x64', clang_version='23',
+               v8_prepared_source_receipt='//v8/emberbsd-prepared-source.json',
+               v8_version_hash_salt_files=[], v8_version_hash_salt='')
+    env = {'PATH':str(host/'bin') + ':/usr/bin', 'EMBERBSD_HOST_TYPESCRIPT':'/old', 'EMBERBSD_HOST_NODE':'/old-node',
+           'EMBERBSD_V8_SOURCE_SHA256':'a' * 64, 'CC':str(work/'target-commands/cc'), 'CXX':str(work/'target-commands/cxx')}
     env.update(GOCACHE=str(work/'go-cache'), GOPATH=str(work/'go-path'))
     opt = SimpleNamespace(workspace=src.parent, ports_source=root, sdk_source=root, host_prefix=host, target='amd64', compiler_family='clang', work=work, git=Path('/usr/bin/git'))
     try: b.require_common_v8(opt); raise AssertionError('accepted missing common V8')
@@ -75,7 +78,10 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     state={'commands':commands, 'values':new}
     def inputs(candidate, sdk):
         bound=b.bind_versioned(sdk, Native(), candidate.work/'target-commands', state['commands'])
-        return Native(), {'PATH':state.get('path', Native.path), 'EMBERBSD_CONTROL_GIT':state.get('git', '/usr/bin/git'), 'EMBERBSD_HOST_TYPESCRIPT':'/new', 'EMBERBSD_HOST_NODE':str(host/'bin/node'), 'CC':bound['cc'], 'CXX':bound['cxx'], **state.get('extra', {})}, state['values']
+        return Native(), {'PATH':state.get('path', Native.path), 'EMBERBSD_CONTROL_GIT':state.get('git', '/usr/bin/git'),
+                          'EMBERBSD_HOST_TYPESCRIPT':'/new', 'EMBERBSD_HOST_NODE':str(host/'bin/node'),
+                          'EMBERBSD_V8_SOURCE_SHA256':state.get('v8_sha', 'b' * 64),
+                          'CC':bound['cc'], 'CXX':bound['cxx'], **state.get('extra', {})}, state['values']
     b.producer_inputs=inputs
     state['path']=Native.path + ':/bin'
     try: b.reconfigure(opt); raise AssertionError('accepted external PATH')
@@ -96,6 +102,31 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     config.write_text(json.dumps(with_identity))
     state['extra'] = {'EMBERBSD_PROTOBUF_SOURCE_SHA256': 'new'}
     try: b.reconfigure(opt); raise AssertionError('accepted changed common protobuf identity')
+    except ValueError as e: assert 'producer input changed: EMBERBSD_PROTOBUF_SOURCE_SHA256' in str(e)
+    state.pop('extra'); config.write_bytes(before)
+    for invalid in (
+        dict(new, v8_prepared_source_receipt='//custom/receipt.json'),
+        dict(new, v8_version_hash_salt_files=['//electron/patches/v8/.patches']),
+        dict(new, v8_version_hash_salt='custom-salt'),
+        {key: value for key, value in new.items() if key != 'v8_prepared_source_receipt'},
+    ):
+        state['values'] = invalid
+        try: b.reconfigure(opt); raise AssertionError('accepted noncanonical common V8 cache identity')
+        except ValueError as e: assert 'verified common V8 receipt salt' in str(e)
+        assert config.read_bytes()==before and (out/'build.ninja').read_text()=='old graph' and not (work/'reconfigure-incomplete').exists()
+    state['values'] = new; state['v8_sha'] = 'invalid'
+    try: b.reconfigure(opt); raise AssertionError('accepted invalid V8 source identity')
+    except ValueError as e: assert 'verified common V8 source identities' in str(e)
+    assert config.read_bytes()==before and not (work/'reconfigure-incomplete').exists()
+    missing_old = json.loads(before); missing_old['environment'].pop('EMBERBSD_V8_SOURCE_SHA256')
+    config.write_text(json.dumps(missing_old))
+    state.pop('v8_sha')
+    try: b.reconfigure(opt); raise AssertionError('accepted missing previous V8 source identity')
+    except ValueError as e: assert 'verified common V8 source identities' in str(e)
+    assert not (work/'reconfigure-incomplete').exists()
+    config.write_bytes(before)
+    state['extra'] = {'EMBERBSD_PROTOBUF_SOURCE_SHA256':'new'}
+    try: b.reconfigure(opt); raise AssertionError('accepted V8 and unrelated provider changes together')
     except ValueError as e: assert 'producer input changed: EMBERBSD_PROTOBUF_SOURCE_SHA256' in str(e)
     state.pop('extra'); config.write_bytes(before)
     try: b.selected_control_git(root/'missing-git'); raise AssertionError('accepted missing Git')
@@ -135,7 +166,12 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     except ValueError as e: assert 'incomplete reconfiguration' in str(e)
     gnfile.write_text('group("electron_dist_zip") {}\n'); b.reconfigure(opt)
     assert not (work/'reconfigure-incomplete').exists() and json.loads(config.read_text())['arguments']==new
-    assert json.loads(config.read_text())['environment']['EMBERBSD_HOST_TYPESCRIPT']=='/new'
+    saved_after = json.loads(config.read_text())
+    assert saved_after['environment']['EMBERBSD_HOST_TYPESCRIPT']=='/new'
+    assert saved_after['environment']['EMBERBSD_V8_SOURCE_SHA256']=='b' * 64
+    gn_args = (out/'args.gn').read_text()
+    assert 'v8_prepared_source_receipt = "//v8/emberbsd-prepared-source.json"\n' in gn_args
+    assert 'v8_version_hash_salt_files = [  ]\n' in gn_args and 'v8_version_hash_salt = ""\n' in gn_args
     assert (out/'build.ninja').read_text()!='old graph' and obj.read_bytes()==b'object' and json.loads(binding.read_text())==commands
     log = work/'reconfigure.log'
     assert 'fixture GN invocation 1' in log.read_text() and 'fixture GN invocation 2' in log.read_text()
