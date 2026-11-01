@@ -1,0 +1,15 @@
+Initialize the ANGLE QuerySurface validation scratch value.
+Origin: EmberBSD contributors (AI-assisted). Newer clang warns with
+-Wuninitialized-const-pointer and ANGLE builds with -Werror.
+
+--- a/third_party/angle/src/libANGLE/validationEGL.cpp
++++ b/third_party/angle/src/libANGLE/validationEGL.cpp
+@@ -7229,7 +7229,7 @@
+             break;
+         default:
+         {
+-            EGLint querySurfaceValue;
++            EGLint querySurfaceValue = 0;
+             ANGLE_VALIDATION_TRY(
+                 ValidateQuerySurface(val, dpy, surfaceID, attribute, &querySurfaceValue));
+         }

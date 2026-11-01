@@ -824,6 +824,11 @@
       "strip": 1
     },
     {
+      "path": "angle-validation-query-surface-init.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "skia-expat-64bit-position-getters.patch",
       "root": "",
       "strip": 1
