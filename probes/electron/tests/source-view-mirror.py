@@ -122,6 +122,47 @@ with tempfile.TemporaryDirectory(prefix='electron-source-mirror-') as temporary:
         fifo.unlink()
         output_fifo.unlink()
 
+    # Electron's build_electron_definitions GN action writes these two
+    # products into the source view. Only regular files with these names may
+    # be absent from the prepared electron source.
+    electron_source = root / 'electron-source'
+    electron_source.mkdir()
+    (electron_source / 'build.gni').write_text('source entry\n')
+    electron_view = root / 'electron-view'
+    view.mirror(electron_source, electron_view)
+    (electron_view / 'electron-api.json').write_text('{"api": true}\n')
+    (electron_view / 'electron.d.ts').write_text('export {}\n')
+    generated = {'electron-api.json', 'electron.d.ts'}
+    view.mirror(electron_source, electron_view, verify=True, generated_files=generated)
+    (electron_view / 'unexpected.json').write_text('{}\n')
+    rejected(lambda: view.mirror(electron_source, electron_view, verify=True,
+                                 generated_files=generated))
+    (electron_view / 'unexpected.json').unlink()
+
+    (electron_view / 'electron-api.json').unlink()
+    (electron_view / 'electron-api.json').symlink_to('build.gni')
+    rejected(lambda: view.mirror(electron_source, electron_view, verify=True,
+                                 generated_files=generated))
+    (electron_view / 'electron-api.json').unlink()
+    (electron_view / 'electron.d.ts').unlink()
+    (electron_view / 'electron.d.ts').mkdir()
+    rejected(lambda: view.mirror(electron_source, electron_view, verify=True,
+                                 generated_files=generated))
+
+    # If a prepared source already owns a generated filename, it remains a
+    # normal source entry and must still match byte-for-byte.
+    electron_collision_source = root / 'electron-collision-source'
+    electron_collision_source.mkdir()
+    (electron_collision_source / 'electron-api.json').write_text('{"source": true}\n')
+    electron_collision_view = root / 'electron-collision-view'
+    view.mirror(electron_collision_source, electron_collision_view)
+    view.mirror(electron_collision_source, electron_collision_view, verify=True,
+                generated_files=generated)
+    (electron_collision_view / 'electron-api.json').unlink()
+    (electron_collision_view / 'electron-api.json').write_text('{"generated": true}\n')
+    rejected(lambda: view.mirror(electron_collision_source, electron_collision_view,
+                                 verify=True, generated_files=generated))
+
     # Count the exact scanner and DirEntry stat operations for a clean verify.
     measured_dest = root / 'measured-view'
     view.mirror(source, measured_dest)
@@ -175,4 +216,4 @@ with tempfile.TemporaryDirectory(prefix='electron-source-mirror-') as temporary:
         rejected(lambda: view.mirror(source, mutation_dest, verify=True))
     (source / 'during-scan').unlink()
 
-print('PASS: hardlink/copy mirror, namespace and content checks, symlink type, scan/stat counts')
+print('PASS: mirror identity/content checks, named Electron GN outputs, symlink types, scan/stat counts')

@@ -167,10 +167,21 @@ def _same_file_bytes(left, right):
                 return True
 
 
-def mirror(origin, dest, *, verify=False, omit=frozenset()):
+def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=frozenset()):
+    """Mirror source entries; verification may allow named regular GN outputs.
+
+    Electron's GN build_electron_definitions action creates electron-api.json
+    and electron.d.ts in the local electron source view. They are build
+    products, not entries in the prepared source tree.
+    """
     origin = Path(origin)
     dest = Path(dest)
     excluded = set(omit)
+    generated = set(generated_files)
+    require(all(isinstance(name, str) and name not in ('.', '..') and
+                Path(name).name == name and
+                '/' not in name and '\\' not in name for name in generated),
+            'generated mirror entries must be simple file names')
     source_entries, source_identity = _scan_directory(origin, excluded)
     names = set(source_entries)
     if verify:
@@ -182,6 +193,13 @@ def mirror(origin, dest, *, verify=False, omit=frozenset()):
             cache_info = cache.stat(follow_symlinks=False)
             if stat.S_ISDIR(cache_info.st_mode):
                 local_entries.pop('__pycache__')
+        for name in set(local_entries) - names:
+            require(name in generated,
+                    'unexpected generated mirrored view entry: ' + str(dest / name))
+            info = local_entries[name].stat(follow_symlinks=False)
+            require(stat.S_ISREG(info.st_mode),
+                    'generated mirrored view entry must be a regular file: ' + str(dest / name))
+            local_entries.pop(name)
         require(set(local_entries) == names,
                 'mirrored view entries changed: ' + str(dest))
     else:
@@ -471,7 +489,8 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     root_special = {'third_party', 'out'} | ({'v8'} if v8 else set())
     mirror(source, root, verify=True, omit=root_special | ({'electron'} if node_modules is not None else set()))
     if node_modules is not None:
-        mirror(source / 'electron', root / 'electron', verify=True, omit={'node_modules'})
+        mirror(source / 'electron', root / 'electron', verify=True, omit={'node_modules'},
+               generated_files={'electron-api.json', 'electron.d.ts'})
     require({item.name for item in root.iterdir()} >= root_special, 'source view root entries changed')
     if v8:
         require((root / 'v8').is_symlink() and os.readlink(root / 'v8') == str(v8),
