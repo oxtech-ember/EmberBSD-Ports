@@ -296,9 +296,10 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         refused(adapter.main, ['write', *pins, '--output', str(destination)])
         for path in (mlir_bin / 'flang', mlir_bin / 'flang-23', root / 'foreign-flang'):
             path.unlink()
-        # Native Darwin recursion takes install_name_tool, TAPI and the
-        # Mach-O metadata lipo/otool from the prefix; all are required. The
-        # signature verification service is the macOS one.
+        # Native Darwin recursion takes install_name_tool, TAPI, the Mach-O
+        # metadata lipo/otool and the static library libtool from the prefix;
+        # all are required. The signature verification service is the macOS
+        # one.
         assert b'EMBERBSD_DARWIN' not in include.read_bytes()
         # MACHO_READLINK is an optional role on every host; the lipo/otool
         # selection is Darwin only.
@@ -306,7 +307,8 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
             assert variable not in include.read_bytes(), variable
         selected.host = {'os': 'Darwin'}
         darwin_tools = [mlir_bin / 'llvm-install-name-tool', mlir_bin / 'llvm-readtapi',
-                        mlir_bin / 'llvm-lipo', mlir_bin / 'llvm-otool']
+                        mlir_bin / 'llvm-lipo', mlir_bin / 'llvm-otool',
+                        mlir_bin / 'llvm-libtool-darwin']
         for tool in darwin_tools:
             refused(adapter.main, ['write', *pins, '--output', str(destination)])
             tool.write_text('#!/bin/sh\n')
@@ -329,6 +331,9 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
                                 ('EMBERBSD_DARWIN_TAPI', str(darwin_tools[1])),
                                 ('MACHO_LIPO', str(darwin_tools[2])),
                                 ('MACHO_OTOOL', str(darwin_tools[3])),
+                                # meta-pkgs/boost requires it whenever
+                                # EMBERBSD_HOST_PREFIX is set.
+                                ('EMBERBSD_DARWIN_LIBTOOL', str(darwin_tools[4])),
                                 ('EMBERBSD_DARWIN_TOOL.codesign', '/usr/bin/codesign'),
                                 ('EMBERBSD_DARWIN_TAPI_KIND', 'llvm-readtapi')):
             assert ('.if "${' + variable + '}" != "' + value + '"').encode() in darwin

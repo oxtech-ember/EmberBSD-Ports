@@ -129,7 +129,10 @@ def flang_host_tool(prefix):
 DARWIN_HOST_TOOLS = (('install-name-tool', 'EMBERBSD_DARWIN_INSTALL_NAME_TOOL', 'llvm-install-name-tool'),
                      ('tapi', 'EMBERBSD_DARWIN_TAPI', 'llvm-readtapi'),
                      ('macho-lipo', 'MACHO_LIPO', 'llvm-lipo'),
-                     ('macho-otool', 'MACHO_OTOOL', 'llvm-otool'))
+                     ('macho-otool', 'MACHO_OTOOL', 'llvm-otool'),
+                     # Static library tool for recipes that create archives
+                     # with Darwin libtool, such as the Boost toolchain.
+                     ('darwin-libtool', 'EMBERBSD_DARWIN_LIBTOOL', 'llvm-libtool-darwin'))
 # Package steps that verify ad hoc signatures, such as lang/rust-bin, use the
 # macOS code signing verification service. It is part of the OS, not a build
 # tool, and has no Ports provider.
