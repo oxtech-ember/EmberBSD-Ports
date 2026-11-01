@@ -1,0 +1,19 @@
+Bump PKGREVISION of php85 for the php-config ldflags change.
+
+php85-cross-php-config-ldflags.patch changes the php-config85 that the
+target php85 package installs; the version must change so that the
+package is rebuilt. In a cross build php85 has a tool dependency on the
+native php85 of its own PKGNAME, which is rebuilt as well.
+
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/lang/php85/Makefile
++++ b/lang/php85/Makefile
+@@ -4,6 +4,7 @@
+ # We can't omit PKGNAME here to handle PKG_OPTIONS.
+ #
+ PKGNAME=		${PHP_PKG_PREFIX}-${PHP_VERSION}
++PKGREVISION=		1
+ CATEGORIES=		lang
+ 
+ COMMENT=		PHP Hypertext Preprocessor version 8.5
