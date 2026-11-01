@@ -3,6 +3,8 @@ $NetBSD$
 Origin: EmberBSD (AI-assisted). Not submitted upstream.
 Run the explicit native data compiler during cross builds while retaining
 both target executables and all generated language/MBROLA data.
+Use relative data paths: the generator has a 160-byte POSIX path buffer,
+so an absolute WRKSRC can be truncated in a deeply nested build directory.
 
 --- Makefile.am.orig
 +++ Makefile.am
@@ -18,8 +20,8 @@ both target executables and all generated language/MBROLA data.
  	src/espeak-ng
 -	ESPEAK_DATA_PATH=$(CURDIR) src/espeak-ng --compile-intonations && \
 -		ESPEAK_DATA_PATH=$(CURDIR) src/espeak-ng --compile-phonemes && \
-+	ESPEAK_DATA_PATH=$(CURDIR)/espeak-ng-data $(ESPEAK_GEN) --compile-intonations && \
-+		ESPEAK_DATA_PATH=$(CURDIR)/espeak-ng-data $(ESPEAK_GEN) --compile-phonemes && \
++	ESPEAK_DATA_PATH=espeak-ng-data $(ESPEAK_GEN) --compile-intonations && \
++		ESPEAK_DATA_PATH=espeak-ng-data $(ESPEAK_GEN) --compile-phonemes && \
  		touch $@
  
  ##### android targets:
@@ -28,7 +30,7 @@ both target executables and all generated language/MBROLA data.
  	@echo "  DICT      $@"
  	rm -f $@
 -	cd dictsource && ESPEAK_DATA_PATH=$(CURDIR) ../src/espeak-ng --compile="$(*F)"
-+	cd dictsource && ESPEAK_DATA_PATH=$(CURDIR)/espeak-ng-data $(ESPEAK_GEN) --compile="$(*F)"
++	cd dictsource && ESPEAK_DATA_PATH=../espeak-ng-data $(ESPEAK_GEN) --compile="$(*F)"
  
  dictionaries: \
  	espeak-ng-data/af_dict \
@@ -37,7 +39,7 @@ both target executables and all generated language/MBROLA data.
  	@echo "  DICT      $@"
  	rm -f $@
 -	cd dictsource && ESPEAK_DATA_PATH=$(CURDIR) LD_LIBRARY_PATH=../src:${LD_LIBRARY_PATH} ../src/espeak-ng --compile=yue && cd ..
-+	cd dictsource && ESPEAK_DATA_PATH=$(CURDIR)/espeak-ng-data LD_LIBRARY_PATH=../src:${LD_LIBRARY_PATH} $(ESPEAK_GEN) --compile=yue && cd ..
++	cd dictsource && ESPEAK_DATA_PATH=../espeak-ng-data $(ESPEAK_GEN) --compile=yue && cd ..
  
  dictsource/yue_emoji:
  	@echo "  EMOJI     $@"
@@ -46,7 +48,7 @@ both target executables and all generated language/MBROLA data.
  espeak-ng-data/mbrola_ph/%_phtrans: phsource/mbrola/% src/espeak-ng
  	mkdir -p espeak-ng-data/mbrola_ph
 -	ESPEAK_DATA_PATH=$(CURDIR) src/espeak-ng --compile-mbrola=phsource/mbrola/$*
-+	ESPEAK_DATA_PATH=$(CURDIR)/espeak-ng-data $(ESPEAK_GEN) --compile-mbrola=phsource/mbrola/$*
++	ESPEAK_DATA_PATH=espeak-ng-data $(ESPEAK_GEN) --compile-mbrola=phsource/mbrola/$*
  
  EXTRA_DIST += $(PHSOURCE_MBROLA)
  
