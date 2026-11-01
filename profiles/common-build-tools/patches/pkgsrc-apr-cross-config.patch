@@ -1,0 +1,69 @@
+Cross apr consumers run a host copy of apr-1-config.
+
+The installed apr-1-config and libexec/apr are the target's, under the
+target prefix that the build host does not have. Cross apr-util passed
+--with-apr=/usr/pkg/bin/apr-1-config and configure stopped at "the
+--with-apr parameter is incorrect"; its configure also copies apr_rules.mk
+from apr-1-config --installbuilddir, which names the target libtool. In
+cross builds the apr buildlink3 file sets APR_CONFIG to a copy of
+apr-1-config whose build directory is a copy of libexec/apr naming itself
+and the cross libtool. apr-util configures with APR_CONFIG; native builds
+keep ${BUILDLINK_PREFIX.apr}/bin/apr-1-config.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+Test: profiles/common-build-tools/tests/apr-cross-config.sh
+
+--- a/devel/apr/buildlink3.mk
++++ b/devel/apr/buildlink3.mk
+@@ -23,6 +23,41 @@
+ .if ${OPSYS} == "Linux" || ${OPSYS} == "SunOS"
+ .include "../../devel/libuuid/buildlink3.mk"
+ .endif
++
++# Consumers pass APR_CONFIG to configure as the apr-1-config to run.
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# The installed apr-1-config and its build directory libexec/apr are the
++# target's, under the target prefix that the build host does not have.
++# configure (apr-util) rejects --with-apr=${BUILDLINK_PREFIX.apr}/bin/apr-1-config
++# and copies apr_rules.mk from apr-1-config --installbuilddir. Run a copy of
++# apr-1-config whose build directory is a copy of libexec/apr that names
++# itself and the cross libtool instead of the target one.
++APR_CONFIG=		${WRKDIR}/.apr-cross/bin/apr-1-config
++_APR_CROSS_BUILDDIR=	${WRKDIR}/.apr-cross/build
++_APR_CROSS_PREFIX=	${_CROSS_DESTDIR}${BUILDLINK_PREFIX.apr}
++_APR_CROSS_FILES=	make_exports.awk make_var_export.awk mkdir.sh
++
++pre-configure: apr-cross-config
++
++.PHONY: apr-cross-config
++apr-cross-config:
++	${RUN}${MKDIR} ${APR_CONFIG:H} ${_APR_CROSS_BUILDDIR}
++.  for f in ${_APR_CROSS_FILES}
++	${RUN}${CP} ${_APR_CROSS_PREFIX}/libexec/apr/${f} ${_APR_CROSS_BUILDDIR}/${f}
++.  endfor
++	${RUN}${LN} -fs ${PKG_LIBTOOL} ${_APR_CROSS_BUILDDIR}/libtool
++	${RUN}${SED} -e 's,^apr_builddir=.*,apr_builddir=${_APR_CROSS_BUILDDIR},' \
++		-e 's,^apr_builders=.*,apr_builders=${_APR_CROSS_BUILDDIR},' \
++		-e 's,^top_builddir=.*,top_builddir=${_APR_CROSS_BUILDDIR},' \
++		${_APR_CROSS_PREFIX}/libexec/apr/apr_rules.mk \
++		> ${_APR_CROSS_BUILDDIR}/apr_rules.mk
++	${RUN}${SED} -e 's,^installbuilddir=.*,installbuilddir="${_APR_CROSS_BUILDDIR}",' \
++		${_APR_CROSS_PREFIX}/bin/apr-1-config > ${APR_CONFIG}.tmp
++	${RUN}${CHMOD} +x ${APR_CONFIG}.tmp
++	${RUN}${MV} -f ${APR_CONFIG}.tmp ${APR_CONFIG}
++.else
++APR_CONFIG?=		${BUILDLINK_PREFIX.apr}/bin/apr-1-config
++.endif
+ .endif # APR_BUILDLINK3_MK
+ 
+ BUILDLINK_TREE+=	-apr
+--- a/devel/apr-util/Makefile
++++ b/devel/apr-util/Makefile
+@@ -13,7 +13,7 @@
+ USE_LIBTOOL=		yes
+ USE_TOOLS+=		pkg-config
+ GNU_CONFIGURE=		yes
+-CONFIGURE_ARGS+=	--with-apr=${BUILDLINK_PREFIX.apr}/bin/apr-1-config
++CONFIGURE_ARGS+=	--with-apr=${APR_CONFIG}
+ CONFIGURE_ARGS+=	--with-expat=${BUILDLINK_PREFIX.expat}
+ CONFIGURE_ARGS+=	--without-gdbm
+ CONFIGURE_ARGS+=	--without-odbc
