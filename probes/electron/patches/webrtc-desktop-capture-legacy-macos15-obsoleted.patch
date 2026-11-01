@@ -1,0 +1,98 @@
+WebRTC: compile out the legacy macOS capturer when the minimum is >= 15.0.
+Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+Replaces webrtc-desktop-capture-objc-macos14-min.patch. The host
+(clang_arm64*) toolchains build blink/webrtc for v8_context_snapshot_generator
+with mac_deployment_target 15.0, the minimum of the selected native C++
+runtime (__ember1), which rejects a 14.0 override. At 15.0 the SDK marks
+CGDisplayStream*, CGDisplayCreateImage and CGWindowListCreateImage* as
+obsoleted (hard errors). With a >= 15.0 minimum those paths return no
+frame / fail registration; ScreenCaptureKit is the capture path there.
+
+--- a/third_party/webrtc/modules/desktop_capture/mac/desktop_frame_cgimage.mm
++++ b/third_party/webrtc/modules/desktop_capture/mac/desktop_frame_cgimage.mm
+@@ -20,6 +20,10 @@
+ // static
+ std::unique_ptr<DesktopFrameCGImage> DesktopFrameCGImage::CreateForDisplay(
+     CGDirectDisplayID display_id) {
++#if defined(MAC_OS_VERSION_15_0) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_VERSION_15_0
++  // EmberBSD: obsoleted in macOS 15.0; ScreenCaptureKit is the capture path.
++  return nullptr;
++#else
+   // Create an image containing a snapshot of the display.
+   webrtc::ScopedCFTypeRef<CGImageRef> cg_image(
+       CGDisplayCreateImage(display_id));
+@@ -28,11 +32,16 @@
+   }
+ 
+   return DesktopFrameCGImage::CreateFromCGImage(cg_image);
++#endif
+ }
+ 
+ // static
+ std::unique_ptr<DesktopFrameCGImage> DesktopFrameCGImage::CreateForWindow(
+     CGWindowID window_id) {
++#if defined(MAC_OS_VERSION_15_0) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_VERSION_15_0
++  // EmberBSD: obsoleted in macOS 15.0; ScreenCaptureKit is the capture path.
++  return nullptr;
++#else
+   webrtc::ScopedCFTypeRef<CGImageRef> cg_image(
+       CGWindowListCreateImage(CGRectNull,
+                               kCGWindowListOptionIncludingWindow,
+@@ -43,6 +52,7 @@
+   }
+ 
+   return DesktopFrameCGImage::CreateFromCGImage(cg_image);
++#endif
+ }
+ 
+ // static
+--- a/third_party/webrtc/modules/desktop_capture/mac/screen_capturer_mac.mm
++++ b/third_party/webrtc/modules/desktop_capture/mac/screen_capturer_mac.mm
+@@ -142,8 +142,13 @@
+   window_bounds.size.width = pixel_bounds.width();
+   window_bounds.size.height = pixel_bounds.height();
+ 
++#if defined(MAC_OS_VERSION_15_0) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_VERSION_15_0
++  // EmberBSD: obsoleted in macOS 15.0; ScreenCaptureKit is the capture path.
++  return webrtc::ScopedCFTypeRef<CGImageRef>();
++#else
+   return webrtc::ScopedCFTypeRef<CGImageRef>(CGWindowListCreateImageFromArray(
+       window_bounds, window_list, kCGWindowImageDefault));
++#endif
+ }
+ 
+ }  // namespace
+@@ -471,6 +476,10 @@
+   }
+ 
+   desktop_config_ = desktop_config_monitor_->desktop_configuration();
++#if defined(MAC_OS_VERSION_15_0) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_VERSION_15_0
++  // EmberBSD: obsoleted in macOS 15.0; ScreenCaptureKit is the capture path.
++  return false;
++#else
+   for (const auto& config : desktop_config_.displays) {
+     size_t pixel_width = config.pixel_bounds.width();
+     size_t pixel_height = config.pixel_bounds.height();
+@@ -527,17 +536,22 @@
+   }
+ 
+   return true;
++#endif
+ }
+ 
+ void ScreenCapturerMac::UnregisterRefreshAndMoveHandlers() {
+   RTC_DCHECK(thread_checker_.IsCurrent());
+ 
++#if defined(MAC_OS_VERSION_15_0) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_VERSION_15_0
++  RTC_DCHECK(display_streams_.empty());
++#else
+   for (CGDisplayStreamRef stream : display_streams_) {
+     CFRunLoopSourceRef source = CGDisplayStreamGetRunLoopSource(stream);
+     CFRunLoopRemoveSource(CFRunLoopGetCurrent(), source, kCFRunLoopCommonModes);
+     CGDisplayStreamStop(stream);
+     CFRelease(stream);
+   }
++#endif
+   display_streams_.clear();
+ 
+   // Release obsolete io surfaces.

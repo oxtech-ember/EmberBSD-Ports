@@ -638,7 +638,7 @@
       "strip": 1
     },
     {
-      "path": "webrtc-desktop-capture-objc-macos14-min.patch",
+      "path": "webrtc-desktop-capture-legacy-macos15-obsoleted.patch",
       "root": "",
       "strip": 1
     },
