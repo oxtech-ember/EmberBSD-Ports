@@ -1,0 +1,36 @@
+graphviz declares the libraries it calls and drops unused ones on Darwin.
+
+The cairo-based render plugins call cairo and glib2, and the gts users call
+glib2; both came only through pango and gts. On Darwin, where packages
+record libraries from Mach-O load commands, link with -dead_strip_dylibs:
+dot_builtins links the plugin libtool archives, whose dependency_libs
+(libfreetype.la: png, brotli) name libraries dot does not call.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+Test: profiles/common-build-tools/tests/graphviz-native-darwin-libraries.sh
+
+--- a/graphics/graphviz/Makefile
++++ b/graphics/graphviz/Makefile
+@@ -125,13 +125,23 @@
+ .include "options.mk"
+ 
+ DEPENDS+=	urw-fonts-[0-9]*:../../fonts/urw-fonts
++.if ${OPSYS} == "Darwin"
++# dot_builtins links the plugin libtool archives, and their dependency_libs
++# (libfreetype.la: png, brotli) name libraries dot does not call. Let the
++# linker drop unused dylibs so the binaries load only what they use.
++LDFLAGS+=	-Wl,-dead_strip_dylibs
++.endif
++# The cairo-based render plugins call cairo and glib2 directly, and the gts
++# users (neato_layout, cluster, gvmap, gvpack) call glib2.
+ .include "../../converters/libiconv/buildlink3.mk"
+ .include "../../devel/gettext-lib/buildlink3.mk"
++.include "../../devel/glib2/buildlink3.mk"
+ .include "../../devel/libltdl/buildlink3.mk"
+ BUILDLINK_API_DEPENDS.pango+=	pango>=1.22.0
+ .include "../../devel/pango/buildlink3.mk"
+ .include "../../devel/zlib/buildlink3.mk"
+ .include "../../fonts/fontconfig/buildlink3.mk"
++.include "../../graphics/cairo/buildlink3.mk"
+ .include "../../graphics/freetype2/buildlink3.mk"
+ .include "../../graphics/gts/buildlink3.mk"
+ .include "../../graphics/libwebp/buildlink3.mk"
