@@ -3,3 +3,7 @@
 BLAKE2s (gtsam-4.3.0-71a25ca36c084cbad1f872e812d6d97fbadfdb05.tar.gz) = 27507b23647eb3f3bc3b5ad08158621e651160c983729272c275a9c6b9631158
 SHA512 (gtsam-4.3.0-71a25ca36c084cbad1f872e812d6d97fbadfdb05.tar.gz) = ccf3892e73bb76a5fda892617fe0648c67784c5824d7c35a6ff5cd52a4e4cf8b5c391819fe8e2784cae62c80e716193824fd92e22bed6e1a56148f095ce677cf
 Size (gtsam-4.3.0-71a25ca36c084cbad1f872e812d6d97fbadfdb05.tar.gz) = 45746023 bytes
+
+SHA1 (patch-gtsam_linear_VectorValues.cpp) = 3957e6bbe53632b5203f358da43917b68ccd2947
+SHA1 (patch-gtsam_nonlinear_ISAM2-impl.h) = 83c790c4a280dd8b1ce43aafd90214ca43f35226
+SHA1 (patch-gtsam_sfm_DsfTrackGenerator.cpp) = 8887928c2b87ca239b81defe0ca360a965c495da
