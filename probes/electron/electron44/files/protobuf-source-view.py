@@ -5,6 +5,7 @@
 import os
 import re
 import ast
+import stat
 from pathlib import Path
 
 
@@ -134,41 +135,100 @@ def dependency_view(origin, dest, replacements, masks, *, verify=False, current=
 MATERIALIZED_THIRD_PARTY = ('blink', 'dawn', 'devtools-frontend', 'node')
 
 
+def _directory_identity(info):
+    return (info.st_dev, info.st_ino, info.st_mode, info.st_size,
+            info.st_mtime_ns, info.st_ctime_ns)
+
+
+def _scan_directory(directory, omit):
+    """Enumerate one real directory and retain its identity for final check."""
+    before = os.lstat(directory)
+    require(stat.S_ISDIR(before.st_mode),
+            'mirrored view component must be a real directory: ' + str(directory))
+    with os.scandir(directory) as scan:
+        entries = {item.name: item for item in scan if item.name not in omit}
+    return entries, _directory_identity(before)
+
+
+def _require_directory_unchanged(directory, identity):
+    current = os.lstat(directory)
+    require(stat.S_ISDIR(current.st_mode) and _directory_identity(current) == identity,
+            'mirrored view directory changed during verification: ' + str(directory))
+
+
+def _same_file_bytes(left, right):
+    with open(left, 'rb') as a, open(right, 'rb') as b:
+        while True:
+            left_chunk = a.read(1024 * 1024)
+            right_chunk = b.read(1024 * 1024)
+            if left_chunk != right_chunk:
+                return False
+            if not left_chunk:
+                return True
+
+
 def mirror(origin, dest, *, verify=False, omit=frozenset()):
-    names = {item.name for item in origin.iterdir() if item.name not in omit}
+    origin = Path(origin)
+    dest = Path(dest)
+    excluded = set(omit)
+    source_entries, source_identity = _scan_directory(origin, excluded)
+    names = set(source_entries)
     if verify:
-        require(dest.is_dir() and not dest.is_symlink(), 'mirrored view component must be local: ' + str(dest))
+        local_entries, local_identity = _scan_directory(dest, excluded)
         # Interpreter byte-code caches written into the local mirror are build
         # products of the view, not source entries.
-        local = {item.name for item in dest.iterdir() if item.name not in omit and
-                 not (item.name == '__pycache__' and item.name not in names and
-                         item.is_dir() and not item.is_symlink())}
-        require(local == names, 'mirrored view entries changed: ' + str(dest))
+        cache = local_entries.get('__pycache__')
+        if cache is not None and cache.name not in names:
+            cache_info = cache.stat(follow_symlinks=False)
+            if stat.S_ISDIR(cache_info.st_mode):
+                local_entries.pop('__pycache__')
+        require(set(local_entries) == names,
+                'mirrored view entries changed: ' + str(dest))
     else:
         dest.mkdir()
-    for item in origin.iterdir():
-        if item.name in omit:
-            continue
-        output = dest / item.name
-        if item.is_symlink():
+
+    for name, item in source_entries.items():
+        output = dest / name
+        source_info = item.stat(follow_symlinks=False)
+        if stat.S_ISLNK(source_info.st_mode):
+            source_link = os.readlink(item.path)
             if verify:
-                require(output.is_symlink() and os.readlink(output) == os.readlink(item),
+                output_entry = local_entries[name]
+                output_info = output_entry.stat(follow_symlinks=False)
+                require(stat.S_ISLNK(output_info.st_mode) and
+                        os.readlink(output_entry.path) == source_link,
                         'mirrored view link changed: ' + str(output))
             else:
-                output.symlink_to(os.readlink(item))
-        elif item.is_dir():
-            mirror(item, output, verify=verify)
-        elif verify:
-            a, b = item.stat(), output.lstat()
-            require(not output.is_symlink() and (a.st_ino, a.st_dev) == (b.st_ino, b.st_dev) or
-                    (a.st_size == b.st_size and output.read_bytes() == item.read_bytes()),
-                    'mirrored view file changed: ' + str(output))
+                output.symlink_to(source_link)
+        elif stat.S_ISDIR(source_info.st_mode):
+            if verify:
+                output_info = local_entries[name].stat(follow_symlinks=False)
+                require(stat.S_ISDIR(output_info.st_mode),
+                        'mirrored view directory changed: ' + str(output))
+            mirror(item.path, output, verify=verify)
         else:
-            try:
-                os.link(item, output)
-            except OSError:
-                import shutil
-                shutil.copy2(item, output)
+            require(stat.S_ISREG(source_info.st_mode),
+                    'unsupported mirrored view file type: ' + str(item.path))
+            if not verify:
+                try:
+                    os.link(item.path, output)
+                except OSError:
+                    import shutil
+                    shutil.copy2(item.path, output)
+                continue
+            output_entry = local_entries[name]
+            output_info = output_entry.stat(follow_symlinks=False)
+            same_inode = ((source_info.st_ino, source_info.st_dev) ==
+                          (output_info.st_ino, output_info.st_dev))
+            require(stat.S_ISREG(output_info.st_mode) and
+                    (same_inode or
+                     (source_info.st_size == output_info.st_size and
+                      _same_file_bytes(item.path, output_entry.path))),
+                    'mirrored view file changed: ' + str(output))
+
+    _require_directory_unchanged(origin, source_identity)
+    if verify:
+        _require_directory_unchanged(dest, local_identity)
 
 
 def mirrored(third_party):
