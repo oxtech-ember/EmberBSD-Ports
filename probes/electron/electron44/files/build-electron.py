@@ -1220,6 +1220,28 @@ def require_common_node(options):
             'Electron 45 requires the verified common Node source and pkgsrc export')
 
 
+def prepare_build_inputs(options, native, environment, sdk):
+    ensure_lastchange(options.workspace, native, environment, sdk)
+    ensure_ffmpeg_netbsd_config(options.workspace)
+    ensure_host_dsymutil(options.workspace, native)
+    require_rust_std(options.host_prefix, options.target)
+
+
+def run_ninja_and_stage(options, sdk, native, source_root, environment):
+    output = options.work / 'out'
+    sdk['process'].run_logged([native.tool('ninja'), '-C', str(output), '-j', str(options.jobs),
+                              'electron_dist_zip'], str(options.work / 'build.log'),
+                             cwd=str(source_root), env=environment,
+                             append=(options.work / 'build.log').exists())
+    archive = output / 'dist.zip'
+    require(archive.is_file(), 'Electron producer did not create dist.zip')
+    with archive.open('rb') as handle:
+        digest = hashlib.file_digest(handle, 'sha256').hexdigest()
+    stage = local_module('electron_runtime_stage', 'stage-runtime.py')
+    stage.stage_runtime(str(archive), str(options.work / 'runtime'), archive_sha256=digest,
+                        target=options.target, sdk=stage.load_sdk(options.sdk_source))
+
+
 def configure(options):
     require_common_v8(options)
     require_common_node(options)
@@ -1229,10 +1251,7 @@ def configure(options):
     require(not work.exists(), 'configure output must be new; retain an unsuccessful output for diagnosis')
     work.mkdir()
     native, environment, values = producer_inputs(options, sdk)
-    ensure_lastchange(options.workspace, native, environment, sdk)
-    ensure_ffmpeg_netbsd_config(options.workspace)
-    ensure_host_dsymutil(options.workspace, native)
-    require_rust_std(options.host_prefix, options.target)
+    prepare_build_inputs(options, native, environment, sdk)
     output = work / 'out'; output.mkdir()
     (output / 'args.gn').write_text(gn_arguments(values))
     sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
@@ -1247,6 +1266,9 @@ def configure(options):
 
 
 def reconfigure(options):
+    build_after_reconfigure = getattr(options, 'build_after_reconfigure', False)
+    if build_after_reconfigure:
+        require(options.jobs > 0, 'Ninja job count must be positive')
     require_common_v8(options)
     require_common_node(options)
     """Regenerate an existing GN graph while preserving its toolchain identity."""
@@ -1358,6 +1380,8 @@ def reconfigure(options):
         bound = bind_versioned(sdk, native, work / 'target-commands', new_commands)
         environment['CC'] = shlex.quote(bound['cc'])
         environment['CXX'] = shlex.quote(bound['cxx'])
+        if build_after_reconfigure:
+            prepare_build_inputs(options, native, environment, sdk)
 
         # A failed or interrupted GN run may leave a partial graph. The marker
         # prevents build until a later successful reconfigure repairs it.
@@ -1365,10 +1389,11 @@ def reconfigure(options):
         marker.write_text('GN reconfiguration incomplete\n')
         try:
             (output / 'args.gn').write_text(gn_arguments(values))
+            source_root = gn_source(options)
             sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
                 '--script-executable=' + native.tool('python'), '--ninja-executable=' + native.tool('ninja'),
                 '--root-target=//electron', '--root-pattern=//electron:electron_dist_zip', '--fail-on-unused-args'],
-                str(work / 'reconfigure.log'), cwd=str(gn_source(options)), env=environment,
+                str(work / 'reconfigure.log'), cwd=str(source_root), env=environment,
                 append=(work / 'reconfigure.log').exists())
             local_module('electron_build_source', 'prepare-build-sources.py').atomic_json(
                 work / 'configuration.json',
@@ -1378,6 +1403,10 @@ def reconfigure(options):
             (output / 'args.gn').write_text(old_args)
             raise
         marker.unlink()
+        if build_after_reconfigure:
+            # Keep Ninja failures outside the GN rollback path: the new graph
+            # and configuration are valid even if the compile is interrupted.
+            run_ninja_and_stage(options, sdk, native, source_root, environment)
 
 def build(options):
     require_common_v8(options)
@@ -1387,10 +1416,7 @@ def build(options):
     sdk = load_sdk(options.sdk_source)
     verify_source(options.workspace, options.ports_source, options.git)
     native, environment, values = producer_inputs(options, sdk)
-    ensure_lastchange(options.workspace, native, environment, sdk)
-    ensure_ffmpeg_netbsd_config(options.workspace)
-    ensure_host_dsymutil(options.workspace, native)
-    require_rust_std(options.host_prefix, options.target)
+    prepare_build_inputs(options, native, environment, sdk)
     saved = json.loads((options.work / 'configuration.json').read_text())
     require(saved['source'] == str(options.workspace) and saved['sdk'] == str(options.sdk_source) and
             saved['host_prefix'] == str(options.host_prefix) and saved['target'] == options.target,
@@ -1403,17 +1429,8 @@ def build(options):
     require(saved['arguments'] == values, 'GN selection changed; configure a new output')
     output = options.work / 'out'
     require((output / 'args.gn').read_text() == gn_arguments(values), 'configured GN arguments changed')
-    sdk['process'].run_logged([native.tool('ninja'), '-C', str(output), '-j', str(options.jobs),
-                              'electron_dist_zip'], str(options.work / 'build.log'),
-                             cwd=str(gn_source(options)), env=saved_env,
-                             append=(options.work / 'build.log').exists())
-    archive = output / 'dist.zip'
-    require(archive.is_file(), 'Electron producer did not create dist.zip')
-    with archive.open('rb') as handle:
-        digest = hashlib.file_digest(handle, 'sha256').hexdigest()
-    stage = local_module('electron_runtime_stage', 'stage-runtime.py')
-    stage.stage_runtime(str(archive), str(options.work / 'runtime'), archive_sha256=digest,
-                        target=options.target, sdk=stage.load_sdk(options.sdk_source))
+    source_root = gn_source(options)
+    run_ninja_and_stage(options, sdk, native, source_root, saved_env)
 
 
 def main():
@@ -1448,6 +1465,8 @@ def main():
         if phase == 'reconfigure':
             command.add_argument('--refresh-source-view', action='store_true',
                                  help='recompose generated sources, preserving existing Ninja objects')
+            command.add_argument('--build-after-reconfigure', action='store_true',
+                                 help='run Ninja after a successful reconfigure without releasing input locks')
         command.add_argument('--macos-minimum')
         command.add_argument('--gcc-platform-reason')
         command.add_argument('--jobs', type=int, default=1)

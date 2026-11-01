@@ -488,7 +488,12 @@ subsequent recovery. A verified common V8 source identity may change only when
 the GN cache salt selects `//v8/emberbsd-prepared-source.json` and clears the
 legacy bundled patch-list salt; unrelated provider changes still fail. GN
 regenerates the receipt-derived cache identity while retaining the existing
-Ninja output. It does not build Electron or execute target code.
+Ninja output. The regression also covers the opt-in
+`reconfigure --build-after-reconfigure --jobs 16` flow: one producer/source
+verification and GN generation proceed to Ninja under the same locks. GN
+failure does not start Ninja; Ninja failure preserves the valid regenerated
+configuration. The ordinary separate build path remains covered. Fixtures do
+not build Electron or execute target code.
 
 The source mirror regression checks hard-link and forced copy-fallback views,
 namespace/content changes, symlink type, and the bounded scan/stat calls:
