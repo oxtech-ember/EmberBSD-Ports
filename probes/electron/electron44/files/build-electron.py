@@ -794,7 +794,7 @@ def common_icu(options, sdk, native, environment, buildlink):
     records = [hashlib.sha256((path / '+BUILD_VERSION').read_bytes()).hexdigest() for path in packages]
     environment['EMBERBSD_SHARED_ICU_VERSION'] = versions[0]
     environment['EMBERBSD_SHARED_ICU_SOURCE_SHA256'] = ':'.join(records)
-    return {'icu_use_data_file': False}
+    return {'icu_use_data_file': False, 'v8_enable_temporal_systemicu': True}
 
 
 def common_re2(options, sdk, native, environment, buildlink):

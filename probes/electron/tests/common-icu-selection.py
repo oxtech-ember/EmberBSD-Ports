@@ -11,6 +11,9 @@ from types import SimpleNamespace
 owner = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('build_electron', owner / 'electron44/files/build-electron.py')
 build = importlib.util.module_from_spec(spec); spec.loader.exec_module(build)
+without_shared_icu = build.common_icu(SimpleNamespace(shared_icu=False), None, None, {}, None)
+assert without_shared_icu == {}
+assert 'v8_enable_temporal_systemicu' not in build.gn_arguments(without_shared_icu)
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp); ports = root/'ports'; export = root/'export'; sysroot = root/'sysroot'; stage = root/'stage'; work = root/'work'
     for recipe in (ports/'pkgsrc/textproc/icu', export/'textproc/icu'):
@@ -28,9 +31,11 @@ with tempfile.TemporaryDirectory() as tmp:
         @staticmethod
         def capture(*args, **kwargs): return SimpleNamespace(stdout=b'79.1\n')
     env = {'EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK': str(work)}
-    build.common_icu(opts, {'process': Process()}, SimpleNamespace(tool=lambda _: '/pkg-config'), env, root/'view')
+    gn_values = build.common_icu(opts, {'process': Process()}, SimpleNamespace(tool=lambda _: '/pkg-config'), env, root/'view')
     assert env['EMBERBSD_SHARED_ICU_VERSION'] == '79.1'
     assert env['EMBERBSD_SHARED_ICU_SOURCE_SHA256']
+    assert gn_values['v8_enable_temporal_systemicu'] is True
+    assert 'v8_enable_temporal_systemicu = true\n' in build.gn_arguments(gn_values)
     (packages[1]/'+BUILD_VERSION').write_text(record.replace(sha(recipe/'distinfo'), '0'*64))
     try:
         build.common_icu(opts, {'process': Process()}, SimpleNamespace(tool=lambda _: '/pkg-config'), env, root/'view')
