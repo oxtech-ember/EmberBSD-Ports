@@ -972,6 +972,11 @@
       "path": "gn-macos-gpu-sdk-search.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "chromium-snapshot-host-paxctl.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

@@ -1,0 +1,65 @@
+$NetBSD$
+
+Apply PaX only to the snapshot executable on NetBSD hosts, using the
+selected common host utility and the snapshot toolchain output path.
+Origin: EmberBSD (AI-assisted), Chromium 156.0.8078.75.
+Status: local cross-build integration; not submitted upstream.
+
+--- a/tools/v8_context_snapshot/BUILD.gn
++++ b/tools/v8_context_snapshot/BUILD.gn
+@@ -39,22 +39,29 @@
+   ]
+ }
+ 
+-action("run_paxctl_v8_context_snapshot_generator") {
+-  deps = [ ":v8_context_snapshot_generator($v8_snapshot_toolchain)" ]
++if (host_os == "netbsd") {
++  assert(v8_host_paxctl != "",
++         "NetBSD-host snapshot generator needs an explicit paxctl path")
++  action("run_paxctl_v8_context_snapshot_generator") {
++    deps = [ ":v8_context_snapshot_generator($v8_snapshot_toolchain)" ]
+ 
+-  script = "//v8/tools/run-paxctl.py"
+-  stamp = "$target_gen_dir/paxctl_stamp"
+-  outputs = [ stamp ]
++    script = "//v8/tools/run-paxctl.py"
++    stamp = "$target_gen_dir/paxctl_stamp"
++    outputs = [ stamp ]
+ 
+-  sources = []
+-  data = []
++    sources = []
++    data = []
++    inputs = [ v8_host_paxctl ]
+ 
+-  args = [
+-    rebase_path(stamp, root_build_dir),
+-    "/usr/sbin/paxctl", "+m",
+-    "./" + rebase_path(get_label_info(":v8_context_snapshot_generator", "root_out_dir") + "/v8_context_snapshot_generator",
+-    root_build_dir),
+-  ]
++    args = [
++      rebase_path(stamp, root_build_dir),
++      v8_host_paxctl, "+m",
++      "./" + rebase_path(get_label_info(
++                        ":v8_context_snapshot_generator($v8_snapshot_toolchain)",
++                        "root_out_dir") + "/v8_context_snapshot_generator",
++      root_build_dir),
++    ]
++  }
+ }
+ 
+ if (use_v8_context_snapshot) {
+@@ -85,9 +92,9 @@
+       ":v8_context_snapshot_generator($v8_snapshot_toolchain)",
+       "//v8:run_mksnapshot_default",
+     ]
+-      if (target_os == "netbsd") {
+-        deps += [ ":run_paxctl_v8_context_snapshot_generator" ]
+-      }
++    if (host_os == "netbsd") {
++      deps += [ ":run_paxctl_v8_context_snapshot_generator" ]
++    }
+ 
+     # TODO(sky): figure out why this doesn't work on android cross compile.
+     # In the case of compiling for the snapshot `shlib_extension` is ".so"

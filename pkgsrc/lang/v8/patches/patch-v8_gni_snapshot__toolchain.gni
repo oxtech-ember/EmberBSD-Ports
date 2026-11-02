@@ -1,0 +1,18 @@
+$NetBSD$
+
+Share the selected NetBSD host PaX tool with snapshot consumers.
+Origin: EmberBSD (AI-assisted), V8 15.6.75.31.
+Status: local cross-build integration; not submitted upstream.
+
+--- gni/snapshot_toolchain.gni.orig
++++ gni/snapshot_toolchain.gni
+@@ -28,6 +28,9 @@
+ import("//build/config/v8_target_cpu.gni")
+ 
+ declare_args() {
++  # Qualified NetBSD-host tool for snapshot executables.
++  v8_host_paxctl = ""
++
+   # The v8 snapshot needs to be built by code that is compiled with a
+   # toolchain that matches the bit-width of the target CPU, but runs on
+   # the host.

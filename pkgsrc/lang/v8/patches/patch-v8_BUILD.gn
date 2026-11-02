@@ -5,16 +5,6 @@ Origin: NetBSD pkgsrc Chromium and EmberBSD Ports Electron overlay.
 
 --- BUILD.gn.orig
 +++ BUILD.gn
-@@ -57,6 +57,9 @@
- 
-   # Dynamically set an additional dependency from v8/custom_deps.
-   v8_custom_deps = ""
-+
-+  # Qualified NetBSD-host tool for snapshot executables.
-+  v8_host_paxctl = ""
- 
-   # Sets -DV8_ENABLE_FUTURE.
-   v8_enable_future = false
 @@ -1116,6 +1119,9 @@
    "V8_TARGET_OS_MACOS",
    "V8_TARGET_OS_WIN",

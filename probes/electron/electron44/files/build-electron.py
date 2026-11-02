@@ -108,12 +108,25 @@ def source_owner_environment(environment):
     return captured
 
 
-def native_inputs(options, sdk):
+def native_required_roles(platform):
     roles = ('python', 'gn', 'ninja', 'node', 'rustc', 'rustfmt', 'bindgen', 'wayland-scanner',
              'pkg-config', 'rollup', 'tsc', 'clang', 'cc', 'cxx', 'cpp', 'ar', 'nm', 'strip', 'objcopy', 'readelf',
              'sh', 'env', 'sed', 'touch', 'cp', 'objdump')
-    if sys.platform == 'darwin':
+    if platform == 'darwin':
         roles += ('dsymutil',)
+    if platform.startswith('netbsd'):
+        roles += ('paxctl',)
+    return roles
+
+
+def host_paxctl_arguments(native):
+    if native.host['os'] == 'NetBSD':
+        return {'v8_host_paxctl': native.tool('paxctl')}
+    return {}
+
+
+def native_inputs(options, sdk):
+    roles = native_required_roles(sys.platform)
     native = sdk['host_prefix'].load_host_prefix(options.host_prefix, required_roles=roles,
                                                 compiler_family=options.host_compiler_family)
     require(Path(sys.executable).resolve() == Path(native.tool('python')).resolve(),
@@ -358,6 +371,7 @@ def arguments(options, native, tools, rust_version, launcher):
         values['host_toolchain'] = '//build/toolchain/linux/unbundle:host'
     else:
         raise ValueError('unsupported GN host OS: ' + native.host['os'])
+    values.update(host_paxctl_arguments(native))
     values.update(emberbsd_electron_node=native.tool('node'),
                   emberbsd_electron_version_provider=str(Path(__file__).with_name('electron-version-provider.py').resolve()),
                   emberbsd_electron_provider_selector=str(Path(__file__).with_name('node-providers.py').resolve()),
@@ -1538,7 +1552,7 @@ def reconfigure(options):
                          'emberbsd_common_protobuf',
                          'emberbsd_protobuf_target_prefix',
                          'emberbsd_protoc',
-                         'custom_toolchain', 'v8_snapshot_toolchain', 'emberbsd_mac_toolchain_bin',
+                         'custom_toolchain', 'v8_snapshot_toolchain', 'v8_host_paxctl', 'emberbsd_mac_toolchain_bin',
                          'emberbsd_sdk_source', 'mac_sdk_path', 'mac_deployment_target',
                          'apple_linker_launcher', 'unbundle_linker_launcher', 'concurrent_links',
                          'rust_sysroot_absolute', 'rust_bindgen_root', 'rustc_version',

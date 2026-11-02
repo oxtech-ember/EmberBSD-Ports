@@ -591,30 +591,20 @@ selected Python and `--source /absolute/chromium/src/electron`. The probe recipe
 still lacks a complete GN build interface. These instructions do not establish
 generation, packaging, loading, or host-generator acceptance.
 
-The [host PaX patch](patches/v8-host-paxctl.patch) keeps the NetBSD snapshot
-permission step local to a NetBSD build host. Apply it from the V8 source root:
+The common [V8 source owner](../../scripts/source-inputs/v8/README.md) owns
+`v8_host_paxctl` and the wrapper. The
+[Chromium snapshot patch](patches/chromium-snapshot-host-paxctl.patch) uses
+the same selected host tool and snapshot-toolchain-qualified executable.
+The Electron controller requires the `paxctl` role from the selected native
+prefix on NetBSD hosts and passes its qualified path to GN; macOS and Linux
+hosts do not invoke this NetBSD utility. The wrapper rejects non-absolute
+paths and propagates failures without leaving a success stamp.
 
-```sh
-cd /absolute/chromium/src/v8
-# v8-host-paxctl.patch is included by source-series.json.
-```
-
-The Mac host does not run NetBSD `paxctl` on its Mach-O snapshot generator.
-For a NetBSD build host, set `v8_host_paxctl` to the absolute executable path
-from the host prefix's `paxctl` role. Include `paxctl` in the existing
-`load_host_prefix` call's `required_roles`. Obtain the path with
-`selection.tool("paxctl")`. The path alone does not qualify its provider.
-The setting has no default path or PATH lookup. The action declares that file as an input and keeps `+m` on the
-selected `mksnapshot($v8_snapshot_toolchain)` output. The wrapper refuses an
-empty or relative executable before it starts a child. It preserves the child
-exit status. This selector does not qualify an executable.
-
-The [PaX source checks](tests/v8-host-paxctl.py) use no native commands.
-Run them with the selected Python and `--source /absolute/chromium/src/v8`.
-Actual GN and NetBSD-host permission checks remain required. This change does
-not repair other context/code-cache PaX actions or change target browser PaX
-and sandbox policy. The current Mac cross configuration keeps the context
-optimization off through the separate argument above.
+The [GN matrix](tests/snapshot-host-paxctl-gn.py),
+[controller selection test](tests/snapshot-host-paxctl-controller.py), and
+[common V8 wrapper test](../../pkgsrc/lang/v8/tests/host-paxctl.py) cover
+the selection and failure contracts. Actual NetBSD-host permission execution
+remains unverified. This does not change target browser PaX or sandbox policy.
 
 The [Apple C++ split](patches/base-apple-cxx-platform.patch) moves existing
 CoreFoundation string conversions, Mach/CoreFoundation time code, and the complete
