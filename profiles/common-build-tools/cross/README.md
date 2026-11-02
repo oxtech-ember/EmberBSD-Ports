@@ -546,15 +546,21 @@ the same order as without the cache, and that fetch reuses the cache only
 while the MAKECONF is unchanged.
 `scripts/tests/cross-bulk-build-queries.sh NEW_OUTPUT PKGPATH...` counts
 the bmake runs of a serial build: three for a new package, one for a done one.
-The build runs `CROSS_BULK_JOBS` packages at once, by default half the CPUs
-available to the selected SDK process. A package starts when every target
-dependency in `STATE/edges` is done; a failed, blocked or skipped dependency
-blocks it. Each package gets
-`MAKE_JOBS` on the command line, by default 1.5 times the CPUs split over the
-packages and at most the CPUs; `CROSS_BULK_MAKE_JOBS=N` sets an explicit
-positive-integer override. Unset derives the per-package budget from the
-selected SDK's CPU count; the `makeconf` sentinel is unsupported.
-`MAKE_JOBS_SAFE=no` recipes stay serial. Order
+The build resolves its logical-CPU capacity through the selected SDK;
+`CROSS_BULK_CPUS=N` passes an explicit capacity to that resolver. It runs
+`CROSS_BULK_JOBS` packages at once, by default half the selected CPU capacity.
+A package starts when every target dependency in `STATE/edges` is done; a
+failed, blocked or skipped dependency blocks it. By default, each ready
+package gets an integer share of one total CPU budget, with remainder CPUs
+assigned to earlier ready workers. The scheduler retains each worker's share
+until it reports its result; ready nodes can receive free capacity when fewer
+packages are ready than worker slots. Thus active default `MAKE_JOBS` values
+sum to no more than the selected CPU capacity. `CROSS_BULK_MAKE_JOBS=N` sets
+an explicit positive per-package override. `N` cannot exceed capacity; when
+the worker count is implicit, the default worker count is lowered as needed.
+When both counts are explicit, their product must fit capacity. Explicit
+`CROSS_BULK_JOBS` cannot exceed capacity. `MAKE_JOBS_SAFE=no` recipes stay
+serial. Order
 writes the native tools as graph nodes `PKGPATH@native`: `TOOL_DEPENDS` and
 `BOOTSTRAP_DEPENDS` of a target package, and every dependency of a native
 node. A native node is a job of its own, built with `USE_CROSS_COMPILE=no`
@@ -594,9 +600,9 @@ base. It holds `STATE/build.lock`, does not clean the `WRKDIR`, and updates
 only that package's state rows: success records the package and clears its
 failure/block entries; failure records the failure and keeps prior successes.
 An archive by itself is not treated as a completed build. The single package
-uses the selected SDK's full CPU budget for `MAKE_JOBS` by default;
-`CROSS_BULK_MAKE_JOBS=N` still overrides it. On TERM/INT/HUP it finishes the
-active package before releasing the lock.
+uses the selected SDK's full CPU budget for `MAKE_JOBS` by default; an explicit
+`CROSS_BULK_MAKE_JOBS=N` must fit that capacity. On TERM/INT/HUP it finishes
+the active package before releasing the lock.
 `scripts/tests/cross-bulk-native-tools.sh NEW_OUTPUT` checks all four
 dependency classes, transitive native tools, installed native leaves,
 cycles, and package scheduling with a recording bmake.

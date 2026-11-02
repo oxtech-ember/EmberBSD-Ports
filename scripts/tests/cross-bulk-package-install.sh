@@ -146,6 +146,22 @@ rm -f "$out/packages/All/demo-1.0.tgz"
 run "$out/override-state" 2 > "$out/override.log" 2>&1 || fail "explicit MAKE_JOBS: $(cat "$out/override.log")"
 grep -q '^MAKE_JOBS=2$' "$out/calls" || fail 'explicit MAKE_JOBS override was ignored'
 
+mkdir -p "$out/invalid-budget-state/logs"
+printf '%s\n' cat/demo > "$out/invalid-budget-state/order"
+printf '%s\n' 'cat/demo cat/demo' > "$out/invalid-budget-state/edges"
+: > "$out/invalid-budget-state/done"
+: > "$out/invalid-budget-state/failed"
+: > "$out/invalid-budget-state/blocked"
+: > "$out/targets"
+: > "$out/calls"
+rc=0
+run "$out/invalid-budget-state" 7 > "$out/invalid-budget.log" 2>&1 || rc=$?
+[ "$rc" = 2 ] || fail "stage-local oversized MAKE_JOBS exited $rc, expected validation failure"
+grep -q 'CROSS_BULK_MAKE_JOBS=7 exceeds resolved CPU capacity=6' "$out/invalid-budget.log" ||
+    fail "stage-local oversized MAKE_JOBS refusal was unclear: $(cat "$out/invalid-budget.log")"
+[ ! -s "$out/targets" ] || fail 'stage-local oversized MAKE_JOBS started a package target'
+[ ! -e "$out/invalid-budget-state/build.lock" ] || fail 'stage-local budget refusal left its lock'
+
 mkdir -p "$out/sentinel-state/logs"
 printf '%s\n' cat/demo > "$out/sentinel-state/order"
 printf '%s\n' 'cat/demo cat/demo' > "$out/sentinel-state/edges"

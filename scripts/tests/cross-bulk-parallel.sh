@@ -5,7 +5,7 @@
 # packages overlap, a package starts only after its dependencies are
 # installed, installs into one package database never overlap, a failure
 # blocks its dependents transitively, a skipped dependency blocks too,
-# MAKE_JOBS is split over the packages, a second run builds only the failure
+# MAKE_JOBS shares one SDK CPU budget over concurrent packages, a second run builds only the failure
 # again without hashing the done packages, a new PKGNAME or a missing
 # package file builds a done package again, SIGTERM lets the running
 # packages finish but starts no new one, and
@@ -37,7 +37,7 @@ while [ "\$#" -gt 0 ]; do
     case "\$1" in --jobs) echo "\$2"; exit 0 ;; esac
     shift
 done
-echo 10
+echo "\${FAKE_CPU_COUNT:-10}"
 WRAP
 chmod +x "$out/bin/shasum" "$out/bin/selected-python"
 : > "$out/errors"
@@ -78,13 +78,14 @@ cat > "$out/bmake" <<WRAP
 #!/bin/sh
 out=$out
 echo "\$*" >> \$out/calls
-dir= target= varname= varnames= add=
+dir= target= varname= varnames= add= jobs=
 while [ "\$#" -gt 0 ]; do
     case "\$1" in
         -C) dir=\$2; shift 2 ;;
         VARNAME=*) varname=\${1#VARNAME=}; shift ;;
         VARNAMES=*) varnames=\${1#VARNAMES=}; shift ;;
         NATIVE_PKG_ADD_CMD=*) add=\${1#NATIVE_PKG_ADD_CMD=}; shift ;;
+        MAKE_JOBS=*) jobs=\${1#MAKE_JOBS=}; shift ;;
         *=*) shift ;;
         *) target=\$1; shift ;;
     esac
@@ -97,9 +98,11 @@ work()
         [ -f \$out/packages/All/\$dep-1.0.tgz ] || echo "ORDER \$pkg before \$dep" >> \$out/errors
     done
     mkdir \$out/active/\$pkg
+    echo "start \$pkg \$jobs" >> \$out/budget-events
     ls \$out/active | wc -l >> \$out/concurrency
     sleep \${FAKE_SLEEP:-2}
     ls \$out/active | wc -l >> \$out/concurrency
+    echo "finish \$pkg \$jobs" >> \$out/budget-events
     rmdir \$out/active/\$pkg
     [ ! -f \$dir/fail ] || exit 1
     : > \$out/work/\$pkg.built
@@ -163,19 +166,91 @@ bulk_makeconf_sentinel()
         CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=3 CROSS_BULK_MAKE_JOBS=makeconf \
         sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/sentinel.log" 2>&1
 }
+budget_bulk()
+{
+    budget_cpu=$1 budget_workers=$2 budget_jobs=$3 budget_resolved=$4 budget_state=$5
+    PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree \
+        CROSS_BULK_CPUS="$budget_cpu" CROSS_BULK_JOBS="$budget_workers" \
+        CROSS_BULK_MAKE_JOBS="$budget_jobs" FAKE_CPU_COUNT="$budget_resolved" FAKE_SLEEP=0.4 \
+        sh "$ports/scripts/cross-bulk.sh" build "$budget_state/order" "$budget_state" > "$out/budget.log" 2>&1
+}
+new_budget_state()
+{
+    budget_count=${1:-6}
+    mkdir -p "$out/tree/budget"
+    : > "$out/budget-edges"
+    budget_index=1
+    while [ "$budget_index" -le "$budget_count" ]; do
+        budget_pkg=p$budget_index
+        mkdir -p "$out/tree/budget/$budget_pkg"
+        echo "budget/$budget_pkg budget/$budget_pkg" >> "$out/budget-edges"
+        budget_index=$((budget_index + 1))
+    done
+    rm -rf "$out/budget-state"
+    mkdir "$out/budget-state"
+    cp "$out/budget-edges" "$out/budget-state/edges"
+    tsort "$out/budget-edges" > "$out/budget-state/order"
+}
+check_budget()
+{
+    budget_expected=$1 budget_expected_workers=$2 budget_expected_first=$3
+    budget_state=$4 budget_count=$5 budget_initial=$6
+    [ "$(grep -c '^start ' "$out/budget-events")" = "$budget_count" ] || fail 'budget graph did not run all packages'
+    [ "$(grep -c '^finish ' "$out/budget-events")" = "$budget_count" ] || fail 'budget graph did not finish all packages'
+    budget_peak=$(awk '$1 == "start" { used += $3; if (used > peak) peak = used }
+        $1 == "finish" { used -= $3 } END { print peak + 0 }' "$out/budget-events")
+    [ "$budget_peak" -le "$budget_expected" ] || fail "active MAKE_JOBS budget reached $budget_peak, over $budget_expected"
+    budget_first=$(awk '$1 == "start" { print $3; n++; if (n == want) exit }' want="$budget_initial" "$out/budget-events" | sort -n | tr '\n' ' ')
+    [ -n "$budget_first" ] || fail 'no initial worker allocations recorded'
+    [ "$budget_first" = "$budget_expected_first" ] ||
+        fail "initial shares were '$budget_first', expected '$budget_expected_first'"
+    grep -q "Building with $budget_expected_workers packages at once" "$out/budget.log" ||
+        fail "wrong worker count: $(cat "$out/budget.log")"
+}
+run_budget_case()
+{
+    budget_cpu=$1 budget_workers=$2 budget_jobs=$3 budget_resolved=$4
+    budget_expected=$5 budget_expected_workers=$6 budget_expected_first=$7
+    budget_count=${8:-6}
+    budget_initial=${9:-$budget_expected_workers}
+    new_budget_state "$budget_count"
+    : > "$out/budget-events"
+    : > "$out/concurrency"
+    : > "$out/selected-python-calls"
+    budget_bulk "$budget_cpu" "$budget_workers" "$budget_jobs" "$budget_resolved" "$out/budget-state" ||
+        fail "budget case failed: cpu=$budget_cpu workers=$budget_workers jobs=$budget_jobs: $(cat "$out/budget.log")"
+    check_budget "$budget_expected" "$budget_expected_workers" "$budget_expected_first" "$out/budget-state" "$budget_count" "$budget_initial"
+}
+reject_budget_case()
+{
+    budget_cpu=$1 budget_workers=$2 budget_jobs=$3 budget_resolved=$4 budget_message=$5
+    new_budget_state
+    : > "$out/calls"
+    rc=0
+    budget_bulk "$budget_cpu" "$budget_workers" "$budget_jobs" "$budget_resolved" "$out/budget-state" || rc=$?
+    [ "$rc" = 2 ] || fail "invalid CPU budget exited $rc, expected validation failure: $(cat "$out/budget.log")"
+    grep -q "$budget_message" "$out/budget.log" || fail "unclear CPU budget refusal: $(cat "$out/budget.log")"
+    ! grep -Eq '(^|[[:space:]])(clean|depends|package|package-install)([[:space:]]|$)' "$out/calls" ||
+        fail 'invalid CPU budget started package work'
+    [ ! -e "$out/budget-state/run" ] && [ ! -e "$out/budget-state/build.lock" ] ||
+        fail 'invalid CPU budget created scheduler state'
+}
 calls() { grep -c -- "-C $out/tree/t/$1 " "$out/calls" || :; }
 
 newstate
 : > "$out/calls"
 bulk_expected_failure
 [ ! -s "$out/errors" ] || fail "$(cat "$out/errors")"
-grep -q 'MAKE_JOBS=3 (6 CPUs)' "$out/bulk.log" || fail 'explicit CROSS_BULK_CPUS was not preserved'
+grep -q 'selected SDK CPU capacity=6' "$out/bulk.log" || fail 'explicit CROSS_BULK_CPUS was not preserved'
 [ "$(cat "$out/selected-python-calls")" = "-B -E -S $out/sdk/scripts/resolve-jobs.py --jobs 6" ] || fail 'explicit CROSS_BULK_CPUS did not use the shared resolver'
 max=$(sort -n "$out/concurrency" | tail -n 1)
 [ "$(calls a)" = 3 ] || fail "package a ran bmake $(calls a) times, expected show-vars, clean, package-install"
 [ "$max" -ge 2 ] || fail "at most $max package built at a time"
 [ "$max" -le 3 ] || fail "$max packages at once, more than CROSS_BULK_JOBS=3"
-grep -q 'MAKE_JOBS=3 ' "$out/calls" || fail 'MAKE_JOBS is not 1.5 x 6 CPUs / 3 packages'
+grep -q 'MAKE_JOBS=2 ' "$out/calls" || fail 'MAKE_JOBS did not share the 6 CPU budget over 3 workers'
+budget_peak=$(awk '$1 == "start" { used += $3; if (used > peak) peak = used }
+    $1 == "finish" { used -= $3 } END { print peak + 0 }' "$out/budget-events")
+[ "$budget_peak" -le 6 ] || fail "initial active MAKE_JOBS budget reached $budget_peak, over 6"
 [ "$(ls "$out/target-db" | tr '\n' ' ')" = 'a b c d j ' ] || fail "installed: $(ls "$out/target-db")"
 [ "$(cut -d ' ' -f 1 "$out/state/done" | sort | tr '\n' ' ')" = 't/a t/b t/c t/d t/j ' ] ||
     fail "done: $(cat "$out/state/done")"
@@ -212,7 +287,7 @@ rc=0
 bulk_auto_cpus || rc=$?
 [ "$rc" = 1 ] || fail "automatic CPU build exited $rc, expected 1: $(cat "$out/bulk.log")"
 [ "$(cat "$out/selected-python-calls")" = "-B -E -S $out/sdk/scripts/resolve-jobs.py" ] || fail 'automatic CPU detection did not use the selected SDK resolver'
-grep -q 'MAKE_JOBS=5 (10 CPUs)' "$out/bulk.log" || fail "SDK resolver result was not used: $(cat "$out/bulk.log")"
+grep -q 'selected SDK CPU capacity=10' "$out/bulk.log" || fail "SDK resolver result was not used: $(cat "$out/bulk.log")"
 
 # A done package whose PKGNAME changed, or whose package file is gone,
 # builds again; a changed package file of a done PKGNAME does not.
@@ -242,6 +317,19 @@ bulk || fail "all-success build: $(cat "$out/bulk.log")"
 [ ! -s "$out/state/blocked" ] || fail "all-success pass recorded blocked nodes: $(cat "$out/state/blocked")"
 [ "$(cut -d ' ' -f 1 "$out/state/done" | sort | tr '\n' ' ')" = 't/a t/b t/c t/d t/e t/f t/g t/h t/i t/j ' ] ||
     fail "all-success done: $(cat "$out/state/done")"
+
+# The default allocation is one selected-SDK budget, including replacement workers.
+run_budget_case 1 '' '' 1 1 1 '1 '
+run_budget_case '' '' '' 5 5 3 '1 2 2 '
+[ "$(cat "$out/selected-python-calls")" = "-B -E -S $out/sdk/scripts/resolve-jobs.py" ] ||
+    fail 'odd default capacity did not use selected SDK resolver'
+run_budget_case 6 3 '' 10 6 3 '2 2 2 '
+run_budget_case 6 '' 4 10 6 1 '4 '
+run_budget_case 6 2 3 10 6 2 '3 3 '
+run_budget_case 10 5 '' 10 10 5 '10 ' 1 1
+reject_budget_case 6 7 '' 10 'CROSS_BULK_JOBS=7 exceeds resolved CPU capacity=6'
+reject_budget_case 6 2 4 10 'CROSS_BULK_JOBS=2 with CROSS_BULK_MAKE_JOBS=4 exceeds resolved CPU capacity=6'
+reject_budget_case 6 '' 7 10 'CROSS_BULK_MAKE_JOBS=7 exceeds resolved CPU capacity=6'
 
 # SIGTERM: the running packages finish, nothing new starts.
 newstate

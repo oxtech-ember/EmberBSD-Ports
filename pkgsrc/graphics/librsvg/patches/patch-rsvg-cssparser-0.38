@@ -1,0 +1,2078 @@
+$NetBSD$
+
+Update librsvg to current CSS selector/parser and HTML/XML dependencies.
+Preserve parse diagnostics across cssparser and selectors API changes.
+Origin: EmberBSD (AI-assisted).
+
+--- rsvg/src/angle.rs.orig
++++ rsvg/src/angle.rs
+@@ -68,22 +68,22 @@
+ // angle ::= number ("deg" | "grad" | "rad")?
+ //
+ impl Parse for Angle {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Angle, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Angle, ParseError> {
+         let angle = {
+-            let loc = parser.current_source_location();
+-
+             let token = parser.next()?;
+ 
+             match *token {
+                 Token::Number { value, .. } => {
+-                    let degrees = finite_f32(value).map_err(|e| loc.new_custom_error(e))?;
++                    let degrees =
++                        finite_f32(value).map_err(|e| cssparser::ParseError::custom(e))?;
+                     Angle::from_degrees(f64::from(degrees))
+                 }
+ 
+                 Token::Dimension {
+                     value, ref unit, ..
+                 } => {
+-                    let value = f64::from(finite_f32(value).map_err(|e| loc.new_custom_error(e))?);
++                    let value =
++                        f64::from(finite_f32(value).map_err(|e| cssparser::ParseError::custom(e))?);
+ 
+                     match unit.as_ref() {
+                         "deg" => Angle::from_degrees(value),
+@@ -91,12 +91,12 @@
+                         "rad" => Angle::new(value),
+                         "turn" => Angle::from_degrees(value * 360.0),
+                         _ => {
+-                            return Err(loc.new_unexpected_token_error(token.clone()));
++                            return Err(cssparser::ParseError::unexpected_token());
+                         }
+                     }
+                 }
+ 
+-                _ => return Err(loc.new_unexpected_token_error(token.clone())),
++                _ => return Err(cssparser::ParseError::unexpected_token()),
+             }
+         };
+ 
+--- rsvg/src/aspect_ratio.rs.orig
++++ rsvg/src/aspect_ratio.rs
+@@ -189,7 +189,7 @@
+     }
+ }
+ 
+-fn parse_align_xy<'i>(parser: &mut Parser<'i, '_>) -> Result<Option<(X, Y)>, BasicParseError<'i>> {
++fn parse_align_xy<'i>(parser: &mut Parser<'i>) -> Result<Option<(X, Y)>, BasicParseError> {
+     use self::Align1D::*;
+ 
+     parse_identifiers!(
+@@ -211,7 +211,7 @@
+     )
+ }
+ 
+-fn parse_fit_mode<'i>(parser: &mut Parser<'i, '_>) -> Result<FitMode, BasicParseError<'i>> {
++fn parse_fit_mode<'i>(parser: &mut Parser<'i>) -> Result<FitMode, BasicParseError> {
+     parse_identifiers!(
+         parser,
+         "meet" => FitMode::Meet,
+@@ -220,7 +220,7 @@
+ }
+ 
+ impl Parse for AspectRatio {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<AspectRatio, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<AspectRatio, ParseError> {
+         let defer = parser
+             .try_parse(|p| p.expect_ident_matching("defer"))
+             .is_ok();
+--- rsvg/src/color.rs.orig
++++ rsvg/src/color.rs
+@@ -145,20 +145,16 @@
+     val.round().clamp(0., 255.) as u8
+ }
+ 
+-/// Turn a short-lived [`cssparser::ParseError`] into a long-lived [`ParseError`].
+-///
+-/// cssparser's error type has a lifetime equal to the string being parsed.  We want
+-/// a long-lived error so we can store it away if needed.  Basically, here we turn
+-/// a `&str` into a `String`.
+-fn map_color_parse_error(err: cssparser::ParseError<'_, ()>) -> ParseError<'_> {
++/// Convert cssparser's custom-unit error to librsvg's owned error type.
++fn map_color_parse_error(err: cssparser::ParseError<()>) -> ParseError {
+     let string_err = match err.kind {
+         ParseErrorKind::Basic(ref e) => format!("{}", e),
+         ParseErrorKind::Custom(()) => {
+-            // In cssparser 0.31, the error type for Color::parse is defined like this:
++            // In cssparser 0.38, the error type for Color::parse is defined like this:
+             //
+-            //   pub fn parse<'i>(input: &mut Parser<'i, '_>) -> Result<Color, ParseError<'i, ()>> {
++            //   pub fn parse<'i>(input: &mut Parser<'i>) -> Result<Color, ParseError<()>> {
+             //
+-            // The ParseError<'i, ()> means that the ParseErrorKind::Custom(T) variant will have
++            // The ParseError<()> means that the ParseErrorKind::Custom(T) variant will have
+             // T be the () type.
+             //
+             // So, here we match for () inside the Custom variant.  If cssparser
+@@ -171,15 +167,10 @@
+         }
+     };
+ 
+-    ParseError {
+-        kind: ParseErrorKind::Custom(ValueErrorKind::Parse(string_err)),
+-        location: err.location,
+-    }
+-}
+-
+-fn parse_plain_color<'i>(parser: &mut Parser<'i, '_>) -> Result<Color, ParseError<'i>> {
+-    let loc = parser.current_source_location();
+-
++    ParseError::custom(ValueErrorKind::Parse(string_err))
++}
++
++fn parse_plain_color<'i>(parser: &mut Parser<'i>) -> Result<Color, ParseError> {
+     let csscolor = cssc::Color::parse(parser).map_err(map_color_parse_error)?;
+ 
+     // Return only supported color types, and mark the others as errors.
+@@ -192,10 +183,9 @@
+ 
+         cssc::Color::Hwb(hwb) => Ok(Color::Hwb(hwb.into())),
+ 
+-        _ => Err(ParseError {
+-            kind: ParseErrorKind::Custom(ValueErrorKind::parse_error("unsupported color syntax")),
+-            location: loc,
+-        }),
++        _ => Err(ParseError::custom(ValueErrorKind::parse_error(
++            "unsupported color syntax",
++        ))),
+     }
+ }
+ 
+@@ -210,13 +200,13 @@
+     }
+ }
+ 
+-fn parse_var_with_fallback<'i>(parser: &mut Parser<'i, '_>) -> Result<Color, ParseError<'i>> {
++fn parse_var_with_fallback<'i>(parser: &mut Parser<'i>) -> Result<Color, ParseError> {
+     let name = parser.expect_ident_cloned()?;
+ 
+     // ignore the name for now; we'll use it later when we actually
+     // process the names of custom variables
+     let _name = parse_name(&name).map_err(|()| {
+-        parser.new_custom_error(ValueErrorKind::parse_error(&format!(
++        cssparser::ParseError::custom(ValueErrorKind::parse_error(&format!(
+             "unexpected identifier {}",
+             name
+         )))
+@@ -236,7 +226,7 @@
+ }
+ 
+ impl Parse for Color {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Color, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Color, ParseError> {
+         if let Ok(c) = parser.try_parse(|p| {
+             p.expect_function_matching("var")?;
+             p.parse_nested_block(parse_var_with_fallback)
+--- rsvg/src/coord_units.rs.orig
++++ rsvg/src/coord_units.rs
+@@ -16,7 +16,7 @@
+ }
+ 
+ impl Parse for CoordUnits {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         Ok(parse_identifiers!(
+             parser,
+             "userSpaceOnUse" => CoordUnits::UserSpaceOnUse,
+@@ -54,8 +54,8 @@
+ 
+         impl $crate::parsers::Parse for $name {
+             fn parse<'i>(
+-                parser: &mut ::cssparser::Parser<'i, '_>,
+-            ) -> Result<Self, $crate::error::ParseError<'i>> {
++                parser: &mut ::cssparser::Parser<'i>,
++            ) -> Result<Self, $crate::error::ParseError> {
+                 Ok($name($crate::coord_units::CoordUnits::parse(parser)?))
+             }
+         }
+--- rsvg/src/css.rs.orig
++++ rsvg/src/css.rs
+@@ -74,9 +74,9 @@
+ //! matches by specificity and apply the result to each element.
+ 
+ use cssparser::{
+-    self, AtRuleParser, BasicParseErrorKind, CowRcStr, DeclarationParser, Parser, ParserInput,
+-    ParserState, QualifiedRuleParser, RuleBodyItemParser, RuleBodyParser, SourceLocation,
+-    StyleSheetParser, ToCss, match_ignore_ascii_case, parse_important,
++    self, AtRuleParser, CowRcStr, DeclarationParser, Parser, ParserState,
++    QualifiedRuleParser, RuleBodyItemParser, RuleBodyParser, StyleSheetParser, ToCss,
++    match_ignore_ascii_case, parse_important,
+ };
+ use language_tags::LanguageTag;
+ use markup5ever::{self, Namespace, QualName, ns};
+@@ -139,9 +139,9 @@
+     fn parse_value<'t>(
+         &mut self,
+         name: CowRcStr<'i>,
+-        input: &mut Parser<'i, 't>,
++        input: &mut Parser<'i>,
+         _declaration_start: &ParserState,
+-    ) -> Result<RuleBodyItem, cssparser::ParseError<'i, Self::Error>> {
++    ) -> Result<RuleBodyItem, cssparser::ParseError<Self::Error>> {
+         let prop_name = QualName::new(None, ns!(), markup5ever::LocalName::from(name.as_ref()));
+         let property = parse_value(&prop_name, input, ParseAs::Property)?;
+ 
+@@ -192,13 +192,28 @@
+ /// Errors from the CSS parsing process
+ #[allow(dead_code)] // looks like we are not actually using this yet?
+ #[derive(Debug)]
+-pub enum ParseErrorKind<'i> {
+-    Selector(selectors::parser::SelectorParseErrorKind<'i>),
+-}
+-
+-impl<'i> From<selectors::parser::SelectorParseErrorKind<'i>> for ParseErrorKind<'i> {
+-    fn from(e: selectors::parser::SelectorParseErrorKind<'_>) -> ParseErrorKind<'_> {
++pub enum ParseErrorKind {
++    Selector(selectors::parser::SelectorParseErrorKind),
++    UnsupportedPseudoClassOrElement(String),
++}
++
++// cssparser 0.38 errors no longer carry token text or source positions. The
++// stylesheet iterators provide the rule/declaration boundary for diagnostics.
++
++impl From<selectors::parser::SelectorParseErrorKind> for ParseErrorKind {
++    fn from(e: selectors::parser::SelectorParseErrorKind) -> ParseErrorKind {
+         ParseErrorKind::Selector(e)
++    }
++}
++
++impl From<ParseErrorKind> for ValueErrorKind {
++    fn from(error: ParseErrorKind) -> ValueErrorKind {
++        match error {
++            ParseErrorKind::Selector(_) => ValueErrorKind::parse_error("Could not parse selector"),
++            ParseErrorKind::UnsupportedPseudoClassOrElement(name) => {
++                ValueErrorKind::parse_error(&format!("Unsupported pseudo-class or element: {name}"))
++            }
++        }
+     }
+ }
+ 
+@@ -227,7 +242,7 @@
+ // Required to implement the `Prelude` associated type in `cssparser::QualifiedRuleParser`
+ impl<'i> selectors::Parser<'i> for RuleParser {
+     type Impl = Selector;
+-    type Error = ParseErrorKind<'i>;
++    type Error = ParseErrorKind;
+ 
+     fn default_namespace(&self) -> Option<<Self::Impl as SelectorImpl>::NamespaceUrl> {
+         Some(ns!(svg))
+@@ -245,23 +260,22 @@
+     }
+     fn parse_non_ts_pseudo_class(
+         &self,
+-        location: SourceLocation,
+         name: CowRcStr<'i>,
+-    ) -> Result<NonTSPseudoClass, cssparser::ParseError<'i, Self::Error>> {
++    ) -> Result<NonTSPseudoClass, cssparser::ParseError<Self::Error>> {
+         match &*name {
+             "link" => Ok(NonTSPseudoClass::Link),
+             "visited" => Ok(NonTSPseudoClass::Visited),
+-            _ => Err(location.new_custom_error(
+-                selectors::parser::SelectorParseErrorKind::UnsupportedPseudoClassOrElement(name),
++            _ => Err(cssparser::ParseError::custom(
++                ParseErrorKind::UnsupportedPseudoClassOrElement(name.as_ref().to_owned()),
+             )),
+         }
+     }
+     fn parse_non_ts_functional_pseudo_class(
+         &self,
+         name: CowRcStr<'i>,
+-        arguments: &mut Parser<'i, '_>,
++        arguments: &mut Parser<'i>,
+         _after_part: bool,
+-    ) -> Result<NonTSPseudoClass, cssparser::ParseError<'i, Self::Error>> {
++    ) -> Result<NonTSPseudoClass, cssparser::ParseError<Self::Error>> {
+         match &*name {
+             "lang" => {
+                 // Comma-separated lists of languages are a Selectors 4 feature,
+@@ -269,14 +283,18 @@
+                 let tags = arguments.parse_comma_separated(|arg| {
+                     let language_tag = arg.expect_ident_or_string()?.clone();
+                     LanguageTag::from_str(&language_tag).map_err(|_| {
+-                        arg.new_custom_error(selectors::parser::SelectorParseErrorKind::UnsupportedPseudoClassOrElement(language_tag))
++                        cssparser::ParseError::custom(
++                            ParseErrorKind::UnsupportedPseudoClassOrElement(
++                                language_tag.as_ref().to_owned(),
++                            ),
++                        )
+                     })
+                 })?;
+                 arguments.expect_exhausted()?;
+                 Ok(NonTSPseudoClass::Lang(tags))
+             }
+-            _ => Err(arguments.new_custom_error(
+-                selectors::parser::SelectorParseErrorKind::UnsupportedPseudoClassOrElement(name),
++            _ => Err(cssparser::ParseError::custom(
++                ParseErrorKind::UnsupportedPseudoClassOrElement(name.as_ref().to_owned()),
+             )),
+         }
+     }
+@@ -308,28 +326,29 @@
+ 
+     fn parse_prelude<'t>(
+         &mut self,
+-        input: &mut Parser<'i, 't>,
+-    ) -> Result<Self::Prelude, cssparser::ParseError<'i, Self::Error>> {
+-        SelectorList::parse(self, input, ParseRelative::No).map_err(|e| ParseError {
+-            kind: cssparser::ParseErrorKind::Custom(ValueErrorKind::parse_error(
+-                "Could not parse selector",
+-            )),
+-            location: e.location,
+-        })
++        input: &mut Parser<'i>,
++    ) -> Result<Self::Prelude, cssparser::ParseError<Self::Error>> {
++        SelectorList::parse(self, input, ParseRelative::No)
++            .map_err(|error| error.into::<ValueErrorKind>())
+     }
+ 
+     fn parse_block<'t>(
+         &mut self,
+         prelude: Self::Prelude,
+         _start: &ParserState,
+-        input: &mut Parser<'i, 't>,
+-    ) -> Result<Self::QualifiedRule, cssparser::ParseError<'i, Self::Error>> {
++        input: &mut Parser<'i>,
++    ) -> Result<Self::QualifiedRule, cssparser::ParseError<Self::Error>> {
+         let declarations = RuleBodyParser::<_, _, Self::Error>::new(input, &mut DeclParser)
+             .filter_map(|r| match r {
+                 Ok(RuleBodyItem::Decl(decl)) => Some(decl),
+                 Ok(RuleBodyItem::Rule(_)) => None,
+-                Err(e) => {
+-                    rsvg_log!(self.session, "Invalid declaration; ignoring: {:?}", e);
++                Err((e, _source, location)) => {
++                    rsvg_log!(
++                        self.session,
++                        "Invalid declaration at boundary {:?}; ignoring: {:?}",
++                        location,
++                        e
++                    );
+                     None
+                 }
+             })
+@@ -354,8 +373,8 @@
+     fn parse_prelude<'t>(
+         &mut self,
+         name: CowRcStr<'i>,
+-        input: &mut Parser<'i, 't>,
+-    ) -> Result<Self::Prelude, cssparser::ParseError<'i, Self::Error>> {
++        input: &mut Parser<'i>,
++    ) -> Result<Self::Prelude, cssparser::ParseError<Self::Error>> {
+         match_ignore_ascii_case! {
+             &name,
+ 
+@@ -366,7 +385,9 @@
+                 Ok(AtRulePrelude::Import(url))
+             },
+ 
+-            _ => Err(input.new_error(BasicParseErrorKind::AtRuleInvalid(name))),
++            _ => Err(cssparser::ParseError::custom(ValueErrorKind::parse_error(
++                &format!("invalid @-rule {}", name.as_ref()),
++            ))),
+         }
+     }
+ 
+@@ -412,8 +433,6 @@
+ }
+ 
+ impl selectors::parser::NonTSPseudoClass for NonTSPseudoClass {
+-    type Impl = Selector;
+-
+     fn is_active_or_hover(&self) -> bool {
+         false
+     }
+@@ -436,9 +455,7 @@
+     }
+ }
+ 
+-impl selectors::parser::PseudoElement for PseudoElement {
+-    type Impl = Selector;
+-}
++impl selectors::parser::PseudoElement for PseudoElement {}
+ 
+ /// Holds all the types for the SelectorImpl trait
+ #[derive(Debug, Clone)]
+@@ -932,8 +949,7 @@
+         load_limiter: LoadingDepthLimiter,
+         session: Session,
+     ) -> Result<(), LoadingError> {
+-        let mut input = ParserInput::new(buf);
+-        let mut parser = Parser::new(&mut input);
++        let mut parser = Parser::new(buf);
+         let mut rule_parser = RuleParser {
+             session: session.clone(),
+         };
+@@ -941,8 +957,13 @@
+         StyleSheetParser::new(&mut parser, &mut rule_parser)
+             .filter_map(|r| match r {
+                 Ok(rule) => Some(rule),
+-                Err(e) => {
+-                    rsvg_log!(session, "Invalid rule; ignoring: {:?}", e);
++                Err((e, _source, location)) => {
++                    rsvg_log!(
++                        session,
++                        "Invalid rule at boundary {:?}; ignoring: {:?}",
++                        location,
++                        e
++                    );
+                     None
+                 }
+             })
+@@ -1091,6 +1112,48 @@
+ 
+     use crate::document::Document;
+     use crate::is_element_of_type;
++
++    #[test]
++    fn unsupported_pseudo_class_reports_rule_boundary_and_name() {
++        let css = "rect { fill: red; }\n\nrect:unknown-rsvg-pseudo { fill: blue; }\n";
++        let mut input = Parser::new(css);
++        let mut rule_parser = RuleParser {
++            session: Session::new_for_test_suite(),
++        };
++        let mut stylesheet = StyleSheetParser::new(&mut input, &mut rule_parser);
++
++        assert!(stylesheet.next().unwrap().is_ok());
++        let (error, source, boundary) = stylesheet.next().unwrap().unwrap_err();
++
++        assert!(source.starts_with("rect:unknown-rsvg-pseudo"));
++        assert_eq!(boundary.line, 2);
++        assert!(matches!(
++            error.kind,
++            cssparser::ParseErrorKind::Custom(ValueErrorKind::Parse(ref message))
++                if message.contains("unknown-rsvg-pseudo")
++        ));
++    }
++
++    #[test]
++    fn unsupported_at_rule_reports_rule_boundary_and_name() {
++        let css = "@unknown-rsvg-rule value;\n";
++        let mut input = Parser::new(css);
++        let mut rule_parser = RuleParser {
++            session: Session::new_for_test_suite(),
++        };
++        let (error, source, boundary) = StyleSheetParser::new(&mut input, &mut rule_parser)
++            .next()
++            .unwrap()
++            .unwrap_err();
++
++        assert!(source.starts_with("@unknown-rsvg-rule"));
++        assert_eq!(boundary.line, 0);
++        assert!(matches!(
++            error.kind,
++            cssparser::ParseErrorKind::Custom(ValueErrorKind::Parse(ref message))
++                if message.contains("@unknown-rsvg-rule")
++        ));
++    }
+ 
+     #[test]
+     fn xml_lang() {
+--- rsvg/src/dasharray.rs.orig
++++ rsvg/src/dasharray.rs
+@@ -14,7 +14,7 @@
+ }
+ 
+ impl Parse for Dasharray {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Dasharray, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Dasharray, ParseError> {
+         if parser
+             .try_parse(|p| p.expect_ident_matching("none"))
+             .is_ok()
+--- rsvg/src/element.rs.orig
++++ rsvg/src/element.rs
+@@ -303,7 +303,7 @@
+     /// element.
+     pub fn new(session: &Session, name: &QualName, mut attributes: Attributes) -> Element {
+         let (create_fn, flags): (ElementDataCreateFn, ElementCreateFlags) = if name.ns == ns!(svg) {
+-            match get_element_creators().get(name.local.as_ref()) {
++            match get_element_creators().get(AsRef::<str>::as_ref(&name.local)) {
+                 // hack in the SVG namespace for supported element names
+                 Some(&(create_fn, flags)) => (create_fn, flags),
+ 
+--- rsvg/src/error.rs.orig
++++ rsvg/src/error.rs
+@@ -3,7 +3,7 @@
+ use std::error;
+ use std::fmt;
+ 
+-use cssparser::{BasicParseError, BasicParseErrorKind, ParseErrorKind, ToCss};
++use cssparser::{BasicParseError, BasicParseErrorKind, ParseErrorKind};
+ use markup5ever::QualName;
+ 
+ #[cfg(doc)]
+@@ -16,14 +16,10 @@
+ 
+ /// A short-lived error.
+ ///
+-/// The lifetime of the error is the same as the `cssparser::ParserInput` that
+-/// was used to create a `cssparser::Parser`.  That is, it is the lifetime of
+-/// the string data that is being parsed.
+-///
+ /// The code flow will sometimes require preserving this error as a long-lived struct;
+-/// see the `impl<'i, O> AttributeResultExt<O> for Result<O, ParseError<'i>>` for that
++/// see the `impl<O> AttributeResultExt<O> for Result<O, ParseError>` for that
+ /// purpose.
+-pub type ParseError<'i> = cssparser::ParseError<'i, ValueErrorKind>;
++pub type ParseError = cssparser::ParseError<ValueErrorKind>;
+ 
+ /// A simple error which refers to an attribute's value
+ #[derive(Debug, Clone)]
+@@ -60,16 +56,17 @@
+     }
+ }
+ 
+-impl<'a> From<BasicParseError<'a>> for ValueErrorKind {
+-    fn from(e: BasicParseError<'_>) -> ValueErrorKind {
++impl From<BasicParseError> for ValueErrorKind {
++    fn from(e: BasicParseError) -> ValueErrorKind {
+         let BasicParseError { kind, .. } = e;
+ 
+         let msg = match kind {
+-            BasicParseErrorKind::UnexpectedToken(_) => "unexpected token",
++            BasicParseErrorKind::UnexpectedToken => "unexpected token",
+             BasicParseErrorKind::EndOfInput => "unexpected end of input",
+-            BasicParseErrorKind::AtRuleInvalid(_) => "invalid @-rule",
++            BasicParseErrorKind::AtRuleInvalid => "invalid @-rule",
+             BasicParseErrorKind::AtRuleBodyInvalid => "invalid @-rule body",
+             BasicParseErrorKind::QualifiedRuleInvalid => "invalid qualified rule",
++            BasicParseErrorKind::TooManyNestedBlocks => "too many nested blocks",
+         };
+ 
+         ValueErrorKind::parse_error(msg)
+@@ -310,31 +307,20 @@
+     }
+ }
+ 
+-/// Convert a short-lived ParseError into a long-lived ElementError
++/// Convert a short-lived ParseError into a long-lived ElementError.
+ ///
+ /// We extract this as a function, instead of putting it directly in the `map_err` invocation
+-/// below in `impl<'i, O> AttributeResultExt<O> for Result<O, ParseError<'i>>`, because
++/// below in `impl<'i, O> AttributeResultExt<O> for Result<O, ParseError>`, because
+ /// putting it there as a closure generates too many duplicated copies of the code.  The generic
+ /// parameter `O` in that `impl` is for the result `Ok()` value, not for the `Err`, after all.
+-fn parse_error_to_element_error<'i>(e: ParseError<'i>, attr: QualName) -> ElementError {
+-    // FIXME: eventually, here we'll want to preserve the location information
+-
+-    let ParseError {
+-        kind,
+-        location: _location,
+-    } = e;
++fn parse_error_to_element_error(e: ParseError, attr: QualName) -> ElementError {
++    let ParseError { kind } = e;
+ 
+     match kind {
+-        ParseErrorKind::Basic(BasicParseErrorKind::UnexpectedToken(tok)) => {
+-            let mut s = String::from("unexpected token '");
+-            tok.to_css(&mut s).unwrap(); // FIXME: what do we do with a fmt::Error?
+-            s.push('\'');
+-
+-            ElementError {
+-                attr,
+-                err: ValueErrorKind::Parse(s),
+-            }
+-        }
++        ParseErrorKind::Basic(BasicParseErrorKind::UnexpectedToken) => ElementError {
++            attr,
++            err: ValueErrorKind::parse_error("unexpected token"),
++        },
+ 
+         ParseErrorKind::Basic(BasicParseErrorKind::EndOfInput) => ElementError {
+             attr,
+@@ -350,7 +336,7 @@
+ }
+ 
+ /// Turns a short-lived `ParseError` into a long-lived `ElementError`
+-impl<'i, O> AttributeResultExt<O> for Result<O, ParseError<'i>> {
++impl<O> AttributeResultExt<O> for Result<O, ParseError> {
+     fn attribute(self, attr: QualName) -> Result<O, ElementError> {
+         self.map_err(|e| parse_error_to_element_error(e, attr))
+     }
+--- rsvg/src/filter.rs.orig
++++ rsvg/src/filter.rs
+@@ -302,18 +302,16 @@
+ }
+ 
+ impl Parse for FilterValueList {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, crate::error::ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, crate::error::ParseError> {
+         let mut result = FilterValueList::default();
+ 
+         loop {
+-            let loc = parser.current_source_location();
+-
+             let filter_value = if let Ok(func) = parser.try_parse(|p| FilterFunction::parse(p)) {
+                 FilterValue::Function(func)
+             } else {
+                 let url = parser.expect_url()?;
+                 let node_id = NodeId::parse(&url)
+-                    .map_err(|e| loc.new_custom_error(ValueErrorKind::from(e)))?;
++                    .map_err(|e| cssparser::ParseError::custom(ValueErrorKind::from(e)))?;
+ 
+                 FilterValue::Url(node_id)
+             };
+--- rsvg/src/filter_func.rs.orig
++++ rsvg/src/filter_func.rs
+@@ -133,7 +133,7 @@
+ 
+ /// Reads an optional number or percentage from the parser.
+ /// Negative numbers are not allowed.
+-fn parse_num_or_percentage(parser: &mut Parser<'_, '_>) -> Option<f64> {
++fn parse_num_or_percentage(parser: &mut Parser<'_>) -> Option<f64> {
+     match parser.try_parse(|p| NumberOrPercentage::parse(p)) {
+         Ok(NumberOrPercentage { value }) if value < 0.0 => None,
+         Ok(NumberOrPercentage { value }) => Some(value),
+@@ -143,17 +143,17 @@
+ 
+ /// Reads an optional number or percentage from the parser, returning a value clamped to [0, 1].
+ /// Negative numbers are not allowed.
+-fn parse_num_or_percentage_clamped(parser: &mut Parser<'_, '_>) -> Option<f64> {
++fn parse_num_or_percentage_clamped(parser: &mut Parser<'_>) -> Option<f64> {
+     parse_num_or_percentage(parser).map(|value| value.clamp(0.0, 1.0))
+ }
+ 
+ fn parse_function<'i, F>(
+-    parser: &mut Parser<'i, '_>,
++    parser: &mut Parser<'i>,
+     name: &str,
+     f: F,
+-) -> Result<FilterFunction, ParseError<'i>>
++) -> Result<FilterFunction, ParseError>
+ where
+-    F: for<'tt> FnOnce(&mut Parser<'i, 'tt>) -> Result<FilterFunction, ParseError<'i>>,
++    F: for<'tt> FnOnce(&mut Parser<'i>) -> Result<FilterFunction, ParseError>,
+ {
+     parser.expect_function_matching(name)?;
+     parser.parse_nested_block(f)
+@@ -162,7 +162,7 @@
+ // This function doesn't fail, but returns a Result like the other parsers, so tell Clippy
+ // about that.
+ #[allow(clippy::unnecessary_wraps)]
+-fn parse_blur<'i>(parser: &mut Parser<'i, '_>) -> Result<FilterFunction, ParseError<'i>> {
++fn parse_blur<'i>(parser: &mut Parser<'i>) -> Result<FilterFunction, ParseError> {
+     let length = parser.try_parse(|p| Length::parse(p)).ok();
+ 
+     Ok(FilterFunction::Blur(Blur {
+@@ -171,20 +171,20 @@
+ }
+ 
+ #[allow(clippy::unnecessary_wraps)]
+-fn parse_brightness<'i>(parser: &mut Parser<'i, '_>) -> Result<FilterFunction, ParseError<'i>> {
++fn parse_brightness<'i>(parser: &mut Parser<'i>) -> Result<FilterFunction, ParseError> {
+     let proportion = parse_num_or_percentage(parser);
+ 
+     Ok(FilterFunction::Brightness(Brightness { proportion }))
+ }
+ 
+ #[allow(clippy::unnecessary_wraps)]
+-fn parse_contrast<'i>(parser: &mut Parser<'i, '_>) -> Result<FilterFunction, ParseError<'i>> {
++fn parse_contrast<'i>(parser: &mut Parser<'i>) -> Result<FilterFunction, ParseError> {
+     let proportion = parse_num_or_percentage(parser);
+ 
+     Ok(FilterFunction::Contrast(Contrast { proportion }))
+ }
+ #[allow(clippy::unnecessary_wraps)]
+-fn parse_dropshadow<'i>(parser: &mut Parser<'i, '_>) -> Result<FilterFunction, ParseError<'i>> {
++fn parse_dropshadow<'i>(parser: &mut Parser<'i>) -> Result<FilterFunction, ParseError> {
+     let mut result = DropShadow {
+         color: None,
+         dx: None,
+@@ -201,16 +201,14 @@
+         result.std_deviation = parser.try_parse(ULength::parse).ok();
+     }
+ 
+-    let loc = parser.current_source_location();
+-
+     // because the color and length arguments can be provided in either order,
+     // check again after potentially parsing lengths if the color is now provided.
+     // if a color is provided both before and after, that is an error.
+     if let Ok(c) = parser.try_parse(Color::parse) {
+         if result.color.is_some() {
+-            return Err(
+-                loc.new_custom_error(ValueErrorKind::Value("color already specified".to_string()))
+-            );
++            return Err(cssparser::ParseError::custom(ValueErrorKind::Value(
++                "color already specified".to_string(),
++            )));
+         } else {
+             result.color = Some(c);
+         }
+@@ -220,42 +218,42 @@
+ }
+ 
+ #[allow(clippy::unnecessary_wraps)]
+-fn parse_grayscale<'i>(parser: &mut Parser<'i, '_>) -> Result<FilterFunction, ParseError<'i>> {
++fn parse_grayscale<'i>(parser: &mut Parser<'i>) -> Result<FilterFunction, ParseError> {
+     let proportion = parse_num_or_percentage_clamped(parser);
+ 
+     Ok(FilterFunction::Grayscale(Grayscale { proportion }))
+ }
+ 
+ #[allow(clippy::unnecessary_wraps)]
+-fn parse_huerotate<'i>(parser: &mut Parser<'i, '_>) -> Result<FilterFunction, ParseError<'i>> {
++fn parse_huerotate<'i>(parser: &mut Parser<'i>) -> Result<FilterFunction, ParseError> {
+     let angle = parser.try_parse(|p| Angle::parse(p)).ok();
+ 
+     Ok(FilterFunction::HueRotate(HueRotate { angle }))
+ }
+ 
+ #[allow(clippy::unnecessary_wraps)]
+-fn parse_invert<'i>(parser: &mut Parser<'i, '_>) -> Result<FilterFunction, ParseError<'i>> {
++fn parse_invert<'i>(parser: &mut Parser<'i>) -> Result<FilterFunction, ParseError> {
+     let proportion = parse_num_or_percentage_clamped(parser);
+ 
+     Ok(FilterFunction::Invert(Invert { proportion }))
+ }
+ 
+ #[allow(clippy::unnecessary_wraps)]
+-fn parse_opacity<'i>(parser: &mut Parser<'i, '_>) -> Result<FilterFunction, ParseError<'i>> {
++fn parse_opacity<'i>(parser: &mut Parser<'i>) -> Result<FilterFunction, ParseError> {
+     let proportion = parse_num_or_percentage_clamped(parser);
+ 
+     Ok(FilterFunction::Opacity(Opacity { proportion }))
+ }
+ 
+ #[allow(clippy::unnecessary_wraps)]
+-fn parse_saturate<'i>(parser: &mut Parser<'i, '_>) -> Result<FilterFunction, ParseError<'i>> {
++fn parse_saturate<'i>(parser: &mut Parser<'i>) -> Result<FilterFunction, ParseError> {
+     let proportion = parse_num_or_percentage(parser);
+ 
+     Ok(FilterFunction::Saturate(Saturate { proportion }))
+ }
+ 
+ #[allow(clippy::unnecessary_wraps)]
+-fn parse_sepia<'i>(parser: &mut Parser<'i, '_>) -> Result<FilterFunction, ParseError<'i>> {
++fn parse_sepia<'i>(parser: &mut Parser<'i>) -> Result<FilterFunction, ParseError> {
+     let proportion = parse_num_or_percentage_clamped(parser);
+ 
+     Ok(FilterFunction::Sepia(Sepia { proportion }))
+@@ -647,9 +645,8 @@
+ impl Parse for FilterFunction {
+     #[allow(clippy::type_complexity)]
+     #[rustfmt::skip]
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, crate::error::ParseError<'i>> {
+-        let loc = parser.current_source_location();
+-        let fns: Vec<(&str, &dyn Fn(&mut Parser<'i, '_>) -> _)> = vec![
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, crate::error::ParseError> {
++        let fns: Vec<(&str, &dyn Fn(&mut Parser<'i>) -> _)> = vec![
+             ("blur",        &parse_blur),
+             ("brightness",  &parse_brightness),
+             ("contrast",    &parse_contrast),
+@@ -668,7 +665,7 @@
+             }
+         }
+ 
+-        Err(loc.new_custom_error(ValueErrorKind::parse_error("expected filter function")))
++        Err(cssparser::ParseError::custom(ValueErrorKind::parse_error("expected filter function")))
+     }
+ }
+ 
+--- rsvg/src/filters/blend.rs.orig
++++ rsvg/src/filters/blend.rs
+@@ -121,7 +121,7 @@
+ }
+ 
+ impl Parse for Mode {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         Ok(parse_identifiers!(
+             parser,
+             "normal" => Mode::Normal,
+--- rsvg/src/filters/color_matrix.rs.orig
++++ rsvg/src/filters/color_matrix.rs
+@@ -339,7 +339,7 @@
+ }
+ 
+ impl Parse for OperationType {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         Ok(parse_identifiers!(
+             parser,
+             "matrix" => OperationType::Matrix,
+--- rsvg/src/filters/component_transfer.rs.orig
++++ rsvg/src/filters/component_transfer.rs
+@@ -57,7 +57,7 @@
+ }
+ 
+ impl Parse for FunctionType {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         Ok(parse_identifiers!(
+             parser,
+             "identity" => FunctionType::Identity,
+--- rsvg/src/filters/composite.rs.orig
++++ rsvg/src/filters/composite.rs
+@@ -141,7 +141,7 @@
+ }
+ 
+ impl Parse for Operator {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         Ok(parse_identifiers!(
+             parser,
+             "over" => Operator::Over,
+--- rsvg/src/filters/convolve_matrix.rs.orig
++++ rsvg/src/filters/convolve_matrix.rs
+@@ -55,16 +55,15 @@
+ pub struct KernelUnitLength(pub Option<(f64, f64)>);
+ 
+ impl Parse for KernelUnitLength {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
+-        let loc = parser.current_source_location();
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         let v: Result<NumberOptionalNumber<f64>, _> = NumberOptionalNumber::parse(parser);
+         match v {
+             Ok(NumberOptionalNumber(x, y)) if x > 0.0 && y > 0.0 => {
+                 Ok(KernelUnitLength(Some((x, y))))
+             } // Only accept positive values
+-            Ok(_) => {
+-                Err(loc.new_custom_error(ValueErrorKind::value_error("expected positive values")))
+-            }
++            Ok(_) => Err(cssparser::ParseError::custom(ValueErrorKind::value_error(
++                "expected positive values",
++            ))),
+             Err(e) => Err(e),
+         }
+     }
+@@ -348,7 +347,7 @@
+ 
+ // Used for the preserveAlpha attribute
+ impl Parse for bool {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         Ok(parse_identifiers!(
+             parser,
+             "false" => false,
+--- rsvg/src/filters/displacement_map.rs.orig
++++ rsvg/src/filters/displacement_map.rs
+@@ -176,7 +176,7 @@
+ }
+ 
+ impl Parse for ColorChannel {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         Ok(parse_identifiers!(
+             parser,
+             "R" => ColorChannel::R,
+--- rsvg/src/filters/mod.rs.orig
++++ rsvg/src/filters/mod.rs
+@@ -345,7 +345,7 @@
+ }
+ 
+ impl Parse for Input {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         parser
+             .try_parse(|p| {
+                 parse_identifiers!(
+@@ -358,7 +358,7 @@
+                     "StrokePaint" => Input::StrokePaint,
+                 )
+             })
+-            .or_else(|_: BasicParseError<'_>| {
++            .or_else(|_: BasicParseError| {
+                 let ident = CustomIdent::parse(parser)?;
+                 Ok(Input::FilterOutput(ident))
+             })
+@@ -567,7 +567,7 @@
+ }
+ 
+ impl Parse for EdgeMode {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         Ok(parse_identifiers!(
+             parser,
+             "duplicate" => EdgeMode::Duplicate,
+--- rsvg/src/filters/morphology.rs.orig
++++ rsvg/src/filters/morphology.rs
+@@ -186,7 +186,7 @@
+ }
+ 
+ impl Parse for Operator {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         Ok(parse_identifiers!(
+             parser,
+             "erode" => Operator::Erode,
+--- rsvg/src/filters/turbulence.rs.orig
++++ rsvg/src/filters/turbulence.rs
+@@ -478,7 +478,7 @@
+ }
+ 
+ impl Parse for StitchTiles {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         Ok(parse_identifiers!(
+             parser,
+             "stitch" => StitchTiles::Stitch,
+@@ -488,7 +488,7 @@
+ }
+ 
+ impl Parse for NoiseType {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         Ok(parse_identifiers!(
+             parser,
+             "fractalNoise" => NoiseType::FractalNoise,
+--- rsvg/src/font_props.rs.orig
++++ rsvg/src/font_props.rs
+@@ -47,7 +47,7 @@
+ }
+ 
+ impl Parse for Font {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Font, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Font, ParseError> {
+         if let Ok(f) = parse_font_spec_identifiers(parser) {
+             return Ok(f);
+         }
+@@ -118,7 +118,7 @@
+         if (count(&style) + count(&weight) + count(&variant_caps) + count(&stretch) + nb_normals)
+             > 4
+         {
+-            return Err(parser.new_custom_error(ValueErrorKind::parse_error(
++            return Err(cssparser::ParseError::custom(ValueErrorKind::parse_error(
+                 "invalid syntax for 'font' property",
+             )));
+         }
+@@ -157,7 +157,7 @@
+ 
+ /// Parses identifiers used for system fonts.
+ #[rustfmt::skip]
+-fn parse_font_spec_identifiers<'i>(parser: &mut Parser<'i, '_>) -> Result<Font, ParseError<'i>> {
++fn parse_font_spec_identifiers<'i>(parser: &mut Parser<'i>) -> Result<Font, ParseError> {
+     Ok(parser.try_parse(|p| {
+         parse_identifiers! {
+             p,
+@@ -254,7 +254,7 @@
+ 
+ impl Parse for FontSize {
+     #[rustfmt::skip]
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<FontSize, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<FontSize, ParseError> {
+         parser
+             .try_parse(|p| Length::<Both>::parse(p))
+             .map(FontSize::Value)
+@@ -290,7 +290,7 @@
+ }
+ 
+ impl Parse for FontWeight {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<FontWeight, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<FontWeight, ParseError> {
+         parser
+             .try_parse(|p| {
+                 Ok(parse_identifiers!(
+@@ -301,13 +301,12 @@
+                     "lighter" => FontWeight::Lighter,
+                 )?)
+             })
+-            .or_else(|_: ParseError<'_>| {
+-                let loc = parser.current_source_location();
++            .or_else(|_: ParseError| {
+                 let i = parser.expect_integer()?;
+                 if (1..=1000).contains(&i) {
+                     Ok(FontWeight::Weight(u16(i).unwrap()))
+                 } else {
+-                    Err(loc.new_custom_error(ValueErrorKind::value_error(
++                    Err(cssparser::ParseError::custom(ValueErrorKind::value_error(
+                         "value must be between 1 and 1000 inclusive",
+                     )))
+                 }
+@@ -401,7 +400,7 @@
+ }
+ 
+ impl Parse for LetterSpacing {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<LetterSpacing, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<LetterSpacing, ParseError> {
+         parser
+             .try_parse(|p| Length::<Horizontal>::parse(p))
+             .map(LetterSpacing::Value)
+@@ -453,9 +452,8 @@
+ }
+ 
+ impl Parse for LineHeight {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<LineHeight, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<LineHeight, ParseError> {
+         let state = parser.state();
+-        let loc = parser.current_source_location();
+ 
+         let token = parser.next()?.clone();
+ 
+@@ -464,14 +462,12 @@
+                 if cow.eq_ignore_ascii_case("normal") {
+                     Ok(LineHeight::Normal)
+                 } else {
+-                    Err(parser
+-                        .new_basic_unexpected_token_error(token.clone())
+-                        .into())
++                    Err(cssparser::ParseError::unexpected_token())
+                 }
+             }
+ 
+             Token::Number { value, .. } => Ok(LineHeight::Number(
+-                finite_f32(value).map_err(|e| loc.new_custom_error(e))?,
++                finite_f32(value).map_err(|e| cssparser::ParseError::custom(e))?,
+             )),
+ 
+             Token::Percentage { unit_value, .. } => Ok(LineHeight::Percentage(unit_value)),
+@@ -481,7 +477,7 @@
+                 Ok(LineHeight::Length(Length::<Both>::parse(parser)?))
+             }
+ 
+-            _ => Err(parser.new_basic_unexpected_token_error(token).into()),
++            _ => Err(cssparser::BasicParseError::unexpected_token().into()),
+         }
+     }
+ }
+@@ -497,13 +493,11 @@
+ pub struct FontFamily(pub String);
+ 
+ impl Parse for FontFamily {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<FontFamily, ParseError<'i>> {
+-        let loc = parser.current_source_location();
+-
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<FontFamily, ParseError> {
+         let fonts = parser.parse_comma_separated(|parser| {
+             if let Ok(cow) = parser.try_parse(|p| p.expect_string_cloned()) {
+                 if cow.is_empty() {
+-                    return Err(loc.new_custom_error(ValueErrorKind::value_error(
++                    return Err(cssparser::ParseError::custom(ValueErrorKind::value_error(
+                         "empty string is not a valid font family name",
+                     )));
+                 }
+@@ -549,9 +543,7 @@
+ }
+ 
+ impl Parse for GlyphOrientationVertical {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<GlyphOrientationVertical, ParseError<'i>> {
+-        let loc = parser.current_source_location();
+-
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<GlyphOrientationVertical, ParseError> {
+         if parser
+             .try_parse(|p| p.expect_ident_matching("auto"))
+             .is_ok()
+@@ -586,7 +578,7 @@
+                 unit,
+                 ..
+             } if unit.eq_ignore_ascii_case("deg") => Ok(GlyphOrientationVertical::Angle90),
+-            _ => Err(loc.new_unexpected_token_error(token.clone())),
++            _ => Err(cssparser::ParseError::unexpected_token()),
+         }
+     }
+ }
+--- rsvg/src/gradient.rs.orig
++++ rsvg/src/gradient.rs
+@@ -45,7 +45,7 @@
+ }
+ 
+ impl Parse for SpreadMethod {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<SpreadMethod, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<SpreadMethod, ParseError> {
+         Ok(parse_identifiers!(
+             parser,
+             "pad" => SpreadMethod::Pad,
+--- rsvg/src/iri.rs.orig
++++ rsvg/src/iri.rs
+@@ -29,17 +29,16 @@
+ }
+ 
+ impl Parse for Iri {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Iri, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Iri, ParseError> {
+         if parser
+             .try_parse(|i| i.expect_ident_matching("none"))
+             .is_ok()
+         {
+             Ok(Iri::None)
+         } else {
+-            let loc = parser.current_source_location();
+             let url = parser.expect_url()?;
+-            let node_id =
+-                NodeId::parse(&url).map_err(|e| loc.new_custom_error(ValueErrorKind::from(e)))?;
++            let node_id = NodeId::parse(&url)
++                .map_err(|e| cssparser::ParseError::custom(ValueErrorKind::from(e)))?;
+ 
+             Ok(Iri::Resource(Box::new(node_id)))
+         }
+--- rsvg/src/length.rs.orig
++++ rsvg/src/length.rs
+@@ -268,7 +268,7 @@
+ const PICA_PER_INCH: f64 = 6.0;
+ 
+ impl<N: Normalize, V: Validate> Parse for CssLength<N, V> {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<CssLength<N, V>, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<CssLength<N, V>, ParseError> {
+         let token = parser.next()?.clone();
+ 
+         let (l_value, l_unit) = match token {
+@@ -291,17 +291,17 @@
+                     "pc" => LengthUnit::Pc,
+                     "ch" => LengthUnit::Ch,
+ 
+-                    _ => return Err(parser.new_unexpected_token_error(token)),
++                    _ => return Err(cssparser::ParseError::unexpected_token()),
+                 },
+             ),
+ 
+-            _ => return Err(parser.new_unexpected_token_error(token)),
++            _ => return Err(cssparser::ParseError::unexpected_token()),
+         };
+ 
+-        let l_value = f64::from(finite_f32(l_value).map_err(|e| parser.new_custom_error(e))?);
++        let l_value = f64::from(finite_f32(l_value).map_err(|e| cssparser::ParseError::custom(e))?);
+ 
+         <V as Validate>::validate(l_value)
+-            .map_err(|e| parser.new_custom_error(e))
++            .map_err(|e| cssparser::ParseError::custom(e))
+             .map(|l_value| CssLength::new(l_value, l_unit))
+     }
+ }
+@@ -543,7 +543,7 @@
+ }
+ 
+ impl<N: Normalize> Parse for LengthOrAuto<N> {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<LengthOrAuto<N>, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<LengthOrAuto<N>, ParseError> {
+         if parser
+             .try_parse(|i| i.expect_ident_matching("auto"))
+             .is_ok()
+--- rsvg/src/marker.rs.orig
++++ rsvg/src/marker.rs
+@@ -36,7 +36,7 @@
+ }
+ 
+ impl Parse for MarkerUnits {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<MarkerUnits, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<MarkerUnits, ParseError> {
+         Ok(parse_identifiers!(
+             parser,
+             "userSpaceOnUse" => MarkerUnits::UserSpaceOnUse,
+@@ -61,7 +61,7 @@
+ }
+ 
+ impl Parse for MarkerOrient {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<MarkerOrient, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<MarkerOrient, ParseError> {
+         if parser
+             .try_parse(|p| p.expect_ident_matching("auto"))
+             .is_ok()
+--- rsvg/src/paint_server.rs.orig
++++ rsvg/src/paint_server.rs
+@@ -2,7 +2,7 @@
+ 
+ use std::rc::Rc;
+ 
+-use cssparser::{ParseErrorKind, Parser};
++use cssparser::Parser;
+ 
+ use crate::color::{Color, resolve_color};
+ use crate::document::{AcquiredNodes, NodeId};
+@@ -69,7 +69,7 @@
+ }
+ 
+ impl Parse for PaintServer {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<PaintServer, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<PaintServer, ParseError> {
+         if parser
+             .try_parse(|i| i.expect_ident_matching("none"))
+             .is_ok()
+@@ -86,8 +86,6 @@
+         {
+             Ok(PaintServer::ContextStroke)
+         } else if let Ok(url) = parser.try_parse(|i| i.expect_url()) {
+-            let loc = parser.current_source_location();
+-
+             let alternate = if !parser.is_exhausted() {
+                 if parser
+                     .try_parse(|i| i.expect_ident_matching("none"))
+@@ -95,11 +93,8 @@
+                 {
+                     None
+                 } else {
+-                    Some(parser.try_parse(Color::parse).map_err(|e| ParseError {
+-                        kind: ParseErrorKind::Custom(ValueErrorKind::parse_error(
+-                            "Could not parse color",
+-                        )),
+-                        location: e.location,
++                    Some(parser.try_parse(Color::parse).map_err(|_| {
++                        ParseError::custom(ValueErrorKind::parse_error("Could not parse color"))
+                     })?)
+                 }
+             } else {
+@@ -110,7 +105,7 @@
+                 iri: Box::new(
+                     NodeId::parse(&url)
+                         .map_err(|e: NodeIdError| -> ValueErrorKind { e.into() })
+-                        .map_err(|e| loc.new_custom_error(e))?,
++                        .map_err(|e| cssparser::ParseError::custom(e))?,
+                 ),
+                 alternate,
+             })
+--- rsvg/src/parsers.rs.orig
++++ rsvg/src/parsers.rs
+@@ -1,6 +1,6 @@
+ //! The `Parse` trait for CSS properties, and utilities for parsers.
+ 
+-use cssparser::{Parser, ParserInput, Token};
++use cssparser::{Parser, Token};
+ use markup5ever::QualName;
+ use std::str;
+ 
+@@ -11,15 +11,14 @@
+     /// Parses a value out of the `parser`.
+     ///
+     /// All value types should implement this for composability.
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>>;
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError>;
+ 
+     /// Convenience function to parse a value out of a `&str`.
+     ///
+     /// This is useful mostly for tests which want to avoid creating a
+     /// `cssparser::Parser` by hand.  Property types do not need to reimplement this.
+-    fn parse_str(s: &str) -> Result<Self, ParseError<'_>> {
+-        let mut input = ParserInput::new(s);
+-        let mut parser = Parser::new(&mut input);
++    fn parse_str(s: &str) -> Result<Self, ParseError> {
++        let mut parser = Parser::new(s);
+ 
+         let res = Self::parse(&mut parser)?;
+         parser.expect_exhausted()?;
+@@ -29,7 +28,7 @@
+ }
+ 
+ /// Consumes a comma if it exists, or does nothing.
+-pub fn optional_comma(parser: &mut Parser<'_, '_>) {
++pub fn optional_comma(parser: &mut Parser<'_>) {
+     let _ = parser.try_parse(|p| p.expect_comma());
+ }
+ 
+@@ -82,8 +81,7 @@
+     /// `expect_exhausted()` below.  We don't want to allow garbage in the string after
+     /// the initial value has been parsed.
+     fn parse(&self, value: &str) -> Result<T, ElementError> {
+-        let mut input = ParserInput::new(value);
+-        let mut parser = Parser::new(&mut input);
++        let mut parser = Parser::new(value);
+ 
+         T::parse(&mut parser)
+             .and_then(|v| {
+@@ -95,19 +93,20 @@
+ }
+ 
+ impl<T: Parse> Parse for Option<T> {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         T::parse(parser).map(Some)
+     }
+ }
+ 
+ impl Parse for f64 {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
+-        let loc = parser.current_source_location();
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         let n = parser.expect_number()?;
+         if n.is_finite() {
+             Ok(f64::from(n))
+         } else {
+-            Err(loc.new_custom_error(ValueErrorKind::value_error("expected finite number")))
++            Err(cssparser::ParseError::custom(ValueErrorKind::value_error(
++                "expected finite number",
++            )))
+         }
+     }
+ }
+@@ -117,13 +116,14 @@
+ pub struct NonNegative(pub f64);
+ 
+ impl Parse for NonNegative {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
+-        let loc = parser.current_source_location();
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         let n = Parse::parse(parser)?;
+         if n >= 0.0 {
+             Ok(NonNegative(n))
+         } else {
+-            Err(loc.new_custom_error(ValueErrorKind::value_error("expected non negative number")))
++            Err(cssparser::ParseError::custom(ValueErrorKind::value_error(
++                "expected non negative number",
++            )))
+         }
+     }
+ }
+@@ -135,7 +135,7 @@
+ pub struct NumberOptionalNumber<T: Parse>(pub T, pub T);
+ 
+ impl<T: Parse + Copy> Parse for NumberOptionalNumber<T> {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         let x = Parse::parse(parser)?;
+ 
+         if !parser.is_exhausted() {
+@@ -157,16 +157,14 @@
+ }
+ 
+ impl Parse for NumberOrPercentage {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
+-        let loc = parser.current_source_location();
+-
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         let value = match parser.next()? {
+             Token::Number { value, .. } => Ok(*value),
+             Token::Percentage { unit_value, .. } => Ok(*unit_value),
+-            tok => Err(loc.new_unexpected_token_error(tok.clone())),
++            _ => Err(cssparser::ParseError::unexpected_token()),
+         }?;
+ 
+-        let v = finite_f32(value).map_err(|e| parser.new_custom_error(e))?;
++        let v = finite_f32(value).map_err(|e| cssparser::ParseError::custom(e))?;
+         Ok(NumberOrPercentage {
+             value: f64::from(v),
+         })
+@@ -177,19 +175,20 @@
+     /// CSS integer
+     ///
+     /// SVG1.1: <https://www.w3.org/TR/SVG11/types.html#DataTypeInteger>
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         Ok(parser.expect_integer()?)
+     }
+ }
+ 
+ impl Parse for u32 {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
+-        let loc = parser.current_source_location();
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         let n = parser.expect_integer()?;
+         if n >= 0 {
+             Ok(n as u32)
+         } else {
+-            Err(loc.new_custom_error(ValueErrorKind::value_error("expected unsigned number")))
++            Err(cssparser::ParseError::custom(ValueErrorKind::value_error(
++                "expected unsigned number",
++            )))
+         }
+     }
+ }
+@@ -201,8 +200,7 @@
+ impl<T: Parse, const REQUIRED: usize, const MAX: usize> Parse
+     for CommaSeparatedList<T, REQUIRED, MAX>
+ {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
+-        let loc = parser.current_source_location();
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         let mut v = Vec::<T>::with_capacity(MAX);
+         for i in 0..MAX {
+             if i != 0 {
+@@ -217,7 +215,9 @@
+         }
+ 
+         if REQUIRED > 0 && v.len() < REQUIRED {
+-            Err(loc.new_custom_error(ValueErrorKind::value_error("expected more values")))
++            Err(cssparser::ParseError::custom(ValueErrorKind::value_error(
++                "expected more values",
++            )))
+         } else {
+             v.shrink_to_fit();
+             Ok(CommaSeparatedList(v))
+@@ -230,11 +230,11 @@
+ /// # Example
+ ///
+ /// ```
+-/// # use cssparser::{ParserInput, Parser};
++/// # use cssparser::{Parser};
+ /// # use rsvg::parse_identifiers;
+-/// # fn main() -> Result<(), cssparser::BasicParseError<'static>> {
+-/// # let mut input = ParserInput::new("true");
+-/// # let mut parser = Parser::new(&mut input);
++/// # fn main() -> Result<(), cssparser::BasicParseError> {
++/// # let mut input = Parser::new("true");
++/// #
+ /// let my_boolean = parse_identifiers!(
+ ///     parser,
+ ///     "true" => true,
+@@ -249,13 +249,12 @@
+     ($parser:expr,
+      $($str:expr => $val:expr,)+) => {
+         {
+-            let loc = $parser.current_source_location();
+             let token = $parser.next()?;
+ 
+             match token {
+                 $(&cssparser::Token::Ident(ref cow) if cow.eq_ignore_ascii_case($str) => Ok($val),)+
+ 
+-                _ => Err(loc.new_basic_unexpected_token_error(token.clone()))
++                _ => Err(cssparser::BasicParseError::unexpected_token())
+             }
+         }
+     };
+@@ -268,8 +267,7 @@
+ pub struct CustomIdent(pub String);
+ 
+ impl Parse for CustomIdent {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
+-        let loc = parser.current_source_location();
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         let token = parser.next()?;
+ 
+         match token {
+@@ -278,14 +276,14 @@
+             Token::Ident(cow) => {
+                 for s in &["initial", "inherit", "unset", "default"] {
+                     if cow.eq_ignore_ascii_case(s) {
+-                        return Err(loc.new_basic_unexpected_token_error(token.clone()).into());
++                        return Err(cssparser::BasicParseError::unexpected_token().into());
+                     }
+                 }
+ 
+                 Ok(CustomIdent(cow.as_ref().to_string()))
+             }
+ 
+-            _ => Err(loc.new_basic_unexpected_token_error(token.clone()).into()),
++            _ => Err(cssparser::BasicParseError::unexpected_token().into()),
+         }
+     }
+ }
+--- rsvg/src/properties.rs.orig
++++ rsvg/src/properties.rs
+@@ -14,9 +14,7 @@
+ //! * Modify the rest of librsvg wherever the computed value of the property needs to be used.
+ //!   This is available in methods that take an argument of type [`ComputedValues`].
+ 
+-use cssparser::{
+-    self, BasicParseErrorKind, ParseErrorKind, Parser, ParserInput, RuleBodyParser, ToCss,
+-};
++use cssparser::{self, BasicParseErrorKind, ParseErrorKind, Parser, RuleBodyParser};
+ use markup5ever::{ExpandedName, LocalName, QualName, expanded_name, local_name, ns};
+ use std::collections::HashSet;
+ 
+@@ -354,9 +352,9 @@
+         /// Parses a value from either a style property or from an element's attribute.
+         pub fn parse_value<'i>(
+             prop_name: &QualName,
+-            input: &mut Parser<'i, '_>,
++            input: &mut Parser<'i>,
+             parse_as: ParseAs,
+-        ) -> Result<ParsedProperty, ParseError<'i>> {
++        ) -> Result<ParsedProperty, ParseError> {
+             match prop_name.expanded() {
+                 $(
+                     expanded_name!("", $long_str) if !(parse_as == ParseAs::PresentationAttr && $long_presentation_attr == PresentationAttr::No) => {
+@@ -383,8 +381,7 @@
+                 )+
+ 
+                 _ => {
+-                    let loc = input.current_source_location();
+-                    Err(loc.new_custom_error(ValueErrorKind::UnknownProperty))
++                    Err(cssparser::ParseError::custom(ValueErrorKind::UnknownProperty))
+                 }
+             }
+         }
+@@ -802,8 +799,7 @@
+     }
+ 
+     fn parse_one_presentation_attribute(&mut self, session: &Session, attr: QualName, value: &str) {
+-        let mut input = ParserInput::new(value);
+-        let mut parser = Parser::new(&mut input);
++        let mut parser = Parser::new(value);
+ 
+         match parse_value(&attr, &mut parser, ParseAs::PresentationAttr) {
+             Ok(prop) => {
+@@ -829,19 +825,15 @@
+             // For all the following cases, ignore illegal values; don't set the whole node to
+             // be in error in that case.
+             Err(ParseError {
+-                kind: ParseErrorKind::Basic(BasicParseErrorKind::UnexpectedToken(ref t)),
++                kind: ParseErrorKind::Basic(BasicParseErrorKind::UnexpectedToken),
+                 ..
+             }) => {
+-                let mut tok = String::new();
+-
+-                t.to_css(&mut tok).unwrap(); // FIXME: what do we do with a fmt::Error?
+                 rsvg_log!(
+                     session,
+                     "(ignoring invalid presentation attribute {:?}\n    value=\"{}\"\n    \
+-                     unexpected token '{}')",
++                     unexpected token)",
+                     attr.expanded(),
+                     value,
+-                    tok,
+                 );
+             }
+ 
+@@ -967,8 +959,7 @@
+         important_styles: &mut HashSet<QualName>,
+         session: &Session,
+     ) {
+-        let mut input = ParserInput::new(declarations);
+-        let mut parser = Parser::new(&mut input);
++        let mut parser = Parser::new(declarations);
+ 
+         RuleBodyParser::new(&mut parser, &mut DeclParser)
+             .filter_map(|r| match r {
+@@ -984,7 +975,7 @@
+ }
+ 
+ // Parses the value for the type `T` of the property out of the Parser, including `inherit` values.
+-fn parse_input<'i, T>(input: &mut Parser<'i, '_>) -> Result<SpecifiedValue<T>, ParseError<'i>>
++fn parse_input<'i, T>(input: &mut Parser<'i>) -> Result<SpecifiedValue<T>, ParseError>
+ where
+     T: Property + Clone + Default + Parse,
+ {
+--- rsvg/src/property_defs.rs.orig
++++ rsvg/src/property_defs.rs
+@@ -105,9 +105,9 @@
+         impl Parse for BaselineShift {
+             // These values come from Inkscape's SP_CSS_BASELINE_SHIFT_(SUB/SUPER/BASELINE);
+             // see sp_style_merge_baseline_shift_from_parent()
+-            fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<BaselineShift, crate::error::ParseError<'i>> {
++            fn parse<'i>(parser: &mut Parser<'i>) -> Result<BaselineShift, crate::error::ParseError> {
+                 parser.try_parse(|p| Ok(BaselineShift(Length::<Both>::parse(p)?)))
+-                    .or_else(|_: ParseError<'_>| {
++                    .or_else(|_: ParseError| {
+                         Ok(parse_identifiers!(
+                             parser,
+                             "baseline" => BaselineShift(Length::<Both>::new(0.0, LengthUnit::Percent)),
+@@ -296,8 +296,7 @@
+ 
+     parse_impl: {
+         impl Parse for EnableBackground {
+-            fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, crate::error::ParseError<'i>> {
+-                let loc = parser.current_source_location();
++            fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, crate::error::ParseError> {
+ 
+                 if parser
+                     .try_parse(|p| p.expect_ident_matching("accumulate"))
+@@ -307,7 +306,7 @@
+                 }
+ 
+                 if parser.try_parse(|p| p.expect_ident_matching("new")).is_ok() {
+-                    parser.try_parse(|p| -> Result<_, ParseError<'_>> {
++                    parser.try_parse(|p| -> Result<_, ParseError> {
+                         let x = f64::parse(p)?;
+                         let y = f64::parse(p)?;
+                         let w = f64::parse(p)?;
+@@ -316,7 +315,7 @@
+                         Ok(EnableBackground::New(Some(Rect::new(x, y, x + w, y + h))))
+                     }).or(Ok(EnableBackground::New(None)))
+                 } else {
+-                    Err(loc.new_custom_error(ValueErrorKind::parse_error("invalid syntax for 'enable-background' property")))
++                    Err(cssparser::ParseError::custom(ValueErrorKind::parse_error("invalid syntax for 'enable-background' property")))
+                 }
+             }
+         }
+@@ -408,7 +407,7 @@
+     inherits_automatically: false,
+     parse_impl: {
+         impl Parse for Filter {
+-            fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, crate::error::ParseError<'i>> {
++            fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, crate::error::ParseError> {
+ 
+                 if parser
+                     .try_parse(|p| p.expect_ident_matching("none"))
+@@ -818,7 +817,7 @@
+ 
+     parse_impl: {
+         impl Parse for PaintOrder {
+-            fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<PaintOrder, ParseError<'i>> {
++            fn parse<'i>(parser: &mut Parser<'i>) -> Result<PaintOrder, ParseError> {
+                 let allowed_targets = 3;
+                 let mut targets = Vec::with_capacity(allowed_targets);
+ 
+@@ -827,14 +826,13 @@
+                 }
+ 
+                 while !parser.is_exhausted() {
+-                    let loc = parser.current_source_location();
+                     let token = parser.next()?;
+ 
+                     let value = match token {
+                         Token::Ident(cow) if cow.eq_ignore_ascii_case("fill") && !targets.contains(&PaintTarget::Fill) => PaintTarget::Fill,
+                         Token::Ident(cow) if cow.eq_ignore_ascii_case("stroke") && !targets.contains(&PaintTarget::Stroke) => PaintTarget::Stroke,
+                         Token::Ident(cow) if cow.eq_ignore_ascii_case("markers") && !targets.contains(&PaintTarget::Markers) => PaintTarget::Markers,
+-                        _ => return Err(loc.new_basic_unexpected_token_error(token.clone()).into()),
++                        _ => return Err(cssparser::BasicParseError::unexpected_token().into()),
+                     };
+ 
+                     targets.push(value);
+@@ -1075,7 +1073,7 @@
+ 
+     parse_impl: {
+         impl Parse for TextDecoration {
+-            fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<TextDecoration, ParseError<'i>> {
++            fn parse<'i>(parser: &mut Parser<'i>) -> Result<TextDecoration, ParseError> {
+                 let mut overline = false;
+                 let mut underline = false;
+                 let mut strike = false;
+@@ -1085,14 +1083,13 @@
+                 }
+ 
+                 while !parser.is_exhausted() {
+-                    let loc = parser.current_source_location();
+                     let token = parser.next()?;
+ 
+                     match token {
+                         Token::Ident(cow) if cow.eq_ignore_ascii_case("overline") => overline = true,
+                         Token::Ident(cow) if cow.eq_ignore_ascii_case("underline") => underline = true,
+                         Token::Ident(cow) if cow.eq_ignore_ascii_case("line-through") => strike = true,
+-                        _ => return Err(loc.new_basic_unexpected_token_error(token.clone()).into()),
++                        _ => return Err(cssparser::BasicParseError::unexpected_token().into()),
+                     }
+                 }
+ 
+@@ -1356,11 +1353,11 @@
+     parse_impl: {
+         impl Parse for XmlLang {
+             fn parse<'i>(
+-                parser: &mut Parser<'i, '_>,
+-            ) -> Result<XmlLang, ParseError<'i>> {
++                parser: &mut Parser<'i>,
++            ) -> Result<XmlLang, ParseError> {
+                 let language_tag = parser.expect_ident()?;
+                 let language_tag = LanguageTag::from_str(language_tag).map_err(|_| {
+-                    parser.new_custom_error(ValueErrorKind::parse_error("invalid syntax for 'xml:lang' parameter"))
++                    cssparser::ParseError::custom(ValueErrorKind::parse_error("invalid syntax for 'xml:lang' parameter"))
+                 })?;
+                 Ok(XmlLang(Some(Box::new(language_tag))))
+             }
+--- rsvg/src/property_macros.rs.orig
++++ rsvg/src/property_macros.rs
+@@ -122,7 +122,7 @@
+         impl_property!($name, $inherits_automatically);
+ 
+         impl $crate::parsers::Parse for $name {
+-            fn parse<'i>(parser: &mut ::cssparser::Parser<'i, '_>) -> Result<$name, $crate::error::ParseError<'i>> {
++            fn parse<'i>(parser: &mut ::cssparser::Parser<'i>) -> Result<$name, $crate::error::ParseError> {
+                 Ok(parse_identifiers!(
+                     parser,
+                     $($str_prop => $name::$variant,)+
+@@ -148,7 +148,7 @@
+         $prop
+ 
+         impl $crate::parsers::Parse for $name {
+-            fn parse<'i>(parser: &mut ::cssparser::Parser<'i, '_>) -> Result<$name, $crate::error::ParseError<'i>> {
++            fn parse<'i>(parser: &mut ::cssparser::Parser<'i>) -> Result<$name, $crate::error::ParseError> {
+                 Ok(parse_identifiers!(
+                     parser,
+                     $($str_prop => $name::$variant,)+
+@@ -171,7 +171,7 @@
+         impl_property!($name, $inherits_automatically);
+ 
+         impl $crate::parsers::Parse for $name {
+-            fn parse<'i>(parser: &mut ::cssparser::Parser<'i, '_>) -> Result<$name, $crate::error::ParseError<'i>> {
++            fn parse<'i>(parser: &mut ::cssparser::Parser<'i>) -> Result<$name, $crate::error::ParseError> {
+                 Ok($name(<$type as $crate::parsers::Parse>::parse(parser)?))
+             }
+         }
+--- rsvg/src/shapes.rs.orig
++++ rsvg/src/shapes.rs
+@@ -353,7 +353,7 @@
+ }
+ 
+ impl Parse for Points {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Points, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Points, ParseError> {
+         let mut v = Vec::new();
+ 
+         loop {
+--- rsvg/src/text2.rs.orig
++++ rsvg/src/text2.rs
+@@ -51,7 +51,7 @@
+ }
+ 
+ impl Parse for LengthAdjust {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<Self, ParseError> {
+         Ok(parse_identifiers!(
+             parser,
+             "spacing" => LengthAdjust::Spacing,
+--- rsvg/src/transform.rs.orig
++++ rsvg/src/transform.rs
+@@ -147,7 +147,7 @@
+ }
+ 
+ impl Parse for TransformProperty {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<TransformProperty, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<TransformProperty, ParseError> {
+         if parser
+             .try_parse(|p| p.expect_ident_matching("none"))
+             .is_ok()
+@@ -162,8 +162,8 @@
+ }
+ 
+ fn parse_transform_prop_function_list<'i>(
+-    parser: &mut Parser<'i, '_>,
+-) -> Result<Vec<TransformFunction>, ParseError<'i>> {
++    parser: &mut Parser<'i>,
++) -> Result<Vec<TransformFunction>, ParseError> {
+     let mut v = Vec::<TransformFunction>::new();
+ 
+     loop {
+@@ -178,22 +178,18 @@
+ }
+ 
+ fn parse_transform_prop_function_command<'i>(
+-    parser: &mut Parser<'i, '_>,
+-) -> Result<TransformFunction, ParseError<'i>> {
+-    let loc = parser.current_source_location();
+-
++    parser: &mut Parser<'i>,
++) -> Result<TransformFunction, ParseError> {
+     match parser.next()?.clone() {
+         Token::Function(ref name) => parse_transform_prop_function_internal(name, parser),
+-        tok => Err(loc.new_unexpected_token_error(tok.clone())),
++        _ => Err(cssparser::ParseError::unexpected_token()),
+     }
+ }
+ 
+ fn parse_transform_prop_function_internal<'i>(
+     name: &str,
+-    parser: &mut Parser<'i, '_>,
+-) -> Result<TransformFunction, ParseError<'i>> {
+-    let loc = parser.current_source_location();
+-
++    parser: &mut Parser<'i>,
++) -> Result<TransformFunction, ParseError> {
+     match name {
+         "matrix" => parse_prop_matrix_args(parser),
+         "translate" => parse_prop_translate_args(parser),
+@@ -206,15 +202,13 @@
+         "skew" => parse_prop_skew_args(parser),
+         "skewX" => parse_prop_skew_x_args(parser),
+         "skewY" => parse_prop_skew_y_args(parser),
+-        _ => Err(loc.new_custom_error(ValueErrorKind::parse_error(
++        _ => Err(cssparser::ParseError::custom(ValueErrorKind::parse_error(
+             "expected matrix|translate|translateX|translateY|scale|scaleX|scaleY|rotate|skewX|skewY",
+         ))),
+     }
+ }
+ 
+-fn parse_prop_matrix_args<'i>(
+-    parser: &mut Parser<'i, '_>,
+-) -> Result<TransformFunction, ParseError<'i>> {
++fn parse_prop_matrix_args<'i>(parser: &mut Parser<'i>) -> Result<TransformFunction, ParseError> {
+     parser.parse_nested_block(|p| {
+         let xx = f64::parse(p)?;
+         p.expect_comma()?;
+@@ -238,18 +232,14 @@
+     l.unit == LengthUnit::Px
+ }
+ 
+-fn only_pixels_error<'i>(loc: cssparser::SourceLocation) -> ParseError<'i> {
+-    loc.new_custom_error(ValueErrorKind::parse_error(
++fn only_pixels_error() -> ParseError {
++    cssparser::ParseError::custom(ValueErrorKind::parse_error(
+         "only translations in pixels are supported for now",
+     ))
+ }
+ 
+-fn parse_prop_translate_args<'i>(
+-    parser: &mut Parser<'i, '_>,
+-) -> Result<TransformFunction, ParseError<'i>> {
+-    parser.parse_nested_block(|p| {
+-        let loc = p.current_source_location();
+-
++fn parse_prop_translate_args<'i>(parser: &mut Parser<'i>) -> Result<TransformFunction, ParseError> {
++    parser.parse_nested_block(|p| {
+         let tx: Length<Horizontal> = Length::parse(p)?;
+ 
+         let ty: Length<Vertical> = if p.try_parse(|p| p.expect_comma()).is_ok() {
+@@ -259,7 +249,7 @@
+         };
+ 
+         if !(length_is_in_pixels(&tx) && length_is_in_pixels(&ty)) {
+-            return Err(only_pixels_error(loc));
++            return Err(only_pixels_error());
+         }
+ 
+         Ok(TransformFunction::Translate(tx, ty))
+@@ -267,15 +257,13 @@
+ }
+ 
+ fn parse_prop_translate_x_args<'i>(
+-    parser: &mut Parser<'i, '_>,
+-) -> Result<TransformFunction, ParseError<'i>> {
+-    parser.parse_nested_block(|p| {
+-        let loc = p.current_source_location();
+-
++    parser: &mut Parser<'i>,
++) -> Result<TransformFunction, ParseError> {
++    parser.parse_nested_block(|p| {
+         let tx: Length<Horizontal> = Length::parse(p)?;
+ 
+         if !length_is_in_pixels(&tx) {
+-            return Err(only_pixels_error(loc));
++            return Err(only_pixels_error());
+         }
+ 
+         Ok(TransformFunction::TranslateX(tx))
+@@ -283,24 +271,20 @@
+ }
+ 
+ fn parse_prop_translate_y_args<'i>(
+-    parser: &mut Parser<'i, '_>,
+-) -> Result<TransformFunction, ParseError<'i>> {
+-    parser.parse_nested_block(|p| {
+-        let loc = p.current_source_location();
+-
++    parser: &mut Parser<'i>,
++) -> Result<TransformFunction, ParseError> {
++    parser.parse_nested_block(|p| {
+         let ty: Length<Vertical> = Length::parse(p)?;
+ 
+         if !length_is_in_pixels(&ty) {
+-            return Err(only_pixels_error(loc));
++            return Err(only_pixels_error());
+         }
+ 
+         Ok(TransformFunction::TranslateY(ty))
+     })
+ }
+ 
+-fn parse_prop_scale_args<'i>(
+-    parser: &mut Parser<'i, '_>,
+-) -> Result<TransformFunction, ParseError<'i>> {
++fn parse_prop_scale_args<'i>(parser: &mut Parser<'i>) -> Result<TransformFunction, ParseError> {
+     parser.parse_nested_block(|p| {
+         let x = f64::parse(p)?;
+ 
+@@ -314,9 +298,7 @@
+     })
+ }
+ 
+-fn parse_prop_scale_x_args<'i>(
+-    parser: &mut Parser<'i, '_>,
+-) -> Result<TransformFunction, ParseError<'i>> {
++fn parse_prop_scale_x_args<'i>(parser: &mut Parser<'i>) -> Result<TransformFunction, ParseError> {
+     parser.parse_nested_block(|p| {
+         let x = f64::parse(p)?;
+ 
+@@ -324,9 +306,7 @@
+     })
+ }
+ 
+-fn parse_prop_scale_y_args<'i>(
+-    parser: &mut Parser<'i, '_>,
+-) -> Result<TransformFunction, ParseError<'i>> {
++fn parse_prop_scale_y_args<'i>(parser: &mut Parser<'i>) -> Result<TransformFunction, ParseError> {
+     parser.parse_nested_block(|p| {
+         let y = f64::parse(p)?;
+ 
+@@ -334,9 +314,7 @@
+     })
+ }
+ 
+-fn parse_prop_rotate_args<'i>(
+-    parser: &mut Parser<'i, '_>,
+-) -> Result<TransformFunction, ParseError<'i>> {
++fn parse_prop_rotate_args<'i>(parser: &mut Parser<'i>) -> Result<TransformFunction, ParseError> {
+     parser.parse_nested_block(|p| {
+         let angle = Angle::parse(p)?;
+ 
+@@ -344,9 +322,7 @@
+     })
+ }
+ 
+-fn parse_prop_skew_args<'i>(
+-    parser: &mut Parser<'i, '_>,
+-) -> Result<TransformFunction, ParseError<'i>> {
++fn parse_prop_skew_args<'i>(parser: &mut Parser<'i>) -> Result<TransformFunction, ParseError> {
+     parser.parse_nested_block(|p| {
+         let ax = Angle::parse(p)?;
+ 
+@@ -360,18 +336,14 @@
+     })
+ }
+ 
+-fn parse_prop_skew_x_args<'i>(
+-    parser: &mut Parser<'i, '_>,
+-) -> Result<TransformFunction, ParseError<'i>> {
++fn parse_prop_skew_x_args<'i>(parser: &mut Parser<'i>) -> Result<TransformFunction, ParseError> {
+     parser.parse_nested_block(|p| {
+         let angle = Angle::parse(p)?;
+         Ok(TransformFunction::SkewX(angle))
+     })
+ }
+ 
+-fn parse_prop_skew_y_args<'i>(
+-    parser: &mut Parser<'i, '_>,
+-) -> Result<TransformFunction, ParseError<'i>> {
++fn parse_prop_skew_y_args<'i>(parser: &mut Parser<'i>) -> Result<TransformFunction, ParseError> {
+     parser.parse_nested_block(|p| {
+         let angle = Angle::parse(p)?;
+         Ok(TransformFunction::SkewY(angle))
+@@ -568,12 +540,12 @@
+ }
+ 
+ impl Parse for TransformAttribute {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<TransformAttribute, ParseError<'i>> {
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<TransformAttribute, ParseError> {
+         Ok(TransformAttribute(parse_transform_list(parser)?))
+     }
+ }
+ 
+-fn parse_transform_list<'i>(parser: &mut Parser<'i, '_>) -> Result<Transform, ParseError<'i>> {
++fn parse_transform_list<'i>(parser: &mut Parser<'i>) -> Result<Transform, ParseError> {
+     let mut t = Transform::identity();
+ 
+     loop {
+@@ -588,9 +560,7 @@
+     Ok(t)
+ }
+ 
+-fn parse_transform_command<'i>(parser: &mut Parser<'i, '_>) -> Result<Transform, ParseError<'i>> {
+-    let loc = parser.current_source_location();
+-
++fn parse_transform_command<'i>(parser: &mut Parser<'i>) -> Result<Transform, ParseError> {
+     match parser.next()?.clone() {
+         Token::Function(ref name) => parse_transform_function(name, parser),
+ 
+@@ -599,16 +569,14 @@
+             parse_transform_function(name, parser)
+         }
+ 
+-        tok => Err(loc.new_unexpected_token_error(tok.clone())),
++        _ => Err(cssparser::ParseError::unexpected_token()),
+     }
+ }
+ 
+ fn parse_transform_function<'i>(
+     name: &str,
+-    parser: &mut Parser<'i, '_>,
+-) -> Result<Transform, ParseError<'i>> {
+-    let loc = parser.current_source_location();
+-
++    parser: &mut Parser<'i>,
++) -> Result<Transform, ParseError> {
+     match name {
+         "matrix" => parse_matrix_args(parser),
+         "translate" => parse_translate_args(parser),
+@@ -616,13 +584,13 @@
+         "rotate" => parse_rotate_args(parser),
+         "skewX" => parse_skew_x_args(parser),
+         "skewY" => parse_skew_y_args(parser),
+-        _ => Err(loc.new_custom_error(ValueErrorKind::parse_error(
++        _ => Err(cssparser::ParseError::custom(ValueErrorKind::parse_error(
+             "expected matrix|translate|scale|rotate|skewX|skewY",
+         ))),
+     }
+ }
+ 
+-fn parse_matrix_args<'i>(parser: &mut Parser<'i, '_>) -> Result<Transform, ParseError<'i>> {
++fn parse_matrix_args<'i>(parser: &mut Parser<'i>) -> Result<Transform, ParseError> {
+     parser.parse_nested_block(|p| {
+         let xx = f64::parse(p)?;
+         optional_comma(p);
+@@ -645,7 +613,7 @@
+     })
+ }
+ 
+-fn parse_translate_args<'i>(parser: &mut Parser<'i, '_>) -> Result<Transform, ParseError<'i>> {
++fn parse_translate_args<'i>(parser: &mut Parser<'i>) -> Result<Transform, ParseError> {
+     parser.parse_nested_block(|p| {
+         let tx = f64::parse(p)?;
+ 
+@@ -660,7 +628,7 @@
+     })
+ }
+ 
+-fn parse_scale_args<'i>(parser: &mut Parser<'i, '_>) -> Result<Transform, ParseError<'i>> {
++fn parse_scale_args<'i>(parser: &mut Parser<'i>) -> Result<Transform, ParseError> {
+     parser.parse_nested_block(|p| {
+         let x = f64::parse(p)?;
+ 
+@@ -675,12 +643,12 @@
+     })
+ }
+ 
+-fn parse_rotate_args<'i>(parser: &mut Parser<'i, '_>) -> Result<Transform, ParseError<'i>> {
++fn parse_rotate_args<'i>(parser: &mut Parser<'i>) -> Result<Transform, ParseError> {
+     parser.parse_nested_block(|p| {
+         let angle = Angle::from_degrees(f64::parse(p)?);
+ 
+         let (tx, ty) = p
+-            .try_parse(|p| -> Result<_, ParseError<'_>> {
++            .try_parse(|p| -> Result<_, ParseError> {
+                 optional_comma(p);
+                 let tx = f64::parse(p)?;
+ 
+@@ -697,14 +665,14 @@
+     })
+ }
+ 
+-fn parse_skew_x_args<'i>(parser: &mut Parser<'i, '_>) -> Result<Transform, ParseError<'i>> {
++fn parse_skew_x_args<'i>(parser: &mut Parser<'i>) -> Result<Transform, ParseError> {
+     parser.parse_nested_block(|p| {
+         let angle = Angle::from_degrees(f64::parse(p)?);
+         Ok(Transform::new_skew(angle, Angle::new(0.0)))
+     })
+ }
+ 
+-fn parse_skew_y_args<'i>(parser: &mut Parser<'i, '_>) -> Result<Transform, ParseError<'i>> {
++fn parse_skew_y_args<'i>(parser: &mut Parser<'i>) -> Result<Transform, ParseError> {
+     parser.parse_nested_block(|p| {
+         let angle = Angle::from_degrees(f64::parse(p)?);
+         Ok(Transform::new_skew(Angle::new(0.0), angle))
+@@ -722,12 +690,12 @@
+             .pre_translate(-tx, -ty)
+     }
+ 
+-    fn parse_transform_attr(s: &str) -> Result<Transform, ParseError<'_>> {
++    fn parse_transform_attr(s: &str) -> Result<Transform, ParseError> {
+         let transform_attr = TransformAttribute::parse_str(s)?;
+         Ok(transform_attr.to_transform())
+     }
+ 
+-    fn parse_transform_prop(s: &str) -> Result<TransformProperty, ParseError<'_>> {
++    fn parse_transform_prop(s: &str) -> Result<TransformProperty, ParseError> {
+         TransformProperty::parse_str(s)
+     }
+ 
+--- rsvg/src/unit_interval.rs.orig
++++ rsvg/src/unit_interval.rs
+@@ -17,12 +17,11 @@
+ }
+ 
+ impl Parse for UnitInterval {
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<UnitInterval, ParseError<'i>> {
+-        let loc = parser.current_source_location();
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<UnitInterval, ParseError> {
+         let l: Length<Both> = Parse::parse(parser)?;
+         match l.unit {
+             LengthUnit::Px | LengthUnit::Percent => Ok(UnitInterval::clamp(l.length)),
+-            _ => Err(loc.new_custom_error(ValueErrorKind::value_error(
++            _ => Err(cssparser::ParseError::custom(ValueErrorKind::value_error(
+                 "<unit-interval> must be in default or percent units",
+             ))),
+         }
+--- rsvg/src/viewbox.rs.orig
++++ rsvg/src/viewbox.rs
+@@ -40,16 +40,14 @@
+     // x, y, w, h
+     //
+     // Where w and h must be nonnegative.
+-    fn parse<'i>(parser: &mut Parser<'i, '_>) -> Result<ViewBox, ParseError<'i>> {
+-        let loc = parser.current_source_location();
+-
++    fn parse<'i>(parser: &mut Parser<'i>) -> Result<ViewBox, ParseError> {
+         let CommaSeparatedList::<f64, 4, 4>(v) = CommaSeparatedList::parse(parser)?;
+         let (x, y, width, height) = (v[0], v[1], v[2], v[3]);
+ 
+         if width >= 0.0 && height >= 0.0 {
+             Ok(ViewBox(Rect::new(x, y, x + width, y + height)))
+         } else {
+-            Err(loc.new_custom_error(ValueErrorKind::value_error(
++            Err(cssparser::ParseError::custom(ValueErrorKind::value_error(
+                 "width and height must not be negative",
+             )))
+         }
+--- rsvg/src/xml/mod.rs.orig
++++ rsvg/src/xml/mod.rs
+@@ -671,7 +671,7 @@
+         match token {
+             Token::Tag(tag) if tag.kind == TagKind::EmptyTag => {
+                 for a in &tag.attrs {
+-                    let name = a.name.local.as_ref().to_string();
++                    let name = AsRef::<str>::as_ref(&a.name.local).to_string();
+                     let value = a.value.to_string();
+ 
+                     data.attributes.push((name, value));

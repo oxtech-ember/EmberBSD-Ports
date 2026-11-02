@@ -17,6 +17,11 @@ USE_LANGUAGES+=		c99 c++
 USE_TOOLS+=		bash:test msgfmt pkg-config xgettext
 USE_CXX_FEATURES=	filesystem
 
+# The test suite needs the xdgmime meson subproject, which is only a wrap
+# file in the distribution and cannot be downloaded during the build. Meson
+# already turns the tests off in cross builds; do the same natively.
+MESON_ARGS+=		-Dbuild-tests=false
+
 .include "../../mk/bsd.prefs.mk"
 
 # msgfmt: unknown option --xml

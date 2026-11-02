@@ -72,6 +72,10 @@ MAKE_ENV+= CC_${_EMBER_RSVG_CC_KEY}=${WRAPPER_BINDIR}/cc
 MAKE_ENV+= CXX_${_EMBER_RSVG_CC_KEY}=${WRAPPER_BINDIR}/c++
 MAKE_ENV+= AR_${_EMBER_RSVG_CC_KEY}=${TOOLDIR}/bin/${_EMBER_GI_TRIPLET}-ar
 MAKE_ENV+= PKG_CONFIG_ALLOW_CROSS=1
+# Cargo queries Meson's uninstalled .pc file. Keep its absolute build-tree
+# library path out of PKG_CONFIG_SYSROOT_DIR; target /usr/pkg paths still pass
+# through the declared .buildlink and cross-compiler mappings.
+MAKE_ENV+= PKG_CONFIG_SYSROOT_DIR=
 RUSTFLAGS+= -C link-arg=-Wl,-rpath,${PREFIX}/lib
 # Panic locations must not retain private source/vendor paths in the package.
 RUSTFLAGS+= --remap-path-prefix=${WRKDIR}=.

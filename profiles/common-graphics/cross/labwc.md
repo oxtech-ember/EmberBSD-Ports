@@ -6,7 +6,7 @@ its dependency closure passed inspection. The separate [session check](labwc-ses
 now passes EGL surfaces, screencopy pixels and USB input in two VirGL VM sessions.
 
 The `labwc-0.20.2nb2` recipe targets the shared wlroots 0.20.2,
-Mesa 26, LLVM 23, GLib 2.90.1 and librsvg 2.63.2 stack. It retains the
+Mesa 26, LLVM 23, GLib 2.90.1 and librsvg 2.63.4 stack. It retains the
 compositor, labnag, terminal/session helpers, SVG window decorations,
 freedesktop icons, translations, configuration examples and man pages.
 EmberBSD Ports owns the recipe and cross-build checks. A working desktop

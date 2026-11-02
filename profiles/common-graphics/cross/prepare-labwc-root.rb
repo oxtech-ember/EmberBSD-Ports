@@ -67,7 +67,7 @@ copy = lambda do |path|
   end
 end
 # Full compositor, SVG/MIME and font payloads; other shared providers follow ELF.
-%w[labwc-0.20.2nb2 nerd-fonts-Hack-3.5.1 fontconfig-2.18.3 librsvg-2.63.2 gdk-pixbuf2-2.44.8nb2 shared-mime-info-2.5.1].each do |pkg|
+%w[labwc-0.20.2nb2 nerd-fonts-Hack-3.5.1 fontconfig-2.18.3 librsvg-2.63.4nb1 gdk-pixbuf2-2.44.8nb2 shared-mime-info-2.5.1].each do |pkg|
   metadata = sysroot + '/usr/pkg/pkgdb/' + pkg + '/+CONTENTS'
   inputs << metadata
   previous = nil

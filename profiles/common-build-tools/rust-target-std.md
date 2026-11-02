@@ -40,6 +40,15 @@ MAKECONF=/absolute/native-mk.conf bmake -C /absolute/pkgsrc/lang/rust-std-x86_64
   EMBERBSD_RUST_BUILD_JOBS=4 package
 ```
 
+When the cross tools were prepared with a separate LLVM runtime stage
+(`prepare-tools.py --runtime-stage`, optionally with `--runtime-base`), set
+`EMBERBSD_RUST_TARGET_RUNTIME_STAGE` and `EMBERBSD_RUST_TARGET_RUNTIME_BASE`
+to the same directories. The producer then validates that stage against its
+base and links the target std with its runtime, as the cross tools and the
+prepared libtool do, instead of reading the sysroot build or import record.
+A sysroot whose runtime libraries were replaced by newer runtime packages no
+longer matches its import record, so it cannot be selected by itself.
+
 The common producer selects native and target compiler bindings separately,
 checks the host compiler and Rust version, and routes both host and target links
 through the SDK link launcher. The build checks its target libstd and a real
