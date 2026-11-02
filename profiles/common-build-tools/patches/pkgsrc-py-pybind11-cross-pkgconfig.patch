@@ -1,0 +1,42 @@
+Give cross pybind11 consumers a usable pybind11.pc.
+
+The pybind11 buildlink file links pybind11-config, a target Python
+script, into the buildlink tree. A cross build cannot run it, and the
+pkg-config tool was not enabled, so meson stopped with "Dependency
+lookup for pybind11 with method 'pkg-config' failed: Pkg-config for
+machine host machine not found". The installed pybind11.pc lives in
+site-packages with prefix=${pcfiledir}/../../, so it is not in the
+buildlink pkg-config path either.
+
+In cross builds enable pkg-config and copy pybind11.pc to the buildlink
+pkg-config directory with the target prefix. The compiler wrappers map
+its include directory to the buildlink tree.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/devel/py-pybind11/buildlink3.mk
++++ b/devel/py-pybind11/buildlink3.mk
+@@ -12,9 +12,24 @@
+ 
+ pre-configure: py-pybind11-preconfigure
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# pybind11-config runs the target Python, so cross builds cannot use it.
++# The installed pybind11.pc lives in site-packages and derives its prefix
++# from its own location; give consumers a copy with the target prefix in
++# the buildlink pkg-config directory.
++USE_TOOLS+=	pkg-config
++.endif
++
+ .PHONY: py-pybind11-preconfigure
+ py-pybind11-preconfigure:
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++	${MKDIR} ${BUILDLINK_DIR}/lib/pkgconfig
++	${SED} -e 's|^prefix=.*|prefix=${PREFIX}/${PYSITELIB}/pybind11|' \
++	    ${BUILDLINK_DIR}/${PYSITELIB}/pybind11/share/pkgconfig/pybind11.pc \
++	    > ${BUILDLINK_DIR}/lib/pkgconfig/pybind11.pc
++.else
+ 	${LN} -sf ${PREFIX}/bin/pybind11-config-${PYVERSSUFFIX} ${BUILDLINK_DIR}/bin/pybind11-config
++.endif
+ 
+ BUILDLINK_API_DEPENDS.py-pybind11+=	${PYPKGPREFIX}-pybind11>=2.5.0
+ BUILDLINK_PKGSRCDIR.py-pybind11?=	../../devel/py-pybind11
