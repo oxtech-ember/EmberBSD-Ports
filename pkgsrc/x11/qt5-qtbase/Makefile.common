@@ -89,3 +89,15 @@ fix-darwin-install-name:
 		${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:Uinstall_name_tool:Q} -id $${libdir}/$${libname} $${lib}; \
 	done
 .endif
+
+# Every Qt 5 module links the qt5-qtbase libraries (QtCore at least) into
+# its own libraries, plugins and tools. Record qt5-qtbase as a direct
+# dependency even when a module reaches it only through another module's
+# buildlink3.mk, as qt5-qtdeclarative does through qt5-qtxmlpatterns.
+# The strict macOS shared-library check rejects an indirect provider.
+# qt5-qttranslations and qt5-qtdoc install no binaries.
+.if "${PKGPATH}" != "x11/qt5-qtbase" && \
+	"${PKGPATH}" != "x11/qt5-qttranslations" && \
+	"${PKGPATH}" != "x11/qt5-qtdoc"
+.include "../../x11/qt5-qtbase/buildlink3.mk"
+.endif
