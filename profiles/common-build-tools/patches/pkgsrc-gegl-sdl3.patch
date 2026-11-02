@@ -1,0 +1,50 @@
+gegl: build the SDL3 display operation instead of the SDL2 one.
+
+EmberBSD keeps SDL3 only. gegl 0.4.72 has an sdl3-display operation
+(meson option sdl3); disable sdl1 and sdl2 and require sdl3.
+Origin: EmberBSD (AI-assisted); upstream status: not needed (upstream option).
+
+diff -ru a/graphics/gegl/Makefile b/graphics/gegl/Makefile
+--- a/graphics/gegl/Makefile
++++ b/graphics/gegl/Makefile
+@@ -1,6 +1,7 @@
+ # $NetBSD: Makefile,v 1.167 2026/09/12 21:49:46 wiz Exp $
+ 
+ DISTNAME=	gegl-0.4.72
++PKGREVISION=	1
+ CATEGORIES=	graphics
+ MASTER_SITES=	https://download.gimp.org/pub/gegl/${PKGVERSION_NOREV:R}/
+ EXTRACT_SUFX=	.tar.xz
+@@ -14,6 +15,11 @@
+ 
+ MESON_ARGS+=	-Dlibv4l=disabled
+ MESON_ARGS+=	-Dlibv4l2=disabled
++# Origin: EmberBSD (AI-assisted). EmberBSD keeps SDL3 only: build the
++# sdl3-display operation instead of sdl-display and sdl2-display.
++MESON_ARGS+=	-Dsdl1=disabled
++MESON_ARGS+=	-Dsdl2=disabled
++MESON_ARGS+=	-Dsdl3=enabled
+ # Some binaries that are required to generate docs
+ # are built with RPATH $ORIGIN. Disable docs explicitly.
+ MESON_ARGS+=	-Ddocs=false
+@@ -56,7 +62,7 @@
+ .include "options.mk"
+ .include "../../devel/meson/build.mk"
+ .include "../../devel/pango/buildlink3.mk"
+-.include "../../devel/SDL2/buildlink3.mk"
++.include "../../devel/SDL3/buildlink3.mk"
+ BUILDLINK_API_DEPENDS.babl+=	babl>=0.1.92nb1
+ .include "../../devel/gobject-introspection/buildlink3.mk"
+ .include "../../graphics/babl/buildlink3.mk"
+diff -ru a/graphics/gegl/PLIST b/graphics/gegl/PLIST
+--- a/graphics/gegl/PLIST
++++ b/graphics/gegl/PLIST
+@@ -122,7 +122,7 @@
+ lib/gegl-0.4/ppm-save.${SHLIB_EXT}
+ lib/gegl-0.4/rgbe-load.${SHLIB_EXT}
+ lib/gegl-0.4/rgbe-save.${SHLIB_EXT}
+-lib/gegl-0.4/sdl2-display.${SHLIB_EXT}
++lib/gegl-0.4/sdl3-display.${SHLIB_EXT}
+ lib/gegl-0.4/seamless-clone-compose.${SHLIB_EXT}
+ lib/gegl-0.4/seamless-clone.${SHLIB_EXT}
+ ${PLIST.svg}lib/gegl-0.4/svg-load.${SHLIB_EXT}
