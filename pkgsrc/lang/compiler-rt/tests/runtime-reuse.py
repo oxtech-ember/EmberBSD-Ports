@@ -25,10 +25,12 @@ def require(value, message):
         raise Failure(message)
 
 old_files = {'pkgsrc/lang/compiler-rt/files/source.py': 'old',
-             'pkgsrc/lang/llvm/version.mk': 'old', 'patch': 'same'}
+             'pkgsrc/lang/llvm/version.mk': 'old',
+             'pkgsrc/lang/llvm/distinfo': 'old broad inventory', 'patch': 'same'}
 expected = {'files': dict(old_files, **{'pkgsrc/lang/compiler-rt/files/source.py': 'new',
     'pkgsrc/lang/llvm/version.mk': 'new', 'pkgsrc/lang/compiler-rt/files/runtime.py': 'new',
     'pkgsrc/lang/compiler-rt/files/build.py': 'same'})}
+expected['files'].pop('pkgsrc/lang/llvm/distinfo')
 cli_bytes = (files / 'runtime.py').read_bytes()
 cli_hash = hashlib.sha256(cli_bytes).hexdigest()
 stage = {'recipe': {'ports_revision': 'a' * 40, 'files': dict(old_files, **{'pkgsrc/lang/compiler-rt/files/runtime.py': cli_hash,
@@ -40,6 +42,8 @@ with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp)
     (root / 'llvm-source.json').write_text(json.dumps(source))
     owner = types.SimpleNamespace(require=require, SOURCE_MANIFEST='llvm-source.json', PORTS=root,
+        NON_OUTPUT_INPUTS={'pkgsrc/lang/compiler-rt/files/source.py',
+                           'pkgsrc/lang/llvm/distinfo'},
         digest=lambda value: hashlib.sha256(value).hexdigest(),
         process=types.SimpleNamespace(capture=lambda *a, **k: types.SimpleNamespace(stdout=cli_bytes),
                                       sanitized_environment=lambda: {}),
@@ -169,6 +173,8 @@ with tempfile.TemporaryDirectory() as tmp:
         values = {dist_name: old_dist, prefix+'files/runtime.py': cli_bytes}
         return types.SimpleNamespace(stdout=values[name])
     test_owner = types.SimpleNamespace(require=require, SOURCE_MANIFEST='llvm-source.json',
+        NON_OUTPUT_INPUTS={'pkgsrc/lang/compiler-rt/files/source.py',
+                           'pkgsrc/lang/llvm/distinfo'},
         PORTS=root, OWNER=root, digest=digest, read=lambda p: p.read_bytes(),
         process=types.SimpleNamespace(capture=capture, sanitized_environment=lambda: {}),
         paths=types.SimpleNamespace(canonical_existing=lambda p: str(Path(p).resolve(strict=True))),

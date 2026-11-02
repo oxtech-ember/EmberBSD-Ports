@@ -18,6 +18,13 @@ PKGSRC = DEFAULT_PKGSRC
 EXPORTED = False
 SOURCE_MANIFEST = 'llvm-source.json'
 RECIPE = 'pkgsrc/lang/compiler-rt'
+# Bump only when extraction or patch-application semantics change. Identity
+# bookkeeping edits do not require rebuilding an equivalent prepared tree.
+PREPARATION_API = 1
+NON_OUTPUT_INPUTS = {
+    'pkgsrc/lang/compiler-rt/files/source.py',
+    'pkgsrc/lang/llvm/distinfo',
+}
 
 
 def load_sdk(arguments):
@@ -80,16 +87,21 @@ def git_revision(git, root):
     return revision
 
 
-def patch_inventory(directory, info, label):
+def patch_inventory(directory, info, label, selected=None):
     declared = re.findall(r'^SHA1 \((patch-[^)]+)\) = ([0-9a-f]{40})$', info, re.M)
     patches = sorted(directory.glob('patch-*'))
     require([p.name for p in patches] == sorted(name for name, _ in declared),
             'undeclared or duplicate ' + label + ' patch')
+    result = []
     for name, expected in declared:
-        data = read(directory / name)
+        path = directory / name
+        data = read(path)
+        if selected is not None and not selected(path, data):
+            continue
         filtered = b''.join(line for line in data.splitlines(True) if b'$NetBSD' not in line)
         require(hashlib.sha1(filtered).hexdigest() == expected, label + ' patch checksum differs: ' + name)
-    return patches
+        result.append(path)
+    return sorted(result)
 
 
 def recipe(git):
@@ -120,18 +132,25 @@ def recipe(git):
                patch_inventory(OWNER / 'patches', package_info, 'common runtime')]
     # The runtime source also consumes LLVM CMake modules. Reuse their common
     # patches in place; compiler-rt must not maintain another copy of them.
-    for path in patch_inventory(PKGSRC / 'lang/llvm/patches', info, 'common LLVM'):
-        names = re.findall(rb'^\+\+\+ ([^\t\n ]+)', read(path), re.M)
+    def runtime_cmake_patch(path, data):
+        names = re.findall(rb'^\+\+\+ ([^\t\n ]+)', data, re.M)
         require(bool(names), 'LLVM patch has no source paths: ' + path.name)
         applies = [name.startswith(b'cmake/') for name in names]
         require(all(applies) or not any(applies), 'LLVM patch mixes runtime CMake and other sources: ' + path.name)
-        if all(applies):
-            patches.append((path, 'llvm', 0))
-    inputs = [version_file, distinfo, component_file, patchinfo, Path(__file__).resolve(),
+        return all(applies)
+
+    for path in patch_inventory(PKGSRC / 'lang/llvm/patches', info, 'common LLVM',
+                                selected=runtime_cmake_patch):
+        patches.append((path, 'llvm', 0))
+    # The LLVM distinfo also inventories unrelated llvm consumers' patches.
+    # Archive hashes above and selected CMake patch hashes below are the
+    # complete inputs this producer actually consumes.
+    inputs = [version_file, component_file, patchinfo,
               *(path for path, _, _ in patches)]
     return dict(llvm_version=version, components=components,
                 source=dict(archive=archive_name, **hashes),
                 recipe=dict(ports_revision=None if EXPORTED else git_revision(git, PORTS),
+                            preparation_api=PREPARATION_API,
                             files={input_name(p): digest(read(p)) for p in inputs})), patches
 
 
@@ -150,11 +169,22 @@ def verify_source(source, git):
     current, _ = recipe(git)
     for key in ('llvm_version', 'components', 'source'):
         require(record[key] == current[key], 'LLVM prepared source selection changed: ' + key)
-    require(isinstance(record['recipe'], dict) and set(record['recipe']) == {'ports_revision', 'files'} and
+    require(isinstance(record['recipe'], dict) and
+            set(record['recipe']) in ({'ports_revision', 'files'},
+                                      {'ports_revision', 'preparation_api', 'files'}) and
             ((record['version'] == 2 and record['recipe'].get('ports_revision') is None) or
              (isinstance(record['recipe'].get('ports_revision'), str) and
-              re.fullmatch('[0-9a-f]{40}', record['recipe']['ports_revision']))) and
-            record['recipe']['files'] == current['recipe']['files'], 'LLVM prepared recipe inputs changed')
+              re.fullmatch('[0-9a-f]{40}', record['recipe']['ports_revision']))),
+            'invalid LLVM prepared recipe identity')
+    preparation_api = record['recipe'].get('preparation_api', 1)
+    require(type(preparation_api) is int and preparation_api == PREPARATION_API,
+            'LLVM prepared source preparation API changed')
+    recorded_files = record['recipe']['files']
+    require(isinstance(recorded_files, dict), 'invalid LLVM prepared recipe inputs')
+    normalized_files = {name: value for name, value in recorded_files.items()
+                        if name not in NON_OUTPUT_INPUTS}
+    require(normalized_files == current['recipe']['files'],
+            'LLVM prepared recipe inputs changed')
     # Unrelated Ports commits do not require preparing the same source again.
     # The manifest written by prepare_source is the tree's input key: the
     # selection and recipe inputs above are compared, the tree is not hashed

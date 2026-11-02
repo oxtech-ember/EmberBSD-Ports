@@ -308,8 +308,8 @@ def compatible_source(owner, stage, expected, source, original_source, git):
     old_files = original.get('recipe', {}).get('files')
     owner.require(isinstance(old_files, dict) and all(stage['recipe']['files'].get(k) == v
                   for k, v in old_files.items()), 'runtime original source recipe differs')
-    exempt = {'pkgsrc/lang/llvm/version.mk', 'pkgsrc/lang/compiler-rt/files/source.py',
-              'pkgsrc/lang/compiler-rt/files/runtime.py'}
+    exempt = ({'pkgsrc/lang/llvm/version.mk',
+               'pkgsrc/lang/compiler-rt/files/runtime.py'} | owner.NON_OUTPUT_INPUTS)
     old = {k: v for k, v in stage['recipe']['files'].items() if k not in exempt}
     new = {k: v for k, v in expected['files'].items() if k not in exempt}
     if not same_tree:

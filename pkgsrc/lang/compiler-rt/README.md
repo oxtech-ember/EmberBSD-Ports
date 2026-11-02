@@ -71,7 +71,10 @@ contributors list remains in `compiler-rt/CREDITS.TXT`.
 `tests/source.py` exercises actual preparation with the selected archive and
 checks existing-output, changed-file, added-file, changed-identity and corrupt
 archive refusals. Supply `--sdk-source`, `--archive`, `--git`, `--patch` and a
-new `--work` directory. The binary128 source tests require explicit `CC`,
+new `--work` directory. `tests/source-identity.py` checks that prepared-source
+identity ignores unrelated LLVM patches while retaining archive and applied
+CMake patch validation; extraction or patch-application changes are tracked by
+the manifest's preparation API version. The binary128 source tests require explicit `CC`,
 `BINARY128_SOURCE` and a caller-owned `TMPDIR`. The contract compiles the full
 production comparator with only its bit container and hardware exception hook
 substituted; it covers 3,600 input/predicate combinations. The boundaries test
