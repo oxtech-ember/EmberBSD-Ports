@@ -5,6 +5,7 @@
 .include "../../devel/kf6-kconfig/Makefile.common"
 
 PKGNAME=	kf6-kconfig-compiler-${KF6VER}
+PKGREVISION=	1
 COMMENT=	Native KConfig code generators for cross builds
 
 .include "../../meta-pkgs/kde/kf6.mk"
@@ -22,8 +23,10 @@ CMAKE_CONFIGURE_ARGS+=	-DKCONFIG_USE_GUI=OFF
 CMAKE_CONFIGURE_ARGS+=	-DKCONFIG_USE_QML=OFF
 CMAKE_CONFIGURE_ARGS+=	-DUSE_DBUS=OFF
 
-# Both install the same programs and CMake import.
-CONFLICTS+=	kf6-kconfig-[0-9]*
+# Older full KConfig packages contain these same files. The revised native
+# package now depends on this disjoint tools package; target packages carry the
+# reverse conflict.
+CONFLICTS+=	kf6-kconfig<6.31.0nb2
 
 _EMBER_KCONFIG_TOOLS=	libexec/kf6/kconfig_compiler_kf6 libexec/kf6/kconf_update
 
