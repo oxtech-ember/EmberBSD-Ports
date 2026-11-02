@@ -17,7 +17,7 @@ that earlier package. Native LLVM keeps its complete manifest
 and package identity. The separate SDK requires a NetBSD cross build.
 
 Both recipes use the same LLVM 23.1.4 archive, patches and source component.
-With `CROSS_BULK_LLVM_SHARED_BUILD=yes`, cross-bulk retains the runtime
+With the default `CROSS_BULK_SHARED_BUILD=yes`, cross-bulk retains the runtime
 producer's full installation stage and reuses it for the devel package when
 both roles have matching compilation inputs. This compiles LLVM once and
 copies the two partitions into separate package stages. A cached runtime

@@ -12,6 +12,29 @@ CONFLICTS+=	qt6-qtwayland<6.10.0
 
 .include "Makefile.common"
 
+# Same-run devel package: the cross-bulk controller supplies a complete
+# stage retained by the runtime package after comparing both roles' actual
+# expanded compile inputs.
+.if defined(EMBERBSD_QTBASE_SHARED_STAGE) && defined(EMBERBSD_QTBASE_DEVEL)
+_EMBERBSD_QTBASE_SHARED_DEVEL= yes
+NO_BUILD= yes
+NO_CONFIGURE= yes
+WRKSRC= ${WRKDIR}/qtbase-shared-stage
+do-extract: qtbase-shared-noop
+do-patch: qtbase-shared-noop
+do-configure:
+	@${MKDIR} ${WRKSRC:Q}
+do-build: qtbase-shared-noop
+do-build:
+	@${MKDIR} ${WRKSRC:Q}
+do-install: qtbase-shared-noop
+do-install:
+	@${MKDIR} ${DESTDIR:Q}
+.PHONY: qtbase-shared-noop
+qtbase-shared-noop:
+	@${MKDIR} ${WRKSRC:Q}
+.endif
+
 PLIST_VARS+=	bsdfb
 .if ${OPSYS} == "NetBSD"
 PLIST.bsdfb=	yes
@@ -254,7 +277,9 @@ pre-configure:
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
 PLIST.targetmetadata=	yes
+.if !defined(_EMBERBSD_QTBASE_SHARED_DEVEL)
 post-install: qt-target-metadata
+.endif
 .PHONY: qt-target-metadata
 qt-target-metadata:
 	${PERL5} ${FILESDIR}/target-metadata.pl ${DESTDIR:Q}${QTPREFIX:Q} \
@@ -396,16 +421,33 @@ BUILDLINK_API_DEPENDS.libxcb+=	libxcb>=1.11
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
 # Both recipes stage and normalize all files before selecting their package.
 # PLIST and WRKDIR are defined by bsd.pkg.mk before these dependencies expand.
-post-install: qtbase-select-stage
 .PHONY: qtbase-select-stage
 .PHONY: ${WRKDIR}/.qtbase-full-plist ${WRKDIR}/.qtbase-runtime-plist ${WRKDIR}/.qtbase-devel-plist
+.if defined(_EMBERBSD_QTBASE_SHARED_DEVEL)
+post-install: qtbase-select-stage
+qtbase-select-stage: pkgconfig-link ${PLIST}
+.else
+post-install: qtbase-select-stage
 qtbase-select-stage: qt-target-metadata pkgconfig-link ${PLIST}
+.endif
 .for _qtbase_part in FULL RUNTIME DEVEL
 	${MAKE} ${WRKDIR:Q}/.qtbase-${_qtbase_part:tl}-plist \
 	    PLIST=${WRKDIR:Q}/.qtbase-${_qtbase_part:tl}-plist \
 	    PLIST_SRC=${QTBASE_${_qtbase_part}_PLIST_SRC:Q}
 .endfor
+.if defined(_EMBERBSD_QTBASE_SHARED_DEVEL)
+	${PERL5} ${FILESDIR}/select-package-stage.pl copy-devel \
+	    ${EMBERBSD_QTBASE_SHARED_STAGE:Q} ${DESTDIR:Q}${PREFIX:Q} \
+	    ${WRKDIR:Q}/.qtbase-full-plist ${WRKDIR:Q}/.qtbase-runtime-plist \
+	    ${WRKDIR:Q}/.qtbase-devel-plist ${PLIST:Q}
+.elif ${QTBASE_PACKAGE_PART} == "runtime" && defined(EMBERBSD_QTBASE_SHARED_STAGE)
+	${PERL5} ${FILESDIR}/select-package-stage.pl handoff-runtime \
+	    ${DESTDIR:Q}${PREFIX:Q} ${WRKDIR:Q}/.qtbase-full-plist \
+	    ${WRKDIR:Q}/.qtbase-runtime-plist ${WRKDIR:Q}/.qtbase-devel-plist ${PLIST:Q} \
+	    ${EMBERBSD_QTBASE_SHARED_STAGE:Q}
+.else
 	${PERL5} ${FILESDIR}/select-package-stage.pl ${QTBASE_PACKAGE_PART:Q} \
 	    ${DESTDIR:Q}${PREFIX:Q} ${WRKDIR:Q}/.qtbase-full-plist \
 	    ${WRKDIR:Q}/.qtbase-runtime-plist ${WRKDIR:Q}/.qtbase-devel-plist ${PLIST:Q}
+.endif
 .endif

@@ -37,6 +37,9 @@
 .if !defined(EMBERBSD_QT_MAKEFILE_COMMON)
 EMBERBSD_QT_MAKEFILE_COMMON= yes
 EMBERBSD_QTBASE_PKGDIR:= ${.PARSEDIR:tA}
+.if defined(EMBERBSD_QTBASE_DEVEL) && defined(EMBERBSD_QTBASE_SHARED_STAGE)
+_EMBERBSD_QTBASE_SHARED_DEVEL= yes
+.endif
 # The SDK recipe and the SQL driver recipes build from this exact qtbase
 # source, so they share its checksums and every patch.
 .if defined(EMBERBSD_QTBASE_DEVEL) || ${.CURDIR:M*/databases/qt6-psql} || \
@@ -53,14 +56,18 @@ FILESDIR= ${EMBERBSD_QTBASE_PKGDIR}/files
 CMAKE_GENERATOR?=	ninja
 CMAKE_BUILD_DIR=	.
 CONFIGURE_DIR=	.
-.if ${PKGPATH} == "x11/qt6-qtbase"
+.if ${PKGPATH} == "x11/qt6-qtbase" || defined(EMBERBSD_QTBASE_DEVEL)
+.if !defined(_EMBERBSD_QTBASE_SHARED_DEVEL)
 do-configure:
 	${RUN}${_ULIMIT_CMD} \
 	cd ${WRKSRC} && \
 	${PKGSRC_SETENV} ${_CONFIGURE_SCRIPT_ENV} \
 		${CONFIG_SHELL} ${CONFIG_SHELL_FLAGS} \
 			${CONFIGURE_SCRIPT} ${CONFIGURE_ARGS}
+.endif
+.if !defined(_EMBERBSD_QTBASE_SHARED_DEVEL)
 .include "../../devel/cmake/build.mk"
+.endif
 .endif
 
 .include "../../mk/dlopen.buildlink3.mk"

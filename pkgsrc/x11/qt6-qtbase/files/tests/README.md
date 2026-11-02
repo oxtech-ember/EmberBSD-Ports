@@ -18,6 +18,11 @@ Run `target-metadata-boundary.py PERL TARGET_METADATA_PL` with the selected
 host Perl and this recipe's `target-metadata.pl` to check the exact buildlink
 root, child paths and rejection of neighboring unresolved build paths.
 
+Run `shared-package-stage.sh` with the selected host Perl to check that the
+runtime selector retains a complete Qtbase stage, that the devel package gets
+only its declared partition in a separate destination, and that staged file
+modes and symlinks survive the handoff.
+
 ## Pre-project Apple autodetection
 
 From the qt6-qtbase recipe directory, run

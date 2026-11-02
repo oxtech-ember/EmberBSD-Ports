@@ -620,15 +620,17 @@ succeeds; the deleter removes it in the background, or the same scoped
 pkgsrc `clean` target is used when it cannot be moved to trash. Failed and
 reused packages are left alone. A cleanup failure warns without changing the
 package result.
-For a fresh cross build that contains both `lang/llvm` and `lang/llvm-devel`,
-`CROSS_BULK_LLVM_SHARED_BUILD=yes` lets `cross-bulk.sh` compare their expanded
-source, toolchain, option, and compile settings. Matching inputs compile LLVM
-once and retain one complete install stage until the SDK package has copied
-its own PLIST entries. A cached runtime without a stage or
-different compile inputs use the regular SDK build. With
-`CROSS_BULK_CLEAN_SUCCESS=yes`, the retained runtime workdir is retired only
-after the SDK package succeeds. `scripts/tests/cross-bulk-llvm-shared-stage.sh`
-checks the handoff, fallback and cleanup paths.
+When a package set contains both roles of a supported split package,
+`cross-bulk.sh` compares their expanded source, toolchain, option, and compile
+settings and shares the compiled stage only when they match. This currently
+covers LLVM runtime/SDK and Qtbase runtime/devel. Sharing is enabled by
+default; set `CROSS_BULK_SHARED_BUILD=no` to request independent builds. A
+cached producer without its complete same-run stage or differing compile
+inputs use the regular consumer build. With
+`CROSS_BULK_CLEAN_SUCCESS=yes`, the producer workdir is retired only after
+the consumer package succeeds. `scripts/tests/cross-bulk-llvm-shared-stage.sh`
+checks LLVM and Qtbase handoff, input mismatch fallback, cached-producer
+fallback, stage-local recovery, and failure retention.
 For the same reason each target package gets one `package-install` run,
 which does the depends, package and install steps. When the sysroot already
 has another version of the package (pkg_info -e PKGBASE), for example one

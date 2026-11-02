@@ -777,14 +777,15 @@ target_install()
     tpath=$1
     shift
     shared_arg=
-    case "$tpath" in
-        lang/llvm)
-            [ "$llvm_shared_enabled" != yes ] || shared_arg=EMBERBSD_LLVM_SHARED_STAGE=$llvm_shared_stage ;;
-        lang/llvm-devel)
-            if [ "$llvm_shared_enabled" = yes ] && [ -f "$run/llvm-runtime-ready" ] && [ -d "$llvm_shared_stage" ]; then
-                shared_arg=EMBERBSD_LLVM_SHARED_STAGE=$llvm_shared_stage
-            fi ;;
-    esac
+    shared_pair_for_path "$tpath" || :
+    if [ -n "$shared_pair" ] && [ "$(cat "$run/shared-$shared_pair/enabled" 2>/dev/null)" = yes ]; then
+        shared_stage=$(cat "$run/shared-$shared_pair/stage")
+        shared_var=$(cat "$run/shared-$shared_pair/variable")
+        if [ "$tpath" = "$shared_producer" ] ||
+            { [ -f "$run/shared-$shared_pair/producer-ready" ] && [ -d "$shared_stage" ]; }; then
+            shared_arg=$shared_var=$shared_stage
+        fi
+    fi
     for target do
         if [ -n "$shared_arg" ]; then
             bmk -C "$PKGSRCDIR/$tpath" "$shared_arg" "$target" < /dev/null || return 1
@@ -794,52 +795,147 @@ target_install()
     done
 }
 
-# The LLVM runtime and SDK packages have separate PLISTs but one compiled
-# payload. Share it only when this run will build both roles and their actual
-# pkgsrc compile inputs agree. Any missing/mismatched input leaves the normal
-# package builds unchanged.
-llvm_shared_configure()
+# A split package pair can share one compiled payload when the run contains
+# both roles and their expanded source, toolchain and build inputs agree.
+# Pair-specific data is kept here; staging and lifecycle are shared below.
+shared_pair_for_path()
 {
-    llvm_shared_enabled=no
-    llvm_shared_stage=
-    [ "${CROSS_BULK_LLVM_SHARED_BUILD:-no}" = yes ] || return 0
-    grep -qFx lang/llvm "$state/order" && grep -qFx lang/llvm-devel "$state/order" || return 0
-    llvm_shared_fields='LLVM_VERSION WRKSRC DISTNAME PATCHDIR DISTINFO_FILE PKG_OPTIONS USE_CROSS_COMPILE OPSYS OS_VERSION MACHINE_ARCH MACHINE_GNU_PLATFORM EMBERBSD_CROSS_COMPILER_FAMILY PKGSRC_COMPILER CMAKE CFLAGS CXXFLAGS CPPFLAGS LDFLAGS CMAKE_CONFIGURE_ARGS CONFIGURE_ENV CC CXX CPP AR AS LD RANLIB STRIP CWRAPPERS_APPEND.cc CWRAPPERS_APPEND.cxx _CMAKE_BUILD_SYSTEM INSTALL_TARGET CMAKE_INSTALL_ARGS LLVM_TARGETS_TO_BUILD LLVM_EXPERIMENTAL_TARGETS_TO_BUILD CROSS_DESTDIR TOOLDIR TOOL_PYTHONBIN EMBERBSD_LLVM_NATIVE_TOOLS MAKE_ENV CMAKE_BUILD_ARGS _CMAKE_BUILD_TOOL CMAKE_GENERATOR CMAKE_BUILD_DIR BUILD_TARGET BUILD_DIRS CONFIGURE_DIR SETENV RUN INSTALL_ENV INSTALL_DIRS PREFIX'
-    llvm_runtime_wrkdir=$(pkg_vars lang/llvm WRKDIR _MAKEVARS_MK=defined) || return 0
-    case "$llvm_runtime_wrkdir" in /*) ;; *) return 0 ;; esac
-    runtime_values=$(pkg_vars lang/llvm "$llvm_shared_fields" "WRKDIR=$llvm_runtime_wrkdir" _MAKEVARS_MK=defined) || return 0
-    devel_values=$(pkg_vars lang/llvm-devel "$llvm_shared_fields" "WRKDIR=$llvm_runtime_wrkdir" _MAKEVARS_MK=defined) || return 0
-    set -f
-    set -- $llvm_shared_fields
-    llvm_shared_expected=$#
-    set +f
-    [ "$(printf '%s\n' "$runtime_values" | wc -l | tr -d ' ')" = "$llvm_shared_expected" ] || return 0
-    [ "$(printf '%s\n' "$devel_values" | wc -l | tr -d ' ')" = "$llvm_shared_expected" ] || return 0
-    runtime_flags=$runtime_values
-    devel_flags=$devel_values
-    [ "$runtime_flags" = "$devel_flags" ] || {
-        echo 'LLVM runtime and SDK compile inputs differ; using ordinary package builds' >&2
-        return 0
-    }
-    llvm_shared_stage=$llvm_runtime_wrkdir/.llvm-shared-full-stage
-    llvm_shared_enabled=yes
-    echo 'LLVM runtime and SDK compile inputs match; enabling same-run stage handoff'
+    case "$1" in
+        lang/llvm|lang/llvm-devel) shared_pair=llvm ;;
+        x11/qt6-qtbase|x11/qt6-qtbase-devel) shared_pair=qtbase ;;
+        *) shared_pair= ;;
+    esac
+    [ -z "$shared_pair" ] || shared_pair_config "$shared_pair"
 }
 
-llvm_shared_retire_runtime()
+shared_pair_config()
 {
-    [ "$llvm_shared_enabled" = yes ] && [ -f "$run/llvm-runtime-ready" ] || return 0
-    [ "${CROSS_BULK_CLEAN_SUCCESS:-no}" = yes ] || return 0
-    if retire "$llvm_runtime_wrkdir" "$job.llvm-runtime-after-sdk" &&
-        [ ! -e "$llvm_runtime_wrkdir" ] && [ ! -L "$llvm_runtime_wrkdir" ]; then
+    pair_key=$1
+    shared_pair=$pair_key
+    shared_producer=
+    shared_consumer=
+    shared_variable=
+    shared_stage_name=
+    shared_fields=
+    case "$pair_key" in
+        llvm)
+            shared_producer=lang/llvm
+            shared_consumer=lang/llvm-devel
+            shared_variable=EMBERBSD_LLVM_SHARED_STAGE
+            shared_stage_name=.llvm-shared-full-stage
+            shared_fields='LLVM_VERSION WRKSRC DISTNAME PATCHDIR DISTINFO_FILE PKG_OPTIONS USE_CROSS_COMPILE OPSYS OS_VERSION MACHINE_ARCH MACHINE_GNU_PLATFORM EMBERBSD_CROSS_COMPILER_FAMILY PKGSRC_COMPILER CMAKE CFLAGS CXXFLAGS CPPFLAGS LDFLAGS CMAKE_CONFIGURE_ARGS CONFIGURE_ENV CC CXX CPP AR AS LD RANLIB STRIP CWRAPPERS_APPEND.cc CWRAPPERS_APPEND.cxx _CMAKE_BUILD_SYSTEM INSTALL_TARGET CMAKE_INSTALL_ARGS LLVM_TARGETS_TO_BUILD LLVM_EXPERIMENTAL_TARGETS_TO_BUILD CROSS_DESTDIR TOOLDIR TOOL_PYTHONBIN EMBERBSD_LLVM_NATIVE_TOOLS MAKE_ENV CMAKE_BUILD_ARGS _CMAKE_BUILD_TOOL CMAKE_GENERATOR CMAKE_BUILD_DIR BUILD_TARGET BUILD_DIRS CONFIGURE_DIR SETENV RUN INSTALL_ENV INSTALL_DIRS PREFIX' ;;
+        qtbase)
+            shared_producer=x11/qt6-qtbase
+            shared_consumer=x11/qt6-qtbase-devel
+            shared_variable=EMBERBSD_QTBASE_SHARED_STAGE
+            shared_stage_name=.qtbase-shared-full-stage
+            shared_fields='QTVERSION WRKSRC DISTNAME PATCHDIR DISTINFO_FILE FILESDIR PKG_OPTIONS USE_CROSS_COMPILE OPSYS OS_VERSION MACHINE_ARCH MACHINE_GNU_PLATFORM EMBERBSD_CROSS_COMPILER_FAMILY PKGSRC_COMPILER CMAKE CFLAGS CXXFLAGS CPPFLAGS LDFLAGS CMAKE_CONFIGURE_ARGS CONFIGURE_ARGS CONFIGURE_ENV CC CXX CPP AR AS LD RANLIB STRIP CWRAPPERS_APPEND.cc CWRAPPERS_APPEND.cxx _CMAKE_BUILD_SYSTEM INSTALL_TARGET CMAKE_INSTALL_ARGS CROSS_DESTDIR TOOLDIR TOOL_PYTHONBIN EMBERBSD_NATIVE_TOOLSET_MAKECONF EMBERBSD_WAYLAND_SCANNER MAKE_ENV CMAKE_BUILD_ARGS _CMAKE_BUILD_TOOL CMAKE_GENERATOR CMAKE_BUILD_DIR BUILD_TARGET BUILD_DIRS CONFIGURE_DIR SETENV RUN INSTALL_ENV INSTALL_DIRS PREFIX QTPREFIX' ;;
+    esac
+}
+
+shared_pair_configure_one()
+{
+    shared_pair_config "$1"
+    shared_dir=$run/shared-$shared_pair
+    mkdir -p "$shared_dir"
+    printf '%s\n' no > "$shared_dir/enabled"
+    printf '%s\n' "$shared_variable" > "$shared_dir/variable"
+    grep -qFx "$shared_producer" "$state/order" && grep -qFx "$shared_consumer" "$state/order" || return 0
+    shared_runtime_wrkdir=$(pkg_vars "$shared_producer" WRKDIR _MAKEVARS_MK=defined) || {
+        echo "$shared_pair producer inputs could not be queried; using ordinary package builds" >&2
+        return 0
+    }
+    case "$shared_runtime_wrkdir" in /*) ;; *)
+        echo "$shared_pair producer WRKDIR is not absolute; using ordinary package builds" >&2
+        return 0 ;;
+    esac
+    shared_runtime_values=$(pkg_vars "$shared_producer" "$shared_fields" "WRKDIR=$shared_runtime_wrkdir" _MAKEVARS_MK=defined) || {
+        echo "$shared_pair producer compile inputs could not be queried; using ordinary package builds" >&2
+        return 0
+    }
+    shared_devel_values=$(pkg_vars "$shared_consumer" "$shared_fields" "WRKDIR=$shared_runtime_wrkdir" _MAKEVARS_MK=defined) || {
+        echo "$shared_pair consumer compile inputs could not be queried; using ordinary package builds" >&2
+        return 0
+    }
+    set -f
+    set -- $shared_fields
+    shared_expected=$#
+    set +f
+    if [ "$(printf '%s\n' "$shared_runtime_values" | wc -l | tr -d ' ')" != "$shared_expected" ] ||
+        [ "$(printf '%s\n' "$shared_devel_values" | wc -l | tr -d ' ')" != "$shared_expected" ]; then
+        echo "$shared_pair compile inputs are incomplete; using ordinary package builds" >&2
         return 0
     fi
-    if ! bmk -C "$PKGSRCDIR/lang/llvm" "WRKDIR=$llvm_runtime_wrkdir" \
-        "EMBERBSD_LLVM_SHARED_STAGE=$llvm_shared_stage" clean < /dev/null >> "$log" 2>&1; then
-        echo "WARNING: $node built successfully but LLVM runtime WRKDIR cleanup failed: $llvm_runtime_wrkdir" >&2
-        echo "WARNING: $node built successfully but LLVM runtime WRKDIR cleanup failed: $llvm_runtime_wrkdir" >> "$log"
+    [ "$shared_runtime_values" = "$shared_devel_values" ] || {
+        echo "$shared_pair producer and consumer compile inputs differ; using ordinary package builds" >&2
+        return 0
+    }
+    shared_stage=$shared_runtime_wrkdir/$shared_stage_name
+    printf '%s\n' "$shared_stage" > "$shared_dir/stage"
+    printf '%s\n' "$shared_runtime_wrkdir" > "$shared_dir/wrkdir"
+    printf '%s\n' "$shared_producer" > "$shared_dir/producer"
+    printf '%s\n' "$shared_consumer" > "$shared_dir/consumer"
+    printf '%s\n' yes > "$shared_dir/enabled"
+    echo "$shared_pair producer and consumer compile inputs match; enabling same-run stage handoff"
+}
+
+shared_pairs_configure()
+{
+    [ "${CROSS_BULK_SHARED_BUILD:-yes}" = yes ] || return 0
+    shared_pair_configure_one llvm
+    shared_pair_configure_one qtbase
+}
+
+shared_pair_ready()
+{
+    shared_pair_for_path "$1"
+    [ -n "$shared_pair" ] && [ "$(cat "$run/shared-$shared_pair/enabled" 2>/dev/null)" = yes ] &&
+        [ -f "$run/shared-$shared_pair/producer-ready" ] &&
+        [ -d "$(cat "$run/shared-$shared_pair/stage")" ]
+}
+
+shared_pair_producer_succeeded()
+{
+    shared_pair_for_path "$1"
+    [ -n "$shared_pair" ] && [ "$1" = "$shared_producer" ] || return 0
+    shared_dir=$run/shared-$shared_pair
+    shared_stage=$(cat "$shared_dir/stage")
+    if [ -d "$shared_stage" ]; then
+        : > "$shared_dir/producer-ready.tmp"
+        mv "$shared_dir/producer-ready.tmp" "$shared_dir/producer-ready"
+        echo "$shared_pair complete stage retained at $shared_stage"
+    else
+        echo "$shared_pair producer completed without a complete stage; consumer will build normally"
+    fi
+}
+
+shared_pair_retire_producer()
+{
+    shared_pair_for_path "$1"
+    [ -n "$shared_pair" ] && [ "$1" = "$shared_consumer" ] || return 0
+    shared_dir=$run/shared-$shared_pair
+    [ "$(cat "$shared_dir/enabled" 2>/dev/null)" = yes ] && [ -f "$shared_dir/producer-ready" ] || return 0
+    [ "${CROSS_BULK_CLEAN_SUCCESS:-no}" = yes ] || return 0
+    shared_wrkdir=$(cat "$shared_dir/wrkdir")
+    if retire "$shared_wrkdir" "$job.$shared_pair-after-consumer" &&
+        [ ! -e "$shared_wrkdir" ] && [ ! -L "$shared_wrkdir" ]; then
+        return 0
+    fi
+    shared_variable=$(cat "$shared_dir/variable")
+    if ! bmk -C "$PKGSRCDIR/$shared_producer" "WRKDIR=$shared_wrkdir" \
+        "$shared_variable=$(cat "$shared_dir/stage")" clean < /dev/null >> "$log" 2>&1; then
+        echo "WARNING: $node built successfully but $shared_pair producer WRKDIR cleanup failed: $shared_wrkdir" >&2
+        echo "WARNING: $node built successfully but $shared_pair producer WRKDIR cleanup failed: $shared_wrkdir" >> "$log"
     fi
     return 0
+}
+
+shared_pair_reset_stage()
+{
+    shared_pair_for_path "$1"
+    [ "${stage_local:-no}" = yes ] && [ -n "$shared_pair" ] || return 0
+    [ "$(cat "$run/shared-$shared_pair/enabled" 2>/dev/null)" = yes ] || return 0
+    bmk -C "$PKGSRCDIR/$1" _package-clean < /dev/null
 }
 
 build_one()
@@ -855,14 +951,13 @@ build_one()
     skip=$(printf '%s\n' "$vars" | sed -n 3p)
     base=$(printf '%s\n' "$vars" | sed -n 4p)
     if [ -n "$skip" ]; then
-        [ "$path" != lang/llvm-devel ] || llvm_shared_retire_runtime
         result "$key" "skipped $path $skip"
         return 0
     fi
     file=$packages/$name.tgz
     if [ "${stage_local:-no}" != yes ] && [ -f "$file" ] &&
         awk -v p="$path" -v n="$name" '$1 == p && $2 == n { f = 1; exit } END { exit !f }' "$state/done"; then
-        [ "$path" != lang/llvm-devel ] || llvm_shared_retire_runtime
+        shared_pair_retire_producer "$path"
         result "$key" "done $path"
         return 0
     fi
@@ -892,14 +987,11 @@ build_one()
         else
             exclusive "$key" target_install "$path" replace >> "$log" 2>&1
         fi; } && {
-        if [ "$path" = lang/llvm ] && [ "$llvm_shared_enabled" = yes ] && [ -d "$llvm_shared_stage" ]; then
-            : > "$run/llvm-runtime-ready.tmp"
-            mv "$run/llvm-runtime-ready.tmp" "$run/llvm-runtime-ready"
-        fi
-        if [ "$path" != lang/llvm ] || [ ! -f "$run/llvm-runtime-ready" ]; then
+        shared_pair_producer_succeeded "$path"
+        if ! shared_pair_ready "$path"; then
             [ "${stage_local:-no}" = yes ] || clean_success
         fi
-        [ "$path" != lang/llvm-devel ] || llvm_shared_retire_runtime
+        shared_pair_retire_producer "$path"
         echo "$(date '+%Y-%m-%d %H:%M:%S') done $path" >> "$state/progress"
         result "$key" "built $path $name $(shasum -a 256 "$file" | cut -d ' ' -f 1)"
         return 0
@@ -960,8 +1052,6 @@ package_install_one()
     clean=clean
     stage_local=yes
     job=1
-    llvm_shared_enabled=no
-    llvm_shared_stage=
     cpus=$(host_cpus)
     make_jobs=${CROSS_BULK_MAKE_JOBS:-$cpus}
     if [ "$make_jobs" != makeconf ]; then
@@ -981,6 +1071,14 @@ package_install_one()
     key=$(echo "$path" | tr / _)
     node=$path
     reported=
+    shared_pairs_configure
+    if ! shared_pair_reset_stage "$path"; then
+        echo "Could not reset the shared package stage: $path" >&2
+        state_path_row "$state/failed" "$path" "$path shared-stage-cleanup"
+        state_path_row "$state/blocked" "$path" "$path shared-stage-cleanup"
+        return 1
+    fi
+    [ "$stop" = 0 ] || return 143
     build_one "$path"
     outcome=$(cat "$run/$key.result" 2>/dev/null || :)
     set -f
@@ -993,6 +1091,44 @@ package_install_one()
             state_path_row "$state/failed" "$path"
             state_path_row "$state/blocked" "$path"
             echo "Installed $path from its current pkgsrc stage"
+            [ "$stop" = 0 ] || return 143
+            shared_pair_for_path "$path"
+            if [ -n "$shared_pair" ] && [ "$path" = "$shared_producer" ] && shared_pair_ready "$path"; then
+                producer_path=$path
+                partner=$shared_consumer
+                key=$(echo "$partner" | tr / _)
+                node=$partner
+                log=$state/logs/$key.log
+                reported=
+                if ! shared_pair_reset_stage "$partner" >> "$log" 2>&1; then
+                    state_path_row "$state/failed" "$partner" "$partner shared-stage-cleanup"
+                    state_path_row "$state/blocked" "$partner" "$partner shared-stage-cleanup"
+                    echo "Could not reset the consumer package stage; retained producer WRKDIR: $producer_path" >&2
+                    return 1
+                fi
+                [ "$stop" = 0 ] || return 143
+                build_one "$partner"
+                outcome=$(cat "$run/$key.result" 2>/dev/null || :)
+                set -f
+                set -- $outcome
+                set +f
+                case "${1:-}" in
+                    built)
+                        shift 2
+                        state_path_row "$state/done" "$partner" "$partner $*"
+                        state_path_row "$state/failed" "$partner"
+                        state_path_row "$state/blocked" "$partner"
+                        echo "Installed paired package $partner from the retained $shared_pair stage"
+                        ;;
+                    *)
+                        reason=${outcome#failed "$partner" }
+                        state_path_row "$state/failed" "$partner" "$partner ${reason:-package-install}"
+                        state_path_row "$state/blocked" "$partner"
+                        echo "Paired package stage failed; retained producer WRKDIR: $producer_path" >&2
+                        return 1
+                        ;;
+                esac
+            fi
             ;;
         done)
             echo "$path is already recorded done"
@@ -1079,7 +1215,7 @@ build()
         gnu_stat=no
         ! stat -c %i / > /dev/null 2>&1 || gnu_stat=yes
     fi
-    llvm_shared_configure
+    shared_pairs_configure
     trash_init
     deleter_pid=
     if [ -n "$trash" ]; then
