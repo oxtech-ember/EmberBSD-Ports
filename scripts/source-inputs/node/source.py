@@ -17,6 +17,8 @@ PORTS = Path(__file__).resolve().parents[3]
 PACKAGE = 'lang/nodejs'
 sys.path.insert(0, str(PORTS / 'pkgsrc/lang/llvm/files'))
 import sdk_source
+sys.path.append(str(PORTS / 'scripts'))
+import prepared_receipt
 
 
 def load_sdk(argv):
@@ -118,7 +120,7 @@ def verify_source(source, pkgsrc_root):
     return record
 
 
-def prepare(archive, output, patch, git, pkgsrc_root=None):
+def prepare(archive, output, patch, git, pkgsrc_root=None, previous_source=None):
     require(os.path.isabs(patch), 'select an absolute patch executable')
     require(pkgsrc_root is not None or (isinstance(git, str) and os.path.isabs(git)),
             'select absolute Git for checkout export')
@@ -127,6 +129,11 @@ def prepare(archive, output, patch, git, pkgsrc_root=None):
     output = Path(paths.canonical_existing(output.parent), output.name)
     require(not os.path.lexists(output), 'prepared source output already exists')
     paths.reject_overlap(str(output), str(PORTS))
+    if previous_source is not None:
+        require(os.path.isabs(previous_source), 'previous source must be absolute')
+        previous_source = paths.canonical_existing(previous_source)
+        paths.real_directory(previous_source)
+        paths.reject_overlap(str(output), previous_source)
     owner_sha256 = digest(read(Path(__file__).resolve()))
     identity = source_identity(git) if pkgsrc_root is None else None
     with tempfile.TemporaryDirectory(prefix='.node-source-', dir=output.parent) as tmp:
@@ -176,7 +183,8 @@ def prepare(archive, output, patch, git, pkgsrc_root=None):
         require(owner_sha256 == digest(read(Path(__file__).resolve())),
                 'Node.js source owner changed during preparation')
         scoped = {'effective': effective, 'owner_sha256': owner_sha256}
-        record = sourceprep.write_prepared_tree_receipt(root, package=PACKAGE, identity=scoped)
+        record = prepared_receipt.write(root, package=PACKAGE, identity=scoped,
+                                        previous_root=previous_source)
         verify_source(root, exported)
         require(sourceprep.archive_hashes(read(archive)) == hashes, 'Node.js archive changed during preparation')
         publish_directory_noreplace(root, output)
@@ -194,6 +202,7 @@ def main():
     produce.add_argument('--output', required=True)
     produce.add_argument('--patch', required=True)
     produce.add_argument('--pkgsrc-root', help='absolute path to a prepared pkgsrc export')
+    produce.add_argument('--previous-source', help='previous prepared Node source for mtime reuse')
     check = sub.add_parser('verify-source')
     check.add_argument('--source', required=True)
     check.add_argument('--pkgsrc-root', required=True, help='current prepared pkgsrc export')
@@ -202,7 +211,11 @@ def main():
     selected = parser.parse_args(args)
     try:
         if selected.action == 'prepare':
-            record = prepare(selected.archive, selected.output, selected.patch, selected.git, selected.pkgsrc_root)
+            if selected.previous_source is not None:
+                require(getattr(sourceprep, 'PREPARED_TREE_REUSE_API', None) == 1,
+                        'selected SDK lacks prepared tree reuse API')
+            record = prepare(selected.archive, selected.output, selected.patch, selected.git,
+                             selected.pkgsrc_root, selected.previous_source)
         elif selected.action == 'verify-source':
             record = verify_source(selected.source, selected.pkgsrc_root)
         else:

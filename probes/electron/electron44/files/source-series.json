@@ -977,6 +977,31 @@
       "path": "chromium-snapshot-host-paxctl.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "electron-converter-modern-apis.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "electron-bsd-desktop-guards.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "electron-node26-consumer-apis.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "electron-crash-key-values.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-electron-pdf-drive-policy.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

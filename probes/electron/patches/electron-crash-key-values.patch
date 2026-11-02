@@ -1,0 +1,88 @@
+$NetBSD$
+
+Preserve Electron crash parameter values with non-Crashpad crash keys and
+include the upload list used by the generic platform branch.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/electron/shell/browser/api/electron_api_crash_reporter.cc
++++ b/electron/shell/browser/api/electron_api_crash_reporter.cc
+@@ -19,6 +19,7 @@
+ #include "base/strings/utf_string_conversions.h"
+ #include "base/trace_event/trace_event.h"
+ #include "chrome/common/chrome_paths.h"
++#include "components/upload_list/combining_upload_list.h"
+ #include "components/upload_list/crash_upload_list.h"
+ #include "components/upload_list/text_log_upload_list.h"
+ #include "electron/mas.h"
+@@ -51,7 +52,6 @@
+ #include "base/files/file_util.h"
+ #include "base/uuid.h"
+ #include "components/crash/core/common/crash_keys.h"
+-#include "components/upload_list/combining_upload_list.h"
+ #include "v8/include/v8-wasm-trap-handler-posix.h"
+ #include "v8/include/v8.h"
+ #endif
+--- a/electron/shell/common/crash_keys.cc
++++ b/electron/shell/common/crash_keys.cc
+@@ -24,13 +24,21 @@
+ 
+ namespace {
+ 
++constexpr size_t kMaxCrashKeyValueSize = 20320;
++
++#if !BUILDFLAG(USE_CRASHPAD_ANNOTATION)
++auto& GetExtraCrashKeyValues() {
++  static base::NoDestructor<std::map<std::string, std::string>> values;
++  return *values;
++}
++#endif
++
+ // Do NOT replace with base::circular_deque. CrashKeyString wraps a
+ // crashpad::Annotation that holds self-referential pointers and registers
+ // in a process-global linked list; relocating elements (as circular_deque
+ // does on growth) corrupts that list and hangs the crashpad handler.
+ // std::deque never relocates existing elements. See #50795.
+ auto& GetExtraCrashKeys() {
+-  constexpr size_t kMaxCrashKeyValueSize = 20320;
+   static_assert(kMaxCrashKeyValueSize < crashpad::Annotation::kValueMaxSize,
+                 "max crash key value length above what crashpad supports");
+   using CrashKeyString = crash_reporter::CrashKeyString<kMaxCrashKeyValueSize>;
+@@ -70,9 +78,19 @@
+     iter = crash_key_names.end() - 1;
+   }
+   GetExtraCrashKeys()[iter - crash_key_names.begin()].Set(value);
++#if !BUILDFLAG(USE_CRASHPAD_ANNOTATION)
++  if (value.empty()) {
++    GetExtraCrashKeyValues().erase(key);
++  } else {
++    GetExtraCrashKeyValues()[key] = value.substr(0, kMaxCrashKeyValueSize);
++  }
++#endif
+ }
+ 
+ void ClearCrashKey(const std::string& key) {
++#if !BUILDFLAG(USE_CRASHPAD_ANNOTATION)
++  GetExtraCrashKeyValues().erase(key);
++#endif
+   const auto& crash_key_names = GetExtraCrashKeyNames();
+ 
+   auto iter = std::ranges::find(crash_key_names, key);
+@@ -82,6 +100,9 @@
+ }
+ 
+ void GetCrashKeys(std::map<std::string, std::string>* keys) {
++#if !BUILDFLAG(USE_CRASHPAD_ANNOTATION)
++  keys->insert(GetExtraCrashKeyValues().begin(), GetExtraCrashKeyValues().end());
++#else
+   const auto& crash_key_names = GetExtraCrashKeyNames();
+   const auto& crash_keys = GetExtraCrashKeys();
+   int i = 0;
+@@ -91,6 +112,7 @@
+       keys->emplace(key, value.value());
+     }
+   }
++#endif
+ }
+ 
+ void SetCrashKeysFromCommandLine(const base::CommandLine& command_line) {

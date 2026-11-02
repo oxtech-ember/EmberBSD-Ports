@@ -1,0 +1,31 @@
+$NetBSD$
+
+Use Node embedder interfaces and keep Chromium tracing categories in scope.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/electron/shell/common/node_includes.h	2026-11-02 21:09:31.718177861 +0300
++++ b/electron/shell/common/node_includes.h	2026-11-02 21:09:31.741798486 +0300
+@@ -19,6 +19,10 @@
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wexit-time-destructors"
+ 
++// Chromium owns the global Perfetto categories in embedder translation units.
++#ifndef NODE_PERFETTO_NO_GLOBAL_CATEGORY_IMPORT
++#define NODE_PERFETTO_NO_GLOBAL_CATEGORY_IMPORT 1
++#endif
+ #include "env-inl.h"
+ #include "env.h"
+ #include "node.h"
+--- a/electron/shell/common/node_bindings.cc	2026-11-02 21:09:31.718487518 +0300
++++ b/electron/shell/common/node_bindings.cc	2026-11-02 21:09:31.741953377 +0300
+@@ -340,8 +340,7 @@
+   if (electron::IsRendererProcess()) {
+     // If the module is created by Node.js, use Node.js' handling.
+     if (env != nullptr) {
+-      ModuleWrap* wrap = ModuleWrap::GetFromModule(env, module);
+-      if (wrap)
++      if (ModuleWrap::IsNodeModule(env, module))
+         return ModuleWrap::HostInitializeImportMetaObjectCallback(context,
+                                                                   module, meta);
+     }

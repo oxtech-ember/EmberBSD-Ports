@@ -167,7 +167,7 @@ def _same_file_bytes(left, right):
                 return True
 
 
-def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=frozenset()):
+def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=frozenset(), updates=None):
     """Mirror source entries; verification may allow named regular GN outputs.
 
     Electron's GN build_electron_definitions action creates electron-api.json
@@ -200,6 +200,8 @@ def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=froz
             require(stat.S_ISREG(info.st_mode),
                     'generated mirrored view entry must be a regular file: ' + str(dest / name))
             local_entries.pop(name)
+        if set(local_entries) != names and updates is not None:
+            raise _LayoutChanged('mirrored view entries changed: ' + str(dest))
         require(set(local_entries) == names,
                 'mirrored view entries changed: ' + str(dest))
     else:
@@ -213,9 +215,12 @@ def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=froz
             if verify:
                 output_entry = local_entries[name]
                 output_info = output_entry.stat(follow_symlinks=False)
-                require(stat.S_ISLNK(output_info.st_mode) and
-                        os.readlink(output_entry.path) == source_link,
-                        'mirrored view link changed: ' + str(output))
+                same = (stat.S_ISLNK(output_info.st_mode) and
+                        os.readlink(output_entry.path) == source_link)
+                if not same and updates is not None:
+                    _add_update(updates, output, 'link', source_link, item.path, source_info)
+                else:
+                    require(same, 'mirrored view link changed: ' + str(output))
             else:
                 output.symlink_to(source_link)
         elif stat.S_ISDIR(source_info.st_mode):
@@ -223,7 +228,7 @@ def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=froz
                 output_info = local_entries[name].stat(follow_symlinks=False)
                 require(stat.S_ISDIR(output_info.st_mode),
                         'mirrored view directory changed: ' + str(output))
-            mirror(item.path, output, verify=verify)
+            mirror(item.path, output, verify=verify, updates=updates)
         else:
             require(stat.S_ISREG(source_info.st_mode),
                     'unsupported mirrored view file type: ' + str(item.path))
@@ -238,11 +243,15 @@ def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=froz
             output_info = output_entry.stat(follow_symlinks=False)
             same_inode = ((source_info.st_ino, source_info.st_dev) ==
                           (output_info.st_ino, output_info.st_dev))
-            require(stat.S_ISREG(output_info.st_mode) and
+            same = (stat.S_ISREG(output_info.st_mode) and
+                    stat.S_IMODE(source_info.st_mode) == stat.S_IMODE(output_info.st_mode) and
                     (same_inode or
                      (source_info.st_size == output_info.st_size and
-                      _same_file_bytes(item.path, output_entry.path))),
-                    'mirrored view file changed: ' + str(output))
+                      _same_file_bytes(item.path, output_entry.path))))
+            if not same and updates is not None:
+                _add_update(updates, output, 'file', item.path, item.path, source_info)
+            else:
+                require(same, 'mirrored view file changed: ' + str(output))
 
     _require_directory_unchanged(origin, source_identity)
     if verify:
@@ -467,13 +476,15 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     return destination / 'src'
 
 
-def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None):
+def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None, _updates=None, _refresh=False):
     source = Path(source).resolve(strict=True)
     protobuf = Path(protobuf).resolve(strict=True) if protobuf is not None else None
     providers = {name: Path(value).resolve(strict=True) for name, value in
                  (('electron_node', node), ('perfetto', perfetto)) if value is not None}
     v8 = Path(v8).resolve(strict=True) if v8 is not None else None
     destination = Path(destination)
+    require(_refresh or not os.path.lexists(_refresh_marker(destination)),
+            'source view refresh is incomplete; rerun refresh')
     require(destination.is_dir() and not destination.is_symlink(), 'source view must be a local directory')
     destination = destination.resolve(strict=True)
     def check(origin, dest, omit, extra):
@@ -487,21 +498,21 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
                     'source view link changed: ' + str(link))
     root = destination / 'src'
     root_special = {'third_party', 'out'} | ({'v8'} if v8 else set())
-    mirror(source, root, verify=True, omit=root_special | ({'electron'} if node_modules is not None else set()))
+    mirror(source, root, verify=True, omit=root_special | ({'electron'} if node_modules is not None else set()), updates=_updates)
     if node_modules is not None:
         mirror(source / 'electron', root / 'electron', verify=True, omit={'node_modules'},
-               generated_files={'electron-api.json', 'electron.d.ts'})
+               generated_files={'electron-api.json', 'electron.d.ts'}, updates=_updates)
     require({item.name for item in root.iterdir()} >= root_special, 'source view root entries changed')
     if v8:
-        require((root / 'v8').is_symlink() and os.readlink(root / 'v8') == str(v8),
-                'common V8 source link changed')
+        _check_provider_link(root / 'v8', v8, _updates)
     require((root / 'out').is_dir() and not (root / 'out').is_symlink(),
             'source view out must be local')
     replaced = ({'protobuf'} if protobuf else set()) | set(providers) | ({'abseil-cpp'} if system_abseil else set()) | ({'icu'} if system_icu else set()) | ({'re2'} if system_re2 else set()) | mirrored(source / 'third_party')
     check(source / 'third_party', root / 'third_party', replaced, replaced)
     for name in mirrored(source / 'third_party'):
         mirror(source / 'third_party' / name, root / 'third_party' / name, verify=True,
-               omit={'node_modules'} if name == 'node' and node_modules is not None else frozenset())
+               omit={'node_modules'} if name == 'node' and node_modules is not None else frozenset(),
+               updates=_updates)
     if node_modules is not None:
         link = root / 'third_party/node/node_modules'
         require(link.is_symlink() and os.readlink(link) == str(Path(node_modules).resolve(strict=True)),
@@ -521,8 +532,7 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
                         replacements, shim_masks(replacements), verify=True)
     for name, path in providers.items():
         link = root / 'third_party' / name
-        require(link.is_symlink() and os.readlink(link) == str(path),
-                'common source link changed: ' + str(link))
+        _check_provider_link(link, path, _updates)
     if protobuf:
         path = root / 'third_party/protobuf'
         common = {'src', 'third_party'} | ({'python'} if protobuf_protoc else set())
@@ -536,6 +546,183 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     return root
 
 
+
+class _LayoutChanged(ValueError):
+    """The leaf-only refresh cannot represent this structural source change."""
+
+
+def _refresh_marker(destination):
+    destination = Path(destination)
+    return destination.parent / ('.' + destination.name + '-refresh-incomplete')
+
+
+def _leaf_identity(path, *, dir_fd=None):
+    info = os.stat(path, dir_fd=dir_fd, follow_symlinks=False)
+    return (info.st_dev, info.st_ino, info.st_mode, info.st_size,
+            info.st_mtime_ns, info.st_ctime_ns)
+
+
+def _add_update(updates, output, kind, value, origin=None, info=None):
+    previous = os.lstat(output)
+    require(stat.S_ISREG(previous.st_mode) or stat.S_ISLNK(previous.st_mode),
+            'incremental view leaf has an unsupported type: ' + str(output))
+    source_identity = None
+    if origin is not None:
+        source_identity = (info.st_dev, info.st_ino, info.st_mode, info.st_size,
+                           info.st_mtime_ns, info.st_ctime_ns)
+    updates.append((Path(output), kind, str(value), origin, source_identity,
+                    _leaf_identity(output)))
+
+
+def _check_provider_link(link, target, updates):
+    require(link.is_symlink(), 'common source must remain a link: ' + str(link))
+    if os.readlink(link) != str(target):
+        if updates is None:
+            raise ValueError('common source link changed: ' + str(link))
+        _add_update(updates, link, 'link', target)
+
+
+def _copy_leaf(source, destination, *, hardlink=False):
+    if source.is_symlink():
+        destination.symlink_to(os.readlink(source))
+    else:
+        if hardlink:
+            try:
+                os.link(source, destination)
+                return
+            except OSError:
+                pass
+        import shutil
+        shutil.copy2(source, destination)
+
+
+def _refresh_leaves(source, protobuf, destination, sources):
+    """Update only verified leaves under the caller's exclusive source lock.
+
+    Ordinary failures restore the previous leaves. An interrupted process
+    leaves a marker which refuses ordinary verification. A later refresh
+    finishes forward from verified source inputs; it does not trust a saved
+    file-operation journal. The controller also guards the GN configuration.
+    """
+    import tempfile
+    from contextlib import ExitStack
+
+    destination = destination.resolve(strict=True)
+    marker = _refresh_marker(destination)
+    recovering = os.path.lexists(marker)
+    if recovering:
+        require(stat.S_ISREG(os.lstat(marker).st_mode) and
+                marker.read_text() == 'source-view-leaves-v1\n',
+                'invalid source view refresh marker')
+    updates = []
+    verify(source, protobuf, destination, **sources, _updates=updates, _refresh=True)
+    if not updates:
+        if recovering:
+            marker.unlink()
+        return destination / 'src'
+
+    with tempfile.TemporaryDirectory(prefix='.source-view-leaves-',
+                                     dir=destination.parent) as temporary, ExitStack() as handles:
+        staged = Path(temporary)
+        parents = {}
+        parent_fds = {}
+        old_states = {}
+        work_fd = os.open(destination.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        handles.callback(os.close, work_fd)
+        new_identities = []
+        for index, (output, kind, value, origin, expected_source, expected_old) in enumerate(updates):
+            old_key = expected_old[:2]
+            expected_old = old_states.get(old_key, expected_old)
+            parent = output.parent
+            while True:
+                require(parent.is_relative_to(destination), 'view update escapes its root')
+                info = os.lstat(parent)
+                require(stat.S_ISDIR(info.st_mode), 'view update parent is not local')
+                parents[parent] = (info.st_dev, info.st_ino)
+                if parent == destination:
+                    break
+                parent = parent.parent
+            if output.parent not in parent_fds:
+                fd = os.open(output.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                handles.callback(os.close, fd)
+                info = os.fstat(fd)
+                require((info.st_dev, info.st_ino) == parents[output.parent],
+                        'view update parent changed while opening')
+                parent_fds[output.parent] = fd
+            require(_leaf_identity(output) == expected_old, 'view leaf changed before staging')
+            if origin is not None:
+                require(_leaf_identity(origin) == expected_source, 'source leaf changed before staging')
+            new = staged / ('new-' + str(index))
+            if kind == 'link':
+                new.symlink_to(value)
+            else:
+                _copy_leaf(Path(value), new)
+            if origin is not None:
+                require(_leaf_identity(origin) == expected_source, 'source leaf changed during staging')
+            _copy_leaf(output, staged / ('old-' + str(index)), hardlink=True)
+            current_old = _leaf_identity(output)
+            # A hardlink backup changes ctime and the link count, not payload.
+            require(current_old[:5] == expected_old[:5], 'view leaf changed during staging')
+            updates[index] = (output, kind, value, origin, expected_source, current_old)
+            old_states[old_key] = current_old
+            new_identities.append(_leaf_identity(new)[:5])
+
+        if not recovering:
+            fd = os.open(marker.name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                         0o600, dir_fd=work_fd)
+            with os.fdopen(fd, 'w') as handle:
+                handle.write('source-view-leaves-v1\n')
+        installed = []
+        try:
+            for index, (output, kind, value, origin, expected_source, expected_old) in enumerate(updates):
+                old_key = expected_old[:2]
+                expected_old = old_states[old_key]
+                for parent, expected in parents.items():
+                    info = os.lstat(parent)
+                    require(stat.S_ISDIR(info.st_mode) and
+                            (info.st_dev, info.st_ino) == expected,
+                            'view update parent changed')
+                require(_leaf_identity(output) == expected_old, 'view leaf changed before install')
+                if origin is not None:
+                    require(_leaf_identity(origin) == expected_source, 'source leaf changed before install')
+                installed.append(index)
+                fd = parent_fds[output.parent]
+                os.replace(staged / ('new-' + str(index)), output.name, dst_dir_fd=fd)
+                require(_leaf_identity(output.name, dir_fd=fd)[:5] == new_identities[index],
+                        'installed source view leaf changed')
+                # Installing one name can change ctime of other names for
+                # the old inode. Retain the observed identity of that inode.
+                backup_identity = _leaf_identity(staged / ('old-' + str(index)))
+                if backup_identity[:2] == old_key:
+                    old_states[old_key] = backup_identity
+                else:
+                    for remaining in updates[index + 1:]:
+                        if remaining[5][:2] == old_key:
+                            sibling = remaining[0]
+                            observed = _leaf_identity(sibling.name, dir_fd=parent_fds[sibling.parent])
+                            require(observed[:5] == remaining[5][:5],
+                                    'view alias changed during install')
+                            old_states[old_key] = observed
+                            break
+        except BaseException:
+            for index in reversed(installed):
+                output = updates[index][0]
+                os.replace(staged / ('old-' + str(index)), output.name,
+                           dst_dir_fd=parent_fds[output.parent])
+            local = True
+            for parent, expected in parents.items():
+                try:
+                    info = os.lstat(parent)
+                    local = local and stat.S_ISDIR(info.st_mode) and (info.st_dev, info.st_ino) == expected
+                except OSError:
+                    local = False
+            if not recovering and local:
+                os.unlink(marker.name, dir_fd=work_fd)
+            raise
+        os.unlink(marker.name, dir_fd=work_fd)
+    return destination / 'src'
+
+
 def refresh(source, protobuf, destination, **sources):
     """Recompose generated inputs while keeping the sibling Ninja output intact.
 
@@ -547,6 +734,25 @@ def refresh(source, protobuf, destination, **sources):
     destination = Path(destination)
     require(destination.is_absolute(), 'source view destination must be absolute')
     resolved = destination.resolve()
+    marker = _refresh_marker(destination)
+    if os.path.lexists(marker):
+        require(stat.S_ISREG(os.lstat(marker).st_mode) and
+                marker.read_text() == 'source-view-leaves-v1\n',
+                'invalid source view refresh marker')
+    source = Path(source).resolve(strict=True)
+    require((source / '.gn').is_file(), 'incomplete Electron source')
+    if protobuf is not None:
+        require((source / 'third_party/protobuf').is_dir() and
+                (Path(protobuf) / 'src').is_dir() and
+                (Path(protobuf) / 'third_party').is_dir(), 'incomplete common Protobuf source')
+    if sources.get('v8') is not None:
+        v8 = Path(sources['v8']).resolve(strict=True)
+        require((v8 / 'BUILD.gn').is_file() and (v8 / 'include/v8-version.h').is_file(),
+                'incomplete common V8 source')
+    for name, provider_marker in (('node', 'node.gni'), ('perfetto', 'gn/perfetto.gni')):
+        if sources.get(name) is not None:
+            provider = Path(sources[name]).resolve(strict=True)
+            require((provider / provider_marker).is_file(), 'incomplete common source: ' + name)
     for value in (source, protobuf, *(sources.get(name) for name in
                   ('node', 'perfetto', 'v8', 'node_modules'))):
         if value is not None:
@@ -565,6 +771,11 @@ def refresh(source, protobuf, destination, **sources):
         require(local_out.is_dir() and not local_out.is_symlink() and
                 not any(local_out.iterdir()),
                 'source view contains build outputs; use the sibling work/out directory')
+    if existing:
+        try:
+            return _refresh_leaves(source, protobuf, destination, sources)
+        except _LayoutChanged:
+            pass
     with tempfile.TemporaryDirectory(prefix='.source-view-refresh-',
                                      dir=destination.parent) as temporary:
         scratch = Path(temporary)
@@ -580,4 +791,10 @@ def refresh(source, protobuf, destination, **sources):
             if existing:
                 previous.rename(destination)
             raise
+    marker = _refresh_marker(destination)
+    if os.path.lexists(marker):
+        require(stat.S_ISREG(os.lstat(marker).st_mode) and
+                marker.read_text() == 'source-view-leaves-v1\n',
+                'invalid source view refresh marker')
+        marker.unlink()
     return destination / 'src'

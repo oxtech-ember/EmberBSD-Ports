@@ -28,6 +28,12 @@ in the caller-selected export; unrelated package changes do not invalidate it.
 `verify-payload` checks only the recorded payload and makes no claim about the
 current recipe. Patches must not be applied a second time.
 
+For incremental preparation, pass `--previous-source` with an absolute path to
+a valid previous prepared Node tree, even if the recipe version changed. The
+new output remains separate, and the previous tree is read-only; the caller
+must hold the appropriate locks and drain writers. Identical files retain their
+previous mtimes; changed inputs retain fresh mtimes.
+
 ## Configure shared inputs
 
 `configure-inputs.py` prepares a writable Node source copy for either the common

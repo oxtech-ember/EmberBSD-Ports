@@ -1,0 +1,112 @@
+$NetBSD$
+
+Adapt Electron converters and printing to current common interfaces.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/electron/shell/common/gin_converters/std_converter.h	2026-11-02 21:11:16.267695815 +0300
++++ b/electron/shell/common/gin_converters/std_converter.h	2026-11-02 21:11:16.304163363 +0300
+@@ -58,9 +58,10 @@
+   }
+ };
+ 
+-#if !BUILDFLAG(IS_LINUX)
+-template <>
+-struct Converter<unsigned long> {  // NOLINT(runtime/int)
++template <typename T>
++  requires(std::is_same_v<T, unsigned long> &&  // NOLINT(runtime/int)
++           !std::is_same_v<T, uint32_t> && !std::is_same_v<T, uint64_t>)
++struct Converter<T> {
+   static v8::Local<v8::Value> ToV8(v8::Isolate* isolate,
+                                    unsigned long val) {  // NOLINT(runtime/int)
+     return v8::Integer::New(isolate, val);
+@@ -75,7 +76,6 @@
+     return true;
+   }
+ };
+-#endif
+ 
+ template <>
+ struct Converter<std::nullptr_t> {
+--- a/electron/shell/browser/printing/print_to_pdf.cc	2026-11-02 21:11:16.277045026 +0300
++++ b/electron/shell/browser/printing/print_to_pdf.cc	2026-11-02 21:11:16.304340780 +0300
+@@ -10,6 +10,7 @@
+ #include <optional>
+ #include <string>
+ #include <utility>
++#include <variant>
+ 
+ #include "base/containers/circular_deque.h"
+ #include "base/containers/fixed_flat_map.h"
+@@ -32,7 +33,6 @@
+ #include "shell/common/gin_helper/options_reader.h"
+ #include "shell/common/gin_helper/promise.h"
+ #include "shell/common/node_util.h"
+-#include "third_party/abseil-cpp/absl/types/variant.h"
+ #include "v8/include/v8-exception.h"
+ #include "v8/include/v8-primitive.h"
+ 
+@@ -330,16 +330,16 @@
+       return Pop(frame_tree);
+     }
+     const PdfRequest& r = job.request;
+-    absl::variant<printing::mojom::PrintPagesParamsPtr, std::string> params =
++    std::variant<printing::mojom::PrintPagesParamsPtr, std::string> params =
+         print_to_pdf::GetPrintPagesParams(
+             rfh->GetLastCommittedURL(), r.landscape, r.display_header_footer,
+             r.print_background, r.scale, r.paper_width, r.paper_height,
+             r.margin_top, r.margin_bottom, r.margin_left, r.margin_right,
+             r.header_template, r.footer_template, r.prefer_css_page_size,
+             r.generate_tagged_pdf, r.generate_document_outline);
+-    if (absl::holds_alternative<std::string>(params)) {
++    if (std::holds_alternative<std::string>(params)) {
+       job.promise.RejectWithErrorMessage(base::StrCat(
+-          {"Invalid print parameters: ", absl::get<std::string>(params)}));
++          {"Invalid print parameters: ", std::get<std::string>(params)}));
+       return Pop(frame_tree);
+     }
+     auto* manager = PrintViewManagerElectron::FromWebContents(
+@@ -358,7 +358,7 @@
+       return Pop(frame_tree);
+     }
+     printing::mojom::PrintPagesParamsPtr pages =
+-        std::move(absl::get<printing::mojom::PrintPagesParamsPtr>(params));
++        std::move(std::get<printing::mojom::PrintPagesParamsPtr>(params));
+     pages->params->document_cookie = r.request_id;
+     manager->PrintToPdf(
+         rfh, r.page_ranges, std::move(pages),
+--- a/electron/shell/browser/ui/views/global_menu_bar_x11.cc	2026-11-02 21:11:16.286574571 +0300
++++ b/electron/shell/browser/ui/views/global_menu_bar_x11.cc	2026-11-02 21:11:16.304473656 +0300
+@@ -26,9 +26,7 @@
+ // libdbusmenu-glib types
+ using DbusmenuMenuitem = struct _DbusmenuMenuitem;
+ using dbusmenu_menuitem_new_func = DbusmenuMenuitem* (*)();
+-using dbusmenu_menuitem_new_with_id_func = DbusmenuMenuitem* (*)(int id);
+ 
+-using dbusmenu_menuitem_get_id_func = int (*)(DbusmenuMenuitem* item);
+ using dbusmenu_menuitem_get_children_func = GList* (*)(DbusmenuMenuitem* item);
+ using dbusmenu_menuitem_child_append_func =
+     DbusmenuMenuitem* (*)(DbusmenuMenuitem* parent, DbusmenuMenuitem* child);
+@@ -62,9 +60,6 @@
+ 
+ // DbusmenuMenuItem methods:
+ dbusmenu_menuitem_new_func menuitem_new = nullptr;
+-dbusmenu_menuitem_new_with_id_func menuitem_new_with_id = nullptr;
+-dbusmenu_menuitem_get_id_func menuitem_get_id = nullptr;
+-dbusmenu_menuitem_get_children_func menuitem_get_children = nullptr;
+ dbusmenu_menuitem_get_children_func menuitem_take_children = nullptr;
+ dbusmenu_menuitem_child_append_func menuitem_child_append = nullptr;
+ dbusmenu_menuitem_property_set_func menuitem_property_set = nullptr;
+@@ -107,12 +102,6 @@
+   // DbusmenuMenuItem methods.
+   menuitem_new = reinterpret_cast<dbusmenu_menuitem_new_func>(
+       dlsym(dbusmenu_lib, "dbusmenu_menuitem_new"));
+-  menuitem_new_with_id = reinterpret_cast<dbusmenu_menuitem_new_with_id_func>(
+-      dlsym(dbusmenu_lib, "dbusmenu_menuitem_new_with_id"));
+-  menuitem_get_id = reinterpret_cast<dbusmenu_menuitem_get_id_func>(
+-      dlsym(dbusmenu_lib, "dbusmenu_menuitem_get_id"));
+-  menuitem_get_children = reinterpret_cast<dbusmenu_menuitem_get_children_func>(
+-      dlsym(dbusmenu_lib, "dbusmenu_menuitem_get_children"));
+   menuitem_take_children =
+       reinterpret_cast<dbusmenu_menuitem_get_children_func>(
+           dlsym(dbusmenu_lib, "dbusmenu_menuitem_take_children"));

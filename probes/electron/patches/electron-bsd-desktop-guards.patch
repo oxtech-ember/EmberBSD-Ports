@@ -1,0 +1,399 @@
+Origin: EmberBSD (AI-assisted)
+Status: downstream portability fix
+
+Align BSD desktop guards with the already-selected XDG, X11, GTK and Views implementations.
+
+--- a/electron/shell/common/electron_paths.h
++++ b/electron/shell/common/electron_paths.h
+@@ -31,7 +31,7 @@
+   DIR_RECENT,  // Directory where recent files live
+ #endif
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   DIR_APP_DATA,  // Application Data directory under the user profile.
+ #endif
+ 
+--- a/electron/shell/common/electron_paths.cc
++++ b/electron/shell/common/electron_paths.cc
+@@ -14,7 +14,7 @@
+ #include "shell/common/platform_util.h"
+ #include "shell/common/thread_restrictions.h"
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+ #include "base/nix/xdg_util.h"
+ #endif
+ 
+@@ -64,7 +64,7 @@
+       create_dir = true;
+       break;
+     }
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+     case DIR_APP_DATA: {
+       auto env = base::Environment::Create();
+       cur = base::nix::GetXDGDirectory(
+--- a/electron/shell/common/platform_util.h
++++ b/electron/shell/common/platform_util.h
+@@ -60,7 +60,7 @@
+                          bool enabled);
+ #endif
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+ // Returns a desktop name (e.g. 'myapp.desktop') if available.
+ // Unlike libgtkui, this does *not* use "chromium-browser.desktop" as a
+ // fallback.
+--- a/electron/shell/browser/browser_linux.cc
++++ b/electron/shell/browser/browser_linux.cc
+@@ -8,7 +8,7 @@
+ 
+ #include <string_view>
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+ #include <gio/gdesktopappinfo.h>
+ #include <gio/gio.h>
+ #include <gtk/gtk.h>
+--- a/electron/shell/browser/printing/printing_utils.cc
++++ b/electron/shell/browser/printing/printing_utils.cc
+@@ -31,7 +31,7 @@
+ #include <ApplicationServices/ApplicationServices.h>
+ #endif
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+ #include <gtk/gtk.h>
+ #endif
+ 
+--- a/electron/shell/browser/native_window_views.h
++++ b/electron/shell/browser/native_window_views.h
+@@ -33,7 +33,7 @@
+ class Arguments;
+ }  // namespace gin
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+ namespace views {
+ class FrameViewLinux;
+ }  // namespace views
+@@ -41,7 +41,7 @@
+ 
+ namespace electron {
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+ class GlobalMenuBarX11;
+ #endif
+ 
+@@ -185,7 +185,7 @@
+                     LPARAM l_param,
+                     LRESULT* result);
+   void SetIcon(HICON small_icon, HICON app_icon);
+-#elif BUILDFLAG(IS_LINUX)
++#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   void SetIcon(const gfx::ImageSkia& icon);
+ #endif
+ 
+@@ -208,7 +208,7 @@
+     return overlay_symbol_color_;
+   }
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   views::FrameViewLinux* GetFrameViewLinux() const;
+   [[nodiscard]] bool ignore_mouse_events() const {
+     return ignore_mouse_events_;
+@@ -306,7 +306,7 @@
+   // events from resizing the window.
+   extensions::SizeConstraints old_size_constraints_;
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   std::unique_ptr<GlobalMenuBarX11> global_menu_bar_;
+ 
+   // Set while the window is disabled; running it re-enables event dispatch.
+@@ -325,7 +325,7 @@
+   // This value is determined when the window is created.
+   bool rounded_corner_ = true;
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   bool ignore_mouse_events_ = false;
+ #endif
+ 
+--- a/electron/shell/browser/native_window_views.cc
++++ b/electron/shell/browser/native_window_views.cc
+@@ -55,7 +55,7 @@
+ #include "ui/views/window/non_client_view.h"
+ #include "ui/wm/core/window_util.h"
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+ #include "base/notimplemented.h"
+ #include "shell/browser/browser.h"
+ #include "shell/browser/linux/launcher_entry.h"
+@@ -298,7 +298,7 @@
+   // If a client frame, we need to draw our own shadows.
+   if (transparent() || has_client_frame())
+     params.opacity = InitParams::WindowOpacity::kTranslucent;
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   // Resize handles and shadows on frameless windows need translucent insets.
+   if (!has_frame())
+     params.opacity = InitParams::WindowOpacity::kTranslucent;
+@@ -317,7 +317,7 @@
+     params.parent = parent->GetNativeWindow();
+ 
+   params.native_widget = new ElectronDesktopNativeWidgetAura{this, widget()};
+-#elif BUILDFLAG(IS_LINUX)
++#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   // Set the WM_CLASS and XDG App ID to the same value
+   // for best compatibility with both X11 and Wayland.
+   const auto app_id = platform_util::GetXdgAppId();
+@@ -347,7 +347,7 @@
+   std::string window_type;
+   options.Get(options::kType, &window_type);
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   // Set _GTK_THEME_VARIANT to dark if we have "dark-theme" option set.
+   if (options.ValueOrDefault(options::kDarkTheme, false))
+     SetGTKDarkThemeEnabled(true);
+@@ -423,7 +423,7 @@
+   ::SetWindowLong(GetAcceleratedWidget(), GWL_EXSTYLE, ex_style);
+ #endif
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   options.Get(options::kRoundedCorners, &rounded_corner_);
+ #endif
+ 
+@@ -543,7 +543,7 @@
+     auto* fv = widget()->non_client_view()->frame_view();
+     if (auto* frameless = views::AsViewClass<FramelessView>(fv)) {
+       frameless->InvalidateCaptionButtons();
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+     } else if (auto* fvl = views::AsViewClass<views::FrameViewLinux>(fv)) {
+       fvl->InvalidateLayout();
+       fvl->SchedulePaint();
+@@ -553,7 +553,7 @@
+ }
+ 
+ void NativeWindowViews::SetGTKDarkThemeEnabled(bool use_dark_theme) {
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   if (x11_util::IsX11()) {
+     const std::string color = use_dark_theme ? "dark" : "light";
+     auto* connection = x11::Connection::Get();
+@@ -621,7 +621,7 @@
+ 
+   NotifyWindowShow();
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   if (global_menu_bar_)
+     global_menu_bar_->OnWindowMapped();
+ 
+@@ -639,7 +639,7 @@
+ 
+   NotifyWindowShow();
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   if (global_menu_bar_)
+     global_menu_bar_->OnWindowMapped();
+ 
+@@ -658,7 +658,7 @@
+ 
+   NotifyWindowHide();
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   if (global_menu_bar_)
+     global_menu_bar_->OnWindowUnmapped();
+ #endif
+@@ -689,7 +689,7 @@
+ bool NativeWindowViews::IsEnabled() const {
+ #if BUILDFLAG(IS_WIN)
+   return ::IsWindowEnabled(GetAcceleratedWidget());
+-#elif BUILDFLAG(IS_LINUX)
++#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   return !enable_event_listening_;
+ #endif
+ }
+@@ -913,7 +913,7 @@
+   }
+ #endif
+ 
+-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   // On Linux and Windows the minimum and maximum size should be updated with
+   // window size when window is not resizable.
+   if (!CanResize()) {
+@@ -968,7 +968,7 @@
+   // of this to determine whether native widget has initialized.
+   if (widget() && widget()->widget_delegate())
+     widget()->OnSizeConstraintsChanged();
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   if (resizable_)
+     old_size_constraints_ = GetSizeConstraints();
+ #endif
+@@ -1188,7 +1188,7 @@
+     return false;
+   }
+   return !(info.fState & MFS_DISABLED);
+-#elif BUILDFLAG(IS_LINUX)
++#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   return true;
+ #endif
+ }
+@@ -1328,7 +1328,7 @@
+   InvalidateRect(GetAcceleratedWidget(), nullptr, 1);
+ #endif
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   // Widget and root view need to be transparent for CSD to draw shadow regions
+   // and custom edges and corners. The web contents view will still be
+   // painted with the true background color, which is cached in state.
+@@ -1351,7 +1351,7 @@
+   // so we no longer call wm::SetShadowElevation and similar to avoid
+   // artifacts. https://github.com/electron/electron/issues/51456.
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   auto* efvl = views::AsViewClass<ElectronFrameViewLinux>(
+       widget()->non_client_view()->frame_view());
+   if (efvl) {
+@@ -1385,7 +1385,7 @@
+   HWND hwnd = GetAcceleratedWidget();
+   SetLayered();
+   ::SetLayeredWindowAttributes(hwnd, 0, bounded_opacity * 255, LWA_ALPHA);
+-#elif BUILDFLAG(IS_LINUX)
++#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   widget()->SetOpacity(static_cast<float>(bounded_opacity));
+ #endif
+ }
+@@ -1476,7 +1476,7 @@
+ }
+ 
+ void NativeWindowViews::SetMenu(ElectronMenuModel* menu_model) {
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   // Remove global menu bar.
+   bool try_global_menu_bar = true;
+   if (global_menu_bar_ && menu_model == nullptr) {
+@@ -1544,7 +1544,7 @@
+ void NativeWindowViews::SetParentWindow(NativeWindow* parent) {
+   NativeWindow::SetParentWindow(parent);
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   if (x11_util::IsX11()) {
+     auto* connection = x11::Connection::Get();
+     connection->SetProperty(
+@@ -1598,7 +1598,7 @@
+   if (auto* frameless = views::AsViewClass<FramelessView>(frame_view))
+     return frameless->RestoredFrameBorderInsets();
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   if (auto* fvl = views::AsViewClass<views::FrameViewLinux>(frame_view))
+     return fvl->GetRestoredFrameBorderInsets();
+ #endif
+@@ -1734,7 +1734,7 @@
+ #if BUILDFLAG(IS_WIN)
+   window_handle =
+       reinterpret_cast<content::DesktopMediaID::Id>(accelerated_widget);
+-#elif BUILDFLAG(IS_LINUX)
++#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   window_handle = static_cast<uint32_t>(accelerated_widget);
+ #endif
+   aura::WindowTreeHost* const host =
+@@ -1864,7 +1864,7 @@
+   SendMessage(hwnd, WM_SETICON, ICON_BIG,
+               reinterpret_cast<LPARAM>(app_icon_.get()));
+ }
+-#elif BUILDFLAG(IS_LINUX)
++#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+ void NativeWindowViews::SetIcon(const gfx::ImageSkia& icon) {
+   auto* tree_host = views::DesktopWindowTreeHostLinux::GetHostForWidget(
+       GetAcceleratedWidget());
+@@ -1985,7 +1985,7 @@
+ bool NativeWindowViews::CanMinimize() const {
+ #if BUILDFLAG(IS_WIN)
+   return minimizable_;
+-#elif BUILDFLAG(IS_LINUX)
++#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   return true;
+ #endif
+ }
+@@ -2052,7 +2052,7 @@
+ #endif
+ }
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+ views::FrameViewLinux* NativeWindowViews::GetFrameViewLinux() const {
+   auto* ncv = widget()->non_client_view();
+   if (!ncv)
+--- a/electron/BUILD.gn
++++ b/electron/BUILD.gn
+@@ -696,6 +696,10 @@
+   if (is_linux) {
+     sources += filenames.lib_sources_linux
+   }
++  if (is_netbsd) {
++    sources -= [ "shell/browser/relauncher_linux.cc" ]
++    sources += [ "shell/browser/relauncher_mac.cc" ]
++  }
+   if (!is_mac) {
+     sources += filenames.lib_sources_views
+   }
+--- a/electron/shell/browser/native_window.cc
++++ b/electron/shell/browser/native_window.cc
+@@ -40,7 +40,7 @@
+ 
+ #if BUILDFLAG(IS_WIN)
+ #include "shell/browser/ui/views/frameless_view.h"
+-#elif BUILDFLAG(IS_LINUX)
++#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+ #include "shell/browser/ui/views/electron_frame_view_linux.h"
+ #endif
+ 
+--- a/electron/shell/browser/api/electron_api_desktop_capturer.cc
++++ b/electron/shell/browser/api/electron_api_desktop_capturer.cc
+@@ -55,7 +55,7 @@
+ #endif
+ 
+ namespace {
+-#if BUILDFLAG(IS_LINUX)
++#if !BUILDFLAG(IS_WIN) && BUILDFLAG(SUPPORTS_OZONE_X11)
+ // Private function in ui/base/x/x11_display_util.cc
+ base::flat_map<x11::RandR::Output, int> GetMonitors(
+     std::pair<uint32_t, uint32_t> version,
+--- a/electron/shell/browser/api/electron_api_web_contents.cc
++++ b/electron/shell/browser/api/electron_api_web_contents.cc
+@@ -205,7 +205,7 @@
+ #include "ui/linux/linux_ui.h"
+ #endif
+ 
+-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD) || BUILDFLAG(IS_WIN)
+ #include "ui/aura/client/focus_client.h"
+ #include "ui/aura/window.h"
+ #include "ui/gfx/font_render_params.h"
+--- a/electron/shell/browser/relauncher_mac.cc
++++ b/electron/shell/browser/relauncher_mac.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "shell/browser/relauncher.h"
+ 
++#include <fcntl.h>
+ #include <sys/event.h>
+ #include <sys/time.h>
+ #include <sys/types.h>

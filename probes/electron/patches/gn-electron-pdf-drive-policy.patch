@@ -1,0 +1,17 @@
+# Origin: EmberBSD (AI-assisted), not submitted upstream.
+# Restore Electron's upstream PDF Save to Drive policy. Its BUILD.gn imports
+# pdf/features.gni, whose current default follows enable_pdf. The PDF viewer
+# and local printing stay enabled.
+--- a/electron/build/args/all.gn
++++ b/electron/build/args/all.gn
+@@ -85,6 +85,10 @@
+ # Expose public V8 symbols for native modules.
+ v8_expose_public_symbols = true
+ 
++# Electron does not provide Chrome account and survey services.
++# Keep its upstream Save to Drive setting when PDF support is enabled.
++enable_pdf_save_to_drive = false
++
+ # Blink's crowdsourced V8 compile hints producer randomly selects 0.5% of
+ # renderer processes (Windows only) to compile every http(s) script from
+ # source -- deliberately not consuming an existing code cache, and neither
