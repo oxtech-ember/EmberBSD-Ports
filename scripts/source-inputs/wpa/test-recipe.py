@@ -8,6 +8,7 @@ import importlib.util
 from pathlib import Path
 import shutil
 import tempfile
+from types import SimpleNamespace
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--sdk-source', required=True)
@@ -53,4 +54,38 @@ with tempfile.TemporaryDirectory(dir=args.work) as tmp:
         except source.SDKError:
             continue
         raise AssertionError(case + ' was accepted')
+
+# A legacy receipt verified against the caller's validated export must reuse
+# that export when comparing its prepared payload.  This keeps verification
+# from launching a second pkgsrc export in the same producer run.
+legacy = {
+    'export': {
+        'api': 1,
+        'package': source.PACKAGE,
+        'export_inputs_sha256': 'a' * 64,
+        'upstream': 'b' * 40,
+    },
+    'owner_sha256': 'c' * 64,
+}
+tree_sha256 = 'd' * 64
+validated_export = Path('/already/validated/pkgsrc')
+current_identity = {'current': 'identity'}
+captured = {}
+selector = SimpleNamespace(shared_export=lambda *args: validated_export)
+source.identity_module = lambda: selector
+source.source_identity = lambda git: current_identity
+source.jsonio = SimpleNamespace(read_json=lambda path: {'identity': legacy,
+                                                          'tree_sha256': tree_sha256})
+source.sourceprep = SimpleNamespace(PREPARED_TREE_RECEIPT='receipt.json',
+                                    validate_prepared_tree=lambda *args, **kwargs:
+                                    {'identity': legacy, 'tree_sha256': tree_sha256})
+
+def capture_prepare(*args, **kwargs):
+    captured['exported'] = kwargs.get('exported')
+    return {'tree_sha256': tree_sha256}
+
+source.prepare = capture_prepare
+source.verify('/prepared/wpa', '/selected/git', '/wpa.tar.gz', '/hostapd.tar.gz',
+              '/selected/patch', pkgsrc_export='/already/validated/export')
+assert captured.get('exported') == validated_export
 print('WPA common recipe boundary PASS')

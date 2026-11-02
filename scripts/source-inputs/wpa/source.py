@@ -170,7 +170,7 @@ def verify(source, git, archive=None, hostapd_archive=None, patch=None, pkgsrc_e
             'changed export requires an explicit archive and patch to compare wpa_supplicant')
     with tempfile.TemporaryDirectory(prefix='.wpa_supplicant-verify-') as tmp:
         expected = Path(tmp) / 'expected'
-        prepared = prepare(archive, hostapd_archive, expected, patch, git)
+        prepared = prepare(archive, hostapd_archive, expected, patch, git, exported=shared)
         require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
         require(prepared['tree_sha256'] == record['tree_sha256'],
                 'prepared wpa_supplicant differs from current effective source')
