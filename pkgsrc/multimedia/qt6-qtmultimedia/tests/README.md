@@ -29,10 +29,14 @@ Check the production recipe selector with native BSD make:
 BMAKE=/absolute/native/bmake sh options.sh /absolute/new-option-results
 ```
 
-The fixture evaluates the unchanged `options.mk` across twelve selections.
+The fixture evaluates the production `options.mk` and conditional Quick3D
+buildlink across twenty-four selections.
 Dependency includes record markers instead of loading the full pkgsrc closure.
-The test checks FFmpeg dependency and manifest selection, retained desktop
-defaults, independent GStreamer/PulseAudio options and Darwin's X11 exclusion.
+The test checks FFmpeg and Quick3D dependency/manifest selection, retained
+desktop defaults, independent GStreamer/PulseAudio options and Darwin's X11
+exclusion. Quick3D SpatialAudio is default-off; selecting it restores the
+Quick3D dependency, feature and manifest entries while core SpatialAudio stays
+in the package.
 It does not replace normal package dependency or configuration checks.
 
 Qt's `NETBSD` variable comes from `QtPlatformSupport.cmake` in Qtbase.
