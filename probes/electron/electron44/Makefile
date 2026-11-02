@@ -39,4 +39,5 @@ BUILD_HOST_NPM=		${EMBERBSD_HOST_NPM}
 # Electron target GN configuration, build with the selected SDK, and package
 # the runtime.
 
+.include "../../sysutils/libnotify/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

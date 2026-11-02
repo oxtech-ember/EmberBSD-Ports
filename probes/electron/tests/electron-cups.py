@@ -49,6 +49,9 @@ def main():
     patch = Path(__file__).resolve().parents[1] / 'patches/gn-netbsd-cups-pkgconfig.patch'
     run('patch-check', [options.git, 'apply', '--check', patch], patched)
     run('patch', [options.git, 'apply', patch], patched)
+    mac_patch = Path(__file__).resolve().parents[1] / 'patches/gn-macos-cups-sdk-search.patch'
+    run('mac-patch-check', [options.git, 'apply', '--check', mac_patch], patched)
+    run('mac-patch', [options.git, 'apply', mac_patch], patched)
     # This is deliberately metadata-only test data, not a target package or ABI.
     metadata = '''prefix=/usr/pkg
 exec_prefix=${prefix}
@@ -104,7 +107,9 @@ Cflags: -I${includedir} -DCUPS_METADATA_FIXTURE=1
     missing, _ = fixture('missing-target-pc', present=False)
     assert not (missing / 'target-script-executed').exists()
     mac, output = fixture('mac', platform='mac')
-    assert output['libs']==['cups'] and output['lib_dirs']==['/declared/macos-sdk/usr/lib/'], output
+    # macOS resolves libcups through the selected SDK sysroot; a separate
+    # SDK library search path must not override the selected native runtime.
+    assert output['libs']==['cups'] and not output.get('lib_dirs'), output
     assert not (mac / 'target-script-executed').exists()
     chromeos, output = fixture('chromeos', platform='chromeos')
     # Chromium's platform emulation guard intentionally makes this empty on Darwin;

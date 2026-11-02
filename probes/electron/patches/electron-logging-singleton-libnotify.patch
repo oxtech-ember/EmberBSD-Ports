@@ -1,0 +1,106 @@
+--- a/chrome/common/logging_chrome.cc
++++ b/chrome/common/logging_chrome.cc
+@@ -25,6 +25,7 @@
+ #include "base/functional/bind.h"
+ #include "base/logging.h"
+ #include "base/metrics/statistics_recorder.h"
++#include "base/no_destructor.h"
+ #include "base/path_service.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/string_util.h"
+@@ -61,7 +62,6 @@
+ 
+ // When true, this means that error dialogs should not be shown.
+ bool dialogs_are_suppressed_ = false;
+-ScopedLogAssertHandler* assert_handler_ = nullptr;
+ 
+ // This should be true for exactly the period between the end of
+ // InitChromeLogging() and the beginning of CleanupChromeLogging().
+@@ -69,10 +69,6 @@
+ 
+ // Set if we called InitChromeLogging() but failed to initialize.
+ bool chrome_logging_failed_ = false;
+-
+-// This should be true for exactly the period between the end of
+-// InitChromeLogging() and the beginning of CleanupChromeLogging().
+-bool chrome_logging_redirected_ = false;
+ 
+ // The directory on which we do rotation of log files instead of switching
+ // with symlink. Because this directory doesn't support symlinks and the logic
+@@ -106,7 +102,7 @@
+   if (dialogs_are_suppressed_)
+     return;
+ 
+-  assert_handler_ = new ScopedLogAssertHandler(
++  static base::NoDestructor<ScopedLogAssertHandler> assert_handler(
+       base::BindRepeating(SilentRuntimeAssertHandler));
+ 
+ #if BUILDFLAG(IS_WIN)
+@@ -542,7 +538,6 @@
+   CloseLogFile();
+ 
+   chrome_logging_initialized_ = false;
+-  chrome_logging_redirected_ = false;
+ }
+ 
+ base::FilePath GetLogFileName(const base::CommandLine& command_line) {
+--- a/chrome/browser/process_singleton_posix.cc
++++ b/chrome/browser/process_singleton_posix.cc
+@@ -379,6 +379,8 @@
+ bool DisplayProfileInUseError(const base::FilePath& lock_path,
+                               const std::string& hostname,
+                               int pid) {
++  if (g_disable_prompt)
++    return g_user_opted_unlock_in_use_profile;
+   return true;
+ #if 0
+   // Ensure there is an instance of ResourceBundle that is initialized for
+--- a/electron/BUILD.gn
++++ b/electron/BUILD.gn
+@@ -76,11 +76,20 @@
+     packages = [ "gio-unix-2.0" ]
+   }
+ 
+-  pkg_config("libnotify_config") {
++  pkg_config("libnotify_dependencies") {
+     packages = [
+       "glib-2.0",
+       "gdk-pixbuf-2.0",
+     ]
++  }
++
++  pkg_config("libnotify_headers") {
++    packages = [ "libnotify" ]
++    ignore_libs = true
++  }
++
++  config("libnotify_config") {
++    configs = [ ":libnotify_dependencies", ":libnotify_headers" ]
+   }
+ 
+   generate_library_loader("libnotify_loader") {
+--- a/chrome/browser/process_singleton_posix_unittest.cc
++++ b/chrome/browser/process_singleton_posix_unittest.cc
+@@ -397,6 +397,22 @@
+       ProcessSingleton::PROFILE_UNLOCKED_BEFORE_KILL, 1u);
+ }
+ 
++// A declined test prompt must leave the remote profile locked.
++TEST_F(ProcessSingletonPosixTest, NotifyOtherProcessOrCreate_RemoteProfileInUse) {
++  CreateProcessSingletonOnThread();
++  BlockWorkerThread();
++  EXPECT_EQ(0, unlink(lock_path_.value().c_str()));
++  EXPECT_EQ(0, symlink("FAKEFOOHOST-1234", lock_path_.value().c_str()));
++  EXPECT_EQ(0, unlink(socket_path_.value().c_str()));
++  ProcessSingleton::SetUserOptedUnlockInUseProfileForTesting(false);
++  EXPECT_EQ(ProcessSingleton::PROFILE_IN_USE,
++            NotifyOtherProcessOrCreate("about:blank"));
++  base::FilePath target_path;
++  EXPECT_TRUE(base::ReadSymbolicLink(lock_path_, &target_path));
++  EXPECT_EQ(base::FilePath("FAKEFOOHOST-1234"), target_path);
++  UnblockWorkerThread();
++}
++
+ // Test that we unlock profile when lock says process is on another host and we
+ // can't notify it over the socket.
+ TEST_F(ProcessSingletonPosixTest, NotifyOtherProcessOrCreate_DifferingHost) {

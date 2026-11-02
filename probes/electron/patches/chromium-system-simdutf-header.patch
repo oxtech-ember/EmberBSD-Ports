@@ -1,0 +1,70 @@
+--- a/third_party/simdutf/BUILD.gn
++++ b/third_party/simdutf/BUILD.gn
+@@ -11,11 +11,14 @@
+   pkg_config("simdutf_external_config") {
+     packages = [ "simdutf" ]
+   }
++  config("simdutf_system_header") {
++    defines = [ "CHROMIUM_USE_SYSTEM_SIMDUTF=1" ]
++  }
+   group("header") {
+-    public_configs = [ ":simdutf_external_config" ]
++    public_configs = [ ":simdutf_external_config", ":simdutf_system_header" ]
+   }
+   group("simdutf") {
+-    public_configs = [ ":simdutf_external_config" ]
++    public_configs = [ ":simdutf_external_config", ":simdutf_system_header" ]
+   }
+ } else {
+   source_set("header") {
+--- a/base/simdutf_shim.cc
++++ b/base/simdutf_shim.cc
+@@ -4,7 +4,11 @@
+ 
+ #include "base/simdutf_shim.h"
+ 
++#if defined(CHROMIUM_USE_SYSTEM_SIMDUTF)
++#include <simdutf.h>
++#else
+ #include "third_party/simdutf/simdutf.h"
++#endif
+ 
+ namespace base::internal {
+ 
+@@ -14,7 +18,9 @@
+ 
+ size_t simdutf_binary_to_base64(std::span<const uint8_t> input,
+                                 std::span<char> binary_output) {
+-  return simdutf::binary_to_base64(input, binary_output);
++  return simdutf::binary_to_base64(
++      reinterpret_cast<const char*>(input.data()), input.size(),
++      binary_output.data());
+ }
+ 
+ }  // namespace base::internal
+--- a/base/base64_unittest.cc
++++ b/base/base64_unittest.cc
+@@ -33,6 +33,23 @@
+  private:
+   base::test::ScopedFeatureList feature_list_;
+ };
++
++TEST_P(Base64Test, RoundTripAcrossSimdBoundaries) {
++  for (size_t length : {size_t{0}, size_t{1}, size_t{2}, size_t{3},
++                        size_t{15}, size_t{16}, size_t{17}, size_t{31},
++                        size_t{32}, size_t{33}, size_t{63}, size_t{64},
++                        size_t{65}, size_t{127}, size_t{128}, size_t{129}}) {
++    std::string input(length, '\0');
++    for (size_t i = 0; i < length; ++i) {
++      input[i] = static_cast<char>(i & 0xff);
++    }
++    const std::string encoded = Base64Encode(input);
++    EXPECT_EQ(4 * ((length + 2) / 3), encoded.size());
++    std::string decoded;
++    ASSERT_TRUE(Base64Decode(encoded, &decoded));
++    EXPECT_EQ(input, decoded);
++  }
++}
+ 
+ TEST_P(Base64Test, Basic) {
+   const std::string kText = "hello world";

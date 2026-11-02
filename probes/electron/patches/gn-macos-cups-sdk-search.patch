@@ -1,0 +1,10 @@
+--- a/printing/BUILD.gn
++++ b/printing/BUILD.gn
+@@ -473,7 +473,6 @@
+     config("cups") {
+       if (is_mac) {
+         libs = [ "cups" ]
+-        lib_dirs = [ "$mac_sdk_path/usr/lib" ]
+       } else {
+         # rebase_path does not accept an empty string
+         if (use_sysroot) {

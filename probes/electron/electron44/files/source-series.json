@@ -947,6 +947,26 @@
       "path": "electron-linux-bsd-unused-helpers.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "chromium-clone-bsd-warning-fixes.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "electron-logging-singleton-libnotify.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "chromium-system-simdutf-header.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-macos-cups-sdk-search.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

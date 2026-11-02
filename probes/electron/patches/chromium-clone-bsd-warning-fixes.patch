@@ -1,0 +1,109 @@
+--- a/mojo/public/cpp/bindings/clone_traits.h
++++ b/mojo/public/cpp/bindings/clone_traits.h
+@@ -58,7 +58,8 @@
+     std::vector<T> result;
+     result.reserve(input.size());
+     for (const auto& element : input) {
+-      result.push_back(mojo::Clone(element));
++      // Vector elements may be proxy references (notably vector<bool>).
++      result.push_back(mojo::Clone<T>(element));
+     }
+ 
+     return result;
+--- a/content/browser/child_thread_type_switcher_linux.cc
++++ b/content/browser/child_thread_type_switcher_linux.cc
+@@ -21,11 +21,13 @@
+ 
+ namespace {
+ 
++#if !BUILDFLAG(IS_BSD)
+ bool IsAllowedForMainThread(base::ThreadType thread_type) {
+   return thread_type == base::ThreadType::kDefault ||
+          thread_type == base::ThreadType::kPresentation ||
+          thread_type == base::ThreadType::kAudioProcessing;
+ }
++#endif  // !BUILDFLAG(IS_BSD)
+ 
+ }  // namespace
+ 
+--- a/mojo/public/cpp/bindings/tests/struct_unittest.cc
++++ b/mojo/public/cpp/bindings/tests/struct_unittest.cc
+@@ -118,6 +118,25 @@
+   CheckRect(*rect);
+ }
+ 
++TEST_F(StructTest, CloneBoolVector) {
++  std::vector<bool> empty;
++  EXPECT_TRUE(mojo::Clone(empty).empty());
++
++  std::vector<bool> input(130, false);
++  input[0] = true;
++  input[63] = true;
++  input[64] = true;
++  input[129] = true;
++  auto clone = mojo::Clone(input);
++  EXPECT_EQ(input, clone);
++  clone[64] = false;
++  EXPECT_TRUE(input[64]);
++  EXPECT_FALSE(clone[64]);
++
++  std::vector<std::vector<bool>> nested{input, empty};
++  EXPECT_EQ(nested, mojo::Clone(nested));
++}
++
+ TEST_F(StructTest, Clone) {
+   NamedRegionPtr region;
+ 
+--- a/content/browser/network_service_instance_impl.cc
++++ b/content/browser/network_service_instance_impl.cc
+@@ -20,6 +20,7 @@
+ #include "base/files/file.h"
+ #include "base/files/file_util.h"
+ #include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
+ #include "base/location.h"
+ #include "base/message_loop/message_pump_type.h"
+ #include "base/message_loop/message_pump_wakeup_counter.h"
+@@ -131,7 +132,6 @@
+ ObservedServiceRemote<network::mojom::NetworkService>*
+     g_observed_network_service = nullptr;
+ network::NetworkConnectionTracker* g_network_connection_tracker;
+-bool g_network_service_is_responding = false;
+ 
+ // When enabled, sets the in-process network service thread to
+ // base::ThreadType::kPresentation during startup.
+@@ -689,9 +689,7 @@
+       g_client->OnNetworkServiceInitialized(
+           g_observed_network_service->remote().get());
+ 
+-      g_network_service_is_responding = false;
+-      g_observed_network_service->remote().QueryVersion(base::BindOnce(
+-          [](uint32_t) { g_network_service_is_responding = true; }));
++      g_observed_network_service->remote().QueryVersion(base::DoNothing());
+ 
+       const base::CommandLine* command_line =
+           base::CommandLine::ForCurrentProcess();
+--- a/content/browser/renderer_host/render_process_host_impl.cc
++++ b/content/browser/renderer_host/render_process_host_impl.cc
+@@ -327,8 +327,10 @@
+ const void* const kSubframeProcessReuseOverLimitUmaLoggedKey =
+     &kSubframeProcessReuseOverLimitUmaLoggedKey;
+ 
++#if BUILDFLAG(IS_WIN)
+ RenderProcessHost::AnalyzeHungRendererFunction g_analyze_hung_renderer =
+     nullptr;
++#endif  // BUILDFLAG(IS_WIN)
+ 
+ // Memory threshold for subframe process reuse, in bytes. A process may be
+ // reused for another subframe only if the process's memory footprint stays
+@@ -5855,7 +5857,10 @@
+ // static
+ void RenderProcessHost::SetHungRendererAnalysisFunction(
+     AnalyzeHungRendererFunction analyze_hung_renderer) {
++  // Hang analysis is used only on Windows.
++#if BUILDFLAG(IS_WIN)
+   g_analyze_hung_renderer = analyze_hung_renderer;
++#endif  // BUILDFLAG(IS_WIN)
+ }
+ 
+ void RenderProcessHostImpl::SuddenTerminationAllowedChanged(bool allowed) {
