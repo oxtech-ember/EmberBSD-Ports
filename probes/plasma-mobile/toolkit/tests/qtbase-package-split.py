@@ -36,7 +36,7 @@ for name in ('qt6-qtbase', 'qt6-qtbase-devel'):
 host_makeconf = Path(os.environ.get('QT_SPLIT_HOST_MAKECONF', str(host / 'etc/mk.conf')))
 if not host_makeconf.is_absolute() or not host_makeconf.is_file(): raise SystemExit('selected host makeconf must be an absolute file')
 (work / 'mk.conf').write_text(f'.include "{host_makeconf}"\nWRKOBJDIR= {work}/objects\nPACKAGES= {work}/packages\nPKG_DBDIR= {work}/pkgdb\nCXXFLAGS= -O2\n')
-common = [str(host / 'bin/bmake'), 'MAKECONF='+str(work/'mk.conf'), 'AWK='+str(host/'bin/nawk'), 'CAT='+str(host/'bin/gcat'), 'SED='+str(host/'bin/gsed'), 'TEST='+str(host/'bin/gtest'), 'MKDIR='+str(host/'bin/gmkdir')+' -p', 'PERL5='+str(host/'bin/perl'), 'FIND='+str(host/'bin/gfind'), 'LN='+str(host/'bin/gln'), 'INSTALL_DATA_DIR='+str(host/'bin/bsdinstall')+' -d', 'X11_TYPE=modular', 'PLATFORM_SUPPORTS_WAYLAND=no', 'EMBERBSD_QT_HOST_PATH='+str(qt)]
+common = [str(host / 'bin/bmake'), 'MAKECONF='+str(work/'mk.conf'), 'AWK='+str(host/'bin/nawk'), 'CAT='+str(host/'bin/gcat'), 'SED='+str(host/'bin/gsed'), 'TEST='+str(host/'bin/gtest'), 'MKDIR='+str(host/'bin/gmkdir')+' -p', 'PERL5='+str(host/'bin/perl'), 'FIND='+str(host/'bin/gfind'), 'LN='+str(host/'bin/gln'), 'INSTALL_DATA_DIR='+str(host/'bin/ginstall')+' -d', 'X11_TYPE=modular', 'PLATFORM_SUPPORTS_WAYLAND=no', 'EMBERBSD_QT_HOST_PATH='+str(qt)]
 for tool, binary in (('m4', 'gm4'), ('yacc', 'yacc')):
     path = host / 'bin' / binary
     if not path.is_file() or not os.access(path, os.X_OK):
@@ -75,26 +75,42 @@ def plist(label, package, *mode):
 runtime=plist('runtime','qt6-qtbase',*cross)
 if any(p.startswith('qt6/include/') or p.endswith('.cmake') or p in ('qt6/bin/qmake','qt6/libexec/moc','qt6/libexec/rcc','qt6/libexec/uic') for p in runtime): raise SystemExit('runtime PLIST still contains target SDK or generators')
 if not all(p in runtime for p in ('qt6/bin/qtpaths','qt6/bin/qtpaths6')): raise SystemExit('runtime qtpaths missing')
-if run('runtime-name','qt6-qtbase',*cross,'-V','${PKGNAME}').strip() != 'qt6-qtbase-6.12.0nb10': raise SystemExit('runtime package identity was not revised')
+if run('runtime-name','qt6-qtbase',*cross,'-V','${PKGNAME}').strip() != 'qt6-qtbase-6.12.0nb11': raise SystemExit('runtime package identity was not revised')
 if not (tree/'x11/qt6-qtbase-devel').is_dir(): raise SystemExit('SDK recipe missing')
 sdk=plist('devel','qt6-qtbase-devel',*cross)
-if run('devel-name','qt6-qtbase-devel',*cross,'-V','${PKGNAME}').strip() != 'qt6-qtbase-devel-6.12.0nb13': raise SystemExit('SDK revision differs')
+if run('devel-name','qt6-qtbase-devel',*cross,'-V','${PKGNAME}').strip() != 'qt6-qtbase-devel-6.12.0nb14': raise SystemExit('SDK revision differs')
 if not all(p in sdk for p in ('qt6/bin/qmake','qt6/libexec/moc','qt6/libexec/rcc','qt6/libexec/uic','qt6/lib/cmake/Qt6/Qt6Config.cmake')): raise SystemExit('SDK PLIST lost the CMake/generator contract')
 if set(runtime)&set(sdk): raise SystemExit('partition overlaps')
 owner=tree/'x11/qt6-qtbase'; full_dir=work/'full'
 run('full','qt6-qtbase',*cross,'WRKDIR='+str(full_dir),'PLIST='+str(full_dir/'.PLIST'),'PLIST_SRC='+str(owner/'PLIST.NetBSD')+' '+str(owner/'PLIST'),'plist')
 full=[x for x in (full_dir/'.PLIST_nokeywords').read_text().splitlines() if x]
 if sorted(runtime+sdk)!=sorted(full): raise SystemExit('expanded partition union differs from full pkgsrc PLIST')
+if not any(path.endswith("libQt6OpenGL.so") for path in runtime) or not any(path.endswith("Qt6OpenGL.pc") for path in sdk): raise SystemExit("default target lost OpenGL runtime or SDK files")
+software = cross + ["PKG_OPTIONS.qt6-qtbase=software-rendering"]
+software_reason = run("software-reason", "qt6-qtbase", *software, "-V", "${PKG_FAIL_REASON}").splitlines()[0].strip()
+if software_reason: raise SystemExit("NetBSD cross software-rendering option was rejected: " + software_reason)
+software_runtime = plist("software-runtime", "qt6-qtbase", *software)
+software_sdk = plist("software-devel", "qt6-qtbase-devel", *software)
+software_full_dir = work / "software-full"
+run("software-full", "qt6-qtbase", *software, "WRKDIR="+str(software_full_dir),
+    "PLIST="+str(software_full_dir/".PLIST"),
+    "PLIST_SRC="+str(owner/"PLIST.NetBSD")+" "+str(owner/"PLIST"), "plist")
+software_full = [path for path in (software_full_dir/".PLIST_nokeywords").read_text().splitlines() if path]
+if set(software_runtime) & set(software_sdk): raise SystemExit("software runtime and SDK PLISTs overlap")
+if sorted(software_runtime + software_sdk) != sorted(software_full): raise SystemExit("software target partitions differ from the independent full PLIST")
+software_only = ("libQt6OpenGL.so", "Qt6OpenGL.pc", "Qt6OpenGLConfig.cmake", "qt6opengl_metatypes.json",
+                 "qopengl_p.h", "qglxconvenience_p.h", "qeglplatformcontext_p.h", "qvulkaninstance_p.h", "libvulkan-server.so")
+if any(any(name in path for name in software_only) for path in software_runtime + software_sdk): raise SystemExit("software target retained OpenGL, EGL, GLX or Vulkan files")
 helper=owner/'files/select-package-stage.pl'
 if not helper.is_file(): raise SystemExit('stage partition helper missing')
 native=plist('native','qt6-qtbase','USE_CROSS_COMPILE=no','PKGSRC_COMPILER=clang','CC='+str(host/'bin/clang'),'CXX='+str(host/'bin/clang++'),'USE_NATIVE_GCC=no','USE_PKGSRC_GCC=no')
 if 'qt6/bin/qmake' not in native or not any(p.startswith('qt6/include/') for p in native): raise SystemExit('native full SDK behavior changed')
 reasons=run('devel-metadata','qt6-qtbase-devel',*cross,'-V','${PKG_FAIL_REASON}','-V','${DEPENDS}','-V','${DISTINFO_FILE}','-V','${PATCHDIR}')
-if reasons.splitlines()[0].strip() or 'qt6-qtbase-6.12.0nb10:' not in reasons or str(owner/'distinfo') not in reasons or str(owner/'patches') not in reasons: raise SystemExit('SDK source owner, exact runtime or platform contract differs')
+if reasons.splitlines()[0].strip() or 'qt6-qtbase-6.12.0nb11:' not in reasons or str(owner/'distinfo') not in reasons or str(owner/'patches') not in reasons: raise SystemExit('SDK source owner, exact runtime or platform contract differs')
 consumer=tree/'devel/qtbase-split-consumer'; consumer.mkdir()
 (consumer/'Makefile').write_text('DISTNAME= qtbase-split-contract-1\nCATEGORIES= devel\nCOMMENT= Qtbase buildlink source contract fixture\nLICENSE= 2-clause-bsd\nMETA_PACKAGE= yes\n.include "../../mk/bsd.prefs.mk"\n.include "../../x11/qt6-qtbase/buildlink3.mk"\n.include "../../mk/bsd.pkg.mk"\n')
 out=run('buildlink','../devel/qtbase-split-consumer',*cross,'-V','${BUILD_DEPENDS}','-V','${DEPENDS}').splitlines()
-if 'qt6-qtbase-devel>=6.12.0nb13:' not in out[0] or 'qt6-qtbase-devel' in out[1] or 'qt6-qtbase>=6.12.0nb9:' not in out[1]: raise SystemExit('SDK was not a separate target build-only dependency')
+if 'qt6-qtbase-devel>=6.12.0nb14:' not in out[0] or 'qt6-qtbase-devel' in out[1] or 'qt6-qtbase>=6.12.0nb9:' not in out[1]: raise SystemExit('SDK was not a separate target build-only dependency')
 original=work/'normalized-full'; prefix=original/'usr/pkg'
 for path in full:
     dest=prefix/path; dest.parent.mkdir(parents=True,exist_ok=True); dest.write_text('source-contract fixture: '+path+'\n')

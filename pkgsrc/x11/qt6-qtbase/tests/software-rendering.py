@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Source contract for the native Linux Qt software-rendering option."""
+"""Source contract for native Linux and NetBSD cross Qt software rendering."""
 from pathlib import Path
 import re
 
@@ -10,6 +10,8 @@ makefile = (pkgdir / "Makefile").read_text()
 buildlink3 = (pkgdir / "buildlink3.mk").read_text()
 plist = (pkgdir / "PLIST").read_text().splitlines()
 runtime_plist = (pkgdir / "PLIST.runtime").read_text().splitlines()
+netbsd_plist = (pkgdir / "PLIST.NetBSD").read_text().splitlines()
+devel_plist = (pkgdir.parent / "qt6-qtbase-devel" / "PLIST").read_text().splitlines()
 declarative = repo / "pkgsrc/lang/qt6-qtdeclarative"
 decl_make = (declarative / "Makefile").read_text()
 decl_plist = (declarative / "PLIST").read_text()
@@ -28,8 +30,11 @@ end_software_guard = decl_make.find(".endif", software_guard)
 require(software_guard >= base_buildlink and open_gl_assignment is not None and end_software_guard > software_guard,
         "QtDeclarative OpenGL PLIST follows QtBase provider options")
 
-require(re.search(r'\.if \$\{OPSYS\} == "Linux" && \$\{USE_CROSS_COMPILE:Uno:tl\} != "yes"\s+PKG_SUPPORTED_OPTIONS\+=\s+software-rendering\s+\.endif', options) is not None,
-        "software-rendering is offered only for native Linux")
+option_guard = r'\.if \(\$\{OPSYS\} == "Linux" && \$\{USE_CROSS_COMPILE:Uno:tl\} != "yes"\) \|\| \\\s*\(\$\{OPSYS\} == "NetBSD" && \$\{USE_CROSS_COMPILE:Uno:tl\} == "yes"\)'
+require(re.search(option_guard + r'\s+PKG_SUPPORTED_OPTIONS\+=\s+software-rendering\s+\.endif', options) is not None,
+        "software-rendering is offered on native Linux and NetBSD cross builds")
+require("software-rendering supports native Linux and NetBSD cross builds" in options,
+        "software-rendering rejects unsupported host and target roles")
 start = options.index(".if !empty(PKG_OPTIONS:Msoftware-rendering)\n")
 block = options[start:].split("\n.else\n", 1)[0]
 for flag in ("-no-opengl", "-no-feature-egl", "-no-feature-eglfs",
@@ -41,8 +46,8 @@ require("PKG_FAIL_REASON" in block and "host-tools" in block,
         "software-rendering conflicts with host-tools")
 require("-no-feature-testlib" not in block and "-no-gui" not in block,
         "software-rendering retains GUI and TestLib")
-require(re.search(r'\.if empty\(PKG_BUILD_OPTIONS\.qt6-qtbase:Msoftware-rendering\)\s+\.include "\.\./\.\./graphics/glu/buildlink3\.mk"\s+\.endif', buildlink3) is not None,
-        "QtBase buildlink omits GLU only for its installed software-rendering flavor")
+require(re.search(r'\.if empty\(PKG_BUILD_OPTIONS\.qt6-qtbase:Msoftware-rendering\)\s+\.include "\.\./\.\./graphics/glu/buildlink3\.mk"\s+\.include "\.\./\.\./graphics/vulkan-headers/buildlink3\.mk"\s+\.endif', buildlink3) is not None,
+        "QtBase omits GLU and Vulkan headers only for its installed software-rendering flavor")
 for dep in ("graphics/glu/buildlink3.mk", "graphics/vulkan-headers/buildlink3.mk"):
     pos = makefile.index('.include "../../' + dep + '"')
     guard = makefile.rfind(".if empty(PKG_OPTIONS:Msoftware-rendering)", 0, pos)
@@ -118,4 +123,33 @@ require("PLIST.opengl" not in protocol_rows[0], "Wayland protocol XML is not hid
 
 require("full-tools-required.mk" in decl_make and "QtQuickTest/" in decl_plist,
         "full QtDeclarative retains QuickTest")
+
+def manifest_rows(rows):
+    return [row for row in rows if row and not row.startswith("@comment")]
+def guards(row):
+    return re.findall(r"\$\{PLIST\.([^}]+)\}", row)
+def path(row):
+    return re.sub(r"^(?:\$\{PLIST\.[^}]+\})+", "", row)
+full_rows = manifest_rows(netbsd_plist + plist)
+full_guards = {}
+for row in full_rows:
+    key = path(row)
+    if key in full_guards and full_guards[key] != guards(row):
+        raise SystemExit("FAIL: complete PLIST has ambiguous feature guards: " + key)
+    full_guards[key] = guards(row)
+runtime_rows = manifest_rows(runtime_plist)
+devel_rows = manifest_rows(devel_plist)
+runtime_paths = {path(row) for row in runtime_rows}
+devel_paths = {path(row) for row in devel_rows}
+require(not runtime_paths & devel_paths and runtime_paths | devel_paths == set(full_guards),
+        "target runtime and SDK PLISTs form the complete independent NetBSD manifest")
+guard_errors = []
+for label, rows in (("target runtime", runtime_rows), ("target SDK", devel_rows)):
+    for row in rows:
+        key = path(row)
+        if key not in full_guards or guards(row) != full_guards[key]:
+            guard_errors.append(label + ": " + key)
+require(not guard_errors,
+        "target partitions preserve complete-PLIST guards" +
+        (" (" + str(len(guard_errors)) + " mismatches: " + ", ".join(guard_errors[:3]) + ")" if guard_errors else ""))
 print("PASS: software-rendering recipe contract")

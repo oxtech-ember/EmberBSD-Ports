@@ -11,8 +11,9 @@ PKG_SUGGESTED_OPTIONS+=	dbus
 PKG_SUPPORTED_OPTIONS+=	host-tools
 .endif
 
-# QtQuick software rendering is a native Linux host-tool flavor only.
-.if ${OPSYS} == "Linux" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+# QtQuick software rendering supports native Linux and NetBSD cross builds.
+.if (${OPSYS} == "Linux" && ${USE_CROSS_COMPILE:Uno:tl} != "yes") || \
+    (${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes")
 PKG_SUPPORTED_OPTIONS+=	software-rendering
 .endif
 
@@ -26,8 +27,10 @@ PKG_SUGGESTED_OPTIONS+=	cups
 PLIST_VARS+=		cups dbus gtk3 opengl vulkan
 
 .if !empty(PKG_OPTIONS:Msoftware-rendering)
-.if ${OPSYS} != "Linux" || ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-PKG_FAIL_REASON+=	"software-rendering is available only for native Linux builds"
+.if (${OPSYS} != "Linux" && ${OPSYS} != "NetBSD") || \
+    (${OPSYS} == "Linux" && ${USE_CROSS_COMPILE:Uno:tl} == "yes") || \
+    (${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} != "yes")
+PKG_FAIL_REASON+=	"software-rendering supports native Linux and NetBSD cross builds"
 .endif
 .if !empty(PKG_OPTIONS:Mhost-tools)
 PKG_FAIL_REASON+=	"software-rendering cannot be combined with the host-tools option"

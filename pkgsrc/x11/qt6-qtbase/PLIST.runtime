@@ -31,12 +31,12 @@ qt6/lib/libQt6Gui.so.6
 qt6/lib/libQt6Network.so
 qt6/lib/libQt6Network.so.${PKGVERSION}
 qt6/lib/libQt6Network.so.6
-qt6/lib/libQt6OpenGL.so
-qt6/lib/libQt6OpenGL.so.${PKGVERSION}
-qt6/lib/libQt6OpenGL.so.6
-qt6/lib/libQt6OpenGLWidgets.so
-qt6/lib/libQt6OpenGLWidgets.so.${PKGVERSION}
-qt6/lib/libQt6OpenGLWidgets.so.6
+${PLIST.opengl}qt6/lib/libQt6OpenGL.so
+${PLIST.opengl}qt6/lib/libQt6OpenGL.so.${PKGVERSION}
+${PLIST.opengl}qt6/lib/libQt6OpenGL.so.6
+${PLIST.opengl}qt6/lib/libQt6OpenGLWidgets.so
+${PLIST.opengl}qt6/lib/libQt6OpenGLWidgets.so.${PKGVERSION}
+${PLIST.opengl}qt6/lib/libQt6OpenGLWidgets.so.6
 qt6/lib/libQt6PrintSupport.so
 qt6/lib/libQt6PrintSupport.so.${PKGVERSION}
 qt6/lib/libQt6PrintSupport.so.6
@@ -93,7 +93,7 @@ ${PLIST.wayland}${PLIST.x11}${PLIST.egl}${PLIST.opengl}qt6/plugins/wayland-graph
 ${PLIST.wayland}${PLIST.x11}${PLIST.egl}${PLIST.opengl}qt6/plugins/wayland-graphics-integration-client/libdrm-egl-server.so
 ${PLIST.wayland}${PLIST.x11}${PLIST.egl}${PLIST.opengl}qt6/plugins/wayland-graphics-integration-client/libqt-plugin-wayland-egl.so
 ${PLIST.wayland}${PLIST.x11}${PLIST.opengl}qt6/plugins/wayland-graphics-integration-client/libshm-emulation-server.so
-${PLIST.wayland}${PLIST.x11}qt6/plugins/wayland-graphics-integration-client/libvulkan-server.so
+${PLIST.vulkan}${PLIST.wayland}${PLIST.x11}qt6/plugins/wayland-graphics-integration-client/libvulkan-server.so
 ${PLIST.wayland}${PLIST.x11}qt6/plugins/wayland-shell-integration/libfullscreen-shell-v1.so
 ${PLIST.wayland}${PLIST.x11}qt6/plugins/wayland-shell-integration/libwl-shell-plugin.so
 ${PLIST.wayland}${PLIST.x11}qt6/plugins/wayland-shell-integration/libxdg-shell.so
