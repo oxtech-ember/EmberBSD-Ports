@@ -1,0 +1,168 @@
+# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+# Reuse shared desktop behavior on BSD and expose thumbnail API only where implemented.
+--- a/electron/shell/browser/browser.cc
++++ b/electron/shell/browser/browser.cc
+@@ -105,7 +105,7 @@
+   return true;
+ }
+ 
+-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+ void Browser::Focus(gin::Arguments* args) {
+   // Focus on the first visible window.
+   for (auto* const window : WindowList::GetWindows()) {
+--- a/electron/shell/browser/api/electron_api_system_preferences.cc
++++ b/electron/shell/browser/api/electron_api_system_preferences.cc
+@@ -16,7 +16,7 @@
+ #include "v8/include/cppgc/allocation.h"
+ #include "v8/include/cppgc/persistent.h"
+ #include "v8/include/v8-cppgc.h"
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+ #include "content/public/browser/browser_thread.h"
+ #include "shell/browser/api/electron_api_system_preferences.h"
+ #include "shell/common/color_util.h"
+@@ -32,7 +32,7 @@
+   gin::PerIsolateData::From(isolate)->AddDisposeObserver(this);
+   InitializeWindow();
+ }
+-#elif BUILDFLAG(IS_LINUX)
++#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+ SystemPreferences::SystemPreferences(v8::Isolate* isolate)
+     : ui_theme_(ui::NativeTheme::GetInstanceForNativeUi()) {
+   gin::PerIsolateData::From(isolate)->AddDisposeObserver(this);
+@@ -51,7 +51,7 @@
+   Dispose();
+ }
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+ void SystemPreferences::Dispose() {
+   ui_theme_->RemoveObserver(this);
+   weak_factory_.Invalidate();
+@@ -74,7 +74,7 @@
+   return dict.GetHandle();
+ }
+ 
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+ std::string SystemPreferences::GetAccentColor() {
+   auto const color = ui_theme_->user_color();
+   if (!color.has_value())
+@@ -174,7 +174,7 @@
+ 
+ void SystemPreferences::Trace(cppgc::Visitor* visitor) const {
+   gin::Wrappable<SystemPreferences>::Trace(visitor);
+-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   visitor->Trace(weak_factory_);
+ #endif
+ }
+--- a/electron/shell/browser/api/electron_api_system_preferences.h
++++ b/electron/shell/browser/api/electron_api_system_preferences.h
+@@ -18,7 +18,7 @@
+ #include "shell/browser/browser.h"
+ #include "shell/browser/browser_observer.h"
+ #endif
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+ #include "base/memory/raw_ptr.h"
+ #include "ui/native_theme/native_theme.h"
+ #include "ui/native_theme/native_theme_observer.h"
+@@ -45,7 +45,7 @@
+ #if BUILDFLAG(IS_WIN)
+     ,
+       public BrowserObserver
+-#elif BUILDFLAG(IS_LINUX)
++#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+     ,
+       public ui::NativeThemeObserver
+ #endif
+@@ -130,7 +130,7 @@
+   // are running tests on a Mojave machine
+   v8::Local<v8::Value> GetEffectiveAppearance(v8::Isolate* isolate);
+ 
+-#elif BUILDFLAG(IS_LINUX)
++#elif BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   // ui::NativeThemeObserver:
+   void OnNativeThemeUpdated(ui::NativeTheme* theme) override;
+ #endif
+@@ -165,13 +165,13 @@
+   base::CallbackListSubscription hwnd_subscription_;
+   base::CallbackListSubscription accent_color_subscription_;
+ #endif
+-#if BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   void OnNativeThemeUpdatedOnUI();
+ 
+   raw_ptr<ui::NativeTheme> ui_theme_;
+   std::string current_accent_color_;
+ #endif
+-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_BSD)
+   gin::WeakCellFactory<SystemPreferences> weak_factory_{this};
+ #endif
+ };
+--- a/electron/shell/common/api/electron_api_native_image.cc
++++ b/electron/shell/common/api/electron_api_native_image.cc
+@@ -675,7 +675,7 @@
+   native_image.SetMethod<&NativeImage::CreateFromNamedImage>(
+       "createFromNamedImage");
+   native_image.SetMethod<&NativeImage::CreateMenuSymbol>("createMenuSymbol");
+-#if !BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+   native_image.SetMethod<&NativeImage::CreateThumbnailFromPath>(
+       "createThumbnailFromPath");
+ #endif
+--- a/electron/shell/common/api/electron_api_native_image.h
++++ b/electron/shell/common/api/electron_api_native_image.h
+@@ -72,7 +72,7 @@
+   static NativeImage* CreateFromNamedImage(gin::Arguments* args,
+                                            std::string name);
+   static NativeImage* CreateMenuSymbol(gin::Arguments* args, std::string name);
+-#if !BUILDFLAG(IS_LINUX)
++#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+   static v8::Local<v8::Promise> CreateThumbnailFromPath(
+       v8::Isolate* isolate,
+       const base::FilePath& path,
+--- a/electron/spec/api-system-preferences.spec.ts
++++ b/electron/spec/api-system-preferences.spec.ts
+@@ -5,8 +5,8 @@
+ import { ifdescribe, ifit } from './lib/spec-helpers.ts';
+ 
+ describe('systemPreferences module', () => {
+-  ifdescribe(['win32', 'linux'].includes(process.platform))('systemPreferences.getAccentColor', () => {
+-    ifit(process.platform === 'linux')('should return a string', () => {
++  ifdescribe(['win32', 'linux', 'freebsd', 'openbsd', 'netbsd'].includes(process.platform))('systemPreferences.getAccentColor', () => {
++    ifit(['linux', 'freebsd', 'openbsd', 'netbsd'].includes(process.platform))('should return a string', () => {
+       // Testing this properly (i.e. non-empty string) requires
+       // some tricky D-Bus mock setup.
+       const accentColor = systemPreferences.getAccentColor();
+--- a/electron/spec/api-native-image.spec.ts
++++ b/electron/spec/api-native-image.spec.ts
+@@ -585,7 +585,11 @@
+     });
+   });
+ 
+-  ifdescribe(process.platform !== 'linux')('createThumbnailFromPath(path, size)', () => {
++  ifit(['linux', 'freebsd', 'openbsd', 'netbsd'].includes(process.platform))('does not expose platform thumbnail API', () => {
++    expect('createThumbnailFromPath' in nativeImage).toBe(false);
++  });
++
++  ifdescribe(['darwin', 'win32'].includes(process.platform))('createThumbnailFromPath(path, size)', () => {
+     useRemoteContext({ webPreferences: { contextIsolation: false, nodeIntegration: true } });
+ 
+     it('throws when invalid size is passed', async () => {
+--- a/electron/spec/api-app.spec.ts
++++ b/electron/spec/api-app.spec.ts
+@@ -47,6 +47,10 @@
+ });
+ 
+ describe('app module', () => {
++  ifit(['freebsd', 'openbsd', 'netbsd'].includes(process.platform))('supports focusing the app', () => {
++    expect(() => app.focus()).not.toThrow();
++  });
++
+   let server: https.Server;
+   let secureUrl: string;
+   const certPath = path.join(fixturesPath, 'certificates');

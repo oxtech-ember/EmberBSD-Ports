@@ -1007,6 +1007,21 @@
       "path": "electron-shared-libuv-link.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "electron-desktop-api-guards.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "electron-netbsd-process-memory.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "electron-bsd-crash-availability.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

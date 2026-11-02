@@ -83,6 +83,25 @@ list from that actual payload. Keep both notice files installed. Reconcile the
 recipe license expression and redistribution restrictions with the generated
 notices and selected dependency recipes before distribution.
 
+## BSD API boundaries
+
+BSD uses the shared desktop window-focus implementation and NativeTheme accent
+color observer. `nativeImage.createThumbnailFromPath` remains a macOS/Windows
+API and is not exposed on BSD or Linux.
+
+The BSD crash collection backend is not implemented. `crashReporter.start`
+and `setUploadToServer` report an unsupported-operation error;
+`getUploadToServer` returns false. Extra parameters remain available through
+add/get/remove, and report listing can still read existing text records. These
+operations do not imply that crashes are captured or uploaded.
+
+NetBSD application memory metrics read current RSS and peak RSS from
+`KERN_PROC2`, converting pages and KiB respectively to the API's units. Query
+errors retain Electron's existing zero-result convention. On architectures
+where the kernel does not track the RSS maximum, its reported peak is current
+RSS. The added API specs require execution on the target; cross-linking alone
+does not validate these desktop or kernel interactions.
+
 ## Source checks
 
 Run the selected Python with an explicit SDK API 1 source:

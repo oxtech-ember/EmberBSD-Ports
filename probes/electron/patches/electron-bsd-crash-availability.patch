@@ -1,0 +1,94 @@
+# Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+# Report the unavailable BSD crash backend instead of calling its absent consent API.
+
+--- a/electron/shell/browser/api/electron_api_crash_reporter.cc
++++ b/electron/shell/browser/api/electron_api_crash_reporter.cc
+@@ -143,7 +143,7 @@
+            const std::map<std::string, std::string>& extra,
+            bool is_node_process) {
+   TRACE_EVENT0("electron", "crash_reporter::Start");
+-#if !IS_MAS_BUILD()
++#if !IS_MAS_BUILD() && !BUILDFLAG(IS_BSD)
+   if (g_crash_reporter_initialized)
+     return;
+   g_crash_reporter_initialized = true;
+@@ -267,6 +267,9 @@
+ 
+ void Start(gin_helper::ErrorThrower thrower,
+            std::optional<gin_helper::Dictionary> maybe_options) {
++#if BUILDFLAG(IS_BSD)
++  thrower.ThrowError("Crash reporting is not supported on BSD");
++#else
+   gin_helper::Dictionary options = maybe_options.value_or(
+       gin_helper::Dictionary::CreateEmpty(thrower.isolate()));
+   std::string product_name = electron::Browser::Get()->GetName();
+@@ -322,8 +325,14 @@
+   electron::api::crash_reporter::Start(submit_url, upload_to_server,
+                                        ignore_system_crash_handler, rate_limit,
+                                        compress, global_extra, extra, false);
+-}
+-
++#endif
++}
++
++#if BUILDFLAG(IS_BSD)
++void SetUploadToServer(gin_helper::ErrorThrower thrower, bool) {
++  thrower.ThrowError("Crash reporting is not supported on BSD");
++}
++#else
+ void SetUploadToServer(bool upload) {
+ #if !IS_MAS_BUILD()
+   ElectronCrashReporterClient::Get()->SetCollectStatsConsent(upload);
+@@ -331,9 +340,10 @@
+   crash_reporter::SetUploadConsent(upload);
+ #endif
+ }
++#endif
+ 
+ bool GetUploadToServer() {
+-#if IS_MAS_BUILD()
++#if IS_MAS_BUILD() || BUILDFLAG(IS_BSD)
+   return false;
+ #else
+   return ElectronCrashReporterClient::Get()->GetCollectStatsConsent();
+# Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+# Runtime regression: requires an executable Electron on a BSD target.
+
+--- a/electron/spec/api-crash-reporter.spec.ts
++++ b/electron/spec/api-crash-reporter.spec.ts
+@@ -140,6 +140,35 @@
+     }, 1000);
+   });
+ }
++
++ifdescribe(['freebsd', 'openbsd', 'netbsd'].includes(process.platform))('BSD crash reporter availability', () => {
++  it('reports that crash collection and uploading are unsupported', () => {
++    const { crashReporter } = require('electron');
++    expect(crashReporter.getUploadToServer()).toBe(false);
++    expect(() => crashReporter.start({ uploadToServer: false })).toThrow('Crash reporting is not supported on BSD');
++    expect(() => crashReporter.setUploadToServer(true)).toThrow('Crash reporting is not supported on BSD');
++    expect(crashReporter.getUploadToServer()).toBe(false);
++  });
++
++  it('retains extra parameters independently of the unavailable backend', () => {
++    const { crashReporter } = require('electron');
++    const key = 'bsd-key';
++    const limitKey = 'n'.repeat(39);
++    const rejectedKey = 'n'.repeat(40);
++    crashReporter.addExtraParameter(key, 'first');
++    expect(crashReporter.getParameters()[key]).toBe('first');
++    crashReporter.addExtraParameter(key, 'second');
++    expect(crashReporter.getParameters()[key]).toBe('second');
++    crashReporter.addExtraParameter(limitKey, 'v'.repeat(20321));
++    crashReporter.addExtraParameter(rejectedKey, 'rejected');
++    expect(crashReporter.getParameters()[limitKey]).toBe('v'.repeat(20320));
++    expect(crashReporter.getParameters()).not.toHaveProperty(rejectedKey);
++    crashReporter.addExtraParameter(key, '');
++    expect(crashReporter.getParameters()).not.toHaveProperty(key);
++    crashReporter.removeExtraParameter(limitKey);
++    expect(crashReporter.getParameters()).not.toHaveProperty(limitKey);
++  });
++});
+ 
+ ifdescribe(!process.mas && !process.env.DISABLE_CRASH_REPORTER_TESTS)('crashReporter module', () => {
+   describe('should send minidump', () => {

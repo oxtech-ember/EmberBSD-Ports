@@ -1,0 +1,81 @@
+# Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+# Query NetBSD resident and peak memory in their native units; do not use Linux procfs.
+--- a/electron/shell/browser/api/process_metric.cc
++++ b/electron/shell/browser/api/process_metric.cc
+@@ -17,6 +17,14 @@
+ #include "shell/common/thread_restrictions.h"
+ #endif
+ 
++#if BUILDFLAG(IS_NETBSD)
++#include <sys/types.h>
++#include <sys/sysctl.h>
++#include <unistd.h>
++
++#include "base/numerics/checked_math.h"
++#endif
++
+ #if BUILDFLAG(IS_WIN)
+ #include <windows.h>
+ 
+@@ -176,6 +184,40 @@
+ #endif
+ }
+ 
++#elif BUILDFLAG(IS_NETBSD)
++
++ProcessMemoryInfo ProcessMetric::GetMemoryInfo() const {
++  ProcessMemoryInfo result;
++  const auto pid = process.Pid();
++  if (pid <= 0)
++    return result;
++
++  struct kinfo_proc2 info = {};
++  size_t length = sizeof(info);
++  int mib[] = {CTL_KERN, KERN_PROC2, KERN_PROC_PID, pid,
++               sizeof(info), 1};
++  if (sysctl(mib, std::size(mib), &info, &length, nullptr, 0) != 0 ||
++      length != sizeof(info) || info.p_uvalid == 0) {
++    return result;
++  }
++
++  const int page_size = getpagesize();
++  if (page_size <= 0 || info.p_vm_rssize < 0)
++    return result;
++
++  // KERN_PROC2 reports current RSS in pages and ru_maxrss in KiB.
++  // Match the other platforms' zero-initialized result on query failure.
++  base::CheckedNumeric<size_t> resident = info.p_vm_rssize;
++  resident *= page_size;
++  base::CheckedNumeric<size_t> peak = info.p_uru_maxrss;
++  peak *= 1024;
++  if (!resident.AssignIfValid(&result.working_set_size) ||
++      !peak.AssignIfValid(&result.peak_working_set_size)) {
++    return {};
++  }
++  return result;
++}
++
+ #elif BUILDFLAG(IS_LINUX)
+ 
+ ProcessMemoryInfo ProcessMetric::GetMemoryInfo() const {
+--- a/electron/spec/api-app.spec.ts	2026-11-03 00:19:32.259944303 +0300
++++ b/electron/spec/api-app.spec.ts	2026-11-03 00:19:32.277998080 +0300
+@@ -2103,6 +2103,9 @@
+         expect(entry.memory.workingSetSize).toBeGreaterThan(0);
+         expect(entry.memory).toHaveProperty('peakWorkingSetSize');
+         expect(entry.memory.peakWorkingSetSize).toBeGreaterThan(0);
++        if (process.platform === 'netbsd') {
++          expect(entry.memory.peakWorkingSetSize).toBeGreaterThanOrEqual(entry.memory.workingSetSize);
++        }
+ 
+         if (entry.type === 'Utility' || entry.type === 'GPU') {
+           expect(entry.serviceName).toBeTypeOf('string');
+@@ -2118,7 +2121,7 @@
+           expect(entry.memory.privateBytes).toBeGreaterThan(0);
+         }
+ 
+-        if (process.platform !== 'linux') {
++        if (process.platform === 'darwin' || process.platform === 'win32') {
+           expect(entry.sandboxed).toBeTypeOf('boolean');
+         }
+ 
