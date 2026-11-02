@@ -58,7 +58,16 @@ CPP='/absolute/llvm-seed/bin/clang -E' CLANGBASE=/absolute/llvm-seed \
 Use the real seed paths and host ABI, with any other needed bootstrap inputs
 explicitly selected. The fragment is read only for bootstrap packages;
 `--mk-fragment` remains the separate installed package configuration input.
-Both accept `--option=FILE` as well. A missing or unreadable bootstrap fragment
+For the initial native tool closure, set `EMBERBSD_NATIVE_BOOTSTRAP=yes` in
+its pkgsrc make configuration. The common lz4 recipe then uses upstream GNU
+Make without CMake package metadata, breaking the cmake → libarchive → zstd
+→ lz4 cycle. This selector is refused for cross builds; the existing Darwin
+selector remains supported. Once CMake is available, remove the selector and
+replace the transitional lz4 package with the ordinary full CMake package of
+the same version before consumers require its CMake metadata. This lifecycle
+has not yet been validated by a complete native bootstrap and replacement.
+
+Both fragment options accept `--option=FILE` as well. A missing or unreadable bootstrap fragment
 fails. Source-only fragment tests do not establish a complete native LLVM
 bootstrap or a usable SDK.
 
