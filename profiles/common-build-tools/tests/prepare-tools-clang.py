@@ -4,6 +4,7 @@
 """Exercise the selected Clang cross route with the installed host toolchain."""
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -37,6 +38,10 @@ from test_llvm_builder import LLVMBuilderTests
 
 cross = Path(__file__).resolve().parents[1]
 helper = cross / 'cross/prepare-tools.py'
+sys.path.insert(0, str(helper.parent))
+spec = importlib.util.spec_from_file_location('prepare_tools_clang', helper)
+prepare_tools = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(prepare_tools)
 ports = cross.parents[1]
 python = Path(sys.executable).resolve(strict=True)
 pkgsrc = args.pkgsrc.resolve(strict=True)
@@ -46,6 +51,35 @@ env['EMBERBSD_HOST_PREFIX'] = str(prefix)
 env['EMBERBSD_HOST_COMPILER_FAMILY'] = 'clang'
 env['EMBERBSD_SDK_SOURCE'] = str(sdk)
 env['PATH'] = str(prefix / 'bin')
+
+
+class LegacyFoundationAPI:
+    def load_clang_c_foundation_runtime(self, result, sysroot, *, target):
+        return dict(root=sysroot, stage='runtime-stage', runtime={})
+
+
+legacy, legacy_base = prepare_tools.select_c_foundation_runtime(
+    LegacyFoundationAPI(), 'foundation-result', 'base-root', 'riscv32')
+assert legacy_base == 'base-root' and legacy['root'] == 'base-root'
+try:
+    prepare_tools.select_c_foundation_runtime(LegacyFoundationAPI(),
+        'foundation-result', 'extended-root', 'riscv32', 'base-root')
+except ValueError as error:
+    assert 'cannot bind a separate C-foundation runtime base' in str(error)
+else:
+    raise AssertionError('legacy SDK unexpectedly accepted a separate C-foundation base')
+
+
+class ExtendedFoundationAPI(LegacyFoundationAPI):
+    FOUNDATION_RUNTIME_BASE_API = 1
+
+    def load_clang_c_foundation_runtime(self, result, sysroot, *, target, runtime_base=None):
+        return dict(root=sysroot, base=runtime_base, stage='runtime-stage', runtime={})
+
+
+extended, selected_base = prepare_tools.select_c_foundation_runtime(
+    ExtendedFoundationAPI(), 'foundation-result', 'extended-root', 'riscv32', 'base-root')
+assert selected_base == 'base-root' and extended['root'] == 'extended-root'
 
 
 def profile_setup():

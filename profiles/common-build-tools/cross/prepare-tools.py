@@ -40,6 +40,17 @@ def make_value(value):
     return value
 
 
+def select_c_foundation_runtime(application_toolchain, foundation_result, sysroot,
+                                target, runtime_base=None):
+    """Select the original C runtime while optionally routing another sysroot."""
+    if runtime_base is not None and getattr(application_toolchain, 'FOUNDATION_RUNTIME_BASE_API', 0) < 1:
+        raise ValueError('The selected SDK cannot bind a separate C-foundation runtime base')
+    options = {'runtime_base':runtime_base} if runtime_base is not None else {}
+    foundation = application_toolchain.load_clang_c_foundation_runtime(
+        foundation_result, sysroot, target=target, **options)
+    return foundation, foundation.get('base', sysroot)
+
+
 def prepare_clang(options):
     from emberbsd_sdk import application_toolchain, llvm_runtime, paths, process, target_toolchain
     from emberbsd_sdk.cpu_capacity import resolve_jobs
@@ -50,7 +61,9 @@ def prepare_clang(options):
         raise ValueError('The selected SDK must provide C-foundation toolchain API 1')
     if not options.sysroot or not options.host_prefix:
         raise ValueError('Clang applications require --sysroot and --host-prefix')
-    checked_paths((options.sysroot, options.host_prefix, *([options.runtime_base] if options.runtime_base else [])))
+    checked_paths((options.sysroot, options.host_prefix,
+        *([options.runtime_base] if options.runtime_base else []),
+        *([options.c_foundation_base] if options.c_foundation_base else [])))
     native = load_host_prefix(options.host_prefix, required_roles=('python', 'sh'),
         compiler_family=options.host_compiler_family)
     if Path(sys.executable).resolve() != Path(native.tool('python')).resolve():
@@ -74,11 +87,13 @@ def prepare_clang(options):
     if c_foundation:
         if options.runtime_stage or options.runtime_base:
             raise ValueError('--c-foundation-result cannot be combined with a full runtime stage')
-        foundation = application_toolchain.load_clang_c_foundation_runtime(
-            options.c_foundation_result, real_sysroot, target=options.target)
+        runtime_base = paths.canonical_existing(options.c_foundation_base) if options.c_foundation_base else real_sysroot
+        foundation, selected_runtime_base = select_c_foundation_runtime(
+            application_toolchain, options.c_foundation_result, real_sysroot,
+            options.target, runtime_base if options.c_foundation_base else None)
         runtime_root = foundation['stage']
         runtime = foundation['runtime']
-        runtime_base = real_sysroot
+        runtime_base = selected_runtime_base
         runtime_kind = 'c-only'
     elif options.runtime_stage:
         runtime_root = paths.canonical_existing(options.runtime_stage)
@@ -108,7 +123,8 @@ def prepare_clang(options):
         if c_foundation:
             bound = application_toolchain.bind_clang_c_foundation_commands(
                 output/'commands', compiler, options.c_foundation_result, real_sysroot,
-                target=options.target, python=native.tool('python'), include_auxiliary=True)['commands']
+                target=options.target, python=native.tool('python'), include_auxiliary=True,
+                **({'runtime_base':runtime_base} if options.c_foundation_base else {}))['commands']
         else:
             bound = application_toolchain.bind_clang_application_commands(
                 output/'commands', compiler, real_sysroot, runtime,
@@ -134,6 +150,8 @@ def prepare_clang(options):
                   'RUNTIME_LIBRARY_PATHS':';'.join(str(Path(runtime_root, name)) for name in libraries)}
         if c_foundation:
             values['C_FOUNDATION_RESULT'] = paths.canonical_existing(options.c_foundation_result)
+        if options.c_foundation_base:
+            values['C_FOUNDATION_BASE'] = paths.canonical_existing(options.c_foundation_base)
         text = '# Generated from the selected SDK compiler and runtime.\n'
         text += ''.join('_EMBER_TARGET_' + key + ':= ' + value + '\n'
                         for key,value in values.items())
@@ -155,6 +173,7 @@ def prepare(args):
     parser.add_argument('--runtime-base', help='foundation used to build the explicit runtime stage')
     parser.add_argument('--c-foundation-result',
         help='explicit completed C-foundation result; binds C compiler-rt without a C++ runtime')
+    parser.add_argument('--c-foundation-base', help='original C-foundation base for a separately installed sysroot')
     parser.add_argument('compiler', metavar='COMPILER_PREFIX')
     parser.add_argument('os_tools', metavar='OS_TOOLDIR')
     parser.add_argument('output', metavar='NEW_TOOLDIR')
@@ -167,6 +186,8 @@ def prepare(args):
         raise ValueError('RV32 C-only target tools require Clang')
     if options.target == 'riscv32' and not options.c_foundation_result:
         raise ValueError('RV32 requires --c-foundation-result for its C-only runtime')
+    if options.c_foundation_base and not options.c_foundation_result:
+        raise ValueError('--c-foundation-base requires --c-foundation-result')
     checked_paths((options.compiler, options.os_tools, options.output))
     if os.path.lexists(options.output):
         raise ValueError('Output already exists')
