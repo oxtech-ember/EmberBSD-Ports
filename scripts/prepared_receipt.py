@@ -20,3 +20,19 @@ def write(root, *, package, identity):
     if receipt.read_bytes() != jsonio.json_bytes(record):
         raise SDKError('prepared source receipt differs from the measured record')
     return record
+
+
+def refresh(root, *, identity, verify):
+    """Rebind a verified payload while the caller holds exclusive use of it."""
+    from emberbsd_sdk import jsonio, sourceprep
+    from emberbsd_sdk.errors import SDKError
+    before = identity()
+    record = verify()
+    if before != identity():
+        raise SDKError('pkgsrc inputs changed during refresh')
+    receipt = Path(root) / sourceprep.PREPARED_TREE_RECEIPT
+    if jsonio.read_json(str(receipt)) != record:
+        raise SDKError('prepared source receipt changed during refresh')
+    updated = dict(record, identity={'effective': before[1], 'owner_sha256': before[0]['owner_sha256']})
+    jsonio.write_json(str(receipt), updated, exclusive=False)
+    return updated
