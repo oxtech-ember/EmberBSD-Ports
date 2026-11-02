@@ -148,7 +148,7 @@ QMAKE_CONF=		qmake.conf.mac
 .endif
 
 # Qt's deployment helpers are host tools and are disabled in cross builds.
-PLIST_VARS+=	androidtools targetmetadata egl egldevice wayland x11
+PLIST_VARS+=	androidtools targetmetadata egl egldevice opengl vulkan wayland x11
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 PLIST.androidtools=	yes
 .endif
@@ -340,8 +340,10 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Concurrent.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Core.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Gui.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Network.pc
+.if empty(PKG_OPTIONS:Msoftware-rendering)
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6OpenGL.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6OpenGLWidgets.pc
+.endif
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6PrintSupport.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Sql.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Test.pc
@@ -377,6 +379,8 @@ BUILDLINK_API_DEPENDS.libpsl+= libpsl>=0.23.3nb2
 .if ${OPSYS} != "Darwin"
 PLIST.x11=	yes
 .include "../../fonts/fontconfig/buildlink3.mk"
+# The native software flavor has no GLU, EGL or Vulkan integration.
+.if empty(PKG_OPTIONS:Msoftware-rendering)
 .include "../../graphics/glu/buildlink3.mk"
 .include "../../graphics/vulkan-headers/buildlink3.mk"
 .  if !empty(MESALIB_SUPPORTS_EGL:Myes)
@@ -397,6 +401,7 @@ PLIST.egldevice=	yes
 .      endif
 .    endif
 .  endif
+.endif
 BUILDLINK_API_DEPENDS.libxcb+=	libxcb>=1.11
 .include "../../x11/libxcb/buildlink3.mk"
 .include "../../x11/xcb-util/buildlink3.mk"
