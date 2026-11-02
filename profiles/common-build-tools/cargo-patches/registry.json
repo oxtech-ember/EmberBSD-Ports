@@ -52,6 +52,15 @@
     },
     "patch": "clang-sys-1.9.1.patch"
   },
+  "cssparser-macros-0.7.1": {
+    "files": {
+      "Cargo.toml": {
+        "before": "d46e8543833c2cee37123f3eb4e6d52a86efeffae4caa07a832053fbe9b8857b",
+        "after": "dbe45d31184a75a5e8240e38407c02906a980a0d528bbe044432af522cc78214"
+      }
+    },
+    "patch": "cssparser-macros-0.7.1.patch"
+  },
   "dashmap-6.2.1": {
     "files": {
       "Cargo.toml": {
