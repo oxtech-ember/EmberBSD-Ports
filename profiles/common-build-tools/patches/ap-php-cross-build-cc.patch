@@ -1,0 +1,29 @@
+Cross ap-php builds minilua for the build machine.
+
+ap-php builds the same PHP source as lang/php85 as an Apache module. The
+opcache JIT generates ir_emit_<arch>.h by running minilua, which the
+Makefile builds with BUILD_CC. configure defaults BUILD_CC to "gcc", which
+in a cross build is the target compiler wrapper, so the build ran an
+aarch64 NetBSD executable on the build host. Pass the build machine
+compiler, as lang/php85 does.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/www/ap-php/Makefile
++++ b/www/ap-php/Makefile
+@@ -25,6 +25,16 @@
+ 
+ .include "${PHPPKGSRCDIR}/Makefile.php"
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# The opcache JIT runs minilua, built with BUILD_CC, on the build machine.
++# configure's default "gcc" is the target compiler wrapper in a cross build.
++.  if defined(EMBERBSD_CROSS_BUILD_CC)
++CONFIGURE_ENV+=		BUILD_CC=${EMBERBSD_CROSS_BUILD_CC:Q}
++.  else
++CONFIGURE_ENV+=		BUILD_CC=${NATIVE_CC:Q}
++.  endif
++.endif
++
+ # Ensure we export symbols in the linked shared object.
+ CONFIGURE_ENV+=		EXTRA_LDFLAGS=${EXPORT_SYMBOLS_LDFLAGS:M*:Q}
+ 
