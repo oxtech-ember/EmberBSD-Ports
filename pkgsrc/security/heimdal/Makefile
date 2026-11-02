@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.172 2026/01/07 08:48:40 wiz Exp $
 
 DISTNAME=	heimdal-7.8.0
-PKGREVISION=	34
+PKGREVISION=	35
 CATEGORIES=	security
 MASTER_SITES=	${MASTER_SITE_GITHUB:=heimdal/}
 GITHUB_RELEASE=	${DISTNAME}
@@ -56,7 +56,12 @@ READLINE_DEFAULT= readline
 PREFER.readline= pkgsrc
 # Preserve the cross default while allowing a caller-verified base provider.
 PREFER.openssl?= pkgsrc
-CONFIGURE_ARGS+= --with-openssl=${BUILDLINK_DIR}
+# Resolve recursively: pkgsrc finalizes USE_BUILTIN.openssl through its
+# builtin and buildlink machinery after this Makefile has been parsed.
+_HEIMDAL_OPENSSL_ROOT_YES= ${_CROSS_DESTDIR}${BUILDLINK_PREFIX.openssl}
+_HEIMDAL_OPENSSL_ROOT_NO= ${BUILDLINK_DIR}
+HEIMDAL_OPENSSL_ROOT= ${_HEIMDAL_OPENSSL_ROOT_${USE_BUILTIN.openssl:tu}}
+CONFIGURE_ARGS+= --with-openssl=${HEIMDAL_OPENSSL_ROOT:Q}
 CONFIGURE_ARGS+= --with-readline=${BUILDLINK_DIR}
 .else
 CONFIGURE_ARGS+= --with-readline=${BUILDLINK_PREFIX.editlinereadline}
@@ -131,10 +136,15 @@ TEST_TARGET=		check
 post-extract:
 	${CP} ${FILESDIR}/heim_find_prime.h ${WRKSRC}/lib/hcrypto/heim_find_prime.h
 
-pre-configure:
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-	${TEST} -f ${BUILDLINK_DIR}/lib/libcrypto.so || \
-	    { ${ECHO} "Selected OpenSSL is missing from the buildlink tree"; exit 1; }
+.PHONY: check-heimdal-openssl-provider
+pre-configure: check-heimdal-openssl-provider
+check-heimdal-openssl-provider:
+	${TEST} x${HEIMDAL_OPENSSL_ROOT:Q} != x && \
+	${TEST} -f ${HEIMDAL_OPENSSL_ROOT:Q}/lib/libcrypto.so || \
+	    { ${ECHO} "Selected OpenSSL provider is missing libcrypto.so"; exit 1; }
+
+pre-configure:
 	for t in asn1_compile slc compile_et; do \
 		${TEST} -x ${_EMBERBSD_HEIMDAL_TOOLS_DIR:Q}/$$t || \
 		{ ${ECHO} "Native Heimdal tool $$t is missing"; exit 1; }; \

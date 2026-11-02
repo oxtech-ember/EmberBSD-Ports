@@ -20,7 +20,8 @@ Ports checkout, target cross configuration and base OpenSSL version. Keep
 `PREFER.openssl` unset in `CROSS_MAKECONF` for the default case. The check uses
 the recipe Makefile from `PORTS_SOURCE` and supporting framework from
 `PKGSRCDIR`. It covers the cross default, explicit native and pkgsrc choices,
-the target `/usr` provider prefix, and native-mode preference preservation.
+the provider-specific physical root passed to configure, the base library path
+under the target sysroot, and native-mode preference preservation.
 
 The cross default remains pkgsrc. A caller may select `PREFER.openssl=native`
 only after verifying the base provider's provenance and complete common Ports
