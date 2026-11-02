@@ -9,6 +9,8 @@ BUILDLINK_API_DEPENDS.kf6-kpackage+=	kf6-kpackage>=6.31.0
 BUILDLINK_ABI_DEPENDS.kf6-kpackage+=	kf6-kpackage>=6.31.0
 BUILDLINK_PKGSRCDIR.kf6-kpackage?=	../../devel/kf6-kpackage
 
+.include "../../devel/kf6-kpackage/cross-tools.mk"
+
 BUILDLINK_FILES.kf6-kpackage+=		bin/kpackagetool6
 
 .include "../../archivers/kf6-karchive/buildlink3.mk"
