@@ -41,6 +41,7 @@ CMAKE_GENERATORS_INCOMPATIBLE=	ninja
 
 BUILDLINK_API_DEPENDS.brotli+=	brotli>=1.1
 .include "../../archivers/brotli/buildlink3.mk"
+BUILDLINK_API_DEPENDS.boost-headers+=	boost-headers>=1.92.0nb2
 .include "../../devel/boost-headers/buildlink3.mk"
 .include "../../devel/cmake/build.mk"
 .include "../../devel/nss/buildlink3.mk"

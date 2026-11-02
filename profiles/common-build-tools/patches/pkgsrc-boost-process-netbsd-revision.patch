@@ -15,12 +15,11 @@
  
 --- a/devel/boost-libs/Makefile
 +++ b/devel/boost-libs/Makefile
-@@ -91,6 +91,8 @@
- .include "../../archivers/xz/buildlink3.mk"
- .include "../../archivers/zstd/buildlink3.mk"
+@@ -93,3 +93,7 @@
  .include "../../converters/libiconv/buildlink3.mk"
-+# boost/process/v2/exit_code.hpp builds on NetBSD from nb1.
++.if ${OPSYS} == "NetBSD"
++# boost/process/v2/exit_code.hpp needs the NetBSD header fix from nb1.
 +BUILDLINK_API_DEPENDS.boost-headers+=	boost-headers>=1.92.0nb1
++.endif
  .include "../../devel/boost-headers/buildlink3.mk"
  .include "../../devel/zlib/buildlink3.mk"
- PKG_OPTIONS_VAR= PKG_OPTIONS.boost-libs
