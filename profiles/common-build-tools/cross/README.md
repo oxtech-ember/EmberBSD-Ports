@@ -566,8 +566,18 @@ a package compiles: the build passes a `pkg_add` wrapper as `NATIVE_PKG_ADD_CMD`
 which takes a lock in `STATE/locks` for the package database it
 installs into, so installs into one prefix never overlap and installs into
 the target sysroot and the native prefix run independently. Only the
-scheduler writes the state lists. SIGTERM starts no new package, lets the
+active controller writes the state lists. SIGTERM starts no new package, lets the
 running ones finish and exits with 143; the next run skips the done packages.
+For a package whose stage already exists, `cross-bulk.sh package-install PKGPATH STATE`
+runs that package's normal `package-install` target, or
+`package` plus `replace` when the target sysroot already has its package
+base. It holds `STATE/build.lock`, does not clean the `WRKDIR`, and updates
+only that package's state rows: success records the package and clears its
+failure/block entries; failure records the failure and keeps prior successes.
+An archive by itself is not treated as a completed build. The single package
+uses the selected SDK's full CPU budget for `MAKE_JOBS` by default;
+`CROSS_BULK_MAKE_JOBS` still overrides it. On TERM/INT/HUP it finishes the
+active package before releasing the lock.
 `scripts/tests/cross-bulk-native-tools.sh NEW_OUTPUT` checks all four
 dependency classes, transitive native tools, installed native leaves,
 cycles, and package scheduling with a recording bmake.

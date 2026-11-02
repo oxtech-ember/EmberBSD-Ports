@@ -63,6 +63,7 @@ umask 022
 
 [ "$#" -eq 3 ] || {
     echo 'Usage: sh scripts/cross-bulk.sh order|fetch|build PKGPATH_LIST ABSOLUTE_STATE' >&2
+    echo '       sh scripts/cross-bulk.sh package-install PKGPATH ABSOLUTE_STATE' >&2
     exit 2
 }
 mode=$1
@@ -857,14 +858,17 @@ build_one()
         return 0
     fi
     file=$packages/$name.tgz
-    if [ -f "$file" ] && awk -v p="$path" -v n="$name" '$1 == p && $2 == n { f = 1; exit } END { exit !f }' "$state/done"; then
+    if [ "${stage_local:-no}" != yes ] && [ -f "$file" ] &&
+        awk -v p="$path" -v n="$name" '$1 == p && $2 == n { f = 1; exit } END { exit !f }' "$state/done"; then
         [ "$path" != lang/llvm-devel ] || llvm_shared_retire_runtime
         result "$key" "done $path"
         return 0
     fi
     # One short line per append: O_APPEND keeps concurrent lines whole.
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name" >> "$state/progress"
-    prepare_wrkdir "$wrkdir" "$job.$key"
+    if [ "${stage_local:-no}" != yes ]; then
+        prepare_wrkdir "$wrkdir" "$job.$key"
+    fi
     : > "$log"
     # One package-install run does depends, package and the install: each
     # target-mode bmake run parses the package again, and the pkg_add wrapper
@@ -879,15 +883,19 @@ build_one()
     set -f
     [ -z "$base" ] || ! $target_pkg_info -e "$base" > /dev/null 2>&1 || { install=package; replace=replace; }
     set +f
-    { [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" clean < /dev/null >> "$log" 2>&1; } &&
+    { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" clean < /dev/null >> "$log" 2>&1; } &&
         target_install "$path" $install >> "$log" 2>&1 &&
-        { [ -z "$replace" ] || exclusive "$key" target_install "$path" replace >> "$log" 2>&1; } && {
+        { [ -z "$replace" ] || if [ "${stage_local:-no}" = yes ]; then
+            target_install "$path" replace >> "$log" 2>&1
+        else
+            exclusive "$key" target_install "$path" replace >> "$log" 2>&1
+        fi; } && {
         if [ "$path" = lang/llvm ] && [ "$llvm_shared_enabled" = yes ] && [ -d "$llvm_shared_stage" ]; then
             : > "$run/llvm-runtime-ready.tmp"
             mv "$run/llvm-runtime-ready.tmp" "$run/llvm-runtime-ready"
         fi
         if [ "$path" != lang/llvm ] || [ ! -f "$run/llvm-runtime-ready" ]; then
-            clean_success
+            [ "${stage_local:-no}" = yes ] || clean_success
         fi
         [ "$path" != lang/llvm-devel ] || llvm_shared_retire_runtime
         echo "$(date '+%Y-%m-%d %H:%M:%S') done $path" >> "$state/progress"
@@ -896,6 +904,112 @@ build_one()
     }
     echo "$(date '+%Y-%m-%d %H:%M:%S') FAILED $path" >> "$state/progress"
     result "$key" "failed $path build"
+}
+
+# Install one explicitly selected package from its existing WRKDIR. This is
+# an owner-directed recovery path, not archive reuse: it runs the same
+# package-install/package+replace targets as build_one, while preserving the
+# workdir and updating only this PKGPATH in the controller state.
+state_path_row()
+{
+    spr_file=$1 spr_path=$2 spr_row=${3:-}
+    spr_tmp=$spr_file.tmp.$$
+    [ -f "$spr_file" ] || : > "$spr_file"
+    awk -v p="$spr_path" '$1 != p { print }' "$spr_file" > "$spr_tmp"
+    [ -z "$spr_row" ] || printf '%s\n' "$spr_row" >> "$spr_tmp"
+    mv "$spr_tmp" "$spr_file"
+}
+
+package_install_one()
+{
+    path=$list
+    case "$path" in
+        ''|/*|*@native|*..*|*\ *) echo 'Expected one target PKGPATH without @native' >&2; return 2 ;;
+    esac
+    [ -f "$state/order" ] && grep -qFx "$path" "$state/order" || {
+        echo "PKGPATH is not in the saved order: $path" >&2
+        return 2
+    }
+    # Fail closed on any existing lock, including a stale one. Recovery must
+    # never race a controller or silently take over its state directory.
+    if ! mkdir "$state/build.lock" 2> /dev/null; then
+        other=$(cat "$state/build.lock/pid" 2> /dev/null || :)
+        echo "Another build${other:+ ($other)} uses $state" >&2
+        return 2
+    fi
+    printf '%s\n' "$$" > "$state/build.lock/pid"
+    run=
+    recovery_cleanup()
+    {
+        [ -z "$run" ] || rm -rf "$run"
+        rm -f "$state/build.lock/pid"
+        rmdir "$state/build.lock" 2> /dev/null || :
+    }
+    trap recovery_cleanup EXIT
+    stop=0
+    trap 'stop=1' HUP INT TERM
+    run=$(mktemp -d "$state/package-install.run.XXXXXX") || {
+        echo 'Cannot create a private package-install run directory' >&2
+        return 2
+    }
+    mkdir -p "$state/locks"
+    vars_cache=
+    gnu_stat=no
+    clean=clean
+    stage_local=yes
+    job=1
+    llvm_shared_enabled=no
+    llvm_shared_stage=
+    cpus=$(host_cpus)
+    make_jobs=${CROSS_BULK_MAKE_JOBS:-$cpus}
+    if [ "$make_jobs" != makeconf ]; then
+        count CROSS_BULK_MAKE_JOBS "$make_jobs"
+    fi
+    real_pkg_add=$(var pkgtools/pkg_install NATIVE_PKG_ADD_CMD)
+    [ -n "$real_pkg_add" ] || { echo 'NATIVE_PKG_ADD_CMD is empty' >&2; return 2; }
+    pkg_add_wrapper "$real_pkg_add" > "$run/pkg_add"
+    chmod +x "$run/pkg_add"
+    target_pkg_info=$(var pkgtools/pkg_install PKG_INFO)
+    [ -n "$target_pkg_info" ] || { echo 'The target PKG_INFO is empty' >&2; return 2; }
+    packages=$(var pkgtools/pkg_install PACKAGES)/All
+    native_packages=${packages%/All}-native
+    target_settings=$(var pkgtools/pkg_install CROSSTARGETSETTINGS)
+    stamp=$(date '+%Y%m%d%H%M%S')
+    link_launcher_args
+    key=$(echo "$path" | tr / _)
+    node=$path
+    reported=
+    build_one "$path"
+    outcome=$(cat "$run/$key.result" 2>/dev/null || :)
+    set -f
+    set -- $outcome
+    set +f
+    case "${1:-}" in
+        built)
+            shift 2
+            state_path_row "$state/done" "$path" "$path $*"
+            state_path_row "$state/failed" "$path"
+            state_path_row "$state/blocked" "$path"
+            echo "Installed $path from its current pkgsrc stage"
+            ;;
+        done)
+            echo "$path is already recorded done"
+            ;;
+        *)
+            case "${1:-}" in
+                skipped)
+                    echo "Package is skipped by the current profile: $outcome" >&2
+                    return 2
+                    ;;
+            esac
+            reason=${outcome#failed "$path" }
+            state_path_row "$state/failed" "$path" "$path ${reason:-package-install}"
+            state_path_row "$state/blocked" "$path"
+            echo "Package stage failed; retained WRKDIR: $path" >&2
+            return 1
+            ;;
+    esac
+    [ "$stop" = 0 ] || return 143
 }
 
 # Print "R PATH" for up to $1 packages whose dependencies are all done and
@@ -1080,5 +1194,6 @@ case "$mode" in
             mv "$state/$key.tmp" "$state/$key.deps" ;;
     fetch) fetch ;;
     build) build ;;
+    package-install) package_install_one ;;
     *) echo "Unknown mode: $mode" >&2; exit 2 ;;
 esac
