@@ -1,30 +1,53 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 /* Origin: EmberBSD (AI-assisted). Exercise the packaged SVG renderer on target. */
-#include <sys/stat.h>
-#include <sys/wait.h>
-
 #include <cairo.h>
-#include <fontconfig/fontconfig.h>
-#include <gdk-pixbuf/gdk-pixbuf.h>
-#include <girepository/girepository.h>
 #include <librsvg/rsvg.h>
 
-#include <errno.h>
-#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#include "librsvg-fixtures.h"
+#ifndef LIBRSVG_CSS_ONLY
+#include <sys/stat.h>
+#include <sys/wait.h>
 
+#include <fontconfig/fontconfig.h>
+#include <gdk-pixbuf/gdk-pixbuf.h>
+#include <girepository/girepository.h>
+
+#include <errno.h>
+#include <fcntl.h>
+
+#include "librsvg-fixtures.h"
+#endif
+
+#ifndef LIBRSVG_CSS_ONLY
 static const char svg[] =
     "<svg xmlns='http://www.w3.org/2000/svg' width='32' height='16'>"
     "<rect width='16' height='16' fill='#ff0000'/>"
     "<rect x='16' width='16' height='16' fill='#00ff00'/>"
     "<circle cx='16' cy='8' r='4' fill='#0000ff'/></svg>";
+#endif
 static const char invalid_svg[] = "<svg><broken";
+static const char css_svg[] =
+	"<svg xmlns='http://www.w3.org/2000/svg' width='30' height='10'>"
+	"<style>rect { fill: #ff0000; }"
+	":lang(fr) > rect { fill: rgb(0% 100% 0%); }"
+	".hsl { fill: hsl(240 100% 50%); }</style>"
+	"<rect width='10' height='10'/>"
+	"<g xml:lang='fr'><rect x='10' width='10' height='10'/></g>"
+	"<rect class='hsl' x='20' width='10' height='10'/></svg>";
+static const char unknown_pseudo_svg[] =
+	"<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'>"
+	"<style>rect { fill: red; }\n\n"
+	"rect:unknown-rsvg-pseudo { fill: blue; }</style>"
+	"<rect width='4' height='4'/></svg>";
+static const char unknown_at_rule_svg[] =
+	"<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'>"
+	"<style>@unknown-rsvg-rule value;\nrect { fill: red; }</style>"
+	"<rect width='4' height='4'/></svg>";
 
 static void
 check(int condition, const char *message)
@@ -36,6 +59,7 @@ check(int condition, const char *message)
 	}
 }
 
+#ifndef LIBRSVG_CSS_ONLY
 static void
 write_file(const char *name, const void *data, size_t size, mode_t mode)
 {
@@ -53,7 +77,9 @@ write_file(const char *name, const void *data, size_t size, mode_t mode)
 	}
 	check(close(fd) == 0, "close temporary fixture");
 }
+#endif
 
+#ifndef LIBRSVG_CSS_ONLY
 static int
 run(char *const args[], const char *output)
 {
@@ -75,6 +101,7 @@ run(char *const args[], const char *output)
 	check(waitpid(pid, &status, 0) == pid, "wait for packaged utility");
 	return WIFEXITED(status) ? WEXITSTATUS(status) : 127;
 }
+#endif
 
 static uint32_t
 pixel(cairo_surface_t *surface, int x, int y)
@@ -87,6 +114,7 @@ pixel(cairo_surface_t *surface, int x, int y)
 	return *(const uint32_t *)(data + y * cairo_image_surface_get_stride(surface) + x * 4);
 }
 
+#ifndef LIBRSVG_CSS_ONLY
 static void
 check_surface(cairo_surface_t *surface)
 {
@@ -97,6 +125,7 @@ check_surface(cairo_surface_t *surface)
 	    pixel(surface, 28, 4) == 0xff00ff00U &&
 	    pixel(surface, 16, 8) == 0xff0000ffU, "SVG RGB reference pixels");
 }
+#endif
 
 static cairo_surface_t *
 render(const char *text, size_t length, int width, int height)
@@ -120,6 +149,87 @@ render(const char *text, size_t length, int width, int height)
 	return surface;
 }
 
+static void
+check_css_diagnostic(const char *text, size_t text_length,
+	const char *boundary, const char *name, const char *name_message)
+{
+	char output[4096];
+	cairo_surface_t *surface;
+	FILE *capture;
+	size_t length;
+	int capture_fd, close_status;
+	int saved_stdout;
+
+	check(setenv("RSVG_LOG", "1", 1) == 0, "enable librsvg diagnostics");
+	capture = tmpfile();
+	check(capture != NULL, "create diagnostic capture");
+	check(fflush(stdout) == 0, "flush stdout before capture");
+	capture_fd = fileno(capture);
+	if (capture_fd < 0) {
+		(void)fprintf(stderr, "could not get diagnostic capture descriptor\n");
+		(void)fclose(capture);
+		abort();
+	}
+	saved_stdout = dup(STDOUT_FILENO);
+	check(saved_stdout >= 0, "save stdout");
+	check(dup2(capture_fd, STDOUT_FILENO) == STDOUT_FILENO,
+	    "capture librsvg diagnostics");
+	surface = render(text, text_length, 4, 4);
+	cairo_surface_destroy(surface);
+	check(fflush(stdout) == 0, "flush captured diagnostics");
+	check(dup2(saved_stdout, STDOUT_FILENO) == STDOUT_FILENO,
+	    "restore stdout");
+	check(close(saved_stdout) == 0, "close saved stdout");
+	check(fseek(capture, 0, SEEK_SET) == 0, "rewind diagnostic capture");
+	length = fread(output, 1, sizeof(output) - 1, capture);
+	check(!ferror(capture) && length < sizeof(output) - 1,
+	    "bounded diagnostic output");
+	output[length] = '\0';
+	close_status = fclose(capture);
+	check(close_status == 0, "close diagnostic capture");
+	if (strstr(output, boundary) == NULL || strstr(output, name) == NULL) {
+		fprintf(stderr,
+		    "Expected CSS diagnostic boundary '%s' and name '%s'; captured %zu bytes:\n",
+		    boundary, name, length);
+		(void)fwrite(output, 1, length, stderr);
+		(void)fputc('\n', stderr);
+	}
+	check(strstr(output, boundary) != NULL,
+	    "CSS diagnostic retains rule boundary");
+	check(strstr(output, name) != NULL, name_message);
+}
+
+static void
+check_css_only(void)
+{
+	cairo_surface_t *surface;
+	RsvgHandle *bad;
+	GError *error = NULL;
+	uint32_t value;
+
+	check(setenv("RSVG_LOG", "1", 1) == 0, "enable librsvg diagnostics");
+	surface = render(css_svg, sizeof(css_svg) - 1, 30, 10);
+	value = pixel(surface, 5, 5);
+	check(value == 0xffff0000U, "CSS base selector red pixel");
+	check(pixel(surface, 15, 5) == 0xff00ff00U,
+	    "CSS :lang selector green pixel");
+	check(pixel(surface, 25, 5) == 0xff0000ffU,
+	    "CSS HSL color blue pixel");
+	cairo_surface_destroy(surface);
+	check_css_diagnostic(unknown_pseudo_svg, sizeof(unknown_pseudo_svg) - 1,
+	    "line: 2", "unknown-rsvg-pseudo",
+	    "CSS diagnostic retains unsupported pseudo name");
+	check_css_diagnostic(unknown_at_rule_svg, sizeof(unknown_at_rule_svg) - 1,
+	    "line: 0", "unknown-rsvg-rule",
+	    "CSS diagnostic retains unsupported at-rule name");
+	bad = rsvg_handle_new_from_data((const guint8 *)invalid_svg,
+	    sizeof(invalid_svg) - 1, &error);
+	check(bad == NULL && error != NULL, "malformed SVG is rejected by C API");
+	g_clear_error(&error);
+	puts("PASS: installed C API CSS colors, :lang, diagnostic boundaries/names, malformed SVG");
+}
+
+#ifndef LIBRSVG_CSS_ONLY
 static void
 check_metadata(void)
 {
@@ -154,7 +264,16 @@ check_metadata(void)
 	gi_base_info_unref(info);
 	g_object_unref(repository);
 }
+#endif
 
+#ifdef LIBRSVG_CSS_ONLY
+int
+main(void)
+{
+	check_css_only();
+	return 0;
+}
+#else
 int
 main(int argc, char **argv)
 {
@@ -174,8 +293,14 @@ main(int argc, char **argv)
 	unsigned int cycle, i, ink;
 	int stride, channels;
 	int loader_only = argc == 2 && strcmp(argv[1], "--loader-only") == 0;
+	int css_only = argc == 2 && strcmp(argv[1], "--css-only") == 0;
 
-	check(argc == 1 || loader_only, "usage: librsvg-package [--loader-only]");
+	check(argc == 1 || loader_only || css_only,
+	    "usage: librsvg-package [--loader-only|--css-only]");
+	if (css_only) {
+		check_css_only();
+		return 0;
+	}
 
 	check(getcwd(cwd, sizeof(cwd)) != NULL, "temporary working directory");
 	check(snprintf(loader, sizeof(loader), "%s/svg-loader.so", cwd) < (int)sizeof(loader), "loader path");
@@ -250,3 +375,4 @@ main(int argc, char **argv)
 	puts("PASS: packaged librsvg features across four target lifecycles; malformed SVG refused");
 	return 0;
 }
+#endif
