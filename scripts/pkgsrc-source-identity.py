@@ -410,9 +410,9 @@ def shared_export_material(directory, relative):
 def export_identity(ports_root, git, sdk_source, patch):
     """Identify one canonical export for every package of a run.
 
-    The export depends on the Ports commit, the pinned pkgsrc commit, the
-    overlay inputs (which also cover uncommitted overlay edits) and the patch
-    tool that applied the infrastructure patches.
+    Record the Ports commit as provenance and fingerprint the pinned pkgsrc
+    commit, overlay inputs (including uncommitted edits), and patch tool that
+    produce the export.
     """
     if not os.path.isabs(str(patch)) or not os.path.isfile(patch) or not os.access(patch, os.X_OK):
         raise ValueError('patch must be an absolute executable')
@@ -423,6 +423,30 @@ def export_identity(ports_root, git, sdk_source, patch):
             'upstream': payload['upstream'],
             'export_inputs_sha256': hashlib.sha256(encoded).hexdigest(),
             'patch': {'path': str(patch), 'sha256': inventory.sha256_file(str(patch))}}
+
+
+def equivalent_export_inputs(left, right):
+    """Compare export-producing inputs while retaining recorded commit provenance."""
+    keys = {'api', 'ports_commit', 'upstream', 'export_inputs_sha256', 'patch'}
+
+    def valid(value):
+        patch = value.get('patch') if isinstance(value, dict) else None
+        return (isinstance(value, dict) and set(value) == keys and
+                type(value['api']) is int and value['api'] == 1 and
+                isinstance(value['ports_commit'], str) and
+                re.fullmatch(r'[0-9a-f]{40}', value['ports_commit']) is not None and
+                isinstance(value['upstream'], str) and
+                re.fullmatch(r'[0-9a-f]{40}', value['upstream']) is not None and
+                isinstance(value['export_inputs_sha256'], str) and
+                re.fullmatch(r'[0-9a-f]{64}', value['export_inputs_sha256']) is not None and
+                isinstance(patch, dict) and set(patch) == {'path', 'sha256'} and
+                isinstance(patch['path'], str) and os.path.isabs(patch['path']) and
+                isinstance(patch['sha256'], str) and
+                re.fullmatch(r'[0-9a-f]{64}', patch['sha256']) is not None)
+
+    return (valid(left) and valid(right) and
+            all(left[key] == right[key] for key in
+                ('api', 'upstream', 'export_inputs_sha256', 'patch')))
 
 
 def create_shared_export(directory, ports_root, git, sdk_source, patch):
@@ -436,7 +460,8 @@ def create_shared_export(directory, ports_root, git, sdk_source, patch):
     subprocess.run([sys.executable, '-B', str(Path(ports_root) / 'scripts/prepare-pkgsrc.py'),
                     str(directory / 'pkgsrc'), '--git', str(git), '--patch', str(patch)],
                    check=True, env=process.sanitized_environment(), stdout=sys.stderr)
-    if export_identity(ports_root, git, sdk_source, patch) != before:
+    if not equivalent_export_inputs(before,
+                                    export_identity(ports_root, git, sdk_source, patch)):
         raise ValueError('pkgsrc export inputs changed during the shared export')
     receipt = {'format': SHARED_EXPORT_FORMAT, 'version': 2, 'identity': before,
                'material': {name: material_snapshot(directory / 'pkgsrc' / name)
@@ -450,8 +475,9 @@ def shared_export(directory, ports_root, git, sdk_source, patch):
     """Return the pkgsrc tree of a shared export made from current inputs.
 
     The caller owns the directory for the duration of its run; this check
-    binds the export to the Ports commit, pkgsrc commit, overlay inputs and
-    patch tool selected now, and refuses an export made from other ones.
+    binds the export to the pkgsrc commit, overlay inputs and patch tool
+    selected now. The recorded Ports commit remains provenance; an unrelated
+    commit with identical export-producing inputs does not require re-export.
     """
     directory = Path(directory)
     if not directory.is_absolute() or directory.is_symlink() or not directory.is_dir():
@@ -473,7 +499,8 @@ def shared_export(directory, ports_root, git, sdk_source, patch):
              (not isinstance(receipt['material'], dict) or
               set(receipt['material']) != set(SHARED_EXPORT_MATERIAL)))):
         raise ValueError('invalid shared pkgsrc export receipt')
-    if receipt['identity'] != export_identity(ports_root, git, sdk_source, patch):
+    if not equivalent_export_inputs(receipt['identity'],
+                                    export_identity(ports_root, git, sdk_source, patch)):
         raise ValueError('shared pkgsrc export was made from different inputs')
     exported = directory / 'pkgsrc'
     revision = exported / 'EMBERBSD-PKGSRC-REVISION'

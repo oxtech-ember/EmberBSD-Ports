@@ -113,9 +113,18 @@ class SharedExportTest(unittest.TestCase):
         self.assertEqual(len(self.exports), 1)
         with self.assertRaises(FileExistsError):
             identity.create_shared_export(directory, self.root, sys.executable, SDK, str(self.tool))
+        self.pins.update(ports=b'b' * 40)
+        self.assertEqual(self.select(directory), directory / 'pkgsrc')
+        self.assertEqual(len(self.exports), 1)
+        # The receipt keeps the commit that produced it as provenance even
+        # though an unrelated HEAD-only change did not change export inputs.
+        stored = json.loads((directory / identity.SHARED_EXPORT_RECEIPT).read_text())
+        self.assertEqual(stored['identity']['ports_commit'], 'a' * 40)
+        self.pins.update(ports=b'a' * 40)
         for change, undo in (
-                (lambda: self.pins.update(ports=b'b' * 40), lambda: self.pins.update(ports=b'a' * 40)),
                 (lambda: self.pins.update(upstream=b'2' * 40), lambda: self.pins.update(upstream=b'1' * 40)),
+                (lambda: (self.root / 'pkgsrc/cat/pkg/Makefile').write_text('DISTNAME=changed\n'),
+                 lambda: (self.root / 'pkgsrc/cat/pkg/Makefile').write_text('DISTNAME=example\n')),
                 (lambda: self.tool.write_text('#!/bin/sh\n# other\n'), lambda: self.tool.write_text('#!/bin/sh\n'))):
             change()
             with self.assertRaisesRegex(ValueError, 'different inputs'):
@@ -128,6 +137,22 @@ class SharedExportTest(unittest.TestCase):
         (directory / identity.SHARED_EXPORT_RECEIPT).unlink()
         with self.assertRaisesRegex(ValueError, 'no receipt'):
             self.select(directory)
+
+    def test_create_shared_export_allows_head_only_move(self):
+        directory = Path(self.temp.name) / 'export-during-head-move'
+
+        def export(command, **kwargs):
+            tree = Path(command[3])
+            (tree / 'cat/pkg').mkdir(parents=True)
+            (tree / 'net/libfetch/files').mkdir(parents=True)
+            (tree / 'EMBERBSD-PKGSRC-REVISION').write_text(self.pins['upstream'].decode() + '\n')
+            self.pins['ports'] = b'b' * 40
+
+        with patch.object(identity.subprocess, 'run', side_effect=export):
+            receipt = identity.create_shared_export(directory, self.root, sys.executable,
+                                                    SDK, str(self.tool))
+        self.assertEqual(receipt['identity']['ports_commit'], 'a' * 40)
+        self.assertEqual(self.select(directory), directory / 'pkgsrc')
 
     def test_receipt_format_is_checked(self):
         directory = Path(self.temp.name) / 'export'
