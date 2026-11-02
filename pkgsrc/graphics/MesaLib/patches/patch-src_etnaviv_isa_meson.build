@@ -1,0 +1,14 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+Keep the ISA disassembly test target behind Mesa's test option.
+
+--- src/etnaviv/isa/meson.build.orig
++++ src/etnaviv/isa/meson.build
+@@ -195,3 +195,5 @@
+ endif
+ 
+-subdir('tests')
++if with_tests
++  subdir('tests')
++endif

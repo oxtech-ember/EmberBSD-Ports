@@ -99,11 +99,21 @@ MESON_ARGS+=	-Dgallium-rusticl=false -Dteflon=false -Dperfetto=false
 MESON_ARGS+=	-Dmicrosoft-clc=disabled -Dallow-fallback-for=
 MESON_ARGS+=	-Dzlib=enabled -Dzstd=enabled -Ddisplay-info=disabled
 MESON_ARGS+=	-Dlibunwind=disabled -Dvalgrind=disabled
-# pkgsrc supplies --buildtype=plain and the selected compiler optimization.
-MESON_ARGS+=	-Dbuild-tests=true -Db_lto=false
+# Tests are opt-in so normal package builds do not compile the test suite.
+MESON_ARGS+=	-Db_lto=false
+.if !empty(PKG_OPTIONS:Mtests)
+MESON_ARGS+=	-Dbuild-tests=true
 BUILDLINK_API_DEPENDS.googletest+= googletest>=1.18.0
 BUILDLINK_DEPMETHOD.googletest= build
 .include "../../devel/googletest/buildlink3.mk"
+.else
+MESON_ARGS+=	-Dbuild-tests=false
+.endif
+.if empty(PKG_OPTIONS:Mtests)
+pre-test:
+	@${ERROR_MSG} "Mesa upstream tests require PKG_OPTIONS.MesaLib+=tests"
+	${FALSE}
+.endif
 PKGCONFIG_OVERRIDE_STAGE=	pre-install
 .for pc in gl glx egl gbm glesv1_cm glesv2 dri
 PKGCONFIG_OVERRIDE+=	output/meson-private/${pc}.pc

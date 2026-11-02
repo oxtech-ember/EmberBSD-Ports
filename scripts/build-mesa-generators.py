@@ -26,14 +26,19 @@ DEPENDENCIES = (
     'py315-lxml>=6.1.3', 'py315-rnc2rng>=2.7.0',
     'py315-rply>=0.7.8', 'py315-appdirs>=1.4.4',
     'llvm>=23.1.4<23.1.5', 'clang>=23.1.4<23.1.5',
-    'googletest>=1.18.0', 'spirv-headers>=1.4.363.0', 'spirv-tools>=2026.4',
+    'spirv-headers>=1.4.363.0', 'spirv-tools>=2026.4',
     'spirv-llvm-translator>=23.1.2<23.2',
 )
+TEST_DEPENDENCIES = ('googletest>=1.18.0',)
 
 
 def require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def selected_dependencies(run_tests):
+    return DEPENDENCIES + (TEST_DEPENDENCIES if run_tests else ())
 
 
 def add_jobs_option(parser):
@@ -138,7 +143,7 @@ def native_file(native, binding=None):
     return '\n'.join(rows) + '\n'
 
 
-def mesa_commands(native, source, work, jobs, rtti):
+def mesa_commands(native, source, work, jobs, rtti, run_tests=False):
     require(rtti in ('YES', 'NO'), 'Unexpected llvm-config --has-rtti result')
     destination = work / 'mesa'
     meson = native.command('python') + ('-B', '-E', '-s', native.tool('meson'))
@@ -153,12 +158,15 @@ def mesa_commands(native, source, work, jobs, rtti):
         '-Dmesa-clc-bundle-headers=enabled',
         '-Dprecomp-compiler=enabled', '-Dinstall-precomp-compiler=true',
         '-Dllvm=enabled', '-Dshared-llvm=enabled', '-Ddraw-use-llvm=false',
-        '-Damd-use-llvm=false', '-Dspirv-tools=enabled', '-Dbuild-tests=true']
-    return [('configure-mesa', configure),
-            ('build-mesa', [native.tool('ninja'), '-C', str(destination), '-j', str(jobs)]),
-            ('test-mesa', [*meson, 'test', '-C', str(destination), '--no-rebuild',
-                           '--print-errorlogs', '--num-processes', str(jobs)]),
-            ('install-mesa', [*meson, 'install', '-C', str(destination), '--no-rebuild'])]
+        '-Damd-use-llvm=false', '-Dspirv-tools=enabled',
+        '-Dbuild-tests=' + ('true' if run_tests else 'false')]
+    commands = [('configure-mesa', configure),
+                ('build-mesa', [native.tool('ninja'), '-C', str(destination), '-j', str(jobs)])]
+    if run_tests:
+        commands.append(('test-mesa', [*meson, 'test', '-C', str(destination), '--no-rebuild',
+                                       '--print-errorlogs', '--num-processes', str(jobs)]))
+    commands.append(('install-mesa', [*meson, 'install', '-C', str(destination), '--no-rebuild']))
+    return commands
 
 
 def check_compilers(native, build, binding=None):
@@ -189,12 +197,14 @@ def build(arguments, sdk_root):
     parser.add_argument('--native-cxx-binding-record', help='SDK native C++ compiler binding record')
     parser.add_argument('--pkgdb', required=True, help='Package database used by the native prefix')
     parser.add_argument('--lock-directory', required=True, help='Shared SDK producer lock namespace')
+    parser.add_argument('--test', action='store_true', help='build and run the upstream Meson test suite')
     add_jobs_option(parser)
     parser.add_argument('work')
     parser.add_argument('distdir')
     args = parser.parse_args(arguments)
     host_policy = mesa_generator_host.host_policy(compiler_family=args.host_compiler_family)
     args.jobs = generator_jobs(args.jobs)
+    dependencies = selected_dependencies(args.test)
     for value in (args.host_prefix, args.pkgdb, args.lock_directory, args.work, args.distdir):
         require(re.fullmatch(r'/[A-Za-z0-9_./-]+', value), 'Use absolute paths without shell metacharacters')
     host = Path(args.host_prefix).resolve(strict=True)
@@ -232,12 +242,14 @@ def build(arguments, sdk_root):
         graphics = PORTS / 'profiles/common-graphics'
         helpers = PORTS / 'probes/a733-accelerators/host-tools'
         objc_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-meson.build-host-objc'
+        etnaviv_tests_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_etnaviv_isa_meson.build'
         gtest_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_include_mesa-gtest-extras.h'
         gtest_provider_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_meson.build'
         dynarray_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_util_u__dynarray.h'
         scripts = [Path(__file__).resolve(), graphics / 'cross/seal-mesa-generators.py',
                    graphics / 'cross/mesa_generator_host.py',
-                   helpers / 'mesa-26.2.4-pco-bvnc.patch', objc_patch, gtest_patch, gtest_provider_patch, dynarray_patch,
+                   helpers / 'mesa-26.2.4-pco-bvnc.patch', objc_patch, etnaviv_tests_patch,
+                   gtest_patch, gtest_provider_patch, dynarray_patch,
                    PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h',
                    graphics / 'sources.tsv']
         scripts.append(selector_path)
@@ -266,7 +278,7 @@ def build(arguments, sdk_root):
                     write_json(str(work / sdk_source.PRODUCER_QUARANTINE), dict(error=str(error), step=name))
                     raise
 
-            providers = {pattern: query([tools['pkg_info'], '-K', str(pkgdb), '-e', pattern]) for pattern in DEPENDENCIES}
+            providers = {pattern: query([tools['pkg_info'], '-K', str(pkgdb), '-e', pattern]) for pattern in dependencies}
             require(all(providers.values()), 'Missing native package dependency')
             modules = json.loads(query([python, '-B', '-E', '-s', '-c', MODULE_QUERY, str(host)]))
             provider_paths = {str(path): str(path.resolve(strict=True)) for path in [python, *map(Path, tools.values()), *map(Path, modules.values())]}
@@ -310,12 +322,15 @@ def build(arguments, sdk_root):
                  '-d', source, '-i', gtest_patch], 'mesa-gtest-patch')
             run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p0',
                  '-d', source, '-i', gtest_provider_patch], 'mesa-gtest-provider-patch')
+            run([tools['patch'], '--posix', '-f', '-N', '-F', '0', '-p0',
+                 '-d', source, '-i', etnaviv_tests_patch], 'mesa-etnaviv-tests-patch')
             source.rename(work / 'mesa-source')
             extract.rmdir()
             native_work = work / 'native'
             native_work.mkdir()
             (native_work / 'native.ini').write_text(native_file(native, binding))
-            for name, command in mesa_commands(native, work / 'mesa-source', native_work, args.jobs, rtti):
+            for name, command in mesa_commands(native, work / 'mesa-source', native_work,
+                                               args.jobs, rtti, args.test):
                 run(command, name)
                 if name == 'configure-mesa':
                     check_compilers(native, native_work / 'mesa', binding)
@@ -326,7 +341,7 @@ def build(arguments, sdk_root):
                          str(work / 'native/mesa'), tools['spirv-val'], str(work / 'sealed')])
             require(source_hashes == {path: sha256_file(path) for path in source_hashes}, 'Builder source changed during the native build')
             require(provider_paths == {path: str(Path(path).resolve(strict=True)) for path in provider_paths}, 'Selected native tool or module path changed')
-            require(providers == {pattern: query([tools['pkg_info'], '-K', str(pkgdb), '-e', pattern]) for pattern in DEPENDENCIES},
+            require(providers == {pattern: query([tools['pkg_info'], '-K', str(pkgdb), '-e', pattern]) for pattern in dependencies},
                     'Native package providers changed during the build')
             write_json(str(work / 'outputs.json'), dict(sealed=str(work / 'sealed'),
                        manifest_sha256=sha256_file(str(work / 'sealed/installed.sha256'))))

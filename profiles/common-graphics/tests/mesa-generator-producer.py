@@ -51,6 +51,12 @@ class ProducerTests(unittest.TestCase):
         pins = [pattern for pattern in producer.DEPENDENCIES if pattern.startswith('meson>=')]
         self.assertEqual(pins, ['meson>=1.12.1nb1'])
 
+    def test_googletest_dependency_is_opt_in_with_meson_tests(self):
+        dependencies = getattr(producer, 'selected_dependencies', None)
+        self.assertTrue(callable(dependencies), 'test-only providers must be selected with the test mode')
+        self.assertNotIn('googletest>=1.18.0', dependencies(False))
+        self.assertIn('googletest>=1.18.0', dependencies(True))
+
     def test_module_origin_query_is_executable_python(self):
         compile(producer.MODULE_QUERY, "native-module-query", "exec")
 
@@ -115,7 +121,8 @@ class ProducerTests(unittest.TestCase):
         with mock.patch('emberbsd_sdk.cpu_capacity.available_cpu_count', return_value=12):
             selected = producer.generator_jobs(None)
         self.assertEqual(selected, 12)
-        commands = dict(producer.mesa_commands(self.native, Path('/source'), Path('/work'), selected, 'YES'))
+        commands = dict(producer.mesa_commands(self.native, Path('/source'), Path('/work'),
+                                               selected, 'YES', run_tests=True))
         self.assertEqual(commands['build-mesa'][-2:], ['-j', '12'])
         self.assertEqual(commands['test-mesa'][-2:], ['--num-processes', '12'])
         self.assertEqual(producer.generator_jobs(3), 3)
@@ -130,17 +137,22 @@ class ProducerTests(unittest.TestCase):
                 setup = commands['configure-mesa']
                 self.assertIn('-s', setup)  # -E alone ignores PYTHONNOUSERSITE.
                 self.assertIn('-Dcpp_rtti=' + enabled, setup)
-                for flag in ('-Db_ndebug=false', '-Dbuild-tests=true', '-Dspirv-tools=enabled',
+                for flag in ('-Db_ndebug=false', '-Dbuild-tests=false', '-Dspirv-tools=enabled',
                              '-Dmesa-clc=enabled', '-Dmesa-clc-bundle-headers=enabled',
                              '-Dprecomp-compiler=enabled',
                              '-Dshared-llvm=enabled', '--wrap-mode=nodownload'):
                     self.assertIn(flag, setup)
                 self.assertEqual(commands['build-mesa'][0], self.native.tool('ninja'))
-                self.assertIn('test', commands['test-mesa'])
-                self.assertIn('--print-errorlogs', commands['test-mesa'])
+                self.assertNotIn('test-mesa', commands)
                 self.assertIn('--no-rebuild', commands['install-mesa'])
         with self.assertRaisesRegex(ValueError, 'has-rtti'):
             producer.mesa_commands(self.native, Path('/source'), Path('/work'), 2, 'UNKNOWN')
+        tested = dict(producer.mesa_commands(self.native, Path('/source'), Path('/work'),
+                                             2, 'YES', run_tests=True))
+        self.assertIn('-Dbuild-tests=true', tested['configure-mesa'])
+        self.assertIn('test-mesa', tested)
+        self.assertIn('--print-errorlogs', tested['test-mesa'])
+        self.assertIn('--no-rebuild', tested['install-mesa'])
 
     def test_configured_compiler_cannot_silently_change(self):
         # This is real Meson introspection shape, not executable fixture tools.

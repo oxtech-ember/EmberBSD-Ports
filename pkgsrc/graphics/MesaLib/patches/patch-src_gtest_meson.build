@@ -1,11 +1,11 @@
 $NetBSD$
 
 Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
-Use the common GoogleTest provider for tests instead of the bundled copy.
+Use the common GoogleTest provider only when Mesa tests are enabled.
 
 --- src/gtest/meson.build.orig
 +++ src/gtest/meson.build
-@@ -1,16 +1,8 @@
+@@ -1,16 +1,10 @@
  # Copyright © 2017 Intel Corporation
  # SPDX-License-Identifier: MIT
  
@@ -17,6 +17,7 @@ Use the common GoogleTest provider for tests instead of the bundled copy.
 -  build_by_default : false,
 -)
 -
++if with_tests or with_radv_tests or with_aco_tests or with_gallium_mediafoundation_test
 +configure_file(input : 'include/mesa-gtest-extras.h', output : 'mesa-gtest-extras.h', copy : true)
  idep_gtest = declare_dependency(
 -  link_with : libgtest,
@@ -25,3 +26,4 @@ Use the common GoogleTest provider for tests instead of the bundled copy.
 -  dependencies : [dep_thread],
 +  dependencies : [dependency('gtest_main', method : 'pkg-config'), dep_thread],
  )
++endif

@@ -56,9 +56,10 @@ discovery and failed plane construction for both import constructors.
 These syscall and mutex models do not establish Mesa configuration, a complete
 target build, kernel mapping, GEM-handle lifetime, cache coherency, hardware
 rendering or a compositor session. They do not execute the full screen or
-resource lifecycle. Complete normal packaging, upstream tests, native PRIME
-mapping, GBM/EGL and compositor acceptance remain required. Run Cppcheck,
-applicable GCC analysis and supported memory checks with the selected tools.
+resource lifecycle. Complete normal packaging, native PRIME mapping, GBM/EGL
+and compositor acceptance remain required. The upstream test suite is available
+through the explicit `tests` package option. Run Cppcheck, applicable GCC
+analysis and supported memory checks with the selected tools.
 Source preparation alone is not a regression pass.
 
 ## Base libelf provider
@@ -103,7 +104,9 @@ C or C++ compiler. The `SPIRV-Tools` pkg-config interface uses the static
 archive; its separately named shared interface is not selected. Mesa keeps
 its ordinary shared LLVM dependency for llvmpipe and ORC.
 Rusticl and Microsoft CLC stay disabled, so this selection does not require
-libclc. Drivers and upstream tests stay enabled.
+libclc. The selected drivers remain enabled. Mesa's upstream test suite is
+disabled by default; add `tests` to `PKG_OPTIONS.MesaLib` to build it and its
+GoogleTest dependency. An explicit pkgsrc test phase requires this option.
 
 The dependency floor rejects older Translator release families. Tools uses
 its stable 2026.4 component release with the function-order repair. Headers
@@ -126,8 +129,9 @@ pkgsrc includes with records of the selected interfaces. It checks native and
 cross options, build-only dependency methods, generator installation, missing
 cross seals, and deliberate selection/dependency faults. It does not resolve
 the full pkgsrc dependency graph, configure Meson, build a generator, or check
-the staged package. Full native shader generation, upstream tests and package
-linkage/PLIST checks remain required.
+the staged package. Full native shader generation and package linkage/PLIST
+checks remain required. Run the upstream test suite when the explicit
+`PKG_OPTIONS.MesaLib+=tests` option is selected.
 
 ## Darwin generator language selection
 

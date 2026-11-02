@@ -14,6 +14,7 @@ FIELDS = ('PKG_FAIL_REASON', 'MESON_ARGS', 'MESON_NATIVE_ARGS', 'DEPENDS',
           'BUILDLINK_DEPMETHOD.spirv-llvm-translator',
           'BUILDLINK_API_DEPENDS.spirv-llvm-translator', 'TEST_INCLUDES',
           'BUILDLINK_API_DEPENDS.spirv-tools',
+          'BUILDLINK_API_DEPENDS.googletest',
           'GCC_REQD', 'USE_LANGUAGES', 'PLIST.radeonsi')
 BUILD_LINKS = {'../../lang/clang/buildlink3.mk', '../../parallel/spirv-tools/buildlink3.mk',
                '../../parallel/spirv-llvm-translator/buildlink3.mk'}
@@ -24,7 +25,7 @@ def require(condition, message):
         raise ValueError(message)
 
 
-def parse(make, work, source, arch, cross, sealed):
+def parse(make, work, source, arch, cross, sealed, tests=False):
     # External pkgsrc includes are outside this finite metadata boundary.
     # Keep local generator policy live. Record selected external interfaces.
     lines = []
@@ -49,6 +50,7 @@ PREFIX=/usr/pkg
 TOOLBASE=/usr/pkg
 PYPKGPREFIX=py315
 PYVERSSUFFIX=3.15
+PKG_OPTIONS={pkg_options}
 EMBERBSD_MESA_GENERATORS={sealed}
 EMBERBSD_SDK_SOURCE={work}/selected-sdk
 .include "{work}/recipe.mk"
@@ -56,7 +58,9 @@ show:
 .for field in {fields}
 \t@printf '%s\\n' ${{${{field}}:Q}}
 .endfor
-'''.format(arch=arch, cross=cross, work=work, sealed=sealed, fields=' '.join(FIELDS)))
+'''.format(arch=arch, cross=cross, work=work,
+           pkg_options='llvm x11 wayland tests' if tests else 'llvm x11 wayland',
+           sealed=sealed, fields=' '.join(FIELDS)))
     result = subprocess.run([str(make), '-r', '-m', '/', '-f', str(fixture), 'show'],
                             cwd=RECIPE, capture_output=True, text=True)
     require(result.returncode == 0, 'bmake failed: ' + result.stdout + result.stderr)
@@ -65,26 +69,32 @@ show:
     return dict(zip(FIELDS, output))
 
 
-def oracle(values, arch, cross, sealed):
+def oracle(values, arch, cross, sealed, tests=False):
     options = set(values['MESON_ARGS'].split())
     drivers = ('iris,radeonsi,virgl,softpipe,llvmpipe,zink' if arch == 'x86_64'
                else 'v3d,virgl,softpipe,llvmpipe,zink')
-    require('-Dgallium-drivers=' + drivers in options and '-Dbuild-tests=true' in options,
-            'The drivers or upstream tests were disabled')
+    require('-Dgallium-drivers=' + drivers in options, 'The selected drivers changed')
+    test_flag = '-Dbuild-tests=true' if tests else '-Dbuild-tests=false'
+    require(test_flag in options and ('-Dbuild-tests=false' if tests else '-Dbuild-tests=true') not in options,
+            'The upstream test mode does not follow the tests package option')
+    includes = set(values['TEST_INCLUDES'].split())
+    gtest_include = '../../devel/googletest/buildlink3.mk'
+    require((gtest_include in includes) == tests, 'GoogleTest buildlink does not follow the tests option')
+    require(values['BUILDLINK_API_DEPENDS.googletest'] == ('googletest>=1.18.0' if tests else ''),
+            'GoogleTest dependency is not scoped to the tests option')
     require(values['PLIST.radeonsi'] == ('yes' if arch == 'x86_64' else ''),
             'RadeonSI package files do not follow the selected architecture')
     require('-Dmicrosoft-clc=disabled' in options and '-Dgallium-rusticl=false' in options,
             'Unrelated CLC consumers changed')
     require('16.2' not in values['GCC_REQD'].split() and values['USE_LANGUAGES'].split() == ['c', 'c++'],
             'Compiler selection changed')
-    includes = set(values['TEST_INCLUDES'].split())
     if cross:
         require({'-Dmesa-clc=system', '-Dprecomp-compiler=system', '-Dspirv-tools=disabled'} <= options,
                 'Cross builds did not select system generators')
         require(not (includes & BUILD_LINKS), 'Cross builds imported target CLC libraries')
         require('--native-file' in values['MESON_NATIVE_ARGS'], 'Cross native-file binding was lost')
-        require(('sealed EMBERBSD_MESA_GENERATORS' in values['PKG_FAIL_REASON']) == (not sealed),
-                'Cross builds did not enforce the sealed tools')
+        require(not sealed or '--native-file' in values['MESON_NATIVE_ARGS'],
+                'Cross builds did not select the sealed native file')
     else:
         require(not values['PKG_FAIL_REASON'] and not values['MESON_NATIVE_ARGS'],
                 'Native builds still require a sealed generator directory')
@@ -124,6 +134,19 @@ def main():
                 values = parse(args.bmake, work, source, arch, 'yes' if cross else 'no',
                                tools if selected else work / 'missing')
                 oracle(values, arch, cross, selected)
+                if cross and not selected:
+                    result = subprocess.run([str(args.bmake), '-r', '-m', '/', '-f', str(work / 'fixture.mk'),
+                                             'emberbsd-mesa-generators-check'],
+                                            cwd=RECIPE, capture_output=True, text=True)
+                    require(result.returncode != 0 and
+                            'requires an absolute sealed EMBERBSD_MESA_GENERATORS directory' in result.stderr,
+                            'The cross pre-configure target accepted a missing generator seal')
+                checks += 1
+        for arch in ('x86_64', 'aarch64'):
+            for cross in (False, True):
+                values = parse(args.bmake, work, source, arch, 'yes' if cross else 'no',
+                               tools if cross else work / 'missing', tests=True)
+                oracle(values, arch, cross, cross, tests=True)
                 checks += 1
         mutations = [
             ('.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"\n# Cross builds', '.if 1\n# Cross builds'),

@@ -29,10 +29,11 @@ The native LLVM and Clang libraries and the generators need a compatible host
 C++ runtime. GCC16 remains an explicit host compiler alternative.
 
 The current inputs are Mesa 26.2.6, LLVM/Clang 23.1.4, Translator 23.1.2,
-SPIRV-Tools 2026.4, SPIRV-Headers 1.4.363.0 and GoogleTest 1.18.0.
-Use the common Ports patches and the external GoogleTest provider for tests.
-The producer checks package predicates, Python module origins and the libyaml extension.
-Build missing dependencies through their normal pkgsrc recipes before starting this producer.
+SPIRV-Tools 2026.4 and SPIRV-Headers 1.4.363.0. Use the common Ports patches
+in both modes. `--test` additionally requires GoogleTest 1.18.0 from the external
+provider. The producer checks selected package predicates, Python module origins
+and the libyaml extension. Build missing dependencies through their normal
+pkgsrc recipes before starting this producer.
 
 SDK `load_host_prefix` selects tools, checks their native CPU and resolves their paths.
 It also checks the selected compiler components and script interpreters.
@@ -46,7 +47,8 @@ selected prefix's `llvm-readelf` and the system `/usr/bin/ldd`.
 The full native build prepares the generic CLC tools and PowerVR's compiler.
 An Intel seal does not copy or execute the PowerVR compiler.
 It still checks the genuine upstream common shader command and compile/link metadata.
-Assertions, SPIR-V validation and upstream tests remain enabled.
+Assertions and SPIR-V validation remain enabled in both modes. `--test` builds
+and runs the upstream Meson test suite.
 Mesa RTTI follows the installed LLVM configuration. The native CLC embeds its
 OpenCL headers even with shared LLVM so it remains usable after relocation.
 
@@ -69,6 +71,8 @@ The Python standard-library orchestrator uses SDK host API1:
 
 The default job count is the number of CPUs available to the selected SDK
 process. Pass `--jobs N` to provide an explicit positive override.
+The default build omits Mesa's upstream test targets. Add `--test` to build and
+run that suite; generator smoke checks and sealing run in either mode.
 The work directory must be absent. A failed build retains its partial work.
 The command checks the source archive checksum and uses existing native packages.
 It does not install dependencies or modify the selected host prefix.

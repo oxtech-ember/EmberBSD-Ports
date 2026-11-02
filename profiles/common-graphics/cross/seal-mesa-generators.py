@@ -428,13 +428,15 @@ def seal_locked(args):
         check_runtime(validator, 'validator')
         bvnc_patch = PORTS / 'probes/a733-accelerators/host-tools/mesa-26.2.4-pco-bvnc.patch'
         objc_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-meson.build-host-objc'
+        etnaviv_tests_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_etnaviv_isa_meson.build'
         gtest_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_include_mesa-gtest-extras.h'
         gtest_provider_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_meson.build'
         interface_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_imagination_common_pvr__iface.h'
         dynarray_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_util_u__dynarray.h'
         inputs = [Path(__file__).resolve(), PORTS / 'profiles/common-graphics/cross/mesa_generator_host.py',
                   archive, validator, build / 'build.ninja',
-                  build / 'compile_commands.json', bvnc_patch, objc_patch, gtest_patch, gtest_provider_patch, interface_patch, dynarray_patch]
+                  build / 'compile_commands.json', bvnc_patch, objc_patch, etnaviv_tests_patch,
+                  gtest_patch, gtest_provider_patch, interface_patch, dynarray_patch]
         targets = json.loads((metadata / 'intro-targets.json').read_text())
         for name, path in tools.items():
             selected = [row for row in targets if row['name'] == name and row['type'] == 'executable']
@@ -459,6 +461,8 @@ def seal_locked(args):
             run(patch_command(native, reference, gtest_patch, 0), 'gtest-patch')
         if sha(reference / 'src/gtest/meson.build') != sha(source / 'src/gtest/meson.build'):
             run(patch_command(native, reference, gtest_provider_patch, 0), 'gtest-provider-patch')
+        if sha(reference / 'src/etnaviv/isa/meson.build') != sha(source / 'src/etnaviv/isa/meson.build'):
+            run(patch_command(native, reference, etnaviv_tests_patch, 0), 'etnaviv-tests-patch')
         run(patch_command(native, reference, dynarray_patch, 0), 'dynarray-patch')
         source_hashes = {}
         for path in sorted(reference.rglob('*')):
