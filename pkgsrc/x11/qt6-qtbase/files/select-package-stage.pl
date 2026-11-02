@@ -108,7 +108,8 @@ sub reject_overlap {
     my ($left, $right) = @_;
     my $a = canonical_target($left);
     my $b = canonical_target($right);
-    $a ne $b && index($a, "$b/") != 0 && index($b, "$a/") != 0
+    $a ne '/' && $b ne '/' && $a ne $b
+        && index($a, "$b/") != 0 && index($b, "$a/") != 0
         or die "Qtbase shared stage and package destination overlap\n";
 }
 
