@@ -383,10 +383,11 @@ fetch()
 }
 
 # Package-level parallelism. CROSS_BULK_JOBS packages build at once (default:
-# half the host CPUs). Each gets MAKE_JOBS on the command line (default: 1.5 x
-# CPUs split over the packages, at most the CPUs), which also reaches pkgsrc's
-# dependency recursion; MAKE_JOBS_SAFE=no recipes stay serial. Set
-# CROSS_BULK_MAKE_JOBS to a positive integer for an explicit override.
+# half the selected SDK CPU capacity). Their MAKE_JOBS shares one total budget,
+# with remainder CPUs assigned to earlier ready workers; the scheduler keeps
+# each allocation until that worker reports its result. MAKE_JOBS_SAFE=no
+# recipes stay serial. CROSS_BULK_MAKE_JOBS sets an explicit per-package value
+# and is checked against the total budget.
 # CROSS_BULK_CPUS overrides the SDK's detected CPU count.
 host_cpus()
 {
@@ -972,7 +973,7 @@ build_one()
         return 0
     fi
     # One short line per append: O_APPEND keeps concurrent lines whole.
-    echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name" >> "$state/progress"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name MAKE_JOBS=$make_jobs" >> "$state/progress"
     if [ "${stage_local:-no}" != yes ]; then
         prepare_wrkdir "$wrkdir" "$job.$key"
     fi
@@ -1065,6 +1066,10 @@ package_install_one()
     cpus=$(host_cpus)
     make_jobs=${CROSS_BULK_MAKE_JOBS:-$cpus}
     count CROSS_BULK_MAKE_JOBS "$make_jobs"
+    if [ "$make_jobs" -gt "$cpus" ]; then
+        echo "CROSS_BULK_MAKE_JOBS=$make_jobs exceeds resolved CPU capacity=$cpus" >&2
+        return 2
+    fi
     real_pkg_add=$(var pkgtools/pkg_install NATIVE_PKG_ADD_CMD)
     [ -n "$real_pkg_add" ] || { echo 'NATIVE_PKG_ADD_CMD is empty' >&2; return 2; }
     pkg_add_wrapper "$real_pkg_add" > "$run/pkg_add"
@@ -1186,11 +1191,40 @@ ready()
 build()
 {
     cpus=$(host_cpus)
-    workers=${CROSS_BULK_JOBS:-$(( (cpus + 1) / 2 ))}
+    workers_explicit=no
+    if [ -n "${CROSS_BULK_JOBS:-}" ]; then
+        workers_explicit=yes
+        workers=$CROSS_BULK_JOBS
+    else
+        workers=$(( (cpus + 1) / 2 ))
+    fi
     count CROSS_BULK_JOBS "$workers"
-    make_jobs=${CROSS_BULK_MAKE_JOBS:-$(( (3 * cpus + 2 * workers - 1) / (2 * workers) ))}
-    count CROSS_BULK_MAKE_JOBS "$make_jobs"
-    [ -n "${CROSS_BULK_MAKE_JOBS:-}" ] || [ "$make_jobs" -le "$cpus" ] || make_jobs=$cpus
+    if [ "$workers" -gt "$cpus" ]; then
+        echo "CROSS_BULK_JOBS=$workers exceeds resolved CPU capacity=$cpus" >&2
+        exit 2
+    fi
+    if [ -n "${CROSS_BULK_MAKE_JOBS:-}" ]; then
+        make_jobs=$CROSS_BULK_MAKE_JOBS
+        count CROSS_BULK_MAKE_JOBS "$make_jobs"
+        if [ "$make_jobs" -gt "$cpus" ]; then
+            echo "CROSS_BULK_MAKE_JOBS=$make_jobs exceeds resolved CPU capacity=$cpus" >&2
+            exit 2
+        fi
+        if [ "$workers_explicit" = yes ]; then
+            max_workers=$((cpus / make_jobs))
+            if [ "$workers" -gt "$max_workers" ]; then
+                echo "CROSS_BULK_JOBS=$workers with CROSS_BULK_MAKE_JOBS=$make_jobs exceeds resolved CPU capacity=$cpus" >&2
+                exit 2
+            fi
+        else
+            max_workers=$((cpus / make_jobs))
+            [ "$workers" -le "$max_workers" ] || workers=$max_workers
+        fi
+    else
+        # Controller-side queries are serial; each package subshell gets its
+        # own allocation before it calls build_one.
+        make_jobs=1
+    fi
     run=$state/run
     # One scheduler per state directory.
     if ! mkdir "$state/build.lock" 2> /dev/null; then
@@ -1239,11 +1273,17 @@ build()
     packages=$(var pkgtools/pkg_install PACKAGES)/All
     native_packages=${packages%/All}-native
     link_launcher_args
-    echo "Building with $workers packages at once, MAKE_JOBS=$make_jobs ($cpus CPUs)"
+    echo "Building with $workers packages at once (selected SDK CPU capacity=$cpus)"
+    if [ -n "${CROSS_BULK_MAKE_JOBS:-}" ]; then
+        echo "Explicit MAKE_JOBS=$make_jobs per package"
+    else
+        echo "Default MAKE_JOBS shares the $cpus CPU budget across ready packages"
+    fi
     [ -z "$link_args" ] || echo "Heavy links through $CROSS_BULK_LINK_LAUNCHER"
     stop=0
     trap 'stop=1' TERM INT HUP
     running=0
+    jobs_in_use=0
     changed=1
     while :; do
         for res in "$run"/*.result; do
@@ -1261,6 +1301,12 @@ build()
             esac
             # A request of a job that ended without its replace.
             res=${res%.result}
+            res_key=${res##*/}
+            if [ -f "$run/$res_key.jobs" ]; then
+                completed_jobs=$(cat "$run/$res_key.jobs")
+                jobs_in_use=$((jobs_in_use - completed_jobs))
+                rm -f "$run/$res_key.jobs"
+            fi
             rm -f "$res.result" "$res.replace" "$res.replacing"
             running=$((running - 1))
             changed=1
@@ -1285,20 +1331,38 @@ build()
         elif [ "$changed" = 1 ] && [ "$running" -lt "$workers" ] && [ "$replacing" = 0 ] && [ "$waiting" = 0 ]; then
             changed=0
             ready $((workers - running)) > "$run/ready"
+            ready_left=$(awk '$1 == "R" { n++ } END { print n + 0 }' "$run/ready")
             while read -r kind path dep; do
                 if [ "$kind" = B ]; then
                     echo "$path $dep" >> "$state/blocked"
                     echo "$path blocked" >> "$run/status"
                     changed=1
                 else
+                    worker_make_jobs=$make_jobs
+                    if [ -z "${CROSS_BULK_MAKE_JOBS:-}" ]; then
+                        available=$((cpus - jobs_in_use))
+                        if [ "$available" -le 0 ]; then
+                            ready_left=$((ready_left - 1))
+                            continue
+                        fi
+                        slots=$((workers - running))
+                        [ "$ready_left" -lt "$slots" ] && slots=$ready_left
+                        [ "$available" -lt "$slots" ] && slots=$available
+                        worker_make_jobs=$(((available + slots - 1) / slots))
+                    fi
                     echo "$path running" >> "$run/status"
                     running=$((running + 1))
                     job=$((job + 1))
+                    budget_key=$(echo "$path" | tr / _)
+                    printf '%s\n' "$worker_make_jobs" > "$run/$budget_key.jobs"
+                    jobs_in_use=$((jobs_in_use + worker_make_jobs))
+                    ready_left=$((ready_left - 1))
                     # Without errexit: every package reports a result.
                     # The scheduler may take the result at once, so the
                     # check is a flag, not the file; build_one changes $path.
                     (
                         set +e
+                        make_jobs=$worker_make_jobs
                         node=$path
                         reported=
                         build_one "$node"
