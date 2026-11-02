@@ -103,6 +103,10 @@ QMAKE_LFLAGS_GCSECTIONS=	-Wl,-dead_strip
 QMAKE_LFLAGS_RELEASE=
 CONFIGURE_ARGS+=		-platform macx-clang
 CONFIGURE_ARGS+=		-no-framework
+# fix-darwin-install-name gives every installed library and plugin its full
+# path as install name. Reserve header space for it; the installed mkspec
+# passes this on to the other qt5 packages.
+LDFLAGS+=			-Wl,-headerpad_max_install_names
 # pkgsrc has a patch to avoid using SDK, but the configure
 # logic gets confused if it can't find the header files
 # so give it a direct path to them if they aren't installed

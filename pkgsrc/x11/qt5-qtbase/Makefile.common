@@ -86,6 +86,6 @@ fix-darwin-install-name:
 		while read lib; do					\
 		libname=`basename $${lib}`;				\
 		libdir=`dirname $${lib} | sed -e 's,${DESTDIR},,'`;	\
-		install_name_tool -id $${libdir}/$${libname} $${lib};	\
+		${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:Uinstall_name_tool:Q} -id $${libdir}/$${libname} $${lib}; \
 	done
 .endif
