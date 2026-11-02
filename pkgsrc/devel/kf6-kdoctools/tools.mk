@@ -5,5 +5,5 @@
 BUILDLINK_DEPMETHOD.kf6-kdoctools?= build
 .include "../../devel/kf6-kdoctools/buildlink3.mk"
 .else
-TOOL_DEPENDS+= kf6-kdoctools>=6.31.0:../../devel/kf6-kdoctools
+TOOL_DEPENDS+= kf6-kdoctools-generators-${KF6VER}{,nb[0-9]*}:../../devel/kf6-kdoctools-generators
 .endif
