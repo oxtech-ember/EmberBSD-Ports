@@ -111,7 +111,7 @@ Build the helpers with the cross compiler of the target SDK, for example
 `aarch64--netbsd-clang --sysroot=SYSROOT -O2 -Wall -Wextra -Werror -o ntpstate ntpstate.c`
 and `... -fPIC -shared -o ntptrace.so ntptrace.c`.
 
-Run on 2 and 3 November 2026 in two EmberBSD aarch64 guests (QEMU with
+Run on 2 November 2026 (UTC) in two EmberBSD aarch64 guests (QEMU with
 HVF on an Apple M-series host, 1 vCPU each, base `28f4d84`, kernel
 `EMBER64`). The first guest ran chronyd 4.9 synchronised to public NTP
 servers (leap status `Normal`); a QEMU `dgram` link joined the second
@@ -131,7 +131,37 @@ compiler and sysroot of OS `2e5ec07` outside pkgsrc; the unpatched one has
 The kernel TAI offset stayed 11 s with the patched build. With the
 unpatched build the passive master set it to 37 s. A master-only port
 announces clock class 13 and the arbitrary timescale, so behind such a
-master a passive port has nothing to write.
+master a passive port has nothing to write. With `ptpengine:utc_offset=37`
+and `ptpengine:utc_offset_valid=Y` on the master-only port, the same peer
+caused no write even unpatched: only a changed UTC offset or leap flags
+raise the update. The repeated runs with the final `check-ntp-owner.sh`
+exited 0 for the patched build in both states, 1 for the unpatched
+no_adjust slave, and 2 for a run that never reached the expected state.
+
+### One hour next to chronyd
+
+On 2 November 2026, 22:10 to 23:10 UTC, in the same pair of guests. The
+first guest booted with `ptpd2=YES` and `chronyd=YES`: rc.d started
+chronyd, then ptpd2 as a master-only port on `vioif1` with
+`clock:no_adjust`, `ptpengine:utc_offset=37` and
+`ptpengine:utc_offset_valid=Y`, under the `ntptrace.so` shim (patched build
+as above). The second guest ran a slave-only ptpd2 that disciplined its
+own clock and logged every offset. Software timestamps in QEMU guests: the
+numbers bound this setup, not a board.
+
+| Result | Value |
+| --- | --- |
+| chronyd | leap status `Normal` in 324 of 324 samples (every 10 s); kernel status 0, TAI 0, esterror 0.8 to 3.6 ms |
+| ptpd2 master | `PTP_MASTER` throughout; no clock or NTP state write from boot to stop, 4560 reads |
+| Slave state | `PTP_SLAVE` throughout, 6777 offsets |
+| Slave offset, absolute | median 44 us, 95th percentile 0.73 ms, maximum 13 ms; 2.9 % above 1 ms |
+| Same, without 120 s after each offset above 1 ms | median 29 us, 95th percentile 0.21 ms, maximum 0.96 ms |
+| One-way delay | median 245 us, maximum 559 us; ping RTT 0.23 to 0.96 ms |
+
+The offsets above 1 ms came in short bursts that the servo removed within
+about a minute; at a 10 s resolution they did not follow the host load.
+After the boot chronyd slewed 0.15 s at 500 ppm for 5 minutes and the
+slave settled 12 minutes after its start.
 
 ## Remaining
 
