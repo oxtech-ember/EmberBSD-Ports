@@ -17,3 +17,12 @@ a local encrypted ping/pong exchange without changing the system trust store.
 Run `target-metadata-boundary.py PERL TARGET_METADATA_PL` with the selected
 host Perl and this recipe's `target-metadata.pl` to check the exact buildlink
 root, child paths and rejection of neighboring unresolved build paths.
+
+## Pre-project Apple autodetection
+
+From the qt6-qtbase recipe directory, run
+`python3 tests/apple-target-autodetect.py CMAKE QTBASE_SOURCE` with the selected
+CMake executable and the patched QtBase source directory. It sets `APPLE` to
+exercise host-Darwin cross configuration, then checks that explicit non-Apple
+systems skip the SDK query while native Darwin and Qt's Apple target systems
+reach a stubbed `xcrun` boundary. The test never runs the system `xcrun`.
