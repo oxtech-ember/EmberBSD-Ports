@@ -1,3 +1,9 @@
+$NetBSD$
+
+Use the selected simdutf header and its runtime pointer API in the Chromium bridge.
+Origin: EmberBSD (AI-assisted), Chromium 156.0.8078.75 / Electron 45.
+Status: local integration; not submitted upstream.
+
 --- a/third_party/simdutf/BUILD.gn
 +++ b/third_party/simdutf/BUILD.gn
 @@ -11,11 +11,14 @@

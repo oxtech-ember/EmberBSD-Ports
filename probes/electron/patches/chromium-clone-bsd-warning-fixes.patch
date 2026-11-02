@@ -1,3 +1,9 @@
+$NetBSD$
+
+Clone vector elements by their declared value type and scope unused platform state.
+Origin: EmberBSD (AI-assisted), Chromium 156.0.8078.75 / Electron 45.
+Status: local integration; not submitted upstream.
+
 --- a/mojo/public/cpp/bindings/clone_traits.h
 +++ b/mojo/public/cpp/bindings/clone_traits.h
 @@ -58,7 +58,8 @@
