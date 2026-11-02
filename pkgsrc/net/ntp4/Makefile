@@ -2,6 +2,7 @@
 #
 
 DISTNAME=	ntp-4.2.8p18
+PKGREVISION=	1
 CATEGORIES=	net time
 MASTER_SITES=	https://downloads.nwtime.org/ntp/4.2.8/
 
