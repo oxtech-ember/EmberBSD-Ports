@@ -7,6 +7,26 @@ with the selected target Clang; pass `--help` for its input paths.
 `tests/make-proto.py` runs the patched prototype generator against conditional
 static functions and checks that a following public prototype is retained.
 
+The target provider preference is checked through pkgsrc itself:
+
+```sh
+/absolute/sdk/bin/python3.15 -B \
+    pkgsrc/security/heimdal/tests/openssl-selection.py
+```
+
+Set `BMAKE`, `PKGSRCDIR`, `PORTS_SOURCE`, `CROSS_MAKECONF` and
+`OPENSSL_BASE_VERSION` to the selected native bmake, prepared pkgsrc tree,
+Ports checkout, target cross configuration and base OpenSSL version. Keep
+`PREFER.openssl` unset in `CROSS_MAKECONF` for the default case. The check uses
+the recipe Makefile from `PORTS_SOURCE` and supporting framework from
+`PKGSRCDIR`. It covers the cross default, explicit native and pkgsrc choices,
+the target `/usr` provider prefix, and native-mode preference preservation.
+
+The cross default remains pkgsrc. A caller may select `PREFER.openssl=native`
+only after verifying the base provider's provenance and complete common Ports
+patch set; version equality alone is not sufficient. Pkgsrc's normal built-in
+OpenSSL checks remain enabled.
+
 The `test-openssl-*.c` programs exercise the OpenSSL provider bridge. Link
 `test-openssl-fallback.c` against the candidate hcrypto and OpenSSL libraries,
 run with the matching OpenSSL module directory, and check its exit status.

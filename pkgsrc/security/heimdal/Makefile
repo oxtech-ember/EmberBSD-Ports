@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.172 2026/01/07 08:48:40 wiz Exp $
 
 DISTNAME=	heimdal-7.8.0
-PKGREVISION=	33
+PKGREVISION=	34
 CATEGORIES=	security
 MASTER_SITES=	${MASTER_SITE_GITHUB:=heimdal/}
 GITHUB_RELEASE=	${DISTNAME}
@@ -54,7 +54,8 @@ CONFIGURE_ARGS+=	--with-hdbdir=${HEIMDAL_HDB_DIR}
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 READLINE_DEFAULT= readline
 PREFER.readline= pkgsrc
-PREFER.openssl= pkgsrc
+# Preserve the cross default while allowing a caller-verified base provider.
+PREFER.openssl?= pkgsrc
 CONFIGURE_ARGS+= --with-openssl=${BUILDLINK_DIR}
 CONFIGURE_ARGS+= --with-readline=${BUILDLINK_DIR}
 .else
