@@ -7,8 +7,7 @@ Origin: EmberBSD (AI-assisted). Not submitted upstream.
 
 --- Source/kwsys/testSystemInformation.cxx
 +++ Source/kwsys/testSystemInformation.cxx
-@@ -26,7 +26,13 @@
-   kwsys::SystemInformation info;
+@@ -27,6 +27,12 @@
    info.RunCPUCheck();
    info.RunOSCheck();
    info.RunMemoryCheck();
