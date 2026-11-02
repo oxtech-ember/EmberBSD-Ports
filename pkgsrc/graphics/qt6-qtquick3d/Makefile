@@ -40,6 +40,7 @@ PLIST_SRC=	PLIST PLIST.openxr
 .include "../../graphics/qt6-qtquicktimeline/buildlink3.mk"
 .include "../../graphics/qt6-qtshadertools/buildlink3.mk"
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"
+.include "host-tools.mk"
 .include "options.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
