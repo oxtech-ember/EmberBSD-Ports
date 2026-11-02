@@ -81,7 +81,6 @@ post-install:
 	${INSTALL_MAN} ${WRKSRC}/README-XPDF ${DESTDIR}${PREFIX}/share/doc/poppler/
 	${RMDIR} ${DESTDIR}${PREFIX}/include/poppler || ${TRUE}
 
-.include "../../devel/boost-libs/buildlink3.mk"
 BUILDLINK_API_DEPENDS.fontconfig+=	fontconfig>=2.15
 .include "../../fonts/fontconfig/buildlink3.mk"
 BUILDLINK_API_DEPENDS.glib2+=   glib2>=2.80.0
