@@ -1,0 +1,17 @@
+$NetBSD$
+
+Avoid expanding glibc's function-like fortified asprintf macro in this declaration.
+
+Origin: EmberBSD (AI-assisted). Not submitted upstream.
+
+--- braces.c.orig
++++ braces.c
+@@ -66,7 +66,7 @@
+ #define BRACE_SEQ	0x02
+ #define BRACE_NONE	0x04
+ 
+-extern int asprintf (char **, const char *, ...) __attribute__((__format__ (printf, 2, 3)));
++extern int (asprintf) (char **, const char *, ...) __attribute__((__format__ (printf, 2, 3)));
+ 
+ /* Basic idea:
+ 
