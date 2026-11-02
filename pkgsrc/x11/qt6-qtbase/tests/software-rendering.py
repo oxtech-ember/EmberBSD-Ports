@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""Source contract for the native Linux Qt software-rendering option."""
+from pathlib import Path
+import re
+
+pkgdir = Path(__file__).resolve().parents[1]
+repo = pkgdir.parents[2]
+options = (pkgdir / "options.mk").read_text()
+makefile = (pkgdir / "Makefile").read_text()
+plist = (pkgdir / "PLIST").read_text().splitlines()
+runtime_plist = (pkgdir / "PLIST.runtime").read_text().splitlines()
+declarative = repo / "pkgsrc/lang/qt6-qtdeclarative"
+decl_make = (declarative / "Makefile").read_text()
+decl_plist = (declarative / "PLIST").read_text()
+
+def require(ok, message):
+    if not ok:
+        raise SystemExit("FAIL: " + message)
+    print("PASS: " + message)
+
+require(re.search(r'\.if \$\{OPSYS\} == "Linux" && \$\{USE_CROSS_COMPILE:Uno:tl\} != "yes"\s+PKG_SUPPORTED_OPTIONS\+=\s+software-rendering\s+\.endif', options) is not None,
+        "software-rendering is offered only for native Linux")
+start = options.index(".if !empty(PKG_OPTIONS:Msoftware-rendering)\n")
+block = options[start:].split("\n.else\n", 1)[0]
+for flag in ("-no-opengl", "-no-feature-egl", "-no-feature-eglfs",
+             "-no-feature-eglfs_egldevice", "-no-feature-vulkan",
+             "-DFEATURE_egl:BOOL=OFF", "-DFEATURE_eglfs:BOOL=OFF",
+             "-DFEATURE_eglfs_egldevice:BOOL=OFF", "-DFEATURE_vulkan:BOOL=OFF"):
+    require(flag in block, "software mode disables " + flag)
+require("PKG_FAIL_REASON" in block and "host-tools" in block,
+        "software-rendering conflicts with host-tools")
+require("-no-feature-testlib" not in block and "-no-gui" not in block,
+        "software-rendering retains GUI and TestLib")
+for dep in ("graphics/glu/buildlink3.mk", "graphics/vulkan-headers/buildlink3.mk"):
+    pos = makefile.index('.include "../../' + dep + '"')
+    guard = makefile.rfind(".if empty(PKG_OPTIONS:Msoftware-rendering)", 0, pos)
+    end = makefile.find(".endif", pos)
+    require(guard >= 0 and end > pos, dep + " is omitted only for software mode")
+
+def unprefixed(path):
+    return re.sub(r"^(?:\$\{PLIST\.[^}]+\})+", "", path)
+
+opengl = [s for s in plist if any(x in unprefixed(s) for x in
+          ("/QtOpenGL/", "/QtOpenGLWidgets/", "Qt6OpenGL", "OpenGLWidgets", "libQt6OpenGL"))]
+vulkan = [s for s in plist if any(x in unprefixed(s).lower() for x in (
+           "qvulkan", "qbasicvulkan", "qrhivulkan", "qplatformvulkan",
+           "qwaylandvulkan", "qvulkanserverbufferplugin", "libvulkan-server.so"))]
+egl = [s for s in plist if "mkspecs/devices/" not in s and any(x in s for x in ("QtEglFS", "QtEglFs", "qeglfs", "libQt6EglFS", "libQt6EglFs"))]
+require(bool(opengl) and all("PLIST.opengl" in s for s in opengl),
+        "OpenGL/OpenGLWidgets files follow PLIST.opengl")
+require(bool(vulkan) and all("PLIST.vulkan" in s for s in vulkan),
+        "Vulkan plugin files follow PLIST.vulkan")
+require(bool(egl) and all("PLIST.egl" in s for s in egl),
+        "EGL/EGLFS files follow PLIST.egl")
+
+def require_rows(source, fragments, features, label, count=None):
+    rows=[row for row in source if any(fragment in unprefixed(row) for fragment in fragments)]
+    require(bool(rows) and (count is None or len(rows)==count) and
+            all(all("${PLIST."+feature+"}" in row for feature in features) for row in rows), label)
+
+require_rows(plist, ["/QtGui/${PKGVERSION}/QtGui/private/"+name for name in
+    ("qeglconvenience_p.h","qeglpbuffer_p.h","qeglplatformcontext_p.h","qeglstreamconvenience_p.h","qt_egl_p.h")],
+    ("egl","x11"), "EGL private headers follow PLIST.egl and PLIST.x11", 5)
+require_rows(plist, ["/QtGui/${PKGVERSION}/QtGui/private/qglxconvenience_p.h"],
+    ("opengl","x11"), "GLX private header follows PLIST.opengl and PLIST.x11", 1)
+require_rows(plist, ["/QtGui/${PKGVERSION}/QtGui/private/"+name for name in
+    ("qopengl_p.h","qopenglcontext_p.h","qopenglextensions_p.h","qopenglprogrambinarycache_p.h","qrhigles2_p.h")] +
+    ["qt6/include/QtGui/qopenglcontext_platform.h"],
+    ("opengl",), "OpenGL private headers follow PLIST.opengl", 6)
+require_rows(plist, ["qt6/metatypes/qt6opengl_metatypes.json","qt6/metatypes/qt6openglwidgets_metatypes.json"],
+    ("opengl",), "OpenGL metatypes follow PLIST.opengl", 2)
+cmake_families = (
+    ("Qt6DmaBufServerBufferPlugin", ("wayland","x11","egl","opengl")),
+    ("Qt6DrmEglServerBufferPlugin", ("wayland","x11","egl","opengl")),
+    ("Qt6QVkKhrDisplayIntegrationPlugin", ("vulkan","x11")),
+    ("Qt6QWaylandEglClientBufferPlugin", ("wayland","x11","egl","opengl")),
+    ("Qt6QXcbEglIntegrationPlugin", ("egl","x11")),
+    ("Qt6QXcbGlxIntegrationPlugin", ("opengl","x11")),
+    ("Qt6ShmServerBufferPlugin", ("wayland","x11","opengl")),
+)
+for family, features in cmake_families:
+    require_rows(plist, ["qt6/lib/cmake/Qt6Gui/"+family], features,
+                 family+" CMake files follow its plugin feature guard", 7)
+require_rows(plist, ["qt6/include/QtGui/${PKGVERSION}/QtGui/private/qxdgdesktopportalfiletransfer_p.h"],
+    ("dbus","wayland"), "QtGui portal transfer header follows DBus and Wayland", 1)
+protocol_xml="qt6/share/qt6/wayland/extensions/qt-vulkan-server-buffer-unstable-v1.xml"
+protocol_rows=[row for row in plist if unprefixed(row)==protocol_xml]
+require(len(protocol_rows)==1 and "${PLIST.vulkan}" not in protocol_rows[0],
+        "Vulkan-named protocol XML follows upstream unconditional Wayland extension install")
+provider_rows = {
+    "libqvkkhrdisplay.so": ("vulkan", "x11"),
+    "libdmabuf-server.so": ("wayland", "x11", "egl", "opengl"),
+    "libdrm-egl-server.so": ("wayland", "x11", "egl", "opengl"),
+    "libqt-plugin-wayland-egl.so": ("wayland", "x11", "egl", "opengl"),
+    "libshm-emulation-server.so": ("wayland", "x11", "opengl"),
+    "libqxcb-glx-integration.so": ("opengl",),
+}
+for plist_name, source_plist in (("native PLIST", plist), ("target runtime PLIST", runtime_plist)):
+    for filename, features in provider_rows.items():
+        rows=[row for row in source_plist if unprefixed(row).endswith(filename)]
+        require(len(rows)==1 and all("${PLIST."+feature+"}" in rows[0] for feature in features),
+                plist_name+": "+filename+" follows "+"/".join("PLIST."+f for f in features))
+require(not any("qxdgdesktopportalfiletransfer_p.h" in row for row in runtime_plist),
+        "runtime PLIST remains free of QtGui development private headers")
+require("PLIST.opengl" not in protocol_rows[0], "Wayland protocol XML is not hidden by software-rendering OpenGL selection")
+
+require("full-tools-required.mk" in decl_make and "QtQuickTest/" in decl_plist,
+        "full QtDeclarative retains QuickTest")
+print("PASS: software-rendering recipe contract")
