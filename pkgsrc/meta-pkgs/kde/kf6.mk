@@ -74,7 +74,7 @@
 # used by x11/kf6-kxmlgui/Makefile
 # used by x11/kf6-qqc2-desktop-style/Makefile
 
-KF6VER=		6.31.0
+.include "../../meta-pkgs/kde/kf6-version.mk"
 
 .include "../../mk/bsd.prefs.mk"
 
