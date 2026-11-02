@@ -935,7 +935,21 @@ shared_pair_reset_stage()
     shared_pair_for_path "$1"
     [ "${stage_local:-no}" = yes ] && [ -n "$shared_pair" ] || return 0
     [ "$(cat "$run/shared-$shared_pair/enabled" 2>/dev/null)" = yes ] || return 0
-    bmk -C "$PKGSRCDIR/$1" _package-clean < /dev/null
+    bmk -C "$PKGSRCDIR/$1" _package-clean < /dev/null || return 1
+    if [ "$1" = "$shared_producer" ]; then
+        shared_dir=$run/shared-$shared_pair
+        shared_stage=$(cat "$shared_dir/stage")
+        shared_wrkdir=$(cat "$shared_dir/wrkdir")
+        [ "$shared_stage" = "$shared_wrkdir/$shared_stage_name" ] || return 1
+        if [ -L "$shared_stage" ]; then
+            echo "Refusing symlinked $shared_pair producer stage: $shared_stage" >&2
+            return 1
+        fi
+        if [ -e "$shared_stage" ]; then
+            [ -d "$shared_stage" ] || return 1
+            rm -r "$shared_stage" || return 1
+        fi
+    fi
 }
 
 build_one()

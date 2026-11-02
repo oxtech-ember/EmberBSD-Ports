@@ -104,7 +104,12 @@ case "$target" in
             echo "compile:$pkg" >> "$out/calls"
         fi
         if [ "$dir" = "$out/tree/$producer" ] && [ -n "$shared" ]; then
+            if [ -e "$shared/stale-metadata" ]; then
+                echo 'stale producer stage survived stage-local recovery' >&2
+                exit 1
+            fi
             mkdir -p "$shared"
+            printf 'fresh metadata\n' > "$shared/metadata"
             : > "$shared/full-stage"
             if [ "${FAKE_STOP_AFTER_PRODUCER:-no}" = yes ]; then
                 kill -TERM "$PPID"
@@ -189,6 +194,8 @@ mkdir -p "$stage_local/work/$producer_dir/.destdir" "$stage_local/work/$producer
 : > "$stage_local/work/$producer_dir/.install_done"
 : > "$stage_local/work/$producer_dir/.package_done"
 : > "$stage_local/work/$producer_dir/objects/compiled.o"
+mkdir -p "$stage_local/work/$producer_dir/.${pair}-shared-full-stage"
+printf 'stale metadata\n' > "$stage_local/work/$producer_dir/.${pair}-shared-full-stage/stale-metadata"
 mkdir -p "$stage_local/work/$consumer_dir/.destdir"
 : > "$stage_local/work/$consumer_dir/.destdir/stale"
 : > "$stage_local/work/$consumer_dir/.install_done"
@@ -202,6 +209,7 @@ grep -q "^_package-clean:$consumer_dir$" "$stage_local/calls" || fail 'stage-loc
 grep -q "^_package-clean:$producer_dir$" "$stage_local/calls" || fail 'stage-local producer package state was not reset'
 [ -f "$stage_local/work/$producer_dir/objects/compiled.o" ] || fail 'stage-local install reset removed producer build objects'
 [ -f "$stage_local/work/$producer_dir/.${pair}-shared-full-stage/full-stage" ] || fail 'stage-local success removed producer stage when clean-success was disabled'
+[ "$(cat "$stage_local/work/$producer_dir/.${pair}-shared-full-stage/metadata")" = 'fresh metadata' ] || fail 'stage-local recovery kept stale post-install metadata instead of the new producer stage'
 
 stopped=$out/stopped-before-consumer
 setup "$stopped"
