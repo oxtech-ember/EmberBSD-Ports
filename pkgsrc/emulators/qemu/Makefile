@@ -2,7 +2,7 @@
 
 .include "../../emulators/qemu/Makefile.common"
 
-PKGREVISION=	1
+PKGREVISION=	2
 
 CATEGORIES=	emulators
 

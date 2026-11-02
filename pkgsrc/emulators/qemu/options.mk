@@ -1,10 +1,17 @@
 # $NetBSD: options.mk,v 1.28 2026/04/27 10:25:01 adam Exp $
 
 PKG_OPTIONS_VAR=	PKG_OPTIONS.qemu
-PKG_SUPPORTED_OPTIONS=	debug debug-info doc gtk3 iscsi jack sdl spice
-PKG_SUGGESTED_OPTIONS+=	doc iscsi sdl spice
+PKG_SUPPORTED_OPTIONS=	debug debug-info doc gtk3 iscsi jack spice
+PKG_SUGGESTED_OPTIONS+=	doc iscsi spice
 
 .include "../../mk/bsd.fast.prefs.mk"
+
+# Origin: EmberBSD (AI-assisted). QEMU's SDL display needs SDL2, which
+# EmberBSD does not keep (SDL3 only), and QEMU has no SDL3 display. Use the
+# GTK display instead; macOS keeps Cocoa.
+.if ${OPSYS} != "Darwin"
+PKG_SUGGESTED_OPTIONS+=	gtk3
+.endif
 
 .if ${OPSYS} == "Linux" || ${OPSYS} == "Darwin" || ${OPSYS} == "NetBSD"
 PKG_SUPPORTED_OPTIONS+=	qemu-virtfs
@@ -68,18 +75,12 @@ CONFIGURE_ARGS+=	--enable-opengl
 CONFIGURE_ARGS+=	--disable-opengl
 .endif
 
-.if !empty(PKG_OPTIONS:Msdl)
-CONFIGURE_ARGS+=	--enable-sdl
-.include "../../devel/SDL2/buildlink3.mk"
-.include "../../graphics/SDL2_image/buildlink3.mk"
-.else
 CONFIGURE_ARGS+=	--disable-sdl
-.endif
 
 # On Darwin, qemu uses Cocoa
 .if ${OPSYS} != "Darwin"
 .  if !empty(PKG_OPTIONS:Mgtk3) || \
-    !empty(PKG_OPTIONS:Mopengl) || !empty(PKG_OPTIONS:Msdl)
+    !empty(PKG_OPTIONS:Mopengl)
 PLIST.keymap=		yes
 .include "../../x11/libxkbcommon/buildlink3.mk"
 .  else
