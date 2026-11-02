@@ -1,1 +1,4 @@
 Qt6 module for handling of multimedia content
+The quick3d-spatialaudio package option enables the optional QtQuick3D QML
+spatial-audio integration; the core SpatialAudio module remains available
+without it.

@@ -7,4 +7,6 @@ SHA1 (patch-cmake_FindFFmpeg.cmake) = ed6a161c91977df3c86c981f4fe98268d07b820e
 SHA1 (patch-src_multimedia_audio_qaudiosystem__p.h) = f4603fd93db64278613f857fe1b48f75f99864a3
 SHA1 (patch-src_multimedia_configure.cmake) = 5d7ff65ef4a16334b26b5dd771d86227d24cf19a
 SHA1 (patch-src_plugins_multimedia_ffmpeg_CMakeLists.txt) = 38f53656f162c3aef54d377336e98bb37471d108
+SHA1 (patch-src_plugins_multimedia_gstreamer_common_qgst_p.h) = c3776e1ab32b765566abf5406f16ab6e3d03c3b6
+SHA1 (patch-src_plugins_multimedia_gstreamer_common_qgstreameraudiooutput.cpp) = dec97e39f53f12ea0a8425a10f7c1d73799304dc
 SHA1 (patch-src_resonance-audio_CMakeLists.txt) = 5b683654d0144b7444d86731acd9125b50b3b4f6

@@ -1,11 +1,11 @@
 # $NetBSD: options.mk,v 1.8 2026/01/28 17:10:52 adam Exp $
 
 PKG_OPTIONS_VAR=	PKG_OPTIONS.qt6-qtmultimedia
-PKG_SUPPORTED_OPTIONS=	gstreamer pulseaudio
+PKG_SUPPORTED_OPTIONS=	gstreamer pulseaudio quick3d-spatialaudio
 
 .include "../../mk/bsd.fast.prefs.mk"
 
-PLIST_VARS+=		dmabuf ffmpeg gstreamer pulseaudio vaapi x11
+PLIST_VARS+=		dmabuf ffmpeg gstreamer pulseaudio quick3d_spatialaudio vaapi x11
 
 .if ${OPSYS} != "Darwin"
 # The common EGL provider exposes the DMA-BUF import declarations.
@@ -14,6 +14,14 @@ PKG_SUGGESTED_OPTIONS+=	gstreamer pulseaudio
 .endif
 
 .include "../../mk/bsd.options.mk"
+
+.if !empty(PKG_OPTIONS:Mquick3d-spatialaudio)
+CONFIGURE_ARGS+=	-feature-spatialaudio_quick3d
+PLIST.quick3d_spatialaudio=	yes
+.include "../../graphics/qt6-qtquick3d/buildlink3.mk"
+.else
+CONFIGURE_ARGS+=	-no-feature-spatialaudio_quick3d
+.endif
 
 .if !empty(PKG_OPTIONS:Mgstreamer)
 CONFIGURE_ARGS+=	-gstreamer
