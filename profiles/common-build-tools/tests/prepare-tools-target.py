@@ -76,4 +76,6 @@ assert not (work / 'rejected-size').exists()
 assert 'Matching GCC16.2.0 target compiler required' in run('wrong-compiler', '--target', 'amd64', work / 'gcc-wrong', work / 'os-tools', work / 'rejected', accept=False)
 assert not (work / 'rejected').exists()
 assert 'Output already exists' in run('existing', '--target', 'amd64', work / 'gcc-amd64', work / 'os-tools', work / 'tools', accept=False)
+assert 'RV32 C-only target tools require Clang' in run('rv32-requires-foundation',
+    '--target', 'riscv32', work / 'gcc-amd64', work / 'os-tools', work / 'rejected-rv32', accept=False)
 print('PASS: prepare-tools.py imports, amd64 composition and target refusals')

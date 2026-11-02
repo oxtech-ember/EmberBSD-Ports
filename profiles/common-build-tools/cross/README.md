@@ -165,6 +165,23 @@ Also set `EMBERBSD_CROSS_TARGET=amd64` in the cross MAKECONF. This selects
 Unknown targets and conflicting compiler or machine overrides fail.
 The selector does not prove an amd64 package build or desktop session.
 
+An explicit C-foundation result selects the SDK's C-only tool route, including
+its C compiler-rt and static unwind archive. It does not infer a smaller
+runtime from the target name or fall back to host libraries. For example,
+RV32 target packages use the current C-foundation result and must declare only
+`USE_LANGUAGES=c` (or C/assembly-only inputs); the cross profile rejects
+packages requesting other languages because their headers and runtimes are
+not part of the C foundation. The ordinary full application sysroot route for
+AArch64 and amd64 remains unchanged. Prepared Clang cross tools obtain their
+default `MAKE_JOBS` from the selected SDK's shared CPU resolver; callers can
+still override it through the ordinary make variable.
+
+`EMBERBSD_CROSS_LIBC_MODE` independently selects target libc link behavior:
+`shared` is the default and keeps the normal shared libc checks, while
+`static` requires `libc.a`, rejects shared libc aliases, disables PIE, and
+adds `-static` for target links. This setting is separate from the C-only
+runtime selection; a C-foundation toolset does not itself imply static libc.
+
 The [root certificate recipe](rootcerts.md) separates native data generators
 from the explicit NetBSD 11 full-base script contract. The compiler SDK does
 not need target command binaries for that data-only package.

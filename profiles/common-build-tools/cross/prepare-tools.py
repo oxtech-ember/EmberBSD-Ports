@@ -42,9 +42,12 @@ def make_value(value):
 
 def prepare_clang(options):
     from emberbsd_sdk import application_toolchain, llvm_runtime, paths, process, target_toolchain
+    from emberbsd_sdk.cpu_capacity import resolve_jobs
     from emberbsd_sdk.host_prefix import load_host_prefix, _member
     if application_toolchain.APPLICATION_TOOLCHAIN_API < 2:
         raise ValueError('The selected SDK must provide application toolchain API 2')
+    if options.c_foundation_result and getattr(application_toolchain, 'FOUNDATION_TOOLCHAIN_API', 0) < 1:
+        raise ValueError('The selected SDK must provide C-foundation toolchain API 1')
     if not options.sysroot or not options.host_prefix:
         raise ValueError('Clang applications require --sysroot and --host-prefix')
     checked_paths((options.sysroot, options.host_prefix, *([options.runtime_base] if options.runtime_base else [])))
@@ -54,7 +57,8 @@ def prepare_clang(options):
         raise ValueError('Run the adapter with the selected host-prefix Python')
     env = process.sanitized_environment()
     env['PATH'] = native.path
-    triplet = {'aarch64':'aarch64--netbsd', 'amd64':'x86_64--netbsd'}[options.target]
+    triplet = {'aarch64':'aarch64--netbsd', 'amd64':'x86_64--netbsd',
+               'riscv32':'riscv32--netbsd'}[options.target]
     compiler = target_toolchain.clang_compiler(options.compiler, triplet,
         host=native.host, env=env)
     # Keep the selected spelling of the sysroot. A caller-owned alias (for
@@ -66,21 +70,34 @@ def prepare_clang(options):
     sysroot_alias = None if sysroot == real_sysroot else sysroot
     if sysroot_alias and getattr(application_toolchain, 'SYSROOT_ALIAS', 0) < 1:
         raise ValueError('The selected SDK cannot bind commands through a sysroot alias')
-    if options.runtime_stage:
+    c_foundation = bool(options.c_foundation_result)
+    if c_foundation:
+        if options.runtime_stage or options.runtime_base:
+            raise ValueError('--c-foundation-result cannot be combined with a full runtime stage')
+        foundation = application_toolchain.load_clang_c_foundation_runtime(
+            options.c_foundation_result, real_sysroot, target=options.target)
+        runtime_root = foundation['stage']
+        runtime = foundation['runtime']
+        runtime_base = real_sysroot
+        runtime_kind = 'c-only'
+    elif options.runtime_stage:
         runtime_root = paths.canonical_existing(options.runtime_stage)
         runtime_base = paths.canonical_existing(options.runtime_base) if options.runtime_base else sysroot
         runtime = llvm_runtime.validate_stage(runtime_root, target=options.target,
             required_components=llvm_runtime.FULL_COMPONENTS, base=paths.canonical_existing(runtime_base))
+        runtime_kind = 'stage'
     else:
         runtime_root = runtime_base = sysroot
         runtime = application_toolchain.load_clang_runtime(real_sysroot, target=options.target)
+        runtime_kind = 'sysroot'
     os_tools = paths.canonical_existing(options.os_tools)
     install = str(Path(os_tools, 'bin', triplet + '-install'))
     _member(install, os_tools, native.host, search_path=native.path)
     output = Path(paths.canonical_new(options.output))
     runtime_prefix = make_value(runtime['prefix'])
-    libraries = sorted({str(Path(runtime['artifacts'][role]['shared']).parent)
-                        for role in ('libcxx', 'libcxxabi', 'libunwind')})
+    libraries = ([str(Path(runtime['artifacts']['libunwind']['static']).parent)] if c_foundation else
+        sorted({str(Path(runtime['artifacts'][role]['shared']).parent)
+                for role in ('libcxx', 'libcxxabi', 'libunwind')}))
     for value in (str(output), sysroot, runtime_root, runtime_base, *libraries):
         make_value(value)
     # A prepared directory is routing, not another runtime or acceptance record.
@@ -88,10 +105,15 @@ def prepare_clang(options):
     # if command binding fails.
     output.mkdir()
     try:
-        bound = application_toolchain.bind_clang_application_commands(
-            output/'commands', compiler, real_sysroot, runtime,
-            python=native.tool('python'), include_auxiliary=True, runtime_root=runtime_root,
-            **({'sysroot_alias': sysroot_alias} if sysroot_alias else {}))
+        if c_foundation:
+            bound = application_toolchain.bind_clang_c_foundation_commands(
+                output/'commands', compiler, options.c_foundation_result, real_sysroot,
+                target=options.target, python=native.tool('python'), include_auxiliary=True)['commands']
+        else:
+            bound = application_toolchain.bind_clang_application_commands(
+                output/'commands', compiler, real_sysroot, runtime,
+                python=native.tool('python'), include_auxiliary=True, runtime_root=runtime_root,
+                **({'sysroot_alias': sysroot_alias} if sysroot_alias else {}))
         binaries = output/'bin'; binaries.mkdir()
         aliases = {'clang':bound['cc'], 'clang++':bound['cxx'], 'clang-cpp':bound['cpp']}
         aliases.update({triplet+'-'+name:path for name,path in aliases.copy().items()})
@@ -104,11 +126,14 @@ def prepare_clang(options):
             (binaries/name).symlink_to(path)
         values = {'FAMILY':'clang', 'TARGET':options.target, 'TRIPLET':triplet,
                   'SYSROOT':sysroot, 'TOOLS':str(output), 'RUNTIME_PREFIX':runtime_prefix,
-                  'RUNTIME_ROOT':runtime_root, 'RUNTIME_KIND':('stage' if options.runtime_stage else 'sysroot'),
+                  'RUNTIME_ROOT':runtime_root, 'RUNTIME_KIND':runtime_kind,
                   'RUNTIME_VERSION':runtime['llvm_version'], 'RUNTIME_BASE':runtime_base,
                   'SDK_SOURCE':str(Path(__import__('emberbsd_sdk').__file__).resolve().parents[2]),
                   'NATIVE_PYTHON':native.tool('python'),
+                  'JOBS':str(resolve_jobs()),
                   'RUNTIME_LIBRARY_PATHS':';'.join(str(Path(runtime_root, name)) for name in libraries)}
+        if c_foundation:
+            values['C_FOUNDATION_RESULT'] = paths.canonical_existing(options.c_foundation_result)
         text = '# Generated from the selected SDK compiler and runtime.\n'
         text += ''.join('_EMBER_TARGET_' + key + ':= ' + value + '\n'
                         for key,value in values.items())
@@ -121,19 +146,27 @@ def prepare_clang(options):
 
 def prepare(args):
     parser = argparse.ArgumentParser(description='Compose selected SDK cross tools without rebuilding.')
-    parser.add_argument('--target', choices=('aarch64','amd64'), default='aarch64')
+    parser.add_argument('--target', choices=('aarch64','amd64','riscv32'), default='aarch64')
     parser.add_argument('--compiler-family', choices=('clang','gcc'), default='clang')
     parser.add_argument('--host-compiler-family', choices=('clang','gcc'), default='clang')
     parser.add_argument('--host-prefix')
     parser.add_argument('--sysroot')
     parser.add_argument('--runtime-stage', help='explicit completed LLVM runtime stage for this sysroot')
     parser.add_argument('--runtime-base', help='foundation used to build the explicit runtime stage')
+    parser.add_argument('--c-foundation-result',
+        help='explicit completed C-foundation result; binds C compiler-rt without a C++ runtime')
     parser.add_argument('compiler', metavar='COMPILER_PREFIX')
     parser.add_argument('os_tools', metavar='OS_TOOLDIR')
     parser.add_argument('output', metavar='NEW_TOOLDIR')
     options = parser.parse_args(args)
     if options.runtime_base and not options.runtime_stage:
         raise ValueError('--runtime-base requires --runtime-stage')
+    if options.c_foundation_result and options.compiler_family != 'clang':
+        raise ValueError('--c-foundation-result requires Clang')
+    if options.target == 'riscv32' and options.compiler_family != 'clang':
+        raise ValueError('RV32 C-only target tools require Clang')
+    if options.target == 'riscv32' and not options.c_foundation_result:
+        raise ValueError('RV32 requires --c-foundation-result for its C-only runtime')
     checked_paths((options.compiler, options.os_tools, options.output))
     if os.path.lexists(options.output):
         raise ValueError('Output already exists')

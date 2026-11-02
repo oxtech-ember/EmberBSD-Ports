@@ -275,6 +275,9 @@ for target, triple, machine, instruction in (
         assert data[:4] == b'\x7fELF' and int.from_bytes(data[18:20], 'little') == machine
         target_mk = (output / 'target.mk').read_text()
         assert '_EMBER_TARGET_FAMILY:= clang\n' in target_mk
+        assert '_EMBER_TARGET_JOBS:= ' in target_mk
+        assert int(next(line.split(':= ', 1)[1] for line in target_mk.splitlines()
+                        if line.startswith('_EMBER_TARGET_JOBS:=')) ) > 0
         assert '_EMBER_TARGET_SYSROOT:= ' + str(sysroot) in target_mk
         assert '_EMBER_TARGET_RUNTIME_ROOT:= ' + str(sysroot) in target_mk
         assert 'gcc' not in target_mk.lower() and 'g++' not in target_mk.lower()

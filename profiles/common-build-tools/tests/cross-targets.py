@@ -65,6 +65,7 @@ with tempfile.TemporaryDirectory(prefix='ember-cross-targets-') as temporary:
         assert result.returncode == 0, result.stdout + result.stderr
         return result.stdout.strip()
 
+
     assert Path(read('-v', 'EMBERBSD_NATIVE_BMAKE')).resolve(strict=True) == bmake
     assert Path(read('-v', 'EMBERBSD_CROSS_BUILD_PYTHON')).resolve(strict=True) == Path(sys.executable).resolve(strict=True)
 
@@ -72,6 +73,11 @@ with tempfile.TemporaryDirectory(prefix='ember-cross-targets-') as temporary:
     assert read('EMBERBSD_CROSS_TARGET=amd64', '-v', 'CROSS_MACHINE_ARCH') == 'x86_64'
     assert read('EMBERBSD_CROSS_TARGET=amd64', '-v', 'CC').endswith('/x86_64--netbsd-gcc')
     assert not read('EMBERBSD_CROSS_TARGET=amd64', '-v', 'PKG_FAIL_REASON')
+    assert read('EMBERBSD_CROSS_TARGET=riscv32', '-v', 'CROSS_MACHINE_ARCH') == 'riscv32'
+    assert read('EMBERBSD_CROSS_TARGET=riscv32', '-v', '_EMBER_CROSS_TRIPLET') == 'riscv32--netbsd'
+    assert not read('EMBERBSD_CROSS_TARGET=riscv32', '-v', 'EMBERBSD_CROSS_RUST_STD')
+    assert 'RV32 cross target currently requires C-foundation Clang tools' in \
+        read('EMBERBSD_CROSS_TARGET=riscv32', '-v', 'PKG_FAIL_REASON')
     assert 'Unsupported cross target' in read('EMBERBSD_CROSS_TARGET=mips', '-v', 'PKG_FAIL_REASON')
     assert 'selected cross target' in read('EMBERBSD_CROSS_TARGET=amd64', 'CROSS_MACHINE_ARCH=aarch64', '-v', 'PKG_FAIL_REASON')
     # GNU ld resolves base DT_NEEDED entries of package libraries through rpath-link.
@@ -135,14 +141,17 @@ with tempfile.TemporaryDirectory(prefix='ember-cross-targets-') as temporary:
                     if role in ('CC', 'CXX', 'CPP') else
                     'NATIVE_' + role + ' differs from the selected Ports tool')
         assert expected in reason, (role, reason)
-    for variable, value in (
-            ('_EMBER_SDK_AR', '/usr/bin/ar'),
-            ('_EMBER_NATIVE_CC_COMMAND', '/usr/bin/cc'),
-            ('_EMBER_NATIVE_TOOLSET_CHECK', 'VERIFIED')):
+    for variable, value, rejection in (
+            ('_EMBER_SDK_AR', '/usr/bin/ar', '_EMBER_SDK_AR differs from the selected Ports tool'),
+            ('_EMBER_NATIVE_CC_COMMAND', '/usr/bin/cc',
+             '_EMBER_NATIVE_CC_COMMAND differs from the selected native ABI command'),
+            ('_EMBER_NATIVE_TOOLSET_CHECK', 'VERIFIED',
+             'Do not override reserved SDK native selection variables')):
         refused = subprocess.run([str(bmake), '-f', str(work / 'Makefile'),
                                   variable + '=' + value, '-v', 'PKG_FAIL_REASON'],
                                  capture_output=True, text=True)
-        assert refused.returncode != 0 and 'Do not override reserved SDK native selection variables' in refused.stderr
+        assert refused.returncode != 0 and rejection in refused.stderr, (
+            variable, refused.returncode, refused.stdout, refused.stderr)
     for prefix in ('NATIVE_', 'HOST_'):
         for flags in ('CPPFLAGS', 'CFLAGS', 'CXXFLAGS', 'LDFLAGS'):
             variable = prefix + flags

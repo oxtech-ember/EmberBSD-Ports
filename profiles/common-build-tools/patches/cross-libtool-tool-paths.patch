@@ -14,14 +14,15 @@ In the wrapper phase of a cross package that uses libtool, check that tool
 paths are under TOOLDIR or CROSS_DESTDIR. A prepared Clang may additionally
 record its exact bound resource directory in the library search path; query
 that directory through the verified TOOLDIR compiler and allow only exact
-search-path equality. Tool paths never receive this exception. Native builds
-are unchanged.
+search-path equality. The canonical selected target runtime root is also
+allowed only as a prefix of library search paths. Tool paths never receive
+either exception. Native builds are unchanged.
 
 Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 
 --- a/mk/cwrappers.mk
 +++ b/mk/cwrappers.mk
-@@ -152,6 +152,56 @@
+@@ -152,6 +152,70 @@
  
  do-wrapper: generate-cwrappers
  
@@ -37,7 +38,7 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 +
 +.PHONY: check-cross-libtool
 +check-cross-libtool:
-+	${RUN} lt=${PKG_LIBTOOL:Q}; bad=; resource_dir=; \
++	${RUN} lt=${PKG_LIBTOOL:Q}; bad=; resource_dir=; runtime=${_EMBER_TARGET_RUNTIME_ROOT:U}; runtime_real=; \
 +	if [ ! -f "$$lt" ]; then \
 +		${ERROR_MSG} "$$lt is missing."; exit 1; \
 +	fi; \
@@ -63,15 +64,29 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 +			${ERROR_MSG} "Selected Clang returned an unsupported resource path."; exit 1 ;; \
 +		esac; \
 +	fi; \
++	if [ -n "$$runtime" ]; then \
++		if [ ! -d "$$runtime" ]; then \
++			${ERROR_MSG} "Selected target runtime root is missing: $$runtime"; exit 1; \
++		fi; \
++		runtime_real=`CDPATH= cd "$$runtime" && pwd -P` || exit 1; \
++		if [ "$$runtime_real" != "$$runtime" ]; then \
++			${ERROR_MSG} "Selected target runtime root is not canonical: $$runtime"; exit 1; \
++		fi; \
++	fi; \
 +	for p in $$search_paths; do \
 +		case "$$p" in \
 +		"$$resource_dir"|${TOOLDIR}/*|${CROSS_DESTDIR}/*|[!/]*) ;; \
-+		*) bad="$$bad $$p" ;; \
++		*) \
++			if [ -n "$$runtime_real" ]; then \
++				case "$$p" in "$$runtime_real"/*) ;; *) bad="$$bad $$p" ;; esac; \
++			else \
++				bad="$$bad $$p"; \
++			fi ;; \
 +		esac; \
 +	done; \
 +	if [ -n "$$bad" ]; then \
 +		${ERROR_MSG} "$$lt was configured for other cross tools or another sysroot:$$bad"; \
-+		${ERROR_MSG} "Reinstall its cross-libtool package with TOOLDIR=${TOOLDIR} and CROSS_DESTDIR=${CROSS_DESTDIR}."; \
++		${ERROR_MSG} "Reinstall its cross-libtool package for the selected TOOLDIR, CROSS_DESTDIR and target runtime root."; \
 +		exit 1; \
 +	fi
 +
