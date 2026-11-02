@@ -14,6 +14,8 @@
 #          checksums.
 #   build  Build and install each node of STATE/order, several at once
 #          (CROSS_BULK_JOBS, see build below).
+#          Independent work drains after a failure. Exit 0 means the pass
+#          has no failed or blocked packages; exit 1 means it does.
 #
 # The graph has two kinds of nodes. PKGPATH is a target package: its
 # DEPENDS and BUILD_DEPENDS are target nodes, its TOOL_DEPENDS and
@@ -1169,7 +1171,12 @@ build()
     done
     trap - TERM INT HUP
     stop_deleter
+    failed=no
+    [ ! -s "$state/failed" ] || failed=yes
+    [ ! -s "$state/blocked" ] || failed=yes
     rm -rf "$run" "$state/locks" "$state/build.lock"
+    [ "$failed" = no ] || return 1
+    return 0
 }
 
 # The deleter stops with the build (a tree it is removing is finished);

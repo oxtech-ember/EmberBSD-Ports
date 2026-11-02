@@ -96,6 +96,7 @@ BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=
     MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=2 CROSS_BULK_JOBS=2 \
     sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1 || rc=$?
 [ ! -s "$out/errors" ] || fail "$(cat "$out/errors")"
+[ "$rc" = 1 ] || fail "failed dependents exited $rc, expected 1"
 [ ! -s "$out/inplace" ] || fail "dependents built a in place: $(tr '\n' ' ' < "$out/inplace")"
 [ "$(cut -d ' ' -f 1 "$out/state/done")" = t/a ] || fail "done: $(cat "$out/state/done")"
 [ "$(sort "$out/state/failed" | tr '\n' ' ')" = 't/b build t/c build ' ] ||

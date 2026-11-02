@@ -140,7 +140,9 @@ echo t/a > "$out/list"
 bulk order "$out/list" "$out/state" > "$out/order.log" 2>&1 || fail "order: $(cat "$out/order.log")"
 grep -qx 'o/ssl@native' "$out/state/order" || fail "o/ssl@native is not in the order: $(cat "$out/state/order")"
 : > "$out/calls"
-bulk build "$out/state/order" "$out/state" > "$out/build.log" 2>&1 || true
+rc=0
+bulk build "$out/state/order" "$out/state" > "$out/build.log" 2>&1 || rc=$?
+[ "$rc" = 1 ] || fail "native replace failure exited $rc, expected 1"
 [ -e "$out/native-db/ssl-3.0" ] && [ ! -e "$out/native-db/ssl-4.0" ] ||
     fail "ssl-4.0 replaced ssl-3.0, which removed libssl.3 under tool-1.0: $(ls "$out/native-db" | tr '\n' ' ')"
 ! grep -q '/o/ssl .* replace' "$out/calls" || fail 'the ssl replace ran'

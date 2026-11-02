@@ -106,11 +106,13 @@ BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=
 mkdir "$out/fail-state"
 printf '%s\n' t/fail > "$out/fail-state/order"
 printf '%s\n' 't/fail t/fail' > "$out/fail-state/edges"
+rc=0
 BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
     MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
     CROSS_BULK_VARS_CACHE=no CROSS_BULK_TRASH=no CROSS_BULK_CLEAN_SUCCESS=yes \
     sh "$ports/scripts/cross-bulk.sh" build "$out/fail-state/order" "$out/fail-state" \
-    > "$out/fail.log" 2>&1 || fail "failed package scheduler: $(cat "$out/fail.log")"
+    > "$out/fail.log" 2>&1 || rc=$?
+[ "$rc" = 1 ] || fail "failed package scheduler exited $rc, expected 1"
 grep -q '^t/fail ' "$out/fail-state/failed" || fail "failure was not recorded: $(cat "$out/fail-state/failed")"
 [ -f "$out/work/fail/built" ] || fail 'failed package WRKDIR was removed'
 

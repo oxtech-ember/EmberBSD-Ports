@@ -137,7 +137,9 @@ grep -q '^package-install:llvm-devel$' "$mismatch/calls" || fail 'SDK did not us
 
 failed=$out/failed
 setup "$failed"
-FAKE_MISMATCH=no FAKE_DEVEL_FAIL=yes run_build "$failed" || fail 'failed SDK run should be recorded by cross-bulk'
+rc=0
+FAKE_MISMATCH=no FAKE_DEVEL_FAIL=yes run_build "$failed" || rc=$?
+[ "$rc" = 1 ] || fail "failed SDK run exited $rc, expected 1"
 grep -q '^lang/llvm-devel build$' "$failed/state/failed" || fail 'SDK failure was not recorded'
 [ -f "$failed/work/llvm/.llvm-shared-full-stage/full-stage" ] || fail 'failed SDK removed runtime full stage'
 

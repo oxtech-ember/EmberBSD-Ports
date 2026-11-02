@@ -169,8 +169,15 @@ PATH="$NATIVE_ALIASES:$HOST_PREFIX/bin:$HOST_PREFIX/gnu/bin" \
   "$NATIVE_ALIASES/sh" "$PORTS/scripts/cross-bulk.sh" order "$PKGPATH_LIST" "$STATE"
 ```
 
-Use the same environment and state for the subsequent `tools`, `fetch`, and
-`build` phases.
+Use the same environment and state for the subsequent `fetch` and `build`
+phases.
+
+The `build` phase drains independent runnable packages after a package fails.
+Exit 0 means the pass completed without failed or blocked packages; exit 1
+means at least one package failed or was blocked. Inspect `STATE/failed`,
+`STATE/blocked`, and `STATE/skipped` to resume only affected work. Usage,
+invalid mode, and explicit CLI validation errors exit 2; SIGTERM exits 143
+after running packages finish.
 
 ```sh
 python3 /absolute/EmberBSD-SDK/scripts/ports-plan.py record plan.json target:www/curl \

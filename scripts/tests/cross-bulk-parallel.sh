@@ -146,6 +146,12 @@ bulk()
     PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=3 \
         sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1
 }
+bulk_expected_failure()
+{
+    rc=0
+    bulk || rc=$?
+    [ "$rc" = 1 ] || fail "build with failed/blocked packages exited $rc, expected 1: $(cat "$out/bulk.log")"
+}
 bulk_auto_cpus()
 {
     PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS= CROSS_BULK_JOBS=3 \
@@ -155,7 +161,7 @@ calls() { grep -c -- "-C $out/tree/t/$1 " "$out/calls" || :; }
 
 newstate
 : > "$out/calls"
-bulk || fail "first build: $(cat "$out/bulk.log")"
+bulk_expected_failure
 [ ! -s "$out/errors" ] || fail "$(cat "$out/errors")"
 grep -q 'MAKE_JOBS=3 (6 CPUs)' "$out/bulk.log" || fail 'explicit CROSS_BULK_CPUS was not preserved'
 [ "$(cat "$out/selected-python-calls")" = "-B -E -S $out/sdk/scripts/resolve-jobs.py --jobs 6" ] || fail 'explicit CROSS_BULK_CPUS did not use the shared resolver'
@@ -177,7 +183,7 @@ grep -q '^t/h not for this profile$' "$out/state/skipped" || fail 'h is not skip
 # A second run parses each done package once and builds the failure again.
 : > "$out/calls"
 : > "$out/shasum-calls"
-bulk || fail "second build: $(cat "$out/bulk.log")"
+bulk_expected_failure
 for pkg in a b c d j; do
     [ "$(calls $pkg)" = 1 ] || fail "done package $pkg ran bmake $(calls $pkg) times"
 done
@@ -187,7 +193,9 @@ done
 
 # Without an explicit override, use the selected SDK jobs resolver.
 : > "$out/selected-python-calls"
-bulk_auto_cpus || fail "automatic CPU detection: $(cat "$out/bulk.log")"
+rc=0
+bulk_auto_cpus || rc=$?
+[ "$rc" = 1 ] || fail "automatic CPU build exited $rc, expected 1: $(cat "$out/bulk.log")"
 [ "$(cat "$out/selected-python-calls")" = "-B -E -S $out/sdk/scripts/resolve-jobs.py" ] || fail 'automatic CPU detection did not use the selected SDK resolver'
 grep -q 'MAKE_JOBS=5 (10 CPUs)' "$out/bulk.log" || fail "SDK resolver result was not used: $(cat "$out/bulk.log")"
 
@@ -197,12 +205,28 @@ echo 1.1 > "$out/tree/t/a/version"
 rm "$out/packages/All/c-1.0.tgz"
 echo changed > "$out/packages/All/b-1.0.tgz"
 : > "$out/calls"
-bulk || fail "third build: $(cat "$out/bulk.log")"
+bulk_expected_failure
 [ "$(calls a)" = 3 ] || fail "package a with a new PKGNAME ran bmake $(calls a) times, expected 3"
 [ "$(calls c)" = 3 ] || fail "package c without its file ran bmake $(calls c) times, expected 3"
 [ "$(calls b)" = 1 ] || fail "package b with a changed file ran bmake $(calls b) times, expected 1"
 grep -q '^t/a a-1.1 ' "$out/state/done" || fail "no record of a-1.1: $(cat "$out/state/done")"
 rm "$out/tree/t/a/version"
+
+# A skipped prerequisite blocks its dependent even without a failed package.
+rm "$out/tree/t/f/fail"
+newstate
+bulk_expected_failure
+[ ! -s "$out/state/failed" ] || fail "blocked-only pass recorded a failure: $(cat "$out/state/failed")"
+[ "$(cat "$out/state/blocked")" = 't/i t/h' ] || fail "blocked-only state: $(cat "$out/state/blocked")"
+
+# Once the skipped prerequisite is restored, all work completes successfully.
+rm "$out/tree/t/h/skip"
+newstate
+bulk || fail "all-success build: $(cat "$out/bulk.log")"
+[ ! -s "$out/state/failed" ] || fail "all-success pass recorded failures: $(cat "$out/state/failed")"
+[ ! -s "$out/state/blocked" ] || fail "all-success pass recorded blocked nodes: $(cat "$out/state/blocked")"
+[ "$(cut -d ' ' -f 1 "$out/state/done" | sort | tr '\n' ' ')" = 't/a t/b t/c t/d t/e t/f t/g t/h t/i t/j ' ] ||
+    fail "all-success done: $(cat "$out/state/done")"
 
 # SIGTERM: the running packages finish, nothing new starts.
 newstate
