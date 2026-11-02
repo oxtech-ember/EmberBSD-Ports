@@ -3,8 +3,13 @@
 # $NetBSD$
 #
 # PROVIDE: ptpd2
-# REQUIRE: NETWORKING
+# REQUIRE: NETWORKING ntpd chronyd
 # KEYWORD: shutdown
+#
+# A master serves the system clock, so it starts after the daemon that
+# disciplines that clock; that daemon may still be synchronising. Without
+# chrony, rcorder(8) warns that chronyd has no provider and exits 1, and
+# keeps the order of the other scripts.
 #
 # In /etc/rc.conf:
 #	ptpd2=YES

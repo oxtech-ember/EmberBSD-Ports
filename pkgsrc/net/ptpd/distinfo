@@ -5,3 +5,4 @@ SHA512 (ptpd-2.3.1-d27a6e02c1191e07ce8dcdfa1d3f954e01f2d983.tar.gz) = 0ef65d5c8a
 Size (ptpd-2.3.1-d27a6e02c1191e07ce8dcdfa1d3f954e01f2d983.tar.gz) = 931323 bytes
 SHA1 (patch-configure.ac) = 25b9a9e7b56ca24b62d17cc99366af52263fc223
 SHA1 (patch-src_dep_iniparser_iniparser.c) = f428c7fccba97d70d955e53ed99a8e4ac7ee2741
+SHA1 (patch-src_timingdomain.c) = e9b2e0936cf16a296160fbfe8fd3008bb37f3f51
