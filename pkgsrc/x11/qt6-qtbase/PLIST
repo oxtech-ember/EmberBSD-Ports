@@ -3297,6 +3297,13 @@ qt6/lib/cmake/Qt6Gui/Qt6GuiTargets.cmake
 qt6/lib/cmake/Qt6Gui/Qt6GuiTargetsPrecheck.cmake
 qt6/lib/cmake/Qt6Gui/Qt6GuiVersionlessAliasTargets.cmake
 qt6/lib/cmake/Qt6Gui/Qt6GuiVersionlessTargets.cmake
+${PLIST.bsdfb}qt6/lib/cmake/Qt6Gui/Qt6QBsdFbIntegrationPluginAdditionalTargetInfo.cmake
+${PLIST.bsdfb}qt6/lib/cmake/Qt6Gui/Qt6QBsdFbIntegrationPluginConfig.cmake
+${PLIST.bsdfb}qt6/lib/cmake/Qt6Gui/Qt6QBsdFbIntegrationPluginConfigVersion.cmake
+${PLIST.bsdfb}qt6/lib/cmake/Qt6Gui/Qt6QBsdFbIntegrationPluginConfigVersionImpl.cmake
+${PLIST.bsdfb}qt6/lib/cmake/Qt6Gui/Qt6QBsdFbIntegrationPluginTargets.cmake
+${PLIST.bsdfb}qt6/lib/cmake/Qt6Gui/Qt6QBsdFbIntegrationPluginTargets-release.cmake
+${PLIST.bsdfb}qt6/lib/cmake/Qt6Gui/Qt6QBsdFbIntegrationPluginTargetsPrecheck.cmake
 ${PLIST.x11}qt6/lib/cmake/Qt6Gui/Qt6QComposePlatformInputContextPluginAdditionalTargetInfo.cmake
 ${PLIST.x11}qt6/lib/cmake/Qt6Gui/Qt6QComposePlatformInputContextPluginConfig.cmake
 ${PLIST.x11}qt6/lib/cmake/Qt6Gui/Qt6QComposePlatformInputContextPluginConfigVersion.cmake
