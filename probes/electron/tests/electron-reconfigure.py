@@ -109,7 +109,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                               'cxx':['--ld-path=/ld','--rtlib=compiler-rt','--unwindlib=libunwind','-stdlib=libc++']})
     binding.write_text(json.dumps(commands))
     (src/'.gn').write_text('buildconfig="//BUILDCONFIG.gn"\n')
-    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n emberbsd_node_source_identity=""\n emberbsd_node_configure_helper=""\n emberbsd_node_configure_inputs=[]\n emberbsd_node_configure_dependencies=[]\n node_module_version=0\n emberbsd_native_pkg_config_prefix=""\n emberbsd_protoc_runtime_launcher=""\n emberbsd_protoc_runtime_view=""\n emberbsd_protoc_runtime_inputs=[]\n node_host_runtime_python=""\n node_host_runtime_launcher=""\n node_host_runtime_view=""\n node_host_runtime_inputs=[]\n perfetto_host_runtime_launcher=""\n perfetto_host_runtime_view=""\n perfetto_host_runtime_inputs=[]\n v8_prepared_source_receipt=""\n v8_version_hash_salt_files=[]\n v8_version_hash_salt=""\n feature=false\n clang_version=""\n}\nset_default_toolchain("//:tools")\n')
+    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n emberbsd_node_source_identity=""\n emberbsd_node_configure_helper=""\n emberbsd_node_configure_inputs=[]\n emberbsd_node_configure_dependencies=[]\n node_module_version=0\n node_inspector_string_traits_header=""\n emberbsd_native_pkg_config_prefix=""\n emberbsd_protoc_runtime_launcher=""\n emberbsd_protoc_runtime_view=""\n emberbsd_protoc_runtime_inputs=[]\n node_host_runtime_python=""\n node_host_runtime_launcher=""\n node_host_runtime_view=""\n node_host_runtime_inputs=[]\n perfetto_host_runtime_launcher=""\n perfetto_host_runtime_view=""\n perfetto_host_runtime_inputs=[]\n v8_prepared_source_receipt=""\n v8_version_hash_salt_files=[]\n v8_version_hash_salt=""\n feature=false\n clang_version=""\n}\nset_default_toolchain("//:tools")\n')
     (src/'BUILD.gn').write_text('toolchain("tools") {\n tool("stamp") { command="touch {{output}}" }\n}\n')
     (src/'electron/build/args').mkdir(parents=True)
     (src/'electron/build/args/release.gn').write_text('')
@@ -195,6 +195,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                perfetto_host_runtime_launcher=str(launcher),
                perfetto_host_runtime_view=str(new_view), perfetto_host_runtime_inputs=new_runtime_inputs,
                node_module_version=130,
+               node_inspector_string_traits_header='third_party/inspector_protocol/crdtp/chromium/protocol_traits.h',
                v8_prepared_source_receipt='//v8/emberbsd-prepared-source.json',
                v8_version_hash_salt_files=[], v8_version_hash_salt='')
     new.update(emberbsd_node_source_identity=str(new_node_receipt.resolve(strict=True)),
@@ -466,6 +467,9 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     assert saved_after['environment']['EMBERBSD_V8_SOURCE_SHA256']=='b' * 64
     assert saved_after['environment']['EMBERBSD_NODE_SOURCE_SHA256']=='b' * 64
     assert saved_after['arguments']['emberbsd_node_source_identity']==str(new_node_receipt.resolve())
+    assert 'node_inspector_string_traits_header' not in old
+    assert saved_after['arguments']['node_inspector_string_traits_header']==(
+        'third_party/inspector_protocol/crdtp/chromium/protocol_traits.h')
     assert saved_after['arguments']['node_module_version']==130
     assert saved_after['arguments']['emberbsd_node_configure_inputs']==new_node_configure_inputs
     assert saved_after['arguments']['emberbsd_node_configure_dependencies']==new_node_configure_dependencies

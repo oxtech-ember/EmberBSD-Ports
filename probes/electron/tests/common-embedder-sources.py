@@ -43,6 +43,7 @@ with tempfile.TemporaryDirectory(prefix='electron-common-sources-') as tmp:
     assert 'EMBER_PREPARED_SOURCE_CACHE' not in cached_env
     assert cached_values == values and cached_env == env
     assert values['node_path'] == '//third_party/electron_node' and values['node_shared_perfetto']
+    assert values['node_inspector_string_traits_header'] == 'third_party/inspector_protocol/crdtp/chromium/protocol_traits.h'
     assert values['node_config_gn_root_target'] == '//electron'
     assert values['node_config_gn_root_pattern'] == '//electron:electron_dist_zip'
     assert values['v8_prepared_source_receipt'] == '//v8/emberbsd-prepared-source.json'
@@ -57,6 +58,11 @@ with tempfile.TemporaryDirectory(prefix='electron-common-sources-') as tmp:
     assert before['EMBERBSD_NODE_SOURCE_SHA256'] != after['EMBERBSD_NODE_SOURCE_SHA256']
     assert before['EMBERBSD_PERFETTO_SOURCE_SHA256'] == after['EMBERBSD_PERFETTO_SOURCE_SHA256']
     assert before['EMBERBSD_V8_SOURCE_SHA256'] == after['EMBERBSD_V8_SOURCE_SHA256']
+    options.node_source = options.node_pkgsrc = None
+    standalone = build.common_embedder_sources(options, {'process': Process()},
+        SimpleNamespace(tool=lambda _: '/selected/python'), {})
+    assert 'node_inspector_string_traits_header' not in standalone
+    options.node_source = root/'node'
     options.node_pkgsrc = None
     try: build.common_embedder_sources(options, {'process': Process()}, SimpleNamespace(tool=lambda _: '/selected/python'), {})
     except ValueError: pass
