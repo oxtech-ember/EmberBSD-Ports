@@ -1,0 +1,39 @@
+Configure Boost.Python for the NetBSD cross target.
+
+py-boost writes a user-config.jam that names the target interpreter. b2
+then needs the Python library path, or it probes that interpreter, which
+cannot run on the build host. Cross builds also select <target-os>netbsd
+(pkgsrc-boost-cross-target.patch), while the plain "using python" applies
+to the host OS only. b2 therefore stopped with "No python installation
+configured" and built no boost_python or boost_numpy libraries.
+
+For NetBSD cross builds give b2 the target library directory and the
+<target-os>netbsd condition. b2's NumPy check imports numpy with the
+target interpreter, which cannot run on the build host, so preset the
+target NumPy include directory before the python module configures.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/devel/py-boost/Makefile
++++ b/devel/py-boost/Makefile
+@@ -19,10 +19,21 @@
+ .include "../../devel/boost-jam/bjam.mk"
+ .include "../../lang/python/pyversion.mk"
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
++post-configure:
++	{ ${ECHO} 'import python ;'; \
++	  ${ECHO} 'module python { .numpy = true ;' \
++	    '.numpy-include = ${PREFIX}/${PYSITELIB}/numpy/_core/include ; }'; \
++	  ${ECHO} 'using python : ${PYVERSSUFFIX} :' \
++	    '${PREFIX}/bin/python${PYVERSSUFFIX} : ${PREFIX}/include/python${PYVERSSUFFIX} :' \
++	    '${PREFIX}/lib : <target-os>netbsd ;'; \
++	} >${WRKSRC}/user-config.jam
++.else
+ post-configure:
+ 	${ECHO} 'using python : ${PYVERSSUFFIX} :' \
+ 	    '${PREFIX}/bin/python${PYVERSSUFFIX} : ${PREFIX}/include/python${PYVERSSUFFIX} ;' \
+ 	    >${WRKSRC}/user-config.jam
++.endif
+ 
+ do-build: bjam-build
+ 
