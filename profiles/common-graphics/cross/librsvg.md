@@ -1,6 +1,6 @@
 # Cross-packaged librsvg
 
-The common graphics profile selects librsvg 2.63.2, including its C library,
+The common graphics profile selects librsvg 2.63.4, including its C library,
 `rsvg-convert`, the dynamic GdkPixbuf SVG loader and Rsvg GIR/typelib.
 Embedded AVIF is enabled through dav1d 1.5.4. xxHash 0.8.4 supplies dav1d's
 build dependency. [GdkPixbuf and shared MIME data](gdk-pixbuf.md),
@@ -10,19 +10,33 @@ are prerequisites, not alternate dependency stacks.
 
 ## Current validation boundary
 
-The full package builds on macOS and installs in the private EmberBSD cross
-sysroot. All 14 installed files and symlinks match the package. Source checks
-cover the unchanged Cargo.lock, all 357 crate archives and 31 patches. The
-native/cross Meson selection and header-mapping regression pass. Rsvg GIR and
-typelib generation used a successful real target GType query.
+The 2.63.4 package builds on macOS and installs in the private EmberBSD AArch64
+cross sysroot. All 14 installed files and symlinks match the package. The
+locked AVIF/pixbuf build compiled the current recipe-patched Cargo closure,
+including num-derive 0.5.1 and av-data 0.4.4. Source checks cover the patched
+lock, selected crate versions and complete patch inventory. Rsvg GIR and
+typelib generation used a successful real target GType query. Its installed
+C API consumer passed focused CSS checks on Zero3W, including pixel colors,
+`:lang`, malformed SVG rejection and pseudo/at-rule diagnostics.
 
-The packaged consumer passes four CPU-rendering lifecycles on physical
-CM5: C API RGB pixels, CLI PNG, the dynamic GdkPixbuf SVG loader, embedded
-AVIF, text with Ahem, and construction through the Rsvg typelib. Malformed
-SVG is rejected through both the C API and CLI. The recursive library
-providers are hash-checked before and after execution; temporary target
-files are removed. These results use the existing package with a freshly
-cross-built GCC16 consumer, not a new renderer package or board installation.
+The recipe follows the current CSS and HTML/XML dependency family: cssparser
+0.38 with cssparser-color 0.6 and selectors 0.41; markup5ever/xml5ever 0.40;
+and string_cache 0.11 with PHF 0.14 and web_atoms 0.3. `patch-Cargo.toml` and
+`patch-Cargo.lock` update source constraints and the lock together, while
+`cargo-depends.mk` and `distinfo` select and checksum only that resolved
+closure. The old cssparser/selectors, markup5ever/xml5ever, string_cache and
+PHF generations are absent from the active lock. A focused source patch adapts
+librsvg to cssparser 0.38's owned parse errors and selectors 0.41's error API;
+CSS diagnostics use the rule/declaration boundary exposed by stylesheet
+iterators and retain unknown pseudo-class and at-rule names in owned errors.
+
+Historical 2.63.2 evidence: the packaged consumer passed four CPU-rendering
+lifecycles on physical CM5 with C API RGB pixels, CLI PNG, the dynamic
+GdkPixbuf SVG loader, embedded AVIF, text with Ahem, and construction through
+the Rsvg typelib. Malformed SVG was rejected through both the C API and CLI;
+recursive providers were hash-checked before and after execution. Those CM5
+results used the 2.63.2 package and a GCC16 consumer; they were not repeated for
+2.63.4. The current 2.63.4 Zero3W result above is the focused CSS C API check.
 
 The earlier loader failure was a test-bundle defect: GdkPixbuf uses GIO MIME
 detection, but the isolated consumer omitted the shared MIME database.
@@ -46,9 +60,10 @@ Sources come from [GNOME](https://download.gnome.org/sources/librsvg/2.63/),
 [VideoLAN](https://downloads.videolan.org/pub/videolan/dav1d/1.5.4/) and
 [xxHash upstream](https://github.com/Cyan4973/xxHash/releases/tag/v0.8.4).
 Their versions and SHA256 values are in [sources.tsv](../sources.tsv).
-The original Cargo.lock remains unchanged. Its 357 registry archives have
-matching SHA256 values, and pkgsrc verifies the separately recorded archive
-digests before extraction. Cargo builds offline with `--locked`.
+The upstream Cargo.lock in the release archive remains untouched. The recipe's
+patched lock, dependency list, vendor inputs and archive checksums are checked
+together; pkgsrc verifies the separately recorded archive digests before
+extraction. Cargo builds offline with `--locked`.
 
 ## Cross adaptation
 
@@ -67,12 +82,12 @@ The native Cargo linker key comes from the actual shared compiler's host
 triple after checking its official 1.99.1 release and producer commit.
 It does not assume that the build host has the target architecture.
 Native build scripts and
-procedural macros use the Mac compiler and archiver; target code uses the
-accepted GCC16 wrappers, fork sysroot and runtime. No Rust, LLVM or GCC rebuild
-is part of this consumer recipe. Rust source locations are remapped so panic
+procedural macros use the selected native-prefix compiler and archiver;
+target code uses the selected Clang wrapper, fork sysroot and runtime. No Rust,
+LLVM or GCC rebuild is part of this consumer recipe. Rust source locations are remapped so panic
 strings do not retain private build paths.
 
-Before configure, the recipe checks the selected GCC16 wrapper identities,
+Before configure, the recipe checks the selected cross-wrapper identities,
 matching Cargo, and the official shared Rust 1.99.1 compiler producer.
 The selected std directory must resolve inside that same native provider.
 Exactly one nonempty, regular, nonsymlink `std` and `core` rlib must exist there.
@@ -130,28 +145,33 @@ install base files or packages on the board. Keep sysroot source revisions,
 artifact hashes and accepted provenance limitations with the build record.
 The inherited NetBSD ABI names do not authorize an upstream base replacement.
 
-Set the query configuration's `library_dirs` to the accepted target GCC16
-runtime directory, as described for [GdkPixbuf](gdk-pixbuf.md). This selects one
-runtime provider consistently across the executable and its dependencies.
+The consumer helper writes `runtime-library-dirs.txt` from the selected
+package's ELF dependencies. Use that value for the query configuration's
+`library_dirs`; it is the selected target runtime directory when required and
+empty otherwise. This keeps the executable and its dependencies on the same
+runtime provider.
 The AVIF option also admits dav1d through librsvg's consumer buildlink because
 the generated pkg-config metadata lists it in `Requires.private`.
 
 The following regressions check the actual patched source and completed build:
 
 ```sh
-ruby profiles/common-graphics/tests/librsvg-inputs.rb \
+/absolute/native/python3.15 -B -I -S \
+  profiles/common-graphics/tests/librsvg-inputs.py \
   /absolute/original-librsvg-source /absolute/built-librsvg-source \
-  /absolute/distfiles
+  /absolute/librsvg-work/vendor
 ruby profiles/common-graphics/tests/librsvg-cross.rb \
   /absolute/built-librsvg-source /absolute/native-prefix \
-  /absolute/cross-tools/bin/aarch64--netbsd-gcc /absolute/new-selection-work
+  /absolute/cross-tools/bin/aarch64--netbsd-clang /absolute/new-selection-work
 ```
 
-The first checks the unchanged upstream lock, every crate archive, all vendor
-directories and patch checksums. The second checks that header transform and
-executes the real Meson guard fragments for native, default cross and explicit
-cross configurations, then checks native generator selection, the target
-module installation path and actual full-build outputs.
+The first checks the patched lock against `cargo-depends.mk`, selected shared
+crate versions, the AVIF dependency chain and the patched `av-data` manifest in
+the vendor tree. The package `checksum` target verifies crate archives and
+patch checksums; Cargo's locked build checks resolvability. The second checks
+the header transform and executes the real Meson guard fragments for native,
+default cross and explicit cross configurations, then checks native generator
+selection, the target module installation path and actual full-build outputs.
 
 The target selection and std guard also have a separate host regression:
 
@@ -168,13 +188,15 @@ std/core bytes to a target sysroot and delegates all queries to the real
 compiler; E0461 rejects that foreign data. No Cargo responses are fabricated.
 Duplicate std archives fail before the metadata import.
 This check does not build Cargo dependencies, librsvg, GIR data or a package.
-The earlier complete-build and CM5 receipts describe AArch64.
-The amd64 renderer build, target GType query, packaging and runtime acceptance
-remain pending. The target receives no compiler or development tools.
+The 2.63.4 package, target GType query and focused Zero3W CSS consumer are
+current AArch64 results. Full four-cycle CM5 consumer acceptance remains the
+historical 2.63.2 result; the amd64 renderer build and target runtime
+acceptance remain pending. The target receives no compiler or development
+tools.
 
 ## Packaged target consumer
 
-[`prepare-librsvg-package.rb`](../tests/prepare-librsvg-package.rb) compares
+[`prepare-librsvg-package.py`](../tests/prepare-librsvg-package.py) compares
 every installed renderer and MIME package file and symlink against the archives and cross-builds
 [`librsvg-package.c`](../tests/librsvg-package.c). It embeds those exact files,
 their required metadata, and two hash-pinned fixtures from the upstream source:
@@ -182,18 +204,22 @@ the Ahem font and `rectangle.avif`. The embedded font retains its public-domain
 notice. Upstream font notes, authors and LGPL text accompany the fixtures.
 
 ```sh
-ruby profiles/common-graphics/tests/prepare-librsvg-package.rb \
+/absolute/native/python3.15 -B -I -S \
+  profiles/common-graphics/tests/prepare-librsvg-package.py \
+  --css-only --sdk-source /absolute/EmberBSD-SDK \
   /absolute/cross-tools /absolute/sysroot \
-  /absolute/packages/librsvg-2.63.2.tgz \
-  /absolute/packages/shared-mime-info-2.5.1.tgz /absolute/original-librsvg-source \
-  /absolute/build-root/new-consumer
+  /absolute/librsvg-work/.destdir/usr/pkg \
+  /absolute/build-root/new-css-consumer
 env EMBERBSD_SDK_SOURCE=/absolute/EmberBSD-SDK \
-  EMBERBSD_GI_QUERY_CONFIG=/absolute/query.json /absolute/native/python3.15 \
-  pkgsrc/devel/gobject-introspection/files/target-query.py \
-  /absolute/build-root/new-consumer/librsvg-package
+  EMBERBSD_GI_QUERY_CONFIG=/absolute/query.json /absolute/native/python3.15 -B -E -S \
+  pkgsrc/devel/gobject-introspection/files/target-query.py --execute \
+  /absolute/build-root/new-css-consumer/librsvg-css-package
 ```
 
-The consumer belongs inside the configured query build root. It renders known
+The staged-prefix argument points to the package's `.destdir/usr/pkg` tree;
+the helper checks the linked renderer against that exact package stage before
+execution. The CSS-only query checks its C API path and belongs inside the
+configured query build root. The full consumer renders known
 red, green and blue pixels through the C API, CLI PNG and dynamically queried
 SVG loader. It also checks embedded AVIF pixels, text with the isolated Ahem
 font, and a constructor invoked through the installed Rsvg typelib. Four

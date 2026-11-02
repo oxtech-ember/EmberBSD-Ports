@@ -1,0 +1,15 @@
+$NetBSD$
+
+Rebuild Cargo custom targets when root manifests change.
+Origin: EmberBSD (AI-assisted).
+
+--- rsvg/meson.build.orig
++++ rsvg/meson.build
+@@ -91 +91 @@
+-  depend_files: library_sources + librsvg_c_sources,
++  depend_files: library_sources + librsvg_c_sources + files('../Cargo.lock', '../Cargo.toml'),
+--- rsvg_convert/meson.build.orig
++++ rsvg_convert/meson.build
+@@ -29 +29 @@
+-  depend_files: rsvg_convert_files,
++  depend_files: rsvg_convert_files + files('../Cargo.lock', '../Cargo.toml'),

@@ -279,8 +279,9 @@ preserve thirteen raster formats, introspection and thumbnailer payload;
 four CM5 cycles pass complete and incremental decoding with pixel checks.
 Sysroot base provenance follows
 the [fork-specific requirements](../common-build-tools/cross/sysroot.md).
-The [librsvg package](cross/librsvg.md) passes four CM5 CPU cycles for its C API,
-CLI, dynamic loader, AVIF, text and typelib with verified MIME data.
+The historical librsvg 2.63.2 package passed four CM5 CPU cycles for its C API,
+CLI, dynamic loader, AVIF, text and typelib with verified MIME data. Current
+2.63.4 build and focused Zero3W results are recorded in [librsvg](cross/librsvg.md).
 The [labwc 0.20.2nb2 package](cross/labwc.md) cross-builds and preserves the
 selected SVG, icon, translation and documentation payload. Inspection matches
 62 installed files/links and 80 target ELF files.

@@ -16,6 +16,15 @@
     },
     "patch": "ast_node-7.0.0.patch"
   },
+  "av-data-0.4.4": {
+    "files": {
+      "Cargo.toml": {
+        "before": "d1ae1da2d6e225e8fbed130a194949161983eddd3149eb4910ff7135be738955",
+        "after": "eb0ae93b18f118e4589902e279a7c47f4e55c39c944a66ad0b2a142a975ccfe8"
+      }
+    },
+    "patch": "av-data-0.4.4.patch"
+  },
   "capacity_builder_macros-0.3.0": {
     "files": {
       "Cargo.toml": {
