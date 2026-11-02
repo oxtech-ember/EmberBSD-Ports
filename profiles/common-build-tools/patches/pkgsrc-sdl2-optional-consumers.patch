@@ -328,20 +328,7 @@ diff -ru a/multimedia/mlt/PLIST b/multimedia/mlt/PLIST
  share/mlt-7/normalize/filter_audiolevel.yml
  share/mlt-7/normalize/filter_volume.yml
  share/mlt-7/oldfilm/dust1.svg
-@@ -372,12 +348,6 @@
- share/mlt-7/presets/consumer/avformat/x265-medium-pass1
- share/mlt-7/presets/filter/brightness/from_black
- share/mlt-7/presets/filter/brightness/to_black
--share/mlt-7/presets/filter/movit.blur/blur_in
--share/mlt-7/presets/filter/movit.blur/blur_in_out
--share/mlt-7/presets/filter/movit.blur/blur_out
--share/mlt-7/presets/filter/movit.opacity/fade_in
--share/mlt-7/presets/filter/movit.opacity/fade_in_out
--share/mlt-7/presets/filter/movit.opacity/fade_out
- share/mlt-7/presets/filter/volume/fade_in
- share/mlt-7/presets/filter/volume/fade_out
- share/mlt-7/profiles/atsc_1080i_50
-@@ -478,8 +448,6 @@
+@@ -478,8 +454,6 @@
  share/mlt-7/resample/link_resample.yml
  share/mlt-7/rtaudio/consumer_rtaudio.yml
  share/mlt-7/rubberband/filter_rbpitch.yml
