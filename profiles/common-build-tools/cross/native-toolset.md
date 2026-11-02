@@ -35,6 +35,37 @@ populates the selected OpenSSL trust store used by the Ports fetch client.
 The full Darwin bootstrap includes these packages; a compiler-only bootstrap
 needs them when completing the native tools manually.
 
+## Initial Linux bootstrap
+
+On a fresh Linux host, explicitly select an official native Clang/LLVM seed,
+its runtime and the required host utilities for the bootstrap. For example,
+when that seed provides the following executable paths, write a private
+bootstrap fragment and run the exported pkgsrc bootstrap:
+
+```sh
+cat > /absolute/bootstrap-tools.mk <<'EOF'
+TOOLS_PATH.readelf=/absolute/llvm-seed/bin/llvm-readelf
+EOF
+CC=/absolute/llvm-seed/bin/clang CXX=/absolute/llvm-seed/bin/clang++ \
+CPP='/absolute/llvm-seed/bin/clang -E' CLANGBASE=/absolute/llvm-seed \
+    /absolute/exported-pkgsrc/bootstrap/bootstrap --unprivileged \
+    --compiler clang --prefix /absolute/host-pkg-llvm \
+    --workdir /absolute/common-build/native/bootstrap \
+    --pkgdbdir /absolute/host-pkg-llvm/pkgdb \
+    --bootstrap-mk-fragment /absolute/bootstrap-tools.mk
+```
+
+Use the real seed paths and host ABI, with any other needed bootstrap inputs
+explicitly selected. The fragment is read only for bootstrap packages;
+`--mk-fragment` remains the separate installed package configuration input.
+Both accept `--option=FILE` as well. A missing or unreadable bootstrap fragment
+fails. Source-only fragment tests do not establish a complete native LLVM
+bootstrap or a usable SDK.
+
+`python3 profiles/development-toolchain/tests/bootstrap-fragments.py
+--bootstrap /absolute/exported-pkgsrc/bootstrap/bootstrap --shell /bin/sh`
+checks fragment routing and refusal without compiling.
+
 ## Configure pkgsrc
 
 Generate the ordinary make-variable include with the selected Python:
