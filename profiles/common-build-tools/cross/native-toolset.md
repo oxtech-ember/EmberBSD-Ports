@@ -65,8 +65,9 @@ metadata and by `lang/rust-bin`, select `bin/llvm-lipo` and `bin/llvm-otool`
 (see `../macho-metadata.md`). `EMBERBSD_DARWIN_LIBTOOL` selects
 `bin/llvm-libtool-darwin` for recipes that create static libraries with Darwin
 libtool, such as the Boost toolchain in `meta-pkgs/boost`, which requires it
-whenever `EMBERBSD_HOST_PREFIX` is set. A prefix without any of these tools is
-refused.
+whenever `EMBERBSD_HOST_PREFIX` is set. `EMBERBSD_DARWIN_DSYMUTIL` selects
+`bin/dsymutil`, which native Darwin `lang/llvm` and `lang/clang` require (see
+`../llvm-family.md`). A prefix without any of these tools is refused.
 `EMBERBSD_DARWIN_TOOL.codesign` names the macOS signature verification
 service `/usr/bin/codesign`, which `lang/rust-bin` uses to check the ad hoc
 signatures it rewrites; a host without it is refused. `OSX_SDK_PATH`
