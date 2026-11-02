@@ -1,0 +1,57 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-aarch64
+recipe: multimedia/gst-plugins1-bad
+package: gst-plugins1-bad-1.28.8
+program: GstTranscoder-1.0
+types-sha256: ee50f104f80bd0d0c01590aa620664f99ae30ad9a783975fbe6337ecf0cabf67
+dump-sha256: 8f4e240721dc1bc214ca32508c64d2b4c2171791daedf6d582a3d055ce20f9ed
+-->
+<?xml version="1.0"?>
+<dump>
+  <enum name="GstTranscoderError" get-type="gst_transcoder_error_get_type">
+    <member name="GST_TRANSCODER_ERROR_FAILED" nick="failed" value="0"/>
+  </enum>  <enum name="GstTranscoderState" get-type="gst_transcoder_state_get_type">
+    <member name="GST_TRANSCODER_STATE_STOPPED" nick="stopped" value="0"/>
+    <member name="GST_TRANSCODER_STATE_PAUSED" nick="paused" value="1"/>
+    <member name="GST_TRANSCODER_STATE_PLAYING" nick="playing" value="2"/>
+  </enum>  <enum name="GstTranscoderMessage" get-type="gst_transcoder_message_get_type">
+    <member name="GST_TRANSCODER_MESSAGE_POSITION_UPDATED" nick="position-updated" value="0"/>
+    <member name="GST_TRANSCODER_MESSAGE_DURATION_CHANGED" nick="duration-changed" value="1"/>
+    <member name="GST_TRANSCODER_MESSAGE_STATE_CHANGED" nick="state-changed" value="2"/>
+    <member name="GST_TRANSCODER_MESSAGE_DONE" nick="done" value="3"/>
+    <member name="GST_TRANSCODER_MESSAGE_ERROR" nick="error" value="4"/>
+    <member name="GST_TRANSCODER_MESSAGE_WARNING" nick="warning" value="5"/>
+  </enum>  <class name="GstTranscoder" get-type="gst_transcoder_get_type" parents="GstObject,GInitiallyUnowned,GObject">
+    <property name="src-uri" type="gchararray" flags="235" default-value="NULL"/>
+    <property name="dest-uri" type="gchararray" flags="235" default-value="NULL"/>
+    <property name="profile" type="GstEncodingProfile" flags="235"/>
+    <property name="position" type="guint64" flags="225" default-value="18446744073709551615"/>
+    <property name="duration" type="guint64" flags="225" default-value="18446744073709551615"/>
+    <property name="pipeline" type="GstElement" flags="225"/>
+    <property name="position-update-interval" type="guint" flags="227" default-value="100"/>
+    <property name="avoid-reencoding" type="gboolean" flags="227" default-value="FALSE"/>
+  </class>
+  <class name="GstTranscoderSignalAdapter" get-type="gst_transcoder_signal_adapter_get_type" parents="GObject">
+    <property name="transcoder" type="GstTranscoder" flags="225"/>
+    <signal name="error" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="GError"/>
+      <param type="GstStructure"/>
+    </signal>
+    <signal name="warning" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="GError"/>
+      <param type="GstStructure"/>
+    </signal>
+    <signal name="state-changed" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="GstTranscoderState"/>
+    </signal>
+    <signal name="duration-changed" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="guint64"/>
+    </signal>
+    <signal name="position-updated" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="guint64"/>
+    </signal>
+    <signal name="done" return="void" when="last" no-recurse="1" no-hooks="1">
+    </signal>
+  </class>
+  <error-quark function="gst_transcoder_error_quark" domain="gst-transcoder-error-quark"/>
+</dump>

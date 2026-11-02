@@ -1,0 +1,29 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-aarch64
+recipe: multimedia/gst-plugins1-bad
+package: gst-plugins1-bad-1.28.8
+program: GstBadBaseCameraBin-1.0
+types-sha256: 3d3dc064554d802750caa7e323570562de2e64acc6e9f1e6acc3d92e8683fd93
+dump-sha256: acd679cdb3ec695e36151ada2b1f7152e538aa68fea6ccb44bc8617285db7198
+-->
+<?xml version="1.0"?>
+<dump>
+  <enum name="GstCameraBin2Mode" get-type="gst_camerabin_mode_get_type">
+    <member name="Still image capture (default)" nick="mode-image" value="1"/>
+    <member name="Video recording" nick="mode-video" value="2"/>
+  </enum>  <class name="GstBaseCameraSrc" get-type="gst_base_camera_src_get_type" parents="GstBin,GstElement,GstObject,GInitiallyUnowned,GObject">
+    <implements name="GstChildProxy"/>
+    <property name="mode" type="GstCameraBin2Mode" flags="227" default-value="Still image capture (default)"/>
+    <property name="zoom" type="gfloat" flags="227" default-value="1.000000"/>
+    <property name="max-zoom" type="gfloat" flags="225" default-value="10.000000"/>
+    <property name="ready-for-capture" type="gboolean" flags="225" default-value="TRUE"/>
+    <property name="post-previews" type="gboolean" flags="227" default-value="TRUE"/>
+    <property name="preview-caps" type="GstCaps" flags="227"/>
+    <property name="preview-filter" type="GstElement" flags="227"/>
+    <property name="auto-start" type="gboolean" flags="227" default-value="FALSE"/>
+    <signal name="start-capture" return="void" when="last" action="1">
+    </signal>
+    <signal name="stop-capture" return="void" when="last" action="1">
+    </signal>
+  </class>
+</dump>

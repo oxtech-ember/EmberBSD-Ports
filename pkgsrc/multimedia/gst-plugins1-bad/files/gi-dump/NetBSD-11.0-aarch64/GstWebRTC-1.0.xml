@@ -1,0 +1,231 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-aarch64
+recipe: multimedia/gst-plugins1-bad
+package: gst-plugins1-bad-1.28.8
+program: GstWebRTC-1.0
+types-sha256: 15ed926a9ccd6bdc32e8474dcafe57041826c7759da717cfcb8313e848dfdc99
+dump-sha256: a989c14191c6a7e8f7d32b23c191f83b15891e5120d6a2c93f43b7b1e190768f
+-->
+<?xml version="1.0"?>
+<dump>
+  <class name="GstWebRTCICETransport" get-type="gst_webrtc_ice_transport_get_type" parents="GstObject,GInitiallyUnowned,GObject" abstract="1">
+    <property name="component" type="GstWebRTCICEComponent" flags="235" default-value="GST_WEBRTC_ICE_COMPONENT_RTP"/>
+    <property name="state" type="GstWebRTCICEConnectionState" flags="225" default-value="GST_WEBRTC_ICE_CONNECTION_STATE_NEW"/>
+    <property name="gathering-state" type="GstWebRTCICEGatheringState" flags="225" default-value="GST_WEBRTC_ICE_GATHERING_STATE_NEW"/>
+    <signal name="on-selected-candidate-pair-change" return="void" when="last">
+    </signal>
+    <signal name="on-new-candidate" return="void" when="last">
+      <param type="gchararray"/>
+    </signal>
+  </class>
+  <class name="GstWebRTCDTLSTransport" get-type="gst_webrtc_dtls_transport_get_type" parents="GstObject,GInitiallyUnowned,GObject">
+    <property name="session-id" type="guint" flags="235" default-value="0"/>
+    <property name="transport" type="GstWebRTCICETransport" flags="225"/>
+    <property name="state" type="GstWebRTCDTLSTransportState" flags="225" default-value="GST_WEBRTC_DTLS_TRANSPORT_STATE_NEW"/>
+    <property name="client" type="gboolean" flags="227" default-value="FALSE"/>
+    <property name="certificate" type="gchararray" flags="227" default-value="NULL"/>
+    <property name="remote-certificate" type="gchararray" flags="225" default-value="NULL"/>
+  </class>
+  <class name="GstWebRTCICE" get-type="gst_webrtc_ice_get_type" parents="GstObject,GInitiallyUnowned,GObject" abstract="1">
+    <property name="min-rtp-port" type="guint" flags="231" default-value="0"/>
+    <property name="max-rtp-port" type="guint" flags="231" default-value="65535"/>
+    <signal name="add-local-ip-address" return="gboolean" when="last" action="1">
+      <param type="gchararray"/>
+    </signal>
+  </class>
+  <boxed name="GstWebRTCICECandidateStats" get-type="gst_webrtc_ice_candidate_stats_get_type"/>
+  <boxed name="GstWebRTCICECandidate" get-type="gst_webrtc_ice_candidate_get_type"/>
+  <boxed name="GstWebRTCICECandidatePair" get-type="gst_webrtc_ice_candidate_pair_get_type"/>
+  <class name="GstWebRTCICEStream" get-type="gst_webrtc_ice_stream_get_type" parents="GstObject,GInitiallyUnowned,GObject" abstract="1">
+    <property name="stream-id" type="guint" flags="235" default-value="0"/>
+  </class>
+  <boxed name="GstWebRTCSessionDescription" get-type="gst_webrtc_session_description_get_type"/>
+  <class name="GstWebRTCRTPReceiver" get-type="gst_webrtc_rtp_receiver_get_type" parents="GstObject,GInitiallyUnowned,GObject">
+    <property name="transport" type="GstWebRTCDTLSTransport" flags="225"/>
+  </class>
+  <class name="GstWebRTCRTPSender" get-type="gst_webrtc_rtp_sender_get_type" parents="GstObject,GInitiallyUnowned,GObject">
+    <property name="priority" type="GstWebRTCPriorityType" flags="227" default-value="GST_WEBRTC_PRIORITY_TYPE_LOW"/>
+    <property name="transport" type="GstWebRTCDTLSTransport" flags="225"/>
+  </class>
+  <class name="GstWebRTCRTPTransceiver" get-type="gst_webrtc_rtp_transceiver_get_type" parents="GstObject,GInitiallyUnowned,GObject" abstract="1">
+    <property name="sender" type="GstWebRTCRTPSender" flags="235"/>
+    <property name="receiver" type="GstWebRTCRTPReceiver" flags="235"/>
+    <property name="direction" type="GstWebRTCRTPTransceiverDirection" flags="227" default-value="GST_WEBRTC_RTP_TRANSCEIVER_DIRECTION_NONE"/>
+    <property name="mlineindex" type="guint" flags="235" default-value="0"/>
+    <property name="mid" type="gchararray" flags="225" default-value="NULL"/>
+    <property name="current-direction" type="GstWebRTCRTPTransceiverDirection" flags="225" default-value="GST_WEBRTC_RTP_TRANSCEIVER_DIRECTION_NONE"/>
+    <property name="kind" type="GstWebRTCKind" flags="225" default-value="GST_WEBRTC_KIND_UNKNOWN"/>
+    <property name="codec-preferences" type="GstCaps" flags="227"/>
+  </class>
+  <class name="GstWebRTCDataChannel" get-type="gst_webrtc_data_channel_get_type" parents="GObject" abstract="1">
+    <property name="label" type="gchararray" flags="235" default-value="NULL"/>
+    <property name="ordered" type="gboolean" flags="235" default-value="FALSE"/>
+    <property name="max-packet-lifetime" type="gint" flags="235" default-value="-1"/>
+    <property name="max-retransmits" type="gint" flags="235" default-value="0"/>
+    <property name="protocol" type="gchararray" flags="235" default-value=""/>
+    <property name="negotiated" type="gboolean" flags="235" default-value="FALSE"/>
+    <property name="id" type="gint" flags="235" default-value="-1"/>
+    <property name="priority" type="GstWebRTCPriorityType" flags="235" default-value="GST_WEBRTC_PRIORITY_TYPE_LOW"/>
+    <property name="ready-state" type="GstWebRTCDataChannelState" flags="225" default-value="GST_WEBRTC_DATA_CHANNEL_STATE_CONNECTING"/>
+    <property name="buffered-amount" type="guint64" flags="225" default-value="0"/>
+    <property name="buffered-amount-low-threshold" type="guint64" flags="227" default-value="0"/>
+    <signal name="on-open" return="void" when="last">
+    </signal>
+    <signal name="on-close" return="void" when="last">
+    </signal>
+    <signal name="on-error" return="void" when="last">
+      <param type="GError"/>
+    </signal>
+    <signal name="on-message-data" return="void" when="last">
+      <param type="GBytes"/>
+    </signal>
+    <signal name="on-message-string" return="void" when="last">
+      <param type="gchararray"/>
+    </signal>
+    <signal name="on-buffered-amount-low" return="void" when="last">
+    </signal>
+    <signal name="send-data" return="void" when="last" action="1">
+      <param type="GBytes"/>
+    </signal>
+    <signal name="send-string" return="void" when="last" action="1">
+      <param type="gchararray"/>
+    </signal>
+    <signal name="close" return="void" when="last" action="1">
+    </signal>
+  </class>
+  <enum name="GstWebRTCICETcpCandidateType" get-type="gst_webrtc_ice_tcp_candidate_type_get_type">
+    <member name="GST_WEBRTC_ICE_TCP_CANDIDATE_TYPE_ACTIVE" nick="active" value="0"/>
+    <member name="GST_WEBRTC_ICE_TCP_CANDIDATE_TYPE_PASSIVE" nick="passive" value="1"/>
+    <member name="GST_WEBRTC_ICE_TCP_CANDIDATE_TYPE_SO" nick="so" value="2"/>
+    <member name="GST_WEBRTC_ICE_TCP_CANDIDATE_TYPE_NONE" nick="none" value="3"/>
+  </enum>  <enum name="GstWebRTCICECandidateProtocolType" get-type="gst_webrtc_ice_candidate_protocol_type_get_type">
+    <member name="GST_WEBRTC_ICE_CANDIDATE_PROTOCOL_TYPE_TCP" nick="tcp" value="0"/>
+    <member name="GST_WEBRTC_ICE_CANDIDATE_PROTOCOL_TYPE_UDP" nick="udp" value="1"/>
+  </enum>  <enum name="GstWebRTCICECandidateType" get-type="gst_webrtc_ice_candidate_type_get_type">
+    <member name="GST_WEBRTC_ICE_CANDIDATE_TYPE_HOST" nick="host" value="0"/>
+    <member name="GST_WEBRTC_ICE_CANDIDATE_TYPE_SERVER_REFLEXIVE" nick="server-reflexive" value="1"/>
+    <member name="GST_WEBRTC_ICE_CANDIDATE_TYPE_PEER_REFLEXIVE" nick="peer-reflexive" value="2"/>
+    <member name="GST_WEBRTC_ICE_CANDIDATE_TYPE_RELAYED" nick="relayed" value="3"/>
+  </enum>  <enum name="GstWebRTCDTLSTransportState" get-type="gst_webrtc_dtls_transport_state_get_type">
+    <member name="GST_WEBRTC_DTLS_TRANSPORT_STATE_NEW" nick="new" value="0"/>
+    <member name="GST_WEBRTC_DTLS_TRANSPORT_STATE_CLOSED" nick="closed" value="1"/>
+    <member name="GST_WEBRTC_DTLS_TRANSPORT_STATE_FAILED" nick="failed" value="2"/>
+    <member name="GST_WEBRTC_DTLS_TRANSPORT_STATE_CONNECTING" nick="connecting" value="3"/>
+    <member name="GST_WEBRTC_DTLS_TRANSPORT_STATE_CONNECTED" nick="connected" value="4"/>
+  </enum>  <enum name="GstWebRTCDTLSRole" get-type="gst_webrtc_dtls_role_get_type">
+    <member name="GST_WEBRTC_DTLS_ROLE_CLIENT" nick="client" value="0"/>
+    <member name="GST_WEBRTC_DTLS_ROLE_SERVER" nick="server" value="1"/>
+    <member name="GST_WEBRTC_DTLS_ROLE_UNKNOWN" nick="unknown" value="2"/>
+  </enum>  <enum name="GstWebRTCICEGatheringState" get-type="gst_webrtc_ice_gathering_state_get_type">
+    <member name="GST_WEBRTC_ICE_GATHERING_STATE_NEW" nick="new" value="0"/>
+    <member name="GST_WEBRTC_ICE_GATHERING_STATE_GATHERING" nick="gathering" value="1"/>
+    <member name="GST_WEBRTC_ICE_GATHERING_STATE_COMPLETE" nick="complete" value="2"/>
+  </enum>  <enum name="GstWebRTCICEConnectionState" get-type="gst_webrtc_ice_connection_state_get_type">
+    <member name="GST_WEBRTC_ICE_CONNECTION_STATE_NEW" nick="new" value="0"/>
+    <member name="GST_WEBRTC_ICE_CONNECTION_STATE_CHECKING" nick="checking" value="1"/>
+    <member name="GST_WEBRTC_ICE_CONNECTION_STATE_CONNECTED" nick="connected" value="2"/>
+    <member name="GST_WEBRTC_ICE_CONNECTION_STATE_COMPLETED" nick="completed" value="3"/>
+    <member name="GST_WEBRTC_ICE_CONNECTION_STATE_FAILED" nick="failed" value="4"/>
+    <member name="GST_WEBRTC_ICE_CONNECTION_STATE_DISCONNECTED" nick="disconnected" value="5"/>
+    <member name="GST_WEBRTC_ICE_CONNECTION_STATE_CLOSED" nick="closed" value="6"/>
+  </enum>  <enum name="GstWebRTCSignalingState" get-type="gst_webrtc_signaling_state_get_type">
+    <member name="GST_WEBRTC_SIGNALING_STATE_STABLE" nick="stable" value="0"/>
+    <member name="GST_WEBRTC_SIGNALING_STATE_CLOSED" nick="closed" value="1"/>
+    <member name="GST_WEBRTC_SIGNALING_STATE_HAVE_LOCAL_OFFER" nick="have-local-offer" value="2"/>
+    <member name="GST_WEBRTC_SIGNALING_STATE_HAVE_REMOTE_OFFER" nick="have-remote-offer" value="3"/>
+    <member name="GST_WEBRTC_SIGNALING_STATE_HAVE_LOCAL_PRANSWER" nick="have-local-pranswer" value="4"/>
+    <member name="GST_WEBRTC_SIGNALING_STATE_HAVE_REMOTE_PRANSWER" nick="have-remote-pranswer" value="5"/>
+  </enum>  <enum name="GstWebRTCPeerConnectionState" get-type="gst_webrtc_peer_connection_state_get_type">
+    <member name="GST_WEBRTC_PEER_CONNECTION_STATE_NEW" nick="new" value="0"/>
+    <member name="GST_WEBRTC_PEER_CONNECTION_STATE_CONNECTING" nick="connecting" value="1"/>
+    <member name="GST_WEBRTC_PEER_CONNECTION_STATE_CONNECTED" nick="connected" value="2"/>
+    <member name="GST_WEBRTC_PEER_CONNECTION_STATE_DISCONNECTED" nick="disconnected" value="3"/>
+    <member name="GST_WEBRTC_PEER_CONNECTION_STATE_FAILED" nick="failed" value="4"/>
+    <member name="GST_WEBRTC_PEER_CONNECTION_STATE_CLOSED" nick="closed" value="5"/>
+  </enum>  <enum name="GstWebRTCICERole" get-type="gst_webrtc_ice_role_get_type">
+    <member name="GST_WEBRTC_ICE_ROLE_CONTROLLED" nick="controlled" value="0"/>
+    <member name="GST_WEBRTC_ICE_ROLE_CONTROLLING" nick="controlling" value="1"/>
+  </enum>  <enum name="GstWebRTCICEComponent" get-type="gst_webrtc_ice_component_get_type">
+    <member name="GST_WEBRTC_ICE_COMPONENT_RTP" nick="rtp" value="0"/>
+    <member name="GST_WEBRTC_ICE_COMPONENT_RTCP" nick="rtcp" value="1"/>
+  </enum>  <enum name="GstWebRTCSDPType" get-type="gst_webrtc_sdp_type_get_type">
+    <member name="GST_WEBRTC_SDP_TYPE_OFFER" nick="offer" value="1"/>
+    <member name="GST_WEBRTC_SDP_TYPE_PRANSWER" nick="pranswer" value="2"/>
+    <member name="GST_WEBRTC_SDP_TYPE_ANSWER" nick="answer" value="3"/>
+    <member name="GST_WEBRTC_SDP_TYPE_ROLLBACK" nick="rollback" value="4"/>
+  </enum>  <enum name="GstWebRTCRTPTransceiverDirection" get-type="gst_webrtc_rtp_transceiver_direction_get_type">
+    <member name="GST_WEBRTC_RTP_TRANSCEIVER_DIRECTION_NONE" nick="none" value="0"/>
+    <member name="GST_WEBRTC_RTP_TRANSCEIVER_DIRECTION_INACTIVE" nick="inactive" value="1"/>
+    <member name="GST_WEBRTC_RTP_TRANSCEIVER_DIRECTION_SENDONLY" nick="sendonly" value="2"/>
+    <member name="GST_WEBRTC_RTP_TRANSCEIVER_DIRECTION_RECVONLY" nick="recvonly" value="3"/>
+    <member name="GST_WEBRTC_RTP_TRANSCEIVER_DIRECTION_SENDRECV" nick="sendrecv" value="4"/>
+  </enum>  <enum name="GstWebRTCDTLSSetup" get-type="gst_webrtc_dtls_setup_get_type">
+    <member name="GST_WEBRTC_DTLS_SETUP_NONE" nick="none" value="0"/>
+    <member name="GST_WEBRTC_DTLS_SETUP_ACTPASS" nick="actpass" value="1"/>
+    <member name="GST_WEBRTC_DTLS_SETUP_ACTIVE" nick="active" value="2"/>
+    <member name="GST_WEBRTC_DTLS_SETUP_PASSIVE" nick="passive" value="3"/>
+  </enum>  <enum name="GstWebRTCStatsType" get-type="gst_webrtc_stats_type_get_type">
+    <member name="GST_WEBRTC_STATS_CODEC" nick="codec" value="1"/>
+    <member name="GST_WEBRTC_STATS_INBOUND_RTP" nick="inbound-rtp" value="2"/>
+    <member name="GST_WEBRTC_STATS_OUTBOUND_RTP" nick="outbound-rtp" value="3"/>
+    <member name="GST_WEBRTC_STATS_REMOTE_INBOUND_RTP" nick="remote-inbound-rtp" value="4"/>
+    <member name="GST_WEBRTC_STATS_REMOTE_OUTBOUND_RTP" nick="remote-outbound-rtp" value="5"/>
+    <member name="GST_WEBRTC_STATS_CSRC" nick="csrc" value="6"/>
+    <member name="GST_WEBRTC_STATS_PEER_CONNECTION" nick="peer-connection" value="7"/>
+    <member name="GST_WEBRTC_STATS_DATA_CHANNEL" nick="data-channel" value="8"/>
+    <member name="GST_WEBRTC_STATS_STREAM" nick="stream" value="9"/>
+    <member name="GST_WEBRTC_STATS_TRANSPORT" nick="transport" value="10"/>
+    <member name="GST_WEBRTC_STATS_CANDIDATE_PAIR" nick="candidate-pair" value="11"/>
+    <member name="GST_WEBRTC_STATS_LOCAL_CANDIDATE" nick="local-candidate" value="12"/>
+    <member name="GST_WEBRTC_STATS_REMOTE_CANDIDATE" nick="remote-candidate" value="13"/>
+    <member name="GST_WEBRTC_STATS_CERTIFICATE" nick="certificate" value="14"/>
+  </enum>  <enum name="GstWebRTCFECType" get-type="gst_webrtc_fec_type_get_type">
+    <member name="GST_WEBRTC_FEC_TYPE_NONE" nick="none" value="0"/>
+    <member name="GST_WEBRTC_FEC_TYPE_ULP_RED" nick="ulp-red" value="1"/>
+  </enum>  <enum name="GstWebRTCSCTPTransportState" get-type="gst_webrtc_sctp_transport_state_get_type">
+    <member name="GST_WEBRTC_SCTP_TRANSPORT_STATE_NEW" nick="new" value="0"/>
+    <member name="GST_WEBRTC_SCTP_TRANSPORT_STATE_CONNECTING" nick="connecting" value="1"/>
+    <member name="GST_WEBRTC_SCTP_TRANSPORT_STATE_CONNECTED" nick="connected" value="2"/>
+    <member name="GST_WEBRTC_SCTP_TRANSPORT_STATE_CLOSED" nick="closed" value="3"/>
+  </enum>  <enum name="GstWebRTCPriorityType" get-type="gst_webrtc_priority_type_get_type">
+    <member name="GST_WEBRTC_PRIORITY_TYPE_VERY_LOW" nick="very-low" value="1"/>
+    <member name="GST_WEBRTC_PRIORITY_TYPE_LOW" nick="low" value="2"/>
+    <member name="GST_WEBRTC_PRIORITY_TYPE_MEDIUM" nick="medium" value="3"/>
+    <member name="GST_WEBRTC_PRIORITY_TYPE_HIGH" nick="high" value="4"/>
+  </enum>  <enum name="GstWebRTCDataChannelState" get-type="gst_webrtc_data_channel_state_get_type">
+    <member name="GST_WEBRTC_DATA_CHANNEL_STATE_CONNECTING" nick="connecting" value="1"/>
+    <member name="GST_WEBRTC_DATA_CHANNEL_STATE_OPEN" nick="open" value="2"/>
+    <member name="GST_WEBRTC_DATA_CHANNEL_STATE_CLOSING" nick="closing" value="3"/>
+    <member name="GST_WEBRTC_DATA_CHANNEL_STATE_CLOSED" nick="closed" value="4"/>
+  </enum>  <enum name="GstWebRTCBundlePolicy" get-type="gst_webrtc_bundle_policy_get_type">
+    <member name="GST_WEBRTC_BUNDLE_POLICY_NONE" nick="none" value="0"/>
+    <member name="GST_WEBRTC_BUNDLE_POLICY_BALANCED" nick="balanced" value="1"/>
+    <member name="GST_WEBRTC_BUNDLE_POLICY_MAX_COMPAT" nick="max-compat" value="2"/>
+    <member name="GST_WEBRTC_BUNDLE_POLICY_MAX_BUNDLE" nick="max-bundle" value="3"/>
+  </enum>  <enum name="GstWebRTCICETransportPolicy" get-type="gst_webrtc_ice_transport_policy_get_type">
+    <member name="GST_WEBRTC_ICE_TRANSPORT_POLICY_ALL" nick="all" value="0"/>
+    <member name="GST_WEBRTC_ICE_TRANSPORT_POLICY_RELAY" nick="relay" value="1"/>
+  </enum>  <enum name="GstWebRTCKind" get-type="gst_webrtc_kind_get_type">
+    <member name="GST_WEBRTC_KIND_UNKNOWN" nick="unknown" value="0"/>
+    <member name="GST_WEBRTC_KIND_AUDIO" nick="audio" value="1"/>
+    <member name="GST_WEBRTC_KIND_VIDEO" nick="video" value="2"/>
+  </enum>  <enum name="GstWebRTCError" get-type="gst_webrtc_error_get_type">
+    <member name="GST_WEBRTC_ERROR_DATA_CHANNEL_FAILURE" nick="data-channel-failure" value="0"/>
+    <member name="GST_WEBRTC_ERROR_DTLS_FAILURE" nick="dtls-failure" value="1"/>
+    <member name="GST_WEBRTC_ERROR_FINGERPRINT_FAILURE" nick="fingerprint-failure" value="2"/>
+    <member name="GST_WEBRTC_ERROR_SCTP_FAILURE" nick="sctp-failure" value="3"/>
+    <member name="GST_WEBRTC_ERROR_SDP_SYNTAX_ERROR" nick="sdp-syntax-error" value="4"/>
+    <member name="GST_WEBRTC_ERROR_HARDWARE_ENCODER_NOT_AVAILABLE" nick="hardware-encoder-not-available" value="5"/>
+    <member name="GST_WEBRTC_ERROR_ENCODER_ERROR" nick="encoder-error" value="6"/>
+    <member name="GST_WEBRTC_ERROR_INVALID_STATE" nick="invalid-state" value="7"/>
+    <member name="GST_WEBRTC_ERROR_INTERNAL_FAILURE" nick="internal-failure" value="8"/>
+    <member name="GST_WEBRTC_ERROR_INVALID_MODIFICATION" nick="invalid-modification" value="9"/>
+    <member name="GST_WEBRTC_ERROR_TYPE_ERROR" nick="type-error" value="10"/>
+  </enum>  <class name="GstWebRTCSCTPTransport" get-type="gst_webrtc_sctp_transport_get_type" parents="GstObject,GInitiallyUnowned,GObject" abstract="1">
+    <property name="transport" type="GstWebRTCDTLSTransport" flags="225"/>
+    <property name="state" type="GstWebRTCSCTPTransportState" flags="225" default-value="GST_WEBRTC_SCTP_TRANSPORT_STATE_NEW"/>
+    <property name="max-message-size" type="guint64" flags="225" default-value="0"/>
+    <property name="max-channels" type="guint" flags="225" default-value="0"/>
+  </class>
+  <error-quark function="gst_webrtc_error_quark" domain="gst-webrtc-error-quark"/>
+</dump>

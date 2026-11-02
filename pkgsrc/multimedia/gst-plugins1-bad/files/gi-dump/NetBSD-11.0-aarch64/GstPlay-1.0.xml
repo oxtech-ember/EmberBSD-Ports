@@ -1,0 +1,122 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-aarch64
+recipe: multimedia/gst-plugins1-bad
+package: gst-plugins1-bad-1.28.8
+program: GstPlay-1.0
+types-sha256: 110cb33a0a09240806022902c942bd3f1251e9ad263c5a6b1f7c3f4d71a27c10
+dump-sha256: fba405240abaa5ff7d66d057269ec28be7c80c9e4eadec91b493be278f50bf5b
+-->
+<?xml version="1.0"?>
+<dump>
+  <interface name="GstPlayVideoRenderer" get-type="gst_play_video_renderer_get_type">
+  </interface>
+  <class name="GstPlayStreamInfo" get-type="gst_play_stream_info_get_type" parents="GObject" abstract="1">
+  </class>
+  <class name="GstPlayVideoInfo" get-type="gst_play_video_info_get_type" parents="GstPlayStreamInfo,GObject">
+  </class>
+  <class name="GstPlayAudioInfo" get-type="gst_play_audio_info_get_type" parents="GstPlayStreamInfo,GObject">
+  </class>
+  <class name="GstPlaySubtitleInfo" get-type="gst_play_subtitle_info_get_type" parents="GstPlayStreamInfo,GObject">
+  </class>
+  <class name="GstPlayMediaInfo" get-type="gst_play_media_info_get_type" parents="GObject">
+  </class>
+  <enum name="GstPlayState" get-type="gst_play_state_get_type">
+    <member name="GST_PLAY_STATE_STOPPED" nick="stopped" value="0"/>
+    <member name="GST_PLAY_STATE_BUFFERING" nick="buffering" value="1"/>
+    <member name="GST_PLAY_STATE_PAUSED" nick="paused" value="2"/>
+    <member name="GST_PLAY_STATE_PLAYING" nick="playing" value="3"/>
+  </enum>  <enum name="GstPlayMessage" get-type="gst_play_message_get_type">
+    <member name="GST_PLAY_MESSAGE_URI_LOADED" nick="uri-loaded" value="0"/>
+    <member name="GST_PLAY_MESSAGE_POSITION_UPDATED" nick="position-updated" value="1"/>
+    <member name="GST_PLAY_MESSAGE_DURATION_CHANGED" nick="duration-changed" value="2"/>
+    <member name="GST_PLAY_MESSAGE_STATE_CHANGED" nick="state-changed" value="3"/>
+    <member name="GST_PLAY_MESSAGE_BUFFERING" nick="buffering" value="4"/>
+    <member name="GST_PLAY_MESSAGE_END_OF_STREAM" nick="end-of-stream" value="5"/>
+    <member name="GST_PLAY_MESSAGE_ERROR" nick="error" value="6"/>
+    <member name="GST_PLAY_MESSAGE_WARNING" nick="warning" value="7"/>
+    <member name="GST_PLAY_MESSAGE_VIDEO_DIMENSIONS_CHANGED" nick="video-dimensions-changed" value="8"/>
+    <member name="GST_PLAY_MESSAGE_MEDIA_INFO_UPDATED" nick="media-info-updated" value="9"/>
+    <member name="GST_PLAY_MESSAGE_VOLUME_CHANGED" nick="volume-changed" value="10"/>
+    <member name="GST_PLAY_MESSAGE_MUTE_CHANGED" nick="mute-changed" value="11"/>
+    <member name="GST_PLAY_MESSAGE_SEEK_DONE" nick="seek-done" value="12"/>
+  </enum>  <enum name="GstPlayLoop" get-type="gst_play_loop_get_type">
+    <member name="GST_PLAY_LOOP_NONE" nick="none" value="0"/>
+    <member name="GST_PLAY_LOOP_TRACK" nick="track" value="1"/>
+  </enum>  <enum name="GstPlayError" get-type="gst_play_error_get_type">
+    <member name="GST_PLAY_ERROR_FAILED" nick="failed" value="0"/>
+  </enum>  <enum name="GstPlayColorBalanceType" get-type="gst_play_color_balance_type_get_type">
+    <member name="GST_PLAY_COLOR_BALANCE_HUE" nick="hue" value="3"/>
+    <member name="GST_PLAY_COLOR_BALANCE_BRIGHTNESS" nick="brightness" value="0"/>
+    <member name="GST_PLAY_COLOR_BALANCE_SATURATION" nick="saturation" value="2"/>
+    <member name="GST_PLAY_COLOR_BALANCE_CONTRAST" nick="contrast" value="1"/>
+  </enum>  <class name="GstPlay" get-type="gst_play_get_type" parents="GstObject,GInitiallyUnowned,GObject">
+    <property name="video-renderer" type="GstPlayVideoRenderer" flags="227"/>
+    <property name="uri" type="gchararray" flags="227" default-value="NULL"/>
+    <property name="suburi" type="gchararray" flags="227" default-value="NULL"/>
+    <property name="position" type="guint64" flags="225" default-value="18446744073709551615"/>
+    <property name="duration" type="guint64" flags="225" default-value="18446744073709551615"/>
+    <property name="media-info" type="GstPlayMediaInfo" flags="225"/>
+    <property name="current-audio-track" type="GstPlayAudioInfo" flags="225"/>
+    <property name="current-video-track" type="GstPlayVideoInfo" flags="225"/>
+    <property name="current-subtitle-track" type="GstPlaySubtitleInfo" flags="225"/>
+    <property name="volume" type="gdouble" flags="227" default-value="1.000000"/>
+    <property name="mute" type="gboolean" flags="227" default-value="FALSE"/>
+    <property name="rate" type="gdouble" flags="227" default-value="1.000000"/>
+    <property name="pipeline" type="GstElement" flags="225"/>
+    <property name="video-multiview-mode" type="GstVideoMultiviewFramePacking" flags="227" default-value="GST_VIDEO_MULTIVIEW_FRAME_PACKING_NONE"/>
+    <property name="video-multiview-flags" type="GstVideoMultiviewFlags" flags="227" default-value="GST_VIDEO_MULTIVIEW_FLAGS_NONE"/>
+    <property name="audio-video-offset" type="gint64" flags="227" default-value="0"/>
+    <property name="subtitle-video-offset" type="gint64" flags="227" default-value="0"/>
+  </class>
+  <class name="GstPlayVideoOverlayVideoRenderer" get-type="gst_play_video_overlay_video_renderer_get_type" parents="GObject">
+    <implements name="GstPlayVideoRenderer"/>
+    <property name="window-handle" type="gpointer" flags="231"/>
+    <property name="video-sink" type="GstElement" flags="227"/>
+  </class>
+  <boxed name="GstPlayVisualization" get-type="gst_play_visualization_get_type"/>
+  <class name="GstPlaySignalAdapter" get-type="gst_play_signal_adapter_get_type" parents="GObject">
+    <property name="play" type="GstPlay" flags="225"/>
+    <signal name="buffering" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="gint"/>
+    </signal>
+    <signal name="error" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="GError"/>
+      <param type="GstStructure"/>
+    </signal>
+    <signal name="warning" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="GError"/>
+      <param type="GstStructure"/>
+    </signal>
+    <signal name="state-changed" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="GstPlayState"/>
+    </signal>
+    <signal name="duration-changed" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="guint64"/>
+    </signal>
+    <signal name="uri-loaded" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="gchararray"/>
+    </signal>
+    <signal name="position-updated" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="guint64"/>
+    </signal>
+    <signal name="end-of-stream" return="void" when="last" no-recurse="1" no-hooks="1">
+    </signal>
+    <signal name="video-dimensions-changed" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="guint"/>
+      <param type="guint"/>
+    </signal>
+    <signal name="media-info-updated" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="GstPlayMediaInfo"/>
+    </signal>
+    <signal name="volume-changed" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="gdouble"/>
+    </signal>
+    <signal name="mute-changed" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="gboolean"/>
+    </signal>
+    <signal name="seek-done" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="guint64"/>
+    </signal>
+  </class>
+  <error-quark function="gst_play_error_quark" domain="gst-play-error-quark"/>
+</dump>

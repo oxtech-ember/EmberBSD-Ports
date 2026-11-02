@@ -1,0 +1,41 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-aarch64
+recipe: multimedia/gst-plugins1-bad
+package: gst-plugins1-bad-1.28.8
+program: GstInsertBin-1.0
+types-sha256: f4b4605b46fbc0e2afed90e472a4f4fd3c861df451d9c09651cb8f548b6e7ff9
+dump-sha256: 7b4bc819fd1eb8e023f8217f7ce7659fb3fbcb01951cefbc0fdb2c44f6f448d4
+-->
+<?xml version="1.0"?>
+<dump>
+  <class name="GstInsertBin" get-type="gst_insert_bin_get_type" parents="GstBin,GstElement,GstObject,GInitiallyUnowned,GObject">
+    <implements name="GstChildProxy"/>
+    <signal name="prepend" return="void" when="last" action="1">
+      <param type="GstElement"/>
+      <param type="gpointer"/>
+      <param type="gpointer"/>
+    </signal>
+    <signal name="append" return="void" when="last" action="1">
+      <param type="GstElement"/>
+      <param type="gpointer"/>
+      <param type="gpointer"/>
+    </signal>
+    <signal name="insert-before" return="void" when="last" action="1">
+      <param type="GstElement"/>
+      <param type="GstElement"/>
+      <param type="gpointer"/>
+      <param type="gpointer"/>
+    </signal>
+    <signal name="insert-after" return="void" when="last" action="1">
+      <param type="GstElement"/>
+      <param type="GstElement"/>
+      <param type="gpointer"/>
+      <param type="gpointer"/>
+    </signal>
+    <signal name="remove" return="void" when="last" action="1">
+      <param type="GstElement"/>
+      <param type="gpointer"/>
+      <param type="gpointer"/>
+    </signal>
+  </class>
+</dump>

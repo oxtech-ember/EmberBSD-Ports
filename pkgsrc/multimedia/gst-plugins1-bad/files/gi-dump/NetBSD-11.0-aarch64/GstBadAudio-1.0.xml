@@ -1,0 +1,19 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-aarch64
+recipe: multimedia/gst-plugins1-bad
+package: gst-plugins1-bad-1.28.8
+program: GstBadAudio-1.0
+types-sha256: 0a3f3bf6278626fd088d1f2b4f0f801eafd0a904ccb19c6d8ac00d9cc1c698e2
+dump-sha256: 509f2df06aab3fcd3c9efaf5086e520a8d8d9505c3e8741b1af50274a877090b
+-->
+<?xml version="1.0"?>
+<dump>
+  <class name="GstNonstreamAudioDecoder" get-type="gst_nonstream_audio_decoder_get_type" parents="GstElement,GstObject,GInitiallyUnowned,GObject" abstract="1">
+    <property name="current-subsong" type="guint" flags="227" default-value="0"/>
+    <property name="subsong-mode" type="GstNonstreamAudioSubsongMode" flags="227" default-value="Decoder specific default behavior"/>
+    <property name="num-loops" type="gint" flags="227" default-value="0"/>
+    <property name="output-mode" type="GstNonstreamAudioOutputMode" flags="227" default-value="Steady output"/>
+  </class>
+  <class name="GstPlanarAudioAdapter" get-type="gst_planar_audio_adapter_get_type" parents="GObject">
+  </class>
+</dump>
