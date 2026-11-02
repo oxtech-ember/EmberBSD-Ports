@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.3 2026/05/07 21:05:47 markd Exp $
 
 DISTNAME=	kde-20260507
+PKGREVISION=	1
 CATEGORIES=	meta-pkgs x11 kde
 MASTER_SITES=	# empty
 DISTFILES=	# empty
@@ -109,7 +110,8 @@ DEPENDS+=	kwordquiz-[0-9]*:../../misc/kwordquiz
 DEPENDS+=	lokalize-[0-9]*:../../devel/lokalize
 DEPENDS+=	lskat-[0-9]*:../../games/lskat
 DEPENDS+=	marble-[0-9]*:../../misc/marble
-DEPENDS+=	okteta-[0-9]*:../../devel/okteta
+# Okteta 0.26.28, the latest release, still needs KDE Frameworks 5.
+#DEPENDS+=	okteta-[0-9]*:../../devel/okteta
 DEPENDS+=	oxygen-icons-[0-9]*:../../graphics/oxygen-icons
 DEPENDS+=	palapeli-[0-9]*:../../games/palapeli
 #DEPENDS+=	parley-[0-9]*:../../misc/parley
