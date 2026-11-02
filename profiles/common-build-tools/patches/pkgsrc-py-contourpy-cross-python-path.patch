@@ -1,0 +1,29 @@
+Record the target Python in contourpy's build configuration.
+
+contourpy's meson build writes py.full_path() into
+contourpy/util/_build_config.py. In a cross build that is the build
+host's interpreter, so the installed module referenced a build host
+path and the work-directory check failed. Substitute the target Python.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/graphics/py-contourpy/Makefile
++++ b/graphics/py-contourpy/Makefile
+@@ -30,6 +30,18 @@
+ do-test:
+ 	cd ${WRKSRC} && ${SETENV} ${TEST_ENV} pytest-${PYVERSSUFFIX} tests
+ 
++.include "../../mk/bsd.prefs.mk"
++
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# The build configuration records the Python that runs contourpy; meson
++# only sees the build host's interpreter in a cross build.
++SUBST_CLASSES+=		pypath
++SUBST_STAGE.pypath=	pre-configure
++SUBST_MESSAGE.pypath=	Recording the target Python interpreter.
++SUBST_FILES.pypath=	lib/contourpy/util/_build_config.py.in
++SUBST_SED.pypath=	-e 's|@python_path@|${PYTHONBIN}|'
++.endif
++
+ BUILDLINK_API_DEPENDS.py-pybind11+=	${PYPKGPREFIX}-pybind11>=2.13.2
+ .include "../../devel/py-pybind11/buildlink3.mk"
+ .include "../../math/py-numpy/buildlink3.mk"
