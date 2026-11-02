@@ -1,0 +1,50 @@
+Bootstrap: accept a separate make configuration fragment for bootstrap packages.
+
+Origin: EmberBSD (AI-assisted); local patch to the pinned pkgsrc bootstrap.
+
+--- a/bootstrap/bootstrap
++++ b/bootstrap/bootstrap
+@@ -67,6 +67,7 @@
+     [ --machine-arch <arch> ]
+     [ --make-jobs <num> ]
+     [ --mk-fragment <mk.conf> ]
++    [ --bootstrap-mk-fragment <mk.conf> ]
+     [ --pkgdbdir <pkgdbdir> ]
+     [ --pkginfodir <pkginfodir> ]
+     [ --pkgmandir <pkgmandir> ]
+@@ -435,6 +436,7 @@
+ march=
+ make_jobs=1
+ mk_fragment=
++bootstrap_mk_fragment=
+ quiet=no
+ 
+ # Set these variables so that we can test whether they have been
+@@ -480,6 +482,15 @@
+ 			mk_fragment=`get_optarg "$1"` ;;
+ 	--mk-fragment)
+ 			mk_fragment="$2"; shift ;;
++	--bootstrap-mk-fragment=*)
++			bootstrap_mk_fragment=`get_optarg "$1"`
++			[ -f "$bootstrap_mk_fragment" ] && [ -r "$bootstrap_mk_fragment" ] ||
++			    die "ERROR: --bootstrap-mk-fragment requires a readable file" ;;
++	--bootstrap-mk-fragment)
++			[ $# -ge 2 ] || die "ERROR: --bootstrap-mk-fragment requires a file"
++			bootstrap_mk_fragment="$2"; shift
++			[ -f "$bootstrap_mk_fragment" ] && [ -r "$bootstrap_mk_fragment" ] ||
++			    die "ERROR: --bootstrap-mk-fragment requires a readable file" ;;
+ 	--binary-kit=*)
+ 			binary_kit=`get_optarg "$1"` ;;
+ 	--binary-kit)
+@@ -1439,6 +1450,11 @@
+ 	cat "${mk_fragment}" >> ${TARGET_MKCONF}
+ 	echo "" >> ${TARGET_MKCONF}
+ fi
++if test -n "${bootstrap_mk_fragment}"; then
++	cat "${bootstrap_mk_fragment}" >> "${BOOTSTRAP_MKCONF}" ||
++	    die "ERROR: cannot read --bootstrap-mk-fragment"
++	echo "" >> "${BOOTSTRAP_MKCONF}"
++fi
+ echo ".endif			# end pkgsrc settings" >> ${TARGET_MKCONF}
+ echo ".endif			# end pkgsrc settings" >> ${BOOTSTRAP_MKCONF}
+ 

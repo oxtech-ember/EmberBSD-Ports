@@ -1,0 +1,41 @@
+$NetBSD$
+
+Exercise the current property value parser API and error contract.
+Origin: EmberBSD (AI-assisted).
+--- rust/src/tests/propertyvalue.rs.orig
++++ rust/src/tests/propertyvalue.rs
+@@ -7,8 +7,7 @@
+ use crate::value::{Color, Dimension, Value, Unit};
+ 
+ fn check_value(input: (&str, &str), expected: Vec<Value>) {
+-    let mut parser_input = cssparser::ParserInput::new(input.1);
+-    let mut parser = cssparser::Parser::new(&mut parser_input);
++    let mut parser = cssparser::Parser::new(input.1);
+ 
+     let parsed_syntax = parse_syntax(input.0, SourceLocation::from_file("Test Input")).unwrap();
+ 
+@@ -50,6 +49,14 @@
+         check_value ("<color>", "blue"), vec![
+             Value::from(Color::rgba(0, 0, 255, 255))
+         ];
++    color_hsl_green_degrees:
++        check_value ("<color>", "hsl(120 100% 50%)"), vec![
++            Value::from(Color::rgba(0, 255, 0, 255))
++        ];
++    color_hwb_green_wrapped_degrees:
++        check_value ("<color>", "hwb(480 0% 0%)"), vec![
++            Value::from(Color::rgba(0, 255, 0, 255))
++        ];
+     color_comma_list:
+         check_value ("<color>#", "red, green, blue"), vec![
+             Value::from(Color::rgba(255, 0, 0, 255)),
+@@ -90,8 +97,7 @@
+ }
+ 
+ fn check_error(syntax: &str, input: &str) {
+-    let mut parser_input = cssparser::ParserInput::new(input);
+-    let mut parser = cssparser::Parser::new(&mut parser_input);
++    let mut parser = cssparser::Parser::new(input);
+ 
+     let parsed_syntax = parse_syntax(syntax, SourceLocation::from_file("Test Input")).unwrap();
+ 

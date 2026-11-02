@@ -14,11 +14,14 @@ LICENSE=	2-clause-bsd AND gnu-gpl-v2
 USE_LANGUAGES=	c
 .include "../../mk/bsd.prefs.mk"
 
+.if ${EMBERBSD_NATIVE_BOOTSTRAP:Uno} == "yes" && ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.error "EMBERBSD_NATIVE_BOOTSTRAP cannot be used for cross builds"
+.endif
+
 PLIST_VARS+=	cmake
-.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
-# The Darwin bootstrap builds lz4 before cmake (cmake -> libarchive -> zstd ->
-# lz4), so use the upstream GNU Makefile there. It installs everything except
-# the CMake package files.
+.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes" || ${EMBERBSD_NATIVE_BOOTSTRAP:Uno} == "yes"
+# Initial native bootstrap breaks cmake -> libarchive -> zstd -> lz4 by
+# using upstream GNU Make. This omits the CMake package files.
 USE_TOOLS+=	gmake
 NO_CONFIGURE=	yes
 BUILD_TARGET=	lib-release lz4-release
@@ -38,7 +41,7 @@ CONFIGURE_DIR=	build/cmake
 post-install:
 	${SH} ${FILESDIR}/install-stage.sh ${WRKSRC} ${DESTDIR}${PREFIX} ${.CURDIR}
 
-.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes"
+.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} != "yes" && ${EMBERBSD_NATIVE_BOOTSTRAP:Uno} != "yes"
 .include "../../devel/cmake/build.mk"
 .endif
 .include "../../mk/bsd.pkg.mk"

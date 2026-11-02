@@ -102,7 +102,9 @@ resolved Cargo.lock, plus upstream crate manifests and license/notice files.
 crate identities and their upstream SPDX expressions. The old derived archive
 and its prior receipt remain reproducible from earlier Git history.
 
-The CXX update retains the existing CSS parser API. Moving to cssparser 0.38
-and selectors 0.41 requires a separate span-aware migration to preserve the
-existing location and token diagnostics. Target runtime and CMake package
+The recipe uses cssparser 0.38, cssparser-color 0.6, selectors 0.42 and PHF
+0.14 from the shared Ports Cargo registry. Its Rust adapter retains owned custom
+diagnostics and the rule/declaration boundary locations exposed by those
+parser APIs; upstream basic errors that no longer retain token text report their
+error kind without guessing a token. Target runtime and CMake package
 integration still require the common Qt6 target dependencies.

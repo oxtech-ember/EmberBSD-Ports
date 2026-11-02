@@ -275,6 +275,15 @@
     },
     "patch": "regress-0.11.1.patch"
   },
+  "selectors-0.42.0": {
+    "files": {
+      "Cargo.toml": {
+        "before": "2560dc023a843d7f3a6f391f2109f262695964c5d818e9f84563683705050655",
+        "after": "66f9f031b6d62826f70a9a3d40ece32fc7b060ff3f2228457b44c28a12199fc1"
+      }
+    },
+    "patch": "selectors-0.42.0.patch"
+  },
   "string_enum-1.0.2": {
     "files": {
       "Cargo.toml": {

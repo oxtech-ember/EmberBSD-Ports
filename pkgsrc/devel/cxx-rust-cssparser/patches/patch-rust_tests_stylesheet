@@ -1,0 +1,104 @@
+$NetBSD$
+
+Add stylesheet API and parser-boundary regressions.
+Origin: EmberBSD (AI-assisted).
+
+--- rust/tests/stylesheet.rs.orig
++++ rust/tests/stylesheet.rs
+@@ -318,6 +318,23 @@
+ }
+ 
+ #[test]
++fn missing_outer_block_reports_multiline_eof_offset() {
++    setup();
++
++    let mut stylesheet = StyleSheet::new(PathBuf::from("inline.css"));
++    let result = stylesheet.parse_string("ok {}\n  div\n    span");
++
++    assert!(result.is_ok());
++    assert_eq!(stylesheet.errors.len(), 1);
++    assert_eq!(stylesheet.errors[0].kind, ParseErrorKind::UnexpectedEndOfInput);
++    assert_eq!(stylesheet.errors[0].location, SourceLocation {
++        file: String::from("inline.css"),
++        line: 3,
++        column: 9,
++    });
++}
++
++#[test]
+ fn errors() {
+     setup();
+ 
+@@ -426,3 +443,72 @@
+     assert_eq!(stylesheet.errors, vec![]);
+     assert_eq!(stylesheet.all_errors(), file_errors);
+ }
++
++
++fn ensure_color_property() {
++    if property_definition("color").is_none() {
++        let definition = Arc::new(
++            PropertyDefinition::from_name_syntax("color", "<color>", "test", 0, 0).unwrap(),
++        );
++        add_property_definition(&definition);
++    }
++}
++
++#[test]
++fn multiline_nested_function_error_keeps_source_boundary() {
++    ensure_color_property();
++    let mut stylesheet = StyleSheet::new(PathBuf::from("inline.css"));
++    stylesheet.parse_string("example {\n  color: unknown-function(\n    red\n  );\n}").unwrap();
++
++    assert_eq!(stylesheet.errors.len(), 1);
++    let error = &stylesheet.errors[0];
++    assert_eq!(error.kind, ParseErrorKind::InvalidPropertyValue);
++    assert_eq!(error.message, "Parsing values for property color failed: Unknown function \"unknown-function\"");
++    assert_eq!(error.location.file, "inline.css");
++    assert_eq!(error.location.line, 2);
++    assert_eq!(error.location.column, 27);
++}
++
++#[test]
++fn multiline_unsupported_pseudo_keeps_name_and_source_boundary() {
++    let mut stylesheet = StyleSheet::new(PathBuf::from("inline.css"));
++    stylesheet.parse_string("a:unknown(\n  arg\n) { color: red; }").unwrap();
++
++    assert_eq!(stylesheet.errors.len(), 1);
++    let error = &stylesheet.errors[0];
++    assert_eq!(error.kind, ParseErrorKind::InvalidSelectors);
++    assert_eq!(error.message, "Invalid Selectors: Unsupported pseudo-class or element unknown");
++    assert_eq!(error.location.file, "inline.css");
++    assert_eq!(error.location.line, 1);
++    assert_eq!(error.location.column, 11);
++}
++
++#[test]
++fn multiline_basic_selector_error_keeps_source_boundary() {
++    let mut stylesheet = StyleSheet::new(PathBuf::from("inline.css"));
++    stylesheet.parse_string("a:state(\n  foo bar\n) { color: red; }").unwrap();
++
++    assert_eq!(stylesheet.errors.len(), 1);
++    let error = &stylesheet.errors[0];
++    assert_eq!(error.kind, ParseErrorKind::InvalidSelectors);
++    assert_eq!(error.message, "Invalid Selectors: Unexpected token");
++    assert_eq!(error.location.file, "inline.css");
++    assert_eq!(error.location.line, 2);
++    assert_eq!(error.location.column, 6);
++}
++
++
++#[test]
++fn malformed_property_keeps_parser_error_kind_and_location() {
++    ensure_color_property();
++    let mut stylesheet = StyleSheet::new(PathBuf::from("inline.css"));
++    stylesheet.parse_string("example {\n  color red;\n}").unwrap();
++
++    assert_eq!(stylesheet.errors.len(), 1);
++    let error = &stylesheet.errors[0];
++    assert_eq!(error.kind, ParseErrorKind::UnexpectedToken);
++    assert_eq!(error.message, "Unexpected token");
++    assert_eq!(error.location.file, "inline.css");
++    assert_eq!(error.location.line, 2);
++    assert_eq!(error.location.column, 3);
++}

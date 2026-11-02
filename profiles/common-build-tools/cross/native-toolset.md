@@ -35,6 +35,46 @@ populates the selected OpenSSL trust store used by the Ports fetch client.
 The full Darwin bootstrap includes these packages; a compiler-only bootstrap
 needs them when completing the native tools manually.
 
+## Initial Linux bootstrap
+
+On a fresh Linux host, explicitly select an official native Clang/LLVM seed,
+its runtime and the required host utilities for the bootstrap. For example,
+when that seed provides the following executable paths, write a private
+bootstrap fragment and run the exported pkgsrc bootstrap:
+
+```sh
+cat > /absolute/bootstrap-tools.mk <<'EOF'
+TOOLS_PATH.readelf=/absolute/llvm-seed/bin/llvm-readelf
+EOF
+CC=/absolute/llvm-seed/bin/clang CXX=/absolute/llvm-seed/bin/clang++ \
+CPP='/absolute/llvm-seed/bin/clang -E' CLANGBASE=/absolute/llvm-seed \
+    /absolute/exported-pkgsrc/bootstrap/bootstrap --unprivileged \
+    --compiler clang --prefix /absolute/host-pkg-llvm \
+    --workdir /absolute/common-build/native/bootstrap \
+    --pkgdbdir /absolute/host-pkg-llvm/pkgdb \
+    --bootstrap-mk-fragment /absolute/bootstrap-tools.mk
+```
+
+Use the real seed paths and host ABI, with any other needed bootstrap inputs
+explicitly selected. The fragment is read only for bootstrap packages;
+`--mk-fragment` remains the separate installed package configuration input.
+For the initial native tool closure, set `EMBERBSD_NATIVE_BOOTSTRAP=yes` in
+its pkgsrc make configuration. The common lz4 recipe then uses upstream GNU
+Make without CMake package metadata, breaking the cmake → libarchive → zstd
+→ lz4 cycle. This selector is refused for cross builds; the existing Darwin
+selector remains supported. Once CMake is available, remove the selector and
+replace the transitional lz4 package with the ordinary full CMake package of
+the same version before consumers require its CMake metadata. This lifecycle
+has not yet been validated by a complete native bootstrap and replacement.
+
+Both fragment options accept `--option=FILE` as well. A missing or unreadable bootstrap fragment
+fails. Source-only fragment tests do not establish a complete native LLVM
+bootstrap or a usable SDK.
+
+`python3 profiles/development-toolchain/tests/bootstrap-fragments.py
+--bootstrap /absolute/exported-pkgsrc/bootstrap/bootstrap --shell /bin/sh`
+checks fragment routing and refusal without compiling.
+
 ## Configure pkgsrc
 
 Generate the ordinary make-variable include with the selected Python:
