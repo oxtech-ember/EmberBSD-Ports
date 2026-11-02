@@ -65,7 +65,7 @@ umask 022
 
 [ "$#" -eq 3 ] || {
     echo 'Usage: sh scripts/cross-bulk.sh order|fetch|build PKGPATH_LIST ABSOLUTE_STATE' >&2
-    echo '       sh scripts/cross-bulk.sh package-install PKGPATH ABSOLUTE_STATE' >&2
+    echo '       sh scripts/cross-bulk.sh package-install PKGPATH[@native] ABSOLUTE_STATE' >&2
     exit 2
 }
 mode=$1
@@ -714,7 +714,7 @@ build_native()
         result "$key" "skipped $nnode $skip"
         return 0
     fi
-    if native_current "$base" "$name"; then
+    if [ "${stage_local:-no}" != yes ] && native_current "$base" "$name"; then
         result "$key" "done $nnode"
         return 0
     fi
@@ -724,18 +724,24 @@ build_native()
     set +f
     log=$state/logs/$key.log
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $nnode $name" >> "$state/progress"
-    prepare_wrkdir "$wrkdir" "$job.$key"
+    if [ "${stage_local:-no}" != yes ]; then
+        prepare_wrkdir "$wrkdir" "$job.$key"
+    fi
     : > "$log"
-    if { [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; } &&
+    if { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; } &&
         if [ "$install" = replace ]; then
             bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes package < /dev/null >> "$log" 2>&1 &&
                 { native_replace_keeps_libraries "$base" "$native_packages/All/$name" >> "$log" 2>&1 ||
                     { why=replace; false; }; } &&
-                exclusive "$key" bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes replace < /dev/null >> "$log" 2>&1
+                if [ "${stage_local:-no}" = yes ]; then
+                    bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes replace < /dev/null >> "$log" 2>&1
+                else
+                    exclusive "$key" bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes replace < /dev/null >> "$log" 2>&1
+                fi
         else
             bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes install < /dev/null >> "$log" 2>&1
         fi; then
-        clean_success "$@"
+        [ "${stage_local:-no}" = yes ] || clean_success "$@"
         echo "$(date '+%Y-%m-%d %H:%M:%S') done $nnode" >> "$state/progress"
         result "$key" "built $nnode $name native"
         return 0
@@ -1045,10 +1051,10 @@ build_one()
     result "$key" "failed $path build"
 }
 
-# Install one explicitly selected package from its existing WRKDIR. This is
-# an owner-directed recovery path, not archive reuse: it runs the same
-# package-install/package+replace targets as build_one, while preserving the
-# workdir and updating only this PKGPATH in the controller state.
+# Install one explicitly selected target or native package from its existing
+# WRKDIR. This is an owner-directed recovery path, not archive reuse: it runs
+# the same package-install/package+replace targets as build_one/build_native,
+# while preserving the workdir and updating only this PKGPATH in state.
 state_path_row()
 {
     spr_file=$1 spr_path=$2 spr_row=${3:-}
@@ -1061,12 +1067,17 @@ state_path_row()
 
 package_install_one()
 {
-    path=$list
-    case "$path" in
-        ''|/*|*@native|*..*|*\ *) echo 'Expected one target PKGPATH without @native' >&2; return 2 ;;
+    requested=$list
+    case "$requested" in
+        *@native) role=native; path=${requested%@native} ;;
+        *@native*) echo 'Expected one PKGPATH with an optional @native suffix' >&2; return 2 ;;
+        *) role=target; path=$requested ;;
     esac
-    [ -f "$state/order" ] && grep -qFx "$path" "$state/order" || {
-        echo "PKGPATH is not in the saved order: $path" >&2
+    case "$path" in
+        ''|/*|*@native|*..*|*\ *) echo 'Expected one safe PKGPATH' >&2; return 2 ;;
+    esac
+    [ -f "$state/order" ] && grep -qFx "$requested" "$state/order" || {
+        echo "PKGPATH is not in the saved order: $requested" >&2
         return 2
     }
     # Fail closed on any existing lock, including a stale one. Recovery must
@@ -1110,23 +1121,31 @@ package_install_one()
     chmod +x "$run/pkg_add"
     target_pkg_info=$(var pkgtools/pkg_install PKG_INFO)
     [ -n "$target_pkg_info" ] || { echo 'The target PKG_INFO is empty' >&2; return 2; }
+    if [ "$role" = native ]; then native_info; fi
     packages=$(var pkgtools/pkg_install PACKAGES)/All
     native_packages=${packages%/All}-native
     target_settings=$(var pkgtools/pkg_install CROSSTARGETSETTINGS)
+    if [ "$role" = native ]; then
+        awk '$1 ~ /@native$/ && $2 !~ /@native$/ { print $1 }' "$state/edges" | sort -u > "$run/crossfed"
+    else
+        : > "$run/crossfed"
+    fi
     stamp=$(date '+%Y%m%d%H%M%S')
     link_launcher_args
-    key=$(echo "$path" | tr / _)
-    node=$path
+    key=$(echo "$requested" | tr / _)
+    node=$requested
     reported=
-    shared_pairs_configure
-    if ! shared_pair_reset_stage "$path"; then
-        echo "Could not reset the shared package stage: $path" >&2
-        state_path_row "$state/failed" "$path" "$path shared-stage-cleanup"
-        state_path_row "$state/blocked" "$path" "$path shared-stage-cleanup"
-        return 1
+    if [ "$role" = target ]; then
+        shared_pairs_configure
+        if ! shared_pair_reset_stage "$path"; then
+            echo "Could not reset the shared package stage: $path" >&2
+            state_path_row "$state/failed" "$requested" "$requested shared-stage-cleanup"
+            state_path_row "$state/blocked" "$requested" "$requested shared-stage-cleanup"
+            return 1
+        fi
     fi
     [ "$stop" = 0 ] || return 143
-    build_one "$path"
+    if [ "$role" = native ]; then build_native "$requested" "$key"; else build_one "$path"; fi
     outcome=$(cat "$run/$key.result" 2>/dev/null || :)
     set -f
     set -- $outcome
@@ -1134,13 +1153,13 @@ package_install_one()
     case "${1:-}" in
         built)
             shift 2
-            state_path_row "$state/done" "$path" "$path $*"
-            state_path_row "$state/failed" "$path"
-            state_path_row "$state/blocked" "$path"
-            echo "Installed $path from its current pkgsrc stage"
+            state_path_row "$state/done" "$requested" "$requested $*"
+            state_path_row "$state/failed" "$requested"
+            state_path_row "$state/blocked" "$requested"
+            echo "Installed $requested from its current pkgsrc stage"
             [ "$stop" = 0 ] || return 143
-            shared_pair_for_path "$path"
-            if [ -n "$shared_pair" ] && [ "$path" = "$shared_producer" ] && shared_pair_ready "$path"; then
+            if [ "$role" = target ]; then shared_pair_for_path "$path"; else shared_pair=; fi
+            if [ "$role" = target ] && [ -n "$shared_pair" ] && [ "$path" = "$shared_producer" ] && shared_pair_ready "$path"; then
                 producer_path=$path
                 partner=$shared_consumer
                 key=$(echo "$partner" | tr / _)
@@ -1178,7 +1197,7 @@ package_install_one()
             fi
             ;;
         done)
-            echo "$path is already recorded done"
+            echo "$requested is already recorded done"
             ;;
         *)
             case "${1:-}" in
@@ -1187,9 +1206,9 @@ package_install_one()
                     return 2
                     ;;
             esac
-            reason=${outcome#failed "$path" }
-            state_path_row "$state/failed" "$path" "$path ${reason:-package-install}"
-            state_path_row "$state/blocked" "$path"
+            reason=${outcome#failed "$requested" }
+            state_path_row "$state/failed" "$requested" "$requested ${reason:-package-install}"
+            state_path_row "$state/blocked" "$requested"
             echo "Package stage failed; retained WRKDIR: $path" >&2
             return 1
             ;;

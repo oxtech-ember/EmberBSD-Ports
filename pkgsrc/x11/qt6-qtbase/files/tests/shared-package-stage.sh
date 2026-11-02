@@ -8,6 +8,29 @@ selector=$base/select-package-stage.pl
 testroot=$(mktemp -d "$TMPDIR/qtbase-shared-stage.XXXXXX")
 trap 'rm -rf "$testroot"' EXIT HUP INT TERM
 
+# Exercise only the pure path check: never pass root to the selector itself.
+perl - "$selector" "$testroot" <<'PERL'
+use strict;
+use warnings;
+use Cwd qw(abs_path);
+use File::Basename qw(dirname basename);
+use File::Spec;
+my ($selector, $directory) = @ARGV;
+open my $in, '<', $selector or die $!;
+local $/;
+my $source = <$in>;
+my ($functions) = $source =~ /(sub reject_overlap \{.*?\n\}\n\nsub canonical_target \{.*?\n\})/s
+    or die "path checks not found\n";
+eval $functions;
+die $@ if $@;
+for my $root ('/', '/.', '//') {
+    eval { reject_overlap($directory, $root) };
+    die "root accepted: $root\n" unless $@ =~ /overlap/;
+}
+eval { reject_overlap("$directory/child", $directory) };
+die "ancestor accepted\n" unless $@ =~ /overlap/;
+PERL
+
 mkdir -p "$testroot/stage/lib" "$testroot/stage/include/QtCore" "$testroot/stage/share"
 printf 'runtime\n' > "$testroot/stage/lib/libQtCore.so.6.12"
 ln -s libQtCore.so.6.12 "$testroot/stage/lib/libQtCore.so.6"

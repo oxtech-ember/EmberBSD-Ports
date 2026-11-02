@@ -1,7 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	ptpd-2.3.1
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	net time
 MASTER_SITES=	${MASTER_SITE_GITHUB:=ptpd/}
 # The 2.3.1 branch head. GitHub resolves a short hash to the full commit

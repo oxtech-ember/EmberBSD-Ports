@@ -8,7 +8,8 @@ case "$out" in /*) ;; *) exit 2 ;; esac
 [ ! -e "$out" ] || exit 2
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
 mkdir -p "$out/tree/pkgtools/pkg_install" "$out/tree/cat/demo" "$out/work/demo" \
-    "$out/packages/All" "$out/db" "$out/state/logs" "$out/sdk/scripts"
+    "$out/work/demo-native" "$out/packages/All" "$out/packages-native/All" \
+    "$out/db" "$out/native-db" "$out/state/logs" "$out/sdk/scripts"
 host_python=$(command -v python3)
 cat > "$out/sdk/scripts/resolve-jobs.py" <<'PY'
 print(6)
@@ -24,8 +25,25 @@ printf '%s\n' 'cat/demo cat/blocked' 'cat/other keep-blocked' > "$out/state/bloc
 cat > "$out/pkg_info" <<'WRAP'
 #!/bin/sh
 db=
-while [ "$#" -gt 0 ]; do case "$1" in -K) db=$2; shift 2;; *) shift;; esac; done
-for f in "$db"/demo-[0-9]*; do [ -e "$f" ] && { echo "${f##*/}"; exit 0; }; done
+query=
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -K) db=$2; shift 2;;
+        -e) query=$2; shift 2;;
+        *) shift;;
+    esac
+done
+for f in "$db"/demo-[0-9]*; do
+    [ -e "$f" ] || continue
+    installed=${f##*/}
+    base=${installed%-*}
+    version=${installed#"$base"-}
+    prefix=$base'>='
+    case "$query" in
+        "$base"|"$installed") echo "$installed"; exit 0;;
+        "$prefix"*) minimum=${query#"$prefix"}; [ "$version" = "$minimum" ] && { echo "$installed"; exit 0; };;
+    esac
+done
 exit 1
 WRAP
 cat > "$out/pkg_add" <<'WRAP'
@@ -35,13 +53,15 @@ WRAP
 cat > "$out/bmake" <<WRAP
 #!/bin/sh
 out=$out
-dir= target= varname= varnames=
+dir= target= varname= varnames= native=no packages=
 for a do echo "\$a" >> \$out/calls; done
 while [ "\$#" -gt 0 ]; do
     case "\$1" in
         -C) dir=\$2; shift 2;;
         VARNAME=*) varname=\${1#VARNAME=}; shift;;
         VARNAMES=*) varnames=\${1#VARNAMES=}; shift;;
+        USE_CROSS_COMPILE=no) native=yes; shift;;
+        PACKAGES=*) packages=\${1#PACKAGES=}; shift;;
         *=*) shift;;
         *) target=\$1; shift;;
     esac
@@ -51,16 +71,16 @@ case "\$target" in
         case "\$varname" in
             EMBERBSD_NATIVE_TOOLSET_VERIFIED) echo fake;;
             NATIVE_PKG_ADD_CMD) echo $out/pkg_add;;
-            PKG_INFO) echo "$out/pkg_info -K $out/db";;
+            PKG_INFO) if [ "\$native" = yes ]; then echo "$out/pkg_info -K $out/native-db"; else echo "$out/pkg_info -K $out/db"; fi;;
             CROSSTARGETSETTINGS) echo TARGET_SETTING=selected;;
-            PACKAGES) echo $out/packages;;
+            PACKAGES) if [ "\$native" = yes ]; then echo $out/packages-native; else echo $out/packages; fi;;
             *) echo;;
         esac;;
     show-vars)
         for v in \$varnames; do
             case "\$v" in
                 PKGNAME) echo demo-1.0;;
-                WRKDIR) echo $out/work/demo;;
+                WRKDIR) if [ "\$native" = yes ]; then echo $out/work/demo-native; else echo $out/work/demo; fi;;
                 PKGBASE) echo demo;;
                 .MAKE.MAKEFILES) echo Makefile;;
                 .CURDIR) echo $out/tree/cat/demo;;
@@ -76,19 +96,34 @@ case "\$target" in
             : > $out/package-started
             while [ ! -e $out/allow-package ]; do sleep 0.05; done
         fi
-        mkdir -p $out/packages/All
-        echo package > $out/packages/All/demo-1.0.tgz;;
+        if [ "\$native" = yes ]; then
+            mkdir -p \${packages:-$out/packages-native}/All
+            echo package > \${packages:-$out/packages-native}/All/demo-1.0.tgz
+        else
+            mkdir -p $out/packages/All
+            echo package > $out/packages/All/demo-1.0.tgz
+        fi;;
     package-install)
         echo package-install >> $out/targets
         [ ! -e $out/fail-package ] || exit 1
         mkdir -p $out/packages/All
         echo package > $out/packages/All/demo-1.0.tgz
         : > $out/db/demo-1.0;;
+    install)
+        echo install >> $out/targets
+        [ "\$native" = yes ] || exit 2
+        mkdir -p $out/native-db
+        : > $out/native-db/demo-1.0;;
     replace)
         echo replace >> $out/targets
         [ ! -e $out/fail-replace ] || exit 1
-        rm -f $out/db/demo-[0-9]*
-        : > $out/db/demo-1.0;;
+        if [ "\$native" = yes ]; then
+            rm -f $out/native-db/demo-[0-9]*
+            : > $out/native-db/demo-1.0
+        else
+            rm -f $out/db/demo-[0-9]*
+            : > $out/db/demo-1.0
+        fi;;
     *) exit 2;;
 esac
 WRAP
@@ -111,6 +146,66 @@ run()
         MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_VARS_CACHE=no \
         sh "$ports/scripts/cross-bulk.sh" package-install cat/demo "$target_state"
 }
+run_native()
+{
+    target_state=$1
+    BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+        CROSS_BULK_TEST_CPUS=6 \
+        MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_VARS_CACHE=no \
+        sh "$ports/scripts/cross-bulk.sh" package-install cat/demo@native "$target_state"
+}
+
+mkdir -p "$out/native-state/logs"
+printf '%s\n' 'cat/demo@native' > "$out/native-state/order"
+printf '%s\n' 'cat/demo@native cat/demo@native' 'cat/demo@native cat/consumer' > "$out/native-state/edges"
+printf '%s\n' 'cat/demo@native demo-1.0 native' > "$out/native-state/done"
+: > "$out/native-state/failed"
+: > "$out/native-state/blocked"
+: > "$out/native-db/demo-1.0"
+: > "$out/packages-native/All/demo-1.0.tgz"
+: > "$out/work/demo-native/keep-native"
+run_native "$out/native-state" > "$out/native.log" 2>&1 || fail "native package-install: $(cat "$out/native.log")"
+grep -q '^USE_CROSS_COMPILE=no$' "$out/calls" || fail 'native rebuild did not select native package mode'
+grep -q "^PACKAGES=$out/packages-native$" "$out/calls" || fail 'native rebuild did not select native package destination'
+grep -q '^TARGET_SETTING=selected$' "$out/calls" || fail 'cross-fed native tool did not receive target settings'
+grep -q '^package$' "$out/targets" && grep -q '^replace$' "$out/targets" || fail 'matching installed native package was not rebuilt and replaced'
+grep -q '^cat/demo@native demo-1.0 native$' "$out/native-state/done" || fail 'native success was not recorded under its canonical role'
+[ -f "$out/work/demo-native/keep-native" ] || fail 'native package-install removed the retained WRKDIR'
+! grep -qx clean "$out/calls" || fail 'native package-install invoked clean'
+
+mkdir -p "$out/native-fresh-state/logs"
+printf '%s\n' 'cat/demo@native' > "$out/native-fresh-state/order"
+printf '%s\n' 'cat/demo@native cat/demo@native' > "$out/native-fresh-state/edges"
+: > "$out/native-fresh-state/done"
+: > "$out/native-fresh-state/failed"
+: > "$out/native-fresh-state/blocked"
+rm -f "$out/native-db"/demo-[0-9]*
+: > "$out/targets"
+: > "$out/calls"
+run_native "$out/native-fresh-state" > "$out/native-fresh.log" 2>&1 || fail "fresh native package-install: $(cat "$out/native-fresh.log")"
+grep -qx install "$out/targets" || fail 'fresh native package did not use install'
+! grep -qx replace "$out/targets" || fail 'fresh native package unexpectedly used replace'
+grep -q '^cat/demo@native demo-1.0 native$' "$out/native-fresh-state/done" || fail 'fresh native package was not recorded under its role'
+[ -f "$out/work/demo-native/keep-native" ] || fail 'fresh native package-install removed the retained WRKDIR'
+! grep -qx clean "$out/calls" || fail 'fresh native package-install invoked clean'
+
+mkdir -p "$out/native-failure-state/logs"
+printf '%s\n' 'cat/demo@native' > "$out/native-failure-state/order"
+printf '%s\n' 'cat/demo@native cat/demo@native' > "$out/native-failure-state/edges"
+printf '%s\n' 'cat/demo@native demo-1.0 native' > "$out/native-failure-state/done"
+printf '%s\n' 'cat/demo@native preserve-failure' > "$out/native-failure-state/failed"
+: > "$out/native-failure-state/blocked"
+: > "$out/targets"
+: > "$out/calls"
+: > "$out/fail-package"
+if run_native "$out/native-failure-state" > "$out/native-failure.log" 2>&1; then fail 'native package failure returned success'; fi
+grep -q '^cat/demo@native ' "$out/native-failure-state/failed" || fail 'native failure lost its @native role'
+grep -q '^cat/demo@native demo-1.0 native$' "$out/native-failure-state/done" || fail 'native failure changed the prior done row'
+! grep -q '^cat/demo@native ' "$out/native-failure-state/blocked" || fail 'native failure duplicated its failed row as blocked'
+[ -f "$out/work/demo-native/keep-native" ] || fail 'native failure removed the retained WRKDIR'
+[ ! -e "$out/native-failure-state/build.lock" ] || fail 'native failure left the stage-local lock'
+rm -f "$out/fail-package"
+
 run "$out/state" > "$out/success.log" 2>&1 || fail "package-install: $(cat "$out/success.log")"
 grep -q '^package$' "$out/targets" && grep -q '^replace$' "$out/targets" || fail 'did not package then replace installed version'
 grep -q '^MAKE_JOBS=6$' "$out/calls" || fail 'default MAKE_JOBS did not use the SDK CPU budget'
