@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.9 2026/09/06 10:23:29 markd Exp $
 
 DISTNAME=	aurorae-${PLASMAVER}
+PKGREVISION=	1
 CATEGORIES=	graphics
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -31,5 +32,6 @@ REPLACE_SH+= plasma-apply-aurorae.cmake
 .include "../../net/kf6-knewstuff/buildlink3.mk"
 .include "../../x11/kf6-kirigami/buildlink3.mk"
 .include "../../x11/plasma6-kdecoration/buildlink3.mk"
+.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

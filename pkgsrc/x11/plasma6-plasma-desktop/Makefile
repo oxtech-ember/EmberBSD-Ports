@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.6 2026/09/06 10:23:33 markd Exp $
 
 DISTNAME=	plasma-desktop-${PLASMAVER}
+PKGREVISION=	1
 CATEGORIES=	x11
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -105,6 +106,7 @@ pre-configure:
 .include "../../x11/plasma6-plasma-activities-stats/buildlink3.mk"
 .include "../../x11/plasma6-plasma-workspace/buildlink3.mk"
 .include "../../x11/plasma6-union/buildlink3.mk"
+.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../x11/xcb-util-cursor/buildlink3.mk"
 .include "../../x11/xkeyboard-config/buildlink3.mk"

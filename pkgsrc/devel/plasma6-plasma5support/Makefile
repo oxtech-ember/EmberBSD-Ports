@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.8 2026/09/06 10:23:28 markd Exp $
 
 DISTNAME=	plasma5support-${PLASMAVER}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	devel
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -27,5 +27,6 @@ USE_TOOLS+=	msgmerge
 .include "../../sysutils/plasma6-libksysguard/buildlink3.mk"
 .include "../../x11/kf6-kguiaddons/buildlink3.mk"
 .include "../../x11/plasma6-plasma-activities/buildlink3.mk"
+.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
