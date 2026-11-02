@@ -1,5 +1,11 @@
 # Current common build tools
 
+`scripts/cross-bulk.sh package-install PKGPATH STATE` rebuilds and installs a
+selected target package from its retained pkgsrc work directory. Add `@native`
+to `PKGPATH` to rebuild a native host-tool package from its retained work
+directory; the controller records that result under the native node in the
+saved order. Both forms preserve the selected work directory for retry.
+
 Pkgsrc `repackage` re-enters its build barrier after cleaning a work directory
 for a changed package revision. `tests/pkgsrc-repackage-revision.py` checks a
 real package rebuild, selected make settings and the new package payload.
