@@ -2,6 +2,7 @@
 
 DISTNAME=	wxWidgets-3.2.12
 PKGNAME=	${DISTNAME:S/wxWidgets/wxGTK32/}
+PKGREVISION=	1
 CATEGORIES=	x11
 MASTER_SITES=	${MASTER_SITE_GITHUB:=wxWidgets/}
 GITHUB_PROJECT=	wxWidgets
@@ -60,6 +61,7 @@ PLIST_SRC+=		PLIST.cmake
 
 CMAKE_CONFIGURE_ARGS+=		-DCMAKE_DISABLE_PRECOMPILE_HEADERS:BOOL=ON
 CMAKE_CONFIGURE_ARGS+=		-DCMAKE_INSTALL_BINDIR:PATH=libexec/wx-3.2
+CMAKE_CONFIGURE_ARGS+=		-DwxUSE_LIBSDL:BOOL=OFF
 .  if ${OPSYS} != "Linux"
 # https://github.com/wxWidgets/wxWidgets/issues/22646
 CMAKE_CONFIGURE_ARGS+=		-DwxUSE_JOYSTICK:BOOL=OFF
@@ -102,6 +104,9 @@ CONFIGURE_ARGS+=	--with-expat=sys
 CONFIGURE_ARGS+=	--with-zlib=sys
 CONFIGURE_ARGS+=	--with-regex=sys
 CONFIGURE_ARGS+=	--enable-mediactrl
+# Origin: EmberBSD (AI-assisted). No SDL audio backend: EmberBSD keeps SDL3
+# only and wxWidgets 3.2 supports SDL 1.2/2 only. wxSound uses OSS.
+CONFIGURE_ARGS+=	--without-sdl
 CONFIGURE_ARGS+=	--disable-precomp-headers
 CONFIGURE_ARGS+=	--bindir=${PREFIX}/libexec/wx-3.2
 CONFIGURE_ARGS+=	--datarootdir=${PREFIX}/share/wx-3.2
@@ -167,7 +172,6 @@ PLIST_SRC+=	PLIST.gtk3
 
 .include "../../archivers/libmspack/buildlink3.mk"
 .include "../../archivers/xz/buildlink3.mk"
-.include "../../devel/SDL2/buildlink3.mk"
 .include "../../devel/gettext-lib/buildlink3.mk"
 .include "../../devel/glib2/buildlink3.mk"
 .include "../../devel/pcre2/buildlink3.mk"
