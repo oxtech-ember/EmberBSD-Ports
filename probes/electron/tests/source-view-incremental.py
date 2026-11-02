@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-owner = Path(__file__).resolve().parents[1] / 'electron44/files/protobuf-source-view.py'
+owner = Path(os.environ.get('SOURCE_VIEW_TEST_MODULE', Path(__file__).resolve().parents[1] / 'electron44/files/protobuf-source-view.py'))
 spec = importlib.util.spec_from_file_location('view', owner)
 view = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(view)
@@ -217,3 +217,79 @@ with tempfile.TemporaryDirectory() as temporary:
     else:
         raise AssertionError('incomplete V8 provider was accepted')
     assert os.readlink(destination / 'src/v8') == before
+
+# Source removals and renames require a verified replacement of the owned view.
+for mutation in ('delete', 'rename', 'nested', 'extra-link'):
+    with tempfile.TemporaryDirectory(prefix='view-structural-') as temporary:
+        root = Path(temporary)
+        source = root/'source'
+        (source/'third_party').mkdir(parents=True)
+        (source/'.gn').write_text('fixture')
+        (source/'stable').write_text('unchanged')
+        (source/'old').write_text('old contents')
+        (source/'dir/sub').mkdir(parents=True)
+        (source/'dir/sub/obsolete').write_text('nested contents')
+        work = root/'work'; work.mkdir()
+        out = work/'out'; out.mkdir(); (out/'object').write_text('preserve')
+        destination = work/'source-view'
+        view.create(source, None, destination)
+        stable = snap(destination/'src/stable')
+        outside = root/'outside'; outside.mkdir(); (outside/'keep').write_text('outside')
+        if mutation == 'extra-link':
+            (destination/'src/stale-link').symlink_to(outside, target_is_directory=True)
+        if mutation == 'delete':
+            (source/'old').unlink()
+        elif mutation == 'rename':
+            (source/'old').rename(source/'renamed')
+        elif mutation == 'nested':
+            (source/'dir/sub/obsolete').unlink()
+            (source/'dir/sub').rmdir()
+        try:
+            view.verify(source, None, destination)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('verify accepted removed source: '+mutation)
+        # A failed candidate creation must leave the original view in place.
+        old_inode = (destination/'src').stat().st_ino
+        with patch.object(view, 'create', side_effect=ValueError('candidate failure')):
+            try:
+                view.refresh(source, None, destination)
+            except ValueError as error:
+                assert str(error) == 'candidate failure'
+            else:
+                raise AssertionError('failed candidate was accepted')
+        assert (destination/'src').stat().st_ino == old_inode
+        view.refresh(source, None, destination)
+        view.verify(source, None, destination)
+        assert snap(destination/'src/stable') == stable
+        assert (out/'object').read_text() == 'preserve'
+        assert (outside/'keep').read_text() == 'outside'
+        assert not os.path.lexists(destination/'src/stale-link')
+        if mutation == 'rename':
+            assert not (destination/'src/old').exists()
+            assert (destination/'src/renamed').read_text() == 'old contents'
+        elif mutation == 'delete':
+            assert not (destination/'src/old').exists()
+        elif mutation == 'nested':
+            assert not (destination/'src/dir/sub').exists()
+        else:
+            assert (destination/'src/old').read_text() == 'old contents'
+            assert (destination/'src/dir/sub/obsolete').read_text() == 'nested contents'
+
+# Unknown extras do not mask bad declared build products in the same mirror.
+with tempfile.TemporaryDirectory(prefix='view-generated-') as temporary:
+    root = Path(temporary); source = root/'source'; source.mkdir()
+    (source/'keep').write_text('source')
+    dest = root/'dest'; view.mirror(source, dest)
+    (dest/'unknown').write_text('unowned')
+    outside = root/'outside'; outside.write_text('preserve')
+    (dest/'electron-api.json').symlink_to(outside)
+    try:
+        view.mirror(source, dest, verify=True, generated_files={'electron-api.json'}, updates=[])
+    except ValueError as error:
+        assert 'must be a regular file' in str(error)
+    else:
+        raise AssertionError('bad generated entry accepted during refresh')
+    assert outside.read_text() == 'preserve'
+print('PASS: structural removals, candidate rollback, generated-entry guard')
