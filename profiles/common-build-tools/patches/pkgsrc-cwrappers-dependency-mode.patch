@@ -1,0 +1,26 @@
+Origin: EmberBSD (AI-assisted). Treat dependency-only compiler modes as preprocessing.
+
+--- a/pkgtools/cwrappers/Makefile
++++ b/pkgtools/cwrappers/Makefile
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.29 2026/01/22 15:28:28 jperkin Exp $
+ 
+ PKGNAME=		cwrappers-20220403
+-PKGREVISION=		5
++PKGREVISION=		6
+ CATEGORIES=		pkgtools sysutils
+ 
+ MAINTAINER=		pkgsrc-users@NetBSD.org
+--- a/pkgtools/cwrappers/files/bin/normalise-cc.c
++++ b/pkgtools/cwrappers/files/bin/normalise-cc.c
+@@ -102,7 +102,9 @@
+ 	TAILQ_FOREACH(arg, args, link) {
+ 		if (arg->val[0] != '-')
+ 			continue;
+-		if (strcmp(arg->val, "-E") == 0) {
++		if (strcmp(arg->val, "-E") == 0 ||
++		    strcmp(arg->val, "-M") == 0 ||
++		    strcmp(arg->val, "-MM") == 0) {
+ 			current_operation_mode = mode_preprocess;
+ 			continue;
+ 		}

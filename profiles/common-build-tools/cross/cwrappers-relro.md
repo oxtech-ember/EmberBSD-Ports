@@ -22,3 +22,17 @@ flags in the `cc`, `c++` and `f77` configurations, and no flags when
 `PKGSRC_USE_RELRO=no`. Without the patch the test fails. With
 `PKG_DEVELOPER=yes` and without the patch, the `www/http_load` package stops
 with "bin/http_load: missing RELRO". With the patch the package is created.
+
+Dependency-only `-M` and `-MM` are preprocessing modes: the wrapper does not
+append executable or shared link flags. `-MD` and `-MMD` retain the ordinary
+compile or link mode. `tests/cwrappers-dependencies.sh CC_WRAPPER CLANG
+READELF NEW_WORK` checks generated-header dependencies, executable and shared
+RELRO, and compile/preprocess controls with the actual selected tools.
+
+On Linux/amd64, Clang 23.1.4 Static Analyzer and Cppcheck 2.13.0 report a pre-existing
+dead assignment in `normalise-cc.c`, also present without this change. Valgrind
+3.22.0 on the diagnostic `CWRAPPERS_EMIT_ARGV` path reports allocation leaks in both
+baseline and fixed wrappers; this mode classification change adds no
+allocations. Normal `-MM` and executable-link wrapper runs showed no Memcheck
+access diagnostics before their `exec` calls. Those runs do not check leaks at
+exit or instrument the replacement Clang process.
