@@ -60,6 +60,12 @@ LDFLAGS.OpenBSD+=	-lz
 
 .include "../../fonts/harfbuzz/options.mk"
 
+.if !empty(PKG_OPTIONS:Mtests)
+MESON_ARGS+=	-Dtests=enabled
+.else
+MESON_ARGS+=	-Dtests=disabled
+.endif
+
 PRINT_PLIST_AWK+=	{ if (/^include\/harfbuzz\/hb-coretext.h/) $$0 = "$${PLIST.coretext}" $$0 }
 
 .if ${OPSYS} == "Darwin"

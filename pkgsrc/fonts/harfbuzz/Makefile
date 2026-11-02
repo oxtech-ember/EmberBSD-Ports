@@ -16,7 +16,6 @@ MESON_ARGS+=	-Ddocs=disabled
 MESON_ARGS+=	-Dpng=enabled
 # Use external icu support.
 MESON_ARGS+=	-Dicu=disabled
-MESON_ARGS+=	-Dtests=enabled
 
 .include "../../graphics/png/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

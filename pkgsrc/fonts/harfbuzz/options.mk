@@ -1,12 +1,18 @@
 # $NetBSD: options.mk,v 1.21 2026/05/15 17:00:57 wiz Exp $
 
 PKG_OPTIONS_VAR=	PKG_OPTIONS.harfbuzz
-PKG_SUPPORTED_OPTIONS+=	introspection
+PKG_SUPPORTED_OPTIONS+=	introspection tests
 PKG_SUGGESTED_OPTIONS=
 
 PKG_SUGGESTED_OPTIONS+=	introspection
 
 .include "../../mk/bsd.options.mk"
+
+.if empty(PKG_OPTIONS:Mtests)
+pre-test:
+	@${ERROR_MSG} "HarfBuzz upstream tests require PKG_OPTIONS.harfbuzz+=tests"
+	${FALSE}
+.endif
 
 PLIST_VARS+=		introspection
 

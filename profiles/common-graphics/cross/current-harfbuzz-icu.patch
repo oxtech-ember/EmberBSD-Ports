@@ -1,11 +1,10 @@
 --- a/fonts/harfbuzz-icu/Makefile
 +++ b/fonts/harfbuzz-icu/Makefile
-@@ -14,7 +14,7 @@
+@@ -14,7 +14,6 @@
  
  MESON_ARGS+=	-Ddocs=disabled
  MESON_ARGS+=	-Dicu=enabled
 -MESON_ARGS+=	-Dtests=disabled # FIXME: build takes forever
-+MESON_ARGS+=	-Dtests=enabled
  
  INSTALLATION_DIRS+=	include/harfbuzz
  INSTALLATION_DIRS+=	lib
