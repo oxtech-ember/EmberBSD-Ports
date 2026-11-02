@@ -5,9 +5,7 @@ CATEGORIES+=	kde
 MASTER_SITES?=	${MASTER_SITE_KDE:=release-service/${KAPPSVER}/src/}
 EXTRACT_SUFX?=	.tar.xz
 
-.if !defined(STILL_KF5)
 USE_CXX_FEATURES+=	c++20
-.endif
 
 .include "../../meta-pkgs/kde/Makefile.common"
 
