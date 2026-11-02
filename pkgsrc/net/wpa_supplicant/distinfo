@@ -8,3 +8,4 @@ SHA512 (hostapd-2.12.tar.gz) = 3d952125dc2b6868532b39264e16eae4d0bdf601b82229e6f
 Size (hostapd-2.12.tar.gz) = 3037984 bytes
 SHA1 (patch-emberbsd-platform) = b779ccb890c404cef9a3518fadd43794339cb794
 SHA1 (patch-src_drivers_driver__bsd.c) = 0b1851aa09c5d51905fb0eddfb8846e2958fef05
+SHA1 (patch-src_crypto_crypto__wolfssl.c) = 29f598c6a3370ffa88bf7eca97c6ec741ca70461
