@@ -2462,8 +2462,8 @@ lib/libMLIRXeVMDialect.a
 lib/libMLIRXeVMTarget.a
 lib/libMLIRXeVMToLLVM.a
 lib/libMLIRXeVMToLLVMIRTranslation.a
-lib/libmlir_apfloat_wrappers.so
-lib/libmlir_apfloat_wrappers.so.23.1
+${PLIST.apfloat}lib/libmlir_apfloat_wrappers.so
+${PLIST.apfloat}lib/libmlir_apfloat_wrappers.so.23.1
 lib/libmlir_arm_runner_utils.so
 lib/libmlir_arm_runner_utils.so.23.1
 lib/libmlir_arm_sme_abi_stubs.so

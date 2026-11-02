@@ -72,6 +72,11 @@ CMAKE_CONFIGURE_ARGS+=	-D${_mlir_setting}=${EMBERBSD_MLIR_NATIVE_TOOLS:Q}/${_mli
 .else
 CMAKE_CONFIGURE_ARGS+=	-DPython3_EXECUTABLE=${TOOL_PYTHONBIN:Q}
 .endif
+# Upstream builds mlir_apfloat_wrappers only for Linux and Darwin targets.
+PLIST_VARS+=	apfloat
+.if ${OPSYS} == "Linux" || ${OPSYS} == "Darwin"
+PLIST.apfloat=	yes
+.endif
 .include "../../lang/python/tool.mk"
 .include "../../mk/atomic64.mk"
 .include "../../mk/bsd.pkg.mk"
