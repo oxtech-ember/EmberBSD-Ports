@@ -229,6 +229,7 @@ pre-configure:
 		done
 	${RM} -f ${WRKSRC}/mkspecs/features/mac/default_pre.prf
 	${RM} -f ${WRKSRC}/mkspecs/features/mac/default_post.prf
+	${RM} -f ${WRKSRC}/mkspecs/features/mac/*.orig
 
 .include "options.mk"
 
