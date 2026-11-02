@@ -71,9 +71,71 @@ In the same guest with `ptpd2=YES`, the script:
 - stopped it and removed the lock file;
 - started it at boot after `NETWORKING`, and it entered `PTP_MASTER`.
 
+Since nb2 the script requires `ntpd` and `chronyd`: a master starts after
+the daemon that disciplines the clock, which may still be synchronising.
+Without chrony, `rcorder(8)` warns that `chronyd` has no provider and exits
+1 (`/etc/rc` records that status) and keeps the order of the other scripts.
+
+## Kernel NTP state and the clock owner
+
+On a host where chronyd disciplines the clock, ptpd2 serves that clock as a
+PTP master and must leave the clock and the kernel NTP state to chronyd.
+In PTPd 2.3.1 only these calls change them:
+
+| Call | Path | Guard before the patch |
+| --- | --- | --- |
+| `ntp_adjtime` `MOD_FREQUENCY`, `adjtime`, `clock_settime` | servo, drift restore and clock step | `clock:no_adjust` (`adjFreq_wrapper`, `restoreDrift`, `updateClock`) |
+| `ntp_adjtime` `MOD_TAI`, `MOD_MAXERROR`/`MOD_ESTERROR`, `MOD_STATUS` (`STA_UNSYNC`, `STA_INS`, `STA_DEL`) | clock status hook `ptpServiceClockUpdate` (`src/timingdomain.c`) | none: it runs whenever a status update is pending |
+
+A status update becomes pending in a slave (servo update, UTC offset or
+leap flags from the master) and in a master-only port that drops to
+`PTP_PASSIVE` behind a better master announcing the PTP timescale. Both
+happened with `clock:no_adjust` set. `patch-src_timingdomain.c` keeps
+the update pending unless the port is a slave that may adjust the clock;
+an adjusting slave behaves as before.
+
+The check runs on the target, next to chronyd, with a second host that
+drives ptpd2 into the state under test:
+
+- `ntptrace.c` is an `LD_PRELOAD` shim. It logs every `ntp_adjtime` call
+  with nonzero modes and every `adjtime`, `settimeofday` and
+  `clock_settime` call, with the requested values, and counts the reads.
+- `ntpstate.c` prints or sets the kernel NTP state (status, maxerror,
+  esterror, TAI offset).
+- `check-ntp-owner.sh SHIM CONFIG SECONDS WORKDIR STATE [PTPD2]` runs
+  ptpd2 under the shim and fails when it made such a call. The run counts
+  only if ptpd2 reached `STATE` and read the NTP state through the shim: a
+  port that stays `PTP_MASTER` has nothing to write, patched or not.
+
+Build the helpers with the cross compiler of the target SDK, for example
+`aarch64--netbsd-clang --sysroot=SYSROOT -O2 -Wall -Wextra -Werror -o ntpstate ntpstate.c`
+and `... -fPIC -shared -o ntptrace.so ntptrace.c`.
+
+Run on 2 and 3 November 2026 in two EmberBSD aarch64 guests (QEMU with
+HVF on an Apple M-series host, 1 vCPU each, base `28f4d84`, kernel
+`EMBER64`). The first guest ran chronyd 4.9 synchronised to public NTP
+servers (leap status `Normal`); a QEMU `dgram` link joined the second
+`vioif1` of both guests. The kernel TAI offset was set to 11 s before
+each run, so a write is visible. Each run took 90 s. Both ptpd2 builds
+come from the recipe work tree, configured and built with the SDK cross
+compiler and sysroot of OS `2e5ec07` outside pkgsrc; the unpatched one has
+`patch-src_timingdomain.c` reversed. The unpatched package
+`ptpd-2.3.1nb1` for that sysroot made the same writes.
+
+| ptpd2 on the chronyd host | Peer | State | Writes, unpatched | Writes, patched |
+| --- | --- | --- | --- | --- |
+| master-only, `clock:no_adjust` | slave | `PTP_MASTER` | 0 | 0 |
+| master-only, `clock:no_adjust` | master, priority1 1, class 6, UTC offset 37 | `PTP_PASSIVE` | 2: TAI 37; maxerror 0, esterror 0 | 0 |
+| slave-only, `clock:no_adjust` | the same master | `PTP_SLAVE` | 2: TAI; maxerror and esterror −3236 us | 0 |
+
+The kernel TAI offset stayed 11 s with the patched build. With the
+unpatched build the passive master set it to 37 s. A master-only port
+announces clock class 13 and the arbitrary timescale, so behind such a
+master a passive port has nothing to write.
+
 ## Remaining
 
-- AArch64 execution: a target with the full base set and its shared libraries.
+- AArch64 package `ptpd-2.3.1nb2` for the current base (`libpcap.so.12`).
 - A Daheng camera as PTP slave on an `rge` port for one hour, offset at
   most 1 ms, with the measured accuracy recorded.
 - Hardware timestamps on `rge` are a separate step (R10).
