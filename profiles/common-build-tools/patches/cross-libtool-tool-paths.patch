@@ -10,21 +10,23 @@ it was configured for. A bulk build then ran ranlib through the tools
 directory of another configuration and searched its sysroot copy, and
 would break once that directory was removed.
 
-In the wrapper phase of a cross package that uses libtool, check that
-every absolute path of these lines is under TOOLDIR or CROSS_DESTDIR, and
-stop with the paths and the settings to reinstall the cross libtool with.
-Native builds are unchanged.
+In the wrapper phase of a cross package that uses libtool, check that tool
+paths are under TOOLDIR or CROSS_DESTDIR. A prepared Clang may additionally
+record its exact bound resource directory in the library search path; query
+that directory through the verified TOOLDIR compiler and allow only exact
+search-path equality. Tool paths never receive this exception. Native builds
+are unchanged.
 
 Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 
 --- a/mk/cwrappers.mk
 +++ b/mk/cwrappers.mk
-@@ -152,6 +152,38 @@
+@@ -152,6 +152,56 @@
  
  do-wrapper: generate-cwrappers
  
 +# A cross libtool records the absolute linker, nm, ranlib and library
-+# search path of the cross tools and sysroot it was configured with.
++# search path of the TOOLDIR and CROSS_DESTDIR it was configured with.
 +# Several configurations can share one TOOLBASE, and an installed
 +# cross-libtool configured for another TOOLDIR or CROSS_DESTDIR satisfies
 +# the dependency all the same. Stop before the package uses it.
@@ -35,24 +37,42 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 +
 +.PHONY: check-cross-libtool
 +check-cross-libtool:
-+	${RUN} lt=${PKG_LIBTOOL:Q}; bad=;				\
-+	if [ ! -f "$$lt" ]; then					\
-+		${ERROR_MSG} "$$lt is missing.";			\
-+		exit 1;							\
-+	fi;								\
-+	paths=`${SED} -n -E						\
-+	    -e 's/^(LD|NM|RANLIB)="(.*)"$$/\2/p'			\
-+	    -e 's/^sys_lib_search_path_spec="(.*)"$$/\1/p' "$$lt"`;	\
-+	for p in $$paths; do						\
-+		case "$$p" in						\
-+		${TOOLDIR}/*|${CROSS_DESTDIR}/*|[!/]*) ;;		\
-+		*) bad="$$bad $$p" ;;					\
-+		esac;							\
-+	done;								\
-+	if [ -n "$$bad" ]; then						\
++	${RUN} lt=${PKG_LIBTOOL:Q}; bad=; resource_dir=; \
++	if [ ! -f "$$lt" ]; then \
++		${ERROR_MSG} "$$lt is missing."; exit 1; \
++	fi; \
++	tool_paths=`${SED} -n -E -e 's/^(LD|NM|RANLIB)="(.*)"$$/\2/p' "$$lt"`; \
++	search_paths=`${SED} -n -E -e 's/^sys_lib_search_path_spec="(.*)"$$/\1/p' "$$lt"`; \
++	for p in $$tool_paths; do \
++		case "$$p" in \
++		${TOOLDIR}/*|${CROSS_DESTDIR}/*|[!/]*) ;; \
++		*) bad="$$bad $$p" ;; \
++		esac; \
++	done; \
++	if [ "${_EMBER_TARGET_FAMILY:U}" = clang ] && \
++	    [ "${_EMBER_TARGET_TOOLS:U}" = "${TOOLDIR}" ] && \
++	    [ "${_EMBER_TARGET_SYSROOT:U}" = "${CROSS_DESTDIR}" ] && \
++	    [ "${CLANGBASE:U}" = "${TOOLDIR}" ]; then \
++		resource_dir=`${CLANGBASE:Q}/bin/clang -print-resource-dir` || { \
++			${ERROR_MSG} "Could not query the selected Clang resource directory."; exit 1; \
++		}; \
++		case "$$resource_dir" in /*) ;; *) \
++			${ERROR_MSG} "Selected Clang returned an invalid resource directory."; exit 1 ;; \
++		esac; \
++		case "$$resource_dir" in *[[:space:]]*) \
++			${ERROR_MSG} "Selected Clang returned an unsupported resource path."; exit 1 ;; \
++		esac; \
++	fi; \
++	for p in $$search_paths; do \
++		case "$$p" in \
++		"$$resource_dir"|${TOOLDIR}/*|${CROSS_DESTDIR}/*|[!/]*) ;; \
++		*) bad="$$bad $$p" ;; \
++		esac; \
++	done; \
++	if [ -n "$$bad" ]; then \
 +		${ERROR_MSG} "$$lt was configured for other cross tools or another sysroot:$$bad"; \
 +		${ERROR_MSG} "Reinstall its cross-libtool package with TOOLDIR=${TOOLDIR} and CROSS_DESTDIR=${CROSS_DESTDIR}."; \
-+		exit 1;							\
++		exit 1; \
 +	fi
 +
  .if !target(do-wrapper)
