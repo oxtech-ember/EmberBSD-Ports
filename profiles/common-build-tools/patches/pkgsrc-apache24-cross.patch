@@ -1,0 +1,88 @@
+Cross-build apache24 for NetBSD.
+
+httpd's build system assumes it runs on the host it builds for:
+
+- configure runs a test program to check that sizeof(void *) is not less
+  than sizeof(long). Its cross default answer is "yes", so configure
+  stopped with 'Size of "void *" is less than size of "long"'. NetBSD's
+  ILP32 and LP64 ABIs have pointers as wide as long; give that result.
+- configure looks for libxml/parser.h with test -f under the
+  --with-libxml2 prefix, which is the target prefix and does not exist
+  on the build host, so it stopped with "mod_xml2enc has been requested
+  but can not be built due to prerequisite failures". Point it at the
+  buildlink tree, which holds the target libxml2 headers.
+- server/gen_test_char generates test_char.h at build time. It was
+  linked for the target and could not run on the build host. Build it
+  with the build host compiler, like httpd trunk's CC_FOR_BUILD rule;
+  gen_test_char.c supports this with -DCROSS_COMPILE.
+- apxs and dbmmanage got the build host's perl as interpreter. They run
+  on the target: use perl as a run tool, which names the target perl and
+  adds the run-time dependency.
+
+Native builds are unchanged.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/www/apache24/Makefile
++++ b/www/apache24/Makefile
+@@ -49,6 +49,14 @@
+ CPPFLAGS+=	-DAP_NO_THREAD_LOCAL=1
+ .endif
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
++CONFIGURE_ENV+=		ap_cv_void_ptr_lt_long=no
++MAKE_FLAGS+=		GEN_TEST_CHAR=gen_test_char_for_build
++MAKE_FLAGS+=		CC_FOR_BUILD=${NATIVE_CC:Q}
++# apxs and dbmmanage run on the target: name and depend on its perl.
++USE_TOOLS+=		perl:run
++.endif
++
+ BUILDLINK_API_DEPENDS.apr+=	apr>=1.5.0
+ .include "../../devel/apr/buildlink3.mk"
+ BUILDLINK_API_DEPENDS.apr-util+=	apr-util>=1.5.3
+--- a/www/apache24/distinfo
++++ b/www/apache24/distinfo
+@@ -14,3 +14,4 @@
+ SHA1 (patch-configure) = 4fc4083c601f67205a10c6d887b69026268c8575
+ SHA1 (patch-include_ap__config.h) = 1d056e2d4db80ec97aaf755b6dd6aff69ed2cd96
+ SHA1 (patch-modules_filters_mod_substitute.c) = d47ee06e70942ab522acf119eb2c4b313aed9bbd
++SHA1 (patch-server_Makefile.in) = f778b44d23953b7402a34721140f41ea11d341e8
+--- a/www/apache24/options.mk
++++ b/www/apache24/options.mk
+@@ -108,7 +108,11 @@
+ 
+ .if !empty(PKG_OPTIONS:Mxml)
+ .include "../../textproc/libxml2/buildlink3.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++CONFIGURE_ARGS+=	--with-libxml2=${BUILDLINK_DIR}
++.else
+ CONFIGURE_ARGS+=	--with-libxml2=${BUILDLINK_PREFIX.libxml2}
++.endif
+ CONFIGURE_ARGS+=	--enable-proxy-html
+ CONFIGURE_ARGS+=	--enable-xml2enc
+ PLIST.xml=		yes
+--- /dev/null
++++ b/www/apache24/patches/patch-server_Makefile.in
+@@ -0,0 +1,23 @@
++$NetBSD$
++
++Build gen_test_char with the build host compiler in cross builds.
++
++--- server/Makefile.in.orig
+++++ server/Makefile.in
++@@ -28,8 +28,14 @@
++ gen_test_char: $(gen_test_char_OBJECTS)
++ 	$(LINK) $(EXTRA_LDFLAGS) $(gen_test_char_OBJECTS) $(EXTRA_LIBS)
++ 
++-test_char.h: gen_test_char
++-	./gen_test_char > test_char.h
+++# Cross builds set GEN_TEST_CHAR=gen_test_char_for_build and CC_FOR_BUILD,
+++# as httpd trunk does with CC_FOR_BUILD.
+++gen_test_char_for_build: $(srcdir)/gen_test_char.c
+++	$(CC_FOR_BUILD) $(CFLAGS_FOR_BUILD) -DCROSS_COMPILE -o $@ $(srcdir)/gen_test_char.c
+++
+++GEN_TEST_CHAR = gen_test_char
+++test_char.h: $(GEN_TEST_CHAR)
+++	./$(GEN_TEST_CHAR) > test_char.h
++ 
++ util.lo: test_char.h
++ 
