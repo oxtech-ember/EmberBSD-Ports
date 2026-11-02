@@ -13,11 +13,20 @@ runtime_plist = (pkgdir / "PLIST.runtime").read_text().splitlines()
 declarative = repo / "pkgsrc/lang/qt6-qtdeclarative"
 decl_make = (declarative / "Makefile").read_text()
 decl_plist = (declarative / "PLIST").read_text()
-
 def require(ok, message):
     if not ok:
         raise SystemExit("FAIL: " + message)
     print("PASS: " + message)
+
+decl_opengl_rows = [row for row in decl_plist.splitlines() if row.endswith(("QtQuick/QQuickFramebufferObject", "QtQuick/QQuickOpenGLUtils", "QtQuick/qquickframebufferobject.h", "QtQuick/qquickopenglutils.h"))]
+require(len(decl_opengl_rows) == 4 and all("${PLIST.opengl}" in row for row in decl_opengl_rows),
+        "QtDeclarative OpenGL headers follow PLIST.opengl")
+base_buildlink = decl_make.index('.include "../../x11/qt6-qtbase/buildlink3.mk"')
+software_guard = decl_make.find(".if empty(PKG_BUILD_OPTIONS.qt6-qtbase:Msoftware-rendering)", base_buildlink)
+open_gl_assignment = re.search(r"PLIST\.opengl=\s*yes", decl_make[software_guard:])
+end_software_guard = decl_make.find(".endif", software_guard)
+require(software_guard >= base_buildlink and open_gl_assignment is not None and end_software_guard > software_guard,
+        "QtDeclarative OpenGL PLIST follows QtBase provider options")
 
 require(re.search(r'\.if \$\{OPSYS\} == "Linux" && \$\{USE_CROSS_COMPILE:Uno:tl\} != "yes"\s+PKG_SUPPORTED_OPTIONS\+=\s+software-rendering\s+\.endif', options) is not None,
         "software-rendering is offered only for native Linux")
