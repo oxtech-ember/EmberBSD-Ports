@@ -1,7 +1,6 @@
 # $NetBSD: Makefile,v 1.189 2026/09/02 19:02:46 wiz Exp $
 
-DISTNAME=	librsvg-2.63.2
-PKGREVISION=	3
+DISTNAME=	librsvg-2.63.4
 CATEGORIES=	graphics gnome
 MASTER_SITES=	${MASTER_SITE_GNOME:=sources/librsvg/${PKGVERSION_NOREV:R}/}
 EXTRACT_SUFX=	.tar.xz
@@ -75,5 +74,9 @@ BUILDLINK_API_DEPENDS.cairo+=	cairo>=1.18
 BUILDLINK_API_DEPENDS.libxml2+=	libxml2>=2.9
 .include "../../textproc/libxml2/buildlink3.mk"
 .include "../../lang/rust/cargo.mk"
+# Apply the shared compatibility patches to the verified Cargo vendor tree.
+EMBER_CARGO_PREFIX?=	${TOOLBASE}
+EMBER_CARGO_PATCH_SET=	yes
+.include "../../lang/rust/emberbsd-cargo-patches.mk"
 .include "../../lang/python/pyversion.mk"
 .include "../../mk/bsd.pkg.mk"
