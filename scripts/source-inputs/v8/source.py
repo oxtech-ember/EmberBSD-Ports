@@ -75,13 +75,18 @@ def recipe(exported):
             'patches': {p.name: digest(read(p)) for p in patches}}, patches
 
 
-def prepare(archive, output, patch, git):
+def prepare(archive, output, patch, git, previous_source=None):
     require(git and patch and os.path.isabs(git) and os.path.isabs(patch), 'select absolute Git and patch tools')
     output = Path(output)
     require(output.is_absolute(), 'output must be absolute')
     output = Path(paths.canonical_existing(output.parent), output.name)
     require(not os.path.lexists(output), 'output already exists')
     paths.reject_overlap(str(output), str(PORTS))
+    if previous_source is not None:
+        require(os.path.isabs(previous_source), 'previous source must be absolute')
+        previous_source = paths.canonical_existing(previous_source)
+        paths.real_directory(previous_source)
+        paths.reject_overlap(str(output), previous_source)
     before = identity(git)
     with tempfile.TemporaryDirectory(prefix='.v8-source-', dir=output.parent) as directory:
         tmp = Path(directory)
@@ -119,7 +124,8 @@ def prepare(archive, output, patch, git):
         require(before == identity(git), 'source inputs changed during preparation')
         scoped = {'effective': selector().effective_package_identity(exported, PACKAGE, before['export']['upstream']),
                   'owner_sha256': before['owner_sha256']}
-        record = prepared_receipt.write(root, package=PACKAGE, identity=scoped)
+        record = prepared_receipt.write(root, package=PACKAGE, identity=scoped,
+                                        previous_root=previous_source)
         require(sourceprep.archive_hashes(read(archive)) == hashes, 'archive changed during preparation')
         publish_directory_noreplace(root, output)
     return record
@@ -160,6 +166,7 @@ def main():
     parser.add_argument('--git', help='absolute Git inspector for preparation')
     commands = parser.add_subparsers(dest='action', required=True)
     build = commands.add_parser('prepare')
+    build.add_argument('--previous-source', help='previous prepared V8 tree to reuse unchanged file mtimes')
     for name in ('archive', 'output', 'patch'):
         build.add_argument('--' + name, required=True)
     payload = commands.add_parser('verify-payload')
@@ -170,7 +177,10 @@ def main():
     args = parser.parse_args(args)
     try:
         if args.action == 'prepare':
-            result = prepare(args.archive, args.output, args.patch, args.git)
+            if args.previous_source is not None:
+                require(getattr(sourceprep, 'PREPARED_TREE_REUSE_API', None) == 1,
+                        'selected SDK lacks prepared tree reuse API')
+            result = prepare(args.archive, args.output, args.patch, args.git, args.previous_source)
         elif args.action == 'verify-payload':
             result = verify_payload(args.source)
         else:

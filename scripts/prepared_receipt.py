@@ -11,11 +11,17 @@ owner has selected its SDK.
 from pathlib import Path
 
 
-def write(root, *, package, identity):
+def write(root, *, package, identity, previous_root=None):
     """Write the receipt for ROOT and return the SDK record."""
     from emberbsd_sdk import jsonio, sourceprep
     from emberbsd_sdk.errors import SDKError
-    record = sourceprep.write_prepared_tree_receipt(root, package=package, identity=identity)
+    if previous_root is None:
+        record = sourceprep.write_prepared_tree_receipt(root, package=package, identity=identity)
+    else:
+        if getattr(sourceprep, 'PREPARED_TREE_REUSE_API', None) != 1:
+            raise SDKError('selected SDK lacks prepared tree reuse API')
+        record = sourceprep.write_prepared_tree_receipt(
+            root, package=package, identity=identity, previous_root=previous_root)
     receipt = Path(root) / sourceprep.PREPARED_TREE_RECEIPT
     if receipt.read_bytes() != jsonio.json_bytes(record):
         raise SDKError('prepared source receipt differs from the measured record')

@@ -10,6 +10,12 @@ source-preparation API, checks the archive hashes and version header, applies
 the complete patch inventory, and records an identity for the resulting tree.
 The output directory must not exist.
 
+`prepare --previous-source /absolute/previous-v8` optionally preserves mtimes
+of unchanged files from an already prepared V8 tree, including across recipe
+versions, using an SDK with `PREPARED_TREE_REUSE_API=1`. The new output is a
+separate tree and the previous source remains read-only. The caller must hold
+the appropriate workspace locks and drain writers before reuse.
+
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/v8/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \

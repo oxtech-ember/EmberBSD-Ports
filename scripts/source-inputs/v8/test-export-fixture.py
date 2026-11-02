@@ -36,7 +36,7 @@ with tempfile.TemporaryDirectory(prefix='v8-export-test-', dir=a.work_dir) as di
     run([a.git, '-C', upstream, '-c', 'user.name=Fixture', '-c',
          'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture'])
     revision = run([a.git, '-C', upstream, 'rev-parse', 'HEAD']).stdout.strip()
-    for name in ('scripts/prepare-pkgsrc.py', 'scripts/pkgsrc-source-identity.py',
+    for name in ('scripts/prepare-pkgsrc.py', 'scripts/pkgsrc-source-identity.py', 'scripts/prepared_receipt.py',
                  'scripts/source-inputs/v8/source.py', 'pkgsrc/lang/llvm/files/sdk_source.py'):
         dest = root / name
         dest.parent.mkdir(parents=True, exist_ok=True)
