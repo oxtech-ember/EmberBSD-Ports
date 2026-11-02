@@ -1,0 +1,3 @@
+Patched upstream Bosch BMM150 SensorAPI sources shared by EmberBSD base and
+other consumers. The recipe preserves Bosch's BSD-3-Clause license and applies
+only the portability and transport-error fixes needed by the kernel consumer.
