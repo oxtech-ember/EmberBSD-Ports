@@ -7,7 +7,7 @@ import tempfile
 
 if len(sys.argv) != 3:
     raise SystemExit('usage: target-metadata-boundary.py PERL TARGET_METADATA_PL')
-with tempfile.TemporaryDirectory() as temp:
+with tempfile.TemporaryDirectory(prefix='qt metadata ') as temp:
     root = pathlib.Path(temp) / 'qt'
     cmake = root / 'lib/cmake'
     cmake.mkdir(parents=True)
@@ -20,4 +20,31 @@ with tempfile.TemporaryDirectory() as temp:
     sample.write_text(f'set(BAD "{work}/.buildlink-other")\n')
     result = subprocess.run(command, capture_output=True, text=True)
     assert result.returncode != 0 and 'unresolved build path' in result.stderr
+    sample.unlink()
+    sbom = root / 'sbom' / 'qtbase.spdx'
+    sbom.parent.mkdir(parents=True)
+    sbom.write_text(
+        'SPDXVersion: SPDX-2.3\n'
+        'PackageName: qtbase\n'
+        'PackageDownloadLocation: https://example.invalid/qtbase.tar.xz\n'
+        'LicenseConcluded: NOASSERTION\n'
+        'qtbase was configured with:\n'
+        f'    qt6/configure -DROOT={work}/.buildlink/lib;{work}/.buildlink/include/python3.15\n'
+        '</text>\n'
+    )
+    external = pathlib.Path(temp) / 'external.spdx'
+    external.write_text(f'Unowned: {work}/.buildlink\n')
+    symlink = sbom.parent / 'linked.spdx'
+    symlink.symlink_to(external)
+    subprocess.run(command, check=True)
+    assert sbom.read_text() == (
+        'SPDXVersion: SPDX-2.3\n'
+        'PackageName: qtbase\n'
+        'PackageDownloadLocation: https://example.invalid/qtbase.tar.xz\n'
+        'LicenseConcluded: NOASSERTION\n'
+        'qtbase was configured with:\n'
+        '    qt6/configure -DROOT=/usr/pkg/lib;/usr/pkg/include/python3.15\n'
+        '</text>\n'
+    )
+    assert symlink.is_symlink() and external.read_text() == f'Unowned: {work}/.buildlink\n'
 print('PASS: target metadata buildlink boundary')

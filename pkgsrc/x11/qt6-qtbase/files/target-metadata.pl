@@ -58,8 +58,10 @@ remove_tree("$root/mkspecs/preliminary");
 my @files;
 find({no_chdir => 1, wanted => sub {
     return if -l $_ || !-f $_;
-    push @files, $File::Find::name if /\.(?:pri|prl|conf|pc|cmake)$/;
-}}, grep { -d $_ } ("$root/mkspecs", "$root/lib"));
+    push @files, $File::Find::name
+        if /\.(?:pri|prl|conf|pc|cmake)$/
+        || $File::Find::name =~ m{\Q$root\E/sbom/[^/]+\.spdx$};
+}}, grep { -d $_ } ("$root/mkspecs", "$root/lib", "$root/sbom"));
 push @files, grep { -f $_ } map { "$root/$_" } qw(bin/qt-cmake bin/qt-cmake-create libexec/qt-cmake-private);
 for my $path (@files) {
     open my $in, '<', $path or die "$path: $!\n";
@@ -67,8 +69,19 @@ for my $path (@files) {
     my $old = <$in>;
     close $in or die "$path: $!\n";
     my $text = $old;
-    $text =~ s{\Q$sysroot\E(?=/)}{}g;
-    $text =~ s{\Q$work\E/\.buildlink(?=/|["\s)])}{$prefix}g;
+    my $spdx = $path =~ m{\Q$root\E/sbom/[^/]+\.spdx$};
+    if ($spdx) {
+        # Keep SBOM package/source/license metadata intact. Only the embedded
+        # configure command is a build record with transient buildlink paths.
+        $text =~ s{(^qtbase was configured with:\n)(.*?)(?=^</text>$)}{
+            my ($heading, $args) = ($1, $2);
+            $args =~ s{\Q$work\E/\.buildlink(?=/|["\s);])}{$prefix}g;
+            $heading . $args;
+        }mse;
+    } else {
+        $text =~ s{\Q$sysroot\E(?=/)}{}g;
+        $text =~ s{\Q$work\E/\.buildlink(?=/|["\s)])}{$prefix}g;
+    }
     # CMake does not sysroot absolute include directories on imported targets.
     # Qt's exported platform flags refer to the common prefix beside qt6.
     if ($path eq "$root/lib/cmake/Qt6/Qt6Targets.cmake") {
@@ -91,7 +104,8 @@ for my $path (@files) {
         $text =~ s{^(QT\.global_private\.disabled_features =[^\n]*)$}{$1 cross_compile}m
             unless $text =~ /^QT\.global_private\.disabled_features =[^\n]*\bcross_compile\b/m;
     }
-    die "unresolved build path in $path\n" if index($text, $sysroot) >= 0 || index($text, $work) >= 0;
+    die "unresolved build path in $path\n"
+        if index($text, $work) >= 0 || (!$spdx && index($text, $sysroot) >= 0);
     if ($text ne $old) {
         open my $out, '>', $path or die "$path: $!\n";
         print {$out} $text or die "$path: $!\n";
