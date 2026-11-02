@@ -1,0 +1,47 @@
+--- a/lang/lua55/Makefile
++++ b/lang/lua55/Makefile
+@@ -3,4 +3,5 @@
+ PKGNAME=	lua55-${LUA_VERSION}
++PKGREVISION=	1
+ CATEGORIES=	lang lua
+ MASTER_SITES=	https://www.lua.org/ftp/
+ 
+@@ -18,8 +18,11 @@
+ USE_LIBTOOL=	yes
+ 
+ .include "../../mk/bsd.prefs.mk"
++.include "options.mk"
+ 
++.if !empty(PKG_OPTIONS:Mreadline)
+ MAKE_FLAGS+=	MYCFLAGS="-DLUA_USE_READLINE"
++.endif
+ MAKE_FLAGS+=	INSTALL_TOP=${PREFIX}
+ MAKE_FLAGS+=	INSTALL_INC=${PREFIX}/include/lua-5.5
+ MAKE_FLAGS+=	INSTALL_MAN=${PREFIX}/${PKGMANDIR}/man1
+@@ -84,11 +87,16 @@
+ 	${INSTALL_DATA} ${WRKSRC}/lua.pc \
+ 	    ${DESTDIR}${PREFIX}/lib/pkgconfig/lua-5.5.pc
+ 
++.if !empty(PKG_OPTIONS:Mreadline)
+ .include "../../mk/readline.buildlink3.mk"
++.if ${READLINE_TYPE} == "editline" && ${USE_BUILTIN.editline:U:tl} != yes
++DEPENDS+=	ncurses>=6.6:../../devel/ncurses
++.endif
+ .if ${READLINE_TYPE} == "editline"
+ MAKE_FLAGS+=	MYLIBS="-L${BUILDLINK_PREFIX.editlinereadline} -ledit"
+ .else
+ MAKE_FLAGS+=	MYLIBS="-L${BUILDLINK_PREFIX.editlinereadline} -lreadline"
+ .endif
++.endif
+ .include "../../mk/dlopen.buildlink3.mk"
+ .include "../../mk/bsd.pkg.mk"
+--- /dev/null
++++ b/lang/lua55/options.mk
+@@ -0,0 +1,7 @@
++# $NetBSD$
++
++PKG_OPTIONS_VAR=	PKG_OPTIONS.lua55
++PKG_SUPPORTED_OPTIONS=	readline
++PKG_SUGGESTED_OPTIONS=	readline
++
++.include "../../mk/bsd.options.mk"
