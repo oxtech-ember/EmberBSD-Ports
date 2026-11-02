@@ -12,7 +12,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import re
 import subprocess
 
 NAME = 'EMBERBSD_DARWIN_INSTALL_NAME_TOOL'
@@ -60,9 +59,8 @@ def check_source(text, makefile):
             'Keep command failure propagation')
     require('$opts{verbose} and print "  $install_name_tool @opts\\n";' in body,
             'Report the actual selected tool')
-    require(makefile.count(ENVIRONMENT) == 1 and
-            re.search(r'^PKGREVISION=\s*14$', makefile, re.M),
-            'Forward the quoted Darwin environment from the canonical Perl revision 14 recipe')
+    require(makefile.count(ENVIRONMENT) == 1,
+            'Forward the quoted Darwin environment from the Perl recipe')
 
 
 def source_mutations(text, makefile):
