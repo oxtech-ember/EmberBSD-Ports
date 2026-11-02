@@ -570,7 +570,14 @@ of pkgsrc dependency patterns), so no package compiles a tool inside its
 dependency step. A native node that the native database already has at that
 version or newer is a leaf: its own tools are not asked, which keeps the
 bootstrap tools that need each other (coreutils, gettext-tools, python) out
-of the graph. An older installed package is not current: its node is built
+of the graph. When two native nodes to build need each other (a revision
+bump of both coreutils and perl), order breaks the cycle at the first sorted
+edge whose dependency pattern the native database already satisfies: pkgsrc
+builds that dependent with the installed package. Order reports each such
+edge as `Cycle broken: DEPENDENT builds with the installed DEPENDENCY` and
+refuses any other cycle;
+`scripts/tests/cross-bulk-native-cycle.sh NEW_OUTPUT` checks both.
+An older installed package is not current: its node is built
 again and replaces it with the pkgsrc `replace` target (`pkg_add -U`), which
 keeps the packages that depend on it registered. A newer host package, such
 as a host clang, stays current.

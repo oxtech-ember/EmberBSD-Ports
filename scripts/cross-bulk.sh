@@ -199,8 +199,20 @@ native_current()
     return 1
 }
 
+# Whether the native prefix has a package that matches the dependency
+# pattern $1.
+native_satisfies()
+{
+    set -f
+    if $native_pkg_info -e "$1" > /dev/null 2>&1; then set +f; return 0; fi
+    set +f
+    return 1
+}
+
 # Print the PKG_SKIP_REASON of a node on the first line, then its
-# dependency nodes, one per line. A native node that the native prefix
+# dependency nodes, one per line. A dependency of a native node that the
+# native prefix already satisfies is followed by the word "soft": sort_edges
+# may drop its edge to break a cycle. A native node that the native prefix
 # already has at its version or newer is a leaf: the build does not build it again, so its own
 # tools do not matter. This is what breaks the cycles among the bootstrap
 # tools (coreutils and gettext-tools need each other, python needs both).
@@ -231,8 +243,14 @@ node_deps()
         NR == 1 || NR > 5 { next }
         { s = NR <= 3 ? suffix : "@native"; n = split($0, w, " ")
           for (i = 1; i <= n; i++)
-              if (match(w[i], /:\.\.\/\.\.\/[^\/:]+\/[^\/:]+$/)) print substr(w[i], RSTART + 7) s }') || return 1
-    printf '%s\n' "$deps" | sort -u
+              if (match(w[i], /:\.\.\/\.\.\/[^\/:]+\/[^\/:]+$/))
+                  print substr(w[i], RSTART + 7) s, substr(w[i], 1, RSTART - 1) }') || return 1
+    # A dependency is soft only when every pattern that names it is satisfied.
+    printf '%s\n' "$deps" | while read -r dep pattern; do
+        [ -n "$dep" ] || continue
+        if [ -n "$suffix" ] && native_satisfies "$pattern"; then echo "$dep 1"; else echo "$dep 0"; fi
+    done | awk '{ if (!($1 in soft)) soft[$1] = 1; if ($2 == 0) soft[$1] = 0 }
+        END { for (d in soft) print d (soft[d] ? " soft" : "") }' | sort -u
 }
 
 # Print "dependent -> skipped" for each edge in $2 that reaches a node
@@ -243,11 +261,24 @@ skipped_deps()
     awk 'FILENAME == ARGV[1] { skip[$1] = 1; next } ($1 in skip) && $1 != $2 { print $2 " -> " $1 }' "$1" "$2"
 }
 
-# Sort the edges $1 into $2. A cycle is refused: tsort would still print
-# an order, with some package before its dependency.
+# Sort the edges $1 into $2. A cycle between native nodes to build, such as
+# coreutils and perl after a revision bump of both, is broken at the first
+# (sorted) edge of the cycle listed in the soft edges $3: the native prefix
+# already satisfies its dependency, so pkgsrc builds the dependent with the
+# installed package. The dropped edge is removed from $1 and reported. Any
+# other cycle is refused: tsort would still print an order, with some
+# package before its dependency.
 sort_edges()
 {
-    tsort "$1" > "$2" 2> "$state/tsort.err" && [ ! -s "$state/tsort.err" ] && return 0
+    while ! { tsort "$1" > "$2" 2> "$state/tsort.err" && [ ! -s "$state/tsort.err" ]; }; do
+        cut=$(awk 'FILENAME == ARGV[1] { if ($1 == "tsort:" && NF == 2) c[$2] = 1; next }
+            ($1 in c) && ($2 in c) && $1 != $2 { print $1, $2 }' \
+            "$state/tsort.err" "${3:-/dev/null}" | sort -u | sed -n 1p)
+        [ -n "$cut" ] || break
+        echo "Cycle broken: ${cut#* } builds with the installed ${cut% *} (pattern satisfied)" >&2
+        awk -v cut="$cut" '$1 " " $2 != cut' "$1" > "$1.cut" && mv "$1.cut" "$1" || return 1
+    done
+    [ -s "$state/tsort.err" ] || return 0
     echo 'Refused: the dependency graph has a cycle:' >&2
     cat "$state/tsort.err" >&2
     rm -f "$2"
@@ -265,6 +296,7 @@ order()
     mkdir "$q"
     : > "$q/failed"
     : > "$state/edges.new"
+    : > "$state/soft.new"
     : > "$state/skipped.new"
     sort -u "$list" > "$state/queue"
     : > "$state/seen"
@@ -309,9 +341,10 @@ order()
                 continue
             fi
             echo "$path $path" >> "$state/edges.new"
-            sed 1d "$q/$key.deps" | while read -r dep; do
+            sed 1d "$q/$key.deps" | while read -r dep soft; do
                 [ -n "$dep" ] || continue
                 echo "$dep $path" >> "$state/edges.new"
+                [ -z "$soft" ] || echo "$dep $path" >> "$state/soft.new"
                 echo "$dep" >> "$state/next"
             done
         done < "$q/frontier-map"
@@ -331,7 +364,8 @@ order()
         echo "$refused" >&2
         return 1
     fi
-    sort_edges "$state/edges.new" "$state/order.new" || return 1
+    sort_edges "$state/edges.new" "$state/order.new" "$state/soft.new" || return 1
+    rm -f "$state/soft.new"
     mv "$state/skipped.new" "$state/skipped"
     mv "$state/edges.new" "$state/edges"
     mv "$state/order.new" "$state/order"
