@@ -2,7 +2,7 @@
 
 DISTNAME=	qtdeclarative-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qtdeclarative-${QTVERSION}
-PKGREVISION=	4
+PKGREVISION=	5
 COMMENT=	Qt6 module for the QML language
 CATEGORIES=	lang x11
 
@@ -40,7 +40,7 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6QuickTemplates2.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6QuickTest.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6QuickWidgets.pc
 
-PLIST_VARS+=	jit crosstools nativetools
+PLIST_VARS+=	jit crosstools nativetools opengl
 
 # Cross-built target tools use upstream's _native metadata suffix.
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
@@ -72,5 +72,8 @@ post-install:
 BUILDLINK_DEPMETHOD.yoga=	build
 .include "../../devel/yoga/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
+.if empty(PKG_BUILD_OPTIONS.qt6-qtbase:Msoftware-rendering)
+PLIST.opengl=	yes
+.endif
 .include "../../x11/qt6-qtbase/full-tools-required.mk"
 .include "../../mk/bsd.pkg.mk"

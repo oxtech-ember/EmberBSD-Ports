@@ -11,6 +11,12 @@ PKG_SUGGESTED_OPTIONS+=	dbus
 PKG_SUPPORTED_OPTIONS+=	host-tools
 .endif
 
+# QtQuick software rendering supports native Linux and NetBSD cross builds.
+.if (${OPSYS} == "Linux" && ${USE_CROSS_COMPILE:Uno:tl} != "yes") || \
+    (${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes")
+PKG_SUPPORTED_OPTIONS+=	software-rendering
+.endif
+
 .if ${OPSYS} != "Darwin"
 PKG_SUPPORTED_OPTIONS+=	cups
 PKG_SUGGESTED_OPTIONS+=	cups
@@ -18,10 +24,30 @@ PKG_SUGGESTED_OPTIONS+=	cups
 
 .include "../../mk/bsd.options.mk"
 
-PLIST_VARS+=		cups dbus gtk3
+PLIST_VARS+=		cups dbus gtk3 opengl vulkan
+
+.if !empty(PKG_OPTIONS:Msoftware-rendering)
+.if (${OPSYS} != "Linux" && ${OPSYS} != "NetBSD") || \
+    (${OPSYS} == "Linux" && ${USE_CROSS_COMPILE:Uno:tl} == "yes") || \
+    (${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} != "yes")
+PKG_FAIL_REASON+=	"software-rendering supports native Linux and NetBSD cross builds"
+.endif
+.if !empty(PKG_OPTIONS:Mhost-tools)
+PKG_FAIL_REASON+=	"software-rendering cannot be combined with the host-tools option"
+.endif
+CONFIGURE_ARGS+=	-no-opengl -no-feature-egl -no-feature-eglfs
+CONFIGURE_ARGS+=	-no-feature-eglfs_egldevice -no-feature-vulkan
+CMAKE_CONFIGURE_ARGS+=	-DFEATURE_egl:BOOL=OFF -DFEATURE_eglfs:BOOL=OFF
+CMAKE_CONFIGURE_ARGS+=	-DFEATURE_eglfs_egldevice:BOOL=OFF -DFEATURE_vulkan:BOOL=OFF
+.else
+PLIST.opengl=	yes
+.if ${OPSYS} != "Darwin"
+PLIST.vulkan=	yes
+.endif
+.endif
 
 .if !empty(PKG_OPTIONS:Mhost-tools)
-.  for _opt_ in cups dbus gtk3
+.  for _opt_ in cups dbus gtk3 software-rendering
 .    if !empty(PKG_OPTIONS:M${_opt_})
 PKG_FAIL_REASON+=	"The host-tools option excludes the ${_opt_} option"
 .    endif

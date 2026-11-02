@@ -132,7 +132,10 @@ DARWIN_HOST_TOOLS = (('install-name-tool', 'EMBERBSD_DARWIN_INSTALL_NAME_TOOL', 
                      ('macho-otool', 'MACHO_OTOOL', 'llvm-otool'),
                      # Static library tool for recipes that create archives
                      # with Darwin libtool, such as the Boost toolchain.
-                     ('darwin-libtool', 'EMBERBSD_DARWIN_LIBTOOL', 'llvm-libtool-darwin'))
+                     ('darwin-libtool', 'EMBERBSD_DARWIN_LIBTOOL', 'llvm-libtool-darwin'),
+                     # Native Darwin LLVM and Clang pass it as CMAKE_DSYMUTIL
+                     # (lang/llvm/darwin.mk, ../llvm-family.md).
+                     ('dsymutil', 'EMBERBSD_DARWIN_DSYMUTIL', 'dsymutil'))
 # Package steps that verify ad hoc signatures, such as lang/rust-bin, use the
 # macOS code signing verification service. It is part of the OS, not a build
 # tool, and has no Ports provider.

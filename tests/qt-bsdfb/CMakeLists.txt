@@ -43,7 +43,7 @@ if(QT_HOST_PREFIX)
     if(NOT IS_ABSOLUTE "${QT_HOST_PREFIX}")
         message(FATAL_ERROR "QT_HOST_PREFIX must be an absolute Qt 6.12 host prefix")
     endif()
-    find_package(Qt6 6.12.0 EXACT CONFIG REQUIRED COMPONENTS Core Gui
+    find_package(Qt6 6.12.0 EXACT CONFIG REQUIRED COMPONENTS Core Gui GuiPrivate
         PATHS "${QT_HOST_PREFIX}/lib/cmake" NO_DEFAULT_PATH)
 
     add_executable(qt-bsdfb-framegate-test framegate.cpp)
@@ -73,7 +73,8 @@ if(QT_HOST_PREFIX)
         target_compile_options(qt-bsdfb-blit-test PRIVATE -stdlib=libstdc++)
         target_link_options(qt-bsdfb-blit-test PRIVATE -stdlib=libstdc++)
     endif()
-    target_link_libraries(qt-bsdfb-blit-test PRIVATE Qt6::Core Qt6::Gui)
+    target_link_libraries(qt-bsdfb-blit-test PRIVATE
+        Qt6::Core Qt6::Gui Qt6::GuiPrivate)
     add_test(NAME qt-bsdfb-blit COMMAND qt-bsdfb-blit-test)
 
     add_executable(qt-bsdfb-inputfailure-test inputfailure.cpp)

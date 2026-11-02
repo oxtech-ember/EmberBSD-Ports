@@ -54,25 +54,25 @@ PKG_FAIL_REASON+= "The separate Qtbase SDK requires a NetBSD cross build; native
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The Qtbase runtime/SDK split requires the common aarch64 or amd64 cross target"
 .endif
-PKGREVISION= 10
+PKGREVISION= 11
 QTBASE_FULL_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.NetBSD ${EMBERBSD_QTBASE_PKGDIR}/PLIST
 QTBASE_RUNTIME_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.runtime
 QTBASE_DEVEL_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.NetBSD ${EMBERBSD_QTBASE_PKGDIR}/../qt6-qtbase-devel/PLIST
 .if defined(EMBERBSD_QTBASE_DEVEL)
-PKGREVISION= 13
-.if ${PKGREVISION} != 13
-PKG_FAIL_REASON+= "The Qtbase SDK requires package revision 13"
+PKGREVISION= 14
+.if ${PKGREVISION} != 14
+PKG_FAIL_REASON+= "The Qtbase SDK requires package revision 14"
 .endif
 QTBASE_PACKAGE_PART= devel
 .if ${QTBASE_PACKAGE_PART} != "devel"
 PKG_FAIL_REASON+= "The Qtbase SDK recipe must select the devel partition"
 .endif
 PLIST_SRC= ${QTBASE_DEVEL_PLIST_SRC}
-DEPENDS+= qt6-qtbase-${QTVERSION}nb10:../../x11/qt6-qtbase
-CONFLICTS+= qt6-qtbase<${QTVERSION}nb10
+DEPENDS+= qt6-qtbase-${QTVERSION}nb11:../../x11/qt6-qtbase
+CONFLICTS+= qt6-qtbase<${QTVERSION}nb11
 .else
-.if ${PKGREVISION} != 10
-PKG_FAIL_REASON+= "The Qtbase runtime requires package revision 10"
+.if ${PKGREVISION} != 11
+PKG_FAIL_REASON+= "The Qtbase runtime requires package revision 11"
 .endif
 QTBASE_PACKAGE_PART= runtime
 .if ${QTBASE_PACKAGE_PART} != "runtime"
@@ -148,7 +148,7 @@ QMAKE_CONF=		qmake.conf.mac
 .endif
 
 # Qt's deployment helpers are host tools and are disabled in cross builds.
-PLIST_VARS+=	androidtools targetmetadata egl egldevice wayland x11
+PLIST_VARS+=	androidtools targetmetadata egl egldevice opengl vulkan wayland x11
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 PLIST.androidtools=	yes
 .endif
@@ -340,8 +340,10 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Concurrent.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Core.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Gui.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Network.pc
+.if empty(PKG_OPTIONS:Msoftware-rendering)
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6OpenGL.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6OpenGLWidgets.pc
+.endif
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6PrintSupport.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Sql.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Test.pc
@@ -377,6 +379,8 @@ BUILDLINK_API_DEPENDS.libpsl+= libpsl>=0.23.3nb2
 .if ${OPSYS} != "Darwin"
 PLIST.x11=	yes
 .include "../../fonts/fontconfig/buildlink3.mk"
+# The native software flavor has no GLU, EGL or Vulkan integration.
+.if empty(PKG_OPTIONS:Msoftware-rendering)
 .include "../../graphics/glu/buildlink3.mk"
 .include "../../graphics/vulkan-headers/buildlink3.mk"
 .  if !empty(MESALIB_SUPPORTS_EGL:Myes)
@@ -397,6 +401,7 @@ PLIST.egldevice=	yes
 .      endif
 .    endif
 .  endif
+.endif
 BUILDLINK_API_DEPENDS.libxcb+=	libxcb>=1.11
 .include "../../x11/libxcb/buildlink3.mk"
 .include "../../x11/xcb-util/buildlink3.mk"

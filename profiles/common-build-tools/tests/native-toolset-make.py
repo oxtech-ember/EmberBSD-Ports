@@ -308,7 +308,7 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         selected.host = {'os': 'Darwin'}
         darwin_tools = [mlir_bin / 'llvm-install-name-tool', mlir_bin / 'llvm-readtapi',
                         mlir_bin / 'llvm-lipo', mlir_bin / 'llvm-otool',
-                        mlir_bin / 'llvm-libtool-darwin']
+                        mlir_bin / 'llvm-libtool-darwin', mlir_bin / 'dsymutil']
         for tool in darwin_tools:
             refused(adapter.main, ['write', *pins, '--output', str(destination)])
             tool.write_text('#!/bin/sh\n')
@@ -334,6 +334,8 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
                                 # meta-pkgs/boost requires it whenever
                                 # EMBERBSD_HOST_PREFIX is set.
                                 ('EMBERBSD_DARWIN_LIBTOOL', str(darwin_tools[4])),
+                                # Native lang/llvm and lang/clang require it.
+                                ('EMBERBSD_DARWIN_DSYMUTIL', str(darwin_tools[5])),
                                 ('EMBERBSD_DARWIN_TOOL.codesign', '/usr/bin/codesign'),
                                 ('EMBERBSD_DARWIN_TAPI_KIND', 'llvm-readtapi')):
             assert ('.if "${' + variable + '}" != "' + value + '"').encode() in darwin

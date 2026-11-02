@@ -65,3 +65,14 @@ per-realm handlers even when the embedder owns isolate callbacks. The native
 regression `tests/node-embedder-runtime.py` requires the selected Node and
 cctest binaries and their build work, and exercises both default and
 embedder-owned ESM callbacks and concurrent worker teardown.
+
+The `lang/v8` tool dependency pins the V8 release that Node expects and accepts
+any package revision of it, so a `lang/v8` revision bump does not leave the
+installed provider unmatched. `tests/nodejs-v8-source-match.sh` evaluates both
+real recipes with the caller's accepted MAKECONF and checks the pattern against
+the current `lang/v8` package and other V8 releases with `pkg_admin pmatch`:
+
+```sh
+sh profiles/common-build-tools/tests/nodejs-v8-source-match.sh \
+    "$EXPORTED_PKGSRC" "$MAKECONF" "$MAKE_WRAPPER" "$HOST_PREFIX/sbin/pkg_admin" "$NEW_OUTPUT"
+```

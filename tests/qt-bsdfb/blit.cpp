@@ -192,13 +192,18 @@ void testLargeDisjointDamage(QImage::Format format, PixelFormat pixelFormat)
     for (Rotation rotation : rotations) {
         const QSize logicalSize = (rotation == Rotation::R90 || rotation == Rotation::R270)
             ? QSize(bigNativeHeight, bigNativeWidth) : QSize(bigNativeWidth, bigNativeHeight);
-        const QRect first(5, 7, 35, 39);
+        const QRect first(-3, 7, 43, 39);
         const QRect second(logicalSize.width() - 41,
                            logicalSize.height() - 44, 36, 37);
         QRegion damage(first);
         damage += second;
 
-        QImage source(logicalSize, QImage::Format_RGB32);
+        const int sourceStride = logicalSize.width() * pixelBytes + 12;
+        std::vector<unsigned char> sourceStorage(
+            static_cast<std::size_t>(sourceStride)
+                * static_cast<std::size_t>(logicalSize.height()), 0x5D);
+        QImage source(sourceStorage.data(), logicalSize.width(), logicalSize.height(),
+                      sourceStride, QImage::Format_RGB32);
         for (int y = 0; y < logicalSize.height(); ++y) {
             for (int x = 0; x < logicalSize.width(); ++x)
                 source.setPixelColor(x, y, coordinateColor(x, y));
@@ -234,6 +239,68 @@ void testLargeDisjointDamage(QImage::Format format, PixelFormat pixelFormat)
         check(guardsAndPaddingAreFor(storage, offset, bigNativeWidth, bigNativeHeight,
                                      bigNativeStride, sentinel),
               "multi-rect blit preserves guards and padded row bytes");
+        for (int y = 0; y < logicalSize.height(); ++y) {
+            for (int x = logicalSize.width() * pixelBytes; x < sourceStride; ++x) {
+                check(sourceStorage[static_cast<std::size_t>(y)
+                                    * static_cast<std::size_t>(sourceStride)
+                                    + static_cast<std::size_t>(x)] == 0x5D,
+                      "multi-rect blit leaves padded source rows unchanged");
+            }
+        }
+    }
+}
+
+void testMixedLargeAndTinyDamage()
+{
+    constexpr int bigNativeWidth = 97;
+    constexpr int bigNativeHeight = 83;
+    constexpr int bigNativeStride = bigNativeWidth * pixelBytes + 12;
+    constexpr int offset = 16;
+    constexpr unsigned char sentinel = 0xA7;
+    constexpr std::size_t framebufferSize =
+        static_cast<std::size_t>(bigNativeStride) * bigNativeHeight;
+    const std::array rotations{Rotation::R90, Rotation::R270};
+
+    for (Rotation rotation : rotations) {
+        const QSize logicalSize(bigNativeHeight, bigNativeWidth);
+        const QRect large(7, 5, 39, 41);
+        const QRect tiny(logicalSize.width() - 1, logicalSize.height() - 1, 1, 1);
+        QRegion damage(large);
+        damage += tiny;
+
+        QImage source(logicalSize, QImage::Format_RGB32);
+        for (int y = 0; y < logicalSize.height(); ++y) {
+            for (int x = 0; x < logicalSize.width(); ++x)
+                source.setPixelColor(x, y, coordinateColor(x, y));
+        }
+        std::vector<unsigned char> storage(
+            static_cast<std::size_t>(offset) + framebufferSize + guardSize, sentinel);
+        QImage destination(storage.data() + offset, bigNativeWidth, bigNativeHeight,
+                           bigNativeStride, QImage::Format_RGB32);
+        for (int y = 0; y < bigNativeHeight; ++y) {
+            for (int x = 0; x < bigNativeWidth; ++x)
+                destination.setPixelColor(x, y, QColor::fromRgb(background));
+        }
+        const Layout layout{storage.size(), offset, bigNativeWidth, bigNativeHeight,
+                            bigNativeStride, PixelFormat::Xrgb8888};
+
+        check(QBsdFb::blit(destination, source, layout, rotation, damage),
+              "mixed large and tiny damage is blitted");
+        for (int y = 0; y < bigNativeHeight; ++y) {
+            for (int x = 0; x < bigNativeWidth; ++x) {
+                const QPoint sourcePoint = sourcePointForNative(
+                    rotation, x, y, bigNativeWidth, bigNativeHeight);
+                const bool touched = damage.contains(sourcePoint);
+                const QColor expected = touched
+                    ? coordinateColor(sourcePoint.x(), sourcePoint.y())
+                    : QColor::fromRgb(background);
+                check(destination.pixelColor(x, y) == expected,
+                      "mixed damage maps pixels and preserves untouched gaps");
+            }
+        }
+        check(guardsAndPaddingAreFor(storage, offset, bigNativeWidth, bigNativeHeight,
+                                     bigNativeStride, sentinel),
+              "mixed damage preserves guards and padded row bytes");
     }
 }
 
@@ -274,6 +341,105 @@ void testInvalidInputsAreRejectedWithoutChangingPixels(QImage::Format format,
           "rejected inputs preserve prefix, suffix, and padded row bytes");
 }
 
+void testInvalidLayoutIsRejectedBeforePainting()
+{
+    std::vector<unsigned char> storage(storageSize, 0xA7);
+    QImage destination(storage.data() + guardSize, nativeWidth, nativeHeight,
+                       nativeStride, QImage::Format_RGB32);
+    const QColor untouched = QColor::fromRgb(background);
+    initializeDestination(destination, untouched);
+    const QImage source = makeSource(QSize(nativeWidth, nativeHeight));
+    Layout shortLayout{guardSize + framebufferBytes - 1, guardSize,
+                       nativeWidth, nativeHeight, nativeStride,
+                       PixelFormat::Xrgb8888};
+
+    check(!QBsdFb::blit(destination, source, shortLayout, Rotation::R0,
+                        QRegion(QRect(0, 0, nativeWidth, nativeHeight))),
+          "layout shorter than its destination storage is rejected");
+    verifyUnchanged(destination, untouched,
+                    "invalid layout leaves framebuffer pixels unchanged");
+    check(guardsAndPaddingAre(storage, 0xA7),
+          "invalid layout preserves framebuffer guards and padding");
+}
+
+void testOverlappingImagesMatchIndependentPixelOracle()
+{
+    constexpr int logicalWidth = 7;
+    constexpr int logicalHeight = 6;
+    constexpr int sourceStride = logicalWidth * pixelBytes + 8;
+    constexpr int rotatedWidth = logicalHeight;
+    constexpr int rotatedHeight = logicalWidth;
+    constexpr int destinationStride = rotatedWidth * pixelBytes + 12;
+    constexpr std::size_t sourceOffset = 8;
+    constexpr std::size_t destinationOffset = 32;
+    constexpr unsigned char sentinel = 0xA7;
+    constexpr std::size_t destinationBytes =
+        static_cast<std::size_t>(destinationStride) * rotatedHeight;
+    constexpr std::size_t storageBytes = destinationOffset + destinationBytes + guardSize;
+
+    std::vector<unsigned char> storage(storageBytes, sentinel);
+    QImage source(storage.data() + sourceOffset, logicalWidth, logicalHeight,
+                  sourceStride, QImage::Format_RGB32);
+    QImage destination(storage.data() + destinationOffset, rotatedWidth, rotatedHeight,
+                       destinationStride, QImage::Format_RGB32);
+    check(!source.isNull() && !destination.isNull(),
+          "overlapping external source and destination images are valid");
+    for (int y = 0; y < logicalHeight; ++y) {
+        for (int x = 0; x < logicalWidth; ++x)
+            source.setPixelColor(x, y, coordinateColor(x, y));
+    }
+    for (int y = 0; y < rotatedHeight; ++y) {
+        for (int x = 0; x < rotatedWidth; ++x)
+            destination.setPixelColor(x, y, QColor::fromRgb(background));
+    }
+    std::vector<unsigned char> referenceStorage = storage;
+    QImage referenceSource(referenceStorage.data() + sourceOffset, logicalWidth,
+                           logicalHeight, sourceStride, QImage::Format_RGB32);
+    QImage referenceDestination(referenceStorage.data() + destinationOffset,
+                                rotatedWidth, rotatedHeight, destinationStride,
+                                QImage::Format_RGB32);
+    QPainter referencePainter(&referenceDestination);
+    referencePainter.setCompositionMode(QPainter::CompositionMode_Source);
+    referencePainter.setClipRect(QRect(0, 0, rotatedWidth, rotatedHeight));
+    referencePainter.translate(rotatedWidth, 0);
+    referencePainter.rotate(90);
+    referencePainter.drawImage(QPoint(0, 0), referenceSource);
+    check(referencePainter.end(), "independent QPainter alias oracle completes");
+    std::vector<unsigned char> destinationPadding;
+    for (int y = 0; y < rotatedHeight; ++y) {
+        const std::size_t row = destinationOffset
+            + static_cast<std::size_t>(y) * destinationStride
+            + static_cast<std::size_t>(rotatedWidth) * pixelBytes;
+        for (int x = 0; x < destinationStride - rotatedWidth * pixelBytes; ++x)
+            destinationPadding.push_back(storage[row + static_cast<std::size_t>(x)]);
+    }
+    const Layout layout{storage.size(), destinationOffset, rotatedWidth, rotatedHeight,
+                        destinationStride, PixelFormat::Xrgb8888};
+
+    check(QBsdFb::blit(destination, source, layout, Rotation::R90,
+                       QRegion(QRect(0, 0, logicalWidth, logicalHeight))),
+          "overlapping images retain the existing accepted blit behavior");
+    for (int y = 0; y < rotatedHeight; ++y) {
+        for (int x = 0; x < rotatedWidth; ++x) {
+            check(destination.pixelColor(x, y)
+                      == referenceDestination.pixelColor(x, y),
+                  "overlapping blit matches independent QPainter behavior");
+        }
+    }
+    std::size_t paddingIndex = 0;
+    for (int y = 0; y < rotatedHeight; ++y) {
+        const std::size_t row = destinationOffset
+            + static_cast<std::size_t>(y) * destinationStride
+            + static_cast<std::size_t>(rotatedWidth) * pixelBytes;
+        for (int x = 0; x < destinationStride - rotatedWidth * pixelBytes; ++x) {
+            check(storage[row + static_cast<std::size_t>(x)]
+                      == destinationPadding[paddingIndex],
+                  "overlapping blit preserves destination row padding");
+            ++paddingIndex;
+        }
+    }
+}
+
 } // namespace
 
 int main()
@@ -282,9 +448,12 @@ int main()
     testRotationAndDamage(QImage::Format_RGBX8888, PixelFormat::Xbgr8888);
     testLargeDisjointDamage(QImage::Format_RGB32, PixelFormat::Xrgb8888);
     testLargeDisjointDamage(QImage::Format_RGBX8888, PixelFormat::Xbgr8888);
+    testMixedLargeAndTinyDamage();
     testInvalidInputsAreRejectedWithoutChangingPixels(
         QImage::Format_RGB32, PixelFormat::Xrgb8888);
     testInvalidInputsAreRejectedWithoutChangingPixels(
         QImage::Format_RGBX8888, PixelFormat::Xbgr8888);
+    testInvalidLayoutIsRejectedBeforePainting();
+    testOverlappingImagesMatchIndependentPixelOracle();
     return failures == 0 ? 0 : 1;
 }
