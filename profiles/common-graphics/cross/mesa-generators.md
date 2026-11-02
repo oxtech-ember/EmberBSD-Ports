@@ -64,9 +64,11 @@ The Python standard-library orchestrator uses SDK host API1:
 "$HOST_PREFIX/bin/python3.15" -B scripts/build-mesa-generators.py \
     --sdk-source "$SDK_SOURCE" --host-prefix "$HOST_PREFIX" \
     --pkgdb "$HOST_PKGDB" --lock-directory "$LOCK_DIRECTORY" \
-    --profile intel --jobs 4 /absolute/new-work /absolute/distdir
+    --profile intel /absolute/new-work /absolute/distdir
 ~~~
 
+The default job count is the number of CPUs available to the selected SDK
+process. Pass `--jobs N` to provide an explicit positive override.
 The work directory must be absent. A failed build retains its partial work.
 The command checks the source archive checksum and uses existing native packages.
 It does not install dependencies or modify the selected host prefix.

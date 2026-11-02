@@ -3,6 +3,7 @@
 # Origin: EmberBSD contributors (AI-assisted).
 """Check native Mesa command routing without executing compilers."""
 import ast
+import argparse
 import configparser
 import importlib.util
 import json
@@ -106,6 +107,21 @@ class ProducerTests(unittest.TestCase):
             producer.check_compilers(self.native, build, binding)
             with self.assertRaises(ValueError):
                 producer.check_compilers(self.native, build)
+
+    def test_generator_jobs_default_to_sdk_capacity_and_reach_build_and_test(self):
+        parser = argparse.ArgumentParser()
+        producer.add_jobs_option(parser)
+        self.assertIsNone(parser.parse_args([]).jobs)
+        with mock.patch('emberbsd_sdk.cpu_capacity.available_cpu_count', return_value=12):
+            selected = producer.generator_jobs(None)
+        self.assertEqual(selected, 12)
+        commands = dict(producer.mesa_commands(self.native, Path('/source'), Path('/work'), selected, 'YES'))
+        self.assertEqual(commands['build-mesa'][-2:], ['-j', '12'])
+        self.assertEqual(commands['test-mesa'][-2:], ['--num-processes', '12'])
+        self.assertEqual(producer.generator_jobs(3), 3)
+        with mock.patch('emberbsd_sdk.cpu_capacity.available_cpu_count', return_value=512):
+            self.assertEqual(producer.generator_jobs(None), 512)
+        self.assertEqual(producer.generator_jobs(512), 512)
 
     def test_llvm_rtti_and_required_upstream_checks(self):
         for rtti, enabled in (('YES', 'true'), ('NO', 'false')):

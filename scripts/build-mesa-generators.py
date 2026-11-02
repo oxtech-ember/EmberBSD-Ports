@@ -36,6 +36,16 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def add_jobs_option(parser):
+    parser.add_argument('--jobs', type=int, default=None,
+                        help='positive build parallelism; default: CPUs available to the selected SDK process')
+
+
+def generator_jobs(override):
+    from emberbsd_sdk.cpu_capacity import resolve_jobs
+    return resolve_jobs(override)
+
+
 def load(path, name):
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
@@ -179,12 +189,12 @@ def build(arguments, sdk_root):
     parser.add_argument('--native-cxx-binding-record', help='SDK native C++ compiler binding record')
     parser.add_argument('--pkgdb', required=True, help='Package database used by the native prefix')
     parser.add_argument('--lock-directory', required=True, help='Shared SDK producer lock namespace')
-    parser.add_argument('--jobs', type=int, default=4)
+    add_jobs_option(parser)
     parser.add_argument('work')
     parser.add_argument('distdir')
     args = parser.parse_args(arguments)
     host_policy = mesa_generator_host.host_policy(compiler_family=args.host_compiler_family)
-    require(1 <= args.jobs <= 256, 'Use a positive job count no greater than 256')
+    args.jobs = generator_jobs(args.jobs)
     for value in (args.host_prefix, args.pkgdb, args.lock_directory, args.work, args.distdir):
         require(re.fullmatch(r'/[A-Za-z0-9_./-]+', value), 'Use absolute paths without shell metacharacters')
     host = Path(args.host_prefix).resolve(strict=True)
