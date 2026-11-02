@@ -156,4 +156,8 @@ vendor userspace. The seven loader cases above are a different validation scope.
 The [Services DRM envelope decoder](BRIDGE-DRM.md) has host and cross-build
 checks. It does not perform device operations or establish KMD compatibility.
 
+The [typed Services ioctl core](SERVICES-IOCTL.md) composes these components.
+Its checked dispatch uses an explicit command table; no real driver command
+or foreign import binding is supplied yet.
+
 The original probe sources use the [BSD 2-Clause license](LICENSE).
