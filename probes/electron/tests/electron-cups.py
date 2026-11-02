@@ -111,6 +111,38 @@ Cflags: -I${includedir} -DCUPS_METADATA_FIXTURE=1
     # SDK library search path must not override the selected native runtime.
     assert output['libs']==['cups'] and not output.get('lib_dirs'), output
     assert not (mac / 'target-script-executed').exists()
+    # Exercise the actual GPU IPC macOS conditional in a minimal GN target.
+    gpu = work / 'gpu-mac'
+    (gpu / 'gpu/ipc/service').mkdir(parents=True)
+    original = (source / 'gpu/ipc/service/BUILD.gn').read_text()
+    (gpu / 'gpu/ipc/service/BUILD.gn').write_text(original)
+    gpu_patch = Path(__file__).resolve().parents[1] / 'patches/gn-macos-gpu-sdk-search.patch'
+    run('gpu-patch-check', [options.git, 'apply', '--check', gpu_patch], gpu)
+    run('gpu-patch', [options.git, 'apply', gpu_patch], gpu)
+    def mac_block(text):
+        start = text.index('    if (is_mac) {', text.index('  if (is_apple) {'))
+        depth = 0
+        for index in range(start, len(text)):
+            if text[index] == '{': depth += 1
+            elif text[index] == '}':
+                depth -= 1
+                if depth == 0: return text[start:index + 1]
+        raise AssertionError('unterminated GPU mac block')
+    block = mac_block((gpu / 'gpu/ipc/service/BUILD.gn').read_text())
+    # Supply unrelated dependencies as empty GN groups; no compilation occurs.
+    for directory, target in (('ui/display', 'display'), ('ui/display/types', 'types'),
+                              ('electron/build/config', 'generate_mas_config')):
+        path = gpu / directory
+        path.mkdir(parents=True, exist_ok=True)
+        (path / 'BUILD.gn').write_text('group("' + target + '") {}\n')
+    (gpu / '.gn').write_text('buildconfig="//BUILDCONFIG.gn"\n')
+    (gpu / 'BUILDCONFIG.gn').write_text('is_mac=true\nmac_sdk_path="/declared/macos-sdk"\nset_default_toolchain("//:target")\n')
+    (gpu / 'gpu/ipc/service/BUILD.gn').write_text('source_set("service") {\n  sources=[]\n  deps=[]\n  defines=[]\n' + block + '\n}\n')
+    (gpu / 'BUILD.gn').write_text('group("all") { deps=["//gpu/ipc/service"] }\ntoolchain("target") { tool("stamp") { command="touch {{output}}" } tool("objcxx") { command="true" outputs=["{{source_out_dir}}/{{source_name_part}}.o"] } }\n')
+    run('gpu-gen', [options.gn, 'gen', gpu / 'out'], gpu)
+    gpu_result = json.loads(run('gpu-desc', [options.gn, 'desc', gpu / 'out', '//gpu/ipc/service:service', '--format=json'], gpu))['//gpu/ipc/service:service']
+    assert not gpu_result.get('lib_dirs'), gpu_result
+    assert set(gpu_result['frameworks']) == {'CoreGraphics.framework', 'IOSurface.framework', 'OpenGL.framework', 'QuartzCore.framework'}, gpu_result
     chromeos, output = fixture('chromeos', platform='chromeos')
     # Chromium's platform emulation guard intentionally makes this empty on Darwin;
     # the original pkg_config branch is preserved, not a target-script invocation.

@@ -1,0 +1,17 @@
+$NetBSD$
+
+Use the selected macOS sysroot without adding its library directory ahead of
+the explicitly selected native runtime. Preserve GPU framework dependencies.
+Origin: EmberBSD (AI-assisted), Chromium 156.0.8078.75.
+Status: local cross-build integration; not submitted upstream.
+
+--- a/gpu/ipc/service/BUILD.gn
++++ b/gpu/ipc/service/BUILD.gn
+@@ -123,7 +123,6 @@
+         "//ui/display",
+         "//ui/display/types",
+       ]
+-      lib_dirs = [ "$mac_sdk_path/usr/lib" ]
+       frameworks = [
+         "CoreGraphics.framework",
+         "IOSurface.framework",
