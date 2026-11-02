@@ -14,9 +14,10 @@ Pass a temporary localhost certificate and private key as arguments. It requires
 a usable OpenSSL 3 backend, trusts only that fixture certificate, and verifies
 a local encrypted ping/pong exchange without changing the system trust store.
 
-Run `target-metadata-boundary.py PERL TARGET_METADATA_PL` with the selected
-host Perl and this recipe's `target-metadata.pl` to check exact buildlink and
-selected host-prefix mappings, including parent, child, and similar-prefix paths.
+Run `target-metadata-boundary.py HOST_PYTHON TARGET_METADATA_PY` with the
+selected host Python and this recipe's `target-metadata.py` to check exact
+buildlink, host-prefix, and selected target-compiler mappings, including parent,
+child, and similar-prefix paths.
 
 Run `shared-package-stage.sh` with the selected host Perl to check that the
 runtime selector retains a complete Qtbase stage, that the devel package gets

@@ -27,7 +27,8 @@ crates.io archive and SHA-256 in the source manifest.
 
 Run from the repository root. Each result directory must be new.
 The tests need BSD make, tar with zstd support, Python, patch, shasum and OpenSSL with BLAKE2s.
-Set `BMAKE`, `OPENSSL`, `PYTHON`, `TAR` and `SH` to selected tools when needed.
+Set `BMAKE`, `OPENSSL`, `PYTHON`, `HOST_PYTHON`, `TAR` and `SH` to selected
+tools when needed.
 
 ```sh
 sh probes/plasma-mobile/toolkit/validate.sh probes/plasma-mobile/toolkit

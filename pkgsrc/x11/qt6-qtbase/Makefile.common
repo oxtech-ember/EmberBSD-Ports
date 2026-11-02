@@ -88,6 +88,15 @@ CMAKE_CONFIGURE_ARGS+=	-DCMAKE_OSX_DEPLOYMENT_TARGET:STRING=${MACOSX_DEPLOYMENT_
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 .include "host-tools.mk"
 CMAKE_CONFIGURE_ARGS+= -DQT_FORCE_BUILD_TOOLS:BOOL=ON
+.if ${EMBERBSD_CROSS_COMPILER_FAMILY:U} == "clang"
+QT_TARGET_CC=	${PREFIX}/bin/clang
+QT_TARGET_CXX=	${PREFIX}/bin/clang++
+.elif ${EMBERBSD_CROSS_COMPILER_FAMILY:U} == "gcc"
+QT_TARGET_CC=	${PREFIX}/gcc16/bin/gcc
+QT_TARGET_CXX=	${PREFIX}/gcc16/bin/g++
+.else
+PKG_FAIL_REASON+=	"Qt target metadata requires an explicitly selected Clang or GCC family"
+.endif
 .if !empty(PLATFORM_SUPPORTS_WAYLAND:Myes)
 .if empty(EMBERBSD_WAYLAND_SCANNER:M/*) || !exists(${EMBERBSD_WAYLAND_SCANNER})
 PKG_FAIL_REASON+= "EMBERBSD_WAYLAND_SCANNER must select the native Wayland scanner"
@@ -181,8 +190,8 @@ pkgconfig-link:
 post-install: qt-module-target-metadata
 .PHONY: qt-module-target-metadata
 qt-module-target-metadata:
-	${PERL5} ${.CURDIR}/../../x11/qt6-qtbase/files/target-metadata.pl \
+	${EMBERBSD_CROSS_BUILD_PYTHON:Q} -B ${.CURDIR:Q}/../../x11/qt6-qtbase/files/target-metadata.py \
 	    ${DESTDIR:Q}${QTPREFIX:Q} ${CROSS_DESTDIR:Q} ${WRKDIR:Q} ${PREFIX:Q} \
-	    ${TOOLBASE:Q} --module
+	    ${TOOLBASE:Q} ${QT_TARGET_CC:Q} ${QT_TARGET_CXX:Q} --module
 .endif
 .endif # EMBERBSD_QT_MAKEFILE_COMMON

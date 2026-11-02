@@ -216,8 +216,9 @@ KWin and a complete accelerated Plasma session remain unfinished.
 ## Reproduce the source checks
 
 Download the original archives listed in sources.tsv to a private directory.
-The checks require BSD make, CMake, tar, patch, shasum and OpenSSL with
-BLAKE2s support. Set `BMAKE`, `CMAKE` and `OPENSSL` when necessary.
+The checks require BSD make, CMake, tar, patch, shasum, OpenSSL with
+BLAKE2s support, and selected host Python. Set `BMAKE`, `CMAKE`, `OPENSSL` and
+`HOST_PYTHON` when necessary.
 
 ```sh
 sh probes/plasma-mobile/toolkit/tests/source-profile.sh \

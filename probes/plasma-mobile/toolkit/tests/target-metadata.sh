@@ -2,10 +2,11 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD; AI-assisted installed Qt metadata regression.
 set -eu
-[ "$#" -eq 2 ] || { echo "Usage: $0 QTBASE_RECIPE NEW_WORK" >&2; exit 2; }
+[ "$#" -eq 3 ] || { echo "Usage: $0 QTBASE_RECIPE NEW_WORK HOST_PYTHON" >&2; exit 2; }
 recipe=$(CDPATH= cd -- "$1" && pwd)
 mkdir "$2"
 work=$(CDPATH= cd -- "$2" && pwd)
+python=$3
 root="$work/staged qt"
 sysroot="$work/target root"
 build="$work/build directory"
@@ -27,6 +28,7 @@ EOF
 cat > "$root/mkspecs/netbsd-g++/qmake.conf" <<EOF
 QMAKE_CC = $build/cc
 QMAKE_CXX = $build/c++
+QMAKE_MKDIR = /host-pkg/bin/gmkdir -p
 EOF
 cat > "$root/lib/cmake/Qt6/Qt6Dependencies.cmake" <<EOF
 set(__qt_platform_initial_qt_host_path "/private/host-qt")
@@ -42,10 +44,11 @@ for file in bin/qt-cmake bin/qt-cmake-create libexec/qt-cmake-private; do
     printf '#!/bin/sh\noriginal_cmake_path="/private/host/cmake"\n' > "$root/$file"
     chmod 755 "$root/$file"
 done
-perl "$recipe/files/target-metadata.pl" "$root" "$sysroot" "$build" /usr/pkg
+"$python" -B "$recipe/files/target-metadata.py" "$root" "$sysroot" "$build" /usr/pkg /host-tools /usr/pkg/bin/clang /usr/pkg/bin/clang++
 [ ! -e "$root/bin/host-qmake" ] && [ ! -e "$root/mkspecs/preliminary" ]
-grep -qx 'QMAKE_CC = /usr/pkg/gcc16/bin/gcc' "$root/mkspecs/netbsd-g++/qmake.conf"
-grep -qx 'QMAKE_CXX = /usr/pkg/gcc16/bin/g++' "$root/mkspecs/netbsd-g++/qmake.conf"
+grep -qx 'QMAKE_CC = /usr/pkg/bin/clang' "$root/mkspecs/netbsd-g++/qmake.conf"
+grep -qx 'QMAKE_CXX = /usr/pkg/bin/clang++' "$root/mkspecs/netbsd-g++/qmake.conf"
+grep -qx 'QMAKE_MKDIR = mkdir -p' "$root/mkspecs/netbsd-g++/qmake.conf"
 grep -qx 'QMAKE_INCDIR = /usr/pkg/include' "$root/mkspecs/qmodule.pri"
 grep -qx 'QMAKE_LIBDIR = /usr/pkg/lib' "$root/mkspecs/qmodule.pri"
 grep -qx 'QT.global_private.disabled_features = static cross_compile' "$root/mkspecs/qmodule.pri"
@@ -54,18 +57,18 @@ grep -qx 'set(__qt_platform_initial_qt_host_path "")' "$root/lib/cmake/Qt6/Qt6De
 grep -Fqx 'INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/../include"' "$root/lib/cmake/Qt6/Qt6Targets.cmake"
 [ -x "$root/bin/qt-cmake" ]
 find "$root" -type f -exec cksum {} \; | sort > "$work/first"
-perl "$recipe/files/target-metadata.pl" "$root" "$sysroot" "$build" /usr/pkg
+"$python" -B "$recipe/files/target-metadata.py" "$root" "$sysroot" "$build" /usr/pkg /host-tools /usr/pkg/bin/clang /usr/pkg/bin/clang++
 find "$root" -type f -exec cksum {} \; | sort > "$work/second"
 cmp "$work/first" "$work/second"
 printf 'unexpected = %s/unhandled\n' "$build" > "$root/mkspecs/invalid.pri"
-if perl "$recipe/files/target-metadata.pl" "$root" "$sysroot" "$build" /usr/pkg > "$work/reject.log" 2>&1; then
+if "$python" -B "$recipe/files/target-metadata.py" "$root" "$sysroot" "$build" /usr/pkg /host-tools /usr/pkg/bin/clang /usr/pkg/bin/clang++ > "$work/reject.log" 2>&1; then
     echo 'unresolved build path was accepted' >&2; exit 1
 fi
 grep -q 'unresolved build path' "$work/reject.log"
 module="$work/staged module"
 mkdir -p "$module/lib/cmake/Qt6Svg"
 printf 'QMAKE_PRL_LIBS = -L"%s/usr/pkg/lib" -lGL\n' "$sysroot" > "$module/lib/libQt6Svg.prl"
-perl "$recipe/files/target-metadata.pl" "$module" "$sysroot" "$build" /usr/pkg --module
+"$python" -B "$recipe/files/target-metadata.py" "$module" "$sysroot" "$build" /usr/pkg /host-tools /usr/pkg/bin/clang /usr/pkg/bin/clang++ --module
 grep -qx 'QMAKE_PRL_LIBS = -L"/usr/pkg/lib" -lGL' "$module/lib/libQt6Svg.prl"
 [ ! -e "$module/bin/qt.conf" ]
 echo 'PASS: target paths, generators, permissions, repeat install and host-path rejection'

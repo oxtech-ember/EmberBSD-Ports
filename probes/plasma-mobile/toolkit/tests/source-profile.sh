@@ -3,6 +3,7 @@
 # Origin: EmberBSD; AI-assisted Qt/KF source regression.
 set -eu
 [ "$#" -eq 2 ] || { echo "Usage: $0 VERIFIED_DISTFILES NEW_WORK" >&2; exit 2; }
+: "${HOST_PYTHON:?Set the selected host Python}"
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../../../.." && pwd)
 toolkit=$root/probes/plasma-mobile/toolkit
 recipes=$root/pkgsrc
@@ -24,7 +25,7 @@ raw=$(shasum -a 1 "$pkg/patches/$name" | awk '{ print $1 }')
 sed "s/^SHA1 ($name) = .*/SHA1 ($name) = $raw/" "$pkg/distinfo" > "$work/raw-distinfo"
 if awk -f "$verifier" -- -p "$work/raw-distinfo" "$pkg/patches/$name" > "$work/raw.log" 2>&1; then exit 1; fi
 sh "$toolkit/tests/mkspecs-preservation.sh" "$recipes/x11/qt6-qtbase" "$work/mkspecs-preservation"
-sh "$toolkit/tests/target-metadata.sh" "$recipes/x11/qt6-qtbase" "$work/target-metadata"
+sh "$toolkit/tests/target-metadata.sh" "$recipes/x11/qt6-qtbase" "$work/target-metadata" "$HOST_PYTHON"
 sh "$toolkit/tests/selection.sh" "$toolkit" "$work/selection"
 sh "$toolkit/tests/dependencies.sh" "$work/dependencies"
 sh "$toolkit/tests/ffmpeg-vaapi.sh" "$work/source/qtmultimedia-everywhere-src-6.12.0" "$work/ffmpeg"

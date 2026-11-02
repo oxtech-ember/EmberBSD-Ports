@@ -2,7 +2,7 @@
 
 DISTNAME=	qtbase-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qtbase-${QTVERSION}
-PKGREVISION=	18
+PKGREVISION=	19
 COMMENT=	C++ X GUI toolkit
 CATEGORIES=	x11
 
@@ -59,9 +59,9 @@ QTBASE_FULL_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.NetBSD ${EMBERBSD_QTBASE_
 QTBASE_RUNTIME_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.runtime
 QTBASE_DEVEL_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.NetBSD ${EMBERBSD_QTBASE_PKGDIR}/../qt6-qtbase-devel/PLIST
 .if defined(EMBERBSD_QTBASE_DEVEL)
-PKGREVISION= 12
-.if ${PKGREVISION} != 12
-PKG_FAIL_REASON+= "The Qtbase SDK requires package revision 12"
+PKGREVISION= 13
+.if ${PKGREVISION} != 13
+PKG_FAIL_REASON+= "The Qtbase SDK requires package revision 13"
 .endif
 QTBASE_PACKAGE_PART= devel
 .if ${QTBASE_PACKAGE_PART} != "devel"
@@ -258,7 +258,6 @@ pre-configure:
 		-e 's:@LEX@:${LEX}:g' \
 		-e 's:@YACC@:${TOOLS_CMDLINE_YACC:Q}:g' \
 		-e 's:@AR@:${AR:Q}:g' \
-		-e 's:@MKDIR@:${MKDIR}:g' \
 		-e 's:@LIBQT@:${LIBQT:Q}:g' \
 		-e 's:@PTHREAD_LDFLAGS@:${PTHREAD_LDFLAGS:Q}:g' \
 		-e 's:@PTHREAD_LIBS@:${PTHREAD_LIBS:Q}:g' \
@@ -277,13 +276,19 @@ pre-configure:
 
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
 PLIST.targetmetadata=	yes
+.if defined(_EMBERBSD_QTBASE_SHARED_DEVEL)
+_QTBASE_METADATA_ROOT=	${EMBERBSD_QTBASE_SHARED_STAGE}/${QTPREFIX:T}
+.else
+_QTBASE_METADATA_ROOT=	${DESTDIR}${QTPREFIX}
+.endif
 .if !defined(_EMBERBSD_QTBASE_SHARED_DEVEL)
 post-install: qt-target-metadata
 .endif
 .PHONY: qt-target-metadata
 qt-target-metadata:
-	${PERL5} ${FILESDIR}/target-metadata.pl ${DESTDIR:Q}${QTPREFIX:Q} \
-	    ${CROSS_DESTDIR:Q} ${WRKDIR:Q} ${PREFIX:Q} ${TOOLBASE:Q}
+	${EMBERBSD_CROSS_BUILD_PYTHON:Q} -B ${FILESDIR:Q}/target-metadata.py \
+	    ${_QTBASE_METADATA_ROOT:Q} ${CROSS_DESTDIR:Q} ${WRKDIR:Q} \
+	    ${PREFIX:Q} ${TOOLBASE:Q} ${QT_TARGET_CC:Q} ${QT_TARGET_CXX:Q}
 
 .endif
 
@@ -291,7 +296,7 @@ qt-target-metadata:
 post-install: qt-native-metadata
 .PHONY: qt-native-metadata
 qt-native-metadata:
-	${PERL5} ${FILESDIR}/target-metadata.pl --native ${DESTDIR:Q}${QTPREFIX:Q} \
+	${EMBERBSD_HOST_PYTHON:Q} -B ${FILESDIR:Q}/target-metadata.py --native ${DESTDIR:Q}${QTPREFIX:Q} \
 	    ${_EMBER_SDK_CC:Q} ${_EMBER_SDK_CXX:Q}
 .endif
 
@@ -425,7 +430,7 @@ BUILDLINK_API_DEPENDS.libxcb+=	libxcb>=1.11
 .PHONY: ${WRKDIR}/.qtbase-full-plist ${WRKDIR}/.qtbase-runtime-plist ${WRKDIR}/.qtbase-devel-plist
 .if defined(_EMBERBSD_QTBASE_SHARED_DEVEL)
 post-install: qtbase-select-stage
-qtbase-select-stage: pkgconfig-link ${PLIST}
+qtbase-select-stage: qt-target-metadata pkgconfig-link ${PLIST}
 .else
 post-install: qtbase-select-stage
 qtbase-select-stage: qt-target-metadata pkgconfig-link ${PLIST}
