@@ -21,5 +21,6 @@ TEST_TARGET=		check-lld  # failing tests fixed in 8.0
 TEST_ENV+=		LD_LIBRARY_PATH=${WRKDIR}/build/lib
 TEST_ENV+=		LC_ALL=C
 .else
+EXTRACT_ELEMENTS+=	${DISTNAME}/llvm/CMakeLists.txt
 CMAKE_CONFIGURE_ARGS+=		-DLLVM_INCLUDE_TESTS=OFF
 .endif

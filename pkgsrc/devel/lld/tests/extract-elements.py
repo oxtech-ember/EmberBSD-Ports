@@ -29,6 +29,8 @@ def main():
                         help='pinned combined pkgsrc export used by the native profile')
     parser.add_argument('--makeconf', required=True, type=Path)
     parser.add_argument('--work', required=True, type=Path)
+    parser.add_argument('--lld-options', choices=('tests', '-tests'), default='tests')
+    parser.add_argument('--tar', type=Path, help='selected tar; omit to prepare pkgsrc tools')
     parser.add_argument('--environment', action='append', default=[],
                         help='NAME=VALUE passed to bmake (repeatable)')
     args = parser.parse_args()
@@ -55,7 +57,7 @@ def main():
     wrkdir = args.work / 'work'
     common = [args.bmake, '-C', fixture / 'devel/lld',
               'MAKECONF=' + str(args.makeconf.resolve(strict=True)),
-              'EMBERBSD_DARWIN_BOOTSTRAP=yes', 'PKG_OPTIONS.lld=tests',
+              'PKG_OPTIONS.lld=' + args.lld_options,
               'WRKDIR=' + str(wrkdir)]
 
     def value(name):
@@ -65,9 +67,11 @@ def main():
     elements = value('EXTRACT_ELEMENTS').split()
     if not elements:
         raise SystemExit('LLD recipe selects no EXTRACT_ELEMENTS')
-    run([*common, 'tools'], env=env)
-    tar = wrkdir / '.tools/bin/tar'
-    tar.resolve(strict=True)
+    if args.tar is None:
+        run([*common, 'tools'], env=env)
+        tar = (wrkdir / '.tools/bin/tar').resolve(strict=True)
+    else:
+        tar = args.tar.resolve(strict=True)
 
     # One file at or below every element, plus the GoogleTest main the unit tests use.
     test_main = distname + '/third-party/unittest/UnitTestMain/TestMain.cpp'
@@ -76,7 +80,9 @@ def main():
     if test_main not in members:
         members.append(test_main)
     source = args.work / 'source'
-    for member in members:
+    header = distname + '/libunwind/include/mach-o/compact_unwind_encoding.h'
+    llvm_root = distname + '/llvm/CMakeLists.txt'
+    for member in set(members + [header, llvm_root]):
         path = source / member
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(member + '\n')
@@ -93,7 +99,10 @@ def main():
     missing = [member for member in members if not (output / member).is_file()]
     if missing:
         raise SystemExit('LLD extract left out: ' + ', '.join(missing))
-    print(f'PASS: pkgsrc tar extracts all {len(elements)} LLD elements, including TestMain.cpp')
+    mach_o_header = output / distname / 'llvm/../libunwind/include/mach-o/compact_unwind_encoding.h'
+    if not mach_o_header.is_file():
+        raise SystemExit('LLD LLVM_MAIN_SRC_DIR/../libunwind header is inaccessible')
+    print(f'PASS: pkgsrc tar extracts {len(elements)} LLD elements and MachO header via LLVM_MAIN_SRC_DIR')
 
 
 if __name__ == '__main__':

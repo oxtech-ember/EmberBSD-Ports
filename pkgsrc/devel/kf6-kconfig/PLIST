@@ -46,8 +46,8 @@ include/KF6/KConfigGui/kwindowstatesaver.h
 include/KF6/KConfigQml/KConfigPropertyMap
 include/KF6/KConfigQml/kconfigpropertymap.h
 include/KF6/KConfigQml/kconfigqml_export.h
-lib/cmake/KF6Config/KF6ConfigCompilerTargets-noconfig.cmake
-lib/cmake/KF6Config/KF6ConfigCompilerTargets.cmake
+${PLIST.kconfig_tools}lib/cmake/KF6Config/KF6ConfigCompilerTargets-noconfig.cmake
+${PLIST.kconfig_tools}lib/cmake/KF6Config/KF6ConfigCompilerTargets.cmake
 lib/cmake/KF6Config/KF6ConfigConfig.cmake
 lib/cmake/KF6Config/KF6ConfigConfigVersion.cmake
 lib/cmake/KF6Config/KF6ConfigMacros.cmake
@@ -62,8 +62,8 @@ lib/libKF6ConfigGui.so.${PKGVERSION}
 lib/libKF6ConfigQml.so
 lib/libKF6ConfigQml.so.6
 lib/libKF6ConfigQml.so.${PKGVERSION}
-libexec/kf6/kconf_update
-libexec/kf6/kconfig_compiler_kf6
+${PLIST.kconfig_tools}libexec/kf6/kconf_update
+${PLIST.kconfig_tools}libexec/kf6/kconfig_compiler_kf6
 qt6/metatypes/qt6kf6configcore_metatypes.json
 qt6/metatypes/qt6kf6configgui_metatypes.json
 qt6/qml/org/kde/config/KF6ConfigQml.qmltypes

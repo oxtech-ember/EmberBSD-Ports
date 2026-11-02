@@ -1,0 +1,16 @@
+$NetBSD$
+
+Keep the current shared CSS parser on Syn 3.
+Origin: EmberBSD (AI-assisted).
+
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -36,7 +36,7 @@
+ version = "1.0.29"
+ 
+ [dependencies.syn]
+-version = ">=2,<4"
++version = ">=3,<4"
+ features = [
+     "full",
+     "extra-traits",
