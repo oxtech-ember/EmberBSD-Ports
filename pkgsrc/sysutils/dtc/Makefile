@@ -24,6 +24,8 @@ MAKE_FLAGS+=	PREFIX=${PREFIX}
 MAKE_FLAGS+=	DESTDIR=${DESTDIR}
 MAKE_FLAGS+=	INSTALL=${INSTALL:Q}
 MAKE_FLAGS+=	NO_PYTHON=1
+# The library format follows the selected target OS, not the build host.
+MAKE_FLAGS+=	HOSTOS=${LOWER_OPSYS}
 MAKE_FLAGS+=	TEST_SHELL=${SH:Q}
 
 TEST_TARGET=	check
