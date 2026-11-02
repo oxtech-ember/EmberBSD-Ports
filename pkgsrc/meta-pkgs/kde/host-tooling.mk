@@ -6,6 +6,7 @@
 #
 # used by devel/kf6-kconfig/cross-tools.mk
 # used by devel/kf6-kcmutils/cross-tools.mk
+# used by devel/kf6-kpackage/cross-tools.mk
 # used by security/kf6-kauth/cross-tools.mk
 .if !defined(KDE_CROSS_TOOLING_MK)
 KDE_CROSS_TOOLING_MK=	yes

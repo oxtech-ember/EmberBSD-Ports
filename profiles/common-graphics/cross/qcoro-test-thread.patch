@@ -1,0 +1,10 @@
+Origin: EmberBSD (AI-assisted). Upstream status: not submitted.
+
+--- a/tests/testlibs/testwsserver.cpp
++++ b/tests/testlibs/testwsserver.cpp
+@@ -14,4 +14,5 @@
+ #include <chrono>
+ #include <cstring>
++#include <thread>
+ 
+ using namespace std::chrono_literals;

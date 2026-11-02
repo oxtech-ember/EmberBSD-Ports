@@ -193,27 +193,16 @@ if (defined $shared) {
         or die "absolute Qtbase shared-stage path required\n";
     reject_overlap($stage_root, $shared);
     if (-d $shared) {
-        # Validate the retained full stage before discarding this reinstall's
-        # temporary stage, then reconstruct the runtime package partition.
-        my ($full, $runtime, $devel, $selected) = map { manifest($_) } @lists;
-        my %actual;
-        find({no_chdir => 1, wanted => sub {
-            my $path = $File::Find::name;
-            return if $path eq $shared;
-            my $name = substr($path, length($shared) + 1);
-            if (-l $path || -f $path) { $full->{$name} or die "unlisted retained Qtbase file: $name\n"; $actual{$name}=1 }
-            elsif (!-d $path) { die "unsupported retained Qtbase file: $name\n" }
-        }}, $shared);
-        for my $name (keys %$full) { $actual{$name} or die "missing retained Qtbase file: $name\n" }
-        remove_tree($stage) or die "cannot remove reinstall stage\n";
-        make_path($stage);
-        copy_manifest($shared, $stage, $runtime);
+        # The retained tree is being replaced, so its old manifest need not
+        # match the freshly validated installation.
+        remove_tree($shared) or die "cannot remove old shared stage\n";
     } else {
+        !-e $shared or die "Qtbase shared stage is not a directory\n";
         my $parent = $shared;
         $parent =~ s{/[^/]+$}{};
         make_path($parent) unless -d $parent;
-        rename($stage, $shared) or die "cannot retain complete Qtbase stage: $!\n";
-        make_path($stage);
-        copy_manifest($shared, $stage, $runtime);
     }
+    rename($stage, $shared) or die "cannot retain complete Qtbase stage: $!\n";
+    make_path($stage);
+    copy_manifest($shared, $stage, $runtime);
 }

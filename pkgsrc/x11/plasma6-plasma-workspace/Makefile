@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.7 2026/09/06 10:23:33 markd Exp $
 
 DISTNAME=	plasma-workspace-${PLASMAVER}
-PKGREVISION=	3
+PKGREVISION=	4
 CATEGORIES=	x11
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -126,6 +126,7 @@ CONF_FILES+=	${PREFIX}/share/examples/kde-xdg/plasmanotifyrc \
 .include "../../x11/plasma6-libkscreen/buildlink3.mk"
 
 .include "../../x11/plasma6-union/buildlink3.mk"
+.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../x11/xcb-util-cursor/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
