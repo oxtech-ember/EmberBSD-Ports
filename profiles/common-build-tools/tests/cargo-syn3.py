@@ -78,6 +78,20 @@ struct NotDebug;
     let vector = nalgebra::vector![5i32, 6]; assert_eq!(vector[1], 6);
 }
 '''),
+    'num-derive': ('num-derive = "=0.5.1"\nnum-traits = "=0.2.19"', '''
+use num_derive::{FromPrimitive, ToPrimitive};
+use num_traits::{FromPrimitive as _, ToPrimitive as _};
+
+#[derive(Debug, PartialEq, FromPrimitive, ToPrimitive)]
+#[repr(i32)]
+enum Number { Zero = 0, Seven = 7 }
+
+#[test] fn numeric_conversions() {
+    assert_eq!(Number::from_i32(7), Some(Number::Seven));
+    assert_eq!(Number::from_u32(9), None);
+    assert_eq!(Number::Seven.to_i32(), Some(7));
+}
+'''),
     'zerocopy': ('zerocopy = {version="=0.8.63",features=["derive"]}', '''
 use zerocopy::{FromBytes,IntoBytes,Immutable,KnownLayout};
 #[repr(C)] #[derive(FromBytes,IntoBytes,Immutable,KnownLayout)] struct S{x:u32}
