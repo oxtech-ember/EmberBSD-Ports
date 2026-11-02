@@ -7,6 +7,7 @@ pkgdir = Path(__file__).resolve().parents[1]
 repo = pkgdir.parents[2]
 options = (pkgdir / "options.mk").read_text()
 makefile = (pkgdir / "Makefile").read_text()
+buildlink3 = (pkgdir / "buildlink3.mk").read_text()
 plist = (pkgdir / "PLIST").read_text().splitlines()
 runtime_plist = (pkgdir / "PLIST.runtime").read_text().splitlines()
 declarative = repo / "pkgsrc/lang/qt6-qtdeclarative"
@@ -31,6 +32,8 @@ require("PKG_FAIL_REASON" in block and "host-tools" in block,
         "software-rendering conflicts with host-tools")
 require("-no-feature-testlib" not in block and "-no-gui" not in block,
         "software-rendering retains GUI and TestLib")
+require(re.search(r'\.if empty\(PKG_BUILD_OPTIONS\.qt6-qtbase:Msoftware-rendering\)\s+\.include "\.\./\.\./graphics/glu/buildlink3\.mk"\s+\.endif', buildlink3) is not None,
+        "QtBase buildlink omits GLU only for its installed software-rendering flavor")
 for dep in ("graphics/glu/buildlink3.mk", "graphics/vulkan-headers/buildlink3.mk"):
     pos = makefile.index('.include "../../' + dep + '"')
     guard = makefile.rfind(".if empty(PKG_OPTIONS:Msoftware-rendering)", 0, pos)
