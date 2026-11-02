@@ -83,6 +83,11 @@ The [Connect payload helper](CONNECT-PAYLOAD.md) checks the pinned candidate's
 input identity and encodes its packed reply. Native flags, options, connection
 lifecycle and handler binding remain pending. It does not invoke ConnectKM.
 
+The [native binding plan](NATIVE-BINDING.md) identifies the present barrier:
+the checked OS has no legacy Services provider. It specifies file ownership,
+native copying, option policy and deferred cleanup for the required port.
+The existing Mesa-facing PowerVR driver cannot supply that binding.
+
 ## First graphics result
 
 After the adapter and KMD work, create a native EGL pbuffer and GLES context

@@ -5,6 +5,10 @@ It supplies a checked, non-variadic dispatch core for the future foreign
 ioctl wrapper. It does not replace the foreign `ioctl` import yet.
 No real device handler, file-descriptor registry or memory backend is included.
 
+The [native binding plan](NATIVE-BINDING.md) defines the actual kernel boundary.
+This userspace policy prototype uses libc TLS errno and in-process callbacks.
+It is not kernel-linkable code or an existing Services provider.
+
 ## Call boundary
 
 `pvr_abi_services_ioctl(services, request, argument)` takes trusted native

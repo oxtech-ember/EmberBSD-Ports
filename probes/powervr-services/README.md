@@ -163,4 +163,8 @@ or foreign import binding is supplied yet.
 The [Connect payload helper](CONNECT-PAYLOAD.md) checks candidate identity and
 encodes the 17-byte reply. It does not bind or execute a real Connect handler.
 
+The [native binding plan and implementation barrier](NATIVE-BINDING.md)
+identify the missing Services provider and the real KMD work before graphics.
+Further isolated decoder results do not close that gap.
+
 The original probe sources use the [BSD 2-Clause license](LICENSE).
