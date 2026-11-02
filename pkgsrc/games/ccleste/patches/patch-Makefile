@@ -1,0 +1,50 @@
+$NetBSD: patch-Makefile,v 1.2 2024/05/07 10:13:14 nia Exp $
+
+Honour pkgsrc CFLAGS/LDFLAGS.
+Use sdl2-config --libs to fix cocoa linking on Darwin.
+Add SDL_VER=3: SDL3 and SDL3_mixer through pkg-config (EmberBSD, AI-assisted).
+
+--- Makefile.orig
++++ Makefile
+@@ -2,20 +2,25 @@
+ # set to 1 to use SDL1.2
+ SDL_VER?=2
+ 
++ifeq ($(SDL_VER),3)
++	SDL_CFLAGS=`pkg-config --cflags sdl3 sdl3-mixer` -DCCLESTE_SDL3
++	SDL_LD=$$(pkg-config --libs sdl3 sdl3-mixer)
++else
+ ifeq ($(SDL_VER),2)
+-	SDL_CONFIG=sdl2-config
+-	SDL_LD=-lSDL2 -lSDL2_mixer
++	SDL_CFLAGS=`sdl2-config --cflags`
++	SDL_LD=$$(sdl2-config --libs) -lSDL2_mixer
+ else
+ ifeq ($(SDL_VER),1)
+-	SDL_CONFIG=sdl-config
+-	SDL_LD=-lSDL -lSDL_mixer
++	SDL_CFLAGS=`sdl-config --cflags`
++	SDL_LD=$$(sdl-config --libs) -lSDL_mixer
+ else
+-	SDL_CONFIG=$(error "invalid SDL version '$(SDL_VER)'. possible values are '1' and '2'")
++	SDL_CFLAGS=$(error "invalid SDL version '$(SDL_VER)'. possible values are '1', '2' and '3'")
+ endif
+ endif
++endif
+ 
+-CFLAGS=-Wall -g -O2 `$(SDL_CONFIG) --cflags`
+-LDFLAGS=$(SDL_LD)
++CFLAGS+=-std=c99 -Wall $(SDL_CFLAGS)
++LDFLAGS+=$(SDL_LD)
+ CELESTE_CC=$(CC)
+ 
+ ifneq ($(USE_FIXEDP),)
+@@ -35,7 +40,7 @@
+ 
+ all: $(OUT)
+ 
+-$(OUT): sdl12main.c $(CELESTE_OBJ) celeste.h sdl20compat.inc.c
++$(OUT): sdl12main.c $(CELESTE_OBJ) celeste.h sdl20compat.inc.c sdl30compat.inc.c
+ 	$(CC) $(CFLAGS) sdl12main.c $(CELESTE_OBJ) -o $(OUT) $(LDFLAGS)
+ 
+ $(CELESTE_OBJ): celeste.c celeste.h

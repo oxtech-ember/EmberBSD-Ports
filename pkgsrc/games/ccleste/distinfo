@@ -1,0 +1,7 @@
+$NetBSD: distinfo,v 1.2 2024/05/07 10:13:14 nia Exp $
+
+BLAKE2s (ccleste-1.4.0.tar.gz) = 0522734715f088f954605dac66007a62c896878ec398f07a5bd771c4c96be08e
+SHA512 (ccleste-1.4.0.tar.gz) = 29b4e052dee7dfb1fed2cfbeebc7d76b5a199b62360e59441844fa2295e1772afd0fd7a572b78e25573e7c176f27be6c8e22836b02d00938aa7e20bc589da926
+Size (ccleste-1.4.0.tar.gz) = 1537733 bytes
+SHA1 (patch-Makefile) = 76fbe5a6475399dd379f23dc90e7f7ab39b5ba6b
+SHA1 (patch-sdl12main.c) = 8496cc53a9c81bbfc89fba06922fc8e5cc37f0d3
