@@ -1,0 +1,56 @@
+Cross apache24 modules configure with a build-host apxs.
+
+Apache module packages configure with --with-apxs2=APXS, and the apache24
+buildlink3.mk names the installed apxs. In a cross build that is the
+target's apxs under the target prefix, which the build host does not have,
+so ap-php's configure stopped with "Aborting" after Error code 127.
+
+Before configure, write a copy of apxs that runs with the build host's
+perl and reads a copy of config_vars.mk naming the sysroot httpd and the
+build-host apr-1-config and apu-1-config that the apr and apr-util
+buildlink3.mk files prepare. The copy lives outside any .../bin of the
+prefix, so apxs does not prepend a cross base directory to the paths it
+reads. Include bsd.fast.prefs.mk so that USE_CROSS_COMPILE is known.
+
+Native builds are unchanged.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/www/apache24/buildlink3.mk
++++ b/www/apache24/buildlink3.mk
+@@ -18,7 +18,36 @@
+ USE_TOOLS+=		perl			# for "apxs"
+ CONFIGURE_ENV+=		APR_LIBTOOL=${LIBTOOL:Q}	# make apxs use the libtool we specify
+ MAKE_ENV+=		APR_LIBTOOL=${LIBTOOL:Q}
++.include "../../mk/bsd.fast.prefs.mk"
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# The installed apxs and its config_vars.mk are the target's, under the
++# target prefix that the build host does not have. Run a copy of apxs with
++# the build host's perl that reads a copy of config_vars.mk naming the
++# sysroot httpd and the build-host apr-1-config and apu-1-config. The copy
++# is outside any .../bin of the prefix, so apxs adds no cross base
++# directory, and the compiler wrappers map the target include directories.
++_APACHE_CROSS_DIR=	${WRKDIR}/.apache-cross
++_APACHE_CROSS_PREFIX=	${_CROSS_DESTDIR}${BUILDLINK_PREFIX.apache}
++_APACHE_CROSS_VARS=	${BUILDLINK_PREFIX.apache}/share/httpd/build/config_vars.mk
++APXS=			${_APACHE_CROSS_DIR}/apxs
++
++pre-configure: apache-cross-apxs
++
++.PHONY: apache-cross-apxs
++apache-cross-apxs:
++	${RUN}${MKDIR} ${_APACHE_CROSS_DIR}
++	${RUN}${SED} -e 's,^sbindir = .*,sbindir = ${_APACHE_CROSS_PREFIX}/sbin,' \
++		-e 's,^APR_CONFIG = .*,APR_CONFIG = ${APR_CONFIG},' \
++		-e 's,^APU_CONFIG = .*,APU_CONFIG = ${APU_CONFIG},' \
++		${_CROSS_DESTDIR}${_APACHE_CROSS_VARS} > ${_APACHE_CROSS_DIR}/config_vars.mk
++	${RUN}${SED} -e '1s,^#!.*perl,#!${TOOLS_PATH.perl},' \
++		-e 's,^my $$installbuilddir = .*,my $$installbuilddir = "${_APACHE_CROSS_DIR}";,' \
++		${_APACHE_CROSS_PREFIX}/bin/apxs > ${APXS}.tmp
++	${RUN}${CHMOD} +x ${APXS}.tmp
++	${RUN}${MV} -f ${APXS}.tmp ${APXS}
++.else
+ APXS?=			${BUILDLINK_PREFIX.apache}/bin/apxs
++.endif
+ .if defined(GNU_CONFIGURE) && ${GNU_CONFIGURE_APXS2:Uyes} == yes
+ CONFIGURE_ARGS+=	${CONFIGURE_ARGS.apache:U--with-apxs2=${APXS:Q}}
+ .endif
