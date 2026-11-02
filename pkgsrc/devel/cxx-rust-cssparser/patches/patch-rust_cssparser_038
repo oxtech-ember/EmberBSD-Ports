@@ -1,0 +1,737 @@
+$NetBSD$
+
+Adapt this consumer to the current shared cssparser/selectors APIs.
+Preserve parser-provided error locations and existing error categories.
+Origin: EmberBSD (AI-assisted).
+--- rust/src/details/mod.rs.orig
++++ rust/src/details/mod.rs
+@@ -9,11 +9,11 @@
+ 
+ use crate::parseerror::{ParseError, ParseErrorKind, SourceLocation};
+ 
+-pub fn parse_error<'i, 't, R>(parser: &cssparser::Parser<'i, 't>, kind: ParseErrorKind, message: String) -> Result<R, cssparser::ParseError<'i, ParseError>> {
+-    Err(parser.new_custom_error(ParseError{ kind, message, location: SourceLocation::from_file_location(parser.current_source_url().unwrap_or("").to_string(), parser.current_source_location())}))
++pub fn parse_error<'i, R>(parser: &cssparser::Parser<'i>, kind: ParseErrorKind, message: String) -> Result<R, cssparser::ParseError<ParseError>> {
++    Err(cssparser::ParseError::custom(ParseError{ kind, message, location: SourceLocation::from_file_location(parser.current_source_url().unwrap_or("").to_string(), parser.current_source_location())}))
+ }
+ 
+-pub fn unwrap_parse_error<'i, 't, R>(error: &'t Result<R, cssparser::ParseError<'i, ParseError>>) -> Option<&'t ParseError> {
++pub fn unwrap_parse_error<'t, R>(error: &'t Result<R, cssparser::ParseError<ParseError>>) -> Option<&'t ParseError> {
+     if let Err(parse_error) = error {
+         if let cssparser::ParseErrorKind::Custom(custom_error) = &parse_error.kind {
+             Some(custom_error)
+@@ -25,44 +25,111 @@
+     }
+ }
+ 
+-pub(crate) fn parse_error_from_cssparser_error<'i, E>(value: &cssparser::ParseError<'i, E>, file: String) -> ParseError
+-where E: ToParseError,
++pub(crate) fn parse_error_from_cssparser_error<E>(
++    value: &cssparser::ParseError<E>,
++    file: String,
++    input: &str,
++    location: cssparser::SourceLocation,
++) -> ParseError
++where
++    E: ToParseError,
+ {
+     match &value.kind {
+-        cssparser::ParseErrorKind::Basic(basic_error) => basic_error.to_parse_error(file, value.location),
+-        cssparser::ParseErrorKind::Custom(custom_error) => custom_error.to_parse_error(file, value.location),
++        cssparser::ParseErrorKind::Basic(basic_error) => {
++            basic_error.to_parse_error(file, input, location)
++        }
++        cssparser::ParseErrorKind::Custom(custom_error) => {
++            custom_error.to_parse_error(file, input, location)
++        }
++    }
++}
++
++#[derive(Debug)]
++pub enum SelectorParserError {
++    Custom(ParseError),
++    Grammar(selectors::parser::SelectorParseErrorKind),
++}
++
++impl From<selectors::parser::SelectorParseErrorKind> for SelectorParserError {
++    fn from(error: selectors::parser::SelectorParseErrorKind) -> Self {
++        Self::Grammar(error)
+     }
+ }
+ 
+ pub(crate) trait ToParseError {
+-    fn to_parse_error(&self, file: String, location: cssparser::SourceLocation) -> ParseError;
++    fn to_parse_error(
++        &self,
++        file: String,
++        input: &str,
++        location: cssparser::SourceLocation,
++    ) -> ParseError;
++}
++
++impl ToParseError for cssparser::BasicParseErrorKind {
++    fn to_parse_error(
++        &self,
++        file: String,
++        _input: &str,
++        location: cssparser::SourceLocation,
++    ) -> ParseError {
++        let location = SourceLocation::from_file_location(file, location);
++        match self {
++            cssparser::BasicParseErrorKind::UnexpectedToken => ParseError {
++                kind: ParseErrorKind::UnexpectedToken,
++                message: String::from("Unexpected token"),
++                location,
++            },
++            cssparser::BasicParseErrorKind::EndOfInput => ParseError {
++                kind: ParseErrorKind::UnexpectedEndOfInput,
++                message: String::new(),
++                location,
++            },
++            cssparser::BasicParseErrorKind::AtRuleInvalid => ParseError {
++                kind: ParseErrorKind::InvalidAtRule,
++                message: String::from("Invalid @-rule"),
++                location,
++            },
++            cssparser::BasicParseErrorKind::AtRuleBodyInvalid => ParseError {
++                kind: ParseErrorKind::InvalidAtRule,
++                message: String::from("Invalid @-rule body"),
++                location,
++            },
++            cssparser::BasicParseErrorKind::QualifiedRuleInvalid
++            | cssparser::BasicParseErrorKind::TooManyNestedBlocks => ParseError {
++                kind: ParseErrorKind::InvalidQualifiedRule,
++                message: String::new(),
++                location,
++            },
++        }
++    }
+ }
+ 
+ impl ToParseError for ParseError {
+-    fn to_parse_error(&self, _file: String, _location: cssparser::SourceLocation) -> ParseError {
++    fn to_parse_error(&self, _file: String, _input: &str, _location: cssparser::SourceLocation) -> ParseError {
+         self.clone()
+     }
+ }
+ 
+-impl ToParseError for cssparser::BasicParseErrorKind<'_> {
+-    fn to_parse_error(&self, file: String, location: cssparser::SourceLocation) -> ParseError {
+-        let location = SourceLocation::from_file_location(file, location);
++impl ToParseError for SelectorParserError {
++    fn to_parse_error(
++        &self,
++        file: String,
++        input: &str,
++        location: cssparser::SourceLocation,
++    ) -> ParseError {
+         match self {
+-            cssparser::BasicParseErrorKind::UnexpectedToken(token) => ParseError{ kind: ParseErrorKind::UnexpectedToken, message: format!("{:?}", token), location },
+-            cssparser::BasicParseErrorKind::EndOfInput => ParseError{ kind: ParseErrorKind::UnexpectedEndOfInput, message: String::new(), location },
+-            cssparser::BasicParseErrorKind::AtRuleInvalid(at_rule) => ParseError{ kind: ParseErrorKind::InvalidAtRule, message: at_rule.to_string(), location },
+-            cssparser::BasicParseErrorKind::AtRuleBodyInvalid => ParseError{ kind: ParseErrorKind::InvalidAtRule, message: String::from("Invalid @-rule body"), location },
+-            cssparser::BasicParseErrorKind::QualifiedRuleInvalid => ParseError{ kind:ParseErrorKind::InvalidQualifiedRule, message: String::new(), location },
++            Self::Custom(error) => error.clone(),
++            Self::Grammar(error) => error.to_parse_error(file, input, location),
+         }
+     }
+ }
+ 
+-impl ToParseError for selectors::parser::SelectorParseErrorKind<'_>
++impl ToParseError for selectors::parser::SelectorParseErrorKind
+ {
+-    fn to_parse_error(&self, file: String, location: cssparser::SourceLocation) -> ParseError {
++    fn to_parse_error(&self, file: String, _input: &str, location: cssparser::SourceLocation) -> ParseError {
+         let location = SourceLocation::from_file_location(file, location);
+         match self {
+-            selectors::parser::SelectorParseErrorKind::NoQualifiedNameInAttributeSelector(_) =>
++            selectors::parser::SelectorParseErrorKind::NoQualifiedNameInAttributeSelector =>
+                 ParseError{ kind: ParseErrorKind::InvalidSelectors, message: String::from("No qualified name in attribute selector"), location },
+             selectors::parser::SelectorParseErrorKind::EmptySelector => ParseError{ kind: ParseErrorKind::InvalidSelectors, message: String::from("Empty Selector"), location },
+             selectors::parser::SelectorParseErrorKind::DanglingCombinator => ParseError{ kind: ParseErrorKind::InvalidSelectors, message: String::from("Dangling Combinator"), location },
+--- rust/src/details/property/value.rs.orig
++++ rust/src/details/property/value.rs
+@@ -26,9 +26,9 @@
+     }
+ }
+ 
+-type ParseValueComponentResult<'i> = Result<Value, cssparser::ParseError<'i, ParseError>>;
++type ParseValueComponentResult = Result<Value, cssparser::ParseError<ParseError>>;
+ 
+-fn parse_dimension<'i, 't>(parser: &mut cssparser::Parser<'i, 't>) -> ParseValueComponentResult<'i> {
++fn parse_dimension<'i>(parser: &mut cssparser::Parser<'i>) -> ParseValueComponentResult {
+     let token = parser.next()?.clone();
+     match token {
+         cssparser::Token::Dimension{has_sign: _, value, int_value: _, unit: unit_string} => {
+@@ -49,18 +49,18 @@
+     }
+ }
+ 
+-fn parse_color<'i, 't>(parser: &mut cssparser::Parser<'i, 't>) -> ParseValueComponentResult<'i> {
++fn parse_color<'i>(parser: &mut cssparser::Parser<'i>) -> ParseValueComponentResult {
+     let color_result = cssparser_color::Color::parse(parser);
+ 
+     if let Ok(color) = color_result {
+         match color {
+             cssparser_color::Color::Rgba(rgba) => return Ok(Value::from(Color::from((rgba.red, rgba.green, rgba.blue, rgba.alpha)))),
+             cssparser_color::Color::Hsl(hsl) => {
+-                let rgb = cssparser_color::hsl_to_rgb(hsl.hue.unwrap_or(0.0), hsl.saturation.unwrap_or(0.0), hsl.lightness.unwrap_or(0.0));
++                let rgb = cssparser_color::hsl_to_rgb(hsl.hue.unwrap_or(0.0).rem_euclid(360.0) / 360.0, hsl.saturation.unwrap_or(0.0), hsl.lightness.unwrap_or(0.0));
+                 return Ok(Value::from(Color::from((rgb.0, rgb.1, rgb.2, hsl.alpha.unwrap_or(1.0)))))
+             }
+             cssparser_color::Color::Hwb(hwb) => {
+-                let rgb = cssparser_color::hwb_to_rgb(hwb.hue.unwrap_or(0.0), hwb.whiteness.unwrap_or(0.0), hwb.blackness.unwrap_or(0.0));
++                let rgb = cssparser_color::hwb_to_rgb(hwb.hue.unwrap_or(0.0).rem_euclid(360.0) / 360.0, hwb.whiteness.unwrap_or(0.0), hwb.blackness.unwrap_or(0.0));
+                 return Ok(Value::from(Color::from((rgb.0, rgb.1, rgb.2, hwb.alpha.unwrap_or(1.0)))))
+             }
+             _ => (),
+@@ -70,17 +70,17 @@
+     parse_error(parser, ParseErrorKind::InvalidPropertyValue, format!("Input could not be parsed as color"))
+ }
+ 
+-fn parse_number<'i, 't>(parser: &mut cssparser::Parser<'i, 't>) -> ParseValueComponentResult<'i> {
++fn parse_number<'i>(parser: &mut cssparser::Parser<'i>) -> ParseValueComponentResult {
+     let number = parser.expect_number()?;
+     Ok(Value::from(number))
+ }
+ 
+-fn parse_integer<'i, 't>(parser: &mut cssparser::Parser<'i, 't>) -> ParseValueComponentResult<'i> {
++fn parse_integer<'i>(parser: &mut cssparser::Parser<'i>) -> ParseValueComponentResult {
+     let integer = parser.expect_integer()?;
+     Ok(Value::from(integer))
+ }
+ 
+-fn parse_string<'i, 't>(parser: &mut cssparser::Parser<'i, 't>) -> ParseValueComponentResult<'i> {
++fn parse_string<'i>(parser: &mut cssparser::Parser<'i>) -> ParseValueComponentResult {
+     let token = parser.next()?.clone();
+     match token {
+         cssparser::Token::Ident(value) => {
+@@ -95,12 +95,12 @@
+     }
+ }
+ 
+-fn parse_url<'i, 't>(parser: &mut cssparser::Parser<'i, 't>) -> ParseValueComponentResult<'i> {
++fn parse_url<'i>(parser: &mut cssparser::Parser<'i>) -> ParseValueComponentResult {
+     let url = parser.expect_url()?;
+     return Ok(Value::new_url(url.as_ref()));
+ }
+ 
+-fn parse_function<'i, 't>(parser: &mut cssparser::Parser<'i, 't>) -> Result<Vec<Value>, cssparser::ParseError<'i, ParseError>> {
++fn parse_function<'i>(parser: &mut cssparser::Parser<'i>) -> Result<Vec<Value>, cssparser::ParseError<ParseError>> {
+     let function_name = parser.expect_function()?.to_string();
+ 
+     if let Some(func) = property_function(function_name.as_ref()) {
+@@ -117,8 +117,8 @@
+     }
+ }
+ 
+-fn parse_value_component<'i, 't>(parser: &mut cssparser::Parser<'i, 't>) -> Result<Vec<Value>, cssparser::ParseError<'i, ParseError>> {
+-    const PARSE_FUNCTIONS: [for<'i, 't> fn(&mut cssparser::Parser<'i, 't>) -> ParseValueComponentResult<'i>; 6] = [
++fn parse_value_component<'i>(parser: &mut cssparser::Parser<'i>) -> Result<Vec<Value>, cssparser::ParseError<ParseError>> {
++    const PARSE_FUNCTIONS: [for<'i> fn(&mut cssparser::Parser<'i>) -> ParseValueComponentResult; 6] = [
+         parse_integer,
+         parse_number,
+         parse_color,
+@@ -143,7 +143,7 @@
+     parse_error(parser, ParseErrorKind::InvalidPropertyValue, String::from("Could not parse input"))
+ }
+ 
+-pub fn parse_values<'i, 't>(syntax: &ParsedPropertySyntax, parser: &mut cssparser::Parser<'i, 't>) -> Result<Vec<Value>, cssparser::ParseError<'i, ParseError>> {
++pub fn parse_values<'i>(syntax: &ParsedPropertySyntax, parser: &mut cssparser::Parser<'i>) -> Result<Vec<Value>, cssparser::ParseError<ParseError>> {
+     let result = parser.parse_until_before(cssparser::Delimiter::Bang, |parser| {
+         let mut values: Vec<Value> = Vec::new();
+         let mut comma_separated = false;
+@@ -153,7 +153,17 @@
+             if let Ok(parsed_values) = result {
+                 values.extend(parsed_values);
+             } else {
+-                return Err(result.err().unwrap());
++                let error = result.err().unwrap();
++                if matches!(&error.kind, cssparser::ParseErrorKind::Basic(_)) {
++                    let error = crate::details::parse_error_from_cssparser_error(
++                        &error,
++                        parser.current_source_url().unwrap_or("").to_string(),
++                        "",
++                        parser.current_source_location(),
++                    );
++                    return Err(cssparser::ParseError::custom(error));
++                }
++                return Err(error);
+             }
+ 
+             if let Ok(_) = parser.try_parse(|parser| { parser.expect_comma() }) {
+@@ -175,7 +185,7 @@
+         if let Ok(_) = validation_result {
+             Ok(values.into())
+         } else {
+-            Err(parser.new_custom_error(validation_result.unwrap_err()))
++            Err(cssparser::ParseError::custom(validation_result.unwrap_err()))
+         }
+     } else {
+         Err(result.err().unwrap())
+--- rust/src/details/property/function.rs.orig
++++ rust/src/details/property/function.rs
+@@ -12,8 +12,8 @@
+ use super::syntax::{ParsedPropertySyntax, parse_syntax};
+ use super::value::parse_values;
+ 
+-pub type PropertyFunctionResult<'i> = Result<Vec<Value>, cssparser::ParseError<'i, ParseError>>;
+-pub type PropertyFunction = for <'a, 'i, 't> fn(&'a mut cssparser::Parser<'i, 't>) -> PropertyFunctionResult<'i>;
++pub type PropertyFunctionResult = Result<Vec<Value>, cssparser::ParseError<ParseError>>;
++pub type PropertyFunction = for <'i> fn(&mut cssparser::Parser<'i>) -> PropertyFunctionResult;
+ 
+ fn property_functions() -> &'static RwLock<HashMap<String, PropertyFunction>> {
+     static FUNCTIONS: OnceLock<RwLock<HashMap<String, PropertyFunction>>> = OnceLock::new();
+@@ -51,17 +51,17 @@
+ }
+ 
+ // Helper function to parse function arguments based on a CSS property syntax
+-fn parse_arguments<'i, 't>(syntax: &str, parser: &mut cssparser::Parser<'i, 't>) -> PropertyFunctionResult<'i> {
++fn parse_arguments<'i>(syntax: &str, parser: &mut cssparser::Parser<'i>) -> PropertyFunctionResult {
+     let syntax_result = parse_syntax(syntax, SourceLocation::from_file("inline"));
+     if let Err(error) = syntax_result {
+-        return Err(parser.new_custom_error(error));
++        return Err(cssparser::ParseError::custom(error));
+     }
+ 
+     parse_values(syntax_result.as_ref().unwrap(), parser)
+ }
+ 
+ // Parse `var(<custom-property-name>, <declaration-value>?)`
+-fn var<'i, 't>(parser: &mut cssparser::Parser<'i, 't>) -> PropertyFunctionResult<'i> {
++fn var<'i>(parser: &mut cssparser::Parser<'i>) -> PropertyFunctionResult {
+     let var_name = parser.expect_ident()?.to_string();
+     let property_definition = property_definition(var_name.as_str());
+     if let Some(definition) = property_definition {
+@@ -77,7 +77,7 @@
+ }
+ 
+ // Parse `mix(<color>, <color>, <number>)`
+-fn mix<'i, 't>(parser: &mut cssparser::Parser<'i, 't>) -> PropertyFunctionResult<'i> {
++fn mix<'i>(parser: &mut cssparser::Parser<'i>) -> PropertyFunctionResult {
+     let values = parse_arguments("<color>, <color>, <number>", parser)?;
+ 
+     let first_color: Color = values[0].clone().into();
+@@ -90,7 +90,7 @@
+ }
+ 
+ // Parse `custom-color(<string>, <string>#)`
+-fn custom_color<'i, 't>(parser: &mut cssparser::Parser<'i, 't>) -> PropertyFunctionResult<'i> {
++fn custom_color<'i>(parser: &mut cssparser::Parser<'i>) -> PropertyFunctionResult {
+     let values = parse_arguments("<string>, <string>#", parser)?;
+ 
+     let (source, args) = values.split_first().unwrap();
+@@ -101,7 +101,7 @@
+ }
+ 
+ // Parse `modify-color(<color> (add | subtract | multiply | set-alpha) (<color> | <number>))
+-fn modify_color<'i, 't>(parser: &mut cssparser::Parser<'i, 't>) -> PropertyFunctionResult<'i> {
++fn modify_color<'i>(parser: &mut cssparser::Parser<'i>) -> PropertyFunctionResult {
+     let values = parse_arguments("<color> (((add | subtract | multiply) <color>) | (set-alpha <number>))", parser)?;
+     let color: Color = values[0].clone().into();
+     let operation: String = values[1].to_string();
+--- rust/src/details/property/definitionparser.rs.orig
++++ rust/src/details/property/definitionparser.rs
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL
+ // SPDX-FileCopyrightText: 2025 Arjen Hiemstra <ahiemstra@heimr.nl>
+ 
+-use crate::details::{parse_error, ParseError, ParseErrorKind, SourceLocation};
++use crate::details::{parse_error, parse_error_from_cssparser_error, ParseError, ParseErrorKind, SourceLocation};
+ 
+ use super::syntax::{parse_syntax, ParsedPropertySyntax};
+ use super::value::parse_values;
+@@ -30,7 +30,7 @@
+     type Declaration = ();
+     type Error = ParseError;
+ 
+-    fn parse_value<'t>(&mut self, name: cssparser::CowRcStr<'i>, input: &mut cssparser::Parser<'i, 't>, _state: &cssparser::ParserState) -> Result<Self::Declaration, cssparser::ParseError<'i, Self::Error>> {
++    fn parse_value(&mut self, name: cssparser::CowRcStr<'i>, input: &mut cssparser::Parser<'i>, _state: &cssparser::ParserState) -> Result<Self::Declaration, cssparser::ParseError<Self::Error>> {
+         match name.to_lowercase().as_str() {
+             "syntax" => {
+                 let location = SourceLocation::from_file_location(input.current_source_url().unwrap_or("").to_string(), input.current_source_location());
+@@ -113,19 +113,26 @@
+     }
+ }
+ 
+-pub fn parse_property_definition<'i, 't>(
+-    input: &mut cssparser::Parser<'i, 't>,
++pub fn parse_property_definition<'i>(
++    input: &mut cssparser::Parser<'i>,
+     name: String,
+-) -> Result<PropertyDefinition, cssparser::ParseError<'i, ParseError>> {
++) -> Result<PropertyDefinition, cssparser::ParseError<ParseError>> {
+     let mut parser = PropertyDefinitionParser{
+         definition: PropertyDefinition::empty(),
+     };
+     parser.definition.name = name;
++    let source_file = input.current_source_url().unwrap_or("").to_string();
+     let mut rule_parser = cssparser::RuleBodyParser::new(input, &mut parser);
+ 
+     while let Some(item) = rule_parser.next() {
+-        if let Err(error) = item {
+-            return Err(error.0)
++        if let Err((error, input_slice, location)) = item {
++            let error = parse_error_from_cssparser_error(
++                &error,
++                source_file.clone(),
++                input_slice,
++                location,
++            );
++            return Err(cssparser::ParseError::custom(error));
+         }
+     }
+ 
+--- rust/src/details/selectorparser.rs.orig
++++ rust/src/details/selectorparser.rs
+@@ -5,7 +5,7 @@
+ use crate::selector::{AttributeOperator, Selector, SelectorKind, SelectorPart, SelectorValue};
+ use crate::value::Value;
+ 
+-use crate::details::parse_error_from_cssparser_error;
++use crate::details::{parse_error_from_cssparser_error, SelectorParserError};
+ use crate::details::identifier::Identifier;
+ 
+ use selectors::SelectorList;
+@@ -14,7 +14,6 @@
+ pub struct PseudoElement(String);
+ 
+ impl selectors::parser::PseudoElement for PseudoElement {
+-    type Impl = SelectorImpl;
+ }
+ 
+ impl cssparser::ToCss for PseudoElement {
+@@ -29,7 +28,6 @@
+ pub struct PseudoClass(String);
+ 
+ impl selectors::parser::NonTSPseudoClass for PseudoClass {
+-    type Impl = SelectorImpl;
+ 
+     fn is_active_or_hover(&self) -> bool {
+         return false;
+@@ -41,7 +39,7 @@
+ 
+     fn visit<V>(&self, _visitor: &mut V) -> bool
+     where
+-        V: selectors::parser::SelectorVisitor<Impl = Self::Impl>, {
++        V: selectors::parser::SelectorVisitor, {
+         return true;
+     }
+ }
+@@ -80,8 +78,21 @@
+ 
+ pub struct SelectorParser;
+ 
++fn basic_selector_error(
++    parser: &cssparser::Parser<'_>,
++    error: cssparser::BasicParseError,
++) -> cssparser::ParseError<SelectorParserError> {
++    let error: cssparser::ParseError<SelectorParserError> = error.into();
++    cssparser::ParseError::custom(SelectorParserError::Custom(parse_error_from_cssparser_error(
++        &error,
++        parser.current_source_url().unwrap_or("").to_string(),
++        "",
++        parser.current_source_location(),
++    )))
++}
++
+ impl SelectorParser {
+-    pub fn parse<'i, 't>(&self, parser: &mut cssparser::Parser<'i, 't>, relative: ParseRelative) -> Result<Vec<Selector>, cssparser::ParseError<'i, ParseError>> {
++    pub fn parse<'i>(&self, parser: &mut cssparser::Parser<'i>, relative: ParseRelative) -> Result<Vec<Selector>, cssparser::ParseError<ParseError>> {
+         let relative_selectors = match relative {
+             ParseRelative::No => selectors::parser::ParseRelative::No,
+             ParseRelative::Nested => selectors::parser::ParseRelative::ForNesting,
+@@ -89,7 +100,7 @@
+         let result = SelectorList::parse(self, parser, relative_selectors);
+ 
+         if let Err(error) = result {
+-            return Err(parser.new_custom_error(parse_error_from_cssparser_error(&error, parser.current_source_url().unwrap_or("").to_string())))
++            return Err(cssparser::ParseError::custom(parse_error_from_cssparser_error(&error, parser.current_source_url().unwrap_or("").to_string(), "", parser.current_source_location())))
+         }
+ 
+         let mut selectors = Vec::new();
+@@ -171,35 +182,46 @@
+ 
+ impl <'i> ::selectors::Parser<'i> for SelectorParser {
+     type Impl = SelectorImpl;
+-    type Error = ::selectors::parser::SelectorParseErrorKind<'i>;
++    type Error = SelectorParserError;
+ 
+     fn parse_non_ts_pseudo_class(
+         &self,
+-        _location: cssparser::SourceLocation,
+-        name: cssparser::CowRcStr<'i>,
+-    ) -> Result<<Self::Impl as selectors::SelectorImpl>::NonTSPseudoClass, cssparser::ParseError<'i, Self::Error>> {
++        name: &str,
++    ) -> Result<<Self::Impl as selectors::SelectorImpl>::NonTSPseudoClass, cssparser::ParseError<Self::Error>> {
+         Ok(PseudoClass(name.to_string()))
+     }
+ 
+-    fn parse_non_ts_functional_pseudo_class<'t>(
++    fn parse_non_ts_functional_pseudo_class(
+         &self,
+-        name: cssparser::CowRcStr<'i>,
+-        parser: &mut cssparser::Parser<'i, 't>,
++        name: &str,
++        parser: &mut cssparser::Parser<'i>,
+         _after_part: bool,
+-    ) -> Result<<Self::Impl as selectors::SelectorImpl>::NonTSPseudoClass, cssparser::ParseError<'i, Self::Error>> {
++    ) -> Result<<Self::Impl as selectors::SelectorImpl>::NonTSPseudoClass, cssparser::ParseError<Self::Error>> {
+         if name == "state" {
+-            let state_name = parser.expect_ident()?;
+-            Ok(PseudoClass(state_name.to_string()))
++            let state_name = match parser.expect_ident() {
++                Ok(state_name) => state_name.to_string(),
++                Err(error) => return Err(basic_selector_error(parser, error)),
++            };
++            if let Err(error) = parser.expect_exhausted() {
++                return Err(basic_selector_error(parser, error));
++            }
++            Ok(PseudoClass(state_name))
+         } else {
+-            Err(parser.new_custom_error(selectors::parser::SelectorParseErrorKind::UnsupportedPseudoClassOrElement(name)))
++            Err(cssparser::ParseError::custom(SelectorParserError::Custom(ParseError {
++                kind: crate::parseerror::ParseErrorKind::InvalidSelectors,
++                message: format!("Unsupported pseudo-class or element {}", name),
++                location: crate::parseerror::SourceLocation::from_file_location(
++                    parser.current_source_url().unwrap_or("").to_string(),
++                    parser.current_source_location(),
++                ),
++            })))
+         }
+     }
+ 
+     fn parse_pseudo_element(
+         &self,
+-       _location: cssparser::SourceLocation,
+-        name: cssparser::CowRcStr<'i>,
+-    ) -> Result<<Self::Impl as selectors::SelectorImpl>::PseudoElement, cssparser::ParseError<'i, Self::Error>> {
++        name: &str,
++    ) -> Result<<Self::Impl as selectors::SelectorImpl>::PseudoElement, cssparser::ParseError<Self::Error>> {
+         Ok(PseudoElement(name.to_string()))
+     }
+ 
+--- rust/src/details/rulesparser.rs.orig
++++ rust/src/details/rulesparser.rs
+@@ -46,15 +46,25 @@
+     type QualifiedRule = ParseResult;
+     type Error = ParseError;
+ 
+-    fn parse_prelude<'t>(&mut self, parser: &mut cssparser::Parser<'i, 't>) -> Result<Self::Prelude, cssparser::ParseError<'i, Self::Error>> {
++    fn parse_prelude(&mut self, parser: &mut cssparser::Parser<'i>) -> Result<Self::Prelude, cssparser::ParseError<Self::Error>> {
+         let selector_parser = SelectorParser{};
+         let relative = if TOP_LEVEL { ParseRelative::No } else { ParseRelative::Nested };
+         let result = selector_parser.parse(parser, relative);
+         match result {
+             Ok(selectors) => Ok(selectors),
+             Err(error) => {
+-                if let cssparser::ParseErrorKind::Custom(error) = error.kind {
+-                    parse_error(parser, ParseErrorKind::InvalidSelectors, format!("Invalid Selectors: {}", error.message))
++                if matches!(&error.kind, cssparser::ParseErrorKind::Custom(_)) {
++                    let error = super::parse_error_from_cssparser_error(
++                        &error,
++                        parser.current_source_url().unwrap_or("").to_string(),
++                        "",
++                        parser.current_source_location(),
++                    );
++                    Err(cssparser::ParseError::custom(ParseError {
++                        kind: ParseErrorKind::InvalidSelectors,
++                        message: format!("Invalid Selectors: {}", error.message),
++                        location: error.location,
++                    }))
+                 } else {
+                     Err(error)
+                 }
+@@ -62,12 +72,13 @@
+         }
+     }
+ 
+-    fn parse_block<'t>(
++    fn parse_block(
+         &mut self,
+         prelude: Self::Prelude,
+         _location: &cssparser::ParserState,
+-        parser: &mut cssparser::Parser<'i, 't>) -> Result<Self::QualifiedRule, cssparser::ParseError<'i, Self::Error>>
++        parser: &mut cssparser::Parser<'i>) -> Result<Self::QualifiedRule, cssparser::ParseError<Self::Error>>
+     {
++        let source_file = parser.current_source_url().unwrap_or("").to_string();
+         let mut nested_parser = NestedParser{};
+         let mut body_parser = RuleBodyParser::<NestedParser, Self::QualifiedRule, Self::Error>::new(parser, &mut nested_parser);
+ 
+@@ -84,7 +95,11 @@
+                     ParseResult::Import(_) => return parse_error(parser, ParseErrorKind::UnsupportedAtRule, String::from("@import can only be used at top level")),
+                 }
+             } else {
+-                return Err(entry.unwrap_err().0)
++                let (error, input, location) = entry.unwrap_err();
++                let error = super::parse_error_from_cssparser_error(
++                    &error, source_file.clone(), input, location,
++                );
++                return Err(cssparser::ParseError::custom(error));
+             }
+         }
+ 
+@@ -101,11 +116,11 @@
+     type AtRule = ParseResult;
+     type Error = ParseError;
+ 
+-    fn parse_prelude<'t>(
++    fn parse_prelude(
+         &mut self,
+         name: CowRcStr<'i>,
+-        input: &mut cssparser::Parser<'i, 't>,
+-    ) -> Result<Self::Prelude, cssparser::ParseError<'i, Self::Error>> {
++        input: &mut cssparser::Parser<'i>,
++    ) -> Result<Self::Prelude, cssparser::ParseError<Self::Error>> {
+         let name_string = name.to_string();
+         match name_string.as_str() {
+             "property" => {
+@@ -119,18 +134,33 @@
+         }
+     }
+ 
+-    fn parse_block<'t>(
++    fn parse_block(
+         &mut self,
+         prelude: Self::Prelude,
+         _start: &cssparser::ParserState,
+-        input: &mut cssparser::Parser<'i, 't>,
+-    ) -> Result<Self::AtRule, cssparser::ParseError<'i, Self::Error>> {
++        input: &mut cssparser::Parser<'i>,
++    ) -> Result<Self::AtRule, cssparser::ParseError<Self::Error>> {
+         match prelude {
+             AtRulePrelude::Property(name) => {
+                 let result = parse_property_definition(input, name.to_string());
+                 match result {
+                     Ok(definition) => return Ok(ParseResult::PropertyDefinition(definition)),
+-                    Err(error) => return parse_error(input, ParseErrorKind::InvalidPropertyDefinition, error.to_string())
++                    Err(error) => {
++                        let custom = match error.kind {
++                            cssparser::ParseErrorKind::Custom(custom) => custom,
++                            _ => super::parse_error_from_cssparser_error(
++                                &error,
++                                input.current_source_url().unwrap_or("").to_string(),
++                                "",
++                                input.current_source_location(),
++                            ),
++                        };
++                        return Err(cssparser::ParseError::custom(ParseError {
++                            kind: ParseErrorKind::InvalidPropertyDefinition,
++                            message: custom.to_string(),
++                            location: custom.location,
++                        }));
++                    }
+                 }
+             },
+             _ => {
+@@ -159,7 +189,7 @@
+     type Declaration = ParseResult;
+     type Error = ParseError;
+ 
+-    fn parse_value<'t>(&mut self, name: CowRcStr<'i>, input: &mut cssparser::Parser<'i, 't>, _state: &cssparser::ParserState) -> Result<Self::Declaration, cssparser::ParseError<'i, Self::Error>> {
++    fn parse_value(&mut self, name: CowRcStr<'i>, input: &mut cssparser::Parser<'i>, _state: &cssparser::ParserState) -> Result<Self::Declaration, cssparser::ParseError<Self::Error>> {
+         let definition = property_definition(name.to_string().as_str());
+         if definition.is_none() {
+             if !name.starts_with("--") {
+@@ -193,10 +223,25 @@
+                 }))
+             }
+             Err(error) => {
+-                if let cssparser::ParseErrorKind::Custom(error) = error.kind {
+-                    parse_error(input, ParseErrorKind::InvalidPropertyValue, format!("Parsing values for property {} failed: {}", name, error.message))
++                if let cssparser::ParseErrorKind::Custom(custom_error) = &error.kind {
++                    let kind = match custom_error.kind {
++                        ParseErrorKind::UnexpectedToken => ParseErrorKind::UnexpectedToken,
++                        ParseErrorKind::UnexpectedEndOfInput => ParseErrorKind::UnexpectedEndOfInput,
++                        _ => ParseErrorKind::InvalidPropertyValue,
++                    };
++                    Err(cssparser::ParseError::custom(ParseError {
++                        kind,
++                        message: format!("Parsing values for property {} failed: {}", name, custom_error.message),
++                        location: custom_error.location.clone(),
++                    }))
+                 } else {
+-                    Err(error)
++                    let error = super::parse_error_from_cssparser_error(
++                        &error,
++                        input.current_source_url().unwrap_or("").to_string(),
++                        "",
++                        input.current_source_location(),
++                    );
++                    Err(cssparser::ParseError::custom(error))
+                 }
+             }
+         }
+--- rust/src/stylesheet.rs.orig
++++ rust/src/stylesheet.rs
+@@ -13,6 +13,25 @@
+ use crate::property::add_property_definition;
+ use crate::stylerule::*;
+ 
++fn missing_qualified_rule_block_eof(input: &str) -> Option<cssparser::SourceLocation> {
++    let mut parser = cssparser::Parser::new(input);
++    let mut rules_parser = TopLevelParser {};
++    let prelude = parser.parse_until_before(
++        cssparser::Delimiter::CurlyBracketBlock,
++        |parser| cssparser::QualifiedRuleParser::parse_prelude(&mut rules_parser, parser),
++    );
++    if prelude.is_err() {
++        return None;
++    }
++
++    match parser.expect_curly_bracket_block() {
++        Err(error) if matches!(error.kind, cssparser::BasicParseErrorKind::EndOfInput) => {
++            Some(parser.current_source_location())
++        }
++        _ => None,
++    }
++}
++
+ #[derive(Debug)]
+ pub struct StyleSheet {
+     pub path: PathBuf,
+@@ -66,8 +85,7 @@
+ 
+     pub fn parse_string(&mut self, input: &str) -> Result<(), ParseError> {
+         let prefix_input = format!("/*# sourceURL={} */\n{}", self.path.to_string_lossy().to_string(), input);
+-        let mut parser_input = cssparser::ParserInput::new(prefix_input.as_str());
+-        let mut parser = cssparser::Parser::new(&mut parser_input);
++        let mut parser = cssparser::Parser::new(prefix_input.as_str());
+         let mut rules_parser = TopLevelParser{};
+         let style_sheet_parser = cssparser::StyleSheetParser::new(&mut parser, &mut rules_parser);
+ 
+@@ -93,8 +111,32 @@
+                         }
+                     }
+                 }
+-                Err(error) => {
+-                    errors.push(parse_error_from_cssparser_error(&error.0, self.path.to_string_lossy().to_string()));
++                Err((error, input, location)) => {
++                    let location = if matches!(
++                        &error.kind,
++                        cssparser::ParseErrorKind::Basic(
++                            cssparser::BasicParseErrorKind::EndOfInput
++                        )
++                    ) {
++                        missing_qualified_rule_block_eof(input)
++                            .map(|end| cssparser::SourceLocation {
++                                line: location.line + end.line,
++                                column: if end.line == 0 {
++                                    location.column + end.column - 1
++                                } else {
++                                    end.column
++                                },
++                            })
++                            .unwrap_or(location)
++                    } else {
++                        location
++                    };
++                    errors.push(parse_error_from_cssparser_error(
++                        &error,
++                        self.path.to_string_lossy().to_string(),
++                        input,
++                        location,
++                    ));
+                 }
+             }
+         }

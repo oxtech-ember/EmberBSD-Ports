@@ -1,0 +1,19 @@
+$NetBSD$
+
+Use the shared current CSS parser release in the Rust crate.
+Origin: EmberBSD (AI-assisted).
+--- rust/Cargo.toml.orig
++++ rust/Cargo.toml
+@@ -8,9 +8,9 @@
+ 
+ [dependencies]
+ cxx = "1.0"
+-cssparser = "0.37"
+-cssparser-color = "0.5"
+-selectors = "0.40.0"
++cssparser = "0.38"
++cssparser-color = "0.6"
++selectors = "0.42.0"
+ precomputed-hash = "0.1.1"
+ nom = "8.0.0"
+ 
