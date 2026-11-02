@@ -70,6 +70,11 @@ REPLACE_PERL=
 USE_TOOLS+= perl:run
 .endif
 
+PLIST_VARS+=	tests
+.if !empty(PKG_OPTIONS:Mtests)
+PLIST.tests=	yes
+.endif
+
 # Certain header files are generated, and can only be generated
 # if llvm has support for the target.
 PLIST_VARS+=	RISCV

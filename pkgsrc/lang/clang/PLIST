@@ -14,7 +14,7 @@ ${PLIST.notdylib}lib/libclang.${SHLIB_EXT}.${PKGVERSION}
 ${PLIST.notdylib}lib/libclang.${SHLIB_EXT}.23.1
 bin/amdgpu-arch
 bin/analyze-build
-bin/c-index-test
+${PLIST.tests}bin/c-index-test
 bin/clang
 bin/clang++
 bin/clang-23
