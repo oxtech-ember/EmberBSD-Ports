@@ -27,7 +27,8 @@ for f in $(sed -n 's/^REPLACE_BASH[+]*=[[:space:]]*//p' "$here/Makefile"); do
 	[ -f "$project/flang/$f" ] || { echo "FAIL: REPLACE_BASH names a missing file: $f"; fail=1; }
 done
 args=$(sed -n 's/^CMAKE_CONFIGURE_ARGS+=[[:space:]]*\(-D[^[:space:]]*\).*/\1/p' "$here/Makefile" |
-    sed -e "s|\${BUILDLINK_PREFIX.mlir}|$mlir|" -e "s|\${BUILDLINK_PREFIX.[a-z]*}|$llvm|")
+    grep -v EMBERBSD_MLIR_NATIVE_TOOLS |
+    sed -e "s|\${_CROSS_DESTDIR:U}||" -e "s|\${BUILDLINK_PREFIX.mlir}|$mlir|" -e "s|\${BUILDLINK_PREFIX.[a-z]*}|$llvm|")
 mkdir "$work" "$work/src"
 # lang/llvm/version.mk: EXTRACT_ELEMENTS are PKGBASE, cmake, runtimes, third-party, libc.
 cp -R "$project/flang" "$work/src/flang"

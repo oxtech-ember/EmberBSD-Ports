@@ -1,0 +1,19 @@
+$NetBSD$
+
+Run the mlir-tblgen that MLIR_TABLEGEN names, a build-host program in
+cross builds, instead of the installed one that MLIRConfig.cmake names.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -175,6 +175,11 @@
+   # Use SYSTEM for the same reasons as for LLVM includes
+   include_directories(SYSTEM ${MLIR_INCLUDE_DIRS})
+   include(AddMLIR)
++  # MLIRConfig.cmake names the installed mlir-tblgen, a target program in a
++  # cross build. As in an in-tree build, let MLIR_TABLEGEN name the one to run.
++  if (MLIR_TABLEGEN)
++    set(MLIR_TABLEGEN_EXE "${MLIR_TABLEGEN}")
++  endif()
+   find_program(MLIR_TABLEGEN_EXE "mlir-tblgen" ${LLVM_TOOLS_BINARY_DIR}
+     NO_DEFAULT_PATH)
+ 
