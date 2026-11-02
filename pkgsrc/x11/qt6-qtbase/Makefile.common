@@ -50,10 +50,10 @@ FILESDIR= ${EMBERBSD_QTBASE_PKGDIR}/files
 
 # Qtbase uses its own configure wrapper, but the selected generator and
 # build/install targets come from pkgsrc's standard CMake fragment.
-.if ${PKGPATH} == "x11/qt6-qtbase"
 CMAKE_GENERATOR?=	ninja
 CMAKE_BUILD_DIR=	.
 CONFIGURE_DIR=	.
+.if ${PKGPATH} == "x11/qt6-qtbase"
 do-configure:
 	${RUN}${_ULIMIT_CMD} \
 	cd ${WRKSRC} && \
@@ -138,6 +138,7 @@ CMAKE_INSTALL_PREFIX=	${QTPREFIX}
 # Native CMake tool checks need the PKG_* tools that compiler.mk selects.
 .include "../../mk/compiler.mk"
 .include "../../devel/cmake/configure-settings.mk"
+CONFIGURE_ARGS+=	-cmake-generator ${_CMAKE_BUILD_SYSTEM:Q}
 CONFIGURE_ARGS+=	-- ${CMAKE_CONFIGURE_ARGS}
 QTCONFDIR?=		.
 QT_CONFIGURE_MODULE=	${QTPREFIX}/bin/qt-configure-module
@@ -146,14 +147,13 @@ QT_CONFIGURE_MODULE=	${QTPREFIX}/bin/qt-configure-module
 QT_CONFIGURE_MODULE=	${CROSS_DESTDIR}${QTPREFIX}/bin/qt-configure-module
 .endif
 do-configure:
-	cd ${WRKSRC} && ${SETENV} ${CONFIGURE_ENV} ${QT_CONFIGURE_MODULE:Q} ${QTCONFDIR} ${CONFIGURE_ARGS}
+	${RUN}${_ULIMIT_CMD} \
+	cd ${WRKSRC} && \
+	${PKGSRC_SETENV} ${_CONFIGURE_SCRIPT_ENV} \
+		${CONFIG_SHELL} ${CONFIG_SHELL_FLAGS} \
+			${QT_CONFIGURE_MODULE:Q} ${QTCONFDIR} ${CONFIGURE_ARGS}
+.include "../../devel/cmake/build.mk"
 .endif
-
-#do-build:
-#	cd ${WRKSRC}/${QTCONFDIR} && ${SETENV} ${MAKE_ENV} ninja ${BUILD_TARGET}
-
-#do-install:
-#	cd ${WRKSRC}/${QTCONFDIR} && ${SETENV} ${INSTALL_ENV} ninja ${INSTALL_TARGET}
 
 PKGCONFIG_OVERRIDE_STAGE=	post-build
 .PHONY: pkgconfig-link
