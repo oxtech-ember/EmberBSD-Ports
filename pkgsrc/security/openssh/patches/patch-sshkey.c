@@ -1,6 +1,6 @@
 $NetBSD$
 
-Keep read-only key and passphrase inputs const with OpenSSL 4.
+Keep read-only key and passphrase inputs const with OpenSSL 3 and newer.
 Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
 
 --- sshkey.c
@@ -27,7 +27,7 @@ Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
  	int was_shielded = sshkey_is_shielded(key);
  	int success, r;
  	int blen, len = strlen(_passphrase);
-+#if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(LIBRESSL_VERSION_NUMBER)
++#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
 +	const u_char *passphrase = (len > 0) ? (const u_char *)_passphrase : NULL;
 +#else
  	u_char *passphrase = (len > 0) ? (u_char *)_passphrase : NULL;
