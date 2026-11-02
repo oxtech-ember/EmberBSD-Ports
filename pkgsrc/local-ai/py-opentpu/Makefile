@@ -18,6 +18,10 @@ USE_PYTEST=	no
 TOOL_DEPENDS+=	${PYPKGPREFIX}-setuptools>=70.1:../../devel/py-setuptools
 DEPENDS+=	${PYPKGPREFIX}-numpy-[0-9]*:../../math/py-numpy
 
+# The installed PCIe host setup script needs bash ([[ ]], pipefail).
+USE_TOOLS+=	bash:run
+REPLACE_BASH+=	opentpu/host/setup_pcie.sh
+
 INSTALLATION_DIRS+=	share/doc/${PKGBASE}
 
 post-install:
