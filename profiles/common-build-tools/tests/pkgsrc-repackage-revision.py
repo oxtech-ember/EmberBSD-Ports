@@ -59,7 +59,7 @@ do-install:
         if changed.returncode:
             raise SystemExit('repackage failed:\n' + changed.stdout[-3000:])
         archive = root / 'packages/All/ember-repackage-fixture-1.0nb2.tgz'
-        with tarfile.open(archive, 'r:gz') as tar:
+        with tarfile.open(archive, 'r:*') as tar:
             metadata = tar.extractfile('+CONTENTS').read().decode()
             payload = tar.extractfile('share/ember-repackage-fixture/revision').read().decode()
             flags = tar.extractfile('share/ember-repackage-fixture/flags').read().decode()

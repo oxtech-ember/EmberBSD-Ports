@@ -1,0 +1,117 @@
+# Origin: EmberBSD contributors (AI-assisted).
+--- a/mk/bsd.pkg.barrier.mk
++++ b/mk/bsd.pkg.barrier.mk
+@@ -28,6 +28,7 @@
+ _BARRIER_POST_TARGETS+=	replace
+ _BARRIER_POST_TARGETS+=	package
+ _BARRIER_POST_TARGETS+=	repackage
++_BARRIER_POST_TARGETS+=	repackage-metadata
+ _BARRIER_POST_TARGETS+=	package-install
+ _BARRIER_POST_TARGETS+=	install install-env
+ 
+--- a/mk/package/bsd.package.mk
++++ b/mk/package/bsd.package.mk
+@@ -25,6 +25,34 @@
+ .PHONY: repackage
+ repackage: _package-clean
+ 	${RUN} ${RECURSIVE_MAKE} ${MAKEFLAGS} package
++
++# The selected SDK interpreter is needed only by this explicit operation.
++EMBERBSD_REPACKAGE_PYTHON?= ${EMBERBSD_HOST_PYTHON:U${EMBERBSD_CROSS_BUILD_PYTHON:U}}
++.if defined(NO_CONFIGURE)
++_EMBER_REPACKAGE_CONFIGURE_NEEDED= no
++.else
++_EMBER_REPACKAGE_CONFIGURE_NEEDED= yes
++.endif
++
++# Repackage a previously verified compatible build without compiling it again.
++.PHONY: repackage-metadata
++.if !defined(_PKGSRC_BARRIER)
++repackage-metadata: barrier
++.else
++repackage-metadata:
++	${RUN} interpreter=${EMBERBSD_REPACKAGE_PYTHON:Q}; \
++	case "$$interpreter" in /*) ;; *) ${ECHO} "repackage-metadata: select an absolute SDK Python" >&2; exit 1;; esac; \
++	${TEST} -x "$$interpreter" || { ${ECHO} "repackage-metadata: unusable SDK Python" >&2; exit 1; }; \
++	old=`"$$interpreter" -B -E -S ${PKGSRCDIR:Q}/mk/package/repackage-metadata-check.py \
++	    ${WRKDIR:Q} ${WRKSRC:Q} ${PKGBASE:Q} ${PKGVERSION_NOREV:Q} \
++	    ${PKGNAME:Q} ${_EMBER_REPACKAGE_CONFIGURE_NEEDED:Q}` || exit $$?; \
++	${RECURSIVE_MAKE} ${MAKEFLAGS} _package-clean || exit $$?; \
++	unset _PKGSRC_BARRIER; \
++	MAKEFLAGS=${.MAKEFLAGS:Q} ${RECURSIVE_MAKE} ${MAKEFLAGS} \
++	    _EMBER_REPACKAGE_IDENTITY="$$old" \
++	    _EMBER_REPACKAGE_PKGPATH=${PKGPATH:Q} \
++	    _EMBER_REPACKAGE_WRKDIR=${WRKDIR:Q} package
++.endif
+ 
+ ######################################################################
+ ### package-clean (PUBLIC)
+--- a/mk/install/install.mk
++++ b/mk/install/install.mk
+@@ -150,6 +150,19 @@
+ .PHONY: install-check-version
+ install-check-version: ${_COOKIE.extract}
+ 	${RUN}								\
++	identity=${_EMBER_REPACKAGE_IDENTITY:U:Q}; \
++	scope=${_EMBER_REPACKAGE_PKGPATH:U:Q}; \
++	work=${_EMBER_REPACKAGE_WRKDIR:U:Q}; \
++	if [ -n "$$identity" ] && [ "$$scope" = ${PKGPATH:Q} ] && \
++	   [ "$$work" = ${WRKDIR:Q} ]; then \
++		interpreter=${EMBERBSD_REPACKAGE_PYTHON:Q}; \
++		case "$$interpreter" in /*) ;; *) ${ECHO} "repackage-metadata: select an absolute SDK Python" >&2; exit 1;; esac; \
++		"$$interpreter" -B -E -S ${PKGSRCDIR:Q}/mk/package/repackage-metadata-check.py \
++		    ${WRKDIR:Q} ${WRKSRC:Q} ${PKGBASE:Q} ${PKGVERSION_NOREV:Q} \
++		    ${PKGNAME:Q} ${_EMBER_REPACKAGE_CONFIGURE_NEEDED:Q} \
++		    "$$identity" >/dev/null || exit $$?; \
++		exit 0; \
++	fi; \
+ 	extractname=`${CAT} ${_COOKIE.extract}`;			\
+ 	pkgname=${PKGNAME};						\
+ 	case "$$extractname" in						\
+--- /dev/null
++++ b/mk/package/repackage-metadata-check.py
+@@ -0,0 +1,44 @@
++# SPDX-License-Identifier: BSD-2-Clause
++# Origin: EmberBSD contributors (AI-assisted).
++"""Validate a completed pkgsrc build identity before metadata-only reuse."""
++from pathlib import Path
++import sys
++
++
++def fail(message):
++    raise ValueError(message)
++
++
++def check(argv):
++    if len(argv) not in (6, 7):
++        fail("invalid arguments")
++    work, source, base, version, current, configure = argv[:6]
++    if configure not in ("yes", "no") or not Path(source).is_dir():
++        fail("missing source/build directory or invalid configure selection")
++    def cookie(name):
++        path = Path(work) / name
++        if path.is_symlink() or not path.is_file():
++            fail("missing " + name)
++        return path.read_text(encoding="utf-8").strip()
++    old = cookie(".extract_done")
++    if not old or cookie(".build_done") != old:
++        fail("inconsistent build identity")
++    if configure == "yes" and cookie(".configure_done") != old:
++        fail("inconsistent configure identity")
++    stem = base + "-" + version
++    for name in (old, current):
++        if name == stem:
++            continue
++        suffix = name[len(stem):] if name.startswith(stem) else ""
++        if not suffix.startswith("nb") or not suffix[2:] or not suffix[2:].isascii() or not suffix[2:].isdigit():
++            fail("different package, upstream version or invalid revision")
++    if len(argv) == 7 and old != argv[6]:
++        fail("build identity changed")
++    return old
++
++
++try:
++    print(check(sys.argv[1:]))
++except (OSError, UnicodeError, ValueError) as error:
++    print("repackage-metadata: " + str(error), file=sys.stderr)
++    raise SystemExit(1)
