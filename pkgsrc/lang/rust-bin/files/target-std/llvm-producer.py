@@ -19,6 +19,8 @@ p.add_argument('--target', choices=('amd64', 'aarch64', 'wasm32-wasip1'), requir
 p.add_argument('--macos-minimum', required=True)
 p.add_argument('--jobs', type=int, required=True)
 p.add_argument('--plan', action='store_true', help='check the bootstrap plan without building target std')
+p.add_argument('--runtime-stage', type=Path, help='prepared LLVM runtime stage instead of the sysroot record')
+p.add_argument('--runtime-base', type=Path, help='base checked by the runtime stage (default: the sysroot)')
 a = p.parse_args()
 if a.jobs < 1: p.error('jobs must be positive')
 if not re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,2}', a.macos_minimum):
@@ -28,14 +30,22 @@ for name in ('source','work','host_prefix','compiler_prefix','sysroot','sdk_sour
     if not path.is_absolute(): p.error(name + ' must be absolute')
     setattr(a, name, path.resolve(strict=True))
 if not a.link_context.is_absolute(): p.error('link_context must be absolute')
+if a.runtime_base and not a.runtime_stage: p.error('--runtime-base requires --runtime-stage')
+if a.runtime_stage and a.target == 'wasm32-wasip1': p.error('WASI std has no LLVM runtime stage')
+for name in ('runtime_stage', 'runtime_base'):
+    path = getattr(a, name)
+    if path is None: continue
+    if not path.is_absolute(): p.error(name + ' must be absolute')
+    setattr(a, name, path.resolve(strict=True))
 for out in (a.source, a.work):
-    for provider in (a.host_prefix, a.compiler_prefix, a.sysroot, a.sdk_source):
+    for provider in (a.host_prefix, a.compiler_prefix, a.sysroot, a.sdk_source,
+                     *(x for x in (a.runtime_stage, a.runtime_base) if x)):
         if out.is_relative_to(provider) or provider.is_relative_to(out):
             p.error('work/source overlaps an input provider')
 sys.path.insert(0, str(a.sdk_source/'src'))
 import emberbsd_sdk
-from emberbsd_sdk import application_toolchain, compiler_bindings, host_prefix, paths, process, target_toolchain, targets
-modules = (emberbsd_sdk, application_toolchain, compiler_bindings, host_prefix, paths, process, target_toolchain, targets)
+from emberbsd_sdk import application_toolchain, compiler_bindings, host_prefix, llvm_runtime, paths, process, target_toolchain, targets
+modules = (emberbsd_sdk, application_toolchain, compiler_bindings, host_prefix, llvm_runtime, paths, process, target_toolchain, targets)
 if emberbsd_sdk.API_VERSION != 1 or application_toolchain.APPLICATION_TOOLCHAIN_API != 2 or compiler_bindings.COMPILER_BINDINGS_API not in (2, 3):
     raise ValueError('incompatible selected SDK API')
 if any(not Path(module.__file__).resolve().is_relative_to(a.sdk_source/'src/emberbsd_sdk') for module in modules):
@@ -87,8 +97,18 @@ if a.target == 'wasm32-wasip1':
 else:
     definition = targets.target_definition(a.target)
     compiler = target_toolchain.clang_compiler(str(a.compiler_prefix), definition['triplet'], host=native.host, env=env)
-    runtime = application_toolchain.load_clang_runtime(str(a.sysroot), target=a.target)
-    target = application_toolchain.bind_clang_application_commands(a.work/'target-commands', compiler, str(a.sysroot), runtime, python=native.tool('python'))
+    if a.runtime_stage:
+        # Same selection as the prepared cross tools: a measured runtime stage
+        # checked against its base, not the sysroot build or import record.
+        runtime_root = str(a.runtime_stage)
+        runtime = llvm_runtime.validate_stage(runtime_root, target=a.target,
+            required_components=llvm_runtime.FULL_COMPONENTS,
+            base=paths.canonical_existing(str(a.runtime_base or a.sysroot)))
+    else:
+        runtime_root = None
+        runtime = application_toolchain.load_clang_runtime(str(a.sysroot), target=a.target)
+    target = application_toolchain.bind_clang_application_commands(a.work/'target-commands', compiler, str(a.sysroot), runtime,
+        python=native.tool('python'), runtime_root=runtime_root)
 env.update(SDKROOT=str(a.macos_sdk), MACOSX_DEPLOYMENT_TARGET=a.macos_minimum)
 flags = ['-isysroot',str(a.macos_sdk),'-mmacosx-version-min='+a.macos_minimum]
 commands = {role:[native.tool(role),*flags] for role in ('cc','cxx','cpp')}
