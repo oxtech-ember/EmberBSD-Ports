@@ -35,16 +35,15 @@ EMBERBSD_CROSS_BUILD_PERL=/absolute/host-perl5.44
 ```
 
 Clang and LLD find the target LLVM with a build-host llvm-config.
-Before configure, `lang/llvm/cross-llvm-config.mk` makes it from the
-lang/llvm build tree. The dependency order builds lang/llvm first; keep its
-WRKDIR until Clang and LLD are configured. The step builds the native
-generator tree with `build-llvm-native.py` and then runs
-`scripts/build-llvm-config.py`. Both write below
-`${WRKOBJDIR}/.emberbsd-cross/<target triple>`, and later builds reuse the
-sealed result. Set `EMBERBSD_CROSS_LLVM_CONFIG` to use a different one.
+`lang/llvm/cross-llvm-config.mk` builds it automatically before configure from
+the installed target `llvm-devel` metadata and selected native LLVM package.
+The helper is cached below `${WRKOBJDIR}/.emberbsd-cross/<target triple>` and
+is regenerated when those installed inputs change. Set
+`EMBERBSD_CROSS_LLVM_CONFIG` to select another helper that validates against
+the current sysroot.
 
-That llvm-config is the native metadata executable derived from the
-actual target LLVM build, following the
+That llvm-config is a native metadata executable built from the
+installed target package, following the
 [metadata workflow](../../common-graphics/cross/llvm-config.md). It is neither
 the target ELF executable nor the host LLVM installation's metadata.
 The recipe rejects absent or incorrect TableGen versions. The explicit
