@@ -31,6 +31,20 @@ BUILDLINK_API_DEPENDS.sqlite3+=	sqlite3>=3.54.1
 
 .include "../../databases/sqlite3/cross.mk"
 
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+# teaish runs tclsh at configure time. The tclsh beside the target
+# tclConfig.sh cannot run on the build host, so use the build host's one.
+# teaish lets the tclConfig.sh found by that tclsh override --with-tcl;
+# keep the target one from --with-tcl instead.
+TOOL_DEPENDS+=		tcl>=9.1:../../lang/tcl
+CONFIGURE_ARGS+=	--with-tclsh=${TOOLBASE}/bin/tclsh${TCL_BASEVER}
+SUBST_CLASSES+=		tclhome
+SUBST_STAGE.tclhome=	pre-configure
+SUBST_MESSAGE.tclhome=	Keeping the target tclConfig.sh from --with-tcl.
+SUBST_FILES.tclhome=	../autosetup/teaish/core.tcl
+SUBST_SED.tclhome=	-e 's,if {\$$doConfigLookup &&$$,if {$$doConfigLookup \&\& "" eq $$tclHome \&\&,'
+.endif
+
 .if ${OPSYS} == "Darwin"
 post-install:
 	''${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:Uinstall_name_tool:Q} -id \
