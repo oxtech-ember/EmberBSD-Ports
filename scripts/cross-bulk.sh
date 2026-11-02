@@ -383,10 +383,10 @@ fetch()
 }
 
 # Package-level parallelism. CROSS_BULK_JOBS packages build at once (default:
-# half the host CPUs). Each gets MAKE_JOBS=CROSS_BULK_MAKE_JOBS on the command
-# line (default: 1.5 x CPUs split over the packages, at most the CPUs), which
-# also reaches pkgsrc's dependency recursion; MAKE_JOBS_SAFE=no recipes stay
-# serial. CROSS_BULK_MAKE_JOBS=makeconf leaves MAKE_JOBS to the MAKECONF.
+# half the host CPUs). Each gets MAKE_JOBS on the command line (default: 1.5 x
+# CPUs split over the packages, at most the CPUs), which also reaches pkgsrc's
+# dependency recursion; MAKE_JOBS_SAFE=no recipes stay serial. Set
+# CROSS_BULK_MAKE_JOBS to a positive integer for an explicit override.
 # CROSS_BULK_CPUS overrides the SDK's detected CPU count.
 host_cpus()
 {
@@ -579,12 +579,8 @@ bmk()
             EMBERBSD_GCC16_LINKER_LAUNCHER="$CROSS_BULK_LINK_LAUNCHER" \
             EMBERBSD_DARWIN_CMAKE_LINKER_LAUNCHER="$link_list" "$@"
     fi
-    if [ "$make_jobs" = makeconf ]; then
-        mk NATIVE_PKG_ADD_CMD="$run/pkg_add" DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency "$@"
-    else
-        mk MAKE_JOBS="$make_jobs" NATIVE_PKG_ADD_CMD="$run/pkg_add" \
-            DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency "$@"
-    fi
+    mk MAKE_JOBS="$make_jobs" NATIVE_PKG_ADD_CMD="$run/pkg_add" \
+        DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency "$@"
 }
 
 # Print device, inode, size, modification time and name of each path.
@@ -1068,9 +1064,7 @@ package_install_one()
     job=1
     cpus=$(host_cpus)
     make_jobs=${CROSS_BULK_MAKE_JOBS:-$cpus}
-    if [ "$make_jobs" != makeconf ]; then
-        count CROSS_BULK_MAKE_JOBS "$make_jobs"
-    fi
+    count CROSS_BULK_MAKE_JOBS "$make_jobs"
     real_pkg_add=$(var pkgtools/pkg_install NATIVE_PKG_ADD_CMD)
     [ -n "$real_pkg_add" ] || { echo 'NATIVE_PKG_ADD_CMD is empty' >&2; return 2; }
     pkg_add_wrapper "$real_pkg_add" > "$run/pkg_add"
@@ -1195,10 +1189,8 @@ build()
     workers=${CROSS_BULK_JOBS:-$(( (cpus + 1) / 2 ))}
     count CROSS_BULK_JOBS "$workers"
     make_jobs=${CROSS_BULK_MAKE_JOBS:-$(( (3 * cpus + 2 * workers - 1) / (2 * workers) ))}
-    if [ "$make_jobs" != makeconf ]; then
-        count CROSS_BULK_MAKE_JOBS "$make_jobs"
-        [ -n "${CROSS_BULK_MAKE_JOBS:-}" ] || [ "$make_jobs" -le "$cpus" ] || make_jobs=$cpus
-    fi
+    count CROSS_BULK_MAKE_JOBS "$make_jobs"
+    [ -n "${CROSS_BULK_MAKE_JOBS:-}" ] || [ "$make_jobs" -le "$cpus" ] || make_jobs=$cpus
     run=$state/run
     # One scheduler per state directory.
     if ! mkdir "$state/build.lock" 2> /dev/null; then

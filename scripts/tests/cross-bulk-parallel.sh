@@ -157,6 +157,12 @@ bulk_auto_cpus()
     PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS= CROSS_BULK_JOBS=3 \
         sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1
 }
+bulk_makeconf_sentinel()
+{
+    PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree \
+        CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=3 CROSS_BULK_MAKE_JOBS=makeconf \
+        sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/sentinel.log" 2>&1
+}
 calls() { grep -c -- "-C $out/tree/t/$1 " "$out/calls" || :; }
 
 newstate
@@ -179,6 +185,15 @@ grep -q 'MAKE_JOBS=3 ' "$out/calls" || fail 'MAKE_JOBS is not 1.5 x 6 CPUs / 3 p
 grep -q '^t/h not for this profile$' "$out/state/skipped" || fail 'h is not skipped'
 [ ! -e "$out/state/run" ] && [ ! -e "$out/state/build.lock" ] && [ ! -e "$out/state/locks" ] ||
     fail 'scheduler files left behind'
+
+# The removed sentinel fails before the scheduler creates worker state.
+: > "$out/calls"
+rc=0
+bulk_makeconf_sentinel || rc=$?
+[ "$rc" = 2 ] || fail "makeconf sentinel exited $rc, expected validation failure"
+grep -q 'CROSS_BULK_MAKE_JOBS must be a positive number: makeconf' "$out/sentinel.log" || fail 'sentinel refusal was unclear'
+! grep -Eq '(^|[[:space:]])(clean|depends|package|package-install)([[:space:]]|$)' "$out/calls" || fail 'makeconf sentinel started a package worker'
+[ ! -e "$out/state/run" ] && [ ! -e "$out/state/build.lock" ] || fail 'sentinel refusal created scheduler state'
 
 # A second run parses each done package once and builds the failure again.
 : > "$out/calls"

@@ -551,8 +551,10 @@ available to the selected SDK process. A package starts when every target
 dependency in `STATE/edges` is done; a failed, blocked or skipped dependency
 blocks it. Each package gets
 `MAKE_JOBS` on the command line, by default 1.5 times the CPUs split over the
-packages and at most the CPUs; `CROSS_BULK_MAKE_JOBS` sets it, or `makeconf`
-leaves it to the MAKECONF. `MAKE_JOBS_SAFE=no` recipes stay serial. Order
+packages and at most the CPUs; `CROSS_BULK_MAKE_JOBS=N` sets an explicit
+positive-integer override. Unset derives the per-package budget from the
+selected SDK's CPU count; the `makeconf` sentinel is unsupported.
+`MAKE_JOBS_SAFE=no` recipes stay serial. Order
 writes the native tools as graph nodes `PKGPATH@native`: `TOOL_DEPENDS` and
 `BOOTSTRAP_DEPENDS` of a target package, and every dependency of a native
 node. A native node is a job of its own, built with `USE_CROSS_COMPILE=no`
@@ -593,7 +595,7 @@ only that package's state rows: success records the package and clears its
 failure/block entries; failure records the failure and keeps prior successes.
 An archive by itself is not treated as a completed build. The single package
 uses the selected SDK's full CPU budget for `MAKE_JOBS` by default;
-`CROSS_BULK_MAKE_JOBS` still overrides it. On TERM/INT/HUP it finishes the
+`CROSS_BULK_MAKE_JOBS=N` still overrides it. On TERM/INT/HUP it finishes the
 active package before releasing the lock.
 `scripts/tests/cross-bulk-native-tools.sh NEW_OUTPUT` checks all four
 dependency classes, transitive native tools, installed native leaves,

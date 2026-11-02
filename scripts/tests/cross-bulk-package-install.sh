@@ -146,6 +146,22 @@ rm -f "$out/packages/All/demo-1.0.tgz"
 run "$out/override-state" 2 > "$out/override.log" 2>&1 || fail "explicit MAKE_JOBS: $(cat "$out/override.log")"
 grep -q '^MAKE_JOBS=2$' "$out/calls" || fail 'explicit MAKE_JOBS override was ignored'
 
+mkdir -p "$out/sentinel-state/logs"
+printf '%s\n' cat/demo > "$out/sentinel-state/order"
+printf '%s\n' 'cat/demo cat/demo' > "$out/sentinel-state/edges"
+: > "$out/sentinel-state/done"
+: > "$out/sentinel-state/failed"
+: > "$out/sentinel-state/blocked"
+: > "$out/targets"
+: > "$out/calls"
+rc=0
+run "$out/sentinel-state" makeconf > "$out/sentinel.log" 2>&1 || rc=$?
+[ "$rc" = 2 ] || fail "makeconf sentinel exited $rc, expected validation failure"
+grep -q 'CROSS_BULK_MAKE_JOBS must be a positive number: makeconf' "$out/sentinel.log" || fail 'sentinel refusal was unclear'
+[ ! -s "$out/targets" ] || fail 'makeconf sentinel started a package target'
+! grep -Eq '(^|[[:space:]])(clean|depends|package|package-install)([[:space:]]|$)' "$out/calls" || fail 'makeconf sentinel started a package worker'
+[ ! -e "$out/sentinel-state/build.lock" ] || fail 'sentinel refusal left a build lock'
+
 cp "$out/state/done" "$out/done.before"
 cp "$out/state/failed" "$out/failed.before"
 rm -f "$out/packages/All/demo-1.0.tgz"
