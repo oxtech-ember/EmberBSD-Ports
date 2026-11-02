@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.16 2026/09/06 10:05:15 markd Exp $
 
 DISTNAME=	kiconthemes-${KF6VER}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	graphics
 
 HOMEPAGE=	https://community.kde.org/Frameworks
@@ -20,5 +20,6 @@ USE_TOOLS+=	msgmerge
 .include "../../graphics/qt6-qtsvg/buildlink3.mk"
 .include "../../x11/kf6-kconfigwidgets/buildlink3.mk"
 .include "../../x11/kf6-kitemviews/buildlink3.mk"
+.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

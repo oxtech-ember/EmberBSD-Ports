@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.25 2026/09/06 10:05:14 markd Exp $
 
 DISTNAME=	purpose-${KF6VER}
+PKGREVISION=	1
 CATEGORIES=	devel
 
 HOMEPAGE=	https://community.kde.org/Frameworks
@@ -22,5 +23,6 @@ USE_TOOLS+=	msgmerge
 .include "../../graphics/hicolor-icon-theme/buildlink3.mk"
 .include "../../graphics/kf6-prison/buildlink3.mk"
 .include "../../x11/kf6-kirigami/buildlink3.mk"
+.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
