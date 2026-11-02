@@ -160,4 +160,7 @@ The [typed Services ioctl core](SERVICES-IOCTL.md) composes these components.
 Its checked dispatch uses an explicit command table; no real driver command
 or foreign import binding is supplied yet.
 
+The [Connect payload helper](CONNECT-PAYLOAD.md) checks candidate identity and
+encodes the 17-byte reply. It does not bind or execute a real Connect handler.
+
 The original probe sources use the [BSD 2-Clause license](LICENSE).

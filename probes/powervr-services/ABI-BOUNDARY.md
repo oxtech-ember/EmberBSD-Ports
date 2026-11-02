@@ -79,6 +79,10 @@ selection, size checks, callback-based memory copies and transport errors.
 Its focused host regression and AArch64 cross-link pass. Real memory backends,
 command handlers, fd ownership and foreign import binding remain pending.
 
+The [Connect payload helper](CONNECT-PAYLOAD.md) checks the pinned candidate's
+input identity and encodes its packed reply. Native flags, options, connection
+lifecycle and handler binding remain pending. It does not invoke ConnectKM.
+
 ## First graphics result
 
 After the adapter and KMD work, create a native EGL pbuffer and GLES context
