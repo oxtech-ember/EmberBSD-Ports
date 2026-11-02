@@ -1,6 +1,62 @@
 --- test/cctest/test_per_process.cc.orig
 +++ test/cctest/test_per_process.cc
-@@ -199,3 +199,78 @@
+@@ -19,6 +19,12 @@
+  protected:
+   static const BuiltinSourceMap get_sources_for_test() {
+     return *BuiltinLoader().source_.read();
++  }
++
++  static int CacheByte(const BuiltinLoader& loader, const std::string& id) {
++    node::RwLock::ScopedReadLock lock(loader.code_cache_->mutex);
++    auto it = loader.code_cache_->map.find(id);
++    return it == loader.code_cache_->map.end() ? -1 : it->second.data[0];
+   }
+ 
+   // id -> first byte of the cached data, after feeding `batches` in order.
+@@ -182,6 +188,42 @@
+ 
+ // RefreshCodeCache() merges: it can be fed the snapshot's code cache and then
+ // an embedder's, and the entry supplied last wins for a shared id.
++// Restores process state even when a fatal assertion stops the test early.
++struct ClearProcessDefaultCache {
++  ~ClearProcessDefaultCache() { BuiltinLoader::SetProcessDefaultCodeCache(nullptr); }
++};
++
++TEST_F(PerProcessTest, ProcessDefaultCopiesAndOverrides) {
++  ClearProcessDefaultCache clear;
++  BuiltinLoader::SetProcessDefaultCodeCache(nullptr);
++  BuiltinLoader before;
++  std::weak_ptr<v8::ScriptCompiler::CachedData> weak;
++  {
++    auto bytes = new uint8_t[4]{31, 31, 31, 31};
++    auto owned = std::make_shared<v8::ScriptCompiler::CachedData>(
++        bytes, 4, v8::ScriptCompiler::CachedData::BufferOwned);
++    weak = owned;
++    std::vector<CodeCacheInfo> entries = {{"default", BuiltinCodeCacheData(owned)}};
++    BuiltinLoader::SetProcessDefaultCodeCache(&entries);
++  }
++  ASSERT_FALSE(weak.expired());
++  EXPECT_EQ(CacheByte(before, "default"), -1);
++  {
++    BuiltinLoader seeded;
++    EXPECT_EQ(CacheByte(seeded, "default"), 31);
++    seeded.RefreshCodeCache({MakeCodeCacheInfo("default", 42)});
++    EXPECT_EQ(CacheByte(seeded, "default"), 42);
++    BuiltinLoader next;
++    EXPECT_EQ(CacheByte(next, "default"), 31);
++    BuiltinLoader::SetProcessDefaultCodeCache(nullptr);
++    EXPECT_EQ(CacheByte(next, "default"), 31);
++    BuiltinLoader cleared;
++    EXPECT_EQ(CacheByte(cleared, "default"), -1);
++    ASSERT_FALSE(weak.expired());
++  }
++  EXPECT_TRUE(weak.expired());
++}
++
+ TEST_F(PerProcessTest, RefreshCodeCacheMerges) {
+   const auto merged = PerProcessTest::RefreshCodeCacheWith({
+       {MakeCodeCacheInfo("internal/a", 1), MakeCodeCacheInfo("internal/b", 1)},
+@@ -199,3 +241,108 @@
  }
  
  }  // end namespace
@@ -32,6 +88,19 @@
 +  ASSERT_TRUE(loader.LookupAndCompileFunction(context, id, &params, nullptr)
 +                  .ToLocal(&compiled));
 +  EXPECT_TRUE(node::builtins::GetBuiltinCodeCacheStatus().at(id));
++  ClearProcessDefaultCache clear_default;
++  {
++    std::vector<CodeCacheInfo> defaults = {{id, BuiltinCodeCacheData(valid_cache)}};
++    BuiltinLoader::SetProcessDefaultCodeCache(&defaults);
++  }
++  BuiltinLoader default_valid;
++  Load(default_valid, id, valid.path());
++  isolate_->ClearCachesForTesting();
++  ASSERT_TRUE(default_valid.LookupAndCompileFunction(context, id, &params, nullptr)
++                  .ToLocal(&compiled));
++  EXPECT_TRUE(node::builtins::GetBuiltinCodeCacheStatus().at(id));
++  BuiltinLoader::SetProcessDefaultCodeCache(nullptr);
++
 +  BuiltinLoader follower;
 +  follower.CopySourceAndCodeCacheReferenceFrom(&loader);
 +  ASSERT_TRUE(follower.LookupAndCompileFunction(context, id, &params, nullptr)
@@ -59,6 +128,23 @@
 +    EXPECT_TRUE(caught.HasCaught());
 +    EXPECT_FALSE(node::builtins::GetBuiltinCodeCacheStatus().at(id));
 +  }
++  auto default_invalid_bytes = std::make_unique<uint8_t[]>(64);
++  std::fill_n(default_invalid_bytes.get(), 64, 0);
++  auto default_invalid = std::make_shared<v8::ScriptCompiler::CachedData>(
++      default_invalid_bytes.release(), 64,
++      v8::ScriptCompiler::CachedData::BufferOwned);
++  node::builtins::TearDownExternalizedBuiltinCache();
++  node::builtins::InitializeExternalizedBuiltinCache();
++  std::vector<CodeCacheInfo> defaults = {{id, BuiltinCodeCacheData(default_invalid)}};
++  BuiltinLoader::SetProcessDefaultCodeCache(&defaults);
++  BuiltinLoader default_loader;
++  Load(default_loader, id, valid.path());
++  isolate_->ClearCachesForTesting();
++  ASSERT_TRUE(default_loader.LookupAndCompileFunction(context, id, &params, nullptr)
++                  .ToLocal(&compiled));
++  EXPECT_FALSE(node::builtins::GetBuiltinCodeCacheStatus().at(id));
++  BuiltinLoader::SetProcessDefaultCodeCache(nullptr);
++
 +  auto invalid_bytes = std::make_unique<uint8_t[]>(64);
 +  std::fill_n(invalid_bytes.get(), 64, 0);
 +  auto invalid = std::make_shared<v8::ScriptCompiler::CachedData>(

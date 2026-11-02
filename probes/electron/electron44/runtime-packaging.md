@@ -38,9 +38,13 @@ The missing recipe integration is concrete:
    the selected Ninja as `ninja -C OUTPUT -j JOBS electron_dist_zip`.
    Use the SDK process API and explicit argv arrays for these calls. Do not
    select a tool through ambient PATH or switch families after a build failure.
-4. Stage only `OUTPUT/dist.zip` produced by that successful, drained build.
-   Use its actual SHA256 as a byte-stability check. The hash does not accept
-   the source graph, compiler, sysroot or build by itself.
+4. The controller's `build` and `reconfigure --build-after-reconfigure` produce
+   `OUTPUT/dist.zip`; they do not stage or replace a runtime directory. To stage
+   the successful, drained result, invoke `files/stage-runtime.py` separately
+   with `--archive OUTPUT/dist.zip`, its actual SHA256 in `--archive-sha256`,
+   an absolute new `--destination`, `--target`, and `--sdk-source`. The hash is
+   a byte-stability check; it does not accept the source graph, compiler,
+   sysroot or build by itself.
 
 The initial source preparer and standalone GN fixtures do not complete steps 1
 and 2.
@@ -82,6 +86,25 @@ a relative `${PREFIX}/bin/electron` link. Generate and review the package file
 list from that actual payload. Keep both notice files installed. Reconcile the
 recipe license expression and redistribution restrictions with the generated
 notices and selected dependency recipes before distribution.
+
+## BSD API boundaries
+
+BSD uses the shared desktop window-focus implementation and NativeTheme accent
+color observer. `nativeImage.createThumbnailFromPath` remains a macOS/Windows
+API and is not exposed on BSD or Linux.
+
+The BSD crash collection backend is not implemented. `crashReporter.start`
+and `setUploadToServer` report an unsupported-operation error;
+`getUploadToServer` returns false. Extra parameters remain available through
+add/get/remove, and report listing can still read existing text records. These
+operations do not imply that crashes are captured or uploaded.
+
+NetBSD application memory metrics read current RSS and peak RSS from
+`KERN_PROC2`, converting pages and KiB respectively to the API's units. Query
+errors retain Electron's existing zero-result convention. On architectures
+where the kernel does not track the RSS maximum, its reported peak is current
+RSS. The added API specs require execution on the target; cross-linking alone
+does not validate these desktop or kernel interactions.
 
 ## Source checks
 

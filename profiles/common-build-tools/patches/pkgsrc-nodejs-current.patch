@@ -8,7 +8,7 @@
  
 -DISTNAME=	node-v26.8.2
 +DISTNAME=	node-v26.13.0
-+PKGREVISION=	1
++PKGREVISION=	2
  EXTRACT_SUFX=	.tar.xz
  
  USE_CXX_FEATURES=	c++20 charconv

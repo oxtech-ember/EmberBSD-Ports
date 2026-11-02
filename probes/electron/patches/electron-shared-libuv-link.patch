@@ -1,0 +1,46 @@
+$NetBSD$
+
+Use the selected common libuv without referencing the bundled archive.
+
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/electron/BUILD.gn	2026-11-02 22:58:16.850790134 +0300
++++ b/electron/BUILD.gn	2026-11-02 22:58:16.903667856 +0300
+@@ -1452,9 +1452,11 @@
+       "-rpath",
+       "@loader_path/../../..",
+ 
+-      # Required for exporting all symbols of libuv.
+-      "-Wl,-force_load,obj/third_party/electron_node/deps/uv/libuv.a",
+     ]
++    if (!node_shared_libuv) {
++      # Required for exporting all symbols of the bundled libuv.
++      ldflags += [ "-Wl,-force_load,obj/third_party/electron_node/deps/uv/libuv.a" ]
++    }
+     if (is_component_build) {
+       ldflags += [
+         "-rpath",
+@@ -1869,14 +1871,15 @@
+       ]
+     }
+     if (is_linux) {
+-      ldflags = [
+-        "-pie",
+-
+-        # Required for exporting all symbols of libuv.
+-        "-Wl,--whole-archive",
+-        "obj/third_party/electron_node/deps/uv/libuv.a",
+-        "-Wl,--no-whole-archive",
+-      ]
++      ldflags = [ "-pie" ]
++      if (!node_shared_libuv) {
++        # Required for exporting all symbols of the bundled libuv.
++        ldflags += [
++          "-Wl,--whole-archive",
++          "obj/third_party/electron_node/deps/uv/libuv.a",
++          "-Wl,--no-whole-archive",
++        ]
++      }
+ 
+       if (!is_component_build && is_component_ffmpeg) {
+         configs += [ "//build/config/gcc:rpath_for_built_shared_libraries" ]

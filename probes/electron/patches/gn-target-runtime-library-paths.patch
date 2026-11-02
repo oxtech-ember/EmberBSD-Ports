@@ -1,0 +1,276 @@
+# Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+# Reverse the prior pkg-config runtime paths and derive them at final C/C++ link.
+
+--- a/build/config/linux/pkg-config.py
++++ b/build/config/linux/pkg-config.py
+@@ -108,25 +108,6 @@
+         return path
+ 
+ 
+-def TargetRuntimeLibdirs(lib_dirs, sysroot):
+-    """Convert selected sysroot library directories to target runtime paths."""
+-    root = os.path.normpath(sysroot)
+-    result = []
+-    for path in lib_dirs:
+-        if not os.path.isabs(path) or '..' in path.split('/'):
+-            raise ValueError('target library directory must be absolute without traversal')
+-        normalized = os.path.normpath(path)
+-        if os.path.commonpath([root, normalized]) != root or normalized == root:
+-            raise ValueError('target library directory is outside sysroot')
+-        target_path = '/' + os.path.relpath(normalized, root)
+-        if any(c in target_path for c in (':', ',', '\n', '\r')):
+-            raise ValueError('target runtime path cannot be represented as a linker argument')
+-        flag = '-Wl,-rpath=' + target_path
+-        if flag not in result:
+-            result.append(flag)
+-    return result
+-
+-
+ def main():
+     parser = OptionParser()
+     parser.add_option('-d', '--debug', action='store_true')
+@@ -157,7 +138,6 @@
+         dest='atleast_version',
+         type='string',
+     )
+-    parser.add_option('--emberbsd-target-runtime-libdirs', action='store_true', default=False)
+     parser.add_option('--libdir', action='store_true', dest='libdir')
+     parser.add_option(
+         '--dridriverdir', action='store_true', dest='dridriverdir'
+@@ -169,13 +149,6 @@
+     )
+     (options, args) = parser.parse_args()
+ 
+-    if options.emberbsd_target_runtime_libdirs:
+-        if options.emberbsd_native_prefix is not None:
+-            parser.error('target runtime library directories cannot use a native prefix')
+-        if not options.sysroot or not os.path.isabs(options.sysroot):
+-            parser.error('target runtime library directories require an absolute sysroot')
+-        if '..' in options.sysroot.split('/'):
+-            parser.error('target sysroot cannot contain traversal')
+     if options.emberbsd_native_buildlink and options.emberbsd_native_prefix is None:
+         parser.error('native buildlink requires a selected prefix')
+     pkg_config_command = [options.pkg_config]
+@@ -318,13 +291,11 @@
+     # Output a GN array, the first one is the cflags, the second are the libs. The
+     # JSON formatter prints GN compatible lists when everything is a list of
+     # strings.
+-    result = [sorted(includes), sorted(cflags), sorted(libs), sorted(lib_dirs)]
+-    if options.emberbsd_target_runtime_libdirs:
+-        try:
+-            result.append(TargetRuntimeLibdirs(result[3], sysroot))
+-        except ValueError as error:
+-            parser.error(str(error))
+-    print(json.dumps(result))
++    print(
++        json.dumps(
++            [sorted(includes), sorted(cflags), sorted(libs), sorted(lib_dirs)]
++        )
++    )
+     return 0
+ 
+ 
+--- a/build/config/linux/pkg_config.gni
++++ b/build/config/linux/pkg_config.gni
+@@ -103,13 +103,10 @@
+ # Chrome-adjacent repos might be using different sysroot versions (e.g. ANGLE).
+ _enable_cache =
+     !_pkg_config_requires_abs_path && defined(build_with_chromium) &&
+-    build_with_chromium && sysroot != "" &&
+-    !(_emberbsd_pkg_config_role == "target" && current_os == "netbsd")
++    build_with_chromium && sysroot != ""
+ 
+ if (_pkg_config_sysroot != "") {
+-  if (_emberbsd_pkg_config_role == "target" && current_os == "netbsd") {
+-    _rebased_sysroot = rebase_path(_pkg_config_sysroot, "")
+-  } else if (_pkg_config_requires_abs_path) {
++  if (_pkg_config_requires_abs_path) {
+     _rebased_sysroot = rebase_path(_pkg_config_sysroot)
+   } else {
+     _rebased_sysroot = rebase_path(_pkg_config_sysroot, root_build_dir)
+@@ -128,9 +125,6 @@
+   ]
+   if (_emberbsd_cross_pkg_config) {
+     common_pkg_config_args += [ "--allow-cross-sysroot" ]
+-  }
+-  if (_emberbsd_pkg_config_role == "target" && current_os == "netbsd") {
+-    common_pkg_config_args += [ "--emberbsd-target-runtime-libdirs" ]
+   }
+   if (_pkg_config_sysroot == emberbsd_target_sysroot &&
+       _emberbsd_cross_pkg_config) {
+@@ -270,10 +264,6 @@
+     if (!defined(invoker.ignore_libs) || !invoker.ignore_libs) {
+       libs = pkgresult[2]
+       lib_dirs = pkgresult[3]
+-      if (_emberbsd_pkg_config_role == "target" && current_os == "netbsd" &&
+-          _pkg_config_sysroot != "") {
+-        ldflags = pkgresult[4]
+-      }
+     }
+ 
+     forward_variables_from(invoker,
+# Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+# Derive target runtime paths from final C/C++ link library directories.
+
+--- a/build/toolchain/wrapper_utils.py
++++ b/build/toolchain/wrapper_utils.py
+@@ -55,6 +55,58 @@
+     return command
+ 
+ 
++def AddTargetRuntimeLibraryPaths(command, sysroot):
++    """Append target runtime paths for sysroot -L inputs without changing them."""
++    if not sysroot:
++        return command
++    if not os.path.isabs(sysroot):
++        raise ValueError('runtime sysroot must be absolute')
++    root = os.path.normpath(sysroot)
++    active = set()
++
++    def tokens(args, depth=0):
++        if depth > 32:
++            raise ValueError('link response nesting exceeds limit')
++        for arg in args:
++            if arg.startswith('@') and len(arg) > 1:
++                path = os.path.abspath(arg[1:])
++                if path in active:
++                    raise ValueError('link response file cycle')
++                active.add(path)
++                try:
++                    with open(path, encoding='utf-8') as stream:
++                        yield from tokens(shlex.split(stream.read()), depth + 1)
++                finally:
++                    active.remove(path)
++            else:
++                yield arg
++
++    expanded = iter(tokens(command))
++    flags = []
++    for arg in expanded:
++        if arg == '-L':
++            try:
++                path = next(expanded)
++            except StopIteration:
++                raise ValueError('missing directory after -L')
++        elif arg.startswith('-L') and len(arg) > 2:
++            path = arg[2:]
++        else:
++            continue
++        if not os.path.isabs(path):
++            continue
++        path = os.path.normpath(path)
++        if os.path.commonpath([root, path]) != root or path == root:
++            continue
++        target = '/' + os.path.relpath(path, root)
++        if any(c in target for c in (':', ',', '\n', '\r')):
++            raise ValueError('target runtime directory cannot be represented')
++        flag = '-Wl,-rpath=' + target
++        if flag not in flags:
++            flags.append(flag)
++    return command + flags
++
++
+ def RunLinkWithOptionalMapFile(command, env=None, map_file=None):
+     """Runs the given command, adding in -Wl,-Map when |map_file| is given.
+ 
+--- a/build/toolchain/gcc_link_wrapper.py
++++ b/build/toolchain/gcc_link_wrapper.py
+@@ -58,14 +58,18 @@
+         help='Final output executable file',
+         metavar='FILE',
+     )
++    parser.add_argument('--runtime-sysroot', help='Target sysroot for runtime library paths')
+     parser.add_argument('command', nargs='+', help='Linking command')
+     args = parser.parse_args()
+ 
+     # Work-around for gold being slow-by-default. http://crbug.com/632230
+     fast_env = dict(os.environ)
+     fast_env['LC_ALL'] = 'C'
++    command = wrapper_utils.AddTargetRuntimeLibraryPaths(
++        args.command, args.runtime_sysroot
++    )
+     result = wrapper_utils.RunLinkWithOptionalMapFile(
+-        args.command, env=fast_env, map_file=args.map_file
++        command, env=fast_env, map_file=args.map_file
+     )
+     if result != 0:
+         return result
+--- a/build/toolchain/gcc_solink_wrapper.py
++++ b/build/toolchain/gcc_solink_wrapper.py
+@@ -132,6 +132,7 @@
+         help='Final output shared object file',
+         metavar='FILE',
+     )
++    parser.add_argument('--runtime-sysroot', help='Target sysroot for runtime library paths')
+     parser.add_argument('command', nargs='+', help='Linking command')
+     args = parser.parse_args()
+ 
+@@ -177,7 +178,10 @@
+         return 0
+ 
+     # Run the actual link.
+-    command = wrapper_utils.CommandToRun(args.command)
++    command = wrapper_utils.AddTargetRuntimeLibraryPaths(
++        args.command, args.runtime_sysroot
++    )
++    command = wrapper_utils.CommandToRun(command)
+     result = wrapper_utils.RunLinkWithOptionalMapFile(
+         command, env=fast_env, map_file=args.map_file
+     )
+--- a/build/toolchain/gcc_toolchain.gni
++++ b/build/toolchain/gcc_toolchain.gni
+@@ -275,6 +275,12 @@
+       linker_prefix = invoker.linker_launcher + " "
+     }
+     ld = linker_prefix + invoker.ld
++    runtime_sysroot_switch = ""
++    if (defined(invoker.target_runtime_sysroot) &&
++        invoker.target_runtime_sysroot != "") {
++      _runtime_sysroot = rebase_path(invoker.target_runtime_sysroot, "")
++      runtime_sysroot_switch = " --runtime-sysroot=\"$_runtime_sysroot\""
++    }
+     if (defined(invoker.readelf)) {
+       readelf = invoker.readelf
+     } else {
+@@ -519,7 +525,7 @@
+       if (sofile_with_symbols != sofile) {
+         command += "--symbols-file=\"$sofile_with_symbols\" "
+       }
+-      command += "-- $link_command $solink_extra_flags"
++      command += "$runtime_sysroot_switch -- $link_command $solink_extra_flags"
+ 
+       if (target_cpu == "mipsel" && is_component_build && is_android) {
+         rspfile_content = "-Wl,--start-group -Wl,--whole-archive {{inputs}} {{solibs}} -Wl,--no-whole-archive {{libs}} -Wl,--end-group"
+@@ -621,7 +627,7 @@
+ 
+       link_wrapper =
+           rebase_path("//build/toolchain/gcc_link_wrapper.py", root_build_dir)
+-      command = "\"$python_path\" \"$link_wrapper\" --output=\"$sofile\"$strip_switch$map_switch -- $link_command"
++      command = "\"$python_path\" \"$link_wrapper\" --output=\"$sofile\"$strip_switch$map_switch$runtime_sysroot_switch -- $link_command"
+       rspfile_content = "$whole_archive_flag {{inputs}} {{solibs}} $no_whole_archive_flag {{libs}} {{rlibs}}"
+ 
+       description = "SOLINK_MODULE $sofile"
+@@ -719,7 +725,7 @@
+ 
+       link_wrapper =
+           rebase_path("//build/toolchain/gcc_link_wrapper.py", root_build_dir)
+-      command = "\"$python_path\" \"$link_wrapper\" --output=\"$outfile\"$strip_switch$map_switch -- $link_command"
++      command = "\"$python_path\" \"$link_wrapper\" --output=\"$outfile\"$strip_switch$map_switch$runtime_sysroot_switch -- $link_command"
+ 
+       description = "LINK $outfile"
+ 
+--- a/build/toolchain/linux/unbundle/BUILD.gn
++++ b/build/toolchain/linux/unbundle/BUILD.gn
+@@ -27,6 +27,12 @@
+   }
+   ld = cxx
+   linker_launcher = unbundle_linker_launcher
++  if (current_os == "netbsd" &&
++      (emberbsd_pkg_config_role == "explicit" ||
++       emberbsd_pkg_config_role == "target") &&
++      emberbsd_target_sysroot != "") {
++    target_runtime_sysroot = emberbsd_target_sysroot
++  }
+ 
+   extra_cflags = getenv("CFLAGS")
+   extra_asmflags = getenv("ASFLAGS")

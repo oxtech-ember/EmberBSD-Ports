@@ -76,12 +76,12 @@ with tempfile.TemporaryDirectory(prefix='electron-source-refresh-') as temporary
         rejected(lambda: view.refresh(source, None, destination))
     assert snapshot(destination / 'src/changed.c') == old
     assert snapshot(out / 'stable.o') == stable
-    rename = Path.rename
-    def fail_install(path, target):
-        if path.name == 'candidate':
+    replace = os.replace
+    def fail_install(path, target, **kwargs):
+        if Path(path).name == 'new-0':
             raise OSError('injected install failure')
-        return rename(path, target)
-    with patch.object(Path, 'rename', fail_install):
+        return replace(path, target, **kwargs)
+    with patch.object(view.os, 'replace', fail_install):
         rejected(lambda: view.refresh(source, None, destination))
     assert snapshot(destination / 'src/changed.c') == old
     view.refresh(source, None, destination)
@@ -89,6 +89,10 @@ with tempfile.TemporaryDirectory(prefix='electron-source-refresh-') as temporary
     ninja()
     assert snapshot(out / 'stable.o') == stable, 'independent object rebuilt'
     assert snapshot(out / 'changed.o')[2] != changed[2], 'changed source was not rebuilt'
+    updated_changed = snapshot(out / 'changed.o')
+    ninja()
+    assert snapshot(out / 'stable.o') == stable, 'no-op rebuilt stable object'
+    assert snapshot(out / 'changed.o') == updated_changed, 'no-op rebuilt changed object'
     assert snapshot(source / 'stable.c') == source_stable
     assert not list(work.glob('.source-view-refresh-*'))
     # Refuse to discard nested build products or a redirected view root.

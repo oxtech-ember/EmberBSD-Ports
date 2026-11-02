@@ -867,6 +867,8 @@ def common_embedder_sources(options, sdk, native, environment):
         commands.append(('NODE', [native.tool('python'), '-B', str(owner), '--sdk-source', str(options.sdk_source),
                                   'verify-source', '--source', str(node), '--pkgsrc-root', str(node_export)]))
         values.update(node_path='//third_party/electron_node',
+                      node_inspector_string_traits_header=(
+                          'third_party/inspector_protocol/crdtp/chromium/protocol_traits.h'),
                       node_config_gn_root_target='//electron',
                       node_config_gn_root_pattern='//electron:electron_dist_zip')
         for feature in NODE_SHARED_FEATURES:
@@ -1409,7 +1411,7 @@ def keep_going_limit(options):
     return value
 
 
-def run_ninja_and_stage(options, sdk, native, source_root, environment):
+def run_ninja(options, sdk, native, source_root, environment):
     output = options.work / 'out'
     sdk['process'].run_logged([native.tool('ninja'), '-C', str(output), '-j', str(options.jobs),
                               '-k', str(keep_going_limit(options)),
@@ -1418,11 +1420,7 @@ def run_ninja_and_stage(options, sdk, native, source_root, environment):
                              append=(options.work / 'build.log').exists())
     archive = output / 'dist.zip'
     require(archive.is_file(), 'Electron producer did not create dist.zip')
-    with archive.open('rb') as handle:
-        digest = hashlib.file_digest(handle, 'sha256').hexdigest()
-    stage = local_module('electron_runtime_stage', 'stage-runtime.py')
-    stage.stage_runtime(str(archive), str(options.work / 'runtime'), archive_sha256=digest,
-                        target=options.target, sdk=stage.load_sdk(options.sdk_source))
+
 
 
 def configure(options):
@@ -1603,7 +1601,7 @@ def reconfigure(options):
         if build_after_reconfigure:
             # Keep Ninja failures outside the GN rollback path: the new graph
             # and configuration are valid even if the compile is interrupted.
-            run_ninja_and_stage(options, sdk, native, source_root, environment)
+            run_ninja(options, sdk, native, source_root, environment)
 
 def build(options):
     keep_going_limit(options)
@@ -1628,7 +1626,7 @@ def build(options):
     output = options.work / 'out'
     require((output / 'args.gn').read_text() == gn_arguments(values), 'configured GN arguments changed')
     source_root = gn_source(options)
-    run_ninja_and_stage(options, sdk, native, source_root, saved_env)
+    run_ninja(options, sdk, native, source_root, saved_env)
 
 
 def main():

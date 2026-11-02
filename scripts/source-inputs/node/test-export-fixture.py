@@ -34,7 +34,8 @@ with tempfile.TemporaryDirectory(dir=a.work_dir) as temp:
          'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture'])
     revision = run([a.git, '-C', upstream, 'rev-parse', 'HEAD']).stdout.strip()
     for relative in ('scripts/prepare-pkgsrc.py', 'scripts/pkgsrc-source-identity.py',
-                     'scripts/source-inputs/node/source.py', 'pkgsrc/lang/llvm/files/sdk_source.py'):
+                     'scripts/source-inputs/node/source.py', 'scripts/prepared_receipt.py',
+                     'pkgsrc/lang/llvm/files/sdk_source.py'):
         dest = root / relative
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ports / relative, dest)

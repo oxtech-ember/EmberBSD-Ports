@@ -95,8 +95,7 @@ class Source:
         return {'fixture': True}
     @staticmethod
     def stage_runtime(archive, destination, **kwargs):
-        assert Path(archive).read_bytes() == b'fixture Electron archive'
-        Source.stage_calls.append((archive, destination, kwargs))
+        raise AssertionError('build must not stage a runtime')
 with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     root = Path(temp); src = root/'source/src'; src.mkdir(parents=True)
     work = root/'work'; out = work/'out'; out.mkdir(parents=True)
@@ -109,7 +108,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                               'cxx':['--ld-path=/ld','--rtlib=compiler-rt','--unwindlib=libunwind','-stdlib=libc++']})
     binding.write_text(json.dumps(commands))
     (src/'.gn').write_text('buildconfig="//BUILDCONFIG.gn"\n')
-    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n emberbsd_node_source_identity=""\n emberbsd_node_configure_helper=""\n emberbsd_node_configure_inputs=[]\n emberbsd_node_configure_dependencies=[]\n node_module_version=0\n emberbsd_native_pkg_config_prefix=""\n emberbsd_protoc_runtime_launcher=""\n emberbsd_protoc_runtime_view=""\n emberbsd_protoc_runtime_inputs=[]\n node_host_runtime_python=""\n node_host_runtime_launcher=""\n node_host_runtime_view=""\n node_host_runtime_inputs=[]\n perfetto_host_runtime_launcher=""\n perfetto_host_runtime_view=""\n perfetto_host_runtime_inputs=[]\n v8_prepared_source_receipt=""\n v8_version_hash_salt_files=[]\n v8_version_hash_salt=""\n feature=false\n clang_version=""\n}\nset_default_toolchain("//:tools")\n')
+    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n emberbsd_node_source_identity=""\n emberbsd_node_configure_helper=""\n emberbsd_node_configure_inputs=[]\n emberbsd_node_configure_dependencies=[]\n node_module_version=0\n node_inspector_string_traits_header=""\n emberbsd_native_pkg_config_prefix=""\n emberbsd_protoc_runtime_launcher=""\n emberbsd_protoc_runtime_view=""\n emberbsd_protoc_runtime_inputs=[]\n node_host_runtime_python=""\n node_host_runtime_launcher=""\n node_host_runtime_view=""\n node_host_runtime_inputs=[]\n perfetto_host_runtime_launcher=""\n perfetto_host_runtime_view=""\n perfetto_host_runtime_inputs=[]\n v8_prepared_source_receipt=""\n v8_version_hash_salt_files=[]\n v8_version_hash_salt=""\n feature=false\n clang_version=""\n}\nset_default_toolchain("//:tools")\n')
     (src/'BUILD.gn').write_text('toolchain("tools") {\n tool("stamp") { command="touch {{output}}" }\n}\n')
     (src/'electron/build/args').mkdir(parents=True)
     (src/'electron/build/args/release.gn').write_text('')
@@ -195,6 +194,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                perfetto_host_runtime_launcher=str(launcher),
                perfetto_host_runtime_view=str(new_view), perfetto_host_runtime_inputs=new_runtime_inputs,
                node_module_version=130,
+               node_inspector_string_traits_header='third_party/inspector_protocol/crdtp/chromium/protocol_traits.h',
                v8_prepared_source_receipt='//v8/emberbsd-prepared-source.json',
                v8_version_hash_salt_files=[], v8_version_hash_salt='')
     new.update(emberbsd_node_source_identity=str(new_node_receipt.resolve(strict=True)),
@@ -466,6 +466,9 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     assert saved_after['environment']['EMBERBSD_V8_SOURCE_SHA256']=='b' * 64
     assert saved_after['environment']['EMBERBSD_NODE_SOURCE_SHA256']=='b' * 64
     assert saved_after['arguments']['emberbsd_node_source_identity']==str(new_node_receipt.resolve())
+    assert 'node_inspector_string_traits_header' not in old
+    assert saved_after['arguments']['node_inspector_string_traits_header']==(
+        'third_party/inspector_protocol/crdtp/chromium/protocol_traits.h')
     assert saved_after['arguments']['node_module_version']==130
     assert saved_after['arguments']['emberbsd_node_configure_inputs']==new_node_configure_inputs
     assert saved_after['arguments']['emberbsd_node_configure_dependencies']==new_node_configure_dependencies
@@ -527,7 +530,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     assert Process.ninja_calls[-1][Process.ninja_calls[-1].index('-k') + 1]=='1'
     assert not (work/'reconfigure-incomplete').exists()
     assert json.loads(config.read_text())['environment']['EMBERBSD_V8_SOURCE_SHA256']=='e' * 64
-    assert obj.read_bytes()==b'object' and len(Source.stage_calls)==1
+    assert obj.read_bytes()==b'object' and not Source.stage_calls
     assert calls == {'verify':1, 'producer':1, 'gn_source':1, 'lastchange':1,
                      'ffmpeg':1, 'dsymutil':1, 'rust_std':1}
     assert phase_order == ['lastchange', 'ffmpeg', 'dsymutil', 'rust_std', 'source-view']
@@ -548,11 +551,14 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     assert not (work/'reconfigure-incomplete').exists()
     assert (out/'build.ninja').is_file() and (out/'args.gn').read_text()==b.gn_arguments(new)
     assert json.loads(config.read_text())['environment']['EMBERBSD_V8_SOURCE_SHA256']=='f' * 64
-    assert obj.read_bytes()==b'object' and len(Source.stage_calls)==1
+    assert obj.read_bytes()==b'object' and not Source.stage_calls
     assert calls == {'verify':1, 'producer':1, 'gn_source':1, 'lastchange':1,
                      'ffmpeg':1, 'dsymutil':1, 'rust_std':1}
     assert phase_order == ['lastchange', 'ffmpeg', 'dsymutil', 'rust_std', 'source-view']
 
+    # Existing unrelated staging output must not affect or be changed by builds.
+    foreign_runtime = work/'runtime'; foreign_runtime.mkdir()
+    (foreign_runtime/'foreign').write_bytes(b'untouched')
     # A separate ordinary build keeps its own verification/prerequisite path.
     Process.ninja_failure = False
     calls.update(verify=0, producer=0, gn_source=0, lastchange=0, ffmpeg=0, dsymutil=0, rust_std=0)
@@ -563,7 +569,12 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     assert calls == {'verify':1, 'producer':1, 'gn_source':1, 'lastchange':1,
                      'ffmpeg':1, 'dsymutil':1, 'rust_std':1}
     assert phase_order == ['lastchange', 'ffmpeg', 'dsymutil', 'rust_std', 'source-view']
-    assert obj.read_bytes()==b'object' and len(Source.stage_calls)==2
+    assert obj.read_bytes()==b'object' and not Source.stage_calls
+    b.build(opt)
+    assert Process.events[-1]=='ninja' and len(Process.ninja_calls)==prior_ninja_count+3
+    assert (foreign_runtime/'foreign').read_bytes()==b'untouched'
+    assert sorted(path.name for path in foreign_runtime.iterdir()) == ['foreign']
+    assert (out/'dist.zip').read_bytes()==b'fixture Electron archive' and not Source.stage_calls
 
     # Isolate a common Node receipt refresh from V8, runtime-view and provider changes.
     node_refresh_source = root/'node-refresh'; node_refresh_source.mkdir()

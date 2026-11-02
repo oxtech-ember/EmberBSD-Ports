@@ -1,0 +1,37 @@
+# Origin: EmberBSD (AI-assisted), fail fast without reversing pkgsrc patches.
+# Not submitted upstream.
+
+--- a/mk/patch/patch.mk
++++ b/mk/patch/patch.mk
+@@ -172,9 +172,9 @@
+ .else
+ PATCH_ARGS?=		-d ${WRKSRC} --forward --quiet -E ${PATCH_STRIP}
+ .endif
+-.if defined(BATCH)
+-PATCH_ARGS+=		--batch
+-.endif
++# Never prompt on a bad path or reverse an already-applied patch.
++# Batch mode must be paired with forward-only handling.
++PATCH_ARGS+=		--batch --forward
+ .if defined(_PATCH_CAN_BACKUP) && (${_PATCH_CAN_BACKUP} == "yes")
+ PATCH_ARGS+=		${_PATCH_BACKUP_ARG} .orig
+ .endif
+@@ -218,12 +218,12 @@
+ PATCH_DIST_ARGS.${i:S/=/--/}?=	-d ${WRKSRC} --forward --quiet -E ${PATCH_DIST_STRIP.${i:S/=/--/}}
+ .  endif
+ .endfor
+-.if defined(BATCH)
+-PATCH_DIST_ARGS+=		--batch
++# Keep distribution patches noninteractive and forward-only too, including
++# per-file argument overrides.
++PATCH_DIST_ARGS+=		--batch --forward
+-.  for i in ${PATCHFILES}
++.for i in ${PATCHFILES}
+-PATCH_DIST_ARGS.${i:S/=/--/}+=	--batch
++PATCH_DIST_ARGS.${i:S/=/--/}+=	--batch --forward
+-.  endfor
++.endfor
+-.endif
+ .if defined(_PATCH_CAN_BACKUP) && (${_PATCH_CAN_BACKUP} == "yes")
+ PATCH_DIST_ARGS+=		${_PATCH_BACKUP_ARG} .orig_dist
+ .  for i in ${PATCHFILES}

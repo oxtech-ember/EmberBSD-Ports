@@ -4,10 +4,9 @@
 # (with gn --fail-on-unused-args) does not load that .gni on non-Linux targets,
 # so configure fails: "Build argument has no effect". Defaults already keep the
 # installer off when !is_linux; omit the assignment for EmberBSD NetBSD cross.
-# enable_pdf_save_to_drive is similarly Chrome-PDF-only; drop it here too so a
-# non-Chrome //electron gen does not trip unused-args when pdf features.gni is
-# not loaded. Electron wants it false; Chromium's declare default is false when
-# the PDF save-to-drive feature flag file is present.
+# This historical source-layer step also removed the PDF policy. The later
+# gn-electron-pdf-drive-policy.patch restores Electron's upstream false value;
+# current pdf/features.gni declares it and otherwise defaults it to enable_pdf.
 # root_extra_deps is declared only in //BUILD.gn's declare_args(); with
 # --root-target=//electron that file is not part of the producer graph, so the
 # assignment is unused. Electron is already the root target; omit it.
