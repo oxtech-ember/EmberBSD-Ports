@@ -48,6 +48,21 @@ FILESDIR= ${EMBERBSD_QTBASE_PKGDIR}/files
 
 .include "../../meta-pkgs/qt6/Makefile.common"
 
+# Qtbase uses its own configure wrapper, but the selected generator and
+# build/install targets come from pkgsrc's standard CMake fragment.
+.if ${PKGPATH} == "x11/qt6-qtbase"
+CMAKE_GENERATOR?=	ninja
+CMAKE_BUILD_DIR=	.
+CONFIGURE_DIR=	.
+do-configure:
+	${RUN}${_ULIMIT_CMD} \
+	cd ${WRKSRC} && \
+	${PKGSRC_SETENV} ${_CONFIGURE_SCRIPT_ENV} \
+		${CONFIG_SHELL} ${CONFIG_SHELL_FLAGS} \
+			${CONFIGURE_SCRIPT} ${CONFIGURE_ARGS}
+.include "../../devel/cmake/build.mk"
+.endif
+
 .include "../../mk/dlopen.buildlink3.mk"
 BUILDLINK_TRANSFORM+=	opt:-ldl:${BUILDLINK_LDADD.dl:Q}
 
