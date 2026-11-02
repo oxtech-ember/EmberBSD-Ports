@@ -61,8 +61,8 @@ def check_source(text, makefile):
     require('$opts{verbose} and print "  $install_name_tool @opts\\n";' in body,
             'Report the actual selected tool')
     require(makefile.count(ENVIRONMENT) == 1 and
-            re.search(r'^PKGREVISION=\s*13$', makefile, re.M),
-            'Forward the quoted Darwin environment from the canonical Perl revision 13 recipe')
+            re.search(r'^PKGREVISION=\s*14$', makefile, re.M),
+            'Forward the quoted Darwin environment from the canonical Perl revision 14 recipe')
 
 
 def source_mutations(text, makefile):

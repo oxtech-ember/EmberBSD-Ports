@@ -3,7 +3,7 @@
 .include "license.mk"
 .include "Makefile.common"
 
-PKGREVISION=	13
+PKGREVISION=	14
 
 COMMENT=	Practical Extraction and Report Language
 
@@ -54,6 +54,16 @@ HAS_CONFIGURE=		yes
 CONFIGURE_SCRIPT=	./Configure
 CONFIGURE_ARGS+=	-sde
 CONFIGURE_ARGS+=	-Dldflags=${LDFLAGS:Q}
+
+# Perl stores full_ar in Config_heavy.pl. Do not persist pkgsrc's temporary
+# .tools wrapper path in the installed native Perl configuration.
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+.  if !defined(TOOLS_PLATFORM.ar) || empty(TOOLS_PLATFORM.ar)
+PKG_FAIL_REASON+=	"Set the selected native archive tool in TOOLS_PLATFORM.ar."
+.  else
+CONFIGURE_ARGS+=	-Dfull_ar=${TOOLS_PLATFORM.ar:Q}
+.  endif
+.endif
 
 .if ${OPSYS} == "Darwin"
 # Configure otherwise adds host /usr/local and optional package-manager
