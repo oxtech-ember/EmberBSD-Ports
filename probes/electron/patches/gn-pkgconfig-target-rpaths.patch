@@ -1,0 +1,111 @@
+# Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+# Derive NetBSD target runtime library directories from selected pkg-config metadata.
+
+--- a/build/config/linux/pkg-config.py
++++ b/build/config/linux/pkg-config.py
+@@ -108,6 +108,25 @@
+         return path
+ 
+ 
++def TargetRuntimeLibdirs(lib_dirs, sysroot):
++    """Convert selected sysroot library directories to target runtime paths."""
++    root = os.path.normpath(sysroot)
++    result = []
++    for path in lib_dirs:
++        if not os.path.isabs(path) or '..' in path.split('/'):
++            raise ValueError('target library directory must be absolute without traversal')
++        normalized = os.path.normpath(path)
++        if os.path.commonpath([root, normalized]) != root or normalized == root:
++            raise ValueError('target library directory is outside sysroot')
++        target_path = '/' + os.path.relpath(normalized, root)
++        if any(c in target_path for c in (':', ',', '\n', '\r')):
++            raise ValueError('target runtime path cannot be represented as a linker argument')
++        flag = '-Wl,-rpath=' + target_path
++        if flag not in result:
++            result.append(flag)
++    return result
++
++
+ def main():
+     parser = OptionParser()
+     parser.add_option('-d', '--debug', action='store_true')
+@@ -138,6 +157,7 @@
+         dest='atleast_version',
+         type='string',
+     )
++    parser.add_option('--emberbsd-target-runtime-libdirs', action='store_true', default=False)
+     parser.add_option('--libdir', action='store_true', dest='libdir')
+     parser.add_option(
+         '--dridriverdir', action='store_true', dest='dridriverdir'
+@@ -149,6 +169,13 @@
+     )
+     (options, args) = parser.parse_args()
+ 
++    if options.emberbsd_target_runtime_libdirs:
++        if options.emberbsd_native_prefix is not None:
++            parser.error('target runtime library directories cannot use a native prefix')
++        if not options.sysroot or not os.path.isabs(options.sysroot):
++            parser.error('target runtime library directories require an absolute sysroot')
++        if '..' in options.sysroot.split('/'):
++            parser.error('target sysroot cannot contain traversal')
+     if options.emberbsd_native_buildlink and options.emberbsd_native_prefix is None:
+         parser.error('native buildlink requires a selected prefix')
+     pkg_config_command = [options.pkg_config]
+@@ -291,11 +318,13 @@
+     # Output a GN array, the first one is the cflags, the second are the libs. The
+     # JSON formatter prints GN compatible lists when everything is a list of
+     # strings.
+-    print(
+-        json.dumps(
+-            [sorted(includes), sorted(cflags), sorted(libs), sorted(lib_dirs)]
+-        )
+-    )
++    result = [sorted(includes), sorted(cflags), sorted(libs), sorted(lib_dirs)]
++    if options.emberbsd_target_runtime_libdirs:
++        try:
++            result.append(TargetRuntimeLibdirs(result[3], sysroot))
++        except ValueError as error:
++            parser.error(str(error))
++    print(json.dumps(result))
+     return 0
+ 
+ 
+--- a/build/config/linux/pkg_config.gni
++++ b/build/config/linux/pkg_config.gni
+@@ -103,10 +103,13 @@
+ # Chrome-adjacent repos might be using different sysroot versions (e.g. ANGLE).
+ _enable_cache =
+     !_pkg_config_requires_abs_path && defined(build_with_chromium) &&
+-    build_with_chromium && sysroot != ""
++    build_with_chromium && sysroot != "" &&
++    !(_emberbsd_pkg_config_role == "target" && current_os == "netbsd")
+ 
+ if (_pkg_config_sysroot != "") {
+-  if (_pkg_config_requires_abs_path) {
++  if (_emberbsd_pkg_config_role == "target" && current_os == "netbsd") {
++    _rebased_sysroot = rebase_path(_pkg_config_sysroot, "")
++  } else if (_pkg_config_requires_abs_path) {
+     _rebased_sysroot = rebase_path(_pkg_config_sysroot)
+   } else {
+     _rebased_sysroot = rebase_path(_pkg_config_sysroot, root_build_dir)
+@@ -125,6 +128,9 @@
+   ]
+   if (_emberbsd_cross_pkg_config) {
+     common_pkg_config_args += [ "--allow-cross-sysroot" ]
++  }
++  if (_emberbsd_pkg_config_role == "target" && current_os == "netbsd") {
++    common_pkg_config_args += [ "--emberbsd-target-runtime-libdirs" ]
+   }
+   if (_pkg_config_sysroot == emberbsd_target_sysroot &&
+       _emberbsd_cross_pkg_config) {
+@@ -264,6 +270,10 @@
+     if (!defined(invoker.ignore_libs) || !invoker.ignore_libs) {
+       libs = pkgresult[2]
+       lib_dirs = pkgresult[3]
++      if (_emberbsd_pkg_config_role == "target" && current_os == "netbsd" &&
++          _pkg_config_sysroot != "") {
++        ldflags = pkgresult[4]
++      }
+     }
+ 
+     forward_variables_from(invoker,

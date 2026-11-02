@@ -1022,6 +1022,11 @@
       "path": "electron-bsd-crash-availability.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-pkgconfig-target-rpaths.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
