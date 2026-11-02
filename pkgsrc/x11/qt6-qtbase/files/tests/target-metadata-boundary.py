@@ -13,7 +13,10 @@ with tempfile.TemporaryDirectory(prefix='qt metadata ') as temp:
     cmake.mkdir(parents=True)
     sample = cmake / 'check.cmake'
     work = pathlib.Path(temp) / 'work'
-    command = [sys.argv[1], sys.argv[2], str(root), str(pathlib.Path(temp) / 'sysroot'), str(work), '/usr/pkg', '--module']
+    sysroot = pathlib.Path(temp) / 'sysroot'
+    host_tools = pathlib.Path(temp) / 'host-tools'
+    command = [sys.argv[1], sys.argv[2], str(root), str(sysroot), str(work),
+               '/usr/pkg', str(host_tools), '--module']
     sample.write_text(f'set(ROOT "{work}/.buildlink")\nset(CHILD "{work}/.buildlink/lib")\n')
     subprocess.run(command, check=True)
     assert sample.read_text() == 'set(ROOT "/usr/pkg")\nset(CHILD "/usr/pkg/lib")\n'
@@ -29,7 +32,10 @@ with tempfile.TemporaryDirectory(prefix='qt metadata ') as temp:
         'PackageDownloadLocation: https://example.invalid/qtbase.tar.xz\n'
         'LicenseConcluded: NOASSERTION\n'
         'qtbase was configured with:\n'
-        f'    qt6/configure -DROOT={work}/.buildlink/lib;{work}/.buildlink/include/python3.15\n'
+        f'    qt6/configure -DROOT={work}/.buildlink/lib;{work}/.buildlink/include/python3.15 '
+        f'-DHostPrefix={host_tools} '
+        f'-DPython_EXECUTABLE={host_tools}/bin/python3.15 '
+        f'-DSimilarPrefix={host_tools}-extra/bin/tool -DCMAKE_SYSROOT={sysroot}\n'
         '</text>\n'
     )
     external = pathlib.Path(temp) / 'external.spdx'
@@ -43,8 +49,36 @@ with tempfile.TemporaryDirectory(prefix='qt metadata ') as temp:
         'PackageDownloadLocation: https://example.invalid/qtbase.tar.xz\n'
         'LicenseConcluded: NOASSERTION\n'
         'qtbase was configured with:\n'
-        '    qt6/configure -DROOT=/usr/pkg/lib;/usr/pkg/include/python3.15\n'
+        '    qt6/configure -DROOT=/usr/pkg/lib;/usr/pkg/include/python3.15 '
+        '-DHostPrefix=${SDK_NATIVE_PREFIX} '
+        '-DPython_EXECUTABLE=${SDK_NATIVE_PREFIX}/bin/python3.15 '
+        f'-DSimilarPrefix={host_tools}-extra/bin/tool -DCMAKE_SYSROOT={sysroot}\n'
         '</text>\n'
     )
+    assert f'{host_tools}/' not in sbom.read_text()
+    assert f'{host_tools}-extra/bin/tool' in sbom.read_text()
+    assert str(sysroot) in sbom.read_text()
     assert symlink.is_symlink() and external.read_text() == f'Unowned: {work}/.buildlink\n'
-print('PASS: target metadata buildlink boundary')
+    sbom.write_text(
+        'SPDXVersion: SPDX-2.3\n'
+        'PackageName: qtsvg\n'
+        'PackageDownloadLocation: https://example.invalid/qtsvg.tar.xz\n'
+        'LicenseConcluded: NOASSERTION\n'
+        'qtsvg was configured with:\n'
+        f'    cmake -DHostPrefix={host_tools} -DPython={host_tools}/bin/python3.15 '
+        f'-DSimilarPrefix={host_tools}-extra/bin/tool\n'
+        '</text>\n'
+    )
+    subprocess.run(command, check=True)
+    assert sbom.read_text() == (
+        'SPDXVersion: SPDX-2.3\n'
+        'PackageName: qtsvg\n'
+        'PackageDownloadLocation: https://example.invalid/qtsvg.tar.xz\n'
+        'LicenseConcluded: NOASSERTION\n'
+        'qtsvg was configured with:\n'
+        '    cmake -DHostPrefix=${SDK_NATIVE_PREFIX} '
+        '-DPython=${SDK_NATIVE_PREFIX}/bin/python3.15 '
+        f'-DSimilarPrefix={host_tools}-extra/bin/tool\n'
+        '</text>\n'
+    )
+print('PASS: target metadata buildlink and native-prefix boundaries')

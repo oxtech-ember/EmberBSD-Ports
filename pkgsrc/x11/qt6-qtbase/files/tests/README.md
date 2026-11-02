@@ -15,8 +15,8 @@ a usable OpenSSL 3 backend, trusts only that fixture certificate, and verifies
 a local encrypted ping/pong exchange without changing the system trust store.
 
 Run `target-metadata-boundary.py PERL TARGET_METADATA_PL` with the selected
-host Perl and this recipe's `target-metadata.pl` to check the exact buildlink
-root, child paths and rejection of neighboring unresolved build paths.
+host Perl and this recipe's `target-metadata.pl` to check exact buildlink and
+selected host-prefix mappings, including parent, child, and similar-prefix paths.
 
 Run `shared-package-stage.sh` with the selected host Perl to check that the
 runtime selector retains a complete Qtbase stage, that the devel package gets

@@ -34,10 +34,11 @@ if (@ARGV == 4 && $ARGV[0] eq '--native') {
     exit 0;
 }
 
-my $module = @ARGV == 5 && $ARGV[4] eq "--module";
-@ARGV == 4 || $module or die "usage: $0 STAGED_QT SYSROOT WORKDIR PREFIX [--module]\n";
-my ($root, $sysroot, $work, $prefix) = @ARGV;
-for ($root, $sysroot, $work, $prefix) {
+my $module = @ARGV == 6 && $ARGV[5] eq "--module";
+@ARGV == 5 || $module or die "usage: $0 STAGED_QT SYSROOT WORKDIR PREFIX HOST_TOOLS_PREFIX [--module]\n";
+pop @ARGV if $module;
+my ($root, $sysroot, $work, $prefix, $host_tools_prefix) = @ARGV;
+for ($root, $sysroot, $work, $prefix, $host_tools_prefix) {
     m{^/[^\n]+[^/]$} or die "absolute, non-root paths required\n";
 }
 -d "$root/lib/cmake" or die "not a staged Qt module tree\n";
@@ -71,11 +72,14 @@ for my $path (@files) {
     my $text = $old;
     my $spdx = $path =~ m{\Q$root\E/sbom/[^/]+\.spdx$};
     if ($spdx) {
-        # Keep SBOM package/source/license metadata intact. Only the embedded
-        # configure command is a build record with transient buildlink paths.
-        $text =~ s{(^qtbase was configured with:\n)(.*?)(?=^</text>$)}{
+        # Keep SBOM package/source/license metadata and target sysroot
+        # provenance intact. Normalize only transient buildlink and selected
+        # host-prefix paths in the embedded configure command.
+        $text =~ s{(^[a-z0-9][a-z0-9._+-]* was configured with:\n)(.*?)(?=^</text>$)}{
             my ($heading, $args) = ($1, $2);
             $args =~ s{\Q$work\E/\.buildlink(?=/|["\s);])}{$prefix}g;
+            my $host_placeholder = '${SDK_NATIVE_PREFIX}';
+            $args =~ s{\Q$host_tools_prefix\E(?=/|["\s);])}{$host_placeholder}g;
             $heading . $args;
         }mse;
     } else {

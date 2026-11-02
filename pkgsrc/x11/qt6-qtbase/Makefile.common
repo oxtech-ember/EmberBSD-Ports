@@ -182,6 +182,7 @@ post-install: qt-module-target-metadata
 .PHONY: qt-module-target-metadata
 qt-module-target-metadata:
 	${PERL5} ${.CURDIR}/../../x11/qt6-qtbase/files/target-metadata.pl \
-	    ${DESTDIR:Q}${QTPREFIX:Q} ${CROSS_DESTDIR:Q} ${WRKDIR:Q} ${PREFIX:Q} --module
+	    ${DESTDIR:Q}${QTPREFIX:Q} ${CROSS_DESTDIR:Q} ${WRKDIR:Q} ${PREFIX:Q} \
+	    ${TOOLBASE:Q} --module
 .endif
 .endif # EMBERBSD_QT_MAKEFILE_COMMON

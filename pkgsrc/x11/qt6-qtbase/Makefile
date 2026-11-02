@@ -54,25 +54,25 @@ PKG_FAIL_REASON+= "The separate Qtbase SDK requires a NetBSD cross build; native
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The Qtbase runtime/SDK split requires the common aarch64 or amd64 cross target"
 .endif
-PKGREVISION= 9
+PKGREVISION= 10
 QTBASE_FULL_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.NetBSD ${EMBERBSD_QTBASE_PKGDIR}/PLIST
 QTBASE_RUNTIME_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.runtime
 QTBASE_DEVEL_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.NetBSD ${EMBERBSD_QTBASE_PKGDIR}/../qt6-qtbase-devel/PLIST
 .if defined(EMBERBSD_QTBASE_DEVEL)
-PKGREVISION= 11
-.if ${PKGREVISION} != 11
-PKG_FAIL_REASON+= "The Qtbase SDK requires package revision 11"
+PKGREVISION= 12
+.if ${PKGREVISION} != 12
+PKG_FAIL_REASON+= "The Qtbase SDK requires package revision 12"
 .endif
 QTBASE_PACKAGE_PART= devel
 .if ${QTBASE_PACKAGE_PART} != "devel"
 PKG_FAIL_REASON+= "The Qtbase SDK recipe must select the devel partition"
 .endif
 PLIST_SRC= ${QTBASE_DEVEL_PLIST_SRC}
-DEPENDS+= qt6-qtbase-${QTVERSION}nb9:../../x11/qt6-qtbase
-CONFLICTS+= qt6-qtbase<${QTVERSION}nb9
+DEPENDS+= qt6-qtbase-${QTVERSION}nb10:../../x11/qt6-qtbase
+CONFLICTS+= qt6-qtbase<${QTVERSION}nb10
 .else
-.if ${PKGREVISION} != 9
-PKG_FAIL_REASON+= "The Qtbase runtime requires package revision 9"
+.if ${PKGREVISION} != 10
+PKG_FAIL_REASON+= "The Qtbase runtime requires package revision 10"
 .endif
 QTBASE_PACKAGE_PART= runtime
 .if ${QTBASE_PACKAGE_PART} != "runtime"
@@ -283,7 +283,7 @@ post-install: qt-target-metadata
 .PHONY: qt-target-metadata
 qt-target-metadata:
 	${PERL5} ${FILESDIR}/target-metadata.pl ${DESTDIR:Q}${QTPREFIX:Q} \
-	    ${CROSS_DESTDIR:Q} ${WRKDIR:Q} ${PREFIX:Q}
+	    ${CROSS_DESTDIR:Q} ${WRKDIR:Q} ${PREFIX:Q} ${TOOLBASE:Q}
 
 .endif
 

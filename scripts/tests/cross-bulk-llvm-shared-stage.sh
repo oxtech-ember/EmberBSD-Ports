@@ -16,7 +16,7 @@ if [ "$pair" = llvm ]; then
     shared_var=EMBERBSD_LLVM_SHARED_STAGE producer_name=llvm-23.1.4nb2 consumer_name=llvm-devel-23.1.4nb3
 else
     producer=x11/qt6-qtbase consumer=x11/qt6-qtbase-devel producer_dir=qt6-qtbase consumer_dir=qt6-qtbase-devel
-    shared_var=EMBERBSD_QTBASE_SHARED_STAGE producer_name=qt6-qtbase-6.12.0nb9 consumer_name=qt6-qtbase-devel-6.12.0nb11
+    shared_var=EMBERBSD_QTBASE_SHARED_STAGE producer_name=qt6-qtbase-6.12.0nb10 consumer_name=qt6-qtbase-devel-6.12.0nb12
 fi
 
 setup()
