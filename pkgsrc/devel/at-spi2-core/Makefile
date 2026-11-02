@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.72 2026/09/02 19:01:22 wiz Exp $
 
 DISTNAME=	at-spi2-core-2.62.1
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	devel gnome
 MASTER_SITES=	${MASTER_SITE_GNOME:=sources/at-spi2-core/${PKGVERSION_NOREV:R}/}
 EXTRACT_SUFX=	.tar.xz
@@ -49,6 +49,8 @@ PKGCONFIG_OVERRIDE_STAGE=	post-configure
 .include "options.mk"
 
 .include "../../devel/meson/build.mk"
+# glib-2.0.pc lists -lintl on macOS, so the libraries load libintl directly.
+.include "../../devel/gettext-lib/buildlink3.mk"
 .include "../../devel/glib2/buildlink3.mk"
 .include "../../textproc/libxml2/buildlink3.mk"
 .include "../../lang/python/tool.mk"
