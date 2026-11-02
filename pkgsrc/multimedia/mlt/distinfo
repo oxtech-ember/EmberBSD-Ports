@@ -1,0 +1,7 @@
+$NetBSD: distinfo,v 1.21 2026/09/06 09:56:09 markd Exp $
+
+BLAKE2s (mlt-7.42.0.tar.gz) = 73983b25ad20bd0d15d9b3573f929783b67f3be7b96e9a8ef45708551956ea66
+SHA512 (mlt-7.42.0.tar.gz) = 37cd9372f3dda4ddd25ab1460f36042d408131308c344e8fbbf7c5a7b78db583856527bc9356e2772fdb68f50909ddf09529ce079521c7af81ae70ce681a146c
+Size (mlt-7.42.0.tar.gz) = 1726815 bytes
+SHA1 (patch-src_melt_io.c) = 461018d90e0e92551e57e15bd227473d59477d71
+SHA1 (patch-src_modules_openfx_factory.c) = 438f8111e6c13008958118ae58754490f87b626b

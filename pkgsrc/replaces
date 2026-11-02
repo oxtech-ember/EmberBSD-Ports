@@ -104,6 +104,7 @@ graphics/png
 math/eigen3
 math/py-numpy
 multimedia/dav1d
+multimedia/mlt
 net/nng
 security/libsecret
 security/mit-krb5

@@ -1,0 +1,64 @@
+# $NetBSD: Makefile,v 1.163 2026/09/08 21:16:33 markd Exp $
+
+DISTNAME=	mlt-7.42.0
+CATEGORIES=	multimedia
+MASTER_SITES=	${MASTER_SITE_GITHUB:=mltframework/}
+GITHUB_PROJECT=	mlt
+GITHUB_TAG=	v${PKGVERSION_NOREV}
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://www.mltframework.org/
+COMMENT=	Open source multimedia framework
+LICENSE=	gnu-lgpl-v2.1
+
+USE_TOOLS+=	pkg-config gmake
+USE_LANGUAGES=	c c++
+
+CFLAGS.NetBSD+=		-DHAVE_LOCALE_H -DHAVE_STRTOD_L -D__SETLOCALE_SOURCE__
+
+CMAKE_CONFIGURE_ARGS+=	-DMOD_VIDSTAB=OFF
+CMAKE_CONFIGURE_ARGS+=	-DMOD_RNNOISE=OFF
+# Origin: EmberBSD (AI-assisted). EmberBSD keeps SDL3 only; build without
+# the SDL2 consumers and without Movit, which needs SDL2.
+CMAKE_CONFIGURE_ARGS+=	-DMOD_SDL2=OFF
+CMAKE_CONFIGURE_ARGS+=	-DMOD_MOVIT=OFF
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_DISABLE_FIND_PACKAGE_SDL2=TRUE
+# Origin: EmberBSD (AI-assisted). MLT 7.42 makes LV2 and libplacebo
+# default-on. Keep the 7.40 module set: lilv and libplacebo are not
+# dependencies of this package.
+CMAKE_CONFIGURE_ARGS+=	-DUSE_LV2=OFF
+CMAKE_CONFIGURE_ARGS+=	-DMOD_PLACEBO=OFF
+
+SUBST_CLASSES+=		frei0r
+SUBST_STAGE.frei0r=	pre-configure
+SUBST_FILES.frei0r=	src/modules/frei0r/factory.c
+SUBST_SED.frei0r=	-e 's^/usr/lib/frei0r-1.*:^${BUILDLINK_PREFIX.frei0r}/lib/frei0r-1:^'
+
+PKGCONFIG_OVERRIDE+=	src/framework/mlt-framework.pc.in
+PKGCONFIG_OVERRIDE+=	src/mlt++/mlt++.pc.in
+
+.include "../../devel/cmake/build.mk"
+
+.include "../../audio/alsa-lib/buildlink3.mk"
+.include "../../audio/jack/buildlink3.mk"
+.include "../../audio/ladspa/buildlink3.mk"
+.include "../../audio/libebur128/buildlink3.mk"
+.include "../../audio/libsamplerate/buildlink3.mk"
+.include "../../audio/rubberband/buildlink3.mk"
+.include "../../audio/sox_ng/buildlink3.mk"
+.include "../../mk/bsd.prefs.mk"
+.if !empty(PKGSRC_COMPILER:M*gcc*)
+.  include "../../devel/libatomic/buildlink3.mk"
+.endif
+.include "../../devel/pango/buildlink3.mk"
+.include "../../devel/qt6-qt5compat/buildlink3.mk"
+.include "../../graphics/gdk-pixbuf2/buildlink3.mk"
+.include "../../graphics/libexif/buildlink3.mk"
+.include "../../graphics/qt6-qtsvg/buildlink3.mk"
+.include "../../multimedia/ffmpeg8/buildlink3.mk"
+.include "../../multimedia/frei0r/buildlink3.mk"
+.include "../../multimedia/libdv/buildlink3.mk"
+.include "../../textproc/libxml2/buildlink3.mk"
+.include "../../x11/gtk2/buildlink3.mk"
+.include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../mk/bsd.pkg.mk"
