@@ -1027,6 +1027,11 @@
       "path": "gn-pkgconfig-target-rpaths.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-target-runtime-library-paths.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
