@@ -1,0 +1,150 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -153,7 +153,7 @@
+ version = "1.0"
+ 
+ [dependencies.syn]
+-version = "2.0.45"
++version = "3"
+ 
+ [dependencies.unicode-xid]
+ version = "0.2.2"
+--- a/src/fmt/mod.rs
++++ b/src/fmt/mod.rs
+@@ -594,7 +594,7 @@
+             return false;
+         }
+         match self {
+-            Self::Path(syn::TypePath { qself, path }) => {
++            Self::Path(syn::TypePath { qself, path, .. }) => {
+                 if let Some(qself) = qself {
+                     if qself.ty.contains_generics(type_params) {
+                         return true;
+@@ -617,7 +617,7 @@
+                 elem.contains_generics(type_params)
+             }
+ 
+-            Self::BareFn(syn::TypeBareFn { inputs, output, .. }) => {
++            Self::FnPtr(syn::TypeFnPtr { inputs, output, .. }) => {
+                 inputs
+                     .iter()
+                     .any(|arg| arg.ty.contains_generics(type_params))
+@@ -690,7 +690,7 @@
+                 syn::PathArguments::Parenthesized(
+                     syn::ParenthesizedGenericArguments { inputs, output, .. },
+                 ) => {
+-                    inputs.iter().any(|ty| ty.contains_generics(type_params))
++                    inputs.iter().any(|arg| arg.ty.contains_generics(type_params))
+                         || match output {
+                             syn::ReturnType::Default => false,
+                             syn::ReturnType::Type(_, ty) => {
+--- a/src/from.rs
++++ b/src/from.rs
+@@ -234,7 +234,7 @@
+                             .push(parse_quote! { #ty: derive_more::core::convert::From<#ident> });
+                         generics
+                             .params
+-                            .push(syn::TypeParam::from(ident.clone()).into());
++                            .push(syn::GenericParam::Type(syn::TypeParam::from(ident.clone())));
+                     }
+                     generics
+                 };
+--- a/src/into.rs
++++ b/src/into.rs
+@@ -146,6 +146,7 @@
+             .collect();
+         let fields_tys: Vec<_> = fields.iter().map(|(_, f)| &f.ty).collect();
+         let fields_tuple = syn::Type::Tuple(syn::TypeTuple {
++            attrs: Vec::new(),
+             paren_token: token::Paren::default(),
+             elems: fields_tys.iter().cloned().cloned().collect(),
+         });
+@@ -164,7 +165,7 @@
+ 
+             let gens = if let Some(lf) = lf.clone() {
+                 let mut gens = input_generics.clone();
+-                gens.params.push(syn::LifetimeParam::new(lf).into());
++                gens.params.push(syn::GenericParam::Lifetime(syn::LifetimeParam::new(lf)));
+                 Cow::Owned(gens)
+             } else {
+                 Cow::Borrowed(input_generics)
+@@ -555,10 +556,14 @@
+                             }
+                             polyfill::Meta::List(list) => {
+                                 if let polyfill::NestedMeta::Meta(polyfill::Meta::List(list)) = list
+-                                    .parse_args_with(Punctuated::<_, token::Comma>::parse_terminated)
++                                    .parse_args_with(
++                                        Punctuated::<
++                                            polyfill::NestedMeta,
++                                            token::Comma,
++                                        >::parse_terminated,
++                                    )
+                                     .ok()?
+                                     .pop()?
+-                                    .into_value()
+                                 {
+                                     parse_list(list, attrs)
+                                 } else {
+--- a/src/ops/mul.rs
++++ b/src/ops/mul.rs
+@@ -202,7 +202,7 @@
+         let rhs_ty: syn::TypeParam = parse_quote! { __derive_more_Rhs };
+ 
+         let mut generics = self.self_ty.1.clone();
+-        generics.params.push(rhs_ty.clone().into());
++        generics.params.push(syn::GenericParam::Type(rhs_ty.clone()));
+         let mut used_fields_count = 0;
+         for field_ty in self.fields.iter().enumerate().filter_map(|(n, field)| {
+             (!self.skipped_fields.contains(&n)).then_some(&field.ty)
+--- a/src/ops/mul_assign.rs
++++ b/src/ops/mul_assign.rs
+@@ -160,7 +160,7 @@
+         let rhs_ty: syn::TypeParam = parse_quote! { __derive_more_Rhs };
+ 
+         let mut generics = self.self_ty.1.clone();
+-        generics.params.push(rhs_ty.clone().into());
++        generics.params.push(syn::GenericParam::Type(rhs_ty.clone()));
+         let mut used_fields_count = 0;
+         for field_ty in self.fields.iter().enumerate().filter_map(|(n, field)| {
+             (!self.skipped_fields.contains(&n)).then_some(&field.ty)
+--- a/src/utils.rs
++++ b/src/utils.rs
+@@ -203,11 +203,11 @@
+ ) -> Generics {
+     let generic_param: GenericParam = parse_quote! { #generic_param };
+     let lifetimes: Vec<GenericParam> =
+-        generics.lifetimes().map(|x| x.clone().into()).collect();
++        generics.lifetimes().map(|x| GenericParam::Lifetime(x.clone())).collect();
+     let type_params: Vec<GenericParam> =
+-        generics.type_params().map(|x| x.clone().into()).collect();
++        generics.type_params().map(|x| GenericParam::Type(x.clone())).collect();
+     let const_params: Vec<GenericParam> =
+-        generics.const_params().map(|x| x.clone().into()).collect();
++        generics.const_params().map(|x| GenericParam::Const(x.clone())).collect();
+     let mut generics = generics.clone();
+     generics.params = Default::default();
+     generics.params.extend(lifetimes);
+@@ -950,11 +950,11 @@
+                                             ),
+                                         ));
+                                     };
+-                                    syn::TypePath {
++                                    syn::Type::Path(syn::TypePath {
++                                        attrs: Vec::new(),
+                                         qself: None,
+                                         path: path.clone().into(),
+-                                    }
+-                                    .into()
++                                    })
+                                 }
+                                 polyfill::NestedMeta::Lit(syn::Lit::Str(s)) => s.parse()?,
+                                 polyfill::NestedMeta::Lit(lit) => return Err(Error::new(
+@@ -2923,7 +2923,7 @@
+                             syn::GenericArgument::Type(ty) if ty.contains_type_structurally(needle),
+                         )
+                     }),
+-                syn::Type::BareFn(_)
++                syn::Type::FnPtr(_)
+                 | syn::Type::ImplTrait(_)
+                 | syn::Type::Infer(_)
+                 | syn::Type::Macro(_)

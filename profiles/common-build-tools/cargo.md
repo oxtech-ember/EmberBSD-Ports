@@ -105,8 +105,9 @@ layout changes; rebuild consumers when selecting this patched crate.
 `tests/cargo-patch-hook.py` checks the common bmake pre-configure hook with a
 real selected-prefix patch tool and a checksum-preserved crate fixture.
 `tests/cargo-syn3.py` runs named offline macro consumers against a prepared
-patched vendor tree using the selected host Cargo and linker; use `--help` for
-the required paths and cases. The caller holds the normal prefix and link locks.
+patched vendor tree using the selected host Cargo, linker and SDK job resolver;
+`--help` lists the selected SDK source, jobs override, vendor paths and cases.
+The caller holds the normal prefix and link locks.
 `tests/cargo-miette-compat-darwin.py` compiles and runs a small offline miette
 derive and Unicode-width consumer with the selected Darwin host tools; its
 `--help` lists the prepared vendor and Cargo cache inputs.

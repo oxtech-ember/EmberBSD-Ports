@@ -72,6 +72,39 @@
     },
     "patch": "dashmap-6.2.1.patch"
   },
+  "derive_more-impl-2.1.1": {
+    "files": {
+      "Cargo.toml": {
+        "before": "a9c5ce200f3ea3822be272c1af53129a992b9e31f51b08c928ff340740d7c1c5",
+        "after": "23c5078548b59236f981491a27271ef70a794d5139a18728e2a118e4d0dcde2b"
+      },
+      "src/fmt/mod.rs": {
+        "before": "0c9dcaa605e7ded3f277deca9da93b622d835a412374c71f64e91dd2091b790b",
+        "after": "82ccdc2755abb3f807bbfb63704bb15b15b6e3040ffaf15c44b00a6d253fbf50"
+      },
+      "src/from.rs": {
+        "before": "dbcea1f655618518d366313124b59d50181928e1f0a092ff8796d5accec81fd6",
+        "after": "5f16d2bd3cf20ecd372c07561eae85198db15d6a4d0743c1245b152ce0527578"
+      },
+      "src/into.rs": {
+        "before": "97d1989d050a3a7f95757a29a91bd4712f7b5862fff57d5aa25e0bb63bbb5a47",
+        "after": "6e95736094092eccf2c6b831c28c5ba2da7de009a80f3ac58282f51cc90999d6"
+      },
+      "src/ops/mul.rs": {
+        "before": "3f02d6034a512cae3080b42758033b0b9d79e9403adb731e17263599e36a8c42",
+        "after": "29eeb02f446df671ef4d78210781ae07075d46aa5cce604abf9c537086e345c3"
+      },
+      "src/ops/mul_assign.rs": {
+        "before": "82d54451ce1018a3128510bd48f55cb737e134a752656d912376331cd6716de4",
+        "after": "00fbce2dc18d790dc1f931889d53760b52b6b89fe3841b31d6fcec81e32b73fc"
+      },
+      "src/utils.rs": {
+        "before": "4801ae8348907fa512f73283995d231bcafff1638729ff1de231f07ad18ace3f",
+        "after": "2430a8611de41d82e52717c8d52be428b341ff23dea7598837c7962246e05356"
+      }
+    },
+    "patch": "derive_more-impl-2.1.1.patch"
+  },
   "dlib-0.5.3": {
     "files": {
       "Cargo.toml": {
@@ -196,6 +229,15 @@
       }
     },
     "patch": "miette-derive-7.6.0.patch"
+  },
+  "nalgebra-macros-0.3.0": {
+    "files": {
+      "Cargo.toml": {
+        "before": "531b772b2b1c2e25c5521ecdb571bc38b0f428efa6b72f1d5e96c42a62a2a440",
+        "after": "e5bc6f25da5a3270274d37743fdebebc68cc11c79c868ca2bfd4aa4bdf10977f"
+      }
+    },
+    "patch": "nalgebra-macros-0.3.0.patch"
   },
   "parking_lot_core-0.9.12": {
     "files": {
