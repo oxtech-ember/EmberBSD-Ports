@@ -1,0 +1,672 @@
+$NetBSD$
+
+Keep the programs building with the strict C warnings of the NetBSD base
+(WARNS=4, -Werror): read-only strings and tables are const, as in the
+NetBSD OpenSSH integration; data handed to an API that does not modify
+it goes through __UNCONST(); functions that never return are __dead;
+shell output uses literal format strings. EmberBSD (AI-assisted).
+
+--- misc.c.orig
++++ misc.c
+@@ -1197,7 +1197,7 @@
+ 
+ /* function to assist building execv() arguments */
+ void
+-addargs(arglist *args, char *fmt, ...)
++addargs(arglist *args, const char *fmt, ...)
+ {
+ 	va_list ap;
+ 	char *cp;
+@@ -1229,7 +1229,7 @@
+ }
+ 
+ void
+-replacearg(arglist *args, u_int which, char *fmt, ...)
++replacearg(arglist *args, u_int which, const char *fmt, ...)
+ {
+ 	va_list ap;
+ 	char *cp;
+--- misc.h.orig
++++ misc.h
+@@ -139,9 +139,9 @@
+ 	u_int   num;
+ 	u_int   nalloc;
+ };
+-void	 addargs(arglist *, char *, ...)
++void	 addargs(arglist *, const char *, ...)
+ 	    __attribute__((format(printf, 2, 3)));
+-void	 replacearg(arglist *, u_int, char *, ...)
++void	 replacearg(arglist *, u_int, const char *, ...)
+ 	    __attribute__((format(printf, 3, 4)));
+ void	 freeargs(arglist *);
+ 
+--- scp.c.orig
++++ scp.c
+@@ -122,9 +122,11 @@
+ 
+ #define COPY_BUFLEN	16384
+ 
+-int do_cmd(char *, char *, char *, int, int, char *, int *, int *, pid_t *);
++int do_cmd(const char *, const char *, const char *, int, int, const char *, int *, int *, pid_t *);
+ int do_cmd2(char *, char *, int, char *, int, int);
+ 
++static char empty[] = "";
++
+ /* Struct for addargs */
+ arglist args;
+ arglist remote_remote_args;
+@@ -153,7 +155,7 @@
+ int sshport = -1;
+ 
+ /* This is the program to execute for the secure connection. ("ssh" or -S) */
+-char *ssh_program = _PATH_SSH_PROGRAM;
++const char *ssh_program = _PATH_SSH_PROGRAM;
+ 
+ /* This is used to store the pid of ssh_program */
+ pid_t do_cmd_pid = -1;
+@@ -169,7 +171,7 @@
+ int sftp_glob(struct sftp_conn *, const char *, int,
+     int (*)(const char *, int), glob_t *); /* proto for sftp-glob.c */
+ 
+-static void
++__dead static void
+ killchild(int signo)
+ {
+ 	if (do_cmd_pid > 1) {
+@@ -257,8 +259,8 @@
+  */
+ 
+ int
+-do_cmd(char *program, char *host, char *remuser, int port, int subsystem,
+-    char *cmd, int *fdin, int *fdout, pid_t *pid)
++do_cmd(const char *program, const char *host, const char *remuser, int port, int subsystem,
++    const char *cmd, int *fdin, int *fdout, pid_t *pid)
+ {
+ #ifdef USE_PIPES
+ 	int pin[2], pout[2];
+@@ -412,7 +414,7 @@
+ } BUF;
+ 
+ BUF *allocbuf(BUF *, int, int);
+-void lostconn(int);
++__dead void lostconn(int);
+ int okname(char *);
+ void run_err(const char *,...)
+     __attribute__((__format__ (printf, 1, 2)))
+@@ -440,7 +442,7 @@
+ void source(int, char *[]);
+ void tolocal(int, char *[], enum scp_mode_e, char *sftp_direct);
+ void toremote(int, char *[], enum scp_mode_e, char *sftp_direct);
+-void usage(void);
++__dead void usage(void);
+ 
+ void source_sftp(int, char *, char *, struct sftp_conn *);
+ void sink_sftp(int, char *, const char *, struct sftp_conn *);
+@@ -1325,7 +1327,8 @@
+ void
+ source_sftp(int argc, char *src, char *targ, struct sftp_conn *conn)
+ {
+-	char *target = NULL, *filename = NULL, *abs_dst = NULL;
++	char *target = NULL, *abs_dst = NULL;
++	const char *filename = NULL;
+ 	int src_is_dir, target_is_dir;
+ 	Attrib a;
+ 	struct stat st;
+@@ -1482,7 +1485,7 @@
+ 			fd = -1;
+ 		}
+ 		if (!haderr)
+-			(void) atomicio(vwrite, remout, "", 1);
++			(void) atomicio(vwrite, remout, empty, 1);
+ 		else
+ 			run_err("%s: %s", name, strerror(haderr));
+ 		(void) response();
+@@ -1536,7 +1539,7 @@
+ 		source(1, vect);
+ 	}
+ 	(void) closedir(dirp);
+-	(void) atomicio(vwrite, remout, "E\n", 2);
++	(void) atomicio(vwrite, remout, __UNCONST("E\n"), 2);
+ 	(void) response();
+ }
+ 
+@@ -1546,7 +1549,8 @@
+ 	char *abs_src = NULL;
+ 	char *abs_dst = NULL;
+ 	glob_t g;
+-	char *filename, *tmp = NULL;
++	const char *filename;
++	char *tmp = NULL;
+ 	int i, r, err = 0, dst_is_dir;
+ 	struct stat st;
+ 
+@@ -1666,7 +1670,8 @@
+ 	off_t size, statbytes;
+ 	unsigned long long ull;
+ 	int setimes, targisdir, wrerr;
+-	char ch, *cp, *np, *targ, *why, *vect[1], buf[2048], visbuf[2048];
++	char ch, *cp, *np, *targ, *vect[1], buf[2048], visbuf[2048];
++	const char *why;
+ 	char **patterns = NULL;
+ 	size_t n, npatterns = 0;
+ 	struct timeval tv[2];
+@@ -1692,7 +1697,7 @@
+ 	if (targetshouldbedirectory)
+ 		verifydir(targ);
+ 
+-	(void) atomicio(vwrite, remout, "", 1);
++	(void) atomicio(vwrite, remout, empty, 1);
+ 	if (stat(targ, &stb) == 0 && S_ISDIR(stb.st_mode))
+ 		targisdir = 1;
+ 	if (src != NULL && !iamrecursive && !Tflag) {
+@@ -1733,7 +1738,7 @@
+ 			continue;
+ 		}
+ 		if (buf[0] == 'E') {
+-			(void) atomicio(vwrite, remout, "", 1);
++			(void) atomicio(vwrite, remout, empty, 1);
+ 			goto done;
+ 		}
+ 		if (ch == '\n')
+@@ -1767,7 +1772,7 @@
+ 			if (!cp || *cp++ != '\0' || atime.tv_usec < 0 ||
+ 			    atime.tv_usec > 999999)
+ 				SCREWUP("atime.usec not delimited");
+-			(void) atomicio(vwrite, remout, "", 1);
++			(void) atomicio(vwrite, remout, empty, 1);
+ 			continue;
+ 		}
+ 		if (*cp != 'C' && *cp != 'D') {
+@@ -1878,7 +1883,7 @@
+ bad:			run_err("%s: %s", np, strerror(errno));
+ 			continue;
+ 		}
+-		(void) atomicio(vwrite, remout, "", 1);
++		(void) atomicio(vwrite, remout, empty, 1);
+ 		if ((bp = allocbuf(&buffer, ofd, COPY_BUFLEN)) == NULL) {
+ 			(void) close(ofd);
+ 			continue;
+@@ -1971,7 +1976,7 @@
+ 		}
+ 		/* If no error was noted then signal success for this file */
+ 		if (note_err(NULL) == 0)
+-			(void) atomicio(vwrite, remout, "", 1);
++			(void) atomicio(vwrite, remout, empty, 1);
+ 	}
+ done:
+ 	for (n = 0; n < npatterns; n++)
+@@ -1990,7 +1995,8 @@
+ throughlocal_sftp(struct sftp_conn *from, struct sftp_conn *to,
+     char *src, char *targ)
+ {
+-	char *target = NULL, *filename = NULL, *abs_dst = NULL;
++	char *target = NULL, *abs_dst = NULL;
++	const char *filename = NULL;
+ 	char *abs_src = NULL, *tmp = NULL;
+ 	glob_t g;
+ 	int i, r, targetisdir, err = 0;
+--- sftp-client.c.orig
++++ sftp-client.c
+@@ -161,7 +161,7 @@
+ 	put_u32(mlen, sshbuf_len(m));
+ 	iov[0].iov_base = mlen;
+ 	iov[0].iov_len = sizeof(mlen);
+-	iov[1].iov_base = (u_char *)sshbuf_ptr(m);
++	iov[1].iov_base = __UNCONST(sshbuf_ptr(m));
+ 	iov[1].iov_len = sshbuf_len(m);
+ 
+ 	if (atomiciov6(writev, conn->fd_out, iov, 2, sftpio,
+--- sftp.c.orig
++++ sftp.c
+@@ -207,7 +207,7 @@
+ 	{ NULL,		-1,		-1,		-1	}
+ };
+ 
+-static void
++__dead static void
+ killchild(int signo)
+ {
+ 	pid_t pid;
+@@ -314,7 +314,7 @@
+ local_do_shell(const char *args)
+ {
+ 	int status;
+-	char *shell;
++	const char *shell;
+ 	pid_t pid;
+ 
+ 	if (!*args)
+@@ -661,7 +661,8 @@
+ process_get(struct sftp_conn *conn, const char *src, const char *dst,
+     const char *pwd, int pflag, int rflag, int resume, int fflag)
+ {
+-	char *filename, *abs_src = NULL, *abs_dst = NULL, *tmp = NULL;
++	const char *filename;
++	char *abs_src = NULL, *abs_dst = NULL, *tmp = NULL;
+ 	glob_t g;
+ 	int i, r, err = 0;
+ 
+@@ -758,7 +759,8 @@
+ {
+ 	char *tmp_dst = NULL;
+ 	char *abs_dst = NULL;
+-	char *tmp = NULL, *filename = NULL;
++	char *tmp = NULL;
++	const char *filename = NULL;
+ 	glob_t g;
+ 	int err = 0;
+ 	int i, dst_is_dir = 1;
+@@ -854,8 +856,8 @@
+ static int
+ sdirent_comp(const void *aa, const void *bb)
+ {
+-	SFTP_DIRENT *a = *(SFTP_DIRENT **)aa;
+-	SFTP_DIRENT *b = *(SFTP_DIRENT **)bb;
++	const SFTP_DIRENT *a = *(const SFTP_DIRENT * const *)aa;
++	const SFTP_DIRENT *b = *(const SFTP_DIRENT * const *)bb;
+ 	int rmul = sort_flag & LS_REVERSE_SORT ? -1 : 1;
+ 
+ #define NCMP(a,b) (a == b ? 0 : (a < b ? 1 : -1))
+@@ -2429,7 +2431,7 @@
+ }
+ 
+ static void
+-connect_to_server(char *path, char **args, int *in, int *out)
++connect_to_server(const char *path, char **args, int *in, int *out)
+ {
+ 	int c_in, c_out;
+ #ifdef USE_PIPES
+@@ -2490,7 +2492,7 @@
+ 	close(c_out);
+ }
+ 
+-static void
++__dead static void
+ usage(void)
+ {
+ 	extern char *__progname;
+@@ -2512,7 +2514,7 @@
+ 	char *host = NULL, *user, *cp, **cpp, *file2 = NULL;
+ 	int debug_level = 0;
+ 	char *file1 = NULL, *sftp_server = NULL;
+-	char *ssh_program = _PATH_SSH_PROGRAM, *sftp_direct = NULL;
++	const char *ssh_program = _PATH_SSH_PROGRAM, *sftp_direct = NULL;
+ 	const char *errstr;
+ 	LogLevel ll = SYSLOG_LEVEL_INFO;
+ 	arglist args;
+--- sk-usbhid.c.orig
++++ sk-usbhid.c
+@@ -742,8 +742,8 @@
+ 			}
+ 			skdebug(__func__, "requested device %s", *devicep);
+ 		} else if (strcmp(options[i]->name, "user") == 0) {
+-			if (strlcpy(user_id, options[i]->value, user_id_len) >=
+-			    user_id_len) {
++			if (strlcpy((char *)user_id, options[i]->value,
++			    user_id_len) >= user_id_len) {
+ 				skdebug(__func__, "user too long");
+ 				return -1;
+ 			}
+--- ssh-add.c.orig
++++ ssh-add.c
+@@ -77,7 +77,7 @@
+ extern char *__progname;
+ 
+ /* Default files to add */
+-static char *default_files[] = {
++static const char *default_files[] = {
+ #ifdef WITH_OPENSSL
+ 	_PATH_SSH_CLIENT_ID_RSA,
+ 	_PATH_SSH_CLIENT_ID_ECDSA,
+@@ -500,7 +500,7 @@
+ 	const char *alg = NULL;
+ 	size_t slen = 0;
+ 	int r, ret = -1;
+-	char data[1024];
++	u_char data[1024];
+ 
+ 	if ((r = sshkey_load_public(filename, &key, NULL)) != 0) {
+ 		error_r(r, "Couldn't read public key %s", filename);
+@@ -818,7 +818,8 @@
+ 	extern char *optarg;
+ 	extern int optind;
+ 	int agent_fd = -1;
+-	char *pkcs11provider = NULL, *skprovider = NULL;
++	char *pkcs11provider = NULL;
++	const char *skprovider = NULL;
+ 	char **dest_constraint_strings = NULL, **hostkey_files = NULL;
+ 	int r, i, ch, deleting = 0, ret = 0, key_only = 0, cert_only = 0;
+ 	int do_download = 0, xflag = 0, lflag = 0, Dflag = 0;
+--- ssh-agent.c.orig
++++ ssh-agent.c
+@@ -665,7 +665,7 @@
+ }
+ 
+ 
+-static char *
++static const char *
+ agent_decode_alg(struct sshkey *key, u_int flags)
+ {
+ 	if (key->type == KEY_RSA) {
+@@ -2236,7 +2236,7 @@
+ 	}
+ }
+ 
+-static void
++__dead static void
+ usage(void)
+ {
+ 	fprintf(stderr,
+@@ -2259,7 +2259,7 @@
+ 	int s_flag = 0, T_flag = 0, u_flag = 0, U_flag = 0;
+ 	int sock = -1, ch, result, saved_errno;
+ 	pid_t pid;
+- 	char *homedir = NULL, *shell, *format, *pidstr, *agentsocket = NULL;
++ 	char *homedir = NULL, *shell, *pidstr, *agentsocket = NULL;
+ 	char *cp, pidstrbuf[1 + 3 * sizeof pid];
+ 	char *fdstr;
+ 	const char *errstr = NULL;
+@@ -2425,9 +2425,13 @@
+ 			perror("kill");
+ 			exit(1);
+ 		}
+-		format = c_flag ? "unsetenv %s;\n" : "unset %s;\n";
+-		printf(format, SSH_AUTHSOCKET_ENV_NAME);
+-		printf(format, SSH_AGENTPID_ENV_NAME);
++		if (c_flag) {
++			printf("unsetenv %s;\n", SSH_AUTHSOCKET_ENV_NAME);
++			printf("unsetenv %s;\n", SSH_AGENTPID_ENV_NAME);
++		} else {
++			printf("unset %s;\n", SSH_AUTHSOCKET_ENV_NAME);
++			printf("unset %s;\n", SSH_AGENTPID_ENV_NAME);
++		}
+ 		printf("echo Agent pid %ld killed;\n", (long)pid);
+ 		exit(0);
+ 	}
+@@ -2527,10 +2531,13 @@
+ 		    SYSLOG_FACILITY_AUTH, 1);
+ 		if (socket_name != NULL) {
+ 			cp = argv_assemble(1, &socket_name);
+-			format = c_flag ?
+-			    "setenv %s %s;\n" : "%s=%s; export %s;\n";
+-			printf(format, SSH_AUTHSOCKET_ENV_NAME, cp,
+-			    SSH_AUTHSOCKET_ENV_NAME);
++			if (c_flag)
++				printf("setenv %s %s;\n",
++				    SSH_AUTHSOCKET_ENV_NAME, cp);
++			else
++				printf("%s=%s; export %s;\n",
++				    SSH_AUTHSOCKET_ENV_NAME, cp,
++				    SSH_AUTHSOCKET_ENV_NAME);
+ 			free(cp);
+ 			printf("echo Agent pid %ld;\n", (long)parent_pid);
+ 			fflush(stdout);
+@@ -2546,12 +2553,20 @@
+ 		close(sock);
+ 		snprintf(pidstrbuf, sizeof pidstrbuf, "%ld", (long)pid);
+ 		if (ac == 0) {
+-			format = c_flag ? "setenv %s %s;\n" : "%s=%s; export %s;\n";
+ 			cp = argv_assemble(1, &socket_name);
+-			printf(format, SSH_AUTHSOCKET_ENV_NAME, cp,
+-			    SSH_AUTHSOCKET_ENV_NAME);
+-			printf(format, SSH_AGENTPID_ENV_NAME, pidstrbuf,
+-			    SSH_AGENTPID_ENV_NAME);
++			if (c_flag) {
++				printf("setenv %s %s;\n",
++				    SSH_AUTHSOCKET_ENV_NAME, cp);
++				printf("setenv %s %s;\n",
++				    SSH_AGENTPID_ENV_NAME, pidstrbuf);
++			} else {
++				printf("%s=%s; export %s;\n",
++				    SSH_AUTHSOCKET_ENV_NAME, cp,
++				    SSH_AUTHSOCKET_ENV_NAME);
++				printf("%s=%s; export %s;\n",
++				    SSH_AGENTPID_ENV_NAME, pidstrbuf,
++				    SSH_AGENTPID_ENV_NAME);
++			}
+ 			free(cp);
+ 			printf("echo Agent pid %ld;\n", (long)pid);
+ 			exit(0);
+--- ssh-keygen.c.orig
++++ ssh-keygen.c
+@@ -145,13 +145,13 @@
+ 	FMT_HEXDUMP
+ } convert_format = FMT_RFC4716;
+ 
+-static char *key_type_name = NULL;
++static const char *key_type_name = NULL;
+ 
+ /* Load key from this PKCS#11 provider */
+ static char *pkcs11provider = NULL;
+ 
+ /* FIDO/U2F provider to use */
+-static char *sk_provider = NULL;
++static const char *sk_provider = NULL;
+ 
+ /* Format for writing private keys */
+ static int private_key_format = SSHKEY_PRIVATE_OPENSSH;
+@@ -243,7 +243,7 @@
+ ask_filename(struct passwd *pw, const char *prompt)
+ {
+ 	char buf[1024];
+-	char *name = NULL;
++	const char *name = NULL;
+ 
+ 	if (key_type_name == NULL)
+ 		name = _PATH_SSH_CLIENT_ID_ED25519;
+@@ -794,7 +794,7 @@
+ }
+ #endif
+ 
+-static void
++__dead static void
+ do_print_public(struct passwd *pw)
+ {
+ 	struct sshkey *prv;
+@@ -821,7 +821,7 @@
+ 	exit(0);
+ }
+ 
+-static void
++__dead static void
+ do_download(struct passwd *pw)
+ {
+ #ifdef ENABLE_PKCS11
+@@ -931,7 +931,7 @@
+ 	free(comment);
+ }
+ 
+-static void
++__dead static void
+ do_fingerprint(struct passwd *pw)
+ {
+ 	FILE *f;
+@@ -1032,9 +1032,9 @@
+ do_gen_all_hostkeys(struct passwd *pw)
+ {
+ 	struct {
+-		char *key_type;
+-		char *key_type_display;
+-		char *path;
++		const char *key_type;
++		const char *key_type_display;
++		const char *path;
+ 	} key_types[] = {
+ #ifdef WITH_OPENSSL
+ 		{ "rsa", "RSA" ,_PATH_HOST_RSA_KEY_FILE },
+@@ -1280,7 +1280,7 @@
+ 	return 0;
+ }
+ 
+-static void
++__dead static void
+ do_known_hosts(struct passwd *pw, const char *name, int find_host,
+     int delete_host, int hash_hosts)
+ {
+@@ -1387,7 +1387,7 @@
+  * Perform changing a passphrase.  The argument is the passwd structure
+  * for the current user.
+  */
+-static void
++__dead static void
+ do_change_passphrase(struct passwd *pw, char * const *opts, size_t nopts)
+ {
+ 	char *comment;
+@@ -1500,8 +1500,8 @@
+  * Print the SSHFP RR.
+  */
+ static int
+-do_print_resource_record(struct passwd *pw, char *fname, char *hname,
+-    int print_generic, char * const *opts, size_t nopts)
++do_print_resource_record(struct passwd *pw, const char *fname,
++    const char *hname, int print_generic, char * const *opts, size_t nopts)
+ {
+ 	struct sshkey *public;
+ 	char *comment = NULL;
+@@ -1537,7 +1537,7 @@
+ /*
+  * Change the comment of a private key file.
+  */
+-static void
++__dead static void
+ do_change_comment(struct passwd *pw, const char *identity_comment)
+ {
+ 	char new_comment[KEY_COMMENT_MAX], *comment, *passphrase;
+@@ -2182,7 +2182,7 @@
+ 	free(ca_fp);
+ }
+ 
+-static void
++__dead static void
+ do_show_cert(struct passwd *pw)
+ {
+ 	struct sshkey *key = NULL;
+@@ -2501,7 +2501,7 @@
+ 	sshkey_free(ca);
+ }
+ 
+-static void
++__dead static void
+ do_check_krl(struct passwd *pw, int print_krl, int argc, char **argv)
+ {
+ 	int i, r, ret = 0;
+@@ -3298,7 +3298,7 @@
+ 	return 1;
+ }
+ 
+-static void
++__dead static void
+ usage(void)
+ {
+ 	fprintf(stderr,
+--- ssh-keyscan.c.orig
++++ ssh-keyscan.c
+@@ -194,7 +194,7 @@
+  * null token for two adjacent separators, so we may have to loop.
+  */
+ static char *
+-strnnsep(char **stringp, char *delim)
++strnnsep(char **stringp, const char *delim)
+ {
+ 	char *tok;
+ 
+@@ -235,7 +235,7 @@
+ static void
+ keygrab_ssh2(con *c)
+ {
+-	char *myproposal[PROPOSAL_MAX] = { KEX_CLIENT };
++	const char *myproposal[PROPOSAL_MAX] = { KEX_CLIENT };
+ 	int r;
+ 
+ 	switch (c->c_keytype) {
+@@ -280,7 +280,7 @@
+ 		fatal("unknown key type %d", c->c_keytype);
+ 		break;
+ 	}
+-	if ((r = kex_setup(c->c_ssh, myproposal)) != 0) {
++	if ((r = kex_setup(c->c_ssh, __UNCONST(myproposal))) != 0) {
+ 		free(c->c_ssh);
+ 		fprintf(stderr, "kex_setup: %s\n", ssh_err(r));
+ 		exit(1);
+@@ -658,7 +658,7 @@
+ 	}
+ }
+ 
+-static void
++__dead static void
+ usage(void)
+ {
+ 	fprintf(stderr,
+--- ssh-pkcs11-client.c.orig
++++ ssh-pkcs11-client.c
+@@ -329,7 +329,7 @@
+ pkcs11_start_helper(const char *path)
+ {
+ 	int pair[2];
+-	char *prog, *verbosity = NULL;
++	const char *prog, *verbosity = NULL;
+ 	struct helper *helper;
+ 	pid_t pid;
+ 
+--- ssh-sk-helper.c.orig
++++ ssh-sk-helper.c
+@@ -50,11 +50,11 @@
+ #ifdef ENABLE_SK
+ extern char *__progname;
+ 
+-static struct sshbuf *reply_error(int r, char *fmt, ...)
++static struct sshbuf *reply_error(int r, const char *fmt, ...)
+     __attribute__((__format__ (printf, 2, 3)));
+ 
+ static struct sshbuf *
+-reply_error(int r, char *fmt, ...)
++reply_error(int r, const char *fmt, ...)
+ {
+ 	char *msg;
+ 	va_list ap;
+--- ssh_api.c.orig
++++ ssh_api.c
+@@ -86,10 +86,10 @@
+ int
+ ssh_init(struct ssh **sshp, int is_server, struct kex_params *kex_params)
+ {
+-	char *myproposal[PROPOSAL_MAX] = { KEX_CLIENT };
++	const char *myproposal[PROPOSAL_MAX] = { KEX_CLIENT };
+ 	char *populated[PROPOSAL_MAX];
+ 	struct ssh *ssh;
+-	char **proposal;
++	const char **proposal;
+ 	static int called;
+ 	int r;
+ 
+@@ -104,7 +104,7 @@
+ 		ssh_packet_set_server(ssh);
+ 
+ 	/* Initialize key exchange */
+-	proposal = kex_params ? kex_params->proposal : myproposal;
++	proposal = kex_params ? __UNCONST(kex_params->proposal) : myproposal;
+ 	kex_proposal_populate_entries(ssh, populated,
+ 	    proposal[PROPOSAL_KEX_ALGS],
+ 	    proposal[PROPOSAL_ENC_ALGS_CTOS],
+--- sshsig.c.orig
++++ sshsig.c
+@@ -418,7 +418,8 @@
+ 		error_f("can't look up hash algorithm %s", hashalg);
+ 		return SSH_ERR_INTERNAL_ERROR;
+ 	}
+-	if ((r = ssh_digest_buffer(alg, m, hash, sizeof(hash))) != 0) {
++	if ((r = ssh_digest_buffer(alg, m, (u_char *)hash,
++	    sizeof(hash))) != 0) {
+ 		error_fr(r, "ssh_digest_buffer");
+ 		return r;
+ 	}
+@@ -543,7 +544,8 @@
+ 			goto out;
+ 		}
+ 	}
+-	if ((r = ssh_digest_final(ctx, hash, sizeof(hash))) != 0) {
++	if ((r = ssh_digest_final(ctx, (u_char *)hash,
++	    sizeof(hash))) != 0) {
+ 		error_fr(r, "ssh_digest_final");
+ 		goto out;
+ 	}
