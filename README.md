@@ -42,7 +42,8 @@ runtime behavior are validated.
   unset flags and ordinary metadata arguments remain unchanged. Focused GCC16
   production checks cover the pinned libc++ recursion and Perfetto warning
   fixes with diagnostics enabled.
-  Complete Electron builds and installed application acceptance remain pending.
+  Electron 45.2.1 amd64 cross-build and pkgsrc package lifecycle have passed;
+  target execution and application acceptance remain pending.
 
 - [libxslt RVT ownership candidate](profiles/development-toolchain/libxslt-security.md):
   isolated GCC16 builds preserve public symbols and pass 747 upstream tests

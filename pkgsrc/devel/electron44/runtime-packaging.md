@@ -1,13 +1,11 @@
 # Stage the Electron runtime
 
-This source probe is the only Electron 44 recipe candidate. Move this directory
-to `pkgsrc/devel/electron44` when its ordinary build and install targets work.
-Remove the probe in that same change. Keep the shared Chromium and Electron
-patch series at its existing owner. Do not add a second fetch-only recipe.
+The Electron recipe is owned by `pkgsrc/devel/electron44`. The shared Chromium
+and Electron patch series remains under `probes/electron/patches`.
 
 ## Build boundary
 
-The probe recipe binds an explicitly selected, complete Electron 45.2.1 source
+The recipe binds an explicitly selected, complete Electron 45.2.1 source
 workspace to `files/build-electron.py`. The [source owner](source-preparation.md)
 prepares the pinned dependency graph and ordered Ports patches before pkgsrc
 configuration. `DISTFILES` is empty: neither an external distribution ZIP nor
@@ -24,7 +22,7 @@ Required settings select `WORKSPACE`, `PORTS_SOURCE`, `SDK_SOURCE`, `HOST_PREFIX
 corresponding common cross-configuration values. Optional settings follow the
 controller's option names in uppercase with underscores, including independent
 host/target compiler families, runtime stages, native generators and common
-source providers. Use the controller's help and the parent README for those
+source providers. Use the controller's help and the [Electron README](../../../probes/electron/README.md) for those
 input contracts. No recipe path overrides the controller's identity checks.
 
 When reusing a graph configured outside the exported recipe, keep the original
@@ -49,9 +47,9 @@ producer work directory to `install-runtime.py`; `GENERATE_PLIST` uses its
 `plist` action. `runtime-dependencies.mk` selects shared package owners of the
 runtime libraries, including the dynamically loaded libnotify. Split LLVM
 runtime buildlinks keep their headers and link-time files as build-only
-dependencies. Ordinary pkgsrc build, package lifecycle and target execution
-acceptance are still pending; keep the recipe in the probe until its ordinary
-build and install targets are checked.
+dependencies. Ordinary cross-build, package creation and isolated host-rooted
+install/delete/reinstall have passed. Target execution, GUI, complete ABI and
+hardware acceptance remain pending.
 
 The controller's `build` and `reconfigure --build-after-reconfigure` do not
 extract or hash the distribution after each build. For a separate inspection,

@@ -9,7 +9,7 @@ from pathlib import Path
 import tempfile
 from types import SimpleNamespace
 owner = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('build_electron', owner / 'electron44/files/build-electron.py')
+spec = importlib.util.spec_from_file_location('build_electron', owner / '../../pkgsrc/devel/electron44/files/build-electron.py')
 build = importlib.util.module_from_spec(spec); spec.loader.exec_module(build)
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp); ports = root/'ports'; export = root/'export'; sysroot = root/'sysroot'; stage = root/'stage'; work = root/'work'

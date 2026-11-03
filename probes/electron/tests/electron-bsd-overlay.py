@@ -230,7 +230,7 @@ if __name__ == "__main__":
     parser.add_argument("--patch", type=Path, required=True)
     options, remaining = parser.parse_known_args()
     spec = importlib.util.spec_from_file_location(
-        "bsd_overlay", Path(__file__).resolve().parents[1] / "electron44/files/audit-bsd-overlay.py")
+        "bsd_overlay", Path(__file__).resolve().parents[1] / "../../pkgsrc/devel/electron44/files/audit-bsd-overlay.py")
     helper = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(helper)
     unittest.main(argv=[__file__, *remaining])

@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from tempfile import TemporaryDirectory
 
-script = Path(__file__).resolve().parents[1] / 'electron44/files/build-electron.py'
+script = Path(__file__).resolve().parents[1] / '../../pkgsrc/devel/electron44/files/build-electron.py'
 spec = importlib.util.spec_from_file_location('electron_controller', script)
 controller = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(controller)

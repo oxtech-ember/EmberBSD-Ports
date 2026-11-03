@@ -15,7 +15,7 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--bmake', required=True, type=Path)
 a = p.parse_args()
 bmake = a.bmake.resolve(strict=True)
-owner = Path(__file__).resolve().parents[1]/'electron44'
+owner = Path(__file__).resolve().parents[1]/'../../pkgsrc/devel/electron44'
 main = (owner/'Makefile').read_text()
 assert 'DISTFILES=' in main and 'WRKSRC=' in main and 'do-patch:' in main
 assert '.include "producer.mk"' in main

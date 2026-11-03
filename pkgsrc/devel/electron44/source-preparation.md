@@ -2,7 +2,7 @@
 
 `files/prepare-sources.py` prepares the first source stage of this recipe.
 It consumes a clean Electron checkout at the revision in the
-[source pins](../README.md#source-pins), copies it without hardlinks into a new
+[source pins](../../../probes/electron/README.md#source-pins), copies it without hardlinks into a new
 `src/electron` directory, applies the recipe-local patch series in declared
 order, and writes an unmanaged `.gclient` solution. It does not require an
 installed compiler. Use control Python with its standard library and an
@@ -14,7 +14,7 @@ For example, obtain the pinned Electron source and prepare an arm64 workspace:
 /absolute/git clone --depth 1 --branch v45.2.1 \
     https://github.com/electron/electron.git /absolute/electron-pristine
 /absolute/control-python -B \
-    probes/electron/electron44/files/prepare-sources.py \
+    pkgsrc/devel/electron44/files/prepare-sources.py \
     --electron-source /absolute/electron-pristine \
     --destination /absolute/NEW_ELECTRON_WORK \
     --git /absolute/git --target-cpu arm64
@@ -27,10 +27,10 @@ the input checkout. `x64` is the other supported source selection. This selects
 dependency source conditions, not the compiler's target ABI.
 
 The helper checks the original Chromium 156.0.8078.75 and Node 24.22.1 DEPS
-values and repository URLs without executing DEPS. It applies the complete
-recipe-local `patch-*` set through Git with full context and the declared
-order. The security roll must produce Node 24.22.1 while retaining the Chromium
-version. Adding a recipe patch without adding it to the order is an error.
+values and repository URLs without executing DEPS. The current 45.2.1 recipe
+has an empty recipe-local `patch-*` set; the helper applies any future declared
+patches through Git with full context and in order. Adding a recipe patch without
+adding it to the order is an error.
 Already-patched or dirty input, changed pins, missing patches and patch rejects
 are errors; none is retried with another version or compiler.
 
@@ -68,7 +68,7 @@ not require a depot_tools checkout.
 
 ```sh
 /absolute/control-python -B \
-    probes/electron/electron44/files/sync-git-sources.py \
+    pkgsrc/devel/electron44/files/sync-git-sources.py \
     --workspace /absolute/NEW_ELECTRON_WORK --depot-tools /absolute/depot-tools \
     --depot-tools-owner /absolute/EmberBSD-Ports/scripts/source-inputs/depot-tools/source.py \
     --git /absolute/source-tools/bin/git --git-lfs /absolute/source-tools/bin/git-lfs \
@@ -138,7 +138,7 @@ CLI. The stage is source-only; pending asset payloads are not downloaded.
 
 ```sh
 /absolute/control-python -B \
-    probes/electron/electron44/files/apply-upstream-patches.py \
+    pkgsrc/devel/electron44/files/apply-upstream-patches.py \
     --workspace /absolute/NEW_ELECTRON_WORK \
     --git /absolute/source-tools/bin/git --git-lfs /absolute/source-tools/bin/git-lfs \
     --source-path /absolute/source-tools/bin
@@ -239,7 +239,7 @@ Ports layer. It never runs gclient, hooks, configure or a compiler.
 
 ```sh
 /absolute/control-python -B -I -S \
-  probes/electron/electron44/files/prepare-build-sources.py \
+  pkgsrc/devel/electron44/files/prepare-build-sources.py \
   --workspace /absolute/electron-workspace \
   --pkgsrc /absolute/pinned-pkgsrc-checkout \
   --archive /absolute/distfiles/kikadf-chromium-nb-v154.0.tar.gz \

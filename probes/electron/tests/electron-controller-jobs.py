@@ -15,7 +15,7 @@ parser.add_argument('--sdk-source',type=Path,required=True)
 args=parser.parse_args(); sdk=args.sdk_source.resolve(strict=True)
 sys.path.insert(0,str(sdk/'src'))
 from emberbsd_sdk import cpu_capacity
-owner=Path(__file__).resolve().parents[1]/'electron44/files/build-electron.py'
+owner=Path(__file__).resolve().parents[1]/'../../pkgsrc/devel/electron44/files/build-electron.py'
 spec=importlib.util.spec_from_file_location('electron_build_jobs',owner)
 b=importlib.util.module_from_spec(spec); spec.loader.exec_module(b)
 class Locks:

@@ -29,7 +29,7 @@ def main():
     native=load_host_prefix(args.host_prefix,required_roles=('python','node','gn','ninja','rollup','tsc','cp','touch'))
     assert Path(sys.executable).resolve()==Path(native.tool('python')).resolve()
     owner=Path(__file__).resolve().parents[1]
-    spec=importlib.util.spec_from_file_location('node_providers',owner/'electron44/files/node-providers.py')
+    spec=importlib.util.spec_from_file_location('node_providers',owner/'../../pkgsrc/devel/electron44/files/node-providers.py')
     providers=importlib.util.module_from_spec(spec);spec.loader.exec_module(providers)
     selected=providers.select(native)
     assert selected['arguments']['emberbsd_devtools_esbuild_module'] == str(args.host_prefix/'lib/node_modules/esbuild/lib/main.js')

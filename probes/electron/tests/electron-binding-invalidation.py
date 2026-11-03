@@ -15,7 +15,7 @@ import tempfile
 p=argparse.ArgumentParser()
 for name in ('host-prefix','sdk-source','macos-sdk'): p.add_argument('--'+name,type=Path,required=True)
 a=p.parse_args(); assert sys.platform=='darwin'
-path=Path(__file__).resolve().parents[1]/'electron44/files/build-electron.py'
+path=Path(__file__).resolve().parents[1]/'../../pkgsrc/devel/electron44/files/build-electron.py'
 spec=importlib.util.spec_from_file_location('electron_build',path);b=importlib.util.module_from_spec(spec);spec.loader.exec_module(b)
 sdk=b.load_sdk(a.sdk_source)
 native=sdk['host_prefix'].load_host_prefix(a.host_prefix,required_roles=('python','ninja','cc','cxx','cpp'))

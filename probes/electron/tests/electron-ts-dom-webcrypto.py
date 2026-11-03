@@ -30,7 +30,7 @@ node = args.node.resolve(strict=True)
 python = prefix / 'bin/python3.15'
 gpatch = prefix / 'bin/gpatch'
 ports = Path(__file__).resolve().parents[3]
-runner = ports / 'probes/electron/electron44/files/electron-npm-runner.py'
+runner = ports / 'pkgsrc/devel/electron44/files/electron-npm-runner.py'
 patch = ports / 'probes/electron/patches/electron-typescript-dom-webcrypto-arraybuffer.patch'
 source_src = source_view / 'src'
 source_electron = source_src / 'electron'

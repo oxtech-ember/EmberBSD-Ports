@@ -169,7 +169,7 @@ if __name__ == '__main__':
     parser.add_argument('--patch', type=Path, required=True)
     options, remaining = parser.parse_known_args()
     directory = Path(__file__).resolve().parent
-    helper = load('electron_build_sources', directory.parent / 'electron44/files/prepare-build-sources.py')
+    helper = load('electron_build_sources', directory.parent / '../../pkgsrc/devel/electron44/files/prepare-build-sources.py')
     fixtures = load('electron_bsd_fixtures', directory / 'electron-bsd-overlay.py')
     fixtures.helper = helper.bsd
     fixtures.options = options

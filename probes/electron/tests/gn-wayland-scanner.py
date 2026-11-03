@@ -58,7 +58,7 @@ def main():
     if sys.implementation.name != 'cpython' or sys.version_info[:2] != (3, 15):
         parser.error('use selected host CPython 3.15')
     spec = importlib.util.spec_from_file_location(
-        'electron_prepare', PROBE / 'electron44/files/prepare-sources.py')
+        'electron_prepare', PROBE / '../../pkgsrc/devel/electron44/files/prepare-sources.py')
     prepare = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(prepare)
     revision = prepare.CHROMIUM_REVISION

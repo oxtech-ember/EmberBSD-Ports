@@ -66,22 +66,20 @@ in macOS 14; the build controller rejects lower minimums.
 
 ## Current status
 
-- Electron and Node distfiles are pinned to the current supported Electron 44.x
-  release and its exact Chromium revision.
+- Electron 45.2.1 uses its pinned Chromium source and the common prepared
+  Node/V8 sources selected by the recipe.
 - The pkgsrc Chromium baseline is 156.0.8078.47 with `chromium-nb` 154.0.
-  The [ordered BSD overlay audit](electron44/bsd-overlay.md) uses the complete
+  The [ordered BSD overlay audit](../../pkgsrc/devel/electron44/bsd-overlay.md) uses the complete
   acquired Git graph after Electron's upstream patches. Five recipe-owned
   adaptations allow 1,632 patches to apply sequentially with zero fuzz in a
   separate source fixture. One dialog patch is superseded by Electron's
   disabled dialog code; eight patches belong to separate GN/Rollup host tools.
-  Those host inputs and target build correctness remain unverified.
-- Focused production GN checks retain explicit target ELF tools and target
-  pkgsrc metadata. Earlier GCC checks do not qualify the new Clang runtime.
-  Complete Clang compilation, linking and target execution remain unverified.
-- No complete Chromium link, Electron runtime package, Blanc package, or target
-  application acceptance run exists yet. Do not treat partial object builds as
-  completion.
-- Full runtime and application package lifecycle checks remain pending.
+  The overlay audit is source preparation evidence, not target execution.
+- Electron 45.2.1 for amd64 has completed the Clang cross-build, normal pkgsrc
+  package creation and isolated host-rooted install/delete/reinstall. Target
+  execution, GUI, complete ABI and hardware acceptance remain pending.
+- Blanc has a prepared ASAR; its ordinary package and target application
+  acceptance remain pending.
 - The Blanc application recipe creates an ASAR from an explicit source
   allowlist and 28 lockfile-pinned runtime archives. Four pure-JavaScript
   modules (argparse, semver, debug and ms) are copied from their common Ports
@@ -103,7 +101,7 @@ in macOS 14; the build controller rejects lower minimums.
 
 ## Electron source preparation
 
-The recipe-owned [source preparer](electron44/source-preparation.md) verifies a
+The recipe-owned [source preparer](../../pkgsrc/devel/electron44/source-preparation.md) verifies a
 clean pinned Electron checkout, applies its complete recipe-local patch series
 in order and creates an unmanaged `.gclient` with immutable Chromium and Node
 pins. Its companion uses the pinned upstream gclient to acquire the Git-only
@@ -111,30 +109,27 @@ graph and retain selected CIPD/GCS declarations and LFS object inputs as pending
 A further recipe stage checks every selected patch repository before invoking
 Electron's upstream patch CLI. No hooks run. The remaining assets, BSD overlay
 and GN integration are necessary before building. The next source stage uses
-[one ordered series](electron44/files/source-series.json) for the BSD layer and
+[one ordered series](../../pkgsrc/devel/electron44/files/source-series.json) for the BSD layer and
 all subsequent Ports patches; see the source preparation contract.
 
 ## Electron runtime packaging
 
-The [runtime staging contract](electron44/runtime-packaging.md) describes the
-existing SDK build entrypoints, the remaining ordinary recipe bindings, and the
-bounded ZIP staging helper. The helper does not accept a source build or an
-external binary distribution. Keep this recipe in the probe until its own
-GN/Ninja build and package lifecycle are checked.
+The [runtime staging contract](../../pkgsrc/devel/electron44/runtime-packaging.md) describes the
+ordinary pkgsrc producer and bounded ZIP staging helper. Cross-build, package
+creation and isolated host-rooted install/delete/reinstall have passed; target
+execution, GUI, complete ABI and hardware acceptance remain pending.
 
 ## Blanc application package
 
-`scripts/prepare-pkgsrc.py` does not export this probe. Copy the two recipes
-into a new export:
+`scripts/prepare-pkgsrc.py` exports the Electron recipe from
+`pkgsrc/devel/electron44`. Blanc remains a probe; place it in an export for
+its ordinary package checks:
 
 ```sh
-# Provide a verified source-data export at /absolute/NEW_PKGSRC. See the root README.
 cp -RL probes/electron/blanc /absolute/NEW_PKGSRC/www/blanc
-cp -RL probes/electron/electron44 /absolute/NEW_PKGSRC/devel/electron44
 ```
 
-When the recipes are complete, move them to `pkgsrc/www/blanc` and
-`pkgsrc/devel/electron44`. Then the normal export includes them. Select the
+When Blanc is complete, move it to `pkgsrc/www/blanc`. Select the
 common Clang cross configuration and matching target runtime, or an explicit
 GCC platform profile. Fetch and checksum need no selected Node, Python or SDK
 source. Extraction requires `EMBERBSD_CROSS_BUILD_PYTHON` set to the selected
@@ -205,9 +200,9 @@ The application package cannot be installed until the target runtime is built.
 ## GN and C++ target inputs
 
 The GN and parser patches retain the exact Chromium pin above. Their only full
-application order is [source-series.json](electron44/files/source-series.json),
+application order is [source-series.json](../../pkgsrc/devel/electron44/files/source-series.json),
 consumed by `prepare-build-sources.py` after Electron's upstream series. Use the
-[source preparation contract](electron44/source-preparation.md#ordered-build-sources)
+[source preparation contract](../../pkgsrc/devel/electron44/source-preparation.md#ordered-build-sources)
 instead of applying individual patches to a prepared production tree. The
 individual patch descriptions below explain isolated regression coverage;
 they do not define a second preparation sequence.
@@ -763,7 +758,7 @@ by four inherited parameterized GTest linkage errors; target execution is pendin
 
 ### Refresh a configured Node provider
 
-`electron44/files/build-electron.py reconfigure` accepts the same inputs as
+`pkgsrc/devel/electron44/files/build-electron.py reconfigure` accepts the same inputs as
 `configure` and regenerates the existing `--work` graph. It allows GN feature and compiler option changes while checking target and
 toolchain identity. Compiler bindings are immutable and their content-addressed
 paths change when their commands change, so Ninja rebuilds affected commands.
@@ -822,8 +817,8 @@ Android/iOS guards. The former AudioBus and sign-in guard patches are superseded
 
 ### Native host buildlink view
 
-`electron44/host-dependencies.mk` is the host dependency declaration shared by
-Electron's pkgsrc consumer and its GN integration. `electron44/files/host-buildlink.py`
+`pkgsrc/devel/electron44/host-dependencies.mk` is the host dependency declaration shared by
+Electron's pkgsrc consumer and its GN integration. `pkgsrc/devel/electron44/files/host-buildlink.py`
 creates a separate native pkgsrc consumer using the selected SDK, package source
 export, native binding and replacement stage. It runs pkgsrc's normal `wrapper`
 phase with dependency installation disabled and prints the resulting `.buildlink`

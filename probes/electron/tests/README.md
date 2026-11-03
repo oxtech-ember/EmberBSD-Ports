@@ -2,7 +2,7 @@
 
 Run these commands from the Ports repository root.
 
-The source-only [DEPS preparation regression](../electron44/source-preparation.md#regression-checks)
+The source-only [DEPS preparation regression](../../../pkgsrc/devel/electron44/source-preparation.md#regression-checks)
 uses control Python and an explicit Git executable; no installed SDK is needed:
 
 ```sh

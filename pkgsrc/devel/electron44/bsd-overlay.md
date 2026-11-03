@@ -13,7 +13,7 @@ Electron's exact Chromium revision remains the source of record.
 The manifest names the public overlay archive and its SHA512 checksum.
 
 ```sh
-/absolute/control-python -B -I -S electron44/files/audit-bsd-overlay.py \
+/absolute/control-python -B -I -S pkgsrc/devel/electron44/files/audit-bsd-overlay.py \
     --workspace /absolute/electron-source \
     --pkgsrc /absolute/pinned-pkgsrc-checkout \
     --archive /absolute/distfiles/kikadf-chromium-nb-v154.0.tar.gz \

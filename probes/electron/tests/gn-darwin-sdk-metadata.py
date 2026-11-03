@@ -58,7 +58,7 @@ def main():
             assert proc.returncode != 0 and error in output, name + ':\n' + output
         return proc.stdout if error is None else output
 
-    spec = importlib.util.spec_from_file_location('source_prepare', PROBE / 'electron44/files/prepare-sources.py')
+    spec = importlib.util.spec_from_file_location('source_prepare', PROBE / '../../pkgsrc/devel/electron44/files/prepare-sources.py')
     prepare = importlib.util.module_from_spec(spec); spec.loader.exec_module(prepare)
     pinned = run('read-pinned-gni', [args.git, '-C', args.source, 'show', prepare.CHROMIUM_REVISION + ':' + MEMBER], args.work)
     assert pinned.encode() == (args.source / MEMBER).read_bytes(), 'prepared mac_sdk.gni is not pinned leaf'

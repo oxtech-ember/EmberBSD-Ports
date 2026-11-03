@@ -16,7 +16,7 @@ parser.add_argument('--node', type=Path, required=True)
 parser.add_argument('--semver', type=Path, required=True)
 parser.add_argument('--electron', type=Path, required=True)
 args = parser.parse_args()
-owner = Path(__file__).resolve().parents[1] / 'electron44/files'
+owner = Path(__file__).resolve().parents[1] / '../../pkgsrc/devel/electron44/files'
 with tempfile.TemporaryDirectory() as name:
     root = Path(name).resolve(); local = root / 'owner'; local.mkdir()
     for filename in ('electron-version-provider.py', 'node-providers.py'):

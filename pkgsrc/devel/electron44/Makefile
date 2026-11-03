@@ -1,5 +1,5 @@
-# EmberBSD probe: Electron 45.2.1 runtime for NetBSD.
-# Draft producer integration; package install and acceptance remain pending.
+# Electron 45.2.1 runtime for NetBSD.
+# Target execution, GUI and hardware acceptance remain pending.
 
 DISTNAME=	electron-45.2.1
 PKGREVISION=	1
