@@ -17,7 +17,7 @@ spec=importlib.util.spec_from_file_location('electron_build',owner)
 b=importlib.util.module_from_spec(spec); spec.loader.exec_module(b)
 sdk=a.sdk_source.resolve(strict=True)
 sys.path.insert(0,str(sdk/'src'))
-from emberbsd_sdk import process
+from emberbsd_sdk import cpu_capacity, process
 with tempfile.TemporaryDirectory(prefix='electron-context-lock-') as temp:
     root=Path(temp).resolve(); real=root/'real'; real.mkdir(); (real/'parent').mkdir(); (real/'workspace').mkdir()
     alias=root/'alias'; alias.symlink_to(real, target_is_directory=True)
@@ -42,7 +42,7 @@ with tempfile.TemporaryDirectory(prefix='electron-context-lock-') as temp:
           '--host-prefix',str(root/'prefix'),'--compiler-prefix',str(root/'compiler'),
           '--sysroot',str(root/'sysroot'),'--git',str(root/'git'),
           '--lock-root',str(locks),'--link-context',str(root/'link'), '--target','amd64']
-    with patch.object(sys,'argv',argv), patch.object(b,'load_sdk',return_value={'process':process}), patch.object(b,'configure',side_effect=configure):
+    with patch.object(sys,'argv',argv), patch.object(b,'load_sdk',return_value={'process':process, 'cpu_capacity':cpu_capacity}), patch.object(b,'configure',side_effect=configure):
         b.main()
     assert len(captured)==1 and not canonical_work.exists()
     with process.ContextLocks([str(canonical_workspace),str(canonical_work)],str(locks)):

@@ -36,7 +36,7 @@ def controller_cli(extra):
     for name, path in paths.items(): argv.extend(('--' + name, str(path)))
     argv.extend(('--target', 'amd64', *extra))
     with patch.object(sys, 'argv', argv), \
-         patch.object(b, 'load_sdk', return_value={'process': LockStub}), \
+         patch.object(b, 'load_sdk', return_value={'process': LockStub, 'cpu_capacity': SimpleNamespace(resolve_jobs=lambda value: value if value is not None else 1)}), \
          patch.object(b, 'build', side_effect=lambda options: selected.append(options)):
         b.main()
 

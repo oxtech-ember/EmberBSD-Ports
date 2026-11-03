@@ -34,7 +34,7 @@ def load_sdk(root):
     sys.path.insert(0, str(package.parent))
     result = {}
     for name in ('', 'host_prefix', 'application_toolchain', 'target_toolchain', 'targets', 'llvm_runtime',
-                 'process', 'paths', 'darwin_sdk', 'compiler_bindings'):
+                 'process', 'paths', 'darwin_sdk', 'compiler_bindings', 'cpu_capacity'):
         module = importlib.import_module('emberbsd_sdk' + ('.' + name if name else ''))
         require(Path(module.__file__).resolve() == package / ((name or '__init__') + '.py'),
                 'SDK module origin differs: ' + module.__name__)
@@ -1680,7 +1680,7 @@ def main():
                                  help='run Ninja after a successful reconfigure without releasing input locks')
         command.add_argument('--macos-minimum')
         command.add_argument('--gcc-platform-reason')
-        command.add_argument('--jobs', type=int, default=1)
+        command.add_argument('--jobs', type=int)
         if phase in ('reconfigure', 'build'):
             command.add_argument('--keep-going', type=nonnegative_integer, default=1,
                                  help='continue independent Ninja jobs until N jobs fail (0 means no failure limit)')
@@ -1693,6 +1693,7 @@ def main():
             print('Materialized source files:', prepare(options))
         else:
             sdk = load_sdk(options.sdk_source)
+            options.jobs = sdk['cpu_capacity'].resolve_jobs(options.jobs)
             exclusive = context_keys(options.workspace, options.work)
             with sdk['process'].ContextLocks(exclusive, str(options.lock_root)):
                 selected = (options.ports_source, options.sdk_source, options.protobuf_source,
