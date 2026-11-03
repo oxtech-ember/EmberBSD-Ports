@@ -3,7 +3,7 @@
 .include "Makefile.common"
 
 PKGNAME=	clang-${LLVM_VERSION}
-PKGREVISION=	11
+PKGREVISION=	12
 
 # Native Darwin LLVM C++ interfaces share the selected runtime ABI.
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
@@ -12,9 +12,12 @@ PKGREVISION= 13
 DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
 DEPENDS+= llvm>=23.1.4nb5:../../lang/llvm
 DEPENDS+= lld>=23.1.4nb7:../../devel/lld
-# clang-tblgen links the LLVM-provided zstd library directly.
-DEPENDS+= zstd>=1.3.6:../../archivers/zstd
 BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
+.endif
+
+# clang-tblgen links the LLVM-provided zstd library directly.
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+DEPENDS+= zstd>=1.3.6:../../archivers/zstd
 .endif
 
 # Clear a stale auto-detected value unless a configure input selected one.
