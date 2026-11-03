@@ -1629,6 +1629,11 @@ def build(options):
     run_ninja(options, sdk, native, source_root, saved_env)
 
 
+def context_keys(*paths):
+    """Canonicalize lock keys without changing producer input paths."""
+    return sorted({str(Path(path).resolve(strict=False)) for path in paths if path is not None})
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
 
@@ -1688,8 +1693,8 @@ def main():
             print('Materialized source files:', prepare(options))
         else:
             sdk = load_sdk(options.sdk_source)
-            with sdk['process'].ContextLocks([str(options.workspace), str(options.work)], str(options.lock_root)):
-                exclusive = {Path(value).resolve() for value in (options.workspace, options.work)}
+            exclusive = context_keys(options.workspace, options.work)
+            with sdk['process'].ContextLocks(exclusive, str(options.lock_root)):
                 selected = (options.ports_source, options.sdk_source, options.protobuf_source,
                             options.protobuf_ports_source, options.protobuf_archive, options.protobuf_patch,
                             options.node_source, options.node_pkgsrc, options.gyp_source, options.gyp_pkgsrc, options.perfetto_source,
@@ -1699,8 +1704,7 @@ def main():
                             options.target_runtime_stage, options.target_runtime_base, options.host_runtime_root, options.protoc_runtime_view,
                             options.host_prefix, options.sysroot, options.host_buildlink_pkgsrc,
                             options.host_buildlink_stage_root)
-                shared = sorted({str(Path(value).resolve()) for value in selected
-                                 if value is not None and Path(value).resolve() not in exclusive})
+                shared = [key for key in context_keys(*selected) if key not in exclusive]
                 with sdk['process'].ContextLocks(shared, str(options.lock_root), shared=True):
                     {'configure': configure, 'reconfigure': reconfigure, 'build': build}[options.phase](options)
     except Exception as error:
