@@ -19,6 +19,7 @@ USE_LANGUAGES=		c c++
 PKGCONFIG_OVERRIDE=	release/libturbojpeg.pc.in release/libjpeg.pc.in
 
 .include "../../mk/bsd.prefs.mk"
+.include "options.mk"
 
 # Resolve Mach-O runpaths and same-package providers structurally.
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
@@ -39,7 +40,6 @@ BUILD_DEFS+=	JPEG_DEFAULT
 TEST_ENV+=	LD_LIBRARY_PATH=${WRKSRC}/${CMAKE_BUILD_DIR}
 # For Darwin
 TEST_ENV+=	DYLD_LIBRARY_PATH=${WRKSRC}/${CMAKE_BUILD_DIR}
-TEST_TARGET=	test
 
 # https://github.com/libjpeg-turbo/libjpeg-turbo/issues/898
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_POSITION_INDEPENDENT_CODE=ON

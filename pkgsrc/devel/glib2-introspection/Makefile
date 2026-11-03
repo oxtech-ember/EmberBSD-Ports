@@ -22,6 +22,7 @@ MESON_ARGS+=	-Dlocalstatedir=${VARBASE}
 MESON_ARGS+=	-Druntime_dir=${VARBASE}/run
 
 .include "../../mk/bsd.prefs.mk"
+.include "options.mk"
 
 EMBERBSD_GI_MESON_OPTIONS=	no
 .include "../../devel/gobject-introspection/cross.mk"
