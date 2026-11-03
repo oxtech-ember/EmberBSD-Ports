@@ -36,7 +36,7 @@ def main():
         return rows
 
     native = query('darwin', 'OPSYS=Darwin', 'EMBERBSD_DARWIN_TOOL_PHASE=full')
-    assert native['PKGNAME'] == 'compiler-rt-23.1.4nb12'
+    assert native['PKGNAME'] == 'compiler-rt-23.1.4nb13'
     assert 'llvm-project-23.1.4.src/libunwind' in shlex.split(native['EXTRACT_ELEMENTS'])
     assert native['PATCHDIR'] == str(args.pkgsrc / 'lang/compiler-rt/patches')
     assert native['PATCH_WRKSRC'].endswith('/llvm-project-23.1.4.src')

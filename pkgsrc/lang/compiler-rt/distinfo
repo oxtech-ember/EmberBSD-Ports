@@ -22,3 +22,4 @@ SHA1 (patch-13-darwin-outline-atomics) = 4244cb11bba7b4722a254271acbc1f45c8d5395
 SHA1 (patch-20-libunwind-library-probes) = ee7df93e2fa272ca5a5bc92a77222474fa802fd7
 SHA1 (patch-21-libunwind-index-miss) = fce99a875a595f04a5e8e3f8dd17d0e3abb520a6
 SHA1 (patch-30-libcxx-netbsd-c-locale) = 92fa363ae3b9545980cb137db3ba9a9560aa7a1b
+SHA1 (patch-14-profile-filename-init) = 5b65757bca705bac510310ffa301db519c43903d

@@ -1,0 +1,13 @@
+# Initialize every profile filename field, including newly added owned state.
+--- a/compiler-rt/lib/profile/InstrProfilingFile.c
++++ b/compiler-rt/lib/profile/InstrProfilingFile.c
+@@ -112,8 +112,7 @@ typedef struct lprofFilename {
+   ProfileNameSpecifier PNS;
+ } lprofFilename;
+ 
+-static lprofFilename lprofCurFilename = {0, 0, 0, {0}, NULL,       {0},
+-                                         0, 0, 0, 0,   PNS_unknown};
++static lprofFilename lprofCurFilename = {.PNS = PNS_unknown};
+ 
+ static int ProfileMergeRequested = 0;
+ static int getProfileFileSizeForMerging(FILE *ProfileFile,
