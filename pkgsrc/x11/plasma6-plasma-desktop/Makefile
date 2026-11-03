@@ -15,7 +15,6 @@ DEPENDS+=	kf6-qqc2-desktop-style>=6.31.0:../../x11/kf6-qqc2-desktop-style
 DEPENDS+=	noto-fonts>=20261001:../../fonts/noto-fonts
 DEPENDS+=	noto-cjk-fonts>=20240730:../../fonts/noto-cjk-fonts
 DEPENDS+=	xdg-user-dirs>=0.20:../../x11/xdg-user-dirs
-DEPENDS+=	kf6-kded>=6.31.0:../../x11/kf6-kded
 # PlasmaActivities starts this D-Bus service when the shell needs activities.
 DEPENDS+=	plasma6-kactivitymanagerd>=6.7.5nb1:../../x11/plasma6-kactivitymanagerd
 # The input KCMs consume KWin's generated complex D-Bus signatures.
@@ -95,6 +94,7 @@ pre-configure:
 .include "../../textproc/kf6-kcodecs/buildlink3.mk"
 .include "../../textproc/kf6-sonnet/buildlink3.mk"
 .include "../../x11/libxkbfile/buildlink3.mk"
+.include "../../x11/kf6-kded/buildlink3.mk"
 .include "../../x11/kf6-kglobalaccel/buildlink3.mk"
 .include "../../x11/kf6-kguiaddons/buildlink3.mk"
 .include "../../x11/kf6-kirigami/buildlink3.mk"
@@ -102,6 +102,8 @@ pre-configure:
 .include "../../x11/kf6-kxmlgui/buildlink3.mk"
 .include "../../x11/kirigami-addons/buildlink3.mk"
 
+.include "../../x11/plasma6-kscreenlocker/buildlink3.mk"
+.include "../../x11/plasma6-kwin/buildlink3.mk"
 .include "../../x11/plasma6-plasma-activities/buildlink3.mk"
 .include "../../x11/plasma6-plasma-activities-stats/buildlink3.mk"
 .include "../../x11/plasma6-plasma-workspace/buildlink3.mk"

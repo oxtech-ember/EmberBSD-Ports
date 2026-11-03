@@ -11,6 +11,7 @@ BUILDLINK_PKGSRCDIR.plasma6-kwin?=	../../x11/plasma6-kwin
 BUILDLINK_FILES.plasma6-kwin+=	include/kwin/*
 BUILDLINK_FILES.plasma6-kwin+=	include/kwin/*/*
 BUILDLINK_FILES.plasma6-kwin+=	lib/cmake/KWin/*
+BUILDLINK_FILES.plasma6-kwin+=	lib/cmake/KWinDBusInterface/*
 
 .include "../../devel/kf6-kconfig/buildlink3.mk"
 .include "../../devel/kf6-kcoreaddons/buildlink3.mk"
