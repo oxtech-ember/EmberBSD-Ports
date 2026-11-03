@@ -365,4 +365,184 @@ with tempfile.TemporaryDirectory() as tmp:
 # A changed build command cannot disappear through preflight normalization.
 assert not runtime.compatible_build_for_target(old_build, new_build.replace(
     b'return driver_flags', b'driver_flags.append("-changed")\n    return driver_flags'), 'aarch64')
+
+# The finalizer transition may only move the exact post-build tail.  These
+# independent small programs exercise scope and control-flow changes.
+old_finalizer = b"""
+def cmake_arguments(definition):
+    return ['--no-default-config']
+def execute(owner, argv, work, environment, log):
+    return run(argv)
+def inspect_inputs(owner, args, prepared):
+    for output in (work, stage):
+        owner.require(not os.path.lexists(output), 'runtime output already exists: ' + str(output))
+def build(owner, args):
+    selected = inspect_inputs(owner, args, prepared)
+    owner.require(ok, 'unchanged postprocess')
+    return record
+"""
+new_finalizer = b"""
+import re
+def check_cmake_cache(owner, work, command):
+    return None
+def check_bootstrap_artifacts(owner, source, work, stage):
+    return None
+def recover_bootstrap(owner, args):
+    return None
+def cmake_arguments(definition):
+    return ['--no-default-config']
+def execute(owner, argv, work, environment, log):
+    return run(argv)
+def inspect_inputs(owner, args, prepared, *, existing=False):
+    for output in (work, stage):
+        if existing:
+            owner.paths.real_directory(output)
+            owner.require(owner.paths.canonical_existing(output) == str(output), 'runtime recovery path must be canonical')
+        else:
+            owner.require(not os.path.lexists(output), 'runtime output already exists: ' + str(output))
+def build(owner, args):
+    selected = inspect_inputs(owner, args, prepared)
+    return finalize(owner, args, prepared, selected, environment)
+def finalize(owner, args, prepared, selected, environment):
+    from emberbsd_sdk import llvm_runtime, target_toolchain
+    source = Path(owner.paths.canonical_existing(args.source))
+    definition, base, work, stage = selected.definition, selected.base, selected.work, selected.stage
+    native, compiler, recipe, context = selected.native, selected.compiler, selected.recipe, selected.context
+    bootstrap, bootstrap_root = selected.bootstrap, selected.bootstrap_root
+    owner.require(ok, 'unchanged postprocess')
+    return record
+"""
+assert runtime.compatible_build_for_target(old_finalizer, new_finalizer, 'aarch64')
+for changed in (
+    new_finalizer.replace(b'--no-default-config', b'--no-default-config -fshort-wchar'),
+    new_finalizer.replace(b'return run(argv)', b'unexpected()\n    return run(argv)'),
+    new_finalizer.replace(b"    owner.require(ok, 'unchanged postprocess')",
+                          b"    unexpected()\n    owner.require(ok, 'unchanged postprocess')"),
+    new_finalizer.replace(b'def recover_bootstrap(owner, args):',
+                          b'def recover_bootstrap(owner, args=unexpected()):'),
+    new_finalizer.replace(b'if existing:', b'if existing or bypass:'),
+):
+    assert changed != new_finalizer
+    assert not runtime.compatible_build_for_target(old_finalizer, changed, 'aarch64')
+dynamic_old = old_finalizer.replace(b'selected = inspect_inputs(owner, args, prepared)',
+                                    b"selected = globals()['recover_bootstrap'](owner, args)")
+dynamic_new = new_finalizer.replace(b'selected = inspect_inputs(owner, args, prepared)',
+                                    b"selected = globals()['recover_bootstrap'](owner, args)")
+assert not runtime.compatible_build_for_target(dynamic_old, dynamic_new, 'aarch64')
+current_build = (files / 'build.py').read_bytes()
+normalized = runtime.normalize_export_revision(current_build)
+assert normalized is not None and runtime.normalize_recipe_recording(normalized) is not None
+mutated_export = current_build.replace(b"export.get('version') == 2", b"export.get('version') == 3")
+assert mutated_export != current_build
+assert runtime.normalize_recipe_recording(runtime.normalize_export_revision(mutated_export)) is None
+
+old_cli = b"""
+def main(arguments):
+    build = commands.add_parser('build')
+    for name in ('sysroot', 'os-source', 'host-prefix', 'target-prefix', 'work', 'stage'):
+        build.add_argument('--' + name, required=True)
+    build.add_argument('--host-compiler-family', choices=('clang', 'gcc'), default='clang')
+    build.add_argument('--bootstrap-stage')
+    build.add_argument('--original-source', help='prepared source used by the bootstrap stage')
+    build.add_argument('--jobs', type=int, default=1)
+    verify = commands.add_parser('verify')
+    for parser in (build, verify):
+        parser.add_argument('--target', choices=('aarch64', 'amd64', 'riscv32'), required=True)
+        parser.add_argument('--phase', choices=('builtins', 'bootstrap', 'full'), default='full')
+    for parser in (prepare, verify_source, build):
+        parser.add_argument('--source', required=True)
+    for parser in (prepare, verify_source, build, verify):
+        parser.add_argument('--git')
+    args = cli.parse_args(arguments)
+    if args.command == 'build':
+        import build as producer
+        record = producer.build(owner, args)
+"""
+new_cli = b"""
+def main(arguments):
+    build = commands.add_parser('build')
+    recover = commands.add_parser('finalize-bootstrap')
+    for parser in (build, recover):
+        for name in ('sysroot', 'os-source', 'host-prefix', 'target-prefix', 'work', 'stage'):
+            parser.add_argument('--' + name, required=True)
+        parser.add_argument('--host-compiler-family', choices=('clang', 'gcc'), default='clang')
+        parser.add_argument('--bootstrap-stage')
+        parser.add_argument('--original-source', help='prepared source used by the bootstrap stage')
+        parser.add_argument('--jobs', type=int, default=1)
+    verify = commands.add_parser('verify')
+    for parser in (build, recover, verify):
+        parser.add_argument('--target', choices=('aarch64', 'amd64', 'riscv32'), required=True)
+    for parser in (build, verify):
+        parser.add_argument('--phase', choices=('builtins', 'bootstrap', 'full'), default='full')
+    recover.add_argument('--phase', choices=('bootstrap',), default='bootstrap')
+    for parser in (prepare, verify_source, build, recover):
+        parser.add_argument('--source', required=True)
+    for parser in (prepare, verify_source, build, recover, verify):
+        parser.add_argument('--git')
+    args = cli.parse_args(arguments)
+    if args.command == 'build':
+        import build as producer
+        record = producer.build(owner, args)
+"""
+assert runtime.build_cli(old_cli, 'aarch64') == runtime.build_cli(new_cli, 'aarch64')
+assert runtime.RECIPE_COMPAT_API == 1
+assert runtime.compatible_runtime_recipe(old_finalizer, new_finalizer, old_cli, new_cli,
+                                         'aarch64', 'aarch64')
+assert not runtime.compatible_runtime_recipe(
+    old_finalizer, new_finalizer.replace(b'--no-default-config', b'--no-default-config -fshort-wchar'),
+    old_cli, new_cli, 'aarch64', 'aarch64')
+for changed in (
+    new_cli.replace(b"default='clang'", b"default='gcc'"),
+    new_cli.replace(b"required=True", b"required=False", 1),
+    new_cli.replace(b"producer.build(owner, args)", b"producer.other(owner, args)"),
+    new_cli.replace(b"default=1", b"default=2", 1),
+):
+    assert changed != new_cli
+    assert runtime.build_cli(old_cli, 'aarch64') != runtime.build_cli(changed, 'aarch64')
+
+
+prefix = 'pkgsrc/lang/compiler-rt/'
+build_name, cli_name, dist_name = (prefix + 'files/build.py', prefix + 'files/runtime.py', prefix + 'distinfo')
+patch_name = prefix + 'patches/patch-builtins'
+patch_bytes = b'--- a/compiler-rt/lib/builtins/a.c\n+++ b/compiler-rt/lib/builtins/a.c\n@@ -1 +1 @@\n-old\n+new\n'
+old_dist = b'BLAKE2s (source.tar.xz) = unchanged\n'
+new_dist = old_dist + b'SHA1 (patch-builtins) = ' + hashlib.sha1(patch_bytes).hexdigest().encode() + b'\n'
+old_blobs = {build_name: old_finalizer, cli_name: old_cli, dist_name: old_dist}
+new_blobs = {build_name: new_finalizer, cli_name: new_cli, dist_name: new_dist, patch_name: patch_bytes}
+def recipe(blobs):
+    return {'ports_revision': 'a' * 40, 'files': {name: hashlib.sha256(data).hexdigest() for name, data in blobs.items()}}
+old_recipe, new_recipe = recipe(old_blobs), recipe(new_blobs)
+changed_paths = ['compiler-rt/lib/builtins/a.c']
+assert runtime.compatible_builtins_recipe(old_recipe, new_recipe, old_blobs, new_blobs,
+                                           changed_paths, 'aarch64', 'aarch64')
+mutated_blobs = dict(new_blobs, **{build_name: new_finalizer.replace(
+    b'--no-default-config', b'--no-default-config -fshort-wchar')})
+assert not runtime.compatible_builtins_recipe(old_recipe, recipe(mutated_blobs), old_blobs, mutated_blobs,
+                                               changed_paths, 'aarch64', 'aarch64')
+cmake_patch = patch_bytes.replace(b'compiler-rt/lib/builtins/a.c',
+                                  b'compiler-rt/lib/builtins/CMakeLists.txt')
+cmake_dist = old_dist + b'SHA1 (patch-builtins) = ' + hashlib.sha1(cmake_patch).hexdigest().encode() + b'\n'
+cmake_blobs = dict(new_blobs, **{patch_name: cmake_patch, dist_name: cmake_dist})
+assert not runtime.compatible_builtins_recipe(old_recipe, recipe(cmake_blobs), old_blobs, cmake_blobs,
+                                               ['compiler-rt/lib/builtins/CMakeLists.txt'],
+                                               'aarch64', 'aarch64')
+bad_hash = copy.deepcopy(new_recipe)
+bad_hash['files'][patch_name] = '0' * 64
+assert not runtime.compatible_builtins_recipe(old_recipe, bad_hash, old_blobs, new_blobs,
+                                               changed_paths, 'aarch64', 'aarch64')
+assert not runtime.compatible_builtins_recipe(old_recipe, new_recipe, old_blobs, new_blobs,
+                                               changed_paths + ['compiler-rt/lib/builtins/other.c'],
+                                               'aarch64', 'aarch64')
+duplicate = dict(new_blobs, **{dist_name: new_dist + b'SHA1 (patch-builtins) = ' + b'0' * 40 + b'\n'})
+assert not runtime.compatible_builtins_recipe(old_recipe, recipe(duplicate), old_blobs, duplicate,
+                                               changed_paths, 'aarch64', 'aarch64')
+extra = dict(new_blobs, **{prefix + 'files/unknown.py': b'unexpected'})
+assert not runtime.compatible_builtins_recipe(old_recipe, recipe(extra), old_blobs, extra,
+                                               changed_paths, 'aarch64', 'aarch64')
+bad_dist = dict(new_blobs, **{dist_name: new_dist + b'BLAKE2s (other.tar.xz) = changed\n'})
+assert not runtime.compatible_builtins_recipe(old_recipe, recipe(bad_dist), old_blobs, bad_dist,
+                                               changed_paths, 'aarch64', 'aarch64')
+
+print('runtime finalizer split and refusals: PASS')
+
 print('runtime phase compatibility and refusals: PASS')

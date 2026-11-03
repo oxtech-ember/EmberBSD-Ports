@@ -5,6 +5,7 @@
 """Prepare, build and verify the canonical common LLVM runtime stages."""
 import argparse
 import ast
+import hashlib
 import re
 from pathlib import Path
 import sys
@@ -111,11 +112,124 @@ def freestanding_cli(commands):
             parser.add_argument('--jobs', type=int, default=1)
 
 
+def normalize_export_revision(data):
+    # Only this metadata-only export identity transition is normalized.
+    export = b"""    if owner.EXPORTED:
+        export = owner.jsonio.read_json(owner.PKGSRC.parent / 'pkgsrc-export.json')
+        owner.require(isinstance(export, dict) and export.get('format') == 'emberbsd-pkgsrc-shared-export'
+                      and export.get('version') == 2 and isinstance(export.get('identity'), dict),
+                      'invalid shared pkgsrc export identity')
+        revision = export['identity'].get('ports_commit')
+        owner.require(isinstance(revision, str) and re.fullmatch(r'[0-9a-f]{40}', revision) is not None,
+                      'invalid shared pkgsrc export revision')
+    else:
+        revision = owner.git_revision(git, owner.PORTS)
+"""
+    replacement = b"    revision = None if owner.EXPORTED else owner.git_revision(git, owner.PORTS)\n"
+    if export not in data:
+        return data
+    if data.count(export) != 1:
+        return None
+    return data.replace(export, replacement, 1)
+
+
+def normalize_finalizer_refactor(tree):
+    """Inline only the reviewed finalizer split and fresh-build input branch."""
+    funcs = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
+    if 'finalize' not in funcs:
+        return True
+    required = {'finalize', 'check_cmake_cache', 'check_bootstrap_artifacts',
+                'recover_bootstrap', 'inspect_inputs', 'build'}
+    if not required <= funcs.keys() or any(
+            sum(isinstance(n, ast.FunctionDef) and n.name == name for n in tree.body) != 1
+            for name in required):
+        return False
+
+    def plain(function, names):
+        args = function.args
+        all_args = args.posonlyargs + args.args + args.kwonlyargs
+        return (not function.decorator_list and function.returns is None and
+                not getattr(function, 'type_params', []) and
+                not args.posonlyargs and [a.arg for a in args.args] == names and
+                not args.kwonlyargs and not args.defaults and not args.kw_defaults and
+                args.vararg is None and args.kwarg is None and
+                all(a.annotation is None and a.type_comment is None for a in all_args))
+
+    signatures = {'finalize': ['owner', 'args', 'prepared', 'selected', 'environment'],
+                  'check_cmake_cache': ['owner', 'work', 'command'],
+                  'check_bootstrap_artifacts': ['owner', 'source', 'work', 'stage'],
+                  'recover_bootstrap': ['owner', 'args']}
+    if any(not plain(funcs[name], names) for name, names in signatures.items()):
+        return False
+    prefix = ast.parse("""from emberbsd_sdk import llvm_runtime, target_toolchain
+source = Path(owner.paths.canonical_existing(args.source))
+definition, base, work, stage = selected.definition, selected.base, selected.work, selected.stage
+native, compiler, recipe, context = selected.native, selected.compiler, selected.recipe, selected.context
+bootstrap, bootstrap_root = selected.bootstrap, selected.bootstrap_root
+""").body
+    finish = funcs['finalize']
+    dump = lambda node: ast.dump(node, include_attributes=False)
+    if [dump(n) for n in finish.body[:5]] != [dump(n) for n in prefix]:
+        return False
+    build = funcs['build']
+    expected_return = ast.parse('return finalize(owner, args, prepared, selected, environment)').body[0]
+    if not build.body or dump(build.body[-1]) != dump(expected_return):
+        return False
+    build.body[-1:] = finish.body[5:]
+
+    inputs = funcs['inspect_inputs']
+    args = inputs.args
+    if (len(args.kwonlyargs) != 1 or args.kwonlyargs[0].arg != 'existing' or
+            args.kwonlyargs[0].annotation is not None or len(args.kw_defaults) != 1 or
+            not isinstance(args.kw_defaults[0], ast.Constant) or args.kw_defaults[0].value is not False):
+        return False
+    branch = ast.parse("""if existing:
+    owner.paths.real_directory(output)
+    owner.require(owner.paths.canonical_existing(output) == str(output), 'runtime recovery path must be canonical')
+else:
+    owner.require(not os.path.lexists(output), 'runtime output already exists: ' + str(output))
+""").body[0]
+    matches = []
+    for node in ast.walk(inputs):
+        if isinstance(node, ast.For):
+            for index, child in enumerate(node.body):
+                if dump(child) == dump(branch):
+                    matches.append((node, index))
+    if len(matches) != 1:
+        return False
+    node, index = matches[0]
+    node.body[index:index + 1] = branch.orelse
+    args.kwonlyargs = []
+    args.kw_defaults = []
+    if any(isinstance(n, ast.Name) and n.id == 'existing' for n in ast.walk(inputs)):
+        return False
+    removed = {'finalize', 'check_cmake_cache', 'check_bootstrap_artifacts', 'recover_bootstrap'}
+    tree.body = [n for n in tree.body if not isinstance(n, ast.FunctionDef) or n.name not in removed]
+    dynamic = {'globals', 'locals', 'vars', 'eval', 'exec', 'getattr', '__import__'}
+    if any((isinstance(n, ast.Name) and n.id in removed | dynamic) or
+           (isinstance(n, ast.Constant) and isinstance(n.value, str) and n.value in removed)
+           for n in ast.walk(tree)):
+        return False
+    # The new import serves only the normalized export metadata check.
+    if any(isinstance(n, ast.Name) and n.id == 're' for n in ast.walk(tree)):
+        return False
+    imports = [n for n in tree.body if isinstance(n, ast.Import) and
+               len(n.names) == 1 and n.names[0].name == 're' and n.names[0].asname is None]
+    if len(imports) != 1:
+        return False
+    tree.body.remove(imports[0])
+    return True
+
+
 def compatible_build_for_target(previous, current, machine_arch, atomic_defaults=False):
     """Compare build inputs after reviewed target-guard and metadata normalization."""
     if not isinstance(machine_arch, str) or not machine_arch:
         return False
 
+    previous = normalize_export_revision(previous)
+    current = normalize_export_revision(current)
+    if previous is None or current is None:
+        return False
     previous = normalize_recipe_recording(previous)
     current = normalize_recipe_recording(current)
     if previous is None or current is None:
@@ -123,6 +237,8 @@ def compatible_build_for_target(previous, current, machine_arch, atomic_defaults
 
     def effective(data):
         tree = ast.parse(data)
+        if not normalize_finalizer_refactor(tree):
+            return None
         functions = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 'cmake_arguments']
         if (len(functions) != 1 or
                 'definition' not in [arg.arg for arg in functions[0].args.posonlyargs + functions[0].args.args]):
@@ -450,10 +566,188 @@ def compatible_source(owner, stage, expected, source, original_source, git):
                   'runtime build CLI or dispatch changed')
 
 
+def normalize_recover_parser(main):
+    """Reduce the reviewed recovery parser refactor to the original build CLI."""
+    dump = lambda node: ast.dump(node, include_attributes=False)
+    nodes = main.body
+    recover = ast.parse("recover = commands.add_parser('finalize-bootstrap')").body[0]
+    phase = ast.parse("recover.add_argument('--phase', choices=('bootstrap',), default='bootstrap')").body[0]
+    marker = [n for n in nodes if dump(n) == dump(recover)]
+    if not marker:
+        return True
+    if len(marker) != 1 or sum(dump(n) == dump(phase) for n in nodes) != 1:
+        return False
+    new_setup = ast.parse("""for parser in (build, recover):
+    for name in ('sysroot', 'os-source', 'host-prefix', 'target-prefix', 'work', 'stage'):
+        parser.add_argument('--' + name, required=True)
+    parser.add_argument('--host-compiler-family', choices=('clang', 'gcc'), default='clang')
+    parser.add_argument('--bootstrap-stage')
+    parser.add_argument('--original-source', help='prepared source used by the bootstrap stage')
+    parser.add_argument('--jobs', type=int, default=1)
+""").body[0]
+    old_setup = ast.parse("""for name in ('sysroot', 'os-source', 'host-prefix', 'target-prefix', 'work', 'stage'):
+    build.add_argument('--' + name, required=True)
+build.add_argument('--host-compiler-family', choices=('clang', 'gcc'), default='clang')
+build.add_argument('--bootstrap-stage')
+build.add_argument('--original-source', help='prepared source used by the bootstrap stage')
+build.add_argument('--jobs', type=int, default=1)
+""").body
+    target_loop = ast.parse("""for parser in (build, verify):
+    parser.add_argument('--target', choices=('aarch64', 'amd64', 'riscv32'), required=True)
+""").body[0]
+    target_loop_old = ast.parse("""for parser in (build, verify):
+    parser.add_argument('--target', choices=('aarch64', 'amd64'), required=True)
+""").body[0]
+    phase_loop = ast.parse("""for parser in (build, verify):
+    parser.add_argument('--phase', choices=('builtins', 'bootstrap', 'full'), default='full')
+""").body[0]
+    allowed = {('build', 'recover', 'verify'),
+               ('prepare', 'verify_source', 'build', 'recover'),
+               ('prepare', 'verify_source', 'build', 'recover', 'verify')}
+    out = []
+    setup_count = 0
+    for node in nodes:
+        if dump(node) in (dump(recover), dump(phase)):
+            continue
+        if dump(node) == dump(new_setup):
+            out.extend(old_setup)
+            setup_count += 1
+            continue
+        if (isinstance(node, ast.For) and isinstance(node.iter, ast.Tuple) and
+                all(isinstance(n, ast.Name) for n in node.iter.elts)):
+            names = tuple(n.id for n in node.iter.elts)
+            if 'recover' in names:
+                if names not in allowed:
+                    return False
+                node.iter.elts = [n for n in node.iter.elts if n.id != 'recover']
+        out.append(node)
+    if setup_count != 1:
+        return False
+    pairs = [i for i in range(len(out) - 1)
+             if dump(out[i]) in (dump(target_loop), dump(target_loop_old)) and
+             dump(out[i + 1]) == dump(phase_loop)]
+    if len(pairs) != 1:
+        return False
+    i = pairs[0]
+    out[i].body.extend(out[i + 1].body)
+    del out[i + 1]
+    main.body = out
+    return True
+
+
+RECIPE_COMPAT_API = 1
+
+
+def compatible_runtime_recipe(previous_build, current_build, previous_cli, current_cli, target, machine_arch):
+    """Compare the ordinary producer build and dispatch for one target."""
+    return (compatible_build_for_target(previous_build, current_build, machine_arch) and
+            build_cli(previous_cli, target) == build_cli(current_cli, target))
+
+
+def builtins_recipe_blob_names(previous, current):
+    """Return validated Git blob names for a scoped builtins recipe update."""
+    try:
+        if (set(previous) != {'ports_revision', 'files'} or set(current) != {'ports_revision', 'files'} or
+                any(not isinstance(item['ports_revision'], str) or
+                    re.fullmatch(r'[0-9a-f]{40}', item['ports_revision']) is None
+                    for item in (previous, current))):
+            return None
+        old, new = previous['files'], current['files']
+        if not isinstance(old, dict) or not isinstance(new, dict):
+            return None
+        if any(not isinstance(name, str) or not isinstance(value, str) or
+               re.fullmatch(r'[0-9a-f]{64}', value) is None
+               for files in (old, new) for name, value in files.items()):
+            return None
+        prefix = 'pkgsrc/lang/compiler-rt/'
+        required = {prefix + 'files/build.py', prefix + 'files/runtime.py', prefix + 'distinfo'}
+        if not required <= old.keys() or not required <= new.keys():
+            return None
+        changed = {name for name in old.keys() | new.keys() if old.get(name) != new.get(name)}
+        patches = {name for name in changed if name.startswith(prefix + 'patches/patch-')}
+        if (not patches or changed - patches - required or
+                any(re.fullmatch(re.escape(prefix + 'patches/patch-') + r'[A-Za-z0-9_.+-]+', name) is None
+                    for name in patches)):
+            return None
+        return sorted(changed | required)
+    except (KeyError, TypeError):
+        return None
+
+
+def compatible_builtins_recipe(previous, current, previous_blobs, current_blobs,
+                               changed_paths, target, machine_arch):
+    """Check a selected builtins source update without executing old code."""
+    try:
+        names = builtins_recipe_blob_names(previous, current)
+        if names is None or not isinstance(previous_blobs, dict) or not isinstance(current_blobs, dict):
+            return False
+        old, new = previous['files'], current['files']
+        prefix = 'pkgsrc/lang/compiler-rt/'
+        build, cli, distinfo = (prefix + 'files/build.py', prefix + 'files/runtime.py',
+                                prefix + 'distinfo')
+        patches = {name for name in names if name.startswith(prefix + 'patches/patch-')}
+        needed = set(names)
+        for recorded, blobs in ((old, previous_blobs), (new, current_blobs)):
+            if set(blobs) != needed & recorded.keys():
+                return False
+            for name, data in blobs.items():
+                if not isinstance(data, bytes) or hashlib.sha256(data).hexdigest() != recorded[name]:
+                    return False
+        if not compatible_runtime_recipe(previous_blobs[build], current_blobs[build],
+                                         previous_blobs[cli], current_blobs[cli],
+                                         target, machine_arch):
+            return False
+        expected = set(changed_paths)
+        darwin = 'compiler-rt/cmake/Modules/AddCompilerRT.cmake'
+        if not expected or any(not isinstance(name, str) or
+                not (name == darwin or
+                     (name.startswith('compiler-rt/lib/builtins/') and
+                      Path(name).suffix in ('.c', '.h', '.inc')))
+                for name in expected):
+            return False
+        touched = set()
+        for name in patches:
+            for blobs in (previous_blobs, current_blobs):
+                if name not in blobs:
+                    continue
+                data = blobs[name]
+                line = b'SHA1 (' + Path(name).name.encode() + b') = ' + hashlib.sha1(data).hexdigest().encode()
+                if blobs[distinfo].splitlines().count(line) != 1:
+                    return False
+                oldpaths = [line[6:].decode('utf-8') for line in data.splitlines()
+                            if line.startswith(b'--- a/')]
+                newpaths = [line[6:].decode('utf-8') for line in data.splitlines()
+                            if line.startswith(b'+++ b/')]
+                if not oldpaths or oldpaths != newpaths:
+                    return False
+                touched.update(newpaths)
+        if touched != expected:
+            return False
+        patch_names = {Path(name).name.encode() for name in patches}
+        for blobs in (previous_blobs, current_blobs):
+            for name in patches:
+                marker = b'SHA1 (' + Path(name).name.encode() + b') = '
+                entries = [line for line in blobs[distinfo].splitlines() if line.startswith(marker)]
+                if name not in blobs:
+                    if entries:
+                        return False
+                elif entries != [marker + hashlib.sha1(blobs[name]).hexdigest().encode()]:
+                    return False
+        def unchanged_distinfo(data):
+            return b''.join(line for line in data.splitlines(keepends=True)
+                            if not any(line.startswith(b'SHA1 (' + name + b') = ')
+                                       for name in patch_names))
+        return unchanged_distinfo(previous_blobs[distinfo]) == unchanged_distinfo(current_blobs[distinfo])
+    except (KeyError, TypeError, UnicodeError, SyntaxError, ValueError):
+        return False
+
+
 def build_cli(data, target=None):
     """Compare the build parser and dispatch without executing historical code."""
     tree = ast.parse(data)
     main = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main')
+    if not normalize_recover_parser(main):
+        return ('unsupported-recovery-parser', ast.dump(main, include_attributes=False))
     additions = """
 cli.add_argument('--pkgsrc-root', help='explicit exported pkgsrc root')
 freestanding_cli(commands)
