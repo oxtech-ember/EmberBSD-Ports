@@ -1,5 +1,11 @@
 # Current common build tools
 
+SPIRV-Tools and glslang build their production libraries and tools without
+compiling upstream test executables by default. To build their separate test
+graph, set `PKG_OPTIONS.spirv-tools+= tests` and
+`PKG_OPTIONS.glslang+= tests`; running the tests remains a separate action.
+The package metadata selection is checked by `tests/shader-test-selection.py`.
+
 `scripts/cross-bulk.sh package-install PKGPATH STATE` rebuilds and installs a
 selected target package from its retained pkgsrc work directory. Add `@native`
 to `PKGPATH` to rebuild a native host-tool package from its retained work
