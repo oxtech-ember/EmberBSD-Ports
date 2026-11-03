@@ -5,6 +5,11 @@ selected target package from its retained pkgsrc work directory. Add `@native`
 to `PKGPATH` to rebuild a native host-tool package from its retained work
 directory; the controller records that result under the native node in the
 saved order. Both forms preserve the selected work directory for retry.
+Stage-local recovery checks existing phase-cookie package identities before
+resetting package staging. A numeric `PKGREVISION` change for the same package
+and upstream version can reuse compatible extracted/configured objects; an
+upstream or package-base change is refused before the work directory is touched.
+The normal build path still applies pkgsrc's ordinary version guard.
 
 Pkgsrc `repackage` re-enters its build barrier after cleaning a work directory
 for a changed package revision. `tests/pkgsrc-repackage-revision.py` checks a
