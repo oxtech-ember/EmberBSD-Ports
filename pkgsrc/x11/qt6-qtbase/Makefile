@@ -363,7 +363,7 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Xml.pc
 .include "../../archivers/brotli/buildlink3.mk"
 .include "../../databases/sqlite3/buildlink3.mk"
 .include "../../devel/glib2/buildlink3.mk"
-.if !empty(PLATFORM_SUPPORTS_WAYLAND:Myes)
+.if !empty(PLATFORM_SUPPORTS_WAYLAND:Myes) && empty(PKG_OPTIONS:Mheadless-generators)
 PLIST.wayland=	yes
 .include "../../devel/wayland/buildlink3.mk"
 .endif

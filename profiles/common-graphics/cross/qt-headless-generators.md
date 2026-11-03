@@ -9,7 +9,8 @@ PKG_OPTIONS.qt6-qtbase+= software-rendering headless-generators -cups -dbus -gtk
 ```
 
 The `headless-generators` option requires native Linux and `software-rendering`.
-It disables the Qt XCB and Xlib features and their direct buildlinks while
+It disables the Qt XCB, Xlib, Wayland and Qt Wayland scanner features and their
+direct buildlinks while
 retaining the GUI library and the ordinary Unix support files. It cannot be
 combined with the Core-only `host-tools` option. Other host and target Qt
 configurations keep their existing defaults.

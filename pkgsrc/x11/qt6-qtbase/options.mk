@@ -39,6 +39,7 @@ PKG_FAIL_REASON+= "headless-generators requires native Linux software-rendering"
 PKG_FAIL_REASON+= "headless-generators excludes gtk3 and host-tools"
 .endif
 CMAKE_CONFIGURE_ARGS+= -DFEATURE_xcb:BOOL=OFF -DFEATURE_xlib:BOOL=OFF
+CMAKE_CONFIGURE_ARGS+= -DFEATURE_wayland:BOOL=OFF -DFEATURE_qtwaylandscanner:BOOL=OFF
 .endif
 
 .if !empty(PKG_OPTIONS:Msoftware-rendering)

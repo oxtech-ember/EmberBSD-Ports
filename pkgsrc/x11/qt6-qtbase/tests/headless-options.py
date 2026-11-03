@@ -38,6 +38,7 @@ with tempfile.TemporaryDirectory(prefix='qt-headless-metadata-', dir=args.work_p
         values = result.stdout.splitlines()
         if result.returncode or len(values) != 2 or bool(values[0]) == accepted:
             raise SystemExit('Unexpected Qt option result: ' + options + '\n' + result.stderr)
-        if ('-DFEATURE_xcb:BOOL=OFF' in values[1]) != ('headless-generators' in options):
-            raise SystemExit('Unexpected XCB feature selection: ' + options)
+        for feature in ('xcb', 'xlib', 'wayland', 'qtwaylandscanner'):
+            if (f'-DFEATURE_{feature}:BOOL=OFF' in values[1]) != ('headless-generators' in options):
+                raise SystemExit('Unexpected ' + feature + ' feature selection: ' + options)
 print('PASS: five native and cross option selections; no build')
