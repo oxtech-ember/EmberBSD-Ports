@@ -5,6 +5,7 @@
 from collections import defaultdict, deque
 import os
 import posixpath
+import re
 from pathlib import Path
 import shlex
 import shutil
@@ -174,6 +175,74 @@ def cmake_arguments(source, work, stage, base, native, compiler, definition, ver
     return arguments + ['-D' + key + '=' + str(value) for key, value in sorted(settings.items())]
 
 
+def check_cmake_cache(owner, work, command):
+    """Refuse recovered work whose configured CMake inputs changed."""
+    cache = {}
+    for line in (work / 'CMakeCache.txt').read_text(encoding='utf-8').splitlines():
+        if line.startswith(('#', '//')) or '=' not in line or ':' not in line.split('=', 1)[0]:
+            continue
+        name, value = line.split('=', 1)
+        name = name.split(':', 1)[0]
+        owner.require(name not in cache, 'duplicate cached CMake input')
+        cache[name] = value
+    expected = {'CMAKE_HOME_DIRECTORY': command[command.index('-S') + 1]}
+    iterator = iter(command)
+    for word in iterator:
+        if word == '-D':
+            word = next(iterator)
+        elif word.startswith('-D'):
+            word = word[2:]
+        else:
+            continue
+        owner.require('=' in word, 'invalid selected CMake option')
+        key, value = word.split('=', 1)
+        expected[key.split(':', 1)[0]] = value
+    owner.require(all(cache.get(key) == value for key, value in expected.items()),
+                  'cached CMake input differs from selected runtime inputs')
+
+
+def check_bootstrap_artifacts(owner, source, work, stage):
+    """Compare installed bootstrap payload with the build and prepared source."""
+    archives = {}
+    for name, directory in (('builtins', work / 'builtins'), ('libunwind', work / 'bootstrap')):
+        pattern = 'libclang_rt.builtins-*.a' if name == 'builtins' else 'libunwind.a'
+        outputs = [path for path in directory.rglob(pattern) if path.is_file() and not path.is_symlink()]
+        installed = [path for path in stage.rglob(pattern) if path.is_file() and not path.is_symlink()]
+        owner.require(len(outputs) == len(installed) == 1, 'ambiguous recovered bootstrap archive')
+        owner.require(owner.inventory.sha256_file(outputs[0]) == owner.inventory.sha256_file(installed[0]),
+                      'stage archive differs from recovered build')
+        archives[name] = installed[0].relative_to(stage).as_posix()
+    prefix = '/usr/pkg/llvm/'
+    manifest = (work / 'bootstrap/install_manifest.txt').read_text(encoding='utf-8').splitlines()
+    files = set(archives.values())
+    for line in manifest:
+        owner.require(line.startswith(prefix), 'bootstrap install manifest escapes prefix')
+        relative = Path(line[len(prefix):])
+        owner.require(relative.parts and '..' not in relative.parts and not relative.is_absolute(),
+                      'invalid bootstrap install path')
+        staged = stage / 'usr/pkg/llvm' / relative
+        owner.require(staged.is_file() and not staged.is_symlink(), 'missing bootstrap installed file')
+        files.add(staged.relative_to(stage).as_posix())
+        if relative.parts[0] == 'include':
+            original = source / 'libunwind/include' / Path(*relative.parts[1:])
+            owner.require(original.is_file() and owner.inventory.sha256_file(original) == owner.inventory.sha256_file(staged),
+                          'installed bootstrap header differs from source')
+        else:
+            owner.require(staged.relative_to(stage).as_posix() == archives['libunwind'],
+                          'unexpected bootstrap installed file')
+    actual = {path.relative_to(stage).as_posix() for path in stage.rglob('*')
+              if (path.is_file() or path.is_symlink()) and not path.is_relative_to(stage / 'usr/pkg/llvm/share/licenses')}
+    owner.require(actual == files, 'unexpected bootstrap stage payload')
+    licenses = {path.relative_to(stage / 'usr/pkg/llvm/share/licenses').as_posix()
+                for path in (stage / 'usr/pkg/llvm/share/licenses').rglob('*')
+                if path.is_file() or path.is_symlink()}
+    allowed = {'compiler-rt/LICENSE.TXT', 'compiler-rt/CREDITS.TXT',
+               'compiler-rt/LICENSE.EmberBSD-BINARY128.TXT', 'compiler-rt/LICENSE.EmberBSD-GCOV.TXT',
+               'libunwind/LICENSE.TXT'}
+    owner.require(licenses <= allowed and not any(path.is_symlink() for path in
+                  (stage / 'usr/pkg/llvm/share/licenses').rglob('*')), 'unexpected bootstrap licenses')
+
+
 def execute(owner, argv, work, environment, log):
     """Reuse SDK logging, signal handling and owned-process cleanup."""
     return owner.process.run_logged(argv, str(log), cwd=str(work), env=environment,
@@ -199,7 +268,7 @@ def artifacts(owner, stage, phase):
     return result
 
 
-def inspect_inputs(owner, args, prepared):
+def inspect_inputs(owner, args, prepared, *, existing=False):
     from emberbsd_sdk import host_prefix, llvm_runtime, native_checks, target_toolchain, targets
     owner.require(native_checks.NATIVE_CHECKS_API == 1,
                   'compiler-rt runtime requires native-checks API 1')
@@ -209,7 +278,11 @@ def inspect_inputs(owner, args, prepared):
     work, stage = Path(args.work), Path(args.stage)
     owner.require(args.jobs > 0 and work.is_absolute() and stage.is_absolute(), 'use absolute work/stage and positive jobs')
     for output in (work, stage):
-        owner.require(not os.path.lexists(output), 'runtime output already exists: ' + str(output))
+        if existing:
+            owner.paths.real_directory(output)
+            owner.require(owner.paths.canonical_existing(output) == str(output), 'runtime recovery path must be canonical')
+        else:
+            owner.require(not os.path.lexists(output), 'runtime output already exists: ' + str(output))
         for read_root in (source, base, Path(args.host_prefix), Path(args.target_prefix)):
             owner.paths.reject_overlap(str(output), str(read_root))
     owner.paths.reject_overlap(str(work), str(stage))
@@ -273,6 +346,15 @@ def build(owner, args):
         install = [native.tool('cmake'), '--build', str(build_dir), '--target', 'install-builtins'] if phase == 'builtins' else [native.tool('cmake'), '--install', str(build_dir)]
         execute(owner, install, work,
                 dict(environment, DESTDIR=str(stage)), work / (phase + '.log'))
+    return finalize(owner, args, prepared, selected, environment)
+
+
+def finalize(owner, args, prepared, selected, environment):
+    from emberbsd_sdk import llvm_runtime, target_toolchain
+    source = Path(owner.paths.canonical_existing(args.source))
+    definition, base, work, stage = selected.definition, selected.base, selected.work, selected.stage
+    native, compiler, recipe, context = selected.native, selected.compiler, selected.recipe, selected.context
+    bootstrap, bootstrap_root = selected.bootstrap, selected.bootstrap_root
     owner.require(base_inputs(owner, base, args.os_source, args.git, args.phase == 'full') == context,
                   'base headers or libraries changed during runtime build')
     owner.require(owner.verify_source(source, args.git) == prepared,
@@ -319,12 +401,47 @@ def build(owner, args):
     return record
 
 
+def recover_bootstrap(owner, args):
+    """Finalize an unchanged, successfully built bootstrap stage without compiling."""
+    from emberbsd_sdk import native_checks
+    owner.require(args.phase == 'bootstrap', 'only bootstrap recovery is supported')
+    source = Path(owner.paths.canonical_existing(args.source))
+    prepared = owner.verify_source(source, args.git)
+    selected = inspect_inputs(owner, args, prepared, existing=True)
+    work, stage = selected.work, selected.stage
+    owner.require(not os.path.lexists(stage / 'runtime.json'), 'runtime stage already finalized')
+    environment = native_checks.check_environment(selected.native,
+        bindings=str(work / 'native-commands'), environment=selected.environment)
+    for phase in ('builtins', 'bootstrap'):
+        build_dir = work / phase
+        command = cmake_arguments(source, build_dir, stage, selected.base, selected.native,
+                                  selected.compiler, selected.definition, prepared['llvm_version'], phase)
+        check_cmake_cache(owner, build_dir, command)
+        dry = [selected.native.tool('ninja'), '-C', str(build_dir), '-n']
+        if phase == 'builtins':
+            dry.append('builtins')
+        result = owner.process.capture(dry, env=environment).stdout.decode('utf-8', 'strict').splitlines()
+        owner.require(result and result[-1] == 'ninja: no work to do.',
+                      'runtime recovery has pending build work')
+    check_bootstrap_artifacts(owner, source, work, stage)
+    return finalize(owner, args, prepared, selected, environment)
+
+
 def effective_recipe(owner, prepared, git):
     files = dict(prepared['recipe']['files'])
     for path in (Path(__file__).resolve(), Path(__file__).with_name('runtime.py').resolve(),
                  owner.OWNER / 'tests/runtime-c.c', owner.OWNER / 'tests/runtime-cxx.cpp'):
         files[owner.input_name(path)] = owner.inventory.sha256_file(path)
-    revision = None if owner.EXPORTED else owner.git_revision(git, owner.PORTS)
+    if owner.EXPORTED:
+        export = owner.jsonio.read_json(owner.PKGSRC.parent / 'pkgsrc-export.json')
+        owner.require(isinstance(export, dict) and export.get('format') == 'emberbsd-pkgsrc-shared-export'
+                      and export.get('version') == 2 and isinstance(export.get('identity'), dict),
+                      'invalid shared pkgsrc export identity')
+        revision = export['identity'].get('ports_commit')
+        owner.require(isinstance(revision, str) and re.fullmatch(r'[0-9a-f]{40}', revision) is not None,
+                      'invalid shared pkgsrc export revision')
+    else:
+        revision = owner.git_revision(git, owner.PORTS)
     return dict(ports_revision=revision, files=files)
 
 

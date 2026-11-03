@@ -26,6 +26,8 @@ def receipt(exported):
         PKGSRC=pkgsrc, EXPORTED=exported,
         input_name=lambda path: 'pkgsrc/' + str(Path(path).relative_to(pkgsrc)),
         inventory=SimpleNamespace(sha256_file=digest), git_revision=revision,
+        require=lambda condition, message: None if condition else (_ for _ in ()).throw(ValueError(message)),
+        jsonio=SimpleNamespace(read_json=lambda path: {"format": "emberbsd-pkgsrc-shared-export", "version": 2, "identity": {"ports_commit": "b" * 40}}),
     )
     result = build.effective_recipe(selected, {'recipe': {'files': {}}}, '/usr/bin/git')
     expected = {
@@ -35,10 +37,23 @@ def receipt(exported):
         'pkgsrc/lang/compiler-rt/tests/runtime-cxx.cpp',
     }
     assert set(result['files']) == expected, result['files']
-    assert result['ports_revision'] == (None if exported else 'a' * 40)
+    assert result['ports_revision'] == ('b' * 40 if exported else 'a' * 40)
+    from emberbsd_sdk.llvm_runtime import _digest
+    _digest(result['ports_revision'], 40)
     assert len(calls) == (0 if exported else 1), calls
     if calls:
         assert calls[0] == ('/usr/bin/git', root)
+    if exported:
+        for invalid in (None, 'not-a-revision', 'a' * 39):
+            selected.jsonio.read_json = lambda path: {
+                'format': 'emberbsd-pkgsrc-shared-export', 'version': 2,
+                'identity': {'ports_commit': invalid}}
+            try:
+                build.effective_recipe(selected, {'recipe': {'files': {}}}, '/usr/bin/git')
+            except ValueError:
+                pass
+            else:
+                raise AssertionError('invalid export revision was accepted')
 
 receipt(False)
 receipt(True)

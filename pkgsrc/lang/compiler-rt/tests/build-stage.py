@@ -157,6 +157,61 @@ class BuildStage(unittest.TestCase):
             self.run_build(changed_compiler=True)
         self.assertFalse((self.stage/'runtime.json').exists())
 
+    def test_recovery_checks_cached_cmake_inputs_before_mutation(self):
+        work = self.root / 'cached-build'
+        work.mkdir()
+        cache = work / 'CMakeCache.txt'
+        command = ['/selected/cmake', '-S', '/selected/source', '-B', str(work),
+                   '-D', 'CMAKE_SYSROOT=/target/base', '-D', 'CMAKE_C_COMPILER=/selected/clang']
+        lines = ['CMAKE_HOME_DIRECTORY:INTERNAL=/selected/source',
+                 'CMAKE_SYSROOT:PATH=/target/base']
+        cache.write_text(chr(10).join(lines + ['CMAKE_C_COMPILER:STRING=/foreign/compiler']))
+        with self.assertRaisesRegex(SDKError, 'cached CMake input differs'):
+            producer.check_cmake_cache(owner, work, command)
+        cache.write_text(chr(10).join(lines + ['CMAKE_C_COMPILER:STRING=/selected/clang']))
+        producer.check_cmake_cache(owner, work, command)
+
+    def test_recovery_rejects_modified_stage_archive(self):
+        source = self.root / 'prepared'
+        work = self.root / 'cached'
+        stage = self.root / 'stage-check'
+        for path in (source / 'libunwind/include', work / 'builtins/lib',
+                     work / 'bootstrap/lib', stage / 'usr/pkg/llvm/include',
+                     stage / 'usr/pkg/llvm/lib'):
+            path.mkdir(parents=True)
+        (source / 'libunwind/include/unwind.h').write_bytes(b'header')
+        (stage / 'usr/pkg/llvm/include/unwind.h').write_bytes(b'header')
+        (work / 'builtins/lib/libclang_rt.builtins-aarch64.a').write_bytes(b'builtins')
+        (work / 'bootstrap/lib/libunwind.a').write_bytes(b'unwind')
+        builtins = stage / 'usr/pkg/llvm/lib/libclang_rt.builtins-aarch64.a'
+        builtins.write_bytes(b'wrong')
+        (stage / 'usr/pkg/llvm/lib/libunwind.a').write_bytes(b'unwind')
+        (work / 'bootstrap/install_manifest.txt').write_text('/usr/pkg/llvm/include/unwind.h' + chr(10) + '/usr/pkg/llvm/lib/libunwind.a')
+        with self.assertRaisesRegex(SDKError, 'stage archive differs'):
+            producer.check_bootstrap_artifacts(owner, source, work, stage)
+        builtins.write_bytes(b'builtins')
+        producer.check_bootstrap_artifacts(owner, source, work, stage)
+        foreign = stage / 'usr/other/share/licenses/foreign'
+        foreign.parent.mkdir(parents=True)
+        foreign.write_bytes(b'unexpected')
+        with self.assertRaisesRegex(SDKError, 'unexpected bootstrap stage payload'):
+            producer.check_bootstrap_artifacts(owner, source, work, stage)
+
+    def test_recovery_refuses_pending_ninja_without_manifest(self):
+        self.args.phase = 'bootstrap'
+        self.work.mkdir()
+        self.stage.mkdir()
+        with patch.object(owner, 'verify_source', return_value=self.prepared), \
+             patch.object(producer, 'inspect_inputs', return_value=self.selected), \
+             patch.object(producer, 'check_cmake_cache'), \
+             patch('emberbsd_sdk.native_checks.check_environment', return_value={}), \
+             patch.object(owner.process, 'capture', return_value=SimpleNamespace(stdout=b'[1/1] CC changed.o')), \
+             patch.object(producer, 'finalize') as finish:
+            with self.assertRaisesRegex(SDKError, 'pending build work'):
+                producer.recover_bootstrap(owner, self.args)
+            finish.assert_not_called()
+        self.assertFalse((self.stage / 'runtime.json').exists())
+
     def test_failed_command_retains_status_and_no_completed_manifest(self):
         with self.assertRaises(CommandError) as error:
             self.run_build(fail=True)

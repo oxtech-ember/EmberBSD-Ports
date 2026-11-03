@@ -24,12 +24,14 @@ def main(arguments):
     prepare.add_argument('--patch', required=True)
     verify_source = commands.add_parser('verify-source')
     build = commands.add_parser('build')
-    for name in ('sysroot', 'os-source', 'host-prefix', 'target-prefix', 'work', 'stage'):
-        build.add_argument('--' + name, required=True)
-    build.add_argument('--host-compiler-family', choices=('clang', 'gcc'), default='clang')
-    build.add_argument('--bootstrap-stage')
-    build.add_argument('--original-source', help='prepared source used by the bootstrap stage')
-    build.add_argument('--jobs', type=int, default=1)
+    recover = commands.add_parser('finalize-bootstrap')
+    for parser in (build, recover):
+        for name in ('sysroot', 'os-source', 'host-prefix', 'target-prefix', 'work', 'stage'):
+            parser.add_argument('--' + name, required=True)
+        parser.add_argument('--host-compiler-family', choices=('clang', 'gcc'), default='clang')
+        parser.add_argument('--bootstrap-stage')
+        parser.add_argument('--original-source', help='prepared source used by the bootstrap stage')
+        parser.add_argument('--jobs', type=int, default=1)
     wasi_build = commands.add_parser('wasi-builtins')
     for name in ('source', 'host-prefix', 'work', 'stage'):
         wasi_build.add_argument('--' + name, required=True)
@@ -45,12 +47,14 @@ def main(arguments):
     verify.add_argument('--base')
     verify.add_argument('--source', help='currently selected prepared LLVM source')
     verify.add_argument('--original-source', help='prepared source used by the existing runtime')
-    for parser in (build, verify):
+    for parser in (build, recover, verify):
         parser.add_argument('--target', choices=('aarch64', 'amd64', 'riscv32'), required=True)
+    for parser in (build, verify):
         parser.add_argument('--phase', choices=('builtins', 'bootstrap', 'full'), default='full')
-    for parser in (prepare, verify_source, build):
+    recover.add_argument('--phase', choices=('bootstrap',), default='bootstrap')
+    for parser in (prepare, verify_source, build, recover):
         parser.add_argument('--source', required=True)
-    for parser in (prepare, verify_source, build, verify):
+    for parser in (prepare, verify_source, build, recover, verify):
         parser.add_argument('--git')
     args = cli.parse_args(arguments)
     if args.command in ('build', 'verify') and args.target == 'riscv32' and args.phase == 'full':
@@ -63,6 +67,9 @@ def main(arguments):
     elif args.command == 'build':
         import build as producer
         record = producer.build(owner, args)
+    elif args.command == 'finalize-bootstrap':
+        import build as producer
+        record = producer.recover_bootstrap(owner, args)
     elif args.command in ('wasi-builtins', 'wasi-verify'):
         import wasi
         record = wasi.build(owner, args) if args.command == 'wasi-builtins' else wasi.verify(owner, args)
