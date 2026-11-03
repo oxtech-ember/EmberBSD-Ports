@@ -11,10 +11,10 @@
  
 --- a/mk/package/bsd.package.mk
 +++ b/mk/package/bsd.package.mk
-@@ -25,6 +25,34 @@
- .PHONY: repackage
- repackage: _package-clean
- 	${RUN} ${RECURSIVE_MAKE} ${MAKEFLAGS} package
+@@ -29,6 +29,37 @@
+ 	    ${.MAKEOVERRIDES:N_PKGSRC_BARRIER:@v@${v}=${${v}:Q}@} \
+ 	    MAKE_JOBS=${MAKE_JOBS:U:Q} package
+ 
 +
 +# The selected SDK interpreter is needed only by this explicit operation.
 +EMBERBSD_REPACKAGE_PYTHON?= ${EMBERBSD_HOST_PYTHON:U${EMBERBSD_CROSS_BUILD_PYTHON:U}}
@@ -39,13 +39,16 @@
 +	${RECURSIVE_MAKE} ${MAKEFLAGS} _package-clean || exit $$?; \
 +	unset _PKGSRC_BARRIER; \
 +	MAKEFLAGS=${.MAKEFLAGS:Q} ${RECURSIVE_MAKE} ${MAKEFLAGS} \
++	    ${.MAKEOVERRIDES:N_PKGSRC_BARRIER:@v@${v}=${${v}:Q}@} \
++	    MAKE_JOBS=${MAKE_JOBS:U:Q} \
 +	    _EMBER_REPACKAGE_IDENTITY="$$old" \
 +	    _EMBER_REPACKAGE_PKGPATH=${PKGPATH:Q} \
 +	    _EMBER_REPACKAGE_WRKDIR=${WRKDIR:Q} package
 +.endif
- 
++
  ######################################################################
  ### package-clean (PUBLIC)
+ ######################################################################
 --- a/mk/install/install.mk
 +++ b/mk/install/install.mk
 @@ -150,6 +150,34 @@

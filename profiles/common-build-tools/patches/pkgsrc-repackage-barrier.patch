@@ -1,14 +1,91 @@
 # Origin: EmberBSD contributors (AI-assisted).
 # The version-mismatch cleanup removes WRKDIR/.barrier_cookie. Re-enter the
 # normal barrier before rebuilding instead of inheriting the completed barrier.
+--- a/mk/package/bsd.package.mk
++++ b/mk/package/bsd.package.mk
+@@ -24,7 +24,10 @@
+ ###
+ .PHONY: repackage
+ repackage: _package-clean
+-	${RUN} ${RECURSIVE_MAKE} ${MAKEFLAGS} package
++	${RUN} unset _PKGSRC_BARRIER; \
++	MAKEFLAGS=${.MAKEFLAGS:Q} ${RECURSIVE_MAKE} ${MAKEFLAGS} \
++	    ${.MAKEOVERRIDES:N_PKGSRC_BARRIER:@v@${v}=${${v}:Q}@} \
++	    MAKE_JOBS=${MAKE_JOBS:U:Q} package
+ 
+ ######################################################################
+ ### package-clean (PUBLIC)
+--- a/mk/bsd.pkg.barrier.mk
++++ b/mk/bsd.pkg.barrier.mk
+@@ -37,6 +37,15 @@
+ .  endif
+ .endfor
+ 
++_BARRIER_BUILD_TARGETS= build test all stage-install stage-package-create \
++	reinstall replace package repackage repackage-metadata package-install install
++_BARRIER_NEEDS_JOBS= no
++.for _target_ in ${_BARRIER_BUILD_TARGETS}
++.  if make(${_target_})
++_BARRIER_NEEDS_JOBS= yes
++.  endif
++.endfor
++
+ ######################################################################
+ ### barrier (PRIVATE)
+ ######################################################################
+@@ -70,8 +79,27 @@
+ 	   ${PKG_INFO} -qe ${PKGNAME}; then \
+ 		${PHASE_MSG} "Skipping installation of already handled package"; \
+ 	else \
+-	cd ${.CURDIR}							\
+-	&& ${RECURSIVE_MAKE} ${MAKEFLAGS} _PKGSRC_BARRIER=yes ${_BARRIER_CMDLINE_TARGETS} \
++	need_jobs=${_BARRIER_NEEDS_JOBS:Q}; \
++	jobs_arg=; \
++	if [ "$$need_jobs" = yes ]; then \
++		jobs=${MAKE_JOBS:U:Q}; \
++		if [ -n "$$jobs" ]; then \
++			case "$$jobs" in *[!0-9]*) ${ECHO} "pkgsrc barrier: MAKE_JOBS must be a positive integer" >&2; exit 1;; esac; \
++			${TEST} "$$jobs" -gt 0 || { ${ECHO} "pkgsrc barrier: MAKE_JOBS must be positive" >&2; exit 1; }; \
++		else \
++			python=${EMBERBSD_HOST_PYTHON:U${EMBERBSD_CROSS_BUILD_PYTHON:U}:Q}; \
++			sdk_source=${EMBERBSD_SDK_SOURCE:U:Q}; \
++			case "$$python" in /*) ;; *) ${ECHO} "pkgsrc barrier: select an absolute SDK Python for automatic jobs" >&2; exit 1;; esac; \
++			${TEST} -x "$$python" || { ${ECHO} "pkgsrc barrier: unusable SDK Python" >&2; exit 1; }; \
++			case "$$sdk_source" in /*) ;; *) ${ECHO} "pkgsrc barrier: select an absolute SDK source for automatic jobs" >&2; exit 1;; esac; \
++			jobs=`"$$python" -B -E -S "$$sdk_source/scripts/resolve-jobs.py"` || exit $$?; \
++		fi; \
++		case "$$jobs" in ''|*[!0-9]*) ${ECHO} "pkgsrc barrier: invalid job count" >&2; exit 1;; esac; \
++		${TEST} "$$jobs" -gt 0 || { ${ECHO} "pkgsrc barrier: job count must be positive" >&2; exit 1; }; \
++		jobs_arg=MAKE_JOBS=$$jobs; \
++	fi; \
++	cd ${.CURDIR}								\
++	&& ${RECURSIVE_MAKE} ${MAKEFLAGS} $$jobs_arg _PKGSRC_BARRIER=yes ${_BARRIER_CMDLINE_TARGETS} \
+ 	|| {								\
+ 		exitcode="$$?";						\
+ 		${RECURSIVE_MAKE} ${MAKEFLAGS} _PKGSRC_BARRIER=yes barrier-error-check; \
+--- a/mk/build/build.mk
++++ b/mk/build/build.mk
+@@ -73,7 +73,7 @@
+ _MAKE_JOBS=	-j${MAKE_JOBS.${PKGPATH}}
+ .  endif
+ _MAKE_JOBS_N=	${MAKE_JOBS.${PKGPATH}}
+-.elif defined(MAKE_JOBS)
++.elif defined(MAKE_JOBS) && !empty(MAKE_JOBS)
+ .  if ${MAKE_JOBS_METHOD} == "make-j"
+ _MAKE_JOBS=	-j${MAKE_JOBS}
+ .  endif
 --- a/mk/install/install.mk
 +++ b/mk/install/install.mk
-@@ -159,6 +159,8 @@
+@@ -159,8 +159,11 @@
  		${WARNING_MSG} "Current version $$pkgname in ${PKGPATH}"; \
  		${WARNING_MSG} "Cleaning and rebuilding $$pkgname...";	\
  		${RECURSIVE_MAKE} ${MAKEFLAGS} clean;			\
+-		${RECURSIVE_MAKE} ${MAKEFLAGS} build ;;			\
 +		unset _PKGSRC_BARRIER;					\
 +		MAKEFLAGS=${.MAKEFLAGS:Q} 				\
- 		${RECURSIVE_MAKE} ${MAKEFLAGS} build ;;			\
++		${RECURSIVE_MAKE} ${MAKEFLAGS} \
++		    ${.MAKEOVERRIDES:N_PKGSRC_BARRIER:@v@${v}=${${v}:Q}@} build ;; \
  	esac
  
+ ######################################################################
+ ### install-all, su-install-all (PRIVATE)

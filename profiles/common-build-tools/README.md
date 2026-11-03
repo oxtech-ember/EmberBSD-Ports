@@ -18,8 +18,11 @@ real package rebuild, selected make settings and the new package payload.
 `bmake repackage-metadata` explicitly repackages an already completed build
 when the operator has verified that sources, patches, build options, dependencies,
 toolchain and ABI are unchanged. Hold exclusive ownership of the work directory
-for the entire operation. The opt-in mode requires an absolute selected SDK
-Python through `EMBERBSD_REPACKAGE_PYTHON`; it defaults to
+for the entire operation. When a requested barrier target can build or install,
+an empty `MAKE_JOBS` is resolved once through the selected SDK
+`scripts/resolve-jobs.py`; a positive value supplied by the caller is passed
+through. Source-only targets do not invoke the job resolver. The opt-in mode
+requires an absolute selected SDK Python through `EMBERBSD_REPACKAGE_PYTHON`; it defaults to
 `EMBERBSD_HOST_PYTHON`, then `EMBERBSD_CROSS_BUILD_PYTHON` when available.
 Extract and build identities, and configure identity
 when applicable, must agree on the same package and upstream version; only the
@@ -30,11 +33,15 @@ available for a retry; a partial stage or failed package is not a result. The
 installed package is not replaced by this target. Ordinary `repackage` continues
 to rebuild when package identity changes.
 
-`tests/pkgsrc-repackage-metadata.py` applies the common patch to a small isolated
-pkgsrc overlay and exercises a package without compiling C. It checks identity
-refusals before cleanup, a changed PLIST and revision without rebuilding,
-install and PLIST failures, and retry. Pass the existing exported pkgsrc, native
-makeconf, bmake, patch executable and the patch file via the script's options.
+`tests/pkgsrc-repackage-metadata.py` combines the prepared export with its
+pristine upstream pkgsrc source, applies the barrier and metadata patches in a
+small isolated overlay and exercises a package without compiling C. It checks
+identity refusals before cleanup, a changed PLIST and revision without
+rebuilding, install and PLIST failures, retry, ordinary revision rebuilds,
+source-only target behavior, automatic job resolution, and explicit job
+pass-through. Pass the existing exported pkgsrc, native makeconf, bmake, patch
+executable, upstream pkgsrc source, SDK source, barrier patch and metadata patch
+via the script's options.
 
 The [Mach-O metadata resolver](macho-metadata.md) uses selected structural tools.
 It does not require libmagic or create a file/libtool bootstrap cycle.
