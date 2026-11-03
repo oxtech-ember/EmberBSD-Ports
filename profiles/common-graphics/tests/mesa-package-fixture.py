@@ -67,7 +67,7 @@ with tempfile.TemporaryDirectory() as tmp:
             if iris:
                 tar.add(prefix/'lib/dri/iris_dri.so', arcname='lib/dri/iris_dri.so')
                 tar.add(prefix/'share/drirc.d/00-iris-defaults.conf', arcname='share/drirc.d/00-iris-defaults.conf')
-    valid='@name MesaLib-26.2.6nb10\n@cwd /usr/pkg\n'
+    valid='@name MesaLib-26.2.6nb11\n@cwd /usr/pkg\n'
     os.environ['EMBERBSD_CROSS_ARCH']='x86_64'
     with patch.object(m,'query',side_effect=fake_query), patch.object(m.subprocess,'run',side_effect=fake_run):
         archive(valid+'@cwd /usr/pkg\n'); m.main([str(tools),str(sysroot),str(source),str(build),str(package),str(root/'ok'),str(libdrm)])

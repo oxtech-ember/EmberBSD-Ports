@@ -17,7 +17,7 @@ prefix = "#{sysroot}/usr/pkg"
 verify = "#{mesa}/run-mesa-package-tests.sh"
 abort 'installed Mesa input verification failed' unless system('sh', verify, '--verify-sysroot', mesa, sysroot)
 contents = ["#{mesa}/source/MesaLib.CONTENTS", "#{mesa}/MesaLib.CONTENTS"].find { |p| File.file?(p) }
-abort 'require accepted canonical MesaLib 26.2.6nb10' unless contents && File.read(contents).include?("@name MesaLib-26.2.6nb10\n")
+abort 'require accepted canonical MesaLib 26.2.6nb11' unless contents && File.read(contents).include?("@name MesaLib-26.2.6nb11\n")
 inputs = [__FILE__, "#{owner}/mesa-dmabuf.c", "#{owner}/run-mesa-dmabuf.sh", cc, readelf, pkgconfig, verify, contents,
           "#{mesa}/artifacts.sha256"] +
          %w[mesa-package-files.sha256 mesa-package-links.tsv runtime-libraries.sha256].map { |p| "#{mesa}/#{p}" } +
