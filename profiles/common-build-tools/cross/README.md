@@ -182,6 +182,11 @@ still override it through the ordinary make variable.
 adds `-static` for target links. This setting is separate from the C-only
 runtime selection; a C-foundation toolset does not itself imply static libc.
 
+`EMBERBSD_CROSS_FUNCTION_SECTIONS` defaults to `no`. Target profiles that
+link static C archives with section garbage collection can set it to `yes`;
+the cross profile then adds `-ffunction-sections -fdata-sections` to target
+CFLAGS only. Native tool builds keep their ordinary CFLAGS.
+
 The [root certificate recipe](rootcerts.md) separates native data generators
 from the explicit NetBSD 11 full-base script contract. The compiler SDK does
 not need target command binaries for that data-only package.
