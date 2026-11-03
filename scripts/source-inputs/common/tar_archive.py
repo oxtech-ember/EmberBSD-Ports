@@ -10,17 +10,28 @@ import sys
 import tempfile
 
 def verify(ctx, source, git, archive=None, patch=None, pkgsrc_export=None):
-    # Check a caller's shared export before any early return: an unchanged
-    # Git-identified receipt needs no export, but a broken one must not pass.
-    shared = (ctx.identity_module().shared_export(pkgsrc_export, ctx.PORTS, git, ctx.SDK_SOURCE, patch)
-              if pkgsrc_export else None)
-    identity = ctx.source_identity(git)
     record = ctx.jsonio.read_json(str(Path(source) / ctx.sourceprep.PREPARED_TREE_RECEIPT))
     old = record.get('identity') if isinstance(record, dict) else None
     record = ctx.sourceprep.validate_prepared_tree(source, package=ctx.PACKAGE, identity=old)
+    selector = ctx.identity_module()
+    compatible = getattr(ctx, 'compatible_owner_digests', ())
+    owner_digest = getattr(ctx, 'owner_digest', None)
+    if isinstance(old, dict) and callable(owner_digest):
+        expected_owner = old.get('owner_sha256') if old.get('owner_sha256') in compatible else owner_digest()
+        if selector.current_git_package(
+                old, expected_owner, lambda: ctx.git_effective_identity(git)):
+            # The prepared tree is validated above and its package recipe,
+            # patch set, and selected owner still match. Unrelated shared
+            # export inputs are not consumed on this path.
+            return record
+
+    # Only compare the whole shared export on paths that need it to rebuild
+    # or compare the selected package payload.
+    shared = (selector.shared_export(pkgsrc_export, ctx.PORTS, git, ctx.SDK_SOURCE, patch)
+              if pkgsrc_export else None)
+    identity = ctx.source_identity(git)
     if old == identity:
         return record
-    compatible = getattr(ctx, 'compatible_owner_digests', ())
     if (isinstance(old, dict) and old.get('owner_sha256') in compatible and
             set(old) == {'export', 'owner_sha256'} and old['export'] == identity['export']):
         return record

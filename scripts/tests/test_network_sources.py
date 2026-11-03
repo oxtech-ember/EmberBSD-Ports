@@ -21,23 +21,77 @@ from emberbsd_sdk.errors import SDKError
 
 
 class NetworkSourcesTest(unittest.TestCase):
-    def test_libpcap_pre_extraction_receipt_is_still_accepted(self):
-        spec = importlib.util.spec_from_file_location('libpcap_owner', ROOT / 'scripts/source-inputs/libpcap/source.py')
+    def test_scoped_mDNS_receipt_skips_unrelated_shared_export_delta(self):
+        spec = importlib.util.spec_from_file_location(
+            'mdns_owner_unrelated_export', ROOT / 'scripts/source-inputs/mdns/source.py')
         owner = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(owner)
         owner.load_sdk(['--sdk-source', str(SDK)])
         with tempfile.TemporaryDirectory(dir=WORK) as temp:
             from emberbsd_sdk import sourceprep
-            old_digest = next(iter(owner.compatible_owner_digests))
             effective = {'api': 2, 'package': owner.PACKAGE,
                          'effective_package_sha256': 'a' * 64, 'upstream': 'b' * 40}
-            old = {'effective': effective, 'owner_sha256': old_digest}
-            record = sourceprep.write_prepared_tree_receipt(temp, package=owner.PACKAGE, identity=old)
+            old = {'effective': effective, 'owner_sha256': owner.engine.owner_digest()}
+            record = sourceprep.write_prepared_tree_receipt(
+                temp, package=owner.PACKAGE, identity=old)
             selector = owner.identity_module()
-            with patch.object(owner, 'source_identity', return_value={'export': {'current': True}, 'owner_sha256': 'c' * 64}), \
-                    patch.object(owner, 'identity_module', return_value=selector), \
-                    patch.object(owner, 'git_effective_identity', return_value=effective):
-                self.assertEqual(owner.verify(temp, '/bin/true'), record)
+            with patch.object(owner.engine, 'identity_module', return_value=selector), \
+                    patch.object(owner.engine, 'git_effective_identity', return_value=effective), \
+                    patch.object(owner.engine, 'source_identity',
+                                 side_effect=AssertionError('global export identity was consulted')), \
+                    patch.object(selector, 'shared_export',
+                                 side_effect=AssertionError('unrelated shared export was consulted')):
+                self.assertEqual(owner.verify(temp, '/git', patch='/patch',
+                                              pkgsrc_export='/stale-unrelated-export'), record)
+
+    def test_changed_mDNS_recipe_still_checks_export_and_requires_comparison(self):
+        spec = importlib.util.spec_from_file_location(
+            'mdns_owner_changed_recipe', ROOT / 'scripts/source-inputs/mdns/source.py')
+        owner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(owner)
+        owner.load_sdk(['--sdk-source', str(SDK)])
+        with tempfile.TemporaryDirectory(dir=WORK) as temp:
+            from emberbsd_sdk import sourceprep
+            old_effective = {'api': 2, 'package': owner.PACKAGE,
+                             'effective_package_sha256': 'a' * 64, 'upstream': 'b' * 40}
+            changed_effective = dict(old_effective, effective_package_sha256='c' * 64)
+            old = {'effective': old_effective, 'owner_sha256': owner.engine.owner_digest()}
+            sourceprep.write_prepared_tree_receipt(temp, package=owner.PACKAGE, identity=old)
+            selector = owner.identity_module()
+            export = Path(temp) / 'current-export'
+            current = {'export': {'current': True, 'upstream': 'b' * 40},
+                       'owner_sha256': owner.engine.owner_digest()}
+            with patch.object(owner.engine, 'identity_module', return_value=selector), \
+                    patch.object(owner.engine, 'git_effective_identity', return_value=changed_effective), \
+                    patch.object(owner.engine, 'source_identity', return_value=current), \
+                    patch.object(selector, 'shared_export', return_value=export) as shared, \
+                    patch.object(selector, 'effective_package_identity', return_value=changed_effective):
+                with self.assertRaisesRegex(SDKError, 'changed mDNSResponder inputs require an explicit archive'):
+                    owner.verify(temp, '/git', patch='/patch', pkgsrc_export='/current-export')
+            shared.assert_called_once()
+
+    def test_libpcap_pre_extraction_receipt_is_still_accepted(self):
+        spec = importlib.util.spec_from_file_location('libpcap_owner', ROOT / 'scripts/source-inputs/libpcap/source.py')
+        owner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(owner)
+        owner.load_sdk(['--sdk-source', str(SDK)])
+        from emberbsd_sdk import sourceprep
+        effective = {'api': 2, 'package': owner.PACKAGE,
+                     'effective_package_sha256': 'a' * 64, 'upstream': 'b' * 40}
+        selector = owner.identity_module()
+        for old_digest in sorted(owner.compatible_owner_digests):
+            with self.subTest(owner_digest=old_digest), tempfile.TemporaryDirectory(dir=WORK) as temp:
+                old = {'effective': effective, 'owner_sha256': old_digest}
+                record = sourceprep.write_prepared_tree_receipt(
+                    temp, package=owner.PACKAGE, identity=old)
+                with patch.object(owner, 'source_identity',
+                                  side_effect=AssertionError('global export identity was consulted')), \
+                        patch.object(owner, 'identity_module', return_value=selector), \
+                        patch.object(owner, 'git_effective_identity', return_value=effective), \
+                        patch.object(selector, 'shared_export',
+                                     side_effect=AssertionError('unrelated shared export was consulted')):
+                    self.assertEqual(owner.verify(temp, '/bin/true', patch='/patch',
+                                                  pkgsrc_export='/stale-unrelated-export'), record)
 
     def test_recipe_archive_receipt_and_patch_inventory(self):
         for name, package in (('mdns', 'net/mDNSResponder'), ('dhcpcd', 'net/dhcpcd')):
