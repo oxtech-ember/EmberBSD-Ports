@@ -152,4 +152,24 @@ for label, rows in (("target runtime", runtime_rows), ("target SDK", devel_rows)
 require(not guard_errors,
         "target partitions preserve complete-PLIST guards" +
         (" (" + str(len(guard_errors)) + " mismatches: " + ", ".join(guard_errors[:3]) + ")" if guard_errors else ""))
+# Native generator GUI keeps Unix support while opting out of X11/XCB.
+require("headless-generators" in options, "native GUI generator role is explicit")
+require("-DFEATURE_xcb:BOOL=OFF" in options and "-DFEATURE_xlib:BOOL=OFF" in options,
+        "headless generator disables XCB and Xlib")
+headless_guard = makefile.index('.if empty(PKG_OPTIONS:Mheadless-generators)')
+headless_end = makefile.index('\n.endif', headless_guard)
+headless_block = makefile[headless_guard:headless_end]
+for dependency in ('libxcb', 'libX11', 'libXext', 'libXcursor', 'libXft', 'libXi',
+                   'libXmu', 'libXrandr', 'libXrender', 'libxkbcommon'):
+    require('/' + dependency + '/buildlink3.mk' in headless_block,
+            dependency + ' stays outside the headless generator dependency graph')
+require('PLIST.xcb=\tyes' in headless_block and 'PLIST.x11=\tyes' in makefile[:headless_guard],
+        'default retains XCB and headless keeps Unix-specific PLIST entries')
+for label, rows in (("full", plist), ("runtime", runtime_plist), ("devel", devel_plist)):
+    for row in rows:
+        clean = unprefixed(row).lower()
+        if any(x in clean for x in ("qt6qxcbintegrationplugin", "qt6qxcbeglintegrationplugin",
+                                     "qt6qxcbglxintegrationplugin", "qt6xcbqpa", "libqxcb",
+                                     "/xcbglintegrations/", "xcbqpaprivate", "qt_lib_xcb_qpa")):
+            require("${PLIST.xcb}" in row, label + " XCB file lacks XCB guard: " + clean)
 print("PASS: software-rendering recipe contract")

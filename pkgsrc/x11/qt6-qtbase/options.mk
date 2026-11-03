@@ -9,6 +9,9 @@ PKG_SUGGESTED_OPTIONS+=	dbus
 # Native generators for cross builds: moc, rcc, uic and their CMake packages.
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 PKG_SUPPORTED_OPTIONS+=	host-tools
+.if ${OPSYS} == "Linux"
+PKG_SUPPORTED_OPTIONS+=	headless-generators
+.endif
 .endif
 
 # QtQuick software rendering supports native Linux and NetBSD cross builds.
@@ -25,6 +28,18 @@ PKG_SUGGESTED_OPTIONS+=	cups
 .include "../../mk/bsd.options.mk"
 
 PLIST_VARS+=		cups dbus gtk3 opengl vulkan
+
+# Native GUI generators without XCB: select software-rendering and
+# headless-generators; do not select gtk3 or host-tools.
+.if !empty(PKG_OPTIONS:Mheadless-generators)
+.if ${OPSYS} != "Linux" || ${USE_CROSS_COMPILE:Uno:tl} == "yes" || empty(PKG_OPTIONS:Msoftware-rendering)
+PKG_FAIL_REASON+= "headless-generators requires native Linux software-rendering"
+.endif
+.if !empty(PKG_OPTIONS:Mgtk3) || !empty(PKG_OPTIONS:Mhost-tools)
+PKG_FAIL_REASON+= "headless-generators excludes gtk3 and host-tools"
+.endif
+CMAKE_CONFIGURE_ARGS+= -DFEATURE_xcb:BOOL=OFF -DFEATURE_xlib:BOOL=OFF
+.endif
 
 .if !empty(PKG_OPTIONS:Msoftware-rendering)
 .if (${OPSYS} != "Linux" && ${OPSYS} != "NetBSD") || \

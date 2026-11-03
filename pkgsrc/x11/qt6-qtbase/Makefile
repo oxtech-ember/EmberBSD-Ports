@@ -148,7 +148,7 @@ QMAKE_CONF=		qmake.conf.mac
 .endif
 
 # Qt's deployment helpers are host tools and are disabled in cross builds.
-PLIST_VARS+=	androidtools targetmetadata egl egldevice opengl vulkan wayland x11
+PLIST_VARS+=	androidtools targetmetadata egl egldevice opengl vulkan wayland x11 xcb
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 PLIST.androidtools=	yes
 .endif
@@ -402,6 +402,8 @@ PLIST.egldevice=	yes
 .    endif
 .  endif
 .endif
+.if empty(PKG_OPTIONS:Mheadless-generators)
+PLIST.xcb=	yes
 BUILDLINK_API_DEPENDS.libxcb+=	libxcb>=1.11
 .include "../../x11/libxcb/buildlink3.mk"
 .include "../../x11/xcb-util/buildlink3.mk"
@@ -420,6 +422,7 @@ BUILDLINK_API_DEPENDS.libxcb+=	libxcb>=1.11
 .include "../../x11/libXrandr/buildlink3.mk"
 .include "../../x11/libXrender/buildlink3.mk"
 .include "../../x11/libxkbcommon/buildlink3.mk"
+.endif
 .endif
 .include "../../mk/jpeg.buildlink3.mk"
 .include "../../mk/krb5.buildlink3.mk"
