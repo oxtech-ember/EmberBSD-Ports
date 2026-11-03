@@ -40,8 +40,11 @@ run the same command without `--check`, then configure and build the selected
 recipe using pkgsrc's scoped stage-local package lifecycle. The helper does not
 acquire locks. It preserves the historical patch cookie and records the source
 transition separately; the receipt supports retry of this one add-only
-transition, including an interrupted configure. A different transition requires
-its own supported source refresh rather than replacing that receipt.
+transition, including an interrupted configure. A completed transition may be
+followed by another verified add-only transition when its source identity and
+configured package match the completed receipt; an unrelated or pending
+transition is refused. Exported version 2 source manifests are checked against
+committed current recipe blobs and a reconstructed prior distinfo.
 
 Run these commands from the Ports source checkout. The returned JSON is also
 stored as `llvm-source.json` inside the source root. Its format is

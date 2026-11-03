@@ -88,6 +88,56 @@ with tempfile.TemporaryDirectory() as tmp:
     m.atomic=original
     assert m.apply_files(before,after,work,'llvm',{m.HEADER},identity) == 1
     assert dst.read_bytes() == b'new'
+
+# A completed transition may be followed by the next verified transition.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve(); before = root / "before"; after = root / "after"; work = root / "work"
+    for path in (before, after, work): path.mkdir()
+    name = "compiler-rt/lib/profile/InstrProfilingFile.c"
+    put(before, name, b"middle"); put(after, name, b"new")
+    dest = put(work / "llvm-project-23.1.4.src", name, b"middle")
+    put(work, ".extract_done", b"compiler-rt-23.1.4nb11\n")
+    put(work, ".configure_done", b"compiler-rt-23.1.4nb12\n")
+    put(work, ".patch_done", b"historical")
+    old = dict(version="23.1.4", before="old", after="middle-id", package="compiler-rt-23.1.4nb12", package_kind="compiler-rt", paths=[name], state="complete")
+    next_identity = dict(version="23.1.4", before="middle-id", after="new-id", package="compiler-rt-23.1.4nb13")
+    receipt = work / m.RECEIPT
+    for bad in (dict(old, state="pending"), dict(old, after="foreign")):
+        receipt.write_text(json.dumps(bad))
+        rejected(lambda: m.apply_files(before, after, work, "compiler-rt", {name}, next_identity))
+        assert dest.read_bytes() == b"middle"
+    receipt.write_text(json.dumps(old)); (work/".configure_done").write_text("compiler-rt-23.1.4nb10\n")
+    rejected(lambda: m.apply_files(before, after, work, "compiler-rt", {name}, next_identity))
+    (work/".configure_done").write_text("compiler-rt-23.1.4nb12\n")
+    second = "compiler-rt/lib/profile/InstrProfilingValue.c"
+    put(before, second, b"middle2"); put(after, second, b"new2")
+    second_dest = put(work / "llvm-project-23.1.4.src", second, b"middle2")
+    original_atomic = m.atomic
+    def interrupted_chain(path, data, mode=0o644):
+        if path == second_dest:
+            raise OSError("interrupted after first file")
+        return original_atomic(path, data, mode)
+    m.atomic = interrupted_chain
+    rejected(lambda: m.apply_files(before, after, work, "compiler-rt", {name, second}, next_identity))
+    m.atomic = original_atomic
+    saved = json.loads(receipt.read_text())
+    assert saved["state"] == "pending" and saved["configured_before"] == "compiler-rt-23.1.4nb12"
+    assert dest.read_bytes() == b"new" and second_dest.read_bytes() == b"middle2"
+    wrong = dict(saved, configured_before="invalid")
+    receipt.write_text(json.dumps(wrong))
+    rejected(lambda: m.apply_files(before, after, work, "compiler-rt", {name, second}, next_identity))
+    receipt.write_text(json.dumps(saved))
+    for wrong_cookie in ("compiler-rt-23.1.4nb10\n", "compiler-rt-23.1.4nb11\n"):
+        (work/".configure_done").write_text(wrong_cookie)
+        rejected(lambda: m.apply_files(before, after, work, "compiler-rt", {name, second}, next_identity))
+    (work/".configure_done").write_text("compiler-rt-23.1.4nb12\n")
+    assert m.apply_files(before, after, work, "compiler-rt", {name, second}, next_identity) == 1
+    assert second_dest.read_bytes() == b"new2" and json.loads(receipt.read_text())["after"] == "new-id"
+    assert m.apply_files(before, after, work, "compiler-rt", {name, second}, next_identity, check=True) == 0
+    assert m.apply_files(before, after, work, "compiler-rt", {name, second}, next_identity) == 0
+    (work/".configure_done").write_text("compiler-rt-23.1.4nb13\n")
+    assert m.apply_files(before, after, work, "compiler-rt", {name, second}, next_identity, check=True) == 0
+    assert m.apply_files(before, after, work, "compiler-rt", {name, second}, next_identity) == 0
 print('profile source refresh and recovery: PASS')
 
 # Verify complete historical input blobs, add-only changes and patch paths.
@@ -129,6 +179,22 @@ with tempfile.TemporaryDirectory() as tmp:
     bad_before = dict(before, recipe=dict(before['recipe'],
         files=dict(before['recipe']['files'], **{'pkgsrc/lang/llvm/version.mk':'bad'})))
     rejected(lambda: m.selected_delta(bad_before,current,'/git'))
+    # Exported v2 has no revision: verify current blobs and reconstruct old distinfo.
+    exported = dict(before, version=2, recipe=dict(before["recipe"], ports_revision=None))
+    def current_git_result(argv, input, **kwargs):
+        blobs = {m.DIST:new_dist, "pkgsrc/lang/llvm/version.mk":b"version"}
+        out = b""
+        for row in input.splitlines():
+            name = row.decode().split(":", 1)[1]; data = blobs[name]
+            out += b"0" * 40 + b" blob " + str(len(data)).encode() + b"\n" + data + b"\n"
+        return types.SimpleNamespace(stdout=out)
+    m.subprocess.run = current_git_result
+    (root/"patches/patch-profile").write_bytes(patch)
+    assert m.selected_delta(exported, current, "/git") == {"compiler-rt/lib/profile/example.c"}
+    forged = dict(exported, recipe=dict(exported["recipe"], files=dict(prior_files, **{m.DIST:digest(b"forged")})))
+    rejected(lambda: m.selected_delta(forged, current, "/git"))
+    forged = dict(exported, recipe=dict(exported["recipe"], files=dict(prior_files, **{"pkgsrc/lang/llvm/version.mk":digest(b"forged")})))
+    rejected(lambda: m.selected_delta(forged, current, "/git"))
     m.owner.OWNER=old_owner; m.owner.PORTS=old_ports; m.subprocess.run=old_run
 print('profile patch provenance and refusals: PASS')
 

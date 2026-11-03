@@ -105,16 +105,40 @@ def apply_files(before, after, work, kind, names, identity, check=False):
     record = dict(identity, package_kind=kind, paths=sorted(names), state='pending')
     previous = None
     same = False
+    chained = False
     if os.path.lexists(receipt):
         require(not receipt.is_symlink() and receipt.is_file(), 'invalid refresh receipt')
         previous = json.loads(receipt.read_text())
         require(previous.get('state') in ('pending', 'complete'), 'invalid refresh state')
-        same = ({k: v for k, v in previous.items() if k != 'state'} ==
+        previous_configured = previous.get('configured_before')
+        if 'configured_before' in previous:
+            require(isinstance(previous_configured, str) and
+                    pattern.fullmatch(previous_configured) is not None,
+                    'invalid prior configure identity')
+        same = ({k: v for k, v in previous.items() if k not in ('state', 'configured_before')} ==
                 {k: v for k, v in record.items() if k != 'state'})
-        require(same, 'different profile source refresh')
-    require(configured == extract_name or
-            (configured in (None, identity['package']) and previous is not None and same and
-             previous['state'] == 'complete' and not pending),
+        chained = (previous['state'] == 'complete' and
+                   previous.get('package_kind') == kind and
+                   previous.get('version') == identity['version'] and
+                   previous.get('after') == identity['before'] and
+                   isinstance(previous.get('package'), str) and
+                   configured == previous['package'] and
+                   pattern.fullmatch(previous['package']) is not None)
+        require(same or chained, 'different profile source refresh')
+        if same and previous['state'] == 'pending' and previous_configured is not None:
+            require(configured == previous_configured, 'work configure identity differs')
+        if chained:
+            record['configured_before'] = configured
+        elif same and previous_configured is not None:
+            record['configured_before'] = previous_configured
+    require(chained or configured == extract_name or
+            (same and previous['state'] == 'pending' and
+             previous.get('configured_before') is not None and
+             configured == previous['configured_before']) or
+            (previous is not None and same and previous['state'] == 'complete' and
+             not pending and (configured in (None, identity['package']) or
+                              (previous.get('configured_before') is not None and
+                               configured == previous['configured_before']))),
             'work configure identity differs')
     if check or (same and previous['state'] == 'complete' and not pending):
         return len(pending)
@@ -141,8 +165,11 @@ def selected_delta(before, current, git, ports=None, include_candidates=False):
     require(DIST in changed and patches and all(k.startswith(PATCH) and k not in old for k in patches),
             'expected add-only profile patch delta')
     revision = before['recipe'].get('ports_revision')
-    require(isinstance(revision, str) and len(revision) == 40 and
-            all(c in '0123456789abcdef' for c in revision), 'historical Git revision missing')
+    exported = before['version'] == 2 and revision is None
+    require(exported or (isinstance(revision, str) and len(revision) == 40 and
+            all(c in '0123456789abcdef' for c in revision)), 'historical Git revision missing')
+    if exported:
+        revision = 'HEAD'
     # One Git process verifies every historic source recipe input, including
     # unchanged patches; the recorded tree identity is never rehashed.
     keys = sorted(old)
@@ -162,7 +189,8 @@ def selected_delta(before, current, git, ports=None, include_candidates=False):
         data = result[offset:offset + size]
         require(len(data) == size and result[offset + size:offset + size + 1] == b'\n',
                 'truncated historical Git blob')
-        require(hashlib.sha256(data).hexdigest() == old[name], 'historical input differs: ' + name)
+        expected = new[DIST] if exported and name == DIST else old[name]
+        require(hashlib.sha256(data).hexdigest() == expected, 'historical input differs: ' + name)
         historic_data[name] = data
         offset += size + 1
     require(offset == len(result), 'unexpected historical Git output')
@@ -173,6 +201,13 @@ def selected_delta(before, current, git, ports=None, include_candidates=False):
         return b''.join(line for line in data.splitlines(keepends=True)
                         if not any(line.startswith(b'SHA1 (' + Path(p).name.encode() + b') = ')
                                    for p in patches))
+    if exported:
+        for patch in patches:
+            prefix = b'SHA1 (' + Path(patch).name.encode() + b') = '
+            require(sum(line.startswith(prefix) for line in new_dist.splitlines()) == 1,
+                    'new patch distinfo entry is missing or duplicated')
+        old_dist = unrelated(old_dist)
+        require(hashlib.sha256(old_dist).hexdigest() == old[DIST], 'historical distinfo differs')
     require(unrelated(old_dist) == unrelated(new_dist), 'unrelated distinfo changed')
     names = set()
     for p in sorted(patches):
