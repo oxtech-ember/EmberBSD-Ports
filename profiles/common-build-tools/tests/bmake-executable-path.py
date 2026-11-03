@@ -44,7 +44,7 @@ with tempfile.TemporaryDirectory(prefix='ember-bmake-relative-') as tmp:
 
     check([str(binary)])
     recipe = root / 'recipe.mk'
-    recipe.write_text("all:\n\t@case \"$$0\" in */mksh) printf 'recipe-ok\\n';; *) exit 1;; esac\n")
+    recipe.write_text("all:\n\t@case \"$$0\" in */mksh) echo recipe-ok;; *) exit 1;; esac\n")
     run = subprocess.run([str(binary), '-f', str(recipe), 'all'], cwd=other, env=env,
                          text=True, capture_output=True)
     if run.returncode or run.stdout.strip() != 'recipe-ok':
