@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.23 2026/09/06 10:05:17 markd Exp $
 
 DISTNAME=	baloo-${KF6VER}
+PKGREVISION=	1
 CATEGORIES=	sysutils
 
 HOMEPAGE=	https://community.kde.org/Frameworks
@@ -38,6 +39,7 @@ PKGCONFIG_OVERRIDE_STAGE=	post-build
 .include "../../devel/kf6-ki18n/buildlink3.mk"
 .include "../../devel/kf6-kidletime/buildlink3.mk"
 .include "../../devel/kf6-kio/buildlink3.mk"
+.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../sysutils/kf6-kdbusaddons/buildlink3.mk"
 .include "../../sysutils/kf6-kfilemetadata/buildlink3.mk"
 .include "../../sysutils/kf6-solid/buildlink3.mk"
