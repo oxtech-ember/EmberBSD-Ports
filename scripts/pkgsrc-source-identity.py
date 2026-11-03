@@ -30,6 +30,8 @@ def effective_package_identity(exported, package, upstream):
     from emberbsd_sdk import inventory
 
     root = Path(exported).resolve(strict=True)
+    if os.path.lexists(root.parent / '.pkgsrc-update-incomplete'):
+        raise ValueError('shared pkgsrc export update is incomplete')
     if not isinstance(package, str) or re.fullmatch(
             r'[A-Za-z0-9][A-Za-z0-9+_.-]*/[A-Za-z0-9][A-Za-z0-9+_.-]*', package) is None:
         raise ValueError('invalid package path')
@@ -165,6 +167,66 @@ def _patch_targets_bytes(data):
                     return None
                 names.append('/'.join(parts))
     return names or None
+
+
+def reconstruct_legacy_payload(current, changes, expected_sha256):
+    """Recover a version-2 input snapshot, refusing unsupported or unproven changes.
+
+    Each change names its previous regular-file bytes/mode and whether it was
+    an export file input. Callers obtain those facts from the recorded commit.
+    The aggregate recorded by the original producer is the final authority.
+    """
+    import copy
+    previous = copy.deepcopy(current)
+    for name, (old, old_mode, was_input) in changes.items():
+        parts = name.split('/')
+        if (not name or '\\' in name or any(ord(char) < 32 or ord(char) == 127 for char in name) or
+                any(part in ('', '.', '..') for part in parts)):
+            raise ValueError('unsafe historical export path')
+        if old is not None and (not isinstance(old, bytes) or old_mode not in (0o644, 0o755)):
+            raise ValueError('historical export input is not a regular file')
+        if was_input:
+            if old is None:
+                raise ValueError('historical export input is missing')
+            previous['files'][name] = hashlib.sha256(old).hexdigest()
+        else:
+            previous['files'].pop(name, None)
+        for tree, rows in previous['trees'].items():
+            prefix = tree + '/'
+            if not name.startswith(prefix):
+                continue
+            relative = name[len(prefix):]
+            existing = rows.get(relative)
+            if existing is not None and existing.get('kind') != 'file':
+                raise ValueError('historical export change is not a regular file')
+            if old is None:
+                rows.pop(relative, None)
+            else:
+                rows[relative] = {'kind': 'file', 'mode': old_mode,
+                                  'size': len(old), 'sha256': hashlib.sha256(old).hexdigest()}
+    encoded = json.dumps(previous, sort_keys=True, separators=(',', ':')).encode()
+    if hashlib.sha256(encoded).hexdigest() != expected_sha256:
+        raise ValueError('historical export inputs do not match the recorded identity')
+    return previous
+
+
+def _update_patch_sections(data):
+    """Parse update inputs without changing existing recipe identity semantics."""
+    lines = data.splitlines(keepends=True)
+    # GNU diff -ruN may precede each unified section with matching paths.
+    # Only remove a validated header; never interpret its text as a target.
+    normalized = []
+    for i, line in enumerate(lines):
+        if line.startswith(b'diff -ruN '):
+            match = re.fullmatch(rb'diff -ruN a/([^\s]+) b/\1\r?\n', line)
+            if (match is None or i + 2 >= len(lines) or
+                    lines[i + 1].split(b'\t', 1)[0].rstrip(b'\r\n') != b'--- a/' + match.group(1) or
+                    lines[i + 2].split(b'\t', 1)[0].rstrip(b'\r\n') != b'+++ b/' + match.group(1)):
+                return None
+            continue
+        normalized.append(line)
+    lines = normalized
+    return _plain_patch_sections(b''.join(lines))
 
 
 def _plain_patch_sections(data):
@@ -475,6 +537,7 @@ def export_inputs(ports_root, git, sdk_source, package=None):
 
 
 SHARED_EXPORT_RECEIPT = 'pkgsrc-export.json'
+SHARED_EXPORT_DIRTY = '.pkgsrc-update-incomplete'
 SHARED_EXPORT_FORMAT = 'emberbsd-pkgsrc-shared-export'
 # These small source directories are consumed directly from the shared export.
 SHARED_EXPORT_MATERIAL = ('net/libfetch/files',)
@@ -531,13 +594,17 @@ def export_identity(ports_root, git, sdk_source, patch):
     commit, overlay inputs (including uncommitted edits), and patch tool that
     produce the export.
     """
+    root, _, payload, run = export_inputs(ports_root, git, sdk_source)
+    return export_identity_from_payload(payload, run(root, 'rev-parse', 'HEAD').decode('ascii'), patch)
+
+
+def export_identity_from_payload(payload, ports_commit, patch):
+    """Bind an already inspected input snapshot to its commit and patch tool."""
     if not os.path.isabs(str(patch)) or not os.path.isfile(patch) or not os.access(patch, os.X_OK):
         raise ValueError('patch must be an absolute executable')
-    root, _, payload, run = export_inputs(ports_root, git, sdk_source)
     from emberbsd_sdk import inventory
     encoded = json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()
-    return {'api': 1, 'ports_commit': run(root, 'rev-parse', 'HEAD').decode('ascii'),
-            'upstream': payload['upstream'],
+    return {'api': 1, 'ports_commit': ports_commit, 'upstream': payload['upstream'],
             'export_inputs_sha256': hashlib.sha256(encoded).hexdigest(),
             'patch': {'path': str(patch), 'sha256': inventory.sha256_file(str(patch))}}
 
@@ -599,6 +666,8 @@ def shared_export(directory, ports_root, git, sdk_source, patch):
     directory = Path(directory)
     if not directory.is_absolute() or directory.is_symlink() or not directory.is_dir():
         raise ValueError('shared pkgsrc export must be an absolute real directory')
+    if os.path.lexists(directory / SHARED_EXPORT_DIRTY):
+        raise ValueError('shared pkgsrc export update is incomplete')
     stage_receipt = directory / 'pkgsrc-stage.json'
     if os.path.lexists(stage_receipt):
         if stage_receipt.is_symlink() or not stage_receipt.is_file():
@@ -609,13 +678,18 @@ def shared_export(directory, ports_root, git, sdk_source, patch):
         raise ValueError('shared pkgsrc export has no receipt')
     receipt = json.loads(path.read_text(encoding='ascii'))
     if (not isinstance(receipt, dict) or receipt.get('format') != SHARED_EXPORT_FORMAT or
-            type(receipt.get('version')) is not int or receipt['version'] not in (1, 2) or
+            type(receipt.get('version')) is not int or receipt['version'] not in (1, 2, 3) or
             set(receipt) != ({'format', 'version', 'identity'} if receipt['version'] == 1 else
-                             {'format', 'version', 'identity', 'material'}) or
-            (receipt['version'] == 2 and
+                             ({'format', 'version', 'identity', 'material'} if receipt['version'] == 2 else
+                              {'format', 'version', 'identity', 'material', 'inputs', 'dirty_inputs'})) or
+            (receipt['version'] in (2, 3) and
              (not isinstance(receipt['material'], dict) or
               set(receipt['material']) != set(SHARED_EXPORT_MATERIAL)))):
         raise ValueError('invalid shared pkgsrc export receipt')
+    if receipt['version'] == 3:
+        encoded = json.dumps(receipt['inputs'], sort_keys=True, separators=(',', ':')).encode()
+        if hashlib.sha256(encoded).hexdigest() != receipt['identity']['export_inputs_sha256']:
+            raise ValueError('invalid shared pkgsrc export input snapshot')
     if not equivalent_export_inputs(receipt['identity'],
                                     export_identity(ports_root, git, sdk_source, patch)):
         raise ValueError('shared pkgsrc export was made from different inputs')

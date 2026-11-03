@@ -87,6 +87,13 @@ class SharedExportTest(unittest.TestCase):
     def select(self, directory):
         return identity.shared_export(directory, self.root, sys.executable, SDK, str(self.tool))
 
+    def test_incomplete_update_is_never_accepted(self):
+        directory = Path(self.temp.name) / 'export'
+        identity.create_shared_export(directory, self.root, sys.executable, SDK, str(self.tool))
+        (directory / identity.SHARED_EXPORT_DIRTY).write_text('interrupted\n')
+        with self.assertRaisesRegex(ValueError, 'update is incomplete'):
+            self.select(directory)
+
     def test_export_identity_covers_commits_overlays_and_patch_tool(self):
         before = identity.export_identity(self.root, sys.executable, SDK, str(self.tool))
         self.assertEqual(before['ports_commit'], 'a' * 40)
