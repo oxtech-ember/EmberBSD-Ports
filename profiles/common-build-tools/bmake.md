@@ -130,3 +130,16 @@ The regression `tests/bmake-deterministic-archive.py` accepts explicit
 indexed archive, checks an unchanged consumer, changes an object, and checks a
 missing index. The upstream bmake source and deterministic archive format are
 retained; this is an EmberBSD fix.
+
+## Executable-relative defaults
+
+The common recipe configures system makefiles and the mksh default relative to
+the running bmake executable. The local EmberBSD patch resolves the executable
+before changing directory, including PATH and symlink invocations. Explicit
+`-m`, `MAKESYSPATH`, and `.SHELL` retain their ordinary behavior. Failure to
+resolve a required executable-relative default is an error. Other upstream
+defaults are unchanged.
+
+`tests/bmake-executable-path.py --bmake /absolute/bmake --shell /absolute/sh`
+checks the relocated defaults and explicit overrides without touching the
+installed prefix. The test needs an already built bmake with these defaults.
