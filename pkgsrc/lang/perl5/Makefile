@@ -3,7 +3,7 @@
 .include "license.mk"
 .include "Makefile.common"
 
-PKGREVISION=	14
+PKGREVISION=	15
 
 COMMENT=	Practical Extraction and Report Language
 
@@ -70,6 +70,12 @@ CONFIGURE_ARGS+=	-Dfull_ar=${TOOLS_PLATFORM.ar:Q}
 # include/library directories to ccflags/lddlflags before Policy.sh runs.
 CONFIGURE_ARGS+=	-Dlocincpth=${LOCALBASE:Q}/include
 CONFIGURE_ARGS+=	-Dloclibpth=${LOCALBASE:Q}/lib
+# Native SDK packages retain the shared Perl ABI and can move with their
+# complete prefix. The SDK package writer relocates Mach-O load commands.
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+CONFIGURE_ARGS+= -Duserelocatableinc
+CONFIGURE_ENV+= EMBERBSD_PERL_RELOCATABLE_DARWIN=yes
+.endif
 .endif
 
 # Opt in with a build/runtime pair. Never inherit a host path for a cross target.
@@ -84,6 +90,7 @@ PKG_FAIL_REASON+= "Set explicit absolute PERL_BUILD_SHELL and PERL_RUNTIME_SHELL
 USE_TOOLS+= cat
 CONFIG_SHELL= ${PERL_BUILD_SHELL}
 CONFIGURE_ENV+= PERL_BUILD_SHELL=${PERL_BUILD_SHELL:Q}
+MAKE_ENV+= PERL_BUILD_SHELL=${PERL_BUILD_SHELL:Q}
 # TOOLS_CAT is TOOLS_PATH.cat, the real binary, not TOOLS_CMD.cat's wrapper.
 CONFIGURE_ENV+= PERL_BUILD_CAT=${TOOLS_CAT:Q}
 CONFIGURE_ARGS+= -Dsh=${PERL_BUILD_SHELL:Q} -Dtargetsh=${PERL_RUNTIME_SHELL:Q}

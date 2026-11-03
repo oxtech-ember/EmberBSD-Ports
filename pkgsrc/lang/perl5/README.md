@@ -17,3 +17,25 @@ Perl. `Module::Build::Bundled` uses another copy of the build system and is
 refused for cross builds. A module that executes a target program during
 configuration still needs a target execution mechanism. Build success alone
 does not establish target runtime behavior.
+
+## Native Darwin SDK prefixes
+
+Native Darwin builds select upstream executable-relative include directories
+while retaining shared libperl. The build/install Mach-O name remains absolute;
+the SDK portable-package producer must make its load commands relative before
+publishing a movable package. Other host and cross configurations retain their
+existing selection.
+
+A selected runtime shell next to the Perl executable is resolved with Perl's
+own path relocation code. During the uninstalled build, the explicit
+`PERL_BUILD_SHELL` remains available to the full interpreter; miniperl keeps
+its build-time shell. The shared `PL_sh_path` symbol is unchanged.
+Package configuration scripts run after textual prefix relocation through the
+SDK's qualified deferred-hook contract.
+
+Check a packaged installation at a new prefix with
+`profiles/common-build-tools/tests/perl-relocation.py --prefix PATH
+--producer-prefix ORIGINAL --deny-producer` (Darwin). It loads core and XS
+modules, checks Config and include paths, and invokes the selected shell while
+reads from the original prefix are denied. A successful build alone does not
+establish these relocation properties.

@@ -1,0 +1,169 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+Retain shared libperl on Darwin while using upstream executable-relative INC.
+Keep its build/install name absolute for the SDK's existing Mach-O relocation.
+Resolve the selected sibling runtime shell with Perl's own path relocator;
+the public PL_sh_path symbol and other hosts/targets remain unchanged.
+
+--- Configure.orig
++++ Configure
+@@ -8787,9 +8787,16 @@
+ true)
+ 	case "$userelocatableinc" in
+ 	true|define)
+-		echo "Cannot build with both -Duserelocatableinc and -Duseshrplib" >&4
+-		echo "See INSTALL for an explanation why that won't work." >&4
+-		exit 4
++		# EmberBSD's Darwin producer keeps an absolute build/install name;
++		# its package writer makes Mach-O load commands relative before release.
++		case "$osname:${EMBERBSD_PERL_RELOCATABLE_DARWIN-no}" in
++		darwin:yes) ;;
++		*)
++		    echo "Cannot build with both -Duserelocatableinc and -Duseshrplib" >&4
++		    echo "See INSTALL for an explanation why that won't work." >&4
++		    exit 4
++		    ;;
++		esac
+ 		;;
+ 	esac
+ 	case "$libperl" in
+--- Makefile.SH.orig
++++ Makefile.SH
+@@ -44,6 +44,10 @@
+ ldlibpth=''
+ DPERL_EXTERNAL_GLOB='-DPERL_EXTERNAL_GLOB'
+ DPERL_IS_MINIPERL='-DPERL_IS_MINIPERL'
++ember_shrpdir=$archlibexp
++case "$osname:$userelocatableinc" in
++darwin:define|darwin:true) ember_shrpdir=$installarchlib ;;
++esac
+ case "$useshrplib" in
+ true)
+ 	# Prefix all runs of 'miniperl' and 'perl' with
+@@ -299,7 +303,7 @@
+ # installman commandline.
+ bin = $installbin
+ scriptdir = $scriptdir
+-shrpdir = $archlibexp/CORE
++shrpdir = $ember_shrpdir/CORE
+ privlib = $installprivlib
+ man1dir = $man1dir
+ man1ext = $man1ext
+--- config_h.SH.orig
++++ config_h.SH
+@@ -31,6 +31,33 @@
+ case "$CONFIG_H" in
+ already-done) echo "Not re-extracting config.h" ;;
+ *)
++# Keep SH_PATH and its public symbol unchanged. Only a native Darwin
++# relocatable interpreter resolves its selected sibling shell at runtime.
++emberbsd_shell_relative=''
++case "$userelocatableinc:$osname:$targetsh" in
++define:darwin:"$initialinstalllocation"/*|true:darwin:"$initialinstalllocation"/*)
++    emberbsd_shell_relative=".../${targetsh#"$initialinstalllocation"/}" ;;
++esac
++# pkgsrc Policy.sh supplies explicit library paths, so Configure leaves them
++# absolute even with userelocatableinc. Give the compiled @INC entries the
++# upstream executable-relative spelling. Keep config.sh/install paths intact.
++case "$userelocatableinc:$osname" in
++define:darwin|true:darwin)
++    emberbsd_prefix=${initialinstalllocation%/*}
++    for emberbsd_var in archlib archlibexp privlib privlibexp \
++        sitearch sitearchexp sitelib sitelibexp sitelib_stem \
++        vendorarch vendorarchexp vendorlib vendorlibexp vendorlib_stem
++    do
++        eval "emberbsd_dir=\$$emberbsd_var"
++        case "$emberbsd_dir" in
++        "$emberbsd_prefix"/*)
++            emberbsd_dir=".../../${emberbsd_dir#"$emberbsd_prefix"/}"
++            eval "$emberbsd_var=\$emberbsd_dir"
++            ;;
++        esac
++    done
++    ;;
++esac
+ echo "Extracting $CONFIG_H (with variable substitutions)"
+ sed <<!GROK!THIS! >$CONFIG_H -e 's!^#undef\(.*/\)\*!/\*#define\1 \*!' -e 's!^#un-def!#undef!' -e's!define\t!define !'
+ /* This file was produced by running the config_h.SH script, which
+@@ -2241,6 +2268,7 @@
+  *	D:/bin/sh.exe.
+  */
+ #define SH_PATH "$targetsh"  /**/
++#define EMBERBSD_PERL_SHELL_RELATIVE "$emberbsd_shell_relative"
+ 
+ /* SIG_NAME:
+  *	This symbol contains a list of signal names in order of
+--- perl.h.orig
++++ perl.h
+@@ -5537,6 +5537,9 @@
+ EXTCONST char PL_sh_path[]
+   INIT(SH_PATH); /* full path of shell */
+ #endif
++#if defined(PERL_RELOCATABLE_INC) && defined(__APPLE__)
++PERL_CALLCONV const char *Perl_ember_runtime_shell(pTHX);
++#endif
+ 
+ #ifdef CSH
+ EXTCONST char PL_cshname[]
+--- perl.c.orig
++++ perl.c
+@@ -5177,6 +5177,29 @@
+     return libdir;
+ }
+ 
++#if defined(PERL_RELOCATABLE_INC) && defined(__APPLE__)
++PERL_CALLCONV const char *
++Perl_ember_runtime_shell(pTHX)
++{
++#ifdef PERL_IS_MINIPERL
++    return PL_sh_path;
++#else
++    const char *build_shell = PerlEnv_getenv("PERL_BUILD_SHELL");
++    SV *shell;
++
++    /* The build invokes the full interpreter before installing it. Keep the
++     * explicitly selected build shell; never infer a fallback from PATH. */
++    if (!TAINTING_get && build_shell && build_shell[0] == '/')
++        return build_shell;
++    if (!EMBERBSD_PERL_SHELL_RELATIVE[0])
++        return PL_sh_path;
++    shell = S_mayberelocate(aTHX_ STR_WITH_LEN(EMBERBSD_PERL_SHELL_RELATIVE),
++                           INCPUSH_CAN_RELOCATE);
++    return SvPV_nolen(sv_2mortal(shell));
++#endif
++}
++#endif
++
+ static void
+ S_incpush(pTHX_ const char *const dir, STRLEN len, U32 flags)
+ {
+--- doio.c.orig
++++ doio.c
+@@ -2543,17 +2543,22 @@
+                     break;
+                 }
+             }
+-          doshell:
++          doshell: {
++            const char *shell = PL_sh_path;
++#if defined(PERL_RELOCATABLE_INC) && defined(__APPLE__) && !defined(PERL_IS_MINIPERL)
++            shell = Perl_ember_runtime_shell(aTHX);
++#endif
+             PERL_FPU_PRE_EXEC
+ #if defined(OEMVS)
+   #if (__CHARSET_LIB == 1)
+             unsetenv("_TAG_REDIR_ERR");
+   #endif
+ #endif
+-            PerlProc_execl(PL_sh_path, "sh", "-c", cmd, (char *)NULL);
++            PerlProc_execl(shell, "sh", "-c", cmd, (char *)NULL);
+             PERL_FPU_POST_EXEC
+-            S_exec_failed(aTHX_ PL_sh_path, fd, do_report);
++            S_exec_failed(aTHX_ shell, fd, do_report);
+             goto leave;
++          }
+         }
+     }
+ 

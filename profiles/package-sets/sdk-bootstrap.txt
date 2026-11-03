@@ -7,3 +7,5 @@ security/mozilla-rootcerts-openssl@native
 # Runtime of native package installation scripts.
 shells/mksh@native
 pkgtools/bootstrap-mk-files@native
+lang/nawk@native
+textproc/nbsed@native

@@ -80,7 +80,7 @@ def validate_darwin_load_commands(text, prefix):
 
 def main(arguments):
     arguments = owner.load_sdk(arguments)
-    from emberbsd_sdk import host_prefix, native_checks
+    from emberbsd_sdk import host_prefix, host_services, native_checks
     from emberbsd_sdk.errors import SDKError
     cli = argparse.ArgumentParser(description=__doc__)
     for name in ('source', 'host-prefix', 'macos-sdk', 'macos-minimum', 'work', 'stage'):
@@ -102,7 +102,7 @@ def main(arguments):
             for input_root in (prefix, sdk, source): owner.paths.reject_overlap(str(output), str(input_root))
         owner.paths.reject_overlap(str(work), str(stage))
         native = host_prefix.load_host_prefix(str(prefix), compiler_family='clang',
-            required_roles=('cc', 'cxx', 'ld', 'ar', 'ranlib', 'cmake', 'ninja', 'python', 'sh', 'objdump'))
+            required_roles=('cc', 'cxx', 'ld', 'ar', 'ranlib', 'cmake', 'ninja', 'python', 'sh', 'awk', 'sed', 'objdump'))
         owner.require(native.host['os'] == 'Darwin', 'native runtime producer currently requires Darwin')
         owner.require(Path(sys.executable).resolve() == Path(native.tool('python')).resolve(),
                       'run with selected native Python')
@@ -116,7 +116,9 @@ def main(arguments):
         prepared = owner.verify_source(source, args.git)
         env = owner.process.sanitized_environment(); env['PATH'] = native.path
         work.mkdir(parents=True); stage.mkdir(parents=True)
+        service_path = host_services.build_path(native, work)
         env = native_checks.check_environment(native, bindings=str(work / 'native-commands'), environment=env)
+        env['PATH'] = service_path.split(os.pathsep, 1)[0] + os.pathsep + env['PATH']
         for name in ('home', 'tmp'): (work / name).mkdir()
         env.update(HOME=str(work / 'home'), TMPDIR=str(work / 'tmp'), SDKROOT=str(sdk),
                    MACOSX_DEPLOYMENT_TARGET=args.macos_minimum, CONFIG_SHELL=native.tool('sh'),

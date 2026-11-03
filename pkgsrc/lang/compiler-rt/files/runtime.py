@@ -25,6 +25,8 @@ def main(arguments):
     prepare.add_argument('--patch', required=True)
     verify_source = commands.add_parser('verify-source')
     build = commands.add_parser('build')
+    build.add_argument('--resume', action='store_true',
+                       help='continue an unfinished build with the same CMake inputs')
     recover = commands.add_parser('finalize-bootstrap')
     for parser in (build, recover):
         for name in ('sysroot', 'os-source', 'host-prefix', 'target-prefix', 'work', 'stage'):

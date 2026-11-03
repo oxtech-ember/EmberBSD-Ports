@@ -472,7 +472,11 @@ dlopen/dlclose and per-FDE JIT registration/deregistration on each target; check
 which DSO provides the APIs. Successful CMake and link checks do not establish
 these runtime behaviors.
 
-Both work and stage must be new directories. For the full phase, select the
+By default both work and stage must be new directories. To continue an
+interrupted build, repeat the same command with `--resume`: existing CMake
+inputs must match, and CMake/Ninja retain compatible objects. A completed
+stage is immutable; `--resume` refuses a stage with `runtime.json`.
+For the full phase, select the
 completed C base with `--sysroot`, use new work/stage paths and add
 `--bootstrap-stage /absolute/stages/runtime-bootstrap`. The native compiler
 family defaults to Clang; `--host-compiler-family gcc` is an explicit native
