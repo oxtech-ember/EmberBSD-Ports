@@ -1,0 +1,6 @@
+Unmodified Imagination PowerVR Rogue firmware for BVNC 22.102.54.38 and
+36.56.104.183. Both files use the documented 1.1.OS@6976702 firmware interface.
+The package retains the upstream license and firmware provenance record.
+
+The operating-system driver selects the exact filename for its GPU profile.
+Installing these files does not establish driver or rendering support.

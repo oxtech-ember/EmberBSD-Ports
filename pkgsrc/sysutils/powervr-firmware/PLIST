@@ -1,0 +1,6 @@
+@comment $NetBSD$
+@comment Origin: EmberBSD; preserve unmodified firmware and its license.
+libdata/firmware/powervr/LICENSE.powervr
+libdata/firmware/powervr/rogue_22.102.54.38_v1.fw
+libdata/firmware/powervr/rogue_36.56.104.183_v1.fw
+share/doc/powervr-firmware/WHENCE
