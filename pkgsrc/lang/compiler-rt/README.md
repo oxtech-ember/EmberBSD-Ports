@@ -21,6 +21,28 @@ python3.15 -B pkgsrc/lang/compiler-rt/files/runtime.py --sdk-source /absolute/Em
     --source /absolute/prepared-llvm --git /absolute/git
 ```
 
+For an add-only profile patch transition in an existing native pkgsrc work
+folder, the selected current export and both prepared source trees can update
+only the affected source files while keeping CMake objects:
+
+```sh
+"$SDK_PYTHON" -B pkgsrc/lang/compiler-rt/files/refresh-profile-source.py \
+    --sdk-source "$SDK_SOURCE" --ports "$PORTS" --pkgsrc-root "$PKGSRC" \
+    --before "$OLD_LLVM_SOURCE" --source "$LLVM_SOURCE" --git "$GIT" \
+    --package-kind compiler-rt --work "$WRKDIR" --package-name "$PKGNAME" --check
+```
+
+Choose `llvm` for the shared LLVM header or `compiler-rt` for its profile
+sources. The caller holds exclusive work and shared source/export leases,
+checks the selected native compiler, target and configuration, and runs the
+read-only `--check` before pkgsrc `build-clean`. With that lease still held,
+run the same command without `--check`, then configure and build the selected
+recipe using pkgsrc's scoped stage-local package lifecycle. The helper does not
+acquire locks. It preserves the historical patch cookie and records the source
+transition separately; the receipt supports retry of this one add-only
+transition, including an interrupted configure. A different transition requires
+its own supported source refresh rather than replacing that receipt.
+
 Run these commands from the Ports source checkout. The returned JSON is also
 stored as `llvm-source.json` inside the source root. Its format is
 `emberbsd-llvm-source`, version 1. It records the LLVM version, selected
