@@ -16,6 +16,15 @@ LICENSE=	mit
 
 WRKSRC=		${WRKDIR}/SPIRV-Headers-${GITHUB_TAG}
 
+PKG_OPTIONS_VAR= PKG_OPTIONS.spirv-headers
+PKG_SUPPORTED_OPTIONS+= tests
+.include "../../mk/bsd.options.mk"
+.if !empty(PKG_OPTIONS:Mtests)
+CMAKE_CONFIGURE_ARGS+= -DSPIRV_HEADERS_ENABLE_TESTS=ON
+.else
+CMAKE_CONFIGURE_ARGS+= -DSPIRV_HEADERS_ENABLE_TESTS=OFF
+.endif
+
 PKGCONFIG_OVERRIDE+=	SPIRV-Headers.pc.in
 
 pre-configure:

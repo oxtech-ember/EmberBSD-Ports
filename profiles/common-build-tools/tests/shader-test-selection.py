@@ -18,7 +18,7 @@ if not args.work_parent.is_absolute() or not args.work_parent.is_dir():
 repo = Path(__file__).resolve().parents[3]
 with tempfile.TemporaryDirectory(prefix='shader-test-metadata-', dir=args.work_parent) as work:
     fixture = Path(work) / 'fixture.mk'
-    for recipe in ('parallel/spirv-tools', 'graphics/glslang'):
+    for recipe in ('parallel/spirv-tools', 'graphics/glslang', 'parallel/spirv-headers'):
         source = (repo / 'pkgsrc' / recipe / 'Makefile').read_text()
         lines = []
         for line in source.splitlines():
@@ -38,6 +38,11 @@ with tempfile.TemporaryDirectory(prefix='shader-test-metadata-', dir=args.work_p
             if len(values) != 2:
                 raise SystemExit('Missing metadata for ' + recipe)
             flags, includes = map(str.split, values)
+            if recipe == 'parallel/spirv-headers':
+                flag = '-DSPIRV_HEADERS_ENABLE_TESTS=' + ('ON' if tests else 'OFF')
+                if flag not in flags:
+                    raise SystemExit(recipe + ': test selection mismatch')
+                continue
             gtest = '../../devel/googletest/buildlink3.mk'
             if (gtest in includes) != tests:
                 raise SystemExit(recipe + ': GoogleTest does not follow tests option')
@@ -50,4 +55,4 @@ with tempfile.TemporaryDirectory(prefix='shader-test-metadata-', dir=args.work_p
                 flag = '-DGLSLANG_TESTS=' + ('ON' if tests else 'OFF')
                 if flag not in flags:
                     raise SystemExit(recipe + ': test selection mismatch')
-print('PASS: four shader package test selections; no build')
+print('PASS: six shader package test selections; no build')
