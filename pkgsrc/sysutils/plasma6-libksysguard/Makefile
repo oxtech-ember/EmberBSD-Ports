@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.6 2026/09/06 10:23:30 markd Exp $
 
 DISTNAME=	libksysguard-${PLASMAVER}
+PKGREVISION=	1
 CATEGORIES=	sysutils
 
 HOMEPAGE=	https://userbase.kde.org/KSysGuard
@@ -32,7 +33,9 @@ CONF_FILES+=	${PREFIX}/share/examples/libksysguard/org.kde.ksysguard.processlist
 INSTALLATION_DIRS+=	share/examples/libksysguard
 
 .include "../../devel/kf6-ki18n/buildlink3.mk"
+.include "../../devel/kf6-kpackage/buildlink3.mk"
 .include "../../devel/kf6-kservice/buildlink3.mk"
+.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../net/kf6-knewstuff/buildlink3.mk"
 .include "../../security/kf6-kauth/buildlink3.mk"
 .include "../../sysutils/kf6-solid/buildlink3.mk"
