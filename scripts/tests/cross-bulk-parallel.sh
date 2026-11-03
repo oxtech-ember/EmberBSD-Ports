@@ -306,7 +306,9 @@ for pkg in a b c d j; do
 done
 [ "$(calls f)" = 3 ] || fail "failed package f ran bmake $(calls f) times, expected 3"
 [ "$(calls e)" = 0 ] || fail 'blocked package e ran bmake'
-[ ! -s "$out/shasum-calls" ] || fail "done packages hashed again: $(cat "$out/shasum-calls")"
+if grep -Ev '^-a 256$' "$out/shasum-calls" > "$out/package-hash-calls"; then
+    fail "done package archives hashed again: $(cat "$out/package-hash-calls")"
+fi
 
 # Without an explicit override, use the selected SDK jobs resolver.
 : > "$out/selected-python-calls"

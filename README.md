@@ -25,6 +25,10 @@ versionless roots and do not define another recipe, resolver, cache, or prefix.
 
 ## Current contents
 
+- [Package selection](docs/package-selection.md): versionless package-set
+  roots feed the SDK selection frontend and the existing locked cross-bulk
+  dependency/build controller.
+
 - [Codex-operated Ports update plans](docs/update-ports.md): native pkgsrc
   metadata exports host and target dependency roles to the shared Python SDK.
   Input locks, impacted consumers, ordering, and evidence checks support existing

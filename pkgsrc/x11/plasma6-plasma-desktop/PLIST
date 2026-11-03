@@ -1349,6 +1349,7 @@ share/locale/el/LC_MESSAGES/org.kde.plasma.emojier.mo
 share/locale/el/LC_MESSAGES/plasma-desktop-sddm-theme.mo
 share/locale/el/LC_MESSAGES/plasma_applet_org.kde.desktopcontainment.mo
 share/locale/el/LC_MESSAGES/plasma_applet_org.kde.panel.mo
+share/locale/el/LC_MESSAGES/plasma_applet_org.kde.plasma.dwellclicker.mo
 share/locale/el/LC_MESSAGES/plasma_applet_org.kde.plasma.keyboardlayout.mo
 share/locale/el/LC_MESSAGES/plasma_applet_org.kde.plasma.kicker.mo
 share/locale/el/LC_MESSAGES/plasma_applet_org.kde.plasma.kickoff.mo
@@ -1359,6 +1360,7 @@ share/locale/el/LC_MESSAGES/plasma_applet_org.kde.plasma.showdesktop.mo
 share/locale/el/LC_MESSAGES/plasma_applet_org.kde.plasma.taskmanager.mo
 share/locale/el/LC_MESSAGES/plasma_applet_org.kde.plasma.trash.mo
 share/locale/el/LC_MESSAGES/plasma_applet_org.kde.plasma.windowlist.mo
+share/locale/el/LC_MESSAGES/plasma_runner_keys.mo
 share/locale/el/LC_MESSAGES/plasma_runner_kwin.mo
 share/locale/el/LC_MESSAGES/plasma_runner_plasma-desktop.mo
 share/locale/el/LC_MESSAGES/plasma_shell_org.kde.plasma.desktop.mo
@@ -1565,6 +1567,7 @@ share/locale/eu/LC_MESSAGES/org.kde.plasma.emojier.mo
 share/locale/eu/LC_MESSAGES/plasma-desktop-sddm-theme.mo
 share/locale/eu/LC_MESSAGES/plasma_applet_org.kde.desktopcontainment.mo
 share/locale/eu/LC_MESSAGES/plasma_applet_org.kde.panel.mo
+share/locale/eu/LC_MESSAGES/plasma_applet_org.kde.plasma.dwellclicker.mo
 share/locale/eu/LC_MESSAGES/plasma_applet_org.kde.plasma.keyboardlayout.mo
 share/locale/eu/LC_MESSAGES/plasma_applet_org.kde.plasma.kicker.mo
 share/locale/eu/LC_MESSAGES/plasma_applet_org.kde.plasma.kickoff.mo
@@ -2173,6 +2176,7 @@ share/locale/ja/LC_MESSAGES/knetattach.mo
 share/locale/ja/LC_MESSAGES/org.kde.plasma.emojier.mo
 share/locale/ja/LC_MESSAGES/plasma_applet_org.kde.desktopcontainment.mo
 share/locale/ja/LC_MESSAGES/plasma_applet_org.kde.panel.mo
+share/locale/ja/LC_MESSAGES/plasma_applet_org.kde.plasma.dwellclicker.mo
 share/locale/ja/LC_MESSAGES/plasma_applet_org.kde.plasma.keyboardlayout.mo
 share/locale/ja/LC_MESSAGES/plasma_applet_org.kde.plasma.kicker.mo
 share/locale/ja/LC_MESSAGES/plasma_applet_org.kde.plasma.kickoff.mo
