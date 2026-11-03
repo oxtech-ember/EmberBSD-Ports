@@ -341,6 +341,17 @@ class GitPackageIdentityTest(unittest.TestCase):
             b'diff -ruN a/cat/pkg/a b/cat/pkg/b\n'
             b'--- a/cat/pkg/a\n+++ b/cat/pkg/a\n@@ -1 +1 @@\n-old\n+new\n'))
 
+    def test_git_wrappers_reject_ambiguous_changes(self):
+        hunk = b'--- a/cat/pkg/a\n+++ b/cat/pkg/a\n@@ -1 +1 @@\n-old\n+new\n'
+        for wrapper in (
+            b'diff --git a/cat/pkg/a b/cat/pkg/b\n',
+            b'diff --git a/cat/pkg/a b/cat/pkg/a\nindex bad..1234567 100644\n',
+            b'diff --git a/cat/pkg/a b/cat/pkg/a\nold mode 100644\nnew mode 100755\n',
+            b'diff --git "a/cat/pkg/a" "b/cat/pkg/a"\n',
+        ):
+            with self.subTest(wrapper=wrapper):
+                self.assertIsNone(identity._update_patch_sections(wrapper + hunk))
+
     def test_parser_payload_and_conservative_fallback(self):
         misleading = (b'--- a/cat/pkg/Makefile\n+++ b/cat/pkg/Makefile\n@@ -1,2 +1,2 @@\n'
                       b'--- a/cat/other/Makefile\n+++ b/cat/other/Makefile\n context\n')

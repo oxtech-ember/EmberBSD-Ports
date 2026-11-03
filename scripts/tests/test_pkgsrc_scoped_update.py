@@ -128,6 +128,41 @@ class ScopedUpdateTests(unittest.TestCase):
         self.assertEqual({path: (path.stat().st_mtime_ns, path.stat().st_ino)
                           for path in before}, before)
 
+    def test_existing_multifile_git_patch_is_replayed_only_for_selected_package(self):
+        patch = ('# Existing shared recipe patch.\n'
+                 'diff --git a/cat/pkg/Makefile b/cat/pkg/Makefile\n'
+                 'index 1234567..abcdef0 100644\n'
+                 '--- a/cat/pkg/Makefile\n+++ b/cat/pkg/Makefile\n'
+                 '@@ -1 +1 @@\n-PKGNAME=fixture-1\n+PKGNAME=fixture-2\n'
+                 'diff --git a/cat/other/Makefile b/cat/other/Makefile\n'
+                 'index 7654321..fedcba0 100644\n'
+                 '--- a/cat/other/Makefile\n+++ b/cat/other/Makefile\n'
+                 '@@ -1 +1 @@\n-PKGNAME=other-1\n+PKGNAME=other-2\n')
+        write(self.ports, 'patches/shared.patch', patch)
+        config = ('patch\tpatches/shared.patch\n'
+                  'file\tresources/owner.txt\tmisc/owner.txt\n')
+        write(self.ports, 'pkgsrc/export.conf', config)
+        commit(self.ports, 'existing git-formatted shared patch')
+        self.export = self.work / 'shared-git'
+        self.command[3] = self.export
+        run(self.command, self.ports)
+        self.tree = self.export / 'pkgsrc'
+        self.receipt = self.export / 'pkgsrc-export.json'
+        self.marker = self.export / '.pkgsrc-update-incomplete'
+        other = self.tree / 'cat/other/Makefile'
+        before = (other.stat().st_ino, other.stat().st_mtime_ns)
+        write(self.ports, 'patches/next.patch',
+              '--- a/cat/pkg/Makefile\n+++ b/cat/pkg/Makefile\n'
+              '@@ -1 +1 @@\n-PKGNAME=fixture-2\n+PKGNAME=fixture-3\n')
+        write(self.ports, 'pkgsrc/export.conf', config + 'patch\tpatches/next.patch\n')
+        commit(self.ports, 'change only selected package')
+        result = self.update()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.tree / 'cat/pkg/Makefile').read_text(), 'PKGNAME=fixture-3\n')
+        self.assertEqual(other.read_text(), 'PKGNAME=other-2\n')
+        self.assertEqual((other.stat().st_ino, other.stat().st_mtime_ns), before)
+        self.assertFalse(self.marker.exists())
+
     def test_interrupted_write_leaves_marker_and_old_receipt(self):
         self.newer_inputs()
         code = r"""import importlib.util,sys
