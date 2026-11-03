@@ -1,1357 +1,1357 @@
---- a/pkgsrc/archivers/ark/distinfo
-+++ b/pkgsrc/archivers/ark/distinfo
+--- a/archivers/ark/distinfo
++++ b/archivers/ark/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (ark-26.08.0.tar.xz) = 7cff6b85c77dc2fe69c0944ac2ea974e865e66dd46251715e1d0392e877898f3
 -SHA512 (ark-26.08.0.tar.xz) = 411364fb824fb713752fdbae3993dc618103c1d39d69fe8fc23077e7c38233cf70825755396257874e39dd397b09f9243713feff0fc94c4614bd1fefe5c9a9a6
 -Size (ark-26.08.0.tar.xz) = 3033900 bytes
 +SHA256 (ark-26.08.2.tar.xz) = ef1e6c47fb17e57271917f71d72cd093eee7c88bcdf679753958498dae6d43a0
 +Size (ark-26.08.2.tar.xz) = 3039516 bytes
---- a/pkgsrc/chat/konversation/distinfo
-+++ b/pkgsrc/chat/konversation/distinfo
+--- a/chat/konversation/distinfo
++++ b/chat/konversation/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (konversation-26.08.0.tar.xz) = 66d1af49df07be620c10a6cd9ff713ee341767e7021d0b64374bc1b01a801e32
 -SHA512 (konversation-26.08.0.tar.xz) = 2dcb105936b2d27d9bc232eecd808f0e8bcf8a095c9920350b20dcb2d82c7461cbb5767120f586d5928cf5b393b655c1c31e7f458522e732499fb31f67f174cd
 -Size (konversation-26.08.0.tar.xz) = 4522636 bytes
 +SHA256 (konversation-26.08.2.tar.xz) = 0b32ae352d186ae66a619b58c0cf8046a998772b679ae0e9cb8248292ee7cd92
 +Size (konversation-26.08.2.tar.xz) = 4532800 bytes
---- a/pkgsrc/databases/kldap/distinfo
-+++ b/pkgsrc/databases/kldap/distinfo
+--- a/databases/kldap/distinfo
++++ b/databases/kldap/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kldap-26.08.0.tar.xz) = b4fee2c9adfeb163990441caf817515065dbd94bbfce5ff3d645e5c49fd88e65
 -SHA512 (kldap-26.08.0.tar.xz) = 5393de7349415a4bf1b4236e88e40690a9b4b01848404ff47a12edee3973ddf9e9f6a34fe6fba28fc2b9ed42ab0aea4889b2a5f3d865089304396c04759b7e02
 -Size (kldap-26.08.0.tar.xz) = 198260 bytes
 +SHA256 (kldap-26.08.2.tar.xz) = 17fb3e289692599b6aa0ad2c3d409e13f52dabcd6273544eb568cf6f025bac59
 +Size (kldap-26.08.2.tar.xz) = 198232 bytes
---- a/pkgsrc/devel/dolphin-plugins/distinfo
-+++ b/pkgsrc/devel/dolphin-plugins/distinfo
+--- a/devel/dolphin-plugins/distinfo
++++ b/devel/dolphin-plugins/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (dolphin-plugins-26.08.0.tar.xz) = c1572972712193f25eb165bd94b685262ed3371f3cda781c923b11aa172bbbf3
 -SHA512 (dolphin-plugins-26.08.0.tar.xz) = b282f455872037deca6a15686c2877b1dfefd4b4a1483ee7c201302bf91e7b4f676dd75018f2fe09e82b57016bdb9258e091ec12b7f8972eafc3e62c5457eae3
 -Size (dolphin-plugins-26.08.0.tar.xz) = 347020 bytes
 +SHA256 (dolphin-plugins-26.08.2.tar.xz) = e9a921523cb17df79db27c81d6c31d08be1f78bd937dc9394d9aafd2ca3a1143
 +Size (dolphin-plugins-26.08.2.tar.xz) = 349196 bytes
---- a/pkgsrc/devel/kapptemplate/distinfo
-+++ b/pkgsrc/devel/kapptemplate/distinfo
+--- a/devel/kapptemplate/distinfo
++++ b/devel/kapptemplate/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kapptemplate-26.08.0.tar.xz) = 16bb456715cb4d075880565e05862d8e2827900722bff23a168cb3d77f1a29c3
 -SHA512 (kapptemplate-26.08.0.tar.xz) = 8e1f469251259dc14a476de7f775c60ad0cb77601cbd9cffce12bfab1746923a344ef9640b5497e36bdb0c5b2ee52ea800bf48958851dd4dfa8ba3ae908fee8c
 -Size (kapptemplate-26.08.0.tar.xz) = 482144 bytes
 +SHA256 (kapptemplate-26.08.2.tar.xz) = 1fa05808863df97682959280eb7b3bc5255099a10e1507e66dbed50a83f30521
 +Size (kapptemplate-26.08.2.tar.xz) = 482164 bytes
---- a/pkgsrc/devel/kcachegrind/distinfo
-+++ b/pkgsrc/devel/kcachegrind/distinfo
+--- a/devel/kcachegrind/distinfo
++++ b/devel/kcachegrind/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kcachegrind-26.08.0.tar.xz) = 362454de7d1913d878fdacdf4a8445c074a6ce005a02715279037507a9390fa2
 -SHA512 (kcachegrind-26.08.0.tar.xz) = c0d86678852ec2897e8196b5679a6a059a35dc0119859ba416644aee76df175ac393f15922a9d01d7d9f687f65629203a503c7d9461daed772bd1b1742b36f38
 -Size (kcachegrind-26.08.0.tar.xz) = 1004608 bytes
 +SHA256 (kcachegrind-26.08.2.tar.xz) = 641a809f7ba5a97637820222b6c7fc639d7bc5d4a1036c69c4886823edb0670a
 +Size (kcachegrind-26.08.2.tar.xz) = 1021808 bytes
---- a/pkgsrc/devel/kde-dev-scripts/distinfo
-+++ b/pkgsrc/devel/kde-dev-scripts/distinfo
+--- a/devel/kde-dev-scripts/distinfo
++++ b/devel/kde-dev-scripts/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kde-dev-scripts-26.08.0.tar.xz) = 2cecca8545575d6e223c2bf2ac8314038a15c536bac1d552175ab7f1bb84dedc
 -SHA512 (kde-dev-scripts-26.08.0.tar.xz) = 93d67c93deb3425e0059c034028fd22458d8d135ba264c683e427cb24224f0e6a1e1e7f1b7bf387373963eaa37026653f88eaa6ac77bca061361286b057ae762
 -Size (kde-dev-scripts-26.08.0.tar.xz) = 377360 bytes
 +SHA256 (kde-dev-scripts-26.08.2.tar.xz) = 5a37ca085d94309d063e2833cab18c7115141277ab4c88cadea05ce5224ee038
 +Size (kde-dev-scripts-26.08.2.tar.xz) = 377384 bytes
---- a/pkgsrc/devel/kde-dev-utils/distinfo
-+++ b/pkgsrc/devel/kde-dev-utils/distinfo
+--- a/devel/kde-dev-utils/distinfo
++++ b/devel/kde-dev-utils/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kde-dev-utils-26.08.0.tar.xz) = deac8f4b7f67e85376c16428d40de6773af084d87a9ab56ddd7296a635b8d9d6
 -SHA512 (kde-dev-utils-26.08.0.tar.xz) = 7873f5b350d076b5d7dceede5e601b890528aff5785d254b99f0092b3c8fb7af04774c7ad46097af5261ed8f2231b416cdc5609a74bdc0a5ac475e91d661e6a6
 -Size (kde-dev-utils-26.08.0.tar.xz) = 78728 bytes
 +SHA256 (kde-dev-utils-26.08.2.tar.xz) = 35180c8cb58b5604e2a4c0828cc9a866857d22c405bcf4aa233e5692dfa55985
 +Size (kde-dev-utils-26.08.2.tar.xz) = 78744 bytes
---- a/pkgsrc/devel/kdebugsettings/distinfo
-+++ b/pkgsrc/devel/kdebugsettings/distinfo
+--- a/devel/kdebugsettings/distinfo
++++ b/devel/kdebugsettings/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kdebugsettings-26.08.0.tar.xz) = c1e8730ebac31679debb709be56ed704f924a34da966912ce385e4bba36e971b
 -SHA512 (kdebugsettings-26.08.0.tar.xz) = 5f69f68a74b8f0f7bfcce4e04e1d45eb0d27935118fea02e2a5ab2333e367c92d83afb0ff8be2e355848f01f43af289732e50a828fb86ad5683c19b356b4cd02
 -Size (kdebugsettings-26.08.0.tar.xz) = 126528 bytes
 +SHA256 (kdebugsettings-26.08.2.tar.xz) = dc2f45a9ac0002c6eb6dfc591332460fd0298b970e73bfbdbc980484c9d67e61
 +Size (kdebugsettings-26.08.2.tar.xz) = 127584 bytes
---- a/pkgsrc/devel/kdevelop/distinfo
-+++ b/pkgsrc/devel/kdevelop/distinfo
+--- a/devel/kdevelop/distinfo
++++ b/devel/kdevelop/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kdevelop-26.08.0.tar.xz) = 665f0a2e1fe1e544d1f5029abb21bf4585df5541bb03ee8e087b55466aa2bd94
 -SHA512 (kdevelop-26.08.0.tar.xz) = f097ba665290b49a5f0c94bb20aa1a61bdd9c6d3b660e0f6173fe75faf7ceba2ba7a493f60c26b91d72e0812b1383c759be4401d10452c72469d116d16370367
 -Size (kdevelop-26.08.0.tar.xz) = 9050832 bytes
 +SHA256 (kdevelop-26.08.2.tar.xz) = f17a064dd6cb8cbbd5345b3c0eccdff102c57f7ae4484affcdb172c9cace5dea
 +Size (kdevelop-26.08.2.tar.xz) = 9054760 bytes
---- a/pkgsrc/devel/kompare/distinfo
-+++ b/pkgsrc/devel/kompare/distinfo
+--- a/devel/kompare/distinfo
++++ b/devel/kompare/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kompare-26.08.0.tar.xz) = cc5c3e91511c1cdbe0c09274e12ab603822243449a9872e943ad48ed229a4313
 -SHA512 (kompare-26.08.0.tar.xz) = 959007c5f0d16fa470688e68fd3180d5f0a4df8980aba687b1e804d53f0aa1b89f8bb49acdcbf1e28d4b7416875589cb56a84da6a4d2fe0ac3658167076e6eb8
 -Size (kompare-26.08.0.tar.xz) = 965900 bytes
 +SHA256 (kompare-26.08.2.tar.xz) = b1bee9df5873ef81746d8069255c286c00cae179bb8ab38870f616806f61b776
 +Size (kompare-26.08.2.tar.xz) = 965880 bytes
---- a/pkgsrc/devel/libkgapi/distinfo
-+++ b/pkgsrc/devel/libkgapi/distinfo
+--- a/devel/libkgapi/distinfo
++++ b/devel/libkgapi/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (libkgapi-26.08.0.tar.xz) = 94f132ba12bedcc94bb1437b3909541b7b68b4dbac94900432c1a84541d1452a
 -SHA512 (libkgapi-26.08.0.tar.xz) = 826bd98ef110c24116dc17a1f6eb180dcca3cbbc0ccd63853e281f585a0e8c6484a6d3c9fe6ddd7429a54262c9d68c6be43a3f93ecc89e3a58b8c7eb00dfa3d7
 -Size (libkgapi-26.08.0.tar.xz) = 344156 bytes
 +SHA256 (libkgapi-26.08.2.tar.xz) = 091b3b6e37f8ccf5fcbe2dd354db05958f48889f87568fad24815ab85354fe25
 +Size (libkgapi-26.08.2.tar.xz) = 343984 bytes
---- a/pkgsrc/devel/libkomparediff2/distinfo
-+++ b/pkgsrc/devel/libkomparediff2/distinfo
+--- a/devel/libkomparediff2/distinfo
++++ b/devel/libkomparediff2/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (libkomparediff2-26.08.0.tar.xz) = 40887dea096155d8c38b05660e4e7bf0b79aeed1deca5ec2c30b8b0bd0d0e72f
 -SHA512 (libkomparediff2-26.08.0.tar.xz) = 46b84c61d011df529ea48d38605733a0a7d9065bfe3fa1c3e84b352cfac75d0b173fdaf32bbb94c0a0a3fbaa4f87eec5443f0788b5291fc1fbc0dfd787bd8fc5
 -Size (libkomparediff2-26.08.0.tar.xz) = 185592 bytes
 +SHA256 (libkomparediff2-26.08.2.tar.xz) = ffdc293a6904a62740357168a89b7a61c955557cddbb69598015940d19d368db
 +Size (libkomparediff2-26.08.2.tar.xz) = 185572 bytes
---- a/pkgsrc/devel/lokalize/distinfo
-+++ b/pkgsrc/devel/lokalize/distinfo
+--- a/devel/lokalize/distinfo
++++ b/devel/lokalize/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (lokalize-26.08.0.tar.xz) = 7602d36acc528bcf1106098234667e1aa27597d42732b8312a2e3631289ab528
 -SHA512 (lokalize-26.08.0.tar.xz) = 292ee5d68de981bfd78aa28799f1e4acd708746462f6b6d011d93e7d1da66e11a85fcd3eaadb50e7dbebfe29e6dc189abe6b8b900f8f16e6e42a046c64e5c601
 -Size (lokalize-26.08.0.tar.xz) = 2118884 bytes
 +SHA256 (lokalize-26.08.2.tar.xz) = f7c73c77a158cf2df339a7cc040e9add999a8331f0c2b2a6dba2e2be10eaeffd
 +Size (lokalize-26.08.2.tar.xz) = 2124568 bytes
---- a/pkgsrc/devel/poxml/distinfo
-+++ b/pkgsrc/devel/poxml/distinfo
+--- a/devel/poxml/distinfo
++++ b/devel/poxml/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (poxml-26.08.0.tar.xz) = 79d5981f835bdafba416fceaaea2922a65f2dac8dbb1a3c6099b02ef9423cfa7
 -SHA512 (poxml-26.08.0.tar.xz) = d24fda58c50cbf3ab011a3a2f21356e22dbbdf0e6d9f854ed203840ca78be15800587aedeeb525299853560c7a09a00f841bfea708597a56a14e886bf55019f7
 -Size (poxml-26.08.0.tar.xz) = 45212 bytes
 +SHA256 (poxml-26.08.2.tar.xz) = 74628bb50c916b34c3dba5061e94cf4d37bc1a372c57383955c1e5cf72d22ec1
 +Size (poxml-26.08.2.tar.xz) = 45208 bytes
---- a/pkgsrc/devel/umbrello/distinfo
-+++ b/pkgsrc/devel/umbrello/distinfo
+--- a/devel/umbrello/distinfo
++++ b/devel/umbrello/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (umbrello-26.08.0.tar.xz) = a79139ee3377892c91a08c347b458357d1b54ab9fec1d0bd99476ea410250508
 -SHA512 (umbrello-26.08.0.tar.xz) = e46fcdc0c0f22f69b5a9b3a9829419cc468f932a69a88fe467f72aba20039245c7c7c1fe37ae61a9186a3a1f24bcd25f9a6927f7df19c1809083ea0f0e45c677
 -Size (umbrello-26.08.0.tar.xz) = 5658076 bytes
 +SHA256 (umbrello-26.08.2.tar.xz) = 3ec1e7e7bf167fde51313a709635cd946fd27fb62e7d3255f1844c76afaa0acf
 +Size (umbrello-26.08.2.tar.xz) = 5662728 bytes
---- a/pkgsrc/editors/kate/distinfo
-+++ b/pkgsrc/editors/kate/distinfo
+--- a/editors/kate/distinfo
++++ b/editors/kate/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kate-26.08.0.tar.xz) = e5901241b3206f762a54595c2d5c8cde5ba3436c506654f312c3494e8304627e
 -SHA512 (kate-26.08.0.tar.xz) = 6c4a03de7c265dad7a5148db1e293fad81f8a121f4487ad3cf9a26c79e29814bd61c104d65e5ad83f5b5d7fea335f6911efd5a464c7e81476bb97f4a6de4dfb7
 -Size (kate-26.08.0.tar.xz) = 8703532 bytes
 +SHA256 (kate-26.08.2.tar.xz) = 6fad08032362300d8de646c6d45f11dac72c9c7c6dfea2261c844a42a17a8652
 +Size (kate-26.08.2.tar.xz) = 8719216 bytes
---- a/pkgsrc/games/blinken/distinfo
-+++ b/pkgsrc/games/blinken/distinfo
+--- a/games/blinken/distinfo
++++ b/games/blinken/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (blinken-26.08.0.tar.xz) = befbd0e9c88f44f82684f8171cfba2f4a7c8c28077a086c243aa5e66d6485656
 -SHA512 (blinken-26.08.0.tar.xz) = ab984dce40fff8835b6ec7526fdc7530bf50bd9f8b21a30e3e066c924ac80d11e513a7155ef943e58edc63192bd326fa5dfa25ea31d4271e0574a4134a6ed65e
 -Size (blinken-26.08.0.tar.xz) = 2715420 bytes
 +SHA256 (blinken-26.08.2.tar.xz) = 4998e4f625aefee1498c55787e18d90e087bf2b98f8c1591684effb194a596fc
 +Size (blinken-26.08.2.tar.xz) = 2717812 bytes
---- a/pkgsrc/games/bomber/distinfo
-+++ b/pkgsrc/games/bomber/distinfo
+--- a/games/bomber/distinfo
++++ b/games/bomber/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (bomber-26.08.0.tar.xz) = 3525ab334d6a31534afc730974d1422b54e367ee0d2cb3cc6fa0c830cf122c8c
 -SHA512 (bomber-26.08.0.tar.xz) = a3d8a8f50d56d4423f18de2cd94d3a5e182cdd24e35e3f28d503e17786ae2b5fbb9de301ac4ed41317379330f9f37b101efc202f3962e5d1b9236757fe8095d2
 -Size (bomber-26.08.0.tar.xz) = 840844 bytes
 +SHA256 (bomber-26.08.2.tar.xz) = d902525fcae153c261a34b8846e0a7b15fc589d8a6a3c8787660930da4ff7cfe
 +Size (bomber-26.08.2.tar.xz) = 841728 bytes
---- a/pkgsrc/games/bovo/distinfo
-+++ b/pkgsrc/games/bovo/distinfo
+--- a/games/bovo/distinfo
++++ b/games/bovo/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (bovo-26.08.0.tar.xz) = 1bac09c3f668067d053b76d74734aecf5534bcd579b309c46a8e6c23c4701764
 -SHA512 (bovo-26.08.0.tar.xz) = 8a86e0477e24e5e0375c0ad3df333981bb16edf27774ea739d9a6eb4c95d1058efe1ce6094104121be00806b456f47ab52107f466ab7dd63ad57c42660c7a545
 -Size (bovo-26.08.0.tar.xz) = 222044 bytes
 +SHA256 (bovo-26.08.2.tar.xz) = 43704ff6e1199b2fec1c6a611cb4c273aa1bacf5162abb891be81cabde55a385
 +Size (bovo-26.08.2.tar.xz) = 222148 bytes
---- a/pkgsrc/games/granatier/distinfo
-+++ b/pkgsrc/games/granatier/distinfo
+--- a/games/granatier/distinfo
++++ b/games/granatier/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (granatier-26.08.0.tar.xz) = 5227a924a9872e9290f325d9fbc44817b71e57051ae9dcbad112356d3a5eb18f
 -SHA512 (granatier-26.08.0.tar.xz) = e4b6438cf3d155c65b62b29eacdac55c5fbcef3e0da822324ebf44e06516dd8b891c4e6eaf3686785823fd6353b3e3f43d7ecc9265f3264f1912d186848a0e24
 -Size (granatier-26.08.0.tar.xz) = 2016224 bytes
 +SHA256 (granatier-26.08.2.tar.xz) = 2272c1d649caaf271ac7490ec849d83301e3c46e2751f78165b852dbdacbdac8
 +Size (granatier-26.08.2.tar.xz) = 2016408 bytes
---- a/pkgsrc/games/kajongg/distinfo
-+++ b/pkgsrc/games/kajongg/distinfo
+--- a/games/kajongg/distinfo
++++ b/games/kajongg/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kajongg-26.08.0.tar.xz) = 4a4a3d997208ed4d0521cccce072351c5532b52b75f524a540645a3c096150d7
 -SHA512 (kajongg-26.08.0.tar.xz) = 834ef34961d41e3b830ab45af10335d61b202759003dff7f7baa08f8ecb9badd1d34e9fa6b7ed734f0e6beac59848344ee157c47b07373277658887ee4610ed6
 -Size (kajongg-26.08.0.tar.xz) = 4641456 bytes
 +SHA256 (kajongg-26.08.2.tar.xz) = 81493ec304ff19c189fc811b1fecd88e749784c1c902e6158565037c9f8ccfed
 +Size (kajongg-26.08.2.tar.xz) = 4653204 bytes
---- a/pkgsrc/games/kanagram/distinfo
-+++ b/pkgsrc/games/kanagram/distinfo
+--- a/games/kanagram/distinfo
++++ b/games/kanagram/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kanagram-26.08.0.tar.xz) = fa0630ff05e6a4e7486362ee20ae97bcbe7174ecb92e21726815cfd5fa5805b7
 -SHA512 (kanagram-26.08.0.tar.xz) = 952bbcac39c0f9b5fb1ed70b9443a7454bbaea14c65972d53b023a161b04ca702c617e9e5c9459aed23a732e11e3d1c0f4257c8da5fcda624f8e418805de273e
 -Size (kanagram-26.08.0.tar.xz) = 7786288 bytes
 +SHA256 (kanagram-26.08.2.tar.xz) = 3d3d4533c0668c0b9d1bf22f1d10cd172d6ef7e0b83f96c6dcf3a1fc129f8bda
 +Size (kanagram-26.08.2.tar.xz) = 7784536 bytes
---- a/pkgsrc/games/kapman/distinfo
-+++ b/pkgsrc/games/kapman/distinfo
+--- a/games/kapman/distinfo
++++ b/games/kapman/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kapman-26.08.0.tar.xz) = 943f430bea30d09e414e104a2589bd15e6539ead8e4add1a82d9c84cc9b79052
 -SHA512 (kapman-26.08.0.tar.xz) = 2b45856deb6545d6079c520259b2329c6877b679a1a152bf34a11bffca9154384ca89a9573268b4cee5be06dba961bd678c6b28a242807ea22a6e94bfb4909f8
 -Size (kapman-26.08.0.tar.xz) = 2149640 bytes
 +SHA256 (kapman-26.08.2.tar.xz) = bbc6448e7ba0c841faae18682ea07c0f2c68ea70eb48c4b188b581a0e36f434a
 +Size (kapman-26.08.2.tar.xz) = 2152380 bytes
---- a/pkgsrc/games/katomic/distinfo
-+++ b/pkgsrc/games/katomic/distinfo
+--- a/games/katomic/distinfo
++++ b/games/katomic/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (katomic-26.08.0.tar.xz) = db084982968e86e7f3b42605d808c04572abd4702f567207577b3f70f11a1b0c
 -SHA512 (katomic-26.08.0.tar.xz) = 1031ef5cbb2d8077c62798fb4230c7d29cc8c8ff580159e9cb7d6c187e99391584cf6c895648722f2f5d069674b8ea3cd3556018a8e1df50937c9fc3d34b2a08
 -Size (katomic-26.08.0.tar.xz) = 1450484 bytes
 +SHA256 (katomic-26.08.2.tar.xz) = d0be5b5f3eff7098f837b900ee1fbea696d6d50df401882f76d849504fc624b6
 +Size (katomic-26.08.2.tar.xz) = 1450508 bytes
---- a/pkgsrc/games/kblackbox/distinfo
-+++ b/pkgsrc/games/kblackbox/distinfo
+--- a/games/kblackbox/distinfo
++++ b/games/kblackbox/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kblackbox-26.08.0.tar.xz) = 0786e24af9fa9eba2931fe910b501e9d6c97dd836fb55b8578b1b85c48788e79
 -SHA512 (kblackbox-26.08.0.tar.xz) = 1e81290e2fe0a7a558c749fc9098cbd1eb9a0823a43ad841950de4d57225293805deb7813595dfbcd9561484bef0fb8ad4f102eab1779d382fc2bcbf099b32cf
 -Size (kblackbox-26.08.0.tar.xz) = 555468 bytes
 +SHA256 (kblackbox-26.08.2.tar.xz) = 72eab8cb7f50586193bfd3a9f810450bd770d5d894e867e181aa86a88969aa21
 +Size (kblackbox-26.08.2.tar.xz) = 558288 bytes
---- a/pkgsrc/games/kblocks/distinfo
-+++ b/pkgsrc/games/kblocks/distinfo
+--- a/games/kblocks/distinfo
++++ b/games/kblocks/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kblocks-26.08.0.tar.xz) = f4a2072bd1d4b88c3b13978334a0de01e8db3378536847d6a288f3f6c4347e65
 -SHA512 (kblocks-26.08.0.tar.xz) = c4b10ab07a1d97f607e1feeef0e3713afbbde710d49789fbcd9332b1c62887b8a691dbb77e0abb817b92d1b491ff3a39323d3eb4fa23b5e1310ba8c30e0dbd5c
 -Size (kblocks-26.08.0.tar.xz) = 2104620 bytes
 +SHA256 (kblocks-26.08.2.tar.xz) = 14f0770c2a9955d962b7d5a7f1347e7f33c2694c61d3f4931af7a94e79f78a8f
 +Size (kblocks-26.08.2.tar.xz) = 2106152 bytes
---- a/pkgsrc/games/kbounce/distinfo
-+++ b/pkgsrc/games/kbounce/distinfo
+--- a/games/kbounce/distinfo
++++ b/games/kbounce/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kbounce-26.08.0.tar.xz) = 0138443f99db614b6c8f7f4004e7d0441683c3cae34d018dcd79d6b5e35955f3
 -SHA512 (kbounce-26.08.0.tar.xz) = ce9586ceb8d05faf08f7ac136efd968990618f3bfa6b1510b7a199eb0f50429696eba3190eb4aa3e81bcbb92f296b19d6500d583bac4287a22f0e6f256570a00
 -Size (kbounce-26.08.0.tar.xz) = 3325848 bytes
 +SHA256 (kbounce-26.08.2.tar.xz) = 09a7a6aaa5624475da706a4de0d5162f9a05df14b971730e03f4e6fce89424df
 +Size (kbounce-26.08.2.tar.xz) = 3328304 bytes
---- a/pkgsrc/games/kbreakout/distinfo
-+++ b/pkgsrc/games/kbreakout/distinfo
+--- a/games/kbreakout/distinfo
++++ b/games/kbreakout/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kbreakout-26.08.0.tar.xz) = 67d056d5a8e306b2962e43f4e86c26e53e3849da8dcc1442af32691ec5109f07
 -SHA512 (kbreakout-26.08.0.tar.xz) = a8ea8c1bf02b502919336de0dc23664b6658bd49099d310e332646c38c716766f2f3effc31f7ecf3c0cb401025d041f0f3bc17f18d96d820fd2a8e5618dc3285
 -Size (kbreakout-26.08.0.tar.xz) = 2558500 bytes
 +SHA256 (kbreakout-26.08.2.tar.xz) = 434b78a64b064783d586f803af62352519681cc0b70f1eb7d84806a8e689c1f3
 +Size (kbreakout-26.08.2.tar.xz) = 2562448 bytes
---- a/pkgsrc/games/kdiamond/distinfo
-+++ b/pkgsrc/games/kdiamond/distinfo
+--- a/games/kdiamond/distinfo
++++ b/games/kdiamond/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kdiamond-26.08.0.tar.xz) = 128b43c0df13ddce830027c54a7308bca4eb0e46e9955f6025f09e79e35dd80f
 -SHA512 (kdiamond-26.08.0.tar.xz) = db355cb220b0cd5e04b24ab45cf7bcd46bd22b6cbd33bb61600be259243f28005755a3ad1c997d60a7e7136db91931375cea11973213f9e1aa7a24fb4ab4795a
 -Size (kdiamond-26.08.0.tar.xz) = 4676828 bytes
 +SHA256 (kdiamond-26.08.2.tar.xz) = c6a73eb6d101623c9cd7d3ac0ea9155c6e256b0c6db7de4a2c809310add27109
 +Size (kdiamond-26.08.2.tar.xz) = 4677252 bytes
---- a/pkgsrc/games/kfourinline/distinfo
-+++ b/pkgsrc/games/kfourinline/distinfo
+--- a/games/kfourinline/distinfo
++++ b/games/kfourinline/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kfourinline-26.08.0.tar.xz) = 762dc8358a15e5a1aadabcc63b01ce28860ef3485251b1fde213928958bc24d3
 -SHA512 (kfourinline-26.08.0.tar.xz) = e0db97207c5fe479fcadc921aebcd5399c20ba4fa936dfb96dfd042b6b5eafd428cbfdc32a6e964a57c3192da64bad36fce1d8a2ceff570d8b51ed03ff0b3cbf
 -Size (kfourinline-26.08.0.tar.xz) = 747332 bytes
 +SHA256 (kfourinline-26.08.2.tar.xz) = 36d6b691b7c9d45200a725faa70f2dabe3b2ae53f2993677de3fda0e445b1cb4
 +Size (kfourinline-26.08.2.tar.xz) = 750136 bytes
---- a/pkgsrc/games/kgoldrunner/distinfo
-+++ b/pkgsrc/games/kgoldrunner/distinfo
+--- a/games/kgoldrunner/distinfo
++++ b/games/kgoldrunner/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kgoldrunner-26.08.0.tar.xz) = a35539c1a3058071de339dcb39425343e7589d02f7ea9bf9d2d5af0825f8f115
 -SHA512 (kgoldrunner-26.08.0.tar.xz) = abd13647dbfd99a12ab8630dc7c5f1863e7dd293e300933ffaf4bdb4037014a3f23adb4fac5f2bfcf063810d546b1608009ba43b22b1fbda4e7c1bfe2de4e047
 -Size (kgoldrunner-26.08.0.tar.xz) = 4473492 bytes
 +SHA256 (kgoldrunner-26.08.2.tar.xz) = aeb7e82d3163915e0493af4d9cf8045e1f5e5cb98a433ef13697be374b2462d5
 +Size (kgoldrunner-26.08.2.tar.xz) = 4488144 bytes
---- a/pkgsrc/games/khangman/distinfo
-+++ b/pkgsrc/games/khangman/distinfo
+--- a/games/khangman/distinfo
++++ b/games/khangman/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (khangman-26.08.0.tar.xz) = a3ea8e29e1b0ea1b570d08c8f14f232132d236bfd6070976989a54f88ca7e725
 -SHA512 (khangman-26.08.0.tar.xz) = 7d8c5e7e8cdfa5f820abd9acd510c60f6253aec86056a4ac47818556cd3713c1d03321fa03a9a92353fd71248b0105ed1d57b97c1ddba62571e8c15c42b95f89
 -Size (khangman-26.08.0.tar.xz) = 7030564 bytes
 +SHA256 (khangman-26.08.2.tar.xz) = 31d5a4d4c59bf12336c27c4175a60327c9caaf7b4596708f421e729e3e916296
 +Size (khangman-26.08.2.tar.xz) = 7030328 bytes
---- a/pkgsrc/games/kigo/distinfo
-+++ b/pkgsrc/games/kigo/distinfo
+--- a/games/kigo/distinfo
++++ b/games/kigo/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kigo-26.08.0.tar.xz) = f8053503c6cf9dfd6f948af734961890694ac623f43b4e28737867a8c0f0dcac
 -SHA512 (kigo-26.08.0.tar.xz) = a9ca453475a9795d07d709fce1cf72503aff6be05cf70ee53a57e7b3614543e334d432432122e5ddf9e96c732e30e450c17c01744690cefe84f1aeb88af121b6
 -Size (kigo-26.08.0.tar.xz) = 4838996 bytes
 +SHA256 (kigo-26.08.2.tar.xz) = ead40096100a10c564b4800d841bea0eb7914d904cde89677e272612662784c5
 +Size (kigo-26.08.2.tar.xz) = 4839276 bytes
---- a/pkgsrc/games/killbots/distinfo
-+++ b/pkgsrc/games/killbots/distinfo
+--- a/games/killbots/distinfo
++++ b/games/killbots/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (killbots-26.08.0.tar.xz) = a560f4d2a869905e1e79e8c60a8404511549be5a801dd37ccc26ebc61feaca42
 -SHA512 (killbots-26.08.0.tar.xz) = f3e6fce20cd8c3ee1bc28f95b22f81504a147a145f8859743d70ab2d0041bf10a5990246691ddd30cc9ce2d49ac138cbc853f68bcaa54e7e08a97a123d0f2c48
 -Size (killbots-26.08.0.tar.xz) = 1178588 bytes
 +SHA256 (killbots-26.08.2.tar.xz) = c77f3b010d8d3b11ab02bea21887371f7091caa515c8ac0d2e3399cca30d8f85
 +Size (killbots-26.08.2.tar.xz) = 1185032 bytes
---- a/pkgsrc/games/kiriki/distinfo
-+++ b/pkgsrc/games/kiriki/distinfo
+--- a/games/kiriki/distinfo
++++ b/games/kiriki/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kiriki-26.08.0.tar.xz) = e2ba491ff0d18497f06a859a4a7257de43780a5927b9573360ec1b1547f22cc1
 -SHA512 (kiriki-26.08.0.tar.xz) = 0034fd6f458aed47573b7103466952f138a037fcc8780b851f21c6ca10ae1a7f4adbd3aafda1919d210f78dc9f09034fe2ad486ae03de10339ef4759ad4a27f1
 -Size (kiriki-26.08.0.tar.xz) = 375844 bytes
 +SHA256 (kiriki-26.08.2.tar.xz) = 00028717af2dbcbda6ed3d9558aa1e013d811a5c96bcc2d0a681465df1602c1b
 +Size (kiriki-26.08.2.tar.xz) = 379160 bytes
---- a/pkgsrc/games/kjumpingcube/distinfo
-+++ b/pkgsrc/games/kjumpingcube/distinfo
+--- a/games/kjumpingcube/distinfo
++++ b/games/kjumpingcube/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kjumpingcube-26.08.0.tar.xz) = d84faa0eb8051a40f395e4b511741bf7dd39d51b3a12ac92ee177498c1a86e1d
 -SHA512 (kjumpingcube-26.08.0.tar.xz) = a61b2c7f2d4ab5c9d99b20be575db80d224b5d2cd08f93ddd8e01dc3731381b3cf8bc939ad051f4bbedc141953a5bf2ec5490783906438fb44994a4f2bc8a0f4
 -Size (kjumpingcube-26.08.0.tar.xz) = 352900 bytes
 +SHA256 (kjumpingcube-26.08.2.tar.xz) = 6470cc49e80d4f343b25e401d54af84de00138525659fcd6bf6b75d105dc8d76
 +Size (kjumpingcube-26.08.2.tar.xz) = 355948 bytes
---- a/pkgsrc/games/klickety/distinfo
-+++ b/pkgsrc/games/klickety/distinfo
+--- a/games/klickety/distinfo
++++ b/games/klickety/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (klickety-26.08.0.tar.xz) = 07a756deb33d8546f5dc52802fa4d1d52e53bce7df2e576181dc5114a257e990
 -SHA512 (klickety-26.08.0.tar.xz) = b7966ae8930e705e0e4af8bd535f83938718a1b33c5021766c89dc7afbccf0b12fdfde928f51a624c2e0f2eb332040eebd6b4d7338a477187d2aa4ae0513f679
 -Size (klickety-26.08.0.tar.xz) = 1506244 bytes
 +SHA256 (klickety-26.08.2.tar.xz) = 714f09c0934cc5d04b07db25734f635a2977b722c4af925420190b4a3107aaa2
 +Size (klickety-26.08.2.tar.xz) = 1509392 bytes
---- a/pkgsrc/games/klines/distinfo
-+++ b/pkgsrc/games/klines/distinfo
+--- a/games/klines/distinfo
++++ b/games/klines/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (klines-26.08.0.tar.xz) = 2fe9372407bc71dbb8c539102921964ad665eec5e6c4e90db16b6a2e48f3ba96
 -SHA512 (klines-26.08.0.tar.xz) = 32f4470e0a2f26776a2fe4e4f27e001c44fd9b773de97cf72400157458e677346b385907e73ae3f79734b2c25e9d14ec6f5d2d6a3c36b4072e883dacdc8fcdf6
 -Size (klines-26.08.0.tar.xz) = 1675856 bytes
 +SHA256 (klines-26.08.2.tar.xz) = c4171b323690b61f6daee9d4b934f370b28d899505c9a55ffdd785e53ef4e3dd
 +Size (klines-26.08.2.tar.xz) = 1679000 bytes
---- a/pkgsrc/games/kmahjongg/distinfo
-+++ b/pkgsrc/games/kmahjongg/distinfo
+--- a/games/kmahjongg/distinfo
++++ b/games/kmahjongg/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kmahjongg-26.08.0.tar.xz) = d64a1f8479a6cd887dc0ebafa8eec4b05b6c0a3594789b07bcb9ec089ac8a4a2
 -SHA512 (kmahjongg-26.08.0.tar.xz) = e183b9ea967c8d1ad54e1a24a05f5dfc83d4fba01d9f0ab9f04a6984d263befe196b41fea19eb87cbc7e6798f004d074b8e15e27972dabf2cd8ae755fd79d197
 -Size (kmahjongg-26.08.0.tar.xz) = 3723668 bytes
 +SHA256 (kmahjongg-26.08.2.tar.xz) = d104bc6517cd459cf671785e618cfb78c156566d43089012d8d8f57459dac3a1
 +Size (kmahjongg-26.08.2.tar.xz) = 3723884 bytes
---- a/pkgsrc/games/kmines/distinfo
-+++ b/pkgsrc/games/kmines/distinfo
+--- a/games/kmines/distinfo
++++ b/games/kmines/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kmines-26.08.0.tar.xz) = 5512c04caa6fd15574054dc230c00e2d15a5e5553eaf94466181784984f7651d
 -SHA512 (kmines-26.08.0.tar.xz) = 494cebd411ae77e6bc77e64f5ddce2d5c83d7251cf13381cd29c7221d5d5958a6060a326d0ba96f35b3ddc3e89b55fb10b5452a932c9054cf034eaea2416bf38
 -Size (kmines-26.08.0.tar.xz) = 952460 bytes
 +SHA256 (kmines-26.08.2.tar.xz) = b88e3a8e7e3deacb2fc113d97deceb05662d188a9639d513acd34a2a88d25ea8
 +Size (kmines-26.08.2.tar.xz) = 951224 bytes
---- a/pkgsrc/games/knavalbattle/distinfo
-+++ b/pkgsrc/games/knavalbattle/distinfo
+--- a/games/knavalbattle/distinfo
++++ b/games/knavalbattle/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (knavalbattle-26.08.0.tar.xz) = d193660b543c834fbdd3a42d5beff9fac063009a5feddd044158594246f70244
 -SHA512 (knavalbattle-26.08.0.tar.xz) = ef88f0d5a71caf01dc85f0712622b55bb2da6624bfa03436a0a512c48552d5c63de8e8b99a731c64b1160a4f3a22d923f767f93a5473308f042da11684de8031
 -Size (knavalbattle-26.08.0.tar.xz) = 1050616 bytes
 +SHA256 (knavalbattle-26.08.2.tar.xz) = 418caa4eeb3f69c8a935aa45d91fa681303f591fd1443aa645bb33786e5a0e0f
 +Size (knavalbattle-26.08.2.tar.xz) = 1053220 bytes
---- a/pkgsrc/games/knetwalk/distinfo
-+++ b/pkgsrc/games/knetwalk/distinfo
+--- a/games/knetwalk/distinfo
++++ b/games/knetwalk/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (knetwalk-26.08.0.tar.xz) = b6cd8d8d4ed4652049bb6ed3f99dba357da3386da1a0f6182c5ddbcc98dfafcf
 -SHA512 (knetwalk-26.08.0.tar.xz) = 35336e6039fcf15f1128909424b4dcdb40df287401e50b6d151fa4bab3f6166a988a09049c40d7c6831c3b1dca983c9a6b697c11ff60b3d5ea58e9256e939874
 -Size (knetwalk-26.08.0.tar.xz) = 1014404 bytes
 +SHA256 (knetwalk-26.08.2.tar.xz) = bfbfb7207226581b956391b4a193eb84a344e6598894249c13f308e6c02fe97a
 +Size (knetwalk-26.08.2.tar.xz) = 1014344 bytes
---- a/pkgsrc/games/kolf/distinfo
-+++ b/pkgsrc/games/kolf/distinfo
+--- a/games/kolf/distinfo
++++ b/games/kolf/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kolf-26.08.0.tar.xz) = 91f36982fe9676acab5ffd420b073c0c82b74893188e80187dfa78573cd942d8
 -SHA512 (kolf-26.08.0.tar.xz) = 84c42d10be23433af752f1ff7573509cb7d9dcae75ab407a0407d336f22c4ebf1ffc34484507d5738e0e11a59540a16d942d6e8c0e4997cfa6f0f773f2dc5b1d
 -Size (kolf-26.08.0.tar.xz) = 1085312 bytes
 +SHA256 (kolf-26.08.2.tar.xz) = 96d34c3e481be32536535fe01da3c4e14536a29a5ab6d3c4552a17c597a51dc8
 +Size (kolf-26.08.2.tar.xz) = 1082488 bytes
---- a/pkgsrc/games/kollision/distinfo
-+++ b/pkgsrc/games/kollision/distinfo
+--- a/games/kollision/distinfo
++++ b/games/kollision/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kollision-26.08.0.tar.xz) = 453a4c6f9052f5e49f4b5d3e8090dbcdb8685aa9d976704e3fadb9fb6b472a2d
 -SHA512 (kollision-26.08.0.tar.xz) = 5baea2a1ed31fc577f491b44e8cd7e62ae4a766f09ec2e796b81dbc031e7a409b9aeb06a16d25f5a839fda2d45d5daa4da7b63feef0abf7751bc38cf4cfd34f6
 -Size (kollision-26.08.0.tar.xz) = 313752 bytes
 +SHA256 (kollision-26.08.2.tar.xz) = 2696b1ac3e8d42f2d4bb229bd9ac398d46a97d948c6b18a8941a5b2875a534fe
 +Size (kollision-26.08.2.tar.xz) = 315500 bytes
---- a/pkgsrc/games/konquest/distinfo
-+++ b/pkgsrc/games/konquest/distinfo
+--- a/games/konquest/distinfo
++++ b/games/konquest/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (konquest-26.08.0.tar.xz) = 7114a989dee9b21cccd6f7ed0f6b79004039bf05b49df061c78c77abd3f47563
 -SHA512 (konquest-26.08.0.tar.xz) = f11131cf181688a501badeceb8ce494eaa6ce99677405071d1087c425d1fccc04319a2189b9a7dc59d58941606230ed4914e399d214e6e01bc16e470a2dd25d5
 -Size (konquest-26.08.0.tar.xz) = 862384 bytes
 +SHA256 (konquest-26.08.2.tar.xz) = 74de272b1778ebf7825bf24111a81e4bf54e16f23b9cd2329144dbd8c3f3d914
 +Size (konquest-26.08.2.tar.xz) = 864244 bytes
---- a/pkgsrc/games/kpat/distinfo
-+++ b/pkgsrc/games/kpat/distinfo
+--- a/games/kpat/distinfo
++++ b/games/kpat/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kpat-26.08.0.tar.xz) = b32b30d01abe66593f66050ae79f2c1694e486f861792db3f96ef83ce3076f35
 -SHA512 (kpat-26.08.0.tar.xz) = 272121cf2838002306955cc6ac95005b92e3b97cc84f7b2ec077fc7d4f6f6311ffbff9fa5a6df0317ae0cf6d477f64180a53ec5c0b2092b3eb1052379652cbc3
 -Size (kpat-26.08.0.tar.xz) = 3741320 bytes
 +SHA256 (kpat-26.08.2.tar.xz) = 6f4b69ebde5602d808fe857e989568255be2c3a9b8f36c8adaa959fe529b1a17
 +Size (kpat-26.08.2.tar.xz) = 3750712 bytes
---- a/pkgsrc/games/kreversi/distinfo
-+++ b/pkgsrc/games/kreversi/distinfo
+--- a/games/kreversi/distinfo
++++ b/games/kreversi/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kreversi-26.08.0.tar.xz) = d5545ca227e1b05998d631310e6e2701b585b297a176419f472534bda03413f5
 -SHA512 (kreversi-26.08.0.tar.xz) = 4a1c365cd8f8b30a92f4c5895734025bb539a4b28b1f05c9b12191f676061564fb19eb753b2c83ecf8c4873d7bf0a8b9215c7cfd61ce70b534b5b12f1372adeb
 -Size (kreversi-26.08.0.tar.xz) = 1036848 bytes
 +SHA256 (kreversi-26.08.2.tar.xz) = dc62f5021ff9df8dece66689101af3d1a9b14dfa04576f21bc502176ffff45b1
 +Size (kreversi-26.08.2.tar.xz) = 1036640 bytes
---- a/pkgsrc/games/kshisen/distinfo
-+++ b/pkgsrc/games/kshisen/distinfo
+--- a/games/kshisen/distinfo
++++ b/games/kshisen/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kshisen-26.08.0.tar.xz) = 619d6e49d0615b78cf2265d1ade41ec11af0cabcf7317787db9a655cd1ccd64d
 -SHA512 (kshisen-26.08.0.tar.xz) = f250be9fef68ec265f0743ad0531ac2781ae86ce128daefc6ea8334e158a0c33c8705b584a797c9015dd554cff7ff44e458191e29a577d4300004ae9dd076c39
 -Size (kshisen-26.08.0.tar.xz) = 975696 bytes
 +SHA256 (kshisen-26.08.2.tar.xz) = d07327b1abb704e1256a3f57d34457a1c246745186dedfcc3bb7d9a635a77ac9
 +Size (kshisen-26.08.2.tar.xz) = 975720 bytes
---- a/pkgsrc/games/ksirk/distinfo
-+++ b/pkgsrc/games/ksirk/distinfo
+--- a/games/ksirk/distinfo
++++ b/games/ksirk/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (ksirk-26.08.0.tar.xz) = 4434013e928812981e2e3719ee785f72d89248757ca9f2b8ded900ffa8e3a4ea
 -SHA512 (ksirk-26.08.0.tar.xz) = 59245e372ee9336589e2bbff424c4456f8ecf2a1fae3f44ccd93033cf9c67e68ee4a4eb55272143058ccb0830591f5e9d08a88a74a29006e3ba567b8c4818b77
 -Size (ksirk-26.08.0.tar.xz) = 6730932 bytes
 +SHA256 (ksirk-26.08.2.tar.xz) = 1f2b3fd9031094748b6830e384fafc6a67ab81df0ffb55ab970f05621512e6e3
 +Size (ksirk-26.08.2.tar.xz) = 6726048 bytes
---- a/pkgsrc/games/ksnakeduel/distinfo
-+++ b/pkgsrc/games/ksnakeduel/distinfo
+--- a/games/ksnakeduel/distinfo
++++ b/games/ksnakeduel/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (ksnakeduel-26.08.0.tar.xz) = 742d82f988248179b1ada04bdbe0458542957adf04be257840482af6dec6f709
 -SHA512 (ksnakeduel-26.08.0.tar.xz) = 87e9a9400164cd976d38e42277a4a38685d6fbba6c51c1cbd8f8694d158eb807ffa8425a9088e56b25ad2a55c246b43248028ffc740f4f8a5e2dd72989967507
 -Size (ksnakeduel-26.08.0.tar.xz) = 580208 bytes
 +SHA256 (ksnakeduel-26.08.2.tar.xz) = 656b8796b798f73d77e84097fdaa8f1572f36c8e2ef57d0b4d743eb2cf0e82ee
 +Size (ksnakeduel-26.08.2.tar.xz) = 582720 bytes
---- a/pkgsrc/games/kspaceduel/distinfo
-+++ b/pkgsrc/games/kspaceduel/distinfo
+--- a/games/kspaceduel/distinfo
++++ b/games/kspaceduel/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kspaceduel-26.08.0.tar.xz) = 794bc1223c759bea49c96d596fd28c651efc19a708c4626da20041e92fe9913e
 -SHA512 (kspaceduel-26.08.0.tar.xz) = 4cdee4df895b1539f5defbea1d132a39a7e5a580292efb7eea3bf508d79d1dee8fc66db59692776466fc665234b56ac65271d3e39531589ac676426facbc7b0c
 -Size (kspaceduel-26.08.0.tar.xz) = 637140 bytes
 +SHA256 (kspaceduel-26.08.2.tar.xz) = 90dcd2aaa34bc66ff350ff958d60a4034e7ca7359bc83ede963edf472a4100de
 +Size (kspaceduel-26.08.2.tar.xz) = 637064 bytes
---- a/pkgsrc/games/ksquares/distinfo
-+++ b/pkgsrc/games/ksquares/distinfo
+--- a/games/ksquares/distinfo
++++ b/games/ksquares/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (ksquares-26.08.0.tar.xz) = c263fd22e8b46afbd7167bbf931eda7757e7bd2737691678d58e675f159b4617
 -SHA512 (ksquares-26.08.0.tar.xz) = a613f1945a98ee92cb46619729f2e709674f62fb07f204ced9a5c9eea35ff70ea7986015da3538b4ca5923d814b8cd5d66016570ad32ff9b0e6ae753ed31a519
 -Size (ksquares-26.08.0.tar.xz) = 323960 bytes
 +SHA256 (ksquares-26.08.2.tar.xz) = cc9bd384f0225b8c2fbba21b3b9d19d8aa03244dbca66b91b669586570fd3e5f
 +Size (ksquares-26.08.2.tar.xz) = 326508 bytes
---- a/pkgsrc/games/ksudoku/distinfo
-+++ b/pkgsrc/games/ksudoku/distinfo
+--- a/games/ksudoku/distinfo
++++ b/games/ksudoku/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (ksudoku-26.08.0.tar.xz) = 8472d35f90b553ed6371ea62515bb50f372aa4373fec14c75f4f988a9fa2f4cc
 -SHA512 (ksudoku-26.08.0.tar.xz) = effc0b2e1a06069b147d0109fb8bddade45cdfbf4be2ccdb8c69922127e5864639630fa2e863c333fa715ad399e5ebabe94c573550ad6f5bb7dd7924811b6d5f
 -Size (ksudoku-26.08.0.tar.xz) = 1753128 bytes
 +SHA256 (ksudoku-26.08.2.tar.xz) = 2c273747dec718c3a7a09e59f3619c3c3330438a9b828de8d2610820613bda66
 +Size (ksudoku-26.08.2.tar.xz) = 1757132 bytes
---- a/pkgsrc/games/ktuberling/distinfo
-+++ b/pkgsrc/games/ktuberling/distinfo
+--- a/games/ktuberling/distinfo
++++ b/games/ktuberling/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (ktuberling-26.08.0.tar.xz) = a3a52e813e922b7676d2274837d636b2ae727a023a588ad7676286b29d8e2a53
 -SHA512 (ktuberling-26.08.0.tar.xz) = 3cf9831ceef78cf4a6d38dc9bef996e9bc988bbebac073016efb6ef08cd3fdbd5a2c8d3859a0d7a869e6311e79b017ad9368334085a1c8dd6fece74f9bf2ca06
 -Size (ktuberling-26.08.0.tar.xz) = 21090868 bytes
 +SHA256 (ktuberling-26.08.2.tar.xz) = d5b45e7f861d9c22b25877603ac269e630237e29f0a7727894af56a47c41706e
 +Size (ktuberling-26.08.2.tar.xz) = 21091632 bytes
---- a/pkgsrc/games/kubrick/distinfo
-+++ b/pkgsrc/games/kubrick/distinfo
+--- a/games/kubrick/distinfo
++++ b/games/kubrick/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kubrick-26.08.0.tar.xz) = 66af364ae6a1a7fd501edfc5f13208f59ba2ffcbf7f1dab0ccc1412f7f04e3bc
 -SHA512 (kubrick-26.08.0.tar.xz) = 08cedc4a8e391eab10b8cbcccde264f1db1c92a9eb986cf85755dcdcde643803c65a06ef7045394f9913b0e0853a1ac0a4a7ad3e1870d091dc517c391db10f07
 -Size (kubrick-26.08.0.tar.xz) = 384940 bytes
 +SHA256 (kubrick-26.08.2.tar.xz) = 386ccb5cc3f8b1e672482443189377ff1f8729558a22f846e638826376584e62
 +Size (kubrick-26.08.2.tar.xz) = 392816 bytes
---- a/pkgsrc/games/libkdegames/distinfo
-+++ b/pkgsrc/games/libkdegames/distinfo
+--- a/games/libkdegames/distinfo
++++ b/games/libkdegames/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (libkdegames-26.08.0.tar.xz) = ab0cae9c3248b5cc7539c63585020f8849f698e95263a0c44e7b1851088f850c
 -SHA512 (libkdegames-26.08.0.tar.xz) = 44b5e453f8b16cdceb36d2172ad6edccaea96d8a784bcce0296c4d7587969f153be6c410c60d211278708d8cf5f87870033c2416b5af92529fd7aa31fc8cc097
 -Size (libkdegames-26.08.0.tar.xz) = 5973336 bytes
 +SHA256 (libkdegames-26.08.2.tar.xz) = 64f5c1a0c79833057ff23fa246a93873ad65730c825c2ba46296741bc079d3ae
 +Size (libkdegames-26.08.2.tar.xz) = 5974784 bytes
---- a/pkgsrc/games/libkmahjongg/distinfo
-+++ b/pkgsrc/games/libkmahjongg/distinfo
+--- a/games/libkmahjongg/distinfo
++++ b/games/libkmahjongg/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (libkmahjongg-26.08.0.tar.xz) = 834bed78b2ff3c8a69f9ad70e51914409c0ecfaa0553fc7b14e671608dfdee1e
 -SHA512 (libkmahjongg-26.08.0.tar.xz) = 7ca8e5393660ee23e3197fc90815e498ead24b57875785f3513a8badfddf584f9e77dc6a6410301e2666e95853d74e9fde2b5c20bfeeb6f488af2fe79c381f74
 -Size (libkmahjongg-26.08.0.tar.xz) = 1694908 bytes
 +SHA256 (libkmahjongg-26.08.2.tar.xz) = 5f5b592e54a3a2029307a3080ea98c9dad43f9ee45a356daf64965970eab91f1
 +Size (libkmahjongg-26.08.2.tar.xz) = 1694704 bytes
---- a/pkgsrc/games/lskat/distinfo
-+++ b/pkgsrc/games/lskat/distinfo
+--- a/games/lskat/distinfo
++++ b/games/lskat/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (lskat-26.08.0.tar.xz) = e6e6777f271e36b3c0eb82d02fee46648ca3f7f614960a4b9074664fd0b3a7d6
 -SHA512 (lskat-26.08.0.tar.xz) = a67167d6d5781840c37787c59b8cba268163d69cc0589e63b994674567eba8911e3cd827bc493f94affadacfdd95575b34c0ce4664e6f96aef990275b022c805
 -Size (lskat-26.08.0.tar.xz) = 1228292 bytes
 +SHA256 (lskat-26.08.2.tar.xz) = 157101e69d4c1356129419b4bb820258db2b77eeedb8beb63d79f5bd35a5a73e
 +Size (lskat-26.08.2.tar.xz) = 1228124 bytes
---- a/pkgsrc/games/palapeli/distinfo
-+++ b/pkgsrc/games/palapeli/distinfo
+--- a/games/palapeli/distinfo
++++ b/games/palapeli/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (palapeli-26.08.0.tar.xz) = 31e7855ae78fde7edd6175e232ee6b623068f5181f065ca8b03fdd4e37c09ffc
 -SHA512 (palapeli-26.08.0.tar.xz) = eeb8984dd885ff113c3346d40dab444ff968ff7e4fa80001192cb904b0bcedf418ba185c6d0f525a3939919f286647f8a1b8bbf7cdd71996c1f7bc68f81857a1
 -Size (palapeli-26.08.0.tar.xz) = 2136496 bytes
 +SHA256 (palapeli-26.08.2.tar.xz) = dd9227f194d8f7113ffbbd857e85e120d65467f98fa1b3928b84855a0e335295
 +Size (palapeli-26.08.2.tar.xz) = 2145340 bytes
---- a/pkgsrc/games/picmi/distinfo
-+++ b/pkgsrc/games/picmi/distinfo
+--- a/games/picmi/distinfo
++++ b/games/picmi/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (picmi-26.08.0.tar.xz) = a1500bfe94a62b611aba20c98710ab4430d17ec7cf08bb61692a2d0d28aaea26
 -SHA512 (picmi-26.08.0.tar.xz) = f99df2c564f6eb7f92001242f983415922bbd9cbafe2ea74fe3f31b9ade6f4eab4261e420ee7f080b170d7280646c09505fd8e48d38831d56f096b8227936031
 -Size (picmi-26.08.0.tar.xz) = 1524112 bytes
 +SHA256 (picmi-26.08.2.tar.xz) = 1d065cacafd9105ae24941e25be07bbd4b29414e5a2321dc71291f295fc03231
 +Size (picmi-26.08.2.tar.xz) = 1526380 bytes
---- a/pkgsrc/graphics/gwenview/distinfo
-+++ b/pkgsrc/graphics/gwenview/distinfo
+--- a/graphics/gwenview/distinfo
++++ b/graphics/gwenview/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (gwenview-26.08.0.tar.xz) = 0f518c766a28e394197129b24a74e3f8ca9bee35d731b4a86a5da575ad1d7b0f
 -SHA512 (gwenview-26.08.0.tar.xz) = 611e916da8fb46da5f247e341bc27e5a5a2703919cf89bb059a0f58740a96404a52fd8b4708a6aeda658bf064c207517812ede39531cad2724395d7a911663f8
 -Size (gwenview-26.08.0.tar.xz) = 6555364 bytes
 +SHA256 (gwenview-26.08.2.tar.xz) = bc6eb96196daeb5879e3551b834e65e296409d2252804ee26fedcbb376826a72
 +Size (gwenview-26.08.2.tar.xz) = 6560668 bytes
---- a/pkgsrc/graphics/kamera/distinfo
-+++ b/pkgsrc/graphics/kamera/distinfo
+--- a/graphics/kamera/distinfo
++++ b/graphics/kamera/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kamera-26.08.0.tar.xz) = 172af786a73d9a19f26c4446c78cf5d6ee6fdf50dcf4bfcf39b2898aef95e191
 -SHA512 (kamera-26.08.0.tar.xz) = 45090fc311675a1581a15144722815df29d34f30b5700ee6c1b63d7a11e3528d809cbfa4614f134fe5d4d247bc01447fba02dee49b40f5581b8227ebfb5e2d3c
 -Size (kamera-26.08.0.tar.xz) = 133516 bytes
 +SHA256 (kamera-26.08.2.tar.xz) = 5b0aa76ece2d89491704f769403352a3d8de2699c85a83f941069103ee5ebe02
 +Size (kamera-26.08.2.tar.xz) = 133612 bytes
---- a/pkgsrc/graphics/kcolorchooser/distinfo
-+++ b/pkgsrc/graphics/kcolorchooser/distinfo
+--- a/graphics/kcolorchooser/distinfo
++++ b/graphics/kcolorchooser/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kcolorchooser-26.08.0.tar.xz) = 609ed25318587ac0b818a6c52585f6a40595980d33e008d6a063f661d34aa1d5
 -SHA512 (kcolorchooser-26.08.0.tar.xz) = 5cacbfde65dc6fbd121627de53633f037bdcbeced380ac0867b696ec4f3658187af573256687f53472386d4ee36025267bcf19cbd7758b770c2b19de56f9693f
 -Size (kcolorchooser-26.08.0.tar.xz) = 36956 bytes
 +SHA256 (kcolorchooser-26.08.2.tar.xz) = dbd21ec12a220c4f3bc3ddf9dc3513b38e20f1eca5d92961a635cc7fef82dace
 +Size (kcolorchooser-26.08.2.tar.xz) = 37448 bytes
---- a/pkgsrc/graphics/kdegraphics-mobipocket/distinfo
-+++ b/pkgsrc/graphics/kdegraphics-mobipocket/distinfo
+--- a/graphics/kdegraphics-mobipocket/distinfo
++++ b/graphics/kdegraphics-mobipocket/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kdegraphics-mobipocket-26.08.0.tar.xz) = f33e4be8423e693a23a039fd5b8fabffaf64f48dc9094c5922f60d5932008bbb
 -SHA512 (kdegraphics-mobipocket-26.08.0.tar.xz) = 83dbf717c2db3eb2199ac029d37c7b99d58b0f14014062ae5381e1821858ccd9d3cf4e4db0b3081f094f485ba29d8e3161a749da6ebdece277167615384d404e
 -Size (kdegraphics-mobipocket-26.08.0.tar.xz) = 20616 bytes
 +SHA256 (kdegraphics-mobipocket-26.08.2.tar.xz) = 771fb6343177cc9b61ab83fda6d32ed3e87b57de0ce2744ce86b00f8488b6300
 +Size (kdegraphics-mobipocket-26.08.2.tar.xz) = 20616 bytes
---- a/pkgsrc/graphics/kdegraphics-thumbnailers/distinfo
-+++ b/pkgsrc/graphics/kdegraphics-thumbnailers/distinfo
+--- a/graphics/kdegraphics-thumbnailers/distinfo
++++ b/graphics/kdegraphics-thumbnailers/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kdegraphics-thumbnailers-26.08.0.tar.xz) = e639cba9e636e2b8fe1bda2b233a9531214f329b4531d6c8b7f332b9965c60bd
 -SHA512 (kdegraphics-thumbnailers-26.08.0.tar.xz) = 06357b64ed050c75e91d6e6b98e3f3d30ffaccb23eb1e47ef3b83b1b53ee95e3bef2070d4967d34f9f34ee8366f8541d0fe9e4c9e63fe5c309de320fb33878d4
 -Size (kdegraphics-thumbnailers-26.08.0.tar.xz) = 128828 bytes
 +SHA256 (kdegraphics-thumbnailers-26.08.2.tar.xz) = 2d16907d630bce50b1b072f2f35d0c577c178b794dcc8014443130cbb52ed628
 +Size (kdegraphics-thumbnailers-26.08.2.tar.xz) = 129024 bytes
---- a/pkgsrc/graphics/kolourpaint/distinfo
-+++ b/pkgsrc/graphics/kolourpaint/distinfo
+--- a/graphics/kolourpaint/distinfo
++++ b/graphics/kolourpaint/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kolourpaint-26.08.0.tar.xz) = 576228d551c1f91cdfd61207db18a80a11804005cfef7a85fbaf5d32e79f15b7
 -SHA512 (kolourpaint-26.08.0.tar.xz) = f87e55067de9eb0844489a5afc57f6b697d9d3f764b28047711327ce283b8131c576d6a345118df6a96a97c0cf9dea94a4526fd782f657cd8bb6b071f3dc2b33
 -Size (kolourpaint-26.08.0.tar.xz) = 5319832 bytes
 +SHA256 (kolourpaint-26.08.2.tar.xz) = 1cde60ce0d7f4c3962b6e0755f0835d0d1a2ff275e48110be70cdfccda5ab372
 +Size (kolourpaint-26.08.2.tar.xz) = 5320200 bytes
---- a/pkgsrc/graphics/kqtquickcharts/distinfo
-+++ b/pkgsrc/graphics/kqtquickcharts/distinfo
+--- a/graphics/kqtquickcharts/distinfo
++++ b/graphics/kqtquickcharts/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kqtquickcharts-26.08.0.tar.xz) = d13c2164ad7c9f0579bf14e8c440ca0da15092c58c4e958ecf4fdb0abccf5db0
 -SHA512 (kqtquickcharts-26.08.0.tar.xz) = b7c7475a5dedc287d38342f0b22bb6ccf1be2ea1d1d965847a3570c702323b1ad1ed3fee2b34e620af3f815ec39bcf81a9a304bd0ba089c648e29b9c8734d784
 -Size (kqtquickcharts-26.08.0.tar.xz) = 30836 bytes
 +SHA256 (kqtquickcharts-26.08.2.tar.xz) = 90deb25fd1c1df5cc36f6aa8ebc393174212580c3fd4d1c2cc47d6197c308151
 +Size (kqtquickcharts-26.08.2.tar.xz) = 30832 bytes
---- a/pkgsrc/graphics/kruler/distinfo
-+++ b/pkgsrc/graphics/kruler/distinfo
+--- a/graphics/kruler/distinfo
++++ b/graphics/kruler/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kruler-26.08.0.tar.xz) = ee8d0ac461c5ec6be264dbab0579f057c2c92aed4df3061079f1b379aa20de05
 -SHA512 (kruler-26.08.0.tar.xz) = 4570a1310dc5041c3423bae1e0c6884bdbfd5ed1edebf9edc2e5405f23393e245045fb261b1e532cb3103ddd957993a3fe463c927d2e1ae05007d270310d1ac6
 -Size (kruler-26.08.0.tar.xz) = 287548 bytes
 +SHA256 (kruler-26.08.2.tar.xz) = e5a5544da043b067feeff386890cb9c0a5292627493559dc7c649dc94e201f67
 +Size (kruler-26.08.2.tar.xz) = 286992 bytes
---- a/pkgsrc/graphics/ksanecore/distinfo
-+++ b/pkgsrc/graphics/ksanecore/distinfo
+--- a/graphics/ksanecore/distinfo
++++ b/graphics/ksanecore/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (ksanecore-26.08.0.tar.xz) = 7d1a97475217684a8cb44d0bc9b89bbfa11bd3484dbcf925869e649a1eedbfb3
 -SHA512 (ksanecore-26.08.0.tar.xz) = 3cb46325989d285440576277f170ced91299c15223eb4ad73cf00dafdd4d757c8d997e743f5fc00fd80ae1baae8f5e557a68fa9fbb51be274673b9110d1352eb
 -Size (ksanecore-26.08.0.tar.xz) = 57752 bytes
 +SHA256 (ksanecore-26.08.2.tar.xz) = 532b69ef17ed29c787b0da4050117fb3fab6499242d23f9207e5d5894caaab9a
 +Size (ksanecore-26.08.2.tar.xz) = 55428 bytes
---- a/pkgsrc/graphics/libkdcraw/distinfo
-+++ b/pkgsrc/graphics/libkdcraw/distinfo
+--- a/graphics/libkdcraw/distinfo
++++ b/graphics/libkdcraw/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (libkdcraw-26.08.0.tar.xz) = 8b9c3a9e94eb3b7a2ce99b97111ec8b71952d9d2e072a1ae4da59a770a634b01
 -SHA512 (libkdcraw-26.08.0.tar.xz) = ffb2378fd69cb0a5d9ebae4a34f45eca4acdad04eb7e9b102fd18b0ebb7da679b980566e0a079e5ee7db0d446e1ff7488f99e556381d531b744a2bbd2ed39aab
 -Size (libkdcraw-26.08.0.tar.xz) = 37212 bytes
 +SHA256 (libkdcraw-26.08.2.tar.xz) = 1e4efcc416d8c2a3f5c1e3c1d458938ca243975fcda094b9101999175f505959
 +Size (libkdcraw-26.08.2.tar.xz) = 37216 bytes
---- a/pkgsrc/graphics/libksane/distinfo
-+++ b/pkgsrc/graphics/libksane/distinfo
+--- a/graphics/libksane/distinfo
++++ b/graphics/libksane/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (libksane-26.08.0.tar.xz) = 371d578a626e7c106c46cc263400b6086a02f4c16f30a3d1783e705164f97f6f
 -SHA512 (libksane-26.08.0.tar.xz) = 7557cfac805df6bdae2b8e2c02b2ac9196c9ed26372e0285553117158b57980794dbcf4b0d265129870ca03e348114e9c93762d180adaad5754f112665a4c877
 -Size (libksane-26.08.0.tar.xz) = 156376 bytes
 +SHA256 (libksane-26.08.2.tar.xz) = dd990b977a3575f57304f6413f59dd9f67ab202828cf3103dcb5035efe3e7035
 +Size (libksane-26.08.2.tar.xz) = 156388 bytes
---- a/pkgsrc/graphics/svgpart/distinfo
-+++ b/pkgsrc/graphics/svgpart/distinfo
+--- a/graphics/svgpart/distinfo
++++ b/graphics/svgpart/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (svgpart-26.08.0.tar.xz) = 09e038eccf509aadb5b6c7635c831323ef1a2f63a0781c4a9476e94cc8cc60af
 -SHA512 (svgpart-26.08.0.tar.xz) = b545f3d606279d9f7c33cf8547d13eed09590dd7d4a887484e28586631aa82e37cbe0c603e419e0a203056d6b5cff515f79da3441250f17bb84d254edbc11381
 -Size (svgpart-26.08.0.tar.xz) = 30536 bytes
 +SHA256 (svgpart-26.08.2.tar.xz) = 9f6a7a4d93e702102cf9c303feddc87e54deeef6642be165ec7fb16819db321a
 +Size (svgpart-26.08.2.tar.xz) = 30516 bytes
---- a/pkgsrc/mail/akonadi/distinfo
-+++ b/pkgsrc/mail/akonadi/distinfo
+--- a/mail/akonadi/distinfo
++++ b/mail/akonadi/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (akonadi-26.08.0.tar.xz) = a3fb37e5cddf70ea4d7953f1cb3995dcff0a4d3a01cf0776b11ee6f33df31224
 -SHA512 (akonadi-26.08.0.tar.xz) = 8436742cd8336201a045a351f7e2a16588c9cef1b82c1d53f0331c9660644f841ce37523173ae2de145ae96ed9daeaca39ff857973f4d820f8120d4e967b25c0
 -Size (akonadi-26.08.0.tar.xz) = 1795084 bytes
 +SHA256 (akonadi-26.08.2.tar.xz) = 85746817161152a3c887c32caabaf2163396796f2ad8fc3ac638e2c91f4b0fbd
 +Size (akonadi-26.08.2.tar.xz) = 1796372 bytes
---- a/pkgsrc/mail/akonadi-import-wizard/distinfo
-+++ b/pkgsrc/mail/akonadi-import-wizard/distinfo
+--- a/mail/akonadi-import-wizard/distinfo
++++ b/mail/akonadi-import-wizard/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (akonadi-import-wizard-26.08.0.tar.xz) = c222a501d311bbc047bc1eba861f04e62ad3c5f5652f55fee763190e598727d3
 -SHA512 (akonadi-import-wizard-26.08.0.tar.xz) = 9f56bbaa66c7408620d32c4c407170be0948e821deb68e2cdc3525a35f9aaa15c46a4f60a78dad908d5e239e66aecfbbb6cd1dbb382932cf55105257d984c96c
 -Size (akonadi-import-wizard-26.08.0.tar.xz) = 501240 bytes
 +SHA256 (akonadi-import-wizard-26.08.2.tar.xz) = 9bc59de4ff00b6486ded21a52b96d334128ad7b283266da81be23da9ebde53bd
 +Size (akonadi-import-wizard-26.08.2.tar.xz) = 501296 bytes
---- a/pkgsrc/mail/akonadi-mime/distinfo
-+++ b/pkgsrc/mail/akonadi-mime/distinfo
+--- a/mail/akonadi-mime/distinfo
++++ b/mail/akonadi-mime/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (akonadi-mime-26.08.0.tar.xz) = 618200c9352a7cfbe68d3158f66a30a5c184ee20cf073531e467db988fd83f65
 -SHA512 (akonadi-mime-26.08.0.tar.xz) = 7a6121f56a44bad0cad33897522be5b346ba3fc300d2c29a56b46b8764793bac1f1941df886aa733f89602504a4fbedf8c913b4fec2c364dc558121c7c36481b
 -Size (akonadi-mime-26.08.0.tar.xz) = 185572 bytes
 +SHA256 (akonadi-mime-26.08.2.tar.xz) = 1f260c099b01ff5eefcba3c9d706b7ece17b251a5719afa43d8f40cdef0daaf5
 +Size (akonadi-mime-26.08.2.tar.xz) = 185588 bytes
---- a/pkgsrc/mail/kimap/distinfo
-+++ b/pkgsrc/mail/kimap/distinfo
+--- a/mail/kimap/distinfo
++++ b/mail/kimap/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kimap-26.08.0.tar.xz) = 4bc39a449e55cb3dc52df03404ae7b466b218032e2174105c3ab9587d8adccf2
 -SHA512 (kimap-26.08.0.tar.xz) = f2d91e590ffe911a4cf9cb191cdd282a9174fdbf4662c485f54a92dbe1878d6acdb6c1e753fb515e230ce0db86147b4770b164a2e79e814b0d36bf1a7dca499f
 -Size (kimap-26.08.0.tar.xz) = 146928 bytes
 +SHA256 (kimap-26.08.2.tar.xz) = 7315fcb0c0b213275378229b7b31a4239acd398ffbf68fd494cb3aa662a51e91
 +Size (kimap-26.08.2.tar.xz) = 146936 bytes
---- a/pkgsrc/mail/kmail/distinfo
-+++ b/pkgsrc/mail/kmail/distinfo
+--- a/mail/kmail/distinfo
++++ b/mail/kmail/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kmail-26.08.0.tar.xz) = 079850f03b76d208dfcb81e932a499bfb4e1a7cd3a340cfc0f05b49f49acf793
 -SHA512 (kmail-26.08.0.tar.xz) = 691d301bb31c0e0585c129c00a42776e75b8a8959414b6f7485dd54d623639e9fd9335c00d60c7d03404830cb9919ab39109ba542e8f6b6a9b0ad314f339e1aa
 -Size (kmail-26.08.0.tar.xz) = 7841200 bytes
 +SHA256 (kmail-26.08.2.tar.xz) = 107c5b3a4c605250f76073c01e0e8eb73cfac969bd853d2e1fddd011c94f4e78
 +Size (kmail-26.08.2.tar.xz) = 7842120 bytes
---- a/pkgsrc/mail/kmail-account-wizard/distinfo
-+++ b/pkgsrc/mail/kmail-account-wizard/distinfo
+--- a/mail/kmail-account-wizard/distinfo
++++ b/mail/kmail-account-wizard/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kmail-account-wizard-26.08.0.tar.xz) = cd2b01ef9e87bc744643493d80b3a131ec2ba2c2ef8ad857f61d0068b4f3e1cc
 -SHA512 (kmail-account-wizard-26.08.0.tar.xz) = 0a0e026f437d50ec19fe20f32d92805f8d9b5fb1b5e932d0d2077265737e03bc5136627e3bc3980d201bc9f9c038878a341001d49dc9bdaa9f2e4f7ac8efd702
 -Size (kmail-account-wizard-26.08.0.tar.xz) = 175340 bytes
 +SHA256 (kmail-account-wizard-26.08.2.tar.xz) = 12c80011c79bd9df7a452d911086fe63164e4a51fdc2749c366b51404b21a980
 +Size (kmail-account-wizard-26.08.2.tar.xz) = 175408 bytes
---- a/pkgsrc/mail/kmailtransport/distinfo
-+++ b/pkgsrc/mail/kmailtransport/distinfo
+--- a/mail/kmailtransport/distinfo
++++ b/mail/kmailtransport/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kmailtransport-26.08.0.tar.xz) = 0d8a654547b7f3a1a6357ae337a52f446d3983ce1ec41de3fdbb2637f34123a1
 -SHA512 (kmailtransport-26.08.0.tar.xz) = 84dcd83a1aafbc620e9ac396f8b438bb773658fe991c0894e4dbd3323dedb51b3bed312b5c401adce6e31bd8d5b8071428d451bd025a6b464b19eb2127194604
 -Size (kmailtransport-26.08.0.tar.xz) = 202332 bytes
 +SHA256 (kmailtransport-26.08.2.tar.xz) = 8dae63e06e2014f03b7e6002a8dcf9bc5323173ac0e12a66ce63cb71aafecacb
 +Size (kmailtransport-26.08.2.tar.xz) = 202380 bytes
---- a/pkgsrc/mail/kmbox/distinfo
-+++ b/pkgsrc/mail/kmbox/distinfo
+--- a/mail/kmbox/distinfo
++++ b/mail/kmbox/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kmbox-26.08.0.tar.xz) = 82ead60c00f40e787a20e05ccfc74580c958b4440f7fa8aae8e1b7c6a6eeb92e
 -SHA512 (kmbox-26.08.0.tar.xz) = 7a8e337be656e0ea32d1f2651f13c529b7bc1fb835ad8877ca05998ae64cbf3c952a4bcbe8c60ddcc9e333b1f374ffbe6220049bba7a576fa1848a91e006ddca
 -Size (kmbox-26.08.0.tar.xz) = 38776 bytes
 +SHA256 (kmbox-26.08.2.tar.xz) = a4b08915584d0b7ec5fa28adae1eb3d0bc63a1d95f15e40bfae529505d0307a5
 +Size (kmbox-26.08.2.tar.xz) = 38768 bytes
---- a/pkgsrc/mail/ksmtp/distinfo
-+++ b/pkgsrc/mail/ksmtp/distinfo
+--- a/mail/ksmtp/distinfo
++++ b/mail/ksmtp/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (ksmtp-26.08.0.tar.xz) = ea0596547f83ae5c39acdd1dae137fb4a4013ba46bb8da87f0f6ecbb950e86eb
 -SHA512 (ksmtp-26.08.0.tar.xz) = 66675ed62354298cac1d633cea810c859e2b6cece9f00536dc062e9cf09ed1902eb8fd37d884aba10baf3a02940b501bce891c11f517f2cd10bbb360ea0e19d7
 -Size (ksmtp-26.08.0.tar.xz) = 65160 bytes
 +SHA256 (ksmtp-26.08.2.tar.xz) = 8d948815bbcd7f4f5c3f19e31651124e36771df19c2bd10cd68763023d24b1e5
 +Size (ksmtp-26.08.2.tar.xz) = 65272 bytes
---- a/pkgsrc/mail/ktnef/distinfo
-+++ b/pkgsrc/mail/ktnef/distinfo
+--- a/mail/ktnef/distinfo
++++ b/mail/ktnef/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (ktnef-26.08.0.tar.xz) = 4df4bba02dfffdd776b34413d3e2aff0689327ceb322449376bc95cf4443dcc2
 -SHA512 (ktnef-26.08.0.tar.xz) = b5db70a8acdecb551feadffeb50f66667d2ea38494cd55c8eba42a259c0ec4b47bc0e60848747786e2c782affb8a4ee2f40279075b2a8af5653eb7468786ea64
 -Size (ktnef-26.08.0.tar.xz) = 323404 bytes
 +SHA256 (ktnef-26.08.2.tar.xz) = 07950712fee0b4965405ce0498e66505adf9c850fd2a7463111c38a474866ad8
 +Size (ktnef-26.08.2.tar.xz) = 323488 bytes
---- a/pkgsrc/mail/libksieve/distinfo
-+++ b/pkgsrc/mail/libksieve/distinfo
+--- a/mail/libksieve/distinfo
++++ b/mail/libksieve/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (libksieve-26.08.0.tar.xz) = 8b055a1e6b4b7b76cedc61b8293317db44d95f807e922c3a666df43358b2d7b5
 -SHA512 (libksieve-26.08.0.tar.xz) = 86cecc7678c70f859081e8d0ca02ed4c37f7790bb9d4de4ed04eca46f99515532526049e040eb92e518e600ab0fb3451bd9fdc42200d2c737084da8878e21f1c
 -Size (libksieve-26.08.0.tar.xz) = 646540 bytes
 +SHA256 (libksieve-26.08.2.tar.xz) = 24dd338c7215cc2031df011edba818a1bfb158189f71f17e6e4286534b716c54
 +Size (libksieve-26.08.2.tar.xz) = 650476 bytes
---- a/pkgsrc/mail/mailcommon/distinfo
-+++ b/pkgsrc/mail/mailcommon/distinfo
+--- a/mail/mailcommon/distinfo
++++ b/mail/mailcommon/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (mailcommon-26.08.0.tar.xz) = b2f8a0c48ed607022e665f164f2e3e47cd8170f5f821555b17457c9b9a76ef38
 -SHA512 (mailcommon-26.08.0.tar.xz) = ae6a47adfd3a1d4124c181a9a90f900c90e6c70b7bbcaef9bd643a3cb7984981a9d2ba4ef76527f8639215af642594275412d394d18529e89e8a240cc396e103
 -Size (mailcommon-26.08.0.tar.xz) = 847604 bytes
 +SHA256 (mailcommon-26.08.2.tar.xz) = a69a2c7c613ad1378c8bc31e89dc5394101534db64d9d83d9afa6f3ab85b39d8
 +Size (mailcommon-26.08.2.tar.xz) = 847532 bytes
---- a/pkgsrc/mail/mailimporter/distinfo
-+++ b/pkgsrc/mail/mailimporter/distinfo
+--- a/mail/mailimporter/distinfo
++++ b/mail/mailimporter/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (mailimporter-26.08.0.tar.xz) = 0906d055f1d389e91d3697029b20d33dc45913302b76de88c706028170c581d0
 -SHA512 (mailimporter-26.08.0.tar.xz) = 8d4e082e3df9259ebf39feab8b6cfc2a80b997e17bdcd33546d79884b1c57fbce18e68e32290c5f58dbf4fe6715e79fcce33a620db6c85b9ac8aec689719b16b
 -Size (mailimporter-26.08.0.tar.xz) = 612760 bytes
 +SHA256 (mailimporter-26.08.2.tar.xz) = 7badf1e23f8a3660f20d9e36397bc6015dc70c0ba51825fd6f47ed405a55853c
 +Size (mailimporter-26.08.2.tar.xz) = 612832 bytes
---- a/pkgsrc/mail/mbox-importer/distinfo
-+++ b/pkgsrc/mail/mbox-importer/distinfo
+--- a/mail/mbox-importer/distinfo
++++ b/mail/mbox-importer/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (mbox-importer-26.08.0.tar.xz) = 512ac354eb5533122f46624351867c0591eac32f553276de458ec92dbf980821
 -SHA512 (mbox-importer-26.08.0.tar.xz) = 908c37a581c1d2d54376a8eb04c1a3ce96283b137e467e0f12aa4f165d70bd657715dcc1b85d9a108cdd325b0866cf2ffc53a1c64fc833ec8a42fbade1689131
 -Size (mbox-importer-26.08.0.tar.xz) = 35580 bytes
 +SHA256 (mbox-importer-26.08.2.tar.xz) = 48ef7b90a7ce35fe2253d262d17e7d74f78391bc566048bf521450e491f8b65d
 +Size (mbox-importer-26.08.2.tar.xz) = 35596 bytes
---- a/pkgsrc/mail/mimetreeparser/distinfo
-+++ b/pkgsrc/mail/mimetreeparser/distinfo
+--- a/mail/mimetreeparser/distinfo
++++ b/mail/mimetreeparser/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (mimetreeparser-26.08.0.tar.xz) = 03498dceffa0a9c2322372fa404780090002cdc89cee1289ce08d0c6a8da417a
 -SHA512 (mimetreeparser-26.08.0.tar.xz) = 53e36a196bbed23ae8fb55574242cacd5865dca78099653997d759211ade06c16ea9bd4b76bab662f8c24d296464c9e2b7f18e161497e1ec81a3a88c2c8aace4
 -Size (mimetreeparser-26.08.0.tar.xz) = 708560 bytes
 +SHA256 (mimetreeparser-26.08.2.tar.xz) = 82b4e37cb59b7264ef13b6e8c18be7d59666f4cbfb51b5ae0f1d7ab6ea35cd09
 +Size (mimetreeparser-26.08.2.tar.xz) = 709272 bytes
---- a/pkgsrc/mail/pim-sieve-editor/distinfo
-+++ b/pkgsrc/mail/pim-sieve-editor/distinfo
+--- a/mail/pim-sieve-editor/distinfo
++++ b/mail/pim-sieve-editor/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (pim-sieve-editor-26.08.0.tar.xz) = 87c07e77f8d8f6da4ad13295d32c224c8f3bb1fa389e2d2ce979264c723c9211
 -SHA512 (pim-sieve-editor-26.08.0.tar.xz) = de03fe2cd0ed8e471df36f2b5e6ed5250fce33e1575fc461e012e62e65982af265ad14ccb0df52a41dba6ad0399a91df8240db178f837f04bd8435996e5e2442
 -Size (pim-sieve-editor-26.08.0.tar.xz) = 490444 bytes
 +SHA256 (pim-sieve-editor-26.08.2.tar.xz) = f7f24d4c0496ee4565abc6821a3b353f7d6b7d5994f247820427243ecafd551c
 +Size (pim-sieve-editor-26.08.2.tar.xz) = 490784 bytes
---- a/pkgsrc/math/analitza/distinfo
-+++ b/pkgsrc/math/analitza/distinfo
+--- a/math/analitza/distinfo
++++ b/math/analitza/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (analitza-26.08.0.tar.xz) = 88a892f57fd253b452444f64db0246d56f94d14e91b632b17b47cc266bed9b66
 -SHA512 (analitza-26.08.0.tar.xz) = 3d581f991c69f5267c12f3e86cbbe06ab2bff938f9064abc5f6654e3cc01ba5614ea248e7d60792b8374fdbcb3154c24edb1bfd8e752bed568898f599fec4732
 -Size (analitza-26.08.0.tar.xz) = 370804 bytes
 +SHA256 (analitza-26.08.2.tar.xz) = f96d4eccc2057d70fa55da6829428e2a298eebe859262dea2a268c44ccfaa309
 +Size (analitza-26.08.2.tar.xz) = 370812 bytes
---- a/pkgsrc/math/cantor/distinfo
-+++ b/pkgsrc/math/cantor/distinfo
+--- a/math/cantor/distinfo
++++ b/math/cantor/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (cantor-26.08.0.tar.xz) = 6938f5084e20d883d6693e24cc8b2ce49f698b5a0e549a61bd9c1ed0334f2f09
 -SHA512 (cantor-26.08.0.tar.xz) = 066cb9bd9107b86d78e5ac1292c0cfd74e9e56ec960fc59bf9ff253b743db04ff0500abcfedbb61103876008808b10b0ff546bcb1d7f18d7dd6e1994f450f4fb
 -Size (cantor-26.08.0.tar.xz) = 10922960 bytes
 +SHA256 (cantor-26.08.2.tar.xz) = bb56336175e90870290e7432f35049ac50563a4dbbb9102efe7696af807b4377
 +Size (cantor-26.08.2.tar.xz) = 10925964 bytes
---- a/pkgsrc/math/kalgebra/distinfo
-+++ b/pkgsrc/math/kalgebra/distinfo
+--- a/math/kalgebra/distinfo
++++ b/math/kalgebra/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kalgebra-26.08.0.tar.xz) = d66a715bf546f3a8e967d0a93ab41e7de45373e10f702bad071a2d21795def1f
 -SHA512 (kalgebra-26.08.0.tar.xz) = 54f5357ffc6c123385e9d32353f28709264ac9722ca19f60aab4d27e75371554b5dee246dc7d9d51799ea329663e4896ba31a2d45e06cca60eff4f05208e7a8f
 -Size (kalgebra-26.08.0.tar.xz) = 952216 bytes
 +SHA256 (kalgebra-26.08.2.tar.xz) = be6c855220291d3b850bf0302f19283081358718896794fb1de18cd56bb66b5d
 +Size (kalgebra-26.08.2.tar.xz) = 952252 bytes
---- a/pkgsrc/math/kcalc/distinfo
-+++ b/pkgsrc/math/kcalc/distinfo
+--- a/math/kcalc/distinfo
++++ b/math/kcalc/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kcalc-26.08.0.tar.xz) = 164ee722f7eb3db682eb3a03f88550fbf762435c84b092b61e5cac524e4b37b0
 -SHA512 (kcalc-26.08.0.tar.xz) = 3d34535ac3fa3e85f368e6d609c1c0519e80524362115647e57197235bb993ef73ca5ea3c54700981a4c8d7b61d2bcecde531e57819cd89ca5201acca6c39720
 -Size (kcalc-26.08.0.tar.xz) = 488628 bytes
 +SHA256 (kcalc-26.08.2.tar.xz) = de987e8c7bbd261e858ab400089d333e65c5558fcad384214b3097446ff925fa
 +Size (kcalc-26.08.2.tar.xz) = 489640 bytes
---- a/pkgsrc/misc/akonadi-contacts/distinfo
-+++ b/pkgsrc/misc/akonadi-contacts/distinfo
+--- a/misc/akonadi-contacts/distinfo
++++ b/misc/akonadi-contacts/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (akonadi-contacts-26.08.0.tar.xz) = 892143191dac62930dc465492487d84f1d3bdaace1ddeec135a56aaf7431bc51
 -SHA512 (akonadi-contacts-26.08.0.tar.xz) = 98983b4e19e9a2a93286c658d5127f4d13137778fbd461c51d7901306b9a112f49676bfaa33730015a1b0e8d05979ca3455f22c658575b1c0ded82e027c9c59a
 -Size (akonadi-contacts-26.08.0.tar.xz) = 446336 bytes
 +SHA256 (akonadi-contacts-26.08.2.tar.xz) = 18e5ae5796fba0bcc9e196b1e4afc52d704da067d4567aec9b0013e02f3fcb0f
 +Size (akonadi-contacts-26.08.2.tar.xz) = 446388 bytes
---- a/pkgsrc/misc/akonadi-search/distinfo
-+++ b/pkgsrc/misc/akonadi-search/distinfo
+--- a/misc/akonadi-search/distinfo
++++ b/misc/akonadi-search/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (akonadi-search-26.08.0.tar.xz) = 617708d26733c371141d434c255ae9b64bc0ff986bc49f70e81b26481b2fed6a
 -SHA512 (akonadi-search-26.08.0.tar.xz) = 29dca17cdf697b3a3d4f74b9fd59c4a409d7fe49c1384cf66135a2859a456e3a10de9a390984340fcbf0dc8fa1c7566a6123c245332c77083da7a1d2d77995b0
 -Size (akonadi-search-26.08.0.tar.xz) = 125604 bytes
 +SHA256 (akonadi-search-26.08.2.tar.xz) = 7508de35606f31bd9cfa2804a3686f232e50721cf7ad206603bdfc2b8bc48dca
 +Size (akonadi-search-26.08.2.tar.xz) = 125612 bytes
---- a/pkgsrc/misc/akonadiconsole/distinfo
-+++ b/pkgsrc/misc/akonadiconsole/distinfo
+--- a/misc/akonadiconsole/distinfo
++++ b/misc/akonadiconsole/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (akonadiconsole-26.08.0.tar.xz) = 81c04f7948a58a96502b63f35823ee847d447f820bbe3960e54ecc6f76a6acf1
 -SHA512 (akonadiconsole-26.08.0.tar.xz) = 754f28404002ad5daaaf40ebac2637bdbde215c1cef9696c6c4de0088fbc17a8e601af00de1611029b58d892b6e28dd83df4d01bf7da4a51ee03b16e6700a9e1
 -Size (akonadiconsole-26.08.0.tar.xz) = 338108 bytes
 +SHA256 (akonadiconsole-26.08.2.tar.xz) = 2d1fe95758b1878460e91b60bc65267486db308e52199a90f60ef54703210949
 +Size (akonadiconsole-26.08.2.tar.xz) = 338144 bytes
---- a/pkgsrc/misc/eventviews/distinfo
-+++ b/pkgsrc/misc/eventviews/distinfo
+--- a/misc/eventviews/distinfo
++++ b/misc/eventviews/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (eventviews-26.08.0.tar.xz) = 2f1f9771ee9fa8a54f5a87226701637ae87109b567cf84747bcd57c549302be7
 -SHA512 (eventviews-26.08.0.tar.xz) = fd1aeb635be2bd617a75dea517b70d8776e1eb3b01224951c3beb158b3994e91425c09b22b9c376ed004986b1a5bc379f87990234a4a5a5230a46c524eaf66bf
 -Size (eventviews-26.08.0.tar.xz) = 564836 bytes
 +SHA256 (eventviews-26.08.2.tar.xz) = e1c4e943f2e7cbde55639bb32822df80377f9d3cffd5f6a1c618dd91bb77117a
 +Size (eventviews-26.08.2.tar.xz) = 565596 bytes
---- a/pkgsrc/misc/grantlee-editor/distinfo
-+++ b/pkgsrc/misc/grantlee-editor/distinfo
+--- a/misc/grantlee-editor/distinfo
++++ b/misc/grantlee-editor/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (grantlee-editor-26.08.0.tar.xz) = 657afc8a1117745ff7ff7f88e972178db54687e6286737ef6bc26cc841ca280f
 -SHA512 (grantlee-editor-26.08.0.tar.xz) = e90ab1980bb450ea788374dea7f2e5da070e65961837ddd1c701374fd8bc8b25fea1d43ffbfdfc9a5e1af6f2a4503cd80c2ab779999031c1825ba3b66a37b082
 -Size (grantlee-editor-26.08.0.tar.xz) = 134384 bytes
 +SHA256 (grantlee-editor-26.08.2.tar.xz) = dadb8a1227ce7a30119b426a82fba0eab18cf08eea1ec20c09dc105ffd830ecc
 +Size (grantlee-editor-26.08.2.tar.xz) = 134660 bytes
---- a/pkgsrc/misc/grantleetheme/distinfo
-+++ b/pkgsrc/misc/grantleetheme/distinfo
+--- a/misc/grantleetheme/distinfo
++++ b/misc/grantleetheme/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (grantleetheme-26.08.0.tar.xz) = dc2f13fce3c04d09442d1ebd984c4f6f74c7533eb69d0b94863e974dde43f6a8
 -SHA512 (grantleetheme-26.08.0.tar.xz) = d4839ba4d31c6184608f70d84526d114d13c7a8b6d2a3dde6eab3ba34d7b9f9dcc5692d0c51559697007070c81dcb648ea310c47a787ec8b096ae6cedcb61c68
 -Size (grantleetheme-26.08.0.tar.xz) = 70080 bytes
 +SHA256 (grantleetheme-26.08.2.tar.xz) = f1db182d421beca76c329cad016cd1f044d4087338141615d646af85fc634634
 +Size (grantleetheme-26.08.2.tar.xz) = 70084 bytes
---- a/pkgsrc/misc/incidenceeditor/distinfo
-+++ b/pkgsrc/misc/incidenceeditor/distinfo
+--- a/misc/incidenceeditor/distinfo
++++ b/misc/incidenceeditor/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (incidenceeditor-26.08.0.tar.xz) = cadc8ce7c39f9c8cd5f14049a8ad99c2e026a82a00c3631690dbe1343737525b
 -SHA512 (incidenceeditor-26.08.0.tar.xz) = fd923a3089f764d516d169da196e4e47954d9db6805fd49cdbae66c9ae0d5a2edb13770e53a4b480681e7679575242b783fe58d5f5934365bd2adcde5255e462
 -Size (incidenceeditor-26.08.0.tar.xz) = 624176 bytes
 +SHA256 (incidenceeditor-26.08.2.tar.xz) = 72dda66668811e612dd3b63b047130e4ac242d98f3c8262a7b810f13c5612c78
 +Size (incidenceeditor-26.08.2.tar.xz) = 624372 bytes
---- a/pkgsrc/misc/kaddressbook/distinfo
-+++ b/pkgsrc/misc/kaddressbook/distinfo
+--- a/misc/kaddressbook/distinfo
++++ b/misc/kaddressbook/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kaddressbook-26.08.0.tar.xz) = f77af352cef8b06153b3532c80cf42b4ba74ef43dad9c114ee77179f27f88e91
 -SHA512 (kaddressbook-26.08.0.tar.xz) = ba96908a41ce5ee4ff633814bb307fe261f5ad766095e9795c51e10656da8c72a5dbfa5ec6be1772412b022b19d9364a24ac9105a289473ea50c35ce9dbe1960
 -Size (kaddressbook-26.08.0.tar.xz) = 3462604 bytes
 +SHA256 (kaddressbook-26.08.2.tar.xz) = 8d593ad344471cc9a7b0d3ef9d7a57d5299745c5adedd0676b9dc70d3e432376
 +Size (kaddressbook-26.08.2.tar.xz) = 3463888 bytes
---- a/pkgsrc/misc/kalzium/distinfo
-+++ b/pkgsrc/misc/kalzium/distinfo
+--- a/misc/kalzium/distinfo
++++ b/misc/kalzium/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kalzium-26.08.0.tar.xz) = f1bec684d95bf4d7c35ae2696633e4b907563947ce156be8f5406fefa08a764c
 -SHA512 (kalzium-26.08.0.tar.xz) = 6cad1a7da3207af0aa0676fbd3472c96181690ba76e73391afc8779c774b10f4096250cd58ea723e707bf8f3b2e70afc3590a909bab00c8654c6390ce80ec8aa
 -Size (kalzium-26.08.0.tar.xz) = 22775760 bytes
 +SHA256 (kalzium-26.08.2.tar.xz) = cc1cb37ef27e8e2bc3e11eb51260b87e05cf0dc37754cf98b2cbb59ed07e65af
 +Size (kalzium-26.08.2.tar.xz) = 22776048 bytes
---- a/pkgsrc/misc/kbruch/distinfo
-+++ b/pkgsrc/misc/kbruch/distinfo
+--- a/misc/kbruch/distinfo
++++ b/misc/kbruch/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kbruch-26.08.0.tar.xz) = f3c6d34dd206c7c5b8243deed4044514c857f4ce3da5e628d3f171aca5cee831
 -SHA512 (kbruch-26.08.0.tar.xz) = 8fc6133335ce9158b4bb3fe1b96464eceede3a06835634338dc2e3bacfd7a7909ab8879d9938579bb26f313ba818ee70c1c5a0f988cbb2cbdb18ded148c0a3c2
 -Size (kbruch-26.08.0.tar.xz) = 5161080 bytes
 +SHA256 (kbruch-26.08.2.tar.xz) = 3ffa56674d13436414c4a5097b61ebe3daefd9019b971d47a02ba3cf367dfa1f
 +Size (kbruch-26.08.2.tar.xz) = 5160988 bytes
---- a/pkgsrc/misc/kcharselect/distinfo
-+++ b/pkgsrc/misc/kcharselect/distinfo
+--- a/misc/kcharselect/distinfo
++++ b/misc/kcharselect/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kcharselect-26.08.0.tar.xz) = 116d1f8fe47fc4fd8209ad74ae7e409038b8d161e617bc1a0bbf5bc96709d9b8
 -SHA512 (kcharselect-26.08.0.tar.xz) = 7bd0285d51c8551778b9965a56c7c6f6b9a6b676c00d8a63b4d5ffdd6e91048d68466ab3140eb92c433e5fc2d1c1debcdce3faa2e1bd4afce1428115a28243c9
 -Size (kcharselect-26.08.0.tar.xz) = 478656 bytes
 +SHA256 (kcharselect-26.08.2.tar.xz) = ce50299a111f8a6e346a52cbf65d77c90d991fb94c5219a19d339e17a6b3fa9b
 +Size (kcharselect-26.08.2.tar.xz) = 479372 bytes
---- a/pkgsrc/misc/kdeedu-data/distinfo
-+++ b/pkgsrc/misc/kdeedu-data/distinfo
+--- a/misc/kdeedu-data/distinfo
++++ b/misc/kdeedu-data/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kdeedu-data-26.08.0.tar.xz) = a9989c8ae22d86f08d328ca056a89fd1dfa3879b2a73d2bebdcac273f1106762
 -SHA512 (kdeedu-data-26.08.0.tar.xz) = bc20db947661f10040e7b84766edffefb62c966f5ec568449aaea1e72ddff723772207b98669294c47a5717e4c261c959617d028404e2a3c05f58dd3d04ed03a
 -Size (kdeedu-data-26.08.0.tar.xz) = 338692 bytes
 +SHA256 (kdeedu-data-26.08.2.tar.xz) = 3d2f1134bea020a0d237d186dc3b30ef69f6c313a2ca31d020b6797bdeae1813
 +Size (kdeedu-data-26.08.2.tar.xz) = 338840 bytes
---- a/pkgsrc/misc/kdepim-runtime/distinfo
-+++ b/pkgsrc/misc/kdepim-runtime/distinfo
+--- a/misc/kdepim-runtime/distinfo
++++ b/misc/kdepim-runtime/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kdepim-runtime-26.08.0.tar.xz) = e5eb6bc859a0cf25270221dbd179fbfeda5beed9c42ef4a7f5446e35f9750d3a
 -SHA512 (kdepim-runtime-26.08.0.tar.xz) = 067664fcfc6c3c3c8a788880c06cd3f2e9a914e285b900f41b693042733e945ebc455f86ac9a609642aadf2047e85d00425da808a56bf90da682bfc042ae9737
 -Size (kdepim-runtime-26.08.0.tar.xz) = 2363388 bytes
 +SHA256 (kdepim-runtime-26.08.2.tar.xz) = e9e27465fa9fdfdd068fff18e52f62118c76df62b44e49a969f891d6b4717e1a
 +Size (kdepim-runtime-26.08.2.tar.xz) = 2366652 bytes
---- a/pkgsrc/misc/kdialog/distinfo
-+++ b/pkgsrc/misc/kdialog/distinfo
+--- a/misc/kdialog/distinfo
++++ b/misc/kdialog/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kdialog-26.08.0.tar.xz) = 00be02d85a9adf257aa02f28a70edf0ba9643d0b45e6fee5a6e074161c8db10c
 -SHA512 (kdialog-26.08.0.tar.xz) = 162e0e3bc57caea1ae38c949f2faad815a0396ca582b93ee86f3f762cd4b11526fea3ea067711245dcd8cc7b3a1993933a525408be1bb539ffc14060561ab423
 -Size (kdialog-26.08.0.tar.xz) = 149884 bytes
 +SHA256 (kdialog-26.08.2.tar.xz) = ed4a6fde2832d2c0265c855b2a871a6b2bb5a22a1949edaed67f44dbda84bf20
 +Size (kdialog-26.08.2.tar.xz) = 150364 bytes
---- a/pkgsrc/misc/keditbookmarks/distinfo
-+++ b/pkgsrc/misc/keditbookmarks/distinfo
+--- a/misc/keditbookmarks/distinfo
++++ b/misc/keditbookmarks/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (keditbookmarks-26.08.0.tar.xz) = da67a2d1e59df0a0d81ee698c77d4d454a1c95090d83951cb681580f1cd4edb4
 -SHA512 (keditbookmarks-26.08.0.tar.xz) = a7ab4c8c1daa392d4845a24f55570e1580571b34218e82c25a4bb66fc75590351903f5bf205f6ccb95df4d86e88d3ba8528b830ad69c7f77d7b0892f7d85a8da
 -Size (keditbookmarks-26.08.0.tar.xz) = 262428 bytes
 +SHA256 (keditbookmarks-26.08.2.tar.xz) = 54c34c25296767d7e783596e4de333c83fd2a1f3ca04af70aa1fb987bd77e319
 +Size (keditbookmarks-26.08.2.tar.xz) = 262532 bytes
---- a/pkgsrc/misc/kfind/distinfo
-+++ b/pkgsrc/misc/kfind/distinfo
+--- a/misc/kfind/distinfo
++++ b/misc/kfind/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kfind-26.08.0.tar.xz) = cd406a8b9f73db2fc7b24deb02be657658256fde5361be33aef9504d03d9d7f5
 -SHA512 (kfind-26.08.0.tar.xz) = 4317ec6a6c03b6df4139da45db83bc452cde6acb91021ba64376be15ed6a9756f853fb38ec8157813425d89f5791b5e58f37b011129035e9530a98fbdc62bb62
 -Size (kfind-26.08.0.tar.xz) = 338424 bytes
 +SHA256 (kfind-26.08.2.tar.xz) = 9640e7cd647da25c4b5b1549016f424a3d5b722751b23366d710849cd14d05c5
 +Size (kfind-26.08.2.tar.xz) = 338684 bytes
---- a/pkgsrc/misc/kgeography/distinfo
-+++ b/pkgsrc/misc/kgeography/distinfo
+--- a/misc/kgeography/distinfo
++++ b/misc/kgeography/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kgeography-26.08.0.tar.xz) = eb5b42b994c6ef6d63f0b48f2bae0ab4429860ebd161a7f314e7ab6e903695d1
 -SHA512 (kgeography-26.08.0.tar.xz) = 0be862bf40d98dbc58bea9d5159ae4ee60cfd673b55ab994f2520790f81656070ad5cec18b4d73094c2c1539f841a9a53c67c696483160d15d06229f04efd34d
 -Size (kgeography-26.08.0.tar.xz) = 12474624 bytes
 +SHA256 (kgeography-26.08.2.tar.xz) = fde7bd9e275786e60118390cf0d10696413c404e07725b420559ecdbafaaee4d
 +Size (kgeography-26.08.2.tar.xz) = 12474916 bytes
---- a/pkgsrc/misc/khelpcenter/distinfo
-+++ b/pkgsrc/misc/khelpcenter/distinfo
+--- a/misc/khelpcenter/distinfo
++++ b/misc/khelpcenter/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (khelpcenter-26.08.0.tar.xz) = 15b10dbc199058a022caa180c0b65a98e3959420027d6beaadae543fa11b3a25
 -SHA512 (khelpcenter-26.08.0.tar.xz) = 85d78c37f5c2a24001def5de6d3bb8c18c4bc7ec9c477dbebe421bc35ae5c42076ff1fb920b59caa6f8eb7e180074d8f68cde0addeb358b13d09ba5444ea27aa
 -Size (khelpcenter-26.08.0.tar.xz) = 4261476 bytes
 +SHA256 (khelpcenter-26.08.2.tar.xz) = 3be3417b8326ee49a02e83a6187698d777207f97d2ed8973b3375524798eb44c
 +Size (khelpcenter-26.08.2.tar.xz) = 4261652 bytes
---- a/pkgsrc/misc/kidentitymanagement/distinfo
-+++ b/pkgsrc/misc/kidentitymanagement/distinfo
+--- a/misc/kidentitymanagement/distinfo
++++ b/misc/kidentitymanagement/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kidentitymanagement-26.08.0.tar.xz) = b454c17f45a2368525c002516e131d9bc9621715c7a0a96474a866f712200165
 -SHA512 (kidentitymanagement-26.08.0.tar.xz) = fec775778df4443a1e0140b9862fc0ea181bee81e4bb3edb926c70b34ce7db93046265b7eb9635f49fb23507e2c3932b89c4a767f0ae80652f7a3a9e35651bc1
 -Size (kidentitymanagement-26.08.0.tar.xz) = 210488 bytes
 +SHA256 (kidentitymanagement-26.08.2.tar.xz) = f1448f9ab0de1eaa5a8a52e5938004c61710051ce2994cc3b6d1db9fa159c208
 +Size (kidentitymanagement-26.08.2.tar.xz) = 210452 bytes
---- a/pkgsrc/misc/kig/distinfo
-+++ b/pkgsrc/misc/kig/distinfo
+--- a/misc/kig/distinfo
++++ b/misc/kig/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kig-26.08.0.tar.xz) = bcb1d13fdde0e1fb1a58b6b5179e8df9e84005e493cdd094343d72f1bdfe031d
 -SHA512 (kig-26.08.0.tar.xz) = 2b0401df14162d1191b5ea46bef3fe0df15a283ae8ebcef93a7ae661a8ef56c738e90372feee4e80dd857394a86b8d82728750e8f453ec4fe4a5edb26aa377f7
 -Size (kig-26.08.0.tar.xz) = 3269792 bytes
 +SHA256 (kig-26.08.2.tar.xz) = 6bde399423484c74ceee2aac22841ba761b82d7e388bc0a6eb69710bd8efcaa2
 +Size (kig-26.08.2.tar.xz) = 3269684 bytes
---- a/pkgsrc/misc/kiten/distinfo
-+++ b/pkgsrc/misc/kiten/distinfo
+--- a/misc/kiten/distinfo
++++ b/misc/kiten/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kiten-26.08.0.tar.xz) = b25dfe8dc45aebdd97df99823fad60638d8d9f7b0c943f71727f956de0cb243c
 -SHA512 (kiten-26.08.0.tar.xz) = 7a0986d6f4d7700bb258014b932b2b527320efcfd0eb45ef229df356d0be4b3eedf1b97fce7056b84ab12f21126af6097818c8454b971c966cd926a659f2b906
 -Size (kiten-26.08.0.tar.xz) = 11316312 bytes
 +SHA256 (kiten-26.08.2.tar.xz) = ee07e3450dd835f86ec15bfdbc00d0b14e8d3030b4173d6650f1a23d2613bc9c
 +Size (kiten-26.08.2.tar.xz) = 11317316 bytes
---- a/pkgsrc/misc/klettres/distinfo
-+++ b/pkgsrc/misc/klettres/distinfo
+--- a/misc/klettres/distinfo
++++ b/misc/klettres/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (klettres-26.08.0.tar.xz) = 9131f366bafac790eb608c5825ff0ae5c352a78240dd72705b857b411f6e43b0
 -SHA512 (klettres-26.08.0.tar.xz) = 111fb459638b4b3d8fdbc9526b96107f252430d5887d194937e869c89f8671e6a73b3049eebadf37bab645fa67ea0e1036e22d8ee7947a7a9c3da9cefdadfdd9
 -Size (klettres-26.08.0.tar.xz) = 47193208 bytes
 +SHA256 (klettres-26.08.2.tar.xz) = 5604e8ca91c719ab2f54dc2d4d64e39c22dbd8d0a2633c6a64465fa09329cc48
 +Size (klettres-26.08.2.tar.xz) = 47195376 bytes
---- a/pkgsrc/misc/kmag/distinfo
-+++ b/pkgsrc/misc/kmag/distinfo
+--- a/misc/kmag/distinfo
++++ b/misc/kmag/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kmag-26.08.0.tar.xz) = ff7ebc026f236315ffec88cb309b12b2b457df2b11ce9ef791b0cd77c6fb2b47
 -SHA512 (kmag-26.08.0.tar.xz) = 2b937083a52c041a53394b25910a9f90f124b395fc8eb7bf58da3ec30a5c509099411c347b4d866c52056bf16e7ce9a723dac40714d371a7b26e7384db7629cc
 -Size (kmag-26.08.0.tar.xz) = 680556 bytes
 +SHA256 (kmag-26.08.2.tar.xz) = 1f62af3f969f97d32cddafb46e0930b346aa2168aecff9cbdd67447f6b7b0882
 +Size (kmag-26.08.2.tar.xz) = 680792 bytes
---- a/pkgsrc/misc/kmousetool/distinfo
-+++ b/pkgsrc/misc/kmousetool/distinfo
+--- a/misc/kmousetool/distinfo
++++ b/misc/kmousetool/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kmousetool-26.08.0.tar.xz) = 8895cdd6b84049bb22024b23feaf7a81bb14edba93ee77d91c9d6e4164e7ade8
 -SHA512 (kmousetool-26.08.0.tar.xz) = 1dc1e9d645231620b9eef13c0a7ca83428828f8dd442fdf1b2044ee4c3b42aad0dff4a2092450494b0823e7c6d36f584f1e87aa6856f9c3f9258e17e806eb219
 -Size (kmousetool-26.08.0.tar.xz) = 136716 bytes
 +SHA256 (kmousetool-26.08.2.tar.xz) = 5ea97ec0463025adcc538cdf143f3052f1bf5ff0e4e8de9724057887f1a60c60
 +Size (kmousetool-26.08.2.tar.xz) = 137216 bytes
---- a/pkgsrc/misc/kmouth/distinfo
-+++ b/pkgsrc/misc/kmouth/distinfo
+--- a/misc/kmouth/distinfo
++++ b/misc/kmouth/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kmouth-26.08.0.tar.xz) = 7ce2cb8bc1f08c5cc7ea30f856e47e7359fcb953df0073cc0bff0fbdbde234e4
 -SHA512 (kmouth-26.08.0.tar.xz) = d7d32009bb12ce5d99ce3e9e6a3a004eeb6a0ba20567a9d73534a69367a9d7e5158c5d59841e5da96fcd98cc27569b408fafcaf2c792395af6f762960ed600ca
 -Size (kmouth-26.08.0.tar.xz) = 1945860 bytes
 +SHA256 (kmouth-26.08.2.tar.xz) = 41c863591c44657d26ed241292dd68e641d15326b2d0a3e425a1e779c1623cf2
 +Size (kmouth-26.08.2.tar.xz) = 1946032 bytes
---- a/pkgsrc/misc/kontact/distinfo
-+++ b/pkgsrc/misc/kontact/distinfo
+--- a/misc/kontact/distinfo
++++ b/misc/kontact/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kontact-26.08.0.tar.xz) = d991a556adc1bd2a21a40422e5eba768c922623c5ab509a170f5c5ca48145244
 -SHA512 (kontact-26.08.0.tar.xz) = 8fdcc3e46b4025c19e9dd4e1e3240005f05958944678520070368e1c701ffcb31679d3c7f2d79a6b73bcc83c3197f7723bf476f56a5d49d6b7216a7131b8288d
 -Size (kontact-26.08.0.tar.xz) = 897372 bytes
 +SHA256 (kontact-26.08.2.tar.xz) = 3d26032dad5f07739c5c24c62ba56a5948a4e25840df2b01f781eaf65000c5fc
 +Size (kontact-26.08.2.tar.xz) = 900428 bytes
---- a/pkgsrc/misc/kontactinterface/distinfo
-+++ b/pkgsrc/misc/kontactinterface/distinfo
+--- a/misc/kontactinterface/distinfo
++++ b/misc/kontactinterface/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kontactinterface-26.08.0.tar.xz) = e6248c34d912c1fb22dbfe21187bbd34a9e61234dfa5e87e65e6323e31ab6405
 -SHA512 (kontactinterface-26.08.0.tar.xz) = 14a033b888a9657d33fc1860fbd0d828d07c3f7edcec6229f049ed0a3178e3d8400f3332a07d6902f9eb4ce38ae3400571a0ae9886931b68ffffb1dfccaec388
 -Size (kontactinterface-26.08.0.tar.xz) = 51536 bytes
 +SHA256 (kontactinterface-26.08.2.tar.xz) = c318a9eaef9df8f3e3bce515f4379c5284255f7b2cb424950ae7cc5fff99eca3
 +Size (kontactinterface-26.08.2.tar.xz) = 51652 bytes
---- a/pkgsrc/misc/kteatime/distinfo
-+++ b/pkgsrc/misc/kteatime/distinfo
+--- a/misc/kteatime/distinfo
++++ b/misc/kteatime/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kteatime-26.08.0.tar.xz) = aac9c3086b88549dcb4f00251f724d30ae90d28ca265696f6374221472f45cc4
 -SHA512 (kteatime-26.08.0.tar.xz) = ef3262c64d63268ee18932ccd3a6f43964bfe8050fdc3f05811526601b79c30558a3d6fa18ce44b383a43ad35be45f6ffbe09fe4c7954c1b47fdab3f73c5354b
 -Size (kteatime-26.08.0.tar.xz) = 311864 bytes
 +SHA256 (kteatime-26.08.2.tar.xz) = 610ed118b3a74313fb12c4a639500bcc153c239fbfa7bbf564e77670d26701f8
 +Size (kteatime-26.08.2.tar.xz) = 311968 bytes
---- a/pkgsrc/misc/ktouch/distinfo
-+++ b/pkgsrc/misc/ktouch/distinfo
+--- a/misc/ktouch/distinfo
++++ b/misc/ktouch/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (ktouch-26.08.0.tar.xz) = e02fe0c4ff6ce0376829f71f7385d52f2ee4467492715db8eb504a2c2de3d54d
 -SHA512 (ktouch-26.08.0.tar.xz) = 27765ef7d750b3551e8d4a329d1bd86f7def8eb203750225d7a3d19e8836474139d20554f7a189d5f826f70f2941a8de42ba75f31f316d0936036e16ebeab0d0
 -Size (ktouch-26.08.0.tar.xz) = 4786716 bytes
 +SHA256 (ktouch-26.08.2.tar.xz) = d9a309aac3edfbba033b72c00981b28bd83d3371a5c293bb3fe81744cfafd407
 +Size (ktouch-26.08.2.tar.xz) = 4786680 bytes
---- a/pkgsrc/misc/kturtle/distinfo
-+++ b/pkgsrc/misc/kturtle/distinfo
+--- a/misc/kturtle/distinfo
++++ b/misc/kturtle/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kturtle-26.08.0.tar.xz) = 3e6a4407c9c7c592bd5a2654817ddda90922235630ecb5ff62e7c8126eb3198c
 -SHA512 (kturtle-26.08.0.tar.xz) = ec8865b161e7eae06f11cd60e836a23b2572ac0cc50fb9e7f6886e32fdfb3b5d1a510a205c395c7e4f9c94e79f36c459717d8f5f80d68125707d5448612cbdba
 -Size (kturtle-26.08.0.tar.xz) = 1890856 bytes
 +SHA256 (kturtle-26.08.2.tar.xz) = 9444b5d59afdfb21de0271feb858794a68e8d79d345bd7a5bdbb70a1d2566a2a
 +Size (kturtle-26.08.2.tar.xz) = 1891256 bytes
---- a/pkgsrc/misc/kwordquiz/distinfo
-+++ b/pkgsrc/misc/kwordquiz/distinfo
+--- a/misc/kwordquiz/distinfo
++++ b/misc/kwordquiz/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kwordquiz-26.08.0.tar.xz) = 0c53945b39731967e6b4ddd2e2f1c154be4e25b7b053fcef4f243c42a9940e37
 -SHA512 (kwordquiz-26.08.0.tar.xz) = 36d36381b4e43b2a97a816a533f73b0c079ddafac5f8888b07a33076531c54374823040b22375a053994aeabe7ec404cfe1bb9a43a9367dd7200f1c2743f86af
 -Size (kwordquiz-26.08.0.tar.xz) = 3614784 bytes
 +SHA256 (kwordquiz-26.08.2.tar.xz) = ada960c3474f7c909de04d20605cc970e9ac317e00a215a063498e4fb23cd088
 +Size (kwordquiz-26.08.2.tar.xz) = 3614492 bytes
---- a/pkgsrc/misc/libgravatar/distinfo
-+++ b/pkgsrc/misc/libgravatar/distinfo
+--- a/misc/libgravatar/distinfo
++++ b/misc/libgravatar/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (libgravatar-26.08.0.tar.xz) = a631b0f18f9c679fa9908b5b576dd77e68a97d3158243e7394a489e12ebe5ae9
 -SHA512 (libgravatar-26.08.0.tar.xz) = d6d94956264abb700d08b5d71d5f647cf3af3c0a7af6fc16123711febd0679b62188d870a1d487100a061dbc791c11cfaddc2f03b67c3d2783ea488c0f9ddec6
 -Size (libgravatar-26.08.0.tar.xz) = 48868 bytes
 +SHA256 (libgravatar-26.08.2.tar.xz) = bd71ec6fefd98402683dd00447e0cab8c29f1f690784462dbfaab1ec95234069
 +Size (libgravatar-26.08.2.tar.xz) = 48904 bytes
---- a/pkgsrc/misc/libkdepim/distinfo
-+++ b/pkgsrc/misc/libkdepim/distinfo
+--- a/misc/libkdepim/distinfo
++++ b/misc/libkdepim/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (libkdepim-26.08.0.tar.xz) = 4c059cc972e7da8da3f8f2a36c4151332d26a8e6c72e0b2a06b3a018e89be64e
 -SHA512 (libkdepim-26.08.0.tar.xz) = b8e27049c418d365a3aac9d39d51c55f8849d5f0de2a2ab00b56b65927ab04b29af2e51d07e2741519c6b566d44e292d7fabac020b5c8128088523d9473c92ee
 -Size (libkdepim-26.08.0.tar.xz) = 289288 bytes
 +SHA256 (libkdepim-26.08.2.tar.xz) = 4a24c06d72fb1f95a98519f66847d2cf069c2e15cdafeaf2321051d56d18ddd5
 +Size (libkdepim-26.08.2.tar.xz) = 289320 bytes
---- a/pkgsrc/misc/libkeduvocdocument/distinfo
-+++ b/pkgsrc/misc/libkeduvocdocument/distinfo
+--- a/misc/libkeduvocdocument/distinfo
++++ b/misc/libkeduvocdocument/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (libkeduvocdocument-26.08.0.tar.xz) = 4a9276c0bafe632ecbaa0fb633f8bbab6d5c23b59ce2625102b71a6f70420519
 -SHA512 (libkeduvocdocument-26.08.0.tar.xz) = b430fcff5f536cc68c0b20f5df5b9cb64053113b5cd0dfd485694489c68e18a84ab67f1b6aa0e45c4a0819db771fd89d2538fc201cbad1b6ae4f836bbceb9960
 -Size (libkeduvocdocument-26.08.0.tar.xz) = 222456 bytes
 +SHA256 (libkeduvocdocument-26.08.2.tar.xz) = fc948c804eccab19d418afafd2549dd99a0ec2ddcaca7b71025fc3ba3b773495
 +Size (libkeduvocdocument-26.08.2.tar.xz) = 222320 bytes
---- a/pkgsrc/misc/marble/distinfo
-+++ b/pkgsrc/misc/marble/distinfo
+--- a/misc/marble/distinfo
++++ b/misc/marble/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (marble-26.08.0.tar.xz) = 9ece91ef259d82e9f654ec210be1c4a6c4b974ba52aae00c082d32cb55aa51e3
 -SHA512 (marble-26.08.0.tar.xz) = 4d885853002b55bc9306dee4019d38a6e2681a789c41223ceee253b7b33d191130abda1200f14af596f092aec9b048a385756c0f6f4c7da4628e8af5f3a75926
 -Size (marble-26.08.0.tar.xz) = 53797428 bytes
 +SHA256 (marble-26.08.2.tar.xz) = e336e4dd45612700a492420ae9e8d46a4847dfc4142fce19f89126d979483064
 +Size (marble-26.08.2.tar.xz) = 53795020 bytes
---- a/pkgsrc/misc/parley/distinfo
-+++ b/pkgsrc/misc/parley/distinfo
+--- a/misc/parley/distinfo
++++ b/misc/parley/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (parley-26.08.0.tar.xz) = b523537c55a4d33f07ca038f4ba11895b1fee7bdfe41c6a6ff63bbe331a31650
 -SHA512 (parley-26.08.0.tar.xz) = 0884a0b2bdeab039a33877a02cf4199dfe291fb609140c509b2e03b5cec3ea43839e1ba069f6ac30d023485fef58d38294aeb77d6e21150a44985257ae28d922
 -Size (parley-26.08.0.tar.xz) = 8441728 bytes
 +SHA256 (parley-26.08.2.tar.xz) = e60f02e6d253e01ef4ec773f35ba27251975e00d20dbd95e9809a1d01fe8416e
 +Size (parley-26.08.2.tar.xz) = 8441536 bytes
---- a/pkgsrc/misc/pim-data-exporter/distinfo
-+++ b/pkgsrc/misc/pim-data-exporter/distinfo
+--- a/misc/pim-data-exporter/distinfo
++++ b/misc/pim-data-exporter/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (pim-data-exporter-26.08.0.tar.xz) = 248e1c7fa27b845ebe14a4a806e638beb6f3cb724641bd9c5df554413e919a67
 -SHA512 (pim-data-exporter-26.08.0.tar.xz) = d73206ca62149a4fed79b49eba8c72d2c9ead698f7d16d1cd439128fb255cf62f74d8a003284e76f1507d4d10c9f6fb80cf1b4dc68b531181bc1906466f68653
 -Size (pim-data-exporter-26.08.0.tar.xz) = 432284 bytes
 +SHA256 (pim-data-exporter-26.08.2.tar.xz) = d4c7d9966e53cc7318d31cfcb447f22bc43fdd4186ef0c2b66229a4b9ea9e4bc
 +Size (pim-data-exporter-26.08.2.tar.xz) = 432828 bytes
---- a/pkgsrc/misc/pimcommon/distinfo
-+++ b/pkgsrc/misc/pimcommon/distinfo
+--- a/misc/pimcommon/distinfo
++++ b/misc/pimcommon/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (pimcommon-26.08.0.tar.xz) = 38e47bf0e3187254fda64db182b9c82232a6adbc42a7d61fbad3b43a525b7c2a
 -SHA512 (pimcommon-26.08.0.tar.xz) = 4fcc3e88bcad3b613e33813e2fdbd02bac752049ec0182444aed6dadd8bce1016062214515684391a0f7514614cbc5ea43693709941decea6072f75866da148e
 -Size (pimcommon-26.08.0.tar.xz) = 380736 bytes
 +SHA256 (pimcommon-26.08.2.tar.xz) = b93967e0d198893b5fcf8a90e76ae63c465d8613ee1b4529ac9425216c36f15e
 +Size (pimcommon-26.08.2.tar.xz) = 380756 bytes
---- a/pkgsrc/misc/rocs/distinfo
-+++ b/pkgsrc/misc/rocs/distinfo
+--- a/misc/rocs/distinfo
++++ b/misc/rocs/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (rocs-26.08.0.tar.xz) = 08c292f0eacdecdfbf9a4261aa721609261f877c418a52b4f9864cc17eb77f70
 -SHA512 (rocs-26.08.0.tar.xz) = 75d2b41edfde0555296378a85b8803216c1464bd902d8e203fae5ab504f9b3e6fc62fdc3618afb0ddc9d6987c772dd059c9e88be88f9fbe3bf5ace90d7ba14fe
 -Size (rocs-26.08.0.tar.xz) = 1578432 bytes
 +SHA256 (rocs-26.08.2.tar.xz) = 0f1f9e641b87d0c872d6e16276f47ea9f46b6b7644a88848251f2603b6efd386
 +Size (rocs-26.08.2.tar.xz) = 1580292 bytes
---- a/pkgsrc/misc/step/distinfo
-+++ b/pkgsrc/misc/step/distinfo
+--- a/misc/step/distinfo
++++ b/misc/step/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (step-26.08.0.tar.xz) = 902430aaa0f4c25e74d2e64d3f6cf42a42d6ecb487b32b4f21d89ad45ccc2fbc
 -SHA512 (step-26.08.0.tar.xz) = 548ff963f8a4c052e39b9bfbb6d045c5b9e7de7d2facc106277ecdad960506370c04e59244b4be601b083d4d470ba430506d28bc2e026c50e73de0ee296e52db
 -Size (step-26.08.0.tar.xz) = 1021276 bytes
 +SHA256 (step-26.08.2.tar.xz) = 0bb937fa2d5f34f6185f0191fe2d56dd74751f62f9846143e33db9e306524709
 +Size (step-26.08.2.tar.xz) = 1022740 bytes
---- a/pkgsrc/multimedia/audiocd-kio/distinfo
-+++ b/pkgsrc/multimedia/audiocd-kio/distinfo
+--- a/multimedia/audiocd-kio/distinfo
++++ b/multimedia/audiocd-kio/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (audiocd-kio-26.08.0.tar.xz) = 736686df025f3ab79e798c5aa2d531cf34784db06afbaac77a34c58e8b22072a
 -SHA512 (audiocd-kio-26.08.0.tar.xz) = 855ba9cc0e9038b0bad870c84e76d0b127138460fee223842c802e627826fa3a433f1219addd3ca603249fe21bf088bbf9ac5b1285666296e702379aeeb55a21
 -Size (audiocd-kio-26.08.0.tar.xz) = 586040 bytes
 +SHA256 (audiocd-kio-26.08.2.tar.xz) = f936e813eaa5515a2365b10f6238613229f6a17fa10a866d7ca20d4f95c0778c
 +Size (audiocd-kio-26.08.2.tar.xz) = 586036 bytes
---- a/pkgsrc/multimedia/dragon/distinfo
-+++ b/pkgsrc/multimedia/dragon/distinfo
+--- a/multimedia/dragon/distinfo
++++ b/multimedia/dragon/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (dragon-26.08.0.tar.xz) = af5b34ec0a040aad2adc249543753344c2497a2e4e9c15cf2e43c365bd3af047
 -SHA512 (dragon-26.08.0.tar.xz) = 23d3a22c6618d38426934d6cba05698722865b1e61b1abefef1ec98343d158aecd3632510abbcc7705e67a402644609b729dcfe89e425ca8277e775f9070b1e1
 -Size (dragon-26.08.0.tar.xz) = 154124 bytes
 +SHA256 (dragon-26.08.2.tar.xz) = e0510d65c59002f5ff5ceed3540b082952bb65bee1490a06e68e24fb0d107941
 +Size (dragon-26.08.2.tar.xz) = 153632 bytes
---- a/pkgsrc/multimedia/ffmpegthumbs/distinfo
-+++ b/pkgsrc/multimedia/ffmpegthumbs/distinfo
+--- a/multimedia/ffmpegthumbs/distinfo
++++ b/multimedia/ffmpegthumbs/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (ffmpegthumbs-26.08.0.tar.xz) = 7ef8104428775e62c31336be6f1bbaf794af09a833325d218c1d61c24b7398df
 -SHA512 (ffmpegthumbs-26.08.0.tar.xz) = ec57f533e1ab27bbbab675734667c1d06a3185d9678422d34bbebe066b237adf0301448806932c8692a5af797a7157b9c3f8ae7132e7746e07b5b0e2a4fa2bd2
 -Size (ffmpegthumbs-26.08.0.tar.xz) = 35312 bytes
 +SHA256 (ffmpegthumbs-26.08.2.tar.xz) = 6b39041282341d583eaa90b1892b46ac70c70b24f2fdd9e782c5093ba9bac03c
 +Size (ffmpegthumbs-26.08.2.tar.xz) = 35432 bytes
---- a/pkgsrc/multimedia/juk/distinfo
-+++ b/pkgsrc/multimedia/juk/distinfo
+--- a/multimedia/juk/distinfo
++++ b/multimedia/juk/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (juk-26.08.0.tar.xz) = a4116dc113df0f876e71186888e9d31b14b329892336b024a39964a093f691fa
 -SHA512 (juk-26.08.0.tar.xz) = bcd2f04c4bb933a8b5ff682342e42b1260a1445bec5ae0d92fa0fdf9313c4e1eb392a9fd7f986d2b63895b04f297c5f86c0da9a50b0af172ee8047096d6bf249
 -Size (juk-26.08.0.tar.xz) = 1942080 bytes
 +SHA256 (juk-26.08.2.tar.xz) = a96650739b5192e6d767ee0dab558257d2d0a59543e6b29cb4eceb9d924eeb8a
 +Size (juk-26.08.2.tar.xz) = 1952940 bytes
---- a/pkgsrc/multimedia/kdenlive/distinfo
-+++ b/pkgsrc/multimedia/kdenlive/distinfo
+--- a/multimedia/kdenlive/distinfo
++++ b/multimedia/kdenlive/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kdenlive-26.08.0.tar.xz) = 6e2bfd3f32684c5ba0c0f156dbc75b4354c1aec61515e9a4043e740cc7fb83cb
 -SHA512 (kdenlive-26.08.0.tar.xz) = 0d6d3a317eb5e065d47c632185f07fab8bb47e8aaaf34c9361fc2d9306e085a87f15c4df2e316ffea7b39c0f41995b89bd7455b7e5bed4e95db93c8e6ace58ba
 -Size (kdenlive-26.08.0.tar.xz) = 19922292 bytes
 +SHA256 (kdenlive-26.08.2.tar.xz) = 1019cda23429a526e3a2dbdd2ec93406fef0c89ca243af16dfa16ac9ae8a6bf8
 +Size (kdenlive-26.08.2.tar.xz) = 19947236 bytes
---- a/pkgsrc/multimedia/kmix/distinfo
-+++ b/pkgsrc/multimedia/kmix/distinfo
+--- a/multimedia/kmix/distinfo
++++ b/multimedia/kmix/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kmix-26.08.0.tar.xz) = a55cbb18ca37d79674582e823f75da8620c0453976644c7669487fc9c323e284
 -SHA512 (kmix-26.08.0.tar.xz) = 2cffa20cc9d3bc7d70aec7ef22bab81e69abf5429a4c8cc2bafbfcfb86cadd3714c87e75f68521a76a512a0c588ac8aa602ed6b9dfecac4545426aebf42cb3a6
 -Size (kmix-26.08.0.tar.xz) = 1176804 bytes
 +SHA256 (kmix-26.08.2.tar.xz) = 25e52a2f513afdec3b6c742bd5a279f227bcfe174555dcb288b6c61e088091a2
 +Size (kmix-26.08.2.tar.xz) = 1174308 bytes
---- a/pkgsrc/multimedia/libkcddb/distinfo
-+++ b/pkgsrc/multimedia/libkcddb/distinfo
+--- a/multimedia/libkcddb/distinfo
++++ b/multimedia/libkcddb/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (libkcddb-26.08.0.tar.xz) = 7766d81bb5fec3640713b5b08c35481c1dea46afa9c3afb878fa128fdc3c6b8d
 -SHA512 (libkcddb-26.08.0.tar.xz) = 64d1a635fe9692e9691956e873d41d529203ba6deaebef3a49d44fc48eb4edab41133197cd758521a890fb2bfbc5014855ae4424515226f465a28bfb2fa9477a
 -Size (libkcddb-26.08.0.tar.xz) = 447992 bytes
 +SHA256 (libkcddb-26.08.2.tar.xz) = cf1594adca2444aef8fadfc1c19bb9e803cae5f43de44a46871fc6cf48121e21
 +Size (libkcddb-26.08.2.tar.xz) = 447732 bytes
---- a/pkgsrc/net/kget/distinfo
-+++ b/pkgsrc/net/kget/distinfo
+--- a/net/kget/distinfo
++++ b/net/kget/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kget-26.08.0.tar.xz) = b54c189bb6928a11fc94d05de0851845d37f640a72d0f0a0e67e1c59d7ddc23a
 -SHA512 (kget-26.08.0.tar.xz) = 906dbeb4455a922bce1c790f1a0193e82644b91015a36252a4280efc52f4f635a816e6af908fa158e02ad2cc92f3225289bf4f304cc7b1d06f7df562f69d67d2
 -Size (kget-26.08.0.tar.xz) = 4851160 bytes
 +SHA256 (kget-26.08.2.tar.xz) = 3a99c78592e1d53940002a0e57e4dd3fc058dc4b3af6ba372b77f8123c7730ae
 +Size (kget-26.08.2.tar.xz) = 4850520 bytes
---- a/pkgsrc/net/krdc/distinfo
-+++ b/pkgsrc/net/krdc/distinfo
+--- a/net/krdc/distinfo
++++ b/net/krdc/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (krdc-26.08.0.tar.xz) = 2198443efcb8cc30cd765dabace2c292d3b4ef00f97f32480399f282e08e885f
 -SHA512 (krdc-26.08.0.tar.xz) = d65a818dcb5abb85ca9a96d929a99d37ba7c9810dd41a9faa978f469856070734ecbcc0b055f9febf10420d4eae14eb53add85537a09eb8dd41d76a971bae5ca
 -Size (krdc-26.08.0.tar.xz) = 1603388 bytes
 +SHA256 (krdc-26.08.2.tar.xz) = 862d375f3e1f677ab62ed3b379ee2ff6e90c25fd4d04be6b8b6658c35a8dc196
 +Size (krdc-26.08.2.tar.xz) = 1604280 bytes
---- a/pkgsrc/net/krfb/distinfo
-+++ b/pkgsrc/net/krfb/distinfo
+--- a/net/krfb/distinfo
++++ b/net/krfb/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (krfb-26.08.0.tar.xz) = 1e424ee42f0be40fe345923acec52d6f6e1053bead7b0ab8f1d4f64fa1c81e07
 -SHA512 (krfb-26.08.0.tar.xz) = 13e866474fbf59d8240a334dcb7ff6440313ac0ef60d958eaf6b598f64e5c86f29fb577c4afe96281948bac379a56cae482c5b978bc9c7759902b5d136112d93
 -Size (krfb-26.08.0.tar.xz) = 1220616 bytes
 +SHA256 (krfb-26.08.2.tar.xz) = 32916d2ca59ce89e19ecf24c65cd48da0aa389d442d6d151baf5d552e3fc16b0
 +Size (krfb-26.08.2.tar.xz) = 1221488 bytes
---- a/pkgsrc/net/ktorrent/distinfo
-+++ b/pkgsrc/net/ktorrent/distinfo
+--- a/net/ktorrent/distinfo
++++ b/net/ktorrent/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (ktorrent-26.08.0.tar.xz) = 2f6f4c5dc76c53e78a010457187a68f22e13a3a3fa45981f9e4ea7cb77c7d508
 -SHA512 (ktorrent-26.08.0.tar.xz) = a35a6fa9b81c34621dbe6d27b6d57d09faec55228aad002c07c5d007e11255729707b67eecbd31f1bd313a770b17e0003830ba8fbfe9fc382239eb71612252b1
 -Size (ktorrent-26.08.0.tar.xz) = 2253364 bytes
 +SHA256 (ktorrent-26.08.2.tar.xz) = 5b85388c87ae6173cf8744ce43a34b1d04f3e0c21e0af413f270c927de3a19fb
 +Size (ktorrent-26.08.2.tar.xz) = 2255144 bytes
---- a/pkgsrc/net/libktorrent/distinfo
-+++ b/pkgsrc/net/libktorrent/distinfo
+--- a/net/libktorrent/distinfo
++++ b/net/libktorrent/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (libktorrent-26.08.0.tar.xz) = 8ad305727595b04e503071f2e24a70f241fc54c82eb474b54bbe3e3d8f31f18d
 -SHA512 (libktorrent-26.08.0.tar.xz) = 9916e75c09d9dd68f981954a154f81cd5d24da6d6c95945f7f2106bdd7745e70c2ec864416a2753246a3c116cc7a882c07b5ad6b79dbf86a736e8194a4e5de76
 -Size (libktorrent-26.08.0.tar.xz) = 606916 bytes
 +SHA256 (libktorrent-26.08.2.tar.xz) = 140a8e90b2b0d2f91ad12a9d0ff9687aceac44ede0c06e00d7f41ca999340b5e
 +Size (libktorrent-26.08.2.tar.xz) = 606928 bytes
---- a/pkgsrc/net/messagelib/distinfo
-+++ b/pkgsrc/net/messagelib/distinfo
+--- a/net/messagelib/distinfo
++++ b/net/messagelib/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (messagelib-26.08.0.tar.xz) = 70032926889d2083990fee6b146e3a5108335cfe6348f08f1dc879580c9c0ec4
 -SHA512 (messagelib-26.08.0.tar.xz) = b50429f3073ea4ea414374ae8e0487e80d93dbeafc5326731774aa64004c0a83989c5e45705cd442424564b68f27ee7ee61c7f0f014efa8c404afe46c269fda8
 -Size (messagelib-26.08.0.tar.xz) = 7419124 bytes
 +SHA256 (messagelib-26.08.2.tar.xz) = 7a6003d027042ad9f69a16f84cb0132cb8a306c28ac0fa70087b505dccca6e3b
 +Size (messagelib-26.08.2.tar.xz) = 7500640 bytes
---- a/pkgsrc/print/okular/distinfo
-+++ b/pkgsrc/print/okular/distinfo
+--- a/print/okular/distinfo
++++ b/print/okular/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (okular-26.08.0.tar.xz) = 1a0dc53ce7cd5ad199fb8ad2a60cd29bacb2151730ce81e990a526297930dcf1
 -SHA512 (okular-26.08.0.tar.xz) = 4b03594e22ec5dc57fdfe5bce67fd842b56b32e1ce41c83d5ac2b99cae03cd6123e1685deed358d0054aa7286b2a9f2f56280ee3b44093c97e330edb3e1f8ce1
 -Size (okular-26.08.0.tar.xz) = 8294608 bytes
 +SHA256 (okular-26.08.2.tar.xz) = f9b39abcb7c6c3ace5d7acf669fa7ed47cf3aa7b932a8b6abe2abbd8075fc9f5
 +Size (okular-26.08.2.tar.xz) = 8298508 bytes
---- a/pkgsrc/security/kgpg/distinfo
-+++ b/pkgsrc/security/kgpg/distinfo
+--- a/security/kgpg/distinfo
++++ b/security/kgpg/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kgpg-26.08.0.tar.xz) = fe55d49e4b20d94a66d74ac9d5d34a2b77a2418d91ad7fb4f3d7615c27bbc077
 -SHA512 (kgpg-26.08.0.tar.xz) = 63c818663149115443d02ecc7985396aabbea5a2e5e7d88f3a61765be74de3a59be99fc776a866e677e75c7d055c6e00c1b616f86f6d8005e182e62b105754b9
 -Size (kgpg-26.08.0.tar.xz) = 3053072 bytes
 +SHA256 (kgpg-26.08.2.tar.xz) = 31d9c98e353882eff6b8218572eec1918f7fb4d1d4b6ce595a02c877be3d985c
 +Size (kgpg-26.08.2.tar.xz) = 3052356 bytes
---- a/pkgsrc/security/kleopatra/distinfo
-+++ b/pkgsrc/security/kleopatra/distinfo
+--- a/security/kleopatra/distinfo
++++ b/security/kleopatra/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kleopatra-26.08.0.tar.xz) = 27fbb43bb55325786c6059de49e85f8dc83f6218fc913535888ab42df308b88d
 -SHA512 (kleopatra-26.08.0.tar.xz) = 620729ff699876110d2aa6e7d667bad449b2aaaba591c01c54083d7390d98c7f7a4399fe7bc9cdc8665e0d91432506fa7204ffe4dbd44db70b8e209f9253859d
 -Size (kleopatra-26.08.0.tar.xz) = 2959720 bytes
 +SHA256 (kleopatra-26.08.2.tar.xz) = b3482904c09bac5394b27432c1f91b66860e9fabb33b48302c24086d76726c5d
 +Size (kleopatra-26.08.2.tar.xz) = 2962352 bytes
---- a/pkgsrc/security/kwalletmanager/distinfo
-+++ b/pkgsrc/security/kwalletmanager/distinfo
+--- a/security/kwalletmanager/distinfo
++++ b/security/kwalletmanager/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kwalletmanager-26.08.0.tar.xz) = 969bf5d0156fa982c7a593d68e569b3d213a1ae40e912e4da22af4594e31f898
 -SHA512 (kwalletmanager-26.08.0.tar.xz) = 5f63bf6ed6ea84f21ad6043e7950469dad4fc42e78ad3bf93b70fad002b47ea2a06502bf535c47687635a7119afdb4272171562f62d66d2138f00a79ed8e68e5
 -Size (kwalletmanager-26.08.0.tar.xz) = 1013660 bytes
 +SHA256 (kwalletmanager-26.08.2.tar.xz) = 579cf90c9d6e9aa9ff103747208c66a172efcf3338a5f0d7384e63c79e17b66a
 +Size (kwalletmanager-26.08.2.tar.xz) = 1013692 bytes
---- a/pkgsrc/security/libkleo/distinfo
-+++ b/pkgsrc/security/libkleo/distinfo
+--- a/security/libkleo/distinfo
++++ b/security/libkleo/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (libkleo-26.08.0.tar.xz) = efc46cfbe7b20e08557735c36a82c49d22e38ea6b09a6d4d4dbf2d9c28e1e4e2
 -SHA512 (libkleo-26.08.0.tar.xz) = c4311f984cde2201b8fa139dedd1cbf384542e951e1b891035f47b8f4c94a9b005e293c29491106d99cd28eb3b3045961b9844c598788dd463ee3e2c2c0ba32d
 -Size (libkleo-26.08.0.tar.xz) = 698420 bytes
 +SHA256 (libkleo-26.08.2.tar.xz) = 70dce52fad62d32a3122542bfb4efa20cd1e0e3de92273bcbaae704f32ed3f32
 +Size (libkleo-26.08.2.tar.xz) = 702972 bytes
---- a/pkgsrc/sysutils/baloo-widgets/distinfo
-+++ b/pkgsrc/sysutils/baloo-widgets/distinfo
+--- a/sysutils/baloo-widgets/distinfo
++++ b/sysutils/baloo-widgets/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (baloo-widgets-26.08.0.tar.xz) = eb7f0b1082668f0fa71e0d96fa2e88bd7ee040cfc72336fe7d34ed2a2eff68d3
 -SHA512 (baloo-widgets-26.08.0.tar.xz) = 3fdd2e5c3966067350ecad8c1458028576b7525b5576556d73859e8fccd288d0e1aef03f84b28b5ab2f7b0188279a0cecf4a6205d2733ec5f4e6187f715c4ac2
 -Size (baloo-widgets-26.08.0.tar.xz) = 277736 bytes
 +SHA256 (baloo-widgets-26.08.2.tar.xz) = 445efd6a8e9aafcd2a86dd47ecc5459c39054303ba650c898893cde8db2f5bf6
 +Size (baloo-widgets-26.08.2.tar.xz) = 277776 bytes
---- a/pkgsrc/sysutils/dolphin/distinfo
-+++ b/pkgsrc/sysutils/dolphin/distinfo
+--- a/sysutils/dolphin/distinfo
++++ b/sysutils/dolphin/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (dolphin-26.08.0.tar.xz) = 454b007c32e170e816d5853395e55f5db51eac36ec5c804b1138d56e18ca840c
 -SHA512 (dolphin-26.08.0.tar.xz) = 7d252ff17cf9c88df86fbc730aad2c832243ef5e17d44ae616aa1b5c00d77e60371614f9cad99d66379920eab9165494dfa5ecb92b7f01826426aeb2de51e87a
 -Size (dolphin-26.08.0.tar.xz) = 5943940 bytes
 +SHA256 (dolphin-26.08.2.tar.xz) = 8bb1bdfcab19dd62d7625270fc6cc3c81145600d67b0599fc9fe89d711cc6730
 +Size (dolphin-26.08.2.tar.xz) = 5975860 bytes
---- a/pkgsrc/sysutils/filelight/distinfo
-+++ b/pkgsrc/sysutils/filelight/distinfo
+--- a/sysutils/filelight/distinfo
++++ b/sysutils/filelight/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (filelight-26.08.0.tar.xz) = 379ef5f3b599b5e2722a6811708ec8c06c9b01e0bf5fdf37893d21841adb021a
 -SHA512 (filelight-26.08.0.tar.xz) = cb575e8e96b813229a0bde42274c7918570e5a5a73fa15106f8e5869edcaf42cfa0375d13241ba77579805f02d216ee35eba6c14aafaddc04d18886cb6eee371
 -Size (filelight-26.08.0.tar.xz) = 695028 bytes
 +SHA256 (filelight-26.08.2.tar.xz) = c802521bef6cdce513a95c3c47b6a581d0bf5dfb3c852bb1d2cd0d7c2e69951b
 +Size (filelight-26.08.2.tar.xz) = 694524 bytes
---- a/pkgsrc/sysutils/k3b/distinfo
-+++ b/pkgsrc/sysutils/k3b/distinfo
+--- a/sysutils/k3b/distinfo
++++ b/sysutils/k3b/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (k3b-26.08.0.tar.xz) = 72b2e1ded484c15e52a82ec56be025594a870b5058ed120d7d1dae7102549b6a
 -SHA512 (k3b-26.08.0.tar.xz) = dd6902e5feff042a680763e3a5c907d92e5772f50887e5eee0742e8796281d3bfe445f9944cd102ad814170273a1ebe24f9baac345fb6d44445bbfb67948de97
 -Size (k3b-26.08.0.tar.xz) = 10803912 bytes
 +SHA256 (k3b-26.08.2.tar.xz) = 04bb92de933388cdfe17c8d38bd192256c6b868c1fa16d1e6679405ea6fd3aed
 +Size (k3b-26.08.2.tar.xz) = 10804656 bytes
---- a/pkgsrc/sysutils/kcron/distinfo
-+++ b/pkgsrc/sysutils/kcron/distinfo
+--- a/sysutils/kcron/distinfo
++++ b/sysutils/kcron/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kcron-26.08.0.tar.xz) = bcd3a2418bc9b4a106713de210cde057ada8d681edb615f04eeea38ff2498211
 -SHA512 (kcron-26.08.0.tar.xz) = 99eb4a8522a39443797493fc234b998683538096af84e091f00885d584061dd96ba7211b12cad07fd7b4d1e65acc2fc8086ef2110a6bd9336c8630cf4d24fe54
 -Size (kcron-26.08.0.tar.xz) = 904696 bytes
 +SHA256 (kcron-26.08.2.tar.xz) = 3137518aaa710a46ff0974f1f206084b9dde608f3ebc9f3f48c06ad478d30deb
 +Size (kcron-26.08.2.tar.xz) = 904776 bytes
---- a/pkgsrc/sysutils/kdf/distinfo
-+++ b/pkgsrc/sysutils/kdf/distinfo
+--- a/sysutils/kdf/distinfo
++++ b/sysutils/kdf/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kdf-26.08.0.tar.xz) = 13f9c09ee790d48dc1e294db8490952eba9e368419e013fbeafe44f7a536fd71
 -SHA512 (kdf-26.08.0.tar.xz) = dc2331a56c4fe2ceb56a8cc681858a41656408b44b175ebb2644ea78b604aab7d31feff0160216218306f42fe3923f278c5f418629d32d7aa91103474b3547a7
 -Size (kdf-26.08.0.tar.xz) = 482388 bytes
 +SHA256 (kdf-26.08.2.tar.xz) = 9c1f8d6ee09f35505f1562e4e580303a4bbf65059369d4a9a2ce10f51ef49bae
 +Size (kdf-26.08.2.tar.xz) = 482856 bytes
---- a/pkgsrc/sysutils/ksystemlog/distinfo
-+++ b/pkgsrc/sysutils/ksystemlog/distinfo
+--- a/sysutils/ksystemlog/distinfo
++++ b/sysutils/ksystemlog/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (ksystemlog-26.08.0.tar.xz) = dc452eff3f0703b3c3603b4689f22bd3662e316ca6787a0fa7dccc011ce70d5b
 -SHA512 (ksystemlog-26.08.0.tar.xz) = 332f4195d25537c86e1a827529a920444247c19ea1f3a4c954eb0561ce6132396784c7bccfa46ee93022456ee5dea73b73b902070111aca00695e17496038053
 -Size (ksystemlog-26.08.0.tar.xz) = 1886596 bytes
 +SHA256 (ksystemlog-26.08.2.tar.xz) = 165f6b26e5cbaab13f85b7d3dc4a0d34d840018fd2e01ed6f17aa38ab8b8406b
 +Size (ksystemlog-26.08.2.tar.xz) = 1887716 bytes
---- a/pkgsrc/textproc/kpimtextedit/distinfo
-+++ b/pkgsrc/textproc/kpimtextedit/distinfo
+--- a/textproc/kpimtextedit/distinfo
++++ b/textproc/kpimtextedit/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kpimtextedit-26.08.0.tar.xz) = 67d33b2e0c7768d66a2302666ea8f9b460e69d4010e869958effd5acb87f5ac2
 -SHA512 (kpimtextedit-26.08.0.tar.xz) = 62e10f924681844c6cef692d6b0157577a46c06631f9824eceb5639863543d86844c2a19c6bc92fb4dbefb76942657ada771feaffd97cda5cea6bcb7f58e7c07
 -Size (kpimtextedit-26.08.0.tar.xz) = 193576 bytes
 +SHA256 (kpimtextedit-26.08.2.tar.xz) = 807837b312ab46abc8f94ac18e7f69b1da42b8b3e437ee5a628592c3023188d4
 +Size (kpimtextedit-26.08.2.tar.xz) = 193536 bytes
---- a/pkgsrc/time/akonadi-calendar/distinfo
-+++ b/pkgsrc/time/akonadi-calendar/distinfo
+--- a/time/akonadi-calendar/distinfo
++++ b/time/akonadi-calendar/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (akonadi-calendar-26.08.0.tar.xz) = aed863ef6d3e71149b5eb0084516c7eaa0aaea4a164ab7ffb733ce181a9d5fec
 -SHA512 (akonadi-calendar-26.08.0.tar.xz) = 5f4d4f68f422645bb2c9e036292a2c7bc96b676fa1930c4b4e85605faf42e80deddc03d68246cc76350bb85a6f4127d7fc7d3bea8290c0f9418f5aac023faf64
 -Size (akonadi-calendar-26.08.0.tar.xz) = 554432 bytes
 +SHA256 (akonadi-calendar-26.08.2.tar.xz) = efe0c094908a4febe939ff5c96fb191cf251d3821314108b5ebcfdd488c0346b
 +Size (akonadi-calendar-26.08.2.tar.xz) = 555020 bytes
---- a/pkgsrc/time/akonadi-calendar-tools/distinfo
-+++ b/pkgsrc/time/akonadi-calendar-tools/distinfo
+--- a/time/akonadi-calendar-tools/distinfo
++++ b/time/akonadi-calendar-tools/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (akonadi-calendar-tools-26.08.0.tar.xz) = 8a4d2ef206459e0e9a2712fad66fe07d43027b399d1a1d8ff8056cc67ba3437e
 -SHA512 (akonadi-calendar-tools-26.08.0.tar.xz) = b2fc850e0a3e3f7a4380c86cf233272f9141f7d48644be08a24cd448bebcf5c06f2a6fd2adb2ddfd196fdf989f8bc481486efdd6b0ec8d8b484d459623ceb932
 -Size (akonadi-calendar-tools-26.08.0.tar.xz) = 278428 bytes
 +SHA256 (akonadi-calendar-tools-26.08.2.tar.xz) = f500b5b9fe9d34a3fd03f7e9c2a9cd9930f9d67ce66b31826826de508e2501dc
 +Size (akonadi-calendar-tools-26.08.2.tar.xz) = 278676 bytes
---- a/pkgsrc/time/calendarsupport/distinfo
-+++ b/pkgsrc/time/calendarsupport/distinfo
+--- a/time/calendarsupport/distinfo
++++ b/time/calendarsupport/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (calendarsupport-26.08.0.tar.xz) = 882bdfc480bf6ae46131c345736df90f6da299fe9064e613806e82af4b4746e8
 -SHA512 (calendarsupport-26.08.0.tar.xz) = 8e1ff48ac22ef65053a40d45e166c26d452dc6fafd5d5b17d666a9da37b52058c2615eba8ed7e5947b451060aa6ae51d45907a88986df38a39af717879430ba6
 -Size (calendarsupport-26.08.0.tar.xz) = 1008212 bytes
 +SHA256 (calendarsupport-26.08.2.tar.xz) = 2c59bc7e9fd7834145de0a5f3dd8f7dbf4a6244d5f286e0edf68cc486e642f14
 +Size (calendarsupport-26.08.2.tar.xz) = 1008300 bytes
---- a/pkgsrc/time/kalarm/distinfo
-+++ b/pkgsrc/time/kalarm/distinfo
+--- a/time/kalarm/distinfo
++++ b/time/kalarm/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kalarm-26.08.0.tar.xz) = c2435b4153148ce8571e7e2798ede470751f49a15385cfca6304d9c3d9163745
 -SHA512 (kalarm-26.08.0.tar.xz) = 66a34aa0e59d502390eab3068ecb24ddedb3f5c7e482638b4e17ed60b121d9bf58db1f2787bfb7c2c413cba9567b7a39d5abb5ecc6b8e731bc9d3011579f67fb
 -Size (kalarm-26.08.0.tar.xz) = 2747928 bytes
 +SHA256 (kalarm-26.08.2.tar.xz) = b8b68cf4c20903adecdacf867df0fe3c538593fca0506a3719fe7d249dd917c4
 +Size (kalarm-26.08.2.tar.xz) = 2752672 bytes
---- a/pkgsrc/time/kcalutils/distinfo
-+++ b/pkgsrc/time/kcalutils/distinfo
+--- a/time/kcalutils/distinfo
++++ b/time/kcalutils/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kcalutils-26.08.0.tar.xz) = cc414367ecb2e59911a8bd612a5cd19c9618d425080d263aca82c986efd1a4a2
 -SHA512 (kcalutils-26.08.0.tar.xz) = 1193b67c1c19a44db99202b2d559c29808471ff5eb16799274a517fa6f3a0f31beb7a4c414854bb32be8b24ae85be00e1defafd31a907ee6cdbf9b7d0a48ef9b
 -Size (kcalutils-26.08.0.tar.xz) = 377752 bytes
 +SHA256 (kcalutils-26.08.2.tar.xz) = 5e5ca87267867f203a5ffd87c88e1ab97884b66f81ff4e6ce8d0d6c087a0c450
 +Size (kcalutils-26.08.2.tar.xz) = 378044 bytes
---- a/pkgsrc/time/korganizer/distinfo
-+++ b/pkgsrc/time/korganizer/distinfo
+--- a/time/korganizer/distinfo
++++ b/time/korganizer/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (korganizer-26.08.0.tar.xz) = e7e481c4c91a12686ca4f22337091aec8ab9d389d9b0210dce4c46b9e2c1d702
 -SHA512 (korganizer-26.08.0.tar.xz) = b9015c37d41123b64e3ecaf5fafe87ef4a49b2f2558e91011b16dade080fe0862f4f98669c33e17e3cc9c131a0fc5b916cd69aa3c491bb1f4e2ff2bac9266fb6
 -Size (korganizer-26.08.0.tar.xz) = 3191724 bytes
 +SHA256 (korganizer-26.08.2.tar.xz) = e0b736e452a0203e265255a1e46c27526fe23d85e8aa8b8b62c40cd79b21dcce
 +Size (korganizer-26.08.2.tar.xz) = 3195904 bytes
---- a/pkgsrc/time/ktimer/distinfo
-+++ b/pkgsrc/time/ktimer/distinfo
+--- a/time/ktimer/distinfo
++++ b/time/ktimer/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (ktimer-26.08.0.tar.xz) = 7e46345a16c58c0384ffdebd125dc48f10aa407823cea9fa72afa3a5555db7f0
 -SHA512 (ktimer-26.08.0.tar.xz) = 1297e7602fa37b06f6fe06b7c3fdfd0d9312210a1325e613bfa0969f0faa546d4cbfc14ed9bab3f5237d29974a5744027d561005d7b3440e6f34911a4d3df142
 -Size (ktimer-26.08.0.tar.xz) = 455016 bytes
 +SHA256 (ktimer-26.08.2.tar.xz) = 3ca309ca39b53b41ab18d404346b9bacb9b99e4b86ef9a2958f366f0eb003076
 +Size (ktimer-26.08.2.tar.xz) = 455424 bytes
---- a/pkgsrc/www/akregator/distinfo
-+++ b/pkgsrc/www/akregator/distinfo
+--- a/www/akregator/distinfo
++++ b/www/akregator/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (akregator-26.08.0.tar.xz) = 4cf6994bcc923fa395414ddca367eed2feac43c06203a0a1a857007f5325133d
 -SHA512 (akregator-26.08.0.tar.xz) = 05c101d33b447e9d9e56a3f0fd3ab2967c4897d85180565bc0271dd1fe0b5e3e2ed74bd1ed7a65ae840b515101be512b2fa19157dd8f6a17d299a1db571758ad
 -Size (akregator-26.08.0.tar.xz) = 2151204 bytes
 +SHA256 (akregator-26.08.2.tar.xz) = d819df8e453e45167ed90c3bf99073017f325f792832b97ce9df5445f844deed
 +Size (akregator-26.08.2.tar.xz) = 2152380 bytes
---- a/pkgsrc/www/kimagemapeditor/distinfo
-+++ b/pkgsrc/www/kimagemapeditor/distinfo
+--- a/www/kimagemapeditor/distinfo
++++ b/www/kimagemapeditor/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (kimagemapeditor-26.08.0.tar.xz) = 4f41f3f16c2d838d89342842e26145b1f22d95e1efa628714bc63ff7749b8dfc
 -SHA512 (kimagemapeditor-26.08.0.tar.xz) = 387741eb5c56e356844b5cb249242345e50b39baca966509153534da1a7dfc04752a3921edfba0fcfa6503c4bca7ecdbd219e68c934253f463bcbcfa09430921
 -Size (kimagemapeditor-26.08.0.tar.xz) = 1077252 bytes
 +SHA256 (kimagemapeditor-26.08.2.tar.xz) = a6e4dfd208c42984758ce70185c40990328220c3654a14c6ad68a9632ebe8cb7
 +Size (kimagemapeditor-26.08.2.tar.xz) = 1077264 bytes
---- a/pkgsrc/www/konqueror/distinfo
-+++ b/pkgsrc/www/konqueror/distinfo
+--- a/www/konqueror/distinfo
++++ b/www/konqueror/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (konqueror-26.08.0.tar.xz) = 923d180287c3067519b4f49d2857d210e80323f31534436154af2e74259cae83
 -SHA512 (konqueror-26.08.0.tar.xz) = 4901b74aee01294b54725b8c43ac40a2fa200cfdda6865df5241f4144e0aef57be2111827f720e82341139137d2ecc51ab0b51120fb3cf2f8a8bb21d74ad7d90
 -Size (konqueror-26.08.0.tar.xz) = 9876712 bytes
 +SHA256 (konqueror-26.08.2.tar.xz) = df13ccf0350b898ad35c12f15a574229788945f59a352432d90ae1ae9b7b273b
 +Size (konqueror-26.08.2.tar.xz) = 9897640 bytes
---- a/pkgsrc/x11/konsole/distinfo
-+++ b/pkgsrc/x11/konsole/distinfo
+--- a/x11/konsole/distinfo
++++ b/x11/konsole/distinfo
 @@ -3,3 +3,2 @@
 -BLAKE2s (konsole-26.08.0.tar.xz) = 0944b3c5d988e7d538dd5b47f92b711d82c16f928bc478d78fa6daad4cd901c2
 -SHA512 (konsole-26.08.0.tar.xz) = 71efc2a8515f59a0ed0bfd312a9252312ef33a3ecaa3e8cfd43b5d7f704d2c0c8b93b7ae3603ab8955a132577e4bdcbc4ac13f6a3ab5788505ff3a5fad2af89e
