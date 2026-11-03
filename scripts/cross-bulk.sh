@@ -602,25 +602,59 @@ count()
 # first -K argument: the target sysroot or the native host prefix), so
 # installs into one prefix never overlap. mkdir is atomic on macOS, NetBSD
 # and Linux alike.
+#
+# A native package built before the native profile kept rc.d in the host
+# prefix (Ports 6869ff45) recorded "# DIR: /etc/rc.d m" in its +DIRS. When
+# pkg_add -U replaces it, its +DIRS REMOVE runs "rmdir -p /etc/rc.d"; on
+# macOS that path is protected, and the attempt waits on a privacy prompt
+# (TCC SystemPolicySysAdminFiles) with the database lock held. The native
+# prefix never owns a path outside it, so before each install into the native
+# database the wrapper marks every refcounted directory or file outside the
+# recording package's prefix (its +CONTENTS @cwd) as preexisting, the state
+# that pkgsrc's +DIRS and +FILES record for a path that existed before the
+# package: REMOVE then leaves it alone. Target databases are not changed.
 pkg_add_wrapper()
 {
+    native_info
+    native_db=$(set -f; set -- $native_pkg_info
+        while [ "$#" -gt 1 ]; do [ "$1" != -K ] || { echo "$2"; break; }; shift; done)
     cat <<WRAPPER
 #!/bin/sh
 # Written by scripts/cross-bulk.sh build: one pkg_add per package database.
+locks=$state/locks
+native_db='$native_db'
+WRAPPER
+    cat <<'WRAPPER'
 db=default
 prev=
 for arg do
-    if [ "\$prev" = -K ]; then db=\$arg; break; fi
-    prev=\$arg
+    if [ "$prev" = -K ]; then db=$arg; break; fi
+    prev=$arg
 done
-lock=$state/locks/\$(printf '%s' "\$db" | tr -c 'A-Za-z0-9._-' '_')
-until mkdir "\$lock" 2> /dev/null; do sleep 1; done
-trap 'rmdir "\$lock"' EXIT
+lock=$locks/$(printf '%s' "$db" | tr -c 'A-Za-z0-9._-' '_')
+until mkdir "$lock" 2> /dev/null; do sleep 1; done
+trap 'rmdir "$lock"' EXIT
 trap 'exit 143' TERM INT HUP
+if [ -n "$native_db" ] && [ "$db" = "$native_db" ]; then
+    grep -lE '^# (DIR|FILE): /' "$db"/*/+DIRS "$db"/*/+FILES 2> /dev/null |
+    while read -r meta; do
+        pkgdir=${meta%/*}
+        prefix=$(sed -n '/^@cwd /{s/^@cwd //;p;q;}' "$pkgdir/+CONTENTS")
+        case "$prefix" in /?*) ;; *) continue ;; esac
+        case "$meta" in */+DIRS) kind=dirs ;; *) kind=files ;; esac
+        sed -En 's/^# (DIR|FILE): (\/[^ ]*).*/\2/p' "$meta" |
+        while read -r path; do
+            case "$path" in "$prefix"|"$prefix"/*) continue ;; esac
+            shadow=$db.refcount/$kind$path
+            [ -d "$shadow" ] && [ ! -f "$shadow/+PREEXISTING" ] || continue
+            echo "${pkgdir##*/}" > "$shadow/+PREEXISTING"
+            echo "cross-bulk: $path is outside the native prefix of ${pkgdir##*/}; marked preexisting" >&2
+        done
+    done
+fi
 rc=0
-$1 "\$@" || rc=\$?
-exit "\$rc"
 WRAPPER
+    printf '%s "$@" || rc=$?\nexit "$rc"\n' "$1"
 }
 
 dev_of()
