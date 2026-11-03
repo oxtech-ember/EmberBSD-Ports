@@ -110,8 +110,8 @@ def recipe(exported):
     return identity, patches
 
 
-def verify(source, git, archive=None, patch=None, pkgsrc_export=None):
-    return tar_archive.verify(SimpleNamespace(**globals()), source, git, archive, patch, pkgsrc_export)
+def verify(source, git, archive=None, patch=None, pkgsrc_export=None, export_patch=None):
+    return tar_archive.verify(SimpleNamespace(**globals()), source, git, archive, patch, pkgsrc_export, export_patch)
 
 
 def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
@@ -135,18 +135,20 @@ def main():
     produce.add_argument('--patch', required=True)
     produce.add_argument('--scoped-identity', action='store_true')
     produce.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
+    produce.add_argument('--export-patch', help='patch used to create the shared export')
     check = sub.add_parser('verify-source')
     check.add_argument('--source', required=True)
     check.add_argument('--archive')
     check.add_argument('--patch')
     check.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
+    check.add_argument('--export-patch', help='patch used to create the shared export')
     selected = parser.parse_args(args)
     try:
         if selected.action == 'prepare':
             record = prepare(selected.archive, selected.output, selected.patch, selected.git, selected.scoped_identity,
                              exported=shared_tree(selected))
         else:
-            record = verify(selected.source, selected.git, selected.archive, selected.patch, pkgsrc_export=selected.pkgsrc_export)
+            record = verify(selected.source, selected.git, selected.archive, selected.patch, pkgsrc_export=selected.pkgsrc_export, export_patch=getattr(selected, 'export_patch', None))
         sys.stdout.buffer.write(jsonio.json_bytes(record))
     except (SDKError, OSError, ValueError) as exc:
         sdk_source.exit_error(exc, f'{LABEL} source: ')

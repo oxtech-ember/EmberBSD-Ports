@@ -119,10 +119,10 @@ def recipe(exported):
     return identity, patches
 
 
-def verify(source, git, archive=None, patch=None, pkgsrc_export=None):
+def verify(source, git, archive=None, patch=None, pkgsrc_export=None, export_patch=None):
     # Check a caller's shared export before any early return: an unchanged
     # Git-identified receipt needs no export, but a broken one must not pass.
-    shared = (identity_module().shared_export(pkgsrc_export, PORTS, git, SDK_SOURCE, patch)
+    shared = (identity_module().shared_export(pkgsrc_export, PORTS, git, SDK_SOURCE, export_patch or patch)
               if pkgsrc_export else None)
     identity = source_identity(git)
     record = jsonio.read_json(str(Path(source) / sourceprep.PREPARED_TREE_RECEIPT))
@@ -181,10 +181,10 @@ def verify(source, git, archive=None, patch=None, pkgsrc_export=None):
     return record
 
 
-def refresh(source, git, archive, patch, pkgsrc_export=None):
+def refresh(source, git, archive, patch, pkgsrc_export=None, export_patch=None):
     return prepared_receipt.refresh(
         source, identity=lambda: (source_identity(git), git_effective_identity(git)),
-        verify=lambda: verify(source, git, archive, patch, pkgsrc_export=pkgsrc_export))
+        verify=lambda: verify(source, git, archive, patch, pkgsrc_export=pkgsrc_export, export_patch=export_patch))
 
 
 def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
@@ -255,7 +255,7 @@ def shared_tree(selected):
     if not selected.pkgsrc_export:
         return None
     require(selected.patch and os.path.isabs(selected.patch), 'select an absolute patch executable')
-    return identity_module().shared_export(selected.pkgsrc_export, PORTS, selected.git, SDK_SOURCE, selected.patch)
+    return identity_module().shared_export(selected.pkgsrc_export, PORTS, selected.git, SDK_SOURCE, getattr(selected, 'export_patch', None) or selected.patch)
 
 
 def main():
@@ -270,25 +270,28 @@ def main():
     produce.add_argument('--patch', required=True)
     produce.add_argument('--scoped-identity', action='store_true')
     produce.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
+    produce.add_argument('--export-patch', help='patch used to create the shared export')
     check = sub.add_parser('verify-source')
     check.add_argument('--source', required=True)
     check.add_argument('--archive')
     check.add_argument('--patch')
     check.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
+    check.add_argument('--export-patch', help='patch used to create the shared export')
     refresh_parser = sub.add_parser('refresh-source')
     refresh_parser.add_argument('--source', required=True)
     refresh_parser.add_argument('--archive', required=True)
     refresh_parser.add_argument('--patch', required=True)
     refresh_parser.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
+    refresh_parser.add_argument('--export-patch', help='patch used to create the shared export')
     selected = parser.parse_args(args)
     try:
         if selected.action == 'prepare':
             record = prepare(selected.archive, selected.output, selected.patch, selected.git, selected.scoped_identity,
                              exported=shared_tree(selected))
         elif selected.action == 'refresh-source':
-            record = refresh(selected.source, selected.git, selected.archive, selected.patch, pkgsrc_export=selected.pkgsrc_export)
+            record = refresh(selected.source, selected.git, selected.archive, selected.patch, pkgsrc_export=selected.pkgsrc_export, export_patch=getattr(selected, 'export_patch', None))
         else:
-            record = verify(selected.source, selected.git, selected.archive, selected.patch, pkgsrc_export=selected.pkgsrc_export)
+            record = verify(selected.source, selected.git, selected.archive, selected.patch, pkgsrc_export=selected.pkgsrc_export, export_patch=getattr(selected, 'export_patch', None))
         sys.stdout.buffer.write(jsonio.json_bytes(record))
     except (SDKError, OSError, ValueError) as exc:
         sdk_source.exit_error(exc, 'gettext source: ')

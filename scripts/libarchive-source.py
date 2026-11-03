@@ -37,11 +37,11 @@ def selected_identity(sdk_source, git):
     return result
 
 
-def verify(source, sdk_source, git, patch=None, pkgsrc_export=None):
+def verify(source, sdk_source, git, patch=None, pkgsrc_export=None, export_patch=None):
     # Check a caller's shared export before any early return: an unchanged
     # Git-identified receipt needs no export, but a broken one must not pass.
     shared = (module(ROOT / 'scripts/pkgsrc-source-identity.py', 'pkgsrc_identity').shared_export(
-        pkgsrc_export, ROOT, git, sdk_source, patch) if pkgsrc_export else None)
+        pkgsrc_export, ROOT, git, sdk_source, export_patch or patch) if pkgsrc_export else None)
     identity = selected_identity(sdk_source, git)
     from emberbsd_sdk import jsonio, process, sourceprep
     record = jsonio.read_json(str(Path(source) / sourceprep.PREPARED_TREE_RECEIPT))
@@ -94,7 +94,7 @@ def verify(source, sdk_source, git, patch=None, pkgsrc_export=None):
     return record
 
 
-def prepare(destination, sdk_source, git, patch, scoped_identity=False, pkgsrc_export=None):
+def prepare(destination, sdk_source, git, patch, scoped_identity=False, pkgsrc_export=None, export_patch=None):
     destination = Path(destination)
     if not destination.is_absolute() or not destination.parent.is_dir() or os.path.lexists(destination):
         raise ValueError('destination must be a new absolute path with an existing parent')
@@ -106,7 +106,7 @@ def prepare(destination, sdk_source, git, patch, scoped_identity=False, pkgsrc_e
         selector = module(ROOT / 'scripts/pkgsrc-source-identity.py', 'pkgsrc_identity')
         if pkgsrc_export:
             # The run's single export, bound to the current Ports inputs.
-            export = selector.shared_export(pkgsrc_export, ROOT, git, sdk_source, patch)
+            export = selector.shared_export(pkgsrc_export, ROOT, git, sdk_source, export_patch or patch)
         else:
             export = work / 'pkgsrc'
             command = [sys.executable, '-B', str(ROOT / 'scripts/prepare-pkgsrc.py'),
@@ -132,15 +132,16 @@ def main():
     parser.add_argument('--git', required=True)
     parser.add_argument('--patch')
     parser.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
+    parser.add_argument('--export-patch', help='patch used to create the shared export')
     parser.add_argument('--scoped-identity', action='store_true', help='record effective package identity')
     args = parser.parse_args()
     if args.operation == 'prepare':
         if not args.patch or not os.path.isabs(args.patch):
             parser.error('prepare requires an absolute --patch')
         result = prepare(args.source, args.sdk_source, args.git, args.patch, args.scoped_identity,
-                         args.pkgsrc_export)
+                         args.pkgsrc_export, args.export_patch)
     else:
-        result = verify(args.source, args.sdk_source, args.git, args.patch, args.pkgsrc_export)
+        result = verify(args.source, args.sdk_source, args.git, args.patch, args.pkgsrc_export, args.export_patch)
     print(json.dumps(result, sort_keys=True))
 
 

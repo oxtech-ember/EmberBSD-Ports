@@ -199,7 +199,7 @@ def shared_tree(selected):
     if not selected.pkgsrc_export:
         return None
     require(selected.patch and os.path.isabs(selected.patch), 'select an absolute patch executable')
-    return identity_module().shared_export(selected.pkgsrc_export, PORTS, selected.git, SDK_SOURCE, selected.patch)
+    return identity_module().shared_export(selected.pkgsrc_export, PORTS, selected.git, SDK_SOURCE, getattr(selected, 'export_patch', None) or selected.patch)
 
 
 def main():
@@ -214,6 +214,7 @@ def main():
     produce.add_argument('--patch', required=True)
     produce.add_argument('--scoped-identity', action='store_true')
     produce.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
+    produce.add_argument('--export-patch', help='patch used to create the shared export')
     check = sub.add_parser('verify-source')
     check.add_argument('--source', required=True)
     check.add_argument('--archive')

@@ -135,13 +135,13 @@ class NetworkOwner:
         return (dict(distname=distname, archive=archive, archive_root=self.root_prefix + distname,
                      **hashes, recipe={str(p.relative_to(root)): self.digest(self.read(p)) for p in inputs}), patches)
 
-    def verify(self, source, git, archive=None, patch=None, pkgsrc_export=None):
-        return tar_archive.verify(self, source, git, archive, patch, pkgsrc_export)
+    def verify(self, source, git, archive=None, patch=None, pkgsrc_export=None, export_patch=None):
+        return tar_archive.verify(self, source, git, archive, patch, pkgsrc_export, export_patch)
 
-    def refresh(self, source, git, archive, patch, pkgsrc_export=None):
+    def refresh(self, source, git, archive, patch, pkgsrc_export=None, export_patch=None):
         return self.prepared_receipt.refresh(
             source, identity=lambda: (self.source_identity(git), self.git_effective_identity(git)),
-            verify=lambda: self.verify(source, git, archive, patch, pkgsrc_export=pkgsrc_export))
+            verify=lambda: self.verify(source, git, archive, patch, pkgsrc_export=pkgsrc_export, export_patch=export_patch))
 
     def prepare(self, archive, output, patch, git, scoped_identity=False, exported=None):
         return tar_archive.prepare(self, archive, output, patch, git, scoped_identity, exported)
@@ -161,16 +161,19 @@ class NetworkOwner:
         produce.add_argument('--patch', required=True)
         produce.add_argument('--scoped-identity', action='store_true')
         produce.add_argument('--pkgsrc-export')
+        produce.add_argument('--export-patch', help='patch used to create the shared export')
         check = sub.add_parser('verify-source')
         check.add_argument('--source', required=True)
         check.add_argument('--archive')
         check.add_argument('--patch')
         check.add_argument('--pkgsrc-export')
+        check.add_argument('--export-patch', help='patch used to create the shared export')
         refresh_parser = sub.add_parser('refresh-source')
         refresh_parser.add_argument('--source', required=True)
         refresh_parser.add_argument('--archive', required=True)
         refresh_parser.add_argument('--patch', required=True)
         refresh_parser.add_argument('--pkgsrc-export')
+        refresh_parser.add_argument('--export-patch', help='patch used to create the shared export')
         selected = parser.parse_args(args)
         try:
             if selected.action == 'prepare':
@@ -178,10 +181,10 @@ class NetworkOwner:
                                       selected.scoped_identity, exported=self.shared_tree(selected))
             elif selected.action == 'refresh-source':
                 record = self.refresh(selected.source, selected.git, selected.archive, selected.patch,
-                                      pkgsrc_export=selected.pkgsrc_export)
+                                      pkgsrc_export=selected.pkgsrc_export, export_patch=getattr(selected, 'export_patch', None))
             else:
                 record = self.verify(selected.source, selected.git, selected.archive, selected.patch,
-                                     pkgsrc_export=selected.pkgsrc_export)
+                                     pkgsrc_export=selected.pkgsrc_export, export_patch=getattr(selected, 'export_patch', None))
             sys.stdout.buffer.write(self.jsonio.json_bytes(record))
         except (self.SDKError, OSError, ValueError) as exc:
             sdk_source.exit_error(exc, self.LABEL + ' source: ')

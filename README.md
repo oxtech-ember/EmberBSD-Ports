@@ -925,6 +925,10 @@ arguments. The shell entry also requires explicit `PY`.
 Python uses its standard library for archives, hashes and copies.
 The subprocess PATH contains only the selected source-tool directories.
 
+Source preparers accepting `--pkgsrc-export` also accept `--export-patch`
+for the patch executable that produced that existing export. It defaults to
+`--patch`; the latter remains the tool used to apply new source patches.
+
 A shared export can refresh selected upstream packages or existing overlay
 recipes and explicitly named
 `file` outputs without rebuilding the full tree. Stop all consumers and hold
