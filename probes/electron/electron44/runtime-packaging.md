@@ -27,6 +27,13 @@ host/target compiler families, runtime stages, native generators and common
 source providers. Use the controller's help and the parent README for those
 input contracts. No recipe path overrides the controller's identity checks.
 
+When reusing a graph configured outside the exported recipe, keep the original
+controller location as well as its selected inputs. Set pkgsrc `FILESDIR` to
+that owner's `electron44/files` directory. The controller derives helper paths
+from its own location; a copied controller has different identity paths even
+when its bytes match. Changing those paths requires a new configuration rather
+than bypassing the existing graph's identity checks.
+
 A new `WORK` is configured once through the selected GN. An existing
 `configuration.json` is left for the controller's strict build checks; an
 existing work directory without it is refused and preserved. Changes that need
