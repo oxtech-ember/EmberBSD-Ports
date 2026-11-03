@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.73 2026/09/06 11:02:44 markd Exp $
 
 DISTNAME=	kio-extras-${KAPPSVER}
-PKGREVISION=	3
+PKGREVISION=	4
 CATEGORIES=	misc
 
 HOMEPAGE=	https://kde.org/applications/internet/
@@ -64,6 +64,7 @@ TOOLS_PATH.md5sum=	${PREFIX}/bin/gmd5sum
 .include "../../graphics/exiv2/buildlink3.mk"
 .include "../../graphics/libkexiv2/buildlink3.mk"
 .include "../../graphics/qt6-qtsvg/buildlink3.mk"
+.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../multimedia/phonon-qt6/buildlink3.mk"
 .include "../../net/kf6-kdnssd/buildlink3.mk"
 .include "../../security/libssh/buildlink3.mk"

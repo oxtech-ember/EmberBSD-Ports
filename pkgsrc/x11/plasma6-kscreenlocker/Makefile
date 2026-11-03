@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.10 2026/09/06 10:23:32 markd Exp $
 
 DISTNAME=	kscreenlocker-${PLASMAVER}
+PKGREVISION=	1
 CATEGORIES=	x11
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -45,7 +46,9 @@ post-install:
 .include "../../devel/kf6-kidletime/buildlink3.mk"
 .include "../../devel/kf6-kio/buildlink3.mk"
 .include "../../devel/kf6-knotifications/buildlink3.mk"
+.include "../../devel/kf6-kpackage/buildlink3.mk"
 .include "../../devel/plasma6-kwayland/buildlink3.mk"
+.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../graphics/kf6-ksvg/buildlink3.mk"
 .include "../../sysutils/consolekit/buildlink3.mk"
 .include "../../sysutils/kf6-solid/buildlink3.mk"
