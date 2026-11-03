@@ -3,7 +3,7 @@
 .include "../../lang/llvm/version.mk"
 
 PKGNAME=	compiler-rt-${LLVM_VERSION}
-PKGREVISION=	10
+PKGREVISION=	11
 # The common runtime patch set also changes libunwind CMake checks and
 # libc++ headers.
 EXTRACT_ELEMENTS+=	${DISTNAME}/libunwind
@@ -77,10 +77,10 @@ CMAKE_CONFIGURE_ARGS+=	-DCOMPILER_RT_BUILD_SANITIZERS=OFF
 TEST_TARGET=	check-compiler-rt
 
 .if ${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-PKGREVISION=	11
+PKGREVISION=	12
 .if ${MACHINE_ARCH} == "riscv32"
 # RV32 previously installed a separate libatomic lock domain.
-PKGREVISION=	12
+PKGREVISION=	13
 .endif
 # Symbol-list generators run on the build host and read target archives.
 .if !empty(EMBERBSD_CROSS_HOST_PREFIX:M/*)
@@ -90,7 +90,7 @@ CMAKE_CONFIGURE_ARGS+=	-DCMAKE_NM:FILEPATH=${EMBERBSD_CROSS_HOST_PREFIX:Q}/bin/l
 
 .if ${OPSYS} == "NetBSD" && ${MACHINE_ARCH} == "riscv32" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 # Native RV32 package identity follows the same libc-provider transition.
-PKGREVISION=	11
+PKGREVISION=	12
 .endif
 
 .if ${OPSYS} == "NetBSD"

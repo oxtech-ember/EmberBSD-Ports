@@ -68,6 +68,11 @@ upstream-owned. The transferred adaptation retains its MIT/NCSA licensing in
 `compiler-rt/lib/builtins/LICENSE.EmberBSD-BINARY128.TXT`; the exact legacy
 contributors list remains in `compiler-rt/CREDITS.TXT`.
 
+`patch-10-darwin-codesign-force` permits the Darwin post-build step to
+re-sign an already signed dylib, preserving the selected identity and options.
+`tests/darwin-codesign.py` exercises both the original failure and the patched
+command with the selected SDK tools and an already signed Mach-O dylib.
+
 `patch-09-builtins-portable-widths` makes integer widths and signedness
 explicit in shared division and floating-point builtins, retaining their
 arithmetic and target ABI. It avoids implementation-defined signed shifts in
