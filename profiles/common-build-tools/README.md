@@ -69,6 +69,15 @@ hooks before publishing that full package.
 Info registration/removal with the selected provider. Package installation and
 removal are checked separately with the resulting archive.
 
+GNU make resolves a selected pkgsrc `mksh` or `pdksh` beside its own canonical
+executable before processing `-C`. Moving the native prefix, invoking the GNU
+alias or using a symlink therefore preserves the selected shell. An explicit
+`SHELL` assignment keeps its normal precedence; a missing provider does not fall
+back to the producer prefix or the system shell. Run
+`tests/gmake-executable-shell.py --gmake /absolute/gmake --shell /absolute/mksh`
+against the built binary to exercise recipes, recursion, `.ONESHELL`, failures,
+relative and empty PATH entries, symlinks, `-C`, spaces and explicit overrides.
+
 The [Mach-O metadata resolver](macho-metadata.md) uses selected structural tools.
 It does not require libmagic or create a file/libtool bootstrap cycle.
 
