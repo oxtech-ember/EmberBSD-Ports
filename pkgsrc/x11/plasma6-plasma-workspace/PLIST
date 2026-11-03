@@ -784,6 +784,8 @@ share/doc/HTML/ru/kcontrol/screenlocker/index.cache.bz2
 share/doc/HTML/ru/kcontrol/screenlocker/index.docbook
 share/doc/HTML/ru/klipper/index.cache.bz2
 share/doc/HTML/ru/klipper/index.docbook
+share/doc/HTML/ru/klipper/klipper-widget.png
+share/doc/HTML/ru/klipper/screenshot.png
 share/doc/HTML/sl/kcontrol/autostart/index.cache.bz2
 share/doc/HTML/sl/kcontrol/autostart/index.docbook
 share/doc/HTML/sl/kcontrol/colors/index.cache.bz2
@@ -1824,13 +1826,17 @@ share/locale/el/LC_MESSAGES/kcm_fonts.mo
 share/locale/el/LC_MESSAGES/kcm_icons.mo
 share/locale/el/LC_MESSAGES/kcm_lookandfeel.mo
 share/locale/el/LC_MESSAGES/kcm_nightlight.mo
+share/locale/el/LC_MESSAGES/kcm_nighttime.mo
 share/locale/el/LC_MESSAGES/kcm_notifications.mo
 share/locale/el/LC_MESSAGES/kcm_regionandlang.mo
 share/locale/el/LC_MESSAGES/kcm_soundtheme.mo
 share/locale/el/LC_MESSAGES/kcm_style.mo
 share/locale/el/LC_MESSAGES/kcm_users.mo
+share/locale/el/LC_MESSAGES/kcm_wallpaper.mo
 share/locale/el/LC_MESSAGES/kded_devicenotifications.mo
 share/locale/el/LC_MESSAGES/kded_donationmessage.mo
+share/locale/el/LC_MESSAGES/kded_geotimezoned.mo
+share/locale/el/LC_MESSAGES/ksecretprompter.mo
 share/locale/el/LC_MESSAGES/kfontinst.mo
 share/locale/el/LC_MESSAGES/kio_applications.mo
 share/locale/el/LC_MESSAGES/kio_desktop.mo
@@ -1841,6 +1847,7 @@ share/locale/el/LC_MESSAGES/libkicker.mo
 share/locale/el/LC_MESSAGES/libkmpris.mo
 share/locale/el/LC_MESSAGES/libkworkspace.mo
 share/locale/el/LC_MESSAGES/libnotificationmanager.mo
+share/locale/el/LC_MESSAGES/oom_notifier.mo
 share/locale/el/LC_MESSAGES/plasma_applet_org.kde.plasma.activitybar.mo
 share/locale/el/LC_MESSAGES/plasma_applet_org.kde.plasma.analogclock.mo
 share/locale/el/LC_MESSAGES/plasma_applet_org.kde.plasma.appmenu.mo
@@ -4496,6 +4503,7 @@ share/locale/ru/LC_MESSAGES/kcm_wallpaper.mo
 share/locale/ru/LC_MESSAGES/kded_devicenotifications.mo
 share/locale/ru/LC_MESSAGES/kded_donationmessage.mo
 share/locale/ru/LC_MESSAGES/kded_geotimezoned.mo
+share/locale/ru/LC_MESSAGES/ksecretprompter.mo
 share/locale/ru/LC_MESSAGES/kfontinst.mo
 share/locale/ru/LC_MESSAGES/kio_applications.mo
 share/locale/ru/LC_MESSAGES/kio_desktop.mo

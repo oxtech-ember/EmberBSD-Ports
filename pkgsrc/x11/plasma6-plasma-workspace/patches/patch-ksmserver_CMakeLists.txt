@@ -1,0 +1,14 @@
+$NetBSD$
+
+Use the logical target Qt runtime tools directory for installed runtime files.
+
+--- ksmserver/CMakeLists.txt.orig
++++ ksmserver/CMakeLists.txt
+@@ -59,4 +59,7 @@
+ install( FILES org.kde.KSMServerInterface.xml DESTINATION ${KDE_INSTALL_DBUSINTERFACEDIR})
+ 
+ ecm_install_configured_files(INPUT plasma-ksmserver.service.in DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})
++if(DEFINED EMBERBSD_QT_RUNTIME_BINDIR)
++    set(QtBinariesDir "${EMBERBSD_QT_RUNTIME_BINDIR}")
++endif()
+ ecm_install_configured_files(INPUT plasma-restoresession.service.in DESTINATION ${KDE_INSTALL_SYSTEMDUSERUNITDIR})

@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.7 2026/09/06 10:23:33 markd Exp $
 
 DISTNAME=	plasma-workspace-${PLASMAVER}
-PKGREVISION=	6
+PKGREVISION=	7
 CATEGORIES=	x11
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -25,6 +25,10 @@ USE_TOOLS+=	msgmerge pkg-config
 USE_CXX_FEATURES+=	c++23
 
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTING=OFF
+# Installed service and update scripts must use target Qt runtime tools.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+CMAKE_CONFIGURE_ARGS+=	-DEMBERBSD_QT_RUNTIME_BINDIR:PATH=${LOCALBASE}/qt6/bin
+.endif
 #CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_TYPE=Debug
 
 CHECK_INTERPRETER_SKIP+=	share/kconf_update/*

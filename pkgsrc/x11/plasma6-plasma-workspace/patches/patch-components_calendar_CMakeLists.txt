@@ -1,0 +1,19 @@
+$NetBSD$
+
+Use the logical target Qt runtime qtpaths for the installed update script.
+
+--- components/calendar/CMakeLists.txt.orig
++++ components/calendar/CMakeLists.txt
+@@ -47,7 +47,11 @@
+ 
+ ecm_finalize_qml_module(calendarplugin)
+ 
+-set(QTPATHS_PATH "$<TARGET_FILE:${QT_CMAKE_EXPORT_NAMESPACE}::qtpaths>")
++if(DEFINED EMBERBSD_QT_RUNTIME_BINDIR)
++    set(QTPATHS_PATH "${EMBERBSD_QT_RUNTIME_BINDIR}/qtpaths")
++else()
++    set(QTPATHS_PATH "$<TARGET_FILE:${QT_CMAKE_EXPORT_NAMESPACE}::qtpaths>")
++endif()
+ configure_file(kconf_update/migrate-calendar-to-plugin-id.py.in ${CMAKE_CURRENT_BINARY_DIR}/migrate-calendar-to-plugin-id.py.in @ONLY)
+ file(GENERATE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/migrate-calendar-to-plugin-id.py INPUT ${CMAKE_CURRENT_BINARY_DIR}/migrate-calendar-to-plugin-id.py.in)
+ install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/migrate-calendar-to-plugin-id.py DESTINATION ${KDE_INSTALL_KCONFUPDATEDIR})
