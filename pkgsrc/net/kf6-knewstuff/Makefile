@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.16 2026/09/06 10:05:17 markd Exp $
 
 DISTNAME=	knewstuff-${KF6VER}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	net
 
 HOMEPAGE=	https://community.kde.org/Frameworks
@@ -18,6 +18,7 @@ USE_TOOLS+=	msgmerge
 .include "../../devel/kf6-ki18n/buildlink3.mk"
 .include "../../devel/kf6-kpackage/buildlink3.mk"
 .include "../../devel/qt6-qttools/buildlink3.mk"
+.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../misc/kf6-attica/buildlink3.mk"
 .include "../../www/kf6-syndication/buildlink3.mk"
 .include "../../x11/kf6-kirigami/buildlink3.mk"
