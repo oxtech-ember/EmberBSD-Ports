@@ -57,6 +57,22 @@ native Clang/LLVM 23.1.4 Ports prefix and an SDK sysroot from EmberBSD
 The package was not run on a target. The reduced CIX P1 root is static
 and has no dynamic loader or shared libraries.
 
+`ptpd-2.3.1nb2` was built on 3 November 2026 from an export of Ports
+`6f749a30` on the sysroot of OS `77cc52ebd1c5`:
+
+| Result | Value |
+| --- | --- |
+| Package | `ptpd-2.3.1nb2.tgz`, 9 files, SHA256 `87dbae5f552677a6b8468b46f89429ca0a03eca3f5ae1477cd2ab116a2006947` |
+| Program | `sbin/ptpd2` needs `libpcap.so.12`, `libm.so.0` and `libc.so.12`; run path `/usr/pkg/lib` |
+| Kernel NTP state | no write as `PTP_MASTER`, `PTP_PASSIVE` and `clock:no_adjust` `PTP_SLAVE` (`check-ntp-owner.sh`, below) |
+| Service | the rc.d script starts it, it detaches and writes its PID to `/var/run/ptpd2.lock`; `status` and `stop` work |
+| Removal | `pkg_delete` removes it and keeps `/usr/pkg/etc/ptpd2.conf` |
+
+It was installed with `pkg_add` in two aarch64 guests booted from the
+sets of that OS. The package installs nothing into `/usr/pkg/etc`, so on a
+base with no other packages the directory is missing until the
+configuration is written.
+
 ## Service
 
 The package installs `share/examples/rc.d/ptpd2`. It reads
@@ -189,9 +205,19 @@ sets, set up as above but without chronyd, under `check-ntp-markers.sh`,
 Without writes maxerror grew from 100000 to 150000 or 150500 us in each
 run.
 
+The package `ptpd-2.3.1nb2` for that base ran in the same guests under
+`check-ntp-owner.sh` with the shim built for that base, 90 s per run.
+With the configurations above it made no clock or NTP state write as
+`PTP_MASTER`, `PTP_PASSIVE` (both master-only configurations) and
+`no_adjust` `PTP_SLAVE`, with 85 to 174 reads per run. The unpatched build
+of the same sources (SDK `2e5ec07`, outside pkgsrc) in `PTP_PASSIVE` wrote
+TAI 37 and maxerror and esterror 0 in the same guest, and the check
+exited 1. `rcorder` put the package rc.d script right after a stub
+`chronyd` script (exit 0); without one it warned that `chronyd` has no
+provider and exited 1, with ptpd2 still after `NETWORKING`.
+
 ## Remaining
 
-- AArch64 package `ptpd-2.3.1nb2` for the current base (`libpcap.so.12`).
 - A Daheng camera as PTP slave on an `rge` port for one hour, offset at
   most 1 ms, with the measured accuracy recorded.
 - Hardware timestamps on `rge` are a separate step (R10).

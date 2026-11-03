@@ -120,6 +120,18 @@ case "$mode" in
 esac
 mkdir -p "$state/logs"
 
+# The selected native prefix may provide the BSD awk implementation as nawk.
+# Use it only when the curated PATH has no awk command; never fall through to
+# an unselected host copy.
+if ! command -v awk > /dev/null 2>&1; then
+    if command -v nawk > /dev/null 2>&1; then
+        awk() { nawk "$@"; }
+    else
+        echo 'The selected native prefix must provide awk or nawk' >&2
+        exit 2
+    fi
+fi
+
 # Hash the complete NUL-delimited environment without writing its values to
 # disk. If a selected env/sort implementation cannot provide a trustworthy
 # digest, the order still runs but gets no persistent query/options cache.
