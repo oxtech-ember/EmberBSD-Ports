@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.19 2026/09/06 10:05:11 markd Exp $
 
 DISTNAME=	kcoreaddons-${KF6VER}
-PKGREVISION=	4
+PKGREVISION=	5
 CATEGORIES=	devel
 
 HOMEPAGE=	https://community.kde.org/Frameworks
@@ -23,6 +23,5 @@ CMAKE_CONFIGURE_ARGS+=	-DENABLE_INOTIFY=OFF
 .include "../../databases/shared-mime-info/buildlink3.mk"
 .include "../../devel/qt6-qttools/linguist.mk"
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"
-.include "../../mk/fam.buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
