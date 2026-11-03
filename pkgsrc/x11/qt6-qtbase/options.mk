@@ -14,6 +14,11 @@ PKG_SUPPORTED_OPTIONS+=	headless-generators
 .endif
 .endif
 
+# Offscreen Vulkan targets use bsdfb without window-system graphics.
+.if ${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+PKG_SUPPORTED_OPTIONS+= vulkan-offscreen
+.endif
+
 # QtQuick software rendering supports native Linux and NetBSD cross builds.
 .if (${OPSYS} == "Linux" && ${USE_CROSS_COMPILE:Uno:tl} != "yes") || \
     (${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes")
@@ -27,7 +32,7 @@ PKG_SUGGESTED_OPTIONS+=	cups
 
 .include "../../mk/bsd.options.mk"
 
-PLIST_VARS+=		cups dbus gtk3 opengl vulkan
+PLIST_VARS+=		cups dbus gtk3 opengl vulkan vkkhrdisplay
 
 # Native GUI generators without XCB: select software-rendering and
 # headless-generators; do not select gtk3 or host-tools.
@@ -40,6 +45,21 @@ PKG_FAIL_REASON+= "headless-generators excludes gtk3 and host-tools"
 .endif
 CMAKE_CONFIGURE_ARGS+= -DFEATURE_xcb:BOOL=OFF -DFEATURE_xlib:BOOL=OFF
 CMAKE_CONFIGURE_ARGS+= -DFEATURE_wayland:BOOL=OFF -DFEATURE_qtwaylandscanner:BOOL=OFF
+.endif
+
+.if !empty(PKG_OPTIONS:Mvulkan-offscreen)
+.if ${OPSYS} != "NetBSD" || ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PKG_FAIL_REASON+= "vulkan-offscreen requires a NetBSD cross build"
+.endif
+.if !empty(PKG_OPTIONS:Msoftware-rendering) || !empty(PKG_OPTIONS:Mheadless-generators) || !empty(PKG_OPTIONS:Mhost-tools) || !empty(PKG_OPTIONS:Mgtk3)
+PKG_FAIL_REASON+= "vulkan-offscreen excludes software-rendering, headless-generators, host-tools and gtk3"
+.endif
+CONFIGURE_ARGS+= -no-opengl -no-feature-egl -no-feature-eglfs -no-feature-eglfs_egldevice
+CMAKE_CONFIGURE_ARGS+= -DFEATURE_vulkan:BOOL=ON -DFEATURE_vkkhrdisplay:BOOL=OFF
+CMAKE_CONFIGURE_ARGS+= -DFEATURE_xcb:BOOL=OFF -DFEATURE_xlib:BOOL=OFF
+CMAKE_CONFIGURE_ARGS+= -DFEATURE_wayland:BOOL=OFF -DFEATURE_qtwaylandscanner:BOOL=OFF
+CMAKE_CONFIGURE_ARGS+= -DFEATURE_egl:BOOL=OFF -DFEATURE_eglfs:BOOL=OFF -DFEATURE_eglfs_egldevice:BOOL=OFF
+CMAKE_CONFIGURE_ARGS+= -DEMBERBSD_BSDFB_VULKAN_OFFSCREEN:BOOL=ON
 .endif
 
 .if !empty(PKG_OPTIONS:Msoftware-rendering)
@@ -56,9 +76,14 @@ CONFIGURE_ARGS+=	-no-feature-eglfs_egldevice -no-feature-vulkan
 CMAKE_CONFIGURE_ARGS+=	-DFEATURE_egl:BOOL=OFF -DFEATURE_eglfs:BOOL=OFF
 CMAKE_CONFIGURE_ARGS+=	-DFEATURE_eglfs_egldevice:BOOL=OFF -DFEATURE_vulkan:BOOL=OFF
 .else
+.if empty(PKG_OPTIONS:Mvulkan-offscreen)
 PLIST.opengl=	yes
+.endif
 .if ${OPSYS} != "Darwin"
 PLIST.vulkan=	yes
+.if empty(PKG_OPTIONS:Mvulkan-offscreen)
+PLIST.vkkhrdisplay=	yes
+.endif
 .endif
 .endif
 

@@ -73,7 +73,9 @@ BUILDLINK_DEPMETHOD.yoga=	build
 .include "../../devel/yoga/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .if empty(PKG_BUILD_OPTIONS.qt6-qtbase:Msoftware-rendering)
+.if empty(PKG_BUILD_OPTIONS.qt6-qtbase:Mvulkan-offscreen)
 PLIST.opengl=	yes
+.endif
 .endif
 .include "../../x11/qt6-qtbase/full-tools-required.mk"
 .include "../../mk/bsd.pkg.mk"

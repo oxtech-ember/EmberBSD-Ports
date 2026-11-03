@@ -47,13 +47,16 @@ require("PKG_FAIL_REASON" in block and "host-tools" in block,
         "software-rendering conflicts with host-tools")
 require("-no-feature-testlib" not in block and "-no-gui" not in block,
         "software-rendering retains GUI and TestLib")
-require(re.search(r'\.if empty\(PKG_BUILD_OPTIONS\.qt6-qtbase:Msoftware-rendering\)\s+\.include "\.\./\.\./graphics/glu/buildlink3\.mk"\s+\.include "\.\./\.\./graphics/vulkan-headers/buildlink3\.mk"\s+\.endif', buildlink3) is not None,
-        "QtBase omits GLU and Vulkan headers only for its installed software-rendering flavor")
-for dep in ("graphics/glu/buildlink3.mk", "graphics/vulkan-headers/buildlink3.mk"):
+require(re.search(r'\.if empty\(PKG_BUILD_OPTIONS\.qt6-qtbase:Msoftware-rendering\) && empty\(PKG_BUILD_OPTIONS\.qt6-qtbase:Mvulkan-offscreen\)\s+\.include "\.\./\.\./graphics/glu/buildlink3\.mk"\s+\.endif', buildlink3) is not None,
+        "QtBase omits GLU for both no-OpenGL flavors")
+require(re.search(r'\.if empty\(PKG_BUILD_OPTIONS\.qt6-qtbase:Msoftware-rendering\)\s+\.include "\.\./\.\./graphics/vulkan-headers/buildlink3\.mk"\s+\.endif', buildlink3) is not None,
+        "QtBase retains Vulkan headers in Vulkan offscreen mode")
+for dep, guard in (("graphics/glu/buildlink3.mk", ".if empty(PKG_OPTIONS:Msoftware-rendering) && empty(PKG_OPTIONS:Mvulkan-offscreen)"),
+                   ("graphics/vulkan-headers/buildlink3.mk", ".if empty(PKG_OPTIONS:Msoftware-rendering)")):
     pos = makefile.index('.include "../../' + dep + '"')
-    guard = makefile.rfind(".if empty(PKG_OPTIONS:Msoftware-rendering)", 0, pos)
-    end = makefile.find(".endif", pos)
-    require(guard >= 0 and end > pos, dep + " is omitted only for software mode")
+    start_guard = makefile.rfind(guard, 0, pos)
+    end_guard = makefile.find(".endif", start_guard)
+    require(start_guard >= 0 and end_guard > pos, dep + " follows its feature guard")
 
 def unprefixed(path):
     return re.sub(r"^(?:\$\{PLIST\.[^}]+\})+", "", path)
@@ -160,7 +163,7 @@ require(not guard_errors,
 require("headless-generators" in options, "native GUI generator role is explicit")
 require("-DFEATURE_xcb:BOOL=OFF" in options and "-DFEATURE_xlib:BOOL=OFF" in options,
         "headless generator disables XCB and Xlib")
-headless_guard = makefile.index('.if empty(PKG_OPTIONS:Mheadless-generators)')
+headless_guard = makefile.index('.if empty(PKG_OPTIONS:Mheadless-generators) && empty(PKG_OPTIONS:Mvulkan-offscreen)')
 headless_end = makefile.index('\n.endif', headless_guard)
 headless_block = makefile[headless_guard:headless_end]
 for dependency in ('libxcb', 'libX11', 'libXext', 'libXcursor', 'libXft', 'libXi',
