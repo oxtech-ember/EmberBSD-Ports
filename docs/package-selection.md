@@ -35,3 +35,27 @@ builds and installs into the selected build prefix/sysroot. This is not a
 target-device package installer.
 The generated root list is temporary and kept outside the state directory so
 selection does not overwrite the persistent full-build root list.
+
+## Small SDK and binary delivery
+
+The initial versionless sets are:
+
+| Set | Roots/purpose |
+| --- | --- |
+| `sdk-bootstrap` | Native Python, pkg_install, OpenSSL and public HTTPS CA certificates; runtime dependencies come from Ports |
+| `sdk-c`, `sdk-cxx` | Shared native Clang, LLVM and LLD; the target application sysroot is selected separately |
+| `kernel-tools` | Native compiler tools and bmake, without an application sysroot |
+| `fetch` | Small target HTTPS client with its shared OpenSSL dependency |
+| `host-fetch` | The same fetch recipe for the developer host |
+
+The bootstrap set is the native dependency portion of the SDK client, not a
+complete relocatable bootstrap archive. C and C++ share Clang; neither set adds
+a desktop, every language, tests or all targets. Target libc/CRT and C++ runtime
+remain the responsibility of the selected OS/SDK sysroot producer.
+Existing runtime/development package partitions (for example LLVM) retain their
+shared compilation and separate payload ownership.
+
+The SDK [binary catalog](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/docs/binary-catalog.md)
+uses these same files when publishing. Its readers can list and plan package
+sets without this source checkout, a compiler or bmake. Signing and catalog
+checks do not establish installed SDK or on-device pkgin acceptance.

@@ -1,0 +1,4 @@
+# Native compiler tools. Select the target application sysroot separately.
+lang/clang@native
+lang/llvm@native
+devel/lld@native

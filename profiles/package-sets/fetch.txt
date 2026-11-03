@@ -1,0 +1,2 @@
+# Small target HTTPS client with the shared OpenSSL runtime dependency.
+net/fetch

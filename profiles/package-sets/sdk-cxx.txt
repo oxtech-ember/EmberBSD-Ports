@@ -1,0 +1,4 @@
+# C++ uses the same native Clang toolchain. Target libc++ belongs to its sysroot.
+lang/clang@native
+lang/llvm@native
+devel/lld@native

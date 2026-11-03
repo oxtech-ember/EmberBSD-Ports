@@ -147,6 +147,16 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
     def nodes(self, graph):
         return {node['id']: node for node in graph['nodes']}
 
+    def test_runtime_phase_does_not_query_build_only_packages(self):
+        # Missing build-tool recipes must not prevent a binary catalog export.
+        for package in ('devel/generator', 'devel/library', 'devel/tests', 'devel/bootstrap'):
+            self.packages[package]['PKG_FAIL_REASON'] = 'not available on publisher'
+        nodes = self.nodes(self.run_export('--dependency-phase', 'runtime'))
+        self.assertEqual(set(nodes), {'target:devel/app', 'target:devel/runtime'})
+        calls = [json.loads(line) for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
+        self.assertEqual({call['package'] for call in calls}, {'devel/app', 'devel/runtime'})
+        self.assertIsNone(self.last_inventory)
+
     def test_cross_roles_follow_native_installer(self):
         graph = self.run_export()
         nodes = self.nodes(graph)

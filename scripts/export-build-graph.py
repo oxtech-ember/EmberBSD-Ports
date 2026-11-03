@@ -292,6 +292,8 @@ class Exporter:
                 recursive_env.pop(key)
         children = []
         for variable, kind in DEPENDENCIES.items():
+            if self.args.dependency_phase == 'runtime' and kind != 'runtime':
+                continue
             for dependency in sorted(set(shlex.split(metadata[variable]))):
                 pattern, sep, path = dependency.partition(':')
                 if not sep or not pattern or not path:
@@ -425,8 +427,8 @@ def main():
     for name in ('target', 'triplet', 'revision'):
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--mode', choices=('cross', 'native'), default='cross')
-    parser.add_argument('--dependency-phase', choices=('all', 'build'), default='all',
-                        help='build excludes test-stage edges and requires a separate inventory')
+    parser.add_argument('--dependency-phase', choices=('all', 'build', 'runtime'), default='all',
+                        help='build records tests separately; runtime exports only installed dependencies')
     parser.add_argument('--test-requirements-output', type=Path,
                         help='mandatory pending TEST_DEPENDS inventory for the build phase')
     parser.add_argument('--diagnostic-graph', type=Path,
@@ -445,7 +447,7 @@ def main():
         if args.max_nodes < 1 or args.jobs < 1 or args.timeout < 1:
             raise ExportError('limits must be positive')
         if (args.dependency_phase == 'build') != bool(args.test_requirements_output):
-            raise ExportError('build phase requires --test-requirements-output; all phase forbids it')
+            raise ExportError('build phase requires --test-requirements-output; other phases forbid it')
         outputs = [args.output] + ([args.test_requirements_output] if args.test_requirements_output else [])
         if args.diagnostic_graph:
             outputs.append(args.diagnostic_graph)
