@@ -2,7 +2,7 @@
 
 .include "Makefile.common"
 PKGNAME=	g${DISTNAME}
-PKGREVISION=	11
+PKGREVISION=	12
 CATEGORIES=	devel sysutils
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -30,6 +30,8 @@ post-extract:
 	    ${_DISTDIR}/${DISTNAME}${EXTRACT_SUFX} ${CASE_ENTRIES}
 
 USE_LIBTOOL=		yes
+# Keep the configured shared-only policy in nested libtool scripts.
+SHLIBTOOL_OVERRIDE=	# empty
 USE_TOOLS+=		gmake perl:run
 GNU_CONFIGURE=		yes
 GNU_CONFIGURE_STRICT=	no # otherwise MiscXS.pm won't be installed
