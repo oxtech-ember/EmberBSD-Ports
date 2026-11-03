@@ -925,6 +925,29 @@ arguments. The shell entry also requires explicit `PY`.
 Python uses its standard library for archives, hashes and copies.
 The subprocess PATH contains only the selected source-tool directories.
 
+A shared export can refresh one selected upstream package and explicitly named
+`file` outputs without rebuilding the full tree. Stop all consumers and hold
+exclusive use of the export for the entire operation:
+
+```sh
+python3 -B scripts/pkgsrc-shared-export.py /absolute/shared-export \
+  --sdk-source /absolute/EmberBSD-SDK --git /absolute/git --patch /absolute/patch \
+  --update --package devel/bmake --file EMBERBSD-SOURCE-IDENTITY/pkgsrc-source-identity.py
+```
+
+The updater proves the previous input identity, replays the selected package's
+ordered overlays and checks its old contents before replacing changed files.
+It keeps unchanged bytes, modes and mtimes. A changed upstream pin, unrelated
+global input, opaque cross-package patch, selected overlay recipe or link in
+the selected package is refused; this interface is not a general full-export
+replacement. A private active-input cache retains only uncommitted source bytes
+needed by the current receipt. It does not retain historical versions.
+
+An interrupted update leaves `.pkgsrc-update-incomplete`; readers refuse it.
+After inspecting and stopping users of the tree, rerun the same selection with
+`--resume`. The updater verifies both recorded states before finishing. A
+failed check leaves the marker and existing files for diagnosis.
+
 The SDK `scripts/pkgsrc-export-stage.py prepare ROOT --git GIT --patch PATCH`
 publishes one stage at `ROOT/FINGERPRINT`. Source owners accept that stage via
 their `--pkgsrc-export` option; the same stage can serve source preparation and

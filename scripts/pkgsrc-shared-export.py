@@ -28,12 +28,29 @@ def main():
     parser.add_argument('--sdk-source', required=True)
     parser.add_argument('--git', required=True, help='absolute Git inspector')
     parser.add_argument('--patch', required=True, help='absolute patch tool')
+    parser.add_argument('--update', action='store_true',
+                        help='refresh one upstream package and selected file outputs; unsupported overlays fail closed')
+    parser.add_argument('--resume', action='store_true', help='resume an interrupted selected update')
+    parser.add_argument('--package', help='selected package to update')
+    parser.add_argument('--file', action='append', default=[], help='selected file output to update')
     args = parser.parse_args()
     sdk_source.load_sdk(['--sdk-source', args.sdk_source])
     spec = importlib.util.spec_from_file_location('pkgsrc_source_identity', PORTS / 'scripts/pkgsrc-source-identity.py')
     selector = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(selector)
-    receipt = selector.create_shared_export(Path(args.directory), PORTS, args.git, args.sdk_source, args.patch)
+    if args.update:
+        if not args.package:
+            parser.error('--update requires --package')
+        spec = importlib.util.spec_from_file_location('pkgsrc_shared_update', PORTS / 'scripts/pkgsrc-shared-update.py')
+        updater = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(updater)
+        receipt = updater.update(args.directory, PORTS, args.git, args.sdk_source, args.patch, args.package, args.file, resume=args.resume)
+    else:
+        if args.package or args.file or args.resume:
+            parser.error('--package and --file require --update')
+        receipt = selector.create_shared_export(Path(args.directory), PORTS, args.git, args.sdk_source, args.patch)
+    if args.update:
+        receipt = {key: receipt[key] for key in ('format', 'version', 'identity')}
     sys.stdout.write(json.dumps(receipt, sort_keys=True) + '\n')
 
 
