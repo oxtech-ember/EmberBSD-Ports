@@ -79,6 +79,10 @@ esac
 : "${MAKECONF:?Set MAKECONF to the cross MAKECONF}"
 : "${PKGSRCDIR:?Set PKGSRCDIR to the prepared pkgsrc tree}"
 export MAKECONF
+# Target and native compiler roles are selected by MAKECONF and the SDK
+# mapping. An inherited host CPP (or binutils role) must not leak into an
+# Autoconf process after bmake resolves a different target tool.
+unset CC CXX CPP AR AS LD NM RANLIB STRIP CLANGBASE
 mkdir -p "$state/logs"
 
 # Hash the complete NUL-delimited environment without writing its values to
@@ -1064,6 +1068,7 @@ shared_pair_for_path()
     case "$1" in
         lang/llvm|lang/llvm-devel) shared_pair=llvm ;;
         x11/qt6-qtbase|x11/qt6-qtbase-devel) shared_pair=qtbase ;;
+        textproc/icu|textproc/icu-devel) shared_pair=icu ;;
         *) shared_pair= ;;
     esac
     [ -z "$shared_pair" ] || shared_pair_config "$shared_pair"
@@ -1085,6 +1090,12 @@ shared_pair_config()
             shared_variable=EMBERBSD_LLVM_SHARED_STAGE
             shared_stage_name=.llvm-shared-full-stage
             shared_fields='LLVM_VERSION WRKSRC DISTNAME PATCHDIR DISTINFO_FILE PKG_OPTIONS USE_CROSS_COMPILE OPSYS OS_VERSION MACHINE_ARCH MACHINE_GNU_PLATFORM EMBERBSD_CROSS_COMPILER_FAMILY PKGSRC_COMPILER CMAKE CFLAGS CXXFLAGS CPPFLAGS LDFLAGS CMAKE_CONFIGURE_ARGS CONFIGURE_ENV CC CXX CPP AR AS LD RANLIB STRIP CWRAPPERS_APPEND.cc CWRAPPERS_APPEND.cxx _CMAKE_BUILD_SYSTEM INSTALL_TARGET CMAKE_INSTALL_ARGS LLVM_TARGETS_TO_BUILD LLVM_EXPERIMENTAL_TARGETS_TO_BUILD CROSS_DESTDIR TOOLDIR TOOL_PYTHONBIN EMBERBSD_LLVM_NATIVE_TOOLS MAKE_ENV CMAKE_BUILD_ARGS _CMAKE_BUILD_TOOL CMAKE_GENERATOR CMAKE_BUILD_DIR BUILD_TARGET BUILD_DIRS CONFIGURE_DIR SETENV RUN INSTALL_ENV INSTALL_DIRS PREFIX' ;;
+        icu)
+            shared_producer=textproc/icu
+            shared_consumer=textproc/icu-devel
+            shared_variable=EMBERBSD_ICU_SHARED_STAGE
+            shared_stage_name=.icu-shared-full-stage
+            shared_fields='DISTNAME PKGVERSION_NOREV WRKSRC PATCHDIR DISTINFO_FILE FILESDIR PKG_OPTIONS USE_CROSS_COMPILE OPSYS OS_VERSION MACHINE_ARCH MACHINE_GNU_PLATFORM ABI EMBERBSD_HOST_PREFIX EMBERBSD_NATIVE_TOOLSET_MAKECONF EMBERBSD_CROSS_COMPILER_FAMILY PKGSRC_COMPILER CFLAGS CXXFLAGS CPPFLAGS LDFLAGS CONFIGURE_ARGS CONFIGURE_ENV CC CXX CPP AR AS LD RANLIB STRIP CWRAPPERS_APPEND.cc CWRAPPERS_APPEND.cxx ICU_CROSS_DIR ICU_STAGED_HOST_PREFIX CROSS_DESTDIR TOOLDIR TOOL_PYTHONBIN EMBERBSD_CROSS_BUILD_PYTHON MAKE_ENV MAKE_FLAGS BUILD_TARGET BUILD_DIRS CONFIGURE_DIR SETENV RUN INSTALL_ENV INSTALL_DIRS PREFIX' ;;
         qtbase)
             shared_producer=x11/qt6-qtbase
             shared_consumer=x11/qt6-qtbase-devel
@@ -1145,6 +1156,7 @@ shared_pairs_configure()
     [ "${CROSS_BULK_SHARED_BUILD:-yes}" = yes ] || return 0
     shared_pair_configure_one llvm
     shared_pair_configure_one qtbase
+    shared_pair_configure_one icu
 }
 
 shared_pair_ready()

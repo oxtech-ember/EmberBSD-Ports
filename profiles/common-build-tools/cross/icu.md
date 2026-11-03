@@ -8,6 +8,16 @@ metadata needed in the development-host sysroot. The SDK package depends on
 the exact matching runtime package. AArch64 and amd64 use the same source and
 patch set.
 
+When the common cross-bulk graph contains both target roles, the controller
+compares their expanded source, compiler, flags, options, ABI and tool inputs.
+A matching runtime build retains its validated complete install stage for the
+development package; the development package selects its partition without a
+second ICU compilation. Mismatched inputs use independent builds. The stage
+owner validates the manifest and copies without following symbolic links.
+The controller clears inherited compiler-role environment variables before
+using the explicit MAKECONF and SDK native-tool selection. Runtime execution
+remains a separate target check.
+
 Cross builds use native ICU generators of the same release and the explicitly
 selected Python 3.15 and SDK source. The SDK stage partition checks the complete
 installed payload against the runtime and development manifests before selecting

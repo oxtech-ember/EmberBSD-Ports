@@ -3,6 +3,8 @@
 # Origin: EmberBSD (AI-assisted). ICU package policy for the shared SDK API.
 """Select an exhaustive ICU runtime or development-host SDK partition."""
 from pathlib import Path
+import os
+import shutil
 import re
 import sys
 
@@ -31,16 +33,9 @@ def manifest(path):
     return result
 
 
-def select(part, stage, *lists):
-    from emberbsd_sdk import stage as stage_api
-
-    feature = getattr(stage_api, "STAGE_PARTITION_API", None)
-    if (type(feature) is not int or feature != 1
-            or not callable(getattr(stage_api, "partition_stage", None))):
-        raise ValueError("the selected SDK must provide STAGE_PARTITION_API 1")
-    if part not in ("runtime", "devel") or len(lists) != 3:
-        raise ValueError("unknown ICU package part or manifest count")
-    full, runtime, devel = map(manifest, lists)
+def check_policy(full, runtime, devel):
+    if runtime & devel or runtime | devel != full:
+        raise ValueError("ICU partitions do not exhaust the full manifest")
     # Conversion, inspection and resource dumping are installed user commands.
     # Data generators, link interfaces and build metadata belong to the SDK.
     expected = {"bin/derb", "bin/icuinfo", "bin/uconv",
@@ -62,6 +57,19 @@ def select(part, stage, *lists):
         raise ValueError("ICU runtime PLIST differs from the shared-library and user-command policy")
     if not any(name.startswith("lib/libicuuc.so.") for name in runtime):
         raise ValueError("ICU runtime requires its versioned core library")
+    return full, runtime, devel
+
+
+def select(part, stage, *lists):
+    from emberbsd_sdk import stage as stage_api
+
+    feature = getattr(stage_api, "STAGE_PARTITION_API", None)
+    if (type(feature) is not int or feature != 1
+            or not callable(getattr(stage_api, "partition_stage", None))):
+        raise ValueError("the selected SDK must provide STAGE_PARTITION_API 1")
+    if part not in ("runtime", "devel") or len(lists) != 3:
+        raise ValueError("unknown ICU package part or manifest count")
+    full, runtime, devel = check_policy(*map(manifest, lists))
     result = stage_api.partition_stage(
         stage, full, {"runtime": runtime, "devel": devel}, part,
         dependencies={"devel": ["runtime"]})
@@ -69,15 +77,80 @@ def select(part, stage, *lists):
           f"{len(result['kept_files'])}/{result['complete_files']} files")
 
 
+
+def rollback_copy(destination, preserve_root):
+    if os.path.isdir(destination) and not os.path.islink(destination):
+        if preserve_root:
+            for entry in os.scandir(destination):
+                if entry.is_dir(follow_symlinks=False):
+                    shutil.rmtree(entry.path)
+                else:
+                    os.unlink(entry.path)
+        else:
+            shutil.rmtree(destination)
+
+
+def copy_complete(source, destination, lists, *, allow_empty=False):
+    from emberbsd_sdk import inventory, paths
+
+    full, runtime, devel = check_policy(*map(manifest, lists))
+    if not callable(getattr(inventory, "transfer_inventory_equal", None)):
+        raise ValueError("the selected SDK must provide inventory transfer validation")
+    source = paths.path_string(source)
+    destination = paths.path_string(destination)
+    if paths.canonical_existing(source) != source or paths.canonical_new(destination) != destination:
+        raise ValueError("ICU stages require normalized paths with real ancestors")
+    paths.real_directory(source)
+    paths.reject_overlap(source, destination)
+    existing = os.path.lexists(destination)
+    if existing:
+        if not allow_empty:
+            raise ValueError("shared-stage destination already exists")
+        paths.real_directory(destination)
+        if os.listdir(destination):
+            raise ValueError("ICU package destination is not empty")
+    before = inventory.snapshot_tree(source)
+    if {name for name, row in before.items() if row['kind'] != 'directory'} != full:
+        raise ValueError("actual ICU complete stage differs from its manifest")
+    parent = Path(destination).parent
+    parent.mkdir(parents=True, exist_ok=True)
+    try:
+        shutil.copytree(source, destination, symlinks=True, dirs_exist_ok=existing)
+        copied = inventory.snapshot_tree(destination)
+        if (not inventory.transfer_inventory_equal(before, copied)
+                or inventory.snapshot_tree(source) != before):
+            raise ValueError("ICU stage changed or differs during handoff")
+    except Exception:
+        rollback_copy(destination, existing)
+        raise
+    return destination
+
 def main():
     install_signal_handlers()
     if sys.version_info[:2] != (3, 15):
         raise ValueError("ICU stage selection requires Python 3.15")
     _, args = load_sdk()
-    if len(args) != 5:
-        raise ValueError("usage: select-stage.py --sdk-source SOURCE "
-                         "runtime|devel STAGE FULL_PLIST RUNTIME_PLIST DEVEL_PLIST")
-    select(*args)
+    if len(args) == 5 and args[0] in ("runtime", "devel"):
+        select(*args)
+    elif len(args) == 6 and args[0] == "handoff-runtime":
+        _, source, full, runtime, devel, shared = args
+        copy_complete(source, shared, (full, runtime, devel))
+        try:
+            select("runtime", source, full, runtime, devel)
+        except Exception:
+            shutil.rmtree(shared)
+            raise
+    elif len(args) == 6 and args[0] == "copy-devel":
+        _, shared, destination, full, runtime, devel = args
+        existing = os.path.lexists(destination)
+        copy_complete(shared, destination, (full, runtime, devel), allow_empty=True)
+        try:
+            select("devel", destination, full, runtime, devel)
+        except Exception:
+            rollback_copy(destination, existing)
+            raise
+    else:
+        raise ValueError("usage: select-stage.py --sdk-source SOURCE runtime|devel|handoff-runtime|copy-devel ...")
 
 
 if __name__ == "__main__":
