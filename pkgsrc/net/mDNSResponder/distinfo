@@ -15,3 +15,4 @@ SHA1 (patch-mDNSShared_utilities_mdns__addr__tailq.h) = b367d840beea8404b457365d
 SHA1 (patch-mDNSPosix_mDNSPosix_NetBSD.c) = cff96ed2f2274c047d9cb676b3df6565dc4ff76b
 SHA1 (patch-mDNSPosix_PosixDaemon.c) = 54ad9e1e17b47a0146c2c5036698b18df09f741d
 SHA1 (patch-mDNSShared_PlatformCommon.c) = c3baf5fe7a56a6b839279ad111c56760b09e5127
+SHA1 (patch-mDNSShared_dns__sd.h) = 401cda93c1e4ef59d2a17fe73259ea3c6fbb2b16
