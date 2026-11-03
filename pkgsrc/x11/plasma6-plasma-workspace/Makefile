@@ -16,7 +16,6 @@ LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2.1 AND gnu-fdl-v1.2
 
 # notifications/global/PulseAudio.qml imports the volume model.
 DEPENDS+=	plasma6-plasma-pa>=${PLASMAVER}:../../audio/plasma6-plasma-pa
-DEPENDS+=	plasma6-kwin>=${PLASMAVER}:../../x11/plasma6-kwin
 # The classic Wayland session starts Xwayland for ksmserver's xcb platform.
 DEPENDS+=	xwayland>=24.1.14nb1:../../wayland/xwayland
 DEPENDS+=	kio-extras>=25.08.3:../../devel/kio-extras
@@ -124,6 +123,7 @@ CONF_FILES+=	${PREFIX}/share/examples/kde-xdg/plasmanotifyrc \
 .include "../../x11/plasma6-kscreenlocker/buildlink3.mk"
 .include "../../x11/plasma6-layer-shell-qt/buildlink3.mk"
 .include "../../x11/plasma6-libkscreen/buildlink3.mk"
+.include "../../x11/plasma6-kwin/buildlink3.mk"
 
 .include "../../x11/plasma6-union/buildlink3.mk"
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"
