@@ -87,6 +87,53 @@ class SharedExportTest(unittest.TestCase):
     def select(self, directory):
         return identity.shared_export(directory, self.root, sys.executable, SDK, str(self.tool))
 
+    def test_consumer_patch_is_distinct_from_export_producer(self):
+        from types import SimpleNamespace
+        from emberbsd_sdk import sourceprep
+        producer = self.tool
+        consumer = os.environ.get('EMBERBSD_TEST_GPATCH')
+        if not consumer:
+            self.skipTest('select the native GNU patch for the source operation')
+        directory = Path(self.temp.name) / 'export'
+        identity.create_shared_export(directory, self.root, sys.executable, SDK, str(producer))
+        owner = load(ROOT / 'scripts/source-inputs/libevent/source.py', 'separate_patch_owner')
+        selected = SimpleNamespace(pkgsrc_export=str(directory), git=sys.executable,
+                                   patch=consumer, export_patch=str(producer))
+        receipt = directory / 'pkgsrc-export.json'
+        tree = directory / 'pkgsrc'
+        stamps = [(path.stat().st_mtime_ns, path.stat().st_ino) for path in (receipt, tree)]
+        with patch.object(owner, 'PORTS', self.root), patch.object(owner, 'SDK_SOURCE', SDK, create=True), \
+                patch.object(owner, 'identity_module', return_value=identity):
+            self.assertEqual(owner.shared_tree(selected), tree)
+            selected.export_patch = consumer
+            with self.assertRaisesRegex(ValueError, 'different inputs'):
+                owner.shared_tree(selected)
+            selected.export_patch = str(producer)
+            producer.write_text('#!/bin/sh\n# changed\n')
+            with self.assertRaisesRegex(ValueError, 'different inputs'):
+                owner.shared_tree(selected)
+            producer.write_text('#!/bin/sh\n')
+            (directory / identity.SHARED_EXPORT_DIRTY).write_text('interrupted\n')
+            with self.assertRaisesRegex(ValueError, 'incomplete'):
+                owner.shared_tree(selected)
+            (directory / identity.SHARED_EXPORT_DIRTY).unlink()
+            self.assertEqual(owner.shared_tree(selected), tree)
+        self.assertEqual(stamps, [(path.stat().st_mtime_ns, path.stat().st_ino) for path in (receipt, tree)])
+        work = Path(self.temp.name) / 'source'
+        work.mkdir()
+        (work / 'file').write_text('before\n')
+        delta = b'--- file\n+++ file\n@@ -1 +1 @@\n-before\n+after\n'
+        diff = Path(self.temp.name) / 'source.patch'
+        diff.write_bytes(delta)
+        self.run.stop()
+        try:
+            with patch.object(sourceprep.process, 'capture', wraps=sourceprep.process.capture) as capture:
+                sourceprep.apply_patch(consumer, diff, delta, work, 'fixture', patch_args=('-p0', '-F0'))
+                self.assertEqual(capture.call_args.args[0][0], consumer)
+        finally:
+            self.run.start()
+        self.assertEqual((work / 'file').read_text(), 'after\n')
+
     def test_incomplete_update_is_never_accepted(self):
         directory = Path(self.temp.name) / 'export'
         identity.create_shared_export(directory, self.root, sys.executable, SDK, str(self.tool))
@@ -308,7 +355,7 @@ class OwnerTest(unittest.TestCase):
                      patch.object(owner.jsonio, 'read_json', return_value={'identity': old}), \
                      patch.object(owner.sourceprep, 'validate_prepared_tree', return_value=record), \
                      patch.object(owner, 'identity_module', return_value=selector), \
-                     patch.object(owner, 'git_effective_identity', return_value=effective) as git_identity, \
+                     patch.object(owner, 'git_effective_identity', return_value=dict(effective, api=3, legacy_api2_sha256=effective['effective_package_sha256'])) as git_identity, \
                      patch.object(selector, 'effective_package_identity', return_value=dict(effective, api=1)), \
                      patch.object(selector, 'shared_export') as shared, \
                      patch.object(owner.process, 'capture') as capture, \
@@ -322,11 +369,11 @@ class OwnerTest(unittest.TestCase):
                     self.assertEqual((capture.call_count, shared.call_count, prepare.call_count),
                                      (0, len(shared_args), 0))
                     # A changed dependent Git object falls back to the payload comparison.
-                    git_identity.return_value = dict(effective, effective_package_sha256='6' * 64)
+                    git_identity.return_value = dict(effective, api=3, legacy_api2_sha256='6' * 64)
                     owner.verify('/source', sys.executable, archive='/archive', patch='/patch', **extra)
                     self.assertEqual((capture.call_count, prepare.call_count), (1, 1))
                     # So does a changed owner.
-                    git_identity.return_value = effective
+                    git_identity.return_value = dict(effective, api=3, legacy_api2_sha256=effective['effective_package_sha256'])
                     current['owner_sha256'] = '7' * 64
                     owner.verify('/source', sys.executable, archive='/archive', patch='/patch', **extra)
                     self.assertEqual((capture.call_count, prepare.call_count), (2, 2))
@@ -348,7 +395,7 @@ class OwnerTest(unittest.TestCase):
                      patch.object(owner.jsonio, 'read_json', return_value={'identity': old}), \
                      patch.object(owner.sourceprep, 'validate_prepared_tree', return_value={'tree_sha256': '5' * 64}), \
                      patch.object(owner, 'identity_module', return_value=selector), \
-                     patch.object(owner, 'git_effective_identity', return_value=effective), \
+                     patch.object(owner, 'git_effective_identity', return_value=dict(effective, api=3, legacy_api2_sha256=effective['effective_package_sha256'])), \
                      patch.object(selector, 'shared_export',
                                   side_effect=ValueError('invalid shared pkgsrc export receipt')):
                     with self.assertRaisesRegex(ValueError, 'invalid shared pkgsrc export receipt'):

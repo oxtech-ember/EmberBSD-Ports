@@ -9,11 +9,14 @@ import re
 import sys
 import tempfile
 
-def verify(ctx, source, git, archive=None, patch=None, pkgsrc_export=None):
+def verify(ctx, source, git, archive=None, patch=None, pkgsrc_export=None, export_patch=None):
     record = ctx.jsonio.read_json(str(Path(source) / ctx.sourceprep.PREPARED_TREE_RECEIPT))
     old = record.get('identity') if isinstance(record, dict) else None
     record = ctx.sourceprep.validate_prepared_tree(source, package=ctx.PACKAGE, identity=old)
     selector = ctx.identity_module()
+    # An explicit export producer must be checked even on the Git fast path.
+    shared = (selector.shared_export(pkgsrc_export, ctx.PORTS, git, ctx.SDK_SOURCE, export_patch)
+              if pkgsrc_export and export_patch is not None else None)
     compatible = getattr(ctx, 'compatible_owner_digests', ())
     owner_digest = getattr(ctx, 'owner_digest', None)
     if isinstance(old, dict) and callable(owner_digest):
@@ -27,8 +30,8 @@ def verify(ctx, source, git, archive=None, patch=None, pkgsrc_export=None):
 
     # Only compare the whole shared export on paths that need it to rebuild
     # or compare the selected package payload.
-    shared = (selector.shared_export(pkgsrc_export, ctx.PORTS, git, ctx.SDK_SOURCE, patch)
-              if pkgsrc_export else None)
+    if shared is None and pkgsrc_export:
+        shared = selector.shared_export(pkgsrc_export, ctx.PORTS, git, ctx.SDK_SOURCE, patch)
     identity = ctx.source_identity(git)
     if old == identity:
         return record
@@ -137,4 +140,4 @@ def shared_tree(ctx, selected):
     if not selected.pkgsrc_export:
         return None
     ctx.require(selected.patch and os.path.isabs(selected.patch), 'select an absolute patch executable')
-    return ctx.identity_module().shared_export(selected.pkgsrc_export, ctx.PORTS, selected.git, ctx.SDK_SOURCE, selected.patch)
+    return ctx.identity_module().shared_export(selected.pkgsrc_export, ctx.PORTS, selected.git, ctx.SDK_SOURCE, getattr(selected, 'export_patch', None) or selected.patch)

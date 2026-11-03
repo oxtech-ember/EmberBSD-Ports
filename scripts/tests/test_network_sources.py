@@ -36,7 +36,7 @@ class NetworkSourcesTest(unittest.TestCase):
                 temp, package=owner.PACKAGE, identity=old)
             selector = owner.identity_module()
             with patch.object(owner.engine, 'identity_module', return_value=selector), \
-                    patch.object(owner.engine, 'git_effective_identity', return_value=effective), \
+                    patch.object(owner.engine, 'git_effective_identity', return_value=dict(effective, api=3, legacy_api2_sha256=effective['effective_package_sha256'])), \
                     patch.object(owner.engine, 'source_identity',
                                  side_effect=AssertionError('global export identity was consulted')), \
                     patch.object(selector, 'shared_export',
@@ -62,7 +62,7 @@ class NetworkSourcesTest(unittest.TestCase):
             current = {'export': {'current': True, 'upstream': 'b' * 40},
                        'owner_sha256': owner.engine.owner_digest()}
             with patch.object(owner.engine, 'identity_module', return_value=selector), \
-                    patch.object(owner.engine, 'git_effective_identity', return_value=changed_effective), \
+                    patch.object(owner.engine, 'git_effective_identity', return_value=dict(changed_effective, api=3, legacy_api2_sha256=changed_effective['effective_package_sha256'])), \
                     patch.object(owner.engine, 'source_identity', return_value=current), \
                     patch.object(selector, 'shared_export', return_value=export) as shared, \
                     patch.object(selector, 'effective_package_identity', return_value=changed_effective):
@@ -87,7 +87,7 @@ class NetworkSourcesTest(unittest.TestCase):
                 with patch.object(owner, 'source_identity',
                                   side_effect=AssertionError('global export identity was consulted')), \
                         patch.object(owner, 'identity_module', return_value=selector), \
-                        patch.object(owner, 'git_effective_identity', return_value=effective), \
+                        patch.object(owner, 'git_effective_identity', return_value=dict(effective, api=3, legacy_api2_sha256=effective['effective_package_sha256'])), \
                         patch.object(selector, 'shared_export',
                                      side_effect=AssertionError('unrelated shared export was consulted')):
                     self.assertEqual(owner.verify(temp, '/bin/true', patch='/patch',

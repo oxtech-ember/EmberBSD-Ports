@@ -38,6 +38,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('export', 'host-prefix', 'pkg-admin', 'make', 'makeconf', 'git', 'patch'):
         parser.add_argument('--' + name, required=True)
+    parser.add_argument('--export-patch', help='patch used to create the shared export')
     selection = parser.add_mutually_exclusive_group(required=True)
     selection.add_argument('--output')
     selection.add_argument('--source')
@@ -65,7 +66,7 @@ def main():
     spec = importlib.util.spec_from_file_location('pkgsrc_source_identity', PORTS / 'scripts/pkgsrc-source-identity.py')
     selector = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(selector)
-    exported = selector.shared_export(args.export, PORTS, args.git, sdk, args.patch)
+    exported = selector.shared_export(args.export, PORTS, args.git, sdk, args.export_patch or args.patch)
     recipe = Path(paths.canonical_existing(exported / 'devel/autogen'))
     search_path = os.pathsep.join(str(prefix / item) for item in ('bin', 'gnu/bin', 'sbin'))
     for tool in (args.make, args.pkg_admin):
@@ -151,6 +152,7 @@ def prepare_distfile(argv, sdk, jsonio, paths, sourceprep, SDKError, publish_dir
     parser = argparse.ArgumentParser(description=prepare_distfile.__doc__)
     for name in ('export', 'git', 'patch', 'archive'):
         parser.add_argument('--' + name, required=True)
+    parser.add_argument('--export-patch', help='patch used to create the shared export')
     selection = parser.add_mutually_exclusive_group(required=True)
     selection.add_argument('--output')
     selection.add_argument('--source')
@@ -173,7 +175,7 @@ def prepare_distfile(argv, sdk, jsonio, paths, sourceprep, SDKError, publish_dir
     selector = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(selector)
     current = selector.identity(PORTS, 'devel/autogen', args.git, sdk)
-    exported = selector.shared_export(args.export, PORTS, args.git, sdk, args.patch)
+    exported = selector.shared_export(args.export, PORTS, args.git, sdk, args.export_patch or args.patch)
     recipe = Path(paths.canonical_existing(exported / 'devel/autogen'))
     makefile = read(recipe / 'Makefile').decode('utf-8')
     distnames = re.findall(r'^DISTNAME=\s*(autogen-[0-9]+(?:\.[0-9]+)+)\s*$', makefile, re.M)
@@ -269,6 +271,7 @@ def verify_source(argv, sdk, jsonio, paths, process, sourceprep, SDKError):
     check.add_argument('--source', required=True)
     check.add_argument('--patch', required=True)
     check.add_argument('--pkgsrc-export')
+    check.add_argument('--export-patch', help='patch used to create the shared export')
     args = parser.parse_args(argv)
     if not all(os.path.isabs(x) for x in (args.git, args.source, args.patch)):
         raise SDKError('select absolute Git, patch and source paths')
@@ -291,7 +294,7 @@ def verify_source(argv, sdk, jsonio, paths, process, sourceprep, SDKError):
     current = selector.identity(PORTS, 'devel/autogen', args.git, sdk)
     with tempfile.TemporaryDirectory(prefix='.autogen-verify-') as temporary:
         if args.pkgsrc_export:
-            exported = selector.shared_export(args.pkgsrc_export, PORTS, args.git, sdk, args.patch)
+            exported = selector.shared_export(args.pkgsrc_export, PORTS, args.git, sdk, args.export_patch or args.patch)
         else:
             exported = Path(temporary) / 'pkgsrc'
             process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),

@@ -59,9 +59,9 @@ def copy_files(exported, root, expected):
             'common libfetch FILESDIR changed during preparation')
 
 
-def export_tree(tmp, git, patch, shared):
+def export_tree(tmp, git, patch, shared, export_patch=None):
     require(patch and os.path.isabs(patch), 'select an absolute patch tool')
-    selected = (identity_module().shared_export(shared, PORTS, git, SDK_SOURCE, patch)
+    selected = (identity_module().shared_export(shared, PORTS, git, SDK_SOURCE, export_patch or patch)
                 if shared else None)
     if selected is not None:
         # The receipt identity is the export key: the pinned pkgsrc commit,
@@ -78,7 +78,7 @@ def export_tree(tmp, git, patch, shared):
     return exported, payload(exported / PACKAGE / 'files')
 
 
-def prepare(output, git, patch, shared=None):
+def prepare(output, git, patch, shared=None, export_patch=None):
     output = Path(output)
     require(output.is_absolute() and output.parent.is_dir() and not os.path.lexists(output),
             'prepared source output must be a new absolute path')
@@ -87,7 +87,7 @@ def prepare(output, git, patch, shared=None):
         paths.reject_overlap(str(output), str(shared))
     before = identity(git)
     with tempfile.TemporaryDirectory(prefix='.libfetch-source-', dir=output.parent) as tmp:
-        exported, expected = export_tree(tmp, git, patch, shared)
+        exported, expected = export_tree(tmp, git, patch, shared, export_patch)
         root = Path(tmp) / 'libfetch'
         copy_files(exported, root, expected)
         require(identity(git) == before, 'libfetch recipe changed during preparation')
@@ -96,7 +96,7 @@ def prepare(output, git, patch, shared=None):
     return record
 
 
-def verify(source, git, patch, shared=None):
+def verify(source, git, patch, shared=None, export_patch=None):
     source = Path(source)
     record = jsonio.read_json(str(source / sourceprep.PREPARED_TREE_RECEIPT))
     old = record.get('identity') if isinstance(record, dict) else None
@@ -105,20 +105,20 @@ def verify(source, git, patch, shared=None):
     if identity_module().current_git_package(old, current['owner_sha256'], lambda: current['effective']):
         # The Git key already covers files/; a matched key does not reread the export.
         if shared:
-            identity_module().shared_export(shared, PORTS, git, SDK_SOURCE, patch)
+            identity_module().shared_export(shared, PORTS, git, SDK_SOURCE, export_patch or patch)
         return record
     require(patch and os.path.isabs(patch), 'changed libfetch identity requires an explicit patch tool')
     with tempfile.TemporaryDirectory(prefix='.libfetch-verify-') as tmp:
-        expected = prepare(Path(tmp) / 'expected', git, patch, shared)
+        expected = prepare(Path(tmp) / 'expected', git, patch, shared, export_patch)
         require(identity(git) == current, 'libfetch recipe changed during verification')
         require(expected['tree_sha256'] == record['tree_sha256'], 'prepared libfetch differs from current source')
     return record
 
 
-def refresh(source, git, patch, shared=None):
+def refresh(source, git, patch, shared=None, export_patch=None):
     return prepared_receipt.refresh(
         source, identity=lambda: (identity(git), git_effective_identity(git)),
-        verify=lambda: verify(source, git, patch, shared))
+        verify=lambda: verify(source, git, patch, shared, export_patch))
 
 
 def main():
@@ -138,22 +138,25 @@ def main():
     prep.add_argument('--patch', required=True)
     prep.add_argument('--scoped-identity', action='store_true')
     prep.add_argument('--pkgsrc-export')
+    prep.add_argument('--export-patch', help='patch used to create the shared export')
     check = sub.add_parser('verify-source')
     check.add_argument('--source', required=True)
     check.add_argument('--patch')
     check.add_argument('--pkgsrc-export')
+    check.add_argument('--export-patch', help='patch used to create the shared export')
     rebind = sub.add_parser('refresh-source')
     rebind.add_argument('--source', required=True)
     rebind.add_argument('--patch', required=True)
     rebind.add_argument('--pkgsrc-export')
+    rebind.add_argument('--export-patch', help='patch used to create the shared export')
     selected = parser.parse_args(args)
     try:
         if selected.action == 'prepare':
-            record = prepare(selected.output, selected.git, selected.patch, selected.pkgsrc_export)
+            record = prepare(selected.output, selected.git, selected.patch, selected.pkgsrc_export, getattr(selected, 'export_patch', None))
         elif selected.action == 'refresh-source':
-            record = refresh(selected.source, selected.git, selected.patch, selected.pkgsrc_export)
+            record = refresh(selected.source, selected.git, selected.patch, selected.pkgsrc_export, getattr(selected, 'export_patch', None))
         else:
-            record = verify(selected.source, selected.git, selected.patch, selected.pkgsrc_export)
+            record = verify(selected.source, selected.git, selected.patch, selected.pkgsrc_export, getattr(selected, 'export_patch', None))
         sys.stdout.buffer.write(jsonio.json_bytes(record))
     except (SDKError, OSError, ValueError) as exc:
         sdk_source.exit_error(exc, 'libfetch source: ')
