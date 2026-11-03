@@ -55,9 +55,9 @@ qt6/lib/libQt6Widgets.so.6
 ${PLIST.wayland}${PLIST.x11}qt6/lib/libQt6WlShellIntegration.so
 ${PLIST.wayland}${PLIST.x11}qt6/lib/libQt6WlShellIntegration.so.${PKGVERSION}
 ${PLIST.wayland}${PLIST.x11}qt6/lib/libQt6WlShellIntegration.so.6
-qt6/lib/libQt6XcbQpa.so
-qt6/lib/libQt6XcbQpa.so.${PKGVERSION}
-qt6/lib/libQt6XcbQpa.so.6
+${PLIST.xcb}qt6/lib/libQt6XcbQpa.so
+${PLIST.xcb}qt6/lib/libQt6XcbQpa.so.${PKGVERSION}
+${PLIST.xcb}qt6/lib/libQt6XcbQpa.so.6
 qt6/lib/libQt6Xml.so
 qt6/lib/libQt6Xml.so.${PKGVERSION}
 qt6/lib/libQt6Xml.so.6
@@ -81,7 +81,7 @@ ${PLIST.vulkan}${PLIST.x11}qt6/plugins/platforms/libqvkkhrdisplay.so
 qt6/plugins/platforms/libqvnc.so
 ${PLIST.bsdfb}qt6/plugins/platforms/libqbsdfb.so
 ${PLIST.wayland}${PLIST.x11}qt6/plugins/platforms/libqwayland.so
-qt6/plugins/platforms/libqxcb.so
+${PLIST.xcb}qt6/plugins/platforms/libqxcb.so
 ${PLIST.gtk3}qt6/plugins/platformthemes/libqgtk3.so
 ${PLIST.dbus}qt6/plugins/platformthemes/libqxdgdesktopportal.so
 ${PLIST.cups}qt6/plugins/printsupport/libcupsprintersupport.so
@@ -97,8 +97,8 @@ ${PLIST.vulkan}${PLIST.wayland}${PLIST.x11}qt6/plugins/wayland-graphics-integrat
 ${PLIST.wayland}${PLIST.x11}qt6/plugins/wayland-shell-integration/libfullscreen-shell-v1.so
 ${PLIST.wayland}${PLIST.x11}qt6/plugins/wayland-shell-integration/libwl-shell-plugin.so
 ${PLIST.wayland}${PLIST.x11}qt6/plugins/wayland-shell-integration/libxdg-shell.so
-${PLIST.egl}qt6/plugins/xcbglintegrations/libqxcb-egl-integration.so
-${PLIST.opengl}qt6/plugins/xcbglintegrations/libqxcb-glx-integration.so
+${PLIST.xcb}${PLIST.egl}qt6/plugins/xcbglintegrations/libqxcb-egl-integration.so
+${PLIST.xcb}${PLIST.opengl}qt6/plugins/xcbglintegrations/libqxcb-glx-integration.so
 qt6/sbom/qtbase-${PKGVERSION}.spdx
 qt6/share/qt6/wayland/extensions/REUSE.toml
 qt6/share/qt6/wayland/protocols/MIT_LICENSE.txt
