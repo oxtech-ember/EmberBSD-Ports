@@ -24,7 +24,18 @@ if grep -Eq 'nproc|sysctl -n hw\.ncpu|getconf _NPROCESSORS_ONLN' "$ports/scripts
 fi
 mkdir -p "$out/tree/t" "$out/packages/All" "$out/active" "$out/work" "$out/target-db" "$out/bin"
 real_shasum=$(command -v shasum)
-real_sleep=$(command -v sleep)
+# mksh can report its sleep builtin. Resolve sleep with the original PATH,
+# before the tracing wrapper is installed, to avoid recursive exec.
+CROSS_BULK_TEST_BASE_PATH=$PATH
+export CROSS_BULK_TEST_BASE_PATH
+real_sleep=$out/bin/base-sleep
+cat > "$real_sleep" <<'WRAP'
+#!/bin/sh
+PATH=${CROSS_BULK_TEST_BASE_PATH:?}
+export PATH
+exec sleep "$@"
+WRAP
+chmod +x "$real_sleep"
 cat > "$out/bin/shasum" <<WRAP
 #!/bin/sh
 echo "\$*" >> $out/shasum-calls
@@ -165,16 +176,28 @@ newstate()
     cp "$out/edges" "$out/state/edges"
     tsort "$out/edges" > "$out/state/order"
 }
+# Instrument the selected shell even when it provides a sleep builtin.
+# Keep the controller's normal $0 and positional arguments.
+run_bulk()
+{
+    sh -c '
+        sleep() { env sleep "$@"; }
+        script=$1
+        shift
+        . "$script"
+    ' "$ports/scripts/cross-bulk.sh" "$ports/scripts/cross-bulk.sh" "$@"
+}
+
 bulk()
 {
     PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=3 \
-        sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1
+        run_bulk build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1
 }
 bulk_trace()
 {
     TRACE_SLEEP=yes PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree \
         CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=3 \
-        sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1
+        run_bulk build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1
 }
 bulk_expected_failure()
 {
@@ -185,13 +208,13 @@ bulk_expected_failure()
 bulk_auto_cpus()
 {
     PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS= CROSS_BULK_JOBS=3 \
-        sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1
+        run_bulk build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1
 }
 bulk_makeconf_sentinel()
 {
     PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree \
         CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=3 CROSS_BULK_MAKE_JOBS=makeconf \
-        sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/sentinel.log" 2>&1
+        run_bulk build "$out/state/order" "$out/state" > "$out/sentinel.log" 2>&1
 }
 budget_bulk()
 {
@@ -199,7 +222,7 @@ budget_bulk()
     PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree \
         CROSS_BULK_CPUS="$budget_cpu" CROSS_BULK_JOBS="$budget_workers" \
         CROSS_BULK_MAKE_JOBS="$budget_jobs" FAKE_CPU_COUNT="$budget_resolved" FAKE_SLEEP=0.4 \
-        sh "$ports/scripts/cross-bulk.sh" build "$budget_state/order" "$budget_state" > "$out/budget.log" 2>&1
+        run_bulk build "$budget_state/order" "$budget_state" > "$out/budget.log" 2>&1
 }
 new_budget_state()
 {
@@ -367,7 +390,7 @@ tsort "$out/long-edges" > "$out/long-state/order"
 : > "$out/sleep-requests"
 TRACE_SLEEP=yes WAIT_FOR_CAP=yes PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf \
     PKGSRCDIR=$out/tree CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=1 \
-    sh "$ports/scripts/cross-bulk.sh" build "$out/long-state/order" "$out/long-state" > "$out/long.log" 2>&1 ||
+    run_bulk build "$out/long-state/order" "$out/long-state" > "$out/long.log" 2>&1 ||
     fail "long-worker wait pass: $(cat "$out/long.log")"
 grep -Fxq 1 "$out/sleep-requests" ||
     fail "long-worker backoff did not reach its one-second cap: $(cat "$out/sleep-requests" | tr '\n' ' ')"
@@ -399,6 +422,7 @@ until grep -q ' start ' "$out/state/progress" 2> /dev/null; do
     n=$((n + 1)); [ "$n" -lt 100 ] || fail 'no package started'
     sleep 0.1
 done
+[ "$(cat "$out/state/build.lock/pid")" = "$pid" ] || fail 'SIGTERM target is not the scheduler PID'
 kill -TERM "$pid"
 rc=0
 wait "$pid" || rc=$?
