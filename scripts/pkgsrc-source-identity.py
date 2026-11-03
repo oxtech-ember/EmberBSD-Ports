@@ -213,18 +213,28 @@ def reconstruct_legacy_payload(current, changes, expected_sha256):
 def _update_patch_sections(data):
     """Parse update inputs without changing existing recipe identity semantics."""
     lines = data.splitlines(keepends=True)
-    # GNU diff -ruN may precede each unified section with matching paths.
-    # Only remove a validated header; never interpret its text as a target.
+    # Strip only checked wrappers around ordinary same-path unified sections.
+    # Git mode changes, renames, binary patches and quoted paths remain opaque.
     normalized = []
-    for i, line in enumerate(lines):
-        if line.startswith(b'diff -ruN '):
-            match = re.fullmatch(rb'diff -ruN a/([^\s]+) b/\1\r?\n', line)
-            if (match is None or i + 2 >= len(lines) or
-                    lines[i + 1].split(b'\t', 1)[0].rstrip(b'\r\n') != b'--- a/' + match.group(1) or
-                    lines[i + 2].split(b'\t', 1)[0].rstrip(b'\r\n') != b'+++ b/' + match.group(1)):
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.startswith((b'diff -ruN ', b'diff --git ')):
+            match = re.fullmatch(rb'diff (?:-ruN|--git) a/([^\s]+) b/\1\r?\n', line)
+            header = i + 1
+            if line.startswith(b'diff --git ') and header < len(lines) and lines[header].startswith(b'index '):
+                if re.fullmatch(rb'index [0-9a-f]{7,64}\.\.[0-9a-f]{7,64}(?: 100(?:644|755))?\r?\n',
+                                lines[header]) is None:
+                    return None
+                header += 1
+            if (match is None or header + 1 >= len(lines) or
+                    lines[header].split(b'\t', 1)[0].rstrip(b'\r\n') != b'--- a/' + match.group(1) or
+                    lines[header + 1].split(b'\t', 1)[0].rstrip(b'\r\n') != b'+++ b/' + match.group(1)):
                 return None
+            i = header
             continue
         normalized.append(line)
+        i += 1
     lines = normalized
     return _plain_patch_sections(b''.join(lines))
 
