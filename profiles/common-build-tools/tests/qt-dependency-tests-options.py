@@ -52,7 +52,7 @@ with tempfile.TemporaryDirectory(prefix='qt-test-options-', dir=a.work_parent) a
         original = archive.extractfile('graphite2-1.3.15/CMakeLists.txt').read()
     (w/'CMakeLists.txt').write_bytes(original)
     with (root/'profiles/common-build-tools/patches/graphite2-test-tool.patch').open('rb') as patch:
-        subprocess.run(['/usr/bin/patch', '-s', '-p1', '-d', str(w)], stdin=patch, check=True)
+        subprocess.run(['/usr/bin/patch', '-s', '-p0', '-d', str(w)], stdin=patch, check=True)
     result = (w/'CMakeLists.txt').read_text()
     if 'if (BUILD_TESTING AND NOT GRAPHITE2_NFILEFACE)' not in result:
         raise SystemExit('graphite test tool guard missing')

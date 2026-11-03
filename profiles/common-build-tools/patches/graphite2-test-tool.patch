@@ -1,6 +1,6 @@
 # Optional test utility; keep the file-face API enabled.
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
 @@ -87,7 +87,7 @@
      add_subdirectory(tests)
  endif()
