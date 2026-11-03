@@ -24,7 +24,7 @@ _PERL5_VARS_CMD=	${EMBERBSD_CROSS_BUILD_PYTHON:Q} -B ${.PARSEDIR}/files/prepare-
 # define later variables.
 #
 .  if !defined(_PERL5_VARS_OUT)
-_PERL5_VARS_CMD?=	${PERL5:Q} -V:prefix ${_PERL5_VARS:tl:S/^/-V:/}
+_PERL5_VARS_CMD?=	${PERL5:Q} -V:prefix -V:installprefix ${_PERL5_VARS:tl:S/^/-V:/}
 _PERL5_VARS_OUT:=	${_PERL5_VARS_CMD:sh:ts,:S/'//g:S/;//g:Q:S/,/ /g}
 MAKEVARS+=		_PERL5_VARS_OUT
 .  endif
@@ -33,6 +33,19 @@ MAKEVARS+=		_PERL5_VARS_OUT
 _PERL5_PREFIX:=		${_PERL5_VARS_OUT:Mprefix=*:C/^prefix=//}
 MAKEVARS+=		_PERL5_PREFIX
 .  endif
+# Relocatable native Perl reports prefix as .../.., while its installation
+# paths remain absolute.  Use the matching installprefix from that Config.
+.  if ${USE_CROSS_COMPILE:Uno} != "yes" && !empty(_PERL5_PREFIX:M.../*)
+_PERL5_PREFIX:=		${_PERL5_VARS_OUT:Minstallprefix=*:C/^installprefix=//}
+.  endif
+.  if empty(_PERL5_PREFIX:M/*) || ${_PERL5_PREFIX} == "/"
+.error Cannot read absolute Perl installation prefix
+.  endif
+.  for _perl_meta in ${_PERL5_VARS:tl}
+.    if empty(_PERL5_VARS_OUT:M${_perl_meta}=${_PERL5_PREFIX}/*)
+.error Perl install path ${_perl_meta} is outside its installation prefix
+.    endif
+.  endfor
 .  if ${USE_CROSS_COMPILE:Uno} == "yes" && defined(EMBERBSD_PERL_TARGET_CONFIG)
 .    if empty(_PERL5_PREFIX) || empty(_PERL5_VARS_OUT:Mprefix=*)
 .error Cannot read target Perl Config metadata
