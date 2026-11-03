@@ -220,3 +220,22 @@ Compile it with the selected host compiler and the prepared patched Mesa
 The original header returns 1 on the first case; the patched header returns 0.
 This fixture checks array behavior and overlap, not the full NIR compiler or
 target libc. The affected Mesa test binaries still require target execution.
+
+## PowerVR submit interruption
+
+Run the focused host regression against the Mesa source after applying the
+recipe patches. Select Clang and its matching `ld.lld` from the native prefix:
+
+```sh
+"$PYTHON" -B tests/pvr-submit-contract.py \
+    --mesa /absolute/patched-mesa-source \
+    --cc /absolute/native-prefix/bin/clang \
+    --work-parent /absolute/private-test-parent
+```
+
+The test compiles the actual bounded Mesa submit helper and driver queue
+function with a fake ioctl and sync callbacks. It checks a completed job
+followed by an interrupted wait, no replay or tail signal, terminal NetBSD
+queue loss, successful submission and unchanged Linux retry/error behavior.
+ASan and UBSan instrument the fixture. The test models the kernel interface;
+it does not build the Vulkan driver or execute work on a GPU.

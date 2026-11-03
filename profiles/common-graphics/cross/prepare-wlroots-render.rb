@@ -21,7 +21,7 @@ cc, readelf = %w[gcc readelf].map { |n| "#{tools}/bin/aarch64--netbsd-#{n}" }
 verify = "#{mesa}/run-mesa-package-tests.sh"
 abort 'accepted Mesa verification failed' unless system('sh', verify, '--verify-sysroot', mesa, sysroot)
 contents = ["#{mesa}/source/MesaLib.CONTENTS", "#{mesa}/MesaLib.CONTENTS"].find { |p| File.file?(p) }
-abort 'need accepted MesaLib-26.2.6nb10' unless contents && File.read(contents).include?("@name MesaLib-26.2.6nb10\n")
+abort 'need accepted MesaLib-26.2.6nb11' unless contents && File.read(contents).include?("@name MesaLib-26.2.6nb11\n")
 inputs = [__FILE__, "#{owner}/wlroots-render.c", "#{owner}/run-wlroots-render.sh", cc, readelf, pkgconfig, verify,
           "#{mesa}/artifacts.sha256", contents, *packages] +
          %w[mesa-package-files.sha256 mesa-package-links.tsv runtime-libraries.sha256].map { |n| "#{mesa}/#{n}" }

@@ -155,8 +155,8 @@ def static_profile_checks():
         "libdrm>=2.4.134nb8" in profile and 'PKGREVISION:U} != "8"' in profile,
     )
     check(
-        "common profile enforces MesaLib 26.2.6nb10",
-        "MesaLib>=26.2.6nb10" in profile,
+        "common profile enforces MesaLib 26.2.6nb11",
+        "MesaLib>=26.2.6nb11" in profile,
     )
 
 
