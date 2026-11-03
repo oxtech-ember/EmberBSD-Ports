@@ -47,6 +47,7 @@ The initial versionless sets are:
 | `kernel-tools` | Native compiler tools and bmake, without an application sysroot |
 | `fetch` | Small target HTTPS client with its shared OpenSSL dependency |
 | `host-fetch` | The same fetch recipe for the developer host |
+| `sdk-source-tools` | Fetch, digest, awk, sed, patch and Ports build helpers; no compiler or sysroot |
 
 The bootstrap set is the native dependency portion of the SDK client, not a
 complete relocatable bootstrap archive. C and C++ share Clang; neither set adds

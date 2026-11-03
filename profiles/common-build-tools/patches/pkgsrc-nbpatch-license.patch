@@ -1,0 +1,40 @@
+--- a/devel/nbpatch/Makefile
++++ b/devel/nbpatch/Makefile
+@@ -2,6 +2,7 @@
+ #
+ 
+ DISTNAME=	nbpatch-20151107
++PKGREVISION=	1
+ CATEGORIES=	devel
+ MASTER_SITES=	# empty
+ DISTFILES=	# empty
+@@ -9,6 +10,7 @@
+ MAINTAINER=	pkgsrc-users@NetBSD.org
+ HOMEPAGE=	https://www.pkgsrc.org/
+ COMMENT=	Patch files using diff output
++LICENSE=	nbpatch-license
+ 
+ # Allow checkperms and other core dependencies to use patches
+ CHECK_PERMS=		no
+@@ -22,10 +24,13 @@
+ LIBS.IRIX+=	-lgen
+ ALL_ENV+=	LDADD=${LIBS:Q}
+ 
+-INSTALLATION_DIRS=	bin ${PKGMANDIR}/cat1 ${PKGMANDIR}/man1
++INSTALLATION_DIRS=	bin ${PKGMANDIR}/cat1 ${PKGMANDIR}/man1 share/doc/nbpatch
+ 
+ do-extract:
+ 	${CP} -r ${FILESDIR} ${WRKSRC}
+ 
++post-install:
++	${INSTALL_DATA} ${PKGSRCDIR}/licenses/nbpatch-license ${DESTDIR}${PREFIX}/share/doc/nbpatch/COPYING
++
+ UAC_REQD_EXECS+=	bin/nbpatch
+ .include "../../mk/bsd.pkg.mk"
+--- a/devel/nbpatch/PLIST
++++ b/devel/nbpatch/PLIST
+@@ -2,3 +2,4 @@
+ bin/nbpatch
+ man/cat1/nbpatch.0
+ man/man1/nbpatch.1
++share/doc/nbpatch/COPYING

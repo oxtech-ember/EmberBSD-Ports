@@ -1,0 +1,9 @@
+# Source acquisition, text/patch tools and Ports build helpers.
+# Compiler and make implementations are selected separately.
+net/fetch@native
+pkgtools/digest@native
+lang/nawk@native
+textproc/nbsed@native
+devel/nbpatch@native
+pkgtools/mktools@native
+pkgtools/cwrappers@native
