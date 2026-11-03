@@ -338,16 +338,18 @@ packages. Use the full default for a first bootstrap or complete bundle.
 The Darwin bootstrap profile uses Perl as a build interpreter. It selects
 `PKG_OPTIONS.perl+=-dtrace` because DTrace instrumentation is outside that
 foundation contract. It preserves test targets, analyzer flags, and diagnostics.
-The common Perl recipe retains its `dtrace` option and its platform suggestions.
+The common Perl recipe retains its `dtrace` option. On Darwin and supported
+Solaris releases it suggests the option only when `DTRACE` is bound; an
+explicitly enabled option still requires a valid provider.
 
 For that option, set `DTRACE` to the absolute executable path from an explicitly
 qualified build-host provider. The recipe passes upstream
-`-Dusedtrace=${DTRACE}`. An unset, empty, relative, or whitespace-containing
-path fails before Configure. Upstream executes this path unquoted, so a path
-with whitespace is not supported. The recipe supplies no system path or PATH
-fallback. The disabled option passes `-Uusedtrace` explicitly. Cross callers
-retain the same explicit provider requirement. No host tool is inferred from
-the target OS.
+`-Dusedtrace=${DTRACE}`. When the option is enabled, an unset, empty, relative,
+or whitespace-containing path fails before Configure. Upstream executes this
+path unquoted, so a path with whitespace is not supported. The recipe supplies
+no system path or PATH fallback. The disabled option passes `-Uusedtrace`
+explicitly. Cross callers retain the same explicit provider requirement. No
+host tool is inferred from the target OS.
 
 The Darwin shell selection, DTrace provider validation, install-name tool and
 search-path behavior are carried together by the canonical `lang/perl5`
