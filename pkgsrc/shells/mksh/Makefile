@@ -7,7 +7,7 @@
 # profiles/shells/mksh-source.sh compares files/ with the archive.
 DISTNAME=	mksh-R59c
 PKGNAME=	mksh-59c
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	shells
 MASTER_SITES=	# maintained locally
 DISTFILES=	# empty

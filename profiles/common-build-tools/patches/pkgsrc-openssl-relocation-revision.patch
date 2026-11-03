@@ -1,3 +1,6 @@
+Bump for the portable native package with repaired shared-library install IDs.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
 --- a/security/openssl/Makefile
 +++ b/security/openssl/Makefile
 @@ -4,7 +4,7 @@
@@ -5,7 +8,7 @@
  # to install it and enable HTTPS fetching.
  DISTNAME=	openssl-4.1.0
 -PKGREVISION=	1
-+PKGREVISION=	2
++PKGREVISION=	3
  CATEGORIES=	security
  MASTER_SITES=	${MASTER_SITE_GITHUB:=openssl/}
  GITHUB_RELEASE=	${DISTNAME}
