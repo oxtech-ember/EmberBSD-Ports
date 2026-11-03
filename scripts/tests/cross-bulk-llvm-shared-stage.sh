@@ -1,12 +1,12 @@
 #!/bin/sh
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Same-run LLVM package stage handoff.
-# Usage: cross-bulk-llvm-shared-stage.sh NEW_OUTPUT [llvm|qtbase]
+# Usage: cross-bulk-llvm-shared-stage.sh NEW_OUTPUT [llvm|qtbase|icu]
 set -eu
-[ "$#" -ge 1 ] && [ "$#" -le 2 ] || { echo 'Usage: cross-bulk-llvm-shared-stage.sh NEW_OUTPUT [llvm|qtbase]' >&2; exit 2; }
+[ "$#" -ge 1 ] && [ "$#" -le 2 ] || { echo 'Usage: cross-bulk-llvm-shared-stage.sh NEW_OUTPUT [llvm|qtbase|icu]' >&2; exit 2; }
 out=$1
 pair=${2:-llvm}
-[ "$pair" = llvm ] || [ "$pair" = qtbase ] || { echo 'Unknown pair' >&2; exit 2; }
+[ "$pair" = llvm ] || [ "$pair" = qtbase ] || [ "$pair" = icu ] || { echo 'Unknown pair' >&2; exit 2; }
 case "$out" in /*) ;; *) echo 'NEW_OUTPUT must be absolute' >&2; exit 2 ;; esac
 case "$out" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2 ;; esac
 [ ! -e "$out" ] || exit 2
@@ -14,9 +14,12 @@ ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
 if [ "$pair" = llvm ]; then
     producer=lang/llvm consumer=lang/llvm-devel producer_dir=llvm consumer_dir=llvm-devel
     shared_var=EMBERBSD_LLVM_SHARED_STAGE producer_name=llvm-23.1.4nb2 consumer_name=llvm-devel-23.1.4nb3
-else
+elif [ "$pair" = qtbase ]; then
     producer=x11/qt6-qtbase consumer=x11/qt6-qtbase-devel producer_dir=qt6-qtbase consumer_dir=qt6-qtbase-devel
     shared_var=EMBERBSD_QTBASE_SHARED_STAGE producer_name=qt6-qtbase-6.12.0nb10 consumer_name=qt6-qtbase-devel-6.12.0nb12
+else
+    producer=textproc/icu consumer=textproc/icu-devel producer_dir=icu consumer_dir=icu-devel
+    shared_var=EMBERBSD_ICU_SHARED_STAGE producer_name=icu-79.1nb1 consumer_name=icu-devel-79.1nb1
 fi
 
 setup()
@@ -38,6 +41,7 @@ WRAP
     cat > "$case_out/bmake" <<'WRAP'
 #!/bin/sh
 out=${FAKE_OUT:?}
+if [ "${CPP+x}" = x ]; then echo 'host CPP leaked into controller bmake' >&2; exit 1; fi
 producer=${FAKE_PRODUCER:?} consumer=${FAKE_CONSUMER:?}
 producer_name=${FAKE_PRODUCER_NAME:?} consumer_name=${FAKE_CONSUMER_NAME:?}
 dir= target= varname= varnames= packages=$out/packages work_override= shared=
@@ -48,7 +52,7 @@ while [ "$#" -gt 0 ]; do
         VARNAMES=*) varnames=${1#VARNAMES=}; shift ;;
         PACKAGES=*) packages=${1#PACKAGES=}; shift ;;
         WRKDIR=*) work_override=${1#WRKDIR=}; shift ;;
-        EMBERBSD_LLVM_SHARED_STAGE=*|EMBERBSD_QTBASE_SHARED_STAGE=*) shared=${1#*=}; shift ;;
+        EMBERBSD_LLVM_SHARED_STAGE=*|EMBERBSD_QTBASE_SHARED_STAGE=*|EMBERBSD_ICU_SHARED_STAGE=*) shared=${1#*=}; shift ;;
         *=*) shift ;;
         *) target=$1; shift ;;
     esac
@@ -69,6 +73,10 @@ case "$target" in
         esac ;;
     show-vars)
         for v in $varnames; do
+            if [ -n "${FAKE_MISMATCH_FIELD:-}" ] && [ "$v" = "$FAKE_MISMATCH_FIELD" ] && [ "$dir" = "$out/tree/$consumer" ]; then
+                echo different
+                continue
+            fi
             case "$v" in
                 PKGNAME) echo "$name" ;;
                 WRKDIR) echo "$work" ;;
@@ -81,7 +89,7 @@ case "$target" in
                 DISTNAME) echo llvm-project-23.1.4.src ;;
                 PATCHDIR) echo "$out/tree/lang/llvm/patches" ;;
                 DISTINFO_FILE) echo "$out/tree/lang/llvm/distinfo" ;;
-                CMAKE_CONFIGURE_ARGS)
+                CMAKE_CONFIGURE_ARGS|CONFIGURE_ARGS)
                     if [ "${FAKE_MISMATCH:-no}" = yes ] && [ "$dir" = "$out/tree/$consumer" ]; then echo different; else echo shared; fi ;;
                 *) echo shared ;;
             esac
@@ -134,10 +142,10 @@ WRAP
 run_build()
 {
     case_out=$1 mode=${2:-build}
-        FAKE_OUT=$case_out FAKE_PRODUCER=$producer FAKE_CONSUMER=$consumer \
+        CPP=/unexpected/host-cpp FAKE_OUT=$case_out FAKE_PRODUCER=$producer FAKE_CONSUMER=$consumer \
         FAKE_PRODUCER_NAME=$producer_name FAKE_CONSUMER_NAME=$consumer_name \
         FAKE_STOP_AFTER_PRODUCER=${FAKE_STOP_AFTER_PRODUCER:-no} \
-        FAKE_MISMATCH=${FAKE_MISMATCH:-no} FAKE_DEVEL_FAIL=${FAKE_DEVEL_FAIL:-no} \
+        FAKE_MISMATCH=${FAKE_MISMATCH:-no} FAKE_MISMATCH_FIELD=${FAKE_MISMATCH_FIELD:-} FAKE_DEVEL_FAIL=${FAKE_DEVEL_FAIL:-no} \
         BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$case_out/bmake \
         MAKECONF=$case_out/mk.conf \
         PKGSRCDIR=$case_out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
@@ -170,6 +178,16 @@ FAKE_MISMATCH=yes run_build "$mismatch" || fail "input mismatch fallback: $(cat 
 if grep -q ':shared$' "$mismatch/calls"; then fail 'mismatched build inputs reused the shared stage'; fi
 grep -q "^package-install:$consumer_dir$" "$mismatch/calls" || fail 'consumer did not use ordinary build after input mismatch'
 grep -q "^compile:$consumer_dir$" "$mismatch/calls" || fail 'input mismatch did not fall back to consumer compilation'
+
+if [ "$pair" = icu ]; then
+    for field in CC CXX CPP CFLAGS CXXFLAGS CPPFLAGS LDFLAGS PKG_OPTIONS ABI; do
+        field_case=$out/mismatch-$field
+        setup "$field_case"
+        FAKE_MISMATCH_FIELD=$field run_build "$field_case" || fail "mismatch $field: $(cat "$field_case/build.log")"
+        if grep -q ':shared$' "$field_case/calls"; then fail "$field mismatch reused shared stage"; fi
+        grep -q "^compile:$consumer_dir$" "$field_case/calls" || fail "$field mismatch did not compile independently"
+    done
+fi
 
 failed=$out/failed
 setup "$failed"
