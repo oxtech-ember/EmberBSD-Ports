@@ -3,6 +3,8 @@ $NetBSD$
 BLAKE2s (plasma-workspace-6.8.2.tar.xz) = 05829156516dc899d6063587f64cdfb09f91b888ee9723c7a94e9f253e3277d6
 SHA512 (plasma-workspace-6.8.2.tar.xz) = 32fd7185d06ba5cd5f77e59b8eb013feaa842c2dff24431f4b75e081c961160a9d0302bcb14e397b1218b53713d6d4168618baee05291668885eb63085fc9c79
 Size (plasma-workspace-6.8.2.tar.xz) = 19398800 bytes
+SHA1 (patch-components_calendar_CMakeLists.txt) = 06ba6c1751001f1b6dcb8e5692fcd24ae1b01084
+SHA1 (patch-ksmserver_CMakeLists.txt) = c377e3e32b2c96dcf87e59167628fe703682e69e
 SHA1 (patch-startkde_config-startplasma.h.cmake) = 79ab1bd7c11a92881e05337f143a6330ec2af47d
 SHA1 (patch-startkde_waitforname_argc) = 354b56dfefd59e9037ff1e8b69c237c79633eae1
 SHA1 (patch-startkde_waitforname_bus) = dba9f506eb45c0dcdc86abb988b5e0af0e94de8d

@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.7 2026/09/06 10:23:33 markd Exp $
 
 DISTNAME=	plasma-workspace-${PLASMAVER}
-PKGREVISION=	6
+PKGREVISION=	7
 CATEGORIES=	x11
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -16,7 +16,6 @@ LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2.1 AND gnu-fdl-v1.2
 
 # notifications/global/PulseAudio.qml imports the volume model.
 DEPENDS+=	plasma6-plasma-pa>=${PLASMAVER}:../../audio/plasma6-plasma-pa
-DEPENDS+=	plasma6-kwin>=${PLASMAVER}:../../x11/plasma6-kwin
 # The classic Wayland session starts Xwayland for ksmserver's xcb platform.
 DEPENDS+=	xwayland>=24.1.14nb1:../../wayland/xwayland
 DEPENDS+=	kio-extras>=25.08.3:../../devel/kio-extras
@@ -26,6 +25,10 @@ USE_TOOLS+=	msgmerge pkg-config
 USE_CXX_FEATURES+=	c++23
 
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTING=OFF
+# Installed service and update scripts must use target Qt runtime tools.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+CMAKE_CONFIGURE_ARGS+=	-DEMBERBSD_QT_RUNTIME_BINDIR:PATH=${LOCALBASE}/qt6/bin
+.endif
 #CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_TYPE=Debug
 
 CHECK_INTERPRETER_SKIP+=	share/kconf_update/*
@@ -124,6 +127,7 @@ CONF_FILES+=	${PREFIX}/share/examples/kde-xdg/plasmanotifyrc \
 .include "../../x11/plasma6-kscreenlocker/buildlink3.mk"
 .include "../../x11/plasma6-layer-shell-qt/buildlink3.mk"
 .include "../../x11/plasma6-libkscreen/buildlink3.mk"
+.include "../../x11/plasma6-kwin/buildlink3.mk"
 
 .include "../../x11/plasma6-union/buildlink3.mk"
 .include "../../lang/qt6-qtdeclarative/buildlink3.mk"

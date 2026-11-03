@@ -40,9 +40,9 @@
 # Each pass checks every done package by its PKGNAME, and a target-mode
 # parse costs seconds. Order and build keep show-vars answers in STATE/vars
 # with the makefiles that parse read (.MAKE.MAKEFILES) and the device, inode,
-# size and modification time of each of them and of their directories. Order
-# also keys those answers by the validated PBULK/package-database context.
-# A changed makefile or a file added next to one invalidates its answer.
+# size and modification time of each of them and their parent directories.
+# Order and build also bind answers to their make/configuration context. A
+# changed makefile or a file added next to one invalidates its answer.
 # CROSS_BULK_VARS_CACHE=no turns the cache off.
 #
 # Before a package builds, build renames its old WRKDIR into a trash
@@ -143,6 +143,7 @@ cache=$state/build-options
 cachearg=
 vars_cache=
 vars_context=
+build_vars_context=
 gnu_stat=no
 case "$mode" in
     order|fetch) ! stat -c %i / > /dev/null 2>&1 || gnu_stat=yes ;;
@@ -801,10 +802,11 @@ sigs()
 # read, and of their directories.
 makefile_sigs()
 {
+    mf_dir=$1 mf_files=$2
     (
-        cd "$PKGSRCDIR/$1" || exit 0
+        cd "$PKGSRCDIR/$mf_dir" || exit 1
         set -f
-        set -- $(printf '%s\n' $2 | awk '{ print; d = $0
+        set -- $(printf '%s\n' $mf_files | awk '{ print; d = $0
             if (!sub("/[^/]*$", "", d)) d = "."
             if (d == "") d = "/"
             print d }' | sort -u)
@@ -886,6 +888,7 @@ result()
 # depend on it registered. The replace runs alone (see exclusive).
 build_native()
 {
+    vars_context=${build_vars_context:+$build_vars_context|native}
     nnode=$1 key=$2 path=${1%@native}
     set -f
     set -- USE_CROSS_COMPILE=no PACKAGES="$native_packages"
@@ -1227,6 +1230,7 @@ shared_pair_reset_stage()
 
 build_one()
 {
+    vars_context=${build_vars_context:+$build_vars_context|target}
     path=$1
     key=$(echo "$path" | tr / _)
     case "$path" in *@native) build_native "$path" "$key"; return 0 ;; esac
@@ -1567,6 +1571,14 @@ build()
         mkdir -p "$vars_cache"
         gnu_stat=no
         ! stat -c %i / > /dev/null 2>&1 || gnu_stat=yes
+        build_env_identity=$(environment_identity) || build_env_identity=
+        if [ -n "$build_env_identity" ]; then
+            build_vars_context="build|$BMAKE|$MAKECONF|$PKGSRCDIR|$native|$build_env_identity"
+            vars_context=$build_vars_context
+        else
+            # An incomplete environment identity cannot safely reuse answers.
+            vars_cache=
+        fi
     fi
     shared_pairs_configure
     trash_init

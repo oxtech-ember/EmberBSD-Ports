@@ -17,6 +17,12 @@ Kernel changes belong in EmberBSD; application demonstrations belong in
 Examples. A source probe remains experimental until packaging and the intended
 runtime behavior are validated.
 
+Select explicit `PKGPATH` roots for each requested target/ABI package set. The
+existing cross-bulk graph expands their target and native dependencies. The
+complete exported recipe catalog is not a request to build every package.
+Configuration profiles set shared build policy; package groups refer to common
+versionless roots and do not define another recipe, resolver, cache, or prefix.
+
 ## Current contents
 
 - [Codex-operated Ports update plans](docs/update-ports.md): native pkgsrc

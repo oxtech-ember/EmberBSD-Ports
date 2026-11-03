@@ -2,11 +2,12 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). A pass of scripts/cross-bulk.sh build does
 # not parse a done package again while no makefile that its parse read has
-# changed, and still sees every version bump. With a recording bmake whose
-# PKGNAME comes from the makefiles it reports in .MAKE.MAKEFILES: a second
-# run parses nothing; a PKGREVISION in an included .mk parses and rebuilds
-# only the package that includes it; a new hacks.mk next to a Makefile
-# parses that package again; CROSS_BULK_VARS_CACHE=no parses everything.
+# changed, and still sees every version bump. It binds build answers to
+# MAKECONF and environment context, and detects new files beside external
+# configs and optional include appearance. With a recording bmake
+# whose PKGNAME comes from .MAKE.MAKEFILES: a second run parses nothing; an
+# included-file edit or new hacks.mk parses the affected package;
+# CROSS_BULK_VARS_CACHE=no parses everything.
 # Usage: cross-bulk-vars-cache.sh NEW_OUTPUT
 set -eu
 [ "$#" = 1 ] || { echo 'Usage: cross-bulk-vars-cache.sh NEW_OUTPUT' >&2; exit 2; }
@@ -15,9 +16,20 @@ case "$out" in /*) ;; *) echo 'NEW_OUTPUT must be absolute' >&2; exit 2 ;; esac
 case "$out" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2 ;; esac
 [ ! -e "$out" ] || exit 2
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
-mkdir -p "$out/tree/t/a" "$out/tree/t/b" "$out/tree/inc" "$out/packages/All" "$out/target-db"
+mkdir -p "$out/tree/t/a" "$out/tree/t/b" "$out/tree/inc" \
+    "$out/config/main" "$out/config/optional" "$out/config/conditional" \
+    "$out/packages/All" "$out/target-db"
+: > "$out/tree/Makefile"
 : > "$out/errors"
-: > "$out/mk.conf"
+: > "$out/config/main/mk.conf"
+echo 'PKGREVISION=5' > "$out/config/main/mk-alt.conf"
+echo '.sinclude "local.mk"' > "$out/config/optional/mk.conf"
+cat > "$out/config/conditional/mk.conf" <<'EOF'
+.if exists \
+    (local.mk)
+.include "local.mk"
+.endif
+EOF
 echo 'PKGREVISION=' > "$out/tree/inc/version.mk"
 echo '.include "../../inc/version.mk"' > "$out/tree/t/a/Makefile"
 echo '# b' > "$out/tree/t/b/Makefile"
@@ -45,10 +57,16 @@ while [ "\$#" -gt 0 ]; do
 done
 pkg=\${dir##*/}
 [ "\$target" = show-var ] || echo "\$pkg \$target" >> \$out/calls
-# What the parse reads: the MAKECONF, the Makefile and its includes.
+# What the parse reads: the selected MAKECONF, the Makefile and its includes.
 cd "\$dir"
-read=\$out/mk.conf\ Makefile
+makeconf=\${MAKECONF:-\$out/config/main/mk.conf}
+read=\$makeconf\ Makefile
+if [ "\${CROSS_BULK_TEST_ROOT_MAKEFILE:-}" = yes ]; then
+    read="\$read \$out/tree/Makefile"
+fi
 name=\$pkg-1.0
+conf_rev=\$(sed -n 's/^PKGREVISION=//p' "\$makeconf")
+[ -z "\$conf_rev" ] || name=\$name-conf\$conf_rev
 if [ "\$pkg" = a ]; then
     read="\$read ../../inc/version.mk"
     rev=\$(sed -n 's/^PKGREVISION=//p' ../../inc/version.mk)
@@ -58,6 +76,23 @@ if [ -f hacks.mk ]; then
     read="\$read hacks.mk"
     name=\$pkg-1.0nb7
 fi
+conf_dir=\${makeconf%/*}
+optional=\$conf_dir/local.mk
+case \$(cat "\$makeconf") in
+    *'.sinclude "local.mk"'*)
+        if [ -f "\$optional" ]; then
+            read="\$read \$optional"
+            name=\$name-opt
+        fi ;;
+esac
+if grep -q 'exists' "\$makeconf" && [ -f "\$conf_dir/local.mk" ]; then
+    read="\$read \$conf_dir/local.mk"
+    name=\$name-cond
+fi
+case \${CROSS_BULK_TEST_ENV:-base} in
+    base) ;;
+    *) name=\$name-\$CROSS_BULK_TEST_ENV ;;
+esac
 case "\$target" in
     show-var)
         case "\$varname" in
@@ -94,7 +129,8 @@ bulk()
 {
     : > "$out/calls"
     env BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
-        MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=4 CROSS_BULK_JOBS=2 "$@" \
+        MAKECONF=$out/config/main/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=4 CROSS_BULK_JOBS=2 \
+        CROSS_BULK_TEST_ENV=base "$@" \
         sh "$ports/scripts/cross-bulk.sh" build "$out/list" "$out/state" > "$out/build.log" 2>&1 ||
         fail "build: $(cat "$out/build.log")"
     [ ! -s "$out/errors" ] || fail "$(cat "$out/errors")"
@@ -107,6 +143,52 @@ bulk
 bulk
 [ -z "$(parsed)" ] || fail "an unchanged done package was parsed again: $(parsed)"
 [ -z "$(built)" ] || fail "an unchanged done package was built again: $(built)"
+# Parent directories of external configs remain watched conservatively.
+: > "$out/config/main/unrelated.tmp"
+bulk
+[ "$(parsed)" = 'a b ' ] && [ -z "$(built)" ] ||
+    fail "a new external sibling did not requery without rebuilding: $(parsed), built $(built)"
+# A different selected MAKECONF must not reuse the first file list or values.
+bulk MAKECONF=$out/config/main/mk-alt.conf
+[ "$(parsed)" = 'a b ' ] && [ "$(built)" = 'a b ' ] ||
+    fail "after selecting a different MAKECONF: parsed $(parsed), built $(built)"
+# Returning to an unchanged prior context can reuse its earlier answer.
+bulk
+[ -z "$(parsed)" ] && [ -z "$(built)" ] ||
+    fail "returning to unchanged MAKECONF reparsed: $(parsed), built $(built)"
+# A missing optional include is absent from .MAKE.MAKEFILES; its appearance
+# must still invalidate the answer using the cached external-directory policy.
+bulk MAKECONF=$out/config/optional/mk.conf
+[ "$(parsed)" = 'a b ' ] || fail "selecting optional-include MAKECONF did not query: $(parsed)"
+: > "$out/config/optional/local.mk"
+bulk MAKECONF=$out/config/optional/mk.conf
+[ "$(parsed)" = 'a b ' ] && [ "$(built)" = 'a b ' ] ||
+    fail "an external optional include did not invalidate the cache: parsed $(parsed), built $(built)"
+# A continued conditional include must also retain its external parent watch.
+bulk MAKECONF=$out/config/conditional/mk.conf
+[ "$(parsed)" = 'a b ' ] || fail "selecting continued conditional MAKECONF did not query: $(parsed)"
+: > "$out/config/conditional/local.mk"
+bulk MAKECONF=$out/config/conditional/mk.conf
+[ "$(parsed)" = 'a b ' ] && [ "$(built)" = 'a b ' ] ||
+    fail "a continued conditional include did not invalidate the cache: parsed $(parsed), built $(built)"
+# The pkgsrc root itself is a watched parent for a reported makefile.
+bulk CROSS_BULK_TEST_ROOT_MAKEFILE=yes
+[ "$(parsed)" = 'a b ' ] || fail "selecting pkgsrc-root makefile did not query: $(parsed)"
+: > "$out/tree/new-root.mk"
+touch -t 203001010000 "$out/tree"
+bulk CROSS_BULK_TEST_ROOT_MAKEFILE=yes
+[ "$(parsed)" = 'a b ' ] && [ -z "$(built)" ] ||
+    fail "a new sibling of a pkgsrc-root makefile did not requery without rebuilding: parsed $(parsed), built $(built)"
+# The effective environment participates in the build query context.
+bulk CROSS_BULK_TEST_ENV=one
+[ "$(parsed)" = 'a b ' ] && [ "$(built)" = 'a b ' ] ||
+    fail "after changing the effective environment: parsed $(parsed), built $(built)"
+bulk CROSS_BULK_TEST_ENV=one
+[ -z "$(parsed)" ] && [ -z "$(built)" ] ||
+    fail "unchanged effective environment reparsed: $(parsed), built $(built)"
+bulk CROSS_BULK_TEST_ENV=two
+[ "$(parsed)" = 'a b ' ] && [ "$(built)" = 'a b ' ] ||
+    fail "after a second effective environment change: parsed $(parsed), built $(built)"
 # A version bump in an included .mk, same second and all.
 echo 'PKGREVISION=1' > "$out/tree/inc/version.mk"
 bulk
@@ -119,4 +201,4 @@ bulk
 [ "$(parsed)" = 'b ' ] && [ "$(built)" = 'b ' ] || fail "after a new hacks.mk: parsed $(parsed), built $(built)"
 bulk CROSS_BULK_VARS_CACHE=no
 [ "$(parsed)" = 'a b ' ] && [ -z "$(built)" ] || fail "without the cache: parsed $(parsed), built $(built)"
-echo 'PASS: done packages are not parsed again while their makefiles are unchanged; an included PKGREVISION, a new hacks.mk and CROSS_BULK_VARS_CACHE=no parse again'
+echo 'PASS: vars cache keys bind MAKECONF and environment; external and pkgsrc parent changes, included files, local new files and disabled caching invalidate as expected'
