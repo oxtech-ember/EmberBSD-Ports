@@ -68,6 +68,20 @@ upstream-owned. The transferred adaptation retains its MIT/NCSA licensing in
 `compiler-rt/lib/builtins/LICENSE.EmberBSD-BINARY128.TXT`; the exact legacy
 contributors list remains in `compiler-rt/CREDITS.TXT`.
 
+`patch-09-builtins-portable-widths` makes integer widths and signedness
+explicit in shared division and floating-point builtins, retaining their
+arithmetic and target ABI. It avoids implementation-defined signed shifts in
+the affected division paths and narrows bounded exponent/count values explicitly.
+
+`tests/builtins-portable-widths.sh` runs upstream builtins tests and boundary
+checks against the prepared sources. Run it with the selected SDK native-check
+environment, passing the prepared source, SDK link launcher, lock root and
+heavy-link context as its four arguments. It exercises integer division and
+128-bit integer conversions; binary128 execution requires a supporting host.
+`tests/binary128-boundaries.c` uses the actual binary128 builtins and
+`fp_lib.h` with bit-pattern expectations; compile for a target with IEEE
+binary128 and run on that target. It covers rounding and exponent boundaries.
+
 `tests/source.py` exercises actual preparation with the selected archive and
 checks existing-output, changed-file, added-file, changed-identity and corrupt
 archive refusals. Supply `--sdk-source`, `--archive`, `--git`, `--patch` and a

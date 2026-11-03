@@ -1,0 +1,113 @@
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+# Origin: EmberBSD (AI-assisted). Preserve arithmetic while making widths and signs explicit.
+
+--- a/compiler-rt/lib/builtins/udivmodti4.c
++++ b/compiler-rt/lib/builtins/udivmodti4.c
+@@ -45,11 +45,11 @@
+ 
+   // Break divisor up into two 32-bit digits.
+   vn1 = v >> (n_udword_bits / 2);
+-  vn0 = v & 0xFFFFFFFF;
++  vn0 = v & UINT64_C(0xFFFFFFFF);
+ 
+   // Break right half of dividend into two digits.
+   un1 = un10 >> (n_udword_bits / 2);
+-  un0 = un10 & 0xFFFFFFFF;
++  un0 = un10 & UINT64_C(0xFFFFFFFF);
+ 
+   // Compute the first quotient digit, q1.
+   q1 = un64 / vn1;
+--- a/compiler-rt/lib/builtins/fp_lib.h
++++ b/compiler-rt/lib/builtins/fp_lib.h
+@@ -113,7 +113,7 @@
+   } uu = {.ll = a};
+ 
+   uint64_t word;
+-  uint64_t add;
++  int add;
+ 
+   if (uu.s.high) {
+     word = uu.s.high;
+@@ -261,7 +261,7 @@
+ // the __compiler_rt prefix.
+ static __inline fp_t __compiler_rt_logbX(fp_t x) {
+   rep_t rep = toRep(x);
+-  int exp = (rep & exponentMask) >> significandBits;
++  int exp = (int)((rep & exponentMask) >> significandBits);
+ 
+   // Abnormal cases:
+   // 1) +/- inf returns +inf; NaN returns NaN
+@@ -284,7 +284,7 @@
+     // Subnormal number; normalize and repeat
+     rep &= absMask;
+     const int shift = 1 - normalize(&rep);
+-    exp = (rep & exponentMask) >> significandBits;
++    exp = (int)((rep & exponentMask) >> significandBits);
+     return exp - exponentBias - shift; // Unbias exponent
+   }
+ }
+@@ -293,7 +293,7 @@
+ // sets errno on underflow/overflow.
+ static __inline fp_t __compiler_rt_scalbnX(fp_t x, int y) {
+   const rep_t rep = toRep(x);
+-  int exp = (rep & exponentMask) >> significandBits;
++  int exp = (int)((rep & exponentMask) >> significandBits);
+ 
+   if (x == 0.0 || exp == maxExponent)
+     return x; // +/- 0.0, NaN, or inf: return x
+--- a/compiler-rt/lib/builtins/fp_mul_impl.inc
++++ b/compiler-rt/lib/builtins/fp_mul_impl.inc
+@@ -101,7 +101,7 @@
+     // zero with the appropriate sign.  Mathematically, there is no need to
+     // handle this case separately, but we make it a special case to
+     // simplify the shift logic.
+-    const unsigned int shift = REP_C(1) - (unsigned int)productExponent;
++    const unsigned int shift = 1U - (unsigned int)productExponent;
+     if (shift >= typeWidth)
+       return fromRep(productSign);
+ 
+--- a/compiler-rt/lib/builtins/int_to_fp_impl.inc
++++ b/compiler-rt/lib/builtins/int_to_fp_impl.inc
+@@ -21,7 +21,7 @@
+   enum {
+     dstMantDig = dstSigBits + 1,
+     srcBits = sizeof(src_t) * CHAR_BIT,
+-    srcIsSigned = ((src_t)-1) < 0,
++    srcIsSigned = ((src_t)-1) < (src_t)1,
+   };
+ 
+   const src_t s = srcIsSigned ? a >> (srcBits - 1) : 0;
+--- a/compiler-rt/lib/builtins/divmodsi4.c
++++ b/compiler-rt/lib/builtins/divmodsi4.c
+@@ -16,9 +16,8 @@
+ // Returns: a / b, *rem = a % b
+ 
+ COMPILER_RT_ABI si_int __divmodsi4(si_int a, si_int b, si_int *rem) {
+-  const int bits_in_word_m1 = (int)(sizeof(si_int) * CHAR_BIT) - 1;
+-  si_int s_a = a >> bits_in_word_m1;                    // s_a = a < 0 ? -1 : 0
+-  si_int s_b = b >> bits_in_word_m1;                    // s_b = b < 0 ? -1 : 0
++  si_int s_a = -(a < 0);                    // s_a = a < 0 ? -1 : 0
++  si_int s_b = -(b < 0);                    // s_b = b < 0 ? -1 : 0
+   a = (su_int)(a ^ s_a) - s_a;                          // negate if s_a == -1
+   b = (su_int)(b ^ s_b) - s_b;                          // negate if s_b == -1
+   s_b ^= s_a;                                           // sign of quotient
+--- a/compiler-rt/lib/builtins/int_div_impl.inc
++++ b/compiler-rt/lib/builtins/int_div_impl.inc
+@@ -33,7 +33,7 @@
+     // Branch-less version of:
+     // carry = 0;
+     // if (r >= d) r -= d, carry = 1;
+-    const fixint_t s = (fixint_t)(d - r - 1) >> (N - 1);
++    const fixuint_t s = (fixuint_t)0 - ((d - r - 1) >> (N - 1));
+     carry = s & 1;
+     r -= d & s;
+   }
+@@ -62,7 +62,7 @@
+     // Branch-less version of:
+     // carry = 0;
+     // if (r >= d) r -= d, carry = 1;
+-    const fixint_t s = (fixint_t)(d - r - 1) >> (N - 1);
++    const fixuint_t s = (fixuint_t)0 - ((d - r - 1) >> (N - 1));
+     carry = s & 1;
+     r -= d & s;
+   }
