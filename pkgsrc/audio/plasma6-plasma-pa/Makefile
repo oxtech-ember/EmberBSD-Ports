@@ -10,7 +10,6 @@ LICENSE= gnu-gpl-v2 AND gnu-lgpl-v2.1
 .include "../../meta-pkgs/kde/plasma6.mk"
 
 USE_TOOLS+= msgmerge pkg-config
-CMAKE_CONFIGURE_ARGS+= -DBUILD_TESTING=ON
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 # The KCM and applet import these QML modules at runtime.
