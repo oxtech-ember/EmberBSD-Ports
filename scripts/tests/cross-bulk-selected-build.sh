@@ -195,7 +195,7 @@ rm -rf "$out/state/build.lock"
 # controller must compute the environment identity through that selected
 # implementation, without depending on another PATH directory.
 mkdir -p "$out/no-awk-bin"
-for tool in env sort shasum rm mkdir rmdir; do
+for tool in env sort shasum rm mkdir rmdir printf; do
     resolved=$(command -v "$tool") || fail "test host lacks $tool"
     ln -s "$resolved" "$out/no-awk-bin/$tool"
 done
