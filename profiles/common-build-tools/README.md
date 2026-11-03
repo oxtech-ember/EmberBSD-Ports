@@ -54,6 +54,21 @@ pass-through. Pass the existing exported pkgsrc, native makeconf, bmake, patch
 executable, upstream pkgsrc source, SDK source, barrier patch and metadata patch
 via the script's options.
 
+GNU gzip has an explicit bootstrap Info phase. `EMBERBSD_GZIP_DEFER_INFO=yes`
+keeps `gzip.info` while omitting registration hooks and their dependency on
+`pkg_install-info`; it defaults to `yes` for the initial Darwin bootstrap and
+`no` elsewhere. The explicit `yes` override is an intermediate bootstrap mode.
+After the provider is installed, select `EMBERBSD_GZIP_DEFER_INFO=no` for the
+full package. When changing this phase in an existing work directory, invalidate
+only generated install scripts in `.pkginstall` and their `.pkgdb` copies, then
+run `pkginstall` before `repackage-metadata`; the build-skipping repackage target
+does not run the build phase's `pkginstall` target. Keep the original compiler
+configuration and compiled objects. Verify the regenerated dependency and Info
+hooks before publishing that full package.
+`tests/gzip-info-phase.py` checks both defaults, the explicit full phase and
+Info registration/removal with the selected provider. Package installation and
+removal are checked separately with the resulting archive.
+
 The [Mach-O metadata resolver](macho-metadata.md) uses selected structural tools.
 It does not require libmagic or create a file/libtool bootstrap cycle.
 
