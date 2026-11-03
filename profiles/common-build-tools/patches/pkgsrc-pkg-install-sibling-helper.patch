@@ -1,0 +1,128 @@
+Resolve pkg_delete beside the running pkg_add before changing directory.
+
+--- a/pkgtools/pkg_install/files/add/add.h	2026-11-04 01:00:21.589210328 +0300
++++ b/pkgtools/pkg_install/files/add/add.h	2026-11-04 01:00:21.632925706 +0300
+@@ -25,6 +25,7 @@
+ #ifndef _INST_ADD_H_INCLUDE
+ #define _INST_ADD_H_INCLUDE
+ 
++extern char *PkgDeletePath;
+ extern char *Destdir;
+ extern char *OverrideMachine;
+ extern char *OverrideOpsys;
+--- a/pkgtools/pkg_install/files/add/main.c	2026-11-04 01:00:21.588850911 +0300
++++ b/pkgtools/pkg_install/files/add/main.c	2026-11-04 01:01:26.558825931 +0300
+@@ -33,6 +33,8 @@
+ #if HAVE_ERR_H
+ #include <err.h>
+ #endif
++#include <sys/stat.h>
++#include <unistd.h>
+ #include "lib.h"
+ #include "add.h"
+ 
+@@ -59,6 +61,54 @@
+ int     Replace = 0;
+ int	ReplaceSame = 0;
+ 
++/*
++ * EmberBSD: resolve this executable before package processing can chdir.
++ * Follow the POSIX argv[0]/PATH and realpath pattern used by bmake.
++ */
++char *PkgDeletePath;
++
++static void
++init_pkg_delete_path(const char *argv0)
++{
++	char resolved[PATH_MAX + 1];
++	char *candidate = NULL, *slash;
++	const char *path, *start, *end;
++	struct stat st;
++
++	if (strchr(argv0, '/') != NULL) {
++		candidate = xstrdup(argv0);
++	} else if ((path = getenv("PATH")) != NULL) {
++		for (start = path;; start = end + 1) {
++			size_t len;
++
++			end = strchr(start, ':');
++			len = end != NULL ? (size_t)(end - start) : strlen(start);
++			candidate = xmalloc(len + strlen(argv0) + 3);
++			if (len == 0) {
++				strcpy(candidate, "./");
++				strcpy(candidate + 2, argv0);
++			} else {
++				memcpy(candidate, start, len);
++				candidate[len] = '/';
++				strcpy(candidate + len + 1, argv0);
++			}
++			if (stat(candidate, &st) == 0 && S_ISREG(st.st_mode) &&
++			    access(candidate, X_OK) == 0)
++				break;
++			free(candidate);
++			candidate = NULL;
++			if (end == NULL)
++				break;
++		}
++	}
++	if (candidate != NULL && realpath(candidate, resolved) != NULL &&
++	    (slash = strrchr(resolved, '/')) != NULL) {
++		slash[1] = '\0';
++		PkgDeletePath = xasprintf("%spkg_delete", resolved);
++	}
++	free(candidate);
++}
++
+ static void
+ usage(void)
+ {
+@@ -76,6 +126,7 @@
+ 	lpkg_head_t pkgs;
+ 
+ 	setprogname(argv[0]);
++	init_pkg_delete_path(argv[0]);
+ 	while ((ch = getopt(argc, argv, Options)) != -1) {
+ 		switch (ch) {
+ 		case 'A':
+--- a/pkgtools/pkg_install/files/add/perform.c	2026-11-04 01:00:21.589049120 +0300
++++ b/pkgtools/pkg_install/files/add/perform.c	2026-11-04 01:01:26.558988890 +0300
+@@ -1377,9 +1377,21 @@
+ start_replacing(struct pkg_task *pkg)
+ {
+ 	int result = 0;
++	struct stat helper_stat;
+ 	const char *delete_dbdir = config_pkg_dbdir;
+ 	const char *skip_scripts = Destdir != NULL && NoInstall ? "-D" : "";
+ 
++	if (PkgDeletePath == NULL) {
++		warnx("cannot resolve pkg_add executable for pkg_delete");
++		return -1;
++	}
++
++	if (!Fake && (stat(PkgDeletePath, &helper_stat) != 0 ||
++	    !S_ISREG(helper_stat.st_mode) || access(PkgDeletePath, X_OK) != 0)) {
++		warnx("pkg_delete is missing or not executable: %s", PkgDeletePath);
++		return -1;
++	}
++
+ 	if (preserve_meta_data_file(pkg, REQUIRED_BY_FNAME))
+ 		return -1;
+ 
+@@ -1391,14 +1403,14 @@
+ 		return -1;
+ 
+ 	if (Verbose || Fake) {
+-		printf("%s/pkg_delete %s -K %s -p %s%s%s '%s'\n",
+-			BINDIR, skip_scripts, delete_dbdir, pkg->prefix,
++		printf("%s %s -K %s -p %s%s%s '%s'\n",
++			PkgDeletePath, skip_scripts, delete_dbdir, pkg->prefix,
+ 			Destdir ? " -P ": "", Destdir ? Destdir : "",
+ 			pkg->other_version);
+ 	}
+ 	if (!Fake) {
+ 		/* pkg_delete adds Destdir itself; never pass the expanded database. */
+-		result = fexec_skipempty(BINDIR "/pkg_delete", skip_scripts,
++		result = fexec_skipempty(PkgDeletePath, skip_scripts,
+ 		    "-K", delete_dbdir,
+ 		    "-p", pkg->prefix,
+ 		    Destdir ? "-P": "", Destdir ? Destdir : "",
