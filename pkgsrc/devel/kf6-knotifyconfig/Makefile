@@ -11,8 +11,6 @@ LICENSE=	gnu-lgpl-v2.1
 
 USE_TOOLS+=	msgmerge
 
-CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTING=OFF
-
 .include "../../audio/libcanberra/buildlink3.mk"
 .include "../../devel/kf6-kconfig/buildlink3.mk"
 .include "../../devel/kf6-ki18n/buildlink3.mk"
