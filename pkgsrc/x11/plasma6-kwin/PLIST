@@ -164,10 +164,9 @@ include/kwin/utils/ramfile.h
 include/kwin/utils/realtime.h
 include/kwin/utils/resource.h
 include/kwin/utils/serial.h
-include/kwin/utils/softwarevsyncmonitor.h
 include/kwin/utils/udev.h
 include/kwin/utils/version.h
-include/kwin/utils/vsyncmonitor.h
+include/kwin/utils/vsyncsource.h
 include/kwin/utils/xcbutils.h
 include/kwin/virtualdesktops.h
 include/kwin/virtualdesktopsdbustypes.h
@@ -1646,7 +1645,6 @@ share/locale/zh_TW/LC_MESSAGES/kcmkwinscreenedges.mo
 share/locale/zh_TW/LC_MESSAGES/kcmkwm.mo
 share/locale/zh_TW/LC_MESSAGES/kwin.mo
 share/qlogging-categories6/org_kde_kwin.categories
-etc/xdg/kwinrulesrc
 include/kwin/core/hostmemoryallocator.h
 include/kwin/core/udmabufallocator.h
 include/kwin/swapchain.h
