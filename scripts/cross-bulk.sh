@@ -927,7 +927,7 @@ build_native()
     fi
     : > "$log"
     if { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; } &&
-        { [ "${stage_local_revision_changed:-no}" != yes ] || bmk -C "$PKGSRCDIR/$path" "$@" _package-clean < /dev/null >> "$log" 2>&1; } &&
+        { [ "${stage_local_revision_changed:-no}" != yes ] || bmk -C "$PKGSRCDIR/$path" "$@" depends-clean _package-clean < /dev/null >> "$log" 2>&1; } &&
         if [ "$install" = replace ]; then
             bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes package < /dev/null >> "$log" 2>&1 &&
                 { native_replace_keeps_libraries "$base" "$native_packages/All/$name" >> "$log" 2>&1 ||
@@ -1243,12 +1243,17 @@ build_one()
         : > "$log"
         shared_pair_for_path "$path"
         if [ -n "$shared_pair" ] && [ "$(cat "$run/shared-$shared_pair/enabled" 2>/dev/null)" = yes ]; then
+            if [ "$stage_local_revision_changed" = yes ] &&
+                ! bmk -C "$PKGSRCDIR/$path" depends-clean < /dev/null >> "$log" 2>&1; then
+                result "$key" "failed $path depends-clean"
+                return 0
+            fi
             if ! shared_pair_reset_stage "$path"; then
                 result "$key" "failed $path shared-stage-cleanup"
                 return 0
             fi
         elif [ "$stage_local_revision_changed" = yes ] &&
-            ! bmk -C "$PKGSRCDIR/$path" _package-clean < /dev/null >> "$log" 2>&1; then
+            ! bmk -C "$PKGSRCDIR/$path" depends-clean _package-clean < /dev/null >> "$log" 2>&1; then
             result "$key" "failed $path package-clean"
             return 0
         fi

@@ -36,8 +36,13 @@ with tempfile.TemporaryDirectory(prefix='pkgsrc-repackage-metadata-') as td:
         for child in src.iterdir():
             if child.name not in exclude:
                 (dst / child.name).symlink_to(child, target_is_directory=child.is_dir())
-    overlay(source / 'mk', tree / 'mk', {'package', 'install', 'build', 'bsd.pkg.barrier.mk'})
+    overlay(source / 'mk', tree / 'mk', {'package', 'install', 'build', 'bsd.pkg.barrier.mk', 'depends', 'pkgformat'})
     (tree / 'mk/bsd.pkg.barrier.mk').write_bytes((upstream / 'mk/bsd.pkg.barrier.mk').read_bytes())
+    overlay(source / 'mk/depends', tree / 'mk/depends', {'bsd.depends.mk'})
+    (tree / 'mk/depends/bsd.depends.mk').write_bytes((upstream / 'mk/depends/bsd.depends.mk').read_bytes())
+    overlay(source / 'mk/pkgformat', tree / 'mk/pkgformat', {'pkg'})
+    overlay(source / 'mk/pkgformat/pkg', tree / 'mk/pkgformat/pkg', {'depends.mk'})
+    (tree / 'mk/pkgformat/pkg/depends.mk').write_bytes((upstream / 'mk/pkgformat/pkg/depends.mk').read_bytes())
     for part, changed in [('package', {'bsd.package.mk', 'repackage-metadata-check.py'}),
                           ('install', {'install.mk'})]:
         overlay(source / 'mk' / part, tree / 'mk' / part, changed)
@@ -73,7 +78,9 @@ with tempfile.TemporaryDirectory(prefix='pkgsrc-repackage-metadata-') as td:
     previous = subprocess.run([str(a.patch), '--batch', '-R', '--dry-run', '-p1', '-F0',
                                '-i', str(old_install)], cwd=tree,
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    if previous.returncode == 0:
+    # GNU patch can exit zero on an unmatched reverse dry run after saying it
+    # would apply the hunk forward instead.
+    if previous.returncode == 0 and 'Unreversed patch detected' not in previous.stdout:
         result = subprocess.run([str(a.patch), '--batch', '-R', '-p1', '-F0',
                                  '-i', str(old_install)], cwd=tree,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -91,7 +98,7 @@ with tempfile.TemporaryDirectory(prefix='pkgsrc-repackage-metadata-') as td:
                                  '-i', str(patch_file.resolve())], cwd=tree,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         if result.returncode:
-            raise SystemExit('patch failed:\n' + result.stdout)
+            raise SystemExit('patch failed (' + patch_file.name + '):\n' + result.stdout)
     if a.inject_identity_fault:
         helper = tree / 'mk/package/repackage-metadata-check.py'
         text = helper.read_text()
@@ -108,6 +115,7 @@ COMMENT= Metadata-only repackage regression fixture
 LICENSE= 2-clause-bsd
 DISTFILES=
 NO_CHECKSUM= yes
+DEPENDS?= provider-a>=1:.
 .if !defined(FIX_CONFIGURE)
 NO_CONFIGURE?= yes
 .endif
@@ -131,12 +139,42 @@ do-install:
     (fixture / 'DESCR').write_text('Metadata repackage regression.\n')
     plist = fixture / 'PLIST'
     plist.write_text('share/ember-repackage-fixture/compiled\nshare/ember-repackage-fixture/revision\n')
+    object_fmt = subprocess.run([str(a.bmake.resolve()), '-s', '-C', str(fixture),
+                                 'MAKECONF=' + str(a.makeconf.resolve()),
+                                 'PKGSRCDIR=' + str(tree),
+                                 'EMBERBSD_PKGSRCDIR=' + str(tree),
+                                 'show-var', 'VARNAME=OBJECT_FMT'],
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                text=True, timeout=60)
+    if object_fmt.returncode != 0 or not object_fmt.stdout.strip():
+        raise SystemExit('cannot determine fixture package format:\n' + object_fmt.stdout[-2000:])
+    object_fmt_value = object_fmt.stdout.strip().splitlines()[-1]
+    mock_pkg_info = root / 'pkg_info'
+    mock_pkg_info.write_text('''#!/bin/sh
+case "$1" in
+-E|-e)
+    case "$2" in
+    provider-a*) echo provider-a-1.0 ;;
+    provider-b*) echo provider-b-2.0 ;;
+    *) exit 1 ;;
+    esac
+    ;;
+-Q)
+    [ "$2" = OBJECT_FMT ] || exit 1
+    echo ''' + object_fmt_value + '''
+    ;;
+*) exit 1 ;;
+esac
+''')
+    mock_pkg_info.chmod(0o755)
     record = root / 'builds'; job_record = root / 'install-jobs'
     work = None
     cmd = [str(a.bmake.resolve()), '-s', '-C', str(fixture), 'MAKECONF=' + str(a.makeconf.resolve()),
-           'EMBERBSD_PKGSRCDIR=' + str(tree), 'EMBERBSD_REPACKAGE_PYTHON=' + sys.executable,
+           'PKGSRCDIR=' + str(tree), 'EMBERBSD_PKGSRCDIR=' + str(tree),
+           'EMBERBSD_REPACKAGE_PYTHON=' + sys.executable,
            'EMBERBSD_HOST_PYTHON=' + str(resolver_python), 'EMBERBSD_SDK_SOURCE=' + str(sdk_source),
            'WRKOBJDIR=' + str(root / 'work'), 'PACKAGES=' + str(root / 'packages'),
+           'PKG_INFO=' + str(mock_pkg_info),
            'BUILD_RECORD=' + str(record), 'JOBS_RECORD=' + str(job_record),
            'INSTALL_RECORD=' + str(root / 'install-record')]
     def run(target, *args):
@@ -179,6 +217,7 @@ reenter:
     def query_wrkdir(fixture, wrkobjdir):
         result = subprocess.run([str(a.bmake.resolve()), '-s', '-C', str(fixture),
                                  'MAKECONF=' + str(a.makeconf.resolve()),
+                                 'PKGSRCDIR=' + str(tree),
                                  'EMBERBSD_PKGSRCDIR=' + str(tree),
                                  'WRKOBJDIR=' + str(wrkobjdir), 'show-var', 'VARNAME=WRKDIR'],
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -199,6 +238,22 @@ reenter:
     work = query_wrkdir(fixture, root / 'work')
     require(not any(x in r.stdout for x in ('unexpected operator', 'missing ]', 'unknown operand')), 'ordinary install emitted shell diagnostic', r)
     require(record.read_text().splitlines() == ['build'], 'initial build count')
+    def archive_contents(name):
+        archive = root / 'packages/All' / (name + '.tgz')
+        with tarfile.open(archive, 'r:*') as tar:
+            return tar.extractfile('+CONTENTS').read().decode()
+    initial_contents = archive_contents('ember-repackage-fixture-1.0nb1')
+    require('@pkgdep provider-a>=1\n' in initial_contents and
+            '@blddep provider-a-1.0\n' in initial_contents,
+            'initial archive omitted declared provider-a dependency')
+    # The recipe changes only its runtime dependency; metadata recovery must
+    # refresh all three dependency lists without rebuilding the package.
+    makefile = fixture / 'Makefile'
+    fixture_makefile = makefile.read_text()
+    old_dep = 'DEPENDS?= provider-a>=1:.'
+    new_dep = 'DEPENDS?= provider-b>=2:.'
+    require(fixture_makefile.count(old_dep) == 1, 'initial dependency fixture changed')
+    makefile.write_text(fixture_makefile.replace(old_dep, new_dep))
     require(resolver_count() == 1, 'automatic package build did not resolve jobs exactly once')
     if not (work / '.extract_done').exists():
         (work / '.extract_done').write_text('ember-repackage-fixture-1.0nb1\n')
@@ -260,6 +315,13 @@ reenter:
     with tarfile.open(archive,'r:*') as tar:
         contents=tar.extractfile('+CONTENTS').read().decode(); payload=tar.extractfile('share/ember-repackage-fixture/revision').read().decode(); added=tar.extractfile('share/ember-repackage-fixture/added').read().decode()
     require('@name ember-repackage-fixture-1.0nb2\n' in contents and payload=='revision-2-barrier-yes\n' and added=='added\n','new metadata/payload incorrect')
+    require('@pkgdep provider-b>=2\n' in contents and
+            '@blddep provider-b-2.0\n' in contents and
+            '@pkgdep provider-a>=1\n' not in contents and
+            '@blddep provider-a-1.0\n' not in contents,
+            'metadata recovery retained stale provider-a dependency')
+    require(record.read_text().splitlines() == ['build'],
+            'dependency metadata refresh recompiled')
     # A mode scoped to another package must not weaken the normal version check.
     plist.write_text('share/ember-repackage-fixture/compiled\nshare/ember-repackage-fixture/revision\n')
     r = run('repackage', 'PKGREVISION=3', '_EMBER_REPACKAGE_IDENTITY=ember-repackage-fixture-1.0nb1',
@@ -291,6 +353,17 @@ reenter:
         r = run('repackage-metadata', 'PKGREVISION=5', 'NO_CONFIGURE=' + value, 'FAIL_INSTALL=yes')
         require(r.returncode != 0 and not sentinel.exists() and 'Installing for' in r.stdout,
                 'defined NO_CONFIGURE was treated as enabled', r)
+    # Removing the runtime dependency also refreshes +CONTENTS without build.
+    r = run('repackage-metadata', 'PKGREVISION=5', 'DEPENDS=')
+    require(r.returncode == 0, 'dependency-removal metadata recovery failed', r)
+    final_contents = archive_contents('ember-repackage-fixture-1.0nb5')
+    require('@pkgdep provider-a>=1\n' not in final_contents and
+            '@pkgdep provider-b>=2\n' not in final_contents and
+            '@blddep provider-a-1.0\n' not in final_contents and
+            '@blddep provider-b-2.0\n' not in final_contents,
+            'removed dependency remained in package +CONTENTS')
+    require(record.read_text().splitlines() == ['build', 'build', 'build'],
+            'dependency removal recovery changed established build count')
     regression = Path(__file__).with_name('pkgsrc-repackage-revision.py')
     r = subprocess.run([sys.executable, '-B', str(regression), '--pkgsrc', str(tree),
                         '--makeconf', str(a.makeconf), '--bmake', str(a.bmake)],
@@ -336,7 +409,8 @@ do-install:
                   'BUILD_RECORD=' + str(stage_builds), 'EXTRACT_RECORD=' + str(stage_extracts),
                   'CONFIGURE_RECORD=' + str(stage_configures)]
     stage_cmd = [str(a.bmake.resolve()), '-s', '-C', str(stage),
-                 'MAKECONF=' + str(a.makeconf.resolve()), 'EMBERBSD_PKGSRCDIR=' + str(tree)] + stage_args
+                 'MAKECONF=' + str(a.makeconf.resolve()), 'PKGSRCDIR=' + str(tree),
+                 'EMBERBSD_PKGSRCDIR=' + str(tree)] + stage_args
     def stage_run(target, revision='1', *extra):
         return subprocess.run(stage_cmd + list(extra) + ['PKGREVISION=' + revision, target],
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=180)
@@ -416,5 +490,5 @@ do-install:
     require(r.returncode == 0, 'bootstrap build with explicit jobs required SDK Python/source', r)
     require(resolver_count() == calls, 'explicit bootstrap MAKE_JOBS invoked the SDK resolver')
     build_cookie.write_bytes(build_bytes)
-    print('PASS: strict metadata-only reuse; stage-local recovery; automatic jobs once; source-only target and explicit nested build avoid another resolver; explicit override preserved')
+    print('PASS: metadata-only dependency add/remove without rebuilding; stage-local recovery; automatic jobs once; source-only target and explicit nested build avoid another resolver; explicit override preserved')
     print(ordinary_output)

@@ -290,6 +290,7 @@ printf '%s\n' 'demo-1.0nb0' > "$out/work/demo/.extract_done"
 run "$out/state" > "$out/success.log" 2>&1 || fail "package-install: $(cat "$out/success.log")"
 grep -q '^package$' "$out/targets" && grep -q '^replace$' "$out/targets" || fail 'did not package then replace installed version'
 ! grep -qx _package-clean "$out/targets" || fail 'unchanged PKGNAME invoked _package-clean'
+! grep -qx depends-clean "$out/calls" || fail 'unchanged PKGNAME invoked depends-clean'
 grep -q '^MAKE_JOBS=6$' "$out/calls" || fail 'default MAKE_JOBS did not use the SDK CPU budget'
 grep -q '^_EMBER_STAGE_LOCAL_PACKAGE_INSTALL=yes$' "$out/calls" || fail 'controller omitted stage-local identity mode'
 grep -q '^_EMBER_STAGE_LOCAL_PKGPATH=cat/demo$' "$out/calls" || fail 'controller omitted exact PKGPATH scope'
@@ -302,6 +303,22 @@ grep -q '^cat/other other-1.0 sha256-old$' "$out/state/done" || fail 'unrelated 
 grep -q '^cat/other keep-failure$' "$out/state/failed" || fail 'unrelated failure changed'
 grep -q '^cat/other keep-blocked$' "$out/state/blocked" || fail 'unrelated blocked row changed'
     grep -qx clean "$out/calls" && fail 'recovery invoked clean'
+
+# A numeric package revision transition refreshes dependency metadata before
+# package staging, while the same-PKGNAME case above remains a no-op reset.
+mkdir -p "$out/revision-state/logs"
+printf '%s\n' cat/demo > "$out/revision-state/order"
+printf '%s\n' 'cat/demo cat/demo' > "$out/revision-state/edges"
+: > "$out/revision-state/done"
+: > "$out/revision-state/failed"
+: > "$out/revision-state/blocked"
+printf '%s\n' 'demo-1.0nb1' > "$out/work/demo/.package_done"
+: > "$out/targets"
+: > "$out/calls"
+run "$out/revision-state" > "$out/revision.log" 2>&1 || fail "revision recovery: $(cat "$out/revision.log")"
+grep -qx depends-clean "$out/calls" || fail 'revision recovery did not refresh dependency metadata'
+grep -qx _package-clean "$out/targets" || fail 'revision recovery did not reset package staging'
+rm -f "$out/work/demo/.package_done"
 
 mkdir -p "$out/fresh-state/logs"
 printf '%s\n' cat/demo > "$out/fresh-state/order"

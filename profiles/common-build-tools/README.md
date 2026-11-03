@@ -16,9 +16,12 @@ for a changed package revision. `tests/pkgsrc-repackage-revision.py` checks a
 real package rebuild, selected make settings and the new package payload.
 
 `bmake repackage-metadata` explicitly repackages an already completed build
-when the operator has verified that sources, patches, build options, dependencies,
-toolchain and ABI are unchanged. Hold exclusive ownership of the work directory
-for the entire operation. When a requested barrier target can build or install,
+when the operator has verified that its compiled inputs, toolchain and ABI remain
+compatible. The current recipe's package dependency declarations may change; the
+mode refreshes their metadata but does not determine whether a new dependency
+changes compiled inputs or ABI. Such changes require a normal rebuild. Hold
+exclusive ownership of the work directory for the entire operation. When a
+requested barrier target can build or install,
 an empty `MAKE_JOBS` is resolved once through the selected SDK
 `scripts/resolve-jobs.py`; a positive value supplied by the caller is passed
 through. Source-only targets do not invoke the job resolver. The opt-in mode
@@ -27,9 +30,11 @@ requires an absolute selected SDK Python through `EMBERBSD_REPACKAGE_PYTHON`; it
 Extract and build identities, and configure identity
 when applicable, must agree on the same package and upstream version; only the
 numeric pkgsrc revision may differ. The mode preserves compiled objects and their
-original identity, reruns installation and its hooks, and performs normal PLIST,
-metadata and package checks. A failed install or package leaves the build objects
-available for a retry; a partial stage or failed package is not a result. The
+original identity, refreshes pkgsrc dependency metadata, reruns installation and
+its hooks, and performs normal PLIST, metadata and package checks. Stage-local
+recovery refreshes the same metadata when the package revision changes. A failed
+install or package leaves the build objects available for a retry; a partial
+stage or failed package is not a result. The
 installed package is not replaced by this target. Ordinary `repackage` continues
 to rebuild when package identity changes.
 

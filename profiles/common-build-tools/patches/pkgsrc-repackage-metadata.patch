@@ -36,7 +36,7 @@
 +	old=`"$$interpreter" -B -E -S ${PKGSRCDIR:Q}/mk/package/repackage-metadata-check.py \
 +	    ${WRKDIR:Q} ${WRKSRC:Q} ${PKGBASE:Q} ${PKGVERSION_NOREV:Q} \
 +	    ${PKGNAME:Q} ${_EMBER_REPACKAGE_CONFIGURE_NEEDED:Q}` || exit $$?; \
-+	${RECURSIVE_MAKE} ${MAKEFLAGS} _package-clean || exit $$?; \
++	${RECURSIVE_MAKE} ${MAKEFLAGS} depends-clean _package-clean || exit $$?; \
 +	unset _PKGSRC_BARRIER; \
 +	MAKEFLAGS=${.MAKEFLAGS:Q} ${RECURSIVE_MAKE} ${MAKEFLAGS} \
 +	    ${.MAKEOVERRIDES:N_PKGSRC_BARRIER:@v@${v}=${${v}:Q}@} \
@@ -184,3 +184,29 @@
 +except (OSError, UnicodeError, ValueError) as error:
 +    print("repackage-metadata: " + str(error), file=sys.stderr)
 +    raise SystemExit(1)
+
+--- a/mk/depends/bsd.depends.mk
++++ b/mk/depends/bsd.depends.mk
+@@ -111,6 +111,9 @@
+ ### depends-clean removes the state files associated with the "depends"
+ ### target so that "depends" may be re-invoked.
+ ###
++.if target(_pkgformat-depends-clean)
++depends-clean: _pkgformat-depends-clean
++.endif
+ depends-clean:
+ 	${RUN}								\
+ 	${RM} -f ${_COOKIE.depends};					\
+--- a/mk/pkgformat/pkg/depends.mk
++++ b/mk/pkgformat/pkg/depends.mk
+@@ -29,6 +29,10 @@
+ _RDEPENDS_FILE=	${WRKDIR}/.rdepends
+ 
+ _RRDEPENDS_FILE=${WRKDIR}/.rrdepends
++
++.PHONY: _pkgformat-depends-clean
++_pkgformat-depends-clean:
++	${RUN} ${RM} -f ${_DEPENDS_FILE} ${_RDEPENDS_FILE} ${_RRDEPENDS_FILE}
+ 
+ _FULL_DEPENDS_CMD=	\
+ 	${AWK} '$$1 == "full" { print $$3; }' < ${_RDEPENDS_FILE}
