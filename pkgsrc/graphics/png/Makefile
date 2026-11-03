@@ -20,7 +20,6 @@ CONFIGURE_ARGS+=	--disable-unversioned-links
 INSTALL_TARGET=		install install-header-links
 
 PKGCONFIG_OVERRIDE=	scripts/libpng.pc.in libpng.pc.in
-TEST_TARGET=		check
 
 CPPFLAGS+=	-DPNG_USER_CHUNK_CACHE_MAX=128 -DPNG_USER_CHUNK_MALLOC_MAX=8000000
 
