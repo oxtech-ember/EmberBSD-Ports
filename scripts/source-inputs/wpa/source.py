@@ -116,14 +116,26 @@ def recipe(exported):
 
 
 def verify(source, git, archive=None, hostapd_archive=None, patch=None, pkgsrc_export=None):
-    # Check a caller's shared export before any early return: an unchanged
-    # Git-identified receipt needs no export, but a broken one must not pass.
-    shared = (identity_module().shared_export(pkgsrc_export, PORTS, git, SDK_SOURCE, patch)
-              if pkgsrc_export else None)
-    identity = source_identity(git)
     record = jsonio.read_json(str(Path(source) / sourceprep.PREPARED_TREE_RECEIPT))
     old = record.get('identity') if isinstance(record, dict) else None
     record = sourceprep.validate_prepared_tree(source, package=PACKAGE, identity=old)
+
+    # A current API 2 receipt proves the selected package inputs directly.
+    # Do not make that scoped path depend on unrelated shared-export inputs.
+    selector = identity_module()
+    if isinstance(old, dict) and set(old) == {'effective', 'owner_sha256'}:
+        owner_sha = digest(read(Path(__file__).resolve()))
+        compatible_owners = {owner_sha,
+            '4360fe9b8d510b770a7ac7a1ba7ceeed87222e41319f819f25ed14414d0fbd45'}
+        if (old.get('owner_sha256') in compatible_owners and
+                selector.current_git_package(old, old['owner_sha256'],
+                                             lambda: git_effective_identity(git))):
+            return record
+
+    # Legacy or changed inputs need the shared export to compare or rebuild.
+    shared = (selector.shared_export(pkgsrc_export, PORTS, git, SDK_SOURCE, patch)
+              if pkgsrc_export else None)
+    identity = source_identity(git)
     if old == identity:
         return record
     if isinstance(old, dict) and set(old) == {'effective', 'owner_sha256'}:

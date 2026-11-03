@@ -18,7 +18,10 @@ PORTS = Path(__file__).resolve().parents[3]
 PACKAGE = 'net/libpcap'
 LABEL = 'libpcap'
 # The pre-extraction owner has identical libpcap preparation semantics.
-compatible_owner_digests = frozenset({'b6127acef33d89d5e2c696241f72cd101e9f8860f6ae5b4bf6628d3663e971a9'})
+compatible_owner_digests = frozenset({
+    'b6127acef33d89d5e2c696241f72cd101e9f8860f6ae5b4bf6628d3663e971a9',
+    '364be33c859e0ea0296a376da0d2e7a9f276fa3e7d631355b1720e0db4b6b9f3',
+})
 sys.path.insert(0, str(PORTS / 'pkgsrc/lang/llvm/files'))
 import sdk_source
 sys.path.insert(0, str(PORTS / 'scripts/source-inputs/common'))

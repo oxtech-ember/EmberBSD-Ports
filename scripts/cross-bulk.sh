@@ -30,19 +30,19 @@
 # failure list, and the packages that depend on it are blocked.
 #
 # The build options of target dependencies that are not installed come
-# from the tree (mk/pkg-build-options.mk). Order starts a new pkgsrc
+# from the tree (mk/pkg-build-options.mk). Order keeps a pkgsrc
 # PBULK_CACHE_DIRECTORY in STATE/build-options, as a pbulk scan does.
-# Fetch reuses it only while the tree, the MAKECONF and the native
-# selection are those of that order run. Build does not use it: there
-# the installed dependencies answer the query.
+# A repeat order reuses it only while the tree, MAKECONF, native selection,
+# bmake environment, installed package metadata and prior options are
+# unchanged. Fetch uses the same gate. Build does not use it: installed
+# dependencies answer there.
 #
 # Each pass checks every done package by its PKGNAME, and a target-mode
-# parse costs seconds. Build keeps the show-vars answers in STATE/vars with
-# the makefiles that parse read (.MAKE.MAKEFILES) and the device, inode,
-# size and modification time of each of them and of their directories. A
-# change to any of them, such as a PKGREVISION in an included .mk, an
-# edited MAKECONF, a replaced tree or a file added next to a makefile,
-# parses again; so does a makefile changed while it was parsed.
+# parse costs seconds. Order and build keep show-vars answers in STATE/vars
+# with the makefiles that parse read (.MAKE.MAKEFILES) and the device, inode,
+# size and modification time of each of them and of their directories. Order
+# also keys those answers by the validated PBULK/package-database context.
+# A changed makefile or a file added next to one invalidates its answer.
 # CROSS_BULK_VARS_CACHE=no turns the cache off.
 #
 # Before a package builds, build renames its old WRKDIR into a trash
@@ -81,12 +81,48 @@ esac
 export MAKECONF
 mkdir -p "$state/logs"
 
+# Hash the complete NUL-delimited environment without writing its values to
+# disk. If a selected env/sort implementation cannot provide a trustworthy
+# digest, the order still runs but gets no persistent query/options cache.
+environment_identity()
+{
+    env_status=$state/environment.$$.env-status
+    sort_status=$state/environment.$$.sort-status
+    digest_file=$state/environment.$$.digest
+    rm -f "$env_status" "$sort_status" "$digest_file"
+    if (env -0 || { status=$?; printf '%s\n' "$status" > "$env_status"; exit "$status"; }) |
+        (LC_ALL=C sort -z || { status=$?; printf '%s\n' "$status" > "$sort_status"; exit "$status"; }) |
+        shasum -a 256 > "$digest_file"; then
+        status=0
+    else
+        status=$?
+    fi
+    if [ "$status" -ne 0 ] || [ -e "$env_status" ] || [ -e "$sort_status" ] ||
+        [ ! -s "$digest_file" ]; then
+        rm -f "$env_status" "$sort_status" "$digest_file"
+        return 1
+    fi
+    digest=$(awk 'NR == 1 { print $1 }' "$digest_file")
+    rm -f "$env_status" "$sort_status" "$digest_file"
+    case "$digest" in ''|*[!0-9a-f]*) return 1 ;; esac
+    [ "${#digest}" -eq 64 ] || return 1
+    printf '%s\n' "$digest"
+}
+
 # Verify the selected native prefix once per run. Every later bmake call,
 # and its recursive queries, receive the verified selection on the command
 # line and skip the per-parse verifier.
 # Parallel order queries run as child runs of this script (mode deps) and
 # get the verified selection in CROSS_BULK_NATIVE.
 unset EMBERBSD_NATIVE_TOOLSET_VERIFIED
+case "$mode" in
+    order|fetch)
+        unset CROSS_BULK_ENV_IDENTITY
+        env_identity=$(environment_identity) || env_identity= ;;
+    deps) env_identity=${CROSS_BULK_ENV_IDENTITY:-} ;;
+    *) env_identity= ;;
+esac
+export CROSS_BULK_ENV_IDENTITY=$env_identity
 if [ "$mode" = deps ] && [ -n "${CROSS_BULK_NATIVE:-}" ]; then
     native=$CROSS_BULK_NATIVE
 else
@@ -101,6 +137,14 @@ unset CROSS_BULK_NATIVE
 
 cache=$state/build-options
 cachearg=
+vars_cache=
+vars_context=
+gnu_stat=no
+case "$mode" in
+    order|fetch) ! stat -c %i / > /dev/null 2>&1 || gnu_stat=yes ;;
+    deps) [ -z "${CROSS_BULK_VARS_CONTEXT:-}" ] ||
+        ! stat -c %i / > /dev/null 2>&1 || gnu_stat=yes ;;
+esac
 if [ "$mode" = deps ] && [ -n "${CROSS_BULK_OPTIONS_CACHE:-}" ]; then
     expected_cache=$(dirname "$state")/build-options
     [ "$CROSS_BULK_OPTIONS_CACHE" = "$expected_cache" ] || {
@@ -129,25 +173,97 @@ option_cache_role()
     esac
 }
 
-# The inputs of the cached build options: the native selection, the tree
-# directory itself, so a replaced export does not match, and the content of
-# each absolute makefile that a parse reads: the MAKECONF, its includes and
-# the generated files at the top of the tree.
+# Inputs for cached dependency queries and pkg-build-options results: native
+# selection, tree identity, selected make tool, environment, pkg_install
+# makefiles and the target/native installed package metadata read for PKG_OPTIONS.
 cache_identity()
 {
+    [ -n "$env_identity" ] || return 1
     files=$(var pkgtools/pkg_install .MAKE.MAKEFILES) || return 1
-    printf '%s\n' "$PKGSRCDIR" "$native"
+    printf '%s\n' "PKGSRCDIR=$PKGSRCDIR" "BMAKE=$BMAKE" "MAKECONF=$MAKECONF" \
+        "native=$native" "environment-sha256=$env_identity"
     ls -id "$PKGSRCDIR/" | awk '{ print $1 }'
     for file in $files; do
         case "$file" in /*) shasum -a 256 "$file" || return 1 ;; esac
     done
+    pkgdb_snapshot
+}
+
+pkgdb_snapshot_one()
+{
+    db=$1 role=$2
+    printf 'pkgdb=%s %s\n' "$role" "$db"
+    [ -d "$db" ] || { printf 'missing\n'; return 0; }
+    db=$(CDPATH= cd -- "$db" && pwd -P) || return 1
+    if [ "$gnu_stat" = yes ]; then
+        snapshot=$(find "$db" \( -type d -o -type f \( -name '+BUILD_INFO' -o -name pkgdb.byfile.db \) \) \
+            -exec stat -c '%d %i %s %.9Y %.9Z %n' {} +) || return 1
+    else
+        snapshot=$(find "$db" \( -type d -o -type f \( -name '+BUILD_INFO' -o -name pkgdb.byfile.db \) \) \
+            -exec stat -f '%d %i %z %Fm %Fc %N' {} +) || return 1
+    fi
+    printf '%s\n' "$snapshot" | sort
+}
+
+pkgdb_snapshot()
+{
+    target_pkgdb=$(mk -C "$PKGSRCDIR/pkgtools/pkg_install" show-var VARNAME=_PKG_DBDIR < /dev/null) || return 1
+    native_pkgdb=$(mk -C "$PKGSRCDIR/pkgtools/pkg_install" USE_CROSS_COMPILE=no \
+        show-var VARNAME=_HOST_PKG_DBDIR < /dev/null) || return 1
+    case "$target_pkgdb:$native_pkgdb" in /*:/*) ;; *) return 1 ;; esac
+    pkgdb_snapshot_one "$target_pkgdb" target || return 1
+    pkgdb_snapshot_one "$native_pkgdb" native || return 1
+}
+
+options_snapshot()
+{
+    for role in target native; do
+        dir=$cache/$role
+        printf 'options=%s\n' "$role"
+        [ -d "$dir" ] || { printf 'missing\n'; continue; }
+        if [ "$gnu_stat" = yes ]; then
+            snapshot=$(find "$dir" \( -type d -o -type f -name 'build-options.*' \) \
+                -exec stat -c '%d %i %s %.9Y %.9Z %n' {} +) || return 1
+        else
+            snapshot=$(find "$dir" \( -type d -o -type f -name 'build-options.*' \) \
+                -exec stat -f '%d %i %z %Fm %Fc %N' {} +) || return 1
+        fi
+        printf '%s\n' "$snapshot" | sort
+    done
+}
+
+cache_matches_current()
+{
+    cache_identity > "$state/identity" || { rm -f "$state/identity"; return 1; }
+    [ -f "$cache/identity" ] && cmp -s "$state/identity" "$cache/identity" || return 1
+    [ -f "$cache/options.identity" ] && options_snapshot > "$state/options.identity" &&
+        cmp -s "$state/options.identity" "$cache/options.identity" || return 1
+    [ "$mode" != order ] || cmp -s "$list" "$cache/order-roots" || return 1
+    set -f
+    set -- $(cat "$state/order" "$list" 2>/dev/null | sed 's/@native$//' | sort -u)
+    set +f
+    [ -z "$(cd "$PKGSRCDIR" && find mk "$@" -newer "$cache/identity" -print | head -n 1)" ]
 }
 
 new_cache()
 {
+    cachearg=
+    if cache_matches_current; then
+        cachearg=$cache
+        rm -f "$state/identity" "$state/options.identity"
+        return 0
+    fi
     rm -rf "$cache"
+    rm -f "$state/options.identity"
     mkdir "$cache"
-    cache_identity > "$cache/identity" || { rm -rf "$cache"; return 0; }
+    if [ -s "$state/identity" ]; then
+        mv "$state/identity" "$cache/identity"
+    else
+        rm -f "$state/identity"
+        cache_identity > "$cache/identity" || { rm -rf "$cache"; return 0; }
+    fi
+    rm -f "$state/options.identity"
+    cat "$list" > "$cache/order-roots"
     cachearg=$cache
 }
 
@@ -155,14 +271,12 @@ new_cache()
 # in an ordered package directory changed after the order run started.
 reuse_cache()
 {
-    if [ -f "$cache/identity" ] && cache_identity > "$state/identity" &&
-        cmp -s "$state/identity" "$cache/identity" &&
-        [ -z "$(cd "$PKGSRCDIR" && find mk $(sed 's/@native$//' "$state/order" | sort -u) -newer "$cache/identity" -print | head -n 1)" ]; then
+    if cache_matches_current; then
         cachearg=$cache
     else
         echo 'The build options cache is not from this tree; querying without it' >&2
     fi
-    rm -f "$state/identity"
+    rm -f "$state/identity" "$state/options.identity"
 }
 
 var()
@@ -230,8 +344,7 @@ node_deps()
     # (WRKDIR/.PHASE_makevars.mk), and a parse includes the latest of them
     # unless _MAKEVARS_MK is defined: a USE_BUILTIN.openssl=yes saved before
     # security/heimdal chose PREFER.openssl=pkgsrc dropped its openssl edge.
-    vars=$(mk -C "$PKGSRCDIR/$dir" "$@" _MAKEVARS_MK=defined show-vars \
-        VARNAMES='PKG_SKIP_REASON DEPENDS BUILD_DEPENDS TOOL_DEPENDS BOOTSTRAP_DEPENDS PKGBASE PKGNAME' < /dev/null) ||
+    vars=$(pkg_vars "$dir" 'PKG_SKIP_REASON DEPENDS BUILD_DEPENDS TOOL_DEPENDS BOOTSTRAP_DEPENDS PKGBASE PKGNAME' "$@") ||
         return 1
     printf '%s\n' "$vars" | sed -n 1p || return 1
     if [ -n "$suffix" ]; then
@@ -289,6 +402,12 @@ order()
 {
     native_info
     new_cache
+    if [ -n "$cachearg" ] && [ "${CROSS_BULK_VARS_CACHE:-yes}" != no ]; then
+        mkdir -p "$state/vars"
+        vars_context="deps|$BMAKE|$MAKECONF|$PKGSRCDIR|$native|$env_identity|$cachearg|$(cksum < "$cache/identity" | awk '{ print $1 ":" $2 }')|$(sigs "$cache/identity")"
+    else
+        vars_context=
+    fi
     jobs=${CROSS_BULK_JOBS:-$(host_cpus)}
     count CROSS_BULK_JOBS "$jobs"
     q=$state/order-query
@@ -324,7 +443,8 @@ order()
         done < "$state/queue"
         if [ -s "$q/frontier" ]; then
             CROSS_BULK_NATIVE=$native CROSS_BULK_PKG_INFO=$native_pkg_info \
-                CROSS_BULK_OPTIONS_CACHE=$cache \
+                CROSS_BULK_OPTIONS_CACHE=$cachearg \
+                CROSS_BULK_VARS_CONTEXT="$vars_context" \
                 xargs -P "$jobs" -I '{}' sh "$0" deps '{}' "$q" \
                 < "$q/frontier" || :
         fi
@@ -365,6 +485,17 @@ order()
         return 1
     fi
     sort_edges "$state/edges.new" "$state/order.new" "$state/soft.new" || return 1
+    if [ -n "$cachearg" ]; then
+        if options_snapshot > "$cache/options.identity.tmp" &&
+            mv "$cache/options.identity.tmp" "$cache/options.identity"; then
+            :
+        else
+            rm -rf "$cache"
+            cachearg=
+            vars_context=
+            echo 'Dependency queries completed, but cache validation failed; results will not be reused' >&2
+        fi
+    fi
     rm -f "$state/soft.new"
     mv "$state/skipped.new" "$state/skipped"
     mv "$state/edges.new" "$state/edges"
@@ -651,7 +782,9 @@ pkg_vars()
     shift 2
     ventry=
     if [ -n "$vars_cache" ]; then
-        ventry=$vars_cache/$(printf '%s\n' "$vdir $vnames $*" | cksum | tr ' ' _)
+        vkey="$vdir $vnames $*"
+        [ -z "$vars_context" ] || vkey="$vars_context|$vkey"
+        ventry=$vars_cache/$(printf '%s\n' "$vkey" | cksum | tr ' ' _)
         if [ -f "$ventry" ] && [ -f "$ventry.sig" ] &&
             makefile_sigs "$vdir" "$(sed -n 1p "$ventry")" | cmp -s - "$ventry.sig"; then
             sed 1d "$ventry"
@@ -659,8 +792,13 @@ pkg_vars()
         fi
         : > "$ventry.start"
     fi
-    vout=$(bmk -C "$PKGSRCDIR/$vdir" "$@" show-vars VARNAMES="$vnames .MAKE.MAKEFILES .CURDIR" < /dev/null) ||
-        return 1
+    if [ "$mode" = deps ]; then
+        vout=$(mk -C "$PKGSRCDIR/$vdir" "$@" _MAKEVARS_MK=defined show-vars \
+            VARNAMES="$vnames .MAKE.MAKEFILES .CURDIR" < /dev/null) || return 1
+    else
+        vout=$(bmk -C "$PKGSRCDIR/$vdir" "$@" show-vars \
+            VARNAMES="$vnames .MAKE.MAKEFILES .CURDIR" < /dev/null) || return 1
+    fi
     vn=$(set -f; set -- $vnames; echo $#)
     if [ "$(printf '%s\n' "$vout" | wc -l | tr -d ' ')" != $((vn + 2)) ]; then
         # Not one line per variable: use it as it is, keep nothing.
@@ -670,14 +808,25 @@ pkg_vars()
     printf '%s\n' "$vout" | sed -n "1,${vn}p"
     vfiles=$(printf '%s\n' "$vout" | sed -n "$((vn + 1))p")
     [ -n "$ventry" ] && [ -n "$vfiles" ] || return 0
+    vfiles_sig=$vfiles
+    if [ "$mode" = deps ]; then
+        # PBULK option files are validated as one cache context. The first
+        # query can create them while bmake is parsing, so their directory
+        # mtimes must not make otherwise valid package signatures miss.
+        vfiles_sig=$(printf '%s\n' $vfiles | awk -v cache="$cache" '
+            $0 == cache || index($0, cache "/") == 1 { next }
+            !seen++ { printf "%s", $0; next }
+            { printf " %s", $0 }
+            END { if (seen) print "" }')
+    fi
     # A makefile changed during the parse may not be what it read.
     (
         cd "$PKGSRCDIR/$vdir" || exit 1
         set -f
-        [ -z "$(find $vfiles -prune -newer "$ventry.start" 2> /dev/null)" ]
+        [ -z "$(find $vfiles_sig -prune -newer "$ventry.start" 2> /dev/null)" ]
     ) || return 0
-    makefile_sigs "$vdir" "$vfiles" > "$ventry.sig.tmp" &&
-        { printf '%s\n' "$vfiles"; printf '%s\n' "$vout" | sed -n "1,${vn}p"; } > "$ventry.tmp" &&
+    makefile_sigs "$vdir" "$vfiles_sig" > "$ventry.sig.tmp" &&
+        { printf '%s\n' "$vfiles_sig"; printf '%s\n' "$vout" | sed -n "1,${vn}p"; } > "$ventry.tmp" &&
         mv "$ventry.sig.tmp" "$ventry.sig" && mv "$ventry.tmp" "$ventry" || :
 }
 
@@ -1456,6 +1605,12 @@ case "$mode" in
             *'|'*) key=${list%%\|*}; path=${list#*\|} ;;
             *) key=$(echo "$list" | tr / _); path=$list ;;
         esac
+        if [ -n "${CROSS_BULK_VARS_CONTEXT:-}" ] &&
+            [ "${CROSS_BULK_VARS_CACHE:-yes}" != no ]; then
+            vars_cache=$(dirname "$state")/vars
+            mkdir -p "$vars_cache"
+            case "$path" in *@native) vars_context="$CROSS_BULK_VARS_CONTEXT|native" ;; *) vars_context="$CROSS_BULK_VARS_CONTEXT|target" ;; esac
+        fi
         node_deps "$path" > "$state/$key.tmp" 2> "$state/$key.err" &&
             mv "$state/$key.tmp" "$state/$key.deps" ;;
     fetch) fetch ;;

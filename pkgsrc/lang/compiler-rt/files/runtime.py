@@ -105,8 +105,13 @@ def freestanding_cli(commands):
 
 
 def compatible_build_for_target(previous, current, machine_arch, atomic_defaults=False):
-    """Compare build code after removing provably false architecture guards."""
+    """Compare build inputs after reviewed target-guard and metadata normalization."""
     if not isinstance(machine_arch, str) or not machine_arch:
+        return False
+
+    previous = normalize_recipe_recording(previous)
+    current = normalize_recipe_recording(current)
+    if previous is None or current is None:
         return False
 
     def effective(data):
@@ -211,6 +216,27 @@ require_bootstrap_inputs(owner, bootstrap, recipe, prepared, args)""").body
         return left is not None and left == right
     except (SyntaxError, ValueError, UnicodeDecodeError):
         return False
+
+
+def normalize_recipe_recording(data):
+    """Normalize the package-relative input names in one reviewed transition."""
+    old_path = (b"        files[str(path.relative_to(owner.PORTS))] = "
+                b"owner.inventory.sha256_file(path)\n")
+    new_path = (b"        files[owner.input_name(path)] = "
+                b"owner.inventory.sha256_file(path)\n")
+    old_revision = (b"    return dict(ports_revision=owner.git_revision(git, owner.PORTS), "
+                    b"files=files)\n")
+    new_revision = (b"    revision = None if owner.EXPORTED else owner.git_revision(git, owner.PORTS)\n"
+                    b"    return dict(ports_revision=revision, files=files)\n")
+    if (data.count(old_path) == 1 and data.count(old_revision) == 1 and
+            new_path not in data and new_revision not in data):
+        return data
+    if (data.count(new_path) == 1 and data.count(new_revision) == 1 and
+            old_path not in data and old_revision not in data):
+        return data.replace(new_path, old_path).replace(new_revision, old_revision)
+    if not any(marker in data for marker in (old_path, new_path, old_revision, new_revision)):
+        return data
+    return None
 
 
 def atomic_builtin_cmake_defaults(source):

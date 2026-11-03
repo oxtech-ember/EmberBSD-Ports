@@ -1,0 +1,4 @@
+# Single shared pin for the Bosch BMM150 API and all source consumers.
+BMM150_SENSORAPI_VERSION= 2.0.0
+BMM150_SENSORAPI_REVISION= 0dce0617873cda1f6d51f6b7b961fdc2641e0c7c
+BMM150_SENSORAPI_SOURCE_DIR?= ${EMBERBSD_HOST_PREFIX:U${TOOLBASE}}/share/bmm150-sensorapi

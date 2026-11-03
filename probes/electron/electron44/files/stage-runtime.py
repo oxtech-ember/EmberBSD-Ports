@@ -211,9 +211,24 @@ def stage_runtime(archive_path, destination, *, archive_sha256, target, sdk):
     The caller holds its input and destination-parent locks. This function does
     not run payloads, write a package receipt, or validate a build/sysroot/loader.
     """
-    paths, publication, elf, targets = sdk
     require(isinstance(archive_sha256, str) and re.fullmatch('[0-9a-f]{64}', archive_sha256),
             'an exact archive SHA256 is required')
+    return _stage_runtime(archive_path, destination, expected_sha256=archive_sha256,
+                          target=target, sdk=sdk)
+
+
+def stage_producer_runtime(work, destination, *, target, sdk):
+    """Stage the caller's successful producer output, hashing it once.
+
+    Build/source acceptance remains the package build phase's responsibility.
+    This API does not accept an independently supplied archive path.
+    """
+    return _stage_runtime(Path(work) / 'out/dist.zip', destination,
+                          expected_sha256=None, target=target, sdk=sdk)
+
+
+def _stage_runtime(archive_path, destination, *, expected_sha256, target, sdk):
+    paths, publication, elf, targets = sdk
     destination = Path(paths.canonical_new(destination))
     paths.real_directory(destination.parent)
     paths.reject_overlap(archive_path, destination)
@@ -222,7 +237,7 @@ def stage_runtime(archive_path, destination, *, archive_sha256, target, sdk):
     handle, before = paths.open_regular(archive_path)
     with handle:
         digest = hashlib.file_digest(handle, 'sha256').hexdigest()
-        require(digest == archive_sha256, 'ZIP SHA256 differs')
+        require(expected_sha256 is None or digest == expected_sha256, 'ZIP SHA256 differs')
         check_zip_directory(handle, before.st_size)
         with zipfile.ZipFile(handle) as archive, tempfile.TemporaryDirectory(
                 prefix='.electron-stage-', dir=destination.parent) as temporary:

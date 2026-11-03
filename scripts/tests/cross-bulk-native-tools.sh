@@ -194,11 +194,18 @@ grep -q 'cycle' "$out/cycle.log" || fail "cycle refusal: $(cat "$out/cycle.log")
 mkdir -p "$out/order-tree/pkgtools/pkg_install" "$out/order-tree/t/app" \
     "$out/order-tree/t/shared" "$out/order-tree/t/skipped" "$out/order-tree/n/shared" "$out/order-tree/a_b/pkg" \
     "$out/order-tree/a/b_pkg" "$out/order-tree/a/leaf1" "$out/order-tree/a/leaf2" \
+    "$out/order-tree/db-target/provider-1.0" "$out/order-tree/db-native/provider-1.0" \
+    "$out/order-tree/mk" \
     "$out/order-cache"
 : > "$out/order-cache/errors"
 : > "$out/order-tree/mk.conf"
 : > "$out/order-tree/pkgtools/pkg_install/Makefile"
+for dir in t/app t/shared t/skipped n/shared a_b/pkg a/b_pkg a/leaf1 a/leaf2; do
+    : > "$out/order-tree/$dir/Makefile"
+done
+printf '%s\n' 'PKG_OPTIONS=small' > "$out/order-tree/db-native/provider-1.0/+BUILD_INFO"
 printf '%s\n' t/app t/skipped > "$out/order-list"
+printf '%s\n' 'shared>=1.0:../../t/shared pkg>=1.0:../../a_b/pkg pkg>=1.0:../../a/b_pkg' > "$out/order-tree/t/app/deps.list"
 cat > "$out/order-bmake" <<WRAP
 #!/bin/sh
 out=$out
@@ -221,12 +228,16 @@ case "\$target" in
         case "\$varname" in
             EMBERBSD_NATIVE_TOOLSET_VERIFIED) echo fake ;;
             PKG_INFO) echo /usr/bin/false ;;
+            _PKG_DBDIR) [ -z "\$native" ] && echo $out/order-tree/db-target || echo $out/order-tree/db-native ;;
+            _HOST_PKG_DBDIR) echo $out/order-tree/db-native ;;
             .MAKE.MAKEFILES) echo $out/order-tree/pkgtools/pkg_install/Makefile ;;
             *) echo ;;
         esac ;;
     show-vars)
         case " \$varnames " in
             *" PKG_SKIP_REASON "*)
+                role=target; [ -z "\$native" ] || role=native
+                echo "\$kind/\$pkg \$role" >> $out/order-cache/dependency-queries
                 echo "fixture-warning \$kind/\$pkg" >&2
                 while ! mkdir $out/order-cache/query-lock 2> /dev/null; do sleep 0.01; done
                 active=\$(cat $out/order-cache/active 2> /dev/null || echo 0)
@@ -260,7 +271,15 @@ case "\$target" in
                 PKG_SKIP_REASON) if [ "\$pkg" = skipped ]; then echo 'outside profile'; else echo; fi ;;
                 DEPENDS)
                     case "\$kind/\$pkg" in
-                        t/app) echo 'shared>=1.0:../../t/shared pkg>=1.0:../../a_b/pkg pkg>=1.0:../../a/b_pkg' ;;
+                        t/app)
+                            if [ "\${PKG_DEFAULT_OPTIONS:-}" = large-env ]; then
+                                echo 'leaf2>=1.0:../../a/leaf2'
+                            elif [ -f $out/order-tree/db-target/provider-1.0/+BUILD_INFO ] &&
+                                grep -q 'PKG_OPTIONS=large' $out/order-tree/db-target/provider-1.0/+BUILD_INFO; then
+                                echo 'leaf2>=1.0:../../a/leaf2'
+                            else
+                                cat $out/order-tree/t/app/deps.list
+                            fi ;;
                         a_b/pkg) echo 'leaf1>=1.0:../../a/leaf1' ;;
                         a/b_pkg) echo 'leaf2>=1.0:../../a/leaf2' ;;
                         *) echo ;;
@@ -268,6 +287,8 @@ case "\$target" in
                 TOOL_DEPENDS) if [ "\$pkg" = app ]; then echo 'shared>=1.0:../../n/shared'; else echo; fi ;;
                 PKGBASE) echo "\$pkg" ;;
                 PKGNAME) echo "\$kind-\$pkg-1.0" ;;
+                .MAKE.MAKEFILES) printf 'Makefile %s' "$out/order-tree/mk.conf"; [ "\$kind/\$pkg" != t/app ] || printf ' deps.list'; [ -z "\$cache" ] || printf ' %s/build-options.shared' "\$cache"; echo ;;
+                .CURDIR) echo "$out/order-tree/\$kind/\$pkg" ;;
                 *) echo ;;
             esac
         done ;;
@@ -277,11 +298,12 @@ WRAP
 chmod +x "$out/order-bmake"
 order_run()
 {
-    state=$1 jobs=$2
-    mkdir "$out/$state"
-    BMAKE=$out/order-bmake MAKECONF=$out/order-tree/mk.conf PKGSRCDIR=$out/order-tree \
-        CROSS_BULK_JOBS=$jobs sh "$ports/scripts/cross-bulk.sh" order \
-        "$out/order-list" "$out/$state" > "$out/$state.log" 2>&1
+    state=$1 jobs=$2 options=${3:-} tool_path=${4:-$PATH}
+    mkdir -p "$out/$state"
+    PATH=$tool_path PKG_DEFAULT_OPTIONS=$options BMAKE=$out/order-bmake MAKECONF=$out/order-tree/mk.conf \
+        PKGSRCDIR=$out/order-tree CROSS_BULK_JOBS=$jobs \
+        sh "$ports/scripts/cross-bulk.sh" order "$out/order-list" "$out/$state" \
+        > "$out/$state.log" 2>&1
 }
 order_run order-serial 1 || fail "serial cache fixture: $(cat "$out/order-serial.log")"
 if grep -q CACHE-CONTAMINATION "$out/order-cache/errors"; then
@@ -289,13 +311,60 @@ if grep -q CACHE-CONTAMINATION "$out/order-cache/errors"; then
 fi
 [ -f "$out/order-serial/build-options/native/build-options.shared" ] || fail 'native options cache was not role-scoped'
 [ -f "$out/order-serial/build-options/target/build-options.shared" ] || fail 'target options cache was not role-scoped'
+query_count=$(wc -l < "$out/order-cache/dependency-queries" | tr -d ' ')
+order_run order-serial 1 || fail "unchanged order cache fixture: $(cat "$out/order-serial.log")"
+[ "$(wc -l < "$out/order-cache/dependency-queries" | tr -d ' ')" = "$query_count" ] ||
+    fail 'unchanged order repeated dependency bmake queries'
+for name in order edges skipped; do cp "$out/order-serial/$name" "$out/expected-$name"; done
+cp "$out/order-serial/logs/order.err" "$out/expected-order.err"
+printf '%s\n' 'leaf1>=1.0:../../a/leaf1' > "$out/order-tree/t/app/deps.list"
+order_run order-serial 1 || fail "recipe change order cache fixture: $(cat "$out/order-serial.log")"
+grep -qFx 'a/leaf1 t/app' "$out/order-serial/edges" || fail 'recipe edit did not change dependency graph'
+query_count=$(wc -l < "$out/order-cache/dependency-queries" | tr -d ' ')
+printf '%s\n' 'PKG_OPTIONS=large' > "$out/order-tree/db-target/provider-1.0/+BUILD_INFO"
+order_run order-serial 1 || fail "pkgdb change order cache fixture: $(cat "$out/order-serial.log")"
+grep -qFx 'a/leaf2 t/app' "$out/order-serial/edges" || fail 'pkgdb option change did not change dependency graph'
+[ "$(wc -l < "$out/order-cache/dependency-queries" | tr -d ' ')" -gt "$query_count" ] ||
+    fail 'pkgdb install did not invalidate dependency bmake queries'
+query_count=$(wc -l < "$out/order-cache/dependency-queries" | tr -d ' ')
+printf '%s\n' 'PKG_OPTIONS=small' > "$out/order-tree/db-target/provider-1.0/+BUILD_INFO"
+order_run order-serial 1 || fail "pkgdb metadata update fixture: $(cat "$out/order-serial.log")"
+[ "$(wc -l < "$out/order-cache/dependency-queries" | tr -d ' ')" -gt "$query_count" ] ||
+    fail 'pkgdb metadata update did not invalidate dependency bmake queries'
+query_count=$(wc -l < "$out/order-cache/dependency-queries" | tr -d ' ')
+rm "$out/order-tree/db-target/provider-1.0/+BUILD_INFO"
+order_run order-serial 1 || fail "pkgdb removal fixture: $(cat "$out/order-serial.log")"
+[ "$(wc -l < "$out/order-cache/dependency-queries" | tr -d ' ')" -gt "$query_count" ] ||
+    fail 'pkgdb removal did not invalidate dependency bmake queries'
+query_count=$(wc -l < "$out/order-cache/dependency-queries" | tr -d ' ')
+order_run order-serial 1 large-env || fail "environment option order fixture: $(cat "$out/order-serial.log")"
+grep -qFx 'a/leaf2 t/app' "$out/order-serial/edges" || fail 'environment option change did not change dependency graph'
+[ "$(wc -l < "$out/order-cache/dependency-queries" | tr -d ' ')" -gt "$query_count" ] ||
+    fail 'environment option change did not invalidate dependency bmake queries'
+real_sort=$(command -v sort)
+mkdir "$out/fail-env"
+cat > "$out/fail-env/env" <<'WRAP'
+#!/bin/sh
+exit 1
+WRAP
+cat > "$out/fail-env/sort" <<WRAP
+#!/bin/sh
+[ "\$1" != -z ] || exit 1
+exec "$real_sort" "\$@"
+WRAP
+chmod +x "$out/fail-env/env" "$out/fail-env/sort"
+order_run order-env-fail 1 '' "$out/fail-env:$PATH" || fail 'order failed when environment hashing was unavailable'
+[ ! -e "$out/order-env-fail/build-options" ] || fail 'failed environment hash left a reusable cache'
+order_run order-sort-fail 1 '' "$out/fail-env:$PATH" || fail 'order failed when NUL sorting was unavailable'
+[ ! -e "$out/order-sort-fail/build-options" ] || fail 'failed NUL sort left a reusable cache'
+printf '%s\n' 'shared>=1.0:../../t/shared pkg>=1.0:../../a_b/pkg pkg>=1.0:../../a/b_pkg' > "$out/order-tree/t/app/deps.list"
 echo 0 > "$out/order-cache/active"
 echo 0 > "$out/order-cache/max"
 order_run order-parallel 2 || fail "parallel cache fixture: $(cat "$out/order-parallel.log")"
 [ -f "$out/order-parallel/build-options/native/build-options.shared" ] || fail 'parallel native cache escaped its state'
 [ -f "$out/order-parallel/build-options/target/build-options.shared" ] || fail 'parallel target cache escaped its state'
 for name in order edges skipped; do
-    cmp -s "$out/order-serial/$name" "$out/order-parallel/$name" ||
+    cmp -s "$out/expected-$name" "$out/order-parallel/$name" ||
         fail "parallel order changed $name"
 done
 grep -qFx 't/skipped outside profile' "$out/order-parallel/skipped" || fail 'parallel order lost skipped node'
@@ -304,7 +373,7 @@ grep -qFx 'a/leaf2 a/b_pkg' "$out/order-parallel/edges" || fail 'second collidin
 max=$(cat "$out/order-cache/max")
 [ "$max" = 2 ] || fail "frontier query concurrency was $max, expected bounded overlap at 2"
 [ ! -s "$out/order-cache/errors" ] || fail "role cache contamination: $(cat "$out/order-cache/errors")"
-cmp -s "$out/order-serial/logs/order.err" "$out/order-parallel/logs/order.err" || fail 'parallel order changed query warnings'
+cmp -s "$out/expected-order.err" "$out/order-parallel/logs/order.err" || fail 'parallel order changed query warnings'
 echo 0 > "$out/order-cache/active"
 echo 0 > "$out/order-cache/max"
 : > "$out/order-cache/errors"

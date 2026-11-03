@@ -88,4 +88,52 @@ source.prepare = capture_prepare
 source.verify('/prepared/wpa', '/selected/git', '/wpa.tar.gz', '/hostapd.tar.gz',
               '/selected/patch', pkgsrc_export='/already/validated/export')
 assert captured.get('exported') == validated_export
+
+# Current package-scoped receipts do not inspect an unrelated export receipt.
+api2_effective = {'api': 2, 'package': source.PACKAGE,
+                   'effective_package_sha256': 'e' * 64, 'upstream': 'b' * 40}
+api2_owner = '4360fe9b8d510b770a7ac7a1ba7ceeed87222e41319f819f25ed14414d0fbd45'
+api2_current_owner = source.digest(b'current owner')
+api2_state = {'record': None, 'current': api2_effective, 'changed': False}
+api2_selector = SimpleNamespace(
+    git_package_identity=lambda *args: api2_state['current'],
+    current_git_package=lambda old, owner, current:
+        owner == old['owner_sha256'] and old['effective'] == current(),
+    shared_export=lambda *args: validated_export,
+    equivalent_effective_package=lambda left, right: left == right,
+    effective_package_identity=lambda *args: api2_state['current'])
+source.identity_module = lambda: api2_selector
+source.read = lambda path: b'current owner'
+source.jsonio = SimpleNamespace(read_json=lambda path: api2_state['record'])
+source.sourceprep = SimpleNamespace(PREPARED_TREE_RECEIPT='receipt.json',
+                                    validate_prepared_tree=lambda *args, **kwargs:
+                                    api2_state['record'])
+for owner in (api2_owner, api2_current_owner):
+    api2 = {'effective': api2_effective, 'owner_sha256': owner}
+    api2_record = {'identity': api2, 'tree_sha256': tree_sha256}
+    api2_state['record'] = api2_record
+    api2_state['current'] = api2_effective
+    api2_selector.shared_export = lambda *args: (_ for _ in ()).throw(
+        AssertionError('current API 2 receipt consulted shared export'))
+    assert source.verify('/prepared/wpa', '/selected/git',
+                         pkgsrc_export='/unrelated-export-without-receipt') == api2_record
+
+# A changed package remains on the explicit archive comparison path.
+api2_state['current'] = dict(api2_effective,
+                             effective_package_sha256='f' * 64)
+api2_selector.shared_export = lambda *args: validated_export
+api2_selector.effective_package_identity = lambda *args: api2_state['current']
+current_identity = {'export': {'upstream': api2_effective['upstream']},
+                    'owner_sha256': api2_current_owner}
+source.source_identity = lambda git: current_identity
+api2_state['record'] = {'identity': {'effective': api2_effective,
+                                     'owner_sha256': api2_current_owner},
+                        'tree_sha256': tree_sha256}
+try:
+    source.verify('/prepared/wpa', '/selected/git', patch='/selected/patch',
+                  pkgsrc_export='/current-export')
+except source.SDKError as error:
+    assert 'changed wpa_supplicant inputs require an explicit archive' in str(error)
+else:
+    raise AssertionError('changed WPA package inputs bypassed archive comparison')
 print('WPA common recipe boundary PASS')

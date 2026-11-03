@@ -26,6 +26,10 @@ bm() { "$BMAKE" -C "$recipe" MAKECONF="$conf" WRKOBJDIR="$out/work" "$@"; }
 [ "$(bm -V '${USE_CROSS_COMPILE:Uno:tl}')" = yes ] ||
     fail 'MAKECONF does not select a cross build'
 [ -n "$(bm -V '${USE_LIBTOOL:Dyes}')" ] || fail 'devel/readline does not use libtool'
+selected=$(bm EMBERBSD_CROSS_LIBTOOL="$out/current" -V '${PKG_LIBTOOL}')
+[ "$selected" = "$out/current" ] || fail 'cross MAKECONF ignores the selected target libtool'
+native=$(bm USE_CROSS_COMPILE=no EMBERBSD_CROSS_LIBTOOL="$out/current" -V '${PKG_LIBTOOL}')
+[ "$native" != "$out/current" ] || fail 'native dependencies inherit the target libtool'
 tooldir=$(bm -V '${TOOLDIR}')
 sysroot=$(bm -V '${CROSS_DESTDIR}')
 runtime=$(bm -V '${_EMBER_TARGET_RUNTIME_ROOT:U}')

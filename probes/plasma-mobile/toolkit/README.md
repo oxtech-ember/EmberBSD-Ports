@@ -66,6 +66,11 @@ by default. An explicit `-assimp` package omits model import while keeping
 the core modules. Its native amd64 package checks pass; scene, model-loader
 and spatial-audio runtime acceptance remain separate.
 
+Qt Multimedia keeps its core SpatialAudio API and normal audio/video support.
+Its `quick3d-spatialaudio` package option is off by default; enable it when the
+QML SpatialAudio integration with QtQuick3D is needed. This avoids pulling the
+Quick3D renderer/tool chain into the ordinary multimedia closure.
+
 [Qt TextToSpeech](tests/qt-speech/README.md) and [KCMUtils](cross/kcmutils.md)
 now have complete cross packages and bounded CM5 acceptance.
 [libplasma and PlasmaActivities](cross/libplasma.md) also have complete packages;

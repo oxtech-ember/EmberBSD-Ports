@@ -1,0 +1,4 @@
+Prepared Bosch BMI270 base SensorAPI sources shared by EmberBSD base and
+other consumers. The package retains Bosch's BSD-3-Clause license and includes
+the public base initialization/configuration data, not Espressif Circle or Toy
+firmware distributed under a separate custom license.

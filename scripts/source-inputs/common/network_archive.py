@@ -30,6 +30,16 @@ class NetworkOwner:
         self.root_prefix = root_prefix
         self.PORTS = PORTS
         self.prepared_receipt = prepared_receipt
+        # Existing package-scoped receipts were made by this owner before the
+        # verifier stopped binding their fast path to unrelated export inputs.
+        # Their prepared-tree hashes and current package identities are still
+        # checked before reuse.
+        self.compatible_owner_digests = {
+            'net/mDNSResponder': frozenset({
+                '9aa51eed70c7728dd5d47f138c4a3ba0fc45a6638b0270114a5c84e31275fbdc'}),
+            'net/dhcpcd': frozenset({
+                '14af165de773208ec9c612f1db30de99c4033a1e50d17e899f84bd81345a8946'}),
+        }.get(package, frozenset())
 
     def load_sdk(self, argv):
         self.SDK_SOURCE, argv = sdk_source.load_sdk(argv)

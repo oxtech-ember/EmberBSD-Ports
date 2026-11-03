@@ -98,6 +98,29 @@ assert not runtime.compatible_build_for_target(old_build, new_build.replace(rv, 
 assert not runtime.compatible_build_for_target(old_build, new_build.replace(rv, b"    if definition['arch'] == 'riscv32':\n        yield 1\n"), 'aarch64')
 assert not runtime.compatible_build_for_target(old_build, new_build.replace(b'def cmake_arguments(definition):', b'def cmake_arguments():'), 'aarch64')
 
+# Exporting the same selected pkgsrc recipe changed only how build.py records
+# its own input paths and revision.  Normalize that exact metadata transition,
+# while keeping compiler settings and source hashes part of the comparison.
+recording_old = (b"def cmake_arguments(definition):\n"
+    b"    return ['-DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON']\n\n"
+    b"def effective_recipe(owner, prepared, git):\n"
+    b"    files = dict(prepared['recipe']['files'])\n"
+    b"    for path in selected:\n"
+    b"        files[str(path.relative_to(owner.PORTS))] = owner.inventory.sha256_file(path)\n"
+    b"    return dict(ports_revision=owner.git_revision(git, owner.PORTS), files=files)\n")
+recording_new = recording_old.replace(
+    b"files[str(path.relative_to(owner.PORTS))] = owner.inventory.sha256_file(path)",
+    b"files[owner.input_name(path)] = owner.inventory.sha256_file(path)").replace(
+    b"return dict(ports_revision=owner.git_revision(git, owner.PORTS), files=files)",
+    b"revision = None if owner.EXPORTED else owner.git_revision(git, owner.PORTS)\n"
+    b"    return dict(ports_revision=revision, files=files)")
+assert runtime.compatible_build_for_target(recording_old, recording_new, 'riscv32')
+assert not runtime.compatible_build_for_target(recording_old,
+    recording_new.replace(b"COMPILER_RT_DEFAULT_TARGET_ONLY=ON",
+                          b"COMPILER_RT_DEFAULT_TARGET_ONLY=OFF"), 'riscv32')
+assert not runtime.compatible_build_for_target(recording_old,
+    recording_new.replace(b"owner.input_name(path)", b"owner.input_name(other)"), 'riscv32')
+
 old_settings = (b"def cmake_arguments(definition, phase):\n    settings = {}\n"
                 b"    if phase == 'builtins':\n"
                 b"        settings.update(COMPILER_RT_DEFAULT_TARGET_ONLY='ON')\n"

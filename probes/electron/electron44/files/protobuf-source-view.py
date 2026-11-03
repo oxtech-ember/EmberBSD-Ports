@@ -194,12 +194,13 @@ def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=froz
             if stat.S_ISDIR(cache_info.st_mode):
                 local_entries.pop('__pycache__')
         for name in set(local_entries) - names:
-            require(name in generated,
-                    'unexpected generated mirrored view entry: ' + str(dest / name))
-            info = local_entries[name].stat(follow_symlinks=False)
-            require(stat.S_ISREG(info.st_mode),
-                    'generated mirrored view entry must be a regular file: ' + str(dest / name))
-            local_entries.pop(name)
+            if name in generated:
+                info = local_entries[name].stat(follow_symlinks=False)
+                require(stat.S_ISREG(info.st_mode),
+                        'generated mirrored view entry must be a regular file: ' + str(dest / name))
+                local_entries.pop(name)
+            elif updates is None:
+                raise ValueError('unexpected generated mirrored view entry: ' + str(dest / name))
         if set(local_entries) != names and updates is not None:
             raise _LayoutChanged('mirrored view entries changed: ' + str(dest))
         require(set(local_entries) == names,

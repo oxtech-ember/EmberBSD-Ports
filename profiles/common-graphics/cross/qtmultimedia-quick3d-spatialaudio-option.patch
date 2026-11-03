@@ -1,0 +1,12 @@
+Origin: EmberBSD (AI-assisted). Upstream status: not submitted.
+
+--- a/mk/defaults/options.description
++++ b/mk/defaults/options.description
+@@ -835,6 +835,7 @@
+ qt5			Enable support for Qt5.
+ qt6			Enable support for Qt6.
+ quartz			Enable Quartz support on Mac OS X.
++quick3d-spatialaudio	Enable QtQuick3D spatial-audio integration in Qt Multimedia.
+ quickml-analog		Enable quickml log analizer.
+ quickml-limit		Enable quickml creators and members limitation.
+ raqm			Enable complex text layout using raqm.
