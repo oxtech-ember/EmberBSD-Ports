@@ -43,6 +43,21 @@ def recipe_digest(exported):
     return hashlib.sha256(json.dumps(entries, separators=(',', ':')).encode()).hexdigest()
 
 
+def verify_pkgsrc_tree(exported, ports, git, patcher, process, env):
+    """Check the selected graph export's pin and current cross-libtool rule patch."""
+    exported = Path(exported)
+    revision_file = exported / 'EMBERBSD-PKGSRC-REVISION'
+    pinned = process.capture([git, '-C', str(ports), 'rev-parse', 'HEAD:upstream/pkgsrc'],
+                             env=env).stdout.decode('ascii').strip() + '\n'
+    if (revision_file.is_symlink() or not revision_file.is_file() or
+            revision_file.read_text(encoding='ascii') != pinned):
+        raise ValueError('pkgsrc tree does not match the pinned upstream revision')
+    patch = Path(ports) / 'profiles/common-build-tools/patches/cross-libtool-tool-paths.patch'
+    process.capture([patcher, '--batch', '--fuzz=0', '-R', '--dry-run', '-p1', '-i', str(patch)],
+                    cwd=str(exported), env=env)
+    return exported
+
+
 def context_name(identity):
     data = json.dumps(identity, sort_keys=True, separators=(',', ':')).encode()
     return 'context-' + hashlib.sha256(data).hexdigest()
@@ -133,6 +148,16 @@ def activate_context(tooldir, root, context):
     tool = context / 'bin/target-libtool'
     if context.parent != root or not tool.is_file():
         raise ValueError('installed cross-libtool is missing')
+    target_tools = context / 'target-tools'
+    target_alias = target_tools / 'bin/target-libtool'
+    target_expected = os.path.relpath(tool, target_alias.parent)
+    if os.path.lexists(target_alias):
+        if not target_alias.is_symlink() or os.readlink(target_alias) != target_expected:
+            raise ValueError('incompatible target-tools libtool alias')
+    else:
+        if not (target_alias.parent.is_dir() and not target_alias.parent.is_symlink()):
+            raise ValueError('selected target-tools directory is missing')
+        target_alias.symlink_to(target_expected)
     current = root / 'current'
     alias = tooldir / 'bin/target-libtool'
     expected = os.path.relpath(root / 'current/bin/target-libtool', alias.parent)
@@ -165,6 +190,20 @@ def clang_runtime(sysroot, target, stage, base, paths, llvm_runtime, application
     return application_toolchain.load_clang_runtime(sysroot, target=target)
 
 
+def clang_c_foundation(sysroot, target, result, base, paths, application_toolchain):
+    if not result:
+        return None
+    if getattr(application_toolchain, 'FOUNDATION_TOOLCHAIN_API', 0) < 1:
+        raise ValueError('the selected SDK cannot select a C-foundation runtime')
+    options = {}
+    if base:
+        if getattr(application_toolchain, 'FOUNDATION_RUNTIME_BASE_API', 0) < 1:
+            raise ValueError('the selected SDK cannot bind a separate C-foundation runtime base')
+        options['runtime_base'] = paths.canonical_existing(base)
+    return application_toolchain.load_clang_c_foundation_runtime(
+        result, sysroot, target=target, **options)
+
+
 def native_package_database(pkg_admin, process, env):
     """Return the package database of the selected native pkg_install."""
     # Each native prefix configures its own database; do not assume var/db/pkg.
@@ -187,7 +226,10 @@ def build_package(make, prefix, pkgdb, context, pkg_add, process, env):
     process.run_logged([*make, 'PREFIX=' + prefix,
                         'PKG_ADD=' + pkg_add + ' -K ' + pkgdb + ' -U', 'depends'],
                        str(context / 'depends.log'), env=env)
-    process.run_logged([*make, 'PREFIX=' + str(context), 'package'],
+    # The selected cross compiler supplies the target sysroot and ABI. Do not
+    # carry host CFLAGS (for example a Darwin SDK path) into the generated
+    # target libtool's LTCFLAGS; target system headers are compiler defaults.
+    process.run_logged([*make, 'PREFIX=' + str(context), 'CFLAGS=-O2', 'package'],
                        str(context / 'build.log'), env=env)
 
 
@@ -204,9 +246,13 @@ def main():
     parser.add_argument('--lock-directory', help='shared prefix/pkgdb lock directory')
     parser.add_argument('--pkgsrc-export',
                         help='read-only stage from scripts/pkgsrc-export-stage.py prepare')
+    parser.add_argument('--pkgsrc-tree',
+                        help='read-only pkgsrc export already used by the package graph')
     parser.add_argument('--runtime-stage')
     parser.add_argument('--runtime-base')
-    parser.add_argument('--target', choices=('aarch64', 'amd64'), required=True)
+    parser.add_argument('--c-foundation-result')
+    parser.add_argument('--c-foundation-base')
+    parser.add_argument('--target', choices=('aarch64', 'amd64', 'riscv32'), required=True)
     parser.add_argument('--compiler-family', choices=('clang', 'gcc'), default='clang')
     parser.add_argument('--host-compiler-family', choices=('clang', 'gcc'), default='clang')
     parser.add_argument('--jobs', type=int, default=1)
@@ -217,8 +263,19 @@ def main():
         raise SDKError('--runtime-stage requires Clang')
     if a.runtime_base and not a.runtime_stage:
         raise SDKError('--runtime-base requires --runtime-stage')
+    if a.compiler_family != 'clang' and a.c_foundation_result:
+        raise SDKError('--c-foundation-result requires Clang')
+    if a.c_foundation_base and not a.c_foundation_result:
+        raise SDKError('--c-foundation-base requires --c-foundation-result')
+    if a.c_foundation_result and (a.runtime_stage or a.runtime_base):
+        raise SDKError('--c-foundation-result cannot be combined with --runtime-stage or --runtime-base')
+    if a.pkgsrc_export and a.pkgsrc_tree:
+        raise SDKError('select only one of --pkgsrc-export or --pkgsrc-tree')
+    if a.target == 'riscv32' and not a.c_foundation_result:
+        raise SDKError('riscv32 cross-libtool requires --c-foundation-result')
     for value in (sdk, a.host_prefix, a.compiler, a.os_tools, a.sysroot,
-                  a.output, a.work_parent, a.git, a.distdir, a.runtime_stage, a.runtime_base, a.lock_directory,
+                  a.output, a.work_parent, a.git, a.distdir, a.runtime_stage, a.runtime_base,
+                  a.c_foundation_result, a.c_foundation_base, a.lock_directory, a.pkgsrc_tree,
                   a.pkgsrc_export):
         if value is None:
             continue
@@ -256,6 +313,10 @@ def main():
         env['PATH'] = os.pathsep.join((prefix + '/bin', prefix + '/gnu/bin', prefix + '/sbin'))
         env['TMPDIR'] = work
         python = native.tool('python')
+        direct_export = None
+        if a.pkgsrc_tree:
+            direct_export = verify_pkgsrc_tree(paths.canonical_existing(a.pkgsrc_tree),
+                                               ports, git, native.tool('gpatch'), process, env)
         try:
             sysroot = bind_sysroot(output, stage_sysroot)
         except (OSError, ValueError) as error:
@@ -263,7 +324,9 @@ def main():
         with tempfile.TemporaryDirectory(prefix='.cross-libtool-', dir=work) as temporary:
             tmp = Path(temporary)
             native_conf = tmp / 'native.mk'
-            if a.pkgsrc_export:
+            if a.pkgsrc_tree:
+                exported = direct_export
+            elif a.pkgsrc_export:
                 # A stage keyed by the Git fingerprint of the export inputs.
                 # It is verified against the current inputs and only read.
                 spec = importlib.util.spec_from_file_location(
@@ -284,16 +347,26 @@ def main():
                        '--target', a.target, '--compiler-family', a.compiler_family,
                        '--host-compiler-family', a.host_compiler_family, '--host-prefix', prefix,
                        '--sysroot', sysroot]
-            if a.runtime_stage:
+            if a.c_foundation_result:
+                command += ['--c-foundation-result', paths.canonical_existing(a.c_foundation_result)]
+                if a.c_foundation_base:
+                    command += ['--c-foundation-base', paths.canonical_existing(a.c_foundation_base)]
+            elif a.runtime_stage:
                 command += ['--runtime-stage', paths.canonical_existing(a.runtime_stage)]
                 if a.runtime_base:
                     command += ['--runtime-base', paths.canonical_existing(a.runtime_base)]
             # The SDK validates the actual foundation and runtime before any reuse.
-            triplet = {'aarch64': 'aarch64--netbsd', 'amd64': 'x86_64--netbsd'}[a.target]
+            triplet = {'aarch64': 'aarch64--netbsd', 'amd64': 'x86_64--netbsd',
+                       'riscv32': 'riscv32--netbsd'}[a.target]
             if a.compiler_family == 'clang':
                 compiler_record = target_toolchain.clang_compiler(compiler, triplet, host=native.host, env=env)
-                runtime_record = clang_runtime(stage_sysroot, a.target, a.runtime_stage, a.runtime_base,
-                                               paths, llvm_runtime, application_toolchain)
+                if a.c_foundation_result:
+                    runtime_record = clang_c_foundation(stage_sysroot, a.target,
+                        paths.canonical_existing(a.c_foundation_result), a.c_foundation_base,
+                        paths, application_toolchain)
+                else:
+                    runtime_record = clang_runtime(stage_sysroot, a.target, a.runtime_stage, a.runtime_base,
+                                                   paths, llvm_runtime, application_toolchain)
             else:
                 # GCC's selected foundation lacks an LLVM manifest; its ABI inputs
                 # are the installed headers and libraries used by configure.
@@ -318,6 +391,7 @@ def main():
             # producer sources are reflected in the effective recipe and bindings.
             bindings_code = inventory.sha256_file(os.path.join(sdk, 'src/emberbsd_sdk/compiler_bindings.py'))
             identity = {'version': 1, 'target': a.target, 'compiler_family': a.compiler_family,
+                        'target_cflags': '-O2',
                         'host': native.as_dict(), 'native_tool_hashes': selected_tools,
                         'compiler': compiler_record, 'sysroot': sysroot, 'runtime': runtime_record,
                         'sysroot_inputs': sysroot_inputs(stage_sysroot, inventory),
@@ -326,6 +400,8 @@ def main():
                         'cross_config': {name: inventory.sha256_file(str(exported / name)) for name in
                                          ('EMBERBSD-CROSS-MK.CONF', 'EMBERBSD-DEFAULTS-MK.CONF',
                                           'EMBERBSD-NATIVE-TOOLS.MK')},
+                        'cross_pkgsrc_rules': {name: inventory.sha256_file(str(exported / name)) for name in
+                                               ('mk/cwrappers.mk', 'mk/buildlink3/bsd.buildlink3.mk')},
                         'binding_code': bindings_code, 'object_format': 'ELF', 'package_cross_mode': 'native'}
             context, reused = claim_context(output, identity)
             target_tools = context / 'target-tools'
@@ -350,7 +426,7 @@ def main():
                 'WRKOBJDIR=' + str(tmp / 'obj'), 'CREATE_WRKDIR_SYMLINK=no', 'DISTDIR=' + chosen_distdir,
                 'PACKAGES=' + str(tmp / 'packages'), 'MAKE_JOBS=' + str(a.jobs),
                 '.include "' + str(exported / 'EMBERBSD-CROSS-MK.CONF') + '"', '.endif', '']))
-            arch = {'aarch64': 'aarch64', 'amd64': 'x86_64'}[a.target]
+            arch = {'aarch64': 'aarch64', 'amd64': 'x86_64', 'riscv32': 'riscv32'}[a.target]
             recipe = str(exported / 'cross/cross-libtool-base')
             query = [native.tool('make'), '-C', recipe, 'MAKECONF=' + str(conf),
                      '-V', '${CROSS_OS_VERSION}', '-V', '${CROSS_OPSYS_VERSION}']
@@ -385,7 +461,8 @@ def main():
                 raise SDKError('cross-libtool interpreter differs from the selected host shell')
             config_env = dict(env, PATH=str(target_tools / 'bin') + os.pathsep + env['PATH'])
             config = process.capture([str(tool), '--config'], env=config_env).stdout.decode('utf-8')
-            triplet = {'aarch64': 'aarch64--netbsd', 'amd64': 'x86_64--netbsd'}[a.target]
+            triplet = {'aarch64': 'aarch64--netbsd', 'amd64': 'x86_64--netbsd',
+                       'riscv32': 'riscv32--netbsd'}[a.target]
             if ('host=' + triplet) not in config.splitlines() or str(target_tools / 'bin') not in config:
                 raise SDKError('cross-libtool configuration differs from the selected target tools')
             aliases = context / 'bin'

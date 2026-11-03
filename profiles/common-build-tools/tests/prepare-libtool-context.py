@@ -34,14 +34,15 @@ class ContextTest(unittest.TestCase):
                     cookie.write_text('native dependencies ready')
                 else:
                     self.assertEqual(argv[-1], 'package')
-                    self.assertEqual(argv[-2], 'PREFIX=' + str(root))
+                    self.assertEqual(argv[-2], 'CFLAGS=-O2')
+                    self.assertEqual(argv[-3], 'PREFIX=' + str(root))
                     self.assertEqual(cookie.read_text(), 'native dependencies ready')
             producer.build_package(make, '/selected/native', '/selected/native/pkgdb', root,
                                    '/selected/native/sbin/pkg_add',
                                    SimpleNamespace(run_logged=run), {'PATH': '/selected/native/bin'})
             self.assertEqual([call[0][-1] for call in calls], ['depends', 'package'])
             self.assertEqual(calls[0][0][:-3], make)
-            self.assertEqual(calls[1][0][:-2], make)
+            self.assertEqual(calls[1][0][:-3], make)
             def fail(*args, **kwargs):
                 raise ValueError('dependency failure')
             with self.assertRaisesRegex(ValueError, 'dependency failure'):
@@ -208,8 +209,12 @@ class ContextTest(unittest.TestCase):
             for context in (one, two):
                 (context / 'bin').mkdir()
                 (context / 'bin/target-libtool').write_text(context.name)
+                (context / 'target-tools/bin').mkdir(parents=True)
             alias = producer.activate_context(tools, root, one)
             self.assertEqual(alias.read_text(), one.name)
+            target_alias = one / 'target-tools/bin/target-libtool'
+            self.assertTrue(target_alias.is_symlink())
+            self.assertEqual(target_alias.resolve(), (one / 'bin/target-libtool').resolve())
             producer.activate_context(tools, root, two)
             self.assertEqual(alias.read_text(), two.name)
             alias.unlink()
