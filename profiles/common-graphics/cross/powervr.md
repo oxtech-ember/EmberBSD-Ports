@@ -1,6 +1,6 @@
 # PowerVR Vulkan ICD through the common Mesa package
 
-The AArch64 MesaLib package always contains the upstream Imagination Vulkan
+The default AArch64 MesaLib package contains the upstream Imagination Vulkan
 ICD. MesaLib 26.2.4nb5 added it. From nb10, it is not a package option.
 MesaLib 26.2.5 contains the upstream PCO fix for the workgroup barrier
 race when a loop uses the barrier again. The BVNC and IDFWDF patches
@@ -8,7 +8,9 @@ apply to 26.2.5 without changes.
 From 26.2.5nb1, the same package also contains the V3D Vulkan ICD
 (`lib/libvulkan_broadcom.so` and `share/vulkan/icd.d/broadcom_icd.json`).
 The package retains V3D, VirGL, softpipe, llvmpipe,
-X11, Wayland, EGL, GBM and the shared LLVM 23.1.3 provider.
+X11, Wayland, EGL, GBM and the shared LLVM provider.
+The explicit `softpipe-only` option omits Vulkan ICDs; select the default
+graphics profile for this PowerVR workflow.
 The installed Vulkan loader now enumerates the physical GPU on Zero 3W.
 The normal package and bounded enumeration checks pass. Native compute also passes
 on the accepted EmberBSD kernel. Graphics and accelerated Plasma remain unaccepted.
@@ -20,46 +22,15 @@ Graphics, PRIME presentation and Plasma require separate acceptance.
 
 ## Native build tools
 
-Use the [upstream Mesa host-tool build](../../../probes/a733-accelerators/host-tools/README.md)
-with the pinned Mesa 26.2.5 archive, LLVM 23.1.3 and current SPIR-V dependencies.
-Apply its maintained SPIRV-Tools function-order fix. Relink `mesa_clc` after
-that static dependency changes. An older installed `mesa_clc` can differ from
-the corrected executable in the actual build directory.
+Use the [shared Mesa generator producer](mesa-generators.md) with its current
+Ports dependencies. It supports Linux x86_64 with Clang and macOS ARM64 with
+Clang or the explicit GCC alternative. Select `--profile powervr` or `--profile all`.
 
-Seal the three executables from that real build:
-
-```sh
-TMPDIR=/absolute/external/tmp python3.15 seal-mesa-generators.py --sdk-source "$SDK_SOURCE" \
-    --host-prefix "$HOST_PREFIX" --pkgdb "$HOST_PKGDB" \
-    --lock-directory "$LOCK_DIRECTORY" \
-    /absolute/mesa-26.2.5.tar.xz /absolute/native-mesa-source \
-    /absolute/native-mesa-build /absolute/spirv-val /absolute/new-generators
-```
-
-The default seal retains the PowerVR profile. See [native generator profiles](mesa-generators.md)
-for Intel-only seals without `pco_clc` and the combined profile.
-
-The helper currently supports macOS ARM64 host tools. It checks the archive
-SHA256, the full pinned source file set and the selected build's metadata.
-The optional exact-BVNC CLI patch is the only accepted native source delta.
-The helper copies `mesa_clc`, `vtn_bindgen2` and `pco_clc` from their build
-outputs. It rejects non-system shared-library dependencies for those tools.
-It records the actual compilers, link libraries, command metadata and inputs.
-
-The helper discovers dependencies with the actual compiler depfile. It hashes
-source, generated and implicit Clang headers before the accepted compile.
-It rejects changed dependency sets or bytes. The two virtual OpenCL built-ins
-are bound to their generated embedded arrays and the real static-header flag.
-The helper compiles all three upstream common OpenCL inputs. It validates the
-resulting SPIR-V, generates NIR and generates the common USC programs.
-It retains upstream assertions and `PCO_DEBUG=no_pred_cf` for precompilation.
-It adds no diagnostic shader. This is build-host execution, not a GPU test.
-Sealing verifies existing compiled tools; it does not claim a fresh native rebuild.
-
-`installed.sha256` binds the tool bytes and receipt. `interface.sha256` binds
-the target NIR, PCO and common-shader interfaces to the same source revision.
-The recipe checks both manifests before configuring Mesa. The receipt is a
-local build provenance record; it is not a signature or an upstream attestation.
+That owner documents the compiler selection, current versions, native build,
+shader checks and sealing. It supplies `mesa_clc`, `vtn_bindgen2` and `pco_clc`
+from one compatible source and host ABI. Rebuild affected generators after
+a dependency ABI changes; retain compatible objects. Host code generation
+does not establish GPU execution.
 
 ## Normal cross package
 
@@ -71,9 +42,10 @@ private MAKECONF after its common profile:
 EMBERBSD_MESA_GENERATORS=/absolute/new-generators
 ```
 
-Run the ordinary pkgsrc `package` target in `graphics/MesaLib`. Use a fresh
-WRKOBJDIR and a separate package output directory. Do not overwrite another
-build's work tree or install into a shared sysroot during the candidate build.
+Run the ordinary pkgsrc `package` target in `graphics/MesaLib`. Use an owned
+WRKOBJDIR and a separate package output directory. Retain compatible objects.
+Do not overwrite another build's work tree or install into a shared sysroot
+during the candidate build.
 The package must pass normal staging, PLIST, ELF ABI and work-reference checks.
 The AArch64 package installs these PowerVR files:
 
