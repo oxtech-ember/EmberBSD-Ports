@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-License-Identifier: BSD-2-Clause
-# Origin: EmberBSD (AI-assisted), preserve target PLIST spelling on cross hosts.
+# Origin: EmberBSD (AI-assisted), preserve PLIST spelling on case-insensitive staging filesystems.
 set -eu
 [ "$#" = 3 ] || { echo 'Usage: check-files-case.sh STAGE EXPECTED ADDED' >&2; exit 2; }
 stage=$1 expected=$2 added=$3

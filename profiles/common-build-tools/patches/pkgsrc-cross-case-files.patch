@@ -1,8 +1,8 @@
-# Origin: EmberBSD (AI-assisted), preserve PLIST spelling on cross-host filesystems.
+# Origin: EmberBSD (AI-assisted), preserve PLIST spelling on case-insensitive staging filesystems.
 
 --- a/mk/check/check-files.mk
 +++ b/mk/check/check-files.mk
-@@ -272,11 +272,16 @@
+@@ -272,11 +272,14 @@
  		  ${_CHECK_FILES_POST.prefix}				\
  		> ${.TARGET} || ${TRUE}
  
@@ -12,10 +12,8 @@
  	${GREP} '^+/' ${_CHECK_FILES_DIFF} | ${SED} "s|^+||" | ${SORT}	\
  		> ${.TARGET}
  
-+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 +	${RUN} ${SH} ${PKGSRCDIR}/mk/check/ember-case-files.sh \
 +	    ${DESTDIR:Q} ${_CHECK_FILES_EXPECTED:Q} ${.TARGET:Q}
-+.endif
 +
  ${_CHECK_FILES_DELETED}: ${_CHECK_FILES_DIFF}
  	${RUN}								\

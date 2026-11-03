@@ -14,8 +14,37 @@ if [ ! -d "$work/stage/threadweaver" ]; then
     cp "$work/added" "$work/expected"
     sh "$helper" "$work/stage" "$work/expected" "$work/added"
     cmp "$work/expected" "$work/added"
+
+    # Case-sensitive filesystems must keep a genuinely distinct lower-case
+    # path; only a case-insensitive staging filesystem can alias it.
+    mkdir -p "$work/stage/include/KF6/KPackage/KPackage"
+    mkdir -p "$work/stage/include/KF6/KPackage/kpackage"
+    : > "$work/stage/include/KF6/KPackage/KPackage/Package.h"
+    : > "$work/stage/include/KF6/KPackage/kpackage/Package.h"
+    printf '%s\n' "$work/stage/include/KF6/KPackage/KPackage/Package.h" > "$work/expected"
+    printf '%s\n' "$work/stage/include/KF6/KPackage/kpackage/Package.h" > "$work/added"
+    cp "$work/added" "$work/original"
+    sh "$helper" "$work/stage" "$work/expected" "$work/added"
+    cmp "$work/original" "$work/added"
+    [ -f "$work/stage/include/KF6/KPackage/KPackage/Package.h" ]
+    [ -f "$work/stage/include/KF6/KPackage/kpackage/Package.h" ]
     exit 0
 fi
+
+# A single public PLIST spelling must survive when APFS reports the same
+# physical staged header using the spelling created by the upstream install.
+mkdir -p "$work/stage/include/KF6/KPackage/kpackage"
+: > "$work/stage/include/KF6/KPackage/kpackage/Package.h"
+printf '%s\n' "$work/stage/include/KF6/KPackage/KPackage/Package.h" > "$work/expected"
+find "$work/stage/include/KF6/KPackage" -type f | sort > "$work/added"
+grep -Fxq "$work/stage/include/KF6/KPackage/kpackage/Package.h" "$work/added"
+sh "$helper" "$work/stage" "$work/expected" "$work/added"
+cmp "$work/expected" "$work/added"
+: > "$work/stage/include/KF6/KPackage/kpackage/unlisted.h"
+find "$work/stage/include/KF6/KPackage" -type f | sort > "$work/added"
+sh "$helper" "$work/stage" "$work/expected" "$work/added"
+grep -Fxq "$work/stage/include/KF6/KPackage/kpackage/unlisted.h" "$work/added"
+rm -r "$work/stage/include"
 : > "$work/stage/threadweaver/job.h"
 printf '%s\n' "$work/stage/ThreadWeaver/Job" "$work/stage/threadweaver/job.h" \
     > "$work/expected"
