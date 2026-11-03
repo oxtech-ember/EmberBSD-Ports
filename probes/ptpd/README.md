@@ -106,6 +106,11 @@ drives ptpd2 into the state under test:
   ptpd2 under the shim and fails when it made such a call. The run counts
   only if ptpd2 reached `STATE` and read the NTP state through the shim: a
   port that stays `PTP_MASTER` has nothing to write, patched or not.
+- `check-ntp-markers.sh CONFIG SECONDS WORKDIR STATE [PTPD2]` is the check
+  for a static ptpd2, which the shim cannot enter. It sets markers (TAI
+  offset 11 s, esterror 4242 us, maxerror 100000 us) and fails when one
+  changes; without writes the kernel only grows maxerror. It refuses to
+  run next to chronyd or ntpd, which rewrite the markers.
 
 Build the helpers with the cross compiler of the target SDK, for example
 `aarch64--netbsd-clang --sysroot=SYSROOT -O2 -Wall -Wextra -Werror -o ntpstate ntpstate.c`
@@ -162,6 +167,27 @@ The offsets above 1 ms came in short bursts that the servo removed within
 about a minute; at a 10 s resolution they did not follow the host load.
 After the boot chronyd slewed 0.15 s at 500 ppm for 5 minutes and the
 slave settled 12 minutes after its start.
+
+### Static ptpd2 on a current base
+
+A board root without shared libraries runs a static ptpd2 built from the
+recipe archive and patches (`configure`, `-static`, lld). On 3 November
+2026 (UTC) two such builds, with all recipe patches and without
+`patch-src_timingdomain.c`, were made with Clang 23.1.4 on the sets of OS
+`77cc52ebd1c5` (`libpcap.so.12` in the base; no `libgcc.a`, and the
+static link needs none). They ran in two aarch64 guests booted from those
+sets, set up as above but without chronyd, under `check-ntp-markers.sh`,
+90 s per run:
+
+| ptpd2 under test | Peer | State | Unpatched | Patched |
+| --- | --- | --- | --- | --- |
+| master-only, `clock:no_adjust`, UTC offset 37 valid | slave | `PTP_MASTER` | markers kept | markers kept |
+| master-only, `clock:no_adjust` | master, priority1 1, class 6, UTC offset 37 | `PTP_PASSIVE` | written: TAI 37, esterror 0, maxerror 44500 us | markers kept |
+| slave-only, `clock:no_adjust` | the same master | `PTP_SLAVE` | written: esterror 5706 us, maxerror 50206 us | markers kept |
+| master-only, `clock:no_adjust`, UTC offset 37 valid | the same master | `PTP_PASSIVE` | not run | markers kept |
+
+Without writes maxerror grew from 100000 to 150000 or 150500 us in each
+run.
 
 ## Remaining
 
