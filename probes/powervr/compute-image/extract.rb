@@ -56,7 +56,7 @@ spec = {
   'winsys/pvr_winsys.h' => [:struct, %w[pvr_rogue_winsys_compute_ctx_static_state pvr_winsys_compute_submit_info]]
 }
 File.open(File.join(out, 'mesa-types.h'), 'w') do |f|
-  f.puts '/* Unchanged Mesa 26.2.4 declarations. See source-hashes.json. */'
+  f.puts '/* Unchanged Mesa 26.2.6 declarations. See source-hashes.json. */'
   border = File.read(File.join(base, 'pvr_border.h'))
   %w[PVR_BORDER_COLOR_TABLE_NR_ENTRIES PVR_BORDER_COLOR_TABLE_NR_BUILTIN_ENTRIES].each do |name|
     definition = border[/^#define #{name} \\\n[^\n]+/] or abort 'missing border constant'
@@ -75,12 +75,12 @@ end
 functions = {
   'pvr_arch_device.c' => %w[pvr_arch_pds_compute_shader_create_and_upload pvr_pds_idfwdf_programs_create_and_upload],
   'pvr_arch_job_context.c' => %w[pvr_pds_ctx_sr_program_setup pvr_pds_compute_ctx_sr_program_create_and_upload pvr_pds_sr_fence_terminate_program_create_and_upload pvr_compute_ctx_ws_static_state_init],
-  'pvr_arch_job_compute.c' => %w[pvr_submit_info_stream_init pvr_submit_info_flags_init],
+  'pvr_arch_job_compute.c' => %w[pvr_submit_info_stream_init pvr_submit_info_ext_stream_init pvr_submit_info_flags_init],
   'winsys/powervr/pvr_drm_job_compute.c' => %w[pvr_winsys_compute_flags_to_drm],
   'pvr_arch_cmd_buffer.c' => %w[pvr_compute_flat_slot_size pvr_compute_generate_control_stream pvr_compute_generate_idfwdf pvr_arch_compute_generate_fence pvr_compute_flat_pad_workgroup_size pvr_arch_compute_update_kernel_private]
 }
 File.open(File.join(out, 'mesa-producers.h'), 'w') do |f|
-  f.puts '/* Unchanged Mesa 26.2.4 producers. See source-hashes.json. */'
+  f.puts '/* Unchanged Mesa 26.2.6 producers. See source-hashes.json. */'
   functions.each do |file, names|
     data = File.read(File.join(base, file))
     names.each { |name| body = function(data, name); f.puts(body[0...body.index("{")].strip + ";") unless body.start_with?("static"); f.puts body }

@@ -1,7 +1,7 @@
 # Native PowerVR compiler tools
 
 This probe uses genuine Mesa compiler tools on Linux x86_64 and macOS ARM64.
-It prepares USC programs for a later A733 compute test. It does not execute GPU code.
+It prepares USC programs for bounded BXM and GE8300 compute images. It does not execute GPU code.
 It does not enable the PowerVR Vulkan driver in the common Mesa recipe.
 
 The exact A733 BVNC is `36.56.104.183`. Mesa also has a different BVNC with
@@ -46,8 +46,12 @@ Generate the acceptance shaders through the checked compiler closure:
 
 ```sh
 ruby generate-usclib.rb "$MESA_SOURCE" "$MESA_BUILD" \
-    "$SPIRV_DIS" "$SPIRV_VAL" "$NEW_PROGRAM_OUTPUT"
+    "$SPIRV_DIS" "$SPIRV_VAL" "$NEW_PROGRAM_OUTPUT" [BVNC]
 ```
+
+The optional BVNC defaults to the legacy BXM common profile. For GE8300, use
+`22.102.54.38`; the probe uses the actual GE-specific compiled symbol while
+the helpers retain their upstream common profile.
 
 The command copies the pinned shared header into an isolated include overlay.
 It applies the same IDFWDF change as the CPU image generator.

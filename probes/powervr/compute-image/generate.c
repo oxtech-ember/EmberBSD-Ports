@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /* Copyright (c) 2026 EmberBSD contributors. */
 /*
- * CPU allocation adapter for unchanged Mesa 26.2.4 producers.
+ * CPU allocation adapter for unchanged Mesa 26.2.6 producers.
  * It never opens a DRM device and never submits GPU work.
  * See README.md for source attribution, address policy, and acceptance limits.
  */
@@ -47,6 +47,8 @@
 #define pvr_cmd_length(x) ROGUE_##x##_length
 #define pvr_cmd_header(x) ROGUE_##x##_header
 #define pvr_cmd_pack(x) ROGUE_##x##_pack
+#define pvr_csb_unpack(src, cmd) \
+    ({ struct ROGUE_##cmd value; ROGUE_##cmd##_unpack((src), &value); value; })
 #define pvr_csb_pack(dst, cmd, name) \
     for (struct ROGUE_##cmd name = { pvr_cmd_header(cmd) }, *loop = &name; \
         loop != NULL; pvr_cmd_pack(cmd)((dst), &name), loop = NULL)
@@ -60,9 +62,9 @@
 #define BORDER_VA UINT64_C(0x8000010000)
 #define GENERAL_BASE UINT64_C(0x8000000000)
 #define PDS_BASE UINT64_C(0xda00000000)
-/* DOUTU execution offsets are 30-bit fields: the USC code heap must
- * live below 4 GiB. 0x2000 matches the kernel's low mapping. */
-#define USC_BASE UINT64_C(0x2000)
+/* DOUTU uses an execution-heap offset. The legacy BXM diagnostic
+ * retains its 0x2000 IDFWDF offset; GE uses the unaliased heap offset. */
+#define BXM_USC_OFFSET UINT64_C(0x2000)
 #define RESUME_OFFSET 0x1000U
 #define TEXTURE_OFFSET 0x2000U
 #define SHARED_OFFSET 0x3000U
@@ -151,7 +153,22 @@ csb_alloc(struct pvr_csb *csb, size_t words)
 /* Relocations are already fixed in the immutable address map. */
 static void pvr_csb_set_relocation_mark(struct pvr_csb *csb) { (void)csb; }
 static void pvr_csb_clear_relocation_mark(struct pvr_csb *csb) { (void)csb; }
-static void pvr_finishme(const char *message) { fail(message); }
+static void
+pvr_finishme(const char *message)
+{
+	static bool warned;
+	/* This dispatch uses only an uncompressed F32 IDFWDF texture. Mesa
+	 * leaves compressed-format border entries zero and warns; no such
+	 * entry is used by this bounded diagnostic. Keep all other warnings
+	 * fatal until their effects are explicitly supported. */
+	if (strcmp(message, "Devices without tpu_border_colour_enhanced require entries "
+	    "for compressed formats to be stored in the table pre-compressed.") != 0)
+		fail(message);
+	if (!warned) {
+		fprintf(stderr, "compute-image: unused compressed border formats unavailable\n");
+		warned = true;
+	}
+}
 static VkResult vk_error(void *dev, VkResult error)
 { (void)dev; return error; }
 static void *vk_alloc(void *alloc, size_t size, size_t alignment, int scope)
@@ -357,7 +374,9 @@ main(int argc, char **argv)
 	struct pvr_sub_cmd_compute compute = { 0 };
 	struct pvr_cmd_buffer cmd = { .device = &device };
 	struct region general = { .base = GENERAL_BASE };
-	struct region usc = { .base = USC_BASE };
+	struct region usc = { 0 };
+	uint64_t usc_offset;
+	bool ge;
 	struct shader shaders[4] = { 0 };
 	struct pvr_winsys_compute_submit_info submit = { 0 };
 	struct pvr_winsys_vma resume_vma = { .dev_addr = PVR_DEV_ADDR(GENERAL_BASE + RESUME_OFFSET) };
@@ -367,12 +386,17 @@ main(int argc, char **argv)
 	uint32_t groups[3] = { 1, 1, 1 };
 	FILE *manifest;
 
-	if (argc != 5)
-		fail("usage: generate PROBE.precomp STORE.precomp LOAD.precomp IDFWDF.precomp");
+	if (argc != 6)
+		fail("usage: generate BVNC PROBE.precomp STORE.precomp LOAD.precomp IDFWDF.precomp");
+	ge = strcmp(argv[1], "22.102.54.38") == 0;
+	if (!ge && strcmp(argv[1], "36.56.104.183") != 0)
+		fail("unsupported BVNC");
+	usc_offset = ge ? 0 : BXM_USC_OFFSET;
 	if (*(const uint8_t *)&(const uint16_t){ 1 } != 1)
 		fail("only little-endian hosts are supported");
 	if (pvr_device_info_init(&physical.dev_info,
-	    PVR_BVNC_PACK(36, 56, 104, 183)) != 0)
+	    (ge ? PVR_BVNC_PACK(22, 102, 54, 38) :
+	    PVR_BVNC_PACK(36, 56, 104, 183))) != 0)
 		fail("exact BVNC is absent from Mesa");
 	device_info = physical.dev_info;
 	context.device = &device;
@@ -393,7 +417,7 @@ main(int argc, char **argv)
 	device.pds.base = PDS_BASE;
 	device.pds.used = PROGRAM_OFFSET;
 	for (unsigned i = 0; i < 4; i++)
-		load_shader(argv[i + 1], &shaders[i], &usc);
+		load_shader(argv[i + 2], &shaders[i], &usc);
 	if (shaders[0].vtxins != 0 || shaders[0].coeffs != 0 ||
 	    shaders[0].shareds != 0)
 		fail("probe inputs require an explicit supported metadata mapping");
@@ -401,7 +425,7 @@ main(int argc, char **argv)
 	pack_idfwdf(&device, (uint32_t *)(general.bytes + SHARED_OFFSET));
 	device.idfwdf_state.usc_shareds = _PVR_IDFWDF_DATA_COUNT;
 	require_success(pvr_pds_idfwdf_programs_create_and_upload(&device,
-	    PVR_DEV_ADDR(USC_BASE + shaders[3].offset), _PVR_IDFWDF_DATA_COUNT,
+	    PVR_DEV_ADDR(usc_offset + shaders[3].offset), _PVR_IDFWDF_DATA_COUNT,
 	    shaders[3].temps, PVR_DEV_ADDR(GENERAL_BASE + SHARED_OFFSET),
 	    &device.idfwdf_state.pds, &device.idfwdf_state.sw_compute_barrier_pds));
 	pvr_pds_compute_shader_program_init(&primary);
@@ -457,10 +481,13 @@ main(int argc, char **argv)
 	pvr_csb_emit(&compute.control_stream, CDMCTRL_STREAM_TERMINATE, terminate) {}
 	/* Export unchanged Mesa command fields after the CDM producer sets shareds. */
 	pvr_submit_info_stream_init(&context, &compute, &submit);
+	pvr_submit_info_ext_stream_init(&context, &submit);
 	pvr_submit_info_flags_init(&physical.dev_info, &compute, &submit.flags);
 	command_flags = pvr_winsys_compute_flags_to_drm(&submit.flags);
 	if (submit.fw_stream_len != sizeof(command) - sizeof(command_flags) ||
-	    PVR_HAS_QUIRK(&physical.dev_info, 49927))
+	    PVR_HAS_QUIRK(&physical.dev_info, 49927) != ge ||
+	    pvr_csb_unpack((uint64_t *)submit.fw_stream, KMD_STREAM_HDR).length !=
+	        (ge ? 36U : 44U))
 		fail("unsupported firmware command extension");
 	memcpy(command, submit.fw_stream, submit.fw_stream_len);
 	command[11] = command_flags;
@@ -474,7 +501,7 @@ main(int argc, char **argv)
 	manifest = fopen("producer.json", "wx");
 	if (manifest == NULL)
 		fail("cannot create producer manifest");
-	fprintf(manifest, "{\n  \"bvnc\": \"36.56.104.183\",\n"
+	fprintf(manifest, "{\n  \"bvnc\": \"%s\",\n"
 	    "  \"hardware_validated\": false,\n"
 	    "  \"scratch_va\": \"0x8000000000\",\n"
 	    "  \"resume_va\": \"0x8000001000\",\n"
@@ -482,7 +509,7 @@ main(int argc, char **argv)
 	    "  \"cdm_bytes\": %zu,\n  \"cdm_local_x\": %u,\n"
 	    "  \"cdm_max_local_mem_size_regs\": %u,\n"
 	    "  \"usc_shared_registers\": %u,\n  \"shaders\": [\n",
-	    compute.control_stream.count * 4, ROGUE_MAX_INSTANCES_PER_TASK,
+	    argv[1], compute.control_stream.count * 4, ROGUE_MAX_INSTANCES_PER_TASK,
 	    (unsigned)physical.dev_runtime_info.cdm_max_local_mem_size_regs,
 	    device.idfwdf_state.usc_shareds);
 	for (unsigned i = 0; i < 4; i++) {

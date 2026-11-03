@@ -4,6 +4,7 @@ require 'digest'
 require 'json'
 
 module Idfwdf
+  MESA_VERSION = "26.2.6".freeze
   UPSTREAM_HEADER = '329700660db533589188cf6610cb0641ba181292eda65f57fe73ace7e1f2ff46'.freeze
   OLD_ADDRESS = "   PVR_IDFWDF_DATA_ADDR_LO,\n".freeze
   NEW_ADDRESS = "   /* The sampler occupies four shared-register dwords. */\n   PVR_IDFWDF_DATA_ADDR_LO = 8,\n".freeze
@@ -11,7 +12,7 @@ module Idfwdf
   def self.patched_header(path)
     text = File.read(path)
     original = text.sub(NEW_ADDRESS, OLD_ADDRESS)
-    raise 'unrecognized Mesa 26.2.4 shared header' unless Digest::SHA256.hexdigest(original) == UPSTREAM_HEADER
+    raise 'unrecognized Mesa shared header' unless Digest::SHA256.hexdigest(original) == UPSTREAM_HEADER
     original.sub(OLD_ADDRESS, NEW_ADDRESS)
   end
 
@@ -54,8 +55,22 @@ module Idfwdf
     'idfwdf' => 'cs_idfwdf_common_0_common'
   }.freeze
 
-  def self.shaders(table)
-    SHADER_NAMES.transform_values do |symbol|
+  def self.compiler_bvnc_args(bvnc)
+    raise ArgumentError, "unsupported BVNC" unless %w[36.56.104.183 22.102.54.38].include?(bvnc)
+    bvnc == "22.102.54.38" ? ["bvnc=#{bvnc}"] : []
+  end
+
+  def self.receipt_bvnc(receipt, expected = nil)
+    bvnc = receipt.fetch("bvnc", "36.56.104.183")
+    compiler_bvnc_args(bvnc)
+    raise ArgumentError, "BVNC mismatch" if expected && bvnc != expected
+    bvnc
+  end
+
+  def self.shaders(table, bvnc = "36.56.104.183")
+    raise ArgumentError, "unsupported BVNC" unless %w[36.56.104.183 22.102.54.38].include?(bvnc)
+    names = SHADER_NAMES.merge("probe" => "cs_probe_store_0_bvnc_22_102_54_38") if bvnc == "22.102.54.38"
+    (names || SHADER_NAMES).transform_values do |symbol|
       match = table.match(/static const uint32_t #{symbol}\[(\d+)\] = \{(.*?)\};/m)
       raise "missing #{symbol}" unless match
       words = match[2].scan(/0x[0-9a-fA-F]+/)
@@ -228,6 +243,7 @@ module Idfwdf
 
   def self.verify_receipt(path, table = nil)
     receipt = JSON.parse(File.read(path))
+    raise "unsupported Mesa version in compiler receipt" unless receipt["mesa_version"] == MESA_VERSION
     raise 'unverified shader ABI receipt' unless receipt['schema'] == 'ember-pco-usclib-v1' &&
       receipt['idfwdf'] == { 'scalar_slots' => [8, 9], 'vector_slots' => [0, 4], 'layout_dwords' => 10 }
     files = receipt.fetch('files')
