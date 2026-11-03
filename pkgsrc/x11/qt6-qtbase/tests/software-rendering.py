@@ -12,6 +12,7 @@ plist = (pkgdir / "PLIST").read_text().splitlines()
 runtime_plist = (pkgdir / "PLIST.runtime").read_text().splitlines()
 netbsd_plist = (pkgdir / "PLIST.NetBSD").read_text().splitlines()
 devel_plist = (pkgdir.parent / "qt6-qtbase-devel" / "PLIST").read_text().splitlines()
+stage_selector = (pkgdir / "files/select-package-stage.pl").read_text()
 declarative = repo / "pkgsrc/lang/qt6-qtdeclarative"
 decl_make = (declarative / "Makefile").read_text()
 decl_plist = (declarative / "PLIST").read_text()
@@ -99,7 +100,10 @@ for family, features in cmake_families:
     require_rows(plist, ["qt6/lib/cmake/Qt6Gui/"+family], features,
                  family+" CMake files follow its plugin feature guard", 7)
 require_rows(plist, ["qt6/include/QtGui/${PKGVERSION}/QtGui/private/qxdgdesktopportalfiletransfer_p.h"],
-    ("dbus","wayland"), "QtGui portal transfer header follows DBus and Wayland", 1)
+    ("dbus","wayland"), "QtGui portal transfer header remains declared for DBus and Wayland", 1)
+require("QT_FEATURE_xdg_desktop_portal_file_transfer:INTERNAL=" in stage_selector and
+        "qxdgdesktopportalfiletransfer_p" in stage_selector,
+        "QtGui portal header selection follows the generated CMake feature")
 protocol_xml="qt6/share/qt6/wayland/extensions/qt-vulkan-server-buffer-unstable-v1.xml"
 protocol_rows=[row for row in plist if unprefixed(row)==protocol_xml]
 require(len(protocol_rows)==1 and "${PLIST.vulkan}" not in protocol_rows[0],

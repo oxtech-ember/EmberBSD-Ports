@@ -454,10 +454,11 @@ qtbase-select-stage: qt-target-metadata pkgconfig-link ${PLIST}
 	${PERL5} ${FILESDIR}/select-package-stage.pl handoff-runtime \
 	    ${DESTDIR:Q}${PREFIX:Q} ${WRKDIR:Q}/.qtbase-full-plist \
 	    ${WRKDIR:Q}/.qtbase-runtime-plist ${WRKDIR:Q}/.qtbase-devel-plist ${PLIST:Q} \
-	    ${EMBERBSD_QTBASE_SHARED_STAGE:Q}
+	    ${EMBERBSD_QTBASE_SHARED_STAGE:Q} ${WRKSRC:Q}/CMakeCache.txt
 .else
 	${PERL5} ${FILESDIR}/select-package-stage.pl ${QTBASE_PACKAGE_PART:Q} \
 	    ${DESTDIR:Q}${PREFIX:Q} ${WRKDIR:Q}/.qtbase-full-plist \
-	    ${WRKDIR:Q}/.qtbase-runtime-plist ${WRKDIR:Q}/.qtbase-devel-plist ${PLIST:Q}
+	    ${WRKDIR:Q}/.qtbase-runtime-plist ${WRKDIR:Q}/.qtbase-devel-plist ${PLIST:Q} \
+	    ${WRKSRC:Q}/CMakeCache.txt
 .endif
 .endif

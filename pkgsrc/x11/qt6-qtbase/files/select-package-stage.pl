@@ -12,8 +12,10 @@ use Cwd qw(abs_path);
 
 my $operation = shift @ARGV // '';
 my $shared;
+my $feature_cache;
 if ($operation eq 'handoff-runtime') {
-    @ARGV == 6 or die "usage: $0 handoff-runtime STAGE FULL_PLIST RUNTIME_PLIST DEVEL_PLIST SELECTED_PLIST SHARED_STAGE\n";
+    @ARGV == 7 or die "usage: $0 handoff-runtime STAGE FULL_PLIST RUNTIME_PLIST DEVEL_PLIST SELECTED_PLIST SHARED_STAGE CMAKE_CACHE\n";
+    $feature_cache = pop @ARGV;
     $operation = 'runtime';
     $shared = pop @ARGV;
     unshift @ARGV, $operation;
@@ -25,7 +27,8 @@ if ($operation eq 'handoff-runtime') {
     exit 0;
 } else {
     unshift @ARGV, $operation;
-    @ARGV == 6 or die "usage: $0 runtime|devel STAGE FULL_PLIST RUNTIME_PLIST DEVEL_PLIST SELECTED_PLIST\n";
+    @ARGV == 7 or die "usage: $0 runtime|devel STAGE FULL_PLIST RUNTIME_PLIST DEVEL_PLIST SELECTED_PLIST CMAKE_CACHE\n";
+    $feature_cache = pop @ARGV;
 }
 my ($part, $stage, @lists) = @ARGV;
 $part eq 'runtime' || $part eq 'devel' or die "unknown Qtbase package part\n";
@@ -51,7 +54,60 @@ sub manifest {
     return \%files;
 }
 
+sub portal_feature {
+    my ($path) = @_;
+    -f $path && !-l $path or die "regular Qtbase CMake cache required: $path\n";
+    open my $in, '<', $path or die "$path: $!\n";
+    my @values;
+    while (my $line = <$in>) {
+        push @values, $1 if $line =~ /^QT_FEATURE_xdg_desktop_portal_file_transfer:INTERNAL=(ON|OFF)\r?\n?$/;
+    }
+    close $in or die "$path: $!\n";
+    @values == 1 or die "missing or duplicate Qt portal file-transfer feature in $path\n";
+    return $values[0] eq 'ON';
+}
+
+sub apply_portal_feature {
+    my ($enabled, @manifests) = @_;
+    return if $enabled;
+    for my $manifest (@manifests) {
+        delete $manifest->{$_} for grep {
+            m{^qt6/include/QtGui/[^/]+/QtGui/private/qxdgdesktopportalfiletransfer_p\.h$}
+        } keys %$manifest;
+    }
+}
+
+sub filter_selected_manifest {
+    my ($path, $enabled) = @_;
+    return if $enabled;
+    my $pattern = qr{^qt6/include/QtGui/[^/]+/QtGui/private/qxdgdesktopportalfiletransfer_p\.h\r?\n?$};
+    open my $in, '<', $path or die "$path: $!\n";
+    my @lines = <$in>;
+    close $in or die "$path: $!\n";
+    my @kept = grep { !/$pattern/ } @lines;
+    return if @kept == @lines;
+    my $tmp = "$path.tmp.$$";
+    open my $out, '>', $tmp or die "$tmp: $!\n";
+    print {$out} @kept or die "$tmp: $!\n";
+    close $out or die "$tmp: $!\n";
+    rename($tmp, $path) or die "cannot update selected Qtbase PLIST: $!\n";
+}
+
+sub read_portal_marker {
+    my ($path) = @_;
+    -f $path && !-l $path or die "Qtbase shared-stage feature marker is missing: $path\n";
+    open my $in, '<', $path or die "$path: $!\n";
+    local $/;
+    my $value = <$in> // '';
+    close $in or die "$path: $!\n";
+    return 1 if $value eq "ON\n";
+    return 0 if $value eq "OFF\n";
+    die "invalid Qtbase shared-stage feature marker: $path\n";
+}
+
 my ($full, $runtime, $devel, $selected) = map { manifest($_) } @lists;
+my $portal_enabled = portal_feature($feature_cache);
+apply_portal_feature($portal_enabled, $full, $runtime, $devel, $selected);
 for my $name (keys %$runtime) {
     !$devel->{$name} or die "Qtbase partitions overlap: $name\n";
 }
@@ -83,6 +139,7 @@ for my $name (keys %$full) {
     $actual{$name} or die "missing complete-stage file: $name\n";
 }
 unless (defined $shared) {
+    filter_selected_manifest($lists[3], $portal_enabled);
     for my $name (sort keys %actual) {
         next if $wanted->{$name};
         unlink "$stage/$name" or die "cannot select staging partition: $name: $!\n";
@@ -157,6 +214,8 @@ sub copy_devel {
         !@entries or die "Qtbase devel destination must be empty\n";
     }
     my ($full, $runtime, $devel, $selected) = map { manifest($_) } @manifest_paths;
+    my $portal_enabled = read_portal_marker("$source.features");
+    apply_portal_feature($portal_enabled, $full, $runtime, $devel, $selected);
     for my $name (keys %$runtime) {
         !$devel->{$name} or die "Qtbase partitions overlap: $name\n";
     }
@@ -183,6 +242,7 @@ sub copy_devel {
         $actual{$name} or die "missing retained Qtbase file: $name\n";
     }
     reject_overlap($source_root, $destination);
+    filter_selected_manifest($manifest_paths[3], $portal_enabled);
     make_path($destination) unless -d $destination;
     copy_manifest($source_root, $destination, $devel);
     print "PASS: copied devel partition from retained complete Qtbase stage\n";
@@ -193,6 +253,13 @@ if (defined $shared) {
     File::Spec->file_name_is_absolute($shared) && !-l $shared
         or die "absolute Qtbase shared-stage path required\n";
     reject_overlap($stage_root, $shared);
+    filter_selected_manifest($lists[3], $portal_enabled);
+    my $feature_marker = "$shared.features";
+    if (-e $feature_marker || -l $feature_marker) {
+        -f $feature_marker && !-l $feature_marker
+            or die "unsafe Qtbase feature marker: $feature_marker\n";
+        unlink $feature_marker or die "cannot remove old Qtbase feature marker: $!\n";
+    }
     if (-d $shared) {
         # The retained tree is being replaced, so its old manifest need not
         # match the freshly validated installation.
@@ -204,6 +271,11 @@ if (defined $shared) {
         make_path($parent) unless -d $parent;
     }
     rename($stage, $shared) or die "cannot retain complete Qtbase stage: $!\n";
+    my $marker_tmp = "$feature_marker.tmp.$$";
+    open my $marker, '>', $marker_tmp or die "$marker_tmp: $!\n";
+    print {$marker} ($portal_enabled ? "ON\n" : "OFF\n") or die "$marker_tmp: $!\n";
+    close $marker or die "$marker_tmp: $!\n";
+    rename($marker_tmp, $feature_marker) or die "cannot publish Qtbase feature marker: $!\n";
     make_path($stage);
     copy_manifest($shared, $stage, $runtime);
 }
