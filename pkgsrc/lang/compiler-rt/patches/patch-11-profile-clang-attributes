@@ -1,0 +1,15 @@
+Origin: EmberBSD (AI-assisted)
+
+Recognize Clang even when its GNU compatibility macro is suppressed.
+
+--- a/compiler-rt/lib/profile/InstrProfilingPort.h
++++ b/compiler-rt/lib/profile/InstrProfilingPort.h
+@@ -24,7 +24,7 @@
+ #define COMPILER_RT_ALWAYS_INLINE __forceinline
+ #define COMPILER_RT_CLEANUP(x)
+ #define COMPILER_RT_USED
+-#elif __GNUC__
++#elif __GNUC__ || defined(__clang__)
+ #ifdef _WIN32
+ #define COMPILER_RT_FTRUNCATE(f, l) _chsize(fileno(f), l)
+ #define COMPILER_RT_VISIBILITY

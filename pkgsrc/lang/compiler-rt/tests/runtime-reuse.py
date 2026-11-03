@@ -230,6 +230,65 @@ with tempfile.TemporaryDirectory() as tmp:
         phase_check(previous, bad, True)
     patch.write_bytes(locale_patch)
 
+    # Exercise changed old and new profile patch blobs, not just names.
+    def patch_for(path):
+        return b'--- a/' + path + b'\n+++ b/' + path + b'\n@@ -1 +1 @@\n-old\n+new\n'
+    profile_path = b'compiler-rt/lib/profile/InstrProfilingValue.c'
+    profile_old = patch_for(profile_path)
+    profile_new = profile_old + patch_for(b'compiler-rt/include/profile/InstrProfData.inc')
+    profile_name = prefix + 'patches/patch-profile'
+    profile_file = root / 'patches/patch-profile'
+    profile_file.write_bytes(profile_new)
+    profile_old_dist = old_dist + b'SHA1 (patch-profile) = old\n'
+    profile_new_dist = old_dist + b'SHA1 (patch-profile) = new\n'
+    dist.write_bytes(profile_new_dist)
+    original = dict(source, recipe={'files': {dist_name: digest(profile_old_dist),
+                                             profile_name: digest(profile_old)}}, tree_sha256='old')
+    current_source = dict(original, tree_sha256='new')
+    (root / 'llvm-source.json').write_text(json.dumps(original))
+    previous = {'recipe': {'ports_revision': 'a' * 40,
+        'files': {dist_name: digest(profile_old_dist), profile_name: digest(profile_old),
+                  prefix+'files/runtime.py': cli_hash, prefix+'files/build.py': 'same'}},
+        'components': ['builtins', 'libunwind-static']}
+    future = {'files': dict(previous['recipe']['files'], **{
+        dist_name: digest(profile_new_dist), profile_name: digest(profile_new)})}
+    def capture_profile(command, **kwargs):
+        name = command[-1].split(':', 1)[-1]
+        values = {dist_name: profile_old_dist, profile_name: profile_old,
+                  prefix+'files/runtime.py': cli_bytes}
+        return types.SimpleNamespace(stdout=values[name])
+    test_owner.process.capture = capture_profile
+    for components in (['builtins'], ['builtins', 'libunwind-static'],
+                       ['builtins', 'libunwind', 'libcxxabi', 'libcxx']):
+        record = copy.deepcopy(previous)
+        record['components'] = components
+        phase_check(record, future)
+    for components in ([], ['builtins', 'profile'], ['libcxx'], ['builtins', 'builtins'], None):
+        record = copy.deepcopy(previous)
+        record['components'] = components
+        phase_check(record, future, True)
+    for forbidden in (b'compiler-rt/lib/builtins/atomic.c', b'cmake/CMakeLists.txt',
+                      b'compiler-rt/include/profile/other.h',
+                      b'compiler-rt/lib/profile/CMakeLists.txt'):
+        bad_blob = profile_new + patch_for(forbidden)
+        profile_file.write_bytes(bad_blob)
+        bad = copy.deepcopy(future)
+        bad['files'][profile_name] = digest(bad_blob)
+        phase_check(previous, bad, True)
+    profile_file.write_bytes(profile_new)
+    # Historic side must be checked independently of a safe current side.
+    bad_old = profile_old + patch_for(b'compiler-rt/lib/builtins/atomic.c')
+    bad_previous = copy.deepcopy(previous)
+    bad_previous['recipe']['files'][profile_name] = digest(bad_old)
+    original['recipe']['files'][profile_name] = digest(bad_old)
+    (root / 'llvm-source.json').write_text(json.dumps(original))
+    def capture_bad_old(command, **kwargs):
+        if command[-1].endswith(':' + profile_name):
+            return types.SimpleNamespace(stdout=bad_old)
+        return capture_profile(command, **kwargs)
+    test_owner.process.capture = capture_bad_old
+    phase_check(bad_previous, future, True)
+    test_owner.process.capture = capture
     atomic_patch = (b'--- a/compiler-rt/lib/builtins/atomic.c\n'
                     b'+++ b/compiler-rt/lib/builtins/atomic.c\n'
                     b'@@ -1 +1,2 @@\n'

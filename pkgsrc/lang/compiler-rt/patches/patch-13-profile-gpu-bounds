@@ -1,0 +1,19 @@
+Origin: EmberBSD (AI-assisted)
+
+Record writable profile data bounds in the shared GPU sections.
+
+--- a/compiler-rt/include/profile/InstrProfData.inc
++++ b/compiler-rt/include/profile/InstrProfData.inc
+@@ -168,10 +168,10 @@
+ INSTR_PROF_GPU_SECT(char *, llvm::PointerType::getUnqual(Ctx),                 \
+                     CountersStop,                                              \
+                     ConstantPointerNull::get(llvm::PointerType::getUnqual(Ctx)))
+-INSTR_PROF_GPU_SECT(const __llvm_profile_data *, llvm::PointerType::getUnqual( \
++INSTR_PROF_GPU_SECT(__llvm_profile_data *, llvm::PointerType::getUnqual( \
+                     Ctx), DataStart,                                           \
+                     ConstantPointerNull::get(llvm::PointerType::getUnqual(Ctx)))
+-INSTR_PROF_GPU_SECT(const __llvm_profile_data *, llvm::PointerType::getUnqual( \
++INSTR_PROF_GPU_SECT(__llvm_profile_data *, llvm::PointerType::getUnqual( \
+                     Ctx), DataStop,                                            \
+                     ConstantPointerNull::get(llvm::PointerType::getUnqual(Ctx)))
+ INSTR_PROF_GPU_SECT(char *, llvm::PointerType::getUnqual(Ctx),                 \

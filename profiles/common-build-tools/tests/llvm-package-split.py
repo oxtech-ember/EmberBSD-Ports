@@ -87,7 +87,7 @@ def plist(label, package, *mode):
 
 runtime = plist('runtime', 'llvm', *cross)
 assert sorted(runtime) == sorted(['include/llvm/Support/LICENSE.TXT', 'lib/libLLVM.so.23.1', 'lib/libLLVM-23.so', 'lib/libLLVM.so', 'lib/libLTO.so.23.1', 'lib/libLTO.so', 'lib/libRemarks.so.23.1', 'lib/libRemarks.so'])
-assert run('runtime-name', 'llvm', *cross, '-v', 'PKGNAME').strip() == 'llvm-23.1.4nb3'
+assert run('runtime-name', 'llvm', *cross, '-v', 'PKGNAME').strip() == 'llvm-23.1.4nb4'
 sdk = plist('devel', 'llvm-devel', *cross)
 assert all(p in sdk for p in ('bin/llvm-config', 'bin/llvm-tblgen', 'include/llvm/IR/Module.h', 'lib/cmake/llvm/LLVMConfig.cmake', 'lib/libLLVMCore.a',
                      'lib/cmake/llvm/emberbsd/BuildVariables.inc',
@@ -105,7 +105,7 @@ native_args = ['USE_CROSS_COMPILE=no', 'PKGSRC_COMPILER=gcc', 'CC=' + HOST_CC, '
 native = plist('native', 'llvm', *native_args)
 assert 'bin/llvm-config' in native and 'include/llvm/IR/Module.h' in native
 reasons = run('devel-metadata', 'llvm-devel', *cross, '-v', 'PKG_FAIL_REASON', '-v', 'DEPENDS', '-v', 'CONFLICTS', '-v', 'DISTINFO_FILE', '-v', 'PATCHDIR').splitlines()
-assert not reasons[0] and 'llvm-23.1.4nb3:' in reasons[1] and 'llvm<23.1.4nb3' in reasons[2] and \
+assert not reasons[0] and 'llvm-23.1.4nb4:' in reasons[1] and 'llvm<23.1.4nb4' in reasons[2] and \
        str(owner / 'distinfo') in reasons[3] and str(owner / 'patches') in reasons[4]
 consumer = tree / 'devel/llvm-split-consumer'
 consumer.mkdir()
@@ -138,7 +138,7 @@ assert sorted(plist('runtime-arm', 'llvm', *arm)) == sorted(runtime)
 for i, bad in enumerate(('LLVM_PACKAGE_PART=devel', 'PKGREVISION=1', 'CROSS_MACHINE_ARCH=i386')):
     reasons = run('bad-contract-' + str(i), 'llvm', *[arg for arg in cross if not arg.startswith(bad.split('=')[0] + '=')], bad, '-v', 'PKG_FAIL_REASON')
     assert reasons.strip(), bad
-assert run('native-name', 'llvm', *native_args, '-v', 'PKGNAME').strip() == 'llvm-23.1.4nb6'
+assert run('native-name', 'llvm', *native_args, '-v', 'PKGNAME').strip() == 'llvm-23.1.4nb7'
 assert run('native-sdk-refused', 'llvm-devel', *native_args, '-v', 'PKG_FAIL_REASON').strip()
 original = work / 'full-stage'
 prefix = original / 'usr/pkg'
@@ -205,12 +205,18 @@ assert fingerprint(shared) == before
 assert fingerprint(handoff / 'usr/pkg') == {p: row for p, row in before.items() if p in runtime}
 replace_stage = work / 'runtime-reinstall'
 shutil.copytree(original, replace_stage, symlinks=True)
+changed_header = replace_stage / 'usr/pkg/include/llvm/IR/Module.h'
+changed_header.write_text('fresh header bytes\n')
+refreshed = fingerprint(replace_stage / 'usr/pkg')
 run('shared-runtime-reinstall-plist', 'llvm', *cross, 'WRKDIR=' + str(work / 'shared-runtime-reinstall'), 'plist')
 run('shared-runtime-reinstall', 'llvm', *cross, 'WRKDIR=' + str(work / 'shared-runtime-reinstall'),
     'DESTDIR=' + str(replace_stage), 'WRKSRC=' + str(metadata_source),
     'EMBERBSD_LLVM_SHARED_STAGE=' + str(shared), 'llvm-select-stage')
-assert fingerprint(shared) == before, 'runtime replace changed retained full stage'
-assert fingerprint(replace_stage / 'usr/pkg') == {p: row for p, row in before.items() if p in runtime}
+assert fingerprint(shared) == refreshed, 'runtime reinstall did not retain fresh full stage'
+assert fingerprint(replace_stage / 'usr/pkg') == {p: row for p, row in refreshed.items() if p in runtime}
+# Remaining fixture checks use the original complete payload.
+shutil.rmtree(shared)
+shutil.copytree(prefix, shared, symlinks=True)
 overlap_root = work / 'overlap-root'
 shutil.copytree(original, overlap_root, symlinks=True)
 overlap_stage = overlap_root / 'usr/pkg'

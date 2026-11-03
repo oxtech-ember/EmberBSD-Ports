@@ -12,6 +12,8 @@ sys.dont_write_bytecode = True
 from llvm_fixture import fixture, load_sdk, module, write_json
 
 sdk_source, args = load_sdk()
+shared_only = '--shared-inputs-only' in args
+args = [arg for arg in args if arg != '--shared-inputs-only']
 from emberbsd_sdk.errors import SDKError
 if len(args) != 4:
     sys.exit('Usage: llvm-reuse-adapter.py --sdk-source SDK PKGSRC MAKECONF BMAKE NEW_WORK')
@@ -26,9 +28,9 @@ for name in os.listdir(pkgsrc):
     if not name.startswith('.') and name != 'lang':
         (tree / name).symlink_to(Path(pkgsrc) / name)
 for name in os.listdir(pkgsrc + '/lang'):
-    if name not in ('llvm', 'llvm-devel'):
+    if name not in ('llvm', 'llvm-devel', 'compiler-rt'):
         (tree / 'lang' / name).symlink_to(Path(pkgsrc) / 'lang' / name)
-for name in ('llvm', 'llvm-devel'):
+for name in ('llvm', 'llvm-devel', 'compiler-rt'):
     shutil.copytree(profile / '../../pkgsrc/lang' / name, tree / 'lang' / name)
 common = work / 'common'
 source = common / 'llvm-project-23.1.4.src/llvm'
@@ -114,6 +116,58 @@ checks.extend(['current runtime/SDK inputs match at common root', 'template flag
 query_receipt = work / 'query-receipt.json'
 write_json(query_receipt, dict(schema=2, context=runtime, inputs=reuse.snapshot(runtime), stage={}))
 query_hash = hashlib.sha256(query_receipt.read_bytes()).hexdigest()
+# Shared compiler-rt patch identity is a real reuse input; unrelated entries
+# in its owner's distinfo do not become LLVM compile inputs.
+shared = tree / 'lang/compiler-rt'
+gpu_patch = shared / 'patches/patch-13-profile-gpu-bounds'
+gpu_info = shared / 'distinfo'
+original_patch, original_info = gpu_patch.read_bytes(), gpu_info.read_text()
+expected_paths = {str(gpu_patch), str(shared / 'files/profile_patch.py'),
+                  str(shared / 'files/apply-profile-gpu-patch.py')}
+assert expected_paths <= set(runtime['files']['patches'])
+assert str(gpu_info) not in runtime['files']['patches']
+# Historical receipt lacking the shared inputs must not be silently accepted.
+legacy = json.loads(json.dumps(runtime))
+legacy['files']['patches'] = [p for p in legacy['files']['patches'] if p not in expected_paths]
+legacy_receipt = work / 'legacy-shared-receipt.json'
+write_json(legacy_receipt, dict(schema=2, context=legacy, inputs=reuse.snapshot(legacy), stage={}))
+legacy_hash = hashlib.sha256(legacy_receipt.read_bytes()).hexdigest()
+try:
+    reuse.verify(str(work / 'runtime/.llvm-reuse-inputs.json'), str(legacy_receipt), legacy_hash)
+except Exception as error:
+    assert 'contract differs' in str(error), str(error)
+else:
+    raise AssertionError('legacy receipt missing shared patch inputs was accepted')
+import re
+unrelated, count = re.subn(r'(?m)^(SHA1 \(patch-11-profile-clang-attributes\) = )[0-9a-f]+$',
+                           lambda match: match.group(1) + '0' * 40, original_info)
+assert count == 1
+gpu_info.write_text(unrelated)
+unrelated_inputs = collect('llvm', 'unrelated-distinfo')
+assert unrelated_inputs == runtime
+reuse.verify(str(work / 'unrelated-distinfo/.llvm-reuse-inputs.json'), str(query_receipt), query_hash)
+gpu_info.write_text(original_info)
+gpu_patch.write_bytes(original_patch + b'\n')
+new_hash = hashlib.sha1(gpu_patch.read_bytes()).hexdigest()
+import re
+updated, count = re.subn(r'(?m)^(SHA1 \(patch-13-profile-gpu-bounds\) = )[0-9a-f]+$',
+                         lambda match: match.group(1) + new_hash, original_info)
+assert count == 1
+gpu_info.write_text(updated)
+changed = collect('llvm', 'shared-patch-changed')
+assert changed == runtime, 'patch change should alter inventory, not make arguments'
+try:
+    reuse.verify(str(work / 'shared-patch-changed/.llvm-reuse-inputs.json'), str(query_receipt), query_hash)
+except Exception as error:
+    assert 'source, patch, compiler, tool or object drift' in str(error), str(error)
+else:
+    raise AssertionError('changed shared patch accepted by old LLVM reuse receipt')
+gpu_patch.write_bytes(original_patch)
+gpu_info.write_text(original_info)
+checks.append('shared patch changes reject old reuse; unrelated distinfo does not')
+if shared_only:
+    print('PASS: shared profile patch reuse input identity')
+    sys.exit(0)
 overrides = dict(CFLAGS='-DUSER_PATH="' + str(work / 'sdk') + '"', CONFIGURE_ENV='USER_VALUE=' + str(work / 'sdk'),
     MAKE_ENV='CPATH=/alternate/headers', CMAKE_BUILD_ARGS='-j 1 CXX_FLAGS=-DNEW_BUILD_CONTRACT',
     _CMAKE_BUILD_TOOL='/usr/bin/true', BUILD_TARGET='different-target', BUILD_DIRS='different-directory',
@@ -179,6 +233,21 @@ for target in ('do-extract', 'do-patch', 'do-install'):
     assert reuse.snapshot(runtime) == before
 assert reuse.tree(str(work / 'reuse-runtime/.destdir/usr/pkg')) == json.loads(accepted.read_text())['stage']
 checks.append('runtime make hooks install exact stage without object writes')
+# The ordinary selector first installs target llvm-config metadata.  Provide
+# its required synthetic inputs so the test reaches the incomplete-stage check.
+reuse_source = work / 'reuse-sdk/llvm-reuse'
+reuse_build = reuse_source / 'cmake-pkgsrc-build'
+metadata_tools = reuse_build / 'tools/llvm-config'
+metadata_tools.mkdir(parents=True, exist_ok=True)
+(reuse_build / 'CMakeCache.txt').write_text('CMAKE_SYSROOT:PATH=\n')
+(reuse_source / 'tools/llvm-config').mkdir(parents=True, exist_ok=True)
+(reuse_source / 'tools/llvm-config/llvm-config.cpp').write_text('// fixture\n')
+variables = {'LLVM_SRC_ROOT': str(reuse_source), 'LLVM_OBJ_ROOT': str(reuse_build),
+             'LLVM_CPPFLAGS': '', 'LLVM_CFLAGS': '', 'LLVM_CXXFLAGS': '', 'LLVM_LDFLAGS': ''}
+(metadata_tools / 'BuildVariables.inc').write_text(''.join(
+    '#define ' + key + ' ' + json.dumps(value) + '\n' for key, value in variables.items()))
+for name in ('LibraryDependencies.inc', 'ExtensionDependencies.inc'):
+    (metadata_tools / name).write_text('// fixture\n')
 result = invoke(accepted_args + ['llvm-select-stage'], 'ordinary-selector')
 assert result.returncode and 'missing complete-stage file:' in result.stdout, result.stdout
 checks.append('ordinary PLIST check rejects incomplete LLVM fixture')

@@ -720,6 +720,18 @@ LLVM output, analysis and memory checks remain separate from this regression.
 
 Origin: EmberBSD contributors. AI assistance was used for this common source change and its checks.
 
+## LLVM shared-stage handoff check
+
+Run the selector regression with the selected SDK Python and SDK source:
+
+```sh
+python3.15 -B profiles/common-build-tools/tests/llvm-stage-handoff.py \
+  --sdk-source /absolute/path/to/EmberBSD-SDK
+```
+
+It exercises runtime and devel partition handoff using small staged files; it
+does not build LLVM or validate a target package.
+
 ## Native acceptance still required
 
 Use staged packages and normal pkgsrc checks; do not bypass missing files,

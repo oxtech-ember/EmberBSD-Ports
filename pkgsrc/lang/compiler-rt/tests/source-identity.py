@@ -27,6 +27,8 @@ def main():
         source_code = Path(__file__).resolve().parents[1] / 'files/source.py'
         local_source = owner / 'files/source.py'
         local_source.write_bytes(source_code.read_bytes())
+        (owner / 'files/profile_patch.py').write_bytes(
+            (source_code.parent / 'profile_patch.py').read_bytes())
         (llvm / 'version.mk').write_text('LLVM_VERSION=23.0.0\n')
         (owner / 'files/source-components.json').write_text(
             '["compiler-rt/lib/builtins"]\n')

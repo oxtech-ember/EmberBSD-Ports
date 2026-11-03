@@ -68,6 +68,59 @@ upstream-owned. The transferred adaptation retains its MIT/NCSA licensing in
 `compiler-rt/lib/builtins/LICENSE.EmberBSD-BINARY128.TXT`; the exact legacy
 contributors list remains in `compiler-rt/CREDITS.TXT`.
 
+`patch-12-profile-portability` preserves the GCDA on-disk tags while using
+explicit unsigned constants, rejects short buffers in the compatibility API,
+and keeps filename ownership, value-profile and private data pointers
+consistent. The patch also updates the affected upstream profile tests. The shared GPU bounds
+change is kept separately in `patch-13-profile-gpu-bounds` so the runtime and
+LLVM installed header use the same definition.
+
+Use the selected SDK Python and compiler with a prepared LLVM source and an
+explicit native profile archive built from that source. For example, with
+`SDK_PYTHON`, `CC`, `LLVM_SOURCE`, `PROFILE_ARCHIVE`, `LLVM_PROFDATA` and a new
+`WORK` set to absolute paths:
+
+```sh
+"$SDK_PYTHON" -B tests/file-profile.py --cc "$CC" --source "$LLVM_SOURCE" \
+    --profile-archive "$PROFILE_ARCHIVE"
+"$SDK_PYTHON" -B tests/profile-regression.py --cc "$CC" \
+    --profdata "$LLVM_PROFDATA" --archive "$PROFILE_ARCHIVE" \
+    --value-source "$LLVM_SOURCE/compiler-rt/test/profile/Linux/instrprof-merge-vp.c" \
+    --include-dir "$LLVM_SOURCE/compiler-rt/lib/profile" \
+    --include-dir "$LLVM_SOURCE/compiler-rt/include" --work "$WORK" --map-style darwin
+```
+
+Run from `pkgsrc/lang/compiler-rt`; use `--map-style gnu` where appropriate,
+and pass the selected link launcher through `--link-prefix` for each launcher
+argument or run the test under that launcher. `--sanitize` requires a matching
+instrumented archive, enables native ASan/UBSan and disables leak detection;
+it is not a Valgrind Memcheck result. The native checks cover filename bounds,
+short profile rejection, MCDC merging and value-profile counts and limits.
+Target execution of these profile changes has not been established.
+
+Target Clang Static Analyzer and Cppcheck were run on compiler-preprocessed
+profile sources. A real null dereference at maximum value counts or a zero
+limit was fixed and covered by the value-limit regression. A remaining Clang
+analyzer warning loses the nonzero-limit invariant across
+`allocateValueProfileCounters`; guarded `NodesKind` and assertion-string
+findings were classified as pre-existing or correlation findings. These are
+not a zero-warning result. Target analysis did not cover platform-specific
+Darwin, Windows and Other branches. Cppcheck's Clang AST importer remains
+unsupported for this input; the ordinary preprocessed-input check is separate.
+
+`patch-13-profile-gpu-bounds` is shared with the LLVM installed profile
+header. The LLVM guarded post-patch helper verifies its single compiler-rt
+checksum and applies the same patch to the LLVM header without extracting an
+extra LLVM tree for runtime preparation. `tests/profile-gpu-patch.py` checks
+application, refusal cases and the ordinary and reuse-mode make hook.
+
+`patch-11-profile-clang-attributes` selects the existing GNU attribute
+implementation for Clang even when its GNU compatibility macro is absent.
+`tests/profile-clang-attributes.py` checks the production header with selected
+Clang in that mode, normal Clang mode and GNU-compatible preprocessor mode,
+using the upstream freestanding profile configuration. It checks alignment,
+size and attribute compilation; hosted lint remains a separate check.
+
 `patch-10-darwin-codesign-force` permits the Darwin post-build step to
 re-sign an already signed dylib, preserving the selected identity and options.
 `tests/darwin-codesign.py` exercises both the original failure and the patched

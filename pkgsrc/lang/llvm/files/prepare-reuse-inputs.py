@@ -52,6 +52,19 @@ def runtime_pkgname(bmake, recipe, work, role_row):
     return name
 
 
+def shared_profile_inputs(recipe):
+    """Select only LLVM's shared profile patch and its implementation."""
+    shared = Path(recipe).parent / 'compiler-rt'
+    helper = shared / 'files/profile_patch.py'
+    applier = shared / 'files/apply-profile-gpu-patch.py'
+    patch_file = shared / 'patches/patch-13-profile-gpu-bounds'
+    spec = importlib.util.spec_from_file_location('profile_patch', helper)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.verified_patch(patch_file, shared / 'distinfo')
+    return [helper, applier, patch_file]
+
+
 def prepare(template, output, bmake, package, receipt, sdk_source):
     from emberbsd_sdk.jsonio import read_json, write_json
     from emberbsd_sdk.paths import canonical_existing, canonical_new, reject_overlap
@@ -89,6 +102,9 @@ def prepare(template, output, bmake, package, receipt, sdk_source):
     value['sdk_source'] = canonical_existing(sdk_source)
     value.pop('perl', None)
     files = value['files']
+    # The shared patch belongs to compiler-rt, outside the LLVM recipe tree.
+    files['patches'] = sorted(set(files['patches'] + [
+        canonical_existing(str(path)) for path in shared_profile_inputs(recipe)]))
     for kind in ('compiler', 'native_tools', 'patches', 'target_abi'):
         reuse.check(isinstance(files[kind], list) and files[kind], f'Missing {kind} inventory')
     compiler_roots = [canonical_existing(path) for path in files['compiler']]

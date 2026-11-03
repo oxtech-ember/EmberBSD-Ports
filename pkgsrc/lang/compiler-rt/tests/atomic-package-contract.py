@@ -20,15 +20,15 @@ def main():
     fragment = text[start:end]
 
     cases = (
-        ('riscv32', 'yes', '11', True),
-        ('riscv32', 'no', '10', True),
-        ('x86_64', 'yes', '10', False),
-        ('x86_64', 'no', '9', False),
+        ('riscv32', 'yes', '14', True),
+        ('riscv32', 'no', '13', True),
+        ('x86_64', 'yes', '13', False),
+        ('x86_64', 'no', '12', False),
     )
     for index, (arch, cross, revision, libc_provider) in enumerate(cases):
         fixture = args.work / ('case-' + str(index) + '.mk')
         fixture.write_text('\n'.join((
-            'PKGREVISION= 9', 'CMAKE_CONFIGURE_ARGS=', 'INSTALLATION_DIRS=',
+            'PKGREVISION= 12', 'CMAKE_CONFIGURE_ARGS=', 'INSTALLATION_DIRS=',
             'TEST= test', 'LN= ln', 'INSTALL_DATA=install',
             'FILESDIR=' + str(recipe.parent / 'files'), fragment,
             '.PHONY: vars',

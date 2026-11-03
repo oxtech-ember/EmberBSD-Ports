@@ -139,7 +139,7 @@ def check_empty_destination(destination, entries):
 
 
 def handoff_runtime(stage, *args):
-    from emberbsd_sdk.paths import canonical_existing, canonical_new, reject_overlap
+    from emberbsd_sdk.paths import canonical_existing, canonical_new, real_directory, reject_overlap
     if len(args) != 5:
         raise ValueError('runtime handoff requires four manifests and a shared stage')
     full_plist, runtime_plist, devel_plist, selected_plist, shared = args
@@ -148,22 +148,22 @@ def handoff_runtime(stage, *args):
     if not os.path.isabs(shared) or shared == '/':
         raise ValueError('absolute LLVM shared stage path required')
     stage = canonical_existing(stage)
+    # Refuse a symlink at the retained path before resolving ancestors.
+    if os.path.lexists(shared):
+        real_directory(shared)
     shared = canonical_new(shared)
+    if shared == '/':
+        raise ValueError('LLVM shared stage cannot be the filesystem root')
     reject_overlap(stage, shared)
     if os.path.lexists(shared):
-        # pkgsrc replace reruns install after its install-clean target. Reuse
-        # the already retained same-run stage and discard that transient
-        # second install stage after validating its complete manifest.
-        validate('check', shared, full_plist, runtime_plist, devel_plist, full_plist)
-        shutil.rmtree(stage)
-        os.makedirs(stage)
-        copy_entries(shared, stage, runtime)
-        print(f'PASS: reused retained full LLVM stage for runtime reinstall ({len(actual)} files)')
-    else:
-        os.rename(stage, shared)
-        os.makedirs(stage)
-        copy_entries(shared, stage, runtime)
-        print(f'PASS: retained complete LLVM stage and copied runtime partition ({len(actual)} files)')
+        real_directory(shared)
+        # The fresh full installation was validated above.  The replaced tree
+        # need not match its new manifest or contain the same file bytes.
+        shutil.rmtree(shared)
+    os.rename(stage, shared)
+    os.makedirs(stage)
+    copy_entries(shared, stage, runtime)
+    print(f'PASS: retained fresh complete LLVM stage and copied runtime partition ({len(actual)} files)')
 
 
 def copy_devel(shared, destination, *lists):

@@ -317,6 +317,22 @@ def atomic_builtin_only_patch(data):
     return patch_paths(data) == {b'compiler-rt/lib/builtins/atomic.c'}
 
 
+
+def profile_only_patch(data):
+    """Recognize profile implementation/tests and its shared data declaration."""
+    paths = patch_paths(data)
+    if not paths:
+        return False
+    def allowed(path):
+        if path == b'compiler-rt/include/profile/InstrProfData.inc':
+            return True
+        if path.startswith(b'compiler-rt/lib/profile/'):
+            return path.endswith((b'.c', b'.h'))
+        if path.startswith(b'compiler-rt/test/profile/'):
+            return path.endswith((b'.c', b'.h'))
+        return False
+    return all(allowed(path) for path in paths)
+
 def require_bootstrap_inputs(owner, bootstrap, recipe, prepared, args):
     owner.require(bootstrap['source'] == {k: prepared['source'][k] for k in ('archive', 'sha512')},
                   'bootstrap runtime source or recipe inputs differ')
@@ -365,6 +381,17 @@ def compatible_source(owner, stage, expected, source, original_source, git):
                     owner.require(bool(stage.get('components')) and
                                   set(stage['components']) <= bootstrap_components,
                                   'libc++ source patch affects selected runtime inputs')
+                elif profile_only_patch(data):
+                    # build.py selects compiler-rt/lib/builtins directly, then
+                    # only libunwind, libcxxabi and libcxx from runtimes/.
+                    components = stage.get('components')
+                    known_profiles = ({'builtins'}, {'builtins', 'libunwind-static'},
+                        {'builtins', 'libunwind', 'libcxxabi', 'libcxx'})
+                    owner.require(isinstance(components, list) and
+                                  all(isinstance(c, str) for c in components) and
+                                  len(components) == len(set(components)) and
+                                  set(components) in known_profiles,
+                                  'profile patch affects selected runtime inputs')
                 elif atomic_builtin_only_patch(data):
                     # AArch64 has always excluded this source. RV32 may reuse
                     # a recorded bootstrap only when both source versions

@@ -11,6 +11,8 @@ import sys
 import tempfile
 
 sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from profile_patch import patch_checksum
 OWNER = Path(__file__).resolve().parents[1]
 PORTS = OWNER.parents[2]
 DEFAULT_PKGSRC = PORTS / 'pkgsrc'
@@ -98,8 +100,7 @@ def patch_inventory(directory, info, label, selected=None):
         data = read(path)
         if selected is not None and not selected(path, data):
             continue
-        filtered = b''.join(line for line in data.splitlines(True) if b'$NetBSD' not in line)
-        require(hashlib.sha1(filtered).hexdigest() == expected, label + ' patch checksum differs: ' + name)
+        require(patch_checksum(data) == expected, label + ' patch checksum differs: ' + name)
         result.append(path)
     return sorted(result)
 

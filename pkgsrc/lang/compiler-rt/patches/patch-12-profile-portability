@@ -1,0 +1,1179 @@
+Origin: EmberBSD (AI-assisted); upstream test notices are retained.
+
+Keep profile merge and serialization behavior portable and bounds-safe.
+
+--- a/compiler-rt/lib/profile/GCDAProfiling.c
++++ b/compiler-rt/lib/profile/GCDAProfiling.c
+@@ -62,15 +62,12 @@
+ #define GCDA_LIBC_VISIBILITY COMPILER_RT_VISIBILITY
+ #endif
+ 
+-enum {
+-  GCOV_DATA_MAGIC = 0x67636461, // "gcda"
+-
+-  GCOV_TAG_FUNCTION = 0x01000000,
+-  GCOV_TAG_COUNTER_ARCS = 0x01a10000,
+-  // GCOV_TAG_OBJECT_SUMMARY superseded GCOV_TAG_PROGRAM_SUMMARY in GCC 9.
+-  GCOV_TAG_OBJECT_SUMMARY = 0xa1000000,
+-  GCOV_TAG_PROGRAM_SUMMARY = 0xa3000000,
+-};
++#define GCOV_DATA_MAGIC UINT32_C(0x67636461) // "gcda"
++#define GCOV_TAG_FUNCTION UINT32_C(0x01000000)
++#define GCOV_TAG_COUNTER_ARCS UINT32_C(0x01a10000)
++// GCOV_TAG_OBJECT_SUMMARY superseded GCOV_TAG_PROGRAM_SUMMARY in GCC 9.
++#define GCOV_TAG_OBJECT_SUMMARY UINT32_C(0xa1000000)
++#define GCOV_TAG_PROGRAM_SUMMARY UINT32_C(0xa3000000)
+ 
+ /*
+  * --- GCOV file format I/O primitives ---
+--- a/compiler-rt/lib/profile/InstrProfiling.h
++++ b/compiler-rt/lib/profile/InstrProfiling.h
+@@ -118,8 +118,8 @@
+  */
+ int __llvm_profile_write_buffer(char *Buffer);
+ 
+-const __llvm_profile_data *__llvm_profile_begin_data(void);
+-const __llvm_profile_data *__llvm_profile_end_data(void);
++__llvm_profile_data *__llvm_profile_begin_data(void);
++__llvm_profile_data *__llvm_profile_end_data(void);
+ const char *__llvm_profile_begin_names(void);
+ const char *__llvm_profile_end_names(void);
+ const char *__llvm_profile_begin_vtabnames(void);
+@@ -374,7 +374,7 @@
+  */
+ extern char INSTR_PROF_PROFILE_NAME_VAR[1]; /* __llvm_profile_filename. */
+ 
+-const __llvm_gcov_init_func_struct *__llvm_profile_begin_covinit();
+-const __llvm_gcov_init_func_struct *__llvm_profile_end_covinit();
++const __llvm_gcov_init_func_struct *__llvm_profile_begin_covinit(void);
++const __llvm_gcov_init_func_struct *__llvm_profile_end_covinit(void);
+ 
+ #endif /* PROFILE_INSTRPROFILING_H_ */
+--- a/compiler-rt/lib/profile/InstrProfilingFile.c
++++ b/compiler-rt/lib/profile/InstrProfilingFile.c
+@@ -15,6 +15,7 @@
+ 
+ #include <assert.h>
+ #include <errno.h>
++#include <limits.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -90,16 +91,16 @@
+ typedef struct lprofFilename {
+   /* File name string possibly with %p or %h specifiers. */
+   const char *FilenamePat;
+-  /* A flag indicating if FilenamePat's memory is allocated
+-   * by runtime. */
+-  unsigned OwnsFilenamePat;
+-  const char *ProfilePathPrefix;
++  /* Owned copy when the filename was supplied by a transient caller. */
++  char *OwnedFilenamePat;
++  char *ProfilePathPrefix;
+   char PidChars[MAX_PID_SIZE];
+   char *TmpDir;
+   char Hostname[COMPILER_RT_MAX_HOSTLEN];
+   unsigned NumPids;
+   unsigned NumHosts;
+   unsigned NumBinaryIds;
++  unsigned NumTmpDirs;
+   /* When in-process merging is enabled, this parameter specifies
+    * the total number of profile data files shared by all the processes
+    * spawned from the same binary. By default the value is 1. If merging
+@@ -269,6 +270,7 @@
+ static void *BitmapBiasDefaultAddr =
+     &INSTR_PROF_PROFILE_BITMAP_BIAS_DEFAULT_VAR;
+ static int mmapForContinuousMode(uint64_t CurrentFileOffset, FILE *File) {
++  (void)CurrentFileOffset;
+   /* Get the sizes of various profile data sections. Taken from
+    * __llvm_profile_get_size_for_buffer(). */
+   const __llvm_profile_data *DataBegin = __llvm_profile_begin_data();
+@@ -332,6 +334,8 @@
+ static void *BitmapBiasAddr = NULL;
+ static void *BitmapBiasDefaultAddr = NULL;
+ static int mmapForContinuousMode(uint64_t CurrentFileOffset, FILE *File) {
++  (void)CurrentFileOffset;
++  (void)File;
+   return 0;
+ }
+ #endif
+@@ -388,15 +392,15 @@
+ 
+ COMPILER_RT_VISIBILITY ProfBufferIO *
+ lprofCreateBufferIOInternal(void *File, uint32_t BufferSz) {
+-  ProfDataWriter *fileWriter =
++  ProfDataWriter *FileWriter =
+       (ProfDataWriter *)calloc(1, sizeof(ProfDataWriter));
+-  if (!fileWriter)
++  if (!FileWriter)
+     return NULL;
+   FreeHook = &free;
+   DynamicBufferIOBuffer = (uint8_t *)calloc(1, BufferSz);
+   VPBufferSize = BufferSz;
+-  initFileWriter(fileWriter, File);
+-  ProfBufferIO *IO = lprofCreateBufferIO(fileWriter);
++  initFileWriter(FileWriter, File);
++  ProfBufferIO *IO = lprofCreateBufferIO(FileWriter);
+   IO->OwnFileWriter = 1;
+   return IO;
+ }
+@@ -586,9 +590,9 @@
+ 
+   FreeHook = &free;
+   setupIOBuffer();
+-  ProfDataWriter fileWriter;
+-  initFileWriter(&fileWriter, OutputFile);
+-  RetVal = lprofWriteData(&fileWriter, lprofGetVPDataReader(), MergeDone);
++  ProfDataWriter FileWriter;
++  initFileWriter(&FileWriter, OutputFile);
++  RetVal = lprofWriteData(&FileWriter, lprofGetVPDataReader(), MergeDone);
+ 
+   closeFileObject(OutputFile);
+   return RetVal;
+@@ -603,6 +607,8 @@
+   int Length;
+ 
+   Length = getCurFilenameLength();
++  if (Length < 0)
++    return;
+   FilenameBuf = (char *)COMPILER_RT_ALLOCA(Length + 1);
+   Filename = getCurFilename(FilenameBuf, 0);
+   if (!Filename)
+@@ -665,6 +671,8 @@
+       __llvm_profile_begin_counters(), __llvm_profile_end_counters());
+ 
+   int Length = getCurFilenameLength();
++  if (Length < 0)
++    return;
+   char *FilenameBuf = (char *)COMPILER_RT_ALLOCA(Length + 1);
+   const char *Filename = getCurFilename(FilenameBuf, 0);
+   if (!Filename)
+@@ -741,28 +749,16 @@
+ 
+ static const char *DefaultProfileName = "default.profraw";
+ static void resetFilenameToDefault(void) {
+-  if (lprofCurFilename.FilenamePat && lprofCurFilename.OwnsFilenamePat) {
+-#ifdef __GNUC__
+-#pragma GCC diagnostic push
+-#pragma GCC diagnostic ignored "-Wcast-qual"
+-#elif defined(__clang__)
+-#pragma clang diagnostic push
+-#pragma clang diagnostic ignored "-Wcast-qual"
+-#endif
+-    free((void *)lprofCurFilename.FilenamePat);
+-#ifdef __GNUC__
+-#pragma GCC diagnostic pop
+-#elif defined(__clang__)
+-#pragma clang diagnostic pop
+-#endif
+-  }
++  free(lprofCurFilename.OwnedFilenamePat);
++  free(lprofCurFilename.ProfilePathPrefix);
+   memset(&lprofCurFilename, 0, sizeof(lprofCurFilename));
+   lprofCurFilename.FilenamePat = DefaultProfileName;
+   lprofCurFilename.PNS = PNS_default;
+ }
+ 
+-static unsigned getMergePoolSize(const char *FilenamePat, int *I) {
+-  unsigned J = 0, Num = 0;
++static unsigned getMergePoolSize(const char *FilenamePat, size_t *I) {
++  size_t J = 0;
++  unsigned Num = 0;
+   for (;; ++J) {
+     char C = FilenamePat[*I + J];
+     if (C == 'm') {
+@@ -771,7 +767,9 @@
+     }
+     if (C < '0' || C > '9')
+       break;
+-    Num = Num * 10 + C - '0';
++    if (Num > (UINT_MAX - (unsigned)(C - '0')) / 10)
++      return 0;
++    Num = Num * 10 + (unsigned)(C - '0');
+ 
+     /* If FilenamePat[*I+J] is between '0' and '9', the next byte is guaranteed
+      * to be in-bound as the string is null terminated. */
+@@ -781,7 +779,7 @@
+ 
+ /* Assert that Idx does index past a string null terminator. Return the
+  * result of the check. */
+-static int checkBounds(int Idx, int Strlen) {
++static int checkBounds(size_t Idx, size_t Strlen) {
+   assert(Idx <= Strlen && "Indexing past string null terminator");
+   return Idx <= Strlen;
+ }
+@@ -790,43 +788,27 @@
+  * lprofcurFilename structure. */
+ static int parseFilenamePattern(const char *FilenamePat,
+                                 unsigned CopyFilenamePat) {
+-  int NumPids = 0, NumHosts = 0, NumBinaryIds = 0, I;
++  unsigned NumPids = 0, NumHosts = 0, NumBinaryIds = 0, NumTmpDirs = 0;
++  size_t I;
+   char *PidChars = &lprofCurFilename.PidChars[0];
+   char *Hostname = &lprofCurFilename.Hostname[0];
+   int MergingEnabled = 0;
+-  int FilenamePatLen = strlen(FilenamePat);
+-
+-#ifdef __GNUC__
+-#pragma GCC diagnostic push
+-#pragma GCC diagnostic ignored "-Wcast-qual"
+-#elif defined(__clang__)
+-#pragma clang diagnostic push
+-#pragma clang diagnostic ignored "-Wcast-qual"
+-#endif
+-  /* The caller retains the old filename until verbose logging is complete. */
+-  /* Clean up the cached prefix. */
+-  if (lprofCurFilename.ProfilePathPrefix)
+-    free((void *)lprofCurFilename.ProfilePathPrefix);
+-
+-#ifdef __GNUC__
+-#pragma GCC diagnostic pop
+-#elif defined(__clang__)
+-#pragma clang diagnostic pop
+-#endif
+-
++  size_t FilenamePatLen = strlen(FilenamePat);
++  if (FilenamePatLen > (size_t)INT_MAX - 1)
++    return -1;
++  char *Owned = CopyFilenamePat ? strdup(FilenamePat) : NULL;
++  if (CopyFilenamePat && !Owned)
++    return -1;
++  free(lprofCurFilename.ProfilePathPrefix);
+   memset(&lprofCurFilename, 0, sizeof(lprofCurFilename));
+-
+-  if (!CopyFilenamePat)
+-    lprofCurFilename.FilenamePat = FilenamePat;
+-  else {
+-    lprofCurFilename.FilenamePat = strdup(FilenamePat);
+-    lprofCurFilename.OwnsFilenamePat = 1;
+-  }
++  lprofCurFilename.OwnedFilenamePat = Owned;
++  lprofCurFilename.FilenamePat = Owned ? Owned : FilenamePat;
++  FilenamePat = lprofCurFilename.FilenamePat;
+   /* Check the filename for "%p", which indicates a pid-substitution. */
+   for (I = 0; checkBounds(I, FilenamePatLen) && FilenamePat[I]; ++I) {
+     if (FilenamePat[I] == '%') {
+       ++I; /* Advance to the next character. */
+-      if (!checkBounds(I, FilenamePatLen))
++      if (!checkBounds(I, FilenamePatLen) || !FilenamePat[I])
+         break;
+       if (FilenamePat[I] == 'p') {
+         if (!NumPids++) {
+@@ -846,6 +828,9 @@
+             return -1;
+           }
+       } else if (FilenamePat[I] == 't') {
++        if (NumTmpDirs == UINT_MAX)
++          return -1;
++        ++NumTmpDirs;
+         lprofCurFilename.TmpDir = getenv("TMPDIR");
+         if (!lprofCurFilename.TmpDir) {
+           PROF_WARN("Unable to get the TMPDIR environment variable, referenced "
+@@ -897,6 +882,7 @@
+   lprofCurFilename.NumPids = NumPids;
+   lprofCurFilename.NumHosts = NumHosts;
+   lprofCurFilename.NumBinaryIds = NumBinaryIds;
++  lprofCurFilename.NumTmpDirs = NumTmpDirs;
+   return 0;
+ }
+ 
+@@ -905,7 +891,7 @@
+                                 unsigned CopyFilenamePat) {
+ 
+   const char *OldFilenamePat = lprofCurFilename.FilenamePat;
+-  unsigned OwnsOldFilenamePat = lprofCurFilename.OwnsFilenamePat;
++  char *OldOwnedFilenamePat = lprofCurFilename.OwnedFilenamePat;
+   ProfileNameSpecifier OldPNS = lprofCurFilename.PNS;
+ 
+   /* The old profile name specifier takes precedence over the old one. */
+@@ -921,8 +907,11 @@
+   }
+ 
+   /* When PNS >= OldPNS, the last one wins. */
+-  if (!FilenamePat || parseFilenamePattern(FilenamePat, CopyFilenamePat))
++  if (!FilenamePat || parseFilenamePattern(FilenamePat, CopyFilenamePat)) {
++    if (lprofCurFilename.OwnedFilenamePat == OldOwnedFilenamePat)
++      lprofCurFilename.OwnedFilenamePat = NULL;
+     resetFilenameToDefault();
++  }
+   lprofCurFilename.PNS = PNS;
+ 
+   if (!OldFilenamePat) {
+@@ -936,20 +925,7 @@
+                 getPNSStr(PNS));
+   }
+ 
+-#ifdef __GNUC__
+-#pragma GCC diagnostic push
+-#pragma GCC diagnostic ignored "-Wcast-qual"
+-#elif defined(__clang__)
+-#pragma clang diagnostic push
+-#pragma clang diagnostic ignored "-Wcast-qual"
+-#endif
+-  if (OwnsOldFilenamePat)
+-    free((void *)OldFilenamePat);
+-#ifdef __GNUC__
+-#pragma GCC diagnostic pop
+-#elif defined(__clang__)
+-#pragma clang diagnostic pop
+-#endif
++  free(OldOwnedFilenamePat);
+   truncateCurrentFile();
+   if (__llvm_profile_is_continuous_mode_enabled())
+     initializeProfileForContinuousMode();
+@@ -957,33 +933,46 @@
+ 
+ /* Return buffer length that is required to store the current profile
+  * filename with PID and hostname substitutions. */
+-/* The length to hold uint64_t followed by 3 digits pool id including '_' */
+-#define SIGLEN 24
++/* 20 digits for uint64_t, an underscore, and 10 digits for unsigned. */
++#define SIGLEN 31
+ /* The length to hold 160-bit hash in hexadecimal form */
+ #define BINARY_ID_LEN 40
++/* Add a repeated substitution without overflowing the maximum allocation. */
++static int addFilenameParts(size_t *Len, size_t Count, size_t Removed,
++                            size_t Added) {
++  if (*Len > (size_t)INT_MAX ||
++      (Count && (Removed > *Len / Count || Added > (size_t)INT_MAX / Count)))
++    return -1;
++  *Len -= Count * Removed;
++  if (Count * Added > (size_t)INT_MAX - *Len)
++    return -1;
++  *Len += Count * Added;
++  return 0;
++}
+ static int getCurFilenameLength(void) {
+-  int Len;
++  size_t Len;
+   if (!lprofCurFilename.FilenamePat || !lprofCurFilename.FilenamePat[0])
+     return 0;
+-
+-  if (!(lprofCurFilename.NumPids || lprofCurFilename.NumHosts ||
+-        lprofCurFilename.NumBinaryIds || lprofCurFilename.TmpDir ||
+-        lprofCurFilename.MergePoolSize))
+-    return strlen(lprofCurFilename.FilenamePat);
+-
+-  Len = strlen(lprofCurFilename.FilenamePat) +
+-        lprofCurFilename.NumPids * (strlen(lprofCurFilename.PidChars) - 2) +
+-        lprofCurFilename.NumHosts * (strlen(lprofCurFilename.Hostname) - 2) +
+-        lprofCurFilename.NumBinaryIds * BINARY_ID_LEN +
+-        (lprofCurFilename.TmpDir ? (strlen(lprofCurFilename.TmpDir) - 1) : 0);
+-  if (lprofCurFilename.MergePoolSize)
+-    Len += SIGLEN;
+-  return Len;
++  Len = strlen(lprofCurFilename.FilenamePat);
++  if (Len > (size_t)INT_MAX - 1)
++    return -1;
++  if (addFilenameParts(&Len, lprofCurFilename.NumPids, 2,
++                       strlen(lprofCurFilename.PidChars)) ||
++      addFilenameParts(&Len, lprofCurFilename.NumHosts, 2,
++                       strlen(lprofCurFilename.Hostname)) ||
++      addFilenameParts(&Len, lprofCurFilename.NumBinaryIds, 0, BINARY_ID_LEN) ||
++      (lprofCurFilename.TmpDir &&
++       addFilenameParts(&Len, lprofCurFilename.NumTmpDirs, 1,
++                        strlen(lprofCurFilename.TmpDir))) ||
++      (lprofCurFilename.MergePoolSize && addFilenameParts(&Len, 1, 0, SIGLEN)) ||
++      Len > (size_t)INT_MAX - 1)
++    return -1;
++  return (int)Len;
+ }
+ 
+ typedef struct lprofBinaryIdsBuffer {
+   char String[BINARY_ID_LEN + 1];
+-  int Length;
++  size_t Length;
+ } lprofBinaryIdsBuffer;
+ 
+ /* Reads binary ID length and then its data, writes it into lprofBinaryIdsBuffer
+@@ -991,17 +980,27 @@
+ static uint32_t binaryIdsStringWriter(ProfDataWriter *This,
+                                       ProfDataIOVec *IOVecs,
+                                       uint32_t NumIOVecs) {
+-  if (NumIOVecs < 2 || IOVecs[0].ElmSize != sizeof(uint64_t))
+-    return -1;
++  if (!This || !This->WriterCtx || !IOVecs || NumIOVecs < 2 ||
++      !IOVecs[0].Data || IOVecs[0].ElmSize != sizeof(uint64_t) ||
++      IOVecs[0].NumElm != 1)
++    return UINT32_MAX;
+   uint64_t BinaryIdLen = *(const uint64_t *)IOVecs[0].Data;
+-  if (IOVecs[1].ElmSize != sizeof(uint8_t) || IOVecs[1].NumElm != BinaryIdLen)
+-    return -1;
++  if ((!IOVecs[1].Data && BinaryIdLen != 0) ||
++      IOVecs[1].ElmSize != sizeof(uint8_t) ||
++      IOVecs[1].NumElm != BinaryIdLen)
++    return UINT32_MAX;
+   const uint8_t *BinaryIdData = (const uint8_t *)IOVecs[1].Data;
+   lprofBinaryIdsBuffer *Data = (lprofBinaryIdsBuffer *)This->WriterCtx;
++  if (Data->Length > BINARY_ID_LEN ||
++      BinaryIdLen > (BINARY_ID_LEN - Data->Length) / 2)
++    return UINT32_MAX;
+   for (uint64_t I = 0; I < BinaryIdLen; I++) {
+-    Data->Length +=
+-        snprintf(Data->String + Data->Length, BINARY_ID_LEN + 1 - Data->Length,
+-                 "%02hhx", BinaryIdData[I]);
++    size_t Capacity = sizeof(Data->String) - Data->Length;
++    int Written = snprintf(Data->String + Data->Length, Capacity, "%02hhx",
++                           BinaryIdData[I]);
++    if (Written < 0 || (size_t)Written >= Capacity)
++      return UINT32_MAX;
++    Data->Length += (size_t)Written;
+   }
+   return 0;
+ }
+@@ -1012,7 +1011,7 @@
+  * current filename pattern string is directly returned, unless ForceUseBuf
+  * is enabled. */
+ static const char *getCurFilename(char *FilenameBuf, int ForceUseBuf) {
+-  int I, J, PidLength, HostNameLength, TmpDirLength, FilenamePatLength;
++  size_t I, J, PidLength, HostNameLength, TmpDirLength, FilenamePatLength;
+   const char *FilenamePat = lprofCurFilename.FilenamePat;
+ 
+   if (!lprofCurFilename.FilenamePat || !lprofCurFilename.FilenamePat[0])
+@@ -1037,7 +1036,9 @@
+   /* Construct the new filename. */
+   for (I = 0, J = 0; FilenamePat[I]; ++I)
+     if (FilenamePat[I] == '%') {
+-      if (FilenamePat[++I] == 'p') {
++      if (!FilenamePat[++I])
++        break;
++      if (FilenamePat[I] == 'p') {
+         memcpy(FilenameBuf + J, lprofCurFilename.PidChars, PidLength);
+         J += PidLength;
+       } else if (FilenamePat[I] == 'h') {
+@@ -1050,7 +1051,8 @@
+       } else if (FilenamePat[I] == 'b') {
+         lprofBinaryIdsBuffer Data = {{0}, 0};
+         ProfDataWriter Writer = {binaryIdsStringWriter, &Data};
+-        __llvm_write_binary_ids(&Writer);
++        if (__llvm_write_binary_ids(&Writer) < 0)
++          return NULL;
+         memcpy(FilenameBuf + J, Data.String, Data.Length);
+         J += Data.Length;
+       } else {
+@@ -1058,11 +1060,11 @@
+           continue;
+         char LoadModuleSignature[SIGLEN + 1];
+         int S;
+-        int ProfilePoolId = getpid() % lprofCurFilename.MergePoolSize;
+-        S = snprintf(LoadModuleSignature, SIGLEN + 1, "%" PRIu64 "_%d",
++        unsigned ProfilePoolId = (unsigned)getpid() % lprofCurFilename.MergePoolSize;
++        S = snprintf(LoadModuleSignature, SIGLEN + 1, "%" PRIu64 "_%u",
+                      lprofGetLoadModuleSignature(), ProfilePoolId);
+-        if (S == -1 || S > SIGLEN)
+-          S = SIGLEN;
++        if (S < 0 || S > SIGLEN)
++          return NULL;
+         memcpy(FilenameBuf + J, LoadModuleSignature, S);
+         J += S;
+       }
+@@ -1093,6 +1095,8 @@
+     return lprofCurFilename.ProfilePathPrefix;
+ 
+   Length = getCurFilenameLength();
++  if (Length < 0)
++    return "";
+   FilenameBuf = (char *)COMPILER_RT_ALLOCA(Length + 1);
+   Filename = getCurFilename(FilenameBuf, 0);
+   if (!Filename)
+@@ -1102,14 +1106,14 @@
+   if (!PrefixEnd)
+     return "\0";
+ 
+-  Length = PrefixEnd - Filename + 1;
+-  Prefix = (char *)malloc(Length + 1);
++  size_t PrefixLength = (size_t)(PrefixEnd - Filename) + 1;
++  Prefix = (char *)malloc(PrefixLength + 1);
+   if (!Prefix) {
+     PROF_ERR("Failed to %s\n", "allocate memory.");
+     return "\0";
+   }
+-  memcpy(Prefix, Filename, Length);
+-  Prefix[Length] = '\0';
++  memcpy(Prefix, Filename, PrefixLength);
++  Prefix[PrefixLength] = '\0';
+   lprofCurFilename.ProfilePathPrefix = Prefix;
+   return Prefix;
+ }
+@@ -1121,6 +1125,8 @@
+   const char *Filename;
+ 
+   Length = getCurFilenameLength();
++  if (Length < 0)
++    return "";
+   FilenameBuf = (char *)malloc(Length + 1);
+   if (!FilenameBuf) {
+     PROF_ERR("Failed to %s\n", "allocate memory.");
+@@ -1205,6 +1211,11 @@
+   }
+ 
+   Length = getCurFilenameLength();
++  if (Length < 0) {
++    if (PDeathSig == 1)
++      lprofRestoreSigKill();
++    return -1;
++  }
+   FilenameBuf = (char *)COMPILER_RT_ALLOCA(Length + 1);
+   Filename = getCurFilename(FilenameBuf, 0);
+ 
+@@ -1300,9 +1311,9 @@
+     if (ProfileFileSize == 0) {
+       FreeHook = &free;
+       setupIOBuffer();
+-      ProfDataWriter fileWriter;
+-      initFileWriter(&fileWriter, File);
+-      if (lprofWriteData(&fileWriter, 0, 0)) {
++      ProfDataWriter FileWriter;
++      initFileWriter(&FileWriter, File);
++      if (lprofWriteData(&FileWriter, 0, 0)) {
+         lprofUnlockFileHandle(File);
+         PROF_ERR("Failed to write file \"%d\": %s\n", fileno(File),
+                  strerror(errno));
+@@ -1335,7 +1346,8 @@
+     const char *CountersEnd, const char *UniformCountersBegin,
+     const char *UniformCountersEnd, const char *NamesBegin,
+     const char *NamesEnd, const uint64_t *VersionOverride) {
+-  int ReturnValue = 0, FilenameLength, TargetLength;
++  int ReturnValue = 0, FilenameLength;
++  size_t TargetLength;
+   char *FilenameBuf, *TargetFilename;
+   const char *Filename;
+ 
+@@ -1365,6 +1377,11 @@
+ 
+   /* Get current filename */
+   FilenameLength = getCurFilenameLength();
++  if (FilenameLength < 0) {
++    if (PDeathSig == 1)
++      lprofRestoreSigKill();
++    return -1;
++  }
+   FilenameBuf = (char *)COMPILER_RT_ALLOCA(FilenameLength + 1);
+   Filename = getCurFilename(FilenameBuf, 0);
+ 
+@@ -1376,17 +1393,23 @@
+     return -1;
+   }
+ 
++  /* The calculated length may include substitution headroom. */
++  FilenameLength = (int)strlen(Filename);
+   /* Allocate new space for our target-specific PGO filename */
+   TargetLength = strlen(Target);
++  if (TargetLength > SIZE_MAX - (size_t)FilenameLength - 2) {
++    if (PDeathSig == 1)
++      lprofRestoreSigKill();
++    return -1;
++  }
+   TargetFilename =
+-      (char *)COMPILER_RT_ALLOCA(FilenameLength + TargetLength + 2);
++      (char *)COMPILER_RT_ALLOCA((size_t)FilenameLength + TargetLength + 2);
+ 
+   /* Find file basename and path sizes */
+-  int32_t DirEnd = FilenameLength - 1;
+-  while (DirEnd >= 0 && !IS_DIR_SEPARATOR(Filename[DirEnd])) {
+-    DirEnd--;
+-  }
+-  uint32_t DirSize = DirEnd + 1, BaseSize = FilenameLength - DirSize;
++  size_t DirSize = (size_t)FilenameLength;
++  while (DirSize && !IS_DIR_SEPARATOR(Filename[DirSize - 1]))
++    DirSize--;
++  size_t BaseSize = (size_t)FilenameLength - DirSize;
+ 
+   /* Prepend "TARGET." to current filename */
+   if (DirSize > 0) {
+@@ -1413,8 +1436,8 @@
+   setupIOBuffer();
+ 
+   /* Write custom data */
+-  ProfDataWriter fileWriter;
+-  initFileWriter(&fileWriter, OutputFile);
++  ProfDataWriter FileWriter;
++  initFileWriter(&FileWriter, OutputFile);
+ 
+   uint64_t Version = __llvm_profile_get_version();
+   if (VersionOverride)
+@@ -1422,7 +1445,7 @@
+ 
+   /* Write custom data to the file */
+   ReturnValue = lprofWriteDataImpl(
+-      &fileWriter, DataBegin, DataEnd, CountersBegin, CountersEnd, NULL, NULL,
++      &FileWriter, DataBegin, DataEnd, CountersBegin, CountersEnd, NULL, NULL,
+       UniformCountersBegin, UniformCountersEnd, lprofGetVPDataReader(),
+       NamesBegin, NamesEnd, NULL, NULL, NULL, NULL, 0, Version);
+   closeFileObject(OutputFile);
+--- a/compiler-rt/lib/profile/InstrProfilingInternal.h
++++ b/compiler-rt/lib/profile/InstrProfilingInternal.h
+@@ -163,9 +163,13 @@
+     const VTableProfData *VTableEnd, const char *VNamesBegin,
+     const char *VNamesEnd, int SkipNameDataWrite, uint64_t Version);
+ 
++/* Shared value record layout helper, defined in InstrProfilingValue.c. */
++COMPILER_RT_VISIBILITY uint32_t getValueProfRecordSize(uint32_t NumValueSites,
++                                                     uint32_t NumValueData);
++
+ /* Merge value profile data pointed to by SrcValueProfData into
+  * in-memory profile counters pointed by to DstData.  */
+-void lprofMergeValueProfData(struct ValueProfData *SrcValueProfData,
++void lprofMergeValueProfData(const struct ValueProfData *SrcValueProfData,
+                              __llvm_profile_data *DstData);
+ 
+ VPDataReaderType *lprofGetVPDataReader(void);
+@@ -197,7 +201,7 @@
+ /* Pointer to the start of static value counters to be allocted. */
+ COMPILER_RT_VISIBILITY extern ValueProfNode *CurrentVNode;
+ COMPILER_RT_VISIBILITY extern ValueProfNode *EndVNode;
+-extern void (*VPMergeHook)(struct ValueProfData *, __llvm_profile_data *);
++extern void (*VPMergeHook)(const struct ValueProfData *, __llvm_profile_data *);
+ 
+ /*
+  * Write binary ids into profiles if writer is given.
+--- a/compiler-rt/lib/profile/InstrProfilingMerge.c
++++ b/compiler-rt/lib/profile/InstrProfilingMerge.c
+@@ -16,7 +16,7 @@
+ #include "profile/InstrProfData.inc"
+ 
+ COMPILER_RT_VISIBILITY
+-void (*VPMergeHook)(ValueProfData *, __llvm_profile_data *);
++void (*VPMergeHook)(const ValueProfData *, __llvm_profile_data *);
+ 
+ COMPILER_RT_VISIBILITY
+ uint64_t lprofGetLoadModuleSignature(void) {
+@@ -37,27 +37,18 @@
+          __llvm_profile_get_magic();
+ }
+ 
+-#ifdef __GNUC__
+-#pragma GCC diagnostic push
+-#pragma GCC diagnostic ignored "-Wcast-qual"
+-#elif defined(__clang__)
+-#pragma clang diagnostic push
+-#pragma clang diagnostic ignored "-Wcast-qual"
+-#endif
+-
+ /* Returns 1 if profile is not structurally compatible.  */
+ COMPILER_RT_VISIBILITY
+ int __llvm_profile_check_compatibility(const char *ProfileData,
+                                        uint64_t ProfileSize) {
+-  __llvm_profile_header *Header = (__llvm_profile_header *)ProfileData;
+-  __llvm_profile_data *SrcDataStart, *SrcDataEnd, *SrcData, *DstData;
+-  SrcDataStart =
+-      (__llvm_profile_data *)(ProfileData + sizeof(__llvm_profile_header) +
+-                              Header->BinaryIdsSize);
+-  SrcDataEnd = SrcDataStart + Header->NumData;
+-
+-  if (ProfileSize < sizeof(__llvm_profile_header))
+-    return 1;
++  const __llvm_profile_header *Header;
++  const __llvm_profile_data *SrcDataStart, *SrcDataEnd, *SrcData, *DstData;
++  uint64_t Offset, Remaining;
++
++  if (!ProfileData || ProfileSize < sizeof(__llvm_profile_header) ||
++      ProfileSize > SIZE_MAX)
++    return 1;
++  Header = (const __llvm_profile_header *)ProfileData;
+ 
+   /* Check the header first.  */
+   if (Header->Magic != __llvm_profile_get_magic() ||
+@@ -77,15 +68,30 @@
+       Header->ValueKindLast != IPVK_Last)
+     return 1;
+ 
+-  if (ProfileSize <
+-      sizeof(__llvm_profile_header) + Header->BinaryIdsSize +
+-          Header->NumData * sizeof(__llvm_profile_data) + Header->NamesSize +
+-          Header->NumCounters * __llvm_profile_counter_entry_size() +
+-          Header->NumBitmapBytes)
+-    return 1;
++  /* Validate each range before multiplication or pointer arithmetic. */
++  Offset = sizeof(*Header);
++  Remaining = ProfileSize - Offset;
++  if (Header->BinaryIdsSize > Remaining)
++    return 1;
++  Offset += Header->BinaryIdsSize;
++  Remaining -= Header->BinaryIdsSize;
++  if (Header->NumData > Remaining / sizeof(*SrcDataStart))
++    return 1;
++  SrcDataStart = (const __llvm_profile_data *)(ProfileData + (size_t)Offset);
++  Offset += Header->NumData * sizeof(*SrcDataStart);
++  Remaining = ProfileSize - Offset;
++  if (Header->NamesSize > Remaining)
++    return 1;
++  Remaining -= Header->NamesSize;
++  if (Header->NumCounters > Remaining / __llvm_profile_counter_entry_size())
++    return 1;
++  Remaining -= Header->NumCounters * __llvm_profile_counter_entry_size();
++  if (Header->NumBitmapBytes > Remaining)
++    return 1;
++  SrcDataEnd = (const __llvm_profile_data *)(ProfileData + (size_t)Offset);
+ 
+   for (SrcData = SrcDataStart,
+-       DstData = (__llvm_profile_data *)__llvm_profile_begin_data();
++       DstData = __llvm_profile_begin_data();
+        SrcData < SrcDataEnd; ++SrcData, ++DstData) {
+     if (SrcData->NameRef != DstData->NameRef ||
+         SrcData->FuncHash != DstData->FuncHash ||
+@@ -136,14 +142,14 @@
+     return 1;
+   }
+ 
+-  __llvm_profile_header *Header = (__llvm_profile_header *)ProfileData;
++  const __llvm_profile_header *Header = (const __llvm_profile_header *)ProfileData;
+   uintptr_t CountersDelta = Header->CountersDelta;
+   uintptr_t BitmapDelta = Header->BitmapDelta;
+ 
+-  __llvm_profile_data *SrcDataStart =
+-      (__llvm_profile_data *)(ProfileData + sizeof(__llvm_profile_header) +
++  const __llvm_profile_data *SrcDataStart =
++      (const __llvm_profile_data *)(ProfileData + sizeof(__llvm_profile_header) +
+                               Header->BinaryIdsSize);
+-  __llvm_profile_data *SrcDataEnd = SrcDataStart + Header->NumData;
++  const __llvm_profile_data *SrcDataEnd = SrcDataStart + Header->NumData;
+   uintptr_t SrcCountersStart = (uintptr_t)SrcDataEnd;
+   uintptr_t SrcCountersEnd =
+       SrcCountersStart +
+@@ -174,11 +180,11 @@
+     return 0;
+   }
+ 
+-  __llvm_profile_data *SrcData, *DstData;
+-  uintptr_t SrcValueProfData;
++  const __llvm_profile_data *SrcData;
++  __llvm_profile_data *DstData;
++  const char *SrcValueProfData = NULL;
+   for (SrcData = SrcDataStart,
+-      DstData = (__llvm_profile_data *)__llvm_profile_begin_data(),
+-      SrcValueProfData = SrcValueProfDataStart;
++      DstData = __llvm_profile_begin_data();
+        SrcData < SrcDataEnd; ++SrcData, ++DstData) {
+     // For the in-memory destination, CounterPtr is the distance from the start
+     // address of the data to the start address of the counter. On WIN64,
+@@ -242,18 +248,23 @@
+     if (!NVK)
+       continue;
+ 
+-    if (SrcValueProfData >= (uintptr_t)ProfileData + ProfileSize)
+-      return 1;
+-    VPMergeHook((ValueProfData *)SrcValueProfData, DstData);
+-    SrcValueProfData =
+-        SrcValueProfData + ((ValueProfData *)SrcValueProfData)->TotalSize;
++    if (!SrcValueProfData) {
++      if (SrcValueProfDataStart < (uintptr_t)ProfileData ||
++          SrcValueProfDataStart - (uintptr_t)ProfileData >= ProfileSize)
++        return 1;
++      SrcValueProfData = ProfileData +
++          (SrcValueProfDataStart - (uintptr_t)ProfileData);
++    }
++    if ((uint64_t)(SrcValueProfData - ProfileData) > ProfileSize ||
++        ProfileSize - (uint64_t)(SrcValueProfData - ProfileData) < sizeof(ValueProfData))
++      return 1;
++    const ValueProfData *ValueData = (const ValueProfData *)SrcValueProfData;
++    if (ValueData->TotalSize > ProfileSize - (uint64_t)(SrcValueProfData - ProfileData))
++      return 1;
++    VPMergeHook(ValueData, DstData);
++    SrcValueProfData += ValueData->TotalSize;
+   }
+ 
+   return 0;
+ }
+ 
+-#ifdef __GNUC__
+-#pragma GCC diagnostic pop
+-#elif defined(__clang__)
+-#pragma clang diagnostic pop
+-#endif
+--- a/compiler-rt/lib/profile/InstrProfilingMergeFile.c
++++ b/compiler-rt/lib/profile/InstrProfilingMergeFile.c
+@@ -17,16 +17,34 @@
+ #define INSTR_PROF_VALUE_PROF_DATA
+ #include "profile/InstrProfData.inc"
+ 
+-/* Merge value profile data pointed to by SrcValueProfData into
+- * in-memory profile counters pointed by to DstData.  */
++/* Read serialized records without discarding their const qualification.
++ * Header and record sizes remain owned by the shared format helpers. */
++static const ValueProfRecord *firstValueProfRecord(const ValueProfData *Data) {
++  return (const ValueProfRecord *)((const char *)Data + sizeof(*Data));
++}
++
++static const InstrProfValueData *valueProfRecordData(const ValueProfRecord *R) {
++  return (const InstrProfValueData *)((const char *)R +
++                                     getValueProfRecordHeaderSize(R->NumValueSites));
++}
++
++static const ValueProfRecord *nextValueProfRecord(const ValueProfRecord *R) {
++  uint32_t NumValueData = 0;
++  for (uint32_t I = 0; I < R->NumValueSites; ++I)
++    NumValueData += R->SiteCountArray[I];
++  return (const ValueProfRecord *)((const char *)R +
++      getValueProfRecordSize(R->NumValueSites, NumValueData));
++}
++
++/* Merge read-only serialized records into writable runtime value counters. */
+ COMPILER_RT_VISIBILITY
+-void lprofMergeValueProfData(ValueProfData *SrcValueProfData,
++void lprofMergeValueProfData(const ValueProfData *SrcValueProfData,
+                              __llvm_profile_data *DstData) {
+   unsigned I, S, V, DstIndex = 0;
+-  InstrProfValueData *VData;
+-  ValueProfRecord *VR = getFirstValueProfRecord(SrcValueProfData);
++  const InstrProfValueData *VData;
++  const ValueProfRecord *VR = firstValueProfRecord(SrcValueProfData);
+   for (I = 0; I < SrcValueProfData->NumValueKinds; I++) {
+-    VData = getValueProfRecordValueData(VR);
++    VData = valueProfRecordData(VR);
+     unsigned SrcIndex = 0;
+     for (S = 0; S < VR->NumValueSites; S++) {
+       uint8_t NV = VR->SiteCountArray[S];
+@@ -37,7 +55,7 @@
+       }
+       ++DstIndex;
+     }
+-    VR = getValueProfRecordNext(VR);
++    VR = nextValueProfRecord(VR);
+   }
+ }
+ 
+--- a/compiler-rt/lib/profile/InstrProfilingPlatformDarwin.c
++++ b/compiler-rt/lib/profile/InstrProfilingPlatformDarwin.c
+@@ -56,11 +56,11 @@
+     VNodesEnd __asm("section$end$__DATA$" INSTR_PROF_VNODES_SECT_NAME);
+ 
+ COMPILER_RT_VISIBILITY
+-const __llvm_profile_data *__llvm_profile_begin_data(void) {
++__llvm_profile_data *__llvm_profile_begin_data(void) {
+   return &DataStart;
+ }
+ COMPILER_RT_VISIBILITY
+-const __llvm_profile_data *__llvm_profile_end_data(void) { return &DataEnd; }
++__llvm_profile_data *__llvm_profile_end_data(void) { return &DataEnd; }
+ COMPILER_RT_VISIBILITY
+ const char *__llvm_profile_begin_names(void) { return &NamesStart; }
+ COMPILER_RT_VISIBILITY
+--- a/compiler-rt/lib/profile/InstrProfilingPlatformLinux.c
++++ b/compiler-rt/lib/profile/InstrProfilingPlatformLinux.c
+@@ -29,6 +29,7 @@
+     !defined(COMPILER_RT_PROFILE_BAREMETAL)
+ // Includes for non-baremetal ELF targets, used to output build IDs.
+ #include <elf.h>
++#include <limits.h>
+ #include <link.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -78,11 +79,11 @@
+ extern __llvm_gcov_init_func_struct PROF_COVINIT_STOP COMPILER_RT_VISIBILITY
+     COMPILER_RT_WEAK;
+ 
+-COMPILER_RT_VISIBILITY const __llvm_profile_data *
++COMPILER_RT_VISIBILITY __llvm_profile_data *
+ __llvm_profile_begin_data(void) {
+   return &PROF_DATA_START;
+ }
+-COMPILER_RT_VISIBILITY const __llvm_profile_data *
++COMPILER_RT_VISIBILITY __llvm_profile_data *
+ __llvm_profile_end_data(void) {
+   return &PROF_DATA_STOP;
+ }
+@@ -129,12 +130,12 @@
+ COMPILER_RT_VISIBILITY ValueProfNode *EndVNode = &PROF_VNODES_STOP;
+ 
+ COMPILER_RT_VISIBILITY const __llvm_gcov_init_func_struct *
+-__llvm_profile_begin_covinit() {
++__llvm_profile_begin_covinit(void) {
+   return &PROF_COVINIT_START;
+ }
+ 
+ COMPILER_RT_VISIBILITY const __llvm_gcov_init_func_struct *
+-__llvm_profile_end_covinit() {
++__llvm_profile_end_covinit(void) {
+   return &PROF_COVINIT_STOP;
+ }
+ 
+@@ -165,6 +166,8 @@
+     const uint8_t *BinaryIdData =
+         (const uint8_t *)(NoteName + RoundUp(Note->n_namesz, 4));
+     uint8_t BinaryIdPadding = __llvm_profile_get_num_padding_bytes(BinaryIdLen);
++    if (BinaryIdLen > (uint64_t)INT_MAX - sizeof(BinaryIdLen) - BinaryIdPadding)
++      return -1;
+     if (Writer != NULL &&
+         lprofWriteOneBinaryId(Writer, BinaryIdLen, BinaryIdData,
+                               BinaryIdPadding) == -1)
+@@ -186,7 +189,7 @@
+   int BinaryIdsSize = 0;
+   while (Note < NotesEnd) {
+     int OneBinaryIdSize = WriteBinaryIdForNote(Writer, Note);
+-    if (OneBinaryIdSize == -1)
++    if (OneBinaryIdSize < 0 || OneBinaryIdSize > INT_MAX - BinaryIdsSize)
+       return -1;
+     BinaryIdsSize += OneBinaryIdSize;
+ 
+@@ -235,7 +238,7 @@
+         (const ElfW(Nhdr) *)((const char *)(Note) + ProgramHeader[I].p_memsz);
+ 
+     int BinaryIdsSize = WriteBinaryIds(Writer, Note, NotesEnd);
+-    if (TotalBinaryIdsSize == -1)
++    if (BinaryIdsSize < 0 || BinaryIdsSize > INT_MAX - TotalBinaryIdsSize)
+       return -1;
+ 
+     TotalBinaryIdsSize += BinaryIdsSize;
+@@ -249,6 +252,7 @@
+  * extensions NT_GNU_BUILD_ID and __ehdr_start.
+  */
+ COMPILER_RT_VISIBILITY int __llvm_write_binary_ids(ProfDataWriter *Writer) {
++  (void)Writer;
+   return 0;
+ }
+ #endif
+--- a/compiler-rt/lib/profile/InstrProfilingPlatformOther.c
++++ b/compiler-rt/lib/profile/InstrProfilingPlatformOther.c
+@@ -32,8 +32,8 @@
+ #define CountersFirst INSTR_PROF_SECT_BOUNDS_TABLE.CountersStart
+ #define CountersLast INSTR_PROF_SECT_BOUNDS_TABLE.CountersStop
+ #else
+-static const __llvm_profile_data *DataFirst = NULL;
+-static const __llvm_profile_data *DataLast = NULL;
++static __llvm_profile_data *DataFirst = NULL;
++static __llvm_profile_data *DataLast = NULL;
+ static const char *NamesFirst = NULL;
+ static const char *NamesLast = NULL;
+ static char *CountersFirst = NULL;
+@@ -64,7 +64,7 @@
+ COMPILER_RT_VISIBILITY
+ void __llvm_profile_register_function(void *Data_) {
+   /* TODO: Only emit this function if we can't use linker magic. */
+-  const __llvm_profile_data *Data = (__llvm_profile_data *)Data_;
++  __llvm_profile_data *Data = (__llvm_profile_data *)Data_;
+ 
+ #if defined(__NVPTX__)
+   // NVPTX stores absolute counter addresses to avoid circular dependencies in
+@@ -87,11 +87,13 @@
+     return;
+   }
+ 
+-  DataFirst = (const __llvm_profile_data *)getMinAddr(DataFirst, Data);
++  if ((uintptr_t)Data < (uintptr_t)DataFirst)
++    DataFirst = Data;
+   CountersFirst = (char *)getMinAddr(
+       CountersFirst, (char *)((uintptr_t)Data_ + Data->CounterPtr));
+ 
+-  DataLast = (const __llvm_profile_data *)getMaxAddr(DataLast, Data + 1);
++  if ((uintptr_t)(Data + 1) > (uintptr_t)DataLast)
++    DataLast = Data + 1;
+   CountersLast = (char *)getMaxAddr(
+       CountersLast,
+       (char *)((uintptr_t)Data_ + Data->CounterPtr) +
+@@ -112,9 +114,9 @@
+ }
+ 
+ COMPILER_RT_VISIBILITY
+-const __llvm_profile_data *__llvm_profile_begin_data(void) { return DataFirst; }
++__llvm_profile_data *__llvm_profile_begin_data(void) { return DataFirst; }
+ COMPILER_RT_VISIBILITY
+-const __llvm_profile_data *__llvm_profile_end_data(void) { return DataLast; }
++__llvm_profile_data *__llvm_profile_end_data(void) { return DataLast; }
+ COMPILER_RT_VISIBILITY const VTableProfData *
+ __llvm_profile_begin_vtables(void) {
+   return VTableProfDataFirst;
+--- a/compiler-rt/lib/profile/InstrProfilingPlatformWindows.c
++++ b/compiler-rt/lib/profile/InstrProfilingPlatformWindows.c
+@@ -61,10 +61,10 @@
+ ValueProfNode COMPILER_RT_SECTION(".lprfnd$A") VNodesStart;
+ ValueProfNode COMPILER_RT_SECTION(".lprfnd$Z") VNodesEnd;
+ 
+-const __llvm_profile_data *__llvm_profile_begin_data(void) {
++__llvm_profile_data *__llvm_profile_begin_data(void) {
+   return &DataStart + 1;
+ }
+-const __llvm_profile_data *__llvm_profile_end_data(void) { return &DataEnd; }
++__llvm_profile_data *__llvm_profile_end_data(void) { return &DataEnd; }
+ 
+ // Type profiling isn't implemented under MSVC ABI, so return NULL (rather than
+ // implementing linker magic on Windows) to make it more explicit. To elaborate,
+--- a/compiler-rt/lib/profile/InstrProfilingUtil.c
++++ b/compiler-rt/lib/profile/InstrProfilingUtil.c
+@@ -325,6 +325,7 @@
+ #ifdef _AIX
+   return isLocalFilesystem(Fd);
+ #else
++  (void)Fd;
+   return 1;
+ #endif
+ }
+--- a/compiler-rt/lib/profile/InstrProfilingValue.c
++++ b/compiler-rt/lib/profile/InstrProfilingValue.c
+@@ -152,7 +152,7 @@
+   __llvm_profile_data *PData = (__llvm_profile_data *)Data;
+   if (!PData)
+     return;
+-  if (!CountValue)
++  if (!CountValue || !VPMaxNumValsPerSite)
+     return;
+   if (!PData->Values) {
+     if (!allocateValueProfileCounters(PData))
+@@ -171,7 +171,7 @@
+       CurVNode->Count += CountValue;
+       return;
+     }
+-    if (CurVNode->Count < MinCount) {
++    if (!MinCountVNode || CurVNode->Count < MinCount) {
+       MinCount = CurVNode->Count;
+       MinCountVNode = CurVNode;
+     }
+--- a/compiler-rt/lib/profile/InstrProfilingWriter.c
++++ b/compiler-rt/lib/profile/InstrProfilingWriter.c
+@@ -27,6 +27,7 @@
+ #define VP_BUFFER_SIZE 8 * 1024
+ static uint8_t BufferIOBuffer[VP_BUFFER_SIZE];
+ static InstrProfValueData VPDataArray[16];
++_Static_assert(sizeof(VPDataArray) <= UINT32_MAX, "value profile buffer exceeds uint32_t");
+ static uint32_t VPDataArraySize = sizeof(VPDataArray) / sizeof(*VPDataArray);
+ 
+ COMPILER_RT_VISIBILITY uint8_t *DynamicBufferIOBuffer = 0;
+@@ -204,7 +205,7 @@
+                                        J, /* Site */
+                                        &VPDataArray[0], NextStartNode, NRead);
+         if (lprofBufferIOWrite(BufferIO, (const uint8_t *)&VPDataArray[0],
+-                               NRead * sizeof(InstrProfValueData)))
++                               (uint32_t)(NRead * sizeof(VPDataArray[0]))))
+           return -1;
+         NRemain -= NRead;
+       } while (NRemain != 0);
+--- a/compiler-rt/test/profile/Inputs/instrprof-value-prof-visibility.c
++++ b/compiler-rt/test/profile/Inputs/instrprof-value-prof-visibility.c
+@@ -11,7 +11,7 @@
+ void __llvm_profile_initialize_file(void);
+ struct __llvm_profile_data;
+ struct ValueProfData;
+-void lprofMergeValueProfData(struct ValueProfData *, struct __llvm_profile_data *);
++void lprofMergeValueProfData(const struct ValueProfData *, struct __llvm_profile_data *);
+ /* Force the vp merger module to be linked in.  */
+ void *Dummy = &lprofMergeValueProfData;
+ 
+--- a/compiler-rt/test/profile/Linux/instrprof-merge-vp.c
++++ b/compiler-rt/test/profile/Linux/instrprof-merge-vp.c
+@@ -9,6 +9,7 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <sys/types.h>
++#include <sys/mman.h>
+ #include <unistd.h>
+ 
+ int __llvm_profile_runtime = 0;
+@@ -18,13 +19,13 @@
+ void __llvm_profile_set_filename(const char *);
+ struct __llvm_profile_data;
+ struct ValueProfData;
+-void lprofMergeValueProfData(struct ValueProfData *, struct __llvm_profile_data *);
++void lprofMergeValueProfData(const struct ValueProfData *, struct __llvm_profile_data *);
+ /* Force the vp merger module to be linked in.  */
+ void *Dummy = &lprofMergeValueProfData;
+ 
+-void callee1() {}
+-void callee2() {}
+-void callee3() {}
++void callee1(void) {}
++void callee2(void) {}
++void callee3(void) {}
+ 
+ typedef void (*FP)(void);
+ FP Fps[3] = {callee1, callee2, callee3};
+@@ -72,10 +73,17 @@
+   fseek(File, 0, SEEK_END);
+   uint64_t Size = ftell(File);
+   fseek(File, 0, SEEK_SET);
+-  char *Buffer = (char *)malloc(Size);
++  size_t PageSize = (size_t)sysconf(_SC_PAGESIZE);
++  size_t AllocSize = ((size_t)Size + PageSize - 1) / PageSize * PageSize;
++  char *Buffer = mmap(NULL, AllocSize, PROT_READ | PROT_WRITE,
++                      MAP_PRIVATE | MAP_ANON, -1, 0);
++  if (Buffer == MAP_FAILED)
++    return 1;
+   if (Size != fread(Buffer, 1, Size, File))
+     return 1;
+   fclose(File);
++  if (mprotect(Buffer, AllocSize, PROT_READ) != 0)
++    return 1;
+ 
+   /* Its profile will be discarded. */
+   for (i = 0; i < 10; i++)
+@@ -93,6 +101,8 @@
+ 
+   /* Its profile will be discarded. */
+   bar();
++  if (munmap(Buffer, AllocSize) != 0)
++    return 1;
+ 
+   return 0;
+ }
+--- /dev/null
++++ b/compiler-rt/test/profile/instrprof-merge-short.c
+@@ -0,0 +1,31 @@
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++// Origin: EmberBSD (AI-assisted).
++// RUN: %clang_profgen -o %t %s
++// RUN: %run %t
++// A truncated header must be rejected before any header field is read.
++#include <assert.h>
++#include <stdint.h>
++#include <stdlib.h>
++#include <string.h>
++
++uint64_t __llvm_profile_get_size_for_buffer(void);
++int __llvm_profile_write_buffer(char *);
++int __llvm_profile_check_compatibility(const char *, uint64_t);
++
++int main(void) {
++  uint64_t size = __llvm_profile_get_size_for_buffer();
++  assert(size > 32);
++  char *full = malloc((size_t)size);
++  assert(full && __llvm_profile_write_buffer(full) == 0);
++  assert(__llvm_profile_check_compatibility(full, size) == 0);
++  assert(__llvm_profile_check_compatibility(NULL, 0) != 0);
++  for (size_t n = 0; n < 32; n++) {
++    char *shortbuf = malloc(n ? n : 1);
++    assert(shortbuf);
++    memcpy(shortbuf, full, n);
++    assert(__llvm_profile_check_compatibility(shortbuf, n) != 0);
++    free(shortbuf);
++  }
++  free(full);
++  return 0;
++}
+--- a/compiler-rt/test/profile/instrprof-value-prof-2.c
++++ b/compiler-rt/test/profile/instrprof-value-prof-2.c
+@@ -13,8 +13,8 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ typedef struct __llvm_profile_data __llvm_profile_data;
+-const __llvm_profile_data *__llvm_profile_begin_data(void);
+-const __llvm_profile_data *__llvm_profile_end_data(void);
++__llvm_profile_data *__llvm_profile_begin_data(void);
++__llvm_profile_data *__llvm_profile_end_data(void);
+ void __llvm_profile_set_num_value_sites(__llvm_profile_data *Data,
+                                         uint32_t ValueKind,
+                                         uint16_t NumValueSites);
+--- a/compiler-rt/test/profile/instrprof-value-prof.c
++++ b/compiler-rt/test/profile/instrprof-value-prof.c
+@@ -29,8 +29,8 @@
+ #include <stdlib.h>
+ #include <string.h>
+ typedef struct __llvm_profile_data __llvm_profile_data;
+-const __llvm_profile_data *__llvm_profile_begin_data(void);
+-const __llvm_profile_data *__llvm_profile_end_data(void);
++__llvm_profile_data *__llvm_profile_begin_data(void);
++__llvm_profile_data *__llvm_profile_end_data(void);
+ void __llvm_profile_set_num_value_sites(__llvm_profile_data *Data,
+                                         uint32_t ValueKind,
+                                         uint16_t NumValueSites);
+--- a/compiler-rt/test/profile/instrprof-write-buffer-internal.c
++++ b/compiler-rt/test/profile/instrprof-write-buffer-internal.c
+@@ -19,8 +19,8 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ 
+-const void *__llvm_profile_begin_data(void);
+-const void *__llvm_profile_end_data(void);
++void *__llvm_profile_begin_data(void);
++void *__llvm_profile_end_data(void);
+ const char *__llvm_profile_begin_names(void);
+ const char *__llvm_profile_end_names(void);
+ char *__llvm_profile_begin_counters(void);
