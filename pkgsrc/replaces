@@ -192,6 +192,7 @@ devel/libinotify
 devel/plasma-wayland-protocols
 devel/plasma6-kwayland
 devel/plasma6-plasma5support
+devel/qcoro
 devel/qt6-qt5compat
 devel/qt6-qttools
 devel/qt6-qtwayland
