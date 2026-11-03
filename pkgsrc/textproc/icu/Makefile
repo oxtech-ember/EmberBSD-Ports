@@ -17,7 +17,28 @@ LICENSE=	unicode-v3 AND modified-bsd AND mit
 
 POLICY_UPDATE_LIMITED=	abi
 
+# Only the common controller may select an already validated same-run stage.
+.if defined(EMBERBSD_ICU_SHARED_STAGE) && defined(EMBERBSD_ICU_DEVEL)
+_EMBERBSD_ICU_SHARED_DEVEL= yes
+NO_BUILD= yes
+NO_CONFIGURE= yes
+WRKSRC= ${WRKDIR}/icu-shared-stage
+do-extract: icu-shared-noop
+do-patch: icu-shared-noop
+do-configure:
+	@${MKDIR} ${WRKSRC:Q}
+do-build: icu-shared-noop
+do-build:
+	@${MKDIR} ${WRKSRC:Q}
+do-install: icu-shared-noop
+do-install:
+	@${MKDIR} ${DESTDIR:Q}
+.PHONY: icu-shared-noop
+icu-shared-noop:
+	@${MKDIR} ${WRKSRC:Q}
+.else
 WRKSRC=			${WRKDIR}/icu/source
+.endif
 USE_LANGUAGES=		c c++
 USE_CC_FEATURES=	c11
 USE_CXX_FEATURES=	c++17
@@ -304,7 +325,7 @@ SUBST_SED.icu-config+=	-e '/l$${ICUPREFIX}/ s/$${ICULIBSUFFIX_VERSION}//g'
 
 # Keep build-host commands out of the installed development interface.
 # Point it at the native compiler of the same family (lang/clang by default).
-.if ${USE_CROSS_COMPILE:tl} == "yes" && (${OPSYS} == "NetBSD" || ${EMBERBSD_COMMON_TOOLS:Uno} == "yes")
+.if ${USE_CROSS_COMPILE:tl} == "yes" && (${OPSYS} == "NetBSD" || ${EMBERBSD_COMMON_TOOLS:Uno} == "yes") && !defined(_EMBERBSD_ICU_SHARED_DEVEL)
 post-install: ember-icu-cross-metadata
 .PHONY: ember-icu-cross-metadata
 ember-icu-cross-metadata:
@@ -333,14 +354,30 @@ ember-icu-cross-metadata:
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD"
 post-install: ember-icu-select-stage
 .PHONY: ember-icu-select-stage
+.if defined(_EMBERBSD_ICU_SHARED_DEVEL)
+ember-icu-select-stage:
+.else
 ember-icu-select-stage: ember-icu-cross-metadata
+.endif
 .for _icu_part in FULL RUNTIME DEVEL
 	${MAKE} ${WRKDIR:Q}/.icu-${_icu_part:tl}-plist \
 	    PLIST=${WRKDIR:Q}/.icu-${_icu_part:tl}-plist \
 	    PLIST_SRC=${ICU_${_icu_part}_PLIST:Q}
 .endfor
+.if defined(_EMBERBSD_ICU_SHARED_DEVEL)
+	${EMBERBSD_CROSS_BUILD_PYTHON} -B ${FILESDIR}/select-stage.py \
+	    --sdk-source ${EMBERBSD_SDK_SOURCE:Q} copy-devel \
+	    ${EMBERBSD_ICU_SHARED_STAGE:Q} ${DESTDIR:Q}${PREFIX:Q} \
+	    ${WRKDIR:Q}/.icu-full-plist ${WRKDIR:Q}/.icu-runtime-plist ${WRKDIR:Q}/.icu-devel-plist
+.elif defined(EMBERBSD_ICU_SHARED_STAGE)
+	${EMBERBSD_CROSS_BUILD_PYTHON} -B ${FILESDIR}/select-stage.py \
+	    --sdk-source ${EMBERBSD_SDK_SOURCE:Q} handoff-runtime \
+	    ${DESTDIR:Q}${PREFIX:Q} ${WRKDIR:Q}/.icu-full-plist \
+	    ${WRKDIR:Q}/.icu-runtime-plist ${WRKDIR:Q}/.icu-devel-plist ${EMBERBSD_ICU_SHARED_STAGE:Q}
+.else
 	${EMBERBSD_CROSS_BUILD_PYTHON} -B ${FILESDIR}/select-stage.py \
 	    --sdk-source ${EMBERBSD_SDK_SOURCE:Q} ${ICU_PACKAGE_PART:Q} \
 	    ${DESTDIR:Q}${PREFIX:Q} ${WRKDIR:Q}/.icu-full-plist \
 	    ${WRKDIR:Q}/.icu-runtime-plist ${WRKDIR:Q}/.icu-devel-plist
+.endif
 .endif
