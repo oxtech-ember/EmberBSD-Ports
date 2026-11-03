@@ -27,7 +27,6 @@ for category in source.iterdir():
             if category.name == 'x11' and package.name in ('qt6-qtbase','qt6-qtbase-devel'): continue
             if category.name == 'meta-pkgs' and package.name == 'qt6':
                 shutil.copytree(package, dest / 'qt6', symlinks=True)
-                shutil.copy2(recipes / 'meta-pkgs/qt6/Makefile.common', dest / 'qt6/Makefile.common')
             else: (dest / package.name).symlink_to(package)
     else: dest.symlink_to(category)
 for name in ('qt6-qtbase', 'qt6-qtbase-devel'):
