@@ -1,0 +1,13 @@
+# $NetBSD$
+
+BUILDLINK_TREE+=	kf6-kded
+
+.if !defined(KF6_KDED_BUILDLINK3_MK)
+KF6_KDED_BUILDLINK3_MK:=
+
+BUILDLINK_API_DEPENDS.kf6-kded+=	kf6-kded>=6.31.0
+BUILDLINK_PKGSRCDIR.kf6-kded?=	../../x11/kf6-kded
+
+.endif	# KF6_KDED_BUILDLINK3_MK
+
+BUILDLINK_TREE+=	-kf6-kded

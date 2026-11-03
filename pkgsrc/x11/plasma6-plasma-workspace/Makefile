@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.7 2026/09/06 10:23:33 markd Exp $
 
 DISTNAME=	plasma-workspace-${PLASMAVER}
-PKGREVISION=	5
+PKGREVISION=	6
 CATEGORIES=	x11
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -19,7 +19,6 @@ DEPENDS+=	plasma6-plasma-pa>=${PLASMAVER}:../../audio/plasma6-plasma-pa
 DEPENDS+=	plasma6-kwin>=${PLASMAVER}:../../x11/plasma6-kwin
 # The classic Wayland session starts Xwayland for ksmserver's xcb platform.
 DEPENDS+=	xwayland>=24.1.14nb1:../../wayland/xwayland
-DEPENDS+=	kf6-kded>=6.18.0:../../x11/kf6-kded
 DEPENDS+=	kio-extras>=25.08.3:../../devel/kio-extras
 
 USE_TOOLS+=	msgmerge pkg-config
@@ -114,6 +113,7 @@ CONF_FILES+=	${PREFIX}/share/examples/kde-xdg/plasmanotifyrc \
 .include "../../time/kf6-kholidays/buildlink3.mk"
 .include "../../time/plasma6-knighttime/buildlink3.mk"
 .include "../../x11/kf6-kglobalaccel/buildlink3.mk"
+.include "../../x11/kf6-kded/buildlink3.mk"
 .include "../../x11/kf6-kguiaddons/buildlink3.mk"
 .include "../../x11/kf6-kirigami/buildlink3.mk"
 .include "../../x11/kf6-ktextwidgets/buildlink3.mk"
