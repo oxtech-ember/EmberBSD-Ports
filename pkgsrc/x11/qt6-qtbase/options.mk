@@ -33,6 +33,10 @@ PKG_SUGGESTED_OPTIONS+=	cups
 .include "../../mk/bsd.options.mk"
 
 PLIST_VARS+=		cups dbus gtk3 opengl vulkan vkkhrdisplay
+PLIST_VARS+= nonoffscreen
+.if empty(PKG_OPTIONS:Mvulkan-offscreen)
+PLIST.nonoffscreen= yes
+.endif
 
 # Native GUI generators without XCB: select software-rendering and
 # headless-generators; do not select gtk3 or host-tools.

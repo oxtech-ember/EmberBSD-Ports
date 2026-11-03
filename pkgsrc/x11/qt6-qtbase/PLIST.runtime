@@ -71,7 +71,7 @@ qt6/plugins/imageformats/libqgif.so
 qt6/plugins/imageformats/libqico.so
 qt6/plugins/imageformats/libqjpeg.so
 qt6/plugins/networkinformation/libqglib.so
-qt6/plugins/platforminputcontexts/libcomposeplatforminputcontextplugin.so
+${PLIST.nonoffscreen}qt6/plugins/platforminputcontexts/libcomposeplatforminputcontextplugin.so
 ${PLIST.dbus}qt6/plugins/platforminputcontexts/libibusplatforminputcontextplugin.so
 ${PLIST.egl}qt6/plugins/platforms/libqeglfs.so
 qt6/plugins/platforms/libqminimal.so
