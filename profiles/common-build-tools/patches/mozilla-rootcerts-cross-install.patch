@@ -2,14 +2,25 @@
 # Origin: EmberBSD (AI-assisted), use the selected native generator for cross installs.
 --- a/security/mozilla-rootcerts-openssl/Makefile
 +++ b/security/mozilla-rootcerts-openssl/Makefile
-@@ -45,9 +45,15 @@
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.39 2026/08/03 12:32:12 wiz Exp $
+ 
+ PKGNAME=	mozilla-rootcerts-openssl-2.24
+-PKGREVISION=	2
++PKGREVISION=	3
+ CATEGORIES=	security
+ MASTER_SITES=	# empty
+ DISTFILES=	# empty
+@@ -45,9 +45,17 @@
  
  OPENSSLDIR=		${PLACE}/openssl/certs
  
 +.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-+# The host tool consumes its own certdata; select the target installation path.
++# Use the selected host generator with the target package certificate data.
++BUILD_DEPENDS+=	mozilla-rootcerts>=1.1.20261020:../../security/mozilla-rootcerts
 +SCRIPT=		${TOOLBASE}/sbin/mozilla-rootcerts
-+_CERT_SCRIPT_ENV=	${SETENV} SSLDIR=${PLACE:Q}/openssl
++_CERT_SCRIPT_ENV=	${SETENV} SSLDIR=${PLACE:Q}/openssl \
++			DATADIR=${CROSS_DESTDIR:Q}${LOCALBASE:Q}/share/mozilla-rootcerts
 +.endif
 +
  do-install:
