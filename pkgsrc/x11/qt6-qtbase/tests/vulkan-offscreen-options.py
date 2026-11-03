@@ -92,4 +92,17 @@ with tempfile.TemporaryDirectory(prefix='qt-vulkan-offscreen-', dir=args.work_pa
         data = run(fixture, ('PLIST.egl', 'PLIST.egldevice'))
         if (data['PLIST.egl'] == 'yes') != egl or (data['PLIST.egldevice'] == 'yes') != egl:
             raise SystemExit('Unexpected EGL/EGLDevice selection: ' + options)
-print('PASS: six option, three consumer and three EGL graph selections; no build')
+    # Makefile.common runs before the QtBase options resolver and must use
+    # the explicitly selected target option from the MAKECONF.
+    common = (root / 'Makefile.common').read_text()
+    start = common.index('.if !empty(PLATFORM_SUPPORTS_WAYLAND:Myes)')
+    end = common.index('# CMake validates imported include directories', start)
+    source = common[start:end]
+    for options, enabled in (('vulkan-offscreen', False), ('', True)):
+        fixture.write_text('PLATFORM_SUPPORTS_WAYLAND=yes\n'
+                           'EMBERBSD_WAYLAND_SCANNER=/bin/sh\n'
+                           'PKG_OPTIONS.qt6-qtbase=' + options + '\n' + source)
+        data = run(fixture, ('CMAKE_CONFIGURE_ARGS', 'PKG_FAIL_REASON'))
+        if ('-DFEATURE_wayland_client:BOOL=ON' in data['CMAKE_CONFIGURE_ARGS']) != enabled:
+            raise SystemExit('Unexpected common Wayland selection: ' + options)
+print('PASS: option, consumer, EGL and common Wayland graph selections; no build')
