@@ -87,6 +87,39 @@ list from that actual payload. Keep both notice files installed. Reconcile the
 recipe license expression and redistribution restrictions with the generated
 notices and selected dependency recipes before distribution.
 
+## Package installation mechanism
+
+`files/install-runtime.py` supplies the installation phase separately from the
+build. Its `install` action takes the producer's `--work`, the selected
+`--sdk-source`, `--target`, `--lock-root`, an existing package `--destdir`, and
+`--prefix /usr/pkg`. It reads only `WORK/out/dist.zip`, holds the work and
+DESTDIR contexts exclusively and the SDK context shared, and uses the same
+bounded extractor and payload checks as standalone staging. The producer API
+hashes the archive once through a stable open file. Standalone staging still
+requires its caller's exact `--archive-sha256`.
+
+The complete payload goes to `DESTDIR/usr/pkg/lib/electron44`, followed by
+`bin/electron -> ../lib/electron44/electron`. Both destinations must be new;
+existing or redirected paths are refused. No target code runs. If another
+writer creates the link name after payload publication, installation fails and
+preserves both that entry and the staged payload for diagnosis. The caller must
+recover its package-owned DESTDIR before retrying; this is not a live-root
+installer or a replacement operation.
+
+The `plist` action, with the same arguments, lists the installed regular files,
+links and empty directories for pkgsrc's `GENERATE_PLIST`. It refuses redirected
+parents and propagates directory-read errors. It does not substitute for the
+recipe's runtime dependency metadata, loader validation or package lifecycle
+checks. The ordinary package build must first complete the existing source and
+toolchain checks and the selected controller build; a ZIP's location alone is
+not evidence of that build.
+
+`probes/electron/tests/electron-package-install.py --sdk-source /absolute/EmberBSD-SDK`
+uses small synthetic ZIP/ELF inputs for payload preservation, relative links,
+PLIST, destination refusals, link races and read errors. It neither reads an
+existing production ZIP nor runs a compiler or target program. Ordinary recipe
+integration and target package acceptance remain separate work.
+
 ## BSD API boundaries
 
 BSD uses the shared desktop window-focus implementation and NativeTheme accent
