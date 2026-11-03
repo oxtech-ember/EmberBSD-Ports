@@ -925,7 +925,8 @@ arguments. The shell entry also requires explicit `PY`.
 Python uses its standard library for archives, hashes and copies.
 The subprocess PATH contains only the selected source-tool directories.
 
-A shared export can refresh one selected upstream package and explicitly named
+A shared export can refresh one selected upstream package or existing overlay
+recipe and explicitly named
 `file` outputs without rebuilding the full tree. Stop all consumers and hold
 exclusive use of the export for the entire operation:
 
@@ -938,8 +939,8 @@ python3 -B scripts/pkgsrc-shared-export.py /absolute/shared-export \
 The updater proves the previous input identity, replays the selected package's
 ordered overlays and checks its old contents before replacing changed files.
 It keeps unchanged bytes, modes and mtimes. A changed upstream pin, unrelated
-global input, opaque cross-package patch, selected overlay recipe or link in
-the selected package is refused; this interface is not a general full-export
+global input, opaque cross-package patch, changed recipe source identity or
+layout, or link in the selected recipe is refused; this interface is not a general full-export
 replacement. A private active-input cache retains only uncommitted source bytes
 needed by the current receipt. It does not retain historical versions.
 

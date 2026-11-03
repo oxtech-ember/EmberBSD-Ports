@@ -108,13 +108,18 @@ def _locked(directory, ports, git, sdk, patch, package, selected_files, ident, e
                 if row and row.get('kind') == 'file':
                     return row['sha256']
         return None
+    old_blobs = {}
     def old_file(name):
-        result = git_call('show', oldrev + ':' + name, check=False)
+        if name in old_blobs:
+            content = old_blobs[name]
+        else:
+            result = git_call('show', oldrev + ':' + name, check=False)
+            content = result.stdout if result.returncode == 0 else None
         expected = snapshot_hash(old_inputs, name)
         if expected is not None and (not isinstance(expected, str) or re.fullmatch('[0-9a-f]{64}', expected) is None):
             raise ValueError('invalid previous input digest: ' + name)
-        if result.returncode == 0 and (expected is None or hashlib.sha256(result.stdout).hexdigest() == expected):
-            return result.stdout
+        if content is not None and (expected is None or hashlib.sha256(content).hexdigest() == expected):
+            return content
         if expected is None:
             return None
         record = dirty_before.get(name)
@@ -203,12 +208,47 @@ def _locked(directory, ports, git, sdk, patch, package, selected_files, ident, e
                 raise ValueError('unsupported historical input type: ' + name)
         changes[name] = (before, mode, name in old_refs and before is not None)
     if receipt['version'] == 2:
-        old_snapshot = ident.reconstruct_legacy_payload(snapshot, changes, previous['export_inputs_sha256'])
+        legacy = copy.deepcopy(snapshot)
+        # Git has no empty directories. Restore historical parent rows for
+        # changed recipe files, then prove the complete v2 digest below.
+        for name in changes:
+            for tree, rows in legacy['trees'].items():
+                if not name.startswith(tree + '/'):
+                    continue
+                relative = Path(name[len(tree) + 1:])
+                for parent in relative.parents:
+                    if str(parent) == '.':
+                        continue
+                    path = tree + '/' + parent.as_posix()
+                    entry = git_call('ls-tree', oldrev, '--', path).stdout.split()
+                    if entry and entry[0] == b'040000':
+                        rows.setdefault(parent.as_posix(), {'kind': 'directory', 'mode': 0o755})
+                    elif parent.as_posix() in rows and rows[parent.as_posix()].get('kind') == 'directory':
+                        rows.pop(parent.as_posix())
+        old_snapshot = ident.reconstruct_legacy_payload(legacy, changes, previous['export_inputs_sha256'])
     else:
+        # The v3 snapshot is already bound to the recorded aggregate above.
         old_snapshot = receipt['inputs']
-        rebuilt = ident.reconstruct_legacy_payload(snapshot, changes, previous['export_inputs_sha256'])
-        if rebuilt != old_snapshot:
-            raise ValueError('previous input snapshot differs')
+    selected_recipes = [(name, source) for name, source in exp.configuration(ports)[0] if name == package]
+    if len(selected_recipes) > 1:
+        raise ValueError('multiple selected recipe sources')
+    overlay = (selected_recipes[0][1].relative_to(ports).as_posix() if selected_recipes else None)
+    if overlay is not None and (overlay not in old_snapshot['trees'] or overlay not in snapshot['trees']):
+        raise ValueError('selected recipe source layout changed')
+    if overlay is None and 'pkgsrc/' + package in old_snapshot['trees']:
+        raise ValueError('selected recipe source layout changed')
+    for rows in ([old_snapshot['trees'][overlay], snapshot['trees'][overlay]] if overlay else []):
+        if any(row['kind'] not in ('file', 'directory') for row in rows.values()):
+            raise ValueError('selected recipe contains unsupported links')
+    for tree in set(old_snapshot['trees']) | set(snapshot['trees']):
+        before, after = old_snapshot['trees'].get(tree, {}), snapshot['trees'].get(tree, {})
+        for name in set(before) | set(after):
+            old_row, new_row = before.get(name), after.get(name)
+            if old_row == new_row or (old_row or new_row).get('kind') != 'directory':
+                continue
+            changed_directory = tree + '/' + name
+            if overlay is None or not changed_directory.startswith(overlay + '/'):
+                raise ValueError('directory input changed outside selected recipe: ' + changed_directory)
     def file_map(rows):
         result = {}
         for row in rows:
@@ -227,6 +267,23 @@ def _locked(directory, ports, git, sdk, patch, package, selected_files, ident, e
         raise ValueError('selected file is not a declared export output')
     selected_sources = {mapping[name] for mapping in (old_files, new_files)
                         for name in selected_files if name in mapping}
+    selected_sources.update(source for mapping in (old_files, new_files)
+                            for name, source in mapping.items() if name.startswith(package + '/'))
+    recipe_patch_sources = {row[1] for rows in (old_records, new_records) for row in rows
+                            if row[0] == 'recipe-patch' and len(row) == 4 and row[2] == package}
+    for rows in (old_records, new_records):
+        for row in rows:
+            if row[1] in changed & recipe_patch_sources and not (row[0] == 'recipe-patch' and row[2] == package):
+                raise ValueError('recipe patch source has other export consumers')
+    for source in changed & selected_sources:
+        for mapping in (old_files, new_files):
+            for output, owner in mapping.items():
+                if owner == source and output not in selected_files and not output.startswith(package + '/'):
+                    raise ValueError('selected file source has another export consumer: ' + source)
+        for rows in (old_records, new_records):
+            for row in rows:
+                if len(row) > 1 and row[1] == source and row[0] != 'file':
+                    raise ValueError('selected file source has another export consumer: ' + source)
     def read_source(name, old):
         if old and name in changed:
             data = old_file(name)
@@ -253,19 +310,19 @@ def _locked(directory, ports, git, sdk, patch, package, selected_files, ident, e
                 raise ValueError('changed patch extends outside selected package: ' + name)
         scoped_patches.add(name)
     for name in changes:
-        if name == 'pkgsrc/export.conf' or name in selected_sources or name in scoped_patches:
+        if (name == 'pkgsrc/export.conf' or name in selected_sources or
+                name in scoped_patches or name in recipe_patch_sources):
             continue
-        if name.startswith('pkgsrc/' + package + '/'):
+        if (overlay is not None and name.startswith(overlay + '/')) or name.startswith('pkgsrc/' + package + '/'):
             continue
         raise ValueError('changed export input outside selected outputs: ' + name)
     def unaffected(rows):
         return [row for row in rows if not (row[0] in ('patch', 'git-apply') and row[1] in scoped_patches)
-                and not (row[0] == 'file' and len(row) == 3 and row[2] in selected_files)]
+                and not (row[0] == 'recipe-patch' and len(row) == 4 and row[2] == package)
+                and not (row[0] == 'file' and len(row) == 3 and
+                         (row[2] in selected_files or row[2].startswith(package + '/')))]
     if unaffected(old_records) != unaffected(new_records):
         raise ValueError('export configuration changed outside selected outputs')
-    for _, source in exp.configuration(ports)[0]:
-        if source.is_relative_to(ports / 'pkgsrc' / package):
-            raise ValueError('overlay recipe update is not supported by this scoped exporter')
     from emberbsd_sdk import inventory
     with tempfile.TemporaryDirectory(prefix='.pkgsrc-update-stage-', dir=directory.parent) as temp:
         temp = Path(temp)
@@ -273,16 +330,96 @@ def _locked(directory, ports, git, sdk, patch, package, selected_files, ident, e
             stage = temp / label
             stage.mkdir()
             archive = temp / (label + '.tar')
-            with archive.open('wb') as stream:
-                subprocess.run([git, '-C', str(ports / 'upstream/pkgsrc'), 'archive',
-                                '--format=tar', previous['upstream'], package], check=True, stdout=stream)
-            exp.extract_archive(archive, stage)
-            if not (stage / package / 'Makefile').is_file():
+            upstream = subprocess.run([git, '-C', str(ports / 'upstream/pkgsrc'), 'cat-file', '-e',
+                                       previous['upstream'] + ':' + package + '/Makefile'],
+                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+            if upstream:
+                with archive.open('wb') as stream:
+                    subprocess.run([git, '-C', str(ports / 'upstream/pkgsrc'), 'archive',
+                                    '--format=tar', previous['upstream'], package], check=True, stdout=stream)
+                exp.extract_archive(archive, stage)
+            if overlay is not None:
+                replaces = old_file('pkgsrc/replaces') if old else (
+                    (ports / 'pkgsrc/replaces').read_bytes() if (ports / 'pkgsrc/replaces').is_file() else b'')
+                replacements = {line.strip() for line in (replaces or b'').decode('utf-8').splitlines()
+                                if line.strip() and not line.startswith('#')}
+                if upstream != (package in replacements):
+                    raise ValueError('selected recipe replacement conflicts with pkgsrc/replaces')
+                target = stage / package
+                if target.exists():
+                    shutil.rmtree(target)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if old:
+                    target.mkdir()
+                    source_rows = old_snapshot['trees'][overlay]
+                    names = []
+                    for relative, entry in source_rows.items():
+                        exp.relative_parts(relative, 'historical recipe path')
+                        if entry['kind'] == 'file':
+                            names.append(overlay + '/' + relative)
+                    if names:
+                        request = b''.join((oldrev + ':' + name + '\n').encode('utf-8') for name in names)
+                        batch = subprocess.run([git, '-C', str(ports), 'cat-file', '--batch'],
+                                               input=request, capture_output=True, check=True).stdout
+                        offset = 0
+                        for name in names:
+                            end = batch.find(b'\n', offset)
+                            if end < 0:
+                                raise ValueError('truncated historical recipe Git response')
+                            header = batch[offset:end].split()
+                            offset = end + 1
+                            if header and header[-1] == b'missing':
+                                old_blobs[name] = None
+                                continue
+                            if len(header) != 3 or header[1] != b'blob' or not header[2].isdigit():
+                                raise ValueError('invalid historical recipe Git response')
+                            size = int(header[2])
+                            if offset + size >= len(batch) or batch[offset + size:offset + size + 1] != b'\n':
+                                raise ValueError('truncated historical recipe Git blob')
+                            old_blobs[name] = batch[offset:offset + size]
+                            offset += size + 1
+                        if offset != len(batch):
+                            raise ValueError('unexpected historical recipe Git response')
+                    for relative, entry in sorted(source_rows.items(), key=lambda item: (item[0].count('/'), item[0])):
+                        exp.relative_parts(relative, 'historical recipe path')
+                        output = target / relative
+                        if entry['kind'] == 'directory':
+                            output.mkdir()
+                            output.chmod(entry['mode'])
+                        elif entry['kind'] == 'file':
+                            data = old_file(overlay + '/' + relative)
+                            if data is None or hashlib.sha256(data).hexdigest() != entry['sha256']:
+                                raise ValueError('historical recipe file differs: ' + relative)
+                            output.write_bytes(data)
+                            output.chmod(entry['mode'] & ~0o022)
+                else:
+                    shutil.copytree(ports / overlay, target, copy_function=exp.copy_file)
+            elif not upstream:
                 raise ValueError('selected upstream package is missing')
             for row in rows:
+                if row[0] == 'recipe-patch' and len(row) == 4 and row[2] == package:
+                    name = exp.relative_parts(row[3], 'recipe patch name')
+                    if len(name) != 1 or not name[0].startswith('patch-'):
+                        raise ValueError('invalid recipe patch name')
+                    dest = exp.ensure_destination_directory(stage, package + '/patches') / name[0]
+                    if os.path.lexists(dest):
+                        raise ValueError('recipe patch collision')
+                    content = read_source(row[1], old)
+                    dest.write_bytes(content)
+                    source_mode = dirty_before.get(row[1], {}).get('mode') if old else None
+                    if source_mode is None and old:
+                        mode_row = git_call('ls-tree', oldrev, '--', row[1]).stdout.split()
+                        source_mode = 0o755 if mode_row and mode_row[0] == b'100755' else 0o644
+                    if source_mode is None:
+                        source_mode = stat.S_IMODE((ports / row[1]).stat().st_mode)
+                    dest.chmod(source_mode & ~0o022)
+                    distinfo = exp.destination_parent(stage, package + '/distinfo')
+                    if distinfo.is_symlink() or not distinfo.is_file():
+                        raise ValueError('recipe distinfo is not a regular file')
+                    with distinfo.open('a', encoding='utf-8') as stream:
+                        stream.write(f'SHA1 ({name[0]}) = {exp.patch_sha1(dest)}\n')
+                    continue
                 if row[0] not in ('patch', 'git-apply'):
-                    if row[0] in ('recipe', 'recipe-patch') and len(row) > 2 and row[2] == package:
-                        raise ValueError('selected recipe overlay is unsupported')
                     continue
                 data = read_source(row[1], old)
                 paths = ident._patch_targets_bytes(data)
@@ -307,6 +444,22 @@ def _locked(directory, ports, git, sdk, patch, package, selected_files, ident, e
                     if matching:
                         subprocess.run([patch, '-f', '-E', '-d', str(stage), '-p1', '-F', '0', '-V', 'none'],
                                        input=b''.join(matching), check=True, stdout=subprocess.DEVNULL)
+            for name, source in file_map(rows).items():
+                if not name.startswith(package + '/'):
+                    continue
+                dest = exp.destination_parent(stage, name)
+                if os.path.lexists(dest):
+                    raise ValueError('exported file collision: ' + name)
+                exp.ensure_destination_directory(stage, name.rpartition('/')[0])
+                dest.write_bytes(read_source(source, old))
+                source_mode = dirty_before.get(source, {}).get('mode') if old else None
+                if source_mode is None and old:
+                    mode_row = git_call('ls-tree', oldrev, '--', source).stdout.split()
+                    source_mode = 0o755 if mode_row and mode_row[0] == b'100755' else 0o644
+                if source_mode is None:
+                    source_mode = stat.S_IMODE((ports / source).stat().st_mode)
+                dest.chmod(source_mode & ~0o022)
+            exp.check_recipe(stage / package, package, stage)
             return stage / package
         old_pkg = prepare('old', old_records, True)
         new_pkg = prepare('new', new_records, False)

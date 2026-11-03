@@ -199,6 +199,81 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
         cache = self.export / '.pkgsrc-update-inputs'
         self.assertFalse(cache.exists() and any(cache.iterdir()))
 
+    def test_existing_overlay_recipe_supports_repeated_dirty_updates(self):
+        recipe = self.ports / 'pkgsrc/cat/pkg'
+        write(self.ports, 'pkgsrc/replaces', 'cat/pkg\n')
+        write(self.ports, 'pkgsrc/cat/pkg/Makefile', 'PKGNAME=overlay-1\n')
+        old_patch = b'old patch payload\n'
+        kept_patch = b'kept patch payload\n'
+        (recipe / 'patches').mkdir()
+        (recipe / 'patches/patch-old').write_bytes(old_patch)
+        (recipe / 'patches/patch-kept').write_bytes(kept_patch)
+        old_line = 'SHA1 (patch-old) = ' + hashlib.sha1(old_patch).hexdigest() + '\n'
+        kept_line = 'SHA1 (patch-kept) = ' + hashlib.sha1(kept_patch).hexdigest() + '\n'
+        (recipe / 'distinfo').write_text(old_line + kept_line)
+        write(self.ports, 'pkgsrc/cat/pkg/files/unchanged', 'overlay-unchanged\n')
+        write(self.ports, 'resources/extra-patch', 'extra patch payload\n')
+        write(self.ports, 'resources/extra-file', 'old extra file\n')
+        conf = self.ports / 'pkgsrc/export.conf'
+        conf.write_text(conf.read_text() + 'recipe-patch\tresources/extra-patch\tcat/pkg\tpatch-extra\n' +
+                        'file\tresources/extra-file\tcat/pkg/files/extra\n' +
+                        'file\tresources/extra-patch\tmisc/shared-patch\n')
+        commit(self.ports, 'existing overlay')
+        self.export = self.work / 'overlay-shared'
+        self.command[3] = self.export
+        result = run(self.command, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.tree = self.export / 'pkgsrc'
+        self.receipt = self.export / 'pkgsrc-export.json'
+        unchanged = self.tree / 'cat/pkg/files/unchanged'
+        before = (unchanged.stat().st_ino, unchanged.stat().st_mtime_ns)
+        (recipe / 'Makefile').write_text('PKGNAME=overlay-2\n')
+        (recipe / 'patches/patch-old').unlink()
+        (recipe / 'distinfo').write_text(kept_line)
+        write(self.ports, 'resources/extra-file', 'new extra file\n')
+        first = self.update()
+        self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+        self.assertEqual((self.tree / 'cat/pkg/Makefile').read_text(), 'PKGNAME=overlay-2\n')
+        self.assertFalse((self.tree / 'cat/pkg/patches/patch-old').exists())
+        self.assertEqual((self.tree / 'cat/pkg/patches/patch-extra').read_text(), 'extra patch payload\n')
+        self.assertEqual((self.tree / 'cat/pkg/files/extra').read_text(), 'new extra file\n')
+        self.assertEqual((unchanged.stat().st_ino, unchanged.stat().st_mtime_ns), before)
+        (recipe / 'Makefile').write_text('PKGNAME=overlay-3\n')
+        (recipe / 'patches/patch-kept').unlink()
+        (recipe / 'patches').rmdir()
+        (recipe / 'distinfo').write_text('')
+        second = self.update()
+        self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
+        self.assertEqual((self.tree / 'cat/pkg/Makefile').read_text(), 'PKGNAME=overlay-3\n')
+        self.assertFalse((self.tree / 'cat/pkg/patches/patch-kept').exists())
+        self.assertTrue((self.tree / 'cat/pkg/patches/patch-extra').is_file())
+        self.assertEqual((unchanged.stat().st_ino, unchanged.stat().st_mtime_ns), before)
+        receipt = self.receipt.read_bytes()
+        write(self.ports, 'resources/extra-patch', 'changed shared patch\n')
+        rejected = self.update()
+        self.assertNotEqual(rejected.returncode, 0)
+        self.assertIn('recipe patch source has other export consumers', rejected.stderr)
+        self.assertEqual(self.receipt.read_bytes(), receipt)
+        self.assertEqual((self.tree / 'misc/shared-patch').read_text(), 'extra patch payload\n')
+
+    def test_shared_file_source_requires_all_consumers(self):
+        conf = self.ports / 'pkgsrc/export.conf'
+        conf.write_text(conf.read_text() + 'file\tresources/owner.txt\tcat/pkg/files/other-owner\n')
+        commit(self.ports, 'shared file source')
+        self.export = self.work / 'shared-source'
+        self.command[3] = self.export
+        result = run(self.command, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.tree = self.export / 'pkgsrc'
+        self.receipt = self.export / 'pkgsrc-export.json'
+        before = self.receipt.read_bytes()
+        write(self.ports, 'resources/owner.txt', 'changed\n')
+        result = run(self.command + ['--update', '--package', 'cat/pkg'], self.ports, check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('another export consumer', result.stderr)
+        self.assertEqual(self.receipt.read_bytes(), before)
+        self.assertEqual((self.tree / 'misc/owner.txt').read_text(), 'old-owner\n')
+
     def test_dirty_package_a_then_dirty_package_b(self):
         self.newer_inputs()
         run([GIT, 'reset', '--mixed', 'HEAD^'], self.ports)
