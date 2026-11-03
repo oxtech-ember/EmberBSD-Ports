@@ -20,7 +20,7 @@ use File::Spec;
 use POSIX qw(floor);
 use Time::HiRes qw(time);
 die "XS modules failed" unless floor(1.9) == 1 && time() > 0 && length(getcwd());
-my $shell = qx{printf '%s' "\$KSH_VERSION"};
+my $shell = qx{print -r -- "\$KSH_VERSION"};
 die "runtime shell failed" if $?;
 print JSON::PP->new->encode({inc => \@INC, shell => $shell,
     config => {map { $_ => $Config{$_} } qw(prefixexp archlibexp privlibexp scriptdir targetsh useshrplib)}});
@@ -55,7 +55,7 @@ def main():
     for key in ('prefixexp', 'archlibexp', 'privlibexp', 'scriptdir', 'targetsh'):
         if not Path(data['config'][key]).resolve().is_relative_to(prefix):
             raise SystemExit('Perl config path escapes selected prefix: ' + key)
-    expected = subprocess.check_output([str(prefix / 'bin/mksh'), '-c', "printf '%s' \"$KSH_VERSION\""],
+    expected = subprocess.check_output([str(prefix / 'bin/mksh'), '-c', "print -r -- \"$KSH_VERSION\""],
                                        env=env, text=True)
     if not expected or data['shell'] != expected or data['config']['useshrplib'] != 'true':
         raise SystemExit('Perl runtime shell or shared library contract differs')
