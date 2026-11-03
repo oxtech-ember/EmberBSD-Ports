@@ -25,7 +25,7 @@ if not abi.isdecimal():
     raise ValueError('Node helper did not return a decimal ABI')
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp)
-    owner = Path(__file__).resolve().parents[1] / 'electron44/files/build-electron.py'
+    owner = Path(__file__).resolve().parents[1] / '../../pkgsrc/devel/electron44/files/build-electron.py'
     spec = importlib.util.spec_from_file_location('electron_build', owner)
     build = importlib.util.module_from_spec(spec); spec.loader.exec_module(build)
     class Native:

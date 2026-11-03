@@ -40,7 +40,7 @@ require(protobuf.is_dir(), '--protobuf-source must be a directory')
 require(protoc.is_file() and os.access(protoc, os.X_OK), '--protoc must be executable')
 
 owner = Path(__file__).resolve().parents[1]
-provider = owner / 'electron44/files/protobuf-source-view.py'
+provider = owner / '../../pkgsrc/devel/electron44/files/protobuf-source-view.py'
 spec = importlib.util.spec_from_file_location('protobuf_source_view', provider)
 view = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(view)

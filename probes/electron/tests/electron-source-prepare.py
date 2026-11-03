@@ -216,7 +216,7 @@ if __name__ == "__main__":
     parser.add_argument("--electron-source", type=Path,
                         help="also exercise the unmodified production pin and recipe patches")
     options = parser.parse_args()
-    owner = Path(__file__).resolve().parents[1] / "electron44"
+    owner = Path(__file__).resolve().parents[1] / "../../pkgsrc/devel/electron44"
     spec = importlib.util.spec_from_file_location("prepare_sources", owner / "files/prepare-sources.py")
     preparer = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(preparer)

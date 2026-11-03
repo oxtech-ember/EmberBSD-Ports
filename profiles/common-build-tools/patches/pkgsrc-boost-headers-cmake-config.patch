@@ -47,16 +47,24 @@
  lib/cmake/boost_headers-${PKGVERSION}/boost_headers-config.cmake
 --- a/devel/boost-libs/Makefile
 +++ b/devel/boost-libs/Makefile
-@@ -1,7 +1,7 @@
+@@ -1,12 +1,15 @@
  # $NetBSD: Makefile,v 1.127 2026/05/15 09:13:49 adam Exp $
  
  BOOST_PACKAGE=		libs
 -PKGREVISION=		2
-+PKGREVISION=		3
++PKGREVISION=		4
  BOOST_COMMENT=		(binary libraries)
  BOOST_CONFIG=		installed
  BOOST_INSTALL_LIBS=	yes
-@@ -77,6 +77,8 @@
+ 
++# Older headers lack the common Boost CMake metadata.
++CONFLICTS+=	boost-headers<1.92.0nb2
++
+ .include "../../meta-pkgs/boost/Makefile.common"
+ 
+ INSTALLATION_DIRS+=	lib
+ 
+@@ -77,6 +80,8 @@
  
  # These are already in boost-headers
  post-install:
@@ -75,3 +83,14 @@
  lib/cmake/boost_atomic-${PKGVERSION}/boost_atomic-config-version.cmake
  lib/cmake/boost_atomic-${PKGVERSION}/boost_atomic-config.cmake
  lib/cmake/boost_atomic-${PKGVERSION}/libboost_atomic-variant-shared.cmake
+--- a/devel/boost-headers/buildlink3.mk
++++ b/devel/boost-headers/buildlink3.mk
+@@ -7,7 +7,7 @@
+ 
+ # Use a dependency pattern that guarantees the proper ABI.
+ BUILDLINK_DEPMETHOD.boost-headers?=	build
+-BUILDLINK_API_DEPENDS.boost-headers+=	boost-headers-1.92.*
++BUILDLINK_API_DEPENDS.boost-headers+=	boost-headers>=1.92.0nb2<1.93
+ BUILDLINK_PKGSRCDIR.boost-headers?=	../../devel/boost-headers
+ 
+ PTHREAD_OPTS+=		require

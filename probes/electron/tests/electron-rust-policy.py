@@ -35,7 +35,7 @@ def main():
         assert (result.returncode == 0 if error is None else result.returncode != 0 and error in output), label + ': ' + output
         return result.stdout
     owner = Path(__file__).resolve().parents[1]
-    spec = importlib.util.spec_from_file_location('rust_policy', owner / 'electron44/files/rust-policy.py')
+    spec = importlib.util.spec_from_file_location('rust_policy', owner / '../../pkgsrc/devel/electron44/files/rust-policy.py')
     policy = importlib.util.module_from_spec(spec); spec.loader.exec_module(policy)
     version = run('version', [args.rustc, '-vV'])
     scoped, banner = policy.apply(env, version)

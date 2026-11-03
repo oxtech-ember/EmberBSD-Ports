@@ -28,6 +28,23 @@
 +BLAKE2s (dkjson-2.11.tar.gz) = 79d7d88f3de92fa5aa4eac55531743f063b0cd1f17620c18df73c35e81bcbac7
 +SHA512 (dkjson-2.11.tar.gz) = 8aab050902d115858a1cbf29e037869e1df42a4e578ab4d08788d0791f9f1db1e76624736511ae9a5caa11ecbffe3327b14d1f99de899679869c8d773643bf61
 +Size (dkjson-2.11.tar.gz) = 18550 bytes
+--- a/security/wolfssl/Makefile
++++ b/security/wolfssl/Makefile
+@@ -15,8 +15,13 @@
+ PKG_OPTIONS_VAR=	PKG_OPTIONS.wolfssl
+-PKG_SUPPORTED_OPTIONS=	shared tests
++PKG_SUPPORTED_OPTIONS=	shared tests smallcache
+ PKG_SUGGESTED_OPTIONS=	shared tests
+ .include "../../mk/bsd.options.mk"
+ 
++# Keep the session cache bounded for embedded clients when requested.
++.if !empty(PKG_OPTIONS:Msmallcache)
++CONFIGURE_ARGS+=	--enable-smallcache
++.endif
++
+ GNU_CONFIGURE=		yes
+ CONFIGURE_ARGS+=	--disable-dependency-tracking
+ # The upstream examples and crypt tests are not installed by this package.
 --- a/www/curl/Makefile
 +++ b/www/curl/Makefile
 @@ -3,9 +3,7 @@
@@ -66,3 +83,11 @@
  .else
  CONFIGURE_ARGS+=	--without-ssl
  .endif
+--- a/mk/defaults/options.description
++++ b/mk/defaults/options.description
+@@ -910,4 +910,5 @@
+ small-net		Tune for a smaller networks.
++smallcache		Use a smaller TLS session cache.
+ smime			Enable S/MIME support.
+ smokeping-speedycgi	Enable SpeedyCGI.
+ smtputf8		Enable use of SMTPUTF8 SMTP protocol extension.

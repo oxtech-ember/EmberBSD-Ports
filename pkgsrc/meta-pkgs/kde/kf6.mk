@@ -74,7 +74,7 @@
 # used by x11/kf6-kxmlgui/Makefile
 # used by x11/kf6-qqc2-desktop-style/Makefile
 
-KF6VER=		6.31.0
+.include "../../meta-pkgs/kde/kf6-version.mk"
 
 .include "../../mk/bsd.prefs.mk"
 
@@ -166,6 +166,11 @@ CATEGORIES+=	kde
 MASTER_SITES=	${MASTER_SITE_KDE:=frameworks/${KF6VER:R}/}
 EXTRACT_SUFX=	.tar.xz
 PKGNAME?=	kf6-${DISTNAME}
+
+# Test and benchmark executables are opt-in for ordinary KF6 package builds.
+# Set KF6_BUILD_TESTING=ON to include them.
+KF6_BUILD_TESTING?= OFF
+CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTING:BOOL=${KF6_BUILD_TESTING}
 
 BUILDLINK_API_DEPENDS.extra-cmake-modules+=	extra-cmake-modules>=${KF6VER}
 .include "../../devel/extra-cmake-modules/buildlink3.mk"

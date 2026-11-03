@@ -17,7 +17,7 @@ parser.add_argument('--target', required=True, help='native compiler target trip
 args = parser.parse_args()
 assert args.host_prefix.is_absolute()
 owner = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('view', owner / 'electron44/files/protobuf-source-view.py')
+spec = importlib.util.spec_from_file_location('view', owner / '../../pkgsrc/devel/electron44/files/protobuf-source-view.py')
 view = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(view)
 
@@ -119,7 +119,7 @@ with tempfile.TemporaryDirectory(prefix='electron-source-refresh-') as temporary
     # The controller exposes refresh only through reconfigure; normal builds
     # continue verifying their source view instead of silently replacing it.
     spec = importlib.util.spec_from_file_location(
-        'controller', owner / 'electron44/files/build-electron.py')
+        'controller', owner / '../../pkgsrc/devel/electron44/files/build-electron.py')
     controller = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(controller)
     options = argparse.Namespace(work=work, workspace=root, host_prefix=args.host_prefix,

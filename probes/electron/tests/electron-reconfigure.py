@@ -20,7 +20,7 @@ p.add_argument('--host-prefix', type=Path, required=True)
 p.add_argument('--sdk-source', type=Path, required=True)
 args = p.parse_args(); host = args.host_prefix
 owner = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('build', owner / 'electron44/files/build-electron.py')
+spec = importlib.util.spec_from_file_location('build', owner / '../../pkgsrc/devel/electron44/files/build-electron.py')
 b = importlib.util.module_from_spec(spec); spec.loader.exec_module(b)
 
 class LockStub:
@@ -32,11 +32,11 @@ def controller_cli(extra):
     paths = {name: Path('/tmp/electron-cli-' + name) for name in (
         'workspace', 'ports-source', 'sdk-source', 'host-prefix', 'compiler-prefix',
         'sysroot', 'work', 'git', 'lock-root', 'link-context')}
-    argv = [str(owner / 'electron44/files/build-electron.py'), 'build']
+    argv = [str(owner / '../../pkgsrc/devel/electron44/files/build-electron.py'), 'build']
     for name, path in paths.items(): argv.extend(('--' + name, str(path)))
     argv.extend(('--target', 'amd64', *extra))
     with patch.object(sys, 'argv', argv), \
-         patch.object(b, 'load_sdk', return_value={'process': LockStub}), \
+         patch.object(b, 'load_sdk', return_value={'process': LockStub, 'cpu_capacity': SimpleNamespace(resolve_jobs=lambda value: value if value is not None else 1)}), \
          patch.object(b, 'build', side_effect=lambda options: selected.append(options)):
         b.main()
 
@@ -45,7 +45,7 @@ assert selected[-1].keep_going == 1, 'CLI default must preserve Ninja -k 1 behav
 controller_cli(['--keep-going', '0'])
 assert selected[-1].keep_going == 0, 'CLI must accept Ninja keep-going 0'
 selected.clear(); sdk_loads = []
-with patch.object(sys, 'argv', [str(owner / 'electron44/files/build-electron.py'), 'build',
+with patch.object(sys, 'argv', [str(owner / '../../pkgsrc/devel/electron44/files/build-electron.py'), 'build',
         '--workspace', '/tmp/w', '--ports-source', '/tmp/p', '--sdk-source', '/tmp/s',
         '--host-prefix', '/tmp/h', '--compiler-prefix', '/tmp/c', '--sysroot', '/tmp/t',
         '--work', '/tmp/o', '--git', '/tmp/g', '--lock-root', '/tmp/l', '--link-context', '/tmp/k',

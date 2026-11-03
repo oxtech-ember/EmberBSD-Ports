@@ -210,7 +210,7 @@ if __name__ == '__main__':
     parser.add_argument('--sdk-source', required=True)
     args, remaining = parser.parse_known_args()
     here = Path(__file__).resolve().parents[1]
-    source = here / 'electron44/files/stage-runtime.py'
+    source = here / '../../pkgsrc/devel/electron44/files/stage-runtime.py'
     spec = importlib.util.spec_from_file_location('electron_runtime_stage', source)
     controller = importlib.util.module_from_spec(spec)
     exec(compile(source.read_bytes(), str(source), 'exec'), controller.__dict__)

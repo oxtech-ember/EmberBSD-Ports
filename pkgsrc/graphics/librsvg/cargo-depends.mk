@@ -1,4 +1,5 @@
-# Generated from upstream librsvg 2.63.4 Cargo.lock with shared Cargo patches.
+# $NetBSD$
+
 CARGO_CRATE_DEPENDS+=	adler2-2.0.1
 CARGO_CRATE_DEPENDS+=	aes-0.9.3
 CARGO_CRATE_DEPENDS+=	ahash-0.8.12
@@ -253,14 +254,14 @@ CARGO_CRATE_DEPENDS+=	rusty-fork-0.3.1
 CARGO_CRATE_DEPENDS+=	safe_arch-1.2.0
 CARGO_CRATE_DEPENDS+=	same-file-1.0.6
 CARGO_CRATE_DEPENDS+=	scopeguard-1.2.0
-CARGO_CRATE_DEPENDS+=	selectors-0.41.0
+CARGO_CRATE_DEPENDS+=	selectors-0.42.0
 CARGO_CRATE_DEPENDS+=	semver-1.0.28
 CARGO_CRATE_DEPENDS+=	serde-1.0.229
 CARGO_CRATE_DEPENDS+=	serde_core-1.0.229
 CARGO_CRATE_DEPENDS+=	serde_derive-1.0.229
 CARGO_CRATE_DEPENDS+=	serde_json-1.0.154
 CARGO_CRATE_DEPENDS+=	serde_spanned-1.1.2
-CARGO_CRATE_DEPENDS+=	servo_arc-0.5.0
+CARGO_CRATE_DEPENDS+=	servo_arc-0.6.0
 CARGO_CRATE_DEPENDS+=	sha2-0.11.1
 CARGO_CRATE_DEPENDS+=	shell-words-1.1.1
 CARGO_CRATE_DEPENDS+=	shlex-2.0.1

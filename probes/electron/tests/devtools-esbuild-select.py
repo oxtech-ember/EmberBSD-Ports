@@ -7,7 +7,7 @@ from pathlib import Path
 import tempfile
 import sys
 
-file=Path(__file__).resolve().parents[1]/'electron44/files/node-providers.py'
+file=Path(__file__).resolve().parents[1]/'../../pkgsrc/devel/electron44/files/node-providers.py'
 spec=importlib.util.spec_from_file_location('providers',file); module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 with tempfile.TemporaryDirectory(prefix='electron esbuild ') as tmp:
     prefix=Path(tmp);mods=prefix/'lib/node_modules';bin=prefix/'bin';bin.mkdir()

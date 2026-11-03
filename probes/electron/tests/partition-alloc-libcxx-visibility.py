@@ -5,7 +5,7 @@ match previous declaration' in allocator_shim on macOS hosts."""
 import json, pathlib, subprocess, sys, tempfile
 root = pathlib.Path(__file__).resolve().parents[1]
 name = 'partition-alloc-system-libcxx-new-delete-visibility.patch'
-series = json.loads((root/'electron44/files/source-series.json').read_text())
+series = json.loads((root/'../../pkgsrc/devel/electron44/files/source-series.json').read_text())
 paths = [e.get('path') for v in series.values() if isinstance(v, list) for e in v if isinstance(e, dict)]
 assert name in paths, 'patch missing from source-series.json'
 rel = 'base/allocator/partition_allocator/src/partition_alloc/BUILD.gn'

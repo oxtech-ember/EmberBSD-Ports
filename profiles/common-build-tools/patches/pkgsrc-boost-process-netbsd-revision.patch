@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
 # Rebuild boost-headers with the NetBSD wait status fix in
-# boost/process/v2/exit_code.hpp, and build boost-libs against it.
+# boost/process/v2/exit_code.hpp; the shared buildlink sets the minimum.
 
 --- a/devel/boost-headers/Makefile
 +++ b/devel/boost-headers/Makefile
@@ -13,13 +13,3 @@
  BOOST_COMMENT=		(build-time headers)
  BOOST_CONFIG=		generate
  
---- a/devel/boost-libs/Makefile
-+++ b/devel/boost-libs/Makefile
-@@ -93,3 +93,7 @@
- .include "../../converters/libiconv/buildlink3.mk"
-+.if ${OPSYS} == "NetBSD"
-+# boost/process/v2/exit_code.hpp needs the NetBSD header fix from nb1.
-+BUILDLINK_API_DEPENDS.boost-headers+=	boost-headers>=1.92.0nb1
-+.endif
- .include "../../devel/boost-headers/buildlink3.mk"
- .include "../../devel/zlib/buildlink3.mk"

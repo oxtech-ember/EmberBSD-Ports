@@ -258,36 +258,40 @@ Origin: EmberBSD (AI-assisted).
  
      fn default_namespace(&self) -> Option<<Self::Impl as SelectorImpl>::NamespaceUrl> {
          Some(ns!(svg))
-@@ -245,23 +260,22 @@
+@@ -245,38 +260,41 @@
      }
      fn parse_non_ts_pseudo_class(
          &self,
 -        location: SourceLocation,
-         name: CowRcStr<'i>,
+-        name: CowRcStr<'i>,
 -    ) -> Result<NonTSPseudoClass, cssparser::ParseError<'i, Self::Error>> {
+-        match &*name {
++        name: &str,
 +    ) -> Result<NonTSPseudoClass, cssparser::ParseError<Self::Error>> {
-         match &*name {
++        match name {
              "link" => Ok(NonTSPseudoClass::Link),
              "visited" => Ok(NonTSPseudoClass::Visited),
 -            _ => Err(location.new_custom_error(
 -                selectors::parser::SelectorParseErrorKind::UnsupportedPseudoClassOrElement(name),
 +            _ => Err(cssparser::ParseError::custom(
-+                ParseErrorKind::UnsupportedPseudoClassOrElement(name.as_ref().to_owned()),
++                ParseErrorKind::UnsupportedPseudoClassOrElement(name.to_owned()),
              )),
          }
      }
      fn parse_non_ts_functional_pseudo_class(
          &self,
-         name: CowRcStr<'i>,
+-        name: CowRcStr<'i>,
 -        arguments: &mut Parser<'i, '_>,
++        name: &str,
 +        arguments: &mut Parser<'i>,
          _after_part: bool,
 -    ) -> Result<NonTSPseudoClass, cssparser::ParseError<'i, Self::Error>> {
+-        match &*name {
 +    ) -> Result<NonTSPseudoClass, cssparser::ParseError<Self::Error>> {
-         match &*name {
++        match name {
              "lang" => {
                  // Comma-separated lists of languages are a Selectors 4 feature,
-@@ -269,14 +283,18 @@
+                 // but a pretty stable one that hasn't changed in a long time.
                  let tags = arguments.parse_comma_separated(|arg| {
                      let language_tag = arg.expect_ident_or_string()?.clone();
                      LanguageTag::from_str(&language_tag).map_err(|_| {
@@ -305,7 +309,7 @@ Origin: EmberBSD (AI-assisted).
 -            _ => Err(arguments.new_custom_error(
 -                selectors::parser::SelectorParseErrorKind::UnsupportedPseudoClassOrElement(name),
 +            _ => Err(cssparser::ParseError::custom(
-+                ParseErrorKind::UnsupportedPseudoClassOrElement(name.as_ref().to_owned()),
++                ParseErrorKind::UnsupportedPseudoClassOrElement(name.to_owned()),
              )),
          }
      }

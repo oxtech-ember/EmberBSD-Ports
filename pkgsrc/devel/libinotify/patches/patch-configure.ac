@@ -17,7 +17,43 @@ or missing results fail instead of guessing from the host OS.
  AM_INIT_AUTOMAKE([foreign subdir-objects])
  AC_CONFIG_SRCDIR([configure.ac])
  AC_CONFIG_HEADERS([config.h])
-@@ -290,7 +296,11 @@
+@@ -168,6 +174,34 @@
+ atfuncs_support=yes
+ AC_CHECK_FUNCS(openat fdopendir fstatat,,atfuncs_support=no)
+-AC_CHECK_FUNCS(fdclosedir faccessat)
++AC_CHECK_FUNC(fdclosedir, [], [])
++if test "$ac_cv_func_fdclosedir" = "yes"; then
++    libinotify_save_CFLAGS=$CFLAGS
++    # A newer SDK can expose declarations absent at the deployment target.
++    # Reject an unsupported warning option instead of silently skipping it.
++    CFLAGS="$CFLAGS -Werror -Werror=unguarded-availability-new"
++    AC_MSG_CHECKING([whether compiler supports -Werror=unguarded-availability-new])
++    AC_COMPILE_IFELSE(
++        [AC_LANG_PROGRAM([], [])],
++        [libinotify_unguarded_availability_flag=yes],
++        [libinotify_unguarded_availability_flag=no]
++    )
++    AC_MSG_RESULT([$libinotify_unguarded_availability_flag])
++    if test "$libinotify_unguarded_availability_flag" != "yes"; then
++        CFLAGS="$libinotify_save_CFLAGS -Werror"
++    fi
++    AC_MSG_CHECKING([whether fdclosedir is available for the deployment target])
++    AC_LINK_IFELSE(
++        [AC_LANG_PROGRAM([[#include <dirent.h>]], [[DIR *dir = opendir ("."); return fdclosedir (dir);]])],
++        [],
++        [ac_cv_func_fdclosedir=no]
++    )
++    AC_MSG_RESULT([$ac_cv_func_fdclosedir])
++    CFLAGS=$libinotify_save_CFLAGS
++fi
++AC_CHECK_FUNCS(faccessat)
++AS_IF([test "$ac_cv_func_fdclosedir" = "yes"], [
++    AC_DEFINE([HAVE_FDCLOSEDIR],[1],[Define to 1 if you have the 'fdclosedir' function])
++])
+ if test "$atfuncs_support" = "yes"; then
+     AC_DEFINE([HAVE_ATFUNCS],[1],[Define to 1 if relative pathname functions detected])
+ fi
+@@ -290,7 +324,11 @@
      AC_DEFINE([HAVE_NOTE_EXTEND_ON_MOVE_TO],[1],[Define to 1 if move_to sets NODE_EXTEND flag])
      AC_MSG_RESULT(yes)
  ],
@@ -30,7 +66,7 @@ or missing results fail instead of guessing from the host OS.
  )
  
  AC_MSG_CHECKING(for NOTE_EXTEND on moving of a file from the watched subdirectory)
-@@ -323,7 +333,11 @@
+@@ -323,7 +361,11 @@
      AC_DEFINE([HAVE_NOTE_EXTEND_ON_MOVE_FROM],[1],[Define to 1 if move_from sets NODE_EXTEND flag])
      AC_MSG_RESULT(yes)
  ],
@@ -43,7 +79,7 @@ or missing results fail instead of guessing from the host OS.
  )
  
  
-@@ -346,7 +360,11 @@
+@@ -346,7 +388,11 @@
      AC_DEFINE([HAVE_O_PATH],[1],[Define to 1 if open supports O_PATH flag])
      have_o_path=yes
  ],
@@ -56,7 +92,7 @@ or missing results fail instead of guessing from the host OS.
  )
  AC_MSG_RESULT($have_o_path)
  
-@@ -362,7 +380,11 @@
+@@ -362,7 +408,11 @@
          AC_DEFINE([HAVE_O_EMPTY_PATH],[1],[Define to 1 if openat supports O_EMPTY_PATH flag])
          AC_MSG_RESULT(yes)
      ],
@@ -69,7 +105,7 @@ or missing results fail instead of guessing from the host OS.
      )
  fi
  
-@@ -385,7 +407,11 @@
+@@ -385,7 +435,11 @@
          AC_DEFINE([HAVE_AT_EMPTY_PATH],[1],[Define to 1 if faccessat supports AT_EMPTY_PATH flag])
          AC_MSG_RESULT(yes)
      ],

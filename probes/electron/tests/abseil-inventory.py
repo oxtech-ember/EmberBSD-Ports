@@ -9,7 +9,7 @@ from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 
 owner=Path(__file__).resolve().parents[1]
-spec=importlib.util.spec_from_file_location('controller',owner/'electron44/files/build-electron.py')
+spec=importlib.util.spec_from_file_location('controller',owner/'../../pkgsrc/devel/electron44/files/build-electron.py')
 controller=importlib.util.module_from_spec(spec);spec.loader.exec_module(controller)
 with TemporaryDirectory() as temporary:
     root=Path(temporary).resolve(); host=root/'host'; sysroot=root/'sysroot'; work=root/'selection'; ports=root/'ports'; export=root/'export'

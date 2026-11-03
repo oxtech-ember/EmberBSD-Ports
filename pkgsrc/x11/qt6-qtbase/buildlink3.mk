@@ -92,6 +92,7 @@ BUILDLINK_API_DEPENDS.libpsl+= libpsl>=0.23.3nb2
 .include "../../graphics/glu/buildlink3.mk"
 .include "../../graphics/vulkan-headers/buildlink3.mk"
 .endif
+.if empty(PKG_BUILD_OPTIONS.qt6-qtbase:Mheadless-generators)
 .include "../../x11/libxcb/buildlink3.mk"
 .include "../../x11/xcb-util/buildlink3.mk"
 .include "../../x11/xcb-util-image/buildlink3.mk"
@@ -107,6 +108,7 @@ BUILDLINK_API_DEPENDS.libpsl+= libpsl>=0.23.3nb2
 .include "../../x11/libXrandr/buildlink3.mk"
 .include "../../x11/libXrender/buildlink3.mk"
 .include "../../x11/libxkbcommon/buildlink3.mk"
+.endif
 .endif
 .endif
 .include "../../mk/atomic64.mk"

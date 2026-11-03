@@ -57,4 +57,26 @@ with tempfile.TemporaryDirectory(dir=a.work_dir) as temp:
     assert '--runtime-base requires --runtime-stage' in reject('--output', invalid_base,
            '--runtime-base', a.sysroot)
     assert not invalid_base.exists()
+    invalid_riscv = tools / 'riscv-without-foundation'
+    assert 'riscv32 cross-libtool requires --c-foundation-result' in reject(
+        '--output', invalid_riscv, '--target', 'riscv32')
+    assert not invalid_riscv.exists()
+    invalid_cfoundation_base = tools / 'foundation-base-without-result'
+    assert '--c-foundation-base requires --c-foundation-result' in reject(
+        '--output', invalid_cfoundation_base, '--c-foundation-base', a.sysroot)
+    assert not invalid_cfoundation_base.exists()
+    invalid_runtime_mix = tools / 'foundation-with-full-runtime'
+    assert '--c-foundation-result cannot be combined' in reject(
+        '--output', invalid_runtime_mix, '--c-foundation-result', a.sysroot,
+        '--runtime-stage', a.sysroot)
+    assert not invalid_runtime_mix.exists()
+    invalid_export_mix = tools / 'export-input-conflict'
+    assert 'select only one of --pkgsrc-export or --pkgsrc-tree' in reject(
+        '--output', invalid_export_mix, '--pkgsrc-export', a.sysroot,
+        '--pkgsrc-tree', a.sysroot)
+    assert not invalid_export_mix.exists()
+    invalid_tree = tools / 'wrong-pkgsrc-tree'
+    assert 'pkgsrc tree does not match the pinned upstream revision' in reject(
+        '--output', invalid_tree, '--pkgsrc-tree', a.sysroot)
+    assert not invalid_tree.exists()
 print('cross-libtool producer destination/family boundaries: PASS')

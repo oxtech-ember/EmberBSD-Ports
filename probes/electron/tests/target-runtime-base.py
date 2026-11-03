@@ -7,7 +7,7 @@ import importlib.util
 from pathlib import Path
 import tempfile
 
-owner = Path(__file__).resolve().parents[1] / 'electron44/files/build-electron.py'
+owner = Path(__file__).resolve().parents[1] / '../../pkgsrc/devel/electron44/files/build-electron.py'
 spec = importlib.util.spec_from_file_location('electron_build', owner)
 build = importlib.util.module_from_spec(spec); spec.loader.exec_module(build)
 class Runtime:

@@ -9,7 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 import sys
 
-controller = Path(__file__).resolve().parents[1] / 'electron44/files/build-electron.py'
+controller = Path(__file__).resolve().parents[1] / '../../pkgsrc/devel/electron44/files/build-electron.py'
 spec = importlib.util.spec_from_file_location('electron_controller_pax', controller)
 build = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(build)

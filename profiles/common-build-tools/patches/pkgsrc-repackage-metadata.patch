@@ -11,10 +11,10 @@
  
 --- a/mk/package/bsd.package.mk
 +++ b/mk/package/bsd.package.mk
-@@ -25,6 +25,34 @@
- .PHONY: repackage
- repackage: _package-clean
- 	${RUN} ${RECURSIVE_MAKE} ${MAKEFLAGS} package
+@@ -29,6 +29,37 @@
+ 	    ${.MAKEOVERRIDES:N_PKGSRC_BARRIER:@v@${v}=${${v}:Q}@} \
+ 	    MAKE_JOBS=${MAKE_JOBS:U:Q} package
+ 
 +
 +# The selected SDK interpreter is needed only by this explicit operation.
 +EMBERBSD_REPACKAGE_PYTHON?= ${EMBERBSD_HOST_PYTHON:U${EMBERBSD_CROSS_BUILD_PYTHON:U}}
@@ -39,16 +39,19 @@
 +	${RECURSIVE_MAKE} ${MAKEFLAGS} _package-clean || exit $$?; \
 +	unset _PKGSRC_BARRIER; \
 +	MAKEFLAGS=${.MAKEFLAGS:Q} ${RECURSIVE_MAKE} ${MAKEFLAGS} \
++	    ${.MAKEOVERRIDES:N_PKGSRC_BARRIER:@v@${v}=${${v}:Q}@} \
++	    MAKE_JOBS=${MAKE_JOBS:U:Q} \
 +	    _EMBER_REPACKAGE_IDENTITY="$$old" \
 +	    _EMBER_REPACKAGE_PKGPATH=${PKGPATH:Q} \
 +	    _EMBER_REPACKAGE_WRKDIR=${WRKDIR:Q} package
 +.endif
- 
++
  ######################################################################
  ### package-clean (PUBLIC)
+ ######################################################################
 --- a/mk/install/install.mk
 +++ b/mk/install/install.mk
-@@ -150,6 +150,19 @@
+@@ -150,6 +150,34 @@
  .PHONY: install-check-version
  install-check-version: ${_COOKIE.extract}
  	${RUN}								\
@@ -65,12 +68,27 @@
 +		    "$$identity" >/dev/null || exit $$?; \
 +		exit 0; \
 +	fi; \
++	stage_mode=${_EMBER_STAGE_LOCAL_PACKAGE_INSTALL:U:Q}; \
++	stage_scope=${_EMBER_STAGE_LOCAL_PKGPATH:U:Q}; \
++	stage_work=${_EMBER_STAGE_LOCAL_WRKDIR:U:Q}; \
++	if [ -n "$$stage_mode" ] || [ -n "$$stage_scope" ] || [ -n "$$stage_work" ]; then \
++		if [ "$$stage_mode" != yes ] || [ "$$stage_scope" != ${PKGPATH:Q} ] || \
++		   [ "$$stage_work" != ${WRKDIR:Q} ]; then \
++			${ECHO} "stage-local package identity scope mismatch" >&2; exit 1; \
++		fi; \
++		interpreter=${EMBERBSD_REPACKAGE_PYTHON:Q}; \
++		case "$$interpreter" in /*) ;; *) ${ECHO} "stage-local package recovery requires an absolute SDK Python" >&2; exit 1;; esac; \
++		"$$interpreter" -B -E -S ${PKGSRCDIR:Q}/mk/package/repackage-metadata-check.py \
++		    --stage-local ${WRKDIR:Q} ${PKGBASE:Q} ${PKGVERSION_NOREV:Q} \
++		    ${PKGNAME:Q} >/dev/null || exit $$?; \
++		exit 0; \
++	fi; \
  	extractname=`${CAT} ${_COOKIE.extract}`;			\
  	pkgname=${PKGNAME};						\
  	case "$$extractname" in						\
 --- /dev/null
 +++ b/mk/package/repackage-metadata-check.py
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,95 @@
 +# SPDX-License-Identifier: BSD-2-Clause
 +# Origin: EmberBSD contributors (AI-assisted).
 +"""Validate a completed pkgsrc build identity before metadata-only reuse."""
@@ -100,18 +118,69 @@
 +        fail("inconsistent configure identity")
 +    stem = base + "-" + version
 +    for name in (old, current):
-+        if name == stem:
-+            continue
-+        suffix = name[len(stem):] if name.startswith(stem) else ""
-+        if not suffix.startswith("nb") or not suffix[2:] or not suffix[2:].isascii() or not suffix[2:].isdigit():
-+            fail("different package, upstream version or invalid revision")
++        revision(name, stem)
 +    if len(argv) == 7 and old != argv[6]:
 +        fail("build identity changed")
 +    return old
 +
 +
++def revision(name, stem):
++    if name == stem:
++        return 0
++    prefix = stem + "nb"
++    if not name.startswith(prefix):
++        fail("different package or upstream version")
++    suffix = name[len(prefix):]
++    if not suffix or not suffix.isascii() or not suffix.isdigit():
++        fail("invalid package revision")
++    return int(suffix)
++
++
++def stage_local(work, base, version, current):
++    root = Path(work)
++    stem = base + "-" + version
++    revision(current, stem)
++
++    identity_cookies = (".extract_done", ".configure_done", ".build_done")
++    later_cookies = (".wrapper_done", ".install_done", ".package_done",
++                     ".replace_done")
++    cookies = identity_cookies + later_cookies
++    values = {}
++    for name in cookies:
++        path = root / name
++        if path.is_symlink():
++            fail("symlinked " + name)
++        if path.exists():
++            if not path.is_file():
++                fail("invalid " + name)
++            values[name] = path.read_text(encoding="utf-8").strip()
++
++    extracted = values.get(".extract_done")
++    if extracted is None:
++        if any(name in values for name in cookies[1:]):
++            fail("later phase cookie without extract identity")
++        return "fresh"
++
++    revision(extracted, stem)
++    for name in identity_cookies[1:]:
++        if name in values:
++            revision(values[name], stem)
++    for name in (".install_done", ".package_done"):
++        if name in values:
++            revision(values[name], stem)
++    package_identity = values.get(".package_done") or values.get(".install_done")
++    if package_identity is None:
++        package_identity = extracted
++    else:
++        revision(package_identity, stem)
++    return "same" if revision(package_identity, stem) == revision(current, stem) else "revision"
++
++
 +try:
-+    print(check(sys.argv[1:]))
++    if sys.argv[1:2] == ["--stage-local"]:
++        print(stage_local(*sys.argv[2:]))
++    else:
++        print(check(sys.argv[1:]))
 +except (OSError, UnicodeError, ValueError) as error:
 +    print("repackage-metadata: " + str(error), file=sys.stderr)
 +    raise SystemExit(1)

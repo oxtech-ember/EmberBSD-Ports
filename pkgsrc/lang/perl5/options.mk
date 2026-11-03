@@ -48,7 +48,9 @@ PKG_SUGGESTED_OPTIONS+=		perl-64bitauto
 
 .if (${OPSYS} == "SunOS" && ${OPSYS_VERSION} >= 051100) || \
     (${OPSYS} == "Darwin" && ${OPSYS_VERSION} >= 100500)
+.  if defined(DTRACE) && !empty(DTRACE)
 PKG_SUGGESTED_OPTIONS+=		dtrace
+.  endif
 .endif
 
 .include "../../mk/bsd.options.mk"

@@ -33,7 +33,7 @@ clangxx = args.clangxx.resolve(strict=True)
 git = args.git.resolve(strict=True)
 sdk = args.macos_sdk.resolve(strict=True)
 patch = Path(__file__).resolve().parents[1] / 'patches' / PATCH_NAME
-series_path = Path(__file__).resolve().parents[1] / 'electron44/files/source-series.json'
+series_path = Path(__file__).resolve().parents[1] / '../../pkgsrc/devel/electron44/files/source-series.json'
 if (not source.is_dir() or not clangxx.is_file() or not git.is_file() or
         not clangxx.is_relative_to(host) or not git.is_relative_to(host) or
         not sdk.is_dir() or not patch.is_file() or not series_path.is_file()):

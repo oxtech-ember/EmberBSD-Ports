@@ -7,8 +7,6 @@ COMMENT=	Configuration system
 
 .include "../../meta-pkgs/kde/kf6.mk"
 
-CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTING=OFF
-
 .include "../../mk/bsd.prefs.mk"
 PLIST_VARS+=	kconfig_tools
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"

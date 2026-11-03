@@ -13,7 +13,7 @@ p=argparse.ArgumentParser()
 p.add_argument('--host-prefix',type=Path,required=True)
 p.add_argument('--sdk-source',type=Path,required=True)
 a=p.parse_args()
-path=Path(__file__).resolve().parents[1]/'electron44/files/build-electron.py'
+path=Path(__file__).resolve().parents[1]/'../../pkgsrc/devel/electron44/files/build-electron.py'
 spec=importlib.util.spec_from_file_location('electron_build',path)
 b=importlib.util.module_from_spec(spec);spec.loader.exec_module(b)
 assert Path(sys.executable).resolve() == (a.host_prefix/'bin/python3.15').resolve()

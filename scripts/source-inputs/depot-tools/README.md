@@ -46,7 +46,7 @@ upstream's existing quarantine/reclone behavior for an invalid checkout.
 Valid repositories remain in place; the consumer does not request force or
 reset. Preserve `_bad_scm` until any unique input has been recovered.
 
-The [Electron consumer](../../../probes/electron/electron44/source-preparation.md)
+The [Electron consumer](../../../pkgsrc/devel/electron44/source-preparation.md)
 invokes gclient's own Git-only filters with hooks disabled and inventories the
 pending CIPD/GCS/LFS objects. This patch does not replace gclient, its DEPS parser,
 Git LFS, CIPD, or GCS transport. Full asset acquisition still needs its required

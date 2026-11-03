@@ -1,6 +1,7 @@
 # $NetBSD$
 
 DISTNAME=	plasma-mobile-${PLASMAVER}
+PKGREVISION=	1
 CATEGORIES=	x11
 
 HOMEPAGE=	https://plasma-mobile.org/

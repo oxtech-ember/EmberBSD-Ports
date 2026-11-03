@@ -85,12 +85,14 @@ MAKE_FLAGS+=		INSTALL_AWK=/usr/bin/awk INSTALL_SED=/usr/bin/sed
 .endif
 MAKE_ENV+=		ROOT_USER=${ROOT_USER}
 MAKE_ENV+=		YFLAGS="-Wnone"
+# The native C compiler can differ from the libtool default command.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "no" && (${OPSYS} == "Darwin" || ${OPSYS} == "Linux")
+MAKE_FLAGS+=		LIBTOOL=${LIBTOOL:Q}\ --tag=CC
+.endif
 .if ${USE_CROSS_COMPILE:Uno:tl} == "no" && ${OPSYS} == "Darwin"
 BUILD_DEPENDS+=		mig>=138:../../devel/mig
 MAKE_FLAGS+=		MIG=${TOOLBASE:Q}/bin/mig
 MAKE_ENV+=		MIGCC=${CC:Q} MIGCOM=${TOOLBASE:Q}/libexec/migcom
-# The native C compiler can differ from the libtool default command.
-MAKE_FLAGS+=		LIBTOOL=${LIBTOOL:Q}\ --tag=CC
 .if !empty(OSX_SDK_PATH)
 # Darwin MIG reads SDKROOT when it selects its preprocessor headers.
 MAKE_ENV+=		SDKROOT=${OSX_SDK_PATH:Q}

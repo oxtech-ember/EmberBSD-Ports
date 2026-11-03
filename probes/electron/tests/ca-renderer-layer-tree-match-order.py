@@ -36,7 +36,7 @@ ld64 = args.ld64.resolve(strict=True)
 git = args.git.resolve(strict=True)
 sdk = args.macos_sdk.resolve(strict=True)
 patch = repo / 'patches' / PATCH_NAME
-series_path = repo / 'electron44/files/source-series.json'
+series_path = repo / '../../pkgsrc/devel/electron44/files/source-series.json'
 if (not source.is_dir() or not clangxx.is_file() or not ld64.is_file() or
         not git.is_file() or not clangxx.is_relative_to(host) or
         not ld64.is_relative_to(host) or not git.is_relative_to(host) or

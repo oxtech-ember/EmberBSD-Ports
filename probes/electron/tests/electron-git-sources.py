@@ -267,7 +267,7 @@ if __name__ == "__main__":
     parser.add_argument("--depot-tools", type=Path, required=True)
     parser.add_argument("--source-path", required=True)
     options = parser.parse_args()
-    helper = Path(__file__).resolve().parents[1] / "electron44/files/sync-git-sources.py"
+    helper = Path(__file__).resolve().parents[1] / "../../pkgsrc/devel/electron44/files/sync-git-sources.py"
     spec = importlib.util.spec_from_file_location("electron_git_sync", helper)
     sync = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(sync)

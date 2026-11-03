@@ -41,9 +41,17 @@ SUBST_CLASSES+=	python
 SUBST_STAGE.python=	pre-configure
 SUBST_FILES.python=	meson.build
 SUBST_SED.python=	-e 's|@PYTHONBIN@|${TOOL_PYTHONBIN}|g'
+PLIST_VARS+= intel v3d powervr radeonsi full_drivers
+.if !empty(PKG_OPTIONS:Msoftpipe-only)
+# X11 software renderer retains common GL, EGL, GLES and GBM interfaces.
+MESON_ARGS+= -Dgallium-drivers=softpipe -Dvulkan-drivers=
+MESON_ARGS+= -Dplatforms=x11 -Dglx=dri -Dllvm=disabled
+# Mesa 26.2 uses auto, not disabled, for these optional compiler choices.
+MESON_ARGS+= -Dmesa-clc=auto -Dprecomp-compiler=auto -Dspirv-tools=disabled
+.else
+PLIST.full_drivers= yes
 # Zink loads the common Vulkan loader at runtime. An ICD stays optional.
-DEPENDS+=	vulkan-loader>=1.4.357.0:../../graphics/vulkan-loader
-PLIST_VARS+= intel v3d powervr radeonsi
+DEPENDS+= vulkan-loader>=1.4.357.0:../../graphics/vulkan-loader
 .if ${MACHINE_ARCH} == "x86_64"
 MESON_ARGS+=	-Dgallium-drivers=iris,radeonsi,virgl,softpipe,llvmpipe,zink
 MESON_ARGS+=	-Dvulkan-drivers=
@@ -62,11 +70,12 @@ PLIST.powervr=	yes
 _EMBERBSD_MESA_GENERATOR_PROFILES+= powervr
 _EMBERBSD_MESA_LLVM_TRIPLE=	aarch64-unknown-netbsd
 .endif
-MESON_ARGS+=	-Dplatforms=x11,wayland -Dglx=dri
-MESON_ARGS+=	-Degl=enabled -Dgbm=enabled -Dglvnd=disabled
-MESON_ARGS+=	-Dgles1=enabled -Dgles2=enabled -Dopengl=true
-MESON_ARGS+=	-Dllvm=enabled -Dshared-llvm=enabled -Dllvm-orcjit=true
-MESON_ARGS+=	-Dvulkan-layers= -Dtools=
+MESON_ARGS+= -Dplatforms=x11,wayland -Dglx=dri
+MESON_ARGS+= -Dllvm=enabled -Dshared-llvm=enabled -Dllvm-orcjit=true
+.endif
+MESON_ARGS+= -Degl=enabled -Dgbm=enabled -Dglvnd=disabled
+MESON_ARGS+= -Dgles1=enabled -Dgles2=enabled -Dopengl=true
+MESON_ARGS+= -Dvulkan-layers= -Dtools=
 .if !empty(_EMBERBSD_MESA_GENERATOR_PROFILES)
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # Cross builds run the matching sealed generators on the build host.
@@ -118,7 +127,9 @@ PKGCONFIG_OVERRIDE_STAGE=	pre-install
 .for pc in gl glx egl gbm glesv1_cm glesv2 dri
 PKGCONFIG_OVERRIDE+=	output/meson-private/${pc}.pc
 .endfor
+.if empty(PKG_OPTIONS:Msoftpipe-only)
 .include "../../lang/llvm/buildlink3.mk"
+.endif
 .if ${USE_CROSS_COMPILE:tl} == "yes"
 USE_TOOLS+=	digest
 # The accepted metadata tool records the real installed sysroot path.
@@ -127,17 +138,21 @@ BUILDLINK_TRANSFORM+= I:${_EMBERBSD_LLVM_SYSROOT}${PREFIX}:${BUILDLINK_DIR}
 # This host executable must understand the target ELF format for ABI checks.
 MESON_BINARIES+=	nm
 MESON_BINARY.nm=	${TOOLDIR}/bin/${MACHINE_GNU_PLATFORM}-nm
+.if !empty(PKG_OPTIONS:Mwayland)
 .include "../../devel/wayland-protocols/cross-scanner.mk"
 .endif
+.endif
+.if empty(PKG_OPTIONS:Msoftpipe-only)
 # The explicit absolute binary prevents Meson's default tool/CMake search.
 MESON_BINARIES+=	llvm-config
 MESON_BINARY.llvm-config=	${LLVM_CONFIG_PATH}
+.endif
 # Native and cross packages must pass the same staged ELF compatibility gate.
 # The actual SDK API check runs in pre-configure before its first use.
 _EMBERBSD_MESA_ELF_CHECK= ${TOOL_PYTHONBIN:Q} -B -E -S ${FILESDIR:Q}/check-dynamic-elf.py \
 	--sdk-source ${EMBERBSD_SDK_SOURCE:U:Q} --arch ${MACHINE_ARCH:Q}
 _EMBERBSD_MESA_STAGED_LIB= ${DESTDIR}${PREFIX}/lib
-.if ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64" && empty(PKG_OPTIONS:Msoftpipe-only)
 # RadeonSI requires libelf. Qualify the OS base provider before Meson probes it.
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 _EMBERBSD_MESA_LIBELF_MODE=	cross
@@ -161,21 +176,25 @@ pre-configure:
 	${TEST} -x ${TOOL_PYTHONBIN:Q}
 	${_EMBERBSD_MESA_ELF_CHECK} --check-sdk
 	${TOOL_PYTHONBIN} -c 'import sys, mako, packaging, yaml; assert sys.version_info[:2] == tuple(map(int, "${PYVERSSUFFIX}".split(".")))'
-.if ${MACHINE_ARCH} == "x86_64"
+.if ${MACHINE_ARCH} == "x86_64" && empty(PKG_OPTIONS:Msoftpipe-only)
 	${_EMBERBSD_MESA_LIBELF_CHECK}
 .endif
-.if ${USE_CROSS_COMPILE:tl} == "yes"
+.if ${USE_CROSS_COMPILE:tl} == "yes" && !empty(PKG_OPTIONS:Mwayland)
 	${TEST} "$$(${TOOLS_CMD.pkg-config} --modversion wayland-client)" = 1.26.0
+.endif
+.if ${USE_CROSS_COMPILE:tl} == "yes" && empty(PKG_OPTIONS:Msoftpipe-only)
 	${TEST} "$$(${LLVM_CONFIG_PATH} --host-target)" = ${_EMBERBSD_MESA_LLVM_TRIPLE:Q}
 	${TEST} "$$(${LLVM_CONFIG_PATH} --prefix)" = ${_EMBERBSD_LLVM_SYSROOT:Q}/usr/pkg
 	${TEST} "$$(${LLVM_CONFIG_PATH} --includedir)" = ${_EMBERBSD_LLVM_SYSROOT:Q}/usr/pkg/include
 	${TEST} "$$(${LLVM_CONFIG_PATH} --libdir)" = ${_EMBERBSD_LLVM_SYSROOT:Q}/usr/pkg/lib
 .endif
+.if empty(PKG_OPTIONS:Msoftpipe-only)
 	${TEST} -x ${LLVM_CONFIG_PATH:Q}
 	${TEST} "$$(${LLVM_CONFIG_PATH} --version)" = 23.1.4
 	${TEST} "$$(${LLVM_CONFIG_PATH} --shared-mode --link-shared)" = shared
 	${TEST} "$$(${LLVM_CONFIG_PATH} --has-rtti)" = YES
 	${LLVM_CONFIG_PATH} --link-shared --libs core executionengine orcjit native > /dev/null
+.endif
 post-install:
 	${_EMBERBSD_MESA_ELF_CHECK} --library-dir ${_EMBERBSD_MESA_STAGED_LIB:Q}
 
@@ -184,10 +203,12 @@ post-install:
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../textproc/expat/buildlink3.mk"
 .include "../../devel/libudev-bsd/buildlink3.mk"
+.if !empty(PKG_OPTIONS:Mwayland)
 BUILDLINK_API_DEPENDS.wayland+= wayland>=1.26.0nb1
 .include "../../devel/wayland/buildlink3.mk"
 BUILDLINK_API_DEPENDS.wayland-protocols+= wayland-protocols>=1.49
 .include "../../devel/wayland-protocols/buildlink3.mk"
+.endif
 BUILDLINK_API_DEPENDS.libX11+= libX11>=1.6
 .include "../../x11/libX11/buildlink3.mk"
 .include "../../x11/libXext/buildlink3.mk"

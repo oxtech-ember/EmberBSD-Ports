@@ -15,7 +15,7 @@ for option in ('electron', 'semver', 'python', 'node', 'gn', 'ninja', 'touch'):
 a = p.parse_args()
 for path in vars(a).values():
     if not path.is_absolute() or not path.exists(): p.error('inputs must be existing absolute paths')
-owner = Path(__file__).resolve().parents[1] / 'electron44/files'
+owner = Path(__file__).resolve().parents[1] / '../../pkgsrc/devel/electron44/files'
 electron = a.electron.resolve()
 expected = 'args_files = [ "$target_gen_dir/electron_version.args" ]'
 if (electron / 'BUILD.gn').read_text().count(expected) != 3:

@@ -207,7 +207,7 @@ if __name__ == "__main__":
     parser.add_argument("--source-path", required=True)
     parser.add_argument("--electron-source", type=Path, required=True)
     options = parser.parse_args()
-    path = Path(__file__).resolve().parents[1] / "electron44/files/apply-upstream-patches.py"
+    path = Path(__file__).resolve().parents[1] / "../../pkgsrc/devel/electron44/files/apply-upstream-patches.py"
     spec = importlib.util.spec_from_file_location("electron_upstream_patches", path)
     helper = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(helper)

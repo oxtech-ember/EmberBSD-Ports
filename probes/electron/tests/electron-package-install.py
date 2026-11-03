@@ -111,7 +111,7 @@ class InstallTests(unittest.TestCase):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(); parser.add_argument('--sdk-source', required=True)
     args = parser.parse_args()
-    files = Path(__file__).resolve().parents[1]/'electron44/files'
+    files = Path(__file__).resolve().parents[1]/'../../pkgsrc/devel/electron44/files'
     installer = load(files/'install-runtime.py', 'electron_install')
     owner = installer.stage_owner(); sdk = owner.load_sdk(args.sdk_source)
     from emberbsd_sdk.errors import SDKError

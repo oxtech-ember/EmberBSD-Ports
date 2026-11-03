@@ -602,25 +602,59 @@ count()
 # first -K argument: the target sysroot or the native host prefix), so
 # installs into one prefix never overlap. mkdir is atomic on macOS, NetBSD
 # and Linux alike.
+#
+# A native package built before the native profile kept rc.d in the host
+# prefix (Ports 6869ff45) recorded "# DIR: /etc/rc.d m" in its +DIRS. When
+# pkg_add -U replaces it, its +DIRS REMOVE runs "rmdir -p /etc/rc.d"; on
+# macOS that path is protected, and the attempt waits on a privacy prompt
+# (TCC SystemPolicySysAdminFiles) with the database lock held. The native
+# prefix never owns a path outside it, so before each install into the native
+# database the wrapper marks every refcounted directory or file outside the
+# recording package's prefix (its +CONTENTS @cwd) as preexisting, the state
+# that pkgsrc's +DIRS and +FILES record for a path that existed before the
+# package: REMOVE then leaves it alone. Target databases are not changed.
 pkg_add_wrapper()
 {
+    native_info
+    native_db=$(set -f; set -- $native_pkg_info
+        while [ "$#" -gt 1 ]; do [ "$1" != -K ] || { echo "$2"; break; }; shift; done)
     cat <<WRAPPER
 #!/bin/sh
 # Written by scripts/cross-bulk.sh build: one pkg_add per package database.
+locks=$state/locks
+native_db='$native_db'
+WRAPPER
+    cat <<'WRAPPER'
 db=default
 prev=
 for arg do
-    if [ "\$prev" = -K ]; then db=\$arg; break; fi
-    prev=\$arg
+    if [ "$prev" = -K ]; then db=$arg; break; fi
+    prev=$arg
 done
-lock=$state/locks/\$(printf '%s' "\$db" | tr -c 'A-Za-z0-9._-' '_')
-until mkdir "\$lock" 2> /dev/null; do sleep 1; done
-trap 'rmdir "\$lock"' EXIT
+lock=$locks/$(printf '%s' "$db" | tr -c 'A-Za-z0-9._-' '_')
+until mkdir "$lock" 2> /dev/null; do sleep 1; done
+trap 'rmdir "$lock"' EXIT
 trap 'exit 143' TERM INT HUP
+if [ -n "$native_db" ] && [ "$db" = "$native_db" ]; then
+    grep -lE '^# (DIR|FILE): /' "$db"/*/+DIRS "$db"/*/+FILES 2> /dev/null |
+    while read -r meta; do
+        pkgdir=${meta%/*}
+        prefix=$(sed -n '/^@cwd /{s/^@cwd //;p;q;}' "$pkgdir/+CONTENTS")
+        case "$prefix" in /?*) ;; *) continue ;; esac
+        case "$meta" in */+DIRS) kind=dirs ;; *) kind=files ;; esac
+        sed -En 's/^# (DIR|FILE): (\/[^ ]*).*/\2/p' "$meta" |
+        while read -r path; do
+            case "$path" in "$prefix"|"$prefix"/*) continue ;; esac
+            shadow=$db.refcount/$kind$path
+            [ -d "$shadow" ] && [ ! -f "$shadow/+PREEXISTING" ] || continue
+            echo "${pkgdir##*/}" > "$shadow/+PREEXISTING"
+            echo "cross-bulk: $path is outside the native prefix of ${pkgdir##*/}; marked preexisting" >&2
+        done
+    done
+fi
 rc=0
-$1 "\$@" || rc=\$?
-exit "\$rc"
 WRAPPER
+    printf '%s "$@" || rc=$?\nexit "$rc"\n' "$1"
 }
 
 dev_of()
@@ -853,15 +887,31 @@ build_native()
     set -- USE_CROSS_COMPILE=no PACKAGES="$native_packages"
     ! grep -qFx "$nnode" "$run/crossfed" || set -- "$@" $target_settings
     set +f
-    vars=$(pkg_vars "$path" 'PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE' "$@") ||
+    varnames='PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE'
+    if [ "${stage_local:-no}" = yes ]; then varnames="$varnames PKGVERSION_NOREV"; fi
+    vars=$(pkg_vars "$path" "$varnames" "$@") ||
         { result "$key" "failed $nnode vars"; return 0; }
     name=$(printf '%s\n' "$vars" | sed -n 1p)
     wrkdir=$(printf '%s\n' "$vars" | sed -n 2p)
     skip=$(printf '%s\n' "$vars" | sed -n 3p)
     base=$(printf '%s\n' "$vars" | sed -n 4p)
+    version=
+    [ "${stage_local:-no}" != yes ] || version=$(printf '%s\n' "$vars" | sed -n 5p)
+    log=$state/logs/$key.log
     if [ -n "$skip" ]; then
         result "$key" "skipped $nnode $skip"
         return 0
+    fi
+    stage_local_revision_changed=no
+    if [ "${stage_local:-no}" = yes ]; then
+        stage_local_identity=$(stage_local_preflight "$wrkdir" "$base" "$version" "$name" "$log") || {
+            result "$key" "failed $nnode incompatible-stage"
+            return 0
+        }
+        [ "$stage_local_identity" != revision ] || stage_local_revision_changed=yes
+        set -- "$@" _EMBER_STAGE_LOCAL_PACKAGE_INSTALL=yes \
+            "_EMBER_STAGE_LOCAL_PKGPATH=$path" \
+            "_EMBER_STAGE_LOCAL_WRKDIR=$wrkdir"
     fi
     if [ "${stage_local:-no}" != yes ] && native_current "$base" "$name"; then
         result "$key" "done $nnode"
@@ -871,13 +921,13 @@ build_native()
     set -f
     [ -z "$base" ] || ! $native_pkg_info -e "$base" > /dev/null 2>&1 || install=replace
     set +f
-    log=$state/logs/$key.log
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $nnode $name" >> "$state/progress"
     if [ "${stage_local:-no}" != yes ]; then
         prepare_wrkdir "$wrkdir" "$job.$key"
     fi
     : > "$log"
     if { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; } &&
+        { [ "${stage_local_revision_changed:-no}" != yes ] || bmk -C "$PKGSRCDIR/$path" "$@" _package-clean < /dev/null >> "$log" 2>&1; } &&
         if [ "$install" = replace ]; then
             bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes package < /dev/null >> "$log" 2>&1 &&
                 { native_replace_keeps_libraries "$base" "$native_packages/All/$name" >> "$log" 2>&1 ||
@@ -974,11 +1024,36 @@ target_install()
     fi
     for target do
         if [ -n "$shared_arg" ]; then
-            bmk -C "$PKGSRCDIR/$tpath" "$shared_arg" "$target" < /dev/null || return 1
+            if [ "${stage_local:-no}" = yes ]; then
+                bmk -C "$PKGSRCDIR/$tpath" "$shared_arg" \
+                    _EMBER_STAGE_LOCAL_PACKAGE_INSTALL=yes \
+                    "_EMBER_STAGE_LOCAL_PKGPATH=$tpath" \
+                    "_EMBER_STAGE_LOCAL_WRKDIR=$wrkdir" "$target" < /dev/null || return 1
+            else
+                bmk -C "$PKGSRCDIR/$tpath" "$shared_arg" "$target" < /dev/null || return 1
+            fi
         else
-            bmk -C "$PKGSRCDIR/$tpath" "$target" < /dev/null || return 1
+            if [ "${stage_local:-no}" = yes ]; then
+                bmk -C "$PKGSRCDIR/$tpath" \
+                    _EMBER_STAGE_LOCAL_PACKAGE_INSTALL=yes \
+                    "_EMBER_STAGE_LOCAL_PKGPATH=$tpath" \
+                    "_EMBER_STAGE_LOCAL_WRKDIR=$wrkdir" "$target" < /dev/null || return 1
+            else
+                bmk -C "$PKGSRCDIR/$tpath" "$target" < /dev/null || return 1
+            fi
         fi
     done
+}
+
+stage_local_preflight()
+{
+    sl_work=$1 sl_base=$2 sl_version=$3 sl_name=$4 sl_log=$5
+    [ -n "$host_python" ] && [ -x "$host_python" ] || {
+        echo 'Stage-local recovery requires the selected SDK Python' >> "$sl_log"
+        return 1
+    }
+    "$host_python" -B -E -S "$PKGSRCDIR/mk/package/repackage-metadata-check.py" \
+        --stage-local "$sl_work" "$sl_base" "$sl_version" "$sl_name" 2>> "$sl_log"
 }
 
 # A split package pair can share one compiled payload when the run contains
@@ -1144,15 +1219,39 @@ build_one()
     key=$(echo "$path" | tr / _)
     case "$path" in *@native) build_native "$path" "$key"; return 0 ;; esac
     log=$state/logs/$key.log
-    vars=$(pkg_vars "$path" 'PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE') ||
+    varnames='PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE'
+    if [ "${stage_local:-no}" = yes ]; then varnames="$varnames PKGVERSION_NOREV"; fi
+    vars=$(pkg_vars "$path" "$varnames") ||
         { result "$key" "failed $path vars"; return 0; }
     name=$(printf '%s\n' "$vars" | sed -n 1p)
     wrkdir=$(printf '%s\n' "$vars" | sed -n 2p)
     skip=$(printf '%s\n' "$vars" | sed -n 3p)
     base=$(printf '%s\n' "$vars" | sed -n 4p)
+    version=
+    [ "${stage_local:-no}" != yes ] || version=$(printf '%s\n' "$vars" | sed -n 5p)
     if [ -n "$skip" ]; then
         result "$key" "skipped $path $skip"
         return 0
+    fi
+    if [ "${stage_local:-no}" = yes ]; then
+        stage_local_identity=$(stage_local_preflight "$wrkdir" "$base" "$version" "$name" "$log") || {
+            result "$key" "failed $path incompatible-stage"
+            return 0
+        }
+        stage_local_revision_changed=no
+        [ "$stage_local_identity" != revision ] || stage_local_revision_changed=yes
+        : > "$log"
+        shared_pair_for_path "$path"
+        if [ -n "$shared_pair" ] && [ "$(cat "$run/shared-$shared_pair/enabled" 2>/dev/null)" = yes ]; then
+            if ! shared_pair_reset_stage "$path"; then
+                result "$key" "failed $path shared-stage-cleanup"
+                return 0
+            fi
+        elif [ "$stage_local_revision_changed" = yes ] &&
+            ! bmk -C "$PKGSRCDIR/$path" _package-clean < /dev/null >> "$log" 2>&1; then
+            result "$key" "failed $path package-clean"
+            return 0
+        fi
     fi
     file=$packages/$name.tgz
     if [ "${stage_local:-no}" != yes ] && [ -f "$file" ] &&
@@ -1161,12 +1260,12 @@ build_one()
         result "$key" "done $path"
         return 0
     fi
+    [ "${stage_local:-no}" = yes ] || : > "$log"
     # One short line per append: O_APPEND keeps concurrent lines whole.
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name MAKE_JOBS=$make_jobs" >> "$state/progress"
     if [ "${stage_local:-no}" != yes ]; then
         prepare_wrkdir "$wrkdir" "$job.$key"
     fi
-    : > "$log"
     # One package-install run does depends, package and the install: each
     # target-mode bmake run parses the package again, and the pkg_add wrapper
     # already keeps installs into one database apart. The sysroot may
@@ -1257,7 +1356,8 @@ package_install_one()
     clean=clean
     stage_local=yes
     job=1
-    cpus=$(host_cpus)
+    host_cpus > "$run/cpu-capacity"
+    cpus=$(cat "$run/cpu-capacity")
     make_jobs=${CROSS_BULK_MAKE_JOBS:-$cpus}
     count CROSS_BULK_MAKE_JOBS "$make_jobs"
     if [ "$make_jobs" -gt "$cpus" ]; then
@@ -1286,12 +1386,6 @@ package_install_one()
     reported=
     if [ "$role" = target ]; then
         shared_pairs_configure
-        if ! shared_pair_reset_stage "$path"; then
-            echo "Could not reset the shared package stage: $path" >&2
-            state_path_row "$state/failed" "$requested" "$requested shared-stage-cleanup"
-            state_path_row "$state/blocked" "$requested" "$requested shared-stage-cleanup"
-            return 1
-        fi
     fi
     [ "$stop" = 0 ] || return 143
     if [ "$role" = native ]; then build_native "$requested" "$key"; else build_one "$path"; fi

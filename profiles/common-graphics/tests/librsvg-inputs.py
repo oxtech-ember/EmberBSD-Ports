@@ -38,6 +38,7 @@ required = {
     'av-data': '0.4.4',
     'cssparser': '0.38.0',
     'cssparser-color': '0.6.0',
+    'cssparser-macros': '0.7.1',
     'dav1d': '0.11.1',
     'image': '0.25.10',
     'markup5ever': '0.40.0',
@@ -47,7 +48,8 @@ required = {
     'phf_generator': '0.14.0',
     'phf_macros': '0.14.0',
     'phf_shared': '0.14.0',
-    'selectors': '0.41.0',
+    'selectors': '0.42.0',
+    'servo_arc': '0.6.0',
     'string_cache': '0.11.0',
     'string_cache_codegen': '0.11.2',
     'web_atoms': '0.3.0',
@@ -84,6 +86,16 @@ for owner, dependency in (('image', 'dav1d'), ('dav1d', 'av-data'),
         fail(f'AVIF dependency chain is missing {owner} -> {dependency}')
 if 'syn 3.0.9' not in package('num-derive').get('dependencies', []):
     fail('num-derive must resolve through Syn 3')
+if 'syn 3.0.9' not in package('cssparser-macros').get('dependencies', []):
+    fail('cssparser-macros must resolve through Syn 3')
+if 'hashbrown 0.17.1' not in package('selectors').get('dependencies', []):
+    fail('selectors must use shared hashbrown 0.17.1')
+selectors_manifest = tomllib.loads(
+    (vendor / 'selectors-0.42.0/Cargo.toml').read_text())
+hashbrown_config = selectors_manifest.get('dependencies', {}).get('hashbrown', {})
+if (hashbrown_config.get('default-features') is not False or
+        'inline-more' not in hashbrown_config.get('features', [])):
+    fail('selectors must use shared hashbrown without unused default features')
 
 av_data_bytes = (vendor / 'av-data-0.4.4/Cargo.toml').read_bytes()
 av_data_manifest = tomllib.loads(av_data_bytes.decode())

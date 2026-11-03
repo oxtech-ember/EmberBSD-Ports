@@ -1,0 +1,509 @@
+$NetBSD$
+
+Provide Copy selector handles through one deduplicated cascade arena.
+Origin: EmberBSD (AI-assisted).
+
+--- rsvg/src/css.rs.orig
++++ rsvg/src/css.rs
+@@ -90,7 +90,9 @@
+ };
+ use selectors::parser::ParseRelative;
+ use selectors::{OpaqueElement, SelectorImpl, SelectorList};
++use std::cell::RefCell;
+ use std::cmp::Ordering;
++use std::collections::HashMap;
+ use std::fmt;
+ use std::str;
+ use std::str::FromStr;
+@@ -581,94 +583,110 @@
+     type PseudoElement = PseudoElement;
+ }
+ 
+-/// Newtype wrapper around `Node` so we can implement [`selectors::Element`] for it.
+-///
+-/// `Node` is an alias for [`rctree::Node`], so we can't implement
+-/// `selectors::Element` directly on it.  We implement it on the
+-/// `RsvgElement` wrapper instead.
+-#[derive(Clone, PartialEq)]
+-pub struct RsvgElement(Node);
++/// Copyable handle into the nodes retained for one CSS cascade.
++#[derive(Clone, Copy)]
++struct RsvgElement<'a> {
++    arena: &'a SelectorArena,
++    index: usize,
++}
++
++#[derive(Default)]
++struct SelectorArena {
++    nodes: RefCell<Vec<Node>>,
++    indices: RefCell<HashMap<OpaqueElement, usize>>,
++}
++
++impl SelectorArena {
++    fn intern(&self, node: Node) -> RsvgElement<'_> {
++        let identity = {
++            let element = node.borrow_element();
++            OpaqueElement::new::<Element>(&*element)
++        };
++
++        if let Some(index) = self.indices.borrow().get(&identity).copied() {
++            return RsvgElement { arena: self, index };
++        }
+ 
+-impl From<Node> for RsvgElement {
+-    fn from(n: Node) -> RsvgElement {
+-        RsvgElement(n)
++        let index = {
++            let mut nodes = self.nodes.borrow_mut();
++            let index = nodes.len();
++            nodes.push(node);
++            index
++        };
++        self.indices.borrow_mut().insert(identity, index);
++        RsvgElement { arena: self, index }
+     }
+ }
+ 
+-impl fmt::Debug for RsvgElement {
++impl RsvgElement<'_> {
++    /// Runs a read-only operation on the retained node without cloning its Rc handle.
++    fn with_node<T>(&self, f: impl FnOnce(&Node) -> T) -> T {
++        let nodes = self.arena.nodes.borrow();
++        f(&nodes[self.index])
++    }
++
++    fn intern(&self, node: Node) -> Self {
++        self.arena.intern(node)
++    }
++}
++
++impl PartialEq for RsvgElement<'_> {
++    fn eq(&self, other: &Self) -> bool {
++        selectors::Element::opaque(self) == selectors::Element::opaque(other)
++    }
++}
++
++impl fmt::Debug for RsvgElement<'_> {
+     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+-        write!(f, "{}", self.0.borrow())
++        self.with_node(|node| write!(f, "{}", node.borrow()))
+     }
+ }
+ 
+ // The selectors crate uses this to examine our tree of elements.
+-impl selectors::Element for RsvgElement {
++impl selectors::Element for RsvgElement<'_> {
+     type Impl = Selector;
+ 
+-    /// Converts self into an opaque representation.
+     fn opaque(&self) -> OpaqueElement {
+-        // The `selectors` crate uses this value just for pointer comparisons, to answer
+-        // the question, "is this element the same as that one?".  So, we'll give it a
+-        // reference to our actual node's data, i.e. skip over whatever wrappers there
+-        // are in rctree.
+-        //
+-        // We use an explicit type here to make it clear what the type is; otherwise you
+-        // may be fooled by the fact that borrow_element() returns a Ref<Element>, not a
+-        // plain reference: &Ref<T> is transient and would get dropped at the end of this
+-        // function, but we want something long-lived.
+-        let element: &Element = &self.0.borrow_element();
+-        OpaqueElement::new::<Element>(element)
++        self.with_node(|node| {
++            let element = node.borrow_element();
++            OpaqueElement::new::<Element>(&*element)
++        })
+     }
+ 
+     fn parent_element(&self) -> Option<Self> {
+-        self.0.parent().map(|n| n.into())
++        let parent = self.with_node(|node| node.parent());
++        parent.map(|node| self.intern(node))
+     }
+ 
+-    /// Whether the parent node of this element is a shadow root.
+     fn parent_node_is_shadow_root(&self) -> bool {
+-        // unsupported
+         false
+     }
+-
+-    /// The host of the containing shadow root, if any.
+     fn containing_shadow_host(&self) -> Option<Self> {
+-        // unsupported
+         None
+     }
+-
+-    /// Whether we're matching on a pseudo-element.
+     fn is_pseudo_element(&self) -> bool {
+-        // unsupported
+         false
+     }
+ 
+-    /// Skips non-element nodes
+     fn prev_sibling_element(&self) -> Option<Self> {
+-        let mut sibling = self.0.previous_sibling();
+-
+-        while let Some(ref sib) = sibling {
+-            if sib.is_element() {
+-                return sibling.map(|n| n.into());
++        let mut sibling = self.with_node(|node| node.previous_sibling());
++        while let Some(ref node) = sibling {
++            if node.is_element() {
++                return sibling.map(|node| self.intern(node));
+             }
+-
+-            sibling = sib.previous_sibling();
++            sibling = node.previous_sibling();
+         }
+-
+         None
+     }
+ 
+-    /// Skips non-element nodes
+     fn next_sibling_element(&self) -> Option<Self> {
+-        let mut sibling = self.0.next_sibling();
+-
+-        while let Some(ref sib) = sibling {
+-            if sib.is_element() {
+-                return sibling.map(|n| n.into());
++        let mut sibling = self.with_node(|node| node.next_sibling());
++        while let Some(ref node) = sibling {
++            if node.is_element() {
++                return sibling.map(|node| self.intern(node));
+             }
+-
+-            sibling = sib.next_sibling();
++            sibling = node.next_sibling();
+         }
+-
+         None
+     }
+ 
+@@ -677,17 +695,21 @@
+     }
+ 
+     fn has_local_name(&self, local_name: &LocalName) -> bool {
+-        self.0.borrow_element().element_name().local == local_name.0
++        self.with_node(|node| node.borrow_element().element_name().local == local_name.0)
+     }
+ 
+-    /// Empty string for no namespace
+     fn has_namespace(&self, ns: &Namespace) -> bool {
+-        self.0.borrow_element().element_name().ns == *ns
++        self.with_node(|node| node.borrow_element().element_name().ns == *ns)
+     }
+ 
+-    /// Whether this element and the `other` element have the same local name and namespace.
+     fn is_same_type(&self, other: &Self) -> bool {
+-        self.0.borrow_element().element_name() == other.0.borrow_element().element_name()
++        self.with_node(|node| {
++            let element = node.borrow_element();
++            other.with_node(|other_node| {
++                let other_element = other_node.borrow_element();
++                element.element_name() == other_element.element_name()
++            })
++        })
+     }
+ 
+     fn attr_matches(
+@@ -696,47 +718,41 @@
+         local_name: &LocalName,
+         operation: &AttrSelectorOperation<&AttributeValue>,
+     ) -> bool {
+-        self.0
+-            .borrow_element()
+-            .get_attributes()
+-            .iter()
+-            .find(|(attr, _)| {
+-                // do we have an attribute that matches the namespace and local_name?
+-                match *ns {
++        self.with_node(|node| {
++            node.borrow_element()
++                .get_attributes()
++                .iter()
++                .find(|(attr, _)| match *ns {
+                     NamespaceConstraint::Any => local_name.0 == attr.local,
+                     NamespaceConstraint::Specific(ns) => {
+                         QualName::new(None, ns.clone(), local_name.0.clone()) == *attr
+                     }
+-                }
+-            })
+-            .map(|(_, value)| {
+-                // we have one; does the attribute's value match the expected operation?
+-                operation.eval_str(value)
+-            })
+-            .unwrap_or(false)
++                })
++                .map(|(_, value)| operation.eval_str(value))
++                .unwrap_or(false)
++        })
+     }
+ 
+     fn match_non_ts_pseudo_class(
+         &self,
+         pc: &<Self::Impl as SelectorImpl>::NonTSPseudoClass,
+         _context: &mut MatchingContext<'_, Self::Impl>,
+-    ) -> bool
+-where {
++    ) -> bool {
+         match pc {
+             NonTSPseudoClass::Link => self.is_link(),
+             NonTSPseudoClass::Visited => false,
+-            NonTSPseudoClass::Lang(css_lang) => self
+-                .0
+-                .borrow_element()
+-                .get_computed_values()
+-                .xml_lang()
+-                .0
+-                .as_ref()
+-                .is_some_and(|e_lang| {
+-                    css_lang
+-                        .iter()
+-                        .any(|l| l.is_language_range() && l.matches(e_lang))
+-                }),
++            NonTSPseudoClass::Lang(css_lang) => self.with_node(|node| {
++                node.borrow_element()
++                    .get_computed_values()
++                    .xml_lang()
++                    .0
++                    .as_ref()
++                    .is_some_and(|e_lang| {
++                        css_lang
++                            .iter()
++                            .any(|lang| lang.is_language_range() && lang.matches(e_lang))
++                    })
++            }),
+         }
+     }
+ 
+@@ -745,50 +761,43 @@
+         _pe: &<Self::Impl as SelectorImpl>::PseudoElement,
+         _context: &mut MatchingContext<'_, Self::Impl>,
+     ) -> bool {
+-        // unsupported
+         false
+     }
+ 
+-    /// Whether this element is a `link`.
+     fn is_link(&self) -> bool {
+-        // Style as link only if href is specified at all.
+-        //
+-        // The SVG and CSS specifications do not seem to clearly
+-        // say what happens when you have an `<svg:a>` tag with no
+-        // `(xlink:|svg:)href` attribute. However, both Firefox and Chromium
+-        // consider a bare `<svg:a>` element with no href to be NOT
+-        // a link, so to avoid nasty surprises, we do the same.
+-        // Empty href's, however, ARE considered links.
+-        self.0.is_element()
+-            && match *self.0.borrow_element_data() {
+-                crate::element::ElementData::Link(ref link) => link.link.is_some(),
+-                _ => false,
+-            }
++        self.with_node(|node| {
++            node.is_element()
++                && match *node.borrow_element_data() {
++                    crate::element::ElementData::Link(ref link) => link.link.is_some(),
++                    _ => false,
++                }
++        })
+     }
+ 
+-    /// Returns whether the element is an HTML `<slot>` element.
+     fn is_html_slot_element(&self) -> bool {
+         false
+     }
+ 
+     fn has_id(&self, id: &Identifier, case_sensitivity: CaseSensitivity) -> bool {
+-        self.0
+-            .borrow_element()
+-            .get_id()
+-            .map(|self_id| case_sensitivity.eq(self_id.as_bytes(), id.0.as_bytes()))
+-            .unwrap_or(false)
++        self.with_node(|node| {
++            node.borrow_element()
++                .get_id()
++                .map(|self_id| case_sensitivity.eq(self_id.as_bytes(), id.0.as_bytes()))
++                .unwrap_or(false)
++        })
+     }
+ 
+     fn has_class(&self, name: &Identifier, case_sensitivity: CaseSensitivity) -> bool {
+-        self.0
+-            .borrow_element()
+-            .get_class()
+-            .map(|classes| {
+-                classes
+-                    .split_whitespace()
+-                    .any(|class| case_sensitivity.eq(class.as_bytes(), name.0.as_bytes()))
+-            })
+-            .unwrap_or(false)
++        self.with_node(|node| {
++            node.borrow_element()
++                .get_class()
++                .map(|classes| {
++                    classes
++                        .split_whitespace()
++                        .any(|class| case_sensitivity.eq(class.as_bytes(), name.0.as_bytes()))
++                })
++                .unwrap_or(false)
++        })
+     }
+ 
+     fn has_custom_state(&self, _name: &<Self::Impl as SelectorImpl>::Identifier) -> bool {
+@@ -796,48 +805,32 @@
+     }
+ 
+     fn imported_part(&self, _name: &Identifier) -> Option<Identifier> {
+-        // unsupported
+         None
+     }
+-
+     fn is_part(&self, _name: &Identifier) -> bool {
+-        // unsupported
+         false
+     }
+ 
+-    /// Returns whether this element matches `:empty`.
+-    ///
+-    /// That is, whether it does not contain any child element or any non-zero-length text node.
+-    /// See <http://dev.w3.org/csswg/selectors-3/#empty-pseudo>.
+     fn is_empty(&self) -> bool {
+-        // .all() returns true for the empty iterator
+-        self.0
+-            .children()
+-            .all(|child| child.is_chars() && child.borrow_chars().is_empty())
++        self.with_node(|node| {
++            node.children()
++                .all(|child| child.is_chars() && child.borrow_chars().is_empty())
++        })
+     }
+ 
+-    /// Returns whether this element matches `:root`,
+-    /// i.e. whether it is the root element of a document.
+-    ///
+-    /// Note: this can be false even if `.parent_element()` is `None`
+-    /// if the parent node is a `DocumentFragment`.
+     fn is_root(&self) -> bool {
+-        self.0.parent().is_none()
++        self.with_node(|node| node.parent().is_none())
+     }
+ 
+     fn add_element_unique_hashes(&self, _filter: &mut BloomFilter) -> bool {
+         false
+     }
+ 
+-    /// Returns the first child element of this element.
+     fn first_element_child(&self) -> Option<Self> {
+-        self.0
+-            .children()
+-            .find(|child| child.is_element())
+-            .map(|n| n.into())
++        let child = self.with_node(|node| node.children().find(|child| child.is_element()));
++        child.map(|node| self.intern(node))
+     }
+ 
+-    /// Applies the given selector flags to this element.
+     fn apply_selector_flags(&self, _: ElementSelectorFlags) {
+         todo!()
+     }
+@@ -1025,7 +1018,7 @@
+     /// Appends the style declarations that match a specified node to a given vector
+     fn get_matches<'a>(
+         &'a self,
+-        node: &Node,
++        element: RsvgElement<'_>,
+         match_ctx: &mut MatchingContext<'_, Selector>,
+         acc: &mut Vec<Match<'a>>,
+     ) {
+@@ -1033,11 +1026,7 @@
+             for selector in rule.selectors.slice() {
+                 // This magic call is stolen from selectors::matching::matches_selector_list()
+                 let matches = selectors::matching::matches_selector(
+-                    selector,
+-                    0,
+-                    None,
+-                    &RsvgElement(node.clone()),
+-                    match_ctx,
++                    selector, 0, None, element, match_ctx,
+                 );
+ 
+                 if matches {
+@@ -1062,6 +1051,7 @@
+     user_stylesheets: &[Stylesheet],
+     session: &Session,
+ ) {
++    let selector_arena = SelectorArena::default();
+     for mut node in root.descendants().filter(|n| n.is_element()) {
+         let mut matches = Vec::new();
+ 
+@@ -1082,12 +1072,13 @@
+             MatchingForInvalidation::No,
+         );
+ 
++        let selector_element = selector_arena.intern(node.clone());
+         for s in ua_stylesheets
+             .iter()
+             .chain(author_stylesheets)
+             .chain(user_stylesheets)
+         {
+-            s.get_matches(&node, &mut match_ctx, &mut matches);
++            s.get_matches(selector_element, &mut match_ctx, &mut matches);
+         }
+ 
+         matches.as_mut_slice().sort();
+@@ -1210,10 +1201,16 @@
+         assert!(is_element_of_type!(c, Circle));
+         assert!(is_element_of_type!(d, Rect));
+ 
+-        let a = RsvgElement(a);
+-        let b = RsvgElement(b);
+-        let c = RsvgElement(c);
+-        let d = RsvgElement(d);
++        let arena = SelectorArena::default();
++        let a = arena.intern(a);
++        let b = arena.intern(b);
++        let c = arena.intern(c);
++        let d = arena.intern(d);
++        let copied = a;
++        assert_eq!(a, copied);
++        let other_arena = SelectorArena::default();
++        let same_node = other_arena.intern(a.with_node(|node| node.clone()));
++        assert_eq!(a, same_node);
+ 
+         // Tree navigation
+ 
+@@ -1229,6 +1226,35 @@
+         assert_eq!(b.prev_sibling_element(), None);
+         assert_eq!(c.prev_sibling_element(), Some(b.clone()));
+         assert_eq!(d.prev_sibling_element(), Some(c.clone()));
++        assert_eq!(arena.nodes.borrow().len(), 4);
++        assert_eq!(arena.indices.borrow().len(), 4);
++        assert_eq!(b.parent_element(), Some(a));
++        assert_eq!(c.next_sibling_element(), Some(d));
++        assert_eq!(arena.nodes.borrow().len(), 4);
++        assert_eq!(arena.indices.borrow().len(), 4);
++
++        let mut parser = Parser::new("svg > rect#b + circle#c");
++        let selector_parser = RuleParser {
++            session: Session::new_for_test_suite(),
++        };
++        let selectors =
++            SelectorList::parse(&selector_parser, &mut parser, ParseRelative::No).unwrap();
++        let mut caches = SelectorCaches::default();
++        let mut match_ctx = MatchingContext::new(
++            MatchingMode::Normal,
++            None,
++            &mut caches,
++            QuirksMode::NoQuirks,
++            NeedsSelectorFlags::No,
++            MatchingForInvalidation::No,
++        );
++        assert!(selectors::matching::matches_selector(
++            &selectors.slice()[0],
++            0,
++            None,
++            c,
++            &mut match_ctx,
++        ));
+ 
+         // Other operations
+ 

@@ -106,8 +106,12 @@ def main():
 
     selected = '/selected/sdk/bin/dtrace'
     check(query('selected', ['DTRACE=' + selected]), selected)
-    for name, values in [('unset', []), ('empty', ['DTRACE=']),
-                         ('relative', ['DTRACE=bin/dtrace']),
+    check(query('default-without-provider', []), disabled=True)
+    check(query('empty-provider-default', ['DTRACE=']), disabled=True)
+    check(query('explicit-without-provider', ['PKG_OPTIONS.perl=dtrace']), refused=True)
+    check(query('pkg-default-explicit-without-provider', ['PKG_DEFAULT_OPTIONS=dtrace']),
+          refused=True)
+    for name, values in [('relative', ['DTRACE=bin/dtrace']),
                          ('space', ['DTRACE=/selected/sdk with space/bin/dtrace'])]:
         check(query(name, values), refused=True)
     check(query('disabled', ['PKG_OPTIONS.perl=-dtrace']), disabled=True)

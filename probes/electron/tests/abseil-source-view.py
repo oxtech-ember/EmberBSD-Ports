@@ -7,7 +7,7 @@ from pathlib import Path
 import tempfile
 
 owner = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('source_view', owner / 'electron44/files/protobuf-source-view.py')
+spec = importlib.util.spec_from_file_location('source_view', owner / '../../pkgsrc/devel/electron44/files/protobuf-source-view.py')
 view = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(view)
 with tempfile.TemporaryDirectory() as tmp:

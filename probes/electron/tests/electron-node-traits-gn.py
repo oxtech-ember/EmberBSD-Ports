@@ -13,7 +13,7 @@ for name in ('node-source', 'gn'):
 args = parser.parse_args()
 node, gn = args.node_source.resolve(strict=True), args.gn.resolve(strict=True)
 owner = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('build_electron', owner / 'electron44/files/build-electron.py')
+spec = importlib.util.spec_from_file_location('build_electron', owner / '../../pkgsrc/devel/electron44/files/build-electron.py')
 build = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(build)
 text = (node / 'unofficial.gni').read_text()

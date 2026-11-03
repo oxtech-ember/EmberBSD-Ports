@@ -182,6 +182,11 @@ still override it through the ordinary make variable.
 adds `-static` for target links. This setting is separate from the C-only
 runtime selection; a C-foundation toolset does not itself imply static libc.
 
+`EMBERBSD_CROSS_FUNCTION_SECTIONS` defaults to `no`. Target profiles that
+link static C archives with section garbage collection can set it to `yes`;
+the cross profile then adds `-ffunction-sections -fdata-sections` to target
+CFLAGS only. Native tool builds keep their ordinary CFLAGS.
+
 The [root certificate recipe](rootcerts.md) separates native data generators
 from the explicit NetBSD 11 full-base script contract. The compiler SDK does
 not need target command binaries for that data-only package.
@@ -589,7 +594,15 @@ node fails with reason `replace`, its log names the library and the
 packages that load it, and the package stays in `PACKAGES-native/All` for
 an install with those rebuilds between passes.
 `scripts/tests/cross-bulk-native-replace-libraries.sh NEW_OUTPUT` checks
-this. A fresh `cross-bulk.sh order LIST STATE` includes the complete target
+this. A native package built before the native profile kept rc.d scripts in
+the host prefix recorded `/etc/rc.d` in its `+DIRS`; its `pkg_add -U`
+removal ran `rmdir -p /etc/rc.d`, which on macOS waits on a privacy prompt
+with the database lock held. Before each install into the native database,
+the build's `pkg_add` wrapper therefore marks each refcounted directory or
+file outside the recording package's `@cwd` prefix as `+PREEXISTING`, so
+pkgsrc's `+DIRS` and `+FILES` removal leaves it alone; the log names each
+marked path. `scripts/tests/cross-bulk-native-outside-dirs.sh NEW_OUTPUT`
+checks this. A fresh `cross-bulk.sh order LIST STATE` includes the complete target
 and native dependency graph. Regenerate it only when dependency selection
 changes; a build resumes from its saved order and done records. Order refuses
 a graph with a cycle or unreadable dependency query; a failed query keeps the

@@ -11,7 +11,7 @@ import tempfile
 from types import SimpleNamespace
 from unittest.mock import patch
 
-OWNER = Path(__file__).resolve().parents[1] / 'electron44/files/build-electron.py'
+OWNER = Path(__file__).resolve().parents[1] / '../../pkgsrc/devel/electron44/files/build-electron.py'
 spec = importlib.util.spec_from_file_location('electron_build', OWNER)
 build = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(build)

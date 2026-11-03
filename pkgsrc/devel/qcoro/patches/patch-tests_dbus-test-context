@@ -1,0 +1,181 @@
+Origin: EmberBSD (AI-assisted). Upstream status: not submitted.
+A DBus reply can be ready before co_await, so fast calls may finish inline.
+Keep pending and explicitly ready cases strict while testing both paths.
+
+--- tests/testlibs/testobject.h
++++ tests/testlibs/testobject.h
+@@ -33,6 +33,7 @@
+     TestContext &operator=(const TestContext &) = delete;
+ 
+     void setShouldNotSuspend();
++    void setMaySuspend();
+ 
+ private:
+     QEventLoop *mEventLoop = {};
+@@ -75,8 +76,9 @@
+ 
+         bool testFinished = el.property("testFinished").toBool();
+         const bool shouldNotSuspend = el.property("shouldNotSuspend").toBool();
++        const bool maySuspend = el.property("maySuspend").toBool();
+         if (testFinished) {
+-            QVERIFY(shouldNotSuspend);
++            QVERIFY(shouldNotSuspend || maySuspend);
+         } else {
+             QVERIFY(!shouldNotSuspend);
+ 
+--- tests/testlibs/testobject.cpp
++++ tests/testlibs/testobject.cpp
+@@ -9,6 +9,7 @@
+ TestContext::TestContext(QEventLoop &el) : mEventLoop(&el) {
+     mEventLoop->setProperty("testFinished", false);
+     mEventLoop->setProperty("shouldNotSuspend", false);
++    mEventLoop->setProperty("maySuspend", false);
+ }
+ 
+ TestContext::TestContext(TestContext &&other) noexcept {
+@@ -30,3 +31,7 @@
+ void TestContext::setShouldNotSuspend() {
+     mEventLoop->setProperty("shouldNotSuspend", true);
+ }
++
++void TestContext::setMaySuspend() {
++    mEventLoop->setProperty("maySuspend", true);
++}
+--- tests/qdbuspendingcall.cpp
++++ tests/qdbuspendingcall.cpp
+@@ -15,7 +15,8 @@
+ class QCoroDBusPendingCallTest : public QCoro::TestObject<QCoroDBusPendingCallTest> {
+     Q_OBJECT
+ private:
+-    QCoro::Task<> testTriggers_coro(QCoro::TestContext) {
++    QCoro::Task<> testTriggers_coro(QCoro::TestContext test) {
++        test.setMaySuspend();
+         QDBusInterface iface(DBusServer::serviceName, DBusServer::objectPath,
+                              DBusServer::interfaceName);
+         QCORO_VERIFY(iface.isValid());
+@@ -24,7 +25,8 @@
+         QCORO_VERIFY(reply.isValid());
+     }
+ 
+-    QCoro::Task<> testReturnsResult_coro(QCoro::TestContext) {
++    QCoro::Task<> testReturnsResult_coro(QCoro::TestContext test) {
++        test.setMaySuspend();
+         QDBusInterface iface(DBusServer::serviceName, DBusServer::objectPath,
+                              DBusServer::interfaceName);
+         QCORO_VERIFY(iface.isValid());
+@@ -71,12 +73,10 @@
+         QCORO_VERIFY(iface.isValid());
+ 
+         auto call = iface.asyncCall(QStringLiteral("foo"));
+-        QDBusReply<void> reply = co_await call;
+-        QCORO_VERIFY(reply.isValid());
+-
++        call.waitForFinished();
+         test.setShouldNotSuspend();
+ 
+-        reply = co_await call;
++        QDBusReply<void> reply = co_await call;
+ 
+         QCORO_VERIFY(reply.isValid());
+     }
+--- tests/qdbuspendingreply.cpp
++++ tests/qdbuspendingreply.cpp
+@@ -19,7 +19,8 @@
+ class QCoroDBusPendingCallTest : public QCoro::TestObject<QCoroDBusPendingCallTest> {
+     Q_OBJECT
+ private:
+-    QCoro::Task<> testTriggers_coro(QCoro::TestContext) {
++    QCoro::Task<> testTriggers_coro(QCoro::TestContext test) {
++        test.setMaySuspend();
+         cz::dvratil::qcorodbustest iface(DBusServer::serviceName, DBusServer::objectPath,
+                                          QDBusConnection::sessionBus());
+         QCORO_VERIFY(iface.isValid());
+@@ -29,7 +30,8 @@
+         QCORO_VERIFY(resp.isFinished());
+     }
+ 
+-    QCoro::Task<> testQCoroWrapperTriggers_coro(QCoro::TestContext) {
++    QCoro::Task<> testQCoroWrapperTriggers_coro(QCoro::TestContext test) {
++        test.setMaySuspend();
+         cz::dvratil::qcorodbustest iface(DBusServer::serviceName, DBusServer::objectPath,
+                                         QDBusConnection::sessionBus());
+         QCORO_VERIFY(iface.isValid());
+@@ -54,7 +56,8 @@
+         QVERIFY(called);
+     }
+ 
+-    QCoro::Task<> testReturnsResult_coro(QCoro::TestContext) {
++    QCoro::Task<> testReturnsResult_coro(QCoro::TestContext test) {
++        test.setMaySuspend();
+         cz::dvratil::qcorodbustest iface(DBusServer::serviceName, DBusServer::objectPath,
+                                          QDBusConnection::sessionBus());
+         QCORO_VERIFY(iface.isValid());
+@@ -108,12 +111,10 @@
+         QCORO_VERIFY(iface.isValid());
+ 
+         auto call = iface.foo();
++        call.waitForFinished();
++        test.setShouldNotSuspend();
++
+         QDBusReply<void> reply = co_await call;
+-        QCORO_VERIFY(reply.isValid());
+-
+-        test.setShouldNotSuspend();
+-
+-        reply = co_await call;
+ 
+         QCORO_VERIFY(reply.isValid());
+     }
+--- tests/testconstraints.cpp
++++ tests/testconstraints.cpp
+@@ -1,5 +1,8 @@
+ #include <QObject>
+ #include <QTest>
++
++#include "testobject.h"
++#include "qcorotimer.h"
+ 
+ #include "qcoro/coroutine.h"
+ #include "qcoro/qcorotask.h"
+@@ -51,9 +54,40 @@
+ }
+ #endif
+ 
+-class TestConstraints : public QObject {
++class TestConstraints : public QCoro::TestObject<TestConstraints> {
++    QCoro::Task<> inlineAllowed(QCoro::TestContext ctx) {
++        ctx.setMaySuspend();
++        co_return;
++    }
++
++    QCoro::Task<> inlineRejected(QCoro::TestContext) {
++        co_return;
++    }
++
++    QCoro::Task<> forcedInlineSuspends(QCoro::TestContext ctx) {
++        ctx.setShouldNotSuspend();
++        QTimer timer;
++        timer.setSingleShot(true);
++        timer.start(0);
++        co_await timer;
++    }
++
+     Q_OBJECT
+ private Q_SLOTS:
++    void testContextMaySuspend() {
++        coroWrapper(&TestConstraints::inlineAllowed);
++    }
++
++    void testContextRejectsUnexpectedInline() {
++        QEXPECT_FAIL("", "Inline completion must be explicitly allowed", Continue);
++        coroWrapper(&TestConstraints::inlineRejected);
++    }
++
++    void testContextRejectsUnexpectedSuspension() {
++        QEXPECT_FAIL("", "Required inline completion must not suspend", Continue);
++        coroWrapper(&TestConstraints::forcedInlineSuspends);
++    }
++
+     void testAwaitableConcept() {
+ 
+         static_assert(helper::is_awaitable_v<QCoro::Task<void>>,

@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-owner = Path(os.environ.get('SOURCE_VIEW_TEST_MODULE', Path(__file__).resolve().parents[1] / 'electron44/files/protobuf-source-view.py'))
+owner = Path(os.environ.get('SOURCE_VIEW_TEST_MODULE', Path(__file__).resolve().parents[1] / '../../pkgsrc/devel/electron44/files/protobuf-source-view.py'))
 spec = importlib.util.spec_from_file_location('view', owner)
 view = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(view)

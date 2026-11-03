@@ -1,60 +1,66 @@
 # Stage the Electron runtime
 
-This source probe is the only Electron 44 recipe candidate. Move this directory
-to `pkgsrc/devel/electron44` when its ordinary build and install targets work.
-Remove the probe in that same change. Keep the shared Chromium and Electron
-patch series at its existing owner. Do not add a second fetch-only recipe.
+The Electron recipe is owned by `pkgsrc/devel/electron44`. The shared Chromium
+and Electron patch series remains under `probes/electron/patches`.
 
 ## Build boundary
 
-The recipe currently fetches Electron 45.2.1 and Node 24.22.1. The
-[source preparer](source-preparation.md) creates a pinned DEPS input workspace
-and applies the recipe-local security series. Its Git-only acquisition stage
-records deferred CIPD/GCS/LFS inputs, followed by a guarded upstream patch stage.
-It does not yet prepare the complete source graph or run GN and Ninja. Do not use `NO_BUILD`, a
-downloaded binary ZIP, or an externally supplied ZIP as its ordinary build.
+The recipe binds an explicitly selected, complete Electron 45.2.1 source
+workspace to `files/build-electron.py`. The [source owner](source-preparation.md)
+prepares the pinned dependency graph and ordered Ports patches before pkgsrc
+configuration. `DISTFILES` is empty: neither an external distribution ZIP nor
+two standalone Electron/Node archives supply this complete workspace. The
+controller verifies the prepared graph, source identities and selected tools.
+The pkgsrc scratch `WRKSRC` stays separate from the reusable workspace, so its
+patch phase does not reapply the source owner's patches.
 
-The SDK already supplies the needed mechanisms. Load the native Ports
-host prefix with `native_toolset.load_host_prefix`. Select GN, Ninja and Python
-from that selection. Use `process.run_logged` for both producers while the
-caller retains its source/input locks and exclusive work context. A separate
-Electron executor or qualification format is not required.
+`producer.mk` maps `EMBERBSD_ELECTRON_*` settings to the existing controller CLI.
+Required settings select `WORKSPACE`, `PORTS_SOURCE`, `SDK_SOURCE`, `HOST_PREFIX`,
+`COMPILER_PREFIX`, `SYSROOT`, `WORK`, `GIT`, `LOCK_ROOT`, `LINK_CONTEXT`, `TARGET`,
+`PYTHON`, `NODE_SOURCE`, `NODE_PKGSRC`, `V8_SOURCE`, `V8_PORTS_SOURCE` and
+`V8_PKGSRC`. SDK source, host prefix, Python, sysroot and target default to the
+corresponding common cross-configuration values. Optional settings follow the
+controller's option names in uppercase with underscores, including independent
+host/target compiler families, runtime stages, native generators and common
+source providers. Use the controller's help and the [Electron README](../../../probes/electron/README.md) for those
+input contracts. No recipe path overrides the controller's identity checks.
 
-The missing recipe integration is concrete:
+When reusing a graph configured outside the exported recipe, keep the original
+controller location as well as its selected inputs. Set pkgsrc `FILESDIR` to
+that owner's `electron44/files` directory. The controller derives helper paths
+from its own location; a copied controller has different identity paths even
+when its bytes match. Changing those paths requires a new configuration rather
+than bypassing the existing graph's identity checks.
 
-1. Starting with the prepared DEPS input, acquire the full pinned dependency
-   tree, run the guarded upstream patch stage, and apply ordered Ports BSD
-   patches in the recipe's own work tree. The two current distfiles are insufficient.
-2. Map the selected native prefix and independent target SDK to GN arguments.
-   Clang is the default; select GCC only for an explicit platform requirement.
-   Bind the native compiler paths and ordered ABI arguments,
-   Mac SDK, host Node and other generators used by the actual graph. Bind the
-   target compiler/binutils, EmberBSD sysroot and target pkgsrc metadata.
-   Set the target `is_clang` mode and the host mode independently, as documented
-   in the parent README. Use the matching host and snapshot toolchain families.
-   Preserve the target custom libc++ policy, final-link pool and link launcher.
-3. Write that checked `args.gn` in a new recipe-owned output directory. Run the
-   selected GN as `gn gen OUTPUT --script-executable=SELECTED_PYTHON`. Then run
-   the selected Ninja as `ninja -C OUTPUT -j JOBS electron_dist_zip`.
-   Use the SDK process API and explicit argv arrays for these calls. Do not
-   select a tool through ambient PATH or switch families after a build failure.
-4. The controller's `build` and `reconfigure --build-after-reconfigure` produce
-   `OUTPUT/dist.zip`; they do not stage or replace a runtime directory. To stage
-   the successful, drained result, invoke `files/stage-runtime.py` separately
-   with `--archive OUTPUT/dist.zip`, its actual SHA256 in `--archive-sha256`,
-   an absolute new `--destination`, `--target`, and `--sdk-source`. The hash is
-   a byte-stability check; it does not accept the source graph, compiler,
-   sysroot or build by itself.
+A new `WORK` is configured once through the selected GN. An existing
+`configuration.json` is left for the controller's strict build checks; an
+existing work directory without it is refused and preserved. Changes that need
+GN regeneration require the controller's explicit `reconfigure` operation with
+compatible identities. The recipe does not silently reset or reconfigure an
+existing graph. `JOBS` defaults to `MAKE_JOBS` when selected by the caller;
+otherwise the controller uses the SDK CPU resolver. `KEEP_GOING` applies only
+to the build action. The selected Ninja retains compatible objects and produces
+`WORK/out/dist.zip`.
 
-The initial source preparer and standalone GN fixtures do not complete steps 1
-and 2.
-They also do not establish a production GN graph for the selected native SDK.
-Those are recipe bindings to the existing APIs, not missing SDK executors.
-Keep the probe until this integration is implemented and checked with real GN.
+The build and installation phases are separate. `do-install` passes that
+producer work directory to `install-runtime.py`; `GENERATE_PLIST` uses its
+`plist` action. `runtime-dependencies.mk` selects shared package owners of the
+runtime libraries, including the dynamically loaded libnotify. Split LLVM
+runtime buildlinks keep their headers and link-time files as build-only
+dependencies. Ordinary cross-build, package creation and isolated host-rooted
+install/delete/reinstall have passed. Target execution, GUI, complete ABI and
+hardware acceptance remain pending.
+
+The controller's `build` and `reconfigure --build-after-reconfigure` do not
+extract or hash the distribution after each build. For a separate inspection,
+invoke `files/stage-runtime.py` with `--archive WORK/out/dist.zip`, its actual
+SHA256 in `--archive-sha256`, an absolute new `--destination`, `--target` and
+`--sdk-source`. The hash establishes byte stability, not the source, compiler,
+sysroot or runtime acceptance.
 
 ## Staging mechanism
 
-`files/stage-runtime.py` is a bounded extraction helper for step 4. It does not
+`files/stage-runtime.py` is the bounded extraction helper for explicit staging. It does not
 run a payload or install a package. It returns extracted byte and ELF facts.
 It emits no success, qualification or build receipt. The caller owns the input,
 destination parent and their SDK context locks for the whole call.

@@ -15,7 +15,7 @@ for name in ('sdk-source', 'pkgsrc', 'host-prefix', 'stage-root', 'base-makeconf
              'binding-record', 'bmake-mk', 'lock-root', 'work-parent'):
     p.add_argument('--' + name, type=Path, required=True)
 a = p.parse_args()
-owner = Path(__file__).resolve().parents[1] / 'electron44'
+owner = Path(__file__).resolve().parents[1] / '../../pkgsrc/devel/electron44'
 with tempfile.TemporaryDirectory(prefix='electron-host-buildlink-test-', dir=a.work_parent) as temp:
     root = Path(temp)
     local = root / 'consumer/files'; local.mkdir(parents=True)

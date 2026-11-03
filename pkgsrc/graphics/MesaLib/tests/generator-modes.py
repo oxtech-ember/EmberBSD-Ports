@@ -15,7 +15,7 @@ FIELDS = ('PKG_FAIL_REASON', 'MESON_ARGS', 'MESON_NATIVE_ARGS', 'DEPENDS',
           'BUILDLINK_API_DEPENDS.spirv-llvm-translator', 'TEST_INCLUDES',
           'BUILDLINK_API_DEPENDS.spirv-tools',
           'BUILDLINK_API_DEPENDS.googletest',
-          'GCC_REQD', 'USE_LANGUAGES', 'PLIST.radeonsi')
+          'GCC_REQD', 'USE_LANGUAGES', 'PLIST.radeonsi', 'PLIST.full_drivers')
 BUILD_LINKS = {'../../lang/clang/buildlink3.mk', '../../parallel/spirv-tools/buildlink3.mk',
                '../../parallel/spirv-llvm-translator/buildlink3.mk'}
 
@@ -25,7 +25,7 @@ def require(condition, message):
         raise ValueError(message)
 
 
-def parse(make, work, source, arch, cross, sealed, tests=False):
+def parse(make, work, source, arch, cross, sealed, tests=False, minimal=False):
     # External pkgsrc includes are outside this finite metadata boundary.
     # Keep local generator policy live. Record selected external interfaces.
     lines = []
@@ -59,7 +59,8 @@ show:
 \t@printf '%s\\n' ${{${{field}}:Q}}
 .endfor
 '''.format(arch=arch, cross=cross, work=work,
-           pkg_options='llvm x11 wayland tests' if tests else 'llvm x11 wayland',
+           pkg_options=('softpipe-only x11' if minimal else
+                        ('llvm x11 wayland tests' if tests else 'llvm x11 wayland')),
            sealed=sealed, fields=' '.join(FIELDS)))
     result = subprocess.run([str(make), '-r', '-m', '/', '-f', str(fixture), 'show'],
                             cwd=RECIPE, capture_output=True, text=True)
@@ -70,6 +71,7 @@ show:
 
 
 def oracle(values, arch, cross, sealed, tests=False):
+    require(values['PLIST.full_drivers'] == 'yes', 'Default full-driver PLIST was lost')
     options = set(values['MESON_ARGS'].split())
     drivers = ('iris,radeonsi,virgl,softpipe,llvmpipe,zink' if arch == 'x86_64'
                else 'v3d,virgl,softpipe,llvmpipe,zink')
@@ -148,6 +150,42 @@ def main():
                                tools if cross else work / 'missing', tests=True)
                 oracle(values, arch, cross, cross, tests=True)
                 checks += 1
+        for arch in ('x86_64', 'aarch64'):
+            for cross in (False, True):
+                values = parse(args.bmake, work, source, arch, 'yes' if cross else 'no',
+                               work / 'missing', minimal=True)
+                options = set(values['MESON_ARGS'].split())
+                require({'-Dgallium-drivers=softpipe', '-Dvulkan-drivers=',
+                         '-Dllvm=disabled', '-Dplatforms=x11', '-Degl=enabled',
+                         '-Dgles2=enabled', '-Dbuild-tests=false'} <= options,
+                        'Softpipe selection does not keep the required APIs')
+                require(not any(x.startswith(('-Dmesa-clc=system', '-Dmesa-clc=enabled',
+                                              '-Dprecomp-compiler=system', '-Dprecomp-compiler=enabled'))
+                                for x in options), 'Softpipe imported CLC generators')
+                require('vulkan-loader' not in values['DEPENDS'], 'Softpipe imported Vulkan loader')
+                require(not (set(values['TEST_INCLUDES'].split()) & BUILD_LINKS),
+                        'Softpipe imported native CLC dependencies')
+                require('../../lang/llvm/buildlink3.mk' not in values['TEST_INCLUDES'].split(),
+                        'Softpipe imported target LLVM dependency')
+                require(not values['PLIST.full_drivers'] and not values['PLIST.radeonsi'],
+                        'Softpipe retained full-driver PLIST')
+                checks += 1
+        # Exercise the real options policy with a stub for pkgsrc's option resolver.
+        option_source = (RECIPE / 'options.mk').read_text().replace(
+            '.include "../../mk/bsd.options.mk"', '')
+        option_file = work / 'options.mk'
+        for selected, accepted in (
+            ('llvm x11 wayland', True), ('softpipe-only x11', True),
+            ('softpipe-only x11 llvm', False), ('softpipe-only x11 wayland', False),
+            ('softpipe-only', False), ('x11 wayland', False),
+        ):
+            option_file.write_text('PKG_OPTIONS= ' + selected + '\n' + option_source +
+                                   '\nshow:\n\t@printf "%s\\n" ${PKG_FAIL_REASON:Q}\n')
+            result = subprocess.run([str(args.bmake), '-r', '-m', '/', '-f', str(option_file),
+                                     'show'], capture_output=True, text=True)
+            require(result.returncode == 0 and bool(result.stdout.strip()) != accepted,
+                    'Unexpected options policy for ' + selected + ': ' + result.stdout + result.stderr)
+            checks += 1
         mutations = [
             ('.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"\n# Cross builds', '.if 1\n# Cross builds'),
             ('BUILDLINK_DEPMETHOD.clang=\tbuild', 'BUILDLINK_DEPMETHOD.clang=\tfull'),

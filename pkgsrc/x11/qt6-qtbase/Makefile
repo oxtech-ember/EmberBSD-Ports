@@ -148,7 +148,7 @@ QMAKE_CONF=		qmake.conf.mac
 .endif
 
 # Qt's deployment helpers are host tools and are disabled in cross builds.
-PLIST_VARS+=	androidtools targetmetadata egl egldevice opengl vulkan wayland x11
+PLIST_VARS+=	androidtools targetmetadata egl egldevice opengl vulkan wayland x11 xcb
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 PLIST.androidtools=	yes
 .endif
@@ -363,7 +363,7 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Xml.pc
 .include "../../archivers/brotli/buildlink3.mk"
 .include "../../databases/sqlite3/buildlink3.mk"
 .include "../../devel/glib2/buildlink3.mk"
-.if !empty(PLATFORM_SUPPORTS_WAYLAND:Myes)
+.if !empty(PLATFORM_SUPPORTS_WAYLAND:Myes) && empty(PKG_OPTIONS:Mheadless-generators)
 PLIST.wayland=	yes
 .include "../../devel/wayland/buildlink3.mk"
 .endif
@@ -402,6 +402,8 @@ PLIST.egldevice=	yes
 .    endif
 .  endif
 .endif
+.if empty(PKG_OPTIONS:Mheadless-generators)
+PLIST.xcb=	yes
 BUILDLINK_API_DEPENDS.libxcb+=	libxcb>=1.11
 .include "../../x11/libxcb/buildlink3.mk"
 .include "../../x11/xcb-util/buildlink3.mk"
@@ -420,6 +422,7 @@ BUILDLINK_API_DEPENDS.libxcb+=	libxcb>=1.11
 .include "../../x11/libXrandr/buildlink3.mk"
 .include "../../x11/libXrender/buildlink3.mk"
 .include "../../x11/libxkbcommon/buildlink3.mk"
+.endif
 .endif
 .include "../../mk/jpeg.buildlink3.mk"
 .include "../../mk/krb5.buildlink3.mk"
@@ -454,10 +457,11 @@ qtbase-select-stage: qt-target-metadata pkgconfig-link ${PLIST}
 	${PERL5} ${FILESDIR}/select-package-stage.pl handoff-runtime \
 	    ${DESTDIR:Q}${PREFIX:Q} ${WRKDIR:Q}/.qtbase-full-plist \
 	    ${WRKDIR:Q}/.qtbase-runtime-plist ${WRKDIR:Q}/.qtbase-devel-plist ${PLIST:Q} \
-	    ${EMBERBSD_QTBASE_SHARED_STAGE:Q}
+	    ${EMBERBSD_QTBASE_SHARED_STAGE:Q} ${WRKSRC:Q}/CMakeCache.txt
 .else
 	${PERL5} ${FILESDIR}/select-package-stage.pl ${QTBASE_PACKAGE_PART:Q} \
 	    ${DESTDIR:Q}${PREFIX:Q} ${WRKDIR:Q}/.qtbase-full-plist \
-	    ${WRKDIR:Q}/.qtbase-runtime-plist ${WRKDIR:Q}/.qtbase-devel-plist ${PLIST:Q}
+	    ${WRKDIR:Q}/.qtbase-runtime-plist ${WRKDIR:Q}/.qtbase-devel-plist ${PLIST:Q} \
+	    ${WRKSRC:Q}/CMakeCache.txt
 .endif
 .endif

@@ -8,7 +8,7 @@ from pathlib import Path
 import tempfile
 
 owner = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('providers', owner / 'electron44/files/node-providers.py')
+spec = importlib.util.spec_from_file_location('providers', owner / '../../pkgsrc/devel/electron44/files/node-providers.py')
 providers = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(providers)
 with tempfile.TemporaryDirectory(prefix='ts-proto-inputs-') as tmp:

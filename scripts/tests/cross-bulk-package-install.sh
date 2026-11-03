@@ -9,10 +9,64 @@ case "$out" in /*) ;; *) exit 2 ;; esac
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
 mkdir -p "$out/tree/pkgtools/pkg_install" "$out/tree/cat/demo" "$out/work/demo" \
     "$out/work/demo-native" "$out/packages/All" "$out/packages-native/All" \
-    "$out/db" "$out/native-db" "$out/state/logs" "$out/sdk/scripts"
+    "$out/db" "$out/native-db" "$out/state/logs" "$out/sdk/scripts" \
+    "$out/tree/mk/package"
 host_python=$(command -v python3)
 cat > "$out/sdk/scripts/resolve-jobs.py" <<'PY'
 print(6)
+PY
+cat > "$out/tree/mk/package/repackage-metadata-check.py" <<'PY'
+#!/usr/bin/env python3
+from pathlib import Path
+import sys
+
+try:
+    if sys.argv[1] != '--stage-local' or len(sys.argv) != 6:
+        raise ValueError('bad stage-local arguments')
+    work, base, version, current = sys.argv[2:]
+    stem = base + '-' + version
+
+    def is_identity(name):
+        if name == stem:
+            return True
+        prefix = stem + 'nb'
+        suffix = name[len(prefix):] if name.startswith(prefix) else ''
+        return bool(suffix and suffix.isascii() and suffix.isdigit())
+
+    def revision(name):
+        if name == stem:
+            return 0
+        return int(name[len(stem) + 2:])
+
+    identity_cookies = ('.extract_done', '.configure_done', '.build_done')
+    later = ('.wrapper_done', '.install_done', '.package_done', '.replace_done')
+    cookies = identity_cookies + later
+    found = {}
+    for name in cookies:
+        path = Path(work) / name
+        if path.is_symlink():
+            raise ValueError('symlinked cookie')
+        if path.exists():
+            found[name] = path.read_text().strip()
+    if not is_identity(current):
+        raise ValueError('current package family changed')
+    extract = found.get('.extract_done')
+    if extract is None:
+        if any(name in found for name in cookies[1:]):
+            raise ValueError('later phase without extract identity')
+        print('fresh')
+    else:
+        if not is_identity(extract) or any(not is_identity(found[name]) for name in identity_cookies[1:] if name in found):
+            raise ValueError('package/upstream identity changed')
+        package = found.get('.package_done') or found.get('.install_done') or extract
+        if not is_identity(package):
+            raise ValueError('package/upstream identity changed')
+        current_rev = revision(current)
+        old_rev = revision(package)
+        print('revision' if current_rev != old_rev else 'same')
+except (OSError, ValueError) as error:
+    print('stage-local: ' + str(error), file=sys.stderr)
+    raise SystemExit(1)
 PY
 printf '%s\n' 'cat/demo' > "$out/state/order"
 printf '%s\n' 'cat/demo cat/demo' > "$out/state/edges"
@@ -80,6 +134,7 @@ case "\$target" in
         for v in \$varnames; do
             case "\$v" in
                 PKGNAME) echo demo-1.0;;
+                PKGVERSION_NOREV) echo 1.0;;
                 WRKDIR) if [ "\$native" = yes ]; then echo $out/work/demo-native; else echo $out/work/demo; fi;;
                 PKGBASE) echo demo;;
                 .MAKE.MAKEFILES) echo Makefile;;
@@ -109,6 +164,8 @@ case "\$target" in
         mkdir -p $out/packages/All
         echo package > $out/packages/All/demo-1.0.tgz
         : > $out/db/demo-1.0;;
+    _package-clean)
+        echo _package-clean >> $out/targets;;
     install)
         echo install >> $out/targets
         [ "\$native" = yes ] || exit 2
@@ -136,6 +193,7 @@ run()
     if [ -n "$make_override" ]; then
         env BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
             CROSS_BULK_TEST_CPUS=6 \
+            CROSS_BULK_TEST_HOST_PYTHON=$host_python CROSS_BULK_TEST_SDK_SOURCE=$out/sdk \
             MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_VARS_CACHE=no \
             CROSS_BULK_MAKE_JOBS=$make_override \
             sh "$ports/scripts/cross-bulk.sh" package-install cat/demo "$target_state"
@@ -143,6 +201,7 @@ run()
     fi
     BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
         CROSS_BULK_TEST_CPUS=6 \
+        CROSS_BULK_TEST_HOST_PYTHON=$host_python CROSS_BULK_TEST_SDK_SOURCE=$out/sdk \
         MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_VARS_CACHE=no \
         sh "$ports/scripts/cross-bulk.sh" package-install cat/demo "$target_state"
 }
@@ -151,6 +210,7 @@ run_native()
     target_state=$1
     BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
         CROSS_BULK_TEST_CPUS=6 \
+        CROSS_BULK_TEST_HOST_PYTHON=$host_python CROSS_BULK_TEST_SDK_SOURCE=$out/sdk \
         MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_VARS_CACHE=no \
         sh "$ports/scripts/cross-bulk.sh" package-install cat/demo@native "$target_state"
 }
@@ -164,11 +224,13 @@ printf '%s\n' 'cat/demo@native demo-1.0 native' > "$out/native-state/done"
 : > "$out/native-db/demo-1.0"
 : > "$out/packages-native/All/demo-1.0.tgz"
 : > "$out/work/demo-native/keep-native"
+: > "$out/targets"
 run_native "$out/native-state" > "$out/native.log" 2>&1 || fail "native package-install: $(cat "$out/native.log")"
 grep -q '^USE_CROSS_COMPILE=no$' "$out/calls" || fail 'native rebuild did not select native package mode'
 grep -q "^PACKAGES=$out/packages-native$" "$out/calls" || fail 'native rebuild did not select native package destination'
 grep -q '^TARGET_SETTING=selected$' "$out/calls" || fail 'cross-fed native tool did not receive target settings'
 grep -q '^package$' "$out/targets" && grep -q '^replace$' "$out/targets" || fail 'matching installed native package was not rebuilt and replaced'
+! grep -qx _package-clean "$out/targets" || fail 'unchanged native PKGNAME invoked _package-clean'
 grep -q '^cat/demo@native demo-1.0 native$' "$out/native-state/done" || fail 'native success was not recorded under its canonical role'
 [ -f "$out/work/demo-native/keep-native" ] || fail 'native package-install removed the retained WRKDIR'
 ! grep -qx clean "$out/calls" || fail 'native package-install invoked clean'
@@ -206,9 +268,32 @@ grep -q '^cat/demo@native demo-1.0 native$' "$out/native-failure-state/done" || 
 [ ! -e "$out/native-failure-state/build.lock" ] || fail 'native failure left the stage-local lock'
 rm -f "$out/fail-package"
 
+# An incompatible retained extract identity must fail before package cleanup
+# or any install/package target is invoked.
+mkdir -p "$out/upstream-failure-state/logs"
+printf '%s\n' 'cat/demo' > "$out/upstream-failure-state/order"
+printf '%s\n' 'cat/demo cat/demo' > "$out/upstream-failure-state/edges"
+: > "$out/upstream-failure-state/done"
+: > "$out/upstream-failure-state/failed"
+: > "$out/upstream-failure-state/blocked"
+printf '%s\n' 'demo-0.9nb1' > "$out/work/demo/.extract_done"
+: > "$out/targets"
+: > "$out/calls"
+if run "$out/upstream-failure-state" > "$out/upstream-failure.log" 2>&1; then
+    fail 'stage-local upstream mismatch returned success'
+fi
+[ ! -s "$out/targets" ] || fail 'upstream mismatch reached package/install target'
+[ -f "$out/work/demo/keep-me" ] || fail 'upstream mismatch removed retained work'
+printf '%s\n' 'demo-1.0nb0' > "$out/work/demo/.extract_done"
+
+: > "$out/targets"
 run "$out/state" > "$out/success.log" 2>&1 || fail "package-install: $(cat "$out/success.log")"
 grep -q '^package$' "$out/targets" && grep -q '^replace$' "$out/targets" || fail 'did not package then replace installed version'
+! grep -qx _package-clean "$out/targets" || fail 'unchanged PKGNAME invoked _package-clean'
 grep -q '^MAKE_JOBS=6$' "$out/calls" || fail 'default MAKE_JOBS did not use the SDK CPU budget'
+grep -q '^_EMBER_STAGE_LOCAL_PACKAGE_INSTALL=yes$' "$out/calls" || fail 'controller omitted stage-local identity mode'
+grep -q '^_EMBER_STAGE_LOCAL_PKGPATH=cat/demo$' "$out/calls" || fail 'controller omitted exact PKGPATH scope'
+grep -q "^_EMBER_STAGE_LOCAL_WRKDIR=$out/work/demo$" "$out/calls" || fail 'controller omitted exact WRKDIR scope'
 [ -f "$out/work/demo/keep-me" ] || fail 'recovery removed the retained WRKDIR'
 grep -q '^cat/demo demo-1.0 [0-9a-f][0-9a-f]*$' "$out/state/done" || fail 'success row/checksum missing'
 ! grep -q '^cat/demo ' "$out/state/failed" || fail 'success retained target failure'
