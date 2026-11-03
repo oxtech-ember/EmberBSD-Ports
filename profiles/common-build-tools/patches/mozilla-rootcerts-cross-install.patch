@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: BSD-2-Clause
+# Origin: EmberBSD (AI-assisted), use the selected native generator for cross installs.
+--- a/security/mozilla-rootcerts-openssl/Makefile
++++ b/security/mozilla-rootcerts-openssl/Makefile
+@@ -45,9 +45,15 @@
+ 
+ OPENSSLDIR=		${PLACE}/openssl/certs
+ 
++.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++# The host tool consumes its own certdata; select the target installation path.
++SCRIPT=		${TOOLBASE}/sbin/mozilla-rootcerts
++_CERT_SCRIPT_ENV=	${SETENV} SSLDIR=${PLACE:Q}/openssl
++.endif
++
+ do-install:
+ 	${INSTALL_DATA_DIR} ${DESTDIR}${OPENSSLDIR}
+-	cd ${WRKSRC} && ${SCRIPT} -d ${DESTDIR} install
++	cd ${WRKSRC} && ${_CERT_SCRIPT_ENV} ${SCRIPT} -d ${DESTDIR} install
+ 	${CHMOD} go+r ${DESTDIR}${OPENSSLDIR}/*.pem
+ 	${CHMOD} go+r ${DESTDIR}${OPENSSLDIR}/*.crt
+ 
