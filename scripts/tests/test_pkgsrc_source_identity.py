@@ -19,6 +19,17 @@ spec.loader.exec_module(identity)
 
 
 class IdentityTest(unittest.TestCase):
+    def test_direct_reader_refuses_interrupted_export(self):
+        sdk = Path(os.environ['EMBERBSD_SDK_SOURCE'])
+        sys.path.insert(0, str(sdk / 'src'))
+        with tempfile.TemporaryDirectory(dir=os.environ['EMBERBSD_TEST_WORK']) as temp:
+            root = Path(temp) / 'pkgsrc'
+            (root / 'cat/pkg').mkdir(parents=True)
+            (root / 'cat/pkg/Makefile').write_text('DISTNAME=fixture\n')
+            (root.parent / '.pkgsrc-update-incomplete').write_text('interrupted\n')
+            with self.assertRaisesRegex(ValueError, 'update is incomplete'):
+                identity.effective_package_identity(root, 'cat/pkg', '1' * 40)
+
     def test_effective_package_identity(self):
         sdk = Path(__import__('os').environ['EMBERBSD_SDK_SOURCE'])
         sys.path.insert(0, str(sdk / 'src'))
@@ -298,6 +309,37 @@ class GitPackageIdentityTest(unittest.TestCase):
         sections = identity._plain_patch_sections(data)
         self.assertIsNotNone(sections)
         self.assertGreater(len(sections), 1)
+
+    def test_legacy_payload_requires_exact_recorded_identity(self):
+        import hashlib
+        import json
+        old = b'old configuration\n'
+        row = {'kind': 'file', 'mode': 0o644, 'size': len(old),
+               'sha256': hashlib.sha256(old).hexdigest()}
+        old_snapshot = {'api': 1, 'upstream': '1' * 40,
+                        'files': {'pkgsrc/export.conf': row['sha256']},
+                        'trees': {'pkgsrc': {'export.conf': row}}}
+        digest = hashlib.sha256(json.dumps(old_snapshot, sort_keys=True,
+            separators=(',', ':')).encode()).hexdigest()
+        current = {'api': 1, 'upstream': '1' * 40,
+                   'files': {'pkgsrc/export.conf': 'changed', 'new.patch': 'added'},
+                   'trees': {'pkgsrc': {'export.conf': dict(row, sha256='changed')}}}
+        changes = {'pkgsrc/export.conf': (old, 0o644, True),
+                   'new.patch': (None, None, False)}
+        self.assertEqual(identity.reconstruct_legacy_payload(current, changes, digest), old_snapshot)
+        with self.assertRaisesRegex(ValueError, 'do not match'):
+            identity.reconstruct_legacy_payload(current, changes, '0' * 64)
+        with self.assertRaisesRegex(ValueError, 'unsafe'):
+            identity.reconstruct_legacy_payload(current, {'../escape': (old, 0o644, True)}, digest)
+
+    def test_gnu_diff_sections_require_matching_names(self):
+        data = (ROOT / 'profiles/common-build-tools/patches/pkgsrc-bmake-executable-path.patch').read_bytes()
+        sections = identity._update_patch_sections(data)
+        self.assertIsNotNone(sections)
+        self.assertIn(['devel/bmake/Makefile', 'devel/bmake/Makefile'], [row[0] for row in sections])
+        self.assertIsNone(identity._update_patch_sections(
+            b'diff -ruN a/cat/pkg/a b/cat/pkg/b\n'
+            b'--- a/cat/pkg/a\n+++ b/cat/pkg/a\n@@ -1 +1 @@\n-old\n+new\n'))
 
     def test_parser_payload_and_conservative_fallback(self):
         misleading = (b'--- a/cat/pkg/Makefile\n+++ b/cat/pkg/Makefile\n@@ -1,2 +1,2 @@\n'
