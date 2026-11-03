@@ -71,18 +71,19 @@ depends.write_text('')
 requires_file = args.work / 'requires'
 
 def check(path, *, expected=None, metadata=True, checker_path=checker, staged=True,
-          toxic='', extra='', dependency=''):
+          toxic='', extra='', dependency='', prefix='/usr/pkg'):
     if requires_file.exists():
         requires_file.unlink()
     depends.write_text(dependency)
     runenv = dict(env, DESTDIR=str(stage) if staged else '',
-                  CROSS_DESTDIR=str(cross) if staged else '', READELF=str(args.readelf),
+                  CROSS_DESTDIR=str(cross) if staged else '', PREFIX=prefix, READELF=str(args.readelf),
                   WRKDIR=str(args.work / 'build'), PLATFORM_RPATH='',
                   PKG_INFO_CMD=str(pkg_info), DEPENDS_FILE=str(depends),
                   CHECK_SHLIBS_TOXIC=toxic, CHECK_WRKREF_EXTRA_DIRS=extra,
                   REQUIRES_FILE=str(requires_file) if metadata else '')
     result = subprocess.run([str(args.awk), '-f', str(checker_path)], input=str(path) + '\n',
-                            text=True, capture_output=True, env=runenv, check=True)
+                            text=True, capture_output=True, env=runenv, check=True,
+                            cwd=stage / 'usr/pkg')
     if expected is None:
         assert result.stdout == '', result.stdout
     else:
@@ -108,6 +109,19 @@ absolute.symlink_to('/usr/pkg/lib/electron44/same.so')
 for alias in (relative, absolute):
     assert '/usr/pkg/lib/electron44/libdiagnostic.so.1' in check(alias)
     check(alias, metadata=False)
+
+# Normal check-shlibs.mk supplies PREFIX-relative names and runs in DESTDIR/PREFIX.
+for name in ('lib/electron44/same.so', 'bin/relative', 'bin/absolute'):
+    assert '/usr/pkg/lib/electron44/libdiagnostic.so.1' in check(name)
+    check(name, metadata=False)
+check('lib/electron44/same.so', expected='relative object requires an absolute safe PREFIX',
+      prefix='')
+check('lib/electron44/same.so', expected='relative object requires an absolute safe PREFIX',
+      prefix='relative')
+check('../outside.so', expected='relative object requires an absolute safe PREFIX')
+# Native relative names use the explicitly declared absolute PREFIX too.
+check('lib/electron44/same.so', metadata=False, staged=False,
+      prefix=str(stage / 'usr/pkg'))
 
 # Native absolute origin is meaningful without DESTDIR; never rely on cwd.
 check(same, metadata=False, staged=False)

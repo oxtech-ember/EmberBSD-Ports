@@ -3,7 +3,7 @@
 # Resolve $ORIGIN in the target namespace without host cwd fallback.
 
 --- a/mk/check/check-shlibs-elf.awk	2026-11-03 04:35:56.181027127 +0300
-+++ b/mk/check/check-shlibs-elf.awk	2026-11-03 04:39:53.106887987 +0300
++++ b/mk/check/check-shlibs-elf.awk	2026-11-03 05:00:31.720781845 +0300
 @@ -121,8 +121,10 @@
  		if (part == "..") { sub(/\/[^\/]*$/, "", path); continue }
  		nextpath = path "/" part
@@ -16,7 +16,7 @@
  		if (system("test -L " shquote(candidate)) == 0) {
  			if (++links > 40) return ""
  			cmd = "readlink " shquote(candidate) " 2>/dev/null; printf '\nEMBER_LINK_STATUS=%s\n' \"$?\""
-@@ -142,10 +144,30 @@
+@@ -142,10 +144,40 @@
  			path = nextpath
  		}
  	}
@@ -45,10 +45,20 @@
 +}
 +
 +function checkshlib(DSO, needed, rpath, found, dso_rpath, got_rpath, nrpath, header, status, line, file, logical, origin, expanded, crossfile, resolved, logicalfile, logicaldir) {
++	# The normal caller supplies paths relative to the declared target PREFIX.
++	if (substr(DSO, 1, 1) != "/") {
++		if (substr(prefix, 1, 1) != "/" ||
++		    (destdir != "" && substr(destdir, 1, 1) != "/") ||
++		    DSO ~ /(^|\/)\.\.(\/|$)/ || prefix ~ /(^|\/)\.\.(\/|$)/) {
++			print DSO ": relative object requires an absolute safe PREFIX and DESTDIR"
++			return
++		}
++		DSO = destdir prefix "/" DSO
++	}
  	# Native checks retain their historical handling of non-ELF input.
  	# Metadata must distinguish scripts from broken ELF or a failed tool.
  	if (requires_file != "") {
-@@ -156,12 +178,17 @@
+@@ -156,12 +188,17 @@
  			print DSO ": not installed in DESTDIR"
  			return
  		}
@@ -66,7 +76,7 @@
  		cmd = "od -An -tx1 -N4 " shquote(DSO) " 2>/dev/null; printf '\nEMBER_OD_STATUS=%s\n' \"$?\""
  		header = ""
  		status = -1
-@@ -210,7 +237,21 @@
+@@ -210,7 +247,21 @@
  		print DSO ": readelf failed"
  		return
  	}
@@ -89,7 +99,7 @@
  		if (rpath[p] == wrkdir ||
  		    substr(rpath[p], 1, length(wrkdir) + 1) == wrkdir "/") {
  			print DSO ": rpath relative to WRKDIR"
-@@ -221,29 +262,48 @@
+@@ -221,29 +272,48 @@
  	for (lib in needed) {
  		found = 0
  		for (p = 1; p <= nrpath; p++) {
@@ -147,7 +157,7 @@
  					}
  				}
  				found = 1
-@@ -251,7 +311,7 @@
+@@ -251,7 +321,7 @@
  			}
  		}
  		if (found && requires_file != "")
@@ -156,3 +166,11 @@
  		if (found == 0)
  			print DSO ": missing library: " lib;
  	}
+@@ -263,6 +333,7 @@
+ 	system_rpath = ENVIRON["PLATFORM_RPATH"]
+ 	cross_destdir = ENVIRON["CROSS_DESTDIR"]
+ 	destdir = ENVIRON["DESTDIR"]
++	prefix = ENVIRON["PREFIX"]
+ 	readelf = ENVIRON["READELF"]
+ 	wrkdir = ENVIRON["WRKDIR"]
+ 	extradirs = ENVIRON["CHECK_WRKREF_EXTRA_DIRS"]
