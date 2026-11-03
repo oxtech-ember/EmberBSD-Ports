@@ -53,7 +53,7 @@ the public PL_sh_path symbol and other hosts/targets remain unchanged.
  man1ext = $man1ext
 --- config_h.SH.orig
 +++ config_h.SH
-@@ -31,6 +31,13 @@
+@@ -31,6 +31,33 @@
  case "$CONFIG_H" in
  already-done) echo "Not re-extracting config.h" ;;
  *)
@@ -64,10 +64,30 @@ the public PL_sh_path symbol and other hosts/targets remain unchanged.
 +define:darwin:"$initialinstalllocation"/*|true:darwin:"$initialinstalllocation"/*)
 +    emberbsd_shell_relative=".../${targetsh#"$initialinstalllocation"/}" ;;
 +esac
++# pkgsrc Policy.sh supplies explicit library paths, so Configure leaves them
++# absolute even with userelocatableinc. Give the compiled @INC entries the
++# upstream executable-relative spelling. Keep config.sh/install paths intact.
++case "$userelocatableinc:$osname" in
++define:darwin|true:darwin)
++    emberbsd_prefix=${initialinstalllocation%/*}
++    for emberbsd_var in archlib archlibexp privlib privlibexp \
++        sitearch sitearchexp sitelib sitelibexp sitelib_stem \
++        vendorarch vendorarchexp vendorlib vendorlibexp vendorlib_stem
++    do
++        eval "emberbsd_dir=\$$emberbsd_var"
++        case "$emberbsd_dir" in
++        "$emberbsd_prefix"/*)
++            emberbsd_dir=".../../${emberbsd_dir#"$emberbsd_prefix"/}"
++            eval "$emberbsd_var=\$emberbsd_dir"
++            ;;
++        esac
++    done
++    ;;
++esac
  echo "Extracting $CONFIG_H (with variable substitutions)"
  sed <<!GROK!THIS! >$CONFIG_H -e 's!^#undef\(.*/\)\*!/\*#define\1 \*!' -e 's!^#un-def!#undef!' -e's!define\t!define !'
  /* This file was produced by running the config_h.SH script, which
-@@ -2241,6 +2248,7 @@
+@@ -2241,6 +2268,7 @@
   *	D:/bin/sh.exe.
   */
  #define SH_PATH "$targetsh"  /**/
