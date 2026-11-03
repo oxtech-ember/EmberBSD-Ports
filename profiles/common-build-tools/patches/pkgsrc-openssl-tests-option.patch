@@ -1,0 +1,19 @@
+--- a/security/openssl/options.mk
++++ b/security/openssl/options.mk
+@@ -1,7 +1,7 @@
+ # $NetBSD: options.mk,v 1.15 2024/05/01 21:11:18 nia Exp $
+ 
+ PKG_OPTIONS_VAR=	PKG_OPTIONS.openssl
+-PKG_SUPPORTED_OPTIONS=	zlib threads
++PKG_SUPPORTED_OPTIONS=	zlib threads tests
+ 
+ .include "../../mk/bsd.fast.prefs.mk"
+ 
+@@ -23,3 +23,7 @@
+ .else
+ CONFIGURE_ARGS+=	no-threads
+ .endif
++
++.if empty(PKG_OPTIONS:Mtests)
++CONFIGURE_ARGS+=	no-tests
++.endif
