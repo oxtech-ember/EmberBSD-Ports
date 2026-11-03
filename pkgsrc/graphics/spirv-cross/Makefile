@@ -16,6 +16,7 @@ COMMENT= SPIR-V reflection and translation library and tools
 LICENSE= apache-2.0 AND mit
 
 .include "../../mk/bsd.prefs.mk"
+.include "options.mk"
 .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && \
     ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
 DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
@@ -33,9 +34,7 @@ PLIST.unix= yes
 CMAKE_CONFIGURE_ARGS+= -DSPIRV_CROSS_SHARED=ON
 CMAKE_CONFIGURE_ARGS+= -DSPIRV_CROSS_STATIC=ON
 CMAKE_CONFIGURE_ARGS+= -DSPIRV_CROSS_CLI=ON
-CMAKE_CONFIGURE_ARGS+= -DSPIRV_CROSS_ENABLE_TESTS=ON
 CMAKE_CONFIGURE_ARGS+= -DPython3_EXECUTABLE=${TOOL_PYTHONBIN}
-TEST_TARGET= test
 
 .include "../../devel/cmake/build.mk"
 .include "../../lang/python/tool.mk"
