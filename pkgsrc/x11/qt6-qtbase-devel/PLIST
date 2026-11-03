@@ -1244,8 +1244,8 @@ qt6/include/QtGui/${PKGVERSION}/QtGui/private/qdrawhelper_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qdrawhelper_x86_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qdrawingprimitive_lsx_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qdrawingprimitive_sse2_p.h
-${PLIST.x11}qt6/include/QtGui/${PKGVERSION}/QtGui/private/qedidparser_p.h
-${PLIST.x11}qt6/include/QtGui/${PKGVERSION}/QtGui/private/qedidvendortable_p.h
+${PLIST.xcb}${PLIST.x11}qt6/include/QtGui/${PKGVERSION}/QtGui/private/qedidparser_p.h
+${PLIST.xcb}${PLIST.x11}qt6/include/QtGui/${PKGVERSION}/QtGui/private/qedidvendortable_p.h
 ${PLIST.egl}${PLIST.x11}qt6/include/QtGui/${PKGVERSION}/QtGui/private/qeglconvenience_p.h
 ${PLIST.egl}${PLIST.x11}qt6/include/QtGui/${PKGVERSION}/QtGui/private/qeglpbuffer_p.h
 ${PLIST.egl}${PLIST.x11}qt6/include/QtGui/${PKGVERSION}/QtGui/private/qeglplatformcontext_p.h
@@ -1377,7 +1377,7 @@ qt6/include/QtGui/${PKGVERSION}/QtGui/private/qtgui-config_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qtguiglobal_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qtriangulatingstroker_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qtriangulator_p.h
-${PLIST.x11}qt6/include/QtGui/${PKGVERSION}/QtGui/private/qtx11extras_p.h
+${PLIST.xcb}${PLIST.x11}qt6/include/QtGui/${PKGVERSION}/QtGui/private/qtx11extras_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qundostack_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qunixeventdispatcher_qpa_p.h
 qt6/include/QtGui/${PKGVERSION}/QtGui/private/qvectorpath_p.h
