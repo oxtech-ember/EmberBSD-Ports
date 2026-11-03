@@ -216,6 +216,15 @@ shell output uses literal format strings. EmberBSD (AI-assisted).
  	iov[1].iov_len = sshbuf_len(m);
  
  	if (atomiciov6(writev, conn->fd_out, iov, 2, sftpio,
+@@ -2414,7 +2414,7 @@
+ 
+ static void
+ handle_dest_replies(struct sftp_conn *to, const char *to_path, int synchronous,
+-    u_int *nreqsp, u_int *write_errorp)
++    u_int *nreqsp, int *write_errorp)
+ {
+ 	struct sshbuf *msg;
+ 	u_char type;
 --- sftp.c.orig
 +++ sftp.c
 @@ -207,7 +207,7 @@
