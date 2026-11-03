@@ -1,7 +1,7 @@
 # Origin: EmberBSD (AI-assisted). Runtime proxy backends remain enabled.
 PKG_OPTIONS_VAR= PKG_OPTIONS.libproxy
-PKG_SUPPORTED_OPTIONS= doc vala tests
-PKG_SUGGESTED_OPTIONS= doc vala
+PKG_SUPPORTED_OPTIONS= doc vala tests gnome
+PKG_SUGGESTED_OPTIONS= doc vala gnome
 .include "../../mk/bsd.options.mk"
 PLIST_VARS+= doc vala
 .if !empty(PKG_OPTIONS:Mdoc)
@@ -29,4 +29,11 @@ MESON_ARGS+= -Dvapi=false
 MESON_ARGS+= -Dtests=true
 .else
 MESON_ARGS+= -Dtests=false
+.endif
+
+.if !empty(PKG_OPTIONS:Mgnome)
+MESON_ARGS+= -Dconfig-gnome=true
+.include "../../sysutils/gsettings-desktop-schemas/buildlink3.mk"
+.else
+MESON_ARGS+= -Dconfig-gnome=false
 .endif

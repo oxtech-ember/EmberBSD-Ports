@@ -54,7 +54,6 @@ BUILDLINK_TRANSFORM+= I:${EMBERBSD_LIBPROXY_REAL_SYSROOT}${PREFIX}:${BUILDLINK_D
 .include "../../devel/gobject-introspection/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../lang/libduktape/buildlink3.mk"
-.include "../../sysutils/gsettings-desktop-schemas/buildlink3.mk"
 .include "../../www/curl/buildlink3.mk"
 .include "../../mk/dlopen.buildlink3.mk"
 .include "../../mk/pthread.buildlink3.mk"
