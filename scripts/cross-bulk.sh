@@ -409,6 +409,9 @@ node_deps()
     vars=$(pkg_vars "$dir" 'PKG_SKIP_REASON DEPENDS BUILD_DEPENDS TOOL_DEPENDS BOOTSTRAP_DEPENDS PKGBASE PKGNAME' "$@") ||
         return 1
     printf '%s\n' "$vars" | sed -n 1p || return 1
+    # Reuse this already evaluated identity for binary-first clients.
+    name=$(printf '%s\n' "$vars" | sed -n 7p) || return 1
+    printf '%s %s\n' "$dir$suffix" "$name" > "$state/$key.package"
     if [ -n "$suffix" ]; then
         base=$(printf '%s\n' "$vars" | sed -n 6p) || return 1
         name=$(printf '%s\n' "$vars" | sed -n 7p) || return 1
@@ -481,6 +484,7 @@ order()
     : > "$state/edges.new"
     : > "$state/soft.new"
     : > "$state/skipped.new"
+    : > "$state/packages.new"
     sort -u "$list" > "$state/queue"
     : > "$state/seen"
     query_index=0
@@ -537,6 +541,7 @@ order()
                 echo "$path $skip" >> "$state/skipped.new"
                 continue
             fi
+            cat "$q/$key.package" >> "$state/packages.new" || return 1
             echo "$path $path" >> "$state/edges.new"
             sed 1d "$q/$key.deps" | while read -r dep soft; do
                 [ -n "$dep" ] || continue
@@ -578,6 +583,7 @@ order()
     mv "$state/skipped.new" "$state/skipped"
     mv "$state/edges.new" "$state/edges"
     mv "$state/order.new" "$state/order"
+    mv "$state/packages.new" "$state/packages"
     rm -f "$state/queue" "$state/next"
     rm -rf "$q"
     [ "$order_stop" = 0 ] || { trap - HUP INT TERM; return 143; }
@@ -1412,6 +1418,18 @@ build_one()
             result "$key" "failed $path package-clean"
             return 0
         fi
+    fi
+    # The SDK supplies only authenticated catalog selections. Recheck the
+    # exact name in pkgdb; ordinary source builds retain their existing policy.
+    if [ "${stage_local:-no}" != yes ] && [ -n "${CROSS_BULK_BINARY_INSTALLED:-}" ] &&
+        awk -v p="$path" -v n="$name" '$1 == p && $2 == n { f = 1 } END { exit !f }' "$CROSS_BULK_BINARY_INSTALLED"; then
+        set -f
+        if $target_pkg_info -e "$name" > /dev/null 2>&1; then
+            set +f
+            result "$key" "done $path"
+            return 0
+        fi
+        set +f
     fi
     file=$packages/$name.tgz
     if [ "${stage_local:-no}" != yes ] && [ -f "$file" ] &&

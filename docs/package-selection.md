@@ -59,3 +59,20 @@ The SDK [binary catalog](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/
 uses these same files when publishing. Its readers can list and plan package
 sets without this source checkout, a compiler or bmake. Signing and catalog
 checks do not establish installed SDK or on-device pkgin acceptance.
+
+## Binary-first SDK installation
+
+The SDK client first checks its signed binary catalog. When a requested root
+is unavailable there, `selected-order` writes `STATE/packages`: one
+`PKGPATH[@native] PKGNAME` row per resolved node. These identities come from the
+same metadata queries as the dependency graph; no second package scan is needed.
+The client may fetch matching binaries for that closure before invoking the
+ordinary selected build.
+
+For that build only, `CROSS_BULK_BINARY_INSTALLED` names a client-owned list of
+verified binary selections in the same two-column format. Target builds skip a
+listed node only when its evaluated PKGNAME still matches and pkg_info confirms
+that exact name is installed. Ordinary source builds and explicit package-stage
+recovery keep their existing rebuild rules. Native packages retain their
+existing installed-version reuse. Do not manufacture this input from file names
+or use it to suppress a deliberately requested source rebuild.
