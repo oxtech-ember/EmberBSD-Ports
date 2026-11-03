@@ -138,6 +138,11 @@ class NetworkOwner:
     def verify(self, source, git, archive=None, patch=None, pkgsrc_export=None):
         return tar_archive.verify(self, source, git, archive, patch, pkgsrc_export)
 
+    def refresh(self, source, git, archive, patch, pkgsrc_export=None):
+        return self.prepared_receipt.refresh(
+            source, identity=lambda: (self.source_identity(git), self.git_effective_identity(git)),
+            verify=lambda: self.verify(source, git, archive, patch, pkgsrc_export=pkgsrc_export))
+
     def prepare(self, archive, output, patch, git, scoped_identity=False, exported=None):
         return tar_archive.prepare(self, archive, output, patch, git, scoped_identity, exported)
 
@@ -161,11 +166,19 @@ class NetworkOwner:
         check.add_argument('--archive')
         check.add_argument('--patch')
         check.add_argument('--pkgsrc-export')
+        refresh_parser = sub.add_parser('refresh-source')
+        refresh_parser.add_argument('--source', required=True)
+        refresh_parser.add_argument('--archive', required=True)
+        refresh_parser.add_argument('--patch', required=True)
+        refresh_parser.add_argument('--pkgsrc-export')
         selected = parser.parse_args(args)
         try:
             if selected.action == 'prepare':
                 record = self.prepare(selected.archive, selected.output, selected.patch, selected.git,
                                       selected.scoped_identity, exported=self.shared_tree(selected))
+            elif selected.action == 'refresh-source':
+                record = self.refresh(selected.source, selected.git, selected.archive, selected.patch,
+                                      pkgsrc_export=selected.pkgsrc_export)
             else:
                 record = self.verify(selected.source, selected.git, selected.archive, selected.patch,
                                      pkgsrc_export=selected.pkgsrc_export)

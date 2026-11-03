@@ -81,9 +81,11 @@ def git_effective_identity(git):
     selector = identity_module()
     source = selector.git_package_identity(PORTS, PACKAGE, git)
     tools = selector.git_package_identity(PORTS, 'devel/gettext-tools', git)
-    pair = json.dumps([source['effective_package_sha256'], tools['effective_package_sha256']],
-                      separators=(',', ':')).encode('ascii')
-    return dict(source, effective_package_sha256=digest(pair))
+    for key in ('effective_package_sha256', 'legacy_api2_sha256'):
+        if key in source:
+            pair = json.dumps([source[key], tools[key]], separators=(',', ':')).encode('ascii')
+            source[key] = digest(pair)
+    return source
 
 
 def recipe(exported):
@@ -179,6 +181,12 @@ def verify(source, git, archive=None, patch=None, pkgsrc_export=None):
     return record
 
 
+def refresh(source, git, archive, patch, pkgsrc_export=None):
+    return prepared_receipt.refresh(
+        source, identity=lambda: (source_identity(git), git_effective_identity(git)),
+        verify=lambda: verify(source, git, archive, patch, pkgsrc_export=pkgsrc_export))
+
+
 def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
     require(os.path.isabs(git) and os.path.isabs(patch), 'select absolute Git and patch executables')
     output = Path(output)
@@ -267,11 +275,18 @@ def main():
     check.add_argument('--archive')
     check.add_argument('--patch')
     check.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
+    refresh_parser = sub.add_parser('refresh-source')
+    refresh_parser.add_argument('--source', required=True)
+    refresh_parser.add_argument('--archive', required=True)
+    refresh_parser.add_argument('--patch', required=True)
+    refresh_parser.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
     selected = parser.parse_args(args)
     try:
         if selected.action == 'prepare':
             record = prepare(selected.archive, selected.output, selected.patch, selected.git, selected.scoped_identity,
                              exported=shared_tree(selected))
+        elif selected.action == 'refresh-source':
+            record = refresh(selected.source, selected.git, selected.archive, selected.patch, pkgsrc_export=selected.pkgsrc_export)
         else:
             record = verify(selected.source, selected.git, selected.archive, selected.patch, pkgsrc_export=selected.pkgsrc_export)
         sys.stdout.buffer.write(jsonio.json_bytes(record))

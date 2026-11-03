@@ -118,7 +118,7 @@ def recipe_files(selector, package, git, patch):
     those that identity describes.  Infrastructure patches which name only
     recipe files of this package (not its distinfo, patches or exported
     files) are then applied as the export applies them."""
-    inputs = selector.git_package_inputs(PORTS, package, git)
+    inputs = selector.git_package_inputs(PORTS, package, git, api=2)
     exporter = selector._exporter(PORTS)
     recipes, patches, files, _ = exporter.configuration(PORTS)
     overlay = dict(recipes).get(package)
@@ -191,9 +191,7 @@ def current(name, identity, git, sdk, patch=None):
             now = selector_module.git_package_identity(PORTS, package, git)
         else:
             now = owner_module(name, owner_path).git_effective_identity(git)
-        if identity['effective'].get('api') != selector_module.GIT_PACKAGE_API:
-            raise Stale('its receipt does not name Git recipe objects; prepare it again')
-        if not selector_module.equivalent_effective_package(identity['effective'], now):
+        if not selector_module.matches_current_git_package(identity['effective'], now):
             raise Stale('it was prepared from another ' + package + ' recipe')
         return [] if identity['owner_sha256'] == owner_sha256 else ['prepared by another ' + script]
     if name == 'x11':

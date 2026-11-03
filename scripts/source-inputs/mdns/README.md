@@ -15,3 +15,10 @@ downloaded archive and a new output directory explicitly. For example:
 An optional `--pkgsrc-export` reuses a compatible shared export. The generated
 source receipt is selected by the SDK's `--mdns-source` and passed to the OS
 as `EMBER_MDNS_SOURCE`. This prepares source; it does not build the daemon.
+
+For unchanged prepared payloads, `refresh-source --source "$OUTPUT" --archive
+"$ARCHIVE" --patch "$PATCH"` verifies the payload and current source identity,
+then atomically updates its receipt to the current scoped identity. Supply
+`--pkgsrc-export` when using a shared export. The caller must hold exclusive
+use of the prepared source throughout verification and refresh; this command
+does not acquire that lock. A failed verification leaves the receipt unchanged.
