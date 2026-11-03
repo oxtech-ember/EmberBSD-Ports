@@ -64,8 +64,8 @@ set -eu
 umask 022
 
 [ "$#" -eq 3 ] || {
-    echo 'Usage: sh scripts/cross-bulk.sh order|fetch|build PKGPATH_LIST ABSOLUTE_STATE' >&2
-    echo '       sh scripts/cross-bulk.sh package-install PKGPATH[@native] ABSOLUTE_STATE' >&2
+    echo 'Usage: scripts/cross-bulk.sh order|fetch|build|selected-order|selected-build PKGPATH_LIST ABSOLUTE_STATE' >&2
+    echo '       scripts/cross-bulk.sh package-install PKGPATH[@native] ABSOLUTE_STATE' >&2
     exit 2
 }
 mode=$1
@@ -79,6 +79,41 @@ esac
 : "${MAKECONF:?Set MAKECONF to the cross MAKECONF}"
 : "${PKGSRCDIR:?Set PKGSRCDIR to the prepared pkgsrc tree}"
 export MAKECONF
+controller_shell=${CROSS_BULK_SHELL:-sh}
+if [ -n "${CROSS_BULK_SHELL:-}" ]; then
+    case "$controller_shell" in /*) ;; *) echo 'CROSS_BULK_SHELL must be an absolute selected shell path' >&2; exit 2 ;; esac
+    [ -x "$controller_shell" ] || { echo 'CROSS_BULK_SHELL is not executable' >&2; exit 2; }
+fi
+state_lock_owned=no
+state_lock_release_safe=yes
+state_lock_acquire()
+{
+    mkdir -p "$state"
+    if ! mkdir "$state/build.lock" 2> /dev/null; then
+        other=$(cat "$state/build.lock/pid" 2> /dev/null || :)
+        echo "Another build${other:+ ($other)} uses $state" >&2
+        return 2
+    fi
+    state_lock_owned=yes
+    if ! printf '%s\n' "$$" > "$state/build.lock/pid"; then
+        rmdir "$state/build.lock" 2> /dev/null || :
+        state_lock_owned=no
+        return 1
+    fi
+}
+state_lock_release()
+{
+    [ "$state_lock_owned" = yes ] || return 0
+    rm -f "$state/build.lock/pid"
+    rmdir "$state/build.lock" 2> /dev/null || :
+    state_lock_owned=no
+}
+case "$mode" in
+    order|fetch|build|package-install|selected-order|selected-build)
+        state_lock_acquire || exit $?
+        trap 'if [ "$state_lock_release_safe" = yes ]; then state_lock_release; else echo "Workers may not have drained; keeping lock $state/build.lock" >&2; fi' EXIT
+        ;;
+esac
 mkdir -p "$state/logs"
 
 # Hash the complete NUL-delimited environment without writing its values to
@@ -116,7 +151,7 @@ environment_identity()
 # get the verified selection in CROSS_BULK_NATIVE.
 unset EMBERBSD_NATIVE_TOOLSET_VERIFIED
 case "$mode" in
-    order|fetch)
+    order|fetch|selected-order|selected-build)
         unset CROSS_BULK_ENV_IDENTITY
         env_identity=$(environment_identity) || env_identity= ;;
     deps) env_identity=${CROSS_BULK_ENV_IDENTITY:-} ;;
@@ -142,7 +177,7 @@ vars_context=
 build_vars_context=
 gnu_stat=no
 case "$mode" in
-    order|fetch) ! stat -c %i / > /dev/null 2>&1 || gnu_stat=yes ;;
+    order|fetch|selected-order|selected-build) ! stat -c %i / > /dev/null 2>&1 || gnu_stat=yes ;;
     deps) [ -z "${CROSS_BULK_VARS_CONTEXT:-}" ] ||
         ! stat -c %i / > /dev/null 2>&1 || gnu_stat=yes ;;
 esac
@@ -158,8 +193,18 @@ fi
 
 mk()
 {
-    "$BMAKE" EMBERBSD_NATIVE_TOOLSET_VERIFIED="$native" \
-        ${cachearg:+"PBULK_CACHE_DIRECTORY=$cachearg"} "$@"
+    mk_lock_was_safe=$state_lock_release_safe
+    if [ "$state_lock_owned" = yes ]; then state_lock_release_safe=no; fi
+    if "$BMAKE" EMBERBSD_NATIVE_TOOLSET_VERIFIED="$native" \
+        ${cachearg:+"PBULK_CACHE_DIRECTORY=$cachearg"} "$@"; then
+        mk_status=0
+    else
+        mk_status=$?
+    fi
+    if [ "$state_lock_owned" = yes ] && [ "$mk_status" -lt 128 ]; then
+        state_lock_release_safe=$mk_lock_was_safe
+    fi
+    return "$mk_status"
 }
 
 # pkg-build-options.mk keys cache files by PKGBASE. One graph can contain a
@@ -401,6 +446,8 @@ sort_edges()
 
 order()
 {
+    order_stop=0
+    trap 'order_stop=1' HUP INT TERM
     native_info
     new_cache
     if [ -n "$cachearg" ] && [ "${CROSS_BULK_VARS_CACHE:-yes}" != no ]; then
@@ -422,6 +469,7 @@ order()
     : > "$state/seen"
     query_index=0
     while [ -s "$state/queue" ]; do
+        [ "$order_stop" = 0 ] || { trap - HUP INT TERM; return 143; }
         : > "$state/next"
         : > "$q/frontier"
         : > "$q/frontier-map"
@@ -443,11 +491,23 @@ order()
             printf '%s %s\n' "$path" "$key" >> "$q/frontier-map"
         done < "$state/queue"
         if [ -s "$q/frontier" ]; then
-            CROSS_BULK_NATIVE=$native CROSS_BULK_PKG_INFO=$native_pkg_info \
+            [ "$order_stop" = 0 ] || { trap - HUP INT TERM; return 143; }
+            state_lock_release_safe=no
+            if CROSS_BULK_NATIVE=$native CROSS_BULK_PKG_INFO=$native_pkg_info \
                 CROSS_BULK_OPTIONS_CACHE=$cachearg \
                 CROSS_BULK_VARS_CONTEXT="$vars_context" \
-                xargs -P "$jobs" -I '{}' sh "$0" deps '{}' "$q" \
-                < "$q/frontier" || :
+                xargs -P "$jobs" -I '{}' "$controller_shell" "$0" deps '{}' "$q" \
+                < "$q/frontier"; then
+                xargs_status=0
+            else
+                xargs_status=$?
+            fi
+            if [ "$xargs_status" -ge 128 ]; then
+                echo "Dependency query workers exited with status $xargs_status; keeping the state lock" >&2
+                return "$xargs_status"
+            fi
+            state_lock_release_safe=yes
+            [ "$order_stop" = 0 ] || { trap - HUP INT TERM; return 143; }
         fi
         while read -r path key; do
             cat "$q/$key.err" >> "$state/logs/order.err" 2>/dev/null || :
@@ -479,6 +539,7 @@ order()
         fi
         sort -u "$state/next" > "$state/queue"
     done
+    [ "$order_stop" = 0 ] || { trap - HUP INT TERM; return 143; }
     refused=$(skipped_deps "$state/skipped.new" "$state/edges.new")
     if [ -n "$refused" ]; then
         echo 'Refused: these packages depend on packages the profile skips:' >&2
@@ -503,7 +564,73 @@ order()
     mv "$state/order.new" "$state/order"
     rm -f "$state/queue" "$state/next"
     rm -rf "$q"
+    [ "$order_stop" = 0 ] || { trap - HUP INT TERM; return 143; }
     echo "Ordered $(wc -l < "$state/order") packages: $state/order; skipped $(wc -l < "$state/skipped")"
+    trap - HUP INT TERM
+}
+
+# Emit a compact selected-target/closure summary while the state lock is held.
+selected_summary()
+{
+    summary_cachearg=$cachearg
+    cachearg=
+    if mk -C "$PKGSRCDIR/pkgtools/pkg_install" show-vars \
+        VARNAMES='OPSYS MACHINE_ARCH MACHINE_GNU_PLATFORM' \
+        < /dev/null > "$state/selected-target.tmp"; then
+        cachearg=$summary_cachearg
+    else
+        summary_status=$?
+        cachearg=$summary_cachearg
+        rm -f "$state/selected-target.tmp"
+        return "$summary_status"
+    fi
+    identity=$(cat "$state/selected-target.tmp") || return 1
+    rm -f "$state/selected-target.tmp"
+    set -f
+    set -- $identity
+    set +f
+    [ "$#" -eq 3 ] || { echo 'Unexpected target identity metadata' >&2; return 1; }
+    target_opsys=$1 target_arch=$2 target_platform=$3
+    roots_count=$(awk 'NF && $1 !~ /^#/ { n++ } END { print n + 0 }' "$list") || return 1
+    counts=$(awk '$1 ~ /@native$/ { n++ } END { print NR + 0, n + 0 }' "$state/order") || return 1
+    set -f
+    set -- $counts
+    set +f
+    [ "$#" -eq 2 ] || return 1
+    closure_count=$1 native_count=$2
+    echo "Target: $target_opsys $target_arch ($target_platform)"
+    echo "Selected roots: $roots_count"
+    echo "Dependency closure: $closure_count packages ($((closure_count - native_count)) target, $native_count native)"
+}
+
+selected_order()
+{
+    mode=order
+    order
+    mode=summary
+    selected_summary
+}
+
+# UI callers can order selected roots and build their graph under one lock.
+# The outer dispatcher owns the state lock across both canonical operations.
+selected_build()
+{
+    mode=order
+    order
+    mode=summary
+    selected_summary
+    mode=build
+    # Order's PBULK options cache is for dependency planning only. Standalone
+    # build queries installed dependencies and keys its answers separately.
+    cachearg=
+    vars_cache=
+    vars_context=
+    build_vars_context=
+    env_identity=
+    native_pkg_info=
+    target_pkg_info=
+    target_settings=
+    build
 }
 
 # True if the distinfo of a package lists distfiles and DISTDIR has each
@@ -1337,20 +1464,11 @@ package_install_one()
         echo "PKGPATH is not in the saved order: $requested" >&2
         return 2
     }
-    # Fail closed on any existing lock, including a stale one. Recovery must
-    # never race a controller or silently take over its state directory.
-    if ! mkdir "$state/build.lock" 2> /dev/null; then
-        other=$(cat "$state/build.lock/pid" 2> /dev/null || :)
-        echo "Another build${other:+ ($other)} uses $state" >&2
-        return 2
-    fi
-    printf '%s\n' "$$" > "$state/build.lock/pid"
     run=
     recovery_cleanup()
     {
         [ -z "$run" ] || rm -rf "$run"
-        rm -f "$state/build.lock/pid"
-        rmdir "$state/build.lock" 2> /dev/null || :
+        state_lock_release
     }
     trap recovery_cleanup EXIT
     stop=0
@@ -1531,15 +1649,6 @@ build()
         make_jobs=1
     fi
     run=$state/run
-    # One scheduler per state directory.
-    if ! mkdir "$state/build.lock" 2> /dev/null; then
-        other=$(cat "$state/build.lock/pid" 2> /dev/null || :)
-        if [ -n "$other" ] && kill -0 "$other" 2> /dev/null; then
-            echo "Another build ($other) uses $state" >&2
-            exit 2
-        fi
-    fi
-    echo $$ > "$state/build.lock/pid"
     # Locks and results of an interrupted run; its packages are rebuilt.
     rm -rf "$run" "$state/locks" "$state/install.lock"
     mkdir "$run" "$state/locks"
@@ -1643,7 +1752,14 @@ build()
             poll_delay=0.05
         fi
         if [ "$stop" = 1 ]; then
-            [ "$running" -gt 0 ] || { echo 'Stopped; the running packages finished' >&2; trap - TERM INT HUP; stop_deleter; rm -rf "$state/build.lock"; return 143; }
+            [ "$running" -gt 0 ] || {
+                echo 'Stopped; the running packages finished' >&2
+                trap - TERM INT HUP
+                stop_deleter
+                wait || :
+                state_lock_release_safe=yes
+                return 143
+            }
         elif [ "$changed" = 1 ] && [ "$running" -lt "$workers" ] && [ "$replacing" = 0 ] && [ "$waiting" = 0 ]; then
             changed=0
             ready $((workers - running)) > "$run/ready"
@@ -1677,6 +1793,7 @@ build()
                     # Without errexit: every package reports a result.
                     # The scheduler may take the result at once, so the
                     # check is a flag, not the file; build_one changes $path.
+                    state_lock_release_safe=no
                     (
                         set +e
                         make_jobs=$worker_make_jobs
@@ -1703,10 +1820,12 @@ build()
     done
     trap - TERM INT HUP
     stop_deleter
+    wait || :
+    state_lock_release_safe=yes
     failed=no
     [ ! -s "$state/failed" ] || failed=yes
     [ ! -s "$state/blocked" ] || failed=yes
-    rm -rf "$run" "$state/locks" "$state/build.lock"
+    rm -rf "$run" "$state/locks"
     [ "$failed" = no ] || return 1
     return 0
 }
@@ -1723,6 +1842,8 @@ stop_deleter()
 
 case "$mode" in
     order) order ;;
+    selected-order) selected_order ;;
+    selected-build) selected_build ;;
     deps)
         native_info
         case "$list" in
