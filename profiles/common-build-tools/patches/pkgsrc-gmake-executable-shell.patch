@@ -1,0 +1,100 @@
+# Origin: EmberBSD (AI-assisted); relocatable GNU make default shell.
+--- a/devel/gmake/Makefile
++++ b/devel/gmake/Makefile
+@@ -2,6 +2,7 @@
+ 
+ DISTNAME=	make-4.4.1
+ PKGNAME=	g${DISTNAME}
++PKGREVISION=	1
+ CATEGORIES=	devel
+ MASTER_SITES=	${MASTER_SITE_GNU:=make/}
+ 
+@@ -36,10 +37,10 @@
+ #
+ .if ${TOOLS_PLATFORM.sh:M?*/bin/mksh}
+ DEPENDS+=	mksh-[0-9]*:../../shells/mksh
+-CPPFLAGS+=	-DPKGSRC_DEFAULT_SHELL="\"${PREFIX}/bin/mksh\""
++CPPFLAGS+=	-DPKGSRC_DEFAULT_SHELL="\"@executable_path/mksh\""
+ .elif ${TOOLS_PLATFORM.sh:M?*/bin/pdksh}
+ DEPENDS+=	pdksh-[0-9]*:../../shells/pdksh
+-CPPFLAGS+=	-DPKGSRC_DEFAULT_SHELL="\"${PREFIX}/bin/pdksh\""
++CPPFLAGS+=	-DPKGSRC_DEFAULT_SHELL="\"@executable_path/pdksh\""
+ .elif (${OPSYS} == "SunOS" || ${OPSYS} == "UnixWare" || \
+ 	${OPSYS} == "SCO_SV") && exists(/usr/bin/bash)
+ CPPFLAGS+=	-DPKGSRC_DEFAULT_SHELL="\"/usr/bin/bash\""
+--- a/devel/gmake/distinfo
++++ b/devel/gmake/distinfo
+@@ -9,3 +9,4 @@
+ SHA1 (patch-src_getopt.h) = a1c831a3870ba470b60bfaa460a28e13a05dc594
+ SHA1 (patch-src_hash.c) = 755de04a4f9a63f5bfc2520026344d6dc8654992
+ SHA1 (patch-src_job.c) = 848eaafc6dfc5086a3d46f9dae387b39d5c514c6
++SHA1 (patch-src_main.c) = 02d114a80f6660642f2ac8865206d670f927e0fa
+--- a/devel/gmake/patches/patch-src_main.c
++++ b/devel/gmake/patches/patch-src_main.c
+@@ -0,0 +1,66 @@
++Origin: EmberBSD (AI-assisted); not submitted upstream.
++Resolve the selected installed shell relative to GNU make itself.
++
++--- src/main.c.orig
+++++ src/main.c
++@@ -25,6 +25,7 @@
++ #include "debug.h"
++ #include "getopt.h"
++ #include "shuffle.h"
+++#include "findprog.h"
++ 
++ #include <assert.h>
++ #ifdef _AMIGA
++@@ -1164,6 +1165,43 @@
++     }
++ }
++ 
+++/* Resolve the configured SDK shell before -C or MAKEFLAGS can change cwd.
+++   Ordinary absolute shell defaults and explicit SHELL assignments retain
+++   upstream semantics.  Use the existing Gnulib executable lookup, including
+++   empty PATH components, then resolve symlinks to the installed binary.  */
+++static void
+++init_executable_shell (const char *argv0)
+++{
+++  static const char token[] = "@executable_path";
+++  size_t len = sizeof token - 1;
+++
+++  if (strncmp (default_shell, token, len) != 0 || default_shell[len] != '/')
+++    return;
+++
+++#ifdef HAVE_REALPATH
+++  {
+++    const char *candidate = find_in_given_path (argv0, getenv ("PATH"), NULL, false);
+++    PATH_VAR (resolved);
+++    char *rp = NULL;
+++    char *slash;
+++
+++    if (candidate != NULL)
+++      {
+++        ENULLLOOP (rp, realpath (candidate, resolved));
+++        if (candidate != argv0)
+++          free ((char *) candidate);
+++      }
+++    if (rp == NULL || (slash = strrchr (resolved, '/')) == NULL)
+++      O (fatal, NILF, _("cannot resolve executable for the configured shell"));
+++
+++    *slash = '\0';
+++    default_shell = xstrdup (concat (2, resolved, default_shell + len));
+++  }
+++#else
+++  O (fatal, NILF, _("executable-relative shell requires realpath support"));
+++#endif
+++}
+++
++ #ifdef MK_OS_ZOS
++ extern char **environ;
++ #endif
++@@ -1401,6 +1439,8 @@
++         ++program;
++ #endif
++     }
+++
+++  init_executable_shell (argv[0]);
++ 
++   initialize_global_hash_tables ();
++ 
