@@ -2,7 +2,7 @@
 
 DISTNAME=	gdk-pixbuf-2.44.8
 PKGNAME=	${DISTNAME:S/pixbuf/pixbuf2/}
-PKGREVISION=	5
+PKGREVISION=	6
 CATEGORIES=	graphics gnome
 MASTER_SITES=	${MASTER_SITE_GNOME:=sources/gdk-pixbuf/${PKGVERSION_NOREV:R}/}
 EXTRACT_SUFX=	.tar.xz
@@ -113,6 +113,8 @@ _BUILDING_GTK2= yes
 # not needed unless 'documentation' option is turned on
 #.include "../../devel/py-gi-docgen/buildlink3.mk"
 BUILDLINK_API_DEPENDS.glib2+= glib2>=2.37.2
+# glib-2.0.pc lists -lintl on macOS, so the libraries load libintl directly.
+.include "../../devel/gettext-lib/buildlink3.mk"
 .include "../../devel/glib2/buildlink3.mk"
 .include "../../graphics/png/buildlink3.mk"
 .include "../../graphics/tiff/buildlink3.mk"
