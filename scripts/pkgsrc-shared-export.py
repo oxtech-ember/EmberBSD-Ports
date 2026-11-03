@@ -29,9 +29,9 @@ def main():
     parser.add_argument('--git', required=True, help='absolute Git inspector')
     parser.add_argument('--patch', required=True, help='absolute patch tool')
     parser.add_argument('--update', action='store_true',
-                        help='refresh one upstream package and selected file outputs; unsupported overlays fail closed')
+                        help='refresh selected packages and file outputs; unsupported changes fail closed')
     parser.add_argument('--resume', action='store_true', help='resume an interrupted selected update')
-    parser.add_argument('--package', help='selected package to update')
+    parser.add_argument('--package', action='append', help='selected package to update (repeatable)')
     parser.add_argument('--file', action='append', default=[], help='selected file output to update')
     args = parser.parse_args()
     sdk_source.load_sdk(['--sdk-source', args.sdk_source])

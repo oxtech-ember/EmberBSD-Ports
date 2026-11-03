@@ -27,7 +27,10 @@ def update(directory, ports, git, sdk, patch, package, selected_files, *, resume
     directory, ports = Path(directory), Path(ports)
     identity = load(ports / 'scripts/pkgsrc-source-identity.py', 'update_identity')
     exporter = load(ports / 'scripts/prepare-pkgsrc.py', 'update_exporter')
-    package = exporter.package_path(package, 'selected package')
+    packages = [exporter.package_path(item, 'selected package') for item in ([package] if isinstance(package, str) else package)]
+    if not packages or len(set(packages)) != len(packages):
+        raise ValueError('empty or duplicate selected package')
+    packages.sort()
     if (not directory.is_absolute() or directory.is_symlink() or not directory.is_dir() or
             not (directory / 'pkgsrc').is_dir() or (directory / 'pkgsrc').is_symlink()):
         raise ValueError('shared export must be an absolute real directory')
@@ -42,17 +45,18 @@ def update(directory, ports, git, sdk, patch, package, selected_files, *, resume
         raise ValueError('update lock is not a regular file')
     with os.fdopen(fd, 'a+b') as handle:
         fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        return _locked(directory, ports, git, sdk, patch, package, selected_files, identity, exporter, resume)
+        return _locked(directory, ports, git, sdk, patch, packages, selected_files, identity, exporter, resume)
 
 
-def _locked(directory, ports, git, sdk, patch, package, selected_files, ident, exp, resume):
+def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, exp, resume):
     marker = directory / ident.SHARED_EXPORT_DIRTY
     pending = None
     if os.path.lexists(marker):
         if not resume or marker.is_symlink() or not marker.is_file():
             raise ValueError('shared export update is incomplete; use --resume after inspection')
         pending = json.loads(marker.read_text())
-        if pending.get('package') != package or pending.get('files') != selected_files:
+        previous_packages = pending.get('packages', [pending.get('package')])
+        if previous_packages != packages or pending.get('files') != selected_files:
             raise ValueError('resume selection differs from interrupted update')
     elif resume:
         raise ValueError('no incomplete shared export update to resume')
@@ -229,17 +233,19 @@ def _locked(directory, ports, git, sdk, patch, package, selected_files, ident, e
     else:
         # The v3 snapshot is already bound to the recorded aggregate above.
         old_snapshot = receipt['inputs']
-    selected_recipes = [(name, source) for name, source in exp.configuration(ports)[0] if name == package]
-    if len(selected_recipes) > 1:
-        raise ValueError('multiple selected recipe sources')
-    overlay = (selected_recipes[0][1].relative_to(ports).as_posix() if selected_recipes else None)
-    if overlay is not None and (overlay not in old_snapshot['trees'] or overlay not in snapshot['trees']):
-        raise ValueError('selected recipe source layout changed')
-    if overlay is None and 'pkgsrc/' + package in old_snapshot['trees']:
-        raise ValueError('selected recipe source layout changed')
-    for rows in ([old_snapshot['trees'][overlay], snapshot['trees'][overlay]] if overlay else []):
-        if any(row['kind'] not in ('file', 'directory') for row in rows.values()):
-            raise ValueError('selected recipe contains unsupported links')
+    selected_recipes = {name: source.relative_to(ports).as_posix()
+                        for name, source in exp.configuration(ports)[0] if name in packages}
+    overlays = {package: selected_recipes.get(package) for package in packages}
+    for package, overlay in overlays.items():
+        if overlay is not None and (overlay not in old_snapshot['trees'] or overlay not in snapshot['trees']):
+            raise ValueError('selected recipe source layout changed')
+        if overlay is None and 'pkgsrc/' + package in old_snapshot['trees']:
+            raise ValueError('selected recipe source layout changed')
+        for rows in ([old_snapshot['trees'][overlay], snapshot['trees'][overlay]] if overlay else []):
+            if any(row['kind'] not in ('file', 'directory') for row in rows.values()):
+                raise ValueError('selected recipe contains unsupported links')
+    def selected_output(name):
+        return any(name.startswith(package + '/') for package in packages)
     for tree in set(old_snapshot['trees']) | set(snapshot['trees']):
         before, after = old_snapshot['trees'].get(tree, {}), snapshot['trees'].get(tree, {})
         for name in set(before) | set(after):
@@ -247,7 +253,7 @@ def _locked(directory, ports, git, sdk, patch, package, selected_files, ident, e
             if old_row == new_row or (old_row or new_row).get('kind') != 'directory':
                 continue
             changed_directory = tree + '/' + name
-            if overlay is None or not changed_directory.startswith(overlay + '/'):
+            if not any(overlay and changed_directory.startswith(overlay + '/') for overlay in overlays.values()):
                 raise ValueError('directory input changed outside selected recipe: ' + changed_directory)
     def file_map(rows):
         result = {}
@@ -261,28 +267,31 @@ def _locked(directory, ports, git, sdk, patch, package, selected_files, ident, e
             result[row[2]] = row[1]
         return result
     old_files, new_files = file_map(old_records), file_map(new_records)
-    if any(name == package or name.startswith(package + '/') for name in selected_files):
+    if any(name in packages or selected_output(name) for name in selected_files):
         raise ValueError('selected file overlaps selected package')
     if any(name not in old_files and name not in new_files for name in selected_files):
         raise ValueError('selected file is not a declared export output')
     selected_sources = {mapping[name] for mapping in (old_files, new_files)
                         for name in selected_files if name in mapping}
     selected_sources.update(source for mapping in (old_files, new_files)
-                            for name, source in mapping.items() if name.startswith(package + '/'))
+                            for name, source in mapping.items() if selected_output(name))
     recipe_patch_sources = {row[1] for rows in (old_records, new_records) for row in rows
-                            if row[0] == 'recipe-patch' and len(row) == 4 and row[2] == package}
+                            if row[0] == 'recipe-patch' and len(row) == 4 and row[2] in packages}
     for rows in (old_records, new_records):
         for row in rows:
-            if row[1] in changed & recipe_patch_sources and not (row[0] == 'recipe-patch' and row[2] == package):
+            if (row[1] in changed & recipe_patch_sources and not
+                    ((row[0] == 'recipe-patch' and row[2] in packages) or
+                     (row[0] == 'file' and (row[2] in selected_files or selected_output(row[2]))))):
                 raise ValueError('recipe patch source has other export consumers')
     for source in changed & selected_sources:
         for mapping in (old_files, new_files):
             for output, owner in mapping.items():
-                if owner == source and output not in selected_files and not output.startswith(package + '/'):
+                if owner == source and output not in selected_files and not selected_output(output):
                     raise ValueError('selected file source has another export consumer: ' + source)
         for rows in (old_records, new_records):
             for row in rows:
-                if len(row) > 1 and row[1] == source and row[0] != 'file':
+                if (len(row) > 1 and row[1] == source and row[0] != 'file' and not
+                        (row[0] == 'recipe-patch' and row[2] in packages)):
                     raise ValueError('selected file source has another export consumer: ' + source)
     def read_source(name, old):
         if old and name in changed:
@@ -305,7 +314,7 @@ def _locked(directory, ports, git, sdk, patch, package, selected_files, ident, e
                 continue
             data = read_source(name, old)
             sections = ident._update_patch_sections(data)
-            if sections is None or any(not all(x.startswith(package + '/') for x in paths)
+            if sections is None or any(not all(selected_output(x) for x in paths)
                                        for paths, _ in sections):
                 raise ValueError('changed patch extends outside selected package: ' + name)
         scoped_patches.add(name)
@@ -313,20 +322,21 @@ def _locked(directory, ports, git, sdk, patch, package, selected_files, ident, e
         if (name == 'pkgsrc/export.conf' or name in selected_sources or
                 name in scoped_patches or name in recipe_patch_sources):
             continue
-        if (overlay is not None and name.startswith(overlay + '/')) or name.startswith('pkgsrc/' + package + '/'):
+        if any((overlay and name.startswith(overlay + '/')) or name.startswith('pkgsrc/' + package + '/')
+               for package, overlay in overlays.items()):
             continue
         raise ValueError('changed export input outside selected outputs: ' + name)
     def unaffected(rows):
         return [row for row in rows if not (row[0] in ('patch', 'git-apply') and row[1] in scoped_patches)
-                and not (row[0] == 'recipe-patch' and len(row) == 4 and row[2] == package)
+                and not (row[0] == 'recipe-patch' and len(row) == 4 and row[2] in packages)
                 and not (row[0] == 'file' and len(row) == 3 and
-                         (row[2] in selected_files or row[2].startswith(package + '/')))]
+                         (row[2] in selected_files or selected_output(row[2])))]
     if unaffected(old_records) != unaffected(new_records):
         raise ValueError('export configuration changed outside selected outputs')
     from emberbsd_sdk import inventory
     with tempfile.TemporaryDirectory(prefix='.pkgsrc-update-stage-', dir=directory.parent) as temp:
         temp = Path(temp)
-        def prepare(label, rows, old):
+        def prepare(label, rows, old, package, overlay):
             stage = temp / label
             stage.mkdir()
             archive = temp / (label + '.tar')
@@ -461,21 +471,28 @@ def _locked(directory, ports, git, sdk, patch, package, selected_files, ident, e
                 dest.chmod(source_mode & ~0o022)
             exp.check_recipe(stage / package, package, stage)
             return stage / package
-        old_pkg = prepare('old', old_records, True)
-        new_pkg = prepare('new', new_records, False)
-        live = exp.destination_parent(directory / 'pkgsrc', package)
-        old_tree = inventory.snapshot_installed_tree(str(old_pkg))
-        new_tree = inventory.snapshot_installed_tree(str(new_pkg))
-        live_tree = inventory.snapshot_installed_tree(str(live))
-        if pending is None and old_tree != live_tree:
-            raise ValueError('selected live package differs from the previous export')
-        if pending is not None:
-            for name in set(old_tree) | set(new_tree) | set(live_tree):
-                if live_tree.get(name) not in (old_tree.get(name), new_tree.get(name)):
-                    raise ValueError('interrupted package differs from both recorded states: ' + name)
-        if any(row['kind'] != 'file' for rows in (old_tree, new_tree) for row in rows.values()
-               if row['kind'] != 'directory'):
-            raise ValueError('selected package has unsupported links or special files')
+        package_trees = []
+        for index, package in enumerate(packages):
+            overlay = overlays[package]
+            old_pkg = prepare('old-' + str(index), old_records, True, package, overlay)
+            new_pkg = prepare('new-' + str(index), new_records, False, package, overlay)
+            live = exp.destination_parent(directory / 'pkgsrc', package)
+            old_tree = inventory.snapshot_installed_tree(str(old_pkg))
+            new_tree = inventory.snapshot_installed_tree(str(new_pkg))
+            live_tree = inventory.snapshot_installed_tree(str(live))
+            if pending is None and old_tree != live_tree:
+                raise ValueError('selected live package differs from the previous export')
+            if pending is not None:
+                for name in set(old_tree) | set(new_tree) | set(live_tree):
+                    if live_tree.get(name) not in (old_tree.get(name), new_tree.get(name)):
+                        raise ValueError('interrupted package differs from both recorded states: ' + name)
+            if any(row['kind'] not in ('file', 'directory') for rows in (old_tree, new_tree)
+                   for row in rows.values()):
+                raise ValueError('selected package has unsupported links or special files')
+            for name in set(old_tree) & set(new_tree):
+                if old_tree[name]['kind'] != new_tree[name]['kind']:
+                    raise ValueError('selected package entry changes type: ' + name)
+            package_trees.append((package, new_pkg, old_tree, new_tree, live_tree))
         file_changes = []
         for name in selected_files:
             destination = exp.destination_parent(directory / 'pkgsrc', name)
@@ -500,9 +517,6 @@ def _locked(directory, ports, git, sdk, patch, package, selected_files, ident, e
             elif before is not None and not (pending is not None and after is None):
                 raise ValueError('selected live file is missing: ' + name)
             file_changes.append((destination, after, mode))
-        for name in set(old_tree) & set(new_tree):
-            if old_tree[name]['kind'] != new_tree[name]['kind']:
-                raise ValueError('selected package entry changes type: ' + name)
         input_names = set(snapshot['files'])
         for tree, rows in snapshot['trees'].items():
             input_names.update(tree + '/' + name for name, row in rows.items() if row['kind'] == 'file')
@@ -540,7 +554,7 @@ def _locked(directory, ports, git, sdk, patch, package, selected_files, ident, e
 
         if pending is None:
             with marker.open('x') as stream:
-                json.dump({'package': package, 'files': selected_files,
+                json.dump({'packages': packages, 'files': selected_files,
                            'previous_receipt': receipt, 'new_identity': current}, stream)
                 stream.flush()
                 os.fsync(stream.fileno())
@@ -578,26 +592,27 @@ def _locked(directory, ports, git, sdk, patch, package, selected_files, ident, e
                 sync_dir(path.parent)
             elif not path.exists() or path.read_bytes() != content or stat.S_IMODE(path.stat().st_mode) != mode:
                 replace(path, content, mode)
-        for name in sorted(set(old_tree) | set(new_tree), key=lambda x: (x.count('/'), x), reverse=True):
-            before, after = live_tree.get(name), new_tree.get(name)
-            target = exp.destination_parent(directory / 'pkgsrc', package + '/' + name)
-            if before == after:
-                continue
-            if after is None:
-                if before['kind'] == 'directory':
-                    target.rmdir()
-                else:
-                    target.unlink()
-                sync_dir(target.parent)
-            elif after['kind'] == 'file':
-                if before is not None and before['kind'] != 'file':
-                    raise ValueError('package entry changed type')
-                replace(target, (new_pkg / name).read_bytes(), after['mode'])
-            elif after['kind'] == 'directory':
-                if before is not None:
-                    raise ValueError('package directory changed')
-                target.mkdir(parents=True, exist_ok=True)
-                sync_dir(target.parent)
+        for package, new_pkg, old_tree, new_tree, live_tree in package_trees:
+            for name in sorted(set(old_tree) | set(new_tree), key=lambda x: (x.count('/'), x), reverse=True):
+                before, after = live_tree.get(name), new_tree.get(name)
+                target = exp.destination_parent(directory / 'pkgsrc', package + '/' + name)
+                if before == after:
+                    continue
+                if after is None:
+                    if before['kind'] == 'directory':
+                        target.rmdir()
+                    else:
+                        target.unlink()
+                    sync_dir(target.parent)
+                elif after['kind'] == 'file':
+                    if before is not None and before['kind'] != 'file':
+                        raise ValueError('package entry changed type')
+                    replace(target, (new_pkg / name).read_bytes(), after['mode'])
+                elif after['kind'] == 'directory':
+                    if before is not None:
+                        raise ValueError('package directory changed')
+                    target.mkdir(parents=True, exist_ok=True)
+                    sync_dir(target.parent)
         updated = {'format': ident.SHARED_EXPORT_FORMAT, 'version': 3, 'identity': current,
                    'material': {name: ident.material_snapshot(directory / 'pkgsrc' / name)
                                 for name in ident.SHARED_EXPORT_MATERIAL}, 'inputs': snapshot,
