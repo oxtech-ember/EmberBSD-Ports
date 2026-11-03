@@ -1,0 +1,359 @@
+Use the common tree-sitter runtime with gettext-pinned language grammars.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+diff --git a/gettext-tools/configure b/gettext-tools/configure
+index e25287f1..bc99624d 100755
+--- gettext-tools/configure
++++ gettext-tools/configure
+@@ -663,7 +663,9 @@ gl_getopt_required=POSIX
+ gl_log10_required=plain
+ enable_option_checking=no
+ enable_year2038=no
+-ac_subst_vars='EMBER_GETTEXT_PLAIN_STYLE_FALSE
++ac_subst_vars='TREE_SITTER_CFLAGS
++TREE_SITTER_LIBS
++EMBER_GETTEXT_PLAIN_STYLE_FALSE
+ EMBER_GETTEXT_PLAIN_STYLE_TRUE
+ EMBER_GETTEXT_PLAIN_STYLE
+ gttgltests_libtestsgnu_LIBOBJDEPS
+@@ -124313,6 +124315,27 @@ fi
+ 
+ ARCHIVE_VERSION=1.0
+ 
++test -n "$PKG_CONFIG" && test -x "$PKG_CONFIG" ||
++  as_fn_error $? "the selected pkg-config is required for tree-sitter" "$LINENO" 5
++TREE_SITTER_CFLAGS=`"$PKG_CONFIG" --cflags tree-sitter` || as_fn_error $? "tree-sitter metadata is required" "$LINENO" 5
++TREE_SITTER_LIBS=`"$PKG_CONFIG" --libs tree-sitter` || as_fn_error $? "tree-sitter link flags are required" "$LINENO" 5
++ember_save_CPPFLAGS=$CPPFLAGS
++ember_save_LIBS=$LIBS
++CPPFLAGS="$CPPFLAGS $TREE_SITTER_CFLAGS"
++LIBS="$TREE_SITTER_LIBS $LIBS"
++cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++#include <tree_sitter/api.h>
++#if TREE_SITTER_LANGUAGE_VERSION < 14 || TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION > 14
++#error incompatible tree-sitter grammar ABI
++#endif
++int main (void) { TSParser *parser = ts_parser_new (); ts_parser_delete (parser); return 0; }
++_ACEOF
++if ac_fn_c_try_link "$LINENO"; then :
++else as_fn_error $? "usable tree-sitter runtime and ABI 14 headers are required" "$LINENO" 5
++fi
++rm -f core conftest.err conftest.$ac_objext conftest.beam conftest$ac_exeext conftest.$ac_ext
++CPPFLAGS=$ember_save_CPPFLAGS
++LIBS=$ember_save_LIBS
+ . $srcdir/tree-sitter.cfg
+ 
+ 
+diff --git a/gettext-tools/configure.ac b/gettext-tools/configure.ac
+index 0b02b3c4..b235a6f7 100644
+--- gettext-tools/configure.ac
++++ gettext-tools/configure.ac
+@@ -756,13 +756,25 @@ AC_SUBST([ARCHIVE_FORMAT])
+ dnl Get versions of files brought in by autopull.sh.
+ ARCHIVE_VERSION=1.0
+ AC_SUBST([ARCHIVE_VERSION])
+-dnl We don't offer a --with-tree-sitter-prefix option, but instead always use
+-dnl the tree-sitter version included in the tarball. This is required because
+-dnl there is no stability guarantee for grammar elements: grammar elements can
+-dnl be changed, extended, or even removed in future tree-sitter-<lang> versions,
+-dnl whereas the x-<lang>.c code assumes that certain grammar elements have a
+-dnl specific structure. We may need to change x-<lang>.c so that it works with
+-dnl a newer version of tree-sitter-<lang>.
++dnl Keep the shipped language grammars: x-<lang>.c relies on their tree shapes.
++dnl The common runtime is independent of those grammar semantics.
++test -n "$PKG_CONFIG" && test -x "$PKG_CONFIG" ||
++  AC_MSG_ERROR([the selected pkg-config is required for tree-sitter])
++TREE_SITTER_CFLAGS=`"$PKG_CONFIG" --cflags tree-sitter` || AC_MSG_ERROR([tree-sitter metadata is required])
++TREE_SITTER_LIBS=`"$PKG_CONFIG" --libs tree-sitter` || AC_MSG_ERROR([tree-sitter link flags are required])
++ember_save_CPPFLAGS=$CPPFLAGS
++ember_save_LIBS=$LIBS
++CPPFLAGS="$CPPFLAGS $TREE_SITTER_CFLAGS"
++LIBS="$TREE_SITTER_LIBS $LIBS"
++AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <tree_sitter/api.h>
++#if TREE_SITTER_LANGUAGE_VERSION < 14 || TREE_SITTER_MIN_COMPATIBLE_LANGUAGE_VERSION > 14
++#error incompatible tree-sitter grammar ABI
++#endif]], [[TSParser *parser = ts_parser_new (); ts_parser_delete (parser);]])], [],
++  [AC_MSG_ERROR([usable tree-sitter runtime and ABI 14 headers are required])])
++CPPFLAGS=$ember_save_CPPFLAGS
++LIBS=$ember_save_LIBS
++AC_SUBST([TREE_SITTER_CFLAGS])
++AC_SUBST([TREE_SITTER_LIBS])
+ . $srcdir/tree-sitter.cfg
+ AC_SUBST([TREE_SITTER_VERSION])
+ AC_SUBST([TREE_SITTER_GO_VERSION])
+diff --git a/gettext-tools/src/Makefile.am b/gettext-tools/src/Makefile.am
+index cf98650b..67363c57 100644
+--- gettext-tools/src/Makefile.am
++++ gettext-tools/src/Makefile.am
+@@ -129,7 +129,7 @@ schemadir = $(pkgdatadir)/schema
+ # The option -I$(top_srcdir) is needed so that woe32dll/export.h is found.
+ AM_CPPFLAGS = \
+   -I$(top_srcdir) \
+-  -I$(top_srcdir)/tree-sitter-$(TREE_SITTER_VERSION)/lib/include \
++  $(TREE_SITTER_CFLAGS) \
+   -I../libgrep -I$(top_srcdir)/libgrep \
+   -I../gnulib-lib -I$(top_srcdir)/gnulib-lib \
+   -I../../gettext-runtime/intl -I$(top_srcdir)/../gettext-runtime/intl
+@@ -264,13 +264,7 @@ libgettextsrc_la_SOURCES = \
+   search-path.c
+ 
+ # xgettext has some tree-sitter based backends.
+-LIBXGETTEXTTS = libxgettextts2.a libxgettextts3.a libxgettextts4.a libxgettextts5.a libxgettextts1.a
+-libxgettextts1_a_SOURCES = \
+-  ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/lib.c
+-libxgettextts1_a_CPPFLAGS = \
+-  -I$(top_srcdir)/tree-sitter-$(TREE_SITTER_VERSION)/lib/include \
+-  -I$(top_srcdir)/tree-sitter-$(TREE_SITTER_VERSION)/lib/src
+-libxgettextts1_a_CFLAGS = $(AM_CFLAGS) @FOREIGN_WARN_CFLAGS@ @NO_EXPENSIVE_WARN_CFLAGS@
++LIBXGETTEXTTS = libxgettextts2.a libxgettextts3.a libxgettextts4.a libxgettextts5.a
+ libxgettextts2_a_SOURCES = \
+   ../tree-sitter-rust-$(TREE_SITTER_RUST_VERSION)/src/rust-parser.c \
+   ../tree-sitter-rust-$(TREE_SITTER_RUST_VERSION)/src/rust-scanner.c \
+@@ -278,28 +272,28 @@ libxgettextts2_a_SOURCES = \
+   ../tree-sitter-d-$(TREE_SITTER_D_VERSION)/src/d-parser.c \
+   ../tree-sitter-d-$(TREE_SITTER_D_VERSION)/src/d-scanner.c
+ libxgettextts2_a_CPPFLAGS = \
+-  -I$(top_srcdir)/tree-sitter-$(TREE_SITTER_VERSION)/lib/include
++  $(TREE_SITTER_CFLAGS)
+ libxgettextts2_a_CFLAGS = $(AM_CFLAGS) @FOREIGN_WARN_CFLAGS@ @NO_EXPENSIVE_WARN_CFLAGS@
+ libxgettextts3_a_SOURCES = \
+   ../tree-sitter-typescript-$(TREE_SITTER_TYPESCRIPT_VERSION)/typescript/src/ts-parser.c \
+   ../tree-sitter-typescript-$(TREE_SITTER_TYPESCRIPT_VERSION)/typescript/src/ts-scanner.c
+ libxgettextts3_a_CPPFLAGS = \
+   -I$(top_srcdir)/tree-sitter-typescript-$(TREE_SITTER_TYPESCRIPT_VERSION)/typescript/src \
+-  -I$(top_srcdir)/tree-sitter-$(TREE_SITTER_VERSION)/lib/include
++  $(TREE_SITTER_CFLAGS)
+ libxgettextts3_a_CFLAGS = $(AM_CFLAGS) @FOREIGN_WARN_CFLAGS@ @NO_EXPENSIVE_WARN_CFLAGS@
+ libxgettextts4_a_SOURCES = \
+   ../tree-sitter-typescript-$(TREE_SITTER_TYPESCRIPT_VERSION)/tsx/src/tsx-parser.c \
+   ../tree-sitter-typescript-$(TREE_SITTER_TYPESCRIPT_VERSION)/tsx/src/tsx-scanner.c
+ libxgettextts4_a_CPPFLAGS = \
+   -I$(top_srcdir)/tree-sitter-typescript-$(TREE_SITTER_TYPESCRIPT_VERSION)/tsx/src \
+-  -I$(top_srcdir)/tree-sitter-$(TREE_SITTER_VERSION)/lib/include
++  $(TREE_SITTER_CFLAGS)
+ libxgettextts4_a_CFLAGS = $(AM_CFLAGS) @FOREIGN_WARN_CFLAGS@ @NO_EXPENSIVE_WARN_CFLAGS@
+ libxgettextts5_a_SOURCES = \
+   ../tree-sitter-ocaml-$(TREE_SITTER_OCAML_VERSION)/grammars/ocaml/src/ocaml-parser.c \
+   ../tree-sitter-ocaml-$(TREE_SITTER_OCAML_VERSION)/grammars/ocaml/src/ocaml-scanner.c
+ libxgettextts5_a_CPPFLAGS = \
+   -I$(top_srcdir)/tree-sitter-ocaml-$(TREE_SITTER_OCAML_VERSION)/grammars/ocaml/src \
+-  -I$(top_srcdir)/tree-sitter-$(TREE_SITTER_VERSION)/lib/include
++  $(TREE_SITTER_CFLAGS)
+ libxgettextts5_a_CFLAGS = $(AM_CFLAGS) @FOREIGN_WARN_CFLAGS@ @NO_EXPENSIVE_WARN_CFLAGS@
+ 
+ # msggrep needs pattern matching.
+@@ -536,7 +530,7 @@ msgcmp_LDADD = libgettextsrc.la @INTL_MACOSX_LIBS@ @MSGMERGE_LIBM@ $(WOE32_LDADD
+ msgfmt_LDADD = libgettextsrc.la @INTL_MACOSX_LIBS@ $(WOE32_LDADD)
+ msgmerge_LDADD = libgettextsrc.la @INTL_MACOSX_LIBS@ @MSGMERGE_LIBM@ $(WOE32_LDADD) $(OPENMP_CFLAGS)
+ msgunfmt_LDADD = libgettextsrc.la @INTL_MACOSX_LIBS@ $(WOE32_LDADD)
+-xgettext_LDADD = libxgettextx.a $(LIBXGETTEXTTS) libgettextsrc.la @INTL_MACOSX_LIBS@ @LTLIBICONV@ $(WOE32_LDADD)
++xgettext_LDADD = libxgettextx.a $(LIBXGETTEXTTS) $(TREE_SITTER_LIBS) libgettextsrc.la @INTL_MACOSX_LIBS@ @LTLIBICONV@ $(WOE32_LDADD)
+ msgattrib_LDADD = libgettextsrc.la @INTL_MACOSX_LIBS@ $(WOE32_LDADD)
+ msgcat_LDADD = libgettextsrc.la @INTL_MACOSX_LIBS@ $(WOE32_LDADD)
+ msgcomm_LDADD = libgettextsrc.la @INTL_MACOSX_LIBS@ $(WOE32_LDADD)
+diff --git a/gettext-tools/src/Makefile.in b/gettext-tools/src/Makefile.in
+index 29f5fdd9..4aaf8fa4 100644
+--- gettext-tools/src/Makefile.in
++++ gettext-tools/src/Makefile.in
+@@ -581,12 +581,7 @@ AM_V_AR = $(am__v_AR_@AM_V@)
+ am__v_AR_ = $(am__v_AR_@AM_DEFAULT_V@)
+ am__v_AR_0 = @echo "  AR      " $@;
+ am__v_AR_1 = 
+-libxgettextts1_a_AR = $(AR) $(ARFLAGS)
+-libxgettextts1_a_RANLIB = $(RANLIB)
+-libxgettextts1_a_LIBADD =
+ am__dirstamp = $(am__leading_dot)dirstamp
+-am_libxgettextts1_a_OBJECTS = ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/libxgettextts1_a-lib.$(OBJEXT)
+-libxgettextts1_a_OBJECTS = $(am_libxgettextts1_a_OBJECTS)
+ libxgettextts2_a_AR = $(AR) $(ARFLAGS)
+ libxgettextts2_a_RANLIB = $(RANLIB)
+ libxgettextts2_a_LIBADD =
+@@ -1001,7 +996,6 @@ am__depfiles_remade =  \
+ 	../../gettext-runtime/intl/$(DEPDIR)/msgfmt-hash-string.Po \
+ 	../../gettext-runtime/intl/$(DEPDIR)/msginit-localealias.Po \
+ 	../../gettext-runtime/intl/$(DEPDIR)/msgunfmt-hash-string.Po \
+-	../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(DEPDIR)/libxgettextts1_a-lib.Po \
+ 	../tree-sitter-d-$(TREE_SITTER_D_VERSION)/src/$(DEPDIR)/libxgettextts2_a-d-parser.Po \
+ 	../tree-sitter-d-$(TREE_SITTER_D_VERSION)/src/$(DEPDIR)/libxgettextts2_a-d-scanner.Po \
+ 	../tree-sitter-go-$(TREE_SITTER_GO_VERSION)/src/$(DEPDIR)/libxgettextts2_a-go-parser.Po \
+@@ -1215,7 +1209,7 @@ am__v_YACC_ = $(am__v_YACC_@AM_DEFAULT_V@)
+ am__v_YACC_0 = @echo "  YACC    " $@;
+ am__v_YACC_1 = 
+ YLWRAP = $(top_srcdir)/../build-aux/ylwrap
+-SOURCES = $(libxgettextts1_a_SOURCES) $(libxgettextts2_a_SOURCES) \
++SOURCES = $(libxgettextts2_a_SOURCES) \
+ 	$(libxgettextts3_a_SOURCES) $(libxgettextts4_a_SOURCES) \
+ 	$(libxgettextts5_a_SOURCES) $(libxgettextx_a_SOURCES) \
+ 	$(libgettextsrc_la_SOURCES) $(cldr_plurals_SOURCES) \
+@@ -1226,7 +1220,7 @@ SOURCES = $(libxgettextts1_a_SOURCES) $(libxgettextts2_a_SOURCES) \
+ 	$(msgmerge_SOURCES) $(msgpre_SOURCES) $(msgunfmt_SOURCES) \
+ 	$(msguniq_SOURCES) $(recode_sr_latin_SOURCES) $(spit_SOURCES) \
+ 	$(urlget_SOURCES) $(xgettext_SOURCES)
+-DIST_SOURCES = $(libxgettextts1_a_SOURCES) $(libxgettextts2_a_SOURCES) \
++DIST_SOURCES = $(libxgettextts2_a_SOURCES) \
+ 	$(libxgettextts3_a_SOURCES) $(libxgettextts4_a_SOURCES) \
+ 	$(libxgettextts5_a_SOURCES) $(libxgettextx_a_SOURCES) \
+ 	$(am__libgettextsrc_la_SOURCES_DIST) $(cldr_plurals_SOURCES) \
+@@ -4433,6 +4427,8 @@ TREE_SITTER_GO_VERSION = @TREE_SITTER_GO_VERSION@
+ TREE_SITTER_OCAML_VERSION = @TREE_SITTER_OCAML_VERSION@
+ TREE_SITTER_RUST_VERSION = @TREE_SITTER_RUST_VERSION@
+ TREE_SITTER_TYPESCRIPT_VERSION = @TREE_SITTER_TYPESCRIPT_VERSION@
++TREE_SITTER_CFLAGS = @TREE_SITTER_CFLAGS@
++TREE_SITTER_LIBS = @TREE_SITTER_LIBS@
+ TREE_SITTER_VERSION = @TREE_SITTER_VERSION@
+ UINT32_MAX_LT_UINTMAX_MAX = @UINT32_MAX_LT_UINTMAX_MAX@
+ UINT64_MAX_EQ_ULONG_MAX = @UINT64_MAX_EQ_ULONG_MAX@
+@@ -4738,7 +4734,7 @@ schemadir = $(pkgdatadir)/schema
+ # The option -I$(top_srcdir) is needed so that woe32dll/export.h is found.
+ AM_CPPFLAGS = \
+   -I$(top_srcdir) \
+-  -I$(top_srcdir)/tree-sitter-$(TREE_SITTER_VERSION)/lib/include \
++  $(TREE_SITTER_CFLAGS) \
+   -I../libgrep -I$(top_srcdir)/libgrep \
+   -I../gnulib-lib -I$(top_srcdir)/gnulib-lib \
+   -I../../gettext-runtime/intl -I$(top_srcdir)/../gettext-runtime/intl
+@@ -4831,15 +4827,7 @@ libgettextsrc_la_SOURCES = \
+ 
+ 
+ # xgettext has some tree-sitter based backends.
+-LIBXGETTEXTTS = libxgettextts2.a libxgettextts3.a libxgettextts4.a libxgettextts5.a libxgettextts1.a
+-libxgettextts1_a_SOURCES = \
+-  ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/lib.c
+-
+-libxgettextts1_a_CPPFLAGS = \
+-  -I$(top_srcdir)/tree-sitter-$(TREE_SITTER_VERSION)/lib/include \
+-  -I$(top_srcdir)/tree-sitter-$(TREE_SITTER_VERSION)/lib/src
+-
+-libxgettextts1_a_CFLAGS = $(AM_CFLAGS) @FOREIGN_WARN_CFLAGS@ @NO_EXPENSIVE_WARN_CFLAGS@
++LIBXGETTEXTTS = libxgettextts2.a libxgettextts3.a libxgettextts4.a libxgettextts5.a
+ libxgettextts2_a_SOURCES = \
+   ../tree-sitter-rust-$(TREE_SITTER_RUST_VERSION)/src/rust-parser.c \
+   ../tree-sitter-rust-$(TREE_SITTER_RUST_VERSION)/src/rust-scanner.c \
+@@ -4848,7 +4836,7 @@ libxgettextts2_a_SOURCES = \
+   ../tree-sitter-d-$(TREE_SITTER_D_VERSION)/src/d-scanner.c
+ 
+ libxgettextts2_a_CPPFLAGS = \
+-  -I$(top_srcdir)/tree-sitter-$(TREE_SITTER_VERSION)/lib/include
++  $(TREE_SITTER_CFLAGS)
+ 
+ libxgettextts2_a_CFLAGS = $(AM_CFLAGS) @FOREIGN_WARN_CFLAGS@ @NO_EXPENSIVE_WARN_CFLAGS@
+ libxgettextts3_a_SOURCES = \
+@@ -4857,7 +4845,7 @@ libxgettextts3_a_SOURCES = \
+ 
+ libxgettextts3_a_CPPFLAGS = \
+   -I$(top_srcdir)/tree-sitter-typescript-$(TREE_SITTER_TYPESCRIPT_VERSION)/typescript/src \
+-  -I$(top_srcdir)/tree-sitter-$(TREE_SITTER_VERSION)/lib/include
++  $(TREE_SITTER_CFLAGS)
+ 
+ libxgettextts3_a_CFLAGS = $(AM_CFLAGS) @FOREIGN_WARN_CFLAGS@ @NO_EXPENSIVE_WARN_CFLAGS@
+ libxgettextts4_a_SOURCES = \
+@@ -4866,7 +4854,7 @@ libxgettextts4_a_SOURCES = \
+ 
+ libxgettextts4_a_CPPFLAGS = \
+   -I$(top_srcdir)/tree-sitter-typescript-$(TREE_SITTER_TYPESCRIPT_VERSION)/tsx/src \
+-  -I$(top_srcdir)/tree-sitter-$(TREE_SITTER_VERSION)/lib/include
++  $(TREE_SITTER_CFLAGS)
+ 
+ libxgettextts4_a_CFLAGS = $(AM_CFLAGS) @FOREIGN_WARN_CFLAGS@ @NO_EXPENSIVE_WARN_CFLAGS@
+ libxgettextts5_a_SOURCES = \
+@@ -4875,7 +4863,7 @@ libxgettextts5_a_SOURCES = \
+ 
+ libxgettextts5_a_CPPFLAGS = \
+   -I$(top_srcdir)/tree-sitter-ocaml-$(TREE_SITTER_OCAML_VERSION)/grammars/ocaml/src \
+-  -I$(top_srcdir)/tree-sitter-$(TREE_SITTER_VERSION)/lib/include
++  $(TREE_SITTER_CFLAGS)
+ 
+ libxgettextts5_a_CFLAGS = $(AM_CFLAGS) @FOREIGN_WARN_CFLAGS@ @NO_EXPENSIVE_WARN_CFLAGS@
+ 
+@@ -4999,7 +4987,7 @@ msgcmp_LDADD = libgettextsrc.la @INTL_MACOSX_LIBS@ @MSGMERGE_LIBM@ $(WOE32_LDADD
+ msgfmt_LDADD = libgettextsrc.la @INTL_MACOSX_LIBS@ $(WOE32_LDADD)
+ msgmerge_LDADD = libgettextsrc.la @INTL_MACOSX_LIBS@ @MSGMERGE_LIBM@ $(WOE32_LDADD) $(OPENMP_CFLAGS)
+ msgunfmt_LDADD = libgettextsrc.la @INTL_MACOSX_LIBS@ $(WOE32_LDADD)
+-xgettext_LDADD = libxgettextx.a $(LIBXGETTEXTTS) libgettextsrc.la @INTL_MACOSX_LIBS@ @LTLIBICONV@ $(WOE32_LDADD)
++xgettext_LDADD = libxgettextx.a $(LIBXGETTEXTTS) $(TREE_SITTER_LIBS) libgettextsrc.la @INTL_MACOSX_LIBS@ @LTLIBICONV@ $(WOE32_LDADD)
+ msgattrib_LDADD = libgettextsrc.la @INTL_MACOSX_LIBS@ $(WOE32_LDADD)
+ msgcat_LDADD = libgettextsrc.la @INTL_MACOSX_LIBS@ $(WOE32_LDADD)
+ msgcomm_LDADD = libgettextsrc.la @INTL_MACOSX_LIBS@ $(WOE32_LDADD)
+@@ -5372,20 +5360,6 @@ clean-noinstLTLIBRARIES:
+ 	      sort -u`; \
+ 	echo rm -f $${locs}; \
+ 	$(am__rm_f) $${locs}
+-../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(am__dirstamp):
+-	@$(MKDIR_P) ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src
+-	@: >>../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(am__dirstamp)
+-../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(DEPDIR)/$(am__dirstamp):
+-	@$(MKDIR_P) ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(DEPDIR)
+-	@: >>../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(DEPDIR)/$(am__dirstamp)
+-../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/libxgettextts1_a-lib.$(OBJEXT):  \
+-	../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(am__dirstamp) \
+-	../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(DEPDIR)/$(am__dirstamp)
+-
+-libxgettextts1.a: $(libxgettextts1_a_OBJECTS) $(libxgettextts1_a_DEPENDENCIES) $(EXTRA_libxgettextts1_a_DEPENDENCIES) 
+-	$(AM_V_at)-rm -f libxgettextts1.a
+-	$(AM_V_AR)$(libxgettextts1_a_AR) libxgettextts1.a $(libxgettextts1_a_OBJECTS) $(libxgettextts1_a_LIBADD)
+-	$(AM_V_at)$(libxgettextts1_a_RANLIB) libxgettextts1.a
+ ../tree-sitter-rust-$(TREE_SITTER_RUST_VERSION)/src/$(am__dirstamp):
+ 	@$(MKDIR_P) ../tree-sitter-rust-$(TREE_SITTER_RUST_VERSION)/src
+ 	@: >>../tree-sitter-rust-$(TREE_SITTER_RUST_VERSION)/src/$(am__dirstamp)
+@@ -5613,7 +5587,6 @@ xgettext$(EXEEXT): $(xgettext_OBJECTS) $(xgettext_DEPENDENCIES) $(EXTRA_xgettext
+ mostlyclean-compile:
+ 	-rm -f *.$(OBJEXT)
+ 	-rm -f ../../gettext-runtime/intl/*.$(OBJEXT)
+-	-rm -f ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/*.$(OBJEXT)
+ 	-rm -f ../tree-sitter-d-$(TREE_SITTER_D_VERSION)/src/*.$(OBJEXT)
+ 	-rm -f ../tree-sitter-go-$(TREE_SITTER_GO_VERSION)/src/*.$(OBJEXT)
+ 	-rm -f ../tree-sitter-ocaml-$(TREE_SITTER_OCAML_VERSION)/grammars/ocaml/src/*.$(OBJEXT)
+@@ -5629,7 +5602,6 @@ distclean-compile:
+ @AMDEP_TRUE@@am__include@ @am__quote@../../gettext-runtime/intl/$(DEPDIR)/msgfmt-hash-string.Po@am__quote@ # am--include-marker
+ @AMDEP_TRUE@@am__include@ @am__quote@../../gettext-runtime/intl/$(DEPDIR)/msginit-localealias.Po@am__quote@ # am--include-marker
+ @AMDEP_TRUE@@am__include@ @am__quote@../../gettext-runtime/intl/$(DEPDIR)/msgunfmt-hash-string.Po@am__quote@ # am--include-marker
+-@AMDEP_TRUE@@am__include@ @am__quote@../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(DEPDIR)/libxgettextts1_a-lib.Po@am__quote@ # am--include-marker
+ @AMDEP_TRUE@@am__include@ @am__quote@../tree-sitter-d-$(TREE_SITTER_D_VERSION)/src/$(DEPDIR)/libxgettextts2_a-d-parser.Po@am__quote@ # am--include-marker
+ @AMDEP_TRUE@@am__include@ @am__quote@../tree-sitter-d-$(TREE_SITTER_D_VERSION)/src/$(DEPDIR)/libxgettextts2_a-d-scanner.Po@am__quote@ # am--include-marker
+ @AMDEP_TRUE@@am__include@ @am__quote@../tree-sitter-go-$(TREE_SITTER_GO_VERSION)/src/$(DEPDIR)/libxgettextts2_a-go-parser.Po@am__quote@ # am--include-marker
+@@ -5845,20 +5817,6 @@ am--depfiles: $(am__depfiles_remade)
+ @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+ @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
+ 
+-../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/libxgettextts1_a-lib.o: ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/lib.c
+-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libxgettextts1_a_CPPFLAGS) $(CPPFLAGS) $(libxgettextts1_a_CFLAGS) $(CFLAGS) -MT ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/libxgettextts1_a-lib.o -MD -MP -MF ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(DEPDIR)/libxgettextts1_a-lib.Tpo -c -o ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/libxgettextts1_a-lib.o `test -f '../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/lib.c' || echo '$(srcdir)/'`../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/lib.c
+-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(DEPDIR)/libxgettextts1_a-lib.Tpo ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(DEPDIR)/libxgettextts1_a-lib.Po
+-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/lib.c' object='../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/libxgettextts1_a-lib.o' libtool=no @AMDEPBACKSLASH@
+-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libxgettextts1_a_CPPFLAGS) $(CPPFLAGS) $(libxgettextts1_a_CFLAGS) $(CFLAGS) -c -o ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/libxgettextts1_a-lib.o `test -f '../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/lib.c' || echo '$(srcdir)/'`../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/lib.c
+-
+-../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/libxgettextts1_a-lib.obj: ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/lib.c
+-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libxgettextts1_a_CPPFLAGS) $(CPPFLAGS) $(libxgettextts1_a_CFLAGS) $(CFLAGS) -MT ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/libxgettextts1_a-lib.obj -MD -MP -MF ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(DEPDIR)/libxgettextts1_a-lib.Tpo -c -o ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/libxgettextts1_a-lib.obj `if test -f '../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/lib.c'; then $(CYGPATH_W) '../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/lib.c'; else $(CYGPATH_W) '$(srcdir)/../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/lib.c'; fi`
+-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(DEPDIR)/libxgettextts1_a-lib.Tpo ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(DEPDIR)/libxgettextts1_a-lib.Po
+-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/lib.c' object='../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/libxgettextts1_a-lib.obj' libtool=no @AMDEPBACKSLASH@
+-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libxgettextts1_a_CPPFLAGS) $(CPPFLAGS) $(libxgettextts1_a_CFLAGS) $(CFLAGS) -c -o ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/libxgettextts1_a-lib.obj `if test -f '../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/lib.c'; then $(CYGPATH_W) '../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/lib.c'; else $(CYGPATH_W) '$(srcdir)/../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/lib.c'; fi`
+-
+ ../tree-sitter-rust-$(TREE_SITTER_RUST_VERSION)/src/libxgettextts2_a-rust-parser.o: ../tree-sitter-rust-$(TREE_SITTER_RUST_VERSION)/src/rust-parser.c
+ @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libxgettextts2_a_CPPFLAGS) $(CPPFLAGS) $(libxgettextts2_a_CFLAGS) $(CFLAGS) -MT ../tree-sitter-rust-$(TREE_SITTER_RUST_VERSION)/src/libxgettextts2_a-rust-parser.o -MD -MP -MF ../tree-sitter-rust-$(TREE_SITTER_RUST_VERSION)/src/$(DEPDIR)/libxgettextts2_a-rust-parser.Tpo -c -o ../tree-sitter-rust-$(TREE_SITTER_RUST_VERSION)/src/libxgettextts2_a-rust-parser.o `test -f '../tree-sitter-rust-$(TREE_SITTER_RUST_VERSION)/src/rust-parser.c' || echo '$(srcdir)/'`../tree-sitter-rust-$(TREE_SITTER_RUST_VERSION)/src/rust-parser.c
+ @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../tree-sitter-rust-$(TREE_SITTER_RUST_VERSION)/src/$(DEPDIR)/libxgettextts2_a-rust-parser.Tpo ../tree-sitter-rust-$(TREE_SITTER_RUST_VERSION)/src/$(DEPDIR)/libxgettextts2_a-rust-parser.Po
+@@ -8094,8 +8052,6 @@ distclean-generic:
+ 	-$(am__rm_f) $(DISTCLEANFILES)
+ 	-$(am__rm_f) ../../gettext-runtime/intl/$(DEPDIR)/$(am__dirstamp)
+ 	-$(am__rm_f) ../../gettext-runtime/intl/$(am__dirstamp)
+-	-$(am__rm_f) ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(DEPDIR)/$(am__dirstamp)
+-	-$(am__rm_f) ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(am__dirstamp)
+ 	-$(am__rm_f) ../tree-sitter-d-$(TREE_SITTER_D_VERSION)/src/$(DEPDIR)/$(am__dirstamp)
+ 	-$(am__rm_f) ../tree-sitter-d-$(TREE_SITTER_D_VERSION)/src/$(am__dirstamp)
+ 	-$(am__rm_f) ../tree-sitter-go-$(TREE_SITTER_GO_VERSION)/src/$(DEPDIR)/$(am__dirstamp)
+@@ -8128,7 +8084,6 @@ distclean: distclean-am
+ 	-rm -f ../../gettext-runtime/intl/$(DEPDIR)/msgfmt-hash-string.Po
+ 	-rm -f ../../gettext-runtime/intl/$(DEPDIR)/msginit-localealias.Po
+ 	-rm -f ../../gettext-runtime/intl/$(DEPDIR)/msgunfmt-hash-string.Po
+-	-rm -f ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(DEPDIR)/libxgettextts1_a-lib.Po
+ 	-rm -f ../tree-sitter-d-$(TREE_SITTER_D_VERSION)/src/$(DEPDIR)/libxgettextts2_a-d-parser.Po
+ 	-rm -f ../tree-sitter-d-$(TREE_SITTER_D_VERSION)/src/$(DEPDIR)/libxgettextts2_a-d-scanner.Po
+ 	-rm -f ../tree-sitter-go-$(TREE_SITTER_GO_VERSION)/src/$(DEPDIR)/libxgettextts2_a-go-parser.Po
+@@ -8362,7 +8317,6 @@ maintainer-clean: maintainer-clean-am
+ 	-rm -f ../../gettext-runtime/intl/$(DEPDIR)/msgfmt-hash-string.Po
+ 	-rm -f ../../gettext-runtime/intl/$(DEPDIR)/msginit-localealias.Po
+ 	-rm -f ../../gettext-runtime/intl/$(DEPDIR)/msgunfmt-hash-string.Po
+-	-rm -f ../tree-sitter-$(TREE_SITTER_VERSION)/lib/src/$(DEPDIR)/libxgettextts1_a-lib.Po
+ 	-rm -f ../tree-sitter-d-$(TREE_SITTER_D_VERSION)/src/$(DEPDIR)/libxgettextts2_a-d-parser.Po
+ 	-rm -f ../tree-sitter-d-$(TREE_SITTER_D_VERSION)/src/$(DEPDIR)/libxgettextts2_a-d-scanner.Po
+ 	-rm -f ../tree-sitter-go-$(TREE_SITTER_GO_VERSION)/src/$(DEPDIR)/libxgettextts2_a-go-parser.Po
