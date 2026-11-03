@@ -1,7 +1,7 @@
 # Native PowerVR compiler tools
 
-This probe builds genuine Mesa compiler tools on macOS ARM64. It prepares
-USC programs for a later A733 compute test. It does not execute GPU code.
+This probe uses genuine Mesa compiler tools on Linux x86_64 and macOS ARM64.
+It prepares USC programs for a later A733 compute test. It does not execute GPU code.
 It does not enable the PowerVR Vulkan driver in the common Mesa recipe.
 
 The exact A733 BVNC is `36.56.104.183`. Mesa also has a different BVNC with
@@ -12,12 +12,13 @@ No feature assertions or IR validation checks are disabled.
 ## Inputs and build
 
 Use the [shared Mesa generator producer](../../../profiles/common-graphics/cross/mesa-generators.md).
-It uses host GCC16 and the common native LLVM/Clang CLC and SPIR-V packages.
+It selects host Clang/LLVM by default and uses the common CLC and SPIR-V packages.
 Their shared Ports recipes own all dependency versions and portability patches.
 The old private dependency builder and compiler wrapper have been removed.
 
 Select `--profile powervr` or `--profile all` for the PowerVR compiler.
-Use a fresh work directory. The producer keeps assertions and upstream tests enabled.
+Select a new work directory for the initial build. The producer keeps assertions enabled.
+Tests are a separate explicit stage, selected with `--test`.
 It applies the exact BVNC patch without changing the shared target Mesa sources.
 The shader check also uses the canonical IDFWDF header layout.
 Old programs for a different IDFWDF layout cannot be reused.
