@@ -1,13 +1,28 @@
 --- a/archivers/gzip/Makefile
 +++ b/archivers/gzip/Makefile
-@@ -20,5 +20,10 @@
+@@ -1,6 +1,7 @@
+ # $NetBSD: Makefile,v 1.42 2026/09/24 16:28:58 drixter Exp $
+ 
+ DISTNAME=	gzip-1.15
++PKGREVISION=	1
+ CATEGORIES=	archivers
+ # does not provide uncompressed tarball, needed due to bootstrapping
+ #MASTER_SITES=	${MASTER_SITE_GNU:=gzip/}
+@@ -20,5 +21,17 @@
  MAKE_FLAGS+=	manlinks=so
  INFO_FILES=	yes
  CHECK_PERMS=	no	# can't depend on checkperms; its distfile is gzipped
-+# pkg_install-info is extracted with this gzip in the Darwin bootstrap.
-+# Install gzip.info there without the install-info dependency cycle.
++# Initial gzip breaks the gzip -> pkg_install-info -> gzip bootstrap cycle.
++# Keep the Info file but defer registration until the provider is available.
 +.if ${EMBERBSD_DARWIN_BOOTSTRAP:Uno} == "yes"
-+TOOLS_IGNORE.install-info=
++EMBERBSD_GZIP_DEFER_INFO?= yes
++.else
++EMBERBSD_GZIP_DEFER_INFO?= no
++.endif
++.if ${EMBERBSD_GZIP_DEFER_INFO} == "yes"
++.undef INFO_FILES
++.elif ${EMBERBSD_GZIP_DEFER_INFO} != "no"
++.error "EMBERBSD_GZIP_DEFER_INFO must be yes or no"
 +.endif
  
  .include "../../mk/bsd.pkg.mk"
