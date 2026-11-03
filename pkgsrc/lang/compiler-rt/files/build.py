@@ -287,7 +287,7 @@ def inspect_inputs(owner, args, prepared, *, existing=False):
             owner.paths.reject_overlap(str(output), str(read_root))
     owner.paths.reject_overlap(str(work), str(stage))
     native = host_prefix.load_host_prefix(args.host_prefix, compiler_family=args.host_compiler_family,
-        required_roles=('cc', 'cxx', 'cpp', 'cmake', 'ninja', 'python', 'sh', 'llvm-config'))
+        required_roles=('cc', 'cxx', 'cpp', 'cmake', 'ninja', 'python', 'sh', 'awk', 'sed', 'llvm-config'))
     owner.require(owner.paths.canonical_existing(sys.executable) ==
                   owner.paths.canonical_existing(native.tool('python')),
                   'run the runtime producer with the selected native Python')
@@ -315,23 +315,27 @@ def inspect_inputs(owner, args, prepared, *, existing=False):
 
 
 def build(owner, args):
-    from emberbsd_sdk import llvm_runtime, native_checks, target_toolchain
+    from emberbsd_sdk import host_services, llvm_runtime, native_checks, target_toolchain
     source = Path(owner.paths.canonical_existing(args.source))
     prepared = owner.verify_source(source, args.git)
-    selected = inspect_inputs(owner, args, prepared)
+    resume = getattr(args, 'resume', False)
+    selected = inspect_inputs(owner, args, prepared, existing=resume)
     definition, base = selected.definition, selected.base
     work, stage = selected.work, selected.stage
     native, environment = selected.native, selected.environment
     compiler, recipe, context = selected.compiler, selected.recipe, selected.context
     bootstrap, bootstrap_root = selected.bootstrap, selected.bootstrap_root
-    work.mkdir()
-    stage.mkdir()
-    if bootstrap is not None:
+    owner.require(not os.path.lexists(stage / 'runtime.json'), 'runtime stage already finalized')
+    work.mkdir(exist_ok=resume)
+    stage.mkdir(exist_ok=resume)
+    service_path = host_services.build_path(native, work)
+    if bootstrap is not None and not (stage / 'usr').exists():
         shutil.copytree(bootstrap_root / 'usr', stage / 'usr', symlinks=True)
     environment = native_checks.check_environment(native,
         bindings=str(work / 'native-commands'), environment=environment)
+    environment['PATH'] = service_path.split(os.pathsep, 1)[0] + os.pathsep + environment['PATH']
     for name in ('home', 'tmp'):
-        (work / name).mkdir()
+        (work / name).mkdir(exist_ok=resume)
     environment.update(HOME=str(work / 'home'), TMPDIR=str(work / 'tmp'),
                        CONFIG_SHELL=native.tool('sh'), SHELL=native.tool('sh'),
                        PYTHONDONTWRITEBYTECODE='1')
@@ -339,6 +343,8 @@ def build(owner, args):
     for phase in phases:
         build_dir = work / phase
         command = cmake_arguments(source, build_dir, stage, base, native, compiler, definition, prepared['llvm_version'], phase)
+        if resume and (build_dir / 'CMakeCache.txt').exists():
+            check_cmake_cache(owner, build_dir, command)
         execute(owner, command, work, environment, work / (phase + '.log'))
         execute(owner, [native.tool('cmake'), '--build', str(build_dir), '--parallel', str(args.jobs)] +
                 (['--target', 'builtins'] if phase == 'builtins' else []),
