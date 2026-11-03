@@ -1,19 +1,17 @@
-# EmberBSD probe: Electron 45.2.1 runtime for NetBSD/aarch64.
-# Not buildable yet; see ../README.md for the plan and boundaries.
+# EmberBSD probe: Electron 45.2.1 runtime for NetBSD.
+# Draft producer integration; package install and acceptance remain pending.
 
 DISTNAME=	electron-45.2.1
 PKGREVISION=	1
 CATEGORIES=	devel
-MASTER_SITES=	https://github.com/electron/electron/archive/refs/tags/
-DISTFILES=	v45.2.1${EXTRACT_SUFX}
-DIST_SUBDIR=	e12-electron
-PATCH_STRIP=	-p1
+# The source owner prepares the complete pinned workspace separately.  The
+# controller verifies it; no prebuilt distribution ZIP is a build input.
+DISTFILES=
+# The selected workspace already contains the owner's complete patch series.
+# Keep the pkgsrc scratch directory separate from that reusable source tree.
+WRKSRC=		${WRKDIR}
 
 CHROMIUM_VERSION=	156.0.8078.75
-# Backport Electron PR55162 in the recipe-local security patch below.
-NODE_VERSION=		24.22.1
-DISTFILES+=	node-v${NODE_VERSION}.tar.xz
-SITES.node-v${NODE_VERSION}.tar.xz=	https://nodejs.org/dist/v${NODE_VERSION}/
 
 MAINTAINER=	oxtech-ember@users.noreply.github.com
 HOMEPAGE=	https://www.electronjs.org/
@@ -26,18 +24,13 @@ USE_CROSS_COMPILE=	yes
 USE_LANGUAGES=		c c++
 USE_TOOLS+=		pkg-config
 
-# Host Node runs the Electron JS toolchain; products are target artifacts.
-BUILD_HOST_NODE=	${EMBERBSD_HOST_NODE}
-BUILD_HOST_NPM=		${EMBERBSD_HOST_NPM}
+# Inputs and producer work are selected explicitly in producer.mk.
+# The prepared source owner applies patches before the controller verifies it.
+# Override the pkgsrc patch target so recipe-local patches are not applied twice.
+do-patch:
+	@${DO_NADA}
 
-# Electron v45.2.1 pins Chromium ${CHROMIUM_VERSION} in DEPS.  The Chromium
-# source preparation starts with files/prepare-sources.py and its pinned
-# gclient dependency graph, not a mismatched
-# chromium-browser-official tarball.  Keep its DEPS revision and the NetBSD
-# overlay revision with the build inputs.
-# TODO(build): apply the NetBSD patch set to this exact Chromium pin, add the
-# Electron target GN configuration, build with the selected SDK, and package
-# the runtime.
+.include "producer.mk"
 
-.include "../../sysutils/libnotify/buildlink3.mk"
+.include "runtime-dependencies.mk"
 .include "../../mk/bsd.pkg.mk"
