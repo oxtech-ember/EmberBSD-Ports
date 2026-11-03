@@ -74,6 +74,12 @@ with tempfile.TemporaryDirectory(prefix='icu-shared-stage-', dir=a.work_parent) 
     run('handoff-runtime', source, *manifest, shared)
     if set(files(source)) != runtime or files(shared) != before:
         raise SystemExit('runtime or complete handoff differs from original payload')
+    dest.mkdir()  # pkgsrc creates an empty PREFIX before post-install
+    foreign = dest / 'unexpected'; foreign.write_bytes(b'keep')
+    run('copy-devel', shared, dest, *manifest, ok=False)
+    if foreign.read_bytes() != b'keep' or files(shared) != before:
+        raise SystemExit('nonempty destination was mutated')
+    foreign.unlink()
     run('copy-devel', shared, dest, *manifest)
     if set(files(dest)) != devel or files(shared) != before:
         raise SystemExit('devel copy changed or lost the shared source payload')

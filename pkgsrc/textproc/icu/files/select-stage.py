@@ -78,7 +78,7 @@ def select(part, stage, *lists):
 
 
 
-def copy_complete(source, destination, lists):
+def copy_complete(source, destination, lists, *, allow_empty=False):
     from emberbsd_sdk import inventory, paths
 
     full, runtime, devel = check_policy(*map(manifest, lists))
@@ -90,15 +90,20 @@ def copy_complete(source, destination, lists):
         raise ValueError("ICU stages require normalized paths with real ancestors")
     paths.real_directory(source)
     paths.reject_overlap(source, destination)
-    if os.path.lexists(destination):
-        raise ValueError("shared-stage destination already exists")
+    existing = os.path.lexists(destination)
+    if existing:
+        if not allow_empty:
+            raise ValueError("shared-stage destination already exists")
+        paths.real_directory(destination)
+        if os.listdir(destination):
+            raise ValueError("ICU package destination is not empty")
     before = inventory.snapshot_tree(source)
     if {name for name, row in before.items() if row['kind'] != 'directory'} != full:
         raise ValueError("actual ICU complete stage differs from its manifest")
     parent = Path(destination).parent
     parent.mkdir(parents=True, exist_ok=True)
     try:
-        shutil.copytree(source, destination, symlinks=True)
+        shutil.copytree(source, destination, symlinks=True, dirs_exist_ok=existing)
         copied = inventory.snapshot_tree(destination)
         if (not inventory.transfer_inventory_equal(before, copied)
                 or inventory.snapshot_tree(source) != before):
@@ -126,7 +131,7 @@ def main():
             raise
     elif len(args) == 6 and args[0] == "copy-devel":
         _, shared, destination, full, runtime, devel = args
-        copy_complete(shared, destination, (full, runtime, devel))
+        copy_complete(shared, destination, (full, runtime, devel), allow_empty=True)
         try:
             select("devel", destination, full, runtime, devel)
         except Exception:
