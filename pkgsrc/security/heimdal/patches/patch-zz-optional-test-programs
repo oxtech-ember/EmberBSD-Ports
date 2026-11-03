@@ -1,0 +1,318 @@
+# Keep installed APIs and generators; make uninstalled test programs optional.
+--- lib/roken/Makefile.am.orig
++++ lib/roken/Makefile.am
+@@ -20,7 +20,8 @@
+ AM_CPPFLAGS += -I$(DBHEADER)
+ endif
+ 
+-noinst_PROGRAMS = snprintf-test resolve-test rkpty test-detach
++HEIMDAL_TEST_PROGRAMS = snprintf-test resolve-test rkpty test-detach
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS)
+ 
+ CHECK_LOCAL = snprintf-test resolve-test rkpty make-roken
+ 
+--- lib/roken/Makefile.in.orig
++++ lib/roken/Makefile.in
+@@ -98,8 +98,8 @@
+ host_triplet = @host@
+ @versionscript_TRUE@am__append_1 = $(LDFLAGS_VERSION_SCRIPT)$(srcdir)/version-script.map
+ @HAVE_DBHEADER_TRUE@am__append_2 = -I$(DBHEADER)
+-noinst_PROGRAMS = snprintf-test$(EXEEXT) resolve-test$(EXEEXT) \
+-	rkpty$(EXEEXT) test-detach$(EXEEXT) $(am__EXEEXT_1)
++HEIMDAL_TEST_PROGRAMS = snprintf-test$(EXEEXT) resolve-test$(EXEEXT) rkpty$(EXEEXT) test-detach$(EXEEXT)
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS) $(am__EXEEXT_1)
+ check_PROGRAMS = base64-test$(EXEEXT) getaddrinfo-test$(EXEEXT) \
+ 	getifaddrs-test$(EXEEXT) getxxyyy-test$(EXEEXT) \
+ 	hex-test$(EXEEXT) test-readenv$(EXEEXT) resolve-test$(EXEEXT) \
+--- lib/krb5/Makefile.am.orig
++++ lib/krb5/Makefile.am
+@@ -6,16 +6,8 @@
+ 
+ bin_PROGRAMS = verify_krb5_conf
+ 
+-noinst_PROGRAMS =				\
+-	krbhst-test				\
+-	test_alname				\
+-	test_crypto				\
+-	test_forward				\
+-	test_get_addrs				\
+-	test_gic				\
+-	test_kuserok				\
+-	test_renew				\
+-	test_rfc3961
++HEIMDAL_TEST_PROGRAMS = krbhst-test test_alname test_crypto test_forward test_get_addrs test_gic test_kuserok test_renew test_rfc3961
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS)
+ 
+ 
+ noinst_LTLIBRARIES =				\
+--- lib/krb5/Makefile.in.orig
++++ lib/krb5/Makefile.in
+@@ -97,11 +97,8 @@
+ build_triplet = @build@
+ host_triplet = @host@
+ bin_PROGRAMS = verify_krb5_conf$(EXEEXT)
+-noinst_PROGRAMS = krbhst-test$(EXEEXT) test_alname$(EXEEXT) \
+-	test_crypto$(EXEEXT) test_forward$(EXEEXT) \
+-	test_get_addrs$(EXEEXT) test_gic$(EXEEXT) \
+-	test_kuserok$(EXEEXT) test_renew$(EXEEXT) \
+-	test_rfc3961$(EXEEXT)
++HEIMDAL_TEST_PROGRAMS = krbhst-test$(EXEEXT) test_alname$(EXEEXT) test_crypto$(EXEEXT) test_forward$(EXEEXT) test_get_addrs$(EXEEXT) test_gic$(EXEEXT) test_kuserok$(EXEEXT) test_renew$(EXEEXT) test_rfc3961$(EXEEXT)
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS)
+ TESTS = aes-test$(EXEEXT) derived-key-test$(EXEEXT) \
+ 	n-fold-test$(EXEEXT) parse-name-test$(EXEEXT) \
+ 	pseudo-random-test$(EXEEXT) store-test$(EXEEXT) \
+--- lib/gssapi/Makefile.am.orig
++++ lib/gssapi/Makefile.am
+@@ -304,7 +304,8 @@
+ check_PROGRAMS = test_acquire_cred $(TESTS)
+ 
+ bin_PROGRAMS = gsstool
+-noinst_PROGRAMS = test_cred test_kcred test_context test_ntlm test_add_store_cred
++HEIMDAL_TEST_PROGRAMS = test_cred test_kcred test_context test_ntlm test_add_store_cred
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS)
+ 
+ test_context_SOURCES = test_context.c test_common.c test_common.h
+ test_ntlm_SOURCES = test_ntlm.c test_common.c test_common.h
+--- lib/gssapi/Makefile.in.orig
++++ lib/gssapi/Makefile.in
+@@ -100,9 +100,8 @@
+ TESTS = test_oid$(EXEEXT) test_names$(EXEEXT) test_cfx$(EXEEXT)
+ check_PROGRAMS = test_acquire_cred$(EXEEXT) $(am__EXEEXT_1)
+ bin_PROGRAMS = gsstool$(EXEEXT)
+-noinst_PROGRAMS = test_cred$(EXEEXT) test_kcred$(EXEEXT) \
+-	test_context$(EXEEXT) test_ntlm$(EXEEXT) \
+-	test_add_store_cred$(EXEEXT)
++HEIMDAL_TEST_PROGRAMS = test_cred$(EXEEXT) test_kcred$(EXEEXT) test_context$(EXEEXT) test_ntlm$(EXEEXT) test_add_store_cred$(EXEEXT)
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS)
+ subdir = lib/gssapi
+ ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+ am__aclocal_m4_deps = $(top_srcdir)/cf/aix.m4 \
+--- lib/hcrypto/Makefile.am.orig
++++ lib/hcrypto/Makefile.am
+@@ -94,7 +94,8 @@
+ SCRIPT_TESTS = \
+ 	test_crypto
+ 
+-noinst_PROGRAMS = test_rand
++HEIMDAL_TEST_PROGRAMS = test_rand
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS)
+ 
+ check_PROGRAMS = $(PROGRAM_TESTS) test_rsa test_dh example_evp_cipher
+ check_SCRIPTS = $(SCRIPT_TESTS)
+--- lib/hcrypto/Makefile.in.orig
++++ lib/hcrypto/Makefile.in
+@@ -98,7 +98,8 @@
+ host_triplet = @host@
+ @HAVE_HCRYPTO_W_OPENSSL_TRUE@am__append_1 = $(INCLUDE_openssl_crypto)
+ @HAVE_HCRYPTO_W_OPENSSL_TRUE@am__append_2 = $(LIB_openssl_crypto)
+-noinst_PROGRAMS = test_rand$(EXEEXT)
++HEIMDAL_TEST_PROGRAMS = test_rand$(EXEEXT)
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS)
+ check_PROGRAMS = $(am__EXEEXT_1) test_rsa$(EXEEXT) test_dh$(EXEEXT) \
+ 	example_evp_cipher$(EXEEXT)
+ TESTS = $(am__EXEEXT_1) $(SCRIPT_TESTS)
+--- lib/hdb/Makefile.am.orig
++++ lib/hdb/Makefile.am
+@@ -72,7 +72,8 @@
+ libhdb_la_LDFLAGS += $(LDFLAGS_VERSION_SCRIPT)$(srcdir)/version-script.map
+ endif
+ 
+-noinst_PROGRAMS = test_dbinfo test_hdbkeys test_mkey test_hdbplugin
++HEIMDAL_TEST_PROGRAMS = test_dbinfo test_hdbkeys test_mkey test_hdbplugin
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS)
+ 
+ dist_libhdb_la_SOURCES =			\
+ 	common.c				\
+--- lib/hdb/Makefile.in.orig
++++ lib/hdb/Makefile.in
+@@ -98,8 +98,8 @@
+ host_triplet = @host@
+ @HAVE_DBHEADER_TRUE@am__append_1 = -I$(DBHEADER)
+ @versionscript_TRUE@am__append_2 = $(LDFLAGS_VERSION_SCRIPT)$(srcdir)/version-script.map
+-noinst_PROGRAMS = test_dbinfo$(EXEEXT) test_hdbkeys$(EXEEXT) \
+-	test_mkey$(EXEEXT) test_hdbplugin$(EXEEXT)
++HEIMDAL_TEST_PROGRAMS = test_dbinfo$(EXEEXT) test_hdbkeys$(EXEEXT) test_mkey$(EXEEXT) test_hdbplugin$(EXEEXT)
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS)
+ subdir = lib/hdb
+ ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+ am__aclocal_m4_deps = $(top_srcdir)/cf/aix.m4 \
+--- lib/kadm5/Makefile.am.orig
++++ lib/kadm5/Makefile.am
+@@ -16,9 +16,11 @@
+ 
+ sbin_PROGRAMS = iprop-log
+ check_PROGRAMS = default_keys
+-noinst_PROGRAMS = test_pw_quality
+-
+-noinst_LTLIBRARIES = sample_passwd_check.la
++HEIMDAL_TEST_PROGRAMS = test_pw_quality
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS)
++
++HEIMDAL_TEST_LIBRARIES = sample_passwd_check.la
++noinst_LTLIBRARIES = $(HEIMDAL_TEST_LIBRARIES)
+ 
+ sample_passwd_check_la_SOURCES = sample_passwd_check.c
+ sample_passwd_check_la_LDFLAGS = -module
+--- lib/kadm5/Makefile.in.orig
++++ lib/kadm5/Makefile.in
+@@ -100,7 +100,8 @@
+ @versionscript_TRUE@am__append_2 = $(LDFLAGS_VERSION_SCRIPT)$(srcdir)/version-script.map
+ sbin_PROGRAMS = iprop-log$(EXEEXT)
+ check_PROGRAMS = default_keys$(EXEEXT)
+-noinst_PROGRAMS = test_pw_quality$(EXEEXT)
++HEIMDAL_TEST_PROGRAMS = test_pw_quality$(EXEEXT)
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS)
+ libexec_PROGRAMS = ipropd-master$(EXEEXT) ipropd-slave$(EXEEXT)
+ subdir = lib/kadm5
+ ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+@@ -704,7 +705,8 @@
+ lib_LTLIBRARIES = libkadm5srv.la libkadm5clnt.la
+ libkadm5srv_la_LDFLAGS = -version-info 8:1:0 $(am__append_2)
+ libkadm5clnt_la_LDFLAGS = -version-info 7:1:0 $(am__append_1)
+-noinst_LTLIBRARIES = sample_passwd_check.la
++HEIMDAL_TEST_LIBRARIES = sample_passwd_check.la
++noinst_LTLIBRARIES = $(HEIMDAL_TEST_LIBRARIES)
+ sample_passwd_check_la_SOURCES = sample_passwd_check.c
+ sample_passwd_check_la_LDFLAGS = -module
+ libkadm5srv_la_LIBADD = \
+--- lib/otp/Makefile.am.orig
++++ lib/otp/Makefile.am
+@@ -7,7 +7,8 @@
+ AM_CPPFLAGS += -I$(DBHEADER)
+ endif
+ 
+-noinst_PROGRAMS = otptest
++HEIMDAL_TEST_PROGRAMS = otptest
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS)
+ 
+ check_PROGRAMS = otptest
+ 
+--- lib/otp/Makefile.in.orig
++++ lib/otp/Makefile.in
+@@ -97,7 +97,8 @@
+ build_triplet = @build@
+ host_triplet = @host@
+ @HAVE_DBHEADER_TRUE@am__append_1 = -I$(DBHEADER)
+-noinst_PROGRAMS = otptest$(EXEEXT)
++HEIMDAL_TEST_PROGRAMS = otptest$(EXEEXT)
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS)
+ check_PROGRAMS = otptest$(EXEEXT)
+ @HAVE_DB3_TRUE@am__append_2 = $(DB3LIB)
+ @HAVE_DB1_TRUE@@HAVE_DB3_FALSE@am__append_3 = $(DB1LIB)
+--- kdc/Makefile.am.orig
++++ kdc/Makefile.am
+@@ -12,7 +12,8 @@
+ 
+ libexec_PROGRAMS = hprop hpropd kdc digest-service
+ 
+-noinst_PROGRAMS = kdc-replay kdc-tester
++HEIMDAL_TEST_PROGRAMS = kdc-replay kdc-tester
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS)
+ 
+ man_MANS = kdc.8 kstash.8 hprop.8 hpropd.8 string2key.8
+ 
+--- kdc/Makefile.in.orig
++++ kdc/Makefile.in
+@@ -100,7 +100,8 @@
+ sbin_PROGRAMS = kstash$(EXEEXT)
+ libexec_PROGRAMS = hprop$(EXEEXT) hpropd$(EXEEXT) kdc$(EXEEXT) \
+ 	digest-service$(EXEEXT)
+-noinst_PROGRAMS = kdc-replay$(EXEEXT) kdc-tester$(EXEEXT)
++HEIMDAL_TEST_PROGRAMS = kdc-replay$(EXEEXT) kdc-tester$(EXEEXT)
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS)
+ @versionscript_TRUE@am__append_1 = $(LDFLAGS_VERSION_SCRIPT)$(srcdir)/version-script.map
+ subdir = kdc
+ ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+--- kadmin/Makefile.am.orig
++++ kadmin/Makefile.am
+@@ -10,7 +10,8 @@
+ 
+ man_MANS = kadmin.1 kadmind.8
+ 
+-noinst_PROGRAMS = add_random_users
++HEIMDAL_TEST_PROGRAMS = add_random_users
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS)
+ 
+ dist_kadmin_SOURCES =				\
+ 	ank.c					\
+--- kadmin/Makefile.in.orig
++++ kadmin/Makefile.in
+@@ -96,7 +96,8 @@
+ host_triplet = @host@
+ bin_PROGRAMS = kadmin$(EXEEXT)
+ libexec_PROGRAMS = kadmind$(EXEEXT)
+-noinst_PROGRAMS = add_random_users$(EXEEXT)
++HEIMDAL_TEST_PROGRAMS = add_random_users$(EXEEXT)
++noinst_PROGRAMS = $(HEIMDAL_TEST_PROGRAMS)
+ TESTS = test_util$(EXEEXT)
+ check_PROGRAMS = $(am__EXEEXT_1)
+ subdir = kadmin
+--- Makefile.am.orig
++++ Makefile.am
+@@ -7,7 +7,9 @@
+ endif
+ 
+ SUBDIRS=  include lib kuser kdc admin kadmin kpasswd 
+-SUBDIRS+= $(kcm_dir) appl tools tests packages etc po
++HEIMDAL_TESTS_DIR = tests
++SUBDIRS+= $(kcm_dir) appl tools $(HEIMDAL_TESTS_DIR) packages etc po
++DIST_SUBDIRS = include lib kuser kdc admin kadmin kpasswd kcm appl tools tests packages etc po doc
+ 
+ if HEIMDAL_DOCUMENTATION
+ SUBDIRS+= doc
+--- Makefile.in.orig
++++ Makefile.in
+@@ -519,8 +519,9 @@
+ heim_verbose_ = $(heim_verbose_$(AM_DEFAULT_VERBOSITY))
+ heim_verbose_0 = @echo "  GEN    "$@;
+ @KCM_TRUE@kcm_dir = kcm
++HEIMDAL_TESTS_DIR = tests
+ SUBDIRS = include lib kuser kdc admin kadmin kpasswd $(kcm_dir) appl \
+-	tools tests packages etc po $(am__append_1)
++	tools $(HEIMDAL_TESTS_DIR) packages etc po $(am__append_1)
+ ACLOCAL_AMFLAGS = -I cf
+ EXTRA_DIST = \
+ 	NTMakefile \
+--- appl/Makefile.am.orig
++++ appl/Makefile.am
+@@ -11,14 +11,18 @@
+ if !NO_AFS
+ dir_afsutil = afsutil
+ endif
++HEIMDAL_GSSMASK_DIR = gssmask
++HEIMDAL_APPL_TEST_DIR = test
+ SUBDIRS = 					\
+ 	  $(dir_afsutil)			\
+ 	  dbutils				\
+ 	  $(dir_otp)				\
+-	  gssmask				\
++	  $(HEIMDAL_GSSMASK_DIR)				\
+ 	  su					\
+-	  test					\
++	  $(HEIMDAL_APPL_TEST_DIR)					\
+ 	  kf					\
+ 	  $(dir_dce)
+ 
++DIST_SUBDIRS = afsutil dbutils otp gssmask su test kf dceutils
++
+ EXTRA_DIST = NTMakefile
+--- appl/Makefile.in.orig
++++ appl/Makefile.in
+@@ -497,13 +497,15 @@
+ @OTP_TRUE@dir_otp = otp
+ @DCE_TRUE@dir_dce = dceutils
+ @NO_AFS_FALSE@dir_afsutil = afsutil
++HEIMDAL_GSSMASK_DIR = gssmask
++HEIMDAL_APPL_TEST_DIR = test
+ SUBDIRS = \
+ 	  $(dir_afsutil)			\
+ 	  dbutils				\
+ 	  $(dir_otp)				\
+-	  gssmask				\
++	  $(HEIMDAL_GSSMASK_DIR)				\
+ 	  su					\
+-	  test					\
++	  $(HEIMDAL_APPL_TEST_DIR)					\
+ 	  kf					\
+ 	  $(dir_dce)
+ 

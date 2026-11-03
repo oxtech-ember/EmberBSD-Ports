@@ -1,7 +1,7 @@
 # $NetBSD: options.mk,v 1.7 2025/03/09 14:04:48 jakllsch Exp $
 
 PKG_OPTIONS_VAR=	PKG_OPTIONS.heimdal
-PKG_SUPPORTED_OPTIONS=	inet6 kerberos-prefix-cmds ldap
+PKG_SUPPORTED_OPTIONS=	inet6 kerberos-prefix-cmds ldap tests
 PKG_SUGGESTED_OPTIONS=	inet6 kerberos-prefix-cmds
 
 .include "../../mk/bsd.options.mk"
@@ -46,3 +46,13 @@ CONFLICTS+=		openafs-[0-9]*
 .endif
 
 PLIST_SUBST+=		KRB5_PREFIX=${KRB5_PREFIX:Q}
+
+.if !empty(PKG_OPTIONS:Mtests)
+TEST_TARGET= check
+.else
+MAKE_FLAGS+= HEIMDAL_TEST_PROGRAMS= HEIMDAL_TEST_LIBRARIES=
+MAKE_FLAGS+= HEIMDAL_TESTS_DIR= HEIMDAL_APPL_TEST_DIR= HEIMDAL_GSSMASK_DIR=
+do-test:
+	@${FAIL_MSG} "Enable the tests package option before running tests."
+	@${FALSE}
+.endif
