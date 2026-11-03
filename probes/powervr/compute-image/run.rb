@@ -12,7 +12,7 @@ input_path = File.realpath(ARGV[1])
 out = File.expand_path(ARGV[2])
 abort 'output already exists' if File.exist?(out)
 input = JSON.parse(File.read(input_path))
-abort 'BVNC mismatch' unless input['bvnc'] == '36.56.104.183'
+Idfwdf.compiler_bvnc_args(input.fetch('bvnc'))
 abort 'old IDFWDF shader ABI' unless input['idfwdf_layout_dwords'] == 10
 
 def verified_input(entry, base)
@@ -25,22 +25,24 @@ base = File.dirname(input_path)
 compiler = verified_input(input.fetch('compiler_manifest'), base)
 proof_path = verified_input(input.fetch('compiler_receipt'), base)
 proof = Idfwdf.verify_receipt(proof_path, compiler)
+Idfwdf.receipt_bvnc(proof, input.fetch('bvnc'))
 generator = JSON.parse(File.read(File.join(build, 'build-manifest.json')))
+abort 'compiler and generator Mesa versions differ' unless proof.fetch('mesa_version') == generator['mesa_version']
 abort 'shader and host shared headers differ' unless proof.fetch('files').fetch('shared_header').fetch('sha256') == generator.fetch('patched_iface_sha256')
 shaders = %w[probe store load idfwdf].map { |name| verified_input(input.fetch('shaders').fetch(name), base) }
-expected_shaders = Idfwdf.shaders(File.read(compiler))
+expected_shaders = Idfwdf.shaders(File.read(compiler), input.fetch('bvnc'))
 %w[probe store load idfwdf].zip(shaders).each do |name, path|
   abort "shader does not match verified compiler output: #{name}" unless File.binread(path) == expected_shaders.fetch(name)
 end
 FileUtils.mkdir_p(out)
-command = [File.join(build, 'generate'), *shaders]
+command = [File.join(build, 'generate'), input.fetch('bvnc'), *shaders]
 output, status = Open3.capture2e(*command, chdir: out)
 File.write(File.join(out, 'run.log'), output)
 abort "producer failed (#{status})" unless status.success?
 producer = JSON.parse(File.read(File.join(out, 'producer.json')))
 files = %w[general.bin pds.bin usc.bin static-state.bin border.bin command.bin]
 manifest = {
-  schema: 'ember-a733-compute-image-v1',
+  schema: input.fetch('bvnc') == '22.102.54.38' ? 'ember-powervr-compute-image-v1' : 'ember-a733-compute-image-v1',
   status: 'cpu-generated-not-hardware-validated',
   producer: producer,
   inputs_sha256: Digest::SHA256.file(input_path).hexdigest,
@@ -69,6 +71,9 @@ manifest = {
                 'The dispatch pads to 32 lanes. The compiler SPIR-V proves only instance zero reaches one four-byte store. GPU execution remains unverified.',
                 'The emitted command stream uses the exact pinned Mesa profile. Other feature sets and command extensions are rejected.']
 }
+if input.fetch('bvnc') == '22.102.54.38'
+  manifest[:limitations] << 'Compressed-format border entries are unavailable on this profile; this diagnostic uses only an uncompressed F32 texture.'
+end
 manifest[:resources].each do |r|
   image_size = manifest[:outputs].fetch(r[:image])[:size]
   abort 'resource exceeds image' unless r[:offset] >= 0 && r[:size] > 0 && r[:offset]+r[:size] <= image_size

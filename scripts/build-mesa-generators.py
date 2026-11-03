@@ -240,7 +240,7 @@ def build(arguments, sdk_root):
                 'Run this command with Python 3.15 from the selected host prefix')
         tools = native.tools
         graphics = PORTS / 'profiles/common-graphics'
-        helpers = PORTS / 'probes/a733-accelerators/host-tools'
+        helpers = PORTS / 'probes/powervr/host-tools'
         objc_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-meson.build-host-objc'
         etnaviv_tests_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_etnaviv_isa_meson.build'
         gtest_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_include_mesa-gtest-extras.h'

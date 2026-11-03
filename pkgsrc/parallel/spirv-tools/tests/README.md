@@ -9,7 +9,7 @@ SDK packages. `distinfo` records the original archive hashes.
 
 `patch-source_link_linker.cpp` keeps declarations before definitions when
 the linker combines input modules. The existing
-[real-tool consumer](../../../../probes/a733-accelerators/host-tools/check-spirv-link-order.py)
+[real-tool consumer](../../../../probes/powervr/host-tools/check-spirv-link-order.py)
 checks both module orders, an import-only module, resolved imports and plain
 definitions. Run it with newly built tools. Source patch checks do not replace
 linker and validator execution.

@@ -67,7 +67,7 @@ RAW clocks only when the target defines them; monotonic timing is retained.
 The IDFWDF shared header reserves all four sampler words before its address.
 The runtime and generated common shader consume this identical header.
 The source-causal ABI proof remains in the
-[IDFWDF owner](../../../probes/a733-accelerators/host-tools/README.md).
+[IDFWDF owner](../../../probes/powervr/host-tools/README.md).
 
 ## Installed enumeration
 

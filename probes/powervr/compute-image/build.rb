@@ -53,13 +53,25 @@ objects = files.each_with_index.map do |file, i|
   object
 end
 libs = %w[src/util/libmesa_util.a src/c11/impl/libmesa_util_c11.a]
-link = [cc, '-isysroot', args[args.index('-isysroot') + 1], '-fsanitize=address,undefined', '-Wl,-dead_strip', *objects,
-        *libs.map { |p| File.join(build, p) }, '-lc++', '-lz', '-o', File.join(out, 'generate')]
+if RbConfig::CONFIG.fetch("host_os").include?("darwin")
+  link = [cc, "-isysroot", args.fetch(args.index("-isysroot") + 1),
+          "-fsanitize=address,undefined", "-Wl,-dead_strip", *objects,
+          *libs.map { |p| File.join(build, p) }, "-lc++", "-lz", "-o", File.join(out, "generate")]
+elsif RbConfig::CONFIG.fetch("host_os").include?("linux")
+  cxx = File.join(File.dirname(cc), "clang++")
+  libdir = File.expand_path("../lib", File.dirname(cc))
+  linker = File.join(File.dirname(cc), "ld.lld")
+  link = [cxx, "-fuse-ld=#{linker}", "-L#{libdir}", "-Wl,-rpath,#{libdir}",
+          "-fsanitize=address,undefined", "-Wl,--gc-sections", *objects,
+          *libs.map { |p| File.join(build, p) }, "-lz", "-lm", "-pthread", "-ldl", "-o", File.join(out, "generate")]
+else
+  abort "unsupported host OS"
+end
 File.write(File.join(out, 'link.json'), JSON.pretty_generate(link)+"\n")
 abort 'link failed' unless system(*link)
 puts File.join(out, 'generate')
 manifest = {
-  mesa_version: '26.2.4',
+  mesa_version: '26.2.6',
   source_pins_sha256: Digest::SHA256.file(File.join(script, 'sources.tsv')).hexdigest,
   adapter_sha256: Digest::SHA256.file(File.join(script, 'generate.c')).hexdigest,
   extractor_sha256: Digest::SHA256.file(File.join(script, 'extract.rb')).hexdigest,

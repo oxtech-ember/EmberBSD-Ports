@@ -18,7 +18,8 @@ receipt = Idfwdf.verify_receipt(receipt_path, src)
 table = File.read(src)
 
 shaders = {}
-programs = Idfwdf.shaders(table)
+bvnc = Idfwdf.receipt_bvnc(receipt)
+programs = Idfwdf.shaders(table, bvnc)
 Dir.mkdir(out)
 programs.each do |key, bytes|
   path = File.join(out, "#{key}.precomp")
@@ -27,7 +28,7 @@ programs.each do |key, bytes|
 end
 
 inputs = {
-  'bvnc' => '36.56.104.183',
+  'bvnc' => bvnc,
   'idfwdf_layout_dwords' => receipt.fetch('idfwdf').fetch('layout_dwords'),
   'compiler_receipt' => Idfwdf.file_record(receipt_path),
   'compiler_manifest' => {

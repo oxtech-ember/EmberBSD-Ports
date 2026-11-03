@@ -426,7 +426,7 @@ def seal_locked(args):
             check_runtime(binary, name)
         require(os.access(validator, os.X_OK), 'Missing SPIR-V validator')
         check_runtime(validator, 'validator')
-        bvnc_patch = PORTS / 'probes/a733-accelerators/host-tools/mesa-26.2.4-pco-bvnc.patch'
+        bvnc_patch = PORTS / 'probes/powervr/host-tools/mesa-26.2.4-pco-bvnc.patch'
         objc_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-meson.build-host-objc'
         etnaviv_tests_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_etnaviv_isa_meson.build'
         gtest_patch = PORTS / 'pkgsrc/graphics/MesaLib/patches/patch-src_gtest_include_mesa-gtest-extras.h'

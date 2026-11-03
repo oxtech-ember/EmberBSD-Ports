@@ -6,10 +6,12 @@ require 'json'
 require 'open3'
 require 'shellwords'
 require_relative '../idfwdf/layout'
-abort 'usage: generate-usclib.rb MESA_SOURCE MESA_BUILD SPIRV_DIS SPIRV_VAL NEW_OUT' unless ARGV.size == 5
-mesa, build, dis, validator, out = ARGV.map { |p| File.expand_path(p) }
+abort 'usage: generate-usclib.rb MESA_SOURCE MESA_BUILD SPIRV_DIS SPIRV_VAL NEW_OUT [BVNC]' unless (5..6).cover?(ARGV.size)
+mesa, build, dis, validator, out = ARGV.first(5).map { |p| File.expand_path(p) }
+bvnc = ARGV[5] || '36.56.104.183'
+bvnc_args = Idfwdf.compiler_bvnc_args(bvnc)
 abort 'output already exists' if File.exist?(out)
-abort 'Mesa version mismatch' unless File.read(mesa + '/VERSION').strip == '26.2.5'
+abort 'Mesa version mismatch' unless File.read(mesa + '/VERSION').strip == '26.2.6'
 upstream_environment = File.read(mesa + '/src/imagination/pco/uscgen/meson.build')
 abort 'upstream common shader mode changed' unless upstream_environment.include?("env: ['PCO_DEBUG=no_pred_cf']")
 header = Idfwdf.patched_header(mesa + '/src/imagination/common/pvr_iface.h')
@@ -31,7 +33,7 @@ command[command.index('-o') + 1] = spv
 command[command.index('--depfile') + 1] = out + '/pco_usclib.d'
 command.insert(command.index('--'), File.join(__dir__, 'cs-probe-store.cl'))
 command.insert(command.index('--') + 1, '-I' + out + '/include')
-commands = [command, [validator, spv], [dis, spv], [pco, spv, out + '/programs.h', out + '/programs.c']]
+commands = [command, [validator, spv], [dis, spv], [pco, spv, out + '/programs.h', out + '/programs.c', *bvnc_args]]
 environments = commands.map { |argv| argv.first == pco ? { 'PCO_DEBUG' => 'no_pred_cf', 'PCO_DEBUG_PRINT' => 'cs,internal,nir,binary,verbose,stats' } : {} }
 commands.each_with_index do |argv, n|
   environment = { 'TMPDIR' => ENV.fetch('TMPDIR') }.merge(environments[n])
@@ -57,10 +59,10 @@ files = {
   'sync_source' => mesa + '/src/imagination/pco/usclib/sync.cl',
   'tex_source' => mesa + '/src/imagination/pco/usclib/tex.cl'
 }
-receipt = { 'schema' => 'ember-pco-usclib-v1', 'mesa_version' => '26.2.5',
+receipt = { 'schema' => 'ember-pco-usclib-v1', 'mesa_version' => '26.2.6', 'bvnc' => bvnc,
   'idfwdf' => Idfwdf.check_spirv(File.read(out + '/pco_usclib.spvasm')),
   'probe' => Idfwdf.check_probe(File.read(out + '/pco_usclib.spvasm')),
   'files' => files.transform_values { |p| Idfwdf.file_record(p) },
   'commands' => commands, 'environments' => environments, 'hardware_validated' => false }
 File.write(out + '/receipt.json', JSON.pretty_generate(receipt) + "\n")
-puts "Generated common shaders with verified IDFWDF ABI: #{out}"
+puts "Generated profile shaders with verified IDFWDF ABI: #{out}"

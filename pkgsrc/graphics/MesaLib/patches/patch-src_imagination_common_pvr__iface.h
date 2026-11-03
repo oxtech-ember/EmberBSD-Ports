@@ -3,7 +3,7 @@ $NetBSD$
 Reserve all four sampler words in the shared IDFWDF layout.
 Keep compiler input and the Vulkan runtime on the same layout.
 Origin: EmberBSD contributors (AI-assisted). SPDX-License-Identifier: MIT.
-See probes/a733-accelerators/idfwdf for the source-causal ABI checks.
+See probes/powervr/idfwdf for the source-causal ABI checks.
 
 --- src/imagination/common/pvr_iface.h.orig
 +++ src/imagination/common/pvr_iface.h
