@@ -1,0 +1,5 @@
+# Native compiler/make only; kernel producers provide their own target inputs.
+lang/clang@native
+lang/llvm@native
+devel/lld@native
+devel/bmake@native

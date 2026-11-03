@@ -1,0 +1,2 @@
+# The same HTTPS client recipe, built for the developer host.
+net/fetch@native

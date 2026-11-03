@@ -99,6 +99,15 @@ those dependencies before the selected upstream tests. Cross tests still need
 their documented target runner. Keep the inventory pending until those tests
 have real evidence. A successful build does not accept them.
 
+For binary distribution, `--dependency-phase runtime` visits only `DEPENDS`
+and `INDIRECT_DEPENDS`. It does not query build, bootstrap, tool or test providers
+and does not require a pending-test inventory. The phase is part of graph input
+identity. Use it for already produced packages, not as a source-build plan.
+The SDK [binary catalog producer](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/docs/binary-catalog.md)
+consumes this graph, checks native package dependencies with pkg_tools, signs
+packages and creates pkg_summary from the signed bytes. Clients receive the
+resolved catalog rather than running bmake or maintaining another resolver.
+
 Both output paths must be new and distinct. Publication uses two exclusive
 writes, not a multi-file transaction. A failed second write can leave an orphan
 inventory; use it only with the graph whose hash it records.

@@ -1,0 +1,4 @@
+# Native dependencies of the binary SDK client; no compiler or sysroot.
+lang/python315@native
+pkgtools/pkg_install@native
+security/openssl@native
