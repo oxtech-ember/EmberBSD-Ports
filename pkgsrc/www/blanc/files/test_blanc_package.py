@@ -45,6 +45,43 @@ class BlancPackageTests(unittest.TestCase):
         cls.sdk_root, cls.jsonio, cls.inventory, cls.stream, cls.native_api = builder.load_sdk(cls.sdk_source)
         cls.native = builder.select_host_tools(cls.native_api, BUILD_OPTIONS.host_prefix, BUILD_OPTIONS.node)
 
+    def test_build_and_test_run_only_their_own_checks(self):
+        with tempfile.TemporaryDirectory(prefix='blanc-phase-') as temporary:
+            work = Path(temporary)
+            common = dict(sdk_source=self.sdk_source, source_archive_sha256=builder.SOURCE_ARCHIVE_SHA256,
+                          source_files_sha256='fixture', source=str(self.source),
+                          archive=None, distdir=str(self.distdir), work=str(work),
+                          node=BUILD_OPTIONS.node, host_prefix=BUILD_OPTIONS.host_prefix,
+                          asar_min_version='4.3.1', electron_version='45.2.1',
+                          electron_package_path='../../devel/electron44',
+                          electron_depends='electron>=45.2.1<45.2.2:../../devel/electron44')
+            names = ('parse_args', 'load_sdk', 'select_host_tools', 'resolve_asar_provider',
+                     'run_host_tool', 'check_source_files', 'validate_runtime_dependency',
+                     'run_node_tests', 'test_asar_pack_roundtrip', 'run_python_tests',
+                     'stage_dependencies')
+            with mock.patch.multiple(builder, **{name: mock.DEFAULT for name in names}) as calls:
+                calls['load_sdk'].return_value = (self.sdk_root, self.jsonio, self.inventory,
+                                                  self.stream, self.native_api)
+                calls['select_host_tools'].return_value = self.native
+                calls['resolve_asar_provider'].return_value = {}
+                calls['run_host_tool'].return_value = b'v26.13.0\n'
+                calls['check_source_files'].return_value = {}
+                calls['parse_args'].return_value = SimpleNamespace(action='test', **common)
+                self.assertEqual(builder.main(), 0)
+                calls['run_node_tests'].assert_called_once()
+                calls['run_python_tests'].assert_called_once()
+                calls['test_asar_pack_roundtrip'].assert_called_once()
+                calls['run_node_tests'].reset_mock()
+                calls['run_python_tests'].reset_mock()
+                calls['test_asar_pack_roundtrip'].reset_mock()
+                calls['parse_args'].return_value = SimpleNamespace(action='build', **common)
+                calls['stage_dependencies'].side_effect = RuntimeError('build phase reached')
+                with self.assertRaisesRegex(RuntimeError, 'build phase reached'):
+                    builder.main()
+                calls['run_node_tests'].assert_not_called()
+                calls['run_python_tests'].assert_not_called()
+                calls['test_asar_pack_roundtrip'].assert_not_called()
+
     def test_host_node_version_is_exact(self):
         self.assertEqual(builder.HOST_NODE_VERSION, '26.13.0')
         builder.validate_host_node_version(b'v26.13.0\n')

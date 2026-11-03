@@ -16,7 +16,7 @@ import shutil
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[3]
-RECIPE = ROOT / 'probes/electron/blanc'
+RECIPE = ROOT / 'pkgsrc/www/blanc'
 SELECTED = ('EMBERBSD_SDK_SOURCE', 'EMBERBSD_CROSS_BUILD_PYTHON', 'EMBERBSD_HOST_NODE', 'EMBERBSD_HOST_PREFIX')
 
 

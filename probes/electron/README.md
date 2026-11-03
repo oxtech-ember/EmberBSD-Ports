@@ -121,15 +121,8 @@ execution, GUI, complete ABI and hardware acceptance remain pending.
 
 ## Blanc application package
 
-`scripts/prepare-pkgsrc.py` exports the Electron recipe from
-`pkgsrc/devel/electron44`. Blanc remains a probe; place it in an export for
-its ordinary package checks:
-
-```sh
-cp -RL probes/electron/blanc /absolute/NEW_PKGSRC/www/blanc
-```
-
-When Blanc is complete, move it to `pkgsrc/www/blanc`. Select the
+`scripts/prepare-pkgsrc.py` exports the shared Electron and Blanc recipes from
+`pkgsrc/devel/electron44` and `pkgsrc/www/blanc`. Select the
 common Clang cross configuration and matching target runtime, or an explicit
 GCC platform profile. Fetch and checksum need no selected Node, Python or SDK
 source. Extraction requires `EMBERBSD_CROSS_BUILD_PYTHON` set to the selected
@@ -160,7 +153,7 @@ development lock on Electron 44.5.1. A different runtime declaration is refused.
 The wrapper selects Electron's packaged application policy. It leaves sandbox
 flags unchanged. NetBSD self-updates are disabled because pkgsrc owns updates.
 The upstream license notices and the dependency license texts remain installed.
-The Blue Oak license text is in `blanc/files/blueoak-1.0.0.txt`; the pinned
+The Blue Oak license text is in `pkgsrc/www/blanc/files/blueoak-1.0.0.txt`; the pinned
 pkgsrc catalog does not include its token. Review that text before adding
 `blueoak-1.0.0` to `ACCEPTABLE_LICENSES`. Keep the recipe's redistribution
 restrictions for unchanged upstream artwork and marks.
@@ -182,7 +175,7 @@ controls with the prepared source and cached archives:
 
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B -I -S \
-  probes/electron/blanc/files/test_blanc_package.py \
+  pkgsrc/www/blanc/files/test_blanc_package.py \
   --sdk-source "$SDK_SOURCE" --source "$BLANC_SOURCE" \
   --distdir "$DISTDIR/e12-electron" --host-prefix "$HOST_PREFIX" \
   --node "$HOST_PREFIX/bin/node"
@@ -195,7 +188,7 @@ old private archive hashes. The production-only registry audit covers the 28
 archive-pinned runtime packages, not the separate upstream development
 dependency graph. Package lifecycle, target startup, and kernel sandbox
 acceptance remain unverified.
-The application package cannot be installed until the target runtime is built.
+The application package requires the matching Electron runtime package.
 
 ## GN and C++ target inputs
 
