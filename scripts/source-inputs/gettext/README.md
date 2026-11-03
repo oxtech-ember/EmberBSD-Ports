@@ -27,3 +27,10 @@ target library and headers.
 
 The archive includes upstream licenses and notices. If effective source inputs
 change, verification prepares and compares the complete payload.
+
+For unchanged prepared payloads, `refresh-source --source "$OUTPUT" --archive
+"$ARCHIVE" --patch "$PATCH"` verifies the payload and current source identity,
+then atomically updates its receipt to the current scoped identity. Supply
+`--pkgsrc-export` when using a shared export. The caller must hold exclusive
+use of the prepared source throughout verification and refresh; this command
+does not acquire that lock. A failed verification leaves the receipt unchanged.

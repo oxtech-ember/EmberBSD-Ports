@@ -157,7 +157,7 @@ class GitPackageIdentityTest(unittest.TestCase):
 
     def test_same_inputs_same_identity(self):
         before = self.current()
-        self.assertEqual(before['api'], 2)
+        self.assertEqual(before['api'], 3)
         self.assertEqual(before, self.current())
         # A second process computes the same identity from the same objects.
         code = ('import importlib.util, json, sys; '
@@ -249,6 +249,75 @@ class GitPackageIdentityTest(unittest.TestCase):
         self.assertEqual(before, self.current())
         self.write(self.root / 'patches/infra.patch', 'no file names\n')
         self.assertChanged(before, 'unknown patch targets are included')
+
+    def test_legacy_and_scoped_sections(self):
+        one = '--- a/cat/pkg/Makefile\n+++ b/cat/pkg/Makefile\n@@ -1 +1 @@\n-old\n+new\n'
+        two = '--- a/cat/other/Makefile\n+++ b/cat/other/Makefile\n@@ -1 +1 @@\n-old\n+new\n'
+        patchfile = self.root / 'patches/infra.patch'
+        self.conf('patch\tpatches/infra.patch\n')
+        self.write(patchfile, 'Prose preamble.\n\n' + one + two)
+        old = identity.git_package_identity(self.root, 'cat/pkg', self.git, api=2)
+        first = self.current()
+        self.assertEqual(first['legacy_api2_sha256'], old['effective_package_sha256'])
+        self.assertTrue(identity.matches_current_git_package(old, first))
+        self.assertTrue(identity.current_git_package({'effective': old, 'owner_sha256': '0'*64}, '0'*64, self.current))
+        self.write(patchfile, 'Prose preamble.\n\n' + one + two.replace('+new', '+other'))
+        second = self.current()
+        self.assertTrue(identity.equivalent_effective_package(first, second))
+        self.assertNotEqual(first['legacy_api2_sha256'], second['legacy_api2_sha256'])
+        self.assertFalse(identity.matches_current_git_package(old, second))
+        self.assertFalse(identity.matches_current_git_package(second, old))
+        self.assertFalse(identity.matches_current_git_package(dict(old, package='cat/other'), first))
+        self.assertFalse(identity.matches_current_git_package(dict(old, api=1), first))
+        for invalid in (dict(first, api=True), dict(first, legacy_api2_sha256='x'),
+                        dict(first, extra=1), dict(first, upstream='bad')):
+            self.assertFalse(identity.equivalent_effective_package(first, invalid))
+            self.assertFalse(identity.matches_current_git_package(invalid, first))
+        for changed in (one.replace('+new', '+changed'), one.replace('b/cat/pkg/Makefile', 'b/cat/pkg/options.mk'),
+                        one + one, one + one.replace('+new', '+second'),
+                        '--- /dev/null\n+++ b/cat/pkg/new.mk\n@@ -0,0 +1 @@\n+new\n',
+                        '--- a/cat/pkg/new.mk\n+++ /dev/null\n@@ -1 +0,0 @@\n-old\n'):
+            self.write(patchfile, changed + two)
+            self.assertFalse(identity.equivalent_effective_package(first, self.current()), changed)
+        self.write(patchfile, one + one.replace('+new', '+second'))
+        ordered = self.current()
+        self.write(patchfile, one.replace('+new', '+second') + one)
+        self.assertFalse(identity.equivalent_effective_package(ordered, self.current()))
+
+    def test_whole_blob_hashes_are_batched(self):
+        self.write(self.root / 'patches/a.patch', 'diff --git a/a b/a\n')
+        self.write(self.root / 'patches/b.patch', 'Binary files differ\n')
+        self.conf('patch\tpatches/a.patch\npatch\tpatches/b.patch\n')
+        with patch.object(identity, '_hash_objects', wraps=identity._hash_objects) as hashes:
+            self.current()
+        batches = [[p.name for p in call.args[2]] for call in hashes.call_args_list]
+        self.assertEqual(batches, [['a.patch', 'b.patch']])
+
+    def test_real_cross_patch_is_sectionable(self):
+        data = (ROOT / 'profiles/common-build-tools/patches/pkgsrc-cross-packages.patch').read_bytes()
+        sections = identity._plain_patch_sections(data)
+        self.assertIsNotNone(sections)
+        self.assertGreater(len(sections), 1)
+
+    def test_parser_payload_and_conservative_fallback(self):
+        misleading = (b'--- a/cat/pkg/Makefile\n+++ b/cat/pkg/Makefile\n@@ -1,2 +1,2 @@\n'
+                      b'--- a/cat/other/Makefile\n+++ b/cat/other/Makefile\n context\n')
+        sections = identity._plain_patch_sections(misleading)
+        self.assertEqual(len(sections), 1)
+        self.assertEqual(sections[0][0], ['cat/pkg/Makefile', 'cat/pkg/Makefile'])
+        for data in (b'diff --git a/a b/a\nold mode 100644\n', b'Index: file\n',
+                     b'GIT binary patch\n', b'Binary files differ\n', b'old mode 100644\n',
+                     b'rename from a\nrename to b\n',
+                     b'1c\nfoo\n.\n--- a/cat/pkg/Makefile\n+++ b/cat/pkg/Makefile\n@@ -1 +1 @@\n-x\n+y\n',
+                     b'--- a/cat/pkg/Makefile\n+++ b/cat/pkg/Makefile\n@@ -2,2 +2 @@\n-x\n+y\n',
+                     b'--- a/a\n+++ b/a\n@@ -1 +1 @@\n-x\n+y\nunknown\n'):
+            self.assertIsNone(identity._plain_patch_sections(data), data)
+            patchfile = self.root / 'patches/infra.patch'
+            patchfile.write_bytes(data)
+            self.conf('patch\tpatches/infra.patch\n')
+            before = self.current()
+            patchfile.write_bytes(data + b'changed\n')
+            self.assertFalse(identity.equivalent_effective_package(before, self.current()))
 
     def test_rows_equal_the_canonical_export(self):
         patch_tool = os.environ.get('EXPORT_TEST_PATCH')

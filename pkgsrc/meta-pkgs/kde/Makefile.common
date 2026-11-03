@@ -20,6 +20,11 @@ CMAKE_CONFIGURE_ARGS+=	-DKDE_INSTALL_SYSCONFDIR=${PKG_SYSCONFDIR:Q}
 CMAKE_CONFIGURE_ARGS+=	-DKDE_INSTALL_XDG_EX_DIR=${PREFIX}/share/examples/kde-xdg
 CMAKE_CONFIGURE_ARGS+=	-DKDE_INSTALL_AUTOSTARTEXDIR=${PREFIX}/share/examples/kde-xdg/autostart
 
+# KDE and Plasma test executables are opt-in for ordinary package builds.
+# Set KF6_BUILD_TESTING=ON to include them.
+KF6_BUILD_TESTING?= OFF
+CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTING:BOOL=${KF6_BUILD_TESTING}
+
 .include "../../mk/bsd.fast.prefs.mk"
 .if ${OPSYS} == "NetBSD"
 # Work-around bad use-warning check in GNU ld 2.26

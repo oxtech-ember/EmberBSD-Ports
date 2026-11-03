@@ -24,6 +24,7 @@ if grep -Eq 'nproc|sysctl -n hw\.ncpu|getconf _NPROCESSORS_ONLN' "$ports/scripts
 fi
 mkdir -p "$out/tree/t" "$out/packages/All" "$out/active" "$out/work" "$out/target-db" "$out/bin"
 real_shasum=$(command -v shasum)
+real_sleep=$(command -v sleep)
 cat > "$out/bin/shasum" <<WRAP
 #!/bin/sh
 echo "\$*" >> $out/shasum-calls
@@ -40,6 +41,16 @@ done
 echo "\${FAKE_CPU_COUNT:-10}"
 WRAP
 chmod +x "$out/bin/shasum" "$out/bin/selected-python"
+cat > "$out/bin/sleep" <<WRAP
+#!/bin/sh
+if [ "\${TRACE_SLEEP:-}" = yes ]; then
+    printf '%s\n' "\$1" >> $out/sleep-requests
+    case "\$1" in *.*) printf '%s\n' "\$1" >> $out/sleep-fractions ;; esac
+    if [ "\${WAIT_FOR_CAP:-}" = yes ] && [ "\$1" = 1 ]; then : > $out/cap-seen; fi
+fi
+exec "$real_sleep" "\$@"
+WRAP
+chmod +x "$out/bin/sleep"
 : > "$out/errors"
 : > "$out/edges"
 # PACKAGE DEPENDENCIES...
@@ -77,6 +88,7 @@ WRAP
 cat > "$out/bmake" <<WRAP
 #!/bin/sh
 out=$out
+real_sleep=$real_sleep
 echo "\$*" >> \$out/calls
 dir= target= varname= varnames= add= jobs=
 while [ "\$#" -gt 0 ]; do
@@ -100,7 +112,16 @@ work()
     mkdir \$out/active/\$pkg
     echo "start \$pkg \$jobs" >> \$out/budget-events
     ls \$out/active | wc -l >> \$out/concurrency
-    sleep \${FAKE_SLEEP:-2}
+    if [ "\${WAIT_FOR_CAP:-}" = yes ] && [ "\$pkg" = one ]; then
+        n=0
+        while [ ! -f \$out/cap-seen ] && [ "\$n" -lt 200 ]; do
+            "\$real_sleep" 0.05
+            n=\$((n + 1))
+        done
+        [ -f \$out/cap-seen ] || { echo 'cap wait timed out' >> \$out/errors; exit 1; }
+    else
+        sleep \${FAKE_SLEEP:-2}
+    fi
     ls \$out/active | wc -l >> \$out/concurrency
     echo "finish \$pkg \$jobs" >> \$out/budget-events
     rmdir \$out/active/\$pkg
@@ -147,6 +168,12 @@ newstate()
 bulk()
 {
     PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=3 \
+        sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1
+}
+bulk_trace()
+{
+    TRACE_SLEEP=yes PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree \
+        CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=3 \
         sh "$ports/scripts/cross-bulk.sh" build "$out/state/order" "$out/state" > "$out/bulk.log" 2>&1
 }
 bulk_expected_failure()
@@ -317,6 +344,34 @@ bulk || fail "all-success build: $(cat "$out/bulk.log")"
 [ ! -s "$out/state/blocked" ] || fail "all-success pass recorded blocked nodes: $(cat "$out/state/blocked")"
 [ "$(cut -d ' ' -f 1 "$out/state/done" | sort | tr '\n' ' ')" = 't/a t/b t/c t/d t/e t/f t/g t/h t/i t/j ' ] ||
     fail "all-success done: $(cat "$out/state/done")"
+
+# Completed-node validation should not pay the old fixed one-second scheduler delay.
+: > "$out/sleep-requests"
+: > "$out/sleep-fractions"
+bulk_trace || fail "completed-node pass: $(cat "$out/bulk.log")"
+awk '{ if ($1 <= 0.1) short = 1; if ($1 > 1) long = 1 }
+     END { if (NR == 0 || !short || long) exit 1 }' "$out/sleep-fractions" ||
+    fail "completed-node pass had no prompt bounded waits: $(cat "$out/sleep-requests" | tr '\n' ' ')"
+
+# A genuinely long fake worker must still drive the wait interval to its one-second cap.
+mkdir -p "$out/tree/long/one" "$out/long-state"
+echo 'long/one long/one' > "$out/long-edges"
+cp "$out/long-edges" "$out/long-state/edges"
+tsort "$out/long-edges" > "$out/long-state/order"
+: > "$out/long-state/done"
+: > "$out/long-state/failed"
+: > "$out/long-state/blocked"
+: > "$out/long-state/skipped"
+: > "$out/sleep-requests"
+TRACE_SLEEP=yes WAIT_FOR_CAP=yes PATH=$out/bin:$PATH BMAKE=$out/bmake MAKECONF=$out/mk.conf \
+    PKGSRCDIR=$out/tree CROSS_BULK_CPUS=6 CROSS_BULK_JOBS=1 \
+    sh "$ports/scripts/cross-bulk.sh" build "$out/long-state/order" "$out/long-state" > "$out/long.log" 2>&1 ||
+    fail "long-worker wait pass: $(cat "$out/long.log")"
+grep -Fxq 1 "$out/sleep-requests" ||
+    fail "long-worker backoff did not reach its one-second cap: $(cat "$out/sleep-requests" | tr '\n' ' ')"
+awk '$1 > 1 { bad = 1 }
+     END { if (bad) exit 1 }' "$out/sleep-requests" ||
+    fail "long-worker wait did not reach one-second cap: $(cat "$out/sleep-requests" | tr '\n' ' ')"
 
 # The default allocation is one selected-SDK budget, including replacement workers.
 run_budget_case 1 '' '' 1 1 1 '1 '

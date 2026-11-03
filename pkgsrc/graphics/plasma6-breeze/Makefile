@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.9 2026/09/06 10:23:29 markd Exp $
 
 DISTNAME=	breeze-${PLASMAVER}
+PKGREVISION=	1
 CATEGORIES=	graphics
 
 HOMEPAGE=	https://kde.org/plasma-desktop/
@@ -18,6 +19,7 @@ CMAKE_CONFIGURE_ARGS+=	-DBUILD_QT5=OFF
 .include "../../graphics/hicolor-icon-theme/buildlink3.mk"
 .include "../../devel/plasma6-kwayland/buildlink3.mk"
 .include "../../devel/kf6-kcmutils/buildlink3.mk"
+.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
 .include "../../x11/kf6-frameworkintegration/buildlink3.mk"
 .include "../../x11/kf6-kirigami/buildlink3.mk"
 .include "../../x11/plasma6-kdecoration/buildlink3.mk"

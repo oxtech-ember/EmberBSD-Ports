@@ -16,8 +16,6 @@ BUILDLINK_API_DEPENDS.plasma-wayland-protocols+= plasma-wayland-protocols>=1.23.
 
 USE_TOOLS+=	pkg-config
 
-# Compile upstream tests with the current EmberBSD API; execution is separate.
-CMAKE_CONFIGURE_ARGS+=	-DBUILD_TESTING=ON
 CMAKE_CONFIGURE_ARGS+=	-DKF_IGNORE_PLATFORM_CHECK=true
 
 .include "../../mk/bsd.prefs.mk"

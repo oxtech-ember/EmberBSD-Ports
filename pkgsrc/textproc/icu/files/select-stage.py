@@ -78,6 +78,18 @@ def select(part, stage, *lists):
 
 
 
+def rollback_copy(destination, preserve_root):
+    if os.path.isdir(destination) and not os.path.islink(destination):
+        if preserve_root:
+            for entry in os.scandir(destination):
+                if entry.is_dir(follow_symlinks=False):
+                    shutil.rmtree(entry.path)
+                else:
+                    os.unlink(entry.path)
+        else:
+            shutil.rmtree(destination)
+
+
 def copy_complete(source, destination, lists, *, allow_empty=False):
     from emberbsd_sdk import inventory, paths
 
@@ -109,8 +121,7 @@ def copy_complete(source, destination, lists, *, allow_empty=False):
                 or inventory.snapshot_tree(source) != before):
             raise ValueError("ICU stage changed or differs during handoff")
     except Exception:
-        if os.path.isdir(destination) and not os.path.islink(destination):
-            shutil.rmtree(destination)
+        rollback_copy(destination, existing)
         raise
     return destination
 
@@ -131,11 +142,12 @@ def main():
             raise
     elif len(args) == 6 and args[0] == "copy-devel":
         _, shared, destination, full, runtime, devel = args
+        existing = os.path.lexists(destination)
         copy_complete(shared, destination, (full, runtime, devel), allow_empty=True)
         try:
             select("devel", destination, full, runtime, devel)
         except Exception:
-            shutil.rmtree(destination)
+            rollback_copy(destination, existing)
             raise
     else:
         raise ValueError("usage: select-stage.py --sdk-source SOURCE runtime|devel|handoff-runtime|copy-devel ...")

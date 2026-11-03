@@ -14,10 +14,11 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / 'scripts/prepared-source-current.py'
-GIT = '/usr/bin/git'
+GIT = os.environ['EXPORT_TEST_GIT']
 spec = importlib.util.spec_from_file_location('prepared_source_current', SCRIPT)
 current = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(current)
@@ -57,6 +58,72 @@ class PreparedSourceCurrentTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), {'current': ['libevent']})
         self.assertEqual(result.stderr, '')
+
+    def test_legacy_api2_receipt_matches_current(self):
+        record = self.libevent_identity()
+        record['effective'] = current.selector().git_package_identity(ROOT, 'devel/libevent', GIT, api=2)
+        result = self.check(('libevent', self.receipt('libevent', 'devel/libevent', record)))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        record['effective']['effective_package_sha256'] = '1' * 64
+        result = self.check(('libevent', self.receipt('different', 'devel/libevent', record)))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('another devel/libevent recipe', result.stderr)
+
+    def test_openldap_legacy_wrapper_and_version(self):
+        owner = current.owner_module('openldap', ROOT / current.OWNERS['openldap'][0])
+        selector = current.selector()
+        base = {'package': 'databases/openldap', 'upstream': '1' * 40}
+        old_raw = dict(base, api=2, effective_package_sha256='2' * 64)
+        new_raw = dict(base, api=3, effective_package_sha256='3' * 64,
+                       legacy_api2_sha256='2' * 64)
+        with patch.object(owner, 'identity_module') as selected, patch.object(owner, 'version_bytes', return_value=b'2.7.1') as version:
+            selected.return_value.git_package_identity.return_value = dict(old_raw)
+            old = dict(owner.git_effective_identity(GIT))
+            selected.return_value.git_package_identity.return_value = dict(new_raw)
+            new = dict(owner.git_effective_identity(GIT))
+            expected = hashlib.sha256(bytes.fromhex('2' * 64) + hashlib.sha256(b'2.7.1').digest()).hexdigest()
+            self.assertEqual(old['effective_package_sha256'], expected)
+            self.assertEqual(new['legacy_api2_sha256'], expected)
+            self.assertTrue(selector.matches_current_git_package(old, new))
+            version.return_value = b'2.7.2'
+            selected.return_value.git_package_identity.return_value = dict(new_raw)
+            self.assertFalse(selector.matches_current_git_package(old, owner.git_effective_identity(GIT)))
+            version.return_value = b'2.7.1'
+            selected.return_value.git_package_identity.return_value = dict(new_raw, legacy_api2_sha256='4' * 64)
+            self.assertFalse(selector.matches_current_git_package(old, owner.git_effective_identity(GIT)))
+            selected.return_value.git_package_identity.return_value = dict(new_raw, legacy_api2_sha256='4' * 64)
+            self.assertTrue(selector.equivalent_effective_package(new, owner.git_effective_identity(GIT)))
+
+    def test_gettext_legacy_wrapper_composes_both_recipes(self):
+        owner = current.owner_module('gettext', ROOT / current.OWNERS['gettext'][0])
+        selector = current.selector()
+        def raw(package, api, primary, legacy=None):
+            result = {'api': api, 'package': package, 'upstream': '1' * 40,
+                      'effective_package_sha256': primary * 64}
+            if legacy is not None:
+                result['legacy_api2_sha256'] = legacy * 64
+            return result
+        records = {'devel/gettext': raw('devel/gettext', 2, '2'),
+                   'devel/gettext-tools': raw('devel/gettext-tools', 2, '3')}
+        with patch.object(owner, 'identity_module') as selected:
+            selected.return_value.git_package_identity.side_effect = lambda root, package, git: dict(records[package])
+            old = dict(owner.git_effective_identity(GIT))
+            expected = hashlib.sha256(json.dumps(['2' * 64, '3' * 64], separators=(',', ':')).encode('ascii')).hexdigest()
+            self.assertEqual(old['effective_package_sha256'], expected)
+            records['devel/gettext'] = raw('devel/gettext', 3, '4', '2')
+            records['devel/gettext-tools'] = raw('devel/gettext-tools', 3, '5', '3')
+            new = dict(owner.git_effective_identity(GIT))
+            self.assertEqual(new['legacy_api2_sha256'], expected)
+            self.assertTrue(selector.matches_current_git_package(old, new))
+            for package in records:
+                before = records[package]
+                records[package] = dict(before, legacy_api2_sha256='6' * 64)
+                changed = owner.git_effective_identity(GIT)
+                self.assertFalse(selector.matches_current_git_package(old, changed))
+                self.assertTrue(selector.equivalent_effective_package(new, changed))
+                records[package] = dict(before, effective_package_sha256='7' * 64)
+                self.assertFalse(selector.equivalent_effective_package(new, owner.git_effective_identity(GIT)))
+                records[package] = before
 
     def test_receipt_of_another_recipe_is_stale(self):
         # A tree prepared before a recipe change (a stale Ports pin) names

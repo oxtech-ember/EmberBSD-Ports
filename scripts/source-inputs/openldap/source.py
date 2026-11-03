@@ -70,8 +70,9 @@ def owner_bytes():
 def git_effective_identity(git):
     identity = identity_module().git_package_identity(PORTS, PACKAGE, git)
     version = version_bytes()
-    identity['effective_package_sha256'] = digest(
-        bytes.fromhex(identity['effective_package_sha256']) + hashlib.sha256(version).digest())
+    for key in ('effective_package_sha256', 'legacy_api2_sha256'):
+        if key in identity:
+            identity[key] = digest(bytes.fromhex(identity[key]) + hashlib.sha256(version).digest())
     return identity
 
 

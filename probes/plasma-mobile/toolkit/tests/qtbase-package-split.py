@@ -27,7 +27,6 @@ for category in source.iterdir():
             if category.name == 'x11' and package.name in ('qt6-qtbase','qt6-qtbase-devel'): continue
             if category.name == 'meta-pkgs' and package.name == 'qt6':
                 shutil.copytree(package, dest / 'qt6', symlinks=True)
-                shutil.copy2(recipes / 'meta-pkgs/qt6/Makefile.common', dest / 'qt6/Makefile.common')
             else: (dest / package.name).symlink_to(package)
     else: dest.symlink_to(category)
 for name in ('qt6-qtbase', 'qt6-qtbase-devel'):
@@ -42,7 +41,7 @@ for tool, binary in (('m4', 'gm4'), ('yacc', 'yacc')):
     if not path.is_file() or not os.access(path, os.X_OK):
         raise SystemExit('missing selected native tool: ' + str(path))
     common.append('OSX_PATH_TO_'+tool.upper()+'='+str(path))
-cross = ['USE_CROSS_COMPILE=yes','CROSS_OPSYS=NetBSD','CROSS_OS_VERSION=11.0','CROSS_OPSYS_VERSION=110000','CROSS_MACHINE_ARCH=x86_64','CROSS_LOWER_OPSYS=netbsd','CROSS_LOWER_OPSYS_VERSUFFIX=','CROSS_LOWER_OS_VARIANT=','CROSS_LOWER_VARIANT_VERSION=','CROSS_LOWER_VENDOR=','CROSS_OBJECT_FMT=ELF','CROSS_LOCALBASE=/usr/pkg','CROSS_DESTDIR='+str(sysroot),'TOOLDIR='+str(tools),'CROSS_PKG_TOOLS_BIN='+str(host/'sbin'),'USE_PKGSRC_GCC_RUNTIME=no']
+cross = ['EMBERBSD_CROSS_COMPILER_FAMILY=clang','EMBERBSD_CROSS_BUILD_PYTHON='+sys.executable,'USE_CROSS_COMPILE=yes','CROSS_OPSYS=NetBSD','CROSS_OS_VERSION=11.0','CROSS_OPSYS_VERSION=110000','CROSS_MACHINE_ARCH=x86_64','CROSS_LOWER_OPSYS=netbsd','CROSS_LOWER_OPSYS_VERSUFFIX=','CROSS_LOWER_OS_VARIANT=','CROSS_LOWER_VARIANT_VERSION=','CROSS_LOWER_VENDOR=','CROSS_OBJECT_FMT=ELF','CROSS_LOCALBASE=/usr/pkg','CROSS_DESTDIR='+str(sysroot),'TOOLDIR='+str(tools),'CROSS_PKG_TOOLS_BIN='+str(host/'sbin'),'USE_PKGSRC_GCC_RUNTIME=no']
 def run(label, package, *args):
     cmd = common + ['-C', str(tree/'x11'/package)] + list(map(str,args))
     process = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
@@ -126,15 +125,27 @@ def fingerprint(directory):
             path=parent/name; key=str(path.relative_to(directory))
             files[key]=('symlink',os.readlink(path)) if path.is_symlink() else ('file',hashlib.sha256(path.read_bytes()).hexdigest(),path.stat().st_mode & 0o7777)
     return files
+feature_dir=work/'feature-cache'; feature_dir.mkdir()
+feature_cache=feature_dir/'CMakeCache.txt'
+feature_cache.write_text('QT_FEATURE_xdg_desktop_portal_file_transfer:INTERNAL=ON\n')
 before=fingerprint(prefix)
 if sorted(before)!=sorted(full): raise SystemExit('full normalized fixture differs from the pkgsrc manifest')
 for part in ('runtime','devel'):
     dest=work/(part+'-stage'); shutil.copytree(original,dest,symlinks=True,copy_function=shutil.copy2)
     package='qt6-qtbase' if part=='runtime' else 'qt6-qtbase-devel'
-    run(part+'-select-stage',package,*cross,'WRKDIR='+str(work/(part+'-select')),'DESTDIR='+str(dest),'qtbase-select-stage')
+    run(part+'-select-stage',package,*cross,'WRKDIR='+str(work/(part+'-select')),'WRKSRC='+str(feature_dir),'DESTDIR='+str(dest),'qtbase-select-stage')
     selected=runtime if part=='runtime' else sdk
     if fingerprint(dest/'usr/pkg') != {k:v for k,v in before.items() if k in selected}: raise SystemExit('selected stage bytes, modes or symlinks changed')
-for case in ('missing','unknown','overlap','union','selected','symlink-parent','part'):
+expected_errors = {
+    'missing': 'missing complete-stage file:',
+    'unknown': 'unlisted staged file:',
+    'overlap': 'Qtbase partitions overlap:',
+    'union': 'Qtbase partition union differs from the complete PLIST',
+    'selected': 'selected package PLIST differs from its declared partition',
+    'symlink-parent': 'unlisted staged file:',
+    'part': 'unknown Qtbase package part',
+}
+for case in expected_errors:
     dest=work/('reject-'+case); shutil.copytree(original,dest,symlinks=True,copy_function=shutil.copy2); stage=dest/'usr/pkg'
     lists=[full_dir/'.PLIST',work/'runtime/.PLIST',work/'devel/.PLIST',work/'runtime/.PLIST']; part='runtime'
     if case=='missing': (stage/sdk[0]).unlink()
@@ -146,9 +157,10 @@ for case in ('missing','unknown','overlap','union','selected','symlink-parent','
         outside=dest/'outside'; outside.mkdir(); (outside/'preserved').write_text('outside fixture'); shutil.rmtree(stage/'qt6/bin'); (stage/'qt6/bin').symlink_to(outside)
     else: part='unsupported'
     unchanged=fingerprint(stage)
-    r=subprocess.run([str(host/'bin/perl'),str(helper),part,str(stage),*map(str,lists)],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
+    r=subprocess.run([str(host/'bin/perl'),str(helper),part,str(stage),*map(str,lists),str(feature_cache)],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
     (work/('reject-'+case+'.log')).write_text(r.stdout)
     if r.returncode==0: raise SystemExit('invalid partition was accepted: '+case)
+    if expected_errors[case] not in r.stdout: raise SystemExit('unexpected rejection for '+case+': '+r.stdout)
     if fingerprint(stage)!=unchanged: raise SystemExit('invalid partition changed staging: '+case)
 print('PASS: real pkgsrc produces distinct runtime/SDK manifests and a revised runtime identity')
 print('PASS: native full manifest, exact source/runtime dependencies, exhaustive union and build-only SDK contract')

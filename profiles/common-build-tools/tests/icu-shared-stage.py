@@ -71,6 +71,21 @@ with tempfile.TemporaryDirectory(prefix='icu-shared-stage-', dir=a.work_parent) 
     if shared.exists():
         raise SystemExit('failed transfer left a shared stage')
     (source / 'bin/derb').write_bytes(before['bin/derb'])
+    dest.mkdir()
+    module.shutil.copytree = change_during_copy
+    try:
+        try:
+            module.copy_complete(str(source), str(dest), manifest, allow_empty=True)
+        except ValueError:
+            pass
+        else:
+            raise SystemExit("source mutation into existing prefix was accepted")
+    finally:
+        module.shutil.copytree = original_copy
+    if not dest.is_dir() or list(dest.iterdir()):
+        raise SystemExit("failed transfer did not preserve empty prefix")
+    dest.rmdir()
+    (source / "bin/derb").write_bytes(before["bin/derb"])
     run('handoff-runtime', source, *manifest, shared)
     if set(files(source)) != runtime or files(shared) != before:
         raise SystemExit('runtime or complete handoff differs from original payload')

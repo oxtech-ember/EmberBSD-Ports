@@ -974,8 +974,8 @@ def main():
         args.source_files_sha256)
     source_manifest['sourceArchiveSha256'] = args.source_archive_sha256
     validate_runtime_dependency(args.electron_version, args.electron_package_path, args.electron_depends)
-    run_node_tests(stream, source_root, native, work)
     if args.action == 'test':
+        run_node_tests(stream, source_root, native, work)
         test_asar_pack_roundtrip(
             stream, node, Path(__file__).parent / 'asar-pack.mjs', asar_tool, native, work)
         run_python_tests(stream, source_root, dist_dir, native, work, sdk_root)

@@ -1,6 +1,6 @@
 # Blanc v1.25.0 source package on the separately packaged Electron runtime.
 # Upstream release commit: ff55d5948f5c71e802ba2ac464659ef96e055ca9.
-# Intended pkgsrc paths are www/blanc and devel/electron44.
+# Shared pkgsrc owners are www/blanc and devel/electron44.
 # This recipe and its local portability patches were prepared with AI assistance.
 
 DISTNAME=	blanc-1.25.0

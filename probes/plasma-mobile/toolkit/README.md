@@ -91,6 +91,8 @@ The isolated Desktop test rejects an empty or transparent capture.
 The complete classic-session runner still requires target execution.
 
 Cross-build on the development host using the [cross workflow](cross/README.md).
+The shared `meta-pkgs/kde/Makefile.common` defaults test targets off across
+Frameworks, Plasma and Gear recipes; set `KF6_BUILD_TESTING=ON` to include them.
 The board installs the resulting packages and runs acceptance tests.
 For an alternative native build, a private MAKECONF includes the exported
 `EMBERBSD-COMMON-TOOLS-MK.CONF`, then
