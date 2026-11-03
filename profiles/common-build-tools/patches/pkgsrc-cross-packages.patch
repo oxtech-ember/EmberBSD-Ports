@@ -98,6 +98,15 @@ Cross OpenSSL uses explicit upstream BSD targets instead of host uname detection
  
  # Declare that this package is using cmake, for bl3 files to know
  # to add to CMAKE_CONFIGURE_ARGS.
+@@ -63,6 +68,8 @@
+ # The assumption in pkgsrc is that packages don't download files
+ # mid-build.
+ CMAKE_CONFIGURE_ARGS+=	-DFETCHCONTENT_FULLY_DISCONNECTED=ON
++# pkgsrc completes the build stage before install; do not rebuild ALL here.
++CMAKE_CONFIGURE_ARGS+=	-DCMAKE_SKIP_INSTALL_ALL_DEPENDENCY:BOOL=TRUE
+ 
+ # Ensure cmake only looks in system files or in the sanitized buildlink
+ # directory for find_package/program/library/file/path.
 --- a/devel/gettext-tools/Makefile
 +++ b/devel/gettext-tools/Makefile
 @@ -3,6 +3,7 @@
