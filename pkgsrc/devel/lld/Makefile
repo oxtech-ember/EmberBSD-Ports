@@ -6,7 +6,7 @@
 EXTRACT_ELEMENTS+= ${DISTNAME}/libunwind/include
 
 PKGNAME=	lld-${LLVM_VERSION}
-PKGREVISION=	5
+PKGREVISION=	6
 CATEGORIES=	devel
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
@@ -39,7 +39,7 @@ BUILDLINK_API_DEPENDS.llvm+=	llvm-${LLVM_VERSION}{,nb*}
 LLVM_USES_SETUP_RPATH= yes
 .include "../../lang/llvm/buildlink3.mk"
 # LLVM exports these libraries in LLD's link interface, so LLD loads them directly.
-.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && ${EMBERBSD_NATIVE_CXX_ABI_NAMESPACE:U} == "__ember1"
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
 DEPENDS+= zstd>=1.3.6:../../archivers/zstd
 .if ${USE_BUILTIN.zlib:Uno:tl} != "yes"
 DEPENDS+= zlib>=1.3.2nb1:../../devel/zlib
