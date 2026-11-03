@@ -1,0 +1,65 @@
+# Origin: EmberBSD contributors (AI-assisted).
+# Fail on unopened packages and process full final signature blocks.
+--- a/pkgtools/pkg_install/files/admin/main.c
++++ b/pkgtools/pkg_install/files/admin/main.c
+@@ -953,6 +953,7 @@
+ 			pkg = open_archive(*argv, &archive_name);
+ 			if (pkg == NULL) {
+ 				warnx("%s could not be opened", *argv);
++				rc = 1;
+ 				continue;
+ 			}
+ 			if (pkg_full_signature_check(archive_name, &pkg))
+--- a/pkgtools/pkg_install/files/lib/pkg_signature.c
++++ b/pkgtools/pkg_install/files/lib/pkg_signature.c
+@@ -118,9 +118,11 @@
+ 		return 0;
+ 
+ 	/* The following works for sign_block_len > 1 */
+-	if (state->sign_cur_block + 1 == state->sign_block_number)
++	if (state->sign_cur_block + 1 == state->sign_block_number) {
+ 		expected = state->pkg_size % state->sign_block_len;
+-	else
++		if (expected == 0)
++			expected = state->sign_block_len;
++	} else
+ 		expected = state->sign_block_len;
+ 
+ 	len = archive_read_data(state->archive, state->sign_buf, expected);
+@@ -545,10 +547,10 @@
+ 	free(pkgname);
+ 
+ 	for (i = 0; i < archive_entry_size(entry); i += block_len) {
+-		if (i + (off_t)sizeof(block) < archive_entry_size(entry))
++		if (archive_entry_size(entry) - i >= (off_t)sizeof(block))
+ 			block_len = sizeof(block);
+ 		else
+-			block_len = archive_entry_size(entry) % sizeof(block);
++			block_len = archive_entry_size(entry) - i;
+ 		if (read(fd, block, block_len) != (ssize_t)block_len)
+ 			err(2, "short read");
+ 		hash_block(block, block_len, hash);
+@@ -593,10 +595,10 @@
+ 	archive_write_header(pkg, entry);
+ 
+ 	for (i = 0; i < size; i += block_len) {
+-		if (i + (off_t)sizeof(block) < size)
++		if (size - i >= (off_t)sizeof(block))
+ 			block_len = sizeof(block);
+ 		else
+-			block_len = size % sizeof(block);
++			block_len = size - i;
+ 		if (read(fd, block, block_len) != (ssize_t)block_len)
+ 			err(2, "short read");
+ 		archive_write_data(pkg, block, block_len);
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -7,7 +7,7 @@
+ # change in the pkg_* tools that pkgsrc relies on for proper operation.
+ 
+ PKGNAME=		pkg_install-${VERSION}
+-PKGREVISION=		20
++PKGREVISION=		21
+ CATEGORIES=		pkgtools
+ 
+ MAINTAINER=		agc@NetBSD.org
