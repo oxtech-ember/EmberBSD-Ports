@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
-"""Evaluate SPIRV-Tools and glslang production metadata with bmake."""
+"""Evaluate shader package test selection metadata with bmake."""
 import argparse
 from pathlib import Path
 import subprocess
@@ -18,8 +18,10 @@ if not args.work_parent.is_absolute() or not args.work_parent.is_dir():
 repo = Path(__file__).resolve().parents[3]
 with tempfile.TemporaryDirectory(prefix='shader-test-metadata-', dir=args.work_parent) as work:
     fixture = Path(work) / 'fixture.mk'
-    for recipe in ('parallel/spirv-tools', 'graphics/glslang', 'parallel/spirv-headers'):
+    for recipe in ('parallel/spirv-tools', 'graphics/glslang', 'parallel/spirv-headers', 'graphics/spirv-cross'):
         source = (repo / 'pkgsrc' / recipe / 'Makefile').read_text()
+        if recipe == 'graphics/spirv-cross':
+            source = (repo / 'pkgsrc' / recipe / 'options.mk').read_text()
         lines = []
         for line in source.splitlines():
             if line.lstrip().startswith('.include '):
@@ -38,6 +40,11 @@ with tempfile.TemporaryDirectory(prefix='shader-test-metadata-', dir=args.work_p
             if len(values) != 2:
                 raise SystemExit('Missing metadata for ' + recipe)
             flags, includes = map(str.split, values)
+            if recipe == "graphics/spirv-cross":
+                flag = "-DSPIRV_CROSS_ENABLE_TESTS=" + ("ON" if tests else "OFF")
+                if flag not in flags:
+                    raise SystemExit(recipe + ": test selection mismatch")
+                continue
             if recipe == 'parallel/spirv-headers':
                 flag = '-DSPIRV_HEADERS_ENABLE_TESTS=' + ('ON' if tests else 'OFF')
                 if flag not in flags:
@@ -55,4 +62,4 @@ with tempfile.TemporaryDirectory(prefix='shader-test-metadata-', dir=args.work_p
                 flag = '-DGLSLANG_TESTS=' + ('ON' if tests else 'OFF')
                 if flag not in flags:
                     raise SystemExit(recipe + ': test selection mismatch')
-print('PASS: six shader package test selections; no build')
+print('PASS: eight shader package test selections; no build')

@@ -340,7 +340,7 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Concurrent.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Core.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Gui.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Network.pc
-.if empty(PKG_OPTIONS:Msoftware-rendering)
+.if empty(PKG_OPTIONS:Msoftware-rendering) && empty(PKG_OPTIONS:Mvulkan-offscreen)
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6OpenGL.pc
 PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6OpenGLWidgets.pc
 .endif
@@ -363,7 +363,7 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Xml.pc
 .include "../../archivers/brotli/buildlink3.mk"
 .include "../../databases/sqlite3/buildlink3.mk"
 .include "../../devel/glib2/buildlink3.mk"
-.if !empty(PLATFORM_SUPPORTS_WAYLAND:Myes) && empty(PKG_OPTIONS:Mheadless-generators)
+.if !empty(PLATFORM_SUPPORTS_WAYLAND:Myes) && empty(PKG_OPTIONS:Mheadless-generators) && empty(PKG_OPTIONS:Mvulkan-offscreen)
 PLIST.wayland=	yes
 .include "../../devel/wayland/buildlink3.mk"
 .endif
@@ -380,10 +380,12 @@ BUILDLINK_API_DEPENDS.libpsl+= libpsl>=0.23.3nb2
 PLIST.x11=	yes
 .include "../../fonts/fontconfig/buildlink3.mk"
 # The native software flavor has no GLU, EGL or Vulkan integration.
-.if empty(PKG_OPTIONS:Msoftware-rendering)
+.if empty(PKG_OPTIONS:Msoftware-rendering) && empty(PKG_OPTIONS:Mvulkan-offscreen)
 .include "../../graphics/glu/buildlink3.mk"
+.endif
+.if empty(PKG_OPTIONS:Msoftware-rendering)
 .include "../../graphics/vulkan-headers/buildlink3.mk"
-.  if !empty(MESALIB_SUPPORTS_EGL:Myes)
+.  if !empty(MESALIB_SUPPORTS_EGL:Myes) && empty(PKG_OPTIONS:Mvulkan-offscreen)
 PLIST.egl=	yes
 .    if defined(EMBERBSD_COMMON_GRAPHICS)
 # The modern Mesa dependency guarantees EGLDevice. Require the compiled
@@ -402,7 +404,7 @@ PLIST.egldevice=	yes
 .    endif
 .  endif
 .endif
-.if empty(PKG_OPTIONS:Mheadless-generators)
+.if empty(PKG_OPTIONS:Mheadless-generators) && empty(PKG_OPTIONS:Mvulkan-offscreen)
 PLIST.xcb=	yes
 BUILDLINK_API_DEPENDS.libxcb+=	libxcb>=1.11
 .include "../../x11/libxcb/buildlink3.mk"

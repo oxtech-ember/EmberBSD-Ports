@@ -88,11 +88,13 @@ BUILDLINK_API_DEPENDS.libpsl+= libpsl>=0.23.3nb2
 .include "../../mk/jpeg.buildlink3.mk"
 .if ${OPSYS} != "Darwin"
 .include "../../fonts/fontconfig/buildlink3.mk"
-.if empty(PKG_BUILD_OPTIONS.qt6-qtbase:Msoftware-rendering)
+.if empty(PKG_BUILD_OPTIONS.qt6-qtbase:Msoftware-rendering) && empty(PKG_BUILD_OPTIONS.qt6-qtbase:Mvulkan-offscreen)
 .include "../../graphics/glu/buildlink3.mk"
+.endif
+.if empty(PKG_BUILD_OPTIONS.qt6-qtbase:Msoftware-rendering)
 .include "../../graphics/vulkan-headers/buildlink3.mk"
 .endif
-.if empty(PKG_BUILD_OPTIONS.qt6-qtbase:Mheadless-generators)
+.if empty(PKG_BUILD_OPTIONS.qt6-qtbase:Mheadless-generators) && empty(PKG_BUILD_OPTIONS.qt6-qtbase:Mvulkan-offscreen)
 .include "../../x11/libxcb/buildlink3.mk"
 .include "../../x11/xcb-util/buildlink3.mk"
 .include "../../x11/xcb-util-image/buildlink3.mk"

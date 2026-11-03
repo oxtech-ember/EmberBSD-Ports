@@ -1,0 +1,80 @@
+--- a/mk/check/check-shlibs-elf.awk
++++ b/mk/check/check-shlibs-elf.awk
+@@ -155,6 +155,30 @@
+ 
+ # Expand only a leading standard token. Resolve dot components later, after
+ # walking target symlinks, rather than applying lexical host normalization.
++# Native Linux packages may use only their selected prefix and declared
++# system ABI directories. Target checks never enable this fallback.
++function host_realpath(value,    cmd, line, result) {
++	cmd = "readlink -f " shquote(value) " 2>/dev/null"
++	result = ""
++	if ((cmd | getline line) > 0) result = line
++	close(cmd)
++	return result
++}
++function host_abi_file(value,    file, dir, prefixdir, count, dirs, i, allowed) {
++	file = host_realpath(value)
++	if (file == "" || system("test -f " shquote(file)) != 0) return ""
++	prefixdir = host_realpath(prefix)
++	if (prefixdir != "" && index(file, prefixdir "/") == 1) return file
++	dir = file
++	sub(/\/[^\/]*$/, "", dir)
++	count = split(system_rpath, dirs, ":")
++	for (i = 1; i <= count; i++) {
++		allowed = host_realpath(dirs[i])
++		if (allowed != "" && dir == allowed) return file
++	}
++	return ""
++}
++
+ function runtime_path(value, origin,    rest) {
+ 	if (value ~ /^\$ORIGIN(\/|$)/) {
+ 		rest = substr(value, 8)
+@@ -279,8 +303,13 @@
+ 				if (!(libfile in pathcache))
+ 					pathcache[libfile] = target_path(libfile)
+ 				resolved = pathcache[libfile]
+-				if (resolved == "") continue
+-				if (cross_destdir != "" && index(resolved, cross_destdir "/") == 1) {
++				if (resolved == "") {
++					if (native_host_abi != "yes" || cross_destdir != "") continue
++					resolved = host_abi_file(rpath[p] "/" lib)
++					if (resolved == "") continue
++					crossfile = resolved
++					libfile = ""
++				} else if (cross_destdir != "" && index(resolved, cross_destdir "/") == 1) {
+ 					crossfile = resolved
+ 					libfile = ""
+ 				} else {
+@@ -295,7 +324,7 @@
+ 				found = 1
+ 				break
+ 			}
+-			if (destdir != "" && cross_destdir == "") continue
++			if (destdir != "" && cross_destdir == "" && native_host_abi != "yes") continue
+ 			libfile = crossfile
+ 			if (!(libfile in libcache)) {
+ 				libcache[libfile] = system("test -f " shquote(libfile))
+@@ -334,6 +363,7 @@
+ 	cross_destdir = ENVIRON["CROSS_DESTDIR"]
+ 	destdir = ENVIRON["DESTDIR"]
+ 	prefix = ENVIRON["PREFIX"]
++	native_host_abi = ENVIRON["EMBERBSD_NATIVE_HOST_ABI"]
+ 	readelf = ENVIRON["READELF"]
+ 	wrkdir = ENVIRON["WRKDIR"]
+ 	extradirs = ENVIRON["CHECK_WRKREF_EXTRA_DIRS"]
+--- a/mk/check/check-shlibs.mk
++++ b/mk/check/check-shlibs.mk
+@@ -81,6 +81,11 @@
+ .    endif
+ .  endif
+ CHECK_SHLIBS_NATIVE_ENV+=	CROSS_DESTDIR=${_CROSS_DESTDIR:Q}
++.if ${USE_CROSS_COMPILE:Uno:tl} == "no" && ${OPSYS} == "Linux" && ${EMBERBSD_NATIVE_HOST_ABI:Uno:tl} == "yes"
++CHECK_SHLIBS_NATIVE_ENV+= EMBERBSD_NATIVE_HOST_ABI=yes
++.else
++CHECK_SHLIBS_NATIVE_ENV+= EMBERBSD_NATIVE_HOST_ABI=no
++.endif
+ CHECK_SHLIBS_NATIVE_ENV+=	EMBERBSD_NATIVE_STAGE_ROOT=${EMBERBSD_NATIVE_STAGE_ROOT:U:Q}
+ CHECK_SHLIBS_NATIVE_ENV+=	EMBERBSD_NATIVE_STAGE_PREFIX=${EMBERBSD_NATIVE_STAGE_PREFIX:U:Q}
+ CHECK_SHLIBS_NATIVE_ENV+=	PKG_INFO_CMD=${PKG_INFO:Q}

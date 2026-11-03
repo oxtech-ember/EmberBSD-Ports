@@ -4,7 +4,7 @@ Build the NetBSD framebuffer platform plugin.
 
 --- /dev/null
 +++ src/plugins/platforms/bsdfb/CMakeLists.txt
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,30 @@
 +# SPDX-License-Identifier: BSD-2-Clause
 +# Origin: EmberBSD contributors (AI-assisted).
 +
@@ -31,3 +31,7 @@ Build the NetBSD framebuffer platform plugin.
 +qt_internal_extend_target(QBsdFbIntegrationPlugin CONDITION TARGET Qt::InputSupportPrivate
 +    LIBRARIES Qt::InputSupportPrivate
 +)
++
++if(EMBERBSD_BSDFB_VULKAN_OFFSCREEN)
++    target_compile_definitions(QBsdFbIntegrationPlugin PRIVATE EMBERBSD_BSDFB_VULKAN_OFFSCREEN)
++endif()

@@ -1,0 +1,26 @@
+# Allow excluding only uninstalled examples from ordinary builds.
+--- Makefile.am.orig
++++ Makefile.am
+@@ -13,7 +13,9 @@
+ # You should have received a copy of the GNU General Public License
+ # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ 
+-SUBDIRS = gl unistring lib src examples fuzz po
++EXAMPLES_SUBDIR = examples
++SUBDIRS = gl unistring lib src $(EXAMPLES_SUBDIR) fuzz po
++DIST_SUBDIRS = gl unistring lib src examples fuzz po doc tests
+ 
+ if ENABLE_DOC
+ SUBDIRS += doc
+--- Makefile.in.orig
++++ Makefile.in
+@@ -1772,7 +1772,8 @@
+ unistringtests_LIBOBJS = @unistringtests_LIBOBJS@
+ unistringtests_LTLIBOBJS = @unistringtests_LTLIBOBJS@
+ unistringtests_WITNESS = @unistringtests_WITNESS@
+-SUBDIRS = gl unistring lib src examples fuzz po $(am__append_1) tests
++EXAMPLES_SUBDIR = examples
++SUBDIRS = gl unistring lib src $(EXAMPLES_SUBDIR) fuzz po $(am__append_1) tests
+ 
+ # version-stamp
+ EXTRA_DIST = cfg.mk maint.mk CONTRIBUTING.md DEPENDENCIES.md README.md \

@@ -97,7 +97,7 @@ QT_TARGET_CXX=	${PREFIX}/gcc16/bin/g++
 .else
 PKG_FAIL_REASON+=	"Qt target metadata requires an explicitly selected Clang or GCC family"
 .endif
-.if !empty(PLATFORM_SUPPORTS_WAYLAND:Myes)
+.if !empty(PLATFORM_SUPPORTS_WAYLAND:Myes) && empty(PKG_OPTIONS.qt6-qtbase:Mvulkan-offscreen)
 .if empty(EMBERBSD_WAYLAND_SCANNER:M/*) || !exists(${EMBERBSD_WAYLAND_SCANNER})
 PKG_FAIL_REASON+= "EMBERBSD_WAYLAND_SCANNER must select the native Wayland scanner"
 .endif

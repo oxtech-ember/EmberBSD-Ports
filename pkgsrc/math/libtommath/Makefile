@@ -10,10 +10,9 @@ COMMENT= Portable multiple-precision integer library
 LICENSE= unlicense
 USE_LANGUAGES= c
 CMAKE_CONFIGURE_ARGS+= -DBUILD_SHARED_LIBS=ON
-CMAKE_CONFIGURE_ARGS+= -DBUILD_TESTING=ON
-TEST_TARGET= test
 PLIST_VARS+= darwin unix
 .include "../../mk/bsd.prefs.mk"
+.include "options.mk"
 .if ${OPSYS} == "Darwin"
 PLIST.darwin= yes
 .else

@@ -22,10 +22,17 @@ BUILDLINK_FILES.qt6-qtdeclarative+=	qt6/qml/*/*/*/*/*
 BUILDLINK_FILES.qt6-qtdeclarative+=	qt6/qml/*/*/*/*/*/*
 BUILDLINK_FILES.qt6-qtdeclarative+=	qt6/qml/*/*/*/*/*/.qt/*/*
 
+pkgbase:= qt6-qtdeclarative
+.include "../../mk/pkg-build-options.mk"
+
+.if empty(PKG_BUILD_OPTIONS.qt6-qtdeclarative:Mminimal-runtime)
 .include "../../graphics/qt6-qtimageformats/buildlink3.mk"
+.endif
 .include "../../graphics/qt6-qtshadertools/buildlink3.mk"
 .include "../../graphics/qt6-qtsvg/buildlink3.mk"
+.if empty(PKG_BUILD_OPTIONS.qt6-qtdeclarative:Mminimal-runtime)
 .include "../../lang/qt6-qtlanguageserver/buildlink3.mk"
+.endif
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .include "../../x11/qt6-qtbase/full-tools-required.mk"
 .include "host-tools.mk"

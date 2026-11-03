@@ -40,6 +40,7 @@ SUBST_SED.visibility+=		-e 's/, visibility("default")//g'
 .endif
 
 .include "../../mk/bsd.prefs.mk"
+.include "options.mk"
 
 ADDFONTS=	${PREFIX}/share/fonts/urw,${PREFIX}/share/ghostscript/fonts,${PREFIX}/share/fonts/X11
 .if ${X11BASE} != ${LOCALBASE}

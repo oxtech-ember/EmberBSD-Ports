@@ -11,6 +11,8 @@ LICENSE= 2-clause-bsd AND libpng-2.0
 USE_LANGUAGES= c
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_BUILD_TYPE=Release
 PKGCONFIG_OVERRIDE+= cmake/libspng.pc.in
+.include "../../mk/bsd.prefs.mk"
+.include "options.mk"
 .include "../../devel/cmake/build.mk"
 .include "../../devel/zlib/buildlink3.mk"
 post-install:

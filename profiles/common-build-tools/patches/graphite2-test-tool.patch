@@ -1,0 +1,12 @@
+# Optional test utility; keep the file-face API enabled.
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -87,7 +87,7 @@
+     add_subdirectory(tests)
+ endif()
+ add_subdirectory(doc)
+-if (NOT GRAPHITE2_NFILEFACE)
++if (BUILD_TESTING AND NOT GRAPHITE2_NFILEFACE)
+     add_subdirectory(gr2fonttest)
+ endif()
+ 

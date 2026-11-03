@@ -1,10 +1,10 @@
 $NetBSD$
 
-Route NetBSD framebuffer initialization and backing-store operations.
+NetBSD framebuffer integration and optional offscreen Vulkan factory.
 
 --- src/plugins/platforms/bsdfb/qbsdfbintegration.cpp
 +++ src/plugins/platforms/bsdfb/qbsdfbintegration.cpp
-@@ -4,7 +4,11 @@
+@@ -4,7 +4,16 @@
  // Qt-Security score:significant reason:default
  
  #include "qbsdfbintegration.h"
@@ -13,10 +13,44 @@ Route NetBSD framebuffer initialization and backing-store operations.
 +#else
  #include "qbsdfbscreen.h"
 +#endif
++
++#if defined(Q_OS_NETBSD) && defined(EMBERBSD_BSDFB_VULKAN_OFFSCREEN) && QT_CONFIG(vulkan)
++#include <QtGui/private/qbasicvulkanplatforminstance_p.h>
++#include <QtGui/qvulkaninstance.h>
++#endif
  
  #include <QtGui/private/qgenericunixfontdatabase_p.h>
  #include <QtGui/private/qgenericunixeventdispatcher_p.h>
-@@ -36,22 +40,34 @@
+@@ -28,6 +37,28 @@
+ 
+ using namespace Qt::StringLiterals;
+ 
++#if defined(Q_OS_NETBSD) && defined(EMBERBSD_BSDFB_VULKAN_OFFSCREEN) && QT_CONFIG(vulkan)
++class QBsdFbOffscreenVulkanInstance final : public QBasicPlatformVulkanInstance
++{
++public:
++    explicit QBsdFbOffscreenVulkanInstance(QVulkanInstance *instance) : m_instance(instance)
++    {
++        loadVulkanLibrary(QStringLiteral("vulkan"), 1);
++    }
++
++    void createOrAdoptInstance() override { initInstance(m_instance, {}); }
++    bool supportsPresent(VkPhysicalDevice, uint32_t, QWindow *) override { return false; }
++
++private:
++    QVulkanInstance *m_instance;
++};
++
++QPlatformVulkanInstance *QBsdFbIntegration::createPlatformVulkanInstance(QVulkanInstance *instance) const
++{
++    return new QBsdFbOffscreenVulkanInstance(instance);
++}
++#endif
++
+ QBsdFbIntegration::QBsdFbIntegration(const QStringList &paramList)
+ {
+     m_fontDb.reset(new QGenericUnixFontDatabase);
+@@ -36,22 +67,34 @@
  
  QBsdFbIntegration::~QBsdFbIntegration()
  {
@@ -52,7 +86,7 @@ Route NetBSD framebuffer initialization and backing-store operations.
  }
  
  bool QBsdFbIntegration::hasCapability(QPlatformIntegration::Capability cap) const
-@@ -70,7 +86,11 @@
+@@ -70,7 +113,11 @@
  
  QPlatformBackingStore *QBsdFbIntegration::createPlatformBackingStore(QWindow *window) const
  {

@@ -1,13 +1,19 @@
 # $NetBSD: options.mk,v 1.1 2026/10/10 10:34:19 adam Exp $
 
 PKG_OPTIONS_VAR=	PKG_OPTIONS.python315
-PKG_SUPPORTED_OPTIONS=	dtrace pymalloc tkinter x11 readline
+PKG_SUPPORTED_OPTIONS=	dtrace pymalloc tkinter x11 readline no-test-modules
 PKG_SUGGESTED_OPTIONS=	x11 readline
 
 .include "../../mk/bsd.prefs.mk"
 .include "../../mk/bsd.options.mk"
 
 PLIST_VARS+=		dtrace readline tkinter
+
+.if !empty(PKG_OPTIONS:Mno-test-modules)
+CONFIGURE_ARGS+=	--disable-test-modules
+.else
+PLIST_SRC=		${PLIST_SRC_DFLT} ${PKGDIR}/PLIST.test-modules
+.endif
 
 .if !empty(PKG_OPTIONS:Mdtrace)
 CONFIGURE_ARGS+=	--with-dtrace

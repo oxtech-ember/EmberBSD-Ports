@@ -60,3 +60,4 @@ SHA1 (patch-kdc_kx509.c) = 01e609a5183874eef8063d586ed050731750c7d5
 SHA1 (patch-kdc_digest.c) = 7e6d15d6fcb3c2f0af622976cc8cb721dfb23044
 SHA1 (patch-lib_gssapi_ntlm_crypto.c) = ba03bd15ef384e85edaad19e8eedd04e1afb74a5
 SHA1 (patch-cf_make-proto.pl) = e6e005135935cf48db769441147074f17621cc6f
+SHA1 (patch-zz-optional-test-programs) = 6de7eeeb4e8b2cfd4fbdbd2904654bc4421ae359

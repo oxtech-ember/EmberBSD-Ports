@@ -10,6 +10,19 @@ LICENSE=	gnu-lgpl-v3 OR gnu-gpl-v2 OR gnu-gpl-v3
 
 .include "../../x11/qt6-qtbase/Makefile.common"
 
+PKG_OPTIONS_VAR= PKG_OPTIONS.qt6-qtdeclarative
+.if ${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+PKG_SUPPORTED_OPTIONS+= minimal-runtime
+.endif
+.include "../../mk/bsd.options.mk"
+PLIST_VARS+= languageserver
+.if empty(PKG_OPTIONS:Mminimal-runtime)
+PLIST.languageserver= yes
+.else
+CMAKE_CONFIGURE_ARGS+= -DCMAKE_DISABLE_FIND_PACKAGE_Qt6LanguageServerPrivate=TRUE
+.endif
+
+
 .include "host-tools.mk"
 
 .if ${OPSYS} == "Darwin"
@@ -64,16 +77,22 @@ post-install:
 	${RM} -f -r ${DESTDIR}${QTPREFIX}/lib/objects-Release
 	${RM} -f -r ${DESTDIR}${QTPREFIX}/qml/Qt/test/controls/objects-Release
 
+.if empty(PKG_OPTIONS:Mminimal-runtime)
 .include "../../graphics/qt6-qtimageformats/buildlink3.mk"
+.endif
 .include "../../graphics/qt6-qtshadertools/buildlink3.mk"
 .include "../../graphics/qt6-qtsvg/buildlink3.mk"
 .include "../../lang/python/tool.mk"
+.if empty(PKG_OPTIONS:Mminimal-runtime)
 .include "../../lang/qt6-qtlanguageserver/buildlink3.mk"
+.endif
 BUILDLINK_DEPMETHOD.yoga=	build
 .include "../../devel/yoga/buildlink3.mk"
 .include "../../x11/qt6-qtbase/buildlink3.mk"
 .if empty(PKG_BUILD_OPTIONS.qt6-qtbase:Msoftware-rendering)
+.if empty(PKG_BUILD_OPTIONS.qt6-qtbase:Mvulkan-offscreen)
 PLIST.opengl=	yes
+.endif
 .endif
 .include "../../x11/qt6-qtbase/full-tools-required.mk"
 .include "../../mk/bsd.pkg.mk"

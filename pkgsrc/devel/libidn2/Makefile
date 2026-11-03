@@ -27,6 +27,7 @@ CONFIGURE_ENV+=	ac_cv_path_GTKDOC_MKPDF=
 PREFER.iconv=	pkgsrc
 PREFER.gettext=	pkgsrc
 .include "../../mk/bsd.prefs.mk"
+.include "options.mk"
 
 .if ${PKGSRC_COMPILER:Msunpro}
 # configure check passes, but linker will fail during build
