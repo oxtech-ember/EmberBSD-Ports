@@ -153,7 +153,7 @@ lib/pkgconfig/kadm-server.pc
 lib/pkgconfig/kafs.pc
 lib/pkgconfig/krb5-gssapi.pc
 lib/pkgconfig/krb5.pc
-lib/windc.la
+${PLIST.tests}lib/windc.la
 libexec/digest-service
 libexec/heimdal/asn1_compile
 ${PLIST.native_tools}libexec/heimdal/compile_et

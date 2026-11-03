@@ -19,6 +19,9 @@ a = p.parse_args()
 root = Path(__file__).resolve().parents[3]
 recipe = root/'pkgsrc/security/heimdal'
 patch = recipe/'patches/patch-zz-optional-test-programs'
+plist_entry = chr(36)+'{PLIST.tests}lib/windc.la'
+if plist_entry not in (recipe/'PLIST').read_text().splitlines():
+    raise SystemExit('test plugin PLIST entry is not conditional')
 expected = re.search(r'^SHA1 \(patch-zz-optional-test-programs\) = ([a-f0-9]+)$',
                      (recipe/'distinfo').read_text(), re.M)
 if not expected or hashlib.sha1(patch.read_bytes()).hexdigest() != expected.group(1):
@@ -41,15 +44,15 @@ with tempfile.TemporaryDirectory(prefix='heimdal-options-', dir=a.work_parent) a
     for selection, enabled in (('', False), ('tests', True)):
         f = w/'options.mk'
         f.write_text('PKG_OPTIONS='+selection+'\n'+source+
-                     '\nshow:\n\t@printf "%s\\n" "${MAKE_FLAGS}" "${TEST_TARGET}"\n')
+                     '\nshow:\n\t@printf "%s\\n" "${MAKE_FLAGS}" "${TEST_TARGET}" "${PLIST.tests}"\n')
         r = subprocess.run([str(a.bmake), '-r', '-m', '/', '-f', str(f), 'show'],
                            text=True, capture_output=True)
         if r.returncode:
             raise SystemExit(r.stderr)
-        flags, target = r.stdout.splitlines()
+        flags, target, plist = r.stdout.splitlines()
         names = ('HEIMDAL_TEST_PROGRAMS=', 'HEIMDAL_TEST_LIBRARIES=',
                  'HEIMDAL_TESTS_DIR=', 'HEIMDAL_APPL_TEST_DIR=', 'HEIMDAL_GSSMASK_DIR=')
-        if any((name in flags.split()) == enabled for name in names) or (target == 'check') != enabled:
+        if any((name in flags.split()) == enabled for name in names) or (target == 'check') != enabled or (plist == 'yes') != enabled:
             raise SystemExit('incorrect Heimdal package selection')
         for sub in dirs:
             program_source = (w/sub/'Makefile.in').read_text()
