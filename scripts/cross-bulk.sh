@@ -1586,6 +1586,7 @@ build()
     running=0
     jobs_in_use=0
     changed=1
+    poll_delay=0.05
     while :; do
         for res in "$run"/*.result; do
             [ -f "$res" ] || continue
@@ -1611,6 +1612,7 @@ build()
             rm -f "$res.result" "$res.replace" "$res.replacing"
             running=$((running - 1))
             changed=1
+            poll_delay=0.05
         done
         # Give one waiting job its replace when every running job waits
         # (see exclusive); start no job while one waits or replaces.
@@ -1626,6 +1628,7 @@ build()
         if [ "$replacing" = 0 ] && [ "$waiting" -gt 0 ] && [ "$waiting" -ge "$running" ]; then
             mv "$first" "${first%.replace}.replacing"
             replacing=1 waiting=$((waiting - 1))
+            poll_delay=0.05
         fi
         if [ "$stop" = 1 ]; then
             [ "$running" -gt 0 ] || { echo 'Stopped; the running packages finished' >&2; trap - TERM INT HUP; stop_deleter; rm -rf "$state/build.lock"; return 143; }
@@ -1638,6 +1641,7 @@ build()
                     echo "$path $dep" >> "$state/blocked"
                     echo "$path blocked" >> "$run/status"
                     changed=1
+                    poll_delay=0.05
                 else
                     worker_make_jobs=$make_jobs
                     if [ -z "${CROSS_BULK_MAKE_JOBS:-}" ]; then
@@ -1669,12 +1673,21 @@ build()
                         build_one "$node"
                         [ -n "$reported" ] || result "$(echo "$node" | tr / _)" "failed $node build"
                     ) < /dev/null > /dev/null 2>&1 &
+                    poll_delay=0.05
                 fi
             done < "$run/ready"
             [ "$running" -gt 0 ] || [ "$changed" = 1 ] || break
         fi
         [ "$running" -gt 0 ] || [ "$changed" = 1 ] || break
-        sleep 1
+        # Poll promptly after progress, then back off while workers keep running.
+        sleep "$poll_delay"
+        case "$poll_delay" in
+            0.05) poll_delay=0.1 ;;
+            0.1) poll_delay=0.2 ;;
+            0.2) poll_delay=0.4 ;;
+            0.4) poll_delay=0.8 ;;
+            *) poll_delay=1 ;;
+        esac
     done
     trap - TERM INT HUP
     stop_deleter
