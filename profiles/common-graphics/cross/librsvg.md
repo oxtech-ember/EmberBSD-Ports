@@ -10,25 +10,31 @@ are prerequisites, not alternate dependency stacks.
 
 ## Current validation boundary
 
-The 2.63.4 package builds on macOS and installs in the private EmberBSD AArch64
-cross sysroot. All 14 installed files and symlinks match the package. The
-locked AVIF/pixbuf build compiled the current recipe-patched Cargo closure,
-including num-derive 0.5.1 and av-data 0.4.4. Source checks cover the patched
-lock, selected crate versions and complete patch inventory. Rsvg GIR and
-typelib generation used a successful real target GType query. Its installed
-C API consumer passed focused CSS checks on Zero3W, including pixel colors,
-`:lang`, malformed SVG rejection and pseudo/at-rule diagnostics.
+The 2.63.4nb2 package builds on macOS and installs in the EmberBSD AArch64
+cross sysroot. The locked AVIF/pixbuf build compiled its recipe-patched
+Cargo closure, including num-derive 0.5.1 and av-data 0.4.4. Source checks cover
+the patched lock, selected crate versions and complete patch inventory. Rsvg
+GIR and typelib generation used a successful real target GType query. The
+rebuilt CSS-only C API consumer adds ID, adjacent-sibling and child-selector
+pixel coverage; these new target assertions have not yet run against nb2. The
+earlier nb1 consumer pass covered pixel colors, `:lang`, malformed SVG
+rejection and pseudo/at-rule diagnostics; it does not validate the selectors/
+servo_arc adapter.
 
 The recipe follows the current CSS and HTML/XML dependency family: cssparser
-0.38 with cssparser-color 0.6 and selectors 0.41; markup5ever/xml5ever 0.40;
+0.38 with cssparser-color 0.6, selectors 0.42 and servo_arc 0.6;
+markup5ever/xml5ever 0.40;
 and string_cache 0.11 with PHF 0.14 and web_atoms 0.3. `patch-Cargo.toml` and
 `patch-Cargo.lock` update source constraints and the lock together, while
 `cargo-depends.mk` and `distinfo` select and checksum only that resolved
 closure. The old cssparser/selectors, markup5ever/xml5ever, string_cache and
 PHF generations are absent from the active lock. A focused source patch adapts
-librsvg to cssparser 0.38's owned parse errors and selectors 0.41's error API;
+librsvg to cssparser 0.38's owned parse errors and selectors' error API;
 CSS diagnostics use the rule/declaration boundary exposed by stylesheet
 iterators and retain unknown pseudo-class and at-rule names in owned errors.
+The selectors/servo_arc refresh and cascade-wide Copy-handle adapter are
+packaged as 2.63.4nb2. The final target package build passed; its new target
+CSS runtime assertions remain pending hardware runtime validation.
 
 Historical 2.63.2 evidence: the packaged consumer passed four CPU-rendering
 lifecycles on physical CM5 with C API RGB pixels, CLI PNG, the dynamic
@@ -36,7 +42,8 @@ GdkPixbuf SVG loader, embedded AVIF, text with Ahem, and construction through
 the Rsvg typelib. Malformed SVG was rejected through both the C API and CLI;
 recursive providers were hash-checked before and after execution. Those CM5
 results used the 2.63.2 package and a GCC16 consumer; they were not repeated for
-2.63.4. The current 2.63.4 Zero3W result above is the focused CSS C API check.
+2.63.4. The earlier 2.63.4nb1 Zero3W result above is the focused CSS C API
+check and does not validate the nb2 selectors adapter.
 
 The earlier loader failure was a test-bundle defect: GdkPixbuf uses GIO MIME
 detection, but the isolated consumer omitted the shared MIME database.
@@ -188,11 +195,11 @@ std/core bytes to a target sysroot and delegates all queries to the real
 compiler; E0461 rejects that foreign data. No Cargo responses are fabricated.
 Duplicate std archives fail before the metadata import.
 This check does not build Cargo dependencies, librsvg, GIR data or a package.
-The 2.63.4 package, target GType query and focused Zero3W CSS consumer are
-current AArch64 results. Full four-cycle CM5 consumer acceptance remains the
-historical 2.63.2 result; the amd64 renderer build and target runtime
-acceptance remain pending. The target receives no compiler or development
-tools.
+The 2.63.4nb2 package and target GType query are current AArch64 results. The
+focused Zero3W CSS consumer result is from nb1. Full four-cycle CM5 consumer
+acceptance remains the historical 2.63.2 result; the nb2 target runtime and
+amd64 renderer build remain pending. The target receives no compiler or
+development tools.
 
 ## Packaged target consumer
 

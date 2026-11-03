@@ -184,20 +184,21 @@ Origin: EmberBSD (AI-assisted).
  ]
  
  [[package]]
-@@ -2557,17 +2548,15 @@
+@@ -2557,17 +2548,16 @@
  
  [[package]]
  name = "selectors"
 -version = "0.40.0"
 -source = "registry+https://github.com/rust-lang/crates.io-index"
 -checksum = "eeee001a77567bb05e71652718d3ff76d8697c151ac523e68e9513194eb2b75a"
-+version = "0.41.0"
++version = "0.42.0"
 +source = "registry+https://github.com/rust-lang/crates.io-index"
-+checksum = "8322aebea94a6cc288ff884e8a49bdbceef60206c400c6c46d22e62fc4fd91a6"
++checksum = "284ac2879477575f13b22201f7e98aa33aacc765b790536808cf580fd79339f1"
  dependencies = [
   "bitflags 2.13.2",
   "cssparser",
   "derive_more",
++ "hashbrown 0.17.1",
   "log",
   "new_debug_unreachable",
 - "phf",
@@ -205,20 +206,20 @@ Origin: EmberBSD (AI-assisted).
   "precomputed-hash",
   "rustc-hash",
   "servo_arc",
-@@ -2634,9 +2623,9 @@
+@@ -2634,9 +2624,9 @@
  
  [[package]]
  name = "servo_arc"
 -version = "0.4.3"
 -source = "registry+https://github.com/rust-lang/crates.io-index"
 -checksum = "170fb83ab34de17dc69aa7c67482b22218ddb85da56546f9bd6b929e32a05930"
-+version = "0.5.0"
++version = "0.6.0"
 +source = "registry+https://github.com/rust-lang/crates.io-index"
-+checksum = "b4eceb519ec34d8290aaf6e46f435102f2bfa63f22b05a144fb16ab266d3b198"
++checksum = "9f121f129345b5201873a0e253f630413d750b9d799613e2873fb768e592c2a7"
  dependencies = [
   "stable_deref_trait",
  ]
-@@ -2720,37 +2709,25 @@
+@@ -2720,37 +2710,25 @@
  
  [[package]]
  name = "string_cache"
@@ -264,7 +265,7 @@ Origin: EmberBSD (AI-assisted).
   "proc-macro2",
   "quote",
  ]
-@@ -3143,13 +3120,13 @@
+@@ -3143,13 +3121,13 @@
  
  [[package]]
  name = "web_atoms"
@@ -282,7 +283,7 @@ Origin: EmberBSD (AI-assisted).
   "string_cache_codegen",
  ]
  
-@@ -3243,9 +3220,9 @@
+@@ -3243,9 +3221,9 @@
  
  [[package]]
  name = "windows-link"
@@ -295,7 +296,7 @@ Origin: EmberBSD (AI-assisted).
  
  [[package]]
  name = "windows-result"
-@@ -3291,9 +3268,9 @@
+@@ -3291,9 +3269,9 @@
  
  [[package]]
  name = "xml5ever"
@@ -308,7 +309,7 @@ Origin: EmberBSD (AI-assisted).
  dependencies = [
   "log",
   "markup5ever",
-@@ -3356,7 +3333,7 @@
+@@ -3356,7 +3334,7 @@
  dependencies = [
   "proc-macro2",
   "quote",
