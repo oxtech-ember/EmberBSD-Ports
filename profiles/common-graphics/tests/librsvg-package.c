@@ -32,13 +32,15 @@ static const char svg[] =
 #endif
 static const char invalid_svg[] = "<svg><broken";
 static const char css_svg[] =
-	"<svg xmlns='http://www.w3.org/2000/svg' width='30' height='10'>"
+	"<svg xmlns='http://www.w3.org/2000/svg' width='40' height='10'>"
 	"<style>rect { fill: #ff0000; }"
 	":lang(fr) > rect { fill: rgb(0% 100% 0%); }"
+	"#before + g > rect { fill: #00ffff; }"
 	".hsl { fill: hsl(240 100% 50%); }</style>"
-	"<rect width='10' height='10'/>"
-	"<g xml:lang='fr'><rect x='10' width='10' height='10'/></g>"
-	"<rect class='hsl' x='20' width='10' height='10'/></svg>";
+	"<rect id='before' width='10' height='10'/>"
+	"<g><rect x='10' width='10' height='10'/></g>"
+	"<g xml:lang='fr'><rect x='20' width='10' height='10'/></g>"
+	"<rect class='hsl' x='30' width='10' height='10'/></svg>";
 static const char unknown_pseudo_svg[] =
 	"<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'>"
 	"<style>rect { fill: red; }\n\n"
@@ -208,12 +210,14 @@ check_css_only(void)
 	uint32_t value;
 
 	check(setenv("RSVG_LOG", "1", 1) == 0, "enable librsvg diagnostics");
-	surface = render(css_svg, sizeof(css_svg) - 1, 30, 10);
+	surface = render(css_svg, sizeof(css_svg) - 1, 40, 10);
 	value = pixel(surface, 5, 5);
 	check(value == 0xffff0000U, "CSS base selector red pixel");
-	check(pixel(surface, 15, 5) == 0xff00ff00U,
+	check(pixel(surface, 15, 5) == 0xff00ffffU,
+	    "CSS ID, adjacent-sibling and child selectors produce cyan pixel");
+	check(pixel(surface, 25, 5) == 0xff00ff00U,
 	    "CSS :lang selector green pixel");
-	check(pixel(surface, 25, 5) == 0xff0000ffU,
+	check(pixel(surface, 35, 5) == 0xff0000ffU,
 	    "CSS HSL color blue pixel");
 	cairo_surface_destroy(surface);
 	check_css_diagnostic(unknown_pseudo_svg, sizeof(unknown_pseudo_svg) - 1,
