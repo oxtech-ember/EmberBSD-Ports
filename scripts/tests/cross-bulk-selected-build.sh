@@ -30,6 +30,10 @@ WRAP
 cat > "$out/bmake" <<WRAP
 #!/bin/sh
 out=$out
+if [ "\${CHECK_AWK_FALLBACK:-no}" = yes ]; then
+    printf '%s\\n' "\${CROSS_BULK_ENV_IDENTITY:-}" > "$out/awk-env-identity"
+    exit 1
+fi
 dir= target= varname= varnames= cross=no
 cache=no
 for arg do
@@ -187,6 +191,32 @@ done
 [ -e "$out/xargs-late-child" ] || fail 'interrupted-xargs child did not finish'
 rm -rf "$out/state/build.lock"
 
+# A curated native prefix can expose BSD nawk without an awk basename. The
+# controller must compute the environment identity through that selected
+# implementation, without depending on another PATH directory.
+mkdir -p "$out/no-awk-bin"
+for tool in env sort shasum rm mkdir rmdir; do
+    resolved=$(command -v "$tool") || fail "test host lacks $tool"
+    ln -s "$resolved" "$out/no-awk-bin/$tool"
+done
+nawk_path=$(command -v nawk || command -v awk) || fail 'test host lacks an awk-compatible implementation'
+ln -s "$nawk_path" "$out/no-awk-bin/nawk"
+[ ! -e "$out/no-awk-bin/awk" ] || fail 'curated PATH unexpectedly contains awk'
+rm -f "$out/awk-env-identity"
+rc=0
+env PATH="$out/no-awk-bin" CHECK_AWK_FALLBACK=yes \
+    BMAKE="$out/bmake" MAKECONF="$out/mk.conf" PKGSRCDIR="$out/tree" \
+    CROSS_BULK_SHELL="$selected_shell" \
+    "$selected_shell" "$ports/scripts/cross-bulk.sh" selected-order "$out/roots" "$out/state" \
+    > "$out/nawk-fallback.log" 2>&1 || rc=$?
+[ "$rc" -eq 2 ] || fail "selected nawk probe exited $rc instead of reaching the deliberate bmake failure"
+awk_identity=$(cat "$out/awk-env-identity")
+[ "${#awk_identity}" -eq 64 ] || fail 'selected nawk did not produce the environment digest'
+case "$awk_identity" in *[!0-9a-f]*) fail 'selected nawk produced a malformed environment digest' ;; esac
+grep -q 'native host prefix selection failed verification' "$out/nawk-fallback.log" ||
+    fail 'selected nawk probe did not reach the deliberate bmake failure'
+[ ! -e "$out/state/build.lock" ] || fail 'nawk probe left its state lock'
+
 # The successful selected path resolves only its requested closure.
 env BMAKE="$out/bmake" MAKECONF="$out/mk.conf" PKGSRCDIR="$out/tree" \
     CROSS_BULK_SHELL="$selected_shell" \
@@ -215,7 +245,7 @@ grep -q '^no show-vars ' "$out/cache-calls" || fail 'build did not query install
 env BMAKE="$out/bmake" MAKECONF="$out/mk.conf" PKGSRCDIR="$out/tree" \
     CROSS_BULK_SHELL="$selected_shell" \
     CROSS_BULK_CPUS=2 CROSS_BULK_JOBS=1 \
-    sh "$ports/scripts/cross-bulk.sh" selected-build "$out/roots" "$out/state" \
+    "$selected_shell" "$ports/scripts/cross-bulk.sh" selected-build "$out/roots" "$out/state" \
     > "$out/selected-again.log" 2>&1 || fail "second selected-build failed: $(cat "$out/selected-again.log")"
 [ "$(wc -l < "$out/targets" | tr -d ' ')" -eq "$target_count" ] ||
     fail 'second selected build rebuilt accepted packages'
@@ -228,7 +258,7 @@ rc=0
 env BMAKE="$out/bmake" MAKECONF="$out/mk.conf" PKGSRCDIR="$out/tree" \
     CROSS_BULK_SHELL="$selected_shell" \
     CROSS_BULK_CPUS=2 CROSS_BULK_JOBS=1 \
-    sh "$ports/scripts/cross-bulk.sh" selected-build "$out/roots" "$out/state" \
+    "$selected_shell" "$ports/scripts/cross-bulk.sh" selected-build "$out/roots" "$out/state" \
     > "$out/order-failure.log" 2>&1 || rc=$?
 [ "$rc" -ne 0 ] || fail 'selected-build ignored dependency-order failure'
 [ ! -s "$out/targets" ] || fail 'selected-build started package work after order failure'
