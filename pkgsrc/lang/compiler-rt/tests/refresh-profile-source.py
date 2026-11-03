@@ -131,3 +131,31 @@ with tempfile.TemporaryDirectory() as tmp:
     rejected(lambda: m.selected_delta(bad_before,current,'/git'))
     m.owner.OWNER=old_owner; m.owner.PORTS=old_ports; m.subprocess.run=old_run
 print('profile patch provenance and refusals: PASS')
+
+# Only unchanged, byte-identical patch candidates may receive old mtimes.
+import os
+with tempfile.TemporaryDirectory() as tmp:
+    root=Path(tmp).resolve(); a=root/'old'; b=root/'new'; a.mkdir(); b.mkdir()
+    names={'compiler-rt/lib/builtins/one.c','compiler-rt/lib/builtins/two.h'}
+    for i,name in enumerate(sorted(names)):
+        x=put(a,name,('same'+str(i)).encode()); y=put(b,name,('same'+str(i)).encode())
+        os.utime(x,ns=(1000000000+i,1000000000+i));os.utime(y,ns=(2000000000+i,2000000000+i))
+    plan=m.mtime_plan(a,b,names)
+    first, second = sorted(names)
+    first_mtime = (b/first).stat().st_mtime_ns
+    (b/second).write_bytes(b'mutated after planning')
+    rejected(lambda: m.preserve_mtimes(a,b,plan))
+    assert (b/first).stat().st_mtime_ns == first_mtime
+    (b/second).write_bytes((a/second).read_bytes())
+    os.utime(b/second,ns=(2000000001,2000000001))
+    plan=m.mtime_plan(a,b,names)
+    assert m.preserve_mtimes(a,b,plan)==2
+    for name in names:
+        assert (a/name).stat().st_mtime_ns==(b/name).stat().st_mtime_ns
+    n=sorted(names)[1];os.utime(b/n,ns=(3000000000,3000000000));(b/n).write_bytes(b'changed')
+    untouched=(b/sorted(names)[0]).stat().st_mtime_ns
+    rejected(lambda:m.mtime_plan(a,b,names))
+    assert (b/sorted(names)[0]).stat().st_mtime_ns==untouched
+    (b/n).unlink(); os.link(a/n,b/n)
+    rejected(lambda:m.mtime_plan(a,b,names))
+print('patched source timestamps, mismatch and aliases: PASS')

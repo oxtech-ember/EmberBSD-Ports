@@ -126,7 +126,7 @@ def apply_files(before, after, work, kind, names, identity, check=False):
     return len(pending)
 
 
-def selected_delta(before, current, git, ports=None):
+def selected_delta(before, current, git, ports=None, include_candidates=False):
     require(before.get('format') == 'emberbsd-llvm-source' and before.get('version') in (1, 2),
             'invalid historical source manifest')
     for key in ('llvm_version', 'components', 'source'):
@@ -180,7 +180,61 @@ def selected_delta(before, current, git, ports=None):
         require(hashlib.sha256(data).hexdigest() == new[p], 'profile patch digest changed')
         require(runtime.profile_only_patch(data), 'unsupported profile patch')
         names.update(x.decode('utf-8') for x in runtime.patch_paths(data))
-    return names
+    if not include_candidates:
+        return names
+    candidates = set()
+    for key, data in historic_data.items():
+        if not key.startswith(PATCH) or old.get(key) != new.get(key):
+            continue
+        if b'compiler-rt/lib/builtins/' not in data:
+            continue
+        paths = runtime.patch_paths(data)
+        require(paths is not None, 'unsupported unchanged builtins patch: ' + key)
+        candidates.update(path.decode('utf-8') for path in paths
+                          if path.startswith(b'compiler-rt/lib/builtins/') and
+                          path.endswith((b'.c', b'.h', b'.inc')))
+    return names, candidates - names
+
+
+def mtime_plan(before, after, candidates):
+    """Compare all patch-derived candidates before any timestamp write."""
+    plan = []
+    for name in sorted(candidates):
+        old = regular(before, name)
+        new = regular(after, name)
+        a, b = old.stat(), new.stat()
+        require(a.st_nlink == b.st_nlink == 1 and
+                (a.st_dev, a.st_ino) != (b.st_dev, b.st_ino), 'aliased source file: ' + name)
+        require(old.read_bytes() == new.read_bytes(), 'unchanged patch file differs: ' + name)
+        plan.append((name, a, b))
+    return plan
+
+
+def stat_key(value):
+    return (value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns,
+            value.st_ctime_ns, value.st_nlink, value.st_mode)
+
+
+def preserve_mtimes(before, after, plan):
+    # Caller holds source leases across planning and writes. Validate the whole
+    # write set once more before the first change, and each file when opened.
+    for name, a, b in plan:
+        require(stat_key(regular(before, name).stat()) == stat_key(a) and
+                stat_key(regular(after, name).stat()) == stat_key(b),
+                'source changed during timestamp planning: ' + name)
+    count = 0
+    for name, a, b in plan:
+        if a.st_mtime_ns == b.st_mtime_ns:
+            continue
+        path = regular(after, name)
+        fd = os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0))
+        try:
+            require(stat_key(os.fstat(fd)) == stat_key(b), 'source changed before timestamp write: ' + name)
+            os.utime(fd, ns=(b.st_atime_ns, a.st_mtime_ns))
+        finally:
+            os.close(fd)
+        count += 1
+    return count
 
 
 def main(argv):
@@ -190,13 +244,17 @@ def main(argv):
     sdk_source = argv[argv.index('--sdk-source') + 1]
     argv = owner.load_sdk(argv)
     parser = argparse.ArgumentParser(description=__doc__)
-    for arg in ('before', 'source', 'work', 'git', 'ports', 'pkgsrc-root'):
+    for arg in ('before', 'source', 'git', 'ports', 'pkgsrc-root'):
         parser.add_argument('--' + arg, required=True)
+    parser.add_argument('--work')
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument('--list-changes', action='store_true', help='emit verified source paths as JSON')
+    modes.add_argument('--preserve-mtime', action='store_true', help='preserve timestamps for identical unchanged patch files')
     parser.add_argument('--check', action='store_true', help='preflight without writes')
-    parser.add_argument('--package-name', required=True)
-    parser.add_argument('--package-kind', choices=('compiler-rt', 'llvm'), required=True)
+    parser.add_argument('--package-name')
+    parser.add_argument('--package-kind', choices=('compiler-rt', 'llvm'))
     args = parser.parse_args(argv)
-    for value in (args.before, args.source, args.work, args.git, args.ports, args.pkgsrc_root):
+    for value in (args.before, args.source, args.git, args.ports, args.pkgsrc_root):
         require(os.path.isabs(value), 'select absolute paths')
     exported_files = Path(args.pkgsrc_root) / 'lang/compiler-rt/files'
     # Keep the source owner's own export selection and API; the imported
@@ -211,14 +269,35 @@ def main(argv):
     exported.load_sdk(['--sdk-source', sdk_source])
     exported.select_recipe_root(args.pkgsrc_root)
     owner = exported
-    before = Path(args.before); after = Path(args.source); work = Path(args.work)
+    before = Path(args.before); after = Path(args.source)
     for root in (before, after):
         require(root.is_dir() and root.resolve() == root, 'source root must be canonical and real')
-    require(before != after, 'source roots must differ')
+    require(before != after and not before.is_relative_to(after) and
+            not after.is_relative_to(before), 'source roots must not overlap')
     manifest = regular(before, owner.SOURCE_MANIFEST)
     regular(after, owner.SOURCE_MANIFEST)
     previous = json.loads(manifest.read_text())
     current = owner.verify_source(str(after), args.git)
+    if args.list_changes:
+        require(not args.check and args.work is None and args.package_name is None and
+                args.package_kind is None, 'unexpected package or check arguments')
+        names = selected_delta(previous, current, args.git, args.ports)
+        print(json.dumps({'version': 1, 'changed_paths': sorted(names)}, sort_keys=True))
+        return
+    if args.preserve_mtime:
+        require(args.work is None and args.package_name is None and args.package_kind is None,
+                'unexpected package arguments')
+        names, candidates = selected_delta(previous, current, args.git, args.ports,
+                                           include_candidates=True)
+        plan = mtime_plan(before, after, candidates)
+        planned = sum(a.st_mtime_ns != b.st_mtime_ns for _, a, b in plan)
+        updated = 0 if args.check else preserve_mtimes(before, after, plan)
+        print(json.dumps({'version': 1, 'candidates': len(plan),
+                          'planned': planned, 'updated': updated}, sort_keys=True))
+        return
+    require(args.work and os.path.isabs(args.work) and args.package_name and args.package_kind,
+            'select absolute work and package identity')
+    work = Path(args.work)
     names = selected_delta(previous, current, args.git, args.ports)
     identity = dict(version=current['llvm_version'], before=previous['tree_sha256'],
                     after=current['tree_sha256'], package=args.package_name)
