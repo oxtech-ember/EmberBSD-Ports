@@ -23,3 +23,12 @@ The caller owns the export; a different key is refused.
 The consumer generates error headers in its object tree;
 the prepared source remains read-only. Run `test-source.py` with the selected
 Python, SDK source, Git and prepared source paths for its focused verification.
+
+For an unchanged prepared payload, `refresh-source --source /path/to/source --patch /path/to/patch --pkgsrc-export /path/to/export` verifies the current source and atomically updates its receipt. The caller must hold exclusive use throughout; failed verification leaves the receipt unchanged.
+
+Run the focused regression with the selected tools:
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/libfetch/test-refresh.py \
+  --sdk-source "$SDK_SOURCE" --git "$GIT" --patch "$PATCH"
+```
