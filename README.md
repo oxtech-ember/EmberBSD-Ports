@@ -925,19 +925,22 @@ arguments. The shell entry also requires explicit `PY`.
 Python uses its standard library for archives, hashes and copies.
 The subprocess PATH contains only the selected source-tool directories.
 
-A shared export can refresh one selected upstream package or existing overlay
-recipe and explicitly named
+A shared export can refresh selected upstream packages or existing overlay
+recipes and explicitly named
 `file` outputs without rebuilding the full tree. Stop all consumers and hold
 exclusive use of the export for the entire operation:
 
 ```sh
 python3 -B scripts/pkgsrc-shared-export.py /absolute/shared-export \
   --sdk-source /absolute/EmberBSD-SDK --git /absolute/git --patch /absolute/patch \
-  --update --package devel/bmake --file EMBERBSD-SOURCE-IDENTITY/pkgsrc-source-identity.py
+  --update --package devel/bmake --package lang/clang \
+  --file EMBERBSD-SOURCE-IDENTITY/pkgsrc-source-identity.py
 ```
 
 The updater proves the previous input identity, replays the selected package's
-ordered overlays and checks its old contents before replacing changed files.
+ordered overlays and checks their old contents before replacing changed files.
+Repeat `--package` for every changed package in the same transaction; all
+changed inputs must be covered by the selected packages or named file outputs.
 It keeps unchanged bytes, modes and mtimes. A changed upstream pin, unrelated
 global input, opaque cross-package patch, changed recipe source identity or
 layout, or link in the selected recipe is refused; this interface is not a general full-export

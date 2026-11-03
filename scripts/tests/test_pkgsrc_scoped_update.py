@@ -234,6 +234,65 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
         cache = self.export / '.pkgsrc-update-inputs'
         self.assertFalse(cache.exists() and any(cache.iterdir()))
 
+    def test_multi_package_shared_patch_atomic_resume(self):
+        write(self.ports, 'pkgsrc/replaces', 'cat/pkg\n')
+        write(self.ports, 'pkgsrc/cat/pkg/Makefile', 'PKGNAME=fixture-1\n')
+        write(self.ports, 'pkgsrc/cat/pkg/files/unchanged', 'retained\n')
+        write(self.ports, 'pkgsrc/cat/pkg/files/modified', 'old\n')
+        def shared_patch(value):
+            return ('--- a/cat/pkg/Makefile\n+++ b/cat/pkg/Makefile\n'
+                    '@@ -1 +1 @@\n-PKGNAME=fixture-1\n+PKGNAME=fixture-' + value + '\n'
+                    '--- a/cat/other/Makefile\n+++ b/cat/other/Makefile\n'
+                    '@@ -1 +1 @@\n-PKGNAME=other-1\n+PKGNAME=other-' + value + '\n')
+        write(self.ports, 'patches/shared.patch', shared_patch('2'))
+        conf = self.ports / 'pkgsrc/export.conf'
+        conf.write_text(conf.read_text() + 'patch\tpatches/shared.patch\n')
+        commit(self.ports, 'overlay and shared patch')
+        self.export = self.work / 'multi'
+        self.command[3] = self.export
+        result = run(self.command, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.tree = self.export / 'pkgsrc'
+        self.receipt = self.export / 'pkgsrc-export.json'
+        self.marker = self.export / '.pkgsrc-update-incomplete'
+        before = self.receipt.read_bytes()
+        retained = self.tree / 'cat/pkg/files/unchanged'
+        stamp = (retained.stat().st_ino, retained.stat().st_mtime_ns)
+        write(self.ports, 'pkgsrc/cat/pkg/files/modified', 'new\n')
+        write(self.ports, 'patches/shared.patch', shared_patch('3'))
+        commit(self.ports, 'update both scopes')
+        one = run(self.command + ['--update', '--package', 'cat/pkg'], self.ports, check=False)
+        self.assertNotEqual(one.returncode, 0)
+        self.assertEqual(self.receipt.read_bytes(), before)
+        code = r"""import importlib.util,sys
+from unittest.mock import patch
+s=importlib.util.spec_from_file_location('u',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+replace=m.os.replace
+calls=[0]
+def fail_after_one(*args):
+    calls[0]+=1
+    if calls[0] == 2: raise OSError('multi interruption')
+    return replace(*args)
+with patch.object(m.os, 'replace', side_effect=fail_after_one):
+    m.update(sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6], ['cat/pkg','cat/other'],[])
+"""
+        result = run([sys.executable, '-B', '-c', code, self.ports / 'scripts/pkgsrc-shared-update.py',
+                      self.export, self.ports, GIT, SDK, PATCH], self.ports, check=False)
+        self.assertIn('multi interruption', result.stderr)
+        self.assertTrue(self.marker.exists())
+        self.assertEqual(self.receipt.read_bytes(), before)
+        write(self.ports, 'pkgsrc/cat/pkg/files/modified', 'changed during interruption\n')
+        resume = self.command + ['--update', '--package', 'cat/pkg', '--package', 'cat/other', '--resume']
+        self.assertNotEqual(run(resume, self.ports, check=False).returncode, 0)
+        write(self.ports, 'pkgsrc/cat/pkg/files/modified', 'new\n')
+        result = run(resume, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(self.marker.exists())
+        self.assertEqual((self.tree / 'cat/pkg/Makefile').read_text(), 'PKGNAME=fixture-3\n')
+        self.assertEqual((self.tree / 'cat/other/Makefile').read_text(), 'PKGNAME=other-3\n')
+        self.assertEqual((self.tree / 'cat/pkg/files/modified').read_text(), 'new\n')
+        self.assertEqual((retained.stat().st_ino, retained.stat().st_mtime_ns), stamp)
+
     def test_existing_overlay_recipe_supports_repeated_dirty_updates(self):
         recipe = self.ports / 'pkgsrc/cat/pkg'
         write(self.ports, 'pkgsrc/replaces', 'cat/pkg\n')
