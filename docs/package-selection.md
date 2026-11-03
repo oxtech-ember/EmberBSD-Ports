@@ -42,7 +42,7 @@ The initial versionless sets are:
 
 | Set | Roots/purpose |
 | --- | --- |
-| `sdk-bootstrap` | Native Python, pkg_install and OpenSSL; their runtime dependencies come from Ports |
+| `sdk-bootstrap` | Native Python, pkg_install, OpenSSL and public HTTPS CA certificates; runtime dependencies come from Ports |
 | `sdk-c`, `sdk-cxx` | Shared native Clang, LLVM and LLD; the target application sysroot is selected separately |
 | `kernel-tools` | Native compiler tools and bmake, without an application sysroot |
 | `fetch` | Small target HTTPS client with its shared OpenSSL dependency |
