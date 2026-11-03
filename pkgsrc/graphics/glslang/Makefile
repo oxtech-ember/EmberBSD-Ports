@@ -19,15 +19,25 @@ PKGREVISION= 2
 DEPENDS+= libcxx>=23.1.4nb1:../../lang/libcxx
 BUILD_DEFS+= EMBERBSD_NATIVE_CXX_ABI_NAMESPACE
 .endif
+PKG_OPTIONS_VAR= PKG_OPTIONS.glslang
+PKG_SUPPORTED_OPTIONS+= tests
+.include "../../mk/bsd.options.mk"
+
 USE_LANGUAGES= c c++
 USE_CXX_FEATURES= c++17
 CMAKE_CONFIGURE_ARGS+= -DALLOW_EXTERNAL_SPIRV_TOOLS=ON
 CMAKE_CONFIGURE_ARGS+= -DENABLE_OPT=ON
-CMAKE_CONFIGURE_ARGS+= -DALLOW_EXTERNAL_GTEST=ON
+.if !empty(PKG_OPTIONS:Mtests)
+CMAKE_CONFIGURE_ARGS+= -DGLSLANG_TESTS=ON -DALLOW_EXTERNAL_GTEST=ON
+.else
+CMAKE_CONFIGURE_ARGS+= -DGLSLANG_TESTS=OFF -DALLOW_EXTERNAL_GTEST=OFF
+.endif
 .include "../../devel/cmake/build.mk"
 .include "../../lang/python/tool.mk"
+.if !empty(PKG_OPTIONS:Mtests)
 BUILDLINK_DEPMETHOD.googletest= build
 .include "../../devel/googletest/buildlink3.mk"
+.endif
 BUILDLINK_ABI_DEPENDS.spirv-tools+= spirv-tools>=2026.4nb3
 .include "../../parallel/spirv-tools/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"

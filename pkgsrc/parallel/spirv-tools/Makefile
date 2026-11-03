@@ -23,11 +23,19 @@ PKGCONFIG_OVERRIDE+=	cmake/SPIRV-Tools.pc.in
 
 REPLACE_SH+=	tools/lesspipe/spirv-lesspipe.sh
 
+PKG_OPTIONS_VAR= PKG_OPTIONS.spirv-tools
+PKG_SUPPORTED_OPTIONS+= tests
+.include "../../mk/bsd.options.mk"
+
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_TYPE=Release
 CMAKE_CONFIGURE_ARGS+=	-DSPIRV-Headers_SOURCE_DIR=${BUILDLINK_DIR}
+.if !empty(PKG_OPTIONS:Mtests)
 CMAKE_CONFIGURE_ARGS+=	-DSPIRV_USE_INSTALLED_GTEST=ON
 CMAKE_CONFIGURE_ARGS+=	-DSPIRV_USE_INSTALLED_EFFCEE=ON
 CMAKE_CONFIGURE_ARGS+=	-DSPIRV_SKIP_TESTS=OFF
+.else
+CMAKE_CONFIGURE_ARGS+=	-DSPIRV_SKIP_TESTS=ON
+.endif
 TEST_TARGET=		test
 
 .include "../../devel/cmake/build.mk"
@@ -39,6 +47,7 @@ TEST_ENV+= DYLD_LIBRARY_PATH=${WRKSRC}/${CMAKE_BUILD_DIR}/source
 .endif
 
 .include "../../lang/python/tool.mk"
+.if !empty(PKG_OPTIONS:Mtests)
 BUILDLINK_API_DEPENDS.googletest+=	googletest>=1.18.0
 BUILDLINK_DEPMETHOD.googletest=	build
 .include "../../devel/googletest/buildlink3.mk"
@@ -48,6 +57,7 @@ BUILDLINK_DEPMETHOD.effcee=	build
 BUILDLINK_API_DEPENDS.re2+=	re2>=20251105nb3
 BUILDLINK_DEPMETHOD.re2=		build
 .include "../../devel/re2/buildlink3.mk"
+.endif
 BUILDLINK_API_DEPENDS.spirv-headers+=	spirv-headers>=1.4.363.0
 .include "../../parallel/spirv-headers/buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
