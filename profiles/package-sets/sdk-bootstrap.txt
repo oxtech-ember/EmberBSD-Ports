@@ -3,3 +3,7 @@ lang/python315@native
 pkgtools/pkg_install@native
 security/openssl@native
 security/mozilla-rootcerts-openssl@native
+
+# Runtime of native package installation scripts.
+shells/mksh@native
+pkgtools/bootstrap-mk-files@native

@@ -314,6 +314,25 @@ hardcoded base-tool paths remains pending.
 OpenSSL cross builds select complete upstream BSD targets instead of the
 build host's uname; the [cross checks](cross/README.md) keep package and runtime acceptance separate.
 
+OpenSSL 4.1.0nb2 on Darwin resolves its standard configuration, certificate,
+CT-log and provider paths relative to the loaded libcrypto. Explicit custom
+configuration/module paths remain fixed; other OS branches are unchanged.
+The patch reuses upstream's one-time path initialization and keeps all files
+in the normal package. Run [the runtime check](tests/openssl-relative-runtime.py)
+with Python from a disposable relocated SDK; the CT fixture never replaces an
+existing configuration file. Darwin arm64 packaging, Clang analysis of the three
+changed C units, Python HTTPS, certificate lookup and dynamic legacy-provider
+loading pass with producer-prefix reads denied. Other hosts and target
+runtime execution are not established by this check.
+
+The `sdk-bootstrap` roots include mksh and bootstrap-mk-files for ordinary
+package configuration scripts, plus Mozilla public trust data. Python's
+`no-test-modules -x11` options keep the first runtime small without trimming
+an installed package. Fetch 1.9nb5 reserves a new package revision for the
+SDK publisher's qualified relative Mach-O packaging; source/API are unchanged.
+The packaging and first-install contract belongs to
+[SDK](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/docs/bootstrap-client.md).
+
 The NSS 3.132 and NSPR 4.40 source pins use the common providers. The NSS
 cross recipe selects the NetBSD target OS, architecture, release and
 CPU. It builds nsinstall with the native compiler. Its narrow link branch removes target

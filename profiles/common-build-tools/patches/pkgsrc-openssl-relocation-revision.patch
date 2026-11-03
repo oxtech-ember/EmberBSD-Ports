@@ -1,0 +1,24 @@
+--- a/security/openssl/Makefile
++++ b/security/openssl/Makefile
+@@ -4,7 +4,7 @@
+ # is not possible for users who have bootstrapped without OpenSSL
+ # to install it and enable HTTPS fetching.
+ DISTNAME=	openssl-4.1.0
+-PKGREVISION=	1
++PKGREVISION=	2
+ CATEGORIES=	security
+ MASTER_SITES=	${MASTER_SITE_GITHUB:=openssl/}
+ GITHUB_RELEASE=	${DISTNAME}
+@@ -34,6 +34,12 @@
+ MAKE_FLAGS+=		MANDIR=${PREFIX}/${PKGMANDIR}
+ 
+ .include "../../mk/bsd.prefs.mk"
++
++# Keep explicit custom paths fixed when the native shared library moves.
++SUBST_CLASSES+=		ember-prefix
++SUBST_STAGE.ember-prefix=	pre-configure
++SUBST_FILES.ember-prefix=	crypto/defaults.c
++SUBST_VARS.ember-prefix=	PREFIX
+ 
+ .if ${OPSYS} == "NetBSD" && \
+ 	((${MACHINE_ARCH} == "hppa") || \

@@ -1,0 +1,43 @@
+Standard Darwin OpenSSL runtime paths follow the shared library location.
+Origin: EmberBSD contributors (AI-assisted). SPDX-License-Identifier: Apache-2.0.
+
+--- crypto/ct/ct_log.c.orig
++++ crypto/ct/ct_log.c
+@@ -162,10 +162,33 @@
+ {
+     const char *fpath = ossl_safe_getenv(CTLOG_FILE_EVP);
+ 
+-    if (fpath == NULL)
+-        fpath = CTLOG_FILE;
+-
+-    return CTLOG_STORE_load_file(store, fpath);
++    if (fpath != NULL)
++        return CTLOG_STORE_load_file(store, fpath);
++#if defined(__APPLE__)
++    {
++        const char *directory = ossl_get_openssldir();
++        const char suffix[] = "/ct_log_list.cnf";
++        char *path;
++        size_t length;
++        int result;
++
++        if (directory == NULL)
++            return 0;
++        length = strlen(directory);
++        path = OPENSSL_malloc(length + sizeof(suffix));
++        if (path == NULL) {
++            ERR_raise(ERR_LIB_CT, ERR_R_MALLOC_FAILURE);
++            return 0;
++        }
++        memcpy(path, directory, length);
++        memcpy(path + length, suffix, sizeof(suffix));
++        result = CTLOG_STORE_load_file(store, path);
++        OPENSSL_free(path);
++        return result;
++    }
++#else
++    return CTLOG_STORE_load_file(store, CTLOG_FILE);
++#endif
+ }
+ 
+ /*
