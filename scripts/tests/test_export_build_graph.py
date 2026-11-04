@@ -352,6 +352,28 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
             self.assertEqual(before[key]['dependencies'], after[key]['dependencies'])
 
     @unittest.skipUnless(os.environ.get('EMBERBSD_BMAKE'), 'set EMBERBSD_BMAKE for native metadata checks')
+    def test_real_bmake_ignores_stale_phase_makevars(self):
+        package = self.pkgsrc / 'devel/app'
+        cache = package / '.stage-install_makevars.mk'
+        cache.write_text('_MAKEVARS_MK=defined\nDEPENDS=stale>=1:../../devel/stale\n')
+        (package / 'Makefile').write_text(
+            '.if !defined(_MAKEVARS_MK)\n.sinclude "' + str(cache) + '"\n.endif\n'
+            'PKGNAME=app-1\nPKGVERSION=1\nMACHINE_ARCH=x86_64\n'
+            'MACHINE_GNU_PLATFORM=x86_64--linux\n'
+            'DEPENDS?=runtime>=1:../../devel/runtime\nall:\n')
+        (self.pkgsrc / 'devel/runtime/Makefile').write_text(
+            'PKGNAME=runtime-1\nPKGVERSION=1\nMACHINE_ARCH=x86_64\n'
+            'MACHINE_GNU_PLATFORM=x86_64--linux\nall:\n')
+        graph = self.run_export('--bmake', os.environ['EMBERBSD_BMAKE'], '--mode', 'native',
+                                '--target', 'x86_64', '--triplet', 'x86_64--linux',
+                                '--dependency-phase', 'runtime')
+        nodes = self.nodes(graph)
+        self.assertEqual(set(nodes), {'host:devel/app', 'host:devel/runtime'})
+        self.assertEqual(nodes['host:devel/app']['dependencies'],
+                         [{'id': 'host:devel/runtime', 'kind': 'runtime'}])
+        self.assertTrue(cache.is_file())
+
+    @unittest.skipUnless(os.environ.get('EMBERBSD_BMAKE'), 'set EMBERBSD_BMAKE for native metadata checks')
     def test_real_bmake_expands_vendor_tree(self):
         vendor = self.pkgsrc / 'archivers/vendor/files'
         vendor.mkdir(parents=True)

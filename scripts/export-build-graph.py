@@ -31,7 +31,7 @@ DEPENDENCIES = {
 }
 RESERVED_MAKE_VARIABLES = {
     'MAKECONF', 'USE_CROSS_COMPILE', 'MAKEFLAGS', 'MFLAGS', '.MAKEFLAGS',
-    'MAKEFILE', 'MAKEOBJDIR', 'MAKEOBJDIRPREFIX', 'PKGNAME_REQD',
+    'MAKEFILE', 'MAKEOBJDIR', 'MAKEOBJDIRPREFIX', 'PKGNAME_REQD', '_MAKEVARS_MK',
 }
 
 
@@ -118,7 +118,7 @@ class Exporter:
     def query(self, package, cross, settings, environment, pattern):
         command = [str(self.bmake), '-C', str(self.root / package),
                    'MAKECONF=' + str(self.makeconf),
-                   'USE_CROSS_COMPILE=' + cross]
+                   'USE_CROSS_COMPILE=' + cross, '_MAKEVARS_MK=defined']
         command += [key + '=' + value for key, value in self.make_variables.items()]
         command += [key + '=' + value for key, value in sorted(settings.items())]
         if pattern:
