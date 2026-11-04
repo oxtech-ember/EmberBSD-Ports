@@ -12,6 +12,8 @@ import tempfile
 p = argparse.ArgumentParser()
 for name in ('source', 'rustc', 'host-linker', 'host-prefix'):
     p.add_argument('--' + name, type=Path, required=True)
+p.add_argument('--producer-command', nargs=argparse.REMAINDER,
+               help='Run the real LLVM producer --plan with the same explicit build inputs')
 a = p.parse_args()
 text = (a.source / 'src/shim_utils/src/shared_helpers.rs').read_text()
 start = text.index('pub fn dylib_path_var()')
@@ -27,6 +29,12 @@ env = os.environ.copy()
 env.pop('DYLD_LIBRARY_PATH', None)
 env.pop('DYLD_INSERT_LIBRARIES', None)
 env['DYLD_FALLBACK_LIBRARY_PATH'] = str(a.host_prefix / 'lib')
+if a.producer_command:
+    if '--plan' not in a.producer_command:
+        p.error('--producer-command must request --plan')
+    # The producer must choose its own runtime instead of inheriting a caller's.
+    plan_env = dict(env, DYLD_FALLBACK_LIBRARY_PATH=str(a.host_prefix / 'missing-runtime'))
+    subprocess.run(a.producer_command, env=plan_env, check=True)
 with tempfile.TemporaryDirectory(prefix='rust-loader-') as tmp:
     source = Path(tmp) / 'probe.rs'
     exe = Path(tmp) / 'probe'
