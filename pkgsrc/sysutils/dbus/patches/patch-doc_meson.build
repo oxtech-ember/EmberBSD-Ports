@@ -1,0 +1,26 @@
+Generate HTML as UTF-8 so documentation paths relocate with the package.
+
+Origin: EmberBSD (AI-assisted).
+
+--- doc/meson.build.orig
++++ doc/meson.build
+@@ -103,7 +103,7 @@
+ if build_xml_docs
+     foreach man: man_html_list + html_list
+         html_files += custom_target(man.get('html'),
+-            input: man.get('xml'),
++            input: [man.get('xml'), 'emberbsd-html-utf8.xsl'],
+             output: man.get('html'),
+             command: [
+                 xsltproc,
+@@ -111,8 +111,8 @@
+                 '--xinclude',
+                 '--stringparam', 'generate.consistent.ids', '1',
+                 '-o', '@OUTPUT@',
+-                'http://docbook.sourceforge.net/release/xsl/current/html/docbook.xsl',
+-                '@INPUT@',
++                '@INPUT1@',
++                '@INPUT0@',
+             ],
+             install: true,
+             install_dir: docs_dir,

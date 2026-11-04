@@ -1,0 +1,12 @@
+Override only DocBook HTML output encoding; retain upstream templates.
+
+Origin: EmberBSD (AI-assisted).
+
+--- /dev/null
++++ doc/emberbsd-html-utf8.xsl
+@@ -0,0 +1,5 @@
++<?xml version="1.0"?>
++<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0">
++  <xsl:import href="http://docbook.sourceforge.net/release/xsl/current/html/docbook.xsl"/>
++  <xsl:output method="html" encoding="UTF-8" indent="no"/>
++</xsl:stylesheet>
