@@ -151,8 +151,8 @@ def static_profile_checks():
         and "-Damdgpu=disabled" in drm_makefile,
     )
     check(
-        "common profile enforces libdrm 2.4.134nb8",
-        "libdrm>=2.4.134nb8" in profile and 'PKGREVISION:U} != "8"' in profile,
+        "common libdrm buildlink enforces the compatible nb8 API and ABI floor",
+        (REPOSITORY / "pkgsrc/x11/libdrm/buildlink3.mk").read_text().count("libdrm>=2.4.134nb8") == 2,
     )
     check(
         "common profile enforces MesaLib 26.2.6nb11",
@@ -235,11 +235,11 @@ def profile_checks():
 
         drm_arm = query(
             "MACHINE_ARCH=aarch64", "PKGPATH=x11/libdrm", "RECIPE=drm",
-            "DISTNAME=libdrm-2.4.134", "PKGREVISION=8"
+            "DISTNAME=libdrm-2.4.134", "PKGREVISION=9"
         )
         drm_amd = query(
             "MACHINE_ARCH=x86_64", "PKGPATH=x11/libdrm", "RECIPE=drm",
-            "DISTNAME=libdrm-2.4.134", "PKGREVISION=8"
+            "DISTNAME=libdrm-2.4.134", "PKGREVISION=9"
         )
         check(
             "AArch64 libdrm disables Intel and AMDGPU modules",

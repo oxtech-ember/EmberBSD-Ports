@@ -2,7 +2,7 @@
 
 DISTNAME=	docbook-xsl-nons-1.79.2
 PKGNAME=	${DISTNAME:S/-nons//}
-PKGREVISION=	8
+PKGREVISION=	9
 CATEGORIES=	textproc
 MASTER_SITES=	${MASTER_SITE_GITHUB:=docbook/}
 GITHUB_PROJECT=	xslt10-stylesheets
@@ -12,12 +12,18 @@ EXTRACT_SUFX=	.tar.bz2
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://github.com/docbook/xslt10-stylesheets/
 COMMENT=	Docbook XSL modular stylesheet
+LICENSE=		docbook-xsl-1.79.2
 
 DEPENDS+=	docbook-xml>=4.2:../../textproc/docbook-xml
 
 USE_LANGUAGES=	# empty
 USE_TOOLS+=	pax
 NO_BUILD=	yes
+
+INSTALLATION_DIRS+=	share/licenses/${PKGBASE}
+
+post-install:
+	${INSTALL_DATA} ${WRKSRC}/COPYING ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}/COPYING
 
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
@@ -65,7 +71,7 @@ XSLMODS+=	xhtml5
 
 XML_CATALOGS=	${XSLDIR}/catalog.xml
 
-INSTALLATION_DIRS=	${EGDIR} ${XSLDIR}
+INSTALLATION_DIRS+=	${EGDIR} ${XSLDIR}
 
 CHECK_INTERPRETER_SKIP+=	share/xsl/docbook/epub/bin/dbtoepub
 

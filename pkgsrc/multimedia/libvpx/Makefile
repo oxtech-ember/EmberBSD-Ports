@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.111 2026/03/27 21:35:19 tnn Exp $
 
 DISTNAME=	libvpx-1.16.0
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	multimedia
 MASTER_SITES=	${MASTER_SITE_GITHUB:=webmproject/}
 GITHUB_TAG=	v${PKGVERSION_NOREV}
@@ -26,6 +26,7 @@ CONFIGURE_ARGS+=	--disable-unit-tests
 
 .if ${MACHINE_ARCH} == "i386" || ${MACHINE_ARCH} == "x86_64"
 TOOL_DEPENDS+=		yasm-[0-9]*:../../devel/yasm
+CONFIGURE_ENV+=		AS=${TOOLBASE}/bin/yasm
 .endif
 
 REPLACE_BASH=		configure

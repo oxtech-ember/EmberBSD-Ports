@@ -32,3 +32,11 @@ CMake executable and the patched QtBase source directory. It sets `APPLE` to
 exercise host-Darwin cross configuration, then checks that explicit non-Apple
 systems skip the SDK query while native Darwin and Qt's Apple target systems
 reach a stubbed `xcrun` boundary. The test never runs the system `xcrun`.
+
+## Native Darwin install RPATH
+
+Qt modules retain the selected Ports prefix library search path during native
+Darwin installation. This keeps dependencies resolvable in the producer
+prefix; portable package qualification remains separate. The
+`native-install-rpath.py` regression uses selected native CMake and a Mach-O
+library; it does not build Qt.

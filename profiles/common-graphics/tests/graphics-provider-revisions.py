@@ -11,8 +11,7 @@ def main():
     for name in ('pkgsrc', 'bmake', 'makeconf', 'awk'):
         parser.add_argument('--' + name, type=Path, required=True)
     args = parser.parse_args()
-    for package, identity, previous in [('devel/libffi', 'libffi 3.8.0nb2', '1'),
-                                         ('x11/libdrm', 'libdrm 2.4.134nb8', '7')]:
+    for package, identity, previous in [('devel/libffi', 'libffi 3.8.0nb2', '1')]:
         base = [str(args.bmake), '-C', str(args.pkgsrc / package),
                 'MAKECONF=' + str(args.makeconf), 'TOOLS_PLATFORM.awk=' + str(args.awk),
                 'show-vars', 'VARNAMES=PKG_FAIL_REASON']

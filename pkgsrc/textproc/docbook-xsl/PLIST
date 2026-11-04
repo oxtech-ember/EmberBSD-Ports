@@ -1539,3 +1539,4 @@ share/xsl/docbook/xhtml5/profile-docbook.xsl
 share/xsl/docbook/xhtml5/xhtml-docbook.xsl
 share/xsl/docbook/xhtml5/xhtml-profile-docbook.xsl
 share/xsl/docbook/xhtml5/xhtml2xhtml5.xsl
+share/licenses/docbook-xsl/COPYING
