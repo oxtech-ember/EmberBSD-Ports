@@ -1,62 +1,212 @@
-BSD install: bind an explicit initial native child shell and avoid a bootstrap checker cycle.
+BSD install: selected native shell and strip follow the executable; avoid bootstrap checker cycle.
 
 Origin: EmberBSD, AI-assisted adaptation of the pinned pkgsrc bootstrap recipe.
 The upstream BSD source and copyright notices remain unchanged.
-The default uses _PATH_BSHELL. An explicit native producer selects its shell
-for strip arguments and after-install commands. TARGET_STRIP stays canonical.
 
 --- a/sysutils/bsdinstall/Makefile
 +++ b/sysutils/bsdinstall/Makefile
-@@ -13,6 +13,9 @@
- POLICY_UPDATE_LIMITED=	bootstrap
+@@ -1,7 +1,7 @@
+ # $NetBSD: Makefile,v 1.8 2025/04/19 08:07:27 wiz Exp $
+ 
+ DISTNAME=	bsdinstall-20160108
+-PKGREVISION=	1
++PKGREVISION=	2
+ CATEGORIES=	sysutils
+ MASTER_SITES=	# empty
+ DISTFILES=	# empty
+@@ -14,6 +14,9 @@
  
  BOOTSTRAP_PKG=	yes
-+
+ 
 +# checkperms itself requires this bootstrap installer.
 +CHECK_PERMS=	no
- 
++
  USE_BSD_MAKEFILE=	yes
  USE_FEATURES=		nbcompat
-@@ -29,6 +29,11 @@
+ 
+@@ -24,11 +27,29 @@
+ 	@${TOUCH} ${WRKSRC}/bsdinstall.cat1
+ 
+ CPPFLAGS+=	-D_PATH_DEVNULL=\"/dev/null\"
+-CPPFLAGS+=	-DTARGET_STRIP=\"${TOOLS_PLATFORM.strip:Q}\"
+ 
  CPPFLAGS.SunOS+=	-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
  
  .include "../../mk/bsd.prefs.mk"
 +
-+# Bind child shells only for an explicit initial native producer.
-+.if defined(EMBERBSD_BSDINSTALL_SHELL)
-+CPPFLAGS+=	-DEMBERBSD_BSDINSTALL_SHELL=\"${EMBERBSD_BSDINSTALL_SHELL:Q}\"
++# Native children use the selected providers; target tools keep donor defaults.
++.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
++_EMBER_BSDINSTALL_SHELL= ${EMBERBSD_BSDINSTALL_SHELL:U${TOOLS_PLATFORM.sh}}
++.if "${TOOLS_PLATFORM.strip:H}" == "${LOCALBASE}/bin"
++CPPFLAGS+= -DEMBERBSD_EXECUTABLE_RELATIVE=1
++CPPFLAGS+= -DTARGET_STRIP=\"@executable_path/../bin/${TOOLS_PLATFORM.strip:T}\"
++.else
++CPPFLAGS+= -DTARGET_STRIP=\"${TOOLS_PLATFORM.strip:Q}\"
++.endif
++.if !empty(_EMBER_BSDINSTALL_SHELL)
++.if "${_EMBER_BSDINSTALL_SHELL:H}" == "${LOCALBASE}/bin"
++CPPFLAGS+= -DEMBERBSD_EXECUTABLE_RELATIVE=1
++CPPFLAGS+= -DEMBERBSD_BSDINSTALL_SHELL=\"@executable_path/../bin/${_EMBER_BSDINSTALL_SHELL:T}\"
++.else
++CPPFLAGS+= -DEMBERBSD_BSDINSTALL_SHELL=\"${_EMBER_BSDINSTALL_SHELL:Q}\"
++.endif
++.endif
 +.endif
  .if !empty(MACHINE_PLATFORM:MSunOS-5.11-*)
  MAKE_ENV+=	NOGCCERROR=yes
  .endif
 --- a/sysutils/bsdinstall/files/bsdinstall.c
 +++ b/sysutils/bsdinstall/files/bsdinstall.c
-@@ -107,6 +107,10 @@
- 
- #ifdef SUPPORT_MTREE
+@@ -109,6 +109,15 @@
  #include "mtree.h"
-+#endif
-+
-+#ifndef EMBERBSD_BSDINSTALL_SHELL
-+#define EMBERBSD_BSDINSTALL_SHELL _PATH_BSHELL
  #endif
  
++#ifndef EMBERBSD_BSDINSTALL_SHELL
++#define EMBERBSD_BSDINSTALL_SHELL _PATH_BSHELL
++#endif
++
++#ifdef EMBERBSD_EXECUTABLE_RELATIVE
++#include "ember-execpath.h"
++static const char *ember_argv0;
++#endif
++
  #define STRIP_ARGS_MAX 32
-@@ -1046,7 +1050,7 @@
+ #define BACKUP_SUFFIX ".old"
+ 
+@@ -182,6 +191,9 @@
+ 	int		ch, no_target;
+ 	char		*p, *to_name;
+ 
++#ifdef EMBERBSD_EXECUTABLE_RELATIVE
++	ember_argv0 = argv[0];
++#endif
+ 	setprogname(argv[0]);
+ 
+ 	iflags = 0;
+@@ -1014,10 +1026,25 @@
+ 	int	serrno, status;
+ 	const char * volatile stripprog, *progname;
+ 	char *cmd;
++#ifdef EMBERBSD_EXECUTABLE_RELATIVE
++	char *selected = NULL, *shell = NULL, *quoted_prog = NULL, *quoted_file = NULL;
++	int selected_default = 0;
++#endif
+ 
+ 	if ((stripprog = getenv("STRIP")) == NULL || *stripprog == '\0') {
+ #ifdef TARGET_STRIP
+ 		stripprog = TARGET_STRIP;
++#ifdef EMBERBSD_EXECUTABLE_RELATIVE
++		if (strncmp(stripprog, "@executable_path/", 17) == 0) {
++			selected = ember_execpath(ember_argv0, stripprog);
++			if (selected == NULL) {
++				(void)unlink(to_name);
++				errx(1, "cannot resolve selected strip relative to executable");
++			}
++			selected_default = 1;
++			stripprog = selected;
++		}
++#endif
+ #else
+ 		stripprog = _PATH_STRIP;
+ #endif
+@@ -1030,13 +1057,34 @@
+ 		 * Build up a command line and let /bin/sh
+ 		 * parse the arguments.
+ 		 */
+-		int ret = asprintf(&cmd, "%s %s %s", stripprog, stripArgs,
+-		    to_name);
++		int ret;
++#ifdef EMBERBSD_EXECUTABLE_RELATIVE
++		if (selected_default) {
++			quoted_prog = ember_shell_quote(stripprog);
++			quoted_file = ember_shell_quote(to_name);
++			if (quoted_prog == NULL || quoted_file == NULL) {
++				(void)unlink(to_name);
++				errx(1, "cannot quote selected strip invocation");
++			}
++		}
++		ret = asprintf(&cmd, "%s %s %s",
++		    selected_default ? quoted_prog : stripprog, stripArgs,
++		    selected_default ? quoted_file : to_name);
++#else
++		ret = asprintf(&cmd, "%s %s %s", stripprog, stripArgs, to_name);
++#endif
+ 
+ 		if (ret == -1 || cmd == NULL)
+ 			err(1, "asprintf failed");
+ 	}
+ 
++#ifdef EMBERBSD_EXECUTABLE_RELATIVE
++	if (stripArgs && (shell = ember_execpath(ember_argv0,
++	    EMBERBSD_BSDINSTALL_SHELL)) == NULL) {
++		(void)unlink(to_name);
++		errx(1, "cannot resolve selected shell relative to executable");
++	}
++#endif
+ 	switch (vfork()) {
+ 	case -1:
+ 		serrno = errno;
+@@ -1046,7 +1094,11 @@
  	case 0:
  
  		if (stripArgs)
 -			execl(_PATH_BSHELL, "sh", "-c", cmd, NULL);
++#ifdef EMBERBSD_EXECUTABLE_RELATIVE
++			execl(shell, "sh", "-c", cmd, NULL);
++#else
 +			execl(EMBERBSD_BSDINSTALL_SHELL, "sh", "-c", cmd, NULL);
++#endif
  		else
  			execlp(stripprog, "strip", to_name, NULL);
  
-@@ -1097,7 +1101,7 @@
+@@ -1063,6 +1115,12 @@
+ 	}
+ 
+ 	free(cmd);
++#ifdef EMBERBSD_EXECUTABLE_RELATIVE
++	free(selected);
++	free(shell);
++	free(quoted_prog);
++	free(quoted_file);
++#endif
+ }
+ 
+ /*
+@@ -1075,6 +1133,14 @@
+ {
+ 	int	serrno, status;
+ 	char	*cmd;
++#ifdef EMBERBSD_EXECUTABLE_RELATIVE
++	char *shell = ember_execpath(ember_argv0, EMBERBSD_BSDINSTALL_SHELL);
++	if (shell == NULL) {
++		if (errunlink)
++			(void)unlink(to_name);
++		errx(1, "cannot resolve selected shell relative to executable");
++	}
++#endif
+ 
+ 	switch (vfork()) {
+ 	case -1:
+@@ -1097,7 +1163,11 @@
  
  		sprintf(cmd, "%s %s", command, to_name);
  
 -		execl(_PATH_BSHELL, "sh", "-c", cmd, NULL);
++#ifdef EMBERBSD_EXECUTABLE_RELATIVE
++		execl(shell, "sh", "-c", cmd, NULL);
++#else
 +		execl(EMBERBSD_BSDINSTALL_SHELL, "sh", "-c", cmd, NULL);
++#endif
  
  		warn("%s: exec of after install command", command);
  		_exit(1);
+@@ -1106,6 +1176,9 @@
+ 		if ((wait(&status) == -1 || status) && errunlink)
+ 			(void)unlink(to_name);
+ 	}
++#ifdef EMBERBSD_EXECUTABLE_RELATIVE
++	free(shell);
++#endif
+ }
+ 
+ /*
