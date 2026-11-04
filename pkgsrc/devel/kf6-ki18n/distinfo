@@ -3,5 +3,7 @@ $NetBSD: distinfo,v 1.5 2026/09/06 10:05:12 markd Exp $
 BLAKE2s (ki18n-6.31.0.tar.xz) = adf329d8f82b6dc51173d759f3ff3afc123d7a2fd70574e083653bb5fe75e0c6
 SHA512 (ki18n-6.31.0.tar.xz) = 80c1e249cc0dd1cc694df21a3039c21287a620d26c4829978da4bc57ca58d80bc97a4d2384dda44cfbae47f204c46cdc07bbd48fd8facc58aa24656f0b650e1f
 Size (ki18n-6.31.0.tar.xz) = 3049752 bytes
+SHA1 (patch-cmake_KF6I18nMacros.cmake.in) = 78804a55ab95c98e8dc59432b72b6d0ad0096ecd
+SHA1 (patch-cmake_build-tsfiles.cmake) = f5dc0145cbf1674c8e02f5836b9b99cb9828b495
 SHA1 (patch-src_i18n-qml_CMakeLists.txt) = 8e7f03a80d858718d986d2631e85e4fcf528fa5d
 SHA1 (patch-src_i18n_CMakeLists.txt) = 24958983172878b7cc94055e27d5430d90d30b61

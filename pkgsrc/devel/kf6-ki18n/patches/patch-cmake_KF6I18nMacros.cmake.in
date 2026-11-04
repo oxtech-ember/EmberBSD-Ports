@@ -1,0 +1,32 @@
+Use consumer-selected Python 3 for translation build tools.
+
+Origin: EmberBSD (AI-assisted).
+
+--- cmake/KF6I18nMacros.cmake.in.orig
++++ cmake/KF6I18nMacros.cmake.in
+@@ -4,11 +4,11 @@
+ 
+ find_package(Gettext REQUIRED)
+ 
+-# The Python executable used for building ki18n will be used as a fallback
+-# solution if it cannot be found in $PATH when building applications.
+-find_program(KI18N_PYTHON_EXECUTABLE NAMES python3 python2 python)
+-if(NOT KI18N_PYTHON_EXECUTABLE)
+-    set(KI18N_PYTHON_EXECUTABLE "@FALLBACK_KI18N_PYTHON_EXECUTABLE@")
++# Python runs on the consumer build host, never on the package producer.
++if(Python3_EXECUTABLE)
++    set(KI18N_PYTHON_EXECUTABLE "${Python3_EXECUTABLE}")
++else()
++    find_program(KI18N_PYTHON_EXECUTABLE NAMES python3 NO_CMAKE_FIND_ROOT_PATH)
+ endif()
+ 
+ set(_ki18n_pmap_compile_script ${CMAKE_CURRENT_LIST_DIR}/ts-pmap-compile.py)
+@@ -148,7 +148,7 @@
+     add_custom_target(tsfiles-${pathmd5} ALL
+         COMMENT "Generating ts..."
+         COMMAND ${CMAKE_COMMAND}
+-                -DPython3_EXECUTABLE=${KI18N_PYTHON_EXECUTABLE}
++                "-DPython3_EXECUTABLE=${KI18N_PYTHON_EXECUTABLE}"
+                 -D_ki18n_pmap_compile_script=${_ki18n_pmap_compile_script}
+                 -DCOPY_TO=${CMAKE_CURRENT_BINARY_DIR}/${dirname}
+                 -DPO_DIR=${absolute_podir}
