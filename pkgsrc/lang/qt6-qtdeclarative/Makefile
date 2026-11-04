@@ -2,7 +2,7 @@
 
 DISTNAME=	qtdeclarative-everywhere-src-${QTVERSION}
 PKGNAME=	qt6-qtdeclarative-${QTVERSION}
-PKGREVISION=	5
+PKGREVISION=	6
 COMMENT=	Qt6 module for the QML language
 CATEGORIES=	lang x11
 
@@ -13,8 +13,8 @@ LICENSE=	gnu-lgpl-v3 OR gnu-gpl-v2 OR gnu-gpl-v3
 PKG_OPTIONS_VAR= PKG_OPTIONS.qt6-qtdeclarative
 .if ${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 PKG_SUPPORTED_OPTIONS+= minimal-runtime
-.endif
 .include "../../mk/bsd.options.mk"
+.endif
 PLIST_VARS+= languageserver
 .if empty(PKG_OPTIONS:Mminimal-runtime)
 PLIST.languageserver= yes
