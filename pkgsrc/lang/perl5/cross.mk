@@ -4,7 +4,7 @@
 .if ${OPSYS} != "NetBSD" || (${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64")
 PKG_FAIL_REASON+= "The Perl cross recipe requires EmberBSD/aarch64 or EmberBSD/x86_64"
 .endif
-TOOL_DEPENDS+= perl>=5.44.0nb13:../../lang/perl5
+TOOL_DEPENDS+= perl>=5.44.0nb16:../../lang/perl5
 _PERL5_HOST_TOOLDIR= ${TOOLBASE}/libexec/perl5/${PKGVERSION_NOREV}
 EMBERBSD_PERL_HOST_MINIPERL?= ${_PERL5_HOST_TOOLDIR}/miniperl
 EMBERBSD_PERL_HOST_GENERATE?= ${_PERL5_HOST_TOOLDIR}/generate_uudmap
@@ -47,6 +47,10 @@ CONFIGURE_ARGS+= -Dfirstmakefile=GNUmakefile
 CONFIGURE_ARGS+= -Dusecrosscompile -Dosname=netbsd -Dosvers=${OS_VERSION:Q}
 CONFIGURE_ARGS+= -Dtargetarch=${MACHINE_ARCH}-netbsd -Darchname=${MACHINE_ARCH}-netbsd
 CONFIGURE_ARGS+= -Dsysroot=${CROSS_DESTDIR:Q}
+# The build tree executes native miniperl through a symlink or copy. Select
+# the host build shell explicitly for every generator in either layout.
+CONFIGURE_ENV+= PERL_BUILD_SHELL=${CONFIG_SHELL:Q}
+MAKE_ENV+= PERL_BUILD_SHELL=${CONFIG_SHELL:Q}
 CONFIGURE_ARGS+= -Dhostperl=${EMBERBSD_PERL_HOST_MINIPERL:Q}
 CONFIGURE_ARGS+= -Dhostgenerate=${EMBERBSD_PERL_HOST_GENERATE:Q}
 CONFIGURE_ARGS+= -Dperl=${EMBERBSD_CROSS_BUILD_PERL:Q}

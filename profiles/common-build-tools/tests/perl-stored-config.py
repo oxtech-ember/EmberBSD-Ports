@@ -86,6 +86,38 @@ cc='/build/tooldir/bin/cc'
             helper('fill', *SET, str(work / 't.sh'), str(work / 'out.sh'))
             self.assertIn("cc='/build/tooldir/bin/cc'", (work / 'out.sh').read_text())
 
+    def test_capture_and_fill_keep_searches_in_selected_sysroot(self):
+        unsafe = ("ccflags='-pthread -I/usr/include -I/usr/local/include'\n"
+                  "cppflags='-isystem /usr/pkg/include -iquote/usr/pkg/include -I/usr/local/include'\n"
+                  "optimize='-O2 -I/usr/include'\n"
+                  "ldflags='-L/usr/lib -L/usr/pkg/lib -Wl,-R/usr/pkg/lib'\n"
+                  "lddlflags='-shared -L/usr/lib -L/usr/pkg/lib'\n"
+                  "libpth='/lib /usr/lib /usr/pkg/lib /usr/local/lib'\n"
+                  "libspath='/usr/lib /usr/local/lib'\n"
+                  "locincpth='/usr/pkg/include'\nloclibpth='/usr/pkg/lib'\n")
+        for arch in ('x86_64', 'aarch64'):
+            with self.subTest(arch=arch), tempfile.TemporaryDirectory() as directory:
+                work = Path(directory)
+                (work / 'in.sh').write_text(self.SOURCE + unsafe)
+                helper('capture', '--identity', 'perl-' + arch, *SET,
+                       str(work / 'in.sh'), str(work / 'template.sh'))
+                template = (work / 'template.sh').read_text()
+                self.assertNotIn('/usr/local/', template)
+                self.assertIn('-I@SYSROOT@/usr/include', template)
+                self.assertIn('-L@SYSROOT@/usr/pkg/lib', template)
+                self.assertIn('-isystem @SYSROOT@/usr/pkg/include', template)
+                self.assertIn('-iquote @SYSROOT@/usr/pkg/include', template)
+                self.assertIn('-Wl,-R/usr/pkg/lib', template)
+                helper('check', str(work / 'template.sh'))
+                helper('fill', *SET, str(work / 'template.sh'), str(work / 'out.sh'))
+                filled = (work / 'out.sh').read_text()
+                self.assertIn('-I' + PATHS['SYSROOT'] + '/usr/include', filled)
+                self.assertIn('-L' + PATHS['SYSROOT'] + '/usr/lib', filled)
+                self.assertIn('-Wl,-R/usr/pkg/lib', filled)
+                self.assertNotIn('/usr/local/', filled)
+                (work / 'unsafe.sh').write_text(unsafe)
+                self.assertNotEqual(helper('check', str(work / 'unsafe.sh'), check=False).returncode, 0)
+
     def test_capture_refuses_unmapped_host_path(self):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)

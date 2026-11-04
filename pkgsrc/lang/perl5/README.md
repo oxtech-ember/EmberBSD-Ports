@@ -34,8 +34,10 @@ existing selection.
 
 A selected runtime shell next to the Perl executable is resolved with Perl's
 own path relocation code. During the uninstalled build, the explicit
-`PERL_BUILD_SHELL` remains available to the full interpreter; miniperl keeps
-its build-time shell. The shared `PL_sh_path` symbol is unchanged.
+`PERL_BUILD_SHELL` selects the current build shell for both the full interpreter
+and miniperl. The cross recipe also supplies it when the build tree executes native
+miniperl through a symlink or copy. An installed miniperl resolves its
+shell relative to its versioned `libexec/perl5` directory. The shared `PL_sh_path` symbol is unchanged.
 Package configuration scripts run after textual prefix relocation through the
 SDK's qualified deferred-hook contract.
 
