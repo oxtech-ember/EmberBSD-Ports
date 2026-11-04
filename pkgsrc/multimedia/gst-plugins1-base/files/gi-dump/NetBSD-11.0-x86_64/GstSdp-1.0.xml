@@ -1,0 +1,14 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-x86_64
+recipe: multimedia/gst-plugins1-base
+package: gst-plugins1-base-1.28.8
+program: GstSdp-1.0
+types-sha256: 324c8e85cca5090155c7b3efdc207e8065c656d7c364541d63d5c1969f6240b4
+dump-sha256: e06399c0e80384bd2a1f7ffd73471c36c85d37b7dd41db5478f9e474e3ccf033
+-->
+<?xml version="1.0"?>
+<dump>
+  <boxed name="GstMIKEYMessage" get-type="gst_mikey_message_get_type"/>
+  <boxed name="GstMIKEYPayload" get-type="gst_mikey_payload_get_type"/>
+  <boxed name="GstSDPMessage" get-type="gst_sdp_message_get_type"/>
+</dump>

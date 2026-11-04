@@ -1,0 +1,12 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-x86_64
+recipe: www/libproxy
+package: libproxy-0.5.12
+program: Libproxy-1.0
+types-sha256: 1af60e8f16af2c36090d7ff651fc185d94d83727ebfbb78b85e197ffd8cecf13
+dump-sha256: 1225de442703d9602c68f3f8dfddbea7cbaf0a4bcef487dc5acbf08781f97487
+-->
+<?xml version="1.0"?>
+<dump>
+  <boxed name="pxProxyFactory" get-type="px_proxy_factory_get_type"/>
+</dump>
