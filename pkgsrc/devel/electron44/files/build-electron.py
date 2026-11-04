@@ -467,6 +467,19 @@ def host_buildlink(options, sdk, native, environment, host_binding):
                 *(['--stage-root', str(selected[1])] if selected[1] else []), '--base-makeconf', str(selected[2]),
                 '--binding-record', str(record), '--bmake-mk', str(selected[3]),
                 '--work', str(work), '--lock-root', str(options.lock_root)]
+    if not previous and getattr(options, 'resume_configure', False):
+        for candidate in sorted(root.glob('host-buildlink-*')):
+            if not (candidate / 'selection.json').is_file():
+                continue
+            try:
+                result = sdk['process'].capture(command(candidate) + ['--check'], env=environment)
+            except sdk['process'].CommandError as error:
+                if error.returncode == 3:
+                    continue
+                raise
+            environment['EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK'] = str(candidate)
+            return result.stdout.decode('utf-8', 'strict').strip()
+        raise ValueError('initial resume has no compatible existing host buildlink')
     if previous:
         previous = Path(previous)
         require(previous.parent == root and previous.name.startswith('host-buildlink-'),
@@ -1371,6 +1384,8 @@ def gn_source(options):
         require(getattr(options, 'phase', '') == 'configure',
                 'common source view is missing; configure a new output')
         return view.create(options.workspace / 'src', common, destination, **sources)
+    if getattr(options, 'resume_configure', False):
+        return view.complete_initial(options.workspace / 'src', common, destination, **sources)
     return view.verify(options.workspace / 'src', common, destination, **sources)
 
 
@@ -1418,12 +1433,27 @@ def configure(options):
     sdk = load_sdk(options.sdk_source)
     verify_source(options.workspace, options.ports_source, options.git)
     work = options.work
-    require(not work.exists(), 'configure output must be new; retain an unsuccessful output for diagnosis')
-    work.mkdir()
+    resume = getattr(options, 'resume_configure', False)
+    if resume:
+        require(work.is_dir() and not work.is_symlink() and not (work / 'configuration.json').exists(),
+                'initial resume requires existing unconfigured work')
+        output = work / 'out'
+        require(output.is_dir() and not output.is_symlink() and
+                {item.name for item in output.iterdir()} == {'args.gn'},
+                'initial resume requires out containing only args.gn')
+    else:
+        require(not work.exists(), 'configure output must be new; retain an unsuccessful output for diagnosis')
+        work.mkdir()
+        output = work / 'out'
     native, environment, values = producer_inputs(options, sdk)
+    if resume:
+        require((output / 'args.gn').is_file() and not (output / 'args.gn').is_symlink() and
+                (output / 'args.gn').read_text() == gn_arguments(values),
+                'initial resume GN arguments changed')
+    else:
+        output.mkdir()
+        (output / 'args.gn').write_text(gn_arguments(values))
     prepare_build_inputs(options, native, environment, sdk)
-    output = work / 'out'; output.mkdir()
-    (output / 'args.gn').write_text(gn_arguments(values))
     sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
         '--script-executable=' + native.tool('python'), '--ninja-executable=' + native.tool('ninja'),
         '--root-target=//electron', '--root-pattern=//electron:electron_dist_zip', '--fail-on-unused-args'],
@@ -1662,6 +1692,9 @@ def main():
         command.add_argument('--shared-abseil', action='store_true')
         command.add_argument('--shared-icu', action='store_true')
         command.add_argument('--shared-re2', action='store_true')
+        if phase == 'configure':
+            command.add_argument('--resume-configure', action='store_true',
+                                 help='resume an initial incomplete configuration without GN outputs')
         if phase == 'reconfigure':
             command.add_argument('--refresh-source-view', action='store_true',
                                  help='recompose generated sources, preserving existing Ninja objects')

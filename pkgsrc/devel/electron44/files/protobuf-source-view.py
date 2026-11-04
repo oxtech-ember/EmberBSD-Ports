@@ -287,7 +287,7 @@ ELECTRON_BUILD_MODULES = ('@electron/asar', '@electron/docs-parser',
                           'pre-flight', 'rolldown', 'semver', 'typescript')
 
 
-def electron_module_view(modules, dest, *, verify=False):
+def electron_module_links(modules):
     import json
     expected, bins = {}, {}
     for name in ELECTRON_BUILD_MODULES:
@@ -306,6 +306,11 @@ def electron_module_view(modules, dest, *, verify=False):
             require(path.is_relative_to(target), 'module command escapes its module: ' + command)
             bins[command] = str(path)
     links = {**expected, **{'.bin/' + c: t for c, t in bins.items()}}
+    return links
+
+
+def electron_module_view(modules, dest, *, verify=False):
+    links = electron_module_links(modules)
     dirs = {str(Path(n).parent) for n in links if '/' in n}
     if not verify:
         dest.mkdir()
@@ -425,6 +430,8 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     if protobuf:
         require(original.is_dir() and (protobuf / 'src').is_dir() and
                 (protobuf / 'third_party').is_dir(), 'incomplete common Protobuf source')
+    if node_modules is not None:
+        electron_module_links(Path(node_modules).resolve(strict=True))
     destination.mkdir(parents=True)
     def links(origin, dest, omit):
         dest.mkdir()
@@ -477,7 +484,7 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     return destination / 'src'
 
 
-def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None, _updates=None, _refresh=False):
+def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None, _updates=None, _refresh=False, _initial_missing=None):
     source = Path(source).resolve(strict=True)
     protobuf = Path(protobuf).resolve(strict=True) if protobuf is not None else None
     providers = {name: Path(value).resolve(strict=True) for name, value in
@@ -491,7 +498,10 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     def check(origin, dest, omit, extra):
         require(dest.is_dir() and not dest.is_symlink(), 'source view component must be a local directory: ' + str(dest))
         expected = entries(origin, omit)
-        require(set(item.name for item in dest.iterdir()) == set(expected) | set(extra),
+        actual = set(item.name for item in dest.iterdir())
+        allowed = set(expected) | set(extra)
+        require(actual <= allowed and set(expected) <= actual and
+                (_initial_missing is not None or actual == allowed),
                 'source view entries changed: ' + str(dest))
         for name, item in expected.items():
             link = dest / name
@@ -518,33 +528,96 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
         link = root / 'third_party/node/node_modules'
         require(link.is_symlink() and os.readlink(link) == str(Path(node_modules).resolve(strict=True)),
                 'common node_modules link changed')
-        electron_module_view(Path(node_modules).resolve(strict=True), root / 'electron/node_modules', verify=True)
+        module_view = root / 'electron/node_modules'
+        if _initial_missing is not None and not os.path.lexists(module_view):
+            _initial_missing.append(('modules', module_view, Path(node_modules).resolve(strict=True)))
+        else:
+            electron_module_view(Path(node_modules).resolve(strict=True), module_view, verify=True)
     if system_abseil:
-        replacements = abseil_replacements(source)
-        dependency_view(source / 'third_party/abseil-cpp', root / 'third_party/abseil-cpp',
-                        replacements, abseil_masks(source, replacements), verify=True)
+        component = root / 'third_party/abseil-cpp'
+        if _initial_missing is not None and not os.path.lexists(component):
+            _initial_missing.append(('abseil', component, None))
+        else:
+            replacements = abseil_replacements(source)
+            dependency_view(source / 'third_party/abseil-cpp', root / 'third_party/abseil-cpp',
+                            replacements, abseil_masks(source, replacements), verify=True)
     if system_icu:
-        replacements = icu_replacements(source)
-        dependency_view(source / 'third_party/icu', root / 'third_party/icu',
-                        replacements, shim_masks(replacements), verify=True)
+        component = root / 'third_party/icu'
+        if _initial_missing is not None and not os.path.lexists(component):
+            _initial_missing.append(('icu', component, None))
+        else:
+            replacements = icu_replacements(source)
+            dependency_view(source / 'third_party/icu', root / 'third_party/icu',
+                            replacements, shim_masks(replacements), verify=True)
     if system_re2:
-        replacements = re2_replacements(source)
-        dependency_view(source / 'third_party/re2', root / 'third_party/re2',
-                        replacements, shim_masks(replacements), verify=True)
+        component = root / 'third_party/re2'
+        if _initial_missing is not None and not os.path.lexists(component):
+            _initial_missing.append(('re2', component, None))
+        else:
+            replacements = re2_replacements(source)
+            dependency_view(source / 'third_party/re2', root / 'third_party/re2',
+                            replacements, shim_masks(replacements), verify=True)
     for name, path in providers.items():
         link = root / 'third_party' / name
-        _check_provider_link(link, path, _updates)
+        if _initial_missing is not None and not os.path.lexists(link):
+            _initial_missing.append(('link', link, path))
+        else:
+            _check_provider_link(link, path, _updates)
     if protobuf:
         path = root / 'third_party/protobuf'
-        common = {'src', 'third_party'} | ({'python'} if protobuf_protoc else set())
-        check(source / 'third_party/protobuf', path, common, common)
-        if protobuf_protoc:
-            python_view(protobuf, path / 'python', protobuf_protoc, verify=True)
-        for name in ('src', 'third_party'):
-            link = path / name
-            require(link.is_symlink() and os.readlink(link) == str(protobuf / name),
-                    'common Protobuf source link changed: ' + str(link))
+        if _initial_missing is not None and not os.path.lexists(path):
+            _initial_missing.append(('protobuf', path, Path(protobuf)))
+        else:
+            common = {'src', 'third_party'} | ({'python'} if protobuf_protoc else set())
+            check(source / 'third_party/protobuf', path, common, common)
+            if protobuf_protoc:
+                python_view(protobuf, path / 'python', protobuf_protoc, verify=True)
+            for name in ('src', 'third_party'):
+                link = path / name
+                require(link.is_symlink() and os.readlink(link) == str(protobuf / name),
+                        'common Protobuf source link changed: ' + str(link))
     return root
+
+
+
+def complete_initial(source, protobuf, destination, **sources):
+    """Complete missing tail components of an interrupted initial create."""
+    import tempfile
+    source = Path(source).resolve(strict=True)
+    destination = Path(destination).resolve(strict=True)
+    modules = sources.get('node_modules')
+    if modules is not None:
+        electron_module_links(Path(modules).resolve(strict=True))
+    missing = []
+    verify(source, protobuf, destination, **sources, _initial_missing=missing)
+    third_party = source / 'third_party'
+    for kind, target, value in missing:
+        require(not os.path.lexists(target), 'initial component appeared: ' + str(target))
+        if kind == 'link':
+            target.symlink_to(value, target_is_directory=True)
+            continue
+        with tempfile.TemporaryDirectory(prefix='.source-component-', dir=target.parent) as temp:
+            staged = Path(temp) / 'component'
+            if kind == 'modules':
+                electron_module_view(value, staged)
+            elif kind == 'protobuf':
+                staged.mkdir()
+                common = {'src', 'third_party'} | ({'python'} if sources.get('protobuf_protoc') else set())
+                for name, item in entries(third_party / 'protobuf', common).items():
+                    (staged / name).symlink_to(item, target_is_directory=item.is_dir())
+                for name in ('src', 'third_party'):
+                    (staged / name).symlink_to(value / name, target_is_directory=True)
+                if sources.get('protobuf_protoc'):
+                    python_view(value, staged / 'python', sources['protobuf_protoc'])
+            else:
+                name = {'abseil': 'abseil-cpp', 'icu': 'icu', 're2': 're2'}[kind]
+                replacements = {'abseil': abseil_replacements, 'icu': icu_replacements,
+                                're2': re2_replacements}[kind](source)
+                masks = abseil_masks(source, replacements) if kind == 'abseil' else shim_masks(replacements)
+                dependency_view(third_party / name, staged, replacements, masks)
+            require(not os.path.lexists(target), 'initial component appeared: ' + str(target))
+            staged.rename(target)
+    return destination / 'src'
 
 
 
