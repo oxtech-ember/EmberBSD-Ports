@@ -48,6 +48,7 @@ refresh_make()
 }
 
 refresh_make generate-install-scripts
+refresh_make install-script-data
 refresh_make _pkgformat-generate-metadata
 refresh_make package-create
 ```
@@ -55,7 +56,9 @@ refresh_make package-create
 These are the real pkgsrc backends, including `pkg_create` and its PLIST checks.
 The example uses private make targets and variables. Check them against the pinned pkgsrc revision before reuse.
 The tested baseline is `fff4deb639a1a640476203c80f752fb77b6cb14b`, with the common EmberBSD cross-package patches.
-The old install metadata and script cache are not reused.
+The old install metadata and script cache are not reused. `install-script-data`
+appends current PLIST-derived entries, including info files, before packaging;
+skipping it can silently omit install and removal registration.
 Do not create compile or install completion cookies to bypass a phase.
 
 The public `repackage` target is different: its `_package-clean` removes `DESTDIR`.
