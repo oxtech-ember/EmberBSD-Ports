@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). EMBERBSD-DEFAULTS-MK.CONF keeps its Darwin
-# native block (MACHO_USE_LOAD_COMMANDS, PKG_OPTIONS.graphviz -gd) to
+# native block (MACHO_USE_LOAD_COMMANDS, PREFER.expat, PKG_OPTIONS.graphviz -gd) to
 # native builds. The cross profile includes it while OPSYS is still the
 # build host's Darwin, and a target build has no USE_CROSS_COMPILE on the
 # command line, so the cross profile must select its cross default before
@@ -40,6 +40,8 @@ EOF
 : > "$work/mk.conf"
 cat > "$work/tools/target.mk" <<'EOF'
 _EMBER_TARGET_FAMILY=clang
+_EMBER_TARGET_RUNTIME_KIND=sysroot
+_EMBER_TARGET_RUNTIME_ROOT=${CROSS_DESTDIR}
 _EMBER_TARGET_TARGET=aarch64
 _EMBER_TARGET_TRIPLET=${_EMBER_CROSS_TRIPLET}
 _EMBER_TARGET_SYSROOT=${CROSS_DESTDIR}
@@ -81,6 +83,10 @@ read_vars() { "$bmake" -f "$work/Makefile" "$@" -v USE_CROSS_COMPILE -v MACHO_US
 getvar() { variable=$1; shift; "$bmake" -f "$work/Makefile" "$@" -v "$variable"; }
 target=$(read_vars) || fail "the target parse failed: $target"
 [ "$target" = 'yes   ' ] || fail "a target build takes the Darwin native defaults (USE_CROSS_COMPILE MACHO_USE_LOAD_COMMANDS PKG_OPTIONS.graphviz: $target)"
+target_expat=$(getvar PREFER.expat) || fail 'the target expat preference query failed'
+[ -z "$target_expat" ] || fail "native expat preference leaked into target: $target_expat"
+native_expat=$(getvar PREFER.expat USE_CROSS_COMPILE=no) || fail 'the native expat preference query failed'
+[ "$native_expat" = pkgsrc ] || fail "native Darwin did not select Ports expat: $native_expat"
 target_qttools=$(getvar PKG_OPTIONS.qt6-qttools) || fail 'the target QtTools option query failed'
 [ -z "$target_qttools" ] || fail "the target QtTools package selected host-only tools: $target_qttools"
 target_rcd=$("$bmake" -f "$work/Makefile" -v RCD_SCRIPTS_DIR) || fail 'the target rc-directory query failed'
