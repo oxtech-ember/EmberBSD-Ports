@@ -1,0 +1,13 @@
+Bump coreutils after fixing relocated stdbuf.
+
+--- a/sysutils/coreutils/Makefile
++++ b/sysutils/coreutils/Makefile
+@@ -2,7 +2,7 @@
+ 
+ .include "../../sysutils/coreutils/Makefile.common"
+ 
+-PKGREVISION=	1
++PKGREVISION=	2
+ 
+ CONFLICTS=	fileutils-[0-9]* gnuls-[0-9]* linuxls-[0-9]* sh-utils-[0-9]* textutils-[0-9]*
+ 
