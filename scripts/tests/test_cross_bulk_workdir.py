@@ -38,6 +38,15 @@ with tempfile.TemporaryDirectory() as temp:
     before = (obj.stat().st_ino, obj.stat().st_mtime_ns)
     assert run('fixture-1.0nb1', 'fixture-1.0nb1', '1.0').returncode == 0
     assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
+    # patch-cookie records applied paths, or is empty when no patches apply.
+    # A configure failure leaves this cookie without .configure_done.
+    patch_cookie = work / '.patch_done'
+    for applied in ('', '/ports/cat/fixture/patches/patch-source\n'):
+        patch_cookie.write_text(applied)
+        assert run('fixture-1.0nb1', 'fixture-1.0nb1', '1.0').returncode == 0
+        assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
+        assert run('fixture-1.0nb1', 'fixture-1.0nb2', '1.0').returncode != 0
+        assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
     assert run('fixture-1.0nb1', 'fixture-1.0nb2', '1.0').returncode != 0
     assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
     (work / '.build_done').write_text('fixture-1.0nb2\n')

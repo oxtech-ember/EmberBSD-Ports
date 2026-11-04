@@ -27,7 +27,8 @@ if a.group(1) != version:
     print('incompatible')
 else:
     latest = old
-    for name in ('.patch_done', '.configure_done', '.build_done', '.install_done', '.package_done'):
+    # .patch_done contains applied patch paths, not a package identity.
+    for name in ('.configure_done', '.build_done', '.install_done', '.package_done'):
         phase = root / name
         if phase.is_symlink() or (phase.exists() and not phase.is_file()):
             fail('invalid phase identity ' + name)
