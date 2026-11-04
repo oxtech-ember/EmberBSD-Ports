@@ -480,6 +480,41 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual((output.stat().st_ino, output.stat().st_mtime_ns), stamp)
 
+    def _upstream_recipe_becomes_selected_overlay(self, version):
+        with self.subTest(version=version):
+            if version == 3:
+                result = self.update()
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            old = self.receipt.read_bytes()
+            retained = self.tree / 'cat/other/Makefile'
+            stamp = (retained.stat().st_ino, retained.stat().st_mtime_ns)
+            write(self.ports, 'pkgsrc/replaces', 'cat/pkg\ncat/other\n')
+            write(self.ports, 'pkgsrc/cat/pkg/Makefile', 'PKGNAME=overlay-1\n')
+            refused = run(self.command + ['--update', '--package', 'cat/pkg'], self.ports, check=False)
+            self.assertNotEqual(refused.returncode, 0)
+            self.assertEqual(self.receipt.read_bytes(), old)
+            write(self.ports, 'pkgsrc/replaces', 'cat/pkg\n')
+            result = run(self.command + ['--update', '--package', 'cat/pkg'], self.ports, check=False)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual((self.tree / 'cat/pkg/Makefile').read_text(), 'PKGNAME=overlay-1\n')
+            self.assertEqual((retained.stat().st_ino, retained.stat().st_mtime_ns), stamp)
+            selected = self.tree / 'cat/pkg/Makefile'
+            selected_stamp = (selected.stat().st_ino, selected.stat().st_mtime_ns)
+            commit(self.ports, 'commit overlay')
+            result = run(self.command + ['--update', '--package', 'cat/pkg'], self.ports, check=False)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual((selected.stat().st_ino, selected.stat().st_mtime_ns), selected_stamp)
+            write(self.ports, 'pkgsrc/cat/pkg/Makefile', 'PKGNAME=overlay-2\n')
+            result = run(self.command + ['--update', '--package', 'cat/pkg'], self.ports, check=False)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(selected.read_text(), 'PKGNAME=overlay-2\n')
+
+    def test_upstream_recipe_becomes_selected_overlay_v2(self):
+        self._upstream_recipe_becomes_selected_overlay(2)
+
+    def test_upstream_recipe_becomes_selected_overlay_v3(self):
+        self._upstream_recipe_becomes_selected_overlay(3)
+
     def test_shared_file_source_requires_all_consumers(self):
         conf = self.ports / 'pkgsrc/export.conf'
         conf.write_text(conf.read_text() + 'file\tresources/owner.txt\tcat/pkg/files/other-owner\n')

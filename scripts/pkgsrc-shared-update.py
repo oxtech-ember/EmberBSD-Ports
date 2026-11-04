@@ -317,6 +317,11 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                 legacy['files'][name] = hashlib.sha256(old_file(name)).hexdigest()
             else:
                 legacy['files'].pop(name, None)
+        # A newly selected overlay was absent from the old v2 snapshot.
+        for package in packages:
+            tree = 'pkgsrc/' + package
+            if tree in legacy['trees'] and tree + '/Makefile' not in historical_entries:
+                legacy['trees'].pop(tree)
         regular_changes = {name: value for name, value in changes.items() if name not in legacy_links}
         old_snapshot = ident.reconstruct_legacy_payload(legacy, regular_changes, previous['export_inputs_sha256'])
     else:
@@ -326,11 +331,11 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                         for name, source in exp.configuration(ports)[0] if name in packages}
     overlays = {package: selected_recipes.get(package) for package in packages}
     for package, overlay in overlays.items():
-        if overlay is not None and (overlay not in old_snapshot['trees'] or overlay not in snapshot['trees']):
+        if overlay is not None and overlay not in snapshot['trees']:
             raise ValueError('selected recipe source layout changed')
         if overlay is None and 'pkgsrc/' + package in old_snapshot['trees']:
             raise ValueError('selected recipe source layout changed')
-        for rows in ([old_snapshot['trees'][overlay], snapshot['trees'][overlay]] if overlay else []):
+        for rows in ([old_snapshot['trees'].get(overlay, {}), snapshot['trees'][overlay]] if overlay else []):
             if any(row['kind'] not in ('file', 'directory', 'link') for row in rows.values()):
                 raise ValueError('selected recipe contains unsupported links')
     def selected_output(name):
@@ -342,7 +347,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
             if old_row == new_row or (old_row or new_row).get('kind') != 'directory':
                 continue
             changed_directory = tree + '/' + name
-            if not any(overlay and changed_directory.startswith(overlay + '/') for overlay in overlays.values()):
+            if not any(overlay and (changed_directory == overlay or changed_directory.startswith(overlay + '/') or (old_row is None and overlay.startswith(changed_directory + '/'))) for overlay in overlays.values()):
                 raise ValueError('directory input changed outside selected recipe: ' + changed_directory)
     def file_map(rows):
         result = {}
@@ -407,8 +412,16 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                                        for paths, _ in sections):
                 raise ValueError('changed patch extends outside selected package: ' + name)
         scoped_patches.add(name)
+    old_replaces = (old_file('pkgsrc/replaces') or b'').decode('utf-8')
+    new_replaces = (ports / 'pkgsrc/replaces').read_text() if (ports / 'pkgsrc/replaces').is_file() else ''
+    def replacements(text):
+        return {line.strip() for line in text.splitlines() if line.strip() and not line.startswith('#')}
+    added = replacements(new_replaces) - replacements(old_replaces)
+    removed = replacements(old_replaces) - replacements(new_replaces)
+    if removed or not added.issubset(set(packages)) or any(overlays.get(p) != 'pkgsrc/' + p for p in added):
+        raise ValueError('replacement changes outside selected new overlays')
     for name in changes:
-        if (name == 'pkgsrc/export.conf' or name in selected_sources or
+        if (name == 'pkgsrc/replaces' or name == 'pkgsrc/export.conf' or name in selected_sources or
                 name in scoped_patches or name in recipe_patch_sources):
             continue
         if any((overlay and name.startswith(overlay + '/')) or name.startswith('pkgsrc/' + package + '/')
@@ -437,7 +450,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                     subprocess.run([git, '-C', str(ports / 'upstream/pkgsrc'), 'archive',
                                     '--format=tar', previous['upstream'], package], check=True, stdout=stream)
                 exp.extract_archive(archive, stage)
-            if overlay is not None:
+            if overlay is not None and (not old or overlay in old_snapshot['trees']):
                 replaces = old_file('pkgsrc/replaces') if old else (
                     (ports / 'pkgsrc/replaces').read_bytes() if (ports / 'pkgsrc/replaces').is_file() else b'')
                 replacements = {line.strip() for line in (replaces or b'').decode('utf-8').splitlines()
