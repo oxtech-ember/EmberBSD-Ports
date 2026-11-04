@@ -1,0 +1,29 @@
+# Origin: EmberBSD (AI-assisted).
+# Resolve a selected native shell beside the CMake executable.
+
+--- a/Source/cmLocalUnixMakefileGenerator3.cxx
++++ b/Source/cmLocalUnixMakefileGenerator3.cxx
+@@ -679,9 +679,21 @@
+                       "\n";
+   } else {
+ #if !defined(__VMS)
++    std::string shell = "/bin/sh";
++    std::string const token = "@EMBERBSD_CMAKE_EXECUTABLE_DIR@/";
++    if (shell.compare(0, token.size(), token) == 0) {
++      std::string const executable =
++        cmSystemTools::GetRealPath(cmSystemTools::GetCMakeCommand());
++      shell = cmStrCat(cmSystemTools::GetFilenamePath(executable), "/",
++                       shell.substr(token.size()));
++      if (!cmSystemTools::FileExists(shell, true)) {
++        cmSystemTools::Error(cmStrCat("Selected native shell is missing: ", shell));
++        return;
++      }
++    }
+     makefileStream << "# The shell in which to execute make rules.\n"
+-                      "SHELL = /bin/sh\n"
+-                      "\n";
++                   << "SHELL = " << this->ConvertToMakefilePath(shell) << "\n"
++                   << "\n";
+ #endif
+   }
+ 

@@ -1,0 +1,27 @@
+# Origin: EmberBSD (AI-assisted).
+# Select an executable-relative shell only for native prefix shells.
+
+--- a/devel/cmake/Makefile
++++ b/devel/cmake/Makefile
+@@ -2,7 +2,7 @@
+ 
+ .include "Makefile.common"
+ 
+-PKGREVISION=	12
++PKGREVISION=	13
+ 
+ COMMENT=	Cross platform make
+ 
+@@ -69,7 +69,12 @@
+ SUBST_STAGE.shell=	pre-configure
+ SUBST_MESSAGE.shell=	Set custom SHELL in generated Makefiles.
+ SUBST_FILES.shell+=	Source/cmLocalUnixMakefileGenerator3.cxx
++# Only a shell installed beside CMake uses the relocatable token.
++.if "${SH}" == "${LOCALBASE}/bin/mksh" || "${SH}" == "${LOCALBASE}/bin/pdksh"
++SUBST_SED.shell=	-e 's,/bin/sh,@EMBERBSD_CMAKE_EXECUTABLE_DIR@/${SH:T},g'
++.else
+ SUBST_SED.shell=	-e 's,/bin/sh,${SH},g'
++.endif
+ 
+ pre-configure:
+ 	${CP} ${FILESDIR}/Source_Checks_cm_cxx_cbegin.cxx ${WRKSRC}/Source/Checks/cm_cxx_cbegin.cxx
