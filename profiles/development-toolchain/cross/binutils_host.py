@@ -62,6 +62,7 @@ def native_selection(prefix, family):
             flags.append('-I' + selected.bundle_root + '/include')
         elif name == 'ldflags':
             flags.append('-L' + selected.bundle_root + '/lib')
+            flags.append('-Wl,-rpath,' + selected.bundle_root + '/lib')
         env[name.upper()] = shlex.join(flags)
     return selected, env
 
