@@ -247,5 +247,8 @@ objects or phase cookies. It does not itself reconfigure or rebuild. For a
 provider changing from builtin to pkgsrc, `refresh-empty-buildlink-<provider>`
 rebuilds its links only if the previous buildlink cookie is empty; it refuses
 a nonempty or invalid cookie. Run these explicit targets without another
-writer in the same work directory, then use the relevant configure and build
-stages. Meson setup reconfigures an existing valid build directory in place.
+writer in the same work directory. Then use `bmake reconfigure` followed by
+`bmake build`: reconfigure runs the normal barrier and preserves source and
+compatible objects while resetting the build phase. Packages with `NO_CONFIGURE`
+keep their existing configure behavior. Meson setup reconfigures an existing
+valid build directory in place.

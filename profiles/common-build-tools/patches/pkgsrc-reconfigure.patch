@@ -1,0 +1,26 @@
+--- a/mk/configure/configure.mk
++++ b/mk/configure/configure.mk
+@@ -127,6 +127,23 @@
+ .endif
+ 
+ ######################################################################
++### reconfigure (PUBLIC)
++######################################################################
++# Re-run the normal configure phase without discarding source or objects.
++.PHONY: reconfigure configure-clean
++reconfigure: configure-clean
++	${RUN} ${RECURSIVE_MAKE} ${MAKEFLAGS} configure
++
++# NO_BUILD omits build.mk, including its build-clean target.
++.if defined(NO_BUILD)
++configure-clean: install-clean _package-clean invalidate-makevars
++	${RUN} ${RM} -f ${_COOKIE.build:Q} ${_COOKIE.configure:Q}
++.else
++configure-clean: build-clean invalidate-makevars
++	${RUN} ${RM} -f ${_COOKIE.configure:Q}
++.endif
++
++######################################################################
+ ### real-configure (PRIVATE)
+ ######################################################################
+ ### real-configure is a helper target onto which one can hook all of the
