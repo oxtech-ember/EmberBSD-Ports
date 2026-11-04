@@ -150,7 +150,7 @@ def main():
             print('FAIL: helper retaining the old prefix was accepted after sysroot relocation')
             return 1
 
-        host_prefix = root / 'host'
+        host_prefix = root / 'host prefix'
         host_config = host_prefix / 'bin/llvm-config'
         host_config.parent.mkdir(parents=True)
         host_config.write_text('#!' + sys.executable + '\nprint("23.1.4")\n')
@@ -197,7 +197,34 @@ def main():
         spec.loader.exec_module(installed_producer)
         os.environ['NATIVE_CXX'] = str(host_cpp)
         os.environ['EMBERBSD_NATIVE_LD'] = str(native_ld)
+        # Exercise the producer's real compile invocation with a recording compiler.
+        (metadata / 'llvm-config.cpp').write_text(
+            'using namespace llvm;\nCurrentExecPrefix =\n'
+            '      sys::path::parent_path(sys::path::parent_path(CurrentPath)).str();\n'
+            '#if defined(NDEBUG)\n#endif\n')
+        recorded = []
+        def fake_capture(argv):
+            if '--version' in argv:
+                return '23.1.4'
+            if '--libfiles' in argv:
+                return ' '.join(__import__('shlex').quote(str(host_prefix.resolve() / 'lib' / ('lib' + name + '.a'))) for name in ('LLVMSupport', 'LLVMTargetParser', 'LLVMDemangle'))
+            return ''
+        def fake_run(argv, **kwargs):
+            recorded.append(argv)
+            Path(argv[argv.index('-o') + 1]).write_text('helper')
+        installed_producer.capture = fake_capture
+        installed_producer.subprocess.run = fake_run
+        installed_producer.validate_llvm_config = lambda *args: None
+        installed_producer.compile_helper(str(root / 'unused'), str(root / 'compile-work'), str(target), str(host_prefix))
+        expected_flags = ['-Xlinker', '-rpath', '-Xlinker', str(host_prefix.resolve() / 'lib')]
+        if not any(command[i:i+4] == expected_flags for command in recorded for i in range(len(command))):
+            print('FAIL: compiler invocation lacks selected native runtime path')
+            return 1
         first_key = installed_producer.cache_key(target, host_prefix)
+        expected_flags = ['-Xlinker', '-rpath', '-Xlinker', str(host_prefix.resolve() / 'lib')]
+        if installed_producer.native_runtime_flags(host_prefix.resolve()) != expected_flags or first_key['native_runtime_flags'] != expected_flags:
+            print('FAIL: helper runtime path missing from link flags or cache key')
+            return 1
         if first_key != installed_producer.cache_key(target, host_prefix):
             print('FAIL: unchanged installed LLVM inputs did not retain their cache identity')
             return 1

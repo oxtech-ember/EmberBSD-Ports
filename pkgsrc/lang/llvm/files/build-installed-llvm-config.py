@@ -46,6 +46,10 @@ def set_macro(text, name, value):
 
 
 
+def native_runtime_flags(host_prefix):
+    return ['-Xlinker', '-rpath', '-Xlinker', str(host_prefix / 'lib')]
+
+
 def compile_helper(config, work, sysroot, host_prefix):
     config = Path(config)
     work = Path(work)
@@ -136,6 +140,7 @@ def compile_helper(config, work, sysroot, host_prefix):
 
     host_flags = shlex.split(os.environ.get('NATIVE_CXXFLAGS', '')) + cxxflags
     host_ldflags += shlex.split(os.environ.get('NATIVE_LDFLAGS', ''))
+    host_ldflags += native_runtime_flags(host_prefix)
     if native_ld.name == 'ld.lld':
         host_ldflags.append('-fuse-ld=lld')
     else:
@@ -222,6 +227,7 @@ def cache_key(sysroot, host_prefix):
                                 size=stat.st_size, mtime_ns=stat.st_mtime_ns, ctime_ns=stat.st_ctime_ns))
     return dict(version=VERSION, sysroot=str(sysroot), host_prefix=str(host_prefix),
                 native_cxx=str(compiler), native_ld=str(linker),
+                native_runtime_flags=native_runtime_flags(host_prefix),
                 native_cxxflags=os.environ.get('NATIVE_CXXFLAGS', ''),
                 native_ldflags=os.environ.get('NATIVE_LDFLAGS', ''), inputs=identities)
 
