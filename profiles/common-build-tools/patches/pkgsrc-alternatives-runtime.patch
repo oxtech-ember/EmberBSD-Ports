@@ -1,0 +1,31 @@
+--- a/mk/alternatives.mk
++++ b/mk/alternatives.mk
+@@ -49,22 +49,22 @@
+ .if !empty(ALTERNATIVES_SRC)
+ 
+ ${WRKDIR}/.altinstall: ${ALTERNATIVES_SRC}
+-	@{ ${ECHO} 'if ${TEST} $${STAGE} = "POST-INSTALL"; then'; \
+-	${ECHO} '${CAT} >./+ALTERNATIVES <<EOF'; \
++	@{ ${ECHO} 'if @TEST@ $${STAGE} = "POST-INSTALL"; then'; \
++	${ECHO} '@CAT@ >./+ALTERNATIVES <<EOF'; \
+ 	${SED} ${FILES_SUBST_SED} <${ALTERNATIVES_SRC}; \
+ 	${ECHO} 'EOF'; \
+-	${ECHO} 'if ${TEST} -x ${PKG_ALTERNATIVES}; then'; \
++	${ECHO} 'if @TEST@ -x ${PKG_ALTERNATIVES}; then'; \
+ 	${ECHO} '${PKG_ALTERNATIVES} -gs register ./+ALTERNATIVES'; \
+ 	${ECHO} 'fi'; \
+ 	${ECHO} 'fi'; \
+ 	} >${WRKDIR}/.altinstall
+ 
+ ${WRKDIR}/.altdeinstall: ${ALTERNATIVES_SRC}
+-	@{ ${ECHO} 'if ${TEST} $${STAGE} = "DEINSTALL"; then'; \
+-	${ECHO} 'if ${TEST} -x ${PKG_ALTERNATIVES}; then'; \
++	@{ ${ECHO} 'if @TEST@ $${STAGE} = "DEINSTALL"; then'; \
++	${ECHO} 'if @TEST@ -x ${PKG_ALTERNATIVES}; then'; \
+ 	${ECHO} '${PKG_ALTERNATIVES} -gs unregister ./+ALTERNATIVES'; \
+ 	${ECHO} 'fi'; \
+-	${ECHO} '${RM} -f ./+ALTERNATIVES'; \
++	${ECHO} '@RM@ -f ./+ALTERNATIVES'; \
+ 	${ECHO} 'fi'; \
+ 	} >${WRKDIR}/.altdeinstall
+ 
