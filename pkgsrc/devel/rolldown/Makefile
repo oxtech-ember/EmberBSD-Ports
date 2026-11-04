@@ -2,6 +2,7 @@
 # Origin: EmberBSD (AI-assisted); upstream Rolldown with a source-built N-API binding.
 
 DISTNAME=	rolldown-1.2.16
+PKGREVISION=	1
 CATEGORIES=	devel
 ROLLDOWN_REVISION=	de6facf2228279718e042b801dd6b60dd6503918
 DISTFILES=	rolldown-${ROLLDOWN_REVISION}.tar.gz ${DISTNAME}.tgz
@@ -9,6 +10,7 @@ SITES.rolldown-${ROLLDOWN_REVISION}.tar.gz=	-https://github.com/rolldown/rolldow
 SITES.${DISTNAME}.tgz=	https://registry.npmjs.org/rolldown/-/
 WRKSRC=		${WRKDIR}/rolldown-${ROLLDOWN_REVISION}
 EXTRACT_DIR.${DISTNAME}.tgz=	${WRKSRC}/npm
+REPLACE_NODEJS=	npm/package/bin/cli.mjs
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://rolldown.rs/
