@@ -79,16 +79,19 @@ class DumpModes(unittest.TestCase):
             with self.subTest(recipe=recipe):
                 replay = bmake(recipe, '-n', 'emberbsd-gi-native')
                 self.assertEqual(replay.returncode, 0, replay.stderr)
-                self.assertIn('No stored GI dumps for', replay.stdout)
+                self.assertNotIn('No stored GI dumps for', replay.stdout)
                 self.assertNotIn('target-query.py --check', replay.stdout)
                 live = bmake(recipe, 'EMBERBSD_GI_DUMP_MODE=live', self.query, '-n', 'emberbsd-gi-native')
                 self.assertEqual(live.returncode, 0, live.stderr)
                 self.assertIn('target-query.py --check', live.stdout)
 
-    def test_missing_dump_directory_refuses_replay(self):
-        result = bmake('devel/pango', 'EMBERBSD_GI_DUMP_DIR=/ember-missing-gi-dumps', 'emberbsd-gi-native')
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn('No stored GI dumps for', result.stdout + result.stderr)
+    def test_missing_dump_directory_is_not_a_configure_gate(self):
+        # GSettings has enum-only introspection and performs no target query.
+        work = Path(self.temp.name) / 'gsettings-work'
+        work.mkdir()
+        result = bmake('sysutils/gsettings-desktop-schemas', 'WRKDIR=' + str(work),
+                       'EMBERBSD_GI_DUMP_DIR=/ember-missing-gi-dumps', 'emberbsd-gi-native')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_live_and_capture_need_a_query_configuration(self):
         for mode in ('live', 'capture'):

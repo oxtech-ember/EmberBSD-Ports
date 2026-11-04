@@ -1,0 +1,43 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-x86_64
+recipe: security/polkit
+package: polkit-128
+program: PolkitAgent-1.0
+types-sha256: db0187bc7bdcb4fe067e2e427263269848f2560bfa6c21003f03cb0b9662bc02
+dump-sha256: 7b0e1c33bfd5011484e9258ddf4092b3de712dbbe378610b586eea562f050033
+-->
+<?xml version="1.0"?>
+<dump>
+  <flags name="PolkitAgentRegisterFlags" get-type="polkit_agent_register_flags_get_type">
+    <member name="POLKIT_AGENT_REGISTER_FLAGS_NONE" nick="none" value="0"/>
+    <member name="POLKIT_AGENT_REGISTER_FLAGS_RUN_IN_THREAD" nick="run-in-thread" value="1"/>
+  </flags>
+  <class name="PolkitAgentListener" get-type="polkit_agent_listener_get_type" parents="GObject" abstract="1">
+  </class>
+  <class name="PolkitAgentTextListener" get-type="polkit_agent_text_listener_get_type" parents="PolkitAgentListener,GObject">
+    <implements name="GInitable"/>
+    <property name="use-color" type="gboolean" flags="11" default-value="TRUE"/>
+    <property name="use-alternate-buffer" type="gboolean" flags="11" default-value="FALSE"/>
+    <property name="delay" type="guint" flags="11" default-value="1"/>
+    <signal name="tty-attrs-changed" return="void" when="last" no-recurse="1" no-hooks="1">
+      <param type="gboolean"/>
+    </signal>
+  </class>
+  <class name="PolkitAgentSession" get-type="polkit_agent_session_get_type" parents="GObject">
+    <property name="identity" type="PolkitIdentity" flags="235"/>
+    <property name="cookie" type="gchararray" flags="235" default-value="NULL"/>
+    <signal name="request" return="void" when="last">
+      <param type="gchararray"/>
+      <param type="gboolean"/>
+    </signal>
+    <signal name="show-info" return="void" when="last">
+      <param type="gchararray"/>
+    </signal>
+    <signal name="show-error" return="void" when="last">
+      <param type="gchararray"/>
+    </signal>
+    <signal name="completed" return="void" when="last">
+      <param type="gboolean"/>
+    </signal>
+  </class>
+</dump>

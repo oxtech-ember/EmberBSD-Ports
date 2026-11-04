@@ -26,9 +26,9 @@ before the include; it then needs the query configuration in every mode.
 `emberbsd-gi-inputs` refuses a wrong mode, a missing query configuration
 outside replay and a missing capture directory. Fetch is never refused.
 
-In replay, `emberbsd-gi-native` checks that
-`${PKGDIR}/files/gi-dump/${CROSS_OPSYS}-${CROSS_OS_VERSION}-${MACHINE_ARCH}`
-exists instead of running the target `--check`.
+In replay, the launcher checks each stored dump only if the scanner actually
+requests a target query. Enum-only namespaces need no dump. Missing or
+mismatched dumps still fail at that query, before output is written.
 
 ## Stored dump format
 

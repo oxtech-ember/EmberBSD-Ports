@@ -105,9 +105,7 @@ MESON_BINARY.pkg-config= ${WRKDIR}/.meson-gi-pkg-config
 pre-configure: emberbsd-gi-native
 .PHONY: emberbsd-gi-native
 emberbsd-gi-native: emberbsd-gi-inputs
-.if "${EMBERBSD_GI_DUMP_MODE}" == "replay"
-	${RUN}${TEST} -d ${EMBERBSD_GI_DUMP_DIR:Q} || { ${ERROR_MSG} "No stored GI dumps for ${_EMBER_GI_PLATFORM} in ${PKGPATH}; capture them from an EmberBSD target (profiles/common-graphics/cross/gi-dumps.md)"; exit 1; }
-.else
+.if "${EMBERBSD_GI_DUMP_MODE}" != "replay"
 	${RUN}${SETENV} EMBERBSD_SDK_SOURCE=${EMBERBSD_SDK_SOURCE:Q} EMBERBSD_GI_QUERY_CONFIG=${EMBERBSD_GI_QUERY_CONFIG:Q} ${EMBERBSD_CROSS_BUILD_PYTHON} -E -S ${EMBERBSD_GI_FILESDIR}/target-query.py --check ${WRKDIR} ${CROSS_DESTDIR} ${TOOLDIR}/bin/${_EMBER_GI_TRIPLET}-readelf ${_EMBER_GI_TARGET}
 .endif
 	${RUN}${TEST} -x ${TOOLBASE}/bin/g-ir-scanner && ${TEST} -x ${TOOLBASE}/bin/g-ir-compiler
