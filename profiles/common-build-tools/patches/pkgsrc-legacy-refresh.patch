@@ -1,0 +1,71 @@
+--- a/mk/pkginstall/bsd.pkginstall.mk
++++ b/mk/pkginstall/bsd.pkginstall.mk
+@@ -1146,22 +1146,20 @@
+ generate-install-scripts:						\
+ 		${_DEINSTALL_FILE} ${_INSTALL_FILE}			\
+ 		${_DEINSTALL_FILE_DFLT} ${_INSTALL_FILE_DFLT}
+-.if !exists(${DEINSTALL_FILE}) || !exists(${INSTALL_FILE})
+-	${RUN}								\
+-	${TEST} -d ${INSTALL_FILE:H} || ${MKDIR} ${INSTALL_FILE:H};	\
+-	${TEST} -d ${DEINSTALL_FILE:H} || ${MKDIR} ${DEINSTALL_FILE:H};	\
+-	if ${CMP} -s ${_INSTALL_FILE_DFLT:Q} ${_INSTALL_FILE:Q}; then	\
+-		${TRUE};						\
+-	else								\
+-		${CP} -f ${_INSTALL_FILE} ${INSTALL_FILE};		\
+-		${CP} -f ${_DEINSTALL_FILE} ${DEINSTALL_FILE};		\
+-	fi;								\
+-	if ${CMP} -s ${_DEINSTALL_FILE_DFLT:Q} ${_DEINSTALL_FILE:Q}; then \
+-		${TRUE};						\
+-	else								\
+-		${CP} -f ${_DEINSTALL_FILE} ${DEINSTALL_FILE};		\
++	${RUN}\
++	${TEST} -d ${INSTALL_FILE:H} || ${MKDIR} ${INSTALL_FILE:H};\
++	${TEST} -d ${DEINSTALL_FILE:H} || ${MKDIR} ${DEINSTALL_FILE:H};\
++	if { ${TEST} -f ${INSTALL_FILE:Q} && ${TEST} ${_INSTALL_FILE:Q} -nt ${INSTALL_FILE:Q}; } || \
++	   { ! ${TEST} -f ${INSTALL_FILE:Q} && ! ${CMP} -s ${_INSTALL_FILE_DFLT:Q} ${_INSTALL_FILE:Q}; }; then \
++		${CP} -f ${_INSTALL_FILE:Q} ${INSTALL_FILE:Q};\
++		if ! ${TEST} -f ${DEINSTALL_FILE:Q}; then \
++			${CP} -f ${_DEINSTALL_FILE:Q} ${DEINSTALL_FILE:Q};\
++		fi;\
++	fi;\
++	if { ${TEST} -f ${DEINSTALL_FILE:Q} && ${TEST} ${_DEINSTALL_FILE:Q} -nt ${DEINSTALL_FILE:Q}; } || \
++	   { ! ${TEST} -f ${DEINSTALL_FILE:Q} && ! ${CMP} -s ${_DEINSTALL_FILE_DFLT:Q} ${_DEINSTALL_FILE:Q}; }; then \
++		${CP} -f ${_DEINSTALL_FILE:Q} ${DEINSTALL_FILE:Q};\
+ 	fi
+-.endif
+ 
+ ${_DEINSTALL_FILE_DFLT}: ${_DEINSTALL_TEMPLATES_DFLT}
+ 	${RUN}								\
+@@ -1178,24 +1176,26 @@
+ ${_DEINSTALL_FILE}: ${DEINSTALL_SRC}
+ 	${RUN}								\
+ 	${TEST} -d ${.TARGET:H} || ${MKDIR} ${.TARGET:H};		\
+-	exec 1>>${.TARGET};						\
++	{						\
+ 	case ${.ALLSRC:Q}"" in						\
+ 	"")	${ECHO} "#!${SH}" ;					\
+ 		${ECHO} "exit 0" ;;					\
+ 	*)	${SED} ${FILES_SUBST_SED} ${.ALLSRC} ;;			\
+-	esac;								\
+-	${CHMOD} +x ${.TARGET}
++	esac; } > ${.TARGET:Q}.tmp &&\
++	${CHMOD} +x ${.TARGET:Q}.tmp &&\
++	${MV} -f ${.TARGET:Q}.tmp ${.TARGET:Q}
+ 
+ ${_INSTALL_FILE}: ${INSTALL_SRC}
+ 	${RUN}								\
+ 	${TEST} -d ${.TARGET:H} || ${MKDIR} ${.TARGET:H};		\
+-	exec 1>>${.TARGET};						\
++	{						\
+ 	case ${.ALLSRC:Q}"" in						\
+ 	"")	${ECHO} "#!${SH}" ;					\
+ 		${ECHO} "exit 0" ;;					\
+ 	*)	${SED} ${FILES_SUBST_SED} ${.ALLSRC} ;;			\
+-	esac;								\
+-	${CHMOD} +x ${.TARGET}
++	esac; } > ${.TARGET:Q}.tmp &&\
++	${CHMOD} +x ${.TARGET:Q}.tmp &&\
++	${MV} -f ${.TARGET:Q}.tmp ${.TARGET:Q}
+ 
+ # rc.d scripts are automatically generated and installed into the rc.d
+ # scripts example directory at the post-install step.  The following

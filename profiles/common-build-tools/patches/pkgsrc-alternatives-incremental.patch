@@ -1,0 +1,20 @@
+--- a/mk/alternatives.mk
++++ b/mk/alternatives.mk
+@@ -48,7 +48,7 @@
+ 
+ .if !empty(ALTERNATIVES_SRC)
+ 
+-${WRKDIR}/.altinstall: ${ALTERNATIVES_SRC}
++${WRKDIR}/.altinstall: ${ALTERNATIVES_SRC} ${PKGSRCDIR}/mk/alternatives.mk
+ 	@{ ${ECHO} 'if @TEST@ $${STAGE} = "POST-INSTALL"; then'; \
+ 	${ECHO} '@CAT@ >./+ALTERNATIVES <<EOF'; \
+ 	${SED} ${FILES_SUBST_SED} <${ALTERNATIVES_SRC}; \
+@@ -59,7 +59,7 @@
+ 	${ECHO} 'fi'; \
+ 	} >${WRKDIR}/.altinstall
+ 
+-${WRKDIR}/.altdeinstall: ${ALTERNATIVES_SRC}
++${WRKDIR}/.altdeinstall: ${ALTERNATIVES_SRC} ${PKGSRCDIR}/mk/alternatives.mk
+ 	@{ ${ECHO} 'if @TEST@ $${STAGE} = "DEINSTALL"; then'; \
+ 	${ECHO} 'if @TEST@ -x ${PKG_ALTERNATIVES}; then'; \
+ 	${ECHO} '${PKG_ALTERNATIVES} -gs unregister ./+ALTERNATIVES'; \
