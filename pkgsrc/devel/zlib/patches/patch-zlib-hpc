@@ -1,0 +1,108 @@
+$NetBSD$
+
+Expose the NetBSD standalone compatibility branches to H/PC project builds
+without pretending that the Windows host is NetBSD.
+
+Origin: NetBSD standalone compatibility; EmberBSD adaptation (AI-assisted).
+
+--- zconf.h.orig
++++ zconf.h
+@@ -265,7 +265,7 @@
+ #  if defined(NO_SIZE_T)
+      typedef unsigned NO_SIZE_T z_size_t;
+ #  elif defined(STDC)
+-#    if defined(__NetBSD__) && (defined(_KERNEL) || defined(_STANDALONE))
++#    if (defined(__NetBSD__) || defined(ZLIB_NETBSD_STANDALONE)) && (defined(_KERNEL) || defined(_STANDALONE))
+ #      include <lib/libkern/libkern.h>
+ #    else
+ #      include <stddef.h>
+@@ -435,7 +435,7 @@
+ #endif
+ 
+ #if !defined(Z_U4) && !defined(Z_SOLO) && defined(STDC)
+-#  if defined(__NetBSD__) && (defined(_KERNEL) || defined(_STANDALONE))
++#  if (defined(__NetBSD__) || defined(ZLIB_NETBSD_STANDALONE)) && (defined(_KERNEL) || defined(_STANDALONE))
+ #    include <machine/limits.h>
+ #  else
+ #    include <limits.h>
+@@ -455,11 +455,11 @@
+    typedef unsigned long z_crc_t;
+ #endif
+ 
+-#if !defined(__NetBSD__) && defined(HAVE_UNISTD_H) && HAVE_UNISTD_H-0 /* may be set by configure */
++#if !defined(__NetBSD__) && !defined(ZLIB_NETBSD_STANDALONE) && defined(HAVE_UNISTD_H) && HAVE_UNISTD_H-0 /* may be set by configure */
+ #  define Z_HAVE_UNISTD_H
+ #endif
+ 
+-#if !defined(__NetBSD__) && defined(HAVE_STDARG_H) && HAVE_STDARG_H-0 /* may be set by configure */
++#if !defined(__NetBSD__) && !defined(ZLIB_NETBSD_STANDALONE) && defined(HAVE_STDARG_H) && HAVE_STDARG_H-0 /* may be set by configure */
+ #  define Z_HAVE_STDARG_H
+ #endif
+ 
+@@ -471,7 +471,7 @@
+ 
+ #if defined(STDC) || defined(Z_HAVE_STDARG_H)
+ #  ifndef Z_SOLO
+-#    if defined(__NetBSD__) && (defined(_KERNEL) || defined(_STANDALONE))
++#    if (defined(__NetBSD__) || defined(ZLIB_NETBSD_STANDALONE)) && (defined(_KERNEL) || defined(_STANDALONE))
+ #      include <sys/stdarg.h>
+ #    else
+ #      include <stdarg.h>         /* for va_list */
+@@ -532,13 +532,13 @@
+ #endif
+ 
+ #ifndef z_off_t
+-#  if defined(__NetBSD__)
++#  if defined(__NetBSD__) || defined(ZLIB_NETBSD_STANDALONE)
+ #    define z_off_t long /* Preserve the libz.so.1 ABI on LP32. */
+ #  else
+ #    define z_off_t long long
+ #  endif
+ #endif
+-#if defined(__NetBSD__) && !defined(z_ptrdiff_t)
++#if (defined(__NetBSD__) || defined(ZLIB_NETBSD_STANDALONE)) && !defined(z_ptrdiff_t)
+ #  define z_ptrdiff_t long
+ #endif
+ 
+--- zlib.h.orig
++++ zlib.h
+@@ -1845,7 +1845,7 @@
+    negative, the result has no meaning or utility.
+ */
+ 
+-#if !defined(__NetBSD__) || (!defined(_KERNEL) && !defined(_STANDALONE))
++#if (!defined(__NetBSD__) && !defined(ZLIB_NETBSD_STANDALONE)) || (!defined(_KERNEL) && !defined(_STANDALONE))
+ ZEXTERN uLong ZEXPORT crc32(uLong crc, const Bytef *buf, uInt len);
+ #endif
+ /*
+--- zutil.h.orig
++++ zutil.h
+@@ -22,7 +22,7 @@
+ #include "zlib.h"
+ 
+ #if defined(STDC) && !defined(Z_SOLO)
+-#  if defined(__NetBSD__) && (defined(_KERNEL) || defined(_STANDALONE))
++#  if (defined(__NetBSD__) || defined(ZLIB_NETBSD_STANDALONE)) && (defined(_KERNEL) || defined(_STANDALONE))
+ #    include <lib/libkern/libkern.h>
+ #  else
+ #    if !(defined(_WIN32_WCE) && defined(_MSC_VER))
+@@ -51,7 +51,7 @@
+ typedef unsigned long  ulg;
+ 
+ #if !defined(Z_U8) && !defined(Z_SOLO) && defined(STDC)
+-# if defined(__NetBSD__) && (defined(_KERNEL) || defined(_STANDALONE))
++# if (defined(__NetBSD__) || defined(ZLIB_NETBSD_STANDALONE)) && (defined(_KERNEL) || defined(_STANDALONE))
+ #  ifdef _LP64
+ #   define Z_U8 unsigned long
+ #  else
+--- inflate.c.orig
++++ inflate.c
+@@ -491,7 +491,7 @@
+     static const unsigned short order[19] = /* permutation of code lengths */
+         {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
+ 
+-#if defined(__NetBSD__) && defined(_STANDALONE)
++#if (defined(__NetBSD__) || defined(ZLIB_NETBSD_STANDALONE)) && defined(_STANDALONE)
+     /* Some kernels are loaded at address zero. */
+     if (inflateStateCheck(strm) ||
+         (strm->next_in == Z_NULL && strm->avail_in != 0))

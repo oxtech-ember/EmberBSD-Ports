@@ -32,6 +32,7 @@ RECEIPT = 'emberbsd-prepared-source.json'
 
 # SDK source name -> (owner script, package).
 OWNERS = {
+    'zlib': ('scripts/source-inputs/zlib/source.py', 'devel/zlib'),
     'libarchive': ('scripts/libarchive-source.py', 'archivers/libarchive'),
     'libevent': ('scripts/source-inputs/libevent/source.py', 'devel/libevent'),
     'openssl': ('scripts/source-inputs/openssl/source.py', 'security/openssl'),
@@ -183,7 +184,7 @@ def current(name, identity, git, sdk, patch=None):
     tree it prepares."""
     script, package = OWNERS[name]
     owner_path = PORTS / script
-    owner_sha256 = (owner_module(name, owner_path).owner_digest() if name in ('openldap', 'libpcap', 'mdns', 'dhcpcd')
+    owner_sha256 = (owner_module(name, owner_path).owner_digest() if name in ('openldap', 'libpcap', 'mdns', 'dhcpcd', 'zlib')
                     else sha256(owner_path.read_bytes()))
     selector_module = selector()
     if isinstance(identity, dict) and set(identity) == {'effective', 'owner_sha256'}:

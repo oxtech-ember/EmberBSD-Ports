@@ -4,6 +4,7 @@
 # Origin: EmberBSD (AI-assisted).
 """Exercise the common zlib owner with the actual recipe and archive."""
 import argparse
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -30,6 +31,19 @@ with tempfile.TemporaryDirectory(dir=a.work_dir) as directory:
     assert 'defined(HAVE_UNISTD_H)' in (root / 'zconf.h').read_text()
     assert 'state->past = 0' in (root / 'gzlib.c').read_text()
     run('verify-source', '--source', root, '--patch', a.patch, *shared)
+    checker = owner.parents[2] / 'prepared-source-current.py'
+    command = [sys.executable, '-B', str(checker), '--sdk-source', str(a.sdk_source),
+               '--git', str(a.git), '--patch', str(a.patch), '--source', 'zlib=' + str(root)]
+    checked = subprocess.run(command, capture_output=True, text=True)
+    assert checked.returncode == 0, checked.stderr
+    receipt = root / 'emberbsd-prepared-source.json'
+    saved = receipt.read_text()
+    stale = json.loads(saved)
+    stale['identity']['effective']['effective_package_sha256'] = '0' * 64
+    receipt.write_text(json.dumps(stale))
+    checked = subprocess.run(command, capture_output=True, text=True)
+    assert checked.returncode != 0 and 'stale' in checked.stderr, checked.stderr
+    receipt.write_text(saved)
     run('prepare', '--archive', a.archive, '--patch', a.patch, '--output', root,
         *shared, ok=False)
     bad = directory / a.archive.name

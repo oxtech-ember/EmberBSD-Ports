@@ -9,3 +9,4 @@ SHA1 (patch-gzwrite.c) = 2135248ce28c5f32fdef4f713487cfa9f09190a0
 SHA1 (patch-zconf.h) = 372504e641a4d3a78c025a1fd4fd25ec00bdd7e1
 SHA1 (patch-zlib-bsd) = d16e82f51110291273b24120151955bbb2a38adf
 SHA1 (patch-zlib-const) = 0c4ec54e47c021d96861970763677934bf764e42
+SHA1 (patch-zlib-hpc) = fec5fd9c18e4dc8a2a020a89e825f9fc908b2ffe
