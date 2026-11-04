@@ -1,6 +1,7 @@
 # Origin: EmberBSD (AI-assisted); shared Rust source and selected LLVM runtime.
 DISTNAME= rustc-1.99.1-src
 PKGNAME= rust-std-wasm32-wasip1-1.99.1
+PKGREVISION= 1
 CATEGORIES= lang
 MASTER_SITES= https://static.rust-lang.org/dist/
 EXTRACT_SUFX= .tar.xz

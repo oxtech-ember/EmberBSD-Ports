@@ -12,8 +12,10 @@ The common patches preserve stage0 cross-std integration and select `libunwind`
 on NetBSD only when the upstream `system-llvm-libunwind` feature is active;
 the existing default `libgcc_s` selection remains available. On Apple hosts the
 bootstrap shim uses `DYLD_FALLBACK_LIBRARY_PATH`, preserving absolute system
-library install names while locating the selected Rust shared libraries. These
-are EmberBSD adaptations with AI assistance, not accepted upstream.
+library install names while locating the selected Rust shared libraries. The
+producer also sets this path to the selected native prefix’s `lib` directory
+for the initial Cargo-built bootstrap, before the shim starts. These are
+EmberBSD adaptations with AI assistance, not accepted upstream.
 
 ## LLVM build
 
@@ -61,8 +63,10 @@ package dependency still apply.
 NetBSD link declarations with and without the system feature. The adjacent
 `test-make-selection.py` checks target and explicit family selection, and
 `test-bootstrap-loader.py` checks the patched host loader choice and runs the
-selected host rustc. The full source build additionally exercises the actual
-bootstrap shim and target link.
+selected host rustc. Its optional `--producer-command` accepts the real LLVM
+producer command with `--plan` and the same explicit inputs; it verifies bootstrap
+startup while the caller supplies an unusable loader path. The full source build
+additionally exercises the actual bootstrap shim and target link.
 
 ## Cross-profile native dependency
 

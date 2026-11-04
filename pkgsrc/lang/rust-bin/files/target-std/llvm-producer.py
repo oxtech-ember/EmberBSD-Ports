@@ -58,6 +58,8 @@ env = process.sanitized_environment()
 (a.work/'tmp').mkdir(exist_ok=True); (a.work/'cargo-home').mkdir(exist_ok=True)
 env.update(PATH=native.path, CARGO_NET_OFFLINE='true', CARGO_HOME=str(a.work/'cargo-home'),
            TMPDIR=str(a.work/'tmp'),
+           # The initial Cargo-built bootstrap runs before the Rust loader shim.
+           DYLD_FALLBACK_LIBRARY_PATH=str(a.host_prefix/'lib'),
            PYTHONDONTWRITEBYTECODE='1')
 for name in ('RUSTFLAGS','CARGO_ENCODED_RUSTFLAGS','CARGO_BUILD_TARGET','RUSTC_BOOTSTRAP',
              'RUSTC_WRAPPER','RUSTC_WORKSPACE_WRAPPER','CARGO_TARGET_DIR',
