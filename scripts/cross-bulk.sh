@@ -404,7 +404,16 @@ native_satisfies()
 node_deps()
 {
     case "$1" in
-        *@native) set -- "${1%@native}" @native USE_CROSS_COMPILE=no ;;
+        *@native)
+            node=$1
+            if [ -n "${CROSS_BULK_CROSSFED:-}" ] && grep -qFx "$node" "$CROSS_BULK_CROSSFED"; then
+                # Match build_native: target-fed native tools need the target identity.
+                set -f
+                set -- "${node%@native}" @native USE_CROSS_COMPILE=no $CROSS_BULK_TARGET_SETTINGS
+                set +f
+            else
+                set -- "${node%@native}" @native USE_CROSS_COMPILE=no
+            fi ;;
         *) set -- "$1" '' ;;
     esac
     dir=$1 suffix=$2
@@ -496,9 +505,28 @@ order()
     : > "$state/packages.new"
     sort -u "$list" > "$state/queue"
     : > "$state/seen"
+    : > "$q/native-pending"
+    : > "$q/crossfed"
+    target_settings=
+    order_phase=target
     query_index=0
-    while [ -s "$state/queue" ]; do
+    while [ -s "$state/queue" ] || { [ "$order_phase" = target ] && [ -s "$q/native-pending" ]; }; do
         [ "$order_stop" = 0 ] || { trap - HUP INT TERM; return 143; }
+        if [ "$order_phase" = target ]; then
+            # No native query runs until every target edge has been seen. A
+            # native root encountered early can also be a later target tool.
+            awk '/@native[ \t]*$/ { print }' "$state/queue" >> "$q/native-pending"
+            awk '!/@native[ \t]*$/ { print }' "$state/queue" > "$state/target-queue"
+            mv "$state/target-queue" "$state/queue"
+            if [ ! -s "$state/queue" ]; then
+                order_phase=native
+                sort -u "$q/native-pending" > "$state/queue"
+                awk '$1 ~ /@native$/ && $2 !~ /@native$/ { print $1 }' "$state/edges.new" | sort -u > "$q/crossfed"
+                if [ -s "$q/crossfed" ]; then
+                    target_settings=$(var pkgtools/pkg_install CROSSTARGETSETTINGS) || return 1
+                fi
+            fi
+        fi
         : > "$state/next"
         : > "$q/frontier"
         : > "$q/frontier-map"
@@ -525,6 +553,8 @@ order()
             if CROSS_BULK_NATIVE=$native CROSS_BULK_PKG_INFO=$native_pkg_info \
                 CROSS_BULK_OPTIONS_CACHE=$cachearg \
                 CROSS_BULK_VARS_CONTEXT="$vars_context" \
+                CROSS_BULK_CROSSFED="$q/crossfed" \
+                CROSS_BULK_TARGET_SETTINGS="$target_settings" \
                 xargs -P "$jobs" -I '{}' "$controller_shell" "$0" deps '{}' "$q" \
                 < "$q/frontier"; then
                 xargs_status=0

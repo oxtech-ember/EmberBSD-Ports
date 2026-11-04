@@ -568,8 +568,11 @@ When both counts are explicit, their product must fit capacity. Explicit
 serial. Order
 writes the native tools as graph nodes `PKGPATH@native`: `TOOL_DEPENDS` and
 `BOOTSTRAP_DEPENDS` of a target package, and every dependency of a native
-node. A native node is a job of its own, built with `USE_CROSS_COMPILE=no`
-and done once the native package database has its PKGBASE at the tree's
+node. Planning completes the target closure before querying native nodes, so
+native tools needed by target packages receive the same `CROSSTARGETSETTINGS`
+as fetch and build. Native-only tools keep their native context. A native node
+is a job of its own, built with `USE_CROSS_COMPILE=no` and done once the native
+package database has its PKGBASE at the tree's
 PKGNAME version or newer (`pkg_info -e 'BASE>=VERSION'`, the version order
 of pkgsrc dependency patterns), so no package compiles a tool inside its
 dependency step. A native node that the native database already has at that
