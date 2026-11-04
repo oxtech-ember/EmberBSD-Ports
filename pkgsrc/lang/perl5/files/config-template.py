@@ -43,6 +43,55 @@ def values(pairs):
     return result
 
 
+# Only compiler/search inputs are mapped; target runtime paths such as -Wl,-R
+# remain target paths. Unknown absolute search paths fail closed.
+SEARCH_FIELDS = frozenset(('ccflags', 'cppflags', 'optimize', 'ldflags',
+                           'lddlflags', 'libpth', 'libspath', 'locincpth',
+                           'loclibpth', 'incpth'))
+
+def normalize_search_paths(text):
+    lines = []
+    for line in text.splitlines():
+        match = ASSIGNMENT.match(line)
+        if not match or match.group(1) not in SEARCH_FIELDS:
+            lines.append(line)
+            continue
+        key, value = match.groups()
+        words = value.split()
+        result = []
+        index = 0
+        while index < len(words):
+            word = words[index]
+            option = ''
+            path = word
+            if word in ('-I', '-L', '-isystem', '-iquote', '-idirafter'):
+                index += 1
+                if index >= len(words):
+                    raise SystemExit('missing compiler search path in ' + key)
+                option, path = word, words[index]
+            elif any(word.startswith(flag + '/') for flag in ('-I', '-L', '-isystem', '-iquote', '-idirafter')):
+                option = next(flag for flag in ('-I', '-L', '-isystem', '-iquote', '-idirafter')
+                              if word.startswith(flag + '/'))
+                path = word[len(option):]
+            is_path = bool(option) or key in ('libpth', 'libspath', 'locincpth', 'loclibpth', 'incpth')
+            if is_path and (path == '/usr/local' or path.startswith('/usr/local/')):
+                index += 1
+                continue
+            if is_path and (path in ('/usr', '/lib') or path.startswith(('/usr/', '/lib/'))):
+                path = '@SYSROOT@' + path
+            elif is_path and path.startswith('/'):
+                raise SystemExit('unsupported compiler search path in ' + key + ': ' + path)
+            if option in ('-I', '-L'):
+                result.append(option + path)
+            elif option:
+                result.extend((option, path))
+            else:
+                result.append(path)
+            index += 1
+        lines.append(key + "='" + ' '.join(result) + "'")
+    return '\n'.join(lines) + '\n'
+
+
 def capture(text, paths, identity):
     lines = []
     for number, line in enumerate(text.splitlines()):
@@ -70,7 +119,7 @@ def capture(text, paths, identity):
     out = re.sub(r"(-Dtarget(?:host|user|dir|port)=)[^\s']*", r'\1', out)
     for name in sorted(paths, key=lambda n: len(paths[n]), reverse=True):
         out = out.replace(paths[name], '@' + name + '@')
-    return out
+    return normalize_search_paths(out)
 
 
 def leaks(text):
@@ -88,7 +137,7 @@ def fill(text, paths):
         if match.group(1) not in paths:
             raise SystemExit(f'unknown placeholder @{match.group(1)}@ in stored config.sh')
         return paths[match.group(1)]
-    return PLACEHOLDER.sub(substitute, text)
+    return PLACEHOLDER.sub(substitute, normalize_search_paths(text))
 
 
 def main():
@@ -102,6 +151,8 @@ def main():
     text = args.input.read_text()
     if args.mode == 'check':
         bad = leaks(text)
+        if normalize_search_paths(text) != text:
+            bad.append('compiler search paths are not normalized')
         for key, value in NEUTRAL.items():
             line = re.search(rf"^{key}='(.*)'$", text, re.M)
             if line and line.group(1) != value:

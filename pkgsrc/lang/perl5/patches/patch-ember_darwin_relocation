@@ -53,16 +53,19 @@ the public PL_sh_path symbol and other hosts/targets remain unchanged.
  man1ext = $man1ext
 --- config_h.SH.orig
 +++ config_h.SH
-@@ -31,6 +31,33 @@
+@@ -31,6 +31,36 @@
  case "$CONFIG_H" in
  already-done) echo "Not re-extracting config.h" ;;
  *)
 +# Keep SH_PATH and its public symbol unchanged. Only a native Darwin
 +# relocatable interpreter resolves its selected sibling shell at runtime.
 +emberbsd_shell_relative=''
++emberbsd_miniperl_shell_relative=''
 +case "$userelocatableinc:$osname:$targetsh" in
 +define:darwin:"$initialinstalllocation"/*|true:darwin:"$initialinstalllocation"/*)
-+    emberbsd_shell_relative=".../${targetsh#"$initialinstalllocation"/}" ;;
++    emberbsd_shell_relative=".../${targetsh#"$initialinstalllocation"/}"
++    # host-tools.mk installs miniperl in libexec/perl5/<version>.
++    emberbsd_miniperl_shell_relative=".../../../../${targetsh#"${initialinstalllocation%/*}"/}" ;;
 +esac
 +# pkgsrc Policy.sh supplies explicit library paths, so Configure leaves them
 +# absolute even with userelocatableinc. Give the compiled @INC entries the
@@ -87,11 +90,12 @@ the public PL_sh_path symbol and other hosts/targets remain unchanged.
  echo "Extracting $CONFIG_H (with variable substitutions)"
  sed <<!GROK!THIS! >$CONFIG_H -e 's!^#undef\(.*/\)\*!/\*#define\1 \*!' -e 's!^#un-def!#undef!' -e's!define\t!define !'
  /* This file was produced by running the config_h.SH script, which
-@@ -2241,6 +2268,7 @@
+@@ -2241,6 +2271,8 @@
   *	D:/bin/sh.exe.
   */
  #define SH_PATH "$targetsh"  /**/
 +#define EMBERBSD_PERL_SHELL_RELATIVE "$emberbsd_shell_relative"
++#define EMBERBSD_PERL_MINIPERL_SHELL_RELATIVE "$emberbsd_miniperl_shell_relative"
  
  /* SIG_NAME:
   *	This symbol contains a list of signal names in order of
@@ -109,7 +113,7 @@ the public PL_sh_path symbol and other hosts/targets remain unchanged.
  EXTCONST char PL_cshname[]
 --- perl.c.orig
 +++ perl.c
-@@ -5177,6 +5177,29 @@
+@@ -5177,6 +5177,32 @@
      return libdir;
  }
  
@@ -117,22 +121,25 @@ the public PL_sh_path symbol and other hosts/targets remain unchanged.
 +PERL_CALLCONV const char *
 +Perl_ember_runtime_shell(pTHX)
 +{
-+#ifdef PERL_IS_MINIPERL
-+    return PL_sh_path;
-+#else
 +    const char *build_shell = PerlEnv_getenv("PERL_BUILD_SHELL");
 +    SV *shell;
 +
-+    /* The build invokes the full interpreter before installing it. Keep the
-+     * explicitly selected build shell; never infer a fallback from PATH. */
++    /* Both native builds and cross Configure copies execute miniperl
++     * outside its install directory. Keep their explicit build shell. */
 +    if (!TAINTING_get && build_shell && build_shell[0] == '/')
 +        return build_shell;
++#ifdef PERL_IS_MINIPERL
++    if (!EMBERBSD_PERL_MINIPERL_SHELL_RELATIVE[0])
++        return PL_sh_path;
++    shell = S_mayberelocate(aTHX_ STR_WITH_LEN(EMBERBSD_PERL_MINIPERL_SHELL_RELATIVE),
++                           INCPUSH_CAN_RELOCATE);
++#else
 +    if (!EMBERBSD_PERL_SHELL_RELATIVE[0])
 +        return PL_sh_path;
 +    shell = S_mayberelocate(aTHX_ STR_WITH_LEN(EMBERBSD_PERL_SHELL_RELATIVE),
 +                           INCPUSH_CAN_RELOCATE);
-+    return SvPV_nolen(sv_2mortal(shell));
 +#endif
++    return SvPV_nolen(sv_2mortal(shell));
 +}
 +#endif
 +
@@ -148,7 +155,7 @@ the public PL_sh_path symbol and other hosts/targets remain unchanged.
 -          doshell:
 +          doshell: {
 +            const char *shell = PL_sh_path;
-+#if defined(PERL_RELOCATABLE_INC) && defined(__APPLE__) && !defined(PERL_IS_MINIPERL)
++#if defined(PERL_RELOCATABLE_INC) && defined(__APPLE__)
 +            shell = Perl_ember_runtime_shell(aTHX);
 +#endif
              PERL_FPU_PRE_EXEC

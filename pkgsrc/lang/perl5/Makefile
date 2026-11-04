@@ -3,7 +3,7 @@
 .include "license.mk"
 .include "Makefile.common"
 
-PKGREVISION=	15
+PKGREVISION=	16
 
 COMMENT=	Practical Extraction and Report Language
 
@@ -97,6 +97,11 @@ CONFIGURE_ARGS+= -Dsh=${PERL_BUILD_SHELL:Q} -Dtargetsh=${PERL_RUNTIME_SHELL:Q}
 .  endif
 .endif
 # END explicit native runtime shells
+# In-place native interpreters cannot use their installed relative shell route.
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes" && !defined(PERL_BUILD_SHELL)
+CONFIGURE_ENV+= PERL_BUILD_SHELL=${CONFIG_SHELL:Q}
+MAKE_ENV+= PERL_BUILD_SHELL=${CONFIG_SHELL:Q}
+.endif
 MAKE_ENV+=		LC_ALL="C"
 .if ${OPSYS} == "Darwin" && defined(EMBERBSD_DARWIN_INSTALL_NAME_TOOL)
 MAKE_ENV+=		EMBERBSD_DARWIN_INSTALL_NAME_TOOL=${EMBERBSD_DARWIN_INSTALL_NAME_TOOL:Q}

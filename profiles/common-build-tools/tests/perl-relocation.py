@@ -8,6 +8,8 @@ import os
 from pathlib import Path
 import platform
 import subprocess
+import shutil
+import tempfile
 
 
 PROGRAM = r'''
@@ -23,7 +25,7 @@ die "XS modules failed" unless floor(1.9) == 1 && time() > 0 && length(getcwd())
 my $shell = qx{print -r -- "\$KSH_VERSION"};
 die "runtime shell failed" if $?;
 print JSON::PP->new->encode({inc => \@INC, shell => $shell,
-    config => {map { $_ => $Config{$_} } qw(prefixexp archlibexp privlibexp scriptdir targetsh useshrplib)}});
+    config => {map { $_ => $Config{$_} } qw(prefixexp archlibexp privlibexp scriptdir targetsh useshrplib version)}});
 '''
 
 
@@ -59,6 +61,31 @@ def main():
                                        env=env, text=True)
     if not expected or data['shell'] != expected or data['config']['useshrplib'] != 'true':
         raise SystemExit('Perl runtime shell or shared library contract differs')
+    version = data['config']['version']
+    if not isinstance(version, str) or not version or '/' in version:
+        raise SystemExit('Invalid Config.version')
+    mini = prefix / 'libexec/perl5' / version / 'miniperl'
+    if not mini.is_file():
+        raise SystemExit('Missing installed miniperl for Config.version: ' + version)
+    mini_program = r'''my $shell = qx{print -r -- "\$KSH_VERSION"}; die "shell failed" if $?; my @names = glob("$ENV{MINI_GLOB_DIR}/*"); die "glob failed" unless @names == 1 && $names[0] =~ /sample$/; print $shell;'''
+    with tempfile.TemporaryDirectory(prefix='ember-miniperl-relocation-') as temp:
+        scratch = Path(temp)
+        (scratch / 'sample').write_text('sample')
+        copied = scratch / 'miniperl'
+        shutil.copy2(mini, copied)
+        for executable, copied_mode in ((mini, False), (copied, True)):
+            mini_env = dict(env, MINI_GLOB_DIR=str(scratch / 'globdir'))
+            globdir = scratch / 'globdir'
+            globdir.mkdir(exist_ok=True)
+            (globdir / 'sample').write_text('sample')
+            if copied_mode:
+                mini_env['PERL_BUILD_SHELL'] = str(prefix / 'bin/mksh')
+            command = [str(executable), '-e', mini_program]
+            if args.deny_producer:
+                command = ['/usr/bin/sandbox-exec', '-p', policy, '--', *command]
+            checked = subprocess.run(command, env=mini_env, capture_output=True, text=True)
+            if checked.returncode or checked.stdout != expected:
+                raise SystemExit(('Copied' if copied_mode else 'Installed') + ' miniperl failed: ' + checked.stderr[-4096:])
     print('Perl relocation: core modules, XS, Config, include paths and selected shell passed' +
           (' with producer reads denied' if args.deny_producer else ''))
 

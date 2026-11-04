@@ -5,6 +5,7 @@
 """Check installed target Config conversion using a real configured Perl tree."""
 import argparse
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -25,6 +26,15 @@ with tempfile.TemporaryDirectory(dir=a.work_dir) as temporary:
     for line in ("aphostname='/bin/hostname'", "lns='/bin/ln -s'", "rm_try='/bin/rm -f try try a.out .out try.[cho] try..o core core.try* try.core*'"):
         assert line in config, line
     assert str(a.sysroot) not in config and '/Users/' not in config
+    source_config = (a.source / 'config.sh').read_text()
+    for field in ('ccflags', 'cppflags', 'optimize', 'ldflags', 'lddlflags',
+                  'libpth', 'libspath', 'locincpth', 'loclibpth'):
+        before_field = re.search(r'^' + field + r"='([^']*)'$", source_config, re.M)
+        after_field = re.search(r'^' + field + r"='([^']*)'$", config, re.M)
+        assert before_field and after_field, field
+        expected = before_field.group(1).replace('--sysroot=' + str(a.sysroot), '')
+        expected = expected.replace(str(a.sysroot) + '/', '/')
+        assert after_field.group(1) == expected, field
     assert (output / 'lib/Config.pm').is_file()
     header = (output / 'config.h').read_text()
     assert '#define PHOSTNAME "/bin/hostname"' in header and '/Users/' not in header
