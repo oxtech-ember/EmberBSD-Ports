@@ -1,0 +1,88 @@
+# Origin: EmberBSD; VT_PROCESS fix from upstream SDDM PR 2210, Gleb Popov.
+--- src/common/VirtualTerminal.cpp.orig
++++ src/common/VirtualTerminal.cpp
+@@ -31,6 +31,7 @@
+ #include <sys/consio.h>
+ #elif __NetBSD__
+ #include <dev/wscons/wsdisplay_usl_io.h>
++#include <dev/wscons/wsconsio.h>
+ #else
+ #include <linux/vt.h>
+ #include <linux/kd.h>
+@@ -140,6 +141,15 @@
+             if (ioctl(fd, KDGETMODE, &kernelDisplayMode) < 0) {
+                 qWarning() << "Failed to query kernel display mode:" << strerror(errno);
+                 ok = false;
++            }
++#elif defined(__NetBSD__)
++            // wscons has no KDGETMODE; query the screen mode directly.
++            if (ioctl(fd, WSDISPLAYIO_GMODE, &kernelDisplayMode) < 0) {
++                qWarning() << "Failed to query wscons display mode:" << strerror(errno);
++                ok = false;
++            } else {
++                kernelDisplayMode = kernelDisplayMode == WSDISPLAYIO_MODE_EMUL
++                    ? KD_TEXT : KD_GRAPHICS;
+             }
+ #endif
+             if (kernelDisplayMode == KD_TEXT)
+@@ -219,6 +229,18 @@
+             int fd;
+ 
+             int activeVtFd = open(defaultVtPath, O_RDWR | O_NOCTTY);
++#ifdef __NetBSD__
++            // ttyE0 is a fixed screen, not an alias for the active VT.
++            const int activeVt = getVtActive(activeVtFd);
++            close(activeVtFd);
++            if (activeVt <= 0)
++                return;
++            activeVtFd = open(qPrintable(path(activeVt)), O_RDWR | O_NOCTTY);
++            if (activeVtFd < 0) {
++                qWarning("Failed to open active VT %d: %s", activeVt, strerror(errno));
++                return;
++            }
++#endif
+ 
+             QString ttyString = path(vt);
+             int vtFd = open(qPrintable(ttyString), O_RDWR | O_NOCTTY);
+@@ -231,6 +253,12 @@
+                     qWarning("Failed to clear VT %d: %s", vt, strerror(errno));
+                 }
+ 
++#ifdef __NetBSD__
++                // The active screen needs repair only when switching away;
++                // resetting the same screen can redraw over the compositor.
++                if (activeVt != vt)
++                    fixVtMode(activeVtFd, vt_auto);
++#endif
+                 // set graphics mode to prevent flickering
+                 if (ioctl(fd, KDSETMODE, KD_GRAPHICS) < 0)
+                     qWarning("Failed to set graphics mode for VT %d: %s", vt, strerror(errno));
+@@ -239,7 +267,9 @@
+                 // combination of states (KD_GRAPHICS with VT_AUTO) that we
+                 // cannot switch from, so make sure things are in a way that
+                 // will make VT_ACTIVATE work without hanging VT_WAITACTIVE
++#ifndef __NetBSD__
+                 fixVtMode(activeVtFd, vt_auto);
++#endif
+             } else {
+                 qWarning("Failed to open %s: %s", qPrintable(ttyString), strerror(errno));
+                 qDebug("Using %s instead of %s!", defaultVtPath, qPrintable(ttyString));
+--- src/helper/UserSession.cpp.orig
++++ src/helper/UserSession.cpp
+@@ -188,7 +188,6 @@
+         QString sessionType = processEnvironment().value(QStringLiteral("XDG_SESSION_TYPE"));
+         QString sessionClass = processEnvironment().value(QStringLiteral("XDG_SESSION_CLASS"));
+         const bool hasDisplayServer = !m_displayServerCmd.isEmpty();
+-        const bool x11UserSession = sessionType == QLatin1String("x11") && sessionClass == QLatin1String("user");
+         const bool waylandUserSession = sessionType == QLatin1String("wayland") && sessionClass == QLatin1String("user");
+ 
+         // When the display server is part of the session, we leak the VT into
+@@ -228,7 +227,7 @@
+                 }
+             }
+ 
+-            VirtualTerminal::jumpToVt(vtNumber, x11UserSession);
++            VirtualTerminal::jumpToVt(vtNumber, true);
+         }
+ 
+ #ifdef Q_OS_LINUX
