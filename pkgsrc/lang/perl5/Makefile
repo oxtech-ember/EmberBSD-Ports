@@ -31,6 +31,11 @@ USE_LANGUAGES=		c
 
 .include "../../mk/bsd.prefs.mk"
 
+# Only the cross-built Time::HiRes module changes; native payload is unchanged.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+PKGREVISION=	19
+.endif
+
 # Determine the Perl API version from the patchlevel.h file from the
 # source distribution.
 #

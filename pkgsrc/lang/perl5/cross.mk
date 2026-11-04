@@ -51,6 +51,10 @@ CONFIGURE_ARGS+= -Dsysroot=${CROSS_DESTDIR:Q}
 # the host build shell explicitly for every generator in either layout.
 CONFIGURE_ENV+= PERL_BUILD_SHELL=${CONFIG_SHELL:Q}
 MAKE_ENV+= PERL_BUILD_SHELL=${CONFIG_SHELL:Q}
+# Time::HiRes has its own compile/link probes beyond core Configure.
+# Keep those target checks, but never execute their ELF binaries on the host.
+CONFIGURE_ENV+= TIME_HIRES_DONT_RUN_PROBES=1
+MAKE_ENV+= TIME_HIRES_DONT_RUN_PROBES=1
 CONFIGURE_ARGS+= -Dhostperl=${EMBERBSD_PERL_HOST_MINIPERL:Q}
 CONFIGURE_ARGS+= -Dhostgenerate=${EMBERBSD_PERL_HOST_GENERATE:Q}
 CONFIGURE_ARGS+= -Dperl=${EMBERBSD_CROSS_BUILD_PERL:Q}

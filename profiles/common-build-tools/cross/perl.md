@@ -48,7 +48,15 @@ The probe runner variables name `Cross/no-target`, which only reports an error.
 For a cross build, `do-configure` fills the placeholders with the current
 paths ([config-template.py](../../../pkgsrc/lang/perl5/files/config-template.py)
 `fill`), runs `Configure -S` to extract the `.SH` files from those answers and
-then `make depend`. No probe runs and no SSH or SCP is started.
+then `make depend`. No core Configure probe executes and no SSH or SCP is started.
+
+Time::HiRes performs separate feature probes when its Makefile is generated.
+The cross recipe uses upstream `TIME_HIRES_DONT_RUN_PROBES=1`: the selected
+target compiler must still compile and link each probe against the target
+sysroot, but target binaries are not executed on the build host. Native builds
+retain upstream runtime probing. After a cross-build change, run
+`tests/perl-time-hires.pl` with the installed target Perl to check the monotonic
+clock used by bounded process supervision.
 
 The second line of each stored file names the recipe it was measured with:
 
