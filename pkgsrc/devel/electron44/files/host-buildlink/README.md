@@ -20,3 +20,10 @@ prefix and pkgdb must already contain every dependency. The wrapper refuses
 missing dependencies without installing packages, and rejects cross sysroot or
 foreign compiler/pkgdb selections. The child environment is sanitized.
 Supplying `--stage-root` retains the explicit hardened replacement-stage route.
+
+An existing selection produced by the known previous identity algorithm can be
+updated once with `--migrate-selection` under the normal work lock. The helper
+recomputes and compares every selected build input and view link, refusing any
+change beyond the previous script identity and the export provenance marker.
+The updated selection retains the current helper identity; normal `--check`
+remains read-only. An unrelated catalog revision is not itself a build input.

@@ -10,6 +10,9 @@ import os
 from pathlib import Path
 import sys
 
+# Published before catalog provenance was removed from buildlink identity.
+LEGACY_SELECTION_SELF_SHA256 = 'bf32e53d13d5a2df2804064f0708ebf455b25cfbee2a36248434e7838ac4b956'
+
 
 def identity(process, command, env, consumer, view, host_prefix, extras):
     """Capture this actual buildlink selection, not an SDK qualification."""
@@ -87,23 +90,42 @@ def check_installed_context(process, command, env, prefix):
         raise ValueError('installed host context contains target or foreign tool selection')
 
 
+def migrate_legacy_selection(saved, current, invocation, script, revision):
+    """Accept only the known legacy algorithm with unchanged actual inputs."""
+    old = saved.get('identity')
+    if (saved.get('invocation') != invocation or not isinstance(old, dict) or
+            set(old) != {'inputs', 'links'} or not isinstance(old.get('inputs'), dict)):
+        raise ValueError('invalid legacy host buildlink selection')
+    old_inputs = dict(old['inputs'])
+    current_inputs = dict(current['inputs'])
+    if (old_inputs.pop(str(script), None) != LEGACY_SELECTION_SELF_SHA256 or
+            old_inputs.pop(str(revision), None) is None or
+            current_inputs.pop(str(script), None) is None or
+            old_inputs != current_inputs or old.get('links') != current['links']):
+        raise ValueError('legacy host buildlink actual inputs changed')
+    return dict(identity=current, invocation=invocation)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('sdk-source', 'pkgsrc-root', 'host-prefix',
                  'base-makeconf', 'binding-record', 'bmake-mk', 'work', 'lock-root'):
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--stage-root', type=Path, help='explicit replacement stage; omit for installed prefix')
-    parser.add_argument('--check', action='store_true', help='check an existing view identity')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--check', action='store_true', help='check an existing view identity')
+    mode.add_argument('--migrate-selection', action='store_true',
+                      help='upgrade a matching legacy selection after validating actual inputs')
     args = parser.parse_args()
     for name, value in vars(args).items():
         if isinstance(value, Path) and not value.is_absolute():
             parser.error('--' + name.replace('_', '-') + ' must be absolute')
     sdk_root = args.sdk_source.resolve(strict=True)
     sys.path.insert(0, str(sdk_root / 'src'))
-    from emberbsd_sdk import darwin_makeconf, host_prefix, process
+    from emberbsd_sdk import darwin_makeconf, host_prefix, process, jsonio
     from emberbsd_sdk.errors import SDKError
     from emberbsd_sdk import paths
-    for module in (darwin_makeconf, host_prefix, process, paths):
+    for module in (darwin_makeconf, host_prefix, process, paths, jsonio):
         if Path(module.__file__).resolve() != sdk_root / 'src/emberbsd_sdk' / (module.__name__.split('.')[-1] + '.py'):
             raise SDKError('selected SDK module origin differs')
     native = host_prefix.load_host_prefix(args.host_prefix, required_roles=('make', 'python', 'cc', 'cxx', 'cpp'),
@@ -131,7 +153,7 @@ def main():
             lock_inputs.append(str(args.stage_root))
         with process.ContextLocks(lock_inputs,
                                   str(args.lock_root), shared=True):
-            if args.check:
+            if args.check or args.migrate_selection:
                 consumer = work / 'pkgsrc/devel/electron-host-context'
                 view = work / 'objects/devel/electron-host-context/work/.buildlink'
                 env = process.sanitized_environment()
@@ -149,12 +171,16 @@ def main():
                 try:
                     current = identity(process, command, env, consumer, view, args.host_prefix,
                                        (Path(__file__), args.binding_record, deps,
-                                        source / 'EMBERBSD-PKGSRC-REVISION',
                                         Path(darwin_makeconf.__file__)))
                 except (FileNotFoundError, process.CommandError):
                     print('host buildlink selection changed', file=sys.stderr)
                     sys.exit(3)
-                if saved.get('identity') != current:
+                if args.migrate_selection:
+                    migrated = migrate_legacy_selection(
+                        saved, current, invocation, Path(__file__).resolve(strict=True),
+                        (source / 'EMBERBSD-PKGSRC-REVISION').resolve(strict=True))
+                    jsonio.write_json(work / 'selection.json', migrated, exclusive=False)
+                elif saved.get('identity') != current:
                     print('host buildlink selection changed', file=sys.stderr)
                     sys.exit(3)
                 print(view)
@@ -216,7 +242,6 @@ def main():
                 raise SDKError('pkgsrc did not create the host buildlink view')
             selected = identity(process, command, env, consumer, view, args.host_prefix,
                                 (Path(__file__), args.binding_record, deps,
-                                 source / 'EMBERBSD-PKGSRC-REVISION',
                                  Path(darwin_makeconf.__file__)))
             (work / 'selection.json').write_text(json.dumps(
                 dict(identity=selected, invocation=invocation), sort_keys=True))
