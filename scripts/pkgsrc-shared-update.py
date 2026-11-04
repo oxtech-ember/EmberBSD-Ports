@@ -8,6 +8,7 @@ import importlib.util
 import io
 import json
 import os
+import posixpath
 import re
 from pathlib import Path
 import shutil
@@ -109,16 +110,62 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
         for tree, rows in inputs['trees'].items():
             if name.startswith(tree + '/'):
                 row = rows.get(name[len(tree) + 1:])
-                if row and row.get('kind') == 'file':
-                    return row['sha256']
+                if row and row.get('kind') in ('file', 'link'):
+                    return row['target_sha256'] if row['kind'] == 'link' else row['sha256']
         return None
+    # Read Git modes once. Source links are materialized by the exporter.
+    tree_cache = {}
+    def historical_tree(revision):
+        if revision not in tree_cache:
+            entries = {}
+            for record in git_call('ls-tree', '-rz', revision).stdout.split(b'\0'):
+                if record:
+                    metadata, name = record.split(b'\t', 1)
+                    entries[name.decode('utf-8')] = metadata.split()
+            tree_cache[revision] = entries
+        return tree_cache[revision]
+    historical_entries = historical_tree(oldrev)
     old_blobs = {}
+    blob_cache = {oldrev: old_blobs}
+    def historical_blob(name, revision=oldrev):
+        blobs = blob_cache.setdefault(revision, {})
+        if name not in blobs:
+            entry = historical_tree(revision).get(name)
+            blobs[name] = (git_call('cat-file', 'blob', entry[2].decode('ascii')).stdout
+                           if entry and entry[1] == b'blob' else None)
+        return blobs[name]
+    def historical_file(name, revision=oldrev):
+        entries = historical_tree(revision)
+        seen = set()
+        while True:
+            if name in seen or len(seen) >= 64:
+                raise ValueError('historical input link cycle: ' + name)
+            seen.add(name)
+            parts = name.split('/')
+            for index in range(1, len(parts) + 1):
+                prefix = '/'.join(parts[:index])
+                entry = entries.get(prefix)
+                if entry and entry[0] == b'120000':
+                    target = historical_blob(prefix, revision).decode('utf-8')
+                    if (not target or posixpath.isabs(target) or '\\' in target or
+                            any(ord(char) < 32 or ord(char) == 127 for char in target)):
+                        raise ValueError('unsafe historical input link: ' + prefix)
+                    resolved = posixpath.normpath(posixpath.join(posixpath.dirname(prefix), target))
+                    if resolved == '..' or resolved.startswith('../'):
+                        raise ValueError('historical input link leaves Ports: ' + prefix)
+                    name = posixpath.join(resolved, *parts[index:])
+                    break
+            else:
+                entry = entries.get(name)
+                if entry is None:
+                    return None, None
+                if entry[0] not in (b'100644', b'100755'):
+                    raise ValueError('historical input is not a regular file: ' + name)
+                return historical_blob(name, revision), 0o755 if entry[0] == b'100755' else 0o644
+    def old_mode(name):
+        return dirty_before[name]['mode'] if name in dirty_before else historical_file(name)[1]
     def old_file(name):
-        if name in old_blobs:
-            content = old_blobs[name]
-        else:
-            result = git_call('show', oldrev + ':' + name, check=False)
-            content = result.stdout if result.returncode == 0 else None
+        content, _ = historical_file(name)
         expected = snapshot_hash(old_inputs, name)
         if expected is not None and (not isinstance(expected, str) or re.fullmatch('[0-9a-f]{64}', expected) is None):
             raise ValueError('invalid previous input digest: ' + name)
@@ -172,6 +219,18 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                            if before.get(name) != after.get(name) and
                            ((before.get(name) or after.get(name)).get('kind') != 'directory'))
     changed.update(git_call('ls-files', '--others', '--exclude-standard').stdout.decode().splitlines())
+    # Link rows store lstat mode. The copied file uses its target's mode.
+    # Include mode-only owner changes without changing existing receipt hashes.
+    link_inputs = {tree + '/' + name for inputs in (old_inputs, snapshot) if inputs
+                   for tree, rows in inputs['trees'].items()
+                   for name, row in rows.items() if row['kind'] == 'link'}
+    material_mode_changes = set()
+    for name in link_inputs:
+        source = ports / name
+        current_mode = stat.S_IMODE(source.stat().st_mode) if source.is_file() else None
+        if old_mode(name) != current_mode:
+            material_mode_changes.add(name)
+    changed.update(material_mode_changes)
     if old_inputs is not None:
         def input_row(inputs, name, historical):
             for tree, rows in inputs['trees'].items():
@@ -183,18 +242,41 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
             if sha is None:
                 return None
             if historical:
-                mode = dirty_before.get(name, {}).get('mode')
-                if mode is None:
-                    row = git_call('ls-tree', oldrev, '--', name).stdout.split()
-                    if not row or row[0] not in (b'100644', b'100755'):
-                        raise ValueError('previous input mode unavailable: ' + name)
-                    mode = 0o755 if row[0] == b'100755' else 0o644
+                mode = old_mode(name)
             else:
                 source = exp.source_path(ports, name, 'current export input')
                 mode = stat.S_IMODE(source.stat().st_mode)
             return {'kind': 'file', 'sha256': sha, 'mode': mode}
         changed = {name for name in changed
-                   if input_row(old_inputs, name, True) != input_row(snapshot, name, False)}
+                   if name in material_mode_changes or
+                   input_row(old_inputs, name, True) != input_row(snapshot, name, False)}
+    legacy_links = {}
+    if receipt['version'] == 2:
+        link_names = {tree + '/' + name for tree, rows in snapshot['trees'].items()
+                      for name, row in rows.items() if row['kind'] == 'link'}
+        link_names.update(name for name in changed
+                          if historical_entries.get(name, [None])[0] == b'120000')
+        if link_names:
+            with tempfile.TemporaryDirectory(prefix='.pkgsrc-link-mode-', dir=directory.parent) as temp:
+                link = Path(temp) / 'link'
+                link.symlink_to('target')
+                link_mode = stat.S_IMODE(link.lstat().st_mode)
+            for name in link_names:
+                data, mode = historical_file(name)
+                entry = historical_entries.get(name)
+                if entry and entry[0] == b'120000':
+                    row = {'kind': 'link', 'mode': link_mode,
+                           'target': historical_blob(name).decode('utf-8'),
+                           'target_sha256': hashlib.sha256(data).hexdigest()}
+                elif data is not None:
+                    row = {'kind': 'file', 'mode': mode, 'size': len(data),
+                           'sha256': hashlib.sha256(data).hexdigest()}
+                else:
+                    row = None
+                legacy_links[name] = row
+                for tree, rows in snapshot['trees'].items():
+                    if name.startswith(tree + '/') and rows.get(name[len(tree) + 1:]) != row:
+                        changed.add(name)
     changes = {}
     for name in changed:
         if name not in old_refs and name not in current_refs and not any(name.startswith(t + '/') for t in snapshot['trees']):
@@ -203,13 +285,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
         if before is None:
             mode = None
         else:
-            row = git_call('ls-tree', oldrev, '--', name).stdout.split()
-            if name in dirty_before:
-                mode = dirty_before[name].get('mode')
-            elif row and row[0] in (b'100644', b'100755'):
-                mode = 0o755 if row[0] == b'100755' else 0o644
-            else:
-                raise ValueError('unsupported historical input type: ' + name)
+            mode = old_mode(name)
         changes[name] = (before, mode, name in old_refs and before is not None)
     if receipt['version'] == 2:
         legacy = copy.deepcopy(snapshot)
@@ -229,7 +305,20 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                         rows.setdefault(parent.as_posix(), {'kind': 'directory', 'mode': 0o755})
                     elif parent.as_posix() in rows and rows[parent.as_posix()].get('kind') == 'directory':
                         rows.pop(parent.as_posix())
-        old_snapshot = ident.reconstruct_legacy_payload(legacy, changes, previous['export_inputs_sha256'])
+        for name, row in legacy_links.items():
+            for tree, rows in legacy['trees'].items():
+                if name.startswith(tree + '/'):
+                    relative = name[len(tree) + 1:]
+                    if row is None:
+                        rows.pop(relative, None)
+                    else:
+                        rows[relative] = row
+            if name in old_refs:
+                legacy['files'][name] = hashlib.sha256(old_file(name)).hexdigest()
+            else:
+                legacy['files'].pop(name, None)
+        regular_changes = {name: value for name, value in changes.items() if name not in legacy_links}
+        old_snapshot = ident.reconstruct_legacy_payload(legacy, regular_changes, previous['export_inputs_sha256'])
     else:
         # The v3 snapshot is already bound to the recorded aggregate above.
         old_snapshot = receipt['inputs']
@@ -242,7 +331,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
         if overlay is None and 'pkgsrc/' + package in old_snapshot['trees']:
             raise ValueError('selected recipe source layout changed')
         for rows in ([old_snapshot['trees'][overlay], snapshot['trees'][overlay]] if overlay else []):
-            if any(row['kind'] not in ('file', 'directory') for row in rows.values()):
+            if any(row['kind'] not in ('file', 'directory', 'link') for row in rows.values()):
                 raise ValueError('selected recipe contains unsupported links')
     def selected_output(name):
         return any(name.startswith(package + '/') for package in packages)
@@ -365,7 +454,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                     names = []
                     for relative, entry in source_rows.items():
                         exp.relative_parts(relative, 'historical recipe path')
-                        if entry['kind'] == 'file':
+                        if entry['kind'] in ('file', 'link'):
                             names.append(overlay + '/' + relative)
                     if names:
                         request = b''.join((oldrev + ':' + name + '\n').encode('utf-8') for name in names)
@@ -396,12 +485,15 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                         if entry['kind'] == 'directory':
                             output.mkdir()
                             output.chmod(entry['mode'])
-                        elif entry['kind'] == 'file':
-                            data = old_file(overlay + '/' + relative)
-                            if data is None or hashlib.sha256(data).hexdigest() != entry['sha256']:
+                        elif entry['kind'] in ('file', 'link'):
+                            name = overlay + '/' + relative
+                            data = old_file(name)
+                            expected = entry['target_sha256'] if entry['kind'] == 'link' else entry['sha256']
+                            if data is None or hashlib.sha256(data).hexdigest() != expected:
                                 raise ValueError('historical recipe file differs: ' + relative)
                             output.write_bytes(data)
-                            output.chmod(entry['mode'] & ~0o022)
+                            mode = old_mode(name) if entry['kind'] == 'link' else entry['mode']
+                            output.chmod(mode & ~0o022)
                 else:
                     shutil.copytree(ports / overlay, target, copy_function=exp.copy_file)
             elif not upstream:
@@ -418,8 +510,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                     dest.write_bytes(content)
                     source_mode = dirty_before.get(row[1], {}).get('mode') if old else None
                     if source_mode is None and old:
-                        mode_row = git_call('ls-tree', oldrev, '--', row[1]).stdout.split()
-                        source_mode = 0o755 if mode_row and mode_row[0] == b'100755' else 0o644
+                        source_mode = old_mode(row[1])
                     if source_mode is None:
                         source_mode = stat.S_IMODE((ports / row[1]).stat().st_mode)
                     dest.chmod(source_mode & ~0o022)
@@ -464,8 +555,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                 dest.write_bytes(read_source(source, old))
                 source_mode = dirty_before.get(source, {}).get('mode') if old else None
                 if source_mode is None and old:
-                    mode_row = git_call('ls-tree', oldrev, '--', source).stdout.split()
-                    source_mode = 0o755 if mode_row and mode_row[0] == b'100755' else 0o644
+                    source_mode = old_mode(source)
                 if source_mode is None:
                     source_mode = stat.S_IMODE((ports / source).stat().st_mode)
                 dest.chmod(source_mode & ~0o022)
@@ -499,17 +589,14 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
             before = read_source(old_files[name], True) if name in old_files else None
             after = read_source(new_files[name], False) if name in new_files else None
             old_source = old_files.get(name)
-            old_row = git_call('ls-tree', oldrev, '--', old_source).stdout.split() if old_source else []
-            old_mode = dirty_before.get(old_source, {}).get('mode')
-            if old_mode is None and old_row:
-                old_mode = 0o755 if old_row[0] == b'100755' else 0o644
+            previous_mode = old_mode(old_source) if old_source else None
             source = new_files.get(name)
             mode = (stat.S_IMODE((ports / source).stat().st_mode) & ~0o022) if source else None
             if os.path.lexists(destination):
                 if destination.is_symlink() or not destination.is_file():
                     raise ValueError('selected live file has unsupported type: ' + name)
                 actual = (destination.read_bytes(), stat.S_IMODE(destination.stat().st_mode))
-                permitted = [(before, old_mode)]
+                permitted = [(before, previous_mode)]
                 if pending is not None:
                     permitted.append((after, mode))
                 if actual not in permitted:
@@ -519,15 +606,17 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
             file_changes.append((destination, after, mode))
         input_names = set(snapshot['files'])
         for tree, rows in snapshot['trees'].items():
-            input_names.update(tree + '/' + name for name, row in rows.items() if row['kind'] == 'file')
+            input_names.update(tree + '/' + name for name, row in rows.items() if row['kind'] in ('file', 'link'))
         dirty = set(git_call('diff', '--name-only', 'HEAD', '--').stdout.decode().splitlines())
         dirty.update(git_call('ls-files', '--others', '--exclude-standard').stdout.decode().splitlines())
         dirty.update(git_call('ls-files', '--others', '-i', '--exclude-standard').stdout.decode().splitlines())
         dirty.update(current_refs - old_refs)
+        dirty.update(tree + '/' + name for tree, rows in snapshot['trees'].items()
+                     for name, row in rows.items() if row['kind'] == 'link')
         dirty_inputs, dirty_content = {}, {}
         for name in sorted(dirty & input_names):
             source = exp.source_path(ports, name, 'dirty export input')
-            if source.is_symlink() or not source.is_file():
+            if not source.is_file():
                 raise ValueError('dirty export input is not a regular file: ' + name)
             content = source.read_bytes()
             sha = hashlib.sha256(content).hexdigest()
@@ -536,10 +625,8 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
             mode = stat.S_IMODE(source.stat().st_mode)
             if mode not in (0o644, 0o755):
                 raise ValueError('unsupported dirty export input mode: ' + name)
-            tracked = git_call('show', 'HEAD:' + name, check=False)
-            tree = git_call('ls-tree', 'HEAD', '--', name, check=False).stdout.split()
-            tracked_mode = (0o755 if tree[0] == b'100755' else 0o644) if tree and tree[0] in (b'100644', b'100755') else None
-            if tracked.returncode == 0 and tracked.stdout == content and tracked_mode == mode:
+            tracked, tracked_mode = historical_file(name, current['ports_commit'])
+            if tracked == content and tracked_mode == mode:
                 continue
             dirty_inputs[name] = {'sha256': sha, 'mode': mode}
             dirty_content[sha] = content

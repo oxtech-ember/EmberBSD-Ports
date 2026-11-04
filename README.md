@@ -947,8 +947,11 @@ Repeat `--package` for every changed package in the same transaction; all
 changed inputs must be covered by the selected packages or named file outputs.
 It keeps unchanged bytes, modes and mtimes. A changed upstream pin, unrelated
 global input, opaque cross-package patch, changed recipe source identity or
-layout, or link in the selected recipe is refused; this interface is not a general full-export
-replacement. A private active-input cache retains only uncommitted source bytes
+layout, or an unsafe source link is refused. This is not a full-export replacement.
+Safe source links are copied as regular files, as in the initial export.
+Historical targets come from the recorded Git revision or active input cache.
+Select every affected recipe when a shared target changes content or executable mode.
+A private active-input cache retains only uncommitted source bytes
 needed by the current receipt. It does not retain historical versions.
 
 An interrupted update leaves `.pkgsrc-update-incomplete`; readers refuse it.
