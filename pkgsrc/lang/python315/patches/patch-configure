@@ -12,6 +12,8 @@ Chunk 4: Do not set duplicated HAVE_UUID_H. This is a hack only for pkgsrc.
 Honor explicit LIBFFI_CFLAGS and LIBFFI_LIBS before the Darwin SDK probe.
 The documented selectors keep the selected Ports provider.
 
+Query the Darwin OS version through its fixed system path with a prefix-only PATH.
+
 --- configure.orig
 +++ configure
 @@ -3796,7 +3796,7 @@
@@ -52,6 +54,18 @@ The documented selectors keep the selected Ports provider.
  
  
  
+@@ -11269,9 +11269,9 @@
+ 
+         { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking which MACOSX_DEPLOYMENT_TARGET to use" >&5
+ printf %s "checking which MACOSX_DEPLOYMENT_TARGET to use... " >&6; }
+-        cur_target_major=`sw_vers -productVersion | \
++        cur_target_major=`/usr/bin/sw_vers -productVersion | \
+                 sed 's/\([0-9]*\)\.\([0-9]*\).*/\1/'`
+-        cur_target_minor=`sw_vers -productVersion | \
++        cur_target_minor=`/usr/bin/sw_vers -productVersion | \
+                 sed 's/\([0-9]*\)\.\([0-9]*\).*/\2/'`
+         cur_target="${cur_target_major}.${cur_target_minor}"
+         if test ${cur_target_major} -eq 10 && \
 @@ -15173,14 +15179,6 @@
  
  fi
