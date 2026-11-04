@@ -20,6 +20,7 @@ SHA1 (patch-glib_genviron.c) = 369612c85621382bf21acdccc5b2904344d60386
 SHA1 (patch-glib_glib-unix.c) = 5923b43e5a935f80f42b53bf28cec7678461326f
 SHA1 (patch-glib_gspawn-posix.c) = 4a6bbaf877a80a5372797cac84dcba9ec9e227e1
 SHA1 (patch-glib_gthread.c) = ad4dfda28394962bac0e9b42e2828d5a40d9dd2a
+SHA1 (patch-glib_libcharset_localcharset.c) = 6926133567cde3dcbe604ae3e9de3c84b52e2175
 SHA1 (patch-glib_tests_hash.c) = 15a1a6b58b47dff7a10cb467d8f17624b872a9cd
 SHA1 (patch-glib_tests_include.c) = 1ee990b9dbbdae22e63306a0656beab6e4439ae2
 SHA1 (patch-glib_tests_meson.build) = 8cac2229d40704e8fdc21abd392c4279703e9626
