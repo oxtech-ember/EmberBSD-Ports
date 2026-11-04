@@ -97,6 +97,48 @@ with tempfile.TemporaryDirectory(prefix='js-projection-') as temp:
     assert [row['name'] for row in result] == ['@test/root', 'child', 'peer']
     root_manifest.write_text(original_manifest)
     root_contents.write_text(original_contents)
+    # A mandatory external peer may be another explicitly projected module.
+    # The consumer selects browser, which selects updater; updater declares
+    # browser externally, avoiding a pkgsrc dependency cycle.
+    owner('browser', {'name': 'browser', 'version': '4.2.0',
+                      'dependencies': {'updater': '^1.0.0'}},
+          'node-browser-4.2.0', dependencies=('node-updater>=1.0.0',))
+    updater = owner('updater', {'name': 'updater', 'version': '1.0.0',
+                               'peerDependencies': {'browser': '>=4.0.0'}},
+                    'node-updater-1.0.0', external='browser')
+    cycle_args = (root, root / 'bin/node', root / 'sbin/pkg_admin')
+    cycle = projection.project(*cycle_args, {'browser': 'devel/node-browser'}, {})
+    assert [row['name'] for row in cycle] == ['browser', 'updater']
+    assert next(row for row in cycle if row['name'] == 'updater')['externalPeers'] == ['browser']
+    try:
+        projection.project(*cycle_args, {'updater': 'devel/node-updater'}, {})
+    except ValueError as error:
+        assert 'unknown or missing mandatory peer' in str(error), str(error)
+    else:
+        raise AssertionError('standalone updater implicitly selected external browser')
+    updater_manifest = updater / 'package.json'
+    updater_original = updater_manifest.read_text()
+    updater_metadata = json.loads(updater_original)
+    updater_metadata['peerDependencies']['browser'] = '>=5.0.0'
+    updater_manifest.write_text(json.dumps(updater_metadata))
+    try:
+        projection.project(*cycle_args, {'browser': 'devel/node-browser'}, {})
+    except ValueError as error:
+        assert 'semver rejected' in str(error), str(error)
+    else:
+        raise AssertionError('incompatible external peer was accepted')
+    updater_manifest.write_text(updater_original)
+    # Without the external declaration, the same peer requires a pkgdb edge.
+    updater_info = database / 'node-updater-1.0.0/+BUILD_INFO'
+    updater_original_info = updater_info.read_text()
+    updater_info.write_text(updater_original_info.replace('JS_MODULE_EXTERNAL_PEERS=browser\n', ''))
+    try:
+        projection.project(*cycle_args, {'browser': 'devel/node-browser'}, {})
+    except ValueError as error:
+        assert 'missing pkgsrc dependency' in str(error), str(error)
+    else:
+        raise AssertionError('ordinary peer without pkgdb edge was accepted')
+    updater_info.write_text(updater_original_info)
     root_contents.write_text(original_contents.replace('@pkgdep node-child>=1.0.0\n', ''))
     fails({'electron': '45.2.1'}, 'missing pkgsrc dependency')
     root_contents.write_text(original_contents.replace('node-child>=1.0.0', 'node-child>=3.0.0'))

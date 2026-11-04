@@ -22,7 +22,9 @@ A mandatory peer supplied by a consuming runtime may be declared with
 or optional dependencies, and records the selection in `BUILD_DEFS`. The
 installed `package.json` retains the upstream version range. Each consumer
 must validate that range against its selected runtime or installed module;
-missing, unknown or incompatible peers are errors. This declaration does not
+missing, unknown or incompatible peers are errors. A declared external peer
+may be supplied by another selected module or an explicit runtime; it does not
+create an implicit package dependency or select that peer on its own. This declaration does not
 install a peer in the host prefix or prove target compatibility.
 
 Node's normal resolver finds sibling modules in `lib/node_modules`, including
@@ -37,7 +39,8 @@ source metadata, including the recorded SHA256 of the recipe distinfo file.
 That value is not the checksum of an individual downloaded archive. It checks
 each declared package dependency with the selected
 `pkg_admin` and validates JavaScript and mandatory peer ranges with the prefix
-common `semver` module. It does not choose, download or install
-versions. Unknown peers, missing owners, unsafe module files and incompatible
+common `semver` module. Declared external peers must already be present in
+the selected module closure or explicit runtimes; they need no pkgdb edge.
+It does not choose, download or install versions. Unknown peers, missing owners, unsafe module files and incompatible
 ranges fail. Consumers can copy only the returned source modules and must keep
 external target runtimes outside the host prefix.

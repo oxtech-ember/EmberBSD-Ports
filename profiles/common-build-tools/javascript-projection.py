@@ -132,7 +132,7 @@ def project(prefix, node, pkg_admin, roots, runtimes):
                            'license': metadata.get('license', 'NOASSERTION')}
         pending.extend(dependencies)
         for peer in mandatory:
-            if peer not in runtimes:
+            if peer not in runtimes and peer not in owners[name]['externalPeers']:
                 require(peer in owners, f'unknown or missing mandatory peer: {name}/{peer}')
                 pending.append(peer)
     checks = []
@@ -161,7 +161,7 @@ def project(prefix, node, pkg_admin, roots, runtimes):
         for dep, wanted in row['peers'].items():
             require(dep in runtimes or dep in projected, f'unknown or missing mandatory peer: {name}/{dep}')
             require(dep not in runtimes or dep in row['externalPeers'], f'undeclared external runtime peer: {name}/{dep}')
-            if dep not in runtimes:
+            if dep not in runtimes and dep not in row['externalPeers']:
                 package_edge(name, dep)
             checks.append([name, dep, runtimes.get(dep, projected.get(dep, {}).get('version')), wanted])
     js = "const s=require(process.argv[1]);const c=JSON.parse(require('fs').readFileSync(0,'utf8'));for(const [a,b,v,r] of c){if(!s.validRange(r)||!s.valid(v)||!s.satisfies(v,r))throw Error(`${a}: ${b}@${v} does not satisfy ${r}`)}"
