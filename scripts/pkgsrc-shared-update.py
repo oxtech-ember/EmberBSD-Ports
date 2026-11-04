@@ -455,6 +455,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
     if unaffected(old_records) != unaffected(new_records):
         raise ValueError('export configuration changed outside selected outputs')
     from emberbsd_sdk import inventory
+    old_patch_targets = {}
     with tempfile.TemporaryDirectory(prefix='.pkgsrc-update-stage-', dir=directory.parent) as temp:
         temp = Path(temp)
         def prepare(label, rows, old, package, overlay, *, global_file=False):
@@ -465,6 +466,19 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
             upstream = subprocess.run([git, '-C', str(ports / 'upstream/pkgsrc'), 'cat-file', '-e',
                                        previous['upstream'] + ':' + upstream_path],
                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+            if old and not global_file and overlay is not None and overlay not in old_snapshot['trees'] and not upstream:
+                for row in rows:
+                    if row[0] == 'recipe-patch' and row[2] == package:
+                        raise ValueError('old export has a recipe patch for absent package: ' + package)
+                    if row[0] == 'file' and (row[2] == package or row[2].startswith(package + '/')):
+                        raise ValueError('old export has a file for absent package: ' + package)
+                    if row[0] in ('patch', 'git-apply'):
+                        if row[1] not in old_patch_targets:
+                            old_patch_targets[row[1]] = ident._patch_targets_bytes(read_global_patch(row[1], True))
+                        targets = old_patch_targets[row[1]]
+                        if targets is None or any(x == package or x.startswith(package + '/') for x in targets):
+                            raise ValueError('old export patch may affect absent package: ' + package)
+                return None
             if upstream:
                 with archive.open('wb') as stream:
                     subprocess.run([git, '-C', str(ports / 'upstream/pkgsrc'), 'archive',
@@ -608,9 +622,11 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
             old_pkg = prepare('old-' + str(index), old_records, True, package, overlay)
             new_pkg = prepare('new-' + str(index), new_records, False, package, overlay)
             live = exp.destination_parent(directory / 'pkgsrc', package)
-            old_tree = inventory.snapshot_installed_tree(str(old_pkg))
+            old_tree = inventory.snapshot_installed_tree(str(old_pkg)) if old_pkg is not None else {}
             new_tree = inventory.snapshot_installed_tree(str(new_pkg))
-            live_tree = inventory.snapshot_installed_tree(str(live))
+            if old_pkg is None and pending is None and os.path.lexists(live):
+                raise ValueError('new package path already exists: ' + package)
+            live_tree = inventory.snapshot_installed_tree(str(live)) if os.path.lexists(live) else {}
             if pending is None and old_tree != live_tree:
                 raise ValueError('selected live package differs from the previous export')
             if pending is not None:

@@ -115,6 +115,57 @@ class ScopedUpdateTests(unittest.TestCase):
         self.assertEqual((self.tree / 'cat/pkg/Makefile').read_text(), 'PKGNAME=fixture-1\n')
         self.assertEqual((self.tree / 'misc/owner.txt').read_text(), 'old-owner\n')
 
+    def new_overlay(self):
+        write(self.ports, 'pkgsrc/cat/new/Makefile', 'PKGNAME=new-1\n')
+        write(self.ports, 'pkgsrc/cat/new/files/data', 'new data\n')
+        commit(self.ports, 'new package')
+
+    def test_new_non_upstream_overlay_preserves_neighbor(self):
+        self.new_overlay()
+        neighbor = self.tree / 'cat/pkg/Makefile'
+        stamp = (neighbor.stat().st_ino, neighbor.stat().st_mtime_ns)
+        result = run(self.command + ['--update', '--package', 'cat/new'], self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.tree / 'cat/new/files/data').read_text(), 'new data\n')
+        self.assertEqual((neighbor.stat().st_ino, neighbor.stat().st_mtime_ns), stamp)
+
+    def test_new_overlay_refuses_existing_empty_or_symlink_path(self):
+        self.new_overlay()
+        for symlink in (False, True):
+            target = self.tree / 'cat/new'
+            if symlink:
+                target.symlink_to(self.tree / 'cat/pkg', target_is_directory=True)
+            else:
+                target.mkdir()
+            result = run(self.command + ['--update', '--package', 'cat/new'], self.ports, check=False)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse(self.marker.exists())
+            self.assertEqual(self.receipt.read_bytes(), self.old_receipt)
+            target.unlink() if symlink else target.rmdir()
+
+    def test_interrupted_new_overlay_resumes(self):
+        self.new_overlay()
+        code = r'''import importlib.util,sys
+from unittest.mock import patch
+s=importlib.util.spec_from_file_location('u',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+replace=m.os.replace
+calls=[0]
+def fail_after_one(*args):
+    calls[0]+=1
+    if calls[0] == 2: raise OSError('injected addition interruption')
+    return replace(*args)
+with patch.object(m.os, 'replace', side_effect=fail_after_one):
+    m.update(sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6], 'cat/new', [])
+'''
+        result = run([sys.executable, '-B', '-c', code, self.ports / 'scripts/pkgsrc-shared-update.py',
+                      self.export, self.ports, GIT, SDK, PATCH], self.ports, check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(self.marker.exists())
+        result = run(self.command + ['--update', '--package', 'cat/new', '--resume'], self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.tree / 'cat/new/files/data').read_text(), 'new data\n')
+        self.assertFalse(self.marker.exists())
+
     def test_global_patch_chain_and_resume(self):
         names = ('mk/bsd.makevars.mk', 'mk/buildlink3/bsd.buildlink3.mk')
         def patch(old, new):
