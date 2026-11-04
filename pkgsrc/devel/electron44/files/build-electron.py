@@ -168,25 +168,6 @@ def native_inputs(options, sdk):
 
 
 
-def prefer_chromium_libcxx_headers(cxx):
-    """Keep Chromium's libc++ headers ahead of SDK and compiler headers."""
-    out = []
-    i = 0
-    while i < len(cxx):
-        if cxx[i] == '-nostdinc++':
-            i += 1
-            continue
-        if cxx[i] == '-isystem' and i + 1 < len(cxx):
-            nxt = cxx[i + 1]
-            if '/include/c++/v1' in nxt or re.search(r'/lib/clang/[^/]+/include$', nxt):
-                i += 2
-                continue
-        out.append(cxx[i])
-        i += 1
-    require(out != cxx, 'bound cxx lacked SDK/resource header flags to drop for custom libc++')
-    return out
-
-
 def bind_versioned(sdk, native, parent, record):
     """Publish immutable adapters whose path changes with their complete inputs."""
     identity = dict(record=record, python=str(Path(native.tool('python')).resolve()),
@@ -279,8 +260,6 @@ def target_inputs(options, sdk, native, environment, work):
         commands = sdk['application_toolchain'].clang_application_commands(compiler, str(options.sysroot),
                                                                             runtime, runtime_root=runtime_root)
         commands = {role: commands[role] for role in ('cc', 'cxx', 'cpp')}
-        if not (getattr(options, 'host_runtime_root', None) and stage):
-            commands['cxx'] = prefer_chromium_libcxx_headers(commands['cxx'])
         links = {role: sdk['application_toolchain'].clang_application_link_flags(
             compiler, str(options.sysroot), runtime, runtime_root=runtime_root, language=language)
             for role, language in (('cc', 'c'), ('cxx', 'c++'))}
@@ -323,8 +302,7 @@ def arguments(options, native, tools, rust_version, launcher):
         unbundle_host_is_clang=options.host_compiler_family == 'clang',
         use_sysroot=True, target_sysroot=str(options.sysroot), emberbsd_target_sysroot=str(options.sysroot),
         clang_base_path=str(options.host_prefix), clang_use_chrome_plugins=False,
-        use_custom_libcxx=not bool(getattr(options, 'host_runtime_root', None) and
-                                   getattr(options, 'target_runtime_stage', None)),
+        use_custom_libcxx=options.compiler_family != 'clang',
         use_custom_libcxx_for_host=False, use_custom_libunwind=False,
         use_lld=options.compiler_family == 'clang', use_thin_lto=False,
         use_system_libdrm=True, use_system_libffi=True, use_bundled_fontconfig=False,
@@ -408,9 +386,13 @@ def native_runtime_binding(options, sdk, native, environment, target_tools):
     """Bind the selected native pair and probe both toolchain headers."""
     selected = getattr(options, 'host_runtime_root', None)
     stage = getattr(options, 'target_runtime_stage', None)
-    if not selected and not stage:
-        return None
-    require(selected and stage and native.host['os'] == 'Darwin' and
+    if not selected:
+        record = dict(commands={role: list(native.command(role)) for role in ('cc', 'cxx', 'cpp')},
+                      flags={name: list(flags) for name, flags in native.abi_flags.items()},
+                      link_flags={'cc': [], 'cxx': []})
+        parent = getattr(options, 'native_binding_root', options.work)
+        return bind_versioned(sdk, native, parent / 'native-commands', record)
+    require(stage and native.host['os'] == 'Darwin' and
             options.host_compiler_family == 'clang',
             'external hardened libc++ requires both native and target runtime selections')
     root = absolute(selected, 'native runtime root')
@@ -469,7 +451,8 @@ def host_buildlink(options, sdk, native, environment, host_binding):
     selected = [getattr(options, name, None) for name in fields]
     if not any(selected):
         return None
-    require(all(selected) and host_binding, 'native host buildlink needs its four inputs and native C++ binding')
+    require(all(selected[i] for i in (0, 2, 3)) and host_binding,
+            'native host buildlink needs pkgsrc, makeconf, bmake mk and native C++ binding')
     root = getattr(options, 'native_binding_root', options.work)
     config = root / 'configuration.json'
     saved = json.loads(config.read_text()) if config.is_file() else {}
@@ -479,7 +462,7 @@ def host_buildlink(options, sdk, native, environment, host_binding):
     def command(work):
         return [native.tool('python'), '-B', str(script), '--sdk-source', str(options.sdk_source),
                 '--pkgsrc-root', str(selected[0]), '--host-prefix', str(options.host_prefix),
-                '--stage-root', str(selected[1]), '--base-makeconf', str(selected[2]),
+                *(['--stage-root', str(selected[1])] if selected[1] else []), '--base-makeconf', str(selected[2]),
                 '--binding-record', str(record), '--bmake-mk', str(selected[3]),
                 '--work', str(work), '--lock-root', str(options.lock_root)]
     if previous:
@@ -1035,11 +1018,11 @@ def common_v8_metagen(options, sdk, native, environment, tools):
                 getattr(options, 'v8_metagen_runtime_view', None))
     if not any(selected):
         return {}
-    require(all(selected) and options.v8_source and options.host_runtime_root,
+    require(all(selected) and options.v8_source,
             'V8 metagen requires common V8, selected libclang, bindings and runtime view')
     require(options.compiler_family == 'clang' and native.host['os'] == 'Darwin',
             'V8 metagen scoped selection requires Darwin and target Clang')
-    prefix = options.host_runtime_root.resolve(strict=True)
+    prefix = (options.host_runtime_root or options.host_prefix).resolve(strict=True)
     libclang = absolute(selected[0], 'V8 metagen libclang', directory=False)
     bindings = absolute(selected[1], 'V8 metagen bindings')
     view = absolute(selected[2], 'V8 metagen runtime view')
@@ -1247,11 +1230,15 @@ def producer_inputs(options, sdk):
     values.update(common_undici(options, sdk, environment))
     values.update(common_embedder_sources(options, sdk, native, environment))
     values.update(common_v8_metagen(options, sdk, native, environment, tools))
-    if host_binding:
-        values.update(external_libcxx_has_extensive_hardening=True,
-                      emberbsd_native_cpu={'aarch64': 'arm64', 'arm64': 'arm64',
+    if options.compiler_family == 'clang':
+        target_root = getattr(options, 'target_runtime_stage', None) or options.sysroot
+        hardening_header(target_root, 'usr/pkg/llvm/include/c++/v1', '__1')
+        values['external_libcxx_has_extensive_hardening'] = True
+    if host_binding and native.host['os'] == 'Darwin' and options.host_compiler_family == 'clang':
+        values.update(emberbsd_native_cpu={'aarch64': 'arm64', 'arm64': 'arm64',
                                            'amd64': 'x64', 'x86_64': 'x64'}[native.host['cpu']],
-                      emberbsd_native_cc=host_binding['cc'], emberbsd_native_cxx=host_binding['cxx'])
+                      emberbsd_native_cc=host_binding['cc'], emberbsd_native_cxx=host_binding['cxx'],
+                      emberbsd_native_libcxx_hardened=bool(getattr(options, 'host_runtime_root', None)))
     resource_text = sdk['process'].capture(
         [native.tool('clang'), '-print-resource-dir'], env=environment).stdout.decode('utf-8', 'strict').strip()
     values['clang_version'] = clang_resource_version(options.host_prefix, resource_text)
@@ -1555,7 +1542,7 @@ def reconfigure(options):
                          'apple_linker_launcher', 'unbundle_linker_launcher', 'concurrent_links',
                          'rust_sysroot_absolute', 'rust_bindgen_root', 'rustc_version',
                          'use_custom_libcxx', 'use_custom_libcxx_for_host', 'use_custom_libunwind',
-                         'external_libcxx_has_extensive_hardening', 'emberbsd_native_cpu',
+                         'external_libcxx_has_extensive_hardening', 'emberbsd_native_libcxx_hardened', 'emberbsd_native_cpu',
                          'emberbsd_native_cc', 'emberbsd_native_cxx',
                          'use_lld', 'emberbsd_target_strip', 'emberbsd_target_objcopy'}
         identity_args.update('node_shared_' + feature for feature in NODE_SHARED_FEATURES)

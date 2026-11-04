@@ -70,27 +70,25 @@ with tempfile.TemporaryDirectory(prefix='electron-native-binding-identity-') as 
     assert fourth != third
     (library / 'libc++_ember1.1.dylib').write_text('new-runtime')
     assert select() != fourth
-native = SimpleNamespace(host={'os': 'Darwin', 'cpu': 'arm64'}, tool=lambda name: '/host/bin/' + name)
-options = SimpleNamespace(target='amd64', compiler_family='clang', host_compiler_family='clang',
-    sysroot=Path('/target'), host_prefix=Path('/host'), sdk_source=Path('/sdk'),
-    xcode_version_plist=Path('/xcode'), macos_sdk=Path('/macos'), macos_minimum='26.0')
-tools = {'strip': '/target/strip', 'objcopy': '/target/objcopy'}
-original_local_module = build.local_module
-build.local_module = lambda name, file: SimpleNamespace(select=lambda native: {'arguments': {}})
-default_args = build.arguments(options, native, tools, '1.0', 'launcher')
-assert default_args['use_custom_libcxx'] is True
-assert 'emberbsd_pkg_config_role' not in default_args
-assert build.native_runtime_binding(options, {}, native, {}, {}) is None
-for host_root, target_stage in ((Path('/native'), None), (None, Path('/target-stage'))):
-    options.host_runtime_root, options.target_runtime_stage = host_root, target_stage
+# Platform host and target LLVM runtime are independently selectable.
+with tempfile.TemporaryDirectory(prefix='electron-platform-binding-') as temporary:
+    root = Path(temporary)
+    native = SimpleNamespace(host={'os': 'Darwin', 'cpu': 'arm64'},
+        command=lambda name: ['/prefix/bin/' + name],
+        abi_flags={name: [] for name in ('cppflags', 'cflags', 'cxxflags', 'ldflags')})
+    original_bind = build.bind_versioned
+    captured = []
+    build.bind_versioned = lambda sdk, native, parent, record: captured.append(record) or {'cxx': 'bound'}
+    options = SimpleNamespace(work=root, host_runtime_root=None, target_runtime_stage=Path('/target-stage'),
+                              host_compiler_family='clang')
+    assert build.native_runtime_binding(options, {}, native, {}, {}) == {'cxx': 'bound'}
+    assert 'native_cxx_runtime' not in captured[0]
+    assert captured[0]['commands']['cxx'] == ['/prefix/bin/cxx']
+    options.host_runtime_root, options.target_runtime_stage = Path('/native'), None
     try:
         build.native_runtime_binding(options, {}, native, {}, {})
-        raise AssertionError('accepted partial external libc++ selection')
+        raise AssertionError('accepted incomplete hardened runtime selection')
     except ValueError as error:
         assert 'requires both native and target' in str(error)
-options.host_runtime_root, options.target_runtime_stage = Path('/native'), Path('/target-stage')
-assert build.arguments(options, native, tools, '1.0', 'launcher')['use_custom_libcxx'] is False
-old = ['clang++', '-nostdinc++', '-isystem', '/sdk/include/c++/v1', '-isystem', '/host/lib/clang/23/include', '-DOTHER']
-assert build.prefer_chromium_libcxx_headers(old) == ['clang++', '-DOTHER']
-build.local_module = original_local_module
-print('native binding identity tracks selected ABI header paths and bytes')
+    build.bind_versioned = original_bind
+print('native bindings distinguish platform and hardened C++ runtime')

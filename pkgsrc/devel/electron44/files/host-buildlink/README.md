@@ -13,3 +13,10 @@ it exits 3 if the saved selection has changed. On a change, create a new work
 directory and rerun the wrapper phase. Directory symlinks in the generated
 view are rejected because their contents cannot be checked as file links.
 This checks the host build view, not target execution or a full Electron build.
+
+Omit `--stage-root` to use the installed native prefix and platform C++ ABI.
+Select the SDK's native tools makeconf and platform compiler binding; the host
+prefix and pkgdb must already contain every dependency. The wrapper refuses
+missing dependencies without installing packages, and rejects cross sysroot or
+foreign compiler/pkgdb selections. The child environment is sanitized.
+Supplying `--stage-root` retains the explicit hardened replacement-stage route.

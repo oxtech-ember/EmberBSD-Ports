@@ -173,3 +173,8 @@ show the applicable BSD pattern: build the owned source tree, install its
 runtime files in a private versioned directory, and retain license notices.
 Their older file lists and compiler policies do not define this runtime's
 payload or its selected toolchains.
+
+The native buildlink can use the installed host prefix and its platform C++ ABI
+without a replacement stage; omit `HOST_BUILDLINK_STAGE_ROOT` and select the
+native tools makeconf. The explicit hardened replacement-stage route remains
+available. The target LLVM runtime is selected independently of the host ABI.

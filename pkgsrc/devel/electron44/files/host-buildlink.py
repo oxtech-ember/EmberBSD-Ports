@@ -72,11 +72,27 @@ def identity(process, command, env, consumer, view, host_prefix, extras):
     return dict(inputs=inputs, links=links)
 
 
+def check_installed_context(process, command, env, prefix):
+    """Reject target metadata and an unselected native compiler or package DB."""
+    variables = ('USE_CROSS_COMPILE', '_CROSS_DESTDIR', 'PKG_CONFIG_SYSROOT_DIR',
+                 'PKGSRC_COMPILER', 'CLANGBASE', 'PKG_DBDIR')
+    query = command[:-1] + [part for name in variables for part in ('-V', name)]
+    values = process.capture(query, env=env).stdout.decode('utf-8', 'strict').splitlines()
+    if len(values) != len(variables):
+        raise ValueError('incomplete installed host context')
+    cross, dest, pcroot, family, clangbase, pkgdb = values
+    if (cross.lower() != 'no' or dest or pcroot or family != 'clang' or
+            Path(clangbase).resolve() != prefix.resolve() or
+            Path(pkgdb).resolve() != (prefix / 'pkgdb').resolve()):
+        raise ValueError('installed host context contains target or foreign tool selection')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ('sdk-source', 'pkgsrc-root', 'host-prefix', 'stage-root',
+    for name in ('sdk-source', 'pkgsrc-root', 'host-prefix',
                  'base-makeconf', 'binding-record', 'bmake-mk', 'work', 'lock-root'):
         parser.add_argument('--' + name, type=Path, required=True)
+    parser.add_argument('--stage-root', type=Path, help='explicit replacement stage; omit for installed prefix')
     parser.add_argument('--check', action='store_true', help='check an existing view identity')
     args = parser.parse_args()
     for name, value in vars(args).items():
@@ -90,7 +106,7 @@ def main():
     for module in (darwin_makeconf, host_prefix, process, paths):
         if Path(module.__file__).resolve() != sdk_root / 'src/emberbsd_sdk' / (module.__name__.split('.')[-1] + '.py'):
             raise SDKError('selected SDK module origin differs')
-    native = host_prefix.load_host_prefix(args.host_prefix, required_roles=('make', 'python'),
+    native = host_prefix.load_host_prefix(args.host_prefix, required_roles=('make', 'python', 'cc', 'cxx', 'cpp'),
                                          compiler_family='clang')
     if Path(sys.executable).resolve() != Path(native.tool('python')).resolve():
         raise SDKError('run with the selected host Python')
@@ -107,10 +123,13 @@ def main():
                   if isinstance(value, Path)}
     paths.reject_overlap(str(work), str(source))
     paths.reject_overlap(str(work), str(args.host_prefix))
-    paths.reject_overlap(str(work), str(args.stage_root))
+    if args.stage_root:
+        paths.reject_overlap(str(work), str(args.stage_root))
     with process.ContextLocks([str(work)], str(args.lock_root), shared=args.check):
-        with process.ContextLocks([str(source), str(args.host_prefix), str(args.stage_root),
-                                   str(args.binding_record), str(args.sdk_source)],
+        lock_inputs = [str(source), str(args.host_prefix), str(args.binding_record), str(args.sdk_source)]
+        if args.stage_root:
+            lock_inputs.append(str(args.stage_root))
+        with process.ContextLocks(lock_inputs,
                                   str(args.lock_root), shared=True):
             if args.check:
                 consumer = work / 'pkgsrc/devel/electron-host-context'
@@ -118,8 +137,11 @@ def main():
                 env = process.sanitized_environment()
                 env.update(PATH=native.path, MAKECONF=str(work / 'make.conf'), EMBERBSD_SDK_SOURCE=str(sdk_root))
                 command = [native.tool('make'), '-m', str(args.bmake_mk), '-C', str(consumer),
-                           'EMBERBSD_DARWIN_BOOTSTRAP=yes',
+                           *(['EMBERBSD_DARWIN_BOOTSTRAP=yes'] if args.stage_root else ['USE_CROSS_COMPILE=no']),
+                           'DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency',
                            'EMBERBSD_ELECTRON_HOST_DEPENDENCIES=' + str(deps), 'wrapper']
+                if not args.stage_root:
+                    check_installed_context(process, command, env, args.host_prefix)
                 saved = json.loads((work / 'selection.json').read_text())
                 if saved.get('invocation') != invocation:
                     print('host buildlink selection changed', file=sys.stderr)
@@ -153,16 +175,41 @@ def main():
             (consumer / 'Makefile').symlink_to(inputs[1])
             (consumer / 'PLIST').symlink_to(inputs[2])
             makeconf = work / 'make.conf'
-            darwin_makeconf.write_native_stage_makeconf(
-                base=str(args.base_makeconf), output=str(makeconf), stage_root=str(args.stage_root),
-                prefix=str(args.host_prefix), object_root=str(work / 'objects'),
-                packages=str(work / 'packages'), binding_record=str(args.binding_record),
-                python=native.tool('python'), buildlinks=[])
+            if args.stage_root:
+                darwin_makeconf.write_native_stage_makeconf(
+                    base=str(args.base_makeconf), output=str(makeconf), stage_root=str(args.stage_root),
+                    prefix=str(args.host_prefix), object_root=str(work / 'objects'),
+                    packages=str(work / 'packages'), binding_record=str(args.binding_record),
+                    python=native.tool('python'), buildlinks=[])
+            else:
+                record = json.loads(args.binding_record.read_text())
+                if 'native_cxx_runtime' in record:
+                    raise SDKError('installed prefix requires platform C++ binding')
+                for role in ('cc', 'cxx', 'cpp'):
+                    if record['commands'][role] != list(native.command(role)):
+                        raise SDKError('installed binding differs from selected prefix tool: ' + role)
+                if (record['flags'] != {name: list(flags) for name, flags in native.abi_flags.items()} or
+                        record.get('link_flags') != {'cc': [], 'cxx': []}):
+                    raise SDKError('installed binding contains foreign compiler or linker flags')
+                if not (args.host_prefix / 'pkgdb').is_dir():
+                    raise SDKError('installed prefix package database missing')
+                for path in (args.base_makeconf, args.host_prefix, work, args.binding_record):
+                    if any(char in str(path) for char in ('\n', '\r', '"', '$', '#')):
+                        raise SDKError('unsupported makeconf path')
+                adapters = args.binding_record.parent
+                makeconf.write_text('.include "' + str(args.base_makeconf) + '"\n' +
+                    'PKGSRC_COMPILER= clang\nCLANGBASE= ' + str(args.host_prefix) + '\nLOCALBASE= ' + str(args.host_prefix) + '\nPKG_DBDIR= ' + str(args.host_prefix / 'pkgdb') +
+                    '\nWRKOBJDIR= ' + str(work / 'objects') + '\nPACKAGES= ' + str(work / 'packages') +
+                    '\nCC= ' + str(adapters / 'cc') + '\nCXX= ' + str(adapters / 'cxx') +
+                    '\nCPP= ' + str(adapters / 'cpp') + '\n')
             env = process.sanitized_environment()
             env.update(PATH=native.path, MAKECONF=str(makeconf), EMBERBSD_SDK_SOURCE=str(sdk_root))
             command = [native.tool('make'), '-m', str(args.bmake_mk), '-C', str(consumer),
-                       'EMBERBSD_DARWIN_BOOTSTRAP=yes',
+                       *(['EMBERBSD_DARWIN_BOOTSTRAP=yes'] if args.stage_root else ['USE_CROSS_COMPILE=no']),
+                           'DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency',
                        'EMBERBSD_ELECTRON_HOST_DEPENDENCIES=' + str(deps), 'wrapper']
+            if not args.stage_root:
+                check_installed_context(process, command, env, args.host_prefix)
             process.run_logged(command, str(work / 'buildlink.log'), env=env)
             view = work / 'objects/devel/electron-host-context/work/.buildlink'
             if not (view / 'lib/pkgconfig').is_dir():

@@ -62,6 +62,11 @@ with tempfile.TemporaryDirectory() as tmp:
     assert result['v8_metagen_host_extra_flags'] == ['--host-flag']
     assert result['v8_metagen_gn_executable'] == '/selected/gn'
     assert str(script) in result['v8_metagen_runtime_inputs']
+    # Installed platform ABI uses the same owned providers without a stage.
+    opts.host_prefix = prefix
+    opts.host_runtime_root = None
+    assert build.common_v8_metagen(*args) == result
+    opts.host_runtime_root = prefix
     replacement = prefix / 'lib/replacement.dylib'
     replacement.touch()
     (view / 'library').unlink()
