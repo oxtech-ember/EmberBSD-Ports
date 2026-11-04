@@ -5,3 +5,4 @@ SHA512 (libsecret-0.21.8.2.tar.xz) = 0a2ae5d86dc635df0a126f1483d917c8fd41cc0c534
 Size (libsecret-0.21.8.2.tar.xz) = 213280 bytes
 SHA1 (patch-libsecret_meson.build) = a0a0c37a799884ee40f6cbe5b6b9815d6387c436
 SHA1 (patch-egg_egg-unix-credentials.c) = 11a9613c508473e62680485f226b1f8f1864bc66
+SHA1 (patch-zz_test_options) = dbe5cea9777c89722cd7c675b63cf56fbb5d64f0

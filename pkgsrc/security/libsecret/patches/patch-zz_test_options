@@ -1,0 +1,149 @@
+# Build tests and MockService only when explicitly requested.
+--- meson_options.txt.orig
++++ meson_options.txt
+@@ -66,3 +66,9 @@
+   value: 'auto',
+   description: 'Automatically setup a test environment when running tests',
+ )
++
++option('tests',
++  type: 'boolean',
++  value: true,
++  description: 'Build test programs and test-only introspection data',
++)
+--- meson.build.orig
++++ meson.build
+@@ -99,24 +99,27 @@
+ configure_file(output: 'config.h', configuration: conf)
+ 
+ # Test environment
+-test_env = environment()
+-test_env.set('abs_top_builddir', meson.build_root())
++if get_option('tests')
++  test_env = environment()
++  test_env.set('abs_top_builddir', meson.build_root())
+ 
+-# Most tests require a D-Bus session, so try to wrap automatically with dbus-run-session
+-dbus_run_session = find_program('dbus-run-session', required: get_option('test_setup'))
+-if dbus_run_session.found()
+-  add_test_setup('dbus',
+-    exe_wrapper: dbus_run_session,
+-    is_default: true,
+-  )
+-else
+-  message('dbus-run-session not found. Please note that tests might fail if you don\'t set up a D-Bus session.')
++  # Most tests require a D-Bus session, so try to wrap automatically with dbus-run-session
++  dbus_run_session = find_program('dbus-run-session', required: get_option('test_setup'))
++  if dbus_run_session.found()
++    add_test_setup('dbus',
++      exe_wrapper: dbus_run_session,
++      is_default: true,
++    )
++  else
++    message('dbus-run-session not found. Please note that tests might fail if you don\'t set up a D-Bus session.')
++  endif
++
++  # Plain test setup without dbus-run-session wrapper, for use when
++  # tests are already running inside a D-Bus session (e.g. coverage CI
++  # with tpm2-abrmd needing a shared session bus)
++  add_test_setup('plain')
++
+ endif
+-
+-# Plain test setup without dbus-run-session wrapper, for use when
+-# tests are already running inside a D-Bus session (e.g. coverage CI
+-# with tpm2-abrmd needing a shared session bus)
+-add_test_setup('plain')
+ 
+ # Subfolders
+ subdir('po')
+--- egg/meson.build.orig
++++ egg/meson.build
+@@ -3,8 +3,11 @@
+   'egg-secure-memory.c',
+   'egg-unix-credentials.c',
+   'egg-buffer.c',
+-  'egg-testing.c',
+ ]
++
++if get_option('tests')
++  libegg_sources += 'egg-testing.c'
++endif
+ 
+ libegg_deps = [
+   glib_deps,
+@@ -52,6 +55,10 @@
+   include_directories: [config_h_dir, build_dir],
+ )
+ 
++if not get_option('tests')
++  subdir_done()
++endif
++
+ # Tests
+ test_names = [
+   'test-hex',
+--- libsecret/meson.build.orig
++++ libsecret/meson.build
+@@ -107,14 +107,16 @@
+   install: true,
+ )
+ 
+-# Also create a static library used for our tests which doesn't hide symbols
+-libsecret_static = static_library('secret-@0@'.format(api_version_major),
+-  [ libsecret_sources, _dbus_generated, _enums_generated ],
+-  dependencies: libsecret_dependencies,
+-  link_with: libegg,
+-  c_args: libsecret_cflags,
+-  include_directories: config_h_dir,
+-)
++if get_option('tests')
++  # Also create a static library used for our tests which doesn't hide symbols
++  libsecret_static = static_library('secret-@0@'.format(api_version_major),
++    [ libsecret_sources, _dbus_generated, _enums_generated ],
++    dependencies: libsecret_dependencies,
++    link_with: libegg,
++    c_args: libsecret_cflags,
++    include_directories: config_h_dir,
++  )
++endif
+ 
+ install_headers(libsecret_headers,
+   subdir: installed_headers_subdir,
+@@ -205,6 +207,10 @@
+   requires: libsecret,
+ )
+ 
++if not get_option('tests')
++  subdir_done()
++endif
++
+ # Tests
+ test_cflags = [
+   libsecret_cflags,
+--- tool/meson.build.orig
++++ tool/meson.build
+@@ -9,6 +9,10 @@
+   c_args: libsecret_cflags,
+   install: true,
+ )
++
++if not get_option('tests')
++  subdir_done()
++endif
+ 
+ if with_crypto and host_machine.system() != 'windows'
+   test('test-secret-tool.sh',
+--- pam/meson.build.orig
++++ pam/meson.build
+@@ -17,6 +17,10 @@
+   ],
+   name_prefix: '',
+ )
++
++if not get_option('tests')
++  subdir_done()
++endif
+ 
+ # pam tests
+ pam_wrapper = dependency('pam_wrapper', required: true)

@@ -2,7 +2,7 @@
 # Origin: EmberBSD contributors (AI-assisted).
 
 PKG_OPTIONS_VAR=		PKG_OPTIONS.libsecret
-PKG_SUPPORTED_OPTIONS=	doc
+PKG_SUPPORTED_OPTIONS=	doc tests
 PKG_SUGGESTED_OPTIONS=	doc
 
 .include "../../mk/bsd.options.mk"
@@ -13,4 +13,10 @@ PLIST.doc=	yes
 MESON_ARGS+=	-Dgtk_doc=true
 .else
 MESON_ARGS+=	-Dgtk_doc=false
+.endif
+
+.if !empty(PKG_OPTIONS:Mtests)
+MESON_ARGS+=	-Dtests=true
+.else
+MESON_ARGS+=	-Dtests=false
 .endif

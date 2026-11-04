@@ -13,6 +13,8 @@ PKGCONFIG_OVERRIDE+=	poppler-glib.pc.cmake
 
 INSTALLATION_DIRS+=	include/poppler share/doc/poppler
 
+.include "options.mk"
+
 # Don't compile GTK+ test program.
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_GTK_TESTS=OFF
 # Build the GLib wrapper and its introspection metadata without GTK.
