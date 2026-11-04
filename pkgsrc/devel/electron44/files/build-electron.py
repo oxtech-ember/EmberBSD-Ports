@@ -4,6 +4,7 @@
 # Origin: EmberBSD (AI-assisted).
 """Bind the Electron recipe's prepared source to selected SDK tools and GN/Ninja."""
 import argparse
+from contextlib import contextmanager
 import hashlib
 import importlib
 import importlib.util
@@ -14,6 +15,7 @@ import re
 import shlex
 import sys
 import tempfile
+import time
 
 
 def require(condition, message):
@@ -467,7 +469,7 @@ def host_buildlink(options, sdk, native, environment, host_binding):
                 *(['--stage-root', str(selected[1])] if selected[1] else []), '--base-makeconf', str(selected[2]),
                 '--binding-record', str(record), '--bmake-mk', str(selected[3]),
                 '--work', str(work), '--lock-root', str(options.lock_root)]
-    if not previous and getattr(options, 'resume_configure', False):
+    if not previous and (getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)):
         for candidate in sorted(root.glob('host-buildlink-*')):
             if not (candidate / 'selection.json').is_file():
                 continue
@@ -1386,6 +1388,8 @@ def gn_source(options):
         return view.create(options.workspace / 'src', common, destination, **sources)
     if getattr(options, 'resume_configure', False):
         return view.complete_initial(options.workspace / 'src', common, destination, **sources)
+    if getattr(options, 'retry_configure', False):
+        return view._refresh_leaves(options.workspace / 'src', common, destination, sources)
     return view.verify(options.workspace / 'src', common, destination, **sources)
 
 
@@ -1399,6 +1403,12 @@ def require_common_v8(options):
 def require_common_node(options):
     require(getattr(options, 'node_source', None) and getattr(options, 'node_pkgsrc', None),
             'Electron 45 requires the verified common Node source and pkgsrc export')
+
+
+def require_common_perfetto(options):
+    require(all(getattr(options, name, None) for name in
+                ('perfetto_source', 'perfetto_ports_source', 'perfetto_archive', 'perfetto_patch')),
+            'Electron 45 requires the verified common Perfetto source, owner, archive and patch')
 
 
 def prepare_build_inputs(options, native, environment, sdk):
@@ -1427,37 +1437,75 @@ def run_ninja(options, sdk, native, source_root, environment):
 
 
 
+@contextmanager
+def configure_stage(name):
+    start = time.monotonic()
+    print(f'configure: {name} begin', flush=True)
+    try:
+        yield
+    finally:
+        print(f'configure: {name} end ({time.monotonic() - start:.1f}s)', flush=True)
+
+
 def configure(options):
     require_common_v8(options)
     require_common_node(options)
+    require_common_perfetto(options)
     sdk = load_sdk(options.sdk_source)
-    verify_source(options.workspace, options.ports_source, options.git)
+    with configure_stage('source verify'):
+        verify_source(options.workspace, options.ports_source, options.git)
     work = options.work
     resume = getattr(options, 'resume_configure', False)
-    if resume:
+    retry = getattr(options, 'retry_configure', False)
+    if resume or retry:
         require(work.is_dir() and not work.is_symlink() and not (work / 'configuration.json').exists(),
                 'initial resume requires existing unconfigured work')
         output = work / 'out'
-        require(output.is_dir() and not output.is_symlink() and
-                {item.name for item in output.iterdir()} == {'args.gn'},
-                'initial resume requires out containing only args.gn')
+        require(output.is_dir() and not output.is_symlink(), 'initial configure output is missing')
+        names = {item.name for item in output.iterdir()}
+        require(('args.gn' in names and not names.intersection({'build.ninja', '.ninja_log', '.ninja_deps'})) if retry
+                else names == {'args.gn'},
+                'initial configure retry cannot reuse Ninja output')
     else:
         require(not work.exists(), 'configure output must be new; retain an unsuccessful output for diagnosis')
         work.mkdir()
         output = work / 'out'
-    native, environment, values = producer_inputs(options, sdk)
-    if resume:
-        require((output / 'args.gn').is_file() and not (output / 'args.gn').is_symlink() and
-                (output / 'args.gn').read_text() == gn_arguments(values),
-                'initial resume GN arguments changed')
+    with configure_stage('producer inputs'):
+        native, environment, values = producer_inputs(options, sdk)
+    if resume or retry:
+        args_file = output / 'args.gn'
+        require(args_file.is_file() and not args_file.is_symlink(), 'initial GN args are missing')
+        old_args = args_file.read_text()
+        current_args = gn_arguments(values)
+        if not retry:
+            require(old_args == current_args, 'initial resume GN arguments changed')
     else:
         output.mkdir()
         (output / 'args.gn').write_text(gn_arguments(values))
-    prepare_build_inputs(options, native, environment, sdk)
-    sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
-        '--script-executable=' + native.tool('python'), '--ninja-executable=' + native.tool('ninja'),
-        '--root-target=//electron', '--root-pattern=//electron:electron_dist_zip', '--fail-on-unused-args'],
-        str(work / 'configure.log'), cwd=str(gn_source(options)), env=environment)
+    with configure_stage('prepare inputs'):
+        prepare_build_inputs(options, native, environment, sdk)
+    with configure_stage('source view refresh'):
+        source_root = gn_source(options)
+    if retry and old_args != current_args:
+        with tempfile.NamedTemporaryFile(mode='w', dir=output, prefix='.args-', delete=False) as handle:
+            temporary = Path(handle.name)
+            try:
+                handle.write(current_args)
+                handle.flush()
+                os.fsync(handle.fileno())
+            except BaseException:
+                temporary.unlink(missing_ok=True)
+                raise
+        try:
+            os.replace(temporary, args_file)
+        finally:
+            temporary.unlink(missing_ok=True)
+    with configure_stage('GN'):
+        sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
+            '--script-executable=' + native.tool('python'), '--ninja-executable=' + native.tool('ninja'),
+            '--root-target=//electron', '--root-pattern=//electron:electron_dist_zip', '--fail-on-unused-args'],
+            str(work / 'configure.log'), cwd=str(source_root), env=environment,
+            append=retry and os.path.lexists(work / 'configure.log'))
     # This is the actual producer invocation, not a qualification record.
     local_module('electron_build_source', 'prepare-build-sources.py').atomic_json(work / 'configuration.json',
         dict(arguments=values, environment=environment, source=str(options.workspace),
@@ -1472,6 +1520,7 @@ def reconfigure(options):
         require(options.jobs > 0, 'Ninja job count must be positive')
     require_common_v8(options)
     require_common_node(options)
+    require_common_perfetto(options)
     """Regenerate an existing GN graph while preserving its toolchain identity."""
     sdk = load_sdk(options.sdk_source)
     verify_source(options.workspace, options.ports_source, options.git)
@@ -1626,6 +1675,7 @@ def build(options):
     keep_going_limit(options)
     require_common_v8(options)
     require_common_node(options)
+    require_common_perfetto(options)
     require(not (options.work / 'reconfigure-incomplete').exists(),
             'incomplete reconfiguration; rerun reconfigure before build')
     sdk = load_sdk(options.sdk_source)
@@ -1693,8 +1743,11 @@ def main():
         command.add_argument('--shared-icu', action='store_true')
         command.add_argument('--shared-re2', action='store_true')
         if phase == 'configure':
-            command.add_argument('--resume-configure', action='store_true',
+            initial = command.add_mutually_exclusive_group()
+            initial.add_argument('--resume-configure', action='store_true',
                                  help='resume an initial incomplete configuration without GN outputs')
+            initial.add_argument('--retry-configure', action='store_true',
+                                 help='retry failed GN with verified selected inputs')
         if phase == 'reconfigure':
             command.add_argument('--refresh-source-view', action='store_true',
                                  help='recompose generated sources, preserving existing Ninja objects')
