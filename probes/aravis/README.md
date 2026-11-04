@@ -81,8 +81,46 @@ unchanged.
 The upstream tests were built but not run: they need the target. The
 package was not run on a target.
 
+## AArch64 target in the C locale
+
+Built on 4 November 2026 from Ports `a05d15e5` with the common cross
+profile on a sysroot from EmberBSD `77cc52ebd1c5`. Checked in an EmberBSD
+aarch64 guest from the same sets (QEMU HVF, 2 vCPU, 2 GiB, full base with
+shared libraries). The guest runs in the C locale: `locale charmap` gives
+`646`.
+
+Since `glib2` nb2, GLib uses the common GNU libiconv. GNU libiconv does not
+know `646`. GLib 2.90.1 finds codeset aliases only in a `charset.alias`
+file, and nothing installs this file. Each GLib program that parses
+options then stops: "Option parsing failed: Conversion from character set
+“646” to “UTF-8” is not supported". `glib2` nb3 resolves the NetBSD names
+with the gnulib table (`patch-glib_libcharset_localcharset.c`).
+
+| Packages | `arv-tool-0.8 --version` | `arv-fake-gv-camera-0.8 -i lo0` | `arv-camera-test-0.8` |
+| --- | --- | --- | --- |
+| `glib2-2.90.1nb2`, `aravis-0.8.36nb1` | 0.8.36 | stops at option parsing | stops at option parsing |
+| `glib2-2.90.1nb3`, `aravis-0.8.36nb1` | 0.8.36 | starts | receives frames |
+
+The 30-minute run used `arv-fake-gv-camera-0.8 -i 127.0.0.1` with its
+default 512x512 Mono8 at 25 frame/s, and `arv-camera-test-0.8 -n 127.0.0.1
+--duration=1800` in the same guest. `kern.sbmax` was 67108864 and
+`net.inet.udp.recvspace` was 33554432. `arv-tool-0.8` found the simulator
+and read its features before the run.
+
+| Result | Value |
+| --- | --- |
+| `glib2-2.90.1nb3.tgz` | SHA256 `135bf8aa30a5bb8f51e326c153dac80865692ec5526cbb7bd816cd54eca912fd` |
+| `aravis-0.8.36nb1.tgz` | SHA256 `a2e33e8d8aa6f2b3f581e9a859912a3998dca529708291bfad5cf6eb25313c83` |
+| Completed frames | 44991 in 1800 s, 25.0 frame/s |
+| Received packets | 8773245, 11866286268 bytes |
+| Failures, missing frames, missing packets, resends | 0 |
+
+The run used packages from a work tree that differed from `a05d15e5` only
+in a patch comment. Their payload files are byte-identical to the packages
+above.
+The guest values are not a hardware measurement.
+
 ## Remaining
 
-- AArch64 run on a target with a full base and shared libraries.
 - Daheng ME2P-1230 on the board for 30 minutes without lost frames.
 - Offering the discovery patch upstream.
