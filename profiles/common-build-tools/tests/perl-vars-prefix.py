@@ -25,27 +25,37 @@ with tempfile.TemporaryDirectory(prefix='perl-vars-prefix-') as tmp:
     (root / 'mk/bsd.prefs.mk').write_text('')
     shutil.copy2(ports / 'pkgsrc/lang/perl5/vars.mk', recipe / 'vars.mk')
     (recipe / 'Makefile').write_text('.include "vars.mk"\n')
-    def query(prefix, installprefix, cross=False, bad=None):
+    def query(prefix, installprefix, cross=False, bad=None, target_config=True):
         rows = ['prefix=' + prefix, 'installprefix=' + installprefix]
         rows += [key + '=' + (bad if key == 'installvendorlib' and bad else '/producer/lib/' + key)
                  for key in keys]
         command = [a.bmake, '-m', a.makefiles, '-C', str(recipe), 'PERL5=' + a.perl,
                    'PREFIX=/selected', '_PERL5_VARS_OUT=' + ' '.join(rows)]
         if cross:
-            command += ['USE_CROSS_COMPILE=yes', 'EMBERBSD_PERL_TARGET_CONFIG=/target/Config.pm']
+            command += ['USE_CROSS_COMPILE=yes']
+            if target_config:
+                command += ['EMBERBSD_PERL_TARGET_CONFIG=/target/Config.pm']
         command += ['-V', '${PERL5_SUB_INSTALLVENDORLIB}', '-V', '${PERL5_INSTALLVENDORLIB}']
         return subprocess.run(command, capture_output=True, text=True)
-    for prefix, installprefix, cross in (('.../..', '/producer', False),
-                                          ('/producer', '/producer', False),
-                                          ('/producer', '/unused', True)):
-        result = query(prefix, installprefix, cross)
+    for prefix, installprefix, cross, target_config in (
+            ('.../..', '/producer', False, False),
+            ('/producer', '/producer', False, False),
+            ('/producer', '/unused', True, True),
+            ('.../..', '/producer', True, False)):
+        result = query(prefix, installprefix, cross, target_config=target_config)
         assert result.returncode == 0, result.stderr
         assert result.stdout.splitlines() == ['lib/installvendorlib', '/selected/lib/installvendorlib']
-    real = subprocess.run([a.bmake, '-m', a.makefiles, '-C', str(recipe), 'PERL5=' + a.perl,
-                           'PREFIX=/selected', '-V', '${PERL5_SUB_INSTALLVENDORLIB}'],
-                          capture_output=True, text=True)
-    assert real.returncode == 0, real.stderr
-    assert real.stdout.strip().startswith('lib/perl5/'), real.stdout
+    for cross in (False, True):
+        command = [a.bmake, '-m', a.makefiles, '-C', str(recipe), 'PERL5=' + a.perl,
+                   'PREFIX=/selected', '-V', '${PERL5_SUB_INSTALLVENDORLIB}']
+        if cross:
+            command += ['USE_CROSS_COMPILE=yes']
+        real = subprocess.run(command, capture_output=True, text=True)
+        assert real.returncode == 0, real.stderr
+        assert real.stdout.strip().startswith('lib/perl5/'), real.stdout
+    # Explicit target metadata must not borrow the native relocation fallback.
+    result = query('.../..', '/producer', cross=True)
+    assert result.returncode != 0 and 'absolute Perl installation prefix' in result.stderr, result.stderr
     for bad in ('/outside/installvendorlib', '/producer-other/installvendorlib', 'relative/path'):
         result = query('.../..', '/producer', bad=bad)
         assert result.returncode != 0 and 'outside its installation prefix' in result.stderr, result.stderr
