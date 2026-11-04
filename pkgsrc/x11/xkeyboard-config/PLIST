@@ -1,5 +1,6 @@
 @comment $NetBSD: PLIST,v 1.25 2025/08/11 10:01:47 wiz Exp $
 share/X11/xkb
+share/licenses/xkeyboard-config/COPYING
 share/locale/af/LC_MESSAGES/xkeyboard-config-2.mo
 share/locale/af/LC_MESSAGES/xkeyboard-config.mo
 share/locale/ar/LC_MESSAGES/xkeyboard-config-2.mo

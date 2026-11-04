@@ -8,3 +8,4 @@ lib/pkgconfig/xcb-atom.pc
 lib/pkgconfig/xcb-aux.pc
 lib/pkgconfig/xcb-event.pc
 lib/pkgconfig/xcb-util.pc
+share/licenses/xcb-util/COPYING

@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.16 2022/12/26 22:10:43 wiz Exp $
 
 DISTNAME=	xcb-util-0.4.1
+PKGREVISION=	1
 CATEGORIES=	x11
 MASTER_SITES=	https://xcb.freedesktop.org/dist/
 EXTRACT_SUFX=	.tar.xz
@@ -8,6 +9,7 @@ EXTRACT_SUFX=	.tar.xz
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://xcb.freedesktop.org/
 COMMENT=	XCB Utilities
+LICENSE=		xcb-util-0.4.1
 
 GNU_CONFIGURE=	yes
 USE_TOOLS+=	pkg-config gmake gm4
@@ -17,6 +19,10 @@ PKGCONFIG_OVERRIDE+=	xcb-util.pc.in
 PKGCONFIG_OVERRIDE+=	xcb-atom.pc.in
 PKGCONFIG_OVERRIDE+=	xcb-event.pc.in
 PKGCONFIG_OVERRIDE+=	xcb-aux.pc.in
+
+post-install:
+	${INSTALL_DATA_DIR} ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}
+	${INSTALL_DATA} ${WRKSRC}/COPYING ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}/COPYING
 
 # xcb-util 0.4.1 removed the gperf-generated atoms.
 .include "../../x11/libxcb/buildlink3.mk"

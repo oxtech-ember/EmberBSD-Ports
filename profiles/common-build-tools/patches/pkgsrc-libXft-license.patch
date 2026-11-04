@@ -1,0 +1,36 @@
+--- a/x11/libXft/Makefile
++++ b/x11/libXft/Makefile
+@@ -1,6 +1,7 @@
+ # $NetBSD: Makefile,v 1.35 2025/07/13 17:27:12 rillig Exp $
+ 
+ DISTNAME=	libXft-2.3.9
++PKGREVISION=	1
+ CATEGORIES=	x11 fonts
+ MASTER_SITES=	${MASTER_SITE_XORG:=lib/}
+ EXTRACT_SUFX=	.tar.xz
+@@ -8,6 +9,7 @@
+ MAINTAINER=	pkgsrc-users@NetBSD.org
+ HOMEPAGE=	https://www.freedesktop.org/wiki/Software/Xft/
+ COMMENT=	Library for configuring and customizing font access
++LICENSE=		libxft-2.3.9
+ 
+ CONFLICTS+=	Xft2-[0-9]*
+ 
+@@ -17,6 +19,10 @@
+ USE_TOOLS+=		pkg-config
+ PKGCONFIG_OVERRIDE=	xft.pc.in
+ 
++post-install:
++	${INSTALL_DATA_DIR} ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}
++	${INSTALL_DATA} ${WRKSRC}/COPYING ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}/COPYING
++
+ .include "../../devel/zlib/buildlink3.mk"
+ .include "../../fonts/fontconfig/buildlink3.mk"
+ .include "../../graphics/freetype2/buildlink3.mk"
+--- a/x11/libXft/PLIST
++++ b/x11/libXft/PLIST
+@@ -81,3 +81,4 @@
+ man/man3/XftTextRenderUtf8.3
+ man/man3/XftUnlockFace.3
+ man/man3/XftXlfdParse.3
++share/licenses/libXft/COPYING

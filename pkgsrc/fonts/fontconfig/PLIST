@@ -66,6 +66,7 @@ share/fontconfig/conf.avail/80-delicious.conf
 share/fontconfig/conf.avail/90-synthetic.conf
 share/gettext/its/fontconfig.its
 share/gettext/its/fontconfig.loc
+share/licenses/fontconfig/COPYING
 share/locale/ka/LC_MESSAGES/fontconfig-conf.mo
 share/locale/ka/LC_MESSAGES/fontconfig.mo
 share/locale/zh_CN/LC_MESSAGES/fontconfig-conf.mo

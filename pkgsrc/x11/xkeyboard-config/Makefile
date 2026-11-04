@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.62 2026/06/22 19:27:18 wiz Exp $
 
 DISTNAME=		xkeyboard-config-2.48
-PKGREVISION=		1
+PKGREVISION=	2
 CATEGORIES=		x11
 MASTER_SITES=		${MASTER_SITE_XORG:=data/${PKGBASE}/}
 EXTRACT_SUFX=		.tar.xz
@@ -9,6 +9,11 @@ EXTRACT_SUFX=		.tar.xz
 MAINTAINER=		pkgsrc-users@NetBSD.org
 HOMEPAGE=		https://www.freedesktop.org/wiki/Software/XKeyboardConfig
 COMMENT=		X Keyboard Configuration Database
+LICENSE=		xkeyboard-config-2.48
+
+post-install:
+	${INSTALL_DATA_DIR} ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}
+	${INSTALL_DATA} ${WRKSRC}/COPYING ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}/COPYING
 
 .include "../../mk/bsd.prefs.mk"
 

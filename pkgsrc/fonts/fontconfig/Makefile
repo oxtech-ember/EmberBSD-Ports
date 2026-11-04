@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.143 2026/08/17 01:30:38 pgoyette Exp $
 
 DISTNAME=	fontconfig-2.18.3
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	fonts
 MASTER_SITES=	https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/${PKGVERSION_NOREV}/
 EXTRACT_SUFX=	.tar.xz
@@ -9,7 +9,7 @@ EXTRACT_SUFX=	.tar.xz
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://www.fontconfig.org/
 COMMENT=	Library for configuring and customizing font access
-#LICENSE=	x11?
+LICENSE=		fontconfig-2.18.3
 
 # https://bugs.freedesktop.org/show_bug.cgi?id=101280
 TOOL_DEPENDS+=	gperf-[0-9]*:../../devel/gperf
@@ -110,6 +110,8 @@ pre-configure:
 	-cd ${BUILDLINK_X11_DIR} && ${FIND} . -path "*fontconfig*" -type l -delete
 
 post-install:
+	${INSTALL_DATA_DIR} ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}
+	${INSTALL_DATA} ${WRKSRC}/COPYING ${DESTDIR}${PREFIX}/share/licenses/${PKGBASE}/COPYING
 	${INSTALL_DATA} ${FILESDIR}/30-pkgsrc-aliases.conf ${DESTDIR}${TMPLDIR}
 	${INSTALL_DATA} ${FILESDIR}/70-no-bitmap-webfonts.conf ${DESTDIR}${TMPLDIR}
 

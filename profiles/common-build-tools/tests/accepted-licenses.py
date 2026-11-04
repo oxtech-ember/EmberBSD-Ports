@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[3]
 # The bulk set accepts AGPL-3 (ghostscript-agpl) and the Realtek firmware licence (rtw88-firmware).
 # Native QEMU on macOS needs APSL 2.0 for devel/cctools codesign_allocate.
 # Native MIG (devel/mig) for the Kerberos KCM RPC stubs needs APSL 1.0 and the CMU licence.
-REQUIRED = ('libxdmcp-1.1.5', 'libice-1.1.2', 'libsm-1.2.6', 'docbook-xsl-1.79.2',
+REQUIRED = ('mkfontscale-1.2.4', 'fontconfig-2.18.3', 'xcb-util-0.4.1', 'xkeyboard-config-2.48', 'libxkbfile-1.2.0', 'libxext-1.3.7', 'xkbcomp-1.5.0', 'libxxf86vm-1.1.7', 'libxres-1.2.3', 'libxscrnsaver-1.2.5', 'libxmu-1.3.1', 'libxrandr-1.5.5', 'libxft-2.3.9', 'libxcursor-1.2.3', 'libxtst-1.2.5', 'libmng-2.0.3', 'libxdmcp-1.1.5', 'libice-1.1.2', 'libsm-1.2.6', 'docbook-xsl-1.79.2',
             'xtrans-1.6.0', 'hunspell-en-us-2026', 'docbook-xml-4',
             'esdl-license', 'gnu-agpl-v3', 'rtlwifi-firmware-license',
             'apple-public-source-license', 'uboot-BSD-2-Clause-Patent',
