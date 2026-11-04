@@ -105,27 +105,18 @@ class SourceTests(unittest.TestCase):
         self.result = replay(self.original, self.patch)
         self.profile = json.loads(PROFILE.read_text())
 
-    def test_exact_source_delta_and_default(self):
-        anchor = '#ifdef SUPPORT_MTREE\n#include "mtree.h"\n#endif\n'
-        expected = self.original[PROGRAM].replace(anchor, anchor +
-            '\n#ifndef EMBERBSD_BSDINSTALL_SHELL\n'
-            '#define EMBERBSD_BSDINSTALL_SHELL _PATH_BSHELL\n#endif\n')
-        expected = expected.replace('execl(_PATH_BSHELL, "sh", "-c", cmd, NULL);',
-            'execl(EMBERBSD_BSDINSTALL_SHELL, "sh", "-c", cmd, NULL);')
-        self.assertEqual(self.result[PROGRAM], expected)
-        self.assertEqual(expected.count('execl(EMBERBSD_BSDINSTALL_SHELL,'), 2)
-        self.assertNotIn('execl(EMBERBSD_BSDINSTALL_SHELL,', self.original[PROGRAM])
-        self.assertIn('execlp(stripprog, "strip", to_name, NULL);', expected)
+    def test_initial_build_retains_explicit_selected_commands(self):
+        source = self.result[PROGRAM]
+        self.assertIn('#ifdef EMBERBSD_EXECUTABLE_RELATIVE', source)
+        self.assertIn('#define EMBERBSD_BSDINSTALL_SHELL _PATH_BSHELL', source)
+        self.assertIn('execlp(stripprog, "strip", to_name, NULL);', source)
+        self.assertIn('execl(EMBERBSD_BSDINSTALL_SHELL, "sh", "-c", cmd, NULL);', source)
 
-    def test_recipe_opt_in_does_not_change_strip_or_other_flags(self):
-        addition = ('\n# Bind child shells only for an explicit initial native producer.\n'
-            '.if defined(EMBERBSD_BSDINSTALL_SHELL)\n'
-            'CPPFLAGS+=\t-DEMBERBSD_BSDINSTALL_SHELL=\\"${EMBERBSD_BSDINSTALL_SHELL:Q}\\"\n'
-            '.endif\n')
-        self.assertEqual(self.result[RECIPE].replace(addition, '').replace('\n# checkperms itself requires this bootstrap installer.\nCHECK_PERMS=\tno\n', ''), self.original[RECIPE])
-        self.assertLess(self.result[RECIPE].index('.include "../../mk/bsd.prefs.mk"'),
-                        self.result[RECIPE].index('.if defined(EMBERBSD_BSDINSTALL_SHELL)'))
-        self.assertIn('-DTARGET_STRIP=\\"${TOOLS_PLATFORM.strip:Q}\\"', self.result[RECIPE])
+    def test_recipe_keeps_bootstrap_checker_exception(self):
+        recipe = self.result[RECIPE]
+        self.assertIn('CHECK_PERMS=\tno', recipe)
+        self.assertIn('PKGREVISION=\t2', recipe)
+        self.assertIn('USE_CROSS_COMPILE:Uno:tl', recipe)
 
     def test_changed_source_context_refuses(self):
         changed = dict(self.original)

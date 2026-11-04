@@ -1,5 +1,16 @@
 # Current common build tools
 
+Native BSDinstall selects its shell and strip provider from its own installed
+prefix when those tools are siblings. Direct paths, PATH lookup and symlinks
+resolve the executable before selecting those providers; an explicit STRIP
+override retains the upstream behavior. Cross-built BSDinstall keeps donor
+defaults. The initial bootstrap manifest still supplies its absolute selected
+commands and does not enable executable-relative resolution.
+
+`tests/bsdinstall-recipe-selection.py` checks real native and target recipe
+flags; `tests/bsdinstall-relocation.py` exercises a built native binary after
+relocation, including shell, strip, overrides and missing-provider failures.
+
 SPIRV-Headers, SPIRV-Tools and glslang build or install their production
 artifacts without compiling upstream test executables by default. To build their separate test
 graph, select `tests` in the corresponding `PKG_OPTIONS.spirv-headers`,
