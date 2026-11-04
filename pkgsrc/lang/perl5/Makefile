@@ -3,7 +3,7 @@
 .include "license.mk"
 .include "Makefile.common"
 
-PKGREVISION=	16
+PKGREVISION=	17
 
 COMMENT=	Practical Extraction and Report Language
 
@@ -285,6 +285,9 @@ PERL5_PACKLIST_DESTDIR=	no
 FILES_SUBST+=		PERL5_COMMENT=\#
 FILES_SUBST+=		PERL5_PACKLIST=
 
+_PERL5_RELBASE=	${PERL5_PERLBASE:S,^${PREFIX}/,,}
+_PERL5_MANUP=	${PKGMANDIR:C,[^/]+,..,g}/..
+
 .PHONY: perl5-post-install
 post-install: perl5-post-install
 perl5-post-install:
@@ -297,9 +300,9 @@ perl5-post-install:
 		${DESTDIR}${PERL5_PERLBASE}/${PKGMANDIR}/man1/perllink.1
 	${RM} -f ${DESTDIR}${PREFIX}/bin/perllink			\
 		${DESTDIR}${PREFIX}/${PKGMANDIR}/man1/perllink.1
-	${LN} -s ${PERL5_PERLBASE}/bin/perllink 			\
+	${LN} -s ../${_PERL5_RELBASE}/bin/perllink 			\
 		${DESTDIR}${PREFIX}/bin/perllink
-	${LN} -s ${PERL5_PERLBASE}/${PKGMANDIR}/man1/perllink.1		\
+	${LN} -s ${_PERL5_MANUP}/${_PERL5_RELBASE}/${PKGMANDIR}/man1/perllink.1		\
 		${DESTDIR}${PREFIX}/${PKGMANDIR}/man1/perllink.1
 .if ${OPSYS} == "Haiku"
 	${CHMOD} a+x ${DESTDIR}${PREFIX}/bin/perl
