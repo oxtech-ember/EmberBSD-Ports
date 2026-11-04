@@ -26,4 +26,13 @@ if not a or not b or b.group(1) != version:
 if a.group(1) != version:
     print('incompatible')
 else:
+    latest = old
+    for name in ('.patch_done', '.configure_done', '.build_done', '.install_done', '.package_done'):
+        phase = root / name
+        if phase.is_symlink() or (phase.exists() and not phase.is_file()):
+            fail('invalid phase identity ' + name)
+        if phase.is_file():
+            latest = phase.read_text(encoding='utf-8').strip()
+    if latest != current:
+        fail('revision changed; explicitly reconfigure/rebuild or use metadata package-install')
     print('same')

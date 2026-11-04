@@ -38,6 +38,9 @@ with tempfile.TemporaryDirectory() as temp:
     before = (obj.stat().st_ino, obj.stat().st_mtime_ns)
     assert run('fixture-1.0nb1', 'fixture-1.0nb1', '1.0').returncode == 0
     assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
+    assert run('fixture-1.0nb1', 'fixture-1.0nb2', '1.0').returncode != 0
+    assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
+    (work / '.build_done').write_text('fixture-1.0nb2\n')
     assert run('fixture-1.0nb1', 'fixture-1.0nb2', '1.0').returncode == 0
     assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
     assert run(None, 'fixture-1.0nb2', '1.0').returncode != 0 and obj.exists()
