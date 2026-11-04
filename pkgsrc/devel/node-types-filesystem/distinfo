@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (filesystem-0.0.36.tgz) = 4b48d3402cd30cd0b1a3797d571dbe5704c007c0a17fee1f05bb8ec742cc6388
+SHA512 (filesystem-0.0.36.tgz) = bcf0d7399b9a9e76fd1597718079ea4b0006fe3bdd18cf16abee8de03fddf34cfe0f81d61fe6c8b6ab19695450ca4027e9611578490b9b6a108a0c87b606f444
+Size (filesystem-0.0.36.tgz) = 5083 bytes

@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (filewriter-0.0.33.tgz) = 93408cf8b7b9882fb3c22da24655a9297520e6f66738c140b67f7480df6e1ba8
+SHA512 (filewriter-0.0.33.tgz) = c4553c6574f0e20777e7c95bda3c36e67c58f50020aa7dbe6ca2a328e61f342ccde0328215eb4aeec3edae5a60eba6307b7bd663d14dc69ad96b0021f707c9de
+Size (filewriter-0.0.33.tgz) = 3118 bytes

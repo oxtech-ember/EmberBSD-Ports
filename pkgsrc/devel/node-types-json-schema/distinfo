@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (json-schema-7.0.15.tgz) = ff1212080e7faab0108ad9ad56921587bcbf765e01f318ddfea93a4e95e75fb8
+SHA512 (json-schema-7.0.15.tgz) = e7e7cff0ff0c14d0be0326420f1ac1da991914f1b3a90594ce949ebae54bbe6f1531ca2b3586af06aa057312bc6d0cf842c6e7e2850411e9b8c032df732b061c
+Size (json-schema-7.0.15.tgz) = 6145 bytes
