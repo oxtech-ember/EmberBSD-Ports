@@ -1,0 +1,12 @@
+--- a/mk/bsd.makevars.mk
++++ b/mk/bsd.makevars.mk
+@@ -38,3 +38,9 @@
+ .    sinclude "${_MAKEVARS_MK.${_phase_}}"
+ .  endif
+ .endfor
++
++# Explicitly refresh cached phase variables after configuration inputs change.
++# This leaves phase cookies, sources, objects and build outputs intact.
++.PHONY: invalidate-makevars
++invalidate-makevars:
++	${RUN} ${RM} -f ${_ALL_PHASES:@_phase_@${_MAKEVARS_MK.${_phase_}:Q}@}

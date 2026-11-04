@@ -113,7 +113,9 @@ meson-configure:
 .  if ${CONFIGURE_DIRS:[#]} != 1
 	@${STEP_MSG} Configuring meson in ${d}
 .  endif
-	${RUN}cd ${WRKSRC} && cd ${d} && ${SETENV} ${MAKE_ENV} meson setup \
+	${RUN}cd ${WRKSRC} && cd ${d} && { \
+		if [ -f output/meson-private/coredata.dat ]; then set -- --reconfigure; else set --; fi; \
+		${SETENV} ${MAKE_ENV} meson setup "$$@" \
 		--prefix ${PREFIX} \
 		--libdir lib \
 		--libexecdir libexec \
@@ -121,7 +123,7 @@ meson-configure:
 		--sysconfdir ${PKG_SYSCONFDIR} \
 		--wrap-mode=nodownload \
 		${MESON_CROSS_ARGS} ${MESON_NATIVE_ARGS} \
-		--buildtype=plain ${MESON_ARGS} . output
+		--buildtype=plain ${MESON_ARGS} . output; }
 .endfor
 
 do-build: meson-build

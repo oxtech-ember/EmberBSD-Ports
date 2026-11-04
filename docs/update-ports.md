@@ -238,3 +238,14 @@ It does not enumerate pbulk multi-version combinations, search alternate provide
 or model source-generated host tools absent from pkgsrc dependency metadata.
 Such tools need explicit producer input receipts. Metadata evaluation can run
 pkgsrc parse-time probes; use a trusted prepared tree. No build target is invoked.
+
+## Refresh configuration metadata
+
+When a selected package's provider configuration changes, `invalidate-makevars`
+removes that work directory's cached phase variables, without removing source,
+objects or phase cookies. It does not itself reconfigure or rebuild. For a
+provider changing from builtin to pkgsrc, `refresh-empty-buildlink-<provider>`
+rebuilds its links only if the previous buildlink cookie is empty; it refuses
+a nonempty or invalid cookie. Run these explicit targets without another
+writer in the same work directory, then use the relevant configure and build
+stages. Meson setup reconfigures an existing valid build directory in place.

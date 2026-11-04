@@ -1,0 +1,23 @@
+--- a/mk/buildlink3/bsd.buildlink3.mk
++++ b/mk/buildlink3/bsd.buildlink3.mk
+@@ -739,6 +739,20 @@
+ 
+ .PHONY: buildlink-${_pkg_}
+ buildlink-${_pkg_}: ${_BLNK_TARGETS.${_pkg_}}
++
++# Refresh a previously builtin provider only when it left no linked files.
++.PHONY: refresh-empty-buildlink-${_pkg_}
++refresh-empty-buildlink-${_pkg_}:
++.if ${USE_BUILTIN.${_pkg_}:Uno:tl} != "no"
++	${RUN} ${ERROR_MSG} "${_pkg_} is not selected from pkgsrc."; exit 1
++.else
++	${RUN} cookie=${_BLNK_COOKIE.${_pkg_}:Q}; \
++	if [ -L "$$cookie" ] || { [ -e "$$cookie" ] && [ ! -f "$$cookie" ]; } || [ -s "$$cookie" ]; then \
++		${ERROR_MSG} "Refusing to replace nonempty or invalid buildlink cookie: $$cookie"; exit 1; \
++	fi; \
++	${RM} -f "$$cookie"
++	${RUN} ${RECURSIVE_MAKE} ${MAKEFLAGS} buildlink-${_pkg_}
++.endif
+ 
+ .PHONY: buildlink-${_pkg_}-message
+ buildlink-${_pkg_}-message:
