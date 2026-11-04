@@ -120,6 +120,39 @@ in a patch comment. Their payload files are byte-identical to the packages
 above.
 The guest values are not a hardware measurement.
 
+## amd64 target in the C locale
+
+Built on 4 November 2026 from Ports `fa5e25e7` with the common Clang cross
+profile on the amd64 application sysroot `c78b703`. Checked in an EmberBSD
+amd64 guest `c5d396f` (QEMU TCG, 2 vCPU, 2 GiB, full base with shared
+libraries). The guest runs in the C locale: `locale charmap` gives `646`.
+The "before" package is `glib2` built from the recipe before `a05d15e5`.
+
+| Packages | `arv-fake-gv-camera-0.8 -i 127.0.0.1` | `arv-tool-0.8` |
+| --- | --- | --- |
+| `glib2-2.90.1nb2`, `aravis-0.8.36nb1` | stops at option parsing (`646` to `UTF-8`) | 0.8.36 |
+| `glib2-2.90.1nb3`, `aravis-0.8.36nb1` | starts | finds the simulator, reads its features |
+
+GLib converts only string option values. `arv-camera-test-0.8
+--duration=1` has no string option and starts with nb2 as well. GNU
+`iconv -f 646` reports the conversion as unsupported; the base `iconv`
+converts it.
+
+With nb3, `arv-camera-test-0.8 -n 127.0.0.1 --duration=60` ran against the
+simulator in the same guest, with the buffer limits of the AArch64 run.
+
+| Result | Value |
+| --- | --- |
+| `glib2-2.90.1nb3.tgz` | SHA256 `811364f04734c85b1d30eadcbf682545db1c27514a336ce38fb8fe218831ee11` |
+| `aravis-0.8.36nb1.tgz` | SHA256 `3ad4e9e03158966ef4feb9dd17db7f13821bf885729024e9ffa8157b6423a2a6` |
+| `glib2-2.90.1nb2.tgz` (before) | SHA256 `08d2d7901b0aad3cadea7e0345093c68030fc68e9431052479f80b1c96683a5b` |
+| Completed frames | 889 in 60 s |
+| Received packets | 173439, 234684676 bytes |
+| Failures, missing frames, missing packets, resends | 0 |
+
+TCG emulates the guest CPU: about 15 frame/s against the simulator's 25 is
+the emulation, not a hardware measurement.
+
 ## Remaining
 
 - Daheng ME2P-1230 on the board for 30 minutes without lost frames.
