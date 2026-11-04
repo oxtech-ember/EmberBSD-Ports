@@ -1,0 +1,164 @@
+# Origin: EmberBSD (AI-assisted).
+# Locate libstdbuf relative to the actual installed executable.
+
+--- a/src/stdbuf.c
++++ b/src/stdbuf.c
+@@ -23,6 +23,7 @@
+ 
+ #include "system.h"
+ #include "assure.h"
++#include "canonicalize.h"
+ #include "filenamecat.h"
+ #include "quote.h"
+ #include "xreadlink.h"
+@@ -123,42 +124,82 @@
+   exit (status);
+ }
+ 
+-/* argv[0] can be anything really, but generally it contains
+-   the path to the executable or just a name if it was executed
+-   using $PATH. In the latter case to get the path we can:
+-   search getenv("PATH"), readlink("/prof/self/exe"), getenv("_"),
+-   dladdr(), pstat_getpathname(), etc.  */
+-
++/* Resolve only this executable, including symlinks, before looking for
++   the library.  PATH empty components denote the current directory.  */
+ static void
+ set_program_path (char const *arg)
+ {
+-  if (strchr (arg, '/'))        /* Use absolute or relative paths directly.  */
+-    {
+-      program_path = dir_name (arg);
+-    }
++  char *resolved = NULL;
++  if (strchr (arg, '/'))
++    resolved = canonicalize_file_name (arg);
+   else
+     {
+-      char *path = xreadlink ("/proc/self/exe");
+-      if (path)
+-        program_path = dir_name (path);
+-      else if ((path = getenv ("PATH")))
++      char const *path = getenv ("PATH");
++      resolved = canonicalize_file_name ("/proc/self/exe");
++      if (!resolved && path)
+         {
+-          path = xstrdup (path);
+-          for (char *dir = strtok (path, ":"); dir != NULL;
+-               dir = strtok (NULL, ":"))
++          char const *start = path;
++          do
+             {
+-              char *candidate = file_name_concat (dir, arg, NULL);
+-              if (access (candidate, X_OK) == 0)
+-                {
+-                  program_path = dir_name (candidate);
+-                  free (candidate);
+-                  break;
+-                }
++              char const *end = strchr (start, ':');
++              size_t len = end ? end - start : strlen (start);
++              char *dir = xmalloc ((len ? len : 1) + 1);
++              char *candidate;
++              struct stat sb;
++              if (len)
++                memcpy (dir, start, len);
++              else
++                dir[0] = '.';
++              dir[len ? len : 1] = '\0';
++              candidate = file_name_concat (dir, arg, NULL);
++              free (dir);
++              if (stat (candidate, &sb) == 0 && S_ISREG (sb.st_mode)
++                  && access (candidate, X_OK) == 0)
++                resolved = canonicalize_file_name (candidate);
+               free (candidate);
++              if (resolved || !end)
++                break;
++              start = end + 1;
+             }
++          while (true);
+         }
+-      free (path);
+     }
++  if (resolved)
++    {
++      program_path = dir_name (resolved);
++      free (resolved);
++    }
++}
++
++/* Translate the configured libexec path using the installed executable's
++   directory.  Only paths below the same configured prefix can be moved.  */
++static char *
++relocated_libexec (void)
++{
++  size_t prefix_len = strlen (PREFIX);
++  size_t dir_len = strlen (program_path);
++  char const *bindir_suffix;
++  size_t suffix_len;
++  char *result;
++
++  if (PREFIX[0] != '/')
++    return NULL;
++  if (prefix_len == 1 && PREFIX[0] == '/')
++    prefix_len = 0;
++  if (strncmp (BINDIR, PREFIX, prefix_len) != 0
++      || strncmp (PKGLIBEXECDIR, PREFIX, prefix_len) != 0
++      || BINDIR[prefix_len] != '/' || PKGLIBEXECDIR[prefix_len] != '/')
++    return streq (program_path, BINDIR) ? xstrdup (PKGLIBEXECDIR) : NULL;
++
++  bindir_suffix = &BINDIR[prefix_len];
++  suffix_len = strlen (bindir_suffix);
++  if (dir_len < suffix_len
++      || strcmp (program_path + dir_len - suffix_len, bindir_suffix) != 0)
++    return streq (program_path, BINDIR) ? xstrdup (PKGLIBEXECDIR) : NULL;
++  if (asprintf (&result, "%.*s%s", (int) (dir_len - suffix_len),
++                program_path, &PKGLIBEXECDIR[prefix_len]) < 0)
++    xalloc_die ();
++  return result;
+ }
+ 
+ static int
+@@ -215,9 +256,10 @@
+      not supported due to the unusual need for controlling the stdio buffering
+      of programs that are a different architecture to the default on the
+      system (and that of stdbuf itself).  */
++  char *relocated = relocated_libexec ();
+   char const *const search_path[] = {
+     program_path,
+-    PKGLIBEXECDIR,
++    relocated,
+     NULL
+   };
+ 
+@@ -256,6 +298,7 @@
+     xalloc_die ();
+ 
+   free (libstdbuf);
++  free (relocated);
+ 
+   ret = putenv (LD_PRELOAD);
+ #ifdef __APPLE__
+@@ -310,8 +353,10 @@
+ main (int argc, char **argv)
+ {
+   int c;
++  char const *executable_arg;
+ 
+   initialize_main (&argc, &argv);
++  executable_arg = argv[0];
+   set_program_name (argv[0]);
+   setlocale (LC_ALL, "");
+   bindtextdomain (PACKAGE, LOCALEDIR);
+@@ -383,9 +428,9 @@
+ 
+   /* Try to preload libstdbuf first from the same path as
+      stdbuf is running from.  */
+-  set_program_path (program_name);
++  set_program_path (executable_arg);
+   if (!program_path)
+-    program_path = xstrdup (PKGLIBDIR);  /* Need to init to non-null.  */
++    error (EXIT_CANCELED, 0, _("failed to determine executable path"));
+   set_LD_PRELOAD ();
+   free (program_path);
+ 
