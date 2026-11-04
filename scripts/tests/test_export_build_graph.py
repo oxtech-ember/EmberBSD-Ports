@@ -329,8 +329,18 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
         self.packages['devel/app']['_inventory_error'] = 'private-makeconf-secret'
         error = self.run_export('--jobs', '2', success=False)
         self.assertIn('variable inventory query failed', error)
+        self.assertIn('devel/app (target)', error)
         self.assertNotIn('private-makeconf-secret', error)
         self.assertNotIn('Global Variables', error)
+        self.assertNotIn(str(self.config), error)
+
+        del self.packages['devel/app']['_inventory_error']
+        self.packages['devel/generator']['_inventory_error'] = 'private-makeconf-secret'
+        error = self.run_export('--jobs', '2', success=False)
+        self.assertIn('devel/generator (native)', error)
+        self.assertNotIn('private-makeconf-secret', error)
+        self.assertNotIn('Global Variables', error)
+        self.assertNotIn(str(self.config), error)
 
     def test_vendor_tree_change_only_changes_consumers(self):
         vendor = self.pkgsrc / 'archivers/vendor/files'

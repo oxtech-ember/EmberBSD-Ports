@@ -130,7 +130,11 @@ class Exporter:
             queries += ['-V', '${' + variable + '}']
         # bmake has no GNU .VARIABLES inventory. Its native input graph lists
         # defined names. Query their expanded values separately through -V.
-        completed = self.run(command + ['-dg1'] + queries, env=environment)
+        try:
+            completed = self.run(command + ['-dg1'] + queries, env=environment)
+        except ExportError:
+            role = 'target' if cross == 'yes' else 'native'
+            raise ExportError(f'bmake variable inventory query failed: {package} ({role})') from None
         if '#*** Global Variables:' not in completed.stderr:
             raise ExportError('bmake did not report its native variable inventory')
         extra_trees = sorted(set(re.findall(
