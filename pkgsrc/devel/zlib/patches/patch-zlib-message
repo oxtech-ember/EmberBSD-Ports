@@ -1,0 +1,396 @@
+$NetBSD$
+
+Preserve the existing public zlib message types while using the NetBSD
+__UNCONST convention for literal message assignments.
+
+Origin: NetBSD zlib integration; EmberBSD adaptation (AI-assisted).
+
+--- zutil.h.orig
++++ zutil.h
+@@ -20,6 +20,13 @@
+ #endif
+ 
+ #include "zlib.h"
++
++/* NetBSD standalone and base preserve mutable public zlib message types. */
++#if defined(__NetBSD__) || defined(ZLIB_NETBSD_STANDALONE)
++#  define Z_MSG_CAST(s) ((z_const char *)__UNCONST(s))
++#else
++#  define Z_MSG_CAST(s) ((z_const char *)(s))
++#endif
+ 
+ #if defined(STDC) && !defined(Z_SOLO)
+ #  if (defined(__NetBSD__) || defined(ZLIB_NETBSD_STANDALONE)) && (defined(_KERNEL) || defined(_STANDALONE))
+--- zutil.c.orig
++++ zutil.c
+@@ -11,16 +11,16 @@
+ #endif
+ 
+ z_const char * const z_errmsg[10] = {
+-    (z_const char *)"need dictionary",     /* Z_NEED_DICT       2  */
+-    (z_const char *)"stream end",          /* Z_STREAM_END      1  */
+-    (z_const char *)"",                    /* Z_OK              0  */
+-    (z_const char *)"file error",          /* Z_ERRNO         (-1) */
+-    (z_const char *)"stream error",        /* Z_STREAM_ERROR  (-2) */
+-    (z_const char *)"data error",          /* Z_DATA_ERROR    (-3) */
+-    (z_const char *)"insufficient memory", /* Z_MEM_ERROR     (-4) */
+-    (z_const char *)"buffer error",        /* Z_BUF_ERROR     (-5) */
+-    (z_const char *)"incompatible version",/* Z_VERSION_ERROR (-6) */
+-    (z_const char *)""
++    Z_MSG_CAST("need dictionary"),     /* Z_NEED_DICT       2  */
++    Z_MSG_CAST("stream end"),          /* Z_STREAM_END      1  */
++    Z_MSG_CAST(""),                    /* Z_OK              0  */
++    Z_MSG_CAST("file error"),          /* Z_ERRNO         (-1) */
++    Z_MSG_CAST("stream error"),        /* Z_STREAM_ERROR  (-2) */
++    Z_MSG_CAST("data error"),          /* Z_DATA_ERROR    (-3) */
++    Z_MSG_CAST("insufficient memory"), /* Z_MEM_ERROR     (-4) */
++    Z_MSG_CAST("buffer error"),        /* Z_BUF_ERROR     (-5) */
++    Z_MSG_CAST("incompatible version"),/* Z_VERSION_ERROR (-6) */
++    Z_MSG_CAST("")
+ };
+ 
+ 
+--- inflate.c.orig
++++ inflate.c
+@@ -533,12 +533,12 @@
+             if (
+ #endif
+                 ((BITS(8) << 8) + (hold >> 8)) % 31) {
+-                strm->msg = (z_const char *)"incorrect header check";
++                strm->msg = Z_MSG_CAST("incorrect header check");
+                 state->mode = BAD;
+                 break;
+             }
+             if (BITS(4) != Z_DEFLATED) {
+-                strm->msg = (z_const char *)"unknown compression method";
++                strm->msg = Z_MSG_CAST("unknown compression method");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -547,7 +547,7 @@
+             if (state->wbits == 0)
+                 state->wbits = len;
+             if (len > 15 || len > state->wbits) {
+-                strm->msg = (z_const char *)"invalid window size";
++                strm->msg = Z_MSG_CAST("invalid window size");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -563,12 +563,12 @@
+             NEEDBITS(16);
+             state->flags = (int)(hold);
+             if ((state->flags & 0xff) != Z_DEFLATED) {
+-                strm->msg = (z_const char *)"unknown compression method";
++                strm->msg = Z_MSG_CAST("unknown compression method");
+                 state->mode = BAD;
+                 break;
+             }
+             if (state->flags & 0xe000) {
+-                strm->msg = (z_const char *)"unknown header flags set";
++                strm->msg = Z_MSG_CAST("unknown header flags set");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -684,7 +684,7 @@
+             if (state->flags & 0x0200) {
+                 NEEDBITS(16);
+                 if ((state->wrap & 4) && hold != (state->check & 0xffff)) {
+-                    strm->msg = (z_const char *)"header crc mismatch";
++                    strm->msg = Z_MSG_CAST("header crc mismatch");
+                     state->mode = BAD;
+                     break;
+                 }
+@@ -746,7 +746,7 @@
+                 state->mode = TABLE;
+                 break;
+             default:
+-                strm->msg = (z_const char *)"invalid block type";
++                strm->msg = Z_MSG_CAST("invalid block type");
+                 state->mode = BAD;
+             }
+             DROPBITS(2);
+@@ -755,7 +755,7 @@
+             BYTEBITS();                         /* go to byte boundary */
+             NEEDBITS(32);
+             if ((hold & 0xffff) != ((hold >> 16) ^ 0xffff)) {
+-                strm->msg = (z_const char *)"invalid stored block lengths";
++                strm->msg = Z_MSG_CAST("invalid stored block lengths");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -796,8 +796,7 @@
+             DROPBITS(4);
+ #ifndef PKZIP_BUG_WORKAROUND
+             if (state->nlen > 286 || state->ndist > 30) {
+-                strm->msg = (z_const char *)
+-                    "too many length or distance symbols";
++                strm->msg = Z_MSG_CAST("too many length or distance symbols");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -820,7 +819,7 @@
+             ret = inflate_table(CODES, state->lens, 19, &(state->next),
+                                 &(state->lenbits), state->work);
+             if (ret) {
+-                strm->msg = (z_const char *)"invalid code lengths set";
++                strm->msg = Z_MSG_CAST("invalid code lengths set");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -844,8 +843,7 @@
+                         NEEDBITS(here.bits + 2);
+                         DROPBITS(here.bits);
+                         if (state->have == 0) {
+-                            strm->msg = (z_const char *)
+-                                "invalid bit length repeat";
++                            strm->msg = Z_MSG_CAST("invalid bit length repeat");
+                             state->mode = BAD;
+                             break;
+                         }
+@@ -868,8 +866,7 @@
+                         DROPBITS(7);
+                     }
+                     if (state->have + copy > state->nlen + state->ndist) {
+-                        strm->msg = (z_const char *)
+-                            "invalid bit length repeat";
++                        strm->msg = Z_MSG_CAST("invalid bit length repeat");
+                         state->mode = BAD;
+                         break;
+                     }
+@@ -883,8 +880,7 @@
+ 
+             /* check for end-of-block code (better have one) */
+             if (state->lens[256] == 0) {
+-                strm->msg = (z_const char *)
+-                    "invalid code -- missing end-of-block";
++                strm->msg = Z_MSG_CAST("invalid code -- missing end-of-block");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -898,7 +894,7 @@
+             ret = inflate_table(LENS, state->lens, state->nlen, &(state->next),
+                                 &(state->lenbits), state->work);
+             if (ret) {
+-                strm->msg = (z_const char *)"invalid literal/lengths set";
++                strm->msg = Z_MSG_CAST("invalid literal/lengths set");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -907,7 +903,7 @@
+             ret = inflate_table(DISTS, state->lens + state->nlen, state->ndist,
+                             &(state->next), &(state->distbits), state->work);
+             if (ret) {
+-                strm->msg = (z_const char *)"invalid distances set";
++                strm->msg = Z_MSG_CAST("invalid distances set");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -961,7 +957,7 @@
+                 break;
+             }
+             if (here.op & 64) {
+-                strm->msg = (z_const char *)"invalid literal/length code";
++                strm->msg = Z_MSG_CAST("invalid literal/length code");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -999,7 +995,7 @@
+             DROPBITS(here.bits);
+             state->back += here.bits;
+             if (here.op & 64) {
+-                strm->msg = (z_const char *)"invalid distance code";
++                strm->msg = Z_MSG_CAST("invalid distance code");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -1016,7 +1012,7 @@
+             }
+ #ifdef INFLATE_STRICT
+             if (state->offset > state->dmax) {
+-                strm->msg = (z_const char *)"invalid distance too far back";
++                strm->msg = Z_MSG_CAST("invalid distance too far back");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -1031,8 +1027,7 @@
+                 copy = state->offset - copy;
+                 if (copy > state->whave) {
+                     if (state->sane) {
+-                        strm->msg = (z_const char *)
+-                            "invalid distance too far back";
++                        strm->msg = Z_MSG_CAST("invalid distance too far back");
+                         state->mode = BAD;
+                         break;
+                     }
+@@ -1091,7 +1086,7 @@
+                      state->flags ? hold :
+ #endif
+                      ZSWAP32(hold)) != state->check) {
+-                    strm->msg = (z_const char *)"incorrect data check";
++                    strm->msg = Z_MSG_CAST("incorrect data check");
+                     state->mode = BAD;
+                     break;
+                 }
+@@ -1105,7 +1100,7 @@
+             if (state->wrap && state->flags) {
+                 NEEDBITS(32);
+                 if ((state->wrap & 4) && hold != (state->total & 0xffffffff)) {
+-                    strm->msg = (z_const char *)"incorrect length check";
++                    strm->msg = Z_MSG_CAST("incorrect length check");
+                     state->mode = BAD;
+                     break;
+                 }
+--- inffast.c.orig
++++ inffast.c
+@@ -155,8 +155,7 @@
+                 dist += (unsigned)hold & ((1U << op) - 1);
+ #ifdef INFLATE_STRICT
+                 if (dist > dmax) {
+-                    strm->msg = (z_const char *)
+-                        "invalid distance too far back";
++                    strm->msg = Z_MSG_CAST("invalid distance too far back");
+                     state->mode = BAD;
+                     break;
+                 }
+@@ -169,8 +168,7 @@
+                     op = dist - op;             /* distance back in window */
+                     if (op > whave) {
+                         if (state->sane) {
+-                            strm->msg = (z_const char *)
+-                                "invalid distance too far back";
++                            strm->msg = Z_MSG_CAST("invalid distance too far back");
+                             state->mode = BAD;
+                             break;
+                         }
+@@ -266,7 +264,7 @@
+                 goto dodist;
+             }
+             else {
+-                strm->msg = (z_const char *)"invalid distance code";
++                strm->msg = Z_MSG_CAST("invalid distance code");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -281,7 +279,7 @@
+             break;
+         }
+         else {
+-            strm->msg = (z_const char *)"invalid literal/length code";
++            strm->msg = Z_MSG_CAST("invalid literal/length code");
+             state->mode = BAD;
+             break;
+         }
+--- infback.c.orig
++++ infback.c
+@@ -253,7 +253,7 @@
+                 state->mode = TABLE;
+                 break;
+             default:
+-                strm->msg = (z_const char *)"invalid block type";
++                strm->msg = Z_MSG_CAST("invalid block type");
+                 state->mode = BAD;
+             }
+             DROPBITS(2);
+@@ -264,7 +264,7 @@
+             BYTEBITS();                         /* go to byte boundary */
+             NEEDBITS(32);
+             if ((hold & 0xffff) != ((hold >> 16) ^ 0xffff)) {
+-                strm->msg = (z_const char *)"invalid stored block lengths";
++                strm->msg = Z_MSG_CAST("invalid stored block lengths");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -302,8 +302,7 @@
+             DROPBITS(4);
+ #ifndef PKZIP_BUG_WORKAROUND
+             if (state->nlen > 286 || state->ndist > 30) {
+-                strm->msg = (z_const char *)
+-                    "too many length or distance symbols";
++                strm->msg = Z_MSG_CAST("too many length or distance symbols");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -325,7 +324,7 @@
+             ret = inflate_table(CODES, state->lens, 19, &(state->next),
+                                 &(state->lenbits), state->work);
+             if (ret) {
+-                strm->msg = (z_const char *)"invalid code lengths set";
++                strm->msg = Z_MSG_CAST("invalid code lengths set");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -348,8 +347,7 @@
+                         NEEDBITS(here.bits + 2);
+                         DROPBITS(here.bits);
+                         if (state->have == 0) {
+-                            strm->msg = (z_const char *)
+-                                "invalid bit length repeat";
++                            strm->msg = Z_MSG_CAST("invalid bit length repeat");
+                             state->mode = BAD;
+                             break;
+                         }
+@@ -372,8 +370,7 @@
+                         DROPBITS(7);
+                     }
+                     if (state->have + copy > state->nlen + state->ndist) {
+-                        strm->msg = (z_const char *)
+-                            "invalid bit length repeat";
++                        strm->msg = Z_MSG_CAST("invalid bit length repeat");
+                         state->mode = BAD;
+                         break;
+                     }
+@@ -387,8 +384,7 @@
+ 
+             /* check for end-of-block code (better have one) */
+             if (state->lens[256] == 0) {
+-                strm->msg = (z_const char *)
+-                    "invalid code -- missing end-of-block";
++                strm->msg = Z_MSG_CAST("invalid code -- missing end-of-block");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -402,7 +398,7 @@
+             ret = inflate_table(LENS, state->lens, state->nlen, &(state->next),
+                                 &(state->lenbits), state->work);
+             if (ret) {
+-                strm->msg = (z_const char *)"invalid literal/lengths set";
++                strm->msg = Z_MSG_CAST("invalid literal/lengths set");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -411,7 +407,7 @@
+             ret = inflate_table(DISTS, state->lens + state->nlen, state->ndist,
+                             &(state->next), &(state->distbits), state->work);
+             if (ret) {
+-                strm->msg = (z_const char *)"invalid distances set";
++                strm->msg = Z_MSG_CAST("invalid distances set");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -470,7 +466,7 @@
+ 
+             /* invalid code */
+             if (here.op & 64) {
+-                strm->msg = (z_const char *)"invalid literal/length code";
++                strm->msg = Z_MSG_CAST("invalid literal/length code");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -502,7 +498,7 @@
+             }
+             DROPBITS(here.bits);
+             if (here.op & 64) {
+-                strm->msg = (z_const char *)"invalid distance code";
++                strm->msg = Z_MSG_CAST("invalid distance code");
+                 state->mode = BAD;
+                 break;
+             }
+@@ -517,7 +513,7 @@
+             }
+             if (state->offset > state->wsize - (state->whave < state->wsize ?
+                                                 left : 0)) {
+-                strm->msg = (z_const char *)"invalid distance too far back";
++                strm->msg = Z_MSG_CAST("invalid distance too far back");
+                 state->mode = BAD;
+                 break;
+             }
