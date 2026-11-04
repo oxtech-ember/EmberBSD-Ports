@@ -1,8 +1,11 @@
 #!/bin/sh
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). Same-run LLVM package stage handoff.
-# Usage: cross-bulk-llvm-shared-stage.sh NEW_OUTPUT [llvm|qtbase|icu]
+# Usage: CROSS_BULK_TEST_HOST_PYTHON=... CROSS_BULK_TEST_SDK_SOURCE=...
+#        cross-bulk-llvm-shared-stage.sh NEW_OUTPUT [llvm|qtbase|icu]
 set -eu
+: "${CROSS_BULK_TEST_HOST_PYTHON:?Select the SDK host Python}"
+: "${CROSS_BULK_TEST_SDK_SOURCE:?Select the SDK source}"
 [ "$#" -ge 1 ] && [ "$#" -le 2 ] || { echo 'Usage: cross-bulk-llvm-shared-stage.sh NEW_OUTPUT [llvm|qtbase|icu]' >&2; exit 2; }
 out=$1
 pair=${2:-llvm}
@@ -26,10 +29,12 @@ setup()
 {
     case_out=$1
     mkdir -p "$case_out/tree/$producer" "$case_out/tree/$consumer" \
-        "$case_out/tree/pkgtools/pkg_install" "$case_out/packages/All" "$case_out/work" "$case_out/state"
+        "$case_out/tree/pkgtools/pkg_install" "$case_out/tree/mk/package" "$case_out/packages/All" "$case_out/work" "$case_out/state"
     : > "$case_out/tree/$producer/Makefile"
     : > "$case_out/tree/$consumer/Makefile"
     : > "$case_out/tree/pkgtools/pkg_install/Makefile"
+    # This fixture tests stage handoff, not the separately tested metadata guard.
+    printf '%s\n' 'import sys' 'sys.exit(0)' > "$case_out/tree/mk/package/repackage-metadata-check.py"
     cat > "$case_out/pkg_info" <<'WRAP'
 #!/bin/sh
 exit 1
@@ -81,6 +86,7 @@ case "$target" in
                 PKGNAME) echo "$name" ;;
                 WRKDIR) echo "$work" ;;
                 PKGBASE) echo "$base" ;;
+                PKGVERSION_NOREV) version=${name#"$base"-}; echo "${version%nb*}" ;;
                 PKG_SKIP_REASON) echo ;;
                 .MAKE.MAKEFILES) echo "$dir/Makefile" ;;
                 .CURDIR) echo "$dir" ;;
@@ -159,8 +165,9 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 
 success=$out/success
 setup "$success"
-mkdir -p "$success/work/llvm/.llvm-shared-full-stage"
-: > "$success/work/llvm/.llvm-shared-full-stage/stale"
+mkdir -p "$success/work/$producer_dir/.${pair}-shared-full-stage"
+: > "$success/work/$producer_dir/.${pair}-shared-full-stage/stale"
+printf '%s\n' "$producer_name" > "$success/work/$producer_dir/.extract_done"
 run_build "$success" || fail "matching inputs: $(cat "$success/build.log")"
 grep -q "^package-install:$producer_dir:shared$" "$success/calls" || fail 'producer did not receive shared-stage path'
 grep -q "^package-install:$consumer_dir:shared$" "$success/calls" || fail 'consumer did not consume producer shared stage'
@@ -189,6 +196,7 @@ if [ "$pair" = icu ]; then
     done
 fi
 
+FAKE_MISMATCH_FIELD=
 failed=$out/failed
 setup "$failed"
 rc=0
@@ -228,6 +236,21 @@ grep -q "^_package-clean:$producer_dir$" "$stage_local/calls" || fail 'stage-loc
 [ -f "$stage_local/work/$producer_dir/objects/compiled.o" ] || fail 'stage-local install reset removed producer build objects'
 [ -f "$stage_local/work/$producer_dir/.${pair}-shared-full-stage/full-stage" ] || fail 'stage-local success removed producer stage when clean-success was disabled'
 [ "$(cat "$stage_local/work/$producer_dir/.${pair}-shared-full-stage/metadata")" = 'fresh metadata' ] || fail 'stage-local recovery kept stale post-install metadata instead of the new producer stage'
+
+# A single producer has no handoff stage or consumer. Its successful ordinary
+# package-install must not attempt to read shared-*/stage or remove objects.
+solo=$out/producer-alone
+setup "$solo"
+printf '%s\n' "$producer" > "$solo/state/order"
+: > "$solo/state/edges"
+mkdir -p "$solo/work/$producer_dir/objects"
+printf 'retained object\n' > "$solo/work/$producer_dir/objects/compiled.o"
+CLEAN_SUCCESS=no run_build "$solo" package-install || fail "producer-alone package-install: $(cat "$solo/build.log")"
+grep -q "^package-install:$producer_dir$" "$solo/calls" || fail 'producer-alone did not package normally'
+grep -q "^$producer $producer_name " "$solo/state/done" || fail 'producer-alone success was not recorded'
+[ "$(cat "$solo/work/$producer_dir/objects/compiled.o")" = 'retained object' ] || fail 'producer-alone lost build objects'
+if grep -q "^package-install:$consumer_dir" "$solo/calls"; then fail 'producer-alone started absent consumer'; fi
+if grep -q 'No such file' "$solo/build.log"; then fail 'producer-alone accessed absent shared stage'; fi
 
 stopped=$out/stopped-before-consumer
 setup "$stopped"

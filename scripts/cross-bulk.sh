@@ -1322,6 +1322,7 @@ shared_pair_producer_succeeded()
     shared_pair_for_path "$1"
     [ -n "$shared_pair" ] && [ "$1" = "$shared_producer" ] || return 0
     shared_dir=$run/shared-$shared_pair
+    [ "$(cat "$shared_dir/enabled" 2>/dev/null)" = yes ] || return 0
     shared_stage=$(cat "$shared_dir/stage")
     if [ -d "$shared_stage" ]; then
         : > "$shared_dir/producer-ready.tmp"
