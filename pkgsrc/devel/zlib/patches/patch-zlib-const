@@ -1,0 +1,64 @@
+$NetBSD$
+
+Use the NetBSD const-discard idiom for upstream's legacy z_stream fields.
+This preserves the upstream code on other systems and allows the native
+NetBSD -Wcast-qual/-Werror build. Adapted from NetBSD common/dist/zlib 1.3.1.
+
+Origin: NetBSD; adaptation by EmberBSD contributors (AI-assisted).
+
+--- compress.c.orig
++++ compress.c
+@@ -44,7 +44,11 @@
+ 
+     stream.next_out = dest;
+     stream.avail_out = 0;
++#if defined(__NetBSD__)
++    stream.next_in = __UNCONST(source);
++#else
+     stream.next_in = (z_const Bytef *)source;
++#endif
+     stream.avail_in = 0;
+ 
+     do {
+--- deflate.c.orig
++++ deflate.c
+@@ -592,7 +592,11 @@
+     avail = strm->avail_in;
+     next = strm->next_in;
+     strm->avail_in = dictLength;
++#if defined(__NetBSD__)
++    strm->next_in = __UNCONST(dictionary);
++#else
+     strm->next_in = (z_const Bytef *)dictionary;
++#endif
+     fill_window(s);
+     while (s->lookahead >= MIN_MATCH) {
+         str = s->strstart;
+--- uncompr.c.orig
++++ uncompr.c
+@@ -42,7 +42,11 @@
+     if (left == 0 && dest == Z_NULL)
+         dest = (Bytef *)&stream.reserved;       /* next_out cannot be NULL */
+ 
++#if defined(__NetBSD__)
++    stream.next_in = __UNCONST(source);
++#else
+     stream.next_in = (z_const Bytef *)source;
++#endif
+     stream.avail_in = 0;
+     stream.zalloc = (alloc_func)0;
+     stream.zfree = (free_func)0;
+--- gzwrite.c.orig
++++ gzwrite.c
+@@ -235,7 +235,11 @@
+             return 0;
+ 
+         /* directly compress user buffer to file */
++#if defined(__NetBSD__)
++        state->strm.next_in = __UNCONST(buf);
++#else
+         state->strm.next_in = (z_const Bytef *)buf;
++#endif
+         do {
+             unsigned n = (unsigned)-1;
+ 
