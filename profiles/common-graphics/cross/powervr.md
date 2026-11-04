@@ -13,7 +13,20 @@ The explicit `softpipe-only` option omits Vulkan ICDs; select the default
 graphics profile for this PowerVR workflow.
 The installed Vulkan loader now enumerates the physical GPU on Zero 3W.
 The normal package and bounded enumeration checks pass. Native compute also passes
-on the accepted EmberBSD kernel. Graphics and accelerated Plasma remain unaccepted.
+on the accepted EmberBSD kernel. Graphics and accelerated Plasma remain unaccepted on Zero 3W.
+
+GE8300 (BVNC 22.102.54.38, Allwinner A133) uses simple parameter format
+version 1, and upstream Mesa builds render targets only for version 2.
+From 26.2.6nb13, two patches remove the version 2 assumptions (2x2 tile
+groups and the 16-macrotile layout). A third encodes the PPP terminate clip
+in tiles; 32-pixel blocks left three quarters of each render unprocessed.
+GE8300 graphics need EmberBSD
+[OS 99a54c18](https://github.com/oxtech-ember/EmberBSD/commit/99a54c183795)
+or later; older kernels reject GE8300 render work. With that kernel on an
+A133 tablet, offscreen Vulkan triangles at 256x256, 1280x800, 256x64 and
+64x256 were pixel-exact. That run used the same Mesa sources in a
+softpipe-only build with this ICD added; the default nb13 package was not
+built. Presentation, Qt and multisampling are not accepted.
 
 This is a native PowerVR DRM consumer. It has no diagnostic-packet backend.
 The OS owns render-node identity, GEM buffers, GPU page tables and syncobj.

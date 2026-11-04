@@ -38,3 +38,6 @@ SHA1 (patch-src_imagination_vulkan_winsys_powervr_pvr__drm__job__common.h) = c02
 SHA1 (patch-src_imagination_vulkan_winsys_powervr_pvr__drm__job__compute.c) = a5f1af7a5d52c772ec085a08c4e0abb0cf08a1d1
 SHA1 (patch-src_imagination_vulkan_winsys_powervr_pvr__drm__job__render.c) = 00f55aaf8df5cf83df93be3bb9c8c7d587d04238
 SHA1 (patch-src_imagination_vulkan_winsys_powervr_pvr__drm__job__transfer.c) = 9cda3d7a0b1797358c1e4e9e2fcc90d36e4686d6
+SHA1 (patch-src_imagination_include_hwdef_rogue__hw__utils.h) = ff540b2fae7671c683b4bcddc69aca0dc6476e9f
+SHA1 (patch-src_imagination_vulkan_pvr__arch__job__render.c) = 8d96eab1163a026eb7933c1487286eca9d069e77
+SHA1 (patch-src_imagination_vulkan_pvr__arch__framebuffer.c) = 1ac8f98424f5d3c32a481093065476d05f2c7dc8
