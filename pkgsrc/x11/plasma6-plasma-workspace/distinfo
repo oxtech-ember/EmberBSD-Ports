@@ -8,3 +8,4 @@ SHA1 (patch-ksmserver_CMakeLists.txt) = c377e3e32b2c96dcf87e59167628fe703682e69e
 SHA1 (patch-startkde_config-startplasma.h.cmake) = 79ab1bd7c11a92881e05337f143a6330ec2af47d
 SHA1 (patch-startkde_waitforname_argc) = 354b56dfefd59e9037ff1e8b69c237c79633eae1
 SHA1 (patch-startkde_waitforname_bus) = dba9f506eb45c0dcdc86abb988b5e0af0e94de8d
+SHA1 (patch-startkde_startplasma.cpp) = ec93efdea20900d86041549e07d09432cd5e309f
