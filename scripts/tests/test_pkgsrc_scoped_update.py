@@ -350,6 +350,136 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
         self.assertEqual(self.receipt.read_bytes(), receipt)
         self.assertEqual((self.tree / 'misc/shared-patch').read_text(), 'extra patch payload\n')
 
+    def test_overlay_symlink_consumers_and_dirty_reuse(self):
+        write(self.ports, 'pkgsrc/replaces', 'cat/pkg\ncat/other\n')
+        for name in ('pkg', 'other', 'shared'):
+            write(self.ports, 'pkgsrc/cat/' + name + '/Makefile', 'PKGNAME=' + name + '-1\n')
+        target = write(self.ports, 'pkgsrc/cat/shared/files/producer', 'old\n')
+        write(self.ports, 'pkgsrc/cat/shared/files/alternate', 'alternate\n')
+        (target.parent / 'alias').symlink_to('producer')
+        for name in ('pkg', 'other'):
+            files = self.ports / 'pkgsrc/cat' / name / 'files'
+            files.mkdir()
+            (files / 'producer').symlink_to('../../shared/files/alias')
+            write(self.ports, 'pkgsrc/cat/' + name + '/files/unchanged', 'retained\n')
+        commit(self.ports, 'overlay links')
+        self.export = self.work / 'links'
+        self.command[3] = self.export
+        result = run(self.command, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.tree = self.export / 'pkgsrc'
+        self.receipt = self.export / 'pkgsrc-export.json'
+        a = self.tree / 'cat/pkg/files/producer'
+        b = self.tree / 'cat/other/files/producer'
+        retained = self.tree / 'cat/pkg/files/unchanged'
+        stamp = (retained.stat().st_ino, retained.stat().st_mtime_ns)
+        self.assertEqual(a.read_text(), 'old\n')
+        self.assertEqual(b.read_text(), 'old\n')
+        target.write_text('new\n')
+        before = self.receipt.read_bytes()
+        one = run(self.command + ['--update', '--package', 'cat/pkg', '--package', 'cat/shared'],
+                  self.ports, check=False)
+        self.assertNotEqual(one.returncode, 0, one.stdout + one.stderr)
+        self.assertEqual(self.receipt.read_bytes(), before)
+        self.assertEqual(a.read_text(), 'old\n')
+        args = ['--update', '--package', 'cat/pkg', '--package', 'cat/other',
+                '--package', 'cat/shared']
+        result = run(self.command + args, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(a.read_text(), 'new\n')
+        self.assertEqual(b.read_text(), 'new\n')
+        self.assertEqual((retained.stat().st_ino, retained.stat().st_mtime_ns), stamp)
+        target.write_text('newer\n')
+        result = run(self.command + args, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(a.read_text(), 'newer\n')
+        self.assertEqual(b.read_text(), 'newer\n')
+        unchanged = (a.stat().st_ino, a.stat().st_mtime_ns)
+        commit(self.ports, 'commit dirty producer')
+        result = run(self.command + args, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((a.stat().st_ino, a.stat().st_mtime_ns), unchanged)
+        # A mode-only target change affects every materialized consumer.
+        target.chmod(0o755)
+        before = self.receipt.read_bytes()
+        one = run(self.command + ['--update', '--package', 'cat/shared'], self.ports, check=False)
+        self.assertNotEqual(one.returncode, 0, one.stdout + one.stderr)
+        self.assertEqual(self.receipt.read_bytes(), before)
+        result = run(self.command + args, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(a.stat().st_mode & 0o777, 0o755)
+        self.assertEqual(b.stat().st_mode & 0o777, 0o755)
+        commit(self.ports, "commit executable producer")
+        target.chmod(0o644)
+        result = run(self.command + args, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(a.stat().st_mode & 0o777, 0o644)
+        commit(self.ports, 'commit restored mode')
+        unchanged = (a.stat().st_ino, a.stat().st_mtime_ns)
+        result = run(self.command + args, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((a.stat().st_ino, a.stat().st_mtime_ns), unchanged)
+        alias = target.parent / 'alias'
+        alias.unlink()
+        alias.symlink_to('alternate')
+        commit(self.ports, 'change alias target')
+        result = run(self.command + args, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(a.read_text(), 'alternate\n')
+        self.assertEqual(b.read_text(), 'alternate\n')
+        self.assertEqual((retained.stat().st_ino, retained.stat().st_mtime_ns), stamp)
+        # Removing one materialized source link removes its exported file.
+        (self.ports / 'pkgsrc/cat/pkg/files/producer').unlink()
+        commit(self.ports, 'remove consumer link')
+        result = run(self.command + args, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(a.exists())
+        self.assertEqual(b.read_text(), 'alternate\n')
+
+    def test_v2_link_deletion_and_dirty_retarget(self):
+        write(self.ports, 'pkgsrc/replaces', 'cat/pkg\n')
+        write(self.ports, 'pkgsrc/cat/pkg/Makefile', 'PKGNAME=pkg-1\n')
+        files = self.ports / 'pkgsrc/cat/pkg/files'
+        files.mkdir()
+        write(self.ports, 'pkgsrc/cat/pkg/files/first', 'first\n')
+        write(self.ports, 'pkgsrc/cat/pkg/files/second', 'second\n')
+        link = files / 'link'
+        link.symlink_to('first')
+        commit(self.ports, 'initial link')
+        self.export = self.work / 'v2-link'
+        self.command[3] = self.export
+        result = run(self.command, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.receipt = self.export / 'pkgsrc-export.json'
+        self.assertEqual(json.loads(self.receipt.read_text())['version'], 2)
+        self.tree = self.export / 'pkgsrc'
+        output = self.tree / 'cat/pkg/files/link'
+        link.unlink()
+        commit(self.ports, 'delete link')
+        args = ['--update', '--package', 'cat/pkg']
+        result = run(self.command + args, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(output.exists())
+        link.symlink_to('first')
+        result = run(self.command + args, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(output.read_text(), 'first\n')
+        link.unlink()
+        link.symlink_to('second')
+        result = run(self.command + args, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(output.read_text(), 'second\n')
+        link.unlink()
+        link.symlink_to('first')
+        result = run(self.command + args, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(output.read_text(), 'first\n')
+        stamp = (output.stat().st_ino, output.stat().st_mtime_ns)
+        commit(self.ports, 'commit retarget')
+        result = run(self.command + args, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((output.stat().st_ino, output.stat().st_mtime_ns), stamp)
+
     def test_shared_file_source_requires_all_consumers(self):
         conf = self.ports / 'pkgsrc/export.conf'
         conf.write_text(conf.read_text() + 'file\tresources/owner.txt\tcat/pkg/files/other-owner\n')
