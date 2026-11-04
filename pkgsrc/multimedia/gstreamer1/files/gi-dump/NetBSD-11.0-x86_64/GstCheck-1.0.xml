@@ -1,0 +1,15 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-x86_64
+recipe: multimedia/gstreamer1
+package: gstreamer1-1.28.8
+program: GstCheck-1.0
+types-sha256: d045e02b23428695996732b7d6c57a70d716db658e895226d4d53a209b6bacbb
+dump-sha256: 59d13626d8ea5f6ca7e35bce15dc2cb6bf5c4024cb98978c0e7c54feb74763a4
+-->
+<?xml version="1.0"?>
+<dump>
+  <class name="GstTestClock" get-type="gst_test_clock_get_type" parents="GstClock,GstObject,GInitiallyUnowned,GObject">
+    <property name="start-time" type="guint64" flags="235" default-value="0"/>
+    <property name="clock-type" type="GstClockType" flags="227" default-value="GST_CLOCK_TYPE_MONOTONIC"/>
+  </class>
+</dump>
