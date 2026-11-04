@@ -5,6 +5,7 @@
 .include "../../textproc/kf6-syntax-highlighting/Makefile.common"
 
 PKGNAME=	kf6-syntax-highlighting-indexer-${KF6VER}
+PKGREVISION=	1
 COMMENT=	Native syntax definition indexer for cross builds
 
 # Define do-install before kf6.mk includes devel/cmake/build.mk, which

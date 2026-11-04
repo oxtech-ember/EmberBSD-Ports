@@ -1,13 +1,19 @@
 $NetBSD$
 
 Origin: EmberBSD (AI-assisted), not submitted upstream.
-Only the QtGui components (library, tests and examples) use QtNetwork and
-QtTest. The definition indexer needs QtCore alone, so the build-host
-configuration (KSYNTAXHIGHLIGHTING_USE_GUI=OFF) works with a tools-only Qt.
+Keep host indexer QtCore-only; GUI components retain their original dependencies.
 
 --- CMakeLists.txt.orig
 +++ CMakeLists.txt
-@@ -40,10 +40,10 @@
+@@ -22,7 +22,6 @@
+ include(ECMOptionalAddSubdirectory)
+ include(ECMGenerateExportHeader)
+ include(ECMDeprecationSettings)
+-include(ECMQmlModule)
+ include(ECMGenerateQDoc)
+ include(ECMInstalledLibraryCheck)
+ 
+@@ -40,12 +39,13 @@
  # Dependencies
  #
  set(REQUIRED_QT_VERSION 6.10.0)
@@ -17,6 +23,10 @@ configuration (KSYNTAXHIGHLIGHTING_USE_GUI=OFF) works with a tools-only Qt.
  if(KSYNTAXHIGHLIGHTING_USE_GUI)
 -    find_package(Qt6 ${REQUIRED_QT_VERSION} NO_MODULE REQUIRED COMPONENTS Gui)
 +    find_package(Qt6 ${REQUIRED_QT_VERSION} NO_MODULE REQUIRED COMPONENTS Gui Network Test)
++    find_package(Qt6 ${REQUIRED_QT_VERSION} NO_MODULE QUIET OPTIONAL_COMPONENTS PrintSupport Widgets Quick)
++    include(ECMQmlModule)
  endif()
- find_package(Qt6 ${REQUIRED_QT_VERSION} NO_MODULE QUIET OPTIONAL_COMPONENTS PrintSupport Widgets Quick)
+-find_package(Qt6 ${REQUIRED_QT_VERSION} NO_MODULE QUIET OPTIONAL_COMPONENTS PrintSupport Widgets Quick)
  set_package_properties(Qt6 PROPERTIES URL "http://qt-project.org/")
+ set_package_properties(Qt6Widgets PROPERTIES PURPOSE "Example application.")
+ set_package_properties(Qt6PrintSupport PROPERTIES PURPOSE "Example application.")

@@ -140,6 +140,10 @@ MAKE_ENV+=		QTPREFIX=${QTPREFIX:Q}
 .if ${OPSYS} == "Darwin"
 CMAKE_INSTALL_NAME_DIR=	${QTPREFIX}/lib
 .if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+# LDFLAGS already embeds this path. Describe it in both CMake phases so
+# installation removes temporary Qt paths without adding a duplicate LC_RPATH.
+# A duplicate makes llvm-install-name-tool reject the entire RPATH update.
+CMAKE_CONFIGURE_ARGS+= -DCMAKE_BUILD_RPATH:STRING=${PREFIX}/lib
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_INSTALL_RPATH:STRING=${PREFIX}/lib
 .endif
 MAKE_ENV+=		DYLD_LIBRARY_PATH=${WRKSRC}/lib
