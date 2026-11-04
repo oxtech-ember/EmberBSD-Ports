@@ -1,6 +1,6 @@
 # $NetBSD$
 
-DISTNAME=	estree-1.0.9
+DISTNAME=	estree-1.0.10
 PKGNAME=	node-types-${DISTNAME}
 CATEGORIES=	devel
 MASTER_SITES=	https://registry.npmjs.org/@types/estree/-/
