@@ -1,0 +1,16 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-x86_64
+recipe: multimedia/gst-plugins1-bad
+package: gst-plugins1-bad-1.28.8
+program: GstAnalytics-1.0
+types-sha256: 69bdb2aa9e5874cc9cf945e5d3a6c1072192e76f3d0235114259340de62cc406
+dump-sha256: c0477afbdf0f8cd18fede77a8805ebfd9a185f9fbe397450fd39408f181d1bae
+-->
+<?xml version="1.0"?>
+<dump>
+  <pointer name="GstAnalyticsRelationMetaAPI" get-type="gst_analytics_relation_meta_api_get_type"/>
+  <boxed name="GstTensor" get-type="gst_tensor_get_type"/>
+  <pointer name="GstTensorMetaAPI" get-type="gst_tensor_meta_api_get_type"/>
+  <pointer name="GstAnalyticsBatchMetaAPI" get-type="gst_analytics_batch_meta_api_get_type"/>
+  <boxed name="GstAnalyticsModelInfo" get-type="gst_analytics_modelinfo_get_type"/>
+</dump>

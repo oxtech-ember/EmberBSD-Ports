@@ -1,0 +1,71 @@
+<!-- EmberBSD GI dump 1
+platform: NetBSD-11.0-x86_64
+recipe: multimedia/gst-plugins1-bad
+package: gst-plugins1-bad-1.28.8
+program: GstMpegts-1.0
+types-sha256: de976655e0cd248a15b6f2e4a8d1bf5f35536ab61de03936a01100ede17fe122
+dump-sha256: 345ff649dd85eab4ca3fdacc6d6f9ec14b97915ec0f9e4d598ac44b10fae06f8
+-->
+<?xml version="1.0"?>
+<dump>
+  <boxed name="GstMpegtsDescriptor" get-type="gst_mpegts_descriptor_get_type"/>
+  <boxed name="GstMpegtsISO639LanguageDescriptor" get-type="gst_mpegts_iso_639_language_get_type"/>
+  <boxed name="GstMpegtsLogicalChannelDescriptor" get-type="gst_mpegts_logical_channel_descriptor_get_type"/>
+  <boxed name="GstMpegtsLogicalChannel" get-type="gst_mpegts_logical_channel_get_type"/>
+  <boxed name="GstMpegtsMetadataDescriptor" get-type="gst_mpegts_metadata_descriptor_get_type"/>
+  <pointer name="GstMpegtsPESMetadataMetaAPI" get-type="gst_mpegts_pes_metadata_meta_api_get_type"/>
+  <boxed name="GstMpegtsMetadataPointerDescriptor" get-type="gst_mpegts_metadata_pointer_descriptor_get_type"/>
+  <boxed name="GstMpegtsJpegXsDescriptor" get-type="gst_mpegts_jpeg_xs_descriptor_get_type"/>
+  <boxed name="GstMpegtsSection" get-type="gst_mpegts_section_get_type"/>
+  <boxed name="GstMpegtsPatProgram" get-type="gst_mpegts_pat_program_get_type"/>
+  <boxed name="GstMpegtsPMT" get-type="gst_mpegts_pmt_get_type"/>
+  <boxed name="GstMpegtsPMTStream" get-type="gst_mpegts_pmt_stream_get_type"/>
+  <boxed name="GstMpegtsAtscVCT" get-type="gst_mpegts_atsc_vct_get_type"/>
+  <boxed name="GstMpegtsAtscVCTSource" get-type="gst_mpegts_atsc_vct_source_get_type"/>
+  <boxed name="GstMpegtsAtscMGT" get-type="gst_mpegts_atsc_mgt_get_type"/>
+  <boxed name="GstMpegtsAtscMGTTable" get-type="gst_mpegts_atsc_mgt_table_get_type"/>
+  <boxed name="GstMpegtsAtscStringSegment" get-type="gst_mpegts_atsc_string_segment_get_type"/>
+  <boxed name="GstMpegtsAtscMultString" get-type="gst_mpegts_atsc_mult_string_get_type"/>
+  <boxed name="GstMpegtsAtscEITEvent" get-type="gst_mpegts_atsc_eit_event_get_type"/>
+  <boxed name="GstMpegtsAtscEIT" get-type="gst_mpegts_atsc_eit_get_type"/>
+  <boxed name="GstMpegtsAtscETT" get-type="gst_mpegts_atsc_ett_get_type"/>
+  <boxed name="GstMpegtsAtscSTT" get-type="gst_mpegts_atsc_stt_get_type"/>
+  <boxed name="GstMpegtsAtscRRT" get-type="gst_mpegts_atsc_rrt_get_type"/>
+  <boxed name="GstMpegtsAtscRRTDimension" get-type="gst_mpegts_atsc_rrt_dimension_get_type"/>
+  <boxed name="GstMpegtsAtscRRTDimensionValue" get-type="gst_mpegts_atsc_rrt_dimension_value_get_type"/>
+  <boxed name="GstMpegtsNIT" get-type="gst_mpegts_nit_get_type"/>
+  <boxed name="GstMpegtsNITStream" get-type="gst_mpegts_nit_stream_get_type"/>
+  <boxed name="GstMpegtsBAT" get-type="gst_mpegts_bat_get_type"/>
+  <boxed name="GstMpegtsBATStream" get-type="gst_mpegts_bat_stream_get_type"/>
+  <boxed name="GstMpegtsSDT" get-type="gst_mpegts_sdt_get_type"/>
+  <boxed name="GstMpegtsSDTService" get-type="gst_mpegts_sdt_service_get_type"/>
+  <boxed name="GstMpegtsEIT" get-type="gst_mpegts_eit_get_type"/>
+  <boxed name="GstMpegtsEITEvent" get-type="gst_mpegts_eit_event_get_type"/>
+  <boxed name="GstMpegtsTOT" get-type="gst_mpegts_tot_get_type"/>
+  <boxed name="GstMpegtsSIT" get-type="gst_mpegts_sit_get_type"/>
+  <boxed name="GstMpegtsSITService" get-type="gst_mpegts_sit_service_get_type"/>
+  <boxed name="GstMpegtsSCTESIT" get-type="gst_mpegts_scte_sit_get_type"/>
+  <boxed name="GstMpegtsSCTESpliceEvent" get-type="gst_mpegts_scte_splice_event_get_type"/>
+  <boxed name="GstMpegtsSCTESpliceComponent" get-type="gst_mpegts_scte_splice_component_get_type"/>
+  <boxed name="GstMpegtsSatelliteDeliverySystemDescriptor" get-type="gst_mpegts_satellite_delivery_system_descriptor_get_type"/>
+  <boxed name="GstMpegtsCableDeliverySystemDescriptor" get-type="gst_mpegts_dvb_cable_delivery_system_descriptor_get_type"/>
+  <boxed name="GstMpegtsDVBServiceListItem" get-type="gst_mpegts_dvb_service_list_item_get_type"/>
+  <boxed name="GstMpegtsDVBLinkageDescriptor" get-type="gst_mpegts_dvb_linkage_descriptor_get_type"/>
+  <boxed name="GstMpegtsDVBLinkageMobileHandOver" get-type="gst_mpegts_dvb_linkage_mobile_hand_over_get_type"/>
+  <boxed name="GstMpegtsDVBLinkageEvent" get-type="gst_mpegts_dvb_linkage_event_get_type"/>
+  <boxed name="GstMpegtsDVBLinkageExtendedEvent" get-type="gst_mpegts_dvb_linkage_extended_event_get_type"/>
+  <boxed name="GstMpegtsExtendedEventItem" get-type="gst_mpegts_extended_event_item_get_type"/>
+  <boxed name="GstMpegtsExtendedEventDescriptor" get-type="gst_mpegts_extended_event_descriptor_get_type"/>
+  <boxed name="GstMpegtsComponentDescriptor" get-type="gst_mpegts_component_descriptor_get_type"/>
+  <boxed name="GstMpegtsContent" get-type="gst_mpegts_content_get_type"/>
+  <boxed name="GstMpegtsDVBParentalRatingItem" get-type="gst_mpegts_dvb_parental_rating_item_get_type"/>
+  <boxed name="GstMpegtsTerrestrialDeliverySystemDescriptor" get-type="gst_mpegts_terrestrial_delivery_system_descriptor_get_type"/>
+  <boxed name="GstMpegtsDvbMultilingualNetworkNameItem" get-type="gst_mpegts_dvb_multilingual_network_name_item_get_type"/>
+  <boxed name="GstMpegtsDvbMultilingualBouquetNameItem" get-type="gst_mpegts_dvb_multilingual_bouquet_name_item_get_type"/>
+  <boxed name="GstMpegtsDvbMultilingualServiceNameItem" get-type="gst_mpegts_dvb_multilingual_service_name_item_get_type"/>
+  <boxed name="GstMpegtsDvbMultilingualComponentItem" get-type="gst_mpegts_dvb_multilingual_component_item_get_type"/>
+  <boxed name="GstMpegtsDataBroadcastDescriptor" get-type="gst_mpegts_dvb_data_broadcast_descriptor_get_type"/>
+  <boxed name="GstMpegtsT2DeliverySystemCellExtension" get-type="gst_mpegts_t2_delivery_system_cell_extension_get_type"/>
+  <boxed name="GstMpegtsT2DeliverySystemCell" get-type="gst_mpegts_t2_delivery_system_cell_get_type"/>
+  <boxed name="GstMpegtsT2DeliverySystemDescriptor" get-type="gst_mpegts_t2_delivery_system_descriptor_get_type"/>
+</dump>
