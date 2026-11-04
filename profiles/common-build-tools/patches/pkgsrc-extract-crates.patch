@@ -1,0 +1,21 @@
+Discover tools for gzip-compressed Rust crate archives.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- a/mk/extract/bsd.extract-vars.mk
++++ b/mk/extract/bsd.extract-vars.mk
+@@ -48,6 +48,7 @@
+     !empty(EXTRACT_ONLY:M*.tbz) || \
+     !empty(EXTRACT_ONLY:M*.tbz2) || \
+     !empty(EXTRACT_ONLY:M*.tgz) || \
++    !empty(EXTRACT_ONLY:M*.crate) || \
+     !empty(EXTRACT_ONLY:M*-tar.gz) || \
+     !empty(EXTRACT_ONLY:M*_tar.gz)
+ .  if !empty(EXTRACT_USING:Mbsdtar)
+@@ -88,6 +89,7 @@
+ USE_TOOLS+=	lha
+ .endif
+ .if !empty(EXTRACT_ONLY:M*.gz) || \
++    !empty(EXTRACT_ONLY:M*.crate) || \
+     !empty(EXTRACT_ONLY:M*.tgz) || \
+     !empty(EXTRACT_ONLY:M*.Z)
+ USE_TOOLS+=	gzcat

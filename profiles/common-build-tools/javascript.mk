@@ -1,6 +1,14 @@
 # Shared source-only Node module installation; each package owns its version,
 # archive, checksums, patches and pkgsrc dependency declarations.
+# Executable scripts need a fixed interpreter in the selected package prefix.
+.if !empty(REPLACE_NODEJS:U)
+DEPENDS+= nodejs>=26:../../lang/nodejs
+.include "../../lang/nodejs/application.mk"
+do-configure:
+	${DO_NADA}
+.else
 NO_CONFIGURE= yes
+.endif
 NO_ARCH= yes
 USE_LANGUAGES= # JavaScript source
 USE_TOOLS+= find sort
