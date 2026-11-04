@@ -29,3 +29,13 @@ with explicitly selected compiler and OS inputs:
   --cc "$HOST_PREFIX/bin/clang" --sysroot "$AMD64_SYSROOT" \
   --os-source "$OS_SOURCE" --zlib-source "$WORK/zlib"
 ```
+
+H/PC Windows project generators select `ZLIB_NETBSD_STANDALONE` together with
+`_STANDALONE`, retaining the NetBSD standalone interface without defining
+`__NetBSD__` on Windows. The ABI test also compiles this selector with
+`__NetBSD__` undefined. Check incremental recipe header dependencies with:
+
+```sh
+"$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/zlib/test-header-deps.py \
+  --bmake "$HOST_PREFIX/bin/bmake"
+```

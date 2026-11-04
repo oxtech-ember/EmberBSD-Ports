@@ -37,6 +37,20 @@ for phase in ('_KERNEL', '_STANDALONE'):
     result = subprocess.run(cmd, text=True, capture_output=True)
     if result.returncode:
         raise SystemExit(f'{phase}: {result.stderr}')
+# H/PC uses Windows-hosted projects: select standalone compatibility without
+# defining __NetBSD__ on that host.
+hpc = [args.cc, '--target=x86_64--netbsd', '--sysroot=' + str(args.sysroot),
+       '-U__NetBSD__', '-DZLIB_NETBSD_STANDALONE', '-D_STANDALONE',
+       '-I' + str(args.zlib_source), '-I' + str(args.os_source / 'sys'),
+       '-Werror', '-fsyntax-only']
+result = subprocess.run(hpc + [str(args.zlib_source / 'inflate.c'),
+                              str(args.zlib_source / 'inftrees.c')], text=True, capture_output=True)
+if result.returncode:
+    raise SystemExit('H/PC standalone source: ' + result.stderr)
+program = '#include "zlib.h"\n_Static_assert(__builtin_types_compatible_p(z_off_t, long), "H/PC offset ABI");\n'
+result = subprocess.run(hpc + ['-x', 'c', '-'], input=program, text=True, capture_output=True)
+if result.returncode:
+    raise SystemExit('H/PC standalone ABI: ' + result.stderr)
 cmd = [args.cc, '--target=x86_64--netbsd', '--sysroot=' + str(args.sysroot),
        '-I' + str(args.zlib_source), '-Wcast-qual', '-Werror', '-fsyntax-only',
        *(str(args.zlib_source / name) for name in ('compress.c', 'deflate.c', 'uncompr.c', 'gzwrite.c'))]
