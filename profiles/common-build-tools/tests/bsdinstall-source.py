@@ -122,7 +122,7 @@ class SourceTests(unittest.TestCase):
             '.if defined(EMBERBSD_BSDINSTALL_SHELL)\n'
             'CPPFLAGS+=\t-DEMBERBSD_BSDINSTALL_SHELL=\\"${EMBERBSD_BSDINSTALL_SHELL:Q}\\"\n'
             '.endif\n')
-        self.assertEqual(self.result[RECIPE].replace(addition, ''), self.original[RECIPE])
+        self.assertEqual(self.result[RECIPE].replace(addition, '').replace('\n# checkperms itself requires this bootstrap installer.\nCHECK_PERMS=\tno\n', ''), self.original[RECIPE])
         self.assertLess(self.result[RECIPE].index('.include "../../mk/bsd.prefs.mk"'),
                         self.result[RECIPE].index('.if defined(EMBERBSD_BSDINSTALL_SHELL)'))
         self.assertIn('-DTARGET_STRIP=\\"${TOOLS_PLATFORM.strip:Q}\\"', self.result[RECIPE])
