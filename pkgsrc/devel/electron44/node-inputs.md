@@ -1,20 +1,24 @@
 # Chromium WebUI Node inputs
 
-The Chromium pin `dd78960ccd8a03a2fe1f629543d27783885b78e9` declares
-`third_party/node/node_modules` as a separate GCS source input. Git-only source
-acquisition does not obtain it. Its DEPS metadata is:
+The current Chromium pin `861389936bf33ea77529ee5dcc0605e68f6bb620` declares
+`third_party/node/node_modules` as a separate GCS source input. Its
+[pinned DEPS](https://chromium.googlesource.com/chromium/src/+/861389936bf33ea77529ee5dcc0605e68f6bb620/DEPS)
+identifies bucket `chromium-nodejs`, object `44f845cd5bd9d805cb1c73a98d5726b38ed8662a`,
+generation `1789349489677960`, size 11,312,049 bytes, and SHA256
+`146cb2af600aa8cf80635592b65219fc94ff3deb384a46a41261405feb46c228`.
+The Git-only acquisition does not fetch this reference archive.
 
-- Bucket: `chromium-nodejs`.
-- Object: `faaf73cc8ff7b0b2f0d984d6cedcf758e006f57a`.
-- Generation: `1781805676756361`.
-- Size: 11,320,770 bytes.
-- SHA256: `a298af5fafd358179d6aec9a42f667902dbcdb03a42ee4a87a1bff83515e96b9`.
+Production selects Node modules, including `@types/trusted-types`, from the
+common native Ports prefix. The source-view owner binds that prefix into the
+Chromium and Electron views. It must not install this archive over the prefix.
 
-The [pinned DEPS](https://chromium.googlesource.com/chromium/src/+/dd78960ccd8a03a2fe1f629543d27783885b78e9/DEPS)
-is the authority for these bytes. The archive contains 303 package manifests.
-It is not a complete selected build-tool contract. It includes the old
-`@rollup/wasm-node` binary as well as JavaScript, declaration and license data.
-Do not expose its old Rollup provider after selecting the shared native recipe.
+The node-provider regression below uses a separate historical source fixture:
+Chromium `dd78960ccd8a03a2fe1f629543d27783885b78e9`, object
+`faaf73cc8ff7b0b2f0d984d6cedcf758e006f57a`, SHA256
+`a298af5fafd358179d6aec9a42f667902dbcdb03a42ee4a87a1bff83515e96b9`.
+It copies only trusted-types declarations from that archive. This fixture is
+not the production source pin. It also contains an old Rollup WASM binary;
+the test does not select that binary.
 
 ## Consumer mapping
 
@@ -84,8 +88,8 @@ Ordinary application `definitions` and their validation are unchanged.
 
 The regression runs actual GN/Ninja Node version, WebUI bundle and TypeScript
 library actions, including JS/declaration output and bundle execution. It uses
-only the pinned archive's trusted-types declaration files. It checks DevTools
-selection, malformed explicit entries, actual provider inputs and rejection
+only the historical fixture archive's trusted-types declaration files. It
+checks DevTools selection, malformed explicit entries, actual provider inputs and rejection
 when standard library dependency declarations are removed. It does not
 establish the complete Electron graph, migrate every TypeScript 7 API consumer,
 or validate Chromium's full DOM declaration adaptation.
