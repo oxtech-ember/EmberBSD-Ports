@@ -33,16 +33,27 @@ GE8300 graphics need EmberBSD
 [OS 99a54c18](https://github.com/oxtech-ember/EmberBSD/commit/99a54c183795)
 or later; older kernels reject GE8300 render work. With that kernel on an
 A133 tablet, offscreen Vulkan triangles at 256x256, 1280x800, 256x64 and
-64x256 were pixel-exact. The nb14 `softpipe-only powervr` cross package
+64x256 were pixel-exact. The `softpipe-only powervr` cross package
 builds with Clang and no target LLVM. Its ICD passed these cases on one
-warm-booted A133, including row padding and buffer guards. The default
-full package was not built for this check. Presentation, Qt and
-multisampling are not accepted.
+warm-booted A133, including row padding and buffer guards.
+
+From nb15, aligned odd one-row SIPFv1 transfers of 32- or 128-bit texels
+use split normal GPU TQ commands. FAST_2D could reset the transfer context.
+The GE8300 22.102.54.38 device table also selects floating-point D24
+background-depth register encoding. Other device tables keep the existing
+encoding. The [causal regressions](../../../pkgsrc/graphics/MesaLib/tests/README.md#ge8300-transfers-and-d24-background-depth)
+cover buffer guards and D24 clears at 0, .5 and 1 with depth writes.
+
+On that warm A133, Qt 6.12 rendered a four-rectangle frame through Vulkan
+with its normal opaque/depth path. All 1280x800 RGBA pixels matched.
+The GPU readback also reached the bsdfb raster backing store. This checks
+one controlled frame, not a complete application or sustained performance.
+The default full package and multisampling were not tested.
 
 This is a native PowerVR DRM consumer. It has no diagnostic-packet backend.
 The OS owns render-node identity, GEM buffers, GPU page tables and syncobj.
 The bounded compute check covers device creation, submission and host readback.
-Graphics, PRIME presentation and Plasma require separate acceptance.
+Application graphics, PRIME presentation and Plasma require separate acceptance.
 
 ## Native build tools
 

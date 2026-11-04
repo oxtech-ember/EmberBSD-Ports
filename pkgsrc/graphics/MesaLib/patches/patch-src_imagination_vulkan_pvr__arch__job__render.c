@@ -1,7 +1,9 @@
 $NetBSD$
 
-Support PowerVR simple parameter format version 1 (GE8300).
-Version 1 uses one macrotile for the render and has no 2x2 tile groups.
+Support simple parameter format version 1 and D24 background depth.
+Version 1 uses one macrotile and no 2x2 tile groups.
+The GE8300 22.102.54.38 table selects floating-point encoding.
+Other device tables keep the existing encoding.
 Origin: EmberBSD contributors (AI-assisted). SPDX-License-Identifier: MIT.
 Not yet submitted upstream.
 
@@ -32,3 +34,14 @@ Not yet submitted upstream.
        assert(PVR_GET_FEATURE_VALUE(dev_info,
                                     simple_parameter_format_version,
                                     0) == 2);
+@@ -1113,7 +1129,9 @@
+          break;
+ 
+       case ROGUE_CR_ZLS_FORMAT_TYPE_24BITINT:
+-         value.value = _mesa_float_to_unorm(depth_clear, 24);
++         value.value = PVR_HAS_FEATURE(dev_info, isp_bgobjdepth_d24_float)
++                          ? fui(depth_clear)
++                          : _mesa_float_to_unorm(depth_clear, 24);
+          break;
+ 
+       default:

@@ -248,3 +248,57 @@ Mesa checks target metadata at configure time; `softpipe-only` does not select
 the helper. Run `standalone-llvm-route.py --pkgsrc PKGSRC --makeconf MAKECONF
 --bmake BMAKE` to check the real pkgsrc metadata and refusal contracts. This
 check does not build Mesa or establish graphics runtime support.
+
+## GE8300 transfers and D24 background depth
+
+`pvr-buffer-copy.c` checks aligned buffer copies and fills on the selected
+GE8300 Vulkan ICD. Build it with the selected target Clang and Vulkan loader.
+Run these cases on the target:
+
+```sh
+./pvr-buffer-copy 48 48
+./pvr-buffer-copy 64 64
+./pvr-buffer-copy 44 44
+./pvr-buffer-copy 80 80
+./pvr-buffer-copy 12 12 --fill
+./pvr-buffer-copy 20 20 --fill
+```
+
+Each case checks all 256 bytes in both buffers, including guards. The original
+ICD passes a 64-byte copy and a 48-byte copy split with `48 32`. A single
+48-byte copy resets its SIPFv1 transfer context. Stop after a device error;
+do not repeat work on a failed GPU. The fix splits aligned odd one-row
+transfers into normal GPU TQ commands. It does not change byte-sized or
+unaligned transfers, or qualify every FAST_2D operation.
+
+`pvr-depth.c` checks D24S8 background clears and depth writes with `LESS`.
+Four scissors select z values `0`, `.25`, `.75`, and `1`. A later, farther
+cyan triangle must fail after each accepted depth write. The oracle checks
+every color byte, row padding, tail padding, and guard byte.
+
+Generate shader headers with the native Ports tool, then cross-build:
+
+```sh
+"$HOST_PREFIX/bin/glslangValidator" -V --target-env vulkan1.2 \
+    --vn depth_vertex -o "$WORK/depth-vertex.h" pvr-depth.vert
+"$HOST_PREFIX/bin/glslangValidator" -V --target-env vulkan1.2 \
+    --vn depth_fragment -o "$WORK/depth-fragment.h" pvr-depth.frag
+printf '%s\n' '#include <stdint.h>' '#include "depth-vertex.h"' \
+    '#include "depth-fragment.h"' > "$WORK/depth-shaders.h"
+"$TARGET_CC" -std=c11 -O2 -Wall -Wextra -Werror -I"$WORK" \
+    -I"$TARGET_SYSROOT/usr/pkg/include" pvr-depth.c \
+    -L"$TARGET_SYSROOT/usr/pkg/lib" -Wl,-rpath,/usr/pkg/lib -lvulkan \
+    -o "$WORK/pvr-depth"
+```
+
+Select the target ICD through `VK_DRIVER_FILES`. Run `pvr-depth 0`,
+`pvr-depth .5`, and `pvr-depth 1` on the target. Expected colored regions are
+zero, two, and three; z=1 always fails `LESS`. Before the fix, clears `.5`
+and `1` fail the oracle while clear `0` passes. All three pass with the fix.
+The capability is enabled only in the GE8300 22.102.54.38 hardware table.
+Other device tables retain their existing D24 encoding. This regression
+does not qualify D16 or other GPU models.
+
+On a warm YS-M33/A133, these cases and a Qt 6.12 Vulkan offscreen frame passed
+with hardware depth enabled. The Qt oracle compared all 1280x800 RGBA pixels.
+This evidence does not qualify a complete Qt application or device image.
