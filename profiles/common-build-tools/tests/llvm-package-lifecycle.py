@@ -29,7 +29,7 @@ assert re.fullmatch('[0-9]{8}', version)
 (work / 'BUILD_INFO').write_text('OPSYS=NetBSD\nOS_VERSION=11.0\nMACHINE_ARCH=x86_64\nOBJECT_FMT=ELF\nLICENSE=2-clause-bsd\nPKGTOOLS_VERSION=' + version + '\nEMBERBSD_TEST_FIXTURE=yes\n')
 (work / 'COMMENT').write_text('Labelled LLVM package partition fixture')
 (work / 'DESCR').write_text('Synthetic text payloads. This is not a LLVM binary package.\n')
-old, runtime, sdk = 'llvm-23.1.4', 'llvm-23.1.4nb4', 'llvm-devel-23.1.4nb6'
+old, runtime, sdk = 'llvm-23.1.4', 'llvm-23.1.4nb5', 'llvm-devel-23.1.4nb7'
 packages = {}
 for name, stage, manifest, dependency in [(old, 'full-stage', 'full', None), (runtime, 'runtime-stage', 'runtime', None), (sdk, 'devel-stage', 'devel', runtime)]:
     prefix = Path(fixture, stage, 'usr/pkg')

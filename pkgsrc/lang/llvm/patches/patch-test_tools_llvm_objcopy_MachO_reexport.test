@@ -1,0 +1,51 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted), test Mach-O reexport load commands.
+Not submitted upstream. SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+
+--- /dev/null
++++ test/tools/llvm-objcopy/MachO/reexport.test
+@@ -0,0 +1,43 @@
++## Preserve and update LC_REEXPORT_DYLIB without changing other dylib commands.
++# RUN: yaml2obj %s -o %t
++# RUN: llvm-objcopy %t %t.copy
++# RUN: llvm-objdump -p %t.copy | FileCheck %s --check-prefix=ORIGINAL
++# RUN: llvm-install-name-tool -change /usr/dylib/LOAD /usr/long/long/dylib/LOAD %t.copy
++# RUN: llvm-objdump -p %t.copy | FileCheck %s --check-prefix=CHANGED
++
++# ORIGINAL: cmd LC_REEXPORT_DYLIB
++# ORIGINAL: name /usr/dylib/LOAD
++# ORIGINAL: cmd LC_LOAD_WEAK_DYLIB
++# ORIGINAL: name /usr/dylib/WEAK
++# CHANGED: cmd LC_REEXPORT_DYLIB
++# CHANGED: name /usr/long/long/dylib/LOAD
++# CHANGED: cmd LC_LOAD_WEAK_DYLIB
++# CHANGED: name /usr/dylib/WEAK
++
++--- !mach-o
++FileHeader:
++  magic:           0xFEEDFACF
++  cputype:         0x01000007
++  cpusubtype:      0x00000003
++  filetype:        0x00000001
++  ncmds:           2
++  sizeofcmds:      80
++  flags:           0x00002000
++  reserved:        0x00000000
++LoadCommands:
++  - cmd:                        LC_REEXPORT_DYLIB
++    cmdsize:                    40
++    dylib:
++        name:                   24
++        timestamp:              2
++        current_version:        82115073
++        compatibility_version:  65536
++    Content:                    '/usr/dylib/LOAD'
++  - cmd:                        LC_LOAD_WEAK_DYLIB
++    cmdsize:                    40
++    dylib:
++        name:                   24
++        timestamp:              2
++        current_version:        82115073
++        compatibility_version:  65536
++    Content:                    '/usr/dylib/WEAK'

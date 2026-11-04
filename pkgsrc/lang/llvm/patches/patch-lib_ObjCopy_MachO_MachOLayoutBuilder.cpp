@@ -5,9 +5,19 @@ An install-name or other load-command update can exhaust the linker's header
 padding. Reject the rewrite before output instead of overwriting section data.
 Not submitted upstream. SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
+Handle LC_REEXPORT_DYLIB as a dylib command with no file offsets.
+
 --- lib/ObjCopy/MachO/MachOLayoutBuilder.cpp.orig
 +++ lib/ObjCopy/MachO/MachOLayoutBuilder.cpp
-@@ -477,6 +477,22 @@
+@@ -450,6 +450,7 @@
+     case MachO::LC_ID_DYLIB:
+     case MachO::LC_LOAD_DYLIB:
+     case MachO::LC_LOAD_WEAK_DYLIB:
++    case MachO::LC_REEXPORT_DYLIB:
+     case MachO::LC_UUID:
+     case MachO::LC_SOURCE_VERSION:
+     case MachO::LC_THREAD:
+@@ -477,6 +478,22 @@
    constructStringTable();
    updateSymbolIndexes();
    uint64_t Offset = layoutSegments();
