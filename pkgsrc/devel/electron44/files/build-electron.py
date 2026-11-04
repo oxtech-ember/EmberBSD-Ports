@@ -1166,6 +1166,27 @@ def selected_node_abi(source, native, environment, sdk):
     return int(abi), hashes
 
 
+def platform_libcxx_hardening(options, sdk, host_binding, environment):
+    """Check the selected native SDK headers for V8's extensive hardening."""
+    source = b"""#include <__config>
+#if !defined(_LIBCPP_VERSION) || !defined(_LIBCPP_HARDENING_MODE) || \
+    !defined(_LIBCPP_HARDENING_MODE_EXTENSIVE) || _LIBCPP_HARDENING_MODE != _LIBCPP_HARDENING_MODE_EXTENSIVE
+#error selected libc++ does not support extensive hardening
+#endif
+#define EMBER_ABI___1 1
+#define EMBER_ABI_CAT_(x) EMBER_ABI_##x
+#define EMBER_ABI_CAT(x) EMBER_ABI_CAT_(x)
+#if EMBER_ABI_CAT(_LIBCPP_ABI_NAMESPACE) != 1
+#error selected libc++ has the wrong ABI namespace
+#endif
+"""
+    sdk['process'].capture([host_binding['cxx'], '-stdlib=libc++', '-isysroot', str(options.macos_sdk),
+                            '-mmacosx-version-min=' + options.macos_minimum,
+                            '-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_EXTENSIVE',
+                            '-x', 'c++', '-fsyntax-only', '-'], env=environment, input=source)
+    return True
+
+
 def producer_inputs(options, sdk):
     native, environment = native_inputs(options, sdk)
     tools = target_inputs(options, sdk, native, environment, options.work)
@@ -1255,7 +1276,8 @@ def producer_inputs(options, sdk):
         values.update(emberbsd_native_cpu={'aarch64': 'arm64', 'arm64': 'arm64',
                                            'amd64': 'x64', 'x86_64': 'x64'}[native.host['cpu']],
                       emberbsd_native_cc=host_binding['cc'], emberbsd_native_cxx=host_binding['cxx'],
-                      emberbsd_native_libcxx_hardened=bool(getattr(options, 'host_runtime_root', None)))
+                      emberbsd_native_libcxx_hardened=(bool(getattr(options, 'host_runtime_root', None)) or
+                          platform_libcxx_hardening(options, sdk, host_binding, environment)))
     resource_text = sdk['process'].capture(
         [native.tool('clang'), '-print-resource-dir'], env=environment).stdout.decode('utf-8', 'strict').strip()
     values['clang_version'] = clang_resource_version(options.host_prefix, resource_text)
