@@ -523,3 +523,5 @@ devel/libepoll-shim
 
 # libde265 1.1.3: current upstream, ABI-compatible with 1.1.2.
 multimedia/libde265
+
+graphics/zint

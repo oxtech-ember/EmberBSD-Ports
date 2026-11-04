@@ -1,0 +1,20 @@
+@comment $NetBSD: PLIST,v 1.2 2026/02/16 13:10:34 wiz Exp $
+bin/zint
+${PLIST.qt}bin/zint-qt
+${PLIST.qt}include/qzint.h
+include/zint.h
+lib/cmake/zint/zint-config.cmake
+lib/cmake/zint/zint-targets-relwithdebinfo.cmake
+lib/cmake/zint/zint-targets.cmake
+${PLIST.qt}lib/libQZint.a
+lib/libzint.so
+lib/libzint.so.2.16
+lib/libzint.so.${PKGVERSION}.0
+man/man1/zint.1
+share/licenses/zint/COPYING.GPL
+share/licenses/zint/LICENSE
+share/licenses/zint/LICENSE_apache-2.0
+share/licenses/zint/LICENSE_feathericons
+share/licenses/zint/LICENSE_imagemagick
+share/licenses/zint/LICENSE_lucide
+share/licenses/zint/NOTICE
