@@ -1,6 +1,7 @@
 # Origin: EmberBSD (AI-assisted); common upstream ts-proto module.
 DISTNAME= ts-proto-2.18.3
 PKGNAME= node-ts-proto-2.18.3
+PKGREVISION= 1
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/ts-proto/-/
 EXTRACT_SUFX= .tgz
@@ -8,6 +9,7 @@ WRKSRC= ${WRKDIR}/package
 HOMEPAGE= https://github.com/stephenh/ts-proto
 COMMENT= Common ts-proto JavaScript module
 LICENSE= apache-2.0
+REPLACE_NODEJS= protoc-gen-ts_proto
 JS_MODULE_NAME= ts-proto
 JS_MODULE_DEPENDS+= @bufbuild/protobuf=node-bufbuild-protobuf>=2.16.0:../../devel/node-bufbuild-protobuf
 JS_MODULE_DEPENDS+= case-anything=node-case-anything>=3.1.7:../../devel/node-case-anything
