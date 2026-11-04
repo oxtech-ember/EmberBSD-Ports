@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted). scripts/cross-bulk.sh counts a native
 # node as present only when the native prefix has its package at the
-# version that the tree builds or newer. The native prefix of the test has
+# version that the tree builds or newer. A normal retry also preserves
+# a compatible work directory and uses the selected host Python. The native prefix of the test has
 # sqlite3-3.54.1, older than the tree's sqlite3-3.54.1nb1, clang-23.1.4nb11,
 # newer than the tree's clang-23.1.4nb9, and m4-1.4.21nb1, the tree's own
 # version. Order must walk the tools of s/sqlite3@native and leave the
@@ -17,7 +18,10 @@ case "$out" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2 ;; esac
 [ ! -e "$out" ] || exit 2
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
 for p in t/a s/sqlite3 c/clang m/m4 d/tclsh e/cmake; do mkdir -p "$out/tree/$p"; done
-mkdir -p "$out/packages/All" "$out/work" "$out/native-db" "$out/vars"
+mkdir -p "$out/packages/All" "$out/work/sqlite3/native" "$out/native-db" "$out/vars" "$out/sdk/scripts"
+printf "sqlite3-3.54.1nb1\n" > "$out/work/sqlite3/native/.extract_done"
+printf object > "$out/work/sqlite3/native/kept.o"
+printf "print(1)\n" > "$out/sdk/scripts/resolve-jobs.py"
 : > "$out/native-db/sqlite3-3.54.1"
 : > "$out/native-db/clang-23.1.4nb11"
 : > "$out/native-db/m4-1.4.21nb1"
@@ -69,6 +73,9 @@ value() {
     case "\$1" in
         PKGBASE) sed 's/-[0-9][^-]*\$//' \$out/vars/\$pkg.\$mode.PKGNAME ;;
         WRKDIR) echo \$out/work/\$pkg/\$mode ;;
+        PKGVERSION_NOREV) sed -E 's/^.*-([0-9][^n]*)(nb[0-9]+)?$/\1/' \$out/vars/\$pkg.\$mode.PKGNAME ;;
+        EMBERBSD_HOST_PYTHON) echo "${TEST_PYTHON:?}" ;;
+        EMBERBSD_SDK_SOURCE) echo "\$out/sdk" ;;
         *) cat \$out/vars/\$pkg.\$mode.\$1 2> /dev/null || echo ;;
     esac
 }
@@ -102,7 +109,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 bulk() {
     BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
         MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
-        CROSS_BULK_VARS_CACHE=no sh "$ports/scripts/cross-bulk.sh" "$@"
+        CROSS_BULK_VARS_CACHE=no CROSS_BULK_TEST_HOST_PYTHON="$TEST_PYTHON" CROSS_BULK_TEST_SDK_SOURCE="$out/sdk" sh "$ports/scripts/cross-bulk.sh" "$@"
 }
 echo t/a > "$out/list"
 bulk order "$out/list" "$out/state" > "$out/order.log" 2>&1 || fail "order: $(cat "$out/order.log")"
@@ -118,4 +125,5 @@ grep -q '/s/sqlite3 .* replace' "$out/calls" || fail 'sqlite3 was not replaced w
 [ -e "$out/native-db/clang-23.1.4nb11" ] || fail 'the newer native clang was replaced'
 ! grep -Eq '/(c/clang|m/m4) .* (install|replace)' "$out/calls" || fail 'a current native node was built'
 grep -q '^s/sqlite3@native ' "$out/state/done" || fail "s/sqlite3@native not done: $(cat "$out/state/done")"
-echo 'PASS: an older native package is rebuilt; a current or newer one stays done'
+[ -f "$out/work/sqlite3/native/kept.o" ] || fail "retry discarded compatible object"
+echo 'PASS: native version selection and compatible retry'
