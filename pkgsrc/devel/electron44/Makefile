@@ -34,6 +34,7 @@ TOOL_DEPENDS+= rolldown>=1.2.16:../../devel/rolldown
 TOOL_DEPENDS+= node-semver>=7.8.5:../../devel/node-semver
 TOOL_DEPENDS+= typescript>=7.0.2:../../lang/typescript
 TOOL_DEPENDS+= node-primer-octicons>=19.42.0:../../devel/node-primer-octicons
+TOOL_DEPENDS+= node-postcss-minify>=1.2.0:../../devel/node-postcss-minify
 
 # Inputs and producer work are selected explicitly in producer.mk.
 # The prepared source owner applies patches before the controller verifies it.
