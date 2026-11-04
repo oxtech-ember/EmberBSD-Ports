@@ -46,6 +46,7 @@ OWNERS = {
     'mdns': ('scripts/source-inputs/mdns/source.py', 'net/mDNSResponder'),
     'dhcpcd': ('scripts/source-inputs/dhcpcd/source.py', 'net/dhcpcd'),
     'libcbor': ('scripts/source-inputs/libcbor/source.py', 'devel/libcbor'),
+    'expat': ('scripts/source-inputs/expat/source.py', 'textproc/expat'),
     'byacc': ('scripts/source-inputs/byacc/source.py', 'devel/byacc'),
     'texinfo': ('scripts/source-inputs/texinfo/source.py', 'devel/gtexinfo'),
     'rcs': ('scripts/source-inputs/rcs/source.py', 'devel/rcs'),
