@@ -1,0 +1,26 @@
+$NetBSD$
+
+Use the independent Ember Browser identity. Origin: EmberBSD (AI-assisted).
+
+--- package.json
++++ package.json
+@@ -1,6 +1,6 @@
+ {
+-  "name": "blanc",
+-  "productName": "Blanc",
++  "name": "ember-browser",
++  "productName": "Ember Browser",
+   "version": "1.25.0",
+   "description": "Minimal Electron browser shell: custom chrome UI + built-in ad/tracker blocking, no extension-store dependency.",
+   "main": "src/main/main.js",
+@@ -95,8 +95,8 @@
+     "electron-updater": "^6.8.9"
+   },
+   "build": {
+-    "appId": "me.bnfy.bowser",
+-    "productName": "Blanc",
++    "appId": "org.emberbsd.browser",
++    "productName": "Ember Browser",
+     "publish": {
+       "provider": "github",
+       "owner": "bnfy",

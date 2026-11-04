@@ -1,0 +1,28 @@
+$NetBSD$
+
+Use the independent Ember Browser identity. Origin: EmberBSD (AI-assisted).
+
+--- src/renderer/styles.css
++++ src/renderer/styles.css
+@@ -1556,8 +1556,8 @@
+    the retired B. */
+ .favicon.internal {
+   background: var(--text);
+-  -webkit-mask: url("pages/sunrise-favicon-mark.png") center / contain no-repeat;
+-  mask: url("pages/sunrise-favicon-mark.png") center / contain no-repeat;
++  -webkit-mask: url("pages/ember-browser.svg") center / contain no-repeat;
++  mask: url("pages/ember-browser.svg") center / contain no-repeat;
+ }
+ .favicon.loading {
+   background: transparent;
+@@ -1635,8 +1635,8 @@
+   position: absolute;
+   inset: 3px;
+   background: var(--text);
+-  -webkit-mask: url("pages/sunrise-favicon-mark.png") center / contain no-repeat;
+-  mask: url("pages/sunrise-favicon-mark.png") center / contain no-repeat;
++  -webkit-mask: url("pages/ember-browser.svg") center / contain no-repeat;
++  mask: url("pages/ember-browser.svg") center / contain no-repeat;
+ }
+ /* Keep internal tabs anonymous when their dot blooms inside the Island too. */
+ #islandPill .dot-peek.internal::after {

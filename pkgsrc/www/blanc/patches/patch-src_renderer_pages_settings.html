@@ -1,0 +1,100 @@
+$NetBSD$
+
+Use the independent Ember Browser identity. Origin: EmberBSD (AI-assisted).
+
+--- src/renderer/pages/settings.html
++++ src/renderer/pages/settings.html
+@@ -4,7 +4,7 @@
+   <meta charset="UTF-8" />
+   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; font-src 'self';" />
+   <title>Settings</title>
+-  <link rel="icon" type="image/png" href="icon-sunrise.png" />
++  <link rel="icon" type="image/svg+xml" href="ember-browser.svg" />
+   <link rel="stylesheet" href="pages.css" />
+ </head>
+ <body class="sheet">
+@@ -79,7 +79,7 @@
+             <div class="setting" id="tabSleepSetting">
+               <div class="label">
+                 <span>Quiet inactive tabs</span>
+-                <span class="hint">Blanc frees the memory of tabs you have not opened in a while, and reloads them when you come back to them.</span>
++                <span class="hint">Ember Browser frees the memory of tabs you have not opened in a while, and reloads them when you come back to them.</span>
+               </div>
+               <select id="tabSleep" aria-label="Quiet inactive tabs">
+                 <option value="off">Off</option>
+@@ -124,7 +124,7 @@
+             <div class="setting" id="appIconSetting">
+               <div class="label">
+                 <span>App icon</span>
+-                <span class="hint" id="appIconHint">Choose the Blanc icon shown by your system</span>
++                <span class="hint" id="appIconHint">Choose the Ember Browser icon shown by your system</span>
+               </div>
+               <div class="icon-scroller">
+                 <div id="appIconGrid" class="icon-grid" role="radiogroup" aria-label="App icon"></div>
+@@ -134,10 +134,10 @@
+             <div class="setting" id="defaultBrowserSetting">
+               <div class="label">
+                 <span>Default browser</span>
+-                <span class="hint" id="defaultBrowserHint">Open web links from other apps in Blanc</span>
++                <span class="hint" id="defaultBrowserHint">Open web links from other apps in Ember Browser</span>
+               </div>
+               <button id="defaultBrowserBtn">Make default…</button>
+-              <span id="defaultBrowserState" hidden>Blanc is your default browser</span>
++              <span id="defaultBrowserState" hidden>Ember Browser is your default browser</span>
+             </div>
+ 
+             <div class="setting">
+@@ -185,7 +185,7 @@
+                 <h3 id="syncSetupTitle">Set up Sync</h3>
+                 <p id="syncSetupIntro">
+                   Sync your favorites and settings across your devices, and, if you choose, open tabs.
+-                  Everything is end-to-end encrypted — Blanc can’t read it, and can’t recover it if you forget your passphrase.
++                  Everything is end-to-end encrypted — Ember Browser can’t read it, and can’t recover it if you forget your passphrase.
+                 </p>
+               </header>
+               <div id="syncPaths" class="sync-paths" aria-label="Choose how to set up Sync">
+@@ -244,7 +244,7 @@
+                       <span class="hint" id="syncPassphraseHint"></span>
+                       <span class="sync-trust-note">
+                         <span class="sync-info-mark" aria-hidden="true">i</span>
+-                        Your passphrase stays on your devices. It’s never sent to Blanc.
++                        Your passphrase stays on your devices. It’s never sent to Ember Browser.
+                       </span>
+                     </label>
+                   </li>
+@@ -391,7 +391,7 @@
+           <div class="settings-card settings-card--mixed" id="onePasswordSettings" hidden>
+             <h3 class="card-title">1Password</h3>
+             <p class="section-hint">
+-              Fill a matching Login item from your installed 1Password app when you ask. While this is on, Blanc checks pages for a login form so the island can offer Fill — it never reads what you type and never contacts 1Password until you ask.
++              Fill a matching Login item from your installed 1Password app when you ask. While this is on, Ember Browser checks pages for a login form so the island can offer Fill — it never reads what you type and never contacts 1Password until you ask.
+             </p>
+             <div class="setting">
+               <div class="label">
+@@ -436,7 +436,7 @@
+             <h3 class="card-title">Usage and data</h3>
+             <div class="setting">
+               <div class="label">
+-                <span>Help improve Blanc</span>
++                <span>Help improve Ember Browser</span>
+                 <span class="hint">Counts active users and which start-page layouts and local features get used. Sends a random install and session id, app version, platform, architecture, coarse OS major, and fixed feature names; never URLs, searches, page content, or private-tab activity. The install id is stored on our side only as a one-way hash. Turn this off to stop sending it.</span>
+               </div>
+               <label class="toggle">
+@@ -464,7 +464,7 @@
+           <h2 class="group-title">Diagnostics</h2>
+           <div class="settings-card settings-card--content">
+             <p class="section-hint">
+-              Blanc keeps a local, 50-event crash ledger with timestamps, process type, and failure reason. It never includes URLs, page titles, history, profile names, account data, identifiers, quiet-tab state, or closed-tab state, and nothing is sent automatically.
++              Ember Browser keeps a local, 50-event crash ledger with timestamps, process type, and failure reason. It never includes URLs, page titles, history, profile names, account data, identifiers, quiet-tab state, or closed-tab state, and nothing is sent automatically.
+             </p>
+             <p class="section-hint" id="diagnosticsSummary" role="status">Checking local crash history…</p>
+             <div class="toolbar-row">
+@@ -503,7 +503,7 @@
+           <h2 class="group-title">Help</h2>
+           <div class="settings-card settings-card--content">
+             <p class="section-hint">
+-              Something broken, or working in a way it shouldn&rsquo;t? Reports go to Blanc&rsquo;s
++              Something broken, or working in a way it shouldn&rsquo;t? Reports go to Ember Browser&rsquo;s
+               public issue tracker on GitHub. Saying which version you&rsquo;re on, which operating
+               system, and what page you were looking at makes a report much faster to act on.
+             </p>

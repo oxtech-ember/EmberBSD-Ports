@@ -618,7 +618,7 @@ def make_sbom(source_manifest, lock, selected, roles, edges, rows, package_metad
         electron_version, electron_pkgpath, electron_dependency)
     lock_sha = source_manifest['packageLockSha256']
     asar_hash = hashlib.sha256(app_asar.read_bytes()).hexdigest()
-    root_ref = 'pkg:generic/blanc@1.25.0'
+    root_ref = 'pkg:generic/ember-browser@1.25.0'
     electron_ref = f'pkgsrc:devel/electron44@{electron_version}'
     components = [{
         'type': 'framework',
@@ -679,11 +679,13 @@ def make_sbom(source_manifest, lock, selected, roles, edges, rows, package_metad
     root = {
         'type': 'application',
         'bom-ref': root_ref,
-        'name': 'Blanc',
+        'name': 'Ember Browser',
         'version': '1.25.0',
         'licenses': [{'license': {'id': 'MIT'}}],
         'hashes': [{'alg': 'SHA-256', 'content': asar_hash}],
         'properties': [
+            {'name': 'emberbsd:upstreamName', 'value': 'Blanc'},
+            {'name': 'emberbsd:upstreamVersion', 'value': '1.25.0'},
             {'name': 'emberbsd:upstreamCommit', 'value': source_manifest['upstreamCommit']},
             {'name': 'emberbsd:sourceArchiveSha256', 'value': source_manifest['sourceArchiveSha256']},
             {'name': 'emberbsd:packageLockSha256', 'value': lock_sha},
@@ -895,6 +897,34 @@ def extract_source_allowlist(jsonio, inventory, archive_path, destination, manif
     return len(found)
 
 
+def validate_derivative_asar(packed):
+    """Check identity and security inputs read from the actual ASAR."""
+    metadata = packed.get('packageMetadata')
+    require(isinstance(metadata, dict) and metadata.get('name') == 'ember-browser' and
+            metadata.get('productName') == 'Ember Browser' and
+            metadata.get('build', {}).get('appId') == 'org.emberbsd.browser',
+            'ASAR package identity does not match Ember Browser')
+    require("org.emberbsd.browser" in packed.get('identitySource', ''),
+            'ASAR runtime identity does not match the package')
+    require("path.join(app.getPath('appData'), 'Bowser')" not in packed.get('mainSource', ''),
+            'ASAR must not migrate the upstream profile')
+    tab_source = packed.get('tabSource', '')
+    for policy in ('contextIsolation: true', 'nodeIntegration: false', 'sandbox: true'):
+        require(policy in tab_source, f'ASAR tab policy is missing {policy}')
+    contents = packed.get('files')
+    require(isinstance(contents, list), 'ASAR packer returned no file list')
+    for reserved in ('icon-sunrise.png', 'icon-sunrise-dark.png', 'sunrise-mark.png', 'sunrise-favicon-mark.png'):
+        require(not any(name.endswith('/' + reserved) for name in contents),
+                f'ASAR contains reserved upstream artwork: {reserved}')
+    require('src/renderer/pages/ember-browser.svg' in contents,
+            'ASAR is missing the derivative icon')
+    require('src/renderer/pages/ember-browser.png' in contents,
+            'ASAR is missing the derivative native icon')
+    for notice in ('LICENSE', 'ASSET-LICENSE.md', 'THIRD-PARTY-NOTICES.md'):
+        require(notice in contents, f'ASAR is missing upstream notice: {notice}')
+    return contents
+
+
 def run_node_tests(stream, source_root, native, work):
     test_paths = [
         'test/unit/updater-policy.test.js',
@@ -992,6 +1022,13 @@ def main():
     require(not app_root.exists() and not seed_root.exists() and not asar_path.exists() and not sbom_path.exists(),
             'refusing to overwrite existing Blanc build output')
     copy_allowlist(source_root, source_manifest['applicationFiles'], app_root)
+    # Replace upstream identity assets only after validating and copying the
+    # original source allowlist. Keep the upstream licence notices in the ASAR.
+    pages = app_root / 'src/renderer/pages'
+    for name in ('icon-sunrise.png', 'icon-sunrise-dark.png', 'sunrise-mark.png', 'sunrise-favicon-mark.png'):
+        (pages / name).unlink()
+    copy_regular(Path(__file__).parent / 'ember-browser.svg', pages / 'ember-browser.svg')
+    copy_regular(Path(__file__).parent / 'ember-browser.png', pages / 'ember-browser.png')
     copy_module_tree(runtime_root, app_root / 'node_modules')
     copy_allowlist(source_root, source_manifest['buildInputs'] + source_manifest['generatedFiles'], seed_root)
     shim = work / 'electron-shim'
@@ -1013,8 +1050,7 @@ def main():
                                 cwd=work, env=env, timeout=900)
     packed = jsonio.loads_json(asar_output)
     require(isinstance(packed, dict), 'ASAR packer result must be a JSON object')
-    contents = packed.get('files')
-    require(isinstance(contents, list), 'ASAR packer returned no file list')
+    contents = validate_derivative_asar(packed)
     for relative in (
         'package.json', 'src/main/main.js', 'src/main/assets/adblock-engine-seed.bin',
         'node_modules/@ghostery/adblocker-electron/package.json',
@@ -1039,7 +1075,7 @@ def main():
                     platform.python_version(), python_sha, runtime_providers,
                     runtime_overrides)
     sbom_path.write_bytes(jsonio.json_bytes(bom))
-    print(f'Built Blanc 1.25.0 app.asar ({len(contents)} files) and external-runtime SBOM.')
+    print(f'Built Ember Browser from Blanc 1.25.0 ({len(contents)} ASAR files) and SBOM.')
     return 0
 
 

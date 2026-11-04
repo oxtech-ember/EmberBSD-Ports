@@ -4,7 +4,8 @@
 # This recipe and its local portability patches were prepared with AI assistance.
 
 DISTNAME=	blanc-1.25.0
-PKGREVISION=	3
+PKGNAME=	ember-browser-1.25.0
+PKGREVISION=	1
 CATEGORIES=	www
 BLANC_SOURCE=	v1.25.0${EXTRACT_SUFX}
 MASTER_SITES=	https://github.com/bnfy/blanc/archive/refs/tags/
@@ -73,7 +74,7 @@ SITES.url-parser-1.3.1.tgz=	https://registry.npmjs.org/@ghostery/url-parser/-/
 
 MAINTAINER=	oxtech-ember@users.noreply.github.com
 HOMEPAGE=	https://github.com/bnfy/blanc
-COMMENT=	Desktop browser application for the system Electron runtime
+COMMENT=	Ember Browser, based on Blanc and system Electron
 TOOL_DEPENDS+=	node-electron-asar>=${BLANC_ASAR_MIN_VERSION}:../../devel/node-electron-asar
 TOOL_DEPENDS+=	node-argparse>=3.0.4:../../devel/node-argparse
 TOOL_DEPENDS+=	node-semver>=7.8.5:../../devel/node-semver
@@ -83,12 +84,9 @@ LICENSE=	mit AND cc-by-sa-v3.0 AND ofl-v1.1 AND isc AND mpl-2.0 AND python-softw
 # Blue Oak is not in the pinned pkgsrc license catalog. Keep its exact text
 # with the installed notices; users must explicitly accept blueoak-1.0.0.
 
-# The unchanged Blanc identity artwork and trademarks are not redistributable.
-RESTRICTED=	Blanc identity artwork and marks may not identify a modified build.
-NO_SRC_ON_FTP=	${RESTRICTED}
-NO_SRC_ON_CDROM=	${RESTRICTED}
-NO_BIN_ON_FTP=	${RESTRICTED}
-NO_BIN_ON_CDROM=	${RESTRICTED}
+# The unfiltered upstream archive includes reserved and third-party imagery.
+NO_SRC_ON_FTP=	Unfiltered upstream archive includes reserved identity artwork and third-party imagery.
+NO_SRC_ON_CDROM=	${NO_SRC_ON_FTP}
 
 BLANC_ELECTRON_RUNTIME_VERSION=	45.2.1
 BLANC_ELECTRON_PKGDIR=	../../devel/electron44
@@ -100,7 +98,7 @@ BLANC_NPM_MANIFEST_SHA256=	4bf1d8a37632598f96d0c062150d2d1f4a3360a1f018b7bd35b1b
 BUILD_HOST_NODE=	${EMBERBSD_HOST_NODE}
 BUILD_HOST_PYTHON=	${EMBERBSD_CROSS_BUILD_PYTHON}
 DEPENDS+=	${BLANC_ELECTRON_DEPENDS}
-INSTALLATION_DIRS+=	bin lib/blanc share/applications share/doc/blanc
+INSTALLATION_DIRS+=	bin lib/ember-browser share/applications share/doc/ember-browser share/icons/hicolor/scalable/apps
 
 .include "../../mk/bsd.prefs.mk"
 
@@ -166,15 +164,16 @@ do-test: blanc-check-build-tools
 	    --electron-depends ${BLANC_ELECTRON_DEPENDS:Q}
 
 do-install:
-	${INSTALL_DATA} ${WRKDIR:Q}/app.asar ${DESTDIR:Q}${PREFIX:Q}/lib/blanc/app.asar
+	${INSTALL_DATA} ${FILESDIR:Q}/ember-browser.svg ${DESTDIR:Q}${PREFIX:Q}/share/icons/hicolor/scalable/apps/org.emberbsd.browser.svg
+	${INSTALL_DATA} ${WRKDIR:Q}/app.asar ${DESTDIR:Q}${PREFIX:Q}/lib/ember-browser/app.asar
 	${INSTALL_DATA} ${WRKSRC:Q}/LICENSE ${WRKSRC:Q}/ASSET-LICENSE.md \
 	    ${WRKSRC:Q}/THIRD-PARTY-NOTICES.md ${WRKDIR:Q}/SBOM.json \
 	    ${FILESDIR:Q}/blueoak-1.0.0.txt \
-	    ${DESTDIR:Q}${PREFIX:Q}/share/doc/blanc/
-	${SED} 's|@PREFIX@|${PREFIX}|g' ${FILESDIR:Q}/blanc.sh > ${WRKDIR:Q}/blanc
-	${INSTALL_SCRIPT} ${WRKDIR:Q}/blanc ${DESTDIR:Q}${PREFIX:Q}/bin/blanc
-	${SED} 's|@PREFIX@|${PREFIX}|g' ${FILESDIR:Q}/blanc.desktop > ${WRKDIR:Q}/blanc.desktop
-	${INSTALL_DATA} ${WRKDIR:Q}/blanc.desktop ${DESTDIR:Q}${PREFIX:Q}/share/applications/blanc.desktop
+	    ${DESTDIR:Q}${PREFIX:Q}/share/doc/ember-browser/
+	${SED} 's|@PREFIX@|${PREFIX}|g' ${FILESDIR:Q}/blanc.sh > ${WRKDIR:Q}/ember-browser
+	${INSTALL_SCRIPT} ${WRKDIR:Q}/ember-browser ${DESTDIR:Q}${PREFIX:Q}/bin/ember-browser
+	${SED} 's|@PREFIX@|${PREFIX}|g' ${FILESDIR:Q}/blanc.desktop > ${WRKDIR:Q}/org.emberbsd.browser.desktop
+	${INSTALL_DATA} ${WRKDIR:Q}/org.emberbsd.browser.desktop ${DESTDIR:Q}${PREFIX:Q}/share/applications/org.emberbsd.browser.desktop
 
 .include "../../sysutils/desktop-file-utils/desktopdb.mk"
 .include "../../mk/bsd.pkg.mk"

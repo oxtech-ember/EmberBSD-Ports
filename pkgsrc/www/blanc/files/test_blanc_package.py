@@ -583,10 +583,28 @@ process.stdout.write(JSON.stringify({enabled:log.enabled,duration:ms('2 seconds'
                 self.stream, Path(self.native.tool('node')), HERE / 'asar-pack.mjs',
                 provider, self.native, work)
 
+    def test_derivative_asar_rejects_reserved_art_and_missing_security_policy(self):
+        packed = {
+            'packageMetadata': {'name': 'ember-browser', 'productName': 'Ember Browser',
+                                'build': {'appId': 'org.emberbsd.browser'}},
+            'identitySource': 'org.emberbsd.browser', 'mainSource': '',
+            'tabSource': 'contextIsolation: true; nodeIntegration: false; sandbox: true',
+            'files': ['LICENSE', 'ASSET-LICENSE.md', 'THIRD-PARTY-NOTICES.md',
+                      'src/renderer/pages/ember-browser.svg', 'src/renderer/pages/ember-browser.png'],
+        }
+        builder.validate_derivative_asar(packed)
+        packed['files'].append('src/renderer/pages/icon-sunrise.png')
+        with self.assertRaisesRegex(builder.BuildError, 'reserved upstream artwork'):
+            builder.validate_derivative_asar(packed)
+        packed['files'].pop()
+        packed['tabSource'] = packed['tabSource'].replace('sandbox: true', 'sandbox: false')
+        with self.assertRaisesRegex(builder.BuildError, 'tab policy'):
+            builder.validate_derivative_asar(packed)
+
     def test_plist_installs_the_generated_compliance_manifest(self):
         plist = (PACKAGE / 'PLIST').read_text(encoding='utf-8')
-        self.assertIn('share/doc/blanc/SBOM.json', plist)
-        self.assertIn('share/doc/blanc/blueoak-1.0.0.txt', plist)
+        self.assertIn('share/doc/ember-browser/SBOM.json', plist)
+        self.assertIn('share/doc/ember-browser/blueoak-1.0.0.txt', plist)
         makefile = (PACKAGE / 'Makefile').read_text(encoding='utf-8')
         self.assertIn('${FILESDIR:Q}/blueoak-1.0.0.txt', makefile)
 

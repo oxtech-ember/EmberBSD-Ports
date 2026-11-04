@@ -1,8 +1,9 @@
-bin/blanc
-lib/blanc/app.asar
-share/applications/blanc.desktop
-share/doc/blanc/ASSET-LICENSE.md
-share/doc/blanc/LICENSE
-share/doc/blanc/SBOM.json
-share/doc/blanc/THIRD-PARTY-NOTICES.md
-share/doc/blanc/blueoak-1.0.0.txt
+bin/ember-browser
+lib/ember-browser/app.asar
+share/applications/org.emberbsd.browser.desktop
+share/doc/ember-browser/ASSET-LICENSE.md
+share/doc/ember-browser/LICENSE
+share/doc/ember-browser/SBOM.json
+share/doc/ember-browser/THIRD-PARTY-NOTICES.md
+share/doc/ember-browser/blueoak-1.0.0.txt
+share/icons/hicolor/scalable/apps/org.emberbsd.browser.svg

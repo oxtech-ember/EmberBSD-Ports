@@ -1,0 +1,15 @@
+$NetBSD$
+
+Use the independent Ember Browser identity. Origin: EmberBSD (AI-assisted).
+
+--- src/renderer/pages/mahjong.css
++++ src/renderer/pages/mahjong.css
+@@ -197,7 +197,7 @@
+   height: 24px;
+   flex: none;
+   display: block;
+-  background: url("sunrise-mark.png") center / contain no-repeat;
++  background: url("ember-browser.svg") center / contain no-repeat;
+ }
+ 
+ .mj-title:hover { color: var(--mj-brass-bright); }

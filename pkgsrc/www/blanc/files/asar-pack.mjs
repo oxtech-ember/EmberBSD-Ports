@@ -11,9 +11,16 @@ if (!asarModule || !appRoot || !outputPath) {
   throw new Error('Usage: asar-pack.mjs asar-module app-root output-asar');
 }
 
-const { createPackage, listPackage } = await import(pathToFileURL(asarModule).href);
+const { createPackage, listPackage, extractFile } = await import(pathToFileURL(asarModule).href);
 await createPackage(appRoot, outputPath);
 const files = listPackage(outputPath, { isPack: true }).map((entry) =>
   entry.replace(/^pack\s*:\s*/, '').replace(/^\/+/, ''),
 );
-process.stdout.write(JSON.stringify({ files }) + '\n');
+const result = { files };
+if (files.includes('package.json') && files.includes('src/main/main.js')) {
+  result.packageMetadata = JSON.parse(extractFile(outputPath, 'package.json').toString('utf8'));
+  result.tabSource = extractFile(outputPath, 'src/main/tab-view.js').toString('utf8');
+  result.mainSource = extractFile(outputPath, 'src/main/main.js').toString('utf8');
+  result.identitySource = extractFile(outputPath, 'src/main/app-identity.js').toString('utf8');
+}
+process.stdout.write(JSON.stringify(result) + '\n');

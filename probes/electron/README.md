@@ -1,7 +1,7 @@
-# Electron runtime probe for NetBSD (E12 Blanc browser)
+# Electron runtime probe for NetBSD (E12 Ember Browser)
 
-Goal: run Blanc v1.25.0 on EmberBSD. Blanc uses Electron and has no
-engine abstraction, so this port needs the native Electron runtime.
+Goal: run Ember Browser, based on Blanc v1.25.0, on EmberBSD.
+The application uses Electron and needs the native Electron runtime.
 
 ## Source pins
 
@@ -78,8 +78,8 @@ in macOS 14; the build controller rejects lower minimums.
 - Electron 45.2.1 for amd64 has completed the Clang cross-build, normal pkgsrc
   package creation and isolated host-rooted install/delete/reinstall. Target
   execution, GUI, complete ABI and hardware acceptance remain pending.
-- Blanc has a prepared ASAR; its ordinary package and target application
-  acceptance remain pending.
+- Ember Browser has a prepared ASAR from Blanc 1.25.0 sources. Target
+  application and ordinary package acceptance remain pending.
 - The Blanc application recipe creates an ASAR from an explicit source
   allowlist and 28 lockfile-pinned runtime archives. Four pure-JavaScript
   modules (argparse, semver, debug and ms) are copied from their common Ports
@@ -119,7 +119,7 @@ ordinary pkgsrc producer and bounded ZIP staging helper. Cross-build, package
 creation and isolated host-rooted install/delete/reinstall have passed; target
 execution, GUI, complete ABI and hardware acceptance remain pending.
 
-## Blanc application package
+## Ember Browser application package
 
 `scripts/prepare-pkgsrc.py` exports the shared Electron and Blanc recipes from
 `pkgsrc/devel/electron44` and `pkgsrc/www/blanc`. Select the
@@ -150,13 +150,18 @@ the lockfile, and environment files out of the installed ASAR. The installed
 SBOM records the external Electron 45.2.1 package separately from upstream's
 development lock on Electron 44.5.1. A different runtime declaration is refused.
 
+The package name is `ember-browser`; its command is `ember-browser` and its
+desktop entry is `org.emberbsd.browser.desktop`. The derivative keeps the
+upstream notices and uses its own identity and artwork.
+
 The wrapper selects Electron's packaged application policy. It leaves sandbox
 flags unchanged. NetBSD self-updates are disabled because pkgsrc owns updates.
 The upstream license notices and the dependency license texts remain installed.
 The Blue Oak license text is in `pkgsrc/www/blanc/files/blueoak-1.0.0.txt`; the pinned
 pkgsrc catalog does not include its token. Review that text before adding
-`blueoak-1.0.0` to `ACCEPTABLE_LICENSES`. Keep the recipe's redistribution
-restrictions for unchanged upstream artwork and marks.
+`blueoak-1.0.0` to `ACCEPTABLE_LICENSES`. The unfiltered upstream source archive
+retains reserved artwork and third-party imagery and is not mirrored by this
+recipe.
 
 `probes/electron/tests/blanc-source-phases.py --help` describes the source-phase regression.
 It uses a real pkgsrc export and explicit make tools/configuration, checks that

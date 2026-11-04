@@ -1,8 +1,9 @@
 [Desktop Entry]
 Type=Application
-Name=Blanc
+Name=Ember Browser
 Comment=Desktop browser
-Exec=@PREFIX@/bin/blanc %U
+Exec=@PREFIX@/bin/ember-browser %U
+Icon=org.emberbsd.browser
 Terminal=false
 Categories=Network;WebBrowser;
 MimeType=text/html;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;
