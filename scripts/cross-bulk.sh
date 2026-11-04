@@ -1333,6 +1333,36 @@ shared_pair_producer_succeeded()
     fi
 }
 
+# Restore a completed producer's full stage without rebuilding or reinstalling
+# its package. All temporary producer variables stay inside this subshell.
+shared_pair_restore_producer()
+(
+    shared_pair_for_path "$1"
+    [ -n "$shared_pair" ] && [ "$1" = "$shared_consumer" ] || return 0
+    shared_dir=$run/shared-$shared_pair
+    [ "$(cat "$shared_dir/enabled" 2>/dev/null)" = yes ] || return 0
+    [ ! -f "$shared_dir/producer-ready" ] || return 0
+    shared_stage=$(cat "$shared_dir/stage") || return 1
+    producer_vars=$(pkg_vars "$shared_producer" 'PKGNAME WRKDIR PKGBASE PKGVERSION_NOREV') || return 0
+    producer_name=$(printf '%s\n' "$producer_vars" | sed -n 1p)
+    producer_work=$(printf '%s\n' "$producer_vars" | sed -n 2p)
+    producer_base=$(printf '%s\n' "$producer_vars" | sed -n 3p)
+    producer_version=$(printf '%s\n' "$producer_vars" | sed -n 4p)
+    [ "$producer_work" = "$(cat "$shared_dir/wrkdir")" ] || return 0
+    [ -f "$packages/$producer_name.tgz" ] || return 0
+    awk -v p="$shared_producer" -v n="$producer_name" '$1 == p && $2 == n { ok=1; exit } END { exit !ok }' "$state/done" || return 0
+    producer_build=$producer_work/.build_done
+    [ ! -L "$producer_build" ] && [ -f "$producer_build" ] || return 0
+    [ "$(cat "$producer_build")" = "$producer_name" ] || return 0
+    stage_local_preflight "$producer_work" "$producer_base" "$producer_version" "$producer_name" "$log" >/dev/null || return 0
+    stage_local=yes
+    wrkdir=$producer_work
+    shared_pair_reset_stage "$shared_producer" >> "$log" 2>&1 || return 1
+    target_install "$shared_producer" stage-install >> "$log" 2>&1 || return 1
+    shared_pair_producer_succeeded "$shared_producer" >> "$log" 2>&1
+    shared_pair_ready "$shared_producer"
+)
+
 shared_pair_retire_producer()
 {
     shared_pair_for_path "$1"
@@ -1440,6 +1470,10 @@ build_one()
         return 0
     fi
     [ "${stage_local:-no}" = yes ] || : > "$log"
+    if [ "${stage_local:-no}" != yes ] && ! shared_pair_restore_producer "$path"; then
+        result "$key" "failed $path shared-stage-restore"
+        return 0
+    fi
     # One short line per append: O_APPEND keeps concurrent lines whole.
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name MAKE_JOBS=$make_jobs" >> "$state/progress"
     if [ "${stage_local:-no}" != yes ]; then

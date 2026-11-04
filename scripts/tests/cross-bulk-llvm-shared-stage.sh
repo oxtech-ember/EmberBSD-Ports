@@ -107,7 +107,7 @@ case "$target" in
         echo "_package-clean:$pkg" >> "$out/calls"
         rm -rf "$work/.destdir"
         rm -f "$work/.install_done" "$work/.package_done" ;;
-    package-install|package|replace)
+    package-install|package|replace|stage-install)
         echo "${target}:$pkg${shared:+:shared}" >> "$out/calls"
         if { [ "$dir" = "$out/tree/$producer" ] || [ "$dir" = "$out/tree/$consumer" ]; } && [ -n "$shared" ] &&
             { [ -e "$work/.destdir/stale" ] || [ -e "$work/.install_done" ] || [ -e "$work/.package_done" ]; }; then
@@ -136,7 +136,7 @@ case "$target" in
         if [ "$dir" = "$out/tree/$consumer" ] && [ "${FAKE_DEVEL_FAIL:-no}" = yes ]; then exit 1; fi
         mkdir -p "$work" "$packages/All"
         : > "$work/built"
-        : > "$packages/All/$name.tgz" ;;
+        [ "$target" = stage-install ] || : > "$packages/All/$name.tgz" ;;
     *) echo "unknown target $target" >&2; exit 2 ;;
 esac
 WRAP
@@ -212,6 +212,71 @@ printf '%s\n' "$producer $producer_name cached" > "$cached/state/done"
 FAKE_MISMATCH=no FAKE_DEVEL_FAIL=no run_build "$cached" || fail "cached runtime fallback: $(cat "$cached/build.log")"
 if grep -q ':shared$' "$cached/calls"; then fail 'cached runtime without current-run stage was reused'; fi
 grep -q "^package-install:$consumer_dir$" "$cached/calls" || fail 'cached producer consumer did not fall back to its regular build'
+
+# A completed producer from an earlier run keeps compatible objects, but its
+# old run-scoped handoff is gone. Restore only the full install stage.
+for stage_kind in missing stale; do
+cached_build=$out/cached-runtime-with-build-$stage_kind
+setup "$cached_build"
+: > "$cached_build/packages/All/$producer_name.tgz"
+printf '%s\n' "$producer $producer_name cached" > "$cached_build/state/done"
+mkdir -p "$cached_build/work/$producer_dir/objects"
+# An earlier extraction/configure revision may legitimately feed a newer
+# incrementally rebuilt package; only the completed build must be current.
+for phase in extract configure; do
+    printf '%s\n' "${producer_name%nb*}" > "$cached_build/work/$producer_dir/.$phase"_done
+done
+printf '%s\n' "$producer_name" > "$cached_build/work/$producer_dir/.build_done"
+# Exercise the actual stage-local preflight from the exported pkgsrc patch.
+awk '/^\+\+\+ b\/mk\/package\/repackage-metadata-check.py$/ { inside=1; next }
+     inside && /^--- / { exit }
+     inside && /^\+/ { print substr($0, 2) }' \
+    "$ports/profiles/common-build-tools/patches/pkgsrc-repackage-metadata.patch" > "$cached_build/tree/mk/package/repackage-metadata-check.py"
+printf 'retained object\n' > "$cached_build/work/$producer_dir/objects/compiled.o"
+# A previous run may have left a stage: it is not current-run proof.
+if [ "$stage_kind" = stale ]; then
+    mkdir -p "$cached_build/work/$producer_dir/.${pair}-shared-full-stage"
+    printf 'stale metadata\n' > "$cached_build/work/$producer_dir/.${pair}-shared-full-stage/stale-metadata"
+fi
+object_before=$("$CROSS_BULK_TEST_HOST_PYTHON" -c 'import os,sys; s=os.stat(sys.argv[1]); print(s.st_ino, s.st_mtime_ns)' "$cached_build/work/$producer_dir/objects/compiled.o")
+CLEAN_SUCCESS=no run_build "$cached_build" || fail "cached producer stage restore: $(cat "$cached_build/build.log")"
+grep -q "^stage-install:$producer_dir:shared$" "$cached_build/calls" || fail 'cached producer did not restore its shared stage'
+grep -q "^package-install:$consumer_dir:shared$" "$cached_build/calls" || fail 'consumer did not use restored stage'
+if grep -Eq "^package-install:$producer_dir(:|$)" "$cached_build/calls"; then fail 'stage restore repackaged producer'; fi
+if grep -q "^compile:$consumer_dir$" "$cached_build/calls"; then fail 'consumer rebuilt after stage restore'; fi
+[ "$object_before" = "$("$CROSS_BULK_TEST_HOST_PYTHON" -c 'import os,sys; s=os.stat(sys.argv[1]); print(s.st_ino, s.st_mtime_ns)' "$cached_build/work/$producer_dir/objects/compiled.o")" ] || fail 'stage restore changed producer object'
+[ -f "$cached_build/work/$producer_dir/.${pair}-shared-full-stage/full-stage" ] || fail 'stage restore did not retain full stage'
+[ ! -e "$cached_build/work/$producer_dir/.${pair}-shared-full-stage/stale-metadata" ] || fail 'stale stage was reused'
+done
+
+# Never follow a stage symlink while recovering a prior producer.
+cached_link=$out/cached-runtime-stage-symlink
+setup "$cached_link"
+: > "$cached_link/packages/All/$producer_name.tgz"
+printf '%s\n' "$producer $producer_name cached" > "$cached_link/state/done"
+mkdir -p "$cached_link/work/$producer_dir" "$cached_link/outside"
+printf '%s\n' "$producer_name" > "$cached_link/work/$producer_dir/.build_done"
+printf 'untouched\n' > "$cached_link/outside/sentinel"
+ln -s "$cached_link/outside" "$cached_link/work/$producer_dir/.${pair}-shared-full-stage"
+link_rc=0
+CLEAN_SUCCESS=no run_build "$cached_link" || link_rc=$?
+[ "$link_rc" = 1 ] || fail "symlinked stage must fail, got $link_rc"
+grep -q "^$consumer shared-stage-restore$" "$cached_link/state/failed" || fail 'symlinked stage failure not reported'
+[ "$(cat "$cached_link/outside/sentinel")" = untouched ] || fail 'stage symlink target was modified'
+if grep -q "^compile:$consumer_dir$" "$cached_link/calls"; then fail 'symlink failure silently rebuilt consumer'; fi
+
+# A mismatched build cookie is not evidence of the current producer build.
+cached_stale=$out/cached-runtime-stale-build
+setup "$cached_stale"
+: > "$cached_stale/packages/All/$producer_name.tgz"
+printf '%s\n' "$producer $producer_name cached" > "$cached_stale/state/done"
+mkdir -p "$cached_stale/work/$producer_dir/objects"
+printf 'other-package-1\n' > "$cached_stale/work/$producer_dir/.build_done"
+printf 'retained object\n' > "$cached_stale/work/$producer_dir/objects/compiled.o"
+CLEAN_SUCCESS=no run_build "$cached_stale" || fail "stale build fallback: $(cat "$cached_stale/build.log")"
+if grep -q "^stage-install:$producer_dir" "$cached_stale/calls"; then fail 'stale producer build was reused'; fi
+grep -q "^compile:$consumer_dir$" "$cached_stale/calls" || fail 'stale producer did not fall back to consumer build'
+[ -f "$cached_stale/work/$producer_dir/objects/compiled.o" ] || fail 'stale producer objects were removed'
 
 stage_local=$out/stage-local
 setup "$stage_local"
