@@ -29,3 +29,15 @@ Node's normal resolver finds sibling modules in `lib/node_modules`, including
 scoped package names. Each source dependency therefore remains owned by one
 common recipe and package. Source-only module packaging does not validate the
 ABI, consumer API compatibility or target runtime behavior.
+
+The shared `javascript-projection.py` inspects one installed prefix and its
+pkgdb. Give it selected module roots and explicit external runtime versions.
+It returns the installed source-module closure with package ownership and
+source metadata, including the recorded SHA256 of the recipe distinfo file.
+That value is not the checksum of an individual downloaded archive. It checks
+each declared package dependency with the selected
+`pkg_admin` and validates JavaScript and mandatory peer ranges with the prefix
+common `semver` module. It does not choose, download or install
+versions. Unknown peers, missing owners, unsafe module files and incompatible
+ranges fail. Consumers can copy only the returned source modules and must keep
+external target runtimes outside the host prefix.
