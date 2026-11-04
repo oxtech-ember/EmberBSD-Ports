@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.276 2026/05/14 16:41:59 ryoon Exp $
 
 DISTNAME=	gnutls-3.8.13
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	security devel
 MASTER_SITES=	${MASTER_SITE_GNUPG:=gnutls/v${PKGVERSION_NOREV:R}/}
 EXTRACT_SUFX=	.tar.xz
@@ -20,7 +20,7 @@ USE_CXX_FEATURES=	c++11
 GCC_REQD+=		6
 
 USE_LIBTOOL=		yes
-USE_TOOLS+=		gmake gsed perl pkg-config bash
+USE_TOOLS+=		gmake gsed perl pkg-config bash:build
 USE_TOOLS+=		msgfmt msgmerge xgettext
 GNU_CONFIGURE=		yes
 # this library duplicates (and conflicts with) openssl

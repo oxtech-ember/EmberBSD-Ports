@@ -30,6 +30,10 @@ target='/usr/pkg/bin/bash|bash-[0-9]*:../../shells/bash'
     fail 'build-only (bash:build) scripts received the target Bash'
 [ "$(q yes 'bash:pkgsrc')" = '/host/bin/bash|' ] ||
     fail 'build-only (bash:pkgsrc) scripts received the target Bash'
+[ "$(q yes 'bash:test')" = '/host/bin/bash|' ] ||
+    fail 'test-only scripts received the target Bash'
+[ "$(q yes 'bash:test bash:run')" = '/usr/pkg/bin/bash|' ] ||
+    fail 'bash:run must take precedence over bash:test'
 [ "$(q yes '')" = "$target" ] ||
     fail 'installed REPLACE_BASH scripts lost the target Bash'
 [ "$(q yes 'bash:run')" = '/usr/pkg/bin/bash|' ] ||

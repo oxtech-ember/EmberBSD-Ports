@@ -1,6 +1,6 @@
 Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 Cross builds gave every REPLACE_BASH script the target Bash. A recipe that
-names only bash:build or bash:pkgsrc runs these scripts during the build
+names only bash:build, bash:pkgsrc or bash:test runs these scripts on the host
 (libvpx build/make/version.sh), where the target /usr/pkg/bin/bash does not
 exist on the build host. Such scripts keep the host BASH.
 
@@ -13,11 +13,11 @@ exist on the build host. Such scripts keep the host BASH.
 -      ${OPSYS} != ${NATIVE_OPSYS}
 +      ${OPSYS} != ${NATIVE_OPSYS} && \
 +      (!empty(USE_TOOLS:Mbash\:run) || \
-+       (empty(USE_TOOLS:Mbash\:build) && empty(USE_TOOLS:Mbash\:pkgsrc)))
++       (empty(USE_TOOLS:Mbash\:build) && empty(USE_TOOLS:Mbash\:pkgsrc) && empty(USE_TOOLS:Mbash\:test)))
  # Installed scripts need the target interpreter; BASH remains a host tool.
  # The scripts run on the target, so the package needs the target Bash.
-+# A recipe that names only bash:build or bash:pkgsrc runs its REPLACE_BASH
-+# scripts during the build, so they keep the host BASH.
++# A recipe that names only bash:build, bash:pkgsrc or bash:test runs its REPLACE_BASH
++# scripts on the host, so they keep the host BASH.
  REPLACE.sys-bash.new=	${CROSS_LOCALBASE}/bin/bash
  .    if empty(USE_TOOLS:Mbash\:run)
  DEPENDS+=		bash-[0-9]*:../../shells/bash
