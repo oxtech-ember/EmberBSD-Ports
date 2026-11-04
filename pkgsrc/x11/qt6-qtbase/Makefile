@@ -387,7 +387,7 @@ PLIST.x11=	yes
 .include "../../graphics/vulkan-headers/buildlink3.mk"
 .  if !empty(MESALIB_SUPPORTS_EGL:Myes) && empty(PKG_OPTIONS:Mvulkan-offscreen)
 PLIST.egl=	yes
-.    if defined(EMBERBSD_COMMON_GRAPHICS)
+.    if defined(EMBERBSD_COMMON_GRAPHICS) || (${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes")
 # The modern Mesa dependency guarantees EGLDevice. Require the compiled
 # feature too; early PLIST expansion must not depend on installed headers
 # or a buildlink prefix cached by a later package phase.
