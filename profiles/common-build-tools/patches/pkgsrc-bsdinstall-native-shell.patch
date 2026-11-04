@@ -1,4 +1,4 @@
-BSD install: bind an explicit initial native child shell.
+BSD install: bind an explicit initial native child shell and avoid a bootstrap checker cycle.
 
 Origin: EmberBSD, AI-assisted adaptation of the pinned pkgsrc bootstrap recipe.
 The upstream BSD source and copyright notices remain unchanged.
@@ -7,6 +7,16 @@ for strip arguments and after-install commands. TARGET_STRIP stays canonical.
 
 --- a/sysutils/bsdinstall/Makefile
 +++ b/sysutils/bsdinstall/Makefile
+@@ -13,6 +13,9 @@
+ POLICY_UPDATE_LIMITED=	bootstrap
+ 
+ BOOTSTRAP_PKG=	yes
++
++# checkperms itself requires this bootstrap installer.
++CHECK_PERMS=	no
+ 
+ USE_BSD_MAKEFILE=	yes
+ USE_FEATURES=		nbcompat
 @@ -29,6 +29,11 @@
  CPPFLAGS.SunOS+=	-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
  
