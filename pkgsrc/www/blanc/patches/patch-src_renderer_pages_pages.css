@@ -1,0 +1,17 @@
+$NetBSD$
+
+Use the independent Ember Browser icon and retain upstream attribution.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- src/renderer/pages/pages.css
++++ src/renderer/pages/pages.css
+@@ -5565,3 +5565,9 @@
+ 
+ .shared-spaces-notice { position: fixed; inset: auto 24px 24px auto; max-width: 28rem; padding: 1rem; border-radius: 16px; background: var(--surface, #fff); color: var(--text, #222); box-shadow: 0 8px 32px #0003; z-index: 100; }
+ .shared-spaces-notice button { margin-inline-end: .5rem; }
++
++/* Independent launch mark; the upstream sunrise artwork is not used. */
++.ember-launch:not([hidden]) { display: grid; place-items: center; background: #182631; animation: ember-launch-out 2.6s both; }
++.ember-launch-icon { width: min(25vw, 144px); animation: ember-launch-in 2.2s both; }
++@keyframes ember-launch-in { from { opacity: 0; transform: scale(.9); } 35%, 80% { opacity: 1; transform: scale(1); } to { opacity: 0; } }
++@keyframes ember-launch-out { 0%, 85% { opacity: 1; } to { opacity: 0; } }

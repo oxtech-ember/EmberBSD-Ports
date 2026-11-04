@@ -1,88 +1,27 @@
-# Blanc v1.25.0 source package on the separately packaged Electron runtime.
-# Upstream release commit: ff55d5948f5c71e802ba2ac464659ef96e055ca9.
+# Blanc v1.46.0 source package on the separately packaged Electron runtime.
+# Upstream release commit: 6479ed3a314e4fd6219b8de1598bacffa78b4d7c.
 # Shared pkgsrc owners are www/blanc and devel/electron44.
 # This recipe and its local portability patches were prepared with AI assistance.
 
-DISTNAME=	blanc-1.25.0
-PKGNAME=	ember-browser-1.25.0
-PKGREVISION=	1
+DISTNAME=	blanc-1.46.0
+PKGNAME=	ember-browser-1.46.0
 CATEGORIES=	www
-BLANC_SOURCE=	v1.25.0${EXTRACT_SUFX}
+BLANC_SOURCE=	v1.46.0${EXTRACT_SUFX}
 MASTER_SITES=	https://github.com/bnfy/blanc/archive/refs/tags/
-BLANC_NPM_DISTFILES= \
-	adblocker-2.18.2.tgz \
-	adblocker-content-2.18.2.tgz \
-	adblocker-electron-2.18.2.tgz \
-	adblocker-electron-preload-2.18.2.tgz \
-	adblocker-extended-selectors-2.18.2.tgz \
-	builder-util-runtime-9.7.0.tgz \
-	electron-updater-6.8.9.tgz \
-	fs-extra-10.1.0.tgz \
-	graceful-fs-4.2.11.tgz \
-	guess-url-type-2.1.0.tgz \
-	js-yaml-4.3.2.tgz \
-	jsonfile-6.2.1.tgz \
-	lazy-val-1.0.5.tgz \
-	lodash.escaperegexp-4.1.2.tgz \
-	lodash.isequal-4.5.0.tgz \
-	sax-1.6.0.tgz \
-	sdk-0.5.0.tgz \
-	sdk-core-0.5.0.tgz \
-	small-2.1.0.tgz \
-	smaz-2.2.0.tgz \
-	smaz-compress-2.2.0.tgz \
-	smaz-decompress-2.2.0.tgz \
-	tiny-typed-emitter-2.1.0.tgz \
-	tldts-core-7.4.10.tgz \
-	tldts-experimental-7.4.10.tgz \
-	trie-2.1.0.tgz \
-	universalify-2.0.1.tgz \
-	url-parser-1.3.1.tgz
-DISTFILES=	${BLANC_SOURCE} ${BLANC_NPM_DISTFILES}
+DISTFILES=	${BLANC_SOURCE}
 DIST_SUBDIR=	e12-electron
 EXTRACT_ONLY=	${BLANC_SOURCE}
 BLANC_ASAR_MIN_VERSION=	4.3.1
 
-SITES.adblocker-2.18.2.tgz=	https://registry.npmjs.org/@ghostery/adblocker/-/
-SITES.adblocker-content-2.18.2.tgz=	https://registry.npmjs.org/@ghostery/adblocker-content/-/
-SITES.adblocker-electron-2.18.2.tgz=	https://registry.npmjs.org/@ghostery/adblocker-electron/-/
-SITES.adblocker-electron-preload-2.18.2.tgz=	https://registry.npmjs.org/@ghostery/adblocker-electron-preload/-/
-SITES.adblocker-extended-selectors-2.18.2.tgz=	https://registry.npmjs.org/@ghostery/adblocker-extended-selectors/-/
-SITES.builder-util-runtime-9.7.0.tgz=	https://registry.npmjs.org/builder-util-runtime/-/
-SITES.electron-updater-6.8.9.tgz=	https://registry.npmjs.org/electron-updater/-/
-SITES.fs-extra-10.1.0.tgz=	https://registry.npmjs.org/fs-extra/-/
-SITES.graceful-fs-4.2.11.tgz=	https://registry.npmjs.org/graceful-fs/-/
-SITES.guess-url-type-2.1.0.tgz=	https://registry.npmjs.org/@remusao/guess-url-type/-/
-SITES.js-yaml-4.3.2.tgz=	https://registry.npmjs.org/js-yaml/-/
-SITES.jsonfile-6.2.1.tgz=	https://registry.npmjs.org/jsonfile/-/
-SITES.lazy-val-1.0.5.tgz=	https://registry.npmjs.org/lazy-val/-/
-SITES.lodash.escaperegexp-4.1.2.tgz=	https://registry.npmjs.org/lodash.escaperegexp/-/
-SITES.lodash.isequal-4.5.0.tgz=	https://registry.npmjs.org/lodash.isequal/-/
-SITES.sax-1.6.0.tgz=	https://registry.npmjs.org/sax/-/
-SITES.sdk-0.5.0.tgz=	https://registry.npmjs.org/@1password/sdk/-/
-SITES.sdk-core-0.5.0.tgz=	https://registry.npmjs.org/@1password/sdk-core/-/
-SITES.small-2.1.0.tgz=	https://registry.npmjs.org/@remusao/small/-/
-SITES.smaz-2.2.0.tgz=	https://registry.npmjs.org/@remusao/smaz/-/
-SITES.smaz-compress-2.2.0.tgz=	https://registry.npmjs.org/@remusao/smaz-compress/-/
-SITES.smaz-decompress-2.2.0.tgz=	https://registry.npmjs.org/@remusao/smaz-decompress/-/
-SITES.tiny-typed-emitter-2.1.0.tgz=	https://registry.npmjs.org/tiny-typed-emitter/-/
-SITES.tldts-core-7.4.10.tgz=	https://registry.npmjs.org/tldts-core/-/
-SITES.tldts-experimental-7.4.10.tgz=	https://registry.npmjs.org/tldts-experimental/-/
-SITES.trie-2.1.0.tgz=	https://registry.npmjs.org/@remusao/trie/-/
-SITES.universalify-2.0.1.tgz=	https://registry.npmjs.org/universalify/-/
-SITES.url-parser-1.3.1.tgz=	https://registry.npmjs.org/@ghostery/url-parser/-/
-
 MAINTAINER=	oxtech-ember@users.noreply.github.com
 HOMEPAGE=	https://github.com/bnfy/blanc
 COMMENT=	Ember Browser, based on Blanc and system Electron
+TOOL_DEPENDS+=	node-ghostery-adblocker-electron>=2.20.3:../../devel/node-ghostery-adblocker-electron
+TOOL_DEPENDS+=	node-readability>=0.6.0:../../devel/node-readability
+TOOL_DEPENDS+=	node-dompurify>=3.4.17:../../devel/node-dompurify
 TOOL_DEPENDS+=	node-electron-asar>=${BLANC_ASAR_MIN_VERSION}:../../devel/node-electron-asar
-TOOL_DEPENDS+=	node-argparse>=3.0.4:../../devel/node-argparse
 TOOL_DEPENDS+=	node-semver>=7.8.5:../../devel/node-semver
-TOOL_DEPENDS+=	node-debug>=4.4.3:../../devel/node-debug
-TOOL_DEPENDS+=	node-ms>=2.1.3:../../devel/node-ms
-LICENSE=	mit AND cc-by-sa-v3.0 AND ofl-v1.1 AND isc AND mpl-2.0 AND python-software-foundation AND blueoak-1.0.0
-# Blue Oak is not in the pinned pkgsrc license catalog. Keep its exact text
-# with the installed notices; users must explicitly accept blueoak-1.0.0.
+LICENSE=	mit AND apache-2.0 AND cc-by-sa-v3.0 AND ofl-v1.1 AND isc AND mpl-2.0
 
 # The unfiltered upstream archive includes reserved and third-party imagery.
 NO_SRC_ON_FTP=	Unfiltered upstream archive includes reserved identity artwork and third-party imagery.
@@ -92,9 +31,8 @@ BLANC_ELECTRON_RUNTIME_VERSION=	45.2.1
 BLANC_ELECTRON_PKGDIR=	../../devel/electron44
 BLANC_ELECTRON_DEPENDS=	electron>=${BLANC_ELECTRON_RUNTIME_VERSION}<45.2.2:${BLANC_ELECTRON_PKGDIR}
 BLANC_NODE_VERSION=	26.13.0
-BLANC_SOURCE_SHA256=	b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971
-BLANC_SOURCE_FILES_SHA256=	89932ab7cb1966bf5a00fe114945acad393f14493d0bcd3157c43d5c697a20c7
-BLANC_NPM_MANIFEST_SHA256=	4bf1d8a37632598f96d0c062150d2d1f4a3360a1f018b7bd35b1b5b4d180d1aa
+BLANC_SOURCE_SHA256=	cdba222bb036eee845716371d7d7aa3f66369bbfd4a40d11951e47d3f6a1f166
+BLANC_SOURCE_FILES_SHA256=	9dcf9dde9e6eefb843a864a67a58455c0d19a8f77c9a1ef7e5747d9773d9a768
 BUILD_HOST_NODE=	${EMBERBSD_HOST_NODE}
 BUILD_HOST_PYTHON=	${EMBERBSD_CROSS_BUILD_PYTHON}
 DEPENDS+=	${BLANC_ELECTRON_DEPENDS}
@@ -143,6 +81,7 @@ do-build: blanc-check-build-tools
 	    --source ${WRKSRC:Q} --distdir ${DISTDIR:Q}/${DIST_SUBDIR:Q} \
 	    --work ${WRKDIR:Q} --node ${BUILD_HOST_NODE:Q} \
 	    --host-prefix ${EMBERBSD_HOST_PREFIX:Q} \
+	    --projection ${_PKGSRCDIR:Q}/mk/emberbsd-js-projection.py \
 	    --source-archive-sha256 ${BLANC_SOURCE_SHA256:Q} \
 	    --source-files-sha256 ${BLANC_SOURCE_FILES_SHA256:Q} \
 	    --asar-min-version ${BLANC_ASAR_MIN_VERSION:Q} \
@@ -156,6 +95,7 @@ do-test: blanc-check-build-tools
 	    --source ${WRKSRC:Q} --distdir ${DISTDIR:Q}/${DIST_SUBDIR:Q} \
 	    --work ${WRKDIR:Q} --node ${BUILD_HOST_NODE:Q} \
 	    --host-prefix ${EMBERBSD_HOST_PREFIX:Q} \
+	    --projection ${_PKGSRCDIR:Q}/mk/emberbsd-js-projection.py \
 	    --source-archive-sha256 ${BLANC_SOURCE_SHA256:Q} \
 	    --source-files-sha256 ${BLANC_SOURCE_FILES_SHA256:Q} \
 	    --asar-min-version ${BLANC_ASAR_MIN_VERSION:Q} \
@@ -167,8 +107,7 @@ do-install:
 	${INSTALL_DATA} ${FILESDIR:Q}/ember-browser.svg ${DESTDIR:Q}${PREFIX:Q}/share/icons/hicolor/scalable/apps/org.emberbsd.browser.svg
 	${INSTALL_DATA} ${WRKDIR:Q}/app.asar ${DESTDIR:Q}${PREFIX:Q}/lib/ember-browser/app.asar
 	${INSTALL_DATA} ${WRKSRC:Q}/LICENSE ${WRKSRC:Q}/ASSET-LICENSE.md \
-	    ${WRKSRC:Q}/THIRD-PARTY-NOTICES.md ${WRKDIR:Q}/SBOM.json \
-	    ${FILESDIR:Q}/blueoak-1.0.0.txt \
+	    ${WRKSRC:Q}/THIRD-PARTY-NOTICES.md ${WRKSRC:Q}/TRADEMARKS.md ${WRKDIR:Q}/SBOM.json \
 	    ${DESTDIR:Q}${PREFIX:Q}/share/doc/ember-browser/
 	${SED} 's|@PREFIX@|${PREFIX}|g' ${FILESDIR:Q}/blanc.sh > ${WRKDIR:Q}/ember-browser
 	${INSTALL_SCRIPT} ${WRKDIR:Q}/ember-browser ${DESTDIR:Q}${PREFIX:Q}/bin/ember-browser

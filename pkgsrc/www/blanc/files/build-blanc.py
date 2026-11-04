@@ -5,7 +5,6 @@
 """Build a lockfile-closed Blanc ASAR with the system Electron runtime."""
 
 import argparse
-import base64
 import hashlib
 import importlib
 import json
@@ -19,7 +18,6 @@ import sys
 import tarfile
 import platform
 import tempfile
-from urllib.parse import urlsplit, quote
 
 
 MAX_ARCHIVE_BYTES = 512 * 1024 * 1024
@@ -28,33 +26,7 @@ MAX_TOOL_OUTPUT = 8 * 1024 * 1024
 NPM_NAME = re.compile(r'^(?:@[a-z0-9._~-]+/)?[a-z0-9._~-]+$')
 VERSION = re.compile(r'^[0-9]+\.[0-9]+\.[0-9]+$')
 HOST_NODE_VERSION = '26.13.0'
-SOURCE_ARCHIVE_SHA256 = 'b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971'
-COMMON_RUNTIME_OVERRIDES = {
-    'node_modules/argparse': {
-        'name': 'argparse', 'lockedVersion': '2.0.1', 'providerVersion': '3.0.4',
-        'pkgsrcPath': 'devel/node-argparse',
-        'consumers': [{'lockKey': 'node_modules/js-yaml', 'dependency': 'argparse',
-                       'lockedRange': '^2.0.1', 'effectiveRange': '^3.0.4'}],
-    },
-    'node_modules/debug': {
-        'name': 'debug', 'lockedVersion': '4.4.3', 'providerVersion': '4.4.3',
-        'pkgsrcPath': 'devel/node-debug',
-        'consumers': [{'lockKey': 'node_modules/builder-util-runtime', 'dependency': 'debug',
-                       'lockedRange': '^4.3.4', 'effectiveRange': '^4.3.4'}],
-    },
-    'node_modules/electron-updater/node_modules/semver': {
-        'name': 'semver', 'lockedVersion': '7.7.4', 'providerVersion': '7.8.5',
-        'pkgsrcPath': 'devel/node-semver',
-        'consumers': [{'lockKey': 'node_modules/electron-updater', 'dependency': 'semver',
-                       'lockedRange': '~7.7.3', 'effectiveRange': '^7.8.5'}],
-    },
-    'node_modules/ms': {
-        'name': 'ms', 'lockedVersion': '2.1.3', 'providerVersion': '2.1.3',
-        'pkgsrcPath': 'devel/node-ms',
-        'consumers': [{'lockKey': 'node_modules/debug', 'dependency': 'ms',
-                       'lockedRange': '^2.1.3', 'effectiveRange': '^2.1.3'}],
-    },
-}
+SOURCE_ARCHIVE_SHA256 = 'cdba222bb036eee845716371d7d7aa3f66369bbfd4a40d11951e47d3f6a1f166'
 
 
 class BuildError(Exception):
@@ -176,63 +148,6 @@ def copy_allowlist(source_root, relative_paths, destination_root):
     return seen
 
 
-def resolve_package(packages, parent, name):
-    require(NPM_NAME.fullmatch(name) is not None, f'invalid NPM dependency name: {name!r}')
-    directory = parent
-    while True:
-        candidate = (directory + '/' if directory else '') + 'node_modules/' + name
-        if candidate in packages:
-            return candidate
-        parent_directory = posixpath.dirname(directory) if directory else '.'
-        if parent_directory in ('.', 'node_modules'):
-            break
-        directory = parent_directory
-    root_key = 'node_modules/' + name
-    return root_key if root_key in packages else None
-
-
-def lock_closure(lock):
-    require(lock.get('lockfileVersion') == 3, 'Blanc requires package-lock version 3')
-    packages = lock.get('packages')
-    require(isinstance(packages, dict) and isinstance(packages.get(''), dict),
-            'package-lock.json has no root package entry')
-    selected = {}
-    roles = {}
-    edges = {}
-
-    def visit(key, role):
-        require(key != 'node_modules/electron',
-                'Electron must use the system package, not the Electron NPM package')
-        if key in selected:
-            roles[key].add(role)
-            return
-        entry = packages.get(key)
-        require(isinstance(entry, dict) and not entry.get('link'),
-                f'unsupported lockfile entry: {key}')
-        selected[key] = entry
-        roles[key] = {role}
-        edges[key] = set()
-        dependencies = set(entry.get('dependencies', {})) | set(entry.get('optionalDependencies', {}))
-        for name in sorted(dependencies):
-            child = resolve_package(packages, key, name)
-            if child is None and name in entry.get('optionalDependencies', {}):
-                continue
-            require(child is not None, f'missing locked dependency: {key} -> {name}')
-            edges[key].add(child)
-            visit(child, role)
-
-    root = packages['']
-    for name in sorted(root.get('dependencies', {})):
-        key = resolve_package(packages, '', name)
-        require(key is not None, f'missing runtime dependency: {name}')
-        visit(key, 'runtime')
-    require('@electron/asar' in root.get('devDependencies', {}),
-            'upstream Blanc package-lock must declare @electron/asar as a build tool')
-    require(resolve_package(packages, '', '@electron/asar') is not None,
-            'upstream package-lock has no @electron/asar build-tool entry')
-    return packages, selected, roles, edges
-
-
 def resolve_asar_provider(native, jsonio, minimum_version):
     """Select the common @electron/asar module installed in the native prefix."""
     require(VERSION.fullmatch(minimum_version) is not None,
@@ -294,218 +209,6 @@ def test_asar_pack_roundtrip(stream, node, wrapper, asar_tool, native, work):
 
 def digest_file(inventory, path, algorithm):
     return inventory.hash_file(str(path), algorithm)
-
-
-def archive_members(path):
-    try:
-        archive = tarfile.open(path, 'r:gz')
-    except (OSError, tarfile.TarError) as exc:
-        raise BuildError(f'invalid NPM archive {path.name}: {exc}') from exc
-    try:
-        members = archive.getmembers()
-        names = set()
-        folded = set()
-        total = 0
-        for member in members:
-            name = member.name
-            normalized = name[:-1] if name.endswith('/') else name
-            parts = safe_parts(normalized)
-            require(parts[0] == 'package', f'archive member is outside package/: {name}')
-            require(member.isdir() or member.isreg(), f'link or special archive member: {name}')
-            require(normalized not in names, f'duplicate archive member: {name}')
-            require(normalized.casefold() not in folded, f'case-colliding archive member: {name}')
-            names.add(normalized)
-            folded.add(normalized.casefold())
-            if member.isreg():
-                require(0 <= member.size <= MAX_MEMBER_BYTES, f'oversized NPM archive member: {name}')
-                total += member.size
-        require(total <= MAX_ARCHIVE_BYTES, f'expanded NPM package is too large: {path.name}')
-        require('package/package.json' in names, f'NPM archive has no package/package.json: {path.name}')
-        return archive, members
-    except BaseException:
-        archive.close()
-        raise
-
-
-def extract_verified_package(jsonio, archive_path, destination, expected_name, expected_version):
-    require(not destination.exists(), f'refusing existing package directory: {destination}')
-    destination.mkdir(parents=True)
-    archive, members = archive_members(archive_path)
-    try:
-        for member in members:
-            normalized = member.name[:-1] if member.name.endswith('/') else member.name
-            parts = safe_parts(normalized)[1:]
-            if not parts:
-                continue
-            target = destination.joinpath(*parts)
-            if member.isdir():
-                target.mkdir(parents=True, exist_ok=True)
-                continue
-            target.parent.mkdir(parents=True, exist_ok=True)
-            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_NOFOLLOW', 0)
-            fd = os.open(target, flags, 0o644)
-            source = archive.extractfile(member)
-            require(source is not None, f'cannot read NPM archive member: {member.name}')
-            remaining = member.size
-            try:
-                with source, os.fdopen(fd, 'wb') as output:
-                    while remaining:
-                        chunk = source.read(min(1024 * 1024, remaining))
-                        require(bool(chunk), f'truncated NPM archive member: {member.name}')
-                        output.write(chunk)
-                        remaining -= len(chunk)
-            except BaseException:
-                try:
-                    os.unlink(target)
-                except FileNotFoundError:
-                    pass
-                raise
-            lowered = target.name.lower()
-            require(not lowered.endswith(('.node', '.so', '.dylib', '.dll')),
-                    f'native NPM dependency is not supported: {member.name}')
-        package = read_object(jsonio, destination / 'package.json', expected_name)
-        require(package.get('name') == expected_name and package.get('version') == expected_version,
-                f'NPM metadata does not match the lockfile: {expected_name}@{expected_version}')
-        require(not package.get('os') and not package.get('cpu'),
-                f'platform-specific package is not supported: {expected_name}')
-        scripts = package.get('scripts', {})
-        require(not any(name in scripts for name in ('install', 'preinstall', 'postinstall')),
-                f'package lifecycle scripts are not run or accepted: {expected_name}')
-        return package
-    finally:
-        archive.close()
-
-
-def apply_consumer_range_overrides(jsonio, packages, runtime_root, package_metadata,
-                                  providers, manifest_overrides):
-    for override in manifest_overrides.values():
-        for consumer in override['consumers']:
-            parent_key = consumer['lockKey']
-            parent_entry = packages.get(parent_key)
-            require(isinstance(parent_entry, dict),
-                    f'runtime override consumer is missing from package-lock: {parent_key}')
-            dependency = consumer['dependency']
-            locked_range = parent_entry.get('dependencies', {}).get(dependency)
-            require(locked_range == consumer['lockedRange'],
-                    f'upstream dependency range changed for {parent_key} -> {dependency}: {locked_range}')
-            parent_name = parent_key.rsplit('node_modules/', 1)[1]
-            parent_metadata = package_metadata[parent_key]
-            declared = parent_metadata.get('dependencies', {}).get(dependency)
-            require(declared == locked_range,
-                    f'package metadata range differs from lock for {parent_key} -> {dependency}')
-            if consumer['effectiveRange'] == locked_range:
-                continue
-            parent_metadata['dependencies'][dependency] = consumer['effectiveRange']
-            package_file = runtime_root / parent_name / 'package.json'
-            package_file.write_bytes(jsonio.json_bytes(parent_metadata))
-            if parent_key in providers:
-                providers[parent_key]['consumerOverrides'].append({
-                    'dependency': dependency,
-                    'lockedRange': locked_range,
-                    'effectiveRange': consumer['effectiveRange'],
-                    'consumer': parent_key,
-                })
-    return providers
-
-
-def stage_dependencies(jsonio, inventory, source_root, dist_dir, runtime_root,
-                       npm_manifest, expected_manifest_sha256, native):
-    manifest_bytes_sha = digest_file(inventory, npm_manifest, 'sha256')
-    require(manifest_bytes_sha == expected_manifest_sha256,
-            'NPM mirror manifest does not match its recipe checksum')
-    lock_path = source_root / 'package-lock.json'
-    lock_bytes_sha = digest_file(inventory, lock_path, 'sha256')
-    manifest = read_object(jsonio, npm_manifest, 'NPM mirror manifest')
-    require(manifest.get('sourceLockSha256') == lock_bytes_sha,
-            'NPM mirror manifest does not match package-lock.json')
-    require(manifest.get('hostBuildTool') == {
-        'name': '@electron/asar', 'pkgsrcPath': 'devel/node-electron-asar',
-    }, 'NPM mirror manifest must identify the common external ASAR build tool')
-    runtime_overrides = manifest.get('runtimeOverrides')
-    require(isinstance(runtime_overrides, list),
-            'NPM mirror manifest must declare common runtime module overrides')
-    overrides_by_key = {row.get('lockKey'): row for row in runtime_overrides if isinstance(row, dict)}
-    require(len(overrides_by_key) == len(runtime_overrides) == len(COMMON_RUNTIME_OVERRIDES),
-            'common runtime override set is incomplete or duplicated')
-    for key, expected in COMMON_RUNTIME_OVERRIDES.items():
-        row = overrides_by_key.get(key)
-        require(row == {'lockKey': key, **expected},
-                f'common runtime override differs from the reviewed contract: {key}')
-    lock = read_object(jsonio, lock_path, 'package-lock.json')
-    packages, selected, roles, edges = lock_closure(lock)
-    rows = manifest.get('packages')
-    require(isinstance(rows, list), 'NPM manifest packages must be a list')
-    rows_by_key = {row.get('lockKey'): row for row in rows if isinstance(row, dict)}
-    require(set(overrides_by_key).issubset(selected),
-            'common runtime override is not present in the upstream runtime closure')
-    require(len(rows_by_key) == len(rows) == len(selected) - len(overrides_by_key),
-            'NPM archive manifest package count differs from the non-overridden lock closure')
-    archives = {}
-    for key in sorted(selected):
-        entry = selected[key]
-        override = overrides_by_key.get(key)
-        if override:
-            require(entry.get('name', override['name']) == override['name'] and
-                    entry.get('version') == override['lockedVersion'],
-                    f'upstream lock entry changed for common runtime override: {key}')
-            continue
-        row = rows_by_key.get(key)
-        require(row is not None, f'missing NPM mirror manifest entry: {key}')
-        require(row.get('version') == entry.get('version') and
-                row.get('resolved') == entry.get('resolved') and
-                row.get('integrity') == entry.get('integrity'),
-                f'NPM mirror metadata differs from package-lock.json: {key}')
-        require(roles[key] == {'runtime'} and row.get('role') == 'runtime',
-                f'NPM package is not part of the runtime-only archive closure: {key}')
-        url = urlsplit(entry.get('resolved', ''))
-        require(url.scheme == 'https' and url.hostname == 'registry.npmjs.org' and
-                not url.username and not url.password and not url.query and not url.fragment,
-                f'unapproved NPM dependency source: {entry.get("resolved")}')
-        filename = PurePosixPath(url.path).name
-        require(row.get('distfile') == filename, f'NPM distfile name mismatch: {key}')
-        require(not entry.get('hasInstallScript') and not entry.get('os') and not entry.get('cpu'),
-                f'scripted or platform-specific dependency: {key}')
-        archive_path = dist_dir / filename
-        info = os.lstat(archive_path)
-        require(stat.S_ISREG(info.st_mode) and info.st_size == row.get('size'),
-                f'NPM archive size mismatch: {key}')
-        sha512 = digest_file(inventory, archive_path, 'sha512')
-        sha256 = digest_file(inventory, archive_path, 'sha256')
-        require(sha512 == row.get('sha512') and sha256 == row.get('sha256'),
-                f'NPM archive checksum mismatch: {key}')
-        require('sha512-' + base64.b64encode(bytes.fromhex(sha512)).decode('ascii') == entry.get('integrity'),
-                f'NPM lock integrity mismatch: {key}')
-        archives[key] = (archive_path, row)
-    require(not runtime_root.exists(), 'refusing to reuse a nonempty runtime dependency directory')
-    runtime_root.mkdir(parents=True)
-    package_metadata = {}
-    providers = {}
-    for key in sorted(selected):
-        entry = selected[key]
-        name = key.rsplit('node_modules/', 1)[1]
-        override = overrides_by_key.get(key)
-        if override:
-            provider = resolve_common_runtime_provider(native, jsonio, key, override)
-            require(provider['version'] == override['providerVersion'],
-                    f'common runtime provider version changed: {key}')
-            copy_module_tree(provider['package_dir'], runtime_root / name)
-            package_metadata[key] = provider['metadata']
-            providers[key] = {
-                key_name: provider[key_name]
-                for key_name in ('key', 'name', 'version', 'package_path', 'module_path', 'metadata', 'consumers')
-            }
-            providers[key]['consumerOverrides'] = []
-            continue
-        archive_path, _row = archives[key]
-        package_metadata[key] = extract_verified_package(
-            jsonio, archive_path, runtime_root / name, name, entry['version'])
-    apply_consumer_range_overrides(jsonio, packages, runtime_root, package_metadata,
-                                   providers, overrides_by_key)
-    require(not (runtime_root / 'electron').exists(),
-            'the system Electron runtime must not be copied into Blanc')
-    require(not (runtime_root / '@electron' / 'asar').exists(),
-            'the external build-only ASAR packer must not be copied into Blanc')
-    return lock, packages, selected, roles, edges, rows_by_key, package_metadata, providers, runtime_overrides
 
 
 def copy_module_tree(source, destination):
@@ -597,10 +300,6 @@ def validate_runtime_dependency(version, package_path, dependency):
     return expected_path, expected
 
 
-def make_ref(name, version):
-    return f'pkg:npm/{quote(name, safe="/-._~")}@{version}'
-
-
 def package_license(metadata):
     value = metadata.get('license')
     if value is None:
@@ -610,189 +309,89 @@ def package_license(metadata):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
 
 
-def make_sbom(source_manifest, lock, selected, roles, edges, rows, package_metadata,
-              app_asar, node_version, electron_version, electron_pkgpath, electron_dependency,
-              asar_tool, node_sha256, python_version, python_sha256, runtime_providers,
-              runtime_overrides):
-    runtime_path, dependency = validate_runtime_dependency(
-        electron_version, electron_pkgpath, electron_dependency)
-    lock_sha = source_manifest['packageLockSha256']
-    asar_hash = hashlib.sha256(app_asar.read_bytes()).hexdigest()
-    root_ref = 'pkg:generic/ember-browser@1.25.0'
-    electron_ref = f'pkgsrc:devel/electron44@{electron_version}'
-    components = [{
-        'type': 'framework',
-        'bom-ref': electron_ref,
-        'name': 'Electron',
-        'version': electron_version,
-        'scope': 'required',
-        'properties': [
-            {'name': 'emberbsd:external', 'value': 'true'},
-            {'name': 'emberbsd:bundled', 'value': 'false'},
-            {'name': 'emberbsd:pkgsrcPath', 'value': runtime_path},
-            {'name': 'emberbsd:dependency', 'value': dependency},
-        ],
-    }]
-    refs = {}
-    for key in sorted(selected):
-        entry = selected[key]
-        provider = runtime_providers.get(key)
-        row = rows.get(key)
-        metadata = package_metadata[key]
-        name = provider['name'] if provider else row['name']
-        version = provider['version'] if provider else entry['version']
-        ref = (f"pkgsrc:{provider['package_path']}@{provider['version']}" if provider
-               else make_ref(name, version))
-        refs[key] = ref
-        declared_license = package_license(metadata)
-        component = {
-            'type': 'library',
-            'bom-ref': ref,
-            'name': name,
-            'version': version,
-            'scope': 'required' if 'runtime' in roles[key] else 'excluded',
-            'properties': [
-                {'name': 'emberbsd:lockKey', 'value': key},
-                {'name': 'emberbsd:role', 'value': '+'.join(sorted(roles[key]))},
-                {'name': 'emberbsd:npmLicense', 'value': package_license(metadata)},
-            ],
-        }
-        if provider:
-            component['properties'].extend([
-                {'name': 'emberbsd:commonProvider', 'value': 'true'},
-                {'name': 'emberbsd:bundled', 'value': 'true'},
-                {'name': 'emberbsd:pkgsrcPath', 'value': provider['package_path']},
-                {'name': 'emberbsd:modulePath', 'value': provider['module_path']},
-                {'name': 'emberbsd:upstreamLockVersion', 'value': entry['version']},
-            ])
-        else:
-            component['hashes'] = [
-                {'alg': 'SHA-512', 'content': row['sha512']},
-                {'alg': 'SHA-256', 'content': row['sha256']},
-            ]
-        if declared_license != 'NOASSERTION':
-            component['licenses'] = [{'license': {'name': declared_license}}]
+def project_runtime(stream, jsonio, native, work, projection_path, electron_version, runtime_root):
+    """Copy the already installed common runtime after the shared owner verifies it."""
+    projection = Path(projection_path).resolve(strict=True)
+    prefix = Path(native.bundle_root).resolve(strict=True)
+    pkg_admin = (prefix / 'sbin/pkg_admin').resolve(strict=True)
+    require(pkg_admin.is_relative_to(prefix) and pkg_admin.is_file(),
+            'pkg_admin must belong to the selected native prefix')
+    from emberbsd_sdk import host_prefix
+    try:
+        host_prefix.validate_host_executable(str(prefix), str(pkg_admin), native.host, search_path=native.path)
+    except host_prefix.SDKError as exc:
+        raise BuildError(str(exc)) from exc
+    roots = ('@ghostery/adblocker-electron=devel/node-ghostery-adblocker-electron',
+             '@mozilla/readability=devel/node-readability', 'dompurify=devel/node-dompurify')
+    command = [str(native.tool('python')), '-B', '-I', '-S', str(projection),
+               '--prefix', str(prefix), '--node', str(native.tool('node')),
+               '--pkg-admin', str(pkg_admin), '--runtime', 'electron=' + electron_version]
+    for root in roots:
+        command += ['--root', root]
+    result = jsonio.loads_json(run_host_tool(stream, command, cwd=work,
+                                               env=child_environment(native, work)))
+    require(isinstance(result, dict) and result.get('schemaVersion') == 1 and
+            isinstance(result.get('modules'), list), 'invalid common JS projection result')
+    rows = result['modules']
+    require(rows and len({row['name'] for row in rows}) == len(rows), 'invalid projected module names')
+    runtime_root.mkdir(parents=True)
+    for row in rows:
+        name = row['name']
+        require(NPM_NAME.fullmatch(name) and row['modulePath'] == 'lib/node_modules/' + name,
+                'invalid projected module path')
+        source = prefix / row['modulePath']
+        copy_module_tree(source, runtime_root / name)
+    return rows
+
+
+def make_projected_sbom(source_manifest, lock, rows, app_asar, node_version,
+                        electron_version, electron_pkgpath, electron_dependency,
+                        asar_tool, node_sha256, python_version, python_sha256):
+    runtime_path, dependency = validate_runtime_dependency(electron_version, electron_pkgpath, electron_dependency)
+    root_ref = 'pkg:generic/ember-browser@1.46.0'
+    electron_ref = f'pkgsrc:{runtime_path}@{electron_version}'
+    refs = {row['name']: f"pkgsrc:{row['pkgpath']}@{row['version']}" for row in rows}
+    components = [{'type': 'framework', 'bom-ref': electron_ref, 'name': 'Electron',
+                   'version': electron_version, 'scope': 'required', 'properties': [
+                       {'name': 'emberbsd:pkgsrcPath', 'value': runtime_path},
+                       {'name': 'emberbsd:dependency', 'value': dependency},
+                       {'name': 'emberbsd:bundled', 'value': 'false'}]}]
+    dependencies = [{'ref': electron_ref, 'dependsOn': []}]
+    for row in rows:
+        properties = [{'name': 'emberbsd:pkgsrcPath', 'value': row['pkgpath']},
+                      {'name': 'emberbsd:packageName', 'value': row['pkgname']},
+                      {'name': 'emberbsd:distinfoSha256', 'value': row['distinfoSha256']},
+                      {'name': 'emberbsd:buildVersionSha256', 'value': row['buildVersionSha256']}]
+        component = {'type': 'library', 'bom-ref': refs[row['name']], 'name': row['name'],
+                     'version': row['version'], 'scope': 'required', 'properties': properties}
+        if isinstance(row['license'], str) and row['license'] != 'NOASSERTION':
+            component['licenses'] = [{'license': {'name': row['license']}}]
         components.append(component)
-    root_dev = lock.get('packages', {}).get('', {}).get('devDependencies', {})
-    locked_dev_packages = lock.get('packages', {})
-    upstream_dev_electron = locked_dev_packages.get('node_modules/electron', {})
-    root = {
-        'type': 'application',
-        'bom-ref': root_ref,
-        'name': 'Ember Browser',
-        'version': '1.25.0',
-        'licenses': [{'license': {'id': 'MIT'}}],
-        'hashes': [{'alg': 'SHA-256', 'content': asar_hash}],
-        'properties': [
-            {'name': 'emberbsd:upstreamName', 'value': 'Blanc'},
-            {'name': 'emberbsd:upstreamVersion', 'value': '1.25.0'},
-            {'name': 'emberbsd:upstreamCommit', 'value': source_manifest['upstreamCommit']},
-            {'name': 'emberbsd:sourceArchiveSha256', 'value': source_manifest['sourceArchiveSha256']},
-            {'name': 'emberbsd:packageLockSha256', 'value': lock_sha},
-            {'name': 'emberbsd:sourceFileAllowlistSha256', 'value': source_manifest['allowlistSha256']},
-            {'name': 'emberbsd:hostNode', 'value': node_version},
-            {'name': 'emberbsd:systemElectron', 'value': electron_version},
-            {'name': 'emberbsd:systemElectronBundled', 'value': 'false'},
-            {'name': 'emberbsd:upstreamDevelopmentElectronVersion',
-             'value': upstream_dev_electron.get('version', 'NOASSERTION')},
-            {'name': 'emberbsd:upstreamDevelopmentElectronRange',
-             'value': root_dev.get('electron', 'NOASSERTION')},
-            {'name': 'emberbsd:upstreamDevelopmentElectronBundled', 'value': 'false'},
-            {'name': 'emberbsd:runtimeDependencyOverrides',
-             'value': json.dumps(runtime_overrides, sort_keys=True, separators=(',', ':'))},
-        ],
-    }
-    root_package = lock['packages']['']
-    root_refs = []
-    for name in sorted(root_package.get('dependencies', {})):
-        key = resolve_package(lock['packages'], '', name)
-        require(key in refs and 'runtime' in roles[key], f'SBOM root dependency is not staged: {name}')
-        root_refs.append(refs[key])
-    all_refs = [electron_ref] + root_refs
-    dependencies = [{'ref': root_ref, 'dependsOn': all_refs}]
-    dependencies.append({'ref': electron_ref, 'dependsOn': []})
-    for key in sorted(selected):
-        if 'runtime' not in roles[key]:
-            continue
-        child_refs = sorted(refs[child] for child in edges[key] if 'runtime' in roles[child])
-        dependencies.append({'ref': refs[key], 'dependsOn': child_refs})
-    build_tools = [
-        {'type': 'application', 'name': 'CPython', 'version': python_version,
-         'scope': 'excluded', 'hashes': [{'alg': 'SHA-256', 'content': python_sha256}],
-         'properties': [{'name': 'emberbsd:role', 'value': 'host-build-only'}]},
-        {'type': 'application', 'name': 'Node.js', 'version': node_version,
-         'scope': 'excluded', 'hashes': [{'alg': 'SHA-256', 'content': node_sha256}],
-         'properties': [{'name': 'emberbsd:role', 'value': 'host-build-only'}]},
-        {'type': 'library', 'bom-ref': f"pkgsrc:{asar_tool['package_path']}@{asar_tool['version']}",
-         'name': asar_tool['name'], 'version': asar_tool['version'], 'scope': 'excluded',
-         'properties': [
-             {'name': 'emberbsd:role', 'value': 'host-build-only'},
-             {'name': 'emberbsd:external', 'value': 'true'},
-             {'name': 'emberbsd:pkgsrcPath', 'value': asar_tool['package_path']},
-             {'name': 'emberbsd:modulePath', 'value': asar_tool['module_path']},
-         ],
-         **({'licenses': [{'license': {'name': asar_tool['license']}}]}
-            if asar_tool.get('license') != 'NOASSERTION' else {})},
-    ]
-    return {
-        'bomFormat': 'CycloneDX',
-        'specVersion': '1.5',
-        'version': 1,
-        'metadata': {
-            'timestamp': source_manifest['upstreamCommitTimestamp'],
-            'component': root,
-            'tools': {'components': build_tools},
-            'properties': [
-                {'name': 'emberbsd:sdkApiVersion', 'value': '1'},
-                {'name': 'emberbsd:sdkProducerStreamApiVersion', 'value': '1'},
-                {'name': 'emberbsd:sdkProducerInspectionApiVersion', 'value': '1'},
-            ],
-        },
-        'components': components,
-        'dependencies': dependencies,
-    }
-
-
-def resolve_common_runtime_provider(native, jsonio, key, specification):
-    """Resolve and validate one common pure-JS package from the selected prefix."""
-    name = specification['name']
-    try:
-        bundle_root = Path(native.bundle_root).resolve(strict=True)
-        package_dir = (bundle_root / 'lib/node_modules' / name).resolve(strict=True)
-        package_dir.relative_to(bundle_root)
-    except (OSError, ValueError) as exc:
-        raise BuildError(f'common runtime provider is missing or outside the selected prefix: {name}: {exc}') from exc
-    package_file = package_dir / 'package.json'
-    try:
-        require(stat.S_ISREG(os.lstat(package_file).st_mode),
-                f'common runtime provider package metadata is not a regular file: {name}')
-        metadata = read_object(jsonio, package_file, f'common runtime provider metadata for {name}')
-    except OSError as exc:
-        raise BuildError(f'cannot inspect common runtime provider {name}: {exc}') from exc
-    require(metadata.get('name') == name,
-            f'common runtime provider name does not match lock entry: {key}')
-    require(metadata.get('version') == specification['providerVersion'],
-            f'common runtime provider version mismatch for {name}: expected {specification["providerVersion"]}')
-    require(not metadata.get('os') and not metadata.get('cpu'),
-            f'common runtime provider is platform-specific: {name}')
-    scripts = metadata.get('scripts', {})
-    require(not any(event in scripts for event in ('install', 'preinstall', 'postinstall')),
-            f'common runtime provider has an install lifecycle: {name}')
-    for current, dirs, files in os.walk(package_dir, topdown=True, followlinks=False):
-        for item in dirs + files:
-            path = Path(current) / item
-            mode = os.lstat(path).st_mode
-            require(stat.S_ISDIR(mode) or stat.S_ISREG(mode),
-                    f'common runtime provider contains a link or special file: {name}/{path.relative_to(package_dir)}')
-            require(not (stat.S_ISREG(mode) and path.suffix == '.node'),
-                    f'common runtime provider contains a native addon: {name}/{path.relative_to(package_dir)}')
-    return {
-        'key': key, 'name': name, 'version': metadata['version'],
-        'package_path': specification['pkgsrcPath'],
-        'module_path': 'lib/node_modules/' + name,
-        'package_dir': package_dir, 'metadata': metadata,
-        'consumers': specification['consumers'],
-    }
+        children = set(row['dependencies']) | set(row['peers'])
+        require(children <= set(refs) | {'electron'}, 'unknown projected SBOM dependency')
+        dependencies.append({'ref': refs[row['name']], 'dependsOn': sorted(
+            electron_ref if name == 'electron' else refs[name] for name in children)})
+    root_names = ('@ghostery/adblocker-electron', '@mozilla/readability', 'dompurify')
+    require(all(name in refs for name in root_names), 'missing projected SBOM root')
+    dependencies.insert(0, {'ref': root_ref, 'dependsOn': [electron_ref] + [refs[name] for name in root_names]})
+    root = {'type': 'application', 'bom-ref': root_ref, 'name': 'Ember Browser', 'version': '1.46.0',
+            'licenses': [{'license': {'id': 'MIT'}}],
+            'hashes': [{'alg': 'SHA-256', 'content': hashlib.sha256(app_asar.read_bytes()).hexdigest()}],
+            'properties': [{'name': 'emberbsd:upstreamName', 'value': 'Blanc'},
+                           {'name': 'emberbsd:upstreamVersion', 'value': '1.46.0'},
+                           {'name': 'emberbsd:upstreamCommit', 'value': source_manifest['upstreamCommit']},
+                           {'name': 'emberbsd:sourceArchiveSha256', 'value': source_manifest['sourceArchiveSha256']},
+                           {'name': 'emberbsd:packageLockSha256', 'value': source_manifest['packageLockSha256']},
+                           {'name': 'emberbsd:sourceFileAllowlistSha256', 'value': source_manifest['allowlistSha256']}]}
+    tools = [{'type': 'application', 'name': 'CPython', 'version': python_version,
+              'hashes': [{'alg': 'SHA-256', 'content': python_sha256}]},
+             {'type': 'application', 'name': 'Node.js', 'version': node_version,
+              'hashes': [{'alg': 'SHA-256', 'content': node_sha256}]},
+             {'type': 'library', 'name': asar_tool['name'], 'version': asar_tool['version']}]
+    return {'bomFormat': 'CycloneDX', 'specVersion': '1.5', 'version': 1,
+            'metadata': {'timestamp': source_manifest['upstreamCommitTimestamp'], 'component': root,
+                         'tools': {'components': tools}},
+            'components': components, 'dependencies': dependencies}
 
 
 def check_source_files(jsonio, inventory, source_root, manifest_path, expected_sha):
@@ -800,8 +399,8 @@ def check_source_files(jsonio, inventory, source_root, manifest_path, expected_s
     require(actual_sha == expected_sha, 'upstream source allowlist does not match the recipe checksum')
     source_manifest = read_object(jsonio, manifest_path, 'upstream source allowlist')
     require(source_manifest.get('schemaVersion') == 2 and
-            source_manifest.get('upstreamCommit') == 'ff55d5948f5c71e802ba2ac464659ef96e055ca9' and
-            source_manifest.get('packageVersion') == '1.25.0',
+            source_manifest.get('upstreamCommit') == '6479ed3a314e4fd6219b8de1598bacffa78b4d7c' and
+            source_manifest.get('packageVersion') == '1.46.0',
             'upstream source allowlist provenance mismatch')
     app_paths = source_manifest.get('applicationFiles')
     build_paths = source_manifest.get('buildInputs')
@@ -828,14 +427,14 @@ def extract_source_allowlist(jsonio, inventory, archive_path, destination, manif
     require(re.fullmatch(r'[0-9a-f]{64}', expected_archive_sha) is not None,
             'invalid pinned Blanc source archive checksum')
     require(digest_file(inventory, archive_path, 'sha256') == expected_archive_sha,
-            'Blanc source distfile checksum differs from the v1.25.0 release archive')
+            'Blanc source distfile checksum differs from the v1.46.0 release archive')
     manifest_sha = digest_file(inventory, manifest_path, 'sha256')
     require(manifest_sha == expected_manifest_sha,
             'upstream source allowlist does not match the recipe checksum')
     manifest = read_object(jsonio, manifest_path, 'upstream source allowlist')
     require(manifest.get('schemaVersion') == 2 and
-            manifest.get('upstreamCommit') == 'ff55d5948f5c71e802ba2ac464659ef96e055ca9' and
-            manifest.get('packageVersion') == '1.25.0',
+            manifest.get('upstreamCommit') == '6479ed3a314e4fd6219b8de1598bacffa78b4d7c' and
+            manifest.get('packageVersion') == '1.46.0',
             'upstream source allowlist provenance mismatch')
     app_paths = manifest.get('applicationFiles')
     build_paths = manifest.get('buildInputs')
@@ -856,7 +455,7 @@ def extract_source_allowlist(jsonio, inventory, archive_path, destination, manif
     require(not destination.exists(), f'refusing existing extracted source: {destination}')
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.mkdir(mode=0o755)
-    archive_prefix = 'blanc-1.25.0/'
+    archive_prefix = 'blanc-1.46.0/'
     found = set()
     try:
         with tarfile.open(archive_path, mode='r|gz') as archive:
@@ -897,6 +496,22 @@ def extract_source_allowlist(jsonio, inventory, archive_path, destination, manif
     return len(found)
 
 
+RESERVED_COLORWAYS = frozenset(('sunrise', 'sunrise-dark', 'paper', 'ink', 'graphite',
+                                'default', 'midnight', 'cream', 'forest', 'sage', 'ember', 'plum', 'gold'))
+
+
+def reserved_artwork(path):
+    path = PurePosixPath(path)
+    if str(path) == 'src/renderer/sunrise-hero-mark.png':
+        return True
+    if str(path.parent) != 'src/renderer/pages':
+        return False
+    name = path.name
+    return (name in ('icon.svg', 'sunrise-mark.png', 'sunrise-favicon-mark.png', 'mahjong-dragon-white.png') or
+            name.startswith('icon-sunrise') and name.endswith('.png') or
+            name.startswith('icon-') and name.endswith('.png') and name[5:-4] in RESERVED_COLORWAYS)
+
+
 def validate_derivative_asar(packed):
     """Check identity and security inputs read from the actual ASAR."""
     metadata = packed.get('packageMetadata')
@@ -913,20 +528,20 @@ def validate_derivative_asar(packed):
         require(policy in tab_source, f'ASAR tab policy is missing {policy}')
     contents = packed.get('files')
     require(isinstance(contents, list), 'ASAR packer returned no file list')
-    for reserved in ('icon-sunrise.png', 'icon-sunrise-dark.png', 'sunrise-mark.png', 'sunrise-favicon-mark.png'):
-        require(not any(name.endswith('/' + reserved) for name in contents),
-                f'ASAR contains reserved upstream artwork: {reserved}')
+    for name in contents:
+        require(not reserved_artwork(name), f'ASAR contains reserved upstream artwork: {name}')
     require('src/renderer/pages/ember-browser.svg' in contents,
             'ASAR is missing the derivative icon')
     require('src/renderer/pages/ember-browser.png' in contents,
             'ASAR is missing the derivative native icon')
-    for notice in ('LICENSE', 'ASSET-LICENSE.md', 'THIRD-PARTY-NOTICES.md'):
+    for notice in ('LICENSE', 'ASSET-LICENSE.md', 'THIRD-PARTY-NOTICES.md', 'TRADEMARKS.md'):
         require(notice in contents, f'ASAR is missing upstream notice: {notice}')
     return contents
 
 
 def run_node_tests(stream, source_root, native, work):
     test_paths = [
+        'test/unit/document-policy.test.js',
         'test/unit/updater-policy.test.js',
         'test/unit/display-capture-netbsd.test.js',
         'test/unit/display-capture-packaged-lock.test.js',
@@ -935,6 +550,12 @@ def run_node_tests(stream, source_root, native, work):
     output = run_host_tool(stream, [native.tool('node'), '--test', *(str(source_root / p) for p in test_paths)], cwd=source_root,
                            env=child_environment(native, work), timeout=300)
     sys.stdout.buffer.write(output)
+    env = child_environment(native, work)
+    env['EMBER_BROWSER_SOURCE'] = str(source_root)
+    for filename in ('test-netbsd-system-updater.cjs', 'test-netbsd-telemetry.cjs'):
+        output = run_host_tool(stream, [native.tool('node'), str(Path(__file__).parent / filename)],
+                               cwd=source_root, env=env, timeout=300)
+        sys.stdout.buffer.write(output)
 
 
 def run_python_tests(stream, source_root, dist_dir, native, work, sdk_root):
@@ -960,6 +581,7 @@ def parse_args():
     parser.add_argument('--asar-min-version')
     parser.add_argument('--source-archive-sha256')
     parser.add_argument('--source-files-sha256')
+    parser.add_argument('--projection')
     parser.add_argument('--electron-version')
     parser.add_argument('--electron-package-path')
     parser.add_argument('--electron-depends')
@@ -971,7 +593,7 @@ def main():
     sdk_root, jsonio, inventory, stream, native_api = load_sdk(args.sdk_source)
     require(sys.version_info >= (3, 15), 'Blanc package tools require host Python 3.15 or newer')
     require(args.source_archive_sha256 == SOURCE_ARCHIVE_SHA256,
-            'Blanc source distfile checksum differs from the v1.25.0 release archive')
+            'Blanc source distfile checksum differs from the v1.46.0 release archive')
     source_list_path = Path(__file__).parent / 'source-files.json'
     if args.action == 'extract':
         require(args.archive and args.source_archive_sha256 and args.source_files_sha256,
@@ -985,7 +607,7 @@ def main():
         return 0
     require(args.distdir and args.work and args.node and args.host_prefix and args.asar_min_version and
             args.source_archive_sha256 and
-            args.source_files_sha256 and args.electron_version and args.electron_package_path and
+            args.source_files_sha256 and args.projection and args.electron_version and args.electron_package_path and
             args.electron_depends, 'build and test require all pinned host, source, and runtime arguments')
     native = select_host_tools(native_api, args.host_prefix, args.node)
     asar_tool = resolve_asar_provider(native, jsonio, args.asar_min_version)
@@ -998,7 +620,6 @@ def main():
     env = child_environment(native, work)
     node_version = run_host_tool(stream, [str(node), '--version'], cwd=work, env=env, timeout=30)
     validate_host_node_version(node_version)
-    manifest_path = Path(__file__).parent / 'npm-mirror-manifest.json'
     source_manifest = check_source_files(
         jsonio, inventory, source_root, source_list_path,
         args.source_files_sha256)
@@ -1016,21 +637,52 @@ def main():
     seed_root = work / 'seed-inputs'
     asar_path = work / 'app.asar'
     sbom_path = work / 'SBOM.json'
-    npm_manifest_sha = '4bf1d8a37632598f96d0c062150d2d1f4a3360a1f018b7bd35b1b5b4d180d1aa'
-    lock, packages, selected, roles, edges, rows, package_metadata, runtime_providers, runtime_overrides = stage_dependencies(
-        jsonio, inventory, source_root, dist_dir, runtime_root, manifest_path, npm_manifest_sha, native)
+    runtime_providers = project_runtime(stream, jsonio, native, work, args.projection,
+                                        args.electron_version, runtime_root)
+    lock = read_object(jsonio, source_root / 'package-lock.json', 'upstream lockfile')
     require(not app_root.exists() and not seed_root.exists() and not asar_path.exists() and not sbom_path.exists(),
             'refusing to overwrite existing Blanc build output')
     copy_allowlist(source_root, source_manifest['applicationFiles'], app_root)
     # Replace upstream identity assets only after validating and copying the
     # original source allowlist. Keep the upstream licence notices in the ASAR.
     pages = app_root / 'src/renderer/pages'
-    for name in ('icon-sunrise.png', 'icon-sunrise-dark.png', 'sunrise-mark.png', 'sunrise-favicon-mark.png'):
-        (pages / name).unlink()
+    for relative in source_manifest['applicationFiles']:
+        if reserved_artwork(relative):
+            (app_root / relative).unlink()
     copy_regular(Path(__file__).parent / 'ember-browser.svg', pages / 'ember-browser.svg')
     copy_regular(Path(__file__).parent / 'ember-browser.png', pages / 'ember-browser.png')
+    copy_regular(Path(__file__).parent / 'netbsd-system-updater.js', app_root / 'src/main/netbsd-system-updater.js')
     copy_module_tree(runtime_root, app_root / 'node_modules')
     copy_allowlist(source_root, source_manifest['buildInputs'] + source_manifest['generatedFiles'], seed_root)
+    # Generate only the consumer-facing desktop catalogs from upstream messages.
+    copy_regular(source_root / 'src/renderer/pages/i18n.js', seed_root / 'src/renderer/pages/i18n.js')
+    run_host_tool(stream, [str(node), str(Path(__file__).parent / 'rebrand-i18n.mjs'),
+                           str(seed_root), str(Path(__file__).parent / 'rebrand-i18n-keys.json')],
+                  cwd=seed_root, env=env, timeout=300)
+    generated_catalogs = [f'src/renderer/pages/strings.{locale}.js'
+                          for locale in ('en', 'en-XA', 'de', 'es', 'fr', 'it', 'pt-BR')]
+    generated_catalogs += ['src/main/i18n-locales.json', 'src/main/ublock-strings.json']
+    for relative in generated_catalogs:
+        target = app_root / relative
+        target.unlink()
+        copy_regular(seed_root / relative, target)
+    resource_provider = next((row for row in runtime_providers
+                              if row['pkgpath'] == 'devel/node-ghostery-adblocker'), None)
+    require(resource_provider is not None, 'missing common Ghostery resource provider')
+    prefix = Path(native.bundle_root).resolve(strict=True)
+    resource = prefix / 'share/ghostery-adblocker/resources.json'
+    contents_path = prefix / 'pkgdb' / resource_provider['pkgname'] / '+CONTENTS'
+    require('share/ghostery-adblocker/resources.json' in contents_path.read_text().splitlines(),
+            'Ghostery resources are not owned by the selected provider')
+    require(resource.is_file() and not resource.is_symlink() and resource.resolve(strict=True).is_relative_to(prefix),
+            'invalid common Ghostery resource path')
+    pin = read_object(jsonio, seed_root / 'adblock/sources/pinned.json', 'Ghostery source pin')
+    require(digest_file(inventory, resource, 'sha256') == pin['ghosteryResources']['sha256'],
+            'common Ghostery resource differs from the source pin')
+    for target in (seed_root / 'adblock/sources/ghostery-resources.json',
+                   app_root / 'adblock/sources/ghostery-resources.json'):
+        target.unlink()
+        copy_regular(resource, target)
     shim = work / 'electron-shim'
     shim.mkdir()
     (shim / 'electron.js').write_text('module.exports = Object.create(null);\n', encoding='utf-8')
@@ -1060,7 +712,7 @@ def main():
             'ASAR contains an Electron NPM package')
     require(not any(name.startswith('node_modules/@electron/asar/') for name in contents),
             'ASAR contains the build-only packer')
-    for provider in runtime_providers.values():
+    for provider in runtime_providers:
         package_file = 'node_modules/' + provider['name'] + '/package.json'
         require(package_file in contents,
                 f'ASAR is missing common runtime provider {provider["name"]}')
@@ -1069,13 +721,12 @@ def main():
     require(asar_path.is_file(), 'upstream ASAR packer produced no app.asar')
     node_sha = digest_file(inventory, node, 'sha256')
     python_sha = digest_file(inventory, Path(native.tool('python')).resolve(strict=True), 'sha256')
-    bom = make_sbom(source_manifest, lock, selected, roles, edges, rows, package_metadata,
-                    asar_path, HOST_NODE_VERSION, args.electron_version, args.electron_package_path,
-                    args.electron_depends, asar_tool, node_sha,
-                    platform.python_version(), python_sha, runtime_providers,
-                    runtime_overrides)
+    bom = make_projected_sbom(source_manifest, lock, runtime_providers, asar_path,
+                               HOST_NODE_VERSION, args.electron_version, args.electron_package_path,
+                               args.electron_depends, asar_tool, node_sha,
+                               platform.python_version(), python_sha)
     sbom_path.write_bytes(jsonio.json_bytes(bom))
-    print(f'Built Ember Browser from Blanc 1.25.0 ({len(contents)} ASAR files) and SBOM.')
+    print(f'Built Ember Browser from Blanc 1.46.0 ({len(contents)} ASAR files) and SBOM.')
     return 0
 
 

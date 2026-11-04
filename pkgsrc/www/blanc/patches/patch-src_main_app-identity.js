@@ -1,6 +1,7 @@
 $NetBSD$
 
-Use the independent Ember Browser identity. Origin: EmberBSD (AI-assisted).
+Use the independent Ember Browser icon and retain upstream attribution.
+Origin: EmberBSD contributors (AI-assisted).
 
 --- src/main/app-identity.js
 +++ src/main/app-identity.js

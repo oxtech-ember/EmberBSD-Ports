@@ -1,25 +1,22 @@
 $NetBSD$
 
-Use the independent Ember Browser identity. Origin: EmberBSD (AI-assisted).
+Select the NetBSD package updater and independent browser profile.
+Origin: EmberBSD contributors (AI-assisted).
 
 --- src/main/main.js
 +++ src/main/main.js
-@@ -644,11 +644,11 @@
-   if (code === 'empty') return 'This handoff has no eligible web tabs.';
-   if (code === 'multiple-active-tabs') return 'The source browser reported more than one active tab.';
-   if (code === 'decryption-failed' || code === 'invalid-envelope' || code === 'invalid-payload') {
--    return 'Blanc could not verify this handoff. It may have been changed or opened with the wrong link.';
-+    return 'Ember Browser could not verify this handoff. It may have been changed or opened with the wrong link.';
-   }
-   if (code === 'unavailable') return 'This handoff has expired, was already used, or is unavailable.';
--  if (code === 'offline') return 'Blanc could not reach the tab handoff service. Check your connection and try again.';
--  return 'Blanc could not import these tabs.';
-+  if (code === 'offline') return 'Ember Browser could not reach the tab handoff service. Check your connection and try again.';
-+  return 'Ember Browser could not import these tabs.';
- }
- 
- async function claimTabHandoff(parsed) {
-@@ -1138,19 +1138,7 @@
+@@ -154,7 +154,9 @@
+   requestNativeMediaAccess: nativeMediaAccess.request,
+   nativeMediaAccessState: nativeMediaAccess.state,
+ };
+-const { setupAutoUpdater, checkForUpdatesManually } = require('./updater');
++const { setupAutoUpdater, checkForUpdatesManually } = process.platform === 'netbsd'
++  ? require('./netbsd-system-updater')
++  : require('./updater');
+ const {
+   sendLaunchPing,
+   sendMahjongPlay,
+@@ -1515,19 +1517,7 @@
    app.setPath('userData', `${app.getPath('userData')}-Dev`);
  }
  
@@ -40,41 +37,14 @@ Use the independent Ember Browser identity. Origin: EmberBSD (AI-assisted).
  // Snapshot whether this is a genuinely new Blanc profile before Chromium's
  // ready phase creates its own directories. settings.json is not sufficient:
  // old versions did not write it until a setting changed, while session.json
-@@ -7170,7 +7158,7 @@
-         },
-         ...(isMac ? [] : [
-           { type: 'separator' },
--          { label: 'About Blanc', click: bound(() => showAboutPanel({ app })) },
-+          { label: 'About Ember Browser', click: bound(() => showAboutPanel({ app })) },
-         ]),
-       ],
-     },
-@@ -7236,8 +7224,8 @@
+@@ -13183,8 +13173,8 @@
  
  function profileWindowTitle(profile) {
    return profile?.id === DEFAULT_PROFILE_ID
 -    ? 'Blanc'
--    : `${profile?.name ?? 'Profile'} — Blanc`;
+-    : `${profile?.name ?? mainI18n.t('profile.unnamed')} — Blanc`;
 +    ? 'Ember Browser'
-+    : `${profile?.name ?? 'Profile'} — Ember Browser`;
++    : `${profile?.name ?? mainI18n.t('profile.unnamed')} — Ember Browser`;
  }
  
- function createMainWindowForRuntime(runtime, { ensureStartTab = false } = {}) {
-@@ -7345,7 +7333,7 @@
-         type: 'error',
-         buttons: ['OK'],
-         message: 'Couldn’t close this window safely',
--        detail: 'Blanc couldn’t save its latest workspace state. Check available disk space and try again.',
-+        detail: 'Ember Browser couldn’t save its latest workspace state. Check available disk space and try again.',
-       });
-     },
-   });
-@@ -7878,7 +7866,7 @@
-     return { ok: false, message: `Type “${profile.name}” exactly to delete this profile.` };
-   }
-   if (sessionReadOnly) {
--    return { ok: false, message: 'This Blanc build cannot safely remove a newer saved workspace.' };
-+    return { ok: false, message: 'This Ember Browser build cannot safely remove a newer saved workspace.' };
-   }
-   if (profileDeletions.hasPendingProfileDeletion(profile.id) || deletingProfileIds.has(profile.id)) {
-     return { ok: true, pending: true, message: 'That profile is already being deleted.' };
+ // `inactive`: shown without taking focus (a background routed link, #1199).

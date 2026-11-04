@@ -1,15 +1,16 @@
 $NetBSD$
 
-Use the independent Ember Browser identity. Origin: EmberBSD (AI-assisted).
+Use the independent Ember Browser icon and retain upstream attribution.
+Origin: EmberBSD contributors (AI-assisted).
 
 --- src/renderer/pages/tab-import.html
 +++ src/renderer/pages/tab-import.html
-@@ -4,7 +4,7 @@
-   <meta charset="UTF-8" />
-   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'; worker-src 'self';" />
-   <title>Bring Your Tabs</title>
+@@ -6,7 +6,7 @@
+   <script src="strings.js"></script>
+   <script src="i18n.js"></script>
+   <title data-i18n="tabImport.title">Bring Your Tabs</title>
 -  <link rel="icon" type="image/png" href="icon-sunrise.png" />
-+  <link rel="icon" type="image/svg+xml" href="ember-browser.svg" />
++  <link rel="icon" type="image/png" href="ember-browser.png" />
    <link rel="stylesheet" href="pages.css" />
  </head>
  <body class="sheet">

@@ -1,10 +1,11 @@
 $NetBSD$
 
-Use the independent Ember Browser icon. Origin: EmberBSD (AI-assisted).
+Use the independent Ember Browser icon and retain upstream attribution.
+Origin: EmberBSD contributors (AI-assisted).
 
 --- src/main/app-icon.js
 +++ src/main/app-icon.js
-@@ -26,8 +26,8 @@
+@@ -49,8 +49,8 @@
    platform = process.platform,
    projectRoot = path.join(__dirname, '../..'),
  }) {
@@ -15,7 +16,7 @@ Use the independent Ember Browser icon. Origin: EmberBSD (AI-assisted).
  }
  
  /**
-@@ -51,34 +51,10 @@
+@@ -77,40 +77,10 @@
  }) {
    if (platform !== 'darwin' || !app.dock) return null;
  
@@ -33,7 +34,14 @@ Use the independent Ember Browser icon. Origin: EmberBSD (AI-assisted).
 -  }
 -
 -  if (app.isPackaged && macOSMajorVersion(systemVersion) >= NATIVE_ICON_MIN_MACOS) {
--    const nativeName = nativeIconNameFor(appIcon);
+-    const nativeName = nativeTargetFor(appIcon, iconStyle);
+-    // Clearing the custom image puts back the live bundle icon, which macOS
+-    // keeps restyling for appearance and Icon & widget style. Loading the same
+-    // stack by name would hand back a fixed bitmap of it instead.
+-    if (nativeName === BUNDLE_APP_ICON_NAME) {
+-      app.dock.setIcon(null);
+-      return { source: 'bundle', nativeName };
+-    }
 -    const adaptiveIcon = nativeImage.createFromNamedImage(nativeName);
 -    if (!adaptiveIcon.isEmpty()) {
 -      app.dock.setIcon(adaptiveIcon);
@@ -41,8 +49,7 @@ Use the independent Ember Browser icon. Origin: EmberBSD (AI-assisted).
 -    }
 -  }
 -
--  const safeId = APP_ICON_ASSETS[appIcon] ? appIcon : 'sunrise';
--  const renderedId = safeId === 'sunrise' && darkAppearance ? 'sunrise-dark' : safeId;
+-  const renderedId = flatIconIdFor(appIcon, darkAppearance);
 -  const flatIcon = nativeImage.createFromPath(path.join(iconsDirectory, `icon-${renderedId}.png`));
 +  const flatIcon = nativeImage.createFromPath(path.join(iconsDirectory, 'ember-browser.png'));
    if (flatIcon.isEmpty()) return null;
@@ -51,4 +58,21 @@ Use the independent Ember Browser icon. Origin: EmberBSD (AI-assisted).
 +  return { source: 'png', appIcon: 'ember-browser' };
  }
  
- module.exports = {
+ /**
+@@ -144,15 +114,7 @@
+   const targetFor = ({
+     appIcon, developmentPreviewPath = null, developmentDarkPreviewPath = null, darkAppearance = false, iconStyle = null,
+   }) => {
+-    return {
+-      preview: !app.isPackaged && developmentPreviewPath
+-        ? (darkAppearance && developmentDarkPreviewPath ? developmentDarkPreviewPath : developmentPreviewPath)
+-        : null,
+-      native: app.isPackaged && macOSMajorVersion(systemVersion) >= NATIVE_ICON_MIN_MACOS
+-        ? nativeTargetFor(appIcon, iconStyle)
+-        : null,
+-      png: flatIconIdFor(appIcon, darkAppearance),
+-    };
++    return { preview: null, native: null, png: 'ember-browser' };
+   };
+   // A source earlier in applyDockAppIcon's order that failed before fails
+   // again for the same target, so only the source that was shown is compared.

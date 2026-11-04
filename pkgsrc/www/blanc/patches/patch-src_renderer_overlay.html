@@ -1,0 +1,34 @@
+$NetBSD$
+
+Use the independent Ember Browser icon and retain upstream attribution.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- src/renderer/overlay.html
++++ src/renderer/overlay.html
+@@ -176,7 +176,7 @@
+   <section id="shieldPop" role="dialog" aria-labelledby="shieldPopTitle" aria-describedby="shieldPopHost" hidden>
+     <header class="shield-pop-header">
+       <button id="shieldPopBack" class="shield-pop-nav shield-pop-back" aria-label="Back to site protection" data-i18n-aria-label="shield.back" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m9.5 3.5-4.5 4.5 4.5 4.5"/></svg></button>
+-      <img class="shield-pop-mark" src="sunrise-hero-mark.png" width="28" height="28" alt="" />
++      <img class="shield-pop-mark" src="pages/ember-browser.svg" width="28" height="28" alt="" />
+       <h2 id="shieldPopTitle" data-i18n="shield.title">Site protection</h2>
+       <p id="shieldPopHost"></p>
+       <button id="shieldPopClose" class="shield-pop-nav shield-pop-close" aria-label="Close site protection" data-i18n-aria-label="shield.close"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m5 5 6 6m0-6-6 6"/></svg></button>
+@@ -184,7 +184,7 @@
+     <div id="shieldPopSummary">
+       <div class="shield-pop-provider-summary">
+         <div class="shield-pop-provider-row">
+-          <div><p class="shield-pop-eyebrow" data-i18n="shield.currentBlocker">Current blocker</p><strong id="shieldPopCurrentProvider">Blanc Blocker</strong></div>
++          <div><p class="shield-pop-eyebrow" data-i18n="shield.currentBlocker">Current blocker</p><strong id="shieldPopCurrentProvider">Ember Browser Blocker</strong></div>
+           <button id="shieldPopChangeProvider" class="shield-pop-change" aria-label="Change blocker" data-i18n-aria-label="shield.changeLabel"><span data-i18n="shield.change">Change</span> <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></button>
+         </div>
+         <p id="shieldPopProviderStatus" role="status"></p>
+@@ -221,7 +221,7 @@
+     <div id="shieldPopChooser" hidden>
+       <fieldset id="shieldPopProvider" aria-describedby="shieldPopRestartNote shieldPopPrivateNote shieldPopAvailability">
+         <legend class="sr-only" data-i18n="shield.chooseBlocker">Choose a blocker</legend>
+-        <label><span class="shield-provider-name"><span class="shield-provider-heading"><strong>Blanc Blocker</strong><span class="shield-provider-active" data-provider="blanc" hidden data-i18n="shield.active">Active</span></span><small>EasyList + EasyPrivacy</small></span><input type="radio" name="shieldProvider" value="blanc" /></label>
++        <label><span class="shield-provider-name"><span class="shield-provider-heading"><strong>Ember Browser Blocker</strong><span class="shield-provider-active" data-provider="blanc" hidden data-i18n="shield.active">Active</span></span><small>EasyList + EasyPrivacy</small></span><input type="radio" name="shieldProvider" value="blanc" /></label>
+         <label><span class="shield-provider-name"><span class="shield-provider-heading"><strong>uBlock Origin</strong><span class="shield-provider-active" data-provider="ublock-origin" hidden data-i18n="shield.active">Active</span></span><small data-i18n="shield.uboTagline">Advanced filtering and controls</small></span><input type="radio" name="shieldProvider" value="ublock-origin" /></label>
+       </fieldset>
+       <div class="shield-pop-chooser-note">

@@ -1,15 +1,16 @@
 $NetBSD$
 
-Use the independent Ember Browser identity. Origin: EmberBSD (AI-assisted).
+Use the independent Ember Browser icon and retain upstream attribution.
+Origin: EmberBSD contributors (AI-assisted).
 
 --- src/renderer/pages/onboarding.js
 +++ src/renderer/pages/onboarding.js
-@@ -82,7 +82,7 @@
-     // disabled where the OS registration is unavailable (dev runs, Linux).
-     const confirmed = state.defaultSet;
-     setDefaultBtn.disabled = confirmed || !state.canSetDefault;
--    setDefaultBtn.textContent = confirmed ? 'Blanc is your default' : 'Set as default';
-+    setDefaultBtn.textContent = confirmed ? 'Ember Browser is your default' : 'Set as default';
-     dialog.style.setProperty('--ob-default-bg', confirmed || !state.canSetDefault ? 'var(--surface-raised)' : 'var(--accent)');
-     dialog.style.setProperty('--ob-default-text', confirmed || !state.canSetDefault ? 'var(--text-dim)' : 'var(--surface-raised)');
-     dialog.style.setProperty('--ob-default-border', confirmed || !state.canSetDefault ? 'var(--border)' : 'var(--accent)');
+@@ -65,7 +65,7 @@
+     busy: false,
+     adblock: true,
+     suggestions: true,
+-    ping: true,
++    ping: false,
+     // F52 spec D5: offered only on a fresh profile's first run (never on a
+     // tour replay), preset on at After 7 days. Continue from the island step
+     // saves it; Skip, or never reaching that Continue, leaves it Off.

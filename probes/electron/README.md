@@ -1,6 +1,6 @@
 # Electron runtime probe for NetBSD (E12 Ember Browser)
 
-Goal: run Ember Browser, based on Blanc v1.25.0, on EmberBSD.
+Goal: run Ember Browser, based on Blanc v1.46.0, on EmberBSD.
 The application uses Electron and needs the native Electron runtime.
 
 ## Source pins
@@ -11,7 +11,7 @@ The application uses Electron and needs the native Electron runtime.
 | Chromium | 156.0.8078.75 (`861389936bf33ea77529ee5dcc0605e68f6bb620`) | Electron `DEPS` |
 | Embedded Node.js | 24.22.1 | Patched Electron `DEPS` |
 | Chromium host Node.js | 26.13.0 | Common Node provider |
-| Blanc | 1.25.0 (`ff55d5948f5c71e802ba2ac464659ef96e055ca9`) | GitHub tag `v1.25.0` |
+| Blanc | 1.46.0 (`6479ed3a314e4fd6219b8de1598bacffa78b4d7c`) | GitHub tag `v1.46.0` |
 
 Electron's `DEPS` graph is the Chromium source of record. Do not substitute the
 pkgsrc `.47` archive. Chromium sources require `gclient`; the older archive does
@@ -21,7 +21,7 @@ not match Electron's pinned revision.
 |---|---:|---|
 | `v45.2.1.tar.gz` | 20,344,442 | `7c788efc441297679411e880898412081bd71ede37671e0c48c45322e9a1de38` |
 | `node-v24.22.1.tar.xz` | 57,669,336 | `4f5379796280cdaeb0c2f358fd04b6a16cc4fb7dfa83b5a8c91a9d963b435231` |
-| `v1.25.0.tar.gz` | 155,108,408 | `b241d6b135b0fab5839f5dea6f64fafbdefa4f213b46ffa4a2f78820cb880971` |
+| `v1.46.0.tar.gz` | 455,374,236 | `cdba222bb036eee845716371d7d7aa3f66369bbfd4a40d11951e47d3f6a1f166` |
 
 The recipe backports the twelve source and build changes from Electron
 [PR 55162](https://github.com/electron/electron/pull/55162), commit
@@ -78,18 +78,15 @@ in macOS 14; the build controller rejects lower minimums.
 - Electron 45.2.1 for amd64 has completed the Clang cross-build, normal pkgsrc
   package creation and isolated host-rooted install/delete/reinstall. Target
   execution, GUI, complete ABI and hardware acceptance remain pending.
-- Ember Browser has a prepared ASAR from Blanc 1.25.0 sources. Target
+- Ember Browser has a prepared ASAR from Blanc 1.46.0 sources. Target
   application and ordinary package acceptance remain pending.
-- The Blanc application recipe creates an ASAR from an explicit source
-  allowlist and 28 lockfile-pinned runtime archives. Four pure-JavaScript
-  modules (argparse, semver, debug and ms) are copied from their common Ports
-  providers, declared as direct native `TOOL_DEPENDS`, into the self-contained
-  application after narrow consumer-range overrides. The common
-  `node-electron-asar` Ports recipe supplies the build-only ASAR tool from the
-  selected native prefix; it is not copied into the application. The host
-  controller uses CPython 3.15 and SDK API 1. Host Node.js 26.13.0 runs the
-  required JavaScript tools. This application archive does not contain an
-  Electron executable.
+- The application recipe builds an ASAR from an explicit source allowlist and
+  the installed common JavaScript providers projected from the pkgsrc graph.
+  The three roots are Ghostery, Readability and DOMPurify. The shared projection
+  verifies package ownership, dependency and peer ranges against Electron 45.2.1.
+  The common ASAR packer remains a host build tool, outside the application.
+  The controller uses the selected CPython 3.15, Node.js 26.13.0 and SDK API 1.
+  The archive does not contain an Electron executable.
 - The Blanc source patches select an explicit NetBSD capture descriptor. It
   uses the existing generic Electron/DOM/WebRTC broker, preload and helper.
   All nine runtime and fourteen shared permission hashes remain unchanged.
@@ -138,17 +135,14 @@ hooks validate these inputs; direct `do-extract`, `do-build` and `do-test` calls
 retain the same checks. The controller checks the SDK API, module origin and
 interpreter versions.
 
-The recipe fetches the source and 28 runtime NPM archives through pkgsrc
-distfiles. The ASAR packer is provided by the common `devel/node-electron-asar`
-recipe, with its installed version and pkgsrc origin recorded as an external
-host build tool in the SBOM. The common runtime module providers are recorded
-with their actual versions and pkgsrc provenance; no historical archive hash
-is assigned to their package files.
-The build uses verified local archives and runs no NPM installation or network
-fetch. It extracts only allowlisted source files. It keeps tests, build tools,
-the lockfile, and environment files out of the installed ASAR. The installed
-SBOM records the external Electron 45.2.1 package separately from upstream's
-development lock on Electron 44.5.1. A different runtime declaration is refused.
+The recipe fetches the upstream source archive and extracts only allowlisted
+files. Its runtime JavaScript comes from installed common Ports providers; no
+NPM installation or application-local downloader runs. The SBOM records each
+provider's package origin and source metadata, as well as the external Electron
+45.2.1 runtime. Upstream's development lock specifies Electron 44.9.3; target
+compatibility with the selected runtime remains to be tested. The ASAR retains
+upstream notices while excluding reserved product artwork. NetBSD uses system
+package updates; upstream-only sync, handoff and usage telemetry remain gated.
 
 The package name is `ember-browser`; its command is `ember-browser` and its
 desktop entry is `org.emberbsd.browser.desktop`. The derivative keeps the
@@ -157,17 +151,15 @@ upstream notices and uses its own identity and artwork.
 The wrapper selects Electron's packaged application policy. It leaves sandbox
 flags unchanged. NetBSD self-updates are disabled because pkgsrc owns updates.
 The upstream license notices and the dependency license texts remain installed.
-The Blue Oak license text is in `pkgsrc/www/blanc/files/blueoak-1.0.0.txt`; the pinned
-pkgsrc catalog does not include its token. Review that text before adding
-`blueoak-1.0.0` to `ACCEPTABLE_LICENSES`. The unfiltered upstream source archive
+The unfiltered upstream source archive
 retains reserved artwork and third-party imagery and is not mirrored by this
 recipe.
 
 `probes/electron/tests/blanc-source-phases.py --help` describes the source-phase regression.
 It uses a real pkgsrc export and explicit make tools/configuration, checks that
-all 29 distfiles are exposed without build inputs, and verifies the consuming
+the upstream distfile is exposed without build inputs, and verifies the consuming
 phases reject missing tools. With `--distdir` it runs normal cached `fetch` and
-`checksum`, including negative license and corrupted-input cases. The optional
+`checksum`, including a corrupted-input case. The optional
 `--baseline-recipe` reproduces the previous global metadata failure. These
 checks do not build an ASAR or qualify the target runtime.
 The package-controller suite also uses the real SDK loader to reject missing

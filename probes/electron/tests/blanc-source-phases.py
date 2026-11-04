@@ -70,7 +70,7 @@ def main():
                'WRKDIR=' + str(args.work / 'objects/work'),
                'PACKAGES=' + str(args.work / 'packages')]
     empty = [key + '=' for key in SELECTED]
-    accepted = ['ACCEPTABLE_LICENSES+=blueoak-1.0.0']
+    accepted = []
     source_tools = ['EMBERBSD_SDK_SOURCE=' + str(args.sdk_source),
                     'EMBERBSD_CROSS_BUILD_PYTHON=' + str(args.python)]
     cases = []
@@ -87,17 +87,11 @@ def main():
         cases.append(label)
         return result.stdout
 
-    reason = run('license-still-required', ['-V', '${PKG_FAIL_REASON}'],
-                 extra=['ACCEPTABLE_LICENSES='], contains='unacceptable license condition')
-    require('Blanc requires' not in reason, 'Source metadata must not require build tools')
-    require('blueoak-1.0.0' in reason, 'License restriction was lost')
-    require(run('accepted-source-metadata', ['-V', '${PKG_FAIL_REASON}'], accepted).strip() == '',
-            'Unexpected fetch failure with accepted licenses')
+    require(run('source-metadata', ['-V', '${PKG_FAIL_REASON}']).strip() == '',
+            'Source metadata must not require application build tools')
     files = run('source-distfiles', ['show-distfiles'], accepted).splitlines()
-    manifest = json.loads((RECIPE / 'files/npm-mirror-manifest.json').read_text())
-    expected = {'e12-electron/v1.25.0.tar.gz'} | {
-        'e12-electron/' + row['distfile'] for row in manifest['packages']}
-    require(set(files) == expected and len(files) == len(expected) == 29,
+    expected = {'e12-electron/v1.46.0.tar.gz'}
+    require(set(files) == expected and len(files) == 1,
             'Actual pkgsrc source inventory is incomplete')
     if args.baseline_recipe:
         baseline = framework_view(args.pkgsrc, args.work / 'baseline', args.baseline_recipe)
@@ -130,14 +124,11 @@ def main():
     if args.distdir:
         require(all((args.distdir / path).is_file() for path in expected),
                 'All inputs must already be cached: this regression does not download')
-        run('fetch-retains-license-check', ['fetch'],
-            ['ACCEPTABLE_LICENSES=', 'DISTDIR=' + str(args.distdir)], success=False,
-            contains='unacceptable license condition')
         run('normal-fetch-checksum-without-build-tools', ['fetch', 'checksum'],
             accepted + ['DISTDIR=' + str(args.distdir)])
         corrupted = args.work / 'corrupted-distfiles'
         (corrupted / 'e12-electron').mkdir(parents=True)
-        corrupted_archive = 'e12-electron/' + manifest['packages'][0]['distfile']
+        corrupted_archive = 'e12-electron/v1.46.0.tar.gz'
         for relative in expected:
             target = corrupted / relative
             if relative == corrupted_archive:

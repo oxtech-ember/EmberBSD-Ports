@@ -52,13 +52,13 @@ class BlancPackageTests(unittest.TestCase):
                           source_files_sha256='fixture', source=str(self.source),
                           archive=None, distdir=str(self.distdir), work=str(work),
                           node=BUILD_OPTIONS.node, host_prefix=BUILD_OPTIONS.host_prefix,
-                          asar_min_version='4.3.1', electron_version='45.2.1',
+                          asar_min_version='4.3.1', projection='/tmp/projection.py', electron_version='45.2.1',
                           electron_package_path='../../devel/electron44',
                           electron_depends='electron>=45.2.1<45.2.2:../../devel/electron44')
             names = ('parse_args', 'load_sdk', 'select_host_tools', 'resolve_asar_provider',
                      'run_host_tool', 'check_source_files', 'validate_runtime_dependency',
                      'run_node_tests', 'test_asar_pack_roundtrip', 'run_python_tests',
-                     'stage_dependencies')
+                     'project_runtime')
             with mock.patch.multiple(builder, **{name: mock.DEFAULT for name in names}) as calls:
                 calls['load_sdk'].return_value = (self.sdk_root, self.jsonio, self.inventory,
                                                   self.stream, self.native_api)
@@ -75,7 +75,7 @@ class BlancPackageTests(unittest.TestCase):
                 calls['run_python_tests'].reset_mock()
                 calls['test_asar_pack_roundtrip'].reset_mock()
                 calls['parse_args'].return_value = SimpleNamespace(action='build', **common)
-                calls['stage_dependencies'].side_effect = RuntimeError('build phase reached')
+                calls['project_runtime'].side_effect = RuntimeError('build phase reached')
                 with self.assertRaisesRegex(RuntimeError, 'build phase reached'):
                     builder.main()
                 calls['run_node_tests'].assert_not_called()
@@ -213,8 +213,8 @@ class BlancPackageTests(unittest.TestCase):
             destination = root / 'source'
             manifest = {
                 'schemaVersion': 2,
-                'upstreamCommit': 'ff55d5948f5c71e802ba2ac464659ef96e055ca9',
-                'packageVersion': '1.25.0',
+                'upstreamCommit': '6479ed3a314e4fd6219b8de1598bacffa78b4d7c',
+                'packageVersion': '1.46.0',
                 'applicationFiles': ['src/main.js'],
                 'buildInputs': [],
                 'generatedFiles': ['test/downstream.test.js'],
@@ -222,14 +222,14 @@ class BlancPackageTests(unittest.TestCase):
             manifest_bytes = json.dumps(manifest, indent=2).encode() + b'\n'
             manifest_path.write_bytes(manifest_bytes)
             with tarfile.open(archive_path, 'w:gz') as archive:
-                root_entry = tarfile.TarInfo('blanc-1.25.0/')
+                root_entry = tarfile.TarInfo('blanc-1.46.0/')
                 root_entry.type = tarfile.DIRTYPE
                 root_entry.mode = 0o755
                 archive.addfile(root_entry)
                 for name, content in (
-                    ('blanc-1.25.0/src/main.js', b'allowed'),
-                    ('blanc-1.25.0/.env.1password', b'test sentinel only'),
-                    ('blanc-1.25.0/untracked.js', b'not allowed'),
+                    ('blanc-1.46.0/src/main.js', b'allowed'),
+                    ('blanc-1.46.0/.env.1password', b'test sentinel only'),
+                    ('blanc-1.46.0/untracked.js', b'not allowed'),
                 ):
                     entry = tarfile.TarInfo(name)
                     entry.size = len(content)
@@ -268,239 +268,42 @@ class BlancPackageTests(unittest.TestCase):
                 with self.assertRaises(builder.BuildError):
                     builder.validate_runtime_dependency(version, package_path, depends)
 
-    def test_recipe_hashes_pin_the_allowlist_and_npm_manifest(self):
+    def test_recipe_pins_the_source_allowlist_and_common_projection(self):
         makefile = (PACKAGE / 'Makefile').read_text(encoding='utf-8')
-        for name in ('BLANC_SOURCE_FILES_SHA256', 'BLANC_NPM_MANIFEST_SHA256'):
-            self.assertIn(name, makefile)
         source_hash = hashlib.sha256((HERE / 'source-files.json').read_bytes()).hexdigest()
-        npm_hash = hashlib.sha256((HERE / 'npm-mirror-manifest.json').read_bytes()).hexdigest()
         self.assertIn(source_hash, makefile)
-        self.assertIn(npm_hash, makefile)
-        self.assertIn('do-extract:', makefile)
-        self.assertIn('--sdk-source ${EMBERBSD_SDK_SOURCE:Q} extract', makefile)
-        self.assertIn('--source-files-sha256 ${BLANC_SOURCE_FILES_SHA256:Q}', makefile)
+        self.assertIn('--projection ${_PKGSRCDIR:Q}/mk/emberbsd-js-projection.py', makefile)
+        self.assertNotIn('BLANC_NPM_DISTFILES', makefile)
 
-    def test_sbom_records_exact_external_runtime_and_build_tools(self):
-        with tempfile.TemporaryDirectory(prefix='blanc-sbom-') as temporary:
-            asar = Path(temporary) / 'app.asar'
-            asar.write_bytes(b'fixture ASAR')
-            selected = {
-                'node_modules/@ghostery/adblocker-electron': {'name': '@ghostery/adblocker-electron', 'version': '2.18.2'},
-            }
-            roles = {
-                'node_modules/@ghostery/adblocker-electron': {'runtime'},
-            }
-            rows = {
-                'node_modules/@ghostery/adblocker-electron': {'name': '@ghostery/adblocker-electron', 'sha512': 'a' * 128, 'sha256': 'a' * 64},
-            }
-            metadata = {
-                'node_modules/@ghostery/adblocker-electron': {'license': 'MIT'},
-            }
-            source_manifest = {
-                'packageLockSha256': 'c' * 64,
-                'upstreamCommit': 'ff55d5948f5c71e802ba2ac464659ef96e055ca9',
-                'sourceArchiveSha256': 'd' * 64,
-                'allowlistSha256': 'e' * 64,
-                'upstreamCommitTimestamp': '2026-10-01T18:41:45-04:00',
-            }
-            bom = builder.make_sbom(
-                source_manifest, {'packages': {
-                    '': {'dependencies': {}, 'devDependencies': {'electron': '^44.5.1'}},
-                    'node_modules/electron': {'version': '44.5.1'},
-                }}, selected, roles,
-                {'node_modules/@ghostery/adblocker-electron': set()},
-                rows, metadata, asar, '26.13.0', '45.2.1', '../../devel/electron44',
-                'electron>=45.2.1<45.2.2:../../devel/electron44',
-                {'name': '@electron/asar', 'version': '4.3.1', 'package_path': 'devel/node-electron-asar',
-                 'module_path': 'lib/node_modules/@electron/asar', 'license': 'MIT'},
-                'f' * 64,
-                '3.15.0', '1' * 64, {}, [])
-            electron = next(item for item in bom['components'] if item['name'] == 'Electron')
-            self.assertEqual(electron['version'], '45.2.1')
-            self.assertEqual(electron['scope'], 'required')
-            self.assertEqual(electron['properties'][1]['value'], 'false')
-            self.assertFalse(any(item.get('bom-ref', '').startswith('pkg:npm/electron@') for item in bom['components']))
-            properties = {item['name']: item['value'] for item in bom['metadata']['component']['properties']}
-            self.assertEqual(properties['emberbsd:upstreamDevelopmentElectronVersion'], '44.5.1')
-            self.assertEqual(properties['emberbsd:upstreamDevelopmentElectronRange'], '^44.5.1')
-            self.assertEqual(properties['emberbsd:systemElectron'], '45.2.1')
-            tools = {item['name']: item for item in bom['metadata']['tools']['components']}
-            asar_tool = tools['@electron/asar']
-            self.assertEqual(asar_tool['scope'], 'excluded')
-            self.assertEqual(asar_tool['version'], '4.3.1')
-            self.assertEqual(asar_tool['bom-ref'], 'pkgsrc:devel/node-electron-asar@4.3.1')
-            self.assertNotIn('hashes', asar_tool)
-            asar_properties = {item['name']: item['value'] for item in asar_tool['properties']}
-            self.assertEqual(asar_properties['emberbsd:external'], 'true')
-            self.assertEqual(asar_properties['emberbsd:pkgsrcPath'], 'devel/node-electron-asar')
-            self.assertEqual(bom['metadata']['component']['hashes'][0]['content'], hashlib.sha256(b'fixture ASAR').hexdigest())
-            self.assertEqual(tools['CPython']['version'], '3.15.0')
-            self.assertEqual(tools['Node.js']['version'], '26.13.0')
-
-    def test_sbom_records_bundled_common_runtime_provenance_without_old_hash(self):
-        with tempfile.TemporaryDirectory(prefix='blanc-common-sbom-') as temporary:
-            asar = Path(temporary) / 'app.asar'
-            asar.write_bytes(b'fixture ASAR')
-            key = 'node_modules/argparse'
-            bom = builder.make_sbom(
-                {'packageLockSha256': 'c' * 64,
-                 'upstreamCommit': 'ff55d5948f5c71e802ba2ac464659ef96e055ca9',
-                 'sourceArchiveSha256': 'd' * 64, 'allowlistSha256': 'e' * 64,
-                 'upstreamCommitTimestamp': '2026-10-01T18:41:45-04:00'},
-                {'packages': {'': {'dependencies': {}, 'devDependencies': {}},
-                              key: {'version': '2.0.1'}}},
-                {key: {'name': 'argparse', 'version': '2.0.1'}},
-                {key: {'runtime'}}, {key: set()}, {}, {key: {'license': 'PSF-2.0'}},
-                asar, '26.13.0', '45.2.1', '../../devel/electron44',
-                'electron>=45.2.1<45.2.2:../../devel/electron44',
-                {'name': '@electron/asar', 'version': '4.3.1', 'package_path': 'devel/node-electron-asar',
-                 'module_path': 'lib/node_modules/@electron/asar', 'license': 'MIT'},
-                'f' * 64, '3.15.0', '1' * 64,
-                {key: {'name': 'argparse', 'version': '3.0.4',
-                       'package_path': 'devel/node-argparse',
-                       'module_path': 'lib/node_modules/argparse'}},
-                [{'lockKey': key, 'lockedVersion': '2.0.1', 'providerVersion': '3.0.4'}])
-            component = next(item for item in bom['components'] if item['name'] == 'argparse')
-            self.assertEqual(component['bom-ref'], 'pkgsrc:devel/node-argparse@3.0.4')
-            self.assertEqual(component['version'], '3.0.4')
-            self.assertNotIn('hashes', component)
-            props = {item['name']: item['value'] for item in component['properties']}
-            self.assertEqual(props['emberbsd:commonProvider'], 'true')
-            self.assertEqual(props['emberbsd:bundled'], 'true')
-            self.assertEqual(props['emberbsd:upstreamLockVersion'], '2.0.1')
-            self.assertEqual(props['emberbsd:pkgsrcPath'], 'devel/node-argparse')
-
-    def test_runtime_lock_closure_excludes_external_asar_build_tool(self):
-        lock_path = self.source / 'package-lock.json'
-        with lock_path.open('rb') as stream:
-            lock = json.load(stream)
-        packages, selected, roles, edges = builder.lock_closure(lock)
-        self.assertNotIn('node_modules/electron', selected)
-        self.assertNotIn('node_modules/@electron/asar', selected)
-        self.assertTrue(all(role == {'runtime'} for role in roles.values()))
-        manifest = json.loads((HERE / 'npm-mirror-manifest.json').read_text())
-        override_keys = {row['lockKey'] for row in manifest['runtimeOverrides']}
-        self.assertEqual(set(row['lockKey'] for row in manifest['packages']), set(selected) - override_keys)
-        self.assertEqual({row['lockKey'] for row in manifest['runtimeOverrides']},
-                         set(builder.COMMON_RUNTIME_OVERRIDES))
-        self.assertEqual(manifest['hostBuildTool'], {
-            'name': '@electron/asar', 'pkgsrcPath': 'devel/node-electron-asar'})
-        # The exact external runtime requirement fails closed before SBOM emission.
-        with self.assertRaises(builder.BuildError):
-            builder.validate_runtime_dependency(
-                '45.2.1', '../../devel/electron44',
-                'electron>=44.5.1<45:../../devel/electron44')
-
-    def test_modified_npm_archive_is_refused_before_staging(self):
-        manifest = HERE / 'npm-mirror-manifest.json'
-        with manifest.open('rb') as handle:
-            data = json.load(handle)
-        first = sorted(data['packages'], key=lambda row: row['lockKey'])[0]
-        with tempfile.TemporaryDirectory(prefix='blanc-bad-mirror-') as temporary:
-            distdir = Path(temporary)
-            corrupt = distdir / first['distfile']
-            shutil.copyfile(self.distdir / first['distfile'], corrupt)
-            with corrupt.open('ab') as handle:
-                handle.write(b'corruption')
-            with self.assertRaises(builder.BuildError):
-                builder.stage_dependencies(
-                    self.jsonio, self.inventory, self.source, distdir,
-                    distdir / 'runtime', manifest,
-                    hashlib.sha256(manifest.read_bytes()).hexdigest(), self.native)
-
-    def test_common_runtime_modules_are_staged_and_compatible(self):
-        manifest = HERE / 'npm-mirror-manifest.json'
-        with tempfile.TemporaryDirectory(prefix='blanc-common-runtime-') as temporary:
+    def test_installed_projection_and_sbom_preserve_package_provenance(self):
+        with tempfile.TemporaryDirectory(prefix='blanc-projection-') as temporary:
             work = Path(temporary)
             (work / 'tmp').mkdir()
             (work / 'home').mkdir()
-            runtime = work / 'runtime'
-            result = builder.stage_dependencies(
-                self.jsonio, self.inventory, self.source, self.distdir, runtime, manifest,
-                hashlib.sha256(manifest.read_bytes()).hexdigest(), self.native)
-            lock, packages, selected, roles, edges, rows, metadata, providers, overrides = result
-            self.assertEqual(set(providers), set(builder.COMMON_RUNTIME_OVERRIDES))
-            self.assertNotIn('node_modules/argparse', rows)
-            self.assertNotIn('node_modules/debug', rows)
-            self.assertNotIn('node_modules/ms', rows)
-            self.assertNotIn('node_modules/electron-updater/node_modules/semver', rows)
-            self.assertFalse((runtime / 'electron-updater/node_modules/semver').exists())
-            self.assertEqual(metadata['node_modules/js-yaml']['dependencies']['argparse'], '^3.0.4')
-            self.assertEqual(metadata['node_modules/electron-updater']['dependencies']['semver'], '^7.8.5')
-            for key, provider in providers.items():
-                package_path = runtime / key.rsplit('node_modules/', 1)[1] / 'package.json'
-                self.assertTrue(package_path.is_file())
-                self.assertEqual(json.loads(package_path.read_text())['version'], provider['version'])
-                self.assertTrue(provider['package_path'].startswith('devel/node-'))
-
-            app_modules = work / 'app/node_modules'
-            builder.copy_module_tree(runtime, app_modules)
-            node = self.native.tool('node')
-            env = builder.child_environment(self.native, work)
-            cli = app_modules / 'js-yaml/bin/js-yaml.js'
-            cases = [
-                ('stdin', [], b'a: 1\n', None, 0, b'{\n  "a": 1\n}\n'),
-                ('version', ['--version'], b'', None, 0, b'4.3.2\n'),
-                ('file', [], b'', ('input.yml', b'hello: world\n'), 0,
-                 b'{\n  "hello": "world"\n}\n'),
-                ('malformed', ['-c'], b'a: [\n', None, 1, None),
-                ('missing', [], b'', ('absent.yml', None), 2, b''),
-            ]
-            for label, args, stdin, file_case, status, stdout in cases:
-                cwd = work / ('cli-' + label)
-                cwd.mkdir()
-                file_args = []
-                if file_case:
-                    filename, contents = file_case
-                    if contents is not None:
-                        (cwd / filename).write_bytes(contents)
-                    file_args = [filename]
-                completed = subprocess.run(
-                    [node, str(cli), *args, *file_args], cwd=cwd, env=env,
-                    input=stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                self.assertEqual(completed.returncode, status, label)
-                if stdout is not None:
-                    self.assertEqual(completed.stdout, stdout, label)
-                if label == 'malformed':
-                    self.assertTrue(completed.stderr)
-
-            semver_script = r'''const s=require(process.argv[1]);
-const {createRequire}=require('node:module');
-const fromUpdater=createRequire(process.argv[2]);
-const answer={
- valid:s.valid('v1.2.3'), invalid:s.valid('bad'), parsed:s.parse('1.2.3-alpha.2'),
- prerelease:s.prerelease('1.2.3-alpha.2'), buildEq:s.eq('1.2.3+build.5','1.2.3'),
- prereleaseOrder:s.gt('1.2.3-alpha.10','1.2.3-alpha.2'), releaseOrder:s.lt('1.2.3-alpha.2','1.2.3'),
- invalidParse:s.parse('bad'), invalidPre:s.prerelease('bad'),
- updaterResolved:fromUpdater.resolve('semver'), updaterApi:fromUpdater('semver').valid('v1.2.3')};
-answer.parsed={major:answer.parsed.major,minor:answer.parsed.minor,patch:answer.parsed.patch,
- prerelease:answer.parsed.prerelease,version:answer.parsed.version};
-try{s.eq('bad','1.0.0');answer.invalidCompare='accepted'}catch(e){answer.invalidCompare=e.name}
-process.stdout.write(JSON.stringify(answer));'''
-            completed = subprocess.run(
-                [node, '-e', semver_script, str(app_modules / 'semver'),
-                 str(app_modules / 'electron-updater/out/AppUpdater.js')], cwd=work, env=env,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            self.assertEqual(completed.returncode, 0, completed.stderr)
-            self.assertEqual(json.loads(completed.stdout), {
-                'valid': '1.2.3', 'invalid': None,
-                'parsed': {'major': 1, 'minor': 2, 'patch': 3,
-                           'prerelease': ['alpha', 2], 'version': '1.2.3-alpha.2'},
-                'prerelease': ['alpha', 2], 'buildEq': True, 'prereleaseOrder': True,
-                'releaseOrder': True, 'invalidParse': None, 'invalidPre': None,
-                'invalidCompare': 'TypeError', 'updaterResolved': str(
-                    (app_modules / 'semver/index.js').resolve(strict=True)),
-                'updaterApi': '1.2.3'})
-            debug_script = r'''const debug=require(process.argv[1]),ms=require(process.argv[2]);
-debug.enable('blanc:*');const log=debug('blanc:runtime');
-process.stdout.write(JSON.stringify({enabled:log.enabled,duration:ms('2 seconds'),resolved:require.resolve(process.argv[2])}));'''
-            completed = subprocess.run(
-                [node, '-e', debug_script, str(app_modules / 'debug'), str(app_modules / 'ms')],
-                cwd=work, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            self.assertEqual(completed.returncode, 0, completed.stderr)
-            self.assertEqual(json.loads(completed.stdout), {
-                'enabled': True, 'duration': 2000,
-                'resolved': str((app_modules / 'ms/index.js').resolve(strict=True))})
+            projection = PACKAGE.parents[2] / 'profiles/common-build-tools/javascript-projection.py'
+            rows = builder.project_runtime(self.stream, self.jsonio, self.native, work,
+                                           projection, '45.2.1', work / 'modules')
+            names = {row['name'] for row in rows}
+            self.assertIn('@ghostery/adblocker-electron', names)
+            self.assertIn('@mozilla/readability', names)
+            self.assertIn('dompurify', names)
+            self.assertNotIn('electron', names)
+            self.assertNotIn('electron-updater', names)
+            self.assertTrue(all(row['distinfoSha256'] and row['buildVersionSha256'] for row in rows))
+            app = work / 'app.asar'
+            app.write_bytes(b'fixture')
+            source = {'upstreamCommit': 'fixture', 'upstreamCommitTimestamp': '2026-11-03T02:10:29Z',
+                      'sourceArchiveSha256': 'a' * 64, 'packageLockSha256': 'b' * 64,
+                      'allowlistSha256': 'c' * 64}
+            asar = {'name': '@electron/asar', 'version': '4.3.1'}
+            bom = builder.make_projected_sbom(source, {}, rows, app, '26.13.0', '45.2.1',
+                      '../../devel/electron44', 'electron>=45.2.1<45.2.2:../../devel/electron44',
+                      asar, 'd' * 64, '3.15.0', 'e' * 64)
+            serialized = json.dumps(bom)
+            self.assertNotIn(str(work), serialized)
+            self.assertNotIn(BUILD_OPTIONS.host_prefix, serialized)
+            self.assertIn('emberbsd:distinfoSha256', serialized)
+            self.assertIn('pkgsrc:devel/electron44@45.2.1', serialized)
 
     def test_installed_asar_provider_rejects_missing_old_and_outside_prefix(self):
         with tempfile.TemporaryDirectory(prefix='blanc-asar-provider-') as temporary:
@@ -530,46 +333,6 @@ process.stdout.write(JSON.stringify({enabled:log.enabled,duration:ms('2 seconds'
             with self.assertRaisesRegex(builder.BuildError, 'missing or outside'):
                 builder.resolve_asar_provider(SimpleNamespace(bundle_root=str(root)), self.jsonio, '4.3.1')
 
-    def test_common_runtime_provider_rejects_old_escaped_and_native_payloads(self):
-        spec = builder.COMMON_RUNTIME_OVERRIDES['node_modules/argparse']
-        with tempfile.TemporaryDirectory(prefix='blanc-common-provider-') as temporary:
-            root = Path(temporary) / 'prefix'
-            outside = Path(temporary) / 'outside'
-
-            def add_provider(prefix, version='3.0.4', native=False):
-                package = prefix / 'lib/node_modules/argparse'
-                package.mkdir(parents=True)
-                (package / 'package.json').write_text(json.dumps({
-                    'name': 'argparse', 'version': version, 'license': 'PSF-2.0'}))
-                if native:
-                    (package / 'addon.node').write_bytes(b'not a native module')
-
-            root.mkdir()
-            with self.assertRaisesRegex(builder.BuildError, 'missing or outside'):
-                builder.resolve_common_runtime_provider(
-                    SimpleNamespace(bundle_root=str(root)), self.jsonio,
-                    'node_modules/argparse', spec)
-            add_provider(root, '2.0.1')
-            with self.assertRaisesRegex(builder.BuildError, 'version mismatch'):
-                builder.resolve_common_runtime_provider(
-                    SimpleNamespace(bundle_root=str(root)), self.jsonio,
-                    'node_modules/argparse', spec)
-            shutil.rmtree(root / 'lib/node_modules/argparse')
-            outside.mkdir()
-            add_provider(outside)
-            (root / 'lib/node_modules').mkdir(parents=True, exist_ok=True)
-            (root / 'lib/node_modules/argparse').symlink_to(
-                outside / 'lib/node_modules/argparse', target_is_directory=True)
-            with self.assertRaisesRegex(builder.BuildError, 'missing or outside'):
-                builder.resolve_common_runtime_provider(
-                    SimpleNamespace(bundle_root=str(root)), self.jsonio,
-                    'node_modules/argparse', spec)
-            (root / 'lib/node_modules/argparse').unlink()
-            add_provider(root, native=True)
-            with self.assertRaisesRegex(builder.BuildError, 'native addon'):
-                builder.resolve_common_runtime_provider(
-                    SimpleNamespace(bundle_root=str(root)), self.jsonio,
-                    'node_modules/argparse', spec)
 
     def test_selected_prefix_asar_pack_list_roundtrip(self):
         provider = builder.resolve_asar_provider(self.native, self.jsonio, '4.3.1')
@@ -589,7 +352,7 @@ process.stdout.write(JSON.stringify({enabled:log.enabled,duration:ms('2 seconds'
                                 'build': {'appId': 'org.emberbsd.browser'}},
             'identitySource': 'org.emberbsd.browser', 'mainSource': '',
             'tabSource': 'contextIsolation: true; nodeIntegration: false; sandbox: true',
-            'files': ['LICENSE', 'ASSET-LICENSE.md', 'THIRD-PARTY-NOTICES.md',
+            'files': ['LICENSE', 'ASSET-LICENSE.md', 'THIRD-PARTY-NOTICES.md', 'TRADEMARKS.md',
                       'src/renderer/pages/ember-browser.svg', 'src/renderer/pages/ember-browser.png'],
         }
         builder.validate_derivative_asar(packed)
@@ -604,9 +367,7 @@ process.stdout.write(JSON.stringify({enabled:log.enabled,duration:ms('2 seconds'
     def test_plist_installs_the_generated_compliance_manifest(self):
         plist = (PACKAGE / 'PLIST').read_text(encoding='utf-8')
         self.assertIn('share/doc/ember-browser/SBOM.json', plist)
-        self.assertIn('share/doc/ember-browser/blueoak-1.0.0.txt', plist)
-        makefile = (PACKAGE / 'Makefile').read_text(encoding='utf-8')
-        self.assertIn('${FILESDIR:Q}/blueoak-1.0.0.txt', makefile)
+        self.assertIn('share/doc/ember-browser/TRADEMARKS.md', plist)
 
 
 if __name__ == '__main__':
