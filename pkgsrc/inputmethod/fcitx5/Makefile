@@ -1,6 +1,6 @@
 # $NetBSD: Makefile,v 1.32 2026/09/02 19:03:02 wiz Exp $
 
-PKGREVISION=	6
+PKGREVISION=	7
 
 .include "Makefile.common"
 
