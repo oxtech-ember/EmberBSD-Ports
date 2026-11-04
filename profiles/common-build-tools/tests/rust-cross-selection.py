@@ -28,6 +28,9 @@ def main():
     if not rust_bin.is_file():
         raise SystemExit(f"missing pkgsrc provider: {rust_bin}")
     librsvg = pkgsrc / "graphics/librsvg/Makefile"
+    cargo_c = pkgsrc / "devel/cargo-c/Makefile"
+    if not cargo_c.is_file():
+        raise SystemExit(f"missing pkgsrc consumer: {cargo_c}")
     bindgen = pkgsrc / "devel/rust-bindgen/Makefile"
     if not bindgen.is_file():
         raise SystemExit(f"missing pkgsrc consumer: {bindgen}")
@@ -50,10 +53,10 @@ def main():
     env["MAKECONF"] = str(test_makeconf)
     result = {}
 
-    def query(package, variable, query_env, label):
+    def query(package, variable, query_env, label, extra=()):
         completed = subprocess.run(
             [str(bmake), "-C", str(package.parent), "show-var",
-             f"VARNAME={variable}"],
+             f"VARNAME={variable}", *extra],
             check=False,
             capture_output=True,
             text=True,
@@ -84,10 +87,16 @@ def main():
     query(rust_bin, "PKG_SKIP_REASON", env, "lang/rust-bin PKG_SKIP_REASON")
     query(rust_bin, "PKG_FAIL_REASON", env, "lang/rust-bin PKG_FAIL_REASON")
     query(bindgen, "DEPENDS", env, "devel/rust-bindgen DEPENDS")
+    # cross-bulk builds native tool dependencies from the same MAKECONF with
+    # only USE_CROSS_COMPILE=no on the command line.
+    native = ("USE_CROSS_COMPILE=no",)
+    for variable in ("RUST_TYPE", "TOOL_DEPENDS", "BUILDLINK_PKGSRCDIR.rust"):
+        query(cargo_c, variable, env, "native devel/cargo-c " + variable, native)
 
     std = result["EMBERBSD_CROSS_RUST_STD"]
     tools = result["TOOL_DEPENDS"].split()
     target = (result["BUILD_DEPENDS"] + " " + result["DEPENDS"]).split()
+    native_tools = result["native devel/cargo-c TOOL_DEPENDS"].split()
     checks = {
         "native Cargo mode": result["RUST_TYPE"] == "native",
         "target std package": re.fullmatch(r"rust-std-(aarch64|x86_64)-netbsd", std) is not None,
@@ -99,6 +108,10 @@ def main():
         "librsvg native override": result["graphics/librsvg RUST_TYPE"] == "native",
         "rust-bin skipped for the target": "build-host compiler" in result["lang/rust-bin PKG_SKIP_REASON"],
         "rust-bin not failed for the target": result["lang/rust-bin PKG_FAIL_REASON"] == "",
+        "native tool keeps native Cargo mode": result["native devel/cargo-c RUST_TYPE"] == "native",
+        "native tool uses the host rust-bin": any(d.startswith("rust-bin>=") and d.endswith(":../../lang/rust-bin") for d in native_tools),
+        "native tool has no target std": not any(d.startswith(std + "-") for d in native_tools),
+        "native tool has no source compiler": result["native devel/cargo-c BUILDLINK_PKGSRCDIR.rust"] == "",
         "no Rust runtime for target bindgen": not any(re.search(r":\.\./\.\./lang/rust(-bin)?$", d) for d in result["devel/rust-bindgen DEPENDS"].split()),
     }
     failed = [name for name, ok in checks.items() if not ok]
@@ -116,7 +129,7 @@ def main():
         json.dumps(result, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    print("PASS: cross Cargo uses the host rust-bin and target std; rust-bin is not built for the target")
+    print("PASS: cross Cargo uses the host rust-bin and target std; native tools use the host rust-bin; rust-bin is not built for the target")
 
 
 if __name__ == "__main__":

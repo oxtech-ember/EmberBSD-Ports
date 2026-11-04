@@ -204,7 +204,10 @@ The common cross profile defaults to `RUST_TYPE=native` and names the target
 std package in `EMBERBSD_CROSS_RUST_STD` (for example
 `rust-std-aarch64-netbsd`). The exported `lang/rust/rust.mk` patch then adds
 the build-host `rust-bin` and that std package as tool dependencies, so Cargo
-runs the host compiler with the target std. No target Rust compiler is
+runs the host compiler with the target std. Native tool dependencies that
+cross-bulk builds from the same MAKECONF with `USE_CROSS_COMPILE=no`, such as
+`devel/cargo-c`, keep native mode and get the same host `rust-bin` as a tool
+dependency without a target std. No target Rust compiler is
 selected: cross builds skip `lang/rust-bin` (`PKG_SKIP_REASON`), so a cross
 bulk lists it as skipped and refuses a target package that depends on it
 (`scripts/tests/cross-bulk-rust-bin-target.sh`). Package recipes can select
@@ -221,8 +224,9 @@ The check removes any explicit `RUST_TYPE` assignment from the supplied
 MAKECONF, then queries `graphics/libimagequant`, the explicit
 `graphics/librsvg` override and `lang/rust-bin`. It requires native Cargo mode,
 the host `rust-bin` and target std in `TOOL_DEPENDS`, no Rust compiler in
-`BUILD_DEPENDS`, `DEPENDS` or buildlink, `librsvg`'s native-tool selection, and
-the `rust-bin` skip for the target. It also requires that the cross
+`BUILD_DEPENDS`, `DEPENDS` or buildlink, `librsvg`'s native-tool selection, the
+host `rust-bin` tool for a native `devel/cargo-c` build, and the `rust-bin` skip
+for the target. It also requires that the cross
 `devel/rust-bindgen` has no Rust compiler runtime dependency.
 
 It builds and installs with the shared Rust on macOS/Apple Silicon, with
