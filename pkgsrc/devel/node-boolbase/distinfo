@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (node-boolbase/boolbase-2.0.0.tgz) = 3bb2d0f6a6459d0e316822aebdb70a218e23e216db4b7d5bf9e8c4369820f174
+SHA512 (node-boolbase/boolbase-2.0.0.tgz) = 0e455a6901f2991869604628f71d68a3b43b07463a28952c8e6ddcf5e4f21436f2e0c1cb053c19e990d605e979ceb6318f55ac6600b9a0ba62cfef77325b9778
+Size (node-boolbase/boolbase-2.0.0.tgz) = 1622 bytes

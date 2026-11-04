@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (node-svgo/svgo-4.1.0.tgz) = 68c5c419f54c32d9b70e52275b7461e278cc0a77b50c5e2a6ed25b7163d7f326
+SHA512 (node-svgo/svgo-4.1.0.tgz) = 6e4c674e0d64494d20ba12019a26c0e94521ad098f540d57b102cdfb294277e516cdb9cb93248e717a729359ab974e5ffa971a0b1d9e1dbfaca7a060319597f9
+Size (node-svgo/svgo-4.1.0.tgz) = 353198 bytes
+SHA1 (patch-package.json) = 7b85e51323f5a41bf233a47c34f1da03d765d95f

@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (node-css-tree/css-tree-3.2.1.tgz) = ccd5fcdf523f88765f75ef3dc87878e3853eafec3974927846db80e71a5614bd
+SHA512 (node-css-tree/css-tree-3.2.1.tgz) = 5fbb2343371e521bb5bbb63fca5ad1645536152e8b462155a7aaca2cf836df2df1ddcdc338a030b97183a7e3c01a387a0929c28d8780ba5f29713f1b025fa548
+Size (node-css-tree/css-tree-3.2.1.tgz) = 316943 bytes
+SHA1 (patch-package.json) = 5db2665d4706f26c11603539ef8e7f8eb35a35b1

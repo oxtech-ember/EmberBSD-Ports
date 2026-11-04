@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (node-cssnano/cssnano-9.9.0.tgz) = 06ed47b58d35f7915b1e6ae3fd9bc5a56c6736b0560c5f469992d459cdb40598
+SHA512 (node-cssnano/cssnano-9.9.0.tgz) = 252f75e13876351936f7bf491c9bdb1375233ed2e6c97b4f9ebdb734dba5f41390c04b7daff03668cd524eb2ad28700f7375d16940f0328aa45e78c4a601e403
+Size (node-cssnano/cssnano-9.9.0.tgz) = 362501 bytes
+SHA1 (patch-package.json) = 9078c660c8559cfcec8f2b63abf8cbbcfa1ce508

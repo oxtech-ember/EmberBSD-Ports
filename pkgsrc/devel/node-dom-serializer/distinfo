@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (node-dom-serializer/dom-serializer-3.1.1.tgz) = 9cadcde765d7338152821af5af3a36e1e1cd59c976c3d42b98f6a4e26f690d22
+SHA512 (node-dom-serializer/dom-serializer-3.1.1.tgz) = e0c11adfcfd07b10686fa805370bbe106756be127538ab8dc1d618dd8dcdc9e58341f9c67836105037c84735aee41e60b2fd37b28d94c5ddbc602eb3aecc772f
+Size (node-dom-serializer/dom-serializer-3.1.1.tgz) = 10730 bytes
+SHA1 (patch-package.json) = c0441ddff49dcff9e4435e2f9bf496772d2e32c4

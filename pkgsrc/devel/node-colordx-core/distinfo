@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (node-colordx-core/core-7.3.0.tgz) = f654c238a1bf2fd770b36510fcd3262d0b9e9b8fbd8b805e52c44d9a7ace0ce3
+SHA512 (node-colordx-core/core-7.3.0.tgz) = 2d5cd34cf857ef0a72ed39068e8b80f736db081230f764469bb650a92285134a18137b0cc761465f3f74795a60c3b93ffb0aeb63ea89f3a9c75e27d958c4b98c
+Size (node-colordx-core/core-7.3.0.tgz) = 105640 bytes

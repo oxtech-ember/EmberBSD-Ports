@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (node-sax/sax-1.6.1.tgz) = 58dc75439e82a3b9232cd97262f7d5ad063bf689615fcd9a685c42b69aebe68d
+SHA512 (node-sax/sax-1.6.1.tgz) = e36b415702d69da42f5b9cdce076d9ad3b9671c1020997c18bdd850eec2dab16ac1fe25b3c1dff14e29bd66db6d8ae364785b1bb1cf332c4ecc1fce0b52bbae1
+Size (node-sax/sax-1.6.1.tgz) = 16800 bytes

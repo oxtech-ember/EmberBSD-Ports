@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (node-domutils/domutils-4.0.2.tgz) = dfbe9f6b6b8d7a48e85003b177ebe87f209b0d18196cb8091ff0a1f49b334607
+SHA512 (node-domutils/domutils-4.0.2.tgz) = a88e092d12a74b3a85aabee10254b9c500eeb010a3292106e2de3eeda36b21030705cb02d9318486ec8004975892049ec0be7b3cd2d812289b63688f2a12a968
+Size (node-domutils/domutils-4.0.2.tgz) = 24735 bytes

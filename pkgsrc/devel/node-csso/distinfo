@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (node-csso/csso-5.0.5.tgz) = 672c1bf826bb07efd98948c316c73b858b29270160b5975a9511449de62ae9e1
+SHA512 (node-csso/csso-5.0.5.tgz) = d0baeb4ad3ce7498fe48f082ac6873af2c9c2e3c1c81448706dc4d03c6880f17f418bb1187570a621074d06775943392e32187ebdf92367d77f9359b54711315
+Size (node-csso/csso-5.0.5.tgz) = 168159 bytes
+SHA1 (patch-package.json) = 78cc9f03d9cd301246549fa3d668a11721b42e60

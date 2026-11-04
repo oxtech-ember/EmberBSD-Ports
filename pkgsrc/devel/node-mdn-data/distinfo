@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (node-mdn-data/mdn-data-2.37.2.tgz) = d74c30720854cb343bfaf9e6438929bc557b7e64da39d9416b5678d62a3da939
+SHA512 (node-mdn-data/mdn-data-2.37.2.tgz) = af3f58381188b5d49b7bb1dc480ad46e1880bf8481ff80ca45883de824854b609c21831b52f06d665cc0d4d09b93601d81b998c0cab035b94ba51e38d652de89
+Size (node-mdn-data/mdn-data-2.37.2.tgz) = 103398 bytes
