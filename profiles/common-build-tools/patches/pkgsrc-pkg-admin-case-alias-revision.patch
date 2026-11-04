@@ -1,0 +1,5 @@
+--- a/pkgtools/pkg_install/Makefile
++++ b/pkgtools/pkg_install/Makefile
+@@ -10 +10 @@
+-PKGREVISION=		22
++PKGREVISION=		23

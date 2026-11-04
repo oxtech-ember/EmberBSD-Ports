@@ -1,0 +1,101 @@
+--- a/pkgtools/pkg_install/files/admin/check.c
++++ b/pkgtools/pkg_install/files/admin/check.c
+@@ -76,0 +77,3 @@
++#if HAVE_STRINGS_H
++#include <strings.h>
++#endif
+@@ -81,0 +85,87 @@
++
++/* Prove that lookup folded the missing spelling, not that two distinct
++ * case-sensitive hard links happen to share an inode. */
++static int
++case_alias_directory(const char *stagefile, const char *target)
++{
++	char *dir, *base;
++	DIR *stream;
++	struct dirent *ent;
++	int found_target = 0, found_alias = 0, scan_error;
++
++	dir = xstrdup(stagefile);
++	base = strrchr(dir, '/');
++	if (base == NULL) {
++		free(dir);
++		return 0;
++	}
++	*base++ = '\0';
++	stream = opendir(*dir == '\0' ? "/" : dir);
++	if (stream == NULL) {
++		free(dir);
++		return 0;
++	}
++	errno = 0;
++	while ((ent = readdir(stream)) != NULL) {
++		if (strcmp(ent->d_name, base) == 0)
++			found_alias = 1;
++		if (strcmp(ent->d_name, target) == 0)
++			found_target = 1;
++	}
++	scan_error = errno;
++	if (closedir(stream) != 0)
++		scan_error = errno;
++	free(dir);
++	return scan_error == 0 && found_target && !found_alias;
++}
++
++/* A same-directory, case-only alias can materialize as its regular target on
++ * a case-insensitive filesystem. Require the target to be owned in the same
++ * packing-list cwd, checksum-protected and physically the very same file. */
++static int
++case_alias_matches(plist_t *entry, const char *stagefile)
++{
++	const char *target, *base, *expected;
++	char *target_name, *target_path, *digest;
++	plist_t *start, *q;
++	struct stat a, b;
++	int ok = 0;
++	size_t dirlen;
++
++	if (entry->next == NULL || entry->next->type != PLIST_COMMENT ||
++	    strncmp(entry->next->name, SYMLINK_HEADER, SymlinkHeaderLen) != 0)
++		return 0;
++	target = entry->next->name + SymlinkHeaderLen;
++	base = strrchr(entry->name, '/');
++	base = base == NULL ? entry->name : base + 1;
++	if (*target == '\0' || strchr(target, '/') != NULL ||
++	    strcmp(base, target) == 0 || strcasecmp(base, target) != 0 ||
++	    lstat(stagefile, &a) != 0 || !S_ISREG(a.st_mode) ||
++	    !case_alias_directory(stagefile, target))
++		return 0;
++	dirlen = (size_t)(base - entry->name);
++	target_name = xasprintf("%.*s%s", (int)dirlen, entry->name, target);
++	start = entry;
++	while (start->prev != NULL && start->prev->type != PLIST_CWD)
++		start = start->prev;
++	for (q = start; q != NULL && q->type != PLIST_CWD; q = q->next) {
++		if (q->type != PLIST_FILE || strcmp(q->name, target_name) != 0 ||
++		    (q->prev != NULL && q->prev->type == PLIST_IGNORE) ||
++		    q->next == NULL || q->next->type != PLIST_COMMENT ||
++		    strncmp(q->next->name, CHECKSUM_HEADER, ChecksumHeaderLen) != 0)
++			continue;
++		expected = q->next->name + ChecksumHeaderLen;
++		target_path = xasprintf("%.*s%s", (int)(strrchr(stagefile, '/') - stagefile + 1),
++		    stagefile, target);
++		if (lstat(target_path, &b) == 0 && S_ISREG(b.st_mode) &&
++		    a.st_dev == b.st_dev && a.st_ino == b.st_ino &&
++		    (digest = MD5File(target_path, NULL)) != NULL) {
++			ok = strcmp(digest, expected) == 0;
++			free(digest);
++		}
++		free(target_path);
++		break;
++	}
++	free(target_name);
++	return ok;
++}
+@@ -146,2 +236,4 @@
+-							warnx("can't readlink `%s'", file);
+-							rv = 1;
++							if (!case_alias_matches(p, stagefile)) {
++								warnx("can't readlink `%s'", file);
++								rv = 1;
++							}
