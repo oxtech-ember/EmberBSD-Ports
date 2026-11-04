@@ -33,9 +33,11 @@ GE8300 graphics need EmberBSD
 [OS 99a54c18](https://github.com/oxtech-ember/EmberBSD/commit/99a54c183795)
 or later; older kernels reject GE8300 render work. With that kernel on an
 A133 tablet, offscreen Vulkan triangles at 256x256, 1280x800, 256x64 and
-64x256 were pixel-exact. That run used the same Mesa sources in a
-softpipe-only build with this ICD added; the default nb13 package was not
-built. Presentation, Qt and multisampling are not accepted.
+64x256 were pixel-exact. The nb14 `softpipe-only powervr` cross package
+builds with Clang and no target LLVM. Its ICD passed these cases on one
+warm-booted A133, including row padding and buffer guards. The default
+full package was not built for this check. Presentation, Qt and
+multisampling are not accepted.
 
 This is a native PowerVR DRM consumer. It has no diagnostic-packet backend.
 The OS owns render-node identity, GEM buffers, GPU page tables and syncobj.
