@@ -10,6 +10,7 @@ LICENSE=	gnu-lgpl-v3 OR gnu-gpl-v2 OR gnu-gpl-v3
 
 CONFLICTS+=	qt6-qtwayland<6.10.0
 
+.include "package-revisions.mk"
 .include "Makefile.common"
 
 # Same-run devel package: the cross-bulk controller supplies a complete
@@ -54,25 +55,25 @@ PKG_FAIL_REASON+= "The separate Qtbase SDK requires a NetBSD cross build; native
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The Qtbase runtime/SDK split requires the common aarch64 or amd64 cross target"
 .endif
-PKGREVISION= 13
+PKGREVISION= ${QTBASE_RUNTIME_REVISION}
 QTBASE_FULL_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.NetBSD ${EMBERBSD_QTBASE_PKGDIR}/PLIST
 QTBASE_RUNTIME_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.runtime
 QTBASE_DEVEL_PLIST_SRC= ${EMBERBSD_QTBASE_PKGDIR}/PLIST.NetBSD ${EMBERBSD_QTBASE_PKGDIR}/../qt6-qtbase-devel/PLIST
 .if defined(EMBERBSD_QTBASE_DEVEL)
-PKGREVISION= 16
-.if ${PKGREVISION} != 16
-PKG_FAIL_REASON+= "The Qtbase SDK requires package revision 16"
+PKGREVISION= ${QTBASE_DEVEL_REVISION}
+.if ${PKGREVISION} != ${QTBASE_DEVEL_REVISION}
+PKG_FAIL_REASON+= "The Qtbase SDK requires package revision ${QTBASE_DEVEL_REVISION}"
 .endif
 QTBASE_PACKAGE_PART= devel
 .if ${QTBASE_PACKAGE_PART} != "devel"
 PKG_FAIL_REASON+= "The Qtbase SDK recipe must select the devel partition"
 .endif
 PLIST_SRC= ${QTBASE_DEVEL_PLIST_SRC}
-DEPENDS+= qt6-qtbase-${QTVERSION}nb13:../../x11/qt6-qtbase
+DEPENDS+= qt6-qtbase-${QTVERSION}nb${QTBASE_RUNTIME_REVISION}:../../x11/qt6-qtbase
 CONFLICTS+= qt6-qtbase<${QTVERSION}nb12
 .else
-.if ${PKGREVISION} != 13
-PKG_FAIL_REASON+= "The Qtbase runtime requires package revision 13"
+.if ${PKGREVISION} != ${QTBASE_RUNTIME_REVISION}
+PKG_FAIL_REASON+= "The Qtbase runtime requires package revision ${QTBASE_RUNTIME_REVISION}"
 .endif
 QTBASE_PACKAGE_PART= runtime
 .if ${QTBASE_PACKAGE_PART} != "runtime"

@@ -1,0 +1,36 @@
+# Origin: EmberBSD contributors (AI-assisted).
+name: Qt split package metadata
+
+'on':
+  pull_request:
+    paths:
+      - '.github/workflows/qt-package-metadata.yml'
+      - 'pkgsrc/x11/qt6-qtbase/**'
+      - 'pkgsrc/x11/qt6-qtbase-devel/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/qt-package-metadata.yml'
+      - 'pkgsrc/x11/qt6-qtbase/**'
+      - 'pkgsrc/x11/qt6-qtbase-devel/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  metadata:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare bmake for metadata evaluation
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends bmake
+      - name: Check revision coupling without compiling Qt
+        run: |
+          python3 pkgsrc/x11/qt6-qtbase/tests/package-revisions.py \
+            --bmake "$(command -v bmake)" --work-parent "$RUNNER_TEMP"
