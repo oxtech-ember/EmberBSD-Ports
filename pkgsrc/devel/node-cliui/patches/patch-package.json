@@ -2,8 +2,8 @@ $NetBSD$
 
 Use the shared current common JavaScript dependencies.
 
---- a/package.json
-+++ b/package.json
+--- package.json.orig
++++ package.json
 @@ -40,9 +40,9 @@
    "author": "Ben Coe <ben@npmjs.com>",
    "license": "ISC",

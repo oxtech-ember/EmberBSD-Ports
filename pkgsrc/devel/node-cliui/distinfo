@@ -3,4 +3,4 @@ $NetBSD$
 BLAKE2s (cliui-9.0.1.tgz) = c97ec70785b5ef16e3c86d5046f54c6bd84ca9d19e8d821e24af01bb511eb65b
 SHA512 (cliui-9.0.1.tgz) = 93b9dd80a870a10bde04bfbfd6da86258373d3dec8ed63afc1b9a6536011e7e99a82d6e33d64134b50b9bf31a4042f189bc5164737ca533514a852f2a58e10fb
 Size (cliui-9.0.1.tgz) = 19175 bytes
-SHA1 (patch-package.json) = ddc7fe87c9e98bbc70508ebae591eb40d7bc655b
+SHA1 (patch-package.json) = aae6a6d3a2441c79b26454cdb66e6512f05466ab

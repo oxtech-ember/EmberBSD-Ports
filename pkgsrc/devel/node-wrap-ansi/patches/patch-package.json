@@ -2,8 +2,8 @@ $NetBSD$
 
 Use the shared current common JavaScript dependencies.
 
---- a/package.json
-+++ b/package.json
+--- package.json.orig
++++ package.json
 @@ -53,7 +53,7 @@
  		"text"
  	],

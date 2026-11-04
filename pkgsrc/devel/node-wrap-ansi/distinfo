@@ -3,4 +3,4 @@ $NetBSD$
 BLAKE2s (wrap-ansi-10.0.2.tgz) = e10087764a5ec8ded8f662bc378a67778a0b0ebd66997f3395fdd477de9f3390
 SHA512 (wrap-ansi-10.0.2.tgz) = e8e2d1359a919ed546066dba821679799842b965b23a44424a7f17b0e22eab9b2da4213fb632db768cddf779da20b6628349660fc00d7d1c27867d032de5c696
 Size (wrap-ansi-10.0.2.tgz) = 8332 bytes
-SHA1 (patch-package.json) = 99c87df04a1baaea79fb0b8f0bcf36b091a62888
+SHA1 (patch-package.json) = 17979afaf3391e80ab51b3f1b53fb5807152b2da
