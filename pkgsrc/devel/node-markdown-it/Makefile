@@ -1,6 +1,7 @@
 # Origin: EmberBSD (AI-assisted); common upstream markdown-it module.
 DISTNAME= markdown-it-15.0.3
 PKGNAME= node-markdown-it-15.0.3
+PKGREVISION= 1
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/markdown-it/-/
 EXTRACT_SUFX= .tgz
@@ -8,6 +9,7 @@ WRKSRC= ${WRKDIR}/package
 HOMEPAGE= https://www.npmjs.com/package/markdown-it/
 COMMENT= Common markdown-it JavaScript module
 LICENSE= mit
+REPLACE_NODEJS= bin/markdown-it.mjs
 JS_MODULE_NAME= markdown-it
 JS_MODULE_DEPENDS+= argparse=node-argparse>=3.0.4:../../devel/node-argparse
 JS_MODULE_DEPENDS+= entities=node-entities>=9.0.0:../../devel/node-entities
