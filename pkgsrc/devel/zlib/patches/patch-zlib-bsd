@@ -1,0 +1,266 @@
+$NetBSD$
+
+Preserve the NetBSD libz.so.1 LP32 offset ABI and kernel/standalone
+compatibility while using the common zlib 1.3.2 source. The zero-address
+inflate behavior and kernel header adaptations come from NetBSD's zlib 1.3.1
+vendor integration. The original zlib notices and licenses remain in source.
+
+Origin: NetBSD common/dist/zlib; adapted for zlib 1.3.2 by EmberBSD (AI-assisted).
+
+--- zconf.h.orig
++++ zconf.h
+@@ -7,6 +7,10 @@
+ 
+ #ifndef ZCONF_H
+ #define ZCONF_H
++
++#if defined(__NetBSD__)
++#  include <sys/types.h>
++#endif
+ 
+ /*
+  * If you *really* need a unique prefix for all types and library functions,
+@@ -261,7 +265,11 @@
+ #  if defined(NO_SIZE_T)
+      typedef unsigned NO_SIZE_T z_size_t;
+ #  elif defined(STDC)
+-#    include <stddef.h>
++#    if defined(__NetBSD__) && (defined(_KERNEL) || defined(_STANDALONE))
++#      include <lib/libkern/libkern.h>
++#    else
++#      include <stddef.h>
++#    endif
+      typedef size_t z_size_t;
+ #  else
+      typedef unsigned long z_size_t;
+@@ -427,7 +435,11 @@
+ #endif
+ 
+ #if !defined(Z_U4) && !defined(Z_SOLO) && defined(STDC)
+-#  include <limits.h>
++#  if defined(__NetBSD__) && (defined(_KERNEL) || defined(_STANDALONE))
++#    include <machine/limits.h>
++#  else
++#    include <limits.h>
++#  endif
+ #  if (UINT_MAX == 0xffffffffUL)
+ #    define Z_U4 unsigned
+ #  elif (ULONG_MAX == 0xffffffffUL)
+@@ -443,11 +455,11 @@
+    typedef unsigned long z_crc_t;
+ #endif
+ 
+-#if defined(HAVE_UNISTD_H) && HAVE_UNISTD_H-0 /* may be set to #if 1 by ./configure */
++#if !defined(__NetBSD__) && defined(HAVE_UNISTD_H) && HAVE_UNISTD_H-0 /* may be set by configure */
+ #  define Z_HAVE_UNISTD_H
+ #endif
+ 
+-#if defined(HAVE_STDARG_H) && HAVE_STDARG_H-0 /* may be set to #if 1 by ./configure */
++#if !defined(__NetBSD__) && defined(HAVE_STDARG_H) && HAVE_STDARG_H-0 /* may be set by configure */
+ #  define Z_HAVE_STDARG_H
+ #endif
+ 
+@@ -459,7 +471,11 @@
+ 
+ #if defined(STDC) || defined(Z_HAVE_STDARG_H)
+ #  ifndef Z_SOLO
+-#    include <stdarg.h>         /* for va_list */
++#    if defined(__NetBSD__) && (defined(_KERNEL) || defined(_STANDALONE))
++#      include <sys/stdarg.h>
++#    else
++#      include <stdarg.h>         /* for va_list */
++#    endif
+ #  endif
+ #endif
+ 
+@@ -516,7 +532,14 @@
+ #endif
+ 
+ #ifndef z_off_t
+-#  define z_off_t long long
++#  if defined(__NetBSD__)
++#    define z_off_t long /* Preserve the libz.so.1 ABI on LP32. */
++#  else
++#    define z_off_t long long
++#  endif
++#endif
++#if defined(__NetBSD__) && !defined(z_ptrdiff_t)
++#  define z_ptrdiff_t long
+ #endif
+ 
+ #if !defined(_WIN32) && defined(Z_LARGE64)
+--- zlib.h.orig
++++ zlib.h
+@@ -1845,7 +1845,9 @@
+    negative, the result has no meaning or utility.
+ */
+ 
++#if !defined(__NetBSD__) || (!defined(_KERNEL) && !defined(_STANDALONE))
+ ZEXTERN uLong ZEXPORT crc32(uLong crc, const Bytef *buf, uInt len);
++#endif
+ /*
+      Update a running CRC-32 with the bytes buf[0..len-1] and return the
+    updated CRC-32. A CRC-32 value is in the range of a 32-bit unsigned integer.
+--- zutil.h.orig
++++ zutil.h
+@@ -22,11 +22,15 @@
+ #include "zlib.h"
+ 
+ #if defined(STDC) && !defined(Z_SOLO)
+-#  if !(defined(_WIN32_WCE) && defined(_MSC_VER))
+-#    include <stddef.h>
+-#  endif
+-#  include <string.h>
+-#  include <stdlib.h>
++#  if defined(__NetBSD__) && (defined(_KERNEL) || defined(_STANDALONE))
++#    include <lib/libkern/libkern.h>
++#  else
++#    if !(defined(_WIN32_WCE) && defined(_MSC_VER))
++#      include <stddef.h>
++#    endif
++#    include <string.h>
++#    include <stdlib.h>
++#  endif
+ #endif
+ 
+ #ifndef local
+@@ -47,6 +51,13 @@
+ typedef unsigned long  ulg;
+ 
+ #if !defined(Z_U8) && !defined(Z_SOLO) && defined(STDC)
++# if defined(__NetBSD__) && (defined(_KERNEL) || defined(_STANDALONE))
++#  ifdef _LP64
++#   define Z_U8 unsigned long
++#  else
++#   define Z_U8 unsigned long long
++#  endif
++# else
+ #  include <limits.h>
+ #  if (ULONG_MAX == 0xffffffffffffffff)
+ #    define Z_U8 unsigned long
+@@ -57,6 +68,7 @@
+ #  elif (UINT_MAX == 0xffffffffffffffff)
+ #    define Z_U8 unsigned
+ #  endif
++# endif
+ #endif
+ 
+ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
+--- inflate.c.orig
++++ inflate.c
+@@ -491,9 +491,16 @@
+     static const unsigned short order[19] = /* permutation of code lengths */
+         {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
+ 
++#if defined(__NetBSD__) && defined(_STANDALONE)
++    /* Some kernels are loaded at address zero. */
++    if (inflateStateCheck(strm) ||
++        (strm->next_in == Z_NULL && strm->avail_in != 0))
++        return Z_STREAM_ERROR;
++#else
+     if (inflateStateCheck(strm) || strm->next_out == Z_NULL ||
+         (strm->next_in == Z_NULL && strm->avail_in != 0))
+         return Z_STREAM_ERROR;
++#endif
+ 
+     state = (struct inflate_state FAR *)strm->state;
+     if (state->mode == TYPE) state->mode = TYPEDO;      /* skip check */
+--- inftrees.c.orig
++++ inftrees.c
+@@ -48,7 +48,7 @@
+                                 unsigned FAR *bits, unsigned short FAR *work) {
+     unsigned len;               /* a code's length in bits */
+     unsigned sym;               /* index of code symbols */
+-    unsigned min, max;          /* minimum and maximum code lengths */
++    unsigned mmin, mmax;          /* minimum and maximum code lengths */
+     unsigned root;              /* number of index bits for root table */
+     unsigned curr;              /* number of index bits for current table */
+     unsigned drop;              /* code bits to drop for sub-table */
+@@ -120,10 +120,10 @@
+ 
+     /* bound code lengths, force root to be within code lengths */
+     root = *bits;
+-    for (max = MAXBITS; max >= 1; max--)
+-        if (count[max] != 0) break;
+-    if (root > max) root = max;
+-    if (max == 0) {                     /* no symbols to code at all */
++    for (mmax = MAXBITS; mmax >= 1; mmax--)
++        if (count[mmax] != 0) break;
++    if (root > mmax) root = mmax;
++    if (mmax == 0) {                     /* no symbols to code at all */
+         here.op = (unsigned char)64;    /* invalid code marker */
+         here.bits = (unsigned char)1;
+         here.val = (unsigned short)0;
+@@ -132,9 +132,9 @@
+         *bits = 1;
+         return 0;     /* no symbols, but wait for decoding to report error */
+     }
+-    for (min = 1; min < max; min++)
+-        if (count[min] != 0) break;
+-    if (root < min) root = min;
++    for (mmin = 1; mmin < mmax; mmin++)
++        if (count[mmin] != 0) break;
++    if (root < mmin) root = mmin;
+ 
+     /* check for an over-subscribed or incomplete set of lengths */
+     left = 1;
+@@ -143,7 +143,7 @@
+         left -= count[len];
+         if (left < 0) return -1;        /* over-subscribed */
+     }
+-    if (left > 0 && (type == CODES || max != 1))
++    if (left > 0 && (type == CODES || mmax != 1))
+         return -1;                      /* incomplete set */
+ 
+     /* generate offsets into symbol table for each length for sorting */
+@@ -181,7 +181,7 @@
+        for more information.
+ 
+        sym increments through all symbols, and the loop terminates when
+-       all codes of length max, i.e. all codes, have been processed.  This
++       all codes of length mmax, i.e. all codes, have been processed.  This
+        routine permits incomplete codes, so another loop after this one fills
+        in the rest of the decoding tables with invalid code markers.
+      */
+@@ -204,7 +204,7 @@
+     /* initialize state for loop */
+     huff = 0;                   /* starting code */
+     sym = 0;                    /* starting code symbol */
+-    len = min;                  /* starting code length */
++    len = mmin;                  /* starting code length */
+     next = *table;              /* current table to fill in */
+     curr = root;                /* current table index bits */
+     drop = 0;                   /* current bits to drop from code for index */
+@@ -237,7 +237,7 @@
+         /* replicate for those indices with low len bits equal to huff */
+         incr = 1U << (len - drop);
+         fill = 1U << curr;
+-        min = fill;                 /* save offset to next table */
++        mmin = fill;                 /* save offset to next table */
+         do {
+             fill -= incr;
+             next[(huff >> drop) + fill] = here;
+@@ -257,7 +257,7 @@
+         /* go to next symbol, update count, len */
+         sym++;
+         if (--(count[len]) == 0) {
+-            if (len == max) break;
++            if (len == mmax) break;
+             len = lens[work[sym]];
+         }
+ 
+@@ -268,12 +268,12 @@
+                 drop = root;
+ 
+             /* increment past last table */
+-            next += min;            /* here min is 1 << curr */
++            next += mmin;            /* here mmin is 1 << curr */
+ 
+             /* determine length of next table */
+             curr = len - drop;
+             left = (int)(1 << curr);
+-            while (curr + drop < max) {
++            while (curr + drop < mmax) {
+                 left -= count[curr + drop];
+                 if (left <= 0) break;
+                 curr++;
