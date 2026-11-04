@@ -12,5 +12,5 @@ SHA1 (patch-Modules_readline.c) = 232f6ac43b5a0e87c915f13117bae91ef069a6c1
 SHA1 (patch-Modules_socketmodule.c) = 9d88a801af6e2cbd36b9935a46c8a86727222d56
 SHA1 (patch-Python_pylifecycle.c) = 2e8ad93292f2fc37abf8c461450d3a9d00225ea0
 SHA1 (patch-Tools_build_generate-build-details.py) = bf3b98adb6385a769008d8e08a67abe42c6be144
-SHA1 (patch-configure) = 0e56284b54538356dab9f26f64d7e71316290b05
-SHA1 (patch-configure.ac) = ee6a2e83a61e6f5f0cc7f4ede84165f63a58615d
+SHA1 (patch-configure) = 8d130e25fc2bb254f25d783df3162f60cdaa80b7
+SHA1 (patch-configure.ac) = 57f29289871759c9e378a6715aa8660764b8cf52
