@@ -1,7 +1,7 @@
 # PowerVR Vulkan ICD through the common Mesa package
 
 The default AArch64 MesaLib package contains the upstream Imagination Vulkan
-ICD. MesaLib 26.2.4nb5 added it. From nb10, it is not a package option.
+ICD. MesaLib 26.2.4nb5 added it. The default package includes it without an option.
 MesaLib 26.2.5 contains the upstream PCO fix for the workgroup barrier
 race when a loop uses the barrier again. The BVNC and IDFWDF patches
 apply to 26.2.5 without changes.
@@ -9,8 +9,17 @@ From 26.2.5nb1, the same package also contains the V3D Vulkan ICD
 (`lib/libvulkan_broadcom.so` and `share/vulkan/icd.d/broadcom_icd.json`).
 The package retains V3D, VirGL, softpipe, llvmpipe,
 X11, Wayland, EGL, GBM and the shared LLVM provider.
-The explicit `softpipe-only` option omits Vulkan ICDs; select the default
-graphics profile for this PowerVR workflow.
+The explicit `softpipe-only` option omits Vulkan ICDs. From 26.2.6nb14,
+add `powervr` to this small set for the PowerVR ICD without target LLVM:
+
+```make
+PKG_OPTIONS.MesaLib+= softpipe-only powervr -llvm -wayland
+```
+
+This selection keeps softpipe, X11, EGL, GLES and GBM. It adds the Vulkan
+loader and PowerVR files. It requires an AArch64 cross build and the sealed
+`powervr` host generators described below. Native builds and other target
+architectures reject this option. The default full graphics set is unchanged.
 The installed Vulkan loader now enumerates the physical GPU on Zero 3W.
 The normal package and bounded enumeration checks pass. Native compute also passes
 on the accepted EmberBSD kernel. Graphics and accelerated Plasma remain unaccepted on Zero 3W.
@@ -218,7 +227,9 @@ BMAKE=/absolute/bmake DIGEST=/absolute/digest \
 
 This parses the real recipe, writes its native Meson file and runs its
 production receipt check. It verifies that the default AArch64 selection
-contains PowerVR and that `powervr` is not a package option.
+contains PowerVR and advertises the optional small graphics selection.
+The recipe's `tests/generator-modes.py` also checks that the small selection
+omits target LLVM and rejects unsupported native and architecture choices.
 The WSI regression extracts both clock conversions and the presentation
 admission expression. It runs with and without the RAW clock feature.
 The UAPI check compares target structure layouts, flags and ioctl encodings

@@ -15,7 +15,8 @@ FIELDS = ('PKG_FAIL_REASON', 'MESON_ARGS', 'MESON_NATIVE_ARGS', 'DEPENDS',
           'BUILDLINK_API_DEPENDS.spirv-llvm-translator', 'TEST_INCLUDES',
           'BUILDLINK_API_DEPENDS.spirv-tools',
           'BUILDLINK_API_DEPENDS.googletest',
-          'GCC_REQD', 'USE_LANGUAGES', 'PLIST.radeonsi', 'PLIST.full_drivers')
+          'GCC_REQD', 'USE_LANGUAGES', 'PLIST.radeonsi', 'PLIST.full_drivers',
+          'PLIST.powervr')
 BUILD_LINKS = {'../../lang/clang/buildlink3.mk', '../../parallel/spirv-tools/buildlink3.mk',
                '../../parallel/spirv-llvm-translator/buildlink3.mk'}
 
@@ -25,7 +26,7 @@ def require(condition, message):
         raise ValueError(message)
 
 
-def parse(make, work, source, arch, cross, sealed, tests=False, minimal=False):
+def parse(make, work, source, arch, cross, sealed, tests=False, minimal=False, powervr=False):
     # External pkgsrc includes are outside this finite metadata boundary.
     # Keep local generator policy live. Record selected external interfaces.
     lines = []
@@ -59,7 +60,8 @@ show:
 \t@printf '%s\\n' ${{${{field}}:Q}}
 .endfor
 '''.format(arch=arch, cross=cross, work=work,
-           pkg_options=('softpipe-only x11' if minimal else
+           pkg_options=('softpipe-only x11 powervr' if powervr else
+                        'softpipe-only x11' if minimal else
                         ('llvm x11 wayland tests' if tests else 'llvm x11 wayland')),
            sealed=sealed, fields=' '.join(FIELDS)))
     result = subprocess.run([str(make), '-r', '-m', '/', '-f', str(fixture), 'show'],
@@ -170,21 +172,48 @@ def main():
                 require(not values['PLIST.full_drivers'] and not values['PLIST.radeonsi'],
                         'Softpipe retained full-driver PLIST')
                 checks += 1
+        # The small PowerVR set keeps softpipe and adds only the Vulkan ICD.
+        for arch in ('aarch64',):
+            for cross, selected in ((True, True), (False, False)):
+                values = parse(args.bmake, work, source, arch, 'yes' if cross else 'no',
+                               tools if selected else work / 'missing', powervr=True)
+                options = set(values['MESON_ARGS'].split())
+                if not cross:
+                    require('cross build' in values['PKG_FAIL_REASON'],
+                            'The PowerVR set accepted a native build without generators')
+                    checks += 1
+                    continue
+                require({'-Dgallium-drivers=softpipe', '-Dvulkan-drivers=imagination',
+                         '-Dimagination-srv=false', '-Dllvm=disabled',
+                         '-Dmesa-clc=system', '-Dprecomp-compiler=system'} <= options,
+                        'The PowerVR set lost its driver or generator selection')
+                require('-Dvulkan-drivers=' not in options, 'The PowerVR set kept an empty Vulkan list')
+                require('vulkan-loader' in values['DEPENDS'], 'The PowerVR ICD lacks the Vulkan loader')
+                require(values['PLIST.powervr'] == 'yes' and not values['PLIST.full_drivers'],
+                        'The PowerVR set has the wrong package files')
+                require('../../lang/llvm/buildlink3.mk' not in values['TEST_INCLUDES'].split(),
+                        'The PowerVR set imported target LLVM')
+                checks += 1
         # Exercise the real options policy with a stub for pkgsrc's option resolver.
         option_source = (RECIPE / 'options.mk').read_text().replace(
             '.include "../../mk/bsd.options.mk"', '')
         option_file = work / 'options.mk'
-        for selected, accepted in (
-            ('llvm x11 wayland', True), ('softpipe-only x11', True),
-            ('softpipe-only x11 llvm', False), ('softpipe-only x11 wayland', False),
-            ('softpipe-only', False), ('x11 wayland', False),
+        for selected, arch, accepted in (
+            ('llvm x11 wayland', 'aarch64', True), ('softpipe-only x11', 'aarch64', True),
+            ('softpipe-only x11 llvm', 'aarch64', False),
+            ('softpipe-only x11 wayland', 'aarch64', False),
+            ('softpipe-only', 'aarch64', False), ('x11 wayland', 'aarch64', False),
+            ('softpipe-only x11 powervr', 'aarch64', True),
+            ('softpipe-only x11 powervr', 'x86_64', False),
+            ('llvm x11 wayland powervr', 'aarch64', False),
         ):
             option_file.write_text('PKG_OPTIONS= ' + selected + '\n' + option_source +
                                    '\nshow:\n\t@printf "%s\\n" ${PKG_FAIL_REASON:Q}\n')
             result = subprocess.run([str(args.bmake), '-r', '-m', '/', '-f', str(option_file),
-                                     'show'], capture_output=True, text=True)
+                                     'MACHINE_ARCH=' + arch, 'show'], capture_output=True, text=True)
             require(result.returncode == 0 and bool(result.stdout.strip()) != accepted,
-                    'Unexpected options policy for ' + selected + ': ' + result.stdout + result.stderr)
+                    'Unexpected options policy for ' + selected + ' on ' + arch + ': ' +
+                    result.stdout + result.stderr)
             checks += 1
         mutations = [
             ('.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"\n# Cross builds', '.if 1\n# Cross builds'),

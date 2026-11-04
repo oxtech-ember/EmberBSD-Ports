@@ -2,7 +2,7 @@
 # Origin: EmberBSD; AI-assisted bounded NetBSD 11/AArch64 and amd64 candidate.
 DISTNAME=	mesa-26.2.6
 PKGNAME=	${DISTNAME:S/mesa/MesaLib/}
-PKGREVISION=	13
+PKGREVISION=	14
 CATEGORIES=	graphics
 MASTER_SITES=	https://archive.mesa3d.org/
 EXTRACT_SUFX=	.tar.xz
@@ -41,10 +41,24 @@ SUBST_SED.python=	-e 's|@PYTHONBIN@|${TOOL_PYTHONBIN}|g'
 PLIST_VARS+= intel v3d powervr radeonsi full_drivers
 .if !empty(PKG_OPTIONS:Msoftpipe-only)
 # X11 software renderer retains common GL, EGL, GLES and GBM interfaces.
-MESON_ARGS+= -Dgallium-drivers=softpipe -Dvulkan-drivers=
+MESON_ARGS+= -Dgallium-drivers=softpipe
 MESON_ARGS+= -Dplatforms=x11 -Dglx=dri -Dllvm=disabled
+.if !empty(PKG_OPTIONS:Mpowervr)
+# This small set uses sealed host generators and does not link target LLVM.
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+PKG_FAIL_REASON+= "The powervr option requires a cross build with sealed Mesa generators"
+.else
+_EMBERBSD_MESA_GENERATOR_PROFILES+= powervr
+.endif
+MESON_ARGS+= -Dvulkan-drivers=imagination -Dimagination-srv=false
+MESON_ARGS+= -Dimagination-uscgen-devices= -Dvulkan-manifest-per-architecture=false
+DEPENDS+= vulkan-loader>=1.4.357.0:../../graphics/vulkan-loader
+PLIST.powervr= yes
+.else
+MESON_ARGS+= -Dvulkan-drivers=
 # Mesa 26.2 uses auto, not disabled, for these optional compiler choices.
 MESON_ARGS+= -Dmesa-clc=auto -Dprecomp-compiler=auto -Dspirv-tools=disabled
+.endif
 .else
 PLIST.full_drivers= yes
 # Zink loads the common Vulkan loader at runtime. An ICD stays optional.
