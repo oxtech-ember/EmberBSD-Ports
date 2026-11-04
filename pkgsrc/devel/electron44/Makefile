@@ -30,6 +30,7 @@ USE_TOOLS+=		pkg-config
 do-patch:
 	@${DO_NADA}
 
+.include "../../mk/bsd.prefs.mk"
 .include "producer.mk"
 
 .include "runtime-dependencies.mk"
