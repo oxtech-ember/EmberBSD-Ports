@@ -843,6 +843,10 @@ retire()
 prepare_wrkdir()
 {
     clean=clean
+    if [ -e "$1" ] || [ -L "$1" ]; then
+        work_identity=$("$host_python" -B -E -S "$(dirname "$0")/cross-bulk-workdir.py" "$1" "$base" "$version" "$name") || return 1
+        case "$work_identity" in same) clean=; return 0 ;; incompatible) ;; *) return 1 ;; esac
+    fi
     if retire "$1" "$2"; then
         [ -e "$1" ] || [ -L "$1" ] || clean=
     else
@@ -1039,16 +1043,14 @@ build_native()
     set -- USE_CROSS_COMPILE=no PACKAGES="$native_packages"
     ! grep -qFx "$nnode" "$run/crossfed" || set -- "$@" $target_settings
     set +f
-    varnames='PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE'
-    if [ "${stage_local:-no}" = yes ]; then varnames="$varnames PKGVERSION_NOREV"; fi
+    varnames='PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE PKGVERSION_NOREV'
     vars=$(pkg_vars "$path" "$varnames" "$@") ||
         { result "$key" "failed $nnode vars"; return 0; }
     name=$(printf '%s\n' "$vars" | sed -n 1p)
     wrkdir=$(printf '%s\n' "$vars" | sed -n 2p)
     skip=$(printf '%s\n' "$vars" | sed -n 3p)
     base=$(printf '%s\n' "$vars" | sed -n 4p)
-    version=
-    [ "${stage_local:-no}" != yes ] || version=$(printf '%s\n' "$vars" | sed -n 5p)
+    version=$(printf '%s\n' "$vars" | sed -n 5p)
     log=$state/logs/$key.log
     if [ -n "$skip" ]; then
         result "$key" "skipped $nnode $skip"
@@ -1075,7 +1077,7 @@ build_native()
     set +f
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $nnode $name" >> "$state/progress"
     if [ "${stage_local:-no}" != yes ]; then
-        prepare_wrkdir "$wrkdir" "$job.$key"
+        prepare_wrkdir "$wrkdir" "$job.$key" || { result "$key" "failed $nnode incompatible-workdir"; return 0; }
     fi
     : > "$log"
     if { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; } &&
@@ -1380,16 +1382,14 @@ build_one()
     key=$(echo "$path" | tr / _)
     case "$path" in *@native) build_native "$path" "$key"; return 0 ;; esac
     log=$state/logs/$key.log
-    varnames='PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE'
-    if [ "${stage_local:-no}" = yes ]; then varnames="$varnames PKGVERSION_NOREV"; fi
+    varnames='PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE PKGVERSION_NOREV'
     vars=$(pkg_vars "$path" "$varnames") ||
         { result "$key" "failed $path vars"; return 0; }
     name=$(printf '%s\n' "$vars" | sed -n 1p)
     wrkdir=$(printf '%s\n' "$vars" | sed -n 2p)
     skip=$(printf '%s\n' "$vars" | sed -n 3p)
     base=$(printf '%s\n' "$vars" | sed -n 4p)
-    version=
-    [ "${stage_local:-no}" != yes ] || version=$(printf '%s\n' "$vars" | sed -n 5p)
+    version=$(printf '%s\n' "$vars" | sed -n 5p)
     if [ -n "$skip" ]; then
         result "$key" "skipped $path $skip"
         return 0
@@ -1442,7 +1442,7 @@ build_one()
     # One short line per append: O_APPEND keeps concurrent lines whole.
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name MAKE_JOBS=$make_jobs" >> "$state/progress"
     if [ "${stage_local:-no}" != yes ]; then
-        prepare_wrkdir "$wrkdir" "$job.$key"
+        prepare_wrkdir "$wrkdir" "$job.$key" || { result "$key" "failed $path incompatible-workdir"; return 0; }
     fi
     # One package-install run does depends, package and the install: each
     # target-mode bmake run parses the package again, and the pkg_add wrapper
