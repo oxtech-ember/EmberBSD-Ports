@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (strip-ansi-7.2.0.tgz) = 898cbd1728eb70773470a105c230484b6e47f5df2ca54b8430224ef32bfcea7b
+SHA512 (strip-ansi-7.2.0.tgz) = c833cc363a785b27d80641e78c844b7dc6b58ba28cc860adb1582829eff3d7eeafba481a10d76018166df9998a3dce206afbc46793a01df1ddadace180dc86ef
+Size (strip-ansi-7.2.0.tgz) = 2156 bytes

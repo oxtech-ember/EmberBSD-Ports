@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (get-caller-file-2.0.5.tgz) = 96f93d68de6f2b2d49155687e0ce627ef980499cccc3bf3422b60684894e9c9b
+SHA512 (get-caller-file-2.0.5.tgz) = 0f214fdc133fdd81d340e0942ffc343991d1d25a4a786af1a2d70759ca8d11d9e5b6a1705d57e110143de1e228df801f429a34ac6922e1cc8889fb58d3a87616
+Size (get-caller-file-2.0.5.tgz) = 2383 bytes
