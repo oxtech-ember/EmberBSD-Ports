@@ -1,0 +1,38 @@
+<!-- EmberBSD GI dump 2
+platform: NetBSD-11.0-x86_64
+recipe: multimedia/gst-plugins1-bad
+package: gst-plugins1-bad-1.28.8
+program: GstCodecs-1.0
+types-sha256: 633f95580749e87d5f4ee20c59d7f02be96f458561b2a5d38c85f357887b50e0
+dump-sha256: 45c62ce4fabd6756d42c7d868a60a31fc80214dd99f544790ad3fad3d98063e4
+-->
+<?xml version="1.0"?>
+<dump>
+  <boxed name="GstH264Picture" get-type="gst_h264_picture_get_type"/>
+  <enum name="GstH264DecoderCompliance" get-type="gst_h264_decoder_compliance_get_type">
+    <member name="GST_H264_DECODER_COMPLIANCE_AUTO" nick="auto" value="0"/>
+    <member name="GST_H264_DECODER_COMPLIANCE_STRICT" nick="strict" value="1"/>
+    <member name="GST_H264_DECODER_COMPLIANCE_NORMAL" nick="normal" value="2"/>
+    <member name="GST_H264_DECODER_COMPLIANCE_FLEXIBLE" nick="flexible" value="3"/>
+  </enum>  <class name="GstH264Decoder" get-type="gst_h264_decoder_get_type" parents="GstVideoDecoder,GstElement,GstObject,GInitiallyUnowned,GObject" abstract="1">
+    <property name="compliance" type="GstH264DecoderCompliance" flags="231" default-value="GST_H264_DECODER_COMPLIANCE_AUTO"/>
+  </class>
+  <boxed name="GstH265Picture" get-type="gst_h265_picture_get_type"/>
+  <class name="GstH265Decoder" get-type="gst_h265_decoder_get_type" parents="GstVideoDecoder,GstElement,GstObject,GInitiallyUnowned,GObject" abstract="1">
+  </class>
+  <boxed name="GstH266Picture" get-type="gst_h266_picture_get_type"/>
+  <class name="GstH266Decoder" get-type="gst_h266_decoder_get_type" parents="GstVideoDecoder,GstElement,GstObject,GInitiallyUnowned,GObject" abstract="1">
+  </class>
+  <boxed name="GstVp9Picture" get-type="gst_vp9_picture_get_type"/>
+  <class name="GstVp9Decoder" get-type="gst_vp9_decoder_get_type" parents="GstVideoDecoder,GstElement,GstObject,GInitiallyUnowned,GObject" abstract="1">
+  </class>
+  <boxed name="GstVp8Picture" get-type="gst_vp8_picture_get_type"/>
+  <class name="GstVp8Decoder" get-type="gst_vp8_decoder_get_type" parents="GstVideoDecoder,GstElement,GstObject,GInitiallyUnowned,GObject" abstract="1">
+  </class>
+  <boxed name="GstMpeg2Picture" get-type="gst_mpeg2_picture_get_type"/>
+  <class name="GstMpeg2Decoder" get-type="gst_mpeg2_decoder_get_type" parents="GstVideoDecoder,GstElement,GstObject,GInitiallyUnowned,GObject" abstract="1">
+  </class>
+  <boxed name="GstAV1Picture" get-type="gst_av1_picture_get_type"/>
+  <class name="GstAV1Decoder" get-type="gst_av1_decoder_get_type" parents="GstVideoDecoder,GstElement,GstObject,GInitiallyUnowned,GObject" abstract="1">
+  </class>
+</dump>
