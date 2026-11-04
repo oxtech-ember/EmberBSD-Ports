@@ -361,10 +361,29 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
             result[row[2]] = row[1]
         return result
     old_files, new_files = file_map(old_records), file_map(new_records)
+    def read_global_patch(name, old):
+        if old and name in changed:
+            data = old_file(name)
+            if data is None:
+                raise ValueError('missing historical patch: ' + name)
+            return data
+        return exp.source_path(ports, name, 'patch source').read_bytes()
     if any(name in packages or selected_output(name) for name in selected_files):
         raise ValueError('selected file overlaps selected package')
-    if any(name not in old_files and name not in new_files for name in selected_files):
-        raise ValueError('selected file is not a declared export output')
+    global_files = set(selected_files) - set(old_files) - set(new_files)
+    for name in global_files:
+        touched = False
+        for rows in (old_records, new_records):
+            for row in rows:
+                if row[0] not in ('patch', 'git-apply'):
+                    continue
+                data = read_global_patch(row[1], rows is old_records)
+                paths = ident._patch_targets_bytes(data)
+                if paths is None:
+                    raise ValueError('opaque patch targets: ' + row[1])
+                touched |= name in paths
+        if not touched:
+            raise ValueError('selected file is not a declared or patched export output: ' + name)
     selected_sources = {mapping[name] for mapping in (old_files, new_files)
                         for name in selected_files if name in mapping}
     selected_sources.update(source for mapping in (old_files, new_files)
@@ -408,7 +427,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                 continue
             data = read_source(name, old)
             sections = ident._update_patch_sections(data)
-            if sections is None or any(not all(selected_output(x) for x in paths)
+            if sections is None or any(not all(selected_output(x) or x in global_files for x in paths)
                                        for paths, _ in sections):
                 raise ValueError('changed patch extends outside selected package: ' + name)
         scoped_patches.add(name)
@@ -438,19 +457,25 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
     from emberbsd_sdk import inventory
     with tempfile.TemporaryDirectory(prefix='.pkgsrc-update-stage-', dir=directory.parent) as temp:
         temp = Path(temp)
-        def prepare(label, rows, old, package, overlay):
+        def prepare(label, rows, old, package, overlay, *, global_file=False):
             stage = temp / label
             stage.mkdir()
             archive = temp / (label + '.tar')
+            upstream_path = package if global_file else package + '/Makefile'
             upstream = subprocess.run([git, '-C', str(ports / 'upstream/pkgsrc'), 'cat-file', '-e',
-                                       previous['upstream'] + ':' + package + '/Makefile'],
+                                       previous['upstream'] + ':' + upstream_path],
                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
             if upstream:
                 with archive.open('wb') as stream:
                     subprocess.run([git, '-C', str(ports / 'upstream/pkgsrc'), 'archive',
                                     '--format=tar', previous['upstream'], package], check=True, stdout=stream)
                 exp.extract_archive(archive, stage)
-            if overlay is not None and (not old or overlay in old_snapshot['trees']):
+            if global_file:
+                entry = subprocess.run([git, '-C', str(ports / 'upstream/pkgsrc'), 'ls-tree',
+                                        previous['upstream'], '--', package], capture_output=True, check=True).stdout
+                if not entry.startswith((b'100644 blob ', b'100755 blob ')) or (stage / package).is_symlink() or not (stage / package).is_file():
+                    raise ValueError('selected upstream file is not regular: ' + package)
+            elif overlay is not None and (not old or overlay in old_snapshot['trees']):
                 replaces = old_file('pkgsrc/replaces') if old else (
                     (ports / 'pkgsrc/replaces').read_bytes() if (ports / 'pkgsrc/replaces').is_file() else b'')
                 replacements = {line.strip() for line in (replaces or b'').decode('utf-8').splitlines()
@@ -512,7 +537,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
             elif not upstream:
                 raise ValueError('selected upstream package is missing')
             for row in rows:
-                if row[0] == 'recipe-patch' and len(row) == 4 and row[2] == package:
+                if not global_file and row[0] == 'recipe-patch' and len(row) == 4 and row[2] == package:
                     name = exp.relative_parts(row[3], 'recipe patch name')
                     if len(name) != 1 or not name[0].startswith('patch-'):
                         raise ValueError('invalid recipe patch name')
@@ -539,10 +564,12 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                 paths = ident._patch_targets_bytes(data)
                 if paths is None:
                     raise ValueError('opaque patch targets: ' + row[1])
-                if not any(path.startswith(package + '/') for path in paths):
+                def matches(path):
+                    return path == package if global_file else path.startswith(package + '/')
+                if not any(matches(path) for path in paths):
                     continue
                 if row[0] == 'git-apply':
-                    if any(not path.startswith(package + '/') for path in paths) or b'GIT binary patch' in data:
+                    if any(not matches(path) for path in paths) or b'GIT binary patch' in data:
                         raise ValueError('git patch extends outside selected package')
                     subprocess.run([git, '-C', str(stage), 'apply', '--whitespace=nowarn', '-'], input=data, check=True)
                 else:
@@ -551,15 +578,15 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                         raise ValueError('opaque unified patch: ' + row[1])
                     matching = []
                     for names, part in sections:
-                        if any(name.startswith(package + '/') for name in names):
-                            if any(not name.startswith(package + '/') for name in names):
+                        if any(matches(name) for name in names):
+                            if any(not matches(name) for name in names):
                                 raise ValueError('patch section crosses selected package')
                             matching.append(part)
                     if matching:
                         subprocess.run([patch, '-f', '-E', '-d', str(stage), '-p1', '-F', '0', '-V', 'none'],
                                        input=b''.join(matching), check=True, stdout=subprocess.DEVNULL)
             for name, source in file_map(rows).items():
-                if not name.startswith(package + '/'):
+                if global_file or not name.startswith(package + '/'):
                     continue
                 dest = exp.destination_parent(stage, name)
                 if os.path.lexists(dest):
@@ -572,7 +599,8 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                 if source_mode is None:
                     source_mode = stat.S_IMODE((ports / source).stat().st_mode)
                 dest.chmod(source_mode & ~0o022)
-            exp.check_recipe(stage / package, package, stage)
+            if not global_file:
+                exp.check_recipe(stage / package, package, stage)
             return stage / package
         package_trees = []
         for index, package in enumerate(packages):
@@ -599,12 +627,21 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
         file_changes = []
         for name in selected_files:
             destination = exp.destination_parent(directory / 'pkgsrc', name)
-            before = read_source(old_files[name], True) if name in old_files else None
-            after = read_source(new_files[name], False) if name in new_files else None
-            old_source = old_files.get(name)
-            previous_mode = old_mode(old_source) if old_source else None
-            source = new_files.get(name)
-            mode = (stat.S_IMODE((ports / source).stat().st_mode) & ~0o022) if source else None
+            if name in global_files:
+                old_path = prepare('old-file-' + str(len(file_changes)), old_records, True, name, None, global_file=True)
+                new_path = prepare('new-file-' + str(len(file_changes)), new_records, False, name, None, global_file=True)
+                if not old_path.is_file() or old_path.is_symlink() or not new_path.is_file() or new_path.is_symlink():
+                    raise ValueError('patched global output is not a regular file: ' + name)
+                before, after = old_path.read_bytes(), new_path.read_bytes()
+                previous_mode = stat.S_IMODE(old_path.stat().st_mode)
+                mode = stat.S_IMODE(new_path.stat().st_mode)
+            else:
+                before = read_source(old_files[name], True) if name in old_files else None
+                after = read_source(new_files[name], False) if name in new_files else None
+                old_source = old_files.get(name)
+                previous_mode = old_mode(old_source) if old_source else None
+                source = new_files.get(name)
+                mode = (stat.S_IMODE((ports / source).stat().st_mode) & ~0o022) if source else None
             if os.path.lexists(destination):
                 if destination.is_symlink() or not destination.is_file():
                     raise ValueError('selected live file has unsupported type: ' + name)

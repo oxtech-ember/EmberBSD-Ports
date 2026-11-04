@@ -65,6 +65,10 @@ class ScopedUpdateTests(unittest.TestCase):
         write(upstream, 'cat/other/Makefile', 'PKGNAME=other-1\n')
         write(upstream, 'net/libfetch/Makefile', 'PKGNAME=libfetch-1\n')
         write(upstream, 'net/libfetch/files/source', 'unchanged\n')
+        write(upstream, 'mk/bsd.makevars.mk', 'makevars=0\n')
+        write(upstream, 'mk/buildlink3/bsd.buildlink3.mk', 'buildlink=0\n')
+        write(upstream, 'mk/neighbor.mk', 'neighbor=0\n')
+        run([GIT, 'add', '-f', 'mk/bsd.makevars.mk', 'mk/buildlink3/bsd.buildlink3.mk', 'mk/neighbor.mk'], upstream)
         commit(upstream, 'upstream')
         (self.ports / 'scripts').mkdir()
         # The updater can add support modules without this test duplicating them.
@@ -110,6 +114,58 @@ class ScopedUpdateTests(unittest.TestCase):
         self.assertEqual(self.receipt.read_bytes(), self.old_receipt)
         self.assertEqual((self.tree / 'cat/pkg/Makefile').read_text(), 'PKGNAME=fixture-1\n')
         self.assertEqual((self.tree / 'misc/owner.txt').read_text(), 'old-owner\n')
+
+    def test_global_patch_chain_and_resume(self):
+        names = ('mk/bsd.makevars.mk', 'mk/buildlink3/bsd.buildlink3.mk')
+        def patch(old, new):
+            return ''.join(f'--- a/{name}\n+++ b/{name}\n@@ -1 +1 @@\n-{key}={old}\n+{key}={new}\n'
+                           for name, key in zip(names, ('makevars', 'buildlink')))
+        write(self.ports, 'patches/one.patch', patch(0, 1))
+        write(self.ports, 'patches/two.patch', patch(1, 2))
+        conf = self.ports / 'pkgsrc/export.conf'
+        conf.write_text(conf.read_text() + 'patch\tpatches/one.patch\npatch\tpatches/two.patch\n')
+        commit(self.ports, 'global patch chain')
+        args = ['--file', names[0], '--file', names[1]]
+        neighbor = self.tree / 'mk/neighbor.mk'
+        stamp = (neighbor.stat().st_ino, neighbor.stat().st_mtime_ns)
+        rejected = self.update('--file', names[0])
+        self.assertNotEqual(rejected.returncode, 0)
+        self.assertEqual((self.tree / names[0]).read_text(), 'makevars=0\n')
+        code = r"""import importlib.util,sys
+from unittest.mock import patch
+s=importlib.util.spec_from_file_location('u',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+replace=m.os.replace
+calls=[0]
+def fail_after_one(*args):
+    calls[0]+=1
+    if calls[0] == 2: raise OSError('injected interruption')
+    return replace(*args)
+with patch.object(m.os, 'replace', side_effect=fail_after_one):
+    m.update(sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6], ['cat/pkg'], ['misc/owner.txt', 'mk/bsd.makevars.mk', 'mk/buildlink3/bsd.buildlink3.mk'])
+"""
+        result = run([sys.executable, '-B', '-c', code, self.ports / 'scripts/pkgsrc-shared-update.py',
+                      self.export, self.ports, GIT, SDK, PATCH], self.ports, check=False)
+        self.assertIn('injected interruption', result.stderr)
+        self.assertTrue(self.marker.exists())
+        result = self.update(*args, '--resume')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.tree / names[0]).read_text(), 'makevars=2\n')
+        self.assertEqual((self.tree / names[1]).read_text(), 'buildlink=2\n')
+        self.assertEqual((neighbor.stat().st_ino, neighbor.stat().st_mtime_ns), stamp)
+        self.assertFalse(self.marker.exists())
+        write(self.ports, 'patches/two.patch', patch(1, 3))
+        commit(self.ports, 'change second global patch')
+        selected = self.tree / names[0]
+        selected.write_text('local drift\n')
+        refused = self.update(*args)
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertEqual(selected.read_text(), 'local drift\n')
+        selected.write_text('makevars=2\n')
+        result = self.update(*args)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(selected.read_text(), 'makevars=3\n')
+        self.assertEqual((self.tree / names[1]).read_text(), 'buildlink=3\n')
+        self.assertEqual((neighbor.stat().st_ino, neighbor.stat().st_mtime_ns), stamp)
 
     def test_changed_patch_and_file_preserve_unrelated_times_and_delete(self):
         unchanged = self.tree / 'cat/pkg/files/unchanged'
