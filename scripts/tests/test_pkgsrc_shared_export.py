@@ -276,7 +276,7 @@ class OwnerTest(unittest.TestCase):
         from emberbsd_sdk.errors import SDKError
         with tempfile.TemporaryDirectory(dir=WORK) as temp:
             tree = Path(temp) / 'selected-tree'
-            for name in ('tdb', 'ppp', 'libpcap', 'tcp_wrappers'):
+            for name in ('tdb', 'ppp', 'libpcap', 'tcp_wrappers', 'libevent'):
                 with self.subTest(owner=name):
                     owner = self.owner(name)
                     selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')

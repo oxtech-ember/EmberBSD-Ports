@@ -39,6 +39,12 @@ sysroot or target library.
 The scoped identity is opt-in for compatibility with existing consumers;
 without it, preparation retains the historical export-wide identity.
 
+For a verified existing tree, `refresh-source --source SOURCE --archive ARCHIVE
+--patch PATCH --pkgsrc-export EXPORT --export-patch EXPORT_PATCH` checks the
+payload against the current recipe and atomically rebinds its receipt to the
+scoped identity. The caller holds exclusive use of the source tree; a failed
+verification leaves the receipt unchanged.
+
 When source inputs or the owner have changed, also supply the current
 `--archive`; verification prepares the current expected payload and compares
 it without rewriting the record.
