@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (node-tldts-core/tldts-core-7.4.20.tgz) = c441f6560bca4d8574dec1a4ac42526ffb92fb725d68901d2cf5c57d5158d3de
+SHA512 (node-tldts-core/tldts-core-7.4.20.tgz) = 0badf44d65d909998bab41766d6e10ab09da6b1090fecbe902abc9c270b826f804339a218419c6b04cd32d239770dfb18f3fa411a1d2e6ea16230da4967a9dd0
+Size (node-tldts-core/tldts-core-7.4.20.tgz) = 83690 bytes

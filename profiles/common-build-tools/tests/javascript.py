@@ -29,4 +29,18 @@ with tempfile.TemporaryDirectory(prefix='js module ') as temp:
     (root / 'NODE_MODULES').touch(); assert run('--dependency', 'other').returncode != 0
     (root / 'NODE_MODULES').unlink()
     (root / 'link').symlink_to(root / 'package.json'); assert run('--dependency', 'other').returncode != 0
+    (root / 'link').unlink()
+    (root / 'package.json').write_text(json.dumps({'name': '@test/module', 'version': '1.2.3',
+                                                    'dependencies': {'other': '^1'},
+                                                    'peerDependencies': {'electron': '>11'}}))
+    assert run('--dependency', 'other', '--external-peer', 'electron').returncode == 0
+    assert run('--dependency', 'other').returncode != 0
+    assert run('--dependency', 'other', '--external-peer', 'unknown').returncode != 0
+    assert run('--dependency', 'other', '--external-peer', 'electron', '--external-peer', 'electron').returncode != 0
+    assert run('--dependency', 'other', '--external-peer', 'other').returncode != 0
+    assert run('--dependency', 'other', '--dependency', 'electron', '--external-peer', 'electron').returncode != 0
+    (root / 'package.json').write_text(json.dumps({'name': '@test/module', 'version': '1.2.3',
+                                                    'peerDependencies': {'electron': '>11'},
+                                                    'peerDependenciesMeta': {'electron': {'optional': True}}}))
+    assert run('--external-peer', 'electron').returncode != 0
 print('common JS package identity, dependencies and no nested stack PASS')

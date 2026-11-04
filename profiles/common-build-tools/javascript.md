@@ -16,6 +16,15 @@ and a package name or version different from its owner recipe. A recipe that
 needs a different installation or build behavior may use its own explicit
 implementation rather than bypassing these checks.
 
+A mandatory peer supplied by a consuming runtime may be declared with
+`JS_MODULE_EXTERNAL_PEERS+= name`. The validator requires this name in
+`peerDependencies`, rejects optional or duplicate peers and overlap with normal
+or optional dependencies, and records the selection in `BUILD_DEFS`. The
+installed `package.json` retains the upstream version range. Each consumer
+must validate that range against its selected runtime or installed module;
+missing, unknown or incompatible peers are errors. This declaration does not
+install a peer in the host prefix or prove target compatibility.
+
 Node's normal resolver finds sibling modules in `lib/node_modules`, including
 scoped package names. Each source dependency therefore remains owned by one
 common recipe and package. Source-only module packaging does not validate the

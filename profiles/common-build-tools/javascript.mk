@@ -14,11 +14,20 @@ USE_LANGUAGES= # JavaScript source
 USE_TOOLS+= find sort
 PYTHON_FOR_BUILD_ONLY= tool
 JS_MODULE_DEPENDS?=
+# Mandatory peers supplied by the consuming runtime, not this source package.
+# The consumer must validate the installed package.json peer ranges.
+JS_MODULE_EXTERNAL_PEERS?=
+.if !empty(JS_MODULE_EXTERNAL_PEERS)
+BUILD_DEFS+= JS_MODULE_EXTERNAL_PEERS
+.endif
 _JS_MODULE_DIR= ${PREFIX}/lib/node_modules/${JS_MODULE_NAME}
 _JS_MODULE_ARGS=
 .for _js_dep in ${JS_MODULE_DEPENDS}
 DEPENDS+= ${_js_dep:C/^[^=]*=//}
 _JS_MODULE_ARGS+= --dependency ${_js_dep:C/=.*//:Q}
+.endfor
+.for _js_peer in ${JS_MODULE_EXTERNAL_PEERS}
+_JS_MODULE_ARGS+= --external-peer ${_js_peer:Q}
 .endfor
 
 do-build:

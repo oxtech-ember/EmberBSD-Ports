@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (node-ghostery-adblocker/adblocker-2.20.3.tgz) = 05b4f0a5b09e7622fec5ca1698933f82fb2f41ca48c3e086715a3cab57f30877
+SHA512 (node-ghostery-adblocker/adblocker-2.20.3.tgz) = 5b1bfe462a9f0fec585628fd824b9d53a9c36fe7aa6dfbb6ae80d96b4aeda95c36a889b4202c449e4aec814c9f670efe2fedcf7c8d8fb331d941ea02911d42b8
+Size (node-ghostery-adblocker/adblocker-2.20.3.tgz) = 473995 bytes
+BLAKE2s (node-ghostery-adblocker/ghostery-resources-6f0610bf.json) = 895ac3841457f29e081b2cfde45444f2943d0d172c63a1551950011db503f230
+SHA512 (node-ghostery-adblocker/ghostery-resources-6f0610bf.json) = d39579444d3c112601c9c48ac202044a30f3b98bc5adacf6c2de49d9c4e3d4b41bd7c458a25ba52b23078d0eccddc8c9c4e18f208467253242797723f1fbd62d
+Size (node-ghostery-adblocker/ghostery-resources-6f0610bf.json) = 183850 bytes

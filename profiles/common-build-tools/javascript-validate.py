@@ -14,6 +14,7 @@ p.add_argument('--source', type=Path, required=True)
 p.add_argument('--name', required=True)
 p.add_argument('--version', required=True)
 p.add_argument('--dependency', action='append', default=[])
+p.add_argument('--external-peer', action='append', default=[])
 a = p.parse_args()
 name = r'(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*'
 if not re.fullmatch(name, a.name) or not a.source.is_absolute():
@@ -34,8 +35,14 @@ peer = manifest.get('peerDependencies', {})
 peer_meta = manifest.get('peerDependenciesMeta', {})
 if not isinstance(peer, dict) or not isinstance(peer_meta, dict):
     p.error('invalid peer dependency metadata')
-actual.update(name for name in peer if not peer_meta.get(name, {}).get('optional', False))
-if actual != expected:
+mandatory_peers = {name for name in peer if not peer_meta.get(name, {}).get('optional', False)}
+external = set(a.external_peer)
+if (len(external) != len(a.external_peer) or
+        not all(re.fullmatch(name, n) for n in external) or
+        not external.issubset(mandatory_peers) or external & actual or external & expected):
+    p.error('invalid external runtime peer declaration')
+actual.update(mandatory_peers)
+if actual != expected | external:
     p.error('runtime dependencies differ from the recipe')
 for current, dirs, files in os.walk(a.source, followlinks=False):
     root = Path(current)
