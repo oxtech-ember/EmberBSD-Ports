@@ -363,7 +363,7 @@ console.log('PASS: actual layout geometry');
             call('layout-' + backend, ['node', str(layout_test), str(payload), str(width), str(height), 'accept'])
             call('layout-wrong-' + backend, ['node', str(layout_test), str(payload), '800', '600', 'reject'])
             evidence = (
-                'LogicalOutput backend\n==============\nName: ' + backend_name + '\n\nScreens\n=======\n'
+                'Output backend\n==============\nName: ' + backend_name + '\n\nScreens\n=======\n'
                 'Number of Screens: 1\n\nScreen 0:\n---------\nName: ' + name + '\nEnabled: 1\n'
                 'Geometry: 0,0,' + str(width) + 'x' + str(height) + '\n'
                 'Scale: 1\nRefresh Rate: ' + expected_refresh + '\n\nCompositing\n')
@@ -382,7 +382,8 @@ console.log('PASS: actual layout geometry');
                                                        'Refresh Rate: ' + ('50000' if expected_refresh == '60000' else '60000'))),
                     ('duplicate', evidence.replace('Name: ' + name, 'Name: ' + name + '\nName: ' + name)),
                     ('two-screens', evidence.replace('Number of Screens: 1', 'Number of Screens: 2')),
-                    ('unrelated', evidence.replace('LogicalOutput backend', 'unrelated'))]:
+                    ('legacy-header', evidence.replace('Output backend', 'LogicalOutput backend')),
+                    ('unrelated', evidence.replace('Output backend', 'unrelated'))]:
                 f = work / ('backend-' + backend + '-' + name + '-' + label + '.txt'); f.write_text(bad)
                 script('backend-' + backend + '-' + name + '-' + label,
                        policy + predicate + 'backend_check "$1"\n', [str(f)], 1, env)

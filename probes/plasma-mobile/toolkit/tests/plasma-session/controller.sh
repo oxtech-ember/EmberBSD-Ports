@@ -75,7 +75,7 @@ backend_check()
     # Match the KWin 6.8 backend and current output fields, not unrelated names.
     if ! awk -v expected_backend="$backend_name" -v expected_name="$output_name" \
         -v expected_geometry="0,0,${width}x${height}" -v expected_refresh_millihz="$refresh_millihz" '
-        $0 == "LogicalOutput backend" { section="backend"; next }
+        $0 == "Output backend" { section="backend"; next }
         section == "backend" && /^Name: / { names++; bad += ($0 != "Name: " expected_backend); next }
         section == "backend" && $0 == "" { section="" }
         $0 == "Screens" { section="screens"; next }
