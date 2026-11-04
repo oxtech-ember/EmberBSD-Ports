@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.278 2026/08/09 17:06:21 wiz Exp $
 
 DISTNAME=	setuptools-84.2.1
-PKGREVISION=	2
+PKGREVISION=	3
 PKGNAME=	${PYPKGPREFIX}-${DISTNAME}
 CATEGORIES=	devel python
 MASTER_SITES=	${MASTER_SITE_PYPI:=s/setuptools/}
@@ -39,6 +39,21 @@ TEST_ENV+=	PYTHONPATH=${WRKSRC}
 # Keep tests isolated from an installed setuptools copy.
 .if make(test)
 ALLOW_NETWORK_ACCESS=	yes
+.endif
+
+# Windows launchers are only used by the Windows script writer.
+.include "../../mk/bsd.fast.prefs.mk"
+PLIST_VARS+=	windows-launchers
+.if ${OPSYS} == "NetBSD"
+SUBST_CLASSES+=	no-windows-launchers
+SUBST_STAGE.no-windows-launchers=	pre-configure
+SUBST_FILES.no-windows-launchers=	pyproject.toml
+SUBST_SED.no-windows-launchers=	-e 's/"setuptools" = \["tests\/\*"\]/"setuptools" = ["tests\/*", "*.exe"]/g'
+pre-build:
+	${RM} ${WRKSRC}/build/lib*/setuptools/cli*.exe \
+		${WRKSRC}/build/lib*/setuptools/gui*.exe
+.else
+PLIST.windows-launchers= yes
 .endif
 
 .include "../../lang/python/application.mk"
