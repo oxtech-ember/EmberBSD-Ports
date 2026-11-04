@@ -1,0 +1,6 @@
+--- a/textproc/hunspell-en_US/Makefile
++++ b/textproc/hunspell-en_US/Makefile
+@@ -6,0 +7 @@
++PKGREVISION=	1
+@@ -13,0 +15 @@
++LICENSE=	hunspell-en-us-2026

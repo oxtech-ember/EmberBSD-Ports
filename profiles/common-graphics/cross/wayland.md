@@ -99,7 +99,7 @@ The current epoll-shim release performs a target `kqueue` timer probe in
 CMake. Cross configuration cannot infer the result from the build host.
 Execute the generated
 `ALLOWS_ONESHOT_TIMERS_WITH_TIMEOUT_ZERO_EXITCODE` probe on the target and
-record its hash, kernel identity and exit status. The cross profile keeps
+record its hash, kernel identity and exit status. The common recipe keeps
 one recorded status per `CROSS_MACHINE_ARCH`; a platform without a record
 requires the measured `EMBERBSD_EPOLL_ZERO_TIMER_EXITCODE` (`0` or `1`) in
 the private MAKECONF. An explicit MAKECONF value overrides the record. Other

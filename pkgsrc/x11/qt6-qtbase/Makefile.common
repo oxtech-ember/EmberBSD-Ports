@@ -139,6 +139,9 @@ MAKE_ENV+=		QTPREFIX=${QTPREFIX:Q}
 # cause linking errors.
 .if ${OPSYS} == "Darwin"
 CMAKE_INSTALL_NAME_DIR=	${QTPREFIX}/lib
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+CMAKE_CONFIGURE_ARGS+= -DCMAKE_INSTALL_RPATH:STRING=${PREFIX}/lib
+.endif
 MAKE_ENV+=		DYLD_LIBRARY_PATH=${WRKSRC}/lib
 # Ports Clang builds Qt; the selected CMAKE_OSX_SYSROOT gives the SDK metadata.
 CMAKE_CONFIGURE_ARGS+=	-DQT_NO_XCODE_MIN_VERSION_CHECK:BOOL=ON

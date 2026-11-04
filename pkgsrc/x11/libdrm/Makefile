@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.126 2026/05/29 09:02:25 wiz Exp $
 # Origin: EmberBSD; AI-assisted matched native-identity source candidate.
 DISTNAME=	libdrm-2.4.134
-PKGREVISION=	8
+PKGREVISION=	9
 CATEGORIES=	x11 graphics
 MASTER_SITES=	https://dri.freedesktop.org/libdrm/
 EXTRACT_SUFX=	.tar.xz
@@ -21,12 +21,7 @@ PKGCONFIG_OVERRIDE+=	libdrm.pc.in
 # Apply after MAKECONF selects its base flags.
 # Retain diagnostics for unsupported buses; keep general warnings fatal.
 CFLAGS+=	-Werror -Wno-error=cpp
-.if !defined(EMBERBSD_COMMON_GRAPHICS)
-PKG_FAIL_REASON+= "libdrm requires the prepared common graphics profile"
-.endif
-.if ${DISTNAME} != "libdrm-2.4.134" || ${PKGREVISION} != "8"
-PKG_FAIL_REASON+= "The common graphics profile requires adapted libdrm 2.4.134nb8"
-.endif
+.include "options.mk"
 SUBST_CLASSES+=	atomic
 SUBST_FILES.atomic=	xf86drm.h
 SUBST_MESSAGE.atomic=	Configuring atomic operations in xf86drm.h
@@ -53,7 +48,7 @@ MESON_ARGS+=	-Damdgpu=disabled
 MESON_ARGS+=	-D${module}=disabled
 .endfor
 MESON_ARGS+=	-Dman-pages=disabled -Dcairo-tests=disabled -Dvalgrind=disabled
-MESON_ARGS+=	-Dtests=true -Dinstall-test-programs=false
+MESON_ARGS+=	-Dinstall-test-programs=false
 # pkgsrc supplies --buildtype=plain and the selected compiler optimization.
 MESON_ARGS+=	-Db_lto=false -Dwerror=true
 LDFLAGS.NetBSD+=	-lpci

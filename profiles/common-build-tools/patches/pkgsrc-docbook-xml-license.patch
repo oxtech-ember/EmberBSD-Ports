@@ -1,0 +1,6 @@
+--- a/textproc/docbook-xml/Makefile
++++ b/textproc/docbook-xml/Makefile
+@@ -4,0 +5 @@
++PKGREVISION=	1
+@@ -15,0 +17 @@
++LICENSE=	docbook-xml-4

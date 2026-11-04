@@ -1,0 +1,15 @@
+--- a/x11/xtrans/Makefile
++++ b/x11/xtrans/Makefile
+@@ -3,0 +4 @@
++PKGREVISION=	1
+@@ -10,0 +12 @@
++LICENSE=	xtrans-1.6.0
+@@ -15,0 +18,4 @@
++post-install:
++	${INSTALL_DATA_DIR} ${DESTDIR}${PREFIX}/share/licenses/xtrans
++	${INSTALL_DATA} ${WRKSRC}/COPYING ${DESTDIR}${PREFIX}/share/licenses/xtrans/COPYING
++
+--- a/x11/xtrans/PLIST
++++ b/x11/xtrans/PLIST
+@@ -10,0 +11 @@
++share/licenses/xtrans/COPYING

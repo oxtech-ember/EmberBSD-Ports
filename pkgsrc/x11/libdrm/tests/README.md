@@ -101,3 +101,11 @@ python3 -B tests/skiplist-oom.py \
 The selected compiler must report GCC 16 and a NetBSD target. The script does
 not select a compiler from `PATH`. Use the runner's documented argument
 syntax. Pass each option as a separate `--runner-arg` value.
+
+The common libdrm recipe works with the normal SDK cross configuration; it
+selects the host Python and target tools independently. Its upstream Meson
+tests are excluded by default. Set `PKG_OPTIONS.libdrm+= tests` before
+building when the tests are needed; `make test` otherwise reports that choice.
+`common-selection.py --pkgsrc PKGSRC --makeconf MAKECONF --bmake BMAKE`
+queries both selections with the real pkgsrc configuration. It does not build
+or run target binaries.
