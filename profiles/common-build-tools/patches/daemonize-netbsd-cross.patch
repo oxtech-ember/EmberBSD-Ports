@@ -1,0 +1,14 @@
+--- a/sysutils/daemonize/Makefile
++++ b/sysutils/daemonize/Makefile
+@@ -14,6 +14,11 @@
+ GNU_CONFIGURE=	yes
+ USE_TOOLS+=	gmake
+ 
++.include "../../mk/bsd.prefs.mk"
++.if ${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++CONFIGURE_ENV+=	ac_cv_func_setpgrp_void=no
++.endif
++
+ MAKE_FLAGS+=	INSTALL_MAN=${PREFIX}/${PKGMANDIR}
+ 
+ .include "../../mk/bsd.pkg.mk"
