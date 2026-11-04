@@ -1655,7 +1655,10 @@ ready()
 
 build()
 {
-    cpus=$(host_cpus)
+    cpu_file=$state/.cross-bulk-cpus.$$
+    host_cpus > "$cpu_file" || return 1
+    cpus=$(cat "$cpu_file")
+    rm -f "$cpu_file"
     workers_explicit=no
     if [ -n "${CROSS_BULK_JOBS:-}" ]; then
         workers_explicit=yes
