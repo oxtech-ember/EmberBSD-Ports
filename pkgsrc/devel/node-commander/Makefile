@@ -1,6 +1,6 @@
 # Origin: EmberBSD (AI-assisted); common upstream commander module.
-DISTNAME= commander-2.20.3
-PKGNAME= node-commander-2.20.3
+DISTNAME= commander-15.0.0
+PKGNAME= node-commander-15.0.0
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/commander/-/
 EXTRACT_SUFX= .tgz

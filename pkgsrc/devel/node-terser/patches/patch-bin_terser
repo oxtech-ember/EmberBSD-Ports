@@ -1,0 +1,23 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Use the current Commander API and native Node source-map support.
+
+--- bin/terser.orig
++++ bin/terser
+@@ -4,13 +4,11 @@
+ 
+ require("../tools/exit.cjs");
+ 
+-try {
+-    require("source-map-support").install();
+-} catch (err) {}
++process.setSourceMapsEnabled(true);
+ 
+ const fs = require("fs");
+ const path = require("path");
+-const program = require("commander");
++const program = new (require("commander").Command)().storeOptionsAsProperties();
+ 
+ const packageJson = require("../package.json");
+ const { _run_cli: run_cli } = require("..");
