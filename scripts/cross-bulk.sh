@@ -78,6 +78,15 @@ esac
 : "${BMAKE:?Set BMAKE to the host bmake}"
 : "${MAKECONF:?Set MAKECONF to the cross MAKECONF}"
 : "${PKGSRCDIR:?Set PKGSRCDIR to the prepared pkgsrc tree}"
+# Order sorts its graph with tsort. Without tsort every graph would be
+# refused as cyclic after all queries, so refuse before the first one.
+case "$mode" in
+    order|selected-order|selected-build)
+        command -v tsort > /dev/null 2>&1 || {
+            echo 'The selected PATH must provide tsort for the dependency order' >&2
+            exit 2
+        } ;;
+esac
 export MAKECONF
 # Target and native compiler roles are selected by MAKECONF and the SDK
 # mapping. An inherited host CPP (or binutils role) must not leak into an

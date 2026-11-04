@@ -606,7 +606,10 @@ checks this. A fresh `cross-bulk.sh order LIST STATE` includes the complete targ
 and native dependency graph. Regenerate it only when dependency selection
 changes; a build resumes from its saved order and done records. Order refuses
 a graph with a cycle or unreadable dependency query; a failed query keeps the
-previous order, edges, skipped list and done records. Nothing is locked while
+previous order, edges, skipped list and done records. The order sorts with
+`tsort` from the selected PATH; without it, order, selected-order and
+selected-build stop before the first query
+(`scripts/tests/cross-bulk-order-tsort.sh NEW_OUTPUT`). Nothing is locked while
 a package compiles: the build passes a `pkg_add` wrapper as `NATIVE_PKG_ADD_CMD`,
 which takes a lock in `STATE/locks` for the package database it
 installs into, so installs into one prefix never overlap and installs into
