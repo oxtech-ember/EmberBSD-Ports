@@ -929,8 +929,8 @@ Source preparers accepting `--pkgsrc-export` also accept `--export-patch`
 for the patch executable that produced that existing export. It defaults to
 `--patch`; the latter remains the tool used to apply new source patches.
 
-A shared export can refresh selected upstream packages or existing overlay
-recipes and explicitly named
+A shared export can refresh selected upstream packages, existing overlay
+recipes, or a selected upstream recipe moving into the common pkgsrc overlay and explicitly named
 `file` outputs without rebuilding the full tree. Stop all consumers and hold
 exclusive use of the export for the entire operation:
 
@@ -946,8 +946,9 @@ ordered overlays and checks their old contents before replacing changed files.
 Repeat `--package` for every changed package in the same transaction; all
 changed inputs must be covered by the selected packages or named file outputs.
 It keeps unchanged bytes, modes and mtimes. A changed upstream pin, unrelated
-global input, opaque cross-package patch, changed recipe source identity or
-layout, or an unsafe source link is refused. This is not a full-export replacement.
+global input, opaque cross-package patch, removal or move of a recipe overlay,
+or an unsafe source link is refused. A new overlay replacing an upstream recipe
+requires its entry in `pkgsrc/replaces` and selection in the same transaction. This is not a full-export replacement.
 Safe source links are copied as regular files, as in the initial export.
 Historical targets come from the recorded Git revision or active input cache.
 Select every affected recipe when a shared target changes content or executable mode.
