@@ -1,7 +1,7 @@
 # Origin: EmberBSD (AI-assisted); common upstream @electron/typescript-definitions module.
 DISTNAME= typescript-definitions-10.0.0
 PKGNAME= node-electron-typescript-definitions-10.0.0
-PKGREVISION= 1
+PKGREVISION= 2
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/@electron/typescript-definitions/-/
 EXTRACT_SUFX= .tgz
@@ -9,6 +9,7 @@ WRKSRC= ${WRKDIR}/package
 HOMEPAGE= https://www.npmjs.com/package/@electron/typescript-definitions/
 COMMENT= Common @electron/typescript-definitions JavaScript module
 LICENSE= mit
+REPLACE_NODEJS= dist/bin.js
 JS_MODULE_NAME= @electron/typescript-definitions
 JS_MODULE_DEPENDS+= @electron/docs-parser=node-electron-docs-parser>=3.0.3:../../devel/node-electron-docs-parser
 JS_MODULE_DEPENDS+= @types/node=node-types-node>=26.6.6:../../devel/node-types-node

@@ -1,7 +1,7 @@
 # Origin: EmberBSD (AI-assisted); common upstream @electron/docs-parser module.
 DISTNAME= docs-parser-3.0.3
 PKGNAME= node-electron-docs-parser-3.0.3
-PKGREVISION= 1
+PKGREVISION= 2
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/@electron/docs-parser/-/
 EXTRACT_SUFX= .tgz
@@ -9,6 +9,7 @@ WRKSRC= ${WRKDIR}/package
 HOMEPAGE= https://github.com/electron/docs-parser#readme/
 COMMENT= Common @electron/docs-parser JavaScript module
 LICENSE= mit
+REPLACE_NODEJS= dist/bin.js
 JS_MODULE_NAME= @electron/docs-parser
 JS_MODULE_DEPENDS+= @types/markdown-it=node-types-markdown-it>=14.2.0:../../devel/node-types-markdown-it
 JS_MODULE_DEPENDS+= chai=node-chai>=6.3.0:../../devel/node-chai
