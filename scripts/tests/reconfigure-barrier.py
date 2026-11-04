@@ -18,6 +18,10 @@ bsdconfigure = (mk / 'configure/bsd.configure.mk').read_text()
 cookie = bsdconfigure[bsdconfigure.index('# Creates the "configure" cookie file.'):]
 build = (mk / 'build/build.mk').read_text()
 clean = build[build.index('.PHONY: build-clean'):build.index('######################################################################\n### real-build')]
+build_phase = build[build.index('_BUILD_TARGETS+=\tcheck-vulnerable'):build.index('######################################################################\n### rebuild')]
+bsd_build = (mk / 'build/bsd.build.mk').read_text()
+build_cookie = bsd_build[bsd_build.index('.PHONY: build-cookie'):]
+
 makevars = (mk / 'bsd.makevars.mk').read_text()
 invalidate = makevars[makevars.index('.PHONY: invalidate-makevars'):]
 barrier = mk / 'bsd.pkg.barrier.mk'
@@ -37,17 +41,18 @@ with tempfile.TemporaryDirectory(prefix='pkgsrc-reconfigure-') as tmp:
         'RUN=\nRM=/bin/rm\nTEST=/bin/test\nMKDIR=/bin/mkdir -p\nECHO=echo\n'
         'DO_NADA=true\nPHASE_MSG=echo\nERROR_MSG=echo\nFALSE=false\n'
         'PKG_INFO=/usr/bin/false\nPKGNAME=fixture-1\nWRKDIR=' + str(work) + '\n'
-        '_CLEANING=0\nMAKE_JOBS=1\nRECURSIVE_MAKE=' + str(args.bmake) + ' -r -f ' + str(root / 'Makefile') + '\n'
+        '_CLEANING=0\n_USE_NEW_PKGINSTALL=yes\nMAKE_JOBS=1\nRECURSIVE_MAKE=' + str(args.bmake) + ' -r -f ' + str(root / 'Makefile') + '\n'
         '_COOKIE.configure=${WRKDIR}/.configure_done\n_COOKIE.build=${WRKDIR}/.build_done\n'
         '_ALL_PHASES=extract patch wrapper configure build install package\n'
         '.for _phase_ in ${_ALL_PHASES}\n_MAKEVARS_MK.${_phase_}=${WRKDIR}/.${_phase_}_makevars.mk\n.endfor\n'
         '.if defined(_PKGSRC_BARRIER)\nBUILDLINK_LDFLAGS=-lmp3lame\n.endif\n'
-        '.include "' + str(barrier) + '"\n' + part + '\n' + cookie + '\n.if !defined(NO_BUILD)\n' + clean + '\n.endif\n' + invalidate + '\n'
+        '.include "' + str(barrier) + '"\n' + part + '\n' + cookie + '\n.if !defined(NO_BUILD)\n' + build_phase + '\n' + clean + '\n' + build_cookie + '\n.endif\n' + invalidate + '\n'
         '.PHONY: install-clean _package-clean checksum-phase makedirs depends error-check acquire-lock release-lock\n'
         'install-clean:\n\t${RM} -f ${WRKDIR}/.install_done\n'
         '_package-clean:\n\t${RM} -f ${WRKDIR}/.package_done\n'
         'checksum-phase makedirs depends:\n\tprintf "%s\\n" ${.TARGET} >> ' + str(events) + '\n'
         'error-check acquire-lock release-lock:\n\t@true\n'
+        '.PHONY: real-build\nreal-build: build-cookie\n\tprintf "build\\n" >> ' + str(events) + '\n'
         '.PHONY: check-vulnerable wrapper acquire-configure-lock release-configure-lock '
         'configure-check-interactive configure-message configure-vars pre-configure '
         'do-configure-pre-hook pre-configure-checks-hook do-configure do-configure-post-hook post-configure\n'
@@ -73,6 +78,12 @@ with tempfile.TemporaryDirectory(prefix='pkgsrc-reconfigure-') as tmp:
     previous = events.read_text()
     result = run('configure')
     assert result.returncode == 0 and events.read_text() == previous, result.stdout + result.stderr
+    # A separate public invocation reparses the removed build cookie.
+    result = run('build')
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (work / '.build_done').read_text().strip() == 'fixture-1'
+    assert events.read_text().splitlines()[-1] == 'build'
+    assert [(p.stat().st_ino, p.stat().st_mtime_ns) for p in (source, obj)] == before
     result = run('reconfigure', 'FORCE_FAIL=yes')
     assert result.returncode != 0 and not (work / '.configure_done').exists()
     assert [(p.stat().st_ino, p.stat().st_mtime_ns) for p in (source, obj)] == before
