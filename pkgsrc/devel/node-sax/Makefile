@@ -8,7 +8,7 @@ EXTRACT_SUFX= .tgz
 WRKSRC= ${WRKDIR}/package
 HOMEPAGE= https://www.npmjs.com/package/sax
 COMMENT= Common sax JavaScript module
-LICENSE= blueoak-1.0.0
+LICENSE= blue-oak-1.0.0
 JS_MODULE_NAME= sax
 
 .include "../../mk/emberbsd-javascript.mk"
