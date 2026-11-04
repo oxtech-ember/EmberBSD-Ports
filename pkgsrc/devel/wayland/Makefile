@@ -52,6 +52,7 @@ PKGCONFIG_OVERRIDE+=		output/meson-private/wayland-server.pc
 PKG_FAIL_REASON+= "The wayland SDK role belongs to devel/wayland-devel"
 .endif
 PKGNAME=	wayland-devel-${WAYLAND_VERSION}
+PKGREVISION=	3
 COMMENT=	Wayland target SDK for the development-host sysroot
 DISTINFO_FILE=	${EMBERBSD_WAYLAND_PKGDIR}/distinfo
 PATCHDIR=	${EMBERBSD_WAYLAND_PKGDIR}/patches
@@ -66,8 +67,12 @@ PLIST_VARS+=	runtime_split
 .if ${MACHINE_ARCH} != "aarch64" && ${MACHINE_ARCH} != "x86_64"
 PKG_FAIL_REASON+= "The wayland runtime/SDK split requires the common aarch64 or amd64 cross target"
 .endif
-.if ${PKGREVISION} != 2
-PKG_FAIL_REASON+= "The wayland runtime/SDK split requires package revision 2"
+.if defined(EMBERBSD_WAYLAND_DEVEL)
+.  if ${PKGREVISION} != 3
+PKG_FAIL_REASON+= "The wayland SDK split requires package revision 3"
+.  endif
+.elif ${PKGREVISION} != 2
+PKG_FAIL_REASON+= "The wayland runtime split requires package revision 2"
 .endif
 PLIST.runtime_split=	yes
 WAYLAND_FULL_PLIST_SRC=	${EMBERBSD_WAYLAND_PKGDIR}/PLIST
