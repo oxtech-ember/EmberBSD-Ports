@@ -1,0 +1,31 @@
+# Origin: EmberBSD (AI-assisted); relocatable Ninja shell on Darwin.
+--- a/devel/ninja-build/Makefile
++++ b/devel/ninja-build/Makefile
+@@ -2,6 +2,7 @@
+ 
+ DISTNAME=	ninja-1.13.2
+ PKGNAME=	${DISTNAME:S/ninja/ninja-build/}
++PKGREVISION=	1
+ CATEGORIES=	devel
+ MASTER_SITES=	${MASTER_SITE_GITHUB:=ninja-build/}
+ GITHUB_PROJECT=	ninja
+@@ -36,11 +37,17 @@
+ #
+ .  if ${TOOLS_PLATFORM.sh:M?*/bin/mksh}
+ DEPENDS+=	mksh-[0-9]*:../../shells/mksh
+-CFLAGS+=	-DNINJA_SHELL=${PREFIX}/bin/mksh
++NINJA_SHELL_NAME=	mksh
+ .  else
+ DEPENDS+=	pdksh-[0-9]*:../../shells/pdksh
+-CFLAGS+=	-DNINJA_SHELL=${PREFIX}/bin/pdksh
++NINJA_SHELL_NAME=	pdksh
+ .  endif
++# Origin: EmberBSD (AI-assisted). Resolve the shell beside the installed
++# ninja so a relocated host prefix keeps it.  The bootstrap runs the newly
++# linked ninja from WRKSRC, so provide the dependency there as well.
++CFLAGS+=	-DNINJA_SHELL=@executable_path/${NINJA_SHELL_NAME}
++pre-build:
++	${LN} -sf ${PREFIX}/bin/${NINJA_SHELL_NAME} ${WRKSRC}/${NINJA_SHELL_NAME}
+ .else
+ CFLAGS+=	-DNINJA_SHELL=/bin/sh
+ .endif

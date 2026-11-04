@@ -1,0 +1,75 @@
+# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+# Resolve the selected Darwin shell beside the installed ninja executable.
+--- src/subprocess-posix.cc.orig
++++ src/subprocess-posix.cc
+@@ -24,6 +24,11 @@
+ #include <string.h>
+ #include <sys/wait.h>
+ #include <spawn.h>
++#include <limits.h>
++#include <stdlib.h>
++#ifdef __APPLE__
++#include <mach-o/dyld.h>
++#endif
+ 
+ #if defined(USE_PPOLL)
+ #include <poll.h>
+@@ -37,6 +42,44 @@
+ 
+ using namespace std;
+ 
++#define xstr(s) str(s)
++#define str(s) #s
++
++// Resolve an @executable_path/ shell beside the canonical ninja executable.
++// Ordinary absolute shells keep upstream behavior; a missing relocated shell
++// fails in posix_spawn instead of falling back to the producer or system one.
++static const char* ExecutableShell() {
++  static string shell;
++  static const char token[] = "@executable_path/";
++  const char* configured = xstr(NINJA_SHELL);
++
++  if (!shell.empty())
++    return shell.c_str();
++  if (strncmp(configured, token, sizeof(token) - 1) != 0) {
++    shell = configured;
++    return shell.c_str();
++  }
++#ifdef __APPLE__
++  uint32_t size = 0;
++  _NSGetExecutablePath(NULL, &size);
++  string executable(size, '\0');
++  if (size == 0 || _NSGetExecutablePath(&executable[0], &size) != 0)
++    Fatal("cannot determine the executable for the configured shell");
++  char resolved[PATH_MAX];
++  if (realpath(executable.c_str(), resolved) == NULL)
++    Fatal("cannot resolve the executable for the configured shell: %s",
++          strerror(errno));
++  char* slash = strrchr(resolved, '/');
++  if (slash == NULL)
++    Fatal("cannot resolve the executable for the configured shell");
++  *slash = '\0';
++  shell = string(resolved) + "/" + (configured + sizeof(token) - 1);
++#else
++  Fatal("an executable-relative shell requires executable path support");
++#endif
++  return shell.c_str();
++}
++
+ namespace {
+   ExitStatus ParseExitStatus(int status);
+ }
+@@ -129,10 +172,9 @@
+   if (err != 0)
+     Fatal("posix_spawnattr_setflags: %s", strerror(err));
+ 
+-#define xstr(s) str(s)
+-#define str(s) #s
+-  const char* spawned_args[] = { xstr(NINJA_SHELL), "-c", command.c_str(), NULL };
+-  err = posix_spawn(&pid_, xstr(NINJA_SHELL), &action, &attr,
++  const char* shell = ExecutableShell();
++  const char* spawned_args[] = { shell, "-c", command.c_str(), NULL };
++  err = posix_spawn(&pid_, shell, &action, &attr,
+         const_cast<char**>(spawned_args), environ);
+   if (err != 0)
+     Fatal("posix_spawn: %s", strerror(err));

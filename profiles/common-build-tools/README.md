@@ -89,6 +89,14 @@ back to the producer prefix or the system shell. Run
 against the built binary to exercise recipes, recursion, `.ONESHELL`, failures,
 relative and empty PATH entries, symlinks, `-C`, spaces and explicit overrides.
 
+On Darwin, Ninja likewise resolves the selected `mksh` or `pdksh` beside its
+canonical executable instead of embedding the producer prefix, so a relocated
+host package keeps a working command shell. A missing provider fails in
+`posix_spawn` rather than falling back. Other systems keep `/bin/sh`. Run
+`tests/ninja-executable-shell.py --ninja /absolute/ninja --shell /absolute/mksh`
+against the built binary to exercise commands, failures, symlinks, relative
+PATH entries, `-C` and spaces.
+
 The [Mach-O metadata resolver](macho-metadata.md) uses selected structural tools.
 It does not require libmagic or create a file/libtool bootstrap cycle.
 
