@@ -37,4 +37,10 @@ for phase in ('_KERNEL', '_STANDALONE'):
     result = subprocess.run(cmd, text=True, capture_output=True)
     if result.returncode:
         raise SystemExit(f'{phase}: {result.stderr}')
+cmd = [args.cc, '--target=x86_64--netbsd', '--sysroot=' + str(args.sysroot),
+       '-I' + str(args.zlib_source), '-Wcast-qual', '-Werror', '-fsyntax-only',
+       *(str(args.zlib_source / name) for name in ('compress.c', 'deflate.c', 'uncompr.c', 'gzwrite.c'))]
+result = subprocess.run(cmd, text=True, capture_output=True)
+if result.returncode:
+    raise SystemExit(f'NetBSD const-qualified build: {result.stderr}')
 print('NetBSD zlib ABI and standalone compile matrix PASS')
