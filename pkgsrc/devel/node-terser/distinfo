@@ -3,6 +3,6 @@ $NetBSD$
 BLAKE2s (terser-5.51.2.tgz) = 3ce1282511cb9bf803c0f604343d8e928ac4e18f22e76ee8bdaa343f10f9345c
 SHA512 (terser-5.51.2.tgz) = 6d69e348db1c9ae23e189cdee99ba99c73fc1bf71372c245f9b5c279092793648742c81b3499cbaea887f636765b84933d55c7da60ca2915f78b03e173d0a7fd
 Size (terser-5.51.2.tgz) = 469320 bytes
-SHA1 (patch-bin_terser) = 1839fd9a7c9ef947e01206a0dfb38d50c63c57fb
-SHA1 (patch-package.json) = c0545c76e7d05baa18d224cf31665ad24faef1f3
-SHA1 (patch-README.md) = b29d7504bf0684aee56958e175c9bbeeaf09284b
+SHA1 (patch-bin_terser) = 7978a93c94550dfeac35d3958d3bbda6e8926aa0
+SHA1 (patch-package.json) = 8f456ed5bb1d1aa63a53f935e92b5849380584f2
+SHA1 (patch-README.md) = 5da2793dbff0329fc75533e6f8fc8c7e5234df8b
