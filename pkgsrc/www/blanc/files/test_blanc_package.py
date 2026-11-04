@@ -303,6 +303,7 @@ class BlancPackageTests(unittest.TestCase):
             self.assertNotIn(str(work), serialized)
             self.assertNotIn(BUILD_OPTIONS.host_prefix, serialized)
             self.assertIn('emberbsd:distinfoSha256', serialized)
+            self.assertIn('ember-browser-1.46.0nb1', serialized)
             self.assertIn('pkgsrc:devel/electron44@45.2.1', serialized)
 
     def test_installed_asar_provider_rejects_missing_old_and_outside_prefix(self):
