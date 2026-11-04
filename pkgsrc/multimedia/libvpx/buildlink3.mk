@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	libvpx
 .if !defined(LIBVPX_BUILDLINK3_MK)
 LIBVPX_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.libvpx+=	libvpx>=1.14.0
-BUILDLINK_ABI_DEPENDS.libvpx+=	libvpx>=1.14.0
+BUILDLINK_API_DEPENDS.libvpx+=	libvpx>=1.17.0
+BUILDLINK_ABI_DEPENDS.libvpx+=	libvpx>=1.17.0
 BUILDLINK_PKGSRCDIR.libvpx?=	../../multimedia/libvpx
 
 USE_CXX_FEATURES+=	c++11

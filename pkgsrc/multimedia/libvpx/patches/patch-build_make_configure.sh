@@ -55,8 +55,9 @@ Recognize powerpc as a target ISA, so we don't end up with generic-gnu
          grep '4f *32 *42 *45' >/dev/null 2>&1 && enable_feature big_endian
  
      # Try to find which inline keywords are supported
-@@ -1550,7 +1556,7 @@ EOF
+@@ -1550,8 +1556,8 @@ EOF
          # bionic includes basic pthread functionality, obviating -lpthread.
+         soft_enable pthread_setname_np
          ;;
        *)
 -        check_header pthread.h && check_lib -lpthread <<EOF && add_extralibs -lpthread || disable_feature pthread_h
