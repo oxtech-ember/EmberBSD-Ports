@@ -1031,6 +1031,23 @@ revision than the cross or native build that it applies to sets for the same
 version. It also checks an export when given its path.
 `python3 scripts/tests/test_check_cross_revisions.py` tests it.
 
+Keep a package revision tied to a change in installed payload or package
+metadata. A failed build, upload or cleanup does not by itself require another
+revision. Preserve signed archives for publication recovery instead of rebuilding
+or resigning them under an immutable name. Check the evaluated selected graph
+before compiling, including exact runtime/SDK dependencies and native tool roles.
+
+QtBase's cross runtime/devel revisions are declared once in
+[`package-revisions.mk`](pkgsrc/x11/qt6-qtbase/package-revisions.mk).
+Its exact devel-to-runtime dependency and revision refusal checks derive from
+those declarations. Keep the separate native revision and API/ABI floors
+independent. When changing the runtime revision, check whether the resulting
+devel dependency metadata needs its own revision before publication. Do not
+relax that exact dependency to work around an incomplete package update.
+The [bmake metadata regression](pkgsrc/x11/qt6-qtbase/tests/package-revisions.py)
+checks both target architectures, invalid overrides and a simulated single
+revision edit; it does not compile Qt or qualify package installation.
+
 Experimental probes remain under `probes/`
 until their package integration and runtime are validated. No signed binary
 package repository is provided yet.
