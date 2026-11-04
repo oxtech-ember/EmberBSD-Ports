@@ -2,7 +2,7 @@
 # Origin: EmberBSD; AI-assisted bounded NetBSD 11/AArch64 and amd64 candidate.
 DISTNAME=	mesa-26.2.6
 PKGNAME=	${DISTNAME:S/mesa/MesaLib/}
-PKGREVISION=	11
+PKGREVISION=	12
 CATEGORIES=	graphics
 MASTER_SITES=	https://archive.mesa3d.org/
 EXTRACT_SUFX=	.tar.xz
@@ -23,16 +23,13 @@ PYTHON_VERSION_REQD=	315
 .include "../../lang/python/pyversion.mk"
 .include "features.mk"
 .include "options.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && empty(PKG_OPTIONS:Msoftpipe-only)
+.include "cross-llvm.mk"
+.endif
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # Mesa lexers handle yywrap themselves. Flex only generates source on the host.
 TOOL_DEPENDS+=	flex>=2.5.4a:../../devel/flex
 TOOLS_PLATFORM.flex=	${TOOLBASE}/bin/flex
-.endif
-.if !defined(EMBERBSD_COMMON_GRAPHICS)
-PKG_FAIL_REASON+= "Mesa requires the prepared common graphics profile"
-.endif
-.if ${DISTNAME} != "mesa-26.2.6" || ${PKGREVISION} != "11"
-PKG_FAIL_REASON+= "The common graphics profile requires adapted MesaLib 26.2.6nb11"
 .endif
 TOOL_DEPENDS+=	${PYPKGPREFIX}-mako>=1.4.3:../../devel/py-mako
 TOOL_DEPENDS+=	${PYPKGPREFIX}-packaging-[0-9]*:../../devel/py-packaging

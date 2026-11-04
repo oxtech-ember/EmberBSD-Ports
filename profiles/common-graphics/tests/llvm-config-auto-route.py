@@ -34,13 +34,15 @@ def main():
     args.pkgsrc = args.pkgsrc.resolve(strict=True)
     args.makeconf = args.makeconf.resolve(strict=True)
     args.work.mkdir(parents=True)
-    profile = (args.profile or (Path(__file__).resolve().parents[1] / 'mk.conf')).resolve(strict=True)
     text = args.makeconf.read_text()
     include = f'.include "{args.pkgsrc}/EMBERBSD-COMMON-GRAPHICS-MK.CONF"'
-    if text.count(include) != 1:
-        parser.error('MAKECONF must contain exactly one common graphics profile include')
+    if args.profile is not None:
+        profile = args.profile.resolve(strict=True)
+        if text.count(include) != 1:
+            parser.error('MAKECONF must contain exactly one graphics profile include')
+        text = text.replace(include, f'.include "{profile}"', 1)
     config = args.work / 'mk.conf'
-    config.write_text(text.replace(include, f'.include "{profile}"', 1))
+    config.write_text(text)
 
     bmake = Path(os.environ.get('BMAKE', ''))
     if not bmake.is_absolute() or not bmake.is_file():
@@ -106,12 +108,10 @@ def main():
         raise SystemExit('command-line LLVM_CONFIG_PATH override was not rejected by the consumer guard')
     # A caller value in MAKECONF is distinct from the profile's own automatic
     # assignment and must continue to be rejected, including an empty value.
-    profile_include = f'.include "{profile}"'
     for name, caller in (('earlier-bad', 'LLVM_CONFIG_PATH=/usr/bin/false'),
                          ('earlier-empty', 'LLVM_CONFIG_PATH=')):
         variant = args.work / (name + '.mk.conf')
-        variant.write_text(config.read_text().replace(profile_include,
-            caller + '\n' + profile_include, 1))
+        variant.write_text(caller + '\n' + config.read_text())
         run([str(bmake), '-C', str(args.pkgsrc / 'graphics/MesaLib'),
              'MAKECONF=' + str(variant), 'PKGSRCDIR=' + str(args.pkgsrc),
              'WRKDIR=' + str(args.work / (name + '-wrkdir')),

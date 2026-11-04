@@ -239,3 +239,12 @@ followed by an interrupted wait, no replay or tail signal, terminal NetBSD
 queue loss, successful submission and unchanged Linux retry/error behavior.
 ASan and UBSan instrument the fixture. The test models the kernel interface;
 it does not build the Vulkan driver or execute work on a GPU.
+
+## Standalone cross LLVM routing
+
+The common Mesa recipe selects the target LLVM metadata helper through the
+normal cross configuration, including a validated explicit override. Full
+Mesa checks target metadata at configure time; `softpipe-only` does not select
+the helper. Run `standalone-llvm-route.py --pkgsrc PKGSRC --makeconf MAKECONF
+--bmake BMAKE` to check the real pkgsrc metadata and refusal contracts. This
+check does not build Mesa or establish graphics runtime support.
