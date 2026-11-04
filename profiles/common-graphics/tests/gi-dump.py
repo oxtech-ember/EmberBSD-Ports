@@ -164,7 +164,7 @@ class StoredDumps(unittest.TestCase):
         self.assertEqual(self.gi.capture(self.arguments('live.xml')), 0)
         stored = capture / 'NetBSD-11.0-aarch64' / 'x11_gtk3' / 'Gtk-3.0.xml'
         data = stored.read_bytes()
-        self.assertTrue(data.startswith(b'<!-- EmberBSD GI dump 1\nplatform: NetBSD-11.0-aarch64\n'))
+        self.assertTrue(data.startswith(b'<!-- EmberBSD GI dump 2\nplatform: NetBSD-11.0-aarch64\n'))
         values, body = self.gi.parse(data)
         self.assertEqual(body, BODY)
         self.assertEqual(values['types-sha256'], hashlib.sha256(TYPES).hexdigest())
@@ -173,6 +173,39 @@ class StoredDumps(unittest.TestCase):
         (self.dumps / 'Gtk-3.0.xml').write_bytes(data)
         self.assertEqual(self.query(self.arguments('replayed.xml')).returncode, 0)
         self.assertEqual((self.root / 'replayed.xml').read_bytes(), BODY)
+
+    def test_v2_accepts_reordering_and_refuses_record_changes(self):
+        records = [b'get-type:zeta\n', b'get-type:alpha\n', b'error-quark:example\n']
+        self.types.write_bytes(b''.join(records))
+        values = self.gi.identity(self.program, str(self.types), version=2)
+        values['dump-sha256'] = hashlib.sha256(BODY).hexdigest()
+        path = self.dumps / 'Gtk-3.0.xml'
+        path.write_bytes(self.gi.render(values, BODY, version=2))
+        self.types.write_bytes(b''.join(reversed(records)))
+        result = self.query(self.arguments('reordered.xml'))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.root / 'reordered.xml').read_bytes(), BODY)
+        for index, changed in enumerate((records[:-1], records + [records[0]],
+                                        records + [b'get-type:extra\n'],
+                                        [b'get-type:changed\n', *records[1:]])):
+            self.types.write_bytes(b''.join(changed))
+            result = self.query(self.arguments(f'changed-{index}.xml'))
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('types-sha256', result.stderr)
+            self.assertFalse((self.root / f'changed-{index}.xml').exists())
+        self.types.write_bytes(b''.join(records))
+        path.write_bytes(path.read_bytes().replace(b'GtkWidget', b'GtkWindow'))
+        result = self.query(self.arguments('changed-body.xml'))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('differs from its dump-sha256', result.stderr)
+
+    def test_v1_keeps_raw_order_identity(self):
+        self.types.write_bytes(b'get-type:zeta\nget-type:alpha\n')
+        self.store()
+        self.types.write_bytes(b'get-type:alpha\nget-type:zeta\n')
+        result = self.query(self.arguments())
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('types-sha256', result.stderr)
 
     def test_capture_refuses_a_non_dump_body(self):
         os.environ['EMBERBSD_GI_DUMP_CAPTURE_DIR'] = str(self.root)

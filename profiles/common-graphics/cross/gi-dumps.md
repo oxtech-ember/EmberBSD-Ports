@@ -37,12 +37,12 @@ One file per dumper program, named after its basename (the GIR
 `pkgsrc/x11/gtk3/files/gi-dump/NetBSD-11.0-aarch64/Gtk-3.0.xml`:
 
 ```xml
-<!-- EmberBSD GI dump 1
+<!-- EmberBSD GI dump 2
 platform: NetBSD-11.0-aarch64
 recipe: x11/gtk3
 package: gtk3+-3.24.52
 program: Gtk-3.0
-types-sha256: <sha256 of the scanner's type list>
+types-sha256: <sha256 of sorted complete scanner type records>
 dump-sha256: <sha256 of the body below>
 -->
 <?xml version="1.0"?>

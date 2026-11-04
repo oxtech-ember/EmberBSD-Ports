@@ -1,10 +1,10 @@
-<!-- EmberBSD GI dump 1
+<!-- EmberBSD GI dump 2
 platform: NetBSD-11.0-x86_64
 recipe: multimedia/gst-plugins1-bad
 package: gst-plugins1-bad-1.28.8
 program: GstWebRTC-1.0
-types-sha256: 7a8168d2e8d047c6f6c403de7da231c1281d696b6563b89ce94b6c18bc309d31
-dump-sha256: 275608e898bf808b400f5aa7b1b50386dd49ec22c89826cd1213013412168f08
+types-sha256: 6d85e9df5046683c02f62701e6f5c758b4d41dbe8292d7d23e30d38c4fea62f7
+dump-sha256: a989c14191c6a7e8f7d32b23c191f83b15891e5120d6a2c93f43b7b1e190768f
 -->
 <?xml version="1.0"?>
 <dump>
@@ -92,12 +92,6 @@ dump-sha256: 275608e898bf808b400f5aa7b1b50386dd49ec22c89826cd1213013412168f08
     </signal>
     <signal name="close" return="void" when="last" action="1">
     </signal>
-  </class>
-  <class name="GstWebRTCSCTPTransport" get-type="gst_webrtc_sctp_transport_get_type" parents="GstObject,GInitiallyUnowned,GObject" abstract="1">
-    <property name="transport" type="GstWebRTCDTLSTransport" flags="225"/>
-    <property name="state" type="GstWebRTCSCTPTransportState" flags="225" default-value="GST_WEBRTC_SCTP_TRANSPORT_STATE_NEW"/>
-    <property name="max-message-size" type="guint64" flags="225" default-value="0"/>
-    <property name="max-channels" type="guint" flags="225" default-value="0"/>
   </class>
   <enum name="GstWebRTCICETcpCandidateType" get-type="gst_webrtc_ice_tcp_candidate_type_get_type">
     <member name="GST_WEBRTC_ICE_TCP_CANDIDATE_TYPE_ACTIVE" nick="active" value="0"/>
@@ -227,5 +221,11 @@ dump-sha256: 275608e898bf808b400f5aa7b1b50386dd49ec22c89826cd1213013412168f08
     <member name="GST_WEBRTC_ERROR_INTERNAL_FAILURE" nick="internal-failure" value="8"/>
     <member name="GST_WEBRTC_ERROR_INVALID_MODIFICATION" nick="invalid-modification" value="9"/>
     <member name="GST_WEBRTC_ERROR_TYPE_ERROR" nick="type-error" value="10"/>
-  </enum>  <error-quark function="gst_webrtc_error_quark" domain="gst-webrtc-error-quark"/>
+  </enum>  <class name="GstWebRTCSCTPTransport" get-type="gst_webrtc_sctp_transport_get_type" parents="GstObject,GInitiallyUnowned,GObject" abstract="1">
+    <property name="transport" type="GstWebRTCDTLSTransport" flags="225"/>
+    <property name="state" type="GstWebRTCSCTPTransportState" flags="225" default-value="GST_WEBRTC_SCTP_TRANSPORT_STATE_NEW"/>
+    <property name="max-message-size" type="guint64" flags="225" default-value="0"/>
+    <property name="max-channels" type="guint" flags="225" default-value="0"/>
+  </class>
+  <error-quark function="gst_webrtc_error_quark" domain="gst-webrtc-error-quark"/>
 </dump>

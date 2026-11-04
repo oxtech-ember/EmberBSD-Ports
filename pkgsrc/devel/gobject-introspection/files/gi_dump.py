@@ -23,6 +23,7 @@ import re
 import xml.etree.ElementTree as ElementTree
 
 FORMAT = 'EmberBSD GI dump 1'
+FORMAT_V2 = 'EmberBSD GI dump 2'
 FIELDS = ('platform', 'recipe', 'package', 'program', 'types-sha256', 'dump-sha256')
 MODES = ('live', 'replay', 'capture')
 LIMIT = 16 * 1024 * 1024
@@ -89,30 +90,42 @@ def normalize(data):
     return body
 
 
-def identity(program, types):
+def identity(program, types, *, version=1):
+    data = read_limited(types)
+    if version == 2:
+        # Preserve each complete record and duplicates; only order is immaterial.
+        records = data.splitlines(keepends=True)
+        require(all(record.endswith(b'\n') for record in records),
+                'type list has an unterminated record')
+        data = b''.join(sorted(records))
+    else:
+        require(version == 1, 'unsupported GI dump version')
     values = {
         'platform': os.environ.get('EMBERBSD_GI_DUMP_PLATFORM', ''),
         'recipe': os.environ.get('EMBERBSD_GI_DUMP_RECIPE', ''),
         'package': os.environ.get('EMBERBSD_GI_DUMP_PACKAGE', ''),
         'program': os.path.basename(program),
-        'types-sha256': sha256(read_limited(types)),
+        'types-sha256': sha256(data),
     }
     for name, value in values.items():
         require(re.fullmatch(PATTERNS[name], value), f'invalid GI dump {name}: {value!r}')
     return values
 
 
-def render(values, body):
-    header = ['<!-- ' + FORMAT] + [f'{name}: {values[name]}' for name in FIELDS] + ['-->']
+def render(values, body, *, version=1):
+    require(version in (1, 2), 'unsupported GI dump version')
+    header = ['<!-- ' + (FORMAT if version == 1 else FORMAT_V2)] + [f'{name}: {values[name]}' for name in FIELDS] + ['-->']
     return ('\n'.join(header) + '\n').encode('ascii') + body
 
 
-def parse(data):
-    """Split a stored dump into its header fields and body."""
+def _parse(data):
+    """Split a stored dump into its header fields, body and version."""
     lines = data.split(b'\n')
     count = len(FIELDS) + 2
-    require(len(lines) > count and lines[0] == ('<!-- ' + FORMAT).encode('ascii')
-            and lines[count - 1] == b'-->', 'stored dump has no EmberBSD GI dump 1 header')
+    require(len(lines) > count and lines[0] in (('<!-- ' + FORMAT).encode('ascii'),
+                                                ('<!-- ' + FORMAT_V2).encode('ascii'))
+            and lines[count - 1] == b'-->', 'stored dump has no EmberBSD GI dump 1 header or dump 2 header')
+    version = 1 if lines[0] == ('<!-- ' + FORMAT).encode('ascii') else 2
     values = {}
     for name, line in zip(FIELDS, lines[1:count - 1]):
         prefix = (name + ': ').encode('ascii')
@@ -123,6 +136,12 @@ def parse(data):
     body = b'\n'.join(lines[count:])
     require(sha256(body) == values['dump-sha256'], 'stored dump body differs from its dump-sha256')
     require(normalize(body) == body, 'stored dump body is not normalized')
+    return values, body, version
+
+
+def parse(data):
+    """Split a stored dump into its header fields and body."""
+    values, body, _ = _parse(data)
     return values, body
 
 
@@ -142,11 +161,11 @@ def replay(arguments):
     parsed = dump_arguments(arguments)
     require(parsed is not None, 'replay supports only PROGRAM --introspect-dump=TYPES,OUTPUT')
     program, types, output = parsed
-    expected = identity(program, types)
     path = stored_path(os.environ.get('EMBERBSD_GI_DUMP_DIR', ''), program)
     require(path.is_file(), f'no stored GI dump {path}; capture it from an EmberBSD target '
             '(profiles/common-graphics/cross/gi-dumps.md)')
-    values, body = parse(read_limited(path))
+    values, body, version = _parse(read_limited(path))
+    expected = identity(program, types, version=version)
     for name in FIELDS[:-1]:
         require(values[name] == expected[name],
                 f'stored GI dump {path.name} {name} is {values[name]}, this build needs {expected[name]}; '
@@ -159,7 +178,7 @@ def replay(arguments):
 def capture(arguments):
     """Store the dump that the live query just wrote, with its identity."""
     program, types, output = dump_arguments(arguments)
-    values = identity(program, types)
+    values = identity(program, types, version=2)
     body = normalize(read_limited(output))
     values['dump-sha256'] = sha256(body)
     directory = os.environ.get('EMBERBSD_GI_DUMP_CAPTURE_DIR', '')
@@ -169,5 +188,5 @@ def capture(arguments):
     target.mkdir(parents=True, exist_ok=True)
     path = stored_path(str(target), program)
     require(not os.path.lexists(path), f'captured dump already exists: {path}')
-    write_new(path, render(values, body))
+    write_new(path, render(values, body, version=2))
     return 0
