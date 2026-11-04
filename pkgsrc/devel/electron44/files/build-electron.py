@@ -158,6 +158,8 @@ def native_inputs(options, sdk):
         metadata = sdk['darwin_sdk'].read_metadata(str(options.macos_sdk),
                     xcode_version_plist=str(options.xcode_version_plist))
         environment['SDKROOT'] = metadata['sdk_path']
+        environment['GYP_MACOS_SDK_PATH'] = metadata['sdk_path']
+        environment['GYP_XCODE_VERSION_PLIST'] = str(Path(options.xcode_version_plist).resolve(strict=True))
         environment['MACOSX_DEPLOYMENT_TARGET'] = options.macos_minimum
         # Crashpad runs the selected devel/mig frontend from PATH; it requires an
         # explicit preprocessor and migcom (pkgsrc/devel/mig/README.md).
