@@ -155,3 +155,11 @@ the artifact does not introduce another zlib library or C++ ABI.
 under `share/zlib-source/core`, with its license. The source-only package shares
 the release, patch revision, distinfo and patch directory with `devel/zlib`.
 Each consumer supplies its own freestanding integration and verifies its ABI.
+
+### NetBSD ABI and common source
+
+Revision 4 preserves the existing NetBSD libz.so.1 `z_off_t` ABI and
+standalone/kernel adaptations in the common source. On NetBSD LP32,
+consumers compiled against the earlier Ports 1.3.2 definition of `z_off_t`
+need rebuilding against this revision. The source-only package shares the
+same revision and patches.
