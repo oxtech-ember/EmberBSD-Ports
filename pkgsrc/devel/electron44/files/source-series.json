@@ -1032,6 +1032,11 @@
       "path": "gn-target-runtime-library-paths.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-mac-native-platform-hardening.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

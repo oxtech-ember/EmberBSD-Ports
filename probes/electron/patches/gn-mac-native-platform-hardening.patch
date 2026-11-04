@@ -1,0 +1,25 @@
+Select hardening independently of the host platform C++ ABI.
+Origin: EmberBSD contributors (AI-assisted).
+
+diff --git a/build/toolchain/mac/BUILD.gn b/build/toolchain/mac/BUILD.gn
+index d05771310..712ef1866 100644
+--- a/build/toolchain/mac/BUILD.gn
++++ b/build/toolchain/mac/BUILD.gn
+@@ -13,6 +13,7 @@ declare_args() {
+   emberbsd_native_cpu = ""
+   emberbsd_native_cc = ""
+   emberbsd_native_cxx = ""
++  emberbsd_native_libcxx_hardened = false
+   mac_gcc_cc = ""
+   mac_gcc_cxx = ""
+   mac_gcc_cc_args = []
+@@ -62,7 +63,8 @@ template("mac_toolchain") {
+         forward_variables_from(_invoker_toolchain_args, "*")
+       }
+       if (emberbsd_native_cc != "") {
+-        external_libcxx_has_extensive_hardening = _selected_native_binding
++        external_libcxx_has_extensive_hardening =
++            _selected_native_binding && emberbsd_native_libcxx_hardened
+       }
+       current_os = "mac"
+ 
