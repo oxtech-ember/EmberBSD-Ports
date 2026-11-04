@@ -1,6 +1,7 @@
 # Origin: EmberBSD (AI-assisted); common upstream acorn module.
 DISTNAME= acorn-8.19.0
 PKGNAME= node-acorn-8.19.0
+PKGREVISION= 1
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/acorn/-/
 EXTRACT_SUFX= .tgz
@@ -9,6 +10,7 @@ HOMEPAGE= https://github.com/acornjs/acorn
 COMMENT= Common acorn JavaScript module
 LICENSE= mit
 JS_MODULE_NAME= acorn
+REPLACE_NODEJS= bin/acorn
 
 .include "../../mk/emberbsd-javascript.mk"
 .include "../../mk/bsd.pkg.mk"
