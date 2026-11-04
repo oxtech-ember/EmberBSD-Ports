@@ -1,10 +1,28 @@
 --- a/mk/buildlink3/bsd.buildlink3.mk
 +++ b/mk/buildlink3/bsd.buildlink3.mk
-@@ -739,6 +739,20 @@
+@@ -367,6 +367,18 @@
+ .  endif
+ .endfor
  
++# Register public refresh targets before the pkgsrc barrier. The barrier
++# command list was already collected, so put refresh before requested builds.
++.if !defined(_PKGSRC_BARRIER)
++.for _pkg_ in ${_BLNK_PACKAGES:O:u}
++.PHONY: refresh-empty-buildlink-${_pkg_}
++refresh-empty-buildlink-${_pkg_}: barrier
++.  if make(refresh-empty-buildlink-${_pkg_})
++_BARRIER_CMDLINE_TARGETS:= refresh-empty-buildlink-${_pkg_} ${_BARRIER_CMDLINE_TARGETS}
++.  endif
++.endfor
++.endif
++
+ ###
+ ### BEGIN: after the barrier
+ ###
+@@ -740,6 +752,20 @@
  .PHONY: buildlink-${_pkg_}
  buildlink-${_pkg_}: ${_BLNK_TARGETS.${_pkg_}}
-+
+ 
 +# Refresh a previously builtin provider only when it left no linked files.
 +.PHONY: refresh-empty-buildlink-${_pkg_}
 +refresh-empty-buildlink-${_pkg_}:
@@ -18,6 +36,7 @@
 +	${RM} -f "$$cookie"
 +	${RUN} ${RECURSIVE_MAKE} ${MAKEFLAGS} buildlink-${_pkg_}
 +.endif
- 
++
  .PHONY: buildlink-${_pkg_}-message
  buildlink-${_pkg_}-message:
+ 	${RUN}					\
