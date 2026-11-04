@@ -97,6 +97,16 @@ host package keeps a working command shell. A missing provider fails in
 against the built binary to exercise commands, failures, symlinks, relative
 PATH entries, `-C` and spaces.
 
+GNU M4 accepts `M4_SYSCMD_SHELL=@executable_path/NAME` and resolves the single
+file `NAME` beside its canonical executable when `syscmd` or `esyscmd` first
+runs, so a relocated prefix keeps its shell. The Darwin bootstrap profile
+selects `@executable_path/mksh`. An unresolvable executable is fatal and a
+missing shell fails the command; neither falls back to another shell. Absolute
+values keep upstream behavior. Run
+`tests/m4-executable-syscmd-shell.py --m4 /absolute/gm4 --shell /absolute/mksh`
+against the built binary to exercise both builtins, exit statuses, symlinks,
+PATH and relative invocations, spaces and the missing-provider failures.
+
 The [Mach-O metadata resolver](macho-metadata.md) uses selected structural tools.
 It does not require libmagic or create a file/libtool bootstrap cycle.
 

@@ -1,0 +1,102 @@
+# Origin: EmberBSD contributors (AI-assisted), not submitted upstream.
+# Resolve an @executable_path/NAME syscmd shell beside the installed m4.
+--- src/builtin.c.orig
++++ src/builtin.c
+@@ -25,6 +25,7 @@
+ #include "m4.h"
+ 
+ #include "execute.h"
++#include "findprog.h"
+ #include "memchr2.h"
+ #include "progname.h"
+ #include "regex.h"
+@@ -954,6 +955,51 @@
+ /* Exit code from last "syscmd" command.  */
+ static int sysval;
+ 
++/* EmberBSD: SYSCMD_SHELL may be @executable_path/NAME.  Resolve NAME
++   beside the canonical installed m4 on first use, so a relocated prefix
++   keeps its shell.  Absolute shells keep upstream behavior.  A missing
++   executable is fatal; there is no fallback shell.  */
++static const char *syscmd_argv0;
++static const char *syscmd_shell_path;
++
++void
++syscmd_init (const char *argv0)
++{
++  syscmd_argv0 = argv0;
++}
++
++static const char *
++syscmd_shell (void)
++{
++  static const char token[] = "@executable_path/";
++  size_t len = sizeof token - 1;
++  const char *candidate;
++  char *resolved = NULL;
++  char *slash;
++
++  if (syscmd_shell_path != NULL)
++    return syscmd_shell_path;
++  if (strncmp (SYSCMD_SHELL, token, len) != 0)
++    return syscmd_shell_path = SYSCMD_SHELL;
++  errno = 0;
++  candidate = (syscmd_argv0 == NULL ? NULL
++               : find_in_given_path (syscmd_argv0, getenv ("PATH"), NULL,
++                                     false));
++  if (candidate != NULL)
++    {
++      resolved = realpath (candidate, NULL);
++      if (candidate != syscmd_argv0)
++        free ((char *) candidate);
++    }
++  if (resolved == NULL || (slash = strrchr (resolved, '/')) == NULL)
++    m4_failure (errno, _("cannot resolve the m4 executable for the syscmd "
++                         "shell %s"), SYSCMD_SHELL);
++  *slash = '\0';
++  syscmd_shell_path = xasprintf ("%s/%s", resolved, SYSCMD_SHELL + len);
++  free (resolved);
++  return syscmd_shell_path;
++}
++
+ static void
+ m4_syscmd (struct obstack *obs MAYBE_UNUSED, int argc, token_data **argv)
+ {
+@@ -990,7 +1036,7 @@
+     }
+   prog_args[3] = NULL;
+   errno = 0;
+-  status = execute (ARG (0), SYSCMD_SHELL, prog_args, NULL, NULL, false,
++  status = execute (ARG (0), syscmd_shell (), prog_args, NULL, NULL, false,
+                     false, false, false, true, false, &sig_status);
+   if (sig_status)
+     {
+@@ -1046,7 +1092,7 @@
+     }
+   prog_args[3] = NULL;
+   errno = 0;
+-  child = create_pipe_in (ARG (0), SYSCMD_SHELL, prog_args, NULL, NULL,
++  child = create_pipe_in (ARG (0), syscmd_shell (), prog_args, NULL, NULL,
+                           NULL, false, true, false, &fd);
+   if (child == -1)
+     {
+--- src/m4.c.orig
++++ src/m4.c
+@@ -428,6 +428,7 @@
+   setlocale (LC_NUMERIC, "C");
+   bindtextdomain (PACKAGE, LOCALEDIR);
+   textdomain (PACKAGE);
++  syscmd_init (argv[0]);
+   atexit (close_stdin);
+ 
+   include_init ();
+--- src/m4.h.orig
++++ src/m4.h
+@@ -443,6 +443,7 @@
+ #define DEFAULT_MACRO_SEQUENCE "\\$\\({[^}]*}\\|[0-9][0-9]+\\)"
+ 
+ extern void builtin_init (void);
++extern void syscmd_init (const char *);
+ extern void define_builtin (const char *, const builtin *, symbol_lookup);
+ extern void set_macro_sequence (const char *);
+ extern void free_macro_sequence (void);

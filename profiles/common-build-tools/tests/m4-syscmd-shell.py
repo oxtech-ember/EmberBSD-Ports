@@ -36,7 +36,7 @@ def check(row, expected, *, dependency=False, refused=False):
     edges = [word for word in row['DEPENDS'].split()
              if word.endswith(':../../shells/mksh')]
     require(len(edges) == int(dependency), 'The mksh runtime edge is missing or duplicated')
-    require(row['PKGREVISION'] == '1', 'The changed installed runtime needs PKGREVISION 1')
+    require(row['PKGREVISION'] == '2', 'The changed installed runtime needs PKGREVISION 2')
 
 
 def main():
@@ -141,13 +141,19 @@ def main():
         values = ['EMBER_TEST_PROFILE=yes', 'EMBERBSD_DARWIN_BOOTSTRAP=yes']
         if mode != 'default':
             values += ['EMBERBSD_DARWIN_METADATA=' + mode]
-        check(query('profile-' + mode, values), str(future / 'bin/mksh'), dependency=True)
+        check(query('profile-' + mode, values), '@executable_path/mksh', dependency=True)
     for cross in (() if args.only_perl else ('no', 'yes')):
         check(query('default-cross-' + cross, ['USE_CROSS_COMPILE=' + cross, 'OPSYS=NetBSD']), None)
     for name, shell in ([] if args.only_perl else [('explicit-cross', '/target/pkg/bin/mksh'),
-                        ('space-cross', '/target sdk/pkg/bin/mksh')]):
+                        ('space-cross', '/target sdk/pkg/bin/mksh'),
+                        ('relative-executable', '@executable_path/sh')]):
         check(query(name, ['USE_CROSS_COMPILE=yes', 'OPSYS=NetBSD', 'M4_SYSCMD_SHELL=' + shell]), shell)
-    for name, value in ([] if args.only_perl else [('empty', ''), ('relative', 'bin/mksh'), ('relative-space', 'bin /target/mksh')]):
+    for name, value in ([] if args.only_perl else [('empty', ''), ('relative', 'bin/mksh'), ('relative-space', 'bin /target/mksh'),
+                        ('executable-empty', '@executable_path/'),
+                        ('executable-nested', '@executable_path/bin/mksh'),
+                        ('executable-parent', '@executable_path/..'),
+                        ('executable-space', '@executable_path/mk sh'),
+                        ('executable-word', '/bin/sh @executable_path/mksh')]):
         check(query(name, ['M4_SYSCMD_SHELL=' + value]), None, refused=True)
     def perl_check(row, build=None, runtime=None, *, dependency=False, refused=False):
         require(bool(row['PKG_FAIL_REASON']) == refused, 'Unexpected Perl pair refusal')
