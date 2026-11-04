@@ -7,6 +7,12 @@ Perl of the same version. The native interpreter and its XS modules remain
 native. A separate build context supplies the target configuration and the
 selected compiler wrappers; target install paths remain target paths.
 
+Cross packages that need Perl only as a build tool and do not select
+`EMBERBSD_PERL_TARGET_CONFIG` query the native interpreter's configuration.
+They accept its relocatable `prefix` through the matching absolute
+`installprefix`, just as native builds do. Explicit target configuration still
+requires an absolute target prefix and keeps the installation-path checks.
+
 This covers `PERL5_MODULE_TYPE` `MakeMaker`, `Module::Install`,
 `Module::Install::Bundled`, `Module::Build` and `Module::Build::Tiny`. The
 packaged Module::Build (`devel/p5-Module-Build`) reads the same build context

@@ -34,8 +34,9 @@ _PERL5_PREFIX:=		${_PERL5_VARS_OUT:Mprefix=*:C/^prefix=//}
 MAKEVARS+=		_PERL5_PREFIX
 .  endif
 # Relocatable native Perl reports prefix as .../.., while its installation
-# paths remain absolute.  Use the matching installprefix from that Config.
-.  if ${USE_CROSS_COMPILE:Uno} != "yes" && !empty(_PERL5_PREFIX:M.../*)
+# paths remain absolute.  Cross build-tool users also query this native
+# Config unless they explicitly select target metadata.
+.  if (${USE_CROSS_COMPILE:Uno} != "yes" || !defined(EMBERBSD_PERL_TARGET_CONFIG)) && !empty(_PERL5_PREFIX:M.../*)
 _PERL5_PREFIX:=		${_PERL5_VARS_OUT:Minstallprefix=*:C/^installprefix=//}
 .  endif
 .  if empty(_PERL5_PREFIX:M/*) || ${_PERL5_PREFIX} == "/"
