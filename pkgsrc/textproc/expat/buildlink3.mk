@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	expat
 .if !defined(EXPAT_BUILDLINK3_MK)
 EXPAT_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.expat+=	expat>=1.95.7
-BUILDLINK_ABI_DEPENDS.expat+=	expat>=2.9.0
+BUILDLINK_API_DEPENDS.expat+=	expat>=2.10.0
+BUILDLINK_ABI_DEPENDS.expat+=	expat>=2.10.0
 BUILDLINK_PKGSRCDIR.expat?=	../../textproc/expat
 .endif # EXPAT_BUILDLINK3_MK
 
