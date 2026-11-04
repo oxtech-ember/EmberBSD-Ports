@@ -39,7 +39,9 @@ The producer keeps its existing `src`, `build` and `prefix` directories.
 Use a new output directory and keep the whole result unchanged while consumers
 use it. Native dependency headers, libraries and pkg-config metadata come from
 the selected prefix. Install common native zlib headers and libraries there;
-`--with-system-zlib` excludes the bundled copy. Optional zstd support remains
+`--with-system-zlib` excludes the bundled copy. The native link flags also
+retain that prefix as a runtime library search path, so the installed tools
+can load its compression libraries without an environment override. Optional zstd support remains
 available; the producer does not disable compression to simplify linking.
 
 The enclosing explicit GCC cross-compiler and firmware producers retain their

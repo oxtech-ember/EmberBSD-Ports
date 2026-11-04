@@ -85,7 +85,8 @@ class BinutilsHostTests(unittest.TestCase):
             self.assertEqual(env['CPPFLAGS'], '-DHOST_ABI_CPP=1 -I' + selected.bundle_root + '/include')
             self.assertEqual(env['CFLAGS'], '-fhost-abi-c')
             self.assertEqual(env['CXXFLAGS'], '-fhost-abi-cxx')
-            self.assertEqual(env['LDFLAGS'], '-Wl,-host-abi -L' + selected.bundle_root + '/lib')
+            self.assertEqual(env['LDFLAGS'], '-Wl,-host-abi -L' + selected.bundle_root + '/lib'
+                             + ' -Wl,-rpath,' + selected.bundle_root + '/lib')
             self.assertEqual(env['PKG_CONFIG_PATH'], '')
             self.assertEqual(env['MAKEINFO'], self.tools['true'])
 
