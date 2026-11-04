@@ -1,12 +1,15 @@
 # $NetBSD: Makefile,v 1.25 2016/01/10 20:01:05 markd Exp $
 
-PKGREVISION=	4
+PKGREVISION=	5
 
 .include "Makefile.common"
 
 COMMENT=	Wayland compositor for KDE Plasma Desktops
 
 .include "../../meta-pkgs/kde/plasma6.mk"
+
+# The overview effect imports the Milou QML search component at runtime.
+DEPENDS+=	plasma6-milou>=${PLASMAVER}:../../sysutils/plasma6-milou
 
 # Vulkan-Hpp loads libvulkan.so at runtime; headers do not supply the loader.
 DEPENDS+=	vulkan-loader>=1.4.357.0:../../graphics/vulkan-loader
