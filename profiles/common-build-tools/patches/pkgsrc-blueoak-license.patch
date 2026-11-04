@@ -1,0 +1,13 @@
+Origin: EmberBSD contributors (AI-assisted).
+Recognize the permissive Blue Oak Model License 1.0.0 in the common catalog.
+
+--- a/mk/license.mk
++++ b/mk/license.mk
+@@ -126,6 +126,7 @@ DEFAULT_ACCEPTABLE_LICENSES= \
+ 	arphic-public \
+ 	artistic artistic-2.0 \
+ 	beer-ware \
++	blueoak-1.0.0 \
+ 	boost-license \
+ 	cc-by-sa-v3.0 \
+ 	cc-by-sa-v4.0 \
