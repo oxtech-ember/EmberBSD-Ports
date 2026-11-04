@@ -24,6 +24,17 @@ USE_CROSS_COMPILE=	yes
 USE_LANGUAGES=		c c++
 USE_TOOLS+=		pkg-config
 
+# Shared native JavaScript providers selected by the Electron producer.
+TOOL_DEPENDS+= node-electron-asar>=4.3.1:../../devel/node-electron-asar
+TOOL_DEPENDS+= node-electron-docs-parser>=3.0.3:../../devel/node-electron-docs-parser
+TOOL_DEPENDS+= node-electron-typescript-definitions>=10.0.0:../../devel/node-electron-typescript-definitions
+TOOL_DEPENDS+= node-types-node>=26.6.6:../../devel/node-types-node
+TOOL_DEPENDS+= node-pre-flight>=2.0.0:../../devel/node-pre-flight
+TOOL_DEPENDS+= rolldown>=1.2.16:../../devel/rolldown
+TOOL_DEPENDS+= node-semver>=7.8.5:../../devel/node-semver
+TOOL_DEPENDS+= typescript>=7.0.2:../../lang/typescript
+TOOL_DEPENDS+= node-primer-octicons>=19.42.0:../../devel/node-primer-octicons
+
 # Inputs and producer work are selected explicitly in producer.mk.
 # The prepared source owner applies patches before the controller verifies it.
 # Override the pkgsrc patch target so recipe-local patches are not applied twice.

@@ -1469,6 +1469,25 @@ def configure_stage(name):
         print(f'configure: {name} end ({time.monotonic() - start:.1f}s)', flush=True)
 
 
+def require_electron_static_assets(options):
+    """Check the default app's selected package files from Electron's GN list."""
+    filenames = (options.workspace / 'src/electron/filenames.gni').read_text()
+    match = re.search(r'(?ms)^\s*default_app_octicon_sources\s*=\s*\[(.*?)^\s*\]', filenames)
+    require(match is not None, 'Electron octicon source list is missing')
+    entries = re.findall(r'"([^"\n]+)"', match.group(1))
+    require(entries and not re.sub(r'"[^"\n]+"|[\s,]', '', match.group(1)),
+            'invalid Electron octicon source list')
+    modules = (options.host_prefix / 'lib/node_modules').resolve(strict=True)
+    for entry in entries:
+        path = Path(entry)
+        require(not path.is_absolute() and '..' not in path.parts and
+                path.parts[:3] == ('node_modules', '@primer', 'octicons'),
+                'invalid Electron octicon source path')
+        selected = modules.joinpath(*path.parts[1:])
+        require(selected.is_file() and selected.resolve().is_relative_to(modules),
+                'missing common Electron octicon asset: ' + entry)
+
+
 def configure(options):
     require_common_v8(options)
     require_common_node(options)
@@ -1476,6 +1495,7 @@ def configure(options):
     sdk = load_sdk(options.sdk_source)
     with configure_stage('source verify'):
         verify_source(options.workspace, options.ports_source, options.git)
+        require_electron_static_assets(options)
     work = options.work
     resume = getattr(options, 'resume_configure', False)
     retry = getattr(options, 'retry_configure', False)
