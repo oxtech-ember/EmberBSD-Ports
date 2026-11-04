@@ -32,6 +32,7 @@ USE_LIBTOOL=		yes
 USE_TOOLS+=		gmake pod2man perl pkg-config
 HAS_CONFIGURE=		yes
 CONFIGURE_ARGS+=	--cc=${CC:Q}
+CONFIGURE_ARGS+=	--nm=${NM:Q}\ -g
 CONFIGURE_ARGS+=	--disable-debug
 CONFIGURE_ARGS+=	--disable-optimizations
 CONFIGURE_ARGS+=	--disable-stripping
