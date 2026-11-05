@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.16)
+project(libsrtp_consumer C)
+find_package(libSRTP CONFIG REQUIRED)
+if(NOT TARGET OpenSSL::Crypto)
+  message(FATAL_ERROR "libSRTP did not provide its OpenSSL dependency")
+endif()
+add_executable(libsrtp_consumer main.c)
+target_link_libraries(libsrtp_consumer PRIVATE libSRTP::srtp2)

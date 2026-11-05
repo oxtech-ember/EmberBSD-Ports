@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (libsrtp-2.8.1.tar.gz) = 2603f34e89f238756e6923d8b837dee046c2059bd502a535a74bc447ff60b1c6
+SHA512 (libsrtp-2.8.1.tar.gz) = 78fc02a2341fedf84e5d539745cbae5410ce799ca9522dfe0be9133d13cd4373d79d6fc83d422e5f92e7f8db96e55feddd2cb8f03d9a9ac8c4ea7ac4697ec741
+Size (libsrtp-2.8.1.tar.gz) = 647097 bytes
+SHA1 (patch-Config.cmake.in) = 644f5261ff8bb9608dc86ba5207e5fb72d549971
