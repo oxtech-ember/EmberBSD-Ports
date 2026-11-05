@@ -21,6 +21,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -100,6 +101,8 @@ draw(GLsizei width, GLsizei height)
 {
 	static const GLfloat vertices[] = { -1, -1, 1, -1, 0, 1 };
 	GLuint texture, framebuffer, vertex, fragment, invalid, program, buffer;
+	GLuint decimal_fragment, decimal_program;
+	unsigned char pixel[4];
 	GLint linked;
 #ifdef EMBER_DESKTOP_GL
 	GLuint vertex_array;
@@ -162,6 +165,38 @@ draw(GLsizei width, GLsizei height)
 		fail("draw and finish");
 	expect_pixel(width / 2, height / 2, 0, 255);
 	expect_pixel(0, height - 1, 255, 0);
+	/* Exercise the GLSL compiler under the selected LC_NUMERIC. */
+#ifdef EMBER_DESKTOP_GL
+	decimal_fragment = shader(GL_FRAGMENT_SHADER,
+	    "#version 140\nout vec4 color; void main() {"
+	    "color = vec4(0.333, 0.5, 0.75, 1.0); }", 1);
+#else
+	decimal_fragment = shader(GL_FRAGMENT_SHADER,
+	    "precision mediump float; void main() {"
+	    "gl_FragColor = vec4(0.333, 0.5, 0.75, 1.0); }", 1);
+#endif
+	decimal_program = glCreateProgram();
+	glAttachShader(decimal_program, vertex);
+	glAttachShader(decimal_program, decimal_fragment);
+	glBindAttribLocation(decimal_program, 0, "position");
+	glLinkProgram(decimal_program);
+	glGetProgramiv(decimal_program, GL_LINK_STATUS, &linked);
+	if (linked != GL_TRUE)
+		fail("decimal shader link");
+	glUseProgram(decimal_program);
+	glDisable(GL_DITHER);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+	glReadPixels(width / 2, height / 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+	if (glGetError() != GL_NO_ERROR)
+		fail("decimal shader draw/read");
+	if (abs((int)pixel[0] - 85) > 1 || abs((int)pixel[1] - 128) > 1 ||
+	    abs((int)pixel[2] - 191) > 1 || pixel[3] != 255) {
+		fprintf(stderr, "Decimal pixel = %u,%u,%u,%u; expected 85,128,191,255\n",
+		    pixel[0], pixel[1], pixel[2], pixel[3]);
+		fail("GLSL decimal literal mismatch");
+	}
+	glDeleteProgram(decimal_program);
+	glDeleteShader(decimal_fragment);
 #ifdef EMBER_DESKTOP_GL
 	glDeleteVertexArrays(1, &vertex_array);
 #endif
@@ -209,6 +244,15 @@ main(int argc, char **argv)
 #ifdef EMBER_EPOXY_DISPATCH
 	int loader_status = 0;
 #endif
+
+	const char *numeric_locale = getenv("EMBER_MESA_TEST_LOCALE");
+	if (numeric_locale && (!setlocale(LC_NUMERIC, numeric_locale) ||
+	    strcmp(localeconv()->decimal_point, ",") != 0)) {
+		fprintf(stderr, "Unavailable or non-comma LC_NUMERIC: %s\n", numeric_locale);
+		return 2;
+	}
+	if (numeric_locale)
+		printf("LC_NUMERIC=%s\n", setlocale(LC_NUMERIC, NULL));
 
 	if (argc != 3 && argc != 5) {
 		fprintf(stderr, "Usage: mesa-render surfaceless|RENDER_NODE EXPECTED_RENDERER [WIDTH HEIGHT]\n");

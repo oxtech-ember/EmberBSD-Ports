@@ -41,6 +41,7 @@ SHA1 (patch-src_imagination_vulkan_winsys_powervr_pvr__drm__job__render.c) = 00f
 SHA1 (patch-src_imagination_vulkan_winsys_powervr_pvr__drm__job__transfer.c) = 9cda3d7a0b1797358c1e4e9e2fcc90d36e4686d6
 SHA1 (patch-src_intel_decoder_tests_genxml__test.c) = cdd7a5d525a38d7dba4d7bd95877d2aece404995
 SHA1 (patch-src_util_half__float.c) = b36aaefa87ccefe069c63f14a6ba6ccdbc14506f
+SHA1 (patch-src_util_strtod.c) = 8ffade597764198562cb33b83060fca25ce3105b
 SHA1 (patch-src_util_u__dynarray.h) = 1a305aa5eb8d7b84482ab55362fa59d368289c14
 SHA1 (patch-src_util_u__process.c) = 9d0ef663ba79648c8e3f5fe5866d2b503c6d2cdf
 SHA1 (patch-src_vulkan_wsi_wsi__common__wayland.c) = cd18ee367f9fbaaf7ba8e5ca8557d066a435f831

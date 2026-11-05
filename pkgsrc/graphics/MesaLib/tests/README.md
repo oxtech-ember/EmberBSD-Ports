@@ -302,3 +302,44 @@ does not qualify D16 or other GPU models.
 On a warm YS-M33/A133, these cases and a Qt 6.12 Vulkan offscreen frame passed
 with hardware depth enabled. The Qt oracle compared all 1280x800 RGBA pixels.
 This evidence does not qualify a complete Qt application or device image.
+
+## GLSL numeric locale regression
+
+The common Mesa conversion uses the probed locale-specific functions with an
+explicit C numeric locale. This keeps decimal GLSL literals independent of the
+application's `LC_NUMERIC`. The Mesa source path below must already contain the
+normal recipe's complete patch set; do not modify an active build tree.
+
+For a NetBSD target, select the SDK target compiler and its sysroot through
+`CC` and its normal configuration. From the Ports root, compile the actual
+patched `strtod.c` with the standalone regression:
+
+```sh
+"$CC" -std=c11 -O2 -DHAVE_STRTOD_L -DHAVE_STRTOF -DHAVE_PTHREAD \
+    -DHAVE_STRUCT_TIMESPEC -DUSE_GCC_ATOMIC_BUILTINS \
+    -I"$MESA_SOURCE/src" -I"$MESA_SOURCE/src/util" -I"$MESA_SOURCE/include" \
+    -pthread "$MESA_SOURCE/src/util/strtod.c" \
+    profiles/common-graphics/tests/mesa-strtod-locale.c -o "$TEST_BINARY"
+```
+
+Run the resulting target executable on the target with an installed comma
+locale, for example `"$TEST_BINARY" ru_RU.UTF-8`. It refuses a missing or
+non-comma locale and checks values and end pointers after comma → C → comma
+transitions. The first conversion runs in the comma locale so the test covers
+locale-object creation, not only a later locale change. Compile the old source
+and a control with only the feature-guard change to distinguish both causes.
+
+For the actual graphics consumer, build `cross/mesa-render.c` with the normal
+selected EGL/GL/GBM package inputs and run on the target with shader caching
+disabled, e.g.:
+
+```sh
+EMBER_MESA_TEST_LOCALE=ru_RU.UTF-8 MESA_SHADER_CACHE_DISABLE=true \
+    "$MESA_RENDER" "$RENDER_NODE" "$EXPECTED_RENDERER"
+```
+
+The diagnostic refuses a missing or non-comma locale, checks the renderer and
+reads back the GLSL fractional color alongside its existing triangle checks.
+Run a separate C-locale control. A matching image tests the selected renderer;
+it does not by itself establish installation, package lifecycle or compositor
+acceptance.
