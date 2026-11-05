@@ -19,6 +19,20 @@ with tempfile.TemporaryDirectory() as temp:
     obj = work / 'kept.o'
     obj.write_bytes(b'object')
     cookie = work / '.extract_done'
+    rundir = root / 'run'
+    rundir.mkdir()
+    # Stands in for pkgsrc: lists (.depends) and resolves (.rdepends) the
+    # dependencies into the files named on the command line.
+    bmk = ('bmk() {\n'
+           '    printf "%s\\n" "$*" > "$run/bmk-args"\n'
+           '    [ "$FIXTURE_RESOLVE" = ok ] || return 1\n'
+           '    for a; do case $a in _DEPENDS_FILE=*) d=${a#*=};; _RDEPENDS_FILE=*) r=${a#*=};; esac; done\n'
+           '    printf "%s\\n" "$FIXTURE_DEPENDS" > "$d"\n'
+           '    eval "last=\\${$#}"\n'
+           '    [ "$last" != "$r" ] || printf "%s\\n" "$FIXTURE_RDEPENDS" > "$r"\n'
+           '}\n')
+    resolved = dict(FIXTURE_RESOLVE='ok', FIXTURE_DEPENDS='full\texpat>=2.10.0\t../../textproc/expat',
+                    FIXTURE_RDEPENDS='full\texpat>=2.10.0\texpat-2.10.0')
     def run(identity, current, version):
         if identity is None:
             cookie.unlink(missing_ok=True)
@@ -26,10 +40,12 @@ with tempfile.TemporaryDirectory() as temp:
             cookie.write_text(identity + '\n')
         shell = root / 'case.sh'
         shell.write_text('#!/bin/sh\nhost_python="$1"; base=fixture; version="$2"; name="$3"\n'
-                         'retire() { mv "$1" "$1.retired"; }\n' + fn +
-                         '\nprepare_wrkdir "$4" job\n')
-        return subprocess.run(['/bin/sh', str(shell), sys.executable, version, current, str(work)],
-                              cwd=script.parent, capture_output=True, text=True)
+                         'run="$5"; PKGSRCDIR=/ports\n'
+                         'retire() { mv "$1" "$1.retired"; }\n' + bmk + fn +
+                         '\nprepare_wrkdir "$4" job t/fixture USE_CROSS_COMPILE=no\n')
+        return subprocess.run(['/bin/sh', str(shell), sys.executable, version, current, str(work),
+                               str(rundir)], cwd=script.parent, capture_output=True, text=True,
+                              env=dict(os.environ, **resolved))
     # The function resolves the classifier alongside $0.
     (root / 'cross-bulk-workdir.py').write_bytes(classifier.read_bytes())
     obj.unlink()
@@ -53,6 +69,36 @@ with tempfile.TemporaryDirectory() as temp:
     assert run('fixture-1.0nb1', 'fixture-1.0nb2', '1.0').returncode == 0
     assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
     assert run(None, 'fixture-1.0nb2', '1.0').returncode != 0 and obj.exists()
+    assert not (rundir / 'bmk-args').exists()
+    # A kept WRKDIR whose dependencies pkgsrc listed and resolved is kept
+    # only while the same bmake arguments still list and resolve them alike.
+    (work / '.depends').write_text(resolved['FIXTURE_DEPENDS'] + '\n')
+    assert run('fixture-1.0nb2', 'fixture-1.0nb2', '1.0').returncode == 0
+    assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
+    args = (rundir / 'bmk-args').read_text().split()
+    assert args[:3] == ['-C', '/ports/t/fixture', 'USE_CROSS_COMPILE=no'] and args[-1].endswith('.depends')
+    (work / '.rdepends').write_text(resolved['FIXTURE_RDEPENDS'] + '\n')
+    assert run('fixture-1.0nb2', 'fixture-1.0nb2', '1.0').returncode == 0
+    assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
+    assert (rundir / 'bmk-args').read_text().split()[-1].endswith('.rdepends')
+    assert sorted(p.name for p in rundir.iterdir()) == ['bmk-args']
+    def retired_by(**change):
+        resolved.update(change)
+        result = run('fixture-1.0nb2', 'fixture-1.0nb2', '1.0')
+        assert result.returncode == 0 and not work.exists(), result.stderr
+        assert 'kept WRKDIR resolved other dependencies' in result.stderr
+        retired = root / 'work.retired'
+        assert (retired / 'kept.o').read_bytes() == b'object'
+        retired.rename(work)
+        assert sorted(p.name for p in rundir.iterdir()) == ['bmk-args']
+        resolved.update(FIXTURE_RESOLVE='ok', FIXTURE_DEPENDS=(work / '.depends').read_text().rstrip('\n'),
+                        FIXTURE_RDEPENDS=(work / '.rdepends').read_text().rstrip('\n'))
+    # The dependency was replaced by a newer revision since the resolution.
+    retired_by(FIXTURE_RDEPENDS='full\texpat>=2.10.0\texpat-2.10.0nb1')
+    # The recipe lists another dependency now.
+    retired_by(FIXTURE_DEPENDS='full\texpat>=2.10.0nb1\t../../textproc/expat')
+    # The dependencies cannot be resolved (one is not installed).
+    retired_by(FIXTURE_RESOLVE='no')
     assert run('fixture-1.0nb2', 'fixture-2.0', '2.0').returncode == 0
     assert not work.exists() and (root / 'work.retired/kept.o').read_bytes() == b'object'
-print('PASS: retry preserves objects, unknown fails closed, new version retires')
+print('PASS: retry preserves objects, unknown fails closed, new version or dependencies retire')

@@ -879,12 +879,20 @@ retire()
 # Set clean to the clean target, or to nothing when the WRKDIR ($1) went to
 # the trash: each target-mode bmake run parses the whole package again
 # (seconds each), and the clean step would have nothing to remove.
+# $2 names the job, $3 is the PKGPATH and the rest are its bmake arguments.
 prepare_wrkdir()
 {
     clean=clean
     if [ -e "$1" ] || [ -L "$1" ]; then
         work_identity=$("$host_python" -B -E -S "$(dirname "$0")/cross-bulk-workdir.py" "$1" "$base" "$version" "$name") || return 1
-        case "$work_identity" in same) clean=; return 0 ;; incompatible) ;; *) return 1 ;; esac
+        case "$work_identity" in
+        same)
+            if work_dependencies_current "$@"; then clean=; return 0; fi
+            echo "$3: kept WRKDIR resolved other dependencies; building it again" >&2
+            ;;
+        incompatible) ;;
+        *) return 1 ;;
+        esac
     fi
     if retire "$1" "$2"; then
         [ -e "$1" ] || [ -L "$1" ] || clean=
@@ -894,6 +902,36 @@ prepare_wrkdir()
     fi
 }
 
+
+# pkgsrc lists the dependencies of a WRKDIR (.depends) and resolves them to
+# installed packages (.rdepends) once, and a kept WRKDIR keeps both. When a
+# dependency was replaced since then (expat-2.10.0 by expat-2.10.0nb1), the
+# checks after the install compare the objects with the old names and refuse
+# the newer package as no runtime dependency. List and resolve them again
+# with the same bmake arguments ($1 WRKDIR, $2 job, $3 PKGPATH, then the
+# arguments): the kept WRKDIR is current only when both lists are unchanged.
+work_dependencies_current()
+{
+    wdc_work=$1 wdc_check=$run/$2.dependencies wdc_path=$3
+    shift 3
+    if [ -f "$wdc_work/.rdepends" ]; then
+        wdc_files='depends rdepends'
+    elif [ -f "$wdc_work/.depends" ]; then
+        wdc_files=depends
+    else
+        return 0
+    fi
+    rm -f "$wdc_check.depends" "$wdc_check.rdepends"
+    wdc_status=0
+    bmk -C "$PKGSRCDIR/$wdc_path" "$@" "_DEPENDS_FILE=$wdc_check.depends" \
+        "_RDEPENDS_FILE=$wdc_check.rdepends" "$wdc_check.${wdc_files##* }" \
+        < /dev/null > /dev/null 2>&1 || wdc_status=1
+    for wdc_file in $wdc_files; do
+        [ "$wdc_status" != 0 ] || cmp -s "$wdc_check.$wdc_file" "$wdc_work/.$wdc_file" || wdc_status=1
+    done
+    rm -f "$wdc_check.depends" "$wdc_check.rdepends"
+    return "$wdc_status"
+}
 # Retire successful workdirs only when the caller opts in. If a rename to the
 # same-filesystem trash is unavailable, use pkgsrc's scoped clean target.
 # Cleanup trouble is diagnostic; it must not undo a completed installation.
@@ -1116,7 +1154,7 @@ build_native()
     set +f
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $nnode $name" >> "$state/progress"
     if [ "${stage_local:-no}" != yes ]; then
-        prepare_wrkdir "$wrkdir" "$job.$key" || { result "$key" "failed $nnode incompatible-workdir"; return 0; }
+        prepare_wrkdir "$wrkdir" "$job.$key" "$path" "$@" || { result "$key" "failed $nnode incompatible-workdir"; return 0; }
     fi
     : > "$log"
     if { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; } &&
@@ -1516,7 +1554,7 @@ build_one()
     # One short line per append: O_APPEND keeps concurrent lines whole.
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name MAKE_JOBS=$make_jobs" >> "$state/progress"
     if [ "${stage_local:-no}" != yes ]; then
-        prepare_wrkdir "$wrkdir" "$job.$key" || { result "$key" "failed $path incompatible-workdir"; return 0; }
+        prepare_wrkdir "$wrkdir" "$job.$key" "$path" || { result "$key" "failed $path incompatible-workdir"; return 0; }
     fi
     # One package-install run does depends, package and the install: each
     # target-mode bmake run parses the package again, and the pkg_add wrapper
