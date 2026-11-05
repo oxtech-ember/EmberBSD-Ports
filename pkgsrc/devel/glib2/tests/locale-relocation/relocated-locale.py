@@ -31,7 +31,7 @@ for mode, tool, expected in (('old', a.old_tool, 'EMBERBSD synthetic relocated l
                              ('new', a.new_tool, 'EMBERBSD traduction relocalisee')):
     library = root / mode / 'lib/libglib-2.0.0.dylib'
     env = os.environ.copy()
-    env.update(LC_ALL=a.locale, LANGUAGE='fr', DYLD_LIBRARY_PATH=str(library.parent))
+    env.update(LC_ALL=a.locale, LANGUAGE='fr', XDG_DATA_DIRS=str(a.sdk / 'share'), DYLD_LIBRARY_PATH=str(library.parent))
     subprocess.run([str(probe), str(library), expected], env=env, check=True)
     env['DYLD_PRINT_LIBRARIES'] = '1'
     result = subprocess.run([str(tool), 'get', 'org.emberbsd.synthetic.missing', 'key'],

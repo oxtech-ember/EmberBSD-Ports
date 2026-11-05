@@ -1,0 +1,302 @@
+# Initialize and serialize GIO MIME directories before xdgmime lookups.
+# Origin: EmberBSD (AI-assisted).
+
+--- gio/gcontenttype-fdo.c.orig
++++ gio/gcontenttype-fdo.c
+@@ -50,6 +50,9 @@
+  * which GLib can never free as it doesn’t know when is suitable to call
+  * xdg_mime_shutdown(). */
+ G_LOCK_DEFINE_STATIC (gio_xdgmime);
++static gchar **global_mime_dirs = NULL;
++static void ensure_mime_dirs_locked (void);
++static gchar **dup_mime_dirs (void);
+ 
+ gsize
+ _g_unix_content_type_get_sniff_len (void)
+@@ -58,6 +61,7 @@
+ 
+   G_LOCK (gio_xdgmime);
+   g_begin_ignore_leaks ();
++  ensure_mime_dirs_locked ();
+   size = xdg_mime_get_max_buffer_extents ();
+   g_end_ignore_leaks ();
+   G_UNLOCK (gio_xdgmime);
+@@ -72,6 +76,7 @@
+ 
+   G_LOCK (gio_xdgmime);
+   g_begin_ignore_leaks ();
++  ensure_mime_dirs_locked ();
+   res = g_strdup (xdg_mime_unalias_mime_type (type));
+   g_end_ignore_leaks ();
+   G_UNLOCK (gio_xdgmime);
+@@ -91,6 +96,7 @@
+ 
+   G_LOCK (gio_xdgmime);
+   g_begin_ignore_leaks ();
++  ensure_mime_dirs_locked ();
+ 
+   umime = xdg_mime_unalias_mime_type (type);
+ 
+@@ -109,9 +115,6 @@
+ 
+   return (gchar **)g_ptr_array_free (array, FALSE);
+ }
+-
+-G_LOCK_DEFINE_STATIC (global_mime_dirs);
+-static gchar **global_mime_dirs = NULL;
+ 
+ static void
+ _g_content_type_set_mime_dirs_locked (const char * const *dirs)
+@@ -135,17 +138,42 @@
+       global_mime_dirs = (gchar **) g_ptr_array_free (mime_dirs, FALSE);
+     }
+ 
++  /* Drop old parsed caches before switching the search directories. */
++  xdg_mime_shutdown ();
+   xdg_mime_set_dirs ((const gchar * const *) global_mime_dirs);
+   tree_magic_schedule_reload ();
++}
++
++/* Caller holds gio_xdgmime. Never call the public getter from here. */
++static void
++ensure_mime_dirs_locked (void)
++{
++  if (global_mime_dirs == NULL)
++    _g_content_type_set_mime_dirs_locked (NULL);
++}
++
++static gchar **
++dup_mime_dirs (void)
++{
++  gchar **dirs;
++  G_LOCK (gio_xdgmime);
++  g_begin_ignore_leaks ();
++  ensure_mime_dirs_locked ();
++  g_end_ignore_leaks ();
++  dirs = g_strdupv (global_mime_dirs);
++  G_UNLOCK (gio_xdgmime);
++  return dirs;
+ }
+ 
+ /*< private >*/
+ void
+ g_content_type_set_mime_dirs_impl (const gchar * const *dirs)
+ {
+-  G_LOCK (global_mime_dirs);
++  G_LOCK (gio_xdgmime);
++  g_begin_ignore_leaks ();
+   _g_content_type_set_mime_dirs_locked (dirs);
+-  G_UNLOCK (global_mime_dirs);
++  g_end_ignore_leaks ();
++  G_UNLOCK (gio_xdgmime);
+ }
+ 
+ /*< private >*/
+@@ -154,16 +182,13 @@
+ {
+   const gchar * const *mime_dirs;
+ 
+-  G_LOCK (global_mime_dirs);
+-
+-  if (global_mime_dirs == NULL)
+-    _g_content_type_set_mime_dirs_locked (NULL);
+-
++  G_LOCK (gio_xdgmime);
++  g_begin_ignore_leaks ();
++  ensure_mime_dirs_locked ();
+   mime_dirs = (const gchar * const *) global_mime_dirs;
+-
+-  G_UNLOCK (global_mime_dirs);
+-
+-  g_assert (mime_dirs != NULL);
++  g_end_ignore_leaks ();
++  G_UNLOCK (gio_xdgmime);
++
+   return mime_dirs;
+ }
+ 
+@@ -178,6 +203,7 @@
+ 
+   G_LOCK (gio_xdgmime);
+   g_begin_ignore_leaks ();
++  ensure_mime_dirs_locked ();
+   res = xdg_mime_mime_type_equal (type1, type2);
+   g_end_ignore_leaks ();
+   G_UNLOCK (gio_xdgmime);
+@@ -196,6 +222,7 @@
+ 
+   G_LOCK (gio_xdgmime);
+   g_begin_ignore_leaks ();
++  ensure_mime_dirs_locked ();
+   res = xdg_mime_mime_type_subclass (type, supertype);
+   g_end_ignore_leaks ();
+   G_UNLOCK (gio_xdgmime);
+@@ -346,14 +373,14 @@
+ static char *
+ load_comment_for_mime (const char *mimetype)
+ {
+-  const char * const *dirs;
++  g_auto(GStrv) dirs = NULL;
+   char *basename;
+   char *comment;
+   gsize i;
+ 
+   basename = g_strdup_printf ("%s.xml", mimetype);
+ 
+-  dirs = g_content_type_get_mime_dirs ();
++  dirs = dup_mime_dirs ();
+   for (i = 0; dirs[i] != NULL; i++)
+     {
+       comment = load_comment_for_mime_helper (dirs[i], basename);
+@@ -379,6 +406,7 @@
+ 
+   G_LOCK (gio_xdgmime);
+   g_begin_ignore_leaks ();
++  ensure_mime_dirs_locked ();
+   type = xdg_mime_unalias_mime_type (type);
+   g_end_ignore_leaks ();
+ 
+@@ -426,19 +454,23 @@
+   char *icon_names[6];
+   int n = 0;
+   GIcon *themed_icon;
+-  const char  *xdg_icon;
++  char *xdg_icon;
+   int i;
+ 
+   g_return_val_if_fail (type != NULL, NULL);
+ 
+   G_LOCK (gio_xdgmime);
+   g_begin_ignore_leaks ();
+-  xdg_icon = xdg_mime_get_icon (type);
+-  g_end_ignore_leaks ();
++  ensure_mime_dirs_locked ();
++  {
++    const char *borrowed = xdg_mime_get_icon (type);
++    g_end_ignore_leaks ();
++    xdg_icon = g_strdup (borrowed);
++  }
+   G_UNLOCK (gio_xdgmime);
+ 
+   if (xdg_icon)
+-    icon_names[n++] = g_strdup (xdg_icon);
++    icon_names[n++] = xdg_icon;
+ 
+   mimetype_icon = g_strdup (type);
+   while ((q = strchr (mimetype_icon, '/')) != NULL)
+@@ -484,15 +516,19 @@
+ gchar *
+ g_content_type_get_generic_icon_name_impl (const gchar *type)
+ {
+-  const gchar *xdg_icon_name;
++  gchar *xdg_icon_name;
+   gchar *icon_name;
+ 
+   g_return_val_if_fail (type != NULL, NULL);
+ 
+   G_LOCK (gio_xdgmime);
+   g_begin_ignore_leaks ();
+-  xdg_icon_name = xdg_mime_get_generic_icon (type);
+-  g_end_ignore_leaks ();
++  ensure_mime_dirs_locked ();
++  {
++    const gchar *borrowed = xdg_mime_get_generic_icon (type);
++    g_end_ignore_leaks ();
++    xdg_icon_name = g_strdup (borrowed);
++  }
+   G_UNLOCK (gio_xdgmime);
+ 
+   if (!xdg_icon_name)
+@@ -511,7 +547,7 @@
+     }
+   else
+     {
+-      icon_name = g_strdup (xdg_icon_name);
++      icon_name = xdg_icon_name;
+     }
+ 
+   return icon_name;
+@@ -556,6 +592,7 @@
+ 
+   G_LOCK (gio_xdgmime);
+   g_begin_ignore_leaks ();
++  ensure_mime_dirs_locked ();
+   /* mime type and content type are same on unixes */
+   umime = g_strdup (xdg_mime_unalias_mime_type (mime_type));
+   g_end_ignore_leaks ();
+@@ -590,6 +627,7 @@
+ 
+   G_LOCK (gio_xdgmime);
+   g_begin_ignore_leaks ();
++  ensure_mime_dirs_locked ();
+ 
+   if (filename)
+     {
+@@ -744,7 +782,7 @@
+ GList *
+ g_content_types_get_registered_impl (void)
+ {
+-  const char * const *dirs;
++  g_auto(GStrv) dirs = NULL;
+   GHashTable *mimetypes;
+   GHashTableIter iter;
+   gpointer key;
+@@ -753,7 +791,7 @@
+ 
+   mimetypes = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+ 
+-  dirs = g_content_type_get_mime_dirs ();
++  dirs = dup_mime_dirs ();
+   for (i = 0; dirs[i] != NULL; i++)
+     enumerate_mimetypes_dir (dirs[i], mimetypes);
+ 
+@@ -773,7 +811,7 @@
+ 
+ /* tree magic data */
+ static GList *tree_matches = NULL;
+-static gboolean need_reload = FALSE;
++static gint need_reload = FALSE;
+ 
+ G_LOCK_DEFINE_STATIC (gio_treemagic);
+ 
+@@ -1010,7 +1048,7 @@
+ static void
+ tree_magic_schedule_reload (void)
+ {
+-  need_reload = TRUE;
++  g_atomic_int_set (&need_reload, TRUE);
+ }
+ 
+ static void
+@@ -1036,19 +1074,22 @@
+     {
+       initialized = TRUE;
+ 
++      G_LOCK (gio_xdgmime);
++      g_begin_ignore_leaks ();
++      ensure_mime_dirs_locked ();
+       xdg_mime_register_reload_callback (xdg_mime_reload, NULL, NULL);
+-      need_reload = TRUE;
+-    }
+-
+-  if (need_reload)
+-    {
+-      const char * const *dirs;
+-
+-      need_reload = FALSE;
++      g_end_ignore_leaks ();
++      G_UNLOCK (gio_xdgmime);
++      g_atomic_int_set (&need_reload, TRUE);
++    }
++
++  if (g_atomic_int_exchange (&need_reload, FALSE))
++    {
++      g_auto(GStrv) dirs = NULL;
+ 
+       tree_magic_shutdown ();
+ 
+-      dirs = g_content_type_get_mime_dirs ();
++      dirs = dup_mime_dirs ();
+       for (i = 0; dirs[i] != NULL; i++)
+         read_tree_magic_from_directory (dirs[i]);
+     }
