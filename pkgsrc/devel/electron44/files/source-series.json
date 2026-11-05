@@ -1162,6 +1162,16 @@
       "path": "devtools-i18n-common-acorn.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "gn-external-ffmpeg.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-common-minizip-unicode.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

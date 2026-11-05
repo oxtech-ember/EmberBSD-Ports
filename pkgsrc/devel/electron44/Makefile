@@ -30,6 +30,14 @@ TOOL_DEPENDS+= crc32c>=1.1.2:../../devel/crc32c
 TOOL_DEPENDS+= libsrtp>=2.8.1:../../security/libsrtp
 TOOL_DEPENDS+= libyuv>=0.0.1978:../../multimedia/libyuv
 
+.if ${EMBERBSD_ELECTRON_SHARED_FFMPEG:Uno} == "yes"
+TOOL_DEPENDS+= ffmpeg9>=9.0.2nb6:../../multimedia/ffmpeg9
+.endif
+
+.if ${EMBERBSD_ELECTRON_SHARED_MINIZIP:Uno} == "yes"
+TOOL_DEPENDS+= minizip-ng>=4.2.2nb1:../../archivers/minizip-ng
+.endif
+
 # Shared native JavaScript providers selected by the Electron producer.
 TOOL_DEPENDS+= node-electron-asar>=4.3.1:../../devel/node-electron-asar
 TOOL_DEPENDS+= node-electron-docs-parser>=3.0.3:../../devel/node-electron-docs-parser

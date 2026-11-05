@@ -20,7 +20,7 @@ with tempfile.TemporaryDirectory() as temp:
     def capture(command, **kwargs):
         calls.append(command)
         export=Path(command[3])
-        for name in ('archivers/brotli','archivers/zstd'):
+        for name in ('archivers/brotli','archivers/zstd','devel/zlib','archivers/minizip-ng','multimedia/ffmpeg9'):
             recipe=export/name; recipe.mkdir(parents=True)
             (recipe/'distinfo').write_text(name + (root/'state').read_text())
         return SimpleNamespace(stdout=b'')
@@ -37,6 +37,12 @@ with tempfile.TemporaryDirectory() as temp:
         scratch=root/'scratch'; scratch.mkdir()
         o.phase='reconfigure'; o.native_binding_root=work; o.work=scratch
         assert electron.compression_recipe_catalog(o,sdk,native,{})==first and len(calls)==1
+        o.shared_minizip=True; o.shared_ffmpeg=True
+        combined=electron.compression_recipe_catalog(o,sdk,native,{})
+        assert len(calls)==2 and set(combined['recipes']) == {
+            'archivers/brotli','archivers/zstd','devel/zlib','archivers/minizip-ng','multimedia/ffmpeg9'}
+        (work/'configuration.json').write_text(json.dumps({'environment':{'EMBERBSD_COMPRESSION_RECIPE_CATALOG':json.dumps(combined)}}))
+        assert electron.compression_recipe_catalog(o,sdk,native,{}) == combined and len(calls)==2
         (root/'state').write_text('two')
         o.phase='build'
         try: electron.compression_recipe_catalog(o,sdk,native,{})
@@ -44,5 +50,5 @@ with tempfile.TemporaryDirectory() as temp:
         else: raise AssertionError('changed owner accepted by build')
         o.phase='reconfigure'
         changed=electron.compression_recipe_catalog(o,sdk,native,{})
-        assert len(calls)==2 and changed['recipes']!=first['recipes']
+        assert len(calls)==3 and changed['recipes']!=combined['recipes']
 print('PASS: one canonical batch per effective owner change, unchanged build reuses catalog')

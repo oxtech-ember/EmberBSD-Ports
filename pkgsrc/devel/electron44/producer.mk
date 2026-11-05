@@ -79,6 +79,18 @@ _EMBER_ELECTRON_ARGS+= --v8-metagen-runtime-extra ${_ember_file:Q}
 _EMBER_ELECTRON_ARGS+= --${_ember_key:tl:S/_/-/g}
 .endfor
 
+.if ${EMBERBSD_ELECTRON_SHARED_FFMPEG:Uno} == "yes"
+_EMBER_ELECTRON_ARGS+= --shared-ffmpeg
+.elif ${EMBERBSD_ELECTRON_SHARED_FFMPEG:Uno} != "no"
+.error EMBERBSD_ELECTRON_SHARED_FFMPEG must be yes or no
+.endif
+
+.if ${EMBERBSD_ELECTRON_SHARED_MINIZIP:Uno} == "yes"
+_EMBER_ELECTRON_ARGS+= --shared-minizip
+.elif ${EMBERBSD_ELECTRON_SHARED_MINIZIP:Uno} != "no"
+.error EMBERBSD_ELECTRON_SHARED_MINIZIP must be yes or no
+.endif
+
 .for _ember_key in PERFETTO_SCOPED_RUNTIME NODE_SCOPED_RUNTIME
 .if ${EMBERBSD_ELECTRON_${_ember_key}:Uno} == "yes"
 _EMBER_ELECTRON_ARGS+= --${_ember_key:tl:S/_/-/g}

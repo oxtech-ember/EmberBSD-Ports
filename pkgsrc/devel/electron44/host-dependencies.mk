@@ -18,3 +18,15 @@
 .include "../../net/libcares/buildlink3.mk"
 .include "../../textproc/icu/buildlink3.mk"
 .include "../../devel/re2/buildlink3.mk"
+
+.if ${EMBERBSD_ELECTRON_SHARED_FFMPEG:Uno} == "yes"
+BUILDLINK_API_DEPENDS.ffmpeg9+= ffmpeg9>=9.0.2nb6
+BUILDLINK_ABI_DEPENDS.ffmpeg9+= ffmpeg9>=9.0.2nb6
+.include "../../multimedia/ffmpeg9/buildlink3.mk"
+.endif
+
+.if ${EMBERBSD_ELECTRON_SHARED_MINIZIP:Uno} == "yes"
+BUILDLINK_API_DEPENDS.minizip-ng+= minizip-ng>=4.2.2nb1
+BUILDLINK_ABI_DEPENDS.minizip-ng+= minizip-ng>=4.2.2nb1
+.include "../../archivers/minizip-ng/buildlink3.mk"
+.endif

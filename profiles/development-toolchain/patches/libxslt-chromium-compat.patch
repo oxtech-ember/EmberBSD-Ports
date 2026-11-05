@@ -1,0 +1,114 @@
+Preserve Chromium XML transformations with the common libxslt provider.
+
+--- /dev/null
++++ b/textproc/libxslt/patches/patch-zz-chromium-attributes
+@@ -0,0 +1,17 @@
++$NetBSD$
++
++Origin: Andrew Paseltiner, Chromium issue 503627446 (2026-04-20).
++Verify dictionary ownership before aliasing attribute text.
++
++--- libxslt/attributes.c.orig
+++++ libxslt/attributes.c
++@@ -1036,7 +1036,8 @@
++ 	*/
++ 	if (ctxt->internalized &&
++ 	    (ctxt->insert->doc != NULL) &&
++-	    (ctxt->insert->doc->dict == ctxt->dict))
+++	    (ctxt->insert->doc->dict == ctxt->dict) &&
+++	    xmlDictOwns(ctxt->dict, inst->children->content))
++ 	{
++ 	    copyTxt = xmlNewText(NULL);
++ 	    if (copyTxt == NULL) /* TODO: report error */
+--- /dev/null
++++ b/textproc/libxslt/patches/patch-zz-chromium-functions
+@@ -0,0 +1,23 @@
++$NetBSD$
++
++Origin: David Cheng, Chromium patch 0007 (2026-07-31).
++Return an empty node set when resolving the document URI fails.
++
++--- libxslt/functions.c.orig
+++++ libxslt/functions.c
++@@ -337,14 +337,7 @@
++         if (base != NULL)
++             xmlFree(base);
++         if (URI == NULL) {
++-            if ((tctxt != NULL) && (tctxt->style != NULL) &&
++-                (tctxt->style->doc != NULL) &&
++-                (xmlStrEqual(URI, tctxt->style->doc->URL))) {
++-                /* This selects the stylesheet's doc itself. */
++-                valuePush(ctxt, xmlXPathNewNodeSet((xmlNodePtr) tctxt->style->doc));
++-            } else {
++-                valuePush(ctxt, xmlXPathNewNodeSet(NULL));
++-            }
+++            valuePush(ctxt, xmlXPathNewNodeSet(NULL));
++         } else {
++ 	    xsltDocumentFunctionLoadDocument(ctxt, URI, fragment);
++ 	    xmlFree(URI);
+--- /dev/null
++++ b/textproc/libxslt/patches/patch-zz-chromium-xslt
+@@ -0,0 +1,29 @@
++$NetBSD$
++
++Origin: Andrew Paseltiner, Chromium issue 503879106 (2026-04-23).
++Only access element namespace fields and skip DTD declarations.
++
++--- libxslt/xslt.c.orig
+++++ libxslt/xslt.c
++@@ -5019,7 +5019,8 @@
++ 		goto skip_children;
++ 	    }
++ 	}
++-	else if ((cur->ns != NULL) && (style->nsDefs != NULL) &&
+++	else if ((cur->type == XML_ELEMENT_NODE) && (cur->ns != NULL) &&
+++	    (style->nsDefs != NULL) &&
++ 	    (xsltCheckExtPrefix(style, cur->ns->prefix)))
++ 	{
++ 	    /*
++@@ -5050,7 +5051,10 @@
++ 	 * Skip to next node
++ 	 */
++ 	if (cur->children != NULL) {
++-	    if (cur->children->type != XML_ENTITY_DECL) {
+++	    if ((cur->type != XML_ENTITY_DECL) &&
+++	        (cur->type != XML_DTD_NODE) &&
+++	        (cur->type != XML_ELEMENT_DECL) &&
+++	        (cur->type != XML_ATTRIBUTE_DECL)) {
++ 		cur = cur->children;
++ 		continue;
++ 	    }
+--- /dev/null
++++ b/textproc/libxslt/patches/patch-zz-chromium-transform
+@@ -0,0 +1,21 @@
++$NetBSD$
++
++Origin: EmberBSD contributors (AI-assisted).
++Keep DTD declarations out of the sequence-constructor traversal;
++these nodes have no matching output-parent level to unwind.
++
++--- libxslt/transform.c.orig
+++++ libxslt/transform.c
++@@ -2978,7 +2978,11 @@
++          * Descend into content in document order.
++          */
++         if (cur->children != NULL) {
++-            if (cur->children->type != XML_ENTITY_DECL) {
+++            if ((cur->type != XML_DTD_NODE) &&
+++                (cur->type != XML_ENTITY_DECL) &&
+++                (cur->type != XML_ELEMENT_DECL) &&
+++                (cur->type != XML_ATTRIBUTE_DECL) &&
+++                (cur->children->type != XML_ENTITY_DECL)) {
++                 cur = cur->children;
++ 		level++;
++                 if (copy != NULL)
+--- a/textproc/libxslt/distinfo
++++ b/textproc/libxslt/distinfo
+@@ -11,3 +11,7 @@
+ SHA1 (patch-libexslt_strings.c) = 61917b207414fce8acdc4a38d2d80e25ad3c55de
+ SHA1 (patch-libexslt_dynamic.c) = a75a933eaf86fce1cefdec2ff226185818878cbc
+ SHA1 (Makefile) = 05fe78490b53ef3e87067d228cda5e12959465ff
++SHA1 (patch-zz-chromium-attributes) = cb5401e05e9f942be8dc7e1d737c43db4414058d
++SHA1 (patch-zz-chromium-functions) = 5350a2d7d6ee09be094dec4fdca6ce049c9ad053
++SHA1 (patch-zz-chromium-xslt) = edf874ab16791643316dc84a459a49181898234d
++SHA1 (patch-zz-chromium-transform) = dde98839359c9c988413f5b0464f4c2894b306d8

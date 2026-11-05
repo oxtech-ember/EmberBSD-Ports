@@ -175,3 +175,28 @@ No Memcheck, ASan or UBSan success is claimed. Exit-zero functional results do
 not prove memory safety. Additional allocation-failure paths, instrumented UAF
 checks, full package integration, cross execution and downstream Qt/KDE
 acceptance remain separate gates. The generic advisory remains open.
+
+## Chromium compatibility in revision nb3
+
+The common recipe also carries Chromium's attribute dictionary ownership check,
+its template traversal checks for DTD declarations, and its empty-node-set result
+when `document()` cannot resolve a URI. The patch headers preserve Andrew
+Paseltiner's and David Cheng's authorship and the Chromium issue references.
+An additional EmberBSD change keeps DTD declarations out of sequence-constructor
+traversal: they do not create an output-tree level to unwind. Public structures,
+function signatures and the shared-library SONAME remain unchanged.
+
+`tests/libxslt-literal-result.py` checks a literal-result stylesheet containing a
+DTD comment and an entity. `tests/libxslt-chromium-compat.c` checks preserved
+attribute whitespace and `document('')` with an invalid base URI and an unnamed
+in-memory stylesheet. Compile this C test with the selected host compiler,
+`-UNDEBUG`, and the selected libxslt/libxml2 headers and libraries. Neither test
+is an automatic ordinary-build step.
+
+On Darwin arm64 with the selected Clang 23 SDK, both focused tests pass against
+the patched library. The upstream `tests/.libs/runtest` executable passes all
+751 tests with that library and the test plugin directory selected explicitly.
+The canonical export and all eleven patches also apply with the normal pkgsrc
+patch arguments; the resulting four changed source files match the tested
+sources byte for byte. Target package execution and instrumented memory checks
+are separate from this native evidence.
