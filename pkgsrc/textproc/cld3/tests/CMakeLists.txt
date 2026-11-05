@@ -1,0 +1,18 @@
+cmake_minimum_required(VERSION 3.16)
+project(ember_cld3_consumer LANGUAGES CXX)
+find_package(cld3 CONFIG REQUIRED)
+add_executable(cld3-smoke smoke.cpp)
+target_link_libraries(cld3-smoke PRIVATE cld3::cld3)
+if(CLD3_UPSTREAM_SOURCE)
+  add_executable(cld3-predictions
+    "${CLD3_UPSTREAM_SOURCE}/src/nnet_lang_id_test.cc"
+    "${CLD3_UPSTREAM_SOURCE}/src/nnet_lang_id_test_data.cc")
+  target_link_libraries(cld3-predictions PRIVATE cld3::cld3)
+  add_executable(cld3-multiple multiple.cpp "${CLD3_UPSTREAM_SOURCE}/src/nnet_lang_id_test_data.cc")
+  target_include_directories(cld3-multiple PRIVATE "${CLD3_UPSTREAM_SOURCE}/src")
+  target_link_libraries(cld3-multiple PRIVATE cld3::cld3)
+  add_executable(cld3-features "${CLD3_UPSTREAM_SOURCE}/src/language_identifier_features_test.cc")
+  target_link_libraries(cld3-features PRIVATE cld3::cld3)
+  add_executable(cld3-script-span "${CLD3_UPSTREAM_SOURCE}/src/script_span/getonescriptspan_test.cc")
+  target_link_libraries(cld3-script-span PRIVATE cld3::cld3)
+endif()
