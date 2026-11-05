@@ -86,6 +86,7 @@ devel/wayland-protocols
 devel/xxhash
 fonts/fontconfig
 fonts/harfbuzz
+fonts/woff2
 graphics/MesaLib
 graphics/OpenJPH
 graphics/cairo
