@@ -65,6 +65,7 @@ class Process:
     ninja_calls = []
     events = []
     ninja_failure = False
+    expected_metagen = None
     @staticmethod
     def run_logged(argv, log, *, append=False, **kwargs):
         if Path(argv[0]).name == 'ninja':
@@ -78,6 +79,9 @@ class Process:
                 output = Path(argv[argv.index('-C') + 1])
                 (output / 'dist.zip').write_bytes(b'fixture Electron archive')
             return
+        if Process.expected_metagen is not None:
+            path, expected = Process.expected_metagen
+            assert json.loads(path.read_text()) == expected, 'metagen descriptor must exist before GN'
         Process.calls += 1
         Process.events.append('gn')
         with Path(log).open('a' if append else 'x') as stream:
@@ -108,7 +112,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                               'cxx':['--ld-path=/ld','--rtlib=compiler-rt','--unwindlib=libunwind','-stdlib=libc++']})
     binding.write_text(json.dumps(commands))
     (src/'.gn').write_text('buildconfig="//BUILDCONFIG.gn"\n')
-    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n emberbsd_node_source_identity=""\n emberbsd_node_configure_helper=""\n emberbsd_node_configure_inputs=[]\n emberbsd_node_configure_dependencies=[]\n node_module_version=0\n node_inspector_string_traits_header=""\n emberbsd_native_pkg_config_prefix=""\n emberbsd_protoc_runtime_launcher=""\n emberbsd_protoc_runtime_view=""\n emberbsd_protoc_runtime_inputs=[]\n node_host_runtime_python=""\n node_host_runtime_launcher=""\n node_host_runtime_view=""\n node_host_runtime_inputs=[]\n perfetto_host_runtime_launcher=""\n perfetto_host_runtime_view=""\n perfetto_host_runtime_inputs=[]\n v8_prepared_source_receipt=""\n v8_version_hash_salt_files=[]\n v8_version_hash_salt=""\n feature=false\n clang_version=""\n mac_deployment_target=""\n v8_metagen_host_extra_flags=[]\n v8_metagen_extra_flags=[]\n}\nset_default_toolchain("//:tools")\n')
+    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n emberbsd_node_source_identity=""\n emberbsd_node_configure_helper=""\n emberbsd_node_configure_inputs=[]\n emberbsd_node_configure_dependencies=[]\n node_module_version=0\n node_inspector_string_traits_header=""\n emberbsd_native_pkg_config_prefix=""\n emberbsd_protoc_runtime_launcher=""\n emberbsd_protoc_runtime_view=""\n emberbsd_protoc_runtime_inputs=[]\n node_host_runtime_python=""\n node_host_runtime_launcher=""\n node_host_runtime_view=""\n node_host_runtime_inputs=[]\n perfetto_host_runtime_launcher=""\n perfetto_host_runtime_view=""\n perfetto_host_runtime_inputs=[]\n v8_prepared_source_receipt=""\n v8_version_hash_salt_files=[]\n v8_version_hash_salt=""\n feature=false\n enable_swiftshader=false\n enable_swiftshader_vulkan=false\n angle_enable_swiftshader=false\n dawn_use_swiftshader=false\n clang_version=""\n mac_deployment_target=""\n v8_metagen_runtime_inputs=[]\n v8_metagen_host_extra_flags=[]\n v8_metagen_extra_flags=[]\n}\nset_default_toolchain("//:tools")\n')
     (src/'BUILD.gn').write_text('toolchain("tools") {\n tool("stamp") { command="touch {{output}}" }\n}\n')
     (src/'electron/build/args').mkdir(parents=True)
     (src/'electron/build/args/release.gn').write_text('')
@@ -201,6 +205,12 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                emberbsd_node_configure_helper=old['emberbsd_node_configure_helper'],
                emberbsd_node_configure_inputs=new_node_configure_inputs,
                emberbsd_node_configure_dependencies=new_node_configure_dependencies)
+    new['emberbsd_protoc_runtime_inputs'] = new_runtime_inputs + [str(work/'protoc-selection.json')]
+    old['v8_metagen_runtime_inputs'] = ['/selected/libiconv.dylib']
+    new['v8_metagen_runtime_inputs'] = old['v8_metagen_runtime_inputs'] + [str(work/'v8-metagen-selection.json')]
+    Process.expected_metagen = (work/'v8-metagen-selection.json', {'version': 1, 'aliases': {'libclang.dylib': 'lib/libclang.dylib'}, 'extra': ['lib/libiconv.2.dylib']})
+    for values in (old, new):
+        values.update({key: False for key in ('enable_swiftshader', 'enable_swiftshader_vulkan', 'angle_enable_swiftshader', 'dawn_use_swiftshader')})
     env = {'PATH':str(host/'bin') + ':/usr/bin', 'EMBERBSD_HOST_TYPESCRIPT':'/old', 'EMBERBSD_HOST_NODE':'/old-node',
            'EMBERBSD_V8_SOURCE_SHA256':'a' * 64, 'EMBERBSD_NODE_SOURCE_SHA256':'a' * 64,
            'EMBERBSD_ELECTRON_NODE_ABI_HELPER_SHA256':'c' * 64,
@@ -248,8 +258,10 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     state={'commands':commands, 'values':new}
     def inputs(candidate, sdk):
         calls['producer'] += 1
+        candidate.protoc_selection = {'version': 1, 'files': {}}
+        candidate.v8_metagen_selection = {'version': 1, 'aliases': {'libclang.dylib': 'lib/libclang.dylib'}, 'extra': ['lib/libiconv.2.dylib']}
         bound=b.bind_versioned(sdk, Native(), candidate.work/'target-commands', state['commands'])
-        return Native(), {'EMBERBSD_DEVTOOLS_PROVIDER_SHA256':'a' * 64, 'PATH':state.get('path', Native.path), 'EMBERBSD_CONTROL_GIT':state.get('git', '/usr/bin/git'),
+        return Native(), {'EMBERBSD_PROTOC_SELECTION_SHA256':'e' * 64, 'EMBERBSD_DEVTOOLS_PROVIDER_SHA256':'a' * 64, 'PATH':state.get('path', Native.path), 'EMBERBSD_CONTROL_GIT':state.get('git', '/usr/bin/git'),
                           'EMBERBSD_HOST_TYPESCRIPT':'/new', 'EMBERBSD_HOST_NODE':str(host/'bin/node'),
                           'EMBERBSD_V8_SOURCE_SHA256':state.get('v8_sha', 'b' * 64),
                           'EMBERBSD_NODE_SOURCE_SHA256':state.get('node_sha', 'b' * 64),

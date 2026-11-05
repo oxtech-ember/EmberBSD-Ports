@@ -64,6 +64,15 @@ with tempfile.TemporaryDirectory() as tmp:
     assert result['v8_metagen_host_extra_flags'] == ['--host-flag']
     assert result['v8_metagen_gn_executable'] == '/selected/gn'
     assert str(script) in result['v8_metagen_runtime_inputs']
+    # Reconfigure computes inputs in a temporary binding directory but must
+    # keep the descriptor under the persistent producer work root.
+    opts.native_binding_root = root
+    opts.work = root / 'scratch'
+    scratch_result = build.common_v8_metagen(*args)
+    assert scratch_result == result
+    assert str(root / 'v8-metagen-selection.json') in scratch_result['v8_metagen_runtime_inputs']
+    opts.work = root
+    del opts.native_binding_root
     # The override namespace changes independently of its tracked payload set.
     class JsonIO:
         @staticmethod

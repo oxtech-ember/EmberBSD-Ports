@@ -1311,7 +1311,7 @@ def common_v8_metagen(options, sdk, native, environment, tools):
         'aliases': {entry.name: str(target.relative_to(prefix))
                     for entry, target in zip(entries, resolved)},
         'extra': sorted(set(extra_paths))}
-    descriptor = str(options.work / 'v8-metagen-selection.json')
+    descriptor = str(Path(getattr(options, 'native_binding_root', options.work)) / 'v8-metagen-selection.json')
     actual.append(descriptor)
     record = json.loads((Path(tools['cxx']).parent / 'commands.json').read_text())
     host_cxx = shlex.split(environment['BUILD_CXX'])
@@ -2150,6 +2150,7 @@ def reconfigure(options):
                 'selected protoc fingerprint is missing')
         permitted_env.add('EMBERBSD_PROTOC_SELECTION_SHA256')
         options.protoc_selection = candidate.protoc_selection
+        options.v8_metagen_selection = getattr(candidate, 'v8_metagen_selection', None)
         require(not (getattr(options, 'activate_common_ml', False) and
                     getattr(options, 'activate_common_providers', False)),
                 'select only one common provider migration')
