@@ -1,5 +1,10 @@
 # KiCad application source port
 
+The current application build is owned by
+[`pkgsrc/cad/kicad10`](../../../pkgsrc/cad/kicad10/README.md) and the normal SDK
+package client. This directory contains the earlier focused source regressions;
+its GCC16 results do not establish acceptance of the current Clang package.
+
 This directory prepares KiCad 10.0.7 for the common AArch64 GCC16 stack.
 It contains source patches, a causal platform regression and cross configuration.
 It does not yet provide an accepted KiCad package or GUI workflow.

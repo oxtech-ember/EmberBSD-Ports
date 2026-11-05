@@ -1,7 +1,7 @@
 # $NetBSD: options.mk,v 1.6 2025/01/10 22:49:54 wiz Exp $
 
 PKG_OPTIONS_VAR=	PKG_OPTIONS.kicad
-PKG_SUPPORTED_OPTIONS=	ng-spice wayland
+PKG_SUPPORTED_OPTIONS=	ng-spice wayland tests
 PKG_SUGGESTED_OPTIONS=	ng-spice
 
 .include "../../devel/wayland/platform.mk"
@@ -11,6 +11,15 @@ PKG_SUGGESTED_OPTIONS+=	wayland
 .endif
 
 .include "../../mk/bsd.options.mk"
+
+# QA executables are an explicit build choice, separate from the CAD package.
+.if !empty(PKG_OPTIONS:Mtests)
+.  include "../../devel/turtle/buildlink3.mk"
+CMAKE_CONFIGURE_ARGS+=	-DKICAD_BUILD_QA_TESTS=ON
+TEST_TARGET=		test
+.else
+CMAKE_CONFIGURE_ARGS+=	-DKICAD_BUILD_QA_TESTS=OFF
+.endif
 
 .if !empty(PKG_OPTIONS:Mng-spice)
 .  include "../../cad/ng-spice-shared/buildlink3.mk"
