@@ -204,6 +204,7 @@ def main():
     parser.add_argument('--shared-xml', action='store_true')
     parser.add_argument('--shared-image', action='store_true')
     parser.add_argument('--shared-font', action='store_true')
+    parser.add_argument('--shared-pdf-libraries', action='store_true')
     parser.add_argument('--shared-codecs', action='store_true')
     parser.add_argument('--shared-openh264', action='store_true')
     parser.add_argument('--shared-pffft', action='store_true')
@@ -251,6 +252,8 @@ def main():
         invocation['shared_image'] = 'yes'
     if args.shared_font:
         invocation['shared_font'] = 'yes'
+    if args.shared_pdf_libraries:
+        invocation['shared_pdf_libraries'] = 'yes'
     if args.shared_codecs:
         invocation['shared_codecs'] = 'yes'
     if args.shared_openh264:
@@ -286,6 +289,7 @@ def main():
                            *(['EMBERBSD_ELECTRON_SHARED_XML=yes'] if args.shared_xml else []),
                            *(['EMBERBSD_ELECTRON_SHARED_IMAGE=yes'] if args.shared_image else []),
                            *(['EMBERBSD_ELECTRON_SHARED_FONT=yes'] if args.shared_font else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_PDF_LIBRARIES=yes'] if args.shared_pdf_libraries else []),
                            *(['EMBERBSD_ELECTRON_SHARED_CODECS=yes'] if args.shared_codecs else []),
                            *(['EMBERBSD_ELECTRON_SHARED_OPENH264=yes'] if args.shared_openh264 else []),
                            *(['EMBERBSD_ELECTRON_SHARED_PFFFT=yes'] if args.shared_pffft else []),
@@ -385,6 +389,7 @@ def main():
                            *(['EMBERBSD_ELECTRON_SHARED_XML=yes'] if args.shared_xml else []),
                            *(['EMBERBSD_ELECTRON_SHARED_IMAGE=yes'] if args.shared_image else []),
                            *(['EMBERBSD_ELECTRON_SHARED_FONT=yes'] if args.shared_font else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_PDF_LIBRARIES=yes'] if args.shared_pdf_libraries else []),
                            *(['EMBERBSD_ELECTRON_SHARED_CODECS=yes'] if args.shared_codecs else []),
                            *(['EMBERBSD_ELECTRON_SHARED_OPENH264=yes'] if args.shared_openh264 else []),
                            *(['EMBERBSD_ELECTRON_SHARED_PFFFT=yes'] if args.shared_pffft else []),

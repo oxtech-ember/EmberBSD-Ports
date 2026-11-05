@@ -1,0 +1,42 @@
+# Origin: EmberBSD contributors (AI-assisted).
+# Shared libtiff owns its allocator and receives per-handle quiet diagnostics.
+
+--- a/third_party/pdfium/core/fxcodec/tiff/libtiff_tiff_context.cpp
++++ b/third_party/pdfium/core/fxcodec/tiff/libtiff_tiff_context.cpp
+@@ -46,6 +46,7 @@
+ 
+ }  // namespace
+ 
++#if !defined(USE_SYSTEM_LIBTIFF)
+ void* _TIFFcalloc(tmsize_t nmemb, tmsize_t siz) {
+   return FXMEM_DefaultCalloc(nmemb, siz);
+ }
+@@ -75,8 +76,17 @@
+ int _TIFFmemcmp(const void* ptr1, const void* ptr2, tmsize_t size) {
+   return UNSAFE_TODO(memcmp(ptr1, ptr2, static_cast<size_t>(size)));
+ }
++#endif  // !defined(USE_SYSTEM_LIBTIFF)
+ 
+ namespace {
++
++#if defined(USE_SYSTEM_LIBTIFF)
++// Match PDFium's quiet bundled TIFF diagnostics without changing other users
++// of the shared library. Returning nonzero stops global handler dispatch.
++int QuietTiffDiagnostic(TIFF*, void*, const char*, const char*, va_list) {
++  return 1;
++}
++#endif
+ 
+ tsize_t tiff_read(thandle_t context, tdata_t buf, tsize_t length) {
+   fxcodec::LibtiffTiffContext* pTiffContext =
+@@ -183,6 +193,10 @@
+       TIFFOpenOptionsAlloc());
+   CHECK(options);
+   TIFFOpenOptionsSetMaxCumulatedMemAlloc(options.get(), kMaxTiffAllocBytes);
++#if defined(USE_SYSTEM_LIBTIFF)
++  TIFFOpenOptionsSetErrorHandlerExtR(options.get(), QuietTiffDiagnostic, nullptr);
++  TIFFOpenOptionsSetWarningHandlerExtR(options.get(), QuietTiffDiagnostic, nullptr);
++#endif
+ 
+   io_in_ = file_ptr;
+   tif_ctx_.reset(TIFFClientOpenExt(

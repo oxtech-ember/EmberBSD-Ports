@@ -1222,6 +1222,26 @@
       "path": "gn-common-expat.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-common-pdfium.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "pdfium-common-lcms-allocator.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "pdfium-common-tiff-allocator.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "pdfium-jpx-nullable-color.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

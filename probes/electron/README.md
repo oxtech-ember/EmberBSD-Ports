@@ -944,3 +944,12 @@ own workers. The current EmberBSD and Darwin graphs do not use the private
 `libaomrc` or `libvpxrc` targets. Configurations requiring those targets,
 including upstream VAAPI or Windows paths, need matching public rate-control
 support in the common package owners before they can use this selection.
+
+For PDFium, `--shared-pdf-libraries` (or
+`EMBERBSD_ELECTRON_SHARED_PDF_LIBRARIES=yes` through the producer Makefile)
+selects common Little CMS, OpenJPEG and TIFF for both toolchain roles. The
+minimum package revisions are lcms2 2.19.1nb2, openjpeg 2.5.4nb1 and tiff
+4.7.2nb2. The source view keeps the selected FreeType table when shared fonts
+are also enabled and hides PDFium's replaced library sources. TIFF is linked
+when PDFium's XFA option is enabled. The selection remains opt-in until the
+required packages have been built and installed for both roles.

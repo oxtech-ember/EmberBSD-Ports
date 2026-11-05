@@ -1,0 +1,130 @@
+# Origin: EmberBSD contributors (AI-assisted).
+# Bind PDFium system libraries to the selected common providers.
+
+--- a/third_party/pdfium/third_party/BUILD.gn
++++ b/third_party/pdfium/third_party/BUILD.gn
+@@ -8,6 +8,32 @@
+ import("//build/config/mips.gni")
+ import("//build_overrides/build.gni")
+ import("../pdfium.gni")
++import("//build/config/emberbsd_pdf.gni")
++
++if (emberbsd_common_pdf) {
++  assert(use_system_lcms2 && use_system_libopenjpeg2 && use_system_libtiff,
++         "Common PDF libraries require all system PDFium selections")
++  emberbsd_codec_provider("emberbsd_lcms2") {
++    host_libraries = emberbsd_lcms2_host_libraries
++    host_inputs = emberbsd_lcms2_host_inputs
++    target_libraries = emberbsd_lcms2_target_libraries
++    target_inputs = emberbsd_lcms2_target_inputs
++  }
++  emberbsd_codec_provider("emberbsd_openjpeg") {
++    host_libraries = emberbsd_openjpeg_host_libraries
++    host_inputs = emberbsd_openjpeg_host_inputs
++    target_libraries = emberbsd_openjpeg_target_libraries
++    target_inputs = emberbsd_openjpeg_target_inputs
++  }
++  if (pdf_enable_xfa) {
++    emberbsd_codec_provider("emberbsd_tiff") {
++      host_libraries = emberbsd_tiff_host_libraries
++      host_inputs = emberbsd_tiff_host_inputs
++      target_libraries = emberbsd_tiff_target_libraries
++      target_inputs = emberbsd_tiff_target_inputs
++    }
++  }
++}
+ 
+ config("pdfium_third_party_config") {
+   configs = [
+@@ -364,6 +390,9 @@
+ 
+ if (use_system_lcms2) {
+   pkg_config("lcms2_from_pkgconfig") {
++    if (emberbsd_common_pdf) {
++      ignore_libs = true
++    }
+     defines = [ "USE_SYSTEM_LCMS2" ]
+     packages = [ "lcms2" ]
+   }
+@@ -372,6 +401,9 @@
+ group("lcms2") {
+   if (use_system_lcms2) {
+     public_configs = [ ":lcms2_from_pkgconfig" ]
++    if (emberbsd_common_pdf) {
++      public_deps = [ ":emberbsd_lcms2" ]
++    }
+   } else {
+     public_deps = [ ":fx_lcms2" ]
+   }
+@@ -379,6 +411,9 @@
+ 
+ if (use_system_libopenjpeg2) {
+   pkg_config("libopenjpeg2_from_pkgconfig") {
++    if (emberbsd_common_pdf) {
++      ignore_libs = true
++    }
+     defines = [ "USE_SYSTEM_LIBOPENJPEG2" ]
+     packages = [ "libopenjp2" ]
+   }
+@@ -387,6 +422,9 @@
+ group("libopenjpeg2") {
+   if (use_system_libopenjpeg2) {
+     public_configs = [ ":libopenjpeg2_from_pkgconfig" ]
++    if (emberbsd_common_pdf) {
++      public_deps = [ ":emberbsd_openjpeg" ]
++    }
+   } else {
+     public_deps = [ ":fx_libopenjpeg" ]
+   }
+@@ -464,9 +502,17 @@
+ 
+ if (pdf_enable_xfa) {
+   if (use_system_libtiff) {
+-    config("system_tiff_config") {
+-      libs = [ "tiff" ]
+-      defines = [ "USE_SYSTEM_LIBTIFF" ]
++    if (emberbsd_common_pdf) {
++      pkg_config("system_tiff_config") {
++        packages = [ "libtiff-4" ]
++        ignore_libs = true
++        defines = [ "USE_SYSTEM_LIBTIFF" ]
++      }
++    } else {
++      config("system_tiff_config") {
++        libs = [ "tiff" ]
++        defines = [ "USE_SYSTEM_LIBTIFF" ]
++      }
+     }
+   } else {
+     source_set("fx_tiff") {
+@@ -529,6 +575,9 @@
+   group("tiff") {
+     if (use_system_libtiff) {
+       public_configs = [ ":system_tiff_config" ]
++      if (emberbsd_common_pdf) {
++        public_deps = [ ":emberbsd_tiff" ]
++      }
+     } else {
+       public_deps = [ ":fx_tiff" ]
+     }
+--- /dev/null
++++ b/build/config/emberbsd_pdf.gni
+@@ -0,0 +1,18 @@
++# Copyright 2026 EmberBSD contributors. BSD-2-Clause.
++import("//build/config/emberbsd_codecs.gni")
++
++declare_args() {
++  emberbsd_common_pdf = false
++  emberbsd_lcms2_host_libraries = []
++  emberbsd_lcms2_host_inputs = []
++  emberbsd_lcms2_target_libraries = []
++  emberbsd_lcms2_target_inputs = []
++  emberbsd_openjpeg_host_libraries = []
++  emberbsd_openjpeg_host_inputs = []
++  emberbsd_openjpeg_target_libraries = []
++  emberbsd_openjpeg_target_inputs = []
++  emberbsd_tiff_host_libraries = []
++  emberbsd_tiff_host_inputs = []
++  emberbsd_tiff_target_libraries = []
++  emberbsd_tiff_target_inputs = []
++}

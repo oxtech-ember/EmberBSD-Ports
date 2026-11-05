@@ -106,6 +106,12 @@ _EMBER_ELECTRON_ARGS+= --shared-openh264
 .error EMBERBSD_ELECTRON_SHARED_OPENH264 must be yes or no
 .endif
 
+.if ${EMBERBSD_ELECTRON_SHARED_PDF_LIBRARIES:Uno} == "yes"
+_EMBER_ELECTRON_ARGS+= --shared-pdf-libraries
+.elif ${EMBERBSD_ELECTRON_SHARED_PDF_LIBRARIES:Uno} != "no"
+.error EMBERBSD_ELECTRON_SHARED_PDF_LIBRARIES must be yes or no
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_CODECS:Uno} == "yes"
 _EMBER_ELECTRON_ARGS+= --shared-codecs
 .elif ${EMBERBSD_ELECTRON_SHARED_CODECS:Uno} != "no"
