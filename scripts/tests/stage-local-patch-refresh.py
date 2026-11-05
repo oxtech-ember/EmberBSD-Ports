@@ -194,4 +194,34 @@ with tempfile.TemporaryDirectory(prefix='pkgsrc-patch-refresh-test-') as temp:
  try: module.old_metadata(paths,recipe,work,version)
  except ValueError as exc: assert 'old patch identity changed' in str(exc)
  else: raise AssertionError('tampered prior patch accepted')
+ # The first patch series can update a verified, previously unpatched stage.
+ (patches/'patch-b').write_bytes(old_patch)
+ empty_work=root/'empty-work';empty_work.mkdir()
+ (empty_work/'.patch_done').write_bytes(b'')
+ empty_source=empty_work/'example-1';empty_source.mkdir()
+ (empty_source/'first').write_bytes(b'A\n')
+ (empty_source/'second').write_bytes(b'C\n');(empty_source/'second').chmod(0o640)
+ (empty_source/'untouched').write_bytes(b'preserve\n')
+ untouched_mtime=(empty_source/'untouched').stat().st_mtime_ns
+ # An emptied cookie must not conceal patches recorded by the installed package.
+ try: module.old_metadata(paths,recipe,empty_work,version)
+ except ValueError as exc: assert 'contradicts installed patch provenance' in str(exc)
+ else: raise AssertionError('empty cookie concealed installed patches')
+ empty_version=root/'EMPTY_BUILD_VERSION'
+ empty_info=('$NetBSD$\n\n'+archive_lines).encode()
+ empty_version.write_text('multimedia/example/distinfo: '+hashlib.sha256(empty_info).hexdigest()+'\n')
+ empty_scratch=root/'empty-scratch';empty_scratch.mkdir()
+ changes,empty_cookie,inventory=module.prepare(sdk,recipe,empty_work,archive,'example-1',empty_version,a.patch,
+  ['-E','-p0','--batch','--forward','-V','simple','-z','.orig'],empty_scratch)
+ assert empty_cookie==b'' and inventory==['patch-a','patch-b']
+ assert [(n,old,new) for n,old,new,_,_ in changes]==[('first',b'A\n',b'B\n'),('second',b'C\n',b'D\n')]
+ module.transaction(sdk,empty_work,empty_source,changes,empty_cookie,[str(patches/n) for n in inventory],lambda:None)
+ assert (empty_source/'first').read_bytes()==b'B\n' and (empty_source/'second').read_bytes()==b'D\n'
+ assert (empty_source/'untouched').read_bytes()==b'preserve\n'
+ assert (empty_source/'untouched').stat().st_mtime_ns==untouched_mtime
+ (empty_work/'.patch_done').write_bytes(b'')
+ empty_version.write_text('multimedia/example/distinfo: '+'0'*64+'\n')
+ try: module.old_metadata(paths,recipe,empty_work,empty_version)
+ except ValueError as exc: assert 'old distinfo cannot be reconstructed exactly' in str(exc)
+ else: raise AssertionError('unverified unpatched recipe accepted')
 print('stage-local additive patch provenance and ordered replay passed')
