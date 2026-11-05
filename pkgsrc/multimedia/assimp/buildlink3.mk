@@ -5,12 +5,12 @@ BUILDLINK_TREE+=	assimp
 .if !defined(ASSIMP_BUILDLINK3_MK)
 ASSIMP_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.assimp+=	assimp>=6.0.5nb1
-BUILDLINK_ABI_DEPENDS.assimp+=	assimp>=6.0.5nb1
+BUILDLINK_API_DEPENDS.assimp+=	assimp>=6.0.5nb2
+BUILDLINK_ABI_DEPENDS.assimp+=	assimp>=6.0.5nb2
 BUILDLINK_PKGSRCDIR.assimp?=	../../multimedia/assimp
 
 .include "../../devel/zlib/buildlink3.mk"
-.include "../../archivers/minizip/buildlink3.mk"
+.include "../../archivers/minizip-ng/buildlink3.mk"
 .include "../../archivers/libzip/buildlink3.mk"
 .include "../../textproc/pugixml/buildlink3.mk"
 .include "../../math/poly2tri/buildlink3.mk"

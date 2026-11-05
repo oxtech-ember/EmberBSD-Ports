@@ -733,3 +733,6 @@ EMBERBSD_VERSION_DEPENDENTS+=	x11/py-sip-qt5
 EMBERBSD_VERSION_DEPENDENTS+=	x11/qqc2-desktop-style
 EMBERBSD_VERSION_DEPENDENTS+=	x11/qwt6-qt5
 EMBERBSD_VERSION_DEPENDENTS+=	x11/x2go-client
+
+# One minizip-ng compatibility provider replaces the classic implementation.
+EMBERBSD_VERSION_DEPENDENTS+=	archivers/minizip

@@ -68,7 +68,7 @@ SUBST_SED.lemon=	-e 's,/usr/share,${PREFIX}/share,g'
 
 .include "../../archivers/brotli/buildlink3.mk"
 .include "../../archivers/lz4/buildlink3.mk"
-.include "../../archivers/minizip/buildlink3.mk"
+.include "../../archivers/minizip-ng/buildlink3.mk"
 .include "../../archivers/zlib-ng/buildlink3.mk"
 .include "../../archivers/zstd/buildlink3.mk"
 .include "../../audio/libopus/buildlink3.mk"

@@ -8,7 +8,7 @@ in the export. Wireshark 4.6 supports the Lua 5.5 lua_newstate() seed.
  
  DISTNAME=	wireshark-4.6.8
 -PKGREVISION=	1
-+PKGREVISION=	2
++PKGREVISION=	3
  CATEGORIES=	net
  MASTER_SITES=	https://www.wireshark.org/download/src/
  EXTRACT_SUFX=	.tar.xz
