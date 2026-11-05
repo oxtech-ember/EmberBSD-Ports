@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (magic_enum-0.9.8.tar.gz) = f39d3bc876591938eb1dc3f22d85610eb603cce0c0100cfb94bb0babfb6e0f66
+SHA512 (magic_enum-0.9.8.tar.gz) = ba20ecefd3bf01c44e0b321bdff55b1f39067d416e9c1afb0b3661289ce26b455ca8736baf4782c19c8f737c0763fa8eb3cf235527cc2f1dbf5b924a767a8ed7
+Size (magic_enum-0.9.8.tar.gz) = 206476 bytes

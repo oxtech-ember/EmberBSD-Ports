@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (picosha2-1.0.1.tar.gz) = aba874ac5958ad3f1d8badded71f607a7199a85d4af3105ae54860c0d75effae
+SHA512 (picosha2-1.0.1.tar.gz) = e6315f9f3a00197dcdd1cf459d956048e5c15f40d158537a061181d43e02ee46b979b650a05e748f61b85149f32f77625dacb869402dc243bdca71c5d2a0cc6d
+Size (picosha2-1.0.1.tar.gz) = 7767 bytes

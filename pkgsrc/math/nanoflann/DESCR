@@ -1,0 +1,1 @@
+nanoflann is a header-only C++ library for building k-d trees and performing nearest-neighbor searches.

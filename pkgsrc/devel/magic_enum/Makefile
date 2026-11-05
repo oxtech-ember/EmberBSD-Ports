@@ -1,0 +1,25 @@
+# $NetBSD$
+
+DISTNAME=	magic_enum-0.9.8
+CATEGORIES=	devel
+MASTER_SITES=	${MASTER_SITE_GITHUB:=Neargye/}
+GITHUB_TAG=	v${PKGVERSION_NOREV}
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://github.com/Neargye/magic_enum
+COMMENT=	Static reflection for enums
+LICENSE=	mit
+
+USE_LANGUAGES=	c++
+CMAKE_CONFIGURE_ARGS+=	-DMAGIC_ENUM_OPT_BUILD_EXAMPLES:BOOL=OFF
+CMAKE_CONFIGURE_ARGS+=	-DMAGIC_ENUM_OPT_BUILD_TESTS:BOOL=OFF
+CMAKE_CONFIGURE_ARGS+=	-DMAGIC_ENUM_OPT_INSTALL:BOOL=ON
+CMAKE_CONFIGURE_ARGS+=	-DMAGIC_ENUM_OPT_INSTALL_PACKAGE_XML:BOOL=OFF
+
+INSTALLATION_DIRS+=	share/licenses/magic_enum
+post-install:
+	${INSTALL_DATA} ${WRKSRC}/LICENSE \
+		${DESTDIR}${PREFIX}/share/licenses/magic_enum/LICENSE
+
+.include "../../devel/cmake/build.mk"
+.include "../../mk/bsd.pkg.mk"

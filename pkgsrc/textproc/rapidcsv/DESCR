@@ -1,0 +1,1 @@
+rapidcsv is a header-only C++ CSV parser and writer. It supports configurable delimiters, quoting, labels and data conversion.

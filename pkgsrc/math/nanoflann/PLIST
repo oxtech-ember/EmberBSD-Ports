@@ -1,0 +1,7 @@
+# $NetBSD$
+include/nanoflann.hpp
+lib/pkgconfig/nanoflann.pc
+share/cmake/nanoflann/nanoflannConfig.cmake
+share/cmake/nanoflann/nanoflannConfigVersion.cmake
+share/cmake/nanoflann/nanoflannTargets.cmake
+share/licenses/nanoflann/COPYING
