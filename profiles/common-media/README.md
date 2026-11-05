@@ -98,7 +98,8 @@ network input has no byte position. Its regressions use the real RTP clock
 and parser implementations; see the [CPU RTP profile](rtp/README.md).
 
 External dependencies are selected explicitly with `PKG_OPTIONS.ffmpeg9`;
-opportunistic host autodetection is disabled. Default AV1, H.264/H.265,
+opportunistic host autodetection is disabled. The `dav1d` option selects the
+AV1 decoder independently of the `aom` and `rav1e` encoder options. Default AV1, H.264/H.265,
 VP8/VP9, MP3, Opus, Vorbis, Theora, Speex, subtitles, fonts, WebP, Blu-ray,
 GnuTLS and X11 options remain. Base bzip2/xz/zlib/XML support is explicit.
 Freetype also selects HarfBuzz, needed by current drawtext. The buildlink

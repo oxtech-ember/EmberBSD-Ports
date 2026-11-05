@@ -4,7 +4,7 @@ PKG_OPTIONS_VAR=		PKG_OPTIONS.ffmpeg9
 PKG_OPTIONS_OPTIONAL_GROUPS=	ssl
 PKG_OPTIONS_GROUP.ssl=		gnutls mbedtls openssl
 
-PKG_SUPPORTED_OPTIONS=	ass aom bluray doc fdk-aac fontconfig freetype jack \
+PKG_SUPPORTED_OPTIONS=	ass aom bluray dav1d doc fdk-aac fontconfig freetype jack \
 			lame libvpx libwebp opencore-amr opus pulseaudio rav1e rpi rtmp \
 			speex tesseract theora vorbis x11 x264 x265 xvid
 PKG_SUGGESTED_OPTIONS=	ass aom bluray freetype fontconfig gnutls lame \
@@ -76,7 +76,7 @@ CONFIGURE_ARGS+=	--enable-librav1e
 CONFIGURE_ARGS+=	--disable-librav1e
 .endif
 
-.if !empty(PKG_OPTIONS:Maom) || !empty(PKG_OPTIONS:Mrav1e)
+.if !empty(PKG_OPTIONS:Maom) || !empty(PKG_OPTIONS:Mrav1e) || !empty(PKG_OPTIONS:Mdav1d)
 CONFIGURE_ARGS+=	--enable-libdav1d
 .include "../../multimedia/dav1d/buildlink3.mk"
 .else
