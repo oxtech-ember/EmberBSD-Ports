@@ -1,0 +1,603 @@
+$NetBSD$
+
+# EmberBSD contributors (AI-assisted): use the shared OpenXLA TSL statistics API.
+--- tflite/profiling/BUILD
++++ tflite/profiling/BUILD
+@@ -230,7 +230,7 @@
+     deps = [
+         "//tflite/profiling/proto:profiling_info_cc",
+         "//tflite/tools:logging",
+-        "@org_tensorflow//tensorflow/core/util:stats_calculator_portable",
++        "@xla//xla/tsl/util:stats_calculator_portable",
+     ],
+ )
+ 
+@@ -242,7 +242,7 @@
+         "//tflite/profiling/proto:profiling_info_cc",
+         "@com_google_absl//absl/strings",
+         "@com_google_googletest//:gtest_main",
+-        "@org_tensorflow//tensorflow/core/util:stats_calculator_portable",
++        "@xla//xla/tsl/util:stats_calculator_portable",
+     ],
+ )
+ 
+@@ -260,7 +260,7 @@
+         "//tflite/c:common",
+         "//tflite/core:framework_stable",
+         "//tflite/core/api",
+-        "@org_tensorflow//tensorflow/core/util:stats_calculator_portable",
++        "@xla//xla/tsl/util:stats_calculator_portable",
+     ],
+ )
+ 
+--- tflite/profiling/profile_summary_formatter.h
++++ tflite/profiling/profile_summary_formatter.h
+@@ -26,8 +26,8 @@
+ #include <utility>
+ #include <vector>
+ 
+-#include "tensorflow/core/util/stat_summarizer_options.h"
+-#include "tensorflow/core/util/stats_calculator.h"
++#include "xla/tsl/util/stat_summarizer_options.h"
++#include "xla/tsl/util/stats_calculator.h"
+ #include "tflite/profiling/proto/profiling_info.pb.h"
+ 
+ namespace tflite {
+@@ -41,18 +41,18 @@
+   // Returns a string detailing the accumulated runtime stats in StatsCalculator
+   // of ProfileSummarizer.
+   virtual std::string GetOutputString(
+-      const std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>&
++      const std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>&
+           stats_calculator_map,
+-      const tensorflow::StatsCalculator& delegate_stats_calculator,
++      const tsl::StatsCalculator& delegate_stats_calculator,
+       const std::map<uint32_t, std::string>& subgraph_name_map) const = 0;
+   // Returns a string detailing the short summary of the accumulated runtime
+   // stats in StatsCalculator of ProfileSummarizer.
+   virtual std::string GetShortSummary(
+-      const std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>&
++      const std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>&
+           stats_calculator_map,
+-      const tensorflow::StatsCalculator& delegate_stats_calculator,
++      const tsl::StatsCalculator& delegate_stats_calculator,
+       const std::map<uint32_t, std::string>& subgraph_name_map) const = 0;
+-  virtual tensorflow::StatSummarizerOptions GetStatSummarizerOptions()
++  virtual tsl::StatSummarizerOptions GetStatSummarizerOptions()
+       const = 0;
+   virtual void HandleOutput(const std::string& init_output,
+                             const std::string& run_output,
+@@ -64,16 +64,16 @@
+   ProfileSummaryDefaultFormatter() = default;
+   ~ProfileSummaryDefaultFormatter() override {}
+   std::string GetOutputString(
+-      const std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>&
++      const std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>&
+           stats_calculator_map,
+-      const tensorflow::StatsCalculator& delegate_stats_calculator,
++      const tsl::StatsCalculator& delegate_stats_calculator,
+       const std::map<uint32_t, std::string>& subgraph_name_map) const override;
+   std::string GetShortSummary(
+-      const std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>&
++      const std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>&
+           stats_calculator_map,
+-      const tensorflow::StatsCalculator& delegate_stats_calculator,
++      const tsl::StatsCalculator& delegate_stats_calculator,
+       const std::map<uint32_t, std::string>& subgraph_name_map) const override;
+-  tensorflow::StatSummarizerOptions GetStatSummarizerOptions() const override;
++  tsl::StatSummarizerOptions GetStatSummarizerOptions() const override;
+   void HandleOutput(const std::string& init_output,
+                     const std::string& run_output,
+                     std::string output_file_path) const override;
+@@ -81,9 +81,9 @@
+  private:
+   std::string GenerateReport(
+       const std::string& tag, bool include_output_string,
+-      const std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>&
++      const std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>&
+           stats_calculator_map,
+-      const tensorflow::StatsCalculator& delegate_stats_calculator,
++      const tsl::StatsCalculator& delegate_stats_calculator,
+       const std::map<uint32_t, std::string>& subgraph_name_map) const;
+   void WriteOutput(const std::string& header, const std::string& data,
+                    std::ostream* stream) const {
+@@ -95,22 +95,22 @@
+ class ProfileSummaryCSVFormatter : public ProfileSummaryDefaultFormatter {
+  public:
+   ProfileSummaryCSVFormatter() = default;
+-  tensorflow::StatSummarizerOptions GetStatSummarizerOptions() const override;
++  tsl::StatSummarizerOptions GetStatSummarizerOptions() const override;
+ };
+ 
+ class ProfileSummaryProtoFormatter : public ProfileSummaryFormatter {
+  public:
+   std::string GetOutputString(
+-      const std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>&
++      const std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>&
+           stats_calculator_map,
+-      const tensorflow::StatsCalculator& delegate_stats_calculator,
++      const tsl::StatsCalculator& delegate_stats_calculator,
+       const std::map<uint32_t, std::string>& subgraph_name_map) const override;
+   std::string GetShortSummary(
+-      const std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>&
++      const std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>&
+           stats_calculator_map,
+-      const tensorflow::StatsCalculator& delegate_stats_calculator,
++      const tsl::StatsCalculator& delegate_stats_calculator,
+       const std::map<uint32_t, std::string>& subgraph_name_map) const override;
+-  tensorflow::StatSummarizerOptions GetStatSummarizerOptions() const override;
++  tsl::StatSummarizerOptions GetStatSummarizerOptions() const override;
+   void HandleOutput(const std::string& init_output,
+                     const std::string& run_output,
+                     std::string output_file_path) const override;
+@@ -118,26 +118,26 @@
+  private:
+   std::string GenerateReport(
+       const std::string& tag, bool include_output_string,
+-      const std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>&
++      const std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>&
+           stats_calculator_map,
+-      const tensorflow::StatsCalculator& delegate_stats_calculator,
++      const tsl::StatsCalculator& delegate_stats_calculator,
+       const std::map<uint32_t, std::string>& subgraph_name_map) const;
+   void GenerateSubGraphProfilingData(
+-      const tensorflow::StatsCalculator* stats_calculator, int subgraph_index,
++      const tsl::StatsCalculator* stats_calculator, int subgraph_index,
+       const std::map<uint32_t, std::string>& subgraph_name_map,
+       SubGraphProfilingData* sub_graph_profiling_data) const;
+ 
+   void GenerateDelegateProfilingData(
+-      const tensorflow::StatsCalculator* stats_calculator,
++      const tsl::StatsCalculator* stats_calculator,
+       DelegateProfilingData* delegate_profiling_data) const;
+ 
+   void GenerateOpProfileDataFromDetail(
+-      const tensorflow::StatsCalculator::Detail* detail,
+-      const tensorflow::StatsCalculator* stats_calculator,
++      const tsl::StatsCalculator::Detail* detail,
++      const tsl::StatsCalculator* stats_calculator,
+       OpProfileData* op_profile_data) const;
+ 
+-  std::vector<tensorflow::StatsCalculator::Detail> GetDetailsSortedByRunOrder(
+-      const tensorflow::StatsCalculator* stats_calculator) const;
++  std::vector<tsl::StatsCalculator::Detail> GetDetailsSortedByRunOrder(
++      const tsl::StatsCalculator* stats_calculator) const;
+ };
+ 
+ }  // namespace profiling
+--- tflite/profiling/profile_summary_formatter.cc
++++ tflite/profiling/profile_summary_formatter.cc
+@@ -27,8 +27,8 @@
+ #include <utility>
+ #include <vector>
+ 
+-#include "tensorflow/core/util/stat_summarizer_options.h"
+-#include "tensorflow/core/util/stats_calculator.h"
++#include "xla/tsl/util/stat_summarizer_options.h"
++#include "xla/tsl/util/stats_calculator.h"
+ #include "tflite/profiling/proto/profiling_info.pb.h"
+ #include "tflite/tools/logging.h"
+ 
+@@ -36,9 +36,9 @@
+ namespace profiling {
+ 
+ std::string ProfileSummaryDefaultFormatter::GetOutputString(
+-    const std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>&
+-        stats_calculator_map,
+-    const tensorflow::StatsCalculator& delegate_stats_calculator,
++    const std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>&
++        stats_calculator_map,
++    const tsl::StatsCalculator& delegate_stats_calculator,
+     const std::map<uint32_t, std::string>& subgraph_name_map) const {
+   return GenerateReport("profile", /*include_output_string*/ true,
+                         stats_calculator_map, delegate_stats_calculator,
+@@ -46,9 +46,9 @@
+ }
+ 
+ std::string ProfileSummaryDefaultFormatter::GetShortSummary(
+-    const std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>&
+-        stats_calculator_map,
+-    const tensorflow::StatsCalculator& delegate_stats_calculator,
++    const std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>&
++        stats_calculator_map,
++    const tsl::StatsCalculator& delegate_stats_calculator,
+     const std::map<uint32_t, std::string>& subgraph_name_map) const {
+   return GenerateReport("summary", /*include_output_string*/ false,
+                         stats_calculator_map, delegate_stats_calculator,
+@@ -57,9 +57,9 @@
+ 
+ std::string ProfileSummaryDefaultFormatter::GenerateReport(
+     const std::string& tag, bool include_output_string,
+-    const std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>&
+-        stats_calculator_map,
+-    const tensorflow::StatsCalculator& delegate_stats_calculator,
++    const std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>&
++        stats_calculator_map,
++    const tsl::StatsCalculator& delegate_stats_calculator,
+     const std::map<uint32_t, std::string>& subgraph_name_map) const {
+   std::stringstream stream;
+   bool has_non_primary_graph =
+@@ -122,9 +122,9 @@
+   }
+ }
+ 
+-tensorflow::StatSummarizerOptions
++tsl::StatSummarizerOptions
+ ProfileSummaryDefaultFormatter::GetStatSummarizerOptions() const {
+-  auto options = tensorflow::StatSummarizerOptions();
++  auto options = tsl::StatSummarizerOptions();
+   // Summary will be manually handled per subgraphs in order to keep the
+   // compatibility.
+   options.show_summary = false;
+@@ -132,26 +132,26 @@
+   return options;
+ }
+ 
+-tensorflow::StatSummarizerOptions
++tsl::StatSummarizerOptions
+ ProfileSummaryCSVFormatter::GetStatSummarizerOptions() const {
+   auto options = ProfileSummaryDefaultFormatter::GetStatSummarizerOptions();
+   options.format_as_csv = true;
+   return options;
+ }
+ 
+-std::vector<tensorflow::StatsCalculator::Detail>
++std::vector<tsl::StatsCalculator::Detail>
+ ProfileSummaryProtoFormatter::GetDetailsSortedByRunOrder(
+-    const tensorflow::StatsCalculator* stats_calculator) const {
+-  std::vector<tensorflow::StatsCalculator::Detail> details;
+-  std::map<std::string, tensorflow::StatsCalculator::Detail> unsorted_details =
++    const tsl::StatsCalculator* stats_calculator) const {
++  std::vector<tsl::StatsCalculator::Detail> details;
++  std::map<std::string, tsl::StatsCalculator::Detail> unsorted_details =
+       stats_calculator->GetDetails();
+ 
+   std::priority_queue<
+-      std::pair<std::string, const tensorflow::StatsCalculator::Detail*>>
++      std::pair<std::string, const tsl::StatsCalculator::Detail*>>
+       sorted_list;
+   const int num_nodes = unsorted_details.size();
+   for (const auto& det : unsorted_details) {
+-    const tensorflow::StatsCalculator::Detail* detail = &(det.second);
++    const tsl::StatsCalculator::Detail* detail = &(det.second);
+     std::stringstream stream_for_sort;
+     stream_for_sort << std::setw(20) << std::right << std::setprecision(10)
+                     << std::fixed;
+@@ -168,8 +168,8 @@
+ }
+ 
+ void ProfileSummaryProtoFormatter::GenerateOpProfileDataFromDetail(
+-    const tensorflow::StatsCalculator::Detail* detail,
+-    const tensorflow::StatsCalculator* stats_calculator,
++    const tsl::StatsCalculator::Detail* detail,
++    const tsl::StatsCalculator* stats_calculator,
+     OpProfileData* const op_profile_data) const {
+   if (detail == nullptr) {
+     return;
+@@ -206,7 +206,7 @@
+ }
+ 
+ void ProfileSummaryProtoFormatter::GenerateSubGraphProfilingData(
+-    const tensorflow::StatsCalculator* stats_calculator, int subgraph_index,
++    const tsl::StatsCalculator* stats_calculator, int subgraph_index,
+     const std::map<uint32_t, std::string>& subgraph_name_map,
+     SubGraphProfilingData* const sub_graph_profiling_data) const {
+   sub_graph_profiling_data->set_subgraph_index(subgraph_index);
+@@ -217,7 +217,7 @@
+   }
+   sub_graph_profiling_data->set_subgraph_name(subgraph_name);
+ 
+-  for (tensorflow::StatsCalculator::Detail& detail :
++  for (tsl::StatsCalculator::Detail& detail :
+        GetDetailsSortedByRunOrder(stats_calculator)) {
+     OpProfileData* const op_profile_data =
+         sub_graph_profiling_data->add_per_op_profiles();
+@@ -226,9 +226,9 @@
+ }
+ 
+ void ProfileSummaryProtoFormatter::GenerateDelegateProfilingData(
+-    const tensorflow::StatsCalculator* stats_calculator,
++    const tsl::StatsCalculator* stats_calculator,
+     DelegateProfilingData* const delegate_profiling_data) const {
+-  for (const tensorflow::StatsCalculator::Detail& detail :
++  for (const tsl::StatsCalculator::Detail& detail :
+        GetDetailsSortedByRunOrder(stats_calculator)) {
+     OpProfileData* const op_profile_data =
+         delegate_profiling_data->add_per_op_profiles();
+@@ -237,23 +237,23 @@
+ }
+ 
+ std::string ProfileSummaryProtoFormatter::GetShortSummary(
+-    const std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>&
+-        stats_calculator_map,
+-    const tensorflow::StatsCalculator& delegate_stats_calculator,
++    const std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>&
++        stats_calculator_map,
++    const tsl::StatsCalculator& delegate_stats_calculator,
+     const std::map<uint32_t, std::string>& subgraph_name_map) const {
+   TFLITE_LOG(ERROR) << "GetShortSummary is not supported for proto formatter.";
+   return "";
+ }
+ 
+ std::string ProfileSummaryProtoFormatter::GetOutputString(
+-    const std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>&
+-        stats_calculator_map,
+-    const tensorflow::StatsCalculator& delegate_stats_calculator,
++    const std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>&
++        stats_calculator_map,
++    const tsl::StatsCalculator& delegate_stats_calculator,
+     const std::map<uint32_t, std::string>& subgraph_name_map) const {
+   ModelProfilingData model_profiling_data;
+   for (const auto& stats_calc : stats_calculator_map) {
+     auto subgraph_index = stats_calc.first;
+-    tensorflow::StatsCalculator* subgraph_stats = stats_calc.second.get();
++    tsl::StatsCalculator* subgraph_stats = stats_calc.second.get();
+     SubGraphProfilingData* const sub_graph_profiling_data =
+         model_profiling_data.add_subgraph_profiles();
+     GenerateSubGraphProfilingData(subgraph_stats, subgraph_index,
+@@ -270,9 +270,9 @@
+   return model_profiling_data.SerializeAsString();
+ }
+ 
+-tensorflow::StatSummarizerOptions
++tsl::StatSummarizerOptions
+ ProfileSummaryProtoFormatter::GetStatSummarizerOptions() const {
+-  auto options = tensorflow::StatSummarizerOptions();
++  auto options = tsl::StatSummarizerOptions();
+   // Summary will be manually handled per subgraphs in order to keep the
+   // compatibility.
+   options.show_summary = false;
+--- tflite/profiling/profile_summarizer.h
++++ tflite/profiling/profile_summarizer.h
+@@ -22,7 +22,7 @@
+ #include <string>
+ #include <vector>
+ 
+-#include "tensorflow/core/util/stats_calculator.h"
++#include "xla/tsl/util/stats_calculator.h"
+ #include "tflite/core/interpreter.h"
+ #include "tflite/profiling/profile_buffer.h"
+ #include "tflite/profiling/profile_summary_formatter.h"
+@@ -54,7 +54,7 @@
+         stats_calculator_map_, *delegate_stats_calculator_, subgraph_name_map_);
+   }
+ 
+-  tensorflow::StatsCalculator* GetStatsCalculator(uint32_t subgraph_index);
++  tsl::StatsCalculator* GetStatsCalculator(uint32_t subgraph_index);
+ 
+   bool HasProfiles() {
+     for (auto& stats_calc : stats_calculator_map_) {
+@@ -66,10 +66,10 @@
+ 
+  private:
+   // Map storing stats per subgraph.
+-  std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>
++  std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>
+       stats_calculator_map_;
+ 
+-  std::unique_ptr<tensorflow::StatsCalculator> delegate_stats_calculator_;
++  std::unique_ptr<tsl::StatsCalculator> delegate_stats_calculator_;
+ 
+   // Summary formatter for customized output formats.
+   std::shared_ptr<ProfileSummaryFormatter> summary_formatter_;
+--- tflite/profiling/profile_summarizer.cc
++++ tflite/profiling/profile_summarizer.cc
+@@ -19,7 +19,7 @@
+ #include <sstream>
+ #include <string>
+ 
+-#include "tensorflow/core/util/stats_calculator.h"
++#include "xla/tsl/util/stats_calculator.h"
+ #include "tflite/c/common.h"
+ #include "tflite/core/api/profiler.h"
+ #include "tflite/interpreter.h"
+@@ -98,12 +98,12 @@
+     std::shared_ptr<ProfileSummaryFormatter> summary_formatter)
+     : summary_formatter_(summary_formatter) {
+   // Create stats calculator for the primary graph.
+-  stats_calculator_map_[0] = std::make_unique<tensorflow::StatsCalculator>(
++  stats_calculator_map_[0] = std::make_unique<tsl::StatsCalculator>(
+ 
+       summary_formatter_->GetStatSummarizerOptions());
+ 
+   // Create stats calculator for the delegation op.
+-  delegate_stats_calculator_ = std::make_unique<tensorflow::StatsCalculator>(
++  delegate_stats_calculator_ = std::make_unique<tsl::StatsCalculator>(
+ 
+       summary_formatter_->GetStatSummarizerOptions());
+ }
+@@ -210,11 +210,11 @@
+   SetSubgraphNameMap(interpreter);
+ }
+ 
+-tensorflow::StatsCalculator* ProfileSummarizer::GetStatsCalculator(
++tsl::StatsCalculator* ProfileSummarizer::GetStatsCalculator(
+     uint32_t subgraph_index) {
+   if (stats_calculator_map_.count(subgraph_index) == 0) {
+     stats_calculator_map_[subgraph_index] =
+-        std::make_unique<tensorflow::StatsCalculator>(
++        std::make_unique<tsl::StatsCalculator>(
+ 
+             summary_formatter_->GetStatSummarizerOptions());
+   }
+--- tflite/profiling/profile_summary_formatter_test.cc
++++ tflite/profiling/profile_summary_formatter_test.cc
+@@ -24,8 +24,8 @@
+ 
+ #include <gtest/gtest.h>
+ #include "absl/strings/match.h"
+-#include "tensorflow/core/util/stat_summarizer_options.h"
+-#include "tensorflow/core/util/stats_calculator.h"
++#include "xla/tsl/util/stat_summarizer_options.h"
++#include "xla/tsl/util/stats_calculator.h"
+ #include "tflite/profiling/proto/profiling_info.pb.h"
+ 
+ namespace tflite {
+@@ -156,7 +156,7 @@
+ 
+ TEST(SummaryWriterTest, SummaryOptionStdOut) {
+   ProfileSummaryDefaultFormatter writer;
+-  tensorflow::StatSummarizerOptions options = writer.GetStatSummarizerOptions();
++  tsl::StatSummarizerOptions options = writer.GetStatSummarizerOptions();
+   EXPECT_EQ(options.show_summary, false);
+   EXPECT_EQ(options.show_memory, false);
+   EXPECT_EQ(options.format_as_csv, false);
+@@ -164,7 +164,7 @@
+ 
+ TEST(SummaryWriterTest, SummaryOptionCSV) {
+   ProfileSummaryCSVFormatter writer;
+-  tensorflow::StatSummarizerOptions options = writer.GetStatSummarizerOptions();
++  tsl::StatSummarizerOptions options = writer.GetStatSummarizerOptions();
+   EXPECT_EQ(options.show_summary, false);
+   EXPECT_EQ(options.show_memory, false);
+   EXPECT_EQ(options.format_as_csv, true);
+@@ -172,28 +172,28 @@
+ TEST(SummaryWriterTest, EmptyOutputString) {
+   ProfileSummaryDefaultFormatter writer;
+   std::string output = writer.GetOutputString(
+-      std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>(),
+-      tensorflow::StatsCalculator(writer.GetStatSummarizerOptions()), {});
++      std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>(),
++      tsl::StatsCalculator(writer.GetStatSummarizerOptions()), {});
+   EXPECT_EQ(output.size(), 0);
+ }
+ 
+ TEST(SummaryWriterTest, EmptyShortSummary) {
+   ProfileSummaryDefaultFormatter writer;
+   std::string output = writer.GetShortSummary(
+-      std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>(),
+-      tensorflow::StatsCalculator(writer.GetStatSummarizerOptions()), {});
++      std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>(),
++      tsl::StatsCalculator(writer.GetStatSummarizerOptions()), {});
+   EXPECT_EQ(output.size(), 0);
+ }
+ 
+ TEST(SummaryWriterTest, SingleSubgraphOutputString) {
+   ProfileSummaryDefaultFormatter writer;
+-  std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>
++  std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>
+       stats_calculator_map;
+-  stats_calculator_map[0] = std::make_unique<tensorflow::StatsCalculator>(
++  stats_calculator_map[0] = std::make_unique<tsl::StatsCalculator>(
+       writer.GetStatSummarizerOptions());
+   std::string output = writer.GetOutputString(
+       stats_calculator_map,
+-      tensorflow::StatsCalculator(writer.GetStatSummarizerOptions()), {});
++      tsl::StatsCalculator(writer.GetStatSummarizerOptions()), {});
+   ASSERT_TRUE(absl::StrContains(output, "Run Order"));
+   ASSERT_TRUE(absl::StrContains(output, "Top by Computation Time"));
+   ASSERT_TRUE(!absl::StrContains(output, "Top by Memory Use"));
+@@ -206,13 +206,13 @@
+ 
+ TEST(SummaryWriterTest, SingleSubgraphShortSummary) {
+   ProfileSummaryDefaultFormatter writer;
+-  std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>
++  std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>
+       stats_calculator_map;
+-  stats_calculator_map[0] = std::make_unique<tensorflow::StatsCalculator>(
++  stats_calculator_map[0] = std::make_unique<tsl::StatsCalculator>(
+       writer.GetStatSummarizerOptions());
+   std::string output = writer.GetShortSummary(
+       stats_calculator_map,
+-      tensorflow::StatsCalculator(writer.GetStatSummarizerOptions()),
++      tsl::StatsCalculator(writer.GetStatSummarizerOptions()),
+       {{0, "Primary graph"}});
+   ASSERT_TRUE(!absl::StrContains(output, "Run Order"));
+   ASSERT_TRUE(!absl::StrContains(output, "Top by Computation Time"));
+@@ -226,15 +226,15 @@
+ 
+ TEST(SummaryWriterTest, MultiSubgraphOutputString) {
+   ProfileSummaryDefaultFormatter writer;
+-  std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>
++  std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>
+       stats_calculator_map;
+-  stats_calculator_map[0] = std::make_unique<tensorflow::StatsCalculator>(
+-      writer.GetStatSummarizerOptions());
+-  stats_calculator_map[1] = std::make_unique<tensorflow::StatsCalculator>(
++  stats_calculator_map[0] = std::make_unique<tsl::StatsCalculator>(
++      writer.GetStatSummarizerOptions());
++  stats_calculator_map[1] = std::make_unique<tsl::StatsCalculator>(
+       writer.GetStatSummarizerOptions());
+   std::string output = writer.GetOutputString(
+       stats_calculator_map,
+-      tensorflow::StatsCalculator(writer.GetStatSummarizerOptions()),
++      tsl::StatsCalculator(writer.GetStatSummarizerOptions()),
+       {{0, "Primary graph"}, {1, "Subgraph 1"}});
+   ASSERT_TRUE(absl::StrContains(output, "Primary graph"));
+   ASSERT_TRUE(absl::StrContains(output, "Subgraph"));
+@@ -243,9 +243,9 @@
+ 
+ TEST(SummaryWriterTest, MultiSubgraphOutputStringForProto) {
+   ProfileSummaryProtoFormatter writer;
+-  std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>
++  std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>
+       stats_calculator_map;
+-  stats_calculator_map[0] = std::make_unique<tensorflow::StatsCalculator>(
++  stats_calculator_map[0] = std::make_unique<tsl::StatsCalculator>(
+       writer.GetStatSummarizerOptions());
+   std::string kernel_name_1 = "Kernel 1";
+   std::string kernel_name_2 = "Kernel 2";
+@@ -258,14 +258,14 @@
+   stats_calculator_map[0]->AddNodeStats(kernel_name_1, op_name_1, 1, 20, 20000);
+   stats_calculator_map[0]->AddNodeStats(kernel_name_2, op_name_2, 2, 15, 10000);
+   stats_calculator_map[0]->UpdateRunTotalUs(25);
+-  stats_calculator_map[1] = std::make_unique<tensorflow::StatsCalculator>(
++  stats_calculator_map[1] = std::make_unique<tsl::StatsCalculator>(
+       writer.GetStatSummarizerOptions());
+   stats_calculator_map[1]->AddNodeStats(kernel_name_3, op_name_3, 3, 10, 10000);
+   stats_calculator_map[1]->UpdateRunTotalUs(10);
+ 
+   std::string output = writer.GetOutputString(
+       stats_calculator_map,
+-      tensorflow::StatsCalculator(writer.GetStatSummarizerOptions()),
++      tsl::StatsCalculator(writer.GetStatSummarizerOptions()),
+       {{0, "Primary graph"}, {1, "Subgraph 1"}});
+   ModelProfilingData model_profiling_data;
+   model_profiling_data.ParseFromString(output);
+@@ -484,15 +484,15 @@
+ 
+ TEST(SummaryWriterTest, MultiSubgraphShortSummary) {
+   ProfileSummaryDefaultFormatter writer;
+-  std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>
++  std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>
+       stats_calculator_map;
+-  stats_calculator_map[0] = std::make_unique<tensorflow::StatsCalculator>(
+-      writer.GetStatSummarizerOptions());
+-  stats_calculator_map[1] = std::make_unique<tensorflow::StatsCalculator>(
++  stats_calculator_map[0] = std::make_unique<tsl::StatsCalculator>(
++      writer.GetStatSummarizerOptions());
++  stats_calculator_map[1] = std::make_unique<tsl::StatsCalculator>(
+       writer.GetStatSummarizerOptions());
+   std::string output = writer.GetShortSummary(
+       stats_calculator_map,
+-      tensorflow::StatsCalculator(writer.GetStatSummarizerOptions()),
++      tsl::StatsCalculator(writer.GetStatSummarizerOptions()),
+       {{0, "Primary graph"}, {1, "Subgraph 1"}});
+   ASSERT_TRUE(absl::StrContains(output, "Primary graph"));
+   ASSERT_TRUE(absl::StrContains(output, "Subgraph"));
+@@ -502,10 +502,10 @@
+ TEST(SummaryWriterTest, DelegationOutputString) {
+   ProfileSummaryDefaultFormatter writer;
+   auto delegate_stats_calculator =
+-      tensorflow::StatsCalculator(writer.GetStatSummarizerOptions());
++      tsl::StatsCalculator(writer.GetStatSummarizerOptions());
+   delegate_stats_calculator.UpdateRunTotalUs(1);
+   std::string output = writer.GetOutputString(
+-      std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>(),
++      std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>(),
+       delegate_stats_calculator, {});
+   ASSERT_TRUE(!absl::StrContains(output, "Primary graph"));
+   ASSERT_TRUE(!absl::StrContains(output, "Subgraph"));
+@@ -515,10 +515,10 @@
+ TEST(SummaryWriterTest, DelegationShortSummary) {
+   ProfileSummaryDefaultFormatter writer;
+   auto delegate_stats_calculator =
+-      tensorflow::StatsCalculator(writer.GetStatSummarizerOptions());
++      tsl::StatsCalculator(writer.GetStatSummarizerOptions());
+   delegate_stats_calculator.UpdateRunTotalUs(1);
+   std::string output = writer.GetShortSummary(
+-      std::map<uint32_t, std::unique_ptr<tensorflow::StatsCalculator>>(),
++      std::map<uint32_t, std::unique_ptr<tsl::StatsCalculator>>(),
+       delegate_stats_calculator, {});
+   ASSERT_TRUE(!absl::StrContains(output, "Primary graph"));
+   ASSERT_TRUE(!absl::StrContains(output, "Subgraph"));
