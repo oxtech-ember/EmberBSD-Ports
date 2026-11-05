@@ -2,6 +2,7 @@
 # Origin: EmberBSD (AI-assisted), first port for the KWin screencast plugin.
 
 DISTNAME=	pipewire-1.6.10
+PKGREVISION=	1
 CATEGORIES=	multimedia
 MASTER_SITES=	https://gitlab.freedesktop.org/pipewire/pipewire/-/archive/${PKGVERSION_NOREV}/
 
@@ -40,14 +41,18 @@ MESON_ARGS+=	-Dpipewire-v4l2=disabled
 MESON_ARGS+=	-Dbluez5-codec-aptx=disabled
 MESON_ARGS+=	-Dsession-managers=
 
-# PipeWire probes a native C compiler; provide the host compiler through
-# a meson native file.
-pre-configure: pipewire-native-file
-.PHONY: pipewire-native-file
-pipewire-native-file:
-	${PRINTF} '%s\n' '[binaries]' "c = '/usr/bin/cc'" \
-	    '[built-in options]' > ${WRKDIR}/.meson-pipewire-native
-MESON_NATIVE_ARGS+=	--native-file ${WRKDIR}/.meson-pipewire-native
+# Meson uses *_FOR_BUILD for build-machine generators in cross builds.
+# Keep native builds on Meson's ordinary native compiler selection.
+.include "../../mk/bsd.prefs.mk"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+MAKE_ENV+= CC_FOR_BUILD=${NATIVE_CC:Q}
+MAKE_ENV+= CXX_FOR_BUILD=${NATIVE_CXX:Q}
+MAKE_ENV+= AR_FOR_BUILD=${NATIVE_AR:Q}
+MAKE_ENV+= CPPFLAGS_FOR_BUILD=${NATIVE_CPPFLAGS:Q}
+MAKE_ENV+= CFLAGS_FOR_BUILD=${NATIVE_CFLAGS:Q}
+MAKE_ENV+= CXXFLAGS_FOR_BUILD=${NATIVE_CXXFLAGS:Q}
+MAKE_ENV+= LDFLAGS_FOR_BUILD=${NATIVE_LDFLAGS:Q}
+.endif
 
 # The modules have install_rpath ${PREFIX}/lib/pipewire-0.3. The wrappers drop
 # meson's build-tree rpath, so meson's install-time rewrite has no room for the
