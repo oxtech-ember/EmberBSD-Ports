@@ -2460,9 +2460,22 @@ def gn_source(options):
                 result.update(ml_names=names, ml_verify=lambda: [check() for check in checks])
             return result
         selection_refreshed = False
+        selection_verified = False
+        selection_needs_final = False
+        # A pending transaction must follow the original full verification path.
+        # This memo exists only for this locked, ordinary reconfigure invocation.
+        reuse_selection = (options.phase == 'reconfigure' and
+                           not getattr(options, 'resume_configure', False) and
+                           not getattr(options, 'retry_configure', False) and
+                           os.path.lexists(destination) and
+                           not os.path.lexists(destination.parent / ('.' + destination.name + '-refresh-incomplete')) and
+                           not any(destination.parent.glob('.' + destination.name + '.*-migration')))
         selection_default = object()
-        def verify_selection(ml_ids, header_ids, media_ids=old_media, compression_id=selection_default, boring_id=selection_default):
-            nonlocal selection_refreshed
+        def verify_selection(ml_ids, header_ids, media_ids=old_media, compression_id=selection_default, boring_id=selection_default, *, force=False):
+            nonlocal selection_refreshed, selection_verified, selection_needs_final
+            if reuse_selection and selection_verified and not force:
+                selection_needs_final = True
+                return destination / 'src'
             if compression_id is selection_default:
                 compression_id = old_compression
             if boring_id is selection_default:
@@ -2473,8 +2486,15 @@ def gn_source(options):
                 result = view._refresh_leaves(options.workspace / 'src', common,
                                               destination, current)
                 selection_refreshed = True
-                return result
-            return view.verify(options.workspace / 'src', common, destination, **current)
+            else:
+                result = view.verify(options.workspace / 'src', common, destination, **current)
+            selection_verified = True
+            selection_needs_final = False
+            return result
+        def finish_selection(result):
+            if selection_needs_final:
+                return verify_selection(ids, new_headers, new_media, new_compression, new_boring, force=True)
+            return result
         if os.path.lexists(font_marker):
             require(new_font and (options.phase == 'reconfigure' or
                     getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
@@ -2661,11 +2681,11 @@ def gn_source(options):
                             new_boring, options.ml_sdk['inventory'], sp,
                             lambda: verify_selection(ids, new_headers, new_media, new_compression, old_boring),
                             old_digest=old_boring)
-            return verify_selection(ids, new_headers, new_media, new_compression, new_boring)
+            return finish_selection(verify_selection(ids, new_headers, new_media, new_compression, new_boring))
         if compression_transition:
-            return verify_selection(ids, new_headers, new_media, new_compression, new_boring)
+            return finish_selection(verify_selection(ids, new_headers, new_media, new_compression, new_boring))
         if transition:
-            return transition_result
+            return finish_selection(transition_result)
         sources = selected_sources(ids, new_headers, new_media, new_compression, new_boring)
     if getattr(options, 'refresh_source_view', False):
         require(options.phase == 'reconfigure', 'source refresh requires reconfigure')
