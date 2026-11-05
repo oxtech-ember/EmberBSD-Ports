@@ -1107,6 +1107,11 @@
       "path": "metal-gpu-family-query-compatibility.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "tflite-support-common-configuration-proto.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {
