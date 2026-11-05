@@ -38,5 +38,5 @@ with tempfile.TemporaryDirectory() as tmp:
   assert set(skia['libs']) == {'//'+sel+'/'+x+'-libraries' for x in ('jpeg','webp')}
   for label,name in (('//third_party:emberbsd_jpeg','jpeg'),('//third_party/libwebp:emberbsd_webp','webp')):
    info=json.loads(subprocess.check_output([GN,'desc',str(out),label,'--format=json'],cwd=r,text=True))[label]
-   assert info['libs']==['//'+sel+'/'+name+'-libraries'] and info['inputs']==['//'+sel+'/'+name+'-inputs']; assert info['ldflags']==['-Wl,-rpath='+ (str(r/'host') if role=='native' else '/usr/pkg/lib')]
+   assert info['libs']==['//'+sel+'/'+name+'-libraries'] and info['inputs']==['//'+sel+'/'+name+'-inputs']; assert info['ldflags']==[('-Wl,-rpath,'+str(r/'host') if role=='native' else '-Wl,-rpath=/usr/pkg/lib')]
 print('PASS image GN branches, tracked role inputs, transitive links and rpaths')

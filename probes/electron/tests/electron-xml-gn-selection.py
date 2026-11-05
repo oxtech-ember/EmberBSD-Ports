@@ -27,17 +27,17 @@ group("test") { deps = [ "//third_party/libxml:libxml", "//third_party/libxslt:l
     for name in ('libxml','libxslt'):
         dest=root/'third_party'/name; dest.mkdir(parents=True)
         (dest/'BUILD.gn').write_text((root/'build/linux/unbundle'/(name+'.gn')).read_text())
-    for role in ('target','native'):
+    for role in ('target','explicit','native'):
         (root/'config.gn').write_text(f'set_default_toolchain("//:tc")\nemberbsd_pkg_config_role = "{role}"\n')
         output=root/('out-'+role); output.mkdir(); argrole='host' if role=='native' else 'target'
-        (output/'args.gn').write_text(''.join(f'emberbsd_{key}_{argrole}_library = "{root}/{key}.so"\nemberbsd_{key}_{argrole}_inputs = [ "{root}/{key}.h" ]\n' for key in ('xml','xslt')))
+        (output/'args.gn').write_text(''.join(f'emberbsd_{key}_{item_role}_library = "{root}/{item_role}/{key}.so"\nemberbsd_{key}_{item_role}_inputs = [ "{root}/{item_role}/{key}.h" ]\n' for key in ('xml','xslt') for item_role in ('host','target')))
         subprocess.run([gn,'gen',str(output)],cwd=root,check=True,capture_output=True)
         for name,key in (('libxml','xml'),('libxslt','xslt'),('libxml_utils','xml'),('xml_writer','xml')):
             owner='libxslt' if name=='libxslt' else 'libxml'
             data=json.loads(subprocess.check_output([gn,'desc',str(output),f'//third_party/{owner}:{name}','--format=json'],cwd=root,text=True))
             value=next(iter(data.values()))
-            assert value['libs']==[f'//{key}.so']
-            if name != 'xml_writer': assert value['inputs']==[f'//{key}.h']
-            expected='/usr/pkg/lib' if role=='target' else str(root)
-            assert value['ldflags']==['-Wl,-rpath='+expected]
+            assert value['libs']==[f'//{argrole}/{key}.so']
+            if name != 'xml_writer': assert value['inputs']==[f'//{argrole}/{key}.h']
+            expected=str(root/'host') if role=='native' else '/usr/pkg/lib'
+            assert value['ldflags']==[('-Wl,-rpath,' if role=='native' else '-Wl,-rpath=')+expected]
 print('PASS: GN XML/XSLT system link ownership and host/target paths')

@@ -35,7 +35,7 @@
 +  config("emberbsd_zlib_libraries") {
 +    libs = _zlib_libraries
 +    if (emberbsd_pkg_config_role == "native") {
-+      ldflags = [ "-Wl,-rpath=" + rebase_path(get_path_info(_zlib_libraries[0], "dir"), "") ]
++      ldflags = [ "-Wl,-rpath," + rebase_path(get_path_info(_zlib_libraries[0], "dir"), "") ]
 +    } else {
 +      ldflags = [ "-Wl,-rpath=/usr/pkg/lib" ]
 +    }
@@ -43,7 +43,7 @@
 +  config("emberbsd_minizip_libraries") {
 +    libs = _minizip_libraries
 +    if (emberbsd_pkg_config_role == "native") {
-+      ldflags = [ "-Wl,-rpath=" + rebase_path(get_path_info(_minizip_libraries[0], "dir"), "") ]
++      ldflags = [ "-Wl,-rpath," + rebase_path(get_path_info(_minizip_libraries[0], "dir"), "") ]
 +    } else {
 +      ldflags = [ "-Wl,-rpath=/usr/pkg/lib" ]
 +    }

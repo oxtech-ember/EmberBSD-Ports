@@ -65,5 +65,5 @@ template("component") {{ source_set(target_name) {{ forward_variables_from(invok
         for name,label in (('freetype','//build/config/freetype:emberbsd_freetype'),('harfbuzz','//third_party/harfbuzz:emberbsd_harfbuzz')):
             data = desc(label)
             assert data['inputs'] == ['//' + name + '-' + selected + '-inputs']
-            assert data['ldflags'] == ['-Wl,-rpath=' + (str(root) if role == 'native' else '/usr/pkg/lib')]
+            assert data['ldflags'] == [('-Wl,-rpath,' + str(root) if role == 'native' else '-Wl,-rpath=/usr/pkg/lib')]
 print('PASS: FreeType and HarfBuzz GN inputs, transitive links and role rpaths')

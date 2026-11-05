@@ -46,5 +46,5 @@ with tempfile.TemporaryDirectory(prefix='electron-codec-pkgconfig-') as td:
   selected_info=json.loads(subprocess.check_output([str(a.gn),'desc',str(out),label,'--format=json','--script-executable='+sys.executable],cwd=r,text=True))[label]
   assert selected_info['inputs'] == [str((provider/'lib'/(libs[name]+('.dylib' if native else '.so'))).resolve(strict=True))],selected_info
  assert len(info['cflags_cc']) == 5 and all(str(provider/'include') in x for x in info['cflags_cc']),info
- assert all(x == '-Wl,-rpath='+str(provider/'lib' if native else Path('/usr/pkg/lib')) for x in info['ldflags']),info
+ assert all(x == ('-Wl,-rpath,'+str(provider/'lib') if native else '-Wl,-rpath=/usr/pkg/lib') for x in info['ldflags']),info
 print('PASS: actual pkg-config template, '+a.role+' codec paths and owned library selection')

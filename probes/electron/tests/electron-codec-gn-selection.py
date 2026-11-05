@@ -43,7 +43,7 @@ with tempfile.TemporaryDirectory() as td:
    label=f'//third_party/{directory}:emberbsd_{name}'
    info=json.loads(subprocess.check_output([gn,'desc',str(out),label,'--format=json'],cwd=r,text=True))[label]
    assert info['libs']==['//'+selected+'/'+name+'-libraries'] and info['inputs']==['//'+selected+'/'+name+'-inputs']
-   assert info['ldflags']==['-Wl,-rpath='+ (str(r/'host') if role=='native' else '/usr/pkg/lib')]
+   assert info['ldflags']==[('-Wl,-rpath,'+str(r/'host') if role=='native' else '-Wl,-rpath=/usr/pkg/lib')]
  # Incomplete role selection must fail instead of falling back to another provider.
  out=r/'out-target'; args=out/'args.gn'; args.write_text(args.read_text().replace(
   f'emberbsd_vpx_target_libraries=["{r}/target/vpx-libraries"]', 'emberbsd_vpx_target_libraries=[]'))

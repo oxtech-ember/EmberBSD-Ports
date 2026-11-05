@@ -132,10 +132,10 @@
 +  assert(_libraries != [] && _inputs != [], "Selected FFmpeg provider is incomplete")
 +  config("emberbsd_ffmpeg_libraries") {
 +    libs = _libraries
-+    if (emberbsd_pkg_config_role == "target") {
-+      ldflags = [ "-Wl,-rpath=/usr/pkg/lib/ffmpeg9" ]
++    if (emberbsd_pkg_config_role == "native") {
++      ldflags = [ "-Wl,-rpath," + rebase_path(get_path_info(_libraries[0], "dir"), "") ]
 +    } else {
-+      ldflags = [ "-Wl,-rpath=" + rebase_path(get_path_info(_libraries[0], "dir"), "") ]
++      ldflags = [ "-Wl,-rpath=/usr/pkg/lib/ffmpeg9" ]
 +    }
 +  }
 +}

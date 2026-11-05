@@ -22,10 +22,10 @@
 +  assert(_library != "" && _inputs != [], "Selected libxml provider is incomplete")
 +  config("emberbsd_xml_library") {
 +    libs = [ _library ]
-+    if (emberbsd_pkg_config_role == "target") {
-+      ldflags = [ "-Wl,-rpath=/usr/pkg/lib" ]
++    if (emberbsd_pkg_config_role == "native") {
++      ldflags = [ "-Wl,-rpath," + rebase_path(get_path_info(_library, "dir"), "") ]
 +    } else {
-+      ldflags = [ "-Wl,-rpath=" + rebase_path(get_path_info(_library, "dir"), "") ]
++      ldflags = [ "-Wl,-rpath=/usr/pkg/lib" ]
 +    }
 +  }
 +}
@@ -78,10 +78,10 @@
 +  assert(_library != "" && _inputs != [], "Selected libxslt provider is incomplete")
 +  config("emberbsd_xslt_library") {
 +    libs = [ _library ]
-+    if (emberbsd_pkg_config_role == "target") {
-+      ldflags = [ "-Wl,-rpath=/usr/pkg/lib" ]
++    if (emberbsd_pkg_config_role == "native") {
++      ldflags = [ "-Wl,-rpath," + rebase_path(get_path_info(_library, "dir"), "") ]
 +    } else {
-+      ldflags = [ "-Wl,-rpath=" + rebase_path(get_path_info(_library, "dir"), "") ]
++      ldflags = [ "-Wl,-rpath=/usr/pkg/lib" ]
 +    }
 +  }
 +}
