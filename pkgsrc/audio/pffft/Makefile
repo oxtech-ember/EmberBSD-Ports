@@ -1,6 +1,7 @@
 # $NetBSD$
 # Origin: EmberBSD contributors (AI-assisted).
 DISTNAME= pffft-1.1.0
+PKGREVISION= 1
 CATEGORIES= audio
 MASTER_SITES= ${MASTER_SITE_GITHUB:=marton78/}
 GITHUB_TAG= v${PKGVERSION_NOREV}

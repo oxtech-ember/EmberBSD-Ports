@@ -7,3 +7,4 @@ SHA1 (patch-aarch64-neon) = bfc76d0fba95cd42cbeb3cb57bc0e39335973783
 SHA1 (patch-cmake-version) = e9cc57242989d291ca7924c8eede37ea4823de88
 SHA1 (patch-neon-alignment) = 3abf158d002248739a46093762a3d23391ba33a5
 SHA1 (patch-netbsd-alloca) = cab9b3a8a016afb81753ebacaeddeb9f6f0bd554
+SHA1 (patch-zz-chromium-compat) = d929a2b8a93fb278198c083beb85ed8e308d8651
