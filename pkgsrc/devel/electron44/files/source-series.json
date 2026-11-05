@@ -1144,6 +1144,11 @@
       "root": ""
     },
     {
+      "path": "boringssl-current-api.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
       "path": "gn-common-brotli-native-tool.patch",
       "strip": 1,
       "root": ""

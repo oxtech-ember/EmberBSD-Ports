@@ -1,0 +1,82 @@
+Adapt Chromium to the common BoringSSL API.
+
+BoringSSL 558e6eef5d7c9fc3cd1d8d464efb052ad50bbc21 folds signature
+algorithm GREASE into the general GREASE control. The public DER OCSP
+overload uses the previous default verification policy (1024-bit minimum
+RSA and SHA-1 allowed); retain the caller's time and age constraints.
+
+--- a/net/cert/internal/revocation_checker.cc
++++ b/net/cert/internal/revocation_checker.cc
+@@ -13,6 +13,7 @@
+ #include "crypto/sha2.h"
+ #include "net/cert/cert_net_fetcher.h"
+ #include "third_party/boringssl/src/include/openssl/pki/ocsp.h"
++#include "third_party/boringssl/src/include/openssl/span.h"
+ #include "third_party/boringssl/src/pki/common_cert_errors.h"
+ #include "third_party/boringssl/src/pki/crl.h"
+ #include "third_party/boringssl/src/pki/ocsp.h"
+@@ -57,8 +58,10 @@
+   if (!stapled_ocsp_response.empty() && issuer_cert) {
+     bssl::OCSPVerifyResult::ResponseStatus response_details;
+     bssl::OCSPRevocationStatus ocsp_status =
+-        bssl::CheckOCSP(stapled_ocsp_response, cert, issuer_cert, time_now,
+-                        max_age_seconds, &response_details);
++        bssl::CheckOCSP(
++            stapled_ocsp_response, bssl::BytesAsStringView(cert->der_cert()),
++            bssl::BytesAsStringView(issuer_cert->der_cert()), time_now,
++            max_age_seconds, &response_details);
+     if (stapled_ocsp_verify_result) {
+       stapled_ocsp_verify_result->response_status = response_details;
+       stapled_ocsp_verify_result->revocation_status = ocsp_status;
+@@ -146,8 +149,10 @@
+       bssl::OCSPVerifyResult::ResponseStatus response_details;
+ 
+       bssl::OCSPRevocationStatus ocsp_status = bssl::CheckOCSP(
+-          base::as_string_view(ocsp_response_bytes), cert, issuer_cert,
+-          time_now, max_age_seconds, &response_details);
++          base::as_string_view(ocsp_response_bytes),
++          bssl::BytesAsStringView(cert->der_cert()),
++          bssl::BytesAsStringView(issuer_cert->der_cert()), time_now,
++          max_age_seconds, &response_details);
+ 
+       switch (ocsp_status) {
+         case bssl::OCSPRevocationStatus::REVOKED:
+--- a/net/socket/ssl_client_socket_impl.cc
++++ b/net/socket/ssl_client_socket_impl.cc
+@@ -208,9 +208,6 @@
+     SSL_CTX_set_timeout(ssl_ctx_.get(), 1 * 60 * 60 /* one hour */);
+ 
+     SSL_CTX_set_grease_enabled(ssl_ctx_.get(), 1);
+-    if (base::FeatureList::IsEnabled(features::kTlsGreaseSigalgs)) {
+-      SSL_CTX_set_grease_sigalgs_enabled(ssl_ctx_.get(), 1);
+-    }
+ 
+     // Deduplicate all certificates minted from the SSL_CTX in memory.
+     SSL_CTX_set0_buffer_pool(ssl_ctx_.get(), x509_util::GetBufferPool());
+--- a/net/base/features.h
++++ b/net/base/features.h
+@@ -1017,13 +1017,6 @@
+ // already be expired.
+ NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int, kCacheCertVerificationTtlSecs);
+ 
+-// If enabled, configures SSLClientSocketImpl to enable GREASE for
+-// signature_algorithms. This is a killswitch for behavior that is enabled by
+-// default.
+-// TODO(crbug.com/526597789): Clean up this killswitch after successfully
+-// deployed.
+-NET_EXPORT BASE_DECLARE_FEATURE(kTlsGreaseSigalgs);
+-
+ // Enables the BackendCleanupTracker for HTTP cache backends (net::DISK_CACHE)
+ // to prevent conflicts when multiple backends are created for the same path.
+ NET_EXPORT BASE_DECLARE_FEATURE(kEnableBackendCleanupTrackerOnHttpCache);
+--- a/net/base/features.cc
++++ b/net/base/features.cc
+@@ -1030,8 +1030,6 @@
+                    &kCacheCertVerification,
+                    1800);
+ 
+-BASE_FEATURE(kTlsGreaseSigalgs, base::FEATURE_ENABLED_BY_DEFAULT);
+-
+ BASE_FEATURE(kEnableBackendCleanupTrackerOnHttpCache,
+ #if BUILDFLAG(CRONET_BUILD)
+              // Disable for Cronet because when a CronetContext is shut down,
