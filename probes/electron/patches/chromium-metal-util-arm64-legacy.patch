@@ -1,0 +1,71 @@
+--- a/components/metal_util/device.mm
++++ b/components/metal_util/device.mm
+@@ -7,17 +7,22 @@
+ #import <Metal/Metal.h>
+ 
+ #include "base/logging.h"
++#include "build/build_config.h"
+ 
+ namespace metal {
+ 
+ id<MTLDevice> GetDefaultDevice() {
+   // First attempt to find a low power device to use.
+-#if BUILDFLAG(IS_MAC)
++#if BUILDFLAG(IS_MAC) && !defined(ARCH_CPU_ARM64)
++  // Intel Macs can select a low-power GPU; the property is unavailable on Apple Silicon.
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+   for (id<MTLDevice> device in MTLCopyAllDevices()) {
+     if (device.lowPower) {
+       return device;
+     }
+   }
++#pragma GCC diagnostic pop
+ #endif
+   // Failing that, use the system default device.
+   id<MTLDevice> system_default = MTLCreateSystemDefaultDevice();
+--- a/components/metal_util/device_removal.mm
++++ b/components/metal_util/device_removal.mm
+@@ -7,10 +7,15 @@
+ #import <Metal/Metal.h>
+ 
+ #include "base/process/process.h"
++#include "build/build_config.h"
+ 
+ namespace metal {
+ 
+ void RegisterGracefulExitOnDeviceRemoval() {
++#if !(BUILDFLAG(IS_MAC) && defined(ARCH_CPU_ARM64))
++  // External GPU removal notifications remain relevant on Intel Macs.
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+   id<NSObject> device_observer = nil;
+   // `MTLCopyAllDevicesWithObserver` is the only way to set an observer for the
+   // change of the MTLDevice list. Because setting an observer is all that's
+@@ -29,6 +34,8 @@
+           base::Process::TerminateCurrentProcessImmediately(0);
+         }
+       });
++#pragma GCC diagnostic pop
++#endif
+ }
+ 
+ }  // namespace metal
+--- a/components/metal_util/hdr_copier_layer.mm
++++ b/components/metal_util/hdr_copier_layer.mm
+@@ -406,8 +406,14 @@
+     texDesc.mipmapLevelCount = 1;
+     texDesc.arrayLength = 1;
+     texDesc.sampleCount = 1;
+-#if BUILDFLAG(IS_MAC)
++#if BUILDFLAG(IS_MAC) && defined(ARCH_CPU_ARM64)
++    texDesc.storageMode = MTLStorageModeShared;
++#elif BUILDFLAG(IS_MAC)
++    // Intel retains managed IOSurface storage.
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+     texDesc.storageMode = MTLStorageModeManaged;
++#pragma GCC diagnostic pop
+ #endif
+     bufferTexture[i] = [device newTextureWithDescriptor:texDesc
+                                               iosurface:buffer

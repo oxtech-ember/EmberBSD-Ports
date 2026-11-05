@@ -1112,6 +1112,11 @@
       "path": "tflite-support-common-configuration-proto.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "chromium-metal-util-arm64-legacy.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {
