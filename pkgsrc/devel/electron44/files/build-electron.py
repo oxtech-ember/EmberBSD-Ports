@@ -14,6 +14,7 @@ from pathlib import Path
 import re
 import shlex
 import sys
+import types
 import tempfile
 import time
 
@@ -484,7 +485,8 @@ def host_buildlink(options, sdk, native, environment, host_binding):
                 '--pkgsrc-root', str(selected[0]), '--host-prefix', str(options.host_prefix),
                 *(['--stage-root', str(selected[1])] if selected[1] else []),
                 *(['--shared-ffmpeg'] if getattr(options, 'shared_ffmpeg', False) else []),
-                *(['--shared-minizip'] if getattr(options, 'shared_minizip', False) else []), '--base-makeconf', str(selected[2]),
+                *(['--shared-minizip'] if getattr(options, 'shared_minizip', False) else []),
+                *(['--shared-xml'] if getattr(options, 'shared_xml', False) else []), '--base-makeconf', str(selected[2]),
                 '--binding-record', str(record), '--bmake-mk', str(selected[3]),
                 '--work', str(work), '--lock-root', str(options.lock_root)]
     if not previous and (getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)):
@@ -628,7 +630,13 @@ def validate_package_source(package, expected, export_recipe, *, distinfo, packa
     metadata = {}
     for line in (package / '+BUILD_VERSION').read_text().splitlines():
         name, separator, digest = line.partition(': ')
-        require(separator and name not in metadata, 'invalid package source metadata')
+        # pkgsrc may record a PATCHDIR with a relative path through the
+        # package directory (e.g. fonts/harfbuzz/../../fonts/harfbuzz).
+        # Compare canonical repository-relative paths and reject collisions.
+        name = os.path.normpath(name)
+        require(separator and not os.path.isabs(name) and name != '..' and
+                not name.startswith('../') and name not in metadata,
+                'invalid package source metadata')
         metadata[name] = digest
     prefix = package_path + '/patches/'
     actual = {name[len(prefix):]: digest for name, digest in metadata.items() if name.startswith(prefix)}
@@ -1301,6 +1309,8 @@ def compression_recipe_catalog(options, sdk, native, environment):
         packages += ('multimedia/ffmpeg9',)
     if getattr(options, 'shared_minizip', False):
         packages += ('devel/zlib', 'archivers/minizip-ng')
+    if getattr(options, 'shared_xml', False):
+        packages += ('textproc/libxml2', 'textproc/libxslt')
     identities = {name: selector.git_package_identity(owner, name, git) for name in packages}
     config_root = getattr(options, 'native_binding_root', None) or options.work
     config = Path(config_root)/'configuration.json'
@@ -1977,6 +1987,11 @@ def producer_inputs(options, sdk):
         values.update(common_compression(options, sdk, native, environment, buildlink))
         values.update(common_ffmpeg(options, sdk, native, environment, buildlink))
         values.update(common_minizip(options, sdk, native, environment, buildlink))
+        if getattr(options, 'shared_xml', False):
+            values.update(local_module('electron_xml_provider', 'xml-provider.py').select(
+                types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
+                                      selected_owned_library=selected_owned_library),
+                options, sdk, native, environment, buildlink))
     runtime_view = getattr(options, 'protoc_runtime_view', None)
     if runtime_view:
         require(native.host['os'] == 'Darwin', 'protoc runtime view requires a Darwin host')
@@ -2184,6 +2199,10 @@ def gn_source(options):
         compression = local_module('electron_compression_source_view', 'compression-source-view.py')
         old_compression = getattr(options, 'old_compression_identity', None)
         new_compression = options.compression_identity
+        old_xml = bool(getattr(options, 'old_xml_identity', None))
+        new_xml = bool(getattr(options, 'shared_xml', False))
+        xml_names = ('libxml', 'libxslt')
+        xml_marker = destination.parent / ('.' + destination.name + '.xml-components-migration')
         old_minizip = bool(getattr(options, 'old_minizip_identity', None))
         new_minizip = bool(getattr(options, 'shared_minizip', False))
         minizip_marker = destination.parent / ('.' + destination.name + '.minizip-components-migration')
@@ -2192,6 +2211,15 @@ def gn_source(options):
         ffmpeg_marker = destination.parent / ('.' + destination.name + '.ffmpeg-components-migration')
         compression_marker = destination.parent / ('.' + destination.name + '.compression-components-migration')
         compression_root = destination / 'src/third_party'
+        if (new_xml and not old_xml and
+                (options.phase == 'reconfigure' or
+                 (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
+                                                    getattr(options, 'resume_configure', False)))) and
+                not os.path.lexists(xml_marker) and
+                all((compression_root/name).is_dir() and not (compression_root/name).is_symlink()
+                    for name in xml_names)):
+            compression.verify_view(view, options.workspace / 'src', destination, xml_names)
+            old_xml = True
         ffmpeg_root = compression_root / 'ffmpeg'
         if (new_ffmpeg and not old_ffmpeg and
                 (options.phase == 'reconfigure' or
@@ -2246,6 +2274,9 @@ def gn_source(options):
             if boring_id:
                 names.append(boring.NAME)
                 checks.append(lambda: boring.verify_view(view, options.workspace / 'src', destination, boring_id, sp))
+            if old_xml:
+                names.extend(xml_names)
+                checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, xml_names))
             if old_minizip:
                 names.append('zlib')
                 checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, ('zlib',)))
@@ -2274,6 +2305,14 @@ def gn_source(options):
                 selection_refreshed = True
                 return result
             return view.verify(options.workspace / 'src', common, destination, **current)
+        if os.path.lexists(xml_marker):
+            require(new_xml and (options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+                    'XML transaction recovery requires shared XML reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring),
+                                 xml_names, 'xml-components')
+            old_xml = True
         if os.path.lexists(ffmpeg_marker):
             require(new_ffmpeg and (options.phase == 'reconfigure' or
                     getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
@@ -2365,6 +2404,16 @@ def gn_source(options):
                                  lambda: verify_selection(ids, new_headers, new_media, new_compression),
                                  ('zlib',), 'minizip-components')
             old_minizip = True
+            transition_result = verify_selection(ids, new_headers, new_media, new_compression)
+            transition = True
+        if old_xml != new_xml or os.path.lexists(xml_marker):
+            require(new_xml, 'disabling shared XML requires a new source view')
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'XML transition requires reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(ids, new_headers, new_media, new_compression),
+                                 xml_names, 'xml-components')
+            old_xml = True
             transition_result = verify_selection(ids, new_headers, new_media, new_compression)
             transition = True
         if old_boring != new_boring or os.path.lexists(boring_marker):
@@ -2572,6 +2621,23 @@ def minizip_activation_args(options, old_environment, environment, old_arguments
     return names
 
 
+def xml_activation_args(options, old_environment, environment, old_arguments, values):
+    """Allow the first verified XML selection; guard later identities."""
+    if not getattr(options, 'shared_xml', False):
+        return set()
+    key = 'EMBERBSD_XML_SOURCE_SHA256'
+    require(re.fullmatch(r'[0-9a-f]{64}', environment.get(key, '')), 'verified XML identity is missing')
+    names = {'emberbsd_' + provider + '_' + role + '_' + kind
+             for provider in ('xml', 'xslt') for role in ('host', 'target')
+             for kind in ('library', 'inputs')}
+    if old_environment.get(key):
+        return set()
+    require(all(old_arguments.get(name) in (None, '', []) for name in names),
+            'XML activation cannot replace existing GN inputs')
+    require(all(values.get(name) for name in names), 'verified XML GN inputs are incomplete')
+    return names
+
+
 def common_activation_allowlist(options, old_environment, environment, old_arguments, values):
     """Allow initial activation or an identical verified common-provider retry."""
     if not getattr(options, 'activate_common_providers', False):
@@ -2750,6 +2816,8 @@ def reconfigure(options):
                 permitted_env.add('EMBERBSD_BORINGSSL_SOURCE_SHA256')
                 options.compression_identity = candidate.compression_identity
                 options.old_compression_identity = old_env.get('EMBERBSD_COMPRESSION_SOURCE_SHA256')
+                options.old_xml_identity = old_env.get('EMBERBSD_XML_SOURCE_SHA256')
+                permitted_env.add('EMBERBSD_XML_SOURCE_SHA256')
                 options.old_minizip_identity = old_env.get('EMBERBSD_MINIZIP_SOURCE_SHA256')
                 permitted_env.add('EMBERBSD_MINIZIP_SOURCE_SHA256')
                 options.old_ffmpeg_identity = old_env.get('EMBERBSD_FFMPEG_SOURCE_SHA256')
@@ -2834,6 +2902,7 @@ def reconfigure(options):
         if v8_descriptor in new_v8 and set(old_v8) - {v8_descriptor} == set(new_v8) - {v8_descriptor}:
             permitted_runtime_args.add('v8_metagen_runtime_inputs')
         minizip_args = minizip_activation_args(options, old_env, environment, saved['arguments'], values)
+        xml_args = xml_activation_args(options, old_env, environment, saved['arguments'], values)
         identity_args = {'node_module_version', 'emberbsd_node_source_identity',
                          'emberbsd_node_configure_helper', 'emberbsd_node_configure_inputs',
                          'emberbsd_node_configure_dependencies', 'target_os', 'target_cpu', 'target_sysroot', 'emberbsd_target_sysroot',
@@ -2887,6 +2956,9 @@ def reconfigure(options):
             require(saved['arguments'].get('use_system_ffmpeg') in (None, False, True),
                     'invalid previous FFmpeg selection')
         identity_args.update(('enable_swiftshader', 'enable_swiftshader_vulkan', 'angle_enable_swiftshader', 'dawn_use_swiftshader'))
+        identity_args.update('emberbsd_' + provider + '_' + role + '_' + kind
+                             for provider in ('xml', 'xslt') for role in ('host', 'target')
+                             for kind in ('library', 'inputs'))
         identity_args.update('node_shared_' + feature for feature in NODE_SHARED_FEATURES)
         node_v8_path_changed = verified_node_configure_v8_path_change(
             saved['arguments'], values, options.v8_source)
@@ -2897,7 +2969,7 @@ def reconfigure(options):
                 continue
             if node_source_refresh and name == 'emberbsd_node_source_identity':
                 continue
-            if name in activation_args or name in minizip_args:
+            if name in activation_args or name in minizip_args or name in xml_args:
                 continue
             if name in ('use_litert_tflite', 'emberbsd_flatc', 'emberbsd_flatc_inputs') and getattr(options, 'activate_common_ml', False) and not old_ml:
                 continue
@@ -2972,6 +3044,7 @@ def build(options):
     require(saved['arguments'] == values, 'GN selection changed; configure a new output')
     options.old_boringssl_identity = saved_env['EMBERBSD_BORINGSSL_SOURCE_SHA256']
     options.old_compression_identity = saved_env['EMBERBSD_COMPRESSION_SOURCE_SHA256']
+    options.old_xml_identity = saved_env.get('EMBERBSD_XML_SOURCE_SHA256')
     options.old_minizip_identity = saved_env.get('EMBERBSD_MINIZIP_SOURCE_SHA256')
     options.old_ffmpeg_identity = saved_env.get('EMBERBSD_FFMPEG_SOURCE_SHA256')
     options.old_media_header_identities = {name: saved_env['EMBERBSD_MEDIA_HEADER_' + name.upper() + '_SHA256']
@@ -3036,6 +3109,7 @@ def main():
         command.add_argument('--shared-re2', action='store_true')
         command.add_argument('--shared-ffmpeg', action='store_true')
         command.add_argument('--shared-minizip', action='store_true')
+        command.add_argument('--shared-xml', action='store_true')
         if phase == 'configure':
             initial = command.add_mutually_exclusive_group()
             initial.add_argument('--resume-configure', action='store_true',

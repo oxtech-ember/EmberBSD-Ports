@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 NAMES = ('brotli', 'zstd')
-SUPPORTED = NAMES + ('ffmpeg', 'zlib')
+SUPPORTED = NAMES + ('ffmpeg', 'zlib', 'libxml', 'libxslt')
 
 
 def replacements(view, source, name):
@@ -17,7 +17,12 @@ def replacements(view, source, name):
     wrapper = source / 'build/linux/unbundle' / (name + '.gn')
     view.require(wrapper.is_file(), 'missing Chromium compression wrapper: ' + name)
     result = {Path('BUILD.gn'): wrapper}
-    return result, view.shim_masks(result)
+    masks = view.shim_masks(result)
+    if name == 'libxml':
+        masks.update((Path('src'), Path('linux/include')))
+    elif name == 'libxslt':
+        masks.add(Path('src'))
+    return result, masks
 
 
 def verify_view(view, source, destination, names=NAMES):

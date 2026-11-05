@@ -83,3 +83,12 @@ BUILDLINK_API_DEPENDS.minizip-ng+= minizip-ng>=4.2.2nb1
 BUILDLINK_ABI_DEPENDS.minizip-ng+= minizip-ng>=4.2.2nb1
 .include "../../archivers/minizip-ng/buildlink3.mk"
 .endif
+
+.if ${EMBERBSD_ELECTRON_SHARED_XML:Uno} == "yes"
+BUILDLINK_API_DEPENDS.libxml2+= libxml2>=2.15.4nb5
+BUILDLINK_ABI_DEPENDS.libxml2+= libxml2>=2.15.4nb5
+BUILDLINK_API_DEPENDS.libxslt+= libxslt>=1.1.45nb3
+BUILDLINK_ABI_DEPENDS.libxslt+= libxslt>=1.1.45nb3
+.include "../../textproc/libxml2/buildlink3.mk"
+.include "../../textproc/libxslt/buildlink3.mk"
+.endif

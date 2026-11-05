@@ -1172,6 +1172,11 @@
       "path": "gn-common-minizip-unicode.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "gn-external-xml.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

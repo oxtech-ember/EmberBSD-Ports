@@ -1,0 +1,102 @@
+--- a/build/linux/unbundle/libxml.gn
++++ b/build/linux/unbundle/libxml.gn
+@@ -4,16 +4,53 @@
+ 
+ import("//build/config/linux/pkg_config.gni")
+ 
++declare_args() {
++  emberbsd_xml_host_library = ""
++  emberbsd_xml_target_library = ""
++  emberbsd_xml_host_inputs = []
++  emberbsd_xml_target_inputs = []
++}
++
++if (emberbsd_pkg_config_role != "upstream") {
++  _library = emberbsd_xml_target_library
++  _inputs = emberbsd_xml_target_inputs
++  if (emberbsd_pkg_config_role == "native") {
++    _library = emberbsd_xml_host_library
++    _inputs = []
++    _inputs = emberbsd_xml_host_inputs
++  }
++  assert(_library != "" && _inputs != [], "Selected libxml provider is incomplete")
++  config("emberbsd_xml_library") {
++    libs = [ _library ]
++    if (emberbsd_pkg_config_role == "target") {
++      ldflags = [ "-Wl,-rpath=/usr/pkg/lib" ]
++    } else {
++      ldflags = [ "-Wl,-rpath=" + rebase_path(get_path_info(_library, "dir"), "") ]
++    }
++  }
++}
++
+ pkg_config("system_libxml") {
++  if (emberbsd_pkg_config_role != "upstream") {
++    ignore_libs = true
++  }
+   packages = [ "libxml-2.0" ]
+ }
+ 
+ source_set("libxml") {
++  if (emberbsd_pkg_config_role != "upstream") {
++    inputs = _inputs
++    all_dependent_configs = [ ":emberbsd_xml_library" ]
++  }
+   public_configs = [ ":system_libxml" ]
+ }
+ 
+ # Please keep in sync with //third_party/libxml/BUILD.gn.
+ static_library("libxml_utils") {
++  if (emberbsd_pkg_config_role != "upstream") {
++    inputs = _inputs
++    all_dependent_configs = [ ":emberbsd_xml_library" ]
++  }
+   # Do not expand this visibility list without first consulting with the
+   # Security Team.
+   visibility = [
+--- a/build/linux/unbundle/libxslt.gn
++++ b/build/linux/unbundle/libxslt.gn
+@@ -4,10 +4,43 @@
+ 
+ import("//build/config/linux/pkg_config.gni")
+ 
++declare_args() {
++  emberbsd_xslt_host_library = ""
++  emberbsd_xslt_target_library = ""
++  emberbsd_xslt_host_inputs = []
++  emberbsd_xslt_target_inputs = []
++}
++
++if (emberbsd_pkg_config_role != "upstream") {
++  _library = emberbsd_xslt_target_library
++  _inputs = emberbsd_xslt_target_inputs
++  if (emberbsd_pkg_config_role == "native") {
++    _library = emberbsd_xslt_host_library
++    _inputs = []
++    _inputs = emberbsd_xslt_host_inputs
++  }
++  assert(_library != "" && _inputs != [], "Selected libxslt provider is incomplete")
++  config("emberbsd_xslt_library") {
++    libs = [ _library ]
++    if (emberbsd_pkg_config_role == "target") {
++      ldflags = [ "-Wl,-rpath=/usr/pkg/lib" ]
++    } else {
++      ldflags = [ "-Wl,-rpath=" + rebase_path(get_path_info(_library, "dir"), "") ]
++    }
++  }
++}
++
+ pkg_config("system_libxslt") {
++  if (emberbsd_pkg_config_role != "upstream") {
++    ignore_libs = true
++  }
+   packages = [ "libxslt" ]
+ }
+ 
+ source_set("libxslt") {
++  if (emberbsd_pkg_config_role != "upstream") {
++    inputs = _inputs
++    all_dependent_configs = [ ":emberbsd_xslt_library" ]
++  }
+   public_configs = [ ":system_libxslt" ]
+ }

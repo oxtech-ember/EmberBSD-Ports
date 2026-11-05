@@ -38,6 +38,11 @@ TOOL_DEPENDS+= ffmpeg9>=9.0.2nb6:../../multimedia/ffmpeg9
 TOOL_DEPENDS+= minizip-ng>=4.2.2nb1:../../archivers/minizip-ng
 .endif
 
+.if ${EMBERBSD_ELECTRON_SHARED_XML:Uno} == "yes"
+TOOL_DEPENDS+= libxml2>=2.15.4nb5:../../textproc/libxml2
+TOOL_DEPENDS+= libxslt>=1.1.45nb3:../../textproc/libxslt
+.endif
+
 # Shared native JavaScript providers selected by the Electron producer.
 TOOL_DEPENDS+= node-electron-asar>=4.3.1:../../devel/node-electron-asar
 TOOL_DEPENDS+= node-electron-docs-parser>=3.0.3:../../devel/node-electron-docs-parser
