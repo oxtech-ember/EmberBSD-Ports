@@ -959,3 +959,14 @@ cpuinfo 0.0.20261104 or newer for both toolchain roles. It hides Chromium's
 CPUINFO sources and links the common shared library, preserving the single
 process-wide initialization state used by sandboxed consumers. The selection
 is opt-in and requires the matching common package in both roles.
+
+Chromium can use the common OpenType Sanitizer source with `--ots-source`,
+`--ots-archive` and `--ots-patch` (or their `EMBERBSD_ELECTRON_OTS_*`
+producer variables). Prepare the source with the
+[OpenType Sanitizer source owner](../../scripts/source-inputs/opentype-sanitizer/README.md)
+and select its verified directory, original archive and patch tool. Optional
+`--ots-pkgsrc-export` and `--ots-export-patch` bind a selected export when
+needed. The source view retains Chromium's GN integration and font policy,
+adds the source files needed by the current common release, and tracks the
+prepared source receipt as a build input. Building the standalone OTS tools is
+not required for this source selection.

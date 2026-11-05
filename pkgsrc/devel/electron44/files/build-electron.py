@@ -2180,6 +2180,13 @@ def producer_inputs(options, sdk):
     values.update(common_ml_sources(options, sdk, native, environment))
     if not getattr(options, 'activate_common_providers', False):
         common_boringssl_source(options, sdk, native, environment)
+        if any(getattr(options, name, None) for name in ('ots_source', 'ots_archive', 'ots_patch', 'ots_pkgsrc_export', 'ots_export_patch')):
+            ots_view = local_module('electron_ots_source_view', 'ots-source-view.py')
+            values.update(local_module('electron_ots_provider', 'ots-provider.py').select(
+                types.SimpleNamespace(require=require, git=selected_control_git,
+                                      source_environment=source_owner_environment,
+                                      view=local_module('electron_protobuf_source_view', 'protobuf-source-view.py')),
+                ots_view, options, sdk, native, environment))
         if any(getattr(options, name, None) for name in ('sqlite_source', 'sqlite_archive', 'sqlite_amalgamation', 'sqlite_patch', 'sqlite_pkgsrc_export', 'sqlite_export_patch')):
             sqlite_view = local_module('electron_sqlite_source_view', 'sqlite-source-view.py')
             local_module('electron_sqlite_provider', 'sqlite-provider.py').select(
@@ -2380,6 +2387,11 @@ def gn_source(options):
         new_image = bool(getattr(options, 'shared_image', False))
         image_names = ('libwebp',)
         image_marker = destination.parent / ('.' + destination.name + '.image-components-migration')
+        old_ots = getattr(options, 'old_ots_selection', None)
+        new_ots = getattr(options, 'ots_selection', None)
+        ots_marker = destination.parent / ('.' + destination.name + '.ots-components-migration')
+        ots = (local_module('electron_ots_source_view', 'ots-source-view.py')
+               if old_ots or new_ots or os.path.lexists(ots_marker) else None)
         old_sqlite = getattr(options, 'old_sqlite_selection', None)
         new_sqlite = getattr(options, 'sqlite_selection', None)
         sqlite_marker = destination.parent / ('.' + destination.name + '.sqlite-components-migration')
@@ -2471,6 +2483,19 @@ def gn_source(options):
             # the configuration receipt was replaced. Reject any foreign view.
             compression.verify_view(view, options.workspace / 'src', destination, ('ffmpeg',))
             old_ffmpeg = True
+        ots_root = compression_root / 'ots'
+        if (new_ots and old_ots != new_ots and
+                (options.phase == 'reconfigure' or
+                 (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
+                                                    getattr(options, 'resume_configure', False)))) and
+                not os.path.lexists(ots_marker) and ots_root.is_dir() and not ots_root.is_symlink()):
+            try:
+                ots.verify_view(view, options.workspace / 'src', destination, new_ots, options.ml_sdk['sourceprep'])
+            except (ValueError, OSError):
+                require(old_ots is not None, 'foreign OTS projection during recovery')
+                ots.verify_view(view, options.workspace / 'src', destination, old_ots, options.ml_sdk['sourceprep'])
+            else:
+                old_ots = new_ots
         sqlite_root = compression_root / 'sqlite'
         if (new_sqlite and old_sqlite != new_sqlite and
                 (options.phase == 'reconfigure' or
@@ -2558,6 +2583,9 @@ def gn_source(options):
                                                                 font_table if old_font else None, True))
                 else:
                     checks.append(lambda: font_view.verify_view(view, options.workspace / 'src', destination, font_table))
+            if old_ots:
+                names.append(ots.NAME)
+                checks.append(lambda: ots.verify_view(view, options.workspace / 'src', destination, old_ots, sp))
             if old_sqlite:
                 names.append(sqlite.NAME)
                 checks.append(lambda: sqlite.verify_view(view, options.workspace / 'src', destination, old_sqlite))
@@ -2646,6 +2674,13 @@ def gn_source(options):
                                       font_table if new_font else None, new_pdf,
                                       lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring))
             old_pdf, old_font = new_pdf, new_font
+        if os.path.lexists(ots_marker):
+            require(new_ots and (options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+                    'OTS transaction recovery requires selected OTS reconfigure')
+            ots.activate(view, options.workspace / 'src', destination, new_ots, old_ots, sp,
+                         lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring))
+            old_ots = new_ots
         if os.path.lexists(sqlite_marker):
             require(new_sqlite and (options.phase == 'reconfigure' or
                     getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
@@ -2800,6 +2835,15 @@ def gn_source(options):
                                       font_table if new_font else None, new_pdf,
                                       lambda: verify_selection(ids, new_headers, new_media, new_compression))
             old_pdf, old_font = new_pdf, new_font
+            transition_result = verify_selection(ids, new_headers, new_media, new_compression)
+            transition = True
+        if old_ots != new_ots or os.path.lexists(ots_marker):
+            require(new_ots, 'disabling common OTS requires a new source view')
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'OTS transition requires reconfigure')
+            ots.activate(view, options.workspace / 'src', destination, new_ots, old_ots, sp,
+                         lambda: verify_selection(ids, new_headers, new_media, new_compression))
+            old_ots = new_ots
             transition_result = verify_selection(ids, new_headers, new_media, new_compression)
             transition = True
         if old_sqlite != new_sqlite or os.path.lexists(sqlite_marker):
@@ -3122,6 +3166,25 @@ def image_activation_args(options, old_environment, environment, old_arguments, 
             'image activation cannot replace existing GN inputs')
     require(all(values.get(name) for name in names), 'verified image GN inputs are incomplete')
     return names
+
+
+def ots_activation_args(options, old_environment, environment, old_arguments, values, receipt_name):
+    selection = getattr(options, 'ots_selection', None)
+    if not selection:
+        return set()
+    require(values.get('emberbsd_common_ots') is True and values.get('emberbsd_ots_identity') ==
+            str(Path(selection['path']) / receipt_name), 'verified OTS GN inputs are incomplete')
+    require(old_arguments.get('emberbsd_common_ots') in (None, False, True), 'invalid previous OTS selection')
+    require(environment.get('EMBERBSD_OTS_SELECTION') == json.dumps(selection, sort_keys=True, separators=(',', ':')),
+            'verified OTS selection identity is missing')
+    previous = old_environment.get('EMBERBSD_OTS_SELECTION')
+    if not previous:
+        require(old_arguments.get('emberbsd_ots_identity') in (None, ''),
+                'OTS activation cannot replace an unrelated identity')
+        return {'emberbsd_common_ots', 'emberbsd_ots_identity'}
+    if previous != environment.get('EMBERBSD_OTS_SELECTION'):
+        return {'emberbsd_ots_identity'}
+    return set()
 
 
 def pffft_activation_args(options, old_environment, environment, old_arguments, values):
@@ -3456,6 +3519,9 @@ def reconfigure(options):
                 permitted_env.add('EMBERBSD_PDF_SOURCE_SHA256')
                 options.font_table = getattr(candidate, 'font_table', None)
                 permitted_env.add('EMBERBSD_FONT_SOURCE_SHA256')
+                options.ots_selection = getattr(candidate, 'ots_selection', None)
+                options.old_ots_selection = json.loads(old_env['EMBERBSD_OTS_SELECTION']) if old_env.get('EMBERBSD_OTS_SELECTION') else None
+                permitted_env.add('EMBERBSD_OTS_SELECTION')
                 options.sqlite_selection = getattr(candidate, 'sqlite_selection', None)
                 options.old_sqlite_selection = json.loads(old_env['EMBERBSD_SQLITE_SELECTION']) if old_env.get('EMBERBSD_SQLITE_SELECTION') else None
                 permitted_env.add('EMBERBSD_SQLITE_SELECTION')
@@ -3546,6 +3612,8 @@ def reconfigure(options):
             permitted_runtime_args.add('v8_metagen_runtime_inputs')
         minizip_args = minizip_activation_args(options, old_env, environment, saved['arguments'], values)
         xml_args = xml_activation_args(options, old_env, environment, saved['arguments'], values)
+        ots_args = ots_activation_args(options, old_env, environment, saved['arguments'], values,
+                                       sdk['sourceprep'].PREPARED_TREE_RECEIPT)
         codec_args = codec_activation_args(options, old_env, environment, saved['arguments'], values)
         pdf_args = pdfium_activation_args(options, old_env, environment, saved['arguments'], values)
         pffft_args = pffft_activation_args(options, old_env, environment, saved['arguments'], values)
@@ -3618,6 +3686,7 @@ def reconfigure(options):
         if getattr(options, 'shared_ffmpeg', False):
             require(saved['arguments'].get('use_system_ffmpeg') in (None, False, True),
                     'invalid previous FFmpeg selection')
+        identity_args.update(('emberbsd_common_ots', 'emberbsd_ots_identity'))
         identity_args.add('emberbsd_common_pffft')
         identity_args.update('emberbsd_pffft_' + role + '_' + kind
                              for role in ('host', 'target') for kind in ('libraries', 'inputs'))
@@ -3657,7 +3726,7 @@ def reconfigure(options):
             if node_source_refresh and name == 'emberbsd_node_source_identity':
                 continue
             if (name in activation_args or name in minizip_args or name in xml_args or
-                    name in image_args or name in font_args or name in pdf_args or name in codec_args or name in openh264_args or name in pffft_args or name in expat_args or name in cpuinfo_args or name in buildlink_args):
+                    name in image_args or name in font_args or name in pdf_args or name in codec_args or name in openh264_args or name in pffft_args or name in expat_args or name in cpuinfo_args or name in ots_args or name in buildlink_args):
                 continue
             if name in ('use_litert_tflite', 'emberbsd_flatc', 'emberbsd_flatc_inputs') and getattr(options, 'activate_common_ml', False) and not old_ml:
                 continue
@@ -3740,6 +3809,7 @@ def build(options):
     options.old_image_identity = saved_env.get('EMBERBSD_IMAGE_SOURCE_SHA256')
     options.old_font_identity = saved_env.get('EMBERBSD_FONT_SOURCE_SHA256')
     options.old_pdf_identity = saved_env.get('EMBERBSD_PDF_SOURCE_SHA256')
+    options.old_ots_selection = json.loads(saved_env['EMBERBSD_OTS_SELECTION']) if saved_env.get('EMBERBSD_OTS_SELECTION') else None
     options.old_sqlite_selection = json.loads(saved_env['EMBERBSD_SQLITE_SELECTION']) if saved_env.get('EMBERBSD_SQLITE_SELECTION') else None
     options.old_xml_identity = saved_env.get('EMBERBSD_XML_SOURCE_SHA256')
     options.old_minizip_identity = saved_env.get('EMBERBSD_MINIZIP_SOURCE_SHA256')
@@ -3792,6 +3862,7 @@ def main():
         for name in ('macos-sdk', 'xcode-version-plist', 'gcc-os-tools', 'target-runtime-stage', 'target-runtime-base', 'host-runtime-root', 'protoc-runtime-view',
                      'host-buildlink-pkgsrc', 'host-buildlink-stage-root',
                      'host-buildlink-base-makeconf', 'host-buildlink-bmake-mk',
+                     'ots-source', 'ots-archive', 'ots-patch', 'ots-pkgsrc-export', 'ots-export-patch',
                      'sqlite-source', 'sqlite-archive', 'sqlite-amalgamation', 'sqlite-patch',
                      'sqlite-pkgsrc-export', 'sqlite-export-patch',
                      'protobuf-source', 'protobuf-ports-source', 'protobuf-archive', 'protobuf-patch',
@@ -3865,6 +3936,7 @@ def main():
                             options.target_runtime_stage, options.target_runtime_base, options.host_runtime_root, options.protoc_runtime_view,
                             options.host_prefix, options.sysroot, options.host_buildlink_pkgsrc,
                             options.boringssl_source, options.boringssl_archive,
+                            options.ots_source, options.ots_archive, options.ots_patch, options.ots_pkgsrc_export, options.ots_export_patch,
                             options.sqlite_source, options.sqlite_archive, options.sqlite_amalgamation,
                             options.sqlite_patch, options.sqlite_pkgsrc_export, options.sqlite_export_patch,
                             options.host_buildlink_stage_root, options.ml_patch, options.ml_pkgsrc_export, options.ml_ports_source, options.ml_export_patch,
