@@ -131,7 +131,7 @@ def host_paxctl_arguments(native):
     return {}
 
 
-def native_inputs(options, sdk):
+def _native_inputs(options, sdk):
     roles = native_required_roles(sys.platform)
     native = sdk['host_prefix'].load_host_prefix(options.host_prefix, required_roles=roles,
                                                 compiler_family=options.host_compiler_family)
@@ -172,8 +172,12 @@ def native_inputs(options, sdk):
         migcom = Path(options.host_prefix) / 'libexec' / 'migcom'
         require(migcom.is_file() and os.access(migcom, os.X_OK), 'selected host prefix has no migcom')
         environment.update(MIGCC=native.tool('clang'), MIGCOM=str(migcom))
-    return native, environment
+    return native, environment, providers
 
+
+def native_inputs(options, sdk):
+    native, environment, _providers = _native_inputs(options, sdk)
+    return native, environment
 
 
 def bind_versioned(sdk, native, parent, record):
@@ -301,7 +305,7 @@ def target_inputs(options, sdk, native, environment, work):
     return {role: str(output / 'bin' / (target['triplet'] + '-' + name)) for role, name in names.items()}
 
 
-def arguments(options, native, tools, rust_version, launcher):
+def arguments(options, native, tools, rust_version, launcher, providers=None):
     cpu = {'amd64': 'x64', 'aarch64': 'arm64'}[options.target]
     host_cpu = {'arm64': 'arm64', 'aarch64': 'arm64', 'x86_64': 'x64', 'amd64': 'x64'}.get(native.host['cpu'])
     require(host_cpu is not None, 'unsupported GN host CPU: ' + native.host['cpu'])
@@ -364,7 +368,10 @@ def arguments(options, native, tools, rust_version, launcher):
                   emberbsd_electron_sdk_source=str(options.sdk_source),
                   emberbsd_electron_host_prefix=str(options.host_prefix),
                   emberbsd_electron_npm_runner=str(Path(__file__).with_name('electron-npm-runner.py').resolve()))
-    values.update(local_module('electron_node_providers', 'node-providers.py').select(native, electron=True)['arguments'])
+    if providers is None:
+        providers = local_module('electron_node_providers', 'node-providers.py').select(native, electron=True)
+    values.update(providers['arguments'])
+    values['emberbsd_node_provider_inputs'] = list(values['emberbsd_node_provider_inputs'])
     provider_root = Path(getattr(options, 'native_binding_root', options.work))
     values['emberbsd_node_provider_inputs'].append(str(provider_root / 'devtools-provider.json'))
     return values
@@ -1234,7 +1241,7 @@ def write_devtools_identity(work, sdk, environment):
 
 
 def producer_inputs(options, sdk):
-    native, environment = native_inputs(options, sdk)
+    native, environment, providers = _native_inputs(options, sdk)
     environment['EMBERBSD_DEVTOOLS_PROVIDER_SHA256'] = devtools_provider_identity(options, sdk, native, environment)
     tools = target_inputs(options, sdk, native, environment, options.work)
     host_binding = native_runtime_binding(options, sdk, native, environment, tools)
@@ -1253,7 +1260,7 @@ def producer_inputs(options, sdk):
     environment, rust = local_module('electron_rust_policy', 'rust-policy.py').apply(environment, verbose_rust)
     launcher = shlex.join([native.tool('python'), str(options.sdk_source / 'scripts/link-launcher.py'),
                           '--lock-root', str(options.lock_root), '--context', str(options.link_context), '--'])
-    values = arguments(options, native, tools, rust, launcher)
+    values = arguments(options, native, tools, rust, launcher, providers=providers)
     if getattr(options, 'node_source', None):
         abi, hashes = selected_node_abi(options.node_source, native, environment, sdk)
         values['node_module_version'] = abi
