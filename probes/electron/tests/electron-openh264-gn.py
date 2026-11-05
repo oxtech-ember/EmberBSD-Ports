@@ -25,14 +25,16 @@ with tempfile.TemporaryDirectory() as td:
  for role in ('native','target'):
   put('config.gn',f'set_default_toolchain("//:tc")\nemberbsd_pkg_config_role="{role}"\nis_clang=false\n')
   out=r/('out-'+role);out.mkdir();selected='host' if role=='native' else 'target'
-  (out/'args.gn').write_text('emberbsd_common_openh264=true\n'+''.join(f'emberbsd_openh264_{selected}_{k}=["{r}/{k}"]\n' for k in ('libraries','inputs')))
-  for k in ('libraries','inputs'): (r/k).write_text('fixture')
+  (out/'args.gn').write_text('emberbsd_common_openh264=true\n'+''.join(f'emberbsd_openh264_{item_role}_{k}=["{r}/{item_role}/{k}"]\n' for item_role in ('host','target') for k in ('libraries','inputs')))
+  for item_role in ('host','target'):
+   (r/item_role).mkdir(exist_ok=True)
+   for k in ('libraries','inputs'): (r/item_role/k).write_text('fixture')
   run=subprocess.run([gn,'gen',str(out),'--fail-on-unused-args'],cwd=r,text=True,capture_output=True)
   if run.returncode: raise RuntimeError(run.stdout+run.stderr)
   label='//third_party/openh264:emberbsd_openh264'
   info=json.loads(subprocess.check_output([gn,'desc',str(out),label,'--format=json'],cwd=r,text=True))[label]
-  assert info['libs']==['//libraries'] and info['inputs']==['//inputs']
-  assert info['ldflags']==['-Wl,-rpath='+ (str(r) if role=='native' else '/usr/pkg/lib')]
+  assert info['libs']==['//'+selected+'/libraries'] and info['inputs']==['//'+selected+'/inputs']
+  assert info['ldflags']==[('-Wl,-rpath,'+str(r/'host') if role=='native' else '-Wl,-rpath=/usr/pkg/lib')]
   aggregate=json.loads(subprocess.check_output([gn,'desc',str(out),'//:test','--format=json'],cwd=r,text=True))['//:test']
-  assert aggregate['libs']==['//libraries'] and '//selected-headers/' in aggregate['include_dirs']
+  assert aggregate['libs']==['//'+selected+'/libraries'] and '//selected-headers/' in aggregate['include_dirs']
 print('PASS: OpenH264 labels use selected role inputs, headers and rpath')
