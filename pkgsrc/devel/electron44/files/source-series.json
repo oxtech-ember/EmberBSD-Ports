@@ -1152,6 +1152,11 @@
       "path": "tflite-support-remove-unused-libzip.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "devtools-i18n-common-acorn.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

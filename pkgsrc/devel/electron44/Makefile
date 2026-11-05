@@ -46,6 +46,7 @@ TOOL_DEPENDS+= esbuild>=0.28.2:../../www/esbuild
 TOOL_DEPENDS+= node-lit>=3.3.3:../../devel/node-lit
 TOOL_DEPENDS+= node-types-dom-speech-recognition>=0.0.12:../../devel/node-types-dom-speech-recognition
 TOOL_DEPENDS+= node-ts-proto>=2.18.3:../../devel/node-ts-proto
+TOOL_DEPENDS+= node-acorn>=8.19.0:../../devel/node-acorn
 TOOL_DEPENDS+= node-js-yaml>=5.5.0:../../devel/node-js-yaml
 TOOL_DEPENDS+= node-yargs>=18.2.0:../../devel/node-yargs
 TOOL_DEPENDS+= node-svgo>=4.1.0:../../devel/node-svgo

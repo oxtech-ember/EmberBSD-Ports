@@ -1651,6 +1651,7 @@ def platform_libcxx_hardening(options, sdk, host_binding, environment):
 
 
 DEVTOOLS_JS_ROOTS = {
+    'acorn': 'devel/node-acorn',
     'js-yaml': 'devel/node-js-yaml', 'yargs': 'devel/node-yargs',
     'svgo': 'devel/node-svgo', 'uuid': 'devel/node-uuid',
     'cssnano': 'devel/node-cssnano',

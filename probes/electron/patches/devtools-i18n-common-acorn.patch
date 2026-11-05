@@ -1,0 +1,170 @@
+Use the shared Acorn parser for DevTools UIStrings with TypeScript 7.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/third_party/devtools-frontend/src/third_party/i18n/collect-strings.js
++++ b/third_party/devtools-frontend/src/third_party/i18n/collect-strings.js
+@@ -8,7 +8,7 @@
+ import * as fs from 'node:fs';
+ import * as path from 'node:path';
+ 
+-import * as tsc from 'typescript';
++import {parse} from 'acorn';
+ 
+ export {collectAndBakeCtcStrings} from './bake-ctc-to-lhl.js';
+ 
+@@ -534,102 +534,76 @@
+   return psuedoLocalizedStrings;
+ }
+ 
+-/**
+- * Helper function that retrieves the text identifier of a named node in the tsc AST.
+- * @param {import('typescript').NamedDeclaration} node
+- * @return {string}
+- */
+-function getIdentifier(node) {
+-  if (!node.name || !tsc.isIdentifier(node.name)) {
+-    throw new Error('no Identifier found');
+-  }
+-
+-  return node.name.text;
+-}
+-
+-/**
+- * Helper function that retrieves the text token in the tsc AST.
+- * @param {import('typescript').NamedDeclaration} node
+- * @return {string}
+- */
+-function getToken(node) {
+-  if (!node.initializer) {
+-    throw new Error('no Token found');
+-  }
+-  let token = '';
+-  getTokenHelper(node.initializer);
+-  function getTokenHelper(node) {
+-    if (!tsc.isToken(node)) {
+-      getTokenHelper(node.left);
+-      getTokenHelper(node.right);
+-    } else {
+-      token += node.text;
++/** Convert one adjacent JSDoc block to the shape used by computeDescription. */
++function parseDescriptionComment(comment) {
++  const lines = comment.split(/\r?\n/).map(line => line.replace(/^\s*\* ?/, '').trim());
++  const text = lines.join('\n').trim();
++  const tags = [];
++  let current;
++  for (const line of text.split('\n')) {
++    const match = /^@(\w+)(?:\s+(.*))?$/.exec(line);
++    if (match) {
++      current = {tagName: {text: match[1]}, comment: match[2] || ''};
++      tags.push(current);
++    } else if (current) {
++      current.comment += '\n' + line;
+     }
+   }
+-  return token;
++  return tags.length ? {tags} : {comment: text};
+ }
+ 
+-/**
+- * @param {string} sourceStr String of the form 'const UIStrings = {...}'.
+- * @return {Record<string, ParsedUIString>}
+- */
++/** Parse the extracted JavaScript declaration, without evaluating it. */
+ export function parseUIStrings(sourceStr) {
+-  const tsAst = tsc.createSourceFile(
+-      'uistrings',
+-      sourceStr,
+-      tsc.ScriptTarget.ES2019,
+-      true,
+-      tsc.ScriptKind.JS,
+-  );
+-
++  const comments = [];
++  const ast = parse(sourceStr, {ecmaVersion: 2022, sourceType: 'script', onComment: comments});
+   const extractionError = new Error(
+       'UIStrings declaration was not extracted correctly by the collect-strings regex.',
+   );
+-  const uiStringsStatement = tsAst.statements[0];
+-  if (tsAst.statements.length !== 1) {
++  if (ast.body.length !== 1 || ast.body[0].type !== 'VariableDeclaration' ||
++      ast.body[0].declarations.length !== 1) {
+     throw extractionError;
+   }
+-  if (!tsc.isVariableStatement(uiStringsStatement)) {
++  const declaration = ast.body[0].declarations[0];
++  if (declaration.id.type !== 'Identifier' || declaration.id.name !== 'UIStrings' ||
++      !declaration.init || declaration.init.type !== 'ObjectExpression') {
+     throw extractionError;
+   }
+-
+-  const uiStringsDeclaration = uiStringsStatement.declarationList.declarations[0];
+-  if (!tsc.isVariableDeclaration(uiStringsDeclaration)) {
+-    throw extractionError;
+-  }
+-  if (getIdentifier(uiStringsDeclaration) !== 'UIStrings') {
+-    throw extractionError;
+-  }
+-
+-  const uiStringsObject = uiStringsDeclaration.initializer;
+-  if (!uiStringsObject || !tsc.isObjectLiteralExpression(uiStringsObject)) {
++  function stringValue(node) {
++    if (node.type === 'Literal' && typeof node.value === 'string') return node.value;
++    if (node.type === 'TemplateLiteral' && node.expressions.length === 0 && node.quasis.length === 1) {
++      return node.quasis[0].value.cooked;
++    }
++    if (node.type === 'BinaryExpression' && node.operator === '+') {
++      return stringValue(node.left) + stringValue(node.right);
++    }
+     throw extractionError;
+   }
+-
+-  /** @type {Record<string, ParsedUIString>} */
+   const parsedMessages = {};
+-
+-  for (const property of uiStringsObject.properties) {
+-    const key = getIdentifier(property);
+-
+-    // concat strings that are broken into parts.
+-    const message = getToken(property);
+-
+-    // @ts-ignore - Not part of the public tsc interface yet.
+-    const jsDocComments = tsc.getJSDocCommentsAndTags(property);
++  let previousEnd = declaration.init.start + 1;
++  for (const property of declaration.init.properties) {
++    if (property.type !== 'Property' || property.kind !== 'init' || property.computed ||
++        property.method || property.shorthand || property.key.type !== 'Identifier') {
++      throw extractionError;
++    }
++    function onlyCommentsAndWhitespace(start, end) {
++      let cursor = start;
++      for (const comment of comments.filter(c => c.start >= start && c.end <= end)) {
++        if (sourceStr.slice(cursor, comment.start).trim()) return false;
++        cursor = comment.end;
++      }
++      return !sourceStr.slice(cursor, end).trim();
++    }
++    const adjacent = comments.filter(comment => comment.type === 'Block' &&
++        comment.value.startsWith('*') && comment.start >= previousEnd && comment.end <= property.start &&
++        (previousEnd === declaration.init.start + 1 || /\r|\n/.test(sourceStr.slice(previousEnd, comment.start))) &&
++        onlyCommentsAndWhitespace(comment.end, property.start));
++    const doc = adjacent.length ? adjacent[adjacent.length - 1] : undefined;
++    const message = stringValue(property.value);
+     const {description, meaning, examples} = computeDescription(
+-        jsDocComments[0],
+-        message,
+-    );
+-
+-    parsedMessages[key] = {
+-      message,
+-      description,
+-      meaning,
+-      examples,
+-    };
++        doc ? parseDescriptionComment(doc.value.slice(1)) : undefined, message);
++    parsedMessages[property.key.name] = {message, description, meaning, examples};
++    previousEnd = property.end;
+   }
+-
+   return parsedMessages;
+ }
+ 
