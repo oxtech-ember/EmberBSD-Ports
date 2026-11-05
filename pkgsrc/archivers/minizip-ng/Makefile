@@ -32,8 +32,8 @@ post-patch:
 # One implementation supplies both the modern namespace and classic source API.
 INSTALLATION_DIRS+=	lib/cmake/minizip share/licenses/minizip-ng
 post-install:
-	cd ${DESTDIR}${PREFIX}/include && ${LN} -s minizip-ng minizip
-	cd ${DESTDIR}${PREFIX}/lib && ${LN} -s libminizip-ng.${SHLIB_EXT} libminizip.${SHLIB_EXT}
+	cd ${DESTDIR}${PREFIX}/include && ${LN} -sfn minizip-ng minizip
+	cd ${DESTDIR}${PREFIX}/lib && ${LN} -sfn libminizip-ng.${SHLIB_EXT} libminizip.${SHLIB_EXT}
 	${SED} 's|^Cflags:|Cflags: -I$${includedir}/.. |' ${DESTDIR}${PREFIX}/lib/pkgconfig/minizip-ng.pc > ${DESTDIR}${PREFIX}/lib/pkgconfig/minizip.pc
 	${INSTALL_DATA} ${FILESDIR}/minizip-config.cmake ${DESTDIR}${PREFIX}/lib/cmake/minizip/
 	${INSTALL_DATA} ${DESTDIR}${PREFIX}/lib/cmake/minizip-ng/minizip-ng-config-version.cmake ${DESTDIR}${PREFIX}/lib/cmake/minizip/minizip-config-version.cmake
