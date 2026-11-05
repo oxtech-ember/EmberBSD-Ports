@@ -202,9 +202,18 @@ def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=froz
                 local_entries.pop(name)
             elif updates is None:
                 raise ValueError('unexpected generated mirrored view entry: ' + str(dest / name))
-        if set(local_entries) != names and updates is not None:
-            raise _LayoutChanged('mirrored view entries changed: ' + str(dest))
-        require(set(local_entries) == names,
+        if updates is not None:
+            if set(local_entries) - names:
+                raise _LayoutChanged('mirrored view entries changed: ' + str(dest))
+            for name in names - set(local_entries):
+                item = source_entries[name]
+                info = item.stat(follow_symlinks=False)
+                if not stat.S_ISREG(info.st_mode):
+                    raise _LayoutChanged('mirrored view entries changed: ' + str(dest))
+                source_id = (info.st_dev, info.st_ino, info.st_mode, info.st_size,
+                             info.st_mtime_ns, info.st_ctime_ns)
+                updates.append((dest / name, 'file', item.path, item.path, source_id, None))
+        require(set(local_entries) == names or (updates is not None and set(local_entries) <= names),
                 'mirrored view entries changed: ' + str(dest))
     else:
         dest.mkdir()
@@ -212,6 +221,8 @@ def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=froz
     for name, item in source_entries.items():
         output = dest / name
         source_info = item.stat(follow_symlinks=False)
+        if verify and name not in local_entries:
+            continue
         if stat.S_ISLNK(source_info.st_mode):
             source_link = os.readlink(item.path)
             if verify:
@@ -727,7 +738,7 @@ def _refresh_leaves(source, protobuf, destination, sources):
         handles.callback(os.close, work_fd)
         new_identities = []
         for index, (output, kind, value, origin, expected_source, expected_old) in enumerate(updates):
-            old_key = expected_old[:2]
+            old_key = expected_old[:2] if expected_old is not None else None
             expected_old = old_states.get(old_key, expected_old)
             parent = output.parent
             while True:
@@ -745,7 +756,10 @@ def _refresh_leaves(source, protobuf, destination, sources):
                 require((info.st_dev, info.st_ino) == parents[output.parent],
                         'view update parent changed while opening')
                 parent_fds[output.parent] = fd
-            require(_leaf_identity(output) == expected_old, 'view leaf changed before staging')
+            if expected_old is None:
+                require(not os.path.lexists(output), 'new view leaf appeared before staging')
+            else:
+                require(_leaf_identity(output) == expected_old, 'view leaf changed before staging')
             if origin is not None:
                 require(_leaf_identity(origin) == expected_source, 'source leaf changed before staging')
             new = staged / ('new-' + str(index))
@@ -755,12 +769,13 @@ def _refresh_leaves(source, protobuf, destination, sources):
                 _copy_leaf(Path(value), new)
             if origin is not None:
                 require(_leaf_identity(origin) == expected_source, 'source leaf changed during staging')
-            _copy_leaf(output, staged / ('old-' + str(index)), hardlink=True)
-            current_old = _leaf_identity(output)
-            # A hardlink backup changes ctime and the link count, not payload.
-            require(current_old[:5] == expected_old[:5], 'view leaf changed during staging')
-            updates[index] = (output, kind, value, origin, expected_source, current_old)
-            old_states[old_key] = current_old
+            if expected_old is not None:
+                _copy_leaf(output, staged / ('old-' + str(index)), hardlink=True)
+                current_old = _leaf_identity(output)
+                # A hardlink backup changes ctime and the link count, not payload.
+                require(current_old[:5] == expected_old[:5], 'view leaf changed during staging')
+                updates[index] = (output, kind, value, origin, expected_source, current_old)
+                old_states[old_key] = current_old
             new_identities.append(_leaf_identity(new)[:5])
 
         if not recovering:
@@ -771,21 +786,32 @@ def _refresh_leaves(source, protobuf, destination, sources):
         installed = []
         try:
             for index, (output, kind, value, origin, expected_source, expected_old) in enumerate(updates):
-                old_key = expected_old[:2]
-                expected_old = old_states[old_key]
+                old_key = expected_old[:2] if expected_old is not None else None
+                if old_key is not None:
+                    expected_old = old_states[old_key]
                 for parent, expected in parents.items():
                     info = os.lstat(parent)
                     require(stat.S_ISDIR(info.st_mode) and
                             (info.st_dev, info.st_ino) == expected,
                             'view update parent changed')
-                require(_leaf_identity(output) == expected_old, 'view leaf changed before install')
+                if expected_old is None:
+                    require(not os.path.lexists(output), 'new view leaf appeared before install')
+                else:
+                    require(_leaf_identity(output) == expected_old, 'view leaf changed before install')
                 if origin is not None:
                     require(_leaf_identity(origin) == expected_source, 'source leaf changed before install')
-                installed.append(index)
                 fd = parent_fds[output.parent]
-                os.replace(staged / ('new-' + str(index)), output.name, dst_dir_fd=fd)
+                if expected_old is None:
+                    os.link(staged / ('new-' + str(index)), output.name,
+                            dst_dir_fd=fd, follow_symlinks=False)
+                    installed.append(index)
+                else:
+                    installed.append(index)
+                    os.replace(staged / ('new-' + str(index)), output.name, dst_dir_fd=fd)
                 require(_leaf_identity(output.name, dir_fd=fd)[:5] == new_identities[index],
                         'installed source view leaf changed')
+                if expected_old is None:
+                    continue
                 # Installing one name can change ctime of other names for
                 # the old inode. Retain the observed identity of that inode.
                 backup_identity = _leaf_identity(staged / ('old-' + str(index)))
@@ -793,7 +819,7 @@ def _refresh_leaves(source, protobuf, destination, sources):
                     old_states[old_key] = backup_identity
                 else:
                     for remaining in updates[index + 1:]:
-                        if remaining[5][:2] == old_key:
+                        if remaining[5] is not None and remaining[5][:2] == old_key:
                             sibling = remaining[0]
                             observed = _leaf_identity(sibling.name, dir_fd=parent_fds[sibling.parent])
                             require(observed[:5] == remaining[5][:5],
@@ -803,8 +829,13 @@ def _refresh_leaves(source, protobuf, destination, sources):
         except BaseException:
             for index in reversed(installed):
                 output = updates[index][0]
-                os.replace(staged / ('old-' + str(index)), output.name,
-                           dst_dir_fd=parent_fds[output.parent])
+                fd = parent_fds[output.parent]
+                if updates[index][5] is None:
+                    require(_leaf_identity(output.name, dir_fd=fd)[:5] == new_identities[index],
+                            'new view leaf changed before rollback')
+                    os.unlink(output.name, dir_fd=fd)
+                else:
+                    os.replace(staged / ('old-' + str(index)), output.name, dst_dir_fd=fd)
             local = True
             for parent, expected in parents.items():
                 try:
