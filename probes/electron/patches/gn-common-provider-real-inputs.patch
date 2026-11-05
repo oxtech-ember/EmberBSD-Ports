@@ -1,0 +1,132 @@
+--- a/build/linux/unbundle/icu.gn
++++ b/build/linux/unbundle/icu.gn
+@@ -49,12 +49,44 @@
+   ]
+ }
+ 
++declare_args() {
++  emberbsd_icuuc_host_library = ""
++  emberbsd_icuuc_target_library = ""
++  emberbsd_icui18n_host_library = ""
++  emberbsd_icui18n_target_library = ""
++}
++
++_emberbsd_icu_selected = emberbsd_pkg_config_role != "upstream"
++if (_emberbsd_icu_selected) {
++  if (emberbsd_pkg_config_role == "native") {
++    _emberbsd_icuuc_library = emberbsd_icuuc_host_library
++    _emberbsd_icui18n_library = emberbsd_icui18n_host_library
++  } else {
++    _emberbsd_icuuc_library = emberbsd_icuuc_target_library
++    _emberbsd_icui18n_library = emberbsd_icui18n_target_library
++  }
++  assert(_emberbsd_icuuc_library != "" && _emberbsd_icui18n_library != "",
++         "Selected ICU libraries are required")
++  config("emberbsd_icuuc_library") {
++    libs = [ _emberbsd_icuuc_library ]
++  }
++  config("emberbsd_icui18n_library") {
++    libs = [ _emberbsd_icui18n_library ]
++  }
++}
++
+ pkg_config("system_icui18n") {
+   packages = [ "icu-i18n" ]
++  if (_emberbsd_icu_selected) {
++    extra_args = [ "-v", "^-licui18n$" ]
++  }
+ }
+ 
+ pkg_config("system_icuuc") {
+   packages = [ "icu-uc" ]
++  if (_emberbsd_icu_selected) {
++    extra_args = [ "-v", "^-licuuc$" ]
++  }
+ }
+ 
+ source_set("icui18n") {
+@@ -63,6 +95,9 @@
+     ":icu_config",
+     ":system_icui18n",
+   ]
++  if (_emberbsd_icu_selected) {
++    public_configs += [ ":emberbsd_icui18n_library" ]
++  }
+ }
+ 
+ source_set("icuuc") {
+@@ -71,6 +106,9 @@
+     ":icu_config",
+     ":system_icuuc",
+   ]
++  if (_emberbsd_icu_selected) {
++    public_configs += [ ":emberbsd_icuuc_library" ]
++  }
+ }
+ 
+ group("icuuc_public") {
+--- a/build/linux/unbundle/re2.gn
++++ b/build/linux/unbundle/re2.gn
+@@ -11,8 +11,28 @@
+            "use_custom_libcxx=true because the library's interface relies on " +
+            "libstdc++'s std::string and std::vector.")
+ 
++declare_args() {
++  emberbsd_re2_host_library = ""
++  emberbsd_re2_target_library = ""
++}
++
++_emberbsd_re2_selected = emberbsd_pkg_config_role != "upstream"
++if (_emberbsd_re2_selected) {
++  _emberbsd_re2_library = emberbsd_re2_target_library
++  if (emberbsd_pkg_config_role == "native") {
++    _emberbsd_re2_library = emberbsd_re2_host_library
++  }
++  assert(_emberbsd_re2_library != "", "Selected RE2 library is required")
++  config("emberbsd_re2_library") {
++    libs = [ _emberbsd_re2_library ]
++  }
++}
++
+ pkg_config("re2_config") {
+   packages = [ "re2" ]
++  if (_emberbsd_re2_selected) {
++    extra_args = [ "-v", "^-lre2$" ]
++  }
+ }
+ 
+ shim_headers("re2_shim") {
+@@ -29,4 +49,7 @@
+ source_set("re2") {
+   deps = [ ":re2_shim" ]
+   public_configs = [ ":re2_config" ]
++  if (_emberbsd_re2_selected) {
++    public_configs += [ ":emberbsd_re2_library" ]
++  }
+ }
+--- a/third_party/protobuf/proto_library.gni
++++ b/third_party/protobuf/proto_library.gni
+@@ -593,8 +593,10 @@
+            ]
+ 
+     # TODO(crbug.com/409484308): Enable in fuzzer builds too.
+-    if (emberbsd_protoc_runtime_launcher != "") {
++    if (emberbsd_protoc_runtime_inputs != []) {
+       inputs += emberbsd_protoc_runtime_inputs
++    }
++    if (emberbsd_protoc_runtime_launcher != "") {
+       args += [
+         "--protoc-runtime-launcher",
+         rebase_path(emberbsd_protoc_runtime_launcher, root_build_dir),
+@@ -962,8 +964,10 @@
+       rebase_path(invoker.output_pattern, root_build_dir),
+     ]
+ 
+-    if (emberbsd_protoc_runtime_launcher != "") {
++    if (emberbsd_protoc_runtime_inputs != []) {
+       inputs += emberbsd_protoc_runtime_inputs
++    }
++    if (emberbsd_protoc_runtime_launcher != "") {
+       args += [
+         "--protoc-runtime-launcher",
+         rebase_path(emberbsd_protoc_runtime_launcher, root_build_dir),

@@ -36,7 +36,7 @@ def load_sdk(root):
     sys.path.insert(0, str(package.parent))
     result = {}
     for name in ('', 'host_prefix', 'application_toolchain', 'target_toolchain', 'targets', 'llvm_runtime',
-                 'process', 'paths', 'jsonio', 'darwin_sdk', 'compiler_bindings', 'cpu_capacity'):
+                 'process', 'paths', 'jsonio', 'darwin_sdk', 'darwin_runtime', 'compiler_bindings', 'cpu_capacity'):
         module = importlib.import_module('emberbsd_sdk' + ('.' + name if name else ''))
         require(Path(module.__file__).resolve() == package / ((name or '__init__') + '.py'),
                 'SDK module origin differs: ' + module.__name__)
@@ -645,6 +645,38 @@ def selected_protoc_command(options, native, protoc, runtime_view):
     return [str(protoc)]
 
 
+def platform_protoc_inputs(options, sdk, native, protoc, selection):
+    """Track direct native dylibs through the selected host buildlink pkgdb."""
+    prefix = Path(options.host_prefix).resolve(strict=True)
+    image = sdk['darwin_runtime'].read_macho_runtime(str(protoc), native.host)
+    owners = {}
+    for item in selection:
+        path = Path(item)
+        if path.name != '+CONTENTS':
+            continue
+        package = path.resolve(strict=True).parent
+        for line in path.read_text().splitlines():
+            if line.startswith('lib/'):
+                owners.setdefault(line, []).append(package)
+    inputs = {str(protoc)}
+    for row in image['loads'] + image['implicit_loads']:
+        name = row['name']
+        if name.startswith('/usr/lib/') or name.startswith('/System/Library/'):
+            continue
+        path = Path(name)
+        require(path.is_absolute(), 'platform protoc has an unselected runtime load')
+        resolved = path.resolve(strict=True)
+        require(resolved.is_relative_to(prefix) and resolved.is_file(),
+                'platform protoc runtime load escapes selected native prefix')
+        relative = str(path.relative_to(prefix)) if path.is_relative_to(prefix) else ''
+        packages = owners.get(relative, [])
+        require(len(packages) == 1, 'platform protoc runtime load has no unique selected package owner')
+        inputs.add(str(resolved))
+        for metadata in ('+CONTENTS', '+BUILD_INFO', '+BUILD_VERSION'):
+            inputs.add(str((packages[0] / metadata).resolve(strict=True)))
+    return sorted(inputs)
+
+
 def common_protobuf(options, sdk, native, environment, buildlink, runtime_view):
     common = getattr(options, 'protobuf_source', None)
     common_inputs = (getattr(options, 'protobuf_ports_source', None),
@@ -725,9 +757,13 @@ def common_protobuf(options, sdk, native, environment, buildlink, runtime_view):
         match = re.fullmatch(r'libprotoc ([0-9]+(?:\.[0-9]+)+)', version_output)
         require(match and normalized_version(match.group(1)) == source_version,
                 'selected host protoc version differs from the common source')
-        return dict(emberbsd_common_protobuf=True, emberbsd_protobuf_native_prefix=buildlink,
-                    emberbsd_protobuf_target_prefix=str(options.sysroot / 'usr/pkg'),
-                    emberbsd_protoc=str(protoc))
+        result = dict(emberbsd_common_protobuf=True, emberbsd_protobuf_native_prefix=buildlink,
+                      emberbsd_protobuf_target_prefix=str(options.sysroot / 'usr/pkg'),
+                      emberbsd_protoc=str(protoc))
+        if not runtime_view:
+            result['emberbsd_protoc_runtime_inputs'] = platform_protoc_inputs(
+                options, sdk, native, protoc, selected)
+        return result
     return {}
 
 
@@ -978,6 +1014,20 @@ def common_abseil(options, sdk, native, environment, buildlink):
 
 
 
+def selected_owned_library(prefix, link_name, owners):
+    """Bind the selected logical and resolved library files to pkgdb ownership."""
+    prefix = Path(prefix).resolve(strict=True)
+    logical = prefix / 'lib' / link_name
+    resolved = logical.resolve(strict=True)
+    require(resolved.is_relative_to(prefix) and resolved.is_file(), 'selected library escapes its prefix')
+    contents = set()
+    for package in owners:
+        contents.update((Path(package) / '+CONTENTS').read_text().splitlines())
+    require(str(logical.relative_to(prefix)) in contents and str(resolved.relative_to(prefix)) in contents,
+            'selected library is not owned by the verified package')
+    return str(resolved)
+
+
 def common_icu(options, sdk, native, environment, buildlink):
     if not getattr(options, 'shared_icu', False):
         return {}
@@ -1016,7 +1066,16 @@ def common_icu(options, sdk, native, environment, buildlink):
     records = [hashlib.sha256((path / '+BUILD_VERSION').read_bytes()).hexdigest() for path in packages]
     environment['EMBERBSD_SHARED_ICU_VERSION'] = versions[0]
     environment['EMBERBSD_SHARED_ICU_SOURCE_SHA256'] = ':'.join(records)
-    return {'icu_use_data_file': False, 'v8_enable_temporal_systemicu': True}
+    native_suffix = '.dylib' if native.host['os'] == 'Darwin' else '.so'
+    host_prefix = host_packages[0].parent.parent
+    target_prefix = options.sysroot / 'usr/pkg'
+    values = {'icu_use_data_file': False, 'v8_enable_temporal_systemicu': True}
+    for role, prefix, suffix, owners in (('host', host_prefix, native_suffix, host_packages),
+                                         ('target', target_prefix, '.so', packages[1:])):
+        for name in ('icuuc', 'icui18n'):
+            values['emberbsd_' + name + '_' + role + '_library'] = selected_owned_library(
+                prefix, 'lib' + name + suffix, owners)
+    return values
 
 
 def common_re2(options, sdk, native, environment, buildlink):
@@ -1051,7 +1110,9 @@ def common_re2(options, sdk, native, environment, buildlink):
             'selected RE2 package distinfo differs from the shared recipe')
     environment['EMBERBSD_SHARED_RE2_VERSION'] = versions[0]
     environment['EMBERBSD_SHARED_RE2_SOURCE_SHA256'] = hashlib.sha256(records[0]).hexdigest()
-    return {}
+    native_suffix = '.dylib' if native.host['os'] == 'Darwin' else '.so'
+    return {'emberbsd_re2_host_library': selected_owned_library(hosts[0].parent.parent, 'libre2' + native_suffix, hosts),
+            'emberbsd_re2_target_library': selected_owned_library(options.sysroot / 'usr/pkg', 'libre2.so', targets)}
 
 
 def common_v8_metagen(options, sdk, native, environment, tools):
@@ -1658,8 +1719,11 @@ def common_activation_allowlist(options, old_environment, environment, old_argum
     args = {'emberbsd_abseil_host_headers', 'emberbsd_abseil_host_inputs',
             'emberbsd_abseil_target_headers', 'emberbsd_abseil_target_inputs',
             'icu_use_data_file', 'v8_enable_temporal_systemicu',
+            'emberbsd_icuuc_host_library', 'emberbsd_icuuc_target_library',
+            'emberbsd_icui18n_host_library', 'emberbsd_icui18n_target_library',
+            'emberbsd_re2_host_library', 'emberbsd_re2_target_library',
             'emberbsd_common_protobuf', 'emberbsd_protobuf_native_prefix',
-            'emberbsd_protobuf_target_prefix', 'emberbsd_protoc',
+            'emberbsd_protobuf_target_prefix', 'emberbsd_protoc', 'emberbsd_protoc_runtime_inputs',
             'node_shared_undici_path', 'node_shared_undici_input'}
     if first:
         require(all(name not in old_arguments for name in args - {'icu_use_data_file', 'v8_enable_temporal_systemicu'}),
@@ -1840,6 +1904,9 @@ def reconfigure(options):
                          'emberbsd_abseil_host_headers', 'emberbsd_abseil_host_inputs',
                          'emberbsd_abseil_target_headers', 'emberbsd_abseil_target_inputs',
                          'v8_enable_temporal_systemicu',
+                         'emberbsd_icuuc_host_library', 'emberbsd_icuuc_target_library',
+                         'emberbsd_icui18n_host_library', 'emberbsd_icui18n_target_library',
+                         'emberbsd_re2_host_library', 'emberbsd_re2_target_library',
                          'emberbsd_protoc',
                          'custom_toolchain', 'v8_snapshot_toolchain', 'v8_host_paxctl', 'emberbsd_mac_toolchain_bin',
                          'emberbsd_sdk_source', 'mac_sdk_path', 'mac_deployment_target',

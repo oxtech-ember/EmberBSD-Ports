@@ -17,7 +17,11 @@ for provider in ('ABSEIL', 'ICU', 'RE2'):
         env['EMBERBSD_SHARED_' + provider + '_' + suffix] = 'verified'
 args = {name: 'selected' for name in ('emberbsd_abseil_host_headers', 'emberbsd_abseil_host_inputs',
     'emberbsd_abseil_target_headers', 'emberbsd_abseil_target_inputs', 'emberbsd_protobuf_native_prefix',
-    'emberbsd_protobuf_target_prefix', 'emberbsd_protoc', 'node_shared_undici_path', 'node_shared_undici_input')}
+    'emberbsd_protobuf_target_prefix', 'emberbsd_protoc', 'emberbsd_protoc_runtime_inputs',
+    'node_shared_undici_path', 'node_shared_undici_input',
+    'emberbsd_icuuc_host_library', 'emberbsd_icuuc_target_library',
+    'emberbsd_icui18n_host_library', 'emberbsd_icui18n_target_library',
+    'emberbsd_re2_host_library', 'emberbsd_re2_target_library')}
 args.update(emberbsd_common_protobuf=True, icu_use_data_file=False, v8_enable_temporal_systemicu=True)
 env_allowed, args_allowed = build.common_activation_allowlist(opts, {}, env, {}, args)
 assert env_allowed == set(env) and args_allowed == set(args)

@@ -28,3 +28,28 @@ try:
 except ValueError:
     pass
 print('PASS: verified Darwin platform direct protoc; custom runtime retains scoped launcher')
+
+# Only dylibs owned by selected buildlink packages may become direct inputs.
+import tempfile
+with tempfile.TemporaryDirectory() as temporary:
+    prefix = Path(temporary).resolve(); (prefix / 'bin').mkdir(); (prefix / 'lib').mkdir()
+    protoc = prefix / 'bin/protoc'; protoc.write_text('binary')
+    library = prefix / 'lib/libprotobuf.dylib'; library.write_text('library')
+    package = prefix / 'pkgdb/protobuf'; package.mkdir(parents=True)
+    contents = package / '+CONTENTS'; contents.write_text('lib/libprotobuf.dylib\n')
+    for name in ('+BUILD_INFO', '+BUILD_VERSION'):
+        (package / name).write_text('metadata')
+    loads = [{'name': str(library)}, {'name': '/usr/lib/libc++.1.dylib'}]
+    inspector = SimpleNamespace(read_macho_runtime=lambda *args: {'loads': loads, 'implicit_loads': []})
+    inputs = build.platform_protoc_inputs(SimpleNamespace(host_prefix=prefix),
+        {'darwin_runtime':inspector}, SimpleNamespace(host={}), protoc, {str(contents):'hash'})
+    assert str(library) in inputs and str(contents) in inputs
+    for name in ('/foreign/lib.dylib', '@rpath/lib.dylib'):
+        loads[0] = {'name': name}
+        try:
+            build.platform_protoc_inputs(SimpleNamespace(host_prefix=prefix),
+                {'darwin_runtime':inspector}, SimpleNamespace(host={}), protoc, {str(contents):'hash'})
+            raise AssertionError('foreign runtime accepted')
+        except (ValueError, FileNotFoundError):
+            pass
+print('PASS: protoc runtime inputs are selected pkgdb-owned dylibs only')
