@@ -974,6 +974,8 @@ def activate_common_components(source, protobuf, destination, **sources):
         return verify(source, protobuf, destination, **sources)
     old_sources = dict(sources, system_abseil=False, system_icu=False, system_re2=False,
                        protobuf_protoc=None)
+    # Update only changed source leaves before validating the old component links.
+    _refresh_leaves(Path(source).resolve(strict=True), None, destination, old_sources)
     verify(source, None, destination, **old_sources)
     mark('staging')
     stage.mkdir()

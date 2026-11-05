@@ -12,7 +12,7 @@ spec = importlib.util.spec_from_file_location('view', owner / '../../pkgsrc/deve
 view = importlib.util.module_from_spec(spec); spec.loader.exec_module(view)
 with tempfile.TemporaryDirectory() as temporary:
     root = Path(temporary).resolve(); source = root / 'source'; dest = root / 'view'; common = root / 'common'
-    source.mkdir(); (source / '.gn').write_text('gn'); third = source / 'third_party'; third.mkdir()
+    source.mkdir(); (source / '.gn').write_text('gn'); (source / 'stable').write_text('stable'); third = source / 'third_party'; third.mkdir()
     for name in ('abseil-cpp', 'icu', 're2', 'protobuf'):
         path = third / name; path.mkdir(); (path / 'BUILD.gn').write_text('old')
     (common / 'src').mkdir(parents=True); (common / 'third_party').mkdir()
@@ -21,7 +21,8 @@ with tempfile.TemporaryDirectory() as temporary:
     view.abseil_masks = lambda *args: frozenset()
     view.shim_masks = lambda *args: frozenset()
     view.create(source, None, dest)
-    keep = dest / 'src/.gn'; before = (keep.stat().st_ino, keep.stat().st_mtime_ns)
+    keep = dest / 'src/stable'; before = (keep.stat().st_ino, keep.stat().st_mtime_ns)
+    updated = root / 'updated-gn'; updated.write_text('updated'); updated.replace(source / '.gn')
     opts = dict(system_abseil=True, system_icu=True, system_re2=True)
     real_verify = view.verify
     def interrupted(*args, **kwargs):
@@ -39,6 +40,7 @@ with tempfile.TemporaryDirectory() as temporary:
     for name in ('abseil-cpp', 'icu', 're2', 'protobuf'):
         assert (dest / 'src/third_party' / name).is_dir() and not (dest / 'src/third_party' / name).is_symlink()
     assert (keep.stat().st_ino, keep.stat().st_mtime_ns) == before
+    assert (dest / 'src/.gn').read_text() == 'updated'
     view.verify(source, common, dest, **opts)
     second = root / 'second'; view.create(source, None, second)
     foreign = second / 'src/third_party/icu'; foreign.unlink(); foreign.symlink_to(root)
