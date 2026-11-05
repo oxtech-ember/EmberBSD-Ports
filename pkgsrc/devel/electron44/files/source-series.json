@@ -1092,6 +1092,11 @@
       "path": "litert-generate-configuration-schema.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "angle-metal-darwin-arm64-legacy.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {
