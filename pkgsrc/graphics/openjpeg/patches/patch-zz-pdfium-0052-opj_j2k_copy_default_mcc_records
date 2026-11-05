@@ -1,0 +1,16 @@
+$NetBSD$
+
+PDFium 0052-opj_j2k_copy_default_mcc_records.patch, revision fa4d5f8fbd89ea07273529daf9fd24fe1c7f6b9a.
+https://pdfium.googlesource.com/pdfium/+/fa4d5f8fbd89ea07273529daf9fd24fe1c7f6b9a/third_party/libopenjpeg/
+The common OpenJPEG license and PDFium BSD-3 notices are preserved.
+
+--- src/lib/openjp2/j2k.c.orig
++++ src/lib/openjp2/j2k.c
+@@ -9306,6 +9306,7 @@ static OPJ_BOOL opj_j2k_copy_default_tcp_and_create_tcd(opj_j2k_t * p_j2k,
+         }
+         memcpy(l_tcp->m_mcc_records, l_default_tcp->m_mcc_records, l_mcc_records_size);
+         l_tcp->m_nb_max_mcc_records = l_default_tcp->m_nb_max_mcc_records;
++        l_tcp->m_nb_mcc_records = l_default_tcp->m_nb_mcc_records;
+ 
+         /* Copy the mcc record data from dflt_tile_cp to the current tile*/
+         l_src_mcc_rec = l_default_tcp->m_mcc_records;

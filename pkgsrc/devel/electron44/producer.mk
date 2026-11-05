@@ -88,6 +88,30 @@ _EMBER_ELECTRON_ARGS+= --v8-metagen-runtime-extra ${_ember_file:Q}
 _EMBER_ELECTRON_ARGS+= --${_ember_key:tl:S/_/-/g}
 .endfor
 
+.if ${EMBERBSD_ELECTRON_SHARED_EXPAT:Uno} == "yes"
+_EMBER_ELECTRON_ARGS+= --shared-expat
+.elif ${EMBERBSD_ELECTRON_SHARED_EXPAT:Uno} != "no"
+.error EMBERBSD_ELECTRON_SHARED_EXPAT must be yes or no
+.endif
+
+.if ${EMBERBSD_ELECTRON_SHARED_PFFFT:Uno} == "yes"
+_EMBER_ELECTRON_ARGS+= --shared-pffft
+.elif ${EMBERBSD_ELECTRON_SHARED_PFFFT:Uno} != "no"
+.error EMBERBSD_ELECTRON_SHARED_PFFFT must be yes or no
+.endif
+
+.if ${EMBERBSD_ELECTRON_SHARED_OPENH264:Uno} == "yes"
+_EMBER_ELECTRON_ARGS+= --shared-openh264
+.elif ${EMBERBSD_ELECTRON_SHARED_OPENH264:Uno} != "no"
+.error EMBERBSD_ELECTRON_SHARED_OPENH264 must be yes or no
+.endif
+
+.if ${EMBERBSD_ELECTRON_SHARED_CODECS:Uno} == "yes"
+_EMBER_ELECTRON_ARGS+= --shared-codecs
+.elif ${EMBERBSD_ELECTRON_SHARED_CODECS:Uno} != "no"
+.error EMBERBSD_ELECTRON_SHARED_CODECS must be yes or no
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_FFMPEG:Uno} == "yes"
 _EMBER_ELECTRON_ARGS+= --shared-ffmpeg
 .elif ${EMBERBSD_ELECTRON_SHARED_FFMPEG:Uno} != "no"

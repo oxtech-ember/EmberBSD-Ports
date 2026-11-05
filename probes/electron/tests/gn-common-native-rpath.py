@@ -94,8 +94,25 @@ source_set("yuv_consumer") { sources = [ "dummy.cc" ] deps = [ "//third_party/li
         libyuv = description('//:yuv_consumer')
         headers = description('//:headers_consumer')
         if is_native:
-            assert zstd['ldflags'] == ['-Wl,-rpath=' + str(prefix / 'lib')], zstd
-            assert libyuv['ldflags'] == ['-Wl,-rpath=' + str(library.parent)], libyuv
+            assert zstd['ldflags'] == ['-Wl,-rpath,' + str(prefix / 'lib')], zstd
+            assert libyuv['ldflags'] == ['-Wl,-rpath,' + str(library.parent)], libyuv
+            # Link and run using exactly the GN-emitted flag with the selected
+            # native linker. The old equals spelling is rejected by ld64.lld.
+            write('native-rpath.c', '#include <zstd.h>\nint main(void) { return ZSTD_versionNumber() < 10000; }\n')
+            compiler = prefix / 'bin/clang'
+            binary = root / 'native-rpath'
+            command = [str(compiler), '-fuse-ld=lld', '-I'+str(prefix/'include'),
+                       str(root/'native-rpath.c'), '-L'+str(prefix/'lib'), '-lzstd',
+                       *zstd['ldflags'], '-o', str(binary)]
+            trace = subprocess.run(command + ['-###'], cwd=root, text=True, capture_output=True, check=True)
+            assert str(prefix/'bin/ld64.lld') in trace.stderr, trace.stderr
+            old = command.copy(); old[old.index(zstd['ldflags'][0])] = '-Wl,-rpath='+str(prefix/'lib')
+            rejected = subprocess.run(old, cwd=root, text=True, capture_output=True)
+            assert rejected.returncode and 'unknown argument' in rejected.stderr, rejected.stderr
+            subprocess.run(command, cwd=root, check=True, capture_output=True)
+            subprocess.run([str(binary)], cwd=root, check=True, capture_output=True)
+            load_commands = subprocess.check_output([str(prefix/'bin/llvm-otool'), '-l', str(binary)], text=True)
+            assert 'cmd LC_RPATH' in load_commands and 'path '+str(prefix/'lib')+' (offset ' in load_commands
         else:
             assert not zstd.get('ldflags') and not libyuv.get('ldflags')
         assert not headers.get('ldflags'), headers

@@ -55,6 +55,24 @@ The OS owns render-node identity, GEM buffers, GPU page tables and syncobj.
 The bounded compute check covers device creation, submission and host readback.
 Application graphics, PRIME presentation and Plasma require separate acceptance.
 
+## Native cached readback
+
+From 26.2.6nb17, AArch64 can expose a second memory type with `HOST_CACHED`
+and without `HOST_COHERENT`. Mesa requests the native EmberBSD cached BO flag
+with all 64 bits preserved. A failed probe retains the original coherent type.
+Older kernels therefore keep their existing behavior.
+
+Flush and invalidate use Mesa's shared cache helpers. The reported
+`nonCoherentAtomSize` uses their writeback granularity. The kernel and userspace
+must support the same non-coherent ownership protocol. External memory and
+scanout allocations retain the coherent type; cached PRIME export is rejected.
+Heterogeneous CPU cache-granularity handling remains unqualified on EmberBSD.
+
+On one A133/GE8300, a 4,096,000-byte CPU copy fell from 41.8 ms to 3.25–3.28 ms
+after initial mapping faults. A cached Vulkan GPU copy preserved exact bytes
+and both buffer guards. These checks do not establish direct scanout or frame rate.
+See the [cached BO checks](../../../pkgsrc/graphics/MesaLib/tests/README.md#native-cached-bos).
+
 ## Native build tools
 
 Use the [shared Mesa generator producer](mesa-generators.md) with its current

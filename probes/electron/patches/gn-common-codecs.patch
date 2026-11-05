@@ -1,0 +1,316 @@
+# Origin: EmberBSD contributors (AI-assisted).
+# Bind the upstream unbundle wrappers to selected common provider inputs.
+
+--- a/build/linux/unbundle/dav1d.gn
++++ b/build/linux/unbundle/dav1d.gn
+@@ -1,7 +1,20 @@
+ import("//build/config/linux/pkg_config.gni")
+ import("//build/shim_headers.gni")
++import("//build/config/emberbsd_codecs.gni")
++
++if (emberbsd_common_codecs) {
++  emberbsd_codec_provider("emberbsd_dav1d") {
++    host_libraries = emberbsd_dav1d_host_libraries
++    host_inputs = emberbsd_dav1d_host_inputs
++    target_libraries = emberbsd_dav1d_target_libraries
++    target_inputs = emberbsd_dav1d_target_inputs
++  }
++}
+ 
+ pkg_config("system_dav1d") {
++  if (emberbsd_common_codecs) {
++    ignore_libs = true
++  }
+   packages = [ "dav1d" ]
+ }
+ 
+@@ -18,6 +31,9 @@
+ }
+ 
+ source_set("dav1d") {
++  if (emberbsd_common_codecs) {
++    public_deps = [ ":emberbsd_dav1d" ]
++  }
+   deps = [ ":dav1d_shim" ]
+   public_configs = [ ":system_dav1d" ]
+ }
+--- a/build/linux/unbundle/libaom.gn
++++ b/build/linux/unbundle/libaom.gn
+@@ -1,6 +1,16 @@
+ import("//build/buildflag_header.gni")
+ import("//build/config/linux/pkg_config.gni")
+ import("//build/shim_headers.gni")
++import("//build/config/emberbsd_codecs.gni")
++
++if (emberbsd_common_codecs) {
++  emberbsd_codec_provider("emberbsd_aom") {
++    host_libraries = emberbsd_aom_host_libraries
++    host_inputs = emberbsd_aom_host_inputs
++    target_libraries = emberbsd_aom_target_libraries
++    target_inputs = emberbsd_aom_target_inputs
++  }
++}
+ import("//third_party/libaom/options.gni")
+ 
+ buildflag_header("libaom_buildflags") {
+@@ -9,6 +19,9 @@
+ }
+ 
+ pkg_config("system_aom") {
++  if (emberbsd_common_codecs) {
++    ignore_libs = true
++  }
+   packages = [ "aom" ]
+ }
+ 
+@@ -19,6 +32,8 @@
+     "aom/aom_codec.h",
+     "aom/aom_decoder.h",
+     "aom/aom_encoder.h",
++    "aom/aom_ext_ratectrl.h",
++    "aom/aom_tpl.h",
+     "aom/aom_external_partition.h",
+     "aom/aom_frame_buffer.h",
+     "aom/aom_image.h",
+@@ -29,6 +44,9 @@
+ }
+ 
+ source_set("libaom") {
++  if (emberbsd_common_codecs) {
++    public_deps = [ ":emberbsd_aom" ]
++  }
+   deps = [ ":aom_shim" ]
+   public_configs = [ ":system_aom" ]
+ }
+--- a/build/linux/unbundle/libvpx.gn
++++ b/build/linux/unbundle/libvpx.gn
+@@ -4,8 +4,21 @@
+ 
+ import("//build/config/linux/pkg_config.gni")
+ import("//build/shim_headers.gni")
++import("//build/config/emberbsd_codecs.gni")
++
++if (emberbsd_common_codecs) {
++  emberbsd_codec_provider("emberbsd_vpx") {
++    host_libraries = emberbsd_vpx_host_libraries
++    host_inputs = emberbsd_vpx_host_inputs
++    target_libraries = emberbsd_vpx_target_libraries
++    target_inputs = emberbsd_vpx_target_inputs
++  }
++}
+ 
+ pkg_config("system_libvpx") {
++  if (emberbsd_common_codecs) {
++    ignore_libs = true
++  }
+   packages = [ "vpx" ]
+ }
+ 
+@@ -16,10 +29,10 @@
+     "vpx/vp8cx.h",
+     "vpx/vp8dx.h",
+     "vpx/vpx_codec.h",
+-    "vpx/vpx_codec_impl_bottom.h",
+-    "vpx/vpx_codec_impl_top.h",
+     "vpx/vpx_decoder.h",
+     "vpx/vpx_encoder.h",
++    "vpx/vpx_ext_ratectrl.h",
++    "vpx/vpx_tpl.h",
+     "vpx/vpx_frame_buffer.h",
+     "vpx/vpx_image.h",
+     "vpx/vpx_integer.h",
+@@ -27,6 +40,9 @@
+ }
+ 
+ source_set("libvpx") {
++  if (emberbsd_common_codecs) {
++    public_deps = [ ":emberbsd_vpx" ]
++  }
+   deps = [ ":libvpx_shim" ]
+   public_configs = [ ":system_libvpx" ]
+ }
+--- a/build/linux/unbundle/opus.gn
++++ b/build/linux/unbundle/opus.gn
+@@ -4,8 +4,21 @@
+ 
+ import("//build/config/linux/pkg_config.gni")
+ import("//build/shim_headers.gni")
++import("//build/config/emberbsd_codecs.gni")
++
++if (emberbsd_common_codecs) {
++  emberbsd_codec_provider("emberbsd_opus") {
++    host_libraries = emberbsd_opus_host_libraries
++    host_inputs = emberbsd_opus_host_inputs
++    target_libraries = emberbsd_opus_target_libraries
++    target_inputs = emberbsd_opus_target_inputs
++  }
++}
+ 
+ pkg_config("opus_config") {
++  if (emberbsd_common_codecs) {
++    ignore_libs = true
++  }
+   packages = [ "opus" ]
+ }
+ 
+@@ -20,6 +33,9 @@
+ }
+ 
+ source_set("opus") {
++  if (emberbsd_common_codecs) {
++    public_deps = [ ":emberbsd_opus" ]
++  }
+   deps = [ ":opus_shim" ]
+   public_configs = [ ":opus_config" ]
+ }
+--- a/build/linux/unbundle/flac.gn
++++ b/build/linux/unbundle/flac.gn
+@@ -4,8 +4,21 @@
+ 
+ import("//build/config/linux/pkg_config.gni")
+ import("//build/shim_headers.gni")
++import("//build/config/emberbsd_codecs.gni")
++
++if (emberbsd_common_codecs) {
++  emberbsd_codec_provider("emberbsd_flac") {
++    host_libraries = emberbsd_flac_host_libraries
++    host_inputs = emberbsd_flac_host_inputs
++    target_libraries = emberbsd_flac_target_libraries
++    target_inputs = emberbsd_flac_target_inputs
++  }
++}
+ 
+ pkg_config("system_flac") {
++  if (emberbsd_common_codecs) {
++    ignore_libs = true
++  }
+   packages = [ "flac" ]
+ }
+ 
+@@ -25,6 +38,9 @@
+ }
+ 
+ source_set("flac") {
++  if (emberbsd_common_codecs) {
++    public_deps = [ ":emberbsd_flac" ]
++  }
+   deps = [ ":flac_shim" ]
+   public_configs = [ ":system_flac" ]
+ }
+--- a/media/base/BUILD.gn
++++ b/media/base/BUILD.gn
+@@ -3,6 +3,7 @@
+ # found in the LICENSE file.
+ 
+ import("//build/config/arm.gni")
++import("//build/config/emberbsd_codecs.gni")
+ import("//build/config/linux/pkg_config.gni")
+ import("//build/config/ozone.gni")
+ import("//build/config/ui.gni")
+@@ -408,6 +409,10 @@
+   ]
+ 
+   defines = []
++  if (emberbsd_common_codecs) {
++    # Shared libraries own their private worker ABI and use their own workers.
++    defines += [ "EMBERBSD_COMMON_CODECS" ]
++  }
+   public_deps = [
+     ":video_facing",
+     "//gpu/command_buffer/client",
+--- a/media/base/libaom_thread_wrapper.cc
++++ b/media/base/libaom_thread_wrapper.cc
+@@ -5,14 +5,14 @@
+ #include "base/logging.h"
+ #include "media/base/codec_worker_impl.h"
+ #include "media/base/libvpx_thread_wrapper.h"
+-#if !BUILDFLAG(IS_BSD)
++#if !BUILDFLAG(IS_BSD) && !defined(EMBERBSD_COMMON_CODECS)
+ #include "third_party/libaom/source/libaom/aom_util/aom_thread.h"
+ #endif
+ 
+ namespace media {
+ 
+ void InitLibAomThreadWrapper() {
+-#if !BUILDFLAG(IS_BSD)
++#if !BUILDFLAG(IS_BSD) && !defined(EMBERBSD_COMMON_CODECS)
+   const AVxWorkerInterface interface =
+       CodecWorkerImpl<AVxWorkerInterface, AVxWorkerImpl, AVxWorker,
+                       AVxWorkerStatus, AVX_WORKER_STATUS_NOT_OK,
+--- a/media/base/libvpx_thread_wrapper.cc
++++ b/media/base/libvpx_thread_wrapper.cc
+@@ -5,14 +5,16 @@
+ #include "media/base/libvpx_thread_wrapper.h"
+ 
+ #include "media/base/codec_worker_impl.h"
+-#if !BUILDFLAG(IS_OPENBSD) && !BUILDFLAG(IS_NETBSD)
++#if !BUILDFLAG(IS_OPENBSD) && !BUILDFLAG(IS_NETBSD) && \
++    !defined(EMBERBSD_COMMON_CODECS)
+ #include "third_party/libvpx/source/libvpx/vpx_util/vpx_thread.h"
+ #endif
+ 
+ namespace media {
+ 
+ void InitLibVpxThreadWrapper() {
+-#if !BUILDFLAG(IS_OPENBSD) && !BUILDFLAG(IS_NETBSD)
++#if !BUILDFLAG(IS_OPENBSD) && !BUILDFLAG(IS_NETBSD) && \
++    !defined(EMBERBSD_COMMON_CODECS)
+   const VPxWorkerInterface interface =
+       CodecWorkerImpl<VPxWorkerInterface, VPxWorkerImpl, VPxWorker,
+                       VPxWorkerStatus, VPX_WORKER_STATUS_NOT_OK,
+--- /dev/null
++++ b/build/config/emberbsd_codecs.gni
+@@ -0,0 +1,53 @@
++# Copyright 2026 EmberBSD contributors. BSD-2-Clause.
++import("//build/config/linux/pkg_config.gni")
++
++declare_args() {
++  emberbsd_common_codecs = false
++  emberbsd_dav1d_host_libraries = []
++  emberbsd_dav1d_host_inputs = []
++  emberbsd_dav1d_target_libraries = []
++  emberbsd_dav1d_target_inputs = []
++  emberbsd_aom_host_libraries = []
++  emberbsd_aom_host_inputs = []
++  emberbsd_aom_target_libraries = []
++  emberbsd_aom_target_inputs = []
++  emberbsd_vpx_host_libraries = []
++  emberbsd_vpx_host_inputs = []
++  emberbsd_vpx_target_libraries = []
++  emberbsd_vpx_target_inputs = []
++  emberbsd_opus_host_libraries = []
++  emberbsd_opus_host_inputs = []
++  emberbsd_opus_target_libraries = []
++  emberbsd_opus_target_inputs = []
++  emberbsd_flac_host_libraries = []
++  emberbsd_flac_host_inputs = []
++  emberbsd_flac_target_libraries = []
++  emberbsd_flac_target_inputs = []
++
++}
++
++template("emberbsd_codec_provider") {
++  not_needed(invoker, "*")
++  if (emberbsd_pkg_config_role == "native") {
++    _libraries = invoker.host_libraries
++    _inputs = invoker.host_inputs
++  } else {
++    _libraries = invoker.target_libraries
++    _inputs = invoker.target_inputs
++  }
++  assert(emberbsd_pkg_config_role != "upstream" && _libraries != [] && _inputs != [],
++         "Selected codec provider is incomplete")
++  _config = "${target_name}_selected"
++  config(_config) {
++    libs = _libraries
++    if (emberbsd_pkg_config_role == "native") {
++      ldflags = [ "-Wl,-rpath," + rebase_path(get_path_info(_libraries[0], "dir"), "") ]
++    } else {
++      ldflags = [ "-Wl,-rpath=/usr/pkg/lib" ]
++    }
++  }
++  source_set(target_name) {
++    inputs = _inputs
++    all_dependent_configs = [ ":${_config}" ]
++  }
++}

@@ -2,6 +2,7 @@
 /* Copyright (c) 2026 EmberBSD contributors. */
 /* Origin: EmberBSD bounded Vulkan transfer diagnostic, AI-assisted. */
 #include <vulkan/vulkan.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,12 +20,20 @@
 int
 main(int argc, char **argv)
 {
-	if (argc < 3 || argc > 4 || (argc == 4 && strcmp(argv[3], "--fill"))) {
+	bool is_fill = false, cached = false;
+	if (argc < 3 || argc > 5) {
 		fprintf(
-		    stderr, "usage: copy-buffer BYTES CHUNK_BYTES [--fill]\n");
+		    stderr, "usage: copy-buffer BYTES CHUNK_BYTES [--fill] [--cached]\n");
 		return 2;
 	}
-	const int is_fill = argc == 4;
+	for (int i = 3; i < argc; i++) {
+		if (strcmp(argv[i], "--fill") == 0 && !is_fill)
+			is_fill = true;
+		else if (strcmp(argv[i], "--cached") == 0 && !cached)
+			cached = true;
+		else
+			return 2;
+	}
 	char *end;
 	unsigned long bytes = strtoul(argv[1], &end, 10);
 	if (*end || !bytes || bytes > 192 || bytes % 4)
@@ -104,7 +113,8 @@ main(int argc, char **argv)
 		    device, buffers[i], &requirements);
 		const VkMemoryPropertyFlags required =
 		    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-		    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+		    (cached ? VK_MEMORY_PROPERTY_HOST_CACHED_BIT :
+		    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 		uint32_t type;
 		for (type = 0; type < memory_properties.memoryTypeCount; type++)
 			if ((requirements.memoryTypeBits & (1U << type)) &&
@@ -131,6 +141,14 @@ main(int argc, char **argv)
 		mapped[0][i] = (unsigned char)(i * 13U + 7U);
 		mapped[1][i] = 0xa5;
 	}
+	VkMappedMemoryRange ranges[2];
+	for (unsigned i = 0; i < 2; i++)
+		ranges[i] = (VkMappedMemoryRange){
+		    .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+		    .memory = memory[i], .offset = 0, .size = VK_WHOLE_SIZE,
+		};
+	if (cached)
+		CHECK(vkFlushMappedMemoryRanges(device, 2, ranges));
 	VkCommandPoolCreateInfo pci = {
 	    .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 	    .queueFamilyIndex = family,
@@ -194,6 +212,8 @@ main(int argc, char **argv)
 	CHECK(vkQueueSubmit(queue, 1, &submit, fence));
 	CHECK(
 	    vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_C(5000000000)));
+	if (cached)
+		CHECK(vkInvalidateMappedMemoryRanges(device, 2, ranges));
 	const uint32_t fill_word = 0x13579bdf;
 	unsigned char fill_bytes[4];
 	memcpy(fill_bytes, &fill_word, sizeof(fill_word));

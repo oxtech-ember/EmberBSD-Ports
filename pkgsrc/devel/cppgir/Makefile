@@ -3,7 +3,7 @@
 CPPGIR_REV= 0bdd2b6a3cb2b17c36f175b78e914a46784c5b86
 DISTNAME= cppgir-${CPPGIR_REV}
 PKGNAME= cppgir-2.0.0
-PKGREVISION= 1
+PKGREVISION= 2
 CATEGORIES= devel
 MASTER_SITES= -https://gitlab.com/mnauw/cppgir/-/archive/${CPPGIR_REV}/cppgir-${CPPGIR_REV}.tar.gz
 HOMEPAGE= https://gitlab.com/mnauw/cppgir/

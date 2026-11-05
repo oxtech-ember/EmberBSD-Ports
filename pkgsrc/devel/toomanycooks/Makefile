@@ -1,6 +1,7 @@
 # $NetBSD$
 DISTNAME= TooManyCooks-1.6.1
 PKGNAME= toomanycooks-1.6.1
+PKGREVISION= 1
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=tzcnt/}
 GITHUB_PROJECT= TooManyCooks

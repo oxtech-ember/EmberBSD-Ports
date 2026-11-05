@@ -1,0 +1,10 @@
+prefix=@PREFIX@
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: PFFFT
+Description: Pretty Fast FFT library
+Version: @VERSION@
+Libs: -L${libdir} -lpffft
+Libs.private: -lm
+Cflags: -I${includedir}

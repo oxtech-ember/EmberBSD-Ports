@@ -204,6 +204,10 @@ def main():
     parser.add_argument('--shared-xml', action='store_true')
     parser.add_argument('--shared-image', action='store_true')
     parser.add_argument('--shared-font', action='store_true')
+    parser.add_argument('--shared-codecs', action='store_true')
+    parser.add_argument('--shared-openh264', action='store_true')
+    parser.add_argument('--shared-pffft', action='store_true')
+    parser.add_argument('--shared-expat', action='store_true')
     parser.add_argument('--stage-root', type=Path, help='explicit replacement stage; omit for installed prefix')
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--check', action='store_true', help='check an existing view identity')
@@ -247,6 +251,14 @@ def main():
         invocation['shared_image'] = 'yes'
     if args.shared_font:
         invocation['shared_font'] = 'yes'
+    if args.shared_codecs:
+        invocation['shared_codecs'] = 'yes'
+    if args.shared_openh264:
+        invocation['shared_openh264'] = 'yes'
+    if args.shared_pffft:
+        invocation['shared_pffft'] = 'yes'
+    if args.shared_expat:
+        invocation['shared_expat'] = 'yes'
     paths.reject_overlap(str(work), str(source))
     paths.reject_overlap(str(work), str(args.host_prefix))
     if args.stage_root:
@@ -273,7 +285,11 @@ def main():
                            *(['EMBERBSD_ELECTRON_SHARED_MINIZIP=yes'] if args.shared_minizip else []),
                            *(['EMBERBSD_ELECTRON_SHARED_XML=yes'] if args.shared_xml else []),
                            *(['EMBERBSD_ELECTRON_SHARED_IMAGE=yes'] if args.shared_image else []),
-                           *(['EMBERBSD_ELECTRON_SHARED_FONT=yes'] if args.shared_font else []), 'wrapper']
+                           *(['EMBERBSD_ELECTRON_SHARED_FONT=yes'] if args.shared_font else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_CODECS=yes'] if args.shared_codecs else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_OPENH264=yes'] if args.shared_openh264 else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_PFFFT=yes'] if args.shared_pffft else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_EXPAT=yes'] if args.shared_expat else []), 'wrapper']
                 saved = json.loads((work / 'selection.json').read_text())
                 if saved.get('invocation') != invocation:
                     print('host buildlink selection changed', file=sys.stderr)
@@ -368,7 +384,11 @@ def main():
                            *(['EMBERBSD_ELECTRON_SHARED_MINIZIP=yes'] if args.shared_minizip else []),
                            *(['EMBERBSD_ELECTRON_SHARED_XML=yes'] if args.shared_xml else []),
                            *(['EMBERBSD_ELECTRON_SHARED_IMAGE=yes'] if args.shared_image else []),
-                           *(['EMBERBSD_ELECTRON_SHARED_FONT=yes'] if args.shared_font else []), 'wrapper']
+                           *(['EMBERBSD_ELECTRON_SHARED_FONT=yes'] if args.shared_font else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_CODECS=yes'] if args.shared_codecs else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_OPENH264=yes'] if args.shared_openh264 else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_PFFFT=yes'] if args.shared_pffft else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_EXPAT=yes'] if args.shared_expat else []), 'wrapper']
             if not args.stage_root:
                 check_installed_context(process, command, env, args.host_prefix)
             process.run_logged(command, str(work / 'buildlink.log'), env=env)

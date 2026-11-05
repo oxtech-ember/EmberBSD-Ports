@@ -8,7 +8,7 @@
    config("emberbsd_libyuv_library") {
      libs = [ _library ]
 +    if (emberbsd_pkg_config_role == "native") {
-+      ldflags = [ "-Wl,-rpath=" + rebase_path(get_path_info(_library, "dir"), "") ]
++      ldflags = [ "-Wl,-rpath," + rebase_path(get_path_info(_library, "dir"), "") ]
 +    }
    }
    source_set("libyuv") {
@@ -24,7 +24,7 @@
 +        # pkg-config view already owns these library search directories.
 +        ldflags = []
 +        foreach(_library_dir, lib_dirs) {
-+          ldflags += [ "-Wl,-rpath=" + rebase_path(_library_dir, "") ]
++          ldflags += [ "-Wl,-rpath," + rebase_path(_library_dir, "") ]
 +        }
 +      }
      }

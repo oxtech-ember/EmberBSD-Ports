@@ -7,3 +7,4 @@ SHA1 (patch-CMakeLists.txt) = a31c4dbe00b9351c23a2cd6286570c25819f5687
 SHA1 (patch-cmake_tmc-install.cmake) = 1305522a2826d5b159203193b18f91889ca1fdbf
 SHA1 (patch-cmake_TooManyCooksConfig.cmake.in) = ae6cdae386c5b90ae2807803352b6f80c37a8d3b
 SHA1 (patch-include_tmc_version.hpp) = 91a6ac14d59c3f7f7d1aaa0690ee4184ce9ee564
+SHA1 (patch-include_tmc_detail_thread_layout.ipp) = e3649a897dbbc6b2facf8c0d3e6104889dceb731

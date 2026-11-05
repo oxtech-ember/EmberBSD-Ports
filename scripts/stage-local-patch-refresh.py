@@ -68,7 +68,7 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None):
     except UnicodeError as exc:
         raise ValueError('invalid old patch cookie') from exc
     patchdir = (recipe / 'patches').resolve(strict=True)
-    require(old_paths and all(p.is_absolute() and p.resolve(strict=True).parent == patchdir for p in old_paths),
+    require(all(p.is_absolute() and p.resolve(strict=True).parent == patchdir for p in old_paths),
             'old patch cookie contains an unsupported path')
     old = [p.name for p in old_paths]
     require(len(set(old)) == len(old), 'duplicate old patch')
@@ -83,6 +83,9 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None):
         require(normalized not in records, 'duplicate BUILD_VERSION entry')
         records[normalized] = value
     pkgpath = '/'.join(recipe.parts[-2:])
+    if not old:
+        require(not any(key.startswith(pkgpath + '/patches/patch-') for key in records),
+                'empty patch cookie contradicts installed patch provenance')
     new = sorted(p.name for p in patchdir.glob('patch-*') if p.is_file())
     require([p for p in new if p in old] == old and len(new) > len(old),
             'old patch list is not a proper subsequence')

@@ -1,0 +1,20 @@
+$NetBSD$
+
+PDFium 0006-tcd_init_tile.patch, revision fa4d5f8fbd89ea07273529daf9fd24fe1c7f6b9a.
+https://pdfium.googlesource.com/pdfium/+/fa4d5f8fbd89ea07273529daf9fd24fe1c7f6b9a/third_party/libopenjpeg/
+The common OpenJPEG license and PDFium BSD-3 notices are preserved.
+
+--- src/lib/openjp2/tcd.c.orig
++++ src/lib/openjp2/tcd.c
+@@ -819,6 +819,11 @@ static INLINE OPJ_BOOL opj_tcd_init_tile(opj_tcd_t *p_tcd, OPJ_UINT32 p_tile_no,
+         if (isEncoder) {
+             OPJ_SIZE_T l_tile_data_size;
+ 
++            if (l_tilec->x0 >= l_tilec->x1 || l_tilec->y0 >= l_tilec->y1) {
++                opj_event_msg(manager, EVT_ERROR, "Invalid tile data\n");
++                return OPJ_FALSE;
++            }
++
+             /* compute l_data_size with overflow check */
+             OPJ_SIZE_T w = (OPJ_SIZE_T)(l_tilec->x1 - l_tilec->x0);
+             OPJ_SIZE_T h = (OPJ_SIZE_T)(l_tilec->y1 - l_tilec->y0);

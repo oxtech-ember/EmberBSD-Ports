@@ -1,0 +1,71 @@
+--- a/build/linux/unbundle/openh264.gn
++++ b/build/linux/unbundle/openh264.gn
+@@ -4,6 +4,24 @@
+ 
+ import("//build/config/linux/pkg_config.gni")
+ import("//build/shim_headers.gni")
++import("//build/config/emberbsd_codecs.gni")
++
++declare_args() {
++  emberbsd_common_openh264 = false
++  emberbsd_openh264_host_libraries = []
++  emberbsd_openh264_host_inputs = []
++  emberbsd_openh264_target_libraries = []
++  emberbsd_openh264_target_inputs = []
++}
++
++if (emberbsd_common_openh264) {
++  emberbsd_codec_provider("emberbsd_openh264") {
++    host_libraries = emberbsd_openh264_host_libraries
++    host_inputs = emberbsd_openh264_host_inputs
++    target_libraries = emberbsd_openh264_target_libraries
++    target_inputs = emberbsd_openh264_target_inputs
++  }
++}
+ 
+ config("encoder_cfi_flags") {
+   cflags = []
+@@ -16,6 +34,9 @@
+ }
+ 
+ pkg_config("config") {
++  if (emberbsd_common_openh264) {
++    ignore_libs = true
++  }
+   packages = [ "openh264" ]
+ }
+ 
+@@ -31,21 +52,33 @@
+ }
+ 
+ source_set("common") {
++  if (emberbsd_common_openh264) {
++    public_deps = [ ":emberbsd_openh264" ]
++  }
+   deps = [ ":openh264_shim" ]
+   public_configs = [ ":config" ]
+ }
+ 
+ source_set("processing") {
++  if (emberbsd_common_openh264) {
++    public_deps = [ ":emberbsd_openh264" ]
++  }
+   deps = [ ":openh264_shim" ]
+   public_configs = [ ":config" ]
+ }
+ 
+ source_set("decoder") {
++  if (emberbsd_common_openh264) {
++    public_deps = [ ":emberbsd_openh264" ]
++  }
+   deps = [ ":openh264_shim" ]
+   public_configs = [ ":config" ]
+ }
+ 
+ source_set("encoder") {
++  if (emberbsd_common_openh264) {
++    public_deps = [ ":emberbsd_openh264" ]
++  }
+   deps = [ ":openh264_shim" ]
+   public_configs = [
+     ":config",

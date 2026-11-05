@@ -20,14 +20,15 @@ with tempfile.TemporaryDirectory() as tmp:
  with (r/'build/linux/unbundle/ffmpeg.gn').open('a') as f: pass
  (r/'BUILD.gn').write_text('''toolchain("tc") { tool("stamp") { command = "touch {{output}}" } }\ngroup("test") { deps = [ "//third_party/ffmpeg:ffmpeg" ] }\n''')
  (r/'third_party/ffmpeg/BUILD.gn').write_text((r/'build/linux/unbundle/ffmpeg.gn').read_text()); out=r/'out'; out.mkdir(); (out/'args.gn').write_text(f'emberbsd_ffmpeg_target_libraries = [ "{r}/provider.so" ]\nemberbsd_ffmpeg_target_inputs = [ "{r}/header.h" ]\n')
- for role in ('target','native'):
+ for role in ('target','explicit','native'):
   (r/'config.gn').write_text(f'set_default_toolchain("//:tc")\nemberbsd_pkg_config_role = "{role}"\n')
   out=r/('out-'+role); out.mkdir()
-  (out/'args.gn').write_text(f'emberbsd_ffmpeg_{"host" if role == "native" else "target"}_libraries = [ "{r}/provider.so" ]\nemberbsd_ffmpeg_{"host" if role == "native" else "target"}_inputs = [ "{r}/header.h" ]\n')
+  (out/'args.gn').write_text(''.join(f'emberbsd_ffmpeg_{item_role}_libraries = [ "{r}/{item_role}/provider.so" ]\nemberbsd_ffmpeg_{item_role}_inputs = [ "{r}/{item_role}/header.h" ]\n' for item_role in ('host','target')))
   subprocess.run([gn,'gen',str(out)],cwd=r,check=True,capture_output=True)
   data=json.loads(subprocess.check_output([gn,'desc',str(out),'//third_party/ffmpeg:ffmpeg','--format=json'],cwd=r,text=True))
   selected=data['//third_party/ffmpeg:ffmpeg']
-  assert selected['libs']==['//provider.so'] and selected['inputs']==['//header.h']
-  expected = '/usr/pkg/lib/ffmpeg9' if role == 'target' else str(r)
-  assert selected.get('ldflags',[]) == ['-Wl,-rpath='+expected]
+  chosen='host' if role=='native' else 'target'
+  assert selected['libs']==['//'+chosen+'/provider.so'] and selected['inputs']==['//'+chosen+'/header.h']
+  expected = '/usr/pkg/lib/ffmpeg9' if role != 'native' else str(r/'host')
+  assert selected.get('ldflags',[]) == [('-Wl,-rpath,' if role=='native' else '-Wl,-rpath=')+expected]
 print('PASS: GN selects tracked role-specific FFmpeg libraries and target runtime path')

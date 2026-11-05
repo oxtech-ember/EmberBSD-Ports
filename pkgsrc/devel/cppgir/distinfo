@@ -4,3 +4,5 @@ BLAKE2s (cppgir-0bdd2b6a3cb2b17c36f175b78e914a46784c5b86.tar.gz) = ae7d1d09c80e1
 SHA512 (cppgir-0bdd2b6a3cb2b17c36f175b78e914a46784c5b86.tar.gz) = e392e41c04b31b5dd1f067efef4e18cf12db45446bcf397a9f43c451f982e5b8bca2aea2b632cbca4c81a85ff67fd90742ec200fc6b8705e7dd9053535eaf422
 Size (cppgir-0bdd2b6a3cb2b17c36f175b78e914a46784c5b86.tar.gz) = 200974 bytes
 SHA1 (patch-no-default-gir-path) = cd98010a7dd6e8766edae4022643f9df14997753
+SHA1 (patch-relocatable-CMakeLists.txt) = 8d38c8758b35ba7204450d8f9a618d21b32ccf21
+SHA1 (patch-relocatable-tools_cppgir.cpp) = a52d69393157f8144d2b7f3f22ec8732ed0b15ca

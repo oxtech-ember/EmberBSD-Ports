@@ -30,12 +30,32 @@ TOOL_DEPENDS+= crc32c>=1.1.2:../../devel/crc32c
 TOOL_DEPENDS+= libsrtp>=2.8.1:../../security/libsrtp
 TOOL_DEPENDS+= libyuv>=0.0.1978:../../multimedia/libyuv
 
+.if ${EMBERBSD_ELECTRON_SHARED_EXPAT:Uno} == "yes"
+TOOL_DEPENDS+= expat>=2.10.0nb1:../../textproc/expat
+.endif
+
+.if ${EMBERBSD_ELECTRON_SHARED_PFFFT:Uno} == "yes"
+TOOL_DEPENDS+= pffft>=1.1.0nb2:../../audio/pffft
+.endif
+
+.if ${EMBERBSD_ELECTRON_SHARED_OPENH264:Uno} == "yes"
+TOOL_DEPENDS+= openh264>=2.7.0:../../multimedia/openh264
+.endif
+
+.if ${EMBERBSD_ELECTRON_SHARED_CODECS:Uno} == "yes"
+TOOL_DEPENDS+= dav1d>=1.5.4:../../multimedia/dav1d
+TOOL_DEPENDS+= libaom>=3.15.2:../../multimedia/libaom
+TOOL_DEPENDS+= libvpx>=1.17.0:../../multimedia/libvpx
+TOOL_DEPENDS+= libopus>=1.6.1nb1:../../audio/libopus
+TOOL_DEPENDS+= flac>=1.5.0nb1:../../audio/flac
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_FFMPEG:Uno} == "yes"
 TOOL_DEPENDS+= ffmpeg9>=9.0.2nb7:../../multimedia/ffmpeg9
 .endif
 
 .if ${EMBERBSD_ELECTRON_SHARED_MINIZIP:Uno} == "yes"
-TOOL_DEPENDS+= minizip-ng>=4.2.2nb1:../../archivers/minizip-ng
+TOOL_DEPENDS+= minizip-ng>=4.2.2nb2:../../archivers/minizip-ng
 .endif
 
 .if ${EMBERBSD_ELECTRON_SHARED_XML:Uno} == "yes"

@@ -92,7 +92,10 @@ def select_roles(controller, options, sdk, native, environment, buildlink, provi
                 require(index+1 < len(manifest) and re.fullmatch(r'@comment MD5:[0-9a-f]{32}', manifest[index+1]),
                         'provider input has no package checksum: '+entry)
                 info = path.stat(); digest = hashlib.md5(path.read_bytes(), usedforsecurity=False).hexdigest()
-                require(path.stat() == info and digest == manifest[index+1].split(':', 1)[1],
+                after = path.stat()
+                stable = lambda value: (value.st_dev, value.st_ino, value.st_mode, value.st_size,
+                                        value.st_mtime_ns, value.st_ctime_ns)
+                require(stable(after) == stable(info) and digest == manifest[index+1].split(':', 1)[1],
                         'provider input differs from installed package: '+entry)
                 files.append(str(path))
             result['emberbsd_'+name+'_'+role+'_libraries'] = selected

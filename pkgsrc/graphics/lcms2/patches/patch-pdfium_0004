@@ -1,0 +1,13 @@
+# Origin: PDFium fa4d5f8fbd89ea07273529daf9fd24fe1c7f6b9a, third_party/lcms; PDFium Authors, BSD-3-Clause.
+# Donor: 0004-old-uninitialized-in-LUTeval16.patch
+--- src/cmslut.c
++++ src/cmslut.c
+@@ -1295,7 +1295,7 @@ void _LUTeval16(register const cmsUInt16Number In[], register cmsUInt16Number Ou
+ {
+     cmsPipeline* lut = (cmsPipeline*) D;
+     cmsStage *mpe;
+-    cmsFloat32Number Storage[2][MAX_STAGE_CHANNELS];
++    cmsFloat32Number Storage[2][MAX_STAGE_CHANNELS] = {0.0f};
+     int Phase = 0, NextPhase;
+ 
+     From16ToFloat(In, &Storage[Phase][0], lut ->InputChannels);

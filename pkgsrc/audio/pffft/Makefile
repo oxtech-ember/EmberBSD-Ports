@@ -1,6 +1,7 @@
 # $NetBSD$
 # Origin: EmberBSD contributors (AI-assisted).
 DISTNAME= pffft-1.1.0
+PKGREVISION= 2
 CATEGORIES= audio
 MASTER_SITES= ${MASTER_SITE_GITHUB:=marton78/}
 GITHUB_TAG= v${PKGVERSION_NOREV}
@@ -21,8 +22,10 @@ PLIST.darwin= yes
 .else
 PLIST.elf= yes
 .endif
-INSTALLATION_DIRS+= share/licenses/pffft
+INSTALLATION_DIRS+= share/licenses/pffft lib/pkgconfig
 post-install:
+	${SED} -e "s|@PREFIX@|${PREFIX}|g" -e "s|@VERSION@|${PKGVERSION_NOREV}|g" \
+	    ${FILESDIR}/pffft.pc.in > ${DESTDIR}${PREFIX}/lib/pkgconfig/pffft.pc
 	${INSTALL_DATA} ${WRKSRC}/LICENSE.txt ${DESTDIR}${PREFIX}/share/licenses/pffft/LICENSE.txt
 .include "../../devel/cmake/build.mk"
 .include "../../mk/bsd.pkg.mk"

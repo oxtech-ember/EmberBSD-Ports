@@ -28,13 +28,15 @@ with tempfile.TemporaryDirectory() as tmp:
  for role in ('native','target'):
   write('config.gn',f'''set_default_toolchain("//:tc")\nemberbsd_pkg_config_role="{role}"\nuse_blink=true\nbuild_with_chromium=false\nuse_gio=false\nis_castos=false\nis_win=false\nis_ios=false\nCHECK_INCLUDES_STRICT_PUBLIC_INCLUDES_PRIVATE=false\ntemplate("component") {{ source_set(target_name) {{ forward_variables_from(invoker,"*") }} }}\n''')
   out=r/('out-'+role);out.mkdir(); sel='host' if role=='native' else 'target'
-  (out/'args.gn').write_text('emberbsd_common_image=true\n'+''.join(f'emberbsd_{n}_{sel}_{k}=["{r}/{n}-{k}"]\n' for n in ('jpeg','webp') for k in ('libraries','inputs')))
-  for n in ('jpeg','webp'):
-   for k in ('libraries','inputs'): (r/(n+'-'+k)).write_text('fixture')
+  (out/'args.gn').write_text('emberbsd_common_image=true\n'+''.join(f'emberbsd_{n}_{selected_role}_{k}=["{r}/{selected_role}/{n}-{k}"]\n' for n in ('jpeg','webp') for k in ('libraries','inputs') for selected_role in ('host','target')))
+  for selected_role in ('host','target'):
+   (r/selected_role).mkdir(exist_ok=True)
+   for n in ('jpeg','webp'):
+    for k in ('libraries','inputs'): (r/selected_role/(n+'-'+k)).write_text('fixture')
   p=subprocess.run([GN,'gen',str(out),'--fail-on-unused-args'],cwd=r,text=True,capture_output=True); print(p.stdout,p.stderr);p.check_returncode()
   skia=json.loads(subprocess.check_output([GN,'desc',str(out),'//skia:skia','--format=json'],cwd=r,text=True))['//skia:skia']
-  assert set(skia['libs']) == {'//'+x+'-libraries' for x in ('jpeg','webp')}
+  assert set(skia['libs']) == {'//'+sel+'/'+x+'-libraries' for x in ('jpeg','webp')}
   for label,name in (('//third_party:emberbsd_jpeg','jpeg'),('//third_party/libwebp:emberbsd_webp','webp')):
    info=json.loads(subprocess.check_output([GN,'desc',str(out),label,'--format=json'],cwd=r,text=True))[label]
-   assert info['libs']==['//'+name+'-libraries'] and info['inputs']==['//'+name+'-inputs']; assert info['ldflags']==['-Wl,-rpath='+ (str(r) if role=='native' else '/usr/pkg/lib')]
+   assert info['libs']==['//'+sel+'/'+name+'-libraries'] and info['inputs']==['//'+sel+'/'+name+'-inputs']; assert info['ldflags']==[('-Wl,-rpath,'+str(r/'host') if role=='native' else '-Wl,-rpath=/usr/pkg/lib')]
 print('PASS image GN branches, tracked role inputs, transitive links and rpaths')

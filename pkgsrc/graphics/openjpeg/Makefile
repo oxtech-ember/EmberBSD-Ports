@@ -1,0 +1,27 @@
+# $NetBSD: Makefile,v 1.34 2025/09/22 05:55:05 adam Exp $
+
+DISTNAME=	openjpeg-2.5.4
+PKGREVISION=	1
+CATEGORIES=	graphics
+MASTER_SITES=	${MASTER_SITE_GITHUB:=uclouvain/}
+GITHUB_TAG=	v${PKGVERSION_NOREV}
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://www.openjpeg.org/
+COMMENT=	JPEG 2000 library
+LICENSE=	2-clause-bsd AND modified-bsd
+
+USE_CC_FEATURES=	c99
+USE_LANGUAGES=		c c++
+
+INSTALLATION_DIRS+= share/licenses/openjpeg
+
+post-install:
+	${INSTALL_DATA} ${FILESDIR}/LICENSE.pdfium ${DESTDIR}${PREFIX}/share/licenses/openjpeg/LICENSE.pdfium
+
+.include "../../devel/cmake/build.mk"
+.include "../../devel/zlib/buildlink3.mk"
+.include "../../graphics/lcms2/buildlink3.mk"
+.include "../../graphics/png/buildlink3.mk"
+.include "../../graphics/tiff/buildlink3.mk"
+.include "../../mk/bsd.pkg.mk"

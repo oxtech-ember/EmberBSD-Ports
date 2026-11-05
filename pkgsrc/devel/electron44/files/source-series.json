@@ -1202,6 +1202,26 @@
       "path": "gn-common-font.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-common-codecs.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-common-openh264.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-common-pffft.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-common-expat.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

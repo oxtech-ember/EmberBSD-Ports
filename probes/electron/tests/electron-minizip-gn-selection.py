@@ -27,16 +27,18 @@ with tempfile.TemporaryDirectory() as tmp:
         selected = 'host' if role == 'native' else 'target'
         (r/'config.gn').write_text(f'set_default_toolchain("//:tc")\nemberbsd_pkg_config_role = "{role}"\nis_win = false\nis_ios = false\n')
         out=r/('out-'+role); out.mkdir()
-        (out/'args.gn').write_text(''.join(f'emberbsd_{name}_{selected}_{kind} = [ "{r}/{name}-{kind}" ]\n' for name in ('zlib','minizip') for kind in ('libraries','inputs')))
-        for name in ('zlib','minizip'):
-            for kind in ('libraries','inputs'): (r/(name+'-'+kind)).write_text('fixture')
+        (out/'args.gn').write_text(''.join(f'emberbsd_{name}_{selected}_{kind} = [ "{r}/{selected}/{name}-{kind}" ]\n' for name in ('zlib','minizip') for kind in ('libraries','inputs') for selected in ('host','target')))
+        for item_role in ('host','target'):
+            (r/item_role).mkdir(exist_ok=True)
+            for name in ('zlib','minizip'):
+                for kind in ('libraries','inputs'): (r/item_role/(name+'-'+kind)).write_text('fixture')
         subprocess.run([str(a.gn),'gen',str(out),'--fail-on-unused-args'],cwd=r,check=True)
         for name in ('zlib','minizip'):
             data=json.loads(subprocess.check_output([str(a.gn),'desc',str(out),'//third_party/zlib:'+name,'--format=json'],cwd=r,text=True))
             target=data['//third_party/zlib:'+name]
-            assert target['libs']==['//'+name+'-libraries'] and target['inputs']==['//'+name+'-inputs']
-            expected=str(r) if role=='native' else '/usr/pkg/lib'
-            assert target['ldflags']==['-Wl,-rpath='+expected]
+            assert target['libs']==['//'+selected+'/'+name+'-libraries'] and target['inputs']==['//'+selected+'/'+name+'-inputs']
+            expected=str(r/'host') if role=='native' else '/usr/pkg/lib'
+            assert target['ldflags']==[('-Wl,-rpath,' if role=='native' else '-Wl,-rpath=')+expected]
         result=subprocess.run([str(a.gn),'desc',str(out),'//third_party/zlib/google:zip','deps'],cwd=r,text=True,capture_output=True,check=True)
         assert '//third_party/zlib:zlib' in result.stdout and '//third_party/zlib:minizip' in result.stdout
 print('PASS: GN selects role-specific owned libraries and inputs for zlib, minizip and Chromium ZIP')

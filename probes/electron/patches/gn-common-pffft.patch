@@ -1,0 +1,45 @@
+--- a/build/linux/unbundle/replace_gn_files.py
++++ b/build/linux/unbundle/replace_gn_files.py
+@@ -64,6 +64,7 @@
+     'libxslt': 'third_party/libxslt/BUILD.gn',
+     'libyuv': 'third_party/libyuv/BUILD.gn',
+     'openh264': 'third_party/openh264/BUILD.gn',
++    'pffft': 'third_party/pffft/BUILD.gn',
+     'opus': 'third_party/opus/BUILD.gn',
+     're2': 'third_party/re2/BUILD.gn',
+     'simdutf': 'third_party/simdutf/BUILD.gn',
+--- /dev/null
++++ b/build/linux/unbundle/pffft.gn
+@@ -0,0 +1,32 @@
++# Copyright 2026 EmberBSD contributors. BSD-2-Clause.
++import("//build/shim_headers.gni")
++import("//build/config/emberbsd_codecs.gni")
++
++declare_args() {
++  emberbsd_common_pffft = false
++  emberbsd_pffft_host_libraries = []
++  emberbsd_pffft_host_inputs = []
++  emberbsd_pffft_target_libraries = []
++  emberbsd_pffft_target_inputs = []
++}
++assert(emberbsd_common_pffft, "A selected common PFFFT provider is required")
++
++emberbsd_codec_provider("emberbsd_pffft") {
++  host_libraries = emberbsd_pffft_host_libraries
++  host_inputs = emberbsd_pffft_host_inputs
++  target_libraries = emberbsd_pffft_target_libraries
++  target_inputs = emberbsd_pffft_target_inputs
++}
++pkg_config("pffft_config") {
++  packages = [ "pffft" ]
++  ignore_libs = true
++}
++shim_headers("pffft_shim") {
++  prefix = "pffft/"
++  root_path = "src"
++  headers = [ "pffft.h" ]
++}
++source_set("pffft") {
++  public_deps = [ ":emberbsd_pffft", ":pffft_shim" ]
++  public_configs = [ ":pffft_config" ]
++}

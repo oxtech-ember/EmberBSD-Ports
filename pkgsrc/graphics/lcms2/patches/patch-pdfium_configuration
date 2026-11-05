@@ -1,0 +1,22 @@
+# Origin: PDFium fa4d5f8fbd89ea07273529daf9fd24fe1c7f6b9a, third_party/lcms; PDFium Authors, BSD-3-Clause.
+# Donor: 0028-do-not-quickfloor.patch, 0029-drop-register-keyword.patch
+--- include/lcms2.h
++++ include/lcms2.h
+@@ -45,7 +45,7 @@
+ // #define CMS_LARGE_FILE_SUPPORT    1
+ 
+ // Uncomment this if your compiler doesn't work with fast floor function
+-// #define CMS_DONT_USE_FAST_FLOOR 1
++#define CMS_DONT_USE_FAST_FLOOR 1
+ 
+ // Uncomment this line if you want lcms to use the black point tag in profile,
+ // if commented, lcms will compute the black point by its own.
+@@ -69,7 +69,7 @@
+ // #define CMS_RELY_ON_WINDOWS_STATIC_MUTEX_INIT
+ 
+ // Uncomment this to remove the "register" storage class
+-// #define CMS_NO_REGISTER_KEYWORD 1
++#define CMS_NO_REGISTER_KEYWORD 1
+ 
+ // Uncomment this to remove visibility attribute when building shared objects
+ // #define CMS_NO_VISIBILITY 1
