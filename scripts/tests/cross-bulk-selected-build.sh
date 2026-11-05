@@ -12,9 +12,14 @@ case "$out" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2 ;; esac
 [ ! -e "$out" ] || exit 2
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
 selected_shell=${CROSS_BULK_TEST_SHELL:-$(command -v sh)}
+host_python=${CROSS_BULK_TEST_PYTHON:-$(command -v python3)}
+: "${CROSS_BULK_TEST_SDK_SOURCE:?Set CROSS_BULK_TEST_SDK_SOURCE to the selected SDK source}"
 mkdir -p "$out/tree/pkgtools/pkg_install" "$out/tree/cat/app" \
     "$out/tree/cat/dep" "$out/tree/cat/fail" "$out/packages/All" \
-    "$out/native-db" "$out/target-db" "$out/state/logs"
+    "$out/native-db" "$out/target-db" "$out/state/logs" "$out/sdk/scripts"
+ln -s "$CROSS_BULK_TEST_SDK_SOURCE/src" "$out/sdk/src"
+# Use real stage locking and process supervision. Only CPU capacity is fixed.
+printf 'print(2)\n' > "$out/sdk/scripts/resolve-jobs.py"
 : > "$out/mk.conf"
 for p in app dep fail; do : > "$out/tree/cat/$p/Makefile"; done
 : > "$out/tree/pkgtools/pkg_install/Makefile"
@@ -22,10 +27,6 @@ mkdir -p "$out/tree/mk"
 cat > "$out/pkg_info" <<WRAP
 #!/bin/sh
 exit 1
-WRAP
-cat > "$out/python" <<WRAP
-#!/bin/sh
-echo 2
 WRAP
 cat > "$out/bmake" <<WRAP
 #!/bin/sh
@@ -64,7 +65,7 @@ case "\$target" in
     show-var)
         case "\$varname" in
             EMBERBSD_NATIVE_TOOLSET_VERIFIED) echo fake ;;
-            EMBERBSD_HOST_PYTHON) echo "$out/python" ;;
+            EMBERBSD_HOST_PYTHON) echo "$host_python" ;;
             EMBERBSD_SDK_SOURCE) echo "$out/sdk" ;;
             PACKAGES) echo "$out/packages" ;;
             PKG_INFO) if [ "\$cross" = yes ]; then echo "$out/pkg_info -K $out/native-db"; else echo "$out/pkg_info -K $out/target-db"; fi ;;
@@ -89,14 +90,17 @@ case "\$target" in
                 OPSYS) echo NetBSD ;;
                 MACHINE_ARCH) echo aarch64 ;;
                 MACHINE_GNU_PLATFORM) echo aarch64--netbsd ;;
-                EMBERBSD_HOST_PYTHON) echo "$out/python" ;;
+                EMBERBSD_HOST_PYTHON) echo "$host_python" ;;
                 EMBERBSD_SDK_SOURCE) echo "$out/sdk" ;;
                 PKG_SKIP_REASON) echo ;;
                 DEPENDS) if [ "\$pkg" = app ]; then echo 'dep>=1:../../cat/dep'; else echo ; fi ;;
                 BUILD_DEPENDS|TOOL_DEPENDS|BOOTSTRAP_DEPENDS) echo ;;
                 PKGBASE) echo "\$pkg" ;;
                 PKGNAME) echo "\$pkg-1.0" ;;
+                PKGVERSION_NOREV) echo 1.0 ;;
+                PKGFILE) echo "$out/packages/All/\$pkg-1.0.tgz" ;;
                 WRKDIR) echo "$out/work/cat/\$pkg" ;;
+                WRKOBJDIR) echo "$out/work" ;;
                 .MAKE.MAKEFILES) echo "\$dir/Makefile" ;;
                 .CURDIR) echo "\$dir" ;;
                 *) echo ;;
@@ -111,7 +115,7 @@ case "\$target" in
     *) echo "unknown target: \$target" >&2; exit 2 ;;
 esac
 WRAP
-chmod +x "$out/pkg_info" "$out/python" "$out/bmake"
+chmod +x "$out/pkg_info" "$out/bmake"
 : > "$out/pkg_add"
 chmod +x "$out/pkg_add"
 : > "$out/missing-build-lock"
@@ -195,7 +199,7 @@ rm -rf "$out/state/build.lock"
 # controller must compute the environment identity through that selected
 # implementation, without depending on another PATH directory.
 mkdir -p "$out/no-awk-bin"
-for tool in env sort shasum rm mkdir rmdir printf; do
+for tool in env sort shasum rm mkdir rmdir printf tsort; do
     resolved=$(command -v "$tool") || fail "test host lacks $tool"
     ln -s "$resolved" "$out/no-awk-bin/$tool"
 done

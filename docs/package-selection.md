@@ -77,3 +77,11 @@ that exact name is installed. Ordinary source builds and explicit package-stage
 recovery keep their existing rebuild rules. Native packages retain their
 existing installed-version reuse. Do not manufacture this input from file names
 or use it to suppress a deliberately requested source rebuild.
+
+For binary package updates, use the SDK client's
+[`installed`, `plan --installed` and `update` commands](https://github.com/oxtech-ember/EmberBSD-SDK/blob/main/docs/sdk-client.md#installed-versions-and-updates).
+They use actual pkgdb package identities and published runtime dependencies.
+They do not expand these package sets, recreate removed selections or build
+the source catalog. Package versions and revisions determine replacements;
+the signed channel generation only protects metadata against rollback.
+The same Ports recipes and existing controller remain the source-build owner.
