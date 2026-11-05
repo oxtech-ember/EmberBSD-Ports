@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.3 2024/08/25 06:18:38 wiz Exp $
 
 DISTNAME=	tl-expected-1.3.1
+PKGREVISION=	1
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=TartanLlama/}
 GITHUB_PROJECT=	expected
@@ -19,5 +20,8 @@ USE_LANGUAGES=	c c++
 CMAKE_CONFIGURE_ARGS+= -DEXPECTED_BUILD_TESTS=OFF
 CMAKE_CONFIGURE_ARGS+= -DEXPECTED_BUILD_PACKAGE=OFF
 
+INSTALLATION_DIRS+= share/licenses/tl-expected
+post-install:
+	${INSTALL_DATA} ${WRKSRC}/COPYING ${DESTDIR}${PREFIX}/share/licenses/tl-expected/COPYING
 .include "../../devel/cmake/build.mk"
 .include "../../mk/bsd.pkg.mk"
