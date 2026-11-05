@@ -141,7 +141,7 @@ Use shared Ports libraries and the native Lemon generator.
  
  if( TARGET remote_provider_schema_build_copy )
      add_dependencies( kicommon remote_provider_schema_build_copy )
-@@ -907,10 +908,9 @@
+@@ -907,10 +908,10 @@
  if( TARGET remote_provider_schema_build_copy )
      add_dependencies( common remote_provider_schema_build_copy )
  endif()
@@ -149,11 +149,12 @@ Use shared Ports libraries and the native Lemon generator.
  
  target_link_libraries( common
 -    libcontext
++    compoundfilereader
 +    libcontext::context
      kimath
      kiplatform
      kicommon
-@@ -919,7 +919,7 @@
+@@ -919,7 +920,7 @@
      gal
      nanosvg
      dxflib_qcad
@@ -162,7 +163,7 @@ Use shared Ports libraries and the native Lemon generator.
      scripting
      nlohmann_json
      pybind11::embed
-@@ -956,10 +956,10 @@
+@@ -956,10 +957,10 @@
      )
  
  # text markup support
@@ -175,7 +176,7 @@ Use shared Ports libraries and the native Lemon generator.
      $<TARGET_PROPERTY:magic_enum,INTERFACE_INCLUDE_DIRECTORIES>
      )
  
-@@ -1101,12 +1101,12 @@
+@@ -1101,12 +1102,12 @@
  target_link_libraries( pcbcommon PUBLIC
      core
      common
@@ -190,7 +191,7 @@ Use shared Ports libraries and the native Lemon generator.
  )
  
  if( APPLE OR NOT UNIX )
-@@ -1116,7 +1116,6 @@
+@@ -1116,7 +1117,6 @@
      target_link_libraries( pcbcommon PUBLIC pcbnew_navlib)
  endif()
  
