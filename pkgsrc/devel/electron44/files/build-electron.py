@@ -490,7 +490,8 @@ def host_buildlink(options, sdk, native, environment, host_binding):
                 *(['--shared-xml'] if getattr(options, 'shared_xml', False) else []),
                 *(['--shared-image'] if getattr(options, 'shared_image', False) else []),
                 *(['--shared-font'] if getattr(options, 'shared_font', False) else []),
-                *(['--shared-codecs'] if getattr(options, 'shared_codecs', False) else []), '--base-makeconf', str(selected[2]),
+                *(['--shared-codecs'] if getattr(options, 'shared_codecs', False) else []),
+                *(['--shared-openh264'] if getattr(options, 'shared_openh264', False) else []), '--base-makeconf', str(selected[2]),
                 '--binding-record', str(record), '--bmake-mk', str(selected[3]),
                 '--work', str(work), '--lock-root', str(options.lock_root)]
     if not previous and (getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)):
@@ -574,7 +575,7 @@ def additive_host_buildlink_relocation(old_args, new_args, old_env, new_env, wor
     require(all(new_links.get(name) == target for name, target in old_links.items()),
             'host buildlink relocation removed or replaced an existing link')
     old_call, new_call = (record['invocation'] for record in records)
-    selection_keys = {'shared_ffmpeg', 'shared_minizip', 'shared_xml', 'shared_image', 'shared_font', 'shared_codecs'}
+    selection_keys = {'shared_ffmpeg', 'shared_minizip', 'shared_xml', 'shared_image', 'shared_font', 'shared_codecs', 'shared_openh264'}
     for name in (set(old_call) | set(new_call)) - {'work'} - selection_keys:
         require(old_call.get(name) == new_call.get(name),
                 'host buildlink relocation changed an unrelated input: ' + name)
@@ -1385,6 +1386,8 @@ def compression_recipe_catalog(options, sdk, native, environment):
         packages += ('graphics/libjpeg-turbo', 'graphics/libwebp')
     if getattr(options, 'shared_font', False):
         packages += ('graphics/freetype2', 'fonts/harfbuzz')
+    if getattr(options, 'shared_openh264', False):
+        packages += ('multimedia/openh264',)
     if getattr(options, 'shared_codecs', False):
         packages += ('multimedia/dav1d', 'multimedia/libaom', 'multimedia/libvpx', 'audio/libopus', 'audio/flac')
     identities = {name: selector.git_package_identity(owner, name, git) for name in packages}
@@ -2079,6 +2082,12 @@ def producer_inputs(options, sdk):
                 types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
                                       selected_owned_library=selected_owned_library),
                 options, sdk, native, environment, buildlink))
+        if getattr(options, 'shared_openh264', False):
+            values.update(local_module('electron_codec_provider', 'codec-provider.py').select_openh264(
+                local_module('electron_image_provider', 'image-provider.py'),
+                types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
+                                      selected_owned_library=selected_owned_library),
+                options, sdk, native, environment, buildlink))
         if getattr(options, 'shared_font', False):
             values.update(local_module('electron_image_provider', 'image-provider.py').select_fonts(
                 types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
@@ -2309,6 +2318,10 @@ def gn_source(options):
         new_codecs = bool(getattr(options, 'shared_codecs', False))
         codec_names = ('dav1d', 'libaom', 'libvpx', 'opus', 'flac')
         codec_marker = destination.parent / ('.' + destination.name + '.codec-components-migration')
+        old_openh264 = bool(getattr(options, 'old_openh264_identity', None))
+        new_openh264 = bool(getattr(options, 'shared_openh264', False))
+        openh264_names = ('openh264',)
+        openh264_marker = destination.parent / ('.' + destination.name + '.openh264-components-migration')
         old_image = bool(getattr(options, 'old_image_identity', None))
         new_image = bool(getattr(options, 'shared_image', False))
         image_names = ('libwebp',)
@@ -2330,6 +2343,15 @@ def gn_source(options):
         ffmpeg_marker = destination.parent / ('.' + destination.name + '.ffmpeg-components-migration')
         compression_marker = destination.parent / ('.' + destination.name + '.compression-components-migration')
         compression_root = destination / 'src/third_party'
+        if (new_openh264 and not old_openh264 and
+                (options.phase == 'reconfigure' or
+                 (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
+                                                    getattr(options, 'resume_configure', False)))) and
+                not os.path.lexists(openh264_marker) and
+                all((compression_root/name).is_dir() and not (compression_root/name).is_symlink()
+                    for name in openh264_names)):
+            compression.verify_view(view, options.workspace / 'src', destination, openh264_names)
+            old_openh264 = True
         if (new_codecs and not old_codecs and
                 (options.phase == 'reconfigure' or
                  (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
@@ -2438,6 +2460,9 @@ def gn_source(options):
             if old_sqlite:
                 names.append(sqlite.NAME)
                 checks.append(lambda: sqlite.verify_view(view, options.workspace / 'src', destination, old_sqlite))
+            if old_openh264:
+                names.extend(openh264_names)
+                checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, openh264_names))
             if old_codecs:
                 names.extend(codec_names)
                 checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, codec_names))
@@ -2509,6 +2534,14 @@ def gn_source(options):
             sqlite.activate(view, options.workspace / 'src', destination, new_sqlite, old_sqlite,
                             lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring))
             old_sqlite = new_sqlite
+        if os.path.lexists(openh264_marker):
+            require(new_openh264 and (options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+                    'OpenH264 transaction recovery requires shared OpenH264 reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring),
+                                 openh264_names, 'openh264-components')
+            old_openh264 = True
         if os.path.lexists(codec_marker):
             require(new_codecs and (options.phase == 'reconfigure' or
                     getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
@@ -2642,6 +2675,16 @@ def gn_source(options):
                                  lambda: verify_selection(ids, new_headers, new_media, new_compression),
                                  ('zlib',), 'minizip-components')
             old_minizip = True
+            transition_result = verify_selection(ids, new_headers, new_media, new_compression)
+            transition = True
+        if old_openh264 != new_openh264 or os.path.lexists(openh264_marker):
+            require(new_openh264, 'disabling shared OpenH264 requires a new source view')
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'OpenH264 transition requires reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(ids, new_headers, new_media, new_compression),
+                                 openh264_names, 'openh264-components')
+            old_openh264 = True
             transition_result = verify_selection(ids, new_headers, new_media, new_compression)
             transition = True
         if old_codecs != new_codecs or os.path.lexists(codec_marker):
@@ -2897,6 +2940,26 @@ def image_activation_args(options, old_environment, environment, old_arguments, 
     return names
 
 
+def openh264_activation_args(options, old_environment, environment, old_arguments, values):
+    if not getattr(options, 'shared_openh264', False):
+        return set()
+    key = 'EMBERBSD_OPENH264_SOURCE_SHA256'
+    require(re.fullmatch(r'[0-9a-f]{64}', environment.get(key, '')), 'verified OpenH264 identity is missing')
+    names = {'emberbsd_openh264_' + role + '_' + kind
+             for role in ('host', 'target') for kind in ('libraries', 'inputs')}
+    names.add('emberbsd_common_openh264')
+    if old_environment.get(key):
+        return set()
+    require(all(old_arguments.get(name) in (None, False, []) for name in names),
+            'OpenH264 activation cannot replace existing GN inputs')
+    require(all(values.get(name) for name in names), 'verified OpenH264 GN inputs are incomplete')
+    require(old_arguments.get('rtc_system_openh264') in (None, False) and
+            values.get('rtc_system_openh264') is False,
+            'OpenH264 activation requires the shared encoder wrapper')
+    names.add('rtc_system_openh264')
+    return names
+
+
 def codec_activation_args(options, old_environment, environment, old_arguments, values):
     """Allow the first verified five-provider selection, guarding later changes."""
     if not getattr(options, 'shared_codecs', False):
@@ -3128,6 +3191,8 @@ def reconfigure(options):
                 permitted_env.add('EMBERBSD_BORINGSSL_SOURCE_SHA256')
                 options.compression_identity = candidate.compression_identity
                 options.old_compression_identity = old_env.get('EMBERBSD_COMPRESSION_SOURCE_SHA256')
+                options.old_openh264_identity = old_env.get('EMBERBSD_OPENH264_SOURCE_SHA256')
+                permitted_env.add('EMBERBSD_OPENH264_SOURCE_SHA256')
                 options.old_codec_identity = old_env.get('EMBERBSD_CODEC_SOURCE_SHA256')
                 permitted_env.add('EMBERBSD_CODEC_SOURCE_SHA256')
                 options.old_image_identity = old_env.get('EMBERBSD_IMAGE_SOURCE_SHA256')
@@ -3226,6 +3291,7 @@ def reconfigure(options):
         minizip_args = minizip_activation_args(options, old_env, environment, saved['arguments'], values)
         xml_args = xml_activation_args(options, old_env, environment, saved['arguments'], values)
         codec_args = codec_activation_args(options, old_env, environment, saved['arguments'], values)
+        openh264_args = openh264_activation_args(options, old_env, environment, saved['arguments'], values)
         image_args = image_activation_args(options, old_env, environment, saved['arguments'], values)
         font_args = font_activation_args(options, old_env, environment, saved['arguments'], values)
         buildlink_args = additive_host_buildlink_relocation(
@@ -3292,6 +3358,9 @@ def reconfigure(options):
         if getattr(options, 'shared_ffmpeg', False):
             require(saved['arguments'].get('use_system_ffmpeg') in (None, False, True),
                     'invalid previous FFmpeg selection')
+        identity_args.update(('emberbsd_common_openh264', 'rtc_system_openh264'))
+        identity_args.update('emberbsd_openh264_' + role + '_' + kind
+                             for role in ('host', 'target') for kind in ('libraries', 'inputs'))
         identity_args.add('emberbsd_common_codecs')
         identity_args.update('emberbsd_' + provider + '_' + role + '_' + kind
                              for provider in ('dav1d', 'aom', 'vpx', 'opus', 'flac')
@@ -3315,7 +3384,7 @@ def reconfigure(options):
             if node_source_refresh and name == 'emberbsd_node_source_identity':
                 continue
             if (name in activation_args or name in minizip_args or name in xml_args or
-                    name in image_args or name in font_args or name in codec_args or name in buildlink_args):
+                    name in image_args or name in font_args or name in codec_args or name in openh264_args or name in buildlink_args):
                 continue
             if name in ('use_litert_tflite', 'emberbsd_flatc', 'emberbsd_flatc_inputs') and getattr(options, 'activate_common_ml', False) and not old_ml:
                 continue
@@ -3390,6 +3459,7 @@ def build(options):
     require(saved['arguments'] == values, 'GN selection changed; configure a new output')
     options.old_boringssl_identity = saved_env['EMBERBSD_BORINGSSL_SOURCE_SHA256']
     options.old_compression_identity = saved_env['EMBERBSD_COMPRESSION_SOURCE_SHA256']
+    options.old_openh264_identity = saved_env.get('EMBERBSD_OPENH264_SOURCE_SHA256')
     options.old_codec_identity = saved_env.get('EMBERBSD_CODEC_SOURCE_SHA256')
     options.old_image_identity = saved_env.get('EMBERBSD_IMAGE_SOURCE_SHA256')
     options.old_font_identity = saved_env.get('EMBERBSD_FONT_SOURCE_SHA256')
@@ -3469,6 +3539,7 @@ def main():
         command.add_argument('--shared-image', action='store_true')
         command.add_argument('--shared-font', action='store_true')
         command.add_argument('--shared-codecs', action='store_true')
+        command.add_argument('--shared-openh264', action='store_true')
         if phase == 'configure':
             initial = command.add_mutually_exclusive_group()
             initial.add_argument('--resume-configure', action='store_true',

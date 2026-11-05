@@ -30,6 +30,10 @@ TOOL_DEPENDS+= crc32c>=1.1.2:../../devel/crc32c
 TOOL_DEPENDS+= libsrtp>=2.8.1:../../security/libsrtp
 TOOL_DEPENDS+= libyuv>=0.0.1978:../../multimedia/libyuv
 
+.if ${EMBERBSD_ELECTRON_SHARED_OPENH264:Uno} == "yes"
+TOOL_DEPENDS+= openh264>=2.7.0:../../multimedia/openh264
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_CODECS:Uno} == "yes"
 TOOL_DEPENDS+= dav1d>=1.5.4:../../multimedia/dav1d
 TOOL_DEPENDS+= libaom>=3.15.2:../../multimedia/libaom

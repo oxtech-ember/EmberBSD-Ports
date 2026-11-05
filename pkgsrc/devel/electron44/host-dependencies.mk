@@ -58,6 +58,12 @@ BUILDLINK_ABI_DEPENDS.harfbuzz+= harfbuzz>=15.0.0nb3
 .include "../../fonts/harfbuzz/buildlink3.mk"
 .endif
 
+.if ${EMBERBSD_ELECTRON_SHARED_OPENH264:Uno} == "yes"
+BUILDLINK_API_DEPENDS.openh264+= openh264>=2.7.0
+BUILDLINK_ABI_DEPENDS.openh264+= openh264>=2.7.0
+.include "../../multimedia/openh264/buildlink3.mk"
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_CODECS:Uno} == "yes"
 BUILDLINK_API_DEPENDS.dav1d+= dav1d>=1.5.4
 BUILDLINK_ABI_DEPENDS.dav1d+= dav1d>=1.5.4

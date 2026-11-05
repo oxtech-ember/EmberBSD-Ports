@@ -25,3 +25,19 @@ def select(image, controller, options, sdk, native, environment, buildlink):
     return image.select_roles(controller, options, sdk, native, environment, buildlink,
                               PROVIDERS, {'emberbsd_common_codecs': True},
                               'EMBERBSD_CODEC_SOURCE_SHA256')
+
+
+OPENH264_PROVIDER = {
+    'openh264': ('multimedia/openh264', 'openh264', (2, 7, 0, 0),
+                 ('libopenh264',), ('openh264',),
+                 tuple('include/wels/' + name for name in
+                       ('codec_api.h', 'codec_app_def.h', 'codec_def.h', 'codec_ver.h'))),
+}
+
+
+def select_openh264(image, controller, options, sdk, native, environment, buildlink):
+    if not getattr(options, 'shared_openh264', False):
+        return {}
+    return image.select_roles(controller, options, sdk, native, environment, buildlink,
+                              OPENH264_PROVIDER, {'emberbsd_common_openh264': True, 'rtc_system_openh264': False},
+                              'EMBERBSD_OPENH264_SOURCE_SHA256')
