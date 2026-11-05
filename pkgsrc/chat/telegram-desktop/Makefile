@@ -26,7 +26,7 @@ CMAKE_CONFIGURE_ARGS+=	-DQT_VERSION_MAJOR=6
 CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_CPPGIR_EXECUTABLE=${TOOLBASE}/bin/cppgir
 CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_CPPGIR_DATA_DIR=${TOOLBASE}/share/cppgir
 CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_GIR_DIR=${CROSS_DESTDIR:U}${LOCALBASE}/share/gir-1.0
-TOOL_DEPENDS+=	cppgir>=2.0.0:../../devel/cppgir
+TOOL_DEPENDS+=	cppgir>=2.0.0nb2:../../devel/cppgir
 TOOL_DEPENDS+=	gobject-introspection>=1.86.0nb4:../../devel/gobject-introspection
 TOOL_DEPENDS+=	zxcvbn-c>=2.7nb2:../../security/zxcvbn-c
 CMAKE_CONFIGURE_ARGS+=	-DZXCVBN_NATIVE_DICTGEN=${TOOLBASE}/bin/zxcvbn-dictgen

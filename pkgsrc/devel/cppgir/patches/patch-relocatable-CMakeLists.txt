@@ -1,0 +1,48 @@
+$NetBSD$
+
+Resolve installed data relative to the actual executable after prefix relocation.
+Explicit search inputs and absolute installation directories retain their meaning.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -114,6 +114,15 @@
+     set(CPPGIR_UNIX_IGNORE "")
+ endif ()
+ set(GI_IGNORE_FILE_INSTALL_DIR ${CMAKE_INSTALL_FULL_DATADIR}/${PROJECT_NAME})
++# Relative install directories follow the executable when a prefix is moved.
++# Explicit absolute data directories retain their configured meaning.
++if (IS_ABSOLUTE "${CMAKE_INSTALL_DATADIR}")
++    set(GI_RUNTIME_DATADIR "${CMAKE_INSTALL_DATADIR}")
++else()
++    file(RELATIVE_PATH GI_RUNTIME_DATADIR
++        "${CMAKE_INSTALL_FULL_BINDIR}" "${CMAKE_INSTALL_FULL_DATADIR}")
++endif()
++set(GI_RUNTIME_IGNORE_DIR ${GI_RUNTIME_DATADIR}/${PROJECT_NAME})
+ 
+ add_executable(cppgir tools/cppgir.cpp
+     tools/genbase.cpp tools/genbase.hpp
+@@ -126,9 +135,13 @@
+ if (UNIX)
+     # add fixed fallback search places
+     target_compile_definitions(cppgir PRIVATE
+-        -DGI_GIR_DIR=${GIR_DIR}
+-        -DGI_DATA_DIR=${CMAKE_INSTALL_FULL_DATADIR}/gir-1.0
++        -DGI_DATA_DIR=${GI_RUNTIME_DATADIR}/gir-1.0
+     )
++    # Do not embed the original prefix for the ordinary installed GIR path.
++    # A separately configured extra path remains an explicit search input.
++    if (NOT "${GIR_DIR}" STREQUAL "${CMAKE_INSTALL_FULL_DATADIR}/gir-1.0")
++        target_compile_definitions(cppgir PRIVATE -DGI_GIR_DIR=${GIR_DIR})
++    endif()
+     if (GIR_DEFAULT_DIRS)
+         target_compile_definitions(cppgir PRIVATE
+             -DDEFAULT_GIRPATH=${GIR_DEFAULT_DIRS}
+@@ -142,7 +155,7 @@
+     set(GENERATED_IGNORE "")
+ else()
+     target_compile_definitions(cppgir PRIVATE
+-        -DDEFAULT_IGNORE_FILE=${GI_IGNORE_FILE_INSTALL_DIR}/${GI_IGNORE_FILE}:${GI_IGNORE_FILE_INSTALL_DIR}/${GI_IGNORE_FILE_PLATFORM})
++        -DDEFAULT_IGNORE_FILE=${GI_RUNTIME_IGNORE_DIR}/${GI_IGNORE_FILE}:${GI_RUNTIME_IGNORE_DIR}/${GI_IGNORE_FILE_PLATFORM})
+     set(GENERATED_IGNORE --ignore ${GI_IGNORE_FILE_DIR}/${GI_IGNORE_FILE}:${GI_IGNORE_FILE_DIR}/${GI_IGNORE_FILE_PLATFORM})
+ endif()
+ if (USE_FMTLIB)
