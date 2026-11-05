@@ -13,6 +13,8 @@ NO_ARCH= yes
 USE_LANGUAGES= # JavaScript source
 USE_TOOLS+= find sort
 PYTHON_FOR_BUILD_ONLY= tool
+# Explicit patch-created backups only; upstream .orig files are not blanket exclusions.
+JS_MODULE_PATCH_BACKUPS?=
 JS_MODULE_DEPENDS?=
 # Mandatory peers supplied by the consuming runtime, not this source package.
 # The consumer must validate the installed package.json peer ranges.
@@ -37,6 +39,11 @@ do-build:
 do-install:
 	${INSTALL_DATA_DIR} ${DESTDIR:Q}${_JS_MODULE_DIR:H:Q}
 	${CP} -R ${WRKSRC:Q} ${DESTDIR:Q}${_JS_MODULE_DIR:Q}
+.for _js_backup in ${JS_MODULE_PATCH_BACKUPS}
+	@case ${_js_backup:Q} in /*|..|../*|*/..|*/../*|./*|*/./*|*/.) ${ECHO} "Invalid JS patch backup" >&2; exit 1 ;; esac
+	@case ${_js_backup:Q} in *.orig) ;; *) ${ECHO} "Invalid JS patch backup" >&2; exit 1 ;; esac
+	${RM} ${DESTDIR:Q}${_JS_MODULE_DIR:Q}/${_js_backup:Q}
+.endfor
 
 GENERATE_PLIST+= cd ${DESTDIR:Q}${PREFIX:Q}; ${FIND} lib/node_modules/${JS_MODULE_NAME:Q} \( -type f -o -type l \) -print | ${SORT};
 .include "../../lang/python/tool.mk"

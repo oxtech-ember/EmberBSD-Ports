@@ -1,6 +1,7 @@
 # Origin: EmberBSD (AI-assisted); common upstream csso module.
 DISTNAME= csso-5.0.5
 PKGNAME= node-csso-5.0.5
+PKGREVISION= 1
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/csso/-/
 DIST_SUBDIR= node-csso
@@ -9,6 +10,7 @@ WRKSRC= ${WRKDIR}/package
 HOMEPAGE= https://www.npmjs.com/package/csso
 COMMENT= Common csso JavaScript module
 LICENSE= mit
+JS_MODULE_PATCH_BACKUPS= package.json.orig
 JS_MODULE_NAME= csso
 JS_MODULE_DEPENDS+= css-tree=node-css-tree>=3.2.1:../../devel/node-css-tree
 

@@ -1,6 +1,7 @@
 # Origin: EmberBSD (AI-assisted); common upstream svgo module.
 DISTNAME= svgo-4.1.0
 PKGNAME= node-svgo-4.1.0
+PKGREVISION= 1
 CATEGORIES= devel
 MASTER_SITES= https://registry.npmjs.org/svgo/-/
 DIST_SUBDIR= node-svgo
@@ -9,6 +10,7 @@ WRKSRC= ${WRKDIR}/package
 HOMEPAGE= https://www.npmjs.com/package/svgo
 COMMENT= Common svgo JavaScript module
 LICENSE= mit
+JS_MODULE_PATCH_BACKUPS= package.json.orig
 JS_MODULE_NAME= svgo
 JS_MODULE_DEPENDS+= commander=node-commander>=15.0.0:../../devel/node-commander
 JS_MODULE_DEPENDS+= css-select=node-css-select>=7.0.0:../../devel/node-css-select
