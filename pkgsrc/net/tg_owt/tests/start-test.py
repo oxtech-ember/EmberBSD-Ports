@@ -1,6 +1,6 @@
 import pathlib,re,subprocess,sys,tempfile
 s=pathlib.Path(sys.argv[1]).read_text(); ctor=s[s.index('VideoCaptureModuleV4L2::VideoCaptureModuleV4L2()'):s.index('int32_t VideoCaptureModuleV4L2::Init(')]; dtor=s[s.index('VideoCaptureModuleV4L2::~VideoCaptureModuleV4L2()'):s.index('bool VideoCaptureModuleV4L2::CaptureStarted()')]; methods=ctor+dtor
-prefix=pathlib.Path('/private/tmp/ember-v4l2-regression/buffer-test.py').read_text().split("pre=r'''",1)[1].split("'''",1)[0]
+prefix=pathlib.Path(__file__).resolve().with_name('buffer-test.py').read_text().split("pre=r'''",1)[1].split("'''",1)[0]
 prefix=prefix[:prefix.index('struct VideoCaptureCapability')]
 fmts=sorted(set(re.findall(r'V4L2_PIX_FMT_[A-Z0-9]+',methods))); prefix+='\n'+''.join('#define %s %d\n'%(n,i+1) for i,n in enumerate(fmts))
 prefix+=r'''
