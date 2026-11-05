@@ -12,4 +12,5 @@ ${PLIST.darwin}lib/libpffft.dylib
 ${PLIST.elf}lib/libpffft.so
 ${PLIST.elf}lib/libpffft.so.1
 ${PLIST.elf}lib/libpffft.so.1.1.0
+lib/pkgconfig/pffft.pc
 share/licenses/pffft/LICENSE.txt
