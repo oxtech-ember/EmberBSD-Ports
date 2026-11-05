@@ -11,7 +11,12 @@ mkdir -p "$out/tree/pkgtools/pkg_install" "$out/tree/cat/demo" "$out/work/demo" 
     "$out/work/demo-native" "$out/packages/All" "$out/packages-native/All" \
     "$out/db" "$out/native-db" "$out/state/logs" "$out/sdk/scripts" \
     "$out/tree/mk/package"
-host_python=$(command -v python3)
+host_python=${CROSS_BULK_TEST_PYTHON:-$(command -v python3)}
+: "${CROSS_BULK_TEST_SDK_SOURCE:?Set CROSS_BULK_TEST_SDK_SOURCE to the selected SDK source}"
+ln -s "$CROSS_BULK_TEST_SDK_SOURCE/src" "$out/sdk/src"
+CROSS_BULK_TEST_HOST_PYTHON=$host_python
+CROSS_BULK_TEST_SDK_SOURCE=$out/sdk
+export CROSS_BULK_TEST_HOST_PYTHON CROSS_BULK_TEST_SDK_SOURCE
 cat > "$out/sdk/scripts/resolve-jobs.py" <<'PY'
 print(6)
 PY
@@ -139,6 +144,7 @@ case "\$target" in
                 PKGVERSION_NOREV) echo 1.0;;
                 WRKDIR) if [ "\$native" = yes ]; then echo $out/work/demo-native; else echo $out/work/demo; fi;;
                 PKGFILE) echo $out/packages/All/demo-1.0.tgz;;
+                WRKOBJDIR) echo $out/work;;
                 STAGE_PKGFILE) echo $out/work/demo/.packages/demo-1.0.tgz;;
                 PKGBASE) echo demo;;
                 .MAKE.MAKEFILES) echo Makefile;;
@@ -474,10 +480,14 @@ BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=
     > "$out/signal.log" 2>&1 &
 pid=$!
 i=0
-while [ ! -f "$out/package-started" ] && [ "$i" -lt 100 ]; do sleep 0.05; i=$((i + 1)); done
+while [ ! -f "$out/package-started" ] && [ "$i" -lt 600 ]; do sleep 0.05; i=$((i + 1)); done
 [ -f "$out/package-started" ] || fail 'signal fixture did not reach active package target'
 run_dir=$(find "$out/signal-state" -maxdepth 1 -type d -name 'package-install.run.*' -print | sed -n 1p)
 [ -f "$run_dir/pkg_add" ] || fail 'active run wrapper was not created'
+if run "$out/signal-state" > "$out/signal-contender.log" 2>&1; then
+    fail 'same-state contender entered while supervised worker was active'
+fi
+grep -q 'Another build' "$out/signal-contender.log" || fail 'same-state contender did not stop at state lock'
 kill -TERM "$pid"
 sleep 0.1
 [ -d "$out/signal-state/build.lock" ] && [ -f "$run_dir/pkg_add" ] || fail 'TERM released the lock before bmake drained'

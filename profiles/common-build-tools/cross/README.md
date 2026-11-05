@@ -631,6 +631,14 @@ missing dependencies. Success goes to `STATE/packaged`, failure to
 `STATE/package-failed`; installed-state rows are unchanged. Matching paired
 Qt roles are packaged from their retained full stage, which remains reusable.
 Neither package is installed.
+For an existing stage whose archive and earlier patches still match the installed
+package provenance, `cross-bulk.sh patch-refresh PKGPATH[@native] STATE` replays
+the old and current ordered patch series and atomically updates only changed
+source files. It preserves compatible objects and unchanged file times, then
+invalidates the build stage. The command refuses incompatible provenance,
+custom patch hooks, and source substitutions requiring a separate refresh.
+Normal builds and stage-local commands lock each selected work directory until
+their owned worker session has drained.
 An archive by itself is not treated as a completed build. The single package
 uses the selected SDK's full CPU budget for `MAKE_JOBS` by default; an explicit
 `CROSS_BULK_MAKE_JOBS=N` must fit that capacity. On TERM/INT/HUP it finishes

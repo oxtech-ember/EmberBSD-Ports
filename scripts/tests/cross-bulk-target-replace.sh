@@ -49,6 +49,7 @@ value() {
     case "\$1" in
         PKGBASE) sed 's/-[0-9][^-]*\$//' \$out/vars/\$pkg.\$mode.PKGNAME ;;
         WRKDIR) echo \$out/work/\$pkg/\$mode ;;
+        PKGFILE) echo \$out/packages/All/\$(value PKGNAME).tgz ;;
         *) cat \$out/vars/\$pkg.\$mode.\$1 2> /dev/null || echo ;;
     esac
 }
@@ -97,7 +98,7 @@ bulk build "$out/state/order" "$out/state" > "$out/build.log" 2>&1 || fail "buil
 [ -e "$out/target-db/ada-idna-0.7.0nb1" ] && [ ! -e "$out/target-db/ada-idna-0.7.0" ] ||
     fail "the older ada-idna in the sysroot was not replaced: $(ls "$out/target-db")"
 grep -q '/d/ada-idna replace' "$out/calls" || fail 'ada-idna was not installed with pkgsrc replace'
-grep -q '/d/ada-url package-install' "$out/calls" || fail 'a new package did not use package-install'
+grep -q '/d/ada-url .*package-install' "$out/calls" || fail 'a new package did not use package-install'
 grep -q '^d/ada-idna ada-idna-0.7.0nb1 ' "$out/state/done" || fail "d/ada-idna not done: $(cat "$out/state/done")"
 grep -q '^d/ada-url ada-url-3.0.0 ' "$out/state/done" || fail "d/ada-url not done: $(cat "$out/state/done")"
 echo 'PASS: a target package replaces another version in the sysroot; a new one is installed'

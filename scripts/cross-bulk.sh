@@ -65,7 +65,7 @@ umask 022
 
 [ "$#" -eq 3 ] || {
     echo 'Usage: scripts/cross-bulk.sh order|fetch|build|selected-order|selected-build PKGPATH_LIST ABSOLUTE_STATE' >&2
-    echo '       scripts/cross-bulk.sh package|package-install PKGPATH[@native] ABSOLUTE_STATE' >&2
+    echo '       scripts/cross-bulk.sh package|package-install|patch-refresh PKGPATH[@native] ABSOLUTE_STATE' >&2
     exit 2
 }
 mode=$1
@@ -99,6 +99,14 @@ if [ -n "${CROSS_BULK_SHELL:-}" ]; then
 fi
 state_lock_owned=no
 state_lock_release_safe=yes
+stage_supervised=no
+if [ -n "${CROSS_BULK_SUPERVISED:-}" ]; then
+    [ "$CROSS_BULK_SUPERVISED" = "$PPID|$mode|$list|$state" ] || {
+        echo 'Invalid supervised cross-bulk context' >&2; exit 2;
+    }
+    stage_supervised=yes
+    unset CROSS_BULK_SUPERVISED
+fi
 state_lock_acquire()
 {
     mkdir -p "$state"
@@ -122,8 +130,8 @@ state_lock_release()
     state_lock_owned=no
 }
 case "$mode" in
-    order|fetch|build|package|package-install|selected-order|selected-build)
-        state_lock_acquire || exit $?
+    order|fetch|build|package|package-install|patch-refresh|selected-order|selected-build)
+        if [ "$stage_supervised" = no ]; then state_lock_acquire || exit $?; fi
         trap 'if [ "$state_lock_release_safe" = yes ]; then state_lock_release; else echo "Workers may not have drained; keeping lock $state/build.lock" >&2; fi' EXIT
         ;;
 esac
@@ -740,6 +748,50 @@ fetch()
     rm -f "$state/sizes"
 }
 
+# Resolve the same build variables used by the actual worker, then lock every
+# selected WRKDIR across the supervised invocation.  The metadata cache uses
+# the identical role, arguments and variable list as build_one/build_native.
+stage_supervise()
+{
+    stage_mode=$1
+    stage_nodes=$2
+    stage_rows=$state/.stage-locks.$$.tsv
+    stage_json=$state/.stage-locks.$$.json
+    stage_manifest=$state/.stage-locked.$$.txt
+    : > "$stage_rows"
+    while IFS= read -r stage_node; do
+        [ -n "$stage_node" ] || continue
+        case "$stage_node" in
+            *@native)
+                stage_path=${stage_node%@native}
+                vars_context=${build_vars_context:+$build_vars_context|native}
+                set -f
+                set -- USE_CROSS_COMPILE=no PACKAGES="$native_packages"
+                ! grep -qFx "$stage_node" "$run/crossfed" || set -- "$@" $target_settings
+                set +f ;;
+            *) stage_path=$stage_node; vars_context=${build_vars_context:+$build_vars_context|target}; set -- ;;
+        esac
+        stage_values=$(pkg_vars "$stage_path" 'PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE PKGVERSION_NOREV PKGFILE WRKOBJDIR' "$@") || return 1
+        stage_work=$(printf '%s\n' "$stage_values" | sed -n 2p)
+        stage_root=$(printf '%s\n' "$stage_values" | sed -n 7p)
+        [ -n "$stage_root" ] || stage_root=$(dirname "$stage_work")
+        case "$stage_root:$stage_work" in /*:/*) ;; *) echo "Invalid stage metadata for $stage_node" >&2; return 1 ;; esac
+        printf '%s\t%s\n' "$stage_root" "$stage_work" >> "$stage_rows"
+    done < "$stage_nodes"
+    "$host_python" -B -c 'import json,sys; rows=[x.rstrip("\n").split("\t") for x in open(sys.argv[1])]; json.dump([{"root":a,"work":b} for a,b in rows],open(sys.argv[2],"w"))' "$stage_rows" "$stage_json" || return 1
+    rm -f "$stage_rows"
+    stage_script=$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")
+    stage_shell=$(command -v "$controller_shell") || return 1
+    case "$stage_shell" in /*) ;; *) echo 'Cannot resolve the selected controller shell' >&2; return 1 ;; esac
+    state_lock_release_safe=no
+    if "$host_python" -B -E -S "$(dirname "$stage_script")/stage-context-supervisor.py" --sdk-source "$sdk_source" --locks "$stage_json" --manifest "$stage_manifest" --bulk -- "$stage_shell" "$stage_script" "$stage_mode" "$list" "$state"; then stage_status=0; else stage_status=$?; fi
+    # A normal supervisor exit proves that the owned session was drained.
+    if [ "$stage_status" -lt 128 ]; then state_lock_release_safe=yes; fi
+    rm -f "$stage_json"
+    if [ "${stop:-0}" = 1 ] && [ "$stage_status" = 0 ]; then return 143; fi
+    return "$stage_status"
+}
+
 # Package-level parallelism. CROSS_BULK_JOBS packages build at once (default:
 # half the selected SDK CPU capacity). Their MAKE_JOBS shares one total budget,
 # with remainder CPUs assigned to earlier ready workers; the scheduler keeps
@@ -1139,6 +1191,12 @@ result()
 # a package of its PKGBASE at its version or newer. An older one is
 # replaced (pkgsrc replace, pkg_add -U), which keeps the packages that
 # depend on it registered. The replace runs alone (see exclusive).
+stage_verify_locked()
+{
+    [ "$stage_supervised" = yes ] && [ -n "${CROSS_BULK_STAGE_MANIFEST:-}" ] &&
+        [ -f "$CROSS_BULK_STAGE_MANIFEST" ] && grep -qFx "$1" "$CROSS_BULK_STAGE_MANIFEST"
+}
+
 build_native()
 {
     vars_context=${build_vars_context:+$build_vars_context|native}
@@ -1147,11 +1205,12 @@ build_native()
     set -- USE_CROSS_COMPILE=no PACKAGES="$native_packages"
     ! grep -qFx "$nnode" "$run/crossfed" || set -- "$@" $target_settings
     set +f
-    varnames='PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE PKGVERSION_NOREV'
+    varnames='PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE PKGVERSION_NOREV PKGFILE WRKOBJDIR'
     vars=$(pkg_vars "$path" "$varnames" "$@") ||
         { result "$key" "failed $nnode vars"; return 0; }
     name=$(printf '%s\n' "$vars" | sed -n 1p)
     wrkdir=$(printf '%s\n' "$vars" | sed -n 2p)
+    stage_verify_locked "$wrkdir" || { result "$key" "failed $nnode stage-lock-mismatch"; return 0; }
     skip=$(printf '%s\n' "$vars" | sed -n 3p)
     base=$(printf '%s\n' "$vars" | sed -n 4p)
     version=$(printf '%s\n' "$vars" | sed -n 5p)
@@ -1533,11 +1592,12 @@ build_one()
     key=$(echo "$path" | tr / _)
     case "$path" in *@native) build_native "$path" "$key"; return 0 ;; esac
     log=$state/logs/$key.log
-    varnames='PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE PKGVERSION_NOREV PKGFILE'
+    varnames='PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE PKGVERSION_NOREV PKGFILE WRKOBJDIR'
     vars=$(pkg_vars "$path" "$varnames") ||
         { result "$key" "failed $path vars"; return 0; }
     name=$(printf '%s\n' "$vars" | sed -n 1p)
     wrkdir=$(printf '%s\n' "$vars" | sed -n 2p)
+    stage_verify_locked "$wrkdir" || { result "$key" "failed $path stage-lock-mismatch"; return 0; }
     skip=$(printf '%s\n' "$vars" | sed -n 3p)
     base=$(printf '%s\n' "$vars" | sed -n 4p)
     version=$(printf '%s\n' "$vars" | sed -n 5p)
@@ -1693,7 +1753,9 @@ package_install_one()
     recovery_cleanup()
     {
         [ -z "$run" ] || rm -rf "$run"
-        state_lock_release
+        if [ "$state_lock_release_safe" = yes ]; then state_lock_release; else
+            echo "Workers may not have drained; keeping lock $state/build.lock" >&2
+        fi
     }
     trap recovery_cleanup EXIT
     stop=0
@@ -1733,6 +1795,26 @@ package_install_one()
     fi
     stamp=$(date '+%Y%m%d%H%M%S')
     link_launcher_args
+    if [ "$stage_supervised" = no ]; then
+        printf '%s\n' "$requested" > "$run/stage-node"
+        stage_supervise "$mode" "$run/stage-node"
+        return $?
+    fi
+    if [ "$mode" = patch-refresh ]; then
+        : "${CROSS_BULK_LOCKED_WORK:?Missing supervised stage identity}"
+        set -- --sdk-source "$sdk_source" --bmake "$BMAKE" --recipe "$PKGSRCDIR/$path" \
+            --expected-work "$CROSS_BULK_LOCKED_WORK"
+        if [ "$role" = native ]; then
+            set -- "$@" --native --make-arg "PACKAGES=$native_packages"
+            if grep -qFx "$requested" "$run/crossfed"; then
+                set -f
+                for stage_arg in $target_settings; do set -- "$@" --make-arg "$stage_arg"; done
+                set +f
+            fi
+        fi
+        "$host_python" -B -E -S "$(dirname "$0")/stage-local-patch-refresh.py" "$@"
+        return $?
+    fi
     key=$(echo "$requested" | tr / _)
     node=$requested
     reported=
@@ -1932,10 +2014,6 @@ build()
     shared_pairs_configure
     trash_init
     deleter_pid=
-    if [ -n "$trash" ]; then
-        deleter $$ < /dev/null > /dev/null 2>&1 &
-        deleter_pid=$!
-    fi
     job=0
     # The native nodes that a target package needs as a tool.
     awk '$1 ~ /@native$/ && $2 !~ /@native$/ { print $1 }' "$state/edges" | sort -u > "$run/crossfed"
@@ -1947,6 +2025,14 @@ build()
     packages=$(var pkgtools/pkg_install PACKAGES)/All
     native_packages=${packages%/All}-native
     link_launcher_args
+    if [ "$stage_supervised" = no ]; then
+        stage_supervise build "$state/order"
+        return $?
+    fi
+    if [ -n "$trash" ]; then
+        deleter $$ < /dev/null > /dev/null 2>&1 &
+        deleter_pid=$!
+    fi
     echo "Building with $workers packages at once (selected SDK CPU capacity=$cpus)"
     if [ -n "${CROSS_BULK_MAKE_JOBS:-}" ]; then
         echo "Explicit MAKE_JOBS=$make_jobs per package"
@@ -2112,6 +2198,6 @@ case "$mode" in
             mv "$state/$key.tmp" "$state/$key.deps" ;;
     fetch) fetch ;;
     build) build ;;
-    package|package-install) package_install_one ;;
+    package|package-install|patch-refresh) package_install_one ;;
     *) echo "Unknown mode: $mode" >&2; exit 2 ;;
 esac
