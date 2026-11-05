@@ -1,6 +1,9 @@
 $NetBSD$
 
-Preserve KiCad natural interpolation workspace fix and include shared Parson.
+Include shared Parson and retain KiCad's natural interpolation workspace layout.
+Move the interior solution before writing the first point: their old locations
+overlap for three points in dimensions greater than two. This ordering repair
+and its public-API regression are local EmberBSD changes (AI-assisted).
 --- src/tinyspline.c
 +++ src/tinyspline.c
 @@ -1,6 +1,6 @@

@@ -5,4 +5,4 @@ SHA512 (tinyspline-0.6.0.tar.gz) = e81d95e9fa7ec33b70d541695ab18b8e9c2a92e7c6687
 Size (tinyspline-0.6.0.tar.gz) = 400164 bytes
 SHA1 (patch-src_CMakeLists.txt) = 19694226a5491820190c8da6b360be6d4fb35709
 SHA1 (patch-src_pkg_tinysplinecxx-config.cmake.in) = 157356894fea1f69ebf0bc851a962051559cccad
-SHA1 (patch-src_tinyspline.c) = f4192607ab7931c9d4c3b948d7f6c1caeef5fa06
+SHA1 (patch-src_tinyspline.c) = 9b43c4b43ed9582834926960f48820c3a1983bd1
