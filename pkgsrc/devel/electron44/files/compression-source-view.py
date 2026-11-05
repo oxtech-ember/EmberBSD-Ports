@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 NAMES = ('brotli', 'zstd')
-SUPPORTED = NAMES + ('ffmpeg', 'zlib', 'libxml', 'libxslt', 'libwebp', 'dav1d', 'libaom', 'libvpx', 'opus', 'flac', 'openh264')
+SUPPORTED = NAMES + ('ffmpeg', 'zlib', 'libxml', 'libxslt', 'libwebp', 'dav1d', 'libaom', 'libvpx', 'opus', 'flac', 'openh264', 'pffft', 'expat')
 
 
 def replacements(view, source, name):
@@ -22,9 +22,11 @@ def replacements(view, source, name):
         masks.update((Path('src'), Path('linux/include')))
     elif name == 'libxslt':
         masks.add(Path('src'))
-    elif name in ('dav1d', 'libaom', 'libvpx', 'opus', 'flac', 'openh264'):
+    elif name in ('dav1d', 'libaom', 'libvpx', 'opus', 'flac', 'openh264', 'pffft', 'expat'):
         masks.add(Path({'dav1d': 'libdav1d', 'libaom': 'source/libaom',
-                        'libvpx': 'source/libvpx', 'opus': 'src', 'flac': 'src', 'openh264': 'src'}[name]))
+                        'libvpx': 'source/libvpx', 'opus': 'src', 'flac': 'src', 'openh264': 'src', 'pffft': 'src', 'expat': 'src'}[name]))
+        if name == 'expat':
+            masks.add(Path('include'))
         if name == 'flac':
             masks.add(Path('include'))
     return result, masks

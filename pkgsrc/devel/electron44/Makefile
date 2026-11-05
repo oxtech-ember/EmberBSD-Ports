@@ -30,6 +30,14 @@ TOOL_DEPENDS+= crc32c>=1.1.2:../../devel/crc32c
 TOOL_DEPENDS+= libsrtp>=2.8.1:../../security/libsrtp
 TOOL_DEPENDS+= libyuv>=0.0.1978:../../multimedia/libyuv
 
+.if ${EMBERBSD_ELECTRON_SHARED_EXPAT:Uno} == "yes"
+TOOL_DEPENDS+= expat>=2.10.0nb1:../../textproc/expat
+.endif
+
+.if ${EMBERBSD_ELECTRON_SHARED_PFFFT:Uno} == "yes"
+TOOL_DEPENDS+= pffft>=1.1.0nb2:../../audio/pffft
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_OPENH264:Uno} == "yes"
 TOOL_DEPENDS+= openh264>=2.7.0:../../multimedia/openh264
 .endif

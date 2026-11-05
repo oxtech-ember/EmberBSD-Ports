@@ -491,7 +491,9 @@ def host_buildlink(options, sdk, native, environment, host_binding):
                 *(['--shared-image'] if getattr(options, 'shared_image', False) else []),
                 *(['--shared-font'] if getattr(options, 'shared_font', False) else []),
                 *(['--shared-codecs'] if getattr(options, 'shared_codecs', False) else []),
-                *(['--shared-openh264'] if getattr(options, 'shared_openh264', False) else []), '--base-makeconf', str(selected[2]),
+                *(['--shared-openh264'] if getattr(options, 'shared_openh264', False) else []),
+                *(['--shared-pffft'] if getattr(options, 'shared_pffft', False) else []),
+                *(['--shared-expat'] if getattr(options, 'shared_expat', False) else []), '--base-makeconf', str(selected[2]),
                 '--binding-record', str(record), '--bmake-mk', str(selected[3]),
                 '--work', str(work), '--lock-root', str(options.lock_root)]
     if not previous and (getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)):
@@ -575,7 +577,7 @@ def additive_host_buildlink_relocation(old_args, new_args, old_env, new_env, wor
     require(all(new_links.get(name) == target for name, target in old_links.items()),
             'host buildlink relocation removed or replaced an existing link')
     old_call, new_call = (record['invocation'] for record in records)
-    selection_keys = {'shared_ffmpeg', 'shared_minizip', 'shared_xml', 'shared_image', 'shared_font', 'shared_codecs', 'shared_openh264'}
+    selection_keys = {'shared_ffmpeg', 'shared_minizip', 'shared_xml', 'shared_image', 'shared_font', 'shared_codecs', 'shared_openh264', 'shared_pffft', 'shared_expat'}
     for name in (set(old_call) | set(new_call)) - {'work'} - selection_keys:
         require(old_call.get(name) == new_call.get(name),
                 'host buildlink relocation changed an unrelated input: ' + name)
@@ -1386,6 +1388,10 @@ def compression_recipe_catalog(options, sdk, native, environment):
         packages += ('graphics/libjpeg-turbo', 'graphics/libwebp')
     if getattr(options, 'shared_font', False):
         packages += ('graphics/freetype2', 'fonts/harfbuzz')
+    if getattr(options, 'shared_pffft', False):
+        packages += ('audio/pffft',)
+    if getattr(options, 'shared_expat', False):
+        packages += ('textproc/expat',)
     if getattr(options, 'shared_openh264', False):
         packages += ('multimedia/openh264',)
     if getattr(options, 'shared_codecs', False):
@@ -2082,6 +2088,18 @@ def producer_inputs(options, sdk):
                 types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
                                       selected_owned_library=selected_owned_library),
                 options, sdk, native, environment, buildlink))
+        if getattr(options, 'shared_pffft', False):
+            values.update(local_module('electron_codec_provider', 'codec-provider.py').select_pffft(
+                local_module('electron_image_provider', 'image-provider.py'),
+                types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
+                                      selected_owned_library=selected_owned_library),
+                options, sdk, native, environment, buildlink))
+        if getattr(options, 'shared_expat', False):
+            values.update(local_module('electron_codec_provider', 'codec-provider.py').select_expat(
+                local_module('electron_image_provider', 'image-provider.py'),
+                types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
+                                      selected_owned_library=selected_owned_library),
+                options, sdk, native, environment, buildlink))
         if getattr(options, 'shared_openh264', False):
             values.update(local_module('electron_codec_provider', 'codec-provider.py').select_openh264(
                 local_module('electron_image_provider', 'image-provider.py'),
@@ -2318,6 +2336,14 @@ def gn_source(options):
         new_codecs = bool(getattr(options, 'shared_codecs', False))
         codec_names = ('dav1d', 'libaom', 'libvpx', 'opus', 'flac')
         codec_marker = destination.parent / ('.' + destination.name + '.codec-components-migration')
+        old_pffft = bool(getattr(options, 'old_pffft_identity', None))
+        new_pffft = bool(getattr(options, 'shared_pffft', False))
+        pffft_names = ('pffft',)
+        pffft_marker = destination.parent / ('.' + destination.name + '.pffft-components-migration')
+        old_expat = bool(getattr(options, 'old_expat_identity', None))
+        new_expat = bool(getattr(options, 'shared_expat', False))
+        expat_names = ('expat',)
+        expat_marker = destination.parent / ('.' + destination.name + '.expat-components-migration')
         old_openh264 = bool(getattr(options, 'old_openh264_identity', None))
         new_openh264 = bool(getattr(options, 'shared_openh264', False))
         openh264_names = ('openh264',)
@@ -2343,6 +2369,24 @@ def gn_source(options):
         ffmpeg_marker = destination.parent / ('.' + destination.name + '.ffmpeg-components-migration')
         compression_marker = destination.parent / ('.' + destination.name + '.compression-components-migration')
         compression_root = destination / 'src/third_party'
+        if (new_pffft and not old_pffft and
+                (options.phase == 'reconfigure' or
+                 (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
+                                                    getattr(options, 'resume_configure', False)))) and
+                not os.path.lexists(pffft_marker) and
+                all((compression_root/name).is_dir() and not (compression_root/name).is_symlink()
+                    for name in pffft_names)):
+            compression.verify_view(view, options.workspace / 'src', destination, pffft_names)
+            old_pffft = True
+        if (new_expat and not old_expat and
+                (options.phase == 'reconfigure' or
+                 (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
+                                                    getattr(options, 'resume_configure', False)))) and
+                not os.path.lexists(expat_marker) and
+                all((compression_root/name).is_dir() and not (compression_root/name).is_symlink()
+                    for name in expat_names)):
+            compression.verify_view(view, options.workspace / 'src', destination, expat_names)
+            old_expat = True
         if (new_openh264 and not old_openh264 and
                 (options.phase == 'reconfigure' or
                  (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
@@ -2460,6 +2504,12 @@ def gn_source(options):
             if old_sqlite:
                 names.append(sqlite.NAME)
                 checks.append(lambda: sqlite.verify_view(view, options.workspace / 'src', destination, old_sqlite))
+            if old_pffft:
+                names.extend(pffft_names)
+                checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, pffft_names))
+            if old_expat:
+                names.extend(expat_names)
+                checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, expat_names))
             if old_openh264:
                 names.extend(openh264_names)
                 checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, openh264_names))
@@ -2534,6 +2584,22 @@ def gn_source(options):
             sqlite.activate(view, options.workspace / 'src', destination, new_sqlite, old_sqlite,
                             lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring))
             old_sqlite = new_sqlite
+        if os.path.lexists(pffft_marker):
+            require(new_pffft and (options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+                    'PFFFT transaction recovery requires shared PFFFT reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring),
+                                 pffft_names, 'pffft-components')
+            old_pffft = True
+        if os.path.lexists(expat_marker):
+            require(new_expat and (options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+                    'EXPAT transaction recovery requires shared EXPAT reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring),
+                                 expat_names, 'expat-components')
+            old_expat = True
         if os.path.lexists(openh264_marker):
             require(new_openh264 and (options.phase == 'reconfigure' or
                     getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
@@ -2675,6 +2741,26 @@ def gn_source(options):
                                  lambda: verify_selection(ids, new_headers, new_media, new_compression),
                                  ('zlib',), 'minizip-components')
             old_minizip = True
+            transition_result = verify_selection(ids, new_headers, new_media, new_compression)
+            transition = True
+        if old_pffft != new_pffft or os.path.lexists(pffft_marker):
+            require(new_pffft, 'disabling shared PFFFT requires a new source view')
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'PFFFT transition requires reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(ids, new_headers, new_media, new_compression),
+                                 pffft_names, 'pffft-components')
+            old_pffft = True
+            transition_result = verify_selection(ids, new_headers, new_media, new_compression)
+            transition = True
+        if old_expat != new_expat or os.path.lexists(expat_marker):
+            require(new_expat, 'disabling shared EXPAT requires a new source view')
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'EXPAT transition requires reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(ids, new_headers, new_media, new_compression),
+                                 expat_names, 'expat-components')
+            old_expat = True
             transition_result = verify_selection(ids, new_headers, new_media, new_compression)
             transition = True
         if old_openh264 != new_openh264 or os.path.lexists(openh264_marker):
@@ -2940,6 +3026,36 @@ def image_activation_args(options, old_environment, environment, old_arguments, 
     return names
 
 
+def pffft_activation_args(options, old_environment, environment, old_arguments, values):
+    if not getattr(options, 'shared_pffft', False):
+        return set()
+    key = 'EMBERBSD_PFFFT_SOURCE_SHA256'
+    require(re.fullmatch(r'[0-9a-f]{64}', environment.get(key, '')), 'verified PFFFT identity is missing')
+    names = {'emberbsd_pffft_' + role + '_' + kind
+             for role in ('host', 'target') for kind in ('libraries', 'inputs')}
+    names.add('emberbsd_common_pffft')
+    if old_environment.get(key):
+        return set()
+    require(all(old_arguments.get(name) in (None, False, []) for name in names),
+            'PFFFT activation cannot replace existing GN inputs')
+    require(all(values.get(name) for name in names), 'verified PFFFT GN inputs are incomplete')
+    return names
+
+def expat_activation_args(options, old_environment, environment, old_arguments, values):
+    if not getattr(options, 'shared_expat', False):
+        return set()
+    key = 'EMBERBSD_EXPAT_SOURCE_SHA256'
+    require(re.fullmatch(r'[0-9a-f]{64}', environment.get(key, '')), 'verified EXPAT identity is missing')
+    names = {'emberbsd_expat_' + role + '_' + kind
+             for role in ('host', 'target') for kind in ('libraries', 'inputs')}
+    names.add('emberbsd_common_expat')
+    if old_environment.get(key):
+        return set()
+    require(all(old_arguments.get(name) in (None, False, []) for name in names),
+            'EXPAT activation cannot replace existing GN inputs')
+    require(all(values.get(name) for name in names), 'verified EXPAT GN inputs are incomplete')
+    return names
+
 def openh264_activation_args(options, old_environment, environment, old_arguments, values):
     if not getattr(options, 'shared_openh264', False):
         return set()
@@ -3191,6 +3307,10 @@ def reconfigure(options):
                 permitted_env.add('EMBERBSD_BORINGSSL_SOURCE_SHA256')
                 options.compression_identity = candidate.compression_identity
                 options.old_compression_identity = old_env.get('EMBERBSD_COMPRESSION_SOURCE_SHA256')
+                options.old_pffft_identity = old_env.get('EMBERBSD_PFFFT_SOURCE_SHA256')
+                permitted_env.add('EMBERBSD_PFFFT_SOURCE_SHA256')
+                options.old_expat_identity = old_env.get('EMBERBSD_EXPAT_SOURCE_SHA256')
+                permitted_env.add('EMBERBSD_EXPAT_SOURCE_SHA256')
                 options.old_openh264_identity = old_env.get('EMBERBSD_OPENH264_SOURCE_SHA256')
                 permitted_env.add('EMBERBSD_OPENH264_SOURCE_SHA256')
                 options.old_codec_identity = old_env.get('EMBERBSD_CODEC_SOURCE_SHA256')
@@ -3291,6 +3411,8 @@ def reconfigure(options):
         minizip_args = minizip_activation_args(options, old_env, environment, saved['arguments'], values)
         xml_args = xml_activation_args(options, old_env, environment, saved['arguments'], values)
         codec_args = codec_activation_args(options, old_env, environment, saved['arguments'], values)
+        pffft_args = pffft_activation_args(options, old_env, environment, saved['arguments'], values)
+        expat_args = expat_activation_args(options, old_env, environment, saved['arguments'], values)
         openh264_args = openh264_activation_args(options, old_env, environment, saved['arguments'], values)
         image_args = image_activation_args(options, old_env, environment, saved['arguments'], values)
         font_args = font_activation_args(options, old_env, environment, saved['arguments'], values)
@@ -3358,6 +3480,12 @@ def reconfigure(options):
         if getattr(options, 'shared_ffmpeg', False):
             require(saved['arguments'].get('use_system_ffmpeg') in (None, False, True),
                     'invalid previous FFmpeg selection')
+        identity_args.add('emberbsd_common_pffft')
+        identity_args.update('emberbsd_pffft_' + role + '_' + kind
+                             for role in ('host', 'target') for kind in ('libraries', 'inputs'))
+        identity_args.add('emberbsd_common_expat')
+        identity_args.update('emberbsd_expat_' + role + '_' + kind
+                             for role in ('host', 'target') for kind in ('libraries', 'inputs'))
         identity_args.update(('emberbsd_common_openh264', 'rtc_system_openh264'))
         identity_args.update('emberbsd_openh264_' + role + '_' + kind
                              for role in ('host', 'target') for kind in ('libraries', 'inputs'))
@@ -3384,7 +3512,7 @@ def reconfigure(options):
             if node_source_refresh and name == 'emberbsd_node_source_identity':
                 continue
             if (name in activation_args or name in minizip_args or name in xml_args or
-                    name in image_args or name in font_args or name in codec_args or name in openh264_args or name in buildlink_args):
+                    name in image_args or name in font_args or name in codec_args or name in openh264_args or name in pffft_args or name in expat_args or name in buildlink_args):
                 continue
             if name in ('use_litert_tflite', 'emberbsd_flatc', 'emberbsd_flatc_inputs') and getattr(options, 'activate_common_ml', False) and not old_ml:
                 continue
@@ -3459,6 +3587,8 @@ def build(options):
     require(saved['arguments'] == values, 'GN selection changed; configure a new output')
     options.old_boringssl_identity = saved_env['EMBERBSD_BORINGSSL_SOURCE_SHA256']
     options.old_compression_identity = saved_env['EMBERBSD_COMPRESSION_SOURCE_SHA256']
+    options.old_pffft_identity = saved_env.get('EMBERBSD_PFFFT_SOURCE_SHA256')
+    options.old_expat_identity = saved_env.get('EMBERBSD_EXPAT_SOURCE_SHA256')
     options.old_openh264_identity = saved_env.get('EMBERBSD_OPENH264_SOURCE_SHA256')
     options.old_codec_identity = saved_env.get('EMBERBSD_CODEC_SOURCE_SHA256')
     options.old_image_identity = saved_env.get('EMBERBSD_IMAGE_SOURCE_SHA256')
@@ -3540,6 +3670,8 @@ def main():
         command.add_argument('--shared-font', action='store_true')
         command.add_argument('--shared-codecs', action='store_true')
         command.add_argument('--shared-openh264', action='store_true')
+        command.add_argument('--shared-expat', action='store_true')
+        command.add_argument('--shared-pffft', action='store_true')
         if phase == 'configure':
             initial = command.add_mutually_exclusive_group()
             initial.add_argument('--resume-configure', action='store_true',
