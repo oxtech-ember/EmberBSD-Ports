@@ -30,11 +30,13 @@ for n in PKG_FAIL_REASON FC DEPENDS BUILD_DEPENDS TOOL_DEPENDS; do
     set -- "$@" -V "\${$n}"
 done
 mk EMBERBSD_FLANG= "$@" > "$work/graph-vars" || fail "cannot query $pkgpath without installed Flang"
-IFS= read -r graph_fail < "$work/graph-vars"
-IFS= read -r graph_fc
-IFS= read -r graph_depends
-IFS= read -r graph_build_depends
-IFS= read -r graph_tool_depends
+{
+    IFS= read -r graph_fail
+    IFS= read -r graph_fc
+    IFS= read -r graph_depends
+    IFS= read -r graph_build_depends
+    IFS= read -r graph_tool_depends
+} < "$work/graph-vars"
 [ -z "$graph_fail" ] || fail "$pkgpath graph requires installed Flang: $graph_fail"
 [ "$graph_fc" = flang ] || fail "graph FC is $graph_fc, not flang"
 case " $graph_tool_depends " in
