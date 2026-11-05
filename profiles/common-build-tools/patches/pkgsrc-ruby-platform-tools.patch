@@ -1,0 +1,20 @@
+Origin: EmberBSD (AI-assisted). Avoid running host utilities while pkgsrc parses
+Ruby platform metadata; preserve the module list order for versioned PLIST substitutions.
+
+--- a/lang/ruby/platform.mk
++++ b/lang/ruby/platform.mk
+@@ -11,12 +11,8 @@
+ .include "../../lang/ruby/rubyversion.mk"
+ .include "../../mk/compiler.mk"
+ 
+-#
+-# sort by length of module's name for PLIST_AWK
+-#
+-_RUBY_BUNDLE_MODULES!=	\
+-	echo ${RUBY_BUNDLE_MODULES} | tr ' ' '\012' | \
+-	awk '{print length(), $$0}' | sort -nr | awk '{print $$2}'
++# No external text tools are needed to expand these versioned gem names.
++_RUBY_BUNDLE_MODULES= ${RUBY_BUNDLE_MODULES}
+ 
+ .for s in ${_RUBY_BUNDLE_MODULES}
+ t:=RUBY_${s:tu:S/-/_/g}_VER
