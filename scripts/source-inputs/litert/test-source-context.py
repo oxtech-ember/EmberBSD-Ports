@@ -26,6 +26,16 @@ with patch.object(owner.sourceprep, 'extract_archive') as extract:
     context.sourceprep.extract_archive('archive', 'directory', 'root', 'LiteRT')
     assert extract.call_args.kwargs == {'max_bytes': 512 * 1024 * 1024}
     assert context.sourceprep.archive_hashes is owner.sourceprep.archive_hashes
+with patch.object(owner.sourceprep, 'apply_patch') as apply:
+    owner.source_context().sourceprep.apply_patch('patch', 'path', b'delta', 'cwd', 'LiteRT', patch_args=())
+    assert apply.call_args.kwargs['allow_dev_null'] is True
+with patch.object(owner.prepared_receipt, 'write') as write:
+    owner.source_context('/previous').prepared_receipt.write(
+        '/new', package='devel/litert', identity={'recipe': 'test'})
+    assert write.call_args.kwargs['previous_root'] == '/previous'
+    owner.source_context().prepared_receipt.write(
+        '/new', package='devel/litert', identity={'recipe': 'test'})
+    assert write.call_args.kwargs['previous_root'] is None
 assert owner.sourceprep.extract_archive is original
 assert [hashlib.sha256(path.read_bytes()).digest() for path in files] == before
-print('PASS: LiteRT extraction limit is local; SDK and shared owners unchanged')
+print('PASS: LiteRT extraction and timestamp reuse are local; SDK and shared owners unchanged')

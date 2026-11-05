@@ -7,8 +7,10 @@ Git and patch executables explicitly and supply the verified upstream archive.
 The output receipt identifies the owner and complete upstream prepared payload.
 The optional source package excludes upstream LFS pointers to prebuilt runtime binaries while
 retaining the adjacent build metadata; consumers build with selected tools.
-Existing output
-is never overwritten.
+Existing output is never overwritten. When replacing a prepared tree, pass
+`--previous-source /absolute/previous-litert-source` to preserve unchanged file
+timestamps using the SDK prepared-tree reuse API; keep the prior tree stable
+throughout preparation.
 
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/litert/source.py \

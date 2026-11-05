@@ -107,23 +107,24 @@ def recipe(exported):
     return identity, patches
 
 
-def source_context():
-    """Set LiteRT's archive limit without changing the shared SDK API."""
+def source_context(previous_root=None):
+    """Set LiteRT-specific extraction and prepared-tree reuse policy."""
     facade = SimpleNamespace(
         PREPARED_TREE_RECEIPT=sourceprep.PREPARED_TREE_RECEIPT,
         validate_prepared_tree=sourceprep.validate_prepared_tree,
         archive_hashes=sourceprep.archive_hashes,
-        apply_patch=sourceprep.apply_patch,
+        apply_patch=partial(sourceprep.apply_patch, allow_dev_null=True),
         extract_archive=partial(sourceprep.extract_archive, max_bytes=MAX_EXTRACTED_BYTES))
-    return SimpleNamespace(**{**globals(), 'sourceprep': facade})
+    receipt = SimpleNamespace(write=partial(prepared_receipt.write, previous_root=previous_root))
+    return SimpleNamespace(**{**globals(), 'sourceprep': facade, 'prepared_receipt': receipt})
 
 
 def verify(source, git, archive=None, patch=None, pkgsrc_export=None, export_patch=None):
     return tar_archive.verify(source_context(), source, git, archive, patch, pkgsrc_export, export_patch)
 
 
-def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
-    return tar_archive.prepare(source_context(), archive, output, patch, git,
+def prepare(archive, output, patch, git, scoped_identity=False, exported=None, previous_root=None):
+    return tar_archive.prepare(source_context(previous_root), archive, output, patch, git,
                                scoped_identity, exported)
 
 
@@ -142,6 +143,7 @@ def main():
     produce.add_argument('--output', required=True)
     produce.add_argument('--patch', required=True)
     produce.add_argument('--scoped-identity', action='store_true')
+    produce.add_argument('--previous-source', help='verified prior source tree for unchanged file timestamps')
     produce.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
     produce.add_argument('--export-patch', help='patch used to create the shared export')
     check = sub.add_parser('verify-source')
@@ -154,7 +156,7 @@ def main():
     try:
         if selected.action == 'prepare':
             record = prepare(selected.archive, selected.output, selected.patch, selected.git, selected.scoped_identity,
-                             exported=shared_tree(selected))
+                             exported=shared_tree(selected), previous_root=selected.previous_source)
         else:
             record = verify(selected.source, selected.git, selected.archive, selected.patch, pkgsrc_export=selected.pkgsrc_export, export_patch=getattr(selected, 'export_patch', None))
         sys.stdout.buffer.write(jsonio.json_bytes(record))
