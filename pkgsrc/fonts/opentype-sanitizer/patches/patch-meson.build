@@ -1,0 +1,64 @@
+$NetBSD$
+
+Keep standalone tests and fuzzers explicit; disable their dependency graph
+in ordinary package builds while leaving upstream defaults unchanged.
+
+--- meson.build.orig
++++ meson.build
+@@ -4,7 +4,9 @@
+   meson_version : '>= 0.58.0',
+ )
+ 
+-subdir('tests')
++if get_option('tests')
++  subdir('tests')
++endif
+ 
+ cxx = meson.get_compiler('cpp')
+ 
+@@ -186,6 +188,7 @@
+   fuzzer_defines += ['-DOTS_FUZZER_NO_MAIN']
+ endif
+ 
++if get_option('tests')
+ ots_fuzzer = executable('ots-fuzzer',
+   'util/ots-fuzzer.cc',
+   include_directories: include_directories(['include', 'src']),
+@@ -193,6 +196,8 @@
+   link_with: libots,
+   link_args: fuzzer_ldflags,
+ )
++
++endif
+ 
+ 
+ if freetype.found() or coretext.found() or gdi32.found()
+@@ -209,12 +214,14 @@
+     install: true,
+   )
+   install_man('docs/ots-idempotent.1')
++  if get_option('tests')
+   foreach file_name : good_fonts
+     test(file_name, ots_idempotent,
+       args: meson.current_source_dir() / 'tests' / file_name,
+       suite: 'good',
+     )
+   endforeach
++  endif
+ endif
+ 
+ 
+@@ -257,6 +264,7 @@
+ endif
+ 
+ 
++if get_option('tests')
+ # https://mesonbuild.com/Dependencies.html#gtest-and-gmock
+ gtest = dependency('gtest', main : true, fallback : ['gtest', 'gtest_main_dep'])
+ 
+@@ -300,3 +308,5 @@
+     suite: 'fuzzing',
+   )
+ endforeach
++
++endif
