@@ -92,3 +92,12 @@ BUILDLINK_ABI_DEPENDS.libxslt+= libxslt>=1.1.45nb3
 .include "../../textproc/libxml2/buildlink3.mk"
 .include "../../textproc/libxslt/buildlink3.mk"
 .endif
+
+.if ${EMBERBSD_ELECTRON_SHARED_IMAGE:Uno} == "yes"
+BUILDLINK_API_DEPENDS.libjpeg-turbo+= libjpeg-turbo>=3.2.1nb1
+BUILDLINK_ABI_DEPENDS.libjpeg-turbo+= libjpeg-turbo>=3.2.1nb1
+BUILDLINK_API_DEPENDS.libwebp+= libwebp>=1.6.0nb4
+BUILDLINK_ABI_DEPENDS.libwebp+= libwebp>=1.6.0nb4
+.include "../../graphics/libjpeg-turbo/buildlink3.mk"
+.include "../../graphics/libwebp/buildlink3.mk"
+.endif

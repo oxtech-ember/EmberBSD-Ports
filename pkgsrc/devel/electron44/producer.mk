@@ -97,6 +97,12 @@ _EMBER_ELECTRON_ARGS+= --shared-xml
 .error EMBERBSD_ELECTRON_SHARED_XML must be yes or no
 .endif
 
+.if ${EMBERBSD_ELECTRON_SHARED_IMAGE:Uno} == "yes"
+_EMBER_ELECTRON_ARGS+= --shared-image
+.elif ${EMBERBSD_ELECTRON_SHARED_IMAGE:Uno} != "no"
+.error EMBERBSD_ELECTRON_SHARED_IMAGE must be yes or no
+.endif
+
 .for _ember_key in PERFETTO_SCOPED_RUNTIME NODE_SCOPED_RUNTIME
 .if ${EMBERBSD_ELECTRON_${_ember_key}:Uno} == "yes"
 _EMBER_ELECTRON_ARGS+= --${_ember_key:tl:S/_/-/g}

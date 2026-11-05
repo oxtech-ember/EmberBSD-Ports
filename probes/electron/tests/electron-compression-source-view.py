@@ -154,3 +154,54 @@ with tempfile.TemporaryDirectory() as tmp:
     else:
         raise AssertionError('mixed zlib projection accepted')
 print('PASS: zlib addition preserves existing wrappers and recovers an interrupted swap')
+
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve(); source = root/'source'; dest = root/'view'
+    origin = source/'third_party'; origin.mkdir(parents=True)
+    selected = dest/'src/third_party'; selected.mkdir(parents=True)
+    unbundle = source/'build/linux/unbundle'; unbundle.mkdir(parents=True)
+    (unbundle/'replace_gn_files.py').write_text("REPLACEMENTS = {'brotli': 'third_party/brotli/BUILD.gn', 'zstd': 'third_party/zstd/BUILD.gn', 'libwebp': 'third_party/libwebp/BUILD.gn'}\n")
+    for name in compression.NAMES + ('libwebp',):
+        component = origin/name; (component/'include').mkdir(parents=True)
+        (component/'BUILD.gn').write_text('vendor')
+        (component/'include/x.h').write_text('vendor header')
+        (unbundle/(name+'.gn')).write_text('shim_headers("shim") { root_path = "include"\n headers = [ "x.h" ]\n}\n')
+        (selected/name).symlink_to(component, target_is_directory=True)
+    compression.activate(view, source, dest, lambda: None)
+    before = {name: ((selected/name).stat().st_ino, (selected/name).stat().st_mtime_ns)
+              for name in compression.NAMES}
+    def old_selection():
+        compression.verify_view(view, source, dest)
+        assert (selected/'libwebp').is_symlink()
+    actual_verify = compression.verify_view
+    def interrupt_libwebp(*args):
+        if len(args) == 4 and args[3] == ('libwebp',):
+            raise ValueError('interrupted')
+        return actual_verify(*args)
+    with patch.object(compression, 'verify_view', side_effect=interrupt_libwebp):
+        try:
+            compression.activate(view, source, dest, old_selection, ('libwebp',), 'libwebp-components')
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('interruption ignored')
+    assert (root/'.view.libwebp-components-migration').is_file()
+    compression.activate(view, source, dest, old_selection, ('libwebp',), 'libwebp-components')
+    compression.verify_view(view, source, dest, compression.NAMES + ('libwebp',))
+    assert before == {name: ((selected/name).stat().st_ino, (selected/name).stat().st_mtime_ns)
+                      for name in compression.NAMES}
+    assert not (selected/'libwebp/include/x.h').exists()
+    libwebp_before = (selected/'libwebp').stat().st_ino
+    compression.activate(view, source, dest, old_selection, ('libwebp',), 'libwebp-components')
+    assert (selected/'libwebp').stat().st_ino == libwebp_before
+    # A directory containing a mixture of selected and vendor files is not
+    # an already completed projection.
+    (selected/'libwebp/BUILD.gn').unlink()
+    (selected/'libwebp/BUILD.gn').write_text('foreign wrapper')
+    try:
+        compression.verify_view(view, source, dest, ('libwebp',))
+    except (ValueError, AssertionError):
+        pass
+    else:
+        raise AssertionError('mixed libwebp projection accepted')
+print('PASS: libwebp addition preserves existing wrappers and recovers an interrupted swap')

@@ -486,7 +486,8 @@ def host_buildlink(options, sdk, native, environment, host_binding):
                 *(['--stage-root', str(selected[1])] if selected[1] else []),
                 *(['--shared-ffmpeg'] if getattr(options, 'shared_ffmpeg', False) else []),
                 *(['--shared-minizip'] if getattr(options, 'shared_minizip', False) else []),
-                *(['--shared-xml'] if getattr(options, 'shared_xml', False) else []), '--base-makeconf', str(selected[2]),
+                *(['--shared-xml'] if getattr(options, 'shared_xml', False) else []),
+                *(['--shared-image'] if getattr(options, 'shared_image', False) else []), '--base-makeconf', str(selected[2]),
                 '--binding-record', str(record), '--bmake-mk', str(selected[3]),
                 '--work', str(work), '--lock-root', str(options.lock_root)]
     if not previous and (getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)):
@@ -1311,6 +1312,8 @@ def compression_recipe_catalog(options, sdk, native, environment):
         packages += ('devel/zlib', 'archivers/minizip-ng')
     if getattr(options, 'shared_xml', False):
         packages += ('textproc/libxml2', 'textproc/libxslt')
+    if getattr(options, 'shared_image', False):
+        packages += ('graphics/libjpeg-turbo', 'graphics/libwebp')
     identities = {name: selector.git_package_identity(owner, name, git) for name in packages}
     config_root = getattr(options, 'native_binding_root', None) or options.work
     config = Path(config_root)/'configuration.json'
@@ -1992,6 +1995,11 @@ def producer_inputs(options, sdk):
                 types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
                                       selected_owned_library=selected_owned_library),
                 options, sdk, native, environment, buildlink))
+        if getattr(options, 'shared_image', False):
+            values.update(local_module('electron_image_provider', 'image-provider.py').select(
+                types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
+                                      selected_owned_library=selected_owned_library),
+                options, sdk, native, environment, buildlink))
     runtime_view = getattr(options, 'protoc_runtime_view', None)
     if runtime_view:
         require(native.host['os'] == 'Darwin', 'protoc runtime view requires a Darwin host')
@@ -2199,6 +2207,10 @@ def gn_source(options):
         compression = local_module('electron_compression_source_view', 'compression-source-view.py')
         old_compression = getattr(options, 'old_compression_identity', None)
         new_compression = options.compression_identity
+        old_image = bool(getattr(options, 'old_image_identity', None))
+        new_image = bool(getattr(options, 'shared_image', False))
+        image_names = ('libwebp',)
+        image_marker = destination.parent / ('.' + destination.name + '.image-components-migration')
         old_xml = bool(getattr(options, 'old_xml_identity', None))
         new_xml = bool(getattr(options, 'shared_xml', False))
         xml_names = ('libxml', 'libxslt')
@@ -2211,6 +2223,15 @@ def gn_source(options):
         ffmpeg_marker = destination.parent / ('.' + destination.name + '.ffmpeg-components-migration')
         compression_marker = destination.parent / ('.' + destination.name + '.compression-components-migration')
         compression_root = destination / 'src/third_party'
+        if (new_image and not old_image and
+                (options.phase == 'reconfigure' or
+                 (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
+                                                    getattr(options, 'resume_configure', False)))) and
+                not os.path.lexists(image_marker) and
+                all((compression_root/name).is_dir() and not (compression_root/name).is_symlink()
+                    for name in image_names)):
+            compression.verify_view(view, options.workspace / 'src', destination, image_names)
+            old_image = True
         if (new_xml and not old_xml and
                 (options.phase == 'reconfigure' or
                  (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
@@ -2274,6 +2295,9 @@ def gn_source(options):
             if boring_id:
                 names.append(boring.NAME)
                 checks.append(lambda: boring.verify_view(view, options.workspace / 'src', destination, boring_id, sp))
+            if old_image:
+                names.extend(image_names)
+                checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, image_names))
             if old_xml:
                 names.extend(xml_names)
                 checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, xml_names))
@@ -2305,6 +2329,14 @@ def gn_source(options):
                 selection_refreshed = True
                 return result
             return view.verify(options.workspace / 'src', common, destination, **current)
+        if os.path.lexists(image_marker):
+            require(new_image and (options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+                    'image transaction recovery requires shared image reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring),
+                                 image_names, 'image-components')
+            old_image = True
         if os.path.lexists(xml_marker):
             require(new_xml and (options.phase == 'reconfigure' or
                     getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
@@ -2404,6 +2436,16 @@ def gn_source(options):
                                  lambda: verify_selection(ids, new_headers, new_media, new_compression),
                                  ('zlib',), 'minizip-components')
             old_minizip = True
+            transition_result = verify_selection(ids, new_headers, new_media, new_compression)
+            transition = True
+        if old_image != new_image or os.path.lexists(image_marker):
+            require(new_image, 'disabling shared image requires a new source view')
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'image transition requires reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(ids, new_headers, new_media, new_compression),
+                                 image_names, 'image-components')
+            old_image = True
             transition_result = verify_selection(ids, new_headers, new_media, new_compression)
             transition = True
         if old_xml != new_xml or os.path.lexists(xml_marker):
@@ -2621,6 +2663,24 @@ def minizip_activation_args(options, old_environment, environment, old_arguments
     return names
 
 
+def image_activation_args(options, old_environment, environment, old_arguments, values):
+    """Allow the first verified image selection, retaining later identity checks."""
+    if not getattr(options, 'shared_image', False):
+        return set()
+    key = 'EMBERBSD_IMAGE_SOURCE_SHA256'
+    require(re.fullmatch(r'[0-9a-f]{64}', environment.get(key, '')), 'verified image identity is missing')
+    names = {'emberbsd_' + provider + '_' + role + '_' + kind
+             for provider in ('jpeg', 'webp') for role in ('host', 'target')
+             for kind in ('libraries', 'inputs')}
+    names.update(('emberbsd_common_image', 'use_system_libjpeg'))
+    if old_environment.get(key):
+        return set()
+    require(all(old_arguments.get(name) in (None, False, []) for name in names),
+            'image activation cannot replace existing GN inputs')
+    require(all(values.get(name) for name in names), 'verified image GN inputs are incomplete')
+    return names
+
+
 def xml_activation_args(options, old_environment, environment, old_arguments, values):
     """Allow the first verified XML selection; guard later identities."""
     if not getattr(options, 'shared_xml', False):
@@ -2816,6 +2876,8 @@ def reconfigure(options):
                 permitted_env.add('EMBERBSD_BORINGSSL_SOURCE_SHA256')
                 options.compression_identity = candidate.compression_identity
                 options.old_compression_identity = old_env.get('EMBERBSD_COMPRESSION_SOURCE_SHA256')
+                options.old_image_identity = old_env.get('EMBERBSD_IMAGE_SOURCE_SHA256')
+                permitted_env.add('EMBERBSD_IMAGE_SOURCE_SHA256')
                 options.old_xml_identity = old_env.get('EMBERBSD_XML_SOURCE_SHA256')
                 permitted_env.add('EMBERBSD_XML_SOURCE_SHA256')
                 options.old_minizip_identity = old_env.get('EMBERBSD_MINIZIP_SOURCE_SHA256')
@@ -2903,6 +2965,7 @@ def reconfigure(options):
             permitted_runtime_args.add('v8_metagen_runtime_inputs')
         minizip_args = minizip_activation_args(options, old_env, environment, saved['arguments'], values)
         xml_args = xml_activation_args(options, old_env, environment, saved['arguments'], values)
+        image_args = image_activation_args(options, old_env, environment, saved['arguments'], values)
         identity_args = {'node_module_version', 'emberbsd_node_source_identity',
                          'emberbsd_node_configure_helper', 'emberbsd_node_configure_inputs',
                          'emberbsd_node_configure_dependencies', 'target_os', 'target_cpu', 'target_sysroot', 'emberbsd_target_sysroot',
@@ -2936,6 +2999,16 @@ def reconfigure(options):
                          'emberbsd_icui18n_host_library', 'emberbsd_icui18n_target_library',
                          'emberbsd_re2_host_library', 'emberbsd_re2_target_library',
                          'emberbsd_protoc',
+                         'emberbsd_common_image',
+                         'use_system_libjpeg',
+                         'emberbsd_jpeg_host_libraries',
+                         'emberbsd_jpeg_host_inputs',
+                         'emberbsd_jpeg_target_libraries',
+                         'emberbsd_jpeg_target_inputs',
+                         'emberbsd_webp_host_libraries',
+                         'emberbsd_webp_host_inputs',
+                         'emberbsd_webp_target_libraries',
+                         'emberbsd_webp_target_inputs',
                          'emberbsd_zlib_host_libraries',
                          'emberbsd_zlib_host_inputs',
                          'emberbsd_zlib_target_libraries',
@@ -2969,7 +3042,7 @@ def reconfigure(options):
                 continue
             if node_source_refresh and name == 'emberbsd_node_source_identity':
                 continue
-            if name in activation_args or name in minizip_args or name in xml_args:
+            if name in activation_args or name in minizip_args or name in xml_args or name in image_args:
                 continue
             if name in ('use_litert_tflite', 'emberbsd_flatc', 'emberbsd_flatc_inputs') and getattr(options, 'activate_common_ml', False) and not old_ml:
                 continue
@@ -3044,6 +3117,7 @@ def build(options):
     require(saved['arguments'] == values, 'GN selection changed; configure a new output')
     options.old_boringssl_identity = saved_env['EMBERBSD_BORINGSSL_SOURCE_SHA256']
     options.old_compression_identity = saved_env['EMBERBSD_COMPRESSION_SOURCE_SHA256']
+    options.old_image_identity = saved_env.get('EMBERBSD_IMAGE_SOURCE_SHA256')
     options.old_xml_identity = saved_env.get('EMBERBSD_XML_SOURCE_SHA256')
     options.old_minizip_identity = saved_env.get('EMBERBSD_MINIZIP_SOURCE_SHA256')
     options.old_ffmpeg_identity = saved_env.get('EMBERBSD_FFMPEG_SOURCE_SHA256')
@@ -3110,6 +3184,7 @@ def main():
         command.add_argument('--shared-ffmpeg', action='store_true')
         command.add_argument('--shared-minizip', action='store_true')
         command.add_argument('--shared-xml', action='store_true')
+        command.add_argument('--shared-image', action='store_true')
         if phase == 'configure':
             initial = command.add_mutually_exclusive_group()
             initial.add_argument('--resume-configure', action='store_true',

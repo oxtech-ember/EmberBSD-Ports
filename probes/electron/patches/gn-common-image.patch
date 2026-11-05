@@ -1,0 +1,152 @@
+--- a/third_party/BUILD.gn
++++ b/third_party/BUILD.gn
+@@ -7,13 +7,43 @@
+ import("//build/config/freetype/freetype.gni")
+ import("//third_party/harfbuzz/harfbuzz.gni")
+ import("//third_party/libjpeg.gni")
++import("//build/config/emberbsd_image.gni")
+ 
+ assert(
+     use_blink,
+     "This is not used on if blink is not enabled, don't drag it in unintentionally")
+ 
++if (emberbsd_common_image) {
++  pkg_config("emberbsd_jpeg_headers") {
++    packages = [ "libjpeg" ]
++    ignore_libs = true
++  }
++  _libraries = emberbsd_jpeg_target_libraries
++  _inputs = emberbsd_jpeg_target_inputs
++  if (emberbsd_pkg_config_role == "native") {
++    _libraries = emberbsd_jpeg_host_libraries
++    _inputs = emberbsd_jpeg_host_inputs
++  }
++  assert(emberbsd_pkg_config_role != "upstream" && _libraries != [] && _inputs != [],
++         "Selected jpeg provider is incomplete")
++  config("emberbsd_jpeg_selected") {
++    libs = _libraries
++    if (emberbsd_pkg_config_role == "native") {
++      ldflags = [ "-Wl,-rpath=" + rebase_path(get_path_info(_libraries[0], "dir"), "") ]
++    } else {
++      ldflags = [ "-Wl,-rpath=/usr/pkg/lib" ]
++    }
++  }
++  source_set("emberbsd_jpeg") {
++    inputs = _inputs
++    all_dependent_configs = [ ":emberbsd_jpeg_selected" ]
++  }
++}
++
+ config("system_libjpeg_config") {
+-  libs = [ "jpeg" ]
++  if (!emberbsd_common_image) {
++    libs = [ "jpeg" ]
++  }
+   defines = [ "USE_SYSTEM_LIBJPEG" ]
+ }
+ 
+@@ -27,6 +57,10 @@
+ group("jpeg") {
+   if (use_system_libjpeg) {
+     public_configs = [ ":system_libjpeg_config" ]
++    if (emberbsd_common_image) {
++      public_deps = [ ":emberbsd_jpeg" ]
++      public_configs += [ ":emberbsd_jpeg_headers" ]
++    }
+   } else if (use_libjpeg_turbo) {
+     public_deps = [ "//third_party/libjpeg_turbo:libjpeg" ]
+     public_configs = [ ":libjpeg_turbo_config" ]
+@@ -42,6 +76,9 @@
+ group("jpeg_includes") {
+   if (use_system_libjpeg) {
+     public_configs = [ ":system_libjpeg_config" ]
++    if (emberbsd_common_image) {
++      public_configs += [ ":emberbsd_jpeg_headers" ]
++    }
+   } else if (use_libjpeg_turbo) {
+     public_configs = [ "//third_party/libjpeg_turbo:libjpeg_config" ]
+   } else {
+--- a/build/linux/unbundle/libwebp.gn
++++ b/build/linux/unbundle/libwebp.gn
+@@ -4,8 +4,36 @@
+ 
+ import("//build/config/linux/pkg_config.gni")
+ import("//build/shim_headers.gni")
++import("//build/config/emberbsd_image.gni")
++
++if (emberbsd_common_image) {
++  _libraries = emberbsd_webp_target_libraries
++  _inputs = emberbsd_webp_target_inputs
++  if (emberbsd_pkg_config_role == "native") {
++    _libraries = emberbsd_webp_host_libraries
++    _inputs = emberbsd_webp_host_inputs
++  }
++  assert(emberbsd_pkg_config_role != "upstream" && _libraries != [] && _inputs != [],
++         "Selected webp provider is incomplete")
++  config("emberbsd_webp_selected") {
++    libs = _libraries
++    if (emberbsd_pkg_config_role == "native") {
++      ldflags = [ "-Wl,-rpath=" + rebase_path(get_path_info(_libraries[0], "dir"), "") ]
++    } else {
++      ldflags = [ "-Wl,-rpath=/usr/pkg/lib" ]
++    }
++  }
++  source_set("emberbsd_webp") {
++    inputs = _inputs
++    all_dependent_configs = [ ":emberbsd_webp_selected" ]
++  }
++}
++
+ 
+ pkg_config("system_libwebp") {
++  if (emberbsd_common_image) {
++    ignore_libs = true
++  }
+   packages = [
+     "libwebp",
+     "libwebpdemux",
+@@ -14,6 +42,9 @@
+ }
+ 
+ pkg_config("system_libsharpyuv") {
++  if (emberbsd_common_image) {
++    ignore_libs = true
++  }
+   packages = [ "libsharpyuv" ]
+ }
+ 
+@@ -39,11 +70,17 @@
+ 
+ source_set("libwebp_webp") {
+   deps = [ ":libwebp_shim" ]
++  if (emberbsd_common_image) {
++    public_deps = [ ":emberbsd_webp" ]
++  }
+   public_configs = [ ":system_libwebp" ]
+ }
+ 
+ source_set("libwebp_sharpyuv") {
+   deps = [ ":libsharpyuv_shim" ]
++  if (emberbsd_common_image) {
++    public_deps = [ ":emberbsd_webp" ]
++  }
+   public_configs = [ ":system_libsharpyuv" ]
+ }
+ 
+--- /dev/null
++++ b/build/config/emberbsd_image.gni
+@@ -0,0 +1,14 @@
++# Copyright 2026 EmberBSD contributors. BSD-2-Clause.
++import("//build/config/linux/pkg_config.gni")
++declare_args() {
++  emberbsd_common_image = false
++  emberbsd_jpeg_host_libraries = []
++  emberbsd_jpeg_target_libraries = []
++  emberbsd_jpeg_host_inputs = []
++  emberbsd_jpeg_target_inputs = []
++  emberbsd_webp_host_libraries = []
++  emberbsd_webp_target_libraries = []
++  emberbsd_webp_host_inputs = []
++  emberbsd_webp_target_inputs = []
++}
++

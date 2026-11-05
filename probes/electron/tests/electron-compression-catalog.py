@@ -20,7 +20,7 @@ with tempfile.TemporaryDirectory() as temp:
     def capture(command, **kwargs):
         calls.append(command)
         export=Path(command[3])
-        for name in ('archivers/brotli','archivers/zstd','devel/zlib','archivers/minizip-ng','multimedia/ffmpeg9'):
+        for name in ('archivers/brotli','archivers/zstd','devel/zlib','archivers/minizip-ng','multimedia/ffmpeg9','textproc/libxml2','textproc/libxslt','graphics/libjpeg-turbo','graphics/libwebp'):
             recipe=export/name; recipe.mkdir(parents=True)
             (recipe/'distinfo').write_text(name + (root/'state').read_text())
         return SimpleNamespace(stdout=b'')
@@ -37,10 +37,11 @@ with tempfile.TemporaryDirectory() as temp:
         scratch=root/'scratch'; scratch.mkdir()
         o.phase='reconfigure'; o.native_binding_root=work; o.work=scratch
         assert electron.compression_recipe_catalog(o,sdk,native,{})==first and len(calls)==1
-        o.shared_minizip=True; o.shared_ffmpeg=True
+        o.shared_minizip=True; o.shared_ffmpeg=True; o.shared_xml=True; o.shared_image=True
         combined=electron.compression_recipe_catalog(o,sdk,native,{})
         assert len(calls)==2 and set(combined['recipes']) == {
-            'archivers/brotli','archivers/zstd','devel/zlib','archivers/minizip-ng','multimedia/ffmpeg9'}
+            'archivers/brotli','archivers/zstd','devel/zlib','archivers/minizip-ng','multimedia/ffmpeg9',
+            'textproc/libxml2','textproc/libxslt','graphics/libjpeg-turbo','graphics/libwebp'}
         (work/'configuration.json').write_text(json.dumps({'environment':{'EMBERBSD_COMPRESSION_RECIPE_CATALOG':json.dumps(combined)}}))
         assert electron.compression_recipe_catalog(o,sdk,native,{}) == combined and len(calls)==2
         (root/'state').write_text('two')

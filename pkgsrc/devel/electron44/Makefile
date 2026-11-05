@@ -43,6 +43,11 @@ TOOL_DEPENDS+= libxml2>=2.15.4nb5:../../textproc/libxml2
 TOOL_DEPENDS+= libxslt>=1.1.45nb3:../../textproc/libxslt
 .endif
 
+.if ${EMBERBSD_ELECTRON_SHARED_IMAGE:Uno} == "yes"
+TOOL_DEPENDS+= libjpeg-turbo>=3.2.1nb1:../../graphics/libjpeg-turbo
+TOOL_DEPENDS+= libwebp>=1.6.0nb4:../../graphics/libwebp
+.endif
+
 # Shared native JavaScript providers selected by the Electron producer.
 TOOL_DEPENDS+= node-electron-asar>=4.3.1:../../devel/node-electron-asar
 TOOL_DEPENDS+= node-electron-docs-parser>=3.0.3:../../devel/node-electron-docs-parser

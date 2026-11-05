@@ -1174,6 +1174,11 @@
       "root": ""
     },
     {
+      "path": "gn-common-image.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
       "path": "gn-external-xml.patch",
       "root": "",
       "strip": 1
