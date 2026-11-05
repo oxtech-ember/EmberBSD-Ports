@@ -1,0 +1,173 @@
+# Allow cross generators to reject fallback to host GIR metadata.
+# Origin: EmberBSD.
+--- tools/cppgir.cpp.orig
++++ tools/cppgir.cpp
+@@ -39,12 +39,14 @@
+ {
+   GeneratorContext &ctx_;
+   std::vector<std::string> girdirs_;
++  bool strict_gir_paths_;
+   // processes ns (ns: ns header)
+   std::map<std::string, std::string> processed_;
+ 
+ public:
+-  Generator(GeneratorContext &_ctx, const std::vector<std::string> &girdirs)
+-      : ctx_(_ctx), girdirs_(girdirs)
++  Generator(GeneratorContext &_ctx, const std::vector<std::string> &girdirs,
++      bool strict_gir_paths)
++      : ctx_(_ctx), girdirs_(girdirs), strict_gir_paths_(strict_gir_paths)
+   {}
+ 
+   std::string find_in_dir(const fs::path p, const std::string &ns) const
+@@ -93,11 +95,15 @@
+   // + a GIR filename
+   // + or a GIR namespace (ns-version)
+   // + or a GIR namespace (no version appended)
+-  void generate(const std::string &gir, bool recurse)
++  void generate(const std::string &gir, bool recurse, bool top_level = false)
+   {
+     fs::path f(gir);
+     fs::error_code ec;
+-    auto path = fs::exists(f, ec) ? gir : find(gir);
++    // A namespace is not an implicit filename in the build working directory.
++    // Explicit top-level file paths remain available for generated GIR inputs.
++    const bool direct_file = !strict_gir_paths_ || (top_level &&
++        (f.is_absolute() || f.has_parent_path() || f.extension() == GIR_SUFFIX));
++    auto path = direct_file && fs::exists(f, ec) ? gir : find(gir);
+     if (path.empty())
+       throw std::runtime_error("could not find GIR for " + gir);
+     // avoid reading if possible
+@@ -240,6 +246,7 @@
+   bool only_changed{};
+   bool basic_collection{};
+   bool dump_ignore{};
++  bool no_default_gir_path{};
+   std::string gir_path;
+ 
+   std::string helpdesc;
+@@ -262,6 +269,8 @@
+       {"output", "GI_OUTPUT", "output directory", make_parser(&output_dir)},
+       {"gir-path", "GI_GIR_PATH", "colon separated GIR search path",
+           make_parser(&gir_path)},
++      {"no-default-gir-path", "", "disable implicit host GIR search paths",
++          make_parser(&no_default_gir_path)},
+       {"class", "GI_CLASS", "generate class implementation",
+           make_parser(&doclass)},
+       {"class-full", "GI_CLASS_FULL", "generate fallback class methods",
+@@ -394,45 +403,48 @@
+   if (debug_level > 0)
+     _loglevel = (Log)debug_level;
+ 
+-  // system default
+-  {
+-    // gobject-introspection considers XDG_DATA_HOME first
+-    // (essentially g_get_user_data_dir)
+-    auto xdg_data_home = wrap(getenv("XDG_DATA_HOME"));
+-    if (xdg_data_home.empty()) {
+-      xdg_data_home = wrap(getenv("HOME"));
+-      if (!xdg_data_home.empty()) {
+-        if (xdg_data_home.back() != PATH_SEP)
+-          xdg_data_home += PATH_SEP;
+-        xdg_data_home += fmt::format(".local{}share", PATH_SEP);
+-      }
+-    }
+-    std::vector<std::string> default_gir_dirs;
+-    if (!xdg_data_home.empty())
+-      default_gir_dirs.push_back(xdg_data_home);
+-    // gobject-introspection uses XDG_DATA_DIRS next
+-    // (essentially g_get_system_data_dirs)
+-    auto xdg_data_dirs = wrap(getenv("XDG_DATA_DIRS"));
+-    addsplit(default_gir_dirs, xdg_data_dirs);
+-    // g_get_system_data_dirs optionally falls back to fixed /usr[/local] now
+-    // but that would then precede custom paths, which is a bit unfortunate
+-    // so, instead, consider those only as the very last resort (below)
+-    for (auto &d : default_gir_dirs) {
+-      girdirs.push_back(make_subdir(d, GIR_SUBDIR));
+-    }
+-  }
+-
+-  // extra GIR paths that gobject-introspection considers
+-#ifdef GI_GIR_DIR
+-  girdirs.push_back(GI_STRINGIFY(GI_GIR_DIR));
+-#endif
+-#ifdef GI_DATA_DIR
+-  girdirs.push_back(GI_STRINGIFY(GI_DATA_DIR));
+-#endif
+-#ifdef DEFAULT_GIRPATH
+-  // optional (hard) fallback
+-  addsplit(girdirs, GI_STRINGIFY(DEFAULT_GIRPATH), GIR_SUBDIR);
+-#endif
++  // Cross generators must not fall back to host ABI metadata.
++  if (!no_default_gir_path) {
++    // system default
++    {
++      // gobject-introspection considers XDG_DATA_HOME first
++      // (essentially g_get_user_data_dir)
++      auto xdg_data_home = wrap(getenv("XDG_DATA_HOME"));
++      if (xdg_data_home.empty()) {
++        xdg_data_home = wrap(getenv("HOME"));
++        if (!xdg_data_home.empty()) {
++          if (xdg_data_home.back() != PATH_SEP)
++            xdg_data_home += PATH_SEP;
++          xdg_data_home += fmt::format(".local{}share", PATH_SEP);
++        }
++      }
++      std::vector<std::string> default_gir_dirs;
++      if (!xdg_data_home.empty())
++        default_gir_dirs.push_back(xdg_data_home);
++      // gobject-introspection uses XDG_DATA_DIRS next
++      // (essentially g_get_system_data_dirs)
++      auto xdg_data_dirs = wrap(getenv("XDG_DATA_DIRS"));
++      addsplit(default_gir_dirs, xdg_data_dirs);
++      // g_get_system_data_dirs optionally falls back to fixed /usr[/local] now
++      // but that would then precede custom paths, which is a bit unfortunate
++      // so, instead, consider those only as the very last resort (below)
++      for (auto &d : default_gir_dirs) {
++        girdirs.push_back(make_subdir(d, GIR_SUBDIR));
++      }
++    }
++  
++    // extra GIR paths that gobject-introspection considers
++  #ifdef GI_GIR_DIR
++    girdirs.push_back(GI_STRINGIFY(GI_GIR_DIR));
++  #endif
++  #ifdef GI_DATA_DIR
++    girdirs.push_back(GI_STRINGIFY(GI_DATA_DIR));
++  #endif
++  #ifdef DEFAULT_GIRPATH
++    // optional (hard) fallback
++    addsplit(girdirs, GI_STRINGIFY(DEFAULT_GIRPATH), GIR_SUBDIR);
++  #endif
++  }
+ 
+   for (auto &&d : girdirs)
+     logger(Log::DEBUG, "extending GIR path " + d);
+@@ -499,10 +511,10 @@
+   std::set<std::string> suppressions;
+   GeneratorContext ctx{
+       options, *repo, match_ignore, match_suppress, suppressions};
+-  Generator gen(ctx, girdirs);
++  Generator gen(ctx, girdirs, no_default_gir_path);
+   try {
+     for (auto &&g : girs)
+-      gen.generate(g, true);
++      gen.generate(g, true, true);
+ 
+     // write suppression
+     if (fpath_gen_suppress.size()) {
+--- docs/cppgir.md.orig
++++ docs/cppgir.md
+@@ -30,6 +30,13 @@
+ * `--gir-path` _PATHS_:
+   Adds a colon-separated list of additional directories within which
+   to (recursively) search for a `.gir` file (if not specified by full pathname).
++
++* `--no-default-gir-path`:
++  Search namespaces only in paths explicitly supplied by `--gir-path` or
++  `GI_GIR_PATH`. Disable working-directory, user, XDG and compiled-in fallback.
++  Explicit top-level GIR file paths remain supported, including generated GIRs.
++  Cross builds should also clear `GI_GIR_PATH` and provide the target metadata
++  path explicitly.
+ 
+ * `--debug` _LEVEL_:
+   Debug level or level of verbosity, higher numbers are more verbose.

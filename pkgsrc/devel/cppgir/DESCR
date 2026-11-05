@@ -1,0 +1,2 @@
+CppGir generates C++ wrappers from GObject Introspection GIR metadata.
+The native package supplies the generator; the cross package supplies headers.
