@@ -1132,6 +1132,11 @@
       "path": "gn-common-media-host-inputs.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "gn-common-libyuv-public-config.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

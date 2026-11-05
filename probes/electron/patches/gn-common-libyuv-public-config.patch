@@ -1,0 +1,20 @@
+--- a/third_party/libyuv/BUILD.gn
++++ b/third_party/libyuv/BUILD.gn
+@@ -20,13 +20,15 @@
+   }
+   assert(_library != "" && _headers != "" && _inputs != [],
+          "Selected libyuv provider is incomplete")
+-  config("emberbsd_libyuv_config") {
++  config("libyuv_config") {
+     include_dirs = [ "include" ]
++  }
++  config("emberbsd_libyuv_library") {
+     libs = [ _library ]
+   }
+   source_set("libyuv") {
+     inputs = _inputs
+-    all_dependent_configs = [ ":emberbsd_libyuv_config" ]
++    all_dependent_configs = [ ":libyuv_config", ":emberbsd_libyuv_library" ]
+   }
+ } else {
+ # Copyright 2014 The LibYuv Project Authors. All rights reserved.
