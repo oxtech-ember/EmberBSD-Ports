@@ -1082,6 +1082,11 @@
       "path": "gn-shared-flatc.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "gn-common-provider-escaped-anchors.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

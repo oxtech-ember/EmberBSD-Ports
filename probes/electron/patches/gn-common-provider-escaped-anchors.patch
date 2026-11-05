@@ -1,0 +1,30 @@
+--- a/build/linux/unbundle/icu.gn
++++ b/build/linux/unbundle/icu.gn
+@@ -78,14 +78,14 @@
+ pkg_config("system_icui18n") {
+   packages = [ "icu-i18n" ]
+   if (_emberbsd_icu_selected) {
+-    extra_args = [ "-v", "^-licui18n$" ]
++    extra_args = [ "-v", "^-licui18n\$" ]
+   }
+ }
+ 
+ pkg_config("system_icuuc") {
+   packages = [ "icu-uc" ]
+   if (_emberbsd_icu_selected) {
+-    extra_args = [ "-v", "^-licuuc$" ]
++    extra_args = [ "-v", "^-licuuc\$" ]
+   }
+ }
+ 
+--- a/build/linux/unbundle/re2.gn
++++ b/build/linux/unbundle/re2.gn
+@@ -31,7 +31,7 @@
+ pkg_config("re2_config") {
+   packages = [ "re2" ]
+   if (_emberbsd_re2_selected) {
+-    extra_args = [ "-v", "^-lre2$" ]
++    extra_args = [ "-v", "^-lre2\$" ]
+   }
+ }
+ 
