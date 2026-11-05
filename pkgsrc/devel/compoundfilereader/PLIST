@@ -1,4 +1,4 @@
-# $NetBSD$
+@comment $NetBSD$
 include/compoundfilereader.h
 include/utf.h
 lib/cmake/CompoundFileReader/CompoundFileReaderConfig.cmake

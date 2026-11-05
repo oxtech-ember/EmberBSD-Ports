@@ -1,4 +1,4 @@
-# $NetBSD$
+@comment $NetBSD$
 include/rapidcsv.h
 lib/cmake/rapidcsv/rapidcsvConfig.cmake
 lib/cmake/rapidcsv/rapidcsvTargets.cmake

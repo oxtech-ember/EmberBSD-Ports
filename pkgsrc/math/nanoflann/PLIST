@@ -1,4 +1,4 @@
-# $NetBSD$
+@comment $NetBSD$
 include/nanoflann.hpp
 lib/pkgconfig/nanoflann.pc
 share/cmake/nanoflann/nanoflannConfig.cmake
