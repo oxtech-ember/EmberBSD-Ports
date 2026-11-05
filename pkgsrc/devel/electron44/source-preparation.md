@@ -282,3 +282,11 @@ ordered Ports patch. Materialization accepts those reconstructed bytes as well
 as the committed preimage and final bytes. It does not trust arbitrary live
 changes or an old completion file to authorize an overwrite. A changed earlier
 patch whose old result is no longer reconstructed is refused.
+
+Fresh source views use the selected common native module prefix for DevTools.
+For an existing verified view with the earlier mirrored DevTools modules, run
+`reconfigure --migrate-devtools-modules-only` with the existing selections before
+materializing the additive source series. This leaves the reconfigure-incomplete
+guard in place. Materialize the current series and run the ordinary
+`reconfigure --refresh-source-view`; the guard is removed only after GN succeeds.
+The migration preserves the sibling Ninja outputs and other source-view leaves.

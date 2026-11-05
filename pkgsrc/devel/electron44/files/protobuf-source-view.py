@@ -167,7 +167,7 @@ def _same_file_bytes(left, right):
                 return True
 
 
-def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=frozenset(), updates=None):
+def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=frozenset(), updates=None, nested_omit=frozenset()):
     """Mirror source entries; verification may allow named regular GN outputs.
 
     Electron's GN build_electron_definitions action creates electron-api.json
@@ -176,7 +176,8 @@ def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=froz
     """
     origin = Path(origin)
     dest = Path(dest)
-    excluded = set(omit)
+    nested_omit = {Path(path) for path in nested_omit}
+    excluded = set(omit) | {p.name for p in nested_omit if len(p.parts) == 1}
     generated = set(generated_files)
     require(all(isinstance(name, str) and name not in ('.', '..') and
                 Path(name).name == name and
@@ -229,7 +230,8 @@ def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=froz
                 output_info = local_entries[name].stat(follow_symlinks=False)
                 require(stat.S_ISDIR(output_info.st_mode),
                         'mirrored view directory changed: ' + str(output))
-            mirror(item.path, output, verify=verify, updates=updates)
+            nested = {Path(*p.parts[1:]) for p in nested_omit if len(p.parts) > 1 and p.parts[0] == name}
+            mirror(item.path, output, verify=verify, updates=updates, nested_omit=nested)
         else:
             require(stat.S_ISREG(source_info.st_mode),
                     'unsupported mirrored view file type: ' + str(item.path))
@@ -443,7 +445,11 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     (destination / 'src/out').mkdir()
     links(third_party, destination / 'src/third_party', ({'protobuf'} if protobuf else set()) | set(providers) | ({'abseil-cpp'} if system_abseil else set()) | ({'icu'} if system_icu else set()) | ({'re2'} if system_re2 else set()) | mirrored(third_party))
     for name in mirrored(third_party):
-        mirror(third_party / name, destination / 'src/third_party' / name)
+        nested = {Path('src/node_modules')} if name == 'devtools-frontend' and node_modules is not None else frozenset()
+        mirror(third_party / name, destination / 'src/third_party' / name, nested_omit=nested)
+        if nested:
+            (destination / 'src/third_party' / name / 'src/node_modules').symlink_to(
+                Path(node_modules).resolve(strict=True), target_is_directory=True)
     if node_modules is not None:
         # WebUI scripts import third_party/node/node_modules statically; bind
         # it to the selected common Ports module prefix.
@@ -484,7 +490,7 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     return destination / 'src'
 
 
-def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None, _updates=None, _refresh=False, _initial_missing=None):
+def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None, _updates=None, _refresh=False, _initial_missing=None, _legacy_devtools=False, _migration=False):
     source = Path(source).resolve(strict=True)
     protobuf = Path(protobuf).resolve(strict=True) if protobuf is not None else None
     providers = {name: Path(value).resolve(strict=True) for name, value in
@@ -493,6 +499,8 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     destination = Path(destination)
     require(_refresh or not os.path.lexists(_refresh_marker(destination)),
             'source view refresh is incomplete; rerun refresh')
+    require(_migration or not os.path.lexists(destination.parent / ('.' + destination.name + '.devtools-modules-migration')),
+            'DevTools modules migration is incomplete; rerun migration')
     require(destination.is_dir() and not destination.is_symlink(), 'source view must be a local directory')
     destination = destination.resolve(strict=True)
     def check(origin, dest, omit, extra):
@@ -521,9 +529,14 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     replaced = ({'protobuf'} if protobuf else set()) | set(providers) | ({'abseil-cpp'} if system_abseil else set()) | ({'icu'} if system_icu else set()) | ({'re2'} if system_re2 else set()) | mirrored(source / 'third_party')
     check(source / 'third_party', root / 'third_party', replaced, replaced)
     for name in mirrored(source / 'third_party'):
+        nested = {Path('src/node_modules')} if name == 'devtools-frontend' and node_modules is not None and not _legacy_devtools else frozenset()
         mirror(source / 'third_party' / name, root / 'third_party' / name, verify=True,
                omit={'node_modules'} if name == 'node' and node_modules is not None else frozenset(),
-               updates=_updates)
+               updates=_updates, nested_omit=nested)
+        if nested:
+            link = root / 'third_party' / name / 'src/node_modules'
+            require(link.is_symlink() and os.readlink(link) == str(Path(node_modules).resolve(strict=True)),
+                    'DevTools common node_modules link changed')
     if node_modules is not None:
         link = root / 'third_party/node/node_modules'
         require(link.is_symlink() and os.readlink(link) == str(Path(node_modules).resolve(strict=True)),
@@ -794,6 +807,92 @@ def _refresh_leaves(source, protobuf, destination, sources):
                 os.unlink(marker.name, dir_fd=work_fd)
             raise
         os.unlink(marker.name, dir_fd=work_fd)
+    return destination / 'src'
+
+
+def migrate_devtools_modules(source, protobuf, destination, **sources):
+    """Replace only the verified legacy DevTools modules mirror under the source lock."""
+    import shutil
+    import tempfile
+    destination = Path(destination).resolve(strict=True)
+    modules = Path(sources['node_modules']).resolve(strict=True)
+    origin = Path(source).resolve(strict=True) / 'third_party/devtools-frontend/src/node_modules'
+    selected = destination / 'src/third_party/devtools-frontend/src/node_modules'
+    backup = destination.parent / ('.' + destination.name + '.devtools-modules-old')
+    pending = destination.parent / ('.' + destination.name + '.devtools-modules-next')
+    marker = destination.parent / ('.' + destination.name + '.devtools-modules-migration')
+    def mark_committed():
+        with tempfile.NamedTemporaryFile(mode='w', dir=destination.parent, prefix='.devtools-marker-', delete=False) as f:
+            tmp = Path(f.name)
+            try:
+                f.write('devtools-modules-committed-v1\n')
+                f.flush()
+                os.fsync(f.fileno())
+            except BaseException:
+                tmp.unlink(missing_ok=True)
+                raise
+        try:
+            os.replace(tmp, marker)
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    if os.path.lexists(marker):
+        require(marker.is_file() and not marker.is_symlink(), 'invalid DevTools migration marker')
+        state = marker.read_text()
+        require(state in ('devtools-modules-v1\n', 'devtools-modules-committed-v1\n'),
+                'invalid DevTools migration marker')
+        if state == 'devtools-modules-committed-v1\n':
+            require(selected.is_symlink() and os.readlink(selected) == str(modules),
+                    'invalid committed DevTools selection')
+            verify(source, protobuf, destination, **sources, _migration=True)
+            if os.path.lexists(backup):
+                require(backup.is_dir() and not backup.is_symlink(), 'invalid DevTools migration backup')
+                shutil.rmtree(backup)
+        elif os.path.lexists(backup):
+            require(backup.is_dir() and not backup.is_symlink(), 'invalid DevTools migration backup')
+            mirror(origin, backup, verify=True)
+            if not os.path.lexists(selected):
+                backup.rename(selected)
+            else:
+                require(selected.is_symlink() and os.readlink(selected) == str(modules),
+                        'invalid DevTools migration selection')
+                verify(source, protobuf, destination, **sources, _migration=True)
+                mark_committed()
+                shutil.rmtree(backup)
+        require(os.path.lexists(selected), 'DevTools migration lost both original and selection')
+        if os.path.lexists(pending):
+            require(pending.is_symlink() and os.readlink(pending) == str(modules),
+                    'invalid pending DevTools selection')
+            pending.unlink()
+        marker.unlink()
+    if selected.is_symlink():
+        require(os.readlink(selected) == str(modules), 'DevTools modules select another prefix')
+        return verify(source, protobuf, destination, **sources)
+    require(not os.path.lexists(backup) and not os.path.lexists(pending),
+            'unexpected DevTools migration files')
+    verify(source, protobuf, destination, **sources, _legacy_devtools=True)
+    require(selected.is_dir() and not selected.is_symlink(), 'legacy DevTools modules missing')
+    with marker.open('x') as f:
+        f.write('devtools-modules-v1\n')
+    try:
+        pending.symlink_to(modules, target_is_directory=True)
+        selected.rename(backup)
+        pending.rename(selected)
+        verify(source, protobuf, destination, **sources, _migration=True)
+    except BaseException:
+        if os.path.lexists(backup):
+            if selected.is_symlink() and os.readlink(selected) == str(modules):
+                selected.unlink()
+            if not os.path.lexists(selected):
+                backup.rename(selected)
+        if pending.is_symlink() and os.readlink(pending) == str(modules):
+            pending.unlink()
+        if not os.path.lexists(backup):
+            marker.unlink(missing_ok=True)
+        raise
+    mark_committed()
+    shutil.rmtree(backup)
+    marker.unlink()
     return destination / 'src'
 
 

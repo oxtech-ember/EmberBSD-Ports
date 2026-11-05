@@ -1037,6 +1037,16 @@
       "path": "gn-mac-native-platform-hardening.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "gn-devtools-common-node-types.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "devtools-cssnano-builtin.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

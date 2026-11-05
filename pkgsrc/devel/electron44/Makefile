@@ -35,6 +35,22 @@ TOOL_DEPENDS+= node-semver>=7.8.5:../../devel/node-semver
 TOOL_DEPENDS+= typescript>=7.0.2:../../lang/typescript
 TOOL_DEPENDS+= node-primer-octicons>=19.42.0:../../devel/node-primer-octicons
 TOOL_DEPENDS+= node-postcss-minify>=1.2.0:../../devel/node-postcss-minify
+TOOL_DEPENDS+= rollup>=4.65.1:../../devel/rollup
+TOOL_DEPENDS+= esbuild>=0.28.2:../../www/esbuild
+TOOL_DEPENDS+= node-lit>=3.3.3:../../devel/node-lit
+TOOL_DEPENDS+= node-types-dom-speech-recognition>=0.0.12:../../devel/node-types-dom-speech-recognition
+TOOL_DEPENDS+= node-ts-proto>=2.18.3:../../devel/node-ts-proto
+TOOL_DEPENDS+= node-js-yaml>=5.5.0:../../devel/node-js-yaml
+TOOL_DEPENDS+= node-yargs>=18.2.0:../../devel/node-yargs
+TOOL_DEPENDS+= node-svgo>=4.1.0:../../devel/node-svgo
+TOOL_DEPENDS+= node-uuid>=14.0.3:../../devel/node-uuid
+TOOL_DEPENDS+= node-cssnano>=9.9.0:../../devel/node-cssnano
+TOOL_DEPENDS+= node-postcss>=8.5.32:../../devel/node-postcss
+TOOL_DEPENDS+= node-types-estree>=1.0.10:../../devel/node-types-estree
+TOOL_DEPENDS+= node-types-filesystem>=0.0.36:../../devel/node-types-filesystem
+TOOL_DEPENDS+= node-types-filewriter>=0.0.33:../../devel/node-types-filewriter
+TOOL_DEPENDS+= node-types-json-schema>=7.0.15:../../devel/node-types-json-schema
+TOOL_DEPENDS+= node-undici-types>=8.12.3:../../devel/node-undici-types
 
 # Inputs and producer work are selected explicitly in producer.mk.
 # The prepared source owner applies patches before the controller verifies it.

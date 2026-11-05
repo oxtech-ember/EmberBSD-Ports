@@ -1,0 +1,14 @@
+Use the explicitly exported common CSSNano builtin lite preset.
+Origin: EmberBSD contributors (AI-assisted).
+
+--- a/third_party/devtools-frontend/src/scripts/build/generate_css_js_files.js
++++ b/third_party/devtools-frontend/src/scripts/build/generate_css_js_files.js
+@@ -2,7 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ import cssnano from 'cssnano';
+-import cssnanoPresetLite from 'cssnano-preset-lite';
++import cssnanoPresetLite from 'cssnano/preset-lite';
+ import * as fs from 'node:fs/promises';
+ import * as path from 'node:path';
+ import postcss from 'postcss';

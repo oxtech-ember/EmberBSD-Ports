@@ -36,7 +36,7 @@ def load_sdk(root):
     sys.path.insert(0, str(package.parent))
     result = {}
     for name in ('', 'host_prefix', 'application_toolchain', 'target_toolchain', 'targets', 'llvm_runtime',
-                 'process', 'paths', 'darwin_sdk', 'compiler_bindings', 'cpu_capacity'):
+                 'process', 'paths', 'jsonio', 'darwin_sdk', 'compiler_bindings', 'cpu_capacity'):
         module = importlib.import_module('emberbsd_sdk' + ('.' + name if name else ''))
         require(Path(module.__file__).resolve() == package / ((name or '__init__') + '.py'),
                 'SDK module origin differs: ' + module.__name__)
@@ -67,12 +67,16 @@ def gn_value(value):
     return json.dumps(value, ensure_ascii=False).replace('$', r'\$')
 
 
-def verify_source(workspace, ports, git):
+def verify_source(workspace, ports, git, *, allow_ordered_prefix=False):
     source = local_module('electron_build_source', 'prepare-build-sources.py')
     record = json.loads((workspace / 'source-inputs/ports-build-sources.json').read_text())
     rows = source.read_series(Path(__file__).with_name('source-series.json'), ports / 'probes/electron/patches')
     expected = [source.series_record(row) for row in rows]
-    require(record.get('version') == 1 and record.get('patches') == expected,
+    actual = record.get('patches')
+    matches = actual == expected
+    if allow_ordered_prefix and isinstance(actual, list):
+        matches = matches or (0 < len(actual) < len(expected) and actual == expected[:len(actual)])
+    require(record.get('version') == 1 and matches,
             'prepare sources with the current complete ordered recipe series')
     for name, revision in record['source_revisions'].items():
         repository = workspace / source.bsd.relative(name)
@@ -361,6 +365,8 @@ def arguments(options, native, tools, rust_version, launcher):
                   emberbsd_electron_host_prefix=str(options.host_prefix),
                   emberbsd_electron_npm_runner=str(Path(__file__).with_name('electron-npm-runner.py').resolve()))
     values.update(local_module('electron_node_providers', 'node-providers.py').select(native, electron=True)['arguments'])
+    provider_root = Path(getattr(options, 'native_binding_root', options.work))
+    values['emberbsd_node_provider_inputs'].append(str(provider_root / 'devtools-provider.json'))
     return values
 
 
@@ -1187,8 +1193,49 @@ def platform_libcxx_hardening(options, sdk, host_binding, environment):
     return True
 
 
+DEVTOOLS_JS_ROOTS = {
+    'js-yaml': 'devel/node-js-yaml', 'yargs': 'devel/node-yargs',
+    'svgo': 'devel/node-svgo', 'uuid': 'devel/node-uuid',
+    'cssnano': 'devel/node-cssnano',
+    'postcss': 'devel/node-postcss', '@types/node': 'devel/node-types-node',
+    'undici-types': 'devel/node-undici-types', '@types/estree': 'devel/node-types-estree',
+    '@types/filesystem': 'devel/node-types-filesystem', '@types/filewriter': 'devel/node-types-filewriter',
+    '@types/json-schema': 'devel/node-types-json-schema',
+}
+
+
+def devtools_provider_identity(options, sdk, native, environment):
+    """Identify the selected common JavaScript closure using its owning helper."""
+    projection = options.ports_source / 'profiles/common-build-tools/javascript-projection.py'
+    pkg_admin = options.host_prefix / 'sbin/pkg_admin'
+    sdk['host_prefix'].validate_host_executable(str(options.host_prefix), str(pkg_admin),
+                                                native.host, search_path=native.path)
+    command = [native.tool('python'), '-B', '-I', '-S', str(projection),
+               '--prefix', str(options.host_prefix), '--node', native.tool('node'),
+               '--pkg-admin', str(pkg_admin)]
+    for name, pkgpath in sorted(DEVTOOLS_JS_ROOTS.items()):
+        command += ['--root', name + '=' + pkgpath]
+    data = json.loads(sdk['process'].capture(command, env=environment).stdout)
+    require(data.get('schemaVersion') == 1 and isinstance(data.get('modules'), list),
+            'invalid DevTools JavaScript projection')
+    return hashlib.sha256(json.dumps(data, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+
+
+def write_devtools_identity(work, sdk, environment):
+    """Update the shared Ninja input only when provider identity changes."""
+    path = Path(work) / 'devtools-provider.json'
+    value = {'schemaVersion': 1, 'sha256': environment['EMBERBSD_DEVTOOLS_PROVIDER_SHA256']}
+    require(not path.is_symlink(), 'DevTools provider input must be a regular file')
+    if path.exists():
+        require(path.is_file(), 'DevTools provider input must be a regular file')
+        if json.loads(path.read_text()) == value:
+            return
+    sdk['jsonio'].write_json(str(path), value, exclusive=False)
+
+
 def producer_inputs(options, sdk):
     native, environment = native_inputs(options, sdk)
+    environment['EMBERBSD_DEVTOOLS_PROVIDER_SHA256'] = devtools_provider_identity(options, sdk, native, environment)
     tools = target_inputs(options, sdk, native, environment, options.work)
     host_binding = native_runtime_binding(options, sdk, native, environment, tools)
     if tools.get('runtime_stage_sha256'):
@@ -1401,6 +1448,9 @@ def gn_source(options):
                    node_modules=Path(options.host_prefix) / 'lib/node_modules',
                    protobuf_protoc=(Path(options.host_prefix) / 'bin/protoc') if common else None)
     destination = options.work / 'source-view'
+    if getattr(options, 'migrate_devtools_modules_only', False):
+        require(options.phase == 'reconfigure', 'DevTools migration requires reconfigure')
+        return view.migrate_devtools_modules(options.workspace / 'src', common, destination, **sources)
     if getattr(options, 'refresh_source_view', False):
         require(options.phase == 'reconfigure', 'source refresh requires reconfigure')
         return view.refresh(options.workspace / 'src', common, destination, **sources)
@@ -1528,6 +1578,7 @@ def configure(options):
         prepare_build_inputs(options, native, environment, sdk)
     with configure_stage('source view refresh'):
         source_root = gn_source(options)
+    write_devtools_identity(work, sdk, environment)
     if retry and old_args != current_args:
         with tempfile.NamedTemporaryFile(mode='w', dir=output, prefix='.args-', delete=False) as handle:
             temporary = Path(handle.name)
@@ -1555,6 +1606,12 @@ def configure(options):
 
 
 
+def migrate_devtools_only(options, work):
+    """Guard an explicit migration until a later GN reconfiguration succeeds."""
+    (work / 'reconfigure-incomplete').write_text('GN reconfiguration incomplete\n')
+    return gn_source(options)
+
+
 def reconfigure(options):
     keep_going_limit(options)
     build_after_reconfigure = getattr(options, 'build_after_reconfigure', False)
@@ -1565,7 +1622,8 @@ def reconfigure(options):
     require_common_perfetto(options)
     """Regenerate an existing GN graph while preserving its toolchain identity."""
     sdk = load_sdk(options.sdk_source)
-    verify_source(options.workspace, options.ports_source, options.git)
+    verify_source(options.workspace, options.ports_source, options.git,
+                  allow_ordered_prefix=getattr(options, 'migrate_devtools_modules_only', False))
     work = options.work
     output = work / 'out'
     saved = json.loads((work / 'configuration.json').read_text())
@@ -1598,6 +1656,7 @@ def reconfigure(options):
                          'EMBERBSD_HOST_TYPESCRIPT', 'EMBERBSD_HOST_ROLLUP',
                          'HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'}
         old_env = saved['environment']
+        permitted_env.add('EMBERBSD_DEVTOOLS_PROVIDER_SHA256')
         node_source_refresh = verified_node_source_refresh(
             saved['arguments'], values, old_env, environment, getattr(options, 'node_source', None))
         if node_source_refresh:
@@ -1688,13 +1747,19 @@ def reconfigure(options):
         if build_after_reconfigure:
             prepare_build_inputs(options, native, environment, sdk)
 
+        if getattr(options, 'migrate_devtools_modules_only', False):
+            require(not build_after_reconfigure, 'migration-only cannot build')
+            migrate_devtools_only(options, work)
+            return
+
         # A failed or interrupted GN run may leave a partial graph. The marker
         # prevents build until a later successful reconfigure repairs it.
         marker = work / 'reconfigure-incomplete'
         marker.write_text('GN reconfiguration incomplete\n')
         try:
-            (output / 'args.gn').write_text(gn_arguments(values))
             source_root = gn_source(options)
+            write_devtools_identity(work, sdk, environment)
+            (output / 'args.gn').write_text(gn_arguments(values))
             sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
                 '--script-executable=' + native.tool('python'), '--ninja-executable=' + native.tool('ninja'),
                 '--root-target=//electron', '--root-pattern=//electron:electron_dist_zip', '--fail-on-unused-args'],
@@ -1734,6 +1799,11 @@ def build(options):
         if name not in ('HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'):
             require(saved_env.get(name) == environment.get(name), 'producer input changed: ' + name)
     require(saved['arguments'] == values, 'GN selection changed; configure a new output')
+    fingerprint = options.work / 'devtools-provider.json'
+    require(not fingerprint.is_symlink() and fingerprint.is_file() and
+            json.loads(fingerprint.read_text()) ==
+            {'schemaVersion': 1, 'sha256': environment['EMBERBSD_DEVTOOLS_PROVIDER_SHA256']},
+            'DevTools provider input changed; reconfigure required')
     output = options.work / 'out'
     require((output / 'args.gn').read_text() == gn_arguments(values), 'configured GN arguments changed')
     source_root = gn_source(options)
@@ -1791,6 +1861,8 @@ def main():
             initial.add_argument('--retry-configure', action='store_true',
                                  help='retry failed GN with verified selected inputs')
         if phase == 'reconfigure':
+            command.add_argument('--migrate-devtools-modules-only', action='store_true',
+                                 help='migrate verified DevTools modules and require subsequent GN reconfigure')
             command.add_argument('--refresh-source-view', action='store_true',
                                  help='recompose generated sources, preserving existing Ninja objects')
             command.add_argument('--build-after-reconfigure', action='store_true',

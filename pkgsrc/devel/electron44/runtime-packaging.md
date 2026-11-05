@@ -178,3 +178,9 @@ The native buildlink can use the installed host prefix and its platform C++ ABI
 without a replacement stage; omit `HOST_BUILDLINK_STAGE_ROOT` and select the
 native tools makeconf. The explicit hardened replacement-stage route remains
 available. The target LLVM runtime is selected independently of the host ABI.
+
+DevTools build actions use the selected common native JavaScript providers.
+The producer projects their installed package identities into one fingerprint
+input shared by Node and TypeScript actions. An unchanged selection preserves
+its timestamp, so an unchanged build remains incremental; a changed selection
+invalidates the affected actions.

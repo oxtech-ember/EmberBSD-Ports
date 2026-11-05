@@ -42,6 +42,24 @@ def select_electron_semver(native):
         raise ValueError('selected semver entry missing')
     return inputs
 
+def selected_node_type_inputs(modules, prefix):
+    """Enumerate the selected Node declarations once for DevTools GN inputs."""
+    inputs = []
+    for name in ('@types/node', 'undici-types'):
+        root = modules / name
+        metadata = json.loads((root / 'package.json').read_text())
+        if metadata.get('name') != name or not metadata.get('version'):
+            raise ValueError('invalid selected DevTools type provider: ' + name)
+        paths = sorted(root.rglob('*.d.ts'))
+        if not paths:
+            raise ValueError('selected DevTools type declarations missing: ' + name)
+        for path in [root / 'package.json', *paths]:
+            if path.is_symlink() or not path.is_file() or not path.resolve(strict=True).is_relative_to(prefix):
+                raise ValueError('DevTools type provider is not a regular file in the native prefix')
+            inputs.append(str(path))
+    return inputs
+
+
 def select(native, *, electron=False):
     prefix = Path(native.bundle_root).resolve(strict=True)
     modules = prefix / 'lib/node_modules'
@@ -129,10 +147,12 @@ def select(native, *, electron=False):
                 common_type_inputs.append(str(path))
     semver_inputs = select_electron_semver(native) if electron else []
     ts_proto_inputs = select_ts_proto(modules, prefix)
+    devtools_types = selected_node_type_inputs(modules, prefix) if electron else []
     return dict(environment={'EMBERBSD_HOST_ROLLUP': native.tool('rollup'),
                              'EMBERBSD_HOST_TYPESCRIPT': native.tool('tsc'),
                              'EMBERBSD_TYPESCRIPT_NATIVE_BINARY': str(backend / 'lib/tsc')},
-                arguments={'emberbsd_electron_semver_inputs': semver_inputs,
+                arguments={'emberbsd_devtools_node_type_inputs': devtools_types,
+                           'emberbsd_electron_semver_inputs': semver_inputs,
                            'emberbsd_node_modules': str(modules),
                            'emberbsd_ts_proto_inputs': ts_proto_inputs,
                            'emberbsd_lit_versions': lit_versions,

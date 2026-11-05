@@ -13,6 +13,7 @@ build = importlib.util.module_from_spec(spec); spec.loader.exec_module(build)
 build.require_common_v8 = build.require_common_node = build.require_common_perfetto = lambda options: None
 build.load_sdk = lambda source: {}
 build.verify_source = build.require_electron_static_assets = lambda *args: None
+build.write_devtools_identity = lambda *args: None
 build.producer_inputs = lambda *args: (None, {}, {'chosen': 'new'})
 prepared = []
 build.prepare_build_inputs = lambda *args: prepared.append(True)

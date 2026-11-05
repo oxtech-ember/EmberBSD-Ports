@@ -1,0 +1,33 @@
+--- a/third_party/node/node.gni
++++ b/third_party/node/node.gni
+@@ -28,6 +28,7 @@
+   emberbsd_trusted_types_inputs = []
+   emberbsd_trusted_types_version = ""
+   emberbsd_common_type_inputs = []
++  emberbsd_devtools_node_type_inputs = []
+   emberbsd_typescript_definitions = []
+   emberbsd_node_provider_versions = []
+   emberbsd_typescript_native_binary = ""
+--- a/third_party/devtools-frontend/src/scripts/build/typescript/typescript_vars.gni
++++ b/third_party/devtools-frontend/src/scripts/build/typescript/typescript_vars.gni
+@@ -155,6 +155,7 @@
+          "selected TypeScript version must be supplied")
+   _ts_wrapper = "//third_party/node/run_selected_tsc.py"
+   typescript_base_inputs += emberbsd_typescript_definitions +
++                            emberbsd_node_provider_inputs +
+                             [ emberbsd_typescript_host_python, _ts_wrapper ]
+   typescript_command = []
+   typescript_command = [
+@@ -748,6 +749,12 @@
+   devtools_location_prepend + "node_modules/undici-types/websocket.d.ts",
+ ]
+ 
++if (build_with_chromium && emberbsd_host_node != "") {
++  assert(emberbsd_devtools_node_type_inputs != [],
++         "selected Node declarations must be supplied")
++  typescript_node_types_inputs = emberbsd_devtools_node_type_inputs
++}
++
+ typescript_global_definition_files = [
+   devtools_location_prepend + "front_end/legacy/legacy-defs.d.ts",
+   devtools_location_prepend + "front_end/global_typings/global_defs.d.ts",
