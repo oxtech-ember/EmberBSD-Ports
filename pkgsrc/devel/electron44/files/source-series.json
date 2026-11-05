@@ -1187,6 +1187,11 @@
       "path": "gn-boringssl-mtc-oid.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-common-native-rpath.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

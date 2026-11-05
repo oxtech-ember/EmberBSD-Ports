@@ -1,0 +1,32 @@
+# Origin: EmberBSD contributors (AI-assisted).
+# Resolve selected shared native providers when executing build generators.
+
+--- a/third_party/libyuv/BUILD.gn
++++ b/third_party/libyuv/BUILD.gn
+@@ -25,6 +25,9 @@
+   }
+   config("emberbsd_libyuv_library") {
+     libs = [ _library ]
++    if (emberbsd_pkg_config_role == "native") {
++      ldflags = [ "-Wl,-rpath=" + rebase_path(get_path_info(_library, "dir"), "") ]
++    }
+   }
+   source_set("libyuv") {
+     inputs = _inputs
+--- a/build/config/linux/pkg_config.gni
++++ b/build/config/linux/pkg_config.gni
+@@ -264,6 +264,14 @@
+     if (!defined(invoker.ignore_libs) || !invoker.ignore_libs) {
+       libs = pkgresult[2]
+       lib_dirs = pkgresult[3]
++      if (_emberbsd_pkg_config_role == "native") {
++        # Native providers can use @rpath install names. The selected
++        # pkg-config view already owns these library search directories.
++        ldflags = []
++        foreach(_library_dir, lib_dirs) {
++          ldflags += [ "-Wl,-rpath=" + rebase_path(_library_dir, "") ]
++        }
++      }
+     }
+ 
+     forward_variables_from(invoker,
