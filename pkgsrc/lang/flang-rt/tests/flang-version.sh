@@ -13,7 +13,15 @@ work=$(CDPATH= cd -- "$2" && pwd)
 make=${BMAKE:?set BMAKE to the selected bmake}
 fail() { echo "FAIL: $*" >&2; exit 1; }
 query() { "$make" -C "$pkgsrc/lang/flang-rt" WRKOBJDIR="$work/obj" "$@" \
-    -V '${PKG_FAIL_REASON}' -V '${LLVM_MAJOR_VERSION}' -V '${EMBERBSD_FLANG}'; }
+    -V '${PKG_FAIL_REASON}' -V '${LLVM_MAJOR_VERSION}' -V '${EMBERBSD_FLANG}' -V '${TOOL_DEPENDS}'; }
+query EMBERBSD_FLANG= > "$work/uninstalled" || fail "cannot query lang/flang-rt before Flang install"
+case $(sed -n 1p "$work/uninstalled") in
+*EMBERBSD_FLANG*) fail "graph query requires installed Flang: $(sed -n 1p "$work/uninstalled")";;
+esac
+case " $(sed -n 4p "$work/uninstalled") " in
+*" flang-"*) ;;
+*) fail "lang/flang-rt does not declare lang/flang: $(sed -n 4p "$work/uninstalled")";;
+esac
 query > "$work/same" || fail "cannot query lang/flang-rt"
 major=$(sed -n 2p "$work/same")
 flang=$(sed -n 3p "$work/same")

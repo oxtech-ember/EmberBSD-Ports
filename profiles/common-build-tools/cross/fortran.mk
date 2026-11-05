@@ -19,15 +19,54 @@ _EMBER_FLANG_MODE=native
 .endif
 .endif
 .if !empty(_EMBER_FLANG_MODE)
+.if ${PKGPATH} == "cross/cross-libtool-fortran" && \
+    ${TOOLS_USE_CROSS_COMPILE:Uno:tl} != "yes"
+_EMBER_FLANG_FAKE_CROSS=yes
+.else
+_EMBER_FLANG_FAKE_CROSS=no
+.endif
+# Resolve the driver from the selected native toolset. Before the graph is
+# built, the optional Flang package may not be installed yet; TOOL_DEPENDS
+# below makes it available before any Fortran build action.
+TOOL_DEPENDS+=	flang-[0-9]*:../../lang/flang
+_EMBER_FLANG_DRIVER=${EMBERBSD_FLANG:U}
+.if empty(_EMBER_FLANG_DRIVER:M/*)
+_EMBER_FLANG_DRIVER=${TOOLBASE}/bin/flang
+.endif
+FC=flang
+PKG_FC=${WRKDIR}/.flang/bin/flang
+override-tools: ${PKG_FC}
+${PKG_FC}:
+	${RUN}${MKDIR} ${.TARGET:H:Q}
+	${RUN}${LN} -f ${_EMBER_FLANG_DRIVER:Q} ${.TARGET:Q} 2>/dev/null || ${CP} -p ${_EMBER_FLANG_DRIVER:Q} ${.TARGET:Q}
+_MKPIE_FCFLAGS=${_MKPIE_CFLAGS}
+# Flang has no stack protector; compiler.mk passes the C flag to every
+# language wrapper.
+CWRAPPERS_TRANSFORM.f77+=${_SSP_CFLAGS:@f@rm:${f}@}
+.if ${_EMBER_FLANG_MODE} == "cross"
+CWRAPPERS_APPEND.f77+=--target=${_EMBER_CROSS_TRIPLET}
+.endif
+.if ${TOOLS_USE_CROSS_COMPILE:Uno:tl} == "yes"
+# Target package selects target Flang-RT through buildlink.
+.include "${PKGSRCDIR}/lang/flang-rt/buildlink3.mk"
+_EMBER_FLANG_RT_LIBDIR=${BUILDLINK_DIR}/lib
+.elif ${_EMBER_FLANG_FAKE_CROSS} == "no" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+# Ordinary native package selects host Flang-RT through buildlink.
+.include "${PKGSRCDIR}/lang/flang-rt/buildlink3.mk"
+_EMBER_FLANG_RT_LIBDIR=${BUILDLINK_DIR}/lib
+.else
+# Fake-cross Libtool is a native host script, but its probes link target RT.
+_EMBER_FLANG_RT_LIBDIR=${CROSS_DESTDIR}${CROSS_LOCALBASE}/lib
+.endif
 # Host Flang compiles for the target and links the shared Flang-RT, a
 # normal runtime dependency like libgfortran: one copy per process.
 # The driver searches the lib directory beside its real path, so packages run
 # a hard link that has no host library directory beside it.
-.if empty(EMBERBSD_FLANG:M/*) || !exists(${EMBERBSD_FLANG})
-PKG_FAIL_REASON+="EMBERBSD_FLANG must select the build-host Ports flang driver"
-.else
+.if exists(${_EMBER_FLANG_DRIVER})
 .include "${.PARSEDIR}/EMBERBSD-CROSS-FLANG-VERSION.MK"
-.if ${_EMBER_FLANG_MODE} == "cross"
+.endif
+.if !empty(_EMBER_FLANG_MAJOR)
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" || ${_EMBER_FLANG_FAKE_CROSS} == "yes"
 _EMBER_FLANG_TRIPLE=${_EMBER_CROSS_TRIPLET}
 _EMBER_FLANG_RT=${CROSS_DESTDIR}${CROSS_LOCALBASE}/lib/clang/${_EMBER_FLANG_MAJOR}
 _EMBER_FLANG_RESOURCE=${CROSS_DESTDIR}/${_EMBER_TARGET_RUNTIME_PREFIX}/lib/clang/${_EMBER_FLANG_MAJOR}
@@ -36,48 +75,23 @@ _EMBER_FLANG_TRIPLE=${MACHINE_GNU_PLATFORM}
 _EMBER_FLANG_RT=${LOCALBASE}/lib/clang/${_EMBER_FLANG_MAJOR}
 _EMBER_FLANG_RESOURCE=${_EMBER_FLANG_RT}
 .endif
-.if empty(_EMBER_FLANG_VERSION:M[0-9]*.[0-9]*.[0-9]*) || !exists(${_EMBER_FLANG_RESOURCE})
-PKG_FAIL_REASON+="EMBERBSD_FLANG must match the major version of the SDK Clang runtime"
-.endif
-.if ${_EMBER_FLANG_MODE} == "native"
-# The native prefix must already hold its Flang-RT; recursion never builds a
-# GCC Fortran in its place.
-.if !exists(${_EMBER_FLANG_RT}/finclude/flang/${_EMBER_FLANG_TRIPLE})
-PKG_FAIL_REASON+="Install lang/flang-rt into the native prefix before native Fortran"
-.else
-.include "${PKGSRCDIR}/lang/flang-rt/buildlink3.mk"
-.endif
-_EMBER_FLANG_RT_LIBDIR=${BUILDLINK_DIR}/lib
-.elif ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-.include "${PKGSRCDIR}/lang/flang-rt/buildlink3.mk"
-_EMBER_FLANG_RT_LIBDIR=${BUILDLINK_DIR}/lib
-.else
-# Fake-cross Libtool is a native host script; it links Flang-RT from the
-# sysroot but never registers the target package in the native database.
-_EMBER_FLANG_RT_LIBDIR=${CROSS_DESTDIR}${CROSS_LOCALBASE}/lib
-.if !exists(${_EMBER_FLANG_RT_LIBDIR}/libflang_rt.runtime.so.${_EMBER_FLANG_MAJOR})
-PKG_FAIL_REASON+="Install lang/flang-rt into the target sysroot before fake-cross Fortran"
+.if ${TOOLS_USE_CROSS_COMPILE:Uno:tl} != "yes" && \
+    ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.if !exists(${_EMBER_FLANG_RT}/finclude/flang/${_EMBER_FLANG_TRIPLE}) || \
+    !exists(${_EMBER_FLANG_RT_LIBDIR}/libflang_rt.runtime.so.${_EMBER_FLANG_MAJOR})
+PKG_FAIL_REASON+="Install matching target lang/flang-rt in the sysroot before fake-cross Fortran"
 .endif
 .endif
 # Flang adds -lflang_rt.runtime itself, also to links without the package
 # LDFLAGS. The wrappers drop -L directories that buildlink does not know;
 # the linker reads this one directly.
+.if !empty(_EMBER_FLANG_RT_LIBDIR)
 CWRAPPERS_APPEND_LINK.f77+=-Wl,-L${_EMBER_FLANG_RT_LIBDIR}
-FC=flang
-PKG_FC=${WRKDIR}/.flang/bin/flang
-override-tools: ${PKG_FC}
-${PKG_FC}:
-	${RUN}${MKDIR} ${.TARGET:H:Q}
-	${RUN}${LN} -f ${EMBERBSD_FLANG:Q} ${.TARGET:Q} 2>/dev/null || ${CP} -p ${EMBERBSD_FLANG:Q} ${.TARGET:Q}
-_MKPIE_FCFLAGS=${_MKPIE_CFLAGS}
-# Flang has no stack protector; compiler.mk passes the C flag to every
-# language wrapper.
-CWRAPPERS_TRANSFORM.f77+=${_SSP_CFLAGS:@f@rm:${f}@}
-.if ${_EMBER_FLANG_MODE} == "cross"
-CWRAPPERS_APPEND.f77+=--target=${_EMBER_CROSS_TRIPLET}
 .endif
+.if !empty(_EMBER_FLANG_RESOURCE)
 CWRAPPERS_APPEND.f77+=-resource-dir=${_EMBER_FLANG_RESOURCE}
 CWRAPPERS_APPEND.f77+=-fintrinsic-modules-path=${_EMBER_FLANG_RT}/finclude/flang/${_EMBER_FLANG_TRIPLE}
+.endif
 .if ${_EMBER_FLANG_MODE} == "native" && ${OPSYS} == "Darwin"
 # CMake's Darwin platform gives Fortran the C driver's -install_name, which
 # the Flang driver rejects; Flang hands it to the linker instead.
@@ -91,6 +105,7 @@ CWRAPPERS_APPEND_LINK.f77+=-Wl,-rpath-link,${CROSS_DESTDIR}/usr/lib
 CWRAPPERS_APPEND_LINK.f77+=-Wl,-rpath-link,${CROSS_DESTDIR}${CROSS_LOCALBASE}/lib
 .endif
 .endif
+.endif # Flang driver is installed; graph-only queries stop above.
 .elif ${TOOLS_USE_CROSS_COMPILE:Uno:tl} == "yes" && \
     (!empty(USE_LANGUAGES:Mfortran) || !empty(USE_LANGUAGES:Mfortran77))
 .if ${EMBERBSD_CROSS_COMPILER_FAMILY} != "gcc"

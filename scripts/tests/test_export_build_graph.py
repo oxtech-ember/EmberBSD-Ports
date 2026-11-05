@@ -34,7 +34,8 @@ class ExportTests(unittest.TestCase):
                           'DEPENDS': 'runtime>=1:../../devel/runtime',
                           'TEST_DEPENDS': 'tests>=1:../../devel/tests',
                           'BOOTSTRAP_DEPENDS': 'bootstrap>=1:../../devel/bootstrap'},
-            'devel/generator': {'PKGVERSION': '2', 'BUILD_DEPENDS': 'hostlib>=1:../../devel/hostlib'},
+            'devel/generator': {'PKGVERSION': '2', 'BUILD_DEPENDS': 'hostlib>=1:../../devel/hostlib',
+                                'CROSS_TARGET_DEPENDS': 'runtime>=1:../../devel/runtime'},
             'devel/library': {}, 'devel/runtime': {}, 'devel/tests': {},
             'devel/bootstrap': {}, 'devel/hostlib': {},
         }
@@ -85,6 +86,7 @@ values.setdefault('PATCHDIR', 'patches')
 values.setdefault('_PATH_ORIG', __import__('os').environ['PATH'])
 values.setdefault('PKGSRC_MAKE_ENV', 'MAKECONF=' + settings['MAKECONF'])
 values.setdefault('CROSSTARGETSETTINGS', 'TARGET_OPSYS=NetBSD TARGET_MACHINE_ARCH=aarch64')
+values.setdefault('CROSS_TARGET_DEPENDS', '')
 with (root / 'calls.jsonl').open('a') as stream:
     stream.write(json.dumps({'package': package, 'settings': settings,
                              'targets': [arg for arg in args if arg == 'show-vars']}) + '\n')
@@ -168,8 +170,9 @@ sys.exit(0 if actual == expected and int(version) >= int(minimum) else 1)
             {'id': 'target:devel/library', 'kind': 'build'},
             {'id': 'target:devel/runtime', 'kind': 'runtime'},
             {'id': 'target:devel/tests', 'kind': 'test'}])
-        self.assertEqual(nodes[generator]['dependencies'],
-                         [{'id': 'host:devel/hostlib', 'kind': 'build'}])
+        self.assertEqual(nodes[generator]['dependencies'], [
+            {'id': 'host:devel/hostlib', 'kind': 'build'},
+            {'id': 'target:devel/runtime', 'kind': 'build'}])
         calls = [json.loads(line) for line in (self.pkgsrc / 'calls.jsonl').read_text().splitlines()]
         calls = {call['package']: call['settings'] for call in calls}
         self.assertEqual(calls['devel/generator']['USE_CROSS_COMPILE'], 'no')

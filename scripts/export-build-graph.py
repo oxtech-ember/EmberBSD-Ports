@@ -17,7 +17,7 @@ import sys
 VARIABLES = (
     'PKGNAME', 'PKGVERSION', 'MACHINE_GNU_PLATFORM', 'MACHINE_ARCH', 'USE_CROSS_COMPILE',
     'BOOTSTRAP_DEPENDS', 'TOOL_DEPENDS', 'BUILD_DEPENDS', 'DEPENDS',
-    'TEST_DEPENDS', 'INDIRECT_BUILD_DEPENDS', 'INDIRECT_DEPENDS',
+    'TEST_DEPENDS', 'INDIRECT_BUILD_DEPENDS', 'INDIRECT_DEPENDS', 'CROSS_TARGET_DEPENDS',
     'CROSSTARGETSETTINGS', 'PKGSRC_MAKE_ENV', '_PATH_ORIG',
     '.MAKE.MAKEFILES', 'PATCHDIR', 'FILESDIR', 'DISTINFO_FILE', 'PLIST_SRC',
     'PKG_SKIP_REASON', 'PKG_FAIL_REASON', 'PKG_OPTIONS', 'DISTFILES', 'LOCALPATCHES',
@@ -314,6 +314,16 @@ class Exporter:
                 if any(not key.startswith('TARGET_') for key in child_settings):
                     raise ExportError('unexpected CROSSTARGETSETTINGS key')
                 children.append(((child, child_cross, child_settings, recursive_env, pattern), kind))
+        # Some native dispatchers link a target runtime while being built.
+        # Keep this build-only edge in the target role and out of runtime
+        # package dependencies.
+        if self.args.dependency_phase != 'runtime':
+            for dependency in sorted(set(shlex.split(metadata['CROSS_TARGET_DEPENDS']))):
+                pattern, sep, path = dependency.partition(':')
+                if not sep or not pattern or not path:
+                    raise ExportError('invalid CROSS_TARGET_DEPENDS entry')
+                child = self.package_path(path, self.root / package)
+                children.append(((child, 'yes', {}, recursive_env, pattern), 'build'))
         return children
 
     def merge_children(self, identity, children):

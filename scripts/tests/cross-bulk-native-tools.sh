@@ -33,15 +33,19 @@ while read -r dir deps builddeps tools; do
     [ "$builddeps" = - ] || echo "$builddeps" | tr , '\n' > "$out/tree/$dir/builddeps"
     [ "$tools" = - ] || echo "$tools" | tr , '\n' > "$out/tree/$dir/tools"
 done <<'TREE'
-t/a - b gen
+t/a flang-rt b gen,dispatch
 t/b - - -
 t/c - - -
 t/d a - -
+t/flang-rt - - flang
 n/gen - - base
 n/base - - -
+n/flang - - -
+n/dispatch - - -
 n/old - - cyc
 n/cyc - - old
 TREE
+printf '%s\n' flang-rt > "$out/tree/n/dispatch/cross-target-deps"
 : > "$out/native-db/old"
 cat > "$out/pkg_add" <<WRAP
 #!/bin/sh
@@ -89,6 +93,11 @@ needs()
     for dep in \$(cat \$dir/builddeps 2> /dev/null); do
         [ -e \$out/target-db/\$dep ] || echo "ORDER \$pkg before build dependency \$dep" >> \$out/errors
     done
+    if [ "\$kind" = n ]; then
+        for dep in \$(cat \$dir/cross-target-deps 2> /dev/null); do
+            [ -e \$out/target-db/\$dep ] || echo "ORDER \$pkg before target-fed dependency \$dep" >> \$out/errors
+        done
+    fi
 }
 work()
 {
@@ -117,11 +126,13 @@ case "\$target" in
             case "\$v" in
                 PKGNAME) echo "\$pkg-1.0" ;;
                 PKGBASE) echo "\$pkg" ;;
+                PKGFILE) echo "\$out/packages/All/\$pkg-1.0.tgz" ;;
                 WRKDIR) echo "\$out/work/\$kind-\$pkg" ;;
                 DEPENDS) list deps t ;;
                 BUILD_DEPENDS) list builddeps t ;;
                 TOOL_DEPENDS) list tools n ;;
                 BOOTSTRAP_DEPENDS) [ -n "\$native" ] && echo || echo 'old>=1:../../n/old' ;;
+                CROSS_TARGET_DEPENDS) [ -f "\$dir/cross-target-deps" ] && echo 'flang-rt>=1:../../t/flang-rt' || echo ;;
                 *) echo ;;
             esac
         done ;;
@@ -156,23 +167,36 @@ before() { [ "$(grep -nFx "$1" "$2" | cut -d : -f 1)" -lt "$(grep -nFx "$3" "$2"
 printf '%s\n' t/b t/c t/d > "$out/list"
 mkdir "$out/state"
 bulk order state
-for edge in 'n/gen@native t/a' 'n/base@native n/gen@native' 'n/old@native t/a' 'n/old@native t/c' 't/a t/d' 't/b t/a'; do
+for edge in 'n/gen@native t/a' 'n/dispatch@native t/a' 'n/base@native n/gen@native' \
+    'n/old@native t/a' 'n/old@native t/c' 'n/flang@native t/flang-rt' \
+    't/flang-rt n/dispatch@native' 't/a t/d' 't/b t/a'; do
     grep -qFx "$edge" "$out/state/edges" || fail "order has no edge $edge"
 done
 grep -q '^n/base@native n/old@native$' "$out/state/edges" && fail 'a native node got a target bootstrap'
+grep -q '^n/flang-rt@native ' "$out/state/edges" && fail 'target Flang-RT became a host package edge'
 before n/gen@native "$out/state/order" t/a || fail 'n/gen@native is not ordered before t/a'
+before n/flang@native "$out/state/order" t/flang-rt || fail 'native Flang is not ordered before target Flang-RT'
+before t/flang-rt "$out/state/order" n/dispatch@native || fail 'target Flang-RT is not ordered before the native dispatcher'
+before n/dispatch@native "$out/state/order" t/a || fail 'the native dispatcher is not ordered before its target consumer'
 before n/base@native "$out/state/order" n/gen@native || fail 'n/base@native is not ordered before n/gen@native'
 grep -q 'n/cyc' "$out/state/edges" && fail 'the installed n/old@native was asked for its tools'
 
 bulk build state
 [ ! -s "$out/errors" ] || fail "$(cat "$out/errors")"
-[ "$(cut -d ' ' -f 1 "$out/state/done" | sort | tr '\n' ' ')" = 'n/base@native n/gen@native t/a t/b t/c t/d ' ] ||
+[ "$(cut -d ' ' -f 1 "$out/state/done" | sort | tr '\n' ' ')" = 'n/base@native n/dispatch@native n/flang@native n/gen@native t/a t/b t/c t/d t/flang-rt ' ] ||
     fail "done: $(cat "$out/state/done")"
 [ ! -s "$out/state/failed" ] && [ ! -s "$out/state/blocked" ] || fail "failed or blocked: $(cat "$out/state/failed" "$out/state/blocked")"
-[ "$(sort "$out/native-builds" | tr '\n' ' ')" = 'base native gen TARGET_OPSYS=NetBSD ' ] ||
+[ "$(sort "$out/native-builds" | tr '\n' ' ')" = 'base native dispatch TARGET_OPSYS=NetBSD flang TARGET_OPSYS=NetBSD gen TARGET_OPSYS=NetBSD ' ] ||
     fail "native builds: $(cat "$out/native-builds")"
 grep -q ' n/old' "$out/state/progress" && fail 'the installed native tool n/old was built again'
-[ "$(ls "$out/target-db" | tr '\n' ' ')" = 'a b c d ' ] || fail "target installs: $(ls "$out/target-db")"
+[ "$(ls "$out/target-db" | tr '\n' ' ')" = 'a b c d flang-rt ' ] || fail "target installs: $(ls "$out/target-db")"
+# A current dispatcher is already installed and does not need its build-only
+# target runtime edge.
+: > "$out/native-db/dispatch-1.0"
+mkdir "$out/state-current"
+bulk order state-current
+grep -q '^t/flang-rt n/dispatch@native$' "$out/state-current/edges" &&
+    fail 'an installed dispatcher retained its build-only target runtime edge'
 # A cycle among tools that the native prefix lacks is refused.
 mkdir -p "$out/tree/t/e" "$out/tree/n/x" "$out/tree/n/y" "$out/state2"
 echo x > "$out/tree/t/e/tools"

@@ -585,6 +585,12 @@ builds that dependent with the installed package. Order reports each such
 edge as `Cycle broken: DEPENDENT builds with the installed DEPENDENCY` and
 refuses any other cycle;
 `scripts/tests/cross-bulk-native-cycle.sh NEW_OUTPUT` checks both.
+For a native dispatcher that must link a target package only while being
+built, `CROSS_TARGET_DEPENDS` adds a hard target-role edge to the same order.
+It is not a pkgsrc runtime dependency. An already-current native dispatcher
+does not need this build-only edge. `scripts/tests/cross-bulk-native-tools.sh`
+checks target Flang-RT before the native Fortran dispatcher and native Flang
+before the target runtime.
 An older installed package is not current: its node is built
 again and replaces it with the pkgsrc `replace` target (`pkg_add -U`), which
 keeps the packages that depend on it registered. A newer host package, such

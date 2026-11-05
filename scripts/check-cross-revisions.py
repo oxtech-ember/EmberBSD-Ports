@@ -31,7 +31,7 @@ import re
 import sys
 
 DEP_RE = re.compile(r'^(BUILDLINK_(?:API|ABI)_DEPENDS\.[\w.+-]+?|DEPENDS|BUILD_DEPENDS|'
-                    r'TOOL_DEPENDS|TEST_DEPENDS)\s*[+?:!]?=\s*(.*)$')
+                    r'TOOL_DEPENDS|TEST_DEPENDS|CROSS_TARGET_DEPENDS)\s*[+?:!]?=\s*(.*)$')
 FAIL_RE = re.compile(r'^PKG_FAIL_REASON\s*\+=')
 REV_RE = re.compile(r'^PKGREVISION\s*[?:!]?=\s*([^#]*?)\s*(?:#.*)?$')
 SET_RE = re.compile(r'^([A-Za-z_][\w.]*)\s*[?:!]?=\s*(\S.*)?$')

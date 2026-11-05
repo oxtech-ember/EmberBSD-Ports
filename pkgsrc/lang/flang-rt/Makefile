@@ -22,12 +22,16 @@ USE_CXX_FEATURES+=	c++17
 # Fortran is built by the Flang named below, not by the pkgsrc Fortran
 # provider: the runtime and intrinsic modules must match that Flang.
 USE_LANGUAGES=		c c++
+TOOL_DEPENDS+=		flang-[0-9]*:../../lang/flang
 
 # The build-host Flang selected by the host toolset include, as for every
 # Fortran package.
 .if empty(EMBERBSD_FLANG:U:M/*) || !exists(${EMBERBSD_FLANG:U/nonexistent})
-PKG_FAIL_REASON+=	"EMBERBSD_FLANG must select the build-host Ports flang driver"
+_FLANG_RT_DRIVER=${TOOLBASE}/bin/flang
 .else
+_FLANG_RT_DRIVER=${EMBERBSD_FLANG}
+.endif
+.if exists(${_FLANG_RT_DRIVER})
 # The runtime and its modules belong to one Flang release.
 .include "${PKGSRCDIR}/EMBERBSD-CROSS-FLANG-VERSION.MK"
 .  if "${_EMBER_FLANG_MAJOR}" != "${LLVM_MAJOR_VERSION}"
@@ -37,7 +41,7 @@ PKG_FAIL_REASON+=	"EMBERBSD_FLANG is Flang ${_EMBER_FLANG_VERSION}, not LLVM ${L
 
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_TYPE=Release
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_ENABLE_RUNTIMES=flang-rt
-CMAKE_CONFIGURE_ARGS+=	-DCMAKE_Fortran_COMPILER=${EMBERBSD_FLANG}
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_Fortran_COMPILER=${_FLANG_RT_DRIVER}
 # CMake's Fortran compiler check links a program, which needs the runtime
 # this package builds; skip only that check, as the Flang-RT README says.
 # C and C++ checks still link, so CMake finds the libraries the shared

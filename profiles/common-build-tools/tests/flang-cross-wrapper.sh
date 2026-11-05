@@ -23,6 +23,28 @@ make=${BMAKE:?set BMAKE to the selected bmake}
 dir=$pkgsrc/$pkgpath
 fail() { echo "FAIL: $*" >&2; exit 1; }
 mk() { "$make" -C "$dir" WRKOBJDIR="$work/obj" "$@"; }
+# Graph queries happen before optional native Flang and Flang-RT are installed.
+# They must declare both roles without requiring EMBERBSD_FLANG to exist.
+set --
+for n in PKG_FAIL_REASON FC DEPENDS BUILD_DEPENDS TOOL_DEPENDS; do
+    set -- "$@" -V "\${$n}"
+done
+mk EMBERBSD_FLANG= "$@" > "$work/graph-vars" || fail "cannot query $pkgpath without installed Flang"
+IFS= read -r graph_fail < "$work/graph-vars"
+IFS= read -r graph_fc
+IFS= read -r graph_depends
+IFS= read -r graph_build_depends
+IFS= read -r graph_tool_depends
+[ -z "$graph_fail" ] || fail "$pkgpath graph requires installed Flang: $graph_fail"
+[ "$graph_fc" = flang ] || fail "graph FC is $graph_fc, not flang"
+case " $graph_tool_depends " in
+*" flang-"*) ;;
+*) fail "$pkgpath does not declare native lang/flang: $graph_tool_depends";;
+esac
+case " $graph_depends $graph_build_depends " in
+*" flang-rt>="*":../../lang/flang-rt "*) ;;
+*) fail "$pkgpath does not declare role-matched lang/flang-rt: $graph_depends $graph_build_depends";;
+esac
 names='PKG_FAIL_REASON FC DEPENDS BUILD_DEPENDS TOOL_DEPENDS EMBERBSD_FLANG PKG_FC LD
     TOOLBASE CROSS_DESTDIR CWRAPPERS_CONFIG_DIR WRAPPER_BINDIR _EMBER_FLANG_RT
     MACHINE_GNU_PLATFORM BUILDLINK_DIR'

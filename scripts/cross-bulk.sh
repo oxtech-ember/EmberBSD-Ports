@@ -435,7 +435,7 @@ node_deps()
     # (WRKDIR/.PHASE_makevars.mk), and a parse includes the latest of them
     # unless _MAKEVARS_MK is defined: a USE_BUILTIN.openssl=yes saved before
     # security/heimdal chose PREFER.openssl=pkgsrc dropped its openssl edge.
-    vars=$(pkg_vars "$dir" 'PKG_SKIP_REASON DEPENDS BUILD_DEPENDS TOOL_DEPENDS BOOTSTRAP_DEPENDS PKGBASE PKGNAME' "$@") ||
+    vars=$(pkg_vars "$dir" 'PKG_SKIP_REASON DEPENDS BUILD_DEPENDS TOOL_DEPENDS BOOTSTRAP_DEPENDS PKGBASE PKGNAME CROSS_TARGET_DEPENDS' "$@") ||
         return 1
     printf '%s\n' "$vars" | sed -n 1p || return 1
     # Reuse this already evaluated identity for binary-first clients.
@@ -448,15 +448,15 @@ node_deps()
         ! native_current "$base" "$name" || current=yes
     fi
     deps=$(printf '%s\n' "$vars" | awk -v suffix="$suffix" -v current="$current" '
-        NR == 1 || NR > 5 || (current == "yes" && NR != 2) { next }
-        { s = NR <= 3 ? suffix : "@native"; n = split($0, w, " ")
+        NR == 1 || NR > 8 || (current == "yes" && NR != 2) { next }
+        { s = NR <= 3 ? suffix : (NR <= 5 ? "@native" : ""); hard = NR == 8 ? "target" : ""; n = split($0, w, " ")
           for (i = 1; i <= n; i++)
               if (match(w[i], /:\.\.\/\.\.\/[^\/:]+\/[^\/:]+$/))
-                  print substr(w[i], RSTART + 7) s, substr(w[i], 1, RSTART - 1) }') || return 1
+                  print substr(w[i], RSTART + 7) s, substr(w[i], 1, RSTART - 1), hard }') || return 1
     # A dependency is soft only when every pattern that names it is satisfied.
-    printf '%s\n' "$deps" | while read -r dep pattern; do
+    printf '%s\n' "$deps" | while read -r dep pattern hard; do
         [ -n "$dep" ] || continue
-        if [ -n "$suffix" ] && native_satisfies "$pattern"; then echo "$dep 1"; else echo "$dep 0"; fi
+        if [ -n "$suffix" ] && [ "$hard" != target ] && native_satisfies "$pattern"; then echo "$dep 1"; else echo "$dep 0"; fi
     done | awk '{ if (!($1 in soft)) soft[$1] = 1; if ($2 == 0) soft[$1] = 0 }
         END { for (d in soft) print d (soft[d] ? " soft" : "") }' | sort -u
 }
