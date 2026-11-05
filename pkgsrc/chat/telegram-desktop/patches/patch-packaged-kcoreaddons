@@ -1,5 +1,5 @@
---- a/cmake/external/kcoreaddons/CMakeLists.txt
-+++ b/cmake/external/kcoreaddons/CMakeLists.txt
+--- cmake/external/kcoreaddons/CMakeLists.txt.orig
++++ cmake/external/kcoreaddons/CMakeLists.txt
 @@ -8,11 +8,9 @@
  add_library(desktop-app::external_kcoreaddons ALIAS external_kcoreaddons)
  

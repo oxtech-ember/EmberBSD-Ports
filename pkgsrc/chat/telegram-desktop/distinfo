@@ -19,5 +19,5 @@ SHA1 (patch-telegram-webrtc-netbsd) = e7d63375cecad75ab82a825cdb79bcb6748eda9d
 SHA1 (patch-telegram-rust-static-deps) = f6f40fc6049ed20e0de0daaba0a9a26eb2112be4
 SHA1 (patch-telegram-packaged-cppgir) = 38587545d2efa7a2eaf7f1306f00cfa8b12b2072
 SHA1 (patch-native-codegen) = ce5b16136359710a77b427e65f60fa60d719ffd0
-SHA1 (patch-packaged-kcoreaddons) = 2897423270229d77bd57f4d723b73c72e32c805e
-SHA1 (patch-packaged-fido) = 06ec8038867456b9f0369ff7a0fe4cb97cea398e
+SHA1 (patch-packaged-kcoreaddons) = d2abf02fd1a91c63a6fb9e6f5bdbb087db7558a0
+SHA1 (patch-packaged-fido) = 8ba40c241075b60d0c300b8e83ffa5eb554c7d21

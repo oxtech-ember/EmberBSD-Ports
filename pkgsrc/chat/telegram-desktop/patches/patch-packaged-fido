@@ -1,5 +1,5 @@
---- a/Telegram/cmake/lib_fido2.cmake
-+++ b/Telegram/cmake/lib_fido2.cmake
+--- Telegram/cmake/lib_fido2.cmake.orig
++++ Telegram/cmake/lib_fido2.cmake
 @@ -10,17 +10,12 @@
  # Win10 < 1903); winhello.c is left out.
  
