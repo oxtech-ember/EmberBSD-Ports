@@ -78,13 +78,6 @@ _EMBER_FLANG_TRIPLE=${MACHINE_GNU_PLATFORM}
 _EMBER_FLANG_RT=${LOCALBASE}/lib/clang/${_EMBER_FLANG_MAJOR}
 _EMBER_FLANG_RESOURCE=${_EMBER_FLANG_RT}
 .endif
-.if ${TOOLS_USE_CROSS_COMPILE:Uno:tl} != "yes" && \
-    ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-.if !exists(${_EMBER_FLANG_RT}/finclude/flang/${_EMBER_FLANG_TRIPLE}) || \
-    !exists(${_EMBER_FLANG_RT_LIBDIR}/libflang_rt.runtime.so.${_EMBER_FLANG_MAJOR})
-PKG_FAIL_REASON+="Install matching target lang/flang-rt in the sysroot before fake-cross Fortran"
-.endif
-.endif
 # Flang adds -lflang_rt.runtime itself, also to links without the package
 # LDFLAGS. The wrappers drop -L directories that buildlink does not know;
 # the linker reads this one directly.

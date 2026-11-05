@@ -32,4 +32,5 @@ gcc_depends=$(printf '%s\n' "$gcc" | sed -n '3,5p' | tr '\n' ' ')
 case "$gcc_fc" in */gfortran) ;; *) fail "GCC target family selects $gcc_fc instead of target gfortran";; esac
 [ -z "$gcc_tools" ] || fail "GCC unexpectedly depends on native Flang: $gcc_tools"
 case " $gcc_depends " in *flang-rt*) fail "GCC unexpectedly depends on Flang-RT: $gcc_depends";; esac
+
 echo "PASS: fake-cross Clang uses host Flang and target Flang-RT; GCC uses target gfortran without Flang dependencies"
