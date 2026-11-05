@@ -953,3 +953,9 @@ minimum package revisions are lcms2 2.19.1nb2, openjpeg 2.5.4nb1 and tiff
 are also enabled and hides PDFium's replaced library sources. TIFF is linked
 when PDFium's XFA option is enabled. The selection remains opt-in until the
 required packages have been built and installed for both roles.
+
+`--shared-cpuinfo` (or `EMBERBSD_ELECTRON_SHARED_CPUINFO=yes`) selects
+cpuinfo 0.0.20261104 or newer for both toolchain roles. It hides Chromium's
+CPUINFO sources and links the common shared library, preserving the single
+process-wide initialization state used by sandboxed consumers. The selection
+is opt-in and requires the matching common package in both roles.

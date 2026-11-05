@@ -83,3 +83,17 @@ def select_expat(image, controller, options, sdk, native, environment, buildlink
             controller.require(re.search(r'^#\s*define\s+' + macro + r'\s+' + expected + r'\s*$', config, re.M),
                                'selected Expat configuration lacks ' + macro)
     return values
+
+
+CPUINFO_PROVIDER = {
+    'cpuinfo': ('sysutils/cpuinfo', 'cpuinfo', (0, 0, 20261104, 0),
+                ('libcpuinfo',), ('libcpuinfo',), ('include/cpuinfo.h',)),
+}
+
+
+def select_cpuinfo(image, controller, options, sdk, native, environment, buildlink):
+    if not getattr(options, 'shared_cpuinfo', False):
+        return {}
+    return image.select_roles(controller, options, sdk, native, environment, buildlink,
+                              CPUINFO_PROVIDER, {'emberbsd_common_cpuinfo': True},
+                              'EMBERBSD_CPUINFO_SOURCE_SHA256')

@@ -1242,6 +1242,11 @@
       "path": "pdfium-jpx-nullable-color.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-common-cpuinfo.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

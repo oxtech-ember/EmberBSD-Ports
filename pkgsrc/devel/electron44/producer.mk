@@ -94,6 +94,12 @@ _EMBER_ELECTRON_ARGS+= --shared-expat
 .error EMBERBSD_ELECTRON_SHARED_EXPAT must be yes or no
 .endif
 
+.if ${EMBERBSD_ELECTRON_SHARED_CPUINFO:Uno} == "yes"
+_EMBER_ELECTRON_ARGS+= --shared-cpuinfo
+.elif ${EMBERBSD_ELECTRON_SHARED_CPUINFO:Uno} != "no"
+.error EMBERBSD_ELECTRON_SHARED_CPUINFO must be yes or no
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_PFFFT:Uno} == "yes"
 _EMBER_ELECTRON_ARGS+= --shared-pffft
 .elif ${EMBERBSD_ELECTRON_SHARED_PFFFT:Uno} != "no"
