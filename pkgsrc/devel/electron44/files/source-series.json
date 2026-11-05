@@ -243,11 +243,6 @@
       "root": ""
     },
     {
-      "path": "chromium-tflite-explicit-arithmetic-gcc16.patch",
-      "strip": 1,
-      "root": ""
-    },
-    {
       "path": "gbm-elf-weak-symbol-gcc16.patch",
       "strip": 1,
       "root": ""
@@ -269,11 +264,6 @@
     },
     {
       "path": "blink-string-vector-declarations-gcc16.patch",
-      "strip": 1,
-      "root": ""
-    },
-    {
-      "path": "chromium-tflite-svdf-null-gemm-scratch-gcc16.patch",
       "strip": 1,
       "root": ""
     },
@@ -1085,6 +1075,11 @@
     },
     {
       "path": "gn-common-provider-escaped-anchors.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "litert-generate-common-flatbuffer-schemas.patch",
       "strip": 1,
       "root": ""
     }

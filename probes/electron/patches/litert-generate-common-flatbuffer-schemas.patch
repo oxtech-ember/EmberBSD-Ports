@@ -1,0 +1,44 @@
+--- a/third_party/litert/BUILD.gn
++++ b/third_party/litert/BUILD.gn
+@@ -192,6 +192,19 @@
+   } else if (is_linux) {
+     defines += [ "GEMMLOWP_ALLOW_SLOW_SCALAR_FALLBACK" ]
+   }
++}
++
++# Generate common LiteRT schemas with the selected native FlatBuffers tool.
++flatbuffer("tflite_common_schemas") {
++  sources = [
++    "src/tflite/converter/schema/schema.fbs",
++    "src/tflite/converter/schema/conversion_metadata.fbs",
++  ]
++  flatc_out_dir = "src/tflite/converter/schema"
++  args = [
++    "--no-union-value-namespacing",
++    "--gen-object-api",
++  ]
+ }
+ 
+ flatbuffer("mutable_schema_litert_tflite_path") {
+@@ -760,7 +773,8 @@
+       "src/tflite/context_util.h",
+       "src/tflite/converter/allocation.h",
+       "src/tflite/converter/core/model_builder_base.h",
+-      "src/tflite/converter/schema/schema_generated.h",
++      "$target_gen_dir/src/tflite/converter/schema/schema_generated.h",
++      "$target_gen_dir/src/tflite/converter/schema/conversion_metadata_generated.h",
+       "src/tflite/converter/schema/schema_utils.h",
+       "src/tflite/core/api/profiler.h",
+       "src/tflite/core/c/c_api.h",
+@@ -822,7 +836,10 @@
+       "src/tflite/type_to_tflitetype.h",
+     ]
+ 
+-    public_deps = [ "//third_party/abseil-cpp:absl" ]
++    public_deps = [
++      ":tflite_common_schemas",
++      "//third_party/abseil-cpp:absl",
++    ]
+ 
+     configs += [ ":tflite_flags" ]
+ 
