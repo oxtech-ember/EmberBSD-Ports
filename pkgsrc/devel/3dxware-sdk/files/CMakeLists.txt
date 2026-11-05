@@ -4,9 +4,13 @@ project(TDxWare_SDK VERSION 4.0 LANGUAGES C CXX)
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-add_library(TDxNavlib STATIC src/navlib_stub.c src/navlib_load.cpp)
+add_library(TDxNavlib SHARED src/navlib_stub.c src/navlib_load.cpp)
 add_library(3DxWare::Navlib ALIAS TDxNavlib)
-set_target_properties(TDxNavlib PROPERTIES EXPORT_NAME Navlib)
+set_target_properties(TDxNavlib PROPERTIES
+  EXPORT_NAME Navlib
+  VERSION "${PROJECT_VERSION}.0"
+  SOVERSION "${PROJECT_VERSION_MAJOR}"
+  WINDOWS_EXPORT_ALL_SYMBOLS ON)
 target_include_directories(TDxNavlib
   PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/inc")
 target_compile_features(TDxNavlib PUBLIC cxx_std_11)
@@ -20,6 +24,8 @@ target_link_libraries(TDxNavlib PUBLIC TDxWareHeaders)
 
 install(TARGETS TDxNavlib TDxWareHeaders EXPORT TDxWare_SDKTargets
   ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
   INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 install(DIRECTORY inc/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
   FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")

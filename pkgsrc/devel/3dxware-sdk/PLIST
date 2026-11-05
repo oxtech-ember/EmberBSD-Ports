@@ -32,5 +32,7 @@ lib/cmake/TDxWare_SDK/TDxWare_SDKConfig.cmake
 lib/cmake/TDxWare_SDK/TDxWare_SDKConfigVersion.cmake
 lib/cmake/TDxWare_SDK/TDxWare_SDKTargets-noconfig.cmake
 lib/cmake/TDxWare_SDK/TDxWare_SDKTargets.cmake
-lib/libTDxNavlib.a
+lib/libTDxNavlib.so
+lib/libTDxNavlib.so.4
+lib/libTDxNavlib.so.4.0.0
 share/licenses/3dxware-sdk/LICENSE.GPLv3
