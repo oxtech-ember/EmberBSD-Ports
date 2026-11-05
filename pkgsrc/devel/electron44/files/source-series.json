@@ -1087,6 +1087,11 @@
       "path": "electron-optional-swiftshader-packaging.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "litert-generate-configuration-schema.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

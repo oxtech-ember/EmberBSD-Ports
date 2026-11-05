@@ -1,0 +1,99 @@
+--- a/third_party/litert/BUILD.gn
++++ b/third_party/litert/BUILD.gn
+@@ -204,6 +204,47 @@
+   args = [
+     "--no-union-value-namespacing",
+     "--gen-object-api",
++  ]
++}
++
++# Generate the configuration schema from the selected LiteRT proto.
++emberbsd_flatc_action_foreach("tflite_configuration_schema_raw") {
++  tool = "//third_party/flatbuffers:flatc"
++  sources = [ "src/tflite/acceleration/configuration/configuration.proto" ]
++  outputs = [ "$target_gen_dir/configuration-raw/{{source_name_part}}.fbs" ]
++  args = [
++    "--proto",
++    "-o",
++    rebase_path(get_path_info(outputs[0], "dir"), root_build_dir),
++    "{{source}}",
++  ]
++}
++
++action("tflite_configuration_schema") {
++  script = "//electron/script/normalize-flatbuffer-namespace.py"
++  deps = [ ":tflite_configuration_schema_raw" ]
++  inputs = get_target_outputs(":tflite_configuration_schema_raw")
++  outputs = [ "$target_gen_dir/configuration-normalized/configuration.fbs" ]
++  args = rebase_path(inputs + outputs, root_build_dir)
++}
++
++group("tflite_configuration_schema_flatc_gen") {
++  public_deps = [ ":tflite_configuration_schema" ]
++}
++
++flatbuffer("tflite_configuration_header") {
++  sources = get_target_outputs(":tflite_configuration_schema")
++  deps = [ ":tflite_configuration_schema" ]
++  public_deps = [ ":tflite_configuration_schema" ]
++  flatc_out_dir = "src/tflite/acceleration/configuration"
++  args = [
++    "--gen-object-api",
++    "--no-includes",
++    "--gen-mutable",
++    "--reflect-names",
++    "--cpp-ptr-type",
++    "flatbuffers::unique_ptr",
++    "--gen-compare",
+   ]
+ }
+ 
+@@ -762,6 +803,7 @@
+     ]
+     public = [
+       "//third_party/tflite/shims/tensorflow/lite/types/fp16.h",
++      "$target_gen_dir/src/tflite/acceleration/configuration/configuration_generated.h",
+       "src/tflite/acceleration/configuration/flatbuffer_to_proto.h",
+       "src/tflite/acceleration/configuration/proto_to_flatbuffer.h",
+       "src/tflite/allocation.h",
+@@ -807,7 +849,10 @@
+ 
+     # The shims files need to access USE_LITERT_TFLITE before completely
+     # switching to use LiteRT.
+-    public_deps = [ "//third_party/tflite:buildflags" ]
++    public_deps = [
++      ":tflite_configuration_header",
++      "//third_party/tflite:buildflags",
++    ]
+     configs += [ ":tflite_flags" ]
+   }
+ 
+--- /dev/null
++++ b/electron/script/normalize-flatbuffer-namespace.py
+@@ -0,0 +1,26 @@
++#!/usr/bin/env python3
++# Copyright 2026 EmberBSD contributors.
++# Use of this source code is governed by a BSD-style license.
++"""Apply LiteRT's configuration schema namespace transformation."""
++
++import os
++from pathlib import Path
++import sys
++import tempfile
++
++source, destination = map(Path, sys.argv[1:])
++data = source.read_bytes()
++old = b"tflite.proto"
++if old not in data:
++    raise SystemExit("configuration schema lacks expected namespace")
++data = data.replace(old, b"tflite")
++if not destination.is_file() or destination.read_bytes() != data:
++    destination.parent.mkdir(parents=True, exist_ok=True)
++    fd, name = tempfile.mkstemp(dir=destination.parent, prefix=".configuration-")
++    try:
++        with os.fdopen(fd, "wb") as output:
++            output.write(data)
++        os.replace(name, destination)
++    finally:
++        if os.path.exists(name):
++            os.unlink(name)
