@@ -1,0 +1,6 @@
+@comment $NetBSD$
+include/sul/dynamic_bitset.hpp
+lib/cmake/sul-dynamic_bitset/sul-dynamic_bitset-config-version.cmake
+lib/cmake/sul-dynamic_bitset/sul-dynamic_bitset-config.cmake
+lib/cmake/sul-dynamic_bitset/sul-dynamic_bitset.cmake
+share/licenses/dynamic_bitset/LICENSE

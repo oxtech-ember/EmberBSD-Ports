@@ -1,0 +1,30 @@
+# $NetBSD$
+
+DISTNAME=	dynamic_bitset-1.3.3
+CATEGORIES=	devel
+MASTER_SITES=	${MASTER_SITE_GITHUB:=pinam45/}
+GITHUB_TAG=	v${PKGVERSION_NOREV}
+
+MAINTAINER=	pkgsrc-users@NetBSD.org
+HOMEPAGE=	https://github.com/pinam45/dynamic_bitset
+COMMENT=	C++17/20 header-only dynamic bitset
+LICENSE=	mit
+
+USE_LANGUAGES=	c++
+CMAKE_CONFIGURE_ARGS+=	-DDYNAMICBITSET_BUILD_EXAMPLE=OFF
+CMAKE_CONFIGURE_ARGS+=	-DDYNAMICBITSET_BUILD_TESTS=OFF
+CMAKE_CONFIGURE_ARGS+=	-DDYNAMICBITSET_BUILD_DOCS=OFF
+CMAKE_CONFIGURE_ARGS+=	-DDYNAMICBITSET_FORMAT_TARGET=OFF
+CMAKE_CONFIGURE_ARGS+=	-DDYNAMICBITSET_HEADERS_TARGET_IDE=OFF
+CMAKE_CONFIGURE_ARGS+=	-DDYNAMICBITSET_INSTALL=ON
+CMAKE_CONFIGURE_ARGS+=	-DDYNAMICBITSET_USE_LIBPOPCNT=ON
+CMAKE_CONFIGURE_ARGS+=	-DDYNAMICBITSET_INSTALL_LIBPOPCNT_SUBMODULE=OFF
+
+INSTALLATION_DIRS+=	share/licenses/dynamic_bitset
+post-install:
+	${INSTALL_DATA} ${WRKSRC}/LICENSE ${DESTDIR}${PREFIX}/share/licenses/dynamic_bitset/LICENSE
+	${INSTALL_DATA} ${FILESDIR}/sul-dynamic_bitset-config.cmake ${DESTDIR}${PREFIX}/lib/cmake/sul-dynamic_bitset/sul-dynamic_bitset-config.cmake
+
+.include "../../devel/libpopcnt/buildlink3.mk"
+.include "../../devel/cmake/build.mk"
+.include "../../mk/bsd.pkg.mk"

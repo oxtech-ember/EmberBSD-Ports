@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (dynamic_bitset-1.3.3.tar.gz) = bd28b6a120f6f67030386668bd40c39922b897f875b740279d260e373ae9876d
+SHA512 (dynamic_bitset-1.3.3.tar.gz) = 812bb87e0169f510e09ed9ae24a40b2fbc3a607360ec5feca142865f7cc4c77a0769887a372b3e20f694f8217a850474ebd2b0610fdb7b6c8ebee4f8e474e673
+Size (dynamic_bitset-1.3.3.tar.gz) = 50468 bytes
