@@ -16,6 +16,15 @@ if not any(root.iterdir()):
     print('same')
     sys.exit(0)
 cookie = root / '.extract_done'
+if not cookie.exists() and not cookie.is_symlink():
+    # pkgsrc may create dependency/diagnostic metadata before extraction.
+    # A failed fetch or dependency preflight leaves no sources to identify.
+    pre_extract = {'.depends', '.rdepends', '.warning', '.warning-done',
+                   '.error', '.error-done', '.home'}
+    if all(entry.name in pre_extract and not entry.is_symlink()
+           for entry in root.iterdir()):
+        print('same')
+        sys.exit(0)
 if cookie.is_symlink() or not cookie.is_file():
     fail('missing extract identity')
 old = cookie.read_text(encoding='utf-8').strip()

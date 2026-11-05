@@ -51,7 +51,20 @@ with tempfile.TemporaryDirectory() as temp:
     (root / 'cross-bulk-workdir.py').write_bytes(classifier.read_bytes())
     obj.unlink()
     assert run(None, 'fixture-1.0nb2', '1.0').returncode == 0
+    # An interrupted dependency/fetch phase has metadata but no extracted
+    # source or object. The next normal run must be able to extract it.
+    for name in ('.warning', '.warning-done', '.error', '.error-done', '.home'):
+        (work / name).mkdir()
+    (work / '.depends').write_text(resolved['FIXTURE_DEPENDS'] + '\n')
+    assert run(None, 'fixture-1.0nb2', '1.0').returncode == 0
+    assert not (root / 'work.retired').exists()
+    # Actual unknown build content is still retained and rejected.
     obj.write_bytes(b'object')
+    assert run(None, 'fixture-1.0nb2', '1.0').returncode != 0 and obj.exists()
+    for name in ('.warning', '.warning-done', '.error', '.error-done', '.home'):
+        (work / name).rmdir()
+    (work / '.depends').unlink()
+    (rundir / 'bmk-args').unlink()
     before = (obj.stat().st_ino, obj.stat().st_mtime_ns)
     assert run('fixture-1.0nb1', 'fixture-1.0nb1', '1.0').returncode == 0
     assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
