@@ -18,7 +18,7 @@ PKG_FAIL_REASON+= "Telegram source generators require a native compiler"
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_OBJC_COMPILER=${WRAPPER_CC}
 CMAKE_CONFIGURE_ARGS+= -DCMAKE_OBJCXX_COMPILER=${WRAPPER_CXX}
 .endif
-.if ${OPSYS} == "Linux"
+.if ${OPSYS} == "Linux" || ${OPSYS} == "NetBSD" || ${OPSYS} == "FreeBSD" || ${OPSYS} == "OpenBSD" || ${OPSYS} == "DragonFly"
 .include "../../devel/cppgir/buildlink3.mk"
 .include "../../devel/kf6-kcoreaddons/buildlink3.mk"
 .include "../../devel/glib2/buildlink3.mk"
