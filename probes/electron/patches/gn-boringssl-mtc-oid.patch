@@ -1,0 +1,35 @@
+# Origin: EmberBSD contributors (AI-assisted).
+# Display both MTC identifiers without changing certificate verification.
+# BoringSSL plants-07 support and distinct plants-04 OID:
+# https://boringssl.googlesource.com/boringssl/+/44979b8a96e43671e1283fdfc6757724248978bc
+
+--- a/components/certificate_model/x509_certificate_constants.h
++++ b/components/certificate_model/x509_certificate_constants.h
+@@ -132,9 +132,14 @@
+ inline constexpr uint8_t kOidAlgMldsa65[] = {OBJ_ENC_ML_DSA_65};
+ inline constexpr uint8_t kOidAlgMldsa87[] = {OBJ_ENC_ML_DSA_87};
+ 
+-// Merkle Tree Certificates, draft-ietf-plants-merkle-tree-certs:
+-// TODO(crbug.com/457784778): Add final OID when draft is finalized.
+-inline constexpr uint8_t kOidAlgMtcProofDraft[] = {OBJ_ENC_alg_mtcProof_draft};
++// Merkle Tree Certificates, draft-ietf-plants-merkle-tree-certs-07:
++// id-alg-mtcProof is 1.3.6.1.5.5.7.6.67.
++inline constexpr uint8_t kOidAlgMtcProof[] = {OBJ_ENC_alg_mtcProof};
++
++// Preserve display of the experimental plants-04 OID
++// 1.3.6.1.4.1.44363.47.0 after BoringSSL retires its public macro.
++inline constexpr uint8_t kOidAlgMtcProofDraft[] = {
++    0x2b, 0x06, 0x01, 0x04, 0x01, 0x82, 0xda, 0x4b, 0x2f, 0x00};
+ 
+ // The certificate viewer may be used to view client certificates, so use the
+ // relaxed parsing mode. See crbug.com/41347446 and crbug.com/41357486.
+--- a/components/certificate_model/x509_certificate_model_base.cc
++++ b/components/certificate_model/x509_certificate_model_base.cc
+@@ -244,6 +244,7 @@
+           {bssl::der::Input(kOidAlgMldsa44), IDS_CERT_OID_ML_DSA_44},
+           {bssl::der::Input(kOidAlgMldsa65), IDS_CERT_OID_ML_DSA_65},
+           {bssl::der::Input(kOidAlgMldsa87), IDS_CERT_OID_ML_DSA_87},
++          {bssl::der::Input(kOidAlgMtcProof), IDS_CERT_OID_MTC_PROOF},
+           {bssl::der::Input(kOidAlgMtcProofDraft), IDS_CERT_OID_MTC_PROOF},
+ 
+           // Extended Key Usage fields:
