@@ -541,3 +541,5 @@ archivers/minizip-ng
 security/libfido2
 
 security/zxcvbn-c
+
+sysutils/cpuinfo

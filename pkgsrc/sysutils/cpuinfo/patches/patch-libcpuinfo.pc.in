@@ -1,0 +1,17 @@
+$NetBSD$
+
+Package version and static link dependencies supplied by EmberBSD.
+
+--- libcpuinfo.pc.in.orig
++++ libcpuinfo.pc.in
+@@ -5,8 +5,9 @@
+ 
+ Name: lib@PROJECT_NAME@
+ Description: Library to detect essential performance optimization information about host CPU.
+-Version: 
++Version: @CPUINFO_PACKAGE_VERSION@
+ URL: @PROJECT_HOMEPAGE_URL@
+ Libs: -L${libdir} -lcpuinfo
++Libs.private: @CPUINFO_PC_PRIVATE_LIBS@
+ Cflags: -I${includedir}
+ 

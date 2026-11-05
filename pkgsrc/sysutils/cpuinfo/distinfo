@@ -1,0 +1,9 @@
+$NetBSD$
+
+BLAKE2s (cpuinfo-0.0.20261104-731932997e55e84900e6f95aefb6edd167b0edcc.tar.gz) = 688963bcd884b521aa6a0b14b8a888dcdc7940c9c1a97deb38b8298da17e7df0
+SHA512 (cpuinfo-0.0.20261104-731932997e55e84900e6f95aefb6edd167b0edcc.tar.gz) = 718ca1becd65319d4dd5bdc47df65665b4fc7256e5c70d9018ec5ffd953415ce4c969bb6c32571c7bd6bdc0260c2ca7334222674c806e79fd1ac5da113e2f336
+Size (cpuinfo-0.0.20261104-731932997e55e84900e6f95aefb6edd167b0edcc.tar.gz) = 3561210 bytes
+SHA1 (patch-CMakeLists.txt) = 1a1b5a668a893b11f0ab138fee3b3651788756b2
+SHA1 (patch-libcpuinfo.pc.in) = fc096bc6acd68c5fbe8b5ff028bab88af2e248f4
+SHA1 (patch-src_freebsd_topology.c) = d21ed5f4cecc7aa21249214bde6a42e5c687f4ac
+SHA1 (patch-src_init.c) = 220ba6622346a83b18be09c368ebad92d5904cad
