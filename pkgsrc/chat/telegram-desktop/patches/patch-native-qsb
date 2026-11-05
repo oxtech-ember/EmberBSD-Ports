@@ -1,0 +1,13 @@
+# Rebuild compiled shaders when the selected native Qt shader baker changes.
+# Origin: EmberBSD.
+--- Telegram/cmake/qrhi_shaders.cmake.orig
++++ Telegram/cmake/qrhi_shaders.cmake
+@@ -64,7 +64,7 @@
+             --msl 12
+             -o ${_qsb}
+             ${_src}
+-        DEPENDS ${_src}
++        DEPENDS ${_src} ${QSB_EXECUTABLE}
+         COMMENT "QSB: ${_name}"
+         VERBATIM)
+     list(APPEND _qsb_outputs ${_qsb})

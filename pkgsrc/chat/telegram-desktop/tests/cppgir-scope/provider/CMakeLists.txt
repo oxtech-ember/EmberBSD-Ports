@@ -1,0 +1,5 @@
+if(TEST_GLOBAL)
+  find_package(cppgir 2 CONFIG REQUIRED GLOBAL)
+else()
+  find_package(cppgir 2 CONFIG REQUIRED)
+endif()

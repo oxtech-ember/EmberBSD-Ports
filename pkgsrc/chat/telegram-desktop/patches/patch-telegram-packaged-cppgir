@@ -13,7 +13,7 @@
 -    add_subdirectory(cppgir EXCLUDE_FROM_ALL)
 -endblock()
 +if (DESKTOP_APP_USE_PACKAGED)
-+    find_package(cppgir 2 CONFIG REQUIRED)
++    find_package(cppgir 2 CONFIG REQUIRED GLOBAL)
 +    foreach(input DESKTOP_APP_CPPGIR_EXECUTABLE DESKTOP_APP_CPPGIR_DATA_DIR DESKTOP_APP_GIR_DIR)
 +        if (NOT IS_ABSOLUTE "${${input}}" OR NOT EXISTS "${${input}}")
 +            message(FATAL_ERROR "${input} must identify a selected native generator or target metadata path")

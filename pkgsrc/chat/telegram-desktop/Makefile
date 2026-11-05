@@ -13,9 +13,11 @@ LICENSE=	gnu-gpl-v3
 BROKEN=		Telegram Desktop dependency integration is incomplete
 .endif
 
+# Keep the client and libfido2 on the same common OpenSSL provider.
+USE_BUILTIN.openssl= no
 USE_LANGUAGES=	c c++
 USE_CXX_FEATURES+=	c++20
-USE_TOOLS+=	pkg-config
+USE_TOOLS+=	pkg-config gdbus-codegen
 CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_USE_PACKAGED=ON
 CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_DISABLE_AUTOUPDATE=ON
 CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_DISABLE_QT_PLUGINS=ON
@@ -24,6 +26,8 @@ CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_CPPGIR_EXECUTABLE=${TOOLBASE}/bin/cppgir
 CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_CPPGIR_DATA_DIR=${TOOLBASE}/share/cppgir
 CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_GIR_DIR=${CROSS_DESTDIR:U}${LOCALBASE}/share/gir-1.0
 TOOL_DEPENDS+=	cppgir>=2.0.0:../../devel/cppgir
+TOOL_DEPENDS+=	qt6-qtshadertools-[0-9]*:../../graphics/qt6-qtshadertools
+CMAKE_CONFIGURE_ARGS+=	-DQSB_EXECUTABLE=${TOOLBASE}/qt6/bin/qsb
 TOOL_DEPENDS+=	telegram-desktop-codegen=${TDESKTOP_VERSION}:../../chat/telegram-desktop-codegen
 CMAKE_CONFIGURE_ARGS+=	-DTDESKTOP_NATIVE_CODEGEN_DIR=${TOOLBASE}/libexec/telegram-desktop-codegen
 .include "../../mk/bsd.prefs.mk"
