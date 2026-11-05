@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (json-schema-validator-2.4.1.tar.gz) = 8225660a8ee24b26d9f028beaceb1c9459ab318f860789ff626cb4f3f595112a
+SHA512 (json-schema-validator-2.4.1.tar.gz) = 2693df0a7c60818d7df19e93f5ff39ce88e250455fc5aa92c41b23c9d12e764218fafe903504ea4caae8f355b6c390e962a0c031a1ba2450bfc5659b6ff83d9a
+Size (json-schema-validator-2.4.1.tar.gz) = 90120 bytes
