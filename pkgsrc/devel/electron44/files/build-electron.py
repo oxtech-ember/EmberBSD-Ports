@@ -529,6 +529,61 @@ def host_buildlink(options, sdk, native, environment, host_binding):
     return result.stdout.decode('utf-8', 'strict').strip()
 
 
+def additive_host_buildlink_relocation(old_args, new_args, old_env, new_env, work):
+    """Accept a new buildlink directory only when all previous links survive."""
+    key = 'emberbsd_protobuf_native_prefix'
+    if old_args.get(key) == new_args.get(key):
+        return set()
+    context_key = 'EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK'
+    records, prefixes = [], []
+    for arguments, environment in ((old_args, old_env), (new_args, new_env)):
+        context = Path(environment.get(context_key, ''))
+        require(context.is_absolute() and context.parent == work and
+                re.fullmatch(r'host-buildlink-[0-9]+', context.name) and
+                context.resolve(strict=True) == context,
+                'host buildlink relocation has an invalid context')
+        prefix = Path(arguments.get(key, ''))
+        require(prefix.is_absolute() and prefix.is_relative_to(context) and
+                prefix.name == '.buildlink' and prefix.resolve(strict=True) == prefix,
+                'host buildlink relocation has an invalid prefix')
+        record_path = context / 'selection.json'
+        require(record_path.is_file() and not record_path.is_symlink(),
+                'host buildlink selection is not a regular file')
+        record = json.loads(record_path.read_text())
+        links = record.get('identity', {}).get('links')
+        invocation = record.get('invocation')
+        require(isinstance(links, dict) and links and isinstance(invocation, dict) and
+                invocation.get('work') == str(context), 'invalid host buildlink selection')
+        for relative, target in links.items():
+            require(isinstance(relative, str) and isinstance(target, str),
+                    'invalid host buildlink link')
+            path = Path(relative)
+            require(path.parts and not path.is_absolute() and
+                    all(part not in ('.', '..') for part in path.parts) and
+                    str(path) == relative and Path(target).is_absolute(),
+                    'invalid host buildlink link path')
+            link = prefix / path
+            require(link.is_symlink() and os.readlink(link) == target,
+                    'host buildlink link differs from selection: ' + relative)
+        records.append(record)
+        prefixes.append(prefix.relative_to(context))
+    require(prefixes[0] == prefixes[1], 'host buildlink prefix layout changed')
+    old_links, new_links = (record['identity']['links'] for record in records)
+    require(all(new_links.get(name) == target for name, target in old_links.items()),
+            'host buildlink relocation removed or replaced an existing link')
+    old_call, new_call = (record['invocation'] for record in records)
+    selection_keys = {'shared_ffmpeg', 'shared_minizip', 'shared_xml', 'shared_image'}
+    for name in (set(old_call) | set(new_call)) - {'work'} - selection_keys:
+        require(old_call.get(name) == new_call.get(name),
+                'host buildlink relocation changed an unrelated input: ' + name)
+    for name in selection_keys:
+        before, after = old_call.get(name), new_call.get(name)
+        require(before in (None, 'yes') and after in (None, 'yes') and
+                (before is None or after == 'yes'),
+                'host buildlink relocation removed a selected provider')
+    return {key}
+
+
 def runtime_view_entries(directory, label):
     view = Path(directory).resolve(strict=True)
     require(view.is_dir(), label + ' is not a directory')
@@ -3025,6 +3080,8 @@ def reconfigure(options):
         minizip_args = minizip_activation_args(options, old_env, environment, saved['arguments'], values)
         xml_args = xml_activation_args(options, old_env, environment, saved['arguments'], values)
         image_args = image_activation_args(options, old_env, environment, saved['arguments'], values)
+        buildlink_args = additive_host_buildlink_relocation(
+            saved['arguments'], values, old_env, environment, work)
         identity_args = {'node_module_version', 'emberbsd_node_source_identity',
                          'emberbsd_node_configure_helper', 'emberbsd_node_configure_inputs',
                          'emberbsd_node_configure_dependencies', 'target_os', 'target_cpu', 'target_sysroot', 'emberbsd_target_sysroot',
@@ -3101,7 +3158,7 @@ def reconfigure(options):
                 continue
             if node_source_refresh and name == 'emberbsd_node_source_identity':
                 continue
-            if name in activation_args or name in minizip_args or name in xml_args or name in image_args:
+            if name in activation_args or name in minizip_args or name in xml_args or name in image_args or name in buildlink_args:
                 continue
             if name in ('use_litert_tflite', 'emberbsd_flatc', 'emberbsd_flatc_inputs') and getattr(options, 'activate_common_ml', False) and not old_ml:
                 continue
