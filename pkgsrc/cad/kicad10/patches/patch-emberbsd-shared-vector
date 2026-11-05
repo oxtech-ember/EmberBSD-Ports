@@ -1,0 +1,113 @@
+$NetBSD$
+
+Use the shared Ports Zint and Potrace libraries and host Lemon tool.
+--- thirdparty/CMakeLists.txt.orig
++++ thirdparty/CMakeLists.txt
+@@ -56,7 +56,18 @@
+ add_subdirectory( rectpack2d )
+ add_subdirectory( rtree )
+ add_subdirectory( tinyspline_lib )
+-add_subdirectory( potrace )
++find_path( POTRACE_INCLUDE_DIR NAMES potracelib.h )
++find_library( POTRACE_LIBRARY NAMES potrace )
++if( NOT POTRACE_INCLUDE_DIR OR NOT POTRACE_LIBRARY )
++    message( FATAL_ERROR "The shared Ports Potrace provider is required" )
++endif()
++add_library( Potrace::potrace UNKNOWN IMPORTED GLOBAL )
++set_target_properties( Potrace::potrace PROPERTIES
++    IMPORTED_LOCATION "${POTRACE_LIBRARY}"
++    INTERFACE_INCLUDE_DIRECTORIES "${POTRACE_INCLUDE_DIR}"
++    )
++
++find_package( zint CONFIG REQUIRED )
+ add_subdirectory( picosha2 )
+ add_subdirectory( json_schema_validator )
+ add_subdirectory( pegtl )
+@@ -64,4 +75,3 @@
+ add_subdirectory( rapidcsv )
+ add_subdirectory( turtle )
+ add_subdirectory( thread-pool )
+-add_subdirectory( zint )
+--- thirdparty/lemon/CMakeLists.txt.orig
++++ thirdparty/lemon/CMakeLists.txt
+@@ -1,5 +1,18 @@
+-add_executable( lemon
+-    lemon.c
++set( LEMON_EXE "" CACHE FILEPATH "Host Lemon executable from Ports" )
++set( LEMON_TEMPLATE "" CACHE FILEPATH "Host Lemon template from Ports" )
++
++if( NOT IS_ABSOLUTE "${LEMON_EXE}" OR NOT EXISTS "${LEMON_EXE}" )
++    message( FATAL_ERROR "LEMON_EXE must name the installed host Lemon executable" )
++endif()
++
++if( NOT IS_ABSOLUTE "${LEMON_TEMPLATE}" OR NOT EXISTS "${LEMON_TEMPLATE}" )
++    message( FATAL_ERROR "LEMON_TEMPLATE must name the installed host Lemon template" )
++endif()
++
++add_executable( lemon IMPORTED GLOBAL )
++set_target_properties( lemon PROPERTIES
++    IMPORTED_LOCATION "${LEMON_EXE}"
++    lemon_template "${LEMON_TEMPLATE}"
+     )
+ 
+ # The location of the template file for lemon is passed as a property on the lemon target
+@@ -9,6 +22,3 @@
+     FULL_DOCS "Location of the template file for the lemon parser"
+     )
+ 
+-set_property( TARGET lemon
+-    PROPERTY lemon_template ${CMAKE_CURRENT_SOURCE_DIR}/lempar.c
+-    )
+--- cmake/Functions.cmake.orig
++++ cmake/Functions.cmake
+@@ -77,8 +77,6 @@
+ 
+     file( MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${GRAMMAR_DIR} )
+ 
+-    set( LEMON_EXE $<TARGET_FILE:lemon> CACHE FILEPATH "Path to Lemon Executable" )
+-
+     get_property( LEMON_TEMPLATE
+         TARGET lemon
+         PROPERTY lemon_template
+@@ -94,7 +92,7 @@
+             -DGRAMMAR_DIR=${CMAKE_CURRENT_BINARY_DIR}/${GRAMMAR_DIR}
+             -P ${KICAD_CMAKE_MODULE_PATH}/BuildSteps/LemonParserGenerator.cmake
+         COMMENT "Running Lemon on ${GRAMMAR_FILE} to generate ${GRAMMAR_DIR}/${GRAMMAR_BASE}.c"
+-        DEPENDS lemon
++        DEPENDS "${LEMON_EXE}" "${LEMON_TEMPLATE}"
+                 ${CMAKE_CURRENT_SOURCE_DIR}/${GRAMMAR_FILE}
+                 ${KICAD_CMAKE_MODULE_PATH}/BuildSteps/LemonParserGenerator.cmake
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${GRAMMAR_DIR}
+--- common/CMakeLists.txt.orig
++++ common/CMakeLists.txt
+@@ -1106,7 +1106,7 @@
+     kiplatform
+     markdown_lib
+     nanoflann
+-    zint
++    zint::zint
+ )
+ 
+ if( APPLE OR NOT UNIX )
+--- pcbnew/pcb_barcode.cpp.orig
++++ pcbnew/pcb_barcode.cpp
+@@ -51,7 +51,7 @@
+ #include <api/api_utils.h>
+ #include <footprint.h>
+ 
+-#include <backend/zint.h>
++#include <zint.h>
+ #include <board_design_settings.h>
+ #include <google/protobuf/any.pb.h>
+ #include <properties/property.h>
+--- bitmap2component/CMakeLists.txt.orig
++++ bitmap2component/CMakeLists.txt
+@@ -54,7 +54,7 @@
+     common
+     kicommon
+     ${wxWidgets_LIBRARIES}
+-    potrace
++    Potrace::potrace
+     )
+ 
+ if( APPLE )
