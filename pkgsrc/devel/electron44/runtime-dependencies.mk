@@ -11,6 +11,14 @@ PREFER.gettext= pkgsrc
 # Node loads the selected common JavaScript provider from its installed prefix.
 DEPENDS+= undici>=8.12.3:../../www/undici
 
+# The selected GN graph consumes these header-only providers only while building.
+BUILDLINK_DEPMETHOD.flatbuffers= build
+BUILDLINK_DEPMETHOD.eigen3= build
+BUILDLINK_DEPMETHOD.fp16= build
+.include "../../devel/flatbuffers/buildlink3.mk"
+.include "../../devel/fp16/buildlink3.mk"
+.include "../../math/eigen3/buildlink3.mk"
+
 .include "../../archivers/brotli/buildlink3.mk"
 .include "../../archivers/zstd/buildlink3.mk"
 .include "../../databases/sqlite3/buildlink3.mk"

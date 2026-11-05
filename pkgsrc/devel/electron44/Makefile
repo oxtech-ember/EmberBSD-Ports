@@ -24,6 +24,9 @@ USE_CROSS_COMPILE=	yes
 USE_LANGUAGES=		c c++
 USE_TOOLS+=		pkg-config
 
+# The selected native flatc generates target headers during the build.
+TOOL_DEPENDS+= flatbuffers>=25.12.19.1:../../devel/flatbuffers
+
 # Shared native JavaScript providers selected by the Electron producer.
 TOOL_DEPENDS+= node-electron-asar>=4.3.1:../../devel/node-electron-asar
 TOOL_DEPENDS+= node-electron-docs-parser>=3.0.3:../../devel/node-electron-docs-parser
