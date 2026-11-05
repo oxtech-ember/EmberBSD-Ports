@@ -24,6 +24,17 @@ with tempfile.TemporaryDirectory(prefix='stage-configure-') as temp:
  cookie=work/'.configure_done';failure=root/'fail';failure.write_text('once')
  fake=root/'bmake';fake.write_text('#!'+sys.executable+'''\nimport pathlib,sys\na=sys.argv[1:];work=pathlib.Path('''+repr(str(work))+''');source=pathlib.Path('''+repr(str(source))+''');cookie=work/'.configure_done'\nif 'show-vars' in a:print(str(work)+'\\n'+str(source)+'\\n'+'''+repr(str(a.shell))+'''+ '\\n'+str(cookie)+'\\nyes\\n'+str(source));sys.exit()\nif 'configure' in a:\n if not cookie.exists():\n  (source/'generated/same.h').write_text('same\\n');(source/'generated/changed.h').write_text('new\\n');cookie.write_text('done')\n  if (work/'change-flags').exists():(source/'Makefile').write_text('CFLAGS = -O2 -pthread\\n')\n  f=pathlib.Path('''+repr(str(failure))+''')\n  if f.exists():f.unlink();sys.exit(9)\n sys.exit()\n''');fake.chmod(0o755)
  cmd=[sys.executable,'-B',str(helper),'--sdk-source',str(a.sdk_source),'--bmake',str(fake),'--recipe',str(recipe),'--expected-work',str(work),'--make-arg','MAKE_JOBS=2','--','USE_CROSS_COMPILE=no']
+ fresh=list(cmd);fresh[fresh.index('--expected-work')+1]=str(root/'missing-stage')
+ subprocess.run(fresh,check=True,capture_output=True,text=True)
+ assert not (root/'missing-stage').exists() and not cookie.exists()
+ saved_source=work/'saved-source';source.rename(saved_source)
+ subprocess.run(cmd,check=True,capture_output=True,text=True)
+ assert not source.exists() and not cookie.exists()
+ source.symlink_to(work/'dangling-source',target_is_directory=True)
+ assert subprocess.run(cmd,capture_output=True,text=True).returncode
+ source.unlink();(work/'.emberbsd-configure-preserve.json').write_text('{}')
+ assert subprocess.run(cmd,capture_output=True,text=True).returncode
+ (work/'.emberbsd-configure-preserve.json').unlink();saved_source.rename(source)
  result=subprocess.run(cmd,capture_output=True,text=True);assert result.returncode and (work/'.emberbsd-configure-preserve.json').is_file()
  marker=work/'.emberbsd-configure-preserve.json'; saved=marker.read_text(); foreign=json.loads(saved)
  foreign['files']['../escape']=next(iter(foreign['files'].values()));marker.write_text(json.dumps(foreign))

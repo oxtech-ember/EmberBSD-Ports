@@ -81,6 +81,9 @@ def main():
         a.bmake_args = a.bmake_args[1:]
     for name in ('sdk_source','bmake','recipe','expected_work'):
         require(getattr(a,name).is_absolute(), 'selected path must be absolute')
+    # A fresh stage has no previous configure outputs to preserve.
+    if not os.path.lexists(a.expected_work):
+        return
     sys.path.insert(0,str(a.sdk_source/'src'))
     from emberbsd_sdk import jsonio,paths
     command=[str(a.bmake),'-C',str(a.recipe),*a.make_arg,*a.bmake_args]
@@ -90,8 +93,13 @@ def main():
     work,source,shell,cookie=map(Path,fields[:4]);gnu,dirs=fields[4:]
     require(paths.canonical_existing(str(work))==paths.canonical_existing(str(a.expected_work)),
             'selected WRKDIR differs from locked stage')
-    work=Path(paths.canonical_existing(str(work)));source=Path(paths.canonical_existing(str(source)))
+    work=Path(paths.canonical_existing(str(work)))
     marker=work/'.emberbsd-configure-preserve.json'
+    # A partially created stage may not have extracted WRKSRC yet.
+    if not os.path.lexists(source):
+        require(not os.path.lexists(marker), 'configure source is missing during retry')
+        return
+    source=Path(paths.canonical_existing(str(source)))
     if not source.is_relative_to(work):
         require(not os.path.lexists(marker), 'configure source changed during retry')
         return
