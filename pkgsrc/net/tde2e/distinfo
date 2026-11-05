@@ -1,0 +1,10 @@
+$NetBSD$
+
+BLAKE2s (td-4c6377aa7386c39217878a9a56d581922ad37ca4.tar.gz) = 847cf0eca97466a897042b17b1355ab2de49c33babcb115665c94930b3ed15e8
+SHA512 (td-4c6377aa7386c39217878a9a56d581922ad37ca4.tar.gz) = 292616c827365d95dbded79de34ec6871428868cffc44431d08d3536c469edc6755a5feae73162a9e20ac4e002a75d1ee8d6469916ca2bd2271c3eea63926982
+Size (td-4c6377aa7386c39217878a9a56d581922ad37ca4.tar.gz) = 5901194 bytes
+SHA1 (patch-tdutils_td_utils_port_detail_KQueue.cpp) = 471e85b5910e1a6b1a58ea8a8c1023c15d2b686b
+SHA1 (patch-CMakeLists.txt) = e5a396c10ff04290ff065d2a2030caa2c23e2778
+SHA1 (patch-CMake_GeneratePkgConfig.cmake) = 1b18aaf2fa2a4ecfaee7b52457d2a23b1c9f079b
+SHA1 (patch-tde2e_CMakeLists.txt) = 0b511cbe9cc565113454b04a49d198d2606b0763
+SHA1 (patch-tdutils_CMakeLists.txt) = 57571799ac2e880b46d5693b896358f6dc970705

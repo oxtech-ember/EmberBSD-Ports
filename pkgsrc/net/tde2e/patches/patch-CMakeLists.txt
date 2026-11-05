@@ -1,0 +1,24 @@
+# $NetBSD$
+
+Export portable dependencies for installed tde2e consumers.
+Origin: EmberBSD.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -198,7 +198,15 @@
+       DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/tde2e"
+     )
+   endif()
+-  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/tde2eConfig.cmake" "include(\"\${CMAKE_CURRENT_LIST_DIR}/tde2eStaticTargets.cmake\")\n")
++  set(TDE2E_CONFIG "include(CMakeFindDependencyMacro)\n")
++  if (TARGET OpenSSL::Crypto)
++    string(APPEND TDE2E_CONFIG "find_dependency(OpenSSL COMPONENTS Crypto)\n")
++  endif()
++  if (TARGET ZLIB::ZLIB)
++    string(APPEND TDE2E_CONFIG "find_dependency(ZLIB)\n")
++  endif()
++  string(APPEND TDE2E_CONFIG "include(\"\${CMAKE_CURRENT_LIST_DIR}/tde2eStaticTargets.cmake\")\n")
++  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/tde2eConfig.cmake" "${TDE2E_CONFIG}")
+   include(CMakePackageConfigHelpers)
+   write_basic_package_version_file("tde2eConfigVersion.cmake"
+     VERSION "${TDLib_VERSION}"

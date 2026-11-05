@@ -1,0 +1,33 @@
+# $NetBSD$
+
+Export portable dependencies for installed tde2e consumers.
+Origin: EmberBSD.
+
+--- tdutils/CMakeLists.txt.orig
++++ tdutils/CMakeLists.txt
+@@ -367,7 +367,11 @@
+ target_include_directories(tdutils PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)
+ 
+ if (OPENSSL_FOUND)
+-  target_link_libraries(tdutils PRIVATE ${OPENSSL_CRYPTO_LIBRARY} ${CMAKE_DL_LIBS} ${ZLIB_LIBRARIES})
++  if (TARGET OpenSSL::Crypto)
++    target_link_libraries(tdutils PRIVATE OpenSSL::Crypto ${CMAKE_DL_LIBS})
++  else()
++    target_link_libraries(tdutils PRIVATE ${OPENSSL_CRYPTO_LIBRARY} ${CMAKE_DL_LIBS})
++  endif()
+   target_include_directories(tdutils SYSTEM PRIVATE ${OPENSSL_INCLUDE_DIR})
+ 
+   if (WIN32)
+@@ -380,7 +384,11 @@
+ endif()
+ 
+ if (ZLIB_FOUND)
+-  target_link_libraries(tdutils PRIVATE ${ZLIB_LIBRARIES})
++  if (TARGET ZLIB::ZLIB)
++    target_link_libraries(tdutils PRIVATE ZLIB::ZLIB)
++  else()
++    target_link_libraries(tdutils PRIVATE ${ZLIB_LIBRARIES})
++  endif()
+   target_include_directories(tdutils SYSTEM PRIVATE ${ZLIB_INCLUDE_DIR})
+ endif()
+ 
