@@ -1,0 +1,3 @@
+rectpack2D is a header-only C++ library for packing rectangles into a
+bounded two-dimensional bin. Its API provides packing strategies and
+callbacks for successful and unsuccessful placements.

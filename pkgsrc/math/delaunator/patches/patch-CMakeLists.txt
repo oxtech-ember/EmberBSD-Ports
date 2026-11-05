@@ -1,0 +1,77 @@
+$NetBSD$
+
+Install the library and export a reusable CMake target.
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -1,33 +1,44 @@
+ cmake_minimum_required(VERSION 3.8)
+-project(delaunator VERSION 0.4.0)
++project(delaunator VERSION 1.0.0 LANGUAGES CXX)
+ 
+-set(ROOT_DIR ${PROJECT_SOURCE_DIR})
+-
+-#
+-# Must be first.
+-#
+-include(${ROOT_DIR}/cmake/common.cmake NO_POLICY_SCOPE)
+-
+-include(CTest)
+-include(FeatureSummary)
+-
+-include(${D_CMAKE_DIR}/options.cmake)
+-include(${D_CMAKE_DIR}/gtest.cmake)
+-
+-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${D_BIN_DIR})
++include(GNUInstallDirs)
++include(CMakePackageConfigHelpers)
+ 
+ add_library(delaunator include/delaunator.cpp)
+-d_target_compile_settings(delaunator)
+-
+-add_subdirectory(test)
+-
+-#examples
+-#add_executable(triangulate-geojson examples/triangulate_geojson.cpp include/delaunator.cpp)
+-add_executable(basic examples/basic.cpp include/delaunator.cpp)
+-target_include_directories(basic
+-    PRIVATE
+-        include
++target_compile_features(delaunator PUBLIC cxx_std_11)
++target_include_directories(delaunator PUBLIC
++    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
++    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+ )
+ 
+-#set(CPACK_PROJECT_NAME ${PROJECT_NAME})
+-#set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
++install(TARGETS delaunator EXPORT delaunatorTargets
++    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
++    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
++    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
++)
++install(FILES
++    include/delaunator.hpp
++    include/delaunator.cpp
++    include/delaunator-header-only.hpp
++    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
++)
++install(EXPORT delaunatorTargets
++    FILE delaunatorTargets.cmake
++    NAMESPACE delaunator::
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/delaunator
++)
++configure_package_config_file(
++    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/delaunatorConfig.cmake.in
++    ${CMAKE_CURRENT_BINARY_DIR}/delaunatorConfig.cmake
++    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/delaunator
++)
++write_basic_package_version_file(
++    ${CMAKE_CURRENT_BINARY_DIR}/delaunatorConfigVersion.cmake
++    VERSION ${PROJECT_VERSION}
++    COMPATIBILITY SameMajorVersion
++)
++install(FILES
++    ${CMAKE_CURRENT_BINARY_DIR}/delaunatorConfig.cmake
++    ${CMAKE_CURRENT_BINARY_DIR}/delaunatorConfigVersion.cmake
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/delaunator
++)

@@ -1,0 +1,6 @@
+@comment $NetBSD$
+include/geometry/rtree.h
+lib/cmake/rtree/rtreeConfig.cmake
+lib/cmake/rtree/rtreeConfigVersion.cmake
+lib/cmake/rtree/rtreeTargets.cmake
+share/licenses/rtree/LICENSE.GPLv3

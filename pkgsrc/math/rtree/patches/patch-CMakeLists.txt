@@ -1,0 +1,48 @@
+$NetBSD$
+
+Export the KiCad-maintained RTree API as a header-only package.
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -1,7 +1,37 @@
+-add_library( rtree INTERFACE )
++cmake_minimum_required(VERSION 3.14)
++project(rtree VERSION 10.0.8 LANGUAGES CXX)
+ 
+-target_include_directories( rtree INTERFACE ${CMAKE_CURRENT_SOURCE_DIR} )
++include(GNUInstallDirs)
++include(CMakePackageConfigHelpers)
+ 
+-target_sources( rtree INTERFACE
+-    ${CMAKE_CURRENT_SOURCE_DIR}/geometry/rtree.h
+-    )
++add_library(rtree INTERFACE)
++target_compile_features(rtree INTERFACE cxx_std_17)
++target_include_directories(rtree INTERFACE
++    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
++    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
++)
++
++install(TARGETS rtree EXPORT rtreeTargets)
++install(FILES geometry/rtree.h
++    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/geometry
++)
++install(EXPORT rtreeTargets
++    FILE rtreeTargets.cmake
++    NAMESPACE rtree::
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rtree
++)
++configure_package_config_file(
++    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/rtreeConfig.cmake.in
++    ${CMAKE_CURRENT_BINARY_DIR}/rtreeConfig.cmake
++    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rtree
++)
++write_basic_package_version_file(
++    ${CMAKE_CURRENT_BINARY_DIR}/rtreeConfigVersion.cmake
++    VERSION ${PROJECT_VERSION}
++    COMPATIBILITY ExactVersion
++)
++install(FILES
++    ${CMAKE_CURRENT_BINARY_DIR}/rtreeConfig.cmake
++    ${CMAKE_CURRENT_BINARY_DIR}/rtreeConfigVersion.cmake
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rtree
++)
