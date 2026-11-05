@@ -8,6 +8,9 @@
 # A base gettext implementation does not provide that package dependency.
 PREFER.gettext= pkgsrc
 
+# Node loads the selected common JavaScript provider from its installed prefix.
+DEPENDS+= undici>=8.12.3:../../www/undici
+
 .include "../../archivers/brotli/buildlink3.mk"
 .include "../../archivers/zstd/buildlink3.mk"
 .include "../../databases/sqlite3/buildlink3.mk"

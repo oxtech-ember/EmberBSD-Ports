@@ -10,7 +10,7 @@ from types import SimpleNamespace
 owner = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('build', owner / '../../pkgsrc/devel/electron44/files/build-electron.py')
 build = importlib.util.module_from_spec(spec); spec.loader.exec_module(build)
-build.require_common_v8 = build.require_common_node = build.require_common_perfetto = lambda options: None
+build.require_common_v8 = build.require_common_node = build.require_common_perfetto = build.require_common_dependencies = lambda options: None
 build.load_sdk = lambda source: {}
 build.verify_source = build.require_electron_static_assets = lambda *args: None
 build.write_devtools_identity = lambda *args: None

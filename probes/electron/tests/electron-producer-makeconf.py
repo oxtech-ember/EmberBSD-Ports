@@ -14,7 +14,9 @@ recipe = (owner / 'Makefile').read_text()
 assert recipe.index('.include "../../mk/bsd.prefs.mk"') < recipe.index('.include "producer.mk"')
 required = ('WORKSPACE PORTS_SOURCE SDK_SOURCE HOST_PREFIX COMPILER_PREFIX SYSROOT WORK GIT '
             'LOCK_ROOT LINK_CONTEXT TARGET PYTHON NODE_SOURCE NODE_PKGSRC V8_SOURCE '
-            'V8_PORTS_SOURCE V8_PKGSRC').split()
+            'V8_PORTS_SOURCE V8_PKGSRC PERFETTO_SOURCE PERFETTO_PORTS_SOURCE '
+            'PERFETTO_ARCHIVE PERFETTO_PATCH PROTOBUF_SOURCE PROTOBUF_PORTS_SOURCE '
+            'PROTOBUF_ARCHIVE PROTOBUF_PATCH').split()
 with tempfile.TemporaryDirectory(prefix='electron-producer-makeconf-') as temp:
     root = Path(temp)
     for item in Path(pkgsrc).resolve().iterdir():
@@ -47,7 +49,7 @@ with tempfile.TemporaryDirectory(prefix='electron-producer-makeconf-') as temp:
         return check, args
     old_check, old_args = run(False)
     new_check, new_args = run(True)
-    assert 'FAIL' in old_check and '--macos-minimum' not in old_args and '--shared-icu' not in old_args
+    assert 'FAIL' in old_check and '--macos-minimum' not in old_args
     assert 'FAIL' not in new_check and '--macos-minimum' in new_args and '--shared-icu' in new_args
     # Fetch/checksum remain independent of producer selectors.
     conf.write_text('\n'.join(lines[:5]) + '\n')

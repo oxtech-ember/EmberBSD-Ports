@@ -1,4 +1,4 @@
-# Draft producer binding: inputs are explicitly prepared source trees.
+# Producer binding: inputs are explicitly prepared common source trees.
 # build-electron.py owns source verification, locks, tool selection and GN.
 
 EMBERBSD_ELECTRON_SDK_SOURCE?=	${EMBERBSD_SDK_SOURCE:U}
@@ -12,7 +12,9 @@ EMBERBSD_ELECTRON_JOBS?=	${MAKE_JOBS:U}
 # The selected workspace and work tree may be reused by the caller.
 _EMBER_ELECTRON_REQUIRED= WORKSPACE PORTS_SOURCE SDK_SOURCE HOST_PREFIX \
 	COMPILER_PREFIX SYSROOT WORK GIT LOCK_ROOT LINK_CONTEXT TARGET PYTHON \
-	NODE_SOURCE NODE_PKGSRC V8_SOURCE V8_PORTS_SOURCE V8_PKGSRC
+	NODE_SOURCE NODE_PKGSRC V8_SOURCE V8_PORTS_SOURCE V8_PKGSRC \
+	PERFETTO_SOURCE PERFETTO_PORTS_SOURCE PERFETTO_ARCHIVE PERFETTO_PATCH \
+	PROTOBUF_SOURCE PROTOBUF_PORTS_SOURCE PROTOBUF_ARCHIVE PROTOBUF_PATCH
 
 _EMBER_ELECTRON_ARGS= \
 	--workspace ${EMBERBSD_ELECTRON_WORKSPACE:Q} \
@@ -54,9 +56,15 @@ _EMBER_ELECTRON_ARGS+= --${_ember_key:tl:S/_/-/g} ${EMBERBSD_ELECTRON_${_ember_k
 .endif
 .endfor
 
-.for _ember_key in \
-	PERFETTO_SCOPED_RUNTIME NODE_SCOPED_RUNTIME SHARED_UNDICI \
-	SHARED_ABSEIL SHARED_ICU SHARED_RE2
+# These packages are common dependencies, not optional bundled alternatives.
+.for _ember_key in SHARED_UNDICI SHARED_ABSEIL SHARED_ICU SHARED_RE2
+.if ${EMBERBSD_ELECTRON_${_ember_key}:Uyes} != "yes"
+.error EMBERBSD_ELECTRON_${_ember_key} must be yes; Electron uses the common Ports provider
+.endif
+_EMBER_ELECTRON_ARGS+= --${_ember_key:tl:S/_/-/g}
+.endfor
+
+.for _ember_key in PERFETTO_SCOPED_RUNTIME NODE_SCOPED_RUNTIME
 .if ${EMBERBSD_ELECTRON_${_ember_key}:Uno} == "yes"
 _EMBER_ELECTRON_ARGS+= --${_ember_key:tl:S/_/-/g}
 .elif ${EMBERBSD_ELECTRON_${_ember_key}:Uno} != "no"

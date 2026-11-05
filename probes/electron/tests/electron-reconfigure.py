@@ -218,6 +218,11 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     opt.node_source = new_node_source; opt.node_pkgsrc = root/'node-pkgsrc'
     opt.perfetto_source = root/'perfetto'; opt.perfetto_ports_source = root/'ports'
     opt.perfetto_archive = root/'perfetto.tar'; opt.perfetto_patch = root/'patch'
+    try: b.require_common_dependencies(opt); raise AssertionError('accepted missing common providers')
+    except ValueError: pass
+    opt.shared_abseil = opt.shared_icu = opt.shared_re2 = opt.shared_undici = True
+    opt.protobuf_source = root/'protobuf'; opt.protobuf_ports_source = root/'owner'
+    opt.protobuf_archive = root/'protobuf.tar'; opt.protobuf_patch = root/'patch'
     assert new['emberbsd_node_source_identity'] == str(
         opt.node_source.resolve(strict=True)/'emberbsd-prepared-source.json')
     saved = dict(arguments=old, environment=env, source=str(src.parent), sdk=str(root), host_prefix=str(host), target='amd64')

@@ -54,7 +54,10 @@ plist-fixture:
       'NODE_PKGSRC':str(root/'node pkgsrc'),'V8_SOURCE':str(root/'v8 source'),
       'V8_PORTS_SOURCE':str(root/'v8 ports'),'V8_PKGSRC':str(root/'v8 pkgsrc'),
       'MACOS_SDK':str(root/'mac sdk'),'COMPILER_FAMILY':'clang','MACOS_MINIMUM':'15.0',
-      'SHARED_UNDICI':'yes','SHARED_ABSEIL':'yes','SHARED_RE2':'no','KEEP_GOING':'0'}
+      'KEEP_GOING':'0'}
+    for provider in ('PROTOBUF','PERFETTO'):
+        for name in ('SOURCE','PORTS_SOURCE','ARCHIVE','PATCH'):
+            variables[provider+'_'+name]=str(root/(provider.lower()+' '+name.lower()))
     env=dict(os.environ,PHASE_RECORD=str(record))
     env.pop('MAKE_JOBS',None)
     def run(target, values=variables, **extra):
@@ -69,13 +72,20 @@ plist-fixture:
         for key in order: result += ['--'+key.lower().replace('_','-'),variables[key]]
         result += ['--jobs', variables['JOBS']]
         # These appear in the source-defined optional mapping order.
-        for key in ('COMPILER_FAMILY','MACOS_SDK','MACOS_MINIMUM'):
+        for key in ('COMPILER_FAMILY','MACOS_SDK','PROTOBUF_SOURCE','PROTOBUF_PORTS_SOURCE',
+                    'PROTOBUF_ARCHIVE','PROTOBUF_PATCH','PERFETTO_SOURCE','PERFETTO_PORTS_SOURCE',
+                    'PERFETTO_ARCHIVE','PERFETTO_PATCH','MACOS_MINIMUM'):
             result += ['--'+key.lower().replace('_','-'),variables[key]]
-        result += ['--shared-undici','--shared-abseil']
+        result += ['--shared-undici','--shared-abseil','--shared-icu','--shared-re2']
         if phase=='build': result += ['--keep-going','0']
         return result
-    missing=dict(variables); del missing['NODE_SOURCE']
-    r=run('do-configure',missing); assert r.returncode!=0 and not rows(), (r.stdout,r.stderr)
+    for name in ('NODE_SOURCE','PROTOBUF_SOURCE','PROTOBUF_ARCHIVE','PERFETTO_SOURCE'):
+        missing=dict(variables); del missing[name]
+        r=run('do-configure',missing); assert r.returncode!=0 and not rows(), (r.stdout,r.stderr)
+    for name in ('SHARED_UNDICI','SHARED_ABSEIL','SHARED_ICU','SHARED_RE2'):
+        disabled=dict(variables,**{name:'no'})
+        r=run('do-configure',disabled)
+        assert r.returncode!=0 and not rows() and 'common Ports provider' in r.stderr, (r.stdout,r.stderr)
     r=run('do-configure'); assert r.returncode==0,(r.stdout,r.stderr)
     assert rows()==[expected('configure')], rows()
     r=run('do-configure'); assert r.returncode==0 and len(rows())==1,(r.stdout,r.stderr,rows())

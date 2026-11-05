@@ -634,6 +634,17 @@ def protobuf_package_source(package, owner_recipe, export_recipe, *, distinfo, p
                 'selected protobuf package distinfo differs from common source')
 
 
+def selected_protoc_command(options, native, protoc, runtime_view):
+    """Select direct platform protoc or the existing explicit scoped runtime."""
+    if runtime_view:
+        return [native.tool('python'), str(options.sdk_source / 'scripts/run-darwin-with-runtime.py'),
+                '--runtime-view', str(runtime_view), '--', str(protoc)]
+    require(native.host['os'] == 'Darwin' and options.host_compiler_family == 'clang' and
+            not getattr(options, 'host_runtime_root', None),
+            'common protobuf without a runtime view requires the Darwin platform ABI')
+    return [str(protoc)]
+
+
 def common_protobuf(options, sdk, native, environment, buildlink, runtime_view):
     common = getattr(options, 'protobuf_source', None)
     common_inputs = (getattr(options, 'protobuf_ports_source', None),
@@ -643,7 +654,7 @@ def common_protobuf(options, sdk, native, environment, buildlink, runtime_view):
             'common protobuf needs the source, owner, archive and patch inputs together')
     require(common or not any(common_inputs), 'incomplete common protobuf source selection')
     if common:
-        require(buildlink and runtime_view, 'common protobuf requires the native buildlink and scoped runtime view')
+        require(buildlink, 'common protobuf requires the selected native buildlink')
         owner = Path(common_inputs[0]) / 'scripts/source-inputs/protobuf/source.py'
         require(owner.is_file(), 'common protobuf source owner is missing')
         verified = sdk['process'].capture([native.tool('python'), '-B', str(owner), '--sdk-source', str(options.sdk_source),
@@ -675,6 +686,8 @@ def common_protobuf(options, sdk, native, environment, buildlink, runtime_view):
                     'selected protobuf package version differs from the common source')
         protoc = (Path(buildlink) / 'bin/protoc').resolve(strict=True)
         require(protoc.is_file() and os.access(protoc, os.X_OK), 'selected host protoc is missing')
+        sdk['host_prefix'].validate_host_executable(str(options.host_prefix), str(protoc),
+                                                    native.host, search_path=native.path)
         selection_work = environment.get('EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK')
         require(selection_work, 'selected protobuf needs actual host buildlink metadata')
         selected = json.loads((Path(selection_work) / 'selection.json').read_text())['identity']['inputs']
@@ -707,8 +720,7 @@ def common_protobuf(options, sdk, native, environment, buildlink, runtime_view):
                     'selected target protobuf package does not own ' + content)
             protobuf_package_source(package, owner_recipe, export_recipe, distinfo=needs_distinfo)
         version_output = sdk['process'].capture(
-            [native.tool('python'), str(options.sdk_source / 'scripts/run-darwin-with-runtime.py'),
-             '--runtime-view', str(runtime_view), '--', str(protoc), '--version'],
+            selected_protoc_command(options, native, protoc, runtime_view) + ['--version'],
             env=environment).stdout.decode('utf-8', 'strict').strip()
         match = re.fullmatch(r'libprotoc ([0-9]+(?:\.[0-9]+)+)', version_output)
         require(match and normalized_version(match.group(1)) == source_version,
@@ -1455,6 +1467,9 @@ def gn_source(options):
                    node_modules=Path(options.host_prefix) / 'lib/node_modules',
                    protobuf_protoc=(Path(options.host_prefix) / 'bin/protoc') if common else None)
     destination = options.work / 'source-view'
+    if getattr(options, 'activate_common_providers', False):
+        require(options.phase == 'reconfigure', 'common provider activation requires reconfigure')
+        return view.activate_common_components(options.workspace / 'src', common, destination, **sources)
     if getattr(options, 'migrate_devtools_modules_only', False):
         require(options.phase == 'reconfigure', 'DevTools migration requires reconfigure')
         return view.migrate_devtools_modules(options.workspace / 'src', common, destination, **sources)
@@ -1482,6 +1497,16 @@ def require_common_v8(options):
 def require_common_node(options):
     require(getattr(options, 'node_source', None) and getattr(options, 'node_pkgsrc', None),
             'Electron 45 requires the verified common Node source and pkgsrc export')
+
+
+def require_common_dependencies(options):
+    """Require the shared library and source providers for an Electron build."""
+    require(all(getattr(options, name, False) for name in
+                ('shared_abseil', 'shared_icu', 'shared_re2', 'shared_undici')),
+            'Electron requires common Abseil, ICU, RE2 and Undici')
+    require(all(getattr(options, name, None) for name in
+                ('protobuf_source', 'protobuf_ports_source', 'protobuf_archive', 'protobuf_patch')),
+            'Electron requires the verified common Protobuf source and owner inputs')
 
 
 def require_common_perfetto(options):
@@ -1549,6 +1574,7 @@ def configure(options):
     require_common_v8(options)
     require_common_node(options)
     require_common_perfetto(options)
+    require_common_dependencies(options)
     sdk = load_sdk(options.sdk_source)
     with configure_stage('source verify'):
         verify_source(options.workspace, options.ports_source, options.git)
@@ -1613,6 +1639,48 @@ def configure(options):
 
 
 
+def common_activation_allowlist(options, old_environment, environment, old_arguments, values):
+    """Allow initial activation or an identical verified common-provider retry."""
+    if not getattr(options, 'activate_common_providers', False):
+        return set(), set()
+    require(all(getattr(options, name, False) for name in
+                ('shared_abseil', 'shared_icu', 'shared_re2', 'shared_undici')) and
+            getattr(options, 'protobuf_source', None),
+            'common provider activation requires all selected providers')
+    env_names = {'EMBERBSD_PROTOBUF_SOURCE_SHA256'} | {
+        'EMBERBSD_SHARED_' + provider + '_' + suffix
+        for provider in ('ABSEIL', 'ICU', 'RE2') for suffix in ('VERSION', 'SOURCE_SHA256')}
+    require(all(isinstance(environment.get(name), str) and environment[name] for name in env_names),
+            'common provider activation requires verified identities')
+    first = all(name not in old_environment for name in env_names)
+    identical = all(old_environment.get(name) == environment[name] for name in env_names)
+    require(first or identical, 'common provider identity changed or is partially selected')
+    args = {'emberbsd_abseil_host_headers', 'emberbsd_abseil_host_inputs',
+            'emberbsd_abseil_target_headers', 'emberbsd_abseil_target_inputs',
+            'icu_use_data_file', 'v8_enable_temporal_systemicu',
+            'emberbsd_common_protobuf', 'emberbsd_protobuf_native_prefix',
+            'emberbsd_protobuf_target_prefix', 'emberbsd_protoc',
+            'node_shared_undici_path', 'node_shared_undici_input'}
+    if first:
+        require(all(name not in old_arguments for name in args - {'icu_use_data_file', 'v8_enable_temporal_systemicu'}),
+                'common provider activation cannot replace an existing selection')
+    else:
+        require(all(old_arguments.get(name) == values.get(name) for name in args),
+                'common provider retry cannot change selected GN inputs')
+    require(values.get('emberbsd_common_protobuf') is True and
+            values.get('icu_use_data_file') is False and values.get('v8_enable_temporal_systemicu') is True and
+            all(values.get(name) for name in args - {'icu_use_data_file'}),
+            'common provider activation produced incomplete GN inputs')
+    for name in (set(old_environment) | set(environment)) - env_names - {
+            'CC', 'CXX', 'HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'}:
+        require(old_environment.get(name) == environment.get(name),
+                'unrelated producer input changed during common provider activation: ' + name)
+    for name in (set(old_arguments) | set(values)) - args:
+        require(old_arguments.get(name) == values.get(name),
+                'unrelated GN input changed during common provider activation: ' + name)
+    return (env_names, args) if first else (set(), set())
+
+
 def migrate_devtools_only(options, work):
     """Guard an explicit migration until a later GN reconfiguration succeeds."""
     (work / 'reconfigure-incomplete').write_text('GN reconfiguration incomplete\n')
@@ -1663,6 +1731,7 @@ def reconfigure(options):
     require_common_v8(options)
     require_common_node(options)
     require_common_perfetto(options)
+    require_common_dependencies(options)
     """Regenerate an existing GN graph while preserving its toolchain identity."""
     sdk = load_sdk(options.sdk_source)
     verify_source(options.workspace, options.ports_source, options.git,
@@ -1699,6 +1768,9 @@ def reconfigure(options):
                          'EMBERBSD_HOST_TYPESCRIPT', 'EMBERBSD_HOST_ROLLUP',
                          'HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'}
         old_env = saved['environment']
+        activation_env, activation_args = common_activation_allowlist(
+            options, old_env, environment, saved['arguments'], values)
+        permitted_env.update(activation_env)
         deployment_changed = verified_host_deployment_change(
             saved['arguments'], values, old_env, environment, options, native)
         if deployment_changed:
@@ -1764,7 +1836,10 @@ def reconfigure(options):
                          'node_simdutf_include_from_target', 'use_system_simdutf',
                          'node_use_ffi',
                          'emberbsd_common_protobuf',
-                         'emberbsd_protobuf_target_prefix',
+                         'emberbsd_protobuf_native_prefix', 'emberbsd_protobuf_target_prefix',
+                         'emberbsd_abseil_host_headers', 'emberbsd_abseil_host_inputs',
+                         'emberbsd_abseil_target_headers', 'emberbsd_abseil_target_inputs',
+                         'v8_enable_temporal_systemicu',
                          'emberbsd_protoc',
                          'custom_toolchain', 'v8_snapshot_toolchain', 'v8_host_paxctl', 'emberbsd_mac_toolchain_bin',
                          'emberbsd_sdk_source', 'mac_sdk_path', 'mac_deployment_target',
@@ -1781,6 +1856,8 @@ def reconfigure(options):
             if deployment_changed and name in ('mac_deployment_target', 'v8_metagen_host_extra_flags'):
                 continue
             if node_source_refresh and name == 'emberbsd_node_source_identity':
+                continue
+            if name in activation_args:
                 continue
             if name in permitted_runtime_args:
                 continue
@@ -1832,6 +1909,7 @@ def build(options):
     require_common_v8(options)
     require_common_node(options)
     require_common_perfetto(options)
+    require_common_dependencies(options)
     require(not (options.work / 'reconfigure-incomplete').exists(),
             'incomplete reconfiguration; rerun reconfigure before build')
     sdk = load_sdk(options.sdk_source)
@@ -1910,6 +1988,8 @@ def main():
             initial.add_argument('--retry-configure', action='store_true',
                                  help='retry failed GN with verified selected inputs')
         if phase == 'reconfigure':
+            command.add_argument('--activate-common-providers', action='store_true',
+                                 help='activate verified common providers without replacing the source view')
             command.add_argument('--migrate-devtools-modules-only', action='store_true',
                                  help='migrate verified DevTools modules and require subsequent GN reconfigure')
             command.add_argument('--refresh-source-view', action='store_true',

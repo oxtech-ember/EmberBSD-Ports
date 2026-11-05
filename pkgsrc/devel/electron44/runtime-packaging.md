@@ -17,12 +17,16 @@ patch phase does not reapply the source owner's patches.
 `producer.mk` maps `EMBERBSD_ELECTRON_*` settings to the existing controller CLI.
 Required settings select `WORKSPACE`, `PORTS_SOURCE`, `SDK_SOURCE`, `HOST_PREFIX`,
 `COMPILER_PREFIX`, `SYSROOT`, `WORK`, `GIT`, `LOCK_ROOT`, `LINK_CONTEXT`, `TARGET`,
-`PYTHON`, `NODE_SOURCE`, `NODE_PKGSRC`, `V8_SOURCE`, `V8_PORTS_SOURCE` and
-`V8_PKGSRC`. SDK source, host prefix, Python, sysroot and target default to the
+`PYTHON`, `NODE_SOURCE`, `NODE_PKGSRC`, `V8_SOURCE`, `V8_PORTS_SOURCE`,
+`V8_PKGSRC`, `PERFETTO_SOURCE`, `PERFETTO_PORTS_SOURCE`, `PERFETTO_ARCHIVE`,
+`PERFETTO_PATCH`, `PROTOBUF_SOURCE`, `PROTOBUF_PORTS_SOURCE`, `PROTOBUF_ARCHIVE`
+and `PROTOBUF_PATCH`. SDK source, host prefix, Python, sysroot and target default to the
 corresponding common cross-configuration values. Optional settings follow the
 controller's option names in uppercase with underscores, including independent
-host/target compiler families, runtime stages, native generators and common
-source providers. Use the controller's help and the [Electron README](../../../probes/electron/README.md) for those
+host/target compiler families, runtime stages and native generators. Abseil,
+ICU, RE2 and Undici always use the common Ports packages; their `SHARED_*`
+settings default to `yes` and cannot select bundled copies. Undici is also a
+runtime package dependency. Use the controller's help and the [Electron README](../../../probes/electron/README.md) for those
 input contracts. No recipe path overrides the controller's identity checks.
 
 When reusing a graph configured outside the exported recipe, keep the original
