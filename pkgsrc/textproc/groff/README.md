@@ -46,6 +46,11 @@ the installed devhtml `DESC` names the image generator that grohtml runs from
 `PATH`. The cross build records the name `gs` and depends on the target
 Ghostscript package. Native builds keep the upstream runtime tools.
 
+The native tools profile selects `-groff-docs -x11` for native groff. Ports
+use the native groff to format manual pages, which needs neither option. This
+keeps Ghostscript, netpbm, CUPS, mDNSResponder and native X11 libraries out of
+native tool closures. The target recipe keeps both default options.
+
 The documentation build also runs the groff it builds (`GROFFBIN`). A cross
 build has no proof yet beyond configuration; it may need a native groff.
 
@@ -57,4 +62,5 @@ MAKECONF=CROSS_MAKECONF python3 profiles/common-build-tools/tests/cross-runtime-
 ```
 
 The test fails with the upstream `awk:run`, `sed:run`, `gs:run` and `gm4:run`.
+It also checks the native and target groff options separately.
 It also covers the automake cross dependency on the target m4 package.

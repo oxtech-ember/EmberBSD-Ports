@@ -7,7 +7,9 @@ pkgsrc refuses USE_TOOLS+=TOOL:run in a cross build, because the build-host
 tool cannot run on the target. groff needs awk and sed at build time only on
 a NetBSD target and the target Ghostscript package for grohtml. automake
 needs the target m4 package instead of the build-host m4. Native builds keep
-the original runtime tools.
+the original runtime tools. The native tools profile builds groff without
+documentation and X11, so a native groff needs no Ghostscript, netpbm or X
+libraries; the target groff keeps both default options.
 
 Usage: cross-runtime-tools.py --bmake BMAKE --pkgsrc TREE --makeconf CROSS_MAKECONF
 """
@@ -66,11 +68,38 @@ class CrossRuntimeTools(unittest.TestCase):
         self.assertNotIn('gm4:run', values['USE_TOOLS'].split())
         self.assertIn('m4>=1.4:../../devel/m4', values['DEPENDS'].split())
 
+    def test_target_groff_keeps_default_options(self):
+        values = query('textproc/groff', 'PKG_OPTIONS', 'CONFIGURE_ARGS')
+        self.assertIn('groff-docs', values['PKG_OPTIONS'].split())
+        self.assertIn('x11', values['PKG_OPTIONS'].split())
+        self.assertIn('--with-x', values['CONFIGURE_ARGS'].split())
+
+    def test_native_groff_has_no_documentation_or_x11(self):
+        values = query('textproc/groff', 'EMBERBSD_COMMON_TOOLS', 'PKG_OPTIONS',
+                       'PKG_FAIL_REASON', 'USE_TOOLS', 'CONFIGURE_ARGS', 'DEPENDS',
+                       'BUILDLINK_TREE', native=True)
+        self.assertEqual(values['EMBERBSD_COMMON_TOOLS'], 'yes')
+        options = values['PKG_OPTIONS'].split()
+        self.assertNotIn('groff-docs', options)
+        self.assertNotIn('x11', options)
+        self.assertEqual(values['PKG_FAIL_REASON'].strip(), '')
+        tools = values['USE_TOOLS'].split()
+        self.assertNotIn('gs', tools)
+        self.assertNotIn('gs:run', tools)
+        arguments = values['CONFIGURE_ARGS'].split()
+        self.assertIn('--without-gs', arguments)
+        self.assertIn('--without-x', arguments)
+        self.assertNotIn('--with-x', arguments)
+        for name in ('ghostscript', 'netpbm'):
+            self.assertFalse(any(d.startswith(name) for d in values['DEPENDS'].split()),
+                             values['DEPENDS'])
+        for name in ('libX11', 'libXaw', 'libXt'):
+            self.assertNotIn(name, values['BUILDLINK_TREE'].split())
+
     def test_native_builds_keep_runtime_tools(self):
         groff = query('textproc/groff', 'USE_TOOLS', native=True)['USE_TOOLS'].split()
         self.assertIn('awk:run', groff)
         self.assertIn('sed:run', groff)
-        self.assertIn('gs:run', groff)
         automake = query('devel/automake', 'USE_TOOLS', native=True)['USE_TOOLS'].split()
         self.assertIn('gm4:run', automake)
 
