@@ -1812,6 +1812,16 @@ package_install_one()
                 set +f
             fi
         fi
+        if [ -n "${CROSS_BULK_PATCH_REFRESH_PREVIOUS_MAKEFILE:-}${CROSS_BULK_PATCH_REFRESH_SUBST_CLASS:-}" ]; then
+            : "${CROSS_BULK_PATCH_REFRESH_PREVIOUS_MAKEFILE:?select the installed Makefile preimage}"
+            : "${CROSS_BULK_PATCH_REFRESH_SUBST_CLASS:?select the added pre-configure SUBST class}"
+            case "$CROSS_BULK_PATCH_REFRESH_PREVIOUS_MAKEFILE" in
+                /*) ;;
+                *) echo 'Previous Makefile must be an absolute path' >&2; return 2 ;;
+            esac
+            set -- "$@" --previous-makefile "$CROSS_BULK_PATCH_REFRESH_PREVIOUS_MAKEFILE" \
+                --subst-class "$CROSS_BULK_PATCH_REFRESH_SUBST_CLASS"
+        fi
         "$host_python" -B -E -S "$(dirname "$0")/stage-local-patch-refresh.py" "$@"
         return $?
     fi
