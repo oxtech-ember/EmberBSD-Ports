@@ -7,3 +7,5 @@ lib/cmake/Crc32c/Crc32cTargets-noconfig.cmake
 lib/libcrc32c.so
 lib/libcrc32c.so.1
 lib/libcrc32c.so.1.1.0
+share/licenses/crc32c/AUTHORS
+share/licenses/crc32c/LICENSE
