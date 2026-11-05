@@ -1,0 +1,123 @@
+# Adapt existing custom filters to the Askama 0.16 filter contract.
+--- bindgen/cpp/bindgen/src/bindings/cpp/gen_cpp/filters/mod.rs.orig
++++ bindgen/cpp/bindgen/src/bindings/cpp/gen_cpp/filters/mod.rs
+@@ -413,3 +413,119 @@
+     }
+     Ok("".to_string())
+ }
++
++// Askama filter_fn generates a type; the same-named value function remains callable.
++#[askama::filter_fn]
++pub(crate) fn to_lower_snake_case(s: &str, _: &dyn askama::Values) -> Result<String> {
++    to_lower_snake_case(s)
++}
++
++#[askama::filter_fn]
++pub(crate) fn type_name(as_ct: &impl AsCodeType, _: &dyn askama::Values, ci: &ComponentInterface) -> Result<String> {
++    type_name(as_ct, ci)
++}
++
++#[askama::filter_fn]
++pub(crate) fn ffi_converter_name(as_ct: &impl AsCodeType, _: &dyn askama::Values) -> Result<String> {
++    ffi_converter_name(as_ct)
++}
++
++#[askama::filter_fn]
++pub(crate) fn ffi_error_converter_name(as_type: &impl AsType, _: &dyn askama::Values) -> Result<String> {
++    ffi_error_converter_name(as_type)
++}
++
++#[askama::filter_fn]
++pub(crate) fn ffi_struct_name(nm: &str, _: &dyn askama::Values) -> Result<String> {
++    ffi_struct_name(nm)
++}
++
++#[askama::filter_fn]
++pub(crate) fn callback_interface_name(nm: &str, _: &dyn askama::Values) -> Result<String> {
++    callback_interface_name(nm)
++}
++
++#[askama::filter_fn]
++pub(crate) fn canonical_name(as_ct: &impl AsCodeType, _: &dyn askama::Values) -> Result<String> {
++    canonical_name(as_ct)
++}
++
++#[askama::filter_fn]
++pub(crate) fn fn_name(nm: &str, _: &dyn askama::Values) -> Result<String> {
++    fn_name(nm)
++}
++
++#[askama::filter_fn]
++pub(crate) fn var_name(nm: &str, _: &dyn askama::Values) -> Result<String> {
++    var_name(nm)
++}
++
++#[askama::filter_fn]
++pub(crate) fn object_names(obj: &Object, _: &dyn askama::Values) -> Result<(String, String)> {
++    object_names(obj)
++}
++
++#[askama::filter_fn]
++pub(crate) fn literal_cpp<T: AsCodeType>(default: &DefaultValue, _: &dyn askama::Values, as_ct: &T, enum_style: &EnumStyle, ci: &ComponentInterface) -> Result<String> {
++    literal_cpp(default, as_ct, enum_style, ci)
++}
++
++#[askama::filter_fn]
++pub(crate) fn lift_fn(as_ct: &impl AsCodeType, _: &dyn askama::Values) -> Result<String> {
++    lift_fn(as_ct)
++}
++
++#[askama::filter_fn]
++pub(crate) fn lower_fn(as_ct: &impl AsCodeType, _: &dyn askama::Values) -> Result<String> {
++    lower_fn(as_ct)
++}
++
++#[askama::filter_fn]
++pub(crate) fn read_fn(as_ct: &impl AsCodeType, _: &dyn askama::Values) -> Result<String> {
++    read_fn(as_ct)
++}
++
++#[askama::filter_fn]
++pub(crate) fn write_fn(as_ct: &impl AsCodeType, _: &dyn askama::Values) -> Result<String> {
++    write_fn(as_ct)
++}
++
++#[askama::filter_fn]
++pub(crate) fn allocation_size_fn(as_ct: &impl AsCodeType, _: &dyn askama::Values) -> Result<String> {
++    allocation_size_fn(as_ct)
++}
++
++#[askama::filter_fn]
++pub(crate) fn variant_name(v: &Variant, _: &dyn askama::Values, enum_style: &EnumStyle) -> Result<String> {
++    variant_name(v, enum_style)
++}
++
++#[askama::filter_fn]
++pub(crate) fn ffi_type_name(ffi_type: &FfiType, _: &dyn askama::Values) -> Result<String> {
++    ffi_type_name(ffi_type)
++}
++
++#[askama::filter_fn]
++pub(crate) fn class_name(nm: &str, _: &dyn askama::Values) -> Result<String> {
++    class_name(nm)
++}
++
++#[askama::filter_fn]
++pub(crate) fn parameter(arg: &Argument, _: &dyn askama::Values, ci: &ComponentInterface) -> Result<String> {
++    parameter(arg, ci)
++}
++
++#[askama::filter_fn]
++pub(crate) fn docstring(docstring: &str, _: &dyn askama::Values, spaces: &i32) -> Result<String> {
++    self::docstring(docstring, spaces)
++}
++
++#[askama::filter_fn]
++pub(crate) fn can_dereference_optional(type_: &Type, _: &dyn askama::Values, ci: &ComponentInterface) -> Result<bool> {
++    can_dereference_optional(type_, ci)
++}
++
++#[askama::filter_fn]
++pub(crate) fn cpp_deref(type_: Type, _: &dyn askama::Values, ci: &ComponentInterface) -> Result<String> {
++    cpp_deref(type_, ci)
++}

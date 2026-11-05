@@ -1,0 +1,11 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -55,7 +55,7 @@
+ version = "1.0"
+ 
+ [dependencies.syn]
+-version = "2.0"
++version = "3.0.9"
+ features = [
+     "full",
+     "visit-mut",

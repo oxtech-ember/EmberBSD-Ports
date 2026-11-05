@@ -284,6 +284,15 @@
     },
     "patch": "regress-0.11.1.patch"
   },
+  "scroll_derive-0.12.1": {
+    "files": {
+      "Cargo.toml": {
+        "after": "d21300bae17414f4199b7d2fea12e486742db09dc3dcfce5680abd6c93385d78",
+        "before": "998cd825592d2c5a6801f09610cc7e4a0576f6b85d394e068399502f3b5e0f26"
+      }
+    },
+    "patch": "scroll_derive-0.12.1.patch"
+  },
   "selectors-0.42.0": {
     "files": {
       "Cargo.toml": {
@@ -433,6 +442,15 @@
       }
     },
     "patch": "tracing-attributes-0.1.31.patch"
+  },
+  "uniffi_internal_macros-0.32.2": {
+    "files": {
+      "Cargo.toml": {
+        "after": "c67c6933eb7ac497fb0658c72828f7e287d3aae4ea81b1a56c49346e513375da",
+        "before": "95d791c953db1a685023916df974da5b35e1b545f80bbd7b2118d5aed18c339b"
+      }
+    },
+    "patch": "uniffi_internal_macros-0.32.2.patch"
   },
   "windows-core-0.62.2": {
     "files": {
