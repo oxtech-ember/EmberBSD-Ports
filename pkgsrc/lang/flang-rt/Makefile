@@ -27,11 +27,11 @@ TOOL_DEPENDS+=		flang-[0-9]*:../../lang/flang
 # The build-host Flang selected by the host toolset include, as for every
 # Fortran package.
 .if empty(EMBERBSD_FLANG:U:M/*) || !exists(${EMBERBSD_FLANG:U/nonexistent})
-_FLANG_RT_DRIVER=${TOOLBASE}/bin/flang
+_EMBER_FLANG_DRIVER=${TOOLBASE}/bin/flang
 .else
-_FLANG_RT_DRIVER=${EMBERBSD_FLANG}
+_EMBER_FLANG_DRIVER=${EMBERBSD_FLANG}
 .endif
-.if exists(${_FLANG_RT_DRIVER})
+.if exists(${_EMBER_FLANG_DRIVER})
 # The runtime and its modules belong to one Flang release.
 .include "${PKGSRCDIR}/EMBERBSD-CROSS-FLANG-VERSION.MK"
 .  if "${_EMBER_FLANG_MAJOR}" != "${LLVM_MAJOR_VERSION}"

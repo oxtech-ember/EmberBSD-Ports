@@ -67,7 +67,9 @@ USE_LANGUAGES=		c c++ fortran
 # The native dispatcher probes target Fortran links while it is built. Keep
 # this build-only target role separate from runtime DEPENDS and the native
 # host Flang-RT selected by ordinary Fortran buildlink users.
+.if ${EMBERBSD_CROSS_COMPILER_FAMILY:Uclang} == "clang"
 CROSS_TARGET_DEPENDS+=	flang-rt>=23.1.4nb4:../../lang/flang-rt
+.endif
 # XXX Added for cross-compilation.  XXX Should be
 # ${TARGET_MACHINE_PLATFORM}, but currently we have to
 # fake-cross-compile libtool because it's broken upstream.

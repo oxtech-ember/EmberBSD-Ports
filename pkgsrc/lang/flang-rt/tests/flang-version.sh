@@ -13,7 +13,8 @@ work=$(CDPATH= cd -- "$2" && pwd)
 make=${BMAKE:?set BMAKE to the selected bmake}
 fail() { echo "FAIL: $*" >&2; exit 1; }
 query() { "$make" -C "$pkgsrc/lang/flang-rt" WRKOBJDIR="$work/obj" "$@" \
-    -V '${PKG_FAIL_REASON}' -V '${LLVM_MAJOR_VERSION}' -V '${EMBERBSD_FLANG}' -V '${TOOL_DEPENDS}'; }
+    -V '${PKG_FAIL_REASON}' -V '${LLVM_MAJOR_VERSION}' -V '${EMBERBSD_FLANG}' \
+    -V '${TOOL_DEPENDS}' -V '${_EMBER_FLANG_DRIVER}' -V '${_EMBER_FLANG_VERSION}'; }
 query EMBERBSD_FLANG= > "$work/uninstalled" || fail "cannot query lang/flang-rt before Flang install"
 case $(sed -n 1p "$work/uninstalled") in
 *EMBERBSD_FLANG*) fail "graph query requires installed Flang: $(sed -n 1p "$work/uninstalled")";;
@@ -26,10 +27,13 @@ query > "$work/same" || fail "cannot query lang/flang-rt"
 major=$(sed -n 2p "$work/same")
 flang=$(sed -n 3p "$work/same")
 case $flang in /*) ;; *) fail "the profile selects no Flang driver";; esac
+driver=$(sed -n 5p "$work/same")
+[ "$driver" = "$flang" ] || fail "runtime recipe uses $driver instead of selected Flang $flang"
 case $(sed -n 1p "$work/same") in
 *EMBERBSD_FLANG*) fail "the matching Flang is refused: $(sed -n 1p "$work/same")";;
 esac
 version=$("$flang" --version | sed -n '1s/^[^ ]* version \([^ ]*\).*/\1/p')
+[ "$(sed -n 6p "$work/same")" = "$version" ] || fail "runtime recipe did not query the selected driver version"
 [ "${version%%.*}" = "$major" ] || fail "the selected Flang $version is not LLVM $major"
 other=$((major + 1))
 query LLVM_VERSION="$other.1.0" > "$work/other" || fail "cannot query lang/flang-rt"

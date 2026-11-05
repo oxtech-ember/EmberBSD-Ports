@@ -317,7 +317,7 @@ class Exporter:
         # Some native dispatchers link a target runtime while being built.
         # Keep this build-only edge in the target role and out of runtime
         # package dependencies.
-        if self.args.dependency_phase != 'runtime':
+        if self.args.mode == 'cross' and self.args.dependency_phase != 'runtime':
             for dependency in sorted(set(shlex.split(metadata['CROSS_TARGET_DEPENDS']))):
                 pattern, sep, path = dependency.partition(':')
                 if not sep or not pattern or not path:

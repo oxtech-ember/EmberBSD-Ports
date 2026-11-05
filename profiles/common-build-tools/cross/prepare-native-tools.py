@@ -477,8 +477,12 @@ def refresh(toolset, destination, qt=(), fetch_mode='fetch', native_cxx=None):
     data = render(toolset, qt, fetch_mode, native_cxx)
     if current == data:
         return {'makeconf': str(output), 'changed': False}
-    if current is not None and output.read_bytes() != current:
-        raise SDKError('The generated native include changed during refresh')
+    if current is not None:
+        latest = output.read_bytes()
+        if latest == data:
+            return {'makeconf': str(output), 'changed': False}
+        if latest != current:
+            raise SDKError('The generated native include changed during refresh')
     replace_makeconf(output, data)
     return {'makeconf': str(output), 'changed': True}
 

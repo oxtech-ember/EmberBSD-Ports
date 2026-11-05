@@ -187,6 +187,22 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         flang = root / 'host-pkg-llvm/bin/flang'
         flang.write_text('#!/bin/sh\nexit 0\n')
         flang.chmod(0o755)
+        refreshed_qt = adapter.qt_host_paths(str(root / 'host-pkg-llvm'), selected.path) + \
+            adapter.mlir_host_tools(str(root / 'host-pkg-llvm')) + \
+            adapter.flang_host_tool(str(root / 'host-pkg-llvm'))
+        race_data = adapter.render(selected, refreshed_qt, fetch_mode='manual')
+        original_read_bytes = Path.read_bytes
+        race_reads = [0]
+        def concurrent_refresh(path):
+            if path == include:
+                race_reads[0] += 1
+                if race_reads[0] == 2:
+                    Path.write_bytes(include, race_data)
+            return original_read_bytes(path)
+        with mock.patch.object(Path, 'read_bytes', concurrent_refresh), \
+             contextlib.redirect_stdout(io.StringIO()):
+            adapter.main(['refresh', *pins, '--fetch-mode', 'manual', '--makeconf', str(include)])
+        assert race_reads[0] == 2 and include.read_bytes() == race_data
         with contextlib.redirect_stdout(io.StringIO()):
             adapter.main(['refresh', *pins, '--fetch-mode', 'manual', '--makeconf', str(include)])
         refreshed = include.read_bytes()
