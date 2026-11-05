@@ -1,0 +1,69 @@
+# $NetBSD$
+
+Export a common Qt-backed MicroTeX provider without forcing sample builds.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -1,7 +1,7 @@
+ cmake_minimum_required(VERSION 3.16)
+ project(LaTeX)
+ 
+-add_library(LaTeX "")
++add_library(LaTeX STATIC "")
+ 
+ # MSVC Compat
+ 
+@@ -139,7 +139,9 @@
+         src/latex.cpp
+         src/render.cpp
+         )
+-target_include_directories(LaTeX PUBLIC src)
++target_include_directories(LaTeX PUBLIC
++    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
++    $<INSTALL_INTERFACE:include/microtex>)
+ 
+ # check operating system
+ 
+@@ -151,9 +153,10 @@
+     target_sources(LaTeX PRIVATE
+             src/platform/qt/graphic_qt.cpp
+             )
+-    target_link_libraries(LaTeX PRIVATE
++    target_link_libraries(LaTeX PUBLIC
+             Qt${QT_VERSION_MAJOR}::Gui
+             )
++    if (BUILD_EXAMPLE)
+     add_executable(LaTeXQtSample
+             src/samples/qt_texwidget.cpp
+             src/samples/qt_mainwindow.cpp
+@@ -165,6 +168,7 @@
+             LaTeX)
+     set_target_properties(LaTeXQtSample PROPERTIES OUTPUT_NAME LaTeX)
+     set_target_properties(LaTeXQtSample PROPERTIES AUTOMOC ON)
++    endif()
+ elseif (SKIA)
+     message(STATUS, "Cross platform build using Qt and Skia for rendering")
+     target_compile_definitions(LaTeX PUBLIC -DBUILD_SKIA -DSK_GL)
+@@ -255,3 +259,22 @@
+     add_subdirectory(example)
+ endif ()
+ 
++
++# Export a reusable Qt-backed provider and the same embedded fonts as the
++# desktop consumer. The static resource is retained by Q_INIT_RESOURCE.
++if (QT)
++    set_target_properties(LaTeX PROPERTIES AUTORCC ON)
++    target_sources(LaTeX PRIVATE res/bundled.qrc)
++    include(GNUInstallDirs)
++    install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/microtex)
++    install(DIRECTORY res/fonts/licences/ DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/microtex)
++    install(TARGETS LaTeX EXPORT MicroTeXTargets ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    install(DIRECTORY src/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/microtex
++            FILES_MATCHING PATTERN "*.h")
++    install(EXPORT MicroTeXTargets NAMESPACE MicroTeX::
++            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/MicroTeX)
++    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/MicroTeXConfig.cmake"
++        "include(CMakeFindDependencyMacro)\nfind_dependency(Qt${QT_VERSION_MAJOR} COMPONENTS Gui)\ninclude(\"\${CMAKE_CURRENT_LIST_DIR}/MicroTeXTargets.cmake\")\n")
++    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/MicroTeXConfig.cmake"
++            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/MicroTeX)
++endif()

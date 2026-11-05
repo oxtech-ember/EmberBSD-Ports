@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.16)
+project(microtex_consumer LANGUAGES CXX)
+find_package(MicroTeX CONFIG REQUIRED)
+add_executable(microtex_consumer main.cpp)
+target_link_libraries(microtex_consumer PRIVATE MicroTeX::LaTeX)

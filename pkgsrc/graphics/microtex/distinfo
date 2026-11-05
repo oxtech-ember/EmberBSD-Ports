@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (MicroTeX-61aaa7cc354de91d5898ffb0b2a6c62628d9a76f.tar.gz) = 53fd43d4572ba90aeabed3cc0146d4a7e8462437c5739f4f6e3c7aef0cd37d68
+SHA512 (MicroTeX-61aaa7cc354de91d5898ffb0b2a6c62628d9a76f.tar.gz) = 207dd25e8926db4e53326a44aea517d5f316efeb9c54b2013ab7b4bfe25a116ad73a03969e559b545142fb5ae19bf4e7d93008ea59cbca312ae762689e4e9db9
+Size (MicroTeX-61aaa7cc354de91d5898ffb0b2a6c62628d9a76f.tar.gz) = 1620370
+SHA1 (patch-CMakeLists.txt) = 2bfd1256ea3a59c68f94220725eae777e3c4a87a
