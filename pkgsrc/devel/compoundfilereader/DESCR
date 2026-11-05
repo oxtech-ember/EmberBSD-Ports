@@ -1,0 +1,3 @@
+Microsoft Compound File Binary Format reader, distributed as a header-only C++ library.
+
+This shared provider carries the KiCad 10.0.8 fork's UTF-16 callback type, early-stop callback contract, malformed directory-name validation and cycle guards. The compatibility delta is maintained as patches over microsoft/compoundfilereader commit 4ddb0602600833bc925d76c0f0382ba88c1c9f60. Its provenance is KiCad 10.0.8's thirdparty/compoundfilereader subtree in the upstream kicad-10.0.8.tar.bz2 source archive (SHA256 e349755a725b5dd2ae43c5bac20b2c5504fd4f788d3bc84e84712b01349e5828).

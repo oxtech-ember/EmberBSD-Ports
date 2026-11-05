@@ -1,0 +1,7 @@
+$NetBSD$
+
+BLAKE2s (compoundfilereader-0.0.20250414-4ddb0602600833bc925d76c0f0382ba88c1c9f60.tar.gz) = da4efbbc37d595c4662ceef5f04556d615c9397535e8d8fe7aecc6de4c89a21c
+SHA512 (compoundfilereader-0.0.20250414-4ddb0602600833bc925d76c0f0382ba88c1c9f60.tar.gz) = 894b9e8e47de5a2ac92f8985efdd4c5d842d21abd54472e28e468337596bdbfeba107c8730346597453d117fc3145e3886244248e37d24811ea8f95968759e1a
+Size (compoundfilereader-0.0.20250414-4ddb0602600833bc925d76c0f0382ba88c1c9f60.tar.gz) = 34049
+SHA1 (patch-src_include_compoundfilereader.h) = 90ad90bf6e05da09d5eca0182eef5c87be8723b8
+SHA1 (patch-src_include_utf.h) = caea6db78b857104d3946147e5e76bd5403e07cc
