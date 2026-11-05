@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.16)
+project(libcontext_roundtrip LANGUAGES CXX)
+find_package(libcontext 20261029 CONFIG REQUIRED)
+add_executable(libcontext_roundtrip roundtrip.cpp)
+target_compile_features(libcontext_roundtrip PRIVATE cxx_std_11)
+target_link_libraries(libcontext_roundtrip PRIVATE libcontext::context)
+enable_testing()
+add_test(NAME libcontext_roundtrip COMMAND libcontext_roundtrip)
