@@ -3,6 +3,16 @@ preserve Ruby and YJIT public exports, and flatten the Rust archive into
 static libruby. Revision advances lang/ruby40 for the changed outputs.
 Not submitted upstream.
 
+--- a/lang/ruby40/Makefile
++++ b/lang/ruby40/Makefile
+@@ -2,6 +2,7 @@
+ 
+ DISTNAME=	${RUBY_DISTNAME}
+ PKGNAME=	${RUBY_PKGPREFIX}-${RUBY_VERSION}
++PKGREVISION=	1
+ CATEGORIES=	lang ruby
+ MASTER_SITES=	${MASTER_SITE_RUBY}
+ 
 --- a/lang/ruby40/distinfo
 +++ b/lang/ruby40/distinfo
 @@ -6,6 +6,7 @@

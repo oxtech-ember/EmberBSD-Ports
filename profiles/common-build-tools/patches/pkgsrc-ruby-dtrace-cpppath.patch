@@ -1,7 +1,7 @@
 # Preserve the selected Darwin DTrace provider and preprocessor.
 # Origin: EmberBSD (AI-assisted). Apple DTrace must not discover its
 # preprocessor through xcrun; pkgsrc's selected PKG_CC is the SDK compiler.
-# Revision 2 includes the native DTrace and Darwin YJIT linker changes.
+# Revision advances lang/ruby40 because its native build environment changes.
 
 --- a/lang/ruby40/Makefile
 +++ b/lang/ruby40/Makefile
@@ -9,7 +9,7 @@
  
  DISTNAME=	${RUBY_DISTNAME}
  PKGNAME=	${RUBY_PKGPREFIX}-${RUBY_VERSION}
-+PKGREVISION=	2
++PKGREVISION=	1
  CATEGORIES=	lang ruby
  MASTER_SITES=	${MASTER_SITE_RUBY}
  
