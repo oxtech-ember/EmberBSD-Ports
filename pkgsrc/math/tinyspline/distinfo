@@ -1,0 +1,7 @@
+$NetBSD$
+
+BLAKE2s (tinyspline-0.6.0-5f0e8fad34e86771cfae3dac4beef5f1858d5610.tar.gz) = bcc6bc7f8514f64897558201deb09c7d6aac6c60d8061db4137ba471ecaaf8a2
+SHA512 (tinyspline-0.6.0-5f0e8fad34e86771cfae3dac4beef5f1858d5610.tar.gz) = e81d95e9fa7ec33b70d541695ab18b8e9c2a92e7c66877aa9957526e2ac144558b47409e1a1b721f7702a8462a22f360d1ec96b0023db108da13f8c37b8c0c20
+Size (tinyspline-0.6.0-5f0e8fad34e86771cfae3dac4beef5f1858d5610.tar.gz) = 400164 bytes
+SHA1 (patch-src_CMakeLists.txt) = f80ac2a173b6e6211d2fda29894f05cb0fe0e50e
+SHA1 (patch-src_tinyspline.c) = 2e44056e3507f145133b501a56e63fee9e51589b

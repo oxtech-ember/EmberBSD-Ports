@@ -1,0 +1,24 @@
+$NetBSD$
+
+Use the shared TinySpline C++ provider and its separately packaged Parson dependency.
+--- thirdparty/CMakeLists.txt.orig
++++ thirdparty/CMakeLists.txt
+@@ -62,7 +62,7 @@
+ add_subdirectory( nanosvg )
+ add_subdirectory( rectpack2d )
+ add_subdirectory( rtree )
+-add_subdirectory( tinyspline_lib )
++find_package( tinysplinecxx 0.6.0 CONFIG REQUIRED )
+ find_path( POTRACE_INCLUDE_DIR NAMES potracelib.h )
+ find_library( POTRACE_LIBRARY NAMES potrace )
+ if( NOT POTRACE_INCLUDE_DIR OR NOT POTRACE_LIBRARY )
+--- common/CMakeLists.txt.orig
++++ common/CMakeLists.txt
+@@ -919,7 +919,7 @@
+     nanosvg
+     dxflib_qcad
+-    tinyspline_lib
++    tinysplinecxx::tinysplinecxx
+     scripting
+     nlohmann_json
+     pybind11::embed
