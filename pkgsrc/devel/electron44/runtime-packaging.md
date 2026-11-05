@@ -188,3 +188,8 @@ The producer projects their installed package identities into one fingerprint
 input shared by Node and TypeScript actions. An unchanged selection preserves
 its timestamp, so an unchanged build remains incremental; a changed selection
 invalidates the affected actions.
+
+The build selects native `flatc` and the target Eigen, FlatBuffers and FP16
+headers from their installed common packages. Their pkgdb ownership and source
+metadata are checked before use; header projections contain only owned files.
+The native generator's actual loader inputs are tracked by the selected SDK.

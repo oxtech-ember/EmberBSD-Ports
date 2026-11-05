@@ -490,7 +490,7 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     return destination / 'src'
 
 
-def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None, _updates=None, _refresh=False, _initial_missing=None, _legacy_devtools=False, _migration=False):
+def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None, ml_names=(), ml_verify=None, _updates=None, _refresh=False, _initial_missing=None, _legacy_devtools=False, _migration=False):
     source = Path(source).resolve(strict=True)
     protobuf = Path(protobuf).resolve(strict=True) if protobuf is not None else None
     providers = {name: Path(value).resolve(strict=True) for name, value in
@@ -503,6 +503,11 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
             'DevTools modules migration is incomplete; rerun migration')
     require(_migration or not os.path.lexists(destination.parent / ('.' + destination.name + '.common-components-migration')),
             'common components migration is incomplete; rerun migration')
+    require(_migration or not os.path.lexists(destination.parent / ('.' + destination.name + '.ml-components-migration')),
+            'ML components migration is incomplete; rerun migration')
+    require(_migration or not os.path.lexists(destination.parent / ('.' + destination.name + '.header-components-migration')),
+            'header components migration is incomplete; rerun migration')
+    require(bool(ml_names) == bool(ml_verify), 'ML view selection is incomplete')
     require(destination.is_dir() and not destination.is_symlink(), 'source view must be a local directory')
     destination = destination.resolve(strict=True)
     def check(origin, dest, omit, extra):
@@ -528,8 +533,10 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
         _check_provider_link(root / 'v8', v8, _updates)
     require((root / 'out').is_dir() and not (root / 'out').is_symlink(),
             'source view out must be local')
-    replaced = ({'protobuf'} if protobuf else set()) | set(providers) | ({'abseil-cpp'} if system_abseil else set()) | ({'icu'} if system_icu else set()) | ({'re2'} if system_re2 else set()) | mirrored(source / 'third_party')
+    replaced = ({'protobuf'} if protobuf else set()) | set(providers) | ({'abseil-cpp'} if system_abseil else set()) | ({'icu'} if system_icu else set()) | ({'re2'} if system_re2 else set()) | mirrored(source / 'third_party') | set(ml_names)
     check(source / 'third_party', root / 'third_party', replaced, replaced)
+    if ml_verify:
+        ml_verify()
     for name in mirrored(source / 'third_party'):
         nested = {Path('src/node_modules')} if name == 'devtools-frontend' and node_modules is not None and not _legacy_devtools else frozenset()
         mirror(source / 'third_party' / name, root / 'third_party' / name, verify=True,
@@ -901,26 +908,21 @@ def migrate_devtools_modules(source, protobuf, destination, **sources):
     return destination / 'src'
 
 
-def activate_common_components(source, protobuf, destination, **sources):
-    """Replace verified bundled component links with selected common views under lock."""
-    import hashlib
+def sibling_component_transaction(destination, origin, names, identity, label, verify_old, build_new, verify_new,
+                                  *, check_old_entry=None, already_new=None):
+    """Swap verified sibling views under the caller's exclusive source lock."""
     import json
     import shutil
-
-    destination = Path(destination).resolve(strict=True)
-    require(not os.path.lexists(_refresh_marker(destination)) and
-            not os.path.lexists(destination.parent / ('.' + destination.name + '.devtools-modules-migration')),
-            'another source-view transaction is incomplete')
-    origin = Path(source).resolve(strict=True) / 'third_party'
+    require(names and len(names) == len(set(names)) and all(re.fullmatch(r'[A-Za-z0-9_.-]+', n) for n in names),
+            'invalid component transaction names')
+    require(re.fullmatch(r'[a-z0-9-]+', label), 'invalid component transaction label')
     selected = destination / 'src/third_party'
-    names = [name for name, enabled in (('abseil-cpp', sources.get('system_abseil')),
-             ('icu', sources.get('system_icu')), ('re2', sources.get('system_re2')),
-             ('protobuf', protobuf is not None)) if enabled]
-    require(names, 'no common components selected')
-    stage = destination.parent / ('.' + destination.name + '.common-components-stage')
-    marker = destination.parent / ('.' + destination.name + '.common-components-migration')
-    identity = hashlib.sha256(json.dumps({'names': names, 'protobuf': str(protobuf),
-        'protoc': str(sources.get('protobuf_protoc'))}, sort_keys=True).encode()).hexdigest()
+    if check_old_entry is None:
+        check_old_entry = lambda path, name, partial: (path.is_symlink() and os.readlink(path) == str(origin / name))
+    if already_new is None:
+        already_new = lambda: all((selected / name).is_dir() and not (selected / name).is_symlink() for name in names)
+    stage = destination.parent / ('.' + destination.name + '.' + label + '-stage')
+    marker = destination.parent / ('.' + destination.name + '.' + label + '-migration')
 
     def mark(state):
         data = json.dumps({'version': 1, 'state': state, 'identity': identity}, sort_keys=True) + '\n'
@@ -934,8 +936,8 @@ def activate_common_components(source, protobuf, destination, **sources):
                 require(item.name in {prefix + name for name in names},
                         'unexpected common component stage entry')
                 if state == 'committed':
-                    require(item.is_symlink() and os.readlink(item) == str(origin / item.name[len(prefix):]),
-                            'invalid saved common component link during cleanup')
+                    require(check_old_entry(item, item.name[len(prefix):], True),
+                            'invalid saved component during cleanup')
                 else:
                     require(item.is_dir() and not item.is_symlink(), 'invalid staged common component')
             shutil.rmtree(stage)
@@ -947,22 +949,20 @@ def activate_common_components(source, protobuf, destination, **sources):
                 record.get('state') in ('staging', 'prepared', 'committed', 'rolled-back'),
                 'common component migration selection changed')
         if record['state'] == 'committed':
-            verify(source, protobuf, destination, **sources, _migration=True)
+            verify_new(True)
         elif record['state'] == 'prepared':
             require(stage.is_dir() and not stage.is_symlink(), 'missing common component stage')
             for name in reversed(names):
                 old, new, path = stage / ('old-' + name), stage / ('new-' + name), selected / name
                 if os.path.lexists(old):
-                    require(old.is_symlink() and os.readlink(old) == str(origin / name),
-                            'invalid saved common component link')
+                    require(check_old_entry(old, name, False), 'invalid saved component')
                     if os.path.lexists(path):
                         require(path.is_dir() and not path.is_symlink() and not os.path.lexists(new),
                                 'invalid partially installed common component')
                         path.rename(new)
                     old.rename(path)
                 else:
-                    require(path.is_symlink() and os.readlink(path) == str(origin / name),
-                            'invalid original common component link')
+                    require(check_old_entry(path, name, False), 'invalid original component')
             mark('rolled-back')
         clean_stage('committed' if record['state'] == 'committed' else 'rolled-back')
         marker.unlink()
@@ -970,32 +970,15 @@ def activate_common_components(source, protobuf, destination, **sources):
             return destination / 'src'
 
     require(not os.path.lexists(stage), 'unexpected existing common component stage')
-    if all((selected / name).is_dir() and not (selected / name).is_symlink() for name in names):
-        return verify(source, protobuf, destination, **sources)
-    old_sources = dict(sources, system_abseil=False, system_icu=False, system_re2=False,
-                       protobuf_protoc=None)
-    # Update only changed source leaves before validating the old component links.
-    _refresh_leaves(Path(source).resolve(strict=True), None, destination, old_sources)
-    verify(source, None, destination, **old_sources)
+    if already_new():
+        return verify_new(False)
+    verify_old()
     mark('staging')
     stage.mkdir()
     try:
         for name in names:
             path = stage / ('new-' + name)
-            if name == 'protobuf':
-                common = {'src', 'third_party'} | ({'python'} if sources.get('protobuf_protoc') else set())
-                path.mkdir()
-                for entry, item in entries(origin / name, common).items():
-                    (path / entry).symlink_to(item, target_is_directory=item.is_dir())
-                for entry in ('src', 'third_party'):
-                    (path / entry).symlink_to(Path(protobuf).resolve(strict=True) / entry, target_is_directory=True)
-                if sources.get('protobuf_protoc'):
-                    python_view(Path(protobuf), path / 'python', sources['protobuf_protoc'])
-            else:
-                replacements = {'abseil-cpp': abseil_replacements, 'icu': icu_replacements,
-                                're2': re2_replacements}[name](Path(source))
-                masks = abseil_masks(Path(source), replacements) if name == 'abseil-cpp' else shim_masks(replacements)
-                dependency_view(origin / name, path, replacements, masks)
+            build_new(name, path)
         mark('prepared')
     except BaseException:
         if not os.path.lexists(marker):
@@ -1004,11 +987,10 @@ def activate_common_components(source, protobuf, destination, **sources):
     try:
         for name in names:
             path = selected / name
-            require(path.is_symlink() and os.readlink(path) == str(origin / name),
-                    'common component link changed before installation')
+            require(check_old_entry(path, name, False), 'component changed before installation')
             path.rename(stage / ('old-' + name))
             (stage / ('new-' + name)).rename(path)
-        verify(source, protobuf, destination, **sources, _migration=True)
+        verify_new(True)
         mark('committed')
     except BaseException:
         # Keep the prepared marker and stage for deterministic recovery on retry.
@@ -1016,6 +998,59 @@ def activate_common_components(source, protobuf, destination, **sources):
     clean_stage('committed')
     marker.unlink()
     return destination / 'src'
+
+
+def activate_common_components(source, protobuf, destination, **sources):
+    """Replace verified bundled component links with selected common views under lock."""
+    import hashlib
+    import json
+    import shutil
+
+    destination = Path(destination).resolve(strict=True)
+    require(not os.path.lexists(destination.parent / ('.' + destination.name + '.devtools-modules-migration')),
+            'another source-view transaction is incomplete')
+    origin = Path(source).resolve(strict=True) / 'third_party'
+    selected = destination / 'src/third_party'
+    names = [name for name, enabled in (('abseil-cpp', sources.get('system_abseil')),
+             ('icu', sources.get('system_icu')), ('re2', sources.get('system_re2')),
+             ('protobuf', protobuf is not None)) if enabled]
+    require(names, 'no common components selected')
+    marker = destination.parent / ('.' + destination.name + '.common-components-migration')
+    stage = destination.parent / ('.' + destination.name + '.common-components-stage')
+    if not os.path.lexists(marker) and all((selected/name).is_dir() and not (selected/name).is_symlink() for name in names):
+        require(not os.path.lexists(stage), 'unexpected existing common component stage')
+        return _refresh_leaves(Path(source).resolve(strict=True), protobuf, destination, sources)
+    require(not os.path.lexists(_refresh_marker(destination)), 'source view refresh is incomplete')
+    identity = hashlib.sha256(json.dumps({'names': names, 'protobuf': str(protobuf),
+        'protoc': str(sources.get('protobuf_protoc'))}, sort_keys=True).encode()).hexdigest()
+
+    def verify_old():
+        old_sources = dict(sources, system_abseil=False, system_icu=False, system_re2=False,
+                           protobuf_protoc=None)
+        _refresh_leaves(Path(source).resolve(strict=True), None, destination, old_sources)
+        verify(source, None, destination, **old_sources)
+
+    def verify_new(migration):
+        return verify(source, protobuf, destination, **sources, _migration=migration)
+
+    def build_new(name, path):
+        if name == 'protobuf':
+            common = {'src', 'third_party'} | ({'python'} if sources.get('protobuf_protoc') else set())
+            path.mkdir()
+            for entry, item in entries(origin / name, common).items():
+                (path / entry).symlink_to(item, target_is_directory=item.is_dir())
+            for entry in ('src', 'third_party'):
+                (path / entry).symlink_to(Path(protobuf).resolve(strict=True) / entry, target_is_directory=True)
+            if sources.get('protobuf_protoc'):
+                python_view(Path(protobuf), path / 'python', sources['protobuf_protoc'])
+        else:
+            replacements = {'abseil-cpp': abseil_replacements, 'icu': icu_replacements,
+                            're2': re2_replacements}[name](Path(source))
+            masks = abseil_masks(Path(source), replacements) if name == 'abseil-cpp' else shim_masks(replacements)
+            dependency_view(origin / name, path, replacements, masks)
+
+    return sibling_component_transaction(destination, origin, names, identity, 'common-components',
+                                         verify_old, build_new, verify_new)
 
 
 def refresh(source, protobuf, destination, **sources):

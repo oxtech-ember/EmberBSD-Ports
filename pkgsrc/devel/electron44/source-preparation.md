@@ -290,3 +290,18 @@ materializing the additive source series. This leaves the reconfigure-incomplete
 guard in place. Materialize the current series and run the ordinary
 `reconfigure --refresh-source-view`; the guard is removed only after GN succeeds.
 The migration preserves the sibling Ninja outputs and other source-view leaves.
+
+Electron selects the common LiteRT, OpenXLA and eight shared ML source
+providers explicitly. Supply their prepared sources and verified archives to
+the producer, together with the source owner, shared pkgsrc export and its patch
+tool. The producer validates the owners before projecting only selected source
+and target package headers into its existing view. Existing configured work
+uses `reconfigure --activate-common-ml` for the initial transition; later
+verified provider changes update only affected components. Unchanged files keep
+their effective timestamps, while changed inputs cause the relevant objects to
+rebuild. Interrupted view transitions retain the reconfiguration guard.
+
+`EMBERBSD_ELECTRON_NODE_PORTS_SOURCE` optionally selects a different checkout
+of the same Ports owner for the Node source verification command. It defaults
+to `EMBERBSD_ELECTRON_PORTS_SOURCE`; the existing Node configure helper and
+its recorded GN dependency paths continue to use `PORTS_SOURCE`.

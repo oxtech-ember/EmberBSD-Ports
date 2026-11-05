@@ -36,7 +36,8 @@ def load_sdk(root):
     sys.path.insert(0, str(package.parent))
     result = {}
     for name in ('', 'host_prefix', 'application_toolchain', 'target_toolchain', 'targets', 'llvm_runtime',
-                 'process', 'paths', 'jsonio', 'darwin_sdk', 'darwin_runtime', 'compiler_bindings', 'cpu_capacity'):
+                 'process', 'paths', 'jsonio', 'darwin_sdk', 'darwin_runtime', 'compiler_bindings', 'cpu_capacity',
+                 'inventory', 'sourceprep', 'native_generator_runtime'):
         module = importlib.import_module('emberbsd_sdk' + ('.' + name if name else ''))
         require(Path(module.__file__).resolve() == package / ((name or '__init__') + '.py'),
                 'SDK module origin differs: ' + module.__name__)
@@ -608,13 +609,13 @@ def additive_protoc_runtime_view(old_arguments, values, options):
     return permitted
 
 
-def protobuf_package_source(package, owner_recipe, export_recipe, *, distinfo, package_path="devel/protobuf"):
+def protobuf_package_source(package, owner_recipe, export_recipe, *, distinfo, package_path="devel/protobuf", allow_empty_patches=False):
     """Compare the package's existing pkgsrc source metadata with its owner."""
     def inventory(recipe):
         patches = recipe / 'patches'
-        require(patches.is_dir(), 'common protobuf patch inventory is missing')
-        files = sorted(patches.glob('patch-*'))
-        require(files, 'common protobuf patch inventory is empty')
+        require(patches.is_dir() or allow_empty_patches, 'common package patch inventory is missing')
+        files = sorted(patches.glob('patch-*')) if patches.is_dir() else []
+        require(files or allow_empty_patches, 'common package patch inventory is empty')
         return {file.name: hashlib.sha256(file.read_bytes()).hexdigest() for file in files}
     expected = inventory(owner_recipe)
     require(inventory(export_recipe) == expected, 'selected pkgsrc protobuf patch inventory differs from common owner')
@@ -639,15 +640,43 @@ def selected_protoc_command(options, native, protoc, runtime_view):
     if runtime_view:
         return [native.tool('python'), str(options.sdk_source / 'scripts/run-darwin-with-runtime.py'),
                 '--runtime-view', str(runtime_view), '--', str(protoc)]
-    require(native.host['os'] == 'Darwin' and options.host_compiler_family == 'clang' and
+    require(native.host['os'] in ('Darwin', 'Linux', 'NetBSD') and
+            (native.host['os'] != 'Darwin' or options.host_compiler_family == 'clang') and
             not getattr(options, 'host_runtime_root', None),
-            'common protobuf without a runtime view requires the Darwin platform ABI')
+            'direct common protobuf requires the selected platform host ABI')
     return [str(protoc)]
 
+
+
+def native_installed_package_dirs(options, prefix):
+    """Index pkgdb metadata directories once; the SDK selects actual load owners."""
+    if getattr(options, '_native_generator_packages', None) is not None:
+        return options._native_generator_packages
+    database = Path(prefix).resolve(strict=True) / 'pkgdb'
+    require(database.is_dir() and not database.is_symlink(), 'native pkgdb is unavailable')
+    result = []
+    for item in sorted(database.iterdir()):
+        require(not item.is_symlink(), 'native pkgdb contains a linked entry')
+        if not item.is_dir():
+            continue
+        require(all((item / name).is_file() and not (item / name).is_symlink()
+                    for name in ('+CONTENTS', '+BUILD_INFO', '+BUILD_VERSION')),
+                'native pkgdb contains incomplete package metadata: ' + item.name)
+        result.append(str(item))
+    require(result, 'native pkgdb contains no package metadata')
+    options._native_generator_packages = result
+    return result
 
 def platform_protoc_inputs(options, sdk, native, protoc, selection):
     """Track direct native dylibs through the selected host buildlink pkgdb."""
     prefix = Path(options.host_prefix).resolve(strict=True)
+    if native.host['os'] != 'Darwin':
+        runtime = sdk['native_generator_runtime']
+        require(getattr(runtime, 'NATIVE_GENERATOR_RUNTIME_API', None) == 1,
+                'unsupported native generator runtime API')
+        packages = native_installed_package_dirs(options, prefix)
+        return runtime.runtime_inputs(str(prefix), str(protoc), native.host, packages,
+                                      search_path=native.path)
     image = sdk['darwin_runtime'].read_macho_runtime(str(protoc), native.host)
     owners = {}
     for item in selection:
@@ -923,7 +952,7 @@ def common_embedder_sources(options, sdk, native, environment):
         values.update(v8_prepared_source_receipt='//v8/emberbsd-prepared-source.json',
                       v8_version_hash_salt_files=[], v8_version_hash_salt='')
     if node:
-        owner = options.ports_source / 'scripts/source-inputs/node/source.py'
+        owner = (getattr(options, 'node_ports_source', None) or options.ports_source) / 'scripts/source-inputs/node/source.py'
         require(owner.is_file(), 'common Node source owner is missing')
         commands.append(('NODE', [native.tool('python'), '-B', str(owner), '--sdk-source', str(options.sdk_source),
                                   'verify-source', '--source', str(node), '--pkgsrc-root', str(node_export)]))
@@ -952,6 +981,111 @@ def common_embedder_sources(options, sdk, native, environment):
 
 
 
+
+
+ML_PROVIDERS = ('ruy', 'pthreadpool', 'gemmlowp', 'farmhash', 'ml-dtypes',
+                'neon2sse', 'fxdiv', 'fft2d', 'litert', 'openxla')
+
+
+
+def common_flatc(options, sdk, native, environment):
+    """Bind the selected native FlatBuffers generator and its real inputs."""
+    prefix = Path(options.host_prefix).resolve(strict=True)
+    db = prefix / 'pkgdb'
+    result = sdk['process'].capture([str(prefix/'sbin/pkg_info'), '-K', str(db), '-E',
+                                     'flatbuffers>=0'], env=environment).stdout.decode().splitlines()
+    require(len(result) == 1 and '/' not in result[0], 'selected native FlatBuffers package is ambiguous')
+    package = db/result[0]
+    require('PKGPATH=devel/flatbuffers' in (package/'+BUILD_INFO').read_text().splitlines(),
+            'native flatc has a different owner')
+    tool = (prefix/'bin/flatc').resolve(strict=True)
+    require(tool.is_file() and os.access(tool, os.X_OK) and tool.is_relative_to(prefix),
+            'native flatc is outside selected prefix')
+    require('bin/flatc' in (package/'+CONTENTS').read_text().splitlines(), 'flatc package ownership differs')
+    sdk['host_prefix'].validate_host_executable(str(prefix), str(tool), native.host, search_path=native.path)
+    recipe = Path(options.host_buildlink_pkgsrc)/'devel/flatbuffers'
+    protobuf_package_source(package, recipe, recipe, distinfo=True,
+                            package_path='devel/flatbuffers', allow_empty_patches=True)
+    version = sdk['process'].capture([str(tool), '--version'], env=environment).stdout.decode().strip()
+    match = re.fullmatch(r'flatc version ([0-9]+(?:\.[0-9]+)+)', version)
+    require(match is not None, 'selected flatc returned an invalid version')
+    version_header = prefix / 'include/flatbuffers/base.h'
+    require('include/flatbuffers/base.h' in (package/'+CONTENTS').read_text().splitlines() and
+            version_header.is_file() and version_header.resolve(strict=True).is_relative_to(prefix),
+            'native FlatBuffers version header is not package-owned')
+    text = version_header.read_text()
+    parts = []
+    for field in ('MAJOR', 'MINOR', 'REVISION'):
+        found = re.findall(r'^#define\s+FLATBUFFERS_VERSION_' + field + r'\s+([0-9]+)\s*$', text, re.M)
+        require(len(found) == 1, 'invalid native FlatBuffers version header')
+        parts.append(found[0])
+    require(match.group(1) == '.'.join(parts), 'selected flatc version differs from its package headers')
+    if native.host['os'] == 'Darwin':
+        image = sdk['darwin_runtime'].read_macho_runtime(str(tool), native.host)
+        loads = image['loads'] + image['implicit_loads']
+        require(all(row['name'].startswith(('/usr/lib/', '/System/Library/')) for row in loads),
+                'native flatc has non-platform runtime dependencies requiring explicit selection')
+        inputs = sorted([str(tool)] + [str((package/name).resolve(strict=True))
+                                      for name in ('+CONTENTS', '+BUILD_INFO', '+BUILD_VERSION')])
+    else:
+        runtime = sdk['native_generator_runtime']
+        require(getattr(runtime, 'NATIVE_GENERATOR_RUNTIME_API', None) == 1,
+                'unsupported native generator runtime API')
+        packages = native_installed_package_dirs(options, prefix)
+        inputs = runtime.runtime_inputs(str(prefix), str(tool), native.host, sorted(packages),
+                                        search_path=native.path)
+    return {'emberbsd_flatc': str(tool), 'emberbsd_flatc_inputs': sorted(set(inputs + [str(version_header.resolve(strict=True))]))}
+
+def common_ml_sources(options, sdk, native, environment):
+    """Validate each explicitly selected common source once per producer pass."""
+    paths = {name: getattr(options, 'ml_' + name.replace('-', '_') + '_source', None)
+             for name in ML_PROVIDERS}
+    archives = {name: getattr(options, 'ml_' + name.replace('-', '_') + '_archive', None)
+                for name in ML_PROVIDERS}
+    controls = tuple(getattr(options, name, None) for name in
+                     ('ml_patch', 'ml_export_patch', 'ml_ports_source', 'ml_pkgsrc_export'))
+    if not any(paths.values()) and not any(archives.values()) and not any(controls) and getattr(options, 'activate_common_providers', False):
+        return {}
+    require(all(paths.values()) and all(archives.values()) and getattr(options, 'ml_patch', None) and
+            getattr(options, 'ml_pkgsrc_export', None) and getattr(options, 'ml_ports_source', None) and
+            getattr(options, 'ml_export_patch', None),
+            'Electron requires all verified common ML sources and patch tool')
+    identities = {}
+    for name, selected in paths.items():
+        selected = absolute(selected, 'common ML source: ' + name)
+        kind = name if name in ('litert', 'openxla') else 'ml-sources'
+        owner = options.ml_ports_source / 'scripts/source-inputs' / kind / 'source.py'
+        require(owner.is_file(), 'common ML source owner missing: ' + name)
+        command = [native.tool('python'), '-B', str(owner)]
+        if kind == 'ml-sources':
+            command += ['--package', 'devel/' + name]
+        command += ['--sdk-source', str(options.sdk_source), '--git', selected_control_git(options.git),
+                    'verify-source', '--source', str(selected), '--archive', str(archives[name]),
+                    '--patch', str(options.ml_patch),
+                    '--pkgsrc-export', str(options.ml_pkgsrc_export)]
+        try:
+            result = sdk['process'].capture(command, env=source_owner_environment(environment))
+        except sdk['process'].CommandError as error:
+            # A fast-path owner needs no export check. If it falls back to the
+            # shared export, select that export's distinct patch explicitly.
+            if b'shared pkgsrc export was made from different inputs' not in error.stderr:
+                raise
+            result = sdk['process'].capture(command + ['--export-patch', str(options.ml_export_patch)],
+                                             env=source_owner_environment(environment))
+        record = json.loads(result.stdout.decode('utf-8', 'strict'))
+        digest = record.get('tree_sha256') if isinstance(record, dict) else None
+        require(record.get('package') == 'devel/' + name and isinstance(digest, str) and
+                re.fullmatch(r'[0-9a-f]{64}', digest), 'invalid verified ML source: ' + name)
+        identities[name] = digest
+        environment['EMBERBSD_ML_' + name.upper().replace('-', '_') + '_SHA256'] = digest
+    options.ml_identities = identities
+    options.ml_sdk = sdk
+    options.ml_sources = {name: Path(path).resolve(strict=True) for name, path in paths.items()}
+    selector = local_module('electron_header_providers', 'header-providers.py')
+    options.ml_headers = selector.select(options, sdk, native, environment, source_check=protobuf_package_source)
+    for name, record in options.ml_headers.items():
+        environment['EMBERBSD_ML_HEADER_' + name.upper() + '_SHA256'] = record['identity']
+    return {'use_litert_tflite': True, **common_flatc(options, sdk, native, environment)}
 
 def common_abseil(options, sdk, native, environment, buildlink):
     if not getattr(options, 'shared_abseil', False):
@@ -1394,6 +1528,7 @@ def producer_inputs(options, sdk):
     values.update(common_protobuf(options, sdk, native, environment, buildlink, runtime_view))
     values.update(common_undici(options, sdk, environment))
     values.update(common_embedder_sources(options, sdk, native, environment))
+    values.update(common_ml_sources(options, sdk, native, environment))
     values.update(common_v8_metagen(options, sdk, native, environment, tools))
     if options.compiler_family == 'clang':
         target_root = getattr(options, 'target_runtime_stage', None) or options.sysroot
@@ -1534,8 +1669,61 @@ def gn_source(options):
     if getattr(options, 'migrate_devtools_modules_only', False):
         require(options.phase == 'reconfigure', 'DevTools migration requires reconfigure')
         return view.migrate_devtools_modules(options.workspace / 'src', common, destination, **sources)
+
+    ids = getattr(options, 'ml_identities', None)
+    if ids:
+        ml = local_module('electron_ml_source_view', 'ml-source-view.py')
+        headers = local_module('electron_header_source_view', 'header-source-view.py')
+        selected = options.ml_headers
+        old_ml = getattr(options, 'old_ml_identities', None)
+        old_headers = getattr(options, 'old_header_identities', None)
+        new_headers = {name: data['identity'] for name, data in selected.items()}
+        sp = options.ml_sdk['sourceprep']
+        def selected_sources(ml_ids, header_ids):
+            result = dict(sources)
+            checks, names = [], []
+            if ml_ids:
+                names.extend(ml.NAMES)
+                checks.append(lambda: ml.verify_view(view, options.workspace / 'src', destination, ml_ids, sp))
+            if header_ids:
+                names.extend(headers.NAMES)
+                records = {name: dict(selected[name], identity=header_ids[name]) for name in headers.NAMES}
+                checks.append(lambda: headers.verify_view(view, options.workspace / 'src', destination, records, sp))
+            if names:
+                result.update(ml_names=names, ml_verify=lambda: [check() for check in checks])
+            return result
+        def verify_selection(ml_ids, header_ids):
+            return view.verify(options.workspace / 'src', common, destination,
+                               **selected_sources(ml_ids, header_ids))
+        new_view = not os.path.lexists(destination)
+        if new_view:
+            require(getattr(options, 'phase', '') == 'configure', 'common source view is missing')
+            view.create(options.workspace / 'src', common, destination, **sources)
+        initial = getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)
+        transition = (new_view or getattr(options, 'activate_common_ml', False) or
+                      (old_ml is not None and (old_ml != ids or old_headers != new_headers)))
+        if initial and not transition:
+            marker = destination.parent / ('.' + destination.name + '.ml-components-migration')
+            header_marker = destination.parent / ('.' + destination.name + '.header-components-migration')
+            legacy = all((destination/'src/third_party'/name).is_symlink() for name in ml.NAMES)
+            transition = os.path.lexists(marker) or os.path.lexists(header_marker) or legacy
+            if legacy and not os.path.lexists(marker):
+                view.complete_initial(options.workspace / 'src', common, destination, **sources)
+        if transition:
+            if not new_view and not initial:
+                require(options.phase == 'reconfigure', 'ML transition requires reconfigure')
+            ml.activate(view, options.workspace / 'src', destination, options.ml_sources, ids,
+                options.ml_sdk['inventory'], sp, lambda: verify_selection(old_ml, old_headers),
+                old_identities=old_ml)
+            headers.activate(view, options.workspace / 'src', destination, selected,
+                options.ml_sdk['inventory'], sp, lambda: verify_selection(ids, old_headers),
+                old_identities=old_headers)
+            return verify_selection(ids, new_headers)
+        sources = selected_sources(ids, new_headers)
     if getattr(options, 'refresh_source_view', False):
         require(options.phase == 'reconfigure', 'source refresh requires reconfigure')
+        if ids:
+            return view._refresh_leaves(options.workspace / 'src', common, destination, sources)
         return view.refresh(options.workspace / 'src', common, destination, **sources)
     if not os.path.lexists(destination):
         require(getattr(options, 'phase', '') == 'configure',
@@ -1792,6 +1980,9 @@ def reconfigure(options):
     build_after_reconfigure = getattr(options, 'build_after_reconfigure', False)
     if build_after_reconfigure:
         require(options.jobs > 0, 'Ninja job count must be positive')
+        require(not getattr(options, 'activate_common_providers', False) or
+                getattr(options, 'ml_ruy_source', None),
+                'common provider transition without ML sources cannot run Ninja')
     require_common_v8(options)
     require_common_node(options)
     require_common_perfetto(options)
@@ -1832,6 +2023,28 @@ def reconfigure(options):
                          'EMBERBSD_HOST_TYPESCRIPT', 'EMBERBSD_HOST_ROLLUP',
                          'HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'}
         old_env = saved['environment']
+        require(not (getattr(options, 'activate_common_ml', False) and
+                    getattr(options, 'activate_common_providers', False)),
+                'select only one common provider migration')
+        require(not getattr(options, 'activate_common_ml', False) or getattr(candidate, 'ml_identities', None),
+                'common ML activation requires verified inputs')
+        if getattr(candidate, 'ml_identities', None):
+            options.ml_identities, options.ml_sources, options.ml_sdk = candidate.ml_identities, candidate.ml_sources, sdk
+            options.ml_headers = candidate.ml_headers
+            ml_keys = {'EMBERBSD_ML_' + name.upper().replace('-', '_') + '_SHA256': name for name in ML_PROVIDERS}
+            old_ml = {name: old_env[key] for key, name in ml_keys.items() if key in old_env}
+            require(not old_ml or len(old_ml) == len(ML_PROVIDERS), 'partial saved ML selection')
+            if not old_ml:
+                require(getattr(options, 'activate_common_ml', False), 'initial ML transition needs explicit activation')
+            options.old_ml_identities = old_ml or None
+            header_keys = {'EMBERBSD_ML_HEADER_' + name.upper() + '_SHA256': name
+                           for name in ('eigen3', 'flatbuffers', 'fp16')}
+            old_headers = {name: old_env[key] for key, name in header_keys.items() if key in old_env}
+            require(not old_headers or len(old_headers) == len(header_keys), 'partial saved header selection')
+            require(bool(old_headers) == bool(old_ml), 'saved ML and header selections disagree')
+            options.old_header_identities = old_headers or None
+            permitted_env.update(ml_keys)
+            permitted_env.update(header_keys)
         activation_env, activation_args = common_activation_allowlist(
             options, old_env, environment, saved['arguments'], values)
         permitted_env.update(activation_env)
@@ -1889,6 +2102,7 @@ def reconfigure(options):
                          'node_host_runtime_python', 'node_host_runtime_launcher',
                          'node_host_runtime_view', 'node_host_runtime_inputs',
                          'node_shared_undici_path', 'node_shared_undici_input',
+                         'use_litert_tflite', 'emberbsd_flatc', 'emberbsd_flatc_inputs',
                          'v8_metagen_libclang_so', 'v8_metagen_libclang_bindings_dir',
                          'v8_metagen_runtime_python', 'v8_metagen_runtime_launcher',
                          'v8_metagen_runtime_view', 'v8_metagen_runtime_inputs',
@@ -1925,6 +2139,8 @@ def reconfigure(options):
             if node_source_refresh and name == 'emberbsd_node_source_identity':
                 continue
             if name in activation_args:
+                continue
+            if name in ('use_litert_tflite', 'emberbsd_flatc', 'emberbsd_flatc_inputs') and getattr(options, 'activate_common_ml', False) and not old_ml:
                 continue
             if name in permitted_runtime_args:
                 continue
@@ -2037,10 +2253,10 @@ def main():
                      'host-buildlink-pkgsrc', 'host-buildlink-stage-root',
                      'host-buildlink-base-makeconf', 'host-buildlink-bmake-mk',
                      'protobuf-source', 'protobuf-ports-source', 'protobuf-archive', 'protobuf-patch',
-                     'node-source', 'node-pkgsrc', 'gyp-source', 'gyp-pkgsrc', 'perfetto-source', 'perfetto-ports-source',
+                     'node-source', 'node-pkgsrc', 'node-ports-source', 'gyp-source', 'gyp-pkgsrc', 'perfetto-source', 'perfetto-ports-source',
                      'perfetto-archive', 'perfetto-patch', 'v8-source', 'v8-ports-source', 'v8-pkgsrc',
                      'v8-metagen-libclang-so', 'v8-metagen-bindings-dir', 'v8-metagen-runtime-view',
-                     'host-tool-runtime-view'):
+                     'host-tool-runtime-view', 'ml-patch', 'ml-pkgsrc-export', 'ml-ports-source', 'ml-export-patch', *( 'ml-' + name + '-' + role for name in ML_PROVIDERS for role in ('source', 'archive'))):
             command.add_argument('--' + name, type=Path)
         command.add_argument('--perfetto-scoped-runtime', action='store_true')
         command.add_argument('--node-scoped-runtime', action='store_true')
@@ -2055,6 +2271,8 @@ def main():
             initial.add_argument('--retry-configure', action='store_true',
                                  help='retry failed GN with verified selected inputs')
         if phase == 'reconfigure':
+            command.add_argument('--activate-common-ml', action='store_true',
+                                 help='activate verified common ML sources without replacing the source view')
             command.add_argument('--activate-common-providers', action='store_true',
                                  help='activate verified common providers without replacing the source view')
             command.add_argument('--migrate-devtools-modules-only', action='store_true',
@@ -2083,13 +2301,15 @@ def main():
             with sdk['process'].ContextLocks(exclusive, str(options.lock_root)):
                 selected = (options.ports_source, options.sdk_source, options.protobuf_source,
                             options.protobuf_ports_source, options.protobuf_archive, options.protobuf_patch,
-                            options.node_source, options.node_pkgsrc, options.gyp_source, options.gyp_pkgsrc, options.perfetto_source,
+                            options.node_source, options.node_pkgsrc, options.node_ports_source, options.gyp_source, options.gyp_pkgsrc, options.perfetto_source,
                             options.perfetto_ports_source, options.perfetto_archive, options.perfetto_patch,
                             options.v8_source, options.v8_ports_source, options.v8_pkgsrc,
                             options.v8_metagen_libclang_so, options.v8_metagen_bindings_dir, options.v8_metagen_runtime_view,
                             options.target_runtime_stage, options.target_runtime_base, options.host_runtime_root, options.protoc_runtime_view,
                             options.host_prefix, options.sysroot, options.host_buildlink_pkgsrc,
-                            options.host_buildlink_stage_root)
+                            options.host_buildlink_stage_root, options.ml_patch, options.ml_pkgsrc_export, options.ml_ports_source, options.ml_export_patch,
+                            *(getattr(options, 'ml_' + name.replace('-', '_') + '_' + role)
+                              for name in ML_PROVIDERS for role in ('source', 'archive')))
                 shared = [key for key in context_keys(*selected) if key not in exclusive]
                 with sdk['process'].ContextLocks(shared, str(options.lock_root), shared=True):
                     {'configure': configure, 'reconfigure': reconfigure, 'build': build}[options.phase](options)

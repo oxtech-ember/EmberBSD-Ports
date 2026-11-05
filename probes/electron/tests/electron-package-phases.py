@@ -58,6 +58,13 @@ plist-fixture:
     for provider in ('PROTOBUF','PERFETTO'):
         for name in ('SOURCE','PORTS_SOURCE','ARCHIVE','PATCH'):
             variables[provider+'_'+name]=str(root/(provider.lower()+' '+name.lower()))
+    ml_keys = ('ML_RUY_SOURCE','ML_PTHREADPOOL_SOURCE','ML_GEMMLOWP_SOURCE','ML_FARMHASH_SOURCE',
+               'ML_ML_DTYPES_SOURCE','ML_NEON2SSE_SOURCE','ML_FXDIV_SOURCE','ML_FFT2D_SOURCE',
+               'ML_LITERT_SOURCE','ML_OPENXLA_SOURCE','ML_PATCH','ML_PKGSRC_EXPORT','ML_PORTS_SOURCE','ML_EXPORT_PATCH',
+               'ML_RUY_ARCHIVE','ML_PTHREADPOOL_ARCHIVE','ML_GEMMLOWP_ARCHIVE','ML_FARMHASH_ARCHIVE',
+               'ML_ML_DTYPES_ARCHIVE','ML_NEON2SSE_ARCHIVE','ML_FXDIV_ARCHIVE','ML_FFT2D_ARCHIVE',
+               'ML_LITERT_ARCHIVE','ML_OPENXLA_ARCHIVE')
+    variables.update({key:str(root/key.lower()) for key in ml_keys})
     env=dict(os.environ,PHASE_RECORD=str(record))
     env.pop('MAKE_JOBS',None)
     def run(target, values=variables, **extra):
@@ -74,12 +81,12 @@ plist-fixture:
         # These appear in the source-defined optional mapping order.
         for key in ('COMPILER_FAMILY','MACOS_SDK','PROTOBUF_SOURCE','PROTOBUF_PORTS_SOURCE',
                     'PROTOBUF_ARCHIVE','PROTOBUF_PATCH','PERFETTO_SOURCE','PERFETTO_PORTS_SOURCE',
-                    'PERFETTO_ARCHIVE','PERFETTO_PATCH','MACOS_MINIMUM'):
+                    'PERFETTO_ARCHIVE','PERFETTO_PATCH','MACOS_MINIMUM',*ml_keys):
             result += ['--'+key.lower().replace('_','-'),variables[key]]
         result += ['--shared-undici','--shared-abseil','--shared-icu','--shared-re2']
         if phase=='build': result += ['--keep-going','0']
         return result
-    for name in ('NODE_SOURCE','PROTOBUF_SOURCE','PROTOBUF_ARCHIVE','PERFETTO_SOURCE'):
+    for name in ('NODE_SOURCE','PROTOBUF_SOURCE','PROTOBUF_ARCHIVE','PERFETTO_SOURCE','ML_RUY_SOURCE'):
         missing=dict(variables); del missing[name]
         r=run('do-configure',missing); assert r.returncode!=0 and not rows(), (r.stdout,r.stderr)
     for name in ('SHARED_UNDICI','SHARED_ABSEIL','SHARED_ICU','SHARED_RE2'):

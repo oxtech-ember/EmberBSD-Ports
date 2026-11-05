@@ -41,6 +41,28 @@ with TemporaryDirectory() as temporary:
     assert 'gyp-pkgsrc=' + str(export) in result['emberbsd_node_configure_inputs']
     assert str(gyp / 'gyp_main.py') in result['emberbsd_node_configure_dependencies']
     assert str(export / 'devel/gyp/files/verify-source.py') in result['emberbsd_node_configure_dependencies']
+    alternate = root / 'clean-owner'
+    for owner_root in (ports, alternate):
+        source_owner = owner_root / 'scripts/source-inputs/node/source.py'
+        source_owner.parent.mkdir(parents=True, exist_ok=True)
+        source_owner.write_text('fixture')
+    commands = []
+    class OwnerProcess:
+        def capture(self, command, **kwargs):
+            commands.append(command)
+            return SimpleNamespace(stdout=b'{}')
+    v8_owner = ports / 'scripts/source-inputs/v8/source.py'
+    v8_owner.parent.mkdir(parents=True, exist_ok=True); v8_owner.write_text('fixture')
+    options.v8_ports_source, options.v8_pkgsrc = ports, export
+    options.node_pkgsrc = export
+    options.git = Path('/usr/bin/git')
+    options.node_ports_source = alternate
+    controller.common_embedder_sources(options, {'process':OwnerProcess()}, Native(), {})
+    assert commands[-1][2] == str(alternate / 'scripts/source-inputs/node/source.py')
+    assert controller.common_node_configure(options, Native(), {'process':Process()}, {}, host/'resource') == result
+    options.node_ports_source = None
+    controller.common_embedder_sources(options, {'process':OwnerProcess()}, Native(), {})
+    assert commands[-1][2] == str(ports / 'scripts/source-inputs/node/source.py')
     options.gyp_source = None
     try:
         controller.common_node_configure(options, Native(), {'process': Process()}, {}, host / 'resource')

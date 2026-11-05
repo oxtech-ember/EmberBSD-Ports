@@ -12,7 +12,7 @@ spec = importlib.util.spec_from_file_location('view', owner / '../../pkgsrc/deve
 view = importlib.util.module_from_spec(spec); spec.loader.exec_module(view)
 with tempfile.TemporaryDirectory() as temporary:
     root = Path(temporary).resolve(); source = root / 'source'; dest = root / 'view'; common = root / 'common'
-    source.mkdir(); (source / '.gn').write_text('gn'); (source / 'stable').write_text('stable'); third = source / 'third_party'; third.mkdir()
+    source.mkdir(); (source / '.gn').write_text('gn'); (source / 'stable').write_text('stable'); (source / 'untouched').write_text('untouched'); third = source / 'third_party'; third.mkdir()
     for name in ('abseil-cpp', 'icu', 're2', 'protobuf'):
         path = third / name; path.mkdir(); (path / 'BUILD.gn').write_text('old')
     (common / 'src').mkdir(parents=True); (common / 'third_party').mkdir()
@@ -42,6 +42,24 @@ with tempfile.TemporaryDirectory() as temporary:
     assert (keep.stat().st_ino, keep.stat().st_mtime_ns) == before
     assert (dest / 'src/.gn').read_text() == 'updated'
     view.verify(source, common, dest, **opts)
+    untouched = dest/'src/untouched'; untouched_before=(untouched.lstat().st_ino, untouched.lstat().st_mtime_ns)
+    for name in ('.gn', 'stable'):
+        replacement=root/('replacement-'+name.replace('.', 'dot')); replacement.write_text('updated-again'); replacement.replace(source/name)
+    view.activate_common_components(source, common, dest, **opts)
+    assert (dest/'src/.gn').read_text() == (dest/'src/stable').read_text() == 'updated-again'
+    assert (untouched.lstat().st_ino, untouched.lstat().st_mtime_ns) == untouched_before
+    interrupted=root/'interrupted-source'; interrupted.write_text('after-interruption'); interrupted.replace(source/'stable')
+    marker=view._refresh_marker(dest); marker.write_text('source-view-leaves-v1\n')
+    view.activate_common_components(source, common, dest, **opts)
+    assert not marker.exists() and (dest/'src/stable').read_text() == 'after-interruption'
+    stage=root/'.view.common-components-stage'; stage.mkdir()
+    try:
+        view.activate_common_components(source, common, dest, **opts)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('stray common component stage accepted')
+    stage.rmdir()
     second = root / 'second'; view.create(source, None, second)
     foreign = second / 'src/third_party/icu'; foreign.unlink(); foreign.symlink_to(root)
     try:
