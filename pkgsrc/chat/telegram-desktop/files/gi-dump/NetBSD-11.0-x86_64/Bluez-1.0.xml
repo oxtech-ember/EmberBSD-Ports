@@ -1,0 +1,65 @@
+<!-- EmberBSD GI dump 2
+platform: NetBSD-11.0-x86_64
+recipe: chat/telegram-desktop
+package: telegram-desktop-7.3.5
+program: Bluez-1.0
+types-sha256: 94ad10f3437abe7eafd2058db18a756bf52d133fb2e827f17cf405f2f4ae95c2
+dump-sha256: 2663a4f0b6d6c7b53f8a8ef3acaa699d640e1a9494173fad8e483d479d610233
+-->
+<?xml version="1.0"?>
+<dump>
+  <interface name="BluezAdapter1" get-type="bluez_adapter1_get_type">
+    <property name="powered" type="gboolean" flags="227" default-value="FALSE"/>
+    <signal name="handle-start-discovery" return="gboolean" when="last">
+      <param type="GDBusMethodInvocation"/>
+    </signal>
+    <signal name="handle-stop-discovery" return="gboolean" when="last">
+      <param type="GDBusMethodInvocation"/>
+    </signal>
+    <signal name="handle-set-discovery-filter" return="gboolean" when="last">
+      <param type="GDBusMethodInvocation"/>
+      <param type="GVariant"/>
+    </signal>
+  </interface>
+  <class name="BluezAdapter1Proxy" get-type="bluez_adapter1_proxy_get_type" parents="GDBusProxy,GObject">
+    <implements name="GDBusInterface"/>
+    <implements name="GInitable"/>
+    <implements name="GAsyncInitable"/>
+    <implements name="BluezAdapter1"/>
+  </class>
+  <class name="BluezAdapter1Skeleton" get-type="bluez_adapter1_skeleton_get_type" parents="GDBusInterfaceSkeleton,GObject">
+    <implements name="GDBusInterface"/>
+    <implements name="BluezAdapter1"/>
+  </class>
+  <interface name="BluezDevice1" get-type="bluez_device1_get_type">
+    <property name="service-data" type="GVariant" flags="227"/>
+  </interface>
+  <class name="BluezDevice1Proxy" get-type="bluez_device1_proxy_get_type" parents="GDBusProxy,GObject">
+    <implements name="GDBusInterface"/>
+    <implements name="GInitable"/>
+    <implements name="GAsyncInitable"/>
+    <implements name="BluezDevice1"/>
+  </class>
+  <class name="BluezDevice1Skeleton" get-type="bluez_device1_skeleton_get_type" parents="GDBusInterfaceSkeleton,GObject">
+    <implements name="GDBusInterface"/>
+    <implements name="BluezDevice1"/>
+  </class>
+  <interface name="BluezObject" get-type="bluez_object_get_type">
+    <prerequisite name="GDBusObject"/>
+    <property name="adapter1" type="BluezAdapter1" flags="227"/>
+    <property name="device1" type="BluezDevice1" flags="227"/>
+  </interface>
+  <class name="BluezObjectProxy" get-type="bluez_object_proxy_get_type" parents="GDBusObjectProxy,GObject">
+    <implements name="GDBusObject"/>
+    <implements name="BluezObject"/>
+  </class>
+  <class name="BluezObjectSkeleton" get-type="bluez_object_skeleton_get_type" parents="GDBusObjectSkeleton,GObject">
+    <implements name="GDBusObject"/>
+    <implements name="BluezObject"/>
+  </class>
+  <class name="BluezObjectManagerClient" get-type="bluez_object_manager_client_get_type" parents="GDBusObjectManagerClient,GObject">
+    <implements name="GInitable"/>
+    <implements name="GAsyncInitable"/>
+    <implements name="GDBusObjectManager"/>
+  </class>
+</dump>

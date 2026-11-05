@@ -1,0 +1,60 @@
+<!-- EmberBSD GI dump 2
+platform: NetBSD-11.0-x86_64
+recipe: chat/telegram-desktop
+package: telegram-desktop-7.3.5
+program: XdpSettings-1.0
+types-sha256: 27f48ee244304761ea609bc3f423dda9f15689362f2de8400c6e08ff241ceb5a
+dump-sha256: a0a7f1465f6517f08a7e291da3d9ab932589a9b6415d5379b541b212cf2ebae7
+-->
+<?xml version="1.0"?>
+<dump>
+  <interface name="XdpSettingsSettings" get-type="xdp_settings_settings_get_type">
+    <property name="version" type="guint" flags="227" default-value="0"/>
+    <signal name="handle-read-all" return="gboolean" when="last">
+      <param type="GDBusMethodInvocation"/>
+      <param type="GStrv"/>
+    </signal>
+    <signal name="handle-read" return="gboolean" when="last">
+      <param type="GDBusMethodInvocation"/>
+      <param type="gchararray"/>
+      <param type="gchararray"/>
+    </signal>
+    <signal name="handle-read-one" return="gboolean" when="last">
+      <param type="GDBusMethodInvocation"/>
+      <param type="gchararray"/>
+      <param type="gchararray"/>
+    </signal>
+    <signal name="setting-changed" return="void" when="last">
+      <param type="gchararray"/>
+      <param type="gchararray"/>
+      <param type="GVariant"/>
+    </signal>
+  </interface>
+  <class name="XdpSettingsSettingsProxy" get-type="xdp_settings_settings_proxy_get_type" parents="GDBusProxy,GObject">
+    <implements name="GDBusInterface"/>
+    <implements name="GInitable"/>
+    <implements name="GAsyncInitable"/>
+    <implements name="XdpSettingsSettings"/>
+  </class>
+  <class name="XdpSettingsSettingsSkeleton" get-type="xdp_settings_settings_skeleton_get_type" parents="GDBusInterfaceSkeleton,GObject">
+    <implements name="GDBusInterface"/>
+    <implements name="XdpSettingsSettings"/>
+  </class>
+  <interface name="XdpSettingsObject" get-type="xdp_settings_object_get_type">
+    <prerequisite name="GDBusObject"/>
+    <property name="settings" type="XdpSettingsSettings" flags="227"/>
+  </interface>
+  <class name="XdpSettingsObjectProxy" get-type="xdp_settings_object_proxy_get_type" parents="GDBusObjectProxy,GObject">
+    <implements name="GDBusObject"/>
+    <implements name="XdpSettingsObject"/>
+  </class>
+  <class name="XdpSettingsObjectSkeleton" get-type="xdp_settings_object_skeleton_get_type" parents="GDBusObjectSkeleton,GObject">
+    <implements name="GDBusObject"/>
+    <implements name="XdpSettingsObject"/>
+  </class>
+  <class name="XdpSettingsObjectManagerClient" get-type="xdp_settings_object_manager_client_get_type" parents="GDBusObjectManagerClient,GObject">
+    <implements name="GInitable"/>
+    <implements name="GAsyncInitable"/>
+    <implements name="GDBusObjectManager"/>
+  </class>
+</dump>

@@ -1,0 +1,55 @@
+<!-- EmberBSD GI dump 2
+platform: NetBSD-11.0-x86_64
+recipe: chat/telegram-desktop
+package: telegram-desktop-7.3.5
+program: XdgFileManager1-1.0
+types-sha256: 8281ba1dfc35c0e82db4971642c624672b2fd368673185847e5277e8b1926046
+dump-sha256: 47a5b929787e8e7433a3d0ed9ab7ae4e83c688da5fe9fa4dd58ba0ae04288990
+-->
+<?xml version="1.0"?>
+<dump>
+  <interface name="XdgFileManager1FileManager1" get-type="xdg_file_manager1_file_manager1_get_type">
+    <signal name="handle-show-folders" return="gboolean" when="last">
+      <param type="GDBusMethodInvocation"/>
+      <param type="GStrv"/>
+      <param type="gchararray"/>
+    </signal>
+    <signal name="handle-show-items" return="gboolean" when="last">
+      <param type="GDBusMethodInvocation"/>
+      <param type="GStrv"/>
+      <param type="gchararray"/>
+    </signal>
+    <signal name="handle-show-item-properties" return="gboolean" when="last">
+      <param type="GDBusMethodInvocation"/>
+      <param type="GStrv"/>
+      <param type="gchararray"/>
+    </signal>
+  </interface>
+  <class name="XdgFileManager1FileManager1Proxy" get-type="xdg_file_manager1_file_manager1_proxy_get_type" parents="GDBusProxy,GObject">
+    <implements name="GDBusInterface"/>
+    <implements name="GInitable"/>
+    <implements name="GAsyncInitable"/>
+    <implements name="XdgFileManager1FileManager1"/>
+  </class>
+  <class name="XdgFileManager1FileManager1Skeleton" get-type="xdg_file_manager1_file_manager1_skeleton_get_type" parents="GDBusInterfaceSkeleton,GObject">
+    <implements name="GDBusInterface"/>
+    <implements name="XdgFileManager1FileManager1"/>
+  </class>
+  <interface name="XdgFileManager1Object" get-type="xdg_file_manager1_object_get_type">
+    <prerequisite name="GDBusObject"/>
+    <property name="file-manager1" type="XdgFileManager1FileManager1" flags="227"/>
+  </interface>
+  <class name="XdgFileManager1ObjectProxy" get-type="xdg_file_manager1_object_proxy_get_type" parents="GDBusObjectProxy,GObject">
+    <implements name="GDBusObject"/>
+    <implements name="XdgFileManager1Object"/>
+  </class>
+  <class name="XdgFileManager1ObjectSkeleton" get-type="xdg_file_manager1_object_skeleton_get_type" parents="GDBusObjectSkeleton,GObject">
+    <implements name="GDBusObject"/>
+    <implements name="XdgFileManager1Object"/>
+  </class>
+  <class name="XdgFileManager1ObjectManagerClient" get-type="xdg_file_manager1_object_manager_client_get_type" parents="GDBusObjectManagerClient,GObject">
+    <implements name="GInitable"/>
+    <implements name="GAsyncInitable"/>
+    <implements name="GDBusObjectManager"/>
+  </class>
+</dump>

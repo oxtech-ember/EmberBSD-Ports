@@ -1,0 +1,12 @@
+# Include the complete accessibility cache type used inline.
+# Origin: EmberBSD.
+--- Telegram/lib_ui/ui/rp_widget.h.orig
++++ Telegram/lib_ui/ui/rp_widget.h
+@@ -7,6 +7,7 @@
+ #pragma once
+ 
+ #include "base/unique_qptr.h"
++#include "ui/accessible/ui_accessible_item.h"
+ #include "ui/style/style_core_direction.h"
+ 
+ #include <rpl/event_stream.h>

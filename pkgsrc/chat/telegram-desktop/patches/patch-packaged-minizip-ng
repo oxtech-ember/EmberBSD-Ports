@@ -1,0 +1,47 @@
+# Select the common minizip-ng compatibility headers for packaged builds.
+# Origin: EmberBSD (AI-assisted).
+--- cmake/external/minizip/CMakeLists.txt.orig
++++ cmake/external/minizip/CMakeLists.txt
+@@ -7,6 +7,12 @@
+ if (DESKTOP_APP_USE_PACKAGED)
+     add_library(external_minizip INTERFACE IMPORTED GLOBAL)
+     add_library(desktop-app::external_minizip ALIAS external_minizip)
++    if (TDESKTOP_USE_MINIZIP_NG)
++        find_package(minizip-ng CONFIG REQUIRED)
++        target_compile_definitions(external_minizip INTERFACE TDESKTOP_USE_MINIZIP_NG)
++        target_link_libraries(external_minizip INTERFACE MINIZIP::minizip-ng)
++        return()
++    endif()
+ 
+     find_package(minizip QUIET COMPONENTS shared)
+     if (minizip_FOUND)
+--- Telegram/lib_base/base/zlib_help.h.orig
++++ Telegram/lib_base/base/zlib_help.h
+@@ -6,8 +6,13 @@
+ //
+ #pragma once
+ 
++#ifdef TDESKTOP_USE_MINIZIP_NG
++#include <minizip-ng/zip.h>
++#include <minizip-ng/unzip.h>
++#else
+ #include <minizip/zip.h>
+ #include <minizip/unzip.h>
++#endif
+ 
+ #include <algorithm>
+ 
+--- Telegram/SourceFiles/storage/storage_folder_archive.cpp.orig
++++ Telegram/SourceFiles/storage/storage_folder_archive.cpp
+@@ -11,7 +11,11 @@
+ #include "platform/platform_file_utilities.h"
+ #include "ui/chat/attach/attach_prepare.h"
+ 
++#ifdef TDESKTOP_USE_MINIZIP_NG
++#include <minizip-ng/zip.h>
++#else
+ #include <minizip/zip.h>
++#endif
+ #include <QtCore/QDirIterator>
+ #include <QtCore/QTemporaryFile>
+ 

@@ -1,0 +1,136 @@
+# Use the shared libyuv provider in packaged tgcalls builds.
+# Origin: EmberBSD (AI-assisted).
+--- Telegram/cmake/lib_tgcalls.cmake.orig
++++ Telegram/cmake/lib_tgcalls.cmake
+@@ -221,6 +221,10 @@
+     desktop-app::external_zlib
+ )
+ 
++if (DESKTOP_APP_USE_PACKAGED)
++    target_compile_definitions(lib_tgcalls PRIVATE TDESKTOP_USE_PACKAGED_LIBYUV)
++endif()
++
+ target_compile_definitions(lib_tgcalls
+ PUBLIC
+     TGCALLS_USE_STD_OPTIONAL
+--- Telegram/ThirdParty/tgcalls/tgcalls/desktop_capturer/DesktopCaptureSourceHelper.cpp.orig
++++ Telegram/ThirdParty/tgcalls/tgcalls/desktop_capturer/DesktopCaptureSourceHelper.cpp
+@@ -24,7 +24,11 @@
+ #include "modules/desktop_capture/desktop_capturer.h"
+ #include "system_wrappers/include/clock.h"
+ #include "api/video/i420_buffer.h"
++#ifdef TDESKTOP_USE_PACKAGED_LIBYUV
++#include <libyuv.h>
++#else
+ #include "third_party/libyuv/include/libyuv.h"
++#endif
+ 
+ #ifdef WEBRTC_MAC
+ #import <QuartzCore/QuartzCore.h>
+--- Telegram/ThirdParty/tgcalls/tgcalls/desktop_capturer/DesktopCaptureSourceManager.cpp.orig
++++ Telegram/ThirdParty/tgcalls/tgcalls/desktop_capturer/DesktopCaptureSourceManager.cpp
+@@ -10,7 +10,11 @@
+ 
+ #include "modules/desktop_capture/desktop_and_cursor_composer.h"
+ #include "modules/desktop_capture/desktop_capturer_differ_wrapper.h"
++#ifdef TDESKTOP_USE_PACKAGED_LIBYUV
++#include <libyuv.h>
++#else
+ #include "third_party/libyuv/include/libyuv.h"
++#endif
+ #include "api/video/i420_buffer.h"
+ #include "tgcalls/desktop_capturer/DesktopCaptureSourceHelper.h"
+ 
+--- Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/CustomExternalCapturer.mm.orig
++++ Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/CustomExternalCapturer.mm
+@@ -19,7 +19,11 @@
+ #include "common_video/libyuv/include/webrtc_libyuv.h"
+ #include "rtc_base/checks.h"
+ #include "rtc_base/logging.h"
++#ifdef TDESKTOP_USE_PACKAGED_LIBYUV
++#include <libyuv.h>
++#else
+ #include "third_party/libyuv/include/libyuv.h"
++#endif
+ #include "pc/video_track_source_proxy.h"
+ 
+ #include "DarwinVideoSource.h"
+--- Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/DesktopSharingCapturer.mm.orig
++++ Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/DesktopSharingCapturer.mm
+@@ -3,12 +3,20 @@
+ #include "modules/desktop_capture/mac/screen_capturer_mac.h"
+ #include "modules/desktop_capture/desktop_and_cursor_composer.h"
+ #include "modules/desktop_capture/desktop_capturer_differ_wrapper.h"
++#ifdef TDESKTOP_USE_PACKAGED_LIBYUV
++#include <libyuv.h>
++#else
+ #include "third_party/libyuv/include/libyuv.h"
++#endif
+ #include "api/video/i420_buffer.h"
+ #include "common_video/libyuv/include/webrtc_libyuv.h"
+ #include "rtc_base/checks.h"
+ #include "rtc_base/logging.h"
++#ifdef TDESKTOP_USE_PACKAGED_LIBYUV
++#include <libyuv.h>
++#else
+ #include "third_party/libyuv/include/libyuv.h"
++#endif
+ 
+ #include "tgcalls/desktop_capturer/DesktopCaptureSource.h"
+ #include "tgcalls/desktop_capturer/DesktopCaptureSourceHelper.h"
+--- Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/VideoCameraCapturer.mm.orig
++++ Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/VideoCameraCapturer.mm
+@@ -20,7 +20,11 @@
+ #include "common_video/libyuv/include/webrtc_libyuv.h"
+ #include "rtc_base/checks.h"
+ #include "rtc_base/logging.h"
++#ifdef TDESKTOP_USE_PACKAGED_LIBYUV
++#include <libyuv.h>
++#else
+ #include "third_party/libyuv/include/libyuv.h"
++#endif
+ #include "api/video/i420_buffer.h"
+ #include "api/video/nv12_buffer.h"
+ 
+--- Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/VideoCameraCapturerMac.mm.orig
++++ Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/VideoCameraCapturerMac.mm
+@@ -18,7 +18,11 @@
+ #include "rtc_base/checks.h"
+ #include "rtc_base/logging.h"
+ #include "pc/video_track_source_proxy.h"
++#ifdef TDESKTOP_USE_PACKAGED_LIBYUV
++#include <libyuv.h>
++#else
+ #include "third_party/libyuv/include/libyuv.h"
++#endif
+ #include "DarwinVideoSource.h"
+ 
+ struct CameraFrameSize {
+--- Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/VideoCMIOCapture.mm.orig
++++ Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/VideoCMIOCapture.mm
+@@ -28,7 +28,11 @@
+ #include "pc/video_track_source_proxy.h"
+ #include "rtc_base/checks.h"
+ #include "rtc_base/logging.h"
++#ifdef TDESKTOP_USE_PACKAGED_LIBYUV
++#include <libyuv.h>
++#else
+ #include "third_party/libyuv/include/libyuv.h"
++#endif
+ #include "DarwinVideoSource.h"
+ 
+ struct MTLFrameSize {
+--- Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/TGRTCVideoEncoderH264.mm.orig
++++ Telegram/ThirdParty/tgcalls/tgcalls/platform/darwin/TGRTCVideoEncoderH264.mm
+@@ -39,7 +39,11 @@
+ #include "rtc_base/logging.h"
+ #include "rtc_base/time_utils.h"
+ #include "sdk/objc/components/video_codec/nalu_rewriter.h"
++#ifdef TDESKTOP_USE_PACKAGED_LIBYUV
++#include <libyuv/convert_from.h>
++#else
+ #include "third_party/libyuv/include/libyuv/convert_from.h"
++#endif
+ 
+ @interface TGRTCVideoEncoderH264 ()
+ 

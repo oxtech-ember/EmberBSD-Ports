@@ -1,0 +1,12 @@
+# Include the complete SessionSettings type used by default unique_ptr arguments.
+# Origin: EmberBSD.
+--- Telegram/SourceFiles/main/main_account.h.orig
++++ Telegram/SourceFiles/main/main_account.h
+@@ -7,6 +7,7 @@
+ */
+ #pragma once
+ 
++#include "main/main_session_settings.h"
+ #include "mtproto/mtproto_auth_key.h"
+ #include "mtproto/mtp_instance.h"
+ #include "base/weak_ptr.h"

@@ -1,0 +1,45 @@
+<!-- EmberBSD GI dump 2
+platform: NetBSD-11.0-x86_64
+recipe: chat/telegram-desktop
+package: telegram-desktop-7.3.5
+program: SigxcpuFeedback-1.0
+types-sha256: 2b81d9ce0b3573aac3e4945ab167cda189c31d7768b354fa93833ade15c08ac1
+dump-sha256: 2997ba18f1c6edfcd06c052022c20816ebc9edbaddf5cd9cc265410d7d2cdb12
+-->
+<?xml version="1.0"?>
+<dump>
+  <interface name="SigxcpuFeedbackHaptic" get-type="sigxcpu_feedback_haptic_get_type">
+    <signal name="handle-vibrate" return="gboolean" when="last">
+      <param type="GDBusMethodInvocation"/>
+      <param type="gchararray"/>
+      <param type="GVariant"/>
+    </signal>
+  </interface>
+  <class name="SigxcpuFeedbackHapticProxy" get-type="sigxcpu_feedback_haptic_proxy_get_type" parents="GDBusProxy,GObject">
+    <implements name="GDBusInterface"/>
+    <implements name="GInitable"/>
+    <implements name="GAsyncInitable"/>
+    <implements name="SigxcpuFeedbackHaptic"/>
+  </class>
+  <class name="SigxcpuFeedbackHapticSkeleton" get-type="sigxcpu_feedback_haptic_skeleton_get_type" parents="GDBusInterfaceSkeleton,GObject">
+    <implements name="GDBusInterface"/>
+    <implements name="SigxcpuFeedbackHaptic"/>
+  </class>
+  <interface name="SigxcpuFeedbackObject" get-type="sigxcpu_feedback_object_get_type">
+    <prerequisite name="GDBusObject"/>
+    <property name="haptic" type="SigxcpuFeedbackHaptic" flags="227"/>
+  </interface>
+  <class name="SigxcpuFeedbackObjectProxy" get-type="sigxcpu_feedback_object_proxy_get_type" parents="GDBusObjectProxy,GObject">
+    <implements name="GDBusObject"/>
+    <implements name="SigxcpuFeedbackObject"/>
+  </class>
+  <class name="SigxcpuFeedbackObjectSkeleton" get-type="sigxcpu_feedback_object_skeleton_get_type" parents="GDBusObjectSkeleton,GObject">
+    <implements name="GDBusObject"/>
+    <implements name="SigxcpuFeedbackObject"/>
+  </class>
+  <class name="SigxcpuFeedbackObjectManagerClient" get-type="sigxcpu_feedback_object_manager_client_get_type" parents="GDBusObjectManagerClient,GObject">
+    <implements name="GInitable"/>
+    <implements name="GAsyncInitable"/>
+    <implements name="GDBusObjectManager"/>
+  </class>
+</dump>

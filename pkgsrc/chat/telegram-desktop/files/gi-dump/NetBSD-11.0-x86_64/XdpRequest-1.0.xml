@@ -1,0 +1,47 @@
+<!-- EmberBSD GI dump 2
+platform: NetBSD-11.0-x86_64
+recipe: chat/telegram-desktop
+package: telegram-desktop-7.3.5
+program: XdpRequest-1.0
+types-sha256: 66994378c2a76d06fc037370dff3c2c6549110753702d8b4bf27d4de7b2f39e6
+dump-sha256: a47067766d54983589d8622ee07ec587c643d7f230b95d1e52eda2fbf40255a2
+-->
+<?xml version="1.0"?>
+<dump>
+  <interface name="XdpRequestRequest" get-type="xdp_request_request_get_type">
+    <signal name="handle-close" return="gboolean" when="last">
+      <param type="GDBusMethodInvocation"/>
+    </signal>
+    <signal name="response" return="void" when="last">
+      <param type="guint"/>
+      <param type="GVariant"/>
+    </signal>
+  </interface>
+  <class name="XdpRequestRequestProxy" get-type="xdp_request_request_proxy_get_type" parents="GDBusProxy,GObject">
+    <implements name="GDBusInterface"/>
+    <implements name="GInitable"/>
+    <implements name="GAsyncInitable"/>
+    <implements name="XdpRequestRequest"/>
+  </class>
+  <class name="XdpRequestRequestSkeleton" get-type="xdp_request_request_skeleton_get_type" parents="GDBusInterfaceSkeleton,GObject">
+    <implements name="GDBusInterface"/>
+    <implements name="XdpRequestRequest"/>
+  </class>
+  <interface name="XdpRequestObject" get-type="xdp_request_object_get_type">
+    <prerequisite name="GDBusObject"/>
+    <property name="request" type="XdpRequestRequest" flags="227"/>
+  </interface>
+  <class name="XdpRequestObjectProxy" get-type="xdp_request_object_proxy_get_type" parents="GDBusObjectProxy,GObject">
+    <implements name="GDBusObject"/>
+    <implements name="XdpRequestObject"/>
+  </class>
+  <class name="XdpRequestObjectSkeleton" get-type="xdp_request_object_skeleton_get_type" parents="GDBusObjectSkeleton,GObject">
+    <implements name="GDBusObject"/>
+    <implements name="XdpRequestObject"/>
+  </class>
+  <class name="XdpRequestObjectManagerClient" get-type="xdp_request_object_manager_client_get_type" parents="GDBusObjectManagerClient,GObject">
+    <implements name="GInitable"/>
+    <implements name="GAsyncInitable"/>
+    <implements name="GDBusObjectManager"/>
+  </class>
+</dump>

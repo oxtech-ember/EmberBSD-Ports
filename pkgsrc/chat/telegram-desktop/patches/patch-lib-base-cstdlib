@@ -1,0 +1,12 @@
+# Include the standard declaration of std::abort.
+# Origin: EmberBSD.
+--- Telegram/lib_base/base/unique_function.h.orig
++++ Telegram/lib_base/base/unique_function.h
+@@ -6,6 +6,7 @@
+ //
+ #pragma once
+ 
++#include <cstdlib>
+ #include <functional>
+ 
+ #ifndef Unexpected

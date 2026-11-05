@@ -1,0 +1,21 @@
+# Define the constructor after its unique_ptr element is complete.
+# Origin: EmberBSD.
+--- Telegram/lib_ui/ui/text/text_shaper_pango.cpp.orig
++++ Telegram/lib_ui/ui/text/text_shaper_pango.cpp
+@@ -459,6 +459,7 @@
+ // is drawn off the main thread too - theme previews, font samples - so every
+ // thread gets a map, a context and a ring of its own, the way Qt does it.
+ struct PerThread {
++	PerThread();
+ 	~PerThread();
+ 
+ 	PangoFontMap *fontMap = nullptr;
+@@ -1347,6 +1348,8 @@
+ 	std::vector<Resolved> kept = std::vector<Resolved>(kKeptParagraphs);
+ 	int next = 0;
+ };
++
++PerThread::PerThread() = default;
+ 
+ PerThread::~PerThread() {
+ 	ring = nullptr;

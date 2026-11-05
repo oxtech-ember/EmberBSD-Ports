@@ -19,6 +19,7 @@ USE_LANGUAGES=	c c++
 USE_CXX_FEATURES+=	c++20
 USE_TOOLS+=	pkg-config gdbus-codegen
 CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_USE_PACKAGED=ON
+CMAKE_CONFIGURE_ARGS+=	-DTDESKTOP_USE_MINIZIP_NG=ON
 CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_DISABLE_AUTOUPDATE=ON
 CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_DISABLE_QT_PLUGINS=ON
 CMAKE_CONFIGURE_ARGS+=	-DQT_VERSION_MAJOR=6
@@ -26,6 +27,7 @@ CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_CPPGIR_EXECUTABLE=${TOOLBASE}/bin/cppgir
 CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_CPPGIR_DATA_DIR=${TOOLBASE}/share/cppgir
 CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_GIR_DIR=${CROSS_DESTDIR:U}${LOCALBASE}/share/gir-1.0
 TOOL_DEPENDS+=	cppgir>=2.0.0:../../devel/cppgir
+TOOL_DEPENDS+=	gobject-introspection>=1.86.0nb4:../../devel/gobject-introspection
 TOOL_DEPENDS+=	zxcvbn-c>=2.7nb2:../../security/zxcvbn-c
 CMAKE_CONFIGURE_ARGS+=	-DZXCVBN_NATIVE_DICTGEN=${TOOLBASE}/bin/zxcvbn-dictgen
 CMAKE_CONFIGURE_ARGS+=	-DZXCVBN_WORDS_DIR=${TOOLBASE}/share/zxcvbn
@@ -34,6 +36,15 @@ CMAKE_CONFIGURE_ARGS+=	-DQSB_EXECUTABLE=${TOOLBASE}/qt6/bin/qsb
 TOOL_DEPENDS+=	telegram-desktop-codegen=${TDESKTOP_VERSION}nb${TDESKTOP_CODEGEN_REVISION}:../../chat/telegram-desktop-codegen
 CMAKE_CONFIGURE_ARGS+=	-DTDESKTOP_NATIVE_CODEGEN_DIR=${TOOLBASE}/libexec/telegram-desktop-codegen
 .include "../../mk/bsd.prefs.mk"
+
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+EMBERBSD_GI_MESON_OPTIONS= no
+.include "../../devel/gobject-introspection/cross.mk"
+CMAKE_CONFIGURE_ARGS+= -DDESKTOP_APP_GIRSCANNER=${WRKDIR}/.meson-gi-scanner
+MAKE_ENV+= GI_GIR_PATH=${CROSS_DESTDIR}${LOCALBASE}/share/gir-1.0
+.else
+CMAKE_CONFIGURE_ARGS+= -DDESKTOP_APP_GIRSCANNER=${TOOLBASE}/bin/g-ir-scanner
+.endif
 
 # Upstream uses LINUX as its Unix desktop source selector (also used by BSD
 # ports); the actual CMake target remains NetBSD and WebRTC is selected natively.
@@ -76,6 +87,7 @@ pre-install pre-package:
 .include "../../graphics/qt6-qtsvg/buildlink3.mk"
 .include "../../multimedia/ffmpeg9/buildlink3.mk"
 .include "../../multimedia/libvpx/buildlink3.mk"
+.include "../../multimedia/libyuv/buildlink3.mk"
 .include "../../multimedia/openh264/buildlink3.mk"
 .include "../../audio/libopus/buildlink3.mk"
 .include "../../audio/openal-soft/buildlink3.mk"

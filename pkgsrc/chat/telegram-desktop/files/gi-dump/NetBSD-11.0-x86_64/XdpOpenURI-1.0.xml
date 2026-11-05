@@ -1,0 +1,66 @@
+<!-- EmberBSD GI dump 2
+platform: NetBSD-11.0-x86_64
+recipe: chat/telegram-desktop
+package: telegram-desktop-7.3.5
+program: XdpOpenURI-1.0
+types-sha256: 3030d00919f0ec79d73276ddf0a617e78ff6cd4065f3af02fea02187490a84dc
+dump-sha256: 507b73a510cf276bbdc3fbbf347bb47a76010796c28f78f3d45ee3cbb6464798
+-->
+<?xml version="1.0"?>
+<dump>
+  <interface name="XdpOpenURIOpenURI" get-type="xdp_open_uri_open_uri_get_type">
+    <property name="version" type="guint" flags="227" default-value="0"/>
+    <signal name="handle-open-uri" return="gboolean" when="last">
+      <param type="GDBusMethodInvocation"/>
+      <param type="gchararray"/>
+      <param type="gchararray"/>
+      <param type="GVariant"/>
+    </signal>
+    <signal name="handle-open-file" return="gboolean" when="last">
+      <param type="GDBusMethodInvocation"/>
+      <param type="GUnixFDList"/>
+      <param type="gchararray"/>
+      <param type="GVariant"/>
+      <param type="GVariant"/>
+    </signal>
+    <signal name="handle-open-directory" return="gboolean" when="last">
+      <param type="GDBusMethodInvocation"/>
+      <param type="GUnixFDList"/>
+      <param type="gchararray"/>
+      <param type="GVariant"/>
+      <param type="GVariant"/>
+    </signal>
+    <signal name="handle-scheme-supported" return="gboolean" when="last">
+      <param type="GDBusMethodInvocation"/>
+      <param type="gchararray"/>
+      <param type="GVariant"/>
+    </signal>
+  </interface>
+  <class name="XdpOpenURIOpenURIProxy" get-type="xdp_open_uri_open_uri_proxy_get_type" parents="GDBusProxy,GObject">
+    <implements name="GDBusInterface"/>
+    <implements name="GInitable"/>
+    <implements name="GAsyncInitable"/>
+    <implements name="XdpOpenURIOpenURI"/>
+  </class>
+  <class name="XdpOpenURIOpenURISkeleton" get-type="xdp_open_uri_open_uri_skeleton_get_type" parents="GDBusInterfaceSkeleton,GObject">
+    <implements name="GDBusInterface"/>
+    <implements name="XdpOpenURIOpenURI"/>
+  </class>
+  <interface name="XdpOpenURIObject" get-type="xdp_open_uri_object_get_type">
+    <prerequisite name="GDBusObject"/>
+    <property name="open-uri" type="XdpOpenURIOpenURI" flags="227"/>
+  </interface>
+  <class name="XdpOpenURIObjectProxy" get-type="xdp_open_uri_object_proxy_get_type" parents="GDBusObjectProxy,GObject">
+    <implements name="GDBusObject"/>
+    <implements name="XdpOpenURIObject"/>
+  </class>
+  <class name="XdpOpenURIObjectSkeleton" get-type="xdp_open_uri_object_skeleton_get_type" parents="GDBusObjectSkeleton,GObject">
+    <implements name="GDBusObject"/>
+    <implements name="XdpOpenURIObject"/>
+  </class>
+  <class name="XdpOpenURIObjectManagerClient" get-type="xdp_open_uri_object_manager_client_get_type" parents="GDBusObjectManagerClient,GObject">
+    <implements name="GInitable"/>
+    <implements name="GAsyncInitable"/>
+    <implements name="GDBusObjectManager"/>
+  </class>
+</dump>

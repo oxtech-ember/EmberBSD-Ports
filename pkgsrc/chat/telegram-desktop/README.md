@@ -20,22 +20,24 @@ latter exports one target Rust archive and generated C++ bindings. Dependency
 resolution and independent host/target roles remain the responsibility of the
 shared Ports graph; amd64 and aarch64 remain in scope.
 
-Native language, emoji and style generators are provided by the sibling
+Native language, emoji, style and password-dictionary transliteration generators are provided by the sibling
 `chat/telegram-desktop-codegen` recipe from this same source and patch set.
 The cross build selects those host tools explicitly. CppGir similarly uses a
 native generator and target headers and GIR data. Packaged-mode checks reject
 bundled fallbacks for the covered dependencies.
 
-The individual providers have been built and checked, including target
-consumers. This does not establish acceptance of the complete application or
-of physical camera capture.
+The NetBSD amd64 diagnostic build compiled and linked with upstream test-only
+API credentials. Its 17 target GIR descriptions were captured and independently
+replayed against the same type inputs without a target connection. The common
+minizip-ng compatibility API was checked on the target with synthetic UTF-8,
+case-sensitive and case-insensitive names, empty entries and invalid archives.
+These checks do not establish messaging, login or physical camera acceptance.
 
 Upstream requires an application-specific Telegram API ID/hash for deployment
 (`docs/api_credentials.md`). `TDESKTOP_API_TEST=ON` selects upstream test-only
 credentials and must be restricted to a non-deployment diagnostic build; this
 mode does not establish login acceptance. Release identity is supplied explicitly,
-not committed as a personal credential. The package is not yet build- or
-runtime-accepted.
+not committed as a personal credential. The release package and runtime remain unaccepted.
 
 For the NetBSD diagnostic build, upstream's `LINUX` CMake variable selects the
 Unix desktop UI sources (as in the FreeBSD port). It does not change the target

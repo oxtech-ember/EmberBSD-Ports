@@ -21,6 +21,8 @@ CMAKE_CONFIGURE_ARGS+= -DCMAKE_OBJCXX_COMPILER=${WRAPPER_CXX}
 .endif
 .if ${OPSYS} == "Linux" || ${OPSYS} == "NetBSD" || ${OPSYS} == "FreeBSD" || ${OPSYS} == "OpenBSD" || ${OPSYS} == "DragonFly"
 .include "../../devel/cppgir/buildlink3.mk"
+TOOL_DEPENDS+= gobject-introspection>=1.86.0nb4:../../devel/gobject-introspection
+CMAKE_CONFIGURE_ARGS+= -DDESKTOP_APP_GIRSCANNER=${TOOLBASE}/bin/g-ir-scanner
 .include "../../devel/kf6-kcoreaddons/buildlink3.mk"
 .include "../../devel/glib2/buildlink3.mk"
 CMAKE_CONFIGURE_ARGS+= -DDESKTOP_APP_CPPGIR_EXECUTABLE=${TOOLBASE}/bin/cppgir

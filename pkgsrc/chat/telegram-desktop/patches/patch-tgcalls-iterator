@@ -1,0 +1,12 @@
+# Include the standard declaration of std::back_inserter.
+# Origin: EmberBSD.
+--- Telegram/ThirdParty/tgcalls/tgcalls/group/GroupJoinPayloadInternal.cpp.orig
++++ Telegram/ThirdParty/tgcalls/tgcalls/group/GroupJoinPayloadInternal.cpp
+@@ -1,6 +1,7 @@
+ #include "GroupJoinPayloadInternal.h"
+ 
+ #include "third-party/json11.hpp"
++#include <iterator>
+ #include <sstream>
+ 
+ namespace tgcalls {

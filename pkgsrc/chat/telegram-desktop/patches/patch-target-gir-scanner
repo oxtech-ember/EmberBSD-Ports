@@ -1,0 +1,45 @@
+# Select the common native scanner with target introspection and GIR inputs.
+# Origin: EmberBSD (AI-assisted).
+--- cmake/external/glib/generate_gir.cmake.orig
++++ cmake/external/glib/generate_gir.cmake
+@@ -5,7 +5,24 @@
+ # https://github.com/desktop-app/legal/blob/master/LEGAL
+ 
+ function(generate_gir target_name namespace deps src_target_name)
++    if (CMAKE_CROSSCOMPILING)
++        if (NOT IS_ABSOLUTE "${DESKTOP_APP_GIRSCANNER}" OR
++            NOT EXISTS "${DESKTOP_APP_GIRSCANNER}" OR
++            IS_DIRECTORY "${DESKTOP_APP_GIRSCANNER}")
++            message(FATAL_ERROR "Select an absolute native scanner configured for target introspection")
++        endif()
++    endif()
+     find_program(DESKTOP_APP_GIRSCANNER g-ir-scanner REQUIRED)
++    set(gir_options)
++    set(gir_metadata)
++    if (DESKTOP_APP_USE_PACKAGED OR CMAKE_CROSSCOMPILING)
++        if (NOT IS_ABSOLUTE "${DESKTOP_APP_GIR_DIR}" OR
++            NOT IS_DIRECTORY "${DESKTOP_APP_GIR_DIR}")
++            message(FATAL_ERROR "Select an absolute target DESKTOP_APP_GIR_DIR")
++        endif()
++        list(APPEND gir_options "--add-include-path=${DESKTOP_APP_GIR_DIR}")
++        file(GLOB gir_metadata CONFIGURE_DEPENDS "${DESKTOP_APP_GIR_DIR}/*.gir")
++    endif()
+ 
+     set(gen_dst ${CMAKE_CURRENT_BINARY_DIR}/gen)
+     file(MAKE_DIRECTORY ${gen_dst})
+@@ -22,6 +39,7 @@
+         env
+         $<$<BOOL:${DESKTOP_APP_ASAN}>:LDFLAGS=-fsanitize=address>
+         ${DESKTOP_APP_GIRSCANNER}
++        ${gir_options}
+         --quiet
+         -n
+         ${namespace}
+@@ -42,6 +60,7 @@
+     COMMENT "Generating GIR (${target_name})"
+     DEPENDS
+         ${DESKTOP_APP_GIRSCANNER}
++        ${gir_metadata}
+         ${src_target_name}
+     )
+     generate_target(${target_name} gir ${gen_timestamp} "${gen_file}" ${gen_dst})

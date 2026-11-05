@@ -1,0 +1,12 @@
+# Include the complete Media type used by default unique_ptr arguments.
+# Origin: EmberBSD.
+--- Telegram/SourceFiles/history/view/history_view_element.h.orig
++++ Telegram/SourceFiles/history/view/history_view_element.h
+@@ -8,6 +8,7 @@
+ #pragma once
+ 
+ #include "history/view/history_view_object.h"
++#include "history/view/media/history_view_media.h"
+ #include "base/runtime_composer.h"
+ #include "base/flags.h"
+ #include "base/weak_ptr.h"
