@@ -1,0 +1,12 @@
+--- a/third_party/lottie/minify_lottie.py
++++ b/third_party/lottie/minify_lottie.py
+@@ -21,8 +21,7 @@
+ 
+   node.RunNode([node_modules.PathToTerser(),
+           os.path.join(_HERE_PATH, 'lottie_worker.js'),
+-          '--ascii_only=true',
+-          '-b', 'beautify=false',
++          '--format', 'ascii_only=true,beautify=false',
+           '--compress',
+           '--mangle', 'reserved=[\'$\',\'onmessage\',\'postMessage\']',
+           '--output', os.path.join(args.out_folder, 'lottie_worker.min.js')])

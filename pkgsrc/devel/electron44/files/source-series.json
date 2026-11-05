@@ -1052,6 +1052,11 @@
       "path": "gn-devtools-node-types-reassign.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "lottie-terser-format-options.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {
