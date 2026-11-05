@@ -1,0 +1,2 @@
+The dxflib C++ library reads and writes DXF files, a CAD interchange format.
+This package provides the shared library, public headers and CMake target.

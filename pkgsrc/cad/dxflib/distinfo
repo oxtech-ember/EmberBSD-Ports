@@ -1,0 +1,10 @@
+$NetBSD$
+
+BLAKE2s (dxflib_3.26.4.orig.tar.gz) = c10f3b1c054cd6831c674a2235b1cff5063ba587a76b16cfc3e45a8f92c0c2cd
+SHA256 (dxflib_3.26.4.orig.tar.gz) = e7208c9b67f5bc6727a0e3adf2162d8e67d80e0244dcda167fb7535556d944a1
+SHA512 (dxflib_3.26.4.orig.tar.gz) = 20c6b212054a757045cc24c820eebcafcb80676747f7c460d5efd86df6a186c594fae107387e84821fcf56b5108edf75096b449e9a0e8f1f1f5b609ffcf89699
+Size (dxflib_3.26.4.orig.tar.gz) = 84360 bytes
+SHA1 (patch-CMakeLists.txt) = 75abc02ca2a2ffa94c8a7b9563e60470f309f0ff
+SHA1 (patch-src_dl_codes.h) = fe5bc8b1b1f2d42b9b1aa50276731ff1e65b353d
+SHA1 (patch-src_dl_dxf.cpp) = f873b89d7d6c556fe716e1dfb95aaba6c064385c
+SHA1 (patch-src_dl_writer_ascii.cpp) = 3b97490e07c3814f12b92b9a5c7e4d9844788844
