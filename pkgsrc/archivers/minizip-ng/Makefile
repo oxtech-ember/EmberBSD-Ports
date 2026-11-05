@@ -44,6 +44,11 @@ post-install:
 CFLAGS.NetBSD+=	-D_NETBSD_SOURCE
 
 .include "../../mk/bsd.prefs.mk"
+.if ${OPSYS} == "Darwin"
+# Resolve the selected prefix's shared dependencies in the installed dylib.
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_INSTALL_RPATH=${PREFIX}/lib
+.endif
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../archivers/bzip2/buildlink3.mk"
 .include "../../archivers/xz/buildlink3.mk"

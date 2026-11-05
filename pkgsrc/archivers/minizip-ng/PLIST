@@ -30,7 +30,7 @@ lib/cmake/minizip-ng/minizip-ng-targets-noconfig.cmake
 lib/cmake/minizip-ng/minizip-ng-targets.cmake
 lib/libminizip-ng.so
 lib/libminizip.so
-lib/libminizip-ng.so.${PKGVERSION_NOREV}
+lib/libminizip-ng.so.${PKGVERSION}
 lib/libminizip-ng.so.4
 lib/pkgconfig/minizip-ng.pc
 lib/pkgconfig/minizip.pc
