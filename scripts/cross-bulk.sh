@@ -1093,6 +1093,53 @@ bmk()
         DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency "$@"
 }
 
+# Configure under the existing stage lock before package compilation, so
+# byte-identical Autoconf outputs retain their original input timestamps.
+stage_configure_preserve()
+{
+    scp_path=$1 scp_work=$2
+    shift 2
+    if [ -f "$scp_work/.configure_done" ] && [ ! -e "$scp_work/.emberbsd-configure-preserve.json" ] &&
+        [ ! -L "$scp_work/.emberbsd-configure-preserve.json" ]; then
+        return 0
+    fi
+    if [ -n "$link_args" ]; then
+        set -- --sdk-source "$sdk_source" --bmake "$BMAKE" --recipe "$PKGSRCDIR/$scp_path" \
+            --expected-work "$scp_work" --make-arg "EMBERBSD_NATIVE_TOOLSET_VERIFIED=$native" \
+            --make-arg "MAKE_JOBS=$make_jobs" --make-arg "NATIVE_PKG_ADD_CMD=$run/pkg_add" \
+            --make-arg DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency \
+            ${cachearg:+--make-arg "PBULK_CACHE_DIRECTORY=$cachearg"} \
+            --make-arg "EMBERBSD_DARWIN_LINKER_LAUNCHER=$CROSS_BULK_LINK_LAUNCHER" \
+            --make-arg "EMBERBSD_GCC16_LINKER_LAUNCHER=$CROSS_BULK_LINK_LAUNCHER" \
+            --make-arg "EMBERBSD_DARWIN_CMAKE_LINKER_LAUNCHER=$link_list" -- "$@"
+    else
+        set -- --sdk-source "$sdk_source" --bmake "$BMAKE" --recipe "$PKGSRCDIR/$scp_path" \
+            --expected-work "$scp_work" --make-arg "EMBERBSD_NATIVE_TOOLSET_VERIFIED=$native" \
+            --make-arg "MAKE_JOBS=$make_jobs" --make-arg "NATIVE_PKG_ADD_CMD=$run/pkg_add" \
+            --make-arg DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency \
+            ${cachearg:+--make-arg "PBULK_CACHE_DIRECTORY=$cachearg"} -- "$@"
+    fi
+    "$host_python" -B -E -S "$(dirname "$0")/stage-local-configure-preserve.py" "$@"
+}
+
+# Shared-pair target_install adds a stage-specific argument. Until that
+# complete invocation can be replayed here, keep its ordinary configure path.
+stage_configure_preserve_target()
+{
+    shared_pair_for_path "$1" || :
+    if [ -n "$shared_pair" ] && [ "$(cat "$run/shared-$shared_pair/enabled" 2>/dev/null)" = yes ]; then
+        if [ -e "$2/.emberbsd-configure-preserve.json" ] || [ -L "$2/.emberbsd-configure-preserve.json" ]; then
+            echo 'Cannot change to a shared stage while configure recovery is pending' >&2
+            return 1
+        fi
+        return 0
+    fi
+    if [ "$install" = package-install ]; then
+        set -- "$@" PKGSRC_KEEP_BIN_PKGS=yes
+    fi
+    stage_configure_preserve "$@"
+}
+
 # Print device, inode, size, modification time and name of each path.
 sigs()
 {
@@ -1245,6 +1292,7 @@ build_native()
     : > "$log"
     if { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; } &&
         { [ "${stage_local_revision_changed:-no}" != yes ] || bmk -C "$PKGSRCDIR/$path" "$@" depends-clean _package-clean < /dev/null >> "$log" 2>&1; } &&
+        { [ "${stage_local:-no}" != yes ] || stage_configure_preserve "$path" "$wrkdir" "$@" _AUTOMATIC=yes >> "$log" 2>&1; } &&
         if [ "${package_only:-no}" = yes ]; then
             bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes package < /dev/null >> "$log" 2>&1
         elif [ "$install" = replace ]; then
@@ -1677,6 +1725,9 @@ build_one()
     fi
     set +f
     { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" clean < /dev/null >> "$log" 2>&1; } &&
+        { [ "${stage_local:-no}" != yes ] || stage_configure_preserve_target "$path" "$wrkdir" \
+            _EMBER_STAGE_LOCAL_PACKAGE_INSTALL=yes \
+            "_EMBER_STAGE_LOCAL_PKGPATH=$path" "_EMBER_STAGE_LOCAL_WRKDIR=$wrkdir" >> "$log" 2>&1; } &&
         target_install "$path" $install >> "$log" 2>&1 &&
         { [ -z "$replace" ] || if [ "${stage_local:-no}" = yes ]; then
             target_install "$path" replace >> "$log" 2>&1
