@@ -12,7 +12,10 @@ _EMBER_FLANG_MODE=
 .if ${EMBERBSD_CROSS_COMPILER_FAMILY:Uclang} == "clang"
 _EMBER_FLANG_MODE=cross
 .endif
-.elif "${EMBERBSD_HOST_COMPILER_FAMILY:U}" == "clang"
+.elif "${EMBERBSD_HOST_COMPILER_FAMILY:U}" == "clang" && \
+    (${USE_CROSS_COMPILE:Uno:tl} != "yes" || \
+     ${PKGPATH} != "cross/cross-libtool-fortran" || \
+     ${EMBERBSD_CROSS_COMPILER_FAMILY:Uclang} == "clang")
 # Native dependency recursion builds for the build host. A Clang build uses
 # the same host Flang there, never a pkgsrc GCC Fortran.
 _EMBER_FLANG_MODE=native
@@ -105,7 +108,9 @@ CWRAPPERS_APPEND_LINK.f77+=-Wl,-rpath-link,${CROSS_DESTDIR}/usr/lib
 CWRAPPERS_APPEND_LINK.f77+=-Wl,-rpath-link,${CROSS_DESTDIR}${CROSS_LOCALBASE}/lib
 .endif
 .endif
-.elif ${TOOLS_USE_CROSS_COMPILE:Uno:tl} == "yes" && \
+.elif (${TOOLS_USE_CROSS_COMPILE:Uno:tl} == "yes" || \
+      (${USE_CROSS_COMPILE:Uno:tl} == "yes" && \
+       ${PKGPATH} == "cross/cross-libtool-fortran")) && \
     (!empty(USE_LANGUAGES:Mfortran) || !empty(USE_LANGUAGES:Mfortran77))
 .if ${EMBERBSD_CROSS_COMPILER_FAMILY} != "gcc"
 PKG_FAIL_REASON+="The cross compiler family must be clang or gcc for Fortran packages"
@@ -114,7 +119,8 @@ FC=${TOOLDIR}/bin/${_EMBER_CROSS_TRIPLET}-gfortran
 .if !exists(${FC})
 PKG_FAIL_REASON+="The selected GCC16 compiler generation has no Fortran frontend"
 .endif
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && \
+    ${TOOLS_USE_CROSS_COMPILE:Uno:tl} == "yes"
 DEPENDS+=gcc16-fortran-runtime-16.2.0nb1:../../lang/gcc16-fortran-runtime
 BUILD_DEPENDS+=gcc16-fortran-devel-16.2.0nb1:../../lang/gcc16-fortran-devel
 .endif
