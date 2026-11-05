@@ -1619,6 +1619,42 @@ def migrate_devtools_only(options, work):
     return gn_source(options)
 
 
+def verified_host_deployment_change(old_args, new_args, old_env, new_env, options, native):
+    """Accept only a coherent Darwin minimum and its derived V8 host flag."""
+    old = old_args.get('mac_deployment_target')
+    new = new_args.get('mac_deployment_target')
+    if old == new:
+        return False
+    require(native.host.get('os') == 'Darwin', 'host deployment change requires Darwin')
+    valid = lambda value: (isinstance(value, str) and
+        re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,2}', value) and
+        tuple(int(part) for part in value.split('.')) >= (14, 0))
+    require(valid(old) and valid(new) and new == options.macos_minimum,
+            'invalid host deployment minimum')
+    require(old_env.get('MACOSX_DEPLOYMENT_TARGET') == old and
+            new_env.get('MACOSX_DEPLOYMENT_TARGET') == new,
+            'host deployment environment disagrees with GN')
+    old_flags = old_args.get('v8_metagen_host_extra_flags')
+    new_flags = new_args.get('v8_metagen_host_extra_flags')
+    require(type(old_flags) == type(new_flags) and
+            (old_flags is None or isinstance(old_flags, list)),
+            'invalid V8 host deployment flags')
+    if old_flags is not None:
+        prefixes = ('-mmacos-version-min=', '-mmacosx-version-min=')
+        expected = []
+        count = 0
+        for flag in old_flags:
+            require(isinstance(flag, str), 'invalid V8 host deployment flag')
+            match = next((prefix for prefix in prefixes if flag.startswith(prefix)), None)
+            if match:
+                require(flag == match + old, 'old V8 host deployment flag disagrees')
+                flag = match + new
+                count += 1
+            expected.append(flag)
+        require(count <= 1 and new_flags == expected, 'V8 host deployment flags changed')
+    return True
+
+
 def reconfigure(options):
     keep_going_limit(options)
     build_after_reconfigure = getattr(options, 'build_after_reconfigure', False)
@@ -1663,6 +1699,10 @@ def reconfigure(options):
                          'EMBERBSD_HOST_TYPESCRIPT', 'EMBERBSD_HOST_ROLLUP',
                          'HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'}
         old_env = saved['environment']
+        deployment_changed = verified_host_deployment_change(
+            saved['arguments'], values, old_env, environment, options, native)
+        if deployment_changed:
+            permitted_env.add('MACOSX_DEPLOYMENT_TARGET')
         permitted_env.add('EMBERBSD_DEVTOOLS_PROVIDER_SHA256')
         node_source_refresh = verified_node_source_refresh(
             saved['arguments'], values, old_env, environment, getattr(options, 'node_source', None))
@@ -1738,6 +1778,8 @@ def reconfigure(options):
         node_v8_path_changed = verified_node_configure_v8_path_change(
             saved['arguments'], values, options.v8_source)
         for name in identity_args:
+            if deployment_changed and name in ('mac_deployment_target', 'v8_metagen_host_extra_flags'):
+                continue
             if node_source_refresh and name == 'emberbsd_node_source_identity':
                 continue
             if name in permitted_runtime_args:

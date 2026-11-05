@@ -752,6 +752,10 @@ by four inherited parameterized GTest linkage errors; target execution is pendin
 `configure` and regenerates the existing `--work` graph. It allows GN feature and compiler option changes while checking target and
 toolchain identity. Compiler bindings are immutable and their content-addressed
 paths change when their commands change, so Ninja rebuilds affected commands.
+On Darwin, reconfigure also accepts a coherent deployment minimum change when
+the selected host and target bindings, SDK and runtime remain unchanged. GN
+updates the derived host flags and Ninja rebuilds affected host and dependent
+actions through their changed commands.
 The prepared Node actions record the selected Node, TypeScript and Rollup paths
 and versions in their command lines and use those selections. After a provider
 update, reconfigure records the current versions; changing a path or version

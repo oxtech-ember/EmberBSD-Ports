@@ -108,7 +108,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
                               'cxx':['--ld-path=/ld','--rtlib=compiler-rt','--unwindlib=libunwind','-stdlib=libc++']})
     binding.write_text(json.dumps(commands))
     (src/'.gn').write_text('buildconfig="//BUILDCONFIG.gn"\n')
-    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n emberbsd_node_source_identity=""\n emberbsd_node_configure_helper=""\n emberbsd_node_configure_inputs=[]\n emberbsd_node_configure_dependencies=[]\n node_module_version=0\n node_inspector_string_traits_header=""\n emberbsd_native_pkg_config_prefix=""\n emberbsd_protoc_runtime_launcher=""\n emberbsd_protoc_runtime_view=""\n emberbsd_protoc_runtime_inputs=[]\n node_host_runtime_python=""\n node_host_runtime_launcher=""\n node_host_runtime_view=""\n node_host_runtime_inputs=[]\n perfetto_host_runtime_launcher=""\n perfetto_host_runtime_view=""\n perfetto_host_runtime_inputs=[]\n v8_prepared_source_receipt=""\n v8_version_hash_salt_files=[]\n v8_version_hash_salt=""\n feature=false\n clang_version=""\n}\nset_default_toolchain("//:tools")\n')
+    (src/'BUILDCONFIG.gn').write_text('declare_args() {\n emberbsd_node_provider_inputs=[]\n emberbsd_typescript_definitions=[]\n emberbsd_node_source_identity=""\n emberbsd_node_configure_helper=""\n emberbsd_node_configure_inputs=[]\n emberbsd_node_configure_dependencies=[]\n node_module_version=0\n node_inspector_string_traits_header=""\n emberbsd_native_pkg_config_prefix=""\n emberbsd_protoc_runtime_launcher=""\n emberbsd_protoc_runtime_view=""\n emberbsd_protoc_runtime_inputs=[]\n node_host_runtime_python=""\n node_host_runtime_launcher=""\n node_host_runtime_view=""\n node_host_runtime_inputs=[]\n perfetto_host_runtime_launcher=""\n perfetto_host_runtime_view=""\n perfetto_host_runtime_inputs=[]\n v8_prepared_source_receipt=""\n v8_version_hash_salt_files=[]\n v8_version_hash_salt=""\n feature=false\n clang_version=""\n mac_deployment_target=""\n v8_metagen_host_extra_flags=[]\n v8_metagen_extra_flags=[]\n}\nset_default_toolchain("//:tools")\n')
     (src/'BUILD.gn').write_text('toolchain("tools") {\n tool("stamp") { command="touch {{output}}" }\n}\n')
     (src/'electron/build/args').mkdir(parents=True)
     (src/'electron/build/args/release.gn').write_text('')
@@ -216,6 +216,8 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     try: b.require_common_node(opt); raise AssertionError('accepted missing common Node')
     except ValueError: pass
     opt.node_source = new_node_source; opt.node_pkgsrc = root/'node-pkgsrc'
+    opt.perfetto_source = root/'perfetto'; opt.perfetto_ports_source = root/'ports'
+    opt.perfetto_archive = root/'perfetto.tar'; opt.perfetto_patch = root/'patch'
     assert new['emberbsd_node_source_identity'] == str(
         opt.node_source.resolve(strict=True)/'emberbsd-prepared-source.json')
     saved = dict(arguments=old, environment=env, source=str(src.parent), sdk=str(root), host_prefix=str(host), target='amd64')
@@ -227,7 +229,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     calls = {'verify':0, 'producer':0, 'gn_source':0, 'lastchange':0,
              'ffmpeg':0, 'dsymutil':0, 'rust_std':0}
     phase_order = []
-    def verify_source(*_): calls['verify'] += 1
+    def verify_source(*_, **__): calls['verify'] += 1
     def gn_source(_): calls['gn_source'] += 1; phase_order.append('source-view'); return src
     b.verify_source=verify_source
     b.gn_source=gn_source  # Composition is tested separately.
@@ -242,7 +244,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     def inputs(candidate, sdk):
         calls['producer'] += 1
         bound=b.bind_versioned(sdk, Native(), candidate.work/'target-commands', state['commands'])
-        return Native(), {'PATH':state.get('path', Native.path), 'EMBERBSD_CONTROL_GIT':state.get('git', '/usr/bin/git'),
+        return Native(), {'EMBERBSD_DEVTOOLS_PROVIDER_SHA256':'a' * 64, 'PATH':state.get('path', Native.path), 'EMBERBSD_CONTROL_GIT':state.get('git', '/usr/bin/git'),
                           'EMBERBSD_HOST_TYPESCRIPT':'/new', 'EMBERBSD_HOST_NODE':str(host/'bin/node'),
                           'EMBERBSD_V8_SOURCE_SHA256':state.get('v8_sha', 'b' * 64),
                           'EMBERBSD_NODE_SOURCE_SHA256':state.get('node_sha', 'b' * 64),
@@ -595,4 +597,38 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     assert refreshed['arguments']['emberbsd_node_source_identity']==str(node_refresh_receipt.resolve())
     assert refreshed['arguments']['node_module_version']==130
     assert obj.read_bytes()==b'object' and not (work/'reconfigure-incomplete').exists()
+    # A Darwin-only minimum change permits exactly its derived host fields.
+    Native.host = {'os': 'Darwin'}
+    opt.macos_minimum = '27.0'
+    deployed = json.loads(config.read_text())
+    deployed['arguments'].update(mac_deployment_target='14.0',
+        v8_metagen_host_extra_flags=['-mmacos-version-min=14.0', '-DHOST'],
+        v8_metagen_extra_flags=['--target=x86_64--netbsd'])
+    deployed['environment']['MACOSX_DEPLOYMENT_TARGET'] = '14.0'
+    config.write_text(json.dumps(deployed))
+    (out/'args.gn').write_text(b.gn_arguments(deployed['arguments']))
+    state['values'] = dict(deployed['arguments'], mac_deployment_target='27.0',
+        v8_metagen_host_extra_flags=['-mmacos-version-min=27.0', '-DHOST'])
+    state['extra'] = {'MACOSX_DEPLOYMENT_TARGET': '27.0'}
+    target_before = (work/'target-commands/commands.json').read_bytes()
+    for invalid_args, invalid_env in (
+        ({'mac_deployment_target': '26.0'}, {}),
+        ({}, {'MACOSX_DEPLOYMENT_TARGET': '26.0'}),
+        ({'v8_metagen_host_extra_flags': ['-mmacos-version-min=27.0', '-DOTHER']}, {}),
+        ({'v8_metagen_extra_flags': ['--target=other']}, {}),
+        ({'target_cpu': 'arm64'}, {}),
+        ({'emberbsd_sdk_source': '/other-sdk'}, {})):
+        good_args, good_env = state['values'], state['extra']
+        state['values'] = dict(good_args, **invalid_args)
+        state['extra'] = dict(good_env, **invalid_env)
+        try: b.reconfigure(opt); raise AssertionError('accepted incoherent deployment input')
+        except ValueError: pass
+        state['values'], state['extra'] = good_args, good_env
+    b.reconfigure(opt)
+    changed = json.loads(config.read_text())
+    assert changed['arguments']['mac_deployment_target'] == '27.0'
+    assert changed['environment']['MACOSX_DEPLOYMENT_TARGET'] == '27.0'
+    assert changed['arguments']['v8_metagen_extra_flags'] == ['--target=x86_64--netbsd']
+    assert (work/'target-commands/commands.json').read_bytes() == target_before
+    assert obj.read_bytes() == b'object' and not (work/'reconfigure-incomplete').exists()
     print('real GN reconfigure, combined Ninja, standalone build, failure recovery and object preservation passed')
