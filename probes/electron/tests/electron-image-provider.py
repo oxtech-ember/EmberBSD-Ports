@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
 """Check image provider ownership, versions, checksums and both roles."""
-import hashlib, importlib.util, json, tempfile
+import hashlib, importlib.util, json, tempfile, os
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -29,7 +29,22 @@ with tempfile.TemporaryDirectory() as tmp:
  sdk={'process':SimpleNamespace(capture=lambda command,env:SimpleNamespace(stdout=('1.0\n'*(len(command)-command.index('--modversion')-1)).encode()))}
  env={'EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK':str(meta)}
  with patch.object(c,'validate_package_source') as verify:
+  watched=host/'include/jpeglib.h'; before=watched.stat()
+  # Old atime reproduces the read-induced update on filesystems that track it.
+  os.utime(watched,ns=(1,before.st_mtime_ns)); before=watched.stat()
   v=image.select(c,o,sdk,native,env,view);assert verify.call_count==4 and len(env['EMBERBSD_IMAGE_SOURCE_SHA256'])==64
+  after=watched.stat()
+  assert after.st_mtime_ns==before.st_mtime_ns and after.st_ctime_ns==before.st_ctime_ns
+  read_bytes=Path.read_bytes
+  def change_mtime(path):
+   data=read_bytes(path)
+   if path==watched:
+    st=path.stat();os.utime(path,ns=(st.st_atime_ns,st.st_mtime_ns+1_000_000_000))
+   return data
+  try:
+   with patch.object(Path,'read_bytes',change_mtime):image.select(c,o,sdk,native,env,view)
+  except ValueError as error:assert 'differs' in str(error)
+  else:raise AssertionError('concurrent mtime change accepted')
   assert len(v['emberbsd_webp_host_libraries'])==4 and v['emberbsd_jpeg_target_libraries'][0].endswith('.so')
   f=target/'lib/libwebp.so';f.write_text('altered')
   try:image.select(c,o,sdk,native,env,view)
