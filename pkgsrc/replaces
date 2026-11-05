@@ -101,6 +101,7 @@ graphics/libraw
 graphics/librsvg
 graphics/opencv
 graphics/openexr
+graphics/openjpeg
 graphics/png
 math/eigen3
 math/py-numpy

@@ -1,0 +1,31 @@
+$NetBSD: distinfo,v 1.27 2025/09/22 05:55:05 adam Exp $
+
+BLAKE2s (openjpeg-2.5.4.tar.gz) = be7ef440f5a3c9e6631be7b52cd7f6a7eb5dd27db10649e28c6563c4ba5d8c0d
+SHA512 (openjpeg-2.5.4.tar.gz) = 702a10e20caaf8209684ded7c9fcf32f5ba6a972cf2d9fcf2611cdc6a446d2c3bb60324205758e6b6f92278c8cf4ef0fbae511e6ffb45ed6e8df514db0c6ab25
+Size (openjpeg-2.5.4.tar.gz) = 2157028 bytes
+SHA1 (patch-CMakeLists.txt) = f9cbfae0f2ff780c6f5250d1a1930d8e8961380d
+SHA1 (patch-src_bin_jp2_CMakeLists.txt) = 2ad64fbd7ce8c084b3d5882d353ae5f6110da183
+SHA1 (patch-src_lib_openjp2_CMakeLists.txt) = 55dccb61e492a7b6b2eca5d91081b2d33ab03ea1
+SHA1 (patch-src_lib_openjp2_opj__config__private.h.cmake.in) = 6d7a88300b29c9bab7fe8c89276d907593961e59
+SHA1 (patch-zz-pdfium-0003-dwt-decode) = 51c618609d7237376be300bbc2170f5ef796c715
+SHA1 (patch-zz-pdfium-0005-jp2_apply_pclr) = 0d2103dbc4c72fe3d4a8d63f397d5ffc08547ef0
+SHA1 (patch-zz-pdfium-0006-tcd_init_tile) = e6ac5568e2cf3165445042e095848fb348d8b1d6
+SHA1 (patch-zz-pdfium-0007-jp2_read_cmap) = cf7533f527a69f9951c96d6bb4659b608bb9359f
+SHA1 (patch-zz-pdfium-0009-opj_pi_next) = 22d38db5be1e6287e5551efbf9ab44864f420481
+SHA1 (patch-zz-pdfium-0011-j2k_update_image_data) = 8c206952f6affb058fde8c085d94d4c0ed976d64
+SHA1 (patch-zz-pdfium-0012-mct_sse) = bb33c832f157fd44c12165e303010379decefd5b
+SHA1 (patch-zz-pdfium-0014-opj_jp2_read_ihdr_leak) = 1196d5ae0c3fc975a651350658cff5a3b835cc3b
+SHA1 (patch-zz-pdfium-0015-read_SPCod_SPCoc_overflow) = e80be9430e9daaa7b6579f86c3dfdfbc1bde3850
+SHA1 (patch-zz-pdfium-0016-read_SQcd_SQcc_overflow) = cdac74cb1a2c6f5fada8f118b9f9496763d6ac60
+SHA1 (patch-zz-pdfium-0019-tcd_init_tile) = 00cb6103b91cd38184c2df52afed31e2dce0506e
+SHA1 (patch-zz-pdfium-0022-jp2_apply_pclr_overflow) = 7e89363025cbf6d553b8a3266d40991fcd380fa9
+SHA1 (patch-zz-pdfium-0023-opj_j2k_read_mct_records) = c5fb109fab32b343a78480e0c4c31b070e6a30b3
+SHA1 (patch-zz-pdfium-0025-opj_j2k_add_mct_null_data) = b5fa4ed97bb83b3d35fa0363e3a74ce9668885f6
+SHA1 (patch-zz-pdfium-0046-func-ptr-mixup) = 5c96036fe33d2930f393e8314171d8e0b5d5113d
+SHA1 (patch-zz-pdfium-0047-opj_j2k_read_sod) = 3b2ded1c446cfc1a8b70a6c98ae3f74b9d714588
+SHA1 (patch-zz-pdfium-0048-dwt_neon_9-7_idwt) = e2ca3471d175c42ab80c96576de6c39f69b40606
+SHA1 (patch-zz-pdfium-0049-dwt_neon_5-3_idwt) = 38f3cbf4499d905aae9c926c0e9eee03cea3fd9b
+SHA1 (patch-zz-pdfium-0050-opj_pi_initialise_encode_overflow) = 4e7d59c86f5ef6f0af78dabec5ab480bfe85f875
+SHA1 (patch-zz-pdfium-0051-opj_j2k_copy_default_double_free) = c1541ea9489160904dee8da41f68f7b0864f9fe9
+SHA1 (patch-zz-pdfium-0052-opj_j2k_copy_default_mcc_records) = b1017f5c8feb0e73318f0f05af08965b7065add4
+SHA1 (patch-zz-pdfium-0053-opj_copy_image_header) = 5c1ffd6fd622c7dd97a45c5623b299029ce0147d

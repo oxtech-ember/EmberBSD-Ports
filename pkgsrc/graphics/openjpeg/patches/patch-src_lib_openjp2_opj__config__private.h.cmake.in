@@ -1,0 +1,18 @@
+$NetBSD: patch-src_lib_openjp2_opj__config__private.h.cmake.in,v 1.3 2024/02/26 18:15:43 adam Exp $
+
+Add #cmakedefine for aligned malloc functions.
+See also patch-CMakeLists.txt
+
+--- src/lib/openjp2/opj_config_private.h.cmake.in.orig	2024-02-26 14:17:28.000000000 +0000
++++ src/lib/openjp2/opj_config_private.h.cmake.in
+@@ -13,6 +13,10 @@
+ /*#cmakedefine HAVE_INTTYPES_H @HAVE_INTTYPES_H@ */
+ /*#cmakedefine HAVE_STDINT_H @HAVE_STDINT_H@ */
+ 
++#cmakedefine HAVE_MM_MALLOC
++#cmakedefine HAVE_MEMALIGN
++#cmakedefine HAVE_POSIX_MEMALIGN
++
+ #cmakedefine _LARGEFILE_SOURCE
+ #cmakedefine _LARGE_FILES
+ #cmakedefine _FILE_OFFSET_BITS @_FILE_OFFSET_BITS@
