@@ -39,6 +39,9 @@ with tempfile.TemporaryDirectory(prefix='electron-producer-makeconf-') as temp:
               'EMBERBSD_ELECTRON_ML_LITERT_PORTS_SOURCE= /selected/litert-owner',
               'EMBERBSD_ELECTRON_ML_OPENXLA_PKGSRC_EXPORT= /selected/xla-export',
               'EMBERBSD_ELECTRON_ML_OPENXLA_EXPORT_PATCH= /selected/xla-patch']
+    sqlite_keys = ('SQLITE_SOURCE', 'SQLITE_ARCHIVE', 'SQLITE_AMALGAMATION',
+                   'SQLITE_PATCH', 'SQLITE_PKGSRC_EXPORT', 'SQLITE_EXPORT_PATCH')
+    lines += ['EMBERBSD_ELECTRON_' + key + '= /selected/' + key.lower() for key in sqlite_keys]
     conf.write_text('\n'.join(lines) + '\n')
     env = {'PATH': os.environ['PATH'], 'HOME': temp, 'TMPDIR': temp, 'MAKECONF': str(conf)}
     def run(early):
@@ -61,6 +64,7 @@ with tempfile.TemporaryDirectory(prefix='electron-producer-makeconf-') as temp:
     assert '--ml-litert-ports-source /selected/litert-owner' in new_args
     assert '--ml-openxla-pkgsrc-export /selected/xla-export' in new_args
     assert '--ml-openxla-export-patch /selected/xla-patch' in new_args
+    assert all('--' + key.lower().replace('_', '-') in new_args for key in sqlite_keys)
     # Fetch/checksum remain independent of producer selectors.
     conf.write_text('\n'.join(lines[:5]) + '\n')
     for target in ('fetch', 'checksum'):

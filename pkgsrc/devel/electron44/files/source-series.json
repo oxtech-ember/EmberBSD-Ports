@@ -1192,6 +1192,11 @@
       "path": "gn-common-native-rpath.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "sqlite-netbsd-alloca.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

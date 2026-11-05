@@ -2062,6 +2062,13 @@ def producer_inputs(options, sdk):
     values.update(common_ml_sources(options, sdk, native, environment))
     if not getattr(options, 'activate_common_providers', False):
         common_boringssl_source(options, sdk, native, environment)
+        if any(getattr(options, name, None) for name in ('sqlite_source', 'sqlite_archive', 'sqlite_amalgamation', 'sqlite_patch', 'sqlite_pkgsrc_export', 'sqlite_export_patch')):
+            sqlite_view = local_module('electron_sqlite_source_view', 'sqlite-source-view.py')
+            local_module('electron_sqlite_provider', 'sqlite-provider.py').select(
+                types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
+                                      git=selected_control_git, source_environment=source_owner_environment,
+                                      view=local_module('electron_protobuf_source_view', 'protobuf-source-view.py')),
+                sqlite_view, options, sdk, native, environment)
     values.update(common_v8_metagen(options, sdk, native, environment, tools))
     if options.compiler_family == 'clang':
         target_root = getattr(options, 'target_runtime_stage', None) or options.sysroot
@@ -2222,6 +2229,11 @@ def gn_source(options):
         new_image = bool(getattr(options, 'shared_image', False))
         image_names = ('libwebp',)
         image_marker = destination.parent / ('.' + destination.name + '.image-components-migration')
+        old_sqlite = getattr(options, 'old_sqlite_selection', None)
+        new_sqlite = getattr(options, 'sqlite_selection', None)
+        sqlite_marker = destination.parent / ('.' + destination.name + '.sqlite-components-migration')
+        sqlite = (local_module('electron_sqlite_source_view', 'sqlite-source-view.py')
+                  if old_sqlite or new_sqlite or os.path.lexists(sqlite_marker) else None)
         old_xml = bool(getattr(options, 'old_xml_identity', None))
         new_xml = bool(getattr(options, 'shared_xml', False))
         xml_names = ('libxml', 'libxslt')
@@ -2263,6 +2275,19 @@ def gn_source(options):
             # the configuration receipt was replaced. Reject any foreign view.
             compression.verify_view(view, options.workspace / 'src', destination, ('ffmpeg',))
             old_ffmpeg = True
+        sqlite_root = compression_root / 'sqlite'
+        if (new_sqlite and old_sqlite != new_sqlite and
+                (options.phase == 'reconfigure' or
+                 (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
+                                                    getattr(options, 'resume_configure', False)))) and
+                not os.path.lexists(sqlite_marker) and sqlite_root.is_dir() and not sqlite_root.is_symlink()):
+            try:
+                sqlite.verify_view(view, options.workspace / 'src', destination, new_sqlite)
+            except (ValueError, OSError):
+                require(old_sqlite is not None, 'foreign SQLite projection during recovery')
+                sqlite.verify_view(view, options.workspace / 'src', destination, old_sqlite)
+            else:
+                old_sqlite = new_sqlite
         minizip_root = compression_root / 'zlib'
         if (new_minizip and not old_minizip and
                 (options.phase == 'reconfigure' or
@@ -2306,6 +2331,9 @@ def gn_source(options):
             if boring_id:
                 names.append(boring.NAME)
                 checks.append(lambda: boring.verify_view(view, options.workspace / 'src', destination, boring_id, sp))
+            if old_sqlite:
+                names.append(sqlite.NAME)
+                checks.append(lambda: sqlite.verify_view(view, options.workspace / 'src', destination, old_sqlite))
             if old_image:
                 names.extend(image_names)
                 checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, image_names))
@@ -2340,6 +2368,13 @@ def gn_source(options):
                 selection_refreshed = True
                 return result
             return view.verify(options.workspace / 'src', common, destination, **current)
+        if os.path.lexists(sqlite_marker):
+            require(new_sqlite and (options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+                    'SQLite transaction recovery requires selected SQLite reconfigure')
+            sqlite.activate(view, options.workspace / 'src', destination, new_sqlite, old_sqlite,
+                            lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring))
+            old_sqlite = new_sqlite
         if os.path.lexists(image_marker):
             require(new_image and (options.phase == 'reconfigure' or
                     getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
@@ -2429,6 +2464,15 @@ def gn_source(options):
             compression.activate(view, options.workspace / 'src', destination,
                                  lambda: verify_selection(ids, new_headers, new_media, old_compression))
             verify_selection(ids, new_headers, new_media, new_compression)
+        if old_sqlite != new_sqlite or os.path.lexists(sqlite_marker):
+            require(new_sqlite, 'disabling common SQLite requires a new source view')
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'SQLite transition requires reconfigure')
+            sqlite.activate(view, options.workspace / 'src', destination, new_sqlite, old_sqlite,
+                            lambda: verify_selection(ids, new_headers, new_media, new_compression))
+            old_sqlite = new_sqlite
+            transition_result = verify_selection(ids, new_headers, new_media, new_compression)
+            transition = True
         if old_ffmpeg != new_ffmpeg or os.path.lexists(ffmpeg_marker):
             require(new_ffmpeg, 'disabling shared FFmpeg requires a new source view')
             require(options.phase == 'reconfigure' or new_view or initial,
@@ -2889,6 +2933,9 @@ def reconfigure(options):
                 options.old_compression_identity = old_env.get('EMBERBSD_COMPRESSION_SOURCE_SHA256')
                 options.old_image_identity = old_env.get('EMBERBSD_IMAGE_SOURCE_SHA256')
                 permitted_env.add('EMBERBSD_IMAGE_SOURCE_SHA256')
+                options.sqlite_selection = getattr(candidate, 'sqlite_selection', None)
+                options.old_sqlite_selection = json.loads(old_env['EMBERBSD_SQLITE_SELECTION']) if old_env.get('EMBERBSD_SQLITE_SELECTION') else None
+                permitted_env.add('EMBERBSD_SQLITE_SELECTION')
                 options.old_xml_identity = old_env.get('EMBERBSD_XML_SOURCE_SHA256')
                 permitted_env.add('EMBERBSD_XML_SOURCE_SHA256')
                 options.old_minizip_identity = old_env.get('EMBERBSD_MINIZIP_SOURCE_SHA256')
@@ -3129,6 +3176,7 @@ def build(options):
     options.old_boringssl_identity = saved_env['EMBERBSD_BORINGSSL_SOURCE_SHA256']
     options.old_compression_identity = saved_env['EMBERBSD_COMPRESSION_SOURCE_SHA256']
     options.old_image_identity = saved_env.get('EMBERBSD_IMAGE_SOURCE_SHA256')
+    options.old_sqlite_selection = json.loads(saved_env['EMBERBSD_SQLITE_SELECTION']) if saved_env.get('EMBERBSD_SQLITE_SELECTION') else None
     options.old_xml_identity = saved_env.get('EMBERBSD_XML_SOURCE_SHA256')
     options.old_minizip_identity = saved_env.get('EMBERBSD_MINIZIP_SOURCE_SHA256')
     options.old_ffmpeg_identity = saved_env.get('EMBERBSD_FFMPEG_SOURCE_SHA256')
@@ -3179,6 +3227,8 @@ def main():
         for name in ('macos-sdk', 'xcode-version-plist', 'gcc-os-tools', 'target-runtime-stage', 'target-runtime-base', 'host-runtime-root', 'protoc-runtime-view',
                      'host-buildlink-pkgsrc', 'host-buildlink-stage-root',
                      'host-buildlink-base-makeconf', 'host-buildlink-bmake-mk',
+                     'sqlite-source', 'sqlite-archive', 'sqlite-amalgamation', 'sqlite-patch',
+                     'sqlite-pkgsrc-export', 'sqlite-export-patch',
                      'protobuf-source', 'protobuf-ports-source', 'protobuf-archive', 'protobuf-patch',
                      'node-source', 'node-pkgsrc', 'node-ports-source', 'gyp-source', 'gyp-pkgsrc', 'perfetto-source', 'perfetto-ports-source',
                      'perfetto-archive', 'perfetto-patch', 'v8-source', 'v8-ports-source', 'v8-pkgsrc',
@@ -3243,6 +3293,8 @@ def main():
                             options.target_runtime_stage, options.target_runtime_base, options.host_runtime_root, options.protoc_runtime_view,
                             options.host_prefix, options.sysroot, options.host_buildlink_pkgsrc,
                             options.boringssl_source, options.boringssl_archive,
+                            options.sqlite_source, options.sqlite_archive, options.sqlite_amalgamation,
+                            options.sqlite_patch, options.sqlite_pkgsrc_export, options.sqlite_export_patch,
                             options.host_buildlink_stage_root, options.ml_patch, options.ml_pkgsrc_export, options.ml_ports_source, options.ml_export_patch,
                             *(getattr(options, 'ml_' + name.replace('-', '_') + '_' + role)
                               for name in ML_PROVIDERS for role in ('source', 'archive', 'ports_source', 'pkgsrc_export', 'export_patch')))

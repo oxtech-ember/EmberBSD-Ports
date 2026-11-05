@@ -1,0 +1,27 @@
+# Origin: EmberBSD contributors (AI-assisted).
+# The NetBSD C library exposes alloca through its extension namespace.
+
+--- a/third_party/sqlite/BUILD.gn
++++ b/third_party/sqlite/BUILD.gn
+@@ -212,6 +212,10 @@ component("chromium_sqlite3") {
+   cflags = []
+   defines = []
+ 
++  if (current_os == "netbsd") {
++    defines += [ "_NETBSD_SOURCE" ]
++  }
++
+   if (is_component_build) {
+     if (is_win) {
+       defines += [ "SQLITE_API=__declspec(dllexport)" ]
+@@ -291,6 +295,10 @@ source_set("dev_sqlite3") {
+   cflags = []
+   defines = []
+ 
++  if (current_os == "netbsd") {
++    defines += [ "_NETBSD_SOURCE" ]
++  }
++
+   if (is_linux || is_chromeos || is_android) {
+     defines += [
+       # Linux provides fdatasync(), a faster equivalent of fsync().
