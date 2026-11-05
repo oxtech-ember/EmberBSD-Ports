@@ -8,9 +8,25 @@ XML catalog from the loaded libxml2 instead of the build-time absolute
 sysconfdir. Published host packages then find docbook catalogs after
 install into another prefix. Explicit XML_CATALOG_FILES stays unchanged.
 
+Ports sets _POSIX_C_SOURCE=200112L on Linux; glibc then hides Dl_info and
+dladdr unless a GNU feature macro is defined before any system headers.
+Define _GNU_SOURCE only for Linux so Darwin and BSD keep their usual
+declarations. Relative-catalog behavior is unchanged on every platform.
+
 --- catalog.c.orig
 +++ catalog.c
-@@ -29,6 +29,12 @@
+@@ -12,6 +12,10 @@
+  * Author: Daniel Veillard
+  */
+ 
++#if defined(__linux__) && !defined(_GNU_SOURCE)
++#define _GNU_SOURCE 1
++#endif
++
+ #define IN_LIBXML
+ #include "libxml.h"
+ 
+@@ -29,6 +33,12 @@
    #include <unistd.h>
  #endif
  
@@ -23,7 +39,7 @@ install into another prefix. Explicit XML_CATALOG_FILES stays unchanged.
  #include <libxml/xmlmemory.h>
  #include <libxml/hash.h>
  #include <libxml/uri.h>
-@@ -64,6 +70,54 @@
+@@ -64,6 +74,54 @@
  #endif
  #endif
  
@@ -78,7 +94,7 @@ install into another prefix. Explicit XML_CATALOG_FILES stays unchanged.
  static xmlChar *xmlCatalogNormalizePublic(const xmlChar *pubID);
  static int xmlExpandCatalog(xmlCatalogPtr catal, const char *filename, int depth);
  
-@@ -3234,8 +3288,11 @@
+@@ -3234,8 +3292,11 @@
  	xmlCatalogEntryPtr *nextent;
  
  	catalogs = (const char *) getenv("XML_CATALOG_FILES");
