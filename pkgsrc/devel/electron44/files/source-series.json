@@ -1047,6 +1047,11 @@
       "path": "devtools-cssnano-builtin.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "gn-devtools-node-types-reassign.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

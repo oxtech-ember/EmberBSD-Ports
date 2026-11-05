@@ -1,0 +1,10 @@
+--- a/third_party/devtools-frontend/src/scripts/build/typescript/typescript_vars.gni
++++ b/third_party/devtools-frontend/src/scripts/build/typescript/typescript_vars.gni
+@@ -752,6 +752,7 @@
+ if (build_with_chromium && emberbsd_host_node != "") {
+   assert(emberbsd_devtools_node_type_inputs != [],
+          "selected Node declarations must be supplied")
++  typescript_node_types_inputs = []
+   typescript_node_types_inputs = emberbsd_devtools_node_type_inputs
+ }
+ 
