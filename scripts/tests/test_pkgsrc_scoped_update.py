@@ -218,6 +218,35 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
         self.assertEqual((self.tree / names[1]).read_text(), 'buildlink=3\n')
         self.assertEqual((neighbor.stat().st_ino, neighbor.stat().st_mtime_ns), stamp)
 
+    def test_global_patch_orig_header(self):
+        name = 'mk/bsd.makevars.mk'
+        def patch(old_name, new_name, old, new):
+            return (f'--- a/{old_name}\n+++ b/{new_name}\n@@ -1 +1 @@\n'
+                    f'-makevars={old}\n+makevars={new}\n')
+        write(self.ports, 'patches/orig.patch', patch(name + '.orig', name, 0, 1))
+        conf = self.ports / 'pkgsrc/export.conf'
+        conf.write_text(conf.read_text() + 'patch\tpatches/orig.patch\n')
+        commit(self.ports, 'existing orig header')
+        self.export = self.work / 'orig-shared'
+        self.command[3] = self.export
+        result = run(self.command, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.tree = self.export / 'pkgsrc'
+        self.assertEqual((self.tree / name).read_text(), 'makevars=1\n')
+        write(self.ports, 'patches/next.patch', patch(name, name, 1, 2))
+        conf.write_text(conf.read_text() + 'patch\tpatches/next.patch\n')
+        commit(self.ports, 'next global patch')
+        result = self.update('--file', name)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.tree / name).read_text(), 'makevars=2\n')
+        for old, new in [('mk/other.mk', name), (name, name + '.orig')]:
+            write(self.ports, 'patches/next.patch', patch(old, new, 1, 2))
+            result = self.update('--file', name)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('changed patch extends outside selected package', result.stderr)
+            self.assertEqual((self.tree / name).read_text(), 'makevars=2\n')
+        self.assertEqual((self.tree / 'mk/neighbor.mk').read_text(), 'neighbor=0\n')
+
     def test_changed_patch_and_file_preserve_unrelated_times_and_delete(self):
         unchanged = self.tree / 'cat/pkg/files/unchanged'
         other = self.tree / 'cat/other/Makefile'

@@ -592,8 +592,10 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                         raise ValueError('opaque unified patch: ' + row[1])
                     matching = []
                     for names, part in sections:
-                        if any(matches(name) for name in names):
-                            if any(not matches(name) for name in names):
+                        section_names = ([package] if global_file and
+                                         names == [package + '.orig', package] else names)
+                        if any(matches(name) for name in section_names):
+                            if any(not matches(name) for name in section_names):
                                 raise ValueError('patch section crosses selected package')
                             matching.append(part)
                     if matching:
