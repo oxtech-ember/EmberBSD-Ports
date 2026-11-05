@@ -20,7 +20,7 @@ required = ('WORKSPACE PORTS_SOURCE SDK_SOURCE HOST_PREFIX COMPILER_PREFIX SYSRO
             'ML_FARMHASH_SOURCE ML_ML_DTYPES_SOURCE ML_NEON2SSE_SOURCE ML_FXDIV_SOURCE ML_FFT2D_SOURCE '
             'ML_LITERT_SOURCE ML_OPENXLA_SOURCE ML_PATCH ML_PKGSRC_EXPORT ML_PORTS_SOURCE ML_EXPORT_PATCH ML_RUY_ARCHIVE ML_PTHREADPOOL_ARCHIVE '
             'ML_GEMMLOWP_ARCHIVE ML_FARMHASH_ARCHIVE ML_ML_DTYPES_ARCHIVE ML_NEON2SSE_ARCHIVE '
-            'ML_FXDIV_ARCHIVE ML_FFT2D_ARCHIVE ML_LITERT_ARCHIVE ML_OPENXLA_ARCHIVE').split()
+            'ML_FXDIV_ARCHIVE ML_FFT2D_ARCHIVE ML_LITERT_ARCHIVE ML_OPENXLA_ARCHIVE BORINGSSL_SOURCE BORINGSSL_ARCHIVE').split()
 with tempfile.TemporaryDirectory(prefix='electron-producer-makeconf-') as temp:
     root = Path(temp)
     for item in Path(pkgsrc).resolve().iterdir():
@@ -35,7 +35,10 @@ with tempfile.TemporaryDirectory(prefix='electron-producer-makeconf-') as temp:
              'LOCALBASE= ' + str(prefix), 'PKG_DBDIR= ' + str(prefix / 'pkgdb'),
              'PKGSRC_COMPILER= clang', 'CLANGBASE= ' + str(prefix)]
     lines += ['EMBERBSD_ELECTRON_' + name + '= /selected/' + name.lower() for name in required]
-    lines += ['EMBERBSD_ELECTRON_MACOS_MINIMUM= 14.0', 'EMBERBSD_ELECTRON_SHARED_ICU= yes']
+    lines += ['EMBERBSD_ELECTRON_MACOS_MINIMUM= 14.0', 'EMBERBSD_ELECTRON_SHARED_ICU= yes',
+              'EMBERBSD_ELECTRON_ML_LITERT_PORTS_SOURCE= /selected/litert-owner',
+              'EMBERBSD_ELECTRON_ML_OPENXLA_PKGSRC_EXPORT= /selected/xla-export',
+              'EMBERBSD_ELECTRON_ML_OPENXLA_EXPORT_PATCH= /selected/xla-patch']
     conf.write_text('\n'.join(lines) + '\n')
     env = {'PATH': os.environ['PATH'], 'HOME': temp, 'TMPDIR': temp, 'MAKECONF': str(conf)}
     def run(early):
@@ -55,6 +58,9 @@ with tempfile.TemporaryDirectory(prefix='electron-producer-makeconf-') as temp:
     new_check, new_args = run(True)
     assert 'FAIL' in old_check and '--macos-minimum' not in old_args
     assert 'FAIL' not in new_check and '--macos-minimum' in new_args and '--shared-icu' in new_args
+    assert '--ml-litert-ports-source /selected/litert-owner' in new_args
+    assert '--ml-openxla-pkgsrc-export /selected/xla-export' in new_args
+    assert '--ml-openxla-export-patch /selected/xla-patch' in new_args
     # Fetch/checksum remain independent of producer selectors.
     conf.write_text('\n'.join(lines[:5]) + '\n')
     for target in ('fetch', 'checksum'):

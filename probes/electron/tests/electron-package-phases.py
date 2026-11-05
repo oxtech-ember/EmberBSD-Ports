@@ -63,7 +63,8 @@ plist-fixture:
                'ML_LITERT_SOURCE','ML_OPENXLA_SOURCE','ML_PATCH','ML_PKGSRC_EXPORT','ML_PORTS_SOURCE','ML_EXPORT_PATCH',
                'ML_RUY_ARCHIVE','ML_PTHREADPOOL_ARCHIVE','ML_GEMMLOWP_ARCHIVE','ML_FARMHASH_ARCHIVE',
                'ML_ML_DTYPES_ARCHIVE','ML_NEON2SSE_ARCHIVE','ML_FXDIV_ARCHIVE','ML_FFT2D_ARCHIVE',
-               'ML_LITERT_ARCHIVE','ML_OPENXLA_ARCHIVE')
+               'ML_LITERT_ARCHIVE','ML_OPENXLA_ARCHIVE', 'BORINGSSL_SOURCE', 'BORINGSSL_ARCHIVE',
+               'ML_LITERT_PORTS_SOURCE')
     variables.update({key:str(root/key.lower()) for key in ml_keys})
     env=dict(os.environ,PHASE_RECORD=str(record))
     env.pop('MAKE_JOBS',None)

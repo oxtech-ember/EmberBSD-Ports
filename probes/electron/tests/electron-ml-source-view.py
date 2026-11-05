@@ -49,6 +49,17 @@ with tempfile.TemporaryDirectory() as tmp:
                 old_identities=previous)
     assert (selected/'ruy/src/file').read_text() == 'updated-ruy'
     assert (selected/'litert').stat().st_ino == unchanged
+    previous = dict(identities)
+    siblings = {name: (selected/name).stat().st_ino for name in ml.NAMES if name != 'litert'}
+    unchanged_header = (selected/'litert/src/tflite/header.h').stat().st_mtime_ns
+    (providers['litert']/'tflite/new-shim.h').write_text('shim')
+    identities['litert'] = 'd'*64
+    ml.activate(view, source, root/'view', providers, identities, inventory, sourceprep,
+                lambda: ml.verify_view(view, source, root/'view', previous, sourceprep),
+                old_identities=previous)
+    assert (selected/'tflite/src/tensorflow/lite/new-shim.h').read_text() == 'shim'
+    assert (selected/'litert/src/tflite/header.h').stat().st_mtime_ns == unchanged_header
+    assert all((selected/name).stat().st_ino == inode for name, inode in siblings.items())
     (selected/'ruy/src/file').write_text('foreign')
     try:
         ml.activate(view, source, root/'view', providers, identities, inventory, sourceprep, old,

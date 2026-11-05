@@ -1063,7 +1063,9 @@ def common_ml_sources(options, sdk, native, environment):
                 for name in ML_PROVIDERS}
     controls = tuple(getattr(options, name, None) for name in
                      ('ml_patch', 'ml_export_patch', 'ml_ports_source', 'ml_pkgsrc_export'))
-    if not any(paths.values()) and not any(archives.values()) and not any(controls) and getattr(options, 'activate_common_providers', False):
+    bindings = tuple(getattr(options, 'ml_' + name.replace('-', '_') + '_' + role, None)
+                     for name in ML_PROVIDERS for role in ('ports_source', 'pkgsrc_export', 'export_patch'))
+    if not any(paths.values()) and not any(archives.values()) and not any(controls) and not any(bindings) and getattr(options, 'activate_common_providers', False):
         return {}
     require(all(paths.values()) and all(archives.values()) and getattr(options, 'ml_patch', None) and
             getattr(options, 'ml_pkgsrc_export', None) and getattr(options, 'ml_ports_source', None) and
@@ -1073,23 +1075,32 @@ def common_ml_sources(options, sdk, native, environment):
     for name, selected in paths.items():
         selected = absolute(selected, 'common ML source: ' + name)
         kind = name if name in ('litert', 'openxla') else 'ml-sources'
-        owner = options.ml_ports_source / 'scripts/source-inputs' / kind / 'source.py'
+        key = 'ml_' + name.replace('-', '_')
+        selected_owner = getattr(options, key + '_ports_source', None)
+        selected_export = getattr(options, key + '_pkgsrc_export', None)
+        selected_export_patch = getattr(options, key + '_export_patch', None)
+        if selected_export is None and selected_owner is None:
+            selected_export = options.ml_pkgsrc_export
+        require(selected_export is not None or selected_export_patch is None,
+                'common ML export patch requires an export: ' + name)
+        owner = (selected_owner or options.ml_ports_source) / 'scripts/source-inputs' / kind / 'source.py'
         require(owner.is_file(), 'common ML source owner missing: ' + name)
         command = [native.tool('python'), '-B', str(owner)]
         if kind == 'ml-sources':
             command += ['--package', 'devel/' + name]
         command += ['--sdk-source', str(options.sdk_source), '--git', selected_control_git(options.git),
                     'verify-source', '--source', str(selected), '--archive', str(archives[name]),
-                    '--patch', str(options.ml_patch),
-                    '--pkgsrc-export', str(options.ml_pkgsrc_export)]
+                    '--patch', str(options.ml_patch)]
+        if selected_export is not None:
+            command += ['--pkgsrc-export', str(selected_export)]
         try:
             result = sdk['process'].capture(command, env=source_owner_environment(environment))
         except sdk['process'].CommandError as error:
             # A fast-path owner needs no export check. If it falls back to the
             # shared export, select that export's distinct patch explicitly.
-            if b'shared pkgsrc export was made from different inputs' not in error.stderr:
+            if selected_export is None or b'shared pkgsrc export was made from different inputs' not in error.stderr:
                 raise
-            result = sdk['process'].capture(command + ['--export-patch', str(options.ml_export_patch)],
+            result = sdk['process'].capture(command + ['--export-patch', str(selected_export_patch or options.ml_export_patch)],
                                              env=source_owner_environment(environment))
         record = json.loads(result.stdout.decode('utf-8', 'strict'))
         digest = record.get('tree_sha256') if isinstance(record, dict) else None
@@ -3175,6 +3186,9 @@ def main():
                      'host-tool-runtime-view', 'boringssl-source', 'boringssl-archive', 'ml-patch', 'ml-pkgsrc-export', 'ml-ports-source', 'ml-export-patch', *( 'ml-' + name + '-' + role for name in ML_PROVIDERS for role in ('source', 'archive'))):
             command.add_argument('--' + name, type=Path)
         command.add_argument('--v8-metagen-runtime-extra', type=Path, action='append', default=[])
+        for provider in ML_PROVIDERS:
+            for role in ('ports-source', 'pkgsrc-export', 'export-patch'):
+                command.add_argument('--ml-' + provider + '-' + role, type=Path)
         command.add_argument('--perfetto-scoped-runtime', action='store_true')
         command.add_argument('--node-scoped-runtime', action='store_true')
         command.add_argument('--shared-undici', action='store_true')
@@ -3231,7 +3245,7 @@ def main():
                             options.boringssl_source, options.boringssl_archive,
                             options.host_buildlink_stage_root, options.ml_patch, options.ml_pkgsrc_export, options.ml_ports_source, options.ml_export_patch,
                             *(getattr(options, 'ml_' + name.replace('-', '_') + '_' + role)
-                              for name in ML_PROVIDERS for role in ('source', 'archive')))
+                              for name in ML_PROVIDERS for role in ('source', 'archive', 'ports_source', 'pkgsrc_export', 'export_patch')))
                 shared = [key for key in context_keys(*selected) if key not in exclusive]
                 with sdk['process'].ContextLocks(shared, str(options.lock_root), shared=True):
                     {'configure': configure, 'reconfigure': reconfigure, 'build': build}[options.phase](options)
