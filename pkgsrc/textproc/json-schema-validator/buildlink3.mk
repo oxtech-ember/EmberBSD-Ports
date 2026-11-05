@@ -7,8 +7,7 @@ JSON_SCHEMA_VALIDATOR_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.json-schema-validator+=	json-schema-validator>=2.4.1
 BUILDLINK_PKGSRCDIR.json-schema-validator?=	../../textproc/json-schema-validator
-BUILDLINK_DEPMETHOD.json-schema-validator?=	build
-BUILDLINK_API_DEPENDS.nlohmann-json+=	nlohmann-json>=3.11.0
+BUILDLINK_API_DEPENDS.nlohmann-json+=	nlohmann-json>=3.12.0
 
 .include "../../textproc/nlohmann-json/buildlink3.mk"
 .endif

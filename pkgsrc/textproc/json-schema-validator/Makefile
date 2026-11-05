@@ -20,6 +20,7 @@ INSTALLATION_DIRS+=	share/licenses/json-schema-validator
 post-install:
 	${INSTALL_DATA} ${WRKSRC}/LICENSE ${DESTDIR}${PREFIX}/share/licenses/json-schema-validator/LICENSE
 
+BUILDLINK_API_DEPENDS.nlohmann-json+=	nlohmann-json>=3.12.0
 .include "../../textproc/nlohmann-json/buildlink3.mk"
 .include "../../devel/cmake/build.mk"
 .include "../../mk/bsd.pkg.mk"

@@ -68,7 +68,7 @@ Use the shared nlohmann-json provider and remove upstream's FetchContent fallbac
 -endif ()
 +# Require the shared nlohmann-json package; this provider never fetches or
 +# installs a private copy of the JSON library.
-+find_package(nlohmann_json CONFIG REQUIRED)
++find_package(nlohmann_json 3.12.0 CONFIG REQUIRED)
  
  #[==============================================================================================[
  #                                        Main definition                                        #
