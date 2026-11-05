@@ -1,0 +1,45 @@
+# EmberBSD: use validated common host flatc when selected.
+--- a/third_party/flatbuffers/flatbuffer.gni
++++ b/third_party/flatbuffers/flatbuffer.gni
+@@ -55,6 +55,32 @@
+ 
+ import("//build/compiled_action.gni")
+ 
++declare_args() {
++  emberbsd_flatc = ""
++  emberbsd_flatc_inputs = []
++}
++assert((emberbsd_flatc == "") == (emberbsd_flatc_inputs == []),
++       "Select the native flatc and its validated runtime inputs together")
++
++template("emberbsd_flatc_action_foreach") {
++  if (emberbsd_flatc == "") {
++    compiled_action_foreach(target_name) {
++      forward_variables_from(invoker, "*")
++    }
++  } else {
++    assert(invoker.tool == "//third_party/flatbuffers:flatc",
++           "Unexpected bundled flatc target")
++    action_foreach(target_name) {
++      forward_variables_from(invoker, [ "visibility", "sources", "deps", "outputs", "testonly" ])
++      script = "//build/gn_run_binary.py"
++      inputs = [ emberbsd_flatc ] + emberbsd_flatc_inputs +
++               emberbsd_host_tool_runtime_inputs
++      args = emberbsd_host_tool_runtime_args +
++             [ rebase_path(emberbsd_flatc, root_build_dir) ] + invoker.args
++    }
++  }
++}
++
+ template("flatbuffer") {
+   assert(defined(invoker.sources), "Need sources for flatbuffers_library")
+ 
+@@ -83,7 +109,7 @@
+   action_name = "${target_name}_gen"
+   source_set_name = target_name
+ 
+-  compiled_action_foreach(action_name) {
++  emberbsd_flatc_action_foreach(action_name) {
+     visibility = [ ":$source_set_name" ]
+ 
+     tool = "//third_party/flatbuffers:flatc"

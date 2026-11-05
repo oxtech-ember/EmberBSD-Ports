@@ -1077,6 +1077,11 @@
       "path": "gn-common-provider-real-inputs.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "gn-shared-flatc.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {
