@@ -72,7 +72,7 @@ emberbsd-gi-inputs:
 	@${FALSE}
 .endif
 # Cross dependency traversal builds the native tool package independently.
-TOOL_DEPENDS+= gobject-introspection>=1.86.0nb4:../../devel/gobject-introspection
+TOOL_DEPENDS+= gobject-introspection>=1.86.0nb11:../../devel/gobject-introspection
 EMBERBSD_GI_FILESDIR?= ${.CURDIR}/../../devel/gobject-introspection/files
 # Consumers share the launcher and native machine file, but not GI's options.
 .if ${EMBERBSD_GI_MESON_OPTIONS:Uyes:tl} == "yes"

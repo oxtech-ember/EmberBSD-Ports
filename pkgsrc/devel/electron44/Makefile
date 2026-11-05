@@ -42,6 +42,12 @@ TOOL_DEPENDS+= pffft>=1.1.0nb2:../../audio/pffft
 TOOL_DEPENDS+= openh264>=2.7.0:../../multimedia/openh264
 .endif
 
+.if ${EMBERBSD_ELECTRON_SHARED_PDF_LIBRARIES:Uno} == "yes"
+TOOL_DEPENDS+= lcms2>=2.19.1nb2:../../graphics/lcms2
+TOOL_DEPENDS+= openjpeg>=2.5.4nb1:../../graphics/openjpeg
+TOOL_DEPENDS+= tiff>=4.7.2nb2:../../graphics/tiff
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_CODECS:Uno} == "yes"
 TOOL_DEPENDS+= dav1d>=1.5.4:../../multimedia/dav1d
 TOOL_DEPENDS+= libaom>=3.15.2:../../multimedia/libaom

@@ -490,6 +490,7 @@ def host_buildlink(options, sdk, native, environment, host_binding):
                 *(['--shared-xml'] if getattr(options, 'shared_xml', False) else []),
                 *(['--shared-image'] if getattr(options, 'shared_image', False) else []),
                 *(['--shared-font'] if getattr(options, 'shared_font', False) else []),
+                *(['--shared-pdf-libraries'] if getattr(options, 'shared_pdf_libraries', False) else []),
                 *(['--shared-codecs'] if getattr(options, 'shared_codecs', False) else []),
                 *(['--shared-openh264'] if getattr(options, 'shared_openh264', False) else []),
                 *(['--shared-pffft'] if getattr(options, 'shared_pffft', False) else []),
@@ -577,7 +578,7 @@ def additive_host_buildlink_relocation(old_args, new_args, old_env, new_env, wor
     require(all(new_links.get(name) == target for name, target in old_links.items()),
             'host buildlink relocation removed or replaced an existing link')
     old_call, new_call = (record['invocation'] for record in records)
-    selection_keys = {'shared_ffmpeg', 'shared_minizip', 'shared_xml', 'shared_image', 'shared_font', 'shared_codecs', 'shared_openh264', 'shared_pffft', 'shared_expat'}
+    selection_keys = {'shared_ffmpeg', 'shared_minizip', 'shared_xml', 'shared_image', 'shared_font', 'shared_codecs', 'shared_openh264', 'shared_pffft', 'shared_expat', 'shared_pdf_libraries'}
     for name in (set(old_call) | set(new_call)) - {'work'} - selection_keys:
         require(old_call.get(name) == new_call.get(name),
                 'host buildlink relocation changed an unrelated input: ' + name)
@@ -1388,6 +1389,8 @@ def compression_recipe_catalog(options, sdk, native, environment):
         packages += ('graphics/libjpeg-turbo', 'graphics/libwebp')
     if getattr(options, 'shared_font', False):
         packages += ('graphics/freetype2', 'fonts/harfbuzz')
+    if getattr(options, 'shared_pdf_libraries', False):
+        packages += ('graphics/lcms2', 'graphics/openjpeg', 'graphics/tiff')
     if getattr(options, 'shared_pffft', False):
         packages += ('audio/pffft',)
     if getattr(options, 'shared_expat', False):
@@ -2082,6 +2085,12 @@ def producer_inputs(options, sdk):
                 types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
                                       selected_owned_library=selected_owned_library),
                 options, sdk, native, environment, buildlink))
+        if getattr(options, 'shared_pdf_libraries', False):
+            values.update(local_module('electron_pdfium_provider', 'pdfium-provider.py').select(
+                local_module('electron_image_provider', 'image-provider.py'),
+                types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
+                                      selected_owned_library=selected_owned_library),
+                options, sdk, native, environment, buildlink))
         if getattr(options, 'shared_codecs', False):
             values.update(local_module('electron_codec_provider', 'codec-provider.py').select(
                 local_module('electron_image_provider', 'image-provider.py'),
@@ -2325,12 +2334,18 @@ def gn_source(options):
         compression = local_module('electron_compression_source_view', 'compression-source-view.py')
         old_compression = getattr(options, 'old_compression_identity', None)
         new_compression = options.compression_identity
+        old_pdf = bool(getattr(options, 'old_pdf_identity', None))
+        new_pdf = bool(getattr(options, 'shared_pdf_libraries', False))
+        require(new_pdf or not old_pdf, 'disabling shared PDF libraries requires a new source view')
+        if new_pdf:
+            require(getattr(options, 'pdf_identity', None), 'verified PDF library selection is missing')
+        pdf_marker = destination.parent / ('.' + destination.name + '.pdfium-components-migration')
         old_font = bool(getattr(options, 'old_font_identity', None))
         new_font = bool(getattr(options, 'shared_font', False))
         require(new_font or not old_font, 'disabling shared font requires a new source view')
         font_marker = destination.parent / ('.' + destination.name + '.font-table-components-migration')
         font_view = (local_module('electron_font_table_view', 'font-table-view.py')
-                     if old_font or new_font or os.path.lexists(font_marker) else None)
+                     if old_font or new_font or old_pdf or new_pdf or os.path.lexists(font_marker) or os.path.lexists(pdf_marker) else None)
         font_table = getattr(options, 'font_table', None)
         old_codecs = bool(getattr(options, 'old_codec_identity', None))
         new_codecs = bool(getattr(options, 'shared_codecs', False))
@@ -2463,7 +2478,7 @@ def gn_source(options):
             # final configuration receipt was written.
             compression.verify_view(view, options.workspace / 'src', destination)
             old_compression = new_compression
-        if (new_font and not old_font and
+        if (new_font and not old_font and not new_pdf and
                 (options.phase == 'reconfigure' or
                  (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
                                                     getattr(options, 'resume_configure', False)))) and
@@ -2471,6 +2486,22 @@ def gn_source(options):
                 (compression_root/'pdfium').is_dir() and not (compression_root/'pdfium').is_symlink()):
             font_view.verify_view(view, options.workspace / 'src', destination, font_table)
             old_font = True
+        if (new_pdf and not old_pdf and not os.path.lexists(pdf_marker) and
+                not os.path.lexists(font_marker) and
+                (options.phase == 'reconfigure' or
+                 (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
+                                                    getattr(options, 'resume_configure', False)))) and
+                (compression_root/'pdfium').is_dir() and not (compression_root/'pdfium').is_symlink()):
+            try:
+                font_view.verify_pdfium(view, options.workspace / 'src', destination,
+                                        font_table if new_font else None, True)
+            except (ValueError, OSError):
+                require((old_font or new_font) and font_table is not None,
+                        'foreign PDFium projection during recovery')
+                font_view.verify_view(view, options.workspace / 'src', destination, font_table)
+                old_font = True
+            else:
+                old_pdf, old_font = True, new_font
         old_ml = getattr(options, 'old_ml_identities', None)
         old_headers = getattr(options, 'old_header_identities', None)
         new_headers = {name: data['identity'] for name, data in selected.items()}
@@ -2498,9 +2529,13 @@ def gn_source(options):
             if boring_id:
                 names.append(boring.NAME)
                 checks.append(lambda: boring.verify_view(view, options.workspace / 'src', destination, boring_id, sp))
-            if old_font:
+            if old_font or old_pdf:
                 names.append(font_view.NAME)
-                checks.append(lambda: font_view.verify_view(view, options.workspace / 'src', destination, font_table))
+                if old_pdf:
+                    checks.append(lambda: font_view.verify_pdfium(view, options.workspace / 'src', destination,
+                                                                font_table if old_font else None, True))
+                else:
+                    checks.append(lambda: font_view.verify_view(view, options.workspace / 'src', destination, font_table))
             if old_sqlite:
                 names.append(sqlite.NAME)
                 checks.append(lambda: sqlite.verify_view(view, options.workspace / 'src', destination, old_sqlite))
@@ -2577,6 +2612,15 @@ def gn_source(options):
             font_view.activate(view, options.workspace / 'src', destination, font_table,
                                lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring))
             old_font = True
+        if os.path.lexists(pdf_marker):
+            require(new_pdf and (options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+                    'PDFium transaction recovery requires shared PDF libraries reconfigure')
+            font_view.activate_pdfium(view, options.workspace / 'src', destination,
+                                      font_table if old_font else None, old_pdf,
+                                      font_table if new_font else None, new_pdf,
+                                      lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring))
+            old_pdf, old_font = new_pdf, new_font
         if os.path.lexists(sqlite_marker):
             require(new_sqlite and (options.phase == 'reconfigure' or
                     getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
@@ -2705,13 +2749,24 @@ def gn_source(options):
             compression.activate(view, options.workspace / 'src', destination,
                                  lambda: verify_selection(ids, new_headers, new_media, old_compression))
             verify_selection(ids, new_headers, new_media, new_compression)
-        if old_font != new_font or os.path.lexists(font_marker):
+        if not new_pdf and (old_font != new_font or os.path.lexists(font_marker)):
             require(new_font, 'disabling shared font requires a new source view')
             require(options.phase == 'reconfigure' or new_view or initial,
                     'font table transition requires reconfigure')
             font_view.activate(view, options.workspace / 'src', destination, font_table,
                                lambda: verify_selection(ids, new_headers, new_media, new_compression))
             old_font = True
+            transition_result = verify_selection(ids, new_headers, new_media, new_compression)
+            transition = True
+        if old_pdf != new_pdf or (new_pdf and old_font != new_font) or os.path.lexists(pdf_marker):
+            require(new_pdf, 'disabling shared PDF libraries requires a new source view')
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'PDFium transition requires reconfigure')
+            font_view.activate_pdfium(view, options.workspace / 'src', destination,
+                                      font_table if old_font else None, old_pdf,
+                                      font_table if new_font else None, new_pdf,
+                                      lambda: verify_selection(ids, new_headers, new_media, new_compression))
+            old_pdf, old_font = new_pdf, new_font
             transition_result = verify_selection(ids, new_headers, new_media, new_compression)
             transition = True
         if old_sqlite != new_sqlite or os.path.lexists(sqlite_marker):
@@ -3076,6 +3131,24 @@ def openh264_activation_args(options, old_environment, environment, old_argument
     return names
 
 
+def pdfium_activation_args(options, old_environment, environment, old_arguments, values):
+    """Allow only the first verified common PDF library selection."""
+    if not getattr(options, 'shared_pdf_libraries', False):
+        return set()
+    key = 'EMBERBSD_PDF_SOURCE_SHA256'
+    require(re.fullmatch(r'[0-9a-f]{64}', environment.get(key, '')), 'verified PDF identity is missing')
+    names = {'emberbsd_' + provider + '_' + role + '_' + kind
+             for provider in ('lcms2', 'openjpeg', 'tiff') for role in ('host', 'target')
+             for kind in ('libraries', 'inputs')}
+    names.update(('emberbsd_common_pdf', 'use_system_lcms2', 'use_system_libopenjpeg2', 'use_system_libtiff'))
+    if old_environment.get(key):
+        return set()
+    require(all(old_arguments.get(name) in (None, False, []) for name in names),
+            'PDF activation cannot replace existing GN inputs')
+    require(all(values.get(name) for name in names), 'verified PDF GN inputs are incomplete')
+    return names
+
+
 def codec_activation_args(options, old_environment, environment, old_arguments, values):
     """Allow the first verified five-provider selection, guarding later changes."""
     if not getattr(options, 'shared_codecs', False):
@@ -3318,6 +3391,9 @@ def reconfigure(options):
                 options.old_image_identity = old_env.get('EMBERBSD_IMAGE_SOURCE_SHA256')
                 permitted_env.add('EMBERBSD_IMAGE_SOURCE_SHA256')
                 options.old_font_identity = old_env.get('EMBERBSD_FONT_SOURCE_SHA256')
+                options.old_pdf_identity = old_env.get('EMBERBSD_PDF_SOURCE_SHA256')
+                options.pdf_identity = getattr(candidate, 'pdf_identity', None)
+                permitted_env.add('EMBERBSD_PDF_SOURCE_SHA256')
                 options.font_table = getattr(candidate, 'font_table', None)
                 permitted_env.add('EMBERBSD_FONT_SOURCE_SHA256')
                 options.sqlite_selection = getattr(candidate, 'sqlite_selection', None)
@@ -3411,6 +3487,7 @@ def reconfigure(options):
         minizip_args = minizip_activation_args(options, old_env, environment, saved['arguments'], values)
         xml_args = xml_activation_args(options, old_env, environment, saved['arguments'], values)
         codec_args = codec_activation_args(options, old_env, environment, saved['arguments'], values)
+        pdf_args = pdfium_activation_args(options, old_env, environment, saved['arguments'], values)
         pffft_args = pffft_activation_args(options, old_env, environment, saved['arguments'], values)
         expat_args = expat_activation_args(options, old_env, environment, saved['arguments'], values)
         openh264_args = openh264_activation_args(options, old_env, environment, saved['arguments'], values)
@@ -3489,6 +3566,10 @@ def reconfigure(options):
         identity_args.update(('emberbsd_common_openh264', 'rtc_system_openh264'))
         identity_args.update('emberbsd_openh264_' + role + '_' + kind
                              for role in ('host', 'target') for kind in ('libraries', 'inputs'))
+        identity_args.update(('emberbsd_common_pdf', 'use_system_lcms2', 'use_system_libopenjpeg2', 'use_system_libtiff'))
+        identity_args.update('emberbsd_' + provider + '_' + role + '_' + kind
+                             for provider in ('lcms2', 'openjpeg', 'tiff')
+                             for role in ('host', 'target') for kind in ('libraries', 'inputs'))
         identity_args.add('emberbsd_common_codecs')
         identity_args.update('emberbsd_' + provider + '_' + role + '_' + kind
                              for provider in ('dav1d', 'aom', 'vpx', 'opus', 'flac')
@@ -3512,7 +3593,7 @@ def reconfigure(options):
             if node_source_refresh and name == 'emberbsd_node_source_identity':
                 continue
             if (name in activation_args or name in minizip_args or name in xml_args or
-                    name in image_args or name in font_args or name in codec_args or name in openh264_args or name in pffft_args or name in expat_args or name in buildlink_args):
+                    name in image_args or name in font_args or name in pdf_args or name in codec_args or name in openh264_args or name in pffft_args or name in expat_args or name in buildlink_args):
                 continue
             if name in ('use_litert_tflite', 'emberbsd_flatc', 'emberbsd_flatc_inputs') and getattr(options, 'activate_common_ml', False) and not old_ml:
                 continue
@@ -3593,6 +3674,7 @@ def build(options):
     options.old_codec_identity = saved_env.get('EMBERBSD_CODEC_SOURCE_SHA256')
     options.old_image_identity = saved_env.get('EMBERBSD_IMAGE_SOURCE_SHA256')
     options.old_font_identity = saved_env.get('EMBERBSD_FONT_SOURCE_SHA256')
+    options.old_pdf_identity = saved_env.get('EMBERBSD_PDF_SOURCE_SHA256')
     options.old_sqlite_selection = json.loads(saved_env['EMBERBSD_SQLITE_SELECTION']) if saved_env.get('EMBERBSD_SQLITE_SELECTION') else None
     options.old_xml_identity = saved_env.get('EMBERBSD_XML_SOURCE_SHA256')
     options.old_minizip_identity = saved_env.get('EMBERBSD_MINIZIP_SOURCE_SHA256')
@@ -3668,6 +3750,7 @@ def main():
         command.add_argument('--shared-xml', action='store_true')
         command.add_argument('--shared-image', action='store_true')
         command.add_argument('--shared-font', action='store_true')
+        command.add_argument('--shared-pdf-libraries', action='store_true')
         command.add_argument('--shared-codecs', action='store_true')
         command.add_argument('--shared-openh264', action='store_true')
         command.add_argument('--shared-expat', action='store_true')

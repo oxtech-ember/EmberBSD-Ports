@@ -1,0 +1,206 @@
+# Origin: EmberBSD contributors (AI-assisted).
+# Propagate nullable OpenJPEG color conversion failures.
+
+--- a/third_party/pdfium/core/fxcodec/jpx/cjpx_decoder.cpp
++++ b/third_party/pdfium/core/fxcodec/jpx/cjpx_decoder.cpp
+@@ -107,12 +107,12 @@
+   return UNSAFE_BUFFERS(pdfium::span(img->comps, img->numcomps));
+ }
+ 
+-void sycc444_to_rgb(opj_image_t* img) {
++bool sycc444_to_rgb(opj_image_t* img) {
+   auto components = components_span(img);
+   int prec = components[0].prec;
+   // If we shift 31 we're going to go negative, then things go bad.
+   if (prec > 30) {
+-    return;
++    return false;
+   }
+   int offset = 1 << (prec - 1);
+   int upb = (1 << prec) - 1;
+@@ -124,19 +124,19 @@
+   max_size *= maxh;
+   max_size *= sizeof(int);
+   if (!max_size.IsValid()) {
+-    return;
++    return false;
+   }
+ 
+   const int* y = components[0].data;
+   const int* cb = components[1].data;
+   const int* cr = components[2].data;
+   if (!y || !cb || !cr) {
+-    return;
++    return false;
+   }
+ 
+   std::optional<OpjImageRgbData> data = alloc_rgb(max_size.ValueOrDie());
+   if (!data.has_value()) {
+-    return;
++    return false;
+   }
+ 
+   int* r = data.value().r.get();
+@@ -152,6 +152,7 @@
+   components[0].data = data.value().r.release();
+   components[1].data = data.value().g.release();
+   components[2].data = data.value().b.release();
++  return true;
+ }
+ 
+ bool sycc420_422_size_is_valid(pdfium::span<opj_image_comp_t> components) {
+@@ -171,17 +172,17 @@
+   return (y & 1) && (cbcr == y / 2);
+ }
+ 
+-void sycc420_to_rgb(opj_image_t* img) {
++bool sycc420_to_rgb(opj_image_t* img) {
+   if (!img) {
+-    return;
++    return false;
+   }
+   auto components = components_span(img);
+   if (!sycc420_size_is_valid(components)) {
+-    return;
++    return false;
+   }
+   OPJ_UINT32 prec = components[0].prec;
+   if (!prec) {
+-    return;
++    return false;
+   }
+ 
+   OPJ_UINT32 offset = 1 << (prec - 1);
+@@ -197,19 +198,19 @@
+   safe_size *= yh;
+   safe_size *= sizeof(int);
+   if (!safe_size.IsValid()) {
+-    return;
++    return false;
+   }
+ 
+   const int* y = components[0].data;
+   const int* cb = components[1].data;
+   const int* cr = components[2].data;
+   if (!y || !cb || !cr) {
+-    return;
++    return false;
+   }
+ 
+   std::optional<OpjImageRgbData> data = alloc_rgb(safe_size.ValueOrDie());
+   if (!data.has_value()) {
+-    return;
++    return false;
+   }
+ 
+   int* r = data.value().r.get();
+@@ -316,6 +317,7 @@
+   components[2].dx = components[0].dx;
+   components[1].dy = components[0].dy;
+   components[2].dy = components[0].dy;
++  return true;
+ }
+ 
+ bool sycc422_size_is_valid(pdfium::span<opj_image_comp_t> components) {
+@@ -323,17 +325,17 @@
+          components[0].h == components[1].h;
+ }
+ 
+-void sycc422_to_rgb(opj_image_t* img) {
++bool sycc422_to_rgb(opj_image_t* img) {
+   if (!img) {
+-    return;
++    return false;
+   }
+   auto components = components_span(img);
+   if (!sycc422_size_is_valid(components)) {
+-    return;
++    return false;
+   }
+   int prec = components[0].prec;
+   if (prec <= 0 || prec >= 32) {
+-    return;
++    return false;
+   }
+ 
+   int offset = 1 << (prec - 1);
+@@ -344,19 +346,19 @@
+   max_size *= maxh;
+   max_size *= sizeof(int);
+   if (!max_size.IsValid()) {
+-    return;
++    return false;
+   }
+ 
+   const int* y = components[0].data;
+   const int* cb = components[1].data;
+   const int* cr = components[2].data;
+   if (!y || !cb || !cr) {
+-    return;
++    return false;
+   }
+ 
+   std::optional<OpjImageRgbData> data = alloc_rgb(max_size.ValueOrDie());
+   if (!data.has_value()) {
+-    return;
++    return false;
+   }
+ 
+   int* r = data.value().r.get();
+@@ -388,6 +390,7 @@
+   components[2].dx = components[0].dx;
+   components[1].dy = components[0].dy;
+   components[2].dy = components[0].dy;
++  return true;
+ }
+ 
+ bool is_sycc420(pdfium::span<opj_image_comp_t> components) {
+@@ -408,22 +411,29 @@
+          components[2].dx == 1 && components[2].dy == 1;
+ }
+ 
+-void color_sycc_to_rgb(opj_image_t* img) {
++bool color_sycc_to_rgb(opj_image_t* img) {
+   auto components = components_span(img);
+   if (components.size() < 3) {
+     img->color_space = OPJ_CLRSPC_GRAY;
+-    return;
++    return true;
+   }
+   if (is_sycc420(components)) {
+-    sycc420_to_rgb(img);
++    if (!sycc420_to_rgb(img)) {
++      return false;
++    }
+   } else if (is_sycc422(components)) {
+-    sycc422_to_rgb(img);
++    if (!sycc422_to_rgb(img)) {
++      return false;
++    }
+   } else if (is_sycc444(components)) {
+-    sycc444_to_rgb(img);
++    if (!sycc444_to_rgb(img)) {
++      return false;
++    }
+   } else {
+-    return;
++    return true;
+   }
+   img->color_space = OPJ_CLRSPC_SRGB;
++  return true;
+ }
+ 
+ }  // namespace
+@@ -535,8 +545,10 @@
+   } else if (image_->numcomps <= 2) {
+     image_->color_space = OPJ_CLRSPC_GRAY;
+   }
+-  if (image_->color_space == OPJ_CLRSPC_SYCC) {
+-    color_sycc_to_rgb(image_.get());
++  if (image_->color_space == OPJ_CLRSPC_SYCC &&
++      !color_sycc_to_rgb(image_.get())) {
++    image_.reset();
++    return false;
+   }
+ 
+   // TODO(crbug.com/346606150): Investigate if it makes sense to use the data in

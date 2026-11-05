@@ -1,11 +1,44 @@
 $NetBSD$
 
-Keep complete target data in cross builds while using native generators.
+Resolve installed default paths from the actual component location.
 Origin: EmberBSD (AI-assisted); not submitted upstream.
 
 --- meson.build.orig
 +++ meson.build
-@@ -301,7 +301,7 @@
+@@ -104,6 +104,32 @@
+   extra_giscanner_args = []
+ endif
+ 
++# The private path resolver is optional on platforms without dladdr.
++gi_reloc_config = configuration_data()
++gi_reloc_config.set_quoted('GI_RELOC_PREFIX', get_option('prefix'))
++gi_reloc_config.set_quoted('GI_RELOC_BINDIR', join_paths(get_option('prefix'), get_option('bindir')))
++gi_reloc_config.set_quoted('GI_RELOC_LIBDIR', join_paths(get_option('prefix'), get_option('libdir')))
++gi_reloc_deps = []
++gi_reloc_cargs = []
++if host_system != 'windows'
++  if host_system == 'linux'
++    gi_reloc_cargs = ['-D_GNU_SOURCE']
++  endif
++  gi_reloc_probe = '''#include <dlfcn.h>
++int main(void) { Dl_info info; return dladdr((void *) &info, &info) == 0; }
++'''
++  gi_reloc_found = cc.links(gi_reloc_probe, args: gi_reloc_cargs, name: 'dladdr without libdl')
++  if not gi_reloc_found
++    gi_dl = cc.find_library('dl', required: false)
++    if gi_dl.found() and cc.links(gi_reloc_probe, args: gi_reloc_cargs, dependencies: gi_dl, name: 'dladdr with libdl')
++      gi_reloc_found = true
++      gi_reloc_deps = [gi_dl]
++    endif
++  endif
++  gi_reloc_config.set('GI_HAVE_DLADDR', gi_reloc_found)
++endif
++configure_file(configuration: gi_reloc_config, output: 'gi-relocate-config.h')
++
+ config = configuration_data()
+ 
+ config.set('GI_MAJOR_VERSION', gi_versions[0])
+@@ -301,7 +327,7 @@
  
  # The tests will also run, which is not possible if they
  # were built for a different architecture.

@@ -1,0 +1,41 @@
+$NetBSD$
+
+Resolve installed default paths from the actual component location.
+Origin: EmberBSD (AI-assisted); not submitted upstream.
+
+--- girepository/meson.build.orig
++++ girepository/meson.build
+@@ -45,14 +45,14 @@
+     'girparser.c',
+     'girwriter.c',
+   ],
+-  c_args: gi_hidden_visibility_cflags + custom_c_args,
++  c_args: gi_hidden_visibility_cflags + custom_c_args + gi_reloc_cargs,
+   include_directories : configinc,
+-  dependencies: [girepo_gthash_dep, libffi_dep],
++  dependencies: [girepo_gthash_dep, libffi_dep] + gi_reloc_deps,
+ )
+ 
+ girepo_internals_dep = declare_dependency(
+   link_with: girepo_internals_lib,
+-  dependencies: libffi_dep,
++  dependencies: [libffi_dep] + gi_reloc_deps,
+   include_directories: include_directories('.'),
+ )
+ 
+@@ -179,13 +179,13 @@
+   sources: girepo_sources,
+   include_directories : configinc,
+   c_args: gi_hidden_visibility_cflags + ['-DG_IREPOSITORY_COMPILATION'] +
+-          custom_c_args,
++          custom_c_args + gi_reloc_cargs,
+   dependencies: [
+     glib_dep,
+     gobject_dep,
+     gmodule_dep,
+     girepo_internals_dep,
+-  ],
++  ] + gi_reloc_deps,
+   version: lib_version,
+   darwin_versions: lib_osx_version,
+   install: true,

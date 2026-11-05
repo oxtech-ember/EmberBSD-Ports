@@ -1,0 +1,170 @@
+# Origin: EmberBSD contributors (AI-assisted).
+# Keep PDFium allocation policy in a private Little CMS context.
+
+--- a/third_party/pdfium/core/fxcodec/icc/icc_transform.h
++++ b/third_party/pdfium/core/fxcodec/icc/icc_transform.h
+@@ -44,8 +44,15 @@
+   IccTransform(cmsHTRANSFORM transform,
+                int srcComponents,
+                bool bIsLab,
+-               bool bNormal);
++               bool bNormal
++#if defined(USE_SYSTEM_LCMS2)
++               , cmsContext context
++#endif
++               );
+ 
++#if defined(USE_SYSTEM_LCMS2)
++  const cmsContext context_;
++#endif
+   const cmsHTRANSFORM transform_;
+   const int src_components_;
+   const bool lab_;
+--- a/third_party/pdfium/core/fxcodec/icc/icc_transform.cpp
++++ b/third_party/pdfium/core/fxcodec/icc/icc_transform.cpp
+@@ -9,9 +9,16 @@
+ #include <stdint.h>
+ 
+ #include <algorithm>
++#include <cstring>
++#include <limits>
++#include <type_traits>
+ #include <memory>
+ 
+ #include "core/fxcrt/data_vector.h"
++#if defined(USE_SYSTEM_LCMS2)
++#include <lcms2_plugin.h>
++#include "core/fxcrt/fx_memory.h"
++#endif
+ #include "core/fxcrt/notreached.h"
+ #include "core/fxcrt/numerics/safe_conversions.h"
+ #include "core/fxcrt/ptr_util.h"
+@@ -26,6 +33,48 @@
+ };
+ 
+ using ScopedCmsProfile = std::unique_ptr<void, CmsProfileDeleter>;
++
++#if defined(USE_SYSTEM_LCMS2)
++// Keep the allocator local to PDFium; other users of the shared library retain
++// their own allocation policy.
++void* CmsAlloc(cmsContext, cmsUInt32Number size) {
++  return FXMEM_DefaultAlloc(size);
++}
++void CmsFree(cmsContext, void* ptr) {
++  if (ptr)
++    FXMEM_DefaultFree(ptr);
++}
++void* CmsRealloc(cmsContext, void* ptr, cmsUInt32Number size) {
++  return FXMEM_DefaultRealloc(ptr, size);
++}
++void* CmsAllocZero(cmsContext context, cmsUInt32Number size) {
++  void* ptr = CmsAlloc(context, size);
++  if (ptr)
++    std::memset(ptr, 0, size);
++  return ptr;
++}
++void* CmsCalloc(cmsContext context, cmsUInt32Number count, cmsUInt32Number size) {
++  if (!count || !size || count > std::numeric_limits<cmsUInt32Number>::max() / size)
++    return nullptr;
++  cmsUInt32Number total = count * size;
++  if (total >= 512u * 1024u * 1024u)
++    return nullptr;
++  return CmsAllocZero(context, total);
++}
++void* CmsDup(cmsContext context, const void* original, cmsUInt32Number size) {
++  void* ptr = CmsAlloc(context, size);
++  if (ptr && original)
++    std::memmove(ptr, original, size);
++  return ptr;
++}
++cmsPluginMemHandler kPdfiumMemoryPlugin = {
++    {cmsPluginMagicNumber, LCMS_VERSION, cmsPluginMemHandlerSig, nullptr},
++    CmsAlloc, CmsFree, CmsRealloc, CmsAllocZero, CmsCalloc, CmsDup};
++struct CmsContextDeleter {
++  void operator()(cmsContext context) { cmsDeleteContext(context); }
++};
++using ScopedCmsContext = std::unique_ptr<std::remove_pointer_t<cmsContext>, CmsContextDeleter>;
++#endif
+ 
+ bool Check3Components(cmsColorSpaceSignature cs) {
+   switch (cs) {
+@@ -42,26 +91,49 @@
+ IccTransform::IccTransform(cmsHTRANSFORM hTransform,
+                            int srcComponents,
+                            bool bIsLab,
+-                           bool bNormal)
++                           bool bNormal
++#if defined(USE_SYSTEM_LCMS2)
++                           , cmsContext context
++#endif
++                           )
++#if defined(USE_SYSTEM_LCMS2)
++    : context_(context), transform_(hTransform),
++#else
+     : transform_(hTransform),
++#endif
+       src_components_(srcComponents),
+       lab_(bIsLab),
+       normal_(bNormal) {}
+ 
+ IccTransform::~IccTransform() {
+   cmsDeleteTransform(transform_);
++#if defined(USE_SYSTEM_LCMS2)
++  cmsDeleteContext(context_);
++#endif
+ }
+ 
+ // static
+ std::unique_ptr<IccTransform> IccTransform::CreateTransformSRGB(
+     pdfium::span<const uint8_t> span) {
++#if defined(USE_SYSTEM_LCMS2)
++  ScopedCmsContext context(cmsCreateContext(&kPdfiumMemoryPlugin, nullptr));
++  if (!context)
++    return nullptr;
++  ScopedCmsProfile srcProfile(cmsOpenProfileFromMemTHR(
++      context.get(), span.data(), pdfium::checked_cast<cmsUInt32Number>(span.size())));
++#else
+   ScopedCmsProfile srcProfile(cmsOpenProfileFromMem(
+       span.data(), pdfium::checked_cast<cmsUInt32Number>(span.size())));
++#endif
+   if (!srcProfile) {
+     return nullptr;
+   }
+ 
++#if defined(USE_SYSTEM_LCMS2)
++  ScopedCmsProfile dstProfile(cmsCreate_sRGBProfileTHR(context.get()));
++#else
+   ScopedCmsProfile dstProfile(cmsCreate_sRGBProfile());
++#endif
+   if (!dstProfile) {
+     return nullptr;
+   }
+@@ -96,9 +168,15 @@
+   cmsHTRANSFORM hTransform = nullptr;
+   switch (dstCS) {
+     case cmsSigRgbData:
++#if defined(USE_SYSTEM_LCMS2)
++      hTransform = cmsCreateTransformTHR(context.get(), srcProfile.get(), srcFormat,
++                                        dstProfile.get(), TYPE_BGR_8,
++                                        INTENT_PERCEPTUAL, /*dwFlags=*/0);
++#else
+       hTransform =
+           cmsCreateTransform(srcProfile.get(), srcFormat, dstProfile.get(),
+                              TYPE_BGR_8, INTENT_PERCEPTUAL, /*dwFlags=*/0);
++#endif
+       break;
+     case cmsSigGrayData:
+     case cmsSigCmykData:
+@@ -113,7 +191,11 @@
+ 
+   // Private ctor.
+   return pdfium::WrapUnique(
+-      new IccTransform(hTransform, nSrcComponents, bLab, bNormal));
++      new IccTransform(hTransform, nSrcComponents, bLab, bNormal
++#if defined(USE_SYSTEM_LCMS2)
++                       , context.release()
++#endif
++                       ));
+ }
+ 
+ void IccTransform::Translate(pdfium::span<const float> src_values,

@@ -93,3 +93,15 @@ BUILDLINK_API_DEPENDS.flac+= flac>=1.5.0nb1
 BUILDLINK_ABI_DEPENDS.flac+= flac>=1.5.0nb1
 .include "../../audio/flac/buildlink3.mk"
 .endif
+
+.if ${EMBERBSD_ELECTRON_SHARED_PDF_LIBRARIES:Uno} == "yes"
+BUILDLINK_API_DEPENDS.lcms2+= lcms2>=2.19.1nb2
+BUILDLINK_ABI_DEPENDS.lcms2+= lcms2>=2.19.1nb2
+.include "../../graphics/lcms2/buildlink3.mk"
+BUILDLINK_API_DEPENDS.openjpeg+= openjpeg>=2.5.4nb1
+BUILDLINK_ABI_DEPENDS.openjpeg+= openjpeg>=2.5.4nb1
+.include "../../graphics/openjpeg/buildlink3.mk"
+BUILDLINK_API_DEPENDS.tiff+= tiff>=4.7.2nb2
+BUILDLINK_ABI_DEPENDS.tiff+= tiff>=4.7.2nb2
+.include "../../graphics/tiff/buildlink3.mk"
+.endif
