@@ -72,6 +72,93 @@ class BuildSources(unittest.TestCase):
         self.assertEqual((self.fixture.src / 'alpha.cc').read_text(), 'BSD support\nfirst\nsecond\nthird\n')
         self.assertEqual((previous / 'files/alpha.cc').read_text(), 'BSD support\nfirst\nsecond\n')
 
+    def transition_fixture(self):
+        previous_result = self.prepare()
+        helper.materialize(self.fixture.workspace, self.fixture.destination, previous_result, git=options.git)
+        previous = self.fixture.destination
+        self.fixture.destination = self.root / 'replacement-preparation'
+        (self.patch_root / 'second.patch').write_text(
+            delta('BSD support\nfirst\n', 'BSD support\nfirst\nreplacement\n', 'alpha.cc'))
+        new = helper.prepare(self.fixture.workspace, self.fixture.pkgsrc, self.fixture.archive,
+                             self.fixture.destination, options.git, options.patch,
+                             self.patch_root, self.manifest, previous_prepared=previous)
+        return previous, previous_result, new
+
+    def test_previous_prepared_replacement_removal_and_retries(self):
+        previous, old, new = self.transition_fixture()
+        self.assertEqual(new['paths']['ports.cc']['after'], None)
+        self.assertIn(old['paths']['alpha.cc']['after'], new['paths']['alpha.cc']['prepared_before'])
+        unchanged = self.fixture.src / 'bsd-only.cc'
+        if not unchanged.exists():
+            unchanged = self.fixture.src / 'alpha.cc'
+        # An interrupted run may have written any subset before its receipt.
+        (self.fixture.src / 'alpha.cc').write_bytes((self.fixture.destination / 'files/alpha.cc').read_bytes())
+        unchanged_before = unchanged.stat().st_mtime_ns
+        helper.materialize(self.fixture.workspace, self.fixture.destination, new, git=options.git)
+        self.assertEqual((self.fixture.src / 'alpha.cc').read_text(), 'BSD support\nfirst\nreplacement\n')
+        self.assertFalse((self.fixture.src / 'ports.cc').exists())
+        self.assertEqual(unchanged.stat().st_mtime_ns, unchanged_before)
+        self.assertEqual(helper.materialize(self.fixture.workspace, self.fixture.destination, new, git=options.git), 0)
+        # Reconstructing a completed transition must accept its replacement receipt.
+        again = self.root / 'replacement-retry'
+        retry = helper.prepare(self.fixture.workspace, self.fixture.pkgsrc, self.fixture.archive,
+                               again, options.git, options.patch, self.patch_root, self.manifest,
+                               previous_prepared=previous)
+        self.assertEqual(retry, new)
+        self.assertEqual(helper.materialize(self.fixture.workspace, again, retry, git=options.git), 0)
+
+    def test_removed_patch_restores_committed_file(self):
+        second = self.patch_root / 'second.patch'
+        second.write_text(second.read_text() + delta('disabled dialog\n', 'patched dialog\n', 'obsolete.cc'))
+        old = self.prepare()
+        helper.materialize(self.fixture.workspace, self.fixture.destination, old, git=options.git)
+        self.assertEqual((self.fixture.src / 'obsolete.cc').read_text(), 'patched dialog\n')
+        previous = self.fixture.destination
+        self.fixture.destination = self.root / 'removed-patch-preparation'
+        second.write_text(delta('BSD support\nfirst\n', 'BSD support\nfirst\nreplacement\n', 'alpha.cc'))
+        new = helper.prepare(self.fixture.workspace, self.fixture.pkgsrc, self.fixture.archive,
+                             self.fixture.destination, options.git, options.patch,
+                             self.patch_root, self.manifest, previous_prepared=previous)
+        self.assertEqual(new['paths']['obsolete.cc']['after'], old['paths']['obsolete.cc']['before'])
+        helper.materialize(self.fixture.workspace, self.fixture.destination, new, git=options.git)
+        self.assertEqual((self.fixture.src / 'obsolete.cc').read_text(), 'disabled dialog\n')
+
+    def test_previous_prepared_refuses_mismatched_receipt_and_payload(self):
+        previous, old, new = self.transition_fixture()
+        (previous / 'files/alpha.cc').write_text('foreign fixture')
+        destination = self.root / 'bad-previous-payload'
+        with self.assertRaisesRegex(ValueError, 'previous prepared payload differs'):
+            helper.prepare(self.fixture.workspace, self.fixture.pkgsrc, self.fixture.archive, destination,
+                           options.git, options.patch, self.patch_root, self.manifest, previous_prepared=previous)
+        (previous / 'files/alpha.cc').write_text('BSD support\nfirst\nsecond\n')
+        receipt = self.fixture.workspace / 'source-inputs/ports-build-sources.json'
+        data = json.loads(receipt.read_text()); data['scope'] = 'foreign'; receipt.write_text(json.dumps(data))
+        destination = self.root / 'bad-previous-receipt'
+        with self.assertRaisesRegex(ValueError, 'previous prepared receipt differs'):
+            helper.prepare(self.fixture.workspace, self.fixture.pkgsrc, self.fixture.archive, destination,
+                           options.git, options.patch, self.patch_root, self.manifest, previous_prepared=previous)
+
+    def test_transition_rejects_foreign_live_state_before_any_write(self):
+        previous, old, new = self.transition_fixture()
+        foreign = self.fixture.src / 'alpha.cc'
+        foreign.write_text('foreign live state')
+        old_ports = (self.fixture.src / 'ports.cc').read_bytes()
+        with self.assertRaisesRegex(ValueError, 'source differs'):
+            helper.materialize(self.fixture.workspace, self.fixture.destination, new, git=options.git)
+        self.assertEqual((self.fixture.src / 'ports.cc').read_bytes(), old_ports)
+        self.assertEqual(foreign.read_text(), 'foreign live state')
+
+    def test_transition_rejects_different_committed_baseline(self):
+        previous, old, new = self.transition_fixture()
+        receipt = previous / 'prepared-sources.json'
+        data = json.loads(receipt.read_text()); data['paths']['alpha.cc']['before'] = '0'*64
+        receipt.write_text(json.dumps(data))
+        (self.fixture.workspace / 'source-inputs/ports-build-sources.json').write_text(json.dumps(data))
+        with self.assertRaisesRegex(ValueError, 'previous source baseline differs'):
+            helper.prepare(self.fixture.workspace, self.fixture.pkgsrc, self.fixture.archive,
+                           self.root / 'bad-baseline', options.git, options.patch, self.patch_root,
+                           self.manifest, previous_prepared=previous)
+
     def test_changed_previous_series_is_refused(self):
         result = self.prepare()
         helper.materialize(self.fixture.workspace, self.fixture.destination, result, git=options.git)

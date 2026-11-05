@@ -95,7 +95,8 @@ def prepare(options):
     source = local_module('electron_build_source', 'prepare-build-sources.py')
     result = source.prepare(options.workspace, options.pkgsrc, options.archive, options.destination,
                             options.git, options.patch, options.ports_source / 'probes/electron/patches',
-                            Path(__file__).with_name('source-series.json'))
+                            Path(__file__).with_name('source-series.json'),
+                            previous_prepared=getattr(options, 'previous_prepared', None))
     return source.materialize(options.workspace, options.destination, result, git=options.git)
 
 
@@ -3216,6 +3217,7 @@ def main():
     source = sub.add_parser('prepare')
     for name in ('workspace', 'ports-source', 'pkgsrc', 'archive', 'destination', 'git', 'patch'):
         source.add_argument('--' + name, type=Path, required=True)
+    source.add_argument('--previous-prepared', type=Path)
     for phase in ('configure', 'reconfigure', 'build'):
         command = sub.add_parser(phase)
         for name in ('workspace', 'ports-source', 'sdk-source', 'host-prefix', 'compiler-prefix',

@@ -8,6 +8,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path, PurePosixPath
 import stat
 import subprocess
@@ -94,7 +95,7 @@ def series_record(row):
     return {key: row[key] for key in keys}
 
 
-def prepare(workspace, pkgsrc, archive, destination, git, patch, patch_root, manifest):
+def prepare(workspace, pkgsrc, archive, destination, git, patch, patch_root, manifest, *, previous_prepared=None):
     workspace = workspace.resolve(strict=True)
     patch_root = patch_root.resolve(strict=True)
     rows = read_series(manifest, patch_root)
@@ -152,8 +153,78 @@ def prepare(workspace, pkgsrc, archive, destination, git, patch, patch_root, man
             paths[name]['prepared_before'] = sorted(intermediate, key=lambda value: value or '')
     output = dict(version=1, source_revisions=source_revisions,
                   patches=applied, paths=paths, scope='prepared source bytes; no configure, compile or target execution')
+    if previous_prepared is not None:
+        add_previous_prepared(workspace, destination, output, previous_prepared, git=git)
     atomic_json(destination / 'prepared-sources.json', output)
     return output
+
+
+def add_previous_prepared(workspace, destination, result, previous_prepared, *, git):
+    """Allow only a verified previous prepared result and restore removed effects."""
+    workspace = Path(workspace).resolve(strict=True)
+    previous = Path(previous_prepared)
+    require(previous.is_absolute() and not previous.is_symlink(), 'invalid previous prepared tree')
+    previous = previous.resolve(strict=True)
+    require(not (previous / 'prepared-sources.json').is_symlink(), 'previous prepared receipt is a symlink')
+    require((previous / 'files').is_dir() and not (previous / 'files').is_symlink(),
+            'invalid previous prepared payload root')
+    destination = Path(destination).resolve(strict=True)
+    require(not previous.is_relative_to(workspace) and not workspace.is_relative_to(previous) and
+            not previous.is_relative_to(destination) and not destination.is_relative_to(previous),
+            'previous prepared tree overlaps source or destination')
+    old = json.loads((previous / 'prepared-sources.json').read_text())
+    require(isinstance(old, dict) and old.get('version') == 1 and
+            isinstance(old.get('paths'), dict) and isinstance(old.get('patches'), list) and
+            isinstance(old.get('source_revisions'), dict), 'invalid previous prepared receipt')
+    for revisions in (old['source_revisions'], result['source_revisions']):
+        for name, revision in revisions.items():
+            require(isinstance(name, str) and isinstance(revision, str) and
+                    re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', revision),
+                    'invalid previous source revision')
+            repository = workspace / bsd.relative(name)
+            require(repository.resolve(strict=True) == repository and not repository.is_symlink(),
+                    'previous source repository path changed: ' + name)
+            require(bsd.git_bytes(git, repository, 'rev-parse', 'HEAD').decode().strip() == revision,
+                    'previous source repository HEAD differs: ' + name)
+    def valid_digest(value):
+        return value is None or isinstance(value, str) and re.fullmatch(r'[0-9a-f]{64}', value)
+    for name, row in old['paths'].items():
+        bsd.relative(name)
+        require(isinstance(row, dict) and set(row).issubset({'before', 'after', 'prepared_before'}) and
+                {'before', 'after'} <= set(row) and valid_digest(row['before']) and valid_digest(row['after']) and
+                isinstance(row.get('prepared_before', []), list) and
+                all(valid_digest(x) for x in row.get('prepared_before', [])), 'invalid previous path: ' + name)
+        _, data = current_file(previous / 'files', name)
+        require(digest(data) == row['after'], 'previous prepared payload differs: ' + name)
+    old_only = set(old['paths']) - set(result['paths'])
+    committed, old_only_revisions = bsd.committed_sources(workspace, git, old_only)
+    for name, revision in old_only_revisions.items():
+        require(name not in result['source_revisions'] or result['source_revisions'][name] == revision,
+                'previous source revision differs: ' + name)
+        result['source_revisions'][name] = revision
+    for name in sorted(old_only):
+        data = committed.get(name)
+        before = old['paths'][name]['before']
+        require(digest(data) == before, 'previous committed source differs: ' + name)
+        path, _ = current_file(destination / 'files', name)
+        if data is not None:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+        elif path.exists():
+            path.unlink()
+        result['paths'][name] = dict(before=before, after=before)
+    for name, old_row in old['paths'].items():
+        row = result['paths'][name]
+        require(old_row['before'] == row['before'], 'previous source baseline differs: ' + name)
+        allowed = set(row.get('prepared_before', []))
+        allowed.add(old_row['after'])
+        allowed -= {row['before'], row['after']}
+        if allowed:
+            row['prepared_before'] = sorted(allowed, key=lambda value: value or '')
+    receipt_path = workspace / 'source-inputs/ports-build-sources.json'
+    require(receipt_path.is_file() and not receipt_path.is_symlink(), 'invalid workspace source receipt')
+    receipt = json.loads(receipt_path.read_text())
+    require(receipt == old or receipt == result, 'previous prepared receipt differs from workspace')
 
 
 def atomic_json(path, value):
@@ -221,10 +292,12 @@ def main():
     for name in ('workspace', 'pkgsrc', 'archive', 'destination', 'git', 'patch', 'patch-root'):
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--apply', action='store_true', help='materialize only after checking all source preimages')
+    parser.add_argument('--previous-prepared', type=Path, help='verified previous prepared source fixture')
     args = parser.parse_args()
     try:
         result = prepare(args.workspace, args.pkgsrc, args.archive, args.destination, args.git, args.patch,
-                         args.patch_root, Path(__file__).with_name('source-series.json'))
+                         args.patch_root, Path(__file__).with_name('source-series.json'),
+                         previous_prepared=args.previous_prepared)
         if args.apply:
             print('Materialized source files:', materialize(args.workspace, args.destination, result, git=args.git))
         print('Prepared ordered source patches:', len(result['patches']))
