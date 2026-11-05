@@ -1,0 +1,63 @@
+$NetBSD: patch-CMakeLists.txt,v 1.4 2026/04/16 12:50:09 adam Exp $
+
+Remove overzealous compiler options and let pkgsrc define the
+stack protection to use.
+
+--- CMakeLists.txt.orig	2026-04-15 07:02:42.000000000 +0000
++++ CMakeLists.txt
+@@ -92,7 +92,6 @@ if(NOT MSVC)
+ endif()
+ 
+ check_c_compiler_flag("-Wshorten-64-to-32" HAVE_SHORTEN_64_TO_32)
+-check_c_compiler_flag("-Werror -fstack-protector-all" HAVE_STACK_PROTECTOR_ALL)
+ 
+ check_include_files(cbor.h HAVE_CBOR_H)
+ check_include_files(endian.h HAVE_ENDIAN_H)
+@@ -300,47 +299,10 @@ else()
+ 
+ 	add_compile_options(-Wall)
+ 	add_compile_options(-Wextra)
+-	add_compile_options(-Werror)
+-	add_compile_options(-Wshadow)
+-	add_compile_options(-Wcast-qual)
+-	add_compile_options(-Wwrite-strings)
+-	add_compile_options(-Wmissing-prototypes)
+-	add_compile_options(-Wbad-function-cast)
+-	add_compile_options(-Wimplicit-fallthrough)
+-	add_compile_options(-pedantic)
+-	add_compile_options(-pedantic-errors)
+-
+-	set(EXTRA_CFLAGS "-Wconversion -Wsign-conversion")
+-
+-	if(WIN32)
+-		add_compile_options(-Wno-type-limits)
+-		add_compile_options(-Wno-cast-function-type)
+-	endif()
+-
+-	if(HAVE_SHORTEN_64_TO_32)
+-		add_compile_options(-Wshorten-64-to-32)
+-	endif()
+-
+-	if(HAVE_STACK_PROTECTOR_ALL)
+-		add_compile_options(-fstack-protector-all)
+-	endif()
+-
+-	set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g2")
+-	set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fno-omit-frame-pointer")
+-	set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -D_FORTIFY_SOURCE=2")
+ 
+ 	if(CRYPTO_VERSION VERSION_GREATER_EQUAL 3.0)
+ 		add_definitions(-DOPENSSL_API_COMPAT=0x10100000L)
+ 	endif()
+-
+-	if(NOT FUZZ)
+-		set(EXTRA_CFLAGS "${EXTRA_CFLAGS} -Wframe-larger-than=2047")
+-	endif()
+-endif()
+-
+-# Avoid https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66425
+-if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+-	add_compile_options(-Wno-unused-result)
+ endif()
+ 
+ # Decide which keyword to use for thread-local storage.
