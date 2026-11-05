@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (turtle-2.0.0.tar.gz) = 731806b11976a912c59a8831de3b361c37bb8b61c6a5cafaa2125d2c3ec95d3e
+SHA512 (turtle-2.0.0.tar.gz) = 5199e841814b055491ef609cbe2fc45303d4bbb28029885c8889c5b0a83bd24c2bbccfc569fa7927f1e0ed638150fece8bc567bca005b3a4fc19b5bfef4684bf
+Size (turtle-2.0.0.tar.gz) = 92468 bytes
+SHA1 (patch-CMakeLists.txt) = 80218aa78edbd9fa1fffbc869e79e3a5b995acf4

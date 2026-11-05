@@ -1,0 +1,2 @@
+Turtle is a C++ mock-object library based on Boost. It is a header-only
+framework for defining mock objects and expectations in test code.
