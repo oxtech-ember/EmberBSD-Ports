@@ -14,9 +14,9 @@
 EMBERBSD_HOST_PYTHON?=${EMBERBSD_HOST_PREFIX}/bin/python3.15
 EMBERBSD_HOST_COMPILER_FAMILY?=clang
 EMBERBSD_HOST_FETCH_MODE?=fetch
-# Check selected paths before the include can assign native commands.
-# The SDK checks the prefix. Ports owns this make-variable mapping.
-# A run verifies one selection once: recursive queries inherit the result,
+# Refresh selected paths before the include can assign native commands.
+# The SDK checks the prefix. Ports owns this generated make-variable mapping.
+# A run refreshes one selection once: recursive queries inherit the result,
 # and scripts/cross-bulk.sh passes it to each of its bmake calls.
 _EMBER_NATIVE_CXX_BINDING_ARG=
 .if defined(EMBERBSD_NATIVE_CXX_BINDING_RECORD) && !empty(EMBERBSD_NATIVE_CXX_BINDING_RECORD)
@@ -25,16 +25,20 @@ _EMBER_NATIVE_CXX_BINDING_ARG= --native-cxx-binding-record ${EMBERBSD_NATIVE_CXX
 .if defined(EMBERBSD_NATIVE_CXX_STAGE_ROOT) && !empty(EMBERBSD_NATIVE_CXX_STAGE_ROOT)
 _EMBER_NATIVE_CXX_BINDING_ARG+= --native-cxx-stage-root ${EMBERBSD_NATIVE_CXX_STAGE_ROOT:Q}
 .endif
-_EMBER_NATIVE_TOOLSET_KEY:=${EMBERBSD_SDK_SOURCE}|${EMBERBSD_HOST_PREFIX}|${EMBERBSD_HOST_COMPILER_FAMILY}|${EMBERBSD_HOST_FETCH_MODE}|${EMBERBSD_NATIVE_TOOLSET_MAKECONF}|${EMBERBSD_NATIVE_CXX_BINDING_RECORD:U}|${EMBERBSD_NATIVE_CXX_STAGE_ROOT:U}
+_EMBER_NATIVE_FLANG_INVENTORY=absent
+.if exists(${EMBERBSD_HOST_PREFIX}/bin/flang)
+_EMBER_NATIVE_FLANG_INVENTORY=present
+.endif
+_EMBER_NATIVE_TOOLSET_KEY:=${EMBERBSD_SDK_SOURCE}|${EMBERBSD_HOST_PREFIX}|${EMBERBSD_HOST_COMPILER_FAMILY}|${EMBERBSD_HOST_FETCH_MODE}|${EMBERBSD_NATIVE_TOOLSET_MAKECONF}|${EMBERBSD_NATIVE_CXX_BINDING_RECORD:U}|${EMBERBSD_NATIVE_CXX_STAGE_ROOT:U}|flang-${_EMBER_NATIVE_FLANG_INVENTORY}
 .if "${EMBERBSD_NATIVE_TOOLSET_VERIFIED:U}" != "${_EMBER_NATIVE_TOOLSET_KEY}"
 _EMBER_NATIVE_TOOLSET_CHECK!= ${EMBERBSD_HOST_PYTHON:Q} -B -E -S \
-    ${.PARSEDIR:Q}/prepare-native-tools.py --sdk-source ${EMBERBSD_SDK_SOURCE:Q} verify \
+    ${.PARSEDIR:Q}/prepare-native-tools.py --sdk-source ${EMBERBSD_SDK_SOURCE:Q} refresh \
     --host-prefix ${EMBERBSD_HOST_PREFIX:Q} \
     --compiler-family ${EMBERBSD_HOST_COMPILER_FAMILY:Q} \
     --fetch-mode ${EMBERBSD_HOST_FETCH_MODE:Q} ${_EMBER_NATIVE_CXX_BINDING_ARG} \
     --makeconf ${EMBERBSD_NATIVE_TOOLSET_MAKECONF:Q}
 .if "${_EMBER_NATIVE_TOOLSET_CHECK}" != "VERIFIED"
-.error The host prefix or its native include is invalid
+.error The host prefix or its generated native include is invalid
 .endif
 EMBERBSD_NATIVE_TOOLSET_VERIFIED:=${_EMBER_NATIVE_TOOLSET_KEY}
 .export EMBERBSD_NATIVE_TOOLSET_VERIFIED

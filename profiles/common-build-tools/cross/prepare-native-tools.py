@@ -178,6 +178,7 @@ def sdk_loader():
 
 # Binary tools that native builds call by name; see render().
 NATIVE_COMMAND_TOOLS = ('ar', 'ranlib', 'nm')
+GENERATED_HEADER = '# Generated from the selected Ports host prefix. Do not edit.'
 
 
 def literal(value):
@@ -188,7 +189,7 @@ def literal(value):
 
 
 def render(toolset, qt=(), fetch_mode='fetch', native_cxx=None):
-    lines = ['# Generated from the selected Ports host prefix. Do not edit.']
+    lines = [GENERATED_HEADER]
     family = toolset.compiler_family
     if native_cxx and any(list(toolset.abi_flags[name]) != native_cxx['flags'][name]
                           for name in ('cppflags', 'cflags', 'cxxflags', 'ldflags')):
@@ -430,14 +431,8 @@ def select_native_cxx(toolset, selected_record, stage_root=None):
             'stage_root':str(stage) if stage is not None else None}
 
 
-def write(toolset, destination, qt=(), fetch_mode='fetch', native_cxx=None):
-    from emberbsd_sdk import paths
-    from emberbsd_sdk.errors import SDKError
-    if not Path(destination).is_absolute():
-        raise SDKError('Use an absolute native include destination')
-    output = Path(paths.canonical_new(destination))
-    data = render(toolset, qt, fetch_mode, native_cxx)
-    # Replace only the requested configuration file, after a complete write.
+def replace_makeconf(output, data):
+    # Publish beside the destination so replacement is atomic on its volume.
     with tempfile.NamedTemporaryFile(prefix='.native-tools-', dir=output.parent,
                                      delete=False) as temporary:
         stage = Path(temporary.name)
@@ -447,7 +442,45 @@ def write(toolset, destination, qt=(), fetch_mode='fetch', native_cxx=None):
             os.replace(stage, output)
         finally:
             stage.unlink(missing_ok=True)
+
+
+def write(toolset, destination, qt=(), fetch_mode='fetch', native_cxx=None):
+    from emberbsd_sdk import paths
+    from emberbsd_sdk.errors import SDKError
+    if not Path(destination).is_absolute():
+        raise SDKError('Use an absolute native include destination')
+    output = Path(paths.canonical_new(destination))
+    data = render(toolset, qt, fetch_mode, native_cxx)
+    replace_makeconf(output, data)
     return {'makeconf': str(output)}
+
+
+def refresh(toolset, destination, qt=(), fetch_mode='fetch', native_cxx=None):
+    """Refresh only a generated native include at its explicitly selected path."""
+    from emberbsd_sdk import paths
+    from emberbsd_sdk.errors import SDKError
+    selected = Path(destination)
+    if not selected.is_absolute():
+        raise SDKError('Use an absolute native include destination')
+    if selected.is_symlink():
+        raise SDKError('The native include must not be a symbolic link')
+    if selected.exists():
+        output = Path(paths.canonical_existing(str(selected)))
+        paths.regular_file(str(output))
+        current = output.read_bytes()
+        header = (GENERATED_HEADER + '\n').encode()
+        if not current.startswith(header):
+            raise SDKError('Refusing to refresh a file without the generated native include header')
+    else:
+        output = Path(paths.canonical_new(str(selected)))
+        current = None
+    data = render(toolset, qt, fetch_mode, native_cxx)
+    if current == data:
+        return {'makeconf': str(output), 'changed': False}
+    if current is not None and output.read_bytes() != current:
+        raise SDKError('The generated native include changed during refresh')
+    replace_makeconf(output, data)
+    return {'makeconf': str(output), 'changed': True}
 
 
 # Bare host tool names required by nested GNU configure/build scripts.
@@ -485,7 +518,7 @@ def write_aliases(toolset, destination, native_cxx=None):
 
 def main(arguments):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=('write', 'verify', 'aliases'))
+    parser.add_argument('operation', choices=('write', 'verify', 'refresh', 'aliases'))
     parser.add_argument('--host-prefix', required=True)
     parser.add_argument('--compiler-family', choices=('clang', 'gcc'), default='clang')
     parser.add_argument('--fetch-mode', choices=('fetch', 'manual'), default='fetch')
@@ -513,6 +546,10 @@ def main(arguments):
     from emberbsd_sdk.errors import SDKError
     if not Path(args.makeconf).is_absolute():
         raise SDKError('Use an absolute native include path')
+    if args.operation == 'refresh':
+        refresh(toolset, args.makeconf, qt, args.fetch_mode, native_cxx)
+        print('VERIFIED')
+        return
     path = Path(paths.canonical_existing(args.makeconf))
     paths.regular_file(str(path))
     data = path.read_bytes()

@@ -136,11 +136,15 @@ command exists in its PATH.
 The macOS release probes for `NATIVE_OPSYS_VERSION` and `OSX_VERSION` run
 `/usr/bin/sw_vers`, a system command outside that PATH.
 
-The verification runs once per selection. A successful parse exports
+The generated include refresh runs once per selection. It preserves an
+unchanged file, updates a generated include when an optional host tool becomes
+available, and refuses a file without the generated header. Flang presence is
+part of the verification key, so the first parse after its installation
+refreshes the mapping even inside a running cross-bulk. A successful parse exports
 `EMBERBSD_NATIVE_TOOLSET_VERIFIED`, so its recursive queries skip the
-verifier. `scripts/cross-bulk.sh` verifies once at the start of a run and
-passes the result to each of its bmake calls. Rerun the helper after
-changing the prefix or the generated include.
+refresh. `scripts/cross-bulk.sh` refreshes once at the start of a run and
+passes the result to each of its bmake calls. Standalone `verify` remains a
+strict comparison for checking an existing generated include.
 
 With a selected toolset, the exported `mk/tools/tools.Darwin.mk` does not
 ask Xcode (`xcrun`) for `yacc` and `m4`. The include supplies `yacc`, and

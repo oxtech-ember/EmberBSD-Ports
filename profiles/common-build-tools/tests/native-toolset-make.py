@@ -105,6 +105,11 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         include = Path(result['makeconf'])
         before = include.read_bytes()
         assert include == destination.resolve()
+        created_include = root / 'refresh-created.mk'
+        with contextlib.redirect_stdout(io.StringIO()):
+            adapter.main(['refresh', *pins, '--makeconf', str(created_include)])
+        assert created_include.read_bytes().startswith(
+            (adapter.GENERATED_HEADER + '\n').encode())
         assert not (root / 'selection.json').exists()
         call = api.load_host_prefix.call_args
         assert call.args == (str(root / 'host-pkg-llvm'),)
@@ -176,9 +181,28 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
         assert 'fetch' not in api.load_host_prefix.call_args.kwargs['required_roles']
         manual = include.read_bytes()
         assert b'FETCH_USING?= manual\n' in manual and b'TOOLS_PLATFORM.fetch' not in manual
+        # Optional Flang is installed after the initial host-tools mapping.
+        # The next top-level refresh must discover it and remain a no-op
+        # when the selected prefix has not changed.
+        flang = root / 'host-pkg-llvm/bin/flang'
+        flang.write_text('#!/bin/sh\nexit 0\n')
+        flang.chmod(0o755)
+        with contextlib.redirect_stdout(io.StringIO()):
+            adapter.main(['refresh', *pins, '--fetch-mode', 'manual', '--makeconf', str(include)])
+        refreshed = include.read_bytes()
+        assert b'_EMBER_SDK_FLANG:= ' + str(flang).encode() + b'\n' in refreshed
+        stamp = include.stat().st_mtime_ns
+        with contextlib.redirect_stdout(io.StringIO()):
+            adapter.main(['refresh', *pins, '--fetch-mode', 'manual', '--makeconf', str(include)])
+        assert include.stat().st_mtime_ns == stamp
+        include.write_bytes(b'# user-owned file\n')
+        refused(adapter.main, ['refresh', *pins, '--fetch-mode', 'manual', '--makeconf', str(include)])
+        assert include.read_bytes() == b'# user-owned file\n'
+        include.write_bytes(refreshed)
         with contextlib.redirect_stdout(io.StringIO()) as out:
             adapter.main(['verify', *pins, '--fetch-mode', 'manual', '--makeconf', str(include)])
         assert out.getvalue() == 'VERIFIED\n'
+        flang.unlink()
         refused(adapter.main, ['verify', *pins, '--makeconf', str(include)])
         adapter.write(selected, str(destination), adapter.qt_host_paths(str(root / 'host-pkg-llvm'), '/usr/bin:/bin'))
         # Cross wayland, lld and clang recipes need these native tools.
@@ -214,7 +238,8 @@ with tempfile.TemporaryDirectory(prefix='ember-native-make-') as temporary:
             adapter.main(['write', *pins, '--output', str(destination)])
         assert 'clang-tblgen' not in api.load_host_prefix.call_args.kwargs['required_roles']
         assert b'EMBERBSD_CLANG_TABLEGEN' not in include.read_bytes()
-        assert include.read_bytes() == adapter.render(selected)
+        assert include.read_bytes() == adapter.render(
+            selected, adapter.flang_host_tool(str(root / 'host-pkg-llvm')))
         wayland_scanner.unlink()
         del tools['wayland-scanner']
         with contextlib.redirect_stdout(io.StringIO()):
