@@ -195,5 +195,6 @@ metadata are checked before use; header projections contain only owned files.
 The native generator's actual loader inputs are tracked by the selected SDK.
 
 This EmberBSD producer omits the optional SwiftShader software Vulkan/GL
-fallback. Hardware Vulkan, GL and ANGLE remain selected independently; actual
+fallback, including Dawn’s optional fallback adapter. Hardware Vulkan, GL and
+ANGLE remain selected independently; actual
 hardware renderer acceptance is established on the target device.

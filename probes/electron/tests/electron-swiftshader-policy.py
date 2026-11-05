@@ -6,7 +6,7 @@ import importlib.util
 from pathlib import Path
 owner=Path(__file__).resolve().parents[3]/'pkgsrc/devel/electron44/files/build-electron.py'
 spec=importlib.util.spec_from_file_location('electron',owner); m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
-keys=('enable_swiftshader','enable_swiftshader_vulkan','angle_enable_swiftshader')
+keys=('enable_swiftshader','enable_swiftshader_vulkan','angle_enable_swiftshader','dawn_use_swiftshader')
 new={key:False for key in keys}
 assert m.verified_swiftshader_disable({},new)==set(keys)
 assert m.verified_swiftshader_disable(new,new)==set()
