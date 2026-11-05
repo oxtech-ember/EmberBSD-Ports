@@ -525,3 +525,5 @@ devel/libepoll-shim
 multimedia/libde265
 
 graphics/zint
+
+textproc/cmark-gfm

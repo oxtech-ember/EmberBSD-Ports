@@ -1,0 +1,15 @@
+$NetBSD: patch-CMakeLists.txt,v 1.2 2025/02/12 09:25:41 adam Exp $
+
+Remove gfm.N from shared library name.
+
+--- CMakeLists.txt.orig	2025-02-11 13:30:26.767639843 +0000
++++ CMakeLists.txt
+@@ -5,7 +5,7 @@ set(PROJECT_VERSION_MAJOR 0)
+ set(PROJECT_VERSION_MINOR 29)
+ set(PROJECT_VERSION_PATCH 0)
+ set(PROJECT_VERSION_GFM 13)
+-set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}.gfm.${PROJECT_VERSION_GFM})
++set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
+ 
+ include("FindAsan.cmake")
+ include("CheckFileOffsetBits.cmake")

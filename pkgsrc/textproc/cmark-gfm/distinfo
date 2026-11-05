@@ -1,0 +1,21 @@
+$NetBSD: distinfo,v 1.6 2025/02/12 09:25:41 adam Exp $
+
+BLAKE2s (cmark-gfm/0.29.0.gfm.13.tar.gz) = c7188c0d647eb4a1546480f3f649203d3440fdfdc6d79c7e6900d251493ddbf5
+SHA512 (cmark-gfm/0.29.0.gfm.13.tar.gz) = 435298fcf782dfc5b64c578ac839759b9d5cd0c08eb90d6702f26278062a0f4887c65c18e89e2c9f6be23f10dd835c769a7e0f8c934be068b6754dcca30cdd7c
+Size (cmark-gfm/0.29.0.gfm.13.tar.gz) = 300086 bytes
+SHA1 (patch-CMakeLists.txt) = d814ef219b0b878c4314ca44378b6fabf115a86c
+SHA1 (patch-extensions_CMakeLists.txt) = 6dafd060f2c21f7b2c859151a6bc2185b943c78b
+SHA1 (patch-src_CMakeLists.txt) = fe5a567353b94c291e1702dd1330f7dadf1e801e
+SHA1 (patch-extensions_autolink.c) = 9747002ca68024b1d370098557c63e3169213463
+SHA1 (patch-extensions_tasklist.c) = 6edb7c7e5c699bc8d07ca973081aad3c125ccd55
+SHA1 (patch-src_buffer.c) = e0798f04db6123b7da79de1428fc131f90b77ccd
+SHA1 (patch-src_inlines.c) = a32988b8d58f285a99540f66317bd265b0c5e290
+SHA1 (patch-src_iterator.c) = 0dfbd763dbfdde6b20853fd21868981c54e6ca85
+SHA1 (patch-src_node.c) = 754a4988fe2d708e64e20215c73bccb674272176
+SHA1 (patch-src_syntax_extension.c) = 74787b26bd4a22a9ea03b372bde724d910ad2159
+SHA1 (patch-src_blocks.c) = 67db3b56cb11e9f999ab87dabbcd66ae1c8a1ef3
+SHA1 (patch-src_cmark-gfm.h) = 444e107db37b36450b663177536d02950e0017e2
+SHA1 (patch-src_parser.h) = 63fdf5a52a45b8178f6f8c822e1158d87869ba4d
+SHA1 (patch-src_plugin.c) = 3f03a8eb584eac36460be6c6d6d5fc2f23f8bfca
+SHA1 (patch-src_registry.c) = de9aa9ce9f0ebe4724308a45dafb81239f4463ab
+SHA1 (patch-src_syntax_extension.h) = 3f9e9494f81f81050320b272f6e93d887364dcfa
