@@ -1117,6 +1117,11 @@
       "path": "chromium-metal-util-arm64-legacy.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "tflite-support-no-minibench-litert.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

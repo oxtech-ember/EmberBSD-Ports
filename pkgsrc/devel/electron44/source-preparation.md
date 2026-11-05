@@ -308,3 +308,6 @@ its recorded GN dependency paths continue to use `PORTS_SOURCE`.
 
 TFLite Support imports the common LiteRT configuration schema and requires
 `use_litert_tflite=true`; the former bundled TensorFlow schema is not selected.
+Its Chromium-carried Support sources are adapted for common LiteRT, which no
+longer supplies MiniBenchmark: requests for `settings_to_test_locally` return
+`Unimplemented`, while ordinary interpreter and delegate setup remain enabled.
