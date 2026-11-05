@@ -1,0 +1,12 @@
+$NetBSD$
+
+BLAKE2s (tg_owt-020feec5c040fdae2cf752c2c2be62ddde7c236d.tar.gz) = c22a32e60a9e1518d7215c95f6bb21e2774b4985c4d677ba697020d30ab0f24d
+SHA512 (tg_owt-020feec5c040fdae2cf752c2c2be62ddde7c236d.tar.gz) = 70898f2e1e8c43da336a19bb8994769a3cde17d9a6856288f2ae822cb1c281e0fc032631eb00a13bfc201fe1f6afa390a1a76b8c102c625d48105dda16674cc5
+Size (tg_owt-020feec5c040fdae2cf752c2c2be62ddde7c236d.tar.gz) = 11723369 bytes
+SHA1 (patch-cmake-external) = 4c967aff875e47efe9a176c2a6c43e9091dd627e
+SHA1 (patch-system-headers) = 45b6a7ba094b7b5572e5fbe70ddef994c4784c87
+SHA1 (patch-cmake-libwebrtcbuild) = 588f5557ba1fc7efdf828fe898ca012c3a31c0a3
+SHA1 (patch-netbsd-webrtc) = d5ee95207f812674e745932869939e2ee9132682
+SHA1 (patch-netbsd-v4l2) = 538a538dad8c515302455552ce3baed0dc648022
+SHA1 (patch-cmake-tg_owtConfig) = 7f16ca198dab50e3adde30396d63bc5bb18831aa
+SHA1 (patch-strict-absl) = 6c49110d792ff021856ed8c4a0b58aadbb9f14ff

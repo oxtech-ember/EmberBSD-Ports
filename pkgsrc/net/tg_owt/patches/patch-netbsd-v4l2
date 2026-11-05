@@ -1,0 +1,87 @@
+# Use the native BSD video API and the V4L2 capability selection contract.
+# Origin: EmberBSD.
+--- src/modules/video_capture/linux/device_info_linux.cc.orig
++++ src/modules/video_capture/linux/device_info_linux.cc
+@@ -16,7 +16,7 @@
+ #include <sys/ioctl.h>
+ #include <unistd.h>
+ // v4l includes
+-#if defined(__OpenBSD__)
++#if defined(__OpenBSD__) || defined(__NetBSD__)
+ #include <sys/videoio.h>
+ #else
+ #include <linux/videodev2.h>
+--- src/modules/video_capture/linux/device_info_v4l2.cc.orig
++++ src/modules/video_capture/linux/device_info_v4l2.cc
+@@ -18,7 +18,7 @@
+ #include <sys/ioctl.h>
+ #include <unistd.h>
+ // v4l includes
+-#if defined(__OpenBSD__)
++#if defined(__OpenBSD__) || defined(__NetBSD__)
+ #include <sys/videoio.h>
+ #else
+ #include <linux/videodev2.h>
+@@ -51,6 +51,13 @@
+ 
+ namespace webrtc {
+ namespace videocapturemodule {
++namespace {
++uint32_t EffectiveCapabilities(const struct v4l2_capability& cap) {
++  return (cap.capabilities & V4L2_CAP_DEVICE_CAPS) ? cap.device_caps
++                                                  : cap.capabilities;
++}
++}  // namespace
++
+ DeviceInfoV4l2::DeviceInfoV4l2() : DeviceInfoImpl() {}
+ 
+ int32_t DeviceInfoV4l2::Init() {
+@@ -71,7 +78,7 @@
+     if ((fd = open(device, O_RDONLY)) != -1) {
+       // query device capabilities and make sure this is a video capture device
+       if (ioctl(fd, VIDIOC_QUERYCAP, &cap) < 0 ||
+-          !(cap.device_caps & V4L2_CAP_VIDEO_CAPTURE)) {
++          !(EffectiveCapabilities(cap) & V4L2_CAP_VIDEO_CAPTURE)) {
+         close(fd);
+         continue;
+       }
+@@ -102,7 +109,7 @@
+     if ((fd = open(device, O_RDONLY)) != -1) {
+       // query device capabilities and make sure this is a video capture device
+       if (ioctl(fd, VIDIOC_QUERYCAP, &cap) < 0 ||
+-          !(cap.device_caps & V4L2_CAP_VIDEO_CAPTURE)) {
++          !(EffectiveCapabilities(cap) & V4L2_CAP_VIDEO_CAPTURE)) {
+         close(fd);
+         continue;
+       }
+@@ -180,7 +187,7 @@
+     struct v4l2_capability cap;
+     if (ioctl(fd, VIDIOC_QUERYCAP, &cap) == 0) {
+       // skip devices without video capture capability
+-      if (!(cap.device_caps & V4L2_CAP_VIDEO_CAPTURE)) {
++      if (!(EffectiveCapabilities(cap) & V4L2_CAP_VIDEO_CAPTURE)) {
+         continue;
+       }
+ 
+--- src/modules/video_capture/linux/video_capture_linux.cc.orig
++++ src/modules/video_capture/linux/video_capture_linux.cc
+@@ -10,7 +10,7 @@
+ 
+ #include <errno.h>
+ #include <fcntl.h>
+-#if defined(__OpenBSD__)
++#if defined(__OpenBSD__) || defined(__NetBSD__)
+ #include <sys/videoio.h>
+ #else
+ #include <linux/videodev2.h>
+--- src/modules/video_capture/linux/video_capture_v4l2.cc.orig
++++ src/modules/video_capture/linux/video_capture_v4l2.cc
+@@ -12,7 +12,7 @@
+ 
+ #include <errno.h>
+ #include <fcntl.h>
+-#if defined(__OpenBSD__)
++#if defined(__OpenBSD__) || defined(__NetBSD__)
+ #include <sys/videoio.h>
+ #else
+ #include <linux/videodev2.h>

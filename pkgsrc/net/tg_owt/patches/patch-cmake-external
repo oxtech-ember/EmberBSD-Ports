@@ -1,0 +1,32 @@
+--- cmake/external.cmake.orig
++++ cmake/external.cmake
+@@ -137,16 +137,10 @@
+ # libSRTP
+ function(link_libsrtp target_name)
+     if (TG_OWT_PACKAGED_BUILD)
+-        find_package(PkgConfig)
+-        if (PkgConfig_FOUND)
+-            pkg_check_modules(SRTP libsrtp2)
+-            if (SRTP_FOUND)
+-                target_include_directories(${target_name} SYSTEM PRIVATE ${SRTP_INCLUDE_DIRS})
+-                target_link_libraries(${target_name} PRIVATE ${SRTP_LINK_LIBRARIES})
+-            endif()
+-        endif()
+-    endif()
+-    if (NOT SRTP_FOUND)
++        find_package(libSRTP CONFIG REQUIRED)
++        target_link_libraries(${target_name} PRIVATE libSRTP::srtp2)
++        set(SRTP_FOUND TRUE PARENT_SCOPE)
++    else()
+         target_link_libraries(${target_name} PRIVATE tg_owt::libsrtp)
+     endif()
+ endfunction()
+@@ -174,7 +168,7 @@
+ # crc32c
+ function(link_crc32c target_name)
+     if (TG_OWT_PACKAGED_BUILD)
+-        find_package(Crc32c)
++        find_package(Crc32c REQUIRED)
+         set(Crc32c_FOUND ${Crc32c_FOUND} PARENT_SCOPE)
+         if (Crc32c_FOUND)
+             target_link_libraries(${target_name} PRIVATE Crc32c::crc32c)

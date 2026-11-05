@@ -1,0 +1,27 @@
+# Define the NetBSD platform explicitly and use its sys/endian.h.
+# Origin: EmberBSD.
+--- cmake/libwebrtcbuild.cmake.orig
++++ cmake/libwebrtcbuild.cmake
+@@ -97,6 +97,11 @@
+         INTERFACE
+             WEBRTC_LINUX
+         )
++    elseif (CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
++        target_compile_definitions(libwebrtcbuild
++        INTERFACE
++            WEBRTC_NETBSD
++        )
+     elseif (CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+         target_compile_definitions(libwebrtcbuild
+         INTERFACE
+--- src/rtc_base/byte_order.h.orig
++++ src/rtc_base/byte_order.h
+@@ -92,7 +92,7 @@
+ 
+ #elif defined(WEBRTC_LINUX)
+ #include <endian.h>
+-#elif defined(WEBRTC_FREEBSD) || defined(WEBRTC_OPENBSD)
++#elif defined(WEBRTC_FREEBSD) || defined(WEBRTC_OPENBSD) || defined(WEBRTC_NETBSD)
+ #include <sys/endian.h>
+ #else
+ #error "Missing byte order functions for this arch."

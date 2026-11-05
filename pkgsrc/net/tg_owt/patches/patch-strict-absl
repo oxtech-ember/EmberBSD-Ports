@@ -1,0 +1,32 @@
+# Require the shared abseil provider in explicitly packaged builds.
+# Origin: EmberBSD.
+--- cmake/external.cmake.orig
++++ cmake/external.cmake
+@@ -86,7 +86,7 @@
+         set(scope INTERFACE)
+     endif()
+     if (TG_OWT_PACKAGED_BUILD)
+-        find_package(absl)
++        find_package(absl REQUIRED)
+         set(absl_FOUND ${absl_FOUND} PARENT_SCOPE)
+         if (absl_FOUND)
+             target_link_libraries(${target_name}
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -7,10 +7,12 @@
+ 
+ set(TG_OWT_SPECIAL_TARGET "" CACHE STRING "Use special platform target, like 'macstore' for Mac App Store.")
+ 
+-if (NOT TG_OWT_SPECIAL_TARGET STREQUAL "")
+-    set(TG_OWT_PACKAGED_BUILD 0)
+-else()
+-    set(TG_OWT_PACKAGED_BUILD 1)
++if (NOT DEFINED TG_OWT_PACKAGED_BUILD)
++    if (NOT TG_OWT_SPECIAL_TARGET STREQUAL "")
++        set(TG_OWT_PACKAGED_BUILD 0)
++    else()
++        set(TG_OWT_PACKAGED_BUILD 1)
++    endif()
+ endif()
+ 
+ set(not_packaged_build 0)

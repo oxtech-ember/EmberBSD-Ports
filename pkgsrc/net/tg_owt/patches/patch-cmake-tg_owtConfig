@@ -1,0 +1,15 @@
+# Resolve the external libyuv in each consuming target environment.
+# Origin: EmberBSD.
+--- cmake/tg_owtConfig.cmake.orig
++++ cmake/tg_owtConfig.cmake
+@@ -6,4 +6,10 @@
+     find_dependency(Crc32c)
+ endif()
+ 
++if (NOT TARGET tg_owt::yuv)
++    find_library(tg_owt_yuv_LIBRARY NAMES yuv REQUIRED)
++    add_library(tg_owt::yuv UNKNOWN IMPORTED)
++    set_target_properties(tg_owt::yuv PROPERTIES IMPORTED_LOCATION "${tg_owt_yuv_LIBRARY}")
++endif()
++
+ include("${CMAKE_CURRENT_LIST_DIR}/tg_owtTargets.cmake")
