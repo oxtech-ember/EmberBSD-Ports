@@ -50,7 +50,7 @@ SUBST_STAGE.no-windows-launchers=	pre-configure
 SUBST_FILES.no-windows-launchers=	pyproject.toml
 SUBST_SED.no-windows-launchers=	-e 's/"setuptools" = \["tests\/\*"\]/"setuptools" = ["tests\/*", "*.exe"]/g'
 pre-build:
-	${RM} ${WRKSRC}/build/lib*/setuptools/cli*.exe \
+	${RM} -f ${WRKSRC}/build/lib*/setuptools/cli*.exe \
 		${WRKSRC}/build/lib*/setuptools/gui*.exe
 .else
 PLIST.windows-launchers= yes
