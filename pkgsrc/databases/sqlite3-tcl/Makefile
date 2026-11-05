@@ -2,8 +2,15 @@
 
 .include "../../databases/sqlite3/Makefile.common"
 
+# Shared source checksums and complete patch set belong to sqlite3.
+DISTINFO_FILE=	${.CURDIR}/../../databases/sqlite3/distinfo
+PATCHDIR=	${.CURDIR}/../../databases/sqlite3/patches
+# WRKSRC is tea/, but the shared patch belongs to the archive root.
+PATCH_ARGS=	-d ${WRKDIR:Q}/${DISTNAME:Q} -E ${PATCH_STRIP}
+
 DISTNAME=	sqlite-autoconf-${SQLITE3_DISTVERSION}
 PKGNAME=	sqlite3-tcl-${SQLITE3_VERSION}
+PKGREVISION=	1
 CATEGORIES=	databases
 
 MAINTAINER=	pkgsrc-users@NetBSD.org

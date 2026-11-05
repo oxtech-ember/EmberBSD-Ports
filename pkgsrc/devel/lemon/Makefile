@@ -2,6 +2,10 @@
 
 .include "../../databases/sqlite3/Makefile.common"
 
+# Shared source checksums and complete patch set belong to sqlite3.
+DISTINFO_FILE=	${.CURDIR}/../../databases/sqlite3/distinfo
+PATCHDIR=	${.CURDIR}/../../databases/sqlite3/patches
+
 LEMON_VERSION=	1.0
 
 # Concatenate versions of lemon and sqlite3

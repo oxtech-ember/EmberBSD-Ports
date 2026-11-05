@@ -110,3 +110,18 @@ diagnostics. Valgrind is unavailable on this host. Actual bmake metadata
 selects nb1 and forwards its capability minimum to Node24, Python315 and the
 Tcl extension; package rebuild/installation and Node-suite acceptance remain
 separate from these checks.
+
+Revision nb2 refreshes the package source metadata for the added full-source
+archive; its library sources and feature contract are unchanged. Installed
+nb1 package metadata does not identify the new complete `distinfo`.
+
+The complete `sqlite-src` archive is recorded in this recipe's `distinfo`
+with the same family version and patch inventory as the autoconf archive.
+`sqlite3-diff`, `sqlite3-tcl`, and `lemon` select that shared metadata and
+patch directory; the Tcl recipe applies patches at the archive root before
+building from `tea/`. The source owner at
+[`scripts/source-inputs/sqlite/source.py`](../../../scripts/source-inputs/sqlite/source.py)
+prepares and verifies the complete source tree for source consumers. It uses
+the SDK's bounded ZIP extraction and the core recipe's complete patch set.
+Source preparation does not by itself accept an installed package or a
+Chromium application build.

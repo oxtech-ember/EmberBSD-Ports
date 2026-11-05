@@ -5,6 +5,7 @@
 
 import argparse
 import hashlib
+import shlex
 from pathlib import Path
 import sys
 import zipfile
@@ -26,7 +27,7 @@ from emberbsd_sdk.inventory import sha256_file
 if API_VERSION != 1:
     parser.error('EmberBSD SDK host API 1 is required')
 
-variables = ('PKGNAME', 'DISTNAME', 'DISTINFO_FILE', 'CONFIGURE_ARGS',
+variables = ('PKGNAME', 'DISTNAME', 'DISTINFO_FILE', 'PATCHDIR', 'PATCH_ARGS', 'CONFIGURE_ARGS',
              'CPPFLAGS', 'PKG_FAIL_REASON', 'PKG_SKIP_REASON',
              'SQLITE3_VERSION', 'TCL_SQLITE3_VERSION', 'PLIST_SUBST',
              'CONFIGURE_ENV', 'TOOLS_SCRIPT.native-cc',
@@ -66,6 +67,8 @@ try:
         row = query(package)
         expected_name = name + ('.' if package == 'devel/lemon' else '-') + '3.54.1'
         if package == 'databases/sqlite3':
+            expected_name += 'nb2'
+        elif package in ('databases/sqlite3-diff', 'databases/sqlite3-tcl'):
             expected_name += 'nb1'
         require(row['PKGNAME'] == expected_name, 'Wrong package version: ' + package)
         data = (args.distfiles / archive).read_bytes()
@@ -79,6 +82,16 @@ try:
                 'Wrong source size: ' + package)
         row['archive_sha256'] = sha256_file(args.distfiles / archive)
         rows[package] = row
+    common_recipe = (args.pkgsrc / 'databases/sqlite3').resolve(strict=True)
+    for package in ('databases/sqlite3', 'databases/sqlite3-diff', 'databases/sqlite3-tcl', 'devel/lemon'):
+        row = rows[package]
+        require(Path(row['DISTINFO_FILE']).resolve(strict=True) == common_recipe/'distinfo' and
+                Path(row['PATCHDIR']).resolve(strict=True) == common_recipe/'patches',
+                'SQLite family source metadata or patches differ: ' + package)
+    patch_args = shlex.split(rows['databases/sqlite3-tcl']['PATCH_ARGS'])
+    require('-d' in patch_args and patch_args.index('-d') + 1 < len(patch_args) and
+            patch_args[patch_args.index('-d') + 1].rstrip('/').endswith('/sqlite-autoconf-3540100'),
+            'Tcl patch directory does not select the archive root')
     if args.cross:
         for package in ('databases/sqlite3', 'databases/sqlite3-tcl',
                         'databases/sqlite3-diff'):
