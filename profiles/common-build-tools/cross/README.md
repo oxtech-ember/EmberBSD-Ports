@@ -625,6 +625,12 @@ runs that package's normal `package-install` target, or
 base. It holds `STATE/build.lock`, does not clean the `WRKDIR`, and updates
 only that package's state rows: success records the package and clears its
 failure/block entries; failure records the failure and keeps prior successes.
+`cross-bulk.sh package PKGPATH[@native] STATE` uses the same stage-local
+checks and lock but creates package archives only, refusing unpreflighted
+missing dependencies. Success goes to `STATE/packaged`, failure to
+`STATE/package-failed`; installed-state rows are unchanged. Matching paired
+Qt roles are packaged from their retained full stage, which remains reusable.
+Neither package is installed.
 An archive by itself is not treated as a completed build. The single package
 uses the selected SDK's full CPU budget for `MAKE_JOBS` by default; an explicit
 `CROSS_BULK_MAKE_JOBS=N` must fit that capacity. On TERM/INT/HUP it finishes

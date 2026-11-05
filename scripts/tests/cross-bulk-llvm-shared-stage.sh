@@ -330,3 +330,21 @@ grep -q "^$producer $producer_name " "$stopped/state/done" || fail 'stopped stag
 [ -f "$stopped/work/$producer_dir/.${pair}-shared-full-stage/full-stage" ] || fail 'stopped stage-local run removed producer stage'
 
 echo "PASS: $pair runtime handoff, exact compile-input match, mismatch fallback, failed-consumer retention and cached-producer fallback"
+
+# Package-only recovery must keep the installed state and shared objects.
+pack=$out/package-only
+setup "$pack"
+mkdir -p "$pack/work/$producer_dir/objects"
+printf 'retained object\n' > "$pack/work/$producer_dir/objects/compiled.o"
+: > "$pack/state/done"
+cp "$pack/state/done" "$pack/done-before"
+FAKE_STOP_AFTER_PRODUCER=no CLEAN_SUCCESS=yes run_build "$pack" package || fail "package-only pair recovery: $(cat "$pack/build.log")"
+grep -q "^package:$producer_dir:shared$" "$pack/calls" || fail 'package-only producer missing'
+grep -q "^package:$consumer_dir:shared$" "$pack/calls" || fail 'package-only consumer missing'
+if grep -Eq '^(package-install|install|replace):' "$pack/calls"; then fail 'package-only attempted install'; fi
+cmp "$pack/done-before" "$pack/state/done" || fail 'package-only changed installed done state'
+grep -q "^$producer $producer_name " "$pack/state/packaged" || fail 'package-only producer not recorded'
+grep -q "^$consumer $consumer_name " "$pack/state/packaged" || fail 'package-only consumer not recorded'
+[ -f "$pack/work/$producer_dir/objects/compiled.o" ] || fail 'package-only removed producer objects'
+[ -f "$pack/work/$producer_dir/.${pair}-shared-full-stage/full-stage" ] || fail 'package-only removed shared stage'
+echo 'PASS: package-only pair preserves installation state, objects and full stage'

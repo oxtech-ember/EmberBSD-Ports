@@ -65,7 +65,7 @@ umask 022
 
 [ "$#" -eq 3 ] || {
     echo 'Usage: scripts/cross-bulk.sh order|fetch|build|selected-order|selected-build PKGPATH_LIST ABSOLUTE_STATE' >&2
-    echo '       scripts/cross-bulk.sh package-install PKGPATH[@native] ABSOLUTE_STATE' >&2
+    echo '       scripts/cross-bulk.sh package|package-install PKGPATH[@native] ABSOLUTE_STATE' >&2
     exit 2
 }
 mode=$1
@@ -122,7 +122,7 @@ state_lock_release()
     state_lock_owned=no
 }
 case "$mode" in
-    order|fetch|build|package-install|selected-order|selected-build)
+    order|fetch|build|package|package-install|selected-order|selected-build)
         state_lock_acquire || exit $?
         trap 'if [ "$state_lock_release_safe" = yes ]; then state_lock_release; else echo "Workers may not have drained; keeping lock $state/build.lock" >&2; fi' EXIT
         ;;
@@ -1186,7 +1186,9 @@ build_native()
     : > "$log"
     if { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; } &&
         { [ "${stage_local_revision_changed:-no}" != yes ] || bmk -C "$PKGSRCDIR/$path" "$@" depends-clean _package-clean < /dev/null >> "$log" 2>&1; } &&
-        if [ "$install" = replace ]; then
+        if [ "${package_only:-no}" = yes ]; then
+            bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes package < /dev/null >> "$log" 2>&1
+        elif [ "$install" = replace ]; then
             bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes package < /dev/null >> "$log" 2>&1 &&
                 { native_replace_keeps_libraries "$base" "$native_packages/All/$name" >> "$log" 2>&1 ||
                     { why=replace; false; }; } &&
@@ -1482,6 +1484,7 @@ shared_pair_restore_producer()
 
 shared_pair_retire_producer()
 {
+    [ "${package_only:-no}" != yes ] || return 0
     shared_pair_for_path "$1"
     [ -n "$shared_pair" ] && [ "$1" = "$shared_consumer" ] || return 0
     shared_dir=$run/shared-$shared_pair
@@ -1607,7 +1610,11 @@ build_one()
     install=package-install
     replace=
     set -f
-    [ -z "$base" ] || ! $target_pkg_info -e "$base" > /dev/null 2>&1 || { install=package; replace=replace; }
+    if [ "${package_only:-no}" = yes ]; then
+        install=package
+    else
+        [ -z "$base" ] || ! $target_pkg_info -e "$base" > /dev/null 2>&1 || { install=package; replace=replace; }
+    fi
     set +f
     { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" clean < /dev/null >> "$log" 2>&1; } &&
         target_install "$path" $install >> "$log" 2>&1 &&
@@ -1668,6 +1675,8 @@ state_path_row()
 package_install_one()
 {
     requested=$list
+    package_only=no
+    [ "$mode" != package ] || package_only=yes
     case "$requested" in
         *@native) role=native; path=${requested%@native} ;;
         *@native*) echo 'Expected one PKGPATH with an optional @native suffix' >&2; return 2 ;;
@@ -1739,10 +1748,16 @@ package_install_one()
     case "${1:-}" in
         built)
             shift 2
-            state_path_row "$state/done" "$requested" "$requested $*"
-            state_path_row "$state/failed" "$requested"
-            state_path_row "$state/blocked" "$requested"
-            echo "Installed $requested from its current pkgsrc stage"
+            if [ "$package_only" = yes ]; then
+                state_path_row "$state/packaged" "$requested" "$requested $*"
+                state_path_row "$state/package-failed" "$requested"
+                echo "Packaged $requested from its current pkgsrc stage"
+            else
+                state_path_row "$state/done" "$requested" "$requested $*"
+                state_path_row "$state/failed" "$requested"
+                state_path_row "$state/blocked" "$requested"
+                echo "Installed $requested from its current pkgsrc stage"
+            fi
             [ "$stop" = 0 ] || return 143
             if [ "$role" = target ]; then shared_pair_for_path "$path"; else shared_pair=; fi
             if [ "$role" = target ] && [ -n "$shared_pair" ] && [ "$path" = "$shared_producer" ] && shared_pair_ready "$path"; then
@@ -1753,8 +1768,12 @@ package_install_one()
                 log=$state/logs/$key.log
                 reported=
                 if ! shared_pair_reset_stage "$partner" >> "$log" 2>&1; then
-                    state_path_row "$state/failed" "$partner" "$partner shared-stage-cleanup"
-                    state_path_row "$state/blocked" "$partner" "$partner shared-stage-cleanup"
+                    if [ "$package_only" = yes ]; then
+                        state_path_row "$state/package-failed" "$partner" "$partner shared-stage-cleanup"
+                    else
+                        state_path_row "$state/failed" "$partner" "$partner shared-stage-cleanup"
+                        state_path_row "$state/blocked" "$partner" "$partner shared-stage-cleanup"
+                    fi
                     echo "Could not reset the consumer package stage; retained producer WRKDIR: $producer_path" >&2
                     return 1
                 fi
@@ -1767,15 +1786,25 @@ package_install_one()
                 case "${1:-}" in
                     built)
                         shift 2
-                        state_path_row "$state/done" "$partner" "$partner $*"
-                        state_path_row "$state/failed" "$partner"
-                        state_path_row "$state/blocked" "$partner"
-                        echo "Installed paired package $partner from the retained $shared_pair stage"
+                        if [ "$package_only" = yes ]; then
+                            state_path_row "$state/packaged" "$partner" "$partner $*"
+                            state_path_row "$state/package-failed" "$partner"
+                            echo "Packaged paired package $partner from the retained $shared_pair stage"
+                        else
+                            state_path_row "$state/done" "$partner" "$partner $*"
+                            state_path_row "$state/failed" "$partner"
+                            state_path_row "$state/blocked" "$partner"
+                            echo "Installed paired package $partner from the retained $shared_pair stage"
+                        fi
                         ;;
                     *)
                         reason=${outcome#failed "$partner" }
-                        state_path_row "$state/failed" "$partner" "$partner ${reason:-package-install}"
-                        state_path_row "$state/blocked" "$partner"
+                        if [ "$package_only" = yes ]; then
+                            state_path_row "$state/package-failed" "$partner" "$partner ${reason:-package}"
+                        else
+                            state_path_row "$state/failed" "$partner" "$partner ${reason:-package-install}"
+                            state_path_row "$state/blocked" "$partner"
+                        fi
                         echo "Paired package stage failed; retained producer WRKDIR: $producer_path" >&2
                         return 1
                         ;;
@@ -1793,8 +1822,12 @@ package_install_one()
                     ;;
             esac
             reason=${outcome#failed "$requested" }
-            state_path_row "$state/failed" "$requested" "$requested ${reason:-package-install}"
-            state_path_row "$state/blocked" "$requested"
+            if [ "$package_only" = yes ]; then
+                state_path_row "$state/package-failed" "$requested" "$requested ${reason:-package}"
+            else
+                state_path_row "$state/failed" "$requested" "$requested ${reason:-package-install}"
+                state_path_row "$state/blocked" "$requested"
+            fi
             echo "Package stage failed; retained WRKDIR: $path" >&2
             return 1
             ;;
@@ -2079,6 +2112,6 @@ case "$mode" in
             mv "$state/$key.tmp" "$state/$key.deps" ;;
     fetch) fetch ;;
     build) build ;;
-    package-install) package_install_one ;;
+    package|package-install) package_install_one ;;
     *) echo "Unknown mode: $mode" >&2; exit 2 ;;
 esac

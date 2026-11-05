@@ -107,7 +107,7 @@ WRAP
 cat > "$out/bmake" <<WRAP
 #!/bin/sh
 out=$out
-dir= target= varname= varnames= native=no packages= keep_bin_pkgs=no
+dir= target= varname= varnames= native=no packages= keep_bin_pkgs=no depguard=no
 for a do echo "\$a" >> \$out/calls; done
 while [ "\$#" -gt 0 ]; do
     case "\$1" in
@@ -116,6 +116,7 @@ while [ "\$#" -gt 0 ]; do
         VARNAMES=*) varnames=\${1#VARNAMES=}; shift;;
         USE_CROSS_COMPILE=no) native=yes; shift;;
         PKGSRC_KEEP_BIN_PKGS=yes) keep_bin_pkgs=yes; shift;;
+        DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency) depguard=yes; shift;;
         PACKAGES=*) packages=\${1#PACKAGES=}; shift;;
         *=*) shift;;
         *) target=\$1; shift;;
@@ -149,6 +150,10 @@ case "\$target" in
         done;;
     package)
         echo package >> $out/targets
+        if [ -e $out/missing-dependency ]; then
+            [ "\$depguard" = yes ] || { echo unsafe-dependency-install >> $out/targets; exit 0; }
+            echo refused-missing-dependency >&2; exit 1
+        fi
         [ ! -e $out/fail-package ] || exit 1
         if [ -e $out/slow-package ]; then
             : > $out/package-started
@@ -483,3 +488,51 @@ if wait "$pid"; then task_rc=0; else task_rc=$?; fi
 [ ! -e "$out/signal-state/build.lock" ] && [ ! -e "$run_dir" ] || fail 'drained run left its lock or wrapper behind'
 grep -q '^cat/demo demo-1.0 ' "$out/signal-state/done" || fail 'drained package success was not recorded'
 echo 'PASS: stage-local install/replacement, matching done-row rebuild, CPU jobs, state preservation, lock refusal, TERM drain, no clean'
+
+# Packaging is separate from installation and retains the scheduler state.
+mkdir -p "$out/package-state/logs"
+printf '%s\n' cat/demo > "$out/package-state/order"
+printf '%s\n' 'cat/demo cat/demo' > "$out/package-state/edges"
+printf '%s\n' 'cat/demo old-installed' > "$out/package-state/done"
+printf '%s\n' 'cat/demo existing-failure' > "$out/package-state/failed"
+printf '%s\n' 'cat/demo existing-block' > "$out/package-state/blocked"
+cp "$out/package-state/done" "$out/package-done-before"
+cp "$out/package-state/failed" "$out/package-failed-before"
+cp "$out/package-state/blocked" "$out/package-blocked-before"
+rm -f "$out/slow-package" "$out/fail-package"
+: > "$out/targets"
+run_package() {
+    BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
+        CROSS_BULK_TEST_CPUS=6 CROSS_BULK_TEST_HOST_PYTHON=$host_python CROSS_BULK_TEST_SDK_SOURCE=$out/sdk \
+        MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_VARS_CACHE=no \
+        sh "$ports/scripts/cross-bulk.sh" package "$1" "$out/package-state"
+}
+run_package cat/demo > "$out/package-only.log" 2>&1 || fail 'package-only target failed'
+grep -q '^package$' "$out/targets" || fail 'package-only target missing'
+! grep -Eq '^(install|replace|package-install)$' "$out/targets" || fail 'package-only installed target'
+cmp "$out/package-state/done" "$out/package-done-before" || fail 'package-only changed done'
+cmp "$out/package-state/failed" "$out/package-failed-before" || fail 'package-only changed failed'
+cmp "$out/package-state/blocked" "$out/package-blocked-before" || fail 'package-only changed blocked'
+grep -q '^cat/demo demo-1.0 ' "$out/package-state/packaged" || fail 'package-only target not recorded'
+[ -f "$out/work/demo/keep-me" ] || fail 'package-only removed objects'
+: > "$out/targets"
+printf '%s\n' cat/demo@native >> "$out/package-state/order"
+run_package cat/demo@native > "$out/package-native.log" 2>&1 || fail 'package-only native failed'
+grep -q '^package$' "$out/targets" || fail 'native package target missing'
+! grep -Eq '^(install|replace|package-install)$' "$out/targets" || fail 'package-only installed native'
+: > "$out/fail-package"
+if run_package cat/demo > "$out/package-failure.log" 2>&1; then fail 'package-only failure returned success'; fi
+grep -q '^cat/demo ' "$out/package-state/package-failed" || fail 'package-only failure not recorded'
+cmp "$out/package-state/done" "$out/package-done-before" || fail 'package-only failure changed done'
+rm "$out/fail-package"
+run_package cat/demo > "$out/package-retry.log" 2>&1 || fail 'package-only retry failed'
+! grep -q '^cat/demo ' "$out/package-state/package-failed" || fail 'successful retry left stale failure'
+echo 'PASS: package-only target/native, failure and retry preserve installation state'
+
+: > "$out/missing-dependency"
+: > "$out/targets"
+if run_package cat/demo > "$out/package-missing-dependency.log" 2>&1; then fail 'missing dependency returned success'; fi
+! grep -q '^unsafe-dependency-install$' "$out/targets" || fail 'missing dependency attempted installation'
+grep -q refused-missing-dependency "$out/package-state/logs/cat_demo.log" || fail 'missing dependency refusal missing'
+cmp "$out/package-state/done" "$out/package-done-before" || fail 'dependency failure changed installed state'
+echo 'PASS: package-only refuses an unpreflighted dependency'
