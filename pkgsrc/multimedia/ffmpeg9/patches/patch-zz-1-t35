@@ -1,0 +1,268 @@
+$NetBSD$
+
+Upstream Vignesh Venkat and James Almer: commits 7c4e41b54cd9fba6f73ee4500a459430ed917722, a302c9ae44ec07cbe12417f14c1852868f903f60, 8a3e9147b697f093ef59675906ceb8f64cd78d19, 5002b55ce79fda51e1d329a28d112495aab9f8cb, df11a425b3fc3172a5eb1bc203a688670cf5055f.
+
+--- a/libavcodec/codec_id.h
++++ b/libavcodec/codec_id.h
+@@ -607,6 +607,7 @@
+     AV_CODEC_ID_SMPTE_2038,
+     AV_CODEC_ID_LCEVC,
+     AV_CODEC_ID_SMPTE_436M_ANC,
++    AV_CODEC_ID_ITUT_T35,
+ 
+ 
+     AV_CODEC_ID_PROBE = 0x19000, ///< codec_id is not known (like AV_CODEC_ID_NONE) but lavf should attempt to identify it
+--- a/libavcodec/codec_desc.c
++++ b/libavcodec/codec_desc.c
+@@ -3838,6 +3838,12 @@
+         .type      = AVMEDIA_TYPE_DATA,
+         .name      = "smpte_436m_anc",
+         .long_name = NULL_IF_CONFIG_SMALL("MXF SMPTE-436M ANC"),
++    },
++    {
++        .id        = AV_CODEC_ID_ITUT_T35,
++        .type      = AVMEDIA_TYPE_DATA,
++        .name      = "itut_t35",
++        .long_name = NULL_IF_CONFIG_SMALL("ITU-T T.35 metadata"),
+     },
+     {
+         .id        = AV_CODEC_ID_MPEG2TS,
+--- a/libavformat/isom.c
++++ b/libavformat/isom.c
+@@ -81,6 +81,7 @@
+ 
+ const AVCodecTag ff_codec_movdata_tags[] = {
+     { AV_CODEC_ID_BIN_DATA, MKTAG('g', 'p', 'm', 'd') },
++    { AV_CODEC_ID_ITUT_T35, MKTAG('i', 't', '3', '5') },
+     { AV_CODEC_ID_NONE, 0 },
+ };
+ 
+--- a/libavformat/mov.c
++++ b/libavformat/mov.c
+@@ -2623,6 +2623,37 @@
+     return tag;
+ }
+ 
++static int mov_read_cdsc_rndr(MOVContext* c, AVIOContext* pb, MOVAtom atom)
++{
++    AVStream* st;
++    MOVStreamContext* sc;
++
++    if (c->fc->nb_streams < 1)
++        return 0;
++
++    if (atom.size > 4) {
++        av_log(c->fc, AV_LOG_ERROR, "Only a single tref of type cdsc/rndr is supported\n");
++        return AVERROR_PATCHWELCOME;
++    }
++    if (atom.size < 4)
++        return AVERROR_INVALIDDATA;
++
++    st = get_curr_st(c);
++    if (!st)
++        return AVERROR_INVALIDDATA;
++    sc = st->priv_data;
++
++    MovTref *tag = mov_add_tref_tag(sc, atom.type);
++    if (!tag)
++        return AVERROR(ENOMEM);
++
++    int ret = mov_add_tref_id(tag, avio_rb32(pb));
++    if (ret < 0)
++        return ret;
++
++    return 0;
++}
++
+ static int mov_read_sbas(MOVContext* c, AVIOContext* pb, MOVAtom atom)
+ {
+     AVStream* st;
+@@ -3053,6 +3084,33 @@
+                     }
+                 }
+             }
++        }
++    } else if (st->codecpar->codec_id == AV_CODEC_ID_ITUT_T35) {
++        int t35_identifier_length = avio_r8(pb);
++
++        if (t35_identifier_length <= 0 || t35_identifier_length >= size)
++            return AVERROR_INVALIDDATA;
++
++        ret = ff_get_extradata(c->fc, st->codecpar, pb, t35_identifier_length);
++        if (ret < 0)
++            return ret;
++
++        int hrsd_len = size - t35_identifier_length - 1;
++        if (hrsd_len > 0) {
++            uint8_t *hrsd_str = av_malloc(hrsd_len + 1);
++            if (!hrsd_str)
++                return AVERROR(ENOMEM);
++
++            ret = ffio_read_size(pb, hrsd_str, hrsd_len);
++            if (ret < 0) {
++                av_free(hrsd_str);
++                return ret;
++            }
++            if (hrsd_str[0]) {
++                hrsd_str[hrsd_len] = 0;
++                ret = av_dict_set(&st->metadata, "description", hrsd_str, AV_DICT_DONT_OVERWRITE);
++            }
++            av_free(hrsd_str);
+         }
+     } else {
+         /* other codec type, just skip (rtp, mp4s ...) */
+@@ -9783,6 +9841,8 @@
+ { MKTAG('a','v','c','C'), mov_read_glbl },
+ { MKTAG('p','a','s','p'), mov_read_pasp },
+ { MKTAG('c','l','a','p'), mov_read_clap },
++{ MKTAG('c','d','s','c'), mov_read_cdsc_rndr },
++{ MKTAG('r','n','d','r'), mov_read_cdsc_rndr },
+ { MKTAG('s','b','a','s'), mov_read_sbas },
+ { MKTAG('v','d','e','p'), mov_read_vdep },
+ { MKTAG('s','i','d','x'), mov_read_sidx },
+@@ -11108,6 +11168,61 @@
+     return NULL;
+ }
+ 
++static int mov_parse_cdsc_and_rndr_streams(AVFormatContext *s)
++{
++    static const uint32_t tref_tags[] = {
++        MKTAG('c','d','s','c'),
++        MKTAG('r','n','d','r'),
++    };
++
++    int err;
++
++    // Don't try to add a group if there's only one track
++    if (s->nb_streams <= 1)
++        return 0;
++
++    for (int i = 0; i < s->nb_streams; i++) {
++        AVStream *st = s->streams[i];
++        MOVStreamContext *sc = st->priv_data;
++
++        for (int c = 0; c < FF_ARRAY_ELEMS(tref_tags); c++) {
++            AVStreamGroup *stg;
++            AVStream *st_ref;
++            MovTref *tag = mov_find_tref_tag(sc, tref_tags[c]);
++
++            if (!tag)
++                continue;
++
++            st_ref = mov_find_reference_track(s, st, tag->id, tag->nb_id, 0);
++            if (!st_ref) {
++                int loglevel = (s->error_recognition & AV_EF_EXPLODE) ? AV_LOG_ERROR : AV_LOG_WARNING;
++                av_log(s, loglevel, "Failed to find referenced stream\n");
++                if (s->error_recognition & AV_EF_EXPLODE)
++                    return AVERROR_INVALIDDATA;
++                continue;
++            }
++
++            stg = avformat_stream_group_create(s, AV_STREAM_GROUP_PARAMS_TREF, NULL);
++            if (!stg)
++                return AVERROR(ENOMEM);
++
++            stg->id = st_ref->id;
++
++            err = avformat_stream_group_add_stream(stg, st_ref);
++            if (err < 0)
++                return err;
++
++            err = avformat_stream_group_add_stream(stg, st);
++            if (err < 0)
++                return err;
++
++            stg->params.tref->metadata_index = stg->nb_streams - 1;
++        }
++    }
++
++    return 0;
++}
++
+ static int mov_parse_lcevc_streams(AVFormatContext *s)
+ {
+     int err;
+@@ -11327,6 +11442,11 @@
+                 mov_read_rtmd_track(s, s->streams[i]);
+             }
+     }
++
++    /* Create metadata stream groups. */
++    err = mov_parse_cdsc_and_rndr_streams(s);
++    if (err < 0)
++        return err;
+ 
+     /* copy timecode metadata from tmcd tracks to the related video streams */
+     err = mov_parse_tmcd_streams(s);
+--- a/tests/fate/mov.mak
++++ b/tests/fate/mov.mak
+@@ -38,6 +38,8 @@
+                    fate-mov-guess-delay-3 \
+                    fate-mov-mp4-with-mov-in24-ver \
+                    fate-mov-mime-codecstring \
++                   fate-mov-t35-cdsc-track \
++                   fate-mov-t35-rndr-track \
+ 
+ FATE_MOV_FFPROBE-$(call FRAMEMD5, MOV, MPEG4, H264_PARSER) += fate-mov-mp4-extended-atom \
+ 
+@@ -164,6 +166,10 @@
+ fate-mov-mp4-extended-atom: CMD = run ffprobe$(PROGSSUF)$(EXESUF) -show_packets -print_format compact -select_streams v $(TARGET_SAMPLES)/mov/extended_atom_size_probe
+ 
+ fate-mov-mime-codecstring: CMD = run ffprobe$(PROGSSUF)$(EXESUF) -show_entries stream=mime_codec_string -v 0 $(TARGET_SAMPLES)/mov/mov_stream_shorter_than_movie.mov
++
++fate-mov-t35-cdsc-track: CMD = run ffprobe$(PROGSSUF)$(EXESUF) -show_entries stream_group=index,id,nb_streams,type:stream_group_stream=index,id,codec_name,codec_type,codec_tag_string,extradata_size $(TARGET_SAMPLES)/mov/mov-t35-cdsc-track.mp4
++
++fate-mov-t35-rndr-track: CMD = run ffprobe$(PROGSSUF)$(EXESUF) -show_entries stream_group=index,id,nb_streams,type:stream_group_stream=index,id,codec_name,codec_type,codec_tag_string,extradata_size $(TARGET_SAMPLES)/mov/mov-t35-rndr-track.mp4
+ 
+ FATE_MOV_FFMPEG_FFPROBE_SAMPLES-$(call REMUX, MP4 MOV, OGG_DEMUXER VORBIS_DECODER) \
+                           += fate-mov-mp4-chapters
+--- a/tests/ref/fate/mov-t35-cdsc-track
++++ b/tests/ref/fate/mov-t35-cdsc-track
+@@ -0,0 +1,22 @@
++[STREAM_GROUP]
++index=0
++id=0x1
++nb_streams=2
++type=Track Reference
++[STREAM]
++index=0
++codec_name=av1
++codec_type=video
++codec_tag_string=av01
++id=0x1
++extradata_size=17
++[/STREAM]
++[STREAM]
++index=1
++codec_name=itut_t35
++codec_type=data
++codec_tag_string=it35
++id=0x2
++extradata_size=5
++[/STREAM]
++[/STREAM_GROUP]
+--- a/tests/ref/fate/mov-t35-rndr-track
++++ b/tests/ref/fate/mov-t35-rndr-track
+@@ -0,0 +1,22 @@
++[STREAM_GROUP]
++index=0
++id=0x1
++nb_streams=2
++type=Track Reference
++[STREAM]
++index=0
++codec_name=av1
++codec_type=video
++codec_tag_string=av01
++id=0x1
++extradata_size=17
++[/STREAM]
++[STREAM]
++index=1
++codec_name=itut_t35
++codec_type=data
++codec_tag_string=it35
++id=0x2
++extradata_size=5
++[/STREAM]
++[/STREAM_GROUP]
