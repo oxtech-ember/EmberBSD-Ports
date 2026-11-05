@@ -2,7 +2,7 @@
 
 Origin: NetBSD pkgsrc and KiCad contributors. EmberBSD integration is AI-assisted.
 
-The four canonical recipes retain the official KiCad 10.0.7 library release.
+The four canonical recipes retain the official KiCad 10.0.8 library release.
 `cad/kicad10` requires matching resource packages, with optional pkgsrc revisions.
 The data packages do not depend on the application.
 
@@ -36,7 +36,7 @@ workflow, 3D rendering, or package lifecycle.
 
 ## Source provenance
 
-All four releases use the `10.0.7` tag in the official
+All four releases use the `10.0.8` tag in the official
 [KiCad library group](https://gitlab.com/kicad/libraries). The original archive
 hashes and sizes are in each recipe's `distinfo`. The shared source index is
 [common-graphics sources](../../../profiles/common-graphics/sources.tsv).

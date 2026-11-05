@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (kicad-packages3D-10.0.7.tar.bz2) = a101f0996159cc7c9865b54264db6a598ae2e52d01c89fc613e168367b391a04
-SHA512 (kicad-packages3D-10.0.7.tar.bz2) = ed75bc26e579db5ccd85eb1cfc702e949b89d5cea672e5041ccd1cdaff4a5c5ca00527736041af933648db7a79e7a070dd696e774380d9e117dfff1880ad74e8
-Size (kicad-packages3D-10.0.7.tar.bz2) = 521783721 bytes
+BLAKE2s (kicad-packages3D-10.0.8.tar.bz2) = 68ed5a4a94e138fc221b3051c9ccf70147fb320b2d2bbccc72c7d3c1d5b2ea63
+SHA512 (kicad-packages3D-10.0.8.tar.bz2) = d0a670347bc870bb1cf9c842231b2cec62be17a0f6ba49cb43c460ee84927b3e8d476989c4dc7c22374e51fc5580ba331fd2efe62d7bbf1ff6209cd34413bdbf
+Size (kicad-packages3D-10.0.8.tar.bz2) = 521786541 bytes

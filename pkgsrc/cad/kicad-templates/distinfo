@@ -1,5 +1,5 @@
 $NetBSD$
 
-BLAKE2s (kicad-templates-10.0.7.tar.bz2) = 32cf6276514680ab9887db7ef3a5b55b7bd5a4438dcc840303ad496b6e5d0141
-SHA512 (kicad-templates-10.0.7.tar.bz2) = c5fa7f155dfc0d7089b7fd75553c20c58770f337d5e8eb2df58320dfa21a8f9d076f8eb0dff449054cfd326eac5d9ffed5a0ebff78ca9251c9262749716cf56e
-Size (kicad-templates-10.0.7.tar.bz2) = 2882984 bytes
+BLAKE2s (kicad-templates-10.0.8.tar.bz2) = 35d34ddea5cf5b71df37d7ba54939a0cd247c1824a5d2f399b62fe60000ee33f
+SHA512 (kicad-templates-10.0.8.tar.bz2) = c0265630a513b11cf425aa32de227f6429c0476c60b765063d2ff863588bc8a8d27efe16e44fc0e81638e7e7b5e5558d4e7dc82629c2492a03a46d49d29ce718
+Size (kicad-templates-10.0.8.tar.bz2) = 2882663 bytes
