@@ -1,0 +1,29 @@
+# Origin: PDFium fa4d5f8fbd89ea07273529daf9fd24fe1c7f6b9a, third_party/lcms; PDFium Authors, BSD-3-Clause.
+# Donor: 0035-func-ptr-mixup.patch
+--- src/cmsopt.c
++++ src/cmsopt.c
+@@ -100,6 +100,15 @@ typedef struct {
+ 
+ } Curves16Data;
+ 
++// A simple adapter to prevent _cmsPipelineEval16Fn vs. _cmsInterpFn16
++// confusion, which trips up UBSAN.
++static
++void Lerp16Adapter(CMSREGISTER const cmsUInt16Number in[],
++                   CMSREGISTER cmsUInt16Number out[],
++                   const void* data) {
++    cmsInterpParams* params = (cmsInterpParams*)data;
++    params->Interpolation.Lerp16(in, out, params);
++}
+ 
+ // Simple optimizations ----------------------------------------------------------------------------------------------------------
+ 
+@@ -805,7 +814,7 @@ Error:
+ 
+     if (DataSetIn == NULL && DataSetOut == NULL) {
+ 
+-        _cmsPipelineSetOptimizationParameters(Dest, (_cmsPipelineEval16Fn) DataCLUT->Params->Interpolation.Lerp16, DataCLUT->Params, NULL, NULL);
++        _cmsPipelineSetOptimizationParameters(Dest, Lerp16Adapter, DataCLUT->Params, NULL, NULL);
+     }
+     else {
+ 

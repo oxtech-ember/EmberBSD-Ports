@@ -1,0 +1,13 @@
+# Origin: PDFium fa4d5f8fbd89ea07273529daf9fd24fe1c7f6b9a, third_party/lcms; PDFium Authors, BSD-3-Clause.
+# Donor: 0003-old-uninitialized-in-LUTevalFloat.patch
+--- src/cmslut.c
++++ src/cmslut.c
+@@ -1321,7 +1321,7 @@ void _LUTevalFloat(register const cmsFloat32Number In[], register cmsFloat32Numb
+ {
+     cmsPipeline* lut = (cmsPipeline*) D;
+     cmsStage *mpe;
+-    cmsFloat32Number Storage[2][MAX_STAGE_CHANNELS];
++    cmsFloat32Number Storage[2][MAX_STAGE_CHANNELS] = {0.0f};
+     int Phase = 0, NextPhase;
+ 
+     memmove(&Storage[Phase][0], In, lut ->InputChannels  * sizeof(cmsFloat32Number));

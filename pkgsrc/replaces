@@ -94,6 +94,7 @@ graphics/freeimageplus
 graphics/freetype2
 graphics/gdk-pixbuf2
 graphics/jbigkit
+graphics/lcms2
 graphics/lerc
 graphics/libliftoff
 graphics/libraw

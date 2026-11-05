@@ -1,0 +1,19 @@
+# Origin: PDFium fa4d5f8fbd89ea07273529daf9fd24fe1c7f6b9a, third_party/lcms; PDFium Authors, BSD-3-Clause.
+# Donor: 0027-changes-from-beginning-of-time.patch (TRC-to-colorant link guard only)
+--- src/cmsio0.c
++++ src/cmsio0.c
+@@ -570,6 +578,14 @@ int _cmsSearchTag(_cmsICCPROFILE* Icc, cmsTagSignature sig, cmsBool lFollowLinks
+ 
+         // Yes, follow link
+         if (LinkedSig != (cmsTagSignature) 0) {
++            // fix bug mantis id#0055942
++            // assume that TRCTag and ColorantTag can't be linked.
++            // Xiaochuan Liu 2014-04-23
++            if ((sig == cmsSigRedTRCTag || sig == cmsSigGreenTRCTag || sig == cmsSigBlueTRCTag) && 
++                (LinkedSig == cmsSigRedColorantTag || LinkedSig == cmsSigGreenColorantTag || LinkedSig == cmsSigBlueColorantTag))
++            {
++                return n;
++            }
+             sig = LinkedSig;
+         }
+ 
