@@ -2,6 +2,7 @@
 
 DISTNAME=	freetype-2.15.0
 PKGNAME=	${DISTNAME:S/-/2-/}
+PKGREVISION=	1
 CATEGORIES=	graphics
 MASTER_SITES=	${MASTER_SITE_SOURCEFORGE:=freetype/}
 MASTER_SITES+=	https://download.savannah.gnu.org/releases/freetype/
@@ -19,7 +20,9 @@ CONFIGURE_DIRS=		builds/unix
 BUILD_DIRS=		.
 CONFIGURE_ARGS+=	--includedir=${PREFIX}/include
 CONFIGURE_ARGS+=	--enable-shared
-CONFIGURE_ARGS+=	--with-harfbuzz=no
+CONFIGURE_ARGS+=	--with-harfbuzz=dynamic
+# NetBSD exposes dladdr and Dl_info with its native feature extensions.
+CFLAGS.NetBSD+=		-D_NETBSD_SOURCE
 CONFIGURE_ENV+=		ac_cv_path_GREP=${GREP:Q} ac_cv_path_EGREP=${EGREP:Q}
 
 # Remove this when all dependent packages have switched to pkg-config
