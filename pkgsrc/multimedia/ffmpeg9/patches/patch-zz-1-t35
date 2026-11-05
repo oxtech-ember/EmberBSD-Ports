@@ -2,8 +2,8 @@ $NetBSD$
 
 Upstream Vignesh Venkat and James Almer: commits 7c4e41b54cd9fba6f73ee4500a459430ed917722, a302c9ae44ec07cbe12417f14c1852868f903f60, 8a3e9147b697f093ef59675906ceb8f64cd78d19, 5002b55ce79fda51e1d329a28d112495aab9f8cb, df11a425b3fc3172a5eb1bc203a688670cf5055f.
 
---- a/libavcodec/codec_id.h
-+++ b/libavcodec/codec_id.h
+--- libavcodec/codec_id.h
++++ libavcodec/codec_id.h
 @@ -607,6 +607,7 @@
      AV_CODEC_ID_SMPTE_2038,
      AV_CODEC_ID_LCEVC,
@@ -12,8 +12,8 @@ Upstream Vignesh Venkat and James Almer: commits 7c4e41b54cd9fba6f73ee4500a45943
  
  
      AV_CODEC_ID_PROBE = 0x19000, ///< codec_id is not known (like AV_CODEC_ID_NONE) but lavf should attempt to identify it
---- a/libavcodec/codec_desc.c
-+++ b/libavcodec/codec_desc.c
+--- libavcodec/codec_desc.c
++++ libavcodec/codec_desc.c
 @@ -3838,6 +3838,12 @@
          .type      = AVMEDIA_TYPE_DATA,
          .name      = "smpte_436m_anc",
@@ -27,8 +27,8 @@ Upstream Vignesh Venkat and James Almer: commits 7c4e41b54cd9fba6f73ee4500a45943
      },
      {
          .id        = AV_CODEC_ID_MPEG2TS,
---- a/libavformat/isom.c
-+++ b/libavformat/isom.c
+--- libavformat/isom.c
++++ libavformat/isom.c
 @@ -81,6 +81,7 @@
  
  const AVCodecTag ff_codec_movdata_tags[] = {
@@ -37,8 +37,8 @@ Upstream Vignesh Venkat and James Almer: commits 7c4e41b54cd9fba6f73ee4500a45943
      { AV_CODEC_ID_NONE, 0 },
  };
  
---- a/libavformat/mov.c
-+++ b/libavformat/mov.c
+--- libavformat/mov.c
++++ libavformat/mov.c
 @@ -2623,6 +2623,37 @@
      return tag;
  }
@@ -194,8 +194,8 @@ Upstream Vignesh Venkat and James Almer: commits 7c4e41b54cd9fba6f73ee4500a45943
  
      /* copy timecode metadata from tmcd tracks to the related video streams */
      err = mov_parse_tmcd_streams(s);
---- a/tests/fate/mov.mak
-+++ b/tests/fate/mov.mak
+--- tests/fate/mov.mak
++++ tests/fate/mov.mak
 @@ -38,6 +38,8 @@
                     fate-mov-guess-delay-3 \
                     fate-mov-mp4-with-mov-in24-ver \
@@ -216,8 +216,8 @@ Upstream Vignesh Venkat and James Almer: commits 7c4e41b54cd9fba6f73ee4500a45943
  
  FATE_MOV_FFMPEG_FFPROBE_SAMPLES-$(call REMUX, MP4 MOV, OGG_DEMUXER VORBIS_DECODER) \
                            += fate-mov-mp4-chapters
---- a/tests/ref/fate/mov-t35-cdsc-track
-+++ b/tests/ref/fate/mov-t35-cdsc-track
+--- tests/ref/fate/mov-t35-cdsc-track
++++ tests/ref/fate/mov-t35-cdsc-track
 @@ -0,0 +1,22 @@
 +[STREAM_GROUP]
 +index=0
@@ -241,8 +241,8 @@ Upstream Vignesh Venkat and James Almer: commits 7c4e41b54cd9fba6f73ee4500a45943
 +extradata_size=5
 +[/STREAM]
 +[/STREAM_GROUP]
---- a/tests/ref/fate/mov-t35-rndr-track
-+++ b/tests/ref/fate/mov-t35-rndr-track
+--- tests/ref/fate/mov-t35-rndr-track
++++ tests/ref/fate/mov-t35-rndr-track
 @@ -0,0 +1,22 @@
 +[STREAM_GROUP]
 +index=0
