@@ -199,6 +199,7 @@ def main():
     for name in ('sdk-source', 'pkgsrc-root', 'host-prefix',
                  'base-makeconf', 'binding-record', 'bmake-mk', 'work', 'lock-root'):
         parser.add_argument('--' + name, type=Path, required=True)
+    parser.add_argument('--shared-ffmpeg', action='store_true')
     parser.add_argument('--stage-root', type=Path, help='explicit replacement stage; omit for installed prefix')
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--check', action='store_true', help='check an existing view identity')
@@ -232,6 +233,8 @@ def main():
     work = args.work
     invocation = {name: str(value) for name, value in vars(args).items()
                   if isinstance(value, Path) and name != 'refresh_from'}
+    if args.shared_ffmpeg:
+        invocation['shared_ffmpeg'] = 'yes'
     paths.reject_overlap(str(work), str(source))
     paths.reject_overlap(str(work), str(args.host_prefix))
     if args.stage_root:
@@ -253,13 +256,14 @@ def main():
                 command = [native.tool('make'), '-m', str(args.bmake_mk), '-C', str(consumer),
                            *(['EMBERBSD_DARWIN_BOOTSTRAP=yes'] if args.stage_root else ['USE_CROSS_COMPILE=no']),
                            'DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency',
-                           'EMBERBSD_ELECTRON_HOST_DEPENDENCIES=' + str(deps), 'wrapper']
-                if not args.stage_root:
-                    check_installed_context(process, command, env, args.host_prefix)
+                           'EMBERBSD_ELECTRON_HOST_DEPENDENCIES=' + str(deps),
+                           *(['EMBERBSD_ELECTRON_SHARED_FFMPEG=yes'] if args.shared_ffmpeg else []), 'wrapper']
                 saved = json.loads((work / 'selection.json').read_text())
                 if saved.get('invocation') != invocation:
                     print('host buildlink selection changed', file=sys.stderr)
                     sys.exit(3)
+                if not args.stage_root:
+                    check_installed_context(process, command, env, args.host_prefix)
                 try:
                     current = identity(process, command, env, consumer, view, args.host_prefix,
                                        (Path(__file__), args.binding_record, deps,
@@ -343,7 +347,8 @@ def main():
             command = [native.tool('make'), '-m', str(args.bmake_mk), '-C', str(consumer),
                        *(['EMBERBSD_DARWIN_BOOTSTRAP=yes'] if args.stage_root else ['USE_CROSS_COMPILE=no']),
                            'DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency',
-                       'EMBERBSD_ELECTRON_HOST_DEPENDENCIES=' + str(deps), 'wrapper']
+                       'EMBERBSD_ELECTRON_HOST_DEPENDENCIES=' + str(deps),
+                           *(['EMBERBSD_ELECTRON_SHARED_FFMPEG=yes'] if args.shared_ffmpeg else []), 'wrapper']
             if not args.stage_root:
                 check_installed_context(process, command, env, args.host_prefix)
             process.run_logged(command, str(work / 'buildlink.log'), env=env)

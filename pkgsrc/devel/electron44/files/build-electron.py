@@ -482,7 +482,8 @@ def host_buildlink(options, sdk, native, environment, host_binding):
     def command(work):
         return [native.tool('python'), '-B', str(script), '--sdk-source', str(options.sdk_source),
                 '--pkgsrc-root', str(selected[0]), '--host-prefix', str(options.host_prefix),
-                *(['--stage-root', str(selected[1])] if selected[1] else []), '--base-makeconf', str(selected[2]),
+                *(['--stage-root', str(selected[1])] if selected[1] else []),
+                *(['--shared-ffmpeg'] if getattr(options, 'shared_ffmpeg', False) else []), '--base-makeconf', str(selected[2]),
                 '--binding-record', str(record), '--bmake-mk', str(selected[3]),
                 '--work', str(work), '--lock-root', str(options.lock_root)]
     if not previous and (getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)):
@@ -1176,10 +1177,10 @@ def common_abseil(options, sdk, native, environment, buildlink):
 
 
 
-def selected_owned_library(prefix, link_name, owners):
+def selected_owned_library(prefix, link_name, owners, directory='lib'):
     """Bind the selected logical and resolved library files to pkgdb ownership."""
     prefix = Path(prefix).resolve(strict=True)
-    logical = prefix / 'lib' / link_name
+    logical = prefix / directory / link_name
     resolved = logical.resolve(strict=True)
     require(resolved.is_relative_to(prefix) and resolved.is_file(), 'selected library escapes its prefix')
     contents = set()
@@ -1295,6 +1296,8 @@ def compression_recipe_catalog(options, sdk, native, environment):
     spec.loader.exec_module(selector)
     git = selected_control_git(options.git)
     packages = ('archivers/brotli', 'archivers/zstd')
+    if getattr(options, 'shared_ffmpeg', False):
+        packages += ('multimedia/ffmpeg9',)
     identities = {name: selector.git_package_identity(owner, name, git) for name in packages}
     config_root = getattr(options, 'native_binding_root', None) or options.work
     config = Path(config_root)/'configuration.json'
@@ -1323,6 +1326,7 @@ def common_compression(options, sdk, native, environment, buildlink):
     """Validate existing common Brotli/Zstd packages and select the native tool."""
     require(buildlink, 'common compression requires the selected host buildlink')
     catalog = compression_recipe_catalog(options, sdk, native, environment)
+    options._compression_catalog = catalog
     environment['EMBERBSD_COMPRESSION_RECIPE_CATALOG'] = json.dumps(catalog, sort_keys=True, separators=(',', ':'))
     record = {}
     for name, pkgpath in (('brotli', 'archivers/brotli'), ('zstd', 'archivers/zstd')):
@@ -1384,6 +1388,89 @@ def common_compression(options, sdk, native, environment, buildlink):
         separators=(',', ':')).encode()).hexdigest()
     environment['EMBERBSD_COMPRESSION_SOURCE_SHA256'] = options.compression_identity
     return {'emberbsd_brotli_native_tool': str(tool), 'emberbsd_brotli_native_inputs': inputs}
+
+
+def common_ffmpeg(options, sdk, native, environment, buildlink):
+    """Select matching current FFmpeg packages for the host and target graph."""
+    if not getattr(options, 'shared_ffmpeg', False):
+        return {}
+    require(buildlink, 'shared FFmpeg requires selected host buildlink')
+    pkgpath = 'multimedia/ffmpeg9'
+    hosts = options._common_native_packages.get(pkgpath, [])
+    targets = options._common_target_packages.get(pkgpath, [])
+    require(len(hosts) == len(targets) == 1 and hosts[0].name == targets[0].name,
+            'shared FFmpeg host and target packages differ or are missing')
+    match = re.fullmatch(r'ffmpeg9-(\d+)\.(\d+)\.(\d+)(?:nb(\d+))?', hosts[0].name)
+    require(match and tuple(int(n or 0) for n in match.groups()) >= (9, 0, 2, 6),
+            'shared FFmpeg requires ffmpeg9>=9.0.2nb6')
+    exported = Path(options.host_buildlink_pkgsrc) / pkgpath
+    expected = options._compression_catalog['recipes'][pkgpath]
+    for package in (hosts[0], targets[0]):
+        validate_package_source(package, expected, exported, distinfo=True,
+                                package_path=pkgpath, allow_empty_patches=True)
+    selection_work = environment.get('EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK')
+    require(selection_work, 'shared FFmpeg needs host buildlink metadata')
+    selection = json.loads((Path(selection_work)/'selection.json').read_text())['identity']['inputs']
+    host_prefix = Path(options.host_prefix).resolve(strict=True)
+    modules = ('libavcodec', 'libavformat', 'libavutil')
+    for package, suffix in ((hosts[0], '.dylib' if native.host['os'] == 'Darwin' else '.so'),
+                            (targets[0], '.so')):
+        manifest = (package/'+CONTENTS').read_text().splitlines()
+        for module in modules:
+            require('lib/ffmpeg9/pkgconfig/' + module + '.pc' in manifest and
+                    'lib/ffmpeg9/' + module + suffix in manifest,
+                    'shared FFmpeg package lacks ' + module)
+    for module in modules:
+        require(str(host_prefix/'lib/ffmpeg9/pkgconfig'/(module + '.pc')) in selection and
+                (Path(buildlink)/'lib/pkgconfig'/(module + '.pc')).is_file(),
+                'native FFmpeg pkg-config provider is not selected: ' + module)
+    versions = []
+    for role, prefix in (('host', Path(buildlink)), ('target', Path(options.sysroot)/'usr/pkg')):
+        dirs = ([prefix/'lib/ffmpeg9/pkgconfig', prefix/'lib/pkgconfig']
+                if role == 'target' else [prefix/'lib/pkgconfig'])
+        env = dict(environment, PKG_CONFIG_LIBDIR=os.pathsep.join(map(str, dirs)))
+        env.pop('PKG_CONFIG_PATH', None)
+        if role == 'host':
+            env.pop('PKG_CONFIG_SYSROOT_DIR', None)
+        else:
+            env['PKG_CONFIG_SYSROOT_DIR'] = str(options.sysroot)
+        command = [native.tool('pkg-config')] + (['--define-prefix'] if role == 'host' else [])
+        output = sdk['process'].capture(command + ['--modversion', *modules], env=env).stdout.decode().splitlines()
+        require(len(output) == len(modules) and all(output), 'invalid FFmpeg pkg-config versions')
+        versions.append(output)
+    require(versions[0] == versions[1], 'host and target FFmpeg versions differ')
+    identity = {'package': hosts[0].name, 'recipe': expected, 'versions': versions[0]}
+    environment['EMBERBSD_FFMPEG_SOURCE_SHA256'] = hashlib.sha256(
+        json.dumps(identity, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    environment['EMBERBSD_FFMPEG_TARGET_PKGCONFIG'] = 'yes'
+    values = {'use_system_ffmpeg': True, 'is_component_ffmpeg': False}
+    for role, package, prefix, suffix in (
+            ('host', hosts[0], host_prefix, '.dylib' if native.host['os'] == 'Darwin' else '.so'),
+            ('target', targets[0], Path(options.sysroot)/'usr/pkg', '.so')):
+        manifest = (package/'+CONTENTS').read_text().splitlines()
+        headers = [line for line in manifest if line.startswith('include/ffmpeg9/') and
+                   not line.startswith('@') and line.endswith('.h')]
+        require(headers, 'shared FFmpeg package has no public headers')
+        libraries = [selected_owned_library(prefix, module + suffix, [package], 'lib/ffmpeg9')
+                     for module in modules]
+        files = []
+        for entry in headers:
+            path = (prefix/entry).resolve(strict=True)
+            require(path.is_relative_to(prefix.resolve(strict=True)) and path.is_file(),
+                    'shared FFmpeg header escapes selected prefix')
+            index = manifest.index(entry)
+            require(index + 1 < len(manifest) and
+                    re.fullmatch(r'@comment MD5:[0-9a-f]{32}', manifest[index+1]),
+                    'shared FFmpeg header has no package checksum: ' + entry)
+            info = path.stat()
+            digest = hashlib.md5(path.read_bytes(), usedforsecurity=False).hexdigest()
+            require(path.stat() == info and digest == manifest[index+1].split(':', 1)[1],
+                    'shared FFmpeg header differs from installed package: ' + entry)
+            files.append(str(path))
+        values['emberbsd_ffmpeg_' + role + '_libraries'] = libraries
+        values['emberbsd_ffmpeg_' + role + '_inputs'] = sorted(set(files + libraries +
+            [str(package/item) for item in ('+CONTENTS', '+BUILD_INFO', '+BUILD_VERSION')]))
+    return values
 
 
 def common_icu(options, sdk, native, environment, buildlink):
@@ -1800,6 +1887,7 @@ def producer_inputs(options, sdk):
     values.update(common_media_libraries(options, native, environment, buildlink))
     if not getattr(options, 'activate_common_providers', False):
         values.update(common_compression(options, sdk, native, environment, buildlink))
+        values.update(common_ffmpeg(options, sdk, native, environment, buildlink))
     runtime_view = getattr(options, 'protoc_runtime_view', None)
     if runtime_view:
         require(native.host['os'] == 'Darwin', 'protoc runtime view requires a Darwin host')
@@ -2007,8 +2095,22 @@ def gn_source(options):
         compression = local_module('electron_compression_source_view', 'compression-source-view.py')
         old_compression = getattr(options, 'old_compression_identity', None)
         new_compression = options.compression_identity
+        old_ffmpeg = bool(getattr(options, 'old_ffmpeg_identity', None))
+        new_ffmpeg = bool(getattr(options, 'shared_ffmpeg', False))
+        ffmpeg_marker = destination.parent / ('.' + destination.name + '.ffmpeg-components-migration')
         compression_marker = destination.parent / ('.' + destination.name + '.compression-components-migration')
         compression_root = destination / 'src/third_party'
+        ffmpeg_root = compression_root / 'ffmpeg'
+        if (new_ffmpeg and not old_ffmpeg and
+                (options.phase == 'reconfigure' or
+                 (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
+                                                    getattr(options, 'resume_configure', False)))) and
+                not os.path.lexists(ffmpeg_marker) and ffmpeg_root.is_dir() and
+                not ffmpeg_root.is_symlink()):
+            # GN can fail after this exact projection was committed but before
+            # the configuration receipt was replaced. Reject any foreign view.
+            compression.verify_view(view, options.workspace / 'src', destination, ('ffmpeg',))
+            old_ffmpeg = True
         if (old_compression is None and not os.path.lexists(compression_marker) and
                 all((compression_root/name).is_dir() and not (compression_root/name).is_symlink()
                     for name in compression.NAMES)):
@@ -2043,6 +2145,9 @@ def gn_source(options):
             if boring_id:
                 names.append(boring.NAME)
                 checks.append(lambda: boring.verify_view(view, options.workspace / 'src', destination, boring_id, sp))
+            if old_ffmpeg:
+                names.append('ffmpeg')
+                checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, ('ffmpeg',)))
             if compression_id:
                 names.extend(compression.NAMES)
                 checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination))
@@ -2065,6 +2170,14 @@ def gn_source(options):
                 selection_refreshed = True
                 return result
             return view.verify(options.workspace / 'src', common, destination, **current)
+        if os.path.lexists(ffmpeg_marker):
+            require(new_ffmpeg and (options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+                    'FFmpeg transaction recovery requires shared FFmpeg reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring),
+                                 ('ffmpeg',), 'ffmpeg-components')
+            old_ffmpeg = True
         if os.path.lexists(boring_marker):
             require(options.phase == 'reconfigure' or getattr(options, 'resume_configure', False) or
                     getattr(options, 'retry_configure', False),
@@ -2122,6 +2235,16 @@ def gn_source(options):
             compression.activate(view, options.workspace / 'src', destination,
                                  lambda: verify_selection(ids, new_headers, new_media, old_compression))
             verify_selection(ids, new_headers, new_media, new_compression)
+        if old_ffmpeg != new_ffmpeg or os.path.lexists(ffmpeg_marker):
+            require(new_ffmpeg, 'disabling shared FFmpeg requires a new source view')
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'FFmpeg transition requires reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(ids, new_headers, new_media, new_compression),
+                                 ('ffmpeg',), 'ffmpeg-components')
+            old_ffmpeg = True
+            transition_result = verify_selection(ids, new_headers, new_media, new_compression)
+            transition = True
         if old_boring != new_boring or os.path.lexists(boring_marker):
             require(options.phase == 'reconfigure' or new_view or initial,
                     'BoringSSL source transition requires reconfigure')
@@ -2183,7 +2306,8 @@ def require_common_perfetto(options):
 
 def prepare_build_inputs(options, native, environment, sdk):
     ensure_lastchange(options.workspace, native, environment, sdk)
-    ensure_ffmpeg_netbsd_config(options.workspace)
+    if not getattr(options, 'shared_ffmpeg', False):
+        ensure_ffmpeg_netbsd_config(options.workspace)
     ensure_host_dsymutil(options.workspace, native)
     require_rust_std(options.host_prefix, options.target)
 
@@ -2485,6 +2609,8 @@ def reconfigure(options):
                 permitted_env.add('EMBERBSD_BORINGSSL_SOURCE_SHA256')
                 options.compression_identity = candidate.compression_identity
                 options.old_compression_identity = old_env.get('EMBERBSD_COMPRESSION_SOURCE_SHA256')
+                options.old_ffmpeg_identity = old_env.get('EMBERBSD_FFMPEG_SOURCE_SHA256')
+                permitted_env.update(('EMBERBSD_FFMPEG_SOURCE_SHA256', 'EMBERBSD_FFMPEG_TARGET_PKGCONFIG'))
                 permitted_env.update(('EMBERBSD_COMPRESSION_SOURCE_SHA256', 'EMBERBSD_COMPRESSION_RECIPE_CATALOG'))
             ml_keys = {'EMBERBSD_ML_' + name.upper().replace('-', '_') + '_SHA256': name for name in ML_PROVIDERS}
             old_ml = {name: old_env[key] for key, name in ml_keys.items() if key in old_env}
@@ -2605,6 +2731,9 @@ def reconfigure(options):
                          'external_libcxx_has_extensive_hardening', 'emberbsd_native_libcxx_hardened', 'emberbsd_native_cpu',
                          'emberbsd_native_cc', 'emberbsd_native_cxx',
                          'use_lld', 'emberbsd_target_strip', 'emberbsd_target_objcopy'}
+        if getattr(options, 'shared_ffmpeg', False):
+            require(saved['arguments'].get('use_system_ffmpeg') in (None, False, True),
+                    'invalid previous FFmpeg selection')
         identity_args.update(('enable_swiftshader', 'enable_swiftshader_vulkan', 'angle_enable_swiftshader', 'dawn_use_swiftshader'))
         identity_args.update('node_shared_' + feature for feature in NODE_SHARED_FEATURES)
         node_v8_path_changed = verified_node_configure_v8_path_change(
@@ -2691,6 +2820,7 @@ def build(options):
     require(saved['arguments'] == values, 'GN selection changed; configure a new output')
     options.old_boringssl_identity = saved_env['EMBERBSD_BORINGSSL_SOURCE_SHA256']
     options.old_compression_identity = saved_env['EMBERBSD_COMPRESSION_SOURCE_SHA256']
+    options.old_ffmpeg_identity = saved_env.get('EMBERBSD_FFMPEG_SOURCE_SHA256')
     options.old_media_header_identities = {name: saved_env['EMBERBSD_MEDIA_HEADER_' + name.upper() + '_SHA256']
                                            for name in ('libyuv', 'libsrtp')}
     write_protoc_selection(options.work, sdk, options.protoc_selection)
@@ -2751,6 +2881,7 @@ def main():
         command.add_argument('--shared-abseil', action='store_true')
         command.add_argument('--shared-icu', action='store_true')
         command.add_argument('--shared-re2', action='store_true')
+        command.add_argument('--shared-ffmpeg', action='store_true')
         if phase == 'configure':
             initial = command.add_mutually_exclusive_group()
             initial.add_argument('--resume-configure', action='store_true',

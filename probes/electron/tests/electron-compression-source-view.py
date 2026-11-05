@@ -51,3 +51,55 @@ with tempfile.TemporaryDirectory() as tmp:
     compression.activate(view, source, dest, lambda: None)
     assert (selected/'brotli/BUILD.gn').lstat().st_ino == old
 print('PASS: upstream compression wrappers mask vendored headers and retry is a no-op')
+
+# Adding a provider touches only its component, including after interruption.
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve(); source = root/'source'; dest = root/'view'
+    origin = source/'third_party'; origin.mkdir(parents=True)
+    selected = dest/'src/third_party'; selected.mkdir(parents=True)
+    unbundle = source/'build/linux/unbundle'; unbundle.mkdir(parents=True)
+    (unbundle/'replace_gn_files.py').write_text("REPLACEMENTS = {'brotli': 'third_party/brotli/BUILD.gn', 'zstd': 'third_party/zstd/BUILD.gn', 'ffmpeg': 'third_party/ffmpeg/BUILD.gn'}\n")
+    for name in compression.SUPPORTED:
+        component = origin/name; (component/'include').mkdir(parents=True)
+        (component/'BUILD.gn').write_text('vendor')
+        (component/'include/x.h').write_text('vendor header')
+        (unbundle/(name+'.gn')).write_text('shim_headers("shim") { root_path = "include"\n headers = [ "x.h" ]\n}\n')
+        (selected/name).symlink_to(component, target_is_directory=True)
+    compression.activate(view, source, dest, lambda: None)
+    before = {name: ((selected/name).stat().st_ino, (selected/name).stat().st_mtime_ns)
+              for name in compression.NAMES}
+    def old_selection():
+        compression.verify_view(view, source, dest)
+        assert (selected/'ffmpeg').is_symlink()
+    actual_verify = compression.verify_view
+    def interrupt_ffmpeg(*args):
+        if len(args) == 4 and args[3] == ('ffmpeg',):
+            raise ValueError('interrupted')
+        return actual_verify(*args)
+    with patch.object(compression, 'verify_view', side_effect=interrupt_ffmpeg):
+        try:
+            compression.activate(view, source, dest, old_selection, ('ffmpeg',), 'ffmpeg-components')
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('interruption ignored')
+    assert (root/'.view.ffmpeg-components-migration').is_file()
+    compression.activate(view, source, dest, old_selection, ('ffmpeg',), 'ffmpeg-components')
+    compression.verify_view(view, source, dest, compression.SUPPORTED)
+    assert before == {name: ((selected/name).stat().st_ino, (selected/name).stat().st_mtime_ns)
+                      for name in compression.NAMES}
+    assert not (selected/'ffmpeg/include/x.h').exists()
+    ffmpeg_before = (selected/'ffmpeg').stat().st_ino
+    compression.activate(view, source, dest, old_selection, ('ffmpeg',), 'ffmpeg-components')
+    assert (selected/'ffmpeg').stat().st_ino == ffmpeg_before
+    # A directory containing a mixture of selected and vendor files is not
+    # an already completed projection.
+    (selected/'ffmpeg/BUILD.gn').unlink()
+    (selected/'ffmpeg/BUILD.gn').write_text('foreign wrapper')
+    try:
+        compression.verify_view(view, source, dest, ('ffmpeg',))
+    except (ValueError, AssertionError):
+        pass
+    else:
+        raise AssertionError('mixed FFmpeg projection accepted')
+print('PASS: FFmpeg addition preserves existing wrappers and recovers an interrupted swap')

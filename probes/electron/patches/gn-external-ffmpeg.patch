@@ -1,0 +1,150 @@
+--- a/third_party/ffmpeg/ffmpeg_options.gni
++++ b/third_party/ffmpeg/ffmpeg_options.gni
+@@ -15,6 +15,12 @@
+ 
+ if (is_cast_android || is_castos) {
+   _default_ffmpeg_branding = "Chrome"
++}
++
++declare_args() {
++  # Use the common external FFmpeg libraries selected by the build producer.
++  # The unbundle wrapper supplies their public headers and link configuration.
++  use_system_ffmpeg = false
+ }
+ 
+ declare_args() {
+@@ -68,3 +74,6 @@
+ } else if (is_win && !is_clang) {
+   os_config = "win-msvc"
+ }
++
++assert(!use_system_ffmpeg || !is_component_ffmpeg,
++       "External FFmpeg has no Chromium component library")
+--- a/electron/BUILD.gn
++++ b/electron/BUILD.gn
+@@ -2004,8 +2004,10 @@
+         ":strip_chrome_crashpad_handler",
+         ":strip_chrome_sandbox",
+         ":strip_electron_binary",
+-        ":strip_libffmpeg_shlib",
+-      ]
++      ]
++      if (!use_system_ffmpeg) {
++        data_deps += [ ":strip_libffmpeg_shlib" ]
++      }
+       if (enable_swiftshader) {
+         data_deps += [ ":strip_libvk_swiftshader_shlib" ]
+       }
+@@ -2028,10 +2030,12 @@
+   outputs = [ "$root_build_dir/dist.zip" ]
+ }
+ 
+-dist_zip("electron_ffmpeg_zip") {
+-  data_deps = [ "//third_party/ffmpeg" ]
+-  deps = data_deps
+-  outputs = [ "$root_build_dir/ffmpeg.zip" ]
++if (!use_system_ffmpeg) {
++  dist_zip("electron_ffmpeg_zip") {
++    data_deps = [ "//third_party/ffmpeg" ]
++    deps = data_deps
++    outputs = [ "$root_build_dir/ffmpeg.zip" ]
++  }
+ }
+ 
+ electron_chromedriver_deps = [
+@@ -2077,10 +2081,12 @@
+   }
+   if (is_linux && is_official_build) {
+     data_deps += [
+-      ":strip_libffmpeg_shlib",
+       ":strip_mksnapshot_binary",
+       ":strip_v8_context_snapshot_generator_binary",
+     ]
++    if (!use_system_ffmpeg) {
++      data_deps += [ ":strip_libffmpeg_shlib" ]
++    }
+     if (enable_swiftshader) {
+       data_deps += [ ":strip_libvk_swiftshader_shlib" ]
+     }
+@@ -2281,11 +2287,13 @@
+     deps = [ ":electron_xcache" ]
+   }
+ 
+-  strip_binary("strip_libffmpeg_shlib") {
+-    binary_input = "$root_out_dir/libffmpeg.so"
+-    symbol_output = "$root_out_dir/debug/libffmpeg.so.debug"
+-    compress_debug_sections = true
+-    deps = [ "//third_party/ffmpeg" ]
++  if (!use_system_ffmpeg) {
++    strip_binary("strip_libffmpeg_shlib") {
++      binary_input = "$root_out_dir/libffmpeg.so"
++      symbol_output = "$root_out_dir/debug/libffmpeg.so.debug"
++      compress_debug_sections = true
++      deps = [ "//third_party/ffmpeg" ]
++    }
+   }
+ 
+   if (enable_swiftshader) {
+--- a/build/config/linux/pkg-config.py
++++ b/build/config/linux/pkg-config.py
+@@ -63,6 +63,8 @@
+     libdir += ':' + sysroot + '/usr/share/pkgconfig'
+     if options.system_libdir == 'pkg/lib':
+         libdir += ':' + sysroot + '/usr/pkg/share/pkgconfig'
++        if os.environ.get('EMBERBSD_FFMPEG_TARGET_PKGCONFIG') == 'yes':
++            libdir = sysroot + '/usr/pkg/lib/ffmpeg9/pkgconfig:' + libdir
+     os.environ['PKG_CONFIG_LIBDIR'] = libdir
+     return libdir
+ 
+--- a/build/linux/unbundle/ffmpeg.gn
++++ b/build/linux/unbundle/ffmpeg.gn
+@@ -6,7 +6,17 @@
+ import("//build/config/linux/pkg_config.gni")
+ import("//build/shim_headers.gni")
+ 
++declare_args() {
++  emberbsd_ffmpeg_host_libraries = []
++  emberbsd_ffmpeg_target_libraries = []
++  emberbsd_ffmpeg_host_inputs = []
++  emberbsd_ffmpeg_target_inputs = []
++}
++
+ pkg_config("system_ffmpeg") {
++  if (emberbsd_pkg_config_role != "upstream") {
++    ignore_libs = true
++  }
+   packages = [
+     "libavcodec",
+     "libavformat",
+@@ -30,7 +40,31 @@
+   ]
+ }
+ 
++if (emberbsd_pkg_config_role != "upstream") {
++  _libraries = emberbsd_ffmpeg_target_libraries
++  _inputs = emberbsd_ffmpeg_target_inputs
++  if (emberbsd_pkg_config_role == "native") {
++    _libraries = []
++    _inputs = []
++    _libraries = emberbsd_ffmpeg_host_libraries
++    _inputs = emberbsd_ffmpeg_host_inputs
++  }
++  assert(_libraries != [] && _inputs != [], "Selected FFmpeg provider is incomplete")
++  config("emberbsd_ffmpeg_libraries") {
++    libs = _libraries
++    if (emberbsd_pkg_config_role == "target") {
++      ldflags = [ "-Wl,-rpath=/usr/pkg/lib/ffmpeg9" ]
++    } else {
++      ldflags = [ "-Wl,-rpath=" + rebase_path(get_path_info(_libraries[0], "dir"), "") ]
++    }
++  }
++}
++
+ source_set("ffmpeg") {
++  if (emberbsd_pkg_config_role != "upstream") {
++    inputs = _inputs
++    all_dependent_configs = [ ":emberbsd_ffmpeg_libraries" ]
++  }
+   deps = [
+     ":ffmpeg_features",
+     ":ffmpeg_shim",

@@ -100,4 +100,61 @@ with tempfile.TemporaryDirectory() as tmp:
     with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
         m.gn_source(o)
     assert calls[0][0]=='compression-recovered' and not marker.exists()
+    # Add FFmpeg to the saved two-component selection without touching it.
+    calls.clear(); o.phase='reconfigure'; o.retry_configure=False; o.refresh_source_view=False
+    o.old_compression_identity='x'; o.shared_ffmpeg=True; o.old_ffmpeg_identity=None
+    def activate_ffmpeg(*args, **kwargs):
+        assert args[4:] == (('ffmpeg',), 'ffmpeg-components')
+        calls.append(('ffmpeg',)); args[3]()
+    compression.activate=activate_ffmpeg
+    with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+        m.gn_source(o)
+    assert [call[0] for call in calls].count('ffmpeg') == 1
+    assert any(call[0] == 'verify' and 'ffmpeg' in call[1] for call in calls)
+    # Interrupted transaction is recovered before any whole-view check.
+    calls.clear(); marker=work/'.source-view.ffmpeg-components-migration'; marker.write_text('pending')
+    def recover_ffmpeg(*args, **kwargs):
+        marker.unlink(); calls.append(('ffmpeg-recovered',))
+    compression.activate=recover_ffmpeg
+    with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+        m.gn_source(o)
+    assert calls[0] == ('ffmpeg-recovered',) and 'ffmpeg' in calls[-1][1]
+    # Completed FFmpeg projection is adopted only after strict verification
+    # when GN failed before the configuration receipt was written.
+    calls.clear(); ffmpeg=work/'source-view/src/third_party/ffmpeg'; ffmpeg.mkdir()
+    (ffmpeg/'valid').write_text('verified wrapper')
+    def verify_component(*args):
+        if len(args) == 4 and args[3] == ('ffmpeg',):
+            assert (ffmpeg/'valid').read_text() == 'verified wrapper', 'foreign FFmpeg view'
+    compression.verify_view=verify_component
+    compression.activate=lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError('projection rebuilt'))
+    with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+        m.gn_source(o)
+    assert any(call[0] == 'verify' and 'ffmpeg' in call[1] for call in calls)
+    (ffmpeg/'valid').write_text('foreign')
+    try:
+        with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+            m.gn_source(o)
+    except AssertionError as error:
+        assert 'foreign FFmpeg view' in str(error)
+    else:
+        raise AssertionError('foreign completed projection accepted')
+    # The saved old selection does not authorize adoption in build mode.
+    (ffmpeg/'valid').write_text('verified wrapper'); o.phase='build'
+    try:
+        with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+            m.gn_source(o)
+    except ValueError as error:
+        assert 'requires reconfigure' in str(error)
+    else:
+        raise AssertionError('build adopted an unsaved projection')
+    # Both initial configure retries can adopt the same strictly verified view.
+    view._refresh_leaves=lambda *args: calls.append(('verify', tuple(args[3].get('ml_names',()))))
+    view.complete_initial=lambda *args, **kwargs: calls.append(('verify', tuple(kwargs.get('ml_names',()))))
+    for flag in ('retry_configure', 'resume_configure'):
+        o.phase='configure'; o.retry_configure=False; o.resume_configure=False
+        setattr(o, flag, True); calls.clear()
+        with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+            m.gn_source(o)
+        assert any(call[0] == 'verify' and 'ffmpeg' in call[1] for call in calls)
 print('PASS: ML and header transitions are ordered before view verification')
