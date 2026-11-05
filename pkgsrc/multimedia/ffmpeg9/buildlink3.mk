@@ -123,7 +123,7 @@ pkgbase := ffmpeg9
 .  include "../../multimedia/xvidcore/buildlink3.mk"
 .endif
 
-.if !empty(PKG_BUILD_OPTIONS.ffmpeg9:Maom) || !empty(PKG_BUILD_OPTIONS.ffmpeg9:Mrav1e)
+.if !empty(PKG_BUILD_OPTIONS.ffmpeg9:Maom) || !empty(PKG_BUILD_OPTIONS.ffmpeg9:Mrav1e) || !empty(PKG_BUILD_OPTIONS.ffmpeg9:Mdav1d)
 .  include "../../multimedia/dav1d/buildlink3.mk"
 .endif
 

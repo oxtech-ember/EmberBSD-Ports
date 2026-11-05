@@ -40,4 +40,20 @@ with tempfile.TemporaryDirectory(prefix='ffmpeg-dav1d-options-') as directory:
             assert 'multimedia/rav1e/buildlink3.mk' not in deps
     flags, deps, _ = query('')
     assert '--disable-libdav1d' in flags and 'multimedia/dav1d/buildlink3.mk' not in deps
+    # Evaluate the actual consumer buildlink branches too.  A dav1d-only
+    # package must expose the library to its buildlink consumers.
+    buildlink = source.with_name('buildlink3.mk').read_text()
+    (package / 'buildlink3.mk').write_text(buildlink)
+    for include in re.findall(r'^\.\s*include "\.\./\.\./([^\"]+)"', buildlink, re.M):
+        path = root / include
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text('DEPENDENCIES+= ' + include + '\n' if include.endswith('buildlink3.mk') else '')
+    makefile.write_text('.include "' + str(package / 'buildlink3.mk') + '"\n')
+    for selected in ('aom', 'rav1e', 'dav1d', ''):
+        result = subprocess.run([str(args.bmake), '-r', '-f', str(makefile),
+                                 '-V', '${DEPENDENCIES}',
+                                 'PKG_BUILD_OPTIONS.ffmpeg9=' + selected],
+                                check=True, capture_output=True, text=True)
+        assert ('multimedia/dav1d/buildlink3.mk' in result.stdout.split()) == bool(selected)
+
 print('FFmpeg dav1d option metadata passed')
