@@ -1202,6 +1202,11 @@
       "path": "gn-common-font.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-common-codecs.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

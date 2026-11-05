@@ -88,6 +88,12 @@ _EMBER_ELECTRON_ARGS+= --v8-metagen-runtime-extra ${_ember_file:Q}
 _EMBER_ELECTRON_ARGS+= --${_ember_key:tl:S/_/-/g}
 .endfor
 
+.if ${EMBERBSD_ELECTRON_SHARED_CODECS:Uno} == "yes"
+_EMBER_ELECTRON_ARGS+= --shared-codecs
+.elif ${EMBERBSD_ELECTRON_SHARED_CODECS:Uno} != "no"
+.error EMBERBSD_ELECTRON_SHARED_CODECS must be yes or no
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_FFMPEG:Uno} == "yes"
 _EMBER_ELECTRON_ARGS+= --shared-ffmpeg
 .elif ${EMBERBSD_ELECTRON_SHARED_FFMPEG:Uno} != "no"

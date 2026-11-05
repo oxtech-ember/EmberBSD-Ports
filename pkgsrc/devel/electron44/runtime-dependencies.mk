@@ -109,3 +109,21 @@ BUILDLINK_ABI_DEPENDS.libwebp+= libwebp>=1.6.0nb4
 .include "../../graphics/libjpeg-turbo/buildlink3.mk"
 .include "../../graphics/libwebp/buildlink3.mk"
 .endif
+
+.if ${EMBERBSD_ELECTRON_SHARED_CODECS:Uno} == "yes"
+BUILDLINK_API_DEPENDS.dav1d+= dav1d>=1.5.4
+BUILDLINK_ABI_DEPENDS.dav1d+= dav1d>=1.5.4
+.include "../../multimedia/dav1d/buildlink3.mk"
+BUILDLINK_API_DEPENDS.libaom+= libaom>=3.15.2
+BUILDLINK_ABI_DEPENDS.libaom+= libaom>=3.15.2
+.include "../../multimedia/libaom/buildlink3.mk"
+BUILDLINK_API_DEPENDS.libvpx+= libvpx>=1.17.0
+BUILDLINK_ABI_DEPENDS.libvpx+= libvpx>=1.17.0
+.include "../../multimedia/libvpx/buildlink3.mk"
+BUILDLINK_API_DEPENDS.libopus+= libopus>=1.6.1nb1
+BUILDLINK_ABI_DEPENDS.libopus+= libopus>=1.6.1nb1
+.include "../../audio/libopus/buildlink3.mk"
+BUILDLINK_API_DEPENDS.flac+= flac>=1.5.0nb1
+BUILDLINK_ABI_DEPENDS.flac+= flac>=1.5.0nb1
+.include "../../audio/flac/buildlink3.mk"
+.endif

@@ -936,3 +936,11 @@ Trusted Types, `hidden` is `boolean`). Those edits live in the shared
 so configure selects the ordinary host `tsc` and its native backend; the source
 view carries no TypeScript copy. Its standard declarations and the shared Lit
 `.d.ts` files reach `ts_library` as `--toolchain_definitions`.
+
+The opt-in common codec selection uses the shared dav1d, libaom, libvpx,
+libopus and FLAC packages for both toolchain roles. Chromium's private AOM and
+VPX worker overrides are disabled for this selection; the libraries use their
+own workers. The current EmberBSD and Darwin graphs do not use the private
+`libaomrc` or `libvpxrc` targets. Configurations requiring those targets,
+including upstream VAAPI or Windows paths, need matching public rate-control
+support in the common package owners before they can use this selection.

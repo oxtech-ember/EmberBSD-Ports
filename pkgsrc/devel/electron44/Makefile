@@ -30,6 +30,14 @@ TOOL_DEPENDS+= crc32c>=1.1.2:../../devel/crc32c
 TOOL_DEPENDS+= libsrtp>=2.8.1:../../security/libsrtp
 TOOL_DEPENDS+= libyuv>=0.0.1978:../../multimedia/libyuv
 
+.if ${EMBERBSD_ELECTRON_SHARED_CODECS:Uno} == "yes"
+TOOL_DEPENDS+= dav1d>=1.5.4:../../multimedia/dav1d
+TOOL_DEPENDS+= libaom>=3.15.2:../../multimedia/libaom
+TOOL_DEPENDS+= libvpx>=1.17.0:../../multimedia/libvpx
+TOOL_DEPENDS+= libopus>=1.6.1nb1:../../audio/libopus
+TOOL_DEPENDS+= flac>=1.5.0nb1:../../audio/flac
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_FFMPEG:Uno} == "yes"
 TOOL_DEPENDS+= ffmpeg9>=9.0.2nb7:../../multimedia/ffmpeg9
 .endif
