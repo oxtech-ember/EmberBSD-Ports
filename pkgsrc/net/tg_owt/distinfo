@@ -10,3 +10,4 @@ SHA1 (patch-netbsd-webrtc) = d5ee95207f812674e745932869939e2ee9132682
 SHA1 (patch-netbsd-v4l2) = 538a538dad8c515302455552ce3baed0dc648022
 SHA1 (patch-cmake-tg_owtConfig) = 7f16ca198dab50e3adde30396d63bc5bb18831aa
 SHA1 (patch-strict-absl) = 6c49110d792ff021856ed8c4a0b58aadbb9f14ff
+SHA1 (patch-v4l2-lifecycle) = 10458551fc66f204fcc7f77edff141fa4e6753e7

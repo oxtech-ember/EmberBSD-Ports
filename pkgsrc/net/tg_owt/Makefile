@@ -2,7 +2,7 @@
 # Packaged providers and native BSD camera integration.
 DISTNAME= tg_owt-020feec5c040fdae2cf752c2c2be62ddde7c236d
 PKGNAME= tg_owt-0.0.20261030
-PKGREVISION= 1
+PKGREVISION= 2
 CATEGORIES= net
 MASTER_SITES= -https://github.com/desktop-app/tg_owt/archive/020feec5c040fdae2cf752c2c2be62ddde7c236d.tar.gz
 HOMEPAGE= https://github.com/desktop-app/tg_owt/

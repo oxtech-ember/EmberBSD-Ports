@@ -1,0 +1,168 @@
+# Close capture descriptors and stop streaming before releasing mapped buffers.
+# Origin: EmberBSD.
+--- src/modules/video_capture/linux/device_info_v4l2.cc.orig
++++ src/modules/video_capture/linux/device_info_v4l2.cc
+@@ -188,6 +188,7 @@
+     if (ioctl(fd, VIDIOC_QUERYCAP, &cap) == 0) {
+       // skip devices without video capture capability
+       if (!(EffectiveCapabilities(cap) & V4L2_CAP_VIDEO_CAPTURE)) {
++        close(fd);
+         continue;
+       }
+ 
+--- src/modules/video_capture/linux/video_capture_v4l2.cc.orig
++++ src/modules/video_capture/linux/video_capture_v4l2.cc
+@@ -27,7 +27,9 @@
+ 
+ #include <new>
+ #include <string>
+-
++#include <utility>
++
++#include "absl/cleanup/cleanup.h"
+ #include "api/scoped_refptr.h"
+ #include "media/base/video_common.h"
+ #include "modules/video_capture/video_capture.h"
+@@ -55,9 +57,11 @@
+ namespace videocapturemodule {
+ VideoCaptureModuleV4L2::VideoCaptureModuleV4L2()
+     : VideoCaptureImpl(),
++      quit_(false),
+       _deviceId(-1),
+       _deviceFd(-1),
+-      _buffersAllocatedByDevice(-1),
++      _buffersMapped(0),
++      _streaming(false),
+       _captureStarted(false),
+       _pool(NULL) {}
+ 
+@@ -137,6 +141,7 @@
+   configured_capability_ = capability;
+ 
+   MutexLock lock(&capture_lock_);
++  auto rollback = absl::MakeCleanup([this] { ReleaseDevice(); });
+   // first open /dev/video device
+   char device[20];
+   snprintf(device, sizeof(device), "/dev/video%d", _deviceId);
+@@ -306,6 +311,7 @@
+         "CaptureThread",
+         rtc::ThreadAttributes().SetPriority(rtc::ThreadPriority::kHigh));
+   }
++  std::move(rollback).Cancel();
+   return 0;
+ }
+ 
+@@ -325,15 +331,7 @@
+ 
+   RTC_CHECK_RUNS_SERIALIZED(&capture_checker_);
+   MutexLock lock(&capture_lock_);
+-  if (_streaming) {
+-    _streaming = false;
+-
+-    DeAllocateVideoBuffers();
+-    close(_deviceFd);
+-    _deviceFd = -1;
+-
+-    _requestedCapability = configured_capability_ = VideoCaptureCapability();
+-  }
++  ReleaseDevice();
+ 
+   return 0;
+ }
+@@ -357,10 +355,13 @@
+   if (rbuffer.count > kNoOfV4L2Bufffers)
+     rbuffer.count = kNoOfV4L2Bufffers;
+ 
+-  _buffersAllocatedByDevice = rbuffer.count;
++  if (rbuffer.count == 0)
++    return false;
+ 
+   // Map the buffers
+-  _pool = new Buffer[rbuffer.count];
++  _pool = new (std::nothrow) Buffer[rbuffer.count];
++  if (!_pool)
++    return false;
+ 
+   for (unsigned int i = 0; i < rbuffer.count; i++) {
+     struct v4l2_buffer buffer;
+@@ -377,12 +378,11 @@
+                           MAP_SHARED, _deviceFd, buffer.m.offset);
+ 
+     if (MAP_FAILED == _pool[i].start) {
+-      for (unsigned int j = 0; j < i; j++)
+-        munmap(_pool[j].start, _pool[j].length);
+       return false;
+     }
+ 
+     _pool[i].length = buffer.length;
++    ++_buffersMapped;
+ 
+     if (ioctl(_deviceFd, VIDIOC_QBUF, &buffer) < 0) {
+       return false;
+@@ -393,20 +393,39 @@
+ 
+ bool VideoCaptureModuleV4L2::DeAllocateVideoBuffers() {
+   RTC_CHECK_RUNS_SERIALIZED(&capture_checker_);
++
++  // Stop DMA before unmapping buffers. Partial StartCapture failures may have
++  // mapped buffers without ever having started a stream.
++  if (_streaming) {
++    enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
++    if (ioctl(_deviceFd, VIDIOC_STREAMOFF, &type) < 0) {
++      RTC_LOG(LS_INFO) << "VIDIOC_STREAMOFF error. errno: " << errno;
++      // Closing the device also stops capture if STREAMOFF failed.
++      close(_deviceFd);
++      _deviceFd = -1;
++    }
++    _streaming = false;
++  }
++
+   // unmap buffers
+-  for (int i = 0; i < _buffersAllocatedByDevice; i++)
++  for (int i = 0; i < _buffersMapped; i++)
+     munmap(_pool[i].start, _pool[i].length);
+ 
+   delete[] _pool;
+-
+-  // turn off stream
+-  enum v4l2_buf_type type;
+-  type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+-  if (ioctl(_deviceFd, VIDIOC_STREAMOFF, &type) < 0) {
+-    RTC_LOG(LS_INFO) << "VIDIOC_STREAMOFF error. errno: " << errno;
+-  }
++  _pool = nullptr;
++  _buffersMapped = 0;
+ 
+   return true;
++}
++
++void VideoCaptureModuleV4L2::ReleaseDevice() {
++  DeAllocateVideoBuffers();
++  if (_deviceFd != -1) {
++    close(_deviceFd);
++    _deviceFd = -1;
++  }
++  _captureStarted = false;
++  _requestedCapability = configured_capability_ = VideoCaptureCapability();
+ }
+ 
+ bool VideoCaptureModuleV4L2::CaptureStarted() {
+--- src/modules/video_capture/linux/video_capture_v4l2.h.orig
++++ src/modules/video_capture/linux/video_capture_v4l2.h
+@@ -40,6 +40,7 @@
+   bool CaptureProcess();
+   bool AllocateVideoBuffers() RTC_EXCLUSIVE_LOCKS_REQUIRED(capture_lock_);
+   bool DeAllocateVideoBuffers() RTC_EXCLUSIVE_LOCKS_REQUIRED(capture_lock_);
++  void ReleaseDevice() RTC_EXCLUSIVE_LOCKS_REQUIRED(capture_lock_);
+ 
+   rtc::PlatformThread _captureThread RTC_GUARDED_BY(api_checker_);
+   Mutex capture_lock_ RTC_ACQUIRED_BEFORE(api_lock_);
+@@ -47,7 +48,7 @@
+   int32_t _deviceId RTC_GUARDED_BY(api_checker_);
+   int32_t _deviceFd RTC_GUARDED_BY(capture_checker_);
+ 
+-  int32_t _buffersAllocatedByDevice RTC_GUARDED_BY(capture_lock_);
++  int32_t _buffersMapped RTC_GUARDED_BY(capture_lock_);
+   VideoCaptureCapability configured_capability_
+       RTC_GUARDED_BY(capture_checker_);
+   bool _streaming RTC_GUARDED_BY(capture_checker_);
