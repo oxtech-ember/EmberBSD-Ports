@@ -41,7 +41,8 @@ with tempfile.TemporaryDirectory() as temp:
         shell = root / 'case.sh'
         shell.write_text('#!/bin/sh\nhost_python="$1"; base=fixture; version="$2"; name="$3"\n'
                          'run="$5"; PKGSRCDIR=/ports\n'
-                         'retire() { mv "$1" "$1.retired"; }\n' + bmk + fn +
+                         'retire() { mv "$1" "$1.retired"; }\n'
+                         'cmp() { if [ "$FIXTURE_CMP" = error ]; then echo "cmp: simulated comparison error" >&2; return 2; fi; command cmp "$@"; }\n' + bmk + fn +
                          '\nprepare_wrkdir "$4" job t/fixture USE_CROSS_COMPILE=no\n')
         return subprocess.run(['/bin/sh', str(shell), sys.executable, version, current, str(work),
                                str(rundir)], cwd=script.parent, capture_output=True, text=True,
@@ -107,6 +108,15 @@ with tempfile.TemporaryDirectory() as temp:
     assert 'kept WRKDIR resolved other dependencies' not in result.stderr
     assert not (root / 'work.retired').exists()
     resolved.update(FIXTURE_RESOLVE='ok')
+    # cmp status 2 is a comparison error: keep WRKDIR and stop (do not treat as change).
+    resolved['FIXTURE_CMP'] = 'error'
+    result = run('fixture-1.0nb2', 'fixture-1.0nb2', '1.0')
+    assert result.returncode != 0 and work.exists(), result.stderr
+    assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
+    assert 'kept WRKDIR dependency check failed: cmp status 2' in result.stderr
+    assert 'kept WRKDIR resolved other dependencies' not in result.stderr
+    assert not (root / 'work.retired').exists()
+    resolved.pop('FIXTURE_CMP', None)
     assert run('fixture-1.0nb2', 'fixture-2.0', '2.0').returncode == 0
     assert not work.exists() and (root / 'work.retired/kept.o').read_bytes() == b'object'
-print('PASS: retry preserves objects, unknown fails closed, dependency change retires, resolver error keeps and stops')
+print('PASS: retry preserves objects, unknown fails closed, dependency change retires, resolver/cmp error keeps and stops')

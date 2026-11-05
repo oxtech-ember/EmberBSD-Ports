@@ -944,7 +944,17 @@ work_dependencies_current()
     fi
     wdc_status=0
     for wdc_file in $wdc_files; do
-        cmp -s "$wdc_check.$wdc_file" "$wdc_work/.$wdc_file" || wdc_status=1
+        cmp -s "$wdc_check.$wdc_file" "$wdc_work/.$wdc_file"
+        wdc_cmp=$?
+        case $wdc_cmp in
+        0) ;;
+        1) wdc_status=1 ;;
+        *)
+            echo "$wdc_path: kept WRKDIR dependency check failed: cmp status $wdc_cmp" >&2
+            rm -f "$wdc_check.depends" "$wdc_check.rdepends" "$wdc_check.log"
+            return 2
+            ;;
+        esac
     done
     rm -f "$wdc_check.depends" "$wdc_check.rdepends" "$wdc_check.log"
     return "$wdc_status"
