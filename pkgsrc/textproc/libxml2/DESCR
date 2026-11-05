@@ -1,1 +1,5 @@
-XML parser library from the GNOME project
+XML parser library from the GNOME project.
+
+EmberBSD resolves the default XML catalog from the loaded libxml2 when the
+package uses the ordinary PREFIX/etc layout, so published host packages find
+docbook catalogs after install into another prefix.

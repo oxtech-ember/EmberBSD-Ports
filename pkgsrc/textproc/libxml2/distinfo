@@ -7,3 +7,4 @@ SHA1 (patch-aa-configure.ac) = 9621d18fc4ace459b52f7be0e74de5c6140113b2
 SHA1 (patch-configure) = f4491a41aa755be97024d1985cb7da0ca51a093b
 SHA1 (patch-encoding-unused) = 45ccecbc45e381b0bb5ee2d7d088f3ea774e86c2
 SHA1 (patch-zz-schema-option-shift) = ce09c4f7459fb237e64190c7633d5a0c0b8f9daa
+SHA1 (patch-catalog-relative-default) = 4a487809ecd70d293c604244301efc87209e759c

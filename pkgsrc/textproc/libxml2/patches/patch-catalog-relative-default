@@ -1,0 +1,94 @@
+$NetBSD$
+
+Origin: EmberBSD (AI-assisted).
+Upstream status: not submitted.
+
+When the package uses the ordinary PREFIX/etc layout, resolve the default
+XML catalog from the loaded libxml2 instead of the build-time absolute
+sysconfdir. Published host packages then find docbook catalogs after
+install into another prefix. Explicit XML_CATALOG_FILES stays unchanged.
+
+--- catalog.c.orig
++++ catalog.c
+@@ -29,6 +29,12 @@
+   #include <unistd.h>
+ #endif
+ 
++#if defined(HAVE_DLFCN_H) && defined(HAVE_DLOPEN) && !defined(LIBXML_STATIC)
++# include <dlfcn.h>
++# include <limits.h>
++# define EMBERBSD_LIBXML2_PREFIX "@PREFIX@"
++#endif
++
+ #include <libxml/xmlmemory.h>
+ #include <libxml/hash.h>
+ #include <libxml/uri.h>
+@@ -64,6 +70,54 @@
+ #endif
+ #endif
+ 
++
++#if defined(HAVE_DLFCN_H) && defined(HAVE_DLOPEN) && !defined(LIBXML_STATIC)
++/*
++ * Origin: EmberBSD (AI-assisted). Keep the standard shared-library layout
++ * relative to libxml2. Explicit nonstandard configuration paths stay fixed.
++ */
++static const char *
++emberbsd_relative_xml_catalog(void)
++{
++    static int once;
++    static char relative[PATH_MAX];
++    Dl_info image;
++    char path[PATH_MAX], *name;
++    size_t length;
++    const char suffix[] = "/etc/xml/catalog";
++
++    if (once != 0)
++	return relative[0] != '\0' ? relative : NULL;
++    once = 1;
++    if (strcmp(XML_SYSCONFDIR, EMBERBSD_LIBXML2_PREFIX "/etc") != 0)
++	return NULL;
++    if (dladdr((void *)&emberbsd_relative_xml_catalog, &image) == 0
++	|| image.dli_fname == NULL || realpath(image.dli_fname, path) == NULL)
++	return NULL;
++    name = strrchr(path, '/');
++    if (name == NULL)
++	return NULL;
++    *name = '\0';
++    length = strlen(path);
++    if (length < 4 || strcmp(path + length - 4, "/lib") != 0)
++	return NULL;
++    path[length - 4] = '\0';
++    length -= 4;
++    if (length + 7 + sizeof(suffix) > sizeof(relative))
++	return NULL;
++    memcpy(relative, "file://", 7);
++    memcpy(relative + 7, path, length);
++    memcpy(relative + 7 + length, suffix, sizeof(suffix));
++    return relative;
++}
++#else
++static const char *
++emberbsd_relative_xml_catalog(void)
++{
++    return NULL;
++}
++#endif
++
+ static xmlChar *xmlCatalogNormalizePublic(const xmlChar *pubID);
+ static int xmlExpandCatalog(xmlCatalogPtr catal, const char *filename, int depth);
+ 
+@@ -3234,8 +3288,11 @@
+ 	xmlCatalogEntryPtr *nextent;
+ 
+ 	catalogs = (const char *) getenv("XML_CATALOG_FILES");
+-	if (catalogs == NULL)
+-	    catalogs = XML_XML_DEFAULT_CATALOG;
++	if (catalogs == NULL) {
++	    catalogs = emberbsd_relative_xml_catalog();
++	    if (catalogs == NULL)
++		catalogs = XML_XML_DEFAULT_CATALOG;
++	}
+ 
+ 	catal = xmlCreateNewCatalog(XML_XML_CATALOG_TYPE,
+ 		xmlCatalogDefaultPrefer);

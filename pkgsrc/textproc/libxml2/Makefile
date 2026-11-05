@@ -2,7 +2,7 @@
 
 .include "../../textproc/libxml2/Makefile.common"
 
-PKGREVISION=	4
+PKGREVISION=	5
 
 # The release tarball omits two CMake test drivers from the same upstream tag.
 post-extract:
@@ -27,6 +27,13 @@ CONFIGURE_ARGS+=	--with-zlib=${BUILDLINK_PREFIX.zlib}
 CONFIGURE_ARGS+=	--with-http
 CONFIGURE_ARGS+=	--with-legacy
 CONFIGURE_ARGS+=	--without-python
+# Resolve the default XML catalog relative to the loaded libxml2 when the
+# package uses the ordinary PREFIX/etc layout (see patch-catalog-relative-default).
+SUBST_CLASSES+=		ember-prefix
+SUBST_STAGE.ember-prefix=	pre-configure
+SUBST_FILES.ember-prefix=	catalog.c
+SUBST_VARS.ember-prefix=	PREFIX
+
 TEST_TARGET=		check
 
 # /usr/include might not exist on some platforms, like Darwin.
@@ -68,6 +75,7 @@ BUILDLINK_TRANSFORM+=	rm:-Wno-array-bounds
 .include "../../converters/libiconv/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"
 .include "../../textproc/xmlcatmgr/catalogs.mk"
+DL_AUTO_VARS=	yes
 .include "../../mk/dlopen.buildlink3.mk"
 .include "../../mk/pthread.buildlink3.mk"
 .include "../../mk/bsd.pkg.mk"
