@@ -1,0 +1,16 @@
+--- a/third_party/angle/src/common/apple_platform_utils.mm
++++ b/third_party/angle/src/common/apple_platform_utils.mm
+@@ -108,7 +108,12 @@
+             return [device supportsFamily:MTLGPUFamilyMacCatalyst2];
+ #elif TARGET_OS_MACCATALYST || TARGET_OS_OSX
+             // Devices in family 1, such as MacBookPro11,4, cannot use ANGLE's Metal backend.
+-            return [device supportsFamily:MTLGPUFamilyMac2];
++            // SDK 27 deprecates Mac2, but Apple7 does not cover legacy Intel/AMD GPUs.
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
++            bool supportsMac2 = [device supportsFamily:MTLGPUFamilyMac2];
++#pragma GCC diagnostic pop
++            return supportsMac2;
+ #else
+             // Devices starting with A9 onwards are supported. Simulator is supported as per
+             // definition that running simulator on Mac Family 1 devices is not supported.

@@ -1062,6 +1062,11 @@
       "path": "angle-explicit-control-git.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "angle-macos27-mac2-deprecation.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {
