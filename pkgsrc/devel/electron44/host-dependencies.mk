@@ -48,3 +48,12 @@ BUILDLINK_ABI_DEPENDS.libwebp+= libwebp>=1.6.0nb4
 .include "../../graphics/libjpeg-turbo/buildlink3.mk"
 .include "../../graphics/libwebp/buildlink3.mk"
 .endif
+
+.if ${EMBERBSD_ELECTRON_SHARED_FONT:Uno} == "yes"
+BUILDLINK_API_DEPENDS.freetype2+= freetype2>=2.15.0nb2
+BUILDLINK_ABI_DEPENDS.freetype2+= freetype2>=2.15.0nb2
+BUILDLINK_API_DEPENDS.harfbuzz+= harfbuzz>=15.0.0nb3
+BUILDLINK_ABI_DEPENDS.harfbuzz+= harfbuzz>=15.0.0nb3
+.include "../../graphics/freetype2/buildlink3.mk"
+.include "../../fonts/harfbuzz/buildlink3.mk"
+.endif
