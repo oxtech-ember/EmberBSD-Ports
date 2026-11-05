@@ -51,29 +51,37 @@ def abseil_replacements(source):
 
 
 def shim_masks(replacements):
-    """Read the literal shim header lists selected from Chromium's GN files."""
+    """Mask every literal shim header, including conditional literal additions."""
     masks = set()
     for destination, shim in replacements.items():
         text = re.sub(r'(?m)#.*$', '', shim.read_text())
+        # The source view is shared by GN toolchains. Mask the union of literal
+        # additions, such as the Windows minizip header, without evaluating GN.
+        # Other conditional bodies and computed header expressions stay invalid.
+        text = re.sub(r'\bif\s*\(\s*[A-Za-z_][A-Za-z0-9_]*\s*\)\s*\{\s*'
+                      r'(headers\s*\+=\s*\[[^\]]*\])\s*\}', r'\1', text, flags=re.S)
         blocks = re.findall(r'\b(?:absl_)?shim_headers\("[^"\n]+"\)\s*\{([^{}]*)\}', text, re.S)
         require(len(blocks) == len(re.findall(r'\b(?:absl_)?shim_headers\s*\(', text)),
                 'unsupported Chromium shim_headers block: ' + str(shim))
         for block in blocks:
             roots = re.findall(r'\broot_path\s*=\s*"([^"\n]+)"', block)
-            headers = re.findall(r'\bheaders\s*=\s*\[([^\]]*)\]', block, re.S)
+            headers = re.findall(r'\bheaders\s*(\+?=)\s*\[([^\]]*)\]', block, re.S)
             assignments = re.findall(r'\b(root_path|headers|prefix)\s*(?:\+=|=)', block)
-            require(assignments.count('root_path') == 1 and assignments.count('headers') == 1 and
-                    assignments.count('prefix') <= 1 and len(roots) == len(headers) == 1,
+            require(assignments.count('root_path') == len(roots) == 1 and
+                    assignments.count('headers') == len(headers) and headers and
+                    headers[0][0] == '=' and all(operator == '+=' for operator, _ in headers[1:]) and
+                    assignments.count('prefix') <= 1,
                     'non-literal or multiple Chromium shim header assignments')
             if 'prefix' in assignments:
                 require(re.search(r'\bprefix\s*=\s*"[^"\n]*"', block) is not None,
                         'non-literal Chromium shim prefix')
             remainder = re.sub(r'\broot_path\s*=\s*"[^"\n]+"', '', block)
-            remainder = re.sub(r'\bheaders\s*=\s*\[[^\]]*\]', '', remainder, flags=re.S)
+            remainder = re.sub(r'\bheaders\s*(?:\+=|=)\s*\[[^\]]*\]', '', remainder, flags=re.S)
             remainder = re.sub(r'\bprefix\s*=\s*"[^"\n]*"', '', remainder)
             require(not remainder.strip(), 'unsupported Chromium shim expression: ' + str(shim))
-            names = re.findall(r'"([^"\n]+)"', headers[0])
-            residue = re.sub(r'"[^"\n]+"|[,\s]', '', headers[0])
+            literals = ','.join(value for _, value in headers)
+            names = re.findall(r'"([^"\n]+)"', literals)
+            residue = re.sub(r'"[^"\n]+"|[,\s]', '', literals)
             require(names and not residue, 'unsupported Chromium shim header expression')
             prefixes = re.findall(r'\bprefix\s*=\s*"([^"\n]*)"', block)
             require(all('$' not in value and '\\' not in value
