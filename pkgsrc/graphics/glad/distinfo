@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (glad-2.0.8.tar.gz) = cd0d3d4dc612dc3172fb2e87fea5342fb2a86c47c7cb890fe6322224b85892bd
+SHA512 (glad-2.0.8.tar.gz) = ec964d0080c9714803f0464492b237039d2bede805d21aa9e487f3bf910447fd6440eeca59f3795dc4d5dd3b3df35101714fa21ea19eb29f6a021864a2310acd
+Size (glad-2.0.8.tar.gz) = 645593 bytes
+SHA1 (patch-CMakeLists.txt) = 16f4472104e4fba565f1b2c1801c0f7ccf504aff

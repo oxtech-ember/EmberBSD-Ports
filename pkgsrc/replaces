@@ -543,3 +543,4 @@ security/zxcvbn-c
 # Current shared PEGTL parser templates.
 textproc/PEGTL
 graphics/vtk
+graphics/glad

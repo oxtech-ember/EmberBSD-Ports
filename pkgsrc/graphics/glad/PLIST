@@ -1,0 +1,15 @@
+@comment $NetBSD$
+include/EGL/eglplatform.h
+include/KHR/khrplatform.h
+include/glad/egl.h
+include/glad/gl.h
+include/glad/glx.h
+include/glad/wgl.h
+lib/cmake/glad/gladConfig.cmake
+lib/cmake/glad/gladConfigVersion.cmake
+lib/cmake/glad/gladTargets-release.cmake
+lib/cmake/glad/gladTargets.cmake
+lib/libglad.so
+lib/libglad.so.2
+lib/libglad.so.2.0.8
+share/licenses/glad/LICENSE
