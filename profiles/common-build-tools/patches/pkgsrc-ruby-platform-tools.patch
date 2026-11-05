@@ -1,5 +1,5 @@
-Origin: EmberBSD (AI-assisted). Avoid running host utilities while pkgsrc parses
-Ruby platform metadata; preserve the module list order for versioned PLIST substitutions.
+Origin: EmberBSD (AI-assisted). Preserve longest-first Ruby PLIST substitutions without
+invoking external text tools during pkgsrc metadata parsing.
 
 --- a/lang/ruby/platform.mk
 +++ b/lang/ruby/platform.mk
@@ -13,8 +13,8 @@ Ruby platform metadata; preserve the module list order for versioned PLIST subst
 -_RUBY_BUNDLE_MODULES!=	\
 -	echo ${RUBY_BUNDLE_MODULES} | tr ' ' '\012' | \
 -	awk '{print length(), $$0}' | sort -nr | awk '{print $$2}'
-+# No external text tools are needed to expand these versioned gem names.
-+_RUBY_BUNDLE_MODULES= ${RUBY_BUNDLE_MODULES}
++# Sort by descending module-name length without external tools.
++_RUBY_BUNDLE_MODULES= ${RUBY_BUNDLE_MODULES:@m@${m:C/./x/g}-${m}@:Or:C/^x*-//}
  
  .for s in ${_RUBY_BUNDLE_MODULES}
  t:=RUBY_${s:tu:S/-/_/g}_VER
