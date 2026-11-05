@@ -636,7 +636,7 @@ package provenance, `cross-bulk.sh patch-refresh PKGPATH[@native] STATE` replays
 the old and current ordered patch series and atomically updates only changed
 source files. It preserves compatible objects and unchanged file times, then
 invalidates the build stage. The command refuses incompatible provenance,
-custom patch hooks, and source substitutions requiring a separate refresh.
+custom patch hooks, and substitutions affecting the changed source files.
 Normal builds and stage-local commands lock each selected work directory until
 their owned worker session has drained.
 An archive by itself is not treated as a completed build. The single package

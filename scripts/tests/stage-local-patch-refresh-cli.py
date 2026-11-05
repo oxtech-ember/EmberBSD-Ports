@@ -20,14 +20,23 @@ with tempfile.TemporaryDirectory() as d:
  (work/'.patch_done').write_text(str(patches/'patch-b')+'\n')
  db=root/'sys/usr/pkg/pkgdb/demo-1nb1';db.mkdir(parents=True)
  (db/'+BUILD_VERSION').write_text('cat/demo/patches/patch-b: '+hashlib.sha256(old).hexdigest()+'\ncat/demo/distinfo: '+hashlib.sha256(old_info).hexdigest()+'\n')
- values={'WRKDIR':str(work),'WRKSRC':str(src),'PATCH':str(a.patch),'PATCH_ARGS':f'-d {src} -E -p0 --batch --forward -V simple -z .orig','DISTDIR':str(root),'DIST_SUBDIR':'','DISTFILES':archive.name,'DISTNAME':'demo-1','PKG_DBDIR':'/usr/pkg/pkgdb','CROSS_DESTDIR':str(root/'sys'),'PKGBASE':'demo','PKGVERSION_NOREV':'1','PATCHFILES':'','PATCHDIR':str(patches),'DISTINFO_FILE':str(recipe/'distinfo'),'EXTRACT_ONLY':archive.name,'LOCALPATCHES':'','META_PACKAGE':'','SUBST_CLASSES':'','.MAKE.MAKEFILES':'Makefile'}
+ values={'WRKDIR':str(work),'WRKSRC':str(src),'PATCH':str(a.patch),'PATCH_ARGS':f'-d {src} -E -p0 --batch --forward -V simple -z .orig','DISTDIR':str(root),'DIST_SUBDIR':'','DISTFILES':archive.name,'DISTNAME':'demo-1','PKG_DBDIR':'/usr/pkg/pkgdb','CROSS_DESTDIR':str(root/'sys'),'PKGBASE':'demo','PKGVERSION_NOREV':'1','PATCHFILES':'','PATCHDIR':str(patches),'DISTINFO_FILE':str(recipe/'distinfo'),'EXTRACT_ONLY':archive.name,'LOCALPATCHES':'','META_PACKAGE':'','SUBST_CLASSES':'','SUBST_FILES.rewrite':'second','.MAKE.MAKEFILES':'Makefile'}
  fake=root/'bmake';fake.write_text('#!'+sys.executable+'\nimport json,sys,pathlib\nv='+repr(values)+'\nfor x in sys.argv:\n if x.startswith("VARNAMES="):\n  print("\\n".join(v[n] for n in x[9:].split()));sys.exit(0)\nif "build-clean" in sys.argv:pathlib.Path('+repr(str(root/'clean'))+').write_text("yes")\n');fake.chmod(0o755)
  cmd=[sys.executable,'-B',str(helper),'--sdk-source',str(a.sdk_source),'--bmake',str(fake),'--recipe',str(recipe),'--expected-work',str(work)]
  wrong=subprocess.run(cmd[:-1]+[str(root)],capture_output=True,text=True);assert wrong.returncode and 'differs from locked stage' in wrong.stderr
- original=fake.read_text();fake.write_text(original.replace("'SUBST_CLASSES': ''", "'SUBST_CLASSES': 'rewrite'"))
- blocked=subprocess.run(cmd,capture_output=True,text=True);assert blocked.returncode and 'substitutions require' in blocked.stderr
+ original=fake.read_text();intersect=original.replace("'SUBST_CLASSES': ''", "'SUBST_CLASSES': 'rewrite'")
+ fake.write_text(intersect)
+ blocked=subprocess.run(cmd,capture_output=True,text=True);assert blocked.returncode and 'needs substitution refresh' in blocked.stderr
  assert (src/'second').read_text()=='C\n' and not (root/'clean').exists()
- fake.write_text(original)
+ fake.write_text(intersect.replace("'SUBST_FILES.rewrite': 'second'", "'SUBST_FILES.rewrite': '*.pc.in'"))
+ blocked=subprocess.run(cmd,capture_output=True,text=True);assert blocked.returncode and 'unsupported substitution paths' in blocked.stderr
+ assert (src/'second').read_text()=='C\n' and not (root/'clean').exists()
+ (src/'alias').symlink_to('second')
+ fake.write_text(intersect.replace("'SUBST_FILES.rewrite': 'second'", "'SUBST_FILES.rewrite': 'alias'"))
+ blocked=subprocess.run(cmd,capture_output=True,text=True);assert blocked.returncode
+ assert (src/'second').read_text()=='C\n' and not (root/'clean').exists()
+ (src/'libxslt.pc.in').write_text('template');(src/'libexslt.pc.in').write_text('template')
+ fake.write_text(intersect.replace("'SUBST_FILES.rewrite': 'second'", "'SUBST_FILES.rewrite': 'libxslt.pc.in libexslt.pc.in'"))
  subprocess.run(cmd,check=True);assert (src/'second').read_text()=='D\n' and (src/'second').stat().st_mode & 0o777 == 0o640 and (root/'clean').read_text()=='yes'
  assert (work/'.patch_done').read_text()==str(patches/'patch-a')+'\n'+str(patches/'patch-b')+'\n'
 print('stage-local CLI validates locked stage and refreshes selected patch series')

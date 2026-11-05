@@ -427,7 +427,6 @@ def main():
     require(len(values) == len(names), 'unexpected selected bmake metadata')
     v = dict(zip(names, values))
     require(not v['PATCHFILES'], 'downloaded patchfiles are unsupported')
-    require(not v['SUBST_CLASSES'], 'configured source substitutions require a separate refresh')
     require(Path(v['PATCHDIR']).resolve() == (a.recipe / 'patches').resolve() and
             Path(v['DISTINFO_FILE']).resolve() == (a.recipe / 'distinfo').resolve(),
             'nonstandard patch inventory is unsupported')
@@ -465,6 +464,27 @@ def main():
     with tempfile.TemporaryDirectory(prefix='.patch-refresh-candidates-', dir=work) as scratch:
         changes, cookie, inventory = prepare(sdk, a.recipe, work, archive, v['DISTNAME'], owner,
                                              Path(v['PATCH']), patch_args[2:], Path(scratch), old_cookie=old_cookie)
+        classes = shlex.split(v['SUBST_CLASSES'])
+        if classes:
+            require(all(re.fullmatch(r'[A-Za-z0-9_.-]+', name) for name in classes),
+                    'unsupported substitution class')
+            requested = ['SUBST_FILES.' + name for name in classes]
+            values = subprocess.run(cmd + ['show-vars', 'VARNAMES=' + ' '.join(requested)],
+                                    check=True, stdout=subprocess.PIPE, text=True).stdout.splitlines()
+            require(len(values) == len(requested), 'unexpected substitution metadata')
+            changed = {row[0] for row in changes}
+            for value in values:
+                files = shlex.split(value)
+                require(files and all(re.fullmatch(r'[A-Za-z0-9_+./-]+', name) and
+                        not name.startswith('/') and all(part not in ('', '.', '..') for part in name.split('/'))
+                        for name in files), 'unsupported substitution paths')
+                for name in files:
+                    current = source
+                    for part in name.split('/')[:-1]:
+                        current = current / part
+                        paths.real_directory(str(current))
+                    paths.regular_file(str(current / name.split('/')[-1]))
+                require(not changed.intersection(files), 'changed source needs substitution refresh')
         transaction(sdk, work, source, changes, cookie,
                     [a.recipe / 'patches' / name for name in inventory],
                     lambda: subprocess.run(cmd + ['build-clean'], check=True))
