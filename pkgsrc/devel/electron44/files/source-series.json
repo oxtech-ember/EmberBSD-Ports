@@ -1137,6 +1137,21 @@
       "path": "gn-common-libyuv-public-config.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "gn-common-boringssl.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "gn-common-brotli-native-tool.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "tflite-support-remove-unused-libzip.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

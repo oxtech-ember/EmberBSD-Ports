@@ -520,6 +520,10 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
             'header components migration is incomplete; rerun migration')
     require(_migration or not os.path.lexists(destination.parent / ('.' + destination.name + '.media-header-components-migration')),
             'incomplete media header component migration')
+    require(_migration or not os.path.lexists(destination.parent / ('.' + destination.name + '.compression-components-migration')),
+            'incomplete compression component migration')
+    require(_migration or not os.path.lexists(destination.parent / ('.' + destination.name + '.boringssl-components-migration')),
+            'incomplete BoringSSL source migration')
     require(bool(ml_names) == bool(ml_verify), 'ML view selection is incomplete')
     require(destination.is_dir() and not destination.is_symlink(), 'source view must be a local directory')
     destination = destination.resolve(strict=True)

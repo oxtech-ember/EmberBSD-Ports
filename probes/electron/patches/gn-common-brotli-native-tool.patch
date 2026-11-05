@@ -1,0 +1,80 @@
+# Origin: EmberBSD contributors (AI-assisted).
+--- /dev/null
++++ b/build/config/emberbsd_brotli.gni
+@@ -0,0 +1,7 @@
++# Shared Brotli host tool selected and validated by the EmberBSD producer.
++declare_args() {
++  emberbsd_brotli_native_tool = ""
++  emberbsd_brotli_native_inputs = []
++}
++assert((emberbsd_brotli_native_tool == "") == (emberbsd_brotli_native_inputs == []),
++       "Select Brotli and its validated runtime inputs together")
+--- a/build/linux/unbundle/brotli.gn
++++ b/build/linux/unbundle/brotli.gn
+@@ -1,5 +1,6 @@
+ import("//build/config/linux/pkg_config.gni")
+ import("//build/shim_headers.gni")
++import("//build/config/emberbsd_brotli.gni")
+ 
+ pkg_config("system_brotli_dec") {
+   packages = [ "libbrotlidec" ]
+@@ -32,5 +33,10 @@
+ 
+ copy("brotli") {
+   sources = [ "/usr/bin/brotli" ]
++  if (emberbsd_pkg_config_role != "upstream") {
++    assert(emberbsd_brotli_native_tool != "", "Select the common native Brotli executable")
++    sources = []
++    sources = [ emberbsd_brotli_native_tool ]
++  }
+   outputs = [ "$root_out_dir/brotli" ]
+ }
+--- a/tools/grit/grit_rule.gni
++++ b/tools/grit/grit_rule.gni
+@@ -99,6 +99,7 @@
+ #     # You can also put deps here if the grit source depends on generated
+ #     # files.
+ #   }
++import("//build/config/emberbsd_brotli.gni")
+ import("//build/config/compiler/compiler.gni")
+ import("//build/config/compute_inputs_for_analyze.gni")
+ import("//build/config/locales.gni")
+@@ -267,6 +268,10 @@
+         _brotli_executable += ".exe"
+       }
+ 
++      if (emberbsd_brotli_native_tool != "") {
++        _brotli_executable = emberbsd_brotli_native_tool
++        inputs += emberbsd_brotli_native_inputs
++      }
+       inputs += [ _brotli_executable ]
+       args += [
+         "--brotli",
+--- a/third_party/libphonenumber/BUILD.gn
++++ b/third_party/libphonenumber/BUILD.gn
+@@ -2,6 +2,7 @@
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+ 
++import("//build/config/emberbsd_brotli.gni")
+ import("//testing/libfuzzer/fuzzer_test.gni")
+ import("//testing/test.gni")
+ import("//third_party/protobuf/proto_library.gni")
+@@ -92,12 +93,17 @@
+   _brotli_executable += ".exe"
+ }
+ 
++if (emberbsd_brotli_native_tool != "") {
++  _brotli_executable = emberbsd_brotli_native_tool
++}
++
+ action("gen_lite_metadata_compressed") {
+   script = "gen_compressed_metadata.py"
+   inputs = [
+     "src/cpp/src/phonenumbers/lite_metadata.cc",
+     _brotli_executable,
+   ]
++  inputs += emberbsd_brotli_native_inputs
+   outputs = [ "$target_gen_dir/lite_metadata_compressed.cc" ]
+   args = [
+     "--input",

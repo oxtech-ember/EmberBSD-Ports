@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: BSD-2-Clause
+# Origin: EmberBSD contributors (AI-assisted).
+"""Exercise first and repeated common ML source/header activation ordering."""
+import importlib.util
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
+import tempfile
+owner=Path(__file__).resolve().parents[3]/'pkgsrc/devel/electron44/files/build-electron.py'
+spec=importlib.util.spec_from_file_location('electron',owner); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+with tempfile.TemporaryDirectory() as tmp:
+    root=Path(tmp); work=root/'work'; (work/'source-view').mkdir(parents=True)
+    calls=[]
+    def verify(*args, **kwargs): calls.append(('verify',tuple(kwargs.get('ml_names',())))); return work/'source-view/src'
+    view=SimpleNamespace(verify=verify, _refresh_leaves=lambda *args: calls.append(('leaf-refresh',)) or work/'source-view/src')
+    def ml_activate(*args, **kwargs):
+        calls.append(('ml',kwargs['old_identities'])); args[7](); return work/'source-view/src'
+    def header_activate(*args, **kwargs):
+        calls.append(('headers',kwargs['old_identities'])); args[6](); return work/'source-view/src'
+    ml=SimpleNamespace(NAMES=('litert','tflite'),activate=ml_activate,verify_view=lambda *args: calls.append(('ml-check',)))
+    hdr=SimpleNamespace(NAMES=('eigen3','flatbuffers','fp16'),activate=header_activate,verify_view=lambda *args:calls.append(('header-check',)))
+    media=SimpleNamespace(NAMES=('libyuv','libsrtp'), identity=lambda data,name:'a', verify_view=lambda *args:None)
+    boring=SimpleNamespace(NAME='boringssl', verify_view=lambda *args:None)
+    compression=SimpleNamespace(NAMES=('brotli','zstd'), verify_view=lambda *args:None)
+    modules={'electron_compression_source_view':compression,'electron_boringssl_source_view':boring, 'electron_protobuf_source_view':view,'electron_ml_source_view':ml,'electron_header_source_view':hdr, 'electron_media_header_view':media}
+    o=SimpleNamespace(workspace=root/'workspace',work=work,protobuf_source=root/'protobuf',host_prefix=root/'host',
+        ml_identities={'litert':'a'},ml_sources={},ml_sdk={'inventory':object(),'sourceprep':object()},
+        ml_headers={name:{'identity':'a'} for name in hdr.NAMES}, media_header_selections={},
+        old_media_header_identities={'libyuv':'a','libsrtp':'a'}, boringssl_identity='b'*64, old_boringssl_identity='b'*64, compression_identity='x', old_compression_identity='x', phase='reconfigure',activate_common_ml=True)
+    with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+        m.gn_source(o)
+    assert [x[0] for x in calls if x[0] in ('ml','headers')]==['ml','headers']
+    assert ('verify',('litert','tflite','libyuv','libsrtp','boringssl','brotli','zstd')) in calls
+    assert ('verify',('litert','tflite','eigen3','flatbuffers','fp16','libyuv','libsrtp','boringssl','brotli','zstd')) in calls
+    calls.clear(); o.refresh_source_view=True
+    o.old_ml_identities={'litert':'old'}; o.old_header_identities={name:'old' for name in hdr.NAMES}
+    with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+        m.gn_source(o)
+    assert [x[0] for x in calls].count('leaf-refresh') == 1
+    assert [x[0] for x in calls].index('leaf-refresh') < [x[0] for x in calls].index('headers')
+    # A resumed header transaction has already installed ML. Its owner
+    # recovers the marker before requesting verification of that selection.
+    calls.clear()
+    marker = work / '.source-view.header-components-migration'
+    marker.write_text('pending')
+    def recovered_ml(*args, **kwargs):
+        calls.append(('ml-recovered',))
+    def recovered_headers(*args, **kwargs):
+        marker.unlink()
+        calls.append(('headers-recovered',))
+        args[6]()
+    ml.activate = recovered_ml; hdr.activate = recovered_headers
+    with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+        m.gn_source(o)
+    assert [x[0] for x in calls] == ['ml-recovered', 'headers-recovered', 'leaf-refresh', 'verify']
+    ml.activate = ml_activate; hdr.activate = header_activate
+    calls.clear(); o.activate_common_ml=False; o.old_ml_identities=o.ml_identities
+    o.old_header_identities={name:'a' for name in hdr.NAMES}
+    with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+        m.gn_source(o)
+    assert calls == [('leaf-refresh',)]
+    # Ordinary build receives the already checked saved media identities.
+    calls.clear(); o.phase='build'; o.refresh_source_view=False
+    with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+        m.gn_source(o)
+    assert calls == [('verify',('litert','tflite','eigen3','flatbuffers','fp16','libyuv','libsrtp','boringssl','brotli','zstd'))]
+    # Initial configure retry may complete the additive media transaction.
+    calls.clear(); o.phase='configure'; o.retry_configure=True
+    o.old_media_header_identities=None
+    def media_activate(*args, **kwargs):
+        calls.append(('media',)); args[6](); return work/'source-view/src'
+    media.activate=media_activate
+    with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+        m.gn_source(o)
+    assert ('media',) in calls
+    # Fresh initial retry activates BoringSSL once, then verifies the current view.
+    calls.clear(); o.old_media_header_identities={'libyuv':'a','libsrtp':'a'}
+    o.old_boringssl_identity=None; o.boringssl_selected=root/'boringssl-source'
+    def boring_activate(*args, **kwargs):
+        calls.append(('boring',)); args[7](); return work/'source-view/src'
+    boring.activate=boring_activate
+    with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+        m.gn_source(o)
+    assert ('boring',) in calls
+    # Independent providers can migrate in one invocation; the second callback
+    # must verify the first freshly activated selection.
+    calls.clear(); o.phase='reconfigure'; o.retry_configure=False
+    o.old_compression_identity=None
+    def compression_activate(*args, **kwargs):
+        calls.append(('compression',)); args[3](); return work/'source-view/src'
+    compression.activate=compression_activate
+    with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+        m.gn_source(o)
+    assert [c[0] for c in calls if c[0] in ('compression','boring')] == ['compression','boring']
+    assert calls[-1] == ('verify',('litert','tflite','eigen3','flatbuffers','fp16','libyuv','libsrtp','boringssl','brotli','zstd'))
+print('PASS: ML and header transitions are ordered before view verification')

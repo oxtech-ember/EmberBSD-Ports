@@ -317,3 +317,7 @@ both native and target roles. The libyuv and SRTP public headers are projected
 into the source view only after the two roles' installed bytes match; crc32c
 uses its selected role's include prefix. These packages must already be present
 when invoking the direct producer.
+
+Electron requires the verified common BoringSSL source and archive; the existing
+Chromium GN wrapper builds that one source separately for host and target roles.
+The source uses the current Ports owner and the existing common patch selector.

@@ -611,30 +611,36 @@ def additive_protoc_runtime_view(old_arguments, values, options):
     return permitted
 
 
-def protobuf_package_source(package, owner_recipe, export_recipe, *, distinfo, package_path="devel/protobuf", allow_empty_patches=False):
-    """Compare the package's existing pkgsrc source metadata with its owner."""
-    def inventory(recipe):
-        patches = recipe / 'patches'
-        require(patches.is_dir() or allow_empty_patches, 'common package patch inventory is missing')
-        files = sorted(patches.glob('patch-*')) if patches.is_dir() else []
-        require(files or allow_empty_patches, 'common package patch inventory is empty')
-        return {file.name: hashlib.sha256(file.read_bytes()).hexdigest() for file in files}
-    expected = inventory(owner_recipe)
-    require(inventory(export_recipe) == expected, 'selected pkgsrc protobuf patch inventory differs from common owner')
-    owner_dist = hashlib.sha256((owner_recipe / 'distinfo').read_bytes()).hexdigest()
-    export_dist = hashlib.sha256((export_recipe / 'distinfo').read_bytes()).hexdigest()
-    require(owner_dist == export_dist, 'selected pkgsrc protobuf distinfo differs from common owner')
+def recipe_source_metadata(recipe, *, allow_empty_patches=False):
+    patches = recipe / 'patches'
+    require(patches.is_dir() or allow_empty_patches, 'common package patch inventory is missing')
+    files = sorted(patches.glob('patch-*')) if patches.is_dir() else []
+    require(files or allow_empty_patches, 'common package patch inventory is empty')
+    return {'distinfo': hashlib.sha256((recipe/'distinfo').read_bytes()).hexdigest(),
+            'patches': {file.name: hashlib.sha256(file.read_bytes()).hexdigest() for file in files}}
+
+
+def validate_package_source(package, expected, export_recipe, *, distinfo, package_path, allow_empty_patches=False):
+    require(recipe_source_metadata(export_recipe, allow_empty_patches=allow_empty_patches) == expected,
+            'selected pkgsrc patch inventory or distinfo differs from common owner')
     metadata = {}
     for line in (package / '+BUILD_VERSION').read_text().splitlines():
         name, separator, digest = line.partition(': ')
-        require(separator and name not in metadata, 'invalid protobuf package source metadata')
+        require(separator and name not in metadata, 'invalid package source metadata')
         metadata[name] = digest
     prefix = package_path + '/patches/'
     actual = {name[len(prefix):]: digest for name, digest in metadata.items() if name.startswith(prefix)}
-    require(actual == expected, 'selected protobuf package patch inventory differs from common source')
+    require(actual == expected['patches'], 'selected package patch inventory differs from common source')
     if distinfo:
-        require(metadata.get(package_path + '/distinfo') == owner_dist,
-                'selected protobuf package distinfo differs from common source')
+        require(metadata.get(package_path + '/distinfo') == expected['distinfo'],
+                'selected package distinfo differs from common source')
+
+
+def protobuf_package_source(package, owner_recipe, export_recipe, *, distinfo, package_path="devel/protobuf", allow_empty_patches=False):
+    """Compare installed pkgsrc source metadata with its selected owner."""
+    expected = recipe_source_metadata(owner_recipe, allow_empty_patches=allow_empty_patches)
+    validate_package_source(package, expected, export_recipe, distinfo=distinfo,
+                            package_path=package_path, allow_empty_patches=allow_empty_patches)
 
 
 def selected_protoc_command(options, native, protoc, runtime_view):
@@ -1089,6 +1095,26 @@ def common_ml_sources(options, sdk, native, environment):
         environment['EMBERBSD_ML_HEADER_' + name.upper() + '_SHA256'] = record['identity']
     return {'use_litert_tflite': True, **common_flatc(options, sdk, native, environment)}
 
+
+def common_boringssl_source(options, sdk, native, environment):
+    """Verify the explicit common source using the shared archive owner."""
+    selected = absolute(options.boringssl_source, 'common BoringSSL source')
+    archive = absolute(options.boringssl_archive, 'common BoringSSL archive', directory=False)
+    owner = Path(options.ports_source) / 'scripts/source-inputs/boringssl/source.py'
+    require(owner.is_file(), 'common BoringSSL source owner is missing')
+    command = [native.tool('python'), '-B', str(owner), '--sdk-source', str(options.sdk_source),
+               '--git', selected_control_git(options.git), 'verify-source', '--source', str(selected),
+               '--archive', str(archive), '--patch', str(options.ml_patch)]
+    result = sdk['process'].capture(command, env=source_owner_environment(environment))
+    record = json.loads(result.stdout.decode('utf-8', 'strict'))
+    digest = record.get('tree_sha256') if isinstance(record, dict) else None
+    require(isinstance(record, dict) and record.get('package') == 'security/boringssl' and isinstance(digest, str) and
+            re.fullmatch(r'[0-9a-f]{64}', digest), 'invalid verified BoringSSL source')
+    options.boringssl_identity = digest
+    options.boringssl_selected = selected
+    environment['EMBERBSD_BORINGSSL_SOURCE_SHA256'] = digest
+
+
 def common_abseil(options, sdk, native, environment, buildlink):
     if not getattr(options, 'shared_abseil', False):
         return {}
@@ -1189,6 +1215,8 @@ def common_media_libraries(options, native, environment, buildlink):
     target_prefix = Path(options.sysroot) / 'usr/pkg'
     target_db = target_prefix / 'pkgdb'
     target_packages = packages_by_path(target_db)
+    options._common_native_packages = host_packages
+    options._common_target_packages = target_packages
     result = {}
     selections = {}
     for name, (pkgpath, library, header_prefixes) in COMMON_MEDIA_LIBRARIES.items():
@@ -1253,6 +1281,109 @@ def common_media_libraries(options, native, environment, buildlink):
     for name in media_view.NAMES:
         environment['EMBERBSD_MEDIA_HEADER_' + name.upper() + '_SHA256'] = media_view.identity(options.media_header_selections, name)
     return result
+
+
+
+
+def compression_recipe_catalog(options, sdk, native, environment):
+    """Derive selected recipes once per effective owner-input change."""
+    owner = Path(options.ports_source).resolve(strict=True)
+    selector_path = owner/'scripts/pkgsrc-source-identity.py'
+    spec = importlib.util.spec_from_file_location('electron_pkgsrc_source_identity', selector_path)
+    require(spec and spec.loader, 'pkgsrc source identity owner is unavailable')
+    selector = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(selector)
+    git = selected_control_git(options.git)
+    packages = ('archivers/brotli', 'archivers/zstd')
+    identities = {name: selector.git_package_identity(owner, name, git) for name in packages}
+    config_root = getattr(options, 'native_binding_root', None) or options.work
+    config = Path(config_root)/'configuration.json'
+    saved = json.loads(config.read_text()) if config.is_file() else {}
+    raw = saved.get('environment', {}).get('EMBERBSD_COMPRESSION_RECIPE_CATALOG')
+    previous = json.loads(raw) if raw else None
+    valid = (isinstance(previous, dict) and set(previous) == {'version', 'identities', 'recipes'} and
+             previous['version'] == 1 and set(previous['identities']) == set(packages) and
+             set(previous['recipes']) == set(packages) and
+             all(selector.equivalent_effective_package(previous['identities'][name], identities[name])
+                 for name in packages))
+    if valid:
+        return previous
+    require(getattr(options, 'phase', '') != 'build',
+            'common compression owner inputs changed; reconfigure required')
+    with tempfile.TemporaryDirectory(prefix='electron-compression-export-') as temp:
+        output = Path(temp)/'pkgsrc'
+        sdk['process'].capture([native.tool('python'), '-B', str(owner/'scripts/prepare-pkgsrc.py'),
+            str(output), '--git', git, '--patch', str(options.ml_patch)],
+            env=source_owner_environment(environment))
+        recipes = {name: recipe_source_metadata(output/name, allow_empty_patches=True) for name in packages}
+    return {'version': 1, 'identities': identities, 'recipes': recipes}
+
+
+def common_compression(options, sdk, native, environment, buildlink):
+    """Validate existing common Brotli/Zstd packages and select the native tool."""
+    require(buildlink, 'common compression requires the selected host buildlink')
+    catalog = compression_recipe_catalog(options, sdk, native, environment)
+    environment['EMBERBSD_COMPRESSION_RECIPE_CATALOG'] = json.dumps(catalog, sort_keys=True, separators=(',', ':'))
+    record = {}
+    for name, pkgpath in (('brotli', 'archivers/brotli'), ('zstd', 'archivers/zstd')):
+        hosts = options._common_native_packages.get(pkgpath, [])
+        targets = options._common_target_packages.get(pkgpath, [])
+        require(len(hosts) == len(targets) == 1 and hosts[0].name == targets[0].name,
+                'common compression package mismatch: ' + pkgpath)
+        exported = Path(options.host_buildlink_pkgsrc) / pkgpath
+        for package in (hosts[0], targets[0]):
+            validate_package_source(package, catalog['recipes'][pkgpath], exported,
+                                    distinfo=True, package_path=pkgpath, allow_empty_patches=True)
+        record[name] = {'package': hosts[0].name,
+                        'distinfo': hashlib.sha256((exported/'distinfo').read_bytes()).hexdigest()}
+    selection_work = environment.get('EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK')
+    require(selection_work, 'common compression needs selected host buildlink metadata')
+    selection = json.loads((Path(selection_work)/'selection.json').read_text())['identity']['inputs']
+    host_prefix = Path(options.host_prefix).resolve(strict=True)
+    for pkgpath, modules in (('archivers/brotli', ('libbrotlidec', 'libbrotlienc')),
+                             ('archivers/zstd', ('libzstd',))):
+        host_package = options._common_native_packages[pkgpath][0]
+        target_package = options._common_target_packages[pkgpath][0]
+        for module in modules:
+            entry = 'lib/pkgconfig/' + module + '.pc'
+            require(entry in (host_package/'+CONTENTS').read_text().splitlines() and
+                    entry in (target_package/'+CONTENTS').read_text().splitlines() and
+                    str(host_prefix/entry) in selection,
+                    'common compression pkg-config provider is not selected: ' + module)
+    versions = []
+    for role, prefix in (('host', Path(buildlink)), ('target', Path(options.sysroot)/'usr/pkg')):
+        env = dict(environment, PKG_CONFIG_LIBDIR=str(prefix/'lib/pkgconfig'))
+        env.pop('PKG_CONFIG_PATH', None)
+        if role == 'host':
+            env.pop('PKG_CONFIG_SYSROOT_DIR', None)
+        else:
+            env['PKG_CONFIG_SYSROOT_DIR'] = str(options.sysroot)
+        command = [native.tool('pkg-config')] + (['--define-prefix'] if role == 'host' else [])
+        command += ['--modversion', 'libbrotlidec', 'libbrotlienc', 'libzstd']
+        output = sdk['process'].capture(command, env=env).stdout.decode('utf-8', 'strict').splitlines()
+        require(len(output) == 3 and output[0] == output[1],
+                'common compression pkg-config returned invalid versions')
+        versions.append(output)
+    require(versions[0] == versions[1], 'host and target compression package versions differ')
+    package = options._common_native_packages['archivers/brotli'][0]
+    manifest = (package/'+CONTENTS').read_text().splitlines()
+    require(manifest.count('bin/brotli') == 1, 'native Brotli executable has no unique owner')
+    tool = (Path(options.host_prefix)/'bin/brotli').resolve(strict=True)
+    index = manifest.index('bin/brotli')
+    require(index + 1 < len(manifest) and re.fullmatch(r'@comment MD5:[0-9a-f]{32}', manifest[index+1]),
+            'native Brotli executable has no package checksum')
+    info = os.stat(tool, follow_symlinks=False)
+    data = tool.read_bytes()
+    require(os.stat(tool, follow_symlinks=False) == info and
+            hashlib.md5(data, usedforsecurity=False).hexdigest() == manifest[index+1].split(':', 1)[1],
+            'native Brotli executable differs from installed package')
+    sdk['host_prefix'].validate_host_executable(str(options.host_prefix), str(tool), native.host,
+                                                search_path=native.path)
+    inputs = platform_protoc_inputs(options, sdk, native, tool, selection)
+    options.compression_identity = hashlib.sha256(json.dumps(record, sort_keys=True,
+        separators=(',', ':')).encode()).hexdigest()
+    environment['EMBERBSD_COMPRESSION_SOURCE_SHA256'] = options.compression_identity
+    return {'emberbsd_brotli_native_tool': str(tool), 'emberbsd_brotli_native_inputs': inputs}
 
 
 def common_icu(options, sdk, native, environment, buildlink):
@@ -1666,6 +1797,8 @@ def producer_inputs(options, sdk):
     values.update(common_icu(options, sdk, native, environment, buildlink))
     values.update(common_re2(options, sdk, native, environment, buildlink))
     values.update(common_media_libraries(options, native, environment, buildlink))
+    if not getattr(options, 'activate_common_providers', False):
+        values.update(common_compression(options, sdk, native, environment, buildlink))
     runtime_view = getattr(options, 'protoc_runtime_view', None)
     if runtime_view:
         require(native.host['os'] == 'Darwin', 'protoc runtime view requires a Darwin host')
@@ -1715,6 +1848,8 @@ def producer_inputs(options, sdk):
     values.update(common_undici(options, sdk, environment))
     values.update(common_embedder_sources(options, sdk, native, environment))
     values.update(common_ml_sources(options, sdk, native, environment))
+    if not getattr(options, 'activate_common_providers', False):
+        common_boringssl_source(options, sdk, native, environment)
     values.update(common_v8_metagen(options, sdk, native, environment, tools))
     if options.compiler_family == 'clang':
         target_root = getattr(options, 'target_runtime_stage', None) or options.sysroot
@@ -1861,15 +1996,37 @@ def gn_source(options):
         ml = local_module('electron_ml_source_view', 'ml-source-view.py')
         headers = local_module('electron_header_source_view', 'header-source-view.py')
         selected = options.ml_headers
+        boring = local_module('electron_boringssl_source_view', 'boringssl-source-view.py')
+        old_boring = getattr(options, 'old_boringssl_identity', None)
+        new_boring = options.boringssl_identity
         media = local_module('electron_media_header_view', 'media-header-view.py')
         media_selected = options.media_header_selections
         old_media = getattr(options, 'old_media_header_identities', None)
         new_media = {name: media.identity(media_selected, name) for name in media.NAMES}
+        compression = local_module('electron_compression_source_view', 'compression-source-view.py')
+        old_compression = getattr(options, 'old_compression_identity', None)
+        new_compression = options.compression_identity
+        compression_marker = destination.parent / ('.' + destination.name + '.compression-components-migration')
+        compression_root = destination / 'src/third_party'
+        if (old_compression is None and not os.path.lexists(compression_marker) and
+                all((compression_root/name).is_dir() and not (compression_root/name).is_symlink()
+                    for name in compression.NAMES)):
+            # A configure retry can find a completed projection before the
+            # final configuration receipt was written.
+            compression.verify_view(view, options.workspace / 'src', destination)
+            old_compression = new_compression
         old_ml = getattr(options, 'old_ml_identities', None)
         old_headers = getattr(options, 'old_header_identities', None)
         new_headers = {name: data['identity'] for name, data in selected.items()}
         sp = options.ml_sdk['sourceprep']
-        def selected_sources(ml_ids, header_ids, media_ids=None):
+        boring_marker = destination.parent / ('.' + destination.name + '.boringssl-components-migration')
+        boring_root = compression_root / boring.NAME
+        if (old_boring is None and not os.path.lexists(boring_marker) and
+                boring_root.is_dir() and not boring_root.is_symlink()):
+            # The projection can finish before the configuration receipt is saved.
+            boring.verify_view(view, options.workspace / 'src', destination, new_boring, sp)
+            old_boring = new_boring
+        def selected_sources(ml_ids, header_ids, media_ids=None, compression_id=None, boring_id=None):
             result = dict(sources)
             checks, names = [], []
             if ml_ids:
@@ -1882,13 +2039,24 @@ def gn_source(options):
             if media_ids:
                 names.extend(media.NAMES)
                 checks.append(lambda: media.verify_view(view, options.workspace / 'src', destination, media_ids, sp))
+            if boring_id:
+                names.append(boring.NAME)
+                checks.append(lambda: boring.verify_view(view, options.workspace / 'src', destination, boring_id, sp))
+            if compression_id:
+                names.extend(compression.NAMES)
+                checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination))
             if names:
                 result.update(ml_names=names, ml_verify=lambda: [check() for check in checks])
             return result
         selection_refreshed = False
-        def verify_selection(ml_ids, header_ids, media_ids=old_media):
+        selection_default = object()
+        def verify_selection(ml_ids, header_ids, media_ids=old_media, compression_id=selection_default, boring_id=selection_default):
             nonlocal selection_refreshed
-            current = selected_sources(ml_ids, header_ids, media_ids)
+            if compression_id is selection_default:
+                compression_id = old_compression
+            if boring_id is selection_default:
+                boring_id = old_boring
+            current = selected_sources(ml_ids, header_ids, media_ids, compression_id, boring_id)
             if (getattr(options, 'refresh_source_view', False) and
                     options.phase == 'reconfigure' and not selection_refreshed):
                 result = view._refresh_leaves(options.workspace / 'src', common,
@@ -1896,6 +2064,22 @@ def gn_source(options):
                 selection_refreshed = True
                 return result
             return view.verify(options.workspace / 'src', common, destination, **current)
+        if os.path.lexists(boring_marker):
+            require(options.phase == 'reconfigure' or getattr(options, 'resume_configure', False) or
+                    getattr(options, 'retry_configure', False),
+                    'BoringSSL transaction recovery requires configure or reconfigure')
+            boring.activate(view, options.workspace / 'src', destination, options.boringssl_selected,
+                            new_boring, options.ml_sdk['inventory'], sp,
+                            lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring),
+                            old_digest=old_boring)
+            old_boring = new_boring
+        if os.path.lexists(compression_marker):
+            require(options.phase == 'reconfigure' or getattr(options, 'resume_configure', False) or
+                    getattr(options, 'retry_configure', False),
+                    'compression transaction recovery requires configure or reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(ids, new_headers, new_media, None))
+            old_compression = new_compression
         new_view = not os.path.lexists(destination)
         if new_view:
             require(getattr(options, 'phase', '') == 'configure', 'common source view is missing')
@@ -1928,10 +2112,28 @@ def gn_source(options):
                            options.ml_sdk['inventory'], sp,
                            lambda: verify_selection(ids, new_headers, old_media),
                            old_identities=old_media)
-            return verify_selection(ids, new_headers, new_media)
+            transition_result = verify_selection(ids, new_headers, new_media)
+            transition = True
+        compression_transition = old_compression != new_compression or os.path.lexists(compression_marker)
+        if compression_transition:
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'compression transition requires reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(ids, new_headers, new_media, old_compression))
+            verify_selection(ids, new_headers, new_media, new_compression)
+        if old_boring != new_boring or os.path.lexists(boring_marker):
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'BoringSSL source transition requires reconfigure')
+            boring.activate(view, options.workspace / 'src', destination, options.boringssl_selected,
+                            new_boring, options.ml_sdk['inventory'], sp,
+                            lambda: verify_selection(ids, new_headers, new_media, new_compression, old_boring),
+                            old_digest=old_boring)
+            return verify_selection(ids, new_headers, new_media, new_compression, new_boring)
+        if compression_transition:
+            return verify_selection(ids, new_headers, new_media, new_compression, new_boring)
         if transition:
             return transition_result
-        sources = selected_sources(ids, new_headers, new_media)
+        sources = selected_sources(ids, new_headers, new_media, new_compression, new_boring)
     if getattr(options, 'refresh_source_view', False):
         require(options.phase == 'reconfigure', 'source refresh requires reconfigure')
         if ids:
@@ -1968,6 +2170,8 @@ def require_common_dependencies(options):
     require(all(getattr(options, name, None) for name in
                 ('protobuf_source', 'protobuf_ports_source', 'protobuf_archive', 'protobuf_patch')),
             'Electron requires the verified common Protobuf source and owner inputs')
+    require(getattr(options, 'boringssl_source', None) and getattr(options, 'boringssl_archive', None),
+            'Electron requires the verified common BoringSSL source and archive')
 
 
 def require_common_perfetto(options):
@@ -2211,6 +2415,9 @@ def verified_host_deployment_change(old_args, new_args, old_env, new_env, option
 def reconfigure(options):
     keep_going_limit(options)
     build_after_reconfigure = getattr(options, 'build_after_reconfigure', False)
+    require(not (getattr(options, 'activate_common_providers', False) and
+                 getattr(options, 'ml_ruy_source', None)),
+            'common provider activation is a separate stage from ML selection')
     if build_after_reconfigure:
         require(options.jobs > 0, 'Ninja job count must be positive')
         require(not getattr(options, 'activate_common_providers', False) or
@@ -2270,6 +2477,14 @@ def reconfigure(options):
             options.ml_identities, options.ml_sources, options.ml_sdk = candidate.ml_identities, candidate.ml_sources, sdk
             options.ml_headers = candidate.ml_headers
             options.media_header_selections = candidate.media_header_selections
+            if not getattr(options, 'activate_common_providers', False):
+                options.boringssl_identity = candidate.boringssl_identity
+                options.boringssl_selected = candidate.boringssl_selected
+                options.old_boringssl_identity = old_env.get('EMBERBSD_BORINGSSL_SOURCE_SHA256')
+                permitted_env.add('EMBERBSD_BORINGSSL_SOURCE_SHA256')
+                options.compression_identity = candidate.compression_identity
+                options.old_compression_identity = old_env.get('EMBERBSD_COMPRESSION_SOURCE_SHA256')
+                permitted_env.update(('EMBERBSD_COMPRESSION_SOURCE_SHA256', 'EMBERBSD_COMPRESSION_RECIPE_CATALOG'))
             ml_keys = {'EMBERBSD_ML_' + name.upper().replace('-', '_') + '_SHA256': name for name in ML_PROVIDERS}
             old_ml = {name: old_env[key] for key, name in ml_keys.items() if key in old_env}
             require(not old_ml or len(old_ml) == len(ML_PROVIDERS), 'partial saved ML selection')
@@ -2473,6 +2688,8 @@ def build(options):
         if name not in ('HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'):
             require(saved_env.get(name) == environment.get(name), 'producer input changed: ' + name)
     require(saved['arguments'] == values, 'GN selection changed; configure a new output')
+    options.old_boringssl_identity = saved_env['EMBERBSD_BORINGSSL_SOURCE_SHA256']
+    options.old_compression_identity = saved_env['EMBERBSD_COMPRESSION_SOURCE_SHA256']
     options.old_media_header_identities = {name: saved_env['EMBERBSD_MEDIA_HEADER_' + name.upper() + '_SHA256']
                                            for name in ('libyuv', 'libsrtp')}
     write_protoc_selection(options.work, sdk, options.protoc_selection)
@@ -2524,7 +2741,7 @@ def main():
                      'node-source', 'node-pkgsrc', 'node-ports-source', 'gyp-source', 'gyp-pkgsrc', 'perfetto-source', 'perfetto-ports-source',
                      'perfetto-archive', 'perfetto-patch', 'v8-source', 'v8-ports-source', 'v8-pkgsrc',
                      'v8-metagen-libclang-so', 'v8-metagen-bindings-dir', 'v8-metagen-runtime-view',
-                     'host-tool-runtime-view', 'ml-patch', 'ml-pkgsrc-export', 'ml-ports-source', 'ml-export-patch', *( 'ml-' + name + '-' + role for name in ML_PROVIDERS for role in ('source', 'archive'))):
+                     'host-tool-runtime-view', 'boringssl-source', 'boringssl-archive', 'ml-patch', 'ml-pkgsrc-export', 'ml-ports-source', 'ml-export-patch', *( 'ml-' + name + '-' + role for name in ML_PROVIDERS for role in ('source', 'archive'))):
             command.add_argument('--' + name, type=Path)
         command.add_argument('--v8-metagen-runtime-extra', type=Path, action='append', default=[])
         command.add_argument('--perfetto-scoped-runtime', action='store_true')
@@ -2576,6 +2793,7 @@ def main():
                             options.v8_metagen_libclang_so, options.v8_metagen_bindings_dir, options.v8_metagen_runtime_view,
                             options.target_runtime_stage, options.target_runtime_base, options.host_runtime_root, options.protoc_runtime_view,
                             options.host_prefix, options.sysroot, options.host_buildlink_pkgsrc,
+                            options.boringssl_source, options.boringssl_archive,
                             options.host_buildlink_stage_root, options.ml_patch, options.ml_pkgsrc_export, options.ml_ports_source, options.ml_export_patch,
                             *(getattr(options, 'ml_' + name.replace('-', '_') + '_' + role)
                               for name in ML_PROVIDERS for role in ('source', 'archive')))

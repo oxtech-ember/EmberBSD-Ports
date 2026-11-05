@@ -1,0 +1,13 @@
+--- a/third_party/boringssl/BUILD.gn
++++ b/third_party/boringssl/BUILD.gn
+@@ -55,10 +55,7 @@
+   ]
+ 
+   all_sources += [
+-    "decrepit/blowfish/blowfish.cc",
+-    "decrepit/cfb/cfb.cc",
+     "decrepit/ripemd/internal.h",
+-    "decrepit/ripemd/ripemd.cc",
+   ]
+ }
+ 

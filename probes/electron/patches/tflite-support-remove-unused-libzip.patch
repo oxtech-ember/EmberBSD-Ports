@@ -1,0 +1,12 @@
+# TFLite Support metadata uses minizip; do not compile unused bundled libzip.
+# Origin: EmberBSD contributors (AI-assisted).
+--- a/third_party/tflite_support/BUILD.gn
++++ b/third_party/tflite_support/BUILD.gn
+@@ -149,7 +149,6 @@
+     "//base",
+     "//third_party/flatbuffers",
+     "//third_party/libyuv",
+-    "//third_party/libzip",
+     "//third_party/tensorflow-text",
+     "//third_party/tflite",
+     "//third_party/zlib:minizip",
