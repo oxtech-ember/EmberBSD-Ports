@@ -1,8 +1,8 @@
 # Origin: EmberBSD (AI-assisted).
 # Resolve a selected native shell beside the CMake executable.
 
---- a/Source/cmLocalUnixMakefileGenerator3.cxx
-+++ b/Source/cmLocalUnixMakefileGenerator3.cxx
+--- Source/cmLocalUnixMakefileGenerator3.cxx
++++ Source/cmLocalUnixMakefileGenerator3.cxx
 @@ -679,9 +679,21 @@
                        "\n";
    } else {
