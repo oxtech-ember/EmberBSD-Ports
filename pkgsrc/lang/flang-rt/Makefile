@@ -41,7 +41,7 @@ PKG_FAIL_REASON+=	"EMBERBSD_FLANG is Flang ${_EMBER_FLANG_VERSION}, not LLVM ${L
 
 CMAKE_CONFIGURE_ARGS+=	-DCMAKE_BUILD_TYPE=Release
 CMAKE_CONFIGURE_ARGS+=	-DLLVM_ENABLE_RUNTIMES=flang-rt
-CMAKE_CONFIGURE_ARGS+=	-DCMAKE_Fortran_COMPILER=${_FLANG_RT_DRIVER}
+CMAKE_CONFIGURE_ARGS+=	-DCMAKE_Fortran_COMPILER=${_EMBER_FLANG_DRIVER}
 # CMake's Fortran compiler check links a program, which needs the runtime
 # this package builds; skip only that check, as the Flang-RT README says.
 # C and C++ checks still link, so CMake finds the libraries the shared

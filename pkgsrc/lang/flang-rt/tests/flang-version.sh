@@ -14,7 +14,8 @@ make=${BMAKE:?set BMAKE to the selected bmake}
 fail() { echo "FAIL: $*" >&2; exit 1; }
 query() { "$make" -C "$pkgsrc/lang/flang-rt" WRKOBJDIR="$work/obj" "$@" \
     -V '${PKG_FAIL_REASON}' -V '${LLVM_MAJOR_VERSION}' -V '${EMBERBSD_FLANG}' \
-    -V '${TOOL_DEPENDS}' -V '${_EMBER_FLANG_DRIVER}' -V '${_EMBER_FLANG_VERSION}'; }
+    -V '${TOOL_DEPENDS}' -V '${_EMBER_FLANG_DRIVER}' -V '${_EMBER_FLANG_VERSION}' \
+    -V '${CMAKE_CONFIGURE_ARGS}'; }
 query EMBERBSD_FLANG= > "$work/uninstalled" || fail "cannot query lang/flang-rt before Flang install"
 case $(sed -n 1p "$work/uninstalled") in
 *EMBERBSD_FLANG*) fail "graph query requires installed Flang: $(sed -n 1p "$work/uninstalled")";;
@@ -29,6 +30,10 @@ flang=$(sed -n 3p "$work/same")
 case $flang in /*) ;; *) fail "the profile selects no Flang driver";; esac
 driver=$(sed -n 5p "$work/same")
 [ "$driver" = "$flang" ] || fail "runtime recipe uses $driver instead of selected Flang $flang"
+case " $(sed -n 7p "$work/same") " in
+*" -DCMAKE_Fortran_COMPILER=$flang "*) ;;
+*) fail "runtime CMake configure does not select $flang: $(sed -n 7p "$work/same")";;
+esac
 case $(sed -n 1p "$work/same") in
 *EMBERBSD_FLANG*) fail "the matching Flang is refused: $(sed -n 1p "$work/same")";;
 esac
