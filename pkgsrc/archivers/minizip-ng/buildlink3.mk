@@ -5,8 +5,8 @@ BUILDLINK_TREE+=	minizip-ng
 .if !defined(MINIZIP_NG_BUILDLINK3_MK)
 MINIZIP_NG_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.minizip-ng+=	minizip-ng>=4.2.2nb1
-BUILDLINK_ABI_DEPENDS.minizip-ng+=	minizip-ng>=4.2.2nb1
+BUILDLINK_API_DEPENDS.minizip-ng+=	minizip-ng>=4.2.2nb2
+BUILDLINK_ABI_DEPENDS.minizip-ng+=	minizip-ng>=4.2.2nb2
 BUILDLINK_PKGSRCDIR.minizip-ng?=	../../archivers/minizip-ng
 
 .include "../../devel/zlib/buildlink3.mk"

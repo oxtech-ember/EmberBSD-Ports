@@ -5,3 +5,4 @@ SHA512 (minizip-ng-4.2.2.tar.gz) = 247e8e6a022dccfb19e1e2239e024adebbef4cba88c43
 Size (minizip-ng-4.2.2.tar.gz) = 611941 bytes
 SHA1 (patch-CMakeLists.txt) = 7a7d61e47176fbc53d24f292b464d5677a6ff99a
 SHA1 (patch-compat_ioapi.c) = 5eb26caacbe1a3fb10915bb146d707feee456410
+SHA1 (patch-classic-filename-compare) = 0988d9d217c11afb7e1a82ece09e0ac6d4664bd0

@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.13 2026/06/30 20:10:22 adam Exp $
 
 DISTNAME=	minizip-ng-4.2.2
-PKGREVISION=	1
+PKGREVISION=	2
 # Classic minizip installs the same source-facing names.
 CONFLICTS+=	minizip-[0-9]*
 CATEGORIES=	archivers

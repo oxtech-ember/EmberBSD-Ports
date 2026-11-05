@@ -1,0 +1,24 @@
+# Keep legacy case flags and pass valid unsigned byte values to ctype.
+# Origin: EmberBSD (AI-assisted).
+--- mz_os.c.orig
++++ mz_os.c
+@@ -106,7 +106,7 @@
+                 break;
+ 
+             if (ignore_case) {
+-                if (tolower(*path) != tolower(*wildcard))
++                if (tolower((unsigned char)*path) != tolower((unsigned char)*wildcard))
+                     return MZ_EXIST_ERROR;
+             } else {
+                 if (*path != *wildcard)
+--- compat/unzip.c.orig
++++ compat/unzip.c
+@@ -502,7 +502,7 @@
+         if (err != MZ_OK)
+             break;
+ 
+-        result = mz_path_compare_wc(filename, file_info->filename, !ignore_case);
++        result = mz_path_compare_wc(filename, file_info->filename, ignore_case);
+ 
+         if (result == 0)
+             return MZ_OK;
