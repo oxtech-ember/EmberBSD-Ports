@@ -8,7 +8,7 @@ GITHUB_TAG=	v${PKGVERSION_NOREV}
 WRKSRC=		${WRKDIR}/glad-${PKGVERSION_NOREV}
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://github.com/Dav1dde/glad
-COMMENT=	OpenGL, EGL, GLX and WGL loader library and generator
+COMMENT=	OpenGL, EGL, GLX and WGL loader library
 LICENSE=	mit AND apache-2.0 AND cc0-1.0-universal
 USE_LANGUAGES=	c
 
