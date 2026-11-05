@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import sys
 
@@ -106,6 +107,67 @@ def migrate_legacy_selection(saved, current, invocation, script, revision):
     return dict(identity=current, invocation=invocation)
 
 
+def _normal_work_file(path, work):
+    """Normalize only generated fields whose meaning is rooted in this workdir."""
+    path, work = Path(path), Path(work)
+    rel = path.relative_to(work).as_posix()
+    data = path.read_bytes()
+    prefix = str(work).encode()
+    if rel == 'make.conf':
+        for key, suffix in ((b'WRKOBJDIR', b'/objects'), (b'PACKAGES', b'/packages')):
+            data = data.replace(key + b'= ' + prefix + suffix + b'\n',
+                                key + b'= @WORK@' + suffix + b'\n')
+    elif rel.endswith('/.wrapper_makevars.mk'):
+        key = b'_BLNK_PHYSICAL_PATH.WRKDIR=\t'
+        data = data.replace(key + prefix + b'/objects/devel/electron-host-context/work\n',
+                            key + b'@WORK@/objects/devel/electron-host-context/work\n')
+    elif re.fullmatch(r'objects/devel/electron-host-context/work/\.buildlink/\.buildlink_[^/]+_done', rel):
+        start = prefix + b'/objects/devel/electron-host-context/work/.buildlink/'
+        data = b''.join((b'@WORK@/' + line[len(start):] if line.startswith(start) and b' -> ' in line else line)
+                        for line in data.splitlines(keepends=True))
+    elif re.fullmatch(r'objects/devel/electron-host-context/work/\.buildlink/lib/[^/]+\.la', rel):
+        old = b"libdir='" + prefix + b"/objects/devel/electron-host-context/work/.buildlink/lib'\n"
+        data = data.replace(old, b"libdir='@WORK@/lib'\n")
+    return hashlib.sha256(data).hexdigest()
+
+
+def refresh_selection(saved, current, candidate, invocation, candidate_invocation, work, candidate_work, source, script):
+    """Accept an owner-generated candidate only when all selected artifacts agree."""
+    old = saved.get('identity', {})
+    if saved.get('invocation') != invocation:
+        raise ValueError('host buildlink invocation changed')
+    expected = dict(invocation); expected['work'] = str(candidate_work)
+    if candidate_invocation != expected:
+        raise ValueError('host buildlink candidate invocation changed')
+    if old.get('links') != current.get('links') or current.get('links') != candidate.get('links'):
+        raise ValueError('host buildlink link mapping changed')
+    old_inputs, now = old.get('inputs', {}), current.get('inputs', {})
+    # Makefile inputs may legitimately change; all other prior inputs remain exact.
+    allowed = str(Path(source) / 'mk') + '/'
+    if set(old_inputs) != set(now):
+        raise ValueError('host buildlink original input set changed')
+    targets = {str((Path(work) / 'objects/devel/electron-host-context/work/.buildlink' / name).resolve(strict=True))
+               for name in current['links']}
+    for path, digest in old_inputs.items():
+        if now[path] != digest and (path in targets or not (path.startswith(allowed) or path == str(script))):
+            raise ValueError('host buildlink prior selected input changed: ' + path)
+    def normalized(identity, base):
+        result = {}
+        base = Path(base)
+        for path, digest in identity['inputs'].items():
+            p = Path(path)
+            if p.is_relative_to(base):
+                key = '@WORK@/' + p.relative_to(base).as_posix()
+                digest = _normal_work_file(p, base)
+            else:
+                key = path
+            result[key] = digest
+        return result
+    if normalized(current, work) != normalized(candidate, candidate_work):
+        raise ValueError('host buildlink regenerated inputs changed')
+    return dict(identity=current, invocation=invocation)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('sdk-source', 'pkgsrc-root', 'host-prefix',
@@ -116,6 +178,7 @@ def main():
     mode.add_argument('--check', action='store_true', help='check an existing view identity')
     mode.add_argument('--migrate-selection', action='store_true',
                       help='upgrade a matching legacy selection after validating actual inputs')
+    mode.add_argument('--refresh-from', type=Path, help='refresh an equivalent owner-generated selection')
     args = parser.parse_args()
     for name, value in vars(args).items():
         if isinstance(value, Path) and not value.is_absolute():
@@ -142,18 +205,21 @@ def main():
         raise SDKError('Electron host consumer inputs are missing')
     work = args.work
     invocation = {name: str(value) for name, value in vars(args).items()
-                  if isinstance(value, Path)}
+                  if isinstance(value, Path) and name != 'refresh_from'}
     paths.reject_overlap(str(work), str(source))
     paths.reject_overlap(str(work), str(args.host_prefix))
     if args.stage_root:
         paths.reject_overlap(str(work), str(args.stage_root))
-    with process.ContextLocks([str(work)], str(args.lock_root), shared=args.check):
+    work_locks = [str(work)] + ([str(args.refresh_from)] if args.refresh_from else [])
+    if args.refresh_from and args.refresh_from == work:
+        raise SDKError('refresh candidate must be a separate work directory')
+    with process.ContextLocks(work_locks, str(args.lock_root), shared=args.check):
         lock_inputs = [str(source), str(args.host_prefix), str(args.binding_record), str(args.sdk_source)]
         if args.stage_root:
             lock_inputs.append(str(args.stage_root))
         with process.ContextLocks(lock_inputs,
                                   str(args.lock_root), shared=True):
-            if args.check or args.migrate_selection:
+            if args.check or args.migrate_selection or args.refresh_from:
                 consumer = work / 'pkgsrc/devel/electron-host-context'
                 view = work / 'objects/devel/electron-host-context/work/.buildlink'
                 env = process.sanitized_environment()
@@ -175,7 +241,25 @@ def main():
                 except (FileNotFoundError, process.CommandError):
                     print('host buildlink selection changed', file=sys.stderr)
                     sys.exit(3)
-                if args.migrate_selection:
+                if args.refresh_from:
+                    candidate_work = args.refresh_from
+                    candidate_consumer = candidate_work / 'pkgsrc/devel/electron-host-context'
+                    candidate_view = candidate_work / 'objects/devel/electron-host-context/work/.buildlink'
+                    candidate_env = dict(env, MAKECONF=str(candidate_work / 'make.conf'))
+                    candidate_command = list(command)
+                    candidate_command[candidate_command.index(str(consumer))] = str(candidate_consumer)
+                    candidate_saved = jsonio.read_json(candidate_work / 'selection.json')
+                    candidate = identity(process, candidate_command, candidate_env, candidate_consumer,
+                                         candidate_view, args.host_prefix,
+                                         (Path(__file__), args.binding_record, deps,
+                                          Path(darwin_makeconf.__file__)))
+                    if candidate_saved.get('identity') != candidate:
+                        raise ValueError('host buildlink candidate is stale')
+                    refreshed = refresh_selection(saved, current, candidate, invocation,
+                                                  candidate_saved.get('invocation'), work, candidate_work,
+                                                  source, Path(__file__).resolve(strict=True))
+                    jsonio.write_json(work / 'selection.json', refreshed, exclusive=False)
+                elif args.migrate_selection:
                     migrated = migrate_legacy_selection(
                         saved, current, invocation, Path(__file__).resolve(strict=True),
                         (source / 'EMBERBSD-PKGSRC-REVISION').resolve(strict=True))
