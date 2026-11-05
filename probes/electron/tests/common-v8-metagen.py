@@ -4,6 +4,8 @@
 """Verify selected metagen providers and compiler roles."""
 import importlib.util
 import json
+import os
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 import tempfile
@@ -43,7 +45,7 @@ with tempfile.TemporaryDirectory() as tmp:
         (directory / 'commands.json').write_text(json.dumps({'test_flag': flag}))
         (directory / 'cxx').touch()
     opts = SimpleNamespace(v8_metagen_libclang_so=lib, v8_metagen_bindings_dir=bindings,
-                           v8_metagen_runtime_view=view, v8_source=root,
+                           v8_metagen_runtime_view=view, v8_source=root, work=root,
                            host_runtime_root=prefix, compiler_family='clang', sdk_source=sdkroot)
     class Process:
         @staticmethod
@@ -62,6 +64,54 @@ with tempfile.TemporaryDirectory() as tmp:
     assert result['v8_metagen_host_extra_flags'] == ['--host-flag']
     assert result['v8_metagen_gn_executable'] == '/selected/gn'
     assert str(script) in result['v8_metagen_runtime_inputs']
+    # The override namespace changes independently of its tracked payload set.
+    class JsonIO:
+        @staticmethod
+        def write_json(path, value, exclusive=False):
+            Path(path).write_text(json.dumps(value, sort_keys=True))
+    package = prefix / 'pkgdb/runtime'
+    package.mkdir()
+    (package / '+BUILD_INFO').write_text('PKGPATH=converters/libiconv\n')
+    (package / '+CONTENTS').write_text(str(runtime_library.relative_to(prefix)) + '\n')
+    opts.v8_metagen_runtime_extra = [runtime_library]
+    build.write_v8_metagen_selection(root, {'jsonio': JsonIO()}, opts.v8_metagen_selection)
+    descriptor = root / 'v8-metagen-selection.json'
+    first_mtime = descriptor.stat().st_mtime_ns
+    build.write_v8_metagen_selection(root, {'jsonio': JsonIO()}, opts.v8_metagen_selection)
+    assert descriptor.stat().st_mtime_ns == first_mtime
+    (view / 'library').unlink()
+    (view / 'other-alias').symlink_to(runtime_library)
+    changed_alias = build.common_v8_metagen(*args)
+    assert changed_alias['v8_metagen_runtime_inputs'] == result['v8_metagen_runtime_inputs']
+    build.write_v8_metagen_selection(root, {'jsonio': JsonIO()}, opts.v8_metagen_selection)
+    assert json.loads(descriptor.read_text()) == {
+        'version': 1, 'aliases': {'other-alias': 'lib/runtime.dylib'},
+        'extra': ['lib/runtime.dylib']}
+    ninja = os.environ.get('EMBERBSD_TEST_NINJA')
+    if ninja:
+        graph = root / 'build.ninja'
+        graph.write_text('rule generate\n  command = cp v8-metagen-selection.json generated\n'
+                         'build generated: generate v8-metagen-selection.json\n')
+        subprocess.run([ninja, '-f', str(graph)], cwd=root, check=True, capture_output=True)
+        before = (root / 'generated').read_text()
+        (view / 'other-alias').unlink()
+        (view / 'third-alias').symlink_to(runtime_library)
+        build.common_v8_metagen(*args)
+        build.write_v8_metagen_selection(root, {'jsonio': JsonIO()}, opts.v8_metagen_selection)
+        subprocess.run([ninja, '-f', str(graph)], cwd=root, check=True, capture_output=True)
+        assert (root / 'generated').read_text() != before
+        (view / 'third-alias').unlink()
+    else:
+        (view / 'other-alias').unlink()
+    (view / 'library').symlink_to(runtime_library)
+    (package / '+CONTENTS').write_text('')
+    try:
+        build.common_v8_metagen(*args)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('unowned extra runtime input was accepted')
+    opts.v8_metagen_runtime_extra = []
     # Installed platform ABI uses the same owned providers without a stage.
     opts.host_prefix = prefix
     opts.host_runtime_root = None

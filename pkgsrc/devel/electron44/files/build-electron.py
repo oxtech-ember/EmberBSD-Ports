@@ -1294,6 +1294,25 @@ def common_v8_metagen(options, sdk, native, environment, tools):
     require(all(item.is_relative_to(prefix) for item in resolved),
             'V8 metagen runtime view points outside selected host stage')
     actual = [str(item) for item in resolved]
+    extras = getattr(options, 'v8_metagen_runtime_extra', None) or []
+    extra_paths = []
+    for selected_file in extras:
+        selected_file = absolute(selected_file, 'V8 metagen extra runtime input', directory=False)
+        real = selected_file.resolve(strict=True)
+        require(real.is_file() and real.is_relative_to(prefix), 'V8 metagen extra input outside selected host stage')
+        relative = str(selected_file.relative_to(prefix))
+        owners = [entry for entry in (prefix / 'pkgdb').iterdir()
+                  if (entry / '+BUILD_INFO').is_file() and (entry / '+CONTENTS').is_file()
+                  and relative in (entry / '+CONTENTS').read_text().splitlines()]
+        require(len(owners) == 1, 'V8 metagen extra input has no unique package owner: ' + relative)
+        actual.append(str(real))
+        extra_paths.append(str(real.relative_to(prefix)))
+    options.v8_metagen_selection = {'version': 1,
+        'aliases': {entry.name: str(target.relative_to(prefix))
+                    for entry, target in zip(entries, resolved)},
+        'extra': sorted(set(extra_paths))}
+    descriptor = str(options.work / 'v8-metagen-selection.json')
+    actual.append(descriptor)
     record = json.loads((Path(tools['cxx']).parent / 'commands.json').read_text())
     host_cxx = shlex.split(environment['BUILD_CXX'])
     require(len(host_cxx) == 1, 'invalid host C++ binding')
@@ -1448,6 +1467,18 @@ def write_devtools_identity(work, sdk, environment):
             return
     sdk['jsonio'].write_json(str(path), value, exclusive=False)
 
+
+
+def write_v8_metagen_selection(work, sdk, record):
+    if record is None:
+        return
+    path = Path(work) / 'v8-metagen-selection.json'
+    require(not path.is_symlink(), 'V8 metagen selection must be a regular file')
+    if path.exists():
+        require(path.is_file(), 'V8 metagen selection must be a regular file')
+        if json.loads(path.read_text()) == record:
+            return
+    sdk['jsonio'].write_json(str(path), record, exclusive=False)
 
 
 def protoc_selection(options, sdk, environment, values):
@@ -1933,6 +1964,7 @@ def configure(options):
         source_root = gn_source(options)
     write_devtools_identity(work, sdk, environment)
     write_protoc_selection(work, sdk, options.protoc_selection)
+    write_v8_metagen_selection(work, sdk, getattr(options, 'v8_metagen_selection', None))
     if retry and old_args != current_args:
         with tempfile.NamedTemporaryFile(mode='w', dir=output, prefix='.args-', delete=False) as handle:
             temporary = Path(handle.name)
@@ -2194,6 +2226,11 @@ def reconfigure(options):
         permitted_runtime_args = additive_protoc_runtime_view(old_without_descriptor, without_descriptor, options)
         permitted_runtime_args.update(additive_protoc_selection(saved['arguments'], values, work,
             runtime_change='emberbsd_protoc_runtime_inputs' in permitted_runtime_args))
+        v8_descriptor = str(work / 'v8-metagen-selection.json')
+        old_v8 = saved['arguments'].get('v8_metagen_runtime_inputs', [])
+        new_v8 = values.get('v8_metagen_runtime_inputs', [])
+        if v8_descriptor in new_v8 and set(old_v8) - {v8_descriptor} == set(new_v8) - {v8_descriptor}:
+            permitted_runtime_args.add('v8_metagen_runtime_inputs')
         identity_args = {'node_module_version', 'emberbsd_node_source_identity',
                          'emberbsd_node_configure_helper', 'emberbsd_node_configure_inputs',
                          'emberbsd_node_configure_dependencies', 'target_os', 'target_cpu', 'target_sysroot', 'emberbsd_target_sysroot',
@@ -2277,6 +2314,7 @@ def reconfigure(options):
             source_root = gn_source(options)
             write_devtools_identity(work, sdk, environment)
             write_protoc_selection(work, sdk, options.protoc_selection)
+            write_v8_metagen_selection(work, sdk, getattr(options, 'v8_metagen_selection', None))
             (output / 'args.gn').write_text(gn_arguments(values))
             sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
                 '--script-executable=' + native.tool('python'), '--ninja-executable=' + native.tool('ninja'),
@@ -2319,6 +2357,7 @@ def build(options):
             require(saved_env.get(name) == environment.get(name), 'producer input changed: ' + name)
     require(saved['arguments'] == values, 'GN selection changed; configure a new output')
     write_protoc_selection(options.work, sdk, options.protoc_selection)
+    write_v8_metagen_selection(options.work, sdk, getattr(options, 'v8_metagen_selection', None))
     fingerprint = options.work / 'devtools-provider.json'
     require(not fingerprint.is_symlink() and fingerprint.is_file() and
             json.loads(fingerprint.read_text()) ==
@@ -2368,6 +2407,7 @@ def main():
                      'v8-metagen-libclang-so', 'v8-metagen-bindings-dir', 'v8-metagen-runtime-view',
                      'host-tool-runtime-view', 'ml-patch', 'ml-pkgsrc-export', 'ml-ports-source', 'ml-export-patch', *( 'ml-' + name + '-' + role for name in ML_PROVIDERS for role in ('source', 'archive'))):
             command.add_argument('--' + name, type=Path)
+        command.add_argument('--v8-metagen-runtime-extra', type=Path, action='append', default=[])
         command.add_argument('--perfetto-scoped-runtime', action='store_true')
         command.add_argument('--node-scoped-runtime', action='store_true')
         command.add_argument('--shared-undici', action='store_true')

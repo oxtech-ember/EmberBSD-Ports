@@ -861,6 +861,13 @@ prepared common V8 tree. For its native libclang metagen, select
 host stage, and its runtime view must resolve within that stage. The SDK
 launcher scopes the runtime to the generator; the selected host, snapshot,
 and target compiler arguments are passed according to the GN toolchain.
+Repeat `--v8-metagen-runtime-extra` for package-owned host runtime files that
+must be tracked without adding their basenames to the override view; the
+producer make variable is `EMBERBSD_ELECTRON_V8_METAGEN_RUNTIME_EXTRA`.
+For example, a GNU libiconv loaded by an absolute package path remains an
+input while its alias is omitted from the view to avoid shadowing the Darwin
+system libiconv used by another library. The alias mapping and extra inputs
+are recorded in a write-on-change GN input.
 
 `--node-source` and `--node-pkgsrc` select a prepared common Node tree and its
 export; `--gyp-source` and `--gyp-pkgsrc` select the verified common GYP

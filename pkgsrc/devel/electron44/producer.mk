@@ -67,6 +67,10 @@ _EMBER_ELECTRON_ARGS+= --${_ember_key:tl:S/_/-/g} ${EMBERBSD_ELECTRON_${_ember_k
 .endif
 .endfor
 
+.for _ember_file in ${EMBERBSD_ELECTRON_V8_METAGEN_RUNTIME_EXTRA:U}
+_EMBER_ELECTRON_ARGS+= --v8-metagen-runtime-extra ${_ember_file:Q}
+.endfor
+
 # These packages are common dependencies, not optional bundled alternatives.
 .for _ember_key in SHARED_UNDICI SHARED_ABSEIL SHARED_ICU SHARED_RE2
 .if ${EMBERBSD_ELECTRON_${_ember_key}:Uyes} != "yes"
