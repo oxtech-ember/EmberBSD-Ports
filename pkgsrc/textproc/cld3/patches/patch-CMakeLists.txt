@@ -1,0 +1,70 @@
+# Use selected host protoc and shared target protobuf; package public API.
+# Origin: EmberBSD.
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -5,7 +5,8 @@
+ # Old versions of cmake dont search/find protobuf lite
+ cmake_minimum_required(VERSION 3.9)
+ 
+-find_package(Protobuf REQUIRED)
++include(GNUInstallDirs)
++find_package(Protobuf CONFIG REQUIRED)
+ message(STATUS "Protobuf_FOUND= ${Protobuf_FOUND}")
+ message(STATUS "Protobuf_VERSION= ${Protobuf_VERSION}")
+ message(WARNING "Protobuf 2.5 and CLD3 seems happy together. This script does NOT check if your verison of protobuf is compatible.")
+@@ -16,13 +17,12 @@
+ # But CLD3 sources have been coded using hard coded pathes to cld_3/protos/*.pb.h. 
+ # So *.pb.h must be output to cld_3/protos.
+ # For that, let's use a custom my_protobuf_generate_cpp:
++set(PROTOBUF_GENERATE_CPP_APPEND_PATH TRUE)
+ include(${CMAKE_CURRENT_SOURCE_DIR}/misc/myprotobuf.cmake)
+ my_protobuf_generate_cpp(cld_3/protos PROTO_SRCS PROTO_HDRS src/feature_extractor.proto src/sentence.proto src/task_spec.proto)
+ message(STATUS "PROTO_HDRS= ${PROTO_HDRS}")
+ 
+ add_definitions(-fPIC) # Position Independant Code
+-add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
+-add_definitions(-std=c++11) # Needed for std::to_string(), ...
+ 
+ include_directories(${CMAKE_CURRENT_BINARY_DIR} ${Protobuf_INCLUDE_DIRS}) # needed to include generated pb headers
+ 
+@@ -50,7 +50,6 @@
+ 	src/script_span/generated_entities.cc
+ 	src/script_span/getonescriptspan.cc
+ 	src/script_span/getonescriptspan.h
+-	src/script_span/getonescriptspan_test.cc
+ 	src/script_span/utf8statetable.cc
+ 	src/script_span/offsetmap.cc
+ 	src/script_span/text_processing.cc
+@@ -58,6 +57,15 @@
+ 	src/script_span/fixunicodevalue.cc
+ 	)
+ 
++target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
++target_include_directories(${PROJECT_NAME} PUBLIC
++  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
++  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
++  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/cld3>)
++target_link_libraries(${PROJECT_NAME} PUBLIC protobuf::libprotobuf-lite)
++
++option(CLD3_BUILD_TESTS "Build CLD3 test programs" OFF)
++if(CLD3_BUILD_TESTS)
+ # unit tests exec:
+ add_executable(language_identifier_main src/language_identifier_main.cc)
+ target_link_libraries(language_identifier_main cld3 ${Protobuf_LITE_LIBRARIES})
+@@ -67,3 +75,16 @@
+ 
+ add_executable(language_identifier_features_test src/language_identifier_features_test.cc)
+ target_link_libraries(language_identifier_features_test cld3 ${Protobuf_LITE_LIBRARIES})
++
++endif()
++
++include(CMakePackageConfigHelpers)
++install(TARGETS cld3 EXPORT cld3Targets ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
++        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
++install(DIRECTORY src/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cld3
++        FILES_MATCHING PATTERN "*.h" PATTERN "*_test.h" EXCLUDE)
++install(FILES ${PROTO_HDRS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/cld3/cld_3/protos)
++install(EXPORT cld3Targets NAMESPACE cld3:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cld3)
++file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/cld3Config.cmake"
++  "include(CMakeFindDependencyMacro)\nfind_dependency(Protobuf CONFIG)\ninclude(\"\${CMAKE_CURRENT_LIST_DIR}/cld3Targets.cmake\")\n")
++install(FILES "${CMAKE_CURRENT_BINARY_DIR}/cld3Config.cmake" DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/cld3)

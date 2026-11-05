@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (cld3-3.0.13.tar.gz) = e8cb939fb134ce6878ccdf2326d41d3048bc652b0e73788b0e6304afc469a958
+SHA512 (cld3-3.0.13.tar.gz) = 1b41c52f20db03515e57a9399bb4c508cf50e5f869f2f2aa867c8ce38baa7f2beb4af513dacbf27e40d205d52db7245fb037ceede5ee4d8b44e94928ef8b697e
+Size (cld3-3.0.13.tar.gz) = 715630 bytes
+SHA1 (patch-CMakeLists.txt) = 33a56decef8ae3c9e9a515c96f4a9f07d0be23c0
