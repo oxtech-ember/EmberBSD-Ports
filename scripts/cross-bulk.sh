@@ -887,12 +887,18 @@ retire()
 prepare_wrkdir()
 {
     clean=clean
+    prepare_wrkdir_error=
     if [ -e "$1" ] || [ -L "$1" ]; then
         work_identity=$("$host_python" -B -E -S "$(dirname "$0")/cross-bulk-workdir.py" "$1" "$base" "$version" "$name") || return 1
         case "$work_identity" in
         same)
-            if work_dependencies_current "$@"; then clean=; return 0; fi
-            echo "$3: kept WRKDIR resolved other dependencies; building it again" >&2
+            # 0 unchanged (keep), 1 changed (rebuild), other resolver error (keep, stop).
+            work_dependencies_current "$@"
+            case $? in
+            0) clean=; return 0 ;;
+            1) echo "$3: kept WRKDIR resolved other dependencies; building it again" >&2 ;;
+            *) prepare_wrkdir_error=workdir-dependency-check; return 1 ;;
+            esac
             ;;
         incompatible) ;;
         *) return 1 ;;
@@ -913,7 +919,9 @@ prepare_wrkdir()
 # checks after the install compare the objects with the old names and refuse
 # the newer package as no runtime dependency. List and resolve them again
 # with the same bmake arguments ($1 WRKDIR, $2 job, $3 PKGPATH, then the
-# arguments): the kept WRKDIR is current only when both lists are unchanged.
+# arguments). Return 0 when both lists are unchanged, 1 when they changed
+# (caller rebuilds), and 2 when the resolver fails (caller keeps WRKDIR,
+# reports the cause, and stops the job).
 work_dependencies_current()
 {
     wdc_work=$1 wdc_check=$run/$2.dependencies wdc_path=$3
@@ -925,15 +933,20 @@ work_dependencies_current()
     else
         return 0
     fi
-    rm -f "$wdc_check.depends" "$wdc_check.rdepends"
-    wdc_status=0
-    bmk -C "$PKGSRCDIR/$wdc_path" "$@" "_DEPENDS_FILE=$wdc_check.depends" \
+    rm -f "$wdc_check.depends" "$wdc_check.rdepends" "$wdc_check.log"
+    if ! bmk -C "$PKGSRCDIR/$wdc_path" "$@" "_DEPENDS_FILE=$wdc_check.depends" \
         "_RDEPENDS_FILE=$wdc_check.rdepends" "$wdc_check.${wdc_files##* }" \
-        < /dev/null > /dev/null 2>&1 || wdc_status=1
+        < /dev/null > "$wdc_check.log" 2>&1; then
+        echo "$wdc_path: kept WRKDIR dependency check failed:" >&2
+        cat "$wdc_check.log" >&2
+        rm -f "$wdc_check.depends" "$wdc_check.rdepends" "$wdc_check.log"
+        return 2
+    fi
+    wdc_status=0
     for wdc_file in $wdc_files; do
-        [ "$wdc_status" != 0 ] || cmp -s "$wdc_check.$wdc_file" "$wdc_work/.$wdc_file" || wdc_status=1
+        cmp -s "$wdc_check.$wdc_file" "$wdc_work/.$wdc_file" || wdc_status=1
     done
-    rm -f "$wdc_check.depends" "$wdc_check.rdepends"
+    rm -f "$wdc_check.depends" "$wdc_check.rdepends" "$wdc_check.log"
     return "$wdc_status"
 }
 # Retire successful workdirs only when the caller opts in. If a rename to the
@@ -1158,7 +1171,7 @@ build_native()
     set +f
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $nnode $name" >> "$state/progress"
     if [ "${stage_local:-no}" != yes ]; then
-        prepare_wrkdir "$wrkdir" "$job.$key" "$path" "$@" || { result "$key" "failed $nnode incompatible-workdir"; return 0; }
+        prepare_wrkdir "$wrkdir" "$job.$key" "$path" "$@" || { result "$key" "failed $nnode ${prepare_wrkdir_error:-incompatible-workdir}"; return 0; }
     fi
     : > "$log"
     if { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; } &&
@@ -1571,7 +1584,7 @@ build_one()
     # One short line per append: O_APPEND keeps concurrent lines whole.
     echo "$(date '+%Y-%m-%d %H:%M:%S') start $path $name MAKE_JOBS=$make_jobs" >> "$state/progress"
     if [ "${stage_local:-no}" != yes ]; then
-        prepare_wrkdir "$wrkdir" "$job.$key" "$path" || { result "$key" "failed $path incompatible-workdir"; return 0; }
+        prepare_wrkdir "$wrkdir" "$job.$key" "$path" || { result "$key" "failed $path ${prepare_wrkdir_error:-incompatible-workdir}"; return 0; }
     fi
     # One package-install run does depends, package and the install: each
     # target-mode bmake run parses the package again, and the pkg_add wrapper

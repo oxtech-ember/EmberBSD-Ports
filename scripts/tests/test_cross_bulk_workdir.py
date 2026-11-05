@@ -25,7 +25,7 @@ with tempfile.TemporaryDirectory() as temp:
     # dependencies into the files named on the command line.
     bmk = ('bmk() {\n'
            '    printf "%s\\n" "$*" > "$run/bmk-args"\n'
-           '    [ "$FIXTURE_RESOLVE" = ok ] || return 1\n'
+           '    [ "$FIXTURE_RESOLVE" = ok ] || { echo "fixture: dependency resolve failed" >&2; return 1; }\n'
            '    for a; do case $a in _DEPENDS_FILE=*) d=${a#*=};; _RDEPENDS_FILE=*) r=${a#*=};; esac; done\n'
            '    printf "%s\\n" "$FIXTURE_DEPENDS" > "$d"\n'
            '    eval "last=\\${$#}"\n'
@@ -97,8 +97,16 @@ with tempfile.TemporaryDirectory() as temp:
     retired_by(FIXTURE_RDEPENDS='full\texpat>=2.10.0\texpat-2.10.0nb1')
     # The recipe lists another dependency now.
     retired_by(FIXTURE_DEPENDS='full\texpat>=2.10.0nb1\t../../textproc/expat')
-    # The dependencies cannot be resolved (one is not installed).
-    retired_by(FIXTURE_RESOLVE='no')
+    # Resolver error: keep WRKDIR, surface the cause, and stop (do not rebuild).
+    resolved.update(FIXTURE_RESOLVE='no')
+    result = run('fixture-1.0nb2', 'fixture-1.0nb2', '1.0')
+    assert result.returncode != 0 and work.exists(), result.stderr
+    assert (obj.stat().st_ino, obj.stat().st_mtime_ns) == before
+    assert 'kept WRKDIR dependency check failed' in result.stderr
+    assert 'fixture: dependency resolve failed' in result.stderr
+    assert 'kept WRKDIR resolved other dependencies' not in result.stderr
+    assert not (root / 'work.retired').exists()
+    resolved.update(FIXTURE_RESOLVE='ok')
     assert run('fixture-1.0nb2', 'fixture-2.0', '2.0').returncode == 0
     assert not work.exists() and (root / 'work.retired/kept.o').read_bytes() == b'object'
-print('PASS: retry preserves objects, unknown fails closed, new version or dependencies retire')
+print('PASS: retry preserves objects, unknown fails closed, dependency change retires, resolver error keeps and stops')
