@@ -1,0 +1,47 @@
+$NetBSD$
+
+Export a complete installed CMake package and a major-version SONAME.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -126,6 +126,7 @@
+ 
+ set_target_properties( nanodbc PROPERTIES
+   VERSION ${NANODBC_VERSION}
++  SOVERSION ${NANODBC_VERSION_MAJOR}
+   WINDOWS_EXPORT_ALL_SYMBOLS ON
+   CXX_EXTENSIONS OFF
+ )
+@@ -234,7 +235,7 @@
+ 
+   # 'make install' to the correct location
+   install( TARGETS nanodbc
+-      EXPORT nanodbc-config
++      EXPORT nanodbc-targets
+       ARCHIVE
+       LIBRARY
+       RUNTIME
+@@ -243,10 +244,21 @@
+ 
+   # Make project importable from the install directory
+   # Generate and install *-config.cmake exporting targets from install tree.
+-  install( EXPORT nanodbc-config
++  install( EXPORT nanodbc-targets
++    NAMESPACE nanodbc::
+     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/nanodbc"
+   )
+-  export( TARGETS nanodbc NAMESPACE nanodbc:: FILE nanodbc-config.cmake )
++  include(CMakePackageConfigHelpers)
++  configure_package_config_file(nanodbc-config.cmake.in
++    "${CMAKE_CURRENT_BINARY_DIR}/nanodbc-config.cmake"
++    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/nanodbc")
++  write_basic_package_version_file(
++    "${CMAKE_CURRENT_BINARY_DIR}/nanodbc-config-version.cmake"
++    VERSION ${NANODBC_VERSION} COMPATIBILITY SameMajorVersion)
++  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/nanodbc-config.cmake"
++    "${CMAKE_CURRENT_BINARY_DIR}/nanodbc-config-version.cmake"
++    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/nanodbc")
++  export( TARGETS nanodbc NAMESPACE nanodbc:: FILE nanodbc-targets.cmake )
+ endif()
+ 
+ # #######################################

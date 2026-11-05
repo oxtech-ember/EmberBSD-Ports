@@ -4,4 +4,4 @@ BLAKE2s (rectpack2d-0.0.20260810-7dde22ed7a707b952b9f8fb263bf3c94f4cef898.tar.gz
 SHA512 (rectpack2d-0.0.20260810-7dde22ed7a707b952b9f8fb263bf3c94f4cef898.tar.gz) = e5d000598ea4b1e23320d26f7ff3c8fa86422dfb819b72655f1ce9752d3b62d0699b8a8212b1fb4d73826e4a54a92e11a096434f18d6d1549144d439fc78c454
 Size (rectpack2d-0.0.20260810-7dde22ed7a707b952b9f8fb263bf3c94f4cef898.tar.gz) = 4128143 bytes
 SHA1 (patch-CMakeLists.txt) = 433f7e177f2d075624bdc3904ad0edd49347fc92
-SHA1 (patch-src_CMakeLists.txt) = 676663b8e89eaab8299771560d9f7aea48dcc8a1
+SHA1 (patch-src_CMakeLists.txt) = 60bc908f5674fe78ecbbb7f39998864ea4d464e7

@@ -12,6 +12,7 @@ COMMENT=	Header-only Microsoft Compound File reader
 LICENSE=	mit AND apache-2.0
 
 NO_BUILD=	yes
+USE_LANGUAGES=	# none
 INSTALLATION_DIRS+=	include lib/cmake/CompoundFileReader share/licenses/compoundfilereader
 
 do-install:

@@ -3,7 +3,7 @@
 DISTNAME=	tinyspline-0.6.0
 CATEGORIES=	math
 MASTER_SITES=	${MASTER_SITE_GITHUB:=msteinbeck/}
-GITHUB_TAG=	5f0e8fad34e86771cfae3dac4beef5f1858d5610
+GITHUB_TAG=	v${PKGVERSION_NOREV}
 WRKSRC=		${WRKDIR}/tinyspline-0.6.0
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://github.com/msteinbeck/tinyspline/

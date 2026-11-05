@@ -11,6 +11,7 @@ COMMENT=	Header-only C++ gzip and zlib compression library
 LICENSE=	2-clause-bsd
 
 NO_BUILD=	yes
+USE_LANGUAGES=	# none
 DEPENDS+=	zlib>=1.3.2:../../devel/zlib
 INSTALLATION_DIRS+=	include/gzip lib/cmake/gzip-hpp share/licenses/gzip-hpp
 

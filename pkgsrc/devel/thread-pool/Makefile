@@ -11,6 +11,7 @@ COMMENT=	Fast, lightweight C++17 header-only thread pool
 LICENSE=	mit
 
 NO_BUILD=	yes
+USE_LANGUAGES=	# none
 
 INSTALLATION_DIRS+=	include share/licenses/thread-pool lib/cmake/BS_thread_pool
 do-install:

@@ -9,11 +9,12 @@ HOMEPAGE=	https://github.com/taocpp/PEGTL/
 COMMENT=	C++ header-only parser combinator library
 LICENSE=	boost-license
 
-USE_LANGUAGES=	c++17
-USE_CMAKE=	yes
+USE_LANGUAGES=	c++
+USE_CXX_FEATURES=	c++17
 
 CMAKE_CONFIGURE_ARGS+=	-DPEGTL_BUILD_EXAMPLES=OFF
 CMAKE_CONFIGURE_ARGS+=	-DPEGTL_BUILD_TESTS=OFF
 CMAKE_CONFIGURE_ARGS+=	-DPEGTL_INSTALL_CMAKE_DIR=lib/cmake/pegtl
 
+.include "../../devel/cmake/build.mk"
 .include "../../mk/bsd.pkg.mk"

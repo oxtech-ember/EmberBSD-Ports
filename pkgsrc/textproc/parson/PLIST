@@ -1,8 +1,7 @@
 @comment $NetBSD$
 include/parson.h
 lib/cmake/parson/parsonConfig.cmake
-lib/cmake/parson/parsonConfig-release.cmake
+lib/cmake/parson/parsonConfig-noconfig.cmake
 lib/libparson.so
-lib/libparson.so.1
 lib/libparson.so.1.5.4
 share/doc/parson/LICENSE

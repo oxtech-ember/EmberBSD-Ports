@@ -11,6 +11,7 @@ COMMENT=	Fast population count header-only library
 LICENSE=	2-clause-bsd
 
 NO_BUILD=	yes
+USE_LANGUAGES=	# none
 
 INSTALLATION_DIRS+=	include share/licenses/libpopcnt lib/cmake/LibPopcnt
 do-install:

@@ -1,0 +1,5 @@
+KiCad-maintained Sundown Markdown parser and HTML renderer.
+
+Shared provider of the maintained KiCad 10.0.8 fork. The official source
+archive supplies the implementation; Ports owns build and portability fixes.
+Application-specific wxWidgets adapters are not included.

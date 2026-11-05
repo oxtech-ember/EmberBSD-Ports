@@ -1,0 +1,10 @@
+@comment $NetBSD$
+include/libcontext.h
+lib/cmake/libcontext/libcontextConfig.cmake
+lib/cmake/libcontext/libcontextConfigVersion.cmake
+lib/cmake/libcontext/libcontextTargets.cmake
+lib/cmake/libcontext/libcontextTargets-noconfig.cmake
+lib/libcontext.so
+lib/libcontext.so.20261029
+lib/libcontext.so.20261029.0.0
+share/licenses/libcontext/LICENSE.BOOSTv1_0

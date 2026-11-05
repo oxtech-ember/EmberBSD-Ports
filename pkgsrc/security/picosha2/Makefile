@@ -14,7 +14,7 @@ LICENSE=	mit
 
 NO_CONFIGURE=	yes
 NO_BUILD=	yes
-USE_LANGUAGES=	c++
+USE_LANGUAGES=	# none
 
 INSTALLATION_DIRS+=	include share/licenses/picosha2
 do-install:
