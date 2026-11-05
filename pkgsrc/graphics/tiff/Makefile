@@ -4,7 +4,7 @@ VERSION_BASE=	4.7.2
 # Accomodate testing unreleased versions.
 #VERSION_RC=	rc4
 DISTNAME=	tiff-${VERSION_BASE}${VERSION_RC}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	graphics
 MASTER_SITES=	https://download.osgeo.org/libtiff/
 EXTRACT_SUFX=	.tar.xz
