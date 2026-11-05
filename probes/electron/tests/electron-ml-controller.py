@@ -29,7 +29,30 @@ with tempfile.TemporaryDirectory() as tmp:
     assert [x[0] for x in calls if x[0] in ('ml','headers')]==['ml','headers']
     assert ('verify',('litert','tflite')) in calls
     assert ('verify',('litert','tflite','eigen3','flatbuffers','fp16')) in calls
-    calls.clear(); o.activate_common_ml=False; o.refresh_source_view=True
+    calls.clear(); o.refresh_source_view=True
+    o.old_ml_identities={'litert':'old'}; o.old_header_identities={name:'old' for name in hdr.NAMES}
+    with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+        m.gn_source(o)
+    assert [x[0] for x in calls].count('leaf-refresh') == 1
+    assert [x[0] for x in calls].index('leaf-refresh') < [x[0] for x in calls].index('headers')
+    # A resumed header transaction has already installed ML. Its owner
+    # recovers the marker before requesting verification of that selection.
+    calls.clear()
+    marker = work / '.source-view.header-components-migration'
+    marker.write_text('pending')
+    def recovered_ml(*args, **kwargs):
+        calls.append(('ml-recovered',))
+    def recovered_headers(*args, **kwargs):
+        marker.unlink()
+        calls.append(('headers-recovered',))
+        args[6]()
+    ml.activate = recovered_ml; hdr.activate = recovered_headers
+    with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+        m.gn_source(o)
+    assert [x[0] for x in calls] == ['ml-recovered', 'headers-recovered', 'leaf-refresh', 'verify']
+    ml.activate = ml_activate; hdr.activate = header_activate
+    calls.clear(); o.activate_common_ml=False; o.old_ml_identities=o.ml_identities
+    o.old_header_identities={name:'a' for name in hdr.NAMES}
     with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
         m.gn_source(o)
     assert calls == [('leaf-refresh',)]

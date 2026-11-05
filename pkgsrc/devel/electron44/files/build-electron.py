@@ -1755,9 +1755,17 @@ def gn_source(options):
             if names:
                 result.update(ml_names=names, ml_verify=lambda: [check() for check in checks])
             return result
+        selection_refreshed = False
         def verify_selection(ml_ids, header_ids):
-            return view.verify(options.workspace / 'src', common, destination,
-                               **selected_sources(ml_ids, header_ids))
+            nonlocal selection_refreshed
+            current = selected_sources(ml_ids, header_ids)
+            if (getattr(options, 'refresh_source_view', False) and
+                    options.phase == 'reconfigure' and not selection_refreshed):
+                result = view._refresh_leaves(options.workspace / 'src', common,
+                                              destination, current)
+                selection_refreshed = True
+                return result
+            return view.verify(options.workspace / 'src', common, destination, **current)
         new_view = not os.path.lexists(destination)
         if new_view:
             require(getattr(options, 'phase', '') == 'configure', 'common source view is missing')
