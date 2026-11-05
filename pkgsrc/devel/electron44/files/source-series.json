@@ -1057,6 +1057,11 @@
       "path": "lottie-terser-format-options.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "angle-explicit-control-git.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

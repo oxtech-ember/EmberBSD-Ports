@@ -1,0 +1,36 @@
+--- a/third_party/angle/src/commit_id.py
++++ b/third_party/angle/src/commit_id.py
+@@ -7,6 +7,7 @@
+ #
+ 
+ import pathlib
++import shlex
+ import subprocess as sp
+ import sys
+ import os
+@@ -17,6 +18,15 @@
+ 
+ 
+ def grab_output(command, cwd):
++    selected = os.environ.get('EMBERBSD_CONTROL_GIT')
++    if selected:
++        args = shlex.split(command)
++        if not args or args[0] != 'git':
++            raise ValueError('expected a Git metadata command')
++        result = sp.run([selected] + args[1:], stdout=sp.PIPE, cwd=cwd)
++        if result.returncode and not (args[1:] == ['config', '--get', 'extensions.refStorage'] and result.returncode == 1):
++            raise RuntimeError('selected control Git failed: ' + command)
++        return result.stdout.strip().decode('utf-8')
+     return sp.Popen(
+         command, stdout=sp.PIPE, shell=True, cwd=cwd).communicate()[0].strip().decode('utf-8')
+ 
+@@ -145,7 +155,8 @@
+             commit_date = grab_output('git show -s --format=%ci HEAD', cwd) or commit_date
+             commit_position = get_commit_position(cwd) or commit_position
+         except:
+-            pass
++            if os.environ.get('EMBERBSD_CONTROL_GIT'):
++                raise
+ 
+     with open(output_file, 'w') as hfile:
+         hfile.write('#define ANGLE_COMMIT_HASH "%s"\n' % (commit_id or "unknown hash"))
