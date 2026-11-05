@@ -16,5 +16,9 @@ CMAKE_CONFIGURE_ARGS+=	-DPEGTL_BUILD_EXAMPLES=OFF
 CMAKE_CONFIGURE_ARGS+=	-DPEGTL_BUILD_TESTS=OFF
 CMAKE_CONFIGURE_ARGS+=	-DPEGTL_INSTALL_CMAKE_DIR=lib/cmake/pegtl
 
+# Upstream installs the complete include tree, including patch backups.
+post-patch:
+	${RM} -f ${WRKSRC}/include/tao/pegtl/internal/resize_uninitialized.hpp.orig
+
 .include "../../devel/cmake/build.mk"
 .include "../../mk/bsd.pkg.mk"
