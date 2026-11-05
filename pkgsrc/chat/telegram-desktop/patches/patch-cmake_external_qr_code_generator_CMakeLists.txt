@@ -1,0 +1,17 @@
+# $NetBSD$
+
+Reject bundled fallback when packaged dependencies are requested.
+
+--- cmake/external/qr_code_generator/CMakeLists.txt.orig
++++ cmake/external/qr_code_generator/CMakeLists.txt
+@@ -16,6 +16,10 @@
+         target_link_libraries(external_qr_code_generator INTERFACE ${DESKTOP_APP_QRCODE_LIBRARIES})
+         return()
+     endif()
++endif()
++
++if (DESKTOP_APP_USE_PACKAGED)
++    message(FATAL_ERROR "Required packaged qr_code_generator dependency not found")
+ endif()
+ 
+ add_library(external_qr_code_generator_bundled STATIC)

@@ -1,0 +1,17 @@
+# $NetBSD$
+
+Reject bundled fallback when packaged dependencies are requested.
+
+--- cmake/external/lz4/CMakeLists.txt.orig
++++ cmake/external/lz4/CMakeLists.txt
+@@ -23,6 +23,10 @@
+         target_link_libraries(external_lz4 INTERFACE PkgConfig::DESKTOP_APP_LZ4)
+         return()
+     endif()
++endif()
++
++if (DESKTOP_APP_USE_PACKAGED)
++    message(FATAL_ERROR "Required packaged lz4 dependency not found")
+ endif()
+ 
+ add_library(external_lz4_bundled STATIC)

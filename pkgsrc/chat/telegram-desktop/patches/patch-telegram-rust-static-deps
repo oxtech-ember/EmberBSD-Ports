@@ -1,0 +1,21 @@
+# Preserve the target Rust producer native static link dependencies.
+# Origin: EmberBSD.
+--- cmake/external/tdesktop_rust/CMakeLists.txt.orig
++++ cmake/external/tdesktop_rust/CMakeLists.txt
+@@ -43,6 +43,16 @@
+     external_tdesktop_rust_native
+ )
+ 
++if (DESKTOP_APP_USE_PACKAGED)
++    # The Rust static archive requires the producer's target-specific system
++    # libraries, recorded in the provider's pkg-config Libs.private.
++    find_package(PkgConfig REQUIRED)
++    pkg_check_modules(TDESKTOP_RUST REQUIRED tdesktop-rust)
++    set(tdesktop_rust_native_deps ${TDESKTOP_RUST_STATIC_LDFLAGS})
++    list(REMOVE_ITEM tdesktop_rust_native_deps "-ltdesktop_rust")
++    target_link_libraries(external_tdesktop_rust INTERFACE ${tdesktop_rust_native_deps})
++endif()
++
+ # What the Rust standard library inside the archive needs resolved. cargo
+ # reports the list through --print native-static-libs while the stage builds.
+ # On macOS it asks only for CoreFoundation, iconv and the C runtime, which the

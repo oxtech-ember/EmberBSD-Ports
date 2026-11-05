@@ -1,0 +1,7 @@
+@comment $NetBSD$
+libexec/telegram-desktop-codegen/codegen_emoji
+libexec/telegram-desktop-codegen/codegen_lang
+libexec/telegram-desktop-codegen/codegen_style
+share/licenses/telegram-desktop-codegen/LEGAL
+share/licenses/telegram-desktop-codegen/LEGAL-desktop-app
+share/licenses/telegram-desktop-codegen/LICENSE

@@ -1,0 +1,22 @@
+# $NetBSD$
+
+Use the common cmark-gfm and extensions libraries in packaged builds.
+
+--- cmake/external/cmark_gfm/CMakeLists.txt.orig
++++ cmake/external/cmark_gfm/CMakeLists.txt
+@@ -6,6 +6,15 @@
+ 
+ add_library(external_cmark_gfm INTERFACE IMPORTED GLOBAL)
+ add_library(desktop-app::external_cmark_gfm ALIAS external_cmark_gfm)
++
++if (DESKTOP_APP_USE_PACKAGED)
++    find_package(PkgConfig REQUIRED)
++    pkg_check_modules(DESKTOP_APP_CMARK_GFM REQUIRED IMPORTED_TARGET libcmark-gfm)
++    find_library(DESKTOP_APP_CMARK_GFM_EXTENSIONS NAMES cmark-gfm-extensions REQUIRED)
++    target_link_libraries(external_cmark_gfm INTERFACE
++        ${DESKTOP_APP_CMARK_GFM_EXTENSIONS} PkgConfig::DESKTOP_APP_CMARK_GFM)
++    return()
++endif()
+ 
+ # Everything that follows is scoped to this block(). All variables, the
+ # install() shadow, and the imported policy floor are local -- siblings

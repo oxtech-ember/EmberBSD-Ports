@@ -1,0 +1,100 @@
+# Separate the selected native CppGir generator from target GIR and headers.
+# Origin: EmberBSD.
+--- cmake/external/glib/CMakeLists.txt.orig
++++ cmake/external/glib/CMakeLists.txt
+@@ -21,12 +21,24 @@
+     GLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_56
+ )
+ 
+-block()
+-    set(BUILD_TESTING OFF)
+-    set(BUILD_DOC OFF)
+-    set(BUILD_EXAMPLES OFF)
+-    add_subdirectory(cppgir EXCLUDE_FROM_ALL)
+-endblock()
++if (DESKTOP_APP_USE_PACKAGED)
++    find_package(cppgir 2 CONFIG REQUIRED)
++    foreach(input DESKTOP_APP_CPPGIR_EXECUTABLE DESKTOP_APP_CPPGIR_DATA_DIR DESKTOP_APP_GIR_DIR)
++        if (NOT IS_ABSOLUTE "${${input}}" OR NOT EXISTS "${${input}}")
++            message(FATAL_ERROR "${input} must identify a selected native generator or target metadata path")
++        endif()
++    endforeach()
++    add_executable(desktop_app_cppgir_native IMPORTED GLOBAL)
++    set_target_properties(desktop_app_cppgir_native PROPERTIES
++        IMPORTED_LOCATION "${DESKTOP_APP_CPPGIR_EXECUTABLE}")
++else()
++    block()
++        set(BUILD_TESTING OFF)
++        set(BUILD_DOC OFF)
++        set(BUILD_EXAMPLES OFF)
++        add_subdirectory(cppgir EXCLUDE_FROM_ALL)
++    endblock()
++endif()
+ 
+ include(generate_cppgir.cmake)
+ 
+--- cmake/external/glib/generate_cppgir.cmake.orig
++++ cmake/external/glib/generate_cppgir.cmake
+@@ -5,7 +5,26 @@
+ # https://github.com/desktop-app/legal/blob/master/LEGAL
+ 
+ function(generate_cppgir target_name gir)
+-    set(cppgir_loc ${cmake_helpers_loc}/external/glib/cppgir)
++    if (DESKTOP_APP_USE_PACKAGED)
++        set(cppgir_data "${DESKTOP_APP_CPPGIR_DATA_DIR}")
++        set(cppgir_dependency desktop_app_cppgir_native)
++        set(cppgir_command "${CMAKE_COMMAND}" -E env
++            --unset=GI_GIR --unset=GI_GIR_PATH --unset=GI_IGNORE
++            "$<TARGET_FILE:desktop_app_cppgir_native>"
++            --no-default-gir-path --gir-path "${DESKTOP_APP_GIR_DIR}")
++        if (NOT IS_ABSOLUTE "${gir}")
++            set(gir "${DESKTOP_APP_GIR_DIR}/${gir}.gir")
++            if (NOT EXISTS "${gir}")
++                message(FATAL_ERROR "Required target GIR metadata not found: ${gir}")
++            endif()
++        endif()
++        file(GLOB cppgir_metadata CONFIGURE_DEPENDS "${DESKTOP_APP_GIR_DIR}/*.gir")
++    else()
++        set(cppgir_data "${cmake_helpers_loc}/external/glib/cppgir/data")
++        set(cppgir_dependency CppGir::cppgir)
++        set(cppgir_command CppGir::cppgir)
++        set(cppgir_metadata)
++    endif()
+ 
+     # cppgir generates all the dependent headers everytime, better to have a global folder
+     set(gen_dst ${CMAKE_BINARY_DIR}/gen)
+@@ -14,15 +33,21 @@
+     set(gen_timestamp ${gen_dst}/${target_name}_cppgir.timestamp)
+ 
+     set(ignore_files
+-        ${cppgir_loc}/data/cppgir.ignore
+-        ${cppgir_loc}/data/cppgir_unix.ignore
++        ${cppgir_data}/cppgir.ignore
++        ${cppgir_data}/cppgir_unix.ignore
+     )
++
++    foreach(ignore_file IN LISTS ignore_files)
++        if (NOT EXISTS "${ignore_file}")
++            message(FATAL_ERROR "CppGir ignore data not found: ${ignore_file}")
++        endif()
++    endforeach()
+ 
+     add_custom_command(
+     OUTPUT
+         ${gen_timestamp}
+     COMMAND
+-        CppGir::cppgir
++        ${cppgir_command}
+         --debug
+         1
+         --class
+@@ -38,7 +63,8 @@
+         echo 1> ${gen_timestamp}
+     COMMENT "Generating C++ wrapper for ${gir} (${target_name})"
+     DEPENDS
+-        CppGir::cppgir
++        ${cppgir_dependency}
++        ${cppgir_metadata}
+         ${ignore_files}
+         $<$<PATH:IS_ABSOLUTE,${gir}>:${gir}>
+     )

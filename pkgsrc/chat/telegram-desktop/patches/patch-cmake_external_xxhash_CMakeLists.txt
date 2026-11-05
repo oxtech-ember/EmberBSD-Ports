@@ -1,0 +1,17 @@
+# $NetBSD$
+
+Reject bundled fallback when packaged dependencies are requested.
+
+--- cmake/external/xxhash/CMakeLists.txt.orig
++++ cmake/external/xxhash/CMakeLists.txt
+@@ -25,6 +25,10 @@
+     endif()
+ endif()
+ 
++if (DESKTOP_APP_USE_PACKAGED)
++    message(FATAL_ERROR "Required packaged xxhash dependency not found")
++endif()
++
+ target_include_directories(external_xxhash SYSTEM
+ INTERFACE
+     ${third_party_loc}/xxHash

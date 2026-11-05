@@ -1,0 +1,17 @@
+# $NetBSD$
+
+Reject bundled fallback when packaged dependencies are requested.
+
+--- cmake/external/tmc/CMakeLists.txt.orig
++++ cmake/external/tmc/CMakeLists.txt
+@@ -20,6 +20,10 @@
+     endif()
+ endif()
+ 
++if (DESKTOP_APP_USE_PACKAGED)
++    message(FATAL_ERROR "Required packaged tmc dependency not found")
++endif()
++
+ target_include_directories(external_tmc SYSTEM
+ INTERFACE
+     ${third_party_loc}/TooManyCooks/include

@@ -1,0 +1,16 @@
+# Select the native NetBSD WebRTC platform independently of the Unix UI selector.
+# Origin: EmberBSD.
+--- Telegram/lib_webrtc/CMakeLists.txt.orig
++++ Telegram/lib_webrtc/CMakeLists.txt
+@@ -67,6 +67,11 @@
+     PRIVATE
+         WEBRTC_MAC
+     )
++elseif (CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
++    target_compile_definitions(lib_webrtc
++    PRIVATE
++        WEBRTC_NETBSD
++    )
+ elseif (LINUX)
+     target_compile_definitions(lib_webrtc
+     PRIVATE

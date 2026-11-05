@@ -1,0 +1,19 @@
+# $NetBSD$
+
+Use the common MicroTeX provider for packaged builds.
+
+--- cmake/external/microtex/CMakeLists.txt.orig
++++ cmake/external/microtex/CMakeLists.txt
+@@ -6,6 +6,12 @@
+ 
+ add_library(external_microtex INTERFACE IMPORTED GLOBAL)
+ add_library(desktop-app::external_microtex ALIAS external_microtex)
++
++if (DESKTOP_APP_USE_PACKAGED)
++    find_package(MicroTeX CONFIG REQUIRED)
++    target_link_libraries(external_microtex INTERFACE MicroTeX::LaTeX)
++    return()
++endif()
+ 
+ # MicroTeX is currently only used through the desktop-app fork (which
+ # carries the Qt setPixelSize fix, the \mathop limits-mode fix, and the

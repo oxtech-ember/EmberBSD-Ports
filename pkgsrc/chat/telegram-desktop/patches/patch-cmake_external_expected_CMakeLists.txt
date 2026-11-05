@@ -1,0 +1,17 @@
+# $NetBSD$
+
+Reject bundled fallback when packaged dependencies are requested.
+
+--- cmake/external/expected/CMakeLists.txt.orig
++++ cmake/external/expected/CMakeLists.txt
+@@ -15,6 +15,10 @@
+     endif()
+ endif()
+ 
++if (DESKTOP_APP_USE_PACKAGED)
++    message(FATAL_ERROR "Required packaged expected dependency not found")
++endif()
++
+ target_include_directories(external_expected SYSTEM
+ INTERFACE
+     ${third_party_loc}/expected/include

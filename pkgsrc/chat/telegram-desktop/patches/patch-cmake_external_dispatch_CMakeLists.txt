@@ -1,0 +1,18 @@
+# $NetBSD$
+
+Keep dispatch optional without building a bundled provider in packaged mode.
+
+--- cmake/external/dispatch/CMakeLists.txt.orig
++++ cmake/external/dispatch/CMakeLists.txt
+@@ -11,6 +11,11 @@
+ if (DESKTOP_APP_USE_PACKAGED)
+     find_library(DESKTOP_APP_DISPATCH_LIBRARIES dispatch)
+     find_path(DESKTOP_APP_DISPATCH_INCLUDE_DIRS dispatch/dispatch.h)
++endif()
++
++if (DESKTOP_APP_USE_PACKAGED AND
++    (NOT DESKTOP_APP_DISPATCH_LIBRARIES OR NOT DESKTOP_APP_DISPATCH_INCLUDE_DIRS))
++    return()
+ endif()
+ 
+ if (NOT DESKTOP_APP_DISPATCH_LIBRARIES OR NOT DESKTOP_APP_DISPATCH_INCLUDE_DIRS)

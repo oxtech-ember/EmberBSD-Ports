@@ -1,0 +1,9 @@
+# Shared upstream source and patches for the client and its host generators.
+TDESKTOP_VERSION= 7.3.5
+DISTNAME=	tdesktop-${TDESKTOP_VERSION}-full
+CATEGORIES=	chat
+MASTER_SITES=	${MASTER_SITE_GITHUB:=telegramdesktop/tdesktop/releases/download/v${PKGVERSION_NOREV}/}
+EXTRACT_SUFX=	.tar.gz
+
+PATCHDIR= ${.CURDIR}/../telegram-desktop/patches
+DISTINFO_FILE= ${.CURDIR}/../telegram-desktop/distinfo

@@ -1,0 +1,64 @@
+# Build and select native generators separately from the target client.
+# Origin: EmberBSD.
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -58,6 +58,32 @@
+ 
+ include(cmake/external/qt/package.cmake)
+ 
++# Host tools use the same source targets and packaged libraries as the client.
++# They neither build the client nor require a Telegram API identity.
++option(TDESKTOP_CODEGEN_ONLY "Build only native Telegram source generators" OFF)
++if (TDESKTOP_CODEGEN_ONLY)
++    if (CMAKE_CROSSCOMPILING)
++        message(FATAL_ERROR "TDESKTOP_CODEGEN_ONLY requires a native toolchain")
++    endif()
++    set(DESKTOP_APP_DISABLE_CRASH_REPORTS ON)
++    set(CRL_FORCE_QT ON)
++    foreach(library qt gsl openssl ranges expected xxhash crash_reports)
++        add_subdirectory(cmake/external/${library})
++    endforeach()
++    if (LINUX)
++        add_subdirectory(cmake/external/glib)
++        add_subdirectory(cmake/external/kcoreaddons)
++    endif()
++    add_subdirectory(Telegram/lib_rpl)
++    add_subdirectory(Telegram/lib_crl)
++    add_subdirectory(Telegram/lib_base)
++    add_subdirectory(Telegram/codegen)
++    include(GNUInstallDirs)
++    install(TARGETS codegen_lang codegen_style codegen_emoji
++        RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/telegram-desktop-codegen)
++    return()
++endif()
++
+ set(desktop_app_skip_libs
+     glibmm
+     variant
+--- Telegram/codegen/CMakeLists.txt.orig
++++ Telegram/codegen/CMakeLists.txt
+@@ -1,3 +1,24 @@
++# Cross builds execute only generators built for the selected host.
++if (CMAKE_CROSSCOMPILING)
++    if (NOT IS_ABSOLUTE "${TDESKTOP_NATIVE_CODEGEN_DIR}" OR
++        NOT IS_DIRECTORY "${TDESKTOP_NATIVE_CODEGEN_DIR}")
++        message(FATAL_ERROR "TDESKTOP_NATIVE_CODEGEN_DIR must name the native generator package")
++    endif()
++    set(host_executable_suffix "")
++    if (CMAKE_HOST_WIN32)
++        set(host_executable_suffix ".exe")
++    endif()
++    foreach(generator codegen_lang codegen_style codegen_emoji)
++        set(program "${TDESKTOP_NATIVE_CODEGEN_DIR}/${generator}${host_executable_suffix}")
++        if (NOT EXISTS "${program}")
++            message(FATAL_ERROR "Required native Telegram generator not found: ${program}")
++        endif()
++        add_executable(${generator} IMPORTED GLOBAL)
++        set_target_properties(${generator} PROPERTIES IMPORTED_LOCATION "${program}")
++    endforeach()
++    return()
++endif()
++
+ add_subdirectory(codegen/common)
+ add_subdirectory(codegen/emoji)
+ add_subdirectory(codegen/lang)

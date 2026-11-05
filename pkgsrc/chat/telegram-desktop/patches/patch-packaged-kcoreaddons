@@ -1,0 +1,17 @@
+--- a/cmake/external/kcoreaddons/CMakeLists.txt
++++ b/cmake/external/kcoreaddons/CMakeLists.txt
+@@ -8,11 +8,9 @@
+ add_library(desktop-app::external_kcoreaddons ALIAS external_kcoreaddons)
+ 
+ if (DESKTOP_APP_USE_PACKAGED)
+-    find_package(KF${QT_VERSION_MAJOR}CoreAddons QUIET)
+-    if (KF${QT_VERSION_MAJOR}CoreAddons_FOUND)
+-        target_link_libraries(external_kcoreaddons INTERFACE KF${QT_VERSION_MAJOR}::CoreAddons)
+-        return()
+-    endif()
++    find_package(KF${QT_VERSION_MAJOR}CoreAddons REQUIRED)
++    target_link_libraries(external_kcoreaddons INTERFACE KF${QT_VERSION_MAJOR}::CoreAddons)
++    return()
+ endif()
+ 
+ add_library(external_kcoreaddons_bundled STATIC)

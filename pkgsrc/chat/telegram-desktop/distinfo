@@ -1,0 +1,23 @@
+$NetBSD$
+
+BLAKE2s (tdesktop-7.3.5-full.tar.gz) = faaf50dc265d82a6336b47094753862984dd63b8b5a8835e586b8e4fe5d8e481
+SHA512 (tdesktop-7.3.5-full.tar.gz) = f44618f061f0eebe4254c4a3f00e97217c9ad381e84346e3cd55472070a1307ca85146b49cabbbb0a9f5fefb73ac62f4312a2e311b3410b7c786171430fce8b9
+Size (tdesktop-7.3.5-full.tar.gz) = 79486386
+SHA1 (patch-cmake_external_dispatch_CMakeLists.txt) = bde955ff4a054b43d906428d08a213a97cc4cd53
+SHA1 (patch-cmake_external_expected_CMakeLists.txt) = 7fe25de69de6ad8097b27049831215f4bf902210
+SHA1 (patch-cmake_external_gsl_CMakeLists.txt) = 47b160ad83b12760b18dc175963e2f442363fa3b
+SHA1 (patch-cmake_external_hunspell_CMakeLists.txt) = 0b0fd5246cc920c3f182a540193e512564a712c4
+SHA1 (patch-cmake_external_lz4_CMakeLists.txt) = 1dcd4471e17a3338119bd0bb14055ba85203f730
+SHA1 (patch-cmake_external_qr_code_generator_CMakeLists.txt) = ae18ebc17655d9e2e823e0ecc184c6a51c11c229
+SHA1 (patch-cmake_external_ranges_CMakeLists.txt) = 5fb34f1152dd87f57607debb81af31a43871d470
+SHA1 (patch-cmake_external_tmc_CMakeLists.txt) = 8ae0f63fe2bb52c5545340d3d21bd34632ce5047
+SHA1 (patch-cmake_external_xxhash_CMakeLists.txt) = e758497ffc780c3787aa0e69885f7a8803b28e16
+SHA1 (patch-cmake_external_cmark_gfm_CMakeLists.txt) = 6965df412ea689fec11011e442f25863b8807167
+SHA1 (patch-Telegram_SourceFiles_iv_markdown_iv__markdown__parse__convert.cpp) = eb5504827a3cd95bd32e44774c0261c5af097fc1
+SHA1 (patch-cmake_external_microtex_CMakeLists.txt) = 0611e60048a2620fdbcfe3407ae030219f4b8e7f
+SHA1 (patch-telegram-webrtc-netbsd) = e7d63375cecad75ab82a825cdb79bcb6748eda9d
+SHA1 (patch-telegram-rust-static-deps) = f6f40fc6049ed20e0de0daaba0a9a26eb2112be4
+SHA1 (patch-telegram-packaged-cppgir) = 38587545d2efa7a2eaf7f1306f00cfa8b12b2072
+SHA1 (patch-native-codegen) = ce5b16136359710a77b427e65f60fa60d719ffd0
+SHA1 (patch-packaged-kcoreaddons) = 2897423270229d77bd57f4d723b73c72e32c805e
+SHA1 (patch-packaged-fido) = 06ec8038867456b9f0369ff7a0fe4cb97cea398e

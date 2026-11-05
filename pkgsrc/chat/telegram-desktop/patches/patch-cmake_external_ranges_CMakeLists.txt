@@ -1,0 +1,17 @@
+# $NetBSD$
+
+Reject bundled fallback when packaged dependencies are requested.
+
+--- cmake/external/ranges/CMakeLists.txt.orig
++++ cmake/external/ranges/CMakeLists.txt
+@@ -19,6 +19,10 @@
+     endif()
+ endif()
+ 
++if (DESKTOP_APP_USE_PACKAGED)
++    message(FATAL_ERROR "Required packaged ranges dependency not found")
++endif()
++
+ target_include_directories(external_ranges SYSTEM
+ INTERFACE
+     ${third_party_loc}/range-v3/include

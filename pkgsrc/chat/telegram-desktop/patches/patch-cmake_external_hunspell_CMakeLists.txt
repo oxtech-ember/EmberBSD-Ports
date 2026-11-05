@@ -1,0 +1,17 @@
+# $NetBSD$
+
+Reject bundled fallback when packaged dependencies are requested.
+
+--- cmake/external/hunspell/CMakeLists.txt.orig
++++ cmake/external/hunspell/CMakeLists.txt
+@@ -17,6 +17,10 @@
+         target_link_libraries(external_hunspell INTERFACE PkgConfig::DESKTOP_APP_HUNSPELL)
+         return()
+     endif()
++endif()
++
++if (DESKTOP_APP_USE_PACKAGED)
++    message(FATAL_ERROR "Required packaged hunspell dependency not found")
+ endif()
+ 
+ add_library(external_hunspell_bundled STATIC)
