@@ -1447,6 +1447,66 @@ def write_devtools_identity(work, sdk, environment):
     sdk['jsonio'].write_json(str(path), value, exclusive=False)
 
 
+
+def protoc_selection(options, sdk, environment, values):
+    """Fingerprint selected generator payloads, independent of installation times."""
+    tool = values.get('emberbsd_protoc')
+    if not tool:
+        return
+    work = Path(getattr(options, 'native_binding_root', options.work)).resolve(strict=True)
+    roots = [(Path(options.host_prefix).resolve(strict=True), '$PREFIX'),
+             (Path(options.sdk_source).resolve(strict=True), '$SDK'),
+             (Path(options.sysroot).resolve(strict=True), '$SYSROOT'), (work, '$WORK')]
+    for field, label in (('host_runtime_root', '$HOST_RUNTIME'),
+                         ('protoc_runtime_view', '$PROTOC_RUNTIME_VIEW')):
+        value = getattr(options, field, None)
+        if value:
+            roots.append((Path(value).resolve(strict=True), label))
+    roots.sort(key=lambda item: len(item[0].parts), reverse=True)
+    files = {}
+    for name in [tool, *values.get('emberbsd_protoc_runtime_inputs', [])]:
+        path = Path(name).resolve(strict=True)
+        if path.name in ('+CONTENTS', '+BUILD_INFO', '+BUILD_VERSION'):
+            continue
+        require(path.is_file(), 'selected protoc input is not a file: ' + str(path))
+        key = next((label + '/' + str(path.relative_to(root)) for root, label in roots
+                    if path.is_relative_to(root)), str(path))
+        digest = sdk['inventory'].sha256_file(str(path))
+        require(key not in files or files[key] == digest, 'ambiguous selected protoc input')
+        files[key] = digest
+    record = {'version': 1, 'files': dict(sorted(files.items()))}
+    encoded = json.dumps(record, sort_keys=True, separators=(',', ':')).encode()
+    environment['EMBERBSD_PROTOC_SELECTION_SHA256'] = hashlib.sha256(encoded).hexdigest()
+    options.protoc_selection = record
+    descriptor = str(work / 'protoc-selection.json')
+    inputs = values.setdefault('emberbsd_protoc_runtime_inputs', [])
+    require(descriptor not in inputs, 'duplicate protoc selection input')
+    inputs.append(descriptor)
+    inputs.sort()
+
+
+def write_protoc_selection(work, sdk, record):
+    path = Path(work) / 'protoc-selection.json'
+    require(not path.is_symlink(), 'protoc selection input must be a regular file')
+    if path.exists():
+        require(path.is_file(), 'protoc selection input must be a regular file')
+        if json.loads(path.read_text()) == record:
+            return
+    sdk['jsonio'].write_json(str(path), record, exclusive=False)
+
+
+def additive_protoc_selection(old_arguments, new_arguments, work, *, runtime_change=False):
+    path = str(Path(work) / 'protoc-selection.json')
+    old = old_arguments.get('emberbsd_protoc_runtime_inputs', [])
+    new = new_arguments.get('emberbsd_protoc_runtime_inputs', [])
+    require(isinstance(old, list) and isinstance(new, list), 'invalid protoc selection input lists')
+    if path in old:
+        require(old.count(path) == new.count(path) == 1, 'protoc selection input changed')
+        return set()
+    require(new.count(path) == 1 and (runtime_change or sorted(new) == sorted(old + [path])),
+            'protoc selection migration changed unrelated inputs')
+    return {'emberbsd_protoc_runtime_inputs'}
+
 def producer_inputs(options, sdk):
     native, environment, providers = _native_inputs(options, sdk)
     environment['EMBERBSD_DEVTOOLS_PROVIDER_SHA256'] = devtools_provider_identity(options, sdk, native, environment)
@@ -1526,6 +1586,7 @@ def producer_inputs(options, sdk):
                       emberbsd_host_tool_runtime_view=str(view),
                       emberbsd_host_tool_runtime_inputs=sorted(set(values['emberbsd_protoc_runtime_inputs'] + actual)))
     values.update(common_protobuf(options, sdk, native, environment, buildlink, runtime_view))
+    protoc_selection(options, sdk, environment, values)
     values.update(common_undici(options, sdk, environment))
     values.update(common_embedder_sources(options, sdk, native, environment))
     values.update(common_ml_sources(options, sdk, native, environment))
@@ -1861,6 +1922,7 @@ def configure(options):
     with configure_stage('source view refresh'):
         source_root = gn_source(options)
     write_devtools_identity(work, sdk, environment)
+    write_protoc_selection(work, sdk, options.protoc_selection)
     if retry and old_args != current_args:
         with tempfile.NamedTemporaryFile(mode='w', dir=output, prefix='.args-', delete=False) as handle:
             temporary = Path(handle.name)
@@ -1917,14 +1979,20 @@ def common_activation_allowlist(options, old_environment, environment, old_argum
         require(all(name not in old_arguments for name in args - {'icu_use_data_file', 'v8_enable_temporal_systemicu'}),
                 'common provider activation cannot replace an existing selection')
     else:
-        require(all(old_arguments.get(name) == values.get(name) for name in args),
-                'common provider retry cannot change selected GN inputs')
+        for name in args:
+            if name == 'emberbsd_protoc_runtime_inputs' and old_arguments.get(name) != values.get(name):
+                require(additive_protoc_selection(old_arguments, values, options.work) == {name},
+                        'common provider retry cannot change protoc inputs')
+            else:
+                require(old_arguments.get(name) == values.get(name),
+                        'common provider retry cannot change selected GN inputs')
     require(values.get('emberbsd_common_protobuf') is True and
             values.get('icu_use_data_file') is False and values.get('v8_enable_temporal_systemicu') is True and
             all(values.get(name) for name in args - {'icu_use_data_file'}),
             'common provider activation produced incomplete GN inputs')
     for name in (set(old_environment) | set(environment)) - env_names - {
-            'CC', 'CXX', 'HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'}:
+            'CC', 'CXX', 'HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME',
+            'EMBERBSD_PROTOC_SELECTION_SHA256'}:
         require(old_environment.get(name) == environment.get(name),
                 'unrelated producer input changed during common provider activation: ' + name)
     for name in (set(old_arguments) | set(values)) - args:
@@ -2023,6 +2091,10 @@ def reconfigure(options):
                          'EMBERBSD_HOST_TYPESCRIPT', 'EMBERBSD_HOST_ROLLUP',
                          'HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'}
         old_env = saved['environment']
+        require(re.fullmatch(r'[0-9a-f]{64}', environment.get('EMBERBSD_PROTOC_SELECTION_SHA256', '')),
+                'selected protoc fingerprint is missing')
+        permitted_env.add('EMBERBSD_PROTOC_SELECTION_SHA256')
+        options.protoc_selection = candidate.protoc_selection
         require(not (getattr(options, 'activate_common_ml', False) and
                     getattr(options, 'activate_common_providers', False)),
                 'select only one common provider migration')
@@ -2088,7 +2160,16 @@ def reconfigure(options):
                               'EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK'))
         for name in (set(environment) | set(old_env)) - permitted_env:
             require(environment.get(name) == old_env.get(name), 'producer input changed: ' + name)
-        permitted_runtime_args = additive_protoc_runtime_view(saved['arguments'], values, options)
+        without_descriptor = dict(values)
+        old_without_descriptor = dict(saved['arguments'])
+        descriptor = str(work / 'protoc-selection.json')
+        for arguments in (without_descriptor, old_without_descriptor):
+            if 'emberbsd_protoc_runtime_inputs' in arguments:
+                arguments['emberbsd_protoc_runtime_inputs'] = [path for path in
+                    arguments['emberbsd_protoc_runtime_inputs'] if path != descriptor]
+        permitted_runtime_args = additive_protoc_runtime_view(old_without_descriptor, without_descriptor, options)
+        permitted_runtime_args.update(additive_protoc_selection(saved['arguments'], values, work,
+            runtime_change='emberbsd_protoc_runtime_inputs' in permitted_runtime_args))
         identity_args = {'node_module_version', 'emberbsd_node_source_identity',
                          'emberbsd_node_configure_helper', 'emberbsd_node_configure_inputs',
                          'emberbsd_node_configure_dependencies', 'target_os', 'target_cpu', 'target_sysroot', 'emberbsd_target_sysroot',
@@ -2168,6 +2249,7 @@ def reconfigure(options):
         try:
             source_root = gn_source(options)
             write_devtools_identity(work, sdk, environment)
+            write_protoc_selection(work, sdk, options.protoc_selection)
             (output / 'args.gn').write_text(gn_arguments(values))
             sdk['process'].run_logged([native.tool('gn'), 'gen', str(output),
                 '--script-executable=' + native.tool('python'), '--ninja-executable=' + native.tool('ninja'),
@@ -2209,6 +2291,7 @@ def build(options):
         if name not in ('HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'):
             require(saved_env.get(name) == environment.get(name), 'producer input changed: ' + name)
     require(saved['arguments'] == values, 'GN selection changed; configure a new output')
+    write_protoc_selection(options.work, sdk, options.protoc_selection)
     fingerprint = options.work / 'devtools-provider.json'
     require(not fingerprint.is_symlink() and fingerprint.is_file() and
             json.loads(fingerprint.read_text()) ==

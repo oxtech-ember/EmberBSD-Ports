@@ -10,7 +10,7 @@ owner = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('build', owner / '../../pkgsrc/devel/electron44/files/build-electron.py')
 build = importlib.util.module_from_spec(spec); spec.loader.exec_module(build)
 opts = SimpleNamespace(activate_common_providers=True, shared_abseil=True, shared_icu=True,
-                       shared_re2=True, shared_undici=True, protobuf_source=Path('/common'))
+                       shared_re2=True, shared_undici=True, protobuf_source=Path('/common'), work=Path('/work'))
 env = {'EMBERBSD_PROTOBUF_SOURCE_SHA256': 'verified'}
 for provider in ('ABSEIL', 'ICU', 'RE2'):
     for suffix in ('VERSION', 'SOURCE_SHA256'):
@@ -26,6 +26,16 @@ args.update(emberbsd_common_protobuf=True, icu_use_data_file=False, v8_enable_te
 env_allowed, args_allowed = build.common_activation_allowlist(opts, {}, env, {}, args)
 assert env_allowed == set(env) and args_allowed == set(args)
 assert build.common_activation_allowlist(opts, env, env, args, args) == (set(), set())
+old_args = dict(args, emberbsd_protoc_runtime_inputs=['/selected/protoc'])
+new_args = dict(args, emberbsd_protoc_runtime_inputs=['/selected/protoc', '/work/protoc-selection.json'])
+assert build.common_activation_allowlist(opts, env, env, old_args, new_args) == (set(), set())
+try:
+    build.common_activation_allowlist(opts, env, env, old_args,
+        dict(new_args, emberbsd_protoc_runtime_inputs=new_args['emberbsd_protoc_runtime_inputs'] + ['/foreign']))
+except ValueError:
+    pass
+else:
+    raise AssertionError('unrelated protoc input accepted on retry')
 changed_env = dict(env, EMBERBSD_SHARED_RE2_VERSION='foreign')
 try:
     build.common_activation_allowlist(opts, env, changed_env, args, args)
