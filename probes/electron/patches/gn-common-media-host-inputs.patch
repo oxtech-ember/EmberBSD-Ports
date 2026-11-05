@@ -1,0 +1,30 @@
+--- a/third_party/libyuv/BUILD.gn
++++ b/third_party/libyuv/BUILD.gn
+@@ -15,6 +15,7 @@
+   if (emberbsd_pkg_config_role == "native") {
+     _library = emberbsd_libyuv_host_library
+     _headers = emberbsd_libyuv_host_headers
++    _inputs = []
+     _inputs = emberbsd_libyuv_host_inputs
+   }
+   assert(_library != "" && _headers != "" && _inputs != [],
+--- a/third_party/libsrtp/BUILD.gn
++++ b/third_party/libsrtp/BUILD.gn
+@@ -15,6 +15,7 @@
+   if (emberbsd_pkg_config_role == "native") {
+     _library = emberbsd_libsrtp_host_library
+     _headers = emberbsd_libsrtp_host_headers
++    _inputs = []
+     _inputs = emberbsd_libsrtp_host_inputs
+   }
+   assert(_library != "" && _headers != "" && _inputs != [],
+--- a/third_party/crc32c/BUILD.gn
++++ b/third_party/crc32c/BUILD.gn
+@@ -15,6 +15,7 @@
+   if (emberbsd_pkg_config_role == "native") {
+     _library = emberbsd_crc32c_host_library
+     _headers = emberbsd_crc32c_host_headers
++    _inputs = []
+     _inputs = emberbsd_crc32c_host_inputs
+   }
+   assert(_library != "" && _headers != "" && _inputs != [],
