@@ -31,7 +31,7 @@ TOOL_DEPENDS+= libsrtp>=2.8.1:../../security/libsrtp
 TOOL_DEPENDS+= libyuv>=0.0.1978:../../multimedia/libyuv
 
 .if ${EMBERBSD_ELECTRON_SHARED_FFMPEG:Uno} == "yes"
-TOOL_DEPENDS+= ffmpeg9>=9.0.2nb6:../../multimedia/ffmpeg9
+TOOL_DEPENDS+= ffmpeg9>=9.0.2nb7:../../multimedia/ffmpeg9
 .endif
 
 .if ${EMBERBSD_ELECTRON_SHARED_MINIZIP:Uno} == "yes"

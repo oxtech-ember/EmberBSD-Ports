@@ -1499,8 +1499,8 @@ def common_ffmpeg(options, sdk, native, environment, buildlink):
     require(len(hosts) == len(targets) == 1 and hosts[0].name == targets[0].name,
             'shared FFmpeg host and target packages differ or are missing')
     match = re.fullmatch(r'ffmpeg9-(\d+)\.(\d+)\.(\d+)(?:nb(\d+))?', hosts[0].name)
-    require(match and tuple(int(n or 0) for n in match.groups()) >= (9, 0, 2, 6),
-            'shared FFmpeg requires ffmpeg9>=9.0.2nb6')
+    require(match and tuple(int(n or 0) for n in match.groups()) >= (9, 0, 2, 7),
+            'shared FFmpeg requires ffmpeg9>=9.0.2nb7')
     exported = Path(options.host_buildlink_pkgsrc) / pkgpath
     expected = options._compression_catalog['recipes'][pkgpath]
     for package in (hosts[0], targets[0]):

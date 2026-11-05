@@ -20,8 +20,8 @@
 .include "../../devel/re2/buildlink3.mk"
 
 .if ${EMBERBSD_ELECTRON_SHARED_FFMPEG:Uno} == "yes"
-BUILDLINK_API_DEPENDS.ffmpeg9+= ffmpeg9>=9.0.2nb6
-BUILDLINK_ABI_DEPENDS.ffmpeg9+= ffmpeg9>=9.0.2nb6
+BUILDLINK_API_DEPENDS.ffmpeg9+= ffmpeg9>=9.0.2nb7
+BUILDLINK_ABI_DEPENDS.ffmpeg9+= ffmpeg9>=9.0.2nb7
 .include "../../multimedia/ffmpeg9/buildlink3.mk"
 .endif
 

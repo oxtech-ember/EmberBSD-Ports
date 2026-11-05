@@ -16,7 +16,7 @@ e = importlib.util.module_from_spec(spec); spec.loader.exec_module(e)
 with tempfile.TemporaryDirectory() as tmp:
     root = Path(tmp).resolve(); host = root/'host'; target = root/'sysroot'; buildlink = root/'buildlink'
     pkgpath = 'multimedia/ffmpeg9'; modules = ('libavcodec', 'libavformat', 'libavutil')
-    hp = host/'pkgdb/ffmpeg9-9.0.2nb6'; tp = target/'usr/pkg/pkgdb/ffmpeg9-9.0.2nb6'
+    hp = host/'pkgdb/ffmpeg9-9.0.2nb7'; tp = target/'usr/pkg/pkgdb/ffmpeg9-9.0.2nb7'
     for pkg, suffix in ((hp, '.dylib'), (tp, '.so')):
         pkg.mkdir(parents=True)
         entries = [entry for name in modules for entry in
@@ -56,6 +56,14 @@ with tempfile.TemporaryDirectory() as tmp:
         assert 'PKG_CONFIG_SYSROOT_DIR' not in environments[0]
         assert environments[1]['PKG_CONFIG_SYSROOT_DIR'] == str(target)
         assert environments[1]['PKG_CONFIG_LIBDIR'].split(':')[0] == str(target/'usr/pkg/lib/ffmpeg9/pkgconfig')
+        old = root/'ffmpeg9-9.0.2nb6'; old.mkdir()
+        options._common_native_packages[pkgpath] = [old]
+        options._common_target_packages[pkgpath] = [old]
+        try: e.common_ffmpeg(options, sdk, native, env, buildlink)
+        except ValueError as error: assert '9.0.2nb7' in str(error)
+        else: raise AssertionError('old nb6 package accepted')
+        options._common_native_packages[pkgpath] = [hp]
+        options._common_target_packages[pkgpath] = [tp]
         options._common_native_packages[pkgpath] = []
         try: e.common_ffmpeg(options, sdk, native, env, buildlink)
         except ValueError as error: assert 'missing' in str(error)

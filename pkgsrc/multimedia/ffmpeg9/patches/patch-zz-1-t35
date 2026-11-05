@@ -1,6 +1,6 @@
 $NetBSD$
 
-Upstream Vignesh Venkat and James Almer: commits 7c4e41b54cd9fba6f73ee4500a459430ed917722, a302c9ae44ec07cbe12417f14c1852868f903f60, 8a3e9147b697f093ef59675906ceb8f64cd78d19, 5002b55ce79fda51e1d329a28d112495aab9f8cb, df11a425b3fc3172a5eb1bc203a688670cf5055f.
+Upstream Vignesh Venkat and James Almer: commits 7c4e41b54cd9fba6f73ee4500a459430ed917722, d998016f921cd7a909cd64296c39a981722b1be2, a302c9ae44ec07cbe12417f14c1852868f903f60, 8a3e9147b697f093ef59675906ceb8f64cd78d19, 5002b55ce79fda51e1d329a28d112495aab9f8cb, df11a425b3fc3172a5eb1bc203a688670cf5055f.
 
 --- libavcodec/codec_id.h
 +++ libavcodec/codec_id.h
