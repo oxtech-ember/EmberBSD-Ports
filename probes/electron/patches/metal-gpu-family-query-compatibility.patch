@@ -1,0 +1,114 @@
+--- a/gpu/config/gpu_info_collector_mac.mm
++++ b/gpu/config/gpu_info_collector_mac.mm
+@@ -35,7 +35,11 @@
+ };
+ 
+ MetalFamilyMac GetMetalFamilyMac(id<MTLDevice> device) {
++  // Preserve legacy Mac family classification on newer SDKs.
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+   if ([device supportsFamily:MTLGPUFamilyMac2]) {
++#pragma GCC diagnostic pop
+     return MetalFamilyMac::kMac2;
+   }
+   return MetalFamilyMac::kMac1;
+--- a/third_party/dawn/src/dawn/native/metal/PhysicalDeviceMTL.mm
++++ b/third_party/dawn/src/dawn/native/metal/PhysicalDeviceMTL.mm
+@@ -245,11 +245,31 @@
+     Mac2,
+ };
+ 
++// SDK 27 deprecates these legacy families, which still describe supported GPUs.
++bool SupportsLegacyMac2(id<MTLDevice> device) {
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
++    return [device supportsFamily:MTLGPUFamilyMac2];
++#pragma GCC diagnostic pop
++}
++
++bool SupportsLegacyCommonFamily(id<MTLDevice> device, unsigned family) {
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
++    switch (family) {
++        case 1: return [device supportsFamily:MTLGPUFamilyCommon1];
++        case 2: return [device supportsFamily:MTLGPUFamilyCommon2];
++        case 3: return [device supportsFamily:MTLGPUFamilyCommon3];
++        default: return false;
++    }
++#pragma GCC diagnostic pop
++}
++
+ ResultOrError<MTLGPUFamily> GetMTLGPUFamily(id<MTLDevice> device) {
+     // https://developer.apple.com/documentation/metal/mtldevice/detecting_gpu_features_and_metal_software_versions?language=objc
+ 
+ #if !DAWN_PLATFORM_IS(IOS)
+-    if ([device supportsFamily:MTLGPUFamilyMac2]) {
++    if (SupportsLegacyMac2(device)) {
+         return MTLGPUFamily::Mac2;
+     }
+ #endif
+@@ -403,7 +423,7 @@
+     {
+         bool haveStoreAndMSAAResolve = false;
+ #if DAWN_PLATFORM_IS(MACOS)
+-        haveStoreAndMSAAResolve = [*mDevice supportsFamily:MTLGPUFamilyCommon2];
++        haveStoreAndMSAAResolve = SupportsLegacyCommonFamily(*mDevice, 2);
+ #elif DAWN_PLATFORM_IS(IOS) && !DAWN_PLATFORM_IS(TVOS)
+ #if !defined(__IPHONE_16_0) || __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_16_0
+         haveStoreAndMSAAResolve = [*mDevice supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v2];
+@@ -627,7 +647,7 @@
+         EnableFeature(Feature::Float32Filterable);
+     }
+ #elif DAWN_PLATFORM_IS(MACOS)
+-    if ([*mDevice supportsFamily:MTLGPUFamilyMac2]) {
++    if (SupportsLegacyMac2(*mDevice)) {
+         EnableFeature(Feature::Float32Filterable);
+     }
+ #endif
+@@ -757,7 +777,7 @@
+     // TODO(380326541): Check that reduction operations are supported in Apple6. The support
+     // table says Apple7.
+     if (([*mDevice supportsFamily:MTLGPUFamilyApple6] ||
+-         [*mDevice supportsFamily:MTLGPUFamilyMac2])) {
++         SupportsLegacyMac2(*mDevice))) {
+         EnableFeature(Feature::Subgroups);
+         // Apple doesn't support selecting a subgroup size, but if there is only one possible size
+         // we can trivially enable the feature.
+@@ -801,7 +821,7 @@
+ 
+     // Early 64-bit (ulong) support when both mac2 and apple8. (This means the M2)
+     // See footnote 11 of https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf
+-    if ([*mDevice supportsFamily:MTLGPUFamilyMac2] &&
++    if (SupportsLegacyMac2(*mDevice) &&
+         [*mDevice supportsFamily:MTLGPUFamilyApple8]) {
+         EnableFeature(Feature::AtomicVec2uMinMax);
+     }
+@@ -827,11 +847,11 @@
+             if ([*mDevice supportsFamily:static_cast<::MTLGPUFamily>(5001)]) {
+                 mArchitectureName = "metal-3";
+             }
+-        } else if ([*mDevice supportsFamily:MTLGPUFamilyCommon3]) {
++        } else if (SupportsLegacyCommonFamily(*mDevice, 3)) {
+             mArchitectureName = "common-3";
+-        } else if ([*mDevice supportsFamily:MTLGPUFamilyCommon2]) {
++        } else if (SupportsLegacyCommonFamily(*mDevice, 2)) {
+             mArchitectureName = "common-2";
+-        } else if ([*mDevice supportsFamily:MTLGPUFamilyCommon1]) {
++        } else if (SupportsLegacyCommonFamily(*mDevice, 1)) {
+             mArchitectureName = "common-1";
+         }
+     }
+--- a/third_party/dawn/src/dawn/native/metal/UtilsMetal.mm
++++ b/third_party/dawn/src/dawn/native/metal/UtilsMetal.mm
+@@ -1010,7 +1010,11 @@
+ }
+ 
+ bool SupportTextureComponentSwizzle(id<MTLDevice> device) {
++    // Preserve legacy Mac family support on SDK 27 and newer.
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+     return [device supportsFamily:MTLGPUFamilyMac2] || [device supportsFamily:MTLGPUFamilyApple2];
++#pragma GCC diagnostic pop
+ }
+ 
+ }  // namespace dawn::native::metal

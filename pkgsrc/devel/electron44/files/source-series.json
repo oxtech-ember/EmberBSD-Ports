@@ -1097,6 +1097,16 @@
       "path": "angle-metal-darwin-arm64-legacy.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "angle-metal-gpu-family-deprecation.patch",
+      "strip": 1,
+      "root": ""
+    },
+    {
+      "path": "metal-gpu-family-query-compatibility.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {
