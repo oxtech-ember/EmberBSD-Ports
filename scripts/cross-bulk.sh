@@ -398,9 +398,12 @@ native_satisfies()
 # dependency nodes, one per line. A dependency of a native node that the
 # native prefix already satisfies is followed by the word "soft": sort_edges
 # may drop its edge to break a cycle. A native node that the native prefix
-# already has at its version or newer is a leaf: the build does not build it again, so its own
+# already has at its version or newer is not built again, so its own build
 # tools do not matter. This is what breaks the cycles among the bootstrap
 # tools (coreutils and gettext-tools need each other, python needs both).
+# Its runtime dependencies (DEPENDS) remain its dependency nodes: its
+# consumers run it, and it runs them. An installed meson runs ninja, so a
+# ninja that this build updates is installed before meson's consumers start.
 node_deps()
 {
     case "$1" in
@@ -430,13 +433,14 @@ node_deps()
     # Reuse this already evaluated identity for binary-first clients.
     name=$(printf '%s\n' "$vars" | sed -n 7p) || return 1
     printf '%s %s\n' "$dir$suffix" "$name" > "$state/$key.package"
+    current=no
     if [ -n "$suffix" ]; then
         base=$(printf '%s\n' "$vars" | sed -n 6p) || return 1
         name=$(printf '%s\n' "$vars" | sed -n 7p) || return 1
-        ! native_current "$base" "$name" || return 0
+        ! native_current "$base" "$name" || current=yes
     fi
-    deps=$(printf '%s\n' "$vars" | awk -v suffix="$suffix" '
-        NR == 1 || NR > 5 { next }
+    deps=$(printf '%s\n' "$vars" | awk -v suffix="$suffix" -v current="$current" '
+        NR == 1 || NR > 5 || (current == "yes" && NR != 2) { next }
         { s = NR <= 3 ? suffix : "@native"; n = split($0, w, " ")
           for (i = 1; i <= n; i++)
               if (match(w[i], /:\.\.\/\.\.\/[^\/:]+\/[^\/:]+$/))
