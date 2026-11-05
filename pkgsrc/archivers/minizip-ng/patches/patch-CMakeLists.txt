@@ -1,0 +1,49 @@
+# Preserve the ABI namespace and discover the selected pkgsrc zstd provider.
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -400,6 +400,12 @@
+     # Check if zstd is present
+     if(NOT MZ_FORCE_FETCH_LIBS)
+         find_package(zstd QUIET CONFIG)
++        if(NOT zstd_FOUND)
++            find_package(PkgConfig QUIET)
++            if(PkgConfig_FOUND)
++                pkg_check_modules(ZSTD QUIET IMPORTED_TARGET libzstd)
++            endif()
++        endif()
+     endif()
+ 
+     if(zstd_FOUND AND NOT MZ_FORCE_FETCH_LIBS)
+@@ -412,6 +418,10 @@
+         endif()
+ 
+         set(PC_PRIVATE_LIBS "${PC_PRIVATE_LIBS} -lzstd")
++    elseif(ZSTD_FOUND AND NOT MZ_FORCE_FETCH_LIBS)
++        message(STATUS "Using ZSTD ${ZSTD_VERSION} (pkg-config)")
++        list(APPEND MINIZIP_LIB PkgConfig::ZSTD)
++        set(PC_PRIVATE_LIBS "${PC_PRIVATE_LIBS} -lzstd")
+     elseif(MZ_FETCH_LIBS)
+         set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "Build zstd programs")
+ 
+@@ -637,7 +647,8 @@
+ 
+ # Include compatibility layer
+ if(MZ_COMPAT)
+-    set(SOVERSION "1")
++    # Preserve minizip-ng ABI namespace while enabling source compatibility.
++    set(SOVERSION "4")
+ 
+     list(APPEND MINIZIP_SRC
+         compat/ioapi.c
+@@ -649,6 +660,11 @@
+         compat/unzip.h
+         compat/zip.h)
+ 
++    list(APPEND MINIZIP_HDR compat/iowin32.h)
++    if(WIN32)
++        list(APPEND MINIZIP_SRC compat/iowin32.c)
++    endif()
++
+     if(MZ_COMPAT_VERSION)
+         list(APPEND MINIZIP_DEF -DMZ_COMPAT_VERSION=${MZ_COMPAT_VERSION})
+     endif()

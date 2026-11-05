@@ -533,3 +533,5 @@ devel/range-v3
 audio/libmysofa
 
 audio/openal-soft
+
+archivers/minizip-ng

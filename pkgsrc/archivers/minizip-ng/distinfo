@@ -1,0 +1,7 @@
+$NetBSD: distinfo,v 1.10 2026/06/30 20:10:22 adam Exp $
+
+BLAKE2s (minizip-ng-4.2.2.tar.gz) = 87e123b95cc5732c7614226f0aea7779109d8b3da5c3072af8f3c8b59a08a0d3
+SHA512 (minizip-ng-4.2.2.tar.gz) = 247e8e6a022dccfb19e1e2239e024adebbef4cba88c433997d41f3dd0cb9b09003fdcc0a77675ae1885b2ad7ec34c7fe222f7fc4ffda08b2ecf5de3f5d7d8262
+Size (minizip-ng-4.2.2.tar.gz) = 611941 bytes
+SHA1 (patch-CMakeLists.txt) = 7a7d61e47176fbc53d24f292b464d5677a6ff99a
+SHA1 (patch-compat_ioapi.c) = 5eb26caacbe1a3fb10915bb146d707feee456410
