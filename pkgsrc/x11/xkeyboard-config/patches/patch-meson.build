@@ -1,6 +1,7 @@
 $NetBSD: patch-meson.build,v 1.4 2026/02/24 08:38:26 wiz Exp $
 
 * Do not find xsltproc from textproc/libxslt.
+* Keep the legacy X11 XKB symlink relative for relocatable package staging.
 
 --- meson.build.orig	2026-02-23 07:06:44.000000000 +0000
 +++ meson.build
@@ -20,3 +21,12 @@ $NetBSD: patch-meson.build,v 1.4 2026/02/24 08:38:26 wiz Exp $
  endif
  
  pymod = import('python')
+@@ -126,7 +126,7 @@
+ # Legacy X11 symlink
+ fs = import('fs')
+ install_symlink(
+     fs.name(dir_xkb_base_x11),
+     install_dir: fs.parent(dir_xkb_base_x11),
+-    pointing_to: dir_xkb_base,
++    pointing_to: fs.relative_to(dir_xkb_base, fs.parent(dir_xkb_base_x11)),
+ )

@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.62 2026/06/22 19:27:18 wiz Exp $
 
 DISTNAME=		xkeyboard-config-2.48
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=		x11
 MASTER_SITES=		${MASTER_SITE_XORG:=data/${PKGBASE}/}
 EXTRACT_SUFX=		.tar.xz
@@ -36,6 +36,7 @@ PYTHON_FOR_BUILD_ONLY=	tool
 BUILD_DEFS+=		VARBASE
 BUILD_DEFS+=		XKBCOMPDIR
 
+MESON_REQD+=	1.3.0
 MESON_ARGS+=		-Dxorg-rules-symlinks=true
 
 ###
