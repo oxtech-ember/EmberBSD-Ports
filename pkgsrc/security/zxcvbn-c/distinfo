@@ -1,0 +1,9 @@
+$NetBSD$
+
+BLAKE2s (zxcvbn-c-2.7.tar.gz) = 458df3c4bff7db9c82de2c00c1dcb36f8e80c458dd4054fe3df535ff76f3f79a
+SHA512 (zxcvbn-c-2.7.tar.gz) = b2a7a7f1409952f070b04e0882239559cd783a5a671c61459aba30ecc270dac765cfef23c76dd32ea4cfb4e9549fbf916faa568cdd3b4c283d5016991b59562a
+Size (zxcvbn-c-2.7.tar.gz) = 1405309 bytes
+SHA1 (patch-CMakeLists.txt) = 646f4b55b107c21ebdf602e87afc4484c52af13c
+SHA1 (patch-dict-generate.cpp) = a837b84e45091fcc690b2395a5483dbb0d3ac862
+SHA1 (patch-zxcvbn.c) = 30c930842335008fb4f8bbdbbb74fc54a0fead5a
+SHA1 (patch-zxcvbn.h) = 8b5789d167ac417ee3ff53e5b8fbeae4cde5e495

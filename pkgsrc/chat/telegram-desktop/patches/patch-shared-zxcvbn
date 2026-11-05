@@ -1,0 +1,108 @@
+# Share the common zxcvbn engine while retaining Telegram dictionary data.
+# Origin: EmberBSD (AI-assisted).
+--- Telegram/cmake/lib_zxcvbn.cmake.orig
++++ Telegram/cmake/lib_zxcvbn.cmake
+@@ -3,6 +3,64 @@
+ #
+ # For license and copyright information please follow this link:
+ # https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
++
++# Packaged builds share the estimator and its native generator.  Only the
++# application-specific compiled dictionary is linked into Telegram.
++if (DESKTOP_APP_USE_PACKAGED)
++    find_path(ZXCVBN_INCLUDE_DIR zxcvbn-dictionary.h REQUIRED)
++    find_library(ZXCVBN_LIBRARY NAMES zxcvbn REQUIRED)
++    if (NOT IS_ABSOLUTE "${ZXCVBN_NATIVE_DICTGEN}" OR
++        NOT EXISTS "${ZXCVBN_NATIVE_DICTGEN}")
++        message(FATAL_ERROR "ZXCVBN_NATIVE_DICTGEN must name the native zxcvbn-dictgen")
++    endif()
++    if (NOT IS_ABSOLUTE "${ZXCVBN_WORDS_DIR}" OR
++        NOT IS_DIRECTORY "${ZXCVBN_WORDS_DIR}")
++        message(FATAL_ERROR "ZXCVBN_WORDS_DIR must name the common zxcvbn word lists")
++    endif()
++    if (NOT TARGET zxcvbn_translit)
++        message(FATAL_ERROR "The native Telegram zxcvbn_translit generator is required")
++    endif()
++    add_executable(zxcvbn_dictgen IMPORTED GLOBAL)
++    set_target_properties(zxcvbn_dictgen PROPERTIES
++        IMPORTED_LOCATION "${ZXCVBN_NATIVE_DICTGEN}")
++    set(zxcvbn_gen ${CMAKE_CURRENT_BINARY_DIR}/zxcvbn_gen)
++    set(zxcvbn_words
++        words-eng_wiki.txt
++        words-female.txt
++        words-male.txt
++        words-passwd.txt
++        words-surname.txt
++        words-tv_film.txt)
++    list(TRANSFORM zxcvbn_words PREPEND "${ZXCVBN_WORDS_DIR}/")
++    set(zxcvbn_latin_words)
++    foreach(name ru_50k.txt uk_50k.txt)
++        string(REGEX REPLACE "\\.txt$" "-latin.txt" latin_name ${name})
++        add_custom_command(
++            OUTPUT ${zxcvbn_gen}/${latin_name}
++            COMMAND ${CMAKE_COMMAND} -E make_directory ${zxcvbn_gen}
++            COMMAND zxcvbn_translit ${res_loc}/zxcvbn/${name} ${zxcvbn_gen}/${latin_name}
++            DEPENDS zxcvbn_translit ${res_loc}/zxcvbn/${name}
++            COMMENT "Transliterating zxcvbn ${name}"
++            VERBATIM)
++        list(APPEND zxcvbn_latin_words ${zxcvbn_gen}/${latin_name})
++    endforeach()
++    add_custom_command(
++        OUTPUT ${zxcvbn_gen}/telegram-dictionary.c
++        COMMAND ${CMAKE_COMMAND} -E make_directory ${zxcvbn_gen}
++        COMMAND zxcvbn_dictgen --descriptor TelegramZxcvbnDictionary
++            -o ${zxcvbn_gen}/telegram-dictionary.c ${zxcvbn_words} ${zxcvbn_latin_words}
++        DEPENDS zxcvbn_dictgen ${zxcvbn_words} ${zxcvbn_latin_words}
++        COMMENT "Generating the Telegram zxcvbn dictionary"
++        VERBATIM)
++    add_library(lib_zxcvbn STATIC ${zxcvbn_gen}/telegram-dictionary.c)
++    init_target(lib_zxcvbn "(external)")
++    add_library(desktop-app::lib_zxcvbn ALIAS lib_zxcvbn)
++    target_include_directories(lib_zxcvbn PUBLIC "${ZXCVBN_INCLUDE_DIR}")
++    target_link_libraries(lib_zxcvbn PUBLIC "${ZXCVBN_LIBRARY}")
++    target_compile_definitions(lib_zxcvbn PUBLIC TDESKTOP_USE_PACKAGED_ZXCVBN)
++    return()
++endif()
++
+ 
+ # zxcvbn-c: the password strength estimator behind
+ # SourceFiles/ui/passcode_strength.cpp. The dictionary is compiled in
+--- Telegram/SourceFiles/ui/passcode_strength.cpp.orig
++++ Telegram/SourceFiles/ui/passcode_strength.cpp
+@@ -12,6 +12,12 @@
+ #include <gsl/gsl>
+ 
+ #include <zxcvbn.h>
++
++#ifdef TDESKTOP_USE_PACKAGED_ZXCVBN
++#include <zxcvbn-dictionary.h>
++#include <memory>
++extern "C" const ZxcvbnDictionaryData TelegramZxcvbnDictionary;
++#endif
+ 
+ #include <array>
+ #include <cctype>
+@@ -303,7 +309,23 @@
+ 		WipeCandidate(bounded);
+ 	});
+ 	NormalizeAndBound(passcode, bounded);
++#ifdef TDESKTOP_USE_PACKAGED_ZXCVBN
++	static const auto dictionary = std::unique_ptr<
++		ZxcvbnDictionary, decltype(&ZxcvbnDictionaryFree)>(
++			ZxcvbnDictionaryCreate(&TelegramZxcvbnDictionary),
++			&ZxcvbnDictionaryFree);
++	auto bits = ZxcvbnMatchWithDictionary(
++		dictionary.get(), bounded.bytes.data(), nullptr, &info);
++#else
+ 	auto bits = ZxcvbnMatch(bounded.bytes.data(), nullptr, &info);
++#endif
++	// An estimator error must not become a positive score after tail correction.
++	if (bits < 0) {
++		return {
++			PasscodeStrengthBand::Weak,
++			PasscodeStrengthAdvice::AddVariety,
++		};
++	}
+ 	bits += CorrectTail(info, bounded);
+ 	const auto band = BandFromBits(bits);
+ 	return {

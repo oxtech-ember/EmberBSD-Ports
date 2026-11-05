@@ -2,6 +2,7 @@
 libexec/telegram-desktop-codegen/codegen_emoji
 libexec/telegram-desktop-codegen/codegen_lang
 libexec/telegram-desktop-codegen/codegen_style
+libexec/telegram-desktop-codegen/zxcvbn_translit
 share/licenses/telegram-desktop-codegen/LEGAL
 share/licenses/telegram-desktop-codegen/LEGAL-desktop-app
 share/licenses/telegram-desktop-codegen/LICENSE

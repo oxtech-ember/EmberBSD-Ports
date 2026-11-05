@@ -1,5 +1,6 @@
 # Shared upstream source and patches for the client and its host generators.
 TDESKTOP_VERSION= 7.3.5
+TDESKTOP_CODEGEN_REVISION= 1
 DISTNAME=	tdesktop-${TDESKTOP_VERSION}-full
 CATEGORIES=	chat
 MASTER_SITES=	${MASTER_SITE_GITHUB:=telegramdesktop/tdesktop/releases/download/v${PKGVERSION_NOREV}/}

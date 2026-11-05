@@ -2,7 +2,7 @@
 # Origin: EmberBSD.
 --- CMakeLists.txt.orig
 +++ CMakeLists.txt
-@@ -58,6 +58,32 @@
+@@ -58,6 +58,36 @@
  
  include(cmake/external/qt/package.cmake)
  
@@ -29,6 +29,10 @@
 +    include(GNUInstallDirs)
 +    install(TARGETS codegen_lang codegen_style codegen_emoji
 +        RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/telegram-desktop-codegen)
++    if (DESKTOP_APP_USE_PACKAGED)
++        install(TARGETS zxcvbn_translit
++            RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/telegram-desktop-codegen)
++    endif()
 +    return()
 +endif()
 +
@@ -37,7 +41,7 @@
      variant
 --- Telegram/codegen/CMakeLists.txt.orig
 +++ Telegram/codegen/CMakeLists.txt
-@@ -1,3 +1,24 @@
+@@ -1,3 +1,37 @@
 +# Cross builds execute only generators built for the selected host.
 +if (CMAKE_CROSSCOMPILING)
 +    if (NOT IS_ABSOLUTE "${TDESKTOP_NATIVE_CODEGEN_DIR}" OR
@@ -48,7 +52,11 @@
 +    if (CMAKE_HOST_WIN32)
 +        set(host_executable_suffix ".exe")
 +    endif()
-+    foreach(generator codegen_lang codegen_style codegen_emoji)
++    set(native_generators codegen_lang codegen_style codegen_emoji)
++    if (DESKTOP_APP_USE_PACKAGED)
++        list(APPEND native_generators zxcvbn_translit)
++    endif()
++    foreach(generator IN LISTS native_generators)
 +        set(program "${TDESKTOP_NATIVE_CODEGEN_DIR}/${generator}${host_executable_suffix}")
 +        if (NOT EXISTS "${program}")
 +            message(FATAL_ERROR "Required native Telegram generator not found: ${program}")
@@ -57,6 +65,15 @@
 +        set_target_properties(${generator} PROPERTIES IMPORTED_LOCATION "${program}")
 +    endforeach()
 +    return()
++endif()
++
++if (DESKTOP_APP_USE_PACKAGED)
++    set(translit_source_dir "${CMAKE_CURRENT_SOURCE_DIR}/../SourceFiles")
++    add_executable(zxcvbn_translit
++        "${translit_source_dir}/_other/zxcvbn_translit.cpp"
++        "${translit_source_dir}/ui/passcode_strength_translit.cpp")
++    init_target(zxcvbn_translit "(codegen)")
++    target_include_directories(zxcvbn_translit PRIVATE "${translit_source_dir}")
 +endif()
 +
  add_subdirectory(codegen/common)

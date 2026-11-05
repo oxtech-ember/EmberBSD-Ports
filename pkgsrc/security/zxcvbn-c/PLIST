@@ -1,0 +1,15 @@
+@comment $NetBSD$
+${PLIST.native}bin/zxcvbn-dictgen
+include/zxcvbn-dictionary.h
+include/zxcvbn.h
+${PLIST.darwin}lib/libzxcvbn.0.dylib
+${PLIST.darwin}lib/libzxcvbn.dylib
+${PLIST.nondarwin}lib/libzxcvbn.so
+${PLIST.nondarwin}lib/libzxcvbn.so.0
+share/licenses/zxcvbn-c/LICENSE.txt
+${PLIST.native}share/zxcvbn/words-eng_wiki.txt
+${PLIST.native}share/zxcvbn/words-female.txt
+${PLIST.native}share/zxcvbn/words-male.txt
+${PLIST.native}share/zxcvbn/words-passwd.txt
+${PLIST.native}share/zxcvbn/words-surname.txt
+${PLIST.native}share/zxcvbn/words-tv_film.txt

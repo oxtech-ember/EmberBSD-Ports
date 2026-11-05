@@ -1,6 +1,7 @@
 # Native source generators for Telegram Desktop.
 .include "../telegram-desktop/Makefile.common"
 PKGNAME= telegram-desktop-codegen-${TDESKTOP_VERSION}
+PKGREVISION= ${TDESKTOP_CODEGEN_REVISION}
 HOMEPAGE= https://desktop.telegram.org/
 COMMENT= Native source generators for Telegram Desktop
 LICENSE= gnu-gpl-v3

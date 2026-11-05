@@ -26,9 +26,12 @@ CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_CPPGIR_EXECUTABLE=${TOOLBASE}/bin/cppgir
 CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_CPPGIR_DATA_DIR=${TOOLBASE}/share/cppgir
 CMAKE_CONFIGURE_ARGS+=	-DDESKTOP_APP_GIR_DIR=${CROSS_DESTDIR:U}${LOCALBASE}/share/gir-1.0
 TOOL_DEPENDS+=	cppgir>=2.0.0:../../devel/cppgir
+TOOL_DEPENDS+=	zxcvbn-c>=2.7nb2:../../security/zxcvbn-c
+CMAKE_CONFIGURE_ARGS+=	-DZXCVBN_NATIVE_DICTGEN=${TOOLBASE}/bin/zxcvbn-dictgen
+CMAKE_CONFIGURE_ARGS+=	-DZXCVBN_WORDS_DIR=${TOOLBASE}/share/zxcvbn
 TOOL_DEPENDS+=	qt6-qtshadertools-[0-9]*:../../graphics/qt6-qtshadertools
 CMAKE_CONFIGURE_ARGS+=	-DQSB_EXECUTABLE=${TOOLBASE}/qt6/bin/qsb
-TOOL_DEPENDS+=	telegram-desktop-codegen=${TDESKTOP_VERSION}:../../chat/telegram-desktop-codegen
+TOOL_DEPENDS+=	telegram-desktop-codegen=${TDESKTOP_VERSION}nb${TDESKTOP_CODEGEN_REVISION}:../../chat/telegram-desktop-codegen
 CMAKE_CONFIGURE_ARGS+=	-DTDESKTOP_NATIVE_CODEGEN_DIR=${TOOLBASE}/libexec/telegram-desktop-codegen
 .include "../../mk/bsd.prefs.mk"
 
@@ -78,6 +81,7 @@ pre-install pre-package:
 .include "../../audio/openal-soft/buildlink3.mk"
 .include "../../audio/rnnoise/buildlink3.mk"
 .include "../../security/libfido2/buildlink3.mk"
+.include "../../security/zxcvbn-c/buildlink3.mk"
 .include "../../security/openssl/buildlink3.mk"
 .include "../../textproc/cmark-gfm/buildlink3.mk"
 .include "../../textproc/cld3/buildlink3.mk"
