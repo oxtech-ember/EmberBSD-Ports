@@ -26,6 +26,15 @@ args.update(emberbsd_common_protobuf=True, icu_use_data_file=False, v8_enable_te
 env_allowed, args_allowed = build.common_activation_allowlist(opts, {}, env, {}, args)
 assert env_allowed == set(env) and args_allowed == set(args)
 assert build.common_activation_allowlist(opts, env, env, args, args) == (set(), set())
+without_swift = dict(args, enable_swiftshader=False, enable_swiftshader_vulkan=False,
+                     angle_enable_swiftshader=False)
+assert build.common_activation_allowlist(opts, env, env, args, without_swift) == (set(), set())
+try:
+    build.common_activation_allowlist(opts, env, env, args, dict(without_swift, angle_enable_swiftshader=True))
+except ValueError:
+    pass
+else:
+    raise AssertionError('unsafe SwiftShader policy accepted')
 old_args = dict(args, emberbsd_protoc_runtime_inputs=['/selected/protoc'])
 new_args = dict(args, emberbsd_protoc_runtime_inputs=['/selected/protoc', '/work/protoc-selection.json'])
 assert build.common_activation_allowlist(opts, env, env, old_args, new_args) == (set(), set())

@@ -328,6 +328,7 @@ def arguments(options, native, tools, rust_version, launcher, providers=None):
         pkg_config=native.tool('pkg-config'), host_pkg_config=native.tool('pkg-config'),
         unbundle_linker_launcher=launcher, concurrent_links=1,
         is_debug=False, is_component_build=False,
+        enable_swiftshader=False, enable_swiftshader_vulkan=False, angle_enable_swiftshader=False,
         # These profiles describe upstream OS/compiler binaries. NetBSD's
         # separately selected compiler/runtime has no matching PGO profile.
         chrome_pgo_phase=0, v8_builtins_profiling_log_file='',
@@ -1995,7 +1996,10 @@ def common_activation_allowlist(options, old_environment, environment, old_argum
             'EMBERBSD_PROTOC_SELECTION_SHA256'}:
         require(old_environment.get(name) == environment.get(name),
                 'unrelated producer input changed during common provider activation: ' + name)
-    for name in (set(old_arguments) | set(values)) - args:
+    swiftshader_keys = ('enable_swiftshader', 'enable_swiftshader_vulkan', 'angle_enable_swiftshader')
+    swiftshader_changed = (verified_swiftshader_disable(old_arguments, values)
+                           if any(name in values for name in swiftshader_keys) else set())
+    for name in (set(old_arguments) | set(values)) - args - swiftshader_changed:
         require(old_arguments.get(name) == values.get(name),
                 'unrelated GN input changed during common provider activation: ' + name)
     return (env_names, args) if first else (set(), set())
@@ -2006,6 +2010,16 @@ def migrate_devtools_only(options, work):
     (work / 'reconfigure-incomplete').write_text('GN reconfiguration incomplete\n')
     return gn_source(options)
 
+
+
+def verified_swiftshader_disable(old_arguments, new_arguments):
+    """Allow only disabling the optional bundled software renderer."""
+    keys = ('enable_swiftshader', 'enable_swiftshader_vulkan', 'angle_enable_swiftshader')
+    require(all(new_arguments.get(key) is False for key in keys),
+            'bundled SwiftShader is disabled in this producer')
+    require(all(old_arguments.get(key) is None or type(old_arguments[key]) is bool for key in keys),
+            'invalid prior SwiftShader selection')
+    return {key for key in keys if old_arguments.get(key) is not False}
 
 def verified_host_deployment_change(old_args, new_args, old_env, new_env, options, native):
     """Accept only a coherent Darwin minimum and its derived V8 host flag."""
@@ -2120,6 +2134,7 @@ def reconfigure(options):
         activation_env, activation_args = common_activation_allowlist(
             options, old_env, environment, saved['arguments'], values)
         permitted_env.update(activation_env)
+        swiftshader_changed = verified_swiftshader_disable(saved['arguments'], values)
         deployment_changed = verified_host_deployment_change(
             saved['arguments'], values, old_env, environment, options, native)
         if deployment_changed:
@@ -2211,10 +2226,13 @@ def reconfigure(options):
                          'external_libcxx_has_extensive_hardening', 'emberbsd_native_libcxx_hardened', 'emberbsd_native_cpu',
                          'emberbsd_native_cc', 'emberbsd_native_cxx',
                          'use_lld', 'emberbsd_target_strip', 'emberbsd_target_objcopy'}
+        identity_args.update(('enable_swiftshader', 'enable_swiftshader_vulkan', 'angle_enable_swiftshader'))
         identity_args.update('node_shared_' + feature for feature in NODE_SHARED_FEATURES)
         node_v8_path_changed = verified_node_configure_v8_path_change(
             saved['arguments'], values, options.v8_source)
         for name in identity_args:
+            if name in swiftshader_changed:
+                continue
             if deployment_changed and name in ('mac_deployment_target', 'v8_metagen_host_extra_flags'):
                 continue
             if node_source_refresh and name == 'emberbsd_node_source_identity':

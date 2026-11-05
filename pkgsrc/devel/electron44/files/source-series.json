@@ -1082,6 +1082,11 @@
       "path": "litert-generate-common-flatbuffer-schemas.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "electron-optional-swiftshader-packaging.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {

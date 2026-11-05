@@ -193,3 +193,7 @@ The build selects native `flatc` and the target Eigen, FlatBuffers and FP16
 headers from their installed common packages. Their pkgdb ownership and source
 metadata are checked before use; header projections contain only owned files.
 The native generator's actual loader inputs are tracked by the selected SDK.
+
+This EmberBSD producer omits the optional SwiftShader software Vulkan/GL
+fallback. Hardware Vulkan, GL and ANGLE remain selected independently; actual
+hardware renderer acceptance is established on the target device.
