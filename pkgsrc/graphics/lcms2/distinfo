@@ -3,7 +3,6 @@ $NetBSD: distinfo,v 1.18 2026/05/12 16:09:35 gdt Exp $
 BLAKE2s (lcms2-2.19.1.tar.gz) = 009ee5035d8d7bafc83514ea8e7ac9552f293e8d1dec41ee114d4fe981ffff3d
 SHA512 (lcms2-2.19.1.tar.gz) = 0c476a0c2ed7a4eabd149767c6e6fb372090dfd582b93ae738c9bd3dda94a2fc1c0b7da4b400422a3bc3650c9b98c9956ba9181b29f9b7c57f08763e20b7c8ac
 Size (lcms2-2.19.1.tar.gz) = 5728743 bytes
-
 SHA1 (patch-pdfium_0003) = c8b2783fbda4480985cbc690504020698d1434ba
 SHA1 (patch-pdfium_0004) = 477177d28c565df71278b0e58e975c4a250f029d
 SHA1 (patch-pdfium_0027) = 7a9a853f539145507722445b101ac611c70446ff
