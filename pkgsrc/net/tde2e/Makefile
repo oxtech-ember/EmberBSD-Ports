@@ -1,5 +1,4 @@
 # $NetBSD$
-# WIP: configure-only, PLIST and host generation must be proven.
 DISTNAME= td-4c6377aa7386c39217878a9a56d581922ad37ca4
 PKGNAME= tde2e-1.8.69
 CATEGORIES= net
@@ -12,7 +11,7 @@ USE_TOOLS+= gperf
 CMAKE_CONFIGURE_ARGS+= -DTD_E2E_ONLY=ON -DTD_INSTALL_STATIC_LIBRARIES=ON
 CMAKE_CONFIGURE_ARGS+= -DBUILD_TESTING=OFF
 
-# WIP cross producer: native selected SDK tools, target objects remain separate.
+# Cross producer: native SDK tools generate sources for the target build.
 .include "../../mk/bsd.prefs.mk"
 .if ${USE_CROSS_COMPILE:tl} == "yes"
 TOOLS_CREATE+= native-cc native-cxx native-ar
