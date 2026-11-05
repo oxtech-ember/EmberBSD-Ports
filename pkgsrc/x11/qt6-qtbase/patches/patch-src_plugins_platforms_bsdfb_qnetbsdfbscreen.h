@@ -4,13 +4,13 @@ Add the NetBSD framebuffer screen interface.
 
 --- /dev/null
 +++ src/plugins/platforms/bsdfb/qnetbsdfbscreen.h
-@@ -0,0 +1,51 @@
+@@ -0,0 +1,52 @@
 +// SPDX-License-Identifier: BSD-2-Clause
 +// Origin: EmberBSD contributors (AI-assisted).
 +
 +#pragma once
 +
-+#include "qbsdfblayout_p.h"
++#include "qbsdfbpointer_p.h"
 +#include "qbsdfbframegate_p.h"
 +#include <QtFbSupport/private/qfbscreen_p.h>
 +#include <QtCore/QPointer>
@@ -48,6 +48,7 @@ Add the NetBSD framebuffer screen interface.
 +    bool m_hasMapping = false;
 +    QBsdFb::Layout m_layout;
 +    QBsdFb::Rotation m_rotation = QBsdFb::Rotation::R0;
++    QBsdFb::InputCoordinates m_inputCoordinates = QBsdFb::InputCoordinates::Native;
 +    QBsdFb::FrameGate m_frameGate{false};
 +    QPointer<QWindow> m_frameWindow;
 +    QSize m_readyFrameSize;

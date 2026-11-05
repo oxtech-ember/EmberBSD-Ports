@@ -4,7 +4,7 @@ Add pointer coordinate and button event handling for the bsdfb backend.
 
 --- /dev/null
 +++ src/plugins/platforms/bsdfb/qbsdfbpointer_p.h
-@@ -0,0 +1,123 @@
+@@ -0,0 +1,133 @@
 +// SPDX-License-Identifier: BSD-2-Clause
 +// Origin: EmberBSD contributors (AI-assisted).
 +
@@ -15,6 +15,8 @@ Add pointer coordinate and button event handling for the bsdfb backend.
 +#include <cstdint>
 +
 +namespace QBsdFb {
++
++enum class InputCoordinates { Native, Logical };
 +
 +class PointerInput
 +{
@@ -28,8 +30,9 @@ Add pointer coordinate and button event handling for the bsdfb backend.
 +        std::uint32_t button = 0, buttons = 0;
 +    };
 +
-+    PointerInput(Layout layout, Rotation rotation, AxisRange axes) noexcept
-+        : m_layout(layout), m_rotation(rotation), m_axes(axes)
++    PointerInput(Layout layout, Rotation rotation, AxisRange axes,
++                 InputCoordinates coordinates = InputCoordinates::Native) noexcept
++        : m_layout(layout), m_rotation(rotation), m_axes(axes), m_coordinates(coordinates)
 +    {
 +        const Size size = logicalSize(layout, rotation);
 +        m_valid = size.width > 0 && size.height > 0
@@ -111,6 +114,12 @@ Add pointer coordinate and button event handling for the bsdfb backend.
 +
 +    void updatePosition() noexcept
 +    {
++        if (m_coordinates == InputCoordinates::Logical) {
++            const Size size = logicalSize(m_layout, m_rotation);
++            m_position = {scaled(m_x, m_axes.xMin, m_axes.xMax, size.width),
++                          scaled(m_y, m_axes.yMin, m_axes.yMax, size.height)};
++            return;
++        }
 +        const Point native{scaled(m_x, m_axes.xMin, m_axes.xMax, m_layout.nativeWidth),
 +                           scaled(m_y, m_axes.yMin, m_axes.yMax, m_layout.nativeHeight)};
 +        const auto logical = logicalFromNative(m_layout, m_rotation, native);
@@ -121,6 +130,7 @@ Add pointer coordinate and button event handling for the bsdfb backend.
 +    Layout m_layout;
 +    Rotation m_rotation;
 +    AxisRange m_axes;
++    InputCoordinates m_coordinates;
 +    bool m_valid = false, m_connected = true;
 +    int m_x = 0, m_y = 0;
 +    Point m_position{}, m_delivered{};

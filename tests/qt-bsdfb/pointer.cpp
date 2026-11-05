@@ -121,6 +121,31 @@ void testRotationCorners(const Layout &layout)
     }
 }
 
+void testLogicalAxes(const Layout &layout)
+{
+    Input input(layout, Rotation::R90, AxisRange{0, 800, 0, 1280},
+                QBsdFb::InputCoordinates::Logical);
+    struct Corner { Point raw; Point logical; };
+    const std::array corners{
+        Corner{{0, 0}, {0, 0}}, Corner{{800, 0}, {1279, 0}},
+        Corner{{0, 1280}, {0, 799}}, Corner{{800, 1280}, {1279, 799}},
+    };
+    for (const Corner &corner : corners) {
+        std::vector<Event> events;
+        feed(input, EventKind::AbsoluteX, corner.raw.x, events);
+        feed(input, EventKind::AbsoluteY, corner.raw.y, events);
+        feed(input, EventKind::ButtonDown, 0, events);
+        feed(input, EventKind::ButtonUp, 0, events);
+        const bool moved = corner.raw.x != 0 || corner.raw.y != 0;
+        const std::size_t press = moved ? 1 : 0;
+        check(events.size() == press + 2
+                  && (!moved || same(events[0], EventType::Motion, corner.logical, 0U, 0U))
+                  && same(events[press], EventType::Press, corner.logical, 1U, 1U)
+                  && same(events.back(), EventType::Release, corner.logical, 1U, 0U),
+              "landscape axes retain screen directions for motion, press and release");
+    }
+}
+
 void testInitialPressAndAxisDrain(const Layout &layout)
 {
     Input input(layout, Rotation::R0, AxisRange{0, 799, 0, 1279});
@@ -303,6 +328,7 @@ int main()
 {
     const Layout layout = testLayout();
     testRotationCorners(layout);
+    testLogicalAxes(layout);
     testInitialPressAndAxisDrain(layout);
     testMotionBeforeButtons(layout);
     testButtonBitsAndDuplicates(layout);

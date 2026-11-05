@@ -4,7 +4,7 @@ Add checked wsdisplay framebuffer and software presentation support.
 
 --- /dev/null
 +++ src/plugins/platforms/bsdfb/qnetbsdfbscreen.cpp
-@@ -0,0 +1,301 @@
+@@ -0,0 +1,305 @@
 +// SPDX-License-Identifier: BSD-2-Clause
 +// Origin: EmberBSD contributors (AI-assisted).
 +
@@ -66,6 +66,10 @@ Add checked wsdisplay framebuffer and software presentation support.
 +            m_fbPath = argument.mid(3);
 +        } else if (argument.startsWith(QLatin1String("mouse="))) {
 +            m_mousePath = argument.mid(6);
++        } else if (argument == QLatin1String("input-coordinates=logical")) {
++            m_inputCoordinates = QBsdFb::InputCoordinates::Logical;
++        } else if (argument == QLatin1String("input-coordinates=native")) {
++            m_inputCoordinates = QBsdFb::InputCoordinates::Native;
 +        } else if (argument == QLatin1String("rotation=0")) {
 +            m_rotation = QBsdFb::Rotation::R0;
 +        } else if (argument == QLatin1String("rotation=90")) {
@@ -203,7 +207,7 @@ Add checked wsdisplay framebuffer and software presentation support.
 +{
 +    if (qEnvironmentVariableIntValue("QT_QPA_FB_DISABLE_INPUT"))
 +        return true;
-+    m_mouse = std::make_unique<QWsconsMouse>(m_mousePath, m_layout, m_rotation);
++    m_mouse = std::make_unique<QWsconsMouse>(m_mousePath, m_layout, m_rotation, m_inputCoordinates);
 +    if (!m_mouse->start()) {
 +        m_mouse.reset();
 +        return false;

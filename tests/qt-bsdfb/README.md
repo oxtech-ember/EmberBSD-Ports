@@ -23,7 +23,12 @@ The backend scope is deliberately narrow: NetBSD wsdisplay in dumb framebuffer
 mode, a linear 32-bit RGB framebuffer (`Xrgb8888`, or the supported
 little-endian `Xbgr8888` ordering), CPU-only software composition, and absolute
 wscons pointer events. It supports 0, 90,
-180, and 270 degree rotation. `preserve=1` keeps the existing contents until
+180, and 270 degree rotation. By default, `input-coordinates=native` maps
+the calibrated axes to framebuffer pixels, then rotates the pointer to match
+the display. Select `input-coordinates=logical` for touch axes that already
+increase rightward and downward on the mounted screen. For example,
+`bsdfb:rotation=90:input-coordinates=logical` scales each axis directly to
+the corresponding landscape screen dimension. `preserve=1` keeps the existing contents until
 the first frame is presented; `preserve=0` permits the initial clear. Set
 `QT_QPA_FB_DISABLE_INPUT=1` to disable wscons input. The plugin does not provide
 GPU-accelerated rendering, relative input, or other pixel depths and layouts.

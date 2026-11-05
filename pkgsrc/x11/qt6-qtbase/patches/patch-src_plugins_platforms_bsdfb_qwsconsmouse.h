@@ -4,7 +4,7 @@ Add the wscons mouse handler interface.
 
 --- /dev/null
 +++ src/plugins/platforms/bsdfb/qwsconsmouse.h
-@@ -0,0 +1,40 @@
+@@ -0,0 +1,42 @@
 +// SPDX-License-Identifier: BSD-2-Clause
 +// Origin: EmberBSD contributors (AI-assisted).
 +
@@ -25,7 +25,8 @@ Add the wscons mouse handler interface.
 +class QWsconsMouse final : public QObject
 +{
 +public:
-+    QWsconsMouse(QString path, QBsdFb::Layout layout, QBsdFb::Rotation rotation);
++    QWsconsMouse(QString path, QBsdFb::Layout layout, QBsdFb::Rotation rotation,
++                 QBsdFb::InputCoordinates coordinates);
 +    ~QWsconsMouse() override;
 +    bool start();
 +
@@ -37,6 +38,7 @@ Add the wscons mouse handler interface.
 +    QString m_path;
 +    QBsdFb::Layout m_layout;
 +    QBsdFb::Rotation m_rotation;
++    QBsdFb::InputCoordinates m_coordinates;
 +    int m_fd = -1;
 +    bool m_registered = false;
 +    std::unique_ptr<QSocketNotifier> m_notifier;
