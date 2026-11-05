@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.22 2026/08/16 12:13:03 wiz Exp $
 
 DISTNAME=	libpsl-0.23.3
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	www
 MASTER_SITES=	${MASTER_SITE_GITHUB:=rockdaboot/}
 GITHUB_RELEASE=	${PKGVERSION_NOREV}
@@ -26,8 +26,8 @@ CONFIGURE_ENV.Darwin=	am_cv_func_iconv_works=yes
 PKGCONFIG_OVERRIDE+=	libpsl.pc.in
 TEST_TARGET=		check
 
-PYTHON_FOR_BUILD_ONLY=	tool
-
+# psl-make-dafsa is installed with a Python shebang; keep Python as a
+# runtime dependency so the cross interpreter check stays honest.
 REPLACE_PYTHON+=	src/psl-make-dafsa
 
 .include "../../converters/libiconv/buildlink3.mk"

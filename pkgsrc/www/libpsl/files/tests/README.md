@@ -17,3 +17,9 @@ rule or invalid input; otherwise the result is a bitwise OR of
 A normal rule may have neither wildcard nor exception bit. The internal PLAIN
 bit is not part of this interface. Inputs containing NUL, empty inputs and lengths
 that cannot be represented by the selected context are rejected.
+
+# Runtime Python for psl-make-dafsa
+
+`psl-make-dafsa-runtime.py` runs the installed `bin/psl-make-dafsa` under the
+selected prefix. The script must keep a working Python interpreter shebang, so
+Python remains a runtime dependency of libpsl rather than a build-only tool.
