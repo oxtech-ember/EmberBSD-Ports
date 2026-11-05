@@ -527,3 +527,5 @@ multimedia/libde265
 graphics/zint
 
 textproc/cmark-gfm
+
+devel/range-v3
