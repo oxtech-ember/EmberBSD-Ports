@@ -64,8 +64,8 @@ Preserve KiCad natural interpolation workspace fix and include shared Parson.
 -		memcpy(d + num_int_points * dimension,
 -		       points + (num_points-1) * dimension,
 -		       sof_ctrlp);
-+		memcpy(thomas, points, sof_ctrlp);
 +		memmove(thomas + dimension, d, num_int_points * sof_ctrlp);
++		memcpy(thomas, points, sof_ctrlp);
 +		memcpy(thomas + (num_int_points+1) * dimension,
 +		       points + (num_points-1) * dimension, sof_ctrlp);
  		TS_CALL(try, err, ts_int_relaxed_uniform_cubic_bspline(
