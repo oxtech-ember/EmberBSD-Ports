@@ -1,0 +1,9 @@
+$NetBSD$
+
+BLAKE2s (TooManyCooks-1.6.1.tar.gz) = bcb934d01b0c5b233bd281926c3a14f0092db3510705b1543d1f77194676b091
+SHA512 (TooManyCooks-1.6.1.tar.gz) = 6a50e09f24405b23a011166881a3a76115fbc236da4777c5890246191b65d8fe3a552a599c09cc6b61733e0fe484e8471ddceab73bb3078c0d995b13623bea24
+Size (TooManyCooks-1.6.1.tar.gz) = 233169 bytes
+SHA1 (patch-CMakeLists.txt) = a31c4dbe00b9351c23a2cd6286570c25819f5687
+SHA1 (patch-cmake_tmc-install.cmake) = 1305522a2826d5b159203193b18f91889ca1fdbf
+SHA1 (patch-cmake_TooManyCooksConfig.cmake.in) = ae6cdae386c5b90ae2807803352b6f80c37a8d3b
+SHA1 (patch-include_tmc_version.hpp) = 91a6ac14d59c3f7f7d1aaa0690ee4184ce9ee564

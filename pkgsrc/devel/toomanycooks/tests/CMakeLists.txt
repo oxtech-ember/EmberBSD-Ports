@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.16)
+project(tmc_consumer LANGUAGES CXX)
+find_package(TooManyCooks 1.6 CONFIG REQUIRED)
+add_executable(tmc_consumer main.cpp)
+target_link_libraries(tmc_consumer PRIVATE TooManyCooks::TooManyCooks)

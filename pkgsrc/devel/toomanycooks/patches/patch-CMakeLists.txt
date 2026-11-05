@@ -1,0 +1,22 @@
+# $NetBSD$
+
+Install a correct package version and preserve BSD platform and license paths.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -1,5 +1,5 @@
+ cmake_minimum_required(VERSION 3.16)
+-project(TooManyCooks VERSION 1.5.0 LANGUAGES CXX)
++project(TooManyCooks VERSION 1.6.1 LANGUAGES CXX)
+ 
+ # ---- Dependency Options ----
+ # all options are documented in detail at https://www.fleetcode.com/oss/tmc/docs/dev/build_flags.html
+@@ -64,7 +64,7 @@
+ endif()
+ 
+ # pthreads
+-if(CMAKE_SYSTEM_NAME MATCHES "Linux|FreeBSD")
++if(CMAKE_SYSTEM_NAME MATCHES "Linux|FreeBSD|NetBSD")
+     find_package(Threads REQUIRED)
+     target_link_libraries(TooManyCooks INTERFACE Threads::Threads)
+ endif()

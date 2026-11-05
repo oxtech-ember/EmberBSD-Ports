@@ -1,0 +1,15 @@
+# $NetBSD$
+
+Find the Threads target when consumed on NetBSD.
+
+--- cmake/TooManyCooksConfig.cmake.in.orig
++++ cmake/TooManyCooksConfig.cmake.in
+@@ -12,7 +12,7 @@
+     endif()
+ endif()
+ 
+-if(CMAKE_SYSTEM_NAME MATCHES "Linux|FreeBSD")
++if(CMAKE_SYSTEM_NAME MATCHES "Linux|FreeBSD|NetBSD")
+     find_dependency(Threads)
+ endif()
+ 
