@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (pthreadpool-15a6644ba1c45f1acc16ac1e883efc3e56c6bed2.tar.gz) = 9571a0d58eea11052ac523e629fecdb036c71b231f6df4885f3873acf9d083e9
+SHA512 (pthreadpool-15a6644ba1c45f1acc16ac1e883efc3e56c6bed2.tar.gz) = c3c68ce357bca786756c25c3ed15233252fc7d02739b9481ff3bfe9f612dfbac8cc0c424b6f6b4b13a4549848fad82c853e6602db3327e70ce40d4ae3b09cdf2
+Size (pthreadpool-15a6644ba1c45f1acc16ac1e883efc3e56c6bed2.tar.gz) = 104801 bytes

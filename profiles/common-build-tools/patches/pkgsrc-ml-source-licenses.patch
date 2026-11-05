@@ -1,0 +1,18 @@
+--- a/mk/license.mk
++++ b/mk/license.mk
+@@ -127,6 +127,7 @@
+ 	artistic artistic-2.0 \
+ 	beer-ware \
+ 	blue-oak-1.0.0 \
++	bsd-source-code \
+ 	boost-license \
+ 	cc-by-sa-v3.0 \
+ 	cc-by-sa-v4.0 \
+@@ -161,6 +162,7 @@
+ 	mplusfont \
+ 	ms-pl \
+ 	odbl-v1 \
++	ooura-fft \
+ 	ofl-v1.0 ofl-v1.1 \
+ 	openssl \
+ 	original-bsd modified-bsd 2-clause-bsd 0-clause-bsd \

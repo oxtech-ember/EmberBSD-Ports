@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (fft2d-20061228.tgz) = 554ee9bfb35b91aaf8252ecb66c114e81888076fa812c9a9acbfa0987ee837c8
+SHA512 (fft2d-20061228.tgz) = af993f68e8e1eb3cb927a51e86da8f74cfafc912a7cd055515e50fe543dd19ab5a6f7b1c2be4a55d6f4a0e5d766ead34c3be4c5705be6353f78cb2a55bd5cf16
+Size (fft2d-20061228.tgz) = 54434 bytes
+SHA1 (patch-fft_declarations) = 8a6604b126bc8f4afd4ca116ab95bcec132d843a
