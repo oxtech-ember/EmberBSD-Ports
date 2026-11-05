@@ -483,7 +483,8 @@ def host_buildlink(options, sdk, native, environment, host_binding):
         return [native.tool('python'), '-B', str(script), '--sdk-source', str(options.sdk_source),
                 '--pkgsrc-root', str(selected[0]), '--host-prefix', str(options.host_prefix),
                 *(['--stage-root', str(selected[1])] if selected[1] else []),
-                *(['--shared-ffmpeg'] if getattr(options, 'shared_ffmpeg', False) else []), '--base-makeconf', str(selected[2]),
+                *(['--shared-ffmpeg'] if getattr(options, 'shared_ffmpeg', False) else []),
+                *(['--shared-minizip'] if getattr(options, 'shared_minizip', False) else []), '--base-makeconf', str(selected[2]),
                 '--binding-record', str(record), '--bmake-mk', str(selected[3]),
                 '--work', str(work), '--lock-root', str(options.lock_root)]
     if not previous and (getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)):
@@ -1298,6 +1299,8 @@ def compression_recipe_catalog(options, sdk, native, environment):
     packages = ('archivers/brotli', 'archivers/zstd')
     if getattr(options, 'shared_ffmpeg', False):
         packages += ('multimedia/ffmpeg9',)
+    if getattr(options, 'shared_minizip', False):
+        packages += ('devel/zlib', 'archivers/minizip-ng')
     identities = {name: selector.git_package_identity(owner, name, git) for name in packages}
     config_root = getattr(options, 'native_binding_root', None) or options.work
     config = Path(config_root)/'configuration.json'
@@ -1388,6 +1391,91 @@ def common_compression(options, sdk, native, environment, buildlink):
         separators=(',', ':')).encode()).hexdigest()
     environment['EMBERBSD_COMPRESSION_SOURCE_SHA256'] = options.compression_identity
     return {'emberbsd_brotli_native_tool': str(tool), 'emberbsd_brotli_native_inputs': inputs}
+
+
+def common_minizip(options, sdk, native, environment, buildlink):
+    """Select matching installed common zlib and compatibility minizip."""
+    if not getattr(options, 'shared_minizip', False):
+        return {}
+    require(buildlink, 'shared minizip requires selected host buildlink')
+    selection_work = environment.get('EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK')
+    require(selection_work, 'shared minizip needs host buildlink metadata')
+    selection = json.loads((Path(selection_work)/'selection.json').read_text())['identity']['inputs']
+    host_prefix = Path(options.host_prefix).resolve(strict=True)
+    record = {}
+    for path, module, minimum in (('devel/zlib', 'zlib', (1, 3, 2, 7)),
+                                  ('archivers/minizip-ng', 'minizip', (4, 2, 2, 1))):
+        hosts = options._common_native_packages.get(path, [])
+        targets = options._common_target_packages.get(path, [])
+        require(len(hosts) == len(targets) == 1 and hosts[0].name == targets[0].name,
+                'shared compression provider missing or mismatched: ' + path)
+        match = re.fullmatch(r'[^-]+(?:-ng)?-(\d+)\.(\d+)\.(\d+)(?:nb(\d+))?', hosts[0].name)
+        require(match and tuple(int(n or 0) for n in match.groups()) >= minimum,
+                'shared compression provider is too old: ' + path)
+        recipe = options._compression_catalog['recipes'][path]
+        exported = Path(options.host_buildlink_pkgsrc)/path
+        for package in (hosts[0], targets[0]):
+            validate_package_source(package, recipe, exported, distinfo=True,
+                                    package_path=path, allow_empty_patches=True)
+            manifest = (package/'+CONTENTS').read_text().splitlines()
+            require('lib/pkgconfig/' + module + '.pc' in manifest,
+                    'missing owned pkg-config file: ' + module)
+        require(str(host_prefix/'lib/pkgconfig'/(module+'.pc')) in selection and
+                (Path(buildlink)/'lib/pkgconfig'/(module+'.pc')).is_file(),
+                'host pkg-config provider is not selected: ' + module)
+        versions = []
+        for role, prefix in (('host', Path(buildlink)), ('target', Path(options.sysroot)/'usr/pkg')):
+            env = dict(environment, PKG_CONFIG_LIBDIR=str(prefix/'lib/pkgconfig'))
+            env.pop('PKG_CONFIG_PATH', None)
+            if role == 'host':
+                env.pop('PKG_CONFIG_SYSROOT_DIR', None)
+            else:
+                env['PKG_CONFIG_SYSROOT_DIR'] = str(options.sysroot)
+            command = [native.tool('pkg-config')] + (['--define-prefix'] if role == 'host' else [])
+            version = sdk['process'].capture(command + ['--modversion', module], env=env).stdout.decode().strip()
+            require(version, 'empty pkg-config version: ' + module)
+            versions.append(version)
+        require(versions[0] == versions[1], 'host and target provider versions differ: ' + module)
+        record[path] = {'package': hosts[0].name, 'recipe': recipe, 'version': versions[0]}
+    for package, prefix in ((options._common_native_packages['archivers/minizip-ng'][0], host_prefix),
+                            (options._common_target_packages['archivers/minizip-ng'][0], Path(options.sysroot)/'usr/pkg')):
+        manifest = (package/'+CONTENTS').read_text().splitlines()
+        require('include/minizip' in manifest and 'include/minizip-ng/unzip.h' in manifest,
+                'minizip compatibility headers missing')
+        require((prefix/'include/minizip').resolve(strict=True) == (prefix/'include/minizip-ng').resolve(strict=True),
+                'minizip compatibility header alias is invalid')
+    environment['EMBERBSD_MINIZIP_SOURCE_SHA256'] = hashlib.sha256(
+        json.dumps(record, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    values = {}
+    for role, db, prefix, suffix in (
+            ('host', options._common_native_packages, host_prefix,
+             '.dylib' if native.host['os'] == 'Darwin' else '.so'),
+            ('target', options._common_target_packages, Path(options.sysroot)/'usr/pkg', '.so')):
+        for label, path, libname, headers in (
+                ('zlib', 'devel/zlib', 'libz', ('include/zlib.h', 'include/zconf.h')),
+                ('minizip', 'archivers/minizip-ng', 'libminizip-ng',
+                 ('include/minizip-ng/ioapi.h', 'include/minizip-ng/unzip.h',
+                  'include/minizip-ng/zip.h', 'include/minizip-ng/crypt.h',
+                  'include/minizip-ng/iowin32.h'))):
+            package = db[path][0]
+            manifest = (package/'+CONTENTS').read_text().splitlines()
+            library = selected_owned_library(prefix, libname + suffix, [package])
+            files = []
+            for entry in headers:
+                require(entry in manifest, 'missing owned header: ' + entry)
+                header = (prefix/entry).resolve(strict=True)
+                require(header.is_relative_to(prefix.resolve(strict=True)) and header.is_file(),
+                        'provider header escapes selected prefix')
+                index = manifest.index(entry)
+                require(index + 1 < len(manifest) and
+                        re.fullmatch(r'@comment MD5:[0-9a-f]{32}', manifest[index+1]) and
+                        hashlib.md5(header.read_bytes(), usedforsecurity=False).hexdigest() ==
+                        manifest[index+1].split(':', 1)[1], 'provider header differs: ' + entry)
+                files.append(str(header))
+            values['emberbsd_' + label + '_' + role + '_libraries'] = [library]
+            values['emberbsd_' + label + '_' + role + '_inputs'] = sorted(set(
+                files + [library] + [str(package/item) for item in ('+CONTENTS', '+BUILD_INFO', '+BUILD_VERSION')]))
+    return values
 
 
 def common_ffmpeg(options, sdk, native, environment, buildlink):
@@ -1888,6 +1976,7 @@ def producer_inputs(options, sdk):
     if not getattr(options, 'activate_common_providers', False):
         values.update(common_compression(options, sdk, native, environment, buildlink))
         values.update(common_ffmpeg(options, sdk, native, environment, buildlink))
+        values.update(common_minizip(options, sdk, native, environment, buildlink))
     runtime_view = getattr(options, 'protoc_runtime_view', None)
     if runtime_view:
         require(native.host['os'] == 'Darwin', 'protoc runtime view requires a Darwin host')
@@ -2095,6 +2184,9 @@ def gn_source(options):
         compression = local_module('electron_compression_source_view', 'compression-source-view.py')
         old_compression = getattr(options, 'old_compression_identity', None)
         new_compression = options.compression_identity
+        old_minizip = bool(getattr(options, 'old_minizip_identity', None))
+        new_minizip = bool(getattr(options, 'shared_minizip', False))
+        minizip_marker = destination.parent / ('.' + destination.name + '.minizip-components-migration')
         old_ffmpeg = bool(getattr(options, 'old_ffmpeg_identity', None))
         new_ffmpeg = bool(getattr(options, 'shared_ffmpeg', False))
         ffmpeg_marker = destination.parent / ('.' + destination.name + '.ffmpeg-components-migration')
@@ -2111,6 +2203,15 @@ def gn_source(options):
             # the configuration receipt was replaced. Reject any foreign view.
             compression.verify_view(view, options.workspace / 'src', destination, ('ffmpeg',))
             old_ffmpeg = True
+        minizip_root = compression_root / 'zlib'
+        if (new_minizip and not old_minizip and
+                (options.phase == 'reconfigure' or
+                 (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
+                                                    getattr(options, 'resume_configure', False)))) and
+                not os.path.lexists(minizip_marker) and minizip_root.is_dir() and
+                not minizip_root.is_symlink()):
+            compression.verify_view(view, options.workspace / 'src', destination, ('zlib',))
+            old_minizip = True
         if (old_compression is None and not os.path.lexists(compression_marker) and
                 all((compression_root/name).is_dir() and not (compression_root/name).is_symlink()
                     for name in compression.NAMES)):
@@ -2145,6 +2246,9 @@ def gn_source(options):
             if boring_id:
                 names.append(boring.NAME)
                 checks.append(lambda: boring.verify_view(view, options.workspace / 'src', destination, boring_id, sp))
+            if old_minizip:
+                names.append('zlib')
+                checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, ('zlib',)))
             if old_ffmpeg:
                 names.append('ffmpeg')
                 checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, ('ffmpeg',)))
@@ -2178,6 +2282,14 @@ def gn_source(options):
                                  lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring),
                                  ('ffmpeg',), 'ffmpeg-components')
             old_ffmpeg = True
+        if os.path.lexists(minizip_marker):
+            require(new_minizip and (options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+                    'minizip transaction recovery requires shared minizip reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring),
+                                 ('zlib',), 'minizip-components')
+            old_minizip = True
         if os.path.lexists(boring_marker):
             require(options.phase == 'reconfigure' or getattr(options, 'resume_configure', False) or
                     getattr(options, 'retry_configure', False),
@@ -2243,6 +2355,16 @@ def gn_source(options):
                                  lambda: verify_selection(ids, new_headers, new_media, new_compression),
                                  ('ffmpeg',), 'ffmpeg-components')
             old_ffmpeg = True
+            transition_result = verify_selection(ids, new_headers, new_media, new_compression)
+            transition = True
+        if old_minizip != new_minizip or os.path.lexists(minizip_marker):
+            require(new_minizip, 'disabling shared minizip requires a new source view')
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'minizip transition requires reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(ids, new_headers, new_media, new_compression),
+                                 ('zlib',), 'minizip-components')
+            old_minizip = True
             transition_result = verify_selection(ids, new_headers, new_media, new_compression)
             transition = True
         if old_boring != new_boring or os.path.lexists(boring_marker):
@@ -2431,6 +2553,25 @@ def configure(options):
 
 
 
+def minizip_activation_args(options, old_environment, environment, old_arguments, values):
+    """Allow only the first verified addition; later selection changes stay guarded."""
+    if not getattr(options, 'shared_minizip', False):
+        return set()
+    key = 'EMBERBSD_MINIZIP_SOURCE_SHA256'
+    require(re.fullmatch(r'[0-9a-f]{64}', environment.get(key, '')),
+            'verified minizip identity is missing')
+    names = {'emberbsd_' + provider + '_' + role + '_' + kind
+             for provider in ('zlib', 'minizip') for role in ('host', 'target')
+             for kind in ('libraries', 'inputs')}
+    if old_environment.get(key):
+        return set()
+    require(all(old_arguments.get(name) in (None, []) for name in names),
+            'minizip activation cannot replace existing GN inputs')
+    require(all(isinstance(values.get(name), list) and values[name] for name in names),
+            'verified minizip GN inputs are incomplete')
+    return names
+
+
 def common_activation_allowlist(options, old_environment, environment, old_arguments, values):
     """Allow initial activation or an identical verified common-provider retry."""
     if not getattr(options, 'activate_common_providers', False):
@@ -2609,6 +2750,8 @@ def reconfigure(options):
                 permitted_env.add('EMBERBSD_BORINGSSL_SOURCE_SHA256')
                 options.compression_identity = candidate.compression_identity
                 options.old_compression_identity = old_env.get('EMBERBSD_COMPRESSION_SOURCE_SHA256')
+                options.old_minizip_identity = old_env.get('EMBERBSD_MINIZIP_SOURCE_SHA256')
+                permitted_env.add('EMBERBSD_MINIZIP_SOURCE_SHA256')
                 options.old_ffmpeg_identity = old_env.get('EMBERBSD_FFMPEG_SOURCE_SHA256')
                 permitted_env.update(('EMBERBSD_FFMPEG_SOURCE_SHA256', 'EMBERBSD_FFMPEG_TARGET_PKGCONFIG'))
                 permitted_env.update(('EMBERBSD_COMPRESSION_SOURCE_SHA256', 'EMBERBSD_COMPRESSION_RECIPE_CATALOG'))
@@ -2690,6 +2833,7 @@ def reconfigure(options):
         new_v8 = values.get('v8_metagen_runtime_inputs', [])
         if v8_descriptor in new_v8 and set(old_v8) - {v8_descriptor} == set(new_v8) - {v8_descriptor}:
             permitted_runtime_args.add('v8_metagen_runtime_inputs')
+        minizip_args = minizip_activation_args(options, old_env, environment, saved['arguments'], values)
         identity_args = {'node_module_version', 'emberbsd_node_source_identity',
                          'emberbsd_node_configure_helper', 'emberbsd_node_configure_inputs',
                          'emberbsd_node_configure_dependencies', 'target_os', 'target_cpu', 'target_sysroot', 'emberbsd_target_sysroot',
@@ -2723,6 +2867,14 @@ def reconfigure(options):
                          'emberbsd_icui18n_host_library', 'emberbsd_icui18n_target_library',
                          'emberbsd_re2_host_library', 'emberbsd_re2_target_library',
                          'emberbsd_protoc',
+                         'emberbsd_zlib_host_libraries',
+                         'emberbsd_zlib_host_inputs',
+                         'emberbsd_zlib_target_libraries',
+                         'emberbsd_zlib_target_inputs',
+                         'emberbsd_minizip_host_libraries',
+                         'emberbsd_minizip_host_inputs',
+                         'emberbsd_minizip_target_libraries',
+                         'emberbsd_minizip_target_inputs',
                          'custom_toolchain', 'v8_snapshot_toolchain', 'v8_host_paxctl', 'emberbsd_mac_toolchain_bin',
                          'emberbsd_sdk_source', 'mac_sdk_path', 'mac_deployment_target',
                          'apple_linker_launcher', 'unbundle_linker_launcher', 'concurrent_links',
@@ -2745,7 +2897,7 @@ def reconfigure(options):
                 continue
             if node_source_refresh and name == 'emberbsd_node_source_identity':
                 continue
-            if name in activation_args:
+            if name in activation_args or name in minizip_args:
                 continue
             if name in ('use_litert_tflite', 'emberbsd_flatc', 'emberbsd_flatc_inputs') and getattr(options, 'activate_common_ml', False) and not old_ml:
                 continue
@@ -2820,6 +2972,7 @@ def build(options):
     require(saved['arguments'] == values, 'GN selection changed; configure a new output')
     options.old_boringssl_identity = saved_env['EMBERBSD_BORINGSSL_SOURCE_SHA256']
     options.old_compression_identity = saved_env['EMBERBSD_COMPRESSION_SOURCE_SHA256']
+    options.old_minizip_identity = saved_env.get('EMBERBSD_MINIZIP_SOURCE_SHA256')
     options.old_ffmpeg_identity = saved_env.get('EMBERBSD_FFMPEG_SOURCE_SHA256')
     options.old_media_header_identities = {name: saved_env['EMBERBSD_MEDIA_HEADER_' + name.upper() + '_SHA256']
                                            for name in ('libyuv', 'libsrtp')}
@@ -2882,6 +3035,7 @@ def main():
         command.add_argument('--shared-icu', action='store_true')
         command.add_argument('--shared-re2', action='store_true')
         command.add_argument('--shared-ffmpeg', action='store_true')
+        command.add_argument('--shared-minizip', action='store_true')
         if phase == 'configure':
             initial = command.add_mutually_exclusive_group()
             initial.add_argument('--resume-configure', action='store_true',

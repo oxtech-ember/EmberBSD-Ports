@@ -59,7 +59,7 @@ with tempfile.TemporaryDirectory() as tmp:
     selected = dest/'src/third_party'; selected.mkdir(parents=True)
     unbundle = source/'build/linux/unbundle'; unbundle.mkdir(parents=True)
     (unbundle/'replace_gn_files.py').write_text("REPLACEMENTS = {'brotli': 'third_party/brotli/BUILD.gn', 'zstd': 'third_party/zstd/BUILD.gn', 'ffmpeg': 'third_party/ffmpeg/BUILD.gn'}\n")
-    for name in compression.SUPPORTED:
+    for name in compression.NAMES + ('ffmpeg',):
         component = origin/name; (component/'include').mkdir(parents=True)
         (component/'BUILD.gn').write_text('vendor')
         (component/'include/x.h').write_text('vendor header')
@@ -85,7 +85,7 @@ with tempfile.TemporaryDirectory() as tmp:
             raise AssertionError('interruption ignored')
     assert (root/'.view.ffmpeg-components-migration').is_file()
     compression.activate(view, source, dest, old_selection, ('ffmpeg',), 'ffmpeg-components')
-    compression.verify_view(view, source, dest, compression.SUPPORTED)
+    compression.verify_view(view, source, dest, compression.NAMES + ('ffmpeg',))
     assert before == {name: ((selected/name).stat().st_ino, (selected/name).stat().st_mtime_ns)
                       for name in compression.NAMES}
     assert not (selected/'ffmpeg/include/x.h').exists()
@@ -103,3 +103,54 @@ with tempfile.TemporaryDirectory() as tmp:
     else:
         raise AssertionError('mixed FFmpeg projection accepted')
 print('PASS: FFmpeg addition preserves existing wrappers and recovers an interrupted swap')
+
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp).resolve(); source = root/'source'; dest = root/'view'
+    origin = source/'third_party'; origin.mkdir(parents=True)
+    selected = dest/'src/third_party'; selected.mkdir(parents=True)
+    unbundle = source/'build/linux/unbundle'; unbundle.mkdir(parents=True)
+    (unbundle/'replace_gn_files.py').write_text("REPLACEMENTS = {'brotli': 'third_party/brotli/BUILD.gn', 'zstd': 'third_party/zstd/BUILD.gn', 'zlib': 'third_party/zlib/BUILD.gn'}\n")
+    for name in compression.NAMES + ('zlib',):
+        component = origin/name; (component/'include').mkdir(parents=True)
+        (component/'BUILD.gn').write_text('vendor')
+        (component/'include/x.h').write_text('vendor header')
+        (unbundle/(name+'.gn')).write_text('shim_headers("shim") { root_path = "include"\n headers = [ "x.h" ]\n}\n')
+        (selected/name).symlink_to(component, target_is_directory=True)
+    compression.activate(view, source, dest, lambda: None)
+    before = {name: ((selected/name).stat().st_ino, (selected/name).stat().st_mtime_ns)
+              for name in compression.NAMES}
+    def old_selection():
+        compression.verify_view(view, source, dest)
+        assert (selected/'zlib').is_symlink()
+    actual_verify = compression.verify_view
+    def interrupt_zlib(*args):
+        if len(args) == 4 and args[3] == ('zlib',):
+            raise ValueError('interrupted')
+        return actual_verify(*args)
+    with patch.object(compression, 'verify_view', side_effect=interrupt_zlib):
+        try:
+            compression.activate(view, source, dest, old_selection, ('zlib',), 'zlib-components')
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('interruption ignored')
+    assert (root/'.view.zlib-components-migration').is_file()
+    compression.activate(view, source, dest, old_selection, ('zlib',), 'zlib-components')
+    compression.verify_view(view, source, dest, compression.NAMES + ('zlib',))
+    assert before == {name: ((selected/name).stat().st_ino, (selected/name).stat().st_mtime_ns)
+                      for name in compression.NAMES}
+    assert not (selected/'zlib/include/x.h').exists()
+    zlib_before = (selected/'zlib').stat().st_ino
+    compression.activate(view, source, dest, old_selection, ('zlib',), 'zlib-components')
+    assert (selected/'zlib').stat().st_ino == zlib_before
+    # A directory containing a mixture of selected and vendor files is not
+    # an already completed projection.
+    (selected/'zlib/BUILD.gn').unlink()
+    (selected/'zlib/BUILD.gn').write_text('foreign wrapper')
+    try:
+        compression.verify_view(view, source, dest, ('zlib',))
+    except (ValueError, AssertionError):
+        pass
+    else:
+        raise AssertionError('mixed zlib projection accepted')
+print('PASS: zlib addition preserves existing wrappers and recovers an interrupted swap')

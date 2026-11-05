@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 NAMES = ('brotli', 'zstd')
-SUPPORTED = NAMES + ('ffmpeg',)
+SUPPORTED = NAMES + ('ffmpeg', 'zlib')
 
 
 def replacements(view, source, name):

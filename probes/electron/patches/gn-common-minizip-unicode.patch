@@ -1,0 +1,264 @@
+--- a/build/linux/unbundle/zlib.gn
++++ b/build/linux/unbundle/zlib.gn
+@@ -3,6 +3,50 @@
+ # found in the LICENSE file.
+ 
+ import("//build/shim_headers.gni")
++import("//build/config/linux/pkg_config.gni")
++
++declare_args() {
++  emberbsd_zlib_host_libraries = []
++  emberbsd_zlib_target_libraries = []
++  emberbsd_zlib_host_inputs = []
++  emberbsd_zlib_target_inputs = []
++  emberbsd_minizip_host_libraries = []
++  emberbsd_minizip_target_libraries = []
++  emberbsd_minizip_host_inputs = []
++  emberbsd_minizip_target_inputs = []
++}
++
++if (emberbsd_pkg_config_role != "upstream") {
++  _zlib_libraries = emberbsd_zlib_target_libraries
++  _zlib_inputs = emberbsd_zlib_target_inputs
++  _minizip_libraries = emberbsd_minizip_target_libraries
++  _minizip_inputs = emberbsd_minizip_target_inputs
++  if (emberbsd_pkg_config_role == "native") {
++    _zlib_libraries = emberbsd_zlib_host_libraries
++    _zlib_inputs = emberbsd_zlib_host_inputs
++    _minizip_libraries = emberbsd_minizip_host_libraries
++    _minizip_inputs = emberbsd_minizip_host_inputs
++  }
++  assert(_zlib_libraries != [] && _zlib_inputs != [] &&
++         _minizip_libraries != [] && _minizip_inputs != [],
++         "Selected zlib and minizip providers are incomplete")
++  config("emberbsd_zlib_libraries") {
++    libs = _zlib_libraries
++    if (emberbsd_pkg_config_role == "native") {
++      ldflags = [ "-Wl,-rpath=" + rebase_path(get_path_info(_zlib_libraries[0], "dir"), "") ]
++    } else {
++      ldflags = [ "-Wl,-rpath=/usr/pkg/lib" ]
++    }
++  }
++  config("emberbsd_minizip_libraries") {
++    libs = _minizip_libraries
++    if (emberbsd_pkg_config_role == "native") {
++      ldflags = [ "-Wl,-rpath=" + rebase_path(get_path_info(_minizip_libraries[0], "dir"), "") ]
++    } else {
++      ldflags = [ "-Wl,-rpath=/usr/pkg/lib" ]
++    }
++  }
++}
+ 
+ shim_headers("zlib_shim") {
+   root_path = "."
+@@ -22,7 +66,12 @@
+ 
+ source_set("zlib") {
+   deps = [ ":zlib_shim" ]
+-  libs = [ "z" ]
++  if (emberbsd_pkg_config_role == "upstream") {
++    libs = [ "z" ]
++  } else {
++    inputs = _zlib_inputs
++    all_dependent_configs = [ ":emberbsd_zlib_libraries" ]
++  }
+   public_configs = [ ":system_zlib" ]
+ }
+ 
+@@ -31,16 +80,27 @@
+   headers = [
+     "minizip/crypt.h",
+     "minizip/ioapi.h",
+-    "minizip/iowin32.h",
+-    "minizip/mztools.h",
+     "minizip/unzip.h",
+     "minizip/zip.h",
+   ]
++  if (is_win) {
++    headers += [ "minizip/iowin32.h" ]
++  }
++}
++
++config("system_minizip") {
++  defines = [ "USE_SYSTEM_MINIZIP=1" ]
+ }
+ 
+ source_set("minizip") {
++  public_configs = [ ":system_minizip" ]
+   deps = [ ":minizip_shim" ]
+-  libs = [ "minizip" ]
++  if (emberbsd_pkg_config_role == "upstream") {
++    libs = [ "minizip" ]
++  } else {
++    inputs = _minizip_inputs
++    all_dependent_configs = [ ":emberbsd_minizip_libraries" ]
++  }
+ }
+ 
+ static_library("zip") {
+@@ -51,9 +111,11 @@
+     "google/zip_internal.h",
+     "google/zip_reader.cc",
+     "google/zip_reader.h",
++    "google/unicode_zip_extra.h",
+   ]
+   deps = [
+     ":minizip",
++    ":zlib",
+     "//base",
+   ]
+ }
+diff -ruN old/third_party/zlib/google/unicode_zip_extra.h new/third_party/zlib/google/unicode_zip_extra.h
+--- old/third_party/zlib/google/unicode_zip_extra.h	1970-01-01 03:00:00.000000000 +0300
++++ new/third_party/zlib/google/unicode_zip_extra.h	2026-11-05 15:33:24.380439181 +0300
+@@ -0,0 +1,50 @@
++// Copyright 2026 The Chromium Authors and EmberBSD contributors.
++// Adapted from third_party/zlib/contrib/minizip/unzip.c, copyright Gilles
++// Vollant and Chromium contributors, under the zlib license.
++// See third_party/zlib/LICENSE.
++#ifndef THIRD_PARTY_ZLIB_GOOGLE_UNICODE_ZIP_EXTRA_H_
++#define THIRD_PARTY_ZLIB_GOOGLE_UNICODE_ZIP_EXTRA_H_
++
++#include <cstdint>
++#include <string>
++#include <string_view>
++#include <zlib.h>
++
++namespace zip {
++
++// Read an Info-ZIP Unicode Path field (ZIP APPNOTE 4.6.9) without changing
++// the original physical path. Returns false on a malformed extra field.
++inline bool UnicodeZipPath(std::string_view raw,
++                           std::string_view extra,
++                           std::string* name) {
++  name->clear();
++  size_t offset = 0;
++  while (offset < extra.size()) {
++    if (extra.size() - offset < 4)
++      return false;
++    const auto byte = [&extra](size_t i) {
++      return static_cast<uint8_t>(extra.at(i));
++    };
++    const uint16_t type = byte(offset) | (uint16_t{byte(offset + 1)} << 8);
++    const uint16_t size = byte(offset + 2) | (uint16_t{byte(offset + 3)} << 8);
++    offset += 4;
++    if (size > extra.size() - offset)
++      return false;
++    if (type == 0x7075) {
++      if (size < 5)
++        return false;
++      const uint32_t expected = uint32_t{byte(offset + 1)} |
++                                (uint32_t{byte(offset + 2)} << 8) |
++                                (uint32_t{byte(offset + 3)} << 16) |
++                                (uint32_t{byte(offset + 4)} << 24);
++      const uint32_t actual = crc32(0, reinterpret_cast<const Bytef*>(raw.data()),
++                                    static_cast<uInt>(raw.size()));
++      if (byte(offset) == 1 && expected == actual)
++        name->assign(extra.substr(offset + 5, size - 5));
++    }
++    offset += size;
++  }
++  return true;
++}
++}  // namespace zip
++#endif  // THIRD_PARTY_ZLIB_GOOGLE_UNICODE_ZIP_EXTRA_H_
+diff -ruN old/third_party/zlib/google/zip_reader.cc new/third_party/zlib/google/zip_reader.cc
+--- old/third_party/zlib/google/zip_reader.cc	2026-11-05 15:30:20.042736063 +0300
++++ new/third_party/zlib/google/zip_reader.cc	2026-11-05 15:33:24.406343472 +0300
+@@ -6,6 +6,7 @@
+ 
+ #include <algorithm>
+ #include <cstdint>
++#include <string>
+ #include <string_view>
+ #include <utility>
+ 
+@@ -30,6 +31,7 @@
+ 
+ #if defined(USE_SYSTEM_MINIZIP)
+ #include <minizip/unzip.h>
++#include "third_party/zlib/google/unicode_zip_extra.h"
+ #else
+ #include "third_party/zlib/contrib/minizip/unzip.h"
+ #if defined(OS_WIN)
+@@ -305,6 +307,30 @@
+     return false;
+   }
+ 
++  if (info.size_filename >= path_in_zip.size() ||
++      info.size_file_extra > UINT16_MAX) {
++    LOG(ERROR) << "Invalid ZIP filename or extra field length";
++    return false;
++  }
++  path_in_zip[info.size_filename] = '\0';
++
++#if defined(USE_SYSTEM_MINIZIP)
++  std::string unicode_filename;
++  if (info.size_file_extra > 0) {
++    auto extra = base::HeapArray<char>::WithSize(info.size_file_extra);
++    if (unzGetCurrentFileInfo64(zip_file_, nullptr, nullptr, 0, extra.data(),
++                                extra.size(), nullptr, 0) != UNZ_OK ||
++        !UnicodeZipPath(std::string_view(path_in_zip.data(), info.size_filename),
++                        std::string_view(extra.data(), extra.size()),
++                        &unicode_filename)) {
++      LOG(ERROR) << "Cannot read ZIP Unicode path extra field";
++      return false;
++    }
++  }
++#else
++  std::string unicode_filename(info.utf8_filename, info.size_utf8_filename);
++#endif
++
+   DCHECK(path_in_zip[info.size_filename] == '\0');
+   entry_.path_in_original_encoding = path_in_zip.data();
+ 
+@@ -318,7 +344,7 @@
+   // Directory path is about to be overridden. Decode and normalize it now into
+   // `entry_.physical_path` so consumers (e.g. Safe Browsing) can still see the
+   // name that other tools (e.g. Windows Explorer) would use for extraction.
+-  if (info.size_utf8_filename > 0) {
++  if (!unicode_filename.empty()) {
+     std::u16string physical_path_in_utf16;
+     if (!base::CodepageToUTF16(entry_.path_in_original_encoding,
+                                configured_encoding,
+@@ -335,8 +361,7 @@
+     physical_path_is_unsafe = entry_.is_unsafe;
+ 
+     // Use the Info-ZIP Unicode Path Extra Field if present.
+-    DCHECK(info.utf8_filename[info.size_utf8_filename] == '\0');
+-    entry_.path_in_original_encoding = info.utf8_filename;
++    entry_.path_in_original_encoding = unicode_filename.c_str();
+     entry_path_encoding = base::kCodepageUTF8;
+   }
+ 
+@@ -353,7 +378,7 @@
+   // Normalize path.
+   Normalize(path_in_utf16);
+ 
+-  if (info.size_utf8_filename > 0) {
++  if (!unicode_filename.empty()) {
+     // Treat an entry as a directory only if both names are directories;
+     // otherwise callers that analyze file entries should inspect it as a file.
+     entry_.is_directory = entry_.is_directory && physical_path_is_directory;
+--- a/third_party/zlib/google/BUILD.gn
++++ b/third_party/zlib/google/BUILD.gn
+@@ -22,6 +22,7 @@
+     ]
+     deps = [
+       "..:minizip",
++      "..",
+       "//base",
+       "//base:i18n",
+     ]
+--- a/third_party/zlib/google/zip_internal.cc
++++ b/third_party/zlib/google/zip_internal.cc
+@@ -21,6 +21,9 @@
+ #include <minizip/ioapi.h>
+ #include <minizip/unzip.h>
+ #include <minizip/zip.h>
++#if defined(OS_WIN)
++#include <minizip/iowin32.h>
++#endif
+ #else
+ #include "third_party/zlib/contrib/minizip/unzip.h"
+ #include "third_party/zlib/contrib/minizip/zip.h"
