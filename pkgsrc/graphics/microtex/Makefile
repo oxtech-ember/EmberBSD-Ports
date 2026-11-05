@@ -2,6 +2,7 @@
 
 DISTNAME=	MicroTeX-61aaa7cc354de91d5898ffb0b2a6c62628d9a76f
 PKGNAME=	microtex-0.0.20260814
+PKGREVISION=	1
 CATEGORIES=	graphics
 MASTER_SITES=	-https://codeload.github.com/desktop-app/MicroTeX/tar.gz/61aaa7cc354de91d5898ffb0b2a6c62628d9a76f
 HOMEPAGE=	https://github.com/desktop-app/MicroTeX
