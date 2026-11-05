@@ -1487,7 +1487,7 @@ def common_minizip(options, sdk, native, environment, buildlink):
     host_prefix = Path(options.host_prefix).resolve(strict=True)
     record = {}
     for path, module, minimum in (('devel/zlib', 'zlib', (1, 3, 2, 7)),
-                                  ('archivers/minizip-ng', 'minizip', (4, 2, 2, 1))):
+                                  ('archivers/minizip-ng', 'minizip', (4, 2, 2, 2))):
         hosts = options._common_native_packages.get(path, [])
         targets = options._common_target_packages.get(path, [])
         require(len(hosts) == len(targets) == 1 and hosts[0].name == targets[0].name,

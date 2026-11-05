@@ -35,7 +35,7 @@ TOOL_DEPENDS+= ffmpeg9>=9.0.2nb7:../../multimedia/ffmpeg9
 .endif
 
 .if ${EMBERBSD_ELECTRON_SHARED_MINIZIP:Uno} == "yes"
-TOOL_DEPENDS+= minizip-ng>=4.2.2nb1:../../archivers/minizip-ng
+TOOL_DEPENDS+= minizip-ng>=4.2.2nb2:../../archivers/minizip-ng
 .endif
 
 .if ${EMBERBSD_ELECTRON_SHARED_XML:Uno} == "yes"
