@@ -38,7 +38,8 @@ with tempfile.TemporaryDirectory(prefix='electron-producer-makeconf-') as temp:
     lines += ['EMBERBSD_ELECTRON_MACOS_MINIMUM= 14.0', 'EMBERBSD_ELECTRON_SHARED_ICU= yes',
               'EMBERBSD_ELECTRON_ML_LITERT_PORTS_SOURCE= /selected/litert-owner',
               'EMBERBSD_ELECTRON_ML_OPENXLA_PKGSRC_EXPORT= /selected/xla-export',
-              'EMBERBSD_ELECTRON_ML_OPENXLA_EXPORT_PATCH= /selected/xla-patch']
+              'EMBERBSD_ELECTRON_ML_OPENXLA_EXPORT_PATCH= /selected/xla-patch',
+              'EMBERBSD_ELECTRON_SHARED_FONT= yes']
     sqlite_keys = ('SQLITE_SOURCE', 'SQLITE_ARCHIVE', 'SQLITE_AMALGAMATION',
                    'SQLITE_PATCH', 'SQLITE_PKGSRC_EXPORT', 'SQLITE_EXPORT_PATCH')
     lines += ['EMBERBSD_ELECTRON_' + key + '= /selected/' + key.lower() for key in sqlite_keys]
@@ -61,6 +62,7 @@ with tempfile.TemporaryDirectory(prefix='electron-producer-makeconf-') as temp:
     new_check, new_args = run(True)
     assert 'FAIL' in old_check and '--macos-minimum' not in old_args
     assert 'FAIL' not in new_check and '--macos-minimum' in new_args and '--shared-icu' in new_args
+    assert '--shared-font' in new_args
     assert '--ml-litert-ports-source /selected/litert-owner' in new_args
     assert '--ml-openxla-pkgsrc-export /selected/xla-export' in new_args
     assert '--ml-openxla-export-patch /selected/xla-patch' in new_args

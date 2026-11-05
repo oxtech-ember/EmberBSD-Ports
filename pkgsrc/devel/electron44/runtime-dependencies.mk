@@ -4,6 +4,14 @@
 # libnotify is loaded dynamically and therefore is not listed in DT_NEEDED.
 # The split LLVM runtime buildlinks select runtime and build-only development packages.
 
+.if ${EMBERBSD_ELECTRON_SHARED_FONT:Uno} == "yes"
+BUILDLINK_API_DEPENDS.freetype2+= freetype2>=2.15.0nb2
+BUILDLINK_ABI_DEPENDS.freetype2+= freetype2>=2.15.0nb2
+BUILDLINK_API_DEPENDS.harfbuzz+= harfbuzz>=15.0.0nb3
+BUILDLINK_ABI_DEPENDS.harfbuzz+= harfbuzz>=15.0.0nb3
+.include "../../graphics/freetype2/buildlink3.mk"
+.endif
+
 # The selected GN graph links the shared GNU libintl from this pkgsrc tree.
 # A base gettext implementation does not provide that package dependency.
 PREFER.gettext= pkgsrc

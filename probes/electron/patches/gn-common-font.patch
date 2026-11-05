@@ -1,0 +1,127 @@
+--- a/build/config/freetype/BUILD.gn
++++ b/build/config/freetype/BUILD.gn
+@@ -3,12 +3,25 @@
+ # found in the LICENSE file.
+ 
+ import("//build/config/freetype/freetype.gni")
++import("//build/config/emberbsd_font.gni")
+ 
+ assert(enable_freetype)
++
++if (emberbsd_common_font) {
++  emberbsd_font_provider("emberbsd_freetype") {
++    host_libraries = emberbsd_freetype_host_libraries
++    target_libraries = emberbsd_freetype_target_libraries
++    host_inputs = emberbsd_freetype_host_inputs
++    target_inputs = emberbsd_freetype_target_inputs
++  }
++}
+ 
+ group("freetype") {
+   if (use_system_freetype) {
+     public_configs = [ "//build/linux:freetype_from_pkgconfig" ]
++    if (emberbsd_common_font) {
++      public_deps = [ ":emberbsd_freetype" ]
++    }
+   } else {
+     public_deps = [ "//third_party/freetype" ]
+   }
+--- a/build/linux/BUILD.gn
++++ b/build/linux/BUILD.gn
+@@ -4,6 +4,7 @@
+ 
+ import("//build/config/features.gni")
+ import("//build/config/freetype/freetype.gni")
++import("//build/config/emberbsd_font.gni")
+ import("//build/config/linux/pkg_config.gni")
+ 
+ if (use_gio) {
+@@ -25,6 +26,9 @@
+   # Only provided for distributions which prefer to keep linking to FreeType on
+   # the system, use with caution,for details see build/config/freetype/BUILD.gn.
+   pkg_config("freetype_from_pkgconfig") {
++    if (emberbsd_common_font) {
++      ignore_libs = true
++    }
+     visibility = [
+       "//build/config/freetype",
+       "//third_party/harfbuzz:harfbuzz_source",
+--- a/third_party/harfbuzz/BUILD.gn
++++ b/third_party/harfbuzz/BUILD.gn
+@@ -6,11 +6,24 @@
+ import("//build/config/chrome_build.gni")
+ import("//build/config/ui.gni")
+ import("//third_party/harfbuzz/harfbuzz.gni")
++import("//build/config/emberbsd_font.gni")
++
++if (emberbsd_common_font) {
++  emberbsd_font_provider("emberbsd_harfbuzz") {
++    host_libraries = emberbsd_harfbuzz_host_libraries
++    target_libraries = emberbsd_harfbuzz_target_libraries
++    host_inputs = emberbsd_harfbuzz_host_inputs
++    target_inputs = emberbsd_harfbuzz_target_inputs
++  }
++}
+ 
+ if (use_system_harfbuzz) {
+   import("//build/config/linux/pkg_config.gni")
+ 
+   pkg_config("harfbuzz_from_pkgconfig") {
++    if (emberbsd_common_font) {
++      ignore_libs = true
++    }
+     visibility = [
+       "//third_party/freetype",
+       "//third_party/harfbuzz",
+@@ -22,6 +35,9 @@
+   }
+ 
+   component("harfbuzz") {
++    if (emberbsd_common_font) {
++      public_deps = [ ":emberbsd_harfbuzz" ]
++    }
+     public_configs = [ ":harfbuzz_from_pkgconfig" ]
+     check_includes_strict = CHECK_INCLUDES_STRICT_PUBLIC_INCLUDES_PRIVATE
+   }
+--- /dev/null
++++ b/build/config/emberbsd_font.gni
+@@ -0,0 +1,39 @@
++# Copyright 2026 EmberBSD contributors. BSD-2-Clause.
++import("//build/config/linux/pkg_config.gni")
++
++declare_args() {
++  emberbsd_common_font = false
++  emberbsd_freetype_host_libraries = []
++  emberbsd_freetype_target_libraries = []
++  emberbsd_freetype_host_inputs = []
++  emberbsd_freetype_target_inputs = []
++  emberbsd_harfbuzz_host_libraries = []
++  emberbsd_harfbuzz_target_libraries = []
++  emberbsd_harfbuzz_host_inputs = []
++  emberbsd_harfbuzz_target_inputs = []
++}
++
++template("emberbsd_font_provider") {
++  not_needed(invoker, "*")
++  if (emberbsd_pkg_config_role == "native") {
++    _libraries = invoker.host_libraries
++    _inputs = invoker.host_inputs
++  } else {
++    _libraries = invoker.target_libraries
++    _inputs = invoker.target_inputs
++  }
++  assert(emberbsd_pkg_config_role != "upstream" && _libraries != [] && _inputs != [],
++         "Selected font provider is incomplete")
++  config(target_name + "_selected") {
++    libs = _libraries
++    if (emberbsd_pkg_config_role == "native") {
++      ldflags = [ "-Wl,-rpath=" + rebase_path(get_path_info(_libraries[0], "dir"), "") ]
++    } else {
++      ldflags = [ "-Wl,-rpath=/usr/pkg/lib" ]
++    }
++  }
++  source_set(target_name) {
++    inputs = _inputs
++    all_dependent_configs = [ ":" + target_name + "_selected" ]
++  }
++}

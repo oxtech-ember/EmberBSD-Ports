@@ -488,7 +488,8 @@ def host_buildlink(options, sdk, native, environment, host_binding):
                 *(['--shared-ffmpeg'] if getattr(options, 'shared_ffmpeg', False) else []),
                 *(['--shared-minizip'] if getattr(options, 'shared_minizip', False) else []),
                 *(['--shared-xml'] if getattr(options, 'shared_xml', False) else []),
-                *(['--shared-image'] if getattr(options, 'shared_image', False) else []), '--base-makeconf', str(selected[2]),
+                *(['--shared-image'] if getattr(options, 'shared_image', False) else []),
+                *(['--shared-font'] if getattr(options, 'shared_font', False) else []), '--base-makeconf', str(selected[2]),
                 '--binding-record', str(record), '--bmake-mk', str(selected[3]),
                 '--work', str(work), '--lock-root', str(options.lock_root)]
     if not previous and (getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)):
@@ -572,7 +573,7 @@ def additive_host_buildlink_relocation(old_args, new_args, old_env, new_env, wor
     require(all(new_links.get(name) == target for name, target in old_links.items()),
             'host buildlink relocation removed or replaced an existing link')
     old_call, new_call = (record['invocation'] for record in records)
-    selection_keys = {'shared_ffmpeg', 'shared_minizip', 'shared_xml', 'shared_image'}
+    selection_keys = {'shared_ffmpeg', 'shared_minizip', 'shared_xml', 'shared_image', 'shared_font'}
     for name in (set(old_call) | set(new_call)) - {'work'} - selection_keys:
         require(old_call.get(name) == new_call.get(name),
                 'host buildlink relocation changed an unrelated input: ' + name)
@@ -1381,6 +1382,8 @@ def compression_recipe_catalog(options, sdk, native, environment):
         packages += ('textproc/libxml2', 'textproc/libxslt')
     if getattr(options, 'shared_image', False):
         packages += ('graphics/libjpeg-turbo', 'graphics/libwebp')
+    if getattr(options, 'shared_font', False):
+        packages += ('graphics/freetype2', 'fonts/harfbuzz')
     identities = {name: selector.git_package_identity(owner, name, git) for name in packages}
     config_root = getattr(options, 'native_binding_root', None) or options.work
     config = Path(config_root)/'configuration.json'
@@ -2067,6 +2070,11 @@ def producer_inputs(options, sdk):
                 types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
                                       selected_owned_library=selected_owned_library),
                 options, sdk, native, environment, buildlink))
+        if getattr(options, 'shared_font', False):
+            values.update(local_module('electron_image_provider', 'image-provider.py').select_fonts(
+                types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
+                                      selected_owned_library=selected_owned_library),
+                options, sdk, native, environment, buildlink))
     runtime_view = getattr(options, 'protoc_runtime_view', None)
     if runtime_view:
         require(native.host['os'] == 'Darwin', 'protoc runtime view requires a Darwin host')
@@ -2281,6 +2289,13 @@ def gn_source(options):
         compression = local_module('electron_compression_source_view', 'compression-source-view.py')
         old_compression = getattr(options, 'old_compression_identity', None)
         new_compression = options.compression_identity
+        old_font = bool(getattr(options, 'old_font_identity', None))
+        new_font = bool(getattr(options, 'shared_font', False))
+        require(new_font or not old_font, 'disabling shared font requires a new source view')
+        font_marker = destination.parent / ('.' + destination.name + '.font-table-components-migration')
+        font_view = (local_module('electron_font_table_view', 'font-table-view.py')
+                     if old_font or new_font or os.path.lexists(font_marker) else None)
+        font_table = getattr(options, 'font_table', None)
         old_image = bool(getattr(options, 'old_image_identity', None))
         new_image = bool(getattr(options, 'shared_image', False))
         image_names = ('libwebp',)
@@ -2360,6 +2375,14 @@ def gn_source(options):
             # final configuration receipt was written.
             compression.verify_view(view, options.workspace / 'src', destination)
             old_compression = new_compression
+        if (new_font and not old_font and
+                (options.phase == 'reconfigure' or
+                 (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
+                                                    getattr(options, 'resume_configure', False)))) and
+                not os.path.lexists(font_marker) and
+                (compression_root/'pdfium').is_dir() and not (compression_root/'pdfium').is_symlink()):
+            font_view.verify_view(view, options.workspace / 'src', destination, font_table)
+            old_font = True
         old_ml = getattr(options, 'old_ml_identities', None)
         old_headers = getattr(options, 'old_header_identities', None)
         new_headers = {name: data['identity'] for name, data in selected.items()}
@@ -2387,6 +2410,9 @@ def gn_source(options):
             if boring_id:
                 names.append(boring.NAME)
                 checks.append(lambda: boring.verify_view(view, options.workspace / 'src', destination, boring_id, sp))
+            if old_font:
+                names.append(font_view.NAME)
+                checks.append(lambda: font_view.verify_view(view, options.workspace / 'src', destination, font_table))
             if old_sqlite:
                 names.append(sqlite.NAME)
                 checks.append(lambda: sqlite.verify_view(view, options.workspace / 'src', destination, old_sqlite))
@@ -2424,6 +2450,13 @@ def gn_source(options):
                 selection_refreshed = True
                 return result
             return view.verify(options.workspace / 'src', common, destination, **current)
+        if os.path.lexists(font_marker):
+            require(new_font and (options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+                    'font table transaction recovery requires shared font reconfigure')
+            font_view.activate(view, options.workspace / 'src', destination, font_table,
+                               lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring))
+            old_font = True
         if os.path.lexists(sqlite_marker):
             require(new_sqlite and (options.phase == 'reconfigure' or
                     getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
@@ -2520,6 +2553,15 @@ def gn_source(options):
             compression.activate(view, options.workspace / 'src', destination,
                                  lambda: verify_selection(ids, new_headers, new_media, old_compression))
             verify_selection(ids, new_headers, new_media, new_compression)
+        if old_font != new_font or os.path.lexists(font_marker):
+            require(new_font, 'disabling shared font requires a new source view')
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'font table transition requires reconfigure')
+            font_view.activate(view, options.workspace / 'src', destination, font_table,
+                               lambda: verify_selection(ids, new_headers, new_media, new_compression))
+            old_font = True
+            transition_result = verify_selection(ids, new_headers, new_media, new_compression)
+            transition = True
         if old_sqlite != new_sqlite or os.path.lexists(sqlite_marker):
             require(new_sqlite, 'disabling common SQLite requires a new source view')
             require(options.phase == 'reconfigure' or new_view or initial,
@@ -2792,6 +2834,24 @@ def image_activation_args(options, old_environment, environment, old_arguments, 
     return names
 
 
+def font_activation_args(options, old_environment, environment, old_arguments, values):
+    """Allow the initial verified font selection without weakening later checks."""
+    if not getattr(options, 'shared_font', False):
+        return set()
+    key = 'EMBERBSD_FONT_SOURCE_SHA256'
+    require(re.fullmatch(r'[0-9a-f]{64}', environment.get(key, '')), 'verified font identity is missing')
+    names = {'emberbsd_' + provider + '_' + role + '_' + kind
+             for provider in ('freetype', 'harfbuzz') for role in ('host', 'target')
+             for kind in ('libraries', 'inputs')}
+    names.update(('emberbsd_common_font', 'use_system_freetype', 'use_system_harfbuzz'))
+    if old_environment.get(key):
+        return set()
+    require(all(old_arguments.get(name) in (None, False, []) for name in names),
+            'font activation cannot replace existing GN inputs')
+    require(all(values.get(name) for name in names), 'verified font GN inputs are incomplete')
+    return names
+
+
 def xml_activation_args(options, old_environment, environment, old_arguments, values):
     """Allow the first verified XML selection; guard later identities."""
     if not getattr(options, 'shared_xml', False):
@@ -2989,6 +3049,9 @@ def reconfigure(options):
                 options.old_compression_identity = old_env.get('EMBERBSD_COMPRESSION_SOURCE_SHA256')
                 options.old_image_identity = old_env.get('EMBERBSD_IMAGE_SOURCE_SHA256')
                 permitted_env.add('EMBERBSD_IMAGE_SOURCE_SHA256')
+                options.old_font_identity = old_env.get('EMBERBSD_FONT_SOURCE_SHA256')
+                options.font_table = getattr(candidate, 'font_table', None)
+                permitted_env.add('EMBERBSD_FONT_SOURCE_SHA256')
                 options.sqlite_selection = getattr(candidate, 'sqlite_selection', None)
                 options.old_sqlite_selection = json.loads(old_env['EMBERBSD_SQLITE_SELECTION']) if old_env.get('EMBERBSD_SQLITE_SELECTION') else None
                 permitted_env.add('EMBERBSD_SQLITE_SELECTION')
@@ -3080,6 +3143,7 @@ def reconfigure(options):
         minizip_args = minizip_activation_args(options, old_env, environment, saved['arguments'], values)
         xml_args = xml_activation_args(options, old_env, environment, saved['arguments'], values)
         image_args = image_activation_args(options, old_env, environment, saved['arguments'], values)
+        font_args = font_activation_args(options, old_env, environment, saved['arguments'], values)
         buildlink_args = additive_host_buildlink_relocation(
             saved['arguments'], values, old_env, environment, work)
         identity_args = {'node_module_version', 'emberbsd_node_source_identity',
@@ -3148,6 +3212,10 @@ def reconfigure(options):
         identity_args.update('emberbsd_' + provider + '_' + role + '_' + kind
                              for provider in ('xml', 'xslt') for role in ('host', 'target')
                              for kind in ('library', 'inputs'))
+        identity_args.update('emberbsd_' + provider + '_' + role + '_' + kind
+                             for provider in ('freetype', 'harfbuzz') for role in ('host', 'target')
+                             for kind in ('libraries', 'inputs'))
+        identity_args.update(('emberbsd_common_font', 'use_system_freetype', 'use_system_harfbuzz'))
         identity_args.update('node_shared_' + feature for feature in NODE_SHARED_FEATURES)
         node_v8_path_changed = verified_node_configure_v8_path_change(
             saved['arguments'], values, options.v8_source)
@@ -3158,7 +3226,8 @@ def reconfigure(options):
                 continue
             if node_source_refresh and name == 'emberbsd_node_source_identity':
                 continue
-            if name in activation_args or name in minizip_args or name in xml_args or name in image_args or name in buildlink_args:
+            if (name in activation_args or name in minizip_args or name in xml_args or
+                    name in image_args or name in font_args or name in buildlink_args):
                 continue
             if name in ('use_litert_tflite', 'emberbsd_flatc', 'emberbsd_flatc_inputs') and getattr(options, 'activate_common_ml', False) and not old_ml:
                 continue
@@ -3234,6 +3303,7 @@ def build(options):
     options.old_boringssl_identity = saved_env['EMBERBSD_BORINGSSL_SOURCE_SHA256']
     options.old_compression_identity = saved_env['EMBERBSD_COMPRESSION_SOURCE_SHA256']
     options.old_image_identity = saved_env.get('EMBERBSD_IMAGE_SOURCE_SHA256')
+    options.old_font_identity = saved_env.get('EMBERBSD_FONT_SOURCE_SHA256')
     options.old_sqlite_selection = json.loads(saved_env['EMBERBSD_SQLITE_SELECTION']) if saved_env.get('EMBERBSD_SQLITE_SELECTION') else None
     options.old_xml_identity = saved_env.get('EMBERBSD_XML_SOURCE_SHA256')
     options.old_minizip_identity = saved_env.get('EMBERBSD_MINIZIP_SOURCE_SHA256')
@@ -3308,6 +3378,7 @@ def main():
         command.add_argument('--shared-minizip', action='store_true')
         command.add_argument('--shared-xml', action='store_true')
         command.add_argument('--shared-image', action='store_true')
+        command.add_argument('--shared-font', action='store_true')
         if phase == 'configure':
             initial = command.add_mutually_exclusive_group()
             initial.add_argument('--resume-configure', action='store_true',
