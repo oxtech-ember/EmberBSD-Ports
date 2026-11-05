@@ -1,0 +1,432 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -45,16 +45,17 @@
+ ]
+ 
+ [dependencies.aead]
+-version = "0.5.2"
++version = "0.6.1"
+ default-features = false
+ 
+ [dependencies.blake2]
+-version = "0.10"
++version = "0.11.0"
+ optional = true
+ default-features = false
+ 
+ [dependencies.chacha20]
+-version = "0.9"
++version = "0.10.2"
++features = ["legacy"]
+ optional = true
+ 
+ [dependencies.crypto_secretbox]
+@@ -62,16 +63,16 @@
+ default-features = false
+ 
+ [dependencies.curve25519-dalek]
+-version = "4"
++version = "5"
+ features = ["zeroize"]
+ default-features = false
+ 
+ [dependencies.salsa20]
+-version = "0.10"
++version = "0.11"
+ optional = true
+ 
+ [dependencies.serdect]
+-version = "0.2"
++version = "0.4.3"
+ optional = true
+ default-features = false
+ 
+@@ -110,7 +111,7 @@
+     "aead/getrandom",
+     "rand_core",
+ ]
+-heapless = ["aead/heapless"]
++os_rng = ["getrandom"]
+ rand_core = ["aead/rand_core"]
+ salsa20 = [
+     "dep:salsa20",
+@@ -121,4 +122,4 @@
+     "alloc",
+ ]
+ serde = ["dep:serdect"]
+-std = ["aead/std"]
++std = ["alloc"]
+--- a/src/secret_key.rs
++++ b/src/secret_key.rs
+@@ -11,7 +11,7 @@
+ use zeroize::Zeroize;
+ 
+ #[cfg(feature = "rand_core")]
+-use aead::rand_core::CryptoRngCore;
++use aead::rand_core::CryptoRng;
+ 
+ #[cfg(feature = "seal")]
+ use {
+@@ -48,7 +48,7 @@
+ 
+     /// Generate a random [`SecretKey`].
+     #[cfg(feature = "rand_core")]
+-    pub fn generate(csprng: &mut impl CryptoRngCore) -> Self {
++    pub fn generate(csprng: &mut impl CryptoRng) -> Self {
+         let mut bytes = [0u8; KEY_SIZE];
+         csprng.fill_bytes(&mut bytes);
+         bytes.into()
+@@ -57,6 +57,32 @@
+     /// Get the [`PublicKey`] which corresponds to this [`SecretKey`]
+     pub fn public_key(&self) -> PublicKey {
+         PublicKey(MontgomeryPoint::mul_base(&self.scalar))
++    }
++
++    /// Borrows [`SecretKey`] as bytes.
++    ///
++    /// # ⚠️Warning
++    ///
++    /// The bytes are secret key material. Please treat them with
++    /// the care they deserve!
++    ///
++    /// # `Scalar` conversion notes
++    ///
++    /// If you are using the `From<Scalar>` impl on [`SecretKey`] (as opposed
++    /// to using [`SecretKey::from_bytes`] or one of the other methods that
++    /// decodes a secret key from bytes), this method will return the same
++    /// value as `Scalar::to_bytes`, which may reflect "clamping" if it was
++    /// applied to the original `Scalar`.
++    ///
++    /// In such cases, it may be undesirable to call this method, since such a
++    /// value may not reflect the original scalar prior to clamping. We suggest
++    /// you don't call this method when using `From<Scalar>` unless you know
++    /// what you're doing.
++    ///
++    /// Calling [`SecretKey::to_scalar`] can be used to safely round-trip the
++    /// scalar value in such cases.
++    pub fn as_bytes(&self) -> &[u8; KEY_SIZE] {
++        &self.bytes
+     }
+ 
+     /// Serialize [`SecretKey`] to bytes.
+@@ -119,9 +145,16 @@
+     }
+ }
+ 
++impl Zeroize for SecretKey {
++    fn zeroize(&mut self) {
++        self.bytes.zeroize();
++        self.scalar.zeroize();
++    }
++}
++
+ impl Drop for SecretKey {
+     fn drop(&mut self) {
+-        self.scalar.zeroize();
++        self.zeroize();
+     }
+ }
+ 
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -9,11 +9,11 @@
+ 
+ //! ## Usage
+ //!
+-#![cfg_attr(all(feature = "getrandom", feature = "std"), doc = "```")]
+-#![cfg_attr(not(all(feature = "getrandom", feature = "std")), doc = "```ignore")]
++#![cfg_attr(all(feature = "os_rng", feature = "std"), doc = "```")]
++#![cfg_attr(not(all(feature = "os_rng", feature = "std")), doc = "```ignore")]
+ //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+ //! use crypto_box::{
+-//!     aead::{Aead, AeadCore, OsRng},
++//!     aead::{Aead, Generate, Nonce, common::getrandom::SysRng, rand_core::UnwrapErr},
+ //!     SalsaBox, PublicKey, SecretKey
+ //! };
+ //!
+@@ -23,7 +23,7 @@
+ //!
+ //! // Generate a random secret key.
+ //! // NOTE: The secret key bytes can be accessed by calling `secret_key.as_bytes()`
+-//! let alice_secret_key = SecretKey::generate(&mut OsRng);
++//! let alice_secret_key = SecretKey::generate(&mut UnwrapErr(SysRng));
+ //!
+ //! // Get the public key for the secret key we just generated
+ //! let alice_public_key_bytes = alice_secret_key.public_key().as_bytes().clone();
+@@ -41,7 +41,7 @@
+ //! let alice_box = SalsaBox::new(&bob_public_key, &alice_secret_key);
+ //!
+ //! // Get a random nonce to encrypt the message under
+-//! let nonce = SalsaBox::generate_nonce(&mut OsRng);
++//! let nonce = Nonce::<SalsaBox>::generate();
+ //!
+ //! // Message to encrypt
+ //! let plaintext = b"Top secret message we're encrypting";
+@@ -87,20 +87,20 @@
+ //! To use it, enable the `chacha20` feature.
+ //!
+ #![cfg_attr(
+-    all(feature = "chacha20", feature = "getrandom", feature = "std"),
++    all(feature = "chacha20", feature = "os_rng", feature = "std"),
+     doc = "```"
+ )]
+ #![cfg_attr(
+-    not(all(feature = "chacha20", feature = "getrandom", feature = "std")),
++    not(all(feature = "chacha20", feature = "os_rng", feature = "std")),
+     doc = "```ignore"
+ )]
+ //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+ //! use crypto_box::{
+-//!     aead::{Aead, AeadCore, Payload, OsRng},
++//!     aead::{Aead, Generate, Nonce, Payload, common::getrandom::SysRng, rand_core::UnwrapErr},
+ //!     ChaChaBox, PublicKey, SecretKey
+ //! };
+ //!
+-//! let alice_secret_key = SecretKey::generate(&mut OsRng);
++//! let alice_secret_key = SecretKey::generate(&mut UnwrapErr(SysRng));
+ //! let alice_public_key_bytes = alice_secret_key.public_key().as_bytes().clone();
+ //! let bob_public_key = PublicKey::from([
+ //!    0xe8, 0x98, 0xc, 0x86, 0xe0, 0x32, 0xf1, 0xeb,
+@@ -109,7 +109,7 @@
+ //!    0x67, 0x8a, 0x53, 0x78, 0x9d, 0x92, 0xc7, 0x54,
+ //! ]);
+ //! let alice_box = ChaChaBox::new(&bob_public_key, &alice_secret_key);
+-//! let nonce = ChaChaBox::generate_nonce(&mut OsRng);
++//! let nonce = Nonce::<ChaChaBox>::generate();
+ //!
+ //! // Message to encrypt
+ //! let plaintext = b"Top secret message we're encrypting".as_ref();
+@@ -147,23 +147,13 @@
+ //! methods accept any type that impls the [`aead::Buffer`] trait which
+ //! contains the plaintext for encryption or ciphertext for decryption.
+ //!
+-//! Note that if you enable the `heapless` feature of this crate,
+-//! you will receive an impl of `aead::Buffer` for [`heapless::Vec`]
+-//! (re-exported from the `aead` crate as `aead::heapless::Vec`),
+-//! which can then be passed as the `buffer` parameter to the in-place encrypt
+-//! and decrypt methods.
+-//!
+-//! A `heapless` usage example can be found in the documentation for the
+-//! `xsalsa20poly1305` crate:
+-//!
+-//! <https://docs.rs/xsalsa20poly1305/latest/xsalsa20poly1305/#in-place-usage-eliminates-alloc-requirement>
++//! The `heapless` integration is unavailable with aead 0.6.
+ //!
+ //! [NaCl]: https://nacl.cr.yp.to/
+ //! [`crypto_box`]: https://nacl.cr.yp.to/box.html
+ //! [X25519]: https://cr.yp.to/ecdh.html
+ //! [XSalsa20Poly1305]: https://nacl.cr.yp.to/secretbox.html
+ //! [ECIES]: https://en.wikipedia.org/wiki/Integrated_Encryption_Scheme
+-//! [`heapless::Vec`]: https://docs.rs/heapless/latest/heapless/struct.Vec.html
+ 
+ #[cfg(feature = "seal")]
+ extern crate alloc;
+@@ -176,9 +166,9 @@
+ pub use crypto_secretbox::Nonce;
+ 
+ use aead::{
+-    consts::{U0, U16, U24, U32, U8},
+-    generic_array::GenericArray,
+-    AeadCore, AeadInPlace, Buffer, Error, KeyInit,
++    array::Array,
++    consts::{U16, U24, U32, U8},
++    AeadCore, AeadInOut, KeyInit,
+ };
+ use crypto_secretbox::{
+     cipher::{IvSizeUser, KeyIvInit, KeySizeUser, StreamCipher},
+@@ -197,8 +187,8 @@
+ 
+ /// Poly1305 tag.
+ ///
+-/// Implemented as an alias for [`GenericArray`].
+-pub type Tag = GenericArray<u8, U16>;
++/// Implemented as an alias for [`Array`].
++pub type Tag = Array<u8, U16>;
+ 
+ /// Size of a Poly1305 tag in bytes.
+ #[cfg(feature = "seal")]
+@@ -229,25 +219,61 @@
+ ///
+ /// [X25519]: https://cr.yp.to/ecdh.html
+ /// [crypto_secretbox]: https://github.com/RustCrypto/nacl-compat/tree/master/crypto_secretbox
+-#[derive(Clone)]
+ pub struct CryptoBox<C> {
+     secretbox: SecretBox<C>,
++}
++
++impl<C> CryptoBox<C> {
++    /// Size of an XSalsa20Poly1305 key in bytes
++    pub const KEY_SIZE: usize = SecretBox::<C>::KEY_SIZE;
++
++    /// Size of an XSalsa20Poly1305 nonce in bytes
++    pub const NONCE_SIZE: usize = SecretBox::<C>::NONCE_SIZE;
++
++    /// Size of a Poly1305 tag in bytes
++    pub const TAG_SIZE: usize = SecretBox::<C>::TAG_SIZE;
++}
++
++// Handwritten instead of derived to avoid `C: Clone` bound
++impl<C> Clone for CryptoBox<C> {
++    fn clone(&self) -> Self {
++        Self {
++            secretbox: self.secretbox.clone(),
++        }
++    }
+ }
+ 
+ impl<C> CryptoBox<C> {
+     /// Create a new [`CryptoBox`], performing X25519 Diffie-Hellman to derive
+     /// a shared secret from the provided public and secret keys.
++    ///
++    /// Internally performs clamping.
+     pub fn new(public_key: &PublicKey, secret_key: &SecretKey) -> Self
+     where
+         C: Kdf,
+     {
+-        let shared_secret = Zeroizing::new(secret_key.scalar * public_key.0);
++        let shared_secret = Zeroizing::new(public_key.0.mul_clamped(secret_key.bytes));
+ 
+         // Use HChaCha20 to create a uniformly random key from the shared secret
+-        let key = Zeroizing::new(C::kdf(
+-            GenericArray::from_slice(&shared_secret.0),
+-            &GenericArray::default(),
+-        ));
++        let key = Zeroizing::new(C::kdf((&shared_secret.0).into(), &Array::default()));
++
++        Self {
++            secretbox: SecretBox::<C>::new(&*key),
++        }
++    }
++
++    /// Create a new [`CryptoBox`], performing X25519 Diffie-Hellman to derive
++    /// a shared secret from the provided public and secret keys.
++    ///
++    /// Assumes that the scalar has already been clamped. Eg like `ed25519-dalek` does.
++    pub fn new_from_clamped(public_key: &PublicKey, secret_key: &SecretKey) -> Self
++    where
++        C: Kdf,
++    {
++        let shared_secret = Zeroizing::new(public_key.0 * secret_key.scalar);
++
++        // Use HChaCha20 to create a uniformly random key from the shared secret
++        let key = Zeroizing::new(C::kdf((&shared_secret.0).into(), &Array::default()));
+ 
+         Self {
+             secretbox: SecretBox::<C>::new(&*key),
+@@ -258,52 +284,32 @@
+ impl<C> AeadCore for CryptoBox<C> {
+     type NonceSize = U24;
+     type TagSize = U16;
+-    type CiphertextOverhead = U0;
+-}
+-
+-impl<C> AeadInPlace for CryptoBox<C>
++    const TAG_POSITION: aead::TagPosition = aead::TagPosition::Prefix;
++}
++
++impl<C> AeadInOut for CryptoBox<C>
+ where
+     C: Kdf + KeyIvInit + KeySizeUser<KeySize = U32> + IvSizeUser<IvSize = U8> + StreamCipher,
+ {
+-    fn encrypt_in_place(
++    fn encrypt_inout_detached(
+         &self,
+-        nonce: &GenericArray<u8, Self::NonceSize>,
++        nonce: &aead::Nonce<Self>,
+         associated_data: &[u8],
+-        buffer: &mut dyn Buffer,
+-    ) -> Result<(), Error> {
++        buffer: aead::inout::InOutBuf<'_, '_, u8>,
++    ) -> aead::Result<aead::Tag<Self>> {
+         self.secretbox
+-            .encrypt_in_place(nonce, associated_data, buffer)
+-    }
+-
+-    fn encrypt_in_place_detached(
++            .encrypt_inout_detached(nonce, associated_data, buffer)
++    }
++
++    fn decrypt_inout_detached(
+         &self,
+-        nonce: &GenericArray<u8, Self::NonceSize>,
++        nonce: &aead::Nonce<Self>,
+         associated_data: &[u8],
+-        buffer: &mut [u8],
+-    ) -> Result<Tag, Error> {
++        buffer: aead::inout::InOutBuf<'_, '_, u8>,
++        tag: &aead::Tag<Self>,
++    ) -> aead::Result<()> {
+         self.secretbox
+-            .encrypt_in_place_detached(nonce, associated_data, buffer)
+-    }
+-
+-    fn decrypt_in_place(
+-        &self,
+-        nonce: &GenericArray<u8, Self::NonceSize>,
+-        associated_data: &[u8],
+-        buffer: &mut dyn Buffer,
+-    ) -> Result<(), Error> {
+-        self.secretbox
+-            .decrypt_in_place(nonce, associated_data, buffer)
+-    }
+-
+-    fn decrypt_in_place_detached(
+-        &self,
+-        nonce: &GenericArray<u8, Self::NonceSize>,
+-        associated_data: &[u8],
+-        buffer: &mut [u8],
+-        tag: &Tag,
+-    ) -> Result<(), Error> {
+-        self.secretbox
+-            .decrypt_in_place_detached(nonce, associated_data, buffer, tag)
++            .decrypt_inout_detached(nonce, associated_data, buffer, tag)
+     }
+ }
+ 
+@@ -327,7 +333,7 @@
+ 
+         // Random PK bytes
+         let mut public_key_bytes = [0; 32];
+-        let mut rng = rand::thread_rng();
++        let mut rng = rand::rng();
+         rng.fill_bytes(&mut public_key_bytes);
+ 
+         // Create public key
+@@ -351,7 +357,7 @@
+ 
+         // Random SK bytes
+         let mut secret_key_bytes = [0; 32];
+-        let mut rng = rand::thread_rng();
++        let mut rng = rand::rng();
+         rng.fill_bytes(&mut secret_key_bytes);
+ 
+         // Create secret key
+--- a/src/public_key.rs
++++ b/src/public_key.rs
+@@ -5,7 +5,7 @@
+ #[cfg(feature = "seal")]
+ use {
+     crate::{get_seal_nonce, SalsaBox, TAG_SIZE},
+-    aead::{rand_core::CryptoRngCore, Aead},
++    aead::{rand_core::CryptoRng, Aead},
+     alloc::vec::Vec,
+ };
+ 
+@@ -15,7 +15,7 @@
+ /// A `crypto_box` public key.
+ ///
+ /// This type can be serialized if the `serde` feature is enabled.
+-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
++#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+ pub struct PublicKey(pub(crate) MontgomeryPoint);
+ 
+ impl PublicKey {
+@@ -50,7 +50,7 @@
+     #[cfg(feature = "seal")]
+     pub fn seal(
+         &self,
+-        csprng: &mut impl CryptoRngCore,
++        csprng: &mut impl CryptoRng,
+         plaintext: &[u8],
+     ) -> Result<Vec<u8>, aead::Error> {
+         let mut out = Vec::with_capacity(KEY_SIZE + TAG_SIZE + plaintext.len());

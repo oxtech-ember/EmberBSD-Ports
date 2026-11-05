@@ -52,6 +52,40 @@
     },
     "patch": "clang-sys-1.9.1.patch"
   },
+  "crypto_box-0.9.1": {
+    "files": {
+      "Cargo.toml": {
+        "after": "2678b4fe8b94851f138ab11fb18938f838441b5c117391a0847ed750d2dab814",
+        "before": "9ed51a7155c73299cb0eb888ad1b1fa3426317bb25b7a990809de0600e4e967a"
+      },
+      "src/lib.rs": {
+        "after": "ad3e30f1baee613a80639a4dae88e2cb786bdcbd18ab80c33aa525bb5e519f54",
+        "before": "0b588025aadd6da948a4734dac68d0589b743cc17ec5ef7eb705f3a17a927586"
+      },
+      "src/public_key.rs": {
+        "after": "e7b30f4ca24d791f24b22f731dcad576f8fdb76906db699d451d18a8c2f7f058",
+        "before": "2d96928577caa420fcb23a8429572d19f9c2739f5569a60f4810792ac96c3118"
+      },
+      "src/secret_key.rs": {
+        "after": "01c32e714ccdbe9a308942ba9a42bc43693f1bdd4b26ccfcf7f8e1159d380740",
+        "before": "cec5588ca73be86d52d11c3d036e6d2a0bedcc6dc85ddbbb62b7ba5dc3e33098"
+      }
+    },
+    "patch": "crypto_box-0.9.1.patch"
+  },
+  "crypto_secretbox-0.1.1": {
+    "files": {
+      "Cargo.toml": {
+        "after": "1cd8adf0848bf2cc6d996498c608cfe82e15131abf0c5e4dd324d9814d83ff6b",
+        "before": "b9c50599490067cd9137e18920811471dc7c9284a83372ac7f86204a7411afd0"
+      },
+      "src/lib.rs": {
+        "after": "181faf0c2ad1f2bfdd6439ddeb86e2b6059c1fb07c9b45367549f390af8a7a5b",
+        "before": "e8335a00dbe2ccf5497d5cb66db725ab3fe14c74e796cd3331d55ff1fd86c488"
+      }
+    },
+    "patch": "crypto_secretbox-0.1.1.patch"
+  },
   "cssparser-macros-0.7.1": {
     "files": {
       "Cargo.toml": {
@@ -60,6 +94,53 @@
       }
     },
     "patch": "cssparser-macros-0.7.1.patch"
+  },
+  "curve25519-dalek-derive-0.1.1": {
+    "files": {
+      "Cargo.toml": {
+        "after": "f4b2914b27bd89c91be5f45bee12cea08f9a7a8242fc15df145d0698d64acb52",
+        "before": "60d2093fbabea9e72ad1350ae4a616ae56b2592742a64d2bd679a749f7a6bb4d"
+      },
+      "src/lib.rs": {
+        "after": "fa2d7dec8b0b29bdb6f4f4c8ed4c365bbb04c818ae9264d6f6a3b66b694634a9",
+        "before": "fb56c338b6294eb1cfc91c3561c2cb01a5a56305dbf0957d5c34fa8927f23895"
+      }
+    },
+    "patch": "curve25519-dalek-derive-0.1.1.patch"
+  },
+  "darling_core-0.23.0": {
+    "files": {
+      "Cargo.toml": {
+        "after": "7deedf9b7da4f4adfbdfdc422e043bdeb9ea2f4ba135c7e7217553c87b0ed4d0",
+        "before": "4ca907c247ea9d256d93885076b298f4151ba43131f923a8f3db4232f26eb45e"
+      },
+      "src/codegen/outer_from_impl.rs": {
+        "after": "8ff5e2048e52d3ce221b98dc29f68edef2517a44bad994cd1129359c5d72b7f6",
+        "before": "b1e63838daed79c8d1c024ca4c88388f32b51454c5a86241717d68d3c3c92414"
+      },
+      "src/from_meta.rs": {
+        "after": "279e4ac7267cf5b884080638d55c03de4608d42b6bc64b7bcada211706ba0cdd",
+        "before": "46d2a7534aa545de8f66c7eb93f88f52fce9b20ecae2b9dee5890b4556308a85"
+      },
+      "src/usage/lifetimes.rs": {
+        "after": "9b848c7597c0c06da62fd4feb7b1e1d2c48d85d6ca15e9823fa7e75cff0c8dd4",
+        "before": "37522484e4bfc9b71aafdb76dec4db0529d9f28b0775e3fb62c84b57f18bccff"
+      },
+      "src/usage/type_params.rs": {
+        "after": "11b423479bbf90610172cffe6c899eea1dff8eedbfd7a80382f9525e3565f608",
+        "before": "e009419b102ad56878706d411b44cb89f5a497e8d0abbb6769bcd2d4af53c90b"
+      }
+    },
+    "patch": "darling_core-0.23.0.patch"
+  },
+  "darling_macro-0.23.0": {
+    "files": {
+      "Cargo.toml": {
+        "after": "68eb270f8e098921bc7f6ba6c9706aa8fde09eec824bcb89eaf53987cfa9d44a",
+        "before": "905c42e14b1406b61888db176859a83149a28f856eaf5b111f9336c3a13b5698"
+      }
+    },
+    "patch": "darling_macro-0.23.0.patch"
   },
   "dashmap-6.2.1": {
     "files": {
@@ -89,6 +170,41 @@
       }
     },
     "patch": "dashmap-6.2.1.patch"
+  },
+  "deluxe-0.5.0": {
+    "files": {
+      "Cargo.toml": {
+        "after": "adb7a72752d73b269dd7da2990d18ea4269e28cd48b5f08dee9d89224d365257",
+        "before": "6b8726f9b43a02552b6eb0a36f8005309fa1d04391efb1be01e157e7b1994f7b"
+      }
+    },
+    "patch": "deluxe-0.5.0.patch"
+  },
+  "deluxe-core-0.5.0": {
+    "files": {
+      "Cargo.toml": {
+        "after": "33039268f5efedc3e9c495d44b7fcc0dbcbb6bf0eb9945d80b5b38a9f912d8f8",
+        "before": "8200270d61e0026fb94aecaff22bf77f011cb3a130fafc281ce7857349abd46a"
+      },
+      "parse_attributes.rs": {
+        "after": "e93fff5106dfcc53e94ba0394a1ff13f761a91dc11e9da3dbd22bb83c5608d62",
+        "before": "ba1ab5f434acd62f262b478c8266ba924cea949c6d0624e1d0ef289d3fb84918"
+      },
+      "parse_meta.rs": {
+        "after": "c9a7c0782c125a280a37e7320e2fe1d36d1b6f31a41353b51d76adaf9a609c17",
+        "before": "55555e2d144168651eef42c11c67f00f38c66b5a241ec6b60a6b8da90ce390da"
+      }
+    },
+    "patch": "deluxe-core-0.5.0.patch"
+  },
+  "deluxe-macros-0.5.0": {
+    "files": {
+      "Cargo.toml": {
+        "after": "b15d3415822fa64429a9946d514dbd88ecada55020e4233f7fdee15f7bc89b0b",
+        "before": "380cf16267cc28ee29dc99277add95bfa85c7bd1612dec069cecf2cb2d9e41d7"
+      }
+    },
+    "patch": "deluxe-macros-0.5.0.patch"
   },
   "derive_more-impl-2.1.1": {
     "files": {
@@ -122,6 +238,15 @@
       }
     },
     "patch": "derive_more-impl-2.1.1.patch"
+  },
+  "derive_setters-0.1.9": {
+    "files": {
+      "Cargo.toml": {
+        "after": "5c2248e005f2659bae3a47e55fadfd3823f86a3ffe30952711d4ca26d838a2d4",
+        "before": "dd541adf6307a3233226309e2e0ac2592d0d1cf014740351ad7ab32fadee89af"
+      }
+    },
+    "patch": "derive_setters-0.1.9.patch"
   },
   "dlib-0.5.3": {
     "files": {
@@ -315,6 +440,15 @@
     },
     "patch": "string_enum-1.0.2.patch"
   },
+  "strum_macros-0.28.0": {
+    "files": {
+      "Cargo.toml": {
+        "after": "2aae4007c0cd7492ed27c1a028331ed477127208d11f257f4e1b1fe925e19d88",
+        "before": "49ce289db377f9e8b25772ccd2121263f05fe908072b9adaccd3bb1e095e3f4c"
+      }
+    },
+    "patch": "strum_macros-0.28.0.patch"
+  },
   "swc_allocator-5.0.0": {
     "files": {
       "Cargo.toml": {
@@ -426,6 +560,81 @@
     },
     "patch": "timezone_provider-0.2.6.patch"
   },
+  "ton-0.4.12": {
+    "files": {
+      "Cargo.toml": {
+        "after": "10d48b3b1e0fb976f8fa82cf21a63c9d3d020f66448b8e97696f4613b13096d1",
+        "before": "d88ad7d9e567e7a24427386f5948f1a32853841dc92ae787b9316aa4d0b31340"
+      },
+      "resources/ton_wallet_code/wallet_trampoline.code": {
+        "after": "d10f10077d7c534ec9ad82167a559e075aa28cdc1e80f0c4b4f90c0252965055",
+        "before": null
+      },
+      "src/block_tlb/out_action.rs": {
+        "after": "412322e58f718d9ee1aa467450aaffba76360f17cc3a2af7395d31d7764bc7d5",
+        "before": "950ac8f167b2b6917f96bfe1c0657077ddb2a72cfa7237984915225e657891e2"
+      },
+      "src/contracts/tep/metadata.rs": {
+        "after": "69750a87625d588b9dbf81c27f9524cab7b3e173fb9e1e0cd4ba6c08a04b2072",
+        "before": "8dd00cc9d777c7ccced4718b9f7727fed8c5896c1606fdfeb86085b8f694ba19"
+      },
+      "src/errors.rs": {
+        "after": "a3ddf06123d95689ca3b70dd62f58b69eaaf767bdf220d4e8a213274cfeb1790",
+        "before": "89885feec576ae862a4c922d32dd6403135214ff44bcea1751a6bf57eb99d683"
+      },
+      "src/ton_wallet.rs": {
+        "after": "c59d06347c3a8ed2dd7174451800d74613b4b1dd3d5e05364c9378acc501477e",
+        "before": "23fffa95229f2148647cc9590753557461d5bf4832ac50d5a139f4e42bbd1a4a"
+      },
+      "src/ton_wallet/mnemonic.rs": {
+        "after": "e24db206c3d26481673c28fadf3b50cc28ad00e31aa25a597b65a71cbe778bdb",
+        "before": "63148e8b4768f9f016faf2180ae40bd23985c9a746223bfdbc970a9d427ee424"
+      },
+      "src/ton_wallet/wallet_code.rs": {
+        "after": "a3baaf0f87ad907b4bfccf1cb447ec02117e7c86e128184ab49bbdea37280321",
+        "before": "dc430127e02c5455f4995ea3583f99e14a3b50fe9d3fd2003bd6de70d441c327"
+      },
+      "src/ton_wallet/wallet_constants.rs": {
+        "after": "d324591f78215cf27f3e8ed35a25abfe14d3bed55d412b33a604bc283d32abc3",
+        "before": "1f522fccd132ebd9001aeb0fcb88e35cba72485b5db37cbb2ca6710e1f5e1826"
+      },
+      "src/ton_wallet/wallet_tlb.rs": {
+        "after": "390721602a90b6d96f7ba4ba7080f79a770b2470026f5b6cf983a1e7f93a97ad",
+        "before": "4a608af71fe5e9ab8d26f3f047bc1463aa3bb026548fdac06c6cd52edf206763"
+      },
+      "src/ton_wallet/wallet_tlb/wallet.rs": {
+        "after": "36bfbf6bdadb159fc0741a5b186919e7401200b8429b7f6fb2141d85e4471602",
+        "before": null
+      },
+      "src/ton_wallet/wallet_tlb/wallet_v5.rs": {
+        "after": "c6b25d7aaed9f4b615317f329ca5424962552fd7abd2899c248c7e18978e0a96",
+        "before": "0b67f3823fc48384ac2e45f4dd33f8e03306a6a842eca4e9cd0036ff9919c17a"
+      },
+      "src/ton_wallet/wallet_version.rs": {
+        "after": "d5ff801d02fbb9bac84f6bd902b8c0e70f973a65c642d0a52a7f13eb1a18255e",
+        "before": "32eacbdb59e7739777f158090115acaab65f8e9d2a7ba609dc1f08230bd73ea9"
+      }
+    },
+    "patch": "ton-0.4.12.patch"
+  },
+  "ton_core-0.3.11": {
+    "files": {
+      "Cargo.toml": {
+        "after": "0c3143179da23d1cc6042fdfaddffb35fe34cbcfe012b11d2f9d04b2f7b4e0fc",
+        "before": "956d8ba3fb8aeafee0413a36d427bf843df9858e368075c81e11dafa402b8c60"
+      }
+    },
+    "patch": "ton_core-0.3.11.patch"
+  },
+  "ton_macros-0.2.6": {
+    "files": {
+      "Cargo.toml": {
+        "after": "da5d65c3644f004fd4df9c591b1de85c9ab7182a910b0b2dc1708183cd0e0db1",
+        "before": "15bbc3b5c6cd714123e404e15555467a2cde5c292e7bda5eb1ca247f832b0aae"
+      }
+    },
+    "patch": "ton_macros-0.2.6.patch"
+  },
   "tracing-attributes-0.1.31": {
     "files": {
       "Cargo.toml": {
@@ -451,6 +660,27 @@
       }
     },
     "patch": "uniffi_internal_macros-0.32.2.patch"
+  },
+  "uniffi_macros-0.32.2": {
+    "files": {
+      "Cargo.toml": {
+        "after": "8afcd713dcc86658623191802882b5f91d692ba2897cb44f9031c0422b891836",
+        "before": "99dfa93cbfd0a605b1582fc3a5cc862e02be1af8cf378754d69b70c206982aa9"
+      },
+      "src/export/item.rs": {
+        "after": "99bf9e0b22ad817e5b94aaf477218e3e6ee10097d6183711139596da289b1e08",
+        "before": "b5c322d2fe931b1f8feba2bd1f5d92cb73ee907dff78302d39d0c4c38db7cce1"
+      },
+      "src/export/trait_interface.rs": {
+        "after": "4e9aa81a50eb1ba6ab5c663c65611c44de38ab596acba4684eaec5f656abf7f0",
+        "before": "7cfbc7b7d03001b416729e7523081efadc7b4fd715e0d145ce1a6216c40c35c2"
+      },
+      "src/fnsig.rs": {
+        "after": "21c9084bc0eefbd53fa7962a62f4cfb612c1cdd207793772316bae5b3e9d1f2c",
+        "before": "98a4c6e76e7f3138b01551831be7bc513e36fc2384ea2664779ab553debea1f1"
+      }
+    },
+    "patch": "uniffi_macros-0.32.2.patch"
   },
   "windows-core-0.62.2": {
     "files": {

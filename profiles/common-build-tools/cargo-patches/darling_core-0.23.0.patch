@@ -1,0 +1,122 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -55,7 +55,7 @@
+ optional = true
+ 
+ [dependencies.syn]
+-version = "2.0.15"
++version = "3.0.9"
+ features = [
+     "full",
+     "extra-traits",
+--- a/src/from_meta.rs
++++ b/src/from_meta.rs
+@@ -175,11 +175,10 @@
+                 // only producing an error on the first unexpected field in the flattened list.
+                 NestedMeta::Meta(meta) => Error::unknown_field_path(meta.path()).with_span(meta),
+                 NestedMeta::Lit(lit) => Error::unexpected_expr_type(
+-                    &(syn::ExprLit {
++                    &syn::Expr::Lit(syn::ExprLit {
+                         attrs: vec![],
+                         lit: lit.clone(),
+-                    }
+-                    .into()),
++                    }),
+                 )
+                 .with_span(lit),
+             });
+@@ -479,7 +478,7 @@
+ 
+ from_syn_parse!(syn::Type);
+ from_syn_parse!(syn::TypeArray);
+-from_syn_parse!(syn::TypeBareFn);
++from_syn_parse!(syn::TypeFnPtr);
+ from_syn_parse!(syn::TypeGroup);
+ from_syn_parse!(syn::TypeImplTrait);
+ from_syn_parse!(syn::TypeInfer);
+@@ -502,6 +501,7 @@
+             Expr::Path(body) => {
+                 if body.attrs.is_empty() {
+                     Ok(syn::TypePath {
++                        attrs: vec![],
+                         qself: body.qself.clone(),
+                         path: body.path.clone(),
+                     })
+--- a/src/usage/lifetimes.rs
++++ b/src/usage/lifetimes.rs
+@@ -114,7 +114,7 @@
+ 
+ uses_lifetimes!(syn::AngleBracketedGenericArguments, args);
+ uses_lifetimes!(syn::AssocType, ty);
+-uses_lifetimes!(syn::BareFnArg, ty);
++uses_lifetimes!(syn::NamedArg, ty);
+ uses_lifetimes!(syn::BoundLifetimes, lifetimes);
+ uses_lifetimes!(syn::ConstParam, ty);
+ uses_lifetimes!(syn::Constraint, bounds);
+@@ -132,7 +132,7 @@
+ uses_lifetimes!(syn::QSelf, ty);
+ uses_lifetimes!(syn::TraitBound, path, lifetimes);
+ uses_lifetimes!(syn::TypeArray, elem);
+-uses_lifetimes!(syn::TypeBareFn, inputs, output);
++uses_lifetimes!(syn::TypeFnPtr, inputs, output);
+ uses_lifetimes!(syn::TypeGroup, elem);
+ uses_lifetimes!(syn::TypeImplTrait, bounds);
+ uses_lifetimes!(syn::TypeParam, bounds);
+@@ -169,7 +169,7 @@
+             Type::Array(ref v) => v.uses_lifetimes(options, lifetimes),
+             Type::Ptr(ref v) => v.uses_lifetimes(options, lifetimes),
+             Type::Reference(ref v) => v.uses_lifetimes(options, lifetimes),
+-            Type::BareFn(ref v) => v.uses_lifetimes(options, lifetimes),
++            Type::FnPtr(ref v) => v.uses_lifetimes(options, lifetimes),
+             Type::Tuple(ref v) => v.uses_lifetimes(options, lifetimes),
+             Type::Path(ref v) => v.uses_lifetimes(options, lifetimes),
+             Type::Paren(ref v) => v.uses_lifetimes(options, lifetimes),
+--- a/src/usage/type_params.rs
++++ b/src/usage/type_params.rs
+@@ -88,7 +88,7 @@
+ 
+ uses_type_params!(syn::AngleBracketedGenericArguments, args);
+ uses_type_params!(syn::AssocType, ty);
+-uses_type_params!(syn::BareFnArg, ty);
++uses_type_params!(syn::NamedArg, ty);
+ uses_type_params!(syn::Constraint, bounds);
+ uses_type_params!(syn::DataEnum, variants);
+ uses_type_params!(syn::DataStruct, fields);
+@@ -100,7 +100,7 @@
+ uses_type_params!(syn::QSelf, ty);
+ uses_type_params!(syn::TraitBound, path);
+ uses_type_params!(syn::TypeArray, elem);
+-uses_type_params!(syn::TypeBareFn, inputs, output);
++uses_type_params!(syn::TypeFnPtr, inputs, output);
+ uses_type_params!(syn::TypeGroup, elem);
+ uses_type_params!(syn::TypeImplTrait, bounds);
+ uses_type_params!(syn::TypeParen, elem);
+@@ -151,7 +151,7 @@
+             Type::Array(ref v) => v.uses_type_params(options, type_set),
+             Type::Ptr(ref v) => v.uses_type_params(options, type_set),
+             Type::Reference(ref v) => v.uses_type_params(options, type_set),
+-            Type::BareFn(ref v) => v.uses_type_params(options, type_set),
++            Type::FnPtr(ref v) => v.uses_type_params(options, type_set),
+             Type::Tuple(ref v) => v.uses_type_params(options, type_set),
+             Type::Path(ref v) => v.uses_type_params(options, type_set),
+             Type::Paren(ref v) => v.uses_type_params(options, type_set),
+--- a/src/codegen/outer_from_impl.rs
++++ b/src/codegen/outer_from_impl.rs
+@@ -1,6 +1,6 @@
+ use proc_macro2::TokenStream;
+ use quote::{quote, ToTokens, TokenStreamExt};
+-use syn::{GenericParam, Generics, Path, TraitBound, TraitBoundModifier, TypeParamBound};
++use syn::{GenericParam, Generics, Path, TraitBound, TypeParamBound};
+ 
+ use crate::codegen::TraitImpl;
+ use crate::usage::IdentSet;
+@@ -45,7 +45,8 @@
+ 
+     let added_bound = TypeParamBound::Trait(TraitBound {
+         paren_token: None,
+-        modifier: TraitBoundModifier::None,
++        modifiers: Default::default(),
++        maybe: None,
+         lifetimes: None,
+         path: bound,
+     });

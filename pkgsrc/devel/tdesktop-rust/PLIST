@@ -1,0 +1,7 @@
+@comment $NetBSD$
+include/tlottie/tlottie.h
+include/wallet_engine/wallet_engine.cpp
+include/wallet_engine/wallet_engine.hpp
+include/wallet_engine/wallet_engine_scaffolding.hpp
+lib/libtdesktop_rust.a
+lib/pkgconfig/tdesktop-rust.pc

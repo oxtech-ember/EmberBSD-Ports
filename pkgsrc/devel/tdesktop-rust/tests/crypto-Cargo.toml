@@ -1,0 +1,18 @@
+[package]
+name = "crypto-feature-probe"
+version = "0.1.0"
+edition = "2021"
+publish = false
+[dependencies]
+crypto_box = { version = "=0.9.1", default-features = false }
+crypto_secretbox = { version = "=0.1.1", default-features = false }
+serde_json = "1.0.154"
+zeroize = "1.9.1"
+[features]
+salsa_noalloc = ["crypto_box/salsa20", "crypto_secretbox/salsa20"]
+chacha_noalloc = ["crypto_box/chacha20", "crypto_secretbox/chacha20"]
+salsa = ["crypto_box/alloc", "crypto_box/std", "crypto_box/salsa20", "crypto_secretbox/alloc", "crypto_secretbox/std", "crypto_secretbox/salsa20"]
+chacha = ["crypto_box/alloc", "crypto_box/std", "crypto_box/chacha20", "crypto_secretbox/alloc", "crypto_secretbox/std", "crypto_secretbox/chacha20"]
+seal = ["salsa", "crypto_box/seal", "crypto_box/getrandom"]
+serde = ["salsa", "crypto_box/serde"]
+os_rng = ["salsa", "crypto_box/os_rng", "crypto_secretbox/os_rng"]

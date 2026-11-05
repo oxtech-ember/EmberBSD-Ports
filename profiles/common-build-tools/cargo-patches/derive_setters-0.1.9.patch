@@ -1,0 +1,20 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -48,7 +48,7 @@
+ path = "tests/trybuild.rs"
+ 
+ [dependencies.darling]
+-version = "0.21"
++version = "0.23"
+ 
+ [dependencies.proc-macro2]
+ version = "1"
+@@ -57,7 +57,7 @@
+ version = "1"
+ 
+ [dependencies.syn]
+-version = "2"
++version = "3"
+ 
+ [dependencies.trybuild]
+ version = "1.0"

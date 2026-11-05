@@ -1,0 +1,85 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -65,7 +65,7 @@
+ features = ["derive"]
+ 
+ [dependencies.syn]
+-version = "2.0"
++version = "3.0.9"
+ features = [
+     "full",
+     "visit-mut",
+--- a/src/export/item.rs
++++ b/src/export/item.rs
+@@ -148,7 +148,7 @@
+             items,
+             self_ident: self_ident.to_owned(),
+             args,
+-            trait_: item.trait_.map(|t| t.1),
++            trait_: item.trait_.map(|t| t.0),
+         })
+     }
+ 
+--- a/src/export/trait_interface.rs
++++ b/src/export/trait_interface.rs
+@@ -259,29 +259,12 @@
+ }
+ 
+ pub fn alter_trait(item: &ItemTrait) -> TokenStream {
+-    let ItemTrait {
+-        attrs,
+-        vis,
+-        unsafety,
+-        auto_token,
+-        trait_token,
+-        ident,
+-        generics,
+-        colon_token,
+-        supertraits,
+-        items,
+-        ..
+-    } = item;
+-
+-    quote! {
+-        #(#attrs)*
+-        #vis #unsafety #auto_token #trait_token #ident #generics #colon_token #supertraits {
+-            #(#items)*
+-
+-            #[doc(hidden)]
+-            fn uniffi_foreign_handle(&self) -> ::std::option::Option<::uniffi::Handle> {
+-                ::std::option::Option::None
+-            }
+-        }
+-    }
++    let mut item = item.clone();
++    item.items.push(syn::parse_quote! {
++        #[doc(hidden)]
++        fn uniffi_foreign_handle(&self) -> ::std::option::Option<::uniffi::Handle> {
++            ::std::option::Option::None
++        }
++    });
++    quote! { #item }
+ }
+--- a/src/fnsig.rs
++++ b/src/fnsig.rs
+@@ -472,13 +472,13 @@
+ 
+ impl From<Receiver> for ReceiverArg {
+     fn from(receiver: Receiver) -> Self {
+-        if let Type::Path(p) = *receiver.ty {
+-            if let Some(segment) = p.path.segments.last() {
+-                // This comparison will fail if a user uses a typedef for Arc.  Maybe we could
+-                // implement some system like TYPE_ID_META to figure this out from the type system.
+-                // However, this seems good enough for now.
+-                if segment.ident == "Arc" {
+-                    return ReceiverArg::Arc;
++        if let syn::ReceiverKind::Typed(_, ty) = receiver.kind {
++            if let Type::Path(p) = *ty {
++                if let Some(segment) = p.path.segments.last() {
++                    // Typedefs for Arc are not recognized, as before.
++                    if segment.ident == "Arc" {
++                        return ReceiverArg::Arc;
++                    }
+                 }
+             }
+         }

@@ -1,0 +1,11 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -100,7 +100,7 @@
+ optional = true
+ 
+ [dependencies.sha2]
+-version = "0.10"
++version = "0.11.1"
+ 
+ [dependencies.smallvec]
+ version = "1"

@@ -1,0 +1,897 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -41,7 +41,10 @@
+ repository = "https://github.com/ston-fi/ton-rs"
+ 
+ [features]
++default = ["http"]
++http = ["dep:reqwest"]
+ lite-client = [
++    "http",
+     "dep:adnl",
+     "dep:auto_pool",
+     "dep:dashmap",
+@@ -52,6 +55,7 @@
+     "dep:tower",
+ ]
+ tonlibjson = [
++    "dep:rand",
+     "dep:tonlib-sys",
+     "lite-client",
+ ]
+@@ -97,7 +101,7 @@
+ version = "0.1"
+ 
+ [dependencies.ed25519-dalek]
+-version = "2.2.0"
++version = "3.0.0"
+ 
+ [dependencies.everscale-types]
+ version = "0.1.2"
+@@ -114,7 +118,7 @@
+ version = "0.4"
+ 
+ [dependencies.hmac]
+-version = "0.12"
++version = "0.13"
+ 
+ [dependencies.libc]
+ version = "0.2"
+@@ -140,14 +144,16 @@
+ version = "0.12"
+ 
+ [dependencies.pbkdf2]
+-version = "0.12"
+-features = ["simple"]
++version = "0.13"
++features = ["hmac"]
+ 
+ [dependencies.rand]
+-version = "0.9"
++version = "0.10.3"
++optional = true
+ 
+ [dependencies.reqwest]
+ version = "0.12"
++optional = true
+ 
+ [dependencies.serde]
+ version = "1"
+@@ -160,10 +166,10 @@
+ version = "1"
+ 
+ [dependencies.sha2]
+-version = "0.10"
++version = "0.11.1"
+ 
+ [dependencies.strum]
+-version = "0.27"
++version = "0.28"
+ features = ["derive"]
+ 
+ [dependencies.thiserror]
+@@ -175,6 +181,8 @@
+     "default",
+     "rt",
+     "macros",
++    "sync",
++    "time",
+ ]
+ 
+ [dependencies.tokio-retry]
+@@ -221,6 +229,8 @@
+     "default",
+     "rt",
+     "macros",
++    "sync",
++    "time",
+ ]
+ 
+ [dev-dependencies.tokio-test]
+--- a/src/errors.rs
++++ b/src/errors.rs
+@@ -1,5 +1,6 @@
+ use crate::contracts::tep::metadata::metadata_content::MetadataContent;
+-use hmac::digest::crypto_common;
++use hmac::digest::InvalidLength;
++#[cfg(feature = "http")]
+ use reqwest::StatusCode;
+ use std::io;
+ use std::sync::Arc;
+@@ -135,7 +136,7 @@
+     MetaLoaderError(#[from] MetaLoaderError),
+ 
+     #[error("{0}")]
+-    HmacInvalidLen(#[from] crypto_common::InvalidLength),
++    HmacInvalidLen(#[from] InvalidLength),
+     #[error("{0}")]
+     NullError(#[from] std::ffi::NulError),
+     #[error("{0}")]
+@@ -156,6 +157,7 @@
+     FromUtf8(#[from] std::string::FromUtf8Error),
+     #[error("{0}")]
+     SerdeJson(#[from] serde_json::Error),
++    #[cfg(feature = "http")]
+     #[error("Transport error ({0})")]
+     TransportError(#[from] reqwest::Error),
+ }
+@@ -167,9 +169,11 @@
+     #[error("Unsupported content layout (Metadata content: {0:?})")]
+     ContentLayoutUnsupported(Box<MetadataContent>),
+ 
++    #[cfg(feature = "http")]
+     #[error("Failed to load jetton metadata (URI: {uri}, response status code: {status})")]
+     LoadMetadataFailed { uri: String, status: StatusCode },
+ 
++    #[cfg(feature = "http")]
+     #[error("IpfsLoaderError path: {path}, status: {status}, msg: {msg}")]
+     IpfsLoadError {
+         path: String,
+--- a/src/ton_wallet.rs
++++ b/src/ton_wallet.rs
+@@ -34,6 +34,7 @@
+     pub fn new(version: WalletVersion, key_pair: KeyPair) -> Result<Self, TonError> {
+         let wallet_id = match version {
+             WalletVersion::V5R1 => WALLET_V5R1_ID_DEFAULT,
++            WalletVersion::Wallet => WALLET_SUBWALLET_ID_DEFAULT,
+             _ => WALLET_ID_DEFAULT,
+         };
+         Self::new_with_params(version, key_pair, 0, wallet_id)
+@@ -82,6 +83,80 @@
+         WalletVersion::build_ext_in_body(self.version, expire_at, seqno, self.wallet_id, int_msgs)
+     }
+ 
++    /// Creates an unsigned external-message body with explicit message modes.
++    pub fn create_ext_in_body_with_modes(
++        &self,
++        expire_at: u32,
++        seqno: u32,
++        int_msgs: Vec<TonCell>,
++        int_msg_modes: Vec<u8>,
++    ) -> Result<TonCell, TonError> {
++        WalletVersion::build_ext_in_body_with_modes(
++            self.version,
++            expire_at,
++            seqno,
++            self.wallet_id,
++            int_msgs,
++            int_msg_modes,
++        )
++    }
++
++    /// Creates and signs an external inbound message with explicit modes.
++    pub fn create_ext_in_msg_with_modes(
++        &self,
++        int_msgs: Vec<TonCell>,
++        int_msg_modes: Vec<u8>,
++        seqno: u32,
++        expire_at: u32,
++        add_state_init: bool,
++    ) -> Result<TonCell, TonError> {
++        let body = self.create_ext_in_body_with_modes(expire_at, seqno, int_msgs, int_msg_modes)?;
++        let signed = self.sign_ext_in_body(&body)?;
++        self.create_ext_in_msg_from_body(signed, add_state_init)
++    }
++
++    /// Builds a signed internal request that a sponsor can relay to this wallet.
++    ///
++    /// The message has no source and zero value. A relayer supplies its source
++    /// and attached TON when submitting the signed body to the wallet contract.
++    pub fn create_internal_signed_msg_with_modes(
++        &self,
++        int_msgs: Vec<TonCell>,
++        int_msg_modes: Vec<u8>,
++        seqno: u32,
++        expire_at: u32,
++        add_state_init: bool,
++    ) -> Result<TonCell, TonError> {
++        let body = WalletVersion::build_internal_signed_body_with_modes(
++            self.version,
++            expire_at,
++            seqno,
++            self.wallet_id,
++            int_msgs,
++            int_msg_modes,
++        )?;
++        let signed = self.sign_ext_in_body(&body)?;
++        self.create_internal_signed_msg_from_body(signed, add_state_init)
++    }
++
++    /// Wraps a signed internal request body for transport to a relayer.
++    pub fn create_internal_signed_msg_from_body(
++        &self,
++        signed_body: TonCell,
++        add_state_init: bool,
++    ) -> Result<TonCell, TonError> {
++        let mut info = CommonMsgInfoInt::new(self.address.to_msg_address(), TLBCoins::ZERO);
++        info.bounce = false;
++
++        let mut msg = Msg::new(CommonMsgInfo::Int(info), signed_body);
++        if add_state_init {
++            let code = WalletVersion::get_code(self.version)?.clone();
++            let data = WalletVersion::get_default_data(self.version, &self.key_pair, self.wallet_id)?;
++            msg.init = Some(TLBEitherRef::new(StateInit::new(code, data)));
++        }
++        Ok(msg.to_cell()?)
++    }
++
+     /// Signs an external-message body.
+     pub fn sign_ext_in_body(&self, ext_in_body: &TonCell) -> Result<TonCell, TonError> {
+         let msg_hash = ext_in_body.cell_hash()?;
+--- a/src/block_tlb/out_action.rs
++++ b/src/block_tlb/out_action.rs
+@@ -5,6 +5,19 @@
+ use ton_core::errors::TonCoreError;
+ use ton_core::traits::tlb::TLB;
+ use ton_core::types::tlb_core::{TLBEither, TLBRef};
++
++/// Sends the message with its explicitly encoded value.
++pub const SEND_MODE_REGULAR: u8 = 0;
++/// Pays message forwarding fees from the sender account balance.
++pub const SEND_MODE_PAY_FEES_SEPARATELY: u8 = 1;
++/// Continues the action phase when the send action encounters an eligible error.
++pub const SEND_MODE_IGNORE_ERRORS: u8 = 2;
++/// Carries all value remaining from the inbound message.
++pub const SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE: u8 = 64;
++/// Carries the complete remaining account balance.
++pub const SEND_MODE_CARRY_ALL_BALANCE: u8 = 128;
++/// Destroys the account when mode 128 leaves a zero balance.
++pub const SEND_MODE_DESTROY_ACCOUNT: u8 = 32;
+ 
+ // https://github.com/ton-blockchain/ton/blob/2a68c8610bf28b43b2019a479a70d0606c2a0aa1/crypto/block/block.tlb#L399
+ #[derive(Debug, PartialEq, Clone, Default)]
+--- a/src/ton_wallet/wallet_version.rs
++++ b/src/ton_wallet/wallet_version.rs
+@@ -22,6 +22,7 @@
+     V4R1,
+     V4R2,
+     V5R1,
++    Wallet,
+     HLV1R1,
+     HLV1R2,
+     HLV2,
+@@ -42,6 +43,7 @@
+             V3R1 | V3R2 => WalletV3Data::new(wallet_id, public_key).to_cell(),
+             V4R1 | V4R2 => WalletV4Data::new(wallet_id, public_key).to_cell(),
+             V5R1 => WalletV5Data::new(wallet_id, public_key).to_cell(),
++            Wallet => WalletData::new(wallet_id, public_key).to_cell(),
+             HLV2R2 => WalletHLV2R2Data::new(wallet_id, public_key).to_cell(),
+             HLV1R1 | HLV1R2 | HLV2 | HLV2R1 => {
+                 bail_ton_core!("initial_data for {version:?} is unsupported");
+@@ -72,11 +74,23 @@
+         wallet_id: i32,
+         msgs: Vec<TonCell>,
+     ) -> Result<TonCell, TonError> {
++        let modes = vec![3u8; msgs.len()];
++        Self::build_ext_in_body_with_modes(version, valid_until, msg_seqno, wallet_id, msgs, modes)
++    }
++
++    pub fn build_ext_in_body_with_modes(
++        version: WalletVersion,
++        valid_until: u32,
++        msg_seqno: u32,
++        wallet_id: i32,
++        msgs: Vec<TonCell>,
++        msgs_modes: Vec<u8>,
++    ) -> Result<TonCell, TonError> {
+         let res = match version {
+             V2R1 | V2R2 => WalletV2ExtMsgBody {
+                 msg_seqno,
+                 valid_until,
+-                msgs_modes: vec![3u8; msgs.len()],
++                msgs_modes,
+                 msgs,
+             }
+             .to_cell(),
+@@ -84,7 +98,7 @@
+                 subwallet_id: wallet_id,
+                 msg_seqno,
+                 valid_until,
+-                msgs_modes: vec![3u8; msgs.len()],
++                msgs_modes,
+                 msgs,
+             }
+             .to_cell(),
+@@ -93,7 +107,7 @@
+                 valid_until,
+                 msg_seqno,
+                 opcode: 0,
+-                msgs_modes: vec![3u8; msgs.len()],
++                msgs_modes,
+                 msgs,
+             }
+             .to_cell(),
+@@ -101,13 +115,57 @@
+                 wallet_id,
+                 valid_until,
+                 msg_seqno,
+-                msgs_modes: vec![3u8; msgs.len()],
++                msgs_modes,
+                 msgs,
+             }
+             .to_cell(),
+-            _ => Err(TonCoreError::Custom(format!("build_ext_in_body for {version:?} is unsupported"))),
++            Wallet => WalletExtMsgBody {
++                wallet_id,
++                valid_until,
++                msg_seqno,
++                msgs_modes,
++                msgs,
++            }
++            .to_cell(),
++            _ => Err(TonCoreError::Custom(format!(
++                "build_ext_in_body for {version:?} is unsupported"
++            ))),
+         };
+         res.map_err(TonError::from)
++    }
++
++    /// Builds an unsigned owner-authorized request for delivery by an internal message.
++    pub fn build_internal_signed_body_with_modes(
++        version: WalletVersion,
++        valid_until: u32,
++        msg_seqno: u32,
++        wallet_id: i32,
++        msgs: Vec<TonCell>,
++        msgs_modes: Vec<u8>,
++    ) -> Result<TonCell, TonError> {
++        match version {
++            V5R1 => WalletV5InternalSignedBody {
++                wallet_id,
++                valid_until,
++                msg_seqno,
++                msgs_modes,
++                msgs,
++            }
++            .to_cell()
++            .map_err(TonError::from),
++            Wallet => WalletInternalSignedBody {
++                wallet_id,
++                valid_until,
++                msg_seqno,
++                msgs_modes,
++                msgs,
++            }
++            .to_cell()
++            .map_err(TonError::from),
++            _ => Err(TonError::from(TonCoreError::Custom(format!(
++                "internal signed requests are unsupported for {version:?}"
++            )))),
++        }
+     }
+ 
+     pub(super) fn sign_msg(version: WalletVersion, msg_cell: &TonCell, sign: &[u8]) -> Result<TonCell, TonError> {
+--- a/src/ton_wallet/wallet_constants.rs
++++ b/src/ton_wallet/wallet_constants.rs
+@@ -1,3 +1,5 @@
+ pub const WALLET_ID_DEFAULT: i32 = 0x29a9a317;
+ pub const WALLET_V5R1_ID_DEFAULT: i32 = 0x7FFFFF11;
+ pub const WALLET_V5R1_ID_DEFAULT_TESTNET: i32 = 0x7FFFFFFD;
++pub const WALLET_SUBWALLET_ID_DEFAULT: i32 = 0x7FFF7F11;
++pub const WALLET_SUBWALLET_ID_DEFAULT_TESTNET: i32 = 0x7FFF7FFD;
+--- a/src/ton_wallet/wallet_tlb.rs
++++ b/src/ton_wallet/wallet_tlb.rs
+@@ -4,9 +4,11 @@
+ mod wallet_v3;
+ mod wallet_v4;
+ mod wallet_v5;
++mod wallet;
+ 
+ pub use wallet_hl_v2::*;
+ pub use wallet_v1_v2::*;
+ pub use wallet_v3::*;
+ pub use wallet_v4::*;
+ pub use wallet_v5::*;
++pub use wallet::*;
+--- a/src/ton_wallet/wallet_code.rs
++++ b/src/ton_wallet/wallet_code.rs
+@@ -11,7 +11,7 @@
+             env!("CARGO_MANIFEST_DIR"),
+             "/resources/ton_wallet_code/",
+             $filename
+-        )))
++        )).trim())
+         .unwrap()
+     };
+ }
+@@ -29,6 +29,9 @@
+         (V4R1, load_code!("wallet_v4r1.code")),
+         (V4R2, load_code!("wallet_v4r2.code")),
+         (V5R1, load_code!("wallet_v5.code")),
++        // Wallet trampoline from wallet-engine vendor/ton; rev00 code hash:
++        // 9149ae51c1e4689710cebf7830297b16acfbadb363a920a537893e7ffeeca768.
++        (Wallet, load_code!("wallet_trampoline.code")),
+         (HLV1R1, load_code!("highload_v1r1.code")),
+         (HLV1R2, load_code!("highload_v1r2.code")),
+         (HLV2, load_code!("highload_v2.code")),
+@@ -39,3 +42,21 @@
+ 
+ pub static TON_WALLET_VERSION_BY_CODE: LazyLock<HashMap<TonHash, WalletVersion>> =
+     LazyLock::new(|| TON_WALLET_CODE_BY_VERSION.iter().map(|(k, v)| (v.cell_hash().unwrap(), *k)).collect());
++
++#[cfg(test)]
++mod wallet_trampoline_tests {
++    use super::*;
++
++    // Hash independently pinned by wallet-engine's existing crypto test.
++    #[test]
++    fn telegram_wallet_code_hash_matches_existing_contract() {
++        let expected = [
++            0x91, 0x49, 0xae, 0x51, 0xc1, 0xe4, 0x68, 0x97,
++            0x10, 0xce, 0xbf, 0x78, 0x30, 0x29, 0x7b, 0x16,
++            0xac, 0xfb, 0xad, 0xb3, 0x63, 0xa9, 0x20, 0xa5,
++            0x37, 0x89, 0x3e, 0x7f, 0xfe, 0xec, 0xa7, 0x68,
++        ];
++        let code = WalletVersion::get_code(WalletVersion::Wallet).unwrap();
++        assert_eq!(code.cell_hash().unwrap().as_slice(), expected.as_slice());
++    }
++}
+--- a/src/ton_wallet/mnemonic.rs
++++ b/src/ton_wallet/mnemonic.rs
+@@ -1,6 +1,6 @@
+ use crate::errors::TonError;
+ use ed25519_dalek::{KEYPAIR_LENGTH, PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH, SecretKey, SigningKey};
+-use hmac::{Hmac, Mac};
++use hmac::{Hmac, KeyInit, Mac};
+ use pbkdf2::pbkdf2_hmac;
+ use sha2::Sha512;
+ use std::collections::HashSet;
+@@ -8,7 +8,7 @@
+ use std::{cmp, convert::TryInto, fmt};
+ use zeroize::{Zeroize, Zeroizing};
+ 
+-const WORDLIST_EN: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/resources/mnemonics/wordlist_en.txt"));
++pub const WORDLIST_EN: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/resources/mnemonics/wordlist_en.txt"));
+ const PBKDF_ITERATIONS: u32 = 100000;
+ 
+ pub static WORDLIST_EN_SET: LazyLock<HashSet<&'static str>> =
+--- /dev/null
++++ b/src/ton_wallet/wallet_tlb/wallet.rs
+@@ -0,0 +1,376 @@
++use crate::ton_wallet::wallet_tlb::wallet_ext_msg_utils::validate_msgs_count;
++use ton_core::TLB;
++use ton_core::bail_ton_core;
++use ton_core::cell::{CellBuilder, CellParser, TonCell, TonHash};
++use ton_core::errors::TonCoreError;
++use ton_core::traits::tlb::TLB as _;
++
++const SEND_ONE_INTERNAL_OPCODE: u32 = 0x6389_6e74;
++const SEND_ONE_EXTERNAL_OPCODE: u32 = 0x6389_6e75;
++const SEND_BULK_INTERNAL_OPCODE: u32 = 0x7389_6e74;
++const SEND_BULK_EXTERNAL_OPCODE: u32 = 0x7389_6e75;
++
++/// Initial data for Wallet revision 00.
++#[derive(Debug, PartialEq, Clone, TLB)]
++pub struct WalletData {
++    pub revision: u8,
++    pub seqno: u32,
++    pub wallet_id: u32,
++    pub public_key: TonHash,
++}
++
++impl WalletData {
++    /// Creates undeployed revision-00 storage.
++    pub fn new(wallet_id: i32, public_key: TonHash) -> Self {
++        Self {
++            revision: 0,
++            seqno: 0,
++            wallet_id: u32::from_be_bytes(wallet_id.to_be_bytes()),
++            public_key,
++        }
++    }
++}
++
++/// An unsigned external Wallet request.
++#[derive(Debug, PartialEq, Clone)]
++pub struct WalletExtMsgBody {
++    pub wallet_id: i32,
++    pub valid_until: u32,
++    pub msg_seqno: u32,
++    pub msgs_modes: Vec<u8>,
++    pub msgs: Vec<TonCell>,
++}
++
++impl WalletExtMsgBody {
++    pub fn to_cell(&self) -> Result<TonCell, TonCoreError> {
++        build_request(
++            self.wallet_id,
++            self.valid_until,
++            self.msg_seqno,
++            &self.msgs,
++            &self.msgs_modes,
++            true,
++        )
++    }
++
++    /// Decodes a signature-prefixed external Wallet request.
++    pub fn read_signed(parser: &mut CellParser) -> Result<(Self, Vec<u8>), TonCoreError> {
++        let signature = parser.read_bits(512)?;
++        let request = read_request(parser, true)?;
++        Ok((
++            Self {
++                wallet_id: request.wallet_id,
++                valid_until: request.valid_until,
++                msg_seqno: request.msg_seqno,
++                msgs_modes: request.msgs_modes,
++                msgs: request.msgs,
++            },
++            signature,
++        ))
++    }
++}
++
++/// An unsigned owner-authorized Wallet request delivered internally.
++#[derive(Debug, PartialEq, Clone)]
++pub struct WalletInternalSignedBody {
++    pub wallet_id: i32,
++    pub valid_until: u32,
++    pub msg_seqno: u32,
++    pub msgs_modes: Vec<u8>,
++    pub msgs: Vec<TonCell>,
++}
++
++impl WalletInternalSignedBody {
++    pub fn to_cell(&self) -> Result<TonCell, TonCoreError> {
++        build_request(
++            self.wallet_id,
++            self.valid_until,
++            self.msg_seqno,
++            &self.msgs,
++            &self.msgs_modes,
++            false,
++        )
++    }
++
++    /// Decodes a signature-prefixed internal Wallet request.
++    pub fn read_signed(parser: &mut CellParser) -> Result<(Self, Vec<u8>), TonCoreError> {
++        let signature = parser.read_bits(512)?;
++        let request = read_request(parser, false)?;
++        Ok((
++            Self {
++                wallet_id: request.wallet_id,
++                valid_until: request.valid_until,
++                msg_seqno: request.msg_seqno,
++                msgs_modes: request.msgs_modes,
++                msgs: request.msgs,
++            },
++            signature,
++        ))
++    }
++}
++
++struct ParsedRequest {
++    wallet_id: i32,
++    valid_until: u32,
++    msg_seqno: u32,
++    msgs_modes: Vec<u8>,
++    msgs: Vec<TonCell>,
++}
++
++fn build_request(
++    wallet_id: i32,
++    valid_until: u32,
++    msg_seqno: u32,
++    msgs: &[TonCell],
++    msgs_modes: &[u8],
++    external: bool,
++) -> Result<TonCell, TonCoreError> {
++    validate_msgs_count(msgs, msgs_modes, u8::MAX.into())?;
++    if msgs.is_empty() {
++        bail_ton_core!("Wallet request must contain at least one message");
++    }
++
++    let mut builder = TonCell::builder();
++    let opcode = match (external, msgs.len()) {
++        (true, 1) => SEND_ONE_EXTERNAL_OPCODE,
++        (false, 1) => SEND_ONE_INTERNAL_OPCODE,
++        (true, _) => SEND_BULK_EXTERNAL_OPCODE,
++        (false, _) => SEND_BULK_INTERNAL_OPCODE,
++    };
++    opcode.write(&mut builder)?;
++    u32::from_be_bytes(wallet_id.to_be_bytes()).write(&mut builder)?;
++    valid_until.write(&mut builder)?;
++    msg_seqno.write(&mut builder)?;
++
++    if msgs.len() == 1 {
++        msgs_modes[0].write(&mut builder)?;
++        builder.write_ref(msgs[0].clone())?;
++    } else {
++        write_message_array(&mut builder, msgs, msgs_modes)?;
++    }
++    builder.build()
++}
++
++fn write_message_array(
++    builder: &mut CellBuilder,
++    msgs: &[TonCell],
++    msgs_modes: &[u8],
++) -> Result<(), TonCoreError> {
++    let len = u8::try_from(msgs.len())
++        .map_err(|_| TonCoreError::Custom("Wallet message array exceeds 255 items".to_owned()))?;
++    len.write(builder)?;
++
++    let mut next = None;
++    let mut end = msgs.len();
++    while end > 0 {
++        // Tolk arrays reserve one reference for the next chunk even for the
++        // tail, so MessageToSend arrays use at most three items per chunk.
++        let chunk_size = end.min(3);
++        let start = end - chunk_size;
++        let mut chunk = TonCell::builder();
++        chunk.write_bit(next.is_some())?;
++        if let Some(next) = next {
++            chunk.write_ref(next)?;
++        }
++        for index in start..end {
++            msgs_modes[index].write(&mut chunk)?;
++            chunk.write_ref(msgs[index].clone())?;
++        }
++        next = Some(chunk.build()?);
++        end = start;
++    }
++
++    builder.write_bit(true)?;
++    let head = next
++        .ok_or_else(|| TonCoreError::Custom("Wallet message array must have a head".to_owned()))?;
++    builder.write_ref(head)?;
++    Ok(())
++}
++
++fn read_request(parser: &mut CellParser, external: bool) -> Result<ParsedRequest, TonCoreError> {
++    let opcode = parser.read_num::<u32>(32)?;
++    let wallet_id = i32::from_be_bytes(parser.read_num::<u32>(32)?.to_be_bytes());
++    let valid_until = parser.read_num::<u32>(32)?;
++    let msg_seqno = parser.read_num::<u32>(32)?;
++
++    let single_opcode = if external {
++        SEND_ONE_EXTERNAL_OPCODE
++    } else {
++        SEND_ONE_INTERNAL_OPCODE
++    };
++    let bulk_opcode = if external {
++        SEND_BULK_EXTERNAL_OPCODE
++    } else {
++        SEND_BULK_INTERNAL_OPCODE
++    };
++    let (msgs_modes, msgs) = if opcode == single_opcode {
++        let mode = parser.read_num::<u8>(8)?;
++        let msg = parser.read_next_ref()?.clone();
++        (vec![mode], vec![msg])
++    } else if opcode == bulk_opcode {
++        read_message_array(parser)?
++    } else {
++        bail_ton_core!("unsupported Wallet request opcode {opcode:#010x}");
++    };
++    parser.ensure_empty()?;
++
++    Ok(ParsedRequest {
++        wallet_id,
++        valid_until,
++        msg_seqno,
++        msgs_modes,
++        msgs,
++    })
++}
++
++fn read_message_array(parser: &mut CellParser) -> Result<(Vec<u8>, Vec<TonCell>), TonCoreError> {
++    let expected_len = usize::from(parser.read_num::<u8>(8)?);
++    if !parser.read_bit()? {
++        bail_ton_core!("Wallet message array must have a head");
++    }
++
++    let mut head = Some(parser.read_next_ref()?.clone());
++    let mut msgs_modes = Vec::with_capacity(expected_len);
++    let mut msgs = Vec::with_capacity(expected_len);
++    while let Some(chunk) = head {
++        let mut chunk_parser = chunk.parser();
++        head = if chunk_parser.read_bit()? {
++            Some(chunk_parser.read_next_ref()?.clone())
++        } else {
++            None
++        };
++        while chunk_parser.refs_left() > 0 {
++            msgs_modes.push(chunk_parser.read_num::<u8>(8)?);
++            msgs.push(chunk_parser.read_next_ref()?.clone());
++        }
++        chunk_parser.ensure_empty()?;
++    }
++    if msgs.is_empty() || msgs.len() != expected_len {
++        bail_ton_core!(
++            "Wallet message array length mismatch: expected {expected_len}, got {}",
++            msgs.len()
++        );
++    }
++    Ok((msgs_modes, msgs))
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    fn messages(count: usize) -> Vec<TonCell> {
++        (0..count)
++            .map(|index| {
++                let mut builder = TonCell::builder();
++                builder.write_num(&index, usize::BITS as usize).unwrap();
++                builder.build().unwrap()
++            })
++            .collect()
++    }
++
++    #[test]
++    fn wallet_storage_matches_revision_zero_layout() -> anyhow::Result<()> {
++        let public_key = TonHash::from([0x5a; 32]);
++        let data = WalletData::new(0x7fff_7ffd, public_key).to_cell()?;
++        let mut parser = data.parser();
++
++        assert_eq!(parser.read_num::<u8>(8)?, 0);
++        assert_eq!(parser.read_num::<u32>(32)?, 0);
++        assert_eq!(parser.read_num::<u32>(32)?, 0x7fff_7ffd);
++        assert_eq!(parser.read_bits(256)?, vec![0x5a; 32]);
++        parser.ensure_empty()?;
++        Ok(())
++    }
++
++    #[test]
++    fn external_single_request_uses_single_opcode_and_inline_item() -> anyhow::Result<()> {
++        let msgs = messages(1);
++        let body = WalletExtMsgBody {
++            wallet_id: 0x7fff_7ffd,
++            valid_until: 1_900_000_000,
++            msg_seqno: 17,
++            msgs_modes: vec![3],
++            msgs: msgs.clone(),
++        }
++        .to_cell()?;
++        let mut parser = body.parser();
++
++        assert_eq!(parser.read_num::<u32>(32)?, SEND_ONE_EXTERNAL_OPCODE);
++        assert_eq!(parser.read_num::<u32>(32)?, 0x7fff_7ffd);
++        assert_eq!(parser.read_num::<u32>(32)?, 1_900_000_000);
++        assert_eq!(parser.read_num::<u32>(32)?, 17);
++        assert_eq!(parser.read_num::<u8>(8)?, 3);
++        assert_eq!(parser.read_next_ref()?, &msgs[0]);
++        parser.ensure_empty()?;
++        Ok(())
++    }
++
++    #[test]
++    fn bulk_request_uses_standard_array_chunks_in_source_order() -> anyhow::Result<()> {
++        let msgs = messages(8);
++        let modes = (0_u8..8).collect::<Vec<_>>();
++        let body = WalletExtMsgBody {
++            wallet_id: 0x7fff_7ffd,
++            valid_until: 1_900_000_000,
++            msg_seqno: 17,
++            msgs_modes: modes.clone(),
++            msgs: msgs.clone(),
++        }
++        .to_cell()?;
++        let mut parser = body.parser();
++
++        assert_eq!(parser.read_num::<u32>(32)?, SEND_BULK_EXTERNAL_OPCODE);
++        let _ = parser.read_bits(96)?;
++        assert_eq!(parser.read_num::<u8>(8)?, 8);
++        assert!(parser.read_bit()?);
++        let mut head = Some(parser.read_next_ref()?.clone());
++        let mut index = 0;
++        while let Some(chunk) = head {
++            let mut chunk_parser = chunk.parser();
++            head = if chunk_parser.read_bit()? {
++                Some(chunk_parser.read_next_ref()?.clone())
++            } else {
++                None
++            };
++            while chunk_parser.refs_left() > 0 {
++                assert_eq!(chunk_parser.read_num::<u8>(8)?, modes[index]);
++                assert_eq!(chunk_parser.read_next_ref()?, &msgs[index]);
++                index += 1;
++            }
++            chunk_parser.ensure_empty()?;
++        }
++        assert_eq!(index, msgs.len());
++        parser.ensure_empty()?;
++        Ok(())
++    }
++
++    #[test]
++    fn internal_request_uses_channel_specific_opcode() -> anyhow::Result<()> {
++        let body = WalletInternalSignedBody {
++            wallet_id: 0x7fff_7ffd,
++            valid_until: 1_900_000_000,
++            msg_seqno: 17,
++            msgs_modes: vec![3],
++            msgs: messages(1),
++        }
++        .to_cell()?;
++
++        assert_eq!(body.parser().read_num::<u32>(32)?, SEND_ONE_INTERNAL_OPCODE);
++        Ok(())
++    }
++
++    #[test]
++    fn request_rejects_empty_mismatched_and_oversized_arrays() {
++        let request = |msgs, msgs_modes| WalletExtMsgBody {
++            wallet_id: 0x7fff_7ffd,
++            valid_until: 1_900_000_000,
++            msg_seqno: 17,
++            msgs_modes,
++            msgs,
++        };
++
++        assert!(request(vec![], vec![]).to_cell().is_err());
++        assert!(request(messages(1), vec![]).to_cell().is_err());
++        assert!(request(messages(256), vec![3; 256]).to_cell().is_err());
++    }
++}
+--- a/src/ton_wallet/wallet_tlb/wallet_v5.rs
++++ b/src/ton_wallet/wallet_tlb/wallet_v5.rs
+@@ -78,6 +78,55 @@
+     }
+ }
+ 
++/// Owner-authorized Wallet V5 request delivered by an internal message.
++///
++/// The serialized cell excludes the trailing signature. Callers sign this
++/// cell hash and append the 512-bit Ed25519 signature to the same cell.
++#[derive(Debug, PartialEq, Clone)]
++pub struct WalletV5InternalSignedBody {
++    pub wallet_id: i32,
++    pub valid_until: u32,
++    pub msg_seqno: u32,
++    pub msgs_modes: Vec<u8>,
++    pub msgs: Vec<TonCell>,
++}
++
++impl TLB for WalletV5InternalSignedBody {
++    const PREFIX: TLBPrefix = TLBPrefix::new(0x73696e74, 32);
++
++    fn read_definition(parser: &mut CellParser) -> Result<Self, TonCoreError> {
++        let wallet_id = TLB::read(parser)?;
++        let valid_until = TLB::read(parser)?;
++        let msg_seqno = TLB::read(parser)?;
++        let inner_request = InnerRequest::read(parser)?;
++        let (msgs, msgs_modes) = parse_inner_request(inner_request)?;
++        Ok(Self {
++            wallet_id,
++            valid_until,
++            msg_seqno,
++            msgs_modes,
++            msgs,
++        })
++    }
++
++    fn write_definition(&self, dst: &mut CellBuilder) -> Result<(), TonCoreError> {
++        self.wallet_id.write(dst)?;
++        self.valid_until.write(dst)?;
++        self.msg_seqno.write(dst)?;
++        build_inner_request(&self.msgs, &self.msgs_modes)?.write(dst)?;
++        Ok(())
++    }
++}
++
++impl WalletV5InternalSignedBody {
++    /// Decodes the internal request fields and its trailing Ed25519 signature.
++    pub fn read_signed(parser: &mut CellParser) -> Result<(Self, Vec<u8>), TonCoreError> {
++        let body = Self::read(parser)?;
++        let signature = parser.read_bits(512)?;
++        Ok((body, signature))
++    }
++}
++
+ #[cfg(test)]
+ #[path = "../../tests/ton_wallet/wallet_tlb/test_wallet_v5.rs"]
+ mod test;
+--- a/src/contracts/tep/metadata.rs
++++ b/src/contracts/tep/metadata.rs
+@@ -1,5 +1,6 @@
+ //! TEP metadata content, field definitions, loading, and parsing traits.
+ 
++#[cfg(feature = "http")]
+ pub mod meta_loader;
+ pub mod metadata_content;
+ pub mod metadata_fields;
+--- /dev/null
++++ b/resources/ton_wallet_code/wallet_trampoline.code
+@@ -0,0 +1 @@
++te6ccgEBAQEAGgAAMP8AIJgh10mDCLnyQN+Ahfgz0O0eIO1T2Q==

@@ -1,0 +1,43 @@
+[package]
+name = "tdesktop-rust"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+name = "tdesktop_rust"
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+tlottie = { path = "../tlottie", features = ["c-api"] }
+wallet-engine = { path = "../wallet-engine" }
+
+[patch.crates-io]
+ton = { path = "../ton" }
+deluxe-macros = { path = "../crates/deluxe-macros-0.5.0" }
+deluxe-core = { path = "../crates/deluxe-core-0.5.0" }
+derive_setters = { path = "../crates/derive_setters-0.1.9" }
+curve25519-dalek-derive = { path = "../crates/curve25519-dalek-derive-0.1.1" }
+darling_core = { path = "../crates/darling_core-0.23.0" }
+darling_macro = { path = "../crates/darling_macro-0.23.0" }
+deluxe = { path = "../crates/deluxe-0.5.0" }
+strum_macros = { path = "../crates/strum_macros-0.28.0" }
+ton_macros = { path = "../crates/ton_macros-0.2.6" }
+uniffi_internal_macros = { path = "../crates/uniffi_internal_macros-0.32.2" }
+uniffi_macros = { path = "../crates/uniffi_macros-0.32.2" }
+ton_core = { path = "../crates/ton_core-0.3.11" }
+crypto_secretbox = { path = "../crates/crypto_secretbox-0.1.1" }
+crypto_box = { path = "../crates/crypto_box-0.9.1" }
+chrono = { path = "../crates/chrono-0.4.45" }
+parking_lot_core = { path = "../crates/parking_lot_core-0.9.12" }
+scroll_derive = { path = "../crates/scroll_derive-0.12.1" }
+windows-core = { path = "../crates/windows-core-0.62.2" }
+windows-result = { path = "../crates/windows-result-0.4.1" }
+windows-strings = { path = "../crates/windows-strings-0.5.1" }
+windows-sys = { path = "../crates/windows-sys-0.61.2" }
+
+# Match upstream desktop Linux combined-provider release semantics.
+[profile.release]
+opt-level = 3
+lto = false
+panic = "unwind"
