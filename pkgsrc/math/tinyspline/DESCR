@@ -1,0 +1,3 @@
+TinySpline provides C and C++ interfaces for B-splines, NURBS and Bezier curves.
+It supports interpolation, evaluation, derivatives and related spline
+operations, and uses the common Parson library for JSON serialization.
