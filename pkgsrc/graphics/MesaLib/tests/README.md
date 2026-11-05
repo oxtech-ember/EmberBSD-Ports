@@ -343,3 +343,41 @@ reads back the GLSL fractional color alongside its existing triangle checks.
 Run a separate C-locale control. A matching image tests the selected renderer;
 it does not by itself establish installation, package lifecycle or compositor
 acceptance.
+
+## Native cached BOs
+
+Prepare Mesa with the complete current recipe patch set. Run the actual-source
+CREATE_BO regression with the selected native SDK compiler:
+
+```sh
+"$PYTHON" tests/pvr-cached-bo-contract.py --mesa "$MESA_SOURCE" \
+    --cc "$HOST_CC" --work-parent "$WORK"
+```
+
+The fake ioctl rejects bit 63 as an older kernel would. It checks the complete
+`0x8000000000000004` request, unchanged output on refusal, a capable kernel,
+and ordinary coherent allocation. The previous 32-bit helper fails this test.
+
+Cross-build `pvr-buffer-copy.c` against the target Vulkan loader. On the running
+native render driver, select the PowerVR ICD and run:
+
+```sh
+./pvr-buffer-copy 192 192 --cached
+```
+
+This selects HOST_CACHED memory, flushes CPU writes, submits a GPU copy, waits
+for its fence, invalidates GPU writes, and checks all bytes and guard regions.
+Without `--cached`, the original coherent check remains unchanged. `--fill`
+selects a GPU fill instead of a copy. Do not reinitialize a running GPU.
+
+On one A133/GE8300 the cached copy passed with memory type 1, flags `0xb`, and
+`drm_failed=0`. Host CREATE_BO models and a native device copy are distinct checks.
+PRIME, compositor operation and sustained application frame rate remain separate.
+
+Clang analysis of the three changed Mesa translation units reported only the
+unchanged `MapMemory2` size assignment when `NDEBUG` removes its assertion.
+Cppcheck 2.22.0 also reported unchanged upstream paths: the scalar `nir_channel`
+call into `nir_swizzle`, and the `UNREACHABLE` allocator fallback in `pvr_gpu_upload`.
+Neither finding identifies a new cache path error. The kernel's actual-source BO
+model passed Cppcheck, Clang analysis, ASan and UBSan for both native page sizes.
+Valgrind was unavailable in the selected SDK; no Valgrind result is claimed.

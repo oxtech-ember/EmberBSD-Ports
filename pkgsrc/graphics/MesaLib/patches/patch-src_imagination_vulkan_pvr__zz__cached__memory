@@ -1,0 +1,284 @@
+$NetBSD$
+
+Add explicit native cached BOs and non-coherent CPU readback.
+Keep PRIME and scanout allocations on the coherent memory type.
+Origin: EmberBSD contributors (AI-assisted). SPDX-License-Identifier: MIT.
+
+--- src/imagination/vulkan/pvr_buffer.h.orig
++++ src/imagination/vulkan/pvr_buffer.h
+@@ -29,6 +29,7 @@
+ 
+    /* Derived and other state */
+    uint32_t alignment;
++   VkExternalMemoryHandleTypeFlags external_handle_types;
+    /* vma this buffer is bound to */
+    struct pvr_winsys_vma *vma;
+    /* Device address the buffer is mapped to in device virtual address space */
+--- src/imagination/vulkan/pvr_device.c.orig
++++ src/imagination/vulkan/pvr_device.c
+@@ -28,6 +28,7 @@
+  */
+ 
+ #include "pvr_device.h"
++#include "util/cache_ops.h"
+ 
+ #include <assert.h>
+ #include <fcntl.h>
+@@ -291,6 +292,14 @@
+       }
+    }
+ 
++   /* Native cached BOs cannot share cache attributes through PRIME. */
++   if ((mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) &&
++       (mem->vk.import_handle_type || mem->vk.export_handle_types ||
++        type == PVR_WINSYS_BO_TYPE_DISPLAY)) {
++      result = vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
++      goto err_vk_device_memory_destroy;
++   }
++
+    if (fd_info && fd_info->handleType) {
+       assert(
+          fd_info->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT ||
+@@ -345,11 +354,16 @@
+        * types as an array that's indexed by pAllocateInfo->memoryTypeIndex so
+        * that they can be looked up.
+        */
++      uint32_t ws_flags = PVR_WINSYS_BO_FLAG_CPU_ACCESS;
++
++      if (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT)
++         ws_flags |= PVR_WINSYS_BO_FLAG_CPU_CACHED;
++
+       result = device->ws->ops->buffer_create(device->ws,
+                                               pAllocateInfo->allocationSize,
+                                               alignment,
+                                               type,
+-                                              PVR_WINSYS_BO_FLAG_CPU_ACCESS,
++                                              ws_flags,
+                                               &mem->bo);
+       if (result != VK_SUCCESS)
+          goto err_vk_device_memory_destroy;
+@@ -381,6 +395,10 @@
+    assert(
+       pGetFdInfo->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT ||
+       pGetFdInfo->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
++
++   if (device->pdevice->memory.memoryTypes[mem->vk.memory_type_index].propertyFlags &
++       VK_MEMORY_PROPERTY_HOST_CACHED_BIT)
++      return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+ 
+    return device->ws->ops->buffer_get_fd(mem->bo, pFd);
+ }
+@@ -395,15 +413,8 @@
+ 
+    switch (handleType) {
+    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
+-      /* FIXME: This should only allow memory types having
+-       * VK_MEMORY_PROPERTY_HOST_CACHED_BIT flag set, as
+-       * dma-buf should be imported using cacheable memory types,
+-       * given exporter's mmap will always map it as cacheable.
+-       * Ref:
+-       * https://www.kernel.org/doc/html/latest/driver-api/dma-buf.html#c.dma_buf_ops
+-       */
+-      pMemoryFdProperties->memoryTypeBits =
+-         (1 << device->pdevice->memory.memoryTypeCount) - 1;
++      /* Native cached BOs cannot be exported through PRIME. */
++      pMemoryFdProperties->memoryTypeBits = 1U;
+       return VK_SUCCESS;
+    default:
+       return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+@@ -510,10 +521,56 @@
+    return VK_SUCCESS;
+ }
+ 
++/* Clean (and optionally invalidate) CPU cache lines of non-coherent ranges.
++ * EL0 data cache maintenance needs SCTLR_EL1.UCI, which NetBSD enables.
++ */
++static void pvr_maintain_mapped_ranges(VkDevice _device,
++                                       uint32_t memoryRangeCount,
++                                       const VkMappedMemoryRange *pMemoryRanges,
++                                       bool invalidate)
++{
++#if defined(__aarch64__)
++   VK_FROM_HANDLE(pvr_device, device, _device);
++   bool done = false;
++
++   util_pre_flush_fence();
++
++   for (uint32_t i = 0; i < memoryRangeCount; i++) {
++      VK_FROM_HANDLE(pvr_device_memory, mem, pMemoryRanges[i].memory);
++      const VkMemoryType *mem_type =
++         &device->pdevice->memory.memoryTypes[mem->vk.memory_type_index];
++
++      if ((mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) ||
++          !mem->bo->map) {
++         continue;
++      }
++
++      const VkDeviceSize size = vk_device_memory_range(&mem->vk,
++                                                       pMemoryRanges[i].offset,
++                                                       pMemoryRanges[i].size);
++      void *start = (char *)mem->bo->map + pMemoryRanges[i].offset;
++
++      if (invalidate)
++         util_flush_inval_range_no_fence(start, size);
++      else
++         util_flush_range_no_fence(start, size);
++      done = true;
++   }
++
++   if (done) {
++      if (invalidate)
++         util_post_flush_inval_fence();
++      else
++         util_post_flush_fence();
++   }
++#endif
++}
++
+ VkResult pvr_FlushMappedMemoryRanges(VkDevice _device,
+                                      uint32_t memoryRangeCount,
+                                      const VkMappedMemoryRange *pMemoryRanges)
+ {
++   pvr_maintain_mapped_ranges(_device, memoryRangeCount, pMemoryRanges, false);
+    return VK_SUCCESS;
+ }
+ 
+@@ -522,6 +579,7 @@
+                                  uint32_t memoryRangeCount,
+                                  const VkMappedMemoryRange *pMemoryRanges)
+ {
++   pvr_maintain_mapped_ranges(_device, memoryRangeCount, pMemoryRanges, true);
+    return VK_SUCCESS;
+ }
+ 
+@@ -766,6 +824,9 @@
+ 
+    assert(buffer->vk.usage != 0);
+    buffer->alignment = alignment;
++   const VkExternalMemoryBufferCreateInfo *external =
++      vk_find_struct_const(pCreateInfo->pNext, EXTERNAL_MEMORY_BUFFER_CREATE_INFO);
++   buffer->external_handle_types = external ? external->handleTypes : 0;
+ 
+    *pBuffer = pvr_buffer_to_handle(buffer);
+ 
+@@ -1019,6 +1080,7 @@
+     * All types are currently supported for buffers.
+     */
+    pMemoryRequirements->memoryRequirements.memoryTypeBits =
++      buffer->external_handle_types ? 1U :
+       (1ul << device->pdevice->memory.memoryTypeCount) - 1;
+ 
+    pMemoryRequirements->memoryRequirements.alignment = buffer->alignment;
+@@ -1067,6 +1129,9 @@
+    /* Initialize a minimal buffer structure */
+    vk_buffer_init(&device->vk, &buffer.vk, pInfo->pCreateInfo);
+    buffer.alignment = device->pdevice->ws->page_size;
++   const VkExternalMemoryBufferCreateInfo *external = vk_find_struct_const(
++      pInfo->pCreateInfo->pNext, EXTERNAL_MEMORY_BUFFER_CREATE_INFO);
++   buffer.external_handle_types = external ? external->handleTypes : 0;
+ 
+    VkBufferMemoryRequirementsInfo2 buffer_info = {
+       .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
+@@ -1128,6 +1193,7 @@
+     * All types are currently supported for images.
+     */
+    const uint32_t memory_types =
++      (image->vk.external_handle_types || image->vk.wsi_legacy_scanout) ? 1U :
+       (1ul << device->pdevice->memory.memoryTypeCount) - 1;
+ 
+    /* TODO: The returned size is aligned here in case of arrays/CEM (as is done
+--- src/imagination/vulkan/pvr_physical_device.c.orig
++++ src/imagination/vulkan/pvr_physical_device.c
+@@ -11,6 +11,7 @@
+  */
+ 
+ #include "pvr_physical_device.h"
++#include "util/cache_ops.h"
+ 
+ #include <sys/types.h>
+ #ifdef MAJOR_IN_MKDEV
+@@ -770,7 +771,9 @@
+       .standardSampleLocations = true,
+       .optimalBufferCopyOffsetAlignment = PVR_STORAGE_BUFFER_OFFSET_ALIGNMENT,
+       .optimalBufferCopyRowPitchAlignment = PVR_STORAGE_BUFFER_OFFSET_ALIGNMENT,
+-      .nonCoherentAtomSize = 1U,
++      /* A cached type is maintained by whole CPU cache lines. */
++      .nonCoherentAtomSize = pdevice->memory.memoryTypeCount > 1 ?
++         util_cache_granularity() : 1U,
+ 
+       /* Vulkan 1.1 */
+       .subgroupSize = ROGUE_MAX_INSTANCES_PER_TASK,
+@@ -1182,6 +1185,31 @@
+       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    pdevice->memory.memoryTypes[0].heapIndex = 0;
+ 
++   /* Readback is far faster from a CPU cached, non-coherent type. Expose it
++    * only when the kernel accepts such buffers.
++    */
++#if defined(__aarch64__)
++   {
++      struct pvr_winsys_bo *probe;
++
++      if (ws->ops->buffer_create(ws,
++                                 ws->page_size,
++                                 ws->page_size,
++                                 PVR_WINSYS_BO_TYPE_GPU,
++                                 PVR_WINSYS_BO_FLAG_CPU_ACCESS |
++                                    PVR_WINSYS_BO_FLAG_CPU_CACHED,
++                                 &probe) == VK_SUCCESS) {
++         ws->ops->buffer_destroy(probe);
++         pdevice->memory.memoryTypeCount = 2;
++         pdevice->memory.memoryTypes[1].propertyFlags =
++            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
++            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
++            VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
++         pdevice->memory.memoryTypes[1].heapIndex = 0;
++      }
++   }
++#endif
++
+    pvr_physical_device_get_supported_extensions(&supported_extensions, instance);
+    pvr_physical_device_get_supported_features(&pdevice->dev_info,
+                                               &supported_features);
+--- src/imagination/vulkan/winsys/pvr_winsys.h.orig
++++ src/imagination/vulkan/winsys/pvr_winsys.h
+@@ -114,6 +114,12 @@
+  * accessible to the Parameter Manager unit and firmware processor.
+  */
+ #define PVR_WINSYS_BO_FLAG_PM_FW_PROTECT BITFIELD_BIT(2U)
++/**
++ * \brief Flag passed to #pvr_winsys_ops.buffer_create to request a CPU
++ * cached mapping. The buffer is then not host coherent. Requires
++ * #PVR_WINSYS_BO_FLAG_CPU_ACCESS. EmberBSD kernel extension.
++ */
++#define PVR_WINSYS_BO_FLAG_CPU_CACHED BITFIELD_BIT(3U)
+ 
+ struct pvr_winsys_bo {
+    struct pvr_winsys *ws;
+--- src/imagination/vulkan/winsys/powervr/pvr_drm_bo.c.orig
++++ src/imagination/vulkan/winsys/powervr/pvr_drm_bo.c
+@@ -42,8 +42,13 @@
+ #include "vk_alloc.h"
+ #include "vk_log.h"
+ 
++#ifndef DRM_PVR_BO_EMBER_CPU_CACHED
++/* EmberBSD extension: CPU cached, non-coherent mapping. */
++#define DRM_PVR_BO_EMBER_CPU_CACHED ((__u64)1 << 63)
++#endif
++
+ static VkResult pvr_drm_create_gem_bo(struct pvr_drm_winsys *drm_ws,
+-                                      uint32_t drm_flags,
++                                      uint64_t drm_flags,
+                                       uint64_t size,
+                                       uint32_t *const handle_out)
+ {
+@@ -177,6 +182,9 @@
+    if (ws_flags & PVR_WINSYS_BO_FLAG_CPU_ACCESS)
+       drm_flags |= DRM_PVR_BO_ALLOW_CPU_USERSPACE_ACCESS;
+ 
++   if (ws_flags & PVR_WINSYS_BO_FLAG_CPU_CACHED)
++      drm_flags |= DRM_PVR_BO_EMBER_CPU_CACHED;
++
+    return drm_flags;
+ }
+ 
