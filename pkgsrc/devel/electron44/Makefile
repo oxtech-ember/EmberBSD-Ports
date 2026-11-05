@@ -26,6 +26,9 @@ USE_TOOLS+=		pkg-config
 
 # The selected native flatc generates target headers during the build.
 TOOL_DEPENDS+= flatbuffers>=25.12.19.1:../../devel/flatbuffers
+TOOL_DEPENDS+= crc32c>=1.1.2:../../devel/crc32c
+TOOL_DEPENDS+= libsrtp>=2.8.1:../../security/libsrtp
+TOOL_DEPENDS+= libyuv>=0.0.1978:../../multimedia/libyuv
 
 # Shared native JavaScript providers selected by the Electron producer.
 TOOL_DEPENDS+= node-electron-asar>=4.3.1:../../devel/node-electron-asar

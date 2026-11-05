@@ -1164,6 +1164,97 @@ def selected_owned_library(prefix, link_name, owners):
     return str(resolved)
 
 
+# Names are package owners and installed ABI names, not a parallel resolver.
+COMMON_MEDIA_LIBRARIES = {
+    'libyuv': ('multimedia/libyuv', 'libyuv', ('include/libyuv.h', 'include/libyuv/')),
+    'libsrtp': ('security/libsrtp', 'libsrtp2', ('include/srtp2/',)),
+    'crc32c': ('devel/crc32c', 'libcrc32c', ('include/crc32c/',)),
+}
+
+
+def common_media_libraries(options, native, environment, buildlink):
+    """Select installed common host/target libraries and their owned inputs."""
+    host_prefix = Path(options.host_prefix).resolve(strict=True)
+    host_db = host_prefix / 'pkgdb'
+    def packages_by_path(db):
+        result = {}
+        for package in db.iterdir():
+            info = package / '+BUILD_INFO'
+            if info.is_file():
+                for line in info.read_text().splitlines():
+                    if line.startswith('PKGPATH='):
+                        result.setdefault(line[len('PKGPATH='):], []).append(package)
+        return result
+    host_packages = packages_by_path(host_db)
+    target_prefix = Path(options.sysroot) / 'usr/pkg'
+    target_db = target_prefix / 'pkgdb'
+    target_packages = packages_by_path(target_db)
+    result = {}
+    selections = {}
+    for name, (pkgpath, library, header_prefixes) in COMMON_MEDIA_LIBRARIES.items():
+        selections[name] = {}
+        hosts = host_packages.get(pkgpath, [])
+        targets = target_packages.get(pkgpath, [])
+        require(len(hosts) == len(targets) == 1, 'ambiguous common media package: ' + pkgpath)
+        host, target = hosts[0], targets[0]
+        selections[name]['source'] = {'pkgpath': pkgpath, 'package': host.name}
+        require(host.name == target.name, 'host and target common media versions differ: ' + pkgpath)
+        owner = Path(options.ports_source) / 'pkgsrc' / pkgpath
+        exported = Path(options.host_buildlink_pkgsrc) / pkgpath
+        selections[name]['source']['distinfo_sha256'] = hashlib.sha256((exported / 'distinfo').read_bytes()).hexdigest()
+        for package in (host, target):
+            protobuf_package_source(package, owner, exported, distinfo=True,
+                                    package_path=pkgpath, allow_empty_patches=True)
+        native_suffix = '.dylib' if native.host['os'] == 'Darwin' else '.so'
+        for role, package, prefix, suffix in (
+                ('host', host, host_prefix, native_suffix),
+                ('target', target, target_prefix, '.so')):
+            prefix = prefix.resolve(strict=True)
+            headers = []
+            header_hashes = {}
+            header_files = {}
+            manifest = (package / '+CONTENTS').read_text().splitlines()
+            for index, line in enumerate(manifest):
+                if any(line == key or (key.endswith('/') and line.startswith(key)) for key in header_prefixes):
+                    path = prefix / line
+                    resolved = path.resolve(strict=True)
+                    require(resolved.is_relative_to(prefix) and resolved.is_file(),
+                            'common media header escapes prefix: ' + str(path))
+                    headers.append(str(resolved))
+                    require(index + 1 < len(manifest) and
+                            re.fullmatch(r'@comment MD5:[0-9a-f]{32}', manifest[index + 1]),
+                            'common media header lacks package checksum: ' + line)
+                    expected_md5 = manifest[index + 1].split(':', 1)[1]
+                    info = os.stat(resolved, follow_symlinks=False)
+                    data = resolved.read_bytes()
+                    require(os.stat(resolved, follow_symlinks=False) == info and
+                            hashlib.md5(data, usedforsecurity=False).hexdigest() == expected_md5,
+                            'common media header differs from installed package: ' + line)
+                    header_hashes[line] = hashlib.sha256(data).hexdigest()
+                    header_files[line] = {'path': str(resolved), 'md5': expected_md5,
+                                          'stable': list((info.st_dev, info.st_ino, info.st_mode,
+                                                          info.st_size, info.st_mtime_ns, info.st_ctime_ns))}
+            require(headers and len(headers) == len(set(headers)), 'missing or duplicate headers: ' + pkgpath)
+            selected = selected_owned_library(prefix, library + suffix, [package])
+            selections[name][role] = {'header_hashes': header_hashes, 'header_files': header_files,
+                                     'package': str(package), 'prefix': str(prefix)}
+            result['emberbsd_' + name + '_' + role + '_library'] = selected
+            result['emberbsd_' + name + '_' + role + '_headers'] = str(prefix / 'include')
+            result['emberbsd_' + name + '_' + role + '_inputs'] = sorted(set(headers + [selected] +
+                [str(package / item) for item in ('+CONTENTS', '+BUILD_INFO', '+BUILD_VERSION')]))
+        if name in ('libyuv', 'libsrtp'):
+            host_headers = selections[name]['host']['header_hashes']
+            target_headers = selections[name]['target']['header_hashes']
+            differing = sorted(key for key in set(host_headers) | set(target_headers)
+                               if host_headers.get(key) != target_headers.get(key))
+            require(not differing, 'host and target public headers differ for ' + pkgpath + ': ' + ', '.join(differing))
+    options.media_header_selections = {name: selections[name] for name in ('libyuv', 'libsrtp')}
+    media_view = local_module('electron_media_header_view', 'media-header-view.py')
+    for name in media_view.NAMES:
+        environment['EMBERBSD_MEDIA_HEADER_' + name.upper() + '_SHA256'] = media_view.identity(options.media_header_selections, name)
+    return result
+
+
 def common_icu(options, sdk, native, environment, buildlink):
     if not getattr(options, 'shared_icu', False):
         return {}
@@ -1574,6 +1665,7 @@ def producer_inputs(options, sdk):
     values.update(common_abseil(options, sdk, native, environment, buildlink))
     values.update(common_icu(options, sdk, native, environment, buildlink))
     values.update(common_re2(options, sdk, native, environment, buildlink))
+    values.update(common_media_libraries(options, native, environment, buildlink))
     runtime_view = getattr(options, 'protoc_runtime_view', None)
     if runtime_view:
         require(native.host['os'] == 'Darwin', 'protoc runtime view requires a Darwin host')
@@ -1769,11 +1861,15 @@ def gn_source(options):
         ml = local_module('electron_ml_source_view', 'ml-source-view.py')
         headers = local_module('electron_header_source_view', 'header-source-view.py')
         selected = options.ml_headers
+        media = local_module('electron_media_header_view', 'media-header-view.py')
+        media_selected = options.media_header_selections
+        old_media = getattr(options, 'old_media_header_identities', None)
+        new_media = {name: media.identity(media_selected, name) for name in media.NAMES}
         old_ml = getattr(options, 'old_ml_identities', None)
         old_headers = getattr(options, 'old_header_identities', None)
         new_headers = {name: data['identity'] for name, data in selected.items()}
         sp = options.ml_sdk['sourceprep']
-        def selected_sources(ml_ids, header_ids):
+        def selected_sources(ml_ids, header_ids, media_ids=None):
             result = dict(sources)
             checks, names = [], []
             if ml_ids:
@@ -1783,13 +1879,16 @@ def gn_source(options):
                 names.extend(headers.NAMES)
                 records = {name: dict(selected[name], identity=header_ids[name]) for name in headers.NAMES}
                 checks.append(lambda: headers.verify_view(view, options.workspace / 'src', destination, records, sp))
+            if media_ids:
+                names.extend(media.NAMES)
+                checks.append(lambda: media.verify_view(view, options.workspace / 'src', destination, media_ids, sp))
             if names:
                 result.update(ml_names=names, ml_verify=lambda: [check() for check in checks])
             return result
         selection_refreshed = False
-        def verify_selection(ml_ids, header_ids):
+        def verify_selection(ml_ids, header_ids, media_ids=old_media):
             nonlocal selection_refreshed
-            current = selected_sources(ml_ids, header_ids)
+            current = selected_sources(ml_ids, header_ids, media_ids)
             if (getattr(options, 'refresh_source_view', False) and
                     options.phase == 'reconfigure' and not selection_refreshed):
                 result = view._refresh_leaves(options.workspace / 'src', common,
@@ -1820,8 +1919,19 @@ def gn_source(options):
             headers.activate(view, options.workspace / 'src', destination, selected,
                 options.ml_sdk['inventory'], sp, lambda: verify_selection(ids, old_headers),
                 old_identities=old_headers)
-            return verify_selection(ids, new_headers)
-        sources = selected_sources(ids, new_headers)
+            transition_result = verify_selection(ids, new_headers)
+        media_marker = destination.parent / ('.' + destination.name + '.media-header-components-migration')
+        if old_media != new_media or os.path.lexists(media_marker):
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'media header transition requires reconfigure')
+            media.activate(view, options.workspace / 'src', destination, media_selected,
+                           options.ml_sdk['inventory'], sp,
+                           lambda: verify_selection(ids, new_headers, old_media),
+                           old_identities=old_media)
+            return verify_selection(ids, new_headers, new_media)
+        if transition:
+            return transition_result
+        sources = selected_sources(ids, new_headers, new_media)
     if getattr(options, 'refresh_source_view', False):
         require(options.phase == 'reconfigure', 'source refresh requires reconfigure')
         if ids:
@@ -2159,6 +2269,7 @@ def reconfigure(options):
         if getattr(candidate, 'ml_identities', None):
             options.ml_identities, options.ml_sources, options.ml_sdk = candidate.ml_identities, candidate.ml_sources, sdk
             options.ml_headers = candidate.ml_headers
+            options.media_header_selections = candidate.media_header_selections
             ml_keys = {'EMBERBSD_ML_' + name.upper().replace('-', '_') + '_SHA256': name for name in ML_PROVIDERS}
             old_ml = {name: old_env[key] for key, name in ml_keys.items() if key in old_env}
             require(not old_ml or len(old_ml) == len(ML_PROVIDERS), 'partial saved ML selection')
@@ -2171,6 +2282,11 @@ def reconfigure(options):
             require(not old_headers or len(old_headers) == len(header_keys), 'partial saved header selection')
             require(bool(old_headers) == bool(old_ml), 'saved ML and header selections disagree')
             options.old_header_identities = old_headers or None
+            media_keys = {'EMBERBSD_MEDIA_HEADER_' + name.upper() + '_SHA256': name for name in ('libyuv', 'libsrtp')}
+            old_media = {name: old_env[key] for key, name in media_keys.items() if key in old_env}
+            require(not old_media or len(old_media) == len(media_keys), 'partial saved media header selection')
+            options.old_media_header_identities = old_media or None
+            permitted_env.update(media_keys)
             permitted_env.update(ml_keys)
             permitted_env.update(header_keys)
         activation_env, activation_args = common_activation_allowlist(
@@ -2357,6 +2473,8 @@ def build(options):
         if name not in ('HOME', 'TMPDIR', 'TMP', 'TEMP', 'USER', 'LOGNAME'):
             require(saved_env.get(name) == environment.get(name), 'producer input changed: ' + name)
     require(saved['arguments'] == values, 'GN selection changed; configure a new output')
+    options.old_media_header_identities = {name: saved_env['EMBERBSD_MEDIA_HEADER_' + name.upper() + '_SHA256']
+                                           for name in ('libyuv', 'libsrtp')}
     write_protoc_selection(options.work, sdk, options.protoc_selection)
     write_v8_metagen_selection(options.work, sdk, getattr(options, 'v8_metagen_selection', None))
     fingerprint = options.work / 'devtools-provider.json'

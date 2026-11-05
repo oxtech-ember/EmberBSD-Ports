@@ -311,3 +311,9 @@ TFLite Support imports the common LiteRT configuration schema and requires
 Its Chromium-carried Support sources are adapted for common LiteRT, which no
 longer supplies MiniBenchmark: requests for `settings_to_test_locally` return
 `Unimplemented`, while ordinary interpreter and delegate setup remain enabled.
+
+Electron selects the installed common libyuv, libsrtp and crc32c packages for
+both native and target roles. The libyuv and SRTP public headers are projected
+into the source view only after the two roles' installed bytes match; crc32c
+uses its selected role's include prefix. These packages must already be present
+when invoking the direct producer.

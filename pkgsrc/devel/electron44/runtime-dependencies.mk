@@ -67,3 +67,7 @@ BUILDLINK_DEPMETHOD.fp16= build
 .include "../../x11/libxcb/buildlink3.mk"
 .include "../../x11/libxkbcommon/buildlink3.mk"
 .include "../../x11/libxshmfence/buildlink3.mk"
+
+.include "../../devel/crc32c/buildlink3.mk"
+.include "../../security/libsrtp/buildlink3.mk"
+.include "../../multimedia/libyuv/buildlink3.mk"

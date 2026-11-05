@@ -20,15 +20,17 @@ with tempfile.TemporaryDirectory() as tmp:
         calls.append(('headers',kwargs['old_identities'])); args[6](); return work/'source-view/src'
     ml=SimpleNamespace(NAMES=('litert','tflite'),activate=ml_activate,verify_view=lambda *args: calls.append(('ml-check',)))
     hdr=SimpleNamespace(NAMES=('eigen3','flatbuffers','fp16'),activate=header_activate,verify_view=lambda *args:calls.append(('header-check',)))
-    modules={'electron_protobuf_source_view':view,'electron_ml_source_view':ml,'electron_header_source_view':hdr}
+    media=SimpleNamespace(NAMES=('libyuv','libsrtp'), identity=lambda data,name:'a', verify_view=lambda *args:None)
+    modules={'electron_protobuf_source_view':view,'electron_ml_source_view':ml,'electron_header_source_view':hdr, 'electron_media_header_view':media}
     o=SimpleNamespace(workspace=root/'workspace',work=work,protobuf_source=root/'protobuf',host_prefix=root/'host',
         ml_identities={'litert':'a'},ml_sources={},ml_sdk={'inventory':object(),'sourceprep':object()},
-        ml_headers={name:{'identity':'a'} for name in hdr.NAMES},phase='reconfigure',activate_common_ml=True)
+        ml_headers={name:{'identity':'a'} for name in hdr.NAMES}, media_header_selections={},
+        old_media_header_identities={'libyuv':'a','libsrtp':'a'}, phase='reconfigure',activate_common_ml=True)
     with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
         m.gn_source(o)
     assert [x[0] for x in calls if x[0] in ('ml','headers')]==['ml','headers']
-    assert ('verify',('litert','tflite')) in calls
-    assert ('verify',('litert','tflite','eigen3','flatbuffers','fp16')) in calls
+    assert ('verify',('litert','tflite','libyuv','libsrtp')) in calls
+    assert ('verify',('litert','tflite','eigen3','flatbuffers','fp16','libyuv','libsrtp')) in calls
     calls.clear(); o.refresh_source_view=True
     o.old_ml_identities={'litert':'old'}; o.old_header_identities={name:'old' for name in hdr.NAMES}
     with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
@@ -56,4 +58,18 @@ with tempfile.TemporaryDirectory() as tmp:
     with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
         m.gn_source(o)
     assert calls == [('leaf-refresh',)]
+    # Ordinary build receives the already checked saved media identities.
+    calls.clear(); o.phase='build'; o.refresh_source_view=False
+    with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+        m.gn_source(o)
+    assert calls == [('verify',('litert','tflite','eigen3','flatbuffers','fp16','libyuv','libsrtp'))]
+    # Initial configure retry may complete the additive media transaction.
+    calls.clear(); o.phase='configure'; o.retry_configure=True
+    o.old_media_header_identities=None
+    def media_activate(*args, **kwargs):
+        calls.append(('media',)); args[6](); return work/'source-view/src'
+    media.activate=media_activate
+    with patch.object(m,'local_module',side_effect=lambda name,path:modules[name]):
+        m.gn_source(o)
+    assert ('media',) in calls
 print('PASS: ML and header transitions are ordered before view verification')

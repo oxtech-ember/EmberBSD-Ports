@@ -1122,6 +1122,11 @@
       "path": "tflite-support-no-minibench-litert.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "gn-common-media-providers.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {
