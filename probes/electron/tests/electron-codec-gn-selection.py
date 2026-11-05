@@ -27,24 +27,26 @@ with tempfile.TemporaryDirectory() as td:
  for role in ('native','target'):
   put('config.gn',f'set_default_toolchain("//:tc")\nemberbsd_pkg_config_role="{role}"\n')
   out=r/('out-'+role);out.mkdir();selected='host' if role=='native' else 'target'
-  (out/'args.gn').write_text('emberbsd_common_codecs=true\n'+''.join(f'emberbsd_{n}_{selected}_{k}=["{r}/{n}-{k}"]\n' for n in names.values() for k in ('libraries','inputs')))
-  for name in names.values():
-   for kind in ('libraries','inputs'): (r/(name+'-'+kind)).write_text('fixture')
+  (out/'args.gn').write_text('emberbsd_common_codecs=true\n'+''.join(f'emberbsd_{n}_{item_role}_{k}=["{r}/{item_role}/{n}-{k}"]\n' for n in names.values() for k in ('libraries','inputs') for item_role in ('host','target')))
+  for item_role in ('host','target'):
+   (r/item_role).mkdir(exist_ok=True)
+   for name in names.values():
+    for kind in ('libraries','inputs'): (r/item_role/(name+'-'+kind)).write_text('fixture')
   run=subprocess.run([gn,'gen',str(out),'--fail-on-unused-args'],cwd=r,text=True,capture_output=True)
   if run.returncode: raise RuntimeError(run.stdout+run.stderr)
   aggregate=json.loads(subprocess.check_output([gn,"desc",str(out),"//:test","--format=json"],cwd=r,text=True))["//:test"]
-  assert set(aggregate['libs']) == {'//'+name+'-libraries' for name in names.values()}
+  assert set(aggregate['libs']) == {'//'+selected+'/'+name+'-libraries' for name in names.values()}
   assert '//selected-headers/' in aggregate['include_dirs']
   for label in ("//third_party/dav1d:dav1d_headers", "//third_party/dav1d:dav1d_config", "//third_party/libaom:libaom_buildflags", "//third_party/opus:opus_config"):
    subprocess.run([gn,"desc",str(out),label],cwd=r,check=True,capture_output=True)
   for directory,name in names.items():
    label=f'//third_party/{directory}:emberbsd_{name}'
    info=json.loads(subprocess.check_output([gn,'desc',str(out),label,'--format=json'],cwd=r,text=True))[label]
-   assert info['libs']==['//'+name+'-libraries'] and info['inputs']==['//'+name+'-inputs']
-   assert info['ldflags']==['-Wl,-rpath='+ (str(r) if role=='native' else '/usr/pkg/lib')]
+   assert info['libs']==['//'+selected+'/'+name+'-libraries'] and info['inputs']==['//'+selected+'/'+name+'-inputs']
+   assert info['ldflags']==['-Wl,-rpath='+ (str(r/'host') if role=='native' else '/usr/pkg/lib')]
  # Incomplete role selection must fail instead of falling back to another provider.
  out=r/'out-target'; args=out/'args.gn'; args.write_text(args.read_text().replace(
-  f'emberbsd_vpx_target_libraries=["{r}/vpx-libraries"]', 'emberbsd_vpx_target_libraries=[]'))
+  f'emberbsd_vpx_target_libraries=["{r}/target/vpx-libraries"]', 'emberbsd_vpx_target_libraries=[]'))
  run=subprocess.run([gn,'gen',str(out),'--fail-on-unused-args'],cwd=r,text=True,capture_output=True)
  assert run.returncode and 'Selected codec provider is incomplete' in (run.stdout+run.stderr)
 print('PASS: five codec wrappers select tracked role libraries, inputs and rpaths')

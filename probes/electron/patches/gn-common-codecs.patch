@@ -260,7 +260,7 @@
                        VPxWorkerStatus, VPX_WORKER_STATUS_NOT_OK,
 --- /dev/null
 +++ b/build/config/emberbsd_codecs.gni
-@@ -0,0 +1,52 @@
+@@ -0,0 +1,53 @@
 +# Copyright 2026 EmberBSD contributors. BSD-2-Clause.
 +import("//build/config/linux/pkg_config.gni")
 +
@@ -291,11 +291,12 @@
 +
 +template("emberbsd_codec_provider") {
 +  not_needed(invoker, "*")
-+  _libraries = invoker.target_libraries
-+  _inputs = invoker.target_inputs
 +  if (emberbsd_pkg_config_role == "native") {
 +    _libraries = invoker.host_libraries
 +    _inputs = invoker.host_inputs
++  } else {
++    _libraries = invoker.target_libraries
++    _inputs = invoker.target_inputs
 +  }
 +  assert(emberbsd_pkg_config_role != "upstream" && _libraries != [] && _inputs != [],
 +         "Selected codec provider is incomplete")

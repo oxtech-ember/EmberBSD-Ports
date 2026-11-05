@@ -31,14 +31,20 @@ with tempfile.TemporaryDirectory(prefix='electron-codec-pkgconfig-') as td:
  values={'emberbsd_pkg_config_role':a.role,'emberbsd_native_pkg_config_prefix':str(prefix),'emberbsd_native_pkg_config_buildlink':False,'emberbsd_target_sysroot':str(a.sysroot),'current_os':'mac' if native else 'netbsd','current_cpu':'arm64' if native else 'x64','sysroot':'' if native else str(a.sysroot),'target_sysroot':'' if native else str(a.sysroot),'use_sysroot':False,'use_remoteexec':False,'build_with_chromium':False}
  write('config.gn','set_default_toolchain("//:tc")\nhost_toolchain="//:tc"\n'+''.join(k+'='+json.dumps(v)+'\n' for k,v in values.items()))
  out=r/'out';out.mkdir();args=['emberbsd_common_codecs=true','pkg_config='+json.dumps(str(prefix/'bin/pkg-config')),'host_pkg_config='+json.dumps(str(prefix/'bin/pkg-config'))]
- for name,lib in libs.items():
-  file=(provider/'lib'/(lib+('.dylib' if native else '.so'))).resolve(strict=True)
-  for kind in ('libraries','inputs'): args.append(f'emberbsd_{name}_{selected}_{kind}='+json.dumps([str(file)]))
+ for role_name, role_prefix, suffix in (('host',prefix,'.dylib'),('target',a.sysroot/'usr/pkg','.so')):
+  for name,lib in libs.items():
+   file=(role_prefix/'lib'/(lib+suffix)).resolve(strict=True)
+   for kind in ('libraries','inputs'): args.append(f'emberbsd_{name}_{role_name}_{kind}='+json.dumps([str(file)]))
  (out/'args.gn').write_text('\n'.join(args)+'\n')
  run=subprocess.run([str(a.gn),'gen',str(out),'--fail-on-unused-args','--script-executable='+sys.executable],cwd=r,text=True,capture_output=True)
  if run.returncode:raise RuntimeError(run.stdout+run.stderr)
  info=json.loads(subprocess.check_output([str(a.gn),'desc',str(out),'//:consumer','--format=json','--script-executable='+sys.executable],cwd=r,text=True))['//:consumer']
- assert len(info['libs'])==5 and all(str(provider/'lib') in x for x in info['libs']),info
+ expected={str((provider/'lib'/(lib+('.dylib' if native else '.so'))).resolve(strict=True)) for lib in libs.values()}
+ assert set(info['libs']) == expected,info
+ for directory,name in names.items():
+  label=f'//third_party/{directory}:emberbsd_{name}'
+  selected_info=json.loads(subprocess.check_output([str(a.gn),'desc',str(out),label,'--format=json','--script-executable='+sys.executable],cwd=r,text=True))[label]
+  assert selected_info['inputs'] == [str((provider/'lib'/(libs[name]+('.dylib' if native else '.so'))).resolve(strict=True))],selected_info
  assert len(info['cflags_cc']) == 5 and all(str(provider/'include') in x for x in info['cflags_cc']),info
  assert all(x == '-Wl,-rpath='+str(provider/'lib' if native else Path('/usr/pkg/lib')) for x in info['ldflags']),info
 print('PASS: actual pkg-config template, '+a.role+' codec paths and owned library selection')
