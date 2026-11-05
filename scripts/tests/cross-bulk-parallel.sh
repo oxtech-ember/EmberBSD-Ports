@@ -155,7 +155,9 @@ case "\$target" in
             echo \$out/bin/selected-python
             echo \$out/sdk
         else
-            echo "\$pkg-\$(cat \$dir/version 2> /dev/null || echo 1.0)"; echo "\$out/work/\$pkg"; cat \$dir/skip 2> /dev/null || echo
+            version=\$(cat \$dir/version 2> /dev/null || echo 1.0)
+            echo "\$pkg-\$version"; echo "\$out/work/\$pkg"; cat \$dir/skip 2> /dev/null || echo
+            echo "\$pkg"; echo "\$version"; echo "\$out/packages/All/\$pkg-\$version.tgz"
         fi ;;
     clean) rm -f \$out/work/\$pkg.built ;;
     depends) ;;

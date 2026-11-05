@@ -87,6 +87,7 @@ case "$target" in
                 WRKDIR) echo "$work" ;;
                 PKGBASE) echo "$base" ;;
                 PKGVERSION_NOREV) version=${name#"$base"-}; echo "${version%nb*}" ;;
+                PKGFILE) echo "$out/packages/All/$name.tgz" ;;
                 PKG_SKIP_REASON) echo ;;
                 .MAKE.MAKEFILES) echo "$dir/Makefile" ;;
                 .CURDIR) echo "$dir" ;;

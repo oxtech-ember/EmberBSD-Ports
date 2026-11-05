@@ -1242,6 +1242,19 @@ exclusive()
     return "$xrc"
 }
 
+# Run one target install through bmake. Preserve the binary package in the
+# shared repository while cross-bulk installs it into the target sysroot.
+target_install_bmake()
+{
+    tib_target=$1
+    shift
+    if [ "$tib_target" = package-install ]; then
+        bmk "$@" PKGSRC_KEEP_BIN_PKGS=yes "$tib_target" < /dev/null
+    else
+        bmk "$@" "$tib_target" < /dev/null
+    fi
+}
+
 # Run the install targets $2... of target package $1, one bmake run each.
 target_install()
 {
@@ -1260,21 +1273,21 @@ target_install()
     for target do
         if [ -n "$shared_arg" ]; then
             if [ "${stage_local:-no}" = yes ]; then
-                bmk -C "$PKGSRCDIR/$tpath" "$shared_arg" \
+                target_install_bmake "$target" -C "$PKGSRCDIR/$tpath" "$shared_arg" \
                     _EMBER_STAGE_LOCAL_PACKAGE_INSTALL=yes \
                     "_EMBER_STAGE_LOCAL_PKGPATH=$tpath" \
-                    "_EMBER_STAGE_LOCAL_WRKDIR=$wrkdir" "$target" < /dev/null || return 1
+                    "_EMBER_STAGE_LOCAL_WRKDIR=$wrkdir" || return 1
             else
-                bmk -C "$PKGSRCDIR/$tpath" "$shared_arg" "$target" < /dev/null || return 1
+                target_install_bmake "$target" -C "$PKGSRCDIR/$tpath" "$shared_arg" || return 1
             fi
         else
             if [ "${stage_local:-no}" = yes ]; then
-                bmk -C "$PKGSRCDIR/$tpath" \
+                target_install_bmake "$target" -C "$PKGSRCDIR/$tpath" \
                     _EMBER_STAGE_LOCAL_PACKAGE_INSTALL=yes \
                     "_EMBER_STAGE_LOCAL_PKGPATH=$tpath" \
-                    "_EMBER_STAGE_LOCAL_WRKDIR=$wrkdir" "$target" < /dev/null || return 1
+                    "_EMBER_STAGE_LOCAL_WRKDIR=$wrkdir" || return 1
             else
-                bmk -C "$PKGSRCDIR/$tpath" "$target" < /dev/null || return 1
+                target_install_bmake "$target" -C "$PKGSRCDIR/$tpath" || return 1
             fi
         fi
     done
@@ -1494,7 +1507,7 @@ build_one()
     key=$(echo "$path" | tr / _)
     case "$path" in *@native) build_native "$path" "$key"; return 0 ;; esac
     log=$state/logs/$key.log
-    varnames='PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE PKGVERSION_NOREV'
+    varnames='PKGNAME WRKDIR PKG_SKIP_REASON PKGBASE PKGVERSION_NOREV PKGFILE'
     vars=$(pkg_vars "$path" "$varnames") ||
         { result "$key" "failed $path vars"; return 0; }
     name=$(printf '%s\n' "$vars" | sed -n 1p)
@@ -1502,6 +1515,7 @@ build_one()
     skip=$(printf '%s\n' "$vars" | sed -n 3p)
     base=$(printf '%s\n' "$vars" | sed -n 4p)
     version=$(printf '%s\n' "$vars" | sed -n 5p)
+    package_file=$(printf '%s\n' "$vars" | sed -n 6p)
     if [ -n "$skip" ]; then
         result "$key" "skipped $path $skip"
         return 0
@@ -1543,8 +1557,7 @@ build_one()
         fi
         set +f
     fi
-    file=$packages/$name.tgz
-    if [ "${stage_local:-no}" != yes ] && [ -f "$file" ] &&
+    if [ "${stage_local:-no}" != yes ] && [ -f "$package_file" ] &&
         awk -v p="$path" -v n="$name" '$1 == p && $2 == n { f = 1; exit } END { exit !f }' "$state/done"; then
         shared_pair_retire_producer "$path"
         result "$key" "done $path"
@@ -1580,13 +1593,35 @@ build_one()
         else
             exclusive "$key" target_install "$path" replace >> "$log" 2>&1
         fi; } && {
+        if [ ! -f "$package_file" ]; then
+            echo "Package archive is missing: $package_file" >> "$log"
+            result "$key" "failed $path package-archive"
+            return 0
+        fi
+        if ! digest_output=$(shasum -a 256 "$package_file" 2>> "$log"); then
+            echo "Could not compute SHA256 for package archive: $package_file" >> "$log"
+            result "$key" "failed $path package-hash"
+            return 0
+        fi
+        package_sha=${digest_output%% *}
+        case "$package_sha" in
+            ''|*[!0123456789abcdef]*)
+                echo "Invalid SHA256 output for package archive: $package_file" >> "$log"
+                result "$key" "failed $path package-hash"
+                return 0 ;;
+        esac
+        if [ "${#package_sha}" -ne 64 ]; then
+            echo "Invalid SHA256 output for package archive: $package_file" >> "$log"
+            result "$key" "failed $path package-hash"
+            return 0
+        fi
         shared_pair_producer_succeeded "$path"
         if ! shared_pair_ready "$path"; then
             [ "${stage_local:-no}" = yes ] || clean_success
         fi
         shared_pair_retire_producer "$path"
         echo "$(date '+%Y-%m-%d %H:%M:%S') done $path" >> "$state/progress"
-        result "$key" "built $path $name $(shasum -a 256 "$file" | cut -d ' ' -f 1)"
+        result "$key" "built $path $name $package_sha"
         return 0
     }
     echo "$(date '+%Y-%m-%d %H:%M:%S') FAILED $path" >> "$state/progress"

@@ -107,7 +107,7 @@ WRAP
 cat > "$out/bmake" <<WRAP
 #!/bin/sh
 out=$out
-dir= target= varname= varnames= native=no packages=
+dir= target= varname= varnames= native=no packages= keep_bin_pkgs=no
 for a do echo "\$a" >> \$out/calls; done
 while [ "\$#" -gt 0 ]; do
     case "\$1" in
@@ -115,6 +115,7 @@ while [ "\$#" -gt 0 ]; do
         VARNAME=*) varname=\${1#VARNAME=}; shift;;
         VARNAMES=*) varnames=\${1#VARNAMES=}; shift;;
         USE_CROSS_COMPILE=no) native=yes; shift;;
+        PKGSRC_KEEP_BIN_PKGS=yes) keep_bin_pkgs=yes; shift;;
         PACKAGES=*) packages=\${1#PACKAGES=}; shift;;
         *=*) shift;;
         *) target=\$1; shift;;
@@ -136,6 +137,8 @@ case "\$target" in
                 PKGNAME) echo demo-1.0;;
                 PKGVERSION_NOREV) echo 1.0;;
                 WRKDIR) if [ "\$native" = yes ]; then echo $out/work/demo-native; else echo $out/work/demo; fi;;
+                PKGFILE) echo $out/packages/All/demo-1.0.tgz;;
+                STAGE_PKGFILE) echo $out/work/demo/.packages/demo-1.0.tgz;;
                 PKGBASE) echo demo;;
                 .MAKE.MAKEFILES) echo Makefile;;
                 .CURDIR) echo $out/tree/cat/demo;;
@@ -155,14 +158,19 @@ case "\$target" in
             mkdir -p \${packages:-$out/packages-native}/All
             echo package > \${packages:-$out/packages-native}/All/demo-1.0.tgz
         else
-            mkdir -p $out/packages/All
-            echo package > $out/packages/All/demo-1.0.tgz
+            mkdir -p $out/work/demo/.packages $out/packages/All
+            echo package > $out/work/demo/.packages/demo-1.0.tgz
+            cp $out/work/demo/.packages/demo-1.0.tgz $out/packages/All/demo-1.0.tgz
         fi;;
     package-install)
         echo package-install >> $out/targets
         [ ! -e $out/fail-package ] || exit 1
-        mkdir -p $out/packages/All
-        echo package > $out/packages/All/demo-1.0.tgz
+        mkdir -p $out/work/demo/.packages
+        echo package > $out/work/demo/.packages/demo-1.0.tgz
+        if [ "\$keep_bin_pkgs" = yes ]; then
+            mkdir -p $out/packages/All
+            cp $out/work/demo/.packages/demo-1.0.tgz $out/packages/All/demo-1.0.tgz
+        fi
         : > $out/db/demo-1.0;;
     _package-clean)
         echo _package-clean >> $out/targets;;
@@ -201,6 +209,15 @@ run()
     fi
     BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh CROSS_BULK_TEST_REAL_BMAKE=$out/bmake \
         CROSS_BULK_TEST_CPUS=6 \
+        CROSS_BULK_TEST_HOST_PYTHON=$host_python CROSS_BULK_TEST_SDK_SOURCE=$out/sdk \
+        MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_VARS_CACHE=no \
+        sh "$ports/scripts/cross-bulk.sh" package-install cat/demo "$target_state"
+}
+run_with_path()
+{
+    test_path=$1 target_state=$2
+    env PATH="$test_path" BMAKE=$ports/scripts/tests/cross-bulk-bmake-proxy.sh \
+        CROSS_BULK_TEST_REAL_BMAKE=$out/bmake CROSS_BULK_TEST_CPUS=6 \
         CROSS_BULK_TEST_HOST_PYTHON=$host_python CROSS_BULK_TEST_SDK_SOURCE=$out/sdk \
         MAKECONF=$out/mk.conf PKGSRCDIR=$out/tree CROSS_BULK_VARS_CACHE=no \
         sh "$ports/scripts/cross-bulk.sh" package-install cat/demo "$target_state"
@@ -342,6 +359,54 @@ printf '%s\n' 'cat/demo cat/demo' > "$out/override-state/edges"
 rm -f "$out/packages/All/demo-1.0.tgz"
 run "$out/override-state" 2 > "$out/override.log" 2>&1 || fail "explicit MAKE_JOBS: $(cat "$out/override.log")"
 grep -q '^MAKE_JOBS=2$' "$out/calls" || fail 'explicit MAKE_JOBS override was ignored'
+
+# package-install must retain its archive in PKGFILE even when the caller
+# would normally keep only STAGE_PKGFILE. Start without PACKAGES/All and
+# require the preserved archive and its recorded checksum.
+mkdir -p "$out/staged-file-state/logs"
+printf '%s\n' cat/demo > "$out/staged-file-state/order"
+printf '%s\n' 'cat/demo cat/demo' > "$out/staged-file-state/edges"
+: > "$out/staged-file-state/done"
+: > "$out/staged-file-state/failed"
+: > "$out/staged-file-state/blocked"
+rm -rf "$out/packages/All"
+rm -f "$out/db"/demo-[0-9]*
+: > "$out/targets"
+: > "$out/calls"
+run "$out/staged-file-state" > "$out/staged-file.log" 2>&1 || fail "staged archive with missing PACKAGES/All: $(cat "$out/staged-file.log")"
+[ -f "$out/packages/All/demo-1.0.tgz" ] || fail 'package-install did not preserve PKGFILE in PACKAGES/All'
+grep -q '^package-install$' "$out/targets" || fail 'fresh recovery did not use package-install'
+grep -q '^PKGSRC_KEEP_BIN_PKGS=yes$' "$out/calls" || fail 'package-install did not retain the binary package'
+published_sha=$(shasum -a 256 "$out/packages/All/demo-1.0.tgz" | cut -d ' ' -f 1)
+grep -q "^cat/demo demo-1.0 $published_sha$" "$out/staged-file-state/done" ||
+    fail 'state digest did not match pkgsrc PKGFILE'
+
+# A failed digest command must fail the package result instead of creating an
+# apparently successful done row without a checksum.
+mkdir -p "$out/failing-hash" "$out/hash-failure-state/logs"
+cat > "$out/failing-hash/shasum" <<'HASH'
+#!/bin/sh
+echo 'simulated shasum failure' >&2
+exit 1
+HASH
+chmod +x "$out/failing-hash/shasum"
+printf '%s\n' cat/demo > "$out/hash-failure-state/order"
+printf '%s\n' 'cat/demo cat/demo' > "$out/hash-failure-state/edges"
+: > "$out/hash-failure-state/done"
+: > "$out/hash-failure-state/failed"
+: > "$out/hash-failure-state/blocked"
+rm -f "$out/db"/demo-[0-9]*
+: > "$out/targets"
+: > "$out/calls"
+rc=0
+run_with_path "$out/failing-hash:$PATH" "$out/hash-failure-state" \
+    > "$out/hash-failure.log" 2>&1 || rc=$?
+[ "$rc" -ne 0 ] || fail 'hash failure returned success'
+grep -q '^package-install$' "$out/targets" || fail 'hash failure did not exercise package-install'
+! grep -q '^cat/demo ' "$out/hash-failure-state/done" || fail 'hash failure wrote a done row'
+grep -q '^cat/demo package-hash$' "$out/hash-failure-state/failed" || fail 'hash failure reason was not recorded'
+grep -q 'simulated shasum failure' "$out/hash-failure-state/logs/cat_demo.log" ||
+    fail 'hash failure diagnostic was not logged'
 
 mkdir -p "$out/invalid-budget-state/logs"
 printf '%s\n' cat/demo > "$out/invalid-budget-state/order"
