@@ -1,0 +1,89 @@
+# EmberBSD contributors (AI-assisted): Chromium retains a shim target removed
+# from the LiteRT OSS export by upstream 982302176a8bf15dd848b78db9a84bee966c37f7.
+# Preserve its separately required TSL clock with the original platform guard.
+--- a/third_party/litert/BUILD.gn
++++ b/third_party/litert/BUILD.gn
+@@ -1213,40 +1213,6 @@
+     ]
+   }
+ 
+-  if (!is_fuchsia) {
+-    tflite_static_library("tflite_op_shim") {
+-      sources = [
+-        "src/tflite/kernels/shim/shape.cc",
+-        "src/tflite/kernels/shim/tflite_op_shim.cc",
+-        "src/tflite/kernels/shim/tflite_tensor_view.cc",
+-      ]
+-
+-      if (is_win) {
+-        sources += [ "//third_party/tflite/src/third_party/xla/xla/tsl/platform/windows/env_time.cc" ]
+-      } else {
+-        sources += [ "//third_party/tflite/src/third_party/xla/xla/tsl/platform/default/env_time.cc" ]
+-      }
+-
+-      deps = [
+-        ":tflite_kernel_common_headers",
+-        ":tflite_public_headers",
+-        "//third_party/abseil-cpp:absl",
+-        "//third_party/flatbuffers",
+-      ]
+-
+-      configs_to_add = [
+-        ":tflite_config",
+-        ":tflite_flags",
+-        "//third_party/eigen3:eigen_includes",
+-        "//third_party/ml_dtypes:ml_dtypes-includes",
+-      ]
+-      visibility = [
+-        ":*",
+-        "//third_party/tflite:*",
+-      ]
+-    }
+-  }
+-
+   # The two below TFLite logging targets are separate since the Chromium one
+   # requires //base, which is not allowed to be embedded by non-libchrome shared
+   # libraries.
+@@ -1441,6 +1407,15 @@
+       "src/tflite/version.h",
+     ]
+ 
++    # Preserve the TSL clock previously provided by the obsolete shim.
++    if (!is_fuchsia) {
++      if (is_win) {
++        sources += [ "//third_party/tflite/src/third_party/xla/xla/tsl/platform/windows/env_time.cc" ]
++      } else {
++        sources += [ "//third_party/tflite/src/third_party/xla/xla/tsl/platform/default/env_time.cc" ]
++      }
++    }
++
+     if (is_win) {
+       sources += [ "src/tflite/converter/mmap_allocation_disabled.cc" ]
+     } else {
+@@ -1632,11 +1607,6 @@
+       ":tflite_kernels",
+       ":tflite_litert",
+     ]
+-    if (!is_fuchsia) {
+-      # absl::Cord::CopyToArray is not available on fuchsia but is required by
+-      # this library.
+-      conditional_public_deps += [ ":tflite_op_shim" ]
+-    }
+ 
+     public_deps = [
+       ":mutable_tflite_schema",
+--- a/third_party/tflite/BUILD.gn
++++ b/third_party/tflite/BUILD.gn
+@@ -84,12 +84,6 @@
+ 
+   group("tflite_compiler_utils") {
+     public_deps = [ "//third_party/litert:tflite_compiler_utils" ]
+-  }
+-
+-  if (!is_fuchsia) {
+-    tflite_group("tflite_op_shim") {
+-      conditional_public_deps = [ "//third_party/litert:tflite_op_shim" ]
+-    }
+   }
+ 
+   if (build_with_chromium) {

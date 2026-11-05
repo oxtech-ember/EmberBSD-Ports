@@ -1067,6 +1067,11 @@
       "path": "angle-macos27-mac2-deprecation.patch",
       "strip": 1,
       "root": ""
+    },
+    {
+      "path": "litert-remove-obsolete-op-shim.patch",
+      "strip": 1,
+      "root": ""
     }
   ],
   "superseded": {
