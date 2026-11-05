@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.146 2026/09/02 19:04:25 wiz Exp $
 
 DISTNAME=	dbus-1.16.2
-PKGREVISION=	10
+PKGREVISION=	11
 CATEGORIES=	sysutils
 MASTER_SITES=	https://dbus.freedesktop.org/releases/dbus/
 EXTRACT_SUFX=	.tar.xz
@@ -40,13 +40,17 @@ CHECK_PORTABILITY_SKIP+=	tools/cmake-format
 BUILDLINK_PASSTHRU_RPATHDIRS+=	@loader_path/../dbus
 .endif
 
-# Select the existing build-host XSLT processor and its installed XML catalog.
-# A host platform fallback may disable docs that the package PLIST requires.
-# Origin: EmberBSD (AI-assisted); native pkgsrc behavior is unchanged.
-.if ${USE_CROSS_COMPILE:U:tl} == "yes"
+# Select the build-host XSLT processor and XML catalog for DocBook probes.
+# Meson's xsltproc --nonet check needs a resolvable catalog; without it,
+# html/manpages are disabled while PLIST still requires them (native and cross).
+# Origin: EmberBSD (AI-assisted).
+TOOL_DEPENDS+=		docbook-xsl-[0-9]*:../../textproc/docbook-xsl
 MESON_BINARIES+=		xsltproc
 MESON_BINARY.xsltproc=	${TOOLBASE}/bin/xsltproc
 MESON_ARGS+=		-Dxml_docs=enabled
+MAKE_ENV+=		XML_CATALOG_FILES=${TOOLBASE}/etc/xml/catalog
+CONFIGURE_ENV+=		XML_CATALOG_FILES=${TOOLBASE}/etc/xml/catalog
+.if ${USE_CROSS_COMPILE:U:tl} == "yes"
 # Runtime sockets belong to the target, never the build host's TMPDIR.
 MESON_ARGS+=		-Dsession_socket_dir=/tmp -Dtest_socket_dir=/tmp
 
