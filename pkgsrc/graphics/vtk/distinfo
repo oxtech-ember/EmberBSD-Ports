@@ -6,4 +6,4 @@ Size (VTK-9.5.2.tar.gz) = 50189467 bytes
 SHA1 (patch-CMake_vtkModule.cmake) = 65df83f6ca7fb25c6ed13a14b07390233ea568b2
 SHA1 (patch-Rendering_GL2PSOpenGL2_vtkOpenGLGL2PSHelperImpl.cxx) = 84f36d65e7f23cfbca1ec7f9a0f2ed7e767d076f
 SHA1 (patch-ThirdParty_ioss_vtkioss_Ioss__FileInfo.C) = 844cdb59f3c4ff977058e94a11b690ff2d84a81c
-SHA1 (patch-emberbsd-pegtl4) = 54e622dff86439bdef7476191577d6b037266fd9
+SHA1 (patch-emberbsd-pegtl4) = 69cb32112fb7d43f8f3eb1fd9dff8c2d1b517d07
