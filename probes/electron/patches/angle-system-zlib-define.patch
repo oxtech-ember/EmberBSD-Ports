@@ -1,0 +1,52 @@
+# Origin: EmberBSD contributors (AI-assisted).
+# Preserve the donor system-zlib choice without redefining the common GN flag.
+# Keep the generated Vulkan source and its generator consistent.
+
+--- a/third_party/angle/src/libANGLE/MemoryProgramCache.cpp
++++ b/third_party/angle/src/libANGLE/MemoryProgramCache.cpp
+@@ -8,7 +8,9 @@
+ //   layer to warm up the cache from disk.
+ 
+ // Include zlib first, otherwise FAR gets defined elsewhere.
++#ifndef USE_SYSTEM_ZLIB
+ #define USE_SYSTEM_ZLIB
++#endif
+ #include "common/unsafe_buffers.h"
+ #include "compression_utils_portable.h"
+ 
+--- a/third_party/angle/src/libANGLE/angletypes.cpp
++++ b/third_party/angle/src/libANGLE/angletypes.cpp
+@@ -19,7 +19,9 @@
+ 
+ #include <limits>
+ 
++#ifndef USE_SYSTEM_ZLIB
+ #define USE_SYSTEM_ZLIB
++#endif
+ #include "compression_utils_portable.h"
+ 
+ namespace gl
+--- a/third_party/angle/src/libANGLE/renderer/vulkan/vk_internal_shaders_autogen.cpp
++++ b/third_party/angle/src/libANGLE/renderer/vulkan/vk_internal_shaders_autogen.cpp
+@@ -10,7 +10,9 @@
+ 
+ #include "libANGLE/renderer/vulkan/vk_internal_shaders_autogen.h"
+ 
++#ifndef USE_SYSTEM_ZLIB
+ #define USE_SYSTEM_ZLIB
++#endif
+ #include "compression_utils_portable.h"
+ 
+ namespace rx
+--- a/third_party/angle/src/libANGLE/renderer/vulkan/gen_vk_internal_shaders.py
++++ b/third_party/angle/src/libANGLE/renderer/vulkan/gen_vk_internal_shaders.py
+@@ -39,7 +39,9 @@
+ 
+ #include "libANGLE/renderer/vulkan/vk_internal_shaders_autogen.h"
+ 
++#ifndef USE_SYSTEM_ZLIB
+ #define USE_SYSTEM_ZLIB
++#endif
+ #include "compression_utils_portable.h"
+ 
+ namespace rx

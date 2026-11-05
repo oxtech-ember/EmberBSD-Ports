@@ -1247,6 +1247,11 @@
       "path": "gn-common-cpuinfo.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "angle-system-zlib-define.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
