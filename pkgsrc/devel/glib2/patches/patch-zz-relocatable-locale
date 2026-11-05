@@ -1,0 +1,397 @@
+# Resolve locale data relative to the loaded GLib library when supported.
+# Origin: EmberBSD (AI-assisted).
+
+--- gio/gapplication-tool.c.orig
++++ gio/gapplication-tool.c
+@@ -20,6 +20,7 @@
+  */
+ 
+ #include "config.h"
++#include "glib/glib-locale-private.h"
+ 
+ #include <gio/gdesktopappinfo.h>
+ 
+@@ -444,7 +445,11 @@
+ {
+   setlocale (LC_ALL, "");
+   textdomain (GETTEXT_PACKAGE);
+-  bindtextdomain (GETTEXT_PACKAGE, GLIB_LOCALE_DIR);
++  {
++    gchar *locale_dir = _glib_get_locale_dir ();
++    bindtextdomain (GETTEXT_PACKAGE, locale_dir);
++    g_free (locale_dir);
++  }
+ #ifdef HAVE_BIND_TEXTDOMAIN_CODESET
+   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+ #endif
+--- gio/gdbus-tool.c.orig
++++ gio/gdbus-tool.c
+@@ -21,6 +21,7 @@
+  */
+ 
+ #include "config.h"
++#include "glib/glib-locale-private.h"
+ 
+ #include <stdlib.h>
+ #include <string.h>
+@@ -2499,20 +2500,15 @@
+   gboolean request_completion;
+   gchar *completion_cur;
+   gchar *completion_prev;
+-#ifdef G_OS_WIN32
+-  gchar *tmp;
+-#endif
+ 
+   setlocale (LC_ALL, "");
+   textdomain (GETTEXT_PACKAGE);
+ 
+-#ifdef G_OS_WIN32
+-  tmp = _glib_get_locale_dir ();
+-  bindtextdomain (GETTEXT_PACKAGE, tmp);
+-  g_free (tmp);
+-#else
+-  bindtextdomain (GETTEXT_PACKAGE, GLIB_LOCALE_DIR);
+-#endif
++  {
++    gchar *locale_dir = _glib_get_locale_dir ();
++    bindtextdomain (GETTEXT_PACKAGE, locale_dir);
++    g_free (locale_dir);
++  }
+ 
+ #ifdef HAVE_BIND_TEXTDOMAIN_CODESET
+   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+--- gio/gio-tool.c.orig
++++ gio/gio-tool.c
+@@ -20,6 +20,7 @@
+  */
+ 
+ #include "config.h"
++#include "glib/glib-locale-private.h"
+ 
+ #include <gio/gio.h>
+ #include <gi18n.h>
+@@ -288,20 +289,15 @@
+   const char *command;
+   gboolean do_help;
+ 
+-#ifdef G_OS_WIN32
+-  gchar *localedir;
+-#endif
+ 
+   setlocale (LC_ALL, GLIB_DEFAULT_LOCALE);
+   textdomain (GETTEXT_PACKAGE);
+ 
+-#ifdef G_OS_WIN32
+-  localedir = _glib_get_locale_dir ();
+-  bindtextdomain (GETTEXT_PACKAGE, localedir);
+-  g_free (localedir);
+-#else
+-  bindtextdomain (GETTEXT_PACKAGE, GLIB_LOCALE_DIR);
+-#endif
++  {
++    gchar *locale_dir = _glib_get_locale_dir ();
++    bindtextdomain (GETTEXT_PACKAGE, locale_dir);
++    g_free (locale_dir);
++  }
+ 
+ #ifdef HAVE_BIND_TEXTDOMAIN_CODESET
+   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+--- gio/glib-compile-resources.c.orig
++++ gio/glib-compile-resources.c
+@@ -20,6 +20,7 @@
+  */
+ 
+ #include "config.h"
++#include "glib/glib-locale-private.h"
+ 
+ #include <glib.h>
+ #include <gstdio.h>
+@@ -845,20 +846,17 @@
+   };
+ 
+ #ifdef G_OS_WIN32
+-  gchar *tmp;
+   gchar **command_line = NULL;
+ #endif
+ 
+   setlocale (LC_ALL, GLIB_DEFAULT_LOCALE);
+   textdomain (GETTEXT_PACKAGE);
+ 
+-#ifdef G_OS_WIN32
+-  tmp = _glib_get_locale_dir ();
+-  bindtextdomain (GETTEXT_PACKAGE, tmp);
+-  g_free (tmp);
+-#else
+-  bindtextdomain (GETTEXT_PACKAGE, GLIB_LOCALE_DIR);
+-#endif
++  {
++    gchar *locale_dir = _glib_get_locale_dir ();
++    bindtextdomain (GETTEXT_PACKAGE, locale_dir);
++    g_free (locale_dir);
++  }
+ 
+ #ifdef HAVE_BIND_TEXTDOMAIN_CODESET
+   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+--- gio/glib-compile-schemas.c.orig
++++ gio/glib-compile-schemas.c
+@@ -21,6 +21,7 @@
+ 
+ /* Prologue {{{1 */
+ #include "config.h"
++#include "glib/glib-locale-private.h"
+ 
+ #include <glib.h>
+ #include <gstdio.h>
+@@ -2184,19 +2185,17 @@
+   };
+ 
+ #ifdef G_OS_WIN32
+-  gchar *tmp = NULL;
+   gchar **command_line = NULL;
+ #endif
+ 
+   setlocale (LC_ALL, GLIB_DEFAULT_LOCALE);
+   textdomain (GETTEXT_PACKAGE);
+ 
+-#ifdef G_OS_WIN32
+-  tmp = _glib_get_locale_dir ();
+-  bindtextdomain (GETTEXT_PACKAGE, tmp);
+-#else
+-  bindtextdomain (GETTEXT_PACKAGE, GLIB_LOCALE_DIR);
+-#endif
++  {
++    gchar *locale_dir = _glib_get_locale_dir ();
++    bindtextdomain (GETTEXT_PACKAGE, locale_dir);
++    g_free (locale_dir);
++  }
+ 
+ #ifdef HAVE_BIND_TEXTDOMAIN_CODESET
+   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+@@ -2338,7 +2337,6 @@
+   g_option_context_free (context);
+ 
+ #ifdef G_OS_WIN32
+-  g_free (tmp);
+   g_strfreev (command_line);  
+ #endif
+ 
+--- gio/gresource-tool.c.orig
++++ gio/gresource-tool.c
+@@ -20,6 +20,7 @@
+  */
+ 
+ #include "config.h"
++#include "glib/glib-locale-private.h"
+ 
+ #include <stdlib.h>
+ #include <stdio.h>
+@@ -613,20 +614,15 @@
+   gboolean details = FALSE;
+   void (* function) (const gchar *, const gchar *, const gchar *, gboolean);
+ 
+-#ifdef G_OS_WIN32
+-  gchar *tmp;
+-#endif
+ 
+   setlocale (LC_ALL, GLIB_DEFAULT_LOCALE);
+   textdomain (GETTEXT_PACKAGE);
+ 
+-#ifdef G_OS_WIN32
+-  tmp = _glib_get_locale_dir ();
+-  bindtextdomain (GETTEXT_PACKAGE, tmp);
+-  g_free (tmp);
+-#else
+-  bindtextdomain (GETTEXT_PACKAGE, GLIB_LOCALE_DIR);
+-#endif
++  {
++    gchar *locale_dir = _glib_get_locale_dir ();
++    bindtextdomain (GETTEXT_PACKAGE, locale_dir);
++    g_free (locale_dir);
++  }
+ 
+ #ifdef HAVE_BIND_TEXTDOMAIN_CODESET
+   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+--- gio/gsettings-tool.c.orig
++++ gio/gsettings-tool.c
+@@ -20,6 +20,7 @@
+  */
+ 
+ #include "config.h"
++#include "glib/glib-locale-private.h"
+ 
+ #include <gio/gio.h>
+ #include <gi18n.h>
+@@ -763,20 +764,15 @@
+   void (* function) (void);
+   gboolean need_settings, skip_third_arg_test;
+ 
+-#ifdef G_OS_WIN32
+-  gchar *tmp;
+-#endif
+ 
+   setlocale (LC_ALL, GLIB_DEFAULT_LOCALE);
+   textdomain (GETTEXT_PACKAGE);
+ 
+-#ifdef G_OS_WIN32
+-  tmp = _glib_get_locale_dir ();
+-  bindtextdomain (GETTEXT_PACKAGE, tmp);
+-  g_free (tmp);
+-#else
+-  bindtextdomain (GETTEXT_PACKAGE, GLIB_LOCALE_DIR);
+-#endif
++  {
++    gchar *locale_dir = _glib_get_locale_dir ();
++    bindtextdomain (GETTEXT_PACKAGE, locale_dir);
++    g_free (locale_dir);
++  }
+ 
+ #ifdef HAVE_BIND_TEXTDOMAIN_CODESET
+   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+--- glib/ggettext.c.orig
++++ glib/ggettext.c
+@@ -29,6 +29,14 @@
+ #include "ggettext.h"
+ #include "glibintl.h"
+ #include "glib-private.h"
++#include "glib-locale-private.h"
++#include "gfileutils.h"
++#include "gstrfuncs.h"
++#include "glib-locale-relocation.h"
++#ifdef GLIB_HAVE_LOCALE_DLADDR
++#include <dlfcn.h>
++#include <stdlib.h>
++#endif
+ 
+ #include "galloca.h"
+ #include "gthread.h"
+@@ -91,6 +99,47 @@
+ 
+ #undef GLIB_LOCALE_DIR
+ 
++#else /* !G_OS_WIN32 */
++
++/* Anchor to the GLib image itself, never to an arbitrary calling program. */
++#ifdef GLIB_HAVE_LOCALE_DLADDR
++static const char glib_locale_anchor;
++#endif
++
++gchar *
++_glib_get_locale_dir (void)
++{
++#ifdef GLIB_HAVE_LOCALE_DLADDR
++  Dl_info info;
++  if (dladdr (&glib_locale_anchor, &info) != 0 && info.dli_fname != NULL)
++    {
++      char *resolved = realpath (info.dli_fname, NULL);
++      if (resolved != NULL)
++        {
++          gchar *base = g_path_get_basename (resolved);
++          if ((g_str_has_prefix (base, "libglib-2.0.") &&
++               g_str_has_suffix (base, ".dylib")) ||
++              strcmp (base, "libglib-2.0.so") == 0 ||
++              g_str_has_prefix (base, "libglib-2.0.so."))
++            {
++              gchar *libdir = g_path_get_dirname (resolved);
++              gchar *combined = g_build_filename (libdir, GLIB_LOCALE_RELATIVE_TO_LIBDIR, NULL);
++              gchar *result = g_canonicalize_filename (combined, NULL);
++              g_free (combined);
++              g_free (libdir);
++              g_free (base);
++              free (resolved);
++              return result;
++            }
++          g_free (base);
++          free (resolved);
++        }
++    }
++#endif
++  /* Static GLib, unsupported hosts, and explicit absolute layouts retain the
++   * configured upstream path. */
++  return g_strdup (GLIB_LOCALE_DIR);
++}
+ #endif /* G_OS_WIN32 */
+ 
+ 
+@@ -101,13 +150,9 @@
+ 
+   if (g_once_init_enter (&initialised))
+     {
+-#ifdef G_OS_WIN32
+       gchar *tmp = _glib_get_locale_dir ();
+       bindtextdomain (GETTEXT_PACKAGE, tmp);
+       g_free (tmp);
+-#else
+-      bindtextdomain (GETTEXT_PACKAGE, GLIB_LOCALE_DIR);
+-#endif
+ #    ifdef HAVE_BIND_TEXTDOMAIN_CODESET
+       bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+ #    endif
+--- /dev/null
++++ glib/glib-locale-private.h
+@@ -0,0 +1,14 @@
++/* Private GLib locale lookup shared with the GIO command-line tools. */
++#ifndef __GLIB_LOCALE_PRIVATE_H__
++#define __GLIB_LOCALE_PRIVATE_H__
++
++#include "glib.h"
++
++G_BEGIN_DECLS
++
++GLIB_AVAILABLE_IN_ALL
++gchar *_glib_get_locale_dir (void);
++
++G_END_DECLS
++
++#endif /* __GLIB_LOCALE_PRIVATE_H__ */
+--- glib/meson.build.orig
++++ glib/meson.build
+@@ -418,6 +418,24 @@
+   pcre2_static_args = ['-DPCRE2_STATIC']
+ endif
+ 
++# Keep locale relocation configuration local to ggettext.c.
++locale_reloc_conf = configuration_data()
++locale_reloc_enabled = false
++locale_dl_dep = []
++if host_system != 'windows' and not fs.is_absolute(get_option('localedir')) and not fs.is_absolute(get_option('libdir'))
++  locale_reloc_enabled = cc.links('''
++    #define _GNU_SOURCE 1
++    #include <dlfcn.h>
++    int main(void) { Dl_info info; return dladdr(&info, &info) == 0; }
++  ''', dependencies : libdl_dep, name : 'dladdr and Dl_info')
++endif
++if locale_reloc_enabled
++  locale_dl_dep = libdl_dep
++  locale_reloc_conf.set('GLIB_HAVE_LOCALE_DLADDR', 1)
++  locale_reloc_conf.set_quoted('GLIB_LOCALE_RELATIVE_TO_LIBDIR', fs.relative_to(glib_localedir, glib_libdir))
++endif
++configure_file(output : 'glib-locale-relocation.h', configuration : locale_reloc_conf)
++
+ glib_c_args = ['-DG_LOG_DOMAIN="GLib"'] + glib_c_args_internal + pcre2_static_args
+ libglib = library('glib-2.0',
+   glib_dtrace_obj, glib_dtrace_hdr,
+@@ -435,6 +453,7 @@
+     gnulib_libm_dependency,
+     libiconv,
+     libintl_deps,
++    locale_dl_dep,
+     libm,
+     librt,
+     libsysprof_capture_dep,
+@@ -462,6 +481,7 @@
+     gnulib_libm_dependency,
+     libiconv,
+     libintl_deps,
++    locale_dl_dep,
+     libm,
+     librt,
+     libsysprof_capture_dep,
+@@ -476,7 +496,7 @@
+ 
+ pkg.generate(libglib,
+   libraries : [libintl_deps],
+-  libraries_private : [win32_ldflags],
++  libraries_private : [win32_ldflags, locale_dl_dep],
+   subdirs : ['glib-2.0'],
+   extra_cflags : ['-I${libdir}/glib-2.0/include'] + win32_cflags,
+   variables : [
