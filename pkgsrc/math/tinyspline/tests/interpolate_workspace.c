@@ -34,7 +34,8 @@ check_points(const tsReal *points, size_t dimension)
 		actual = ts_deboornet_result_ptr(&net);
 		for (j = 0; j < dimension; j++) {
 			if (!isfinite(actual[j]) ||
-			    fabs(actual[j] - points[i * dimension + j]) > 1e-5) {
+			    fabs(actual[j] - points[i * dimension + j]) >
+			    1e-6 * fmax(1.0, fabs(points[i * dimension + j]))) {
 				fprintf(stderr,
 				    "%zuD point %zu component %zu: got %.9g, expected %.9g\n",
 				    dimension, i, j, actual[j], points[i * dimension + j]);
