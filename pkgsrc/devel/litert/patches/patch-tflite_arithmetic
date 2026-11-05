@@ -1,0 +1,26 @@
+$NetBSD$
+
+# EmberBSD contributors (AI-assisted), from chromium-tflite-explicit-arithmetic-gcc16.patch.
+# Keep integer multiplication conversion explicit in the common LiteRT sources.
+--- tflite/kernels/stablehlo_scatter.cc
++++ tflite/kernels/stablehlo_scatter.cc
+@@ -179,7 +179,7 @@
+   } else if (computation_type == ComputationType::kAdd) {
+     result = input_value + update_value;
+   } else if (computation_type == ComputationType::kMultiply) {
+-    result = input_value * update_value;
++    result = static_cast<DataType>(input_value * update_value);
+   } else if (computation_type == ComputationType::kMaximum) {
+     result = std::max(input_value, update_value);
+   } else if (computation_type == ComputationType::kMinimum) {
+--- tflite/kernels/internal/common.h
++++ tflite/kernels/internal/common.h
+@@ -99,7 +99,7 @@
+ template <typename T>
+ TFLITE_NO_SANITIZE_INTEGER_OVERFLOW inline T
+ MulTensorValuesWithExpectedOverflow(T a, T b) {
+-  return a * b;
++  return static_cast<T>(a * b);
+ }
+ 
+ // Reduces and compresses dimensions so that broadcast handling becomes more

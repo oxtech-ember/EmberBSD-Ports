@@ -1,6 +1,7 @@
 # Origin: EmberBSD contributors (AI-assisted); shared LiteRT source owner.
 DISTNAME= LiteRT-2.3.2
 PKGNAME= litert-source-2.3.2
+PKGREVISION= 1
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=google-ai-edge/}
 GITHUB_PROJECT= LiteRT

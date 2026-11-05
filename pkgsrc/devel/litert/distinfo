@@ -3,3 +3,5 @@ $NetBSD$
 BLAKE2s (LiteRT-2.3.2.tar.gz) = 254fcdb622350eab54a71cc6aa1e6e12bbdbdbf4f285f424f1c66267ae8e2aa4
 SHA512 (LiteRT-2.3.2.tar.gz) = 8ee04eda60a3d195d099fef5e98ad543a3835fa581b96a3aa69958f9a26a4e3203f57b3d530672e5d0de5d16a63751690021642b494a087780e67815a1f816a8
 Size (LiteRT-2.3.2.tar.gz) = 196987367 bytes
+SHA1 (patch-tflite_arithmetic) = e6b1135cbc567eb314f221898d1def977aed9d12
+SHA1 (patch-tflite_svdf) = d8e96d138146e7b1f4dbca00ba6d91c1229d0951
