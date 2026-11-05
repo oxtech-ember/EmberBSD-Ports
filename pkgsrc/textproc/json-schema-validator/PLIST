@@ -2,7 +2,9 @@
 include/nlohmann/json-schema.hpp
 lib/cmake/nlohmann_json_schema_validator/nlohmann_json_schema_validatorConfig.cmake
 lib/cmake/nlohmann_json_schema_validator/nlohmann_json_schema_validatorConfigVersion.cmake
-lib/cmake/nlohmann_json_schema_validator/nlohmann_json_schema_validatorTargets-noconfig.cmake
+lib/cmake/nlohmann_json_schema_validator/nlohmann_json_schema_validatorTargets-release.cmake
 lib/cmake/nlohmann_json_schema_validator/nlohmann_json_schema_validatorTargets.cmake
-lib/libnlohmann_json_schema_validator.a
+lib/libnlohmann_json_schema_validator.so
+lib/libnlohmann_json_schema_validator.so.2
+lib/libnlohmann_json_schema_validator.so.2.4.1
 share/licenses/json-schema-validator/LICENSE
