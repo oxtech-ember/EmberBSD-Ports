@@ -1059,7 +1059,7 @@
       "root": ""
     },
     {
-      "path": "litert-remove-obsolete-op-shim.patch",
+      "path": "litert-common-op-shim.patch",
       "strip": 1,
       "root": ""
     },

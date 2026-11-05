@@ -1,0 +1,1572 @@
+$NetBSD$
+
+# EmberBSD contributors (AI-assisted): restore TensorFlow Lite op shim from
+
+# TensorFlow 9edd58f895c58c3db484a9e39ab2e953baca4bca (Apache-2.0).
+
+# Use shared OpenXLA TSL directly; preserve the public tensorflow::tstring alias.
+
+--- /dev/null
++++ tflite/kernels/shim/op_kernel.h
+@@ -0,0 +1,279 @@
++/* Copyright 2021 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++#ifndef TENSORFLOW_LITE_KERNELS_SHIM_OP_KERNEL_H_
++#define TENSORFLOW_LITE_KERNELS_SHIM_OP_KERNEL_H_
++
++// This file defines a shim layer on top of TF and TFLite custom op APIs.
++// The goal is for a custom op to be written once and used for both runtimes
++//
++// It consists of two pieces:
++//   * A set of *context* interfaces:
++//     ** InvokeContext, InitContext, ShapeInferenceContext
++//     These are passed on to the custom op implementation to read/write
++//     tensors, etc.
++//
++//   * An OpKernelShim interface:
++//     This is what a custom op needs to implement. By using that interface the
++//     custom op can then be easily converted to both a TF op kernel and a
++//     TFLite op kernel.
++
++#include <cstdint>
++#include <memory>
++#include <string>
++#include <variant>
++
++#include "absl/status/status.h"
++#include "absl/status/statusor.h"
++#include "absl/strings/str_cat.h"
++#include "absl/strings/string_view.h"
++#include "absl/types/variant.h"
++#include "tensorflow/lite/kernels/shim/shape.h"
++#include "tensorflow/lite/kernels/shim/status_macros.h"
++#include "tensorflow/lite/kernels/shim/tensor_view.h"
++
++namespace tflite {
++namespace shim {
++
++// List of the TF custom op APIs this shim library is abstracting away.
++//
++// This enum is used as the template parameter in various places in
++// order to pick the correct set of types (eg. TfInvokeContext vs.
++// TfLiteInvokeContext) in the op implementation.
++enum class Runtime { kTf, kTfLite };
++
++// TensorView or error
++using TensorViewOr = absl::StatusOr<std::unique_ptr<TensorView>>;
++using ConstTensorViewOr = absl::StatusOr<std::unique_ptr<const TensorView>>;
++
++// Below are the interfaces for various "Context" objects to abstract away the
++// TF and TFLite differences.
++//
++// The interfaces are static and use the CRTP pattern instead of virtual
++// methods.
++
++// The attribute dictionary passed to the op
++using AttrValue = std::variant<bool, int64_t, float, absl::string_view>;
++
++// The interface for available methods during an op kernel initialization
++template <typename SubType>
++class InitContext {
++ public:
++  // Read the given attribute and populate the given value.
++  template <typename AttrType>
++  absl::Status GetAttr(const std::string& attr_name, AttrType* value) const;
++
++ protected:
++  // Read a given attribute or return error
++  absl::StatusOr<AttrValue> GetAttr(const std::string& attr_name) const {
++    return static_cast<const SubType&>(*this).GetAttr(attr_name);
++  }
++};
++
++// The interface for available methods during an op kernel invocation
++template <typename SubType>
++class InvokeContext {
++ public:
++  // Read an input tensor
++  ConstTensorViewOr GetInput(const int idx) const {
++    return static_cast<const SubType&>(*this).GetInput(idx);
++  }
++  // Get a mutable output tensor
++  TensorViewOr GetOutput(const int idx, const Shape& shape) const {
++    return static_cast<const SubType&>(*this).GetOutput(idx, shape);
++  }
++  // Number of input tensors
++  int NumInputs() const {
++    return static_cast<const SubType&>(*this).NumInputs();
++  }
++  // Number of output tensors
++  int NumOutputs() const {
++    return static_cast<const SubType&>(*this).NumOutputs();
++  }
++};
++
++// The interface for available methods during shape inference
++template <typename SubType>
++class ShapeInferenceContext {
++ public:
++  // Read an input tensor shape
++  ShapeOr GetInputShape(const int idx) const {
++    return static_cast<const SubType&>(*this).GetInputShape(idx);
++  }
++  // Set an output tensor shape
++  absl::Status SetOutputShape(const int idx, const Shape& shape) {
++    return static_cast<SubType&>(*this).SetOutputShape(idx, shape);
++  }
++  // Read an input tensor during shape inference
++  ConstTensorViewOr GetInputTensor(const int idx) const {
++    return static_cast<const SubType&>(*this).GetInputTensor(idx);
++  }
++  // Number of input tensors
++  int NumInputs() const {
++    return static_cast<const SubType&>(*this).NumInputs();
++  }
++  // Number of output tensors
++  int NumOutputs() const {
++    return static_cast<const SubType&>(*this).NumOutputs();
++  }
++  // Read the given attribute and populate the given value.
++  template <typename AttrType>
++  absl::Status GetAttr(const std::string& attr_name, AttrType* value) const;
++
++ protected:
++  // Read a given attribute or return error
++  absl::StatusOr<AttrValue> GetAttr(const std::string& attr_name) const {
++    return static_cast<const SubType&>(*this).GetAttr(attr_name);
++  }
++};
++
++// Maps the Runtime to the correct context types.
++// eg. ContextTypeForRuntime<Runtime::Tf>  -->
++//       { TfInitContext, TfInvokeContext, TfShapreInferenceContext }
++template <Runtime Rt>
++struct ContextTypeForRuntime {
++  // * Init
++  // * Invoke
++  // * ShapeInference
++};
++
++// A Tensorflow operation interface which is then adapted to both TF and TFLite
++// runtimes.
++//
++// Example usage:
++//
++//   template<Runtime R>
++//   class MyOp : public OpKernelShim<MyOp, R> {
++//
++//     // Attributes declaration
++//     // (syntax: https://www.tensorflow.org/guide/create_op)
++//     static std::vector<std::string> Attrs();
++//
++//     // Input tensors declaration
++//     // (syntax: https://www.tensorflow.org/guide/create_op)
++//     static std::vector<std::string> Inputs();
++//
++//     // Output tensors declaration
++//     // (syntax: https://www.tensorflow.org/guide/create_op)
++//     static std::vector<std::string> Outputs();
++//
++//     // Initializes the op
++//     absl::Status Init(InitContext* ctx);
++//
++//     // Runs the operation
++//     absl::Status Invoke(InvokeContext* ctx);
++//
++//     // Shape inference
++//     static absl::Status ShapeInference(ShapeInferenceContext* ctx);
++//
++//   };
++//
++// WARNING: Experimental interface, subject to change
++template <template <Runtime, typename...> typename SubType, Runtime Rt,
++          typename... Ts>
++class OpKernelShim {
++ public:
++  // Some typedefs for convenience
++  using Shape = ::tflite::shim::Shape;
++  using InitContext =
++      ::tflite::shim::InitContext<typename ContextTypeForRuntime<Rt>::Init>;
++  using InvokeContext =
++      ::tflite::shim::InvokeContext<typename ContextTypeForRuntime<Rt>::Invoke>;
++  using ShapeInferenceContext = ::tflite::shim::ShapeInferenceContext<
++      typename ContextTypeForRuntime<Rt>::ShapeInference>;
++
++  // Needed because the pointer to this class is stored
++  virtual ~OpKernelShim() = default;
++
++  // If the operation has any attributes they are passed here.
++  absl::Status Init(InitContext* ctx) {
++    return static_cast<SubType<Rt, Ts...>&>(*this).Init(ctx);
++  }
++
++  // The actual computations of the operation
++  absl::Status Invoke(InvokeContext* ctx) {
++    return static_cast<SubType<Rt, Ts...>&>(*this).Invoke(ctx);
++  }
++
++  // Shape inference
++  static absl::Status ShapeInference(ShapeInferenceContext* ctx) {
++    return SubType<Rt, Ts...>::ShapeInference(ctx);
++  }
++
++ protected:
++  OpKernelShim() = default;
++
++  // Convience method for filling a single dimension output tensor.
++  template <typename BufferType, typename DType>
++  absl::Status FillOutputTensor(const std::vector<BufferType>& buffer,
++                                int index, InvokeContext* context) const;
++};
++
++/////////////////////// Implementations
++
++namespace internal {
++// Extract the given AttrType from the AttrValue variant or returns error.
++template <typename AttrType>
++absl::Status GetAttr(const std::string& attr_name,
++                     const absl::StatusOr<AttrValue> attr_value_or,
++                     AttrType* value) {
++  if (!attr_value_or.ok()) return attr_value_or.status();
++  const AttrValue& attr_value = attr_value_or.value();
++  if (!std::holds_alternative<AttrType>(attr_value)) {
++    return absl::InternalError(
++        absl::StrCat("The attribute type does not match the provided "
++                     "type: attr_name: ",
++                     attr_name));
++  }
++  *value = std::get<AttrType>(attr_value);
++  return absl::OkStatus();
++}
++}  // namespace internal
++
++template <typename SubType>
++template <typename AttrType>
++absl::Status InitContext<SubType>::GetAttr(const std::string& attr_name,
++                                           AttrType* value) const {
++  const auto attr_value_or = GetAttr(attr_name);
++  return internal::GetAttr<AttrType>(attr_name, attr_value_or, value);
++}
++
++template <typename SubType>
++template <typename AttrType>
++absl::Status ShapeInferenceContext<SubType>::GetAttr(
++    const std::string& attr_name, AttrType* value) const {
++  const auto attr_value_or = GetAttr(attr_name);
++  return internal::GetAttr<AttrType>(attr_name, attr_value_or, value);
++}
++
++template <template <Runtime, typename...> typename SubType, Runtime Rt,
++          typename... Ts>
++template <typename BufferType, typename DType>
++absl::Status OpKernelShim<SubType, Rt, Ts...>::FillOutputTensor(
++    const std::vector<BufferType>& buffer, const int index,
++    tflite::shim::InvokeContext<typename ContextTypeForRuntime<Rt>::Invoke>*
++        context) const {
++  SH_ASSIGN_OR_RETURN(
++      const auto tensorview,
++      context->GetOutput(
++          index, tflite::shim::Shape({static_cast<int>(buffer.size())})));
++  auto data = tensorview->template As<DType, 1>();
++  for (int i = 0; i < buffer.size(); ++i) data(i) = buffer.at(i);
++  return absl::OkStatus();
++}
++
++}  // namespace shim
++}  // namespace tflite
++
++#endif  // TENSORFLOW_LITE_KERNELS_SHIM_OP_KERNEL_H_
+--- /dev/null
++++ tflite/kernels/shim/shape.h
+@@ -0,0 +1,96 @@
++/* Copyright 2021 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++#ifndef TENSORFLOW_LITE_KERNELS_SHIM_SHAPE_H_
++#define TENSORFLOW_LITE_KERNELS_SHIM_SHAPE_H_
++
++#include <initializer_list>
++#include <string>
++#include <vector>
++
++#include "absl/status/statusor.h"
++#include "absl/types/span.h"
++
++namespace tflite {
++namespace shim {
++
++// Shape of a tensor. When unset it means the rank is unknown. Individual dims
++// can also be unknown.
++class Shape {
++ public:
++  using ValueType = std::vector<int>;
++
++  Shape() = default;
++  Shape(const Shape& o) = default;
++  Shape(Shape&& o) = default;
++  Shape& operator=(const Shape& o) = default;
++  Shape& operator=(Shape&& o) = default;
++
++  // Ctors
++  Shape(const std::initializer_list<int>& o) : value_(o), has_value_(true) {}
++  template <typename... Args>
++  explicit Shape(Args&&... args)  // forward ctor args to that of std::vector
++      : value_(std::forward<Args>(args)...), has_value_(true) {}
++  explicit Shape(const absl::Span<int> value)
++      : value_(value.data(), value.data() + value.size()), has_value_(true) {}
++
++  // Accessors
++  inline bool has_value() const { return has_value_; }
++  inline ValueType& value() { return value_; }
++  inline const ValueType& value() const { return value_; }
++  ValueType* operator->() { return &value_; }
++  const ValueType* operator->() const { return &value_; }
++  ValueType& operator*() { return value_; }
++  const ValueType& operator*() const { return value_; }
++  // Get the specified dimension if known
++  int Dim(const int idx) const;
++
++  // Returns the rank of the shape
++  int Rank() const { return has_value_ ? value_.size() : kUnknownRank; }
++
++  // Whether all the dimensions of the shape are known
++  bool FullyDefined() const;
++
++  // Pretty printer
++  std::string ToString() const;
++
++  // Adds two dimension taking into account unknown dims.
++  static int AddDims(const int dim1, const int dim2);
++
++  // Comparison
++
++  // Strict equality of the shapes. Unknown dims or rank on one side will
++  // result in false
++  bool operator==(const Shape& rhs) const;
++  bool operator!=(const Shape& rhs) const;
++
++  // Compatibility of the shapes. If there are two known and incompatible
++  // dimensions it returns false
++  bool Compatible(const Shape& rhs) const;
++
++  // The value for unknown dimensions and rank. There are static_asserts to
++  // ensure this matches the one defined in ::tensorflow namespace
++  static constexpr int kUnknownDim = -1;
++  static constexpr int kUnknownRank = -1;
++
++ private:
++  ValueType value_;
++  bool has_value_ = false;
++};
++using ShapeOr = absl::StatusOr<Shape>;
++
++}  // namespace shim
++}  // namespace tflite
++
++#endif  // TENSORFLOW_LITE_KERNELS_SHIM_SHAPE_H_
+--- /dev/null
++++ tflite/kernels/shim/shape.cc
+@@ -0,0 +1,84 @@
++/* Copyright 2021 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++#include "tensorflow/lite/kernels/shim/shape.h"
++
++#include <string>
++
++namespace tflite {
++namespace shim {
++
++bool Shape::operator==(const Shape& rhs) const {
++  if (!has_value() || !rhs.has_value()) return false;
++  if (value_.size() != rhs.value_.size()) return false;
++  for (int i = 0; i < value_.size(); ++i)
++    if (value_[i] != rhs.value_[i] || value_[i] == kUnknownDim ||
++        rhs.value_[i] == kUnknownDim)
++      return false;
++  return true;
++}
++
++bool Shape::operator!=(const Shape& rhs) const { return !(*this == rhs); }
++
++bool Shape::Compatible(const Shape& rhs) const {
++  if (!has_value() || !rhs.has_value()) return true;
++  if (value_.size() != rhs.value_.size()) return false;
++  for (int i = 0; i < value_.size(); ++i) {
++    const auto lhs_i = value_[i];
++    const auto rhs_i = rhs.value_[i];
++    if (lhs_i != rhs_i && lhs_i != kUnknownDim && rhs_i != kUnknownDim)
++      return false;
++  }
++  return true;
++}
++
++std::string Shape::ToString() const {
++  std::string ret;
++  if (has_value()) {
++    ret += "[";
++    if (!value_.empty()) ret += " ";
++    for (const auto dim : value_) {
++      if (dim != kUnknownDim) {
++        ret += std::to_string(dim);
++      } else {
++        ret += "?";
++      }
++      ret += " ";
++    }
++    ret += "]";
++  } else {
++    ret += "?";
++  }
++  return ret;
++}
++
++bool Shape::FullyDefined() const {
++  if (!has_value_) return false;
++  for (const auto dim : value_)
++    if (dim == kUnknownDim) return false;
++  return true;
++}
++
++int Shape::AddDims(const int dim1, const int dim2) {
++  if (dim1 == kUnknownDim || dim2 == kUnknownDim) return kUnknownDim;
++  return dim1 + dim2;
++}
++
++int Shape::Dim(const int idx) const {
++  if (has_value_) return value_[idx];
++  return kUnknownDim;
++}
++
++}  // namespace shim
++}  // namespace tflite
+--- /dev/null
++++ tflite/kernels/shim/status_macros.h
+@@ -0,0 +1,73 @@
++/* Copyright 2021 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++#ifndef TENSORFLOW_LITE_KERNELS_SHIM_STATUS_MACROS_H_
++#define TENSORFLOW_LITE_KERNELS_SHIM_STATUS_MACROS_H_
++
++#include "absl/status/status.h"
++#include "absl/strings/str_cat.h"
++
++// A few macros to help with propagating status.
++// They are mainly adapted from the ones in  tensorflow/core/platform/errors.h
++// and tensorflow/core/platform/statusor.h but these files come with many
++// transitive deps which can be too much for TFLite use cases. If these type of
++// macros end up in `absl` we can replace them with those.
++
++// The macros are prefixed with SH_ to avoid name collision.
++
++namespace tflite {
++namespace shim {
++template <typename... Args>
++void AppendToMessage(::absl::Status* status, Args... args) {
++  *status = ::absl::Status(status->code(),
++                           ::absl::StrCat(status->message(), "\n\t", args...));
++}
++}  // namespace shim
++}  // namespace tflite
++
++// Propagates error up the stack and appends to the error message.
++#define SH_RETURN_WITH_CONTEXT_IF_ERROR(expr, ...)            \
++  do {                                                        \
++    ::absl::Status _status = (expr);                          \
++    if (!_status.ok()) {                                      \
++      ::tflite::shim::AppendToMessage(&_status, __VA_ARGS__); \
++      return _status;                                         \
++    }                                                         \
++  } while (0)
++
++// Propages the error up the stack.
++// This can't be merged with the SH_RETURN_WITH_CONTEXT_IF_ERROR unless some
++// overly clever/unreadable macro magic is used.
++#define SH_RETURN_IF_ERROR(...)             \
++  do {                                      \
++    ::absl::Status _status = (__VA_ARGS__); \
++    if (!_status.ok()) return _status;      \
++  } while (0)
++
++// Internal helper for concatenating macro values.
++#define SH_STATUS_MACROS_CONCAT_NAME_INNER(x, y) x##y
++#define SH_STATUS_MACROS_CONCAT_NAME(x, y) \
++  SH_STATUS_MACROS_CONCAT_NAME_INNER(x, y)
++
++// Assigns an expression to lhs or propagates the error up.
++#define SH_ASSIGN_OR_RETURN(lhs, rexpr) \
++  SH_ASSIGN_OR_RETURN_IMPL(             \
++      SH_STATUS_MACROS_CONCAT_NAME(statusor, __COUNTER__), lhs, rexpr)
++
++#define SH_ASSIGN_OR_RETURN_IMPL(statusor, lhs, rexpr) \
++  auto statusor = (rexpr);                             \
++  if (!statusor.ok()) return statusor.status();        \
++  lhs = std::move(statusor.value())
++
++#endif  // TENSORFLOW_LITE_KERNELS_SHIM_STATUS_MACROS_H_
+--- /dev/null
++++ tflite/kernels/shim/tensor_view.h
+@@ -0,0 +1,262 @@
++/* Copyright 2021 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++#ifndef TENSORFLOW_LITE_KERNELS_SHIM_TENSOR_VIEW_H_
++#define TENSORFLOW_LITE_KERNELS_SHIM_TENSOR_VIEW_H_
++
++#include <variant>
++
++#include "absl/status/statusor.h"
++#include "absl/strings/string_view.h"
++#include "absl/types/span.h"
++// EmberBSD: use the shared TSL implementation directly.  TensorFlow Text's
++// public shim API still spells this same type tensorflow::tstring.
++#include "tsl/platform/logging.h"
++#include "tsl/platform/tstring.h"
++
++namespace tensorflow {
++using tstring = ::tsl::tstring;
++}  // namespace tensorflow
++
++namespace tflite {
++namespace shim {
++
++// A type deduction template which is specialized for TF and TFLite.
++// That is it maps
++//   ::tensorflow::Tensor -> tflite::shim::TfTensorView
++//   ::TfLiteTensor -> tflite::shim::TfLiteTensorView
++template <typename W>
++struct TensorViewSubType {};
++
++// Common denominator for ::tflite::TfLiteTensor and ::tensorflow::Tensor.
++// It is a "view" over the underlying tensor without taking ownership.
++// Objects of this class can also mutate the underlying tensor depending on
++// whether the underlying tensor is "const" qualified or not.
++//
++// Movable and copyable.
++// It can be instantiated with the New() factory function. eg.
++//   TfTensorView t           = TensorView::New(&tf_tensor);
++//   const TfTensorView t     = TensorView::New(&const_tf_tensor);
++//   TfLiteTensorView t       = TensorView::New(&tflite_tensor);
++//   const TfLiteTensorView t = TensorView::New(&const_tflite_tensor);
++class TensorView {
++ protected:
++  // Union over all data types
++  using DataVariantType =
++      std::variant<absl::Span<bool>, absl::Span<int8_t>, absl::Span<uint8_t>,
++                   absl::Span<int16_t>, absl::Span<uint16_t>,
++                   absl::Span<int32_t>, absl::Span<uint32_t>,
++                   absl::Span<int64_t>, absl::Span<uint64_t>, absl::Span<float>,
++                   absl::Span<double>, absl::Span<::tensorflow::tstring>>;
++
++  // An interface while provides convenient row-major indexing over the
++  // underlying tensor.
++  // Example usage:
++  //
++  //   // A scalar view
++  //   const TensorView t_float
++  //   float val = t_float.AsScalar<float>();
++  //
++  //   // A vector view
++  //   const TensorView t_int;
++  //   auto t_int_vec = t_int.As<int32_t, /*RANK=*/ 1>();
++  //   int sum = t_int_vec(0) + t_int_vec(1);
++  //
++  //   // A matrix view
++  //   TensorView t_str;
++  //   auto t_str_mat = t_str.As<tensorflow::tstring, /*RANK=*/ 2>();
++  //   t_str_mat(0, 0) = "abc";
++  //   t_str_mat(2, 3) = "def";
++  template <typename DType, int RANK>
++  class Tensor {
++   public:
++    explicit Tensor(TensorView *t)
++        : data_(t->Data<DType>()), shape_(t->Shape()) {
++      DCHECK_EQ(RANK, shape_.size());
++      ComputeRowSizes();
++    }
++
++    explicit Tensor(const TensorView *t)
++        : data_(t->Data<DType>()), shape_(t->Shape()) {
++      DCHECK_EQ(RANK, shape_.size());
++      ComputeRowSizes();
++    }
++
++    // indexing operator
++    template <typename... IndexTypes>
++    inline DType &operator()(IndexTypes... indices) {
++      const auto idx = RowMajorIndex(std::array<int, RANK>{{indices...}});
++      return data_[idx];
++    }
++
++    // const indexing operator
++    template <typename... IndexTypes>
++    inline const DType &operator()(IndexTypes... indices) const {
++      const auto idx = RowMajorIndex(std::array<int, RANK>{{indices...}});
++      return data_.at(idx);
++    }
++
++    // Pointer accessor
++    typename absl::Span<DType>::pointer Ptr() { return data_.data(); }
++    constexpr typename absl::Span<DType>::const_pointer Ptr() const {
++      return data_.data();
++    }
++
++    // Size of the given dimension
++    inline int Dim(int dim_i) const {
++      DCHECK(RANK > 0 && dim_i < RANK) << "dim: " << dim_i << " rank:" << RANK;
++      // Handle negative indices
++      if (dim_i < 0) dim_i = ((dim_i % RANK) + RANK) % RANK;
++      return shape_[dim_i];
++    }
++
++    // The tensor's rank: number of dimensions
++    /*[[nodiscard]]*/ constexpr std::size_t Rank() const { return RANK; }
++
++   private:
++    // Computes the row-major index
++    inline std::size_t RowMajorIndex(
++        const std::array<int, RANK> &indices) const {
++      std::size_t ret = 0;
++      for (int i = 0; i < RANK; ++i) ret += indices[i] * row_sizes_[i];
++      return ret;
++    }
++
++    // Pre computes row sizes to convert multi dim indices into a row major
++    // index
++    void ComputeRowSizes() {
++      // Precompute row sizes for row major index computation
++      if (RANK > 0) {
++        row_sizes_[RANK - 1] = 1;
++        for (int i = RANK - 2; i >= 0; --i) {
++          row_sizes_[i] = row_sizes_[i + 1] * shape_[i + 1];
++        }
++      }
++    }
++
++    absl::Span<DType> data_;
++    const absl::Span<int> shape_;
++    std::size_t row_sizes_[RANK]{};
++  };
++
++ public:
++  // Factory which gets specialized for different wrapped tensor types.
++  template <typename W>
++  static absl::StatusOr<typename TensorViewSubType<W>::Type> New(
++      W *wrapped_tensor);
++
++ protected:
++  // Move constructor
++  TensorView(TensorView &&o) = default;
++  // Copy constructor
++  TensorView(const TensorView &o) = default;
++  // Move assignment operator
++  TensorView &operator=(TensorView &&o) = default;
++  // Copy assignment operator
++  TensorView &operator=(const TensorView &) = default;
++
++ public:
++  // Dtor
++  virtual ~TensorView() = default;
++
++  // Accessors
++
++  // Shape
++  absl::Span<int> Shape() { return shape_; }
++  /*[[nodiscard]]*/ const absl::Span<int> Shape() const { return shape_; }
++
++  // Data
++  template <typename DType>
++  absl::Span<DType> &Data() {
++    return std::get<absl::Span<DType>>(data_);
++  }
++  template <typename DType>
++  constexpr absl::Span<DType> Data() const {
++    return std::get<absl::Span<DType>>(data_);
++  }
++
++  // Reads the tensor given the dtype and its rank and provides an indexing
++  // operator.
++  template <typename DType, int RANK>
++  Tensor<DType, RANK> As() {
++    return Tensor<DType, RANK>(this);
++  }
++
++  // Const version of As()
++  template <typename DType, int RANK>
++  const Tensor<DType, RANK> As() const {
++    return Tensor<DType, RANK>(this);
++  }
++
++  // Read the given tensor as a scalar or return error if it isn't
++  template <typename DType>
++  DType &AsScalar();
++
++  template <typename DType>
++  const DType &AsScalar() const;
++
++ protected:
++  // Templated constructor. Since it's not possible to specify the template
++  // argument directly we place a dummy argument of that type so compiler
++  // can deduce the right template parameter
++  template <typename DType>
++  TensorView(const absl::Span<int> shape, void *data,
++             const std::size_t data_size, const DType &)
++      : shape_(shape),
++        data_(absl::Span<DType>(reinterpret_cast<DType *>(data),
++                                data_size / sizeof(DType))) {}
++
++  // Return the total number of elements given the shape.
++  static constexpr std::size_t NumElements(const absl::Span<int> shape) {
++    std::size_t ret = 1;
++    for (const auto dim : shape) ret *= dim;
++    return ret;
++  }
++
++  // Tensor shape
++  // Note: using int rather than size_t to avoid conversion to from TfLite shape
++  absl::Span<int> shape_;
++  // Tensor data
++  DataVariantType data_;
++};
++
++// Add or remove const qualifier to O based on whether it is in I.
++// For example
++//   MatchConstNess<const TfLiteTensor, TensorView>::Type == const TensorView
++//   MatchConstNess<TfLiteTensor, TensorView>::Type == TensorView
++//   MatchConstNess<TfLiteTensor, const TensorView>::Type == TensorView
++template <typename I, typename O>
++struct MatchConstNess {
++  using Type = std::conditional_t<std::is_const<I>::value, std::add_const_t<O>,
++                                  std::remove_const_t<O>>;
++};
++
++///////////////////////////// Implementation
++
++template <typename DType>
++DType &TensorView::AsScalar() {
++  DCHECK_EQ(shape_.size(), 0) << "Tensor is not a scalar";
++  return Data<DType>()[0];
++}
++
++template <typename DType>
++const DType &TensorView::AsScalar() const {
++  DCHECK_EQ(shape_.size(), 0) << "Tensor is not a scalar";
++  return Data<DType>().at(0);
++}
++
++}  // namespace shim
++}  // namespace tflite
++
++#endif  // TENSORFLOW_LITE_KERNELS_SHIM_TENSOR_VIEW_H_
+--- /dev/null
++++ tflite/kernels/shim/tflite_op_shim.h
+@@ -0,0 +1,225 @@
++/* Copyright 2021 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++#ifndef TENSORFLOW_LITE_KERNELS_SHIM_TFLITE_OP_SHIM_H_
++#define TENSORFLOW_LITE_KERNELS_SHIM_TFLITE_OP_SHIM_H_
++
++#include <memory>
++#include <string>
++
++#include "absl/status/status.h"
++#include "absl/strings/str_cat.h"
++#include "absl/strings/str_join.h"
++#include "flatbuffers/flexbuffers.h"  // from @flatbuffers
++#include "tensorflow/lite/core/c/common.h"
++#include "tensorflow/lite/kernels/kernel_util.h"
++#include "tensorflow/lite/kernels/shim/op_kernel.h"
++#include "tensorflow/lite/kernels/shim/shape.h"
++#include "tensorflow/lite/kernels/shim/tensor_view.h"
++#include "tensorflow/lite/kernels/shim/tflite_tensor_view.h"
++#include "tensorflow/lite/mutable_op_resolver.h"
++
++// This file contains the TFLite adapter. That is, it takes a `OpKernelShim`
++// class and provides a TFLite kernel out of it.
++
++namespace tflite {
++namespace shim {
++
++// TfLite implementation of the methods during an op kernel initialization
++class TfLiteInitContext : public InitContext<TfLiteInitContext> {
++ public:
++  TfLiteInitContext(const TfLiteContext* context,
++                    const flexbuffers::Map* attr_map);
++  // Read a given attribute
++  absl::StatusOr<AttrValue> GetAttr(const std::string& attr_name) const;
++
++ private:
++  const flexbuffers::Map* attr_map_;
++};
++
++// TfLite implementation of the methods during an op kernel invocation
++class TfLiteInvokeContext : public InvokeContext<TfLiteInvokeContext> {
++ public:
++  TfLiteInvokeContext(TfLiteContext* context_, TfLiteNode* node_);
++  // Read an input tensor
++  ConstTensorViewOr GetInput(const int idx) const;
++  // Get a mutable output tensor. For output string tensors, this should only
++  // be called once.
++  TensorViewOr GetOutput(const int idx, const Shape& shape) const;
++  // Number of input tensors
++  int NumInputs() const;
++  // Number of output tensors
++  int NumOutputs() const;
++
++ private:
++  absl::Status AssertShapesEqual(const TfLiteIntArray* dims,
++                                 const Shape& output_shape) const;
++
++  std::string ShapeMismatchErrorMsg(const TfLiteIntArray* actual_shape,
++                                    const Shape& expected_shape) const;
++
++  TfLiteContext* context_;
++  TfLiteNode* node_;
++};
++
++// TfLite implementation of the methods during shape inference
++class TfLiteShapeInferenceContext
++    : public ShapeInferenceContext<TfLiteShapeInferenceContext> {
++ public:
++  TfLiteShapeInferenceContext(TfLiteContext* context, TfLiteNode* node,
++                              const flexbuffers::Map* attr_map,
++                              std::vector<Shape>* inferred_shapes);
++  // Read an input tensor shape
++  ShapeOr GetInputShape(const int idx) const;
++  // Set an output tensor shape
++  absl::Status SetOutputShape(const int idx, const Shape& shape);
++  // Read an input tensor during shape inference
++  ConstTensorViewOr GetInputTensor(const int idx) const;
++  // Read a given attribute
++  absl::StatusOr<AttrValue> GetAttr(const std::string& attr_name) const;
++  // Number of input tensors
++  int NumInputs() const;
++  // Number of output tensors
++  int NumOutputs() const;
++
++ private:
++  TfLiteContext* context_;
++  TfLiteNode* node_;
++  const flexbuffers::Map* attr_map_;
++  std::vector<Shape>* inferred_shapes_;
++};
++
++// Convert the absl::Status to a TfLiteStatus and report the error message.
++TfLiteStatus StatusToTfLiteStatus(TfLiteContext* context,
++                                  const absl::Status& status);
++
++// Converts a vector of dims into an int array for TFLite use.
++TfLiteIntArray* ShapeToTfLiteShape(const std::vector<int>& shape);
++
++// Converts an int array representing shape in TFLite to Shape.
++Shape TfLiteShapeToShape(const TfLiteIntArray* tflite_shape);
++
++// An op kernel base class which is an adapter between an Op implementation
++// (OpKernelShim subclass) and TFLite runtime
++template <template <Runtime, typename...> typename Impl, typename... Ts>
++class TfLiteOpKernel {
++ public:
++  using ImplType = Impl<Runtime::kTfLite, Ts...>;
++
++  // Builds a TfLiteRegistration object to register this with the TfLite runtime
++  static TfLiteRegistration* GetTfLiteRegistration() {
++    static TfLiteRegistration r =
++        TfLiteRegistration{Init, Free, Prepare, Invoke};
++    return &r;
++  }
++
++  // Adds this op kernel to the passed in op resolver
++  static void Add(MutableOpResolver* resolver) {
++    resolver->AddCustom(ImplType::OpName(), GetTfLiteRegistration());
++  }
++
++  // The operation name
++  static const char* OpName() { return ImplType::OpName(); }
++
++ protected:
++  // The data that is stored in node::user_data.
++  struct UserData {
++    UserData(const char* buffer, size_t length) {
++      impl = new ImplType;
++      attr_map = new flexbuffers::Map(
++          flexbuffers::GetRoot(reinterpret_cast<const uint8_t*>(buffer), length)
++              .AsMap());
++    }
++
++    // An instance of OpKernelShim<TF or TFLite>.
++    // This is so that the Invoke(), Prepare(), etc. can call Invoke(),
++    // ShapeInference(), ... on the kernel defined using this library.
++    ImplType* impl = nullptr;
++    // Attribute map for the op kernel.
++    // The map needs to be accessible because the library provides
++    // GetAttr() during ShapeInference() which is called during Prepare(). So
++    // this needs to be accessible at that point.
++    const flexbuffers::Map* attr_map = nullptr;
++
++    ~UserData() {
++      delete impl;
++      delete attr_map;
++    }
++  };
++
++  static void* Init(TfLiteContext* context, const char* buffer, size_t length) {
++    auto* user_data = new UserData(buffer, length);
++    TfLiteInitContext ctx(context, user_data->attr_map);
++    auto status = user_data->impl->Init(&ctx);
++    StatusToTfLiteStatus(context, status);
++    return user_data;
++  }
++
++  static void Free(TfLiteContext* context, void* buffer) {
++    delete static_cast<UserData*>(buffer);
++  }
++
++  // Resizes the Output Tensor to their shape. There are two cases:
++  //
++  // case 1: output shape is known after ShapeInference() was called during
++  //     Prepare()
++  //   ResizeTensor(output_of_shape_inference)
++  // case 2: output shape is not fully defined even after shape inference
++  //   SetTensorToDynamic(...)
++  static TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
++    const size_t num_outputs = ::tflite::NumOutputs(node);
++    std::vector<Shape> inferred_output_shapes(num_outputs);
++    const auto* attr_map = static_cast<UserData*>(node->user_data)->attr_map;
++    TfLiteShapeInferenceContext ctx(context, node, attr_map,
++                                    &inferred_output_shapes);
++    auto status = ImplType::ShapeInference(&ctx);
++    TF_LITE_ENSURE_STATUS(StatusToTfLiteStatus(context, status));
++    // Output shapes.
++    for (int output_idx = 0; output_idx < num_outputs; ++output_idx) {
++      TfLiteTensor* output_tensor =
++          tflite::GetOutput(context, node, output_idx);
++      TF_LITE_ENSURE(context, output_tensor != nullptr);
++      if (inferred_output_shapes[output_idx].FullyDefined()) {
++        // Case: output shape can be inferred during `Prepare`
++        TF_LITE_ENSURE_OK(context,
++                          context->ResizeTensor(
++                              context, output_tensor,
++                              ShapeToTfLiteShape(
++                                  inferred_output_shapes[output_idx].value())));
++      } else {
++        // Case: output shape is dynamic
++        tflite::SetTensorToDynamic(output_tensor);
++      }
++    }
++    return kTfLiteOk;
++  }
++
++  static TfLiteStatus Invoke(TfLiteContext* context, TfLiteNode* node) {
++    TfLiteInvokeContext ctx(context, node);
++    return StatusToTfLiteStatus(
++        context, static_cast<UserData*>(node->user_data)->impl->Invoke(&ctx));
++  }
++};
++
++template <>
++struct ContextTypeForRuntime<Runtime::kTfLite> {
++  using Init = TfLiteInitContext;
++  using Invoke = TfLiteInvokeContext;
++  using ShapeInference = TfLiteShapeInferenceContext;
++};
++
++}  // namespace shim
++}  // namespace tflite
++
++#endif  // TENSORFLOW_LITE_KERNELS_SHIM_TFLITE_OP_SHIM_H_
+--- /dev/null
++++ tflite/kernels/shim/tflite_op_shim.cc
+@@ -0,0 +1,230 @@
++/* Copyright 2021 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++#include "tensorflow/lite/kernels/shim/tflite_op_shim.h"
++
++#include <cstdint>
++#include <cstring>
++#include <memory>
++#include <string>
++#include <utility>
++#include <vector>
++
++#include "absl/log/absl_check.h"
++#include "absl/status/status.h"
++#include "absl/status/statusor.h"
++#include "absl/strings/str_cat.h"
++#include "absl/strings/string_view.h"
++#include "flatbuffers/flexbuffers.h"  // from @flatbuffers
++#include "tensorflow/lite/core/c/common.h"
++#include "tensorflow/lite/kernels/kernel_util.h"
++#include "tensorflow/lite/kernels/shim/op_kernel.h"
++#include "tensorflow/lite/kernels/shim/shape.h"
++#include "tensorflow/lite/kernels/shim/status_macros.h"
++#include "tensorflow/lite/kernels/shim/tensor_view.h"
++#include "tensorflow/lite/kernels/shim/tflite_tensor_view.h"
++#include "tensorflow/lite/string_util.h"
++
++namespace tflite {
++namespace shim {
++
++namespace internal {
++absl::StatusOr<AttrValue> GetAttr(const flexbuffers::Map* attr_map,
++                                  const std::string& attr_name) {
++  const auto value = (*attr_map)[attr_name.data()];
++  if (value.IsNull())
++    return absl::InvalidArgumentError(
++        absl::StrCat("Non-existent attribute: ", attr_name));
++  AttrValue ret;
++  switch (value.GetType()) {
++    case ::flexbuffers::FBT_BOOL: {
++      ret = value.AsBool();
++      break;
++    }
++    case ::flexbuffers::FBT_INT: {
++      ret = static_cast<int64_t>(value.AsInt64());
++      break;
++    }
++    case ::flexbuffers::FBT_FLOAT: {
++      ret = value.AsFloat();
++      break;
++    }
++    case ::flexbuffers::FBT_STRING: {
++      const auto str_val = value.AsString();
++      ret = absl::string_view(str_val.c_str(), str_val.length());
++      break;
++    }
++    default: {
++      return absl::FailedPreconditionError(
++          absl::StrCat("Unsupported type for attribute: ", attr_name,
++                       " with value: ", value.ToString()));
++    }
++  }
++  return ret;
++}
++}  // namespace internal
++
++TfLiteInitContext::TfLiteInitContext(const TfLiteContext* context,
++                                     const flexbuffers::Map* attr_map)
++    : attr_map_(attr_map) {}
++
++absl::StatusOr<AttrValue> TfLiteInitContext::GetAttr(
++    const std::string& attr_name) const {
++  return internal::GetAttr(attr_map_, attr_name);
++}
++
++TfLiteInvokeContext::TfLiteInvokeContext(TfLiteContext* context,
++                                         TfLiteNode* node)
++    : context_(context), node_(node) {}
++
++ConstTensorViewOr TfLiteInvokeContext::GetInput(const int idx) const {
++  // Scope is used to ensure tensor_view string contents are flushed
++  const auto* tflite_tensor = ::tflite::GetInput(context_, node_, idx);
++  if (tflite_tensor == nullptr)
++    return absl::InternalError(
++        absl::StrCat("input tensor is null during invocation. idx: ", idx));
++  SH_ASSIGN_OR_RETURN(const TfLiteTensorView& tensor_view,
++                      TensorView::New(tflite_tensor));
++  return std::make_unique<const TfLiteTensorView>(tensor_view);
++}
++
++TensorViewOr TfLiteInvokeContext::GetOutput(const int idx,
++                                            const Shape& output_shape) const {
++  if (!output_shape.has_value()) {
++    return absl::InvalidArgumentError(
++        absl::StrCat("output_shape value should be populated. idx: ", idx));
++  }
++  auto* tflite_tensor = ::tflite::GetOutput(context_, node_, idx);
++  if (tflite_tensor == nullptr)
++    return absl::InternalError(
++        absl::StrCat("output tensor is null during invocation. idx: ", idx));
++  if (tflite_tensor->data.raw == nullptr ||
++      tflite_tensor->allocation_type == kTfLiteDynamic) {
++    // Clear out string tensor so previous values are not copied.
++    if (tflite_tensor->type == kTfLiteString) {
++      tflite::DynamicBuffer buf;
++      buf.WriteToTensor(tflite_tensor, /*new_shape=*/nullptr);
++    }
++    std::unique_ptr<TfLiteIntArray, void (*)(TfLiteIntArray*)>
++        output_shape_array(ShapeToTfLiteShape(output_shape.value()),
++                           ::TfLiteIntArrayFree);
++    if (context_->ResizeTensor(context_, tflite_tensor,
++                               output_shape_array.release()) != kTfLiteOk) {
++      return absl::InternalError(
++          absl::StrCat("Failed to resize output tensor. idx: ", idx));
++    }
++  } else {
++    ABSL_DCHECK(TfLiteShapeToShape(tflite_tensor->dims) == output_shape);
++  }
++  SH_ASSIGN_OR_RETURN(TfLiteTensorView tensor_view,
++                      TensorView::New(tflite_tensor));
++  return std::make_unique<TfLiteTensorView>(std::move(tensor_view));
++}
++
++int TfLiteInvokeContext::NumInputs() const {
++  return ::tflite::NumInputs(node_);
++}
++
++int TfLiteInvokeContext::NumOutputs() const {
++  return ::tflite::NumOutputs(node_);
++}
++
++TfLiteShapeInferenceContext::TfLiteShapeInferenceContext(
++    TfLiteContext* context, TfLiteNode* node, const flexbuffers::Map* attr_map,
++    std::vector<Shape>* inferred_shapes)
++    : context_(context),
++      node_(node),
++      attr_map_(attr_map),
++      inferred_shapes_(inferred_shapes) {}
++
++ShapeOr TfLiteShapeInferenceContext::GetInputShape(const int idx) const {
++  auto* tflite_tensor = ::tflite::GetInput(context_, node_, idx);
++  if (tflite_tensor == nullptr)
++    return absl::InternalError(absl::StrCat(
++        "input tensor is null during shape inference. idx: ", idx));
++  return TfLiteShapeToShape(tflite_tensor->dims);
++}
++
++// A function object to set output shape information from a Shape
++// object
++absl::Status TfLiteShapeInferenceContext::SetOutputShape(const int idx,
++                                                         const Shape& shape) {
++  if (idx >= inferred_shapes_->size()) {
++    return absl::InternalError(absl::StrCat("output idx out of bounds: ", idx,
++                                            " >= ", inferred_shapes_->size()));
++  }
++  (*inferred_shapes_)[idx] = shape;
++  return absl::OkStatus();
++}
++
++// A function object to read input tensor during shape inference as a TensorView
++ConstTensorViewOr TfLiteShapeInferenceContext::GetInputTensor(
++    const int idx) const {
++  const auto* tflite_tensor = ::tflite::GetInput(context_, node_, idx);
++  if (tflite_tensor == nullptr)
++    return absl::InternalError(absl::StrCat(
++        "input tensor is null during shape inference. idx: ", idx));
++  if (::tflite::IsConstantTensor(tflite_tensor)) {
++    SH_ASSIGN_OR_RETURN(const TfLiteTensorView& tensor_view,
++                        TensorView::New(tflite_tensor));
++    return std::make_unique<const TfLiteTensorView>(tensor_view);
++  } else {
++    return absl::FailedPreconditionError(absl::StrCat(
++        "input tensor is unavailable during shape inference. idx: ", idx));
++  }
++}
++
++absl::StatusOr<AttrValue> TfLiteShapeInferenceContext::GetAttr(
++    const std::string& attr_name) const {
++  return internal::GetAttr(attr_map_, attr_name);
++}
++
++int TfLiteShapeInferenceContext::NumInputs() const {
++  return ::tflite::NumInputs(node_);
++}
++
++int TfLiteShapeInferenceContext::NumOutputs() const {
++  return ::tflite::NumOutputs(node_);
++}
++
++TfLiteStatus StatusToTfLiteStatus(TfLiteContext* context,
++                                  const absl::Status& status) {
++  if (status.ok()) return kTfLiteOk;
++  const auto error_string = std::string(status.message());
++  TF_LITE_KERNEL_LOG(context, "error: %s", error_string.c_str());
++  return kTfLiteError;
++}
++
++TfLiteIntArray* ShapeToTfLiteShape(const std::vector<int>& shape) {
++  TfLiteIntArray* tflite_shape = TfLiteIntArrayCreate(shape.size());
++  // TfLiteIntArray has a data array inside which is not a pointer so there's a
++  // need for copy
++  if (!shape.empty()) {
++    std::memcpy(tflite_shape->data, shape.data(), sizeof(int) * shape.size());
++  }
++  return tflite_shape;
++}
++
++// Converts an int array representing shape in TFLite to Shape.
++Shape TfLiteShapeToShape(const TfLiteIntArray* tflite_shape) {
++  Shape ret(tflite_shape->size);
++  std::memcpy(ret->data(), tflite_shape->data,
++              sizeof(int) * tflite_shape->size);
++  return ret;
++}
++
++}  // namespace shim
++}  // namespace tflite
++
++// Dummy comment to trigger Tricorder
+--- /dev/null
++++ tflite/kernels/shim/tflite_tensor_view.h
+@@ -0,0 +1,129 @@
++/* Copyright 2021 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++#ifndef TENSORFLOW_LITE_KERNELS_SHIM_TFLITE_TENSOR_VIEW_H_
++#define TENSORFLOW_LITE_KERNELS_SHIM_TFLITE_TENSOR_VIEW_H_
++
++#include <cstring>
++#include <memory>
++#include <vector>
++
++#include "absl/status/statusor.h"
++#include "absl/strings/string_view.h"
++#include "absl/types/span.h"
++#include "tensorflow/lite/core/c/common.h"
++#include "tensorflow/lite/kernels/shim/tensor_view.h"
++
++namespace tflite {
++namespace shim {
++
++// A view over a TFLite tensor without taking ownership. It can either be
++// mutable or immutable.
++class TfLiteTensorView : public TensorView {
++ public:
++  // Move constructor
++  TfLiteTensorView(TfLiteTensorView &&o) noexcept;
++  // Copy constructor
++  TfLiteTensorView(const TfLiteTensorView &o);
++  // Move assignment operator
++  TfLiteTensorView &operator=(TfLiteTensorView &&o) noexcept;
++  // Copy assignment operator
++  TfLiteTensorView &operator=(const TfLiteTensorView &);
++
++ protected:
++  // Templated constructor. Since it's not possible to specify the template
++  // argument directly we place a dummy argument of that type so compiler can
++  // deduce the right template parameter
++  template <typename DType>
++  TfLiteTensorView(::TfLiteTensor *wrapped_tensor, const DType &dtype)
++      : TensorView(absl::Span<int>(wrapped_tensor->dims->data,
++                                   wrapped_tensor->dims->size),
++                   wrapped_tensor->data.raw, wrapped_tensor->bytes, dtype),
++        wrapped_tensor_(wrapped_tensor),
++        const_wrapped_tensor_(wrapped_tensor) {}
++
++  // Specialization for string. (this take precedence over the above template)
++  TfLiteTensorView(::TfLiteTensor *wrapped_tensor,
++                   const ::tensorflow::tstring &dtype);
++
++  // Templated constructor for const input.
++  template <typename DType>
++  TfLiteTensorView(const ::TfLiteTensor *wrapped_tensor, const DType &dtype)
++      : TensorView(absl::Span<int>(wrapped_tensor->dims->data,
++                                   wrapped_tensor->dims->size),
++                   wrapped_tensor->data.raw, wrapped_tensor->bytes, dtype),
++        const_wrapped_tensor_(wrapped_tensor) {}
++
++  // Specialization for const string. (this take precedence over the above
++  // template)
++  TfLiteTensorView(const ::TfLiteTensor *wrapped_tensor,
++                   const ::tensorflow::tstring &dtype);
++
++  // Let the factory implementation use private constructors
++  template <typename TfLiteTensorType>
++  friend absl::StatusOr<
++      typename MatchConstNess<TfLiteTensorType, TfLiteTensorView>::Type>
++  TfLiteTensorViewTemplatizedNew(TfLiteTensorType *wrapped_tensor);
++
++  struct StringBuffer {
++    explicit StringBuffer(TfLiteTensorView *t_view);
++    ~StringBuffer();
++
++    // A vector of string as the intermediate shared buffer between
++    // TensorViews
++    std::vector<::tensorflow::tstring> buffer;
++    // The TFLite tensor to which the contents of the buffer is flushed in
++    // dtor
++    ::TfLiteTensor *wrapped_tensor = nullptr;
++  };
++
++  // Initialize the data_ field for string tensors
++  void InitForStringDType();
++
++  // The wrapped TFLiteTensor
++  ::TfLiteTensor *wrapped_tensor_ = nullptr;
++  // A const version of the wrapped TFLiteTensor used when the input is const
++  const ::TfLiteTensor *const_wrapped_tensor_ = nullptr;
++  // A temporary buffer used to expose TfLite strings tensor as Span<tstring>.
++  // This buffer will be flushed and serialized back to the underlying TfLite
++  // string tensor once all the TensorViews over that tensor are destructed.
++  std::shared_ptr<StringBuffer> str_vec_ = nullptr;
++};
++
++// Mapping of ::TfLiteTensor -> TfLiteTensorView
++template <>
++struct TensorViewSubType<::TfLiteTensor> {
++  using Type = TfLiteTensorView;
++};
++
++// Mapping of const ::TfLiteTensor -> const TfLiteTensorView
++template <>
++struct TensorViewSubType<const ::TfLiteTensor> {
++  using Type = const TfLiteTensorView;
++};
++
++// Specialization for TensorView::New()
++template <>
++absl::StatusOr<TfLiteTensorView> TensorView::New<::TfLiteTensor>(
++    ::TfLiteTensor *wrapped_tensor);
++
++// Specialization for TensorView::New()
++template <>
++absl::StatusOr<const TfLiteTensorView> TensorView::New<const ::TfLiteTensor>(
++    const ::TfLiteTensor *wrapped_tensor);
++
++}  // namespace shim
++}  // namespace tflite
++
++#endif  // TENSORFLOW_LITE_KERNELS_SHIM_TFLITE_TENSOR_VIEW_H_
+--- /dev/null
++++ tflite/kernels/shim/tflite_tensor_view.cc
+@@ -0,0 +1,159 @@
++/* Copyright 2021 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++#include "tensorflow/lite/kernels/shim/tflite_tensor_view.h"
++
++#include <utility>
++
++#include "absl/status/status.h"
++#include "absl/status/statusor.h"
++#include "absl/strings/str_cat.h"
++#include "absl/types/variant.h"
++#include "tensorflow/lite/core/c/common.h"
++#include "tensorflow/lite/kernels/shim/tensor_view.h"
++#include "tensorflow/lite/string_util.h"
++#include "tensorflow/lite/type_to_tflitetype.h"
++
++// Creates a case statement for the switch() clause given the dtype
++#define CASE_FOR_DTYPE_GIVEN_CPP_DTYPE(TFLITE_DTYPE, CPP_DTYPE) \
++  case TFLITE_DTYPE: {                                          \
++    using DType = typename CPP_DTYPE;                           \
++    return TfLiteTensorView(wrapped_tensor, DType());           \
++  }
++
++#define CASE_FOR_DTYPE(TFLITE_DTYPE) \
++  CASE_FOR_DTYPE_GIVEN_CPP_DTYPE(    \
++      TFLITE_DTYPE, ::tflite::TfLiteTypeToType<TFLITE_DTYPE>::Type)
++
++namespace tflite {
++namespace shim {
++
++TfLiteTensorView::TfLiteTensorView(::TfLiteTensor *wrapped_tensor,
++                                   const ::tensorflow::tstring &dtype)
++    : TensorView(absl::Span<int>(wrapped_tensor->dims->data,
++                                 wrapped_tensor->dims->size),
++                 nullptr, 0, dtype),
++      wrapped_tensor_(wrapped_tensor),
++      const_wrapped_tensor_(wrapped_tensor) {
++  InitForStringDType();
++}
++
++TfLiteTensorView::TfLiteTensorView(const ::TfLiteTensor *wrapped_tensor,
++                                   const ::tensorflow::tstring &dtype)
++    : TensorView(absl::Span<int>(wrapped_tensor->dims->data,
++                                 wrapped_tensor->dims->size),
++                 nullptr, 0, dtype),
++      const_wrapped_tensor_(wrapped_tensor) {
++  InitForStringDType();
++}
++
++TfLiteTensorView::TfLiteTensorView(TfLiteTensorView &&o) noexcept
++    : TensorView(std::move(o)),
++      wrapped_tensor_(o.wrapped_tensor_),
++      const_wrapped_tensor_(o.const_wrapped_tensor_),
++      str_vec_(std::move(o.str_vec_)) {
++}
++
++TfLiteTensorView::TfLiteTensorView(const TfLiteTensorView &o)
++    : TensorView(o),
++      wrapped_tensor_(o.wrapped_tensor_),
++      const_wrapped_tensor_(o.const_wrapped_tensor_),
++      str_vec_(o.str_vec_) {
++}
++
++TfLiteTensorView &TfLiteTensorView::operator=(TfLiteTensorView &&o) noexcept {
++  wrapped_tensor_ = o.wrapped_tensor_;
++  const_wrapped_tensor_ = o.const_wrapped_tensor_;
++  str_vec_ = std::move(o.str_vec_);
++  TensorView::operator=(std::move(o));
++  return *this;
++}
++
++TfLiteTensorView &TfLiteTensorView::operator=(const TfLiteTensorView &o) {
++  if (&o == this) return *this;
++  TensorView::operator=(o);
++  wrapped_tensor_ = o.wrapped_tensor_;
++  const_wrapped_tensor_ = o.const_wrapped_tensor_;
++  str_vec_ = o.str_vec_;
++  return *this;
++}
++
++void TfLiteTensorView::InitForStringDType() {
++  if (str_vec_ == nullptr) {
++    str_vec_ = std::make_shared<StringBuffer>(this);
++  }
++  data_ = absl::Span<::tensorflow::tstring>(str_vec_->buffer);
++}
++
++TfLiteTensorView::StringBuffer::StringBuffer(TfLiteTensorView *t_view)
++    : wrapped_tensor(t_view->wrapped_tensor_) {
++  buffer.resize(NumElements(t_view->shape_));
++  // Read the TfLite string into the buffer
++  const auto const_wrapped_tensor = t_view->const_wrapped_tensor_;
++  std::size_t str_count;
++  if (const_wrapped_tensor->data.raw == nullptr)
++    str_count = 0;
++  else
++    str_count = ::tflite::GetStringCount(const_wrapped_tensor);
++  for (int i = 0; i < str_count; ++i) {
++    const auto str_ref = ::tflite::GetString(const_wrapped_tensor, i);
++    buffer[i].assign_as_view(str_ref.str, str_ref.len);
++  }
++}
++
++TfLiteTensorView::StringBuffer::~StringBuffer() {
++  if (wrapped_tensor == nullptr) return;
++  tflite::DynamicBuffer buf;
++  for (const auto &s : buffer) buf.AddString(s.data(), s.length());
++  buf.WriteToTensor(wrapped_tensor, /*new_shape=*/nullptr);
++}
++
++template <typename TfLiteTensorType>
++absl::StatusOr<
++    typename MatchConstNess<TfLiteTensorType, TfLiteTensorView>::Type>
++TfLiteTensorViewTemplatizedNew(TfLiteTensorType *wrapped_tensor) {
++  switch (wrapped_tensor->type) {
++    CASE_FOR_DTYPE(kTfLiteBool);
++    CASE_FOR_DTYPE(kTfLiteUInt8);
++    CASE_FOR_DTYPE(kTfLiteUInt64);
++    CASE_FOR_DTYPE(kTfLiteInt8);
++    CASE_FOR_DTYPE(kTfLiteInt16);
++    CASE_FOR_DTYPE(kTfLiteInt32);
++    CASE_FOR_DTYPE(kTfLiteInt64);
++    CASE_FOR_DTYPE(kTfLiteFloat32);
++    CASE_FOR_DTYPE(kTfLiteFloat64);
++    // The DType for kTfLiteString is slightly different as we need to use
++    // tensorflow::tstring rather than std::string
++    CASE_FOR_DTYPE_GIVEN_CPP_DTYPE(kTfLiteString, ::tensorflow::tstring);
++    default: {
++      return absl::UnimplementedError(
++          absl::StrCat("Unsupported dtype: ", wrapped_tensor->type));
++    }
++  }
++}
++
++template <>
++absl::StatusOr<TfLiteTensorView> TensorView::New<::TfLiteTensor>(
++    ::TfLiteTensor *wrapped_tensor) {
++  return TfLiteTensorViewTemplatizedNew(wrapped_tensor);
++}
++
++template <>
++absl::StatusOr<const TfLiteTensorView> TensorView::New<const ::TfLiteTensor>(
++    const ::TfLiteTensor *wrapped_tensor) {
++  return TfLiteTensorViewTemplatizedNew(wrapped_tensor);
++}
++
++}  // namespace shim
++}  // namespace tflite

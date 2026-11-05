@@ -1,0 +1,35 @@
+# Keep the common LiteRT op shim required by TensorFlow Text.
+
+# The TSL clock is compiled once in the main runtime.
+
+--- a/third_party/litert/BUILD.gn
++++ b/third_party/litert/BUILD.gn
+@@ -1283,12 +1283,6 @@
+         "src/tflite/kernels/shim/tflite_tensor_view.cc",
+       ]
+ 
+-      if (is_win) {
+-        sources += [ "//third_party/tflite/src/third_party/xla/xla/tsl/platform/windows/env_time.cc" ]
+-      } else {
+-        sources += [ "//third_party/tflite/src/third_party/xla/xla/tsl/platform/default/env_time.cc" ]
+-      }
+-
+       deps = [
+         ":tflite_kernel_common_headers",
+         ":tflite_public_headers",
+@@ -1503,6 +1497,15 @@
+       "src/tflite/version.h",
+     ]
+ 
++    # Compile the TSL clock once for both the runtime and the op shim.
++    if (!is_fuchsia) {
++      if (is_win) {
++        sources += [ "//third_party/tflite/src/third_party/xla/xla/tsl/platform/windows/env_time.cc" ]
++      } else {
++        sources += [ "//third_party/tflite/src/third_party/xla/xla/tsl/platform/default/env_time.cc" ]
++      }
++    }
++
+     if (is_win) {
+       sources += [ "src/tflite/converter/mmap_allocation_disabled.cc" ]
+     } else {

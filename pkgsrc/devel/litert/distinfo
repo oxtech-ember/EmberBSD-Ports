@@ -6,3 +6,4 @@ Size (LiteRT-2.3.2.tar.gz) = 196987367 bytes
 SHA1 (patch-tflite_arithmetic) = e6b1135cbc567eb314f221898d1def977aed9d12
 SHA1 (patch-tflite_svdf) = d8e96d138146e7b1f4dbca00ba6d91c1229d0951
 SHA1 (patch-tflite_profiling_tsl) = fef7d0a76e52f86793b6ae620bc05747ccf710ac
+SHA1 (patch-tflite_op_shim_compat) = e8281b29dcb832db09f5df8dd930c9c0b1ef9408
