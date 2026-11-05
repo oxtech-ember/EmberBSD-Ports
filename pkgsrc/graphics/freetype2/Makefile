@@ -2,7 +2,7 @@
 
 DISTNAME=	freetype-2.15.0
 PKGNAME=	${DISTNAME:S/-/2-/}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	graphics
 MASTER_SITES=	${MASTER_SITE_SOURCEFORGE:=freetype/}
 MASTER_SITES+=	https://download.savannah.gnu.org/releases/freetype/
@@ -60,6 +60,11 @@ post-configure:
 .if ${OPSYS} == "IRIX"
 	${MKDIR} ${WRKSRC}/.libs
 .endif
+
+# Generated PostScript names for source consumers; this is not a public ABI.
+post-install:
+	${INSTALL_DATA_DIR} ${DESTDIR}${PREFIX}/share/freetype2/generated
+	${INSTALL_DATA} ${WRKSRC}/src/psnames/pstables.h ${DESTDIR}${PREFIX}/share/freetype2/generated/pstables.h
 
 USE_BUILTIN.bzip2=	no
 .include "../../archivers/bzip2/buildlink3.mk"

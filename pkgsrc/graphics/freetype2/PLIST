@@ -59,3 +59,4 @@ lib/libfreetype.la
 lib/pkgconfig/freetype2.pc
 man/man1/freetype-config.1
 share/aclocal/freetype2.m4
+share/freetype2/generated/pstables.h
