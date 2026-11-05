@@ -102,6 +102,60 @@ class IdentityTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'absolute executable'):
                     identity.identity(root, 'cat/pkg', 'git', sdk)
 
+    def test_shared_tree_snapshot_matches_independent_recipe_reads(self):
+        sdk = Path(os.environ['EMBERBSD_SDK_SOURCE'])
+        sys.path.insert(0, str(sdk / 'src'))
+        from emberbsd_sdk import inventory
+        with tempfile.TemporaryDirectory(dir=os.environ['EMBERBSD_TEST_WORK']) as temp:
+            root = Path(temp)
+            for name in ('scripts', 'pkgsrc/cat/pkg/files', 'pkgsrc/cat/empty',
+                         'pkgsrc/lang/llvm/files', 'upstream/pkgsrc', 'profiles/extra'):
+                (root / name).mkdir(parents=True)
+            shutil.copy(ROOT / 'scripts/prepare-pkgsrc.py', root / 'scripts')
+            shutil.copy(ROOT / 'pkgsrc/lang/llvm/files/sdk_source.py', root / 'pkgsrc/lang/llvm/files')
+            (root / 'pkgsrc/export.conf').write_text('recipe\tprofiles/extra\tcat/extra\n')
+            (root / 'pkgsrc/cat/pkg/Makefile').write_text('DISTNAME=pkg\n')
+            (root / 'pkgsrc/cat/empty/Makefile').write_text('DISTNAME=empty\n')
+            (root / 'pkgsrc/lang/llvm/Makefile').write_text('DISTNAME=llvm\n')
+            (root / 'profiles/extra/Makefile').write_text('DISTNAME=extra\n')
+            data = root / 'pkgsrc/cat/pkg/files/data'
+            data.write_text('untracked input\n')
+            data.chmod(0o755)
+            (root / 'pkgsrc/cat/pkg/files/link').symlink_to('data')
+            (root / 'profiles/extra/link').symlink_to('../../pkgsrc/cat/pkg/files/data')
+            sha = b'1' * 40
+            def git(argv, *, env):
+                return b'160000 ' + sha + b' 0\tupstream/pkgsrc\n' if 'ls-files' in argv else sha + b'\n'
+            def legacy_tree(source):
+                rows = inventory.snapshot_installed_tree(str(source))
+                for relative, row in rows.items():
+                    if row['kind'] == 'link':
+                        target = (source / relative).resolve(strict=True)
+                        if not target.is_relative_to(root) or not target.is_file():
+                            raise ValueError('unsupported export source link')
+                        row['target_sha256'] = inventory.sha256_file(str(target))
+                return rows
+            with patch.object(identity.subprocess, 'check_output', side_effect=git):
+                sources = [root / 'profiles/extra', root / 'pkgsrc/cat/pkg',
+                           root / 'pkgsrc/cat/empty', root / 'pkgsrc/lang/llvm']
+                expected = {str(source.relative_to(root)): legacy_tree(source) for source in sources}
+                expected['pkgsrc'] = legacy_tree(root / 'pkgsrc')
+                with patch.object(inventory, 'snapshot_installed_tree', wraps=inventory.snapshot_installed_tree) as snapshots:
+                    _, _, before, _ = identity.export_inputs(root, sys.executable, sdk)
+                self.assertEqual(before['trees'], expected)
+                self.assertCountEqual([Path(call.args[0]) for call in snapshots.call_args_list],
+                                      [root / 'pkgsrc', root / 'profiles/extra'])
+                data.write_text('modified input\n')
+                _, _, after, _ = identity.export_inputs(root, sys.executable, sdk)
+                self.assertNotEqual(before, after)
+                data.unlink()
+                with self.assertRaises((FileNotFoundError, ValueError)):
+                    identity.export_inputs(root, sys.executable, sdk)
+                (root / 'pkgsrc/cat/pkg/files/link').unlink()
+                (root / 'profiles/extra/link').unlink()
+                _, _, deleted, _ = identity.export_inputs(root, sys.executable, sdk)
+                self.assertNotEqual(after, deleted)
+
 
 
 class GitPackageIdentityTest(unittest.TestCase):

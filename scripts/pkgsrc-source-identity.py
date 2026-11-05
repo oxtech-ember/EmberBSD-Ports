@@ -538,9 +538,31 @@ def export_inputs(ports_root, git, sdk_source, package=None):
                 row['target_sha256'] = inventory.sha256_file(str(target))
         return rows
 
-    trees = {str(source.relative_to(root)): tree(source) for _, source in recipes}
+    # One inventory covers pkgsrc and its recipe directories.  A recipe's
+    # root is omitted from its own snapshot, just as in snapshot_installed_tree.
+    pkgsrc = root / 'pkgsrc'
+    pkgsrc_rows = tree(pkgsrc)
+    trees = {}
+    nested = {}
+    for _, source in recipes:
+        name = str(source.relative_to(root))
+        if source == pkgsrc:
+            trees[name] = pkgsrc_rows
+        elif source.is_relative_to(pkgsrc):
+            prefix = source.relative_to(pkgsrc).as_posix()
+            if pkgsrc_rows.get(prefix, {}).get('kind') != 'directory':
+                raise ValueError(f'export recipe is not a directory: {source}')
+            nested[prefix] = trees[name] = {}
+        else:
+            trees[name] = tree(source)
+    for relative, row in pkgsrc_rows.items():
+        parts = relative.split('/')
+        for end in range(1, len(parts)):
+            prefix = '/'.join(parts[:end])
+            if prefix in nested:
+                nested[prefix]['/'.join(parts[end:])] = row.copy()
     # Include overlay category metadata and replacement-list state as well.
-    trees['pkgsrc'] = tree(root / 'pkgsrc')
+    trees['pkgsrc'] = pkgsrc_rows
     payload = {'api': 1, 'upstream': pin[1].decode('ascii'),
                'files': inputs, 'trees': trees}
     return root, package, payload, run
