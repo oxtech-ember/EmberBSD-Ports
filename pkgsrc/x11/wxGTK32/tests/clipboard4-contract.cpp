@@ -4,6 +4,7 @@
 #include <wx/clipbrd.h>
 #include <wx/dataobj.h>
 #include <wx/evtloop.h>
+#include <wx/gtk/private/transfer4.h>
 #include <wx/image.h>
 #if wxUSE_LIBPNG
 #include <wx/imagpng.h>
@@ -86,6 +87,24 @@ static void destructive_provider_class_init(DestructiveProviderClass* klass)
 }
 static void destructive_provider_init(DestructiveProvider* self) { self->victim = NULL; }
 
+// Real GCancellable signals are synchronous: owner teardown may reenter Cancel.
+static void ReentrantCancellation()
+{
+    wxGTKTransfer::Requests requests;
+    auto first = std::make_shared<wxGTKTransfer::Operation>();
+    auto second = std::make_shared<wxGTKTransfer::Operation>();
+    requests.Add(first); requests.Add(second);
+    unsigned notifications = 0;
+    g_signal_connect(first->cancel, "cancelled", G_CALLBACK(+[](GCancellable*, void* data)
+        { static_cast<wxGTKTransfer::Requests*>(data)->Cancel(); }), &requests);
+    g_signal_connect(second->cancel, "cancelled", G_CALLBACK(+[](GCancellable*, void* data)
+        { ++*static_cast<unsigned*>(data); }), &notifications);
+    requests.Cancel();
+    Check(g_cancellable_is_cancelled(first->cancel) && g_cancellable_is_cancelled(second->cancel),
+          "recursive cancellation cancels every detached request");
+    Check(notifications == 1 && requests.pending.empty(), "each pending request is cancelled once");
+}
+
 class ClipboardContract : public wxApp
 {
     wxFrame* frame = NULL;
@@ -94,6 +113,7 @@ class ClipboardContract : public wxApp
     {
         try
         {
+            ReentrantCancellation();
             GdkClipboard* native = gdk_display_get_clipboard(gdk_display_get_default());
             wxClipboard clipboard;
             Check(clipboard.Open(), "open clipboard");

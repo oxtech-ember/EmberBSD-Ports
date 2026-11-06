@@ -471,7 +471,7 @@ https://docs.gtk.org/gdk4/class.Clipboard.html
 +#endif // wxUSE_CLIPBOARD
 --- /dev/null
 +++ include/wx/gtk/private/transfer4.h
-@@ -0,0 +1,242 @@
+@@ -0,0 +1,245 @@
 +///////////////////////////////////////////////////////////////////////////////
 +// Shared GTK4 clipboard/DnD MIME transport.
 +// Origin: EmberBSD (AI-assisted). wxWindows licence.
@@ -707,9 +707,12 @@ https://docs.gtk.org/gdk4/class.Clipboard.html
 +    }
 +    void Cancel()
 +    {
-+        for (const auto& weak : pending)
++        // GCancellable emits synchronously. A provider's cancellation handler
++        // may reenter owner teardown, so detach the list before notifying it.
++        std::vector<std::weak_ptr<Operation> > active;
++        active.swap(pending);
++        for (const auto& weak : active)
 +            if (Pending request = weak.lock()) g_cancellable_cancel(request->cancel);
-+        pending.clear();
 +    }
 +};
 +}

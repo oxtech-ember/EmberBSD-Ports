@@ -438,7 +438,7 @@ GTK2/3 retain their existing GdkAtom representation. No removed selection-data
 API or fabricated GDK types are used. One private transport helper snapshots
 all supported wx formats into immutable providers and reads native streams
 asynchronously through the existing wx event loop. The GTK4 drag-and-drop
-consumer uses this same byte transport when its backend is integrated.
+consumer uses this same byte transport.
 
 Unicode text is transferred as UTF-8. wxDF_TEXT uses its existing wx locale
 encoding at the wx data-object boundary and is converted explicitly to/from
@@ -474,6 +474,10 @@ wxClipboard from its asynchronous write callback to exercise request lifetime
 under ASan. Run with G_DEBUG=fatal-warnings and a real X11/Wayland display; cross
 application paste and clipboard-manager persistence are separate runtime checks.
 The test temporarily replaces clipboard contents and clears its test offers.
+A real GCancellable signal reenters Requests::Cancel; pending requests are
+detached before emission so recursive teardown cannot invalidate iteration.
+The regression checks that both requests cancel exactly once; run under ASan
+to detect the former invalidated iterator.
 
 Full target syntax checks pass for dataobj.cpp, clipbrd.cpp and the fixture with
 real configured wx and GTK4 headers. The diagnostic setup has no PNG handler,
@@ -481,3 +485,36 @@ so its conditional PNG fixture section has not been compiled or executed yet.
 Source Cppcheck is clean with explicit annotations for GObject initialization
 and callbacks that can reenter/delete a clipboard. GUI execution, linking,
 PNG acceptance and executable memory checking remain pending the shared build.
+
+# GTK4 drag-and-drop
+
+`patch-gtk4-dnd` uses GtkDropTargetAsync and native GdkDrag on both display
+backends. It shares the clipboard provider/stream implementation, preferred MIME
+negotiation and text conversion. wx OnEnter/OnDragOver/OnLeave/OnDrop/OnData and
+GiveFeedback callbacks retain native drop/drag objects while checking owner
+lifetime after application callbacks. Target destruction cancels outstanding
+reads; source-window destruction or event-loop shutdown ends synchronous
+DoDragDrop through the existing wx event loop. Icons use native drag paintables.
+Copy/move/link actions are constrained by the real source offer; wx source flags
+retain copy versus default-move policy. No fabricated events, private GDK structs
+or second transfer engine are used.
+
+`dnd4-contract` (`BUILD_DND_CONTRACT`) is an interactive executable, deliberately
+excluded from automatic CTest. On a real X11 or Wayland display, drag from the
+blue source to the green target: check normal copy, Shift move, Ctrl copy and
+Escape cancellation. Select the veto mode and verify no successful source result;
+select each removal mode to delete the target during OnEnter or after OnData.
+Changing modes recreates the target. Close the window during a drag, and drag
+UTF-8 text from another application into it. Observe the reported action/counts,
+text and application termination, with G_DEBUG=fatal-warnings and ASan enabled.
+The fixture reports observations and never prints an automatic acceptance PASS.
+
+Full target syntax checks pass for dnd.cpp, common/dndcmn.cpp and the interactive
+fixture using real configured wx/GTK4 headers. Actual drag protocol, callback
+ordering, compositor feedback, cross-application interoperability and memory
+execution remain pending the shared GTK4/wx build and display runtime.
+
+Primary sources: [GtkDropTargetAsync](https://docs.gtk.org/gtk4/class.DropTargetAsync.html),
+[GdkDrag.begin](https://docs.gtk.org/gdk4/ctor.Drag.begin.html),
+[GdkDrop.read_async](https://docs.gtk.org/gdk4/method.Drop.read_async.html),
+[GdkDrop.finish](https://docs.gtk.org/gdk4/method.Drop.finish.html).

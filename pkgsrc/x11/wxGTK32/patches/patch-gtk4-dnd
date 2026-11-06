@@ -1,0 +1,441 @@
+$NetBSD$
+
+Implement GTK4 drag-and-drop with native controllers, GdkDrag and shared MIME transport.
+Origin: EmberBSD (AI-assisted). wxWindows licence, like upstream.
+Preserve synchronous wx callbacks with owned native objects across nested dispatch.
+https://docs.gtk.org/gtk4/class.DropTargetAsync.html
+https://docs.gtk.org/gdk4/ctor.Drag.begin.html
+
+--- include/wx/gtk/dnd.h.orig
++++ include/wx/gtk/dnd.h
+@@ -10,6 +10,11 @@
+ #define _WX_GTK_DND_H_
+ 
+ #include "wx/icon.h"
++#ifdef __WXGTK4__
++#include <memory>
++struct wxGTKDropTargetData;
++struct wxGTKDropSourceData;
++#endif
+ 
+ // ----------------------------------------------------------------------------
+ // macros
+@@ -29,6 +34,9 @@
+ {
+ public:
+     wxDropTarget(wxDataObject *dataObject = NULL );
++#ifdef __WXGTK4__
++    ~wxDropTarget() wxOVERRIDE;
++#endif
+ 
+     virtual wxDragResult OnDragOver(wxCoord x, wxCoord y, wxDragResult def) wxOVERRIDE;
+     virtual bool OnDrop(wxCoord x, wxCoord y) wxOVERRIDE;
+@@ -40,12 +48,20 @@
+ 
+     // implementation
+ 
++#ifdef __WXGTK4__
++    wxDataFormat::NativeFormat GTKGetMatchingPair(bool quiet = false);
++#else
+     GdkAtom GTKGetMatchingPair(bool quiet = false);
++#endif
+     wxDragResult GTKFigureOutSuggestedAction();
+ 
+     void GtkRegisterWidget( GtkWidget *widget );
+     void GtkUnregisterWidget( GtkWidget *widget );
+ 
++#ifdef __WXGTK4__
++private:
++    std::shared_ptr<wxGTKDropTargetData> m_gtk4;
++#else
+     GdkDragContext     *m_dragContext;
+     GtkWidget          *m_dragWidget;
+     GtkSelectionData   *m_dragData;
+@@ -56,6 +72,7 @@
+     void GTKSetDragWidget( GtkWidget *w ) { m_dragWidget = w; }
+     void GTKSetDragData( GtkSelectionData *sd ) { m_dragData = sd; }
+     void GTKSetDragTime(unsigned time) { m_dragTime = time; }
++#endif
+ };
+ 
+ //-------------------------------------------------------------------------
+@@ -94,6 +111,7 @@
+     // start drag action
+     virtual wxDragResult DoDragDrop(int flags = wxDrag_CopyOnly) wxOVERRIDE;
+ 
++#ifndef __WXGTK4__
+     void PrepareIcon( int action, GdkDragContext *context );
+ 
+     GtkWidget       *m_widget;
+@@ -102,11 +120,14 @@
+     wxWindow        *m_window;
+ 
+     wxDragResult     m_retValue;
++#endif
+     wxIcon           m_iconCopy,
+                      m_iconMove,
+                      m_iconNone;
+ 
++#ifndef __WXGTK4__
+     bool             m_waiting;
++#endif
+ 
+ private:
+     // common part of both ctors
+@@ -114,9 +135,12 @@
+                   const wxIcon& move,
+                   const wxIcon& none);
+ 
+-    // GTK implementation
++#ifdef __WXGTK4__
++    std::shared_ptr<wxGTKDropSourceData> m_gtk4;
++#else
+     void GTKConnectDragSignals();
+     void GTKDisconnectDragSignals();
++#endif
+ 
+ };
+ 
+--- src/gtk/dnd.cpp.orig
++++ src/gtk/dnd.cpp
+@@ -8,6 +8,10 @@
+ 
+ // For compilers that support precompilation, includes "wx.h".
+ #include "wx/wxprec.h"
++
++#ifdef __WXGTK4__
++#include "dnd_gtk4.inc"
++#else
+ 
+ #if wxUSE_DRAG_AND_DROP
+ 
+@@ -987,3 +991,5 @@
+ 
+ #endif
+       // wxUSE_DRAG_AND_DROP
++
++#endif // !__WXGTK4__
+--- /dev/null
++++ src/gtk/dnd_gtk4.inc
+@@ -0,0 +1,321 @@
++///////////////////////////////////////////////////////////////////////////////
++// GTK4 drag-and-drop. Origin: EmberBSD (AI-assisted). wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++#if wxUSE_DRAG_AND_DROP
++#include "wx/dnd.h"
++#include "wx/window.h"
++#include "wx/weakref.h"
++#include "wx/gtk/private/transfer4.h"
++extern bool g_blockEventsOnDrag;
++extern GdkEvent* g_lastMouseEvent;
++
++namespace
++{
++GdkDragAction NativeAction(wxDragResult result)
++{
++    switch (result)
++    {
++        case wxDragCopy: return GDK_ACTION_COPY;
++        case wxDragMove: return GDK_ACTION_MOVE;
++        case wxDragLink: return GDK_ACTION_LINK;
++        default: return GdkDragAction(0);
++    }
++}
++wxDragResult WxAction(GdkDragAction action)
++{
++    switch (action)
++    {
++        case GDK_ACTION_COPY: return wxDragCopy;
++        case GDK_ACTION_MOVE: return wxDragMove;
++        case GDK_ACTION_LINK: return wxDragLink;
++        default: return wxDragNone;
++    }
++}
++}
++
++struct wxGTKDropTargetData : std::enable_shared_from_this<wxGTKDropTargetData>
++{
++    wxDropTarget* owner;
++    GtkDropTargetAsync* controller = NULL;
++    GWeakRef widget;
++    GdkDrop* current = NULL; // Borrowed from the current callback's Scope.
++    wxGTKTransfer::Requests requests;
++    explicit wxGTKDropTargetData(wxDropTarget* target) : owner(target)
++        { g_weak_ref_init(&widget, NULL); }
++    ~wxGTKDropTargetData() { Unregister(); g_weak_ref_clear(&widget); }
++    void Unregister()
++    {
++        wxGtkObject<GtkDropTargetAsync> previous(controller);
++        controller = NULL;
++        wxGtkObject<GtkWidget> native(GTK_WIDGET(g_weak_ref_get(&widget)));
++        g_weak_ref_set(&widget, NULL);
++        if (previous.get()) g_signal_handlers_disconnect_by_data(previous, this);
++        requests.Cancel();
++        if (previous.get() && native.get() &&
++            gtk_event_controller_get_widget(GTK_EVENT_CONTROLLER(previous.get())) == native.get())
++            gtk_widget_remove_controller(native, GTK_EVENT_CONTROLLER(previous.get()));
++    }
++    struct Scope
++    {
++        std::shared_ptr<wxGTKDropTargetData> state;
++        wxGtkObject<GdkDrop> drop;
++        GdkDrop* previous;
++        Scope(wxGTKDropTargetData* value, GdkDrop* native)
++            : state(value->shared_from_this()), drop(GDK_DROP(g_object_ref(native))), previous(state->current)
++            { state->current = native; }
++        ~Scope() { state->current = previous; }
++    };
++    static gboolean Accept(GtkDropTargetAsync*, GdkDrop* drop, wxGTKDropTargetData* data)
++    {
++        Scope scope(data, drop);
++        return data->owner && data->owner->GTKGetMatchingPair() != NULL;
++    }
++    static GdkDragAction Motion(GtkDropTargetAsync*, GdkDrop* drop, double x, double y,
++                                wxGTKDropTargetData* data, bool enter)
++    {
++        Scope scope(data, drop);
++        wxDropTarget* owner = data->owner;
++        if (!owner || !owner->GTKGetMatchingPair()) return GdkDragAction(0);
++        const wxDragResult suggested = owner->GTKFigureOutSuggestedAction();
++        const wxDragResult result = enter ? owner->OnEnter(wxRound(x), wxRound(y), suggested)
++                                         : owner->OnDragOver(wxRound(x), wxRound(y), suggested);
++        return data->owner == owner ? GdkDragAction(NativeAction(result) & gdk_drop_get_actions(drop)) : GdkDragAction(0);
++    }
++    static GdkDragAction Enter(GtkDropTargetAsync* controller, GdkDrop* drop, double x, double y, wxGTKDropTargetData* data)
++        { return Motion(controller, drop, x, y, data, true); }
++    static GdkDragAction Over(GtkDropTargetAsync* controller, GdkDrop* drop, double x, double y, wxGTKDropTargetData* data)
++        { return Motion(controller, drop, x, y, data, false); }
++    static void Leave(GtkDropTargetAsync*, GdkDrop* drop, wxGTKDropTargetData* data)
++    {
++        Scope scope(data, drop);
++        if (data->owner) data->owner->OnLeave();
++    }
++    static gboolean Drop(GtkDropTargetAsync*, GdkDrop* drop, double x, double y, wxGTKDropTargetData* data)
++    {
++        Scope scope(data, drop);
++        wxDropTarget* owner = data->owner;
++        if (!owner || !owner->GTKGetMatchingPair() || !owner->OnDrop(wxRound(x), wxRound(y))) return FALSE;
++        if (data->owner != owner) return FALSE;
++        const wxDragResult suggested = owner->GTKFigureOutSuggestedAction();
++        const wxDragResult result = owner->OnData(wxRound(x), wxRound(y), suggested);
++        const GdkDragAction action = data->owner == owner
++            ? GdkDragAction(NativeAction(result) & gdk_drop_get_actions(drop)) : GdkDragAction(0);
++        gdk_drop_finish(drop, action);
++        return TRUE;
++    }
++};
++
++wxDropTarget::wxDropTarget(wxDataObject* object)
++    : wxDropTargetBase(object), m_gtk4(new wxGTKDropTargetData(this)) {}
++wxDropTarget::~wxDropTarget()
++{
++    m_gtk4->owner = NULL;
++    m_gtk4->Unregister();
++}
++void wxDropTarget::GtkRegisterWidget(GtkWidget* widget)
++{
++    wxCHECK_RET(widget, "drop target widget is NULL");
++    auto state = m_gtk4;
++    wxGtkObject<GtkWidget> native(GTK_WIDGET(g_object_ref(widget)));
++    state->Unregister();
++    if (state->owner != this) return; // Cancellation can reenter owner teardown.
++    state->controller = gtk_drop_target_async_new(NULL,
++        GdkDragAction(GDK_ACTION_COPY | GDK_ACTION_MOVE | GDK_ACTION_LINK));
++    g_weak_ref_set(&state->widget, G_OBJECT(widget));
++    g_signal_connect(state->controller, "accept", G_CALLBACK(wxGTKDropTargetData::Accept), state.get());
++    g_signal_connect(state->controller, "drag-enter", G_CALLBACK(wxGTKDropTargetData::Enter), state.get());
++    g_signal_connect(state->controller, "drag-motion", G_CALLBACK(wxGTKDropTargetData::Over), state.get());
++    g_signal_connect(state->controller, "drag-leave", G_CALLBACK(wxGTKDropTargetData::Leave), state.get());
++    g_signal_connect(state->controller, "drop", G_CALLBACK(wxGTKDropTargetData::Drop), state.get());
++    gtk_widget_add_controller(widget, GTK_EVENT_CONTROLLER(g_object_ref(state->controller)));
++}
++void wxDropTarget::GtkUnregisterWidget(GtkWidget*)
++    { auto state = m_gtk4; state->Unregister(); }
++wxDataFormat::NativeFormat wxDropTarget::GTKGetMatchingPair(bool)
++{
++    auto state = m_gtk4;
++    if (!state->current || !m_dataObject) return NULL;
++    for (const auto& format : wxGTKTransfer::Formats(*m_dataObject, wxDataObject::Set))
++        if (const char* mime = wxGTKTransfer::Match(gdk_drop_get_formats(state->current), format)) return mime;
++    return NULL;
++}
++wxDataFormat wxDropTarget::GetMatchingPair() { return wxDataFormat(GTKGetMatchingPair()); }
++wxDragResult wxDropTarget::GTKFigureOutSuggestedAction()
++{
++    auto state = m_gtk4;
++    if (!state->current) return wxDragNone;
++    const GdkDragAction allowed = gdk_drop_get_actions(state->current);
++    GdkDevice* device = gdk_drop_get_device(state->current);
++    const GdkModifierType modifiers = device ? gdk_device_get_modifier_state(device) : GdkModifierType(0);
++    GdkDragAction desired = GdkDragAction(0);
++    if ((modifiers & GDK_CONTROL_MASK) && (modifiers & GDK_SHIFT_MASK)) desired = GDK_ACTION_LINK;
++    else if (modifiers & GDK_CONTROL_MASK) desired = GDK_ACTION_COPY;
++    else if (modifiers & GDK_SHIFT_MASK) desired = GDK_ACTION_MOVE;
++    else
++    {
++        desired = NativeAction(GetDefaultAction());
++        if (!desired)
++        {
++            GdkDrag* drag = gdk_drop_get_drag(state->current);
++            const int flags = drag ? GPOINTER_TO_INT(g_object_get_data(G_OBJECT(drag), "wx-drag-flags")) : 0;
++            desired = (flags & wxDrag_DefaultMove) == wxDrag_DefaultMove ? GDK_ACTION_MOVE : GDK_ACTION_COPY;
++        }
++    }
++    if (desired & allowed) return WxAction(desired);
++    if (allowed & GDK_ACTION_COPY) return wxDragCopy;
++    if (allowed & GDK_ACTION_MOVE) return wxDragMove;
++    if (allowed & GDK_ACTION_LINK) return wxDragLink;
++    return wxDragNone;
++}
++wxDragResult wxDropTarget::OnDragOver(wxCoord, wxCoord, wxDragResult suggested) { return suggested; }
++bool wxDropTarget::OnDrop(wxCoord, wxCoord) { return GTKGetMatchingPair() != NULL; }
++wxDragResult wxDropTarget::OnData(wxCoord, wxCoord, wxDragResult suggested)
++    { return GetData() ? suggested : wxDragNone; }
++bool wxDropTarget::GetData()
++{
++    auto state = m_gtk4;
++    wxDataObject* object = m_dataObject;
++    if (!state->current || !object) return false;
++    wxGtkObject<GdkDrop> drop(GDK_DROP(g_object_ref(state->current)));
++    for (const auto& format : wxGTKTransfer::Formats(*object, wxDataObject::Set))
++    {
++        const char* mime = wxGTKTransfer::Match(gdk_drop_get_formats(drop), format);
++        if (!mime) continue;
++        auto request = wxGTKTransfer::Read(G_OBJECT(drop.get()), mime);
++        state->requests.Add(request);
++        if (!state->owner) { g_cancellable_cancel(request->cancel); return false; }
++        if (!wxGTKTransfer::Wait(request) || !state->owner || state->owner->GetDataObject() != object) return false;
++        return wxGTKTransfer::Receive(*object, format, request->bytes);
++    }
++    return false;
++}
++
++struct wxGTKDropSourceData
++{
++    wxDropSource* owner;
++    wxWeakRef<wxWindow> window;
++    bool hadWindow, done = false;
++    wxDragResult result = wxDragCancel;
++    GdkDrag* drag = NULL;
++    wxGTKDropSourceData(wxDropSource* source, wxWindow* win) : owner(source), window(win), hadWindow(win != NULL) {}
++    ~wxGTKDropSourceData() { g_clear_object(&drag); }
++    bool Alive() const { return owner && (!hadWindow || (window && !window->IsBeingDeleted())); }
++    static void Finished(GdkDrag* drag, wxGTKDropSourceData* state)
++    {
++        state->result = WxAction(gdk_drag_get_selected_action(drag));
++        state->done = true;
++    }
++    static void Cancelled(GdkDrag*, GdkDragCancelReason reason, wxGTKDropSourceData* state)
++    {
++        state->result = reason == GDK_DRAG_CANCEL_NO_TARGET ? wxDragNone : wxDragCancel;
++        state->done = true;
++    }
++    static void Feedback(GdkDrag* drag, GParamSpec*, wxGTKDropSourceData* state)
++    {
++        wxDropSource* owner = state->owner;
++        if (!state->Alive()) return;
++        const wxDragResult action = WxAction(gdk_drag_get_selected_action(drag));
++        if (owner->GiveFeedback(action) || !state->Alive()) return;
++        const wxIcon& icon = action == wxDragCopy ? owner->m_iconCopy :
++                             action == wxDragMove ? owner->m_iconMove : owner->m_iconNone;
++        if (icon.IsOk())
++        {
++            if (GdkTexture* texture = icon.GetTexture())
++                gtk_drag_icon_set_from_paintable(drag, GDK_PAINTABLE(texture), 0, 0);
++        }
++        else
++        {
++            GtkWidget* native = gtk_drag_icon_get_for_drag(drag);
++            GtkWidget* image = gtk_image_new_from_icon_name("text-x-generic");
++            gtk_image_set_icon_size(GTK_IMAGE(image), GTK_ICON_SIZE_LARGE);
++            gtk_drag_icon_set_child(GTK_DRAG_ICON(native), image);
++        }
++    }
++};
++wxDropSource::wxDropSource(wxWindow* win, const wxIcon& copy, const wxIcon& move, const wxIcon& none)
++    : m_gtk4(new wxGTKDropSourceData(this, win)) { SetIcons(copy, move, none); }
++wxDropSource::wxDropSource(wxDataObject& data, wxWindow* win, const wxIcon& copy, const wxIcon& move, const wxIcon& none)
++    : m_gtk4(new wxGTKDropSourceData(this, win)) { SetData(data); SetIcons(copy, move, none); }
++wxDropSource::~wxDropSource()
++{
++    m_gtk4->owner = NULL;
++    m_gtk4->done = true;
++    m_gtk4->result = wxDragCancel;
++}
++void wxDropSource::SetIcons(const wxIcon& copy, const wxIcon& move, const wxIcon& none)
++    { m_iconCopy = copy; m_iconMove = move; m_iconNone = none; }
++wxDragResult wxDropSource::DoDragDrop(int flags)
++{
++    auto state = m_gtk4;
++    if (!m_data) return wxDragError;
++    if (g_blockEventsOnDrag || !g_lastMouseEvent || !state->Alive()) return wxDragNone;
++    struct EventRef
++    {
++        GdkEvent* value;
++        ~EventRef() { gdk_event_unref(value); }
++    } event = { gdk_event_ref(g_lastMouseEvent) };
++    const GdkEventType type = gdk_event_get_event_type(event.value);
++    if (type != GDK_BUTTON_PRESS && type != GDK_MOTION_NOTIFY && type != GDK_TOUCH_BEGIN && type != GDK_TOUCH_UPDATE)
++        return wxDragNone;
++    if (type == GDK_MOTION_NOTIFY &&
++        !(gdk_event_get_modifier_state(event.value) &
++          (GDK_BUTTON1_MASK | GDK_BUTTON2_MASK | GDK_BUTTON3_MASK | GDK_BUTTON4_MASK | GDK_BUTTON5_MASK)))
++        return wxDragNone;
++    GdkSurface* surface = gdk_event_get_surface(event.value);
++    GdkDevice* device = gdk_event_get_device(event.value);
++    if (!surface || !device || gdk_surface_is_destroyed(surface)) return wxDragError;
++    wxGtkObject<GdkContentProvider> provider(wxGTKTransfer::Snapshot(*m_data));
++    if (!state->Alive() || !provider.get()) return wxDragError;
++    double x = 0, y = 0, px = 0, py = 0;
++    gdk_event_get_position(event.value, &x, &y);
++    gdk_surface_get_device_position(surface, device, &px, &py, NULL);
++    const GdkDragAction actions = GdkDragAction(GDK_ACTION_COPY | ((flags & wxDrag_AllowMove) ? GDK_ACTION_MOVE : 0));
++    state->done = false; state->result = wxDragCancel;
++    state->drag = gdk_drag_begin(surface, device, provider, actions, px - x, py - y);
++    if (!state->drag) return wxDragError;
++    struct Cleanup
++    {
++        std::shared_ptr<wxGTKDropSourceData> state;
++        bool previous;
++        explicit Cleanup(const std::shared_ptr<wxGTKDropSourceData>& value)
++            : state(value), previous(g_blockEventsOnDrag) { g_blockEventsOnDrag = true; }
++        Cleanup(const Cleanup&) = delete;
++        Cleanup& operator=(const Cleanup&) = delete;
++        ~Cleanup()
++        {
++            g_signal_handlers_disconnect_by_data(state->drag, state.get());
++            gdk_drag_drop_done(state->drag, state->done && wxIsDragResultOk(state->result));
++            g_clear_object(&state->drag);
++            g_blockEventsOnDrag = previous;
++        }
++    } cleanup(state);
++    g_object_set_data(G_OBJECT(state->drag), "wx-drag-flags", GINT_TO_POINTER(flags));
++    g_signal_connect(state->drag, "dnd-finished", G_CALLBACK(wxGTKDropSourceData::Finished), state.get());
++    g_signal_connect(state->drag, "cancel", G_CALLBACK(wxGTKDropSourceData::Cancelled), state.get());
++    g_signal_connect(state->drag, "notify::selected-action", G_CALLBACK(wxGTKDropSourceData::Feedback), state.get());
++    // GtkDragSource resets its widget's controllers after the native grab.
++    // Use public controller observation/reset APIs for wx's explicit drag API.
++    GtkWidget* widget = state->window ? state->window->GetConnectWidget() : GTK_WIDGET(gtk_native_get_for_surface(surface));
++    if (widget)
++    {
++        wxGtkObject<GListModel> model(gtk_widget_observe_controllers(widget));
++        struct Controllers
++        {
++            std::vector<GtkEventController*> values;
++            Controllers() = default;
++            Controllers(const Controllers&) = delete;
++            Controllers& operator=(const Controllers&) = delete;
++            ~Controllers() { for (auto value : values) g_object_unref(value); }
++        } controllers;
++        for (guint i = 0; i < g_list_model_get_n_items(model); ++i)
++            controllers.values.push_back(GTK_EVENT_CONTROLLER(g_list_model_get_item(model, i)));
++        for (auto controller : controllers.values) gtk_event_controller_reset(controller);
++    }
++    wxGTKDropSourceData::Feedback(state->drag, NULL, state.get());
++    wxEventLoopGuarantor ensureLoop;
++    wxEventLoopBase* loop = wxEventLoopBase::GetActive();
++    while (!state->done && state->Alive() && !gdk_surface_is_destroyed(surface))
++        if (!loop || loop->DispatchTimeout(50) == 0) break;
++    return state->done ? state->result : wxDragCancel;
++}
++#endif // wxUSE_DRAG_AND_DROP
