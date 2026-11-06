@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
-"""Exercise the real reconfigure candidate-to-source-view registry handoff."""
+"""Exercise real reconfigure registry and verified created-file handoffs."""
 import argparse
 import importlib.util
 import json
@@ -33,8 +33,16 @@ with tempfile.TemporaryDirectory() as tmp:
         target='amd64', compiler_family='clang', git=Path('/git'), shared_vulkan=True,
         activate_common_ml=True, activate_common_providers=False, jobs=1, v8_source=root)
     native = SimpleNamespace(path='/native', tool=lambda name:'/native/'+name)
-    sdk = {'sourceprep': SimpleNamespace(PREPARED_TREE_RECEIPT='receipt')}
+    publication = object()
+    sdk = {'sourceprep': SimpleNamespace(PREPARED_TREE_RECEIPT='receipt'), 'publication': publication}
+    name = 'build/config/emberbsd_vulkan/BUILD.gn'
+    receipt = {'paths': {name: {'before': None, 'after': 'c'*64},
+                         'build/config/existing.gni': {'before': 'd'*64, 'after': 'e'*64},
+                         'build/config/removed.gni': {'before': 'f'*64, 'after': None}}}
+    expected = {str(root / 'src' / name): 'c'*64}
     def inputs(candidate, sdk):
+        assert getattr(candidate, 'source_view_created_files', None) == expected, 'candidate lacks verified created files'
+        assert getattr(candidate, 'source_view_publication', None) is publication, 'candidate lacks selected publication'
         candidate.vulkan_registry = registry
         candidate.protoc_selection = {}
         candidate.ml_identities = {'litert':'a'}; candidate.ml_sources = {}
@@ -44,9 +52,11 @@ with tempfile.TemporaryDirectory() as tmp:
         return native, dict(env), dict(args)
     def source_view(options):
         assert getattr(options, 'vulkan_registry', None) == registry, 'verified Vulkan registry is missing'
+        assert getattr(options, 'source_view_created_files', None) == expected, 'source-view lacks verified created files'
+        assert getattr(options, 'source_view_publication', None) is publication, 'source-view lacks selected publication'
         raise ReachedSourceView()
     noops = ('keep_going_limit','require_common_v8','require_common_node','require_common_perfetto',
-             'require_common_dependencies','verify_source')
+             'require_common_dependencies')
     returns = ('minizip_activation_args','xml_activation_args','ots_activation_args','codec_activation_args',
         'pdfium_activation_args','pffft_activation_args','expat_activation_args','cpuinfo_activation_args',
         'vulkan_activation_args','woff2_activation_args','openh264_activation_args','image_activation_args',
@@ -54,7 +64,8 @@ with tempfile.TemporaryDirectory() as tmp:
         'additive_protoc_selection')
     patches = [patch.object(m, name, lambda *a,**k:None) for name in noops]
     patches += [patch.object(m, name, lambda *a,**k:set()) for name in returns]
-    patches += [patch.object(m,'load_sdk',return_value=sdk),patch.object(m,'producer_inputs',side_effect=inputs),
+    patches += [patch.object(m,'load_sdk',return_value=sdk),patch.object(m,'verify_source',return_value=receipt),
+        patch.object(m,'producer_inputs',side_effect=inputs),
         patch.object(m,'saved_binding_directory',return_value=binding),patch.object(m,'binding_identity',return_value={}),
         patch.object(m,'gn_arguments',return_value=''),patch.object(m,'common_activation_allowlist',return_value=(set(),set())),
         patch.object(m,'verified_swiftshader_disable',return_value=set()),patch.object(m,'verified_host_deployment_change',return_value=False),
@@ -67,4 +78,4 @@ with tempfile.TemporaryDirectory() as tmp:
         try: m.reconfigure(o)
         except ReachedSourceView: pass
         else: raise AssertionError('reconfigure did not reach source-view')
-print('PASS: verified Vulkan registry propagated from candidate into reconfigure source-view')
+print('PASS: verified created files, publication and Vulkan registry propagated through reconfigure')

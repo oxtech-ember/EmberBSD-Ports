@@ -5,6 +5,7 @@
 import os
 import re
 import ast
+import hashlib
 import stat
 from pathlib import Path
 
@@ -175,7 +176,45 @@ def _same_file_bytes(left, right):
                 return True
 
 
-def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=frozenset(), updates=None, nested_omit=frozenset()):
+def _created_subtree(root, created_files):
+    """Measure a nonempty, entirely receipt-authorized regular-file tree."""
+    root = Path(root)
+    require(root.is_absolute(), 'created source directory must be absolute')
+    rows = {}
+    def visit(path, relative):
+        info = os.lstat(path)
+        identity = (info.st_dev, info.st_ino, info.st_mode, info.st_size,
+                    info.st_mtime_ns, info.st_ctime_ns)
+        if stat.S_ISDIR(info.st_mode):
+            with os.scandir(path) as scan:
+                children = sorted(item.name for item in scan)
+            require(children, 'created source directory is empty: ' + str(path))
+            rows[relative] = (identity, None)
+            for name in children:
+                visit(path / name, relative / name)
+        else:
+            require(stat.S_ISREG(info.st_mode), 'created source subtree contains a non-regular file')
+            expected = created_files.get(str(path))
+            require(isinstance(expected, str) and re.fullmatch(r'[0-9a-f]{64}', expected),
+                    'created source file is absent from receipt: ' + str(path))
+            fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+            with os.fdopen(fd, 'rb') as handle:
+                opened = os.fstat(handle.fileno())
+                require((opened.st_dev, opened.st_ino, opened.st_mode, opened.st_size,
+                         opened.st_mtime_ns, opened.st_ctime_ns) == identity,
+                        'created source file changed before reading')
+                digest = hashlib.file_digest(handle, 'sha256').hexdigest()
+            require(digest == expected, 'created source file differs from receipt: ' + str(path))
+            rows[relative] = (identity, digest)
+        after = os.lstat(path)
+        require((after.st_dev, after.st_ino, after.st_mode, after.st_size,
+                 after.st_mtime_ns, after.st_ctime_ns) == identity,
+                'created source subtree changed during verification: ' + str(path))
+    visit(root, Path())
+    return rows
+
+
+def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=frozenset(), updates=None, nested_omit=frozenset(), created_files=None):
     """Mirror source entries; verification may allow named regular GN outputs.
 
     Electron's GN build_electron_definitions action creates electron-api.json
@@ -216,6 +255,12 @@ def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=froz
             for name in names - set(local_entries):
                 item = source_entries[name]
                 info = item.stat(follow_symlinks=False)
+                if stat.S_ISDIR(info.st_mode) and created_files is not None:
+                    require(not any(path.parts[0] == name for path in nested_omit),
+                            'created subtree overlaps an omitted view component')
+                    snapshot = _created_subtree(item.path, created_files)
+                    updates.append((dest / name, 'directory', item.path, item.path, snapshot, None))
+                    continue
                 if not stat.S_ISREG(info.st_mode):
                     raise _LayoutChanged('mirrored view entries changed: ' + str(dest))
                 source_id = (info.st_dev, info.st_ino, info.st_mode, info.st_size,
@@ -250,7 +295,8 @@ def mirror(origin, dest, *, verify=False, omit=frozenset(), generated_files=froz
                 require(stat.S_ISDIR(output_info.st_mode),
                         'mirrored view directory changed: ' + str(output))
             nested = {Path(*p.parts[1:]) for p in nested_omit if len(p.parts) > 1 and p.parts[0] == name}
-            mirror(item.path, output, verify=verify, updates=updates, nested_omit=nested)
+            mirror(item.path, output, verify=verify, updates=updates, nested_omit=nested,
+                   created_files=created_files)
         else:
             require(stat.S_ISREG(source_info.st_mode),
                     'unsupported mirrored view file type: ' + str(item.path))
@@ -509,7 +555,7 @@ def create(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
     return destination / 'src'
 
 
-def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None, ml_names=(), ml_verify=None, _updates=None, _refresh=False, _initial_missing=None, _legacy_devtools=False, _migration=False):
+def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, system_abseil=False, system_icu=False, system_re2=False, node_modules=None, protobuf_protoc=None, ml_names=(), ml_verify=None, _updates=None, _refresh=False, _initial_missing=None, _legacy_devtools=False, _migration=False, _created_files=None):
     source = Path(source).resolve(strict=True)
     protobuf = Path(protobuf).resolve(strict=True) if protobuf is not None else None
     providers = {name: Path(value).resolve(strict=True) for name, value in
@@ -549,10 +595,10 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
                     'source view link changed: ' + str(link))
     root = destination / 'src'
     root_special = {'third_party', 'out'} | ({'v8'} if v8 else set())
-    mirror(source, root, verify=True, omit=root_special | ({'electron'} if node_modules is not None else set()), updates=_updates)
+    mirror(source, root, verify=True, omit=root_special | ({'electron'} if node_modules is not None else set()), updates=_updates, created_files=_created_files)
     if node_modules is not None:
         mirror(source / 'electron', root / 'electron', verify=True, omit={'node_modules'},
-               generated_files={'electron-api.json', 'electron.d.ts'}, updates=_updates)
+               generated_files={'electron-api.json', 'electron.d.ts'}, updates=_updates, created_files=_created_files)
     require({item.name for item in root.iterdir()} >= root_special, 'source view root entries changed')
     if v8:
         _check_provider_link(root / 'v8', v8, _updates)
@@ -566,7 +612,7 @@ def verify(source, protobuf, destination, *, node=None, perfetto=None, v8=None, 
         nested = {Path('src/node_modules')} if name == 'devtools-frontend' and node_modules is not None and not _legacy_devtools else frozenset()
         mirror(source / 'third_party' / name, root / 'third_party' / name, verify=True,
                omit={'node_modules'} if name == 'node' and node_modules is not None else frozenset(),
-               updates=_updates, nested_omit=nested)
+               updates=_updates, nested_omit=nested, created_files=_created_files)
         if nested:
             link = root / 'third_party' / name / 'src/node_modules'
             require(link.is_symlink() and os.readlink(link) == str(Path(node_modules).resolve(strict=True)),
@@ -717,7 +763,7 @@ def _copy_leaf(source, destination, *, hardlink=False):
         shutil.copy2(source, destination)
 
 
-def _refresh_leaves(source, protobuf, destination, sources):
+def _refresh_leaves(source, protobuf, destination, sources, *, created_files=None, publication=None):
     """Update only verified leaves under the caller's exclusive source lock.
 
     Ordinary failures restore the previous leaves. An interrupted process
@@ -736,7 +782,8 @@ def _refresh_leaves(source, protobuf, destination, sources):
                 marker.read_text() == 'source-view-leaves-v1\n',
                 'invalid source view refresh marker')
     updates = []
-    verify(source, protobuf, destination, **sources, _updates=updates, _refresh=True)
+    extra = {'_created_files': created_files} if created_files is not None else {}
+    verify(source, protobuf, destination, **sources, _updates=updates, _refresh=True, **extra)
     if not updates:
         if recovering:
             marker.unlink()
@@ -751,6 +798,7 @@ def _refresh_leaves(source, protobuf, destination, sources):
         work_fd = os.open(destination.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         handles.callback(os.close, work_fd)
         new_identities = []
+        created_trees = {}
         for index, (output, kind, value, origin, expected_source, expected_old) in enumerate(updates):
             old_key = expected_old[:2] if expected_old is not None else None
             expected_old = old_states.get(old_key, expected_old)
@@ -774,14 +822,33 @@ def _refresh_leaves(source, protobuf, destination, sources):
                 require(not os.path.lexists(output), 'new view leaf appeared before staging')
             else:
                 require(_leaf_identity(output) == expected_old, 'view leaf changed before staging')
-            if origin is not None:
+            if origin is not None and kind == 'directory':
+                require(publication is not None and _created_subtree(origin, created_files) == expected_source,
+                        'created source subtree changed before staging')
+            elif origin is not None:
                 require(_leaf_identity(origin) == expected_source, 'source leaf changed before staging')
             new = staged / ('new-' + str(index))
             if kind == 'link':
                 new.symlink_to(value)
+            elif kind == 'directory':
+                import shutil
+                shutil.copytree(value, new, symlinks=True, copy_function=shutil.copy2)
+                require(_created_subtree(origin, created_files) == expected_source,
+                        'created source subtree changed during staging')
+                stage_map = {str(new / rel): digest for rel, (_, digest) in expected_source.items()
+                             if digest is not None}
+                stage_tree = _created_subtree(new, stage_map)
+                require(set(stage_tree) == set(expected_source) and all(
+                    (entry[0][2] & 0o7777, entry[0][4], entry[1]) ==
+                    (expected_source[rel][0][2] & 0o7777, expected_source[rel][0][4],
+                     expected_source[rel][1]) and
+                    (entry[1] is None or entry[0][3] == expected_source[rel][0][3])
+                    for rel, entry in stage_tree.items()),
+                    'staged source subtree differs')
+                created_trees[index] = (stage_map, stage_tree)
             else:
                 _copy_leaf(Path(value), new)
-            if origin is not None:
+            if origin is not None and kind != 'directory':
                 require(_leaf_identity(origin) == expected_source, 'source leaf changed during staging')
             if expected_old is not None:
                 _copy_leaf(output, staged / ('old-' + str(index)), hardlink=True)
@@ -812,10 +879,27 @@ def _refresh_leaves(source, protobuf, destination, sources):
                     require(not os.path.lexists(output), 'new view leaf appeared before install')
                 else:
                     require(_leaf_identity(output) == expected_old, 'view leaf changed before install')
-                if origin is not None:
+                if origin is not None and kind == 'directory':
+                    require(_created_subtree(origin, created_files) == expected_source,
+                            'created source subtree changed before install')
+                elif origin is not None:
                     require(_leaf_identity(origin) == expected_source, 'source leaf changed before install')
                 fd = parent_fds[output.parent]
-                if expected_old is None:
+                if kind == 'directory':
+                    _, tree = created_trees[index]
+                    actual_map = {str(output / rel): digest for rel, (_, digest) in tree.items()
+                                  if digest is not None}
+                    created_trees[index] = (actual_map, tree)
+                    publication.publish_directory_noreplace(staged / ('new-' + str(index)), output)
+                    installed.append(index)
+                    actual = _created_subtree(output, actual_map)
+                    require(all(actual[rel][0][:5] == tree[rel][0][:5] and actual[rel][1] == tree[rel][1]
+                                for rel in tree) and set(actual) == set(tree),
+                            'installed source subtree changed')
+                    created_trees[index] = (actual_map, actual)
+                    require(_created_subtree(origin, created_files) == expected_source,
+                            'created source subtree changed during install')
+                elif expected_old is None:
                     os.link(staged / ('new-' + str(index)), output.name,
                             dst_dir_fd=fd, follow_symlinks=False)
                     installed.append(index)
@@ -844,7 +928,13 @@ def _refresh_leaves(source, protobuf, destination, sources):
             for index in reversed(installed):
                 output = updates[index][0]
                 fd = parent_fds[output.parent]
-                if updates[index][5] is None:
+                if updates[index][1] == 'directory':
+                    import shutil
+                    actual_map, tree = created_trees[index]
+                    require(_created_subtree(output, actual_map) == tree,
+                            'new view subtree changed before rollback')
+                    shutil.rmtree(output)
+                elif updates[index][5] is None:
                     require(_leaf_identity(output.name, dir_fd=fd)[:5] == new_identities[index],
                             'new view leaf changed before rollback')
                     os.unlink(output.name, dir_fd=fd)

@@ -38,14 +38,15 @@ def load_sdk(root):
     result = {}
     for name in ('', 'host_prefix', 'application_toolchain', 'target_toolchain', 'targets', 'llvm_runtime',
                  'process', 'paths', 'jsonio', 'darwin_sdk', 'darwin_runtime', 'compiler_bindings', 'cpu_capacity',
-                 'inventory', 'sourceprep', 'native_generator_runtime'):
+                 'inventory', 'sourceprep', 'native_generator_runtime', 'publication'):
         module = importlib.import_module('emberbsd_sdk' + ('.' + name if name else ''))
         require(Path(module.__file__).resolve() == package / ((name or '__init__') + '.py'),
                 'SDK module origin differs: ' + module.__name__)
         result[name] = module
     for name, field, version in (('', 'API_VERSION', 1), ('host_prefix', 'HOST_PREFIX_API', 2),
                                  ('application_toolchain', 'APPLICATION_TOOLCHAIN_API', 2),
-                                 ('darwin_sdk', 'DARWIN_SDK_API', 1)):
+                                 ('darwin_sdk', 'DARWIN_SDK_API', 1),
+                                 ('publication', 'DIRECTORY_PUBLICATION_API', 1)):
         require(getattr(result[name], field, None) == version, 'unsupported SDK contract: ' + field)
     return result
 
@@ -2404,6 +2405,13 @@ def gn_source(options):
                    node_modules=Path(options.host_prefix) / 'lib/node_modules',
                    protobuf_protoc=(Path(options.host_prefix) / 'bin/protoc') if common else None)
     destination = options.work / 'source-view'
+    def refresh_leaves(current):
+        created = getattr(options, 'source_view_created_files', None)
+        extra = ({'created_files': created,
+                  'publication': options.source_view_publication} if created else {})
+        return view._refresh_leaves(options.workspace / 'src', common, destination,
+                                    current, **extra)
+
     if getattr(options, 'activate_common_providers', False):
         require(options.phase == 'reconfigure', 'common provider activation requires reconfigure')
         return view.activate_common_components(options.workspace / 'src', common, destination, **sources)
@@ -2816,8 +2824,7 @@ def gn_source(options):
             current = selected_sources(ml_ids, header_ids, media_ids, compression_id, boring_id)
             if (getattr(options, 'refresh_source_view', False) and
                     options.phase == 'reconfigure' and not selection_refreshed):
-                result = view._refresh_leaves(options.workspace / 'src', common,
-                                              destination, current)
+                result = refresh_leaves(current)
                 selection_refreshed = True
             else:
                 result = view.verify(options.workspace / 'src', common, destination, **current)
@@ -3216,8 +3223,8 @@ def gn_source(options):
         sources = selected_sources(ids, new_headers, new_media, new_compression, new_boring)
     if getattr(options, 'refresh_source_view', False):
         require(options.phase == 'reconfigure', 'source refresh requires reconfigure')
-        if ids:
-            return view._refresh_leaves(options.workspace / 'src', common, destination, sources)
+        if ids or getattr(options, 'source_view_created_files', None):
+            return refresh_leaves(sources)
         return view.refresh(options.workspace / 'src', common, destination, **sources)
     if not os.path.lexists(destination):
         require(getattr(options, 'phase', '') == 'configure',
@@ -3226,7 +3233,7 @@ def gn_source(options):
     if getattr(options, 'resume_configure', False):
         return view.complete_initial(options.workspace / 'src', common, destination, **sources)
     if getattr(options, 'retry_configure', False):
-        return view._refresh_leaves(options.workspace / 'src', common, destination, sources)
+        return refresh_leaves(sources)
     return view.verify(options.workspace / 'src', common, destination, **sources)
 
 
@@ -3805,8 +3812,16 @@ def reconfigure(options):
     require_common_dependencies(options)
     """Regenerate an existing GN graph while preserving its toolchain identity."""
     sdk = load_sdk(options.sdk_source)
-    verify_source(options.workspace, options.ports_source, options.git,
-                  allow_ordered_prefix=getattr(options, 'migrate_devtools_modules_only', False))
+    source_record = verify_source(options.workspace, options.ports_source, options.git,
+                                 allow_ordered_prefix=getattr(options, 'migrate_devtools_modules_only', False))
+    # Only patch-created regular files from the verified source receipt may
+    # populate a missing derived subtree during an explicit incremental refresh.
+    options.source_view_created_files = {
+        str(options.workspace / 'src' / name): row['after']
+        for name, row in (source_record or {}).get('paths', {}).items()
+        if 'before' in row and row['before'] is None and
+        isinstance(row.get('after'), str) and re.fullmatch(r'[0-9a-f]{64}', row['after'])}
+    options.source_view_publication = sdk.get('publication')
     work = options.work
     output = work / 'out'
     saved = json.loads((work / 'configuration.json').read_text())
