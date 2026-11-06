@@ -36,6 +36,7 @@ with tempfile.TemporaryDirectory(prefix='pkgsrc-source-refresh-test-') as temp:
     scope = 'tools/llvm-objcopy/Objcopy.cpp'
     scope_b = 'tools/llvm-objcopy/Archive.cpp'
     scope_c = 'test/tools/llvm-objcopy/MachO/reexport.test'
+    interpreter = 'tools/opt-viewer/extract-reproducers.py'
     unchanged = 'llvm/include/llvm/Config/llvm-config.h'
     (retained / scope).parent.mkdir(parents=True)
     (retained / unchanged).parent.mkdir(parents=True)
@@ -43,7 +44,10 @@ with tempfile.TemporaryDirectory(prefix='pkgsrc-source-refresh-test-') as temp:
     (retained / scope).write_bytes(b'old objcopy\n')
     (retained / scope_b).write_bytes(b'old archive\n')
     (retained / unchanged).write_bytes(b'generated stable\n')
+    (retained / interpreter).parent.mkdir(parents=True)
+    (retained / interpreter).write_bytes(b'#!/Users/smolev/Downloads/EmberBSD/host-pkg-llvm/bin/python3.15\nscript\n')
     (work / '.patch_done').write_bytes(b'old patch cookie\n')
+    (work / '.configure_done').write_text('configured\n')
     obj = work / 'nested/llvm-src/cmake-pkgsrc-build/CMakeCache.txt'
     obj.parent.mkdir(parents=True)
     obj.write_bytes(b'preserve build output')
@@ -70,7 +74,15 @@ elif 'extract' in args and 'patch' in args:
     (src / 'test/tools/llvm-objcopy/MachO').mkdir(parents=True)
     (src / 'test/tools/llvm-objcopy/MachO/reexport.test').write_bytes(b'added test\\n')
     (src / 'llvm/include/llvm/Config/llvm-config.h').write_bytes(b'generated stable\\n')
+    (src / 'tools/opt-viewer').mkdir(parents=True)
+    (src / 'tools/opt-viewer/extract-reproducers.py').write_bytes(b'#!/usr/bin/env python3\\nscript\\n')
     (wrkdir / '.patch_done').write_bytes(b'current pkgsrc cookie\\n')
+elif 'replace-interpreter' in args:
+    script = wrkdir / src_name / 'tools/opt-viewer/extract-reproducers.py'
+    data = script.read_bytes().replace(b'#!/usr/bin/env python3', b'#!/Users/smolev/Downloads/EmberBSD/host-pkg-llvm/bin/python3.15', 1)
+    script.write_bytes(data)
+    if os.environ.get('REPLACE_CALLED'):
+        pathlib.Path(os.environ['REPLACE_CALLED']).write_text('called')
 elif 'build-clean' in args:
     fail = os.environ.get('FAIL_BUILD_CLEAN')
     if fail and not pathlib.Path(fail).exists():
@@ -80,6 +92,8 @@ else:
     raise SystemExit('unexpected fake bmake invocation: ' + repr(args))
 ''')
     fake.chmod(0o755)
+    replaced_marker = root / 'replace-interpreter-called'
+    os.environ['REPLACE_CALLED'] = str(replaced_marker)
     def run(expected_failure=False, fail_clean=None, error=None, scope_override=None):
         old = os.environ.get('FAIL_BUILD_CLEAN')
         if fail_clean:
@@ -110,10 +124,25 @@ else:
     assert (retained / scope_b).read_bytes() == b'old archive\n'
     assert (retained / scope_c).read_bytes() == b'added test\n'
     assert (retained / unchanged).read_bytes() == b'generated stable\n'
+    assert (retained / interpreter).read_bytes().startswith(
+        b'#!/Users/smolev/Downloads/EmberBSD/host-pkg-llvm/bin/python3.15\n')
+    assert replaced_marker.exists()
     assert (work / '.patch_done').read_bytes() == b'current pkgsrc cookie\n'
     assert obj.read_bytes() == b'preserve build output'
     assert obj.stat().st_mtime_ns == obj_stat.st_mtime_ns
     assert run() is False
+
+    # An unconfigured retained stage skips replace-interpreter; the fresh and
+    # retained source both keep the upstream shebang.
+    (retained / interpreter).write_bytes(b'#!/usr/bin/env python3\nscript\n')
+    (work / '.configure_done').unlink()
+    replaced_marker.unlink()
+    assert run() is False
+    assert (retained / interpreter).read_bytes() == b'#!/usr/bin/env python3\nscript\n'
+    assert not replaced_marker.exists()
+    (retained / interpreter).write_bytes(
+        b'#!/Users/smolev/Downloads/EmberBSD/host-pkg-llvm/bin/python3.15\nscript\n')
+    (work / '.configure_done').write_text('configured\n')
 
     # A divergence outside the authorized scope refuses before transaction;
     # object bytes and timestamps remain unchanged.

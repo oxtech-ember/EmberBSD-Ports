@@ -70,6 +70,11 @@ def source_refresh(sdk, patch_refresh, bmake, recipe, work, make_args, scope):
         subprocess.run(base + ['WRKDIR=' + str(candidate_work), 'extract', 'patch'], check=True)
         candidate_source = variables(candidate_work)
         paths.real_directory(str(candidate_source))
+        configure_cookie = work / '.configure_done'
+        if os.path.lexists(configure_cookie):
+            paths.regular_file(str(configure_cookie))
+            subprocess.run(base + ['WRKDIR=' + str(candidate_work), 'replace-interpreter'],
+                           check=True)
         rel_source = candidate_source.relative_to(candidate_work.resolve())
         require(rel_source == retained_rel_source,
                 'candidate WRKSRC relative path differs from retained stage')
