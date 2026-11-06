@@ -668,6 +668,47 @@ def transaction(sdk, work, source, changes, old_cookie, new_inventory, build_cle
         raise
 
 
+def validate_added_revision_includes(paths, recipe, names, selected_values, oldcmd, cmd):
+    """Accept new literal revision metadata only when build inputs are unchanged."""
+    variables = set()
+    for name in sorted(names):
+        data = stable_read(paths, recipe / name).decode('utf-8')
+        count = 0
+        for line in data.splitlines():
+            if not line.strip() or line.lstrip().startswith('#'):
+                continue
+            match = re.fullmatch(r' *([A-Z][A-Z0-9_]*_REVISION) *= *([0-9]+)[ \t]*(?:#.*)?', line)
+            require(match is not None, 'invalid revision-only include: ' + name)
+            variable = match.group(1)
+            require(variable not in variables, 'duplicate variable in revision-only include: ' + variable)
+            variables.add(variable)
+            count += 1
+        require(count, 'empty revision-only include: ' + name)
+    # A revision variable can feed compiler flags or a recipe command. Its
+    # spelling alone does not establish that it only changes package metadata.
+    fields = ('OPSYS OS_VERSION MACHINE_ARCH MACHINE_GNU_PLATFORM ABI USE_CROSS_COMPILE '
+              'PKG_OPTIONS PKGSRC_COMPILER EMBERBSD_CROSS_COMPILER_FAMILY EMBERBSD_HOST_COMPILER_FAMILY '
+              'CC CXX CPP FC F77 AR AS LD NM RANLIB STRIP CFLAGS CXXFLAGS CPPFLAGS FFLAGS LDFLAGS '
+              'CWRAPPERS_APPEND.cc CWRAPPERS_APPEND.cxx '
+              'CONFIGURE_ARGS CONFIGURE_ENV CMAKE_CONFIGURE_ARGS MESON_ARGS '
+              'MAKE_ENV MAKE_FLAGS BUILD_MAKE_FLAGS CMAKE_BUILD_ARGS BUILD_TARGET BUILD_DIRS '
+              'CONFIGURE_DIR CONFIGURE_SCRIPT HAS_CONFIGURE GNU_CONFIGURE NO_CONFIGURE NO_BUILD '
+              'USE_LANGUAGES USE_TOOLS TOOL_DEPENDS BUILD_DEPENDS DEPENDS '
+              'PREFIX LOCALBASE TOOLBASE CROSS_DESTDIR TOOLDIR '
+              'EMBERBSD_HOST_PREFIX EMBERBSD_CROSS_HOST_PREFIX EMBERBSD_CROSS_SYSROOT '
+              'CMAKE CMAKE_GENERATOR CMAKE_BUILD_DIR _CMAKE_BUILD_SYSTEM _CMAKE_BUILD_TOOL '
+              'GMAKE MAKE_PROGRAM PYTHONBIN TOOL_PYTHONBIN').split()
+    before, after = selected_values(oldcmd, fields), selected_values(cmd, fields)
+    changed = [name for name, old, new in zip(fields, before, after) if old != new]
+    require(not changed, 'revision include changes build inputs: ' + ', '.join(changed))
+    import subprocess
+    hooks = ['-n', 'pre-configure', 'do-configure', 'post-configure',
+             'pre-build', 'do-build', 'post-build']
+    previous = subprocess.run(oldcmd + hooks, check=True, stdout=subprocess.PIPE).stdout
+    current = subprocess.run(cmd + hooks, check=True, stdout=subprocess.PIPE).stdout
+    require(previous == current, 'revision include changes configure/build commands')
+
+
 def validate_recipe_includes(paths, recipe, makefiles, records, *, package=None, cwd=None, observed=None):
     """Bind old local includes to provenance and observe current recipe inputs."""
     import shlex
@@ -897,7 +938,10 @@ def main():
                                                 observed=observed_recipe_inputs)
         new_includes = validate_recipe_includes(paths, a.recipe, v['.MAKE.MAKEFILES'], None,
                                                observed=observed_recipe_inputs)
-        require(old_includes == new_includes, 'included recipe inputs changed')
+        require(old_includes <= new_includes, 'included recipe inputs removed')
+        if new_includes != old_includes:
+            validate_added_revision_includes(paths, a.recipe, new_includes - old_includes,
+                                             selected_values, oldcmd, cmd)
         # Configuration and package policy may legitimately change in a local
         # include. The complete old recipe still supplies source preimages;
         # require unchanged source preparation and replay the current configure.

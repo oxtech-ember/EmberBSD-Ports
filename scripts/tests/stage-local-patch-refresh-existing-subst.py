@@ -81,6 +81,10 @@ for arg in args:
   if names[0]=='PKG_FAIL_REASON':
    with pathlib.Path(''' + repr(str(base / 'metadata-queries')) + ''').open('a') as log: log.write(('old' if old else 'new')+'\\n')
   print('\\n'.join((''' + repr(str(previous / 'Makefile') + ' ' + str(previous / 'Makefile.common') + ' ../../mk/bsd.prefs.mk') + ''' if old and n=='.MAKE.MAKEFILES' else v[n]) for n in names));sys.exit()
+if '-d' in args:
+ print('demo-1nb1')
+ print('Parsing ' + ''' + repr(str(previous / 'Makefile.common')) + ''' + ':1: do-extract:',file=sys.stderr)
+ print('ParseDependency(do-extract:)',file=sys.stderr);sys.exit()
 if 'pre-patch' in args or 'post-patch' in args or 'pre-extract' in args or 'post-extract' in args:sys.exit()
 if 'configure-clean' in args:
  flag=pathlib.Path(''' + repr(str(base / 'fail-clean')) + ''')
@@ -173,7 +177,7 @@ sys.exit(3)
     data = db.read_text().splitlines()
     db.write_text('\n'.join(('cat/demo/Makefile.common: ' + hashlib.sha256((previous / 'Makefile.common').read_bytes()).hexdigest()) if x.startswith('cat/demo/Makefile.common:') else x for x in data) + '\n')
     result = subprocess.run(command, capture_output=True, text=True)
-    assert result.returncode and 'custom do-extract' in result.stderr
+    assert result.returncode and 'custom do-extract' in result.stderr, result.stderr
     base, work, source, command, previous = setup('changed-during-replay')
     fake = base / 'bmake'
     fake.write_text(fake.read_text().replace("if 'subst-rewrite' in args:", "if 'subst-rewrite' in args:\n pathlib.Path(" + repr(str(base / 'pkgsrc/cat/demo/Makefile.common')) + ").write_text('changed during replay')"))
@@ -210,4 +214,58 @@ sys.exit(3)
     result = subprocess.run(command, capture_output=True, text=True)
     assert result.returncode and 'previous SUBST configuration changed' in result.stderr
     assert (base / 'metadata-queries').read_text().splitlines() == ['old', 'new']
+    def revision_setup(name, content='RUNTIME_REVISION= 2\nDEVEL_REVISION= 3\n'):
+        base, work, source, command, previous = setup(name)
+        recipe = base / 'pkgsrc/cat/demo'
+        (recipe / 'revisions.mk').write_text(content)
+        with (recipe / 'Makefile').open('a') as stream:
+            stream.write('.include "revisions.mk"\nPKGREVISION= ${RUNTIME_REVISION}\n')
+        config = base / 'vars.json'
+        values = json.loads(config.read_text())
+        values['.MAKE.MAKEFILES'] += ' ' + str(recipe / 'revisions.mk')
+        config.write_text(json.dumps(values))
+        fake = base / 'bmake'
+        text = fake.read_text().replace("else v[n]) for n in names", "else v.get('_old_'+n, v.get(n,'')) if old else v.get(n,'')) for n in names")
+        text = text.replace("if 'configure-clean' in args:",
+                            "if 'pre-configure' in args or 'pre-build' in args:\n print(v.get('_old_hooks' if old else '_new_hooks', 'same build commands'));sys.exit()\nif 'configure-clean' in args:")
+        fake.write_text(text)
+        return base, work, source, command, previous
+
+    base, work, source, command, previous = revision_setup('revision-include')
+    stamp = (source / 'sibling.o').stat().st_mtime_ns
+    result = subprocess.run(command, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert (source / 'input').read_bytes() == b'new /prefix\n'
+    assert (source / 'sibling.o').read_bytes() == b'object'
+    assert (source / 'sibling.o').stat().st_mtime_ns == stamp
+    for index, content in enumerate(('CFLAGS= -O0\n', 'RUNTIME_REVISION!= echo 2\n',
+                                     'RUNTIME_REVISION= ${VALUE}\n', '.include "other.mk"\n',
+                                     'RUNTIME_REVISION= 1\nRUNTIME_REVISION= 2\n',
+                                     'RUNTIME_REVISION= 2; echo unsafe\n',
+                                     'RUNTIME_REVISION= 2\\\n3\n')):
+        base, work, source, command, previous = revision_setup('bad-revision-'+str(index), content)
+        result = subprocess.run(command, capture_output=True, text=True)
+        assert result.returncode and 'revision-only include' in result.stderr, result.stderr
+        assert (source / 'input').read_bytes() == b'old /prefix\n'
+    for field in ('CFLAGS', 'CONFIGURE_ARGS', 'CMAKE_CONFIGURE_ARGS', 'MACHINE_GNU_PLATFORM', 'CC', 'PKG_OPTIONS'):
+        base, work, source, command, previous = revision_setup('revision-used-in-'+field)
+        recipe = base / 'pkgsrc/cat/demo'
+        with (recipe / 'Makefile').open('a') as stream:
+            stream.write(field+'= ${RUNTIME_REVISION}\n')
+        config = base / 'vars.json'
+        values = json.loads(config.read_text())
+        values[field] = '2'
+        values['_old_'+field] = ''
+        config.write_text(json.dumps(values))
+        result = subprocess.run(command, capture_output=True, text=True)
+        assert result.returncode and 'revision include changes build inputs' in result.stderr, result.stderr
+        assert (source / 'input').read_bytes() == b'old /prefix\n'
+    base, work, source, command, previous = revision_setup('revision-build-hook')
+    config = base / 'vars.json'
+    values = json.loads(config.read_text())
+    values['_new_hooks'] = 'extra build command'
+    config.write_text(json.dumps(values))
+    result = subprocess.run(command, capture_output=True, text=True)
+    assert result.returncode and 'revision include changes configure/build commands' in result.stderr, result.stderr
+    assert (source / 'input').read_bytes() == b'old /prefix\n'
 print('PASS: existing SUBST replay, exact inputs, cookie, recovery and mtimes')
