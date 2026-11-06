@@ -1,0 +1,4 @@
+@comment $NetBSD$
+bin/mesa_clc
+bin/pco_clc
+bin/vtn_bindgen2

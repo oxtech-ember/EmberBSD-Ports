@@ -1,11 +1,9 @@
 # $NetBSD: Makefile,v 1.220 2026/04/06 10:47:10 wiz Exp $
 # Origin: EmberBSD; AI-assisted bounded NetBSD 11/AArch64 and amd64 candidate.
-DISTNAME=	mesa-26.2.6
+.include "mesa-source.mk"
 PKGNAME=	${DISTNAME:S/mesa/MesaLib/}
-PKGREVISION=	17
+PKGREVISION=	${MESA_PORT_REVISION}
 CATEGORIES=	graphics
-MASTER_SITES=	https://archive.mesa3d.org/
-EXTRACT_SUFX=	.tar.xz
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://www.mesa3d.org/
 COMMENT=	OpenGL and Vulkan with RadeonSI, V3D, PowerVR, VirGL, Zink and software rendering

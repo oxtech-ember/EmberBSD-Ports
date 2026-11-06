@@ -9,7 +9,9 @@ import subprocess
 import tempfile
 
 RECIPE = Path(__file__).resolve().parents[1]
-FIELDS = ('PKG_FAIL_REASON', 'MESON_ARGS', 'MESON_NATIVE_ARGS', 'DEPENDS',
+FIELDS = ('PKG_FAIL_REASON', 'MESON_ARGS', 'MESON_NATIVE_ARGS', 'DEPENDS', 'TOOL_DEPENDS',
+          'TOOLS_PATH.mesa_clc', 'TOOLS_PATH.vtn_bindgen2', 'TOOLS_PATH.pco_clc',
+          '_EMBERBSD_MESA_NATIVE', '_EMBERBSD_MESA_GENERATOR_NAMES',
           'BUILDLINK_DEPMETHOD.clang', 'BUILDLINK_DEPMETHOD.spirv-tools',
           'BUILDLINK_DEPMETHOD.spirv-llvm-translator',
           'BUILDLINK_API_DEPENDS.spirv-llvm-translator', 'TEST_INCLUDES',
@@ -33,7 +35,7 @@ def parse(make, work, source, arch, cross, sealed, tests=False, minimal=False, p
     for line in source.splitlines():
         if line.startswith('.include '):
             name = line.split('"')[1]
-            if name == 'mesa-generators.mk':
+            if name in ('mesa-generators.mk', 'mesa-source.mk'):
                 line = '.include "' + str(RECIPE / name) + '"'
             else:
                 line = 'TEST_INCLUDES+= ' + name
@@ -49,6 +51,9 @@ WRKDIR={work}
 CROSS_DESTDIR={work}
 PREFIX=/usr/pkg
 TOOLBASE=/usr/pkg
+ECHO=echo
+MV=mv
+TEST=test
 PYPKGPREFIX=py315
 PYVERSSUFFIX=3.15
 PKG_OPTIONS={pkg_options}
@@ -97,11 +102,21 @@ def oracle(values, arch, cross, sealed, tests=False):
                 'Cross builds did not select system generators')
         require(not (includes & BUILD_LINKS), 'Cross builds imported target CLC libraries')
         require('--native-file' in values['MESON_NATIVE_ARGS'], 'Cross native-file binding was lost')
-        require(not sealed or '--native-file' in values['MESON_NATIVE_ARGS'],
-                'Cross builds did not select the sealed native file')
+        if sealed:
+            require(not any(item.startswith('mesa-generators>') for item in values['TOOL_DEPENDS'].split()),
+                    'Explicit external tools unexpectedly add a package dependency')
+        else:
+            require('mesa-generators>=26.2.6nb17:../mesa-generators' in values['TOOL_DEPENDS'].split(),
+                    'The normal cross path does not depend on the matching native generator package')
+            for name in (('mesa_clc', 'vtn_bindgen2', 'pco_clc') if arch == 'aarch64'
+                         else ('mesa_clc', 'vtn_bindgen2')):
+                require(values['TOOLS_PATH.' + name] == '/usr/pkg/bin/' + name,
+                        'The normal cross path did not select the native package tool: ' + name)
     else:
         require(not values['PKG_FAIL_REASON'] and not values['MESON_NATIVE_ARGS'],
                 'Native builds still require a sealed generator directory')
+        require(not any(item.startswith('mesa-generators>') for item in values['TOOL_DEPENDS'].split()),
+                'Native builds unexpectedly depend on the cross generator package')
         require({'-Dmesa-clc=enabled', '-Dprecomp-compiler=enabled', '-Dspirv-tools=enabled',
                  '-Dinstall-mesa-clc=false', '-Dinstall-precomp-compiler=false'} <= options,
                 'Native generators are absent or installable')
@@ -128,29 +143,76 @@ def main():
     before = subprocess.check_output(['df', '-k', str(args.work_parent)], text=True)
     work = Path(tempfile.mkdtemp(prefix='mesa-generator-modes-', dir=args.work_parent))
     try:
+        source_vars = work / 'source-vars.mk'
+        source_vars.write_text('''
+.include "{source}"
+show:
+	@printf '%s\\n' ${{DISTNAME}} ${{MESA_PORT_REVISION}} ${{MESA_GENERATORS_VERSION}} ${{PATCHDIR}} ${{DISTINFO_FILE}}
+'''.format(source=RECIPE / 'mesa-source.mk'))
+        source_values = subprocess.check_output([str(args.bmake), '-r', '-m', '/', '-f',
+                                                  str(source_vars), 'show'], cwd=RECIPE, text=True).splitlines()
+        require(source_values[:3] == ['mesa-26.2.6', '17', '26.2.6nb17'],
+                'Mesa source and generator package versions are not shared')
+        require(source_values[3].endswith('/MesaLib/patches') and
+                source_values[4].endswith('/MesaLib/distinfo'),
+                'The generator package does not share the Mesa source patch set and archive digest')
+        provider_make = (RECIPE.parent / 'mesa-generators/Makefile').read_text()
+        provider_plist = (RECIPE.parent / 'mesa-generators/PLIST').read_text().splitlines()
+        require('PKGREVISION= ${MESA_PORT_REVISION}' in provider_make and
+                {'bin/mesa_clc', 'bin/vtn_bindgen2', 'bin/pco_clc'} ==
+                {line for line in provider_plist if line.startswith('bin/')},
+                'The native package revision or installed generator interface is incomplete')
+        require(not any(name in provider_make for name in ('py-lxml', 'py-rnc2rng', 'py-rply', 'py-appdirs')),
+                'Optional schema/test modules became mandatory native package dependencies')
         tools = work / 'sealed'
         tools.mkdir()
         (tools / 'installed.sha256').write_text('metadata fixture only; never executed\n')
         source = (RECIPE / 'Makefile').read_text()
         checks = 0
         for arch in ('x86_64', 'aarch64'):
-            for cross, selected in ((False, False), (True, False), (True, True)):
+            for cross, selected in ((False, False), (True, None), (True, True)):
                 values = parse(args.bmake, work, source, arch, 'yes' if cross else 'no',
-                               tools if selected else work / 'missing')
+                               tools if selected is True else '' if selected is None else work / 'missing')
                 oracle(values, arch, cross, selected)
-                if cross and not selected:
+                if cross and selected is None:
+                    for name in ('mesa_clc', 'vtn_bindgen2', 'pco_clc'):
+                        path = work / 'native-prefix/bin' / name
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        path.write_text('#!/bin/sh\nexit 0\n')
+                        path.chmod(0o755)
+                    prefix_fixture = work / 'fixture.mk'
+                    prefix_fixture.write_text(prefix_fixture.read_text().replace('TOOLBASE=/usr/pkg',
+                                                                                 'TOOLBASE=' + str(work / 'native-prefix')))
+                    result = subprocess.run([str(args.bmake), '-r', '-m', '/', '-f', str(prefix_fixture),
+                                             'emberbsd-mesa-generators-check'],
+                                            cwd=RECIPE, capture_output=True, text=True)
+                    require(result.returncode == 0, 'The normal package provider check failed: ' + result.stderr)
+                    native_path = Path(values['_EMBERBSD_MESA_NATIVE'])
+                    native_path.unlink(missing_ok=True)
+                    generated = subprocess.run([str(args.bmake), '-r', '-m', '/', '-f', str(prefix_fixture),
+                                                str(native_path)], cwd=RECIPE, capture_output=True, text=True)
+                    require(generated.returncode == 0, 'The normal Meson native file was not regenerated: ' +
+                            generated.stdout + generated.stderr)
+                    native_text = native_path.read_text()
+                    required_tools = values['_EMBERBSD_MESA_GENERATOR_NAMES'].split()
+                    require(all(name + " = '" + str(work / 'native-prefix/bin' / name) + "'" in native_text
+                                for name in required_tools),
+                            'The normal native file does not bind the selected package executables ' +
+                            arch + ' ' + repr(required_tools) + ': ' + native_text)
+                if cross and selected is True:
                     result = subprocess.run([str(args.bmake), '-r', '-m', '/', '-f', str(work / 'fixture.mk'),
+                                             'EMBERBSD_MESA_GENERATORS=' + str(work / 'missing'),
                                              'emberbsd-mesa-generators-check'],
                                             cwd=RECIPE, capture_output=True, text=True)
                     require(result.returncode != 0 and
-                            'requires an absolute sealed EMBERBSD_MESA_GENERATORS directory' in result.stderr,
-                            'The cross pre-configure target accepted a missing generator seal')
+                            'installed.sha256 seal' in result.stderr,
+                            'The external path accepted a missing generator seal')
                 checks += 1
         for arch in ('x86_64', 'aarch64'):
             for cross in (False, True):
                 values = parse(args.bmake, work, source, arch, 'yes' if cross else 'no',
-                               tools if cross else work / 'missing', tests=True)
-                oracle(values, arch, cross, cross, tests=True)
+                               '' if cross else work / 'missing', tests=True)
+                oracle(values, arch, cross, None, tests=True)
                 checks += 1
         for arch in ('x86_64', 'aarch64'):
             for cross in (False, True):
@@ -165,6 +227,8 @@ def main():
                                               '-Dprecomp-compiler=system', '-Dprecomp-compiler=enabled'))
                                 for x in options), 'Softpipe imported CLC generators')
                 require('vulkan-loader' not in values['DEPENDS'], 'Softpipe imported Vulkan loader')
+                require(not any(item.startswith('mesa-generators>') for item in values['TOOL_DEPENDS'].split()),
+                        'Softpipe imported the native shader tools package')
                 require(not (set(values['TEST_INCLUDES'].split()) & BUILD_LINKS),
                         'Softpipe imported native CLC dependencies')
                 require('../../lang/llvm/buildlink3.mk' not in values['TEST_INCLUDES'].split(),
