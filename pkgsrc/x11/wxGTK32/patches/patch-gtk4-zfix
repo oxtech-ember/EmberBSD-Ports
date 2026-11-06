@@ -1,0 +1,271 @@
+$NetBSD$GTK4 source-level follow-up fixes for wxGTK.Origin: EmberBSD, wxWindows licence.--- include/wx/gtk/bmpcbox.h.orig
++++ include/wx/gtk/bmpcbox.h
+@@ -127,7 +127,9 @@
+     virtual GtkWidget* GetConnectWidget() wxOVERRIDE;
+ 
+ protected:
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+     virtual void GTKCreateComboBoxWidget() wxOVERRIDE;
+     virtual void GTKInsertComboBoxTextItem( unsigned int n, const wxString& text ) wxOVERRIDE;
+--- include/wx/gtk/combobox.h.orig
++++ include/wx/gtk/combobox.h
+@@ -149,7 +149,11 @@
+     virtual GtkEntry *GetEntry() const wxOVERRIDE
+         { return m_entry; }
+ 
++#ifdef __WXGTK4__
++    virtual int GTKIMFilterKeypress(GdkEvent* event) const wxOVERRIDE
++#else
+     virtual int GTKIMFilterKeypress(GdkEventKey* event) const wxOVERRIDE
++#endif
+         { return GTKEntryIMFilterKeypress(event); }
+ 
+ 
+--- include/wx/gtk/listbox.h.orig
++++ include/wx/gtk/listbox.h
+@@ -106,7 +106,9 @@
+     virtual void DoDeleteOneItem(unsigned int n) wxOVERRIDE;
+     virtual wxSize DoGetBestSize() const wxOVERRIDE;
+     virtual void DoApplyWidgetStyle(GtkRcStyle *style) wxOVERRIDE;
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+     virtual void DoSetSelection(int n, bool select) wxOVERRIDE;
+ 
+--- include/wx/gtk/private/wrapgdk.h.orig
++++ include/wx/gtk/private/wrapgdk.h
+@@ -17,13 +17,21 @@
+     // __STDC_VERSION__ used there being undefined, suppress this.
+     wxGCC_WARNING_SUPPRESS(undef)
+ 
+-    #include <gdk/gdkwayland.h>
++    #ifdef __WXGTK4__
++        #include <gdk/wayland/gdkwayland.h>
++    #else
++        #include <gdk/gdkwayland.h>
++    #endif
+ 
+     wxGCC_WARNING_RESTORE(undef)
+ #endif // GDK_WINDOWING_WAYLAND
+ 
+ #ifdef GDK_WINDOWING_X11
+-    #include <gdk/gdkx.h>
++    #ifdef __WXGTK4__
++        #include <gdk/x11/gdkx.h>
++    #else
++        #include <gdk/gdkx.h>
++    #endif
+ #endif
+ 
+ #ifdef GDK_WINDOWING_WIN32
+--- include/wx/gtk/radiobox.h.orig
++++ include/wx/gtk/radiobox.h
+@@ -139,7 +139,9 @@
+ #endif
+ 
+     virtual void DoApplyWidgetStyle(GtkRcStyle *style) wxOVERRIDE;
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+     virtual void DoEnable(bool enable) wxOVERRIDE;
+ 
+--- include/wx/gtk/slider.h.orig
++++ include/wx/gtk/slider.h
+@@ -82,7 +82,9 @@
+     // Note the following member is not used in GTK+2 < 2.16.
+     int m_tickFreq;
+ 
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+     // set the slider value unconditionally
+     void GTKSetValue(int value);
+--- include/wx/gtk/textentry.h.orig
++++ include/wx/gtk/textentry.h
+@@ -10,7 +10,11 @@
+ #ifndef _WX_GTK_TEXTENTRY_H_
+ #define _WX_GTK_TEXTENTRY_H_
+ 
++#ifdef __WXGTK4__
++typedef struct _GdkEvent GdkEvent;
++#else
+ typedef struct _GdkEventKey GdkEventKey;
++#endif
+ typedef struct _GtkEditable GtkEditable;
+ typedef struct _GtkEntry GtkEntry;
+ 
+--- src/gtk/bitmap.cpp.orig
++++ src/gtk/bitmap.cpp
+@@ -24,6 +24,9 @@
+ 
+ #include "wx/gtk/private/object.h"
+ #include "wx/gtk/private.h"
++#ifdef __WXGTK4__
++    #include <gdk/deprecated/gdkpixbuf.h>
++#endif
+ 
+ #ifndef __WXGTK3__
+ GdkWindow* wxGetTopLevelGDK();
+@@ -550,6 +553,11 @@
+ 
+ wxBitmap::wxBitmap(const wxCursor& cursor)
+ {
++#ifdef __WXGTK4__
++    GdkTexture* texture = gdk_cursor_get_texture(cursor.GetCursor());
++    if (texture)
++        *this = wxBitmap(gdk_pixbuf_get_from_texture(texture));
++#else
+ #if GTK_CHECK_VERSION(2,8,0)
+     if (wx_is_at_least_gtk2(8))
+     {
+@@ -558,6 +566,7 @@
+     }
+ #else
+     wxUnusedVar(cursor);
++#endif
+ #endif
+ }
+ 
+--- src/gtk/bmpcbox.cpp.orig
++++ src/gtk/bmpcbox.cpp
+@@ -177,6 +177,7 @@
+     return wxChoice::GetConnectWidget();
+ }
+ 
++#ifndef __WXGTK4__
+ GdkWindow *wxBitmapComboBox::GTKGetWindow(wxArrayGdkWindows& windows) const
+ {
+     if ( GetEntry() )
+@@ -184,6 +185,7 @@
+ 
+     return wxChoice::GTKGetWindow(windows);
+ }
++#endif
+ 
+ wxSize wxBitmapComboBox::DoGetBestSize() const
+ {
+--- src/gtk/display.cpp.orig
++++ src/gtk/display.cpp
+@@ -17,7 +17,11 @@
+ #include "wx/gtk/private/backend.h"
+ #ifdef GDK_WINDOWING_X11
+     #include "wx/unix/private/displayx11.h"
+-    #include <gdk/gdkx.h>
++    #ifdef __WXGTK4__
++        #include <gdk/x11/gdkx.h>
++    #else
++        #include <gdk/gdkx.h>
++    #endif
+     #define wxGTK_HAVE_X11_DISPLAY
+ #endif
+ 
+@@ -40,7 +44,7 @@
+ 
+ static GListModel* GetMonitors()
+ {
+-    GdkDisplay* const display = GetDisplay();
++    GdkDisplay* const display = ::GetDisplay();
+     return display ? gdk_display_get_monitors(display) : NULL;
+ }
+ 
+@@ -118,7 +122,7 @@
+ 
+ int wxDisplayFactoryGTK::GetFromPoint(const wxPoint& pt)
+ {
+-    GdkDisplay* const display = GetDisplay();
++    GdkDisplay* const display = ::GetDisplay();
+ #ifdef GDK_WINDOWING_X11
+     // wx screen points are global only on X11. Wayland does not expose a
+     // global monitor coordinate space, so do not guess from toplevel-relative
+--- src/gtk/listbox.cpp.orig
++++ src/gtk/listbox.cpp
+@@ -865,10 +865,12 @@
+     return GTK_WIDGET(m_treeview);
+ }
+ 
++#ifndef __WXGTK4__
+ GdkWindow *wxListBox::GTKGetWindow(wxArrayGdkWindows& WXUNUSED(windows)) const
+ {
+     return gtk_tree_view_get_bin_window(m_treeview);
+ }
++#endif
+ 
+ void wxListBox::DoApplyWidgetStyle(GtkRcStyle *style)
+ {
+--- src/gtk/nativewin.cpp.orig
++++ src/gtk/nativewin.cpp
+@@ -27,7 +27,11 @@
+ #include "wx/gtk/private/wrapgtk.h"
+ 
+ #ifdef GDK_WINDOWING_X11
+-    #include <gdk/gdkx.h>
++    #ifdef __WXGTK4__
++        #include <gdk/x11/gdkx.h>
++    #else
++        #include <gdk/gdkx.h>
++    #endif
+ #endif
+ 
+ // ============================================================================
+--- src/gtk/radiobox.cpp.orig
++++ src/gtk/radiobox.cpp
+@@ -668,6 +668,7 @@
+ 
+ #endif // wxUSE_TOOLTIPS
+ 
++#ifndef __WXGTK4__
+ GdkWindow *wxRadioBox::GTKGetWindow(wxArrayGdkWindows& windows) const
+ {
+     windows.push_back(gtk_widget_get_window(m_widget));
+@@ -686,6 +687,7 @@
+ 
+     return NULL;
+ }
++#endif
+ 
+ // static
+ wxVisualAttributes
+--- src/gtk/slider.cpp.orig
++++ src/gtk/slider.cpp
+@@ -581,6 +581,7 @@
+     return size;
+ }
+ 
++#ifndef __WXGTK4__
+ GdkWindow *wxSlider::GTKGetWindow(wxArrayGdkWindows& WXUNUSED(windows)) const
+ {
+ #ifdef __WXGTK3__
+@@ -589,6 +590,7 @@
+     return GTK_RANGE(m_scale)->event_window;
+ #endif
+ }
++#endif
+ 
+ // static
+ wxVisualAttributes
+--- src/gtk/utilsgtk.cpp.orig
++++ src/gtk/utilsgtk.cpp
+@@ -171,7 +171,7 @@
+     //       added in pango-1.4 or earlier since GTK 2.4 (our minimum requirement
+     //       for GTK lib) required pango 1.4...
+ 
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) && !defined(__WXGTK4__)
+     return pango_version_check(major, minor, micro);
+ #elif defined(PANGO_VERSION_MAJOR)
+     if (!gtk_check_version (2,11,0))
+@@ -399,7 +399,7 @@
+ #ifndef __WXGTK4__
+         GdkDisplay* display = gtk_widget_get_display(dialog);
+ #endif
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) && !defined(__WXGTK4__)
+         wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+         GdkDeviceManager* manager = gdk_display_get_device_manager(display);
+         GdkDevice* device = gdk_device_manager_get_client_pointer(manager);

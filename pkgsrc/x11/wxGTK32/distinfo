@@ -19,6 +19,7 @@ SHA1 (patch-gtk4-text) = a66faa73aa6c395bd930bad4672e8fcba4cb74cd
 SHA1 (patch-gtk4-toplevel) = ee2535bf2851e49c4d32bc62835b3df3779640ed
 SHA1 (patch-gtk4-webview) = 0394ddef8d1549e6e0602b589657aa6a151ae9fe
 SHA1 (patch-gtk4-window) = 6fb750eb544be26f7c5bbc47e064261d71eb3b4f
+SHA1 (patch-gtk4-zfix) = 0e1a6943503356caebf955e1fb0b99330ef94889
 SHA1 (patch-src_unix_glegl.cpp) = 1610bc04a0f8155138b169eb68f4b03e60ccecd9
 SHA1 (patch-src_unix_utilsunx.cpp) = be61cc3931e8aa8cf790cfedf6f916a84970f074
 SHA1 (patch-wx-config.in) = 87cca953a550858cb95ad061352fd82038e67e16
