@@ -1,6 +1,6 @@
 --- a/mk/cwrappers.mk
 +++ b/mk/cwrappers.mk
-@@ -55,5 +55,12 @@
+@@ -55,6 +55,13 @@
  # TODO: Find and fix packages depending on the implicit include path.
 -CWRAPPERS_APPEND.cc+=		-I${PREFIX}/include
 -CWRAPPERS_APPEND.cxx+=		-I${PREFIX}/include
