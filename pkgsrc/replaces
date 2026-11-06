@@ -545,3 +545,6 @@ security/libfido2
 security/zxcvbn-c
 
 sysutils/cpuinfo
+
+graphics/vulkan-headers
+graphics/vulkan-loader
