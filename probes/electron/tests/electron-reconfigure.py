@@ -233,6 +233,13 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     opt.shared_abseil = opt.shared_icu = opt.shared_re2 = opt.shared_undici = True
     opt.protobuf_source = root/'protobuf'; opt.protobuf_ports_source = root/'owner'
     opt.protobuf_archive = root/'protobuf.tar'; opt.protobuf_patch = root/'patch'
+    opt.boringssl_source = root/'boringssl'; opt.boringssl_archive = root/'boringssl.tar'
+    env.update(EMBERBSD_BORINGSSL_SOURCE_SHA256='a' * 64,
+               EMBERBSD_COMPRESSION_SOURCE_SHA256='a' * 64,
+               EMBERBSD_MEDIA_HEADER_LIBYUV_SHA256='a' * 64,
+               EMBERBSD_MEDIA_HEADER_LIBSRTP_SHA256='a' * 64,
+               EMBERBSD_PERFETTO_SOURCE_SHA256='a' * 64,
+               EMBERBSD_PROTOBUF_SOURCE_SHA256='a' * 64)
     assert new['emberbsd_node_source_identity'] == str(
         opt.node_source.resolve(strict=True)/'emberbsd-prepared-source.json')
     saved = dict(arguments=old, environment=env, source=str(src.parent), sdk=str(root), host_prefix=str(host), target='amd64')
@@ -262,6 +269,12 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
         candidate.v8_metagen_selection = {'version': 1, 'aliases': {'libclang.dylib': 'lib/libclang.dylib'}, 'extra': ['lib/libiconv.2.dylib']}
         bound=b.bind_versioned(sdk, Native(), candidate.work/'target-commands', state['commands'])
         return Native(), {'EMBERBSD_PROTOC_SELECTION_SHA256':'e' * 64, 'EMBERBSD_DEVTOOLS_PROVIDER_SHA256':'a' * 64, 'PATH':state.get('path', Native.path), 'EMBERBSD_CONTROL_GIT':state.get('git', '/usr/bin/git'),
+                          'EMBERBSD_BORINGSSL_SOURCE_SHA256':'a' * 64,
+                          'EMBERBSD_COMPRESSION_SOURCE_SHA256':'a' * 64,
+                          'EMBERBSD_MEDIA_HEADER_LIBYUV_SHA256':'a' * 64,
+                          'EMBERBSD_MEDIA_HEADER_LIBSRTP_SHA256':'a' * 64,
+                          'EMBERBSD_PERFETTO_SOURCE_SHA256':'a' * 64,
+                          'EMBERBSD_PROTOBUF_SOURCE_SHA256':'a' * 64,
                           'EMBERBSD_HOST_TYPESCRIPT':'/new', 'EMBERBSD_HOST_NODE':str(host/'bin/node'),
                           'EMBERBSD_V8_SOURCE_SHA256':state.get('v8_sha', 'b' * 64),
                           'EMBERBSD_NODE_SOURCE_SHA256':state.get('node_sha', 'b' * 64),
@@ -299,7 +312,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     config.write_text(json.dumps(with_identity))
     state['extra'] = {'EMBERBSD_PROTOBUF_SOURCE_SHA256': 'new'}
     try: b.reconfigure(opt); raise AssertionError('accepted changed common protobuf identity')
-    except ValueError as e: assert 'producer input changed: EMBERBSD_PROTOBUF_SOURCE_SHA256' in str(e)
+    except ValueError as e: assert 'verified common PROTOBUF source identities' in str(e)
     state.pop('extra'); config.write_bytes(before)
     for invalid in (
         dict(new, v8_prepared_source_receipt='//custom/receipt.json'),
@@ -324,7 +337,7 @@ with tempfile.TemporaryDirectory(prefix='electron-reconfigure-test-') as temp:
     config.write_bytes(before)
     state['extra'] = {'EMBERBSD_PROTOBUF_SOURCE_SHA256':'new'}
     try: b.reconfigure(opt); raise AssertionError('accepted V8 and unrelated provider changes together')
-    except ValueError as e: assert 'producer input changed: EMBERBSD_PROTOBUF_SOURCE_SHA256' in str(e)
+    except ValueError as e: assert 'verified common PROTOBUF source identities' in str(e)
     state.pop('extra'); config.write_bytes(before)
     state['values'] = new; state['node_sha'] = 'invalid'
     try: b.reconfigure(opt); raise AssertionError('accepted malformed verified Node source identity')

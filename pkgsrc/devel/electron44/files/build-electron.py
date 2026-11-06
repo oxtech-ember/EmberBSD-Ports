@@ -1029,6 +1029,43 @@ def verified_node_source_refresh(old_arguments, new_arguments, old_environment, 
     return old_hash != new_hash or old_receipt != new_receipt
 
 
+def verified_common_source_refresh(old_arguments, new_arguments, old_environment,
+                                   new_environment, options, work):
+    """Allow verified source receipt changes while retaining existing views."""
+    permitted = set()
+    if verified_node_source_refresh(old_arguments, new_arguments, old_environment,
+                                    new_environment, options.node_source):
+        permitted.add('EMBERBSD_NODE_SOURCE_SHA256')
+    require(new_arguments.get('v8_prepared_source_receipt') == '//v8/emberbsd-prepared-source.json' and
+            new_arguments.get('v8_version_hash_salt_files') == [] and
+            new_arguments.get('v8_version_hash_salt') == '',
+            'reconfigure requires the verified common V8 receipt salt')
+    links = {
+        'PERFETTO': (options.perfetto_source, ('src/third_party/perfetto',)),
+        'PROTOBUF': (options.protobuf_source, ('src/third_party/protobuf/src',
+                                                'src/third_party/protobuf/third_party')),
+    }
+    for name in ('V8', 'PERFETTO', 'PROTOBUF'):
+        key = 'EMBERBSD_' + name + '_SOURCE_SHA256'
+        old, new = old_environment.get(key), new_environment.get(key)
+        require(isinstance(old, str) and re.fullmatch(r'[0-9a-f]{64}', old) and
+                isinstance(new, str) and re.fullmatch(r'[0-9a-f]{64}', new),
+                'reconfigure requires verified common ' + name + ' source identities')
+        if old == new:
+            continue
+        if name in links:
+            root, paths = links[name]
+            require(root and Path(root).is_absolute(), 'common ' + name + ' source is missing')
+            root = Path(root).resolve(strict=True)
+            for relative in paths:
+                link = work / 'source-view' / relative
+                target = root if name == 'PERFETTO' else root / Path(relative).name
+                require(link.is_symlink() and Path(os.readlink(link)) == target,
+                        'common ' + name + ' source root changed')
+        permitted.add(key)
+    return permitted
+
+
 def common_embedder_sources(options, sdk, native, environment):
     node = getattr(options, 'node_source', None)
     node_export = getattr(options, 'node_pkgsrc', None)
@@ -3954,23 +3991,11 @@ def reconfigure(options):
         if deployment_changed:
             permitted_env.add('MACOSX_DEPLOYMENT_TARGET')
         permitted_env.add('EMBERBSD_DEVTOOLS_PROVIDER_SHA256')
-        node_source_refresh = verified_node_source_refresh(
-            saved['arguments'], values, old_env, environment, getattr(options, 'node_source', None))
-        if node_source_refresh:
-            permitted_env.add('EMBERBSD_NODE_SOURCE_SHA256')
-        require(values.get('v8_prepared_source_receipt') == '//v8/emberbsd-prepared-source.json' and
-                values.get('v8_version_hash_salt_files') == [] and
-                values.get('v8_version_hash_salt') == '',
-                'reconfigure requires the verified common V8 receipt salt')
-        old_v8_identity = old_env.get('EMBERBSD_V8_SOURCE_SHA256')
-        new_v8_identity = environment.get('EMBERBSD_V8_SOURCE_SHA256')
-        require(isinstance(old_v8_identity, str) and re.fullmatch(r'[0-9a-f]{64}', old_v8_identity) and
-                isinstance(new_v8_identity, str) and re.fullmatch(r'[0-9a-f]{64}', new_v8_identity),
-                'reconfigure requires verified common V8 source identities')
-        if old_v8_identity != new_v8_identity:
-            # producer_inputs has just run the common V8 owner's verify-source;
-            # this exception is limited to that receipt-derived identity.
-            permitted_env.add('EMBERBSD_V8_SOURCE_SHA256')
+        # producer_inputs has already verified each current owner and payload.
+        refreshed_sources = verified_common_source_refresh(
+            saved['arguments'], values, old_env, environment, options, work)
+        permitted_env.update(refreshed_sources)
+        node_source_refresh = 'EMBERBSD_NODE_SOURCE_SHA256' in refreshed_sources
         require(not old_env.get('EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK') or
                 environment.get('EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK'),
                 'reconfigure cannot remove the selected host buildlink')
