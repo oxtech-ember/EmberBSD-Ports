@@ -23,6 +23,7 @@ mkdir -p "$out/tree/pkgtools/pkg_install" "$out/tree/graphics/MesaLib" \
     "$out/tree/graphics/mesa-generators" "$out/tree/graphics/widget" \
     "$out/tree/graphics/helper" "$out/tree/graphics/bad" \
     "$out/tree/devel/flex" "$out/tree/devel/bison" \
+    "$out/tree/x11/libX11" \
     "$out/native-db" "$out/sdk/scripts" "$out/packages/All"
 : > "$out/mk.conf"
 printf 'print(1)\n' > "$out/sdk/scripts/resolve-jobs.py"
@@ -73,6 +74,8 @@ value() {
     case "\$pkg:\$role:\$1" in
         MesaLib:target:TOOL_DEPENDS)
             echo 'mesa-generators-26.2.6nb20:../mesa-generators flex>=2.6.4:../../devel/flex' ;;
+        MesaLib:target:BUILD_DEPENDS)
+            echo '{libX11>=1.8:alt,libX11>=1.8}:../../x11/libX11' ;;
         mesa-generators:native:TOOL_DEPENDS) echo 'bison>=3.8.2:../../devel/bison' ;;
         widget:target:TOOL_DEPENDS) echo 'helper-1.0:./../helper' ;;
         bad:target:TOOL_DEPENDS) echo 'evil>=1:../../../../tmp/evil' ;;
@@ -127,12 +130,15 @@ order_case() {
         fail "$label did not keep the sibling generator edge"
     grep -qx 'devel/flex@native graphics/MesaLib' "$state/edges" ||
         fail "$label did not keep the canonical flex edge"
+    grep -qx 'x11/libX11 graphics/MesaLib' "$state/edges" ||
+        fail "$label did not keep the directory after the last colon"
     grep -qx 'graphics/helper@native graphics/widget' "$state/edges" ||
         fail "$label did not resolve ./../helper"
     grep -qx 'graphics/mesa-generators@native mesa-generators-26.2.6nb20' "$state/packages" ||
         fail "$label did not record the exact generator package"
     before graphics/mesa-generators@native graphics/MesaLib "$state/order"
     before devel/flex@native graphics/MesaLib "$state/order"
+    before x11/libX11 graphics/MesaLib "$state/order"
     before graphics/helper@native graphics/widget "$state/order"
     generator=$(grep -- "-C $out/tree/graphics/mesa-generators " "$out/calls" | grep show-vars || true)
     bison=$(grep -- "-C $out/tree/devel/bison " "$out/calls" | grep show-vars || true)
