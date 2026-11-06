@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import tempfile
 from pathlib import Path
 import sys
@@ -153,29 +154,109 @@ def _additive_wrapper(old, candidate, old_work, candidate_work, prefix, candidat
     if old_index != len(before):
         raise ValueError('existing generated wrapper line changed')
     additions = {}
-    pattern = re.compile(rb'^(BUILDLINK_PREFIX|_BLNK_PKG_DBDIR)\.([A-Za-z0-9_+.-]+)=\s*(\S+)\n$')
-    old_keys = {(match.group(1), match.group(2)) for line in before
-                if (match := pattern.fullmatch(line))}
+    pattern = re.compile(rb'^([A-Za-z0-9_+.-]+)=[ \t]*(.*?)\n$')
+    old_keys = set()
+    for line in before:
+        match = pattern.fullmatch(line)
+        if match:
+            if match.group(1) in old_keys:
+                raise ValueError('duplicate existing generated wrapper key')
+            old_keys.add(match.group(1))
     for line in remaining:
         match = pattern.fullmatch(line)
         if not match:
             raise ValueError('unsupported generated wrapper addition')
-        kind, name, value = match.groups()
-        key = (kind, name)
+        key, value = match.groups()
         if key in additions or key in old_keys:
-            raise ValueError('duplicate generated provider key')
-        additions[key] = value.decode()
-    names = {name for _, name in additions}
+            raise ValueError('duplicate generated wrapper key')
+        additions[key] = value.decode('utf-8', 'strict')
+    names = {key.removeprefix(b'BUILDLINK_PREFIX.') for key in additions
+             if key.startswith(b'BUILDLINK_PREFIX.')}
     for name in names:
-        if additions.get((b'BUILDLINK_PREFIX', name)) != str(prefix):
+        if not re.fullmatch(rb'[A-Za-z0-9_+.-]+', name):
+            raise ValueError('invalid new generated provider name')
+        if additions.get(b'BUILDLINK_PREFIX.' + name) != str(prefix):
             raise ValueError('new generated provider prefix is foreign')
-        db = additions.get((b'_BLNK_PKG_DBDIR', name))
+        db = additions.get(b'_BLNK_PKG_DBDIR.' + name)
         if not db or Path(db).parent != Path(prefix) / 'pkgdb':
             raise ValueError('new generated provider package is foreign')
         if str(Path(db) / '+CONTENTS') not in candidate_inputs:
             raise ValueError('new generated provider package is not selected')
-    if len(additions) != 2 * len(names):
-        raise ValueError('unpaired generated provider additions')
+    consumed = {kind + name for name in names for kind in (b'BUILDLINK_PREFIX.', b'_BLNK_PKG_DBDIR.')}
+
+    def selected_bytes(path):
+        path = Path(path)
+        info = path.lstat()
+        if not stat.S_ISREG(info.st_mode) or path.resolve(strict=True) != path:
+            raise ValueError('selected wrapper input is not a canonical regular file')
+        data = path.read_bytes()
+        after = path.lstat()
+        stable = lambda s: (s.st_dev, s.st_ino, s.st_mode, s.st_size, s.st_mtime_ns, s.st_ctime_ns)
+        if stable(info) != stable(after) or hashlib.sha256(data).hexdigest() != candidate_inputs.get(str(path)):
+            raise ValueError('selected wrapper input differs from candidate identity')
+        return data
+
+    metadata = {}
+    def selected_metadata(name):
+        if name not in names:
+            raise ValueError('wrapper metadata lacks a new selected provider')
+        if name not in metadata:
+            db = Path(additions[b'_BLNK_PKG_DBDIR.' + name])
+            metadata[name] = (selected_bytes(db / '+CONTENTS').decode('utf-8', 'strict').splitlines(),
+                              selected_bytes(db / '+BUILD_INFO').decode('utf-8', 'strict').splitlines())
+        return metadata[name]
+
+    file_keys = {
+        b'FIND_FILES_libX11': (b'libX11', 'lib/pkgconfig/x11.pc'),
+        b'FIND_FILES_libxcb': (b'libxcb', 'lib/pkgconfig/xcb.pc'),
+        b'FIND_FILES_xcb-proto': (b'xcb-proto', 'share/pkgconfig/xcb-proto.pc'),
+        b'FIND_FILES_xorgproto': (b'xorgproto', 'lib/pkgconfig/xproto.pc'),
+        b'H_XAUTH': (b'libXau', 'include/X11/Xauth.h'),
+        b'H_XDMCP': (b'libXdmcp', 'include/X11/Xdmcp.h'),
+    }
+    for key, (name, relative) in file_keys.items():
+        if key not in additions:
+            continue
+        path = Path(prefix) / relative
+        if additions[key] != str(path):
+            raise ValueError('selected wrapper file path is foreign')
+        contents, _ = selected_metadata(name)
+        matches = []; cwd = None
+        for index, line in enumerate(contents):
+            if line == '@cwd':
+                cwd = None
+            elif line.startswith('@cwd '):
+                cwd = line[5:]
+            elif line == relative:
+                if cwd != str(prefix) or index + 1 >= len(contents):
+                    raise ValueError('selected wrapper file has invalid package cwd')
+                matches.append(contents[index + 1])
+        if len(matches) != 1 or not re.fullmatch(r'@comment MD5:[0-9a-f]{32}', matches[0]):
+            raise ValueError('selected wrapper file is not uniquely owned')
+        data = selected_bytes(path)
+        if hashlib.md5(data, usedforsecurity=False).hexdigest() != matches[0].split(':', 1)[1]:
+            raise ValueError('selected wrapper file differs from package checksum')
+        consumed.add(key)
+    for name in names:
+        builtin = (b'IS_BUILTIN.' + name, b'USE_BUILTIN.' + name)
+        present = [key for key in builtin if key in additions]
+        if present:
+            if len(present) != 2 or any(additions[key] != 'no' for key in builtin):
+                raise ValueError('invalid new builtin provider selection')
+            selected_metadata(name)
+            consumed.update(builtin)
+        key = b'PKG_BUILD_OPTIONS.' + name
+        if key in additions:
+            value = additions[key]
+            if value and not re.fullmatch(r'[A-Za-z0-9_+.-]+(?: [A-Za-z0-9_+.-]+)*', value):
+                raise ValueError('invalid package build options')
+            _, info = selected_metadata(name)
+            options = [line.removeprefix('PKG_OPTIONS=') for line in info if line.startswith('PKG_OPTIONS=')]
+            if len(options) != 1 or options[0] != value:
+                raise ValueError('package build options differ from selected package')
+            consumed.add(key)
+    if set(additions) != consumed:
+        raise ValueError('unsupported or unpaired generated wrapper addition')
     candidate_path = b'_BLNK_PHYSICAL_PATH.WRKDIR=\t' + str(candidate_work).encode() + b'/objects/devel/electron-host-context/work\n'
     old_path = b'_BLNK_PHYSICAL_PATH.WRKDIR=\t' + str(old_work).encode() + b'/objects/devel/electron-host-context/work\n'
     return candidate.replace(candidate_path, old_path)
