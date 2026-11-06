@@ -2,7 +2,7 @@
 
 DISTNAME=	wxWidgets-3.2.12
 PKGNAME=	${DISTNAME:S/wxWidgets/wxGTK32/}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	x11
 MASTER_SITES=	${MASTER_SITE_GITHUB:=wxWidgets/}
 GITHUB_PROJECT=	wxWidgets
@@ -62,6 +62,9 @@ PLIST_SRC+=		PLIST.cmake
 CMAKE_CONFIGURE_ARGS+=		-DCMAKE_DISABLE_PRECOMPILE_HEADERS:BOOL=ON
 CMAKE_CONFIGURE_ARGS+=		-DCMAKE_INSTALL_BINDIR:PATH=libexec/wx-3.2
 CMAKE_CONFIGURE_ARGS+=		-DwxUSE_LIBSDL:BOOL=OFF
+.  if ${OPSYS} != "Darwin"
+CMAKE_CONFIGURE_ARGS+=		-DwxBUILD_TOOLKIT:STRING=gtk4
+.  endif
 .  if ${OPSYS} != "Linux"
 # https://github.com/wxWidgets/wxWidgets/issues/22646
 CMAKE_CONFIGURE_ARGS+=		-DwxUSE_JOYSTICK:BOOL=OFF
@@ -71,7 +74,7 @@ SUBST_CLASSES+=		unwrap
 SUBST_STAGE.unwrap=	post-build
 SUBST_MESSAGE.unwrap=	Unwrapping wx-config.
 .  if ${OPSYS} != "Darwin"
-SUBST_FILES.unwrap=	lib/wx/config/gtk3-unicode-3.2
+SUBST_FILES.unwrap=	lib/wx/config/gtk4-unicode-3.2
 .  else
 SUBST_FILES.unwrap=	lib/wx/config/osx_cocoa-unicode-3.2
 .  endif
@@ -108,6 +111,9 @@ CONFIGURE_ARGS+=	--enable-mediactrl
 # only and wxWidgets 3.2 supports SDL 1.2/2 only. wxSound uses OSS.
 CONFIGURE_ARGS+=	--without-sdl
 CONFIGURE_ARGS+=	--disable-precomp-headers
+.  if ${OPSYS} != "Darwin"
+CONFIGURE_ARGS+=	--with-gtk=4
+.  endif
 CONFIGURE_ARGS+=	--bindir=${PREFIX}/libexec/wx-3.2
 CONFIGURE_ARGS+=	--datarootdir=${PREFIX}/share/wx-3.2
 CONFIGURE_ARGS.Darwin+=	--with-osx_cocoa
@@ -162,12 +168,13 @@ post-install:
 .if ${OPSYS} != "Darwin"
 .include "../../graphics/MesaLib/buildlink3.mk"
 .include "../../graphics/glu/buildlink3.mk"
+.include "../../graphics/libepoxy/buildlink3.mk"
 .include "../../sysutils/libnotify/buildlink3.mk"
-.include "../../textproc/gspell/buildlink3.mk"
-.include "../../www/webkit-gtk41/buildlink3.mk"
+.include "../../textproc/libspelling/buildlink3.mk"
+.include "../../www/webkit-gtk60/buildlink3.mk"
 .include "../../x11/libSM/buildlink3.mk"
-.include "../../x11/gtk3/buildlink3.mk"
-PLIST_SRC+=	PLIST.gtk3
+.include "../../x11/gtk4/buildlink3.mk"
+PLIST_SRC+=	PLIST.gtk4
 .endif
 
 .include "../../archivers/libmspack/buildlink3.mk"

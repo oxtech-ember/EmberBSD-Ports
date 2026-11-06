@@ -93,12 +93,12 @@ def main():
     distinfo = (recipe / "distinfo").read_text()
     for name, value in [("SHA512", hashlib.sha512(data).hexdigest()),
                         ("BLAKE2s", hashlib.blake2s(data).hexdigest()), ("Size", str(len(data)))]:
-        assert re.search(r"^" + name + r" \(webkitgtk-2\.54\.1\.tar\.xz\) = " + value + r"(?: bytes)?$",
+        assert re.search(r"^" + name + r" \(webkitgtk-2\.54\.2\.tar\.xz\) = " + value + r"(?: bytes)?$",
                          distinfo, re.M), "Archive differs from recipe distinfo"
     source = args.work / "source/Source/cmake/FindGI.cmake"
     source.parent.mkdir(parents=True)
     with tarfile.open(args.archive) as archive:
-        source.write_bytes(archive.extractfile("webkitgtk-2.54.1/Source/cmake/FindGI.cmake").read())
+        source.write_bytes(archive.extractfile("webkitgtk-2.54.2/Source/cmake/FindGI.cmake").read())
     patch = recipe / "patches/patch-Source_cmake_FindGI.cmake"
     applied = subprocess.run(["patch", "-f", "-p0", "-F", "0", "-d", str(args.work / "source")],
                              input=patch.read_text(), capture_output=True, text=True)

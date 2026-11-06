@@ -1,7 +1,7 @@
 $NetBSD$
 
 Use CLOCK_MONOTONIC when CLOCK_MONOTONIC_RAW is unavailable on NetBSD.
-Origin: EmberBSD (AI-assisted), for the pinned WebKitGTK 2.54.1 source.
+Origin: EmberBSD (AI-assisted), for the pinned WebKitGTK 2.54.2 source.
 
 --- Source/ThirdParty/ANGLE/src/common/system_utils_linux.cpp.orig
 +++ Source/ThirdParty/ANGLE/src/common/system_utils_linux.cpp

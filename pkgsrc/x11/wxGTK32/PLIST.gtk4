@@ -1,4 +1,4 @@
-@comment $NetBSD: PLIST.gtk3,v 1.2 2022/08/08 10:39:46 wiz Exp $
+@comment $NetBSD: PLIST.gtk4,v 1.2 2022/08/08 10:39:46 wiz Exp $
 include/wx-3.2/wx/generic/activityindicator.h
 include/wx-3.2/wx/generic/paletteg.h
 include/wx-3.2/wx/gtk/accel.h
@@ -94,6 +94,5 @@ include/wx-3.2/wx/unix/sound.h
 include/wx-3.2/wx/unix/stdpaths.h
 include/wx-3.2/wx/unix/taskbarx11.h
 include/wx-3.2/wx/unix/utilsx11.h
-lib/wx/3.2/web-extensions/webkit2_extu-3.2.so
-lib/wx/config/${WX_HOST_PREFIX}gtk3-unicode-3.2
-lib/wx/include/${WX_HOST_PREFIX}gtk3-unicode-3.2/wx/setup.h
+lib/wx/config/${WX_HOST_PREFIX}gtk4-unicode-3.2
+lib/wx/include/${WX_HOST_PREFIX}gtk4-unicode-3.2/wx/setup.h

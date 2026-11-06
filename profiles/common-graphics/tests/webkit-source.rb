@@ -14,8 +14,19 @@ abort 'Output must be new.' if File.exist?(output) || File.symlink?(output)
 root = File.expand_path('../../..', __dir__)
 abort 'Repository path must not contain CMake metacharacters.' unless root.match?(%r{\A[-+A-Za-z0-9_./]+\z})
 recipe = root + '/pkgsrc/www/webkit-gtk41'
-expected = 'ea0bbb02dbdbc596874a4e7ad35b66645b3e0a232bd0e4081de5ed92eb0a397d'
-abort 'Wrong official WebKitGTK2.54.1 archive.' unless Digest::SHA256.file(archive).hexdigest == expected
+expected = 'a76345b391bef6211fb5ab6cfab2e86b285d18cda17cbb9ade595f1252b86065'
+abort 'Wrong official WebKitGTK2.54.2 archive.' unless Digest::SHA256.file(archive).hexdigest == expected
+common = File.read(recipe + '/Makefile.common')
+gtk3_recipe = File.read(recipe + '/Makefile')
+gtk4_recipe = File.read(File.dirname(recipe) + '/webkit-gtk60/Makefile')
+raise 'GTK API recipes must share one source and patch owner.' unless
+  gtk3_recipe.include?('include "Makefile.common"') &&
+  gtk4_recipe.include?('include "../../www/webkit-gtk41/Makefile.common"') &&
+  common.include?("DISTNAME=\twebkitgtk-2.54.2")
+raise 'GTK API recipes selected the wrong GTK version.' unless
+  gtk3_recipe.include?('-DUSE_GTK4=OFF') && gtk4_recipe.include?('-DUSE_GTK4=ON') &&
+  gtk3_recipe.include?('../../x11/gtk3/buildlink3.mk') &&
+  gtk4_recipe.include?('../../x11/gtk4/buildlink3.mk')
 Dir.mkdir(output)
 commands = []
 run = lambda do |name, argv, input: '', success: true, environment: {}|
@@ -34,8 +45,8 @@ run.call('patch-checksums', ['awk', '-f', pkgsrc + '/mk/checksum/checksum.awk', 
 paths = patches.flat_map { |path| File.readlines(path).grep(/^\+\+\+ /).map { |line| line.split[1] } }.uniq
 raise 'Unsafe patch path.' unless paths.all? { |path| path.start_with?('Source/') && !path.split('/').include?('..') }
 paths += %w[Source/cmake/VersioningUtils.cmake Source/cmake/OptionsGTK.cmake Source/cmake/WebKitCompilerFlags.cmake]
-run.call('extract', ['tar', '-xJf', archive, '-C', output, *paths.uniq.map { |path| 'webkitgtk-2.54.1/' + path }])
-source = output + '/webkitgtk-2.54.1'
+run.call('extract', ['tar', '-xJf', archive, '-C', output, *paths.uniq.map { |path| 'webkitgtk-2.54.2/' + path }])
+source = output + '/webkitgtk-2.54.2'
 arm = 'Source/JavaScriptCore/assembler/ARM64Assembler.h'
 original_arm = File.read(source + '/' + arm)
 patches.each do |path|

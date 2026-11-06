@@ -44,12 +44,11 @@ uninitialized Huffman checksum input. Normal GCC16 native/AArch64 packages
 and all four original samples pass in EmberBSD. Package removal and
 reinstallation also pass, with verified runtime providers.
 
-[wxWidgets 3.2.12 and WebKitGTK 2.54.1](cross/wxwebkit.md) retain the
+[wxWidgets 3.2.12 and WebKitGTK 2.54.2](cross/wxwebkit.md) retain the
 canonical WebView, media and OpenGL configuration. Both WebKit API recipes
-share current sources and native generator routes. Source, GCC16 target link
-and focused native Skia memory checks pass. The rebuilt Skia locale contract
-passes in EmberBSD with installed GCC16 runtime nb3. Full dependency composition,
-WebKit packages and GUI execution remain pending.
+share one source and native generator routes. The 2.54.2 archive and patch set
+are checked. Earlier source, GCC16 target link and focused Skia locale checks
+cover 2.54.1 only; normal 2.54.2 package and GUI acceptance remain pending.
 
 [libproxy 0.5.12nb5](cross/libproxy.md) passes the required `long` arguments to
 curl's variadic API. The actual GCC16 translation unit rejects the old arguments

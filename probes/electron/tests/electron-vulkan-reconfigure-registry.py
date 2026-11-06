@@ -69,7 +69,7 @@ with tempfile.TemporaryDirectory() as tmp:
         patch.object(m,'saved_binding_directory',return_value=binding),patch.object(m,'binding_identity',return_value={}),
         patch.object(m,'gn_arguments',return_value=''),patch.object(m,'common_activation_allowlist',return_value=(set(),set())),
         patch.object(m,'verified_swiftshader_disable',return_value=set()),patch.object(m,'verified_host_deployment_change',return_value=False),
-        patch.object(m,'verified_node_source_refresh',return_value=False),patch.object(m,'selected_control_git',return_value='/git'),
+        patch.object(m,'verified_common_source_refresh',return_value=set()),patch.object(m,'selected_control_git',return_value='/git'),
         patch.object(m,'verified_node_configure_v8_path_change',return_value=False),
         patch.object(m,'bind_versioned',return_value={'cc':'/cc','cxx':'/cxx'}),patch.object(m,'gn_source',side_effect=source_view)]
     from contextlib import ExitStack

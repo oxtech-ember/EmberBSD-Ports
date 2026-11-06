@@ -1,0 +1,1259 @@
+$NetBSD$
+
+GTK4 implementations for common wxGTK controls.
+Origin: EmberBSD, wxWindows licence.
+
+--- src/gtk/button.cpp.orig
++++ src/gtk/button.cpp
+@@ -28,6 +28,22 @@
+ extern "C"
+ {
+ 
++#ifdef __WXGTK4__
++static GtkLabel* wxGtkButtonFindLabel(GtkWidget* button)
++{
++    GtkWidget* child = gtk_button_get_child(GTK_BUTTON(button));
++    if (child && GTK_IS_LABEL(child))
++        return GTK_LABEL(child);
++    for (GtkWidget* part = child ? gtk_widget_get_first_child(child) : NULL;
++         part; part = gtk_widget_get_next_sibling(part))
++    {
++        if (GTK_IS_LABEL(part))
++            return GTK_LABEL(part);
++    }
++    return NULL;
++}
++#endif
++
+ static void
+ wxgtk_button_clicked_callback(GtkWidget *WXUNUSED(widget), wxButton *button)
+ {
+@@ -43,6 +59,7 @@
+ // "style_set" from m_widget
+ //-----------------------------------------------------------------------------
+ 
++#ifndef __WXGTK4__
+ static void
+ wxgtk_button_style_set_callback(GtkWidget* widget, GtkStyle*, wxButton* win)
+ {
+@@ -63,6 +80,7 @@
+         }
+     }
+ }
++#endif
+ 
+ } // extern "C"
+ 
+@@ -104,8 +122,12 @@
+         m_widget = gtk_button_new();
+ 
+         GtkWidget* image = wxGtkImage::New(this);
++#ifdef __WXGTK4__
++        gtk_button_set_child(GTK_BUTTON(m_widget), image);
++#else
+         gtk_widget_show(image);
+         gtk_container_add(GTK_CONTAINER(m_widget), image);
++#endif
+     }
+ 
+     g_object_ref(m_widget);
+@@ -125,8 +147,10 @@
+ #ifdef __WXGTK4__
+     if (useLabel)
+     {
+-        g_object_set(gtk_bin_get_child(GTK_BIN(m_widget)),
+-            "xalign", x_alignment, "yalign", y_alignment, NULL);
++        gtk_label_set_xalign(
++            GTK_LABEL(gtk_button_get_child(GTK_BUTTON(m_widget))), x_alignment);
++        gtk_label_set_yalign(
++            GTK_LABEL(gtk_button_get_child(GTK_BUTTON(m_widget))), y_alignment);
+     }
+ #else
+     wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+@@ -138,11 +162,17 @@
+         SetLabel(label);
+ 
+     if (style & wxNO_BORDER)
+-       gtk_button_set_relief( GTK_BUTTON(m_widget), GTK_RELIEF_NONE );
++    {
++#ifdef __WXGTK4__
++        gtk_button_set_has_frame(GTK_BUTTON(m_widget), FALSE);
++#else
++        gtk_button_set_relief(GTK_BUTTON(m_widget), GTK_RELIEF_NONE);
++#endif
++    }
+ 
+     if ( useLabel && (style & wxBU_EXACTFIT) )
+     {
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) || defined(__WXGTK4__)
+         GTKApplyCssStyle("* { padding:0 }");
+ #else
+         // Define a special button style without inner border
+@@ -166,9 +196,11 @@
+                             G_CALLBACK (wxgtk_button_clicked_callback),
+                             this);
+ 
++#ifndef __WXGTK4__
+     g_signal_connect_after (m_widget, "style_set",
+                             G_CALLBACK (wxgtk_button_style_set_callback),
+                             this);
++#endif
+ 
+     m_parent->DoAddChild( this );
+ 
+@@ -182,11 +214,17 @@
+ {
+     wxWindow *oldDefault = wxButtonBase::SetDefault();
+ 
++#ifdef __WXGTK4__
++    GtkRoot* root = gtk_widget_get_root(m_widget);
++    if (root && GTK_IS_WINDOW(root))
++        gtk_window_set_default_widget(GTK_WINDOW(root), m_widget);
++#else
+     gtk_widget_set_can_default(m_widget, TRUE);
+     gtk_widget_grab_default( m_widget );
+ 
+     // resize for default border
+     wxgtk_button_style_set_callback( m_widget, NULL, this );
++#endif
+ 
+     return oldDefault;
+ }
+@@ -204,8 +242,17 @@
+         //     GtkButtonBox's minimal button size may be smaller than stock
+         //     button's size. We have to retrieve both values and combine them.
+ 
+-        GtkWidget *wnd = gtk_window_new(GTK_WINDOW_TOPLEVEL);
++        GtkWidget *wnd;
++#ifdef __WXGTK4__
++        wnd = gtk_window_new();
++#else
++        wnd = gtk_window_new(GTK_WINDOW_TOPLEVEL);
++#endif
++#ifdef __WXGTK4__
++        GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
++#else
+         GtkWidget *box = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
++#endif
+ #ifdef __WXGTK4__
+         wxString labelGTK = GTKConvertMnemonics(wxGetStockLabel(wxID_CANCEL));
+         GtkWidget *btn = gtk_button_new_with_mnemonic(labelGTK.utf8_str());
+@@ -214,6 +261,19 @@
+         GtkWidget* btn = gtk_button_new_from_stock("gtk-cancel");
+         wxGCC_WARNING_RESTORE()
+ #endif
++#ifdef __WXGTK4__
++        gtk_box_append(GTK_BOX(box), btn);
++        gtk_window_set_child(GTK_WINDOW(wnd), box);
++        int reqWidth, reqHeight;
++        gtk_widget_measure(btn, GTK_ORIENTATION_HORIZONTAL, -1,
++                           NULL, &reqWidth, NULL, NULL);
++        gtk_widget_measure(btn, GTK_ORIENTATION_VERTICAL, -1,
++                           NULL, &reqHeight, NULL, NULL);
++        size.x = reqWidth;
++        size.y = reqHeight;
++        gtk_window_destroy(GTK_WINDOW(wnd));
++        return size;
++#else
+         gtk_container_add(GTK_CONTAINER(box), btn);
+         gtk_container_add(GTK_CONTAINER(wnd), box);
+         GtkRequisition req;
+@@ -229,6 +289,7 @@
+         size.y = wxMax(minheight, req.height);
+ 
+         gtk_widget_destroy(wnd);
++#endif
+     }
+     return size;
+ }
+@@ -268,6 +329,16 @@
+     // so "use-underline" GtkButton property remained unset
+     gtk_button_set_use_underline(GTK_BUTTON(m_widget), TRUE);
+     const wxString labelGTK = GTKConvertMnemonics(label);
++#ifdef __WXGTK4__
++    GtkLabel* existingLabel = wxGtkButtonFindLabel(m_widget);
++    GtkWidget* buttonChild = gtk_button_get_child(GTK_BUTTON(m_widget));
++    if (existingLabel && buttonChild != GTK_WIDGET(existingLabel))
++    {
++        gtk_label_set_text_with_mnemonic(existingLabel, wxGTK_CONV(labelGTK));
++        GTKApplyWidgetStyle(false);
++        return;
++    }
++#endif
+     gtk_button_set_label(GTK_BUTTON(m_widget), wxGTK_CONV(labelGTK));
+ #ifndef __WXGTK4__
+     wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+@@ -299,13 +370,10 @@
+ 
+ GtkLabel *wxButton::GTKGetLabel() const
+ {
+-    GtkWidget* child = gtk_bin_get_child(GTK_BIN(m_widget));
+ #ifdef __WXGTK4__
+-    if (GTK_IS_LABEL(child))
+-        return GTK_LABEL(child);
+-
+-    return NULL;
++    return wxGtkButtonFindLabel(m_widget);
+ #else
++    GtkWidget* child = gtk_bin_get_child(GTK_BIN(m_widget));
+     wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+     if ( GTK_IS_ALIGNMENT(child) )
+     {
+@@ -330,6 +398,10 @@
+ void wxButton::DoApplyWidgetStyle(GtkRcStyle *style)
+ {
+     GTKApplyStyle(m_widget, style);
++#ifdef __WXGTK4__
++    if (GtkLabel* label = wxGtkButtonFindLabel(m_widget))
++        GTKApplyStyle(GTK_WIDGET(label), style);
++#else
+     GtkWidget* child = gtk_bin_get_child(GTK_BIN(m_widget));
+     GTKApplyStyle(child, style);
+ 
+@@ -351,6 +423,7 @@
+     }
+     wxGCC_WARNING_RESTORE()
+ #endif
++#endif
+ }
+ 
+ wxSize wxButton::DoGetBestSize() const
+@@ -359,6 +432,7 @@
+     // extra border around it, but we don't want to take it into account in
+     // our size calculations (otherwise the result is visually ugly), so
+     // always return the size of non default button from here
++#ifndef __WXGTK4__
+     const bool isDefault = gtk_widget_has_default(m_widget) != 0;
+     if ( isDefault )
+     {
+@@ -373,6 +447,9 @@
+         // set it back again
+         gtk_widget_set_can_default(m_widget, TRUE);
+     }
++#else
++    wxSize ret( wxAnyButton::DoGetBestSize() );
++#endif
+ 
+     if (!HasFlag(wxBU_EXACTFIT))
+     {
+--- src/gtk/anybutton.cpp.orig
++++ src/gtk/anybutton.cpp
+@@ -29,7 +29,13 @@
+ {
+ 
+ static void
++#ifdef __WXGTK4__
++wxgtk_button_enter_callback(GtkEventControllerMotion* WXUNUSED(controller),
++                            double WXUNUSED(x), double WXUNUSED(y),
++                            wxAnyButton *button)
++#else
+ wxgtk_button_enter_callback(GtkWidget *WXUNUSED(widget), wxAnyButton *button)
++#endif
+ {
+     if ( button->GTKShouldIgnoreEvent() )
+         return;
+@@ -38,7 +44,12 @@
+ }
+ 
+ static void
++#ifdef __WXGTK4__
++wxgtk_button_leave_callback(GtkEventControllerMotion* WXUNUSED(controller),
++                            wxAnyButton *button)
++#else
+ wxgtk_button_leave_callback(GtkWidget *WXUNUSED(widget), wxAnyButton *button)
++#endif
+ {
+     if ( button->GTKShouldIgnoreEvent() )
+         return;
+@@ -47,7 +58,7 @@
+ }
+ 
+ static void
+-wxgtk_button_press_callback(GtkWidget *WXUNUSED(widget), wxAnyButton *button)
++wxgtk_button_press_callback(gpointer WXUNUSED(widget), wxAnyButton *button)
+ {
+     if ( button->GTKShouldIgnoreEvent() )
+         return;
+@@ -56,7 +67,7 @@
+ }
+ 
+ static void
+-wxgtk_button_released_callback(GtkWidget *WXUNUSED(widget), wxAnyButton *button)
++wxgtk_button_released_callback(gpointer WXUNUSED(widget), wxAnyButton *button)
+ {
+     if ( button->GTKShouldIgnoreEvent() )
+         return;
+@@ -64,8 +75,152 @@
+     button->GTKReleased();
+ }
+ 
++#ifdef __WXGTK4__
++static void
++wxgtk_button_gesture_pressed(GtkGestureClick* WXUNUSED(gesture),
++                             int WXUNUSED(nPress), double WXUNUSED(x),
++                             double WXUNUSED(y), wxAnyButton* button)
++{
++    if (button->GTKShouldIgnoreEvent())
++        return;
++    button->GTKPressed();
++}
++
++static void
++wxgtk_button_gesture_released(GtkGestureClick* WXUNUSED(gesture),
++                              int WXUNUSED(nPress), double WXUNUSED(x),
++                              double WXUNUSED(y), wxAnyButton* button)
++{
++    if (button->GTKShouldIgnoreEvent())
++        return;
++    button->GTKReleased();
++}
++
++static void
++wxgtk_button_gesture_cancelled(GtkGesture* WXUNUSED(gesture),
++                               GdkEventSequence* WXUNUSED(sequence),
++                               wxAnyButton* button)
++{
++    if (!button->GTKShouldIgnoreEvent())
++        button->GTKReleased();
++}
++#endif
++
+ } // extern "C"
+ 
++#ifdef __WXGTK4__
++namespace
++{
++GObject* wxGtkGetButtonMotionController(GtkWidget* button)
++{
++    const char* key = "wx-motion-controller";
++    GObject* controller = static_cast<GObject*>(g_object_get_data(G_OBJECT(button), key));
++    if (!controller)
++    {
++        controller = G_OBJECT(gtk_event_controller_motion_new());
++        gtk_widget_add_controller(button, GTK_EVENT_CONTROLLER(controller));
++        g_object_set_data(G_OBJECT(button), key, controller);
++    }
++    return controller;
++}
++
++GObject* wxGtkGetButtonPressController(GtkWidget* button)
++{
++    const char* key = "wx-press-controller";
++    GObject* controller = static_cast<GObject*>(g_object_get_data(G_OBJECT(button), key));
++    if (!controller)
++    {
++        GtkGesture* gesture = gtk_gesture_click_new();
++        gtk_gesture_single_set_exclusive(GTK_GESTURE_SINGLE(gesture), FALSE);
++        gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(gesture), GDK_BUTTON_PRIMARY);
++        controller = G_OBJECT(gesture);
++        gtk_event_controller_set_propagation_phase(
++            GTK_EVENT_CONTROLLER(controller), GTK_PHASE_CAPTURE);
++        gtk_widget_add_controller(button, GTK_EVENT_CONTROLLER(controller));
++        g_object_set_data(G_OBJECT(button), key, controller);
++    }
++    return controller;
++}
++
++GtkWidget* wxGtkGetButtonImage(GtkWidget* button)
++{
++    GtkWidget* child = gtk_button_get_child(GTK_BUTTON(button));
++    if (child && WX_GTK_IS_IMAGE(child))
++        return child;
++
++    for (GtkWidget* part = child ? gtk_widget_get_first_child(child) : NULL;
++         part; part = gtk_widget_get_next_sibling(part))
++    {
++        if (WX_GTK_IS_IMAGE(part))
++            return part;
++    }
++    return NULL;
++}
++
++GtkWidget* wxGtkGetButtonLabel(GtkWidget* button)
++{
++    GtkWidget* child = gtk_button_get_child(GTK_BUTTON(button));
++    if (child && GTK_IS_LABEL(child))
++        return child;
++
++    for (GtkWidget* part = child ? gtk_widget_get_first_child(child) : NULL;
++         part; part = gtk_widget_get_next_sibling(part))
++    {
++        if (GTK_IS_LABEL(part))
++            return part;
++    }
++    return NULL;
++}
++
++void wxGtkSetButtonBitmapContent(GtkWidget* button, GtkWidget* image,
++                                 wxDirection direction)
++{
++    GtkWidget* label = wxGtkGetButtonLabel(button);
++
++    GtkOrientation orientation = direction == wxTOP || direction == wxBOTTOM
++        ? GTK_ORIENTATION_VERTICAL : GTK_ORIENTATION_HORIZONTAL;
++    GtkWidget* box = gtk_box_new(orientation, 4);
++    g_object_ref(image);
++    if (label)
++        g_object_ref(label);
++    gtk_button_set_child(GTK_BUTTON(button), NULL);
++
++    if (direction == wxRIGHT || direction == wxBOTTOM)
++    {
++        if (label) gtk_box_append(GTK_BOX(box), label);
++        gtk_box_append(GTK_BOX(box), image);
++    }
++    else
++    {
++        gtk_box_append(GTK_BOX(box), image);
++        if (label) gtk_box_append(GTK_BOX(box), label);
++    }
++    if (label)
++        g_object_unref(label);
++    gtk_button_set_child(GTK_BUTTON(button), box);
++    g_object_unref(image);
++}
++
++void wxGtkRemoveButtonBitmap(GtkWidget* button, GtkWidget* image)
++{
++    GtkWidget* child = gtk_button_get_child(GTK_BUTTON(button));
++    if (child == image)
++    {
++        gtk_button_set_child(GTK_BUTTON(button), NULL);
++        return;
++    }
++
++    GtkWidget* label = wxGtkGetButtonLabel(button);
++    if (label)
++        g_object_ref(label);
++    gtk_button_set_child(GTK_BUTTON(button), NULL);
++    gtk_button_set_child(GTK_BUTTON(button), label);
++    if (label)
++        g_object_unref(label);
++}
++}
++#endif
++
+ //-----------------------------------------------------------------------------
+ // wxAnyButton
+ //-----------------------------------------------------------------------------
+@@ -78,7 +233,9 @@
+ 
+     base_type::DoEnable(enable);
+ 
++#ifndef __WXGTK4__
+     gtk_widget_set_sensitive(gtk_bin_get_child(GTK_BIN(m_widget)), enable);
++#endif
+ 
+     if (enable)
+         GTKFixSensitivity();
+@@ -88,7 +245,11 @@
+ 
+ GdkWindow *wxAnyButton::GTKGetWindow(wxArrayGdkWindows& WXUNUSED(windows)) const
+ {
++#ifdef __WXGTK4__
++    return NULL;
++#else
+     return gtk_button_get_event_window(GTK_BUTTON(m_widget));
++#endif
+ }
+ 
+ // static
+@@ -186,9 +347,13 @@
+ {
+     wxCHECK_RET(bitmap.IsOk(), "invalid bitmap");
+ 
++#ifdef __WXGTK4__
++    GtkWidget* image = wxGtkGetButtonImage(m_widget);
++#else
+     GtkWidget* image = gtk_button_get_image(GTK_BUTTON(m_widget));
+     if (image == NULL)
+         image = gtk_bin_get_child(GTK_BIN(m_widget));
++#endif
+ 
+     wxCHECK_RET(WX_GTK_IS_IMAGE(image), "must have image widget");
+ 
+@@ -216,7 +381,11 @@
+             // resetting it to nothing disables all of them
+             else
+             {
++#ifdef __WXGTK4__
++                GtkWidget *image = wxGtkGetButtonImage(m_widget);
++#else
+                 GtkWidget *image = gtk_button_get_image(GTK_BUTTON(m_widget));
++#endif
+                 if ( image && !WX_GTK_IS_IMAGE(image) )
+                 {
+                     // This must be the GtkImage created for stock buttons, we
+@@ -227,12 +396,20 @@
+ 
+                 if ( image && !bitmap.IsOk() )
+                 {
++#ifdef __WXGTK4__
++                    wxGtkRemoveButtonBitmap(m_widget, image);
++#else
+                     gtk_container_remove(GTK_CONTAINER(m_widget), image);
++#endif
+                 }
+                 else if ( !image && bitmap.IsOk() )
+                 {
+                     image = wxGtkImage::New(this);
++#ifdef __WXGTK4__
++                    wxGtkSetButtonBitmapContent(m_widget, image, wxLEFT);
++#else
+                     gtk_button_set_image(GTK_BUTTON(m_widget), image);
++#endif
+ 
+                     // Setting the image recreates the label, so we need to
+                     // reapply the styles to it to preserve the existing text
+@@ -256,6 +433,15 @@
+                 {
+                     // we need to install the callbacks to be notified about
+                     // the button pressed state change
++#ifdef __WXGTK4__
++                    GObject* pressController = wxGtkGetButtonPressController(m_widget);
++                    g_signal_connect(pressController, "pressed",
++                        G_CALLBACK(wxgtk_button_gesture_pressed), this);
++                    g_signal_connect(pressController, "released",
++                        G_CALLBACK(wxgtk_button_gesture_released), this);
++                    g_signal_connect(pressController, "cancel",
++                        G_CALLBACK(wxgtk_button_gesture_cancelled), this);
++#else
+                     g_signal_connect
+                     (
+                         m_widget,
+@@ -263,7 +449,6 @@
+                         G_CALLBACK(wxgtk_button_press_callback),
+                         this
+                     );
+-
+                     g_signal_connect
+                     (
+                         m_widget,
+@@ -271,6 +456,7 @@
+                         G_CALLBACK(wxgtk_button_released_callback),
+                         this
+                     );
++#endif
+                 }
+             }
+             else // no valid bitmap
+@@ -281,17 +467,35 @@
+                     // state changes any more
+                     g_signal_handlers_disconnect_by_func
+                     (
++#ifdef __WXGTK4__
++                        wxGtkGetButtonPressController(m_widget),
++#else
+                         m_widget,
++#endif
++#ifdef __WXGTK4__
++                        (gpointer)wxgtk_button_gesture_pressed,
++#else
+                         (gpointer)wxgtk_button_press_callback,
++#endif
+                         this
+                     );
++#ifdef __WXGTK4__
++                    g_signal_handlers_disconnect_by_func(
++                        wxGtkGetButtonPressController(m_widget),
++                        (gpointer)wxgtk_button_gesture_released, this);
++                    g_signal_handlers_disconnect_by_func(
++                        wxGtkGetButtonPressController(m_widget),
++                        (gpointer)wxgtk_button_gesture_cancelled, this);
++#endif
+ 
++#ifndef __WXGTK4__
+                     g_signal_handlers_disconnect_by_func
+                     (
+                         m_widget,
+                         (gpointer)wxgtk_button_released_callback,
+                         this
+                     );
++#endif
+ 
+                     // also make sure we don't remain stuck in pressed state
+                     if ( m_isPressed )
+@@ -314,7 +518,11 @@
+                 {
+                     g_signal_connect
+                     (
++#ifdef __WXGTK4__
++                        wxGtkGetButtonMotionController(m_widget),
++#else
+                         m_widget,
++#endif
+                         "enter",
+                         G_CALLBACK(wxgtk_button_enter_callback),
+                         this
+@@ -322,7 +530,11 @@
+ 
+                     g_signal_connect
+                     (
++#ifdef __WXGTK4__
++                        wxGtkGetButtonMotionController(m_widget),
++#else
+                         m_widget,
++#endif
+                         "leave",
+                         G_CALLBACK(wxgtk_button_leave_callback),
+                         this
+@@ -335,14 +547,22 @@
+                 {
+                     g_signal_handlers_disconnect_by_func
+                     (
++#ifdef __WXGTK4__
++                        wxGtkGetButtonMotionController(m_widget),
++#else
+                         m_widget,
++#endif
+                         (gpointer)wxgtk_button_enter_callback,
+                         this
+                     );
+ 
+                     g_signal_handlers_disconnect_by_func
+                     (
++#ifdef __WXGTK4__
++                        wxGtkGetButtonMotionController(m_widget),
++#else
+                         m_widget,
++#endif
+                         (gpointer)wxgtk_button_leave_callback,
+                         this
+                     );
+@@ -393,6 +613,16 @@
+ 
+ void wxAnyButton::DoSetBitmapPosition(wxDirection dir)
+ {
++#ifdef __WXGTK4__
++    if (gtk_button_get_child(GTK_BUTTON(m_widget)) &&
++        wxGtkGetButtonImage(m_widget) && wxGtkGetButtonLabel(m_widget))
++    {
++        GtkWidget* image = wxGtkGetButtonImage(m_widget);
++        wxGtkSetButtonBitmapContent(m_widget, image, dir);
++        GTKApplyWidgetStyle();
++        InvalidateBestSize();
++    }
++#else
+ #ifdef __WXGTK210__
+     if ( wx_is_at_least_gtk2(10) )
+     {
+@@ -429,6 +659,7 @@
+         InvalidateBestSize();
+     }
+ #endif // GTK+ 2.10+
++#endif
+ }
+ 
+ #endif // wxHAS_ANY_BUTTON
+--- src/gtk/checkbox.cpp.orig
++++ src/gtk/checkbox.cpp
+@@ -36,6 +36,23 @@
+     // changed automatically:
+     if (cb->Is3State())
+     {
++#ifdef __WXGTK4__
++        GtkCheckButton *toggle = GTK_CHECK_BUTTON(widget);
++
++        // The 3 states cycle like this when clicked:
++        // checked -> undetermined -> unchecked -> checked -> ...
++        if (gtk_check_button_get_inconsistent(toggle))
++        {
++            wxGtkEventsDisabler<wxCheckBox> noEvents(cb);
++            gtk_check_button_set_active(toggle, false);
++            gtk_check_button_set_inconsistent(toggle, false);
++        }
++        else if (!gtk_check_button_get_active(toggle) &&
++                 cb->Is3rdStateAllowedForUser())
++        {
++            gtk_check_button_set_inconsistent(toggle, true);
++        }
++#else
+         GtkToggleButton *toggle = GTK_TOGGLE_BUTTON(widget);
+ 
+         // The 3 states cycle like this when clicked:
+@@ -58,6 +75,7 @@
+             // else checked -> unchecked
+         }
+         // else unchecked -> checked
++#endif
+     }
+ 
+     wxCommandEvent event(wxEVT_CHECKBOX, cb->GetId());
+@@ -108,7 +126,8 @@
+ 
+         m_widgetLabel = gtk_label_new("");
+ #ifdef __WXGTK4__
+-        g_object_set(m_widgetLabel, "xalign", 0.0f, NULL);
++        gtk_widget_set_halign(m_widgetLabel, GTK_ALIGN_START);
++        gtk_widget_set_valign(m_widgetLabel, GTK_ALIGN_CENTER);
+ #else
+         wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+         gtk_misc_set_alignment(GTK_MISC(m_widgetLabel), 0.0, 0.5);
+@@ -116,25 +135,36 @@
+ #endif
+ 
+         m_widget = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
++#ifdef __WXGTK4__
++        gtk_box_append(GTK_BOX(m_widget), m_widgetLabel);
++        gtk_box_append(GTK_BOX(m_widget), m_widgetCheckbox);
++#else
+         gtk_box_pack_start(GTK_BOX(m_widget), m_widgetLabel, FALSE, FALSE, 3);
+         gtk_box_pack_start(GTK_BOX(m_widget), m_widgetCheckbox, FALSE, FALSE, 3);
+ 
+         gtk_widget_show( m_widgetLabel );
+         gtk_widget_show( m_widgetCheckbox );
++#endif
+     }
+     else
+     {
+         m_widgetCheckbox = gtk_check_button_new_with_label("");
++#ifdef __WXGTK4__
++        m_widgetLabel = gtk_check_button_get_child(GTK_CHECK_BUTTON(m_widgetCheckbox));
++#else
+         m_widgetLabel = gtk_bin_get_child(GTK_BIN(m_widgetCheckbox));
++#endif
+         m_widget = m_widgetCheckbox;
+     }
+     g_object_ref(m_widget);
+     SetLabel( label );
+ 
++#ifndef __WXGTK4__
+     if ( style & wxNO_BORDER )
+     {
+         gtk_container_set_border_width(GTK_CONTAINER(m_widgetCheckbox), 0);
+     }
++#endif
+ 
+     g_signal_connect (m_widgetCheckbox, "toggled",
+                       G_CALLBACK (gtk_checkbox_toggled_callback), this);
+@@ -191,21 +221,39 @@
+     if (DoGet3StateValue() == state)
+         return;
+ 
++#ifdef __WXGTK4__
++    GtkCheckButton* tglbtn = GTK_CHECK_BUTTON(m_widgetCheckbox);
++#else
+     GtkToggleButton* tglbtn = GTK_TOGGLE_BUTTON(m_widgetCheckbox);
++#endif
+ 
+     wxGtkEventsDisabler<wxCheckBox> noEvents(this);
++#ifdef __WXGTK4__
++    gtk_check_button_set_inconsistent(tglbtn, state == wxCHK_UNDETERMINED);
++    gtk_check_button_set_active(tglbtn, state == wxCHK_CHECKED);
++#else
+     gtk_toggle_button_set_inconsistent(tglbtn, state == wxCHK_UNDETERMINED);
+     gtk_toggle_button_set_active(tglbtn, state == wxCHK_CHECKED);
++#endif
+ }
+ 
+ wxCheckBoxState wxCheckBox::DoGet3StateValue() const
+ {
++#ifdef __WXGTK4__
++    GtkCheckButton* tglbtn = GTK_CHECK_BUTTON(m_widgetCheckbox);
++
++    if (gtk_check_button_get_inconsistent(tglbtn))
++        return wxCHK_UNDETERMINED;
++
++    return gtk_check_button_get_active(tglbtn) ? wxCHK_CHECKED : wxCHK_UNCHECKED;
++#else
+     GtkToggleButton* tglbtn = GTK_TOGGLE_BUTTON(m_widgetCheckbox);
+ 
+-    if (gtk_toggle_button_get_inconsistent(GTK_TOGGLE_BUTTON(tglbtn)))
++    if (gtk_toggle_button_get_inconsistent(tglbtn))
+         return wxCHK_UNDETERMINED;
+ 
+     return gtk_toggle_button_get_active(tglbtn) ? wxCHK_CHECKED : wxCHK_UNCHECKED;
++#endif
+ }
+ 
+ void wxCheckBox::SetLabel( const wxString& label )
+@@ -215,9 +263,9 @@
+     // If we don't hide the empty label, in some themes a focus rectangle is
+     // still drawn around it and this looks out of place.
+     if ( label.empty() )
+-        gtk_widget_hide(m_widgetLabel);
++        gtk_widget_set_visible(m_widgetLabel, FALSE);
+     else
+-        gtk_widget_show(m_widgetLabel);
++        gtk_widget_set_visible(m_widgetLabel, TRUE);
+ 
+     // save the label inside m_label in case user calls GetLabel() later
+     wxControl::SetLabel(label);
+@@ -246,7 +294,13 @@
+ 
+ GdkWindow *wxCheckBox::GTKGetWindow(wxArrayGdkWindows& WXUNUSED(windows)) const
+ {
++#ifdef __WXGTK4__
++    // GTK4 dispatches pointer input through event controllers, not per-widget
++    // GdkWindows.
++    return NULL;
++#else
+     return gtk_button_get_event_window(GTK_BUTTON(m_widgetCheckbox));
++#endif
+ }
+ 
+ // static
+--- src/gtk/radiobut.cpp.orig
++++ src/gtk/radiobut.cpp
+@@ -40,11 +40,17 @@
+ 
+ extern "C" {
+ static
+-void gtk_radiobutton_clicked_callback( GtkToggleButton *button, wxRadioButton *rb )
++void gtk_radiobutton_clicked_callback( GtkWidget *widget, wxRadioButton *rb )
+ {
+     if (g_blockEventsOnDrag) return;
+ 
++#ifdef __WXGTK4__
++    GtkCheckButton *button = GTK_CHECK_BUTTON(widget);
++    if (!gtk_check_button_get_active(button)) return;
++#else
++    GtkToggleButton *button = GTK_TOGGLE_BUTTON(widget);
+     if (!gtk_toggle_button_get_active(button)) return;
++#endif
+ 
+     wxCommandEvent event( wxEVT_RADIOBUTTON, rb->GetId());
+     event.SetInt( rb->GetValue() );
+@@ -76,7 +82,11 @@
+     // Check if this radio button should be put into an existing group. This
+     // shouldn't be done if it's given a style to explicitly start a new group
+     // or if it's not meant to be a part of a group at all.
++#ifdef __WXGTK4__
++    GtkCheckButton* radioButtonGroup = NULL;
++#else
+     GSList* radioButtonGroup = NULL;
++#endif
+     if (!HasFlag(wxRB_GROUP) && !HasFlag(wxRB_SINGLE))
+     {
+         // search backward for last group start
+@@ -96,8 +106,12 @@
+                 // wxRB_SINGLE ones as their group should never be shared.
+                 if (!child->HasFlag(wxRB_SINGLE))
+                 {
++#ifdef __WXGTK4__
++                    radioButtonGroup = GTK_CHECK_BUTTON(child->m_widget);
++#else
+                     radioButtonGroup = gtk_radio_button_get_group(
+                         GTK_RADIO_BUTTON(child->m_widget));
++#endif
+                 }
+ 
+                 break;
+@@ -110,23 +124,44 @@
+     // hidden radio button.
+     if (HasFlag(wxRB_SINGLE))
+     {
++#ifdef __WXGTK4__
++        GtkCheckButton* const hiddenButton = GTK_CHECK_BUTTON(gtk_check_button_new());
++        g_object_ref_sink(hiddenButton);
++        gs_hiddenButtons[this] = GTK_WIDGET(hiddenButton);
++        m_widget = gtk_check_button_new_with_label(label.utf8_str());
++        gtk_check_button_set_group(GTK_CHECK_BUTTON(m_widget), hiddenButton);
++        gtk_check_button_set_active(GTK_CHECK_BUTTON(m_widget), TRUE);
++#else
+         GtkWidget* const hiddenButton = gtk_radio_button_new( NULL );
+         gs_hiddenButtons[this] = hiddenButton;
+         m_widget = gtk_radio_button_new_with_label_from_widget( GTK_RADIO_BUTTON(hiddenButton), label.utf8_str() );
+         // Since this is the second button in the group, we need to ensure it
+         // is active by default and not the first hidden one.
+         gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON(m_widget), TRUE );
++#endif
+     }
+     else
+     {
++#ifdef __WXGTK4__
++        m_widget = gtk_check_button_new_with_label(label.utf8_str());
++        if (radioButtonGroup)
++            gtk_check_button_set_group(GTK_CHECK_BUTTON(m_widget), radioButtonGroup);
++        else
++            gtk_check_button_set_active(GTK_CHECK_BUTTON(m_widget), TRUE);
++#else
+         m_widget = gtk_radio_button_new_with_label( radioButtonGroup, label.utf8_str() );
++#endif
+     }
+ 
+     g_object_ref(m_widget);
+ 
+     SetLabel(label);
+ 
++#ifdef __WXGTK4__
++    g_signal_connect_after (m_widget, "toggled",
++#else
+     g_signal_connect_after (m_widget, "clicked",
++#endif
+                             G_CALLBACK (gtk_radiobutton_clicked_callback), this);
+ 
+     m_parent->DoAddChild( this );
+@@ -138,6 +173,14 @@
+ 
+ wxRadioButton::~wxRadioButton()
+ {
++#ifdef __WXGTK4__
++    wxRadioButtonHashMap::iterator it = gs_hiddenButtons.find(this);
++    if (it != gs_hiddenButtons.end())
++    {
++        gtk_check_button_set_group(GTK_CHECK_BUTTON(m_widget), NULL);
++        g_object_unref(it->second);
++    }
++#endif
+     gs_hiddenButtons.erase(this);
+ }
+ 
+@@ -148,7 +191,11 @@
+     // save the original label
+     wxControlBase::SetLabel(label);
+ 
++#ifdef __WXGTK4__
++    GTKSetLabelForLabel(GTK_LABEL(gtk_check_button_get_child(GTK_CHECK_BUTTON(m_widget))), label);
++#else
+     GTKSetLabelForLabel(GTK_LABEL(gtk_bin_get_child(GTK_BIN(m_widget))), label);
++#endif
+ }
+ 
+ void wxRadioButton::SetValue( bool val )
+@@ -158,12 +205,21 @@
+     if (val == GetValue())
+         return;
+ 
++#ifdef __WXGTK4__
++    g_signal_handlers_block_by_func(m_widget,
++        (gpointer)gtk_radiobutton_clicked_callback, this);
++#else
+     g_signal_handlers_block_by_func(
+         m_widget, (void*)gtk_radiobutton_clicked_callback, this);
++#endif
+ 
+     if (val)
+     {
++#ifdef __WXGTK4__
++        gtk_check_button_set_active(GTK_CHECK_BUTTON(m_widget), TRUE);
++#else
+         gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON(m_widget), TRUE );
++#endif
+     }
+     else
+     {
+@@ -172,18 +228,31 @@
+         // manually, which is implemented by turning a hidden button on, as
+         // it's the only way to do it with GTK.
+         if (HasFlag(wxRB_SINGLE))
++#ifdef __WXGTK4__
++            gtk_check_button_set_active(GTK_CHECK_BUTTON(gs_hiddenButtons[this]), TRUE);
++#else
+             gtk_toggle_button_set_active( GTK_TOGGLE_BUTTON(gs_hiddenButtons[this]), TRUE );
++#endif
+     }
+ 
++#ifdef __WXGTK4__
++    g_signal_handlers_unblock_by_func(m_widget,
++        (gpointer)gtk_radiobutton_clicked_callback, this);
++#else
+     g_signal_handlers_unblock_by_func(
+         m_widget, (void*)gtk_radiobutton_clicked_callback, this);
++#endif
+ }
+ 
+ bool wxRadioButton::GetValue() const
+ {
+     wxCHECK_MSG( m_widget != NULL, false, wxT("invalid radiobutton") );
+ 
++#ifdef __WXGTK4__
++    return gtk_check_button_get_active(GTK_CHECK_BUTTON(m_widget)) != 0;
++#else
+     return gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(m_widget)) != 0;
++#endif
+ }
+ 
+ void wxRadioButton::DoEnable(bool enable)
+@@ -193,7 +262,7 @@
+ 
+     base_type::DoEnable(enable);
+ 
+-    gtk_widget_set_sensitive(gtk_bin_get_child(GTK_BIN(m_widget)), enable);
++    gtk_widget_set_sensitive(m_widget, enable);
+ 
+     if (enable)
+         GTKFixSensitivity();
+@@ -202,20 +271,34 @@
+ void wxRadioButton::DoApplyWidgetStyle(GtkRcStyle *style)
+ {
+     GTKApplyStyle(m_widget, style);
++#ifdef __WXGTK4__
++    GTKApplyStyle(gtk_check_button_get_child(GTK_CHECK_BUTTON(m_widget)), style);
++#else
+     GTKApplyStyle(gtk_bin_get_child(GTK_BIN(m_widget)), style);
++#endif
+ }
+ 
+ GdkWindow *
+ wxRadioButton::GTKGetWindow(wxArrayGdkWindows& WXUNUSED(windows)) const
+ {
++#ifdef __WXGTK4__
++    // GTK4 dispatches pointer input through event controllers, not per-widget
++    // GdkWindows.
++    return NULL;
++#else
+     return gtk_button_get_event_window(GTK_BUTTON(m_widget));
++#endif
+ }
+ 
+ // static
+ wxVisualAttributes
+ wxRadioButton::GetClassDefaultAttributes(wxWindowVariant WXUNUSED(variant))
+ {
++#ifdef __WXGTK4__
++    return GetDefaultAttributesFromGTKWidget(gtk_check_button_new_with_label(""));
++#else
+     return GetDefaultAttributesFromGTKWidget(gtk_radio_button_new_with_label(NULL, ""));
++#endif
+ }
+ 
+ 
+--- src/gtk/stattext.cpp.orig
++++ src/gtk/stattext.cpp
+@@ -134,12 +134,22 @@
+ #ifdef __WXGTK4__
+     g_object_set(m_widget, "xalign", labelAlignments[justify], NULL);
+ #else
++#ifdef __WXGTK4__
++    const float xalign = labelAlignments[justify];
++    gtk_label_set_xalign(GTK_LABEL(m_widget), xalign);
++    gtk_label_set_yalign(GTK_LABEL(m_widget), 0.0f);
++#else
+     wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+     gtk_misc_set_alignment(GTK_MISC(m_widget), labelAlignments[justify], 0.0);
+     wxGCC_WARNING_RESTORE()
+ #endif
++#endif
+ 
++#ifdef __WXGTK4__
++    gtk_label_set_wrap(GTK_LABEL(m_widget), TRUE);
++#else
+     gtk_label_set_line_wrap( GTK_LABEL(m_widget), TRUE );
++#endif
+ 
+     SetLabel(label);
+ 
+@@ -295,9 +305,12 @@
+         // infinite loop sometimes (notably when the control is in a toolbar)
+         // With GTK3 however, there is no simple alternative, and the sizing loop
+         // no longer seems to occur.
+-#ifdef __WXGTK3__
++#ifdef __WXGTK4__
++        gtk_label_set_wrap(GTK_LABEL(m_widget), false);
++#elif defined(__WXGTK3__)
+         gtk_label_set_line_wrap(GTK_LABEL(m_widget), false);
+-#else
++#endif
++#if !defined(__WXGTK3__) && !defined(__WXGTK4__)
+         GTK_LABEL(m_widget)->wrap = FALSE;
+ 
+         // Reset the ellipsize mode while computing the best size, otherwise it's
+@@ -309,7 +322,9 @@
+         gtk_label_set_ellipsize(GTK_LABEL(m_widget), PANGO_ELLIPSIZE_NONE);
+ #endif
+         size = wxStaticTextBase::DoGetBestSize();
+-#ifdef __WXGTK3__
++#ifdef __WXGTK4__
++        gtk_label_set_wrap(GTK_LABEL(m_widget), true);
++#elif defined(__WXGTK3__)
+         gtk_label_set_line_wrap(GTK_LABEL(m_widget), true);
+ #else
+         gtk_label_set_ellipsize(GTK_LABEL(m_widget), ellipsizeMode);
+--- src/gtk/choice.cpp.orig
++++ src/gtk/choice.cpp
+@@ -43,6 +43,7 @@
+ {
+     m_strings = NULL;
+     m_stringCellIndex = 0;
++    m_columns = 1;
+ }
+ 
+ bool wxChoice::Create( wxWindow *parent, wxWindowID id,
+@@ -163,7 +164,11 @@
+ 
+     int n = wxNOT_FOUND;
+ 
++#ifdef __WXGTK4__
++    g_object_freeze_notify(G_OBJECT(m_widget));
++#else
+     gtk_widget_freeze_child_notify(m_widget);
++#endif
+ 
+     for ( int i = 0; i < count; ++i )
+     {
+@@ -179,7 +184,11 @@
+         AssignNewItemClientData(n, clientData, i, type);
+     }
+ 
++#ifdef __WXGTK4__
++    g_object_thaw_notify(G_OBJECT(m_widget));
++#else
+     gtk_widget_thaw_child_notify(m_widget);
++#endif
+ 
+ 
+     InvalidateBestSize();
+@@ -337,12 +346,23 @@
+ 
+ void wxChoice::SetColumns(int n)
+ {
++#ifdef __WXGTK4__
++    // GtkComboBox in GTK4 no longer supports a multi-column popup.
++    wxCHECK_RET(n <= 1, "GTK4 GtkComboBox supports a single popup column");
++    m_columns = n;
++#else
+     gtk_combo_box_set_wrap_width(GTK_COMBO_BOX(m_widget), n);
++    m_columns = n;
++#endif
+ }
+ 
+ int wxChoice::GetColumns() const
+ {
++#ifdef __WXGTK4__
++    return m_columns;
++#else
+     return gtk_combo_box_get_wrap_width(GTK_COMBO_BOX(m_widget));
++#endif
+ }
+ 
+ void wxChoice::GTKDisableEvents()
+@@ -359,7 +379,11 @@
+ 
+ GdkWindow *wxChoice::GTKGetWindow(wxArrayGdkWindows& WXUNUSED(windows)) const
+ {
++#ifdef __WXGTK4__
++    return NULL;
++#else
+     return gtk_widget_get_window(m_widget);
++#endif
+ }
+ 
+ wxSize wxChoice::DoGetBestSize() const
+@@ -375,7 +399,11 @@
+     wxASSERT_MSG( m_widget, wxS("GetSizeFromTextSize called before creation") );
+ 
+     // a GtkEntry for wxComboBox and a GtkCellView for wxChoice
++#ifdef __WXGTK4__
++    GtkWidget* childPart = gtk_combo_box_get_child(GTK_COMBO_BOX(m_widget));
++#else
+     GtkWidget* childPart = gtk_bin_get_child(GTK_BIN(m_widget));
++#endif
+ 
+ #ifdef __WXGTK3__
+     // Preferred size for wxChoice can be incorrect when control is empty,
+@@ -404,8 +432,15 @@
+ 
+     // We are interested in the difference of sizes between the whole contol
+     // and its child part. I.e. arrow, separators, etc.
++    int childWidth;
++#ifdef __WXGTK4__
++    gtk_widget_measure(childPart, GTK_ORIENTATION_HORIZONTAL, -1,
++                       NULL, &childWidth, NULL, NULL);
++#else
+     GtkRequisition req;
+     gtk_widget_get_preferred_size(childPart, NULL, &req);
++    childWidth = req.width;
++#endif
+     wxSize totalS = GTKGetPreferredSize(m_widget);
+ 
+ #ifdef __WXGTK3__
+@@ -413,7 +448,7 @@
+         gtk_list_store_clear(GTK_LIST_STORE(model));
+ #endif
+ 
+-    wxSize tsize(xlen + totalS.x - req.width, totalS.y);
++    wxSize tsize(xlen + totalS.x - childWidth, totalS.y);
+ 
+     // For a wxChoice, not for wxComboBox, add some margins
+     if ( !GTK_IS_ENTRY(childPart) )
+@@ -429,7 +464,11 @@
+ void wxChoice::DoApplyWidgetStyle(GtkRcStyle *style)
+ {
+     GTKApplyStyle(m_widget, style);
++#ifdef __WXGTK4__
++    GTKApplyStyle(gtk_combo_box_get_child(GTK_COMBO_BOX(m_widget)), style);
++#else
+     GTKApplyStyle(gtk_bin_get_child(GTK_BIN(m_widget)), style);
++#endif
+ }
+ 
+ // static
+--- src/gtk/combobox.cpp.orig
++++ src/gtk/combobox.cpp
+@@ -146,7 +146,7 @@
+                                          !HasFlag(wxTE_PROCESS_ENTER) );
+ 
+         gtk_editable_set_editable(GTK_EDITABLE(entry), true);
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) && !defined(__WXGTK4__)
+         gtk_entry_set_width_chars(entry, 0);
+ #endif
+     }
+@@ -174,7 +174,11 @@
+         else // editable combobox
+         {
+             // any value is accepted, even if it's not in our list
++#ifdef __WXGTK4__
++            gtk_editable_set_text(GTK_EDITABLE(entry), wxGTK_CONV(value));
++#else
+             gtk_entry_set_text( entry, wxGTK_CONV(value) );
++#endif
+         }
+ 
+         GTKConnectChangedSignal();
+@@ -196,14 +200,18 @@
+ 
+ void wxComboBox::GTKCreateComboBoxWidget()
+ {
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) || defined(__WXGTK4__)
+     m_widget = gtk_combo_box_text_new_with_entry();
+ #else
+     m_widget = gtk_combo_box_entry_new_text();
+ #endif
+     g_object_ref(m_widget);
+ 
++#ifdef __WXGTK4__
++    m_entry = GTK_ENTRY(gtk_combo_box_get_child(GTK_COMBO_BOX(m_widget)));
++#else
+     m_entry = GTK_ENTRY(gtk_bin_get_child(GTK_BIN(m_widget)));
++#endif
+     g_object_add_weak_pointer(G_OBJECT(m_entry), (void**)&m_entry);
+ }
+ 
+@@ -271,18 +279,22 @@
+ 
+ GdkWindow* wxComboBox::GTKGetWindow(wxArrayGdkWindows& /* windows */) const
+ {
++#ifdef __WXGTK4__
++    return NULL;
++#else
+ #ifdef __WXGTK3__
+     return GTKFindWindow(GTK_WIDGET(GetEntry()));
+ #else
+     return gtk_entry_get_text_window(GetEntry());
+ #endif
++#endif
+ }
+ 
+ // static
+ wxVisualAttributes
+ wxComboBox::GetClassDefaultAttributes(wxWindowVariant WXUNUSED(variant))
+ {
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) || defined(__WXGTK4__)
+     return GetDefaultAttributesFromGTKWidget(gtk_combo_box_new_with_entry(), true);
+ #else
+     return GetDefaultAttributesFromGTKWidget(gtk_combo_box_entry_new(), true);
+--- include/wx/gtk/choice.h.orig
++++ include/wx/gtk/choice.h
+@@ -90,6 +90,7 @@
+ 
+     // index to GtkListStore cell which displays the item text
+     int m_stringCellIndex;
++    int m_columns;
+ 
+     virtual wxSize DoGetBestSize() const wxOVERRIDE;
+     virtual wxSize DoGetSizeFromTextSize(int xlen, int ylen = -1) const wxOVERRIDE;

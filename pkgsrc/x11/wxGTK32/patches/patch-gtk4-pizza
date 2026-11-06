@@ -1,0 +1,423 @@
+$NetBSD$
+
+GTK4 window integration (work in progress; full backend validation pending).
+Use GtkWidget allocation/snapshot/controllers and opaque GDK events.
+Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
+
+--- include/wx/gtk/private/win_gtk.h.orig
++++ include/wx/gtk/private/win_gtk.h
+@@ -27,7 +27,21 @@
+     void size_allocate_child(
+         GtkWidget* child, int x, int y, int width, int height, int parent_width = -1);
+ 
++#ifdef __WXGTK4__
++    void set_virtual_size(int width, int height);
++    // GTK4 has no child GdkWindows. wxWidgets owns child allocations and
++    // paints its client area during the widget's snapshot.
++    GtkWidget m_widget;
++    bool m_inSnapshot;
++    GtkAdjustment* m_hadjustment;
++    GtkAdjustment* m_vadjustment;
++    GtkScrollablePolicy m_hpolicy;
++    GtkScrollablePolicy m_vpolicy;
++    int m_virtual_width;
++    int m_virtual_height;
++#else
+     GtkFixed m_fixed;
++#endif
+     GList* m_children;
+     int m_scroll_x;
+     int m_scroll_y;
+--- src/gtk/win_gtk.cpp.orig
++++ src/gtk/win_gtk.cpp
+@@ -10,6 +10,10 @@
+ 
+ #include "wx/gtk/private.h"
+ #include "wx/gtk/private/win_gtk.h"
++
++#ifdef __WXGTK4__
++#include "win_gtk4.inc"
++#else
+ 
+ /*
+ wxPizza is a custom GTK+ widget derived from GtkFixed.  A custom widget
+@@ -533,3 +537,5 @@
+         border.left = border.right = border.top = border.bottom = 0;
+     }
+ }
++
++#endif // !__WXGTK4__
+--- /dev/null
++++ src/gtk/win_gtk4.inc
+@@ -0,0 +1,371 @@
++///////////////////////////////////////////////////////////////////////////////
++// Name:        src/gtk/win_gtk4.inc
++// Purpose:     GTK4 client widget: allocation, scrolling and snapshot painting
++// Copyright:   (c) 2026 EmberBSD contributors
++// Licence:     wxWindows licence
++// Origin:      EmberBSD, AI-assisted adaptation of wxPizza
++///////////////////////////////////////////////////////////////////////////////
++
++// Included by win_gtk.cpp instead of the GdkWindow/GtkContainer implementation.
++// Scrolling remains owned by wxScrolledWindow: GTK adjustments report input,
++// and wxWindow::ScrollWindow changes the child coordinate origin.
++
++struct wxPizzaChild
++{
++    GtkWidget* widget;
++    int x, y, width, height;
++    gulong parentHandler;
++};
++
++struct wxPizzaClass
++{
++    GtkWidgetClass parent;
++};
++
++static GtkWidgetClass* parent_class;
++static guint pizza_paint_signal;
++static guint pizza_allocate_signal;
++static guint pizza_snapshot_signal;
++
++enum
++{
++    PROP_0,
++    PROP_HADJUSTMENT,
++    PROP_VADJUSTMENT,
++    PROP_HSCROLL_POLICY,
++    PROP_VSCROLL_POLICY
++};
++
++extern "C" {
++
++static void pizza_child_parent_changed(GObject* object, GParamSpec*, void* data)
++{
++    wxPizza* pizza = static_cast<wxPizza*>(data);
++    if (gtk_widget_get_parent(GTK_WIDGET(object)) == GTK_WIDGET(pizza))
++        return;
++
++    for (GList* p = pizza->m_children; p; p = p->next)
++    {
++        wxPizzaChild* child = static_cast<wxPizzaChild*>(p->data);
++        if (child->widget == GTK_WIDGET(object))
++        {
++            pizza->m_children = g_list_delete_link(pizza->m_children, p);
++            g_signal_handler_disconnect(object, child->parentHandler);
++            delete child;
++            gtk_widget_queue_resize(GTK_WIDGET(pizza));
++            return;
++        }
++    }
++}
++
++static void pizza_dispose(GObject* object)
++{
++    wxPizza* pizza = WX_PIZZA(object);
++    while (pizza->m_children)
++    {
++        GList* head = pizza->m_children;
++        wxPizzaChild* child = static_cast<wxPizzaChild*>(head->data);
++        pizza->m_children = g_list_delete_link(pizza->m_children, head);
++        g_signal_handler_disconnect(child->widget, child->parentHandler);
++        gtk_widget_unparent(child->widget);
++        delete child;
++    }
++    g_clear_object(&pizza->m_hadjustment);
++    g_clear_object(&pizza->m_vadjustment);
++    G_OBJECT_CLASS(parent_class)->dispose(object);
++}
++
++static void pizza_measure(GtkWidget* widget, GtkOrientation orientation, int,
++                          int* minimum, int* natural,
++                          int* minimumBaseline, int* naturalBaseline)
++{
++    // wx sizers set explicit child allocations. A child's natural size must
++    // not prevent its parent from shrinking (or make scrolling resize it).
++    // GTK adds CSS border and padding outside these content dimensions.
++    *minimum = 0;
++    wxPizza* pizza = WX_PIZZA(widget);
++    *natural = orientation == GTK_ORIENTATION_HORIZONTAL
++        ? pizza->m_virtual_width : pizza->m_virtual_height;
++    *minimumBaseline = *naturalBaseline = -1;
++}
++
++static void pizza_size_allocate(GtkWidget* widget, int width, int height, int)
++{
++    wxPizza* pizza = WX_PIZZA(widget);
++    // GTK has already removed CSS border/padding. Notify wx before laying
++    // out children so a wxSizeEvent handler can update their geometry.
++    g_signal_emit(widget, pizza_allocate_signal, 0, width, height);
++    const int clientWidth = width;
++    // Allocation can call application code which reparents or destroys a
++    // sibling. Keep widget references, not pointers into the mutable list.
++    GPtrArray* children = g_ptr_array_new_with_free_func(g_object_unref);
++    for (const GList* p = pizza->m_children; p; p = p->next)
++        g_ptr_array_add(children, g_object_ref(static_cast<wxPizzaChild*>(p->data)->widget));
++    for (guint i = 0; i < children->len; ++i)
++    {
++        GtkWidget* widgetChild = GTK_WIDGET(g_ptr_array_index(children, i));
++        if (gtk_widget_get_parent(widgetChild) != widget || !gtk_widget_should_layout(widgetChild))
++            continue;
++        for (const GList* p = pizza->m_children; p; p = p->next)
++        {
++            const wxPizzaChild* child = static_cast<wxPizzaChild*>(p->data);
++            if (child->widget == widgetChild)
++            {
++                pizza->size_allocate_child(widgetChild, child->x, child->y,
++                                           child->width, child->height, clientWidth);
++                break;
++            }
++        }
++    }
++    g_ptr_array_unref(children);
++}
++
++static void pizza_snapshot(GtkWidget* widget, GtkSnapshot* snapshot)
++{
++    wxPizza* pizza = WX_PIZZA(widget);
++    struct SnapshotScope
++    {
++        wxPizza* pizza;
++        explicit SnapshotScope(wxPizza* p) : pizza(p) { pizza->m_inSnapshot = true; }
++        ~SnapshotScope() { pizza->m_inSnapshot = false; }
++    } inSnapshot(pizza);
++    const int width = gtk_widget_get_width(widget);
++    const int height = gtk_widget_get_height(widget);
++    // GTK snapshots CSS background/border before this vfunc and translates
++    // both allocation and snapshot to the content origin. Do not inset twice.
++    if (width == 0 || height == 0)
++        return;
++
++    graphene_rect_t client;
++    graphene_rect_init(&client, 0, 0, width, height);
++    gtk_snapshot_push_clip(snapshot, &client);
++    cairo_t* cr = gtk_snapshot_append_cairo(snapshot, &client);
++    g_signal_emit(widget, pizza_paint_signal, 0, cr);
++    cairo_destroy(cr);
++    // Native GPU surfaces append their texture node without a CPU readback.
++    g_signal_emit(widget, pizza_snapshot_signal, 0, snapshot);
++
++    // Use GTK's child order, so z ordering follows gtk_widget_insert_*().
++    GPtrArray* children = g_ptr_array_new_with_free_func(g_object_unref);
++    for (GtkWidget* child = gtk_widget_get_first_child(widget); child;
++         child = gtk_widget_get_next_sibling(child))
++        g_ptr_array_add(children, g_object_ref(child));
++    for (guint i = 0; i < children->len; ++i)
++    {
++        GtkWidget* child = GTK_WIDGET(g_ptr_array_index(children, i));
++        if (gtk_widget_get_parent(child) == widget)
++            gtk_widget_snapshot_child(widget, child, snapshot);
++    }
++    g_ptr_array_unref(children);
++    gtk_snapshot_pop(snapshot);
++}
++
++static void pizza_get_property(GObject* object, guint id, GValue* value,
++                               GParamSpec* spec)
++{
++    wxPizza* pizza = WX_PIZZA(object);
++    switch (id)
++    {
++        case PROP_HADJUSTMENT: g_value_set_object(value, pizza->m_hadjustment); break;
++        case PROP_VADJUSTMENT: g_value_set_object(value, pizza->m_vadjustment); break;
++        case PROP_HSCROLL_POLICY: g_value_set_enum(value, pizza->m_hpolicy); break;
++        case PROP_VSCROLL_POLICY: g_value_set_enum(value, pizza->m_vpolicy); break;
++        default: G_OBJECT_WARN_INVALID_PROPERTY_ID(object, id, spec); break;
++    }
++}
++
++static void pizza_set_property(GObject* object, guint id, const GValue* value,
++                               GParamSpec* spec)
++{
++    wxPizza* pizza = WX_PIZZA(object);
++    switch (id)
++    {
++        case PROP_HADJUSTMENT:
++        case PROP_VADJUSTMENT:
++        {
++            GtkAdjustment*& slot = id == PROP_HADJUSTMENT
++                ? pizza->m_hadjustment : pizza->m_vadjustment;
++            GtkAdjustment* adjustment = GTK_ADJUSTMENT(g_value_get_object(value));
++            if (slot == adjustment && slot)
++                break;
++            if (!adjustment)
++                adjustment = gtk_adjustment_new(0, 0, 0, 0, 0, 0);
++            g_object_ref_sink(adjustment);
++            g_clear_object(&slot);
++            slot = adjustment;
++            break;
++        }
++        case PROP_HSCROLL_POLICY:
++            pizza->m_hpolicy = static_cast<GtkScrollablePolicy>(g_value_get_enum(value));
++            break;
++        case PROP_VSCROLL_POLICY:
++            pizza->m_vpolicy = static_cast<GtkScrollablePolicy>(g_value_get_enum(value));
++            break;
++        default: G_OBJECT_WARN_INVALID_PROPERTY_ID(object, id, spec); break;
++    }
++}
++
++static void pizza_init(GTypeInstance* instance, void*)
++{
++    wxPizza* pizza = reinterpret_cast<wxPizza*>(instance);
++    pizza->m_hpolicy = pizza->m_vpolicy = GTK_SCROLL_NATURAL;
++    gtk_widget_set_overflow(GTK_WIDGET(pizza), GTK_OVERFLOW_HIDDEN);
++}
++
++static void class_init(void* klass, void*)
++{
++    parent_class = GTK_WIDGET_CLASS(g_type_class_peek_parent(klass));
++    GtkWidgetClass* widgetClass = GTK_WIDGET_CLASS(klass);
++    widgetClass->measure = pizza_measure;
++    widgetClass->size_allocate = pizza_size_allocate;
++    widgetClass->snapshot = pizza_snapshot;
++    gtk_widget_class_set_css_name(widgetClass, "wxwindow");
++
++    GObjectClass* objectClass = G_OBJECT_CLASS(klass);
++    objectClass->dispose = pizza_dispose;
++    objectClass->get_property = pizza_get_property;
++    objectClass->set_property = pizza_set_property;
++    g_object_class_override_property(objectClass, PROP_HADJUSTMENT, "hadjustment");
++    g_object_class_override_property(objectClass, PROP_VADJUSTMENT, "vadjustment");
++    g_object_class_override_property(objectClass, PROP_HSCROLL_POLICY, "hscroll-policy");
++    g_object_class_override_property(objectClass, PROP_VSCROLL_POLICY, "vscroll-policy");
++    pizza_paint_signal = g_signal_new("wx-paint", G_TYPE_FROM_CLASS(klass),
++        G_SIGNAL_RUN_LAST, 0, NULL, NULL, g_cclosure_marshal_VOID__POINTER,
++        G_TYPE_NONE, 1, G_TYPE_POINTER);
++    pizza_allocate_signal = g_signal_new("wx-size-allocate", G_TYPE_FROM_CLASS(klass),
++        G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
++        G_TYPE_NONE, 2, G_TYPE_INT, G_TYPE_INT);
++    pizza_snapshot_signal = g_signal_new("wx-snapshot", G_TYPE_FROM_CLASS(klass),
++        G_SIGNAL_RUN_LAST, 0, NULL, NULL, g_cclosure_marshal_VOID__POINTER,
++        G_TYPE_NONE, 1, G_TYPE_POINTER);
++}
++
++} // extern "C"
++
++GType wxPizza::type()
++{
++    static GType type;
++    if (type == 0)
++    {
++        const char* name = "wxPizza";
++        char buf[30];
++        for (unsigned i = 0; g_type_from_name(name); ++i)
++        {
++            g_snprintf(buf, sizeof(buf), "wxPizza%u", i);
++            name = buf;
++        }
++        const GTypeInfo info = {
++            sizeof(wxPizzaClass), NULL, NULL, class_init, NULL, NULL,
++            sizeof(wxPizza), 0, pizza_init, NULL
++        };
++        type = g_type_register_static(GTK_TYPE_WIDGET, name, &info, GTypeFlags(0));
++        const GInterfaceInfo scrollable = { NULL, NULL, NULL };
++        g_type_add_interface_static(type, GTK_TYPE_SCROLLABLE, &scrollable);
++    }
++    return type;
++}
++
++GtkWidget* wxPizza::New(long style)
++{
++    GtkWidget* widget = GTK_WIDGET(g_object_new(type(), NULL));
++    WX_PIZZA(widget)->m_windowStyle = style;
++    if (style & wxBORDER_SIMPLE)
++    {
++        GtkCssProvider* provider = gtk_css_provider_new();
++        gtk_css_provider_load_from_string(provider,
++            "wxwindow { border: 1px solid currentColor; border-radius: 0; padding: 0; }");
++        gtk_style_context_add_provider(gtk_widget_get_style_context(widget),
++            GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
++        g_object_unref(provider);
++    }
++    else if (style & BORDER_STYLES)
++        gtk_widget_add_css_class(widget, "frame");
++    return widget;
++}
++
++void wxPizza::put(GtkWidget* widget, int x, int y, int width, int height)
++{
++    // A wx toplevel can have an owner, but cannot become a GTK child.
++    if (GTK_IS_WINDOW(widget))
++        return;
++    g_return_if_fail(gtk_widget_get_parent(widget) == NULL);
++    wxPizzaChild* child = new wxPizzaChild;
++    child->widget = widget;
++    child->x = x;
++    child->y = y;
++    child->width = width;
++    child->height = height;
++    gtk_widget_set_parent(widget, GTK_WIDGET(this));
++    child->parentHandler = g_signal_connect(widget, "notify::parent",
++        G_CALLBACK(pizza_child_parent_changed), this);
++    m_children = g_list_append(m_children, child);
++    gtk_widget_queue_allocate(GTK_WIDGET(this));
++}
++
++void wxPizza::move(GtkWidget* widget, int x, int y, int width, int height)
++{
++    for (const GList* p = m_children; p; p = p->next)
++    {
++        wxPizzaChild* child = static_cast<wxPizzaChild*>(p->data);
++        if (child->widget != widget)
++            continue;
++        if (child->x != x || child->y != y ||
++            child->width != width || child->height != height)
++        {
++            child->x = x;
++            child->y = y;
++            child->width = width;
++            child->height = height;
++            gtk_widget_queue_allocate(GTK_WIDGET(this));
++        }
++        return;
++    }
++}
++
++void wxPizza::size_allocate_child(GtkWidget* child, int x, int y,
++                                  int width, int height, int parentWidth)
++{
++    if (parentWidth < 0)
++        parentWidth = gtk_widget_get_width(GTK_WIDGET(this));
++    width = wxMax(0, width);
++    height = wxMax(0, height);
++    x -= m_scroll_x;
++    y -= m_scroll_y;
++    if (gtk_widget_get_direction(GTK_WIDGET(this)) == GTK_TEXT_DIR_RTL)
++        x = parentWidth - x - width;
++    graphene_point_t origin;
++    graphene_point_init(&origin, x, y);
++    // gtk_widget_allocate() takes ownership of the transform.
++    gtk_widget_allocate(child, width, height, -1, gsk_transform_translate(NULL, &origin));
++}
++
++void wxPizza::scroll(int dx, int dy)
++{
++    m_scroll_x -= dx;
++    m_scroll_y -= dy;
++    gtk_widget_queue_allocate(GTK_WIDGET(this));
++    gtk_widget_queue_draw(GTK_WIDGET(this));
++}
++
++void wxPizza::set_virtual_size(int width, int height)
++{
++    width = wxMax(0, width);
++    height = wxMax(0, height);
++    if (width == m_virtual_width && height == m_virtual_height)
++        return;
++    m_virtual_width = width;
++    m_virtual_height = height;
++    gtk_widget_queue_resize(GTK_WIDGET(this));
++}
++
++void wxPizza::get_border(GtkBorder& border)
++{
++    GtkStyleContext* style = gtk_widget_get_style_context(GTK_WIDGET(this));
++    gtk_style_context_get_border(style, &border);
++    GtkBorder padding;
++    gtk_style_context_get_padding(style, &padding);
++    border.left += padding.left;
++    border.right += padding.right;
++    border.top += padding.top;
++    border.bottom += padding.bottom;
++}

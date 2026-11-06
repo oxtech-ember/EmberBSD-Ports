@@ -1,6 +1,6 @@
 $NetBSD$
 
-Refresh the existing pkgsrc platform adaptation for WebKitGTK 2.54.1.
+Refresh the existing pkgsrc platform adaptation for WebKitGTK 2.54.2.
 Origin: EmberBSD (AI-assisted), based on the pinned pkgsrc patch; not submitted upstream.
 
 --- Source/cmake/WebKitFeatures.cmake.orig
