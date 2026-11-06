@@ -1,0 +1,12 @@
+$NetBSD$
+
+Resolve the shared C implementation before importing its C++ wrapper.
+--- src/pkg/tinysplinecxx-config.cmake.in.orig
++++ src/pkg/tinysplinecxx-config.cmake.in
+@@ -1,4 +1,6 @@
+ @PACKAGE_INIT@
++include(CMakeFindDependencyMacro)
++find_dependency(tinyspline CONFIG)
+ set_and_check(TINYSPLINECXX_INCLUDE_DIRS "@PACKAGE_TINYSPLINE_INSTALL_INCLUDE_DIR@")
+ set_and_check(TINYSPLINECXX_LIBRARY_DIRS "@PACKAGE_TINYSPLINE_INSTALL_LIBRARY_DIR@")
+ set(TINYSPLINECXX_BINARY_DIRS "@PACKAGE_TINYSPLINE_INSTALL_BINARY_DIR@")

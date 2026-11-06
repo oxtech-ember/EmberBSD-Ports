@@ -11,9 +11,9 @@ package metadata:
 
 Consumers use the Ports package and its exported include/CMake interfaces.
 They do not vendor another copy or download these dependencies during their
-own build. `pkgsrc/replaces` selects these shared recipes in place of the
-upstream pkgsrc recipes, and the normal exporter carries the complete package
-recipe tree.
+own build. The normal exporter adds these common `pkgsrc/` overlay recipes to
+the package catalog. `pkgsrc/replaces` applies only when an overlay replaces an
+existing upstream recipe.
 
 The shared test consumer at
 [`tests/cpp-header-providers`](../tests/cpp-header-providers/CMakeLists.txt)

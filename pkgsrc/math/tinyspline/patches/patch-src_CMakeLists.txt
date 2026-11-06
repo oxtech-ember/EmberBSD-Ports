@@ -1,0 +1,40 @@
+$NetBSD$
+
+Use shared Parson and link the C++ wrapper to the common C library.
+--- src/CMakeLists.txt.orig
++++ src/CMakeLists.txt
+@@ -901,13 +901,14 @@
+ set(TINYSPLINE_CXX_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+ 
+ # TINYSPLINE_C_SOURCE_FILES
++find_package(parson CONFIG REQUIRED)
++
+ list(APPEND TINYSPLINE_C_SOURCE_FILES
+      "${CMAKE_CURRENT_SOURCE_DIR}/tinyspline.c"
+-     "${CMAKE_CURRENT_SOURCE_DIR}/parson.c"
+ )
+ 
+ # TINYSPLINE_CXX_SOURCE_FILES
+-list(APPEND TINYSPLINE_CXX_SOURCE_FILES ${TINYSPLINE_C_SOURCE_FILES}
++list(APPEND TINYSPLINE_CXX_SOURCE_FILES
+      "${CMAKE_CURRENT_SOURCE_DIR}/tinysplinecxx.cxx"
+ )
+ 
+@@ -939,7 +940,7 @@
+              COMPILE_FLAGS "${TINYSPLINE_LIBRARY_C_FLAGS}"
+              PUBLIC_HEADER "tinyspline.h"
+ )
+-target_link_libraries(tinyspline PRIVATE ${TINYSPLINE_C_LINK_LIBRARIES})
++target_link_libraries(tinyspline PRIVATE ${TINYSPLINE_C_LINK_LIBRARIES} parson::parson)
+ 
+ target_include_directories(
+   tinyspline PUBLIC $<BUILD_INTERFACE:${TINYSPLINE_C_INCLUDE_DIR}>
+@@ -1039,7 +1040,7 @@
+         PROPERTY PUBLIC_HEADER "tinysplinecxx.h"
+       )
+     endif()
+-    target_link_libraries(${target} PRIVATE ${TINYSPLINE_CXX_LINK_LIBRARIES})
++    target_link_libraries(${target} PUBLIC tinyspline PRIVATE ${TINYSPLINE_CXX_LINK_LIBRARIES})
+   endfunction()
+ 
+   tinyspline_add_cxx_library()

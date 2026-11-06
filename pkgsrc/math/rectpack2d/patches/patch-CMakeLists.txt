@@ -1,0 +1,39 @@
+$NetBSD$
+
+Install reusable CMake target and public headers.
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -1,12 +1,29 @@
+ cmake_minimum_required(VERSION 3.20.0)
++project(rectpack2D VERSION 0.0.20260810 LANGUAGES CXX)
+ 
+-project(rectpack2D)
++include(GNUInstallDirs)
++include(CMakePackageConfigHelpers)
+ 
+ add_subdirectory(src)
+ add_library(rectpack2D::rectpack2D ALIAS rectpack2D)
+ 
+ option(RECTPACK2D_BUILD_EXAMPLE "Build example for rectpack2D" OFF)
+-
+ if(RECTPACK2D_BUILD_EXAMPLE)
+     add_subdirectory(example)
+-endif()
+\ No newline at end of file
++endif()
++
++configure_package_config_file(
++    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/rectpack2dConfig.cmake.in
++    ${CMAKE_CURRENT_BINARY_DIR}/rectpack2dConfig.cmake
++    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rectpack2d
++)
++write_basic_package_version_file(
++    ${CMAKE_CURRENT_BINARY_DIR}/rectpack2dConfigVersion.cmake
++    VERSION ${PROJECT_VERSION}
++    COMPATIBILITY ExactVersion
++)
++install(FILES
++    ${CMAKE_CURRENT_BINARY_DIR}/rectpack2dConfig.cmake
++    ${CMAKE_CURRENT_BINARY_DIR}/rectpack2dConfigVersion.cmake
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rectpack2d
++)

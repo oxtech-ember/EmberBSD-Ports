@@ -1,0 +1,16 @@
+@comment $NetBSD$
+include/tinyspline.h
+include/tinysplinecxx.h
+lib/cmake/tinyspline/tinyspline-config-version.cmake
+lib/cmake/tinyspline/tinyspline-config.cmake
+lib/cmake/tinyspline/tinyspline-targets.cmake
+lib/cmake/tinyspline/tinyspline-targets-noconfig.cmake
+lib/cmake/tinysplinecxx/tinysplinecxx-config-version.cmake
+lib/cmake/tinysplinecxx/tinysplinecxx-config.cmake
+lib/cmake/tinysplinecxx/tinysplinecxx-targets.cmake
+lib/cmake/tinysplinecxx/tinysplinecxx-targets-noconfig.cmake
+lib/libtinyspline.so
+lib/libtinysplinecxx.so
+lib/pkgconfig/tinyspline.pc
+lib/pkgconfig/tinysplinecxx.pc
+share/doc/tinyspline/LICENSE

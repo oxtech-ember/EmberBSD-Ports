@@ -1,0 +1,37 @@
+$NetBSD$
+
+Export the shared header provider with the original upstream include spelling.
+--- src/CMakeLists.txt.orig
++++ src/CMakeLists.txt
+@@ -1,13 +1,27 @@
+ add_library(rectpack2D INTERFACE)
+ 
+ target_compile_features(
+-	rectpack2D
+-	INTERFACE
+-		cxx_std_17
++    rectpack2D
++    INTERFACE
++        cxx_std_17
+ )
+ 
+ target_include_directories(
+     rectpack2D
+     INTERFACE
+-        ${CMAKE_CURRENT_SOURCE_DIR}/
++        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
++        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+ )
++
++set_target_properties(rectpack2D PROPERTIES EXPORT_NAME rectpack2d)
++
++install(TARGETS rectpack2D EXPORT rectpack2DTargets)
++install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/rectpack2D/
++    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rectpack2D
++    FILES_MATCHING PATTERN "*.h"
++)
++install(EXPORT rectpack2DTargets
++    FILE rectpack2dTargets.cmake
++    NAMESPACE rectpack2d::
++    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rectpack2d
++)

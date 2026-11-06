@@ -3,7 +3,9 @@
 `math/nanoflann`, `security/picosha2`, `textproc/parson`, and
 `textproc/rapidcsv` are common package providers. Consumers use their installed
 headers and CMake targets where provided rather than carrying private copies.
-The normal Ports exporter selects these overlays through `pkgsrc/replaces`.
+The normal exporter adds these common `pkgsrc/` overlay recipes to the package
+catalog. `pkgsrc/replaces` applies only when an overlay replaces an existing
+upstream recipe.
 
 The cross-link consumer in
 [`tests/cpp-utility-providers`](../tests/cpp-utility-providers/CMakeLists.txt)

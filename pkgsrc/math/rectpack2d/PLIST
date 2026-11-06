@@ -1,0 +1,11 @@
+@comment $NetBSD$
+include/rectpack2D/best_bin_finder.h
+include/rectpack2D/empty_space_allocators.h
+include/rectpack2D/empty_spaces.h
+include/rectpack2D/finders_interface.h
+include/rectpack2D/insert_and_split.h
+include/rectpack2D/rect_structs.h
+lib/cmake/rectpack2d/rectpack2dConfig.cmake
+lib/cmake/rectpack2d/rectpack2dConfigVersion.cmake
+lib/cmake/rectpack2d/rectpack2dTargets.cmake
+share/licenses/rectpack2d/LICENSE
