@@ -58,6 +58,12 @@ static void Paint(GtkWidget*, cairo_t* cr, unsigned* paints)
     cairo_paint(cr);
 }
 
+static void UnparentOnNotify(GtkWidget* child, GParamSpec*, void*)
+{
+    if (gtk_widget_get_parent(child))
+        gtk_widget_unparent(child);
+}
+
 struct Allocations { unsigned count = 0; bool valid = true; };
 
 static void Allocated(GtkWidget* widget, int width, int height, Allocations* allocations)
@@ -115,6 +121,44 @@ int main()
         g_object_set_data(G_OBJECT(widget), "wx-frozen", NULL);
         Redraw(widget);
         Check(paints > beforeFreeze, "thawed widget did not repaint");
+
+        // Outside-paint drawing must preserve the native renderer and must
+        // not be erased by an extra wxPaint triggered by its own queue_draw.
+        void* dcToken = NULL;
+        cairo_t* dc = pizza->BeginClientDC(&dcToken);
+        Check(dc && dcToken, "could not acquire real client content for DC");
+        cairo_set_source_rgb(dc, 0, 0, 1);
+        cairo_paint(dc);
+        cairo_destroy(dc);
+        const unsigned beforeDC = paints;
+        wxPizza::EndClientDC(dcToken);
+        Redraw(widget);
+        Check(paints == beforeDC, "ClientDC was overwritten by its own paint event");
+        GtkNative* native = gtk_widget_get_native(widget);
+        graphene_rect_t sample = GRAPHENE_RECT_INIT(0, 0, 1, 1);
+        GdkTexture* pixel = gsk_renderer_render_texture(gtk_native_get_renderer(native),
+                                                       pizza->m_contentSnapshot, &sample);
+        unsigned char rgba[4] = {};
+        gdk_texture_download(pixel, rgba, 4);
+        g_object_unref(pixel);
+#if G_BYTE_ORDER == G_LITTLE_ENDIAN
+        Check(rgba[0] == 255 && rgba[2] == 0 && rgba[3] == 255, "ClientDC pixels did not reach retained content");
+#else
+        Check(rgba[0] == 255 && rgba[1] == 0 && rgba[3] == 255, "ClientDC pixels did not reach retained content");
+#endif
+        pizza->InvalidateClientDC();
+        Redraw(widget);
+        Check(paints > beforeDC, "Refresh did not restore ordinary painting after ClientDC");
+
+        GtkWidget* transient = gtk_drawing_area_new();
+        g_object_ref_sink(transient);
+        const gulong unparent = g_signal_connect(transient, "notify::parent",
+            G_CALLBACK(UnparentOnNotify), NULL);
+        pizza->put(transient, 1, 1, 10, 10);
+        Check(!gtk_widget_get_parent(transient) && g_list_length(pizza->m_children) == 1,
+              "reentrant parent notification left a stale child record");
+        g_signal_handler_disconnect(transient, unparent);
+        g_object_unref(transient);
 
         pizza->set_virtual_size(1000, 800);
         int minimum, natural;
