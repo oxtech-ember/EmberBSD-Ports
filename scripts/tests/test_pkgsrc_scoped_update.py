@@ -247,6 +247,79 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
             self.assertEqual((self.tree / name).read_text(), 'makevars=2\n')
         self.assertEqual((self.tree / 'mk/neighbor.mk').read_text(), 'neighbor=0\n')
 
+    def test_global_patch_created_file_update_and_foreign_preimage(self):
+        name = 'mk/tools/ember-created.mk'
+        def creation(value):
+            return (f'--- a/{name}\n+++ b/{name}\n@@ -0,0 +1 @@\n+value={value}\n')
+        patch = self.ports / 'patches/create.patch'
+        write(self.ports, 'patches/create.patch', creation('old'))
+        conf = self.ports / 'pkgsrc/export.conf'
+        conf.write_text(conf.read_text() + 'patch\tpatches/create.patch\n')
+        commit(self.ports, 'create global file')
+        self.export = self.work / 'created-shared'; self.command[3] = self.export
+        initial = run(self.command, self.ports, check=False)
+        self.assertEqual(initial.returncode, 0, initial.stdout + initial.stderr)
+        self.tree = self.export / 'pkgsrc'; self.receipt = self.export / 'pkgsrc-export.json'
+        self.marker = self.export / '.pkgsrc-update-incomplete'
+        self.old_receipt = self.receipt.read_bytes()
+        selected = self.tree / name; neighbor = self.tree / 'mk/neighbor.mk'
+        self.assertEqual(selected.read_text(), 'value=old\n')
+        stamp = (neighbor.stat().st_ino, neighbor.stat().st_mtime_ns)
+        patch.write_text(creation('new')); commit(self.ports, 'change created global file')
+        selected.write_text('foreign\n')
+        result = self.update('--file', name)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(selected.read_text(), 'foreign\n')
+        self.assertEqual(self.receipt.read_bytes(), self.old_receipt)
+        self.assertFalse(self.marker.exists())
+        selected.write_text('value=old\n')
+        result = self.update('--file', name)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(selected.read_text(), 'value=new\n')
+        self.assertEqual((neighbor.stat().st_ino, neighbor.stat().st_mtime_ns), stamp)
+
+    def test_global_patch_missing_creator_is_refused_before_write(self):
+        name = 'mk/tools/ember-created.mk'
+        patch = self.ports / 'patches/create.patch'
+        write(self.ports, 'patches/create.patch',
+              f'--- a/{name}\n+++ b/{name}\n@@ -0,0 +1 @@\n+value=old\n')
+        conf = self.ports / 'pkgsrc/export.conf'
+        conf.write_text(conf.read_text() + 'patch\tpatches/create.patch\n')
+        commit(self.ports, 'create global file')
+        self.export = self.work / 'missing-creator'; self.command[3] = self.export
+        initial = run(self.command, self.ports, check=False)
+        self.assertEqual(initial.returncode, 0, initial.stdout + initial.stderr)
+        self.tree = self.export / 'pkgsrc'; self.receipt = self.export / 'pkgsrc-export.json'
+        self.marker = self.export / '.pkgsrc-update-incomplete'
+        before = self.receipt.read_bytes(); selected = self.tree / name
+        neighbor = self.tree / 'mk/neighbor.mk'; stamp = (neighbor.stat().st_ino, neighbor.stat().st_mtime_ns)
+        patch.write_text(f'--- a/{name}\n+++ b/{name}\n@@ -1 +1 @@\n-value=old\n+value=new\n')
+        commit(self.ports, 'remove creator')
+        result = self.update('--file', name)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(selected.read_text(), 'value=old\n')
+        self.assertEqual(self.receipt.read_bytes(), before)
+        self.assertFalse(self.marker.exists())
+        self.assertEqual((neighbor.stat().st_ino, neighbor.stat().st_mtime_ns), stamp)
+
+    def test_global_patch_dev_null_creator(self):
+        name = 'mk/tools/ember-null-created.mk'
+        def creation(value):
+            return f'--- /dev/null\n+++ b/{name}\n@@ -0,0 +1 @@\n+value={value}\n'
+        patch = self.ports / 'patches/null-create.patch'
+        write(self.ports, 'patches/null-create.patch', creation('old'))
+        conf = self.ports / 'pkgsrc/export.conf'
+        conf.write_text(conf.read_text() + 'patch\tpatches/null-create.patch\n')
+        commit(self.ports, 'create global file from dev null')
+        self.export = self.work / 'null-created'; self.command[3] = self.export
+        initial = run(self.command, self.ports, check=False)
+        self.assertEqual(initial.returncode, 0, initial.stdout + initial.stderr)
+        self.tree = self.export / 'pkgsrc'
+        patch.write_text(creation('new')); commit(self.ports, 'change null-created global file')
+        result = self.update('--file', name)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.tree / name).read_text(), 'value=new\n')
+
     def test_changed_patch_and_file_preserve_unrelated_times_and_delete(self):
         unchanged = self.tree / 'cat/pkg/files/unchanged'
         other = self.tree / 'cat/other/Makefile'
