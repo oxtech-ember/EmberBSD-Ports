@@ -37,6 +37,9 @@ with tempfile.TemporaryDirectory(prefix='pkgsrc-source-refresh-test-') as temp:
     scope_b = 'tools/llvm-objcopy/Archive.cpp'
     scope_c = 'test/tools/llvm-objcopy/MachO/reexport.test'
     interpreter = 'tools/opt-viewer/extract-reproducers.py'
+    subst_scope = 'build-tools/python-path.in'
+    neighbor = 'build-tools/neighbor.in'
+    chmod_scope = 'sample/test.rb'
     unchanged = 'llvm/include/llvm/Config/llvm-config.h'
     (retained / scope).parent.mkdir(parents=True)
     (retained / unchanged).parent.mkdir(parents=True)
@@ -46,6 +49,12 @@ with tempfile.TemporaryDirectory(prefix='pkgsrc-source-refresh-test-') as temp:
     (retained / unchanged).write_bytes(b'generated stable\n')
     (retained / interpreter).parent.mkdir(parents=True)
     (retained / interpreter).write_bytes(b'#!/Users/smolev/Downloads/EmberBSD/host-pkg-llvm/bin/python3.15\nscript\n')
+    (retained / subst_scope).parent.mkdir(parents=True)
+    (retained / subst_scope).write_bytes(b'python=/old/native/python\n')
+    (retained / neighbor).write_bytes(b'python=@PYTHON@\n')
+    (retained / chmod_scope).parent.mkdir(parents=True)
+    (retained / chmod_scope).write_bytes(b'#!/usr/bin/env ruby\n')
+    (retained / chmod_scope).chmod(0o644)
     (work / '.patch_done').write_bytes(b'old patch cookie\n')
     (work / '.configure_done').write_text('configured\n')
     obj = work / 'nested/llvm-src/cmake-pkgsrc-build/CMakeCache.txt'
@@ -69,6 +78,8 @@ elif 'extract' in args and 'patch' in args:
     src = wrkdir / src_name
     (src / 'tools/llvm-objcopy').mkdir(parents=True)
     (src / 'llvm/include/llvm/Config').mkdir(parents=True)
+    (src / 'build-tools').mkdir(parents=True)
+    (src / 'sample').mkdir(parents=True)
     (src / 'tools/llvm-objcopy/Objcopy.cpp').write_bytes(b'new objcopy\\n')
     (src / 'tools/llvm-objcopy/Archive.cpp').write_bytes(b'new archive\\n' if os.environ.get('CHANGE_SCOPE_B') else b'old archive\\n')
     (src / 'test/tools/llvm-objcopy/MachO').mkdir(parents=True)
@@ -76,13 +87,23 @@ elif 'extract' in args and 'patch' in args:
     (src / 'llvm/include/llvm/Config/llvm-config.h').write_bytes(b'generated stable\\n')
     (src / 'tools/opt-viewer').mkdir(parents=True)
     (src / 'tools/opt-viewer/extract-reproducers.py').write_bytes(b'#!/usr/bin/env python3\\nscript\\n')
+    (src / 'build-tools/python-path.in').write_bytes(b'python=@PYTHON@\\n')
+    (src / 'build-tools/neighbor.in').write_bytes(b'python=@PYTHON@\\n')
+    (src / 'sample/test.rb').write_bytes(b'#!/usr/bin/env ruby\\n')
+    (src / 'sample/test.rb').chmod(0o755)
     (wrkdir / '.patch_done').write_bytes(b'current pkgsrc cookie\\n')
-elif 'replace-interpreter' in args:
-    script = wrkdir / src_name / 'tools/opt-viewer/extract-reproducers.py'
-    data = script.read_bytes().replace(b'#!/usr/bin/env python3', b'#!/Users/smolev/Downloads/EmberBSD/host-pkg-llvm/bin/python3.15', 1)
-    script.write_bytes(data)
-    if os.environ.get('REPLACE_CALLED'):
-        pathlib.Path(os.environ['REPLACE_CALLED']).write_text('called')
+elif 'pre-configure' in args or 'do-configure-pre-hook' in args:
+    src = wrkdir / src_name
+    if 'pre-configure' in args:
+        path = src / 'build-tools/python-path.in'
+        path.write_bytes(path.read_bytes().replace(b'@PYTHON@', b'/native/bin/python3'))
+        (src / 'sample/test.rb').chmod(0o644)
+    if 'do-configure-pre-hook' in args:
+        script = src / 'tools/opt-viewer/extract-reproducers.py'
+        data = script.read_bytes().replace(b'#!/usr/bin/env python3', b'#!/Users/smolev/Downloads/EmberBSD/host-pkg-llvm/bin/python3.15', 1)
+        script.write_bytes(data)
+        if os.environ.get('REPLACE_CALLED'):
+            pathlib.Path(os.environ['REPLACE_CALLED']).write_text('called')
 elif 'build-clean' in args:
     fail = os.environ.get('FAIL_BUILD_CLEAN')
     if fail and not pathlib.Path(fail).exists():
@@ -101,7 +122,8 @@ else:
         try:
             result = refresh.source_refresh(sdk, patch, fake, recipe, work,
                                             ['WRKDIR=' + str(work)],
-                                            scope_override or [scope, scope_b, scope_c])
+                                            scope_override or [scope, scope_b, scope_c,
+                                                               subst_scope, chmod_scope])
         except Exception as exc:
             if not expected_failure:
                 raise
@@ -123,6 +145,9 @@ else:
     assert (retained / scope).read_bytes() == b'new objcopy\n'
     assert (retained / scope_b).read_bytes() == b'old archive\n'
     assert (retained / scope_c).read_bytes() == b'added test\n'
+    assert (retained / subst_scope).read_bytes() == b'python=/native/bin/python3\n'
+    assert (retained / neighbor).read_bytes() == b'python=@PYTHON@\n'
+    assert (retained / chmod_scope).stat().st_mode & 0o777 == 0o644
     assert (retained / unchanged).read_bytes() == b'generated stable\n'
     assert (retained / interpreter).read_bytes().startswith(
         b'#!/Users/smolev/Downloads/EmberBSD/host-pkg-llvm/bin/python3.15\n')
@@ -132,13 +157,16 @@ else:
     assert obj.stat().st_mtime_ns == obj_stat.st_mtime_ns
     assert run() is False
 
-    # An unconfigured retained stage skips replace-interpreter; the fresh and
-    # retained source both keep the upstream shebang.
+    # An unconfigured retained stage skips all pre-configure transforms.
     (retained / interpreter).write_bytes(b'#!/usr/bin/env python3\nscript\n')
+    (retained / subst_scope).write_bytes(b'python=@PYTHON@\n')
+    (retained / chmod_scope).chmod(0o755)
     (work / '.configure_done').unlink()
     replaced_marker.unlink()
     assert run() is False
     assert (retained / interpreter).read_bytes() == b'#!/usr/bin/env python3\nscript\n'
+    assert (retained / subst_scope).read_bytes() == b'python=@PYTHON@\n'
+    assert (retained / chmod_scope).stat().st_mode & 0o777 == 0o755
     assert not replaced_marker.exists()
     (retained / interpreter).write_bytes(
         b'#!/Users/smolev/Downloads/EmberBSD/host-pkg-llvm/bin/python3.15\nscript\n')

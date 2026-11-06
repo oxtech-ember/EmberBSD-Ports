@@ -4,8 +4,10 @@
 """Refresh an explicit set of prepared pkgsrc source leaves in a retained stage.
 
 The selected bmake prepares a fresh sibling WRKDIR with the package's actual
-extract and patch targets. Only caller-authorized regular files may differ;
-all other candidate WRKSRC inputs must match the retained source tree.
+extract and patch targets. For a configured retained stage it also runs the
+pkgsrc pre-configure hooks, stopping before the project's do-configure target.
+Only caller-authorized regular files may differ; all other candidate WRKSRC
+inputs must match the retained source tree.
 """
 import base64
 import importlib.util
@@ -73,7 +75,8 @@ def source_refresh(sdk, patch_refresh, bmake, recipe, work, make_args, scope):
         configure_cookie = work / '.configure_done'
         if os.path.lexists(configure_cookie):
             paths.regular_file(str(configure_cookie))
-            subprocess.run(base + ['WRKDIR=' + str(candidate_work), 'replace-interpreter'],
+            subprocess.run(base + ['WRKDIR=' + str(candidate_work),
+                                   'pre-configure', 'do-configure-pre-hook'],
                            check=True)
         rel_source = candidate_source.relative_to(candidate_work.resolve())
         require(rel_source == retained_rel_source,

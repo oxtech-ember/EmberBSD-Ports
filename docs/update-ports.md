@@ -241,6 +241,13 @@ pkgsrc parse-time probes; use a trusted prepared tree. No build target is invoke
 
 ## Refresh configuration metadata
 
+`source-refresh` prepares a fresh candidate with pkgsrc `extract` and `patch`.
+When the retained work directory has `.configure_done`, it additionally runs
+pkgsrc `pre-configure` and `do-configure-pre-hook`, applying the recipe's
+standard source substitutions, mode changes, and interpreter replacement.
+It stops before project `do-configure`; it does not configure or compile the
+candidate. Only explicitly scoped source leaves may then be transferred.
+
 When a selected package's provider configuration changes, `invalidate-makevars`
 removes that work directory's cached phase variables, without removing source,
 objects or phase cookies. It does not itself reconfigure or rebuild. For a
