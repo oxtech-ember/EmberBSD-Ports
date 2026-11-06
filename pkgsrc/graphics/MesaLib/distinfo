@@ -39,6 +39,7 @@ SHA1 (patch-src_imagination_vulkan_pvr__arch__job__render.c) = 6c0b7371503fb41b9
 SHA1 (patch-src_imagination_vulkan_pvr__arch__pipeline.c) = a398db6193595a383187622af1cfda505d69ed54
 SHA1 (patch-src_imagination_vulkan_pvr__arch__queue.c) = 1ddc4d8acaca7f7a83d7a16c1e112ebc21f7e82e
 SHA1 (patch-src_imagination_vulkan_pvr__physical__device.c) = 65a95e0957e6b018abfcfb36091c1d4818364151
+SHA1 (patch-src_imagination_vulkan_pvr__zz__bo__reuse) = 7960d7cd7a10143449943e7baaebbee2747fb898
 SHA1 (patch-src_imagination_vulkan_pvr__zz__cached__memory) = 086c0931f3c7b15fce1488188ea015c26c80fdb6
 SHA1 (patch-src_imagination_vulkan_rogue_pvr__blit.c) = 951ebab0b784cf4310d25e9fe16373e4d3ae2f8d
 SHA1 (patch-src_imagination_vulkan_winsys_powervr_pvr__drm__job__common.h) = c021139c1d6d768b663c745d87654d35dd603454
