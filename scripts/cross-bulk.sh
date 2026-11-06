@@ -1863,6 +1863,16 @@ package_install_one()
                 set +f
             fi
         fi
+        if [ -n "${CROSS_BULK_PATCH_REFRESH_PREVIOUS_RECIPE:-}" ]; then
+            case "$CROSS_BULK_PATCH_REFRESH_PREVIOUS_RECIPE" in
+                /*) ;;
+                *) echo 'Previous recipe must be an absolute path' >&2; return 2 ;;
+            esac
+            set -- "$@" --previous-recipe "$CROSS_BULK_PATCH_REFRESH_PREVIOUS_RECIPE"
+        fi
+        if [ -n "${CROSS_BULK_PATCH_REFRESH_EXISTING_SUBST:-}" ]; then
+            set -- "$@" --refresh-subst "$CROSS_BULK_PATCH_REFRESH_EXISTING_SUBST"
+        fi
         if [ -n "${CROSS_BULK_PATCH_REFRESH_PREVIOUS_MAKEFILE:-}${CROSS_BULK_PATCH_REFRESH_SUBST_CLASS:-}" ]; then
             : "${CROSS_BULK_PATCH_REFRESH_PREVIOUS_MAKEFILE:?select the installed Makefile preimage}"
             : "${CROSS_BULK_PATCH_REFRESH_SUBST_CLASS:?select the added pre-configure SUBST class}"

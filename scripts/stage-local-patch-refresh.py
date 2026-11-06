@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD contributors (AI-assisted).
-"""Verify and prepare an additive pkgsrc stage patch refresh.
+"""Verify and prepare an incremental pkgsrc stage patch refresh.
 
 This module never accepts an unverified old patch list or a caller-supplied
 replacement digest. The controlling owner holds the stage lock for its lifetime.
@@ -10,6 +10,9 @@ provenance and supports one added pre-configure SUBST class whose literal files
 are exactly the added patch targets. Unchanged patch hooks must be bounded
 timestamp copies. The selected pkgsrc SUBST generates the verified candidate
 and records a verified no-op in the live stage before the journal is cleared.
+The previous-recipe mode binds complete old patch inputs to the installed
+package, replays replacement patches and an unchanged existing SUBST class,
+and verifies omitted old-cookie targets without rewriting their source files.
 """
 import base64
 import hashlib
@@ -17,6 +20,8 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import stat
+
+MAX_STAGE_ARCHIVE_BYTES = 512 * 1024 * 1024
 
 
 def require(condition, message):
@@ -60,7 +65,60 @@ def targets(data):
     return result
 
 
-def old_metadata(paths, recipe, work, installed_version, old_cookie=None):
+def validate_patch_endpoints(paths, tree, data):
+    """Reject link/special patch targets and backups before executing patch."""
+    lines = data.splitlines()
+    found = False
+    for index, line in enumerate(lines[:-1]):
+        if not line.startswith(b'--- ') or not lines[index + 1].startswith(b'+++ '):
+            continue
+        found = True
+        for field in (line[4:].split()[0], lines[index + 1][4:].split()[0]):
+            if field == b'/dev/null':
+                continue
+            try:
+                name = field.decode('ascii')
+            except UnicodeError as exc:
+                raise ValueError('non-ASCII patch path') from exc
+            parts = name.split('/')
+            require(name and not name.startswith('/') and '\\' not in name and
+                    all(part not in ('', '.', '..') for part in parts) and
+                    all(ord(c) >= 32 and ord(c) != 127 for c in name),
+                    'unsafe patch path')
+            # Both header spellings and the backup names may be inspected by
+            # patch; check each without ever following an archive symlink.
+            for candidate in {name, name.removesuffix('.orig')}:
+                for endpoint in (candidate, candidate + '.orig'):
+                    current = tree
+                    pieces = endpoint.split('/')
+                    for part in pieces[:-1]:
+                        current /= part
+                        if paths.entry(str(current)) is None:
+                            break
+                        paths.real_directory(str(current))
+                    else:
+                        current /= pieces[-1]
+                        if paths.entry(str(current)) is not None:
+                            paths.regular_file(str(current))
+    require(found, 'patch has no supported file headers')
+
+
+def unselected_subst_file(paths, root, name):
+    """Return whether a literal input exists; reject links and special files."""
+    current = root
+    parts = name.split('/')
+    for index, part in enumerate(parts):
+        current = current / part
+        if paths.entry(str(current)) is None:
+            return False
+        if index == len(parts) - 1:
+            paths.regular_file(str(current))
+        else:
+            paths.real_directory(str(current))
+    return True
+
+
+def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, previous_recipe=None):
     """Bind the old ordered cookie to installed BUILD_VERSION and current recipe."""
     cookie = stable_read(paths, work / '.patch_done') if old_cookie is None else old_cookie
     try:
@@ -87,64 +145,112 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None):
         require(not any(key.startswith(pkgpath + '/patches/patch-') for key in records),
                 'empty patch cookie contradicts installed patch provenance')
     new = sorted(p.name for p in patchdir.glob('patch-*') if p.is_file())
-    require([p for p in new if p in old] == old and len(new) > len(old),
+    old_recipe = Path(previous_recipe) if previous_recipe is not None else recipe
+    if previous_recipe is not None:
+        require(old_recipe.is_absolute(), 'previous recipe must be absolute')
+        for name in ('Makefile', 'distinfo'):
+            require(records.get(pkgpath + '/' + name) ==
+                    hashlib.sha256(stable_read(paths, old_recipe / name)).hexdigest(),
+                    'previous recipe identity changed: ' + name)
+        complete = sorted(p.name for p in (old_recipe / 'patches').glob('patch-*') if p.is_file())
+        recorded_prefix = pkgpath + '/patches/'
+        recorded = sorted(key[len(recorded_prefix):] for key in records
+                          if key.startswith(recorded_prefix + 'patch-'))
+        require(complete == recorded, 'previous recipe patch inventory differs from installed provenance')
+        require([name for name in complete if name in old] == old,
+                'old patch cookie is not an ordered subsequence of previous recipe')
+        # A completed build may retain an earlier extraction/patch cookie.
+        # Reconcile it only against the complete installed recipe; prepare()
+        # adds mandatory live preimage checks for every omitted patch target.
+        old = complete
+    require([p for p in new if p in old] == old and
+            (previous_recipe is not None or len(new) > len(old)),
             'old patch list is not a proper subsequence')
     for name in old:
         expected = records.get(pkgpath + '/patches/' + name)
-        require(expected and hashlib.sha256(stable_read(paths, patchdir / name)).hexdigest() == expected,
+        require(expected and hashlib.sha256(stable_read(paths, old_recipe / 'patches' / name)).hexdigest() == expected,
                 'old patch identity changed: ' + name)
     additions = [p for p in new if p not in old]
     distinfo = stable_read(paths, recipe / 'distinfo')
-    old_distinfo = b''.join(line for line in distinfo.splitlines(keepends=True)
-                            if not any(line.startswith(b'SHA1 (' + name.encode() + b') = ') for name in additions))
+    old_distinfo = (stable_read(paths, old_recipe / 'distinfo') if previous_recipe is not None else
+                    b''.join(line for line in distinfo.splitlines(keepends=True)
+                             if not any(line.startswith(b'SHA1 (' + name.encode() + b') = ') for name in additions)))
     expected = records.get(pkgpath + '/distinfo')
     require(expected and hashlib.sha256(old_distinfo).hexdigest() == expected,
             'old distinfo cannot be reconstructed exactly')
     return old, new, additions, cookie
 
 
-def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, patch_args, scratch, *, old_cookie=None, transform=None, allow_completed=False):
+def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, patch_args, scratch, *, old_cookie=None, transform=None, allow_completed=False, previous_recipe=None, old_transform=None):
     """Replay complete old and current patch order and return validated leaf changes."""
     paths, sourceprep, archive_metadata = sdk['paths'], sdk['sourceprep'], sdk['archive_metadata']
     recipe, work, archive, scratch = map(Path, (recipe, work, archive, scratch))
-    old, new, additions, old_cookie = old_metadata(paths, recipe, work, installed_version, old_cookie)
+    old, new, additions, old_cookie = old_metadata(paths, recipe, work, installed_version, old_cookie, previous_recipe=previous_recipe)
     metadata, patches = archive_metadata.read_recipe(recipe, archive.name, archive_root)
+    if previous_recipe is not None:
+        old_recipe = Path(previous_recipe)
+        old_meta, old_patches = archive_metadata.read_recipe(old_recipe, archive.name, archive_root)
+        require([p.name for p in old_patches] == old, 'previous recipe patch inventory changed')
+    else:
+        old_recipe, old_meta = recipe, metadata
     data = stable_read(paths, archive)
     measured = sourceprep.archive_hashes(data)
+    require(all(measured[k] == old_meta[k] for k in ('sha512', 'blake2s', 'size')),
+            'archive differs from previous distinfo')
     require(all(measured[k] == metadata[k] for k in ('sha512', 'blake2s', 'size')),
             'archive differs from verified distinfo')
     require([p.name for p in patches] == new, 'current patch inventory changed')
     require(patch_args == ['-E', '-p0', '--batch', '--forward', '-V', 'simple', '-z', '.orig'],
             'unsupported selected pkgsrc PATCH_ARGS')
     affected = set()
-    for name in additions:
-        affected.update(targets(stable_read(paths, recipe / 'patches' / name)))
+    cookie_inventory = {Path(name).name for name in old_cookie.decode('utf-8').splitlines() if name}
+    verify_targets = set()
+    for name in old:
+        if name not in cookie_inventory:
+            verify_targets.update(targets(stable_read(paths, old_recipe / 'patches' / name)))
+    for name in new:
+        current = stable_read(paths, recipe / 'patches' / name)
+        prior = stable_read(paths, old_recipe / 'patches' / name) if name in old else None
+        if prior != current:
+            affected.update(targets(current))
+            if prior is not None:
+                affected.update(targets(prior))
     candidates = []
     for label, series in (('old', old), ('new', new)):
         dest = scratch / label
         dest.mkdir()
-        sourceprep.extract_archive(archive, dest, archive_root, label)
+        require(getattr(sourceprep, 'ARCHIVE_INTERNAL_SYMLINKS_API', None) == 1,
+                'selected SDK lacks verified internal symlink extraction')
+        sourceprep.extract_archive(archive, dest, archive_root, label,
+                                   internal_symlinks=True,
+                                   max_bytes=MAX_STAGE_ARCHIVE_BYTES)
         tree = dest / archive_root
         for name in series:
-            path = recipe / 'patches' / name
+            path = (old_recipe if label == 'old' else recipe) / 'patches' / name
             contents = stable_read(paths, path)
-            require(hashlib.sha256(contents).hexdigest() == metadata['recipe']['patches/' + name],
+            patch_meta = old_meta if label == 'old' else metadata
+            require(hashlib.sha256(contents).hexdigest() == patch_meta['recipe']['patches/' + name],
                     'patch changed during replay: ' + name)
+            validate_patch_endpoints(paths, tree, contents)
             sourceprep.apply_patch(str(patch), path, contents, tree, label,
                                    patch_args=tuple(patch_args), allow_dev_null=True)
             require(stable_read(paths, path) == contents, 'patch changed while applying: ' + name)
         candidates.append(tree)
+    if old_transform is not None:
+        old_transform(candidates[0], affected)
     if transform is not None:
         transform(candidates[1], affected)
     require(sourceprep.archive_hashes(stable_read(paths, archive)) == measured,
             'archive changed during replay')
     changes = []
     adoption_states = set()
-    for name in sorted(affected):
+    for name in sorted(affected | verify_targets):
         before, after = (tree / name for tree in candidates)
         require(not before.is_symlink() and not after.is_symlink(), 'symlink patch target')
         old_data = stable_read(paths, before) if before.is_file() else None
         new_data = stable_read(paths, after) if after.is_file() else None
+        if name in verify_targets:
+            require(old_data is not None, 'omitted patch has no verifiable installed preimage: ' + name)
         require(new_data is not None, 'patch deletion or nonregular result is unsupported')
         old_mode = stat.S_IMODE(before.stat().st_mode) if old_data is not None else None
         new_mode = stat.S_IMODE(after.stat().st_mode)
@@ -158,7 +264,7 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
             require((live_mode & 0o111) == (old_mode & 0o111), 'live executable bits differ: ' + name)
             old_mode = live_mode
             new_mode = live_mode
-        if old_data != new_data or old_mode != new_mode:
+        if old_data != new_data or old_mode != new_mode or name in verify_targets:
             if allow_completed:
                 require(old_data is not None, 'configured refresh requires existing patch targets')
                 marker = work / '.emberbsd-patch-refresh.json'
@@ -179,7 +285,7 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
                         adoption_states.add('old')
             changes.append((name, old_data, new_data, old_mode, new_mode))
     require(len(adoption_states) <= 1, 'mixed configured patch preimages')
-    require(changes, 'additive patch series has no source changes')
+    require(changes, 'patch series has no source changes or inventory reconciliation')
     return changes, old_cookie, new
 
 
@@ -398,7 +504,7 @@ def transaction(sdk, work, source, changes, old_cookie, new_inventory, build_cle
         require(current_cookie in (old_cookie, new_cookie), 'patch cookie changed during refresh')
         require(record['phase'] != 'cookie' or current_cookie == new_cookie,
                 'committed patch cookie changed')
-        if current_cookie == old_cookie:
+        if current_cookie == old_cookie and record['phase'] != 'cookie':
             candidate = staging / 'cookie-next'
             cookie_mode = stat.S_IMODE(paths.regular_file(str(cookie)).st_mode)
             if os.path.lexists(candidate):
@@ -419,22 +525,25 @@ def transaction(sdk, work, source, changes, old_cookie, new_inventory, build_cle
         step('complete')
         clean_stage(record)
     except BaseException:
-        # Once the cookie is updated, retain the journal for build-clean retry.
-        if stable_read(paths, cookie) == old_cookie:
+        # A replacement patch can keep the same inventory cookie. The journal
+        # phase, rather than equal cookie bytes, records the commit in that case.
+        # Once committed, retain it for an idempotent build-clean retry.
+        if record['phase'] not in ('cookie', 'complete') and stable_read(paths, cookie) == old_cookie:
             rollback(record)
         raise
 
 
-def validate_recipe_includes(paths, recipe, makefiles, records):
+def validate_recipe_includes(paths, recipe, makefiles, records, *, package=None, cwd=None):
     """Bind included files local to the recipe to the installed package."""
     import shlex
     root = Path(recipe).resolve(strict=True)
-    package = '/'.join(root.parts[-2:])
+    base = Path(cwd).resolve(strict=True) if cwd is not None else root
+    package = package or '/'.join(root.parts[-2:])
     result = set()
     for item in shlex.split(makefiles):
         path = Path(item)
         if not path.is_absolute():
-            path = root / path
+            path = base / path
         path = path.resolve(strict=True)
         if path.is_relative_to(root) and path != root / 'Makefile':
             name = str(path.relative_to(root))
@@ -492,6 +601,8 @@ def main():
     p.add_argument('--make-arg', action='append', default=[])
     p.add_argument('--previous-makefile', type=Path, help='installed package Makefile preimage')
     p.add_argument('--subst-class', help='one added pre-configure SUBST class')
+    p.add_argument('--previous-recipe', type=Path, help='installed recipe preimage directory')
+    p.add_argument('--refresh-subst', help='one existing pre-configure SUBST class')
     a = p.parse_args()
     sys.path.insert(0, str(a.sdk_source / 'src'))
     from emberbsd_sdk import archive_metadata, jsonio, paths, sourceprep
@@ -505,6 +616,12 @@ def main():
     if a.native:
         cmd.append('USE_CROSS_COMPILE=no')
     cmd.extend(a.make_arg)
+    require(not a.refresh_subst or (a.previous_recipe and not a.previous_makefile and not a.subst_class),
+            'existing substitution refresh requires previous recipe only')
+    if a.refresh_subst:
+        require(re.fullmatch(r'[A-Za-z0-9_-]+', a.refresh_subst), 'invalid SUBST class')
+    require(not (a.previous_recipe and (a.previous_makefile or a.subst_class)),
+            'previous recipe and added substitution modes are exclusive')
     require(bool(a.previous_makefile) == bool(a.subst_class),
             'configure-aware refresh needs previous Makefile and SUBST class')
     if a.subst_class:
@@ -608,6 +725,70 @@ def main():
         pending_cookie = Path(subst_cookie + '.tmp')
         if os.path.lexists(pending_cookie):
             require(stable_read(paths, pending_cookie) == b'', 'foreign pending SUBST cookie')
+    if a.previous_recipe:
+        package = '/'.join(a.recipe.parts[-2:])
+        previous_makefile = a.previous_recipe / 'Makefile'
+        records = {}
+        for line in stable_read(paths, owner).decode('utf-8').splitlines():
+            if ': ' in line:
+                key, value = line.rsplit(': ', 1)
+                key = os.path.normpath(key)
+                require(key not in records, 'duplicate installed source record')
+                records[key] = value
+        previous_data = stable_read(paths, previous_makefile)
+        require(records.get(package + '/Makefile') == _sha(previous_data),
+                'previous Makefile differs from installed provenance')
+        oldcmd = cmd[:3] + ['-f', str(previous_makefile)] + cmd[3:]
+        old_hooks = subprocess.run(oldcmd + ['-n', 'pre-patch', 'post-patch'], check=True,
+                                   stdout=subprocess.PIPE, text=True)
+        require(not hooks.stdout.strip() and old_hooks.stdout == hooks.stdout,
+                'custom or changed patch hooks are unsupported')
+        def selected_values(command, fields):
+            result = subprocess.run(command + ['show-vars', 'VARNAMES=' + ' '.join(fields)],
+                                    check=True, stdout=subprocess.PIPE, text=True).stdout.splitlines()
+            require(len(result) == len(fields), 'unexpected previous recipe metadata')
+            return result
+        old_classes, old_makefiles = selected_values(oldcmd, ['SUBST_CLASSES', '.MAKE.MAKEFILES'])
+        require(old_classes == v['SUBST_CLASSES'], 'previous SUBST classes changed')
+        old_includes = validate_recipe_includes(paths, a.previous_recipe, old_makefiles, records,
+                                                package=package, cwd=a.recipe)
+        old_includes |= validate_recipe_includes(paths, a.recipe, old_makefiles, records)
+        new_includes = validate_recipe_includes(paths, a.recipe, v['.MAKE.MAKEFILES'], records)
+        require(old_includes == new_includes, 'included recipe inputs changed')
+        class_names = old_classes.split()
+        require(len(class_names) == len(set(class_names)) and
+                all(re.fullmatch(r'[A-Za-z0-9_.-]+', name) for name in class_names),
+                'unsupported previous SUBST classes')
+        attributes = ('SUBST_STAGE.', 'SUBST_FILES.', 'SUBST_VARS.', 'SUBST_SED.',
+                      'SUBST_FILTER_CMD.', 'SUBST_SKIP_TEXT_CHECK.', 'SUBST_NOOP_OK.', '_SUBST_COOKIE.')
+        fields = ['PKG_FAIL_REASON'] + [attribute + name for name in class_names for attribute in attributes]
+        before, after = selected_values(oldcmd, fields), selected_values(cmd, fields)
+        require(before[0] == after[0] and not before[0], 'previous recipe reports a failure')
+        subst_metadata = {}
+        for index, name in enumerate(class_names):
+            start = 1 + index * len(attributes)
+            old_values = tuple(before[start:start + len(attributes)])
+            new_values = tuple(after[start:start + len(attributes)])
+            require(old_values == new_values, 'previous SUBST configuration changed: ' + name)
+            subst_metadata[name] = new_values
+        require(stable_read(paths, previous_makefile) == previous_data,
+                'previous Makefile changed during verification')
+    if a.refresh_subst:
+        require(a.refresh_subst in subst_metadata,
+                'existing SUBST class not uniquely present')
+        stage, files, variables, sed, filter_cmd, skip, noop, subst_cookie = subst_metadata[a.refresh_subst]
+        subst_files = shlex.split(files)
+        require(stage == 'pre-configure' and subst_files and
+                len(set(subst_files)) == len(subst_files) and
+                all(re.fullmatch(r'[A-Za-z0-9_./+-]+', name) and not name.startswith('/') and
+                    all(part not in ('', '.', '..') for part in name.split('/')) for name in subst_files),
+                'unsupported existing SUBST files or stage')
+        require(filter_cmd and (sed or variables), 'unsupported existing SUBST transformation')
+        require(Path(subst_cookie) == work / ('.subst_' + a.refresh_subst + '_done'),
+                'unexpected existing SUBST cookie')
+        live_subst_cookie = stable_read(paths, Path(subst_cookie))
+        require(not os.path.lexists(subst_cookie + '.tmp'), 'unexpected pending existing SUBST cookie')
+        subst_candidates = {}
     archive = Path(v['DISTDIR']) / v['DIST_SUBDIR'] / distfiles[0]
     marker = work / '.emberbsd-patch-refresh.json'
     old_cookie = journal_old_cookie(sdk, work) if marker.exists() else None
@@ -621,11 +802,38 @@ def main():
                                   '_SUBST_COOKIE.' + a.subst_class + '=' + str(scratch_cookie),
                                   'subst-' + a.subst_class], check=True)
             require(scratch_cookie.is_file(), 'pkgsrc SUBST did not create its cookie')
+        def existing_transform(label, command, candidate, affected):
+            for name in subst_files:
+                path = _entry(paths, candidate, name)
+                paths.regular_file(str(path))
+                require(not os.path.lexists(str(path) + '.subst.sav'),
+                        'unexpected existing SUBST temporary file')
+            scratch_cookie = Path(scratch) / ('existing-subst-' + label)
+            subprocess.run(command + ['WRKSRC=' + str(candidate),
+                                      '_SUBST_COOKIE.' + a.refresh_subst + '=' + str(scratch_cookie),
+                                      'subst-' + a.refresh_subst], check=True)
+            require(stable_read(paths, scratch_cookie) == live_subst_cookie,
+                    'existing SUBST cookie differs from replay')
+            subst_candidates[label] = {name: stable_read(paths, _entry(paths, candidate, name))
+                                       for name in subst_files}
+            require(all(not os.path.lexists(str(_entry(paths, candidate, name)) + '.subst.sav')
+                        for name in subst_files), 'existing SUBST temporary file remains')
         changes, cookie, inventory = prepare(sdk, a.recipe, work, archive, v['DISTNAME'], owner,
                                              Path(v['PATCH']), patch_args[2:], Path(scratch), old_cookie=old_cookie,
-                                             transform=transform if a.subst_class else None,
-                                             allow_completed=bool(a.subst_class))
-        classes = [name for name in shlex.split(v['SUBST_CLASSES']) if name != a.subst_class]
+                                             transform=(transform if a.subst_class else
+                                                        (lambda candidate, affected: existing_transform('new', cmd, candidate, affected))
+                                                        if a.refresh_subst else None),
+                                             old_transform=(lambda candidate, affected: existing_transform('old', oldcmd, candidate, affected))
+                                                           if a.refresh_subst else None,
+                                             allow_completed=bool(a.subst_class),
+                                             previous_recipe=a.previous_recipe)
+        if a.refresh_subst:
+            for name in subst_files:
+                if subst_candidates['old'][name] == subst_candidates['new'][name]:
+                    require(stable_read(paths, _entry(paths, source, name)) == subst_candidates['old'][name],
+                            'unchanged existing SUBST input differs: ' + name)
+        classes = [name for name in shlex.split(v['SUBST_CLASSES'])
+                   if name not in (a.subst_class, a.refresh_subst)]
         if classes:
             require(all(re.fullmatch(r'[A-Za-z0-9_.-]+', name) for name in classes),
                     'unsupported substitution class')
@@ -640,14 +848,20 @@ def main():
                         not name.startswith('/') and all(part not in ('', '.', '..') for part in name.split('/'))
                         for name in files), 'unsupported substitution paths')
                 for name in files:
-                    current = source
-                    for part in name.split('/')[:-1]:
-                        current = current / part
-                        paths.real_directory(str(current))
-                    paths.regular_file(str(current / name.split('/')[-1]))
-                require(not changed.intersection(files), 'changed source needs substitution refresh')
+                    require(name not in changed, 'changed source needs substitution refresh')
+                    if not unselected_subst_file(paths, source, name):
+                        for label in ('old', 'new'):
+                            candidate = Path(scratch) / label / v['DISTNAME']
+                            require(not unselected_subst_file(paths, candidate, name),
+                                    'missing substitution input differs from archive: ' + name)
         def clean():
-            subprocess.run(cmd + ['configure-clean' if a.subst_class else 'build-clean'], check=True)
+            subprocess.run(cmd + ['configure-clean' if (a.subst_class or a.previous_recipe) else 'build-clean'], check=True)
+            if a.refresh_subst:
+                require(stable_read(paths, Path(subst_cookie)) == live_subst_cookie,
+                        'existing SUBST cookie changed')
+                for name in subst_files:
+                    require(stable_read(paths, _entry(paths, source, name)) == subst_candidates['new'][name],
+                            'existing SUBST result differs: ' + name)
             if a.subst_class:
                 # Every target is byte-verified against the pkgsrc-transformed
                 # candidate before permitting this one no-op SUBST invocation.

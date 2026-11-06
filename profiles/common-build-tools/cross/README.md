@@ -636,7 +636,21 @@ package provenance, `cross-bulk.sh patch-refresh PKGPATH[@native] STATE` replays
 the old and current ordered patch series and atomically updates only changed
 source files. It preserves compatible objects and unchanged file times, then
 invalidates the build stage. The command refuses incompatible provenance,
-custom patch hooks, and substitutions affecting the changed source files.
+custom patch hooks, and unsupported substitutions affecting changed source files.
+For an existing changed patch, set `CROSS_BULK_PATCH_REFRESH_PREVIOUS_RECIPE`
+to an absolute directory containing the installed recipe's Makefile, distinfo,
+patches, and recipe-local includes. The installed package provenance binds those
+inputs; the current recipe is reconfigured before the next build. When one
+unchanged pre-configure substitution affects the changed files, also set
+`CROSS_BULK_PATCH_REFRESH_EXISTING_SUBST` to its class name. The owner replays
+that class against both candidates and retains the verified existing cookie.
+If an older patch inventory omits patches from that installed recipe, each
+omitted patch target must already match the complete old replay. These files
+are verified within the same transaction and retain their timestamps; an
+unapplied or divergent omitted patch is rejected. Archives may contain verified
+internal symlinks, but patch targets and backup paths must not traverse them.
+Extraction remains bounded to 512 MiB per candidate.
+Unsupported changes and mismatched live inputs remain errors.
 Normal builds and stage-local commands lock each selected work directory until
 their owned worker session has drained.
 An archive by itself is not treated as a completed build. The single package
