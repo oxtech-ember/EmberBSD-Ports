@@ -55,7 +55,7 @@ def selected_inputs(args):
     from emberbsd_sdk.native_toolset import load_host_prefix
     if not args.host_prefix:
         raise SDKError('Set the native Ports host prefix')
-    selected = load_host_prefix(args.host_prefix, required_roles=REQUIRED_ROLES)
+    selected = load_host_prefix(args.host_prefix, required_roles=REQUIRED_ROLES, compiler_family='gcc')
     if selected.host['os'] != 'Darwin':
         raise SDKError('This probe requires a native Darwin GCC16 host prefix')
     directory = args.tools_bin
@@ -77,7 +77,7 @@ def selected_inputs(args):
     flags = selected.abi_flags
     env = dict(PATH=str(directory), HOME=str(args.work), TMPDIR=str(args.work), LC_ALL='C', TZ='UTC',
                SHELL=selected.tool('sh'), CONFIG_SHELL=selected.tool('sh'), CONFIG_SITE='/dev/null',
-               GCC_CONFIGURE_SDK='yes', GCC_CONFIGURE_UNAME=selected.tool('uname'))
+               EMBERBSD_CONFIGURE_SDK='yes', EMBERBSD_CONFIGURE_UNAME=selected.tool('uname'))
     for key, role in (('CC', 'cc'), ('CXX', 'cxx'), ('CPP', 'cpp'), ('AS', 'as'), ('LD', 'ld'),
                       ('AR', 'ar'), ('RANLIB', 'ranlib'), ('NM', 'nm'), ('STRIP', 'strip'),
                       ('OBJDUMP', 'objdump'), ('OBJCOPY', 'objcopy'), ('MAKE', 'make'),

@@ -63,20 +63,6 @@ def diagnostic_checks(args, work, hook, recipe):
             actual = invoke([spelling, option], env)
             require(actual.returncode == 0 and actual.stdout == expected.stdout
                     and not actual.stderr, 'Selected uname diagnostic changed')
-    expected = subprocess.run([str(args.uname), '-p'], env=env,
-                              capture_output=True, check=True)
-    legacy = {'PATH': str(work), 'LC_ALL': 'C', 'GCC_CONFIGURE_SDK': 'yes',
-              'GCC_CONFIGURE_UNAME': str(args.uname)}
-    for selected in (legacy, dict(env, **{key: value for key, value in legacy.items()
-                                        if key.startswith('GCC_')})):
-        actual = invoke(['/usr/bin/uname', '-p'], selected, direct=True)
-        require(actual.returncode == 0 and actual.stdout == expected.stdout
-                and not actual.stderr, 'Legacy GCC aliases changed')
-    for key, value in (('GCC_CONFIGURE_SDK', 'no'),
-                       ('GCC_CONFIGURE_UNAME', str(work / 'different'))):
-        actual = invoke(['/usr/bin/uname', '-p'], dict(env, **{key: value}), direct=True)
-        require(actual.returncode == 1 and not actual.stdout and b'conflicting SDK' in actual.stderr,
-                'Conflicting GCC aliases must fail before diagnostics')
     for command in (['/bin/uname', '-X'], ['/bin/arch'], ['/usr/bin/arch', '-k'],
                     ['/usr/convex/getsysinfo'], ['/usr/bin/hostinfo'],
                     ['/bin/machine'], ['/usr/bin/oslevel'], ['/bin/universe'],

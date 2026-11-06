@@ -125,8 +125,8 @@ It runs only the diagnostic hook with the selected SDK shell and uname.
 Missing, relative, directory and non-executable selectors fail before a
 diagnostic runs. All six allowed uname options use the explicitly selected
 executable, including a declared initial host tool. The calling SDK profile
-owns bootstrap and ordinary prefix policy. Legacy GCC aliases remain supported
-and conflicting selectors fail. Unsupported legacy commands and extra options
+owns bootstrap and ordinary prefix policy. All callers use the shared
+`EMBERBSD_CONFIGURE_*` selectors. Unsupported legacy commands and extra options
 report unavailable without executing.
 The check also preserves the original unset-mode invocation.
 A real cleanup control leaves a compiler-style debug directory with the old

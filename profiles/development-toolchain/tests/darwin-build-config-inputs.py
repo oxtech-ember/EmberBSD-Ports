@@ -69,13 +69,14 @@ class Inputs(unittest.TestCase):
         self.assertIn(str(self.root / 'abi'), env['CPPFLAGS'])
         self.assertEqual(env['CFLAGS'], '-O2')
         self.assertEqual(env['CONFIG_SITE'], '/dev/null')
-        self.assertEqual(env['GCC_CONFIGURE_SDK'], 'yes')
-        self.assertEqual(env['GCC_CONFIGURE_UNAME'], self.tools['uname'])
+        self.assertEqual(env['EMBERBSD_CONFIGURE_SDK'], 'yes')
+        self.assertEqual(env['EMBERBSD_CONFIGURE_UNAME'], self.tools['uname'])
         self.assertEqual(env['EGREP'], self.tools['grep'] + ' -E')
         self.assertEqual(env['FGREP'], self.tools['grep'] + ' -F')
         self.assertEqual(env['CONFIG_SHELL'], self.tools['sh'])
         self.assertEqual(loader.call_args.args, (self.root,))
         self.assertEqual(set(loader.call_args.kwargs['required_roles']), set(subject.REQUIRED_ROLES))
+        self.assertEqual(loader.call_args.kwargs['compiler_family'], 'gcc')
 
     def test_missing_prefix_refuses_before_selection_or_children(self):
         self.args.host_prefix = None
@@ -123,6 +124,9 @@ class Inputs(unittest.TestCase):
             self.selected()
 
     def test_actual_loader_rejects_non_native_and_outside_tools(self):
+        # Use installed GCC names so the real loader reaches image validation.
+        (self.bin / 'gcc').symlink_to('cc')
+        (self.bin / 'g++').symlink_to('cxx')
         # The fixture tools are text files; the SDK refuses them before any query.
         with patch.object(subject.subprocess, 'run') as child:
             with self.assertRaisesRegex(SDKError, 'expected a native executable'):
@@ -173,7 +177,7 @@ class Inputs(unittest.TestCase):
                 '--math-prefix', str(self.args.math_prefix), '--work', str(self.args.work),
                 '--host-prefix', str(self.args.host_prefix)]
         for path in paths:
-            configure.write_text('emberbsd_host_diagnostic ()\nGCC_CONFIGURE_UNAME\ndiagnostic = `(' + path + ' -p) 2>/dev/null || echo unknown`\n')
+            configure.write_text('emberbsd_host_diagnostic ()\nEMBERBSD_CONFIGURE_UNAME\ndiagnostic = `(' + path + ' -p) 2>/dev/null || echo unknown`\n')
             with patch.object(subject, 'selected_inputs', return_value=(self.selection, {})), \
                  patch.object(subject, 'CONFIGURE_FILES', ('configure',)), \
                  patch.object(subject, 'mach_o_probe') as probe, \

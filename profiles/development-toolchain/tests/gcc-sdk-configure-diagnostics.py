@@ -65,10 +65,10 @@ PATHS = ('/usr/bin/uname', '/bin/uname', '/bin/arch', '/usr/bin/arch',
 def recipe(text):
     required = next(line for line in text.splitlines() if line.startswith('+.for _ember_gcc16_input in '))
     assert 'EMBERBSD_GCC16_UNAME' in required.split()
-    assert '+CONFIGURE_ENV+= GCC_CONFIGURE_SDK=yes\n' in text
-    assert '+CONFIGURE_ENV+= GCC_CONFIGURE_UNAME=${EMBERBSD_GCC16_UNAME:Q}\n' in text
-    assert '+MAKE_ENV+= GCC_CONFIGURE_SDK=yes\n' in text
-    assert '+MAKE_ENV+= GCC_CONFIGURE_UNAME=${EMBERBSD_GCC16_UNAME:Q}\n' in text
+    assert '+CONFIGURE_ENV+= EMBERBSD_CONFIGURE_SDK=yes\n' in text
+    assert '+CONFIGURE_ENV+= EMBERBSD_CONFIGURE_UNAME=${EMBERBSD_GCC16_UNAME:Q}\n' in text
+    assert '+MAKE_ENV+= EMBERBSD_CONFIGURE_SDK=yes\n' in text
+    assert '+MAKE_ENV+= EMBERBSD_CONFIGURE_UNAME=${EMBERBSD_GCC16_UNAME:Q}\n' in text
     assert '+CONFIGURE_ARGS+= --without-build-config\n' in text
 
 
@@ -106,16 +106,14 @@ class Diagnostics(unittest.TestCase):
         self.assertIn('if test "${EMBERBSD_CONFIGURE_SDK-}" != yes; then', helper)
         self.assertIn('case ${EMBERBSD_CONFIGURE_UNAME-} in', helper)
         self.assertIn('test ! -f "$EMBERBSD_CONFIGURE_UNAME" || test ! -x "$EMBERBSD_CONFIGURE_UNAME"', helper)
-        self.assertEqual(helper.count('exit 1'), 5)
-        self.assertIn('conflicting SDK uname selectors', helper)
-        self.assertIn('conflicting SDK mode selectors', helper)
+        self.assertEqual(helper.count('exit 1'), 3)
         self.assertIn('/usr/bin/uname | /bin/uname)', helper)
         self.assertIn('"$EMBERBSD_CONFIGURE_UNAME" "$@"; return $?', helper)
         self.assertIn("echo 'unavailable (selected SDK profile)'\n  return 1", helper)
         for name in ROSTER:
             relative = '../' * (len(Path(name).parts) - 1) + HELPER
             hook = FIXED[name].split('# EmberBSD: selected SDK diagnostic entry.\n', 1)[1].split('cat <<_ASUNAME', 1)[0]
-            self.assertIn('if test "${GCC_CONFIGURE_SDK+set}" = set || test "${EMBERBSD_CONFIGURE_SDK+set}" = set; then', hook)
+            self.assertIn('if test "${EMBERBSD_CONFIGURE_SDK+set}" = set; then', hook)
             self.assertIn('. "${srcdir}/' + relative + '" || exit 1', hook)
             self.assertIn('emberbsd_host_diagnostic () { "$@"; }', hook)
             self.assertNotIn('case $1', hook)
@@ -139,8 +137,8 @@ class Diagnostics(unittest.TestCase):
         text = (PROFILE / 'patches/gcc-darwin-host.patch').read_text()
         recipe(text)
         for old, new in [(' EMBERBSD_GCC16_UNAME OSX_SDK_PATH', ' OSX_SDK_PATH'),
-                         ('+CONFIGURE_ENV+= GCC_CONFIGURE_SDK=yes\n', ''),
-                         ('+MAKE_ENV+= GCC_CONFIGURE_SDK=yes\n', ''),
+                         ('+CONFIGURE_ENV+= EMBERBSD_CONFIGURE_SDK=yes\n', ''),
+                         ('+MAKE_ENV+= EMBERBSD_CONFIGURE_SDK=yes\n', ''),
                          ('${EMBERBSD_GCC16_UNAME:Q}', '/usr/bin/uname')]:
             self.assertIn(old, text)
             with self.assertRaises(AssertionError):
