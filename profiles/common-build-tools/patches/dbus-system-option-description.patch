@@ -1,0 +1,10 @@
+--- a/mk/defaults/options.description
++++ b/mk/defaults/options.description
+@@ -150,6 +150,7 @@
+ dbh			Enable DBH support.
+ dblatex-fig		Enable fig support in dblatex.
+ dbus			Enable dbus (desktop bus) support.
++dbus-system		Enable DBus system service integration and privileged helper.
+ dca			Enable DTS Coherent Acoustics support using libdca.
+ dconf			Use dconf as backend for GSettings.
+ debug			Enable debugging facilities in the package.

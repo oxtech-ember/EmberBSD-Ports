@@ -38,6 +38,8 @@ with tempfile.TemporaryDirectory() as directory:
     target = prefix / 'old.h'; target.write_text('old header')
     added_target = prefix / 'new.h'; added_target.write_text('new header')
     db = prefix / 'pkgdb/new-1/+CONTENTS'; db.parent.mkdir(parents=True); db.write_text('package')
+    info = db.with_name('+BUILD_INFO'); info.write_text('options')
+    pkgsrc = root / 'pkgsrc'; pkgsrc.mkdir(); mk = pkgsrc / 'buildlink.mk'; mk.write_text('selected makefile')
     base = root / 'base'; base.write_text('base')
     binding = root / 'binding'; binding.write_text('binding')
     work, candidate = root / 'old-work', root / 'new-work'
@@ -58,15 +60,41 @@ with tempfile.TemporaryDirectory() as directory:
         inputs = {str(file): digest(file) for file in (target, base, binding, wrapper, path / 'make.conf')}
         links = {'include/old.h': str(target)}
         if index:
-            inputs.update({str(file): digest(file) for file in (added_target, db, view / '.buildlink_new_done')})
+            inputs.update({str(file): digest(file) for file in (added_target, db, info, mk, view / '.buildlink_new_done')})
             links['include/new.h'] = str(added_target)
         identities.append({'inputs': inputs, 'links': links})
-    inv = {'work': str(work), 'base_makeconf': str(base), 'binding_record': str(binding)}
+    inv = {'work': str(work), 'base_makeconf': str(base), 'binding_record': str(binding), 'pkgsrc_root': str(pkgsrc)}
     cinv = {**inv, 'work': str(candidate), 'shared_cpuinfo': 'yes'}
     new_inv = {**inv, 'shared_cpuinfo': 'yes'}
     saved = {'identity': identities[0], 'invocation': inv}
-    current = json.loads(json.dumps(identities[0])); current['inputs'][str(db)] = digest(db)
+    current = json.loads(json.dumps(identities[0]))
     plan = host._extension_plan(saved, current, identities[1], new_inv, cinv, work, candidate, prefix)
+    command = ['make', 'EMBERBSD_ELECTRON_SHARED_CPUINFO=yes', 'EMBERBSD_ELECTRON_SHARED_SNAPPY=yes', 'wrapper']
+    assert host._saved_selection_command(command, saved) == ['make', 'wrapper']
+    assert host._saved_selection_command(command, {'invocation': {'shared_cpuinfo':'yes'}}) == ['make', 'EMBERBSD_ELECTRON_SHARED_CPUINFO=yes', 'wrapper']
+    owner_pkgsrc = root / 'owner/pkgsrc'; owner_mk = owner_pkgsrc / 'devel/example/buildlink3.mk'
+    owner_mk.parent.mkdir(parents=True); owner_mk.write_text('selected owner makefile')
+    export_mk = pkgsrc / 'devel/example/buildlink3.mk'
+    export_mk.parent.mkdir(parents=True); export_mk.write_bytes(owner_mk.read_bytes())
+    prior_file = host.__file__; host.__file__ = str(owner_pkgsrc / 'devel/electron44/files/host-buildlink.py')
+    owner_candidate = json.loads(json.dumps(identities[1])); owner_candidate['inputs'][str(owner_mk)] = digest(owner_mk)
+    try:
+        host._extension_plan(saved, current, owner_candidate, new_inv, cinv, work, candidate, prefix)
+        export_mk.write_text('different export content')
+        try: host._extension_plan(saved, current, owner_candidate, new_inv, cinv, work, candidate, prefix)
+        except ValueError: pass
+        else: raise AssertionError('owner makefile differing from selected export accepted')
+    finally:
+        host.__file__ = prior_file
+    foreign = root / 'foreign.mk'; foreign.write_text('foreign')
+    bad = json.loads(json.dumps(identities[1])); bad['inputs'][str(foreign)] = digest(foreign)
+    try: host._extension_plan(saved, current, bad, new_inv, cinv, work, candidate, prefix)
+    except ValueError: pass
+    else: raise AssertionError('foreign makefile accepted')
+    bad = json.loads(json.dumps(identities[1])); del bad['inputs'][str(info)]
+    try: host._extension_plan(saved, current, bad, new_inv, cinv, work, candidate, prefix)
+    except ValueError: pass
+    else: raise AssertionError('unpaired new package metadata accepted')
     host._canonical_work(work, required=True)
     alias = root / 'alias'; alias.symlink_to(candidate, target_is_directory=True)
     try: host._canonical_work(alias, required=True)
@@ -131,6 +159,8 @@ with tempfile.TemporaryDirectory() as directory:
     recovered['inputs'][str(work / rel / '.buildlink_new_done')] = digest(work / rel / '.buildlink_new_done')
     recovered['inputs'][str(added_target)] = digest(added_target)
     recovered['inputs'][str(db)] = digest(db)
+    recovered['inputs'][str(info)] = digest(info)
+    recovered['inputs'][str(mk)] = digest(mk)
     retry = host._extension_plan(saved, recovered, identities[1], new_inv, cinv, work, candidate, prefix, recovery=True)
     assert retry == plan
     assert host._extension_identity(recovered, work) == host._extension_identity(identities[1], candidate)

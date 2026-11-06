@@ -33,7 +33,7 @@ lib/libdbus-1.so
 lib/libdbus-1.so.3
 lib/libdbus-1.so.3.38.3
 lib/pkgconfig/dbus-1.pc
-libexec/dbus-daemon-launch-helper
+${PLIST.dbus-system}libexec/dbus-daemon-launch-helper
 man/man1/dbus-cleanup-sockets.1
 man/man1/dbus-daemon.1
 man/man1/dbus-launch.1
@@ -44,7 +44,7 @@ man/man1/dbus-test-tool.1
 man/man1/dbus-update-activation-environment.1
 man/man1/dbus-uuidgen.1
 share/dbus-1/session.conf
-share/dbus-1/system.conf
+${PLIST.dbus-system}share/dbus-1/system.conf
 share/doc/dbus/dbus-cleanup-sockets.1.html
 share/doc/dbus/dbus-daemon.1.html
 share/doc/dbus/dbus-faq.html

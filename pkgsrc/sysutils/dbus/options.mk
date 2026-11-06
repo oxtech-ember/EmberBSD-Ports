@@ -1,8 +1,8 @@
 # $NetBSD: options.mk,v 1.16 2025/08/01 20:58:51 wiz Exp $
 
 PKG_OPTIONS_VAR=	PKG_OPTIONS.dbus
-PKG_SUPPORTED_OPTIONS+=	x11
-PKG_SUGGESTED_OPTIONS=	x11
+PKG_SUPPORTED_OPTIONS+=	x11 dbus-system
+PKG_SUGGESTED_OPTIONS=	x11 dbus-system
 
 .if ${OPSYS} == "NetBSD"  ||	\
     ${OPSYS} == "FreeBSD" ||	\
@@ -13,12 +13,16 @@ PKG_SUPPORTED_OPTIONS+=	kqueue
 PKG_SUGGESTED_OPTIONS+=	kqueue
 .endif
 
-PLIST_VARS+=		launchd
+PLIST_VARS+=		launchd dbus-system
 # We may want to make it SUGGESTED once we have a framework for
 # launchd support. See PR/49591.
 PKG_SUPPORTED_OPTIONS.Darwin+=	launchd
 
 .include "../../mk/bsd.options.mk"
+
+.if !empty(PKG_OPTIONS:Mdbus-system)
+PLIST.dbus-system=	yes
+.endif
 
 .if !empty(PKG_OPTIONS:Mkqueue)
 MESON_ARGS+=		-Dkqueue=enabled

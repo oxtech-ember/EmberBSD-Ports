@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.146 2026/09/02 19:04:25 wiz Exp $
 
 DISTNAME=	dbus-1.16.2
-PKGREVISION=	12
+PKGREVISION=	13
 CATEGORIES=	sysutils
 MASTER_SITES=	https://dbus.freedesktop.org/releases/dbus/
 EXTRACT_SUFX=	.tar.xz
@@ -23,12 +23,6 @@ PKGCONFIG_OVERRIDE+=		output/meson-private/dbus-1.pc
 PKGCONFIG_OVERRIDE_STAGE=	post-configure
 
 BUILD_DEFS+=		VARBASE PKG_SYSCONFBASE
-
-OWN_DIRS_PERMS+=	${VARBASE}/lib/dbus ${DBUS_USER} ${DBUS_GROUP} 0755
-SPECIAL_PERMS+=		libexec/dbus-daemon-launch-helper ${REAL_ROOT_USER} ${DBUS_GROUP} 4511
-
-SMF_METHODS=	dbus
-SMF_NAME=	dbus
 
 CHECK_PORTABILITY_SKIP+=	tools/cmake-format
 
@@ -84,22 +78,7 @@ MESON_ARGS+=		-Dsolaris_console_owner_file="/dev/vt/console_user"
 
 DBUS_CONF_DIR=		${PKG_SYSCONFBASE}/dbus-1
 OWN_DIRS+=		${DBUS_CONF_DIR}/services
-OWN_DIRS+=		${DBUS_CONF_DIR}/system-services
 OWN_DIRS+=		${DBUS_CONF_DIR}/session.d
-OWN_DIRS+=		${DBUS_CONF_DIR}/system.d
-
-RCD_SCRIPTS=		dbus
-
-PKG_GROUPS_VARS+=	DBUS_GROUP
-PKG_USERS_VARS+=	DBUS_USER
-
-PKG_GROUPS=		${DBUS_GROUP}
-PKG_USERS=		${DBUS_USER}:${DBUS_GROUP}
-PKG_GECOS.${DBUS_USER}=	System message bus
-PKG_HOME.${DBUS_USER}=	${VARBASE}/run/dbus
-
-FILES_SUBST+=		DBUS_USER=${DBUS_USER}
-FILES_SUBST+=		DBUS_GROUP=${DBUS_GROUP}
 
 BUILDLINK_TRANSFORM.FreeBSD+=	rm:-Wl,--no-undefined
 BUILDLINK_TRANSFORM+=		rm:-Wl,--gc-sections
@@ -112,7 +91,32 @@ BUILDLINK_TRANSFORM+=		rm:-pie
 
 .include "options.mk"
 
+.if !empty(PKG_OPTIONS:Mdbus-system)
+OWN_DIRS_PERMS+=	${VARBASE}/lib/dbus ${DBUS_USER} ${DBUS_GROUP} 0755
+SPECIAL_PERMS+=		libexec/dbus-daemon-launch-helper ${REAL_ROOT_USER} ${DBUS_GROUP} 4511
+SMF_METHODS=		dbus
+SMF_NAME=		dbus
+OWN_DIRS+=		${DBUS_CONF_DIR}/system-services
+OWN_DIRS+=		${DBUS_CONF_DIR}/system.d
+RCD_SCRIPTS=		dbus
+PKG_GROUPS_VARS+=	DBUS_GROUP
+PKG_USERS_VARS+=	DBUS_USER
+PKG_GROUPS=		${DBUS_GROUP}
+PKG_USERS=		${DBUS_USER}:${DBUS_GROUP}
+PKG_GECOS.${DBUS_USER}=	System message bus
+PKG_HOME.${DBUS_USER}=	${VARBASE}/run/dbus
+FILES_SUBST+=		DBUS_USER=${DBUS_USER}
+FILES_SUBST+=		DBUS_GROUP=${DBUS_GROUP}
+.else
+# Session tools still require a prefix-owned machine-id directory.
+OWN_DIRS+=		${VARBASE}/lib/dbus
+.endif
+
 post-install:
+.if empty(PKG_OPTIONS:Mdbus-system)
+	${RM} -f ${DESTDIR}${PREFIX}/libexec/dbus-daemon-launch-helper
+	${RM} -f ${DESTDIR}${PREFIX}/share/dbus-1/system.conf
+.endif
 	${INSTALL_DATA} ${WRKSRC}/doc/introspect.* \
 		${DESTDIR}${PREFIX}/share/doc/dbus/
 	${RM} -f ${DESTDIR}${PREFIX}/etc/dbus-1/s*.conf
