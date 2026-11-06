@@ -152,8 +152,17 @@ def source_refresh(sdk, patch_refresh, bmake, recipe, work, make_args, scope):
                         patch_refresh._sha(after) == row.get('new_sha') and
                         new_mode == row.get('new_mode'),
                         'candidate no longer matches source refresh journal')
-                if record.get('phase') in ('complete', 'rolled-back'):
+                if record.get('phase') == 'complete':
                     before, old_mode = after, row.get('old_mode')
+                    resumed.append((name, before, after, old_mode, new_mode))
+                    continue
+                if record.get('phase') == 'rolled-back':
+                    live = retained_source / name
+                    before = patch_refresh.stable_read(paths, live)
+                    old_mode = stat.S_IMODE(paths.regular_file(str(live)).st_mode)
+                    require(patch_refresh._sha(before) == row.get('old_sha') and
+                            old_mode == row.get('old_mode'),
+                            'rolled-back source preimage differs from journal: ' + name)
                     resumed.append((name, before, after, old_mode, new_mode))
                     continue
                 if row.get('old_sha') is None:
@@ -181,7 +190,7 @@ def source_refresh(sdk, patch_refresh, bmake, recipe, work, make_args, scope):
                     'candidate has new authorized source changes outside the pending journal: ' +
                     ', '.join(sorted(fresh_names - journal_names)))
             changes = resumed
-            if record.get('phase') in ('complete', 'rolled-back'):
+            if record.get('phase') == 'complete':
                 journal_expected = record['files']
         elif not changes:
             require(new_cookie == old_cookie,

@@ -81,7 +81,8 @@ else:
         if fail_clean:
             os.environ['FAIL_BUILD_CLEAN'] = str(fail_clean)
         try:
-            return refresh.source_refresh(sdk, patch, fake, recipe, work, ['WRKDIR=' + str(work)], [scope, scope_b])
+            result = refresh.source_refresh(sdk, patch, fake, recipe, work,
+                                            ['WRKDIR=' + str(work)], [scope, scope_b])
         except Exception as exc:
             if not expected_failure:
                 raise
@@ -90,6 +91,7 @@ else:
             return exc
         else:
             assert not expected_failure
+            return result
         finally:
             if old is None:
                 os.environ.pop('FAIL_BUILD_CLEAN', None)
@@ -163,6 +165,30 @@ else:
     assert (work / '.emberbsd-patch-refresh.json').exists()
     assert not (work / '.emberbsd-patch-refresh').exists()
     run()
+    assert not (work / '.emberbsd-patch-refresh.json').exists()
+
+    # A rollback can also be interrupted after its backup tree is removed.
+    # The retry must use the restored live preimage before starting afresh.
+    (retained / scope).write_bytes(b'old objcopy\n')
+    (work / '.patch_done').write_bytes(b'old patch cookie\n')
+    def interrupt_after_rollback_cleaned(*args, **kwargs):
+        def interrupt(point):
+            if point == 'file-0':
+                raise RuntimeError('force transaction rollback')
+            if point == 'stage-cleaned':
+                raise RuntimeError('interrupted after rollback staging cleanup')
+        kwargs['inject'] = interrupt
+        return original_transaction(*args, **kwargs)
+    patch.transaction = interrupt_after_rollback_cleaned
+    try:
+        run(expected_failure=True, error='interrupted after rollback staging cleanup')
+    finally:
+        patch.transaction = original_transaction
+    assert (work / '.emberbsd-patch-refresh.json').exists()
+    assert not (work / '.emberbsd-patch-refresh').exists()
+    assert (retained / scope).read_bytes() == b'old objcopy\n'
+    run()
+    assert (retained / scope).read_bytes() == b'new objcopy\n'
     assert not (work / '.emberbsd-patch-refresh.json').exists()
 
 print('Prepared source refresh fixtures passed.')

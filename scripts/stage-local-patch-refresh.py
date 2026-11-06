@@ -239,8 +239,12 @@ def transaction(sdk, work, source, changes, old_cookie, new_inventory, build_cle
     require(source != work and source.is_relative_to(work), 'source is not inside work directory')
     marker, staging = work / '.emberbsd-patch-refresh.json', work / '.emberbsd-patch-refresh'
     cookie = work / '.patch_done'
-    require(expected_files is None or os.path.lexists(marker),
-            'journal file expectations require an existing patch refresh journal')
+    if expected_files is not None:
+        require(os.path.lexists(marker),
+                'journal file expectations require an existing patch refresh journal')
+        expected_record = jsonio.read_json(str(marker))
+        require(isinstance(expected_record, dict) and expected_record.get('phase') == 'complete',
+                'journal file expectations are only valid for completed transactions')
     new_cookie = (''.join(str(p) + '\n' for p in new_inventory).encode()
                   if cookie_bytes is None else cookie_bytes)
     require(changes and len({row[0] for row in changes}) == len(changes), 'empty or duplicate patch changes')
