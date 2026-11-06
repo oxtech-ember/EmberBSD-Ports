@@ -60,3 +60,47 @@ acceptance; this contract does not claim to exercise them.
 The metadata regression passes on the selected host tools. Full WebView
 translation-unit compilation, GUI runtime and memory checking await the shared
 GTK4/WebKitGTK target build; preparation of this test is not runtime acceptance.
+
+# GTK4 text and spellchecking contract
+
+`patch-gtk4-text` adapts GtkEntry/GtkTextView without disabling spellchecking.
+It uses the existing GTK4 native IM controllers, GtkText's native edit batching,
+and GtkTextBuffer user-action signals. Clipboard signals/actions operate on the
+GtkEditable delegate. Completion observes its GTK4 popover map/unmap signals.
+Text geometry uses the public GtkAccessibleText interface, and style queries
+read public GtkTextTag properties in priority order. Scrollbars use the shared
+GTK4 wxWindow adjustment implementation supplied by `patch-gtk4-core`.
+
+The current stable libspelling 0.4.10 TextBufferAdapter requires GtkSourceBuffer.
+Multiline controls create that buffer directly. Singleline entries synchronize
+text and cursor/selection with a short GtkSourceBuffer and reuse the same
+adapter for checking, language selection and correction actions. Its error tag
+becomes Pango error underlines on the entry. Corrections flow back through
+wxTextCtrl's normal SetValue/event contract. There is one spelling engine and
+no duplicated dictionary parser or new GTK3 dependency. The supported API comes
+from [libspelling 0.4.10](https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10),
+not the development documentation's newer API.
+
+```sh
+python3 tests/spelling-selection.py --source /prepared/wxWidgets \
+  --shell /native/bin/mksh --work-parent /work/tmp
+```
+
+Five actual generated-configure cases pass: GTK4/libspelling, GTK4 refusing
+GTK3 gspell, missing libspelling, preserved GTK3 and explicitly disabled feature.
+The unpatched recipe's GTK4 case fails. GTK4 spellchecking requested but missing
+libspelling is a configure error, including in the optional CMake build.
+
+`text4-contract` is built by the same tests CMake project. It can be built before
+WebKit with `-DBUILD_WEBKIT_CONTRACT=OFF`. Run it on the matching GTK4 target with
+an Enchant `en_US` dictionary installed. It tests native singleline and multiline
+selection replacement, separate edit event counts, suppressed programmatic
+updates, Unicode offsets, length boundaries, style round trips, real misspelling
+underlines, correction actions, and disabling spellchecking. Its timeout fails
+if the display, dictionary or checker cannot complete the operation. The native
+insert-at-cursor checks do not simulate IME composition. Input acceptance must
+exercise composed commits in both controls: one text change and wxEVT_CHAR for
+each committed Unicode code point, including a commit delivered after the
+capture key handler has cleared m_imKeyEvent. Clipboard, completion popup
+keyboard interaction and memory checks also remain separate acceptance tasks. This fixture and text translation units are prepared
+but have not yet been compiled or executed against the shared GTK4 target stack.
