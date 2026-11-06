@@ -776,9 +776,13 @@ def main():
                         jsonio.write_json(work / 'selection.json', {'identity': updated, 'invocation': invocation}, exclusive=False)
                         journal.unlink()
                     else:
-                        refreshed = refresh_selection(saved, current, candidate, invocation,
-                                                      candidate_saved.get('invocation'), work, candidate_work,
-                                                      source, Path(__file__).resolve(strict=True))
+                        try:
+                            refreshed = refresh_selection(saved, current, candidate, invocation,
+                                                          candidate_saved.get('invocation'), work, candidate_work,
+                                                          source, Path(__file__).resolve(strict=True))
+                        except ValueError as error:
+                            print('host buildlink cannot refresh: ' + str(error), file=sys.stderr)
+                            sys.exit(3)
                         jsonio.write_json(work / 'selection.json', refreshed, exclusive=False)
                 elif args.migrate_selection:
                     migrated = migrate_legacy_selection(

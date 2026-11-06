@@ -187,11 +187,14 @@ class CommandError(Exception):
 with tempfile.TemporaryDirectory() as directory:
     root = Path(directory).resolve(); old = root / 'host-buildlink-0'; old.mkdir()
     (root / 'configuration.json').write_text(json.dumps({'environment': {'EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK': str(old)}}))
-    calls = []; race = [False]
+    calls = []; race = [False]; equivalent = [False]
     def capture(command, env):
         calls.append(command)
         context = Path(command[command.index('--work') + 1])
         if '--check' in command: raise CommandError(3)
+        if '--refresh-from' in command:
+            if not equivalent[0]: raise CommandError(3)
+            return SimpleNamespace(stdout=str(context / 'view').encode())
         if '--extend-from' in command:
             if race[0]:
                 (old / '.host-buildlink-extension.json').write_text('{}')
@@ -207,7 +210,27 @@ with tempfile.TemporaryDirectory() as directory:
     environment = {}
     assert controller.host_buildlink(options, sdk, native, environment, {'cxx': '/binding/cxx'}) == str(old / 'view')
     assert environment['EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK'] == str(old)
-    assert len(calls) == 3 and '--extend-from' in calls[-1]
+    assert len(calls) == 4 and '--refresh-from' in calls[-2] and '--extend-from' in calls[-1]
+    equivalent[0] = True
+    calls.clear()
+    assert controller.host_buildlink(options, sdk, native, {}, {'cxx': '/binding/cxx'}) == str(old / 'view')
+    assert any('--refresh-from' in call for call in calls) and not any('--extend-from' in call for call in calls)
+    options.reuse_host_buildlink = old
+    calls.clear()
+    assert controller.host_buildlink(options, sdk, native, {}, {'cxx': '/binding/cxx'}) == str(old / 'view')
+    assert any('--refresh-from' in call for call in calls)
+    equivalent[0] = False
+    rejected_environment = {}
+    try: controller.host_buildlink(options, sdk, native, rejected_environment, {'cxx': '/binding/cxx'})
+    except CommandError as error: assert error.returncode == 3
+    else: raise AssertionError('accepted an incompatible requested host buildlink')
+    assert 'EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK' not in rejected_environment
+    options.reuse_host_buildlink = root / 'outside'
+    try: controller.host_buildlink(options, sdk, native, {}, {'cxx': '/binding/cxx'})
+    except ValueError: pass
+    else: raise AssertionError('accepted an unrelated host buildlink')
+    options.reuse_host_buildlink = None
+    equivalent[0] = False
     (old / '.host-buildlink-extension.json').write_text(json.dumps({'candidate': str(root / 'host-buildlink-1')}))
     calls.clear()
     assert controller.host_buildlink(options, sdk, native, {}, {'cxx': '/binding/cxx'}) == str(old / 'view')
