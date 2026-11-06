@@ -6,7 +6,7 @@ BUILDLINK_TREE+=	wxGTK32
 WXGTK32_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.wxGTK32+=	wxGTK32>=3.2
-BUILDLINK_ABI_DEPENDS.wxGTK32+=	wxGTK32>=3.2.12
+BUILDLINK_ABI_DEPENDS.wxGTK32+=	wxGTK32>=3.2.12nb2
 BUILDLINK_PKGSRCDIR.wxGTK32?=	../../x11/wxGTK32
 
 BUILDLINK_INCDIRS.wxGTK32+=	include/wx-3.2
@@ -20,7 +20,7 @@ pkgbase := wxGTK32
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes" && ${OPSYS} == "NetBSD" && empty(PKG_BUILD_OPTIONS.wxGTK32:Mcmake)
 # AI-assisted: read the target POSIX script on the build host.
 # The installed libexec entry has an absolute target-prefix symlink.
-_WXGTK32_CROSS_CONFIG=	${CROSS_DESTDIR}${BUILDLINK_PREFIX.wxGTK32}/lib/wx/config/${MACHINE_GNU_PLATFORM}-gtk3-unicode-3.2
+_WXGTK32_CROSS_CONFIG=	${CROSS_DESTDIR}${BUILDLINK_PREFIX.wxGTK32}/lib/wx/config/${MACHINE_GNU_PLATFORM}-gtk4-unicode-3.2
 CMAKE_CONFIGURE_ARGS+=	-DwxWidgets_CONFIG_EXECUTABLE:FILEPATH=${_WXGTK32_CROSS_CONFIG}
 CMAKE_CONFIGURE_ARGS+=	-DwxWidgets_CONFIG_OPTIONS:STRING=--prefix=${BUILDLINK_DIR}\;--exec-prefix=${BUILDLINK_DIR}
 .endif
@@ -31,7 +31,7 @@ CMAKE_CONFIGURE_ARGS+=	-DwxWidgets_CONFIG_OPTIONS:STRING=--prefix=${BUILDLINK_DI
 .include "../../graphics/png/buildlink3.mk"
 .include "../../graphics/tiff/buildlink3.mk"
 .if ${OPSYS} != "Darwin"
-.include "../../x11/gtk3/buildlink3.mk"
+.include "../../x11/gtk4/buildlink3.mk"
 .endif
 .endif # WXGTK32_BUILDLINK3_MK
 
