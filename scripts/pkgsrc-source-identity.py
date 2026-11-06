@@ -684,7 +684,8 @@ def _initial_dirty_inputs(root, git, snapshot):
         sha = hashlib.sha256(data).hexdigest()
         if sha != expected[name]:
             raise ValueError('dirty export input changed while read: ' + name)
-        mode = stat.S_IMODE(resolved.stat().st_mode)
+        # Match prepare-pkgsrc's copied payload, not the checkout's umask.
+        mode = stat.S_IMODE(resolved.stat().st_mode) & ~0o022
         if mode not in (0o644, 0o755):
             raise ValueError('unsupported dirty export input mode: ' + name)
         records[name] = {'sha256': sha, 'mode': mode}

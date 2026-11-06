@@ -124,6 +124,49 @@ class ScopedUpdateTests(unittest.TestCase):
         after = untouched.stat()
         self.assertEqual((before.st_ino, before.st_mtime_ns), (after.st_ino, after.st_mtime_ns))
 
+    def test_group_writable_inputs_use_exported_modes(self):
+        source = write(self.ports, 'resources/owner.txt', 'shared-before\n')
+        source.chmod(0o664)
+        directory = self.work / 'group-writable'
+        command = [*self.command]
+        command[3] = directory
+        result = run(command, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        receipt = directory / 'pkgsrc-export.json'
+        output = directory / 'pkgsrc/misc/owner.txt'
+        self.assertEqual(json.loads(receipt.read_text())['dirty_inputs']['resources/owner.txt']['mode'], 0o644)
+        self.assertEqual(output.stat().st_mode & 0o777, 0o644)
+        self.assertEqual(source.stat().st_mode & 0o777, 0o664)
+        result = run(command + ['--update', '--package', 'cat/pkg'], self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        source.write_text('shared-after\n')
+        source.chmod(0o775)
+        result = run(command + ['--update', '--package', 'cat/pkg', '--file', 'misc/owner.txt'],
+                     self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(output.read_text(), 'shared-after\n')
+        self.assertEqual(output.stat().st_mode & 0o777, 0o755)
+        self.assertEqual(json.loads(receipt.read_text())['dirty_inputs']['resources/owner.txt']['mode'], 0o755)
+        self.assertEqual(source.stat().st_mode & 0o777, 0o775)
+
+    def test_unchanged_group_writable_link_allows_other_package_update(self):
+        write(self.ports, 'pkgsrc/replaces', 'cat/pkg\n')
+        write(self.ports, 'pkgsrc/cat/pkg/Makefile', 'PKGNAME=fixture-1\n')
+        write(self.ports, 'pkgsrc/cat/shared/Makefile', 'PKGNAME=shared-1\n')
+        target = write(self.ports, 'pkgsrc/cat/shared/files/producer', 'shared\n')
+        link = self.ports / 'pkgsrc/cat/pkg/files/producer'
+        link.parent.mkdir()
+        link.symlink_to('../../shared/files/producer')
+        commit(self.ports, 'overlay link')
+        target.chmod(0o664)
+        command = [*self.command]
+        command[3] = self.work / 'group-writable-link'
+        result = run(command, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        result = run(command + ['--update', '--package', 'cat/other'], self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(target.stat().st_mode & 0o777, 0o664)
+
     def test_updater_rejects_retired_receipt_versions(self):
         original = json.loads(self.old_receipt)
         for version in (1, 2, 3):

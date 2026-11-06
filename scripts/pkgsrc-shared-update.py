@@ -220,7 +220,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
     material_mode_changes = set()
     for name in link_inputs:
         source = ports / name
-        current_mode = stat.S_IMODE(source.stat().st_mode) if source.is_file() else None
+        current_mode = (stat.S_IMODE(source.stat().st_mode) & ~0o022) if source.is_file() else None
         if old_mode(name) != current_mode:
             material_mode_changes.add(name)
     changed.update(material_mode_changes)
@@ -238,7 +238,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                 mode = old_mode(name)
             else:
                 source = exp.source_path(ports, name, 'current export input')
-                mode = stat.S_IMODE(source.stat().st_mode)
+                mode = stat.S_IMODE(source.stat().st_mode) & ~0o022
             return {'kind': 'file', 'sha256': sha, 'mode': mode}
         changed = {name for name in changed
                    if name in material_mode_changes or
@@ -632,7 +632,8 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
             sha = hashlib.sha256(content).hexdigest()
             if sha != snapshot_hash(snapshot, name):
                 raise ValueError('dirty export input changed while read: ' + name)
-            mode = stat.S_IMODE(source.stat().st_mode)
+            # The exporter removes group/other write bits from copied inputs.
+            mode = stat.S_IMODE(source.stat().st_mode) & ~0o022
             if mode not in (0o644, 0o755):
                 raise ValueError('unsupported dirty export input mode: ' + name)
             tracked, tracked_mode = historical_file(name, current['ports_commit'])
