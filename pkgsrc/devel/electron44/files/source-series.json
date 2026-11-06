@@ -1292,6 +1292,11 @@
       "path": "gn-common-vulkan-macos-packaging.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "leveldb-read-options.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

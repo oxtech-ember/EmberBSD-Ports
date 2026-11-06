@@ -1,0 +1,18 @@
+# Use the common LevelDB ReadOptions API without aggregate initialization.
+# Preserve checksum verification and avoid filling the cache while sweeping.
+# Origin: EmberBSD contributors (AI-assisted).
+--- a/content/browser/indexed_db/instance/leveldb/tombstone_sweeper.cc
++++ b/content/browser/indexed_db/instance/leveldb/tombstone_sweeper.cc
+@@ -233,8 +233,11 @@
+     LevelDbTombstoneSweeper::SweepStatus* sweep_status,
+     Status* leveldb_status,
+     int* round_iterations) {
++  leveldb::ReadOptions options;
++  options.verify_checksums = true;
++  options.fill_cache = false;
+   std::unique_ptr<leveldb::Iterator> iterator(
+-      database()->NewIterator({.verify_checksums = true, .fill_cache = false}));
++      database()->NewIterator(options));
+ 
+   // If the sweeper exited early from an index scan, continue where it left off.
+   if (sweep_state_.index_it_key) {
