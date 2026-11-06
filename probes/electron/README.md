@@ -975,3 +975,10 @@ not required for this source selection.
 WOFF2 1.0.2nb4 decoder for host and target. Its upstream-compatible header
 shim and role-specific library replace the bundled decoder and use the common
 Brotli provider. The selection requires the matching package in both roles.
+
+`--shared-vulkan` (or `EMBERBSD_ELECTRON_SHARED_VULKAN=yes`) selects the
+common Vulkan loader and headers in both toolchain roles. The source view
+hides the bundled copies and exposes the verified native registry to host
+generators. The loader remains an installed runtime dependency; the Electron
+distribution does not copy it. The option requires vulkan-loader
+1.4.363.0nb1 and vulkan-headers 1.4.363.0 or newer in both roles.

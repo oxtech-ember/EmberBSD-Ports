@@ -495,6 +495,7 @@ def host_buildlink(options, sdk, native, environment, host_binding):
                 *(['--shared-openh264'] if getattr(options, 'shared_openh264', False) else []),
                 *(['--shared-pffft'] if getattr(options, 'shared_pffft', False) else []),
                 *(['--shared-cpuinfo'] if getattr(options, 'shared_cpuinfo', False) else []),
+                *(['--shared-vulkan'] if getattr(options, 'shared_vulkan', False) else []),
                 *(['--shared-woff2'] if getattr(options, 'shared_woff2', False) else []),
                 *(['--shared-expat'] if getattr(options, 'shared_expat', False) else []), '--base-makeconf', str(selected[2]),
                 '--binding-record', str(record), '--bmake-mk', str(selected[3]),
@@ -580,7 +581,7 @@ def additive_host_buildlink_relocation(old_args, new_args, old_env, new_env, wor
     require(all(new_links.get(name) == target for name, target in old_links.items()),
             'host buildlink relocation removed or replaced an existing link')
     old_call, new_call = (record['invocation'] for record in records)
-    selection_keys = {'shared_ffmpeg', 'shared_minizip', 'shared_xml', 'shared_image', 'shared_font', 'shared_codecs', 'shared_openh264', 'shared_pffft', 'shared_expat', 'shared_cpuinfo', 'shared_woff2', 'shared_pdf_libraries'}
+    selection_keys = {'shared_ffmpeg', 'shared_minizip', 'shared_xml', 'shared_image', 'shared_font', 'shared_codecs', 'shared_openh264', 'shared_pffft', 'shared_expat', 'shared_cpuinfo', 'shared_vulkan', 'shared_woff2', 'shared_pdf_libraries'}
     for name in (set(old_call) | set(new_call)) - {'work'} - selection_keys:
         require(old_call.get(name) == new_call.get(name),
                 'host buildlink relocation changed an unrelated input: ' + name)
@@ -1399,6 +1400,8 @@ def compression_recipe_catalog(options, sdk, native, environment):
         packages += ('textproc/expat',)
     if getattr(options, 'shared_cpuinfo', False):
         packages += ('sysutils/cpuinfo',)
+    if getattr(options, 'shared_vulkan', False):
+        packages += ('graphics/vulkan-loader', 'graphics/vulkan-headers')
     if getattr(options, 'shared_woff2', False):
         packages += ('fonts/woff2',)
     if getattr(options, 'shared_openh264', False):
@@ -2121,6 +2124,12 @@ def producer_inputs(options, sdk):
                 types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
                                       selected_owned_library=selected_owned_library),
                 options, sdk, native, environment, buildlink))
+        if getattr(options, 'shared_vulkan', False):
+            values.update(local_module('electron_vulkan_provider', 'vulkan-provider.py').select(
+                local_module('electron_image_provider', 'image-provider.py'),
+                types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
+                                      selected_owned_library=selected_owned_library),
+                options, sdk, native, environment, buildlink))
         if getattr(options, 'shared_woff2', False):
             values.update(local_module('electron_codec_provider', 'codec-provider.py').select_woff2(
                 local_module('electron_image_provider', 'image-provider.py'),
@@ -2388,6 +2397,14 @@ def gn_source(options):
         new_cpuinfo = bool(getattr(options, 'shared_cpuinfo', False))
         cpuinfo_names = ('cpuinfo',)
         cpuinfo_marker = destination.parent / ('.' + destination.name + '.cpuinfo-components-migration')
+        old_vulkan = bool(getattr(options, 'old_vulkan_identity', None))
+        new_vulkan = bool(getattr(options, 'shared_vulkan', False))
+        vulkan_names = ('vulkan-loader', 'vulkan-headers')
+        vulkan_marker = destination.parent / ('.' + destination.name + '.vulkan-components-migration')
+        require(new_vulkan or not old_vulkan, 'disabling shared Vulkan requires a new source view')
+        vulkan_registry = getattr(options, 'vulkan_registry', None)
+        if old_vulkan or new_vulkan:
+            require(vulkan_registry is not None, 'verified Vulkan registry is missing')
         old_woff2 = bool(getattr(options, 'old_woff2_identity', None))
         new_woff2 = bool(getattr(options, 'shared_woff2', False))
         woff2_names = ('woff2',)
@@ -2449,6 +2466,15 @@ def gn_source(options):
                     for name in cpuinfo_names)):
             compression.verify_view(view, options.workspace / 'src', destination, cpuinfo_names)
             old_cpuinfo = True
+        if (new_vulkan and not old_vulkan and
+                (options.phase == 'reconfigure' or
+                 (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
+                                                    getattr(options, 'resume_configure', False)))) and
+                not os.path.lexists(vulkan_marker) and
+                all((compression_root/name).is_dir() and not (compression_root/name).is_symlink()
+                    for name in vulkan_names)):
+            compression.verify_view(view, options.workspace / 'src', destination, vulkan_names, registry=vulkan_registry)
+            old_vulkan = True
         if (new_woff2 and not old_woff2 and
                 (options.phase == 'reconfigure' or
                  (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
@@ -2620,6 +2646,9 @@ def gn_source(options):
             if old_cpuinfo:
                 names.extend(cpuinfo_names)
                 checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, cpuinfo_names))
+            if old_vulkan:
+                names.extend(vulkan_names)
+                checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, vulkan_names, registry=vulkan_registry))
             if old_woff2:
                 names.extend(woff2_names)
                 checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, woff2_names))
@@ -2737,6 +2766,14 @@ def gn_source(options):
                                  lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring),
                                  cpuinfo_names, 'cpuinfo-components')
             old_cpuinfo = True
+        if os.path.lexists(vulkan_marker):
+            require(new_vulkan and (options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+                    'VULKAN transaction recovery requires shared VULKAN reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring),
+                                 vulkan_names, 'vulkan-components', registry=vulkan_registry)
+            old_vulkan = True
         if os.path.lexists(woff2_marker):
             require(new_woff2 and (options.phase == 'reconfigure' or
                     getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
@@ -2936,6 +2973,16 @@ def gn_source(options):
                                  lambda: verify_selection(ids, new_headers, new_media, new_compression),
                                  cpuinfo_names, 'cpuinfo-components')
             old_cpuinfo = True
+            transition_result = verify_selection(ids, new_headers, new_media, new_compression)
+            transition = True
+        if old_vulkan != new_vulkan or os.path.lexists(vulkan_marker):
+            require(new_vulkan, 'disabling shared VULKAN requires a new source view')
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'VULKAN transition requires reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(ids, new_headers, new_media, new_compression),
+                                 vulkan_names, 'vulkan-components', registry=vulkan_registry)
+            old_vulkan = True
             transition_result = verify_selection(ids, new_headers, new_media, new_compression)
             transition = True
         if old_woff2 != new_woff2 or os.path.lexists(woff2_marker):
@@ -3275,6 +3322,28 @@ def cpuinfo_activation_args(options, old_environment, environment, old_arguments
     require(all(values.get(name) for name in names), 'verified CPUINFO GN inputs are incomplete')
     return names
 
+def vulkan_activation_args(options, old_environment, environment, old_arguments, values):
+    if not getattr(options, 'shared_vulkan', False):
+        return set()
+    key = 'EMBERBSD_VULKAN_SOURCE_SHA256'
+    require(re.fullmatch(r'[0-9a-f]{64}', environment.get(key, '')), 'verified Vulkan identity is missing')
+    names = {'emberbsd_vulkan_' + role + '_' + kind
+             for role in ('host', 'target') for kind in ('library', 'inputs', 'runtime_dir')}
+    names.update('emberbsd_vulkan_headers_' + role + '_' + kind
+                 for role in ('host', 'target') for kind in ('include', 'inputs'))
+    names.add('emberbsd_common_vulkan')
+    if old_environment.get(key):
+        return set()
+    require(all(old_arguments.get(name) in (None, False, '', []) for name in names),
+            'Vulkan activation cannot replace existing GN inputs')
+    require(all(values.get(name) for name in names), 'verified Vulkan GN inputs are incomplete')
+    require(old_arguments.get('angle_use_custom_libvulkan') in (None, True, False) and
+            values.get('angle_use_custom_libvulkan') is False,
+            'Vulkan activation requires system loader search')
+    names.add('angle_use_custom_libvulkan')
+    return names
+
+
 def woff2_activation_args(options, old_environment, environment, old_arguments, values):
     if not getattr(options, 'shared_woff2', False):
         return set()
@@ -3565,6 +3634,8 @@ def reconfigure(options):
                 permitted_env.add('EMBERBSD_EXPAT_SOURCE_SHA256')
                 options.old_cpuinfo_identity = old_env.get('EMBERBSD_CPUINFO_SOURCE_SHA256')
                 permitted_env.add('EMBERBSD_CPUINFO_SOURCE_SHA256')
+                options.old_vulkan_identity = old_env.get('EMBERBSD_VULKAN_SOURCE_SHA256')
+                permitted_env.add('EMBERBSD_VULKAN_SOURCE_SHA256')
                 options.old_woff2_identity = old_env.get('EMBERBSD_WOFF2_SOURCE_SHA256')
                 permitted_env.add('EMBERBSD_WOFF2_SOURCE_SHA256')
                 options.old_openh264_identity = old_env.get('EMBERBSD_OPENH264_SOURCE_SHA256')
@@ -3679,6 +3750,7 @@ def reconfigure(options):
         pffft_args = pffft_activation_args(options, old_env, environment, saved['arguments'], values)
         expat_args = expat_activation_args(options, old_env, environment, saved['arguments'], values)
         cpuinfo_args = cpuinfo_activation_args(options, old_env, environment, saved['arguments'], values)
+        vulkan_args = vulkan_activation_args(options, old_env, environment, saved['arguments'], values)
         woff2_args = woff2_activation_args(options, old_env, environment, saved['arguments'], values)
         openh264_args = openh264_activation_args(options, old_env, environment, saved['arguments'], values)
         image_args = image_activation_args(options, old_env, environment, saved['arguments'], values)
@@ -3757,6 +3829,11 @@ def reconfigure(options):
         identity_args.add('emberbsd_common_cpuinfo')
         identity_args.update('emberbsd_cpuinfo_' + role + '_' + kind
                              for role in ('host', 'target') for kind in ('libraries', 'inputs'))
+        identity_args.update(('emberbsd_common_vulkan', 'angle_use_custom_libvulkan'))
+        identity_args.update('emberbsd_vulkan_' + role + '_' + kind
+                             for role in ('host', 'target') for kind in ('library', 'inputs', 'runtime_dir'))
+        identity_args.update('emberbsd_vulkan_headers_' + role + '_' + kind
+                             for role in ('host', 'target') for kind in ('include', 'inputs'))
         identity_args.add('emberbsd_common_woff2')
         identity_args.update('emberbsd_woff2_' + role + '_' + kind
                              for role in ('host', 'target') for kind in ('libraries', 'inputs'))
@@ -3790,7 +3867,7 @@ def reconfigure(options):
             if node_source_refresh and name == 'emberbsd_node_source_identity':
                 continue
             if (name in activation_args or name in minizip_args or name in xml_args or
-                    name in image_args or name in font_args or name in pdf_args or name in codec_args or name in openh264_args or name in pffft_args or name in expat_args or name in cpuinfo_args or name in ots_args or name in woff2_args or name in buildlink_args):
+                    name in image_args or name in font_args or name in pdf_args or name in codec_args or name in openh264_args or name in pffft_args or name in expat_args or name in cpuinfo_args or name in vulkan_args or name in ots_args or name in woff2_args or name in buildlink_args):
                 continue
             if name in ('use_litert_tflite', 'emberbsd_flatc', 'emberbsd_flatc_inputs') and getattr(options, 'activate_common_ml', False) and not old_ml:
                 continue
@@ -3868,6 +3945,7 @@ def build(options):
     options.old_pffft_identity = saved_env.get('EMBERBSD_PFFFT_SOURCE_SHA256')
     options.old_expat_identity = saved_env.get('EMBERBSD_EXPAT_SOURCE_SHA256')
     options.old_cpuinfo_identity = saved_env.get('EMBERBSD_CPUINFO_SOURCE_SHA256')
+    options.old_vulkan_identity = saved_env.get('EMBERBSD_VULKAN_SOURCE_SHA256')
     options.old_woff2_identity = saved_env.get('EMBERBSD_WOFF2_SOURCE_SHA256')
     options.old_openh264_identity = saved_env.get('EMBERBSD_OPENH264_SOURCE_SHA256')
     options.old_codec_identity = saved_env.get('EMBERBSD_CODEC_SOURCE_SHA256')
@@ -3956,6 +4034,7 @@ def main():
         command.add_argument('--shared-openh264', action='store_true')
         command.add_argument('--shared-expat', action='store_true')
         command.add_argument('--shared-cpuinfo', action='store_true')
+        command.add_argument('--shared-vulkan', action='store_true')
         command.add_argument('--shared-woff2', action='store_true')
         command.add_argument('--shared-pffft', action='store_true')
         if phase == 'configure':

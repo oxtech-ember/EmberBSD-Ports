@@ -70,6 +70,15 @@ BUILDLINK_ABI_DEPENDS.cpuinfo+= cpuinfo>=0.0.20261104
 .include "../../sysutils/cpuinfo/buildlink3.mk"
 .endif
 
+.if ${EMBERBSD_ELECTRON_SHARED_VULKAN:Uno} == "yes"
+BUILDLINK_API_DEPENDS.vulkan-loader+= vulkan-loader>=1.4.363.0nb1
+BUILDLINK_ABI_DEPENDS.vulkan-loader+= vulkan-loader>=1.4.363.0nb1
+BUILDLINK_API_DEPENDS.vulkan-headers+= vulkan-headers>=1.4.363.0
+BUILDLINK_ABI_DEPENDS.vulkan-headers+= vulkan-headers>=1.4.363.0
+.include "../../graphics/vulkan-loader/buildlink3.mk"
+.include "../../graphics/vulkan-headers/buildlink3.mk"
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_WOFF2:Uno} == "yes"
 BUILDLINK_API_DEPENDS.woff2+= woff2>=1.0.2nb4
 BUILDLINK_ABI_DEPENDS.woff2+= woff2>=1.0.2nb4

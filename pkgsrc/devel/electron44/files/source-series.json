@@ -1262,6 +1262,11 @@
       "path": "gn-common-woff2.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-common-vulkan.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

@@ -101,6 +101,12 @@ _EMBER_ELECTRON_ARGS+= --shared-cpuinfo
 .error EMBERBSD_ELECTRON_SHARED_CPUINFO must be yes or no
 .endif
 
+.if ${EMBERBSD_ELECTRON_SHARED_VULKAN:Uno} == "yes"
+_EMBER_ELECTRON_ARGS+= --shared-vulkan
+.elif ${EMBERBSD_ELECTRON_SHARED_VULKAN:Uno} != "no"
+.error EMBERBSD_ELECTRON_SHARED_VULKAN must be yes or no
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_WOFF2:Uno} == "yes"
 _EMBER_ELECTRON_ARGS+= --shared-woff2
 .elif ${EMBERBSD_ELECTRON_SHARED_WOFF2:Uno} != "no"

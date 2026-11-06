@@ -210,6 +210,7 @@ def main():
     parser.add_argument('--shared-pffft', action='store_true')
     parser.add_argument('--shared-expat', action='store_true')
     parser.add_argument('--shared-cpuinfo', action='store_true')
+    parser.add_argument('--shared-vulkan', action='store_true')
     parser.add_argument('--shared-woff2', action='store_true')
     parser.add_argument('--stage-root', type=Path, help='explicit replacement stage; omit for installed prefix')
     mode = parser.add_mutually_exclusive_group()
@@ -266,6 +267,8 @@ def main():
         invocation['shared_expat'] = 'yes'
     if args.shared_cpuinfo:
         invocation['shared_cpuinfo'] = 'yes'
+    if args.shared_vulkan:
+        invocation['shared_vulkan'] = 'yes'
     if args.shared_woff2:
         invocation['shared_woff2'] = 'yes'
     paths.reject_overlap(str(work), str(source))
@@ -301,6 +304,7 @@ def main():
                            *(['EMBERBSD_ELECTRON_SHARED_PFFFT=yes'] if args.shared_pffft else []),
                            *(['EMBERBSD_ELECTRON_SHARED_EXPAT=yes'] if args.shared_expat else []),
                            *(['EMBERBSD_ELECTRON_SHARED_CPUINFO=yes'] if args.shared_cpuinfo else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_VULKAN=yes'] if args.shared_vulkan else []),
                            *(['EMBERBSD_ELECTRON_SHARED_WOFF2=yes'] if args.shared_woff2 else []), 'wrapper']
                 saved = json.loads((work / 'selection.json').read_text())
                 if saved.get('invocation') != invocation:
@@ -403,6 +407,7 @@ def main():
                            *(['EMBERBSD_ELECTRON_SHARED_PFFFT=yes'] if args.shared_pffft else []),
                            *(['EMBERBSD_ELECTRON_SHARED_EXPAT=yes'] if args.shared_expat else []),
                            *(['EMBERBSD_ELECTRON_SHARED_CPUINFO=yes'] if args.shared_cpuinfo else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_VULKAN=yes'] if args.shared_vulkan else []),
                            *(['EMBERBSD_ELECTRON_SHARED_WOFF2=yes'] if args.shared_woff2 else []), 'wrapper']
             if not args.stage_root:
                 check_installed_context(process, command, env, args.host_prefix)
