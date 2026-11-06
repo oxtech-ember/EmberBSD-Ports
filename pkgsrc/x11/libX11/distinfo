@@ -1,0 +1,14 @@
+$NetBSD$
+
+BLAKE2s (libX11-1.8.14.tar.xz) = 3adc988ada8ff227af49c366f5396430a25f83d95b3453a7b103af07e06fa48b
+SHA512 (libX11-1.8.14.tar.xz) = 4d61596d06235791d6afab823d0457dc42d2769717eb80d4c7e5bc825bb08db6fae46a75561547c679b5f892f24ebd0e1129b60bd4a574f7d1edb3cbfc91df0c
+Size (libX11-1.8.14.tar.xz) = 1897544 bytes
+SHA1 (patch-configure.ac) = e8abae8fef420da3c62ec023c39851c728c6e6bf
+SHA1 (patch-include_Makefile.am) = 11b8419af32142a3559a0ced77699e896739c970
+SHA1 (patch-include_X11_XlibRelocate.h) = 04f16d695e60b0c688507a8e567672db8ff02820
+SHA1 (patch-src_ErrDes.c) = d1b150d4852d5284b729e3300d2177075c61107c
+SHA1 (patch-src_StrKeysym.c) = 84037ace67fbe17d500051af637d2101371c4c8e
+SHA1 (patch-src_xcms_cmsColNm.c) = 697da8b689ca364f2aab0b0f7748fc1eeab78ae7
+SHA1 (patch-src_xlibi18n_lcDynamic.c) = d5f172b209ce539c83fe7c4bb5d34d0ed427bb74
+SHA1 (patch-src_xlibi18n_lcFile.c) = 17cdafcc972fc6d37dba2447bb919424ab2e5594
+SHA1 (patch-x11.pc.in) = 64d0a80b5a5f43f5ec24150313ccca7e82ae11dd

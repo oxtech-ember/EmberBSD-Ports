@@ -1,0 +1,15 @@
+$NetBSD$
+
+Preserve prefix-owned default paths when the native package is moved.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- include/Makefile.am.orig
++++ include/Makefile.am
+@@ -4,6 +4,7 @@
+ 	X11/Xcms.h \
+ 	X11/Xlib.h \
+ 	X11/Xlibint.h \
++	X11/XlibRelocate.h \
+ 	X11/Xlocale.h \
+ 	X11/Xresource.h \
+ 	X11/Xutil.h \

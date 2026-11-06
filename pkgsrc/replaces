@@ -124,6 +124,7 @@ wayland/wlroots
 www/webkit-gtk41
 www/webkit-gtk60
 x11/gtk3
+x11/libX11
 x11/libXt
 x11/libdisplay-info
 x11/libdrm
