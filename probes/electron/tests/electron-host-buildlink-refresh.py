@@ -16,7 +16,7 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 with tempfile.TemporaryDirectory() as temp:
-    root = Path(temp)
+    root = Path(temp).resolve()
     source = root / 'pkgsrc'; (source / 'mk').mkdir(parents=True)
     license_file = source / 'mk/license.mk'; license_file.write_text('new license token\n')
     recipe = source / 'devel/provider/buildlink3.mk'; recipe.parent.mkdir(parents=True)
@@ -100,6 +100,61 @@ with tempfile.TemporaryDirectory() as temp:
     candidate_mixed['inputs'][str(selected_make)] = digest(selected_make)
     host.refresh_selection(saved_mixed, current_mixed, candidate_mixed,
                            invocations[0], invocations[1], works[0], works[1], source, live_script)
+    # The recorded owner script is already in the export, but the old
+    # generated consumer still resolves its Makefile in a different checkout.
+    # This is independent from the older owner-script relocation above.
+    for work, makefile in zip(works, (old_make, selected_make)):
+        consumer = work / 'pkgsrc/devel/electron-host-context'
+        consumer.mkdir(parents=True)
+        (consumer / 'Makefile').symlink_to(makefile)
+        assert (consumer / 'Makefile').resolve(strict=True) == makefile.resolve(strict=True)
+    split_saved = {'identity': {**identities[0], 'inputs': dict(identities[0]['inputs'])},
+                   'invocation': invocations[0]}
+    split_saved['identity']['inputs'][str(old_make)] = digest(old_make)
+    split_current = {**identities[0], 'inputs': dict(identities[0]['inputs'])}
+    split_current['inputs'][str(old_make)] = digest(old_make)
+    split_candidate = {**identities[1], 'inputs': dict(identities[1]['inputs'])}
+    split_candidate['inputs'][str(selected_make)] = digest(selected_make)
+    host.refresh_selection(split_saved, split_current, split_candidate,
+                           invocations[0], invocations[1], works[0], works[1], source, script)
+    for name in ('old-consumer', 'candidate-consumer', 'selected-artifact'):
+        changed_current = {**split_current, 'inputs': dict(split_current['inputs'])}
+        changed_candidate = {**split_candidate, 'inputs': dict(split_candidate['inputs'])}
+        if name == 'old-consumer':
+            changed_current['inputs'][str(old_make)] = 'different-old-consumer'
+        elif name == 'candidate-consumer':
+            changed_candidate['inputs'][str(selected_make)] = 'different-candidate-consumer'
+        else:
+            changed_current['inputs'][str(target)] = 'different-selected-artifact'
+        try:
+            host.refresh_selection(split_saved, changed_current, changed_candidate,
+                                   invocations[0], invocations[1], works[0], works[1], source, script)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('accepted changed ' + name)
+    # Equal bytes are insufficient if the candidate consumer resolves to an
+    # unrelated file rather than the selected owner's declared Makefile.
+    foreign_make = root / 'foreign/Makefile'
+    foreign_make.parent.mkdir()
+    foreign_make.write_bytes(selected_make.read_bytes())
+    candidate_link = works[1] / 'pkgsrc/devel/electron-host-context/Makefile'
+    foreign_candidate = {**split_candidate, 'inputs': dict(split_candidate['inputs'])}
+    foreign_candidate['inputs'].pop(str(selected_make))
+    foreign_candidate['inputs'][str(foreign_make)] = digest(foreign_make)
+    candidate_link.unlink()
+    candidate_link.symlink_to(foreign_make)
+    try:
+        try:
+            host.refresh_selection(split_saved, split_current, foreign_candidate,
+                                   invocations[0], invocations[1], works[0], works[1], source, script)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('accepted foreign candidate consumer with identical bytes')
+    finally:
+        candidate_link.unlink()
+        candidate_link.symlink_to(selected_make)
     after = (works[0] / 'make.conf').stat()
     assert (before.st_ino, before.st_mtime_ns) == (after.st_ino, after.st_mtime_ns)
     changed = {**identities[0], 'inputs': dict(identities[0]['inputs'])}

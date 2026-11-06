@@ -550,7 +550,24 @@ def refresh_selection(saved, current, candidate, invocation, candidate_invocatio
     selected_root = str(Path(source))
     targets = {str((Path(work) / 'objects/devel/electron-host-context/work/.buildlink' / name).resolve(strict=True))
                for name in current['links']}
+    # The generated consumer can retain its own source link after the owner
+    # script has moved into the export. Normalize that declared input only;
+    # the old/current/candidate digests are still compared below.
+    consumer_aliases = {}
+    consumer_rel = Path('pkgsrc/devel/electron-host-context/Makefile')
+    prior_consumer = Path(work) / consumer_rel
+    candidate_consumer = Path(candidate_work) / consumer_rel
+    if prior_consumer.is_symlink() and candidate_consumer.is_symlink():
+        prior_input = str(prior_consumer.resolve(strict=True))
+        candidate_input = str(candidate_consumer.resolve(strict=True))
+        if prior_input in old_inputs and prior_input in now:
+            declared = Path(script).parent / 'host-buildlink/Makefile'
+            if (candidate_input != str(declared.resolve(strict=True)) or
+                    candidate_input not in candidate['inputs'] or prior_input in targets):
+                raise ValueError('host buildlink consumer is not the declared owner input')
+            consumer_aliases[prior_input] = candidate_input
     def canonical(path):
+        path = consumer_aliases.get(path, path)
         for root in (previous_root, current_root):
             if path not in targets and path.startswith(root + '/'):
                 return selected_root + path[len(root):]
