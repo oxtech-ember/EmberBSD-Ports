@@ -1,0 +1,14 @@
+# $NetBSD$
+
+BUILDLINK_TREE+=	picosha2
+
+.if !defined(PICOSHA2_BUILDLINK3_MK)
+PICOSHA2_BUILDLINK3_MK:=
+
+BUILDLINK_DEPMETHOD.picosha2?=	build
+BUILDLINK_API_DEPENDS.picosha2+=	picosha2>=1.0.1
+BUILDLINK_PKGSRCDIR.picosha2?=	../../security/picosha2
+
+.endif # PICOSHA2_BUILDLINK3_MK
+
+BUILDLINK_TREE+=	-picosha2

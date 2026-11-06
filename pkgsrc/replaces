@@ -552,6 +552,12 @@ devel/libpopcnt
 devel/magic_enum
 devel/thread-pool
 
+# Common data and spatial utility providers.
+math/nanoflann
+security/picosha2
+textproc/parson
+textproc/rapidcsv
+
 graphics/glad
 sysutils/cpuinfo
 
