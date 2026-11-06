@@ -126,14 +126,13 @@ selection remains conditional on Darwin:
   relative to its source directory before writing host diagnostics.
   The unset route needs no new helper and keeps the upstream commands.
   Its explicit
-  `GCC_CONFIGURE_SDK=yes` mode requires an executable absolute
-  `GCC_CONFIGURE_UNAME`. The two uname diagnostics use that selected tool.
+  `EMBERBSD_CONFIGURE_SDK=yes` mode requires an executable absolute
+  `EMBERBSD_CONFIGURE_UNAME`. The two uname diagnostics use that selected tool.
   Other legacy platform-specific queries report `unavailable (selected SDK profile)`.
   They do not execute absolute host commands.
   The helper comes from the [common configure diagnostic source](../common-build-tools/libnbcompat.md).
-  Its generated GCC patch hunk must match those bytes exactly. The common
-  `EMBERBSD_CONFIGURE_SDK` and `EMBERBSD_CONFIGURE_UNAME` selectors also work.
-  Conflicting legacy and common selectors fail. Unavailable queries return
+  Its generated GCC patch hunk must match those bytes exactly.
+  All callers use the common selectors. Unavailable queries return
   failure, without claiming that a platform operation ran successfully.
   The shared helper update requires rebuilding GCC nb13, gcc16-libs nb14,
   and gcc16-libjit nb4. It does not qualify previous binaries under the new source.

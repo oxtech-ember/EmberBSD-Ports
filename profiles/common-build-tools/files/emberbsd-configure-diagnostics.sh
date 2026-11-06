@@ -3,22 +3,6 @@
 # Origin: EmberBSD (AI-assisted). Shared explicit SDK configure diagnostics.
 # The caller selects tools and enforces its bootstrap or ordinary prefix policy.
 # This helper validates the explicit executable and routes only known queries.
-if test "${GCC_CONFIGURE_SDK+set}" = set; then
-  if test "${EMBERBSD_CONFIGURE_SDK+set}" = set &&
-     test "$EMBERBSD_CONFIGURE_SDK" != "$GCC_CONFIGURE_SDK"; then
-    echo 'configure: conflicting SDK mode selectors' >&2
-    exit 1
-  fi
-  EMBERBSD_CONFIGURE_SDK=$GCC_CONFIGURE_SDK
-fi
-if test "${GCC_CONFIGURE_UNAME+set}" = set; then
-  if test "${EMBERBSD_CONFIGURE_UNAME+set}" = set &&
-     test "$EMBERBSD_CONFIGURE_UNAME" != "$GCC_CONFIGURE_UNAME"; then
-    echo 'configure: conflicting SDK uname selectors' >&2
-    exit 1
-  fi
-  EMBERBSD_CONFIGURE_UNAME=$GCC_CONFIGURE_UNAME
-fi
 if test "${EMBERBSD_CONFIGURE_SDK-}" != yes; then
   echo 'configure: EMBERBSD_CONFIGURE_SDK must be yes when selected' >&2
   exit 1
