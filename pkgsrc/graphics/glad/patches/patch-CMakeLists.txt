@@ -1,0 +1,68 @@
+# $NetBSD$
+
+Create an installable shared library and CMake package.
+
+--- /dev/null
++++ CMakeLists.txt
+@@ -0,0 +1,61 @@
++cmake_minimum_required(VERSION 3.15)
++project(glad VERSION 2.0.8 LANGUAGES C)
++
++include(GNUInstallDirs)
++include(CMakePackageConfigHelpers)
++
++set(GLAD_CMAKE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
++set(GLAD_SOURCES_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
++include("${GLAD_CMAKE_DIR}/GladConfig.cmake")
++
++set(GLAD_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
++glad_add_library(glad SHARED ALIAS LOADER REPRODUCIBLE
++    LOCATION "${GLAD_GENERATED_DIR}"
++    API gl:compatibility=4.6 egl=1.5 glx=1.4 wgl=1.0
++)
++
++# Ship all generated public headers, but compile only the window-system
++# loader used by this host platform.
++get_target_property(GLAD_GENERATED_SOURCES glad SOURCES)
++if(WIN32)
++    list(FILTER GLAD_GENERATED_SOURCES EXCLUDE REGEX "/(egl|glx)\\.c$")
++else()
++    list(FILTER GLAD_GENERATED_SOURCES EXCLUDE REGEX "/wgl\\.c$")
++endif()
++set_property(TARGET glad PROPERTY SOURCES "${GLAD_GENERATED_SOURCES}")
++
++target_compile_features(glad PUBLIC c_std_11)
++target_compile_definitions(glad PRIVATE GLAD_GLX_NO_X11)
++target_include_directories(glad PRIVATE "${GLAD_GENERATED_DIR}/include")
++set_property(TARGET glad PROPERTY INTERFACE_INCLUDE_DIRECTORIES
++    "$<BUILD_INTERFACE:${GLAD_GENERATED_DIR}/include>;$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
++set_target_properties(glad PROPERTIES
++    VERSION "${PROJECT_VERSION}"
++    SOVERSION "2"
++    EXPORT_NAME glad
++)
++
++install(TARGETS glad EXPORT gladTargets
++    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
++    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
++    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
++)
++install(DIRECTORY "${GLAD_GENERATED_DIR}/include/"
++    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
++    PATTERN "eglplatform.h" EXCLUDE
++    PATTERN "khrplatform.h" EXCLUDE
++)
++install(EXPORT gladTargets NAMESPACE glad::
++    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/glad"
++)
++configure_package_config_file(files/gladConfig.cmake.in
++    "${CMAKE_CURRENT_BINARY_DIR}/gladConfig.cmake"
++    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/glad"
++)
++write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/gladConfigVersion.cmake"
++    VERSION "${PROJECT_VERSION}" COMPATIBILITY SameMajorVersion
++)
++install(FILES "${CMAKE_CURRENT_BINARY_DIR}/gladConfig.cmake"
++    "${CMAKE_CURRENT_BINARY_DIR}/gladConfigVersion.cmake"
++    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/glad"
++)

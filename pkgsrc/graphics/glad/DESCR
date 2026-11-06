@@ -1,0 +1,4 @@
+GLAD generates OpenGL loader code from Khronos specifications. This package
+ships a shared loader for OpenGL compatibility 4.6, EGL 1.5, GLX 1.4 and
+WGL 1.0, generated from the XML specifications included in the upstream
+release.

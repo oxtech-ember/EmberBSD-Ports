@@ -1,0 +1,23 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted); install Khronos platform headers
+from the shared egl-headers package.
+
+--- include/meson.build.orig
++++ include/meson.build
+@@ -14,6 +14,3 @@
+ if not with_glvnd and host_machine.system() != 'windows'
+-  if with_gles1 or with_gles2 or with_opengl or with_egl
+-    install_headers('KHR/khrplatform.h', subdir : 'KHR')
+-  endif
+ 
+   if with_gles1
+@@ -62,8 +59,7 @@
+   if with_egl
+     install_headers(
+       'EGL/egl.h',
+       'EGL/eglext.h',
+-      'EGL/eglplatform.h',
+       subdir : 'EGL',
+     )
+   endif

@@ -1,5 +1,28 @@
 # Native shader generators for Iris and PowerVR
 
+## Normal Ports dependency
+
+Cross `graphics/MesaLib` adds the matching `graphics/mesa-generators` package
+as a native `TOOL_DEPENDS` only when its selected driver closure needs shader
+generators. The package builds the same Mesa source and patch set, installs
+`mesa_clc`, `vtn_bindgen2` and `pco_clc` into the selected native prefix, and
+provides the paths through Meson's native file. Its version and package
+revision track MesaLib, so a changed shader compiler interface rebuilds the
+host tools with the target package. Native Mesa builds continue to use their
+in-tree tools; softpipe-only configurations do not acquire this package.
+
+Set `EMBERBSD_MESA_GENERATORS` only when intentionally supplying an external
+sealed tool directory. That path retains the standalone producer's host ABI,
+interface and binary hash checks. A normal package dependency uses the package
+database and selected native prefix; it does not consume or require a seal.
+
+The 26.2.6nb19 native package passed Darwin arm64 Clang packaging and SDK
+installation into another prefix. The relocated `pco_clc` generated C and a
+header from the full aarch64 Mesa build's SPIR-V input. That target package
+passed build, PLIST checks and sysroot installation with PowerVR, V3D and the
+other default drivers retained. These checks do not establish target rendering
+or a complete KiCad session.
+
 Mesa 26.2.6 uses CLC for Iris shaders even when Rusticl is disabled.
 The default `mesa-clc=auto` selects the target CLC dependency closure.
 Cross builds instead use `mesa-clc=system` and `precomp-compiler=system`.
@@ -58,7 +81,11 @@ The target verifier also binds the shared dynarray header used by the generators
 The Objective-C patch keeps Objective-C enabled for macOS graphics consumers.
 Generators without those consumers use only C and C++.
 
-## Scripted build
+## Explicit external tool directory
+
+The standalone producer remains available when another workflow needs a
+sealed directory outside the normal pkgsrc package graph. It is not part of
+the ordinary Mesa dependency path.
 
 The Python standard-library orchestrator uses SDK host API1:
 

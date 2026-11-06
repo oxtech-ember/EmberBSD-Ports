@@ -1,0 +1,3 @@
+Native build tools used by Mesa cross builds to compile shader inputs.
+The package provides mesa_clc, vtn_bindgen2 and pco_clc from the same
+patched Mesa source as MesaLib. It is a build-time dependency only.

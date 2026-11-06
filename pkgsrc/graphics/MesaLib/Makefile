@@ -1,11 +1,9 @@
 # $NetBSD: Makefile,v 1.220 2026/04/06 10:47:10 wiz Exp $
 # Origin: EmberBSD; AI-assisted bounded NetBSD 11/AArch64 and amd64 candidate.
-DISTNAME=	mesa-26.2.6
+.include "mesa-source.mk"
 PKGNAME=	${DISTNAME:S/mesa/MesaLib/}
-PKGREVISION=	18
+PKGREVISION=	${MESA_PORT_REVISION}
 CATEGORIES=	graphics
-MASTER_SITES=	https://archive.mesa3d.org/
-EXTRACT_SUFX=	.tar.xz
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://www.mesa3d.org/
 COMMENT=	OpenGL and Vulkan with RadeonSI, V3D, PowerVR, VirGL, Zink and software rendering
@@ -13,6 +11,7 @@ LICENSE=	mit
 CONFLICTS+=	libglapi-[0-9]* libglvnd-[0-9]*
 ONLY_FOR_PLATFORM=	NetBSD-11.*-aarch64 NetBSD-11.*-x86_64
 USE_TOOLS+=	bison flex pkg-config xgettext
+USE_TOOLS+=	cmp
 USE_LANGUAGES=	c c++
 USE_CC_FEATURES+=	c11
 USE_CXX_FEATURES+=	c++17
@@ -184,6 +183,8 @@ _EMBERBSD_MESA_LIBELF_CHECK=	${TOOL_PYTHONBIN:Q} -B -E -S ${FILESDIR:Q}/check-ba
 	--mode ${_EMBERBSD_MESA_LIBELF_MODE:Q} --arch ${MACHINE_ARCH:Q}
 .endif
 pre-configure:
+	@if ! ${CMP} -s ${WRKSRC}/include/EGL/eglplatform.h ${BUILDLINK_DIR}/include/EGL/eglplatform.h; then ${CP} ${BUILDLINK_DIR}/include/EGL/eglplatform.h ${WRKSRC}/include/EGL/eglplatform.h; fi
+	@if ! ${CMP} -s ${WRKSRC}/include/KHR/khrplatform.h ${BUILDLINK_DIR}/include/KHR/khrplatform.h; then ${CP} ${BUILDLINK_DIR}/include/KHR/khrplatform.h ${WRKSRC}/include/KHR/khrplatform.h; fi
 	${TEST} -x ${TOOL_PYTHONBIN:Q}
 	${_EMBERBSD_MESA_ELF_CHECK} --check-sdk
 	${TOOL_PYTHONBIN} -c 'import sys, mako, packaging, yaml; assert sys.version_info[:2] == tuple(map(int, "${PYVERSSUFFIX}".split(".")))'
@@ -209,6 +210,7 @@ pre-configure:
 post-install:
 	${_EMBERBSD_MESA_ELF_CHECK} --library-dir ${_EMBERBSD_MESA_STAGED_LIB:Q}
 
+.include "../../graphics/egl-headers/buildlink3.mk"
 .include "../../x11/libdrm/buildlink3.mk"
 .include "../../archivers/zstd/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"

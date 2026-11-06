@@ -75,9 +75,12 @@ See the [cached BO checks](../../../pkgsrc/graphics/MesaLib/tests/README.md#nati
 
 ## Native build tools
 
-Use the [shared Mesa generator producer](mesa-generators.md) with its current
-Ports dependencies. It supports Linux x86_64 with Clang and macOS ARM64 with
-Clang or the explicit GCC alternative. Select `--profile powervr` or `--profile all`.
+Normal Mesa cross package builds obtain the host tools from
+`graphics/mesa-generators` through `TOOL_DEPENDS`. Use the
+[standalone sealed generator workflow](mesa-generators.md#explicit-external-tool-directory)
+only when a consumer needs tools outside the package graph. That workflow
+supports Linux x86_64 with Clang and macOS ARM64 with Clang or the explicit GCC
+alternative; select `--profile powervr` or `--profile all`.
 
 That owner documents the compiler selection, current versions, native build,
 shader checks and sealing. It supplies `mesa_clc`, `vtn_bindgen2` and `pco_clc`
@@ -88,12 +91,8 @@ does not establish GPU execution.
 ## Normal cross package
 
 Prepare a fresh `common-graphics` export and use the existing
-[graphics cross configuration](profile.md). Add these settings to the
-private MAKECONF after its common profile:
-
-```make
-EMBERBSD_MESA_GENERATORS=/absolute/new-generators
-```
+[graphics cross configuration](profile.md). No generator path setting is
+needed for the ordinary package dependency path.
 
 Run the ordinary pkgsrc `package` target in `graphics/MesaLib`. Use an owned
 WRKOBJDIR and a separate package output directory. Retain compatible objects.
@@ -111,7 +110,7 @@ Target libraries still use the common cross file and target sysroot.
 `-Dmesa-clc=system` and `-Dprecomp-compiler=system` prevent execution of target
 compiler programs on the build host. No target SPIRV-Tools or translator
 runtime is required for this path. Upstream Python generators still run with
-the common build-host Python 3.14.
+the selected build-host Python 3.15.
 
 The source patches use Mesa's existing device-number header checks on BSD.
 PowerVR UAPI types come from Mesa's platform-aware DRM header. Portable
