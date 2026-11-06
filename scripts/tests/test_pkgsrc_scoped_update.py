@@ -120,6 +120,119 @@ class ScopedUpdateTests(unittest.TestCase):
         write(self.ports, 'pkgsrc/cat/new/files/data', 'new data\n')
         commit(self.ports, 'new package')
 
+    def alternate_patch(self, *, diverge=False):
+        tool = self.work / ('divergent-patch' if diverge else 'alternate-patch')
+        code = (f'#!{sys.executable}\nimport subprocess,sys,pathlib\n'
+                f'r=subprocess.run([{PATCH!r}, *sys.argv[1:]], input=sys.stdin.buffer.read())\n')
+        if diverge:
+            code += ("stage=pathlib.Path(sys.argv[sys.argv.index('-d')+1])\n"
+                     "p=stage/'cat/pkg/Makefile'\n"
+                     "if r.returncode == 0 and 'old-' in stage.name and p.exists(): p.write_text('different\\n')\n")
+        tool.write_text(code + 'sys.exit(r.returncode)\n')
+        tool.chmod(0o755)
+        return str(tool)
+
+    def test_patch_transition_preserves_unselected_and_reader(self):
+        self.newer_inputs()
+        baseline = self.update()
+        self.assertEqual(baseline.returncode, 0, baseline.stderr)
+        self.assertEqual(json.loads(self.receipt.read_text())['version'], 3)
+        tool = self.alternate_patch()
+        neighbor = self.tree / 'cat/other/Makefile'
+        stamp = (neighbor.stat().st_ino, neighbor.stat().st_mtime_ns)
+        result = self.update('--patch', tool)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        receipt = json.loads(self.receipt.read_text())
+        self.assertEqual(receipt['version'], 4)
+        self.assertEqual(receipt['patch_provenance']['base']['path'], PATCH)
+        self.assertEqual(receipt['patch_provenance']['packages']['cat/pkg']['path'], tool)
+        self.assertEqual(receipt['patch_provenance']['files']['misc/owner.txt']['path'], tool)
+        self.assertEqual((neighbor.stat().st_ino, neighbor.stat().st_mtime_ns), stamp)
+        code = "import importlib.util,sys;s=importlib.util.spec_from_file_location('i',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);m.shared_export(*sys.argv[2:])"
+        read = run([sys.executable, '-B', '-c', code, self.ports / 'scripts/pkgsrc-source-identity.py', self.export, self.ports, GIT, SDK, tool], self.ports, check=False)
+        self.assertEqual(read.returncode, 0, read.stderr)
+        # A later update with the base tool removes redundant overrides.
+        result = self.update()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        provenance = json.loads(self.receipt.read_text())['patch_provenance']
+        self.assertEqual(provenance['packages'], {})
+        self.assertEqual(provenance['files'], {})
+        # Invalid provenance is rejected by the reader.
+        receipt = json.loads(self.receipt.read_text())
+        receipt['patch_provenance']['files']['../escape'] = receipt['identity']['patch']
+        self.receipt.write_text(json.dumps(receipt))
+        read = run([sys.executable, '-B', '-c', code, self.ports / 'scripts/pkgsrc-source-identity.py', self.export, self.ports, GIT, SDK, PATCH], self.ports, check=False)
+        self.assertNotEqual(read.returncode, 0)
+
+    def test_patch_transition_divergent_old_replay_refused(self):
+        self.newer_inputs()
+        result = self.update()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.old_receipt = self.receipt.read_bytes()
+        before = (self.tree / 'cat/pkg/Makefile').read_bytes()
+        tool = self.alternate_patch(diverge=True)
+        result = self.update('--patch', tool)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.receipt.read_bytes(), self.old_receipt)
+        self.assertEqual((self.tree / 'cat/pkg/Makefile').read_bytes(), before)
+        self.assertFalse(self.marker.exists())
+
+    def test_patch_transition_resume(self):
+        self.newer_inputs()
+        tool = self.alternate_patch()
+        code = r'''import importlib.util,sys
+from unittest.mock import patch
+s=importlib.util.spec_from_file_location('u',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+replace=m.os.replace
+calls=[0]
+def fail(*args):
+    calls[0]+=1
+    if calls[0] == 2: raise OSError('injected interruption')
+    return replace(*args)
+with patch.object(m.os, 'replace', side_effect=fail):
+    m.update(sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6], ['cat/pkg'], ['misc/owner.txt'])
+'''
+        result = run([sys.executable, '-B', '-c', code, self.ports / 'scripts/pkgsrc-shared-update.py', self.export, self.ports, GIT, SDK, tool], self.ports, check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(self.marker.exists())
+        result = self.update('--patch', tool, '--resume')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(self.receipt.read_text())['version'], 4)
+        self.assertFalse(self.marker.exists())
+
+    def test_transition_resume_requires_exact_published_receipt(self):
+        self.newer_inputs()
+        tool = self.alternate_patch()
+        code = r'''import importlib.util,sys
+from unittest.mock import patch
+from pathlib import Path
+s=importlib.util.spec_from_file_location('u',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+original=Path.unlink
+def fail_marker(self, *args, **kwargs):
+    if self.name == '.pkgsrc-update-incomplete': raise OSError('after receipt publish')
+    return original(self,*args,**kwargs)
+with patch.object(Path, 'unlink', fail_marker):
+    m.update(sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6], ['cat/pkg'], ['misc/owner.txt'])
+'''
+        result = run([sys.executable, '-B', '-c', code, self.ports / 'scripts/pkgsrc-shared-update.py', self.export, self.ports, GIT, SDK, tool], self.ports, check=False)
+        self.assertIn('after receipt publish', result.stderr)
+        expected = self.receipt.read_bytes()
+        for key in ('material', 'patch_provenance'):
+            modified = json.loads(expected)
+            if key == 'material':
+                modified[key] = {}
+            else:
+                modified[key]['packages'] = {}
+            self.receipt.write_text(json.dumps(modified))
+            result = self.update('--patch', tool, '--resume')
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('receipt differs from interrupted update', result.stderr)
+            self.assertTrue(self.marker.exists())
+        self.receipt.write_bytes(expected)
+        result = self.update('--patch', tool, '--resume')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(self.marker.exists())
+
     def test_new_non_upstream_overlay_preserves_neighbor(self):
         self.new_overlay()
         neighbor = self.tree / 'cat/pkg/Makefile'

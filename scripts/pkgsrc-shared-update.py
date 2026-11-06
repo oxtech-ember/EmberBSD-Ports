@@ -28,6 +28,15 @@ def update(directory, ports, git, sdk, patch, package, selected_files, *, resume
     directory, ports = Path(directory), Path(ports)
     identity = load(ports / 'scripts/pkgsrc-source-identity.py', 'update_identity')
     exporter = load(ports / 'scripts/prepare-pkgsrc.py', 'update_exporter')
+    class PatchSelection:
+        def command(self, role):
+            if role != 'patch':
+                raise ValueError('unexpected patch capability role')
+            return (patch,)
+    def patch_probe(argv):
+        return subprocess.run(argv, check=True, stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE).stdout
+    patch_options = exporter.patch_safety_options(PatchSelection(), patch_probe)
     packages = [exporter.package_path(item, 'selected package') for item in ([package] if isinstance(package, str) else package)]
     if not packages or len(set(packages)) != len(packages):
         raise ValueError('empty or duplicate selected package')
@@ -46,10 +55,10 @@ def update(directory, ports, git, sdk, patch, package, selected_files, *, resume
         raise ValueError('update lock is not a regular file')
     with os.fdopen(fd, 'a+b') as handle:
         fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        return _locked(directory, ports, git, sdk, patch, packages, selected_files, identity, exporter, resume)
+        return _locked(directory, ports, git, sdk, patch, packages, selected_files, identity, exporter, resume, patch_options)
 
 
-def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, exp, resume):
+def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, exp, resume, patch_options):
     marker = directory / ident.SHARED_EXPORT_DIRTY
     pending = None
     if os.path.lexists(marker):
@@ -65,18 +74,19 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
     if receipt_path.is_symlink() or not receipt_path.is_file():
         raise ValueError('missing shared export receipt')
     receipt = json.loads(receipt_path.read_text())
-    if receipt.get('format') != ident.SHARED_EXPORT_FORMAT or receipt.get('version') not in (2, 3):
+    if receipt.get('format') != ident.SHARED_EXPORT_FORMAT or receipt.get('version') not in (2, 3, 4):
         raise ValueError('unsupported shared export receipt')
     if pending is not None:
         recorded = pending.get('previous_receipt')
         if not isinstance(recorded, dict) or not isinstance(recorded.get('identity'), dict):
             raise ValueError('invalid interrupted update marker')
-        if receipt != recorded and not ident.equivalent_export_inputs(
-                receipt.get('identity'), pending.get('new_identity')):
+        if receipt != recorded and receipt != pending.get('expected_new_receipt'):
             raise ValueError('receipt differs from interrupted update')
         receipt = recorded
     previous = receipt['identity']
-    if receipt['version'] == 3:
+    if receipt['version'] == 4:
+        ident.validate_patch_provenance(receipt.get('patch_provenance'))
+    if receipt['version'] in (3, 4):
         raw = json.dumps(receipt.get('inputs'), sort_keys=True, separators=(',', ':')).encode()
         if hashlib.sha256(raw).hexdigest() != previous.get('export_inputs_sha256'):
             raise ValueError('invalid previous input snapshot')
@@ -94,10 +104,10 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
     current = ident.export_identity_from_payload(snapshot, run(root, 'rev-parse', 'HEAD').decode('ascii'), patch)
     if pending is not None and not ident.equivalent_export_inputs(pending.get('new_identity'), current):
         raise ValueError('inputs changed since interrupted update')
-    if previous['upstream'] != current['upstream'] or previous['patch'] != current['patch']:
-        raise ValueError('upstream pin or patch selection changed; update refused')
+    if previous['upstream'] != current['upstream']:
+        raise ValueError('upstream pin changed; update refused')
     oldrev = previous['ports_commit']
-    old_inputs = receipt.get('inputs') if receipt['version'] == 3 else None
+    old_inputs = receipt.get('inputs') if receipt['version'] in (3, 4) else None
     dirty_before = receipt.get('dirty_inputs', {})
     cache = directory / '.pkgsrc-update-inputs'
     def git_call(*args, check=True):
@@ -607,7 +617,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                                 raise ValueError('patch section crosses selected package')
                             matching.append(part)
                     if matching:
-                        subprocess.run([patch, '-f', '-E', '-d', str(stage), '-p1', '-F', '0', '-V', 'none'],
+                        subprocess.run([patch, '-f', '-E', '-d', str(stage), '-p1', '-F', '0', '-V', 'none', *patch_options],
                                        input=b''.join(matching), check=True, stdout=subprocess.DEVNULL)
             for name, source in file_map(rows).items():
                 if global_file or not name.startswith(package + '/'):
@@ -780,6 +790,34 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                    'material': {name: ident.material_snapshot(directory / 'pkgsrc' / name)
                                 for name in ident.SHARED_EXPORT_MATERIAL}, 'inputs': snapshot,
                    'dirty_inputs': dirty_inputs}
+        if receipt['version'] == 4 or previous['patch'] != current['patch']:
+            provenance = copy.deepcopy(receipt.get('patch_provenance', {
+                'base': previous['patch'], 'packages': {}, 'files': {}}))
+            for package in packages:
+                for name in list(provenance['files']):
+                    if name.startswith(package + '/'):
+                        del provenance['files'][name]
+                if current['patch'] == provenance['base']:
+                    provenance['packages'].pop(package, None)
+                else:
+                    provenance['packages'][package] = current['patch']
+            for name in selected_files:
+                parent = '/'.join(name.split('/')[:2])
+                inherited = provenance['packages'].get(parent, provenance['base'])
+                if current['patch'] == inherited:
+                    provenance['files'].pop(name, None)
+                else:
+                    provenance['files'][name] = current['patch']
+            ident.validate_patch_provenance(provenance)
+            updated['version'] = 4
+            updated['patch_provenance'] = provenance
+        # Commit the complete expected receipt to the durable marker first.
+        # A resumed transaction accepts no other published receipt, even if
+        # its input identity happens to match.
+        pending_marker = {'packages': packages, 'files': selected_files,
+                          'previous_receipt': receipt, 'new_identity': current,
+                          'expected_new_receipt': updated}
+        replace(marker, (json.dumps(pending_marker, sort_keys=True) + '\n').encode(), 0o600)
         replace(receipt_path, (json.dumps(updated, sort_keys=True) + '\n').encode(), 0o644)
         marker.unlink()
         sync_dir(directory)

@@ -665,6 +665,32 @@ def equivalent_export_inputs(left, right):
                 ('api', 'upstream', 'export_inputs_sha256', 'patch')))
 
 
+def validate_patch_provenance(value):
+    """Validate compact producer attribution for a mixed shared export."""
+    def descriptor(item):
+        return (isinstance(item, dict) and set(item) == {'path', 'sha256'} and
+                isinstance(item['path'], str) and os.path.isabs(item['path']) and
+                isinstance(item['sha256'], str) and
+                re.fullmatch(r'[0-9a-f]{64}', item['sha256']) is not None)
+
+    def relative(name):
+        return (isinstance(name, str) and bool(name) and '\\' not in name and
+                all(part not in ('', '.', '..') and
+                    not any(ord(c) < 32 or ord(c) == 127 for c in part)
+                    for part in name.split('/')))
+
+    if (not isinstance(value, dict) or set(value) != {'base', 'packages', 'files'} or
+            not descriptor(value['base'])):
+        raise ValueError('invalid shared export patch provenance')
+    for kind in ('packages', 'files'):
+        entries = value[kind]
+        if (not isinstance(entries, dict) or
+                any(not relative(name) or not descriptor(tool) for name, tool in entries.items())):
+            raise ValueError('invalid shared export patch provenance ' + kind)
+    if any(len(name.split('/')) != 2 for name in value['packages']):
+        raise ValueError('invalid shared export package provenance path')
+
+
 def create_shared_export(directory, ports_root, git, sdk_source, patch):
     """Export pkgsrc once into a new directory and record its identity."""
     directory = Path(directory)
@@ -710,15 +736,18 @@ def shared_export(directory, ports_root, git, sdk_source, patch):
         raise ValueError('shared pkgsrc export has no receipt')
     receipt = json.loads(path.read_text(encoding='ascii'))
     if (not isinstance(receipt, dict) or receipt.get('format') != SHARED_EXPORT_FORMAT or
-            type(receipt.get('version')) is not int or receipt['version'] not in (1, 2, 3) or
+            type(receipt.get('version')) is not int or receipt['version'] not in (1, 2, 3, 4) or
             set(receipt) != ({'format', 'version', 'identity'} if receipt['version'] == 1 else
                              ({'format', 'version', 'identity', 'material'} if receipt['version'] == 2 else
-                              {'format', 'version', 'identity', 'material', 'inputs', 'dirty_inputs'})) or
-            (receipt['version'] in (2, 3) and
+                              ({'format', 'version', 'identity', 'material', 'inputs', 'dirty_inputs'} if receipt['version'] == 3 else
+                               {'format', 'version', 'identity', 'material', 'inputs', 'dirty_inputs', 'patch_provenance'}))) or
+            (receipt['version'] in (2, 3, 4) and
              (not isinstance(receipt['material'], dict) or
               set(receipt['material']) != set(SHARED_EXPORT_MATERIAL)))):
         raise ValueError('invalid shared pkgsrc export receipt')
-    if receipt['version'] == 3:
+    if receipt['version'] == 4:
+        validate_patch_provenance(receipt['patch_provenance'])
+    if receipt['version'] in (3, 4):
         encoded = json.dumps(receipt['inputs'], sort_keys=True, separators=(',', ':')).encode()
         if hashlib.sha256(encoded).hexdigest() != receipt['identity']['export_inputs_sha256']:
             raise ValueError('invalid shared pkgsrc export input snapshot')
