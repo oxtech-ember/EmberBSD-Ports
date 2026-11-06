@@ -70,6 +70,129 @@ def fingerprint(paths, path):
             'mtime_ns':before.st_mtime_ns}
 
 
+def refresh_tools(a, paths, jsonio, command, work):
+    """Refresh changed pkgsrc tool wrappers under the caller's stage lock."""
+    import tempfile
+    marker = work / '.emberbsd-tools-refresh.json'
+    values = subprocess.run(command + ['-V', '${USE_TOOLS}', '-V', '${WRKDIR}',
+                                       '-V', '${_COOKIE.tools}'], check=True, text=True,
+                            stdout=subprocess.PIPE).stdout.splitlines()
+    require(len(values) == 3, 'invalid tools metadata')
+    use, selected_work, cookie_name = values
+    require(Path(selected_work).resolve(strict=True) == work, 'selected tools work differs from lock')
+    cookie = Path(cookie_name)
+    require(cookie.parent == work and cookie.name == '.tools_done', 'invalid tools cookie')
+    if not os.path.lexists(cookie) and not os.path.lexists(marker):
+        return
+    if os.path.lexists(cookie):
+        require(cookie.is_file() and not cookie.is_symlink() and cookie.stat().st_nlink == 1,
+                'invalid tools cookie file')
+        old_use = cookie.read_text()
+    else:
+        old_use = ''
+    identity = {'work': str(work), 'recipe': str(a.recipe), 'use': use.split(),
+                'command': [x for x in command if not x.startswith(('MAKE_JOBS=', 'NATIVE_PKG_ADD_CMD='))]}
+    if not os.path.lexists(marker) and old_use.split() == use.split():
+        return
+    require(set(old_use.split()) <= set(use.split()), 'removing USE_TOOLS is unsupported')
+    with tempfile.TemporaryDirectory(prefix='ember-tools-plan-') as tmp:
+        scratch = Path(tmp) / 'tools'
+        query = command + ['TOOLS_DIR=' + str(scratch)]
+        expr = '${TOOLS_CREATE:@t@${t}|${TOOLS_CMD.${t}}|${TOOLS_ALIASES.${t}:ts,}@}'
+        groups = subprocess.run(query + ['-V', expr], check=True, text=True,
+                                stdout=subprocess.PIPE).stdout.strip()
+        live = work / '.tools'
+        paths.real_directory(str(live)); paths.real_directory(str(live / 'bin'))
+        if os.path.lexists(marker):
+            record = jsonio.read_json(str(marker))
+            require(record.get('identity') == identity and record.get('version') == 1,
+                    'tools refresh journal changed')
+        else:
+            dry = subprocess.run(command + ['-n', 'post-tools'], check=True, text=True,
+                                 stdout=subprocess.PIPE).stdout
+            require(not dry.strip(), 'custom post-tools is unsupported')
+            record = {'version': 1, 'identity': identity, 'files': {}, 'writing': []}
+        specs = {}
+        for group in groups.split():
+            parts = group.split('|')
+            require(len(parts) == 3 and parts[0] not in ('', '.', '..') and '/' not in parts[0] and '\\' not in parts[0], 'invalid tools group')
+            primary = Path(parts[1]); require(primary.parent == scratch / 'bin', 'tool outside tools bin')
+            aliases = [x for x in parts[2].split(',') if x]
+            require(all(x not in ('', '.', '..') and '/' not in x and '\\' not in x for x in aliases), 'invalid tools alias')
+            key = primary.name
+            spec = (key, tuple(aliases))
+            require(key not in specs or specs[key] == spec, 'conflicting tool targets')
+            specs[key] = spec
+        targets = [str(scratch / 'bin' / x) for x in specs]
+        subprocess.run(query + targets, check=True)
+        def state(path, normalize=False):
+            if path.is_symlink():
+                target = os.readlink(path)
+                if normalize: target = target.replace(str(scratch), str(live))
+                return {'kind': 'link', 'value': target}
+            if not os.path.lexists(path): return {'kind': 'missing'}
+            require(path.is_file() and path.stat().st_nlink == 1, 'unsafe tools file: ' + str(path))
+            data = path.read_bytes()
+            if normalize: data = data.replace(os.fsencode(scratch), os.fsencode(live))
+            return {'kind': 'file', 'sha256': hashlib.sha256(data).hexdigest(),
+                    'mode': stat.S_IMODE(path.stat().st_mode)}
+        expected = {}
+        for primary, aliases in specs.values():
+            for name in (primary, *aliases):
+                candidate = scratch / 'bin' / name
+                item = state(candidate, True)
+                require(item['kind'] != 'missing', 'factory did not produce tool: ' + name)
+                require(name not in expected or expected[name] == item, 'conflicting tool alias')
+                expected[name] = item
+        if not record['files']:
+            for name, goal in expected.items():
+                path = live / 'bin' / name
+                record['files'][name] = {'before': state(path), 'after': goal,
+                                         'mtime_ns': path.lstat().st_mtime_ns if os.path.lexists(path) else None}
+            jsonio.write_json(str(marker), record)
+        require(set(record['files']) == set(expected), 'tool inventory changed during retry')
+        for name, item in record['files'].items():
+            require(item['after'] == expected[name], 'tool factory changed during retry')
+            now = state(live / 'bin' / name)
+            partial = name in record.get('writing', []) and now['kind'] == 'file'
+            require(now in (item['before'], item['after'], {'kind': 'missing'}) or partial, 'tool changed during retry: ' + name)
+        for primary, aliases in specs.values():
+            for alias in aliases:
+                path = live / 'bin' / alias
+                require(not (path.is_symlink() and path.is_dir()), 'directory symlink tool alias: ' + alias)
+        changed = []
+        for primary, aliases in specs.values():
+            if any(state(live / 'bin' / n) != expected[n] for n in (primary, *aliases)):
+                changed.append(primary)
+        changed = sorted(set(changed) | set(record.get('writing', [])))
+        require(set(changed) <= set(specs), 'invalid writing journal')
+        record['writing'] = changed
+        jsonio.write_json(str(marker), record, exclusive=False)
+        for primary in changed:
+            path = live / 'bin' / primary
+            if os.path.lexists(path):
+                path.unlink()
+        if changed:
+            subprocess.run(command + [str(live / 'bin' / x) for x in changed], check=True)
+        for name, item in record['files'].items():
+            path = live / 'bin' / name
+            require(state(path) == item['after'], 'tool factory output differs: ' + name)
+            if item['before'] == item['after'] and item['mtime_ns'] is not None:
+                info = path.lstat()
+                os.utime(path, ns=(info.st_atime_ns, item['mtime_ns']), follow_symlinks=False)
+        record['writing'] = []
+        jsonio.write_json(str(marker), record, exclusive=False)
+        with tempfile.TemporaryDirectory(prefix='.tools-cookie-', dir=work) as tmpcookie:
+            temporary = Path(tmpcookie) / 'cookie'
+            subprocess.run(command + ['_COOKIE.tools=' + str(temporary), 'tools-cookie'], check=True)
+            require(temporary.is_file() and not temporary.is_symlink() and
+                    temporary.read_text().split() == use.split(), 'invalid generated tools cookie')
+            subprocess.run(command + ['configure-clean'], check=True)
+            os.replace(temporary, cookie)
+        marker.unlink()
+        print('Refreshed staged pkgsrc tools')
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     for name in ('sdk-source','bmake','recipe','expected-work'):
@@ -87,6 +210,7 @@ def main():
     sys.path.insert(0,str(a.sdk_source/'src'))
     from emberbsd_sdk import jsonio,paths
     command=[str(a.bmake),'-C',str(a.recipe),*a.make_arg,*a.bmake_args]
+    refresh_tools(a, paths, jsonio, command, a.expected_work.resolve(strict=True))
     result=subprocess.run(command+['_MAKEVARS_MK=defined','show-vars','VARNAMES=WRKDIR WRKSRC CONFIG_SHELL _COOKIE.configure GNU_CONFIGURE CONFIGURE_DIRS'],
                           check=True,stdout=subprocess.PIPE,text=True)
     fields=result.stdout.splitlines();require(len(fields)==6,'invalid configure stage metadata')
@@ -118,7 +242,7 @@ def main():
         require(not os.path.lexists(marker), 'configure directory changed during retry')
         return
     identity={'work':str(work),'source':str(source),'cookie':str(cookie),
-              'command':[arg for arg in command if not arg.startswith('MAKE_JOBS=')],
+              'command':[arg for arg in command if not arg.startswith(('MAKE_JOBS=', 'NATIVE_PKG_ADD_CMD='))],
               'shell':str(shell)}
     if os.path.lexists(marker):
         record=jsonio.read_json(str(marker))

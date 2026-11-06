@@ -1099,10 +1099,6 @@ stage_configure_preserve()
 {
     scp_path=$1 scp_work=$2
     shift 2
-    if [ -f "$scp_work/.configure_done" ] && [ ! -e "$scp_work/.emberbsd-configure-preserve.json" ] &&
-        [ ! -L "$scp_work/.emberbsd-configure-preserve.json" ]; then
-        return 0
-    fi
     if [ -n "$link_args" ]; then
         set -- --sdk-source "$sdk_source" --bmake "$BMAKE" --recipe "$PKGSRCDIR/$scp_path" \
             --expected-work "$scp_work" --make-arg "EMBERBSD_NATIVE_TOOLSET_VERIFIED=$native" \

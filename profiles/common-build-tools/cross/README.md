@@ -638,7 +638,12 @@ checks and lock but creates package archives only, refusing unpreflighted
 missing dependencies. Success goes to `STATE/packaged`, failure to
 `STATE/package-failed`; installed-state rows are unchanged. Matching paired
 Qt roles are packaged from their retained full stage, which remains reusable.
-Neither package is installed.
+Neither package is installed. When the saved pkgsrc tools cookie differs from
+current `USE_TOOLS`, the stage-local package path refreshes the affected tool
+wrappers through the pkgsrc factory and reconfigures the retained stage. Only
+additive changes are supported. It
+preserves unchanged wrappers and compatible objects; custom `post-tools` is
+not supported for this refresh.
 For an existing stage whose archive and earlier patches still match the installed
 package provenance, `cross-bulk.sh patch-refresh PKGPATH[@native] STATE` replays
 the old and current ordered patch series and atomically updates only changed

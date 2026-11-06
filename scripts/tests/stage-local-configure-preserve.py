@@ -22,8 +22,9 @@ with tempfile.TemporaryDirectory(prefix='stage-configure-') as temp:
  os.utime(same,ns=(1000000000000000000,1000000000000000000));before=same.stat();obj_before=obj.stat()
  status=source/'config.status';status.write_text("printf '%s\\n' 'Configuration files:' ' Makefile generated/same.h generated/changed.h' 'Configuration headers:' 'Configuration commands:'\n")
  cookie=work/'.configure_done';failure=root/'fail';failure.write_text('once')
- fake=root/'bmake';fake.write_text('#!'+sys.executable+'''\nimport pathlib,sys\na=sys.argv[1:];work=pathlib.Path('''+repr(str(work))+''');source=pathlib.Path('''+repr(str(source))+''');cookie=work/'.configure_done'\nif 'show-vars' in a:print(str(work)+'\\n'+str(source)+'\\n'+'''+repr(str(a.shell))+'''+ '\\n'+str(cookie)+'\\nyes\\n'+str(source));sys.exit()\nif 'configure' in a:\n if not cookie.exists():\n  (source/'generated/same.h').write_text('same\\n');(source/'generated/changed.h').write_text('new\\n');cookie.write_text('done')\n  if (work/'change-flags').exists():(source/'Makefile').write_text('CFLAGS = -O2 -pthread\\n')\n  f=pathlib.Path('''+repr(str(failure))+''')\n  if f.exists():f.unlink();sys.exit(9)\n sys.exit()\n''');fake.chmod(0o755)
- cmd=[sys.executable,'-B',str(helper),'--sdk-source',str(a.sdk_source),'--bmake',str(fake),'--recipe',str(recipe),'--expected-work',str(work),'--make-arg','MAKE_JOBS=2','--','USE_CROSS_COMPILE=no']
+ fake=root/'bmake';fake.write_text('#!'+sys.executable+'''\nimport pathlib,sys\na=sys.argv[1:];work=pathlib.Path('''+repr(str(work))+''');source=pathlib.Path('''+repr(str(source))+''');cookie=work/'.configure_done'\nif '-V' in a:print('tool\\n'+str(work)+'\\n'+str(work/'.tools_done'));sys.exit()
+if 'show-vars' in a:print(str(work)+'\\n'+str(source)+'\\n'+'''+repr(str(a.shell))+'''+ '\\n'+str(cookie)+'\\nyes\\n'+str(source));sys.exit()\nif 'configure' in a:\n if not cookie.exists():\n  (source/'generated/same.h').write_text('same\\n');(source/'generated/changed.h').write_text('new\\n');cookie.write_text('done')\n  if (work/'change-flags').exists():(source/'Makefile').write_text('CFLAGS = -O2 -pthread\\n')\n  f=pathlib.Path('''+repr(str(failure))+''')\n  if f.exists():f.unlink();sys.exit(9)\n sys.exit()\n''');fake.chmod(0o755)
+ cmd=[sys.executable,'-B',str(helper),'--sdk-source',str(a.sdk_source),'--bmake',str(fake),'--recipe',str(recipe),'--expected-work',str(work),'--make-arg','MAKE_JOBS=2','--make-arg','NATIVE_PKG_ADD_CMD=/run/old/pkg_add','--','USE_CROSS_COMPILE=no']
  fresh=list(cmd);fresh[fresh.index('--expected-work')+1]=str(root/'missing-stage')
  subprocess.run(fresh,check=True,capture_output=True,text=True)
  assert not (root/'missing-stage').exists() and not cookie.exists()
@@ -40,7 +41,7 @@ with tempfile.TemporaryDirectory(prefix='stage-configure-') as temp:
  foreign['files']['../escape']=next(iter(foreign['files'].values()));marker.write_text(json.dumps(foreign))
  assert subprocess.run(cmd,capture_output=True,text=True).returncode
  marker.write_text(saved)
- retry=['MAKE_JOBS=1' if value=='MAKE_JOBS=2' else value for value in cmd]
+ retry=['MAKE_JOBS=1' if value=='MAKE_JOBS=2' else 'NATIVE_PKG_ADD_CMD=/run/new/pkg_add' if value=='NATIVE_PKG_ADD_CMD=/run/old/pkg_add' else value for value in cmd]
  subprocess.run(retry,check=True,capture_output=True,text=True)
  assert same.stat().st_mtime_ns==before.st_mtime_ns and same.read_text()=='same\n'
  assert changed.read_text()=='new\n' and changed.stat().st_mtime_ns!=before.st_mtime_ns
