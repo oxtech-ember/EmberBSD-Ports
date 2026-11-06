@@ -279,3 +279,45 @@ Source-only Cppcheck 2.22.0 reports no warnings in the new implementation and
 fixture. Patch application uses zero fuzz. Full translation-unit compilation,
 the runtime fixture, Clang analysis and executable memory checking remain
 pending the shared GTK4 build; these prepared checks are not runtime acceptance.
+
+# GTK4 notebook and static-box contract
+
+`patch-gtk4-notebook-statbox` retains native GtkNotebook and GtkFrame widgets.
+Notebook selection veto stops the public `switch-page` signal before its
+RUN_LAST class handler. Nested selections and structural changes supersede an
+older request; weak ownership handles deletion during callbacks. Selected-page
+removal sends the changing event before mutation and the changed event after
+native and wx page lists agree. Destruction suppresses selection notifications.
+Native insertion owns GTK parenting, rather than adding an unmanaged widget
+child outside the notebook's GtkStack.
+
+Side-tab labels retain rotation through a small GtkWidget using public measure,
+allocation transforms and snapshot APIs. Images retain the shared wx bitmap
+bundle provider. Dynamic tab text, padding, size requests and hit testing use
+real native widgets and coordinate transforms. Size calculation derives themed
+chrome from actual notebook/page requests, without a synthetic GtkWidgetPath.
+Static boxes use GtkFrame child APIs, retain label widgets across reparenting,
+and measure the actual label and the frame's own CSS border/padding.
+
+Primary references:
+
+- [GtkNotebook selection signal](https://docs.gtk.org/gtk4/signal.Notebook.switch-page.html)
+- [GTK4 notebook signal ordering](https://gitlab.gnome.org/GNOME/gtk/-/blob/4.24.1/gtk/gtknotebook.c)
+- [GtkWidget allocation transforms](https://docs.gtk.org/gtk4/method.Widget.allocate.html)
+- [GtkFrame child and label APIs](https://docs.gtk.org/gtk4/class.Frame.html)
+
+`notebook4-contract` is selected with `BUILD_NOTEBOOK_CONTRACT`. It checks native
+selection veto, silent nested selection, deletion of a requested page during
+notification, selected-page removal veto, synchronized page removal, dynamic
+tab metadata, static-box ownership and notebook destruction during a callback.
+Run under ASan for the reentrant destruction paths. Visual acceptance also
+covers side-label rotation, bitmap rendering, hit testing, focus navigation and
+scaled theme geometry.
+
+The complete notebook.cpp and statbox.cpp translation units, the rotated-label
+GtkWidget implementation and notebook4-contract compile with the selected
+target Clang, the real configured wx setup.h and GTK4 source/generated headers.
+The diagnostic configuration excludes PNG/SVG, GL, WebView and media controls;
+these remain separately selected features in the Ports recipe. Linking, GUI
+execution and executable memory checking remain pending; syntax checks do not
+establish runtime acceptance.

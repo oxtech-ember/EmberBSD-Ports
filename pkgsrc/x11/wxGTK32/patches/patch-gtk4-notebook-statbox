@@ -1,0 +1,544 @@
+$NetBSD$
+
+Port notebooks and static boxes to public GTK4 widget APIs.
+Origin: EmberBSD (AI-assisted). wxWindows licence, like upstream.
+Veto native page changes before GTK's class handler; retain nested mutation,
+page ownership, images, transformed side labels and actual widget measurements.
+See tests/README.md for targeted compile evidence and pending runtime checks.
+https://docs.gtk.org/gtk4/class.Notebook.html
+https://docs.gtk.org/gtk4/class.Frame.html
+
+--- include/wx/gtk/notebook.h.orig
++++ include/wx/gtk/notebook.h
+@@ -119,11 +119,18 @@
+     // is no other way to know about it at the time
+     // of the change selection event
+     int m_oldSelection;
++#ifdef __WXGTK4__
++    unsigned m_gtk4SelectionGeneration;
++    wxSize m_gtk4TabSize;
++    bool m_gtk4Destroying;
++#endif
+ 
+ protected:
+     // set all page's attributes
+     virtual void DoApplyWidgetStyle(GtkRcStyle *style) wxOVERRIDE;
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+     // remove one page from the notebook but do not destroy it
+     virtual wxNotebookPage *DoRemovePage(size_t nPage) wxOVERRIDE;
+--- src/gtk/notebook.cpp.orig
++++ src/gtk/notebook.cpp
+@@ -8,6 +8,10 @@
+ 
+ // For compilers that support precompilation, includes "wx.h".
+ #include "wx/wxprec.h"
++
++#ifdef __WXGTK4__
++#include "notebook_gtk4.inc"
++#else
+ 
+ #if wxUSE_NOTEBOOK
+ 
+@@ -670,3 +674,5 @@
+ }
+ 
+ #endif
++
++#endif // __WXGTK4__
+--- /dev/null
++++ src/gtk/notebook_gtk4.inc
+@@ -0,0 +1,392 @@
++///////////////////////////////////////////////////////////////////////////////
++// GTK4 notebook. Origin: EmberBSD (AI-assisted). wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++#if wxUSE_NOTEBOOK
++#include "wx/notebook.h"
++#include "wx/imaglist.h"
++#include "wx/utils.h"
++#include "wx/log.h"
++#include "wx/weakref.h"
++#include "wx/gtk/private.h"
++#include "wx/gtk/private/image.h"
++#include "wx/listimpl.cpp"
++
++// Public widget allocation/snapshot transforms replace GtkLabel's removed
++// angle property. Only the label rotates; tab icons keep their usual direction.
++struct wxGTKTabLabel
++{
++    GtkWidget parent;
++    GtkWidget* label;
++    bool clockwise;
++};
++struct wxGTKTabLabelClass { GtkWidgetClass parent; };
++G_DEFINE_TYPE(wxGTKTabLabel, wx_gtk_tab_label, GTK_TYPE_WIDGET)
++static void wx_gtk_tab_label_measure(GtkWidget* widget, GtkOrientation orientation,
++    int forSize, int* minimum, int* natural, int* minBaseline, int* natBaseline)
++{
++    wxGTKTabLabel* tab = reinterpret_cast<wxGTKTabLabel*>(widget);
++    gtk_widget_measure(tab->label, orientation == GTK_ORIENTATION_HORIZONTAL ?
++        GTK_ORIENTATION_VERTICAL : GTK_ORIENTATION_HORIZONTAL, forSize,
++        minimum, natural, NULL, NULL);
++    *minBaseline = *natBaseline = -1;
++}
++static void wx_gtk_tab_label_allocate(GtkWidget* widget, int width, int height, int)
++{
++    wxGTKTabLabel* tab = reinterpret_cast<wxGTKTabLabel*>(widget);
++    graphene_point_t point;
++    graphene_point_init(&point, tab->clockwise ? float(width) : 0,
++                               tab->clockwise ? 0 : float(height));
++    GskTransform* transform = gsk_transform_translate(NULL, &point);
++    transform = gsk_transform_rotate(transform, tab->clockwise ? 90 : -90);
++    gtk_widget_allocate(tab->label, height, width, -1, transform);
++}
++static void wx_gtk_tab_label_snapshot(GtkWidget* widget, GtkSnapshot* snapshot)
++{
++    wxGTKTabLabel* tab = reinterpret_cast<wxGTKTabLabel*>(widget);
++    gtk_widget_snapshot_child(widget, tab->label, snapshot);
++}
++static void wx_gtk_tab_label_dispose(GObject* object)
++{
++    wxGTKTabLabel* tab = reinterpret_cast<wxGTKTabLabel*>(object);
++    if (tab->label)
++    {
++        GtkWidget* label = tab->label;
++        tab->label = NULL;
++        gtk_widget_unparent(label);
++    }
++    G_OBJECT_CLASS(wx_gtk_tab_label_parent_class)->dispose(object);
++}
++static void wx_gtk_tab_label_class_init(wxGTKTabLabelClass* klass)
++{
++    GtkWidgetClass* widget = GTK_WIDGET_CLASS(klass);
++    widget->measure = wx_gtk_tab_label_measure;
++    widget->size_allocate = wx_gtk_tab_label_allocate;
++    widget->snapshot = wx_gtk_tab_label_snapshot;
++    G_OBJECT_CLASS(klass)->dispose = wx_gtk_tab_label_dispose;
++    gtk_widget_class_set_css_name(widget, "wx-tab-label");
++}
++static void wx_gtk_tab_label_init(wxGTKTabLabel* tab)
++    { tab->label = NULL; tab->clockwise = false; }
++
++class wxGtkNotebookPage: public wxObject
++{
++public:
++    wxGtkNotebookPage() : m_box(NULL), m_label(NULL), m_image(NULL), m_imageIndex(-1) {}
++    ~wxGtkNotebookPage() { if (m_box) g_object_unref(m_box); }
++    GtkWidget *m_box, *m_label, *m_image;
++    int m_imageIndex;
++private:
++    wxDECLARE_NO_COPY_CLASS(wxGtkNotebookPage);
++};
++WX_DEFINE_LIST(wxGtkNotebookPagesList)
++
++static void wxGTKNotebookChanging(GtkNotebook* native, GtkWidget* page, guint index, wxNotebook* win)
++{
++    const unsigned generation = ++win->m_gtk4SelectionGeneration;
++    wxWeakRef<wxNotebook> self(win);
++    g_object_ref(page);
++    win->m_oldSelection = gtk_notebook_get_current_page(native);
++    const bool allowed = win->SendPageChangingEvent(index);
++    // A nested selection or structural edit supersedes the outer request.
++    // GtkNotebook::switch-page is RUN_LAST, so veto precedes its class handler.
++    if (!self || self->IsBeingDeleted() || !allowed ||
++        generation != self->m_gtk4SelectionGeneration ||
++        gtk_notebook_page_num(native, page) != int(index))
++        g_signal_stop_emission_by_name(native, "switch-page");
++    g_object_unref(page);
++}
++static void wxGTKNotebookChanged(GtkNotebook*, GtkWidget*, guint, wxNotebook* win)
++    { win->GTKOnPageChanged(); }
++
++// Strong native ownership makes unblocking safe even when a wx callback deletes
++// the notebook during a synchronous GTK operation. This never dereferences win.
++struct wxGTKNotebookBlock
++{
++    GtkWidget* widget;
++    wxNotebook* owner;
++    wxGTKNotebookBlock(wxNotebook* win) : widget(GTK_WIDGET(g_object_ref(win->m_widget))), owner(win)
++    {
++        g_signal_handlers_block_by_func(widget, reinterpret_cast<void*>(wxGTKNotebookChanging), owner);
++        g_signal_handlers_block_by_func(widget, reinterpret_cast<void*>(wxGTKNotebookChanged), owner);
++    }
++    wxGTKNotebookBlock(const wxGTKNotebookBlock&) = delete;
++    wxGTKNotebookBlock& operator=(const wxGTKNotebookBlock&) = delete;
++    ~wxGTKNotebookBlock()
++    {
++        g_signal_handlers_unblock_by_func(widget, reinterpret_cast<void*>(wxGTKNotebookChanging), owner);
++        g_signal_handlers_unblock_by_func(widget, reinterpret_cast<void*>(wxGTKNotebookChanged), owner);
++        g_object_unref(widget);
++    }
++};
++
++wxBEGIN_EVENT_TABLE(wxNotebook, wxBookCtrlBase)
++    EVT_NAVIGATION_KEY(wxNotebook::OnNavigationKey)
++wxEND_EVENT_TABLE()
++void wxNotebook::Init()
++{
++    m_padding = 0; m_oldSelection = -1; m_themeEnabled = true;
++    m_gtk4SelectionGeneration = 0;
++    m_gtk4Destroying = false;
++    m_gtk4TabSize = wxDefaultSize;
++}
++wxNotebook::wxNotebook() { Init(); }
++wxNotebook::wxNotebook(wxWindow* parent, wxWindowID id, const wxPoint& pos,
++                      const wxSize& size, long style, const wxString& name)
++{ Init(); Create(parent, id, pos, size, style, name); }
++wxNotebook::~wxNotebook()
++{
++    m_gtk4Destroying = true;
++    if (m_widget) GTKDisconnect(m_widget);
++    DeleteAllPages();
++}
++bool wxNotebook::Create(wxWindow* parent, wxWindowID id, const wxPoint& pos,
++                       const wxSize& size, long style, const wxString& name)
++{
++    if ((style & wxBK_ALIGN_MASK) == wxBK_DEFAULT) style |= wxBK_TOP;
++    if (!PreCreation(parent, pos, size) ||
++        !CreateBase(parent, id, pos, size, style, wxDefaultValidator, name)) return false;
++    m_widget = gtk_notebook_new();
++    g_object_ref(m_widget);
++    gtk_notebook_set_scrollable(GTK_NOTEBOOK(m_widget), TRUE);
++    if (style & wxBK_LEFT) gtk_notebook_set_tab_pos(GTK_NOTEBOOK(m_widget), GTK_POS_LEFT);
++    else if (style & wxBK_RIGHT) gtk_notebook_set_tab_pos(GTK_NOTEBOOK(m_widget), GTK_POS_RIGHT);
++    else if (style & wxBK_BOTTOM) gtk_notebook_set_tab_pos(GTK_NOTEBOOK(m_widget), GTK_POS_BOTTOM);
++    g_signal_connect(m_widget, "switch-page", G_CALLBACK(wxGTKNotebookChanging), this);
++    g_signal_connect_after(m_widget, "switch-page", G_CALLBACK(wxGTKNotebookChanged), this);
++    parent->DoAddChild(this);
++    PostCreation(size);
++    return true;
++}
++void wxNotebook::AddChildGTK(wxWindowGTK*)
++{
++    // GtkNotebook owns page parenting through InsertPage. Direct set_parent()
++    // would bypass its GtkStack and create an unmanaged extra widget child.
++}
++int wxNotebook::GetSelection() const
++    { return m_widget ? gtk_notebook_get_current_page(GTK_NOTEBOOK(m_widget)) : wxNOT_FOUND; }
++wxGtkNotebookPage* wxNotebook::GetNotebookPage(int index) const
++    { return m_pagesData.Item(index)->GetData(); }
++wxString wxNotebook::GetPageText(size_t index) const
++{
++    wxCHECK_MSG(index < GetPageCount(), wxEmptyString, "invalid page index");
++    return wxGTK_CONV_BACK(gtk_label_get_text(GTK_LABEL(GetNotebookPage(index)->m_label)));
++}
++int wxNotebook::GetPageImage(size_t index) const
++{
++    wxCHECK_MSG(index < GetPageCount(), wxNOT_FOUND, "invalid page index");
++    return GetNotebookPage(index)->m_imageIndex;
++}
++bool wxNotebook::SetPageText(size_t index, const wxString& text)
++{
++    wxCHECK_MSG(index < GetPageCount(), false, "invalid page index");
++    gtk_label_set_text(GTK_LABEL(GetNotebookPage(index)->m_label), wxGTK_CONV(text));
++    InvalidateBestSize();
++    return true;
++}
++bool wxNotebook::SetPageImage(size_t index, int image)
++{
++    wxCHECK_MSG(index < GetPageCount(), false, "invalid page index");
++    wxGtkNotebookPage* page = GetNotebookPage(index);
++    const wxBitmapBundle bitmap = GetBitmapBundle(image);
++    if (bitmap.IsOk())
++    {
++        if (!page->m_image)
++        {
++            page->m_image = wxGtkImage::New(this);
++            gtk_box_prepend(GTK_BOX(page->m_box), page->m_image);
++        }
++        WX_GTK_IMAGE(page->m_image)->Set(bitmap);
++    }
++    else if (page->m_image)
++    {
++        GtkWidget* imageWidget = page->m_image;
++        page->m_image = NULL;
++        gtk_box_remove(GTK_BOX(page->m_box), imageWidget);
++    }
++    page->m_imageIndex = image;
++    InvalidateBestSize();
++    return true;
++}
++int wxNotebook::DoSetSelection(size_t index, int flags)
++{
++    wxCHECK_MSG(index < GetPageCount(), wxNOT_FOUND, "invalid page index");
++    const int previous = GetSelection();
++    ++m_gtk4SelectionGeneration;
++    wxWeakRef<wxNotebook> self(this);
++    if (flags & SetSelection_SendEvent)
++        gtk_notebook_set_current_page(GTK_NOTEBOOK(m_widget), index);
++    else
++    {
++        wxGTKNotebookBlock block(this);
++        gtk_notebook_set_current_page(GTK_NOTEBOOK(m_widget), index);
++    }
++    if (self && !IsBeingDeleted())
++    {
++        m_selection = GetSelection();
++        if (m_selection >= 0 && size_t(m_selection) < GetPageCount())
++            GetPage(m_selection)->SetFocus();
++    }
++    return previous;
++}
++void wxNotebook::GTKOnPageChanged()
++{
++    m_selection = GetSelection();
++    SendPageChangedEvent(m_oldSelection);
++}
++bool wxNotebook::InsertPage(size_t index, wxNotebookPage* child,
++                           const wxString& text, bool select, int image)
++{
++    wxCHECK_MSG(child && child->GetParent() == this, false, "invalid page parent");
++    wxCHECK_MSG(index <= GetPageCount(), false, "invalid page index");
++    wxCHECK_MSG(!gtk_widget_get_parent(child->m_widget), false, "page already inserted");
++    ++m_gtk4SelectionGeneration;
++    wxGtkNotebookPage* page = new wxGtkNotebookPage;
++    page->m_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, wxMax(1, m_padding));
++    g_object_ref_sink(page->m_box);
++    gtk_widget_set_margin_start(page->m_box, m_padding);
++    gtk_widget_set_margin_end(page->m_box, m_padding);
++    gtk_widget_set_size_request(page->m_box, m_gtk4TabSize.x, m_gtk4TabSize.y);
++    page->m_label = gtk_label_new(wxGTK_CONV(wxStripMenuCodes(text)));
++    GtkWidget* labelContainer = page->m_label;
++    if (m_windowStyle & (wxBK_LEFT | wxBK_RIGHT))
++    {
++        wxGTKTabLabel* rotated = reinterpret_cast<wxGTKTabLabel*>(g_object_new(wx_gtk_tab_label_get_type(), NULL));
++        rotated->label = page->m_label;
++        rotated->clockwise = (m_windowStyle & wxBK_RIGHT) != 0;
++        gtk_widget_set_parent(page->m_label, GTK_WIDGET(rotated));
++        labelContainer = GTK_WIDGET(rotated);
++    }
++    gtk_box_append(GTK_BOX(page->m_box), labelContainer);
++    m_pages.insert(m_pages.begin() + index, child);
++    m_pagesData.Insert(index, page);
++    SetPageImage(index, image);
++    GTKApplyStyle(page->m_label, NULL);
++    wxWeakRef<wxNotebook> self(this);
++    {
++        wxGTKNotebookBlock block(this);
++        gtk_notebook_insert_page(GTK_NOTEBOOK(m_widget), child->m_widget, page->m_box, index);
++    }
++    if (!self || IsBeingDeleted()) return false;
++    InvalidateBestSize();
++    DoSetSelectionAfterInsertion(index, select);
++    return true;
++}
++wxNotebookPage* wxNotebook::DoRemovePage(size_t index)
++{
++    wxCHECK_MSG(index < GetPageCount(), NULL, "invalid page index");
++    const unsigned generation = ++m_gtk4SelectionGeneration;
++    wxNotebookPage* child = GetPage(index);
++    wxGtkNotebookPage* page = GetNotebookPage(index);
++    const int previous = GetSelection();
++    wxWeakRef<wxNotebook> self(this);
++    wxWeakRef<wxNotebookPage> childLife(child);
++    if (!m_gtk4Destroying && !IsBeingDeleted() && previous == int(index) && GetPageCount() > 1)
++    {
++        const int next = index ? int(index) - 1 : 1;
++        const bool allowed = SendPageChangingEvent(next);
++        if (!self || !childLife || !allowed || IsBeingDeleted() ||
++            generation != m_gtk4SelectionGeneration) return NULL;
++    }
++    {
++        wxGTKNotebookBlock block(this);
++        gtk_notebook_remove_page(GTK_NOTEBOOK(m_widget), index);
++    }
++    if (!self) return childLife.get();
++    wxNotebookBase::DoRemovePage(index);
++    m_pagesData.DeleteObject(page);
++    delete page;
++    m_selection = GetSelection();
++    InvalidateBestSize();
++    // Native removal is complete and both index lists agree before notifying
++    // the actual resulting selection. Veto was handled before the mutation.
++    if (!m_gtk4Destroying && !IsBeingDeleted() && previous == int(index) && m_selection != wxNOT_FOUND)
++        SendPageChangedEvent(previous);
++    return childLife.get();
++}
++bool wxNotebook::DeleteAllPages()
++{
++    while (GetPageCount())
++    {
++        wxWeakRef<wxNotebook> self(this);
++        if (!DeletePage(GetPageCount() - 1)) return false;
++        if (!self) return true;
++    }
++    return true;
++}
++void wxNotebook::SetPadding(const wxSize& padding)
++{
++    m_padding = wxMax(0, padding.x);
++    for (size_t i = 0; i < GetPageCount(); ++i)
++    {
++        GtkWidget* box = GetNotebookPage(i)->m_box;
++        gtk_box_set_spacing(GTK_BOX(box), wxMax(1, m_padding));
++        gtk_widget_set_margin_start(box, m_padding);
++        gtk_widget_set_margin_end(box, m_padding);
++    }
++    InvalidateBestSize();
++}
++void wxNotebook::SetTabSize(const wxSize& size)
++{
++    m_gtk4TabSize = size;
++    for (size_t i = 0; i < GetPageCount(); ++i)
++        gtk_widget_set_size_request(GetNotebookPage(i)->m_box, size.x, size.y);
++    InvalidateBestSize();
++}
++wxSize wxNotebook::CalcSizeFromPage(const wxSize& pageSize) const
++{
++    // Measure actual themed widgets. GTK includes the tab strip and stack CSS
++    // in its native request, so no fabricated GtkWidgetPath or fixed metrics.
++    wxSize pageNatural(0, 0);
++    for (size_t i = 0; i < GetPageCount(); ++i)
++        pageNatural.IncTo(GTKGetPreferredSize(GetPage(i)->m_widget));
++    const wxSize native = GTKGetPreferredSize(m_widget);
++    return wxSize(pageSize.x + wxMax(0, native.x - pageNatural.x),
++                  pageSize.y + wxMax(0, native.y - pageNatural.y));
++}
++static bool wxGTKNotebookContains(GtkWidget* root, GtkWidget* child, const wxPoint& point)
++{
++    if (!gtk_widget_is_visible(child) || !gtk_widget_get_child_visible(child)) return false;
++    graphene_rect_t bounds;
++    if (!gtk_widget_compute_bounds(child, root, &bounds)) return false;
++    graphene_point_t p;
++    graphene_point_init(&p, float(point.x), float(point.y));
++    return graphene_rect_contains_point(&bounds, &p);
++}
++int wxNotebook::HitTest(const wxPoint& point, long* flags) const
++{
++    for (size_t i = 0; i < GetPageCount(); ++i)
++    {
++        wxGtkNotebookPage* page = GetNotebookPage(i);
++        if (!wxGTKNotebookContains(m_widget, page->m_box, point)) continue;
++        if (flags)
++            *flags = page->m_image && wxGTKNotebookContains(m_widget, page->m_image, point) ?
++                wxBK_HITTEST_ONICON : wxGTKNotebookContains(m_widget, page->m_label, point) ?
++                wxBK_HITTEST_ONLABEL : wxBK_HITTEST_ONITEM;
++        return i;
++    }
++    if (flags)
++    {
++        *flags = wxBK_HITTEST_NOWHERE;
++        wxNotebookPage* page = GetCurrentPage();
++        if (page && wxGTKNotebookContains(m_widget, page->m_widget, point))
++            *flags |= wxBK_HITTEST_ONPAGE;
++    }
++    return wxNOT_FOUND;
++}
++void wxNotebook::OnNavigationKey(wxNavigationKeyEvent& event)
++{
++    if (event.IsWindowChange()) AdvanceSelection(event.GetDirection());
++    else event.Skip();
++}
++#if wxUSE_CONSTRAINTS
++void wxNotebook::SetConstraintSizes(bool) { wxControl::SetConstraintSizes(false); }
++bool wxNotebook::DoPhase(int) { return true; }
++#endif
++void wxNotebook::DoApplyWidgetStyle(GtkRcStyle* style)
++{
++    GTKApplyStyle(m_widget, style);
++    for (size_t i = 0; i < GetPageCount(); ++i) GTKApplyStyle(GetNotebookPage(i)->m_label, style);
++}
++wxVisualAttributes wxNotebook::GetClassDefaultAttributes(wxWindowVariant)
++    { return GetDefaultAttributesFromGTKWidget(gtk_notebook_new()); }
++#endif // wxUSE_NOTEBOOK
+--- src/gtk/statbox.cpp.orig
++++ src/gtk/statbox.cpp
+@@ -12,10 +12,15 @@
+ #if wxUSE_STATBOX
+ 
+ #include "wx/statbox.h"
++#ifdef __WXGTK4__
++#include "wx/weakref.h"
++#endif
+ 
+ #include "wx/gtk/private/wrapgtk.h"
+ #include "wx/gtk/private/win_gtk.h"
++#ifndef __WXGTK4__
+ #include "wx/gtk/private/stylecontext.h"
++#endif
+ #include "wx/gtk/private/gtk3-compat.h"
+ 
+ // constants taken from GTK sources
+@@ -92,9 +97,22 @@
+ 
+         // The widget must not have any parent at GTK+ level or setting it as
+         // label widget would fail.
++#ifdef __WXGTK4__
++        // Retain across notify::parent and the native ownership transfer.
++        wxWeakRef<wxWindow> labelLife(labelWin);
++        wxWeakRef<wxStaticBox> self(this);
++        g_object_ref(labelWidget);
++        if (gtk_widget_get_parent(labelWidget)) gtk_widget_unparent(labelWidget);
++        if (!self || !labelLife || gtk_widget_get_parent(labelWidget))
++        {
++            g_object_unref(labelWidget);
++            return false;
++        }
++#else
+         GtkWidget* const oldParent = gtk_widget_get_parent(labelWidget);
+         gtk_container_remove(GTK_CONTAINER(oldParent), labelWidget);
+         gtk_widget_unparent(labelWidget);
++#endif
+ 
+         // It also should be our child at wx API level, but without being our
+         // child in wxGTK, i.e. it must not be added to the GtkFrame container,
+@@ -108,6 +126,9 @@
+ 
+         m_widget = gtk_frame_new(NULL);
+         gtk_frame_set_label_widget(GTK_FRAME(m_widget), labelWidget);
++#ifdef __WXGTK4__
++        g_object_unref(labelWidget);
++#endif
+     }
+ 
+     g_object_ref(m_widget);
+@@ -123,7 +144,11 @@
+     else if ( style & wxALIGN_RIGHT )
+         xalign = 1.0;
+ 
++#ifdef __WXGTK4__
++    gtk_frame_set_label_align(GTK_FRAME(m_widget), xalign);
++#else
+     gtk_frame_set_label_align(GTK_FRAME(m_widget), xalign, 0.5);
++#endif
+ 
+ #ifndef __WXGTK3__
+     if (!wx_is_at_least_gtk2(12))
+@@ -146,7 +171,11 @@
+         // and packing it into the GtkFrame:
+         m_wxwindow = wxPizza::New();
+         gtk_widget_show( m_wxwindow );
++#ifdef __WXGTK4__
++        gtk_frame_set_child(GTK_FRAME(m_widget), m_wxwindow);
++#else
+         gtk_container_add( GTK_CONTAINER (m_widget), m_wxwindow );
++#endif
+         GTKApplyWidgetStyle();
+     }
+ 
+@@ -197,7 +226,22 @@
+ void wxStaticBox::GetBordersForSizer(int *borderTop, int *borderOther) const
+ {
+     GtkWidget* label = gtk_frame_get_label_widget(GTK_FRAME(m_widget));
+-#ifdef __WXGTK3__
++#ifdef __WXGTK4__
++    GtkStyleContext* context = gtk_widget_get_style_context(m_widget);
++    GtkBorder border, padding;
++    gtk_style_context_get_border(context, &border);
++    gtk_style_context_get_padding(context, &padding);
++    *borderOther = wxMax(border.left + padding.left,
++                        wxMax(border.right + padding.right, border.bottom + padding.bottom));
++    *borderTop = border.top + padding.top;
++    if (label)
++    {
++        int width, height;
++        gtk_widget_measure(label, GTK_ORIENTATION_HORIZONTAL, -1, NULL, &width, NULL, NULL);
++        gtk_widget_measure(label, GTK_ORIENTATION_VERTICAL, width, &height, NULL, NULL, NULL);
++        *borderTop += height;
++    }
++#elif defined(__WXGTK3__)
+     *borderOther = 0;
+     *borderTop = 0;
+     if (label)
