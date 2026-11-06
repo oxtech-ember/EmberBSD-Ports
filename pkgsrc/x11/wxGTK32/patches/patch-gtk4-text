@@ -2,7 +2,8 @@ $NetBSD$
 
 Preserve native GTK4 text editing and spellchecking in wxWidgets 3.2.
 AI-assisted EmberBSD adaptation; wxWindows licence, like the upstream files.
-GTK4 native text controllers own IME; GtkText batches native edits and
+GTK4 uses native controller IM contexts within the wx current-key scope;
+GtkText batches native edits and
 GtkTextBuffer user-action signals coalesce multiline changes. Use the common
 libspelling TextBufferAdapter for multiline and mirrored singleline buffers.
 Requires the shared GTK4 core patch's wxGTKKeyEvent/scrollbar boundary.
@@ -11,7 +12,17 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
 
 --- src/gtk/textentry.cpp.orig
 +++ src/gtk/textentry.cpp
-@@ -38,6 +38,47 @@
+@@ -31,6 +31,9 @@
+ #include "wx/textcompleter.h"
+ 
+ #include "wx/gtk/private.h"
++#ifdef __WXGTK4__
++    #include "wx/gtk/private/native-im.h"
++#endif
+ #include "wx/gtk/private/object.h"
+ #include "wx/gtk/private/string.h"
+ 
+@@ -38,6 +41,47 @@
  // wxTextCoalesceData
  // ----------------------------------------------------------------------------
  
@@ -59,7 +70,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  class wxTextCoalesceData
  {
  public:
-@@ -100,6 +141,8 @@
+@@ -100,6 +144,8 @@
      wxDECLARE_NO_COPY_CLASS(wxTextCoalesceData);
  };
  
@@ -68,7 +79,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  //-----------------------------------------------------------------------------
  //  helper function to get the length of the text
  //-----------------------------------------------------------------------------
-@@ -113,7 +156,11 @@
+@@ -113,7 +159,11 @@
      }
  #endif // GTK+ 2.14+
  
@@ -80,7 +91,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  }
  
  // ============================================================================
-@@ -122,6 +169,7 @@
+@@ -122,6 +172,7 @@
  
  extern "C" {
  
@@ -88,7 +99,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  // "event-after" handler is only connected when we get a "key-press-event", so
  // it's effectively called after the end of processing of this event and used
  // to send a single wxEVT_TEXT even if we received several (typically two, when
-@@ -142,6 +190,8 @@
+@@ -142,6 +193,8 @@
      return FALSE;
  }
  
@@ -97,7 +108,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  // "changed" handler for GtkEntry
  static void
  wx_gtk_text_changed_callback(GtkWidget* WXUNUSED(widget), wxTextEntry* entry)
-@@ -247,6 +297,7 @@
+@@ -247,6 +300,7 @@
      }
  }
  
@@ -105,7 +116,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  // GTK+ does not expose any mechanism that we can really rely on to detect if/when
  // the completion popup is shown or hidden. And the sole reliable way (for now) to
  // know its state is to connect to the "grab-notify" signal and be notified then
-@@ -257,6 +308,8 @@
+@@ -257,6 +311,8 @@
  wx_gtk_entry_parent_grab_notify (GtkWidget *widget,
                                   gboolean was_grabbed,
                                   wxTextAutoCompleteData *data);
@@ -114,7 +125,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  
  } // extern "C"
  
-@@ -366,6 +419,12 @@
+@@ -366,6 +422,12 @@
          // instead and only after checking that it is still valid.
          if ( GTK_IS_ENTRY(m_widgetEntry) )
          {
@@ -127,7 +138,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
              gtk_entry_set_completion(m_widgetEntry, NULL);
  
              g_signal_handlers_disconnect_by_data(m_widgetEntry, this);
-@@ -394,10 +453,32 @@
+@@ -394,10 +456,32 @@
          gtk_entry_completion_set_text_column (completion, 0);
          gtk_entry_set_completion(m_widgetEntry, completion);
  
@@ -161,7 +172,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  
      // Provide access to wxTextEntry::GetEditableWindow() to the derived
      // classes: we can call it because this class is a friend of wxTextEntry,
-@@ -578,6 +659,7 @@
+@@ -578,6 +662,7 @@
      wxDECLARE_NO_COPY_CLASS(wxTextAutoCompleteDynamic);
  };
  
@@ -169,7 +180,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  extern "C"
  {
  
-@@ -605,6 +687,8 @@
+@@ -605,6 +690,8 @@
  }
  
  } // extern "C"
@@ -178,7 +189,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  
  // ============================================================================
  // wxTextEntry implementation
-@@ -716,6 +800,13 @@
+@@ -716,6 +803,13 @@
  
  void wxTextEntry::GTKConnectClipboardSignals(GtkWidget* entry)
  {
@@ -192,7 +203,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
      g_signal_connect(entry, "copy-clipboard",
                       G_CALLBACK (wx_gtk_copy_clipboard_callback),
                       GetEditableWindow());
-@@ -729,17 +820,35 @@
+@@ -729,17 +823,35 @@
  
  void wxTextEntry::Copy()
  {
@@ -228,7 +239,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  }
  
  // ----------------------------------------------------------------------------
-@@ -965,6 +1074,11 @@
+@@ -965,6 +1077,11 @@
  
  void wxTextEntry::GTKEntryOnKeypress(GtkWidget* widget) const
  {
@@ -240,7 +251,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
      // We coalesce possibly multiple events resulting from a single key press
      // (this always happens when there is a selection, as we always get a
      // "changed" event when the selection is removed and another one when the
-@@ -989,14 +1103,22 @@
+@@ -989,14 +1106,21 @@
      }
  
      m_coalesceData->StartHandlingKeyPress();
@@ -260,13 +271,12 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
      int result = false;
 -#if GTK_CHECK_VERSION(2, 22, 0)
 +#ifdef __WXGTK4__
-+    // GtkText's native key controller owns its IM context and filters once.
-+    wxUnusedVar(event);
++    result = wxGTKFilterNativeKeypress(GTK_WIDGET(GetEntry()), event);
 +#elif GTK_CHECK_VERSION(2, 22, 0)
      if (wx_is_at_least_gtk2(22))
      {
          result = gtk_entry_im_context_filter_keypress(GetEntry(), event);
-@@ -1035,6 +1157,10 @@
+@@ -1035,6 +1159,10 @@
  
  void wxTextEntry::GTKConnectChangedSignal()
  {
@@ -277,7 +287,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
      g_signal_connect(GetTextObject(), "changed",
                       G_CALLBACK(wx_gtk_text_changed_callback), this);
  
-@@ -1057,7 +1183,26 @@
+@@ -1057,7 +1185,26 @@
  
  bool wxTextEntry::DoSetMargins(const wxPoint& margins)
  {
@@ -305,7 +315,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
      GtkEntry* entry = GetEntry();
  
      if ( !entry )
-@@ -1102,7 +1247,15 @@
+@@ -1102,7 +1249,15 @@
  wxPoint wxTextEntry::DoGetMargins() const
  {
      wxPoint point(-1, -1);
@@ -322,7 +332,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
      GtkEntry* entry = GetEntry();
      if (entry)
      {
-@@ -1166,7 +1319,11 @@
+@@ -1166,7 +1321,11 @@
      // This does the same thing as gtk_entry_real_activate() in GTK itself.
      //
      // Note: in GTK 4 we should probably just use gtk_widget_activate_default().
@@ -334,7 +344,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
      if ( GTK_IS_WINDOW (toplevel) )
      {
          GtkWindow* const window = GTK_WINDOW(toplevel);
-@@ -1181,8 +1338,16 @@
+@@ -1181,8 +1340,16 @@
                          (!default_widget ||
                              !gtk_widget_get_sensitive(default_widget))) )
              {
@@ -353,8 +363,13 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
      }
 --- src/gtk/textctrl.cpp.orig
 +++ src/gtk/textctrl.cpp
-@@ -32,10 +32,18 @@
+@@ -30,12 +30,23 @@
+ #include <ctype.h>
+ 
  #include "wx/gtk/private.h"
++#ifdef __WXGTK4__
++    #include "wx/gtk/private/native-im.h"
++#endif
  #include "wx/gtk/private/gtk3-compat.h"
  
 +#ifdef __WXGTK4__
@@ -372,7 +387,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  #endif // wxUSE_SPELLCHECK && __WXGTK3__
  
  // ----------------------------------------------------------------------------
-@@ -185,6 +193,14 @@
+@@ -185,6 +196,14 @@
      {
          wxGtkTextRemoveTagsWithPrefix(text_buffer, "WXFORECOLOR", start, end);
  
@@ -387,7 +402,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
          const GdkColor *colFg = attr.GetTextColour().GetColor();
          g_snprintf(buf, sizeof(buf), "WXFORECOLOR %d %d %d",
                     colFg->red, colFg->green, colFg->blue);
-@@ -193,6 +209,7 @@
+@@ -193,6 +212,7 @@
          if (!tag)
              tag = gtk_text_buffer_create_tag( text_buffer, buf,
                                                "foreground-gdk", colFg, NULL );
@@ -395,7 +410,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
          gtk_text_buffer_apply_tag (text_buffer, tag, start, end);
      }
  
-@@ -200,6 +217,14 @@
+@@ -200,6 +220,14 @@
      {
          wxGtkTextRemoveTagsWithPrefix(text_buffer, "WXBACKCOLOR", start, end);
  
@@ -410,7 +425,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
          const GdkColor *colBg = attr.GetBackgroundColour().GetColor();
          g_snprintf(buf, sizeof(buf), "WXBACKCOLOR %d %d %d",
                     colBg->red, colBg->green, colBg->blue);
-@@ -208,6 +233,7 @@
+@@ -208,6 +236,7 @@
          if (!tag)
              tag = gtk_text_buffer_create_tag( text_buffer, buf,
                                                "background-gdk", colBg, NULL );
@@ -418,7 +433,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
          gtk_text_buffer_apply_tag (text_buffer, tag, start, end);
      }
  
-@@ -273,11 +299,9 @@
+@@ -273,11 +302,9 @@
  
          // Convert indent from 1/10th of a mm into pixels
  #ifdef __WXGTK4__
@@ -433,7 +448,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  #else
          wxGCC_WARNING_SUPPRESS(deprecated-declarations)
          float factor =
-@@ -340,11 +364,9 @@
+@@ -340,11 +367,9 @@
          {
              // Factor to convert from 1/10th of a mm into pixels
  #ifdef __WXGTK4__
@@ -448,7 +463,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  #else
              wxGCC_WARNING_SUPPRESS(deprecated-declarations)
              float factor =
-@@ -606,6 +628,7 @@
+@@ -606,6 +631,7 @@
  //  "populate_popup" from text control and "unmap" from its poup menu
  //-----------------------------------------------------------------------------
  
@@ -456,7 +471,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  extern "C" {
  static void
  gtk_textctrl_popup_unmap( GtkMenu *WXUNUSED(menu), wxTextCtrl* win )
-@@ -623,6 +646,8 @@
+@@ -623,6 +649,8 @@
      g_signal_connect (menu, "unmap", G_CALLBACK (gtk_textctrl_popup_unmap), win );
  }
  }
@@ -465,7 +480,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  
  //-----------------------------------------------------------------------------
  //  "mark_set"
-@@ -747,7 +772,11 @@
+@@ -747,7 +775,11 @@
  
      if (multi_line)
      {
@@ -477,7 +492,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
          gulong sig_id = g_signal_connect(m_buffer, "mark_set", G_CALLBACK(mark_set), &m_anonymousMarkList);
          // Create view
          m_text = gtk_text_view_new_with_buffer(m_buffer);
-@@ -762,25 +791,40 @@
+@@ -762,25 +794,40 @@
          gtk_text_buffer_create_mark(m_buffer, "ShowPosition", &iter, true);
  
          // create scrolled window
@@ -519,7 +534,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
      }
      else
      {
-@@ -790,11 +834,19 @@
+@@ -790,11 +837,19 @@
  
          // Set a minimal width for preferred size to avoid GTK3 debug warnings
          // about size allocations smaller than preferred size
@@ -539,7 +554,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  
          if (style & wxNO_BORDER)
              gtk_entry_set_has_frame((GtkEntry*)m_text, FALSE);
-@@ -816,9 +868,11 @@
+@@ -816,9 +871,11 @@
      GTKConnectChangedSignal();
  
      // Catch to disable focus out handling
@@ -551,7 +566,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  
      if (!value.empty())
      {
-@@ -920,7 +974,7 @@
+@@ -920,7 +977,7 @@
      return NULL;
  }
  
@@ -560,19 +575,18 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  {
      if (IsSingleLine())
          return GTKEntryIMFilterKeypress(event);
-@@ -930,7 +984,10 @@
+@@ -930,7 +987,9 @@
      GTKEntryOnKeypress(m_text);
  
      int result = false;
 -#if GTK_CHECK_VERSION(2, 22, 0)
 +#ifdef __WXGTK4__
-+    // The native text-view controller filters the key through its own IME.
-+    wxUnusedVar(event);
++    result = wxGTKFilterNativeKeypress(m_text, event);
 +#elif GTK_CHECK_VERSION(2, 22, 0)
      if (wx_is_at_least_gtk2(22))
      {
          result = gtk_text_view_im_context_filter_keypress(GTK_TEXT_VIEW(m_text), event);
-@@ -1022,6 +1079,25 @@
+@@ -1022,6 +1081,25 @@
  
  #if wxUSE_SPELLCHECK && defined(__WXGTK3__)
  
@@ -598,7 +612,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  bool wxTextCtrl::EnableProofCheck(const wxTextProofOptions& options)
  {
      if ( IsMultiLine() )
-@@ -1075,6 +1151,8 @@
+@@ -1075,6 +1153,8 @@
  
      return opts;
  }
@@ -607,7 +621,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  
  #endif // wxUSE_SPELLCHECK && __WXGTK3__
  
-@@ -1205,12 +1283,16 @@
+@@ -1205,12 +1285,16 @@
  extern "C" {
  static gboolean afterLayout(void* data)
  {
@@ -624,7 +638,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
      return false;
  }
  }
-@@ -1237,7 +1319,7 @@
+@@ -1237,7 +1321,7 @@
      // this key press -- which is not the case here (but m_imKeyEvent might
      // still be set e.g. because we're called from a menu event handler
      // triggered by a keyboard accelerator), so reset m_imKeyEvent temporarily.
@@ -633,7 +647,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
      m_imKeyEvent = NULL;
      wxON_BLOCK_EXIT_SET(m_imKeyEvent, imKeyEvent_save);
  
-@@ -1629,6 +1711,26 @@
+@@ -1629,6 +1713,26 @@
  {
      if ( !IsMultiLine() )
      {
@@ -660,7 +674,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
          // These variables will contain the position inside PangoLayout.
          int x = pt.x,
              y = pt.y;
-@@ -1676,6 +1778,7 @@
+@@ -1676,6 +1780,7 @@
              *pos = idx;
  
          return wxTE_HT_ON_TEXT;
@@ -668,7 +682,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
      }
  
      int x, y;
-@@ -1876,6 +1979,7 @@
+@@ -1876,6 +1981,7 @@
      return GTK_WIDGET(m_text);
  }
  
@@ -676,7 +690,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  GdkWindow *wxTextCtrl::GTKGetWindow(wxArrayGdkWindows& WXUNUSED(windows)) const
  {
      if ( IsMultiLine() )
-@@ -1892,6 +1996,8 @@
+@@ -1892,6 +1998,8 @@
  #endif
      }
  }
@@ -685,7 +699,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  
  // the font will change for subsequent text insertiongs
  bool wxTextCtrl::SetFont( const wxFont &font )
-@@ -1990,6 +2096,14 @@
+@@ -1990,6 +2098,14 @@
      return false;
  }
  
@@ -700,7 +714,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
  bool wxTextCtrl::GetStyle(long position, wxTextAttr& style)
  {
      if ( !IsMultiLine() )
-@@ -2006,6 +2120,74 @@
+@@ -2006,6 +2122,74 @@
      GtkTextIter positioni;
      gtk_text_buffer_get_iter_at_offset(m_buffer, &positioni, position);
  
@@ -775,7 +789,7 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
      // Obtain a copy of the default attributes
      GtkTextAttributes * const
          pattr = gtk_text_view_get_default_attributes(GTK_TEXT_VIEW(m_text));
-@@ -2086,13 +2268,17 @@
+@@ -2086,13 +2270,17 @@
          // TODO: set alignment, tabs and indents
      }
  
@@ -1027,6 +1041,71 @@ https://gitlab.gnome.org/GNOME/libspelling/-/tree/0.4.10
 +    GMenuModel* m_oldMenu;
 +    GMenu* m_menu;
 +};
++#endif
+--- /dev/null
++++ include/wx/gtk/private/native-im.h
+@@ -0,0 +1,62 @@
++///////////////////////////////////////////////////////////////////////////////
++// Native GTK4 text input within wxWindow's current-key scope.
++// Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++#ifndef _WX_GTK_PRIVATE_NATIVE_IM_H_
++#define _WX_GTK_PRIVATE_NATIVE_IM_H_
++
++#include <gtk/gtk.h>
++
++// Use the native control's existing IM context, including its focus, preedit
++// and surrounding-text callbacks. The caller consumes a handled key, preventing
++// a second native IM pass. Do not retain the observed controller model: GTK
++// enables extra controller bookkeeping for the lifetime of the model.
++inline bool wxGTKFilterNativeKeypress(GtkWidget* widget, GdkEvent* event)
++{
++    if (GTK_IS_EDITABLE(widget))
++    {
++        GtkEditable* delegate = gtk_editable_get_delegate(GTK_EDITABLE(widget));
++        if (delegate) widget = GTK_WIDGET(delegate);
++    }
++
++    g_object_ref(widget);
++    GListModel* controllers = gtk_widget_observe_controllers(widget);
++    GtkEventController* native = NULL;
++    GtkIMContext* context = NULL;
++    const guint count = g_list_model_get_n_items(controllers);
++    for (guint i = 0; i < count; ++i)
++    {
++        GtkEventController* controller = GTK_EVENT_CONTROLLER(g_list_model_get_item(controllers, i));
++        if (GTK_IS_EVENT_CONTROLLER_KEY(controller) &&
++            gtk_event_controller_get_propagation_phase(controller) != GTK_PHASE_NONE)
++        {
++            context = gtk_event_controller_key_get_im_context(GTK_EVENT_CONTROLLER_KEY(controller));
++            if (context && gtk_im_context_get_client_widget(context) == widget)
++            {
++                native = controller;
++                g_object_ref(context);
++                break;
++            }
++            context = NULL;
++        }
++        g_object_unref(controller);
++    }
++    g_object_unref(controllers);
++
++    bool handled = false;
++    if (context)
++    {
++        handled = gtk_im_context_filter_keypress(context, event);
++        // Match GtkEventControllerKey's successful IM path: GtkText/TextView
++        // use this signal to reset composition when the cursor moves later.
++        // A synchronous commit can destroy the wx control or remove controllers.
++        if (handled && gtk_event_controller_get_widget(native) == widget &&
++            !gtk_widget_in_destruction(widget))
++            g_signal_emit_by_name(native, "im-update");
++        g_object_unref(context);
++        g_object_unref(native);
++    }
++    g_object_unref(widget);
++    return handled;
++}
 +#endif
 --- interface/wx/textctrl.h.orig
 +++ interface/wx/textctrl.h
