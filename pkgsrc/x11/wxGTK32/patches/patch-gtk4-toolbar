@@ -85,7 +85,7 @@ https://docs.gtk.org/gtk4/method.Viewport.set_scroll_to_focus.html
 +#endif // __WXGTK4__
 --- /dev/null
 +++ src/gtk/toolbar_gtk4.inc
-@@ -0,0 +1,519 @@
+@@ -0,0 +1,531 @@
 +///////////////////////////////////////////////////////////////////////////////
 +// GTK4 toolbar. Origin: EmberBSD (AI-assisted). wxWindows licence.
 +///////////////////////////////////////////////////////////////////////////////
@@ -285,11 +285,23 @@ https://docs.gtk.org/gtk4/method.Viewport.set_scroll_to_focus.html
 +        wxToolBarTool* tool = item ? Lookup(item) : NULL;
 +        if (!tool || g_blockEventsOnDrag || !tool->GetToolBar() ||
 +            tool->GetToolBar()->IsBeingDeleted()) return;
++        wxWeakRef<wxToolBarBase> bar(tool->GetToolBar());
++        const int id = tool->GetId();
++        g_object_ref(item);
++        g_object_ref(gesture);
++        // Claiming a sequence can cancel another controller and deliver a wx
++        // capture-lost callback which removes this tool or destroys its bar.
 +        gtk_gesture_set_state(GTK_GESTURE(gesture), GTK_EVENT_SEQUENCE_CLAIMED);
-+        graphene_point_t input, output;
-+        graphene_point_init(&input, float(x), float(y));
-+        if (gtk_widget_compute_point(item, tool->GetToolBar()->m_widget, &input, &output))
-+            tool->GetToolBar()->OnRightClick(tool->GetId(), wxRound(output.x), wxRound(output.y));
++        if (bar && !bar->IsBeingDeleted() && Lookup(item) == tool &&
++            tool->GetToolBar() == bar.get())
++        {
++            graphene_point_t input, output;
++            graphene_point_init(&input, float(x), float(y));
++            if (gtk_widget_compute_point(item, bar->m_widget, &input, &output))
++                bar->OnRightClick(id, wxRound(output.x), wxRound(output.y));
++        }
++        g_object_unref(gesture);
++        g_object_unref(item);
 +    }
 +};
 +

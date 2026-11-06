@@ -419,7 +419,10 @@ remove/reinsert ownership, dropdown events, text-only to bitmap presentation,
 orientation and destruction during a command callback. Run it under ASan for
 reentrant lifetime checks. Popup rendering is also covered by menu4-contract;
 actual toolbar keyboard delivery, overflow scrolling, icon rendering and focus
-notifications remain interactive checks.
+notifications remain interactive checks. In particular, claiming a right-click
+gesture must remain safe if cancelling a competing gesture delivers a wx
+capture-lost handler that deletes the tool or toolbar. A synthetic pressed
+signal without a real GDK event sequence does not establish that contract.
 
 The complete toolbar.cpp and common/addremovectrl.cpp translation units and
 this fixture pass target Clang syntax checks using real configured wx and GTK4
