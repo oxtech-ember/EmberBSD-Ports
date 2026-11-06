@@ -68,13 +68,12 @@ Origin: EmberBSD, wxWindows licence.
      // override this and return true.
 --- include/wx/gtk/dc.h.orig
 +++ include/wx/gtk/dc.h
-@@ -13,12 +13,18 @@
+@@ -13,12 +13,17 @@
  
  #include "wx/dcgraph.h"
  
 +#ifdef __WXGTK4__
 +typedef struct _GtkWidget GtkWidget;
-+typedef struct _GdkDrawContext GdkDrawContext;
 +#endif
 +
  class wxGTKCairoDCImpl: public wxGCDCImpl
@@ -87,14 +86,15 @@ Origin: EmberBSD, wxWindows licence.
  
      virtual void DoDrawBitmap(const wxBitmap& bitmap, int x, int y, bool useMask) wxOVERRIDE;
      virtual void DoDrawCheckMark(int x, int y, int width, int height) wxOVERRIDE;
-@@ -39,8 +45,14 @@
+@@ -39,8 +44,15 @@
      virtual wxLayoutDirection GetLayoutDirection() const wxOVERRIDE;
  
  protected:
 +#ifdef __WXGTK4__
 +    // Set m_size from the GTK widget's allocated content size.
 +    void InitSize(GtkWidget* widget);
-+    GdkDrawContext* m_surfaceDrawContext;
++    // Token returned by the active wxPizza client-content drawing session.
++    void* m_clientDCToken;
 +#else
      // Set m_size from the given (valid) GdkWindow.
      void InitSize(GdkWindow* window);
@@ -313,7 +313,7 @@ Origin: EmberBSD, wxWindows licence.
  #ifdef __WXGTK3__
      if (bmpData->m_pixbufMask)
          return bmpData->m_pixbufMask;
-@@ -1567,6 +1631,88 @@
+@@ -1567,6 +1631,87 @@
  #endif
  }
  
@@ -370,8 +370,7 @@ Origin: EmberBSD, wxWindows licence.
 +        return NULL;
 +    }
 +
-+    const gsize length = gsize(gdk_pixbuf_get_rowstride(pixbuf)) *
-+                         gdk_pixbuf_get_height(pixbuf);
++    const gsize length = gdk_pixbuf_get_byte_length(pixbuf);
 +    // GdkMemoryTexture may outlive this bitmap generation in retained render
 +    // nodes, so its backing pixels must not alias mutable wxBitmap storage.
 +    GBytes* bytes = g_bytes_new(gdk_pixbuf_read_pixels(pixbuf), length);
@@ -402,7 +401,7 @@ Origin: EmberBSD, wxWindows licence.
  #ifndef __WXGTK3__
  bool wxBitmap::HasPixbuf() const
  {
-@@ -1595,11 +1741,14 @@
+@@ -1595,11 +1740,14 @@
  {
      void* bits = NULL;
  #ifdef __WXGTK3__
@@ -474,45 +473,47 @@ Origin: EmberBSD, wxWindows licence.
  wxVisualAttributes
 --- src/gtk/dc.cpp.orig
 +++ src/gtk/dc.cpp
-@@ -22,8 +22,13 @@
+@@ -21,9 +21,20 @@
+ #include "wx/gtk/dc.h"
  
  #include "wx/gtk/private/wrapgtk.h"
- 
++#ifdef __WXGTK4__
++#include "wx/gtk/private/win_gtk.h"
++#endif
++
 +#include <math.h>
 +
++#ifdef __WXGTK4__
++#endif
+ 
  wxGTKCairoDCImpl::wxGTKCairoDCImpl(wxDC* owner)
      : wxGCDCImpl(owner)
 +#ifdef __WXGTK4__
-+    , m_surfaceDrawContext(NULL)
++    , m_clientDCToken(NULL)
 +#endif
  {
      m_layoutDir = wxLayout_Default;
  }
-@@ -31,6 +36,9 @@
+@@ -31,6 +42,9 @@
  wxGTKCairoDCImpl::wxGTKCairoDCImpl(wxDC* owner, wxWindow* window, wxLayoutDirection dir, int width)
      : wxGCDCImpl(owner, 0)
      , m_size(width, 0)
 +#ifdef __WXGTK4__
-+    , m_surfaceDrawContext(NULL)
++    , m_clientDCToken(NULL)
 +#endif
  {
      m_layoutDir = dir;
      if ( window )
-@@ -43,11 +51,95 @@
+@@ -43,11 +57,29 @@
      }
  }
  
 +wxGTKCairoDCImpl::~wxGTKCairoDCImpl()
 +{
 +#ifdef __WXGTK4__
-+    // The GDK draw context commits its frame only after the wx graphics
-+    // context has released the Cairo context that targets its frame buffer.
 +    SetGraphicsContext(NULL);
-+    if (m_surfaceDrawContext)
-+    {
-+        gdk_draw_context_end_frame(m_surfaceDrawContext);
-+        g_object_unref(m_surfaceDrawContext);
-+    }
++    if (m_clientDCToken)
++        wxPizza::EndClientDC(m_clientDCToken);
 +#endif
 +}
 +
@@ -523,67 +524,6 @@ Origin: EmberBSD, wxWindows licence.
 +    m_size.y = gtk_widget_get_height(widget);
 +}
 +
-+// Create a short-lived drawing frame on the real GtkNative surface. GTK4 has
-+// no child GdkWindows: drawing is clipped to the widget allocation and
-+// translated into the native surface's coordinate space. GTK deprecated the
-+// begin/end frame API in 4.16 in favor of retained rendering; this immediate
-+// compatibility path lasts until the next GTK redraw of the same area.
-+static cairo_t* wxCreateGTKSurfaceContext(GtkWidget* widget,
-+                                          GdkDrawContext** drawContext,
-+                                          wxSize* size)
-+{
-+    GtkNative* native = gtk_widget_get_native(widget);
-+    if (!native)
-+        return NULL;
-+
-+    GdkSurface* surface = gtk_native_get_surface(native);
-+    if (!surface || gdk_surface_is_destroyed(surface) ||
-+        !gdk_surface_get_mapped(surface))
-+        return NULL;
-+
-+    GtkWidget* nativeWidget = GTK_WIDGET(native);
-+    const graphene_point_t localOrigin = GRAPHENE_POINT_INIT(0, 0);
-+    graphene_point_t origin;
-+    if (!gtk_widget_compute_point(widget, nativeWidget, &localOrigin, &origin))
-+        return NULL;
-+
-+    size->x = gtk_widget_get_width(widget);
-+    size->y = gtk_widget_get_height(widget);
-+    if (size->x <= 0 || size->y <= 0)
-+        return NULL;
-+
-+    const int left = int(floor(origin.x));
-+    const int top = int(floor(origin.y));
-+    const int right = int(ceil(origin.x + size->x));
-+    const int bottom = int(ceil(origin.y + size->y));
-+    const cairo_rectangle_int_t rect = { left, top, right - left, bottom - top };
-+    cairo_region_t* region = cairo_region_create_rectangle(&rect);
-+    GdkCairoContext* context = gdk_surface_create_cairo_context(surface);
-+    if (!context)
-+    {
-+        cairo_region_destroy(region);
-+        return NULL;
-+    }
-+
-+    *drawContext = GDK_DRAW_CONTEXT(context);
-+    gdk_draw_context_begin_frame(*drawContext, region);
-+    cairo_region_destroy(region);
-+
-+    cairo_t* cr = gdk_cairo_context_cairo_create(context);
-+    if (cairo_status(cr) != CAIRO_STATUS_SUCCESS)
-+    {
-+        cairo_destroy(cr);
-+        gdk_draw_context_end_frame(*drawContext);
-+        g_object_unref(*drawContext);
-+        *drawContext = NULL;
-+        return NULL;
-+    }
-+
-+    cairo_translate(cr, origin.x, origin.y);
-+    cairo_rectangle(cr, 0, 0, size->x, size->y);
-+    cairo_clip(cr);
-+    return cr;
-+}
 +#else
  void wxGTKCairoDCImpl::InitSize(GdkWindow* window)
  {
@@ -594,7 +534,7 @@ Origin: EmberBSD, wxWindows licence.
  
  void wxGTKCairoDCImpl::DoDrawBitmap(const wxBitmap& bitmap, int x, int y, bool useMask)
  {
-@@ -408,6 +500,44 @@
+@@ -408,6 +440,59 @@
  wxWindowDCImpl::wxWindowDCImpl(wxWindowDC* owner, wxWindow* window)
      : wxGTKCairoDCImpl(owner, window)
  {
@@ -606,11 +546,26 @@ Origin: EmberBSD, wxWindows licence.
 +    InitSize(widget);
 +    cairo_t* cr = window->GTKPaintContext();
 +    const bool inPaint = cr != NULL;
-+    if (!cr)
-+        cr = wxCreateGTKSurfaceContext(widget, &m_surfaceDrawContext, &m_size);
++    bool ownsContext = false;
 +    if (!cr)
 +    {
-+        wxFAIL_MSG("wxWindowDC requires a mapped GtkNative surface or an active GTK paint");
++        if (WX_IS_PIZZA(widget))
++        {
++            cr = WX_PIZZA(widget)->BeginClientDC(&m_clientDCToken);
++            ownsContext = cr != NULL;
++        }
++        if (m_size.x <= 0 || m_size.y <= 0)
++            window->GetClientSize(&m_size.x, &m_size.y);
++    }
++    if (!cr)
++    {
++        wxGraphicsContext* const gc = wxGraphicsContext::Create();
++        if (gc)
++        {
++            m_ok = true;
++            gc->SetContentScaleFactor(m_contentScaleFactor);
++            SetGraphicsContext(gc);
++        }
 +        return;
 +    }
 +
@@ -619,7 +574,8 @@ Origin: EmberBSD, wxWindows licence.
 +    if (!inPaint)
 +        AdjustForRTL(cr);
 +    wxGraphicsContext* gc = wxGraphicsContext::CreateFromNative(cr);
-+    cairo_destroy(cr);
++    if (ownsContext)
++        cairo_destroy(cr);
 +    if (gc)
 +    {
 +        gc->SetContentScaleFactor(m_contentScaleFactor);
@@ -628,18 +584,17 @@ Origin: EmberBSD, wxWindows licence.
 +    else
 +    {
 +        m_ok = false;
-+        if (m_surfaceDrawContext)
++        if (m_clientDCToken)
 +        {
-+            gdk_draw_context_end_frame(m_surfaceDrawContext);
-+            g_object_unref(m_surfaceDrawContext);
-+            m_surfaceDrawContext = NULL;
++            wxPizza::EndClientDC(m_clientDCToken);
++            m_clientDCToken = NULL;
 +        }
 +    }
 +#else
      GtkWidget* widget = window->m_wxwindow;
      if (widget == NULL)
          widget = window->m_widget;
-@@ -450,12 +580,51 @@
+@@ -450,12 +535,66 @@
      }
      else
          SetGraphicsContext(wxGraphicsContext::Create());
@@ -658,11 +613,26 @@ Origin: EmberBSD, wxWindows licence.
 +    InitSize(widget);
 +    cairo_t* cr = window->GTKPaintContext();
 +    const bool inPaint = cr != NULL;
-+    if (!cr)
-+        cr = wxCreateGTKSurfaceContext(widget, &m_surfaceDrawContext, &m_size);
++    bool ownsContext = false;
 +    if (!cr)
 +    {
-+        wxFAIL_MSG("wxClientDC requires a mapped GtkNative surface or an active GTK paint");
++        if (WX_IS_PIZZA(widget))
++        {
++            cr = WX_PIZZA(widget)->BeginClientDC(&m_clientDCToken);
++            ownsContext = cr != NULL;
++        }
++        if (m_size.x <= 0 || m_size.y <= 0)
++            window->GetClientSize(&m_size.x, &m_size.y);
++    }
++    if (!cr)
++    {
++        wxGraphicsContext* const gc = wxGraphicsContext::Create();
++        if (gc)
++        {
++            m_ok = true;
++            gc->SetContentScaleFactor(m_contentScaleFactor);
++            SetGraphicsContext(gc);
++        }
 +        return;
 +    }
 +
@@ -671,7 +641,8 @@ Origin: EmberBSD, wxWindows licence.
 +    if (!inPaint)
 +        AdjustForRTL(cr);
 +    wxGraphicsContext* gc = wxGraphicsContext::CreateFromNative(cr);
-+    cairo_destroy(cr);
++    if (ownsContext)
++        cairo_destroy(cr);
 +    if (gc)
 +    {
 +        gc->SetContentScaleFactor(m_contentScaleFactor);
@@ -680,18 +651,17 @@ Origin: EmberBSD, wxWindows licence.
 +    else
 +    {
 +        m_ok = false;
-+        if (m_surfaceDrawContext)
++        if (m_clientDCToken)
 +        {
-+            gdk_draw_context_end_frame(m_surfaceDrawContext);
-+            g_object_unref(m_surfaceDrawContext);
-+            m_surfaceDrawContext = NULL;
++            wxPizza::EndClientDC(m_clientDCToken);
++            m_clientDCToken = NULL;
 +        }
 +    }
 +#else
      GtkWidget* widget = window->m_wxwindow;
      if (widget == NULL)
          widget = window->m_widget;
-@@ -486,6 +655,7 @@
+@@ -486,6 +625,7 @@
      }
      else
          SetGraphicsContext(wxGraphicsContext::Create());
@@ -699,7 +669,7 @@ Origin: EmberBSD, wxWindows licence.
  }
  //-----------------------------------------------------------------------------
  
-@@ -495,7 +665,13 @@
+@@ -495,7 +635,13 @@
  {
      cairo_t* cr = window->GTKPaintContext();
      wxCHECK_RET(cr, "using wxPaintDC without being in a native paint event");
@@ -713,7 +683,7 @@ Origin: EmberBSD, wxWindows licence.
      wxGraphicsContext* gc = wxGraphicsContext::CreateFromNative(cr);
      gc->SetContentScaleFactor(m_contentScaleFactor);
      SetGraphicsContext(gc);
-@@ -521,6 +697,9 @@
+@@ -521,6 +667,9 @@
  wxScreenDCImpl::wxScreenDCImpl(wxScreenDC* owner)
      : wxGTKCairoDCImpl(owner, static_cast<wxWindow*>(NULL))
  {
@@ -723,7 +693,7 @@ Origin: EmberBSD, wxWindows licence.
      GdkWindow* window = gdk_get_default_root_window();
      InitSize(window);
  
-@@ -529,6 +708,7 @@
+@@ -529,6 +678,7 @@
      cairo_destroy(cr);
      gc->SetContentScaleFactor(m_contentScaleFactor);
      SetGraphicsContext(gc);
