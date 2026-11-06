@@ -640,8 +640,11 @@ custom patch hooks, and unsupported substitutions affecting changed source files
 For an existing changed patch, set `CROSS_BULK_PATCH_REFRESH_PREVIOUS_RECIPE`
 to an absolute directory containing the installed recipe's Makefile, distinfo,
 patches, and recipe-local includes. The installed package provenance binds those
-inputs; the current recipe is reconfigured before the next build. When one
-unchanged pre-configure substitution affects the changed files, also set
+inputs; the current recipe is reconfigured before the next build. Current local
+includes may change configuration or package policy when source preparation,
+extraction hooks and substitutions remain identical. Both recipes' local inputs
+must stay unchanged during replay. When one unchanged substitution at
+`pre-configure` or `do-configure-pre-hook` affects the changed files, also set
 `CROSS_BULK_PATCH_REFRESH_EXISTING_SUBST` to its class name. The owner replays
 that class against both candidates and retains the verified existing cookie.
 If an older patch inventory omits patches from that installed recipe, each

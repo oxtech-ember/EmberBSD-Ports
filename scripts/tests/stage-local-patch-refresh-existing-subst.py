@@ -62,7 +62,9 @@ with tempfile.TemporaryDirectory(prefix='existing-subst-test-') as tmp:
                 'PKG_DBDIR': '/usr/pkg/pkgdb', 'CROSS_DESTDIR': str(base / 'sys'),
                 'PKGBASE': 'demo', 'PKGVERSION_NOREV': '1', 'PATCHFILES': '',
                 'PATCHDIR': str(recipe / 'patches'), 'DISTINFO_FILE': str(recipe / 'distinfo'),
-                'EXTRACT_ONLY': archive.name, 'LOCALPATCHES': '', 'META_PACKAGE': '',
+                'EXTRACT_ONLY': archive.name, 'EXTRACT_USING': 'bsdtar', 'EXTRACT_SUFX': '.tar.xz',
+                'EXTRACT_CMD': '/selected/bsdtar', 'EXTRACT_ENV': 'env',
+                'EXTRACT_BEFORE_ARGS': '-xf', 'EXTRACT_AFTER_ARGS': '', 'LOCALPATCHES': '', 'META_PACKAGE': '',
                 'SUBST_CLASSES': 'rewrite', 'SUBST_STAGE.rewrite': 'pre-configure',
                 'SUBST_FILES.rewrite': 'input third', 'SUBST_VARS.rewrite': '',
                 'SUBST_SED.rewrite': '-e replace', 'SUBST_FILTER_CMD.rewrite': '/selected/sed -e replace',
@@ -79,7 +81,7 @@ for arg in args:
   if names[0]=='PKG_FAIL_REASON':
    with pathlib.Path(''' + repr(str(base / 'metadata-queries')) + ''').open('a') as log: log.write(('old' if old else 'new')+'\\n')
   print('\\n'.join((''' + repr(str(previous / 'Makefile') + ' ' + str(previous / 'Makefile.common') + ' ../../mk/bsd.prefs.mk') + ''' if old and n=='.MAKE.MAKEFILES' else v[n]) for n in names));sys.exit()
-if 'pre-patch' in args or 'post-patch' in args:sys.exit()
+if 'pre-patch' in args or 'post-patch' in args or 'pre-extract' in args or 'post-extract' in args:sys.exit()
 if 'configure-clean' in args:
  flag=pathlib.Path(''' + repr(str(base / 'fail-clean')) + ''')
  if flag.exists():flag.unlink();sys.exit(8)
@@ -107,6 +109,22 @@ sys.exit(3)
     assert (source / 'third').stat().st_mtime_ns == third_time
     assert (source / 'sibling.o').stat().st_mtime_ns == object_time
     assert (work / '.subst_rewrite_done').read_bytes() == cookie
+    base, work, source, command, previous = setup('configure-pre-hook')
+    config = base / 'vars.json'
+    values = json.loads(config.read_text())
+    values['SUBST_STAGE.rewrite'] = 'do-configure-pre-hook'
+    config.write_text(json.dumps(values))
+    subprocess.run(command, check=True, capture_output=True, text=True)
+    assert (source / 'input').read_bytes() == b'new /prefix\n'
+    assert (work / '.subst_rewrite_done').read_text() == 'input\nthird\n'
+    base, work, source, command, previous = setup('post-configure-rejected')
+    config = base / 'vars.json'
+    values = json.loads(config.read_text())
+    values['SUBST_STAGE.rewrite'] = 'post-configure'
+    config.write_text(json.dumps(values))
+    result = subprocess.run(command, capture_output=True, text=True)
+    assert result.returncode and 'unsupported existing SUBST files or stage' in result.stderr
+    assert (source / 'input').read_bytes() == b'old /prefix\n'
     base, work, source, command, previous = setup('retry')
     (base / 'fail-clean').write_text('once')
     assert subprocess.run(command, capture_output=True).returncode != 0
@@ -127,6 +145,41 @@ sys.exit(3)
     (previous / 'Makefile.common').write_text('foreign\n')
     result = subprocess.run(command, capture_output=True, text=True)
     assert result.returncode and 'included recipe input differs' in result.stderr
+    base, work, source, command, previous = setup('current-include-config-only')
+    (base / 'pkgsrc/cat/demo/Makefile.common').write_text('# changed configure dependency only\n')
+    subprocess.run(command, check=True, capture_output=True, text=True)
+    assert (base / 'configure-clean').is_file()
+    base, work, source, command, previous = setup('old-include-fallback')
+    current = base / 'pkgsrc/cat/demo/Makefile.common'
+    current.write_text('# changed current include\n')
+    fake = base / 'bmake'
+    fake.write_text(fake.read_text().replace(str(previous / 'Makefile.common'), str(current)))
+    result = subprocess.run(command, capture_output=True, text=True)
+    assert result.returncode and 'included recipe input differs' in result.stderr
+    assert (source / 'input').read_bytes() == b'old /prefix\n'
+    base, work, source, command, previous = setup('changed-source-var')
+    fake = base / 'bmake'
+    fake.write_text(fake.read_text().replace("else v[n]) for n in names", "else ('foreign' if old and n=='EXTRACT_CMD' else v[n])) for n in names"))
+    result = subprocess.run(command, capture_output=True, text=True)
+    assert result.returncode and 'source preparation inputs changed' in result.stderr
+    base, work, source, command, previous = setup('changed-extract-hook')
+    fake = base / 'bmake'
+    fake.write_text(fake.read_text().replace("if 'pre-patch' in args or 'post-patch' in args or 'pre-extract' in args or 'post-extract' in args:sys.exit()", "if 'pre-extract' in args or 'post-extract' in args:\n if old: print('foreign extract')\n sys.exit()\nif 'pre-patch' in args or 'post-patch' in args:sys.exit()"))
+    result = subprocess.run(command, capture_output=True, text=True)
+    assert result.returncode and 'extraction hooks changed' in result.stderr
+    base, work, source, command, previous = setup('custom-extract')
+    (previous / 'Makefile.common').write_text('do-extract:\n\ttrue\n')
+    db = base / 'sys/usr/pkg/pkgdb/demo-1nb1/+BUILD_VERSION'
+    data = db.read_text().splitlines()
+    db.write_text('\n'.join(('cat/demo/Makefile.common: ' + hashlib.sha256((previous / 'Makefile.common').read_bytes()).hexdigest()) if x.startswith('cat/demo/Makefile.common:') else x for x in data) + '\n')
+    result = subprocess.run(command, capture_output=True, text=True)
+    assert result.returncode and 'custom do-extract' in result.stderr
+    base, work, source, command, previous = setup('changed-during-replay')
+    fake = base / 'bmake'
+    fake.write_text(fake.read_text().replace("if 'subst-rewrite' in args:", "if 'subst-rewrite' in args:\n pathlib.Path(" + repr(str(base / 'pkgsrc/cat/demo/Makefile.common')) + ").write_text('changed during replay')"))
+    result = subprocess.run(command, capture_output=True, text=True)
+    assert result.returncode and 'recipe input changed during source replay' in result.stderr
+    assert (source / 'input').read_bytes() == b'old /prefix\n'
     base, work, source, command, previous = setup('plain-previous')
     config = base / 'vars.json'
     values = json.loads(config.read_text())
@@ -139,7 +192,7 @@ sys.exit(3)
     assert (source / 'input').read_bytes() == b'new @PREFIX@\n'
     base, work, source, command, previous = setup('changed-hook')
     fake = base / 'bmake'
-    text = fake.read_text().replace("if 'pre-patch' in args or 'post-patch' in args:sys.exit()", "if 'pre-patch' in args or 'post-patch' in args:\n if old: print('foreign hook')\n sys.exit()")
+    text = fake.read_text().replace("if 'pre-patch' in args or 'post-patch' in args or 'pre-extract' in args or 'post-extract' in args:sys.exit()", "if 'pre-patch' in args or 'post-patch' in args:\n if old: print('foreign hook')\n sys.exit()\nif 'pre-extract' in args or 'post-extract' in args:sys.exit()")
     fake.write_text(text)
     result = subprocess.run(command, capture_output=True, text=True)
     assert result.returncode and 'changed patch hooks' in result.stderr

@@ -118,6 +118,77 @@ def unselected_subst_file(paths, root, name):
     return True
 
 
+def unselected_subst_pattern(paths, roots, pattern, changed):
+    """Check a bounded glob without following links or touching changed leaves."""
+    import fnmatch
+
+    def component_matches(name, component):
+        return (not name.startswith('.') or component.startswith('.')) and fnmatch.fnmatchcase(name, component)
+
+    parts = pattern.split('/')
+    require(parts and all(re.fullmatch(r'[A-Za-z0-9_+.*?-]+', part) and
+                          part not in ('.', '..') and '**' not in part for part in parts),
+            'unsupported substitution paths')
+    for name in changed:
+        leaf = name.split('/')
+        require(len(leaf) != len(parts) or
+                not all(component_matches(value, match) for value, match in zip(leaf, parts)),
+                'changed source needs substitution refresh')
+
+    def walk(fd, index):
+        component = parts[index]
+        if '*' in component or '?' in component:
+            with os.scandir(fd) as entries:
+                names = sorted(entry.name for entry in entries
+                               if component_matches(entry.name, component))
+        else:
+            names = [component]
+        for name in names:
+            try:
+                before = os.stat(name, dir_fd=fd, follow_symlinks=False)
+            except FileNotFoundError:
+                if '*' in component or '?' in component:
+                    raise ValueError('substitution match changed during inspection: ' + name)
+                continue
+            if index + 1 == len(parts):
+                require(stat.S_ISREG(before.st_mode), 'expected a regular substitution match: ' + name)
+                flags = os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0)
+                child = os.open(name, flags, dir_fd=fd)
+                try:
+                    require(paths.stable_identity(os.fstat(child)) == paths.stable_identity(before),
+                            'substitution match changed during inspection: ' + name)
+                finally:
+                    os.close(child)
+            elif stat.S_ISREG(before.st_mode):
+                # A regular file cannot be an ancestor of a matched path.
+                continue
+            else:
+                require(stat.S_ISDIR(before.st_mode), 'unsafe substitution ancestor: ' + name)
+                flags = os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_DIRECTORY', 0)
+                child = os.open(name, flags, dir_fd=fd)
+                try:
+                    require(paths.stable_identity(os.fstat(child)) == paths.stable_identity(before),
+                            'substitution ancestor changed during inspection: ' + name)
+                    walk(child, index + 1)
+                finally:
+                    os.close(child)
+            require(paths.stable_identity(os.stat(name, dir_fd=fd, follow_symlinks=False)) ==
+                    paths.stable_identity(before), 'substitution match changed during inspection: ' + name)
+
+    for root in roots:
+        before = paths.real_directory(str(root))
+        fd = os.open(root, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_DIRECTORY', 0))
+        try:
+            require(paths.stable_identity(os.fstat(fd)) == paths.stable_identity(before),
+                    'substitution root changed during inspection')
+            walk(fd, 0)
+            require(paths.stable_identity(os.fstat(fd)) == paths.stable_identity(before),
+                    'substitution root changed during inspection')
+            paths.verify_stable(str(root), before)
+        finally:
+            os.close(fd)
+
+
 def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, previous_recipe=None):
     """Bind the old ordered cookie to installed BUILD_VERSION and current recipe."""
     cookie = stable_read(paths, work / '.patch_done') if old_cookie is None else old_cookie
@@ -533,8 +604,8 @@ def transaction(sdk, work, source, changes, old_cookie, new_inventory, build_cle
         raise
 
 
-def validate_recipe_includes(paths, recipe, makefiles, records, *, package=None, cwd=None):
-    """Bind included files local to the recipe to the installed package."""
+def validate_recipe_includes(paths, recipe, makefiles, records, *, package=None, cwd=None, observed=None):
+    """Bind old local includes to provenance and observe current recipe inputs."""
     import shlex
     root = Path(recipe).resolve(strict=True)
     base = Path(cwd).resolve(strict=True) if cwd is not None else root
@@ -549,9 +620,15 @@ def validate_recipe_includes(paths, recipe, makefiles, records, *, package=None,
             name = str(path.relative_to(root))
             require(not name.startswith('patches/') and name != 'distinfo',
                     'unsupported recipe-local makefile')
-            expected = records.get(package + '/' + name)
-            require(expected and _sha(stable_read(paths, path)) == expected,
-                    'included recipe input differs from installed provenance: ' + name)
+            data = stable_read(paths, path)
+            if records is not None:
+                expected = records.get(package + '/' + name)
+                require(expected and _sha(data) == expected,
+                        'included recipe input differs from installed provenance: ' + name)
+            if observed is not None:
+                require(path not in observed or observed[path] == data,
+                        'included recipe input changed during verification: ' + name)
+                observed[path] = data
             result.add(name)
     return result
 
@@ -602,7 +679,7 @@ def main():
     p.add_argument('--previous-makefile', type=Path, help='installed package Makefile preimage')
     p.add_argument('--subst-class', help='one added pre-configure SUBST class')
     p.add_argument('--previous-recipe', type=Path, help='installed recipe preimage directory')
-    p.add_argument('--refresh-subst', help='one existing pre-configure SUBST class')
+    p.add_argument('--refresh-subst', help='one existing substitution before configure')
     a = p.parse_args()
     sys.path.insert(0, str(a.sdk_source / 'src'))
     from emberbsd_sdk import archive_metadata, jsonio, paths, sourceprep
@@ -728,6 +805,7 @@ def main():
     if a.previous_recipe:
         package = '/'.join(a.recipe.parts[-2:])
         previous_makefile = a.previous_recipe / 'Makefile'
+        observed_recipe_inputs = {a.recipe / 'Makefile': stable_read(paths, a.recipe / 'Makefile')}
         records = {}
         for line in stable_read(paths, owner).decode('utf-8').splitlines():
             if ': ' in line:
@@ -738,6 +816,7 @@ def main():
         previous_data = stable_read(paths, previous_makefile)
         require(records.get(package + '/Makefile') == _sha(previous_data),
                 'previous Makefile differs from installed provenance')
+        observed_recipe_inputs[previous_makefile] = previous_data
         oldcmd = cmd[:3] + ['-f', str(previous_makefile)] + cmd[3:]
         old_hooks = subprocess.run(oldcmd + ['-n', 'pre-patch', 'post-patch'], check=True,
                                    stdout=subprocess.PIPE, text=True)
@@ -751,10 +830,40 @@ def main():
         old_classes, old_makefiles = selected_values(oldcmd, ['SUBST_CLASSES', '.MAKE.MAKEFILES'])
         require(old_classes == v['SUBST_CLASSES'], 'previous SUBST classes changed')
         old_includes = validate_recipe_includes(paths, a.previous_recipe, old_makefiles, records,
-                                                package=package, cwd=a.recipe)
-        old_includes |= validate_recipe_includes(paths, a.recipe, old_makefiles, records)
-        new_includes = validate_recipe_includes(paths, a.recipe, v['.MAKE.MAKEFILES'], records)
+                                               package=package, cwd=a.recipe, observed=observed_recipe_inputs)
+        old_includes |= validate_recipe_includes(paths, a.recipe, old_makefiles, records,
+                                                observed=observed_recipe_inputs)
+        new_includes = validate_recipe_includes(paths, a.recipe, v['.MAKE.MAKEFILES'], None,
+                                               observed=observed_recipe_inputs)
         require(old_includes == new_includes, 'included recipe inputs changed')
+        # Configuration and package policy may legitimately change in a local
+        # include. The complete old recipe still supplies source preimages;
+        # require unchanged source preparation and replay the current configure.
+        source_fields = ['WRKDIR', 'WRKSRC', 'DISTDIR', 'DIST_SUBDIR', 'DISTNAME',
+                         'DISTFILES', 'EXTRACT_ONLY', 'EXTRACT_USING', 'EXTRACT_SUFX',
+                         'EXTRACT_CMD', 'EXTRACT_ENV', 'EXTRACT_BEFORE_ARGS', 'EXTRACT_AFTER_ARGS',
+                         'PATCH', 'PATCH_ARGS', 'PATCHFILES', 'PATCHDIR', 'DISTINFO_FILE', 'LOCALPATCHES']
+        old_source, new_source = selected_values(oldcmd, source_fields), selected_values(cmd, source_fields)
+        require(old_source == new_source, 'previous source preparation inputs changed')
+        require(all(name not in v or value == v[name] for name, value in zip(source_fields, new_source)),
+                'current source preparation inputs changed during verification')
+        for command in (oldcmd, cmd):
+            result = subprocess.run(command + ['-n', 'pre-extract', 'post-extract'], check=True,
+                                    stdout=subprocess.PIPE, text=True).stdout
+            if command is oldcmd:
+                old_extract_hooks = result
+            else:
+                require(result == old_extract_hooks, 'previous extraction hooks changed')
+        extract_framework = (a.recipe.parents[1] / 'mk/extract/extract.mk').resolve()
+        for item in set(shlex.split(old_makefiles) + shlex.split(v['.MAKE.MAKEFILES'])):
+            makefile = Path(item)
+            if not makefile.is_absolute():
+                makefile = a.recipe / makefile
+            content = stable_read(paths, makefile)
+            if re.search(rb'(?m)^\s*do-extract\s*:', content):
+                require(makefile.resolve() == extract_framework, 'custom do-extract is unsupported')
+            if re.search(rb'(?m)^\s*do-patch\s*:', content):
+                require(makefile.resolve() in framework_files, 'custom do-patch is unsupported')
         class_names = old_classes.split()
         require(len(class_names) == len(set(class_names)) and
                 all(re.fullmatch(r'[A-Za-z0-9_.-]+', name) for name in class_names),
@@ -778,7 +887,7 @@ def main():
                 'existing SUBST class not uniquely present')
         stage, files, variables, sed, filter_cmd, skip, noop, subst_cookie = subst_metadata[a.refresh_subst]
         subst_files = shlex.split(files)
-        require(stage == 'pre-configure' and subst_files and
+        require(stage in ('pre-configure', 'do-configure-pre-hook') and subst_files and
                 len(set(subst_files)) == len(subst_files) and
                 all(re.fullmatch(r'[A-Za-z0-9_./+-]+', name) and not name.startswith('/') and
                     all(part not in ('', '.', '..') for part in name.split('/')) for name in subst_files),
@@ -844,10 +953,16 @@ def main():
             changed = {row[0] for row in changes}
             for value in values:
                 files = shlex.split(value)
-                require(files and all(re.fullmatch(r'[A-Za-z0-9_+./-]+', name) and
-                        not name.startswith('/') and all(part not in ('', '.', '..') for part in name.split('/'))
-                        for name in files), 'unsupported substitution paths')
+                require(files, 'unsupported substitution paths')
                 for name in files:
+                    if '*' in name or '?' in name:
+                        candidates = [Path(scratch) / label / v['DISTNAME'] for label in ('old', 'new')]
+                        unselected_subst_pattern(paths, [*candidates, source], name, changed)
+                        continue
+                    require(re.fullmatch(r'[A-Za-z0-9_+./-]+', name) and
+                            not name.startswith('/') and
+                            all(part not in ('', '.', '..') for part in name.split('/')),
+                            'unsupported substitution paths')
                     require(name not in changed, 'changed source needs substitution refresh')
                     if not unselected_subst_file(paths, source, name):
                         for label in ('old', 'new'):
@@ -855,6 +970,10 @@ def main():
                             require(not unselected_subst_file(paths, candidate, name),
                                     'missing substitution input differs from archive: ' + name)
         def clean():
+            if a.previous_recipe:
+                for path, contents in observed_recipe_inputs.items():
+                    require(stable_read(paths, path) == contents,
+                            'recipe input changed before configure invalidation: ' + str(path))
             subprocess.run(cmd + ['configure-clean' if (a.subst_class or a.previous_recipe) else 'build-clean'], check=True)
             if a.refresh_subst:
                 require(stable_read(paths, Path(subst_cookie)) == live_subst_cookie,
@@ -872,6 +991,10 @@ def main():
                                       'subst-' + a.subst_class], check=True)
                 require(stable_read(paths, Path(subst_cookie)) == b'',
                         'pkgsrc SUBST did not record the expected no-op result')
+        if a.previous_recipe:
+            for path, contents in observed_recipe_inputs.items():
+                require(stable_read(paths, path) == contents,
+                        'recipe input changed during source replay: ' + str(path))
         transaction(sdk, work, source, changes, cookie,
                     [a.recipe / 'patches' / name for name in inventory], clean)
     print('Refreshed verified patch inputs; compatible build objects retained.')

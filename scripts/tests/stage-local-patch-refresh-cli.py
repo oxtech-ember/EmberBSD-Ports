@@ -30,8 +30,10 @@ with tempfile.TemporaryDirectory() as d:
  blocked=subprocess.run(cmd,capture_output=True,text=True);assert blocked.returncode and 'needs substitution refresh' in blocked.stderr
  assert (src/'second').read_text()=='C\n' and not (root/'clean').exists()
  fake.write_text(intersect.replace("'SUBST_FILES.rewrite': 'second'", "'SUBST_FILES.rewrite': '*.pc.in'"))
- blocked=subprocess.run(cmd,capture_output=True,text=True);assert blocked.returncode and 'unsupported substitution paths' in blocked.stderr
- assert (src/'second').read_text()=='C\n' and not (root/'clean').exists()
+ (src/'second').write_text('foreign\n')
+ blocked=subprocess.run(cmd,capture_output=True,text=True);assert blocked.returncode and 'preimage differs' in blocked.stderr
+ assert not (root/'clean').exists()
+ (src/'second').write_text('C\n')
  (src/'alias').symlink_to('second')
  fake.write_text(intersect.replace("'SUBST_FILES.rewrite': 'second'", "'SUBST_FILES.rewrite': 'alias'"))
  blocked=subprocess.run(cmd,capture_output=True,text=True);assert blocked.returncode
