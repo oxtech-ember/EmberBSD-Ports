@@ -6,7 +6,7 @@
 SDK_VERSION=	1.4.363.0
 
 DISTNAME=	vulkan-loader-${SDK_VERSION}
-PKGREVISION=	1
+PKGREVISION=	2
 CATEGORIES=	graphics
 GITHUB_PROJECT=	Vulkan-Loader
 EXTRACT_USING=	bsdtar
@@ -43,6 +43,12 @@ PLIST.darwin=	yes
 CMAKE_CONFIGURE_ARGS+=	-DLOADER_BUILD_FRAMEWORK=OFF
 .else
 PLIST.elf=	yes
+
+# Preserve the path exported by the previous Vulkan 1 ABI package, including
+# consumers that use its complete filename with dlopen instead of the SONAME.
+# This is an alias to the current loader, not a second library implementation.
+post-install:
+	${LN} -sf libvulkan.so.1 ${DESTDIR}${PREFIX}/lib/libvulkan.so.1.4.357
 .endif
 .if ${OPSYS} != "Darwin"
 .include "../../sysutils/libpciaccess/buildlink3.mk"

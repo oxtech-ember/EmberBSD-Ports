@@ -213,6 +213,29 @@ def reconstruct_legacy_payload(current, changes, expected_sha256):
 def _update_patch_sections(data):
     """Parse update inputs without changing existing recipe identity semantics."""
     lines = data.splitlines(keepends=True)
+    if lines and re.fullmatch(rb'From (?:[0-9a-f]{40}|[0-9a-f]{64}) Mon Sep 17 00:00:00 2001\r?\n', lines[0]):
+        # Git's email patches may contain a diffstat after the message. Keep
+        # the message subject to the ordinary conservative preamble parser;
+        # discard only a checked statistics block before a real Git section.
+        for start, line in enumerate(lines):
+            if line.startswith(b'diff --git '):
+                break
+            if line.startswith(b'--- '):
+                return None
+            if line.rstrip(b'\r\n') != b'---':
+                continue
+            end = start + 1
+            while end < len(lines) and not lines[end].startswith(b'diff --git '):
+                stat = lines[end].rstrip(b'\r\n')
+                if (stat and
+                        re.fullmatch(rb' [A-Za-z0-9_./+~-]+[ \t]+\|[ \t]+[0-9]+(?:[ \t]+[+-]*)?', stat) is None and
+                        re.fullmatch(rb' [0-9]+ files? changed(?:, [0-9]+ (?:insertions?\(\+\)|deletions?\(-\))){0,2}', stat) is None):
+                    return None
+                end += 1
+            if end == len(lines):
+                return None
+            lines = lines[:start] + lines[end:]
+            break
     # Strip only checked wrappers around ordinary same-path unified sections.
     # Git mode changes, renames, binary patches and quoted paths remain opaque.
     normalized = []
