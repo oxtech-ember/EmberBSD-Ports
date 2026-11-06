@@ -16,7 +16,8 @@ query() {
 	    EMBERBSD_HOST_COMPILER_FAMILY=clang EMBERBSD_CROSS_COMPILER_FAMILY="$1" \
 	    PKGSRC_COMPILER=clang \
 	    -V '${FC}' -V '${TOOL_DEPENDS}' -V '${DEPENDS}' \
-	    -V '${BUILD_DEPENDS}' -V '${CROSS_TARGET_DEPENDS}'
+	    -V '${BUILD_DEPENDS}' -V '${CROSS_TARGET_DEPENDS}' \
+	    -V '${TOOLDIR}/bin/${_EMBER_CROSS_TRIPLET}-gfortran'
 }
 clang=$(query clang) || fail "cannot query Clang fake-cross recipe"
 clang_fc=$(printf '%s\n' "$clang" | sed -n '1p')
@@ -29,7 +30,8 @@ gcc=$(query gcc) || fail "cannot query GCC fake-cross recipe"
 gcc_fc=$(printf '%s\n' "$gcc" | sed -n '1p')
 gcc_tools=$(printf '%s\n' "$gcc" | sed -n '2p')
 gcc_depends=$(printf '%s\n' "$gcc" | sed -n '3,5p' | tr '\n' ' ')
-case "$gcc_fc" in */gfortran) ;; *) fail "GCC target family selects $gcc_fc instead of target gfortran";; esac
+gcc_expected=$(printf '%s\n' "$gcc" | sed -n '6p')
+[ "$gcc_fc" = "$gcc_expected" ] || fail "GCC target family selects $gcc_fc instead of $gcc_expected"
 [ -z "$gcc_tools" ] || fail "GCC unexpectedly depends on native Flang: $gcc_tools"
 case " $gcc_depends " in *flang-rt*) fail "GCC unexpectedly depends on Flang-RT: $gcc_depends";; esac
 
