@@ -19,7 +19,7 @@ Not submitted upstream.
  SHA1 (patch-.bundle_gems_rdoc-7.0.4_lib_rdoc_encoding.rb) = 896fc0825d59174b508bcfc5d17727f0d0b1050f
  SHA1 (patch-common.mk) = c23eed58427b2fd4ba8fdb3692f609701a666c6d
  SHA1 (patch-configure) = ff1b1e659ddc7cb1d62a71e1447df55f1f7b07c2
-+SHA1 (patch-defs_jit.mk) = e25df87dc9de975dac08df1fda4f0cedde4c8007
++SHA1 (patch-defs_jit.mk) = 6f084caf17d2d83d0a032d12a66b679164166cc0
  SHA1 (patch-include_ruby_internal_static__assert.h) = 7d5c3ae7ff674b9b34639924fcf08237164de9f8
  SHA1 (patch-lib_mkmf.rb) = ea66bc4e42d2b15edfcd8ceefa9b94d07a3cdd0f
  SHA1 (patch-lib_rubygems.rb) = bea18f991525d7ed72d8a5a64539e6fd247e1d30
@@ -68,7 +68,7 @@ Not submitted upstream.
 +
 +--- defs/jit.mk.orig
 ++++ defs/jit.mk
-+@@ -63,11 +63,30 @@
++@@ -63,10 +63,29 @@
 + endif # ifneq ($(JIT_CARGO_SUPPORT),no)
 + 
 + RUST_LIB_SYMBOLS = $(RUST_LIB:.a=).symbols
