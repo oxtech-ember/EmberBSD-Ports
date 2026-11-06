@@ -5,19 +5,26 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 
 --- include/wx/gtk/private/win_gtk.h.orig
 +++ include/wx/gtk/private/win_gtk.h
-@@ -27,7 +27,24 @@
+@@ -27,7 +27,31 @@
      void size_allocate_child(
          GtkWidget* child, int x, int y, int width, int height, int parent_width = -1);
  
 +#ifdef __WXGTK4__
 +    void set_virtual_size(int width, int height);
 +    void set_focus_order(GList* widgets);
++    cairo_t* BeginClientDC(void** token);
++    static void EndClientDC(void* token);
++    void InvalidateClientDC();
 +    // GTK4 has no child GdkWindows. wxWidgets owns child allocations and
 +    // paints its client area during the widget's snapshot.
 +    GtkWidget m_widget;
 +    bool m_inSnapshot;
 +    GList* m_focusOrder;
 +    GskRenderNode* m_snapshotCache;
++    GskRenderNode* m_contentSnapshot;
++    guint64 m_paintSerial;
++    bool m_useClientContent;
++    bool m_contentInvalidated;
 +    GtkAdjustment* m_hadjustment;
 +    GtkAdjustment* m_vadjustment;
 +    GtkScrollablePolicy m_hpolicy;
@@ -51,7 +58,7 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +#endif // !__WXGTK4__
 --- /dev/null
 +++ src/gtk/win_gtk4.inc
-@@ -0,0 +1,459 @@
+@@ -0,0 +1,616 @@
 +///////////////////////////////////////////////////////////////////////////////
 +// Name:        src/gtk/win_gtk4.inc
 +// Purpose:     GTK4 client widget: allocation, scrolling and snapshot painting
@@ -63,6 +70,8 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +// Included by win_gtk.cpp instead of the GdkWindow/GtkContainer implementation.
 +// Scrolling remains owned by wxScrolledWindow: GTK adjustments report input,
 +// and wxWindow::ScrollWindow changes the child coordinate origin.
++
++#include <cmath>
 +
 +struct wxPizzaChild
 +{
@@ -138,10 +147,15 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +        g_clear_pointer(&child->snapshot, gsk_render_node_unref);
 +        delete child;
 +    }
++    // Native popovers are parented by the menu owner without wx geometry
++    // records. GtkWidget disposal still requires every child to be unparented.
++    while (GtkWidget* child = gtk_widget_get_first_child(GTK_WIDGET(pizza)))
++        gtk_widget_unparent(child);
 +    g_clear_object(&pizza->m_hadjustment);
 +    g_clear_object(&pizza->m_vadjustment);
 +    g_clear_pointer(&pizza->m_focusOrder, g_list_free);
 +    g_clear_pointer(&pizza->m_snapshotCache, gsk_render_node_unref);
++    g_clear_pointer(&pizza->m_contentSnapshot, gsk_render_node_unref);
 +    G_OBJECT_CLASS(parent_class)->dispose(object);
 +}
 +
@@ -197,13 +211,19 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +    // Allocation can call application code which reparents or destroys a
 +    // sibling. Keep widget references, not pointers into the mutable list.
 +    GPtrArray* children = g_ptr_array_new_with_free_func(g_object_unref);
-+    for (const GList* p = pizza->m_children; p; p = p->next)
-+        g_ptr_array_add(children, g_object_ref(static_cast<wxPizzaChild*>(p->data)->widget));
++    for (GtkWidget* child = gtk_widget_get_first_child(widget); child;
++         child = gtk_widget_get_next_sibling(child))
++        g_ptr_array_add(children, g_object_ref(child));
 +    for (guint i = 0; i < children->len; ++i)
 +    {
 +        GtkWidget* widgetChild = GTK_WIDGET(g_ptr_array_index(children, i));
 +        if (gtk_widget_get_parent(widgetChild) != widget || !gtk_widget_should_layout(widgetChild))
 +            continue;
++        if (GTK_IS_POPOVER(widgetChild))
++        {
++            gtk_popover_present(GTK_POPOVER(widgetChild));
++            continue;
++        }
 +        for (const GList* p = pizza->m_children; p; p = p->next)
 +        {
 +            const wxPizzaChild* child = static_cast<wxPizzaChild*>(p->data);
@@ -224,8 +244,10 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +    struct SnapshotScope
 +    {
 +        wxPizza* pizza;
-+        explicit SnapshotScope(wxPizza* p) : pizza(p) { pizza->m_inSnapshot = true; }
-+        ~SnapshotScope() { pizza->m_inSnapshot = false; }
++        bool previous;
++        explicit SnapshotScope(wxPizza* p) : pizza(p), previous(p->m_inSnapshot)
++            { pizza->m_inSnapshot = true; }
++        ~SnapshotScope() { pizza->m_inSnapshot = previous; }
 +    } inSnapshot(pizza);
 +    const int width = gtk_widget_get_width(widget);
 +    const int height = gtk_widget_get_height(widget);
@@ -237,11 +259,24 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +    graphene_rect_t client;
 +    graphene_rect_init(&client, 0, 0, width, height);
 +    gtk_snapshot_push_clip(snapshot, &client);
-+    cairo_t* cr = gtk_snapshot_append_cairo(snapshot, &client);
-+    g_signal_emit(widget, pizza_paint_signal, 0, cr);
-+    cairo_destroy(cr);
-+    // Native GPU surfaces append their texture node without a CPU readback.
-+    g_signal_emit(widget, pizza_snapshot_signal, 0, snapshot);
++    if (pizza->m_useClientContent && pizza->m_contentSnapshot)
++        pizza->m_useClientContent = false;
++    else
++    {
++        ++pizza->m_paintSerial;
++        GtkSnapshot* content = gtk_snapshot_new();
++        cairo_t* cr = gtk_snapshot_append_cairo(content, &client);
++        g_signal_emit(widget, pizza_paint_signal, 0, cr);
++        cairo_destroy(cr);
++        // Native GPU surfaces append their texture node without a readback.
++        g_signal_emit(widget, pizza_snapshot_signal, 0, content);
++        GskRenderNode* node = gtk_snapshot_free_to_node(content);
++        g_clear_pointer(&pizza->m_contentSnapshot, gsk_render_node_unref);
++        pizza->m_contentSnapshot = node;
++        pizza->m_contentInvalidated = false;
++    }
++    if (pizza->m_contentSnapshot)
++        gtk_snapshot_append_node(snapshot, pizza->m_contentSnapshot);
 +
 +    // Use GTK's child order, so z ordering follows gtk_widget_insert_*().
 +    GPtrArray* children = g_ptr_array_new_with_free_func(g_object_unref);
@@ -251,7 +286,7 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +    for (guint i = 0; i < children->len; ++i)
 +    {
 +        GtkWidget* child = GTK_WIDGET(g_ptr_array_index(children, i));
-+        if (gtk_widget_get_parent(child) != widget || !gtk_widget_get_visible(child))
++        if (gtk_widget_get_parent(child) != widget || !gtk_widget_get_visible(child) || GTK_IS_NATIVE(child))
 +            continue;
 +        wxPizzaChild* record = pizza_find_child(pizza, child);
 +        if (record && record->snapshot && g_object_get_data(G_OBJECT(child), "wx-frozen"))
@@ -344,6 +379,7 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +{
 +    wxPizza* pizza = reinterpret_cast<wxPizza*>(instance);
 +    pizza->m_hpolicy = pizza->m_vpolicy = GTK_SCROLL_NATURAL;
++    pizza->m_contentInvalidated = true;
 +    gtk_widget_set_overflow(GTK_WIDGET(pizza), GTK_OVERFLOW_HIDDEN);
 +}
 +
@@ -431,17 +467,23 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +    if (GTK_IS_WINDOW(widget))
 +        return;
 +    g_return_if_fail(gtk_widget_get_parent(widget) == NULL);
++    g_object_ref(this);
++    g_object_ref(widget);
 +    wxPizzaChild* child = new wxPizzaChild();
 +    child->widget = widget;
 +    child->x = x;
 +    child->y = y;
 +    child->width = width;
 +    child->height = height;
-+    gtk_widget_set_parent(widget, GTK_WIDGET(this));
 +    child->parentHandler = g_signal_connect(widget, "notify::parent",
 +        G_CALLBACK(pizza_child_parent_changed), this);
 +    m_children = g_list_append(m_children, child);
++    // Parent notification can synchronously unparent the child or destroy
++    // its wx owner. Register first and retain both GTK objects across it.
++    gtk_widget_set_parent(widget, GTK_WIDGET(this));
 +    gtk_widget_queue_allocate(GTK_WIDGET(this));
++    g_object_unref(widget);
++    g_object_unref(this);
 +}
 +
 +void wxPizza::move(GtkWidget* widget, int x, int y, int width, int height)
@@ -483,10 +525,132 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +
 +void wxPizza::scroll(int dx, int dy)
 +{
++    InvalidateClientDC();
 +    m_scroll_x -= dx;
 +    m_scroll_y -= dy;
 +    gtk_widget_queue_allocate(GTK_WIDGET(this));
 +    gtk_widget_queue_draw(GTK_WIDGET(this));
++}
++
++// Immediate wx DCs use a copy of the last client content. They must never
++// detach the GSK renderer from its GtkNative surface. This path deliberately
++// performs a GPU readback; ordinary paint and GL snapshot presentation do not.
++struct wxPizzaClientDC
++{
++    GWeakRef widget;
++    cairo_surface_t* surface;
++    guint references;
++    guint64 serial;
++    int width, height;
++    wxPizzaClientDC(wxPizza* pizza, cairo_surface_t* pixels, int w, int h)
++        : surface(pixels), references(1), serial(pizza->m_paintSerial), width(w), height(h)
++        { g_weak_ref_init(&widget, pizza); }
++    ~wxPizzaClientDC()
++        { g_weak_ref_clear(&widget); cairo_surface_destroy(surface); }
++};
++
++void wxPizza::InvalidateClientDC()
++{
++    ++m_paintSerial;
++    m_useClientContent = false;
++    m_contentInvalidated = true;
++}
++
++cairo_t* wxPizza::BeginClientDC(void** token)
++{
++    *token = NULL;
++    GtkWidget* widget = GTK_WIDGET(this);
++    if (m_inSnapshot || !m_contentSnapshot || !gtk_widget_get_mapped(widget))
++        return NULL;
++    const int width = gtk_widget_get_width(widget);
++    const int height = gtk_widget_get_height(widget);
++    if (width <= 0 || height <= 0)
++        return NULL;
++    wxPizzaClientDC* current = static_cast<wxPizzaClientDC*>(
++        g_object_get_data(G_OBJECT(this), "wx-client-dc"));
++    if (current && current->serial == m_paintSerial &&
++        current->width == width && current->height == height)
++    {
++        ++current->references;
++        *token = current;
++        return cairo_create(current->surface);
++    }
++    GtkNative* native = gtk_widget_get_native(widget);
++    GskRenderer* renderer = native ? gtk_native_get_renderer(native) : NULL;
++    if (!renderer)
++        return NULL;
++    const double scale = gdk_surface_get_scale(gtk_native_get_surface(native));
++    const int pixelWidth = int(std::ceil(width * scale));
++    const int pixelHeight = int(std::ceil(height * scale));
++    GtkSnapshot* copy = gtk_snapshot_new();
++    gtk_snapshot_scale(copy, scale, scale);
++    // Include the widget's own CSS background in the destination pixels, but
++    // not child widgets: children retain their normal independent z order.
++    gtk_snapshot_render_background(copy, gtk_widget_get_style_context(widget),
++                                   0, 0, width, height);
++    gtk_snapshot_append_node(copy, m_contentSnapshot);
++    GskRenderNode* node = gtk_snapshot_free_to_node(copy);
++    const graphene_rect_t bounds = GRAPHENE_RECT_INIT(0, 0, pixelWidth, pixelHeight);
++    GdkTexture* texture = gsk_renderer_render_texture(renderer, node, &bounds);
++    gsk_render_node_unref(node);
++    if (!texture)
++        return NULL;
++    cairo_surface_t* surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, pixelWidth, pixelHeight);
++    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS)
++    {
++        cairo_surface_destroy(surface);
++        g_object_unref(texture);
++        return NULL;
++    }
++    gdk_texture_download(texture, cairo_image_surface_get_data(surface),
++                         cairo_image_surface_get_stride(surface));
++    g_object_unref(texture);
++    cairo_surface_mark_dirty(surface);
++    cairo_surface_set_device_scale(surface, scale, scale);
++    current = new wxPizzaClientDC(this, surface, width, height);
++    g_object_set_data(G_OBJECT(this), "wx-client-dc", current);
++    *token = current;
++    return cairo_create(surface);
++}
++
++void wxPizza::EndClientDC(void* token)
++{
++    wxPizzaClientDC* state = static_cast<wxPizzaClientDC*>(token);
++    if (!state || --state->references)
++        return;
++    GtkWidget* widget = GTK_WIDGET(g_weak_ref_get(&state->widget));
++    if (widget)
++    {
++        wxPizza* pizza = WX_PIZZA(widget);
++        if (g_object_get_data(G_OBJECT(widget), "wx-client-dc") == state)
++            g_object_set_data(G_OBJECT(widget), "wx-client-dc", NULL);
++        // A normal repaint requested during the DC lifetime supersedes the
++        // transient pixels, just as it does with immediate window drawing.
++        if (pizza->m_paintSerial == state->serial && !pizza->m_contentInvalidated &&
++            gtk_widget_get_mapped(widget) && gtk_widget_get_width(widget) == state->width &&
++            gtk_widget_get_height(widget) == state->height)
++        {
++            cairo_surface_flush(state->surface);
++            const int stride = cairo_image_surface_get_stride(state->surface);
++            const int height = cairo_image_surface_get_height(state->surface);
++            GBytes* pixels = g_bytes_new(cairo_image_surface_get_data(state->surface), gsize(stride) * height);
++            GdkTexture* texture = gdk_memory_texture_new(
++                cairo_image_surface_get_width(state->surface), height,
++                GDK_MEMORY_DEFAULT, pixels, stride);
++            g_bytes_unref(pixels);
++            GtkSnapshot* snapshot = gtk_snapshot_new();
++            const graphene_rect_t bounds = GRAPHENE_RECT_INIT(0, 0, state->width, state->height);
++            gtk_snapshot_append_texture(snapshot, texture, &bounds);
++            g_object_unref(texture);
++            GskRenderNode* node = gtk_snapshot_free_to_node(snapshot);
++            g_clear_pointer(&pizza->m_contentSnapshot, gsk_render_node_unref);
++            pizza->m_contentSnapshot = node;
++            pizza->m_useClientContent = true;
++            gtk_widget_queue_draw(widget);
++        }
++        g_object_unref(widget);
++    }
++    delete state;
 +}
 +
 +void wxPizza::set_virtual_size(int width, int height)

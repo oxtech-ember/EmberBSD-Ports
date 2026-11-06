@@ -1,0 +1,237 @@
+$NetBSD$
+
+GTK4 window integration (work in progress).
+Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
+
+--- src/gtk/frame.cpp.orig
++++ src/gtk/frame.cpp
+@@ -19,6 +19,20 @@
+ 
+ #include "wx/gtk/private/wrapgtk.h"
+ 
++static int wxGTKFrameMeasure(GtkWidget* widget, GtkOrientation orientation)
++{
++    int size = 0;
++#ifdef __WXGTK4__
++    gtk_widget_measure(widget, orientation, -1, NULL, &size, NULL, NULL);
++#else
++    if (orientation == GTK_ORIENTATION_HORIZONTAL)
++        gtk_widget_get_preferred_width(widget, NULL, &size);
++    else
++        gtk_widget_get_preferred_height(widget, NULL, &size);
++#endif
++    return size;
++}
++
+ // ----------------------------------------------------------------------------
+ // event tables
+ // ----------------------------------------------------------------------------
+@@ -66,9 +80,7 @@
+         // menu bar
+         if (m_frameMenuBar && m_frameMenuBar->IsShown())
+         {
+-            int h;
+-            gtk_widget_get_preferred_height(m_frameMenuBar->m_widget, NULL, &h);
+-            *height -= h;
++            *height -= wxGTKFrameMeasure(m_frameMenuBar->m_widget, GTK_ORIENTATION_VERTICAL);
+         }
+ #endif // wxUSE_MENUS_NATIVE
+ 
+@@ -87,18 +99,14 @@
+         {
+             if (width)
+             {
+-                int w;
+-                gtk_widget_get_preferred_width(m_frameToolBar->m_widget, NULL, &w);
+-                *width -= w;
++                *width -= wxGTKFrameMeasure(m_frameToolBar->m_widget, GTK_ORIENTATION_HORIZONTAL);
+             }
+         }
+         else
+         {
+             if (height)
+             {
+-                int h;
+-                gtk_widget_get_preferred_height(m_frameToolBar->m_widget, NULL, &h);
+-                *height -= h;
++                *height -= wxGTKFrameMeasure(m_frameToolBar->m_widget, GTK_ORIENTATION_VERTICAL);
+             }
+         }
+     }
+@@ -191,7 +199,11 @@
+     wxASSERT_MSG( (m_wxwindow != NULL), wxT("invalid frame") );
+ 
+     if ( m_frameMenuBar )
++#ifdef __WXGTK4__
++        gtk_box_remove(GTK_BOX(m_mainWidget), m_frameMenuBar->m_widget);
++#else
+         gtk_container_remove( GTK_CONTAINER(m_mainWidget), m_frameMenuBar->m_widget );
++#endif
+ 
+     wxFrameBase::DetachMenuBar();
+ 
+@@ -207,9 +219,13 @@
+     if (m_frameMenuBar)
+     {
+         // menubar goes into top of vbox (m_mainWidget)
++#ifdef __WXGTK4__
++        gtk_box_prepend(GTK_BOX(m_mainWidget), menuBar->m_widget);
++#else
+         gtk_box_pack_start(
+             GTK_BOX(m_mainWidget), menuBar->m_widget, false, false, 0);
+         gtk_box_reorder_child(GTK_BOX(m_mainWidget), menuBar->m_widget, 0);
++#endif
+ 
+         // reset size request to allow native sizing to work
+         gtk_widget_set_size_request(menuBar->m_widget, -1, -1);
+@@ -229,6 +245,38 @@
+     m_frameToolBar = toolbar;
+     if (toolbar)
+     {
++#ifdef __WXGTK4__
++        if (gtk_widget_get_parent(toolbar->m_widget))
++            gtk_widget_unparent(toolbar->m_widget);
++        GtkWidget* clientRow = gtk_widget_get_parent(m_wxwindow);
++        if (toolbar->IsVertical())
++        {
++            if (clientRow == m_mainWidget)
++            {
++                clientRow = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
++                GtkWidget* previous = gtk_widget_get_prev_sibling(m_wxwindow);
++                gtk_box_insert_child_after(GTK_BOX(m_mainWidget), clientRow, previous);
++                gtk_widget_set_hexpand(clientRow, true);
++                gtk_widget_set_vexpand(clientRow, true);
++                g_object_ref(m_wxwindow);
++                gtk_box_remove(GTK_BOX(m_mainWidget), m_wxwindow);
++                gtk_box_append(GTK_BOX(clientRow), m_wxwindow);
++                g_object_unref(m_wxwindow);
++            }
++            if (toolbar->HasFlag(wxTB_RIGHT))
++                gtk_box_append(GTK_BOX(clientRow), toolbar->m_widget);
++            else
++                gtk_box_prepend(GTK_BOX(clientRow), toolbar->m_widget);
++        }
++        else
++        {
++            if (clientRow == m_mainWidget)
++                clientRow = m_wxwindow;
++            GtkWidget* previous = toolbar->HasFlag(wxTB_BOTTOM)
++                ? clientRow : gtk_widget_get_prev_sibling(clientRow);
++            gtk_box_insert_child_after(GTK_BOX(m_mainWidget), toolbar->m_widget, previous);
++        }
++#else
+         gtk_container_remove(
+             GTK_CONTAINER(gtk_widget_get_parent(toolbar->m_widget)), toolbar->m_widget);
+         if (toolbar->IsVertical())
+@@ -266,6 +314,7 @@
+             gtk_box_reorder_child(
+                 GTK_BOX(m_mainWidget), toolbar->m_widget, pos);
+         }
++#endif
+         // reset size request to allow native sizing to work
+         gtk_widget_set_size_request(toolbar->m_widget, -1, -1);
+     }
+@@ -284,9 +333,15 @@
+     if (statbar)
+     {
+         // statusbar goes into bottom of vbox (m_mainWidget)
++#ifdef __WXGTK4__
++        if (gtk_widget_get_parent(statbar->m_widget))
++            gtk_widget_unparent(statbar->m_widget);
++        gtk_box_append(GTK_BOX(m_mainWidget), statbar->m_widget);
++#else
+         gtk_container_remove(
+             GTK_CONTAINER(gtk_widget_get_parent(statbar->m_widget)), statbar->m_widget);
+         gtk_box_pack_end(GTK_BOX(m_mainWidget), statbar->m_widget, false, false, 0);
++#endif
+         // make sure next size_allocate on statusbar causes a size event
+         statbar->m_useCachedClientSize = false;
+         statbar->m_clientWidth = 0;
+--- src/gtk/dialog.cpp.orig
++++ src/gtk/dialog.cpp
+@@ -18,9 +18,11 @@
+ 
+ #include "wx/scopedptr.h"
+ #include "wx/modalhook.h"
++#include "wx/weakref.h"
+ 
+ #include "wx/gtk/private/wrapgtk.h"
+ #include "wx/gtk/private/dialogcount.h"
++#include "wx/gtk/private/object.h"
+ 
+ wxDEFINE_TIED_SCOPED_PTR_TYPE(wxGUIEventLoop)
+ 
+@@ -100,7 +102,7 @@
+ // Ubuntu 12.04 and 12.10 are known to have this problem.
+ 
+ // need 2.10 for gtk_window_get_group()
+-#if GTK_CHECK_VERSION(2,10,0)
++#if GTK_CHECK_VERSION(2,10,0) && !defined(__WXGTK4__)
+ extern "C" {
+ static gboolean
+ realize_hook(GSignalInvocationHint*, unsigned, const GValue* param_values, void*)
+@@ -132,6 +134,56 @@
+ 
+     wxASSERT_MSG( !IsModal(), "ShowModal() can't be called twice" );
+ 
++#ifdef __WXGTK4__
++    GTKReleaseMouseAndNotify();
++    wxWindow* parent = GetParentForModalDialog();
++    if (parent)
++        gtk_window_set_transient_for(GTK_WINDOW(m_widget), GTK_WINDOW(parent->m_widget));
++    wxGtkObject<GtkWidget> widget(GTK_WIDGET(g_object_ref(m_widget)));
++    wxWeakRef<wxDialog> alive(this);
++    const bool wasModal = gtk_window_get_modal(GTK_WINDOW(widget.get()));
++    gtk_window_set_modal(GTK_WINDOW(widget.get()), true);
++    // GTK4 close-request is cancellable. Keep the GTK object alive until the
++    // modal invocation unwinds even if a command deletes the wx dialog.
++    const gulong handler = g_signal_connect(widget.get(), "close-request",
++        G_CALLBACK(+[](GtkWindow*, gpointer) -> gboolean { return true; }), NULL);
++    struct ModalScope
++    {
++        wxWeakRef<wxDialog> dialog;
++        GtkWindow* widget;
++        gulong handler;
++        bool wasModal;
++        ModalScope(wxDialog* d, GtkWindow* w, gulong h, bool m)
++            : dialog(d), widget(w), handler(h), wasModal(m) { }
++        ~ModalScope()
++        {
++            if (dialog)
++            {
++                dialog->m_modalLoop = NULL;
++                dialog->m_modalShowing = false;
++            }
++            g_signal_handler_disconnect(widget, handler);
++            gtk_window_set_modal(widget, wasModal);
++        }
++    } scope(this, GTK_WINDOW(widget.get()), handler, wasModal);
++    wxOpenModalDialogLocker modalLock;
++    wxGUIEventLoop loop;
++    m_modalLoop = &loop;
++    m_modalShowing = true;
++    Show(true);
++    if (alive && m_modalShowing)
++        loop.Run();
++    int result = wxID_CANCEL;
++    if (alive)
++    {
++        m_modalLoop = NULL;
++        if (m_modalShowing)
++            EndModal(wxID_CANCEL);
++        if (alive)
++            result = GetReturnCode();
++    }
++    return result;
++#else
+     // release the mouse if it's currently captured as the window having it
+     // will be disabled when this dialog is shown -- but will still keep the
+     // capture making it impossible to do anything in the modal dialog itself
+@@ -185,6 +237,7 @@
+     gtk_window_set_modal(GTK_WINDOW(m_widget), FALSE);
+ 
+     return GetReturnCode();
++#endif
+ }
+ 
+ void wxDialog::EndModal( int retCode )
