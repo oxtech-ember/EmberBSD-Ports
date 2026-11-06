@@ -1,0 +1,716 @@
+$NetBSD$
+
+Use GTK4 MIME content providers and asynchronous clipboard transport.
+Origin: EmberBSD (AI-assisted). wxWindows licence, like upstream.
+Share snapshot/read helpers with drag-and-drop; retain ownership, cancellation,
+primary selection, custom bytes and text conversion through public GDK APIs.
+https://docs.gtk.org/gdk4/class.ContentProvider.html
+https://docs.gtk.org/gdk4/class.Clipboard.html
+
+--- include/wx/gtk/dataform.h.orig
++++ include/wx/gtk/dataform.h
+@@ -10,12 +10,19 @@
+ 
+ #ifndef _WX_GTK_DATAFORM_H
+ #define _WX_GTK_DATAFORM_H
++#ifdef __WXGTK4__
++#include <cstring>
++#endif
+ 
+ class WXDLLIMPEXP_CORE wxDataFormat
+ {
+ public:
+-    // the clipboard formats under GDK are GdkAtoms
++#ifdef __WXGTK4__
++    // GTK4 exposes interned MIME names directly through GdkContentFormats.
++    typedef const char* NativeFormat;
++#else
+     typedef GdkAtom NativeFormat;
++#endif
+ 
+     wxDataFormat();
+     wxDataFormat( wxDataFormatId type );
+@@ -24,7 +31,7 @@
+     // we have to provide all the overloads to allow using strings instead of
+     // data formats (as a lot of existing code does)
+     wxDataFormat( const wxString& id ) { InitFromString(id); }
+-#ifndef wxNO_IMPLICIT_WXSTRING_ENCODING
++#if !defined(wxNO_IMPLICIT_WXSTRING_ENCODING) && !defined(__WXGTK4__)
+     wxDataFormat( const char *id ) { InitFromString(id); }
+ #endif
+     wxDataFormat( const wchar_t *id ) { InitFromString(id); }
+@@ -39,9 +46,15 @@
+     bool operator!=(wxDataFormatId type) const
+         { return m_type != type; }
+     bool operator==(NativeFormat format) const
+-        { return m_format == (NativeFormat)format; }
++        {
++#ifdef __WXGTK4__
++            return m_format == format || (m_format && format && std::strcmp(m_format, format) == 0);
++#else
++            return m_format == format;
++#endif
++        }
+     bool operator!=(NativeFormat format) const
+-        { return m_format != (NativeFormat)format; }
++        { return !(*this == format); }
+     bool operator==(const wxDataFormat& other) const;
+     bool operator!=(const wxDataFormat& other) const
+         { return m_format != other.m_format; }
+--- src/gtk/dataobj.cpp.orig
++++ src/gtk/dataobj.cpp
+@@ -32,35 +32,37 @@
+ namespace
+ {
+ 
+-// Atom initialized on first access.
+-//
+-// Note that this is more than just an optimization, as we have to delay
+-// calling gdk_atom_intern() until after GDK initialization.
+-class wxGdkAtom
++// Native name initialized on first access. GTK4 uses an interned MIME string;
++// GTK2/3 defer gdk_atom_intern() until after GDK initialization.
++class wxGtkFormatName
+ {
+ public:
+     // Name is literal, so we don't copy it but just store the pointer.
+-    wxGdkAtom(const char* name) : m_name(name), m_atom(NULL) {}
+-
+-    GdkAtom Get() const
++    wxGtkFormatName(const char* name) : m_name(name), m_atom(NULL) {}
++
++    wxDataFormat::NativeFormat Get() const
+     {
+         if ( !m_atom )
++#ifdef __WXGTK4__
++            m_atom = g_intern_static_string(m_name);
++#else
+             m_atom = gdk_atom_intern(m_name, FALSE);
++#endif
+ 
+         return m_atom;
+     }
+ 
+ private:
+     const char* const m_name;
+-    mutable GdkAtom m_atom;
++    mutable wxDataFormat::NativeFormat m_atom;
+ };
+ 
+-inline bool operator==(wxDataFormat format, const wxGdkAtom& wxatom)
++inline bool operator==(wxDataFormat format, const wxGtkFormatName& wxatom)
+ {
+     return format.GetFormatId() == wxatom.Get();
+ }
+ 
+-inline bool operator==(GdkAtom atom, const wxGdkAtom& wxatom)
++inline bool operator==(wxDataFormat::NativeFormat atom, const wxGtkFormatName& wxatom)
+ {
+     return atom == wxatom.Get();
+ }
+@@ -70,14 +72,19 @@
+ //
+ // Note that there are also other atoms for text, e.g. "COMPOUND_TEXT" and
+ // "TEXT", but it doesn't seem necessary to support them, so we don't.
+-wxGdkAtom g_u8strAtom   ("UTF8_STRING");
+-wxGdkAtom g_strAtom     ("STRING");
+-wxGdkAtom g_u8textAtom  ("text/plain;charset=utf-8");
+-wxGdkAtom g_textAtom    ("text/plain");
+-
+-wxGdkAtom g_pngAtom     ("image/png");
+-wxGdkAtom g_fileAtom    ("text/uri-list");
+-wxGdkAtom g_htmlAtom    ("text/html");
++#ifdef __WXGTK4__
++wxGtkFormatName g_u8strAtom   ("text/plain;charset=utf-8");
++wxGtkFormatName g_strAtom     ("text/plain");
++#else
++wxGtkFormatName g_u8strAtom   ("UTF8_STRING");
++wxGtkFormatName g_strAtom     ("STRING");
++#endif
++wxGtkFormatName g_u8textAtom  ("text/plain;charset=utf-8");
++wxGtkFormatName g_textAtom    ("text/plain");
++
++wxGtkFormatName g_pngAtom     ("image/png");
++wxGtkFormatName g_fileAtom    ("text/uri-list");
++wxGtkFormatName g_htmlAtom    ("text/html");
+ 
+ } // anonymous namespace
+ 
+@@ -88,7 +95,7 @@
+ wxDataFormat::wxDataFormat()
+ {
+     m_type = wxDF_INVALID;
+-    m_format = (GdkAtom) 0;
++    m_format = (wxDataFormat::NativeFormat) 0;
+ }
+ 
+ wxDataFormat::wxDataFormat( wxDataFormatId type )
+@@ -144,13 +151,22 @@
+ 
+ wxString wxDataFormat::GetId() const
+ {
++#ifdef __WXGTK4__
++    return m_format ? wxString::FromUTF8(m_format) : wxString();
++#else
+     wxGtkString atom_name(gdk_atom_name(m_format));
+     return wxString::FromAscii(atom_name);
++#endif
+ }
+ 
+ void wxDataFormat::SetId( NativeFormat format )
+ {
++#ifdef __WXGTK4__
++    m_format = format ? g_intern_string(format) : NULL;
++    if (!m_format) { m_type = wxDF_INVALID; return; }
++#else
+     m_format = format;
++#endif
+ 
+     if (m_format == g_u8strAtom || m_format == g_u8textAtom)
+ #if wxUSE_UNICODE
+@@ -176,14 +192,18 @@
+ 
+ void wxDataFormat::SetId( const wxString& id )
+ {
++#ifdef __WXGTK4__
++    SetId(id.utf8_str().data());
++#else
+     m_type = wxDF_PRIVATE;
+     m_format = gdk_atom_intern( id.ToAscii(), FALSE );
++#endif
+ }
+ 
+ 
+ // This is also used by wxClipboard to check if the given atom refer to the
+ // same format, so make it extern.
+-extern bool wxGTKIsSameFormat(GdkAtom atom1, GdkAtom atom2)
++extern bool wxGTKIsSameFormat(wxDataFormat::NativeFormat atom1, wxDataFormat::NativeFormat atom2)
+ {
+     if (atom1 == atom2)
+         return true;
+@@ -197,8 +217,9 @@
+     return false;
+ }
+ 
++#ifndef __WXGTK4__
+ // Also used by wxClipboard to use the alternative Wayland atoms for the text.
+-extern GdkAtom wxGTKGetAltWaylandFormat(GdkAtom atom)
++extern wxDataFormat::NativeFormat wxGTKGetAltWaylandFormat(wxDataFormat::NativeFormat atom)
+ {
+     if (atom == g_u8strAtom)
+         return g_u8textAtom.Get();
+@@ -207,6 +228,8 @@
+ 
+     return NULL;
+ }
++
++#endif
+ 
+ bool wxDataFormat::operator==(const wxDataFormat& other) const
+ {
+@@ -456,14 +479,19 @@
+ 
+     wxImage image = m_bitmap.ConvertToImage();
+ 
+-    wxCountingOutputStream count;
+-    image.SaveFile(count, wxBITMAP_TYPE_PNG);
+-
+-    m_pngSize = count.GetSize() + 100; // sometimes the size seems to vary ???
+-    m_pngData = malloc(m_pngSize);
+-
+-    wxMemoryOutputStream mstream((char*) m_pngData, m_pngSize);
+-    image.SaveFile(mstream, wxBITMAP_TYPE_PNG);
++    wxMemoryOutputStream stream;
++    if (!image.SaveFile(stream, wxBITMAP_TYPE_PNG))
++        return;
++
++    // Transfer only the encoded bytes, not spare allocation capacity. The old
++    // count+100 buffer exposed its uninitialized tail through GetDataSize().
++    const size_t size = stream.GetSize();
++    void* const bytes = malloc(size);
++    if (!bytes)
++        return;
++    stream.CopyTo(bytes, size);
++    m_pngData = bytes;
++    m_pngSize = size;
+ }
+ 
+ // ----------------------------------------------------------------------------
+--- include/wx/gtk/clipbrd.h.orig
++++ include/wx/gtk/clipbrd.h
+@@ -15,6 +15,10 @@
+ // ----------------------------------------------------------------------------
+ 
+ #include "wx/weakref.h"
++#ifdef __WXGTK4__
++#include <memory>
++struct wxGTKClipboardData;
++#endif
+ 
+ class WXDLLIMPEXP_CORE wxClipboard : public wxClipboardBase
+ {
+@@ -63,6 +67,12 @@
+ 
+ 
+ 
++#ifdef __WXGTK4__
++private:
++    bool GTKSetData(wxDataObject* data, bool append);
++    std::shared_ptr<wxGTKClipboardData> m_gtk4;
++    bool m_open;
++#else
+     // implementation from now on
+     // --------------------------
+ 
+@@ -137,6 +147,8 @@
+ private:
+     GtkWidget         *m_targetsWidgetAsync;  // for getting list of supported formats
+ 
++#endif
++
+     wxDECLARE_DYNAMIC_CLASS(wxClipboard);
+ };
+ 
+--- src/gtk/clipbrd.cpp.orig
++++ src/gtk/clipbrd.cpp
+@@ -17,6 +17,10 @@
+ 
+ // For compilers that support precompilation, includes "wx.h".
+ #include "wx/wxprec.h"
++
++#ifdef __WXGTK4__
++#include "clipbrd_gtk4.inc"
++#else
+ 
+ #if wxUSE_CLIPBOARD
+ 
+@@ -894,3 +898,5 @@
+ }
+ 
+ #endif // wxUSE_CLIPBOARD
++
++#endif // !__WXGTK4__
+--- /dev/null
++++ src/gtk/clipbrd_gtk4.inc
+@@ -0,0 +1,176 @@
++///////////////////////////////////////////////////////////////////////////////
++// GTK4 clipboard transport. Origin: EmberBSD (AI-assisted). wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++#if wxUSE_CLIPBOARD
++#include "wx/clipbrd.h"
++#include "wx/gtk/private/transfer4.h"
++
++struct wxGTKClipboardData
++{
++    GdkClipboard* clipboard[2] = { NULL, NULL };
++    GdkContentProvider* owned[2] = { NULL, NULL };
++    bool stored[2] = { false, false };
++    bool alive = true;
++    wxGTKTransfer::Requests requests;
++    wxGTKClipboardData()
++    {
++        GdkDisplay* display = gdk_display_get_default();
++        if (!display) return;
++        clipboard[wxClipboard::Primary] = GDK_CLIPBOARD(g_object_ref(gdk_display_get_primary_clipboard(display)));
++        clipboard[wxClipboard::Clipboard] = GDK_CLIPBOARD(g_object_ref(gdk_display_get_clipboard(display)));
++        for (auto item : clipboard) g_signal_connect(item, "changed", G_CALLBACK(Changed), this);
++    }
++    ~wxGTKClipboardData()
++    {
++        for (int i = 0; i < 2; ++i)
++        {
++            if (clipboard[i]) g_signal_handlers_disconnect_by_data(clipboard[i], this);
++            g_clear_object(&owned[i]);
++            g_clear_object(&clipboard[i]);
++        }
++    }
++    static void Changed(GdkClipboard* clipboard, wxGTKClipboardData* state)
++    {
++        for (int i = 0; i < 2; ++i)
++            if (state->clipboard[i] == clipboard && state->owned[i] != gdk_clipboard_get_content(clipboard))
++            { g_clear_object(&state->owned[i]); state->stored[i] = false; }
++    }
++    void Clear(int kind)
++    {
++        GdkContentProvider* old = owned[kind];
++        owned[kind] = NULL;
++        stored[kind] = false;
++        if (old && clipboard[kind] && gdk_clipboard_get_content(clipboard[kind]) == old)
++            gdk_clipboard_set_content(clipboard[kind], NULL);
++        if (old) g_object_unref(old);
++    }
++};
++
++wxIMPLEMENT_DYNAMIC_CLASS(wxClipboard, wxClipboardBase);
++wxClipboard::wxClipboard() : m_gtk4(new wxGTKClipboardData), m_open(false) {}
++wxClipboard::~wxClipboard()
++{
++    auto state = m_gtk4;
++    state->alive = false;
++    state->requests.Cancel();
++    for (int i = 0; i < 2; ++i)
++        if (!state->stored[i]) state->Clear(i);
++}
++bool wxClipboard::Open()
++{
++    wxCHECK_MSG(!m_open, false, "clipboard already open");
++    m_open = m_gtk4->clipboard[m_usePrimary ? Primary : Clipboard] != NULL;
++    return m_open;
++}
++void wxClipboard::Close()
++{
++    wxCHECK_RET(m_open, "clipboard not open");
++    m_open = false;
++}
++bool wxClipboard::IsOpened() const { return m_open; }
++bool wxClipboard::SetData(wxDataObject* data) { return GTKSetData(data, false); }
++bool wxClipboard::AddData(wxDataObject* data) { return GTKSetData(data, true); }
++bool wxClipboard::GTKSetData(wxDataObject* data, bool append)
++{
++    wxCHECK_MSG(m_open && data, false, "clipboard must be open with valid data");
++    const int kind = m_usePrimary ? Primary : Clipboard;
++    auto state = m_gtk4;
++    // Transfer ownership at the API boundary. Native providers retain immutable
++    // bytes, never a callback into a data object after its owner has gone away.
++    std::unique_ptr<wxDataObject> transferred(data);
++    wxGtkObject<GdkContentProvider> provider(wxGTKTransfer::Snapshot(*data));
++    if (!provider.get() || !state->alive) return false;
++    if (append && state->owned[kind] &&
++        gdk_clipboard_get_content(state->clipboard[kind]) == state->owned[kind])
++    {
++        GdkContentProvider* members[] = {
++            GDK_CONTENT_PROVIDER(g_object_ref(provider.get())),
++            GDK_CONTENT_PROVIDER(g_object_ref(state->owned[kind]))
++        };
++        provider = gdk_content_provider_new_union(members, 2);
++    }
++    wxGtkObject<GdkContentProvider> old(state->owned[kind]);
++    state->owned[kind] = GDK_CONTENT_PROVIDER(g_object_ref(provider.get()));
++    state->stored[kind] = false;
++    const bool result = gdk_clipboard_set_content(state->clipboard[kind], provider);
++    if (!result && state->alive)
++    {
++        g_clear_object(&state->owned[kind]);
++        if (old.get() && gdk_clipboard_get_content(state->clipboard[kind]) == old.get())
++            state->owned[kind] = GDK_CONTENT_PROVIDER(g_object_ref(old.get()));
++    }
++    return result && state->alive;
++}
++void wxClipboard::Clear()
++{
++    auto state = m_gtk4;
++    state->Clear(m_usePrimary ? Primary : Clipboard);
++}
++bool wxClipboard::IsSupported(const wxDataFormat& format)
++{
++    auto state = m_gtk4;
++    GdkClipboard* clipboard = state->clipboard[m_usePrimary ? Primary : Clipboard];
++    return clipboard && wxGTKTransfer::Match(gdk_clipboard_get_formats(clipboard), format);
++}
++bool wxClipboard::IsSupportedAsync(wxEvtHandler* sink)
++{
++    wxCHECK_MSG(sink, false, "no clipboard event sink");
++    auto state = m_gtk4;
++    GdkClipboard* clipboard = state->clipboard[m_usePrimary ? Primary : Clipboard];
++    if (!clipboard) return false;
++    GdkContentFormats* formats = gdk_content_formats_union_serialize_mime_types(
++        gdk_content_formats_ref(gdk_clipboard_get_formats(clipboard)));
++    wxClipboardEvent* event = new wxClipboardEvent(wxEVT_CLIPBOARD_CHANGED);
++    gsize count = 0;
++    const char* const* names = gdk_content_formats_get_mime_types(formats, &count);
++    for (gsize i = 0; i < count; ++i) event->AddFormat(wxDataFormat(names[i]));
++    if (wxGTKTransfer::Match(formats, wxDataFormat(wxDF_UNICODETEXT)))
++    {
++        event->AddFormat(wxDataFormat(wxDF_UNICODETEXT));
++        event->AddFormat(wxDataFormat(wxDF_TEXT));
++    }
++    gdk_content_formats_unref(formats);
++    // QueueEvent owns the event and removes it safely if its sink is destroyed.
++    wxQueueEvent(sink, event);
++    return true;
++}
++bool wxClipboard::GetData(wxDataObject& data)
++{
++    wxCHECK_MSG(m_open, false, "clipboard not open");
++    auto state = m_gtk4;
++    GdkClipboard* clipboard = state->clipboard[m_usePrimary ? Primary : Clipboard];
++    if (!clipboard) return false;
++    for (const auto& format : wxGTKTransfer::Formats(data, wxDataObject::Set))
++    {
++        const char* mime = wxGTKTransfer::Match(gdk_clipboard_get_formats(clipboard), format);
++        if (!mime) continue;
++        if (!state->alive) return false;
++        auto request = wxGTKTransfer::Read(G_OBJECT(clipboard), mime);
++        state->requests.Add(request);
++        // Starting a GDK read may call a native provider synchronously. Both
++        // it and the nested wx loop can run application destruction callbacks.
++        // cppcheck-suppress identicalConditionAfterEarlyExit
++        if (!state->alive) { g_cancellable_cancel(request->cancel); return false; }
++        // cppcheck-suppress identicalConditionAfterEarlyExit
++        if (!wxGTKTransfer::Wait(request) || !state->alive) return false;
++        return wxGTKTransfer::Receive(data, format, request->bytes);
++    }
++    return false;
++}
++bool wxClipboard::Flush()
++{
++    if (m_usePrimary) return false;
++    auto state = m_gtk4;
++    GdkClipboard* clipboard = state->clipboard[Clipboard];
++    if (!clipboard) return false;
++    GdkContentProvider* current = gdk_clipboard_get_content(clipboard);
++    wxGtkObject<GdkContentProvider> offered(current ? GDK_CONTENT_PROVIDER(g_object_ref(current)) : NULL);
++    auto request = wxGTKTransfer::Store(clipboard);
++    state->requests.Add(request);
++    if (!state->alive) { g_cancellable_cancel(request->cancel); return false; }
++    const bool result = wxGTKTransfer::Wait(request);
++    const bool unchanged = state->alive && gdk_clipboard_get_content(clipboard) == offered.get();
++    if (unchanged && result) state->stored[Clipboard] = true;
++    return result && unchanged;
++}
++#endif // wxUSE_CLIPBOARD
+--- /dev/null
++++ include/wx/gtk/private/transfer4.h
+@@ -0,0 +1,242 @@
++///////////////////////////////////////////////////////////////////////////////
++// Shared GTK4 clipboard/DnD MIME transport.
++// Origin: EmberBSD (AI-assisted). wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++#ifndef WX_GTK_PRIVATE_TRANSFER4_H
++#define WX_GTK_PRIVATE_TRANSFER4_H
++#include "wx/dataobj.h"
++#include "wx/evtloop.h"
++#include "wx/gtk/private/object.h"
++#include <gtk/gtk.h>
++#include <memory>
++#include <vector>
++#include <set>
++#include <string>
++#include <limits>
++
++namespace wxGTKTransfer
++{
++inline bool IsText(const wxDataFormat& format)
++{ return format.GetType() == wxDF_TEXT || format.GetType() == wxDF_UNICODETEXT; }
++
++inline std::vector<wxDataFormat> Formats(wxDataObject& data, wxDataObject::Direction direction)
++{
++    std::vector<wxDataFormat> result;
++    const size_t count = data.GetFormatCount(direction);
++    if (!count) return result;
++    result.push_back(data.GetPreferredFormat(direction));
++    std::vector<wxDataFormat> all(count);
++    data.GetAllFormats(all.data(), direction);
++    for (const auto& format : all)
++        if (format != result.front()) result.push_back(format);
++    return result;
++}
++
++class Providers
++{
++public:
++    Providers() = default;
++    Providers(const Providers&) = delete;
++    Providers& operator=(const Providers&) = delete;
++    std::vector<GdkContentProvider*> values;
++    ~Providers() { for (auto value : values) g_object_unref(value); }
++    GdkContentProvider* Union()
++    {
++        if (values.empty()) return NULL;
++        // GDK copies the pointer array and takes ownership of each provider.
++        GdkContentProvider* result = gdk_content_provider_new_union(values.data(), values.size());
++        values.clear();
++        return result;
++    }
++};
++
++inline GdkContentProvider* Snapshot(wxDataObject& data)
++{
++    Providers providers;
++    std::set<std::string> supplied;
++    for (const auto& format : Formats(data, wxDataObject::Get))
++    {
++        const char* mime = format.GetFormatId();
++        if (!mime || !*mime) continue;
++        if (IsText(format) && supplied.count("text/plain;charset=utf-8")) continue;
++        if (!IsText(format) && supplied.count(mime)) continue;
++        const size_t size = data.GetDataSize(format);
++        if (size == std::numeric_limits<size_t>::max()) continue;
++        // Some wx data objects write a terminator; retain room even for empty data.
++        std::vector<unsigned char> buffer(size + 1, 0);
++        if (!data.GetDataHere(format, buffer.data())) continue;
++        const void* bytes = buffer.data();
++        size_t length = size;
++        wxScopedCharBuffer converted;
++        if (format.GetType() == wxDF_TEXT)
++        {
++            const wxString text(reinterpret_cast<const char*>(bytes), wxConvLocal, length);
++            converted = text.utf8_str();
++            if (!converted && length) continue;
++            bytes = converted.data(); length = converted.length();
++        }
++        if (IsText(format) || format.GetType() == wxDF_FILENAME)
++            while (length && static_cast<const char*>(bytes)[length - 1] == '\0') --length;
++        GBytes* content = g_bytes_new(bytes, length);
++        if (IsText(format))
++        {
++            providers.values.push_back(gdk_content_provider_new_for_bytes("text/plain;charset=utf-8", content));
++            providers.values.push_back(gdk_content_provider_new_for_bytes("text/plain", content));
++            supplied.insert("text/plain;charset=utf-8"); supplied.insert("text/plain");
++        }
++        else
++        {
++            providers.values.push_back(gdk_content_provider_new_for_bytes(mime, content));
++            supplied.insert(mime);
++        }
++        g_bytes_unref(content);
++    }
++    return providers.Union();
++}
++
++inline const char* Match(GdkContentFormats* available, const wxDataFormat& wanted)
++{
++    // Native GTypes (e.g. G_TYPE_STRING/GDK_TYPE_TEXTURE) also expose their
++    // standard MIME serializations through GDK's registered serializers.
++    GdkContentFormats* formats = gdk_content_formats_union_serialize_mime_types(gdk_content_formats_ref(available));
++    const char* result = NULL;
++    if (IsText(wanted))
++    {
++        if (gdk_content_formats_contain_mime_type(formats, "text/plain;charset=utf-8"))
++            result = "text/plain;charset=utf-8";
++        else if (gdk_content_formats_contain_mime_type(formats, "text/plain"))
++            result = "text/plain";
++    }
++    else if (wanted.GetFormatId() && gdk_content_formats_contain_mime_type(formats, wanted.GetFormatId()))
++        result = wanted.GetFormatId();
++    gdk_content_formats_unref(formats);
++    return result;
++}
++
++struct Operation
++{
++    wxGtkObject<GCancellable> cancel;
++    wxGtkObject<GInputStream> input;
++    wxGtkObject<GOutputStream> output;
++    GBytes* bytes = NULL;
++    bool done = false, success = false;
++    Operation() : cancel(g_cancellable_new()) {}
++    Operation(const Operation&) = delete;
++    Operation& operator=(const Operation&) = delete;
++    ~Operation() { if (bytes) g_bytes_unref(bytes); }
++};
++typedef std::shared_ptr<Operation> Pending;
++inline Pending Take(void* data)
++{
++    std::unique_ptr<Pending> holder(static_cast<Pending*>(data));
++    return *holder;
++}
++inline void Spliced(GObject* source, GAsyncResult* result, void* data)
++{
++    Pending pending = Take(data);
++    GError* error = NULL;
++    pending->success = g_output_stream_splice_finish(G_OUTPUT_STREAM(source), result, &error) >= 0;
++    if (pending->success)
++        pending->bytes = g_memory_output_stream_steal_as_bytes(G_MEMORY_OUTPUT_STREAM(source));
++    g_clear_error(&error);
++    pending->done = true;
++}
++inline void ReadReady(GObject* source, GAsyncResult* result, void* data)
++{
++    Pending pending = Take(data);
++    GError* error = NULL;
++    const char* mime = NULL;
++    pending->input = GDK_IS_CLIPBOARD(source)
++        ? gdk_clipboard_read_finish(GDK_CLIPBOARD(source), result, &mime, &error)
++        : gdk_drop_read_finish(GDK_DROP(source), result, &mime, &error);
++    g_clear_error(&error);
++    if (!pending->input.get()) { pending->done = true; return; }
++    pending->output = g_memory_output_stream_new_resizable();
++    g_output_stream_splice_async(pending->output, pending->input,
++        GOutputStreamSpliceFlags(G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET),
++        G_PRIORITY_DEFAULT, pending->cancel, Spliced, new Pending(pending));
++}
++inline Pending Read(GObject* source, const char* mime)
++{
++    Pending pending(new Operation);
++    const char* types[] = { mime, NULL };
++    if (GDK_IS_CLIPBOARD(source))
++        gdk_clipboard_read_async(GDK_CLIPBOARD(source), types, G_PRIORITY_DEFAULT,
++            pending->cancel, ReadReady, new Pending(pending));
++    else
++        gdk_drop_read_async(GDK_DROP(source), types, G_PRIORITY_DEFAULT,
++            pending->cancel, ReadReady, new Pending(pending));
++    return pending;
++}
++inline void Stored(GObject* source, GAsyncResult* result, void* data)
++{
++    Pending pending = Take(data);
++    GError* error = NULL;
++    pending->success = gdk_clipboard_store_finish(GDK_CLIPBOARD(source), result, &error);
++    g_clear_error(&error);
++    pending->done = true;
++}
++inline Pending Store(GdkClipboard* clipboard)
++{
++    Pending pending(new Operation);
++    gdk_clipboard_store_async(clipboard, G_PRIORITY_DEFAULT, pending->cancel, Stored, new Pending(pending));
++    return pending;
++}
++inline bool Wait(const Pending& pending)
++{
++    struct CancelOnExit
++    {
++        GCancellable* cancel;
++        ~CancelOnExit() { g_cancellable_cancel(cancel); }
++    } cancel = { pending->cancel.get() };
++    wxEventLoopGuarantor ensureLoop;
++    wxEventLoopBase* loop = wxEventLoopBase::GetActive();
++    while (!pending->done && !g_cancellable_is_cancelled(pending->cancel))
++        if (!loop || loop->DispatchTimeout(50) == 0) break;
++    return pending->done && pending->success;
++}
++inline bool Receive(wxDataObject& object, const wxDataFormat& format, GBytes* bytes)
++{
++    gsize length = 0;
++    const char* content = static_cast<const char*>(g_bytes_get_data(bytes, &length));
++    wxScopedCharBuffer converted;
++    if (IsText(format))
++    {
++        if (length && !g_utf8_validate(content, length, NULL)) return false;
++        if (format.GetType() == wxDF_TEXT)
++        {
++            converted = wxString::FromUTF8(content ? content : "", length).mb_str(wxConvLocal);
++            if (!converted && length) return false;
++            content = converted.data(); length = converted.length();
++        }
++    }
++    if (length == std::numeric_limits<size_t>::max()) return false;
++    std::vector<char> terminated(length + 1, 0);
++    if (length) memcpy(terminated.data(), content, length);
++    return object.SetData(format, length, terminated.data());
++}
++
++// Owner destruction cancels requests without invalidating callback storage.
++class Requests
++{
++public:
++    Requests() = default;
++    Requests(const Requests&) = delete;
++    Requests& operator=(const Requests&) = delete;
++    std::vector<std::weak_ptr<Operation> > pending;
++    ~Requests() { Cancel(); }
++    void Add(const Pending& request)
++    {
++        for (auto i = pending.begin(); i != pending.end(); )
++            if (i->expired()) i = pending.erase(i); else ++i;
++        pending.push_back(request);
++    }
++    void Cancel()
++    {
++        for (const auto& weak : pending)
++            if (Pending request = weak.lock()) g_cancellable_cancel(request->cancel);
++        pending.clear();
++    }
++};
++}
++#endif

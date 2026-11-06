@@ -429,3 +429,55 @@ this fixture pass target Clang syntax checks using real configured wx and GTK4
 headers. Source Cppcheck reports no warnings with its GTK/wx libraries. Linking,
 GUI execution and executable memory checks remain pending the shared build;
 prepared fixtures and successful compilation are not runtime acceptance.
+
+# GTK4 clipboard and shared MIME transport
+
+`patch-gtk4-transfer` uses GdkContentProvider and GdkClipboard. wxDataFormat's
+GTK4 native representation is an interned MIME name, matching GdkContentFormats;
+GTK2/3 retain their existing GdkAtom representation. No removed selection-data
+API or fabricated GDK types are used. One private transport helper snapshots
+all supported wx formats into immutable providers and reads native streams
+asynchronously through the existing wx event loop. The GTK4 drag-and-drop
+consumer uses this same byte transport when its backend is integrated.
+
+Unicode text is transferred as UTF-8. wxDF_TEXT uses its existing wx locale
+encoding at the wx data-object boundary and is converted explicitly to/from
+UTF-8 on the native wire. Custom MIME payloads preserve exact lengths, including
+zero bytes and empty payloads. Received data has extra terminator storage for
+wx file/URI objects without changing the reported payload length. Bitmap data
+keeps the shared wx PNG handler. PNG serialization now reports the actual
+encoded size instead of exposing spare allocation bytes after IEND.
+
+SetData atomically replaces the offer; AddData forms a union with a locally
+owned offer, preferring the new representation for duplicate formats. Clear and
+destruction do not erase another provider's contents. Primary selection uses
+GDK's separate clipboard and does not overwrite the regular clipboard; Wayland
+compositors without the primary-selection protocol can reject that offer.
+Flush reports the real asynchronous GDK store result, including an unavailable
+clipboard manager, and does not mark a replacement offer as persisted. Pending
+reads/stores have cancellable, separately owned callback storage; clipboard
+destruction and event-loop shutdown stop waiting without retaining a dangling
+wxClipboard pointer. IsSupportedAsync queues the normal wxClipboardEvent.
+
+Primary references:
+
+- [GdkContentProvider and its public virtual methods](https://docs.gtk.org/gdk4/class.ContentProvider.html)
+- [Provider union order and ownership](https://docs.gtk.org/gdk4/ctor.ContentProvider.new_union.html)
+- [Asynchronous clipboard reads](https://docs.gtk.org/gdk4/method.Clipboard.read_async.html)
+- [Remote clipboard persistence](https://docs.gtk.org/gdk4/method.Clipboard.store_async.html)
+
+`clipboard4-contract` (`BUILD_CLIPBOARD_CONTRACT`) checks Unicode interchange
+with native GDK, custom binary and empty payloads, AddData/SetData semantics,
+format notifications, foreign-owner Clear, primary isolation, PNG round-trip
+and exact IEND length. A real GdkContentProvider subclass destroys the requesting
+wxClipboard from its asynchronous write callback to exercise request lifetime
+under ASan. Run with G_DEBUG=fatal-warnings and a real X11/Wayland display; cross
+application paste and clipboard-manager persistence are separate runtime checks.
+The test temporarily replaces clipboard contents and clears its test offers.
+
+Full target syntax checks pass for dataobj.cpp, clipbrd.cpp and the fixture with
+real configured wx and GTK4 headers. The diagnostic setup has no PNG handler,
+so its conditional PNG fixture section has not been compiled or executed yet.
+Source Cppcheck is clean with explicit annotations for GObject initialization
+and callbacks that can reenter/delete a clipboard. GUI execution, linking,
+PNG acceptance and executable memory checking remain pending the shared build.
