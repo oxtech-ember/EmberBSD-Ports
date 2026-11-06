@@ -448,27 +448,27 @@ node_deps()
         ! native_current "$base" "$name" || current=yes
     fi
     # pkgsrc resolves each dependency directory from the package that declares
-    # it. A same-category sibling is as real as ../../category/package. A path
-    # that is not one category/package inside this tree is an error: omitting
-    # it would build the dependent with that provider absent.
+    # it. show-depends-pkgpaths keeps that directory with :C/^[^:]*://, the
+    # text after the first colon. A same-category sibling is as real as
+    # ../../category/package. A path that is not one category/package inside
+    # this tree is an error: omitting it would build the dependent with that
+    # provider absent.
     deps=$(printf '%s\n' "$vars" | awk -v suffix="$suffix" -v current="$current" -v pkgdir="$dir" '
         function fail(msg) {
             print "cross-bulk: " msg > "/dev/stderr"
             exit 2
         }
-        function last_colon(text,    rest, pos) {
-            rest = text
-            pos = 0
-            while (match(rest, /:/)) {
-                pos = pos + RSTART
-                rest = substr(rest, RSTART + 1)
-            }
-            return pos
-        }
-        function resolve(base, rel,    n, m, i, count, part, stack) {
+        function resolve(base, rel,    n, m, i, count, part, raw, stack) {
             if (rel ~ /^\//) fail("absolute dependency path in " base ": " rel)
-            n = split(base, stack, "/")
-            count = n
+            # A trailing slash is an empty component. graphics/MesaLib/ is the
+            # same declaring package as graphics/MesaLib; "." is not a step.
+            n = split(base, raw, "/")
+            count = 0
+            for (i = 1; i <= n; i++) {
+                if (raw[i] == "" || raw[i] == ".") continue
+                count++
+                stack[count] = raw[i]
+            }
             m = split(rel, part, "/")
             for (i = 1; i <= m; i++) {
                 if (part[i] == "" || part[i] == ".") continue
@@ -492,7 +492,7 @@ node_deps()
             n = split($0, w, " ")
             for (i = 1; i <= n; i++) {
                 if (w[i] == "") continue
-                colon = last_colon(w[i])
+                colon = index(w[i], ":")
                 if (colon < 1) fail("dependency entry has no package path: " w[i] " from " pkgdir)
                 pattern = substr(w[i], 1, colon - 1)
                 rel = substr(w[i], colon + 1)

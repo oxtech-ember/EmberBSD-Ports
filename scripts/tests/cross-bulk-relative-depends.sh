@@ -4,7 +4,10 @@
 # Order resolves a dependency directory from the package that declares it.
 # A same-category sibling (../mesa-generators) and a dotted relative path
 # (./../helper) are category/package nodes, just as ../../category/package is.
-# An entry that leaves the tree is refused rather than omitted.
+# pkgsrc show-depends-pkgpaths keeps the directory with :C/^[^:]*://, the
+# text after the first colon. A trailing slash on the declaring directory
+# is the same package. An entry that leaves the tree is refused rather than
+# omitted.
 # Target tools are queried in the cross-fed native context. Tools of those
 # tools keep the plain native context. An installed native package is current
 # only at the tree PKGNAME or newer, so an older exact dependency is built
@@ -22,6 +25,7 @@ python=${TEST_PYTHON:-$(command -v python3)}
 mkdir -p "$out/tree/pkgtools/pkg_install" "$out/tree/graphics/MesaLib" \
     "$out/tree/graphics/mesa-generators" "$out/tree/graphics/widget" \
     "$out/tree/graphics/helper" "$out/tree/graphics/bad" \
+    "$out/tree/graphics/altpat" \
     "$out/tree/devel/flex" "$out/tree/devel/bison" \
     "$out/tree/x11/libX11" \
     "$out/native-db" "$out/sdk/scripts" "$out/packages/All"
@@ -69,12 +73,15 @@ while [ "\$#" -gt 0 ]; do
         *) target=\$1; shift ;;
     esac
 done
-pkg=\${dir##*/}
+pkg=\${dir%/}
+pkg=\${pkg##*/}
 value() {
     case "\$pkg:\$role:\$1" in
         MesaLib:target:TOOL_DEPENDS)
             echo 'mesa-generators-26.2.6nb20:../mesa-generators flex>=2.6.4:../../devel/flex' ;;
         MesaLib:target:BUILD_DEPENDS)
+            echo 'libX11>=1.8:../../x11/libX11' ;;
+        altpat:target:BUILD_DEPENDS)
             echo '{libX11>=1.8:alt,libX11>=1.8}:../../x11/libX11' ;;
         mesa-generators:native:TOOL_DEPENDS) echo 'bison>=3.8.2:../../devel/bison' ;;
         widget:target:TOOL_DEPENDS) echo 'helper-1.0:./../helper' ;;
@@ -131,7 +138,7 @@ order_case() {
     grep -qx 'devel/flex@native graphics/MesaLib' "$state/edges" ||
         fail "$label did not keep the canonical flex edge"
     grep -qx 'x11/libX11 graphics/MesaLib' "$state/edges" ||
-        fail "$label did not keep the directory after the last colon"
+        fail "$label did not keep the directory after the first colon"
     grep -qx 'graphics/helper@native graphics/widget' "$state/edges" ||
         fail "$label did not resolve ./../helper"
     grep -qx 'graphics/mesa-generators@native mesa-generators-26.2.6nb20' "$state/packages" ||
@@ -183,4 +190,29 @@ if bulk order "$out/escape-list" "$out/state-escape" > "$out/escape.log" 2>&1; t
 fi
 grep -q 'dependency path leaves the pkgsrc tree: ../../../../tmp/evil from graphics/bad' "$out/escape.log" ||
     fail "escape was not reported: $(cat "$out/escape.log")"
+: > "$out/calls"
+rm -rf "$out/state-slash"
+printf '%s\n' 'graphics/MesaLib/' > "$out/slash-list"
+bulk order "$out/slash-list" "$out/state-slash" > "$out/slash.log" 2>&1 ||
+    fail "trailing-slash base rejected a normal dependency: $(cat "$out/slash.log")"
+grep -qx 'devel/flex@native graphics/MesaLib/' "$out/state-slash/edges" ||
+    fail "graphics/MesaLib/ did not resolve ../../devel/flex"
+grep -qx 'graphics/mesa-generators@native graphics/MesaLib/' "$out/state-slash/edges" ||
+    fail "graphics/MesaLib/ did not resolve ../mesa-generators"
+: > "$out/calls"
+rm -rf "$out/state-slash-escape"
+printf '%s\n' 'graphics/bad/' > "$out/slash-escape-list"
+if bulk order "$out/slash-escape-list" "$out/state-slash-escape" > "$out/slash-escape.log" 2>&1; then
+    fail 'a trailing slash on the declaring directory hid an escape'
+fi
+grep -q 'dependency path leaves the pkgsrc tree: ../../../../tmp/evil from graphics/bad/' "$out/slash-escape.log" ||
+    fail "trailing-slash escape was not reported: $(cat "$out/slash-escape.log")"
+: > "$out/calls"
+rm -rf "$out/state-alt"
+printf '%s\n' graphics/altpat > "$out/alt-list"
+if bulk order "$out/alt-list" "$out/state-alt" > "$out/alt.log" 2>&1; then
+    fail 'a colon inside a pattern was accepted; pkgsrc cuts at the first colon'
+fi
+grep -q 'unsupported dependency path in graphics/altpat: alt,libX11>=1.8}:../../x11/libX11' "$out/alt.log" ||
+    fail "first-colon split was not applied: $(cat "$out/alt.log")"
 echo 'PASS: relative dependency paths, exact generator compatibility, and cross-fed native context'
