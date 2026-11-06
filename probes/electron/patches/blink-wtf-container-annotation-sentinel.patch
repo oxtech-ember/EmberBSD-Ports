@@ -145,3 +145,22 @@
    T inline_buffer[inlineCapacity];
  #endif
  };
+--- a/third_party/blink/renderer/core/html/parser/literal_buffer.h
++++ b/third_party/blink/renderer/core/html/parser/literal_buffer.h
+@@ -18,6 +18,7 @@
+ #include "base/memory/raw_ptr.h"
+ #include "base/numerics/checked_math.h"
+ #include "third_party/blink/renderer/core/core_export.h"
+ #include "third_party/blink/renderer/platform/wtf/allocator/partitions.h"
++#include "third_party/blink/renderer/platform/wtf/container_annotations.h"
+ #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
+ #include "third_party/blink/renderer/platform/wtf/text/atomic_string_encoding.h"
+@@ -26,7 +27,7 @@
+ 
+ // For ASAN builds, disable inline buffers completely as they cause various
+ // issues.
+-#ifdef ANNOTATE_CONTIGUOUS_CONTAINER
++#ifdef WTF_ANNOTATE_CONTIGUOUS_CONTAINER
+ #define BUFFER_INLINE_CAPACITY 0
+ #else
+ #define BUFFER_INLINE_CAPACITY kInlineSize

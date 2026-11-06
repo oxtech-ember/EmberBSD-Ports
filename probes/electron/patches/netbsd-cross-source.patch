@@ -28,6 +28,21 @@ diff --git a/base/BUILD.gn b/base/BUILD.gn
 diff --git a/base/base_paths_posix.cc b/base/base_paths_posix.cc
 --- a/base/base_paths_posix.cc
 +++ b/base/base_paths_posix.cc
+@@ -59,8 +59,12 @@
+         NOTREACHED() << "Unable to resolve path.";
+         return false;
+       }
+-      *result = FilePath(bin_dir.value());
+-      VLOG(1) << "PathProviderPosix result: " << bin_dir.value();
++      FilePath resolved = MakeAbsoluteFilePath(FilePath(bin_dir.value()));
++      if (resolved.empty()) {
++        return false;
++      }
++      *result = resolved;
++      VLOG(1) << "PathProviderPosix result: " << resolved.value();
+       return true;
+ #elif BUILDFLAG(IS_SOLARIS)
+       char bin_dir[PATH_MAX + 1];
 @@ -82,7 +82,7 @@
        if ((cpath = getenv("CHROME_EXE_PATH")) != NULL) {
          *result = FilePath(cpath);
