@@ -34,14 +34,19 @@ The container emits `wx-size-allocate(width, height)` with GTK content dimension
 provide a texture without recursively requesting another frame.
 
 `patch-gtk4-dc` routes `wxPaintDC` through the active snapshot Cairo context.
-Outside paint, `wxClientDC` and `wxWindowDC` use a short-lived Cairo frame on
-the containing `GtkNative` surface and clip to the widget allocation; the
-deprecated GDK begin/end-frame API is an immediate compatibility path whose
-draw may be replaced by the next GTK redraw. GTK4 has no desktop surface for
-`wxScreenDC`, so that API reports unsupported. Bitmap textures copy pixels
-into immutable `GdkMemoryTexture` generations because retained snapshots can
-outlive later writes to a `wxBitmap`. Textures for bitmaps with exposed writable
-pixel data or a mutable Cairo surface refresh on each snapshot.
+Outside paint, `wxClientDC` and `wxWindowDC` use the latest wxPizza client
+content node as the Cairo destination. GTK renders that node to a texture and
+downloads it to a mutable image buffer; the next snapshot installs the changed
+content node in the same layer, before children. This rare immediate path uses
+a CPU readback. If the widget has no prior snapshot or is a native control, the
+existing generic offscreen context remains available for measurement, without
+claiming screen output. This path does not read other windows or the desktop;
+transparent client content backed by a parent's pixels still needs validation.
+GTK4 has no desktop surface for `wxScreenDC`, so that API reports unsupported.
+Bitmap textures copy pixels into immutable
+`GdkMemoryTexture` generations because retained snapshots can outlive later
+writes to a `wxBitmap`. Textures for bitmaps with exposed writable pixel data
+or a mutable Cairo surface refresh on each snapshot.
 
 `patch-gtk4-controls` adapts buttons, checkboxes, radio buttons, labels, choices
 and combo boxes. GTK4 removed GtkComboBox's multi-column popup API; `SetColumns`
