@@ -1,0 +1,80 @@
+$NetBSD$
+
+GTK4 window integration (work in progress).
+Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
+
+--- src/gtk/fontdlg.cpp.orig
++++ src/gtk/fontdlg.cpp
+@@ -32,14 +32,17 @@
+     {
+         rc = wxID_OK;
+ #if GTK_CHECK_VERSION(3,2,0)
+-        if (gtk_check_version(3,2,0) == NULL)
++        if (GTK_MAJOR_VERSION >= 4 || gtk_check_version(3,2,0) == NULL)
+         {
+             wxNativeFontInfo info;
+             info.description = gtk_font_chooser_get_font_desc(GTK_FONT_CHOOSER(dialog));
+             win->GetFontData().SetChosenFont(wxFont(info));
+         }
++#ifndef __WXGTK4__
+         else
+ #endif
++#endif
++#ifndef __WXGTK4__
+         {
+             wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+             GtkFontSelectionDialog* sel = GTK_FONT_SELECTION_DIALOG(dialog);
+@@ -47,6 +50,7 @@
+             win->GetFontData().SetChosenFont(wxFont(wxString::FromUTF8(name)));
+             wxGCC_WARNING_RESTORE()
+         }
++#endif
+     }
+ 
+     if (win->IsModal())
+@@ -83,10 +87,13 @@
+ #if GLIB_CHECK_VERSION(2, 34, 0)
+     g_type_ensure(PANGO_TYPE_FONT_FACE);
+ #endif
+-    if (gtk_check_version(3,2,0) == NULL)
++    if (GTK_MAJOR_VERSION >= 4 || gtk_check_version(3,2,0) == NULL)
+         m_widget = gtk_font_chooser_dialog_new(wxGTK_CONV(message), gtk_parent);
++#ifndef __WXGTK4__
+     else
+ #endif
++#endif
++#ifndef __WXGTK4__
+     {
+         wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+         m_widget = gtk_font_selection_dialog_new(wxGTK_CONV(message));
+@@ -94,6 +101,7 @@
+             gtk_window_set_transient_for(GTK_WINDOW(m_widget), gtk_parent);
+         wxGCC_WARNING_RESTORE()
+     }
++#endif
+     g_object_ref(m_widget);
+ 
+     g_signal_connect(m_widget, "response", G_CALLBACK(response), this);
+@@ -106,10 +114,13 @@
+         if ( info )
+         {
+ #if GTK_CHECK_VERSION(3,2,0)
+-            if (gtk_check_version(3,2,0) == NULL)
++            if (GTK_MAJOR_VERSION >= 4 || gtk_check_version(3,2,0) == NULL)
+                 gtk_font_chooser_set_font_desc(GTK_FONT_CHOOSER(m_widget), info->description);
++#ifndef __WXGTK4__
+             else
+ #endif
++#endif
++#ifndef __WXGTK4__
+             {
+                 wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+                 const wxString& fontname = info->ToString();
+@@ -117,6 +128,7 @@
+                 gtk_font_selection_dialog_set_font_name(sel, wxGTK_CONV(fontname));
+                 wxGCC_WARNING_RESTORE()
+             }
++#endif
+         }
+         else
+         {
