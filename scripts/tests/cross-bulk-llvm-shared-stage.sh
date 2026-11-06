@@ -49,10 +49,11 @@ out=${FAKE_OUT:?}
 if [ "${CPP+x}" = x ]; then echo 'host CPP leaked into controller bmake' >&2; exit 1; fi
 producer=${FAKE_PRODUCER:?} consumer=${FAKE_CONSUMER:?}
 producer_name=${FAKE_PRODUCER_NAME:?} consumer_name=${FAKE_CONSUMER_NAME:?}
-dir= target= varname= varnames= packages=$out/packages work_override= shared=
+dir= target= varname= varnames= packages=$out/packages work_override= shared= vquery=
 while [ "$#" -gt 0 ]; do
     case "$1" in
         -C) dir=$2; shift 2 ;;
+        -V) vquery="$vquery $2"; shift 2 ;;
         VARNAME=*) varname=${1#VARNAME=}; shift ;;
         VARNAMES=*) varnames=${1#VARNAMES=}; shift ;;
         PACKAGES=*) packages=${1#PACKAGES=}; shift ;;
@@ -67,6 +68,17 @@ base=$pkg
 name=$producer_name
 [ "$dir" != "$out/tree/$consumer" ] || { base=${consumer##*/}; name=$consumer_name; }
 work=${work_override:-$out/work/$pkg}
+if [ -n "$vquery" ]; then
+    for v in $vquery; do
+        case "$v" in
+            '${USE_TOOLS}') echo fixture ;;
+            '${WRKDIR}') echo "$work" ;;
+            '${_COOKIE.tools}') echo "$work/.tools_done" ;;
+            *) echo "unknown query $v" >&2; exit 2 ;;
+        esac
+    done
+    exit 0
+fi
 case "$target" in
     show-var)
         case "$varname" in
@@ -85,6 +97,7 @@ case "$target" in
             case "$v" in
                 PKGNAME) echo "$name" ;;
                 WRKDIR) echo "$work" ;;
+                WRKOBJDIR) echo "$out/work" ;;
                 PKGBASE) echo "$base" ;;
                 PKGVERSION_NOREV) version=${name#"$base"-}; echo "${version%nb*}" ;;
                 PKGFILE) echo "$out/packages/All/$name.tgz" ;;
@@ -148,7 +161,7 @@ WRAP
 
 run_build()
 {
-    case_out=$1 mode=${2:-build}
+    case_out=$1 mode=${2:-build} requested_path=${3:-$producer}
         CPP=/unexpected/host-cpp FAKE_OUT=$case_out FAKE_PRODUCER=$producer FAKE_CONSUMER=$consumer \
         FAKE_PRODUCER_NAME=$producer_name FAKE_CONSUMER_NAME=$consumer_name \
         FAKE_STOP_AFTER_PRODUCER=${FAKE_STOP_AFTER_PRODUCER:-no} \
@@ -158,7 +171,7 @@ run_build()
         PKGSRCDIR=$case_out/tree CROSS_BULK_CPUS=1 CROSS_BULK_JOBS=1 \
         CROSS_BULK_MAKE_JOBS=1 CROSS_BULK_TRASH=no CROSS_BULK_VARS_CACHE=no \
         CROSS_BULK_CLEAN_SUCCESS=${CLEAN_SUCCESS:-yes} CROSS_BULK_SHARED_BUILD=yes \
-        sh "$ports/scripts/cross-bulk.sh" "$mode" "$producer" "$case_out/state" \
+        sh "$ports/scripts/cross-bulk.sh" "$mode" "$requested_path" "$case_out/state" \
         > "$case_out/build.log" 2>&1
 }
 
@@ -348,3 +361,75 @@ grep -q "^$consumer $consumer_name " "$pack/state/packaged" || fail 'package-onl
 [ -f "$pack/work/$producer_dir/objects/compiled.o" ] || fail 'package-only removed producer objects'
 [ -f "$pack/work/$producer_dir/.${pair}-shared-full-stage/full-stage" ] || fail 'package-only removed shared stage'
 echo 'PASS: package-only pair preserves installation state, objects and full stage'
+
+# A concurrent consumer owns its stage: the single producer request must not
+# enter either package or cleanup before both locks have been acquired.
+locked=$out/consumer-held
+setup "$locked"
+mkdir -p "$locked/work/$consumer_dir"
+PYTHONPATH="$CROSS_BULK_TEST_SDK_SOURCE/src" "$CROSS_BULK_TEST_HOST_PYTHON" -B -c '
+import sys,time
+from pathlib import Path
+from emberbsd_sdk import paths,process
+work,ready,release=map(Path,sys.argv[1:])
+with process.ContextLocks([paths.canonical_new(str(work))],paths.canonical_existing(str(work.parent))):
+ ready.write_text("ready")
+ deadline=time.monotonic()+30
+ while not release.exists() and time.monotonic()<deadline:time.sleep(.02)
+' "$locked/work/$consumer_dir" "$locked/ready" "$locked/release" &
+holder=$!
+trap 'kill "$holder" 2>/dev/null || :; wait "$holder" 2>/dev/null || :' EXIT HUP INT TERM
+count=0
+while [ ! -f "$locked/ready" ]; do
+    count=$((count + 1)); [ "$count" -lt 200 ] || fail 'consumer lock holder did not start'
+    sleep .05
+done
+rc=0
+CLEAN_SUCCESS=no run_build "$locked" package || rc=$?
+[ "$rc" != 0 ] || fail 'producer package entered while consumer lock held'
+if [ -f "$locked/calls" ] && grep -Eq '^(_package-clean|package|package-install):' "$locked/calls"; then
+    fail 'cleanup or package ran while paired consumer was locked'
+fi
+: > "$locked/release"
+wait "$holder"
+trap - EXIT HUP INT TERM
+CLEAN_SUCCESS=no run_build "$locked" package || fail "pair after consumer unlock: $(cat "$locked/build.log")"
+grep -q "^package:$producer_dir:shared$" "$locked/calls" || fail 'unlocked producer did not package'
+grep -q "^package:$consumer_dir:shared$" "$locked/calls" || fail 'unlocked consumer did not package'
+[ -f "$locked/work/$producer_dir/.${pair}-shared-full-stage/full-stage" ] || fail 'unlocked pair lost full stage'
+echo 'PASS: held consumer blocks controller before cleanup and pair packages after release'
+
+# The reverse request also takes both locks: a consumer cannot clean or build
+# while the potential producer stage belongs to a different controller.
+reverse=$out/producer-held
+setup "$reverse"
+mkdir -p "$reverse/work/$producer_dir"
+PYTHONPATH="$CROSS_BULK_TEST_SDK_SOURCE/src" "$CROSS_BULK_TEST_HOST_PYTHON" -B -c '
+import sys,time
+from pathlib import Path
+from emberbsd_sdk import paths,process
+work,ready,release=map(Path,sys.argv[1:])
+with process.ContextLocks([paths.canonical_new(str(work))],paths.canonical_existing(str(work.parent))):
+ ready.write_text("ready")
+ deadline=time.monotonic()+30
+ while not release.exists() and time.monotonic()<deadline:time.sleep(.02)
+' "$reverse/work/$producer_dir" "$reverse/ready" "$reverse/release" &
+holder=$!
+trap 'kill "$holder" 2>/dev/null || :; wait "$holder" 2>/dev/null || :' EXIT HUP INT TERM
+count=0
+while [ ! -f "$reverse/ready" ]; do
+    count=$((count + 1)); [ "$count" -lt 200 ] || fail 'producer lock holder did not start'
+    sleep .05
+done
+rc=0
+CLEAN_SUCCESS=no run_build "$reverse" package "$consumer" || rc=$?
+[ "$rc" != 0 ] || fail 'consumer package entered while producer lock held'
+if [ -f "$reverse/calls" ] && grep -Eq '^(_package-clean|package|package-install):' "$reverse/calls"; then
+    fail 'cleanup or package ran while paired producer was locked'
+fi
+: > "$reverse/release"
+wait "$holder"
+trap - EXIT HUP INT TERM
+CLEAN_SUCCESS=no run_build "$reverse" package "$consumer" || fail "consumer after producer unlock: $(cat "$reverse/build.log")"
+grep -q "^package:$consumer_dir$" "$reverse/calls" || fail 'unlocked consumer did not package'
+echo 'PASS: held producer blocks single consumer before cleanup'

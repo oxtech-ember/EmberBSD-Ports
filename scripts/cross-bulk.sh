@@ -1531,6 +1531,27 @@ shared_pairs_configure()
     shared_pair_configure_one icu
 }
 
+# A single-package invocation can also restore the producer or package its
+# consumer. Lock that possible pair before evaluating the shared-stage inputs;
+# a disabled/incompatible pair may use only the requested stage afterwards.
+package_stage_nodes()
+(
+    printf '%s\n' "$requested"
+    case "$mode:$role:${CROSS_BULK_SHARED_BUILD:-yes}" in
+        package:target:yes|package-install:target:yes) ;;
+        *) return 0 ;;
+    esac
+    shared_pair_for_path "$path"
+    [ -n "$shared_pair" ] || return 0
+    grep -qFx "$shared_producer" "$state/order" &&
+        grep -qFx "$shared_consumer" "$state/order" || return 0
+    if [ "$path" = "$shared_producer" ]; then
+        printf '%s\n' "$shared_consumer"
+    else
+        printf '%s\n' "$shared_producer"
+    fi
+)
+
 shared_pair_ready()
 {
     shared_pair_for_path "$1"
@@ -1577,6 +1598,10 @@ shared_pair_restore_producer()
     [ ! -L "$producer_build" ] && [ -f "$producer_build" ] || return 0
     [ "$(cat "$producer_build")" = "$producer_name" ] || return 0
     stage_local_preflight "$producer_work" "$producer_base" "$producer_version" "$producer_name" "$log" >/dev/null || return 0
+    stage_verify_locked "$producer_work" || {
+        echo "Producer stage is not locked: $producer_work" >> "$log"
+        return 1
+    }
     stage_local=yes
     wrkdir=$producer_work
     shared_pair_reset_stage "$shared_producer" >> "$log" 2>&1 || return 1
@@ -1612,6 +1637,11 @@ shared_pair_reset_stage()
     shared_pair_for_path "$1"
     [ "${stage_local:-no}" = yes ] && [ -n "$shared_pair" ] || return 0
     [ "$(cat "$run/shared-$shared_pair/enabled" 2>/dev/null)" = yes ] || return 0
+    reset_work=$(pkg_vars "$1" WRKDIR) || return 1
+    stage_verify_locked "$reset_work" || {
+        echo "Shared package stage is not locked: $reset_work" >&2
+        return 1
+    }
     bmk -C "$PKGSRCDIR/$1" _package-clean < /dev/null || return 1
     if [ "$1" = "$shared_producer" ]; then
         shared_dir=$run/shared-$shared_pair
@@ -1843,7 +1873,7 @@ package_install_one()
     stamp=$(date '+%Y%m%d%H%M%S')
     link_launcher_args
     if [ "$stage_supervised" = no ]; then
-        printf '%s\n' "$requested" > "$run/stage-node"
+        package_stage_nodes > "$run/stage-node" || return 1
         stage_supervise "$mode" "$run/stage-node"
         return $?
     fi

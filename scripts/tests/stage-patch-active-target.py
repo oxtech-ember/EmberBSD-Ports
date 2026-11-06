@@ -19,6 +19,7 @@ m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 with tempfile.TemporaryDirectory(prefix='active-patch-test-') as tmp:
  root=Path(tmp).resolve(); recipe=root/'recipe'; recipe.mkdir(); framework=root/'patch.mk'
  for target in ('do-patch', 'do-extract'):
+  m.active_parse_trace.cache_clear()
   framework.write_text('.if !target('+target+')\n'+target+': pkgsrc-action\n.endif\npkgsrc-action:\n\t@:\n')
   makefile=recipe/'Makefile'
   makefile.write_text('PKGNAME=fixture\n.if defined(CUSTOM)\n'+target+': custom-action\ncustom-action:\n\t@:\n.endif\n.include "'+str(framework)+'"\n')
