@@ -21,7 +21,7 @@ $NetBSD$
  
 -class Decompressor
 +namespace detail {
-+inline constexpr std::size_t default_max_uncompressed_size = 1000000000;
++constexpr std::size_t default_max_uncompressed_size = 1000000000;
 +} // namespace detail
 +
 +inline void decompress(const char* data,

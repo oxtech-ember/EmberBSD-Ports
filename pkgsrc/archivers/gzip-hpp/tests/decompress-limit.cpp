@@ -10,7 +10,8 @@
 
 int main()
 {
-    static_assert(gzip::detail::default_max_uncompressed_size == 1000000000);
+    static_assert(gzip::detail::default_max_uncompressed_size == 1000000000,
+                  "value-returning decompression retains the 1 GB safety cap");
 
     constexpr char compressed[] = {
         '\x1f', '\x8b', '\x08', '\x00', '\x00', '\x00', '\x00', '\x00',
@@ -22,7 +23,11 @@ int main()
     constexpr std::size_t compressed_size = sizeof(compressed);
     const std::string expected = "hello gzip-hpp";
 
+    const std::string input(compressed, compressed_size);
     assert(gzip::decompress(compressed, compressed_size) == expected);
+    assert(gzip::decompress(input) == expected);
+    assert(gzip::decompress(compressed, compressed_size, 0) == expected);
+    assert(gzip::decompress(input, 0) == expected);
 
     std::string unlimited;
     gzip::decompress(compressed, compressed_size, unlimited, 0, 4);
