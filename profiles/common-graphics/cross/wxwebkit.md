@@ -61,16 +61,16 @@ metadata checks. The cross configuration still reports its missing X11 base
 path; the native configuration has no package failure reason. Neither result
 establishes a complete configure, library build, installed PLIST or GUI runtime.
 
-## WebKitGTK 2.54.1
+## WebKitGTK 2.54.2
 
 The common `webkit-gtk41` and `webkit-gtk60` recipes share the official
-[WebKitGTK 2.54.1 release](https://webkitgtk.org/2026/10/02/webkitgtk2.54.1-released.html),
+[WebKitGTK 2.54.2 release](https://webkitgtk.org/2026/10/23/webkitgtk2.54.2-released.html),
 patch directory and distinfo. The archive SHA256 is
-`ea0bbb02dbdbc596874a4e7ad35b66645b3e0a232bd0e4081de5ed92eb0a397d`.
+`a76345b391bef6211fb5ab6cfab2e86b285d18cda17cbb9ade595f1252b86065`.
 The bytes match the publisher's checksum file. This does not establish
 verification of the separate detached signature.
 
-All 27 selected patches pass pkgsrc checksum verification and apply with zero
+All 29 selected patches pass pkgsrc checksum verification and apply with zero
 fuzz. Nineteen pinned pkgsrc patches remain unchanged. Refreshed patches retain
 the X11 macro, numeric classification, DMA buffer and platform JIT boundaries.
 Upstream already supplies the old round-even and process-launch fixes.
@@ -81,6 +81,11 @@ GTK API 4.1 and API 6.0 keep their shared source version and separate libraries.
 Actual upstream CMake version calculations produce `0.24.4` and `0.11.8` for
 API 4.1, and `4.19.4` and `1.8.8` for API 6.0. The recipes update these four
 PLIST names. Complete installed PLIST validation remains pending.
+
+For 2.54.2, archive provenance, source patches and the upstream ABI declarations
+are checked; normal metadata evaluation, package builds and runtime checks have
+not yet run. The GCC16, Skia locale, target-link and introspection results below
+were recorded against 2.54.1 and do not validate the updated release.
 
 The recipes select C++23, GCC16 and Ninja. Canonical X11/Wayland, GL, video,
 WebAudio, WebRTC, introspection, documentation and existing options remain.
@@ -190,11 +195,11 @@ Run the bounded source and locale checks with genuine tools and a new output:
 
 ```sh
 DIGEST=/native/bin/digest ruby profiles/common-graphics/tests/webkit-source.rb \
-  /pinned/pkgsrc /downloads/webkitgtk-2.54.1.tar.xz \
+  /pinned/pkgsrc /downloads/webkitgtk-2.54.2.tar.xz \
   /cross/bin/aarch64--netbsd-g++ /sdk /new/source-check
 NATIVE_CXX='/native/bin/g++ -B/usr/bin/' \
   ruby profiles/common-graphics/tests/webkit-locale/build.rb \
-  /downloads/webkitgtk-2.54.1.tar.xz /cross/bin/aarch64--netbsd-g++ \
+  /downloads/webkitgtk-2.54.2.tar.xz /cross/bin/aarch64--netbsd-g++ \
   /sdk /new/locale-check
 ```
 

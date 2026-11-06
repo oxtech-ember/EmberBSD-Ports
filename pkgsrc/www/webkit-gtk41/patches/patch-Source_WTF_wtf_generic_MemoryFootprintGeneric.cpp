@@ -1,7 +1,7 @@
 $NetBSD$
 
 Use the generic fallback on platforms without memoryStatus().
-Origin: EmberBSD (AI-assisted), for the pinned WebKitGTK 2.54.1 source.
+Origin: EmberBSD (AI-assisted), for the pinned WebKitGTK 2.54.2 source.
 
 --- Source/WTF/wtf/generic/MemoryFootprintGeneric.cpp.orig
 +++ Source/WTF/wtf/generic/MemoryFootprintGeneric.cpp

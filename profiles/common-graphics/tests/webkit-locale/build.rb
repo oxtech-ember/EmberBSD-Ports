@@ -9,7 +9,7 @@ require 'shellwords'
 abort 'Usage: build.rb WEBKIT_ARCHIVE TARGET_CXX SYSROOT NEW_OUTPUT' unless ARGV.size == 4
 archive, target_cxx, sysroot, output = ARGV.map { |path| File.expand_path(path) }
 abort 'Output must be new.' if File.exist?(output) || File.symlink?(output)
-abort 'Wrong official WebKitGTK2.54.1 archive.' unless Digest::SHA256.file(archive).hexdigest == 'ea0bbb02dbdbc596874a4e7ad35b66645b3e0a232bd0e4081de5ed92eb0a397d'
+abort 'Wrong official WebKitGTK2.54.2 archive.' unless Digest::SHA256.file(archive).hexdigest == 'a76345b391bef6211fb5ab6cfab2e86b285d18cda17cbb9ade595f1252b86065'
 root = File.expand_path('../../../..', __dir__)
 native = Shellwords.split(ENV.fetch('NATIVE_CXX'))
 abort 'NATIVE_CXX must name a genuine compiler.' if native.empty?
@@ -25,8 +25,8 @@ run = lambda do |name, argv, input: '', environment: {}|
 end
 raise 'Actual AArch64 GCC16 is required.' unless run.call('target', [target_cxx, '-dumpmachine']).strip == 'aarch64--netbsd'
 raise 'GCC16.2 is required.' unless run.call('target-version', [target_cxx, '-dumpfullversion']).strip == '16.2.0' && run.call('native-version', native + ['-dumpfullversion']).strip == '16.2.0'
-run.call('extract-skia', ['tar', '-xJf', archive, '-C', output, 'webkitgtk-2.54.1/Source/ThirdParty/skia'])
-source = output + '/webkitgtk-2.54.1'
+run.call('extract-skia', ['tar', '-xJf', archive, '-C', output, 'webkitgtk-2.54.2/Source/ThirdParty/skia'])
+source = output + '/webkitgtk-2.54.2'
 patches = Dir[root + '/pkgsrc/www/webkit-gtk41/patches/patch-Source_ThirdParty_skia*'].sort
 raise 'Expected the complete three-patch Skia set.' unless patches.size == 3
 patches.each { |path| run.call(File.basename(path), ['patch', '-f', '-p0', '-F', '0', '-d', source], input: File.read(path)) }
