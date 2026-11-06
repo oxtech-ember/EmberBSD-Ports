@@ -44,3 +44,4 @@ lib/libSPIRV-Tools-shared.so
 lib/libSPIRV-Tools.a
 lib/pkgconfig/SPIRV-Tools-shared.pc
 lib/pkgconfig/SPIRV-Tools.pc
+share/spirv-tools/generated/core_tables_header.inc
