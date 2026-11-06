@@ -657,8 +657,9 @@ unexpected changes stop before the transaction. The command carries forward
 pkgsrc's genuine candidate `.patch_done` cookie, uses the existing journal and
 build-clean retry, and preserves retained generated files and objects. When
 the retained stage has `.configure_done`, the command also runs pkgsrc's
-`replace-interpreter` target in the candidate stage before comparison, without
-running project configure. The caller is responsible for selecting the correct
+`pre-configure` and `do-configure-pre-hook` targets in the candidate before
+comparison, including declared substitutions and interpreter replacement,
+without running project configure. The caller is responsible for selecting the correct
 source paths and compiler configuration; normal builds do not use this recovery
 mode.
 An archive by itself is not treated as a completed build. The single package
