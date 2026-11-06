@@ -9,27 +9,26 @@ patches have been reconciled; preparation alone does not establish that.
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/byacc/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
   --archive "$DISTFILES/byacc-20260126.tgz" --patch "$HOST_PREFIX/bin/gpatch" \
-  --output "$WORK/byacc-source" --scoped-identity
+  --output "$WORK/byacc-source"
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/byacc/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" verify-source --source "$WORK/byacc-source" \
   --patch "$HOST_PREFIX/bin/gpatch"
 ```
 
-The scoped identity is opt-in for compatibility with existing consumers;
-without it, preparation retains the historical export-wide identity.
+Prepared receipts use one effective Git recipe identity.
 The output must not exist. The verifier checks recipe identity, all patches,
 and the prepared tree. This operation does not install or build a package.
 When source inputs or the owner have changed, also supply the current
 `--archive`; the verifier prepares the current expected payload and compares
 it with the unchanged record.
 
-A scoped record names the effective recipe by Git object ids (API 2, see
+A scoped record names the effective recipe by Git object ids (API 3, see
 `git_package_identity` in `scripts/pkgsrc-source-identity.py`): the blobs of
 the recipe inputs in the pinned pkgsrc tree or the Ports overlay that replaces
 them, the recipe patches and files added to them, and every infrastructure
 patch that names a path in them. When the record and the owner are unchanged,
-`verify-source` needs no pkgsrc export. Otherwise, and for older records, the
-verifier needs one export to compare the effective recipe. Callers that
+`verify-source` needs no pkgsrc export. For changed inputs, the verifier compares the current prepared payload.
+Retired receipt formats must be prepared again. Callers that
 prepare or verify several sources in one run can make that export once
 with `scripts/pkgsrc-shared-export.py DIR --sdk-source ... --git ... --patch ...`
 and pass `--pkgsrc-export DIR` to `prepare` or `verify-source`. The libarchive, libevent,

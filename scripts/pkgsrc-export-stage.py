@@ -13,8 +13,8 @@ reuses the stage. Inputs must be committed: an uncommitted change has no Git
 object id, and the stage is refused instead of being keyed wrongly; so is an
 untracked or ignored file inside an input.
 
-  pkgsrc-export-stage.py fingerprint --git GIT --patch PATCH
-  pkgsrc-export-stage.py prepare ROOT --git GIT --patch PATCH
+  pkgsrc-export-stage.py fingerprint --sdk-source SDK --git GIT --patch PATCH
+  pkgsrc-export-stage.py prepare ROOT --sdk-source SDK --git GIT --patch PATCH
 
 prepare prints the stage directory ROOT/FINGERPRINT. It creates the stage in
 a private directory and renames it into place, or verifies an existing one.
@@ -34,7 +34,6 @@ import sys
 PORTS = Path(__file__).resolve().parents[1]
 FORMAT = 'emberbsd-pkgsrc-export-stage'
 VERSION = 1
-RECEIPT = 'pkgsrc-stage.json'
 
 
 def _executable(path, role):
@@ -122,7 +121,11 @@ def fingerprint_inputs(git, patch, root=PORTS):
     objects = _object_ids(git, root, paths)
     with open(patch, 'rb') as stream:
         patch_sha256 = hashlib.sha256(stream.read()).hexdigest()
-    return {'format': FORMAT, 'version': VERSION, 'upstream': pin[1].decode('ascii'),
+    identity = _selector(root)
+    return {'format': FORMAT, 'version': VERSION,
+            'receipt': {'format': identity.SHARED_EXPORT_FORMAT,
+                        'version': identity.SHARED_EXPORT_VERSION},
+            'upstream': pin[1].decode('ascii'),
             'objects': objects, 'patch': {'path': patch, 'sha256': patch_sha256}}
 
 
@@ -131,31 +134,24 @@ def fingerprint(inputs):
     return hashlib.sha256(encoded).hexdigest()
 
 
-def verify(directory, git, patch, root=PORTS):
-    """Return DIRECTORY/pkgsrc when the stage matches the current inputs."""
+def _selector(root):
+    spec = importlib.util.spec_from_file_location('pkgsrc_source_identity', Path(root) / 'scripts/pkgsrc-source-identity.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def verify(directory, git, patch, sdk_source, root=PORTS):
+    """Verify a keyed stage using the canonical shared export receipt."""
     directory = Path(directory)
-    if not directory.is_absolute() or directory.is_symlink() or not directory.is_dir():
-        raise ValueError('pkgsrc export stage must be an absolute real directory')
     inputs = fingerprint_inputs(git, patch, root)
-    key = fingerprint(inputs)
-    if directory.name != key:
+    if directory.name != fingerprint(inputs):
         raise ValueError('pkgsrc export stage was made from different inputs')
-    receipt = directory / RECEIPT
-    if receipt.is_symlink() or not receipt.is_file():
-        raise ValueError('pkgsrc export stage has no receipt')
-    recorded = json.loads(receipt.read_text(encoding='ascii'))
-    if recorded != {'fingerprint': key, 'inputs': inputs}:
-        raise ValueError('pkgsrc export stage receipt differs from its inputs')
-    exported = directory / 'pkgsrc'
-    revision = exported / 'EMBERBSD-PKGSRC-REVISION'
-    if (exported.is_symlink() or not exported.is_dir() or revision.is_symlink() or not revision.is_file() or
-            revision.read_text(encoding='ascii') != inputs['upstream'] + '\n'):
-        raise ValueError('pkgsrc export stage tree differs from its receipt')
-    return exported
+    return _selector(root).shared_export(directory, root, git, sdk_source, patch)
 
 
-def prepare(root_directory, git, patch, root=PORTS):
-    """Create or reuse ROOT/FINGERPRINT; return (directory, reused)."""
+def prepare(root_directory, git, patch, sdk_source, root=PORTS):
+    """Create or reuse ROOT/FINGERPRINT with the canonical receipt."""
     stages = Path(root_directory)
     if not stages.is_absolute():
         raise ValueError('pkgsrc export stage root must be absolute')
@@ -164,30 +160,24 @@ def prepare(root_directory, git, patch, root=PORTS):
     key = fingerprint(inputs)
     final = stages / key
     if os.path.lexists(final):
-        verify(final, git, patch, root)
+        verify(final, git, patch, sdk_source, root)
         return final, True
     partial = stages / f'.partial-{key}-{os.getpid()}'
-    partial.mkdir(mode=0o755)
     try:
-        subprocess.run([sys.executable, '-B', str(Path(root) / 'scripts/prepare-pkgsrc.py'),
-                        str(partial / 'pkgsrc'), '--git', git, '--patch', patch],
-                       check=True, env=_environment(git, patch), stdout=sys.stderr)
+        _selector(root).create_shared_export(partial, root, git, sdk_source, patch)
         if fingerprint_inputs(git, patch, root) != inputs:
             raise ValueError('pkgsrc export inputs changed during the export')
-        with open(partial / RECEIPT, 'x', encoding='ascii') as output:
-            output.write(json.dumps({'fingerprint': key, 'inputs': inputs}, sort_keys=True) + '\n')
         try:
             os.rename(partial, final)
         except OSError:
-            # Another run published the same fingerprint first.
             if not os.path.lexists(final):
                 raise
-            verify(final, git, patch, root)
+            verify(final, git, patch, sdk_source, root)
             return final, True
     finally:
         if os.path.lexists(partial):
             shutil.rmtree(partial)
-    verify(final, git, patch, root)
+    verify(final, git, patch, sdk_source, root)
     return final, False
 
 
@@ -198,15 +188,18 @@ def main(argv=None):
         command = commands.add_parser(name)
         if name == 'prepare':
             command.add_argument('root', help='absolute directory holding the stages')
+        command.add_argument('--sdk-source', required=True, help='absolute SDK source')
         command.add_argument('--git', required=True, help='absolute Git executable')
         command.add_argument('--patch', required=True, help='absolute patch tool')
     args = parser.parse_args(argv)
     try:
+        if not Path(args.sdk_source).is_absolute() or not Path(args.sdk_source).is_dir():
+            raise ValueError('SDK source must be an absolute existing directory')
         if args.command == 'fingerprint':
             inputs = fingerprint_inputs(args.git, args.patch)
             result = {'fingerprint': fingerprint(inputs), 'inputs': inputs}
         else:
-            directory, reused = prepare(args.root, args.git, args.patch)
+            directory, reused = prepare(args.root, args.git, args.patch, args.sdk_source)
             result = {'directory': str(directory), 'fingerprint': directory.name, 'reused': reused}
         sys.stdout.write(json.dumps(result, sort_keys=True) + '\n')
         return 0

@@ -330,12 +330,12 @@ def main():
                 # A stage keyed by the Git fingerprint of the export inputs.
                 # It is verified against the current inputs and only read.
                 spec = importlib.util.spec_from_file_location(
-                    'emberbsd_pkgsrc_export_stage', ports / 'scripts/pkgsrc-export-stage.py')
-                stage = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(stage)
+                    'emberbsd_pkgsrc_source_identity', ports / 'scripts/pkgsrc-source-identity.py')
+                identity = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(identity)
                 try:
-                    exported = stage.verify(paths.canonical_existing(a.pkgsrc_export), git,
-                                            native.tool('gpatch'), ports)
+                    exported = identity.shared_export(paths.canonical_existing(a.pkgsrc_export), ports,
+                                                      git, sdk, native.tool('gpatch'))
                 except ValueError as error:
                     raise SDKError(str(error)) from error
             else:

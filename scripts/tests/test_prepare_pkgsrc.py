@@ -103,7 +103,7 @@ class ExportTests(unittest.TestCase):
 
     def test_vala_infrastructure_patches_compose_without_fuzz(self):
         owner = HERE.parents[1]
-        names = ['valadoc-option', 'array-termination', 'dbus-fd-exhaustion']
+        names = ['valadoc-option', 'array-termination', 'dbus-fd-exhaustion', 'gettext-dependency']
         paths = [owner / ('profiles/common-build-tools/patches/pkgsrc-vala-' + name + '.patch')
                  for name in names]
         configured = [line.split('\t')[1] for line in
@@ -147,6 +147,13 @@ class ExportTests(unittest.TestCase):
         self.assertEqual((recipe / 'distinfo').read_bytes().replace(added, b''), before)
         self.assertEqual((recipe / 'Makefile').read_bytes().count(
             b'TEST_DEPENDS+=\tdbus>=1.16.2:../../sysutils/dbus\n'), 1)
+        output = apply(tree, paths[3].read_bytes())
+        self.assertNotIn(b'fuzz', output)
+        makefile = (recipe / 'Makefile').read_bytes()
+        self.assertEqual(makefile.count(b'PKGREVISION=\t3\n'), 1)
+        self.assertEqual(makefile.count(b'PREFER.gettext=\tpkgsrc\n'), 1)
+        self.assertEqual(makefile.count(b'.include "../../devel/gettext-lib/buildlink3.mk"\n'), 1)
+        exporter.check_recipe(recipe, 'lang/vala', tree)
 
     def test_numeric_owner_patch_composes_after_pkg_install_revision_patches(self):
         owner = HERE.parents[1]
@@ -725,6 +732,8 @@ class ExportTests(unittest.TestCase):
         (self.upstream / relative).parent.mkdir(parents=True)
         shutil.copyfile(owner / 'upstream/pkgsrc' / relative,
                         self.upstream / relative)
+        shutil.copyfile(owner / 'upstream/pkgsrc/lang/gcc16/distinfo',
+                        self.upstream / 'lang/gcc16/distinfo')
         relative_patch = Path('lang/gcc16/patches/patch-isl_configure')
         (self.upstream / relative_patch).parent.mkdir(parents=True)
         shutil.copyfile(owner / 'upstream/pkgsrc' / relative_patch,

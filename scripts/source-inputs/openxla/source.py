@@ -124,9 +124,9 @@ def verify(source, git, archive=None, patch=None, pkgsrc_export=None, export_pat
     return tar_archive.verify(source_context(), source, git, archive, patch, pkgsrc_export, export_patch)
 
 
-def prepare(archive, output, patch, git, scoped_identity=False, exported=None):
+def prepare(archive, output, patch, git, exported=None):
     return tar_archive.prepare(source_context(), archive, output, patch, git,
-                               scoped_identity, exported)
+                               exported)
 
 
 def shared_tree(selected):
@@ -143,7 +143,6 @@ def main():
     produce.add_argument('--archive', required=True)
     produce.add_argument('--output', required=True)
     produce.add_argument('--patch', required=True)
-    produce.add_argument('--scoped-identity', action='store_true')
     produce.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
     produce.add_argument('--export-patch', help='patch used to create the shared export')
     check = sub.add_parser('verify-source')
@@ -155,7 +154,7 @@ def main():
     selected = parser.parse_args(args)
     try:
         if selected.action == 'prepare':
-            record = prepare(selected.archive, selected.output, selected.patch, selected.git, selected.scoped_identity,
+            record = prepare(selected.archive, selected.output, selected.patch, selected.git,
                              exported=shared_tree(selected))
         else:
             record = verify(selected.source, selected.git, selected.archive, selected.patch, pkgsrc_export=selected.pkgsrc_export, export_patch=getattr(selected, 'export_patch', None))

@@ -105,60 +105,33 @@ def verify(source, git, archive=None, patch=None, lzip=None, pkgsrc_export=None,
     record = jsonio.read_json(str(Path(source) / sourceprep.PREPARED_TREE_RECEIPT))
     old = record.get('identity') if isinstance(record, dict) else None
     record = sourceprep.validate_prepared_tree(source, package=PACKAGE, identity=old)
-    if old == identity:
+    prepared_receipt.require_current_identity(old, PACKAGE)
+    if identity_module().current_git_package(old, identity['owner_sha256'], lambda: git_effective_identity(git)):
+        # The receipt names the Git objects of the current effective recipe.
+        require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
         return record
-    if isinstance(old, dict) and set(old) == {'effective', 'owner_sha256'}:
-        require(isinstance(old['owner_sha256'], str) and re.fullmatch('[0-9a-f]{64}', old['owner_sha256']),
-                'invalid scoped rcs owner identity')
-        if identity_module().current_git_package(old, identity['owner_sha256'], lambda: git_effective_identity(git)):
-            # The receipt names the Git objects of the current effective recipe.
-            require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
-            return record
-        require(patch and os.path.isabs(patch), 'effective rcs verification requires an explicit patch')
-        with tempfile.TemporaryDirectory(prefix='.rcs-verify-') as tmp:
-            selector = identity_module()
-            if pkgsrc_export:
-                # The run's single export, bound to the current Ports inputs.
-                exported = shared
-            else:
-                exported = Path(tmp) / 'pkgsrc'
-                process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
-                                 str(exported), '--git', git, '--patch', patch],
-                                env=process.sanitized_environment())
-            current = selector.effective_package_identity(exported, PACKAGE, identity['export']['upstream'])
-            require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
-            require(selector.equivalent_effective_package(old['effective'], old['effective']) and
-                    old['effective']['package'] == PACKAGE,
-                    'invalid scoped rcs package identity')
-            if (not selector.equivalent_effective_package(old['effective'], current) or
-                    old['owner_sha256'] != identity['owner_sha256']):
-                require(archive and os.path.isabs(archive) and lzip and os.path.isabs(lzip),
-                        'changed rcs inputs require an explicit archive and lzip for payload comparison')
-                prepared = prepare(archive, Path(tmp) / 'expected', patch, git, lzip, exported=exported)
-                require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
-                require(prepared['tree_sha256'] == record['tree_sha256'],
-                        'prepared rcs differs from current effective source')
-        return record
-    export = old.get('export') if isinstance(old, dict) else None
-    require(isinstance(export, dict) and set(old) == {'export', 'owner_sha256'} and
-            set(export) == {'api', 'package', 'export_inputs_sha256', 'upstream'} and
-            type(export['api']) is int and export['api'] == 1 and export['package'] == PACKAGE and
-            isinstance(export['export_inputs_sha256'], str) and re.fullmatch('[0-9a-f]{64}', export['export_inputs_sha256']) and
-            isinstance(export['upstream'], str) and re.fullmatch('[0-9a-f]{40}', export['upstream']) and
-            isinstance(old['owner_sha256'], str) and re.fullmatch('[0-9a-f]{64}', old['owner_sha256']),
-            'unrecognized legacy rcs identity')
-    require(archive and patch and lzip and os.path.isabs(archive) and os.path.isabs(patch) and os.path.isabs(lzip),
-            'changed export requires an explicit archive, patch and lzip to compare rcs')
+    require(patch and os.path.isabs(patch), 'effective rcs verification requires an explicit patch')
     with tempfile.TemporaryDirectory(prefix='.rcs-verify-') as tmp:
-        expected = Path(tmp) / 'expected'
-        prepared = prepare(archive, expected, patch, git, lzip)
+        selector = identity_module()
+        if pkgsrc_export:
+            # The run's single export, bound to the current Ports inputs.
+            exported = shared
+        else:
+            exported = Path(tmp) / 'pkgsrc'
+            process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
+                             str(exported), '--git', git, '--patch', patch],
+                            env=process.sanitized_environment())
+        require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
+        require(archive and os.path.isabs(archive) and lzip and os.path.isabs(lzip),
+                'changed rcs inputs require an explicit archive and lzip for payload comparison')
+        prepared = prepare(archive, Path(tmp) / 'expected', patch, git, lzip, exported=exported)
         require(identity == source_identity(git), 'pkgsrc export inputs changed during verification')
         require(prepared['tree_sha256'] == record['tree_sha256'],
                 'prepared rcs differs from current effective source')
     return record
 
 
-def prepare(archive, output, patch, git, lzip, scoped_identity=False, exported=None):
+def prepare(archive, output, patch, git, lzip, exported=None):
     require(all(os.path.isabs(tool) for tool in (git, patch, lzip)), 'select absolute Git, patch and lzip executables')
     output = Path(output)
     require(output.is_absolute(), 'prepared source output must be absolute')
@@ -194,9 +167,8 @@ def prepare(archive, output, patch, git, lzip, scoped_identity=False, exported=N
         require(not any(p.name.endswith(('.orig', '.rej')) for p in root.rglob('*')),
                 'rcs patch left a backup or reject')
         require(identity == source_identity(git), 'pkgsrc export inputs changed during preparation')
-        if scoped_identity:
-            identity = {'effective': git_effective_identity(git),
-                        'owner_sha256': identity['owner_sha256']}
+        identity = {'effective': git_effective_identity(git),
+                    'owner_sha256': identity['owner_sha256']}
         record = prepared_receipt.write(root, package=PACKAGE, identity=identity)
         require(sourceprep.archive_hashes(read(archive)) == hashes, 'rcs archive changed during preparation')
         publish_directory_noreplace(root, output)
@@ -222,7 +194,6 @@ def main():
     produce.add_argument('--output', required=True)
     produce.add_argument('--patch', required=True)
     produce.add_argument('--lzip', required=True)
-    produce.add_argument('--scoped-identity', action='store_true')
     produce.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
     produce.add_argument('--export-patch', help='patch used to create the shared export')
     check = sub.add_parser('verify-source')
@@ -235,7 +206,7 @@ def main():
     selected = parser.parse_args(args)
     try:
         if selected.action == 'prepare':
-            record = prepare(selected.archive, selected.output, selected.patch, selected.git, selected.lzip, selected.scoped_identity,
+            record = prepare(selected.archive, selected.output, selected.patch, selected.git, selected.lzip,
                              exported=shared_tree(selected))
         else:
             record = verify(selected.source, selected.git, selected.archive, selected.patch, selected.lzip, pkgsrc_export=selected.pkgsrc_export, export_patch=getattr(selected, 'export_patch', None))

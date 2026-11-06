@@ -24,7 +24,7 @@ a C++ runtime.
 
 Without an export input the producer exports pkgsrc into its temporary work
 directory on every run. `--pkgsrc-export DIR` selects a stage made by
-`scripts/pkgsrc-export-stage.py prepare ROOT --git GIT --patch PATCH`, which
+`scripts/pkgsrc-export-stage.py prepare ROOT --sdk-source SDK --git GIT --patch PATCH`, which
 prints `ROOT/FINGERPRINT`. The fingerprint hashes the Git object ids of the
 pinned `upstream/pkgsrc` gitlink and of every input that
 `scripts/prepare-pkgsrc.py` reads, plus the patch tool. A Ports commit outside

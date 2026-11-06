@@ -8,7 +8,7 @@ directory and can be reused with matching source inputs.
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/expat/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
   --archive "$DISTDIR/expat-2.10.0.tar.gz" --patch "$PATCH" \
-  --output "$WORK/expat-source" --scoped-identity --pkgsrc-export "$SHARED_EXPORT"
+  --output "$WORK/expat-source" --pkgsrc-export "$SHARED_EXPORT"
 ```
 
 Use `verify-source --source "$WORK/expat-source"` with the same SDK and Git;

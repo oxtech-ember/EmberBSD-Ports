@@ -26,7 +26,7 @@ with tempfile.TemporaryDirectory(dir=args.work_dir) as directory:
         if (result.returncode == 0) != success:
             raise AssertionError(result.stderr)
         return result
-    run('prepare', '--archive', args.archive, '--patch', args.patch, '--output', root, '--scoped-identity')
+    run('prepare', '--archive', args.archive, '--patch', args.patch, '--output', root)
     run('verify-source', '--source', root, '--patch', args.patch)
     assert (root / 'src/base/utils.cc').is_file()
     assert (root / 'src/tracing/data_source.cc').is_file()

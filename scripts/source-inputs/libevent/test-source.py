@@ -30,12 +30,11 @@ with tempfile.TemporaryDirectory(dir=args.work_dir) as directory:
         shared += ['--pkgsrc-export', args.pkgsrc_export]
     if args.export_patch:
         shared += ['--export-patch', args.export_patch]
-    # Legacy-by-default prepare remains supported; force the legacy comparison
-    # path with a valid old owner digest, as after an owner update.
+    # An owner change requires comparison with the current prepared payload.
     run('prepare', '--archive', args.archive, '--patch', args.patch, '--output', root, *shared)
     receipt = root / 'emberbsd-prepared-source.json'
     record = json.loads(receipt.read_text())
-    assert 'export' in record['identity']
+    assert record['identity']['effective']['api'] == 3
     record['identity']['owner_sha256'] = '0' * 64
     receipt.write_text(json.dumps(record))
     payload = root / 'event.c'

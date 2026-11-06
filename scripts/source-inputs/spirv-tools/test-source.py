@@ -16,16 +16,16 @@ with tempfile.TemporaryDirectory(prefix='spirv-owner-test-') as td:
  root=Path(td);pkgroot=root/'pkgsrc';recipe=pkgroot/'parallel/spirv-tools';recipe.parent.mkdir(parents=True)
  shutil.copytree(ports/'pkgsrc/parallel/spirv-tools',recipe)
  archive=root/'SPIRV-Tools-2026.4.tar.gz';shutil.copyfile(a.archive,archive)
- out=root/'source';record=owner.prepare(str(archive),str(out),str(a.patch),str(a.git),True,exported=str(pkgroot))
+ out=root/'source';record=owner.prepare(str(archive),str(out),str(a.patch),str(a.git),exported=str(pkgroot))
  assert record['package']=='parallel/spirv-tools'
  assert (out/'source/opt/build_module.h').is_file() and (out/'utils/ggt.py').is_file()
  archive.write_bytes(b'wrong archive')
- try:owner.prepare(str(archive),str(root/'bad-archive'),str(a.patch),str(a.git),True,exported=str(pkgroot))
+ try:owner.prepare(str(archive),str(root/'bad-archive'),str(a.patch),str(a.git),exported=str(pkgroot))
  except (ValueError,owner.SDKError):pass
  else:raise AssertionError('incorrect archive accepted')
  archive.unlink();shutil.copyfile(a.archive,archive)
  with (recipe/'patches/patch-source_val_scalar-matrix-extent').open('ab') as f:f.write(b'foreign')
- try:owner.prepare(str(archive),str(root/'bad-patch'),str(a.patch),str(a.git),True,exported=str(pkgroot))
+ try:owner.prepare(str(archive),str(root/'bad-patch'),str(a.patch),str(a.git),exported=str(pkgroot))
  except (ValueError,owner.SDKError):pass
  else:raise AssertionError('incorrect patch accepted')
 print('PASS: SPIRV-Tools owner verifies archive, complete patch set and prepared source')

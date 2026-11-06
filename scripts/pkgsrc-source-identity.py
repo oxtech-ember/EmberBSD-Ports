@@ -169,47 +169,6 @@ def _patch_targets_bytes(data):
     return names or None
 
 
-def reconstruct_legacy_payload(current, changes, expected_sha256):
-    """Recover a version-2 input snapshot, refusing unsupported or unproven changes.
-
-    Each change names its previous regular-file bytes/mode and whether it was
-    an export file input. Callers obtain those facts from the recorded commit.
-    The aggregate recorded by the original producer is the final authority.
-    """
-    import copy
-    previous = copy.deepcopy(current)
-    for name, (old, old_mode, was_input) in changes.items():
-        parts = name.split('/')
-        if (not name or '\\' in name or any(ord(char) < 32 or ord(char) == 127 for char in name) or
-                any(part in ('', '.', '..') for part in parts)):
-            raise ValueError('unsafe historical export path')
-        if old is not None and (not isinstance(old, bytes) or old_mode not in (0o644, 0o755)):
-            raise ValueError('historical export input is not a regular file')
-        if was_input:
-            if old is None:
-                raise ValueError('historical export input is missing')
-            previous['files'][name] = hashlib.sha256(old).hexdigest()
-        else:
-            previous['files'].pop(name, None)
-        for tree, rows in previous['trees'].items():
-            prefix = tree + '/'
-            if not name.startswith(prefix):
-                continue
-            relative = name[len(prefix):]
-            existing = rows.get(relative)
-            if existing is not None and existing.get('kind') != 'file':
-                raise ValueError('historical export change is not a regular file')
-            if old is None:
-                rows.pop(relative, None)
-            else:
-                rows[relative] = {'kind': 'file', 'mode': old_mode,
-                                  'size': len(old), 'sha256': hashlib.sha256(old).hexdigest()}
-    encoded = json.dumps(previous, sort_keys=True, separators=(',', ':')).encode()
-    if hashlib.sha256(encoded).hexdigest() != expected_sha256:
-        raise ValueError('historical export inputs do not match the recorded identity')
-    return previous
-
-
 def _update_patch_sections(data):
     """Parse update inputs without changing existing recipe identity semantics."""
     lines = data.splitlines(keepends=True)
@@ -340,13 +299,12 @@ def _digest_payload(payload):
     return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 
-def _git_package_inputs_pair(ports_root, package, git):
+def git_package_inputs(ports_root, package, git):
     """Identify one effective recipe from Git object ids, without an export.
 
-    The tree rows and overlays are computed once. API 2 retains whole
-    infrastructure blobs selected by the legacy path heuristic. API 3 uses
-    ordered matching sections of plain unified patches; ambiguous formats use
-    the whole blob for every package. The upstream revision is provenance.
+    The tree rows and overlays are computed once. Ordered matching sections
+    identify plain unified patches; ambiguous formats use the whole blob
+    for every package. The upstream revision is provenance.
     """
     root = Path(ports_root).resolve(strict=True)
     if not os.path.isabs(str(git)) or not os.path.isfile(git) or not os.access(git, os.X_OK):
@@ -404,53 +362,33 @@ def _git_package_inputs_pair(ports_root, package, git):
         if method not in ('patch', 'git-apply'):
             continue
         data = source.read_bytes()
-        targets = _patch_targets_bytes(data)
-        legacy_needed = (targets is None or any(target.startswith(package + '/') and
-                         recipe_input(target[len(package) + 1:]) for target in targets))
         sections = _plain_patch_sections(data) if method == 'patch' else None
         selected = None if sections is None else b''.join(
             section for names, section in sections
             if any(name.startswith(package + '/') and recipe_input(name[len(package) + 1:])
                    for name in names))
-        if legacy_needed or sections is None:
+        if sections is None:
             blob_paths.append(source)
-        patch_rows.append((method, source, legacy_needed, selected))
+        patch_rows.append((method, source, selected))
     blobs = iter(_hash_objects(git, root, blob_paths))
-    legacy, infrastructure = [], []
-    for method, source, legacy_needed, selected in patch_rows:
+    infrastructure = []
+    for method, source, selected in patch_rows:
         path = source.relative_to(root).as_posix()
-        blob = next(blobs) if legacy_needed or selected is None else None
-        if legacy_needed:
-            legacy.append([method, path, blob])
         if selected is None:
-            infrastructure.append([method, path, blob])
+            infrastructure.append([method, path, next(blobs)])
         elif selected:
             infrastructure.append([method, path, hashlib.sha256(selected).hexdigest()])
-    common = {'package': package, 'origin': origin, 'tree': dict(sorted(rows.items()))}
-    old = {'api': 2, **common, 'infrastructure_patches': legacy}
-    new = {'api': 3, **common, 'infrastructure_patches': infrastructure}
-    return ({**old, 'upstream': upstream}, {**new, 'upstream': upstream})
+    return {'api': GIT_PACKAGE_API, 'package': package, 'origin': origin,
+            'tree': dict(sorted(rows.items())), 'infrastructure_patches': infrastructure,
+            'upstream': upstream}
 
 
-def git_package_inputs(ports_root, package, git, api=GIT_PACKAGE_API):
-    if type(api) is not int or api not in (2, 3):
-        raise ValueError('unsupported Git package API')
-    return _git_package_inputs_pair(ports_root, package, git)[api - 2]
-
-
-def git_package_identity(ports_root, package, git, api=GIT_PACKAGE_API):
-    """Identify the recipe; API 3 carries the exact legacy API 2 digest."""
-    if type(api) is not int or api not in (2, 3):
-        raise ValueError('unsupported Git package API')
-    old, new = _git_package_inputs_pair(ports_root, package, git)
-    upstream = new.pop('upstream')
-    old.pop('upstream')
-    payload = old if api == 2 else new
-    result = {'api': api, 'package': package,
-              'effective_package_sha256': _digest_payload(payload), 'upstream': upstream}
-    if api == 3:
-        result['legacy_api2_sha256'] = _digest_payload(old)
-    return result
+def git_package_identity(ports_root, package, git):
+    """Identify only the current Git recipe contract."""
+    payload = git_package_inputs(ports_root, package, git)
+    upstream = payload.pop('upstream')
+    return {'api': GIT_PACKAGE_API, 'package': package,
+            'effective_package_sha256': _digest_payload(payload), 'upstream': upstream}
 
 
 def exported_package_rows(exported, package, git):
@@ -465,14 +403,12 @@ def exported_package_rows(exported, package, git):
 
 def _valid_effective_package(value):
     keys = {'api', 'package', 'effective_package_sha256', 'upstream'}
-    if not isinstance(value, dict) or type(value.get('api')) is not int or value['api'] not in (1, 2, 3):
+    if not isinstance(value, dict) or type(value.get('api')) is not int or value['api'] not in (1, GIT_PACKAGE_API):
         return False
-    if value['api'] == 3:
-        keys.add('legacy_api2_sha256')
     return (set(value) == keys and isinstance(value['package'], str) and
             re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9+_.-]*/[A-Za-z0-9][A-Za-z0-9+_.-]*', value['package']) is not None and
-            all(isinstance(value[k], str) and re.fullmatch(r'[0-9a-f]{64}', value[k]) is not None
-                for k in keys if k in ('effective_package_sha256', 'legacy_api2_sha256')) and
+            isinstance(value['effective_package_sha256'], str) and
+            re.fullmatch(r'[0-9a-f]{64}', value['effective_package_sha256']) is not None and
             isinstance(value['upstream'], str) and re.fullmatch(r'[0-9a-f]{40}', value['upstream']) is not None)
 
 
@@ -484,14 +420,9 @@ def equivalent_effective_package(left, right):
 
 
 def matches_current_git_package(old, current):
-    """Compare a receipt to current API 3; only the old-to-new bridge is valid."""
-    if not _valid_effective_package(old) or not _valid_effective_package(current):
-        return False
-    if current['api'] != 3 or old['package'] != current['package']:
-        return False
-    if old['api'] == 2:
-        return old['effective_package_sha256'] == current['legacy_api2_sha256']
-    return old['api'] == 3 and equivalent_effective_package(old, current)
+    """Accept only a receipt using the current Git recipe contract."""
+    return (equivalent_effective_package(old, current) and
+            current['api'] == GIT_PACKAGE_API)
 
 
 def current_git_package(old, owner_sha256, current):
@@ -499,7 +430,7 @@ def current_git_package(old, owner_sha256, current):
     if not isinstance(old, dict) or set(old) != {'effective', 'owner_sha256'}:
         return False
     effective = old['effective']
-    if not _valid_effective_package(effective) or effective['api'] not in (2, 3) or old['owner_sha256'] != owner_sha256:
+    if not _valid_effective_package(effective) or effective['api'] != GIT_PACKAGE_API or old['owner_sha256'] != owner_sha256:
         return False
     return matches_current_git_package(effective, current())
 
@@ -594,18 +525,9 @@ def export_inputs(ports_root, git, sdk_source, package=None):
 SHARED_EXPORT_RECEIPT = 'pkgsrc-export.json'
 SHARED_EXPORT_DIRTY = '.pkgsrc-update-incomplete'
 SHARED_EXPORT_FORMAT = 'emberbsd-pkgsrc-shared-export'
+SHARED_EXPORT_VERSION = 4
 # These small source directories are consumed directly from the shared export.
 SHARED_EXPORT_MATERIAL = ('net/libfetch/files',)
-
-
-def _pkgsrc_export_stage(ports_root):
-    path = Path(ports_root) / 'scripts/pkgsrc-export-stage.py'
-    spec = importlib.util.spec_from_file_location('emberbsd_pkgsrc_export_stage', path)
-    if spec is None or spec.loader is None:
-        raise ValueError('cannot load pkgsrc export stage verifier')
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 def material_snapshot(root):
@@ -630,14 +552,9 @@ def material_snapshot(root):
 def shared_export_material(directory, relative):
     """Return a stored snapshot; the caller must first validate through shared_export()."""
     directory = Path(directory)
-    stage_receipt = directory / 'pkgsrc-stage.json'
-    if os.path.lexists(stage_receipt):
-        if stage_receipt.is_symlink() or not stage_receipt.is_file():
-            raise ValueError('invalid pkgsrc export stage receipt')
-        return None
     receipt = json.loads((directory / SHARED_EXPORT_RECEIPT).read_text(encoding='ascii'))
-    if receipt['version'] == 1:
-        return None
+    if receipt.get('version') != SHARED_EXPORT_VERSION:
+        raise ValueError('unsupported shared export receipt')
     return receipt['material'][relative]
 
 
@@ -714,23 +631,98 @@ def validate_patch_provenance(value):
         raise ValueError('invalid shared export package provenance path')
 
 
+def validate_shared_receipt(receipt):
+    """Validate the sole current receipt before a read or scoped update."""
+    if (not isinstance(receipt, dict) or receipt.get('format') != SHARED_EXPORT_FORMAT or
+            type(receipt.get('version')) is not int or receipt['version'] != SHARED_EXPORT_VERSION or
+            set(receipt) != {'format', 'version', 'identity', 'material', 'inputs', 'dirty_inputs', 'patch_provenance'} or
+            not isinstance(receipt['material'], dict) or set(receipt['material']) != set(SHARED_EXPORT_MATERIAL) or
+            not isinstance(receipt['dirty_inputs'], dict) or
+            not equivalent_export_inputs(receipt['identity'], receipt['identity'])):
+        raise ValueError('invalid shared pkgsrc export receipt')
+    validate_patch_provenance(receipt['patch_provenance'])
+    encoded = json.dumps(receipt['inputs'], sort_keys=True, separators=(',', ':')).encode()
+    if hashlib.sha256(encoded).hexdigest() != receipt['identity']['export_inputs_sha256']:
+        raise ValueError('invalid shared pkgsrc export input snapshot')
+    for name, entry in receipt['dirty_inputs'].items():
+        if (not isinstance(name, str) or not name or '\\' in name or
+                any(ord(char) < 32 or ord(char) == 127 for char in name) or
+                any(x in ('', '.', '..') for x in name.split('/')) or
+                not isinstance(entry, dict) or set(entry) != {'sha256', 'mode'} or
+                not isinstance(entry['sha256'], str) or re.fullmatch('[0-9a-f]{64}', entry['sha256']) is None or
+                type(entry['mode']) is not int or entry['mode'] not in (0o644, 0o755)):
+            raise ValueError('invalid dirty input inventory')
+
+
+def _initial_dirty_inputs(root, git, snapshot):
+    """Retain exact current uncommitted export inputs for later scoped replay."""
+    import stat
+    from emberbsd_sdk import process
+    candidates = set()
+    for args in (('diff', '--name-only', '-z', 'HEAD', '--'),
+                 ('ls-files', '-z', '--others', '--exclude-standard'),
+                 ('ls-files', '-z', '--others', '-i', '--exclude-standard')):
+        data = subprocess.check_output([str(git), '-C', str(root), *args], env=process.sanitized_environment())
+        candidates.update(os.fsdecode(x) for x in data.split(b'\0') if x)
+    expected = dict(snapshot['files'])
+    for tree, rows in snapshot['trees'].items():
+        for name, row in rows.items():
+            if row['kind'] in ('file', 'link'):
+                path = tree + '/' + name
+                expected[path] = row['target_sha256'] if row['kind'] == 'link' else row['sha256']
+                if row['kind'] == 'link':
+                    candidates.add(path)
+    records, contents = {}, {}
+    for name in sorted(candidates & expected.keys()):
+        path = root / name
+        if not path.is_file():
+            raise ValueError('dirty export input is not a regular file: ' + name)
+        resolved = path.resolve(strict=True)
+        if not resolved.is_relative_to(root):
+            raise ValueError('dirty export input leaves Ports: ' + name)
+        data = resolved.read_bytes()
+        sha = hashlib.sha256(data).hexdigest()
+        if sha != expected[name]:
+            raise ValueError('dirty export input changed while read: ' + name)
+        mode = stat.S_IMODE(resolved.stat().st_mode)
+        if mode not in (0o644, 0o755):
+            raise ValueError('unsupported dirty export input mode: ' + name)
+        records[name] = {'sha256': sha, 'mode': mode}
+        contents[sha] = data
+    return records, contents
+
+
 def create_shared_export(directory, ports_root, git, sdk_source, patch):
-    """Export pkgsrc once into a new directory and record its identity."""
+    """Export once with the current receipt and complete replay inputs."""
     directory = Path(directory)
     if not directory.is_absolute():
         raise ValueError('shared export directory must be absolute')
-    before = export_identity(ports_root, git, sdk_source, patch)
+    root, _, snapshot, run = export_inputs(ports_root, git, sdk_source)
+    before = export_identity_from_payload(snapshot, run(root, 'rev-parse', 'HEAD').decode('ascii'), patch)
+    dirty, contents = _initial_dirty_inputs(root, git, snapshot)
     directory.mkdir(mode=0o700)
     from emberbsd_sdk import process
-    subprocess.run([sys.executable, '-B', str(Path(ports_root) / 'scripts/prepare-pkgsrc.py'),
+    subprocess.run([sys.executable, '-B', str(root / 'scripts/prepare-pkgsrc.py'),
                     str(directory / 'pkgsrc'), '--git', str(git), '--patch', str(patch)],
                    check=True, env=process.sanitized_environment(), stdout=sys.stderr)
-    if not equivalent_export_inputs(before,
-                                    export_identity(ports_root, git, sdk_source, patch)):
+    if not equivalent_export_inputs(before, export_identity(root, git, sdk_source, patch)):
         raise ValueError('pkgsrc export inputs changed during the shared export')
-    receipt = {'format': SHARED_EXPORT_FORMAT, 'version': 2, 'identity': before,
+    if _initial_dirty_inputs(root, git, snapshot) != (dirty, contents):
+        raise ValueError('dirty pkgsrc export inputs changed during the shared export')
+    if contents:
+        cache = directory / '.pkgsrc-update-inputs'
+        cache.mkdir(mode=0o700)
+        for sha, data in contents.items():
+            fd = os.open(cache / sha, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, 'wb') as output:
+                output.write(data)
+                output.flush()
+                os.fsync(output.fileno())
+    receipt = {'format': SHARED_EXPORT_FORMAT, 'version': SHARED_EXPORT_VERSION, 'identity': before,
                'material': {name: material_snapshot(directory / 'pkgsrc' / name)
-                            for name in SHARED_EXPORT_MATERIAL}}
+                            for name in SHARED_EXPORT_MATERIAL}, 'inputs': snapshot,
+               'dirty_inputs': dirty,
+               'patch_provenance': {'base': before['patch'], 'packages': {}, 'files': {}}}
     with open(directory / SHARED_EXPORT_RECEIPT, 'x', encoding='ascii') as output:
         output.write(json.dumps(receipt, sort_keys=True) + '\n')
     return receipt
@@ -749,31 +741,13 @@ def shared_export(directory, ports_root, git, sdk_source, patch):
         raise ValueError('shared pkgsrc export must be an absolute real directory')
     if os.path.lexists(directory / SHARED_EXPORT_DIRTY):
         raise ValueError('shared pkgsrc export update is incomplete')
-    stage_receipt = directory / 'pkgsrc-stage.json'
-    if os.path.lexists(stage_receipt):
-        if stage_receipt.is_symlink() or not stage_receipt.is_file():
-            raise ValueError('invalid pkgsrc export stage receipt')
-        return _pkgsrc_export_stage(ports_root).verify(directory, git, patch, root=ports_root)
+    if os.path.lexists(directory / 'pkgsrc-stage.json'):
+        raise ValueError('retired pkgsrc stage receipt is unsupported')
     path = directory / SHARED_EXPORT_RECEIPT
     if path.is_symlink() or not path.is_file():
         raise ValueError('shared pkgsrc export has no receipt')
     receipt = json.loads(path.read_text(encoding='ascii'))
-    if (not isinstance(receipt, dict) or receipt.get('format') != SHARED_EXPORT_FORMAT or
-            type(receipt.get('version')) is not int or receipt['version'] not in (1, 2, 3, 4) or
-            set(receipt) != ({'format', 'version', 'identity'} if receipt['version'] == 1 else
-                             ({'format', 'version', 'identity', 'material'} if receipt['version'] == 2 else
-                              ({'format', 'version', 'identity', 'material', 'inputs', 'dirty_inputs'} if receipt['version'] == 3 else
-                               {'format', 'version', 'identity', 'material', 'inputs', 'dirty_inputs', 'patch_provenance'}))) or
-            (receipt['version'] in (2, 3, 4) and
-             (not isinstance(receipt['material'], dict) or
-              set(receipt['material']) != set(SHARED_EXPORT_MATERIAL)))):
-        raise ValueError('invalid shared pkgsrc export receipt')
-    if receipt['version'] == 4:
-        validate_patch_provenance(receipt['patch_provenance'])
-    if receipt['version'] in (3, 4):
-        encoded = json.dumps(receipt['inputs'], sort_keys=True, separators=(',', ':')).encode()
-        if hashlib.sha256(encoded).hexdigest() != receipt['identity']['export_inputs_sha256']:
-            raise ValueError('invalid shared pkgsrc export input snapshot')
+    validate_shared_receipt(receipt)
     if not equivalent_export_inputs(receipt['identity'],
                                     export_identity(ports_root, git, sdk_source, patch)):
         raise ValueError('shared pkgsrc export was made from different inputs')

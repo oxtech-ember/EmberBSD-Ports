@@ -105,6 +105,79 @@ class ScopedUpdateTests(unittest.TestCase):
               'patch\tpatches/fixture.patch\nfile\tresources/owner.txt\tmisc/owner.txt\n')
         commit(self.ports, 'update selected outputs')
 
+    def test_initial_dirty_input_is_replayed_for_scoped_update(self):
+        write(self.ports, 'resources/owner.txt', 'dirty-before\n')
+        second = self.work / 'dirty-shared'
+        command = [*self.command]
+        command[3] = second
+        result = run(command, self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        receipt = json.loads((second / 'pkgsrc-export.json').read_text())
+        self.assertIn('resources/owner.txt', receipt['dirty_inputs'])
+        untouched = second / 'pkgsrc/cat/pkg/files/unchanged'
+        before = untouched.stat()
+        write(self.ports, 'resources/owner.txt', 'dirty-after\n')
+        result = run(command + ['--update', '--package', 'cat/pkg', '--file', 'misc/owner.txt'],
+                     self.ports, check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((second / 'pkgsrc/misc/owner.txt').read_text(), 'dirty-after\n')
+        after = untouched.stat()
+        self.assertEqual((before.st_ino, before.st_mtime_ns), (after.st_ino, after.st_mtime_ns))
+
+    def test_updater_rejects_retired_receipt_versions(self):
+        original = json.loads(self.old_receipt)
+        for version in (1, 2, 3):
+            receipt = dict(original, version=version)
+            self.receipt.write_text(json.dumps(receipt))
+            before = self.receipt.read_bytes()
+            result = self.update()
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(self.receipt.read_bytes(), before)
+            self.assertFalse(self.marker.exists())
+
+    def test_updater_rejects_control_characters_in_dirty_input_name(self):
+        original = json.loads(self.old_receipt)
+        for char in ('\x00', '\n', '\x1f', '\x7f'):
+            receipt = dict(original, dirty_inputs={'resources/owner' + char:
+                           {'sha256': '0' * 64, 'mode': 0o644}})
+            self.receipt.write_text(json.dumps(receipt))
+            before = self.receipt.read_bytes()
+            result = self.update()
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(self.receipt.read_bytes(), before)
+            self.assertFalse(self.marker.exists())
+
+    def test_real_stage_cli_uses_canonical_receipt(self):
+        options = ['--sdk-source', SDK, '--git', GIT, '--patch', PATCH]
+        stage = self.ports / 'scripts/pkgsrc-export-stage.py'
+        fingerprint = run([sys.executable, '-B', stage, 'fingerprint', *options], self.ports)
+        fingerprint_data = json.loads(fingerprint.stdout)
+        expected = fingerprint_data['fingerprint']
+        root = self.work / 'stages'
+        legacy_inputs = dict(fingerprint_data['inputs'])
+        self.assertEqual(legacy_inputs.pop('receipt')['version'], 4)
+        legacy_key = hashlib.sha256(json.dumps(legacy_inputs, sort_keys=True,
+                                             separators=(',', ':')).encode('ascii')).hexdigest()
+        self.assertNotEqual(legacy_key, expected)
+        legacy = root / legacy_key
+        legacy.mkdir(parents=True)
+        (legacy / 'pkgsrc-stage.json').write_text('old stage\n')
+        legacy_stat = (legacy / 'pkgsrc-stage.json').stat()
+        command = [sys.executable, '-B', stage, 'prepare', root, *options]
+        initial = json.loads(run(command, self.ports).stdout)
+        self.assertEqual(initial['fingerprint'], expected)
+        self.assertFalse(initial['reused'])
+        directory = Path(initial['directory'])
+        self.assertEqual(json.loads((directory / 'pkgsrc-export.json').read_text())['version'], 4)
+        self.assertFalse((directory / 'pkgsrc-stage.json').exists())
+        again = json.loads(run(command, self.ports).stdout)
+        self.assertEqual(again['directory'], initial['directory'])
+        self.assertTrue(again['reused'])
+        self.assertEqual((legacy / 'pkgsrc-stage.json').read_text(), 'old stage\n')
+        after = (legacy / 'pkgsrc-stage.json').stat()
+        self.assertEqual((legacy_stat.st_ino, legacy_stat.st_mtime_ns),
+                         (after.st_ino, after.st_mtime_ns))
+
     def update(self, *extra):
         return run(self.command + ['--update', '--package', 'cat/pkg', '--file', 'misc/owner.txt', *extra],
                    self.ports, check=False)
@@ -136,7 +209,7 @@ class ScopedUpdateTests(unittest.TestCase):
         self.newer_inputs()
         baseline = self.update()
         self.assertEqual(baseline.returncode, 0, baseline.stderr)
-        self.assertEqual(json.loads(self.receipt.read_text())['version'], 3)
+        self.assertEqual(json.loads(self.receipt.read_text())['version'], 4)
         tool = self.alternate_patch()
         neighbor = self.tree / 'cat/other/Makefile'
         stamp = (neighbor.stat().st_ino, neighbor.stat().st_mtime_ns)
@@ -220,7 +293,7 @@ with patch.object(Path, 'unlink', fail_marker):
         for key in ('material', 'patch_provenance'):
             modified = json.loads(expected)
             if key == 'material':
-                modified[key] = {}
+                modified[key]['net/libfetch/files'] = {'unexpected': ['directory']}
             else:
                 modified[key]['packages'] = {}
             self.receipt.write_text(json.dumps(modified))
@@ -871,7 +944,7 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
         self.assertFalse(a.exists())
         self.assertEqual(b.read_text(), 'alternate\n')
 
-    def test_v2_link_deletion_and_dirty_retarget(self):
+    def test_current_link_deletion_and_dirty_retarget(self):
         write(self.ports, 'pkgsrc/replaces', 'cat/pkg\n')
         write(self.ports, 'pkgsrc/cat/pkg/Makefile', 'PKGNAME=pkg-1\n')
         files = self.ports / 'pkgsrc/cat/pkg/files'
@@ -886,7 +959,7 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
         result = run(self.command, self.ports, check=False)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.receipt = self.export / 'pkgsrc-export.json'
-        self.assertEqual(json.loads(self.receipt.read_text())['version'], 2)
+        self.assertEqual(json.loads(self.receipt.read_text())['version'], 4)
         self.tree = self.export / 'pkgsrc'
         output = self.tree / 'cat/pkg/files/link'
         link.unlink()
@@ -915,9 +988,9 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual((output.stat().st_ino, output.stat().st_mtime_ns), stamp)
 
-    def _upstream_recipe_becomes_selected_overlay(self, version):
-        with self.subTest(version=version):
-            if version == 3:
+    def _upstream_recipe_becomes_selected_overlay(self, after_update):
+        with self.subTest(after_update=after_update):
+            if after_update:
                 result = self.update()
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             old = self.receipt.read_bytes()
@@ -944,11 +1017,11 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertEqual(selected.read_text(), 'PKGNAME=overlay-2\n')
 
-    def test_upstream_recipe_becomes_selected_overlay_v2(self):
-        self._upstream_recipe_becomes_selected_overlay(2)
+    def test_upstream_recipe_becomes_selected_overlay_initial(self):
+        self._upstream_recipe_becomes_selected_overlay(False)
 
-    def test_upstream_recipe_becomes_selected_overlay_v3(self):
-        self._upstream_recipe_becomes_selected_overlay(3)
+    def test_upstream_recipe_becomes_selected_overlay_after_update(self):
+        self._upstream_recipe_becomes_selected_overlay(True)
 
     def test_shared_file_source_requires_all_consumers(self):
         conf = self.ports / 'pkgsrc/export.conf'

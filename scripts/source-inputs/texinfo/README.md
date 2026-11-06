@@ -13,7 +13,7 @@ upstream archive and package build. This omission does not change the patch set.
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/texinfo/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
   --archive "$DISTFILES/texinfo-7.3.tar.xz" --patch "$HOST_PREFIX/bin/gpatch" \
-  --output "$WORK/texinfo-source" --scoped-identity
+  --output "$WORK/texinfo-source"
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/texinfo/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" verify-source \
   --source "$WORK/texinfo-source" --patch "$HOST_PREFIX/bin/gpatch"

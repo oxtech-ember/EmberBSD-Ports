@@ -142,10 +142,9 @@ def verify_source(source, pkgsrc_root):
     require(os.path.isabs(pkgsrc_root), 'select an absolute prepared pkgsrc export')
     record = verify_payload(source)
     old = record['identity']
-    require(isinstance(old, dict) and set(old) in ({'effective'}, {'effective', 'owner_sha256'}),
+    require(isinstance(old, dict) and set(old) == {'effective', 'owner_sha256'},
             'source receipt lacks an effective V8 recipe')
-    if 'owner_sha256' in old:
-        require(old['owner_sha256'] == digest(read(Path(__file__).resolve())), 'V8 source producer changed')
+    require(old['owner_sha256'] == digest(read(Path(__file__).resolve())), 'V8 source producer changed')
     module = selector()
     require(module.equivalent_effective_package(old['effective'], old['effective']) and
             old['effective']['package'] == PACKAGE, 'invalid V8 effective package identity')

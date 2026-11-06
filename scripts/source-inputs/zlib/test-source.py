@@ -26,7 +26,7 @@ with tempfile.TemporaryDirectory(dir=a.work_dir) as directory:
             raise AssertionError(result.stderr)
         return result
     run('prepare', '--archive', a.archive, '--patch', a.patch, '--output', root,
-        '--scoped-identity', *shared)
+        *shared)
     assert (root / 'zlib.h').is_file() and (root / 'LICENSE').is_file()
     assert 'defined(HAVE_UNISTD_H)' in (root / 'zconf.h').read_text()
     assert 'state->past = 0' in (root / 'gzlib.c').read_text()

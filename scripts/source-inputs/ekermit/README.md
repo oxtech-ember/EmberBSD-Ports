@@ -9,7 +9,7 @@ headers and the upstream BSD three-clause license. It does not install a package
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/ekermit/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
   --archive "$DISTFILES/ek18.tar" --patch "$HOST_PREFIX/bin/gpatch" \
-  --scoped-identity --output "$WORK/ekermit-source"
+  --output "$WORK/ekermit-source"
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/ekermit/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" verify-source \
   --source "$WORK/ekermit-source" --patch "$HOST_PREFIX/bin/gpatch" \

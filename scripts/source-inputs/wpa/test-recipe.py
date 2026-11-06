@@ -55,30 +55,22 @@ with tempfile.TemporaryDirectory(dir=args.work) as tmp:
             continue
         raise AssertionError(case + ' was accepted')
 
-# A legacy receipt verified against the caller's validated export must reuse
-# that export when comparing its prepared payload.  This keeps verification
-# from launching a second pkgsrc export in the same producer run.
-legacy = {
-    'export': {
-        'api': 1,
-        'package': source.PACKAGE,
-        'export_inputs_sha256': 'a' * 64,
-        'upstream': 'b' * 40,
-    },
-    'owner_sha256': 'c' * 64,
-}
+# Changed current receipts reuse the caller's validated export.
+effective = {'api': 3, 'package': source.PACKAGE,
+             'effective_package_sha256': 'a' * 64, 'upstream': 'b' * 40}
+old = {'effective': effective, 'owner_sha256': 'c' * 64}
 tree_sha256 = 'd' * 64
 validated_export = Path('/already/validated/pkgsrc')
-current_identity = {'current': 'identity'}
+current_identity = {'export': {'upstream': 'b' * 40}, 'owner_sha256': 'f' * 64}
 captured = {}
-selector = SimpleNamespace(shared_export=lambda *args: validated_export)
+selector = SimpleNamespace(shared_export=lambda *args: validated_export,
+                           current_git_package=lambda *args: False)
 source.identity_module = lambda: selector
 source.source_identity = lambda git: current_identity
-source.jsonio = SimpleNamespace(read_json=lambda path: {'identity': legacy,
-                                                          'tree_sha256': tree_sha256})
+source.jsonio = SimpleNamespace(read_json=lambda path: {'identity': old, 'tree_sha256': tree_sha256})
 source.sourceprep = SimpleNamespace(PREPARED_TREE_RECEIPT='receipt.json',
                                     validate_prepared_tree=lambda *args, **kwargs:
-                                    {'identity': legacy, 'tree_sha256': tree_sha256})
+                                    {'identity': old, 'tree_sha256': tree_sha256})
 
 def capture_prepare(*args, **kwargs):
     captured['exported'] = kwargs.get('exported')
@@ -90,44 +82,43 @@ source.verify('/prepared/wpa', '/selected/git', '/wpa.tar.gz', '/hostapd.tar.gz'
 assert captured.get('exported') == validated_export
 
 # Current package-scoped receipts do not inspect an unrelated export receipt.
-api2_effective = {'api': 2, 'package': source.PACKAGE,
+current_effective = {'api': 3, 'package': source.PACKAGE,
                    'effective_package_sha256': 'e' * 64, 'upstream': 'b' * 40}
-api2_owner = '4360fe9b8d510b770a7ac7a1ba7ceeed87222e41319f819f25ed14414d0fbd45'
-api2_current_owner = source.digest(b'current owner')
-api2_state = {'record': None, 'current': api2_effective, 'changed': False}
-api2_selector = SimpleNamespace(
-    git_package_identity=lambda *args: api2_state['current'],
+current_current_owner = source.digest(b'current owner')
+current_state = {'record': None, 'current': current_effective, 'changed': False}
+current_selector = SimpleNamespace(
+    git_package_identity=lambda *args: current_state['current'],
     current_git_package=lambda old, owner, current:
         owner == old['owner_sha256'] and old['effective'] == current(),
     shared_export=lambda *args: validated_export,
     equivalent_effective_package=lambda left, right: left == right,
-    effective_package_identity=lambda *args: api2_state['current'])
-source.identity_module = lambda: api2_selector
+    effective_package_identity=lambda *args: current_state['current'])
+source.identity_module = lambda: current_selector
 source.read = lambda path: b'current owner'
-source.jsonio = SimpleNamespace(read_json=lambda path: api2_state['record'])
+source.jsonio = SimpleNamespace(read_json=lambda path: current_state['record'])
 source.sourceprep = SimpleNamespace(PREPARED_TREE_RECEIPT='receipt.json',
                                     validate_prepared_tree=lambda *args, **kwargs:
-                                    api2_state['record'])
-for owner in (api2_owner, api2_current_owner):
-    api2 = {'effective': api2_effective, 'owner_sha256': owner}
-    api2_record = {'identity': api2, 'tree_sha256': tree_sha256}
-    api2_state['record'] = api2_record
-    api2_state['current'] = api2_effective
-    api2_selector.shared_export = lambda *args: (_ for _ in ()).throw(
-        AssertionError('current API 2 receipt consulted shared export'))
+                                    current_state['record'])
+for owner in (current_current_owner,):
+    current = {'effective': current_effective, 'owner_sha256': owner}
+    current_record = {'identity': current, 'tree_sha256': tree_sha256}
+    current_state['record'] = current_record
+    current_state['current'] = current_effective
+    current_selector.shared_export = lambda *args: (_ for _ in ()).throw(
+        AssertionError('current Git receipt consulted shared export'))
     assert source.verify('/prepared/wpa', '/selected/git',
-                         pkgsrc_export='/unrelated-export-without-receipt') == api2_record
+                         pkgsrc_export='/unrelated-export-without-receipt') == current_record
 
 # A changed package remains on the explicit archive comparison path.
-api2_state['current'] = dict(api2_effective,
+current_state['current'] = dict(current_effective,
                              effective_package_sha256='f' * 64)
-api2_selector.shared_export = lambda *args: validated_export
-api2_selector.effective_package_identity = lambda *args: api2_state['current']
-current_identity = {'export': {'upstream': api2_effective['upstream']},
-                    'owner_sha256': api2_current_owner}
+current_selector.shared_export = lambda *args: validated_export
+current_selector.effective_package_identity = lambda *args: current_state['current']
+current_identity = {'export': {'upstream': current_effective['upstream']},
+                    'owner_sha256': current_current_owner}
 source.source_identity = lambda git: current_identity
-api2_state['record'] = {'identity': {'effective': api2_effective,
-                                     'owner_sha256': api2_current_owner},
+current_state['record'] = {'identity': {'effective': current_effective,
+                                     'owner_sha256': current_current_owner},
                         'tree_sha256': tree_sha256}
 try:
     source.verify('/prepared/wpa', '/selected/git', patch='/selected/patch',

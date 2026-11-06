@@ -9,7 +9,7 @@ a new output directory:
 
 ```sh
 python3 -B source.py --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
-  --archive "$ARCHIVE" --patch "$PATCH" --output "$OUTPUT" --scoped-identity
+  --archive "$ARCHIVE" --patch "$PATCH" --output "$OUTPUT"
 python3 -B source.py --sdk-source "$SDK_SOURCE" --git "$GIT" verify-source \
   --source "$OUTPUT" --archive "$ARCHIVE" --patch "$PATCH"
 ```

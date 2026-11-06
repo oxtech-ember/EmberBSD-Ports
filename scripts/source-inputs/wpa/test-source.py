@@ -30,7 +30,7 @@ with tempfile.TemporaryDirectory(dir=args.work_dir) as directory:
 
     def prepare(archive, hostapd, output, success=True):
         return run('prepare', '--archive', archive, '--hostapd-archive', hostapd,
-                   '--patch', args.patch, '--output', output, '--scoped-identity',
+                   '--patch', args.patch, '--output', output,
                    success=success)
 
     prepare(args.archive, args.hostapd_archive, root)

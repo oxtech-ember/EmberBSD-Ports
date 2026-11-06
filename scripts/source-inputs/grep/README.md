@@ -8,7 +8,7 @@ helper applies the complete effective patch inventory and does not install a pac
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/grep/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
   --archive "$DISTFILES/grep-3.12.tar.xz" --patch "$HOST_PREFIX/bin/gpatch" \
-  --scoped-identity --output "$WORK/grep-source"
+  --output "$WORK/grep-source"
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/grep/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" verify-source \
   --source "$WORK/grep-source" --patch "$HOST_PREFIX/bin/gpatch" \
