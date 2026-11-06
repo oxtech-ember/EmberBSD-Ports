@@ -19,7 +19,7 @@ Build the NetBSD framebuffer platform plugin.
 +        qwsconsmouse.cpp qwsconsmouse.h
 +        qbsdfblayout_p.h qbsdfbframegate_p.h qbsdfbpointer_p.h
 +        qbsdfbblit_p.h qbsdfbrotateneon_p.h qbsdfbinputfailure_p.h
-+        qbsdfbrecordbuffer_p.h
++        qbsdfbrecordbuffer_p.h qbsdfbpresent_p.h
 +    LIBRARIES
 +        Qt::Core
 +        Qt::CorePrivate

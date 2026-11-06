@@ -56,6 +56,9 @@ struct pvr_winsys { struct fake_ops *ops; };
 /* HEADER */
 #ifndef PVR_BO_ALLOC_FLAG_CACHE
 #define PVR_BO_ALLOC_FLAG_CACHE 0
+/* Keep the pre-cache source usable as the failing causal control. */
+#define PVR_BO_CACHE_MAX_BYTES (1024U * 1024U)
+#define PVR_BO_CACHE_MAX_COUNT 16U
 struct pvr_bo_cache { int unused; };
 static void pvr_bo_cache_init(struct pvr_device *device) {}
 static void pvr_bo_cache_fini(struct pvr_device *device) {}
@@ -234,11 +237,12 @@ int main(void)
       for (unsigned i = 0; i < 40; i++)
          assert(pvr_bo_alloc(&device, &heap, mode ? 131072 : 4096, 64, flags, &batch[i]) == VK_SUCCESS);
       for (unsigned i = 0; i < 40; i++) pvr_bo_free(&device, batch[i]);
-      assert(created - destroyed <= 16 && live_bytes <= 1024 * 1024);
+      assert(created - destroyed <= PVR_BO_CACHE_MAX_COUNT &&
+             live_bytes <= PVR_BO_CACHE_MAX_BYTES);
       pvr_bo_cache_flush(&device);
       assert(live_bytes == 0);
    }
-   assert(pvr_bo_alloc(&device, &heap, 1, 2 * 1024 * 1024, flags, &next) == VK_SUCCESS);
+   assert(pvr_bo_alloc(&device, &heap, 1, 2 * PVR_BO_CACHE_MAX_BYTES, flags, &next) == VK_SUCCESS);
    pvr_bo_free(&device, next); assert(live_bytes == 0);
 
    /* A flush drains its initial snapshot, not BOs freed during destruction. */

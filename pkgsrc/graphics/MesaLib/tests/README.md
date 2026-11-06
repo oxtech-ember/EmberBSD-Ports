@@ -387,3 +387,33 @@ call into `nir_swizzle`, and the `UNREACHABLE` allocator fallback in `pvr_gpu_up
 Neither finding identifies a new cache path error. The kernel's actual-source BO
 model passed Cppcheck, Clang analysis, ASan and UBSan for both native page sizes.
 Valgrind was unavailable in the selected SDK; no Valgrind result is claimed.
+
+## PowerVR queue dependencies across submissions
+
+The queue retains per-stage job tails and unconsumed waits across Vulkan
+submissions. It no longer waits for the previous submission on the CPU.
+New semaphore waits merge with earlier unconsumed waits. A wait-only submit
+includes these dependencies in its signals, including an empty fence submit.
+A failed merge preserves the previous queue-owned sync and destroys its new sync.
+
+Winsys submissions must capture input fences before returning. The DRM backend
+joins dependencies through syncobj timeline chains; it does not wait for GPU
+completion. Same-context execution order makes the newest job signal cover its
+previous jobs. Transfer scratch allocations belong to the command buffer's BO
+list, while cached transfer shaders live until context destruction. Applications
+must not reset or overwrite pending command buffers or resources before their
+completion fence. This change does not relax those Vulkan lifetime requirements.
+
+Run the causal check on a patched source tree with the selected SDK host Clang:
+
+```sh
+"$PYTHON" tests/pvr-queue-syncs.py /absolute/patched/src/imagination/vulkan/pvr_arch_queue.c \
+  --cc "$HOST_PREFIX/bin/clang" --work /absolute/queue-sync-check
+```
+
+The check extracts the production queue functions and models only the sync
+backend. It covers pending wait-only signals, cross-submit wait merges, sync
+ownership, merge failure, and an empty fence after earlier work. The prior code
+fails the wait-only signal assertion. The changed AArch64 translation unit
+compiles and passes Clang Static Analyzer. This does not establish asynchronous
+kernel submission, GPU execution, package lifecycle, or application frame rate.

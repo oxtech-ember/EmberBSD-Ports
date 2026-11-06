@@ -21,7 +21,7 @@ startup performance, GPU acceleration, or compatibility with other devices.
 
 The backend scope is deliberately narrow: NetBSD wsdisplay in dumb framebuffer
 mode, a linear 32-bit RGB framebuffer (`Xrgb8888`, or the supported
-little-endian `Xbgr8888` ordering), CPU-only software composition, and absolute
+little-endian `Xbgr8888` ordering), CPU framebuffer presentation, and absolute
 wscons pointer events. It supports 0, 90,
 180, and 270 degree rotation. By default, `input-coordinates=native` maps
 the calibrated axes to framebuffer pixels, then rotates the pointer to match
@@ -32,6 +32,44 @@ the corresponding landscape screen dimension. `preserve=1` keeps the existing co
 the first frame is presented; `preserve=0` permits the initial clear. Set
 `QT_QPA_FB_DISABLE_INPUT=1` to disable wscons input. The plugin does not provide
 GPU-accelerated rendering, relative input, or other pixel depths and layouts.
+
+## Direct image presentation
+
+The NetBSD native interface exports two platform functions:
+
+```cpp
+using PresentImage = bool (*)(const QImage &);
+using NativeFormat = QImage::Format (*)();
+auto present = reinterpret_cast<PresentImage>(
+    QGuiApplication::platformFunction("bsdfbPresentImage"));
+auto nativeFormat = reinterpret_cast<NativeFormat>(
+    QGuiApplication::platformFunction("bsdfbNativeImageFormat"));
+```
+
+Resolve these functions after QGuiApplication initialization. Stop presentation
+workers before QGuiApplication teardown. The plugin owns the framebuffer mapping.
+`present(image)` copies pixels synchronously and retains no source reference.
+The caller keeps the image storage unchanged until the call returns.
+
+Direct presentation requires `rotation=0`, the exact framebuffer dimensions,
+and the native image format returned by `nativeFormat()`. The supported formats
+are `Format_RGB32` and `Format_RGBX8888`. Unsupported rotation returns
+`Format_Invalid`. An unsupported image returns false without changing the display.
+A compatible image takes one row copy, with no conversion or compositor copy.
+
+A presentation worker may call these functions. The plugin serializes direct
+copies, ordinary framebuffer blits, and mapping teardown. It does not inspect
+windows or GUI state from that worker. Direct presentation replaces the complete
+frame and does not compose other windows or a software cursor. Use one fullscreen
+presenter; ordinary compositor updates can replace its contents. `grabWindow()`
+continues to read the ordinary compositor image.
+
+`input-rotation=0/90/180/270` rotates pointer coordinates clockwise after the
+existing `input-coordinates` mapping. It keeps the display's logical dimensions
+and rescales swapped axes into those dimensions. It does not rotate the display.
+The default is zero and preserves the earlier input contract. For a landscape
+sensor with a portrait framebuffer, select
+`bsdfb:rotation=0:input-coordinates=logical:input-rotation=90`.
 
 Run the isolated helper checks with a host C++17 compiler and a patched QtBase
 source tree:
@@ -44,7 +82,7 @@ ctest --test-dir /absolute/new-build --output-on-failure
 ```
 
 The layout, pointer, and record-buffer tests have no Qt dependency. To enable
-the FrameGate, blit, and input-failure tests, set `QT_HOST_PREFIX` to the host
+the FrameGate, blit, direct-presentation, and input-failure tests, set `QT_HOST_PREFIX` to the host
 Qt 6.12.0 prefix; CMake then finds only that exact Qt version under its
 `lib/cmake` directory.
 

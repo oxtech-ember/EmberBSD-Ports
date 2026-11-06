@@ -4,12 +4,13 @@ Add checked wsdisplay framebuffer and software presentation support.
 
 --- /dev/null
 +++ src/plugins/platforms/bsdfb/qnetbsdfbscreen.cpp
-@@ -0,0 +1,305 @@
+@@ -0,0 +1,330 @@
 +// SPDX-License-Identifier: BSD-2-Clause
 +// Origin: EmberBSD contributors (AI-assisted).
 +
 +#include "qnetbsdfbscreen.h"
 +#include "qbsdfbblit_p.h"
++#include "qbsdfbpresent_p.h"
 +#include "qwsconsmouse.h"
 +
 +#include <QtCore/QFile>
@@ -70,6 +71,14 @@ Add checked wsdisplay framebuffer and software presentation support.
 +            m_inputCoordinates = QBsdFb::InputCoordinates::Logical;
 +        } else if (argument == QLatin1String("input-coordinates=native")) {
 +            m_inputCoordinates = QBsdFb::InputCoordinates::Native;
++        } else if (argument == QLatin1String("input-rotation=0")) {
++            m_inputRotation = QBsdFb::Rotation::R0;
++        } else if (argument == QLatin1String("input-rotation=90")) {
++            m_inputRotation = QBsdFb::Rotation::R90;
++        } else if (argument == QLatin1String("input-rotation=180")) {
++            m_inputRotation = QBsdFb::Rotation::R180;
++        } else if (argument == QLatin1String("input-rotation=270")) {
++            m_inputRotation = QBsdFb::Rotation::R270;
 +        } else if (argument == QLatin1String("rotation=0")) {
 +            m_rotation = QBsdFb::Rotation::R0;
 +        } else if (argument == QLatin1String("rotation=90")) {
@@ -99,6 +108,7 @@ Add checked wsdisplay framebuffer and software presentation support.
 +
 +void QNetBsdFbScreen::closeFramebuffer()
 +{
++    QMutexLocker lock(&m_presentMutex);
 +    // Destroy all Qt views of the device before unmapping it.
 +    m_onscreenImage = QImage();
 +    if (m_hasMapping) {
@@ -207,7 +217,7 @@ Add checked wsdisplay framebuffer and software presentation support.
 +{
 +    if (qEnvironmentVariableIntValue("QT_QPA_FB_DISABLE_INPUT"))
 +        return true;
-+    m_mouse = std::make_unique<QWsconsMouse>(m_mousePath, m_layout, m_rotation, m_inputCoordinates);
++    m_mouse = std::make_unique<QWsconsMouse>(m_mousePath, m_layout, m_rotation, m_inputCoordinates, m_inputRotation);
 +    if (!m_mouse->start()) {
 +        m_mouse.reset();
 +        return false;
@@ -244,6 +254,20 @@ Add checked wsdisplay framebuffer and software presentation support.
 +    }
 +}
 +
++bool QNetBsdFbScreen::presentImage(const QImage &image)
++{
++    QMutexLocker lock(&m_presentMutex);
++    // This path only uses immutable layout and the protected device mapping.
++    return QBsdFb::presentImage(m_onscreenImage, image, m_rotation);
++}
++
++QImage::Format QNetBsdFbScreen::nativeImageFormat() const
++{
++    QMutexLocker lock(&m_presentMutex);
++    return m_rotation == QBsdFb::Rotation::R0
++        ? m_onscreenImage.format() : QImage::Format_Invalid;
++}
++
 +QRegion QNetBsdFbScreen::doRedraw()
 +{
 +    const bool traceEnabled = lcBsdFbFrame().isDebugEnabled();
@@ -264,6 +288,7 @@ Add checked wsdisplay framebuffer and software presentation support.
 +    const QRegion touched = QFbScreen::doRedraw();
 +    const qint64 composeUs = traceEnabled
 +        ? (traceTimer.nsecsElapsed() - composeStartNs) / 1000 : 0;
++    QMutexLocker lock(&m_presentMutex);
 +    if (!m_frameGate.allowsRedraw() || m_onscreenImage.isNull() || touched.isEmpty())
 +        return {};
 +

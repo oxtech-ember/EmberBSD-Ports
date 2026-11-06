@@ -4,7 +4,7 @@ Add absolute wscons pointer input for the framebuffer platform.
 
 --- /dev/null
 +++ src/plugins/platforms/bsdfb/qwsconsmouse.cpp
-@@ -0,0 +1,169 @@
+@@ -0,0 +1,170 @@
 +// SPDX-License-Identifier: BSD-2-Clause
 +// Origin: EmberBSD contributors (AI-assisted).
 +
@@ -42,8 +42,9 @@ Add absolute wscons pointer input for the framebuffer platform.
 +} // namespace
 +
 +QWsconsMouse::QWsconsMouse(QString path, QBsdFb::Layout layout, QBsdFb::Rotation rotation,
-+                           QBsdFb::InputCoordinates coordinates)
-+    : m_path(std::move(path)), m_layout(layout), m_rotation(rotation), m_coordinates(coordinates)
++                           QBsdFb::InputCoordinates coordinates, QBsdFb::Rotation inputRotation)
++    : m_path(std::move(path)), m_layout(layout), m_rotation(rotation),
++      m_inputRotation(inputRotation), m_coordinates(coordinates)
 +{
 +}
 +
@@ -77,7 +78,7 @@ Add absolute wscons pointer input for the framebuffer platform.
 +        return fail("Cannot query absolute input calibration");
 +    m_input = std::make_unique<QBsdFb::PointerInput>(m_layout, m_rotation,
 +        QBsdFb::PointerInput::AxisRange{calibration.minx, calibration.maxx,
-+                                       calibration.miny, calibration.maxy}, m_coordinates);
++                                       calibration.miny, calibration.maxy}, m_coordinates, m_inputRotation);
 +    if (!m_input->valid())
 +        return fail("Invalid absolute input calibration");
 +    m_notifier = std::make_unique<QSocketNotifier>(m_fd, QSocketNotifier::Read);

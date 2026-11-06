@@ -57,9 +57,9 @@ Origin: EmberBSD, AI-assisted; not submitted upstream.
     }
  }
  
-+/* Keep transient command storage bounded across all heaps of one device. */
-+#define PVR_BO_CACHE_MAX_BYTES (1024U * 1024U)
-+#define PVR_BO_CACHE_MAX_COUNT 16U
++/* Bound idle command storage per device; async submits keep frames in flight. */
++#define PVR_BO_CACHE_MAX_BYTES (4U * 1024U * 1024U)
++#define PVR_BO_CACHE_MAX_COUNT 32U
 +
 +static void pvr_bo_destroy(struct pvr_device *device, struct pvr_bo *bo);
 +

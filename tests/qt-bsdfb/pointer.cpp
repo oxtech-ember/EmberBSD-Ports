@@ -146,6 +146,36 @@ void testLogicalAxes(const Layout &layout)
     }
 }
 
+void testIndependentInputRotation(const Layout &layout)
+{
+    const std::array rotations{Rotation::R0, Rotation::R90, Rotation::R180, Rotation::R270};
+    const std::array<Point, 4> raw{{{0, 0}, {1000, 0}, {0, 1000}, {1000, 1000}}};
+    // Expected normalized corners are independent of display rotation.
+    const std::array<std::array<Point, 4>, 4> expected{{
+        {{{0, 0}, {1, 0}, {0, 1}, {1, 1}}},
+        {{{1, 0}, {1, 1}, {0, 0}, {0, 1}}},
+        {{{1, 1}, {0, 1}, {1, 0}, {0, 0}}},
+        {{{0, 1}, {0, 0}, {1, 1}, {1, 0}}}
+    }};
+    for (const auto display : rotations) {
+        const auto size = QBsdFb::logicalSize(layout, display);
+        for (std::size_t r = 0; r < rotations.size(); ++r) {
+            for (std::size_t c = 0; c < raw.size(); ++c) {
+                Input input(layout, display, AxisRange{0, 1000, 0, 1000},
+                            QBsdFb::InputCoordinates::Logical, rotations[r]);
+                std::vector<Event> events;
+                feed(input, EventKind::AbsoluteX, raw[c].x, events);
+                feed(input, EventKind::AbsoluteY, raw[c].y, events);
+                feed(input, EventKind::ButtonDown, 0, events);
+                const Point want{expected[r][c].x * (size.width - 1),
+                                 expected[r][c].y * (size.height - 1)};
+                check(!events.empty() && same(events.back().position, want),
+                      "independent input rotation preserves logical display bounds");
+            }
+        }
+    }
+}
+
 void testInitialPressAndAxisDrain(const Layout &layout)
 {
     Input input(layout, Rotation::R0, AxisRange{0, 799, 0, 1279});
@@ -329,6 +359,7 @@ int main()
     const Layout layout = testLayout();
     testRotationCorners(layout);
     testLogicalAxes(layout);
+    testIndependentInputRotation(layout);
     testInitialPressAndAxisDrain(layout);
     testMotionBeforeButtons(layout);
     testButtonBitsAndDuplicates(layout);

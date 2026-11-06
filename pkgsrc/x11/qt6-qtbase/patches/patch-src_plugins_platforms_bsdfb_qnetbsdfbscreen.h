@@ -4,7 +4,7 @@ Add the NetBSD framebuffer screen interface.
 
 --- /dev/null
 +++ src/plugins/platforms/bsdfb/qnetbsdfbscreen.h
-@@ -0,0 +1,52 @@
+@@ -0,0 +1,57 @@
 +// SPDX-License-Identifier: BSD-2-Clause
 +// Origin: EmberBSD contributors (AI-assisted).
 +
@@ -14,6 +14,7 @@ Add the NetBSD framebuffer screen interface.
 +#include "qbsdfbframegate_p.h"
 +#include <QtFbSupport/private/qfbscreen_p.h>
 +#include <QtCore/QPointer>
++#include <QtCore/QMutex>
 +#include <memory>
 +
 +QT_BEGIN_NAMESPACE
@@ -29,6 +30,8 @@ Add the NetBSD framebuffer screen interface.
 +
 +    bool initialize() override;
 +    bool initializeInput();
++    bool presentImage(const QImage &image);
++    QImage::Format nativeImageFormat() const;
 +    QPlatformBackingStore *createBackingStore(QWindow *window);
 +    void backingStoreResized(QWindow *window);
 +    void backingStoreFlushed(QWindow *window, const QSize &imageSize, const QRegion &region);
@@ -48,10 +51,12 @@ Add the NetBSD framebuffer screen interface.
 +    bool m_hasMapping = false;
 +    QBsdFb::Layout m_layout;
 +    QBsdFb::Rotation m_rotation = QBsdFb::Rotation::R0;
++    QBsdFb::Rotation m_inputRotation = QBsdFb::Rotation::R0;
 +    QBsdFb::InputCoordinates m_inputCoordinates = QBsdFb::InputCoordinates::Native;
 +    QBsdFb::FrameGate m_frameGate{false};
 +    QPointer<QWindow> m_frameWindow;
 +    QSize m_readyFrameSize;
++    mutable QMutex m_presentMutex;
 +    QImage m_onscreenImage;
 +    std::unique_ptr<QWsconsMouse> m_mouse;
 +};
