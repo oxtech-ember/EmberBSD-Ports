@@ -3844,6 +3844,7 @@ def reconfigure(options):
         permitted_env.add('EMBERBSD_PROTOC_SELECTION_SHA256')
         options.protoc_selection = candidate.protoc_selection
         options.v8_metagen_selection = getattr(candidate, 'v8_metagen_selection', None)
+        options.vulkan_registry = getattr(candidate, 'vulkan_registry', None)
         require(not (getattr(options, 'activate_common_ml', False) and
                     getattr(options, 'activate_common_providers', False)),
                 'select only one common provider migration')

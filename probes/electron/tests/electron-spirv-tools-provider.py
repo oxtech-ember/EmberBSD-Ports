@@ -44,6 +44,30 @@ with tempfile.TemporaryDirectory() as tmp:
   assert str(script) in v['emberbsd_spirv_link_target_inputs']
   old_mtime=script.stat().st_mtime_ns;codec.select_spirv_tools(image,c,o,sdk,native,env,view)
   assert script.stat().st_mtime_ns==old_mtime
+  persistent={name:Path(v['emberbsd_'+name+'_target_libraries'][0]) for name in ('spirv_tools','spirv_link')}
+  before={name:(path.read_bytes(),path.stat().st_mtime_ns) for name,path in persistent.items()}
+  with tempfile.TemporaryDirectory(dir=root,prefix='candidate-') as candidate:
+   o.work=Path(candidate);o.native_binding_root=root
+   candidate_values=codec.select_spirv_tools(image,c,o,sdk,native,env,view)
+   assert all(Path(candidate_values['emberbsd_'+name+'_target_libraries'][0])==path for name,path in persistent.items())
+   assert all(str(path) in candidate_values['emberbsd_'+name+'_target_inputs'] for name,path in persistent.items())
+  assert all(path.is_file() and (path.read_bytes(),path.stat().st_mtime_ns)==before[name] for name,path in persistent.items())
+  o.work=root
+  del o.native_binding_root
+  normal=codec.select_spirv_tools(image,c,o,sdk,native,env,view)
+  assert all(Path(normal['emberbsd_'+name+'_target_libraries'][0])==path and path.stat().st_mtime_ns==before[name][1] for name,path in persistent.items())
+  definition=codec.SPIRV_TOOLS_PROVIDER['spirv_tools'];changed=definition[:3]+(tuple(reversed(definition[3])),)+definition[4:]
+  with patch.dict(codec.SPIRV_TOOLS_PROVIDER,{'spirv_tools':changed}):
+   altered=codec.select_spirv_tools(image,c,o,sdk,native,env,view)
+   changed_path=Path(altered['emberbsd_spirv_tools_target_libraries'][0])
+   assert changed_path!=persistent['spirv_tools'] and changed_path.is_file()
+   assert all((path.read_bytes(),path.stat().st_mtime_ns)==before[name] for name,path in persistent.items())
+  victim=persistent['spirv_tools'];victim.write_bytes(b'foreign')
+  try:codec.select_spirv_tools(image,c,o,sdk,native,env,view)
+  except ValueError:pass
+  else:raise AssertionError('modified GROUP input accepted')
+  assert victim.read_bytes()==b'foreign'
+  victim.write_bytes(before['spirv_tools'][0])
   assert [Path(x).name for x in v['emberbsd_spirv_core_host_libraries']] == ['libSPIRV-Tools.a']
   contents=dbs['target']['parallel/spirv-tools'][0]/'+CONTENTS'; original=contents.read_text()
   contents.write_text(original.replace('@blddep spirv-headers-1.4.363.0', '@blddep spirv-headers-1.4.362.0'))

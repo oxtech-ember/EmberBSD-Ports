@@ -65,6 +65,14 @@ pass-through. Pass the existing exported pkgsrc, native makeconf, bmake, patch
 executable, upstream pkgsrc source, SDK source, barrier patch and metadata patch
 via the script's options.
 
+Generated pkginstall fragments, INSTALL/DEINSTALL hooks and rc.d scripts track
+changes to `mk/pkginstall/bsd.pkginstall.mk`. Rebuilding package metadata after
+that shared input changes refreshes their substitutions without recompiling the
+payload. This dependency does not track arbitrary changes in mk.conf or recipes.
+`scripts/tests/pkginstall-substitution-regeneration.py` checks the real rules and
+templates with explicit selected tools, including stale, regenerated, empty-hook,
+rc.d and no-op cases; run it with `--help` for the required paths.
+
 GNU gzip has an explicit bootstrap Info phase. `EMBERBSD_GZIP_DEFER_INFO=yes`
 keeps `gzip.info` while omitting registration hooks and their dependency on
 `pkg_install-info`; it defaults to `yes` for the initial Darwin bootstrap and

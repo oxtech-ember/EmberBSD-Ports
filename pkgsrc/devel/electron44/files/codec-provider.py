@@ -2,6 +2,7 @@
 # Origin: EmberBSD contributors (AI-assisted).
 """Select common codec libraries for both Chromium toolchain roles."""
 
+import hashlib
 import re
 from pathlib import Path
 
@@ -162,7 +163,7 @@ def select_spirv_tools(image, controller, options, sdk, native, environment, bui
     values = image.select_roles(controller, options, sdk, native, environment, buildlink,
                                 SPIRV_CORE_PROVIDER, values, 'EMBERBSD_SPIRV_CORE_SOURCE_SHA256',
                                 static_libraries=True)
-    work = Path(options.work).resolve(strict=True)
+    work = Path(getattr(options, 'native_binding_root', options.work)).resolve(strict=True)
     for role in ('host', 'target'):
         if role == 'host' and native.host['os'] == 'Darwin':
             continue
@@ -172,9 +173,13 @@ def select_spirv_tools(image, controller, options, sdk, native, environment, bui
             controller.require(all(Path(path).is_absolute() and not any(c in '\\"' or ord(c) < 32 for c in path)
                                    for path in libraries), 'invalid SPIRV archive path')
             content = 'GROUP ( ' + ' '.join('"' + path + '"' for path in libraries) + ' )\n'
-            script = work / (name + '-' + role + '-group.a')
+            digest = hashlib.sha256(content.encode('utf-8')).hexdigest()
+            script = work / (name + '-' + role + '-group-' + digest + '.a')
             controller.require(not script.is_symlink(), 'SPIRV group script is a symlink')
-            if not script.is_file() or script.read_text() != content:
+            if script.exists():
+                controller.require(script.is_file() and script.read_text() == content,
+                                   'existing SPIRV group script differs')
+            else:
                 controller.atomic_write(script, content)
             values[key + '_libraries'] = [str(script)]
             values[key + '_inputs'] = sorted(set(values[key + '_inputs'] + [str(script)]))
