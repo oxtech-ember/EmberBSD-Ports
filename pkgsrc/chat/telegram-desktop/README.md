@@ -39,6 +39,16 @@ credentials and must be restricted to a non-deployment diagnostic build; this
 mode does not establish login acceptance. Release identity is supplied explicitly,
 not committed as a personal credential. The release package and runtime remain unaccepted.
 
+The Unix desktop package list follows upstream's packaged-mode CMake install
+rules: the executable, application entry, hicolor and symbolic icons, D-Bus
+service and AppStream metadata. It also retains the application's license and
+notices for the compiled Desktop App Toolkit, libprisma and tgcalls code, the
+portal interface definitions and the application password dictionary. The
+desktop database and icon cache use the existing pkgsrc install hooks. The
+actual release stage, component attribution and package lifecycle still need
+verification with a release identity; the diagnostic install guard remains in
+force.
+
 For the NetBSD diagnostic build, upstream's `LINUX` CMake variable selects the
 Unix desktop UI sources (as in the FreeBSD port). It does not change the target
 OS or preprocessor identity. The WebRTC target explicitly selects

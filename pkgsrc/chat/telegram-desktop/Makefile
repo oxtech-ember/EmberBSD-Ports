@@ -37,6 +37,15 @@ TOOL_DEPENDS+=	telegram-desktop-codegen=${TDESKTOP_VERSION}nb${TDESKTOP_CODEGEN_
 CMAKE_CONFIGURE_ARGS+=	-DTDESKTOP_NATIVE_CODEGEN_DIR=${TOOLBASE}/libexec/telegram-desktop-codegen
 .include "../../mk/bsd.prefs.mk"
 
+# Upstream installs the desktop entry and resources for its non-Apple Unix
+# desktop branch.  Its CMake LINUX selector also covers the BSD targets.
+PLIST_VARS+=	unixdesktop
+.if ${OPSYS} != "Darwin" && ${OPSYS} != "WINNT"
+PLIST.unixdesktop=	yes
+ICON_THEMES=		yes
+.include "../../sysutils/desktop-file-utils/desktopdb.mk"
+.endif
+
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 EMBERBSD_GI_MESON_OPTIONS= no
 .include "../../devel/gobject-introspection/cross.mk"
@@ -64,6 +73,15 @@ CMAKE_CONFIGURE_ARGS+=	-DTDESKTOP_API_TEST=ON
 pre-install pre-package:
 	${ERROR_MSG} "TELEGRAM_API_TEST is for local diagnostics only"; ${FALSE}
 .endif
+
+INSTALLATION_DIRS+= share/licenses/telegram-desktop
+post-install:
+	${INSTALL_DATA} ${WRKSRC}/LICENSE ${WRKSRC}/LEGAL ${DESTDIR}${PREFIX}/share/licenses/telegram-desktop/
+	${INSTALL_DATA} ${.CURDIR}/../telegram-desktop-codegen/files/LEGAL-desktop-app ${DESTDIR}${PREFIX}/share/licenses/telegram-desktop/
+	${INSTALL_DATA} ${WRKSRC}/Telegram/ThirdParty/libprisma/LICENSE ${DESTDIR}${PREFIX}/share/licenses/telegram-desktop/LICENSE-libprisma
+	${INSTALL_DATA} ${WRKSRC}/Telegram/ThirdParty/tgcalls/LICENSE ${DESTDIR}${PREFIX}/share/licenses/telegram-desktop/LICENSE-tgcalls
+	${INSTALL_DATA} ${WRKSRC}/Telegram/ThirdParty/xdg-desktop-portal/COPYING ${DESTDIR}${PREFIX}/share/licenses/telegram-desktop/LICENSE-xdg-desktop-portal
+	${INSTALL_DATA} ${WRKSRC}/Telegram/ThirdParty/zxcvbn/LICENSE.txt ${DESTDIR}${PREFIX}/share/licenses/telegram-desktop/LICENSE-zxcvbn
 
 .include "../../devel/cmake/build.mk"
 .include "../../archivers/lz4/buildlink3.mk"
