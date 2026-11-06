@@ -1297,6 +1297,11 @@
       "path": "leveldb-read-options.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-codec-public-headers.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

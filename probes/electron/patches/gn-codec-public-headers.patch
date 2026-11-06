@@ -1,0 +1,33 @@
+# Carry shared codec header requirements to their actual consumers.
+# Origin: EmberBSD contributors (AI-assisted).
+--- a/third_party/blink/renderer/platform/media/BUILD.gn
++++ b/third_party/blink/renderer/platform/media/BUILD.gn
+@@ -112,6 +112,10 @@
+     "//third_party/blink/renderer/platform",
+     "//third_party/blink/renderer/platform:allow_discouraged_type",
+   ]
++  if (media_use_ffmpeg) {
++    # ffmpeg_demuxer.h exposes FFmpeg types to this implementation.
++    deps += [ "//third_party/ffmpeg" ]
++  }
+ }
+ 
+ source_set("unit_tests") {
+--- a/third_party/pdfium/core/fxcodec/BUILD.gn
++++ b/third_party/pdfium/core/fxcodec/BUILD.gn
+@@ -128,10 +128,13 @@
+     "../../:pdfium_strict_config",
+     "../../:pdfium_noshorten_config",
+   ]
+-  public_deps = [ "../fxcrt" ]
+-  deps = [
++  # Public ICC and JPX headers expose the selected library interfaces.
++  public_deps = [
+     "../../third_party:lcms2",
+     "../../third_party:libopenjpeg2",
++    "../fxcrt",
++  ]
++  deps = [
+     "../../third_party:zlib",
+     "../fxge",
+   ]
