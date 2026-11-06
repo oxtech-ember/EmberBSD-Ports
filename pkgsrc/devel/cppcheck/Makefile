@@ -1,6 +1,8 @@
+.include "../../mk/bsd.prefs.mk"
+
 # Origin: EmberBSD contributors (AI-assisted).
 DISTNAME= cppcheck-2.22.0
-PKGREVISION= 8
+PKGREVISION= 9
 CATEGORIES= devel
 MASTER_SITES= ${MASTER_SITE_GITHUB:=cppcheck-opensource/}
 GITHUB_PROJECT= cppcheck
@@ -36,6 +38,12 @@ CMAKE_CONFIGURE_ARGS+= -DUSE_BOOST:STRING=On
 # Keep dmake available without running a target maintainer tool in cross builds.
 CMAKE_CONFIGURE_ARGS+= -DDISABLE_DMAKE:BOOL=ON
 CMAKE_CONFIGURE_ARGS+= -DFILESDIR:PATH=${PREFIX}/share/cppcheck
+# Native Darwin CMake install removes link-time RPATHs unless the installed
+# runtime path is declared. Shared pkgsrc dylibs may use @rpath install names.
+.if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+CMAKE_CONFIGURE_ARGS+= -DCMAKE_INSTALL_RPATH:PATH=${PREFIX}/lib
+CMAKE_CONFIGURE_ARGS+= -DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=ON
+.endif
 CMAKE_CONFIGURE_ARGS+= -DPython_EXECUTABLE:FILEPATH=${TOOL_PYTHONBIN}
 CMAKE_CONFIGURE_ARGS+= -DPKG_CONFIG_EXECUTABLE:FILEPATH=${TOOLS_CMD.pkg-config}
 CMAKE_CONFIGURE_ARGS+= -DLIBXML2_XMLLINT_EXECUTABLE:FILEPATH=${TOOLBASE}/bin/xmllint

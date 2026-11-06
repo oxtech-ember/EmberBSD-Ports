@@ -21,7 +21,7 @@ environment = json.loads(a.environment.read_text())
 assert isinstance(environment, dict) and all(isinstance(k, str) and isinstance(v, str) for k, v in environment.items())
 assert all(a.__dict__[name].is_absolute() for name in ('pkgsrc', 'makeconf', 'bmake', 'environment', 'work'))
 a.work.mkdir()
-fields = ('PKGNAME', 'PKG_OPTIONS', 'CMAKE_CONFIGURE_ARGS', 'TOOL_PYTHONBIN', 'PYTHONBIN', 'TOOLBASE', 'PREFIX', 'TOOL_DEPENDS', 'DEPENDS', 'BUILDLINK_API_DEPENDS.pcre2', 'BUILD_TARGET', 'TEST_TARGET', 'BUILD_DEPENDS', 'PKG_FAIL_REASON')
+fields = ('PKGNAME', 'PKG_OPTIONS', 'CMAKE_CONFIGURE_ARGS', 'TOOL_PYTHONBIN', 'PYTHONBIN', 'TOOLBASE', 'PREFIX', 'TOOL_DEPENDS', 'DEPENDS', 'BUILDLINK_API_DEPENDS.pcre2', 'BUILD_TARGET', 'TEST_TARGET', 'BUILD_DEPENDS', 'PKG_FAIL_REASON', 'OPSYS', 'USE_CROSS_COMPILE')
 records = []
 for name, option in (('default', ''), ('qt6', 'qt6'), ('legacy-qt5', 'qt5')):
     argv = [str(a.bmake), '-C', str(a.pkgsrc / 'devel/cppcheck'), 'MAKECONF=' + str(a.makeconf), 'PKG_OPTIONS.cppcheck=' + option]
@@ -33,7 +33,7 @@ for name, option in (('default', ''), ('qt6', 'qt6'), ('legacy-qt5', 'qt5')):
     lines = result.value.decode().splitlines()
     assert len(lines) == len(fields), (name, lines)
     values = dict(zip(fields, lines))
-    assert values['PKGNAME'] == 'cppcheck-2.22.0nb2', values
+    assert values['PKGNAME'] == 'cppcheck-2.22.0nb9', values
     assert not values['PKG_FAIL_REASON'], values['PKG_FAIL_REASON']
     selected = values['PKG_OPTIONS'].split()
     assert ('qt6' in selected) == bool(option) and 'qt5' not in selected, values
@@ -42,6 +42,11 @@ for name, option in (('default', ''), ('qt6', 'qt6'), ('legacy-qt5', 'qt5')):
         if word.startswith('-D') and '=' in word:
             key, value = word[2:].split('=', 1)
             args[key.split(':')[0]] = value
+    if values['OPSYS'] == 'Darwin' and values['USE_CROSS_COMPILE'].lower() != 'yes':
+        assert args.get('CMAKE_INSTALL_RPATH') == values['PREFIX'] + '/lib', args
+        assert args.get('CMAKE_BUILD_WITH_INSTALL_RPATH') == 'ON', args
+    else:
+        assert 'CMAKE_INSTALL_RPATH' not in args and 'CMAKE_BUILD_WITH_INSTALL_RPATH' not in args, args
     for key in ('BUILD_CLI', 'BUILD_TESTING', 'CPPCHK_GLIBCXX_DEBUG', 'HAVE_RULES', 'BUILD_MANPAGE', 'DISABLE_DMAKE'):
         assert args[key] == 'ON', (key, args)
     assert args['BUILD_GUI'] == ('ON' if option else 'OFF'), args
