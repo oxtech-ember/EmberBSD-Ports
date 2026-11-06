@@ -392,6 +392,9 @@ versionless roots and do not define another recipe, resolver, cache, or prefix.
   package passes three native compute cycles on the accepted Zero 3W kernel.
   [Offscreen graphics](profiles/common-graphics/cross/powervr-offscreen.md)
   and accelerated Plasma remain separate steps for A733.
+  [Qt offscreen uploads](profiles/common-graphics/cross/qt-bsdfb-vulkan-offscreen.md#host-visible-static-uploads)
+  provide an opt-in host-visible static-buffer path. Target compilation and
+  compiled ordering guards pass; mixed-render hardware and package lifecycle remain separate.
   Source, export and dependency-selection checks cover X11/Wayland,
   EGL/GBM and V3D/VirGL/softpipe/llvmpipe. The complete core-only libdrm
   payload cross-builds on macOS/GCC16, matches all 26 PLIST entries and passes
