@@ -47,6 +47,10 @@ TOOL_DEPENDS+= vulkan-headers>=1.4.363.0:../../graphics/vulkan-headers
 TOOL_DEPENDS+= woff2>=1.0.2nb4:../../fonts/woff2
 .endif
 
+.if ${EMBERBSD_ELECTRON_SHARED_SNAPPY:Uno} == "yes"
+TOOL_DEPENDS+= snappy>=1.3.1nb1:../../devel/snappy
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_PFFFT:Uno} == "yes"
 TOOL_DEPENDS+= pffft>=1.1.0nb2:../../audio/pffft
 .endif

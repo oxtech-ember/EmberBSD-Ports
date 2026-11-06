@@ -85,6 +85,12 @@ BUILDLINK_ABI_DEPENDS.woff2+= woff2>=1.0.2nb4
 .include "../../fonts/woff2/buildlink3.mk"
 .endif
 
+.if ${EMBERBSD_ELECTRON_SHARED_SNAPPY:Uno} == "yes"
+BUILDLINK_API_DEPENDS.snappy+= snappy>=1.3.1nb1
+BUILDLINK_ABI_DEPENDS.snappy+= snappy>=1.3.1nb1
+.include "../../devel/snappy/buildlink3.mk"
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_PFFFT:Uno} == "yes"
 BUILDLINK_API_DEPENDS.pffft+= pffft>=1.1.0nb2
 BUILDLINK_ABI_DEPENDS.pffft+= pffft>=1.1.0nb2
