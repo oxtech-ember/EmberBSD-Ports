@@ -9,6 +9,8 @@ BUILDLINK_API_DEPENDS.MesaLib+=	MesaLib>=26.2.4nb4
 BUILDLINK_ABI_DEPENDS.MesaLib+=	MesaLib>=26.2.4nb4
 BUILDLINK_PKGSRCDIR.MesaLib?=	../../graphics/MesaLib
 
+.include "../../graphics/egl-headers/buildlink3.mk"
+
 .include "../../graphics/MesaLib/features.mk"
 
 # See <http://developer.apple.com/qa/qa2007/qa1567.html>.

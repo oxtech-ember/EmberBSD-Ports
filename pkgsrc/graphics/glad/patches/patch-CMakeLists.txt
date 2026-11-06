@@ -49,6 +49,8 @@ Create an installable shared library and CMake package.
 +)
 +install(DIRECTORY "${GLAD_GENERATED_DIR}/include/"
 +    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
++    PATTERN "eglplatform.h" EXCLUDE
++    PATTERN "khrplatform.h" EXCLUDE
 +)
 +install(EXPORT gladTargets NAMESPACE glad::
 +    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/glad"

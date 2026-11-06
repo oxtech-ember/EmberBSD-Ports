@@ -11,6 +11,7 @@ LICENSE=	mit
 CONFLICTS+=	libglapi-[0-9]* libglvnd-[0-9]*
 ONLY_FOR_PLATFORM=	NetBSD-11.*-aarch64 NetBSD-11.*-x86_64
 USE_TOOLS+=	bison flex pkg-config xgettext
+USE_TOOLS+=	cmp
 USE_LANGUAGES=	c c++
 USE_CC_FEATURES+=	c11
 USE_CXX_FEATURES+=	c++17
@@ -207,6 +208,11 @@ pre-configure:
 post-install:
 	${_EMBERBSD_MESA_ELF_CHECK} --library-dir ${_EMBERBSD_MESA_STAGED_LIB:Q}
 
+post-extract:
+	@if ! ${CMP} -s ${WRKSRC}/include/EGL/eglplatform.h ${BUILDLINK_DIR}/include/EGL/eglplatform.h; then ${CP} ${BUILDLINK_DIR}/include/EGL/eglplatform.h ${WRKSRC}/include/EGL/eglplatform.h; fi
+	@if ! ${CMP} -s ${WRKSRC}/include/KHR/khrplatform.h ${BUILDLINK_DIR}/include/KHR/khrplatform.h; then ${CP} ${BUILDLINK_DIR}/include/KHR/khrplatform.h ${WRKSRC}/include/KHR/khrplatform.h; fi
+
+.include "../../graphics/egl-headers/buildlink3.mk"
 .include "../../x11/libdrm/buildlink3.mk"
 .include "../../archivers/zstd/buildlink3.mk"
 .include "../../devel/zlib/buildlink3.mk"

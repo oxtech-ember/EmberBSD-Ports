@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (EGL-Registry-8e56e86e65687697ef54114cdb1afabdfac756bf.tar.gz) = ed68858cfe447959b010475166182e23b9874caef3cca0c28f3da967f90a60f8
+SHA512 (EGL-Registry-8e56e86e65687697ef54114cdb1afabdfac756bf.tar.gz) = 93dc83a7244506d7618be8863487d9aad3e225c1a7319af385f3bfd0bc842f7a487ae5f0b6911e4ff8fed2b5b450ea387a955a78bcc507a5d1861ae15b5f7f3e
+Size (EGL-Registry-8e56e86e65687697ef54114cdb1afabdfac756bf.tar.gz) = 3372455 bytes

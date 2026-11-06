@@ -1,6 +1,4 @@
 @comment $NetBSD$
-include/EGL/eglplatform.h
-include/KHR/khrplatform.h
 include/glad/egl.h
 include/glad/gl.h
 include/glad/glx.h
