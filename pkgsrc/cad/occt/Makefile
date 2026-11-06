@@ -69,14 +69,6 @@ SUBST_STAGE.custom-prefix= post-install
 SUBST_FILES.custom-prefix= ${DESTDIR}${PREFIX}/bin/${OCCT_CUSTOM_COMPILER_DRIVER}
 SUBST_SED.custom-prefix= -e 's,${BUILDLINK_DIR:C|[.[\\*^]|\\\\&|gW},${PREFIX},g'
 
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-# Resolve the compiler runtime paths from the imported package location.
-_OCCT_CROSS_PREFIX=     ${CROSS_DESTDIR}${PREFIX}
-SUBST_CLASSES+=         cmake-prefix
-SUBST_STAGE.cmake-prefix= post-install
-SUBST_FILES.cmake-prefix= ${DESTDIR}${PREFIX}/lib/cmake/opencascade/OpenCASCADEConfig.cmake
-SUBST_SED.cmake-prefix= -e 's,${_OCCT_CROSS_PREFIX:C|[.[\\*^]|\\\\&|gW}/,$${OpenCASCADE_INSTALL_PREFIX}/,g'
-.endif
 
 .include "../../devel/cmake/build.mk"
 .include "../../fonts/fontconfig/buildlink3.mk"
