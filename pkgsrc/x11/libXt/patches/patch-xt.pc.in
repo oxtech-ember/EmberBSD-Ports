@@ -8,6 +8,6 @@ Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
 @@ -14,3 +14,5 @@
  Requires.private: ice sm
  Cflags: -I${includedir}
- Libs: -Wl,-rpath,${libdir} -L${libdir} -lXt
+ Libs: -L${libdir} -lXt
 +
 +Libs.private: @X11_RELOC_DL_LIBS@
