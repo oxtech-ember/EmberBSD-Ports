@@ -503,6 +503,28 @@ def host_buildlink(options, sdk, native, environment, host_binding):
                 *(['--shared-expat'] if getattr(options, 'shared_expat', False) else []), '--base-makeconf', str(selected[2]),
                 '--binding-record', str(record), '--bmake-mk', str(selected[3]),
                 '--work', str(work), '--lock-root', str(options.lock_root)]
+    requested = getattr(options, 'reuse_host_buildlink', None)
+    if requested is not None:
+        require(getattr(options, 'phase', None) == 'reconfigure' and previous,
+                'host buildlink reuse requires an existing configuration')
+        requested = Path(requested)
+        require(requested.is_absolute() and requested.parent == root and
+                re.fullmatch(r'host-buildlink-[0-9]+', requested.name) and
+                not requested.is_symlink() and requested.resolve(strict=True) == requested,
+                'requested host buildlink is outside the Electron output')
+        previous = Path(previous)
+        require(previous.parent == root and re.fullmatch(r'host-buildlink-[0-9]+', previous.name),
+                'saved host buildlink is outside the Electron output')
+        for index in range(10000):
+            candidate = root / ('host-buildlink-' + str(index))
+            if not os.path.lexists(candidate):
+                break
+        else:
+            raise ValueError('too many retained host buildlink contexts')
+        sdk['process'].capture(command(candidate), env=environment)
+        result = sdk['process'].capture(command(requested) + ['--refresh-from', str(candidate)], env=environment)
+        environment['EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK'] = str(requested)
+        return result.stdout.decode('utf-8', 'strict').strip()
     if not previous and (getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)):
         for candidate in sorted(root.glob('host-buildlink-*')):
             if not (candidate / 'selection.json').is_file():
@@ -549,6 +571,14 @@ def host_buildlink(options, sdk, native, environment, host_binding):
     require(getattr(options, 'phase', None) != 'build', 'host buildlink requires configuration')
     result = sdk['process'].capture(command(work), env=environment)
     if previous:
+        try:
+            refreshed = sdk['process'].capture(command(previous) + ['--refresh-from', str(work)], env=environment)
+        except sdk['process'].CommandError as error:
+            if error.returncode != 3:
+                raise
+        else:
+            environment['EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK'] = str(previous)
+            return refreshed.stdout.decode('utf-8', 'strict').strip()
         try:
             extended = sdk['process'].capture(command(previous) + ['--extend-from', str(work)], env=environment)
         except sdk['process'].CommandError as error:
@@ -4354,6 +4384,8 @@ def main():
             initial.add_argument('--retry-configure', action='store_true',
                                  help='retry failed GN with verified selected inputs')
         if phase == 'reconfigure':
+            command.add_argument('--reuse-host-buildlink', type=Path,
+                                 help='reuse an equivalent existing host buildlink context')
             command.add_argument('--activate-common-ml', action='store_true',
                                  help='activate verified common ML sources without replacing the source view')
             command.add_argument('--activate-common-providers', action='store_true',

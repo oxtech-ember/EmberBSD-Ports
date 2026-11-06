@@ -84,6 +84,22 @@ with tempfile.TemporaryDirectory() as temp:
         live.append(item)
     host.refresh_selection(moved, live[0], live[1], invocations[0], invocations[1],
                            works[0], works[1], source, live_script)
+    # An older work tree may retain a link into its original owner checkout
+    # even after the executing owner moved to the selected export.
+    old_make = old_script.parent / 'host-buildlink/Makefile'
+    old_make.parent.mkdir(parents=True, exist_ok=True)
+    old_make.write_text('same host consumer')
+    selected_make = script.parent / 'host-buildlink/Makefile'
+    selected_make.parent.mkdir(parents=True, exist_ok=True)
+    selected_make.write_bytes(old_make.read_bytes())
+    saved_mixed = {**moved, 'identity': {**moved['identity'], 'inputs': dict(moved['identity']['inputs'])}}
+    saved_mixed['identity']['inputs'][str(old_make)] = digest(old_make)
+    current_mixed = {**live[0], 'inputs': dict(live[0]['inputs'])}
+    current_mixed['inputs'][str(old_make)] = digest(old_make)
+    candidate_mixed = {**live[1], 'inputs': dict(live[1]['inputs'])}
+    candidate_mixed['inputs'][str(selected_make)] = digest(selected_make)
+    host.refresh_selection(saved_mixed, current_mixed, candidate_mixed,
+                           invocations[0], invocations[1], works[0], works[1], source, live_script)
     after = (works[0] / 'make.conf').stat()
     assert (before.st_ino, before.st_mtime_ns) == (after.st_ino, after.st_mtime_ns)
     changed = {**identities[0], 'inputs': dict(identities[0]['inputs'])}
