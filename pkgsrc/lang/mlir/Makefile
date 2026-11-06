@@ -3,12 +3,18 @@
 .include "../../lang/llvm/version.mk"
 
 PKGNAME=	mlir-${LLVM_VERSION}
+PKGREVISION=	1
 CATEGORIES=	lang devel
 
 MAINTAINER=	pkgsrc-users@NetBSD.org
 HOMEPAGE=	https://mlir.llvm.org/
 COMMENT=	Multi-Level Intermediate Representation
 LICENSE=	apache-2.0
+
+# These tools link both libraries directly.  Include their common buildlink
+# interfaces before LLVM so pkgsrc can capture their dependency roles.
+.include "../../devel/zlib/buildlink3.mk"
+.include "../../archivers/zstd/buildlink3.mk"
 
 USE_CXX_FEATURES=	c++17
 USE_LANGUAGES=		c c++
