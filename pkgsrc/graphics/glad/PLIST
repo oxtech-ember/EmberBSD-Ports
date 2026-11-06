@@ -7,7 +7,7 @@ include/glad/glx.h
 include/glad/wgl.h
 lib/cmake/glad/gladConfig.cmake
 lib/cmake/glad/gladConfigVersion.cmake
-lib/cmake/glad/gladTargets-release.cmake
+lib/cmake/glad/gladTargets-noconfig.cmake
 lib/cmake/glad/gladTargets.cmake
 lib/libglad.so
 lib/libglad.so.2
