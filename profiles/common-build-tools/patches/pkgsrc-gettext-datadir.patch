@@ -1,0 +1,27 @@
+Keep host msgfmt ITS data with the selected prefix.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+GNU msgfmt searches $GETTEXTDATADIR/its and $GETTEXTDATADIR$PACKAGE_SUFFIX/its.
+The version suffix stays in the tool. A relocated installation keeps metainfo
+rules under share/gettext-1.0/its beside the executable; libraries built
+without --enable-relocatable still embed the producer prefix.
+
+--- a/mk/tools/gettext.mk
++++ b/mk/tools/gettext.mk
+@@ -73,6 +73,16 @@
+ .        else
+ TOOLS_PLATFORM.msgfmt=${EMBERBSD_BUILD_MSGFMT}
+ _TOOLS_USE_PKGSRC.msgfmt= no
++# devel/gettext-tools ignores this tool while that package is being built.
++# Resolve the directory containing the selected executable, not a symlink
++# target in the producer prefix. Leave an explicit GETTEXTDATADIR alone.
++.          if !defined(GETTEXTDATADIR) || empty(GETTEXTDATADIR)
++_EMBERBSD_MSGFMT_BINDIR!= cd "$$(dirname ${EMBERBSD_BUILD_MSGFMT:Q})" && pwd -P
++GETTEXTDATADIR= ${_EMBERBSD_MSGFMT_BINDIR:H}/share/gettext
++.          endif
++ALL_ENV+= GETTEXTDATADIR=${GETTEXTDATADIR:Q}
++CONFIGURE_ENV+= GETTEXTDATADIR=${GETTEXTDATADIR:Q}
++MAKE_ENV+= GETTEXTDATADIR=${GETTEXTDATADIR:Q}
+ .        endif
+ .      endif
+ .    elif ${USE_BUILTIN.gettext:U:tl} == no

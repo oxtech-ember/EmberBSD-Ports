@@ -76,11 +76,14 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
  
  DISTINFO_FILE=	${.CURDIR}/../../devel/gettext/distinfo
  PATCHDIR=	${.CURDIR}/../../devel/gettext/patches
-@@ -19,9 +32,10 @@
+@@ -19,9 +32,13 @@
  .endif
  USE_PKGLOCALEDIR=	yes
  CONFIGURE_ARGS+=	--disable-csharp
 +CONFIGURE_ARGS+=	--without-included-libxml
++# Data files follow the executable after a prefix move. Darwin uses the
++# loader's relative library path; the compiled directory is only the origin.
++CONFIGURE_ARGS+=	--enable-relocatable
 +USE_TOOLS+=		pkg-config
  CONFIGURE_ARGS+=	--disable-java
  CONFIGURE_ARGS+=	--disable-openmp
@@ -88,7 +91,7 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
  CONFIGURE_ARGS+=	--with-xz
  CONFIGURE_ARGS+=	--without-git
  CONFIGURE_ARGS+=	--without-emacs
-@@ -76,6 +90,11 @@
+@@ -76,6 +93,11 @@
  	${INSTALL_MAN} ${WRKSRC}/gettext-tools/man/gettextize.1 \
  		${DESTDIR}${PREFIX}/${PKGMANDIR}/man1
  

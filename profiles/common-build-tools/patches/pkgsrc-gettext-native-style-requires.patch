@@ -3,7 +3,7 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 
 --- a/devel/gettext-tools/Makefile
 +++ b/devel/gettext-tools/Makefile
-@@ -98,4 +98,19 @@
+@@ -101,4 +101,19 @@
  .include "../../devel/gettext-lib/buildlink3.mk"
  .include "../../lang/python/application.mk"
  .include "../../mk/termcap.buildlink3.mk"

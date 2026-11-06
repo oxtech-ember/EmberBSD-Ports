@@ -31,11 +31,11 @@ index f4f336de..88bd5d28 100644
  
  PKGNAME=	${DISTNAME:S/-/-tools-/}
 -PKGREVISION=	6
-+PKGREVISION=	7
++PKGREVISION=	8
  COMMENT=	Tools for providing messages in different languages
  
  PKG_OPTIONS_VAR=	PKG_OPTIONS.gettext-tools
-@@ -99,13 +99,14 @@ post-install:
+@@ -102,13 +102,14 @@ post-install:
  .else
  .include "../../textproc/libxml2/buildlink3.mk"
  .endif
@@ -47,7 +47,7 @@ index f4f336de..88bd5d28 100644
  .if ${OPSYS} == "Darwin" && ${USE_CROSS_COMPILE:Uno:tl} != "yes"
  # Native binaries import zlib; styled builds also import GLib and libxml2.
 -PKGREVISION= 7
-+PKGREVISION= 8
++PKGREVISION= 9
  .  if !empty(PKG_OPTIONS:Mstyle)
  DEPENDS+= glib2>=2.90.1:../../devel/glib2
  .    if ${USE_BUILTIN.libxml2:Uno:tl} != "yes"
