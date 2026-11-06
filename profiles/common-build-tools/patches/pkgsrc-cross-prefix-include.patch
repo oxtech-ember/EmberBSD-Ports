@@ -1,0 +1,19 @@
+--- a/mk/cwrappers.mk
++++ b/mk/cwrappers.mk
+@@ -55,5 +55,12 @@
+ # TODO: Find and fix packages depending on the implicit include path.
+-CWRAPPERS_APPEND.cc+=		-I${PREFIX}/include
+-CWRAPPERS_APPEND.cxx+=		-I${PREFIX}/include
+-CWRAPPERS_APPEND.cpp+=		-I${PREFIX}/include
++.if ${USE_CROSS_COMPILE:U:tl} == yes
++# Cross wrappers run on the build machine, so anchor this target include path
++# in the target root instead of leaking a host /usr/pkg/include.
++_CWRAPPERS_PREFIX_INCLUDE=	${CROSS_DESTDIR}${PREFIX}/include
++.else
++_CWRAPPERS_PREFIX_INCLUDE=	${PREFIX}/include
++.endif
++CWRAPPERS_APPEND.cc+=		-I${_CWRAPPERS_PREFIX_INCLUDE}
++CWRAPPERS_APPEND.cxx+=		-I${_CWRAPPERS_PREFIX_INCLUDE}
++CWRAPPERS_APPEND.cpp+=		-I${_CWRAPPERS_PREFIX_INCLUDE}
+ 
+ .if defined(USE_IMAKE) || !empty(USE_TOOLS:Mimake)

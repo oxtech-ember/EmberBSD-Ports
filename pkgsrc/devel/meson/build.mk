@@ -99,7 +99,29 @@ ${MESON_NATIVE_FILE}:
 
 .include "../../devel/meson/cross-file.mk"
 MESON_CROSS_ARGS+=	--cross-file ${MESON_CROSS_FILE:Q}
-meson-configure: ${MESON_CROSS_FILE}
+
+# Build-machine helpers are distinct from the target binaries in the cross
+# file. Keep them in a Meson native file so modules using native=True select
+# the selected host tools during cross builds.
+MESON_NATIVE_FILE=	${WRKDIR}/.meson_native
+MESON_NATIVE_ARGS+=	--native-file ${MESON_NATIVE_FILE:Q}
+MESON_NATIVE_ARGS+=	${MESON_NATIVE_EXTRA_ARGS:U}
+.include "../../devel/glib2/native-stage-meson-tools.mk"
+.PHONY: meson-native-file
+meson-configure: ${MESON_CROSS_FILE} meson-native-file
+meson-native-file:
+	@${STEP_MSG} Creating meson native file
+	${RUN}${TOOL_PYTHONBIN} ${PKGSRCDIR}/devel/meson/files/native-file.py \
+	    --output ${MESON_NATIVE_FILE:Q} \
+	    --binary=c=${HOST_CC:Q} --binary=cpp=${HOST_CXX:Q} \
+	    --binary=ar=${TOOLS_PLATFORM.ar:Q} \
+	    --binary=ranlib=${TOOLS_PLATFORM.ranlib:Q} \
+	    --binary=nm=${TOOLS_PLATFORM.nm:Q} --binary=strip=${TOOLS_PLATFORM.strip:Q} \
+	    --binary=pkg-config=${TOOLS_PLATFORM.pkg-config:Q} \
+	    --pkg-config-libdir=${EMBERBSD_HOST_PREFIX:Q}/lib/pkgconfig \
+	    --pkg-config-libdir=${EMBERBSD_HOST_PREFIX:Q}/share/pkgconfig \
+	    --cflags=${HOST_CFLAGS:Q} --cppflags=${HOST_CPPFLAGS:Q} \
+	    --cxxflags=${HOST_CXXFLAGS:Q} --ldflags=${HOST_LDFLAGS:Q}
 
 .endif				# ${USE_CROSS_COMPILE:U:tl} == yes
 

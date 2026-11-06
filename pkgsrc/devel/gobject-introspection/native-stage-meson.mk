@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
-# This file is included by Meson's native stage path, never generic GI consumers.
+# This file supplies build-machine GI tools only for native staged builds,
+# never for generic GI consumers. Cross builds use gobject-introspection/cross.mk
+# so the target-aware scanner wrapper remains selected.
 .if !empty(EMBERBSD_NATIVE_RUNTIME_VIEW:U)
 _MESON_STAGE_GI_ARG= --native-file ${WRKDIR:Q}/.meson-emberbsd-native-gi
 MESON_NATIVE_EXTRA_ARGS+= ${BUILDLINK_TREE:Mgobject-introspection:C,^.+$,${_MESON_STAGE_GI_ARG},}
