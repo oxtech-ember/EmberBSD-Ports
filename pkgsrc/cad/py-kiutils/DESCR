@@ -1,0 +1,4 @@
+KiUtils provides Python dataclass models and an S-expression parser for KiCad
+schematics, symbols, footprints, boards, worksheets and design rules. It has no
+runtime dependencies beyond Python. Electrical connectivity and ERC remain
+KiCad's responsibility; reading a drawing does not replace those calculations.
