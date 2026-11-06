@@ -1,0 +1,438 @@
+$NetBSD$
+
+Use GLib main loops and GTK4 application lifecycle signals.
+Origin: EmberBSD (AI-assisted). wxWindows licence, like upstream.
+Each nested loop owns its quit state; default-context wakeups and one-shot
+idle sources are retained. GtkWindow activation uses the toplevel list model.
+GTK4 selective native YieldFor explicitly fails before dispatch: GTK4 removed
+GDK's global event handler. Unrestricted Yield remains functional.
+https://docs.gtk.org/glib/struct.MainLoop.html
+https://docs.gtk.org/gtk4/migrating-3to4.html
+
+--- src/gtk/evtloop.cpp.orig
++++ src/gtk/evtloop.cpp
+@@ -30,10 +30,13 @@
+ 
+ #include "wx/private/eventloopsourcesmanager.h"
+ #include "wx/apptrait.h"
++#include "wx/scopeguard.h"
+ 
+ #include "wx/gtk/private/wrapgtk.h"
+ 
++#ifndef __WXGTK4__
+ GdkWindow* wxGetTopLevelGDK();
++#endif
+ 
+ // ============================================================================
+ // wxEventLoop implementation
+@@ -46,10 +49,22 @@
+ wxGUIEventLoop::wxGUIEventLoop()
+ {
+     m_exitcode = 0;
++#ifdef __WXGTK4__
++    m_loop = NULL;
++#endif
+ }
+ 
+ int wxGUIEventLoop::DoRun()
+ {
++#ifdef __WXGTK4__
++    // Each wx loop has its own quit state. Quitting an outer loop leaves a
++    // nested modal loop running until it exits, then the outer run unwinds.
++    m_loop = g_main_loop_new(NULL, FALSE);
++    wxON_BLOCK_EXIT1(g_main_loop_unref, m_loop);
++    wxON_BLOCK_EXIT_SET(m_loop, static_cast<GMainLoop*>(NULL));
++    if ( !m_shouldExit )
++        g_main_loop_run(m_loop);
++#else
+     guint loopLevel = gtk_main_level();
+ 
+     // This is placed inside of a loop to take into account nested
+@@ -72,6 +87,8 @@
+         gtk_main_quit();
+     }
+ 
++#endif // __WXGTK4__
++
+     OnExit();
+ 
+ #if wxUSE_EXCEPTIONS
+@@ -92,7 +109,12 @@
+ 
+     m_shouldExit = true;
+ 
++#ifdef __WXGTK4__
++    if ( m_loop )
++        g_main_loop_quit(m_loop);
++#else
+     gtk_main_quit();
++#endif
+ }
+ 
+ void wxGUIEventLoop::WakeUp()
+@@ -103,6 +125,9 @@
+     //       nothing when we don't...
+     if ( wxTheApp )
+         wxTheApp->WakeUpIdle();
++#ifdef __WXGTK4__
++    g_main_context_wakeup(NULL);
++#endif
+ }
+ 
+ // ----------------------------------------------------------------------------
+@@ -231,15 +256,26 @@
+         return wxTheApp->EventsPending();
+     }
+ 
++#ifdef __WXGTK4__
++    return g_main_context_pending(NULL) != 0;
++#else
+     return gtk_events_pending() != 0;
++#endif
+ }
+ 
+ bool wxGUIEventLoop::Dispatch()
+ {
+     wxCHECK_MSG( IsRunning(), false, wxT("can't call Dispatch() if not running") );
+ 
++#ifdef __WXGTK4__
++    if ( m_shouldExit )
++        return false;
++    g_main_context_iteration(NULL, TRUE);
++    return !m_shouldExit;
++#else
+     // gtk_main_iteration() returns TRUE only if gtk_main_quit() was called
+     return !gtk_main_iteration();
++#endif
+ }
+ 
+ extern "C" {
+@@ -255,9 +291,18 @@
+ 
+ int wxGUIEventLoop::DispatchTimeout(unsigned long timeout)
+ {
++#ifdef __WXGTK4__
++    if ( m_shouldExit )
++        return 0;
++#endif
+     bool expired = false;
+     const unsigned id = g_timeout_add(timeout, wx_event_loop_timeout, &expired);
++#ifdef __WXGTK4__
++    g_main_context_iteration(NULL, TRUE);
++    const bool quit = m_shouldExit;
++#else
+     bool quit = gtk_main_iteration() != 0;
++#endif
+ 
+     if ( expired )
+         return -1;
+@@ -271,6 +316,31 @@
+ // YieldFor
+ //-----------------------------------------------------------------------------
+ 
++#ifdef __WXGTK4__
++bool wxGUIEventLoop::YieldFor(long eventsToProcess)
++{
++    // GTK4 removed the global event handler used to defer selected native
++    // event categories. Do not dispatch prohibited input or report success.
++    if ( eventsToProcess != wxEVT_CATEGORY_ALL )
++    {
++        static bool reported = false;
++        if ( !reported )
++        {
++            reported = true;
++            wxLogWarning("Selective native event yielding is not supported by wxGTK4.");
++        }
++        return false;
++    }
++    return wxEventLoopBase::YieldFor(eventsToProcess);
++}
++
++void wxGUIEventLoop::DoYieldFor(long eventsToProcess)
++{
++    while ( !m_shouldExit && Pending() )
++        g_main_context_iteration(NULL, FALSE);
++    wxEventLoopBase::DoYieldFor(eventsToProcess);
++}
++#else
+ extern "C" {
+ static void wxgtk_main_do_event(GdkEvent* event, void* data)
+ {
+@@ -415,3 +485,5 @@
+         m_arrGdkEvents.Clear();
+     }
+ }
++
++#endif // __WXGTK4__
+--- src/gtk/app.cpp.orig
++++ src/gtk/app.cpp
+@@ -46,6 +46,11 @@
+ // local functions
+ //-----------------------------------------------------------------------------
+ 
++#ifdef __WXGTK4__
++static guint gs_idleSignals[2];
++static gulong gs_idleHooks[2];
++#endif
++
+ // One-shot signal emission hook, to install idle handler.
+ extern "C" {
+ static gboolean
+@@ -54,9 +59,13 @@
+     wxApp* app = wxTheApp;
+     if (app != NULL)
+         app->WakeUpIdle();
++#ifdef __WXGTK4__
++    *static_cast<gulong*>(data) = 0;
++#else
+     bool* hook_installed = (bool*)data;
+     // record that hook is not installed
+     *hook_installed = false;
++#endif
+     // remove hook
+     return false;
+ }
+@@ -65,6 +74,19 @@
+ // Add signal emission hooks, to re-install idle handler when needed.
+ static void wx_add_idle_hooks()
+ {
++#ifdef __WXGTK4__
++    // GdkSurface retains event and layout signals; GtkWidget no longer has
++    // event/size-allocate signals. No frame lifecycle is intercepted here.
++    const char* names[] = { "event", "layout" };
++    for (unsigned i = 0; i != 2; ++i)
++    {
++        if ( !gs_idleSignals[i] )
++            gs_idleSignals[i] = g_signal_lookup(names[i], GDK_TYPE_SURFACE);
++        if ( !gs_idleHooks[i] )
++            gs_idleHooks[i] = g_signal_add_emission_hook(
++                gs_idleSignals[i], 0, wx_emission_hook, &gs_idleHooks[i], NULL);
++    }
++#else
+     // "event" hook
+     {
+         static bool hook_installed;
+@@ -93,6 +115,7 @@
+                 sig_id, 0, wx_emission_hook, &hook_installed, NULL);
+         }
+     }
++#endif // __WXGTK4__
+ }
+ 
+ extern "C" {
+@@ -105,6 +128,45 @@
+ // 0: no change, 1: focus in, 2: focus out
+ static wxUIntPtr gs_focusChange;
+ 
++#ifdef __WXGTK4__
++static GPtrArray* gs_gtkWindows;
++
++static void wx_gtk4_focus_changed(GObject*, GParamSpec*, gpointer)
++{
++    bool active = false;
++    for (guint i = 0; gs_gtkWindows && i < gs_gtkWindows->len; ++i)
++        active = active || gtk_window_is_active(GTK_WINDOW(g_ptr_array_index(gs_gtkWindows, i)));
++    // Coalesce transitions between windows of the same app before idle.
++    gs_focusChange = active ? 1 : 2;
++    if ( wxTheApp ) wxTheApp->WakeUpIdle();
++}
++
++static void wx_gtk4_clear_windows()
++{
++    if ( !gs_gtkWindows ) return;
++    GPtrArray* windows = gs_gtkWindows;
++    gs_gtkWindows = NULL;
++    for (guint i = 0; i < windows->len; ++i)
++        g_signal_handlers_disconnect_by_func(g_ptr_array_index(windows, i),
++            reinterpret_cast<gpointer>(wx_gtk4_focus_changed), NULL);
++    g_ptr_array_unref(windows);
++}
++
++static void wx_gtk4_windows_changed(GListModel* model, guint, guint, guint, gpointer)
++{
++    // Acquire the new list before releasing old refs: callbacks can remove
++    // windows while their last application reference is being released.
++    GPtrArray* windows = g_ptr_array_new_with_free_func(g_object_unref);
++    for (guint i = 0; i < g_list_model_get_n_items(model); ++i)
++        g_ptr_array_add(windows, g_list_model_get_item(model, i));
++    wx_gtk4_clear_windows();
++    gs_gtkWindows = windows;
++    for (guint i = 0; i < windows->len; ++i)
++        g_signal_connect(g_ptr_array_index(windows, i), "notify::is-active",
++            G_CALLBACK(wx_gtk4_focus_changed), NULL);
++    wx_gtk4_focus_changed(NULL, NULL, NULL);
++}
++#else
+ extern "C" {
+ static gboolean
+ wx_focus_event_hook(GSignalInvocationHint*, unsigned, const GValue* param_values, void* data)
+@@ -116,6 +178,7 @@
+     return true;
+ }
+ }
++#endif // __WXGTK4__
+ 
+ bool wxApp::DoIdle()
+ {
+@@ -139,7 +202,9 @@
+ #endif
+     }
+ 
++#ifndef __WXGTK4__
+     gdk_threads_enter();
++#endif
+ 
+     if (gs_focusChange) {
+         SetActive(gs_focusChange == 1, NULL);
+@@ -149,7 +214,9 @@
+     ProcessPendingEvents();
+     const bool needMore = ProcessIdle();
+ 
++#ifndef __WXGTK4__
+     gdk_threads_leave();
++#endif
+ 
+ #if wxUSE_THREADS
+     wxMutexLocker lock(m_idleMutex);
+@@ -539,7 +606,11 @@
+ #else // !wxUSE_UNICODE
+     // gtk_init() shouldn't actually change argv_ itself (just its contents) so
+     // it's ok to pass pointer to it
++#ifdef __WXGTK4__
++    init_result = gtk_init_check() != 0;
++#else
+     init_result = gtk_init_check( &argc_, &argv_ );
++#endif
+ #endif // wxUSE_UNICODE/!wxUSE_UNICODE
+ 
+     // update internal arg[cv] as GTK+ may have removed processed options:
+@@ -561,7 +632,9 @@
+ #endif
+ 
+     // we cannot enter threads before gtk_init is done
++#ifndef __WXGTK4__
+     gdk_threads_enter();
++#endif
+ 
+ #if wxUSE_INTL
+     wxFont::SetDefaultEncoding(wxLocale::GetSystemEncoding());
+@@ -571,6 +644,14 @@
+     const GType widgetType = GTK_TYPE_WIDGET;
+     g_type_class_ref(widgetType);
+ 
++#ifdef __WXGTK4__
++    // Ensure the GdkSurface signals exist before installing idle hooks.
++    gpointer surfaceClass = g_type_class_ref(GDK_TYPE_SURFACE);
++    g_type_class_unref(surfaceClass);
++    GListModel* windows = gtk_window_get_toplevels();
++    g_signal_connect(windows, "items-changed", G_CALLBACK(wx_gtk4_windows_changed), NULL);
++    wx_gtk4_windows_changed(windows, 0, 0, 0, NULL);
++#else
+     // focus in/out hooks used for generating wxEVT_ACTIVATE_APP
+     g_signal_add_emission_hook(
+         g_signal_lookup("focus_in_event", widgetType),
+@@ -579,6 +660,7 @@
+         g_signal_lookup("focus_out_event", widgetType),
+         0, wx_focus_event_hook, GINT_TO_POINTER(2), NULL);
+ 
++#endif
+     WakeUpIdle();
+ 
+     return true;
+@@ -586,15 +668,30 @@
+ 
+ void wxApp::CleanUp()
+ {
++#ifdef __WXGTK4__
++    g_signal_handlers_disconnect_by_func(gtk_window_get_toplevels(),
++        reinterpret_cast<gpointer>(wx_gtk4_windows_changed), NULL);
++    wx_gtk4_clear_windows();
++    for (unsigned i = 0; i != 2; ++i)
++    {
++        if ( gs_idleHooks[i] )
++            g_signal_remove_emission_hook(gs_idleSignals[i], gs_idleHooks[i]);
++        gs_idleHooks[i] = 0;
++    }
++    gs_focusChange = 0;
++#endif
+     if (m_idleSourceId != 0)
+         g_source_remove(m_idleSourceId);
++    m_idleSourceId = 0;
+ 
+     // release reference acquired by Initialize()
+     gpointer gt = g_type_class_peek(GTK_TYPE_WIDGET);
+     if (gt != NULL)
+         g_type_class_unref(gt);
+ 
++#ifndef __WXGTK4__
+     gdk_threads_leave();
++#endif
+ 
+     wxAppBase::CleanUp();
+ }
+@@ -621,7 +718,11 @@
+         m_idleSourceId = 0;
+         wx_add_idle_hooks();
+     }
++#ifdef __WXGTK4__
++    return g_main_context_pending(NULL) != 0;
++#else
+     return gtk_events_pending() != 0;
++#endif
+ }
+ 
+ void wxApp::OnAssertFailure(const wxChar *file,
+@@ -651,12 +752,20 @@
+ #if wxUSE_THREADS
+ void wxGUIAppTraits::MutexGuiEnter()
+ {
++#ifdef __WXGTK4__
++    wxAppTraitsBase::MutexGuiEnter();
++#else
+     gdk_threads_enter();
++#endif
+ }
+ 
+ void wxGUIAppTraits::MutexGuiLeave()
+ {
++#ifdef __WXGTK4__
++    wxAppTraitsBase::MutexGuiLeave();
++#else
+     gdk_threads_leave();
++#endif
+ }
+ #endif // wxUSE_THREADS
+ 
+--- include/wx/gtk/evtloop.h.orig
++++ include/wx/gtk/evtloop.h
+@@ -9,6 +9,10 @@
+ 
+ #ifndef _WX_GTK_EVTLOOP_H_
+ #define _WX_GTK_EVTLOOP_H_
++
++#ifdef __WXGTK4__
++typedef struct _GMainLoop GMainLoop;
++#endif
+ 
+ // ----------------------------------------------------------------------------
+ // wxGUIEventLoop for wxGTK
+@@ -26,6 +30,9 @@
+     virtual bool Dispatch() wxOVERRIDE;
+     virtual int DispatchTimeout(unsigned long timeout) wxOVERRIDE;
+     virtual void WakeUp() wxOVERRIDE;
++#ifdef __WXGTK4__
++    virtual bool YieldFor(long eventsToProcess) wxOVERRIDE;
++#endif
+ 
+     void StoreGdkEventForLaterProcessing(GdkEvent* ev)
+         { m_arrGdkEvents.Add(ev); }
+@@ -37,6 +44,9 @@
+ private:
+     // the exit code of this event loop
+     int m_exitcode;
++#ifdef __WXGTK4__
++    GMainLoop* m_loop;
++#endif
+ 
+     // used to temporarily store events in DoYield()
+     wxArrayPtrVoid m_arrGdkEvents;
