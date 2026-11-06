@@ -1,0 +1,28 @@
+$NetBSD$
+
+Preserve prefix-owned default paths when the native package is moved.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- configure.ac.orig
++++ configure.ac
+@@ -45,6 +45,20 @@
+ 	  [m4_fatal([must install xorg-macros 1.16 or later before running autoconf/autogen])])
+ XORG_MACROS_VERSION(1.16)
+ XORG_DEFAULT_OPTIONS
++
++# Optional POSIX dladdr, independently resolved for this shared/static library.
++x11_reloc_saved_LIBS=$LIBS
++LIBS=
++AC_SEARCH_LIBS([dladdr], [dl], [], [])
++x11_reloc_dl_LIBS=$LIBS
++AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <dlfcn.h>]],
++  [[Dl_info info; return dladdr(&info, &info) == 0;]])],
++  [AC_DEFINE([X11_RELOC_HAVE_DLADDR], [1], [Define when Dl_info and dladdr are usable])],
++  [x11_reloc_dl_LIBS=])
++LIBS="$x11_reloc_saved_LIBS $x11_reloc_dl_LIBS"
++AC_SUBST([X11_RELOC_DL_LIBS], [$x11_reloc_dl_LIBS])
++AX_DEFINE_DIR([X11_RELOC_PREFIX], [prefix], [Installed prefix for private path relocation])
++AX_DEFINE_DIR([X11_RELOC_LIBDIR], [libdir], [Installed library directory for private path relocation])
+ XORG_CHECK_MALLOC_ZERO
+ XORG_ENABLE_SPECS
+ XORG_WITH_XMLTO(0.0.20)

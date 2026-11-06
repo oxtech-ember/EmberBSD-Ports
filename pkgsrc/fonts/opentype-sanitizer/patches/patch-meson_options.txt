@@ -1,0 +1,11 @@
+$NetBSD$
+
+Allow ordinary package builds to omit the optional test and fuzzer graph.
+
+--- meson_options.txt.orig
++++ meson_options.txt
+@@ -2,3 +2,4 @@
+ option('graphite', type : 'boolean', value : true, description : 'Sanitize Graphite tables')
+ option('synthesize-gvar', type : 'boolean', value : true, description : 'Synthesize an empty gvar if fvar is present')
+ option('fuzzer_ldflags', type: 'string', description : 'Extra LDFLAGS used during linking of fuzzing binaries')
++option('tests', type : 'boolean', value : true, description : 'Build tests and fuzzers')

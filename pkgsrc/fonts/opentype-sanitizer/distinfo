@@ -1,0 +1,7 @@
+$NetBSD$
+
+BLAKE2s (ots-9.3.0.tar.gz) = ad0e9a4de138be912de51c4d876b31ddd43fe7db6beceff92cd152346152d052
+SHA512 (ots-9.3.0.tar.gz) = a5339058ff087a16b60268bd9d0eade8fc1955460f418b0cf0db415f124c0dfb855d8eba2c2d812730154c4ecfce8e7b697636a6938fd4f3326ff9c1482d47a9
+Size (ots-9.3.0.tar.gz) = 46912988 bytes
+SHA1 (patch-meson.build) = 4cf9350383fcf08c0bc7a4ef3278f5999701c196
+SHA1 (patch-meson_options.txt) = 3aa0b038a1ffaaf589cae08c7d76d9292cb55585

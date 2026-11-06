@@ -209,6 +209,8 @@ def main():
     parser.add_argument('--shared-openh264', action='store_true')
     parser.add_argument('--shared-pffft', action='store_true')
     parser.add_argument('--shared-expat', action='store_true')
+    parser.add_argument('--shared-cpuinfo', action='store_true')
+    parser.add_argument('--shared-woff2', action='store_true')
     parser.add_argument('--stage-root', type=Path, help='explicit replacement stage; omit for installed prefix')
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--check', action='store_true', help='check an existing view identity')
@@ -262,6 +264,10 @@ def main():
         invocation['shared_pffft'] = 'yes'
     if args.shared_expat:
         invocation['shared_expat'] = 'yes'
+    if args.shared_cpuinfo:
+        invocation['shared_cpuinfo'] = 'yes'
+    if args.shared_woff2:
+        invocation['shared_woff2'] = 'yes'
     paths.reject_overlap(str(work), str(source))
     paths.reject_overlap(str(work), str(args.host_prefix))
     if args.stage_root:
@@ -293,7 +299,9 @@ def main():
                            *(['EMBERBSD_ELECTRON_SHARED_CODECS=yes'] if args.shared_codecs else []),
                            *(['EMBERBSD_ELECTRON_SHARED_OPENH264=yes'] if args.shared_openh264 else []),
                            *(['EMBERBSD_ELECTRON_SHARED_PFFFT=yes'] if args.shared_pffft else []),
-                           *(['EMBERBSD_ELECTRON_SHARED_EXPAT=yes'] if args.shared_expat else []), 'wrapper']
+                           *(['EMBERBSD_ELECTRON_SHARED_EXPAT=yes'] if args.shared_expat else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_CPUINFO=yes'] if args.shared_cpuinfo else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_WOFF2=yes'] if args.shared_woff2 else []), 'wrapper']
                 saved = json.loads((work / 'selection.json').read_text())
                 if saved.get('invocation') != invocation:
                     print('host buildlink selection changed', file=sys.stderr)
@@ -393,7 +401,9 @@ def main():
                            *(['EMBERBSD_ELECTRON_SHARED_CODECS=yes'] if args.shared_codecs else []),
                            *(['EMBERBSD_ELECTRON_SHARED_OPENH264=yes'] if args.shared_openh264 else []),
                            *(['EMBERBSD_ELECTRON_SHARED_PFFFT=yes'] if args.shared_pffft else []),
-                           *(['EMBERBSD_ELECTRON_SHARED_EXPAT=yes'] if args.shared_expat else []), 'wrapper']
+                           *(['EMBERBSD_ELECTRON_SHARED_EXPAT=yes'] if args.shared_expat else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_CPUINFO=yes'] if args.shared_cpuinfo else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_WOFF2=yes'] if args.shared_woff2 else []), 'wrapper']
             if not args.stage_root:
                 check_installed_context(process, command, env, args.host_prefix)
             process.run_logged(command, str(work / 'buildlink.log'), env=env)

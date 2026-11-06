@@ -1,0 +1,646 @@
+$NetBSD$
+
+Backport WOFF2 upstream changes through 1c69169e for Chromium consumers.
+Retain the shared external Brotli provider and existing cstdint portability fix.
+
+--- include/woff2/encode.h.orig
++++ include/woff2/encode.h
+@@ -26,8 +26,8 @@
+ 
+ // Returns an upper bound on the size of the compressed file.
+ size_t MaxWOFF2CompressedSize(const uint8_t* data, size_t length);
+-size_t MaxWOFF2CompressedSize(const uint8_t* data, size_t length,
+-                              const std::string& extended_metadata);
++size_t MaxWOFF2CompressedSize(const uint8_t *data, size_t length,
++                              const std::string &extended_metadata);
+ 
+ // Compresses the font into the target buffer. *result_length should be at least
+ // the value returned by MaxWOFF2CompressedSize(), upon return, it is set to the
+--- include/woff2/output.h.orig
++++ include/woff2/output.h
+@@ -18,7 +18,7 @@
+ namespace woff2 {
+ 
+ // Suggested max size for output.
+-const size_t kDefaultMaxSize = 30 * 1024 * 1024;
++const size_t kDefaultMaxSize = 128 * 1024 * 1024;
+ 
+ /**
+  * Output interface for the woff2 decoding.
+@@ -52,7 +52,7 @@
+   // Create a writer that writes its data to buf.
+   // buf->size() will grow to at most max_size
+   // buf may be sized (e.g. using EstimateWOFF2FinalSize) or empty.
+-  explicit WOFF2StringOut(std::string* buf);
++  explicit WOFF2StringOut(std::string *buf);
+ 
+   bool Write(const void *buf, size_t n) override;
+   bool Write(const void *buf, size_t offset, size_t n) override;
+@@ -60,7 +60,7 @@
+   size_t MaxSize() { return max_size_; }
+   void SetMaxSize(size_t max_size);
+  private:
+-  std::string* buf_;
++  std::string *buf_;
+   size_t max_size_;
+   size_t offset_;
+ };
+--- src/buffer.h.orig
++++ src/buffer.h
+@@ -82,7 +82,7 @@
+   }
+ 
+   inline bool ReadU8(uint8_t *value) {
+-    if (offset_ + 1 > length_) {
++    if (length_ < 1 || offset_ > length_ - 1) {
+       return FONT_COMPRESSION_FAILURE();
+     }
+     *value = buffer_[offset_];
+@@ -91,7 +91,7 @@
+   }
+ 
+   bool ReadU16(uint16_t *value) {
+-    if (offset_ + 2 > length_) {
++    if (length_ < 2 || offset_ > length_ - 2) {
+       return FONT_COMPRESSION_FAILURE();
+     }
+     std::memcpy(value, buffer_ + offset_, sizeof(uint16_t));
+@@ -105,7 +105,7 @@
+   }
+ 
+   bool ReadU24(uint32_t *value) {
+-    if (offset_ + 3 > length_) {
++    if (length_ < 3 || offset_ > length_ - 3) {
+       return FONT_COMPRESSION_FAILURE();
+     }
+     *value = static_cast<uint32_t>(buffer_[offset_]) << 16 |
+@@ -116,7 +116,7 @@
+   }
+ 
+   bool ReadU32(uint32_t *value) {
+-    if (offset_ + 4 > length_) {
++    if (length_ < 4 || offset_ > length_ - 4) {
+       return FONT_COMPRESSION_FAILURE();
+     }
+     std::memcpy(value, buffer_ + offset_, sizeof(uint32_t));
+@@ -130,7 +130,7 @@
+   }
+ 
+   bool ReadTag(uint32_t *value) {
+-    if (offset_ + 4 > length_) {
++    if (length_ < 4 || offset_ > length_ - 4) {
+       return FONT_COMPRESSION_FAILURE();
+     }
+     std::memcpy(value, buffer_ + offset_, sizeof(uint32_t));
+@@ -139,7 +139,7 @@
+   }
+ 
+   bool ReadR64(uint64_t *value) {
+-    if (offset_ + 8 > length_) {
++    if (length_ < 8 || offset_ > length_ - 8) {
+       return FONT_COMPRESSION_FAILURE();
+     }
+     std::memcpy(value, buffer_ + offset_, sizeof(uint64_t));
+@@ -151,7 +151,13 @@
+   size_t offset() const { return offset_; }
+   size_t length() const { return length_; }
+ 
+-  void set_offset(size_t newoffset) { offset_ = newoffset; }
++  bool set_offset(size_t newoffset) {
++    if (newoffset > length_) {
++      return FONT_COMPRESSION_FAILURE();
++    }
++    offset_ = newoffset;
++    return true;
++  }
+ 
+  private:
+   const uint8_t * const buffer_;
+--- src/file.h.orig
++++ src/file.h
+@@ -14,18 +14,14 @@
+ 
+ namespace woff2 {
+ 
+-using std::string;
+-
+-
+-inline string GetFileContent(string filename) {
++inline std::string GetFileContent(std::string filename) {
+   std::ifstream ifs(filename.c_str(), std::ios::binary);
+-  return string(
+-    std::istreambuf_iterator<char>(ifs.rdbuf()),
+-    std::istreambuf_iterator<char>());
++  return std::string(std::istreambuf_iterator<char>(ifs.rdbuf()),
++                     std::istreambuf_iterator<char>());
+ }
+ 
+-inline void SetFileContents(string filename, string::iterator start,
+-    string::iterator end) {
++inline void SetFileContents(std::string filename, std::string::iterator start,
++                            std::string::iterator end) {
+   std::ofstream ofs(filename.c_str(), std::ios::binary);
+   std::copy(start, end, std::ostream_iterator<char>(ofs));
+ }
+--- src/font.cc.orig
++++ src/font.cc
+@@ -155,7 +155,9 @@
+ 
+     std::map<uint32_t, Font::Table*> all_tables;
+     for (const auto offset : offsets) {
+-      file->set_offset(offset);
++      if (!file->set_offset(offset)) {
++        return FONT_COMPRESSION_FAILURE();
++      }
+       Font& font = *font_it++;
+       if (!ReadCollectionFont(file, data, len, &font, &all_tables)) {
+         return FONT_COMPRESSION_FAILURE();
+--- src/glyph.cc.orig
++++ src/glyph.cc
+@@ -21,6 +21,7 @@
+ static const int32_t kFLAG_REPEAT = 1 << 3;
+ static const int32_t kFLAG_XREPEATSIGN = 1 << 4;
+ static const int32_t kFLAG_YREPEATSIGN = 1 << 5;
++static const int32_t kFLAG_OVERLAP_SIMPLE = 1 << 6;
+ static const int32_t kFLAG_ARG_1_AND_2_ARE_WORDS = 1 << 0;
+ static const int32_t kFLAG_WE_HAVE_A_SCALE = 1 << 3;
+ static const int32_t kFLAG_MORE_COMPONENTS = 1 << 5;
+@@ -134,6 +135,10 @@
+       }
+     }
+ 
++    if (!flags.empty() && !flags[0].empty()) {
++      glyph->overlap_simple_flag_set = (flags[0][0] & kFLAG_OVERLAP_SIMPLE);
++    }
++
+     // Read the x coordinates.
+     int prev_x = 0;
+     for (int i = 0; i < num_contours; ++i) {
+@@ -239,7 +244,7 @@
+ 
+ bool StorePoints(const Glyph& glyph, size_t* offset,
+                  uint8_t* dst, size_t dst_size) {
+-  int last_flag = -1;
++  int previous_flag = -1;
+   int repeat_count = 0;
+   int last_x = 0;
+   int last_y = 0;
+@@ -250,6 +255,10 @@
+   for (const auto& contour : glyph.contours) {
+     for (const auto& point : contour) {
+       int flag = point.on_curve ? kFLAG_ONCURVE : 0;
++      if (previous_flag == -1 && glyph.overlap_simple_flag_set) {
++        // First flag needs to have overlap simple bit set.
++        flag = flag | kFLAG_OVERLAP_SIMPLE;
++      }
+       int dx = point.x - last_x;
+       int dy = point.y - last_y;
+       if (dx == 0) {
+@@ -268,7 +277,7 @@
+       } else {
+         y_bytes += 2;
+       }
+-      if (flag == last_flag && repeat_count != 255) {
++      if (flag == previous_flag && repeat_count != 255) {
+         dst[*offset - 1] |= kFLAG_REPEAT;
+         repeat_count++;
+       } else {
+@@ -286,7 +295,7 @@
+       }
+       last_x = point.x;
+       last_y = point.y;
+-      last_flag = flag;
++      previous_flag = flag;
+     }
+   }
+   if (repeat_count != 0) {
+--- src/glyph.h.orig
++++ src/glyph.h
+@@ -10,8 +10,10 @@
+ #ifndef WOFF2_GLYPH_H_
+ #define WOFF2_GLYPH_H_
+ 
++#include <inttypes.h>
+ #include <stddef.h>
+-#include <inttypes.h>
++
++#include <cstdint>
+ #include <vector>
+ 
+ namespace woff2 {
+@@ -22,7 +24,10 @@
+ // is around.
+ class Glyph {
+  public:
+-  Glyph() : instructions_size(0), composite_data_size(0) {}
++  Glyph()
++      : instructions_size(0),
++        overlap_simple_flag_set(false),
++        composite_data_size(0) {}
+ 
+   // Bounding box.
+   int16_t x_min;
+@@ -33,6 +38,9 @@
+   // Instructions.
+   uint16_t instructions_size;
+   const uint8_t* instructions_data;
++
++  // Flags.
++  bool overlap_simple_flag_set;
+ 
+   // Data model for simple glyphs.
+   struct Point {
+--- src/store_bytes.h.orig
++++ src/store_bytes.h
+@@ -27,15 +27,8 @@
+ }
+ 
+ inline size_t Store16(uint8_t* dst, size_t offset, int x) {
+-#if defined(WOFF_LITTLE_ENDIAN)
+-  *reinterpret_cast<uint16_t*>(dst + offset) =
+-      ((x & 0xFF) << 8) | ((x & 0xFF00) >> 8);
+-#elif defined(WOFF_BIG_ENDIAN)
+-  *reinterpret_cast<uint16_t*>(dst + offset) = static_cast<uint16_t>(x);
+-#else
+   dst[offset] = x >> 8;
+   dst[offset + 1] = x;
+-#endif
+   return offset + 2;
+ }
+ 
+@@ -47,17 +40,8 @@
+ }
+ 
+ inline void Store16(int val, size_t* offset, uint8_t* dst) {
+-#if defined(WOFF_LITTLE_ENDIAN)
+-  *reinterpret_cast<uint16_t*>(dst + *offset) =
+-      ((val & 0xFF) << 8) | ((val & 0xFF00) >> 8);
+-  *offset += 2;
+-#elif defined(WOFF_BIG_ENDIAN)
+-  *reinterpret_cast<uint16_t*>(dst + *offset) = static_cast<uint16_t>(val);
+-  *offset += 2;
+-#else
+   dst[(*offset)++] = val >> 8;
+   dst[(*offset)++] = val;
+-#endif
+ }
+ 
+ inline void StoreBytes(const uint8_t* data, size_t len,
+--- src/transform.cc.orig
++++ src/transform.cc
+@@ -22,6 +22,7 @@
+ 
+ const int FLAG_ARG_1_AND_2_ARE_WORDS = 1 << 0;
+ const int FLAG_WE_HAVE_INSTRUCTIONS = 1 << 8;
++const int FLAG_OVERLAP_SIMPLE_BITMAP = 1 << 0;
+ 
+ void WriteBytes(std::vector<uint8_t>* out, const uint8_t* data, size_t len) {
+   if (len == 0) return;
+@@ -69,7 +70,10 @@
+   }
+ 
+   void GetTransformedGlyfBytes(std::vector<uint8_t>* result) {
+-    WriteLong(result, 0);  // version
++    WriteUShort(result, 0);  // Version
++    WriteUShort(result, overlap_bitmap_.empty()
++                            ? 0x00
++                            : FLAG_OVERLAP_SIMPLE_BITMAP);  // Flags
+     WriteUShort(result, n_glyphs_);
+     WriteUShort(result, 0);  // index_format, will be set later
+     WriteLong(result, n_contour_stream_.size());
+@@ -87,6 +91,9 @@
+     WriteBytes(result, bbox_bitmap_);
+     WriteBytes(result, bbox_stream_);
+     WriteBytes(result, instruction_stream_);
++    if (!overlap_bitmap_.empty()) {
++      WriteBytes(result, overlap_bitmap_);
++    }
+   }
+ 
+  private:
+@@ -127,6 +134,10 @@
+   }
+ 
+   void WriteSimpleGlyph(int glyph_id, const Glyph& glyph) {
++    if (glyph.overlap_simple_flag_set) {
++      EnsureOverlapBitmap();
++      overlap_bitmap_[glyph_id >> 3] |= 0x80 >> (glyph_id & 7);
++    }
+     int num_contours = glyph.contours.size();
+     WriteUShort(&n_contour_stream_, num_contours);
+     if (ShouldWriteSimpleGlyphBbox(glyph)) {
+@@ -214,6 +225,12 @@
+     }
+   }
+ 
++  void EnsureOverlapBitmap() {
++    if (overlap_bitmap_.empty()) {
++      overlap_bitmap_.resize((n_glyphs_ + 7) >> 3);
++    }
++  }
++
+   std::vector<uint8_t> n_contour_stream_;
+   std::vector<uint8_t> n_points_stream_;
+   std::vector<uint8_t> flag_byte_stream_;
+@@ -222,6 +239,7 @@
+   std::vector<uint8_t> bbox_stream_;
+   std::vector<uint8_t> glyph_stream_;
+   std::vector<uint8_t> instruction_stream_;
++  std::vector<uint8_t> overlap_bitmap_;
+   int n_glyphs_;
+ };
+ 
+--- src/woff2_common.cc.orig
++++ src/woff2_common.cc
+@@ -19,16 +19,8 @@
+   uint32_t checksum = 0;
+   size_t aligned_size = size & ~3;
+   for (size_t i = 0; i < aligned_size; i += 4) {
+-#if defined(WOFF_LITTLE_ENDIAN)
+-    uint32_t v = *reinterpret_cast<const uint32_t*>(buf + i);
+-    checksum += (((v & 0xFF) << 24) | ((v & 0xFF00) << 8) |
+-      ((v & 0xFF0000) >> 8) | ((v & 0xFF000000) >> 24));
+-#elif defined(WOFF_BIG_ENDIAN)
+-    checksum += *reinterpret_cast<const uint32_t*>(buf + i);
+-#else
+-    checksum += (buf[i] << 24) | (buf[i + 1] << 16) |
+-      (buf[i + 2] << 8) | buf[i + 3];
+-#endif
++    checksum +=
++        (buf[i] << 24) | (buf[i + 1] << 16) | (buf[i + 2] << 8) | buf[i + 3];
+   }
+ 
+   // treat size not aligned on 4 as if it were padded to 4 with 0's
+--- src/woff2_compress.cc.orig
++++ src/woff2_compress.cc
+@@ -13,22 +13,20 @@
+ 
+ 
+ int main(int argc, char **argv) {
+-  using std::string;
+-
+   if (argc != 2) {
+     fprintf(stderr, "One argument, the input filename, must be provided.\n");
+     return 1;
+   }
+ 
+-  string filename(argv[1]);
+-  string outfilename = filename.substr(0, filename.find_last_of(".")) + ".woff2";
++  std::string filename(argv[1]);
++  std::string outfilename = filename.substr(0, filename.find_last_of(".")) + ".woff2";
+   fprintf(stdout, "Processing %s => %s\n",
+     filename.c_str(), outfilename.c_str());
+-  string input = woff2::GetFileContent(filename);
++  std::string input = woff2::GetFileContent(filename);
+ 
+   const uint8_t* input_data = reinterpret_cast<const uint8_t*>(input.data());
+   size_t output_size = woff2::MaxWOFF2CompressedSize(input_data, input.size());
+-  string output(output_size, 0);
++  std::string output(output_size, 0);
+   uint8_t* output_data = reinterpret_cast<uint8_t*>(&output[0]);
+ 
+   woff2::WOFF2Params params;
+--- src/woff2_dec.cc.orig
++++ src/woff2_dec.cc
+@@ -32,10 +32,6 @@
+ 
+ namespace {
+ 
+-using std::string;
+-using std::vector;
+-
+-
+ // simple glyph flags
+ const int kGlyfOnCurve = 1 << 0;
+ const int kGlyfXShort = 1 << 1;
+@@ -43,6 +39,7 @@
+ const int kGlyfRepeat = 1 << 3;
+ const int kGlyfThisXIsSame = 1 << 4;
+ const int kGlyfThisYIsSame = 1 << 5;
++const int kOverlapSimple = 1 << 6;
+ 
+ // composite glyph flags
+ // See CompositeGlyph.java in sfntly for full definitions
+@@ -52,6 +49,9 @@
+ const int FLAG_WE_HAVE_AN_X_AND_Y_SCALE = 1 << 6;
+ const int FLAG_WE_HAVE_A_TWO_BY_TWO = 1 << 7;
+ const int FLAG_WE_HAVE_INSTRUCTIONS = 1 << 8;
++
++// glyf flags
++const int FLAG_OVERLAP_SIMPLE_BITMAP = 1 << 0;
+ 
+ const size_t kCheckSumAdjustmentOffset = 8;
+ 
+@@ -109,6 +109,16 @@
+ int WithSign(int flag, int baseval) {
+   // Precondition: 0 <= baseval < 65536 (to avoid integer overflow)
+   return (flag & 1) ? baseval : -baseval;
++}
++
++bool _SafeIntAddition(int a, int b, int* result) {
++  if (PREDICT_FALSE(
++          ((a > 0) && (b > std::numeric_limits<int>::max() - a)) ||
++          ((a < 0) && (b < std::numeric_limits<int>::min() - a)))) {
++    return false;
++  }
++  *result = a + b;
++  return true;
+ }
+ 
+ bool TripletDecode(const uint8_t* flags_in, const uint8_t* in, size_t in_size,
+@@ -166,9 +176,12 @@
+           (in[triplet_index + 2] << 8) + in[triplet_index + 3]);
+     }
+     triplet_index += n_data_bytes;
+-    // Possible overflow but coordinate values are not security sensitive
+-    x += dx;
+-    y += dy;
++    if (!_SafeIntAddition(x, dx, &x)) {
++      return false;
++    }
++    if (!_SafeIntAddition(y, dy, &y)) {
++      return false;
++    }
+     *result++ = {x, y, on_curve};
+   }
+   *in_bytes_consumed = triplet_index;
+@@ -178,8 +191,9 @@
+ // This function stores just the point data. On entry, dst points to the
+ // beginning of a simple glyph. Returns true on success.
+ bool StorePoints(unsigned int n_points, const Point* points,
+-    unsigned int n_contours, unsigned int instruction_length,
+-    uint8_t* dst, size_t dst_size, size_t* glyph_size) {
++                 unsigned int n_contours, unsigned int instruction_length,
++                 bool has_overlap_bit, uint8_t* dst, size_t dst_size,
++                 size_t* glyph_size) {
+   // I believe that n_contours < 65536, in which case this is safe. However, a
+   // comment and/or an assert would be good.
+   unsigned int flag_offset = kEndPtsOfContoursOffset + 2 * n_contours + 2 +
+@@ -194,6 +208,10 @@
+   for (unsigned int i = 0; i < n_points; ++i) {
+     const Point& point = points[i];
+     int flag = point.on_curve ? kGlyfOnCurve : 0;
++    if (has_overlap_bit && i == 0) {
++      flag |= kOverlapSimple;
++    }
++
+     int dx = point.x - last_x;
+     int dy = point.y - last_y;
+     if (dx == 0) {
+@@ -391,13 +409,20 @@
+                      WOFF2Out* out) {
+   static const int kNumSubStreams = 7;
+   Buffer file(data, glyf_table->transform_length);
+-  uint32_t version;
++  uint16_t version;
+   std::vector<std::pair<const uint8_t*, size_t> > substreams(kNumSubStreams);
+   const size_t glyf_start = out->Size();
+ 
+-  if (PREDICT_FALSE(!file.ReadU32(&version))) {
+-    return FONT_COMPRESSION_FAILURE();
+-  }
++  if (PREDICT_FALSE(!file.ReadU16(&version))) {
++    return FONT_COMPRESSION_FAILURE();
++  }
++
++  uint16_t flags;
++  if (PREDICT_FALSE(!file.ReadU16(&flags))) {
++    return FONT_COMPRESSION_FAILURE();
++  }
++  bool has_overlap_bitmap = (flags & FLAG_OVERLAP_SIMPLE_BITMAP);
++
+   if (PREDICT_FALSE(!file.ReadU16(&info->num_glyphs) ||
+       !file.ReadU16(&info->index_format))) {
+     return FONT_COMPRESSION_FAILURE();
+@@ -434,6 +459,17 @@
+   Buffer composite_stream(substreams[4].first, substreams[4].second);
+   Buffer bbox_stream(substreams[5].first, substreams[5].second);
+   Buffer instruction_stream(substreams[6].first, substreams[6].second);
++
++  const uint8_t* overlap_bitmap = nullptr;
++  unsigned int overlap_bitmap_length = 0;
++  if (has_overlap_bitmap) {
++    overlap_bitmap_length = (info->num_glyphs + 7) >> 3;
++    overlap_bitmap = data + offset;
++    if (PREDICT_FALSE(overlap_bitmap_length >
++                           glyf_table->transform_length - offset)) {
++      return FONT_COMPRESSION_FAILURE();
++    }
++  }
+ 
+   std::vector<uint32_t> loca_values(info->num_glyphs + 1);
+   std::vector<unsigned int> n_points_vec;
+@@ -588,8 +624,12 @@
+       }
+       glyph_size += instruction_size;
+ 
+-      if (PREDICT_FALSE(!StorePoints(total_n_points, points.get(), n_contours,
+-            instruction_size, glyph_buf.get(), glyph_buf_size, &glyph_size))) {
++      bool has_overlap_bit =
++          has_overlap_bitmap && overlap_bitmap[i >> 3] & (0x80 >> (i & 7));
++
++      if (PREDICT_FALSE(!StorePoints(
++              total_n_points, points.get(), n_contours, instruction_size,
++              has_overlap_bit, glyph_buf.get(), glyph_buf_size, &glyph_size))) {
+         return FONT_COMPRESSION_FAILURE();
+       }
+     } else {
+--- src/woff2_decompress.cc.orig
++++ src/woff2_decompress.cc
+@@ -14,21 +14,21 @@
+ 
+ 
+ int main(int argc, char **argv) {
+-  using std::string;
+-
+   if (argc != 2) {
+     fprintf(stderr, "One argument, the input filename, must be provided.\n");
+     return 1;
+   }
+ 
+-  string filename(argv[1]);
+-  string outfilename = filename.substr(0, filename.find_last_of(".")) + ".ttf";
++  std::string filename(argv[1]);
++  std::string outfilename = filename.substr(0, filename.find_last_of(".")) + ".ttf";
+ 
+   // Note: update woff2_dec_fuzzer_new_entry.cc if this pattern changes.
+-  string input = woff2::GetFileContent(filename);
++  std::string input = woff2::GetFileContent(filename);
+   const uint8_t* raw_input = reinterpret_cast<const uint8_t*>(input.data());
+-  string output(std::min(woff2::ComputeWOFF2FinalSize(raw_input, input.size()),
+-                         woff2::kDefaultMaxSize), 0);
++  std::string output(
++      std::min(woff2::ComputeWOFF2FinalSize(raw_input, input.size()),
++               woff2::kDefaultMaxSize),
++      0);
+   woff2::WOFF2StringOut out(&output);
+ 
+   const bool ok = woff2::ConvertWOFF2ToTTF(raw_input, input.size(), &out);
+--- src/woff2_enc.cc.orig
++++ src/woff2_enc.cc
+@@ -28,12 +28,8 @@
+ 
+ namespace woff2 {
+ 
++
+ namespace {
+-
+-
+-using std::string;
+-using std::vector;
+-
+ 
+ const size_t kWoff2HeaderSize = 48;
+ const size_t kWoff2EntrySize = 20;
+@@ -183,7 +179,7 @@
+ }
+ 
+ size_t MaxWOFF2CompressedSize(const uint8_t* data, size_t length,
+-    const string& extended_metadata) {
++                              const std::string& extended_metadata) {
+   // Except for the header size, which is 32 bytes larger in woff2 format,
+   // all other parts should be smaller (table header in short format,
+   // transformations and compression). Just to be sure, we will give some
+--- src/woff2_info.cc.orig
++++ src/woff2_info.cc
+@@ -29,18 +29,16 @@
+ }
+ 
+ int main(int argc, char **argv) {
+-  using std::string;
+-
+   if (argc != 2) {
+     fprintf(stderr, "One argument, the input filename, must be provided.\n");
+     return 1;
+   }
+ 
+-  string filename(argv[1]);
+-  string outfilename = filename.substr(0, filename.find_last_of(".")) + ".woff2";
++  std::string filename(argv[1]);
++  std::string outfilename = filename.substr(0, filename.find_last_of(".")) + ".woff2";
+   fprintf(stdout, "Processing %s => %s\n",
+     filename.c_str(), outfilename.c_str());
+-  string input = woff2::GetFileContent(filename);
++  std::string input = woff2::GetFileContent(filename);
+ 
+   woff2::Buffer file(reinterpret_cast<const uint8_t*>(input.data()),
+     input.size());
+--- src/woff2_out.cc.orig
++++ src/woff2_out.cc
+@@ -8,14 +8,10 @@
+ 
+ #include <woff2/output.h>
+ 
+-using std::string;
+-
+ namespace woff2 {
+ 
+-WOFF2StringOut::WOFF2StringOut(string* buf)
+-  : buf_(buf),
+-    max_size_(kDefaultMaxSize),
+-    offset_(0) {}
++WOFF2StringOut::WOFF2StringOut(std::string *buf)
++    : buf_(buf), max_size_(kDefaultMaxSize), offset_(0) {}
+ 
+ bool WOFF2StringOut::Write(const void *buf, size_t n) {
+   return Write(buf, offset_, n);

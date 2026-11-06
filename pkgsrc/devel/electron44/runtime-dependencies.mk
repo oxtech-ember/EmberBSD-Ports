@@ -116,6 +116,18 @@ BUILDLINK_ABI_DEPENDS.expat+= expat>=2.10.0nb1
 .include "../../textproc/expat/buildlink3.mk"
 .endif
 
+.if ${EMBERBSD_ELECTRON_SHARED_CPUINFO:Uno} == "yes"
+BUILDLINK_API_DEPENDS.cpuinfo+= cpuinfo>=0.0.20261104
+BUILDLINK_ABI_DEPENDS.cpuinfo+= cpuinfo>=0.0.20261104
+.include "../../sysutils/cpuinfo/buildlink3.mk"
+.endif
+
+.if ${EMBERBSD_ELECTRON_SHARED_WOFF2:Uno} == "yes"
+BUILDLINK_API_DEPENDS.woff2+= woff2>=1.0.2nb4
+BUILDLINK_ABI_DEPENDS.woff2+= woff2>=1.0.2nb4
+.include "../../fonts/woff2/buildlink3.mk"
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_PFFFT:Uno} == "yes"
 BUILDLINK_API_DEPENDS.pffft+= pffft>=1.1.0nb2
 BUILDLINK_ABI_DEPENDS.pffft+= pffft>=1.1.0nb2

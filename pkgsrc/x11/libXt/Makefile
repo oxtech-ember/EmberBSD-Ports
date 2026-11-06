@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.36 2024/11/17 07:21:09 wiz Exp $
 
 DISTNAME=		libXt-1.3.1
-PKGREVISION=		1
+PKGREVISION=		2
 CATEGORIES=		x11 devel
 MASTER_SITES=		${MASTER_SITE_XORG:=lib/}
 EXTRACT_SUFX=		.tar.xz
@@ -13,7 +13,8 @@ LICENSE=		mit
 
 GNU_CONFIGURE=		yes
 USE_LIBTOOL=		yes
-USE_TOOLS+=		pkg-config
+TOOL_DEPENDS+=		xorg-util-macros>=1.20.2:../../devel/xorg-util-macros
+USE_TOOLS+=		pkg-config autoconf automake
 
 CONFIGURE_ARGS+=	--with-appdefaultdir=${PREFIX}/lib/X11/app-defaults
 CONFIGURE_ENV+=		APP_MAN_SUFFIX=1 LIB_MAN_SUFFIX=3
@@ -45,6 +46,11 @@ X11_LIB_NAME?=		libXt
 .include "../../meta-pkgs/modular-xorg/avoid-duplicate.mk"
 .include "../../x11/libSM/buildlink3.mk"
 .include "../../x11/libICE/buildlink3.mk"
+BUILDLINK_API_DEPENDS.libX11+= libX11>=1.8.14nb1
 .include "../../x11/libX11/buildlink3.mk"
 .include "../../x11/xorgproto/buildlink3.mk"
+# Regenerate changed Autoconf inputs with selected host tools.
+pre-configure:
+	cd ${WRKSRC} && aclocal -I m4 && autoheader && autoconf
+
 .include "../../mk/bsd.pkg.mk"

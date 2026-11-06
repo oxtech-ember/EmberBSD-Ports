@@ -3,8 +3,8 @@
 # Origin: EmberBSD contributors (AI-assisted); current component release.
 DISTNAME=	SPIRV-Tools-2026.4
 PKGNAME=	${DISTNAME:tl}
-# nb3 fixes scalar-layout column-major matrix extent.
-PKGREVISION=	3
+# nb4 installs the generated internal table for consumers of the patched source.
+PKGREVISION=	4
 CATEGORIES=	parallel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=KhronosGroup/}
 GITHUB_PROJECT=	SPIRV-Tools
@@ -37,6 +37,10 @@ CMAKE_CONFIGURE_ARGS+=	-DSPIRV_SKIP_TESTS=OFF
 CMAKE_CONFIGURE_ARGS+=	-DSPIRV_SKIP_TESTS=ON
 .endif
 TEST_TARGET=		test
+
+post-install:
+	${INSTALL_DATA_DIR} ${DESTDIR}${PREFIX}/share/spirv-tools/generated
+	${INSTALL_DATA} ${WRKSRC}/${CMAKE_BUILD_DIR}/core_tables_header.inc ${DESTDIR}${PREFIX}/share/spirv-tools/generated/core_tables_header.inc
 
 .include "../../devel/cmake/build.mk"
 

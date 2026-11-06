@@ -1,0 +1,13 @@
+$NetBSD$
+
+Preserve prefix-owned default paths when the native package is moved.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- xt.pc.in.orig
++++ xt.pc.in
+@@ -14,3 +14,5 @@
+ Requires.private: ice sm
+ Cflags: -I${includedir}
+ Libs: -Wl,-rpath,${libdir} -L${libdir} -lXt
++
++Libs.private: @X11_RELOC_DL_LIBS@

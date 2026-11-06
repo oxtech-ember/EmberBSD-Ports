@@ -1,0 +1,46 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Allow package consumers to omit the optional macOS framework and duplicated headers.
+
+--- loader/CMakeLists.txt.orig
++++ loader/CMakeLists.txt
+@@ -463,6 +463,14 @@
+         find_library(COREFOUNDATION_LIBRARY NAMES CoreFoundation)
+         target_link_libraries(vulkan PRIVATE "-framework CoreFoundation")
+ 
++        if (MODIFY_UNKNOWN_FUNCTION_DECLS)
++            # Keep the C declaration ABI consistent with the assembly symbols.
++            target_compile_definitions(vulkan PRIVATE MODIFY_UNKNOWN_FUNCTION_DECLS)
++        endif()
++        option(LOADER_BUILD_FRAMEWORK "Build and install vulkan.framework" ON)
++        set(APPLE_VULKAN_LOADER_VERSION "${VULKAN_LOADER_VERSION_MAJOR}.${VULKAN_LOADER_VERSION_MINOR}.0")
++        set_target_properties(vulkan PROPERTIES MACHO_CURRENT_VERSION "${APPLE_VULKAN_LOADER_VERSION}")
++        if (LOADER_BUILD_FRAMEWORK)
+         # Build vulkan.framework
+         # Use GLOB_RECURSE to find all the header files and populate the vulkan.framework headers with them
+         # Use CONFIGURE_DEPENDS to ensure that if the header files are updated, this list is also updated
+@@ -482,7 +490,6 @@
+         if (MODIFY_UNKNOWN_FUNCTION_DECLS)
+             # Modifies the names of functions as they appearin the assembly code so that the
+             # unknown function handling will work
+-            target_compile_definitions(vulkan PRIVATE MODIFY_UNKNOWN_FUNCTION_DECLS)
+             target_compile_definitions(vulkan-framework PRIVATE MODIFY_UNKNOWN_FUNCTION_DECLS)
+         endif()
+ 
+@@ -507,14 +514,13 @@
+         #
+         # MACHO_CURRENT_VERSION specifically applies to the -current_version linker option which is the
+         # linker warning we are trying to address.
+-        set(APPLE_VULKAN_LOADER_VERSION "${VULKAN_LOADER_VERSION_MAJOR}.${VULKAN_LOADER_VERSION_MINOR}.0")
+-        set_target_properties(vulkan PROPERTIES MACHO_CURRENT_VERSION "${APPLE_VULKAN_LOADER_VERSION}")
+         set_target_properties(vulkan-framework PROPERTIES MACHO_CURRENT_VERSION "${APPLE_VULKAN_LOADER_VERSION}")
+ 
+         install(TARGETS vulkan-framework
+             PUBLIC_HEADER DESTINATION vulkan
+             FRAMEWORK DESTINATION loader
+         )
++        endif()
+     endif()
+ endif()
+ 

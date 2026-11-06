@@ -21,7 +21,8 @@ header = '''#define _GNU_SOURCE 1
 #define GLIB_LOCALE_DIR "/synthetic/absolute/locale"
 #ifdef TEST_STATIC_ANCHOR
 #define GLIB_HAVE_LOCALE_DLADDR 1
-#define GLIB_LOCALE_RELATIVE_TO_LIBDIR "../share/locale"
+#define GLIB_CONFIGURED_PREFIX "/synthetic"
+#define GLIB_CONFIGURED_LIBDIR "/synthetic/lib"
 #endif
 '''
 main = '''\nint main(void) { gchar *p = _glib_get_locale_dir(); int ok = strcmp(p, GLIB_LOCALE_DIR) == 0; g_free(p); return !ok; }\n'''

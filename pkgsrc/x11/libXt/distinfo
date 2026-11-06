@@ -5,3 +5,7 @@ SHA512 (libXt-1.3.1.tar.xz) = c220292f60b0f53134cf9364831a32bbaa9fa6bbb3a7143e91
 Size (libXt-1.3.1.tar.xz) = 691200 bytes
 SHA1 (patch-include_X11_Xtos.h) = 5da6f08b22b0175ae5c2df4a5284ea5ce06b0ecd
 SHA1 (patch-util_Makefile.in) = 3bc33e42c88e1bf45606175c4a83dc7781e1aa2b
+SHA1 (patch-configure.ac) = 5d011bd0518530fb3551ea4d83414763941e7a80
+SHA1 (patch-src_Error.c) = 163024b41794c73cb6f9aa499526b1a01e7c3a23
+SHA1 (patch-src_Intrinsic.c) = ea17633678050934b5892944fe1292c0ad90ba8b
+SHA1 (patch-xt.pc.in) = f2d722870d9c6d3fd8c0fad948f3c5d8f19f54ca

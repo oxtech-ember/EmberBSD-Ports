@@ -35,3 +35,6 @@ SHA1 (patch-meson.options) = d52bdacee2ed6548512b051e1258baf5655b1df3
 SHA1 (patch-meson_gir-cross.build) = 988671dabb088e6d42ae90c95f15f815a73ab0d1
 SHA1 (patch-girepository_compiler_meson.build) = 95dfd7d3eb9e4e72ee8f130827d3384ecfe843f3
 SHA1 (patch-zz-relocatable-locale) = 657256289bccc8a0558252230cd961ae0e57bad6
+SHA1 (patch-zzz-relocatable-owned-paths) = cd3091e704521d67716a119ceabb326e7fdeffe1
+SHA1 (patch-zzzz-mime-dirs) = 941396e7cd590532ab99848228baba50626969f4
+SHA1 (patch-zzzzz-gir-default-paths) = 38b9ea1a7f8842fd0ead986af510637779a4fba0

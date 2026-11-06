@@ -1,0 +1,12 @@
+@comment $NetBSD$
+bin/ots-idempotent
+bin/ots-perf
+bin/ots-sanitize
+bin/ots-side-by-side
+bin/ots-validator-checker
+man/man1/ots-idempotent.1
+man/man1/ots-perf.1
+man/man1/ots-sanitize.1
+man/man1/ots-side-by-side.1
+man/man1/ots-validator-checker.1
+share/licenses/opentype-sanitizer/LICENSE

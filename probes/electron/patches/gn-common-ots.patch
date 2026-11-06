@@ -1,0 +1,30 @@
+--- a/third_party/ots/BUILD.gn
++++ b/third_party/ots/BUILD.gn
+@@ -3,6 +3,11 @@
+ # found in the LICENSE file.
+ 
+ import("//testing/libfuzzer/fuzzer_test.gni")
++
++declare_args() {
++  emberbsd_common_ots = false
++  emberbsd_ots_identity = ""
++}
+ 
+ config("ots_config") {
+   include_dirs = [ "src/include" ]
+@@ -90,6 +95,15 @@
+     "src/src/vvar.h",
+   ]
+ 
++  if (emberbsd_common_ots) {
++    assert(emberbsd_ots_identity != "", "Selected OTS identity is required")
++    inputs = [ emberbsd_ots_identity ]
++    sources += [
++      "src/src/colr.cc",
++      "src/src/cpal.cc",
++    ]
++  }
++
+   public_configs = [ ":ots_config" ]
+ 
+   deps = [

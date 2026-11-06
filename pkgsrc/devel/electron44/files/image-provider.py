@@ -32,6 +32,19 @@ FONT_PROVIDERS = {
 }
 
 
+def package_at_least(name, base, minimum):
+    """Compare numeric release components separately from the pkgsrc revision."""
+    match = re.fullmatch(re.escape(base) + r'-(\d+(?:\.\d+)+)(?:nb(\d+))?', name)
+    if not match:
+        return False
+    release = tuple(map(int, match.group(1).split('.')))
+    floor_release, floor_revision = minimum[:-1], minimum[-1]
+    width = max(len(release), len(floor_release))
+    actual = (release + (0,) * (width - len(release)), int(match.group(2) or 0))
+    floor = (floor_release + (0,) * (width - len(floor_release)), floor_revision)
+    return actual >= floor
+
+
 def select(controller, options, sdk, native, environment, buildlink):
     if not getattr(options, 'shared_image', False):
         return {}
@@ -48,7 +61,8 @@ def select_fonts(controller, options, sdk, native, environment, buildlink):
                          'use_system_harfbuzz': True}, 'EMBERBSD_FONT_SOURCE_SHA256')
 
 
-def select_roles(controller, options, sdk, native, environment, buildlink, providers, result, identity_key):
+def select_roles(controller, options, sdk, native, environment, buildlink, providers, result, identity_key,
+                 *, static_libraries=False):
     require = controller.require
     require(buildlink, 'shared providers require host buildlink')
     selection_work = environment.get('EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK')
@@ -62,8 +76,7 @@ def select_roles(controller, options, sdk, native, environment, buildlink, provi
         targets = options._common_target_packages.get(pkgpath, [])
         require(len(hosts) == len(targets) == 1 and hosts[0].name == targets[0].name,
                 'shared package missing or mismatched: ' + pkgpath)
-        match = re.fullmatch(re.escape(pkgbase) + r'-(\d+)\.(\d+)\.(\d+)(?:nb(\d+))?', hosts[0].name)
-        require(match and tuple(int(n or 0) for n in match.groups()) >= minimum,
+        require(package_at_least(hosts[0].name, pkgbase, minimum),
                 'shared package is too old: ' + pkgpath)
         recipe = options._compression_catalog['recipes'][pkgpath]
         export = Path(options.host_buildlink_pkgsrc)/pkgpath
@@ -81,7 +94,8 @@ def select_roles(controller, options, sdk, native, environment, buildlink, provi
                 if role == 'host':
                     require(str(host_prefix/pc) in selection and (Path(buildlink)/pc).is_file(),
                             'native pkg-config provider is not selected: '+pc)
-            selected = [controller.selected_owned_library(prefix, lib+suffix, [package]) for lib in libraries]
+            selected = [controller.selected_owned_library(prefix, lib+('.a' if static_libraries else suffix),
+                                                          [package]) for lib in libraries]
             entries = list(headers) + pc_files + [str(Path(lib).relative_to(prefix)) for lib in selected]
             files = []
             for entry in entries:
@@ -109,24 +123,30 @@ def select_roles(controller, options, sdk, native, environment, buildlink, provi
                               'FT_CONFIG_OPTION_USE_HARFBUZZ_DYNAMIC'):
                     require(re.search(r'^#\s*define\s+' + macro + r'\b', config, re.M),
                             'selected FreeType configuration lacks ' + macro)
+            if name == 'spirv_tools':
+                tables.append((prefix / 'share/spirv-tools/generated/core_tables_header.inc').resolve(strict=True))
             pc_prefix = Path(buildlink) if role == 'host' else target_prefix
             env = dict(environment, PKG_CONFIG_LIBDIR=str(pc_prefix/'lib/pkgconfig'))
             env.pop('PKG_CONFIG_PATH', None)
             if role == 'host': env.pop('PKG_CONFIG_SYSROOT_DIR', None)
             else: env['PKG_CONFIG_SYSROOT_DIR'] = str(options.sysroot)
             command = [native.tool('pkg-config')] + (['--define-prefix'] if role == 'host' else [])
-            result_versions = sdk['process'].capture(command + ['--modversion', *modules], env=env).stdout.decode().splitlines()
+            result_versions = (sdk['process'].capture(command + ['--modversion', *modules], env=env)
+                               .stdout.decode().splitlines()) if modules else []
             require(len(result_versions) == len(modules) and all(result_versions),
                     'invalid provider pkg-config versions: '+pkgpath)
-            require(len(set(result_versions)) == 1, 'provider component versions disagree: '+pkgpath)
+            require(not modules or len(set(result_versions)) == 1, 'provider component versions disagree: '+pkgpath)
             versions.append(result_versions)
         require(versions[0] == versions[1], 'host and target provider versions differ: '+pkgpath)
         identities[pkgpath] = {'package': hosts[0].name, 'recipe': recipe, 'versions': versions[0]}
-        if name == 'freetype':
+        if name in ('freetype', 'spirv_tools'):
             table_hashes = [hashlib.sha256(path.read_bytes()).hexdigest() for path in tables]
-            require(len(set(table_hashes)) == 1, 'host and target FreeType source tables differ')
+            require(len(set(table_hashes)) == 1, 'host and target ' + name + ' source tables differ')
             identities[pkgpath]['table_sha256'] = table_hashes[0]
-            options.font_table = tables[1]
+            if name == 'freetype':
+                options.font_table = tables[1]
+            else:
+                options.spirv_tools_table = tables[1]
     environment[identity_key] = hashlib.sha256(
         json.dumps(identities, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     return result

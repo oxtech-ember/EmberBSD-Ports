@@ -1,0 +1,67 @@
+--- a/build/linux/unbundle/replace_gn_files.py
++++ b/build/linux/unbundle/replace_gn_files.py
+@@ -66,6 +66,7 @@
+     'openh264': 'third_party/openh264/BUILD.gn',
+     'pffft': 'third_party/pffft/BUILD.gn',
+     'expat': 'third_party/expat/BUILD.gn',
++    'cpuinfo': 'third_party/cpuinfo/BUILD.gn',
+     'opus': 'third_party/opus/BUILD.gn',
+     're2': 'third_party/re2/BUILD.gn',
+     'simdutf': 'third_party/simdutf/BUILD.gn',
+--- /dev/null
++++ b/build/config/emberbsd_cpuinfo.gni
+@@ -0,0 +1,8 @@
++# Copyright 2026 EmberBSD contributors. BSD-2-Clause.
++declare_args() {
++  emberbsd_common_cpuinfo = false
++  emberbsd_cpuinfo_host_libraries = []
++  emberbsd_cpuinfo_host_inputs = []
++  emberbsd_cpuinfo_target_libraries = []
++  emberbsd_cpuinfo_target_inputs = []
++}
+--- /dev/null
++++ b/build/linux/unbundle/cpuinfo.gn
+@@ -0,0 +1,22 @@
++# Copyright 2026 EmberBSD contributors. BSD-2-Clause.
++import("//build/config/emberbsd_codecs.gni")
++
++import("//build/config/emberbsd_cpuinfo.gni")
++
++assert(emberbsd_common_cpuinfo, "A selected common CPUINFO provider is required")
++
++emberbsd_codec_provider("emberbsd_cpuinfo") {
++  host_libraries = emberbsd_cpuinfo_host_libraries
++  host_inputs = emberbsd_cpuinfo_host_inputs
++  target_libraries = emberbsd_cpuinfo_target_libraries
++  target_inputs = emberbsd_cpuinfo_target_inputs
++}
++pkg_config("cpuinfo_config") {
++  packages = [ "libcpuinfo" ]
++  ignore_libs = true
++}
++# Both components link the same shared provider, preserving pre-sandbox state.
++source_set("cpuinfo") {
++  public_deps = [ ":emberbsd_cpuinfo" ]
++  public_configs = [ ":cpuinfo_config" ]
++}
+--- a/third_party/tflite/BUILD.gn
++++ b/third_party/tflite/BUILD.gn
+@@ -4,6 +4,7 @@
+ 
+ import("//build/buildflag_header.gni")
+ import("//build/config/sanitizers/sanitizers.gni")
++import("//build/config/emberbsd_cpuinfo.gni")
+ import("//build_overrides/build.gni")
+ import("//third_party/cpuinfo/cpuinfo.gni")
+ import("//third_party/flatbuffers/flatbuffer.gni")
+@@ -862,7 +863,9 @@
+     if (use_cpuinfo) {
+       defines = [ "TFLITE_HAVE_CPUINFO" ]
+       deps += [ "//third_party/cpuinfo" ]
+-      include_dirs = [ "//third_party/cpuinfo/src" ]
++      if (!emberbsd_common_cpuinfo) {
++        include_dirs = [ "//third_party/cpuinfo/src" ]
++      }
+     }
+ 
+     if (build_tflite_with_xnnpack) {

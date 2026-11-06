@@ -1,0 +1,256 @@
+# Relocate prefix-owned defaults from the loaded GLib or GIO image.
+# Origin: EmberBSD (AI-assisted).
+
+--- glib/ggettext.c.orig
++++ glib/ggettext.c
+@@ -101,44 +101,94 @@
+ 
+ #else /* !G_OS_WIN32 */
+ 
+-/* Anchor to the GLib image itself, never to an arbitrary calling program. */
++/* Keep anchors in their own shared library; static executables fall back. */
+ #ifdef GLIB_HAVE_LOCALE_DLADDR
+ static const char glib_locale_anchor;
+ #endif
+ 
+ gchar *
+-_glib_get_locale_dir (void)
++_glib_relocate_owned_path (const void *anchor, const char *library,
++                           const char *fallback)
+ {
+ #ifdef GLIB_HAVE_LOCALE_DLADDR
+   Dl_info info;
+-  if (dladdr (&glib_locale_anchor, &info) != 0 && info.dli_fname != NULL)
++  gchar *prefix = g_canonicalize_filename (GLIB_CONFIGURED_PREFIX, NULL);
++  gchar *libdir = g_canonicalize_filename (GLIB_CONFIGURED_LIBDIR, NULL);
++  gchar *configured = NULL;
++  gchar *result = NULL;
++  gsize prefix_len = strlen (prefix);
++
++  /* A list is not a single path. Keep it intact, just as the caller supplied it. */
++  if (prefix_len > 1 && g_path_is_absolute (fallback) &&
++      strchr (fallback, G_SEARCHPATH_SEPARATOR) == NULL)
++    configured = g_canonicalize_filename (fallback, NULL);
++
++  if (configured != NULL &&
++      g_str_has_prefix (configured, prefix) && configured[prefix_len] == G_DIR_SEPARATOR &&
++      g_str_has_prefix (libdir, prefix) && libdir[prefix_len] == G_DIR_SEPARATOR &&
++      dladdr (anchor, &info) != 0 && info.dli_fname != NULL)
+     {
+       char *resolved = realpath (info.dli_fname, NULL);
+       if (resolved != NULL)
+         {
+           gchar *base = g_path_get_basename (resolved);
+-          if ((g_str_has_prefix (base, "libglib-2.0.") &&
+-               g_str_has_suffix (base, ".dylib")) ||
+-              strcmp (base, "libglib-2.0.so") == 0 ||
+-              g_str_has_prefix (base, "libglib-2.0.so."))
++          gchar *so = g_strconcat (library, ".so", NULL);
++          gchar *so_version = g_strconcat (library, ".so.", NULL);
++          gchar *dylib_version = g_strconcat (library, ".", NULL);
++          gboolean matches = strcmp (base, so) == 0 ||
++            g_str_has_prefix (base, so_version) ||
++            (g_str_has_prefix (base, dylib_version) &&
++             g_str_has_suffix (base, ".dylib"));
++          g_free (so);
++          g_free (so_version);
++          g_free (dylib_version);
++          g_free (base);
++          if (matches)
+             {
+-              gchar *libdir = g_path_get_dirname (resolved);
+-              gchar *combined = g_build_filename (libdir, GLIB_LOCALE_RELATIVE_TO_LIBDIR, NULL);
+-              gchar *result = g_canonicalize_filename (combined, NULL);
+-              g_free (combined);
+-              g_free (libdir);
+-              g_free (base);
+-              free (resolved);
+-              return result;
++              gchar *actual_dir = g_path_get_dirname (resolved);
++              const gchar *suffix = libdir + prefix_len + 1;
++              gsize dir_len = strlen (actual_dir), suffix_len = strlen (suffix);
++              /* Only climb from a DSO whose real path has the configured
++               * complete libdir suffix. Unknown layouts retain the fallback. */
++              if (dir_len > suffix_len &&
++                  actual_dir[dir_len - suffix_len - 1] == G_DIR_SEPARATOR &&
++                  g_str_has_suffix (actual_dir, suffix))
++                {
++                  gchar *moved_prefix = g_strndup (actual_dir, dir_len - suffix_len - 1);
++                  gchar *combined = g_build_filename (*moved_prefix ? moved_prefix : G_DIR_SEPARATOR_S,
++                                                       configured + prefix_len + 1, NULL);
++                  result = g_canonicalize_filename (combined, NULL);
++                  g_free (combined);
++                  g_free (moved_prefix);
++                }
++              g_free (actual_dir);
+             }
+-          g_free (base);
+           free (resolved);
+         }
+     }
++  g_free (configured);
++  g_free (libdir);
++  g_free (prefix);
++  if (result != NULL)
++    return result;
+ #endif
+-  /* Static GLib, unsupported hosts, and explicit absolute layouts retain the
+-   * configured upstream path. */
+-  return g_strdup (GLIB_LOCALE_DIR);
++  return g_strdup (fallback);
++}
++
++gchar *
++_glib_relocate_glib_path (const char *fallback)
++{
++#ifdef GLIB_HAVE_LOCALE_DLADDR
++  return _glib_relocate_owned_path (&glib_locale_anchor, "libglib-2.0", fallback);
++#else
++  return g_strdup (fallback);
++#endif
++}
++
++gchar *
++_glib_get_locale_dir (void)
++{
++  return _glib_relocate_glib_path (GLIB_LOCALE_DIR);
+ }
+ #endif /* G_OS_WIN32 */
+ 
+--- glib/glib-locale-private.h.orig
++++ glib/glib-locale-private.h
+@@ -9,6 +9,13 @@
+ GLIB_AVAILABLE_IN_ALL
+ gchar *_glib_get_locale_dir (void);
+ 
++#ifndef G_OS_WIN32
++GLIB_AVAILABLE_IN_ALL
++gchar *_glib_relocate_owned_path (const void *anchor, const char *library, const char *fallback);
++GLIB_AVAILABLE_IN_ALL
++gchar *_glib_relocate_glib_path (const char *fallback);
++#endif
++
+ G_END_DECLS
+ 
+ #endif /* __GLIB_LOCALE_PRIVATE_H__ */
+--- glib/meson.build.orig
++++ glib/meson.build
+@@ -422,7 +422,10 @@
+ locale_reloc_conf = configuration_data()
+ locale_reloc_enabled = false
+ locale_dl_dep = []
+-if host_system != 'windows' and not fs.is_absolute(get_option('localedir')) and not fs.is_absolute(get_option('libdir'))
++# The shared library must live below the configured prefix. Absolute libdir
++# options are supported when their normalized relative path remains inside it.
++locale_libdir_rel = fs.relative_to(glib_libdir, glib_prefix)
++if host_system != 'windows' and locale_libdir_rel != '.' and locale_libdir_rel != '..' and not locale_libdir_rel.startswith('../')
+   locale_reloc_enabled = cc.links('''
+     #define _GNU_SOURCE 1
+     #include <dlfcn.h>
+@@ -432,7 +435,8 @@
+ if locale_reloc_enabled
+   locale_dl_dep = libdl_dep
+   locale_reloc_conf.set('GLIB_HAVE_LOCALE_DLADDR', 1)
+-  locale_reloc_conf.set_quoted('GLIB_LOCALE_RELATIVE_TO_LIBDIR', fs.relative_to(glib_localedir, glib_libdir))
++  locale_reloc_conf.set_quoted('GLIB_CONFIGURED_PREFIX', glib_prefix)
++  locale_reloc_conf.set_quoted('GLIB_CONFIGURED_LIBDIR', glib_libdir)
+ endif
+ configure_file(output : 'glib-locale-relocation.h', configuration : locale_reloc_conf)
+ 
+--- glib/gutils.c.orig
++++ glib/gutils.c
+@@ -30,6 +30,7 @@
+ 
+ #include "config.h"
+ 
++#include "glib-locale-private.h"
+ #include "gutils.h"
+ #include "gutilsprivate.h"
+ 
+@@ -2604,9 +2605,13 @@
+    */
+ #ifndef G_OS_WIN32
+   if (!data_dirs || !data_dirs[0])
+-    data_dirs = "/usr/local/share/:/usr/share/";
+-
+-  data_dir_vector = g_strsplit (data_dirs, G_SEARCHPATH_SEPARATOR_S, 0);
++    {
++      gchar *owned = _glib_relocate_glib_path ("/usr/local/share/:/usr/share/");
++      data_dir_vector = g_strsplit (owned, G_SEARCHPATH_SEPARATOR_S, 0);
++      g_free (owned);
++    }
++  else
++    data_dir_vector = g_strsplit (data_dirs, G_SEARCHPATH_SEPARATOR_S, 0);
+ #else
+   if (!data_dirs || !data_dirs[0])
+     data_dir_vector = g_strdupv ((gchar **) g_win32_get_system_data_dirs_for_module_real (NULL));
+@@ -2701,9 +2706,13 @@
+     }
+ #else
+   if (!conf_dirs || !conf_dirs[0])
+-    conf_dirs = "/etc/xdg";
+-
+-  conf_dir_vector = g_strsplit (conf_dirs, G_SEARCHPATH_SEPARATOR_S, 0);
++    {
++      gchar *owned = _glib_relocate_glib_path ("/etc/xdg");
++      conf_dir_vector = g_strsplit (owned, G_SEARCHPATH_SEPARATOR_S, 0);
++      g_free (owned);
++    }
++  else
++    conf_dir_vector = g_strsplit (conf_dirs, G_SEARCHPATH_SEPARATOR_S, 0);
+ #endif
+ 
+   return g_steal_pointer (&conf_dir_vector);
+--- glib/gcharset.c.orig
++++ glib/gcharset.c
+@@ -20,6 +20,7 @@
+ 
+ #include "config.h"
+ 
++#include "glib-locale-private.h"
+ #include "gcharset.h"
+ #include "gcharsetprivate.h"
+ 
+@@ -505,7 +506,9 @@
+   if (g_once_init_enter_pointer (&alias_table))
+     {
+       GHashTable *table = g_hash_table_new (g_str_hash, g_str_equal);
+-      read_aliases ("/usr/share/locale/locale.alias", table);
++      gchar *alias_path = _glib_relocate_glib_path ("/usr/share/locale/locale.alias");
++      read_aliases (alias_path, table);
++      g_free (alias_path);
+       g_once_init_leave_pointer (&alias_table, table);
+     }
+ 
+--- gio/gdesktopappinfo.c.orig
++++ gio/gdesktopappinfo.c
+@@ -40,6 +40,7 @@
+ #include <crt_externs.h>
+ #endif
+ 
++#include "glib/glib-locale-private.h"
+ #include "gcontenttypeprivate.h"
+ #include "gdesktopappinfo.h"
+ #ifdef G_OS_UNIX
+@@ -3112,8 +3113,19 @@
+             tmp = g_getenv ("GIO_LAUNCH_DESKTOP");
+ 
+           /* Allow build system to specify path to gio-launch-desktop */
+-          if (tmp == NULL && g_file_test (GIO_LAUNCH_DESKTOP, G_FILE_TEST_IS_EXECUTABLE))
+-            tmp = GIO_LAUNCH_DESKTOP;
++          if (tmp == NULL)
++            {
++#ifndef G_OS_WIN32
++              static const char gio_anchor;
++              gchar *candidate = _glib_relocate_owned_path (&gio_anchor, "libgio-2.0", GIO_LAUNCH_DESKTOP);
++#else
++              gchar *candidate = g_strdup (GIO_LAUNCH_DESKTOP);
++#endif
++              if (g_file_test (candidate, G_FILE_TEST_IS_EXECUTABLE))
++                tmp = candidate; /* retained by gio_launch_desktop_path */
++              else
++                g_free (candidate);
++            }
+ 
+           /* Fall back on usual searching in $PATH */
+           if (tmp == NULL)

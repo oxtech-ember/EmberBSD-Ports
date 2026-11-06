@@ -17,6 +17,7 @@ BUILDLINK_API_DEPENDS.libXt+=	libXt>=1.0.0
 BUILDLINK_PKGSRCDIR.libXt?=	../../x11/libXt
 
 .include "../../x11/libSM/buildlink3.mk"
+BUILDLINK_API_DEPENDS.libX11+= libX11>=1.8.14nb1
 .include "../../x11/libX11/buildlink3.mk"
 .include "../../x11/xorgproto/buildlink3.mk"
 .  endif # LIBXT_BUILDLINK3_MK

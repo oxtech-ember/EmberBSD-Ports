@@ -953,3 +953,25 @@ minimum package revisions are lcms2 2.19.1nb2, openjpeg 2.5.4nb1 and tiff
 are also enabled and hides PDFium's replaced library sources. TIFF is linked
 when PDFium's XFA option is enabled. The selection remains opt-in until the
 required packages have been built and installed for both roles.
+
+`--shared-cpuinfo` (or `EMBERBSD_ELECTRON_SHARED_CPUINFO=yes`) selects
+cpuinfo 0.0.20261104 or newer for both toolchain roles. It hides Chromium's
+CPUINFO sources and links the common shared library, preserving the single
+process-wide initialization state used by sandboxed consumers. The selection
+is opt-in and requires the matching common package in both roles.
+
+Chromium can use the common OpenType Sanitizer source with `--ots-source`,
+`--ots-archive` and `--ots-patch` (or their `EMBERBSD_ELECTRON_OTS_*`
+producer variables). Prepare the source with the
+[OpenType Sanitizer source owner](../../scripts/source-inputs/opentype-sanitizer/README.md)
+and select its verified directory, original archive and patch tool. Optional
+`--ots-pkgsrc-export` and `--ots-export-patch` bind a selected export when
+needed. The source view retains Chromium's GN integration and font policy,
+adds the source files needed by the current common release, and tracks the
+prepared source receipt as a build input. Building the standalone OTS tools is
+not required for this source selection.
+
+`--shared-woff2` (or `EMBERBSD_ELECTRON_SHARED_WOFF2=yes`) selects the common
+WOFF2 1.0.2nb4 decoder for host and target. Its upstream-compatible header
+shim and role-specific library replace the bundled decoder and use the common
+Brotli provider. The selection requires the matching package in both roles.

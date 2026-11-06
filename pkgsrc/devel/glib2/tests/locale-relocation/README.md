@@ -13,7 +13,33 @@ Use the library and executable extracted from the exact package to qualify it.
 `locale-fallback.py --source PATCHED_SOURCE --cc CC --sdk PREFIX --output
 WORKDIR` exercises the actual resolver with relocation unavailable and with a
 static executable anchor. This covers those resolver branches, not a complete
-static GLib build. Unsupported, static and explicitly absolute layouts retain
+static GLib build. Unsupported and static layouts, and paths outside the configured prefix, retain
 the configured locale fallback. The corresponding configured path may remain
 in a binary: permit that specific prefix during package qualification only
-after verifying the exact relocated artifact and its loaded library.
+after classifying all remaining references and verifying the exact relocated
+artifact and its loaded library.
+
+`owned-paths.py --cc CC --sdk PREFIX --old-glib OLD_DYLIB --new-glib
+NEW_DYLIB --new-gio NEW_GIO_DYLIB --new-girepository NEW_GI_DYLIB
+--update-mime-database TOOL --output WORKDIR` tests loaded-library
+identity, relocated XDG defaults, locale aliases and the GIO launcher, plus
+environment overrides, external paths, layout mismatch and static anchor. It
+also checks GIO module discovery and GIRepository typelibs in the relocated
+layout; the latter requires the native SDK GLib, GLibUnix, GObject and Gio
+typelib files.
+This runner targets Darwin and requires `en_US.UTF-8`; it keeps the original
+prefix available while exercising synthetic relocated inputs.
+
+`mime-regression.py --cc CC --sdk PREFIX --update-mime-database TOOL
+--new-glib NEW_GLIB --new-gio NEW_GIO --old-glib OLD_GLIB --old-gio OLD_GIO
+--output WORKDIR` checks old first-lookup failure, new default lookup,
+explicit setter before and after lookup, and concurrent queries and setter
+against two synthetic MIME databases. The timeout detects hangs. Darwin only.
+
+`relocated-gir.py --prefix DISPOSABLE_PREFIX --old-prefix PRODUCER_PREFIX`
+checks installed gi-compile-repository default GIR lookup: a missing relocated
+GLib GIR must not fall back to the old prefix, a temporary relocated GIR must
+work, and explicit `--includedir` and GI_GIR_PATH must still work. It requires
+a Darwin prefix with all runtime dependencies, but without a pre-existing
+`share/gir-1.0/GLib-2.0.gir`, and an existing producer GLib GIR. The fixture
+creates and removes only its own temporary GIR file.

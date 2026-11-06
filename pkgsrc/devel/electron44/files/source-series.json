@@ -1242,6 +1242,26 @@
       "path": "pdfium-jpx-nullable-color.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-common-cpuinfo.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "angle-system-zlib-define.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-common-ots.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-common-woff2.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

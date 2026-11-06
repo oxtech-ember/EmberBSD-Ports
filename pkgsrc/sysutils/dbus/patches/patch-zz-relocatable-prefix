@@ -1,0 +1,545 @@
+$NetBSD$
+
+Resolve prefix-owned D-Bus paths from the installed library and use the selected Python for Meson scripts.
+Origin: EmberBSD (AI-assisted).
+
+--- meson.build.orig
++++ meson.build
+@@ -631,6 +631,26 @@
+     endif
+ endforeach
+ 
++# The optional resolver must compile and link with the selected toolchain.
++dbus_dl_deps = []
++have_dbus_dladdr = false
++if platform_unix
++    dl_probe = '''
++        #include <dlfcn.h>
++        int main(void) { Dl_info info; return dladdr((void *)&main, &info) == 0; }
++    '''
++    if cc.links(dl_probe, args: compile_args_c)
++        have_dbus_dladdr = true
++    else
++        dbus_dl = cc.find_library('dl', required: false)
++        if dbus_dl.found() and cc.links(dl_probe, args: compile_args_c, dependencies: dbus_dl)
++            have_dbus_dladdr = true
++            dbus_dl_deps += [dbus_dl]
++        endif
++    endif
++endif
++config.set('HAVE_DBUS_DLADDR', have_dbus_dladdr)
++
+ if get_option('x11_autolaunch').disabled()
+     use_x11_autolaunch = false
+     x11 = not_found
+@@ -922,6 +942,7 @@
+ 
+ data_config.set('DBUS_PREFIX', get_option('prefix'))
+ config.set_quoted('DBUS_PREFIX', get_option('prefix'))
++config.set_quoted('DBUS_LIBDIR', get_option('prefix') / get_option('libdir'))
+ config.set_quoted('DBUS_BINDIR', get_option('prefix') / get_option('bindir'))
+ config.set_quoted('DBUS_DATADIR',get_option('prefix') / get_option('datadir'))
+ data_config.set('DBUS_LIBEXECDIR', get_option('prefix') / get_option('libexecdir'))
+--- dbus/meson.build.orig
++++ dbus/meson.build
+@@ -23,6 +23,7 @@
+     threads,
+     adt_libs,
+     network_libs,
++    dbus_dl_deps,
+     systemd,
+     valgrind.partial_dependency(compile_args: true),
+ ]
+--- dbus/dbus-sysdeps.h.orig
++++ dbus/dbus-sysdeps.h
+@@ -709,6 +709,10 @@
+ DBUS_PRIVATE_EXPORT
+ void _dbus_flush_caches (void);
+ 
++#ifndef DBUS_WIN
++DBUS_PRIVATE_EXPORT
++dbus_bool_t _dbus_relocate_install_prefix (DBusString *path);
++#endif
+ dbus_bool_t _dbus_replace_install_prefix (DBusString *path);
+ 
+ /* Do not set this too high: it is a denial-of-service risk.
+--- dbus/dbus-sysdeps-unix.c.orig
++++ dbus/dbus-sysdeps-unix.c
+@@ -39,6 +39,9 @@
+ #include "dbus-credentials.h"
+ #include "dbus-nonce.h"
+ 
++#ifdef HAVE_DBUS_DLADDR
++#include <dlfcn.h>
++#endif
+ #include <limits.h>
+ #include <sys/types.h>
+ #include <stdlib.h>
+@@ -61,6 +64,119 @@
+ #include <netdb.h>
+ #include <grp.h>
+ #include <arpa/inet.h>
++
++
++/* Resolve configured prefix-owned paths using this shared libdbus image.
++ * Unknown layouts, static executables and unsupported platforms retain the
++ * configured path; explicitly external paths are never rewritten. */
++#if defined(HAVE_DBUS_DLADDR) && defined(DBUS_PREFIX) && defined(DBUS_LIBDIR)
++static const char _dbus_relocation_anchor = 0;
++
++/* Refuse non-canonical spelling instead of rewriting paths that can escape
++ * their configured prefix through dot components or duplicate separators. */
++static dbus_bool_t
++_dbus_relocation_safe_path (const char *path)
++{
++  const char *p = path;
++  if (p == NULL || *p != '/')
++    return FALSE;
++  while (*p != '\0')
++    {
++      const char *start;
++      size_t length;
++      if (*p++ != '/' || *p == '/' || *p == '\0')
++        return FALSE;
++      start = p;
++      while (*p != '\0' && *p != '/')
++        p++;
++      length = p - start;
++      if ((length == 1 && start[0] == '.') ||
++          (length == 2 && start[0] == '.' && start[1] == '.'))
++        return FALSE;
++    }
++  return TRUE;
++}
++
++/* Require a shared-library filename, not an executable with a prefix match. */
++static dbus_bool_t
++_dbus_relocation_is_library (const char *name)
++{
++  const char *suffix;
++  if (strncmp (name, "libdbus-1.", 10) != 0)
++    return FALSE;
++  suffix = name + 10;
++  if (strncmp (suffix, "so", 2) == 0)
++    {
++      suffix += 2;
++      if (*suffix == '\0')
++        return TRUE;
++      if (*suffix++ != '.')
++        return FALSE;
++      while (*suffix >= '0' && *suffix <= '9')
++        {
++          while (*suffix >= '0' && *suffix <= '9') suffix++;
++          if (*suffix == '\0') return TRUE;
++          if (*suffix++ != '.') return FALSE;
++        }
++      return FALSE;
++    }
++  if (strcmp (suffix, "dylib") == 0)
++    return TRUE;
++  while (*suffix >= '0' && *suffix <= '9')
++    {
++      while (*suffix >= '0' && *suffix <= '9') suffix++;
++      if (*suffix++ != '.') return FALSE;
++      if (strcmp (suffix, "dylib") == 0) return TRUE;
++    }
++  return FALSE;
++}
++
++#endif /* HAVE_DBUS_DLADDR and configured paths */
++
++dbus_bool_t
++_dbus_relocate_install_prefix (DBusString *path)
++{
++#if defined(HAVE_DBUS_DLADDR) && defined(DBUS_PREFIX) && defined(DBUS_LIBDIR)
++  Dl_info info;
++  char actual[PATH_MAX];
++  char *base, *last;
++  const char *lib_suffix;
++  size_t prefix_len = strlen (DBUS_PREFIX);
++  size_t suffix_len, actual_len;
++  DBusString runtime;
++  dbus_bool_t result;
++
++  if (!_dbus_relocation_safe_path (DBUS_PREFIX) ||
++      !_dbus_relocation_safe_path (DBUS_LIBDIR) ||
++      !_dbus_relocation_safe_path (_dbus_string_get_const_data (path)) ||
++      strncmp (DBUS_LIBDIR, DBUS_PREFIX, prefix_len) != 0 ||
++      DBUS_LIBDIR[prefix_len] != '/' ||
++      !_dbus_string_starts_with_c_str (path, DBUS_PREFIX "/"))
++    return TRUE;
++  lib_suffix = DBUS_LIBDIR + prefix_len;
++  suffix_len = strlen (lib_suffix);
++  if (dladdr ((const void *) &_dbus_relocation_anchor, &info) == 0 ||
++      info.dli_fname == NULL || realpath (info.dli_fname, actual) == NULL)
++    return TRUE;
++  base = strrchr (actual, '/');
++  if (base == NULL || !_dbus_relocation_is_library (base + 1))
++    return TRUE;
++  *base = '\0';
++  actual_len = strlen (actual);
++  if (actual_len <= suffix_len ||
++      strcmp (actual + actual_len - suffix_len, lib_suffix) != 0)
++    return TRUE;
++  last = actual + actual_len - suffix_len;
++  *last = '\0';
++  _dbus_string_init_const (&runtime, actual);
++  result = _dbus_string_replace_len (&runtime, 0, _dbus_string_get_length (&runtime),
++                                     path, 0, prefix_len);
++  return result;
++#else
++  (void) path;
++  return TRUE;
++#endif
++}
+ 
+ #ifdef HAVE_ERRNO_H
+ #include <errno.h>
+@@ -4314,6 +4430,7 @@
+   const char *argv[6];
+   int i;
+   DBusString uuid;
++  DBusString launch_path;
+   dbus_bool_t retval;
+ 
+   if (_dbus_check_setuid ())
+@@ -4349,6 +4466,13 @@
+       return FALSE;
+     }
+ 
++  if (!_dbus_string_init (&launch_path))
++    {
++      _dbus_string_free (&uuid);
++      _DBUS_SET_OOM (error);
++      return FALSE;
++    }
++
+   if (!_dbus_get_local_machine_uuid_encoded (&uuid, error))
+     {
+       goto out;
+@@ -4359,7 +4483,15 @@
+ 
+   if (progpath == NULL)
+ #endif
+-    progpath = DBUS_BINDIR "/dbus-launch";
++    {
++      if (!_dbus_string_append (&launch_path, DBUS_BINDIR "/dbus-launch") ||
++          !_dbus_relocate_install_prefix (&launch_path))
++        {
++          _DBUS_SET_OOM (error);
++          goto out;
++        }
++      progpath = _dbus_string_get_const_data (&launch_path);
++    }
+   /*
+    * argv[0] is always dbus-launch, that's the name what we'll
+    * get from /proc, or ps(1), regardless what the progpath is,
+@@ -4386,6 +4518,7 @@
+                                        argv, address, error);
+ 
+  out:
++  _dbus_string_free (&launch_path);
+   _dbus_string_free (&uuid);
+   return retval;
+ #else
+@@ -4427,26 +4560,38 @@
+   DBusString filename;
+   dbus_bool_t b;
+ 
+-  _dbus_string_init_const (&filename, DBUS_MACHINE_UUID_FILE);
++  if (!_dbus_string_init (&filename))
++    {
++      _DBUS_SET_OOM (error);
++      return FALSE;
++    }
++  if (!_dbus_string_append (&filename, DBUS_MACHINE_UUID_FILE) ||
++      !_dbus_relocate_install_prefix (&filename))
++    {
++      _dbus_string_free (&filename);
++      _DBUS_SET_OOM (error);
++      return FALSE;
++    }
+ 
+   b = _dbus_read_uuid_file (&filename, machine_id, FALSE, &our_error);
+   if (b)
+-    return TRUE;
+-
+-  /* Fallback to the system machine ID */
+-  _dbus_string_init_const (&filename, "/etc/machine-id");
+-  b = _dbus_read_uuid_file (&filename, machine_id, FALSE, &etc_error);
++    {
++      _dbus_string_free (&filename);
++      return TRUE;
++    }
++
++  /* The host machine identity is intentionally not prefix-relative. */
++  {
++    DBusString system_filename;
++    _dbus_string_init_const (&system_filename, "/etc/machine-id");
++    b = _dbus_read_uuid_file (&system_filename, machine_id, FALSE, &etc_error);
++  }
+ 
+   if (b)
+     {
+       if (create_if_not_found)
+-        {
+-          /* try to copy it to the DBUS_MACHINE_UUID_FILE, but do not
+-           * complain if that isn't possible for whatever reason */
+-          _dbus_string_init_const (&filename, DBUS_MACHINE_UUID_FILE);
+-          _dbus_write_uuid_file (&filename, machine_id, NULL);
+-        }
+-
++        _dbus_write_uuid_file (&filename, machine_id, NULL);
++      _dbus_string_free (&filename);
+       dbus_error_free (&our_error);
+       return TRUE;
+     }
+@@ -4458,6 +4603,7 @@
+                       "see the manual page for dbus-uuidgen to correct "
+                       "this issue. (%s; %s)",
+                       our_error.message, etc_error.message);
++      _dbus_string_free (&filename);
+       dbus_error_free (&our_error);
+       dbus_error_free (&etc_error);
+       return FALSE;
+@@ -4465,14 +4611,14 @@
+ 
+   dbus_error_free (&our_error);
+   dbus_error_free (&etc_error);
+-
+-  /* if none found, try to make a new one */
+-  _dbus_string_init_const (&filename, DBUS_MACHINE_UUID_FILE);
+-
+   if (!_dbus_generate_uuid (machine_id, error))
+-    return FALSE;
+-
+-  return _dbus_write_uuid_file (&filename, machine_id, error);
++    {
++      _dbus_string_free (&filename);
++      return FALSE;
++    }
++  b = _dbus_write_uuid_file (&filename, machine_id, error);
++  _dbus_string_free (&filename);
++  return b;
+ }
+ 
+ /**
+--- dbus/dbus-sysdeps-util-unix.c.orig
++++ dbus/dbus-sysdeps-util-unix.c
+@@ -1175,8 +1175,8 @@
+ 
+ /**
+  * Replace the DBUS_PREFIX in the given path, in-place, by the
+- * current D-Bus installation directory. On Unix this function
+- * does nothing, successfully.
++ * current D-Bus installation directory when the shared library layout is
++ * recognized; otherwise retain the configured path.
+  *
+  * @param path path to edit
+  * @return #FALSE on OOM
+@@ -1184,7 +1184,7 @@
+ dbus_bool_t
+ _dbus_replace_install_prefix (DBusString *path)
+ {
+-  return TRUE;
++  return _dbus_relocate_install_prefix (path);
+ }
+ 
+ static dbus_bool_t
+@@ -1417,8 +1417,19 @@
+    * however the config parser should take
+    * care of duplicates
+    */
+-  if (!_dbus_string_append (&servicedir_path, DBUS_DATADIR))
+-    goto oom;
++  {
++    DBusString configured;
++    if (!_dbus_string_init (&configured))
++      goto oom;
++    if (!_dbus_string_append (&configured, DBUS_DATADIR) ||
++        !_dbus_replace_install_prefix (&configured) ||
++        !_dbus_string_append (&servicedir_path, _dbus_string_get_const_data (&configured)))
++      {
++        _dbus_string_free (&configured);
++        goto oom;
++      }
++    _dbus_string_free (&configured);
++  }
+ 
+   if (!_dbus_split_paths_and_append (&servicedir_path,
+                                      DBUS_UNIX_STANDARD_SESSION_SERVICEDIR,
+@@ -1464,18 +1475,24 @@
+    * facilitate early boot system bus activation where /usr might not
+    * be available.
+    */
+-  static const char standard_search_path[] =
+-    "/usr/local/share:"
+-    "/usr/share:"
+-    DBUS_DATADIR ":"
+-    "/lib";
+-  DBusString servicedir_path;
+-
+-  _dbus_string_init_const (&servicedir_path, standard_search_path);
+-
+-  return _dbus_split_paths_and_append (&servicedir_path,
+-                                       DBUS_UNIX_STANDARD_SYSTEM_SERVICEDIR,
+-                                       dirs);
++  DBusString servicedir_path, configured;
++  dbus_bool_t result;
++  if (!_dbus_string_init (&servicedir_path))
++    return FALSE;
++  if (!_dbus_string_init (&configured))
++    {
++      _dbus_string_free (&servicedir_path);
++      return FALSE;
++    }
++  result = _dbus_string_append (&configured, DBUS_DATADIR) &&
++    _dbus_replace_install_prefix (&configured) &&
++    _dbus_string_append (&servicedir_path, "/usr/local/share:/usr/share:") &&
++    _dbus_string_append (&servicedir_path, _dbus_string_get_const_data (&configured)) &&
++    _dbus_string_append (&servicedir_path, ":/lib") &&
++    _dbus_split_paths_and_append (&servicedir_path, DBUS_UNIX_STANDARD_SYSTEM_SERVICEDIR, dirs);
++  _dbus_string_free (&configured);
++  _dbus_string_free (&servicedir_path);
++  return result;
+ }
+ 
+ 
+@@ -1519,7 +1536,8 @@
+ {
+   _dbus_assert (_dbus_string_get_length (str) == 0);
+ 
+-  return _dbus_string_append (str, DBUS_SYSTEM_CONFIG_FILE);
++  return _dbus_string_append (str, DBUS_SYSTEM_CONFIG_FILE) &&
++    _dbus_replace_install_prefix (str);
+ }
+ 
+ /**
+@@ -1533,7 +1551,8 @@
+ {
+   _dbus_assert (_dbus_string_get_length (str) == 0);
+ 
+-  return _dbus_string_append (str, DBUS_SESSION_CONFIG_FILE);
++  return _dbus_string_append (str, DBUS_SESSION_CONFIG_FILE) &&
++    _dbus_replace_install_prefix (str);
+ }
+ 
+ /**
+--- dbus/dbus-bus.c.orig
++++ dbus/dbus-bus.c
+@@ -230,8 +230,42 @@
+        if (bus_connection_addresses[DBUS_BUS_SYSTEM] == NULL)
+          {
+            /* Use default system bus address if none set in environment */
+-           bus_connection_addresses[DBUS_BUS_SYSTEM] =
+-             _dbus_strdup (DBUS_SYSTEM_BUS_DEFAULT_ADDRESS);
++#ifndef DBUS_WIN
++           /* Rewrite only the ordinary, single unescaped unix:path form.
++            * Other configured address grammars keep their original meaning. */
++           {
++             const char *address = DBUS_SYSTEM_BUS_DEFAULT_ADDRESS;
++             const char *tag = "unix:path=";
++             size_t tag_len = strlen (tag);
++             if (strncmp (address, tag, tag_len) == 0 &&
++                 strpbrk (address + tag_len, ",;%") == NULL)
++               {
++                 DBusString path, output;
++                 if (!_dbus_string_init (&path))
++                   return FALSE;
++                 if (!_dbus_string_init (&output))
++                   {
++                     _dbus_string_free (&path);
++                     return FALSE;
++                   }
++                 if (!_dbus_string_append (&path, address + tag_len) ||
++                     !_dbus_relocate_install_prefix (&path) ||
++                     !_dbus_string_append (&output, tag) ||
++                     !_dbus_address_append_escaped (&output, &path) ||
++                     !_dbus_string_steal_data (&output, &bus_connection_addresses[DBUS_BUS_SYSTEM]))
++                   {
++                     _dbus_string_free (&output);
++                     _dbus_string_free (&path);
++                     return FALSE;
++                   }
++                 _dbus_string_free (&output);
++                 _dbus_string_free (&path);
++               }
++           }
++#endif
++           if (bus_connection_addresses[DBUS_BUS_SYSTEM] == NULL)
++             bus_connection_addresses[DBUS_BUS_SYSTEM] =
++               _dbus_strdup (DBUS_SYSTEM_BUS_DEFAULT_ADDRESS);
+ 
+            if (bus_connection_addresses[DBUS_BUS_SYSTEM] == NULL)
+              return FALSE;
+--- tools/dbus-launch.c.orig
++++ tools/dbus-launch.c
+@@ -1293,8 +1293,17 @@
+       }
+  #endif /* DBUS_ENABLE_EMBEDDED_TESTS */
+ 
+-      execl (DBUS_DAEMONDIR"/dbus-daemon",
+-             DBUS_DAEMONDIR"/dbus-daemon",
++      DBusString installed_daemon;
++      if (!_dbus_string_init (&installed_daemon) ||
++          !_dbus_string_append (&installed_daemon, DBUS_DAEMONDIR "/dbus-daemon") ||
++          !_dbus_relocate_install_prefix (&installed_daemon))
++        {
++          fprintf (stderr, "Out of memory locating message bus daemon.\n");
++          exit (1);
++        }
++      const char *daemon_path = _dbus_string_get_const_data (&installed_daemon);
++      execl (daemon_path,
++             daemon_path,
+              close_stderr ? "--syslog-only" : "--syslog",
+              "--fork",
+              "--print-pid", write_pid_fd_as_string,
+@@ -1305,7 +1314,7 @@
+ 
+       fprintf (stderr,
+                "Failed to execute message bus daemon %s: %s.  Will try again without full path.\n",
+-               DBUS_DAEMONDIR"/dbus-daemon", strerror (errno));
++               daemon_path, strerror (errno));
+       
+       /*
+        * If it failed, try running without full PATH.  Note this is needed
+--- test/data/meson.build.orig
++++ test/data/meson.build
+@@ -208,7 +208,7 @@
+     endif
+ endif
+ 
+-run_result = run_command(find_program('copy_data_for_tests.py'), files, check: true)
++run_result = run_command(python, files('copy_data_for_tests.py'), files, check: true)
+ 
+ files_not_found = run_result.stdout().split()
+ if files_not_found.length() > 0
+--- meson.build.orig
++++ meson.build
+@@ -1267,7 +1267,7 @@
+ subdir('doc')
+ subdir('cmake')
+ 
+-meson.add_install_script('meson_post_install.py',
++meson.add_install_script(python, files('meson_post_install.py'),
+     '@0@'.format(relocation),
+ )
+ 
+@@ -1303,7 +1303,7 @@
+     endforeach
+ else
+     meson.add_install_script(
+-        'tools/meson-compat-install-emptydirs.py',
++        python, files('tools/meson-compat-install-emptydirs.py'),
+         ':'.join(install_emptydirs),
+     )
+ endif
+@@ -1325,7 +1325,7 @@
+         )
+     else
+         meson.add_install_script(
+-            'tools/meson-compat-install-symlink.py',
++            python, files('tools/meson-compat-install-symlink.py'),
+             symlink['link_name'],
+             symlink['install_dir'],
+             symlink['pointing_to'],

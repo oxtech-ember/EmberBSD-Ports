@@ -1,0 +1,37 @@
+# Resolve installed GIR defaults using the shared GLib prefix resolver.
+# Origin: EmberBSD (AI-assisted).
+
+--- girepository/girparser.c.orig
++++ girepository/girparser.c
+@@ -29,6 +29,7 @@
+ #include "girnode-private.h"
+ #include "gitypelib-internal.h"
+ #include "glib-private.h"
++#include "glib/glib-locale-private.h"
+ 
+ #include <stdlib.h>
+ #include <string.h>
+@@ -359,13 +360,23 @@
+       g_clear_pointer (&path, g_free);
+     }
+ 
++#ifndef G_OS_WIN32
++  g_autofree char *configured_gir_dir = _glib_relocate_glib_path (GIR_DIR);
++  path = g_build_filename (configured_gir_dir, girname, NULL);
++#else
+   path = g_build_filename (GIR_DIR, girname, NULL);
++#endif
+   g_debug ("Trying %s from GIR_DIR", path);
+   if (g_file_test (path, G_FILE_TEST_EXISTS | G_FILE_TEST_IS_REGULAR))
+     return g_steal_pointer (&path);
+   g_clear_pointer (&path, g_free);
+ 
++#ifndef G_OS_WIN32
++  g_autofree char *configured_data_dir = _glib_relocate_glib_path (GOBJECT_INTROSPECTION_DATADIR);
++  path = g_build_filename (configured_data_dir, GIR_SUFFIX, girname, NULL);
++#else
+   path = g_build_filename (GOBJECT_INTROSPECTION_DATADIR, GIR_SUFFIX, girname, NULL);
++#endif
+   g_debug ("Trying %s from DATADIR", path);
+   if (g_file_test (path, G_FILE_TEST_EXISTS | G_FILE_TEST_IS_REGULAR))
+     return g_steal_pointer (&path);

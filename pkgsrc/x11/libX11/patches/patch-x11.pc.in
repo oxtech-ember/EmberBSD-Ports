@@ -1,0 +1,13 @@
+$NetBSD$
+
+Preserve prefix-owned default paths when the native package is moved.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- x11.pc.in.orig
++++ x11.pc.in
+@@ -13,4 +13,4 @@
+ Requires.private: @X11_EXTRA_DEPS@
+ Cflags: -I${includedir} @XTHREAD_CFLAGS@
+ Libs: -L${libdir} -lX11
+-Libs.private: @XTHREADLIB@
++Libs.private: @XTHREADLIB@ @X11_RELOC_DL_LIBS@
