@@ -106,6 +106,8 @@ def main():
     parser.add_argument('--pkgsrc-export', help='shared export from scripts/pkgsrc-shared-export.py')
     parser.add_argument('--export-patch', help='patch used to create the shared export')
     args = parser.parse_args()
+    loader = module(ROOT / 'pkgsrc/lang/llvm/files/sdk_source.py', 'libarchive_sdk_source')
+    loader.load_sdk(['--sdk-source', args.sdk_source])
     if args.operation == 'prepare':
         if not args.patch or not os.path.isabs(args.patch):
             parser.error('prepare requires an absolute --patch')

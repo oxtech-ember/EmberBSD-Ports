@@ -1,8 +1,8 @@
 # Origin: EmberBSD (AI-assisted).
 # Locate libstdbuf relative to the actual installed executable.
 
---- a/src/stdbuf.c
-+++ b/src/stdbuf.c
+--- src/stdbuf.c
++++ src/stdbuf.c
 @@ -23,6 +23,7 @@
  
  #include "system.h"

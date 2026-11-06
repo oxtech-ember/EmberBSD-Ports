@@ -149,6 +149,25 @@ class ScopedUpdateTests(unittest.TestCase):
         self.assertEqual(json.loads(receipt.read_text())['dirty_inputs']['resources/owner.txt']['mode'], 0o755)
         self.assertEqual(source.stat().st_mode & 0o777, 0o775)
 
+    def test_private_inputs_survive_scoped_replay(self):
+        for mode in (0o600, 0o640, 0o700, 0o750):
+            with self.subTest(mode=oct(mode)):
+                source = write(self.ports, 'resources/owner.txt', 'private-before\n')
+                source.chmod(mode)
+                directory = self.work / ('private-' + oct(mode))
+                command = [*self.command]
+                command[3] = directory
+                result = run(command, self.ports, check=False)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                source.write_text('private-after\n')
+                result = run(command + ['--update', '--package', 'cat/pkg', '--file', 'misc/owner.txt'],
+                             self.ports, check=False)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                output = directory / 'pkgsrc/misc/owner.txt'
+                self.assertEqual(output.read_text(), 'private-after\n')
+                self.assertEqual(output.stat().st_mode & 0o777, mode)
+                self.assertEqual(source.stat().st_mode & 0o777, mode)
+
     def test_unchanged_group_writable_link_allows_other_package_update(self):
         write(self.ports, 'pkgsrc/replaces', 'cat/pkg\n')
         write(self.ports, 'pkgsrc/cat/pkg/Makefile', 'PKGNAME=fixture-1\n')
@@ -720,10 +739,9 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
 from unittest.mock import patch
 s=importlib.util.spec_from_file_location('u',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 replace=m.os.replace
-calls=[0]
 def fail_after_one(*args):
-    calls[0]+=1
-    if calls[0] == 2: raise OSError('injected interruption')
+    if str(args[1]).endswith('/pkgsrc/cat/pkg/Makefile'):
+        raise OSError('injected interruption')
     return replace(*args)
 with patch.object(m.os, 'replace', side_effect=fail_after_one):
     m.update(sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5],sys.argv[6], 'cat/pkg',['misc/owner.txt'])
@@ -783,7 +801,12 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
         self.assertEqual(third.returncode, 0, third.stdout + third.stderr)
         self.assertEqual((selected.stat().st_ino, selected.stat().st_mtime_ns), stamp)
         cache = self.export / '.pkgsrc-update-inputs'
-        self.assertFalse(cache.exists() and any(cache.iterdir()))
+        retained = json.loads(self.receipt.read_text())['dirty_inputs']
+        # Committed bytes need no dirty content record. Private mode overrides
+        # still need replay metadata because Git only stores the executable bit.
+        self.assertTrue(all(entry['mode'] not in (0o644, 0o755) for entry in retained.values()))
+        self.assertEqual({path.name for path in cache.iterdir()} if cache.exists() else set(),
+                         {entry['sha256'] for entry in retained.values()})
 
     def test_multi_package_shared_patch_atomic_resume(self):
         write(self.ports, 'pkgsrc/replaces', 'cat/pkg\n')

@@ -621,6 +621,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
         dirty.update(git_call('ls-files', '--others', '--exclude-standard').stdout.decode().splitlines())
         dirty.update(git_call('ls-files', '--others', '-i', '--exclude-standard').stdout.decode().splitlines())
         dirty.update(current_refs - old_refs)
+        dirty.update(ident.input_mode_overrides(ports, snapshot))
         dirty.update(tree + '/' + name for tree, rows in snapshot['trees'].items()
                      for name, row in rows.items() if row['kind'] == 'link')
         dirty_inputs, dirty_content = {}, {}
@@ -634,7 +635,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                 raise ValueError('dirty export input changed while read: ' + name)
             # The exporter removes group/other write bits from copied inputs.
             mode = stat.S_IMODE(source.stat().st_mode) & ~0o022
-            if mode not in (0o644, 0o755):
+            if not ident.valid_input_mode(mode):
                 raise ValueError('unsupported dirty export input mode: ' + name)
             tracked, tracked_mode = historical_file(name, current['ports_commit'])
             if tracked == content and tracked_mode == mode:

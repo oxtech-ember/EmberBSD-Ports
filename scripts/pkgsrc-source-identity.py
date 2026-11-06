@@ -650,8 +650,28 @@ def validate_shared_receipt(receipt):
                 any(x in ('', '.', '..') for x in name.split('/')) or
                 not isinstance(entry, dict) or set(entry) != {'sha256', 'mode'} or
                 not isinstance(entry['sha256'], str) or re.fullmatch('[0-9a-f]{64}', entry['sha256']) is None or
-                type(entry['mode']) is not int or entry['mode'] not in (0o644, 0o755)):
+                not valid_input_mode(entry['mode'])):
             raise ValueError('invalid dirty input inventory')
+
+
+def valid_input_mode(mode):
+    """Copied inputs must be owner-readable, without special or public write bits."""
+    return type(mode) is int and mode & ~0o755 == 0 and bool(mode & 0o400)
+
+
+def input_mode_overrides(root, snapshot):
+    """Retain copied permissions that Git's executable bit cannot reconstruct."""
+    import stat
+
+    def overridden(mode):
+        return mode & ~0o022 != (0o755 if mode & 0o100 else 0o644)
+
+    names = {name for name in snapshot['files']
+             if overridden(stat.S_IMODE((Path(root) / name).stat().st_mode))}
+    for tree, rows in snapshot['trees'].items():
+        names.update(tree + '/' + name for name, row in rows.items()
+                     if row['kind'] == 'file' and overridden(row['mode']))
+    return names
 
 
 def _initial_dirty_inputs(root, git, snapshot):
@@ -664,6 +684,7 @@ def _initial_dirty_inputs(root, git, snapshot):
                  ('ls-files', '-z', '--others', '-i', '--exclude-standard')):
         data = subprocess.check_output([str(git), '-C', str(root), *args], env=process.sanitized_environment())
         candidates.update(os.fsdecode(x) for x in data.split(b'\0') if x)
+    candidates.update(input_mode_overrides(root, snapshot))
     expected = dict(snapshot['files'])
     for tree, rows in snapshot['trees'].items():
         for name, row in rows.items():
@@ -686,7 +707,7 @@ def _initial_dirty_inputs(root, git, snapshot):
             raise ValueError('dirty export input changed while read: ' + name)
         # Match prepare-pkgsrc's copied payload, not the checkout's umask.
         mode = stat.S_IMODE(resolved.stat().st_mode) & ~0o022
-        if mode not in (0o644, 0o755):
+        if not valid_input_mode(mode):
             raise ValueError('unsupported dirty export input mode: ' + name)
         records[name] = {'sha256': sha, 'mode': mode}
         contents[sha] = data
