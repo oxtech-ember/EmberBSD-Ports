@@ -337,9 +337,11 @@ for the destruction paths. Manual acceptance includes dragging/resizing across
 scaled monitors, titlebar controls, activation policy and transient ownership.
 
 Source-only Cppcheck 2.22.0, public API/header inspection and zero-fuzz patch
-application are preparation checks. The fixture and complete translation unit
-have not yet been compiled or run against the shared GTK4 SDK. Geometry, WM
-policy and executable memory-safety acceptance remain pending that build.
+application are preparation checks. The complete toplevel.cpp translation unit
+passes the selected target Clang syntax check with real configured wx and GTK4
+headers, including frame style constants without a precompiled header. The
+fixture, linking, geometry, WM policy and executable memory-safety acceptance
+remain pending the shared GTK4 runtime.
 
 # GTK4 notebook and static-box contract
 

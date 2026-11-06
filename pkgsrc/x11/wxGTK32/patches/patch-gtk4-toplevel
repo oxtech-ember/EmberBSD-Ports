@@ -52,12 +52,13 @@ https://docs.gtk.org/gdk4-x11/signal.X11Display.xevent.html
 +#endif // __WXGTK4__
 --- /dev/null
 +++ src/gtk/toplevel_gtk4.inc
-@@ -0,0 +1,829 @@
+@@ -0,0 +1,830 @@
 +///////////////////////////////////////////////////////////////////////////////
 +// GTK4 top-level windows. Origin: EmberBSD (AI-assisted).
 +// Licence: wxWindows licence, like the surrounding wxWidgets implementation.
 +///////////////////////////////////////////////////////////////////////////////
 +#include "wx/toplevel.h"
++#include "wx/frame.h"
 +#include "wx/app.h"
 +#include "wx/icon.h"
 +#include "wx/log.h"
