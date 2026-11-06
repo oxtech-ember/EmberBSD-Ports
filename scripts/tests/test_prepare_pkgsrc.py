@@ -81,6 +81,34 @@ class ExportTests(unittest.TestCase):
             with self.subTest(recipe=name):
                 exporter.check_recipe(source, name, owner)
 
+    def test_new_cpp_providers_export_without_upstream_recipes(self):
+        owner = HERE.parents[1]
+        # These providers are absent from the pinned pkgsrc 2026Q3 tree.
+        names = ('devel/argparse', 'devel/dynamic_bitset', 'devel/libpopcnt',
+                 'devel/magic_enum', 'devel/thread-pool', 'math/nanoflann',
+                 'security/picosha2', 'textproc/parson', 'textproc/rapidcsv')
+        replacements = (owner / 'pkgsrc/replaces').read_text().splitlines()
+        (self.root / 'pkgsrc/replaces').write_text(
+            ''.join(name + '\n' for name in replacements if name in names))
+        for name in names:
+            category, _ = name.split('/')
+            upstream_category = self.upstream / category
+            upstream_category.mkdir(exist_ok=True)
+            (upstream_category / 'Makefile').write_text(
+                '.include "../mk/misc/category.mk"\n')
+            shutil.copytree(owner / 'pkgsrc' / name,
+                            self.root / 'pkgsrc' / name)
+
+        self.fake_export()
+        for name in names:
+            with self.subTest(recipe=name):
+                category, package = name.split('/')
+                exported = self.work / 'export' / name
+                self.assertEqual((exported / 'Makefile').read_bytes(),
+                                 (owner / 'pkgsrc' / name / 'Makefile').read_bytes())
+                category_makefile = (exported.parent / 'Makefile').read_text()
+                self.assertEqual(category_makefile.count('SUBDIR+=\t' + package + '\n'), 1)
+
     def test_recipe_patch_rcs_changes_keep_digest_but_raw_or_changed_body_refuse(self):
         source = self.root / 'pkgsrc/devel/patch-checksum'
         (source / 'patches').mkdir(parents=True)

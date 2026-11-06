@@ -545,19 +545,6 @@ security/libfido2
 
 security/zxcvbn-c
 
-# Current common header-only C++ providers.
-devel/argparse
-devel/dynamic_bitset
-devel/libpopcnt
-devel/magic_enum
-devel/thread-pool
-
-# Common data and spatial utility providers.
-math/nanoflann
-security/picosha2
-textproc/parson
-textproc/rapidcsv
-
 graphics/glad
 sysutils/cpuinfo
 

@@ -25,7 +25,7 @@ mkdir -p "$upstream/devel/alpha" "$upstream/devel/beta/patches" "$upstream/mk"
 printf 'PKGNAME=alpha-1\n' > "$upstream/devel/alpha/Makefile"
 printf 'PKGNAME=beta-1\n' > "$upstream/devel/beta/Makefile"
 : > "$upstream/devel/beta/distinfo"
-printf 'SUBDIR+=alpha\nSUBDIR+=beta\n' > "$upstream/devel/Makefile"
+printf 'SUBDIR+=alpha\nSUBDIR+=beta\n.include "../mk/misc/category.mk"\n' > "$upstream/devel/Makefile"
 printf 'upstream\n' > "$upstream/mk/bsd.pkg.mk"
 
 # The fixture repository.
