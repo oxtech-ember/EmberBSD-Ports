@@ -1,0 +1,857 @@
+$NetBSD$
+
+Port native DataView model, custom cells, input and DnD to public GTK4 APIs.
+Origin: EmberBSD (AI-assisted). wxWindows licence, like upstream.
+Retain GtkTreeView and wx models; GtkSnapshot replaces Cairo render vfuncs.
+Reuse the common wxDropTarget MIME transport for arbitrary-format tree drops.
+https://docs.gtk.org/gtk4/class.TreeView.html
+https://docs.gtk.org/gtk4/vfunc.CellRenderer.snapshot.html
+https://docs.gtk.org/gtk4/iface.TreeDragSource.html
+
+--- include/wx/gtk/dataview.h.orig
++++ include/wx/gtk/dataview.h
+@@ -221,7 +221,9 @@
+     virtual void DoExpand(const wxDataViewItem& item, bool expandChildren) wxOVERRIDE;
+ 
+     virtual void DoApplyWidgetStyle(GtkRcStyle *style) wxOVERRIDE;
++#ifndef __WXGTK4__
+     virtual GdkWindow* GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+ private:
+     void Init();
+--- src/gtk/dataview.cpp.orig
++++ src/gtk/dataview.cpp
+@@ -41,6 +41,12 @@
+ #include "wx/gtk/private/object.h"
+ #include "wx/gtk/private/treeview.h"
+ #include "wx/gtk/private/value.h"
++#ifdef __WXGTK4__
++#include "wx/gtk/private/transfer4.h"
++#include "wx/gtk/private/surface4.h"
++#include "wx/weakref.h"
++#include "wx/dnd.h"
++#endif
+ using namespace wxGTKImpl;
+ 
+ class wxGtkDataViewModelNotifier;
+@@ -217,12 +223,16 @@
+ 
+     gboolean row_draggable( GtkTreeDragSource *drag_source, GtkTreePath *path );
+     gboolean drag_data_delete( GtkTreeDragSource *drag_source, GtkTreePath* path );
++#ifdef __WXGTK4__
++    GdkContentProvider* drag_data_get(GtkTreeDragSource*, GtkTreePath*);
++#else
+     gboolean drag_data_get( GtkTreeDragSource *drag_source, GtkTreePath *path,
+         GtkSelectionData *selection_data );
+     gboolean drag_data_received( GtkTreeDragDest *drag_dest, GtkTreePath *dest,
+         GtkSelectionData *selection_data );
+     gboolean row_drop_possible( GtkTreeDragDest *drag_dest, GtkTreePath *dest_path,
+         GtkSelectionData *selection_data );
++#endif
+ 
+     // notifactions from wxDataViewModel
+     bool ItemAdded( const wxDataViewItem &parent, const wxDataViewItem &item );
+@@ -308,12 +318,18 @@
+     int                   m_sort_column;
+     bool                  m_sort_frozen;
+ 
++#ifndef __WXGTK4__
+     GtkTargetEntry        m_dragSourceTargetEntry;
+     wxCharBuffer          m_dragSourceTargetEntryTarget;
++#endif
+     wxDataObject         *m_dragDataObject;
+ 
++#ifdef __WXGTK4__
++    std::unique_ptr<wxDropTarget> m_gtkDropTarget;
++#else
+     GtkTargetEntry        m_dropTargetTargetEntry;
+     wxCharBuffer          m_dropTargetTargetEntryTarget;
++#endif
+     wxDataObject         *m_dropDataObject;
+ 
+     wxGtkDataViewModelNotifier *m_notifier;
+@@ -517,7 +533,10 @@
+ static void         wxgtk_tree_model_tree_model_init (void* g_iface, void*);
+ static void         wxgtk_tree_model_sortable_init   (void* g_iface, void*);
+ static void         wxgtk_tree_model_drag_source_init(void* g_iface, void*);
++#ifndef __WXGTK4__
+ static void         wxgtk_tree_model_drag_dest_init  (void* g_iface, void*);
++
++#endif
+ 
+ static GtkTreeModelFlags wxgtk_tree_model_get_flags  (GtkTreeModel      *tree_model);
+ static gint         wxgtk_tree_model_get_n_columns   (GtkTreeModel      *tree_model);
+@@ -572,6 +591,9 @@
+                                                         GtkTreePath           *path);
+ static gboolean wxgtk_tree_model_drag_data_delete      (GtkTreeDragSource     *drag_source,
+                                                         GtkTreePath           *path);
++#ifdef __WXGTK4__
++static GdkContentProvider* wxgtk_tree_model_drag_data_get(GtkTreeDragSource*, GtkTreePath*);
++#else
+ static gboolean wxgtk_tree_model_drag_data_get         (GtkTreeDragSource     *drag_source,
+                                                         GtkTreePath           *path,
+                                                         GtkSelectionData      *selection_data);
+@@ -581,6 +603,7 @@
+ static gboolean wxgtk_tree_model_row_drop_possible     (GtkTreeDragDest       *drag_dest,
+                                                         GtkTreePath           *dest_path,
+                                                         GtkSelectionData      *selection_data);
++#endif
+ 
+ static GType
+ gtk_wx_tree_model_get_type (void)
+@@ -624,12 +647,14 @@
+             NULL
+         };
+ 
++#ifndef __WXGTK4__
+         static const GInterfaceInfo drag_dest_iface_info =
+         {
+             wxgtk_tree_model_drag_dest_init,
+             NULL,
+             NULL
+         };
++#endif
+ 
+         tree_model_type = g_type_register_static (G_TYPE_OBJECT, "GtkWxTreeModel",
+                                                 &tree_model_info, (GTypeFlags)0 );
+@@ -640,9 +665,11 @@
+         g_type_add_interface_static (tree_model_type,
+                                      GTK_TYPE_TREE_SORTABLE,
+                                      &sortable_iface_info);
++#ifndef __WXGTK4__
+         g_type_add_interface_static (tree_model_type,
+                                      GTK_TYPE_TREE_DRAG_DEST,
+                                      &drag_dest_iface_info);
++#endif
+         g_type_add_interface_static (tree_model_type,
+                                      GTK_TYPE_TREE_DRAG_SOURCE,
+                                      &drag_source_iface_info);
+@@ -696,6 +723,7 @@
+     iface->drag_data_get = wxgtk_tree_model_drag_data_get;
+ }
+ 
++#ifndef __WXGTK4__
+ static void
+ wxgtk_tree_model_drag_dest_init(void* g_iface, void*)
+ {
+@@ -703,6 +731,8 @@
+     iface->drag_data_received = wxgtk_tree_model_drag_data_received;
+     iface->row_drop_possible = wxgtk_tree_model_row_drop_possible;
+ }
++
++#endif
+ 
+ static void
+ wxgtk_tree_model_init(GTypeInstance* instance, void*)
+@@ -937,6 +967,13 @@
+     return wxtree_model->internal->drag_data_delete( drag_source, path );
+ }
+ 
++#ifdef __WXGTK4__
++static GdkContentProvider* wxgtk_tree_model_drag_data_get(GtkTreeDragSource* source, GtkTreePath* path)
++{
++    GtkWxTreeModel* model = GTK_WX_TREE_MODEL(source);
++    return model->stamp && model->internal ? model->internal->drag_data_get(source, path) : NULL;
++}
++#else
+ static gboolean
+ wxgtk_tree_model_drag_data_get (GtkTreeDragSource *drag_source,
+                                 GtkTreePath       *path,
+@@ -993,6 +1030,8 @@
+ 
+     return wxtree_model->internal->row_drop_possible( drag_dest, dest_path, selection_data );
+ }
++
++#endif
+ 
+ /* sortable iface */
+ static gboolean
+@@ -1230,16 +1269,16 @@
+ // In GTK+ < 3.8 GtkBin can't be used as widget base type without defining our
+ // own size_allocate and related (either size_request for GTK+ 2 or
+ // get_preferred_height for GTK+ 3) vfuncs, so we use GtkHBox instead. But in
+-// GTK+ 4, GtkHBox is removed, so we do use GtkBin with it.
++// GTK4 removes both GtkHBox and GtkBin, so use its layout-capable GtkBox.
+ #ifdef __WXGTK4__
+-    typedef GtkBin GtkWxCellEditorBinBase;
+-    typedef GtkBinClass GtkWxCellEditorBinBaseClass;
++    typedef GtkBox GtkWxCellEditorBinBase;
++    typedef GtkBoxClass GtkWxCellEditorBinBaseClass;
+ 
+     // Notice that this can't be just a (const) variable as GTK+ type constants
+     // are actually macros expanding into function calls, which shouldn't be
+     // performed before the library is initialized, so we need to use either an
+     // inline function or a define, which is simpler.
+-    #define GtkWxCellEditorBinBaseType GTK_TYPE_BIN
++    #define GtkWxCellEditorBinBaseType GTK_TYPE_BOX
+ #else // GTK+ < 4
+     // GtkHBox is deprecated since 3.2, so avoid warnings about using it.
+     wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+@@ -1257,6 +1296,9 @@
+ 
+     // The actual user-created editor.
+     wxWindow* editor;
++#ifdef __WXGTK4__
++    gboolean editingCancelled; // GObject zero-initializes instance storage.
++#endif
+ };
+ 
+ static GtkWidget* gtk_wx_cell_editor_bin_new(wxWindow* editor);
+@@ -1327,6 +1369,20 @@
+     }
+ }
+ 
++#ifdef __WXGTK4__
++static void gtk_wx_cell_editor_bin_get_property(GObject* object, guint property, GValue* value, GParamSpec* spec)
++{
++    if (property == CELL_EDITOR_BIN_PROP_EDITING_CANCELED)
++        g_value_set_boolean(value, reinterpret_cast<GtkWxCellEditorBin*>(object)->editingCancelled);
++    else G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property, spec);
++}
++static void gtk_wx_cell_editor_bin_set_property(GObject* object, guint property, const GValue* value, GParamSpec* spec)
++{
++    if (property == CELL_EDITOR_BIN_PROP_EDITING_CANCELED)
++        reinterpret_cast<GtkWxCellEditorBin*>(object)->editingCancelled = g_value_get_boolean(value);
++    else G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property, spec);
++}
++#else
+ // We need to provide these virtual methods as we must support the
+ // editing-canceled property, but they don't seem to be actually ever called,
+ // so it's not clear if we must implement them and how. For now just do
+@@ -1342,6 +1398,8 @@
+ {
+ }
+ 
++#endif
++
+ static GtkWidget*
+ gtk_wx_cell_editor_bin_new(wxWindow* editor)
+ {
+@@ -1352,7 +1410,12 @@
+         bin = (GtkWxCellEditorBin*)g_object_new (GTK_TYPE_WX_CELL_EDITOR_BIN, NULL);
+ 
+     bin->editor = editor;
++#ifdef __WXGTK4__
++    gtk_widget_set_hexpand(editor->m_widget, TRUE);
++    gtk_box_append(GTK_BOX(bin), editor->m_widget);
++#else
+     gtk_container_add(GTK_CONTAINER(bin), editor->m_widget);
++#endif
+ 
+     return GTK_WIDGET(bin);
+ }
+@@ -1500,8 +1563,34 @@
+ {
+     GtkCellRendererClass *cell_class = GTK_CELL_RENDERER_CLASS (klass);
+ 
++#ifdef __WXGTK4__
++    cell_class->get_preferred_width = [](GtkCellRenderer* cell, GtkWidget* widget, gint* minimum, gint* natural)
++    {
++        gint width;
++        gtk_wx_cell_renderer_get_size(cell, widget, NULL, NULL, NULL, &width, NULL);
++        if (minimum) *minimum = width;
++        if (natural) *natural = width;
++    };
++    cell_class->get_preferred_height = [](GtkCellRenderer* cell, GtkWidget* widget, gint* minimum, gint* natural)
++    {
++        gint height;
++        gtk_wx_cell_renderer_get_size(cell, widget, NULL, NULL, NULL, NULL, &height);
++        if (minimum) *minimum = height;
++        if (natural) *natural = height;
++    };
++    cell_class->snapshot = [](GtkCellRenderer* cell, GtkSnapshot* snapshot, GtkWidget* widget,
++                             const GdkRectangle* background, const GdkRectangle* area, GtkCellRendererState flags)
++    {
++        graphene_rect_t bounds;
++        graphene_rect_init(&bounds, background->x, background->y, background->width, background->height);
++        cairo_t* cr = gtk_snapshot_append_cairo(snapshot, &bounds);
++        gtk_wx_cell_renderer_render(cell, cr, widget, background, area, flags);
++        cairo_destroy(cr);
++    };
++#else
+     cell_class->get_size = gtk_wx_cell_renderer_get_size;
+     cell_class->render = gtk_wx_cell_renderer_render;
++#endif
+     cell_class->activate = gtk_wx_cell_renderer_activate;
+     cell_class->start_editing = gtk_wx_cell_renderer_start_editing;
+ }
+@@ -1739,10 +1828,21 @@
+         // activated by <ENTER>
+         return cell->ActivateCell(renderrect, model, item, model_col, NULL);
+     }
+-    else if ( event->type == GDK_BUTTON_PRESS )
+-    {
++    else if (
++#ifdef __WXGTK4__
++        gdk_event_get_event_type(event) == GDK_BUTTON_PRESS
++#else
++        event->type == GDK_BUTTON_PRESS
++#endif
++    )
++    {
++#ifdef __WXGTK4__
++        GdkEvent* button_event = event;
++        if (gdk_button_event_get_button(event) == 1)
++#else
+         GdkEventButton *button_event = (GdkEventButton*)event;
+         if ( button_event->button == 1 )
++#endif
+         {
+             wxMouseEvent mouse_event(wxEVT_LEFT_DOWN);
+             InitMouseEvent(ctrl, mouse_event, button_event);
+@@ -1930,8 +2030,12 @@
+                     gtk_widget_get_allocation(GTK_WIDGET(gtk_tree_view_column_get_button(gcolumn)), &a);
+                     int ydiff = a.height;
+                     // Redraw
++#ifdef __WXGTK4__
++                    gtk_widget_queue_draw(GTK_WIDGET(widget));
++#else
+                     gtk_widget_queue_draw_area( GTK_WIDGET(widget),
+                         cell_area.x - xdiff, ydiff + cell_area.y, cell_area.width, cell_area.height );
++#endif
+                 }
+             }
+ 
+@@ -2447,7 +2551,12 @@
+ 
+ namespace
+ {
+-class wxCellRendererPixbuf: GtkCellRendererPixbuf
++class wxCellRendererPixbuf:
++#ifdef __WXGTK4__
++    GtkCellRenderer
++#else
++    GtkCellRendererPixbuf
++#endif
+ {
+ public:
+     static GType Type();
+@@ -2469,9 +2578,15 @@
+     if (type == 0)
+     {
+         type = g_type_register_static_simple(
++#ifdef __WXGTK4__
++            GTK_TYPE_CELL_RENDERER,
++            "wxCellRendererPixbuf",
++            sizeof(GtkCellRendererClass),
++#else
+             GTK_TYPE_CELL_RENDERER_PIXBUF,
+             "wxCellRendererPixbuf",
+             sizeof(GtkCellRendererPixbufClass),
++#endif
+             wxCellRendererPixbufClassInit,
+             sizeof(wxCellRendererPixbuf),
+             NULL, GTypeFlags(0));
+@@ -2490,6 +2605,12 @@
+ {
+     *m_bundle = bundle;
+ 
++#ifdef __WXGTK4__
++    const wxSize size = bundle.IsOk() ? bundle.GetDefaultSize() : wxSize(0, 0);
++    gint xpad, ypad;
++    gtk_cell_renderer_get_padding(GTK_CELL_RENDERER(this), &xpad, &ypad);
++    gtk_cell_renderer_set_fixed_size(GTK_CELL_RENDERER(this), size.x + 2 * xpad, size.y + 2 * ypad);
++#else
+     GdkPixbuf* pixbuf = NULL;
+     if (bundle.IsOk())
+     {
+@@ -2499,6 +2620,7 @@
+     g_object_set(G_OBJECT(this), "pixbuf", pixbuf, NULL);
+     if (pixbuf)
+         g_object_unref(pixbuf);
++#endif
+ }
+ } // anonymous namespace
+ 
+@@ -2534,7 +2656,19 @@
+ 
+ static void wxCellRendererPixbufClassInit(void* g_class, void* /*class_data*/)
+ {
++#ifdef __WXGTK4__
++    GTK_CELL_RENDERER_CLASS(g_class)->snapshot = [](GtkCellRenderer* cell, GtkSnapshot* snapshot,
++        GtkWidget* widget, const GdkRectangle* background, const GdkRectangle* area, GtkCellRendererState flags)
++    {
++        graphene_rect_t bounds;
++        graphene_rect_init(&bounds, area->x, area->y, area->width, area->height);
++        cairo_t* cr = gtk_snapshot_append_cairo(snapshot, &bounds);
++        wxCellRendererPixbufRender(cell, cr, widget, background, area, flags);
++        cairo_destroy(cr);
++    };
++#else
+     GTK_CELL_RENDERER_CLASS(g_class)->render = wxCellRendererPixbufRender;
++#endif
+     G_OBJECT_CLASS(g_class)->finalize = wxCellRendererPixbufFinalize;
+     wxCellRendererPixbufParentClass = GTK_CELL_RENDERER_CLASS(g_type_class_peek_parent(g_class));
+ }
+@@ -2799,6 +2933,16 @@
+     cell_area.x += xoffset;
+     cell_area.width -= xoffset;
+ 
++#ifdef __WXGTK4__
++    GtkSnapshot* snapshot = gtk_snapshot_new();
++    gtk_cell_renderer_snapshot(GTK_CELL_RENDERER(textRenderer), snapshot, m_renderParams->widget,
++        m_renderParams->background_area, &cell_area, GtkCellRendererState(m_renderParams->flags));
++    if (GskRenderNode* node = gtk_snapshot_free_to_node(snapshot))
++    {
++        gsk_render_node_draw(node, m_renderParams->cr);
++        gsk_render_node_unref(node);
++    }
++#else
+     gtk_cell_renderer_render( GTK_CELL_RENDERER(textRenderer),
+ #ifdef __WXGTK3__
+         m_renderParams->cr,
+@@ -2812,6 +2956,7 @@
+         m_renderParams->expose_area,
+ #endif
+         GtkCellRendererState(m_renderParams->flags));
++#endif
+ }
+ 
+ bool wxDataViewCustomRenderer::Init(wxDataViewCellMode mode, int align)
+@@ -3178,6 +3323,20 @@
+ // ---------------------------------------------------------
+ 
+ 
++#ifdef __WXGTK4__
++static gboolean gtk_dataview_header_event(GtkEventController*, GdkEvent* native, wxDataViewColumn* column)
++{
++    if (gdk_event_get_event_type(native) != GDK_BUTTON_PRESS) return FALSE;
++    const guint button = gdk_button_event_get_button(native);
++    if (button != 1 && button != 3) return FALSE;
++    if (button == 1) gs_lastLeftClickHeader = column;
++    wxDataViewCtrl* dv = column->GetOwner();
++    wxDataViewEvent event(button == 1 ? wxEVT_DATAVIEW_COLUMN_HEADER_CLICK :
++                         wxEVT_DATAVIEW_COLUMN_HEADER_RIGHT_CLICK, dv, column);
++    dv->HandleWindowEvent(event);
++    return FALSE; // Preserve native sort/resize and the existing event contract.
++}
++#else
+ static gboolean
+ gtk_dataview_header_button_press_callback( GtkWidget *WXUNUSED(widget),
+                                            GdkEventButton *gdk_event,
+@@ -3207,6 +3366,7 @@
+ 
+     return FALSE;
+ }
++#endif
+ 
+ extern "C"
+ {
+@@ -3294,9 +3454,17 @@
+     gtk_widget_show( box );
+     // gtk_container_set_border_width((GtkContainer*)box, 2);
+     m_image = wxGtkImage::New();
++#ifdef __WXGTK4__
++    gtk_box_append(GTK_BOX(box), m_image);
++#else
+     gtk_box_pack_start(GTK_BOX(box), m_image, FALSE, FALSE, 1);
++#endif
+     m_label = gtk_label_new("");
++#ifdef __WXGTK4__
++    gtk_box_append(GTK_BOX(box), GTK_WIDGET(m_label));
++#else
+     gtk_box_pack_end( GTK_BOX(box), GTK_WIDGET(m_label), FALSE, FALSE, 1 );
++#endif
+     gtk_tree_view_column_set_widget( column, box );
+ 
+     wxDataViewRenderer * const colRenderer = GetRenderer();
+@@ -3319,8 +3487,15 @@
+         GtkWidget* button = gtk_tree_view_column_get_button(column);
+         if (button)
+         {
++#ifdef __WXGTK4__
++            GtkEventController* controller = gtk_event_controller_legacy_new();
++            gtk_event_controller_set_propagation_phase(controller, GTK_PHASE_CAPTURE);
++            g_signal_connect(controller, "event", G_CALLBACK(gtk_dataview_header_event), this);
++            gtk_widget_add_controller(button, controller);
++#else
+             g_signal_connect(button, "button_press_event",
+                       G_CALLBACK (gtk_dataview_header_button_press_callback), this);
++#endif
+ 
+             // otherwise the event will be blocked by GTK+
+             gtk_tree_view_column_set_clickable( column, TRUE );
+@@ -3708,6 +3883,9 @@
+ 
+ wxDataViewCtrlInternal::~wxDataViewCtrlInternal()
+ {
++#ifdef __WXGTK4__
++    m_gtkDropTarget.reset();
++#endif
+     m_wx_model->RemoveNotifier( m_notifier );
+ 
+     // remove the model from the GtkTreeView before it gets destroyed
+@@ -3805,6 +3983,9 @@
+ 
+ // GTK+ dnd iface
+ 
++#ifdef __WXGTK4__
++#include "dataview_dnd4.inc"
++#else
+ bool wxDataViewCtrlInternal::EnableDragSource( const wxDataFormat &format )
+ {
+     wxGtkString atom_str( gdk_atom_name( format  ) );
+@@ -3843,27 +4024,37 @@
+     return true;
+ }
+ 
++#endif
++
+ gboolean wxDataViewCtrlInternal::row_draggable( GtkTreeDragSource *WXUNUSED(drag_source),
+     GtkTreePath *path )
+ {
+     delete m_dragDataObject;
+     m_dragDataObject = NULL;
+ 
+-#ifdef __WXGTK4__
+-    return false;
+-#else
+     wxDataViewCtrl* const dvc = GetOwner();
+     wxDataViewItem item(dvc->GTKPathToItem(path));
+     if ( !item )
+         return FALSE;
+ 
+     wxDataViewEvent event(wxEVT_DATAVIEW_ITEM_BEGIN_DRAG, dvc, item);
++#ifdef __WXGTK4__
++    wxWeakRef<wxDataViewCtrl> alive(dvc);
++    const wxPoint position = dvc->ScreenToClient(wxGetMousePosition());
++    const gint x = position.x, y = position.y;
++#else
+     wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+     gint x, y;
+     gtk_widget_get_pointer(m_owner->GtkGetTreeView(), &x, &y);
+     wxGCC_WARNING_RESTORE()
++#endif
+     event.SetPosition(x, y);
+-    if (!m_owner->HandleWindowEvent( event ))
++    const bool handled = dvc->HandleWindowEvent(event);
++#ifdef __WXGTK4__
++    if (!alive || alive->IsBeingDeleted() || alive->GtkGetInternal() != this)
++    { delete event.GetDataObject(); return FALSE; }
++#endif
++    if (!handled)
+         return FALSE;
+ 
+     if (!event.IsAllowed())
+@@ -3876,7 +4067,6 @@
+     m_dragDataObject = obj;
+ 
+     return TRUE;
+-#endif
+ }
+ 
+ gboolean
+@@ -3886,6 +4076,12 @@
+     return FALSE;
+ }
+ 
++#ifdef __WXGTK4__
++GdkContentProvider* wxDataViewCtrlInternal::drag_data_get(GtkTreeDragSource*, GtkTreePath*)
++{
++    return m_dragDataObject ? wxGTKTransfer::Snapshot(*m_dragDataObject) : NULL;
++}
++#else
+ gboolean wxDataViewCtrlInternal::drag_data_get( GtkTreeDragSource *WXUNUSED(drag_source),
+     GtkTreePath *path, GtkSelectionData *selection_data )
+ {
+@@ -3955,6 +4151,8 @@
+ 
+     return TRUE;
+ }
++
++#endif
+ 
+ // notifications from wxDataViewModel
+ 
+@@ -4672,6 +4870,55 @@
+ // "motion_notify_event"
+ //-----------------------------------------------------------------------------
+ 
++#ifdef __WXGTK4__
++static gboolean gtk_dataview_event(GtkEventController* controller, GdkEvent* native, wxDataViewCtrl* dv)
++{
++    const GdkEventType type = gdk_event_get_event_type(native);
++    if (type != GDK_MOTION_NOTIFY &&
++        (type != GDK_BUTTON_PRESS || gdk_button_event_get_button(native) != 3)) return FALSE;
++    GtkWidget* widget = gtk_event_controller_get_widget(controller);
++    GtkNative* top = gtk_widget_get_native(widget);
++    if (!top) return FALSE;
++    double x, y, dx, dy;
++    if (!gdk_event_get_position(native, &x, &y)) return FALSE;
++    if (gdk_event_get_surface(native) != gtk_native_get_surface(top) &&
++        !gdk_surface_translate_coordinates(gdk_event_get_surface(native), gtk_native_get_surface(top), &x, &y)) return FALSE;
++    gtk_native_get_surface_transform(top, &dx, &dy);
++    graphene_point_t point, local;
++    graphene_point_init(&point, float(x - dx), float(y - dy));
++    if (!gtk_widget_compute_point(GTK_WIDGET(top), widget, &point, &local)) return FALSE;
++    GtkTreeView* tree = GTK_TREE_VIEW(widget);
++    int bx, by;
++    gtk_tree_view_convert_widget_to_bin_window_coords(tree, wxRound(local.x), wxRound(local.y), &bx, &by);
++    if (by < 0) return FALSE; // Header events have their own wx column callbacks.
++    wxGtkTreePath path;
++    GtkTreeViewColumn* column = NULL;
++    gtk_tree_view_get_path_at_pos(tree, bx, by, path.ByRef(), &column, NULL, NULL);
++    if (type == GDK_MOTION_NOTIFY)
++    {
++        if (path && dv->GtkGetInternal())
++        { GtkTreeIter iter; dv->GtkGetInternal()->get_iter(&iter, path); }
++        return FALSE;
++    }
++    wxWeakRef<wxDataViewCtrl> alive(dv);
++    wxGtkObject<GtkTreeView> hold(GTK_TREE_VIEW(g_object_ref(tree)));
++    if (path)
++    {
++        GtkTreeSelection* selection = gtk_tree_view_get_selection(tree);
++        if (!gtk_tree_selection_path_is_selected(selection, path))
++        {
++            gtk_tree_selection_unselect_all(selection);
++            if (!alive || alive->IsBeingDeleted()) return TRUE;
++            gtk_tree_selection_select_path(selection, path);
++            if (!alive || alive->IsBeingDeleted()) return TRUE;
++        }
++    }
++    wxDataViewEvent event(wxEVT_DATAVIEW_ITEM_CONTEXT_MENU, dv,
++                         dv->GTKColumnToWX(column), dv->GTKPathToItem(path));
++    event.SetPosition(wxRound(local.x), wxRound(local.y));
++    return dv->HandleWindowEvent(event);
++}
++#else
+ static gboolean
+ gtk_dataview_motion_notify_callback( GtkWidget *WXUNUSED(widget),
+                                      GdkEventMotion *gdk_event,
+@@ -4775,6 +5022,8 @@
+     return FALSE;
+ }
+ 
++#endif
++
+ wxIMPLEMENT_DYNAMIC_CLASS(wxDataViewCtrl, wxDataViewCtrlBase);
+ 
+ wxDataViewCtrl::~wxDataViewCtrl()
+@@ -4830,13 +5079,21 @@
+         return false;
+     }
+ 
++#ifdef __WXGTK4__
++    m_widget = gtk_scrolled_window_new();
++#else
+     m_widget = gtk_scrolled_window_new (NULL, NULL);
++#endif
+     g_object_ref(m_widget);
+ 
+     GTKScrolledWindowSetBorder(m_widget, style);
+ 
+     m_treeview = gtk_tree_view_new();
++#ifdef __WXGTK4__
++    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(m_widget), m_treeview);
++#else
+     gtk_container_add (GTK_CONTAINER (m_widget), m_treeview);
++#endif
+ 
+     m_focusWidget = GTK_WIDGET(m_treeview);
+ 
+@@ -4900,19 +5157,28 @@
+     g_signal_connect_after (m_treeview, "row-expanded",
+                             G_CALLBACK (wxdataview_row_expanded_callback), this);
+ 
++#ifdef __WXGTK4__
++    GtkEventController* controller = gtk_event_controller_legacy_new();
++    gtk_event_controller_set_propagation_phase(controller, GTK_PHASE_CAPTURE);
++    g_signal_connect(controller, "event", G_CALLBACK(gtk_dataview_event), this);
++    gtk_widget_add_controller(m_treeview, controller);
++#else
+     g_signal_connect (m_treeview, "motion_notify_event",
+                       G_CALLBACK (gtk_dataview_motion_notify_callback), this);
+ 
+     g_signal_connect (m_treeview, "button_press_event",
+                       G_CALLBACK (gtk_dataview_button_press_callback), this);
++#endif
+ 
+     return true;
+ }
+ 
++#ifndef __WXGTK4__
+ GdkWindow* wxDataViewCtrl::GTKGetWindow(wxArrayGdkWindows& /* windows */) const
+ {
+     return gtk_tree_view_get_bin_window(GTK_TREE_VIEW(m_treeview));
+ }
++#endif
+ 
+ wxDataViewItem wxDataViewCtrl::GTKPathToItem(GtkTreePath *path) const
+ {
+--- /dev/null
++++ src/gtk/dataview_dnd4.inc
+@@ -0,0 +1,172 @@
++///////////////////////////////////////////////////////////////////////////////
++// GTK4 DataView DnD adapter. Origin: EmberBSD (AI-assisted). wxWindows licence.
++// Uses wxDropTarget's shared MIME transport; GtkTreeDragSource owns native drags.
++///////////////////////////////////////////////////////////////////////////////
++namespace
++{
++class wxDataViewDropTarget4 : public wxDropTarget
++{
++    struct State
++    {
++        wxWeakRef<wxDataViewCtrl> view;
++        bool alive = true;
++        guint timer = 0;
++        unsigned long generation = 0;
++        int x = 0, y = 0;
++        GtkTreeRowReference* hover = NULL;
++        gint64 hoverSince = 0;
++        explicit State(wxDataViewCtrl* value) : view(value) {}
++        ~State() { if (hover) gtk_tree_row_reference_free(hover); }
++        bool Valid() const { return alive && view && !view->IsBeingDeleted(); }
++        void Stop()
++        {
++            if (timer) { g_source_remove(timer); timer = 0; }
++            if (hover) { gtk_tree_row_reference_free(hover); hover = NULL; }
++        }
++        static gboolean Tick(void* data)
++        {
++            auto state = *static_cast<std::shared_ptr<State>*>(data);
++            if (!state->Valid()) { state->timer = 0; return G_SOURCE_REMOVE; }
++            const guint source = state->timer;
++            GtkWidget* widget = state->view->GtkGetTreeView();
++            wxGtkObject<GtkWidget> hold(GTK_WIDGET(g_object_ref(widget)));
++            wxGtkObject<GtkAdjustment> horizontal(GTK_ADJUSTMENT(g_object_ref(gtk_scrollable_get_hadjustment(GTK_SCROLLABLE(widget)))));
++            wxGtkObject<GtkAdjustment> vertical(GTK_ADJUSTMENT(g_object_ref(gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(widget)))));
++            GtkAdjustment* adjustments[] = { horizontal, vertical };
++            const int positions[] = { state->x, state->y };
++            const int limits[] = { gtk_widget_get_width(widget), gtk_widget_get_height(widget) };
++            for (int i = 0; i != 2; ++i)
++            {
++                const int delta = positions[i] < 24 ? positions[i] - 24 :
++                                  positions[i] > limits[i] - 24 ? positions[i] - limits[i] + 24 : 0;
++                if (delta && adjustments[i])
++                    gtk_adjustment_set_value(adjustments[i], gtk_adjustment_get_value(adjustments[i]) + delta);
++                if (state->timer != source) return G_SOURCE_REMOVE;
++                if (!state->Valid()) { state->timer = 0; return G_SOURCE_REMOVE; }
++            }
++            if (state->hover && g_get_monotonic_time() - state->hoverSince > 700000)
++            {
++                wxGtkTreePath path(gtk_tree_row_reference_get_path(state->hover));
++                gtk_tree_row_reference_free(state->hover); state->hover = NULL;
++                if (path) gtk_tree_view_expand_row(GTK_TREE_VIEW(widget), path, FALSE);
++            }
++            if (state->timer != source) return G_SOURCE_REMOVE;
++            if (!state->Valid()) { state->timer = 0; return G_SOURCE_REMOVE; }
++            return G_SOURCE_CONTINUE;
++        }
++        void Hover(GtkTreePath* path)
++        {
++            wxGtkTreePath previous(hover ? gtk_tree_row_reference_get_path(hover) : NULL);
++            if ((!previous && !path) || (previous && path && gtk_tree_path_compare(previous, path) == 0)) return;
++            if (hover) gtk_tree_row_reference_free(hover);
++            hover = path ? gtk_tree_row_reference_new(gtk_tree_view_get_model(GTK_TREE_VIEW(view->GtkGetTreeView())), path) : NULL;
++            hoverSince = g_get_monotonic_time();
++        }
++    };
++    std::shared_ptr<State> m_state;
++    static wxDataObjectComposite* Data(const wxVector<wxDataFormat>& formats)
++    {
++        auto data = new wxDataObjectComposite;
++        for (const auto& format : formats) data->Add(new wxCustomDataObject(format));
++        return data;
++    }
++    static wxDataViewItem Item(wxDataViewCtrl* view, int x, int y, wxGtkTreePath& path,
++                               GtkTreeViewDropPosition& position)
++    {
++        gtk_tree_view_get_dest_row_at_pos(GTK_TREE_VIEW(view->GtkGetTreeView()), x, y, path.ByRef(), &position);
++        return view->GTKPathToItem(path);
++    }
++public:
++    wxDataViewDropTarget4(wxDataViewCtrl* view, const wxVector<wxDataFormat>& formats)
++        : wxDropTarget(Data(formats)), m_state(new State(view)) {}
++    ~wxDataViewDropTarget4()
++    {
++        ++m_state->generation;
++        m_state->Stop();
++        if (m_state->Valid())
++            gtk_tree_view_set_drag_dest_row(GTK_TREE_VIEW(m_state->view->GtkGetTreeView()), NULL, GTK_TREE_VIEW_DROP_BEFORE);
++        m_state->alive = false;
++    }
++    wxDragResult OnDragOver(wxCoord x, wxCoord y, wxDragResult suggested) wxOVERRIDE
++    {
++        auto state = m_state;
++        const unsigned long generation = ++state->generation;
++        // GTK3's tree model DnD likewise requested data before DROP_POSSIBLE.
++        // Keep its size/format contract using the shared asynchronous reader.
++        if (!state->Valid() || !GetData() || !state->Valid() || state->generation != generation) return wxDragNone;
++        wxDataViewCtrl* view = state->view;
++        state->x = x; state->y = y;
++        if (!state->timer)
++            state->timer = g_timeout_add_full(G_PRIORITY_DEFAULT, 100, State::Tick,
++                new std::shared_ptr<State>(state), [](void* value) { delete static_cast<std::shared_ptr<State>*>(value); });
++        wxGtkTreePath path;
++        GtkTreeViewDropPosition position = GTK_TREE_VIEW_DROP_INTO_OR_BEFORE;
++        const wxDataViewItem item = Item(view, x, y, path, position);
++        wxDataViewEvent event(wxEVT_DATAVIEW_ITEM_DROP_POSSIBLE, view, item);
++        auto data = static_cast<wxDataObjectComposite*>(GetDataObject());
++        event.InitData(data, data->GetReceivedFormat());
++        event.SetPosition(x, y);
++        event.SetDropEffect(suggested);
++        const bool accepted = view->HandleWindowEvent(event) && event.IsAllowed();
++        if (!state->Valid() || state->generation != generation) return wxDragNone;
++        gtk_tree_view_set_drag_dest_row(GTK_TREE_VIEW(view->GtkGetTreeView()),
++                                       accepted ? static_cast<GtkTreePath*>(path) : NULL, position);
++        state->Hover(accepted ? static_cast<GtkTreePath*>(path) : NULL);
++        return accepted ? event.GetDropEffect() : wxDragNone;
++    }
++    bool OnDrop(wxCoord x, wxCoord y) wxOVERRIDE
++    { return wxIsDragResultOk(OnDragOver(x, y, GTKFigureOutSuggestedAction())); }
++    void OnLeave() wxOVERRIDE
++    {
++        ++m_state->generation;
++        m_state->Stop();
++        if (m_state->Valid())
++            gtk_tree_view_set_drag_dest_row(GTK_TREE_VIEW(m_state->view->GtkGetTreeView()),
++                                           NULL, GTK_TREE_VIEW_DROP_BEFORE);
++    }
++    wxDragResult OnData(wxCoord x, wxCoord y, wxDragResult suggested) wxOVERRIDE
++    {
++        auto state = m_state;
++        const unsigned long generation = ++state->generation;
++        state->Stop();
++        if (!state->Valid() || !GetData() || !state->Valid() || state->generation != generation) return wxDragNone;
++        wxDataViewCtrl* view = state->view;
++        wxGtkTreePath path;
++        GtkTreeViewDropPosition position = GTK_TREE_VIEW_DROP_INTO_OR_BEFORE;
++        const wxDataViewItem item = Item(view, x, y, path, position);
++        wxDataViewEvent event(wxEVT_DATAVIEW_ITEM_DROP, view, item);
++        auto data = static_cast<wxDataObjectComposite*>(GetDataObject());
++        event.InitData(data, data->GetReceivedFormat());
++        event.SetPosition(x, y);
++        event.SetDropEffect(suggested);
++        const bool accepted = view->HandleWindowEvent(event) && event.IsAllowed();
++        if (!state->Valid() || state->generation != generation) return wxDragNone;
++        gtk_tree_view_set_drag_dest_row(GTK_TREE_VIEW(view->GtkGetTreeView()), NULL, position);
++        return accepted ? event.GetDropEffect() : wxDragNone;
++    }
++};
++}
++bool wxDataViewCtrlInternal::EnableDragSource(const wxDataFormat& format)
++{
++    if (!format.GetFormatId())
++    {
++        gtk_tree_view_unset_rows_drag_source(GTK_TREE_VIEW(m_owner->GtkGetTreeView()));
++        return true;
++    }
++    const char* mime = format.GetFormatId();
++    GdkContentFormats* formats = gdk_content_formats_new(&mime, 1);
++    gtk_tree_view_enable_model_drag_source(GTK_TREE_VIEW(m_owner->GtkGetTreeView()),
++        GDK_BUTTON1_MASK, formats, GDK_ACTION_COPY);
++    gdk_content_formats_unref(formats);
++    return true;
++}
++bool wxDataViewCtrlInternal::EnableDropTarget(const wxVector<wxDataFormat>& formats)
++{
++    wxWeakRef<wxDataViewCtrl> alive(m_owner);
++    m_gtkDropTarget.reset();
++    if (!alive || alive->IsBeingDeleted() || alive->GtkGetInternal() != this) return false;
++    if (formats.empty()) return true;
++    m_gtkDropTarget.reset(new wxDataViewDropTarget4(m_owner, formats));
++    m_gtkDropTarget->GtkRegisterWidget(m_owner->GtkGetTreeView());
++    return true;
++}

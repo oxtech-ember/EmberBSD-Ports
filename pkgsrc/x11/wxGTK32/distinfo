@@ -9,6 +9,7 @@ SHA1 (patch-gtk4-art) = b2f4f062548be201f88aeb0bb43f646a7c8d9ba3
 SHA1 (patch-gtk4-controls) = d0a0871c136b93cc24381315d5dc545f7c691ac5
 SHA1 (patch-gtk4-core-controls) = e728ef5b15a3c6840f1a3963684b7d2b99080e1f
 SHA1 (patch-gtk4-cursor-display) = 9fdccca11c542efec7bc7ffe077ecdbd563be8be
+SHA1 (patch-gtk4-dataview) = 55bcf0ecff4fe28f1514e5329ca5827bfc97fd03
 SHA1 (patch-gtk4-dc) = d90fac12fa933826a5170ebd406164ec58fb0a8c
 SHA1 (patch-gtk4-dnd) = f873749c9f159d23455c3043236d96bd359f9c87
 SHA1 (patch-gtk4-evtloop) = 06a64389bff6f226fd51c45b4d72d7c12d4810ab

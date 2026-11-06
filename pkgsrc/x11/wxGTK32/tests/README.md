@@ -518,3 +518,44 @@ Primary sources: [GtkDropTargetAsync](https://docs.gtk.org/gtk4/class.DropTarget
 [GdkDrag.begin](https://docs.gtk.org/gdk4/ctor.Drag.begin.html),
 [GdkDrop.read_async](https://docs.gtk.org/gdk4/method.Drop.read_async.html),
 [GdkDrop.finish](https://docs.gtk.org/gdk4/method.Drop.finish.html).
+
+# GTK4 native DataView
+
+`patch-gtk4-dataview` retains GtkTreeView and its wx model/sort/selection bridge.
+GTK4.24 still provides these public APIs, deprecated since 4.10. Custom cells
+measure through GtkCellRenderer preferred-size methods and render through real
+GtkSnapshot Cairo nodes. Custom RenderText snapshots the native text renderer;
+bitmap bundles keep logical dimensions and select assets for the widget scale.
+Custom editors use a GtkBox implementing GtkCellEditable and store its actual
+editing-canceled property. Header and context-menu input uses event controllers
+and real event/widget coordinate transforms.
+
+Tree drag sources return the shared immutable MIME provider. Tree destinations
+use wxDropTarget and the same asynchronous byte reader as clipboard and ordinary
+DnD; all enabled MIME formats are offered to negotiation. DROP_POSSIBLE retains
+its data-format/size contract, DROP receives owned event bytes, and wx vetoes
+control acceptance. Native row highlighting, timed hover expansion and edge
+scrolling use public GtkTreeView/GtkScrollable APIs. Pending reads, timer callbacks
+and nested events retain separate state; weak owner checks and motion generations
+prevent stale callbacks from accessing a removed view or repainting an old drop.
+The existing native tree-source policy remains copy-only.
+
+`dataview4-contract` (`BUILD_DATAVIEW_CONTRACT`) exercises native selection, text
+edit and toggle signals, custom cell measurement and snapshot rendering, native
+editor cancellation state, sorting and model removal. Run the same executable
+with positional argument `interactive` for native tree-row drag/drop, veto,
+hover expansion, edge scrolling, external text drops, target replacement and
+destruction during DROP_POSSIBLE. This interactive mode reports observations; it does not print an
+automatic acceptance result. Use a real X11 or Wayland display, fatal GTK warnings
+and an instrumented build for callback lifetime checks.
+
+The complete target dataview.cpp translation unit and both fixture modes pass
+syntax checking against configured wx/GTK4 headers. Native display execution,
+rendered pixels, actual editor interaction, drag protocol and ASan acceptance
+remain pending the shared build. No generic DataView replacement or fake GTK
+selection structures are introduced.
+
+Primary sources: [GtkTreeView](https://docs.gtk.org/gtk4/class.TreeView.html),
+[GtkCellRenderer.snapshot](https://docs.gtk.org/gtk4/vfunc.CellRenderer.snapshot.html),
+[GtkCellEditable](https://docs.gtk.org/gtk4/iface.CellEditable.html),
+[GtkTreeDragSource](https://docs.gtk.org/gtk4/iface.TreeDragSource.html).
