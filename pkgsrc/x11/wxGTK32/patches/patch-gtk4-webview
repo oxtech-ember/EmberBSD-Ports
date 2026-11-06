@@ -1,0 +1,876 @@
+$NetBSD$
+
+Support WebKitGTK API 6.0 in the GTK4 toolkit while preserving wxWebView 3.2.
+AI-assisted EmberBSD adaptation of wxWidgets 3.2.12 (wxWindows licence).
+Use JSCValue and evaluate_javascript; preserve selection operations through
+DOM JavaScript instead of the removed WebKitDOM web-process extension.
+Select matching headers/libraries in both build systems, with no GTK3 fallback
+for a GTK4 WebView.
+https://github.com/WebKit/WebKit/blob/webkitgtk-2.54.2/Source/WebKit/gtk/migrating-to-webkitgtk-6.0.md
+https://docs.gtk.org/gtk4/migrating-3to4.html
+
+--- src/gtk/webview_webkit2.cpp.orig
++++ src/gtk/webview_webkit2.cpp
+@@ -31,13 +31,48 @@
+ #include "wx/log.h"
+ #include "wx/gtk/private/webview_webkit2_extension.h"
+ #include "wx/gtk/private/string.h"
++#if defined(__WXGTK4__)
++#include "wx/gtk/private/object.h"
++#include <webkit/webkit.h>
++#include <jsc/jsc.h>
++#include <libsoup/soup.h>
++#else
+ #include "wx/gtk/private/webkit.h"
++#endif
+ #include "wx/gtk/private/error.h"
+ #include "wx/private/jsscriptwrapper.h"
++#ifndef __WXGTK4__
+ #include <webkit2/webkit2.h>
+ #include <JavaScriptCore/JSValueRef.h>
+ #include <JavaScriptCore/JSStringRef.h>
+-
++#endif
++
++#ifdef __WXGTK4__
++// API 6.0 returns a borrowed JSCValue in message signals and a full reference
++// from evaluate_javascript_finish. The caller owns the latter reference.
++bool wxGetStringFromJSResult(JSCValue* value, wxString* output)
++{
++    JSCContext* context = jsc_value_get_context(value);
++    gchar* text = jsc_value_is_object(value)
++                    ? jsc_value_to_json(value, 0)
++                    : jsc_value_to_string(value);
++    JSCException* exception = jsc_context_get_exception(context);
++    if ( exception || !text )
++    {
++        if ( output )
++            *output = exception
++                ? wxString::FromUTF8(jsc_exception_get_message(exception))
++                : wxString("JavaScript result cannot be converted to a string");
++        g_free(text);
++        jsc_context_clear_exception(context);
++        return false;
++    }
++    if ( output )
++        *output = wxString::FromUTF8(text);
++    g_free(text);
++    return true;
++}
++#else
+ // Helper function to get string from Webkit JS result
+ bool wxGetStringFromJSResult(WebKitJavascriptResult* js_result, wxString* output)
+ {
+@@ -69,6 +104,8 @@
+     return true;
+ }
+ 
++#endif
++
+ // ----------------------------------------------------------------------------
+ // GTK callbacks
+ // ----------------------------------------------------------------------------
+@@ -116,7 +153,7 @@
+     WebKitNavigationAction* action = webkit_navigation_policy_decision_get_navigation_action(navigation_decision);
+     WebKitURIRequest* request = webkit_navigation_action_get_request(action);
+     const gchar* uri = webkit_uri_request_get_uri(request);
+-    wxString target = webkit_navigation_policy_decision_get_frame_name(navigation_decision);
++    wxString target = wxString::FromUTF8(webkit_navigation_action_get_frame_name(action));
+ 
+     //If m_creating is true then we are the result of a new window
+     //and so we need to send the event and veto the load
+@@ -237,6 +274,33 @@
+                 break;
+         }
+     }
++    else if (error->domain == G_IO_ERROR)
++    {
++        switch (error->code)
++        {
++            case G_IO_ERROR_CANCELLED:
++                type = wxWEBVIEW_NAV_ERR_USER_CANCELLED;
++                break;
++            case G_IO_ERROR_NOT_FOUND:
++                type = wxWEBVIEW_NAV_ERR_NOT_FOUND;
++                break;
++            case G_IO_ERROR_PERMISSION_DENIED:
++                type = wxWEBVIEW_NAV_ERR_AUTH;
++                break;
++            case G_IO_ERROR_HOST_NOT_FOUND:
++            case G_IO_ERROR_HOST_UNREACHABLE:
++            case G_IO_ERROR_NETWORK_UNREACHABLE:
++            case G_IO_ERROR_CONNECTION_REFUSED:
++            case G_IO_ERROR_CONNECTION_CLOSED:
++            case G_IO_ERROR_TIMED_OUT:
++                type = wxWEBVIEW_NAV_ERR_CONNECTION;
++                break;
++            default:
++                break;
++        }
++    }
++    else if (error->domain == G_RESOLVER_ERROR || error->domain == G_TLS_ERROR)
++        type = wxWEBVIEW_NAV_ERR_CONNECTION;
+     else if (strcmp(g_quark_to_string(error->domain),
+                     "webkit-network-error-quark") == 0)
+     {
+@@ -288,7 +352,7 @@
+     WebKitURIRequest* request = webkit_navigation_action_get_request(action);
+     const gchar* uri = webkit_uri_request_get_uri(request);
+ 
+-    wxString target = webkit_navigation_policy_decision_get_frame_name(navigation_decision);
++    wxString target = wxString::FromUTF8(webkit_navigation_action_get_frame_name(action));
+     wxWebViewEvent event(wxEVT_WEBVIEW_NEWWINDOW,
+                                        webKitCtrl->GetId(),
+                                        wxString( uri, wxConvUTF8 ),
+@@ -334,7 +398,11 @@
+ 
+ static void
+ wxgtk_webview_webkit_script_message_received(WebKitUserContentManager *WXUNUSED(content_manager),
++#ifdef __WXGTK4__
++                                             JSCValue *js_result,
++#else
+                                              WebKitJavascriptResult *js_result,
++#endif
+                                              wxWebViewWebKit *webKitCtrl)
+ {
+     wxWebViewEvent event(wxEVT_WEBVIEW_SCRIPT_MESSAGE_RECEIVED,
+@@ -439,7 +507,9 @@
+ static gboolean
+ wxgtk_webview_webkit_context_menu(WebKitWebView *,
+                                   WebKitContextMenu *,
++#ifndef __WXGTK4__
+                                   GdkEvent *,
++#endif
+                                   WebKitHitTestResult *,
+                                   wxWebViewWebKit *webKitCtrl)
+ {
+@@ -465,6 +535,7 @@
+     *findCount = match_count;
+ }
+ 
++#ifndef __WXGTK4__
+ // This function checks if the specified directory contains our web extension.
+ static bool CheckDirectoryForWebExt(const wxString& dirname)
+ {
+@@ -601,6 +672,8 @@
+     return wxgtk_dbus_peer_is_authorized(credentials);
+ }
+ 
++#endif // !__WXGTK4__
++
+ } // extern "C"
+ 
+ //-----------------------------------------------------------------------------
+@@ -622,8 +695,10 @@
+ wxWebViewWebKit::wxWebViewWebKit()
+ {
+     m_web_view = NULL;
++#ifndef __WXGTK4__
+     m_dbusServer = NULL;
+     m_extension = NULL;
++#endif
+ }
+ 
+ bool wxWebViewWebKit::Create(wxWindow *parent,
+@@ -635,8 +710,10 @@
+                       const wxString& name)
+ {
+     m_web_view = NULL;
++#ifndef __WXGTK4__
+     m_dbusServer = NULL;
+     m_extension = NULL;
++#endif
+     m_busy = false;
+     m_guard = false;
+     m_creating = false;
+@@ -653,14 +730,21 @@
+         return false;
+     }
+ 
++#ifndef __WXGTK4__
+     SetupWebExtensionServer();
+     g_signal_connect(webkit_web_context_get_default(),
+                      "initialize-web-extensions",
+                      G_CALLBACK(wxgtk_initialize_web_extensions),
+                      m_dbusServer);
++#endif
+ 
+     m_web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
++#ifdef __WXGTK4__
++    // WebKitGTK 6 implements its own scrolling and is not GtkScrollable.
++    m_widget = GTK_WIDGET(m_web_view);
++#else
+     GTKCreateScrolledWindowWith(GTK_WIDGET(m_web_view));
++#endif
+     g_object_ref(m_widget);
+ 
+     if (!m_customUserAgent.empty())
+@@ -712,6 +796,7 @@
+ {
+     if (m_web_view)
+         GTKDisconnect(m_web_view);
++#ifndef __WXGTK4__
+     if (m_dbusServer)
+     {
+         g_dbus_server_stop(m_dbusServer);
+@@ -720,6 +805,7 @@
+     }
+     g_clear_object(&m_dbusServer);
+     g_clear_object(&m_extension);
++#endif
+ }
+ 
+ bool wxWebViewWebKit::Enable( bool enable )
+@@ -727,17 +813,20 @@
+     if (!wxControl::Enable(enable))
+         return false;
+ 
+-    gtk_widget_set_sensitive(gtk_bin_get_child(GTK_BIN(m_widget)), enable);
++    gtk_widget_set_sensitive(GTK_WIDGET(m_web_view), enable);
+ 
+     return true;
+ }
+ 
++#ifndef __WXGTK4__
+ GdkWindow*
+ wxWebViewWebKit::GTKGetWindow(wxArrayGdkWindows& WXUNUSED(windows)) const
+ {
+     GdkWindow* window = gtk_widget_get_parent_window(m_widget);
+     return window;
+ }
++
++#endif
+ 
+ void wxWebViewWebKit::ZoomIn()
+ {
+@@ -1121,8 +1210,49 @@
+ #endif
+ }
+ 
++#ifdef __WXGTK4__
++extern "C" {
++static void wxgtk_dom_script_ready(GObject*, GAsyncResult* result, void* data)
++{
++    *static_cast<GAsyncResult**>(data) = G_ASYNC_RESULT(g_object_ref(result));
++}
++}
++
++bool wxWebViewWebKit::GTKRunDOMScript(const wxString& script, wxString* output) const
++{
++    // Private DOM operations must not call author-overridden globals/prototypes.
++    // Keep public RunScript in the normal page world.
++    wxJSScriptWrapper wrapper(script, wxJSScriptWrapper::JS_OUTPUT_STRING);
++    wxGtkObject<WebKitWebView> view(WEBKIT_WEB_VIEW(g_object_ref(m_web_view)));
++    wxGtkObject<GAsyncResult> result;
++    webkit_web_view_evaluate_javascript(view, wrapper.GetWrappedCode().utf8_str(), -1,
++                                      "wxWidgets.DOM", NULL, NULL,
++                                      wxgtk_dom_script_ready, result.Out());
++    GMainContext* context = g_main_context_get_thread_default();
++    while ( !result.get() )
++        g_main_context_iteration(context, TRUE);
++
++    wxGtkError error;
++    wxGtkObject<JSCValue> value(
++        webkit_web_view_evaluate_javascript_finish(view, result, error.Out()));
++    wxString text;
++    if ( !value.get() || !wxGetStringFromJSResult(value, &text) )
++        return false;
++    wxString unwrapped;
++    if ( !wxJSScriptWrapper::ExtractOutput(text, &unwrapped) )
++        return false;
++    if ( output )
++        *output = unwrapped;
++    return true;
++}
++#endif
++
+ void wxWebViewWebKit::DeleteSelection()
+ {
++#ifdef __WXGTK4__
++    GTKRunDOMScript("(function() { var s = window.getSelection(); "
++              "if (s) s.deleteFromDocument(); })();");
++#else
+     GDBusProxy *extension = GetExtensionProxy();
+     if (extension)
+     {
+@@ -1137,10 +1267,17 @@
+             g_variant_unref(retval);
+         }
+     }
++#endif
+ }
+ 
+ bool wxWebViewWebKit::HasSelection() const
+ {
++#ifdef __WXGTK4__
++    wxString result;
++    return GTKRunDOMScript("(function() { var s = window.getSelection(); "
++                     "return !!s && !s.isCollapsed; })();", &result)
++        && result == "true";
++#else
+     GDBusProxy *extension = GetExtensionProxy();
+     if (extension)
+     {
+@@ -1159,6 +1296,7 @@
+         }
+     }
+     return false;
++#endif
+ }
+ 
+ void wxWebViewWebKit::SelectAll()
+@@ -1169,6 +1307,13 @@
+ 
+ wxString wxWebViewWebKit::GetSelectedText() const
+ {
++#ifdef __WXGTK4__
++    wxString result;
++    GTKRunDOMScript("(function() { var s = window.getSelection(); "
++              "return s && s.rangeCount ? s.getRangeAt(0).toString() : ''; })();",
++              &result);
++    return result;
++#else
+     GDBusProxy *extension = GetExtensionProxy();
+     if (extension)
+     {
+@@ -1187,10 +1332,20 @@
+         }
+     }
+     return wxString();
++#endif
+ }
+ 
+ wxString wxWebViewWebKit::GetSelectedSource() const
+ {
++#ifdef __WXGTK4__
++    wxString result;
++    GTKRunDOMScript("(function() { var s = window.getSelection(); "
++              "if (!s || !s.rangeCount) return ''; "
++              "var div = document.createElement('div'); "
++              "div.appendChild(s.getRangeAt(0).cloneContents()); "
++              "return div.innerHTML; })();", &result);
++    return result;
++#else
+     GDBusProxy *extension = GetExtensionProxy();
+     if (extension)
+     {
+@@ -1209,10 +1364,15 @@
+         }
+     }
+     return wxString();
++#endif
+ }
+ 
+ void wxWebViewWebKit::ClearSelection()
+ {
++#ifdef __WXGTK4__
++    GTKRunDOMScript("(function() { var s = window.getSelection(); "
++              "if (s) s.removeAllRanges(); })();");
++#else
+     GDBusProxy *extension = GetExtensionProxy();
+     if (extension)
+     {
+@@ -1227,10 +1387,16 @@
+             g_variant_unref(retval);
+         }
+     }
++#endif
+ }
+ 
+ wxString wxWebViewWebKit::GetPageText() const
+ {
++#ifdef __WXGTK4__
++    wxString result;
++    GTKRunDOMScript("document.body ? document.body.innerText : '';", &result);
++    return result;
++#else
+     GDBusProxy *extension = GetExtensionProxy();
+     if (extension)
+     {
+@@ -1249,6 +1415,7 @@
+         }
+     }
+     return wxString();
++#endif
+ }
+ 
+ class wxWebKitRunScriptParams
+@@ -1274,6 +1441,10 @@
+ void wxWebViewWebKit::ProcessJavaScriptResult(GAsyncResult *res, wxWebKitRunScriptParams* params) const
+ {
+     wxGtkError error;
++#ifdef __WXGTK4__
++    wxGtkObject<JSCValue> js_result(
++        webkit_web_view_evaluate_javascript_finish(m_web_view, res, error.Out()));
++#else
+     wxWebKitJavascriptResult js_result
+                              (
+                                 webkit_web_view_run_javascript_finish
+@@ -1283,6 +1454,7 @@
+                                     error.Out()
+                                 )
+                              );
++#endif
+ 
+     if ( js_result )
+     {
+@@ -1293,6 +1465,8 @@
+             bool success = wxJSScriptWrapper::ExtractOutput(scriptResult, &scriptOutput);
+             SendScriptResult(params->clientData, success, scriptOutput);
+         }
++        else
++            SendScriptResult(params->clientData, false, scriptResult);
+     }
+     else
+         SendScriptResult(params->clientData, false, error.GetMessage());
+@@ -1309,11 +1483,18 @@
+     params->webKitCtrl = this;
+     params->clientData = clientData;
+ 
++#ifdef __WXGTK4__
++    webkit_web_view_evaluate_javascript(m_web_view,
++                                      wrapJS.GetWrappedCode().utf8_str(), -1,
++                                      NULL, NULL, NULL,
++                                      wxgtk_run_javascript_cb, params);
++#else
+     webkit_web_view_run_javascript(m_web_view,
+                                    wrapJS.GetWrappedCode().utf8_str(),
+                                    NULL,
+                                    wxgtk_run_javascript_cb,
+                                    params);
++#endif
+ }
+ 
+ bool wxWebViewWebKit::AddScriptMessageHandler(const wxString& name)
+@@ -1322,9 +1503,14 @@
+         return false;
+ 
+     WebKitUserContentManager *ucm = webkit_web_view_get_user_content_manager(m_web_view);
+-    g_signal_connect(ucm, wxString::Format("script-message-received::%s", name).utf8_str(),
++    const gulong signalId = g_signal_connect(ucm,
++                     wxString::Format("script-message-received::%s", name).utf8_str(),
+                      G_CALLBACK(wxgtk_webview_webkit_script_message_received), this);
+-    bool res = webkit_user_content_manager_register_script_message_handler(ucm, name.utf8_str());
++    bool res = webkit_user_content_manager_register_script_message_handler(ucm, name.utf8_str()
++#ifdef __WXGTK4__
++                                                                           , NULL
++#endif
++                                                                           );
+     if (res)
+     {
+         // Make webkit message handler available under common name
+@@ -1333,6 +1519,8 @@
+         AddUserScript(js);
+         RunScript(js);
+     }
++    else
++        g_signal_handler_disconnect(ucm, signalId);
+ 
+     return res;
+ }
+@@ -1340,7 +1528,20 @@
+ bool wxWebViewWebKit::RemoveScriptMessageHandler(const wxString& name)
+ {
+     WebKitUserContentManager *ucm = webkit_web_view_get_user_content_manager(m_web_view);
+-    webkit_user_content_manager_unregister_script_message_handler(ucm, name.utf8_str());
++    webkit_user_content_manager_unregister_script_message_handler(ucm, name.utf8_str()
++#ifdef __WXGTK4__
++                                                                 , NULL
++#endif
++                                                                 );
++    // Unregistering the channel does not disconnect its detailed signal.
++    // Remove only this view's handler so re-registration delivers one event.
++    const guint signalId = g_signal_lookup("script-message-received", G_OBJECT_TYPE(ucm));
++    const GQuark detail = g_quark_from_string(name.utf8_str());
++    g_signal_handlers_disconnect_matched(ucm,
++        GSignalMatchType(G_SIGNAL_MATCH_ID | G_SIGNAL_MATCH_DETAIL |
++                        G_SIGNAL_MATCH_FUNC | G_SIGNAL_MATCH_DATA),
++        signalId, detail, NULL,
++        reinterpret_cast<gpointer>(wxgtk_webview_webkit_script_message_received), this);
+     return true;
+ }
+ 
+@@ -1493,6 +1694,7 @@
+      return GetDefaultAttributesFromGTKWidget(webkit_web_view_new());
+ }
+ 
++#ifndef __WXGTK4__
+ void wxWebViewWebKit::SetupWebExtensionServer()
+ {
+     char *address = g_strdup_printf("unix:tmpdir=%s", g_get_tmp_dir());
+@@ -1538,4 +1740,6 @@
+     return m_extension;
+ }
+ 
++#endif // !__WXGTK4__
++
+ #endif // wxUSE_WEBVIEW && wxUSE_WEBVIEW_WEBKIT2
+--- include/wx/gtk/webview_webkit.h.orig
++++ include/wx/gtk/webview_webkit.h
+@@ -164,7 +164,9 @@
+ protected:
+     virtual void DoSetPage(const wxString& html, const wxString& baseUrl) wxOVERRIDE;
+ 
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+ private:
+ 
+@@ -181,8 +183,13 @@
+ 
+ #if wxUSE_WEBVIEW_WEBKIT2
+     bool CanExecuteEditingCommand(const gchar* command) const;
++#ifdef __WXGTK4__
++    bool GTKRunDOMScript(const wxString& script, wxString* output = NULL) const;
++#endif
++#ifndef __WXGTK4__
+     void SetupWebExtensionServer();
+     GDBusProxy *GetExtensionProxy() const;
++#endif
+ #endif
+ 
+     WebKitWebView *m_web_view;
+@@ -198,9 +205,11 @@
+     int m_findCount;
+ 
+ #if wxUSE_WEBVIEW_WEBKIT2
++#ifndef __WXGTK4__
+     //Used for webkit2 extension
+     GDBusServer *m_dbusServer;
+     GDBusProxy *m_extension;
++#endif
+ 
+     static wxSharedPtr<wxWebViewHistoryItem>
+     CreateHistoryItemFromWKItem(WebKitBackForwardListItem* gtkitem);
+--- configure.orig
++++ configure
+@@ -676,7 +676,7 @@
+ COND_WINDOWS_IMPLIB_1
+ COND_USE_XRC_1
+ COND_USE_XML_1
+-COND_USE_WEBVIEW_WEBKIT2_1
++COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1
+ COND_USE_THREADS_1
+ COND_USE_THREADS_0
+ COND_USE_STC_1
+@@ -42256,12 +42256,91 @@
+     SAMPLES_SUBDIRS="$SAMPLES_SUBDIRS richtext"
+ fi
+ 
++USE_WEBVIEW_WEBKIT2_EXTENSION=0
+ if test "$wxUSE_WEBVIEW" = "yes"; then
+     USE_WEBVIEW_WEBKIT=0
+     USE_WEBVIEW_WEBKIT2=0
+     if test "$wxUSE_WEBVIEW_WEBKIT" = "yes"; then
+         if test "$wxUSE_GTK" = 1; then
+-            if test "$WXGTK3" = 1; then
++            if test "$WXGTK4" = 1; then
++
++pkg_failed=no
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for WEBKIT" >&5
++$as_echo_n "checking for WEBKIT... " >&6; }
++
++if test -n "$PKG_CONFIG"; then
++    if test -n "$WEBKIT_CFLAGS"; then
++        pkg_cv_WEBKIT_CFLAGS="$WEBKIT_CFLAGS"
++    else
++        if test -n "$PKG_CONFIG" && \
++    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"webkitgtk-6.0\""; } >&5
++  ($PKG_CONFIG --exists --print-errors "webkitgtk-6.0") 2>&5
++  ac_status=$?
++  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
++  test $ac_status = 0; }; then
++  pkg_cv_WEBKIT_CFLAGS=`$PKG_CONFIG --cflags "webkitgtk-6.0" 2>/dev/null`
++else
++  pkg_failed=yes
++fi
++    fi
++else
++	pkg_failed=untried
++fi
++if test -n "$PKG_CONFIG"; then
++    if test -n "$WEBKIT_LIBS"; then
++        pkg_cv_WEBKIT_LIBS="$WEBKIT_LIBS"
++    else
++        if test -n "$PKG_CONFIG" && \
++    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"webkitgtk-6.0\""; } >&5
++  ($PKG_CONFIG --exists --print-errors "webkitgtk-6.0") 2>&5
++  ac_status=$?
++  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
++  test $ac_status = 0; }; then
++  pkg_cv_WEBKIT_LIBS=`$PKG_CONFIG --libs "webkitgtk-6.0" 2>/dev/null`
++else
++  pkg_failed=yes
++fi
++    fi
++else
++	pkg_failed=untried
++fi
++
++
++
++if test $pkg_failed = yes; then
++
++if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
++        _pkg_short_errors_supported=yes
++else
++        _pkg_short_errors_supported=no
++fi
++        if test $_pkg_short_errors_supported = yes; then
++	        WEBKIT_PKG_ERRORS=`$PKG_CONFIG --short-errors --errors-to-stdout --print-errors "webkitgtk-6.0"`
++        else
++	        WEBKIT_PKG_ERRORS=`$PKG_CONFIG --errors-to-stdout --print-errors "webkitgtk-6.0"`
++        fi
++	# Put the nasty error message in config.log where it belongs
++	echo "$WEBKIT_PKG_ERRORS" >&5
++
++
++                                    as_fn_error $? "GTK4 WebView requires webkitgtk-6.0" "$LINENO" 5
++
++elif test $pkg_failed = untried; then
++
++                                    as_fn_error $? "GTK4 WebView requires webkitgtk-6.0" "$LINENO" 5
++
++else
++	WEBKIT_CFLAGS=$pkg_cv_WEBKIT_CFLAGS
++	WEBKIT_LIBS=$pkg_cv_WEBKIT_LIBS
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++$as_echo "yes" >&6; }
++
++                                    USE_WEBVIEW_WEBKIT2=1
++                                    CXXFLAGS="$CXXFLAGS $WEBKIT_CFLAGS"
++                                    EXTRALIBS_WEBVIEW="$WEBKIT_LIBS"
++
++fi
++            elif test "$WXGTK3" = 1; then
+ 
+ pkg_failed=no
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for WEBKIT" >&5
+@@ -42507,6 +42586,9 @@
+                                     EXTRALIBS_WEBVIEW="$WEBKIT_LIBS"
+ 
+ fi
++            fi
++            if test "$USE_WEBVIEW_WEBKIT2" = 1 -a "$WXGTK4" != 1; then
++                USE_WEBVIEW_WEBKIT2_EXTENSION=1
+             fi
+         elif test "$wxUSE_MAC" = 1 -a "$USE_DARWIN" = 1; then
+                         USE_WEBVIEW_WEBKIT=1
+@@ -45987,9 +46069,9 @@
+         COND_USE_THREADS_1=""
+     fi
+ 
+-    COND_USE_WEBVIEW_WEBKIT2_1="#"
+-    if test "x$USE_WEBVIEW_WEBKIT2" = "x1" ; then
+-        COND_USE_WEBVIEW_WEBKIT2_1=""
++    COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1="#"
++    if test "x$USE_WEBVIEW_WEBKIT2_EXTENSION" = "x1" ; then
++        COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1=""
+     fi
+ 
+     COND_USE_XML_1="#"
+--- configure.in.orig
++++ configure.in
+@@ -7032,7 +7032,15 @@
+                     AC_DEFINE(wxUSE_XTEST)
+                 ],
+                 [
+-                    if test "$WXGTK3" = 1; then
++                    if test "$WXGTK4" = 1; then
++                PKG_CHECK_MODULES([WEBKIT], [webkitgtk-6.0],
++                                  [
++                                    USE_WEBVIEW_WEBKIT2=1
++                                    CXXFLAGS="$CXXFLAGS $WEBKIT_CFLAGS"
++                                    EXTRALIBS_WEBVIEW="$WEBKIT_LIBS"
++                                  ],
++                                  [AC_MSG_ERROR([GTK4 WebView requires webkitgtk-6.0])])
++            elif test "$WXGTK3" = 1; then
+                         dnl This class can't work without XTest with GTK+ 3
+                         dnl which uses XInput2 and so ignores XSendEvent().
+                         AC_MSG_WARN([XTest not found, disabling wxUIActionSimulator])
+@@ -7651,6 +7659,7 @@
+     SAMPLES_SUBDIRS="$SAMPLES_SUBDIRS richtext"
+ fi
+ 
++USE_WEBVIEW_WEBKIT2_EXTENSION=0
+ if test "$wxUSE_WEBVIEW" = "yes"; then
+     USE_WEBVIEW_WEBKIT=0
+     USE_WEBVIEW_WEBKIT2=0
+@@ -7696,6 +7705,9 @@
+                                     AC_MSG_WARN([webkitgtk not found.])
+                                   ])
+             fi
++            if test "$USE_WEBVIEW_WEBKIT2" = 1 -a "$WXGTK4" != 1; then
++                USE_WEBVIEW_WEBKIT2_EXTENSION=1
++            fi
+         elif test "$wxUSE_MAC" = 1 -a "$USE_DARWIN" = 1; then
+             dnl Under Mac we always have the libraries
+             USE_WEBVIEW_WEBKIT=1
+--- autoconf_inc.m4.orig
++++ autoconf_inc.m4
+@@ -998,12 +998,12 @@
+         COND_USE_THREADS_1=""
+     fi
+     AC_SUBST(COND_USE_THREADS_1)
+-dnl ### begin block 20_COND_USE_WEBVIEW_WEBKIT2_1[wx.bkl] ###
+-    COND_USE_WEBVIEW_WEBKIT2_1="#"
+-    if test "x$USE_WEBVIEW_WEBKIT2" = "x1" ; then
+-        COND_USE_WEBVIEW_WEBKIT2_1=""
+-    fi
+-    AC_SUBST(COND_USE_WEBVIEW_WEBKIT2_1)
++dnl ### begin block 20_COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1[wx.bkl] ###
++    COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1="#"
++    if test "x$USE_WEBVIEW_WEBKIT2_EXTENSION" = "x1" ; then
++        COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1=""
++    fi
++    AC_SUBST(COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1)
+ dnl ### begin block 20_COND_USE_XML_1[../../utils/wxrc/wxrc.bkl,wx.bkl] ###
+     COND_USE_XML_1="#"
+     if test "x$USE_XML" = "x1" ; then
+--- Makefile.in.orig
++++ Makefile.in
+@@ -13372,13 +13372,13 @@
+ @COND_WITH_PLUGIN_SDL_1@__install_sound_sdl___depname = install_sound_sdl
+ @COND_WITH_PLUGIN_SDL_1@__uninstall_sound_sdl___depname \
+ @COND_WITH_PLUGIN_SDL_1@	= uninstall_sound_sdl
+-COND_USE_WEBVIEW_WEBKIT2_1___webkit2_ext___depname = \
++COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1___webkit2_ext___depname = \
+ 	$(DLLPREFIX_MODULE)webkit2_ext$(WXUNICODEFLAG)$(WXDEBUGFLAG)$(PLUGVERDELIM)$(PLUGIN_VERSION0)$(WXCOMPILER).$(SO_SUFFIX_MODULE)
+-@COND_USE_WEBVIEW_WEBKIT2_1@__webkit2_ext___depname = $(COND_USE_WEBVIEW_WEBKIT2_1___webkit2_ext___depname)
+-@COND_USE_WEBVIEW_WEBKIT2_1@__install_webkit2_ext___depname \
+-@COND_USE_WEBVIEW_WEBKIT2_1@	= install_webkit2_ext
+-@COND_USE_WEBVIEW_WEBKIT2_1@__uninstall_webkit2_ext___depname \
+-@COND_USE_WEBVIEW_WEBKIT2_1@	= uninstall_webkit2_ext
++@COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1@__webkit2_ext___depname = $(COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1___webkit2_ext___depname)
++@COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1@__install_webkit2_ext___depname \
++@COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1@	= install_webkit2_ext
++@COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1@__uninstall_webkit2_ext___depname \
++@COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1@	= uninstall_webkit2_ext
+ @COND_USE_XML_1@__wxrc___depname = wxrc
+ @COND_USE_XML_1@__clean_wxrc___depname = clean-wxrc
+ @COND_USE_XML_1@__install_wxrc___depname = install-wxrc
+@@ -14089,7 +14089,7 @@
+ 	$(STRIP) $(DESTDIR)$(libdir)/$(DLLPREFIX)$(WXDLLNAMEPREFIXGUI)$(WXUNICODEFLAG)$(WXDEBUGFLAG)$(WX_LIB_FLAVOUR)_stc$(WXCOMPILER)$(VENDORTAG)$(WXDLLVERSIONTAG)$(dll___targetsuf3)
+ 	$(STRIP) $(DESTDIR)$(libdir)/$(DLLPREFIX)$(WXDLLNAMEPREFIXGUI)$(WXUNICODEFLAG)$(WXDEBUGFLAG)$(WX_LIB_FLAVOUR)_gl$(WXCOMPILER)$(VENDORTAG)$(WXDLLVERSIONTAG)$(dll___targetsuf3)
+ 	$(STRIP) $(DESTDIR)$(PLUGINS_INST_DIR)/$(DLLPREFIX_MODULE)sound_sdl$(WXUNICODEFLAG)$(WXDEBUGFLAG)$(PLUGVERDELIM)$(PLUGIN_VERSION0)$(WXCOMPILER).$(SO_SUFFIX_MODULE)
+-	$(STRIP) $(DESTDIR)$(PLUGINS_INST_DIR)/web-extensions/$(DLLPREFIX_MODULE)webkit2_ext$(WXUNICODEFLAG)$(WXDEBUGFLAG)$(PLUGVERDELIM)$(PLUGIN_VERSION0)$(WXCOMPILER).$(SO_SUFFIX_MODULE)
++@COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1@	$(STRIP) $(DESTDIR)$(PLUGINS_INST_DIR)/web-extensions/$(DLLPREFIX_MODULE)webkit2_ext$(WXUNICODEFLAG)$(WXDEBUGFLAG)$(PLUGVERDELIM)$(PLUGIN_VERSION0)$(WXCOMPILER).$(SO_SUFFIX_MODULE)
+ 
+ clean: $(__clean_wxrc___depname)
+ 	rm -rf ./.deps ./.pch
+@@ -14915,15 +14915,15 @@
+ @COND_WITH_PLUGIN_SDL_1@uninstall_sound_sdl: 
+ @COND_WITH_PLUGIN_SDL_1@	rm -f $(DESTDIR)$(PLUGINS_INST_DIR)/$(DLLPREFIX_MODULE)sound_sdl$(WXUNICODEFLAG)$(WXDEBUGFLAG)$(PLUGVERDELIM)$(PLUGIN_VERSION0)$(WXCOMPILER).$(SO_SUFFIX_MODULE)
+ 
+-@COND_USE_WEBVIEW_WEBKIT2_1@$(DLLPREFIX_MODULE)webkit2_ext$(WXUNICODEFLAG)$(WXDEBUGFLAG)$(PLUGVERDELIM)$(PLUGIN_VERSION0)$(WXCOMPILER).$(SO_SUFFIX_MODULE): $(WEBKIT2_EXT_OBJECTS)
+-@COND_USE_WEBVIEW_WEBKIT2_1@	$(SHARED_LD_MODULE_CXX) $@ $(WEBKIT2_EXT_OBJECTS)    $(LDFLAGS)  $(WX_LDFLAGS) $(EXTRALIBS_WEBVIEW) $(LIBS)
+-
+-@COND_USE_WEBVIEW_WEBKIT2_1@install_webkit2_ext: $(__webkit2_ext___depname)
+-@COND_USE_WEBVIEW_WEBKIT2_1@	$(INSTALL_DIR) $(DESTDIR)$(PLUGINS_INST_DIR)/web-extensions
+-@COND_USE_WEBVIEW_WEBKIT2_1@	$(INSTALL_PROGRAM) $(DLLPREFIX_MODULE)webkit2_ext$(WXUNICODEFLAG)$(WXDEBUGFLAG)$(PLUGVERDELIM)$(PLUGIN_VERSION0)$(WXCOMPILER).$(SO_SUFFIX_MODULE) $(DESTDIR)$(PLUGINS_INST_DIR)/web-extensions
+-
+-@COND_USE_WEBVIEW_WEBKIT2_1@uninstall_webkit2_ext: 
+-@COND_USE_WEBVIEW_WEBKIT2_1@	rm -f $(DESTDIR)$(PLUGINS_INST_DIR)/web-extensions/$(DLLPREFIX_MODULE)webkit2_ext$(WXUNICODEFLAG)$(WXDEBUGFLAG)$(PLUGVERDELIM)$(PLUGIN_VERSION0)$(WXCOMPILER).$(SO_SUFFIX_MODULE)
++@COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1@$(DLLPREFIX_MODULE)webkit2_ext$(WXUNICODEFLAG)$(WXDEBUGFLAG)$(PLUGVERDELIM)$(PLUGIN_VERSION0)$(WXCOMPILER).$(SO_SUFFIX_MODULE): $(WEBKIT2_EXT_OBJECTS)
++@COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1@	$(SHARED_LD_MODULE_CXX) $@ $(WEBKIT2_EXT_OBJECTS)    $(LDFLAGS)  $(WX_LDFLAGS) $(EXTRALIBS_WEBVIEW) $(LIBS)
++
++@COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1@install_webkit2_ext: $(__webkit2_ext___depname)
++@COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1@	$(INSTALL_DIR) $(DESTDIR)$(PLUGINS_INST_DIR)/web-extensions
++@COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1@	$(INSTALL_PROGRAM) $(DLLPREFIX_MODULE)webkit2_ext$(WXUNICODEFLAG)$(WXDEBUGFLAG)$(PLUGVERDELIM)$(PLUGIN_VERSION0)$(WXCOMPILER).$(SO_SUFFIX_MODULE) $(DESTDIR)$(PLUGINS_INST_DIR)/web-extensions
++
++@COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1@uninstall_webkit2_ext: 
++@COND_USE_WEBVIEW_WEBKIT2_EXTENSION_1@	rm -f $(DESTDIR)$(PLUGINS_INST_DIR)/web-extensions/$(DLLPREFIX_MODULE)webkit2_ext$(WXUNICODEFLAG)$(WXDEBUGFLAG)$(PLUGVERDELIM)$(PLUGIN_VERSION0)$(WXCOMPILER).$(SO_SUFFIX_MODULE)
+ 
+ samples: 
+ 	(cd samples && $(MAKE) all)
+--- build/bakefiles/config.bkl.orig
++++ build/bakefiles/config.bkl
+@@ -430,7 +430,7 @@
+         <option name="DYLIB_RPATH_POSTLINK"/>
+         <option name="SAMPLES_RPATH_FLAG"/>
+         <option name="SAMPLES_CXXFLAGS"/>
+-        <option name="USE_WEBVIEW_WEBKIT2"/>
++        <option name="USE_WEBVIEW_WEBKIT2_EXTENSION"/>
+ 
+         <!-- see configure.in; it's required by some samples on Mac OS X -->
+         <option name="HEADER_PAD_OPTION"/>
+--- build/bakefiles/plugins.bkl.orig
++++ build/bakefiles/plugins.bkl
+@@ -12,7 +12,7 @@
+     </wx-base-plugin>
+ 
+     <if cond="FORMAT=='autoconf'">
+-        <wx-base-plugin id="webkit2_ext" cond="USE_WEBVIEW_WEBKIT2=='1'">
++        <wx-base-plugin id="webkit2_ext" cond="USE_WEBVIEW_WEBKIT2_EXTENSION=='1'">
+             <sources>$(WEBVIEW_WEBKIT2_EXTENSION_SRC)</sources>
+             <ldlibs>$(EXTRALIBS_WEBVIEW)</ldlibs>
+             <install-to>$(PLUGINS_INST_DIR)/web-extensions</install-to>
+--- build/cmake/init.cmake.orig
++++ build/cmake/init.cmake
+@@ -498,6 +498,9 @@
+                 set(WEBKIT_LIBSOUP_VERSION 2.4)
+                 if(WXGTK2)
+                     find_package(WEBKIT 1.0)
++                elseif(WXGTK4)
++                    find_package(WEBKIT2 6.0 REQUIRED)
++                    set(WEBKIT_LIBSOUP_VERSION 3.0)
+                 elseif(WXGTK3)
+                     find_package(WEBKIT2 4.1 QUIET)
+                     if(WEBKIT2_FOUND)
+@@ -509,7 +512,11 @@
+                         find_package(WEBKIT 3.0)
+                     endif()
+                 endif()
+-                find_package(LIBSOUP ${WEBKIT_LIBSOUP_VERSION})
++                if(WXGTK4)
++                    find_package(LIBSOUP ${WEBKIT_LIBSOUP_VERSION} REQUIRED)
++                else()
++                    find_package(LIBSOUP ${WEBKIT_LIBSOUP_VERSION})
++                endif()
+             endif()
+             set(wxUSE_WEBVIEW_WEBKIT OFF)
+             set(wxUSE_WEBVIEW_WEBKIT2 OFF)
+--- build/cmake/modules/FindWEBKIT2.cmake.orig
++++ build/cmake/modules/FindWEBKIT2.cmake
+@@ -15,11 +15,18 @@
+ set(WEBKIT2_JS_LIBRARY WEBKIT2_JS_LIBRARY-NOTFOUND)
+ set(WEBKIT2_LIBRARIES WEBKIT2_LIBRARIES-NOTFOUND)
+ 
+-FIND_PATH(WEBKIT2_INCLUDE_DIR webkit2/webkit2.h
++if(WEBKIT2_VERSION VERSION_GREATER_EQUAL 6.0)
++    set(WEBKIT2_HEADER webkit/webkit.h)
++    set(WEBKIT2_NAMES "webkitgtk-${WEBKIT2_VERSION}")
++else()
++    set(WEBKIT2_HEADER webkit2/webkit2.h)
++    set(WEBKIT2_NAMES "webkit2gtk-${WEBKIT2_VERSION}")
++endif()
++
++FIND_PATH(WEBKIT2_INCLUDE_DIR ${WEBKIT2_HEADER}
+     PATH_SUFFIXES "webkitgtk-${WEBKIT2_VERSION}"
+ )
+ 
+-SET(WEBKIT2_NAMES "webkit2gtk-${WEBKIT2_VERSION}")
+ FIND_LIBRARY(WEBKIT2_LIBRARY
+     NAMES ${WEBKIT2_NAMES}
+ )
+@@ -34,7 +41,7 @@
+ INCLUDE(FindPackageHandleStandardArgs)
+ FIND_PACKAGE_HANDLE_STANDARD_ARGS(
+     WEBKIT2 DEFAULT_MSG
+-    WEBKIT2_LIBRARY WEBKIT2_INCLUDE_DIR
++    WEBKIT2_LIBRARY WEBKIT2_JS_LIBRARY WEBKIT2_INCLUDE_DIR
+ )
+ 
+ IF(WEBKIT2_FOUND)
+--- build/cmake/lib/webview/CMakeLists.txt.orig
++++ build/cmake/lib/webview/CMakeLists.txt
+@@ -141,7 +141,7 @@
+ # webkit extension plugin
+ # we can't use (all of the) macros and functions because this library should
+ # always be built as a shared library, and not included in the monolithic build.
+-if(WXGTK AND wxUSE_WEBVIEW_WEBKIT2)
++if(WXGTK AND wxUSE_WEBVIEW_WEBKIT2 AND NOT WXGTK4)
+     wx_append_sources(WEBKIT2_EXT_FILES WEBVIEW_WEBKIT2_EXTENSION)
+     add_library(wxwebkit2_ext SHARED ${WEBKIT2_EXT_FILES})
+     wx_set_target_properties(wxwebkit2_ext IS_PLUGIN)
