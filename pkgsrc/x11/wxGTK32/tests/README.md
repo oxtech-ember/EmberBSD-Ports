@@ -64,8 +64,14 @@ GTK4/WebKitGTK target build; preparation of this test is not runtime acceptance.
 # GTK4 text and spellchecking contract
 
 `patch-gtk4-text` adapts GtkEntry/GtkTextView without disabling spellchecking.
-It uses the existing GTK4 native IM controllers, GtkText's native edit batching,
-and GtkTextBuffer user-action signals. Clipboard signals/actions operate on the
+It uses the existing GTK4 native IM contexts, GtkText's native edit batching,
+and GtkTextBuffer user-action signals. A shared native-im helper observes the
+native widget's key controllers, refs their existing context for synchronous
+filtering inside wxWindow's current-key scope, and preserves the controller's
+`im-update` signal when handled. The capture handler consumes handled keys;
+unhandled keys continue through native dispatch. No second IM context is
+created. The temporary controller model is released before filtering; the
+widget, controller and context remain referenced across synchronous callbacks. Clipboard signals/actions operate on the
 GtkEditable delegate. Completion observes its GTK4 popover map/unmap signals.
 Text geometry uses the public GtkAccessibleText interface, and style queries
 read public GtkTextTag properties in priority order. Scrollbars use the shared
