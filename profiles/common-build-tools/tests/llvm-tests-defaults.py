@@ -3,6 +3,7 @@
 # Origin: EmberBSD contributors (AI-assisted).
 """Check LLVM-family tests default-off policy with pkgsrc's real bmake options."""
 import argparse
+import os
 from pathlib import Path
 import re
 import shutil
@@ -26,10 +27,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--bmake', type=Path, required=True)
     parser.add_argument('--pkgsrc', type=Path, required=True)
+    parser.add_argument('--host-prefix', type=Path, required=True)
     parser.add_argument('--work-parent', type=Path, required=True)
     args = parser.parse_args()
     require(args.bmake.is_file() and args.bmake.is_absolute(), 'Use an absolute bmake executable')
     require((args.pkgsrc / 'mk/bsd.options.mk').is_file(), 'Expected an exported pkgsrc tree')
+    require(args.host_prefix.is_absolute() and args.host_prefix.is_dir(), 'Use an existing native package prefix')
     require(args.work_parent.is_dir() and args.work_parent.is_absolute(), 'Use an existing absolute work directory')
 
     for profile in (ROOT / 'profiles/common-build-tools/mk.conf',
@@ -44,6 +47,45 @@ def main():
         defaults.write_text((ROOT / 'pkgsrc/defaults.mk.conf').read_text())
         shutil.copyfile(ROOT / 'pkgsrc/versions.mk', work / 'EMBERBSD-VERSIONS.MK')
 
+        def actual_package(package):
+            settings = work / 'actual-settings.mk'
+            prefix = args.host_prefix
+            settings.write_text(f'''PREFIX={prefix}
+LOCALBASE={prefix}
+PKG_TOOLS_BIN={prefix}/sbin
+PKG_INFO={prefix}/sbin/pkg_info
+PKG_ADMIN={prefix}/sbin/pkg_admin
+PKG_DBDIR={prefix}/pkgdb
+PKGSRC_COMPILER=clang
+CLANGBASE={prefix}
+CC={prefix}/bin/clang
+CXX={prefix}/bin/clang++
+.include "{defaults}"
+''')
+            result = subprocess.run([
+                str(args.bmake), '-r', '-m', str(prefix / 'share/mk'),
+                '-m', str(args.pkgsrc / 'mk'),
+                '-C', str(args.pkgsrc / package), 'MAKECONF=' + str(settings),
+                'USE_CROSS_COMPILE=no',
+                '-V', 'PKG_OPTIONS',
+            ], env=dict(os.environ, PATH=str(prefix / 'bin') + os.pathsep + os.environ.get('PATH', '')),
+                capture_output=True, text=True)
+            require(result.returncode == 0,
+                    f'{package} native package metadata failed:\n{result.stdout}{result.stderr}')
+            lines = result.stdout.splitlines()
+            require(len(lines) == 1,
+                    f'{package} returned unexpected native package metadata: {result.stdout!r}')
+            options = set(lines[0].split())
+            require('tests' not in options,
+                    f'{package} actual package defaults enabled tests: {sorted(options)}')
+
+        checks = 0
+        # Query the real native recipes as well as the role-independent option
+        # fixture below. No fixture PKGPATH is needed by the defaults policy.
+        for package in PACKAGES:
+            actual_package(package)
+            checks += 1
+
         def selected(package, role, local=None, global_options=None):
             option_var, other = PACKAGES[package]
             supported = 'tests' + (' ' + other if other else '')
@@ -56,7 +98,6 @@ def main():
             settings.write_text('\n'.join(rows) + ('\n' if rows else ''))
             makefile = work / 'fixture.mk'
             makefile.write_text(f'''BSD_PKG_MK=yes
-PKGPATH={package}
 USE_CROSS_COMPILE={'yes' if role == 'target' else 'no'}
 PKG_OPTIONS_VAR={option_var}
 PKG_SUPPORTED_OPTIONS={supported}
@@ -75,7 +116,6 @@ all:
             require(len(lines) == 1, f'{package} {role} returned unexpected metadata: {result.stdout!r}')
             return set(lines[0].split())
 
-        checks = 0
         for package, (_, other) in PACKAGES.items():
             for role in ('native', 'target'):
                 require('tests' not in selected(package, role), f'{package} {role}: tests defaulted on')
