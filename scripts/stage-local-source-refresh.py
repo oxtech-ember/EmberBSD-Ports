@@ -80,6 +80,11 @@ def source_refresh(sdk, patch_refresh, bmake, recipe, work, make_args, scope):
             # as BUILDLINK_PREFIX.*, which the retained stage's cached values
             # must not leak into a newly prepared WRKDIR.
             configure_base = [arg for arg in base if arg != '_MAKEVARS_MK=defined']
+            # Hooks can read headers and metadata through BUILDLINK_DIR. Enter
+            # pkgsrc's normal wrapper target so the candidate gets its own
+            # dependency links and wrappers without configuring or building.
+            subprocess.run(configure_base + ['WRKDIR=' + str(candidate_work), 'wrapper'],
+                           check=True)
             subprocess.run(configure_base + ['WRKDIR=' + str(candidate_work),
                                              'pre-configure', 'do-configure-pre-hook'],
                            check=True)

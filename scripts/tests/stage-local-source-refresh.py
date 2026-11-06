@@ -92,9 +92,14 @@ elif 'extract' in args and 'patch' in args:
     (src / 'sample/test.rb').write_bytes(b'#!/usr/bin/env ruby\\n')
     (src / 'sample/test.rb').chmod(0o755)
     (wrkdir / '.patch_done').write_bytes(b'current pkgsrc cookie\\n')
+elif 'wrapper' in args:
+    (wrkdir / '.buildlink/include/KHR').mkdir(parents=True)
+    (wrkdir / '.buildlink/include/KHR/khrplatform.h').write_text('dependency header\\n')
 elif 'pre-configure' in args or 'do-configure-pre-hook' in args:
     if '_MAKEVARS_MK=defined' in args:
         raise SystemExit('candidate pre-configure must load its own phase makevars')
+    if not (wrkdir / '.buildlink/include/KHR/khrplatform.h').is_file():
+        raise SystemExit('candidate buildlink must be prepared before source hooks')
     src = wrkdir / src_name
     if 'pre-configure' in args:
         path = src / 'build-tools/python-path.in'
