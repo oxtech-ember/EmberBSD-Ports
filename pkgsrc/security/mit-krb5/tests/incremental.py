@@ -10,16 +10,22 @@ p = argparse.ArgumentParser()
 p.add_argument('--source', type=Path, required=True)
 p.add_argument('--cc', type=Path, required=True)
 p.add_argument('--make', type=Path, required=True)
+p.add_argument('--shell', type=Path, required=True)
+p.add_argument('--tool-bin', type=Path, action='append', required=True)
 p.add_argument('--work', type=Path, required=True)
 a = p.parse_args()
 if sys.platform != 'darwin':
     p.error('this native dynamic-library fixture currently supports Darwin')
-if any(not x.is_absolute() or not x.is_file() for x in (a.cc, a.make)):
-    p.error('supply absolute selected SDK compiler and GNU make paths')
+if any(not x.is_absolute() or not x.is_file() for x in (a.cc, a.make, a.shell)):
+    p.error('supply absolute selected SDK compiler, GNU make and shell paths')
+if any(not x.is_absolute() or not x.is_dir() for x in a.tool_bin):
+    p.error('each tool-bin must be an absolute selected tool directory')
+env = dict(os.environ)
+env['PATH'] = os.pathsep.join(str(x) for x in a.tool_bin)
 
 def run(args, cwd):
     return subprocess.run([str(x) for x in args], cwd=cwd, text=True,
-                          capture_output=True, check=True, timeout=60)
+                          capture_output=True, check=True, timeout=60, env=env)
 
 for kind in ('lib.in', 'libnover.in'):
     root = a.work / kind.replace('.', '-')
@@ -32,7 +38,7 @@ for kind in ('lib.in', 'libnover.in'):
         raise SystemExit('source does not have expected restat rule: ' + kind)
     frag = root / 'rules.in'
     tool = root / 'mini-libtool'
-    tool.write_text('''#!/bin/sh
+    tool.write_text('#!' + str(a.shell) + '''
 set -eu
 case "$1" in
 --mode=compile) shift; "$@" -o child.o; printf '%s\\n' child.o > child.lo;;
@@ -48,6 +54,7 @@ SHLIBSEXT=.1.dylib
 SHLIBEXT=.dylib
 PFLIBEXT=.p.a
 CC={a.cc}
+SHELL={a.shell}
 LIBTOOL={tool}
 LIBBASE=fixture
 LALIBEXT=.la
@@ -68,6 +75,7 @@ include {frag}
     (root / 'Makefile').write_text(root_make)
     (child / 'Makefile').write_text(f'''top_srcdir={a.source}
 CC={a.cc}
+SHELL={a.shell}
 LIBTOOL={tool}
 STLIBOBJS=child.o
 LALIBOBJS=child.lo
