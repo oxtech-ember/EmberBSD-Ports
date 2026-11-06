@@ -10,8 +10,9 @@ Use the selected target compiler and flags to compile both files with
 `-fsyntax-only`; add `-I tests/preprocessor/include-next` for the second file.
 For Cppcheck, use the selected source `cfg/std.cfg`, `--std=c++17`, and
 `--platform=unix64`; add the same `-I` directory for the second file. Cppcheck
-returns status 0 despite printing `[syntaxError]`, so inspect diagnostics rather
-than treating its exit status as proof that preprocessing succeeded.
+returns status 0 under its default exit-code policy despite printing
+`[syntaxError]`. Use `--error-exitcode=1` and inspect diagnostics; the default
+exit status alone does not prove that preprocessing succeeded.
 
 With actual SDK system include paths, Cppcheck 2.22.0 also stops on compiler
 preprocessing constructs inside libc++/NetBSD headers, including
