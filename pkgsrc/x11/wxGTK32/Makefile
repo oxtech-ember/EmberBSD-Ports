@@ -168,6 +168,7 @@ post-install:
 .if ${OPSYS} != "Darwin"
 .include "../../graphics/MesaLib/buildlink3.mk"
 .include "../../graphics/glu/buildlink3.mk"
+.include "../../graphics/libepoxy/buildlink3.mk"
 .include "../../sysutils/libnotify/buildlink3.mk"
 .include "../../textproc/libspelling/buildlink3.mk"
 .include "../../www/webkit-gtk60/buildlink3.mk"

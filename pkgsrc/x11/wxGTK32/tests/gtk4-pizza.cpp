@@ -40,6 +40,14 @@ static void Paint(GtkWidget*, cairo_t* cr, unsigned* paints)
     cairo_paint(cr);
 }
 
+struct Allocations { unsigned count = 0; bool valid = true; };
+
+static void Allocated(GtkWidget* widget, int width, int height, Allocations* allocations)
+{
+    allocations->valid &= width == gtk_widget_get_width(widget) && height == gtk_widget_get_height(widget);
+    ++allocations->count;
+}
+
 int main()
 {
     if (!gtk_init_check())
@@ -60,7 +68,9 @@ int main()
         g_object_ref_sink(child);
         pizza->put(child, 10, 20, 40, 30);
         unsigned paints = 0;
+        Allocations allocations;
         g_signal_connect(widget, "wx-paint", G_CALLBACK(Paint), &paints);
+        g_signal_connect(widget, "wx-size-allocate", G_CALLBACK(Allocated), &allocations);
         gtk_window_present(GTK_WINDOW(window));
 
         const gint64 deadline = g_get_monotonic_time() + 3000000;
@@ -70,6 +80,8 @@ int main()
             g_usleep(1000);
         }
         Check(gtk_widget_get_mapped(widget) && paints, "widget did not allocate and paint");
+        Check(allocations.count != 0 && allocations.valid,
+              "wx allocation notification must report GTK content dimensions");
         CheckPosition(widget, child, 10, 20);
         Check(gtk_widget_get_width(child) == 40 && gtk_widget_get_height(child) == 30,
               "wx child size was not preserved");
