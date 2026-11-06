@@ -8,3 +8,4 @@ SHA1 (patch-doc_emberbsd-html-utf8.xsl) = 15a65522fcd73d46a2d7929de6e8378a864fe2
 SHA1 (patch-doc_meson.build) = 9ada4f7fe392f236e38992dfba4723b30a297031
 SHA1 (patch-meson.build) = d8713c596b35b8406a2ec68dda908d54abc191bc
 SHA1 (patch-tools_meson.build) = 1199df4b4d73cf32278a359c94f3bef8d1d34a51
+SHA1 (patch-zz-relocatable-prefix) = a9c09d487c26d728c3a083b7f24fbaf346194346
