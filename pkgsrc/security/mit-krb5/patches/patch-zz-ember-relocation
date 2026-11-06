@@ -1,0 +1,972 @@
+$NetBSD$
+
+Relocate compiled prefix-owned defaults relative to the libkrb5support image.
+Explicit overrides, secure environment handling and external paths remain unchanged.
+
+--- aclocal.m4.orig
++++ aclocal.m4
+@@ -154,6 +154,21 @@
+ fi
+ LIBS="$old_LIBS"
+ AC_DEFINE(USE_DLOPEN,1,[Define if dlopen should be used])])
++dnl Probe both the declaration/type and link; preserve the original LIBS.
++K5_RELOC_HAVE_DLADDR=0
++LIBS="$old_LIBS $DL_LIB"
++AC_SEARCH_LIBS([dladdr], [dl], [
++  AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <dlfcn.h>]],
++    [[Dl_info info; return dladdr(&info, &info) == 0;]])], [
++    K5_RELOC_HAVE_DLADDR=1
++    if test "$ac_cv_search_dladdr" != "none required" &&
++       test "$ac_cv_search_dladdr" != "$DL_LIB"; then
++      DL_LIB="$DL_LIB $ac_cv_search_dladdr"
++    fi
++  ])
++])
++LIBS="$old_LIBS"
++AC_SUBST([K5_RELOC_HAVE_DLADDR])
+ AC_SUBST(DL_LIB)
+ ])
+ 
+--- configure.ac.orig
++++ configure.ac
+@@ -221,6 +221,54 @@
+ AC_SUBST(SECURE_GETENV_INIT)
+ 
+ AC_PROG_AWK
++
++dnl Private relocated defaults: no shell eval of user-supplied paths.
++dnl Support standard Autoconf directory forms; unknown forms retain defaults.
++K5_RELOC_CONFIG_OK=1
++AC_PATH_PROG([K5_RELOC_OD], [od])
++if test -z "$K5_RELOC_OD"; then
++  K5_RELOC_CONFIG_OK=0
++fi
++case "$prefix" in
++  NONE) k5_reloc_prefix=$ac_default_prefix ;;
++  /*) k5_reloc_prefix=$prefix ;;
++  *) K5_RELOC_CONFIG_OK=0 ;;
++esac
++case "$exec_prefix" in
++  NONE|'${prefix}') k5_reloc_exec=$k5_reloc_prefix ;;
++  '${prefix}/'*) k5_reloc_exec=$k5_reloc_prefix${exec_prefix#'${prefix}'} ;;
++  /*) k5_reloc_exec=$exec_prefix ;;
++  *) K5_RELOC_CONFIG_OK=0 ;;
++esac
++case "$libdir" in
++  '${exec_prefix}') k5_reloc_lib=$k5_reloc_exec ;;
++  '${exec_prefix}/'*) k5_reloc_lib=$k5_reloc_exec${libdir#'${exec_prefix}'} ;;
++  '${prefix}') k5_reloc_lib=$k5_reloc_prefix ;;
++  '${prefix}/'*) k5_reloc_lib=$k5_reloc_prefix${libdir#'${prefix}'} ;;
++  /*) k5_reloc_lib=$libdir ;;
++  *) K5_RELOC_CONFIG_OK=0 ;;
++esac
++case "$k5_reloc_prefix$k5_reloc_lib" in
++  *'
++'*) K5_RELOC_CONFIG_OK=0 ;;
++esac
++K5_RELOC_PREFIX_C=
++K5_RELOC_LIBDIR_C=
++if test "$K5_RELOC_CONFIG_OK" = 1; then
++  dnl Encode each byte as a fixed-width C octal escape; no quote or slash leaks.
++  K5_RELOC_PREFIX_C=$(printf '%s' "$k5_reloc_prefix" | "$K5_RELOC_OD" -An -v -t u1 | "$AWK" '{for (i=1; i<=NF; i++) printf "\\%03o", [$]i}')
++  K5_RELOC_LIBDIR_C=$(printf '%s' "$k5_reloc_lib" | "$K5_RELOC_OD" -An -v -t u1 | "$AWK" '{for (i=1; i<=NF; i++) printf "\\%03o", [$]i}')
++  if test -z "$K5_RELOC_PREFIX_C" || test -z "$K5_RELOC_LIBDIR_C"; then
++    K5_RELOC_CONFIG_OK=0
++    AC_MSG_NOTICE([private default-path relocation disabled: cannot encode directories])
++  fi
++else
++  AC_MSG_NOTICE([private default-path relocation disabled for unsupported directory form])
++fi
++AC_SUBST([K5_RELOC_CONFIG_OK])
++AC_SUBST([K5_RELOC_PREFIX_C])
++AC_SUBST([K5_RELOC_LIBDIR_C])
++AC_CONFIG_FILES([util/support/k5-reloc-conf.h:util/support/k5-reloc-conf.h.in])
+ KRB5_AC_INET6
+ KRB5_SOCKADDR_SA_LEN
+ CHECK_SIGNALS
+--- include/k5-platform.h.orig
++++ include/k5-platform.h
+@@ -1072,6 +1072,9 @@
+  */
+ long k5_path_split(const char *path, char **parent_out, char **basename_out);
+ 
++/* Resolve only an owner-compiled default; caller frees the returned path. */
++long k5_relocate_default(const char *path, char **path_out);
++
+ /*
+  * Compose two path components, inserting the platform-appropriate path
+  * separator if needed.  If path2 is an absolute path, path1 will be discarded
+--- kadmin/server/ovsec_kadmd.c.orig
++++ kadmin/server/ovsec_kadmd.c
+@@ -68,9 +68,9 @@
+ gss_name_t gss_changepw_name = NULL, gss_oldchangepw_name = NULL;
+ void *global_server_handle;
+ int nofork = 0;
+-char *kdb5_util = KPROPD_DEFAULT_KDB5_UTIL;
+-char *kprop = KPROPD_DEFAULT_KPROP;
+-char *dump_file = KPROP_DEFAULT_FILE;
++char *kdb5_util;
++char *kprop;
++char *dump_file;
+ char *kprop_port = NULL;
+ 
+ static krb5_context context;
+@@ -433,6 +433,17 @@
+ 
+     if (argc != 0)
+         usage();
++    if ((kdb5_util == NULL &&
++         (ret = k5_relocate_default(KPROPD_DEFAULT_KDB5_UTIL,
++                                    &kdb5_util)) != 0) ||
++        (kprop == NULL &&
++         (ret = k5_relocate_default(KPROPD_DEFAULT_KPROP, &kprop)) != 0) ||
++        (dump_file == NULL &&
++         (ret = k5_relocate_default(KPROP_DEFAULT_FILE, &dump_file)) != 0)) {
++        fprintf(stderr, _("%s: unable to resolve default paths: %s\n"),
++                progname, error_message(ret));
++        exit(1);
++    }
+ 
+     ret = kadm5_init_krb5_context(&context);
+     if (ret) {
+--- kprop/kprop.c.orig
++++ kprop/kprop.c
+@@ -54,7 +54,7 @@
+ static char *replica_host;
+ static char *realm = NULL;
+ static char *def_realm = NULL;
+-static char *file = KPROP_DEFAULT_FILE;
++static char *file;
+ 
+ /* The Kerberos principal we'll be sending as, initialized in get_tickets. */
+ static krb5_principal my_principal;
+@@ -150,6 +150,13 @@
+     if (argc - optind != 1)
+         usage();
+     replica_host = argv[optind];
++    if (file == NULL) {
++        ret = k5_relocate_default(KPROP_DEFAULT_FILE, &file);
++        if (ret) {
++            com_err(progname, ret, _("while resolving default dump path"));
++            exit(1);
++        }
++    }
+ 
+     if (realm == NULL) {
+         ret = krb5_get_default_realm(context, &def_realm);
+--- kprop/kpropd.c.orig
++++ kprop/kpropd.c
+@@ -130,11 +130,11 @@
+ static krb5_auth_context auth_context;
+ static char *realm = NULL;      /* Our realm */
+ static char *def_realm = NULL;  /* Ref pointer for default realm */
+-static char *file = KPROPD_DEFAULT_FILE;
++static char *file;
+ static char *temp_file_name;
+-static char *kdb5_util = KPROPD_DEFAULT_KDB5_UTIL;
++static char *kdb5_util;
+ static char *kerb_database = NULL;
+-static char *acl_file_name = KPROPD_ACL_FILE;
++static char *acl_file_name;
+ 
+ static krb5_address *receiver_addr;
+ static const char *port = KPROP_SERVICE;
+@@ -1124,6 +1124,17 @@
+     }
+     if (optind != argc)
+         usage();
++    if ((file == NULL &&
++         (retval = k5_relocate_default(KPROPD_DEFAULT_FILE, &file)) != 0) ||
++        (kdb5_util == NULL &&
++         (retval = k5_relocate_default(KPROPD_DEFAULT_KDB5_UTIL,
++                                       &kdb5_util)) != 0) ||
++        (acl_file_name == NULL &&
++         (retval = k5_relocate_default(KPROPD_ACL_FILE,
++                                       &acl_file_name)) != 0)) {
++        com_err(progname, retval, _("while resolving default paths"));
++        exit(1);
++    }
+ 
+     openlog("kpropd", LOG_PID | LOG_ODELAY, SYSLOG_CLASS);
+     if (!debug)
+--- lib/gssapi/mechglue/g_initialize.c.orig
++++ lib/gssapi/mechglue/g_initialize.c
+@@ -479,6 +479,7 @@
+ 	glob_t globbuf;
+ 	time_t highest = (time_t)-1, now;
+ 	char **path;
++	char *default_conf = NULL, *default_pattern = NULL;
+ 	const char *val;
+ 
+ 	/* Don't glob and stat more than once per second. */
+@@ -492,14 +493,22 @@
+ 		return;
+ 	}
+ 
+-	load_if_changed(MECH_CONF, g_confFileModTime, &highest);
++	if (k5_relocate_default(MECH_CONF, &default_conf) != 0 ||
++	    k5_relocate_default(MECH_CONF_PATTERN, &default_pattern) != 0) {
++		free(default_conf);
++		free(default_pattern);
++		return;
++	}
++	load_if_changed(default_conf, g_confFileModTime, &highest);
+ 
+ 	memset(&globbuf, 0, sizeof(globbuf));
+-	if (glob(MECH_CONF_PATTERN, 0, NULL, &globbuf) == 0) {
++	if (glob(default_pattern, 0, NULL, &globbuf) == 0) {
+ 		for (path = globbuf.gl_pathv; *path != NULL; path++)
+ 			load_if_changed(*path, g_confFileModTime, &highest);
+ 	}
+ 	globfree(&globbuf);
++	free(default_conf);
++	free(default_pattern);
+ 
+ 	g_confFileModTime = highest;
+ }
+@@ -1491,7 +1500,7 @@
+ #if defined(_WIN32)
+ 	const char *sharedPath;
+ #else
+-	char sharedPath[sizeof (MECH_LIB_PREFIX) + BUFSIZ];
++	char *sharedPath = NULL, *relocated_prefix = NULL;
+ #endif
+ 	char *tmpStr;
+ 	gss_OID mechOid;
+@@ -1530,11 +1539,17 @@
+ #if defined(_WIN32)
+ 	sharedPath = sharedLib;
+ #else
+-	if (sharedLib[0] == '/')
+-		snprintf(sharedPath, sizeof(sharedPath), "%s", sharedLib);
+-	else
+-		snprintf(sharedPath, sizeof(sharedPath), "%s%s",
+-			 MECH_LIB_PREFIX, sharedLib);
++	if (sharedLib[0] == '/') {
++		sharedPath = strdup(sharedLib);
++	} else if (k5_relocate_default(MECH_LIB_PREFIX, &relocated_prefix) == 0) {
++		if (k5_path_join(relocated_prefix, sharedLib, &sharedPath) != 0)
++			sharedPath = NULL;
++	}
++	free(relocated_prefix);
++	if (sharedPath == NULL) {
++		generic_gss_release_oid(&minor, &mechOid);
++		return;
++	}
+ #endif
+ 	/*
+ 	 * are we creating a new mechanism entry or
+@@ -1555,7 +1570,11 @@
+ 			aMech->optionStr = NULL;
+ 		}
+ 
+-		if ((tmpStr = strdup(sharedPath)) != NULL) {
++		tmpStr = strdup(sharedPath);
++#if !defined(_WIN32)
++		free(sharedPath);
++#endif
++		if (tmpStr != NULL) {
+ 			if (aMech->uLibName)
+ 				free(aMech->uLibName);
+ 			aMech->uLibName = tmpStr;
+@@ -1575,11 +1594,17 @@
+ 	/* adding a new entry */
+ 	aMech = calloc(1, sizeof (struct gss_mech_config));
+ 	if (aMech == NULL) {
++#if !defined(_WIN32)
++		free(sharedPath);
++#endif
+ 		generic_gss_release_oid(&minor, &mechOid);
+ 		return;
+ 	}
+ 	aMech->mech_type = mechOid;
+ 	aMech->uLibName = strdup(sharedPath);
++#if !defined(_WIN32)
++	free(sharedPath);
++#endif
+ 	aMech->mechNameStr = strdup(oidStr);
+ 	aMech->freeMech = 0;
+ 
+--- lib/kadm5/alt_prof.c.orig
++++ lib/kadm5/alt_prof.c
+@@ -502,12 +502,20 @@
+     }
+ 
+     /* Get the value for the database. */
+-    GET_STRING_PARAM(dbname, KADM5_CONFIG_DBNAME, KRB5_CONF_DATABASE_NAME,
+-                     DEFAULT_KDB_FILE);
++    if (!GET_STRING_PARAM(dbname, KADM5_CONFIG_DBNAME, KRB5_CONF_DATABASE_NAME, NULL)) {
++        ret = k5_relocate_default(DEFAULT_KDB_FILE, &params.dbname);
++        if (ret)
++            goto cleanup;
++        params.mask |= KADM5_CONFIG_DBNAME;
++    }
+ 
+     /* Get the name of the acl file. */
+-    GET_STRING_PARAM(acl_file, KADM5_CONFIG_ACL_FILE, KRB5_CONF_ACL_FILE,
+-                     DEFAULT_KADM5_ACL_FILE);
++    if (!GET_STRING_PARAM(acl_file, KADM5_CONFIG_ACL_FILE, KRB5_CONF_ACL_FILE, NULL)) {
++        ret = k5_relocate_default(DEFAULT_KADM5_ACL_FILE, &params.acl_file);
++        if (ret)
++            goto cleanup;
++        params.mask |= KADM5_CONFIG_ACL_FILE;
++    }
+ 
+     /* Get the name of the dict file. */
+     GET_STRING_PARAM(dict_file, KADM5_CONFIG_DICT_FILE, KRB5_CONF_DICT_FILE,
+--- lib/kdb/kdb5.c.orig
++++ lib/kdb/kdb5.c
+@@ -399,7 +399,7 @@
+ load_library(krb5_context kcontext, const char *lib_name, db_library *lib)
+ {
+     krb5_error_code status = 0;
+-    int     ndx;
++    int     ndx, i, first_default = 0;
+     void  **vftabl_addrs = NULL;
+     /* N.B.: If this is "const" but not "static", the Solaris 10
+        native compiler has trouble building the library because of
+@@ -439,7 +439,12 @@
+     }
+     if (ndx)
+         memcpy(path, profpath, ndx * sizeof(profpath[0]));
+-    memcpy(path + ndx, db_dl_location, db_dl_n_locations * sizeof(char *));
++    first_default = ndx;
++    for (i = 0; db_dl_location[i] != NULL; i++) {
++        status = k5_relocate_default(db_dl_location[i], &path[ndx + i]);
++        if (status)
++            goto clean_n_exit;
++    }
+     status = 0;
+ 
+     if ((status = krb5int_open_plugin_dirs ((const char **) path,
+@@ -482,6 +487,10 @@
+ clean_n_exit:
+     krb5int_free_plugin_dir_data(vftabl_addrs);
+     /* Both of these DTRT with NULL.  */
++    if (path != NULL) {
++        for (i = first_default; path[i] != NULL; i++)
++            free(path[i]);
++    }
+     profile_free_list(profpath);
+     free(path);
+     if (status && *lib) {
+--- lib/kdb/kdb_default.c.orig
++++ lib/kdb/kdb_default.c
+@@ -124,8 +124,13 @@
+     int statrc;
+ 
+     if (!keyfile) {
++        char *stub = NULL;
++        retval = k5_relocate_default(DEFAULT_KEYFILE_STUB, &stub);
++        if (retval)
++            return retval;
+         (void) snprintf(defkeyfile, sizeof(defkeyfile), "%s%s",
+-                        DEFAULT_KEYFILE_STUB, realm->data);
++                        stub, realm->data);
++        free(stub);
+         keyfile = defkeyfile;
+     }
+ 
+@@ -368,8 +373,12 @@
+     if (db_args != NULL) {
+         (void) strncpy(keyfile, db_args, sizeof(keyfile));
+     } else {
+-        (void) snprintf(keyfile, sizeof(keyfile), "%s%s",
+-                        DEFAULT_KEYFILE_STUB, realm->data);
++        char *stub = NULL;
++        retval = k5_relocate_default(DEFAULT_KEYFILE_STUB, &stub);
++        if (retval)
++            return retval;
++        (void) snprintf(keyfile, sizeof(keyfile), "%s%s", stub, realm->data);
++        free(stub);
+     }
+     /* null terminate no matter what */
+     keyfile[sizeof(keyfile) - 1] = '\0';
+--- lib/krb5/krb/authdata.c.orig
++++ lib/krb5/krb/authdata.c
+@@ -33,14 +33,6 @@
+ 
+ #define IS_PRIMARY_INSTANCE(_module) ((_module)->client_req_init != NULL)
+ 
+-static const char *objdirs[] = {
+-#if TARGET_OS_MAC
+-    KRB5_AUTHDATA_PLUGIN_BUNDLE_DIR,
+-#endif
+-    LIBDIR "/krb5/plugins/authdata",
+-    NULL
+-}; /* should be a list */
+-
+ /* Internal authdata systems */
+ static krb5plugin_authdata_client_ftable_v0 *authdata_systems[] = {
+     &k5_mspac_ad_client_ftable,
+@@ -379,6 +371,14 @@
+     krb5_authdata_context context = NULL;
+     int internal_count = 0;
+     struct plugin_dir_handle plugins;
++    char *relocated_dir = NULL;
++#if TARGET_OS_MAC
++    const char *objdirs[] = { KRB5_AUTHDATA_PLUGIN_BUNDLE_DIR, NULL, NULL };
++    const size_t relocated_index = 1;
++#else
++    const char *objdirs[] = { NULL, NULL };
++    const size_t relocated_index = 0;
++#endif
+     krb5_error_code code;
+ 
+     *pcontext = NULL;
+@@ -390,6 +390,10 @@
+     }
+     internal_count = n_tables;
+ 
++    code = k5_relocate_default(LIBDIR "/krb5/plugins/authdata", &relocated_dir);
++    if (code != 0)
++        goto cleanup;
++    objdirs[relocated_index] = relocated_dir;
+     if (PLUGIN_DIR_OPEN(&plugins) == 0 &&
+         krb5int_open_plugin_dirs(objdirs, NULL,
+                                  &plugins,
+@@ -435,6 +439,7 @@
+     context->plugins = plugins;
+ 
+ cleanup:
++    free(relocated_dir);
+     if (tables != NULL)
+         krb5int_free_plugin_dir_data(tables);
+ 
+--- lib/krb5/krb/init_ctx.c.orig
++++ lib/krb5/krb/init_ctx.c
+@@ -159,6 +159,7 @@
+     krb5_error_code retval;
+     int tmp;
+     char *plugin_dir = NULL, *timeout_str = NULL;
++    int compiled_plugin_default = 0;
+ 
+     /* Verify some assumptions.  If the assumptions hold and the
+        compiler is optimizing, this should result in no code being
+@@ -271,9 +272,23 @@
+ 
+     retval = profile_get_string(ctx->profile, KRB5_CONF_LIBDEFAULTS,
+                                 KRB5_CONF_PLUGIN_BASE_DIR, 0,
+-                                DEFAULT_PLUGIN_BASE_DIR, &plugin_dir);
++                                NULL, &plugin_dir);
++    if (!retval && plugin_dir == NULL) {
++        plugin_dir = strdup(DEFAULT_PLUGIN_BASE_DIR);
++        if (plugin_dir == NULL)
++            retval = ENOMEM;
++        compiled_plugin_default = 1;
++    }
+     if (!retval)
+         retval = k5_expand_path_tokens(ctx, plugin_dir, &ctx->plugin_base_dir);
++    if (!retval && compiled_plugin_default) {
++        char *relocated = NULL;
++        retval = k5_relocate_default(ctx->plugin_base_dir, &relocated);
++        if (!retval) {
++            free(ctx->plugin_base_dir);
++            ctx->plugin_base_dir = relocated;
++        }
++    }
+     if (retval) {
+         TRACE_PROFILE_ERR(ctx, KRB5_CONF_PLUGIN_BASE_DIR,
+                           KRB5_CONF_LIBDEFAULTS, retval);
+--- lib/krb5/os/init_os_ctx.c.orig
++++ lib/krb5/os/init_os_ctx.c
+@@ -290,15 +290,19 @@
+     files[1] = 0;
+ #else /* !_WIN32 */
+     char* filepath = 0;
+-    int n_entries, i;
++    int n_entries, i, compiled_default = 0;
+     unsigned int ent_len;
+     const char *s, *t;
+ 
+     if (secure) {
+         filepath = DEFAULT_SECURE_PROFILE_PATH;
++        compiled_default = 1;
+     } else {
+         filepath = secure_getenv("KRB5_CONFIG");
+-        if (!filepath) filepath = DEFAULT_PROFILE_PATH;
++        if (!filepath) {
++            filepath = DEFAULT_PROFILE_PATH;
++            compiled_default = 1;
++        }
+     }
+ 
+     /* count the distinct filename components */
+@@ -324,6 +328,17 @@
+         }
+         strncpy(files[i], s, ent_len);
+         files[i][ent_len] = 0;
++        if (compiled_default) {
++            char *relocated = NULL;
++            int err = k5_relocate_default(files[i], &relocated);
++            if (err) {
++                while (i >= 0) free(files[i--]);
++                free(files);
++                return err;
++            }
++            free(files[i]);
++            files[i] = relocated;
++        }
+         if (*t == 0) {
+             i++;
+             break;
+@@ -340,12 +355,15 @@
+ add_kdc_config_file(profile_filespec_t **pfiles)
+ {
+     char *file = NULL;
++    int compiled_default = 0;
+     size_t count = 0;
+     profile_filespec_t *newfiles;
+ 
+     file = secure_getenv(KDC_PROFILE_ENV);
+-    if (file == NULL)
++    if (file == NULL) {
+         file = DEFAULT_KDC_PROFILE;
++        compiled_default = 1;
++    }
+ 
+     for (count = 0; (*pfiles)[count]; count++)
+         ;
+@@ -354,7 +372,12 @@
+     if (newfiles == NULL)
+         return ENOMEM;
+     memcpy(newfiles + 1, *pfiles, (count-1) * sizeof(*newfiles));
+-    newfiles[0] = strdup(file);
++    if (compiled_default) {
++        if (k5_relocate_default(file, &newfiles[0]) != 0)
++            newfiles[0] = NULL;
++    } else {
++        newfiles[0] = strdup(file);
++    }
+     if (newfiles[0] == NULL) {
+         int e = ENOMEM;
+         free(newfiles);
+--- lib/krb5/os/ktdefname.c.orig
++++ lib/krb5/os/ktdefname.c
+@@ -29,6 +29,32 @@
+ #include "k5-int.h"
+ #include "os-proto.h"
+ 
++/* Relocate only compiled FILE defaults after normal token expansion. */
++static krb5_error_code
++expand_compiled_keytab(krb5_context context, const char *value, char **out)
++{
++    krb5_error_code ret;
++    char *expanded = NULL, *relocated = NULL, *result = NULL;
++
++    ret = k5_expand_path_tokens(context, value, &expanded);
++    if (ret != 0)
++        return ret;
++    if (strncmp(expanded, "FILE:", 5) != 0) {
++        *out = expanded;
++        return 0;
++    }
++    ret = k5_relocate_default(expanded + 5, &relocated);
++    if (ret == 0 && asprintf(&result, "FILE:%s", relocated) < 0)
++        ret = ENOMEM;
++    free(expanded);
++    free(relocated);
++    if (ret == 0)
++        *out = result;
++    else
++        free(result);
++    return ret;
++}
++
+ /* this is a an exceedinly gross thing. */
+ char *krb5_overridekeyname = NULL;
+ 
+@@ -52,7 +78,7 @@
+         profile_release_string(str);
+         return ret;
+     } else {
+-        return k5_expand_path_tokens(context, DEFKTNAME, name_out);
++        return expand_compiled_keytab(context, DEFKTNAME, name_out);
+     }
+ }
+ 
+@@ -73,7 +99,7 @@
+         profile_release_string(str);
+         return ret;
+     } else {
+-        return k5_expand_path_tokens(context, DEFCKTNAME, name_out);
++        return expand_compiled_keytab(context, DEFCKTNAME, name_out);
+     }
+ }
+ 
+--- lib/krb5/os/locate_kdc.c.orig
++++ lib/krb5/os/locate_kdc.c
+@@ -397,14 +397,6 @@
+ 
+ #include <krb5/locate_plugin.h>
+ 
+-#if TARGET_OS_MAC
+-static const char *objdirs[] = { KRB5_PLUGIN_BUNDLE_DIR,
+-                                 LIBDIR "/krb5/plugins/libkrb5",
+-                                 NULL }; /* should be a list */
+-#else
+-static const char *objdirs[] = { LIBDIR "/krb5/plugins/libkrb5", NULL };
+-#endif
+-
+ struct module_callback_data {
+     int out_of_mem;
+     struct serverlist *list;
+@@ -449,13 +441,27 @@
+     int socktype;
+     struct module_callback_data cbdata = { 0, };
+     const char *msg;
++    char *relocated_dir = NULL;
++#if TARGET_OS_MAC
++    const char *objdirs[] = { KRB5_PLUGIN_BUNDLE_DIR, NULL, NULL };
++    const size_t relocated_index = 1;
++#else
++    const char *objdirs[] = { NULL, NULL };
++    const size_t relocated_index = 0;
++#endif
+ 
+     Tprintf("in module_locate_server\n");
+     cbdata.list = serverlist;
+     if (!PLUGIN_DIR_OPEN(&ctx->libkrb5_plugins)) {
+ 
++        code = k5_relocate_default(LIBDIR "/krb5/plugins/libkrb5",
++                                   &relocated_dir);
++        if (code)
++            return code;
++        objdirs[relocated_index] = relocated_dir;
+         code = krb5int_open_plugin_dirs(objdirs, NULL, &ctx->libkrb5_plugins,
+                                         &ctx->err);
++        free(relocated_dir);
+         if (code)
+             return KRB5_PLUGIN_NO_HANDLE;
+     }
+--- lib/krb5/rcache/rc_dfl.c.orig
++++ lib/krb5/rcache/rc_dfl.c
+@@ -84,7 +84,7 @@
+ {
+     krb5_error_code ret;
+     int fd = -1;
+-    char *fname = NULL;
++    char *fname = NULL, *default_dir = NULL;
+     const char *dir;
+     struct stat statbuf;
+     uid_t euid = geteuid();
+@@ -94,10 +94,16 @@
+     dir = secure_getenv("KRB5RCACHEDIR");
+     if (dir == NULL) {
+         dir = secure_getenv("TMPDIR");
+-        if (dir == NULL)
+-            dir = RCTMPDIR;
++        if (dir == NULL) {
++            ret = k5_relocate_default(RCTMPDIR, &default_dir);
++            if (ret)
++                return ret;
++            dir = default_dir;
++        }
+     }
+-    if (asprintf(&fname, "%s/krb5_%lu.rcache2", dir, (unsigned long)euid) < 0)
++    ret = asprintf(&fname, "%s/krb5_%lu.rcache2", dir, (unsigned long)euid);
++    free(default_dir);
++    if (ret < 0)
+         return ENOMEM;
+ 
+     fd = open(fname, O_CREAT | O_RDWR | O_NOFOLLOW, 0600);
+--- plugins/kdb/db2/kdb_db2.c.orig
++++ plugins/kdb/db2/kdb_db2.c
+@@ -256,8 +256,9 @@
+             /* For compatibility, check for database_name in the realm. */
+             status = profile_get_string(profile, KDB_REALM_SECTION,
+                                         KRB5_DB_GET_REALM(context),
+-                                        KDB_DB2_DATABASE_NAME,
+-                                        DEFAULT_KDB_FILE, &pval);
++                                        KDB_DB2_DATABASE_NAME, NULL, &pval);
++            if (status == 0 && pval == NULL)
++                status = k5_relocate_default(DEFAULT_KDB_FILE, &pval);
+         }
+         if (status != 0)
+             goto cleanup;
+--- plugins/kdb/lmdb/kdb_lmdb.c.orig
++++ plugins/kdb/lmdb/kdb_lmdb.c
+@@ -176,8 +176,9 @@
+             /* For compatibility, check for database_name in the realm. */
+             ret = profile_get_string(profile, KDB_REALM_SECTION,
+                                      KRB5_DB_GET_REALM(context),
+-                                     KRB5_CONF_DATABASE_NAME, DEFAULT_KDB_FILE,
+-                                     &pval);
++                                     KRB5_CONF_DATABASE_NAME, NULL, &pval);
++            if (ret == 0 && pval == NULL)
++                ret = k5_relocate_default(DEFAULT_KDB_FILE, &pval);
+         }
+         if (ret)
+             goto cleanup;
+--- plugins/preauth/otp/otp_state.c.orig
++++ plugins/preauth/otp/otp_state.c
+@@ -40,7 +40,7 @@
+ #endif
+ 
+ #define DEFAULT_TYPE_NAME "DEFAULT"
+-#define DEFAULT_SOCKET_FMT KDC_RUN_DIR "/%s.socket"
++
+ #define DEFAULT_TIMEOUT 5
+ #define DEFAULT_RETRIES 3
+ #define MAX_SECRET_LEN 1024
+@@ -84,13 +84,17 @@
+ {
+     char buf[MAX_SECRET_LEN];
+     krb5_error_code retval;
+-    char *filename = NULL;
++    char *filename = NULL, *default_dir = NULL;
+     FILE *file;
+     size_t i, j;
+ 
+     *secret = NULL;
+ 
+-    retval = k5_path_join(KDC_DIR, secret_file, &filename);
++    retval = k5_relocate_default(KDC_DIR, &default_dir);
++    if (retval != 0)
++        goto cleanup;
++    retval = k5_path_join(default_dir, secret_file, &filename);
++    free(default_dir);
+     if (retval != 0) {
+         com_err("otp", retval, "Unable to resolve secret file '%s'", filename);
+         goto cleanup;
+@@ -141,6 +145,23 @@
+     profile_free_list(type->indicators);
+ }
+ 
++/* Form the built-in socket path without changing profile-specified servers. */
++static krb5_error_code
++default_socket(const char *name, char **out)
++{
++    krb5_error_code ret;
++    char *dir = NULL;
++
++    *out = NULL;
++    ret = k5_relocate_default(KDC_RUN_DIR, &dir);
++    if (ret != 0)
++        return ret;
++    if (asprintf(out, "%s/%s.socket", dir, name) < 0)
++        ret = ENOMEM;
++    free(dir);
++    return ret;
++}
++
+ /* Construct the internal default token type. */
+ static krb5_error_code
+ token_type_default(token_type *out)
+@@ -152,7 +173,7 @@
+     name = strdup(DEFAULT_TYPE_NAME);
+     if (name == NULL)
+         goto oom;
+-    if (asprintf(&server, DEFAULT_SOCKET_FMT, name) < 0)
++    if (default_socket(name, &server) != 0)
+         goto oom;
+     secret = strdup("");
+     if (secret == NULL)
+@@ -207,9 +228,10 @@
+             retval = ENOMEM;
+             goto cleanup;
+         }
+-    } else if (asprintf(&server, DEFAULT_SOCKET_FMT, name) < 0) {
+-        retval = ENOMEM;
+-        goto cleanup;
++    } else {
++        retval = default_socket(name, &server);
++        if (retval != 0)
++            goto cleanup;
+     }
+ 
+     /* Get the secret (optional for Unix-domain sockets). */
+--- util/support/Makefile.in.orig
++++ util/support/Makefile.in
+@@ -190,6 +190,11 @@
+ ##DOS##!if 0
+ $(BUILDTOP)/include/autoconf.h: $(top_srcdir)/include/autoconf.h.in
+ 	(cd $(BUILDTOP)/include; $(MAKE) autoconf.h)
++
++# Only path.c consumes this private configured header.
++k5-reloc-conf.h: $(srcdir)/k5-reloc-conf.h.in $(BUILDTOP)/config.status
++	(cd $(BUILDTOP); $(SHELL) config.status util/support/k5-reloc-conf.h)
++path.so path.po path.lo $(OUTPRE)path.$(OBJEXT): k5-reloc-conf.h
+ ##DOS##!endif
+ 
+ t_mktime: gmt_mktime.c
+--- /dev/null
++++ util/support/k5-reloc-conf.h.in
+@@ -0,0 +1,5 @@
++/* Private path relocation configuration, generated by config.status. */
++#define K5_RELOC_HAVE_DLADDR @K5_RELOC_HAVE_DLADDR@
++#define K5_RELOC_CONFIG_OK @K5_RELOC_CONFIG_OK@
++#define K5_RELOC_PREFIX "@K5_RELOC_PREFIX_C@"
++#define K5_RELOC_LIBDIR "@K5_RELOC_LIBDIR_C@"
+--- util/support/libkrb5support-fixed.exports.orig
++++ util/support/libkrb5support-fixed.exports
+@@ -61,6 +61,7 @@
+ k5_path_isabs
+ k5_path_join
+ k5_path_split
++k5_relocate_default
+ k5_siphash24
+ k5_strerror_r
+ k5_utf8_to_utf16le
+--- util/support/path.c.orig
++++ util/support/path.c
+@@ -159,3 +159,159 @@
+     return (*path == '/');
+ #endif
+ }
++
++/* EmberBSD: resolve only prefix-owned compiled defaults from this DSO. */
++#ifndef _WIN32
++#include "k5-reloc-conf.h"
++#endif
++#if !defined(_WIN32) && K5_RELOC_HAVE_DLADDR && K5_RELOC_CONFIG_OK
++#include <dlfcn.h>
++static const char k5_reloc_anchor;
++
++static int
++reloc_valid_basename(const char *name)
++{
++    const char *p, *end;
++
++    if (strncmp(name, "libkrb5support.", 15) != 0)
++        return 0;
++    p = name + 15;
++    if (strcmp(p, "dylib") == 0 || strcmp(p, "so") == 0)
++        return 1;
++    if (strncmp(p, "so.", 3) == 0) {
++        p += 3;
++        end = p + strlen(p);
++    } else {
++        end = strstr(p, ".dylib");
++        if (end == NULL || end[6] != '\0')
++            return 0;
++    }
++    if (p == end)
++        return 0;
++    for (; p < end; p++) {
++        if (*p == '.') {
++            if (p == name + 15 || p + 1 == end || p[-1] == '.')
++                return 0;
++        } else if (*p < '0' || *p > '9') {
++            return 0;
++        }
++    }
++    return 1;
++}
++
++static char *
++reloc_normalize(const char *input)
++{
++    char *copy, *out, *save = NULL, *part, *cut;
++    size_t len = 1, n;
++
++    if (!k5_path_isabs(input))
++        return NULL;
++    copy = strdup(input);
++    if (copy == NULL)
++        return NULL;
++    out = malloc(strlen(input) + 2);
++    if (out == NULL) {
++        free(copy);
++        return NULL;
++    }
++    out[0] = '/';
++    out[1] = '\0';
++    for (part = strtok_r(copy, "/", &save); part != NULL;
++         part = strtok_r(NULL, "/", &save)) {
++        if (!strcmp(part, "."))
++            continue;
++        if (!strcmp(part, "..")) {
++            if (len > 1) {
++                cut = strrchr(out, '/');
++                len = (cut == out) ? 1 : (size_t)(cut - out);
++                out[len] = '\0';
++            }
++            continue;
++        }
++        if (len > 1)
++            out[len++] = '/';
++        n = strlen(part);
++        memcpy(out + len, part, n);
++        len += n;
++        out[len] = '\0';
++    }
++    free(copy);
++    return out;
++}
++#endif
++
++long
++k5_relocate_default(const char *input, char **output)
++{
++    char *result = NULL;
++    long status = 0;
++#if !defined(_WIN32) && K5_RELOC_HAVE_DLADDR && K5_RELOC_CONFIG_OK
++    Dl_info info;
++    char *image = NULL, *dir = NULL, *name = NULL, *prefix = NULL;
++    char *libdir = NULL, *path = NULL, *moved_prefix = NULL;
++    const char *relative;
++    size_t plen, dlen, rlen;
++#endif
++
++    *output = NULL;
++#if !defined(_WIN32) && K5_RELOC_HAVE_DLADDR && K5_RELOC_CONFIG_OK
++    if (dladdr(&k5_reloc_anchor, &info) == 0 || info.dli_fname == NULL)
++        goto fallback;
++    image = realpath(info.dli_fname, NULL);
++    if (image == NULL) {
++        if (errno == ENOMEM)
++            status = ENOMEM;
++        goto fallback;
++    }
++    status = k5_path_split(image, &dir, &name);
++    if (status != 0) goto fallback;
++    if (!reloc_valid_basename(name))
++        goto fallback;
++    if (!k5_path_isabs(input) || !k5_path_isabs(K5_RELOC_PREFIX) ||
++        !k5_path_isabs(K5_RELOC_LIBDIR)) goto fallback;
++    prefix = reloc_normalize(K5_RELOC_PREFIX);
++    libdir = reloc_normalize(K5_RELOC_LIBDIR);
++    path = reloc_normalize(input);
++    if (prefix == NULL || libdir == NULL || path == NULL) {
++        status = ENOMEM;
++        goto fallback;
++    }
++    plen = strlen(prefix);
++    if (plen <= 1 || strncmp(prefix, libdir, plen) || libdir[plen] != '/' ||
++        strncmp(prefix, path, plen) || (path[plen] != '/' && path[plen] != '\0')) goto fallback;
++    relative = libdir + plen + 1;
++    rlen = strlen(relative); dlen = strlen(dir);
++    if (rlen == 0 || dlen < rlen + 1 || dir[dlen-rlen-1] != '/' ||
++        strcmp(dir+dlen-rlen, relative) != 0) goto fallback;
++    moved_prefix = strndup(dir, dlen-rlen-1);
++    if (moved_prefix == NULL) {
++        status = ENOMEM;
++        goto fallback;
++    }
++    if (path[plen] == '\0') {
++        result = strdup(*moved_prefix ? moved_prefix : "/");
++        status = result == NULL ? ENOMEM : 0;
++    } else {
++        status = k5_path_join(*moved_prefix ? moved_prefix : "/",
++                              path+plen+1, &result);
++    }
++    if (status != 0) goto fallback;
++fallback:
++    free(image);
++    free(dir);
++    free(name);
++    free(prefix);
++    free(libdir);
++    free(path);
++    free(moved_prefix);
++#endif
++    if (status != 0)
++        return status;
++    if (result == NULL)
++        result = strdup(input);
++    if (result == NULL)
++        return ENOMEM;
++    *output = result;
++    return 0;
++}
