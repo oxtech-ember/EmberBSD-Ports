@@ -32,7 +32,8 @@ gcc_tools=$(printf '%s\n' "$gcc" | sed -n '2p')
 gcc_depends=$(printf '%s\n' "$gcc" | sed -n '3,5p' | tr '\n' ' ')
 gcc_expected=$(printf '%s\n' "$gcc" | sed -n '6p')
 [ "$gcc_fc" = "$gcc_expected" ] || fail "GCC target family selects $gcc_fc instead of $gcc_expected"
-[ -z "$gcc_tools" ] || fail "GCC unexpectedly depends on native Flang: $gcc_tools"
+case " $gcc_tools " in *":../../lang/flang "*) fail "GCC unexpectedly depends on native Flang: $gcc_tools";; esac
 case " $gcc_depends " in *flang-rt*) fail "GCC unexpectedly depends on Flang-RT: $gcc_depends";; esac
+case " $gcc_tools $gcc_depends " in *"../../lang/gcc10"*) fail "GCC unexpectedly selects obsolete pkgsrc GCC10 Fortran: $gcc_tools $gcc_depends";; esac
 
 echo "PASS: fake-cross Clang uses host Flang and target Flang-RT; GCC uses target gfortran without Flang dependencies"
