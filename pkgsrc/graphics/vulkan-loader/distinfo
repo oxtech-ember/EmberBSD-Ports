@@ -3,4 +3,5 @@ $NetBSD$
 BLAKE2s (vulkan-loader-1.4.363.0.tar.gz) = bab49813eba5277429b5927381762c9022ceb905ad6ad53afe1ff3de00aebaeb
 SHA512 (vulkan-loader-1.4.363.0.tar.gz) = dc1884b0af24b94c974aa4526e3534625a187effe21088adfebeda94179ebe5ee789e7839765f20a1b1a460aa05a64bf1247310dc5649e61ba90dcb8647915b9
 Size (vulkan-loader-1.4.363.0.tar.gz) = 1866201 bytes
+SHA1 (patch-loader_CMakeLists.txt) = 9251e891cb3d71a8aaeb056e07a32ade9eaf25e4
 SHA1 (patch-loader_loader__environment.c) = 13b7c1ec84f17c332faafaf5bfe7d75ca0ea79f6

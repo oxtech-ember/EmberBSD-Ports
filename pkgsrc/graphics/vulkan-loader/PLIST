@@ -2,7 +2,10 @@
 lib/cmake/VulkanLoader/VulkanLoaderConfig-noconfig.cmake
 lib/cmake/VulkanLoader/VulkanLoaderConfig.cmake
 lib/cmake/VulkanLoader/VulkanLoaderConfigVersion.cmake
-lib/libvulkan.so
-lib/libvulkan.so.1
-lib/libvulkan.so.${LIBVERSION}
+${PLIST.elf}lib/libvulkan.so
+${PLIST.elf}lib/libvulkan.so.1
+${PLIST.elf}lib/libvulkan.so.${LIBVERSION}
+${PLIST.darwin}lib/libvulkan.dylib
+${PLIST.darwin}lib/libvulkan.1.dylib
+${PLIST.darwin}lib/libvulkan.${LIBVERSION}.dylib
 lib/pkgconfig/vulkan.pc

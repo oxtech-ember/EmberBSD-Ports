@@ -8,7 +8,12 @@
 int
 main(void)
 {
-	void *loader = dlopen("libvulkan.so.1", RTLD_NOW | RTLD_LOCAL);
+#if defined(__APPLE__)
+	const char *name = "libvulkan.1.dylib";
+#else
+	const char *name = "libvulkan.so.1";
+#endif
+	void *loader = dlopen(name, RTLD_NOW | RTLD_LOCAL);
 	PFN_vkGetInstanceProcAddr get_proc;
 	PFN_vkEnumerateInstanceVersion get_version;
 	uint32_t version = 0;

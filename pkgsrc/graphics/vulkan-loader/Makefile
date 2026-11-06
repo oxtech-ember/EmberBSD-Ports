@@ -6,6 +6,7 @@
 SDK_VERSION=	1.4.363.0
 
 DISTNAME=	vulkan-loader-${SDK_VERSION}
+PKGREVISION=	1
 CATEGORIES=	graphics
 GITHUB_PROJECT=	Vulkan-Loader
 EXTRACT_USING=	bsdtar
@@ -35,7 +36,17 @@ PKGCONFIG_OVERRIDE+=	loader/vulkan.pc.in
 
 .include "../../devel/cmake/build.mk"
 .include "../../lang/python/tool.mk"
+.include "../../mk/bsd.prefs.mk"
+PLIST_VARS+=	darwin elf
+.if ${OPSYS} == "Darwin"
+PLIST.darwin=	yes
+CMAKE_CONFIGURE_ARGS+=	-DLOADER_BUILD_FRAMEWORK=OFF
+.else
+PLIST.elf=	yes
+.endif
+.if ${OPSYS} != "Darwin"
 .include "../../sysutils/libpciaccess/buildlink3.mk"
+.endif
 BUILDLINK_API_DEPENDS.vulkan-headers+=	vulkan-headers>=${SDK_VERSION}
 .include "../../graphics/vulkan-headers/buildlink3.mk"
 .include "../../x11/libX11/buildlink3.mk"
