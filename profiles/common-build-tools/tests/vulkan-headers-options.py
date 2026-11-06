@@ -17,9 +17,7 @@ with tempfile.TemporaryDirectory(prefix='vulkan-options-', dir=a.work_parent) as
     d = w / 'graphics/vulkan-headers'
     d.mkdir(parents=True)
     for name in ('Makefile', 'buildlink3.mk'):
-        (d / name).write_bytes((root / 'upstream/pkgsrc/graphics/vulkan-headers' / name).read_bytes())
-    with (root / 'profiles/common-build-tools/patches/vulkan-headers-headless.patch').open('rb') as patch:
-        subprocess.run(['patch', '-p1', '-d', str(w)], stdin=patch, check=True, capture_output=True)
+        (d / name).write_bytes((root / 'pkgsrc/graphics/vulkan-headers' / name).read_bytes())
     for kind in ('Makefile', 'buildlink3.mk'):
         text = (d / kind).read_text()
         lines = []
