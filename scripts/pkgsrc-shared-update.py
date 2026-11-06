@@ -494,7 +494,9 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                     # A global patch can create a file absent from upstream.
                     # Replay the complete old/new chain against an absent file;
                     # the output must still be regular and match the live tree.
-                    exp.ensure_destination_directory(stage, package.rpartition('/')[0])
+                    parent = package.rpartition('/')[0]
+                    if parent:
+                        exp.ensure_destination_directory(stage, parent)
             elif overlay is not None and (not old or overlay in old_snapshot['trees']):
                 replaces = old_file('pkgsrc/replaces') if old else (
                     (ports / 'pkgsrc/replaces').read_bytes() if (ports / 'pkgsrc/replaces').is_file() else b'')

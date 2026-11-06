@@ -302,8 +302,7 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
         self.assertFalse(self.marker.exists())
         self.assertEqual((neighbor.stat().st_ino, neighbor.stat().st_mtime_ns), stamp)
 
-    def test_global_patch_dev_null_creator(self):
-        name = 'mk/tools/ember-null-created.mk'
+    def check_global_patch_dev_null_creator(self, name):
         def creation(value):
             return f'--- /dev/null\n+++ b/{name}\n@@ -0,0 +1 @@\n+value={value}\n'
         patch = self.ports / 'patches/null-create.patch'
@@ -319,6 +318,12 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
         result = self.update('--file', name)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual((self.tree / name).read_text(), 'value=new\n')
+
+    def test_global_patch_dev_null_creator(self):
+        self.check_global_patch_dev_null_creator('mk/tools/ember-null-created.mk')
+
+    def test_global_patch_dev_null_creator_at_root(self):
+        self.check_global_patch_dev_null_creator('ember-created.mk')
 
     def test_changed_patch_and_file_preserve_unrelated_times_and_delete(self):
         unchanged = self.tree / 'cat/pkg/files/unchanged'
