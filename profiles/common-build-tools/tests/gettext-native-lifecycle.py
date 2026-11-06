@@ -37,7 +37,7 @@ archives = list(dict.fromkeys(path.resolve() for path in
 by_name = {name(path): path for path in archives}
 assert len(by_name) == len(archives), 'duplicate provider identities'
 plain_name, full_name = name(a.plain), name(a.full)
-assert plain_name == full_name == 'gettext-tools-1.0nb7', (plain_name, full_name)
+assert plain_name == full_name == 'gettext-tools-1.0nb9', (plain_name, full_name)
 installed = set()
 def install(archive):
     package = name(archive)

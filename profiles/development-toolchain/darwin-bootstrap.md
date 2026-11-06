@@ -90,7 +90,7 @@ PKGSRC_ADD=/absolute/selected-pkg-add
   PACKAGES=/absolute/common-objects/gettext-plain-packages \
   PKG_OPTIONS.gettext-tools=-style package
 "$PKGSRC_ADD" -K /absolute/host-prefix/pkgdb -u \
-  /absolute/common-objects/gettext-plain-packages/All/gettext-tools-1.0nb7.tgz
+  /absolute/common-objects/gettext-plain-packages/All/gettext-tools-1.0nb9.tgz
 "$PKGSRC_MAKE" -m /absolute/host-prefix/share/mk \
   MAKECONF="$PKGSRC_MKCONF" EMBERBSD_DARWIN_BOOTSTRAP=yes \
   -C /absolute/pkgsrc/devel/glib2 \
@@ -110,7 +110,7 @@ PKGSRC_ADD=/absolute/selected-pkg-add
   TOOLS_PLATFORM.xgettext=/absolute/host-prefix/bin/xgettext \
   PKG_OPTIONS.gettext-tools=style package
 "$PKGSRC_ADD" -K /absolute/host-prefix/pkgdb -U \
-  /absolute/common-objects/gettext-full-packages/All/gettext-tools-1.0nb7.tgz
+  /absolute/common-objects/gettext-full-packages/All/gettext-tools-1.0nb9.tgz
 ```
 
 The selected `PKGSRC_ADD` is the explicit `pkg_add` tool supplied to the SDK

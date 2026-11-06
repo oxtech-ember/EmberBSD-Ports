@@ -3,21 +3,26 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
 
 GNU msgfmt searches $GETTEXTDATADIR/its and $GETTEXTDATADIR$PACKAGE_SUFFIX/its.
 The version suffix stays in the tool. A relocated installation keeps metainfo
-rules under share/gettext-1.0/its beside the executable; libraries built
-without --enable-relocatable still embed the producer prefix.
+rules under share/gettext-1.0/its beside the executable. The selected prefix
+is the logical path of the executable, so spaces and directory symlinks stay
+intact. Libraries built without --enable-relocatable still embed the producer
+prefix.
 
 --- a/mk/tools/gettext.mk
 +++ b/mk/tools/gettext.mk
-@@ -73,6 +73,16 @@
+@@ -73,6 +73,19 @@
  .        else
  TOOLS_PLATFORM.msgfmt=${EMBERBSD_BUILD_MSGFMT}
  _TOOLS_USE_PKGSRC.msgfmt= no
 +# devel/gettext-tools ignores this tool while that package is being built.
-+# Resolve the directory containing the selected executable, not a symlink
-+# target in the producer prefix. Leave an explicit GETTEXTDATADIR alone.
++# The selected prefix is the logical directory named by the executable.
++# dirname does not follow a symlink of the executable file. pwd -L keeps a
++# symlink of that directory or its parents; pwd -P would substitute the
++# producer directory. The shell prints one path, so a space is not a make
++# word and :H cannot drop a component. An explicit GETTEXTDATADIR stays.
 +.          if !defined(GETTEXTDATADIR) || empty(GETTEXTDATADIR)
-+_EMBERBSD_MSGFMT_BINDIR!= cd "$$(dirname ${EMBERBSD_BUILD_MSGFMT:Q})" && pwd -P
-+GETTEXTDATADIR= ${_EMBERBSD_MSGFMT_BINDIR:H}/share/gettext
++_EMBERBSD_GETTEXTDATADIR!= bindir=$$(cd "$$(dirname ${EMBERBSD_BUILD_MSGFMT:Q})" && pwd -L) && printf '%s/share/gettext\n' "$${bindir%/*}"
++GETTEXTDATADIR= ${_EMBERBSD_GETTEXTDATADIR}
 +.          endif
 +ALL_ENV+= GETTEXTDATADIR=${GETTEXTDATADIR:Q}
 +CONFIGURE_ENV+= GETTEXTDATADIR=${GETTEXTDATADIR:Q}

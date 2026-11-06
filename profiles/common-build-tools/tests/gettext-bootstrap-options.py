@@ -33,7 +33,7 @@ assert 'EMBER_GETTEXT_PLAIN_STYLE=yes' in plain[2]
 assert full[3] == 'yes' and plain[3] == ''
 assert full[4] == plain[4], (full[4], plain[4])
 if full[6:8] == ['Darwin', 'no']:
-    assert full[4] == 'gettext-tools-1.0nb7', full[4]
+    assert full[4] == 'gettext-tools-1.0nb9', full[4]
     for name in ('glib2>=', 'libcroco>='):
         assert name in full[5], (name, full[5])
     assert 'glib2>=' not in plain[5] and 'libcroco>=' not in plain[5], plain[5]

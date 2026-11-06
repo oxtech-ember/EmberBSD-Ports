@@ -81,8 +81,8 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
  USE_PKGLOCALEDIR=	yes
  CONFIGURE_ARGS+=	--disable-csharp
 +CONFIGURE_ARGS+=	--without-included-libxml
-+# Data files follow the executable after a prefix move. Darwin uses the
-+# loader's relative library path; the compiled directory is only the origin.
++# GNU --enable-relocatable asks for a prefix-relative install. Upstream
++# disables rpath to do that; this tree has not executed that Darwin build.
 +CONFIGURE_ARGS+=	--enable-relocatable
 +USE_TOOLS+=		pkg-config
  CONFIGURE_ARGS+=	--disable-java

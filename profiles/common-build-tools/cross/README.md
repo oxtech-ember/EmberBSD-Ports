@@ -381,13 +381,18 @@ Python → xz → gettext-tools → Python bootstrap cycle without disabling NLS
 or changing the selected libintl. Without this opt-in, pkgsrc's original
 msgfmt dependency choice is retained. Put the setting in the host bootstrap
 MAKECONF too, so recursively built host packages see it.
-The same selection sets `GETTEXTDATADIR` to `<prefix>/share/gettext` for the
-directory that contains the selected executable. `msgfmt` still appends its
+The same selection sets `GETTEXTDATADIR` to `<prefix>/share/gettext`. The
+prefix is the logical directory named by the selected executable: a symlink
+of the executable is not followed, and a symlink of that directory or its
+parents stays in the selected path. The shell prints the whole path, including
+spaces, so make does not apply `:H` to each word. `msgfmt` still appends its
 compiled version suffix, so `share/gettext-1.0/its` supplies AppStream
-metainfo rules after the prefix moves. An explicit `GETTEXTDATADIR` is left
-unchanged. `devel/gettext-tools` does not use this tool while it is built.
-Newly built gettext-tools are relocatable, so a later prefix move resolves
-the same directory from the executable without rewriting library text.
+metainfo rules after the prefix moves. The value is shell-quoted into the
+configure, build, and global environments. An explicit `GETTEXTDATADIR` is
+left unchanged. `devel/gettext-tools` does not use this tool while it is built.
+Newly built gettext-tools pass `--enable-relocatable`. Upstream disables
+rpath for that option; a Darwin build of the relocatable package has not
+been run from this tree.
 The SQLite `readline` option is off by default on a Darwin build host.
 This breaks the native Python → SQLite → editline → automake → help2man →
 gettext-tools → Python bootstrap cycle. Target and native EmberBSD packages
