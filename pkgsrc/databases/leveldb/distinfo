@@ -1,0 +1,6 @@
+$NetBSD: distinfo,v 1.6 2022/08/05 13:02:02 adam Exp $
+
+BLAKE2s (leveldb-1.23.tar.gz) = a8cfd6386f6697a71373b4bae909d95ca2d7678076300726465d09334b051cdb
+SHA512 (leveldb-1.23.tar.gz) = ac15eac29387b9f702a901b6567d47a9f8c17cf5c7d8700a77ec771da25158c83b04959c33f3d4de7a3f033ef08f545d14ba823a8d527e21889c4b78065b0f84
+Size (leveldb-1.23.tar.gz) = 242925 bytes
+SHA1 (patch-chromium-compat) = 8fd80328a3218072201586f13bde91850723bf40

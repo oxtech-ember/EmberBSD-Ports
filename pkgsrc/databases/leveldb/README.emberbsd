@@ -1,0 +1,21 @@
+LevelDB 1.23 (BSD-3-Clause, see upstream LICENSE)
+https://github.com/google/leveldb/releases/tag/1.23
+The distfile hashes are inherited from pkgsrc. patch-chromium-compat is an
+AI-assisted selection from upstream LevelDB through Chromium's pinned commit
+7ee830d02b623e8ffe0b95d59a74db1e58da04c5:
+https://chromium.googlesource.com/external/leveldb/+/7ee830d02b623e8ffe0b95d59a74db1e58da04c5
+It includes correctness fixes for log close failures, compaction, footer bounds,
+and pointer arithmetic, plus Chromium-required source compatibility. The
+C++17 variable-template spellings are adapted to C++11. The 1.23 public Cache
+and Options layouts, internal length-prefixed-slice overload, existing codecs,
+and storage format remain unchanged; Zstd additions are not included.
+Patch provenance: upstream LevelDB contributors, accepted upstream in the
+history above; the selection and C++11 adaptations are local EmberBSD work.
+This recipe alone does not establish target runtime or browser acceptance.
+
+Validation: source owner preparation and altered archive/patch rejection pass.
+The direct native and amd64 target CMake builds detect the common Snappy 1.3.1
+package staged by the ordinary pkgsrc recipe; native write, read, compaction,
+reopen and delete pass. Cache and Options headers are unchanged and their
+native sizes match 1.23. Target execution, LevelDB package lifecycle and full
+browser acceptance have not been tested.

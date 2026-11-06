@@ -26,6 +26,7 @@ net/wireshark
 shells/dash
 shells/mksh
 archivers/libzip
+databases/leveldb
 databases/sqlite3
 databases/sqlite3-diff
 databases/sqlite3-docs
