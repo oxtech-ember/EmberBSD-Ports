@@ -27,9 +27,11 @@ with tempfile.TemporaryDirectory(dir=a.work_dir) as temp:
     root = Path(temp) / 'ports'
     upstream = root / 'upstream/pkgsrc'
     (upstream / 'lang').mkdir(parents=True)
+    (upstream / 'lang/Makefile').write_text(
+        'SUBDIR+= nodejs\n.include "../mk/misc/category.mk"\n')
     shutil.copytree(a.upstream_pkgsrc / 'lang/nodejs', upstream / 'lang/nodejs')
     run([a.git, '-C', upstream, 'init', '-q'])
-    run([a.git, '-C', upstream, 'add', '-f', 'lang/nodejs'])
+    run([a.git, '-C', upstream, 'add', '-f', 'lang/nodejs', 'lang/Makefile'])
     run([a.git, '-C', upstream, '-c', 'user.name=Fixture', '-c',
          'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture'])
     revision = run([a.git, '-C', upstream, 'rev-parse', 'HEAD']).stdout.strip()

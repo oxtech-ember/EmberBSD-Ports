@@ -1,0 +1,238 @@
+Node embedder ESM integration adapted from Electron upstream:
+  fix_expose_the_built-in_electron_module_via_the_esm_loader.patch
+  fix_do_not_resolve_electron_entrypoints.patch
+From: Samuel Attard <sattard@salesforce.com> and <marshallofsound@electronjs.org>
+Electron project license: MIT; adapted for Node 26 and guarded by embedder context.
+
+--- lib/internal/modules/customization_hooks.js
++++ lib/internal/modules/customization_hooks.js
+@@ -17,6 +17,7 @@
+ } = require('internal/util/types');
+ 
+ const { BuiltinModule } = require('internal/bootstrap/realm');
++const { isElectronApp } = require('internal/util');
+ const {
+   ERR_INVALID_RETURN_PROPERTY_VALUE,
+ } = require('internal/errors').codes;
+@@ -286,6 +287,7 @@
+   // the builtins even though the default load step only provides null as source,
+   // and any source content for builtins provided by the user hooks are ignored.
+   if (!StringPrototypeStartsWith(url, 'node:') &&
++    (!StringPrototypeStartsWith(url, 'electron:') || !isElectronApp()) &&
+     typeof result.source !== 'string' &&
+       !isAnyArrayBuffer(source) &&
+       !isArrayBufferView(source) &&
+--- lib/internal/modules/esm/get_format.js
++++ lib/internal/modules/esm/get_format.js
+@@ -9,6 +9,7 @@
+   StringPrototypeSlice,
+ } = primordials;
+ const { getOptionValue } = require('internal/options');
++const { isElectronApp } = require('internal/util');
+ const { getValidatedPath } = require('internal/fs/utils');
+ const { internal: internalConstants } = internalBinding('constants');
+ 
+@@ -83,6 +84,7 @@
+   'data:': getDataProtocolModuleFormat,
+   'file:': getFileProtocolModuleFormat,
+   'node:'() { return 'builtin'; },
++  'electron:'() { return isElectronApp() ? 'electron' : null; },
+ };
+ 
+ /**
+--- lib/internal/modules/esm/load.js
++++ lib/internal/modules/esm/load.js
+@@ -5,6 +5,7 @@
+ } = primordials;
+ const {
+   kEmptyObject,
++  isElectronApp,
+ } = require('internal/util');
+ 
+ const { defaultGetFormat } = require('internal/modules/esm/get_format');
+@@ -79,7 +80,7 @@
+ 
+   throwIfUnsupportedURLScheme(urlInstance);
+ 
+-  if (urlInstance.protocol === 'node:') {
++  if (urlInstance.protocol === 'node:' || (format === 'electron' && isElectronApp())) {
+     source = null;
+     format ??= 'builtin';
+   } else if (format === 'addon') {
+@@ -95,7 +96,7 @@
+       // Now that we have the source for the module, run `defaultGetFormat` to detect its format.
+       format = defaultGetFormat(urlInstance, context);
+ 
+-      if (format === 'commonjs') {
++      if ((format === 'electron' && isElectronApp()) || format === 'commonjs') {
+         // For backward compatibility reasons, we need to discard the source in
+         // order for the CJS loader to re-fetch it.
+         source = null;
+@@ -143,7 +144,7 @@
+ 
+   throwIfUnsupportedURLScheme(urlInstance, false);
+ 
+-  if (urlInstance.protocol === 'node:') {
++  if (urlInstance.protocol === 'node:' || (format === 'electron' && isElectronApp())) {
+     source = null;
+     format ??= 'builtin';
+   } else if (format === 'addon') {
+@@ -182,12 +183,13 @@
+     protocol !== 'file:' &&
+     protocol !== 'data:' &&
+     protocol !== 'node:' &&
++    (protocol !== 'electron:' || !isElectronApp()) &&
+     (
+       protocol !== 'https:' &&
+       protocol !== 'http:'
+     )
+   ) {
+-    const schemes = ['file', 'data', 'node'];
++    const schemes = isElectronApp() ? ['file', 'data', 'node', 'electron'] : ['file', 'data', 'node'];
+     throw new ERR_UNSUPPORTED_ESM_URL_SCHEME(parsed, schemes);
+   }
+ }
+--- lib/internal/modules/esm/loader.js
++++ lib/internal/modules/esm/loader.js
+@@ -34,6 +34,7 @@
+ const { isURL, pathToFileURL } = require('internal/url');
+ const {
+   getDeprecationWarningEmitter,
++  isElectronApp,
+   kEmptyObject,
+ } = require('internal/util');
+ const {
+@@ -405,7 +406,7 @@
+     assert(wrap instanceof ModuleWrap, `Translator used for require(${url}) should not be async`);
+ 
+     const cjsModule = wrap[imported_cjs_symbol];
+-    if (cjsModule) {
++    if (cjsModule && !(translatorKey === 'electron' && isElectronApp())) {
+       // Check if the ESM initiating import CJS is being required by the same CJS module.
+       if (cjsModule?.[kIsExecuting]) {
+         const parentFilename = urlToFilename(parentURL);
+--- lib/internal/modules/esm/resolve.js
++++ lib/internal/modules/esm/resolve.js
+@@ -27,7 +27,7 @@
+ // Do not eagerly grab .manifest, it may be in TDZ
+ const { sep, posix: { relative: relativePosixPath }, resolve, join } = require('path');
+ const { URL, pathToFileURL, fileURLToPath, isURL, URLParse } = require('internal/url');
+-const { getCWDURL, setOwnProperty, kEmptyObject } = require('internal/util');
++const { getCWDURL, setOwnProperty, kEmptyObject, isElectronApp } = require('internal/util');
+ const { canParse: URLCanParse } = internalBinding('url');
+ const {
+   ERR_INPUT_TYPE_NOT_ALLOWED,
+@@ -720,6 +720,10 @@
+   throw importNotDefined(name, packageJSONUrl, base);
+ }
+ 
++const electronSpecifiers = new SafeSet([
++  'electron', 'electron/main', 'electron/common', 'electron/renderer', 'electron/utility',
++]);
++
+ /**
+  * Resolves a package specifier to a URL.
+  * @param {string} specifier - The package specifier to resolve.
+@@ -731,6 +735,10 @@
+   // TODO(@anonrig): Move this to a C++ function.
+   if (BuiltinModule.canBeRequiredWithoutScheme(specifier)) {
+     return new URL('node:' + specifier);
++  }
++
++  if (isElectronApp() && electronSpecifiers.has(specifier)) {
++    return new URL('electron:electron');
+   }
+ 
+   let packageJSONUrl, packageJSONPath, packageSubpath;
+--- lib/internal/modules/esm/translators.js
++++ lib/internal/modules/esm/translators.js
+@@ -5,6 +5,7 @@
+   FunctionPrototypeCall,
+   JSONParse,
+   ObjectAssign,
++  ObjectKeys,
+   ObjectPrototypeHasOwnProperty,
+   SafeMap,
+   SafeSet,
+@@ -50,9 +51,10 @@
+ let debug = require('internal/util/debuglog').debuglog('esm', (fn) => {
+   debug = fn;
+ });
+-const { emitExperimentalWarning, kEmptyObject, setOwnProperty, isWindows } = require('internal/util');
++const { emitExperimentalWarning, kEmptyObject, setOwnProperty, isWindows, isElectronApp } = require('internal/util');
+ const {
+   ERR_INVALID_RETURN_PROPERTY_VALUE,
++  ERR_UNKNOWN_MODULE_FORMAT,
+   ERR_UNKNOWN_BUILTIN_MODULE,
+   ERR_WEBASSEMBLY_NOT_SUPPORTED,
+ } = require('internal/errors').codes;
+@@ -222,7 +224,9 @@
+   const { exportNames, module } = cjsPreparseModuleExports(filename, source, sourceFormat);
+   cjsCache.set(url, module);
+ 
+-  const wrapperNames = [...exportNames];
++  const wrapperNames = filename === 'electron' && isElectronApp() ?
++    ['default', ...ObjectKeys(module.exports)] :
++    [...exportNames];
+   if (!exportNames.has('default')) {
+     ArrayPrototypePush(wrapperNames, 'default');
+   }
+@@ -332,6 +336,11 @@
+ // loader hooks.
+ translators.set('require-commonjs', (url, translateContext, parentURL) => {
+   return createCJSModuleWrap(url, translateContext, parentURL);
++});
++
++translators.set('electron', () => {
++  if (!isElectronApp()) throw new ERR_UNKNOWN_MODULE_FORMAT('electron', 'electron:electron');
++  return createCJSModuleWrap('electron', { source: '' });
+ });
+ 
+ // Handle TypeScript CommonJS modules referenced by `require` calls using re-invented require.
+@@ -428,6 +437,10 @@
+     return { module, exportNames: module[kModuleExportNames] };
+   }
+ 
++  if (filename === 'electron' && isElectronApp()) {
++    return { module, exportNames: new SafeSet(['default', ...ObjectKeys(module.exports)]) };
++  }
++
+   if (source === undefined) {
+     ({ source } = loadSourceForCJSWithHooks(module, filename, format));
+   }
+--- lib/internal/url.js
++++ lib/internal/url.js
+@@ -42,6 +42,7 @@
+ } = require('internal/querystring');
+ 
+ const {
++  isElectronApp,
+   getConstructorOf,
+   removeColors,
+   kEnumerableProperty,
+@@ -1659,6 +1660,8 @@
+     path = new URL(path);
+   else if (!isURL(path))
+     throw new ERR_INVALID_ARG_TYPE('path', ['string', 'URL'], path);
++  if (path.protocol === 'electron:' && isElectronApp())
++    return 'electron';
+   if (path.protocol !== 'file:')
+     throw new ERR_INVALID_URL_SCHEME('file');
+   return (windows ?? isWindows) ? getPathFromURLWin32(path) : getPathFromURLPosix(path);
+--- lib/internal/util.js
++++ lib/internal/util.js
+@@ -925,7 +925,14 @@
+   });
+ }
+ 
++function isElectronApp() {
++  const type = process.type;
++  return !!process.versions.electron &&
++    (type === 'browser' || type === 'renderer' || type === 'utility');
++}
++
+ module.exports = {
++  isElectronApp,
+   getLazy,
+   assertCrypto,
+   assertTypeScript,
