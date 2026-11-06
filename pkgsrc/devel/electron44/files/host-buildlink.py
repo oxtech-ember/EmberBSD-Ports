@@ -4,10 +4,12 @@
 # Origin: EmberBSD (AI-assisted).
 """Create the Electron host dependency view with the selected pkgsrc buildlink phase."""
 import argparse
+import base64
 import hashlib
 import json
 import os
 import re
+import tempfile
 from pathlib import Path
 import sys
 
@@ -128,7 +130,258 @@ def _normal_work_file(path, work):
     elif re.fullmatch(r'objects/devel/electron-host-context/work/\.buildlink/lib/[^/]+\.la', rel):
         old = b"libdir='" + prefix + b"/objects/devel/electron-host-context/work/.buildlink/lib'\n"
         data = data.replace(old, b"libdir='@WORK@/lib'\n")
+        root = prefix + b'/objects/devel/electron-host-context/work/.buildlink/'
+        data = b''.join(line.replace(root, b'@WORK@/buildlink/')
+                        if line.startswith(b"dependency_libs='") else line
+                        for line in data.splitlines(keepends=True))
     return hashlib.sha256(data).hexdigest()
+
+
+def _additive_wrapper(old, candidate, old_work, candidate_work, prefix, candidate_inputs):
+    """Accept only paired new provider entries in generated make variables."""
+    def lines(data, work):
+        old = b'_BLNK_PHYSICAL_PATH.WRKDIR=\t' + str(work).encode() + b'/objects/devel/electron-host-context/work\n'
+        return data.replace(old, b'_BLNK_PHYSICAL_PATH.WRKDIR=\t@WORK@/objects/devel/electron-host-context/work\n').splitlines(keepends=True)
+    before, after = lines(old, old_work), lines(candidate, candidate_work)
+    remaining = []
+    old_index = 0
+    for line in after:
+        if old_index < len(before) and line == before[old_index]:
+            old_index += 1
+        else:
+            remaining.append(line)
+    if old_index != len(before):
+        raise ValueError('existing generated wrapper line changed')
+    additions = {}
+    pattern = re.compile(rb'^(BUILDLINK_PREFIX|_BLNK_PKG_DBDIR)\.([A-Za-z0-9_+.-]+)=\s*(\S+)\n$')
+    old_keys = {(match.group(1), match.group(2)) for line in before
+                if (match := pattern.fullmatch(line))}
+    for line in remaining:
+        match = pattern.fullmatch(line)
+        if not match:
+            raise ValueError('unsupported generated wrapper addition')
+        kind, name, value = match.groups()
+        key = (kind, name)
+        if key in additions or key in old_keys:
+            raise ValueError('duplicate generated provider key')
+        additions[key] = value.decode()
+    names = {name for _, name in additions}
+    for name in names:
+        if additions.get((b'BUILDLINK_PREFIX', name)) != str(prefix):
+            raise ValueError('new generated provider prefix is foreign')
+        db = additions.get((b'_BLNK_PKG_DBDIR', name))
+        if not db or Path(db).parent != Path(prefix) / 'pkgdb':
+            raise ValueError('new generated provider package is foreign')
+        if str(Path(db) / '+CONTENTS') not in candidate_inputs:
+            raise ValueError('new generated provider package is not selected')
+    if len(additions) != 2 * len(names):
+        raise ValueError('unpaired generated provider additions')
+    candidate_path = b'_BLNK_PHYSICAL_PATH.WRKDIR=\t' + str(candidate_work).encode() + b'/objects/devel/electron-host-context/work\n'
+    old_path = b'_BLNK_PHYSICAL_PATH.WRKDIR=\t' + str(old_work).encode() + b'/objects/devel/electron-host-context/work\n'
+    return candidate.replace(candidate_path, old_path)
+
+
+def _extension_plan(saved, current, candidate, invocation, candidate_invocation,
+                    work, candidate_work, prefix, *, recovery=False):
+    """Validate an additive candidate before touching the existing work tree."""
+    expected = dict(invocation); expected['work'] = str(candidate_work)
+    prior = saved.get('invocation', {})
+    optional = {'shared_ffmpeg', 'shared_minizip', 'shared_xml', 'shared_image', 'shared_font',
+                'shared_pdf_libraries', 'shared_codecs', 'shared_openh264', 'shared_pffft',
+                'shared_expat', 'shared_cpuinfo', 'shared_woff2', 'shared_vulkan',
+                'shared_spirv_tools', 'shared_snappy'}
+    if (candidate_invocation != expected or
+            any(prior.get(k) != invocation.get(k) for k in (prior.keys() | invocation.keys()) - optional) or
+            any(prior.get(k) not in (None, invocation.get(k)) or invocation.get(k) not in (None, 'yes')
+                for k in optional)):
+        raise ValueError('host buildlink extension invocation changed')
+    old = saved['identity']
+    if (any(current['links'].get(key) != value for key, value in old['links'].items()) or
+            (not recovery and old['links'] != current['links']) or
+            any(candidate['links'].get(key) != value for key, value in current['links'].items())):
+        raise ValueError('existing host buildlink links changed')
+    if any(candidate['links'].get(key) != value for key, value in old['links'].items()):
+        raise ValueError('candidate replaced an existing host buildlink')
+    work, candidate_work, prefix = Path(work), Path(candidate_work), Path(prefix)
+    if any(character.isspace() or character == '\\' for path in (work, candidate_work) for character in str(path)):
+        raise ValueError('host work path requires unsupported generated-file escaping')
+    view_rel = Path('objects/devel/electron-host-context/work/.buildlink')
+    wrapper_rel = Path('objects/devel/electron-host-context/work/.wrapper_makevars.mk')
+    for link in old['links']:
+        path = (work / view_rel / link).resolve(strict=True)
+        if (candidate_work / view_rel / link).resolve(strict=True) != path:
+            raise ValueError('candidate host buildlink target changed')
+        key = str(path)
+        if (key not in old['inputs'] or old['inputs'][key] != current['inputs'].get(key) or
+                old['inputs'][key] != candidate['inputs'].get(key)):
+            raise ValueError('existing selected host input changed')
+    for key in ('binding_record', 'base_makeconf'):
+        path = invocation[key]
+        if (path not in old['inputs'] or old['inputs'][path] != current['inputs'].get(path) or
+                old['inputs'][path] != candidate['inputs'].get(path)):
+            raise ValueError('host buildlink binding or base configuration changed')
+    for path, digest in old['inputs'].items():
+        if Path(path).name in ('+CONTENTS', '+BUILD_INFO') and (current['inputs'].get(path) != digest or
+                                                                candidate['inputs'].get(path) != digest):
+            raise ValueError('existing selected host package metadata changed')
+    old_generated = {Path(path).relative_to(work) for path in old['inputs'] if Path(path).is_relative_to(work)}
+    new_generated = {Path(path).relative_to(candidate_work) for path in candidate['inputs'] if Path(path).is_relative_to(candidate_work)}
+    if not old_generated <= new_generated:
+        raise ValueError('candidate removed generated host input')
+    for rel in old_generated - {wrapper_rel}:
+        old_path, new_path = work / rel, candidate_work / rel
+        if (old_path.is_symlink() or new_path.is_symlink() or not old_path.is_file() or not new_path.is_file() or
+                old_path.stat().st_mode != new_path.stat().st_mode or
+                old['inputs'][str(old_path)] != current['inputs'].get(str(old_path)) or
+                _normal_work_file(old_path, work) != _normal_work_file(new_path, candidate_work)):
+            raise ValueError('existing generated host input changed: ' + str(rel))
+    wrapper_path = work / wrapper_rel
+    candidate_wrapper_path = candidate_work / wrapper_rel
+    if (wrapper_path.is_symlink() or candidate_wrapper_path.is_symlink() or
+            not wrapper_path.is_file() or not candidate_wrapper_path.is_file() or
+            wrapper_path.stat().st_mode != candidate_wrapper_path.stat().st_mode):
+        raise ValueError('existing generated host wrapper type or mode changed')
+    wrapper_before = wrapper_path.read_bytes()
+    old_wrapper_hash = old['inputs'].get(str(wrapper_path))
+    wrapper_current_hash = hashlib.sha256(wrapper_before).hexdigest()
+    candidate_wrapper = (candidate_work / wrapper_rel).read_bytes()
+    if recovery and wrapper_current_hash != old_wrapper_hash:
+        old_path = b'_BLNK_PHYSICAL_PATH.WRKDIR=\t' + str(work).encode() + b'/objects/devel/electron-host-context/work\n'
+        new_path = b'_BLNK_PHYSICAL_PATH.WRKDIR=\t' + str(candidate_work).encode() + b'/objects/devel/electron-host-context/work\n'
+        wrapper = candidate_wrapper.replace(new_path, old_path)
+        if wrapper != wrapper_before:
+            raise ValueError('interrupted host wrapper has foreign content')
+    else:
+        if wrapper_current_hash != old_wrapper_hash:
+            raise ValueError('existing generated host wrapper changed')
+        wrapper = _additive_wrapper(wrapper_before, candidate_wrapper, work, candidate_work, prefix, candidate['inputs'])
+    files = {}
+    for rel in new_generated - old_generated:
+        text = rel.as_posix()
+        if not (re.fullmatch(r'objects/devel/electron-host-context/work/\.buildlink/\.buildlink_[^/]+_done', text) or
+                re.fullmatch(r'objects/devel/electron-host-context/work/\.buildlink/lib/[^/]+\.la', text)):
+            raise ValueError('unsupported new generated host input: ' + text)
+        data = (candidate_work / rel).read_bytes()
+        old_prefix = str(candidate_work / view_rel).encode()
+        new_prefix = str(work / view_rel).encode()
+        if text.endswith('.la'):
+            data = b''.join(line.replace(old_prefix, new_prefix)
+                            if line.startswith((b"dependency_libs='", b"libdir='")) else line
+                            for line in data.splitlines(keepends=True))
+        else:
+            data = b''.join(line.replace(old_prefix + b'/', new_prefix + b'/', 1)
+                            if line.startswith(old_prefix + b'/') and b' -> ' in line else line
+                            for line in data.splitlines(keepends=True))
+        if str(candidate_work).encode() in data:
+            raise ValueError('unsupported candidate path in generated input')
+        files[rel.as_posix()] = data
+    added = {key: value for key, value in candidate['links'].items() if key not in old['links']}
+    if any(not Path(value).is_absolute() or str(candidate_work) in value for value in added.values()):
+        raise ValueError('new host buildlink target is not absolute')
+    external = {key: value for key, value in current['inputs'].items() if not Path(key).is_relative_to(work)}
+    candidate_external = {key: value for key, value in candidate['inputs'].items()
+                          if not Path(key).is_relative_to(candidate_work)}
+    new_targets = {str((candidate_work / view_rel / name).resolve(strict=True)) for name in added}
+    if (set(candidate_external) != set(external) | new_targets or
+            any(candidate_external.get(key) != value for key, value in external.items())):
+        raise ValueError('candidate host buildlink external inputs differ')
+    return wrapper, files, added
+
+
+def _atomic_file(path, data, mode, *, replace, temporary_dir=None):
+    fd, name = tempfile.mkstemp(prefix='.host-buildlink-', dir=temporary_dir or path.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(fd, 'wb') as stream:
+            stream.write(data); stream.flush(); os.fsync(stream.fileno())
+            os.fchmod(stream.fileno(), mode)
+        if replace:
+            os.replace(temporary, path)
+        else:
+            os.link(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _safe_extension_parent(root, relative):
+    relative = Path(relative)
+    if relative.is_absolute() or any(part in ('', '.', '..') for part in relative.parts):
+        raise ValueError('invalid host buildlink extension path')
+    parent = root
+    for part in relative.parts[:-1]:
+        parent = parent / part
+        if os.path.lexists(parent):
+            if parent.is_symlink() or not parent.is_dir():
+                raise ValueError('foreign host buildlink extension directory')
+        else:
+            parent.mkdir()
+    return root / relative
+
+
+def _apply_extension(work, candidate_work, wrapper, files, links, saved, candidate):
+    """Commit a validated additive plan; a marker makes interruption retryable."""
+    work, candidate_work = Path(work), Path(candidate_work)
+    marker = work / '.host-buildlink-extension.json'
+    wrapper_rel = Path('objects/devel/electron-host-context/work/.wrapper_makevars.mk')
+    view_rel = Path('objects/devel/electron-host-context/work/.buildlink')
+    plan = {'candidate': str(candidate_work), 'saved': saved, 'candidate_identity': candidate,
+            'wrapper': base64.b64encode(wrapper).decode(),
+            'files': {k: base64.b64encode(v).decode() for k, v in sorted(files.items())},
+            'links': dict(sorted(links.items()))}
+    encoded = (json.dumps(plan, sort_keys=True, separators=(',', ':')) + '\n').encode()
+    if os.path.lexists(marker):
+        if marker.is_symlink() or not marker.is_file() or marker.read_bytes() != encoded:
+            raise ValueError('foreign or changed host buildlink extension journal')
+    else:
+        _atomic_file(marker, encoded, 0o600, replace=False)
+    for name, target in sorted(links.items()):
+        path = _safe_extension_parent(work, view_rel / name)
+        if os.path.lexists(path):
+            if not path.is_symlink() or os.readlink(path) != target:
+                raise ValueError('foreign host buildlink extension link')
+        else:
+            path.symlink_to(target)
+    for name, data in sorted(files.items()):
+        path = _safe_extension_parent(work, name)
+        candidate_file = candidate_work / name
+        mode = candidate_file.stat().st_mode & 0o777
+        if os.path.lexists(path):
+            if path.is_symlink() or not path.is_file() or path.read_bytes() != data or path.stat().st_mode & 0o777 != mode:
+                raise ValueError('foreign host buildlink extension file')
+        else:
+            _atomic_file(path, data, mode, replace=False, temporary_dir=work)
+    path = work / wrapper_rel
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    old_digest = saved['identity']['inputs'][str(path)]
+    new_digest = hashlib.sha256(wrapper).hexdigest()
+    if digest not in (old_digest, new_digest) or path.is_symlink():
+        raise ValueError('foreign host buildlink extension wrapper')
+    if digest != new_digest:
+        _atomic_file(path, wrapper, path.stat().st_mode & 0o777, replace=True)
+
+
+def _extension_identity(identity_value, work):
+    result = {}
+    work = Path(work)
+    for path, digest in identity_value['inputs'].items():
+        path = Path(path)
+        if path.is_relative_to(work):
+            key = '@WORK@/' + path.relative_to(work).as_posix()
+            digest = _normal_work_file(path, work)
+        else:
+            key = str(path)
+        if key in result and result[key] != digest:
+            raise ValueError('conflicting host buildlink extension identity')
+        result[key] = digest
+    return {'links': identity_value['links'], 'inputs': result}
+
+
+def _canonical_work(directory, *, required):
+    if os.path.lexists(directory):
+        if directory.is_symlink() or not directory.is_dir() or directory.resolve(strict=True) != directory:
+            raise ValueError('host buildlink work must be a canonical directory')
+    elif required:
+        raise ValueError('host buildlink candidate directory is missing')
 
 
 def refresh_selection(saved, current, candidate, invocation, candidate_invocation, work, candidate_work, source, script):
@@ -220,6 +473,7 @@ def main():
     mode.add_argument('--migrate-selection', action='store_true',
                       help='upgrade a matching legacy selection after validating actual inputs')
     mode.add_argument('--refresh-from', type=Path, help='refresh an equivalent owner-generated selection')
+    mode.add_argument('--extend-from', type=Path, help='extend an existing view from a verified additive candidate')
     args = parser.parse_args()
     for name, value in vars(args).items():
         if isinstance(value, Path) and not value.is_absolute():
@@ -246,7 +500,7 @@ def main():
         raise SDKError('Electron host consumer inputs are missing')
     work = args.work
     invocation = {name: str(value) for name, value in vars(args).items()
-                  if isinstance(value, Path) and name != 'refresh_from'}
+                  if isinstance(value, Path) and name not in ('refresh_from', 'extend_from')}
     if args.shared_ffmpeg:
         invocation['shared_ffmpeg'] = 'yes'
     if args.shared_minizip:
@@ -281,16 +535,22 @@ def main():
     paths.reject_overlap(str(work), str(args.host_prefix))
     if args.stage_root:
         paths.reject_overlap(str(work), str(args.stage_root))
-    work_locks = [str(work)] + ([str(args.refresh_from)] if args.refresh_from else [])
-    if args.refresh_from and args.refresh_from == work:
+    candidate_arg = args.refresh_from or args.extend_from
+    _canonical_work(work, required=bool(args.extend_from))
+    if candidate_arg:
+        _canonical_work(candidate_arg, required=True)
+    work_locks = [str(work)] + ([str(candidate_arg)] if candidate_arg else [])
+    if candidate_arg and candidate_arg == work:
         raise SDKError('refresh candidate must be a separate work directory')
+    if candidate_arg:
+        paths.reject_overlap(str(work), str(candidate_arg))
     with process.ContextLocks(work_locks, str(args.lock_root), shared=args.check):
         lock_inputs = [str(source), str(args.host_prefix), str(args.binding_record), str(args.sdk_source)]
         if args.stage_root:
             lock_inputs.append(str(args.stage_root))
         with process.ContextLocks(lock_inputs,
                                   str(args.lock_root), shared=True):
-            if args.check or args.migrate_selection or args.refresh_from:
+            if args.check or args.migrate_selection or candidate_arg:
                 consumer = work / 'pkgsrc/devel/electron-host-context'
                 view = work / 'objects/devel/electron-host-context/work/.buildlink'
                 env = process.sanitized_environment()
@@ -315,7 +575,10 @@ def main():
                            *(['EMBERBSD_ELECTRON_SHARED_WOFF2=yes'] if args.shared_woff2 else []),
                            *(['EMBERBSD_ELECTRON_SHARED_SNAPPY=yes'] if args.shared_snappy else []), 'wrapper']
                 saved = json.loads((work / 'selection.json').read_text())
-                if saved.get('invocation') != invocation:
+                journal = work / '.host-buildlink-extension.json'
+                if os.path.lexists(journal) and not args.extend_from:
+                    raise ValueError('pending host buildlink extension requires recovery')
+                if not args.extend_from and saved.get('invocation') != invocation:
                     print('host buildlink selection changed', file=sys.stderr)
                     sys.exit(3)
                 if not args.stage_root:
@@ -327,8 +590,8 @@ def main():
                 except (FileNotFoundError, process.CommandError):
                     print('host buildlink selection changed', file=sys.stderr)
                     sys.exit(3)
-                if args.refresh_from:
-                    candidate_work = args.refresh_from
+                if candidate_arg:
+                    candidate_work = candidate_arg
                     candidate_consumer = candidate_work / 'pkgsrc/devel/electron-host-context'
                     candidate_view = candidate_work / 'objects/devel/electron-host-context/work/.buildlink'
                     candidate_env = dict(env, MAKECONF=str(candidate_work / 'make.conf'))
@@ -341,10 +604,37 @@ def main():
                                           Path(darwin_makeconf.__file__)))
                     if candidate_saved.get('identity') != candidate:
                         raise ValueError('host buildlink candidate is stale')
-                    refreshed = refresh_selection(saved, current, candidate, invocation,
-                                                  candidate_saved.get('invocation'), work, candidate_work,
-                                                  source, Path(__file__).resolve(strict=True))
-                    jsonio.write_json(work / 'selection.json', refreshed, exclusive=False)
+                    if args.extend_from:
+                        recovering = os.path.lexists(journal)
+                        if recovering and (journal.is_symlink() or not journal.is_file()):
+                            raise ValueError('invalid host buildlink extension journal')
+                        original = jsonio.read_json(journal)['saved'] if recovering else saved
+                        if recovering and saved != original:
+                            if saved != {'identity': current, 'invocation': invocation} or _extension_identity(current, work) != _extension_identity(candidate, candidate_work):
+                                raise ValueError('host buildlink recovery receipt changed')
+                        try:
+                            wrapper, files, links = _extension_plan(original, current, candidate, invocation,
+                                                                     candidate_saved.get('invocation'), work,
+                                                                     candidate_work, args.host_prefix,
+                                                                     recovery=recovering)
+                        except (ValueError, OSError) as error:
+                            if recovering:
+                                raise
+                            print('host buildlink cannot extend: ' + str(error), file=sys.stderr)
+                            sys.exit(3)
+                        _apply_extension(work, candidate_work, wrapper, files, links, original, candidate)
+                        updated = identity(process, command, env, consumer, view, args.host_prefix,
+                                           (Path(__file__), args.binding_record, deps,
+                                            Path(darwin_makeconf.__file__)))
+                        if _extension_identity(updated, work) != _extension_identity(candidate, candidate_work):
+                            raise ValueError('extended host buildlink differs from candidate')
+                        jsonio.write_json(work / 'selection.json', {'identity': updated, 'invocation': invocation}, exclusive=False)
+                        journal.unlink()
+                    else:
+                        refreshed = refresh_selection(saved, current, candidate, invocation,
+                                                      candidate_saved.get('invocation'), work, candidate_work,
+                                                      source, Path(__file__).resolve(strict=True))
+                        jsonio.write_json(work / 'selection.json', refreshed, exclusive=False)
                 elif args.migrate_selection:
                     migrated = migrate_legacy_selection(
                         saved, current, invocation, Path(__file__).resolve(strict=True),

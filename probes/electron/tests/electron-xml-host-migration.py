@@ -24,6 +24,8 @@ with tempfile.TemporaryDirectory() as tmp:
     def capture(command, env):
         calls.append(command)
         work=Path(command[command.index('--work')+1])
+        if '--extend-from' in command:
+            raise CommandError(3)  # Incompatible selection retains the new context.
         if '--check' in command:
             record=json.loads((work/'selection.json').read_text())
             actual=record['invocation'].get('shared_xml') == 'yes'
@@ -43,7 +45,7 @@ with tempfile.TemporaryDirectory() as tmp:
     assert selected == str(root/'host-buildlink-1/view')
     assert env['EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK'] == str(root/'host-buildlink-1')
     assert json.loads((previous/'selection.json').read_text()) == saved
-    assert len(calls)==2 and '--check' in calls[0] and '--shared-xml' in calls[0] and '--check' not in calls[1]
+    assert len(calls)==3 and '--extend-from' in calls[2] and '--check' in calls[0] and '--shared-xml' in calls[0] and '--check' not in calls[1]
     o.phase='build'
     try: e.host_buildlink(o,sdk,native,{}, {'cxx':'/binding/cxx'})
     except ValueError as error: assert 'reconfigure' in str(error)
