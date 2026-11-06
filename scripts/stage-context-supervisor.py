@@ -30,7 +30,7 @@ def main():
         command = sys.argv[2:]
         if command[:1] == ['--']:
             command = command[1:]
-        if len(command) != 5 or command[2] not in ('build', 'package', 'package-install', 'patch-refresh'):
+        if len(command) != 5 or command[2] not in ('build', 'package', 'package-install', 'patch-refresh', 'source-refresh'):
             raise ValueError('invalid supervised cross-bulk entry')
         os.environ['CROSS_BULK_SUPERVISED'] = '|'.join([str(os.getppid()), *command[2:]])
         os.execv(command[0], command)
@@ -97,7 +97,7 @@ def main():
                 manifest.flush()
                 os.fsync(manifest.fileno())
             env['CROSS_BULK_STAGE_MANIFEST'] = str(a.manifest)
-        if a.bulk and len(a.command) == 5 and a.command[2] == 'patch-refresh':
+        if a.bulk and len(a.command) == 5 and a.command[2] in ('patch-refresh', 'source-refresh'):
             if len(spec) != 1:
                 raise ValueError('patch refresh requires exactly one stage lock')
             env['CROSS_BULK_LOCKED_WORK'] = str(next(iter(next(iter(groups.values())))))

@@ -645,6 +645,17 @@ invalidates the build stage. The command refuses incompatible provenance,
 custom patch hooks, and substitutions affecting the changed source files.
 Normal builds and stage-local commands lock each selected work directory until
 their owned worker session has drained.
+For a retained stage whose newly prepared `WRKSRC` differs only in explicitly
+selected existing source leaves, `cross-bulk.sh source-refresh
+PKGPATH[@native] STATE` runs the selected bmake's real `extract patch` targets
+in a sibling work directory. Set `CROSS_BULK_SOURCE_REFRESH_FILES` to the
+whitespace-separated relative paths authorized for replacement. Every other
+regular file and symlink in candidate `WRKSRC` must match the retained source;
+unexpected changes stop before the transaction. The command carries forward
+pkgsrc's genuine candidate `.patch_done` cookie, uses the existing journal and
+build-clean retry, and preserves retained generated files and objects. The
+caller is responsible for selecting the correct source paths and compiler
+configuration; normal builds do not use this recovery mode.
 An archive by itself is not treated as a completed build. The single package
 uses the selected SDK's full CPU budget for `MAKE_JOBS` by default; an explicit
 `CROSS_BULK_MAKE_JOBS=N` must fit that capacity. On TERM/INT/HUP it finishes

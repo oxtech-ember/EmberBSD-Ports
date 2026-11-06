@@ -65,7 +65,7 @@ umask 022
 
 [ "$#" -eq 3 ] || {
     echo 'Usage: scripts/cross-bulk.sh order|fetch|build|selected-order|selected-build PKGPATH_LIST ABSOLUTE_STATE' >&2
-    echo '       scripts/cross-bulk.sh package|package-install|patch-refresh PKGPATH[@native] ABSOLUTE_STATE' >&2
+    echo '       scripts/cross-bulk.sh package|package-install|patch-refresh|source-refresh PKGPATH[@native] ABSOLUTE_STATE' >&2
     exit 2
 }
 mode=$1
@@ -130,7 +130,7 @@ state_lock_release()
     state_lock_owned=no
 }
 case "$mode" in
-    order|fetch|build|package|package-install|patch-refresh|selected-order|selected-build)
+    order|fetch|build|package|package-install|patch-refresh|source-refresh|selected-order|selected-build)
         if [ "$stage_supervised" = no ]; then state_lock_acquire || exit $?; fi
         trap 'if [ "$state_lock_release_safe" = yes ]; then state_lock_release; else echo "Workers may not have drained; keeping lock $state/build.lock" >&2; fi' EXIT
         ;;
@@ -1851,7 +1851,7 @@ package_install_one()
         stage_supervise "$mode" "$run/stage-node"
         return $?
     fi
-    if [ "$mode" = patch-refresh ]; then
+    if [ "$mode" = patch-refresh ] || [ "$mode" = source-refresh ]; then
         : "${CROSS_BULK_LOCKED_WORK:?Missing supervised stage identity}"
         set -- --sdk-source "$sdk_source" --bmake "$BMAKE" --recipe "$PKGSRCDIR/$path" \
             --expected-work "$CROSS_BULK_LOCKED_WORK"
@@ -1862,6 +1862,11 @@ package_install_one()
                 for stage_arg in $target_settings; do set -- "$@" --make-arg "$stage_arg"; done
                 set +f
             fi
+        fi
+        if [ "$mode" = source-refresh ]; then
+            : "${CROSS_BULK_SOURCE_REFRESH_FILES:?Set an explicit whitespace list of prepared source leaves}"
+            "$host_python" -B -E -S "$(dirname "$0")/stage-local-source-refresh.py" "$@"
+            return $?
         fi
         if [ -n "${CROSS_BULK_PATCH_REFRESH_PREVIOUS_MAKEFILE:-}${CROSS_BULK_PATCH_REFRESH_SUBST_CLASS:-}" ]; then
             : "${CROSS_BULK_PATCH_REFRESH_PREVIOUS_MAKEFILE:?select the installed Makefile preimage}"
@@ -2259,6 +2264,6 @@ case "$mode" in
             mv "$state/$key.tmp" "$state/$key.deps" ;;
     fetch) fetch ;;
     build) build ;;
-    package|package-install|patch-refresh) package_install_one ;;
+    package|package-install|patch-refresh|source-refresh) package_install_one ;;
     *) echo "Unknown mode: $mode" >&2; exit 2 ;;
 esac
