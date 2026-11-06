@@ -1,0 +1,8 @@
+EmberBSD Schematic Analyzer combines KiCad's electrical netlist and ERC with
+the schematic drawing's wire graph, symbol transforms and sheet identities.
+It reports cycle, overlap and detour candidates, checks explicit voltage and
+connection facts, and produces JSON, HTML and per-sheet SVG graphs.
+
+It reads schematics only and never rewrites the source design. Rotation costs
+are measurements, not clearance-checked placement recommendations. KiCad and
+KiUtils are shared dependencies, not bundled copies.
