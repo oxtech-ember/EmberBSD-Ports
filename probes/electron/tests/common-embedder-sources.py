@@ -43,6 +43,8 @@ with tempfile.TemporaryDirectory(prefix='electron-common-sources-') as tmp:
     assert 'EMBER_PREPARED_SOURCE_CACHE' not in cached_env
     assert cached_values == values and cached_env == env
     assert values['node_path'] == '//third_party/electron_node' and values['node_shared_perfetto']
+    assert values['node_embedder_builtins_target'] == '//electron:electron_js2c'
+    assert values['node_embedder_builtins_output'] == 'electron_natives.cc'
     assert values['node_inspector_string_traits_header'] == 'third_party/inspector_protocol/crdtp/chromium/protocol_traits.h'
     assert values['node_config_gn_root_target'] == '//electron'
     assert values['node_config_gn_root_pattern'] == '//electron:electron_dist_zip'
@@ -62,6 +64,8 @@ with tempfile.TemporaryDirectory(prefix='electron-common-sources-') as tmp:
     standalone = build.common_embedder_sources(options, {'process': Process()},
         SimpleNamespace(tool=lambda _: '/selected/python'), {})
     assert 'node_inspector_string_traits_header' not in standalone
+    assert 'node_embedder_builtins_target' not in standalone
+    assert 'node_embedder_builtins_output' not in standalone
     options.node_source = root/'node'
     options.node_pkgsrc = None
     try: build.common_embedder_sources(options, {'process': Process()}, SimpleNamespace(tool=lambda _: '/selected/python'), {})

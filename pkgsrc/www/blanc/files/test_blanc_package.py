@@ -54,7 +54,7 @@ class BlancPackageTests(unittest.TestCase):
                           node=BUILD_OPTIONS.node, host_prefix=BUILD_OPTIONS.host_prefix,
                           asar_min_version='4.3.1', projection='/tmp/projection.py', electron_version='45.2.1',
                           electron_package_path='../../devel/electron44',
-                          electron_depends='electron>=45.2.1<45.2.2:../../devel/electron44')
+                          electron_depends='electron>=45.2.1nb2<45.2.2:../../devel/electron44')
             names = ('parse_args', 'load_sdk', 'select_host_tools', 'resolve_asar_provider',
                      'run_host_tool', 'check_source_files', 'validate_runtime_dependency',
                      'run_node_tests', 'test_asar_pack_roundtrip', 'run_python_tests',
@@ -256,13 +256,15 @@ class BlancPackageTests(unittest.TestCase):
     def test_exact_runtime_dependency_is_required(self):
         path, dependency = builder.validate_runtime_dependency(
             '45.2.1', '../../devel/electron44',
-            'electron>=45.2.1<45.2.2:../../devel/electron44')
+            'electron>=45.2.1nb2<45.2.2:../../devel/electron44')
         self.assertEqual(path, 'devel/electron44')
-        self.assertEqual(dependency, 'electron>=45.2.1<45.2.2:../../devel/electron44')
+        self.assertEqual(dependency, 'electron>=45.2.1nb2<45.2.2:../../devel/electron44')
         for version, package_path, depends in (
-            ('45.2.2', '../../devel/electron44', 'electron>=45.2.1<45.2.2:../../devel/electron44'),
-            ('45.2.1', '../../www/electron44', 'electron>=45.2.1<45.2.2:../../www/electron44'),
+            ('45.2.2', '../../devel/electron44', 'electron>=45.2.1nb2<45.2.2:../../devel/electron44'),
+            ('45.2.1', '../../www/electron44', 'electron>=45.2.1nb2<45.2.2:../../www/electron44'),
             ('45.2.1', '../../devel/electron44', 'electron>=45.2.0<45.2.2:../../devel/electron44'),
+            ('45.2.1', '../../devel/electron44', 'electron>=45.2.1nb1<45.2.2:../../devel/electron44'),
+            ('45.2.1', '../../devel/electron44', 'electron>=45.2.1<45.2.2:../../devel/electron44'),
         ):
             with self.subTest(version=version, package_path=package_path, depends=depends):
                 with self.assertRaises(builder.BuildError):
@@ -297,7 +299,7 @@ class BlancPackageTests(unittest.TestCase):
                       'allowlistSha256': 'c' * 64}
             asar = {'name': '@electron/asar', 'version': '4.3.1'}
             bom = builder.make_projected_sbom(source, {}, rows, app, '26.13.0', '45.2.1',
-                      '../../devel/electron44', 'electron>=45.2.1<45.2.2:../../devel/electron44',
+                      '../../devel/electron44', 'electron>=45.2.1nb2<45.2.2:../../devel/electron44',
                       asar, 'd' * 64, '3.15.0', 'e' * 64)
             serialized = json.dumps(bom)
             self.assertNotIn(str(work), serialized)

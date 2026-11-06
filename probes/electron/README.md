@@ -748,6 +748,14 @@ by four inherited parameterized GTest linkage errors; target execution is pendin
 
 ### Refresh a configured Node provider
 
+The common Node provider selects Electron's `electron_js2c` action through
+`node_embedder_builtins_target` and `node_embedder_builtins_output`. Node's GN
+target then compiles `electron_natives.cc` into `libnode` and enables its builtin
+registration. Generating that file without selecting the hook leaves Electron's
+bootstrap modules unavailable at runtime. A configured graph from before this
+selection needs a normal `reconfigure`; Ninja rebuilds the affected Node objects
+without clearing the Chromium outputs.
+
 `pkgsrc/devel/electron44/files/build-electron.py reconfigure` accepts the same inputs as
 `configure` and regenerates the existing `--work` graph. It allows GN feature and compiler option changes while checking target and
 toolchain identity. Compiler bindings are immutable and their content-addressed

@@ -744,3 +744,16 @@ changed files. Cppcheck 2.22.0 does not parse the selected C++23/libc++ input,
 so its result is incomplete rather than clean. These focused checks do not
 claim full Vector runtime or Memcheck coverage. Neither regression copies
 Vector implementation code.
+
+## Node embedder builtins selection
+
+```sh
+/absolute/native/bin/python3.15 -B -S probes/electron/tests/common-embedder-sources.py
+/absolute/native/bin/python3.15 -B -S probes/electron/tests/electron-node-embedder-builtins-gn.py \
+  --node-source /absolute/prepared/common-node --gn /absolute/native/bin/gn
+```
+
+The GN fixture uses the selected Node source's actual embedder conditionals and
+the producer's selection. It checks that empty settings omit the define and
+source, while the selected target adds the generated source exactly once and
+depends on its producer. Full Electron graph, link and runtime remain separate.

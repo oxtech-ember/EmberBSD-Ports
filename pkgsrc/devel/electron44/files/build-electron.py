@@ -1066,6 +1066,11 @@ def common_embedder_sources(options, sdk, native, environment):
         commands.append(('NODE', [native.tool('python'), '-B', str(owner), '--sdk-source', str(options.sdk_source),
                                   'verify-source', '--source', str(node), '--pkgsrc-root', str(node_export)]))
         values.update(node_path='//third_party/electron_node',
+                      # The common Node builds embedder sources only when this
+                      # hook is selected; generating electron_natives.cc alone
+                      # does not register Electron's bootstrap modules.
+                      node_embedder_builtins_target='//electron:electron_js2c',
+                      node_embedder_builtins_output='electron_natives.cc',
                       node_inspector_string_traits_header=(
                           'third_party/inspector_protocol/crdtp/chromium/protocol_traits.h'),
                       node_config_gn_root_target='//electron',

@@ -293,7 +293,7 @@ def validate_runtime_dependency(version, package_path, dependency):
     expected_path = posixpath.normpath(posixpath.join('www/blanc', package_path))
     require(expected_path == 'devel/electron44',
             f'Electron package path does not resolve from www/blanc: {package_path}')
-    expected = f'electron>={version}<{next_patch(version)}:{package_path}'
+    expected = f'electron>={version}nb2<{next_patch(version)}:{package_path}'
     require(dependency == expected,
             f'SBOM runtime version and pkgsrc dependency disagree: expected {expected}')
     require(version == '45.2.1', 'Blanc package is qualified only for Electron 45.2.1')
