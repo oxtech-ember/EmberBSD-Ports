@@ -1,0 +1,296 @@
+$NetBSD$
+
+GTK4 window integration (work in progress).
+Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
+
+--- include/wx/gtk/colour.h.orig
++++ include/wx/gtk/colour.h
+@@ -23,7 +23,9 @@
+     // constructors
+     // ------------
+     DEFINE_STD_WXCOLOUR_CONSTRUCTORS
++#ifndef __WXGTK4__
+     wxColour(const GdkColor& gdkColor);
++#endif
+ #ifdef __WXGTK3__
+     wxColour(const GdkRGBA& gdkRGBA);
+ #endif
+@@ -47,7 +49,9 @@
+     void CalcPixel( GdkColormap *cmap );
+     int GetPixel() const;
+ #endif
++#ifndef __WXGTK4__
+     const GdkColor *GetColor() const;
++#endif
+ 
+ protected:
+     virtual void
+--- src/gtk/colour.cpp.orig
++++ src/gtk/colour.cpp
+@@ -22,7 +22,21 @@
+ class wxColourRefData : public wxGDIRefData
+ {
+ public:
+-#ifdef __WXGTK3__
++#ifdef __WXGTK4__
++    wxColourRefData(const GdkRGBA& rgba) : m_gdkRGBA(rgba)
++    {
++        m_red = guint16(wxRound(rgba.red * 65535));
++        m_green = guint16(wxRound(rgba.green * 65535));
++        m_blue = guint16(wxRound(rgba.blue * 65535));
++        m_alpha = wxByte(wxRound(rgba.alpha * 255));
++    }
++    wxColourRefData(guchar red, guchar green, guchar blue, guchar alpha)
++        : wxColourRefData(GdkRGBA{red / 255.0f, green / 255.0f, blue / 255.0f, alpha / 255.0f})
++    {
++    }
++    GdkRGBA m_gdkRGBA;
++    guint16 m_red, m_green, m_blue;
++#elif defined(__WXGTK3__)
+     wxColourRefData(const GdkRGBA& gdkRGBA)
+         : m_gdkRGBA(gdkRGBA)
+     {
+@@ -128,10 +142,12 @@
+     m_refData = new wxColourRefData(gdkRGBA);
+ }
+ 
++#ifndef __WXGTK4__
+ wxColour::wxColour(const GdkColor& gdkColor)
+ {
+     m_refData = new wxColourRefData(gdkColor);
+ }
++#endif
+ #else
+ wxColour::wxColour(const GdkColor& gdkColor)
+ {
+@@ -153,7 +169,7 @@
+ 
+     wxColourRefData* refData = M_COLDATA;
+     wxColourRefData* that_refData = static_cast<wxColourRefData*>(col.m_refData);
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) && !defined(__WXGTK4__)
+     return refData->m_gdkColor.red == that_refData->m_gdkColor.red &&
+            refData->m_gdkColor.green == that_refData->m_gdkColor.green &&
+            refData->m_gdkColor.blue == that_refData->m_gdkColor.blue &&
+@@ -185,7 +201,7 @@
+ {
+     wxCHECK_MSG( IsOk(), 0, wxT("invalid colour") );
+ 
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) && !defined(__WXGTK4__)
+     return wxByte(M_COLDATA->m_gdkColor.red >> 8);
+ #else
+     return wxByte(M_COLDATA->m_red >> SHIFT);
+@@ -196,7 +212,7 @@
+ {
+     wxCHECK_MSG( IsOk(), 0, wxT("invalid colour") );
+ 
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) && !defined(__WXGTK4__)
+     return wxByte(M_COLDATA->m_gdkColor.green >> 8);
+ #else
+     return wxByte(M_COLDATA->m_green >> SHIFT);
+@@ -207,7 +223,7 @@
+ {
+     wxCHECK_MSG( IsOk(), 0, wxT("invalid colour") );
+ 
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) && !defined(__WXGTK4__)
+     return wxByte(M_COLDATA->m_gdkColor.blue >> 8);
+ #else
+     return wxByte(M_COLDATA->m_blue >> SHIFT);
+@@ -237,6 +253,7 @@
+ }
+ #endif
+ 
++#ifndef __WXGTK4__
+ const GdkColor *wxColour::GetColor() const
+ {
+     wxCHECK_MSG( IsOk(), NULL, wxT("invalid colour") );
+@@ -248,6 +265,7 @@
+ #endif
+ }
+ 
++#endif // !__WXGTK4__
+ #ifdef __WXGTK3__
+ wxColour::operator const GdkRGBA*() const
+ {
+--- src/gtk/control.cpp.orig
++++ src/gtk/control.cpp
+@@ -23,6 +23,7 @@
+ #include "wx/sysopt.h"
+ 
+ #include "wx/gtk/private.h"
++#include "wx/gtk/private/stylecontext.h"
+ #include "wx/gtk/private/mnemonics.h"
+ 
+ // ============================================================================
+@@ -60,6 +61,7 @@
+ bool wxControl::SetFont(const wxFont& font)
+ {
+     const bool changed = base_type::SetFont(font);
++#ifndef __WXGTK4__
+     if (changed && m_widget && !gtk_widget_get_realized(m_widget) && gtk_check_version(3,5,0))
+     {
+         // GTK defers sending "style-updated" until widget is realized, but
+@@ -69,6 +71,7 @@
+         // GTK updates it's style cache
+         g_signal_emit_by_name(m_widget, "style-updated");
+     }
++#endif
+     return changed;
+ }
+ #endif
+@@ -238,11 +241,27 @@
+     GtkWidget* tlw = NULL;
+     if (gtk_widget_get_parent(widget) == NULL)
+     {
++#ifdef __WXGTK4__
++        tlw = gtk_window_new();
++        gtk_window_set_child(GTK_WINDOW(tlw), widget);
++#else
+         tlw = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+         gtk_container_add(GTK_CONTAINER(tlw), widget);
+-    }
+-
+-#ifdef __WXGTK3__
++#endif
++    }
++
++#ifdef __WXGTK4__
++    {
++        wxGtkStyleContext context(gtk_widget_get_scale_factor(widget));
++        context.AddWidget(widget);
++        context.Fg(attr.colFg, state);
++        context.Bg(attr.colBg, state);
++        wxNativeFontInfo info;
++        info.description = pango_font_description_copy(
++            pango_context_get_font_description(gtk_widget_get_pango_context(widget)));
++        attr.font = wxFont(info);
++    }
++#elif defined(__WXGTK3__)
+     GtkStateFlags stateFlag = GTK_STATE_FLAG_NORMAL;
+     if (state)
+     {
+@@ -324,7 +343,11 @@
+     }
+ 
+     if (tlw)
++#ifdef __WXGTK4__
++        gtk_window_destroy(GTK_WINDOW(tlw));
++#else
+         gtk_widget_destroy(tlw);
++#endif
+ 
+     return attr;
+ }
+@@ -365,11 +388,15 @@
+ 
+ #ifdef __WXGTK3__
+     GtkStyleContext* sc = gtk_widget_get_style_context(GTK_WIDGET(entry));
+-    GtkStateFlags    state = gtk_style_context_get_state(sc);
+-
+     GtkBorder padding, border;
++#ifdef __WXGTK4__
++    gtk_style_context_get_padding(sc, &padding);
++    gtk_style_context_get_border(sc, &border);
++#else
++    GtkStateFlags state = gtk_style_context_get_state(sc);
+     gtk_style_context_get_padding(sc, state, &padding);
+     gtk_style_context_get_border(sc, state, &border);
++#endif
+ 
+     size.x += padding.left + padding.right + border.left + border.right;
+     size.y += padding.top + padding.bottom + border.top + border.bottom;
+--- src/gtk/activityindicator.cpp.orig
++++ src/gtk/activityindicator.cpp
+@@ -94,10 +94,13 @@
+     if ( !m_widget )
+         return false;
+ 
++#ifdef __WXGTK4__
++    return gtk_spinner_get_spinning(GTK_SPINNER(m_widget));
++#else
+     gboolean b;
+     g_object_get(m_widget, "active", &b, NULL);
+-
+     return b != 0;
++#endif
+ }
+ 
+ wxSize wxActivityIndicator::DoGetBestClientSize() const
+@@ -109,7 +112,16 @@
+ 
+     gint w, h;
+ 
+-#ifdef __WXGTK3__
++#ifdef __WXGTK4__
++    // Ask for the spinner content size even while it is hidden: the public
++    // gtk_widget_measure() wrapper returns zero for invisible non-root widgets.
++    // GtkSpinner's measure vfunc reads the themed icon size and requires both
++    // minimum and natural output pointers.
++    GtkWidgetClass* const wc = GTK_WIDGET_GET_CLASS(m_widget);
++    gint natural;
++    wc->measure(m_widget, GTK_ORIENTATION_HORIZONTAL, -1, &w, &natural, NULL, NULL);
++    wc->measure(m_widget, GTK_ORIENTATION_VERTICAL, -1, &h, &natural, NULL, NULL);
++#elif defined(__WXGTK3__)
+     // gtk_widget_get_preferred_size() seems to return the size based on the
+     // current size of the widget and also always returns 0 if it is hidden,
+     // so ask GtkSpinner for its preferred size directly instead of using it.
+--- src/gtk/gauge.cpp.orig
++++ src/gtk/gauge.cpp
+@@ -59,7 +59,7 @@
+     PostCreation(size);
+ #ifdef __WXGTK3__
+     int wh = isVertical ? size.x : size.y;
+-    if (wh > 0 && gtk_check_version(3,20,0) == NULL)
++    if (wh > 0 && (GTK_MAJOR_VERSION >= 4 || gtk_check_version(3,20,0) == NULL))
+     {
+         GtkCssProvider* provider = gtk_css_provider_new();
+         const char* whStr = isVertical ? "width" : "height";
+@@ -68,10 +68,15 @@
+         GTKApplyCssStyle(provider, buf);
+ 
+         int min;
++#ifdef __WXGTK4__
++        gtk_widget_measure(m_widget, isVertical ? GTK_ORIENTATION_HORIZONTAL : GTK_ORIENTATION_VERTICAL,
++                           -1, &min, NULL, NULL, NULL);
++#else
+         if (isVertical)
+             gtk_widget_get_preferred_width(m_widget, &min, NULL);
+         else
+             gtk_widget_get_preferred_height(m_widget, &min, NULL);
++#endif
+ 
+         // Adjust the min{width,height} to get the right overall size
+         wh -= min - wh;
+@@ -132,7 +137,13 @@
+     // Visible gauge colours use a different colour state
+     return GetDefaultAttributesFromGTKWidget(m_widget,
+                                              UseGTKStyleBase(),
+-                                             GTK_STATE_ACTIVE);
++                                             
++#ifdef __WXGTK4__
++                                             GTK_STATE_FLAG_ACTIVE
++#else
++                                             GTK_STATE_ACTIVE
++#endif
++);
+ 
+ }
+ 
+@@ -141,7 +152,13 @@
+ wxGauge::GetClassDefaultAttributes(wxWindowVariant WXUNUSED(variant))
+ {
+     return GetDefaultAttributesFromGTKWidget(gtk_progress_bar_new(),
+-                                             false, GTK_STATE_ACTIVE);
++                                             false, 
++#ifdef __WXGTK4__
++                                             GTK_STATE_FLAG_ACTIVE
++#else
++                                             GTK_STATE_ACTIVE
++#endif
++);
+ }
+ 
+ #endif // wxUSE_GAUGE

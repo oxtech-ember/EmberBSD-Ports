@@ -3,6 +3,8 @@
 #include <wx/app.h>
 #include <wx/frame.h>
 #include <wx/settings.h>
+#include <wx/artprov.h>
+#include <wx/activityindicator.h>
 #include <wx/renderer.h>
 #include <wx/dcmemory.h>
 #include <wx/dcgraph.h>
@@ -46,21 +48,34 @@ public:
             Check(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT).IsOk(), "selection colour");
             Check(wxSystemSettings::GetFont(wxSYS_DEFAULT_GUI_FONT).IsOk(), "native font");
             Check(wxSystemSettings::GetMetric(wxSYS_VSCROLL_X, frame) > 0, "measured scrollbar width");
+            wxBitmap icon = wxArtProvider::GetBitmap(wxART_MISSING_IMAGE, wxART_BUTTON, wxSize(24, 32));
+            Check(icon.IsOk() && icon.GetSize() == wxSize(24, 32), "theme icon raster dimensions");
+            wxActivityIndicator* spinner = new wxActivityIndicator(frame, wxID_ANY);
+            const wxSize shownSpinnerSize = spinner->GetBestSize();
+            spinner->Hide();
+            spinner->InvalidateBestSize();
+            Check(shownSpinnerSize.x > 0 && shownSpinnerSize.y > 0 &&
+                  spinner->GetBestSize() == shownSpinnerSize,
+                  "hidden spinner retains its themed best size");
             wxRendererNative& renderer = wxRendererNative::Get();
             const wxSize checkbox = renderer.GetCheckBoxSize(frame);
             Check(checkbox.x > 0 && checkbox.y > 0, "measured checkbox size");
             Check(renderer.GetHeaderButtonHeight(frame) > 0, "measured column header height");
             GtkStyleContext* buttonStyle = gtk_widget_get_style_context(wxGTKPrivate::GetButtonWidget());
             const GtkStateFlags initialState = gtk_style_context_get_state(buttonStyle);
-            wxBitmap bitmap(160, 64, 32);
+            const int initialScale = gtk_style_context_get_scale(buttonStyle);
+            wxBitmap bitmap(320, 128, 32);
+            bitmap.SetScaleFactor(2);
             {
-                wxMemoryDC memory(bitmap);
-                wxGCDC dc(memory);
+                wxMemoryDC dc(bitmap);
+                Check(dc.GetContentScaleFactor() == 2, "high-DPI memory drawing context");
                 renderer.DrawPushButton(frame, dc, wxRect(0, 0, 70, 32), wxCONTROL_PRESSED);
                 renderer.DrawPushButton(frame, dc, wxRect(75, 0, 70, 32), wxCONTROL_DISABLED);
                 renderer.DrawCheckBox(frame, dc, wxRect(0, 34, 24, 24), wxCONTROL_CHECKED);
                 renderer.DrawRadioBitmap(frame, dc, wxRect(30, 34, 24, 24), wxCONTROL_CHECKED);
             }
+            Check(gtk_style_context_get_scale(buttonStyle) == initialScale,
+                  "high-DPI drawing must restore cached style scale");
             Check(gtk_style_context_get_state(buttonStyle) == initialState,
                   "scoped drawing must restore cached widget state");
             // Exercise cache invalidation with the actual GTK setting. A custom

@@ -17,24 +17,27 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
  WXDLLIMPEXP_CORE GtkWidget *GetComboBoxWidget();
 --- include/wx/gtk/private/stylecontext.h.orig
 +++ include/wx/gtk/private/stylecontext.h
-@@ -32,6 +32,10 @@
+@@ -32,6 +32,11 @@
      wxGtkStyleContext& AddTreeviewHeaderButton(int pos);
  #endif // GTK >= 3.20
      wxGtkStyleContext& AddWindow(const char* className2 = NULL);
 +#ifdef __WXGTK4__
 +    GtkWidget* GetWidget() const { return m_widget; }
++    wxGtkStyleContext& AddWidget(GtkWidget* widget) { Select(widget); return *this; }
 +    wxGtkStyleContext& AddRadioButton();
 +#endif
      void Bg(wxColour& color, int state = GTK_STATE_FLAG_NORMAL) const;
      void Fg(wxColour& color, int state = GTK_STATE_FLAG_NORMAL) const;
      void Border(wxColour& color) const;
-@@ -39,7 +43,13 @@
+@@ -39,7 +44,15 @@
  
  private:
      GtkStyleContext* m_context;
 +#ifdef __WXGTK4__
 +    void Select(GtkWidget* widget);
++    void Release();
 +    GtkWidget* m_widget;
++    int m_previousScale;
 +    bool m_selection;
 +#else
      GtkWidgetPath* const m_path;
@@ -575,7 +578,7 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
  }
 --- /dev/null
 +++ src/gtk/stylecontext4.inc
-@@ -0,0 +1,222 @@
+@@ -0,0 +1,238 @@
 +///////////////////////////////////////////////////////////////////////////////
 +// GTK4 theme queries through real, rooted widgets and public style APIs.
 +// Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
@@ -649,25 +652,36 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +}
 +
 +wxGtkStyleContext::wxGtkStyleContext(double scale)
-+    : m_context(NULL), m_widget(NULL), m_selection(false), m_scale(wxMax(1, int(scale)))
++    : m_context(NULL), m_widget(NULL), m_previousScale(1), m_selection(false), m_scale(wxMax(1, int(scale)))
 +{
 +}
 +
 +void wxGtkStyleContext::Select(GtkWidget* widget)
 +{
-+    if (m_context) gtk_style_context_restore(m_context);
-+    if (m_widget) g_object_unref(m_widget);
++    Release();
 +    m_widget = GTK_WIDGET(g_object_ref(widget));
 +    m_selection = false;
 +    m_context = gtk_widget_get_style_context(widget);
++    m_previousScale = gtk_style_context_get_scale(m_context);
 +    gtk_style_context_save(m_context);
 +    gtk_style_context_set_scale(m_context, m_scale);
 +}
 +
++void wxGtkStyleContext::Release()
++{
++    if (m_context)
++    {
++        gtk_style_context_restore(m_context);
++        // GTK's context save/restore only saves the style node, not its
++        // cascade scale. Restore it separately for the cached native widget.
++        gtk_style_context_set_scale(m_context, m_previousScale);
++        m_context = NULL;
++    }
++    g_clear_object(&m_widget);
++}
 +wxGtkStyleContext::~wxGtkStyleContext()
 +{
-+    if (m_context) gtk_style_context_restore(m_context);
-+    if (m_widget) g_object_unref(m_widget);
++    Release();
 +}
 +
 +wxGtkStyleContext& wxGtkStyleContext::Add(GType type, const char* name, ...)
@@ -781,8 +795,13 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +        color = wxColour(rgba);
 +    else
 +        color = SampleStyleColour(m_context, false);
-+    if (!color.Alpha() && !GTK_IS_WINDOW(m_widget))
-+        wxGtkStyleContext().AddWindow().Bg(color, state);
++    if (!color.Alpha())
++    {
++        if (GtkWidget* parent = gtk_widget_get_parent(m_widget))
++            wxGtkStyleContext(m_scale).AddWidget(parent).Bg(color, state);
++        else if (!GTK_IS_WINDOW(m_widget))
++            wxGtkStyleContext(m_scale).AddWindow().Bg(color, state);
++    }
 +}
 +void wxGtkStyleContext::Fg(wxColour& color, int state) const
 +{

@@ -2,8 +2,8 @@
 
 The Unix provider is being moved to GTK4, WebKitGTK 6.0 and libspelling.
 Darwin continues to use Cocoa. The package path names wxWidgets 3.2, not a
-GTK major version. This branch is an integration draft and does not yet
-produce a working GTK4 wxWidgets or KiCad package.
+GTK major version. GTK4 integration is in progress and does not yet produce
+a working GTK4 wxWidgets or KiCad package.
 
 `patch-gtk4-pizza` implements the client container using `GtkWidget`
 measurement, allocation and snapshot callbacks. GTK owns CSS rendering and
@@ -78,3 +78,9 @@ The combined patches pass zero-fuzz application to the verified upstream
 3.2.12 release. Full backend compilation, linking, runtime and memory checks
 remain required. Do not publish a wxWidgets binary
 based only on patch-application or metadata tests.
+
+`patch-gtk4-art` resolves GTK4 icon-theme paintables and rasterizes their immutable
+snapshots for wxArtProvider, including theme-coloured symbolic icons. It retains
+provider fallback for unknown names and expands scalable sources into usable
+icon-bundle sizes. Its complete target translation unit passes syntax checks;
+real-display icon rendering is covered by the pending `style4-contract` run.

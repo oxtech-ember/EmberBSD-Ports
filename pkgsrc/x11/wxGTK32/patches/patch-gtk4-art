@@ -1,0 +1,173 @@
+$NetBSD$
+
+GTK4 window integration (work in progress).
+Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
+
+--- src/gtk/artgtk.cpp.orig
++++ src/gtk/artgtk.cpp
+@@ -144,6 +144,7 @@
+     return ret;
+ }
+ 
++#ifndef __WXGTK4__
+ GtkIconSize ArtClientToIconSize(const wxArtClient& client)
+ {
+     if (client == wxART_TOOLBAR)
+@@ -294,7 +295,12 @@
+     return bundle;
+ }
+ 
++#endif // !__WXGTK4__
+ } // anonymous namespace
++
++#ifdef __WXGTK4__
++#include "artgtk4.inc"
++#else
+ 
+ wxBitmap wxGTK2ArtProvider::CreateBitmap(const wxArtID& id,
+                                          const wxArtClient& client,
+@@ -387,3 +393,5 @@
+     gtk_icon_size_lookup( gtk_size, &width, &height);
+     return wxSize(width, height);
+ }
++
++#endif // __WXGTK4__
+--- /dev/null
++++ src/gtk/artgtk4.inc
+@@ -0,0 +1,136 @@
++///////////////////////////////////////////////////////////////////////////////
++// GTK4 icon theme and paintable provider.
++// Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++#include <algorithm>
++
++namespace
++{
++int ArtClientPixels(const wxArtClient& client)
++{
++    GtkIconSize size;
++    if (client == wxART_TOOLBAR || client == wxART_CMN_DIALOG || client == wxART_MESSAGE_BOX)
++        size = GTK_ICON_SIZE_LARGE;
++    else if (client == wxART_MENU || client == wxART_FRAME_ICON || client == wxART_BUTTON)
++        size = GTK_ICON_SIZE_NORMAL;
++    else
++        return -1;
++    GtkWidget* image = wxGTKPrivate::GetStyleWidget(GTK_TYPE_IMAGE);
++    gtk_image_set_from_icon_name(GTK_IMAGE(image), "image-missing");
++    gtk_image_set_icon_size(GTK_IMAGE(image), size);
++    int width;
++    gtk_widget_measure(image, GTK_ORIENTATION_HORIZONTAL, -1, NULL, &width, NULL, NULL);
++    return width;
++}
++
++GdkPixbuf* CreateThemeIcon4(const char* name, int width, int height)
++{
++    GdkDisplay* display = gdk_display_get_default();
++    if (!display || width <= 0 || height <= 0) return NULL;
++    GtkIconTheme* theme = gtk_icon_theme_get_for_display(display);
++    // Let the next wxArtProvider handle an unavailable name; lookup_icon()
++    // alone would return image-missing and incorrectly stop that chain.
++    if (!gtk_icon_theme_has_icon(theme, name)) return NULL;
++    const int iconSize = std::min(width, height);
++    GtkIconPaintable* icon = gtk_icon_theme_lookup_icon(theme, name, NULL,
++        iconSize, 1, gtk_widget_get_default_direction(), GtkIconLookupFlags(0));
++    if (!icon) return NULL;
++    GtkSnapshot* snapshot = gtk_snapshot_new();
++    const graphene_point_t origin = GRAPHENE_POINT_INIT(
++        float(width - iconSize) / 2, float(height - iconSize) / 2);
++    gtk_snapshot_translate(snapshot, &origin);
++    if (GTK_IS_SYMBOLIC_PAINTABLE(icon))
++    {
++        GtkWidget* widget = wxGTKPrivate::GetButtonWidget();
++        GdkRGBA colors[4];
++        gtk_widget_get_color(widget, &colors[0]);
++        for (unsigned i = 1; i < 4; ++i) colors[i] = colors[0];
++        GtkStyleContext* style = gtk_widget_get_style_context(widget);
++        const char* names[] = { "success_color", "warning_color", "error_color" };
++        for (unsigned i = 0; i < 3; ++i)
++        {
++            GdkRGBA named;
++            if (gtk_style_context_lookup_color(style, names[i], &named)) colors[i + 1] = named;
++        }
++        const PangoFontDescription* font = pango_context_get_font_description(
++            gtk_widget_get_pango_context(widget));
++        gtk_symbolic_paintable_snapshot_with_weight(GTK_SYMBOLIC_PAINTABLE(icon),
++            GDK_SNAPSHOT(snapshot), iconSize, iconSize, colors, 4,
++            pango_font_description_get_weight(font));
++    }
++    else
++        gdk_paintable_snapshot(GDK_PAINTABLE(icon), GDK_SNAPSHOT(snapshot), iconSize, iconSize);
++    g_object_unref(icon);
++    GskRenderNode* node = gtk_snapshot_free_to_node(snapshot);
++    if (!node) return NULL;
++    // wxArtProvider returns a raster bitmap. Rasterize this immutable icon
++    // snapshot; normal window drawing continues through the native renderer.
++    cairo_surface_t* surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
++    GdkPixbuf* pixbuf = NULL;
++    if (cairo_surface_status(surface) == CAIRO_STATUS_SUCCESS)
++    {
++        cairo_t* cr = cairo_create(surface);
++        gsk_render_node_draw(node, cr);
++        cairo_destroy(cr);
++        pixbuf = gdk_pixbuf_get_from_surface(surface, 0, 0, width, height);
++    }
++    cairo_surface_destroy(surface);
++    gsk_render_node_unref(node);
++    return pixbuf;
++}
++}
++
++wxBitmap wxGTK2ArtProvider::CreateBitmap(const wxArtID& id,
++                                        const wxArtClient& client, const wxSize& requested)
++{
++    wxSize size(requested);
++    if (size == wxDefaultSize)
++    {
++        int pixels = ArtClientPixels(client);
++        if (pixels <= 0) pixels = 16;
++        size = wxSize(pixels, pixels);
++    }
++    // wxBitmap takes ownership of the returned pixbuf.
++    return wxBitmap(CreateThemeIcon4(wxArtIDToStock(id).utf8_str(), size.x, size.y));
++}
++
++wxIconBundle wxGTK2ArtProvider::CreateIconBundle(const wxArtID& id, const wxArtClient&)
++{
++    wxIconBundle bundle;
++    GdkDisplay* display = gdk_display_get_default();
++    if (!display) return bundle;
++    const wxString name = wxArtIDToStock(id);
++    GtkIconTheme* theme = gtk_icon_theme_get_for_display(display);
++    if (!gtk_icon_theme_has_icon(theme, name.utf8_str())) return bundle;
++    int* sizes = gtk_icon_theme_get_icon_sizes(theme, name.utf8_str());
++    if (!sizes) return bundle;
++    const auto add = [&](int size)
++    {
++        GdkPixbuf* pixbuf = CreateThemeIcon4(name.utf8_str(), size, size);
++        if (pixbuf)
++        {
++            wxIcon icon;
++            icon.CopyFromBitmap(wxBitmap(pixbuf));
++            bundle.AddIcon(icon);
++        }
++    };
++    for (int* size = sizes; *size; ++size)
++    {
++        if (*size > 0) add(*size);
++        else
++        {
++            // -1 denotes a scalable source, not a negative raster size.
++            const int scalableSizes[] = { 16, 32, 48, 64, 128 };
++            for (int rasterSize : scalableSizes) add(rasterSize);
++        }
++    }
++    g_free(sizes);
++    return bundle;
++}
++
++wxSize wxArtProvider::GetNativeDIPSizeHint(const wxArtClient& client)
++{
++    if (!gdk_display_get_default()) return wxDefaultSize;
++    const int pixels = ArtClientPixels(client);
++    return pixels > 0 ? wxSize(pixels, pixels) : wxDefaultSize;
++}
