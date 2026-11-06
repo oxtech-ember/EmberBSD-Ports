@@ -16,6 +16,7 @@ and verifies omitted old-cookie targets without rewriting their source files.
 """
 import base64
 import hashlib
+from functools import lru_cache
 import os
 from pathlib import Path, PurePosixPath
 import re
@@ -37,6 +38,50 @@ def stable_read(paths, path):
                 'file changed while reading: ' + str(path))
     paths.verify_stable(str(path), before)
     return data
+
+
+@lru_cache(maxsize=4)
+def active_parse_trace(command):
+    """Read the selected bmake parse trace once per immutable invocation."""
+    import subprocess
+    result = subprocess.run(list(command) + ['-d', 'p', '-V', 'PKGNAME'], check=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    require(bool(result.stdout.strip()), 'unsupported bmake patch parse trace: missing package identity')
+    return result.stderr
+
+
+def validate_active_target(paths, command, recipe, makefiles, framework_files, target):
+    """Reject active non-framework target rules, including dependencies."""
+    import shlex
+    potential = False
+    for item in shlex.split(makefiles):
+        source = Path(item)
+        if not source.is_absolute():
+            source = recipe / source
+        if (source.resolve() not in framework_files and
+                re.search(rb'(?m)^\s*' + re.escape(target.encode()) + rb'\s*:', stable_read(paths, source))):
+            potential = True
+    if not potential:
+        return
+    trace = active_parse_trace(tuple(command))
+    origin = None
+    found = 0
+    for line in trace.splitlines():
+        if line.startswith('Parsing '):
+            match = re.fullmatch(r'Parsing (.+):([0-9]+): (.*)', line)
+            require(match is not None, 'unsupported bmake patch parse trace: invalid source origin')
+            path = Path(match.group(1))
+            origin = (path if path.is_absolute() else recipe / path).resolve()
+        elif line.startswith('ParseDependency('):
+            match = re.fullmatch(r'ParseDependency\((.*)\)', line)
+            require(match is not None and origin is not None,
+                    'unsupported bmake patch parse trace: missing dependency origin')
+            left, sep, _ = match.group(1).partition(':')
+            require(bool(sep), 'unsupported bmake patch parse trace: invalid dependency')
+            if target in left.split():
+                require(origin in framework_files, 'active custom ' + target + ' is unsupported')
+                found += 1
+    require(found == 1, 'unsupported bmake patch parse trace: framework ' + target + ' not uniquely identified')
 
 
 def targets(data):
@@ -723,12 +768,7 @@ def main():
                 'additional local patches are unsupported')
     framework_files = {(a.recipe.parents[1] / name).resolve() for name in
                        ('mk/patch/patch.mk', 'mk/bsd.prefs.mk')}
-    for item in shlex.split(v['.MAKE.MAKEFILES']):
-        makefile = Path(item)
-        if not makefile.is_absolute():
-            makefile = a.recipe / makefile
-        if re.search(rb'(?m)^\s*do-patch\s*:', stable_read(paths, makefile)):
-            require(makefile.resolve() in framework_files, 'custom do-patch is unsupported')
+    validate_active_target(paths, cmd, a.recipe, v['.MAKE.MAKEFILES'], framework_files, 'do-patch')
     distfiles = shlex.split(v['DISTFILES'])
     require(len(distfiles) == 1 and '/' not in distfiles[0], 'unsupported archive inventory')
     require(shlex.split(v['EXTRACT_ONLY']) == distfiles, 'custom archive selection is unsupported')
@@ -764,6 +804,7 @@ def main():
         old_meta = subprocess.run(oldcmd + ['show-vars', 'VARNAMES=SUBST_CLASSES .MAKE.MAKEFILES'],
                                   check=True, stdout=subprocess.PIPE, text=True).stdout.splitlines()
         require(len(old_meta) == 2, 'unexpected previous recipe metadata')
+        validate_active_target(paths, oldcmd, a.recipe, old_meta[1], framework_files, 'do-patch')
         old_subst = old_meta[0].split()
         old_includes = validate_recipe_includes(paths, a.recipe, old_meta[1], records)
         current_includes = validate_recipe_includes(paths, a.recipe, v['.MAKE.MAKEFILES'], records)
@@ -828,6 +869,7 @@ def main():
             require(len(result) == len(fields), 'unexpected previous recipe metadata')
             return result
         old_classes, old_makefiles = selected_values(oldcmd, ['SUBST_CLASSES', '.MAKE.MAKEFILES'])
+        validate_active_target(paths, oldcmd, a.recipe, old_makefiles, framework_files, 'do-patch')
         require(old_classes == v['SUBST_CLASSES'], 'previous SUBST classes changed')
         old_includes = validate_recipe_includes(paths, a.previous_recipe, old_makefiles, records,
                                                package=package, cwd=a.recipe, observed=observed_recipe_inputs)
@@ -855,15 +897,8 @@ def main():
             else:
                 require(result == old_extract_hooks, 'previous extraction hooks changed')
         extract_framework = (a.recipe.parents[1] / 'mk/extract/extract.mk').resolve()
-        for item in set(shlex.split(old_makefiles) + shlex.split(v['.MAKE.MAKEFILES'])):
-            makefile = Path(item)
-            if not makefile.is_absolute():
-                makefile = a.recipe / makefile
-            content = stable_read(paths, makefile)
-            if re.search(rb'(?m)^\s*do-extract\s*:', content):
-                require(makefile.resolve() == extract_framework, 'custom do-extract is unsupported')
-            if re.search(rb'(?m)^\s*do-patch\s*:', content):
-                require(makefile.resolve() in framework_files, 'custom do-patch is unsupported')
+        validate_active_target(paths, oldcmd, a.recipe, old_makefiles, {extract_framework}, 'do-extract')
+        validate_active_target(paths, cmd, a.recipe, v['.MAKE.MAKEFILES'], {extract_framework}, 'do-extract')
         class_names = old_classes.split()
         require(len(class_names) == len(set(class_names)) and
                 all(re.fullmatch(r'[A-Za-z0-9_.-]+', name) for name in class_names),
