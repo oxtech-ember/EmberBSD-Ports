@@ -1,0 +1,1260 @@
+$NetBSD$
+
+Implement GTK4 menus with public popovers, custom rows and GActions.
+Origin: EmberBSD (AI-assisted). wxWindows licence, like upstream.
+Retain dynamic state, radio groups, icons, mnemonics, highlights and shortcuts.
+Synchronous popup dispatch uses the existing wx event loop and weak owners.
+The common invoking-window guard also tolerates menu destruction on all ports.
+See tests/README.md for window integration and pending target GUI acceptance.
+https://docs.gtk.org/gtk4/class.PopoverMenu.html
+https://docs.gtk.org/gtk4/class.ShortcutController.html
+
+--- include/wx/menu.h.orig
++++ include/wx/menu.h
+@@ -21,6 +21,7 @@
+ 
+ #include "wx/list.h"        // for "template" list classes
+ #include "wx/window.h"      // base class for wxMenuBar
++#include "wx/weakref.h"
+ 
+ // also include this one to ensure compatibility with old code which only
+ // included wx/menu.h
+@@ -619,14 +620,15 @@
+ // the given menu in its ctor and resets it in dtor.
+ // ----------------------------------------------------------------------------
+ 
++
+ class wxMenuInvokingWindowSetter
+ {
+ public:
+     // Ctor sets the invoking window for the given menu.
+     //
+-    // The menu lifetime must be greater than that of this class.
++    // Event handlers may destroy the menu before this scope ends.
+     wxMenuInvokingWindowSetter(wxMenu& menu, wxWindow *win)
+-        : m_menu(menu)
++        : m_menu(&menu)
+     {
+         menu.SetInvokingWindow(win);
+     }
+@@ -634,11 +636,11 @@
+     // Dtor resets the invoking window.
+     ~wxMenuInvokingWindowSetter()
+     {
+-        m_menu.SetInvokingWindow(NULL);
++        if (m_menu) m_menu->SetInvokingWindow(NULL);
+     }
+ 
+ private:
+-    wxMenu& m_menu;
++    wxWeakRef<wxMenu> m_menu;
+ 
+     wxDECLARE_NO_COPY_CLASS(wxMenuInvokingWindowSetter);
+ };
+--- include/wx/gtk/menu.h.orig
++++ include/wx/gtk/menu.h
+@@ -8,6 +8,11 @@
+ 
+ #ifndef _WX_GTKMENU_H_
+ #define _WX_GTKMENU_H_
++
++#ifdef __WXGTK4__
++struct wxGTKMenuData;
++struct wxGTKMenuBarData;
++#endif
+ 
+ //-----------------------------------------------------------------------------
+ // wxMenuBar
+@@ -42,6 +47,9 @@
+ 
+     virtual void Attach(wxFrame *frame) wxOVERRIDE;
+     virtual void Detach() wxOVERRIDE;
++#ifdef __WXGTK4__
++    void GTKRefreshShortcuts();
++#endif
+ 
+ private:
+     // common part of Append and Insert
+@@ -54,6 +62,9 @@
+     virtual bool GTKNeedsParent() const wxOVERRIDE { return false; }
+ 
+     GtkWidget* m_menubar;
++#ifdef __WXGTK4__
++    wxGTKMenuBarData* m_gtkBar;
++#endif
+ 
+     wxDECLARE_DYNAMIC_CLASS(wxMenuBar);
+ };
+@@ -87,9 +98,16 @@
+     virtual void SetTitle(const wxString& title) wxOVERRIDE;
+ 
+     // implementation GTK only
+-    GtkWidget       *m_menu;  // GtkMenu
++    GtkWidget       *m_menu;  // GtkMenu, or GtkPopoverMenu on GTK4
+     GtkWidget       *m_owner;
++#ifndef __WXGTK4__
+     GtkAccelGroup   *m_accel;
++#else
++    wxGTKMenuData* m_gtkMenu;
++    bool GTKPopup(wxWindow* invoking, GtkWidget* anchor, int x, int y);
++    void GTKRebuild(wxMenuItem* removing = NULL);
++    void GTKRefreshShortcuts();
++#endif
+     bool m_popupShown;
+ 
+ protected:
+--- include/wx/gtk/menuitem.h.orig
++++ include/wx/gtk/menuitem.h
+@@ -8,6 +8,10 @@
+ 
+ #ifndef _WX_GTKMENUITEM_H_
+ #define _WX_GTKMENUITEM_H_
++
++#ifdef __WXGTK4__
++struct wxGTKMenuItemData;
++#endif
+ 
+ //-----------------------------------------------------------------------------
+ // wxMenuItem
+@@ -30,6 +34,10 @@
+     virtual void Check( bool check = true ) wxOVERRIDE;
+     virtual bool IsChecked() const wxOVERRIDE;
+     void SetupBitmaps(wxWindow *win);
++#ifdef __WXGTK4__
++    virtual void SetBitmap(const wxBitmapBundle& bmp) wxOVERRIDE;
++    wxGTKMenuItemData* m_gtkItem;
++#endif
+ 
+ #if wxUSE_ACCEL
+     virtual void AddExtraAccel(const wxAcceleratorEntry& accel) wxOVERRIDE;
+--- src/gtk/menu.cpp.orig
++++ src/gtk/menu.cpp
+@@ -12,6 +12,10 @@
+ #if wxUSE_MENUS
+ 
+ #include "wx/menu.h"
++
++#ifdef __WXGTK4__
++#include "menu_gtk4.inc"
++#else
+ 
+ #ifndef WX_PRECOMP
+     #include "wx/intl.h"
+@@ -1608,4 +1612,6 @@
+ wxGCC_WARNING_RESTORE()
+ #endif // !__WXGTK4__
+ 
++#endif // __WXGTK4__
++
+ #endif // wxUSE_MENUS
+--- /dev/null
++++ src/gtk/menu_gtk4.inc
+@@ -0,0 +1,1098 @@
++///////////////////////////////////////////////////////////////////////////////
++// GTK4 menus: public popover custom slots, native widgets and GActions.
++// Origin: EmberBSD (AI-assisted). wxWindows licence, like upstream.
++///////////////////////////////////////////////////////////////////////////////
++#include "wx/frame.h"
++#include "wx/dialog.h"
++#include "wx/app.h"
++#include "wx/evtloop.h"
++#include "wx/weakref.h"
++#include "wx/bitmap.h"
++#include "wx/gtk/private.h"
++#include "wx/gtk/private/mnemonics.h"
++#if wxUSE_ACCEL
++#include "wx/accel.h"
++#include "wx/scopedptr.h"
++#endif
++#include <gtk/gtk.h>
++#include <string>
++#include <vector>
++
++extern int wxOpenModalDialogsCount;
++
++struct wxGTKMenuItemData
++{
++    wxGTKMenuItemData() : action(NULL), label(NULL), accel(NULL), image(NULL) {}
++    GSimpleAction* action;
++    GtkWidget *label, *accel, *image;
++    std::string name;
++};
++struct wxGTKMenuData
++{
++    wxGTKMenuData() : model(g_menu_new()), actions(g_simple_action_group_new()),
++        shortcuts(g_list_store_new(GTK_TYPE_SHORTCUT)), rebuilding(false), opened(false) {}
++    GMenu* model;
++    GSimpleActionGroup* actions;
++    GListStore* shortcuts;
++    bool rebuilding, opened;
++};
++struct wxGTKMenuBarData
++{
++    wxGTKMenuBarData() : shortcuts(g_list_store_new(GTK_TYPE_SHORTCUT)), controller(NULL), host(NULL) {}
++    GListStore* shortcuts;
++    GtkEventController* controller;
++    GtkWidget* host; // weak, cleared by GObject on host destruction
++};
++
++namespace
++{
++static unsigned wxGTKMenuSerial;
++static bool wxGTKMenuUpdating(wxMenu* menu)
++{
++    for (; menu; menu = menu->GetParent())
++        if (menu->m_gtkMenu->rebuilding) return true;
++    return false;
++}
++static bool wxGTKMenuAllowed(wxMenu* menu)
++{
++    if (!menu || !menu->GetWindow() || menu->GetWindow()->IsBeingDeleted() || !menu->GetWindow()->IsEnabled()) return false;
++    if (wxOpenModalDialogsCount && !wxDynamicCast(wxGetTopLevelParent(menu->GetWindow()), wxDialog))
++        return false;
++    for (wxMenu* parent = menu; parent; parent = parent->GetParent())
++        if (parent->m_owner && !gtk_widget_get_sensitive(parent->m_owner)) return false;
++    return true;
++}
++static void wxGTKMenuEvent(wxMenu* menu, wxEventType type, int id)
++{
++    if (!wxGTKMenuAllowed(menu)) return;
++    wxMenuEvent event(type, id, menu);
++    wxMenu::ProcessMenuEvent(menu, event, menu->GetWindow());
++}
++static wxMenuItem* wxGTKMenuItemFromAction(GObject* action)
++{
++    return static_cast<wxMenuItem*>(g_object_get_data(action, "wx-menu-item"));
++}
++static void wxGTKMenuCloseTree(wxMenu* menu)
++{
++    // Closing emits wx events, which are permitted to delete the menu.
++    wxWeakRef<wxMenu> alive(menu);
++    for (size_t i = 0; alive && i < menu->GetMenuItemCount(); ++i)
++    {
++        wxMenuItem* item = menu->FindItemByPosition(i);
++        if (item->IsSubMenu()) wxGTKMenuCloseTree(item->GetSubMenu());
++    }
++    if (alive) gtk_popover_popdown(GTK_POPOVER(menu->m_menu));
++}
++static void wxGTKMenuActivate(GSimpleAction* action, GVariant*, gpointer)
++{
++    wxMenuItem* item = wxGTKMenuItemFromAction(G_OBJECT(action));
++    if (!item || !item->IsEnabled() || !wxGTKMenuAllowed(item->GetMenu())) return;
++    if (item->IsSubMenu())
++    {
++        std::vector<wxWeakRef<wxMenu> > chain;
++        for (wxMenu* current = item->GetSubMenu(); current; current = current->GetParent())
++            chain.push_back(wxWeakRef<wxMenu>(current));
++        for (auto it = chain.rbegin(); it != chain.rend(); ++it)
++            if (*it && (*it)->m_owner) gtk_menu_button_popup(GTK_MENU_BUTTON((*it)->m_owner));
++        return;
++    }
++    if (item->GetKind() == wxITEM_RADIO && item->IsChecked()) return;
++    if (item->IsCheckable()) item->Check(item->GetKind() == wxITEM_RADIO || !item->IsChecked());
++    const int id = item->GetId(), checked = item->IsCheckable() ? item->IsChecked() : -1;
++    wxWeakRef<wxMenu> alive(item->GetMenu());
++    wxMenu* root = item->GetMenu();
++    while (root->GetParent() && !root->m_popupShown) root = root->GetParent();
++    wxGTKMenuCloseTree(root);
++    if (alive) alive->SendEvent(id, checked);
++    wxWakeUpIdle();
++}
++static void wxGTKMenuHighlight(GObject* action, bool selected)
++{
++    wxMenuItem* item = wxGTKMenuItemFromAction(action);
++    if (item && item->IsEnabled() && item->GetMenu() && !wxGTKMenuUpdating(item->GetMenu()))
++        wxGTKMenuEvent(item->GetMenu(), wxEVT_MENU_HIGHLIGHT, selected ? item->GetId() : wxID_NONE);
++}
++static void wxGTKMenuEnter(GtkEventControllerMotion*, double, double, GObject* action)
++{ wxGTKMenuHighlight(action, true); }
++static void wxGTKMenuLeave(GtkEventControllerMotion*, GObject* action)
++{ wxGTKMenuHighlight(action, false); }
++static void wxGTKMenuFocusIn(GtkEventControllerFocus*, GObject* action)
++{ wxGTKMenuHighlight(action, true); }
++static void wxGTKMenuFocusOut(GtkEventControllerFocus*, GObject* action)
++{ wxGTKMenuHighlight(action, false); }
++static void wxGTKMenuUnref(gpointer data, GClosure*) { g_object_unref(data); }
++static void wxGTKMenuConnect(gpointer object, const char* signal, GCallback callback, GObject* action)
++{
++    g_signal_connect_data(object, signal, callback, g_object_ref(action), wxGTKMenuUnref, G_CONNECT_DEFAULT);
++}
++static gboolean wxGTKMenuRowKey(GtkEventControllerKey*, guint key, guint, GdkModifierType, GObject* action)
++{
++    wxMenuItem* item = wxGTKMenuItemFromAction(action);
++    if (!item || !item->GetMenu()) return FALSE;
++    wxMenu* menu = item->GetMenu();
++    const bool rtl = menu->GetLayoutDirection() == wxLayout_RightToLeft;
++    if (item->IsSubMenu() && key == (rtl ? GDK_KEY_Left : GDK_KEY_Right))
++    {
++        if (item->IsEnabled()) gtk_menu_button_popup(GTK_MENU_BUTTON(item->GetMenuItem()));
++        return TRUE;
++    }
++    if (menu->GetParent() && key == (rtl ? GDK_KEY_Right : GDK_KEY_Left))
++    {
++        GtkWidget* owner = menu->m_owner;
++        if (owner) g_object_ref(owner);
++        gtk_popover_popdown(GTK_POPOVER(menu->m_menu));
++        if (owner) { gtk_widget_grab_focus(owner); g_object_unref(owner); }
++        return TRUE;
++    }
++    if (!menu->GetParent() && menu->GetMenuBar() &&
++        (key == GDK_KEY_Left || key == GDK_KEY_Right))
++    {
++        GtkWidget* owner = menu->m_owner;
++        GtkWidget* bar = owner ? gtk_widget_get_parent(owner) : NULL;
++        if (!bar) return FALSE;
++        const bool next = (key == GDK_KEY_Right) != rtl;
++        GtkWidget* target = owner;
++        do
++        {
++            target = next ? gtk_widget_get_next_sibling(target) : gtk_widget_get_prev_sibling(target);
++            if (!target) target = next ? gtk_widget_get_first_child(bar) : gtk_widget_get_last_child(bar);
++            if (!target) return FALSE;
++            if (gtk_widget_get_sensitive(target)) break;
++        } while (target != owner);
++        g_object_ref(target);
++        wxGTKMenuCloseTree(menu);
++        if (gtk_widget_get_root(target))
++        { gtk_widget_grab_focus(target); gtk_menu_button_popup(GTK_MENU_BUTTON(target)); }
++        g_object_unref(target);
++        return TRUE;
++    }
++    return FALSE;
++}
++static void wxGTKMenuMap(GtkWidget*, wxMenu* menu)
++{
++    if (menu->m_gtkMenu->opened) return;
++    menu->m_gtkMenu->opened = true;
++    wxWeakRef<wxMenu> alive(menu);
++    if (!menu->m_popupShown) menu->UpdateUI();
++    if (alive) wxGTKMenuEvent(menu, wxEVT_MENU_OPEN, menu->m_popupShown ? -1 : 0);
++}
++static void wxGTKMenuClosed(GtkWidget*, wxMenu* menu)
++{
++    // Reparenting custom rows during a structural update can temporarily
++    // unmap an open submenu. GTKRebuild restores it without duplicate events.
++    if (wxGTKMenuUpdating(menu->GetParent())) return;
++    const bool wasOpen = menu->m_gtkMenu->opened;
++    const int id = menu->m_popupShown ? -1 : 0;
++    menu->m_gtkMenu->opened = false;
++    menu->m_popupShown = false;
++    if (wasOpen) wxGTKMenuEvent(menu, wxEVT_MENU_CLOSE, id);
++}
++#if wxUSE_ACCEL
++static wxString wxGTKMenuHotKey(const wxAcceleratorEntry* entry);
++static gboolean wxGTKMenuShortcut(GtkWidget*, GVariant*, gpointer data)
++{
++    GSimpleAction* action = G_SIMPLE_ACTION(data);
++    wxMenuItem* item = wxGTKMenuItemFromAction(G_OBJECT(action));
++    if (!item || !item->IsEnabled() || !wxGTKMenuAllowed(item->GetMenu())) return FALSE;
++    g_action_activate(G_ACTION(action), item->GetKind() == wxITEM_RADIO ?
++                      g_variant_new_string(item->m_gtkItem->name.c_str()) : NULL);
++    return TRUE;
++}
++static void wxGTKMenuAddShortcut(GListStore* list, wxMenuItem* item, const wxAcceleratorEntry* entry)
++{
++    const wxString key = wxGTKMenuHotKey(entry);
++    if (key.empty()) return;
++    GtkShortcutTrigger* trigger = gtk_shortcut_trigger_parse_string(key.utf8_str());
++    if (!trigger) return;
++    GtkShortcutAction* action = gtk_callback_action_new(wxGTKMenuShortcut,
++        g_object_ref(item->m_gtkItem->action), g_object_unref);
++    GtkShortcut* shortcut = gtk_shortcut_new(trigger, action);
++    g_list_store_append(list, shortcut);
++    g_object_unref(shortcut);
++}
++static void wxGTKMenuShortcuts(GListStore* list, wxMenu* menu, wxMenuItem* removing = NULL)
++{
++    for (wxMenuItem* item : menu->GetMenuItems())
++    {
++        if (item == removing || !item->GetMenuItem()) continue;
++        if (item->IsSubMenu()) wxGTKMenuShortcuts(list, item->GetSubMenu());
++        wxScopedPtr<wxAcceleratorEntry> primary(item->GetAccel());
++        wxGTKMenuAddShortcut(list, item, primary.get());
++        for (const wxAcceleratorEntry& extra : item->GetExtraAccels())
++            wxGTKMenuAddShortcut(list, item, &extra);
++    }
++}
++#endif
++static gboolean wxGTKMenuBarFocus(GtkWidget*, GVariant*, gpointer data)
++{
++    GtkWidget* bar = GTK_WIDGET(data);
++    for (GtkWidget* child = gtk_widget_get_first_child(bar); child; child = gtk_widget_get_next_sibling(child))
++        if (gtk_widget_get_sensitive(child)) { gtk_widget_grab_focus(child); return TRUE; }
++    return FALSE;
++}
++static gboolean wxGTKMenuBarKey(GtkEventControllerKey* controller, guint key, guint, GdkModifierType, gpointer)
++{
++    GtkWidget* bar = gtk_event_controller_get_widget(GTK_EVENT_CONTROLLER(controller));
++    GtkRoot* root = gtk_widget_get_root(bar);
++    GtkWidget* focus = root ? gtk_root_get_focus(root) : NULL;
++    GtkWidget* child = focus;
++    while (child && gtk_widget_get_parent(child) != bar) child = gtk_widget_get_parent(child);
++    if (!child) return FALSE;
++    const bool rtl = gtk_widget_get_direction(bar) == GTK_TEXT_DIR_RTL;
++    if (key == GDK_KEY_Down || key == GDK_KEY_Return || key == GDK_KEY_space)
++    { gtk_menu_button_popup(GTK_MENU_BUTTON(child)); return TRUE; }
++    if (key != GDK_KEY_Left && key != GDK_KEY_Right) return FALSE;
++    const bool next = (key == GDK_KEY_Right) != rtl;
++    GtkWidget* candidate = child;
++    do
++    {
++        candidate = next ? gtk_widget_get_next_sibling(candidate) : gtk_widget_get_prev_sibling(candidate);
++        if (!candidate) candidate = next ? gtk_widget_get_first_child(bar) : gtk_widget_get_last_child(bar);
++        if (!candidate) return FALSE;
++        if (gtk_widget_get_sensitive(candidate)) { gtk_widget_grab_focus(candidate); break; }
++    } while (candidate != child);
++    return TRUE;
++}
++}
++
++
++void wxMenuBar::Init(size_t n, wxMenu* menus[], const wxString titles[], long style)
++{
++    m_gtkBar = new wxGTKMenuBarData;
++    m_menubar = NULL;
++    if (!PreCreation(NULL, wxDefaultPosition, wxDefaultSize) ||
++        !CreateBase(NULL, -1, wxDefaultPosition, wxDefaultSize, style, wxDefaultValidator, "menubar")) return;
++    m_widget = m_menubar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
++    gtk_widget_add_css_class(m_widget, "menubar");
++    GtkEventController* keys = gtk_event_controller_key_new();
++    g_signal_connect(keys, "key-pressed", G_CALLBACK(wxGTKMenuBarKey), NULL);
++    gtk_widget_add_controller(m_widget, keys);
++    PostCreation();
++    g_object_ref_sink(m_widget);
++    for (size_t i = 0; i < n; ++i) Append(menus[i], titles[i]);
++}
++wxMenuBar::wxMenuBar() { Init(0, NULL, NULL, 0); }
++wxMenuBar::wxMenuBar(long style) { Init(0, NULL, NULL, style); }
++wxMenuBar::wxMenuBar(size_t n, wxMenu* menus[], const wxString titles[], long style) { Init(n, menus, titles, style); }
++wxMenuBar::~wxMenuBar()
++{
++    Detach();
++    g_object_unref(m_gtkBar->shortcuts);
++    delete m_gtkBar;
++}
++void wxMenuBar::GtkAppend(wxMenu* menu, const wxString& title, int pos)
++{
++    menu->SetTitle(title);
++    menu->m_owner = gtk_menu_button_new();
++    gtk_menu_button_set_label(GTK_MENU_BUTTON(menu->m_owner), wxConvertMnemonicsToGTK(title).utf8_str());
++    gtk_menu_button_set_use_underline(GTK_MENU_BUTTON(menu->m_owner), TRUE);
++    gtk_menu_button_set_has_frame(GTK_MENU_BUTTON(menu->m_owner), FALSE);
++    gtk_menu_button_set_always_show_arrow(GTK_MENU_BUTTON(menu->m_owner), FALSE);
++    gtk_menu_button_set_popover(GTK_MENU_BUTTON(menu->m_owner), menu->m_menu);
++    GtkWidget* previous = NULL;
++    for (int i = 0; (pos < 0 || i < pos); ++i)
++    {
++        GtkWidget* next = previous ? gtk_widget_get_next_sibling(previous) : gtk_widget_get_first_child(m_menubar);
++        if (!next) break;
++        previous = next;
++    }
++    gtk_box_insert_child_after(GTK_BOX(m_menubar), menu->m_owner, previous);
++    menu->SetLayoutDirection(GetLayoutDirection());
++    menu->SetupBitmaps(GetFrame());
++    GTKRefreshShortcuts();
++}
++bool wxMenuBar::Append(wxMenu* menu, const wxString& title)
++{ if (!wxMenuBarBase::Append(menu, title)) return false; GtkAppend(menu, title); return true; }
++bool wxMenuBar::Insert(size_t pos, wxMenu* menu, const wxString& title)
++{ if (!wxMenuBarBase::Insert(pos, menu, title)) return false; GtkAppend(menu, title, int(pos)); return true; }
++wxMenu* wxMenuBar::Replace(size_t pos, wxMenu* menu, const wxString& title)
++{ wxMenu* old = Remove(pos); if (old && !Insert(pos, menu, title)) return NULL; return old; }
++wxMenu* wxMenuBar::Remove(size_t pos)
++{
++    wxMenu* menu = wxMenuBarBase::Remove(pos);
++    if (!menu) return NULL;
++    wxWeakRef<wxMenu> alive(menu);
++    wxGTKMenuCloseTree(menu);
++    if (!alive) return NULL;
++    gtk_menu_button_set_popover(GTK_MENU_BUTTON(menu->m_owner), NULL);
++    gtk_box_remove(GTK_BOX(m_menubar), menu->m_owner);
++    menu->m_owner = NULL;
++    GTKRefreshShortcuts();
++    return menu;
++}
++void wxMenuBar::EnableTop(size_t pos, bool enable)
++{ wxCHECK_RET(pos < GetMenuCount(), "invalid menu index"); gtk_widget_set_sensitive(GetMenu(pos)->m_owner, enable); }
++bool wxMenuBar::IsEnabledTop(size_t pos) const
++{ wxCHECK_MSG(pos < GetMenuCount(), false, "invalid menu index"); return gtk_widget_get_sensitive(GetMenu(pos)->m_owner); }
++void wxMenuBar::SetMenuLabel(size_t pos, const wxString& title)
++{ wxCHECK_RET(pos < GetMenuCount(), "invalid menu index"); GetMenu(pos)->SetTitle(title); }
++wxString wxMenuBar::GetMenuLabel(size_t pos) const
++{ wxCHECK_MSG(pos < GetMenuCount(), wxString(), "invalid menu index"); return GetMenu(pos)->GetTitle(); }
++static int wxGTKFindMenuLabel(const wxMenu* menu, const wxString& title, const wxString& label)
++{
++    if (wxMenuItem::GetLabelText(menu->GetTitle()) == wxMenuItem::GetLabelText(title))
++    { const int id = menu->FindItem(label); if (id != wxNOT_FOUND) return id; }
++    for (wxMenuItem* item : menu->GetMenuItems())
++        if (item->IsSubMenu())
++        { int id = wxGTKFindMenuLabel(item->GetSubMenu(), title, label); if (id != wxNOT_FOUND) return id; }
++    return wxNOT_FOUND;
++}
++int wxMenuBar::FindMenuItem(const wxString& title, const wxString& label) const
++{
++    for (wxMenu* menu : m_menus) { const int id = wxGTKFindMenuLabel(menu, title, label); if (id != wxNOT_FOUND) return id; }
++    return wxNOT_FOUND;
++}
++wxMenuItem* wxMenuBar::FindItem(int id, wxMenu** owner) const
++{
++    for (wxMenu* menu : m_menus) { wxMenuItem* item = menu->FindItem(id, owner); if (item) return item; }
++    if (owner) *owner = NULL;
++    return NULL;
++}
++void wxMenuBar::SetLayoutDirection(wxLayoutDirection dir)
++{
++    if (dir == wxLayout_Default) dir = GetFrame() ? GetFrame()->GetLayoutDirection() : wxTheApp->GetLayoutDirection();
++    GTKSetLayout(m_menubar, dir);
++    for (wxMenu* menu : m_menus) menu->SetLayoutDirection(dir);
++}
++wxLayoutDirection wxMenuBar::GetLayoutDirection() const { return GTKGetLayout(m_menubar); }
++void wxMenuBar::Attach(wxFrame* frame)
++{
++    wxMenuBarBase::Attach(frame);
++    m_gtkBar->host = wxGetTopLevelParent(frame)->GetHandle();
++    g_object_add_weak_pointer(G_OBJECT(m_gtkBar->host), reinterpret_cast<gpointer*>(&m_gtkBar->host));
++    m_gtkBar->controller = gtk_shortcut_controller_new_for_model(G_LIST_MODEL(m_gtkBar->shortcuts));
++    gtk_shortcut_controller_set_scope(GTK_SHORTCUT_CONTROLLER(m_gtkBar->controller), GTK_SHORTCUT_SCOPE_GLOBAL);
++    g_object_ref(m_gtkBar->controller);
++    gtk_widget_add_controller(m_gtkBar->host, m_gtkBar->controller);
++    GTKRefreshShortcuts();
++    for (wxMenu* menu : m_menus) menu->SetupBitmaps(frame);
++    SetLayoutDirection(wxLayout_Default);
++}
++void wxMenuBar::Detach()
++{
++    if (m_gtkBar->host)
++    {
++        gtk_widget_remove_controller(m_gtkBar->host, m_gtkBar->controller);
++        g_object_remove_weak_pointer(G_OBJECT(m_gtkBar->host), reinterpret_cast<gpointer*>(&m_gtkBar->host));
++        m_gtkBar->host = NULL;
++    }
++    if (m_gtkBar->controller) { g_object_unref(m_gtkBar->controller); m_gtkBar->controller = NULL; }
++    g_list_store_remove_all(m_gtkBar->shortcuts);
++    if (GetFrame()) wxMenuBarBase::Detach();
++    for (wxMenu* menu : m_menus) wxGTKMenuCloseTree(menu);
++}
++void wxMenuBar::GTKRefreshShortcuts()
++{
++    g_list_store_remove_all(m_gtkBar->shortcuts);
++#if wxUSE_ACCEL
++    for (wxMenu* menu : m_menus) wxGTKMenuShortcuts(m_gtkBar->shortcuts, menu);
++#endif
++    GtkShortcut* focus = gtk_shortcut_new(gtk_keyval_trigger_new(GDK_KEY_F10, GdkModifierType(0)),
++        gtk_callback_action_new(wxGTKMenuBarFocus, m_menubar, NULL));
++    g_list_store_append(m_gtkBar->shortcuts, focus);
++    g_object_unref(focus);
++}
++
++wxMenuItem* wxMenuItemBase::New(wxMenu* parent, int id, const wxString& text,
++                              const wxString& help, wxItemKind kind, wxMenu* sub)
++{ return new wxMenuItem(parent, id, text, help, kind, sub); }
++wxMenuItem::wxMenuItem(wxMenu* parent, int id, const wxString& text,
++                      const wxString& help, wxItemKind kind, wxMenu* sub)
++    : wxMenuItemBase(parent, id, text, help, kind, sub), m_gtkItem(new wxGTKMenuItemData), m_menuItem(NULL)
++{
++    m_gtkItem->name = "i" + std::to_string(++wxGTKMenuSerial);
++    if (kind == wxITEM_RADIO)
++        m_gtkItem->action = g_simple_action_new_stateful(m_gtkItem->name.c_str(), G_VARIANT_TYPE_STRING,
++                                                       g_variant_new_string(""));
++    else if (kind == wxITEM_CHECK)
++        m_gtkItem->action = g_simple_action_new_stateful(m_gtkItem->name.c_str(), NULL, g_variant_new_boolean(false));
++    else
++        m_gtkItem->action = g_simple_action_new(m_gtkItem->name.c_str(), NULL);
++    g_object_set_data(G_OBJECT(m_gtkItem->action), "wx-menu-item", this);
++    g_signal_connect(m_gtkItem->action, "activate", G_CALLBACK(wxGTKMenuActivate), NULL);
++}
++#if WXWIN_COMPATIBILITY_2_8
++wxMenuItem::wxMenuItem(wxMenu* parent, int id, const wxString& text,
++                      const wxString& help, bool check, wxMenu* sub)
++    : wxMenuItem(parent, id, text, help, check ? wxITEM_CHECK : wxITEM_NORMAL, sub) {}
++#endif
++wxMenuItem::~wxMenuItem()
++{
++    g_object_set_data(G_OBJECT(m_gtkItem->action), "wx-menu-item", NULL);
++    if (m_subMenu && m_menuItem)
++    {
++        g_signal_handlers_disconnect_by_data(m_subMenu->m_menu, m_subMenu);
++        gtk_menu_button_set_popover(GTK_MENU_BUTTON(m_menuItem), NULL);
++        m_subMenu->m_owner = NULL;
++    }
++    if (m_menuItem) g_object_unref(m_menuItem);
++    g_object_unref(m_gtkItem->action);
++    delete m_gtkItem;
++}
++void wxMenuItem::SetMenuItem(GtkWidget* widget)
++{
++    if (m_menuItem == widget) return;
++    if (m_menuItem) g_object_unref(m_menuItem);
++    m_menuItem = widget;
++    if (widget) g_object_ref_sink(widget);
++}
++void wxMenuItem::SetItemLabel(const wxString& label)
++{
++    wxMenuItemBase::SetItemLabel(label);
++    SetGtkLabel();
++#if wxUSE_ACCEL
++    GTKSetExtraAccels();
++#endif
++}
++void wxMenuItem::SetGtkLabel()
++{
++    if (!m_gtkItem->label) return;
++    gtk_label_set_text_with_mnemonic(GTK_LABEL(m_gtkItem->label), wxConvertMnemonicsToGTK(m_text.BeforeFirst('\t')).utf8_str());
++    gtk_label_set_text(GTK_LABEL(m_gtkItem->accel), m_text.AfterFirst('\t').utf8_str());
++}
++void wxMenuItem::Enable(bool enable)
++{
++    wxMenuItemBase::Enable(enable);
++    g_simple_action_set_enabled(m_gtkItem->action, enable);
++    if (m_menuItem) gtk_widget_set_sensitive(m_menuItem, enable);
++}
++void wxMenuItem::Check(bool check)
++{
++    wxCHECK_RET(IsCheckable(), "item is not checkable");
++    if (GetKind() == wxITEM_RADIO && !check) return;
++    if (GetKind() == wxITEM_RADIO && GetMenu())
++    {
++        // Radio groups are consecutive runs. Clear only this run, never a
++        // separated group, and do not emit commands for programmatic changes.
++        wxMenu* menu = GetMenu();
++        size_t pos = 0;
++        while (pos < menu->GetMenuItemCount() && menu->FindItemByPosition(pos) != this) ++pos;
++        size_t first = pos;
++        while (first && menu->FindItemByPosition(first - 1)->GetKind() == wxITEM_RADIO) --first;
++        for (size_t i = first; i < menu->GetMenuItemCount(); ++i)
++        {
++            wxMenuItem* item = menu->FindItemByPosition(i);
++            if (item->GetKind() != wxITEM_RADIO) break;
++            const bool selected = item == this;
++            item->wxMenuItemBase::Check(selected);
++            g_simple_action_set_state(item->m_gtkItem->action,
++                g_variant_new_string(selected ? item->m_gtkItem->name.c_str() : ""));
++        }
++    }
++    else
++    {
++        wxMenuItemBase::Check(check);
++        g_simple_action_set_state(m_gtkItem->action, GetKind() == wxITEM_RADIO ?
++            g_variant_new_string(m_gtkItem->name.c_str()) : g_variant_new_boolean(check));
++    }
++}
++bool wxMenuItem::IsChecked() const { return wxMenuItemBase::IsChecked(); }
++void wxMenuItem::SetBitmap(const wxBitmapBundle& bitmap)
++{ wxMenuItemBase::SetBitmap(bitmap); SetupBitmaps(GetMenu() ? GetMenu()->GetWindow() : NULL); }
++void wxMenuItem::SetupBitmaps(wxWindow* win)
++{
++    if (!m_gtkItem->image) return;
++    if (!m_bitmap.IsOk()) { gtk_image_clear(GTK_IMAGE(m_gtkItem->image)); return; }
++    const wxBitmap bitmap = win ? m_bitmap.GetBitmapFor(win) : m_bitmap.GetBitmap(m_bitmap.GetDefaultSize());
++    gtk_image_set_from_pixbuf(GTK_IMAGE(m_gtkItem->image), bitmap.GetPixbuf());
++}
++#if wxUSE_ACCEL
++void wxMenuItem::GTKSetExtraAccels() { if (GetMenu()) GetMenu()->GTKRefreshShortcuts(); }
++void wxMenuItem::AddExtraAccel(const wxAcceleratorEntry& entry)
++{ wxMenuItemBase::AddExtraAccel(entry); GTKSetExtraAccels(); }
++void wxMenuItem::ClearExtraAccels() { wxMenuItemBase::ClearExtraAccels(); GTKSetExtraAccels(); }
++#endif
++
++void wxMenu::Init()
++{
++    m_gtkMenu = new wxGTKMenuData;
++    m_owner = NULL;
++    m_popupShown = false;
++    m_menu = gtk_popover_menu_new_from_model_full(G_MENU_MODEL(m_gtkMenu->model), GTK_POPOVER_MENU_NESTED);
++    g_object_ref_sink(m_menu);
++    gtk_popover_set_has_arrow(GTK_POPOVER(m_menu), FALSE);
++    gtk_widget_insert_action_group(m_menu, "wxmenu", G_ACTION_GROUP(m_gtkMenu->actions));
++    GtkEventController* shortcuts = gtk_shortcut_controller_new_for_model(G_LIST_MODEL(m_gtkMenu->shortcuts));
++    gtk_shortcut_controller_set_scope(GTK_SHORTCUT_CONTROLLER(shortcuts), GTK_SHORTCUT_SCOPE_MANAGED);
++    gtk_widget_add_controller(m_menu, shortcuts);
++    g_signal_connect(m_menu, "map", G_CALLBACK(wxGTKMenuMap), this);
++    g_signal_connect(m_menu, "closed", G_CALLBACK(wxGTKMenuClosed), this);
++}
++static void wxGTKMenuQuiesce(wxMenu* menu)
++{
++    g_signal_handlers_disconnect_by_data(menu->m_menu, menu);
++    menu->m_gtkMenu->opened = false;
++    menu->m_popupShown = false;
++    for (wxMenuItem* item : menu->GetMenuItems())
++    {
++        g_object_set_data(G_OBJECT(item->m_gtkItem->action), "wx-menu-item", NULL);
++        if (item->IsSubMenu()) wxGTKMenuQuiesce(item->GetSubMenu());
++    }
++}
++wxMenu::~wxMenu()
++{
++    // No callbacks into a C++ owner while its native subtree is torn down.
++    wxGTKMenuQuiesce(this);
++    gtk_popover_popdown(GTK_POPOVER(m_menu));
++    if (m_owner) { gtk_menu_button_set_popover(GTK_MENU_BUTTON(m_owner), NULL); m_owner = NULL; }
++    else if (gtk_widget_get_parent(m_menu)) gtk_widget_unparent(m_menu);
++    g_object_unref(m_menu);
++    g_object_unref(m_gtkMenu->model);
++    g_object_unref(m_gtkMenu->actions);
++    g_object_unref(m_gtkMenu->shortcuts);
++    delete m_gtkMenu;
++}
++void wxMenu::GtkAppend(wxMenuItem* item, int)
++{
++    if (!item->IsSeparator())
++    {
++        GtkWidget* row = item->IsSubMenu() ? gtk_menu_button_new() :
++            item->IsCheckable() ? gtk_check_button_new() : gtk_button_new();
++        item->SetMenuItem(row);
++        GtkWidget* box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
++        item->m_gtkItem->image = gtk_image_new();
++        item->m_gtkItem->label = gtk_label_new(NULL);
++        item->m_gtkItem->accel = gtk_label_new(NULL);
++        gtk_widget_set_hexpand(item->m_gtkItem->label, TRUE);
++        gtk_label_set_xalign(GTK_LABEL(item->m_gtkItem->label), 0);
++        gtk_label_set_mnemonic_widget(GTK_LABEL(item->m_gtkItem->label), row);
++        gtk_widget_add_css_class(item->m_gtkItem->accel, "dim-label");
++        gtk_box_append(GTK_BOX(box), item->m_gtkItem->image);
++        gtk_box_append(GTK_BOX(box), item->m_gtkItem->label);
++        gtk_box_append(GTK_BOX(box), item->m_gtkItem->accel);
++        if (item->IsSubMenu())
++        {
++            wxMenu* sub = item->GetSubMenu();
++            sub->m_owner = row;
++            gtk_menu_button_set_child(GTK_MENU_BUTTON(row), box);
++            gtk_menu_button_set_direction(GTK_MENU_BUTTON(row), GTK_ARROW_RIGHT);
++            gtk_menu_button_set_has_frame(GTK_MENU_BUTTON(row), FALSE);
++            gtk_menu_button_set_popover(GTK_MENU_BUTTON(row), sub->m_menu);
++        }
++        else
++        {
++            if (item->IsCheckable()) gtk_check_button_set_child(GTK_CHECK_BUTTON(row), box);
++            else { gtk_button_set_child(GTK_BUTTON(row), box); gtk_button_set_has_frame(GTK_BUTTON(row), FALSE); }
++            const std::string action = "wxmenu." + item->m_gtkItem->name;
++            if (item->GetKind() == wxITEM_RADIO)
++                gtk_actionable_set_action_target_value(GTK_ACTIONABLE(row), g_variant_new_string(item->m_gtkItem->name.c_str()));
++            gtk_actionable_set_action_name(GTK_ACTIONABLE(row), action.c_str());
++        }
++        g_action_map_add_action(G_ACTION_MAP(m_gtkMenu->actions), G_ACTION(item->m_gtkItem->action));
++        GtkEventController* motion = gtk_event_controller_motion_new();
++        wxGTKMenuConnect(motion, "enter", G_CALLBACK(wxGTKMenuEnter), G_OBJECT(item->m_gtkItem->action));
++        wxGTKMenuConnect(motion, "leave", G_CALLBACK(wxGTKMenuLeave), G_OBJECT(item->m_gtkItem->action));
++        gtk_widget_add_controller(row, motion);
++        GtkEventController* focus = gtk_event_controller_focus_new();
++        wxGTKMenuConnect(focus, "enter", G_CALLBACK(wxGTKMenuFocusIn), G_OBJECT(item->m_gtkItem->action));
++        wxGTKMenuConnect(focus, "leave", G_CALLBACK(wxGTKMenuFocusOut), G_OBJECT(item->m_gtkItem->action));
++        gtk_widget_add_controller(row, focus);
++        GtkEventController* key = gtk_event_controller_key_new();
++        wxGTKMenuConnect(key, "key-pressed", G_CALLBACK(wxGTKMenuRowKey), G_OBJECT(item->m_gtkItem->action));
++        gtk_widget_add_controller(row, key);
++        item->SetGtkLabel();
++        item->Enable(item->IsEnabled());
++        item->SetupBitmaps(GetWindow());
++    }
++    GTKRebuild();
++}
++static void wxGTKMenuRestoreOpen(wxMenu* menu)
++{
++    if (menu->m_gtkMenu->opened) gtk_popover_popup(GTK_POPOVER(menu->m_menu));
++    for (wxMenuItem* item : menu->GetMenuItems())
++        if (item->IsSubMenu()) wxGTKMenuRestoreOpen(item->GetSubMenu());
++}
++void wxMenu::GTKRebuild(wxMenuItem* removing)
++{
++    if (m_gtkMenu->rebuilding) return;
++    m_gtkMenu->rebuilding = true;
++    GtkRoot* root = gtk_widget_get_root(m_menu);
++    GtkWidget* focus = root ? gtk_root_get_focus(root) : NULL;
++    if (focus) g_object_ref(focus);
++    std::vector<wxMenu*> reopen;
++    for (wxMenuItem* item : GetMenuItems())
++    {
++        if (item != removing && item->IsSubMenu() && item->GetSubMenu()->m_gtkMenu->opened)
++            reopen.push_back(item->GetSubMenu());
++        if (item->GetMenuItem() && gtk_widget_get_parent(item->GetMenuItem()))
++            gtk_popover_menu_remove_child(GTK_POPOVER_MENU(m_menu), item->GetMenuItem());
++    }
++    g_menu_remove_all(m_gtkMenu->model);
++    GMenu* section = g_menu_new();
++    bool firstSection = true;
++    const auto appendSection = [this, &firstSection](GMenu* value)
++    {
++        if (!g_menu_model_get_n_items(G_MENU_MODEL(value))) return;
++        const wxString title = firstSection && !GetParent() && !GetMenuBar() ? wxMenuItem::GetLabelText(m_title) : wxString();
++        g_menu_append_section(m_gtkMenu->model, title.empty() ? NULL : title.utf8_str().data(), G_MENU_MODEL(value));
++        firstSection = false;
++    };
++    std::vector<wxMenuItem*> radio;
++    const auto finishRadio = [&radio]()
++    {
++        if (radio.empty()) return;
++        wxMenuItem* selected = radio.front();
++        for (wxMenuItem* item : radio) if (item->IsChecked()) { selected = item; break; }
++        GtkCheckButton* first = GTK_CHECK_BUTTON(radio.front()->GetMenuItem());
++        gtk_check_button_set_group(first, NULL);
++        for (size_t i = 1; i < radio.size(); ++i)
++            gtk_check_button_set_group(GTK_CHECK_BUTTON(radio[i]->GetMenuItem()), first);
++        for (wxMenuItem* item : radio)
++        {
++            const bool checked = item == selected;
++            item->wxMenuItemBase::Check(checked);
++            g_simple_action_set_state(item->m_gtkItem->action,
++                g_variant_new_string(checked ? item->m_gtkItem->name.c_str() : ""));
++            gtk_check_button_set_active(GTK_CHECK_BUTTON(item->GetMenuItem()), checked);
++        }
++        radio.clear();
++    };
++    for (wxMenuItem* item : GetMenuItems())
++    {
++        if (item == removing) continue;
++        if (item->GetKind() != wxITEM_RADIO) finishRadio();
++        if (item->IsSeparator())
++        {
++            appendSection(section);
++            g_object_unref(section); section = g_menu_new();
++            continue;
++        }
++        if (item->GetKind() == wxITEM_RADIO) radio.push_back(item);
++        GMenuItem* entry = g_menu_item_new(NULL, NULL);
++        g_menu_item_set_attribute(entry, "custom", "s", item->m_gtkItem->name.c_str());
++        g_menu_append_item(section, entry);
++        g_object_unref(entry);
++    }
++    finishRadio();
++    appendSection(section);
++    g_object_unref(section);
++    for (wxMenuItem* item : GetMenuItems())
++        if (item != removing && item->GetMenuItem())
++            gtk_popover_menu_add_child(GTK_POPOVER_MENU(m_menu), item->GetMenuItem(), item->m_gtkItem->name.c_str());
++    for (wxMenu* menu : reopen) wxGTKMenuRestoreOpen(menu);
++    if (focus)
++    {
++        if (gtk_widget_get_root(focus)) gtk_widget_grab_focus(focus);
++        g_object_unref(focus);
++    }
++    m_gtkMenu->rebuilding = false;
++    GTKRefreshShortcuts();
++}
++wxMenuItem* wxMenu::DoAppend(wxMenuItem* item)
++{ if (!wxMenuBase::DoAppend(item)) return NULL; GtkAppend(item); return item; }
++wxMenuItem* wxMenu::DoInsert(size_t pos, wxMenuItem* item)
++{ if (!wxMenuBase::DoInsert(pos, item)) return NULL; GtkAppend(item, int(pos)); return item; }
++wxMenuItem* wxMenu::DoRemove(wxMenuItem* item)
++{
++    g_action_map_remove_action(G_ACTION_MAP(m_gtkMenu->actions), item->m_gtkItem->name.c_str());
++    GTKRebuild(item);
++    if (item->IsSubMenu())
++    {
++        wxMenu* sub = item->GetSubMenu();
++        g_signal_handlers_block_matched(sub->m_menu, G_SIGNAL_MATCH_DATA, 0, 0, NULL, NULL, sub);
++        gtk_menu_button_set_popover(GTK_MENU_BUTTON(item->GetMenuItem()), NULL);
++        sub->m_gtkMenu->opened = false;
++        sub->m_popupShown = false;
++        g_signal_handlers_unblock_matched(sub->m_menu, G_SIGNAL_MATCH_DATA, 0, 0, NULL, NULL, sub);
++        sub->m_owner = NULL;
++    }
++    item->SetMenuItem(NULL);
++    item->m_gtkItem->label = item->m_gtkItem->image = item->m_gtkItem->accel = NULL;
++    wxMenuItem* result = wxMenuBase::DoRemove(item);
++    GTKRefreshShortcuts();
++    return result;
++}
++void wxMenu::Attach(wxMenuBarBase* menubar)
++{ wxMenuBase::Attach(menubar); SetLayoutDirection(menubar->GetLayoutDirection()); }
++void wxMenu::SetupBitmaps(wxWindow* win)
++{
++    for (wxMenuItem* item : GetMenuItems())
++    {
++        item->SetupBitmaps(win);
++        if (item->IsSubMenu()) item->GetSubMenu()->SetupBitmaps(win);
++    }
++}
++void wxMenu::SetLayoutDirection(wxLayoutDirection dir)
++{
++    wxWindow::GTKSetLayout(m_menu, dir);
++    if (m_owner) wxWindow::GTKSetLayout(m_owner, dir);
++    for (wxMenuItem* item : GetMenuItems())
++        if (item->IsSubMenu())
++        {
++            gtk_menu_button_set_direction(GTK_MENU_BUTTON(item->GetMenuItem()), dir == wxLayout_RightToLeft ? GTK_ARROW_LEFT : GTK_ARROW_RIGHT);
++            item->GetSubMenu()->SetLayoutDirection(dir);
++        }
++}
++wxLayoutDirection wxMenu::GetLayoutDirection() const { return wxWindow::GTKGetLayout(m_menu); }
++wxString wxMenu::GetTitle() const { return m_title; }
++void wxMenu::SetTitle(const wxString& title)
++{
++    wxMenuBase::SetTitle(title);
++    if (m_owner && !GetParent()) gtk_menu_button_set_label(GTK_MENU_BUTTON(m_owner), wxConvertMnemonicsToGTK(title).utf8_str());
++    else if (!GetParent()) GTKRebuild();
++}
++void wxMenu::GTKRefreshShortcuts()
++{
++    wxMenu* root = this;
++    while (root->GetParent()) root = root->GetParent();
++    g_list_store_remove_all(root->m_gtkMenu->shortcuts);
++#if wxUSE_ACCEL
++    wxGTKMenuShortcuts(root->m_gtkMenu->shortcuts, root);
++#endif
++    if (root->GetMenuBar()) root->GetMenuBar()->GTKRefreshShortcuts();
++}
++
++namespace
++{
++class wxGTKMenuPopupScope
++{
++public:
++    wxGTKMenuPopupScope(wxMenu* menu, wxWindow* window)
++        : alive(menu), invoking(window), popover(menu->m_menu), owner(menu->m_owner)
++    {
++        g_object_ref(popover);
++        if (owner) { g_object_ref(owner); gtk_menu_button_set_popover(GTK_MENU_BUTTON(owner), NULL); }
++    }
++    ~wxGTKMenuPopupScope()
++    {
++        if (alive && (!invoking || invoking->IsBeingDeleted())) alive->SetInvokingWindow(NULL);
++        gtk_popover_popdown(GTK_POPOVER(popover));
++        if (gtk_widget_get_parent(popover)) gtk_widget_unparent(popover);
++        if (alive)
++        {
++            alive->m_popupShown = false;
++            if (owner && invoking && !invoking->IsBeingDeleted() && gtk_widget_get_root(owner))
++                gtk_menu_button_set_popover(GTK_MENU_BUTTON(owner), popover);
++        }
++        if (owner) g_object_unref(owner);
++        g_object_unref(popover);
++    }
++    wxWeakRef<wxMenu> alive;
++    wxWeakRef<wxWindow> invoking;
++    GtkWidget *popover, *owner;
++};
++}
++
++bool wxMenu::GTKPopup(wxWindow* invoking, GtkWidget* anchor, int x, int y)
++{
++    if (m_popupShown || !gtk_widget_get_root(anchor) || !gtk_widget_get_mapped(anchor)) return false;
++    wxGTKMenuPopupScope scope(this, invoking);
++    if (!scope.alive || !scope.invoking || scope.invoking->IsBeingDeleted()) return false;
++    wxEventLoopGuarantor ensureLoop;
++    wxEventLoopBase* loop = wxEventLoopBase::GetActive();
++    GtkWidget* popover = scope.popover;
++    gtk_widget_set_parent(popover, anchor);
++    SetupBitmaps(invoking);
++    if (x == -1 && y == -1)
++    {
++        // Use the real pointer's surface coordinates, translated to anchor.
++        GdkDisplay* display = gtk_widget_get_display(anchor);
++        GdkSeat* seat = gdk_display_get_default_seat(display);
++        GdkDevice* pointer = seat ? gdk_seat_get_pointer(seat) : NULL;
++        double px = 0, py = 0;
++        GdkSurface* surface = pointer ? gdk_device_get_surface_at_position(pointer, &px, &py) : NULL;
++        GtkNative* native = gtk_widget_get_native(anchor);
++        double sx = 0, sy = 0;
++        if (native) gtk_native_get_surface_transform(native, &sx, &sy);
++        graphene_point_t from, to;
++        graphene_point_init(&from, px + sx, py + sy);
++        if (native && surface == gtk_native_get_surface(native) &&
++            gtk_widget_compute_point(GTK_WIDGET(native), anchor, &from, &to))
++        { x = int(to.x); y = int(to.y); }
++        else { x = 0; y = gtk_widget_get_height(anchor); }
++    }
++    const GdkRectangle rect = { x, y, 1, 1 };
++    gtk_popover_set_pointing_to(GTK_POPOVER(popover), &rect);
++    m_popupShown = true;
++    gtk_popover_popup(GTK_POPOVER(popover));
++    const bool shown = scope.alive && gtk_widget_get_visible(popover);
++    while (scope.alive && scope.invoking && !scope.invoking->IsBeingDeleted() &&
++           scope.alive->m_popupShown && gtk_widget_get_visible(popover))
++        if (!loop || loop->DispatchTimeout(50) == 0) break;
++    return shown;
++}
++
++#if wxUSE_ACCEL
++namespace
++{
++static wxString wxGTKMenuHotKey(const wxAcceleratorEntry *accel)
++{
++    wxString hotkey;
++
++    if ( accel )
++    {
++        int flags = accel->GetFlags();
++        if ( flags & wxACCEL_ALT )
++            hotkey += wxT("<alt>");
++        if ( flags & wxACCEL_CTRL )
++            hotkey += wxT("<control>");
++        if ( flags & wxACCEL_SHIFT )
++            hotkey += wxT("<shift>");
++
++        // Accelerator can be invalid for 2 different reasons from GTK point of
++        // view: either the key just can't be used as an accelerator at all
++        // (e.g. TAB), or it can only be used as an accelerator with modifiers.
++        // This variable can be set to one of the matching values in the switch
++        // below and is used to give the most fitting error message later.
++        enum Validity
++        {
++            Valid_Always,
++            Valid_Never,
++            Valid_WithModifiers
++        } validity = Valid_Always;
++
++        int code = accel->GetKeyCode();
++        switch ( code )
++        {
++            case WXK_F1:  case WXK_F2:  case WXK_F3:  case WXK_F4:  case WXK_F5:
++            case WXK_F6:  case WXK_F7:  case WXK_F8:  case WXK_F9:  case WXK_F10:
++            case WXK_F11: case WXK_F12: case WXK_F13: case WXK_F14: case WXK_F15:
++            case WXK_F16: case WXK_F17: case WXK_F18: case WXK_F19: case WXK_F20:
++            case WXK_F21: case WXK_F22: case WXK_F23: case WXK_F24:
++                hotkey += wxString::Format(wxT("F%d"), code - WXK_F1 + 1);
++                break;
++
++                // TODO: we should use gdk_keyval_name() (a.k.a.
++                //       XKeysymToString) here as well as hardcoding the keysym
++                //       names this might be not portable
++            case WXK_INSERT:
++                hotkey << wxT("Insert" );
++                break;
++            case WXK_DELETE:
++                hotkey << wxT("Delete" );
++                break;
++            case WXK_UP:
++                validity = Valid_WithModifiers;
++                hotkey << wxT("Up" );
++                break;
++            case WXK_DOWN:
++                validity = Valid_WithModifiers;
++                hotkey << wxT("Down" );
++                break;
++            case WXK_LEFT:
++                validity = Valid_WithModifiers;
++                hotkey << wxT("Left" );
++                break;
++            case WXK_RIGHT:
++                validity = Valid_WithModifiers;
++                hotkey << wxT("Right" );
++                break;
++            case WXK_PAGEUP:
++                hotkey << wxT("Page_Up" );
++                break;
++            case WXK_PAGEDOWN:
++                hotkey << wxT("Page_Down" );
++                break;
++            case WXK_HOME:
++                hotkey << wxT("Home" );
++                break;
++            case WXK_END:
++                hotkey << wxT("End" );
++                break;
++            case WXK_RETURN:
++                hotkey << wxT("Return" );
++                break;
++            case WXK_BACK:
++                hotkey << wxT("BackSpace" );
++                break;
++            case WXK_ESCAPE:
++                hotkey << wxT("Escape" );
++                break;
++            case WXK_SPACE:
++                hotkey << wxT("space" );
++                break;
++            case WXK_MULTIPLY:
++                hotkey << wxT("multiply" );
++                break;
++            case WXK_CANCEL:
++                hotkey << wxT("Cancel" );
++                break;
++            case WXK_CLEAR:
++                hotkey << wxT("Clear" );
++                break;
++            case WXK_MENU:
++                hotkey << wxT("Menu" );
++                break;
++            case WXK_PAUSE:
++                hotkey << wxT("Pause" );
++                break;
++            case WXK_SELECT:
++                hotkey << wxT("Select" );
++                break;
++            case WXK_PRINT:
++                hotkey << wxT("Print" );
++                break;
++            case WXK_EXECUTE:
++                hotkey << wxT("Execute" );
++                break;
++            case WXK_HELP:
++                hotkey << wxT("Help" );
++                break;
++            case WXK_NUMPAD_INSERT:
++                hotkey << wxT("KP_Insert" );
++                break;
++            case WXK_NUMPAD_DELETE:
++                hotkey << wxT("KP_Delete" );
++                break;
++             case WXK_NUMPAD_SPACE:
++                hotkey << wxT("KP_Space" );
++                break;
++            case WXK_NUMPAD_ENTER:
++                hotkey << wxT("KP_Enter" );
++                break;
++            case WXK_NUMPAD_F1: case WXK_NUMPAD_F2: case WXK_NUMPAD_F3:
++            case WXK_NUMPAD_F4:
++                hotkey += wxString::Format(wxT("KP_F%d"), code - WXK_NUMPAD_F1 + 1);
++                break;
++            case WXK_NUMPAD_HOME:
++                hotkey << wxT("KP_Home" );
++                break;
++             case WXK_NUMPAD_UP:
++                validity = Valid_WithModifiers;
++                hotkey << wxT("KP_Up" );
++                break;
++            case WXK_NUMPAD_DOWN:
++                validity = Valid_WithModifiers;
++                hotkey << wxT("KP_Down" );
++                break;
++            case WXK_NUMPAD_LEFT:
++                validity = Valid_WithModifiers;
++                hotkey << wxT("KP_Left" );
++                break;
++            case WXK_NUMPAD_RIGHT:
++                validity = Valid_WithModifiers;
++                hotkey << wxT("KP_Right" );
++                break;
++            case WXK_NUMPAD_PAGEUP:
++                hotkey << wxT("KP_Page_Up" );
++                break;
++            case WXK_NUMPAD_PAGEDOWN:
++                hotkey << wxT("KP_Page_Down" );
++                break;
++            case WXK_NUMPAD_END:
++                hotkey << wxT("KP_End" );
++                break;
++            case WXK_NUMPAD_BEGIN:
++                hotkey << wxT("KP_Begin" );
++                break;
++            case WXK_NUMPAD_EQUAL:
++                hotkey << wxT("KP_Equal" );
++                break;
++            case WXK_NUMPAD_MULTIPLY:
++                hotkey << wxT("KP_Multiply" );
++                break;
++            case WXK_NUMPAD_ADD:
++                hotkey << wxT("KP_Add" );
++                break;
++            case WXK_NUMPAD_SEPARATOR:
++                hotkey << wxT("KP_Separator" );
++                break;
++            case WXK_NUMPAD_SUBTRACT:
++                hotkey << wxT("KP_Subtract" );
++                break;
++            case WXK_NUMPAD_DECIMAL:
++                hotkey << wxT("KP_Decimal" );
++                break;
++            case WXK_NUMPAD_DIVIDE:
++                hotkey << wxT("KP_Divide" );
++                break;
++           case WXK_NUMPAD0: case WXK_NUMPAD1: case WXK_NUMPAD2:
++           case WXK_NUMPAD3: case WXK_NUMPAD4: case WXK_NUMPAD5:
++           case WXK_NUMPAD6: case WXK_NUMPAD7: case WXK_NUMPAD8:
++           case WXK_NUMPAD9:
++                hotkey += wxString::Format(wxT("KP_%d"), code - WXK_NUMPAD0);
++                break;
++            case WXK_WINDOWS_MENU:
++                hotkey << wxT("Menu" );
++                break;
++
++            /*
++             The following keycodes have been shown not to work as accelerator
++             keys on GTK (see https://github.com/wxWidgets/wxWidgets/issues/10049)
++             and are not valid
++             (see gtkaccelgroup.c inside gtk_accelerator_valid())
++             */
++            case WXK_COMMAND:   // Same as WXK_CONTROL
++            case WXK_SHIFT:
++            case WXK_ALT:
++            case WXK_SCROLL:    // Scroll lock
++            case WXK_CAPITAL:   // Caps lock
++            case WXK_NUMLOCK:
++            case WXK_NUMPAD_TAB:
++            case WXK_TAB:
++            case WXK_WINDOWS_LEFT:
++            case WXK_WINDOWS_RIGHT:
++
++            /*
++             The following keycodes do not map clearly into a GTK keycode,
++             so they are not included in the accelerator mapping:
++             */
++            case WXK_ADD:
++            case WXK_SEPARATOR:
++            case WXK_SUBTRACT:
++            case WXK_DECIMAL:
++            case WXK_DIVIDE:
++            case WXK_SNAPSHOT:
++
++            /*
++             The following special codes do not map into GTK keycodes,
++             see gdk/keynames.txt
++             */
++            case WXK_SPECIAL1:  case WXK_SPECIAL2:  case WXK_SPECIAL3:
++            case WXK_SPECIAL4:  case WXK_SPECIAL5:  case WXK_SPECIAL6:
++            case WXK_SPECIAL7:  case WXK_SPECIAL8:  case WXK_SPECIAL9:
++            case WXK_SPECIAL10: case WXK_SPECIAL11: case WXK_SPECIAL12:
++            case WXK_SPECIAL13: case WXK_SPECIAL14: case WXK_SPECIAL15:
++            case WXK_SPECIAL16: case WXK_SPECIAL17: case WXK_SPECIAL18:
++            case WXK_SPECIAL19: case WXK_SPECIAL20:
++                validity = Valid_Never;
++                break;
++
++            // if there are any other keys wxAcceleratorEntry::Create() may
++            // return, we should process them here
++
++            default:
++                if ( code < 127 )
++                {
++                    const wxString
++                        name = wxGTK_CONV_BACK_SYS(gdk_keyval_name((guint)code));
++                    if ( !name.empty() )
++                    {
++                        hotkey << name;
++                        break;
++                    }
++                }
++
++                wxLogDebug( "Unknown keyboard accelerator key code: %i", code );
++                hotkey.clear();
++        }
++
++        switch ( validity )
++        {
++            case Valid_Always:
++                break;
++
++            case Valid_Never:
++                wxLogDebug("\"%s\" is not supported as "
++                           "a keyboard accelerator with GTK",
++                           accel->ToString());
++                hotkey.clear();
++                break;
++
++            case Valid_WithModifiers:
++                if ( !flags )
++                {
++                    wxLogDebug("\"%s\" must use modifiers to be used as "
++                               "a keyboard accelerator with GTK",
++                               accel->ToString());
++                    hotkey.clear();
++                }
++                break;
++        }
++    }
++
++    return hotkey;
++}
++
++}
++#endif
+--- /dev/null
++++ src/gtk/window_menu4.inc
+@@ -0,0 +1,7 @@
++// Origin: EmberBSD (AI-assisted). wxWindows licence, like upstream.
++// Included by window.cpp in place of the GTK3 popup block.
++bool wxWindowGTK::DoPopupMenu(wxMenu* menu, int x, int y)
++{
++    wxCHECK_MSG(m_widget, false, "invalid popup window");
++    return menu->GTKPopup(this, m_wxwindow ? m_wxwindow : m_widget, x, y);
++}

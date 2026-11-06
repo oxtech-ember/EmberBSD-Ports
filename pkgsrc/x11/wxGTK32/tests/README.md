@@ -221,3 +221,61 @@ GL state preservation. Hardware GL is required by default. Explicit
 not establish hardware acceptance. Full translation-unit compilation and this
 GUI fixture remain pending the shared GTK4 build; method/metadata checks do not
 claim that runtime acceptance.
+
+# GTK4 menu contract
+
+`patch-gtk4-menus` implements menubar and popup menus with public GTK4 APIs.
+`GMenuModel` sections supply separators and custom slots to `GtkPopoverMenu`;
+owned `GtkButton`, `GtkCheckButton` and `GtkMenuButton` rows supply labels,
+mnemonics, bitmap-bundle icons and wx highlight events. Stateful `GSimpleAction`
+objects keep check/radio state and command delivery shared between rows and
+keyboard shortcuts. Consecutive radio runs are regrouped on structural changes,
+including removing a separator. Programmatic checks do not emit commands.
+Labels and icons change on existing rows; structural mutation preserves row
+identity and focus, and restores open submenus without duplicate wx open events.
+
+The menubar uses public `GtkMenuButton`s in a `GtkBox`. GTK4's generated
+`GtkPopoverMenuBar` top items do not bind sensitivity, and its generated menu
+rows do not expose their tracker action via `GtkActionable:action-name`. Using
+owned widgets preserves `EnableTop`, per-item highlight events and icons without
+reading private GTK tracker data or depending on `GtkModelButton` internals.
+GTK handles popover focus, Escape and mnemonic activation. Controllers add
+submenu directional navigation, adjacent top menus and F10 menubar focus.
+`GtkShortcutController` models own primary and extra accelerators; disabling,
+removing or detaching a menu prevents their dispatch, and changing a label
+replaces its primary accelerator.
+
+`window_menu4.inc` provides the GTK4 `wxWindowGTK::DoPopupMenu` body. Include it
+instead of the legacy GTK popup block. It delegates to
+`wxMenu::GTKPopup(invokingWindow, anchorWidget, x, y)`. The custom wxPizza parent
+must call `gtk_popover_present()` for its direct GtkPopover children during
+allocation; GtkMenuButton manages its own submenus. Popup waiting uses the
+existing active wx event loop's `DispatchTimeout`, with `wxEventLoopGuarantor`
+for calls made before a loop exists. It returns synchronously after closure,
+invoking-window/menu destruction or an event-loop exit request. RAII retains GTK
+objects and releases/reparents the popover on exit. The common
+`wxMenuInvokingWindowSetter` now uses the existing `wxWeakRef` API on all backends,
+so returning after an event handler deletes the menu does not dereference it.
+
+Primary references:
+
+- [GtkPopoverMenu custom slots and keyboard behavior](https://docs.gtk.org/gtk4/class.PopoverMenu.html)
+- [GtkShortcutController](https://docs.gtk.org/gtk4/class.ShortcutController.html)
+- [GSimpleAction state and activation](https://docs.gtk.org/gio/class.SimpleAction.html)
+- [GTK4 menu row creation](https://gitlab.gnome.org/GNOME/gtk/-/blob/4.24.1/gtk/gtkmenusectionbox.c)
+- [GTK4 generated menubar ownership](https://gitlab.gnome.org/GNOME/gtk/-/blob/4.24.1/gtk/gtkpopovermenubar.c)
+
+Build `menu4-contract` through the shared tests CMake project. Other contracts
+can be deselected using their `BUILD_*_CONTRACT` options. The fixture invokes
+real registered GTK shortcut actions and native row activation, checks dynamic
+labels and accelerator replacement/removal, disabled top/item states, radio
+regrouping, popup command/open/close behavior and destruction during a popup
+command. Run it under ASan on a supported target to exercise the former common
+RAII use-after-free. Actual key delivery, mouse hover, nested menu keyboard
+navigation, rendered icons, RTL and application shutdown remain GUI acceptance
+checks; programmatic shortcut activation is not synthetic keyboard evidence.
+
+Source-only Cppcheck 2.22.0 reports no warnings in the new implementation and
+fixture. Patch application uses zero fuzz. Full translation-unit compilation,
+the runtime fixture, Clang analysis and executable memory checking remain
+pending the shared GTK4 build; these prepared checks are not runtime acceptance.
