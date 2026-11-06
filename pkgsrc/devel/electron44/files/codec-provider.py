@@ -106,6 +106,40 @@ WOFF2_PROVIDER = {
 }
 
 
+SPIRV_TOOLS_PROVIDER = {
+    'spirv_tools': ('parallel/spirv-tools', 'spirv-tools', (2026, 4, 0, 4),
+                    ('libSPIRV-Tools-opt', 'libSPIRV-Tools'), ('SPIRV-Tools',),
+                    ('include/spirv-tools/libspirv.h', 'include/spirv-tools/libspirv.hpp',
+                     'include/spirv-tools/linker.hpp', 'include/spirv-tools/optimizer.hpp',
+                     'share/spirv-tools/generated/core_tables_header.inc')),
+}
+
+SPIRV_HEADERS_PROVIDER = {
+    'spirv_headers': ('parallel/spirv-headers', 'spirv-headers', (1, 4, 363, 0, 0),
+                      (), (), ('include/spirv/unified1/spirv.h',
+                               'include/spirv/unified1/spirv.hpp11',
+                               'include/spirv/unified1/spirv.core.grammar.json')),
+}
+
+
+def select_spirv_tools(image, controller, options, sdk, native, environment, buildlink):
+    if not getattr(options, 'shared_spirv_tools', False):
+        return {}
+    for role in ('_common_native_packages', '_common_target_packages'):
+        packages = getattr(options, role)
+        tools = packages.get('parallel/spirv-tools', [])
+        headers = packages.get('parallel/spirv-headers', [])
+        controller.require(len(tools) == len(headers) == 1, 'SPIRV package selection missing')
+        dependencies = (tools[0] / '+CONTENTS').read_text().splitlines()
+        controller.require('@blddep ' + headers[0].name in dependencies,
+                           'SPIRV-Tools was built against different SPIRV-Headers')
+    values = image.select_roles(controller, options, sdk, native, environment, buildlink,
+                                SPIRV_TOOLS_PROVIDER, {'emberbsd_common_spirv_tools': True},
+                                'EMBERBSD_SPIRV_TOOLS_SOURCE_SHA256', static_libraries=True)
+    return image.select_roles(controller, options, sdk, native, environment, buildlink,
+                              SPIRV_HEADERS_PROVIDER, values, 'EMBERBSD_SPIRV_HEADERS_SOURCE_SHA256')
+
+
 def select_woff2(image, controller, options, sdk, native, environment, buildlink):
     if not getattr(options, 'shared_woff2', False):
         return {}
