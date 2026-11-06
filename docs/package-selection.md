@@ -83,5 +83,7 @@ For binary package updates, use the SDK client's
 They use actual pkgdb package identities and published runtime dependencies.
 They do not expand these package sets, recreate removed selections or build
 the source catalog. Package versions and revisions determine replacements;
-the signed channel generation only protects metadata against rollback.
+there is no common catalog generation or client-side freshness counter.
+Signed metadata binds the selected indexes and archives; package signatures,
+installed-version checks and dependency constraints protect installation.
 The same Ports recipes and existing controller remain the source-build owner.
