@@ -69,6 +69,16 @@ Keep `TOOLS_PATH.readelf` selected in the installed configuration too.
 Use the seed's LLVM archive tools and the explicitly selected host assembler
 and linker. These initial providers do not qualify the final native prefix.
 
+Install `shells/mksh` before building native CMake. Then select that prefix's
+`bin/mksh` as `SH`, `CONFIG_SHELL` and `TOOLS_PLATFORM.sh` in the initial package
+configuration. The common CMake recipe uses this selection for generated Unix
+Makefiles. A CMake initially built with the host `/bin/sh` must be rebuilt with
+the prefix shell before ordinary prefix-only builds. Check the generated
+Makefile's `SHELL`, not only `cmake --version`.
+For an initial `net/libfetch` and `net/fetch` build, select
+`PKG_OPTIONS.libfetch+=openssl` and install the Mozilla CA packages described
+above. The normal native profile sets this option after bootstrap.
+
 Follow the [gettext bootstrap composition](../gettext-bootstrap.md) before
 building a dependency closure that needs GLib and gettext style support.
 Use a control Python with `ctypes`, `ssl` and the compression modules required
