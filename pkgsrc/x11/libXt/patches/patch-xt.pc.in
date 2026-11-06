@@ -5,9 +5,10 @@ Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
 
 --- xt.pc.in.orig
 +++ xt.pc.in
-@@ -14,3 +14,5 @@
+@@ -13,4 +13,5 @@
+ Requires: xproto x11
  Requires.private: ice sm
  Cflags: -I${includedir}
- Libs: -Wl,-rpath,${libdir} -L${libdir} -lXt
-+
+-Libs: -L${libdir} -lXt
++Libs: -Wl,-rpath,${libdir} -L${libdir} -lXt
 +Libs.private: @X11_RELOC_DL_LIBS@

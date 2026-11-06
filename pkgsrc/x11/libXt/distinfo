@@ -8,4 +8,4 @@ SHA1 (patch-util_Makefile.in) = 3bc33e42c88e1bf45606175c4a83dc7781e1aa2b
 SHA1 (patch-configure.ac) = 5d011bd0518530fb3551ea4d83414763941e7a80
 SHA1 (patch-src_Error.c) = 163024b41794c73cb6f9aa499526b1a01e7c3a23
 SHA1 (patch-src_Intrinsic.c) = ea17633678050934b5892944fe1292c0ad90ba8b
-SHA1 (patch-xt.pc.in) = f2d722870d9c6d3fd8c0fad948f3c5d8f19f54ca
+SHA1 (patch-xt.pc.in) = 7802503bf6feb06b2e44b34cb95cdd4fa62eb19c
