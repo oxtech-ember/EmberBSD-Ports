@@ -115,7 +115,8 @@ def source_context(previous_root=None):
         archive_hashes=sourceprep.archive_hashes,
         apply_patch=partial(sourceprep.apply_patch, allow_dev_null=True),
         extract_archive=partial(sourceprep.extract_archive, max_bytes=MAX_EXTRACTED_BYTES))
-    receipt = SimpleNamespace(write=partial(prepared_receipt.write, previous_root=previous_root))
+    receipt = SimpleNamespace(write=partial(prepared_receipt.write, previous_root=previous_root),
+                              require_current_identity=prepared_receipt.require_current_identity)
     return SimpleNamespace(**{**globals(), 'sourceprep': facade, 'prepared_receipt': receipt})
 
 

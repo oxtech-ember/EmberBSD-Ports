@@ -24,6 +24,9 @@ USE_CROSS_COMPILE=	yes
 USE_LANGUAGES=		c c++
 USE_TOOLS+=		pkg-config
 
+# V8 requires executable memory; mark this ELF through pkgsrc's PaX owner.
+NOT_PAX_MPROTECT_SAFE+=	lib/electron44/electron
+
 # The selected native flatc generates target headers during the build.
 TOOL_DEPENDS+= flatbuffers>=25.12.19.1:../../devel/flatbuffers
 TOOL_DEPENDS+= crc32c>=1.1.2:../../devel/crc32c

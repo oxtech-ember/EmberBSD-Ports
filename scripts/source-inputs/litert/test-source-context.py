@@ -15,6 +15,13 @@ spec = importlib.util.spec_from_file_location('litert_source', root / 'source.py
 owner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(owner)
 owner.load_sdk(['--sdk-source', sys.argv[1]])
+context = owner.source_context()
+try:
+    context.prepared_receipt.require_current_identity({}, owner.PACKAGE)
+except owner.SDKError:
+    pass
+else:
+    raise AssertionError('retired source identity was accepted')
 common = Path(owner.tar_archive.__file__).resolve()
 ports = root.parents[2]
 files = [common, ports / 'scripts/source-inputs/zlib/source.py',
