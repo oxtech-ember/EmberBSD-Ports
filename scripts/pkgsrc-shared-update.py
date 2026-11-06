@@ -634,7 +634,14 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                     source_mode = stat.S_IMODE((ports / source).stat().st_mode)
                 dest.chmod(source_mode & ~0o022)
             if not global_file:
-                exp.check_recipe(stage / package, package, stage)
+                if old:
+                    # A recorded export can contain a recipe defect which this
+                    # update repairs. Retain structural checks and the exact
+                    # live-preimage comparison below, but validate recipe
+                    # completeness and checksums on the replacement.
+                    exp.check_tree_links(stage, stage / package, package)
+                else:
+                    exp.check_recipe(stage / package, package, stage)
             return stage / package
         package_trees = []
         for index, package in enumerate(packages):

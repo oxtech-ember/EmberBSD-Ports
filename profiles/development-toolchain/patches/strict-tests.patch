@@ -26,6 +26,17 @@ its unconditional source patch. This profile must not enable gcc-graphite.
  
  post-test:
 
+--- a/lang/gcc16/distinfo
++++ b/lang/gcc16/distinfo
+@@ -20,7 +20,6 @@
+ SHA1 (patch-gcc_config_i386_t-netbsd64) = 914b4d2fd65f5e46681aa2ea592d0bc75299f09a
+ SHA1 (patch-gcc_config_netbsd.h) = ada05409eacb33bc1e7a659f3090f2f43551a35d
+ SHA1 (patch-gcc_configure) = 360629b30ce676915147dec26520e6902db43cfb
+-SHA1 (patch-isl_configure) = 6b7f5f6dea42bca0f90e6f9ce1131f93d607495d
+ SHA1 (patch-libffi_configure) = 0ed41a6bde6987f5e6be4847e02f02abd09c176d
+ SHA1 (patch-libffi_testsuite_libffi.call_float2.c) = 89e2dd6aaf2c1f75726f02362d8a8bf7178694ea
+ SHA1 (patch-libgcc_config.host) = c9ea8bda0e6a1a8c4c39e4b8320a34b86e1da278
+
 --- a/lang/gcc16/patches/patch-isl_configure
 +++ /dev/null
 @@ -1,24 +0,0 @@
