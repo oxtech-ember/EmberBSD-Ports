@@ -2,6 +2,7 @@
 
 DISTNAME=	EmberBSD-Schematic-Analyzer-0.1.0
 PKGNAME=	${DISTNAME:tl}
+WHEEL_NAME=	emberbsd_schematic_analyzer-${PKGVERSION_NOREV}
 CATEGORIES=	cad
 MASTER_SITES=	${MASTER_SITE_GITHUB:=oxtech-ember/}
 GITHUB_PROJECT=	EmberBSD-Schematic-Analyzer
