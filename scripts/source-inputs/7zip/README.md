@@ -9,7 +9,7 @@ It does not build or install a package and does not require a target SDK.
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/7zip/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
   --archive "$DISTFILES/7z2605-src.tar.xz" --patch "$HOST_PREFIX/bin/gpatch" \
-  --output "$WORK/7zip-source" --scoped-identity
+  --output "$WORK/7zip-source"
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/7zip/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" verify-source \
   --source "$WORK/7zip-source" --patch "$HOST_PREFIX/bin/gpatch"

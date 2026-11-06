@@ -9,7 +9,7 @@ by consumers. The NTP copyright and license are retained in `COPYRIGHT`.
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/ntp/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
   --archive "$DISTFILES/ntp-4.2.8p18.tar.gz" --patch "$HOST_PREFIX/bin/gpatch" \
-  --scoped-identity --output "$WORK/ntp-source"
+  --output "$WORK/ntp-source"
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/ntp/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" verify-source \
   --source "$WORK/ntp-source" --patch "$HOST_PREFIX/bin/gpatch" \

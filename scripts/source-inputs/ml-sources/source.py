@@ -44,8 +44,8 @@ class Owner(NetworkOwner):
         source = field('WRKSRC', r'\$\{WRKDIR\}/[A-Za-z0-9_.+-]+').split('/', 1)[1]
         return self.archive_metadata.read_recipe(root, dist + suffix, source)
 
-    def prepare(self, archive, output, patch, git, scoped_identity=False, exported=None):
-        return prepare(self, archive, output, patch, git, scoped_identity, exported)
+    def prepare(self, archive, output, patch, git, exported=None):
+        return prepare(self, archive, output, patch, git, exported)
 
     def verify(self, source, git, archive=None, patch=None, pkgsrc_export=None, export_patch=None):
         return verify(self, source, git, archive, patch, pkgsrc_export, export_patch)

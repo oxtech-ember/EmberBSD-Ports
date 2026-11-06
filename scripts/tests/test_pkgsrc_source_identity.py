@@ -159,7 +159,7 @@ class IdentityTest(unittest.TestCase):
 
 
 class GitPackageIdentityTest(unittest.TestCase):
-    """The API 2 identity is made of Git object ids; no export is written."""
+    """The API 3 identity is made of Git object ids; no export is written."""
 
     def setUp(self):
         self.git = os.environ.get('EXPORT_TEST_GIT')
@@ -315,26 +315,28 @@ class GitPackageIdentityTest(unittest.TestCase):
         self.write(self.root / 'patches/infra.patch', 'no file names\n')
         self.assertChanged(before, 'unknown patch targets are included')
 
-    def test_legacy_and_scoped_sections(self):
+    def test_current_contract_and_scoped_sections(self):
         one = '--- a/cat/pkg/Makefile\n+++ b/cat/pkg/Makefile\n@@ -1 +1 @@\n-old\n+new\n'
         two = '--- a/cat/other/Makefile\n+++ b/cat/other/Makefile\n@@ -1 +1 @@\n-old\n+new\n'
         patchfile = self.root / 'patches/infra.patch'
         self.conf('patch\tpatches/infra.patch\n')
         self.write(patchfile, 'Prose preamble.\n\n' + one + two)
-        old = identity.git_package_identity(self.root, 'cat/pkg', self.git, api=2)
         first = self.current()
-        self.assertEqual(first['legacy_api2_sha256'], old['effective_package_sha256'])
-        self.assertTrue(identity.matches_current_git_package(old, first))
-        self.assertTrue(identity.current_git_package({'effective': old, 'owner_sha256': '0'*64}, '0'*64, self.current))
+        self.assertEqual(set(first), {'api', 'package', 'effective_package_sha256', 'upstream'})
+        self.assertEqual(first['api'], 3)
+        self.assertTrue(identity.matches_current_git_package(first, first))
+        self.assertTrue(identity.current_git_package(
+            {'effective': first, 'owner_sha256': '0' * 64}, '0' * 64, self.current))
         self.write(patchfile, 'Prose preamble.\n\n' + one + two.replace('+new', '+other'))
         second = self.current()
-        self.assertTrue(identity.equivalent_effective_package(first, second))
-        self.assertNotEqual(first['legacy_api2_sha256'], second['legacy_api2_sha256'])
-        self.assertFalse(identity.matches_current_git_package(old, second))
-        self.assertFalse(identity.matches_current_git_package(second, old))
-        self.assertFalse(identity.matches_current_git_package(dict(old, package='cat/other'), first))
-        self.assertFalse(identity.matches_current_git_package(dict(old, api=1), first))
-        for invalid in (dict(first, api=True), dict(first, legacy_api2_sha256='x'),
+        self.assertEqual(first, second)
+        self.assertTrue(identity.matches_current_git_package(first, second))
+        for retired in (dict(first, api=1), dict(first, api=2),
+                        dict(first, legacy_api2_sha256=first['effective_package_sha256'])):
+            self.assertFalse(identity.matches_current_git_package(retired, first))
+            self.assertFalse(identity.current_git_package(
+                {'effective': retired, 'owner_sha256': '0' * 64}, '0' * 64, self.current))
+        for invalid in (dict(first, api=True), dict(first, effective_package_sha256='x'),
                         dict(first, extra=1), dict(first, upstream='bad')):
             self.assertFalse(identity.equivalent_effective_package(first, invalid))
             self.assertFalse(identity.matches_current_git_package(invalid, first))

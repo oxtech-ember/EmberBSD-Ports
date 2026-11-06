@@ -30,16 +30,6 @@ class NetworkOwner:
         self.root_prefix = root_prefix
         self.PORTS = PORTS
         self.prepared_receipt = prepared_receipt
-        # Existing package-scoped receipts were made by this owner before the
-        # verifier stopped binding their fast path to unrelated export inputs.
-        # Their prepared-tree hashes and current package identities are still
-        # checked before reuse.
-        self.compatible_owner_digests = {
-            'net/mDNSResponder': frozenset({
-                '9aa51eed70c7728dd5d47f138c4a3ba0fc45a6638b0270114a5c84e31275fbdc'}),
-            'net/dhcpcd': frozenset({
-                '14af165de773208ec9c612f1db30de99c4033a1e50d17e899f84bd81345a8946'}),
-        }.get(package, frozenset())
 
     def load_sdk(self, argv):
         self.SDK_SOURCE, argv = sdk_source.load_sdk(argv)
@@ -143,8 +133,8 @@ class NetworkOwner:
             source, identity=lambda: (self.source_identity(git), self.git_effective_identity(git)),
             verify=lambda: self.verify(source, git, archive, patch, pkgsrc_export=pkgsrc_export, export_patch=export_patch))
 
-    def prepare(self, archive, output, patch, git, scoped_identity=False, exported=None):
-        return tar_archive.prepare(self, archive, output, patch, git, scoped_identity, exported)
+    def prepare(self, archive, output, patch, git, exported=None):
+        return tar_archive.prepare(self, archive, output, patch, git, exported)
 
     def shared_tree(self, selected):
         return tar_archive.shared_tree(self, selected)
@@ -159,7 +149,6 @@ class NetworkOwner:
         produce.add_argument('--archive', required=True)
         produce.add_argument('--output', required=True)
         produce.add_argument('--patch', required=True)
-        produce.add_argument('--scoped-identity', action='store_true')
         produce.add_argument('--pkgsrc-export')
         produce.add_argument('--export-patch', help='patch used to create the shared export')
         check = sub.add_parser('verify-source')
@@ -178,7 +167,7 @@ class NetworkOwner:
         try:
             if selected.action == 'prepare':
                 record = self.prepare(selected.archive, selected.output, selected.patch, selected.git,
-                                      selected.scoped_identity, exported=self.shared_tree(selected))
+                                      exported=self.shared_tree(selected))
             elif selected.action == 'refresh-source':
                 record = self.refresh(selected.source, selected.git, selected.archive, selected.patch,
                                       pkgsrc_export=selected.pkgsrc_export, export_patch=getattr(selected, 'export_patch', None))

@@ -10,7 +10,7 @@ firmware compressor; target integration needs its own freestanding ABI glue.
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/brotli/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
   --archive "$DISTFILES/brotli/brotli-1.2.1.tar.gz" --patch "$HOST_PREFIX/bin/gpatch" \
-  --output "$WORK/brotli-source" --scoped-identity
+  --output "$WORK/brotli-source"
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/brotli/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" verify-source \
   --source "$WORK/brotli-source" --patch "$HOST_PREFIX/bin/gpatch"

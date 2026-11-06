@@ -317,13 +317,12 @@ def _digest_payload(payload):
     return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 
-def _git_package_inputs_pair(ports_root, package, git):
+def git_package_inputs(ports_root, package, git):
     """Identify one effective recipe from Git object ids, without an export.
 
-    The tree rows and overlays are computed once. API 2 retains whole
-    infrastructure blobs selected by the legacy path heuristic. API 3 uses
-    ordered matching sections of plain unified patches; ambiguous formats use
-    the whole blob for every package. The upstream revision is provenance.
+    The tree rows and overlays are computed once. Ordered matching sections
+    identify plain unified patches; ambiguous formats use the whole blob
+    for every package. The upstream revision is provenance.
     """
     root = Path(ports_root).resolve(strict=True)
     if not os.path.isabs(str(git)) or not os.path.isfile(git) or not os.access(git, os.X_OK):
@@ -381,53 +380,33 @@ def _git_package_inputs_pair(ports_root, package, git):
         if method not in ('patch', 'git-apply'):
             continue
         data = source.read_bytes()
-        targets = _patch_targets_bytes(data)
-        legacy_needed = (targets is None or any(target.startswith(package + '/') and
-                         recipe_input(target[len(package) + 1:]) for target in targets))
         sections = _plain_patch_sections(data) if method == 'patch' else None
         selected = None if sections is None else b''.join(
             section for names, section in sections
             if any(name.startswith(package + '/') and recipe_input(name[len(package) + 1:])
                    for name in names))
-        if legacy_needed or sections is None:
+        if sections is None:
             blob_paths.append(source)
-        patch_rows.append((method, source, legacy_needed, selected))
+        patch_rows.append((method, source, selected))
     blobs = iter(_hash_objects(git, root, blob_paths))
-    legacy, infrastructure = [], []
-    for method, source, legacy_needed, selected in patch_rows:
+    infrastructure = []
+    for method, source, selected in patch_rows:
         path = source.relative_to(root).as_posix()
-        blob = next(blobs) if legacy_needed or selected is None else None
-        if legacy_needed:
-            legacy.append([method, path, blob])
         if selected is None:
-            infrastructure.append([method, path, blob])
+            infrastructure.append([method, path, next(blobs)])
         elif selected:
             infrastructure.append([method, path, hashlib.sha256(selected).hexdigest()])
-    common = {'package': package, 'origin': origin, 'tree': dict(sorted(rows.items()))}
-    old = {'api': 2, **common, 'infrastructure_patches': legacy}
-    new = {'api': 3, **common, 'infrastructure_patches': infrastructure}
-    return ({**old, 'upstream': upstream}, {**new, 'upstream': upstream})
+    return {'api': GIT_PACKAGE_API, 'package': package, 'origin': origin,
+            'tree': dict(sorted(rows.items())), 'infrastructure_patches': infrastructure,
+            'upstream': upstream}
 
 
-def git_package_inputs(ports_root, package, git, api=GIT_PACKAGE_API):
-    if type(api) is not int or api not in (2, 3):
-        raise ValueError('unsupported Git package API')
-    return _git_package_inputs_pair(ports_root, package, git)[api - 2]
-
-
-def git_package_identity(ports_root, package, git, api=GIT_PACKAGE_API):
-    """Identify the recipe; API 3 carries the exact legacy API 2 digest."""
-    if type(api) is not int or api not in (2, 3):
-        raise ValueError('unsupported Git package API')
-    old, new = _git_package_inputs_pair(ports_root, package, git)
-    upstream = new.pop('upstream')
-    old.pop('upstream')
-    payload = old if api == 2 else new
-    result = {'api': api, 'package': package,
-              'effective_package_sha256': _digest_payload(payload), 'upstream': upstream}
-    if api == 3:
-        result['legacy_api2_sha256'] = _digest_payload(old)
-    return result
+def git_package_identity(ports_root, package, git):
+    """Identify only the current Git recipe contract."""
+    payload = git_package_inputs(ports_root, package, git)
+    upstream = payload.pop('upstream')
+    return {'api': GIT_PACKAGE_API, 'package': package,
+            'effective_package_sha256': _digest_payload(payload), 'upstream': upstream}
 
 
 def exported_package_rows(exported, package, git):
@@ -442,14 +421,12 @@ def exported_package_rows(exported, package, git):
 
 def _valid_effective_package(value):
     keys = {'api', 'package', 'effective_package_sha256', 'upstream'}
-    if not isinstance(value, dict) or type(value.get('api')) is not int or value['api'] not in (1, 2, 3):
+    if not isinstance(value, dict) or type(value.get('api')) is not int or value['api'] not in (1, GIT_PACKAGE_API):
         return False
-    if value['api'] == 3:
-        keys.add('legacy_api2_sha256')
     return (set(value) == keys and isinstance(value['package'], str) and
             re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9+_.-]*/[A-Za-z0-9][A-Za-z0-9+_.-]*', value['package']) is not None and
-            all(isinstance(value[k], str) and re.fullmatch(r'[0-9a-f]{64}', value[k]) is not None
-                for k in keys if k in ('effective_package_sha256', 'legacy_api2_sha256')) and
+            isinstance(value['effective_package_sha256'], str) and
+            re.fullmatch(r'[0-9a-f]{64}', value['effective_package_sha256']) is not None and
             isinstance(value['upstream'], str) and re.fullmatch(r'[0-9a-f]{40}', value['upstream']) is not None)
 
 
@@ -461,14 +438,9 @@ def equivalent_effective_package(left, right):
 
 
 def matches_current_git_package(old, current):
-    """Compare a receipt to current API 3; only the old-to-new bridge is valid."""
-    if not _valid_effective_package(old) or not _valid_effective_package(current):
-        return False
-    if current['api'] != 3 or old['package'] != current['package']:
-        return False
-    if old['api'] == 2:
-        return old['effective_package_sha256'] == current['legacy_api2_sha256']
-    return old['api'] == 3 and equivalent_effective_package(old, current)
+    """Accept only a receipt using the current Git recipe contract."""
+    return (equivalent_effective_package(old, current) and
+            current['api'] == GIT_PACKAGE_API)
 
 
 def current_git_package(old, owner_sha256, current):
@@ -476,7 +448,7 @@ def current_git_package(old, owner_sha256, current):
     if not isinstance(old, dict) or set(old) != {'effective', 'owner_sha256'}:
         return False
     effective = old['effective']
-    if not _valid_effective_package(effective) or effective['api'] not in (2, 3) or old['owner_sha256'] != owner_sha256:
+    if not _valid_effective_package(effective) or effective['api'] != GIT_PACKAGE_API or old['owner_sha256'] != owner_sha256:
         return False
     return matches_current_git_package(effective, current())
 

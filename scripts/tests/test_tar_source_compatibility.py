@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Copyright (c) 2026 EmberBSD contributors.
-"""Check the legacy comparison boundary for the tar-based source owners."""
+"""Check the current receipt comparison boundary for the tar-based source owners."""
 import importlib.util
 import os
 from pathlib import Path
@@ -32,7 +32,7 @@ class CompatibilityTest(unittest.TestCase):
                 recipe.mkdir(parents=True)
                 (recipe / 'Makefile').write_text('recipe\n')
                 selector = owner.identity_module()
-                effective = selector.effective_package_identity(exported, package, '1' * 40)
+                effective = dict(selector.effective_package_identity(exported, package, '1' * 40), api=3)
                 source = root / 'source'
                 source.mkdir()
                 (source / 'source.c').write_text('payload\n')
@@ -42,6 +42,7 @@ class CompatibilityTest(unittest.TestCase):
                 def export(command, **kwargs):
                     shutil.copytree(exported, Path(command[3]))
                 with patch.object(owner, 'source_identity', return_value=current), \
+                        patch.object(owner, 'git_effective_identity', return_value=dict(effective, effective_package_sha256='8' * 64)), \
                         patch.object(owner.process, 'capture', side_effect=export), \
                         patch.object(owner, 'prepare', return_value={'tree_sha256': record['tree_sha256']}) as prepare:
                     self.assertEqual(owner.verify(source, '/git', '/archive', '/patch'), record)
@@ -91,7 +92,7 @@ class CompatibilityTest(unittest.TestCase):
                     with self.assertRaisesRegex(SDKError, 'archive checksum differs'):
                         owner.prepare(str(archive), root / 'output', '/patch', '/git')
 
-    def test_legacy_compares_current_payload_and_archive(self):
+    def test_retired_receipts_are_rejected_without_preparing(self):
         for name, package in (('byacc', 'devel/byacc'), ('libevent', 'devel/libevent')):
             with self.subTest(owner=name), tempfile.TemporaryDirectory(dir=os.environ['EMBERBSD_TEST_WORK']) as tmp:
                 spec = importlib.util.spec_from_file_location('owner_' + name,
@@ -102,24 +103,21 @@ class CompatibilityTest(unittest.TestCase):
                 source = Path(tmp) / 'source'
                 source.mkdir()
                 (source / 'source.c').write_text('payload\n')
-                old = {'export': {'api': 1, 'package': package,
-                                  'export_inputs_sha256': '1' * 64, 'upstream': '2' * 40},
-                       'owner_sha256': '3' * 64}
-                record = sourceprep.write_prepared_tree_receipt(source, package=package, identity=old)
-                current = {'export': {**old['export'], 'export_inputs_sha256': '4' * 64},
-                           'owner_sha256': '3' * 64}
-                with patch.object(owner, 'source_identity', return_value=current), \
-                        patch.object(owner, 'prepare', return_value={'tree_sha256': record['tree_sha256']}) as prepare:
-                    self.assertEqual(owner.verify(source, '/git', '/archive', '/patch'), record)
-                    self.assertEqual(prepare.call_args.args[0], '/archive')
-                    prepare.return_value = {'tree_sha256': '0' * 64}
-                    with self.assertRaisesRegex(SDKError, 'differs from current'):
-                        owner.verify(source, '/git', '/archive', '/patch')
-                    with self.assertRaisesRegex(SDKError, 'explicit archive and patch'):
-                        owner.verify(source, '/git')
-                    (source / 'source.c').write_text('tampered\n')
-                    with self.assertRaises(SDKError):
-                        owner.verify(source, '/git', '/archive', '/patch')
+                for old in (
+                    {'export': {'api': 1, 'package': package,
+                                'export_inputs_sha256': '1' * 64, 'upstream': '2' * 40},
+                     'owner_sha256': '3' * 64},
+                    {'effective': {'api': 2, 'package': package,
+                                   'effective_package_sha256': '1' * 64, 'upstream': '2' * 40},
+                     'owner_sha256': '3' * 64}):
+                    receipt = source / sourceprep.PREPARED_TREE_RECEIPT
+                    receipt.unlink(missing_ok=True)
+                    sourceprep.write_prepared_tree_receipt(source, package=package, identity=old)
+                    with patch.object(owner, 'source_identity', return_value=old), \
+                            patch.object(owner, 'prepare') as prepare:
+                        with self.assertRaisesRegex(SDKError, 'prepare the source again'):
+                            owner.verify(source, '/git', '/archive', '/patch')
+                        prepare.assert_not_called()
 
 
 if __name__ == '__main__':

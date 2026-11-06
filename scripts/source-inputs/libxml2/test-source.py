@@ -22,7 +22,7 @@ with tempfile.TemporaryDirectory(dir=args.work_dir) as directory:
         if (result.returncode == 0) != success:
             raise AssertionError(result.stderr)
         return result
-    run('prepare', '--archive', args.archive, '--patch', args.patch, '--output', root, '--scoped-identity')
+    run('prepare', '--archive', args.archive, '--patch', args.patch, '--output', root)
     run('verify-source', '--source', root, '--patch', args.patch)
     stamp = (root / 'configure.ac').stat().st_mtime_ns
     for generated in [root / 'aclocal.m4', root / 'configure', root / 'config.h.in',

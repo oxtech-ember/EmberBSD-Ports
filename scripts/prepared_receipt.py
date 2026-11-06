@@ -9,6 +9,7 @@ receipt against the returned record. Import this module only after the
 owner has selected its SDK.
 """
 from pathlib import Path
+import re
 
 
 def write(root, *, package, identity, previous_root=None):
@@ -42,3 +43,22 @@ def refresh(root, *, identity, verify):
     updated = dict(record, identity={'effective': before[1], 'owner_sha256': before[0]['owner_sha256']})
     jsonio.write_json(str(receipt), updated, exclusive=False)
     return updated
+
+
+def require_current_identity(identity, package):
+    """Reject retired receipts; derived source trees can be prepared again."""
+    from emberbsd_sdk.errors import SDKError
+    if not isinstance(identity, dict) or set(identity) != {'effective', 'owner_sha256'}:
+        raise SDKError('retired prepared-source identity; prepare the source again')
+    effective = identity['effective']
+    if (not isinstance(effective, dict) or
+            set(effective) != {'api', 'package', 'effective_package_sha256', 'upstream'} or
+            type(effective['api']) is not int or effective['api'] != 3 or
+            effective['package'] != package or
+            not isinstance(effective['effective_package_sha256'], str) or
+            not re.fullmatch('[0-9a-f]{64}', effective['effective_package_sha256']) or
+            not isinstance(effective['upstream'], str) or
+            not re.fullmatch('[0-9a-f]{40}', effective['upstream']) or
+            not isinstance(identity['owner_sha256'], str) or
+            not re.fullmatch('[0-9a-f]{64}', identity['owner_sha256'])):
+        raise SDKError('retired or invalid prepared-source identity; prepare the source again')

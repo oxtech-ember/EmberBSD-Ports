@@ -9,7 +9,7 @@ downloaded archive and a new output directory explicitly. For example:
 ```
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/mdns/source.py --sdk-source "$SDK_SOURCE" \
   --git "$GIT" prepare --archive "$ARCHIVE" --patch "$PATCH" \
-  --scoped-identity --output "$OUTPUT"
+  --output "$OUTPUT"
 ```
 
 An optional `--pkgsrc-export` reuses a compatible shared export. The generated

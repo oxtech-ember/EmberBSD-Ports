@@ -6,7 +6,7 @@ This producer prepares one explicitly selected source-only Ports owner: `devel/r
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/ml-sources/source.py \
   --package devel/ruy --sdk-source "$SDK_SOURCE" --git /usr/bin/git prepare \
   --archive /absolute/recipe-distfile --patch "$HOST_PREFIX/bin/gpatch" \
-  --output /absolute/new-source --scoped-identity
+  --output /absolute/new-source
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/ml-sources/source.py \
   --package devel/ruy --sdk-source "$SDK_SOURCE" --git /usr/bin/git verify-source \
   --source /absolute/new-source --patch "$HOST_PREFIX/bin/gpatch"

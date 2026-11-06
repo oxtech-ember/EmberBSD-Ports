@@ -9,7 +9,7 @@ uses Berkeley DB 18. This helper does not build or install either consumer.
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/nvi/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
   --archive "$DISTFILES/nvi-1.81.6.tar.bz2" --patch "$HOST_PREFIX/bin/gpatch" \
-  --scoped-identity --output "$WORK/nvi-source"
+  --output "$WORK/nvi-source"
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/nvi/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" verify-source \
   --source "$WORK/nvi-source" --patch "$HOST_PREFIX/bin/gpatch" \

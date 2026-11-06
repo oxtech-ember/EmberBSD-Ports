@@ -18,7 +18,7 @@ target library and headers.
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/gettext/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
   --archive "$DISTFILES/gettext-1.0.tar.gz" --patch "$HOST_PREFIX/bin/gpatch" \
-  --scoped-identity --output "$WORK/gettext-source"
+  --output "$WORK/gettext-source"
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/gettext/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" verify-source \
   --source "$WORK/gettext-source" --archive "$DISTFILES/gettext-1.0.tar.gz" \

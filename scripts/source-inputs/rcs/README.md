@@ -9,7 +9,7 @@ patches have been reconciled; preparation alone does not establish that.
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/rcs/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
   --archive "$DISTFILES/rcs-5.10.1.tar.lz" --patch "$HOST_PREFIX/bin/gpatch" --lzip "$HOST_PREFIX/bin/lzip" \
-  --scoped-identity --output "$WORK/rcs-source"
+  --output "$WORK/rcs-source"
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/rcs/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" verify-source --source "$WORK/rcs-source" \
   --archive "$DISTFILES/rcs-5.10.1.tar.lz" --patch "$HOST_PREFIX/bin/gpatch" --lzip "$HOST_PREFIX/bin/lzip"

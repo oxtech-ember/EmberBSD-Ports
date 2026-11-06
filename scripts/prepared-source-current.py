@@ -120,7 +120,7 @@ def recipe_files(selector, package, git, patch):
     those that identity describes.  Infrastructure patches which name only
     recipe files of this package (not its distinfo, patches or exported
     files) are then applied as the export applies them."""
-    inputs = selector.git_package_inputs(PORTS, package, git, api=2)
+    inputs = selector.git_package_inputs(PORTS, package, git)
     exporter = selector._exporter(PORTS)
     recipes, patches, files, _ = exporter.configuration(PORTS)
     overlay = dict(recipes).get(package)
@@ -150,16 +150,22 @@ def recipe_files(selector, package, git, patch):
     for relative, (_, oid) in inputs['tree'].items():
         if relative not in contents or blob_id(contents[relative]) != oid:
             raise ValueError('cannot rebuild effective recipe file ' + package + '/' + relative)
-    infrastructure = [Path(PORTS, relative) for _, relative, _ in inputs['infrastructure_patches']]
+    infrastructure = []
+    for _, relative, _ in inputs['infrastructure_patches']:
+        source = Path(PORTS, relative)
+        targets = selector._patch_targets(source)
+        # Git identity conservatively hashes opaque patches for every package.
+        # Materialization applies only patches that touch this recipe.
+        if targets is not None and not any(target.startswith(package + '/') for target in targets):
+            continue
+        if (targets is None or source.read_bytes().startswith(b'diff --git') or
+                any(not target.startswith(package + '/') or
+                    target[len(package) + 1:] in replaced or
+                    target[len(package) + 1:].startswith('patches/') or
+                    target[len(package) + 1:] == 'distinfo' for target in targets)):
+            raise Stale(source.name + ' changes more than its recipe files; verify it through its owner')
+        infrastructure.append(source)
     if infrastructure:
-        for source in infrastructure:
-            targets = selector._patch_targets(source)
-            if (targets is None or source.read_bytes().startswith(b'diff --git') or
-                    any(not target.startswith(package + '/') or
-                        target[len(package) + 1:] in replaced or
-                        target[len(package) + 1:].startswith('patches/') or
-                        target[len(package) + 1:] == 'distinfo' for target in targets)):
-                raise Stale(source.name + ' changes more than its recipe files; verify it through its owner')
         if not patch or not os.path.isabs(patch):
             raise Stale('its recipe has infrastructure patches; select --patch')
         with tempfile.TemporaryDirectory(prefix='.recipe-current-') as temporary:
