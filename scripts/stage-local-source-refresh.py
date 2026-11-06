@@ -75,8 +75,13 @@ def source_refresh(sdk, patch_refresh, bmake, recipe, work, make_args, scope):
         configure_cookie = work / '.configure_done'
         if os.path.lexists(configure_cookie):
             paths.regular_file(str(configure_cookie))
-            subprocess.run(base + ['WRKDIR=' + str(candidate_work),
-                                   'pre-configure', 'do-configure-pre-hook'],
+            # The candidate has its own extract/patch makevars.  Let bmake
+            # load them here: pre-configure hooks need dependency values such
+            # as BUILDLINK_PREFIX.*, which the retained stage's cached values
+            # must not leak into a newly prepared WRKDIR.
+            configure_base = [arg for arg in base if arg != '_MAKEVARS_MK=defined']
+            subprocess.run(configure_base + ['WRKDIR=' + str(candidate_work),
+                                             'pre-configure', 'do-configure-pre-hook'],
                            check=True)
         rel_source = candidate_source.relative_to(candidate_work.resolve())
         require(rel_source == retained_rel_source,

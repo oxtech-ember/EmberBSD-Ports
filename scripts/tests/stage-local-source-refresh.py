@@ -93,6 +93,8 @@ elif 'extract' in args and 'patch' in args:
     (src / 'sample/test.rb').chmod(0o755)
     (wrkdir / '.patch_done').write_bytes(b'current pkgsrc cookie\\n')
 elif 'pre-configure' in args or 'do-configure-pre-hook' in args:
+    if '_MAKEVARS_MK=defined' in args:
+        raise SystemExit('candidate pre-configure must load its own phase makevars')
     src = wrkdir / src_name
     if 'pre-configure' in args:
         path = src / 'build-tools/python-path.in'
