@@ -1,6 +1,86 @@
 --- a/mk/pkginstall/bsd.pkginstall.mk
 +++ b/mk/pkginstall/bsd.pkginstall.mk
-@@ -1146,22 +1146,20 @@
+@@ -274,6 +274,7 @@
+ 		${ECHO} "# USER: $$i";					\
+ 	done
+ 
++${_INSTALL_USERGROUP_FILE}: ../../mk/pkginstall/bsd.pkginstall.mk
+ ${_INSTALL_USERGROUP_FILE}: ${_INSTALL_USERGROUP_DATAFILE}
+ ${_INSTALL_USERGROUP_FILE}:						\
+ 		../../mk/pkginstall/usergroup				\
+@@ -412,6 +413,7 @@
+ 		${ECHO} "# PERMS: $$file $$mode $$owner $$group";	\
+ 	done
+ 
++${_INSTALL_PERMS_FILE}: ../../mk/pkginstall/bsd.pkginstall.mk
+ ${_INSTALL_PERMS_FILE}: ${_INSTALL_PERMS_DATAFILE}
+ ${_INSTALL_PERMS_FILE}: ../../mk/pkginstall/perms
+ 	${RUN}								\
+@@ -571,6 +573,7 @@
+ 		${ECHO} "# FILE: $$file cf $$egfile $$mode $$owner $$group"; \
+ 	done
+ 
++${_INSTALL_FILES_FILE}: ../../mk/pkginstall/bsd.pkginstall.mk
+ ${_INSTALL_FILES_FILE}: ${_INSTALL_FILES_DATAFILE}
+ ${_INSTALL_FILES_FILE}: ../../mk/pkginstall/files
+ 	${RUN}								\
+@@ -685,6 +688,7 @@
+ 		${ECHO} "# DIR: $$dir mo $$mode $$owner $$group";	\
+ 	done
+ 
++${_INSTALL_DIRS_FILE}: ../../mk/pkginstall/bsd.pkginstall.mk
+ ${_INSTALL_DIRS_FILE}: ${_INSTALL_DIRS_DATAFILE}
+ ${_INSTALL_DIRS_FILE}: ../../mk/pkginstall/dirs
+ 	${RUN}								\
+@@ -719,6 +723,7 @@
+ 	${TEST} -d ${.TARGET:H} || ${MKDIR} ${.TARGET:H};		\
+ 	${TOUCH} ${TOUCH_ARGS} ${.TARGET}
+ 
++${_INSTALL_INFO_FILES_FILE}: ../../mk/pkginstall/bsd.pkginstall.mk
+ ${_INSTALL_INFO_FILES_FILE}: ${_INSTALL_INFO_FILES_DATAFILE}
+ ${_INSTALL_INFO_FILES_FILE}: ../../mk/pkginstall/info-files
+ 	${RUN}								\
+@@ -759,6 +764,7 @@
+ _INSTALL_OFR_FILE=	${_PKGINSTALL_DIR}/ocaml-findlib-register
+ _INSTALL_UNPACK_TMPL+=		${_INSTALL_OFR_FILE}
+ 
++${_INSTALL_OFR_FILE}: ../../mk/pkginstall/bsd.pkginstall.mk
+ ${_INSTALL_OFR_FILE}: ../../mk/pkginstall/ocaml-findlib-register
+ 	${RUN} ${TEST} -d ${.TARGET:H} || ${MKDIR} ${.TARGET:H}
+ .if !empty(OCAML_FINDLIB_REGISTER:M[Yy][Ee][Ss])
+@@ -802,6 +808,7 @@
+ 		${ECHO} "# SHELL: $$shell";				\
+ 	done
+ 
++${_INSTALL_SHELL_FILE}: ../../mk/pkginstall/bsd.pkginstall.mk
+ ${_INSTALL_SHELL_FILE}: ${_INSTALL_SHELL_DATAFILE}
+ ${_INSTALL_SHELL_FILE}: ../../mk/pkginstall/shell
+ 	${RUN}								\
+@@ -838,6 +845,7 @@
+ _INSTALL_UNPACK_TMPL+=		${_INSTALL_SHLIBS_FILE}
+ .endif
+ 
++${_INSTALL_SHLIBS_FILE}: ../../mk/pkginstall/bsd.pkginstall.mk
+ ${_INSTALL_SHLIBS_FILE}: ../../mk/pkginstall/shlibs
+ 	${RUN}								\
+ 	${TEST} -d ${.TARGET:H} || ${MKDIR} ${.TARGET:H};		\
+@@ -935,6 +943,7 @@
+ 		${ECHO} "# FONTS: $$dir x11";				\
+ 	done
+ 
++${_INSTALL_FONTS_FILE}: ../../mk/pkginstall/bsd.pkginstall.mk
+ ${_INSTALL_FONTS_FILE}: ${_INSTALL_FONTS_DATAFILE}
+ ${_INSTALL_FONTS_FILE}: ../../mk/pkginstall/fonts
+ 	${RUN}								\
+@@ -988,6 +997,7 @@
+ 	fi
+ .endif
+ 
++${_INSTALL_ICON_THEMES_FILE}: ../../mk/pkginstall/bsd.pkginstall.mk
+ ${_INSTALL_ICON_THEMES_FILE}: ${_INSTALL_ICON_THEMES_DATAFILE}
+ ${_INSTALL_ICON_THEMES_FILE}: ../../mk/pkginstall/icon-themes
+ 	${RUN}								\
+@@ -1215,56 +1225,60 @@
  generate-install-scripts:						\
  		${_DEINSTALL_FILE} ${_INSTALL_FILE}			\
  		${_DEINSTALL_FILE_DFLT} ${_INSTALL_FILE_DFLT}
@@ -33,39 +113,74 @@
 +		${CP} -f ${_DEINSTALL_FILE:Q} ${DEINSTALL_FILE:Q};\
  	fi
 -.endif
- 
+-
++
++${_DEINSTALL_FILE_DFLT}: ../../mk/pkginstall/bsd.pkginstall.mk
  ${_DEINSTALL_FILE_DFLT}: ${_DEINSTALL_TEMPLATES_DFLT}
  	${RUN}								\
-@@ -1178,24 +1176,26 @@
+ 	${TEST} -d ${.TARGET:H} || ${MKDIR} ${.TARGET:H};		\
+-	${SED} ${FILES_SUBST_SED} ${.ALLSRC} > ${.TARGET};		\
++	${SED} ${FILES_SUBST_SED} ${.ALLSRC:N../../mk/pkginstall/bsd.pkginstall.mk} > ${.TARGET};		\
+ 	${CHMOD} +x ${.TARGET}
+ 
++${_INSTALL_FILE_DFLT}: ../../mk/pkginstall/bsd.pkginstall.mk
+ ${_INSTALL_FILE_DFLT}: ${_INSTALL_TEMPLATES_DFLT}
+ 	${RUN}								\
+ 	${TEST} -d ${.TARGET:H} || ${MKDIR} ${.TARGET:H};		\
+-	${SED} ${FILES_SUBST_SED} ${.ALLSRC} > ${.TARGET};		\
++	${SED} ${FILES_SUBST_SED} ${.ALLSRC:N../../mk/pkginstall/bsd.pkginstall.mk} > ${.TARGET};		\
+ 	${CHMOD} +x ${.TARGET}
+ 
++${_DEINSTALL_FILE}: ../../mk/pkginstall/bsd.pkginstall.mk
  ${_DEINSTALL_FILE}: ${DEINSTALL_SRC}
  	${RUN}								\
  	${TEST} -d ${.TARGET:H} || ${MKDIR} ${.TARGET:H};		\
 -	exec 1>>${.TARGET};						\
+-	case ${.ALLSRC:Q}"" in						\
 +	{						\
- 	case ${.ALLSRC:Q}"" in						\
++	case ${.ALLSRC:N../../mk/pkginstall/bsd.pkginstall.mk:Q}"" in						\
  	"")	${ECHO} "#!${SH}" ;					\
  		${ECHO} "exit 0" ;;					\
- 	*)	${SED} ${FILES_SUBST_SED} ${.ALLSRC} ;;			\
+-	*)	${SED} ${FILES_SUBST_SED} ${.ALLSRC} ;;			\
 -	esac;								\
 -	${CHMOD} +x ${.TARGET}
+-
++	*)	${SED} ${FILES_SUBST_SED} ${.ALLSRC:N../../mk/pkginstall/bsd.pkginstall.mk} ;;			\
 +	esac; } > ${.TARGET:Q}.tmp &&\
 +	${CHMOD} +x ${.TARGET:Q}.tmp &&\
 +	${MV} -f ${.TARGET:Q}.tmp ${.TARGET:Q}
- 
++
++${_INSTALL_FILE}: ../../mk/pkginstall/bsd.pkginstall.mk
  ${_INSTALL_FILE}: ${INSTALL_SRC}
  	${RUN}								\
  	${TEST} -d ${.TARGET:H} || ${MKDIR} ${.TARGET:H};		\
 -	exec 1>>${.TARGET};						\
+-	case ${.ALLSRC:Q}"" in						\
 +	{						\
- 	case ${.ALLSRC:Q}"" in						\
++	case ${.ALLSRC:N../../mk/pkginstall/bsd.pkginstall.mk:Q}"" in						\
  	"")	${ECHO} "#!${SH}" ;					\
  		${ECHO} "exit 0" ;;					\
- 	*)	${SED} ${FILES_SUBST_SED} ${.ALLSRC} ;;			\
+-	*)	${SED} ${FILES_SUBST_SED} ${.ALLSRC} ;;			\
 -	esac;								\
 -	${CHMOD} +x ${.TARGET}
++	*)	${SED} ${FILES_SUBST_SED} ${.ALLSRC:N../../mk/pkginstall/bsd.pkginstall.mk} ;;			\
 +	esac; } > ${.TARGET:Q}.tmp &&\
 +	${CHMOD} +x ${.TARGET:Q}.tmp &&\
 +	${MV} -f ${.TARGET:Q}.tmp ${.TARGET:Q}
  
  # rc.d scripts are automatically generated and installed into the rc.d
  # scripts example directory at the post-install step.  The following
+@@ -1293,11 +1307,12 @@
+ 
+ .  if !empty(RCD_SCRIPT_SRC.${_script_})
+ generate-rcd-scripts: ${RCD_SCRIPT_WRK.${_script_}}
++${RCD_SCRIPT_WRK.${_script_}}: ../../mk/pkginstall/bsd.pkginstall.mk
+ ${RCD_SCRIPT_WRK.${_script_}}: ${RCD_SCRIPT_SRC.${_script_}}
+ 	${RUN}								\
+ 	${STEP_MSG} "Creating ${.TARGET}";				\
+ 	${TEST} -d ${.TARGET:H} || ${MKDIR} ${.TARGET:H};		\
+-	${SED} ${FILES_SUBST_SED} ${.ALLSRC} > ${.TARGET};		\
++	${SED} ${FILES_SUBST_SED} ${.ALLSRC:N../../mk/pkginstall/bsd.pkginstall.mk} > ${.TARGET};		\
+ 	${CHMOD} +x ${.TARGET}
+ 
+ install-rcd-scripts: install-rcd-${_script_}
