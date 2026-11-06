@@ -1,6 +1,7 @@
 # $NetBSD$
 # Origin: Mapbox gzip-hpp 0.1.0 with the KiCad 10.0.8 bounded decompressor API.
 DISTNAME=	gzip-hpp-0.1.0
+PKGREVISION=	1
 CATEGORIES=	archivers
 MASTER_SITES=	${MASTER_SITE_GITHUB:=mapbox/}
 GITHUB_TAG=	v${PKGVERSION_NOREV}
