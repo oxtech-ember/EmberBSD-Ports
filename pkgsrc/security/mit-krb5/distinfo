@@ -47,3 +47,6 @@ SHA1 (patch-zy-lib_gssapi_generic_Makefile.in) = 1f1e4d4a1c4aba158cb462deee7cc1d
 SHA1 (patch-zy-util_ss_Makefile.in) = 7d2939ea319bac4efc44fb0db044256b9bf5e52b
 SHA1 (patch-zz-plugins__preauth__pkinit__pkinit__crypto__openssl.c) = 82d636146ed5cebc0e7fd60268e572fd810f3ede
 SHA1 (patch-zz-plugins__tls__k5tls__openssl.c) = 0177681545470f698fef8ce42740d576e7e700f1
+SHA1 (patch-zz-ember-relocation) = 27c5bccb425f726ed4cb28c8cc7408710b7dec3f
+SHA1 (patch-zzz-ember-incremental-relink) = a4f6023687f48a9fdcaa360aab066d934da40eca
+SHA1 (patch-zzz-ember-locale) = 4f240aa119227d7162c311cd06403cd00abb8872

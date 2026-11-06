@@ -7,3 +7,4 @@ SHA1 (patch-tflite_arithmetic) = e6b1135cbc567eb314f221898d1def977aed9d12
 SHA1 (patch-tflite_svdf) = d8e96d138146e7b1f4dbca00ba6d91c1229d0951
 SHA1 (patch-tflite_profiling_tsl) = fef7d0a76e52f86793b6ae620bc05747ccf710ac
 SHA1 (patch-tflite_op_shim_compat) = 16d45740e51c365caf5f3370ea7cb4cb25685f5f
+SHA1 (patch-tflite_cpuinfo_public_header) = 76d86cbb79bae0824f714b32f195de139013b41a

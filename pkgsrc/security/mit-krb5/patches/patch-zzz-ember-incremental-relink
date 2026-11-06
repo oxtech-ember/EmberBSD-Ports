@@ -1,0 +1,24 @@
+$NetBSD$
+
+Refresh recursively generated object-list timestamps before evaluating library links.
+
+--- config/lib.in.orig
++++ config/lib.in
+@@ -24,6 +24,7 @@
+ LAOBJLISTS=$(STOBJLISTS:.ST=.LA)
+ 
+ dummy-target-1 $(SUBDIROBJLISTS) $(SUBDIROBJLISTS:.ST=.SH) $(SUBDIROBJLISTS:.ST=.PF) $(SUBDIROBJLISTS:.ST=.LA): all-recurse
++	@: $@ updated by recursion
+ 
+ # Gets invoked as $(PARSE_OBJLISTS) list-of-OBJS.*-files
+ PARSE_OBJLISTS= set -x && $(PERL) -p -e 'BEGIN { $$SIG{__WARN__} = sub {die @_} }; $$e=$$ARGV; $$e =~ s/OBJS\...$$//; s/^/ /; s/ $$//; s/ / $$e/g;'
+--- config/libnover.in.orig
++++ config/libnover.in
+@@ -24,6 +24,7 @@
+ LIBTOOL_TAIL=-rpath $(MODULE_INSTALL_DIR) -shared -module -avoid-version
+ 
+ dummy-target-1 $(SUBDIROBJLISTS) $(SUBDIROBJLISTS:.ST=.SH) $(SUBDIROBJLISTS:.ST=.PF) $(SUBDIROBJLISTS:.ST=.LA): all-recurse
++	@: $@ updated by recursion
+ 
+ # Gets invoked as $(PARSE_OBJLISTS) list-of-OBJS.*-files
+ PARSE_OBJLISTS= set -x && $(PERL) -p -e 'BEGIN { $$SIG{__WARN__} = sub {die @_} }; $$e=$$ARGV; $$e =~ s/OBJS\...$$//; s/^/ /; s/ $$//; s/ / $$e/g;'

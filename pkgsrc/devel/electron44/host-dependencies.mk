@@ -64,16 +64,39 @@ BUILDLINK_ABI_DEPENDS.expat+= expat>=2.10.0nb1
 .include "../../textproc/expat/buildlink3.mk"
 .endif
 
+.if ${EMBERBSD_ELECTRON_SHARED_SPIRV_TOOLS:Uno} == "yes"
+BUILDLINK_API_DEPENDS.spirv-tools+= spirv-tools>=2026.4nb4
+BUILDLINK_ABI_DEPENDS.spirv-tools+= spirv-tools>=2026.4nb4
+BUILDLINK_API_DEPENDS.spirv-headers+= spirv-headers>=1.4.363.0
+.include "../../parallel/spirv-tools/buildlink3.mk"
+.include "../../parallel/spirv-headers/buildlink3.mk"
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_CPUINFO:Uno} == "yes"
 BUILDLINK_API_DEPENDS.cpuinfo+= cpuinfo>=0.0.20261104
 BUILDLINK_ABI_DEPENDS.cpuinfo+= cpuinfo>=0.0.20261104
 .include "../../sysutils/cpuinfo/buildlink3.mk"
 .endif
 
+.if ${EMBERBSD_ELECTRON_SHARED_VULKAN:Uno} == "yes"
+BUILDLINK_API_DEPENDS.vulkan-loader+= vulkan-loader>=1.4.363.0nb1
+BUILDLINK_ABI_DEPENDS.vulkan-loader+= vulkan-loader>=1.4.363.0nb1
+BUILDLINK_API_DEPENDS.vulkan-headers+= vulkan-headers>=1.4.363.0
+BUILDLINK_ABI_DEPENDS.vulkan-headers+= vulkan-headers>=1.4.363.0
+.include "../../graphics/vulkan-loader/buildlink3.mk"
+.include "../../graphics/vulkan-headers/buildlink3.mk"
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_WOFF2:Uno} == "yes"
 BUILDLINK_API_DEPENDS.woff2+= woff2>=1.0.2nb4
 BUILDLINK_ABI_DEPENDS.woff2+= woff2>=1.0.2nb4
 .include "../../fonts/woff2/buildlink3.mk"
+.endif
+
+.if ${EMBERBSD_ELECTRON_SHARED_SNAPPY:Uno} == "yes"
+BUILDLINK_API_DEPENDS.snappy+= snappy>=1.3.1nb1
+BUILDLINK_ABI_DEPENDS.snappy+= snappy>=1.3.1nb1
+.include "../../devel/snappy/buildlink3.mk"
 .endif
 
 .if ${EMBERBSD_ELECTRON_SHARED_PFFFT:Uno} == "yes"

@@ -1,0 +1,36 @@
+--- a/third_party/leveldatabase/BUILD.gn
++++ b/third_party/leveldatabase/BUILD.gn
+@@ -4,6 +4,11 @@
+ 
+ import("//testing/libfuzzer/fuzzer_test.gni")
+ import("//testing/test.gni")
++
++declare_args() {
++  emberbsd_common_leveldb = false
++  emberbsd_leveldb_identity = ""
++}
+ 
+ defines = [ "LEVELDB_PLATFORM_CHROMIUM=1" ]
+ 
+@@ -114,6 +119,10 @@
+ 
+ component("leveldatabase") {
+   sources = leveldb_sources
++  if (emberbsd_common_leveldb) {
++    assert(emberbsd_leveldb_identity != "", "Selected LevelDB identity is required")
++    inputs = [ emberbsd_leveldb_identity ]
++  }
+ 
+   configs -= [ "//build/config/compiler:chromium_code" ]
+   configs += [ "//build/config/compiler:no_chromium_code" ]
+@@ -154,6 +163,10 @@
+     ":leveldb_testutil",
+   ]
+   sources = leveldb_sources
++  if (emberbsd_common_leveldb) {
++    assert(emberbsd_leveldb_identity != "", "Selected LevelDB identity is required")
++    inputs = [ emberbsd_leveldb_identity ]
++  }
+ 
+   configs -= [ "//build/config/compiler:chromium_code" ]
+   configs += [ "//build/config/compiler:no_chromium_code" ]

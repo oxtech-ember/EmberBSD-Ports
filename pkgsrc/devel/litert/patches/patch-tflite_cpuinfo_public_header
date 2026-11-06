@@ -1,0 +1,39 @@
+$NetBSD$
+
+Origin: EmberBSD contributors (AI-assisted).
+Use CPUINFO's public installed header for all architectures. The shared
+package and upstream CPUINFO build both export this include directory.
+
+--- tflite/kernels/cpu_backend_context.cc.orig
++++ tflite/kernels/cpu_backend_context.cc
+@@ -22,7 +22,7 @@
+ #endif
+ 
+ #ifdef TFLITE_HAVE_CPUINFO
+-#include "include/cpuinfo.h"
++#include <cpuinfo.h>
+ #endif
+ 
+ #include "public/gemmlowp.h"
+--- tflite/kernels/fully_connected.cc.orig
++++ tflite/kernels/fully_connected.cc
+@@ -43,7 +43,7 @@
+ #include "tflite/minimal_logging.h"
+ #include "tflite/util.h"
+ #ifdef TFLITE_HAVE_CPUINFO
+-#include "include/cpuinfo.h"
++#include <cpuinfo.h>
+ #endif
+ 
+ #if defined(__APPLE__) || defined(__linux__) || defined(__Fuchsia__)
+--- tflite/kernels/internal/optimized/4bit/neon_fully_connected.cc.orig
++++ tflite/kernels/internal/optimized/4bit/neon_fully_connected.cc
+@@ -21,7 +21,7 @@
+ #include <cstring>
+ #include <vector>
+ 
+-#include "include/cpuinfo.h"
++#include <cpuinfo.h>
+ #include "tflite/kernels/internal/cppmath.h"
+ #include "tflite/kernels/internal/optimized/4bit/fully_connected_common.h"
+ #include "tflite/kernels/internal/optimized/4bit/neon_fully_connected_impl.h"

@@ -1,0 +1,180 @@
+--- a/build/linux/unbundle/replace_gn_files.py
++++ b/build/linux/unbundle/replace_gn_files.py
+@@ -67,6 +67,8 @@
+     'pffft': 'third_party/pffft/BUILD.gn',
+     'expat': 'third_party/expat/BUILD.gn',
+     'cpuinfo': 'third_party/cpuinfo/BUILD.gn',
++    'vulkan-loader': 'third_party/vulkan-loader/src/BUILD.gn',
++    'vulkan-headers': 'third_party/vulkan-headers/src/BUILD.gn',
+     'opus': 'third_party/opus/BUILD.gn',
+     're2': 'third_party/re2/BUILD.gn',
+     'simdutf': 'third_party/simdutf/BUILD.gn',
+--- /dev/null
++++ b/build/config/emberbsd_vulkan.gni
+@@ -0,0 +1,19 @@
++# Copyright 2026 EmberBSD contributors. BSD-2-Clause.
++import("//build/config/linux/pkg_config.gni")
++declare_args() {
++  emberbsd_common_vulkan = false
++  emberbsd_vulkan_host_library = ""
++  emberbsd_vulkan_host_inputs = []
++  emberbsd_vulkan_host_runtime_dir = ""
++  emberbsd_vulkan_target_library = ""
++  emberbsd_vulkan_target_inputs = []
++  emberbsd_vulkan_target_runtime_dir = ""
++  emberbsd_vulkan_headers_host_include = ""
++  emberbsd_vulkan_headers_host_inputs = []
++  emberbsd_vulkan_headers_target_include = ""
++  emberbsd_vulkan_headers_target_inputs = []
++}
++emberbsd_vulkan_is_native = emberbsd_pkg_config_role == "native"
++emberbsd_vulkan_is_target = emberbsd_pkg_config_role == "target" ||
++                           (emberbsd_pkg_config_role == "explicit" &&
++                            current_toolchain == default_toolchain)
+--- /dev/null
++++ b/build/config/emberbsd_vulkan/BUILD.gn
+@@ -0,0 +1,15 @@
++# Copyright 2026 EmberBSD contributors. BSD-2-Clause.
++import("//build/config/emberbsd_vulkan.gni")
++config("runtime_path") {
++  if (emberbsd_common_vulkan) {
++    assert(emberbsd_vulkan_is_native || emberbsd_vulkan_is_target,
++           "Selected common Vulkan loader is unavailable for this toolchain")
++    if (emberbsd_vulkan_is_native) {
++      assert(emberbsd_vulkan_host_runtime_dir != "", "Missing native Vulkan directory")
++      ldflags = [ "-Wl,-rpath," + emberbsd_vulkan_host_runtime_dir ]
++    } else {
++      assert(emberbsd_vulkan_target_runtime_dir != "", "Missing target Vulkan directory")
++      ldflags = [ "-Wl,-rpath=" + emberbsd_vulkan_target_runtime_dir ]
++    }
++  }
++}
+--- /dev/null
++++ b/build/linux/unbundle/vulkan-loader.gn
+@@ -0,0 +1,16 @@
++# Copyright 2026 EmberBSD contributors. BSD-2-Clause.
++import("//build/config/emberbsd_vulkan.gni")
++assert(emberbsd_common_vulkan && (emberbsd_vulkan_is_native || emberbsd_vulkan_is_target),
++       "Selected common Vulkan loader is unavailable for this toolchain")
++if (emberbsd_vulkan_is_native) {
++  _library = emberbsd_vulkan_host_library
++  _inputs = emberbsd_vulkan_host_inputs
++} else {
++  _library = emberbsd_vulkan_target_library
++  _inputs = emberbsd_vulkan_target_inputs
++}
++assert(_library != "" && _inputs != [], "Selected Vulkan loader is incomplete")
++# Keep Chromium's label and dependency tracking without packaging a copy.
++source_set("libvulkan") {
++  inputs = _inputs + [ _library ]
++}
+--- /dev/null
++++ b/build/linux/unbundle/vulkan-headers.gn
+@@ -0,0 +1,67 @@
++# Copyright 2018-2023 The ANGLE Project Authors.
++# Copyright 2019-2023 LunarG, Inc.
++#
++# SPDX-License-Identifier: Apache-2.0
++
++import("//build_overrides/vulkan_headers.gni")
++import("//build/config/emberbsd_vulkan.gni")
++assert(emberbsd_common_vulkan && (emberbsd_vulkan_is_native || emberbsd_vulkan_is_target),
++       "Selected common Vulkan headers are unavailable for this toolchain")
++if (emberbsd_vulkan_is_native) {
++  _headers_include = emberbsd_vulkan_headers_host_include
++  _headers_inputs = emberbsd_vulkan_headers_host_inputs
++} else {
++  _headers_include = emberbsd_vulkan_headers_target_include
++  _headers_inputs = emberbsd_vulkan_headers_target_inputs
++}
++assert(_headers_include != "" && _headers_inputs != [], "Selected Vulkan headers are incomplete")
++
++config("vulkan_headers_config") {
++  include_dirs = [ _headers_include ]
++  defines = []
++
++  if (is_win) {
++    defines += [ "VK_USE_PLATFORM_WIN32_KHR" ]
++  }
++  if (defined(vulkan_use_x11) && vulkan_use_x11) {
++    defines += [ "VK_USE_PLATFORM_XCB_KHR" ]
++    if (!defined(vulkan_no_xlib_headers) || !vulkan_no_xlib_headers) {
++      defines += [ "VK_USE_PLATFORM_XLIB_KHR" ]
++    }
++  }
++  if (defined(vulkan_use_wayland) && vulkan_use_wayland) {
++    defines += [ "VK_USE_PLATFORM_WAYLAND_KHR" ]
++    if (defined(vulkan_wayland_include_dirs)) {
++      include_dirs += vulkan_wayland_include_dirs
++    }
++  }
++  if (is_android) {
++    defines += [ "VK_USE_PLATFORM_ANDROID_KHR" ]
++  }
++  if (is_fuchsia) {
++    defines += [ "VK_USE_PLATFORM_FUCHSIA" ]
++  }
++  if (is_apple) {
++    defines += [ "VK_USE_PLATFORM_METAL_EXT" ]
++  }
++  if (is_mac) {
++    defines += [ "VK_USE_PLATFORM_MACOS_MVK" ]
++  }
++  if (is_ios) {
++    defines += [ "VK_USE_PLATFORM_IOS_MVK" ]
++  }
++  if (defined(is_ggp) && is_ggp) {
++    defines += [ "VK_USE_PLATFORM_GGP" ]
++  }
++  if (is_clang) {
++    cflags = [
++      "-Wno-redundant-parens",
++    ]
++  }
++}
++
++# Vulkan headers only, no compiled sources.
++source_set("vulkan_headers") {
++  inputs = _headers_inputs
++  public_configs = [ ":vulkan_headers_config" ]
++}
+--- a/third_party/angle/BUILD.gn
++++ b/third_party/angle/BUILD.gn
+@@ -4,6 +4,7 @@
+ 
+ # import the ozone_platform_x11 variable
+ import("gni/angle.gni")
++import("//build/config/emberbsd_vulkan.gni")
+ if (angle_enable_vulkan) {
+   import("//build_overrides//vulkan_headers.gni")
+ }
+@@ -1507,6 +1508,9 @@
+       ":debug_annotations_config",
+       ":gl_prototypes",
+     ]
++    if (emberbsd_common_vulkan) {
++      configs += [ "//build/config/emberbsd_vulkan:runtime_path" ]
++    }
+ 
+     if (angle_enable_cl) {
+       sources += libglesv2_cl_sources
+--- a/electron/BUILD.gn
++++ b/electron/BUILD.gn
+@@ -1,6 +1,7 @@
+ import("//build/compiled_action.gni")
+ import("//build/config/locales.gni")
+ import("//build/config/ui.gni")
++import("//build/config/emberbsd_vulkan.gni")
+ import("//build/config/win/manifest.gni")
+ import("//components/os_crypt/sync/features.gni")
+ import("//components/spellcheck/spellcheck_build_features.gni")
+@@ -1771,6 +1772,9 @@
+ 
+   executable("electron_app") {
+     output_name = electron_project_name
++    if (emberbsd_common_vulkan) {
++      configs += [ "//build/config/emberbsd_vulkan:runtime_path" ]
++    }
+ 
+     # Perform full ThinLTO optimization in the link step for the main binary,
+     # matching what Chrome does for its main executable. The default

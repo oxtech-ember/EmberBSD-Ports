@@ -1259,7 +1259,27 @@
       "strip": 1
     },
     {
+      "path": "gn-common-snappy.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-common-leveldb.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
       "path": "gn-common-woff2.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-common-vulkan.patch",
+      "root": "",
+      "strip": 1
+    },
+    {
+      "path": "gn-common-spirv-tools.patch",
       "root": "",
       "strip": 1
     }

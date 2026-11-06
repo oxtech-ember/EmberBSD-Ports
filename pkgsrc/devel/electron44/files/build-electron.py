@@ -495,7 +495,10 @@ def host_buildlink(options, sdk, native, environment, host_binding):
                 *(['--shared-openh264'] if getattr(options, 'shared_openh264', False) else []),
                 *(['--shared-pffft'] if getattr(options, 'shared_pffft', False) else []),
                 *(['--shared-cpuinfo'] if getattr(options, 'shared_cpuinfo', False) else []),
+                *(['--shared-vulkan'] if getattr(options, 'shared_vulkan', False) else []),
+                *(['--shared-spirv-tools'] if getattr(options, 'shared_spirv_tools', False) else []),
                 *(['--shared-woff2'] if getattr(options, 'shared_woff2', False) else []),
+                *(['--shared-snappy'] if getattr(options, 'shared_snappy', False) else []),
                 *(['--shared-expat'] if getattr(options, 'shared_expat', False) else []), '--base-makeconf', str(selected[2]),
                 '--binding-record', str(record), '--bmake-mk', str(selected[3]),
                 '--work', str(work), '--lock-root', str(options.lock_root)]
@@ -580,7 +583,7 @@ def additive_host_buildlink_relocation(old_args, new_args, old_env, new_env, wor
     require(all(new_links.get(name) == target for name, target in old_links.items()),
             'host buildlink relocation removed or replaced an existing link')
     old_call, new_call = (record['invocation'] for record in records)
-    selection_keys = {'shared_ffmpeg', 'shared_minizip', 'shared_xml', 'shared_image', 'shared_font', 'shared_codecs', 'shared_openh264', 'shared_pffft', 'shared_expat', 'shared_cpuinfo', 'shared_woff2', 'shared_pdf_libraries'}
+    selection_keys = {'shared_ffmpeg', 'shared_minizip', 'shared_xml', 'shared_image', 'shared_font', 'shared_codecs', 'shared_openh264', 'shared_pffft', 'shared_expat', 'shared_cpuinfo', 'shared_vulkan', 'shared_woff2', 'shared_snappy', 'shared_pdf_libraries', 'shared_spirv_tools'}
     for name in (set(old_call) | set(new_call)) - {'work'} - selection_keys:
         require(old_call.get(name) == new_call.get(name),
                 'host buildlink relocation changed an unrelated input: ' + name)
@@ -1399,8 +1402,14 @@ def compression_recipe_catalog(options, sdk, native, environment):
         packages += ('textproc/expat',)
     if getattr(options, 'shared_cpuinfo', False):
         packages += ('sysutils/cpuinfo',)
+    if getattr(options, 'shared_vulkan', False):
+        packages += ('graphics/vulkan-loader', 'graphics/vulkan-headers')
     if getattr(options, 'shared_woff2', False):
         packages += ('fonts/woff2',)
+    if getattr(options, 'shared_snappy', False):
+        packages += ('devel/snappy',)
+    if getattr(options, 'shared_spirv_tools', False):
+        packages += ('parallel/spirv-tools', 'parallel/spirv-headers')
     if getattr(options, 'shared_openh264', False):
         packages += ('multimedia/openh264',)
     if getattr(options, 'shared_codecs', False):
@@ -2121,11 +2130,31 @@ def producer_inputs(options, sdk):
                 types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
                                       selected_owned_library=selected_owned_library),
                 options, sdk, native, environment, buildlink))
+        if getattr(options, 'shared_vulkan', False):
+            values.update(local_module('electron_vulkan_provider', 'vulkan-provider.py').select(
+                local_module('electron_image_provider', 'image-provider.py'),
+                types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
+                                      selected_owned_library=selected_owned_library),
+                options, sdk, native, environment, buildlink))
         if getattr(options, 'shared_woff2', False):
             values.update(local_module('electron_codec_provider', 'codec-provider.py').select_woff2(
                 local_module('electron_image_provider', 'image-provider.py'),
                 types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
                                       selected_owned_library=selected_owned_library),
+                options, sdk, native, environment, buildlink))
+        if getattr(options, 'shared_snappy', False):
+            values.update(local_module('electron_codec_provider', 'codec-provider.py').select_snappy(
+                local_module('electron_image_provider', 'image-provider.py'),
+                types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
+                                      selected_owned_library=selected_owned_library),
+                options, sdk, native, environment, buildlink))
+        if getattr(options, 'shared_spirv_tools', False):
+            values.update(local_module('electron_codec_provider', 'codec-provider.py').select_spirv_tools(
+                local_module('electron_image_provider', 'image-provider.py'),
+                types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
+                                      selected_owned_library=selected_owned_library,
+                                      atomic_write=local_module('electron_protobuf_source_view',
+                                                                'protobuf-source-view.py')._write_transaction_marker),
                 options, sdk, native, environment, buildlink))
         if getattr(options, 'shared_openh264', False):
             values.update(local_module('electron_codec_provider', 'codec-provider.py').select_openh264(
@@ -2196,6 +2225,22 @@ def producer_inputs(options, sdk):
                                       source_environment=source_owner_environment,
                                       view=local_module('electron_protobuf_source_view', 'protobuf-source-view.py')),
                 ots_view, options, sdk, native, environment))
+        if any(getattr(options, name, None) for name in ('leveldb_source', 'leveldb_archive', 'leveldb_patch', 'leveldb_pkgsrc_export', 'leveldb_export_patch')):
+            leveldb_view = local_module('electron_leveldb_source_view', 'leveldb-source-view.py')
+            values.update(local_module('electron_leveldb_provider', 'leveldb-provider.py').select(
+                types.SimpleNamespace(require=require, git=selected_control_git,
+                                      source_environment=source_owner_environment,
+                                      view=local_module('electron_protobuf_source_view', 'protobuf-source-view.py')),
+                leveldb_view, options, sdk, native, environment))
+        if getattr(options, 'shared_spirv_tools', False):
+            require(all(getattr(options, name, None) for name in ('spirv_source', 'spirv_archive', 'spirv_patch')),
+                    'shared SPIRV-Tools requires verified common source inputs')
+            spirv_view = local_module('electron_spirv_source_view', 'spirv-source-view.py')
+            values.update(local_module('electron_spirv_provider', 'spirv-provider.py').select(
+                types.SimpleNamespace(require=require, git=selected_control_git,
+                                      source_environment=source_owner_environment,
+                                      view=local_module('electron_protobuf_source_view', 'protobuf-source-view.py')),
+                spirv_view, options, sdk, native, environment))
         if any(getattr(options, name, None) for name in ('sqlite_source', 'sqlite_archive', 'sqlite_amalgamation', 'sqlite_patch', 'sqlite_pkgsrc_export', 'sqlite_export_patch')):
             sqlite_view = local_module('electron_sqlite_source_view', 'sqlite-source-view.py')
             local_module('electron_sqlite_provider', 'sqlite-provider.py').select(
@@ -2388,10 +2433,22 @@ def gn_source(options):
         new_cpuinfo = bool(getattr(options, 'shared_cpuinfo', False))
         cpuinfo_names = ('cpuinfo',)
         cpuinfo_marker = destination.parent / ('.' + destination.name + '.cpuinfo-components-migration')
+        old_vulkan = bool(getattr(options, 'old_vulkan_identity', None))
+        new_vulkan = bool(getattr(options, 'shared_vulkan', False))
+        vulkan_names = ('vulkan-loader', 'vulkan-headers')
+        vulkan_marker = destination.parent / ('.' + destination.name + '.vulkan-components-migration')
+        require(new_vulkan or not old_vulkan, 'disabling shared Vulkan requires a new source view')
+        vulkan_registry = getattr(options, 'vulkan_registry', None)
+        if old_vulkan or new_vulkan:
+            require(vulkan_registry is not None, 'verified Vulkan registry is missing')
         old_woff2 = bool(getattr(options, 'old_woff2_identity', None))
         new_woff2 = bool(getattr(options, 'shared_woff2', False))
         woff2_names = ('woff2',)
         woff2_marker = destination.parent / ('.' + destination.name + '.woff2-components-migration')
+        old_snappy = bool(getattr(options, 'old_snappy_identity', None))
+        new_snappy = bool(getattr(options, 'shared_snappy', False))
+        snappy_names = ('snappy',)
+        snappy_marker = destination.parent / ('.' + destination.name + '.snappy-components-migration')
         old_openh264 = bool(getattr(options, 'old_openh264_identity', None))
         new_openh264 = bool(getattr(options, 'shared_openh264', False))
         openh264_names = ('openh264',)
@@ -2405,6 +2462,16 @@ def gn_source(options):
         ots_marker = destination.parent / ('.' + destination.name + '.ots-components-migration')
         ots = (local_module('electron_ots_source_view', 'ots-source-view.py')
                if old_ots or new_ots or os.path.lexists(ots_marker) else None)
+        old_leveldb = getattr(options, 'old_leveldb_selection', None)
+        new_leveldb = getattr(options, 'leveldb_selection', None)
+        leveldb_marker = destination.parent / ('.' + destination.name + '.leveldb-components-migration')
+        leveldb = (local_module('electron_leveldb_source_view', 'leveldb-source-view.py')
+               if old_leveldb or new_leveldb or os.path.lexists(leveldb_marker) else None)
+        old_spirv = getattr(options, 'old_spirv_selection', None)
+        new_spirv = getattr(options, 'spirv_selection', None)
+        spirv_marker = destination.parent / ('.' + destination.name + '.spirv-components-migration')
+        spirv = (local_module('electron_spirv_source_view', 'spirv-source-view.py')
+               if old_spirv or new_spirv or os.path.lexists(spirv_marker) else None)
         old_sqlite = getattr(options, 'old_sqlite_selection', None)
         new_sqlite = getattr(options, 'sqlite_selection', None)
         sqlite_marker = destination.parent / ('.' + destination.name + '.sqlite-components-migration')
@@ -2449,6 +2516,15 @@ def gn_source(options):
                     for name in cpuinfo_names)):
             compression.verify_view(view, options.workspace / 'src', destination, cpuinfo_names)
             old_cpuinfo = True
+        if (new_vulkan and not old_vulkan and
+                (options.phase == 'reconfigure' or
+                 (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
+                                                    getattr(options, 'resume_configure', False)))) and
+                not os.path.lexists(vulkan_marker) and
+                all((compression_root/name).is_dir() and not (compression_root/name).is_symlink()
+                    for name in vulkan_names)):
+            compression.verify_view(view, options.workspace / 'src', destination, vulkan_names, registry=vulkan_registry)
+            old_vulkan = True
         if (new_woff2 and not old_woff2 and
                 (options.phase == 'reconfigure' or
                  (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
@@ -2458,6 +2534,15 @@ def gn_source(options):
                     for name in woff2_names)):
             compression.verify_view(view, options.workspace / 'src', destination, woff2_names)
             old_woff2 = True
+        if (new_snappy and not old_snappy and
+                (options.phase == 'reconfigure' or
+                 (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
+                                                    getattr(options, 'resume_configure', False)))) and
+                not os.path.lexists(snappy_marker) and
+                all((compression_root/name).is_dir() and not (compression_root/name).is_symlink()
+                    for name in snappy_names)):
+            compression.verify_view(view, options.workspace / 'src', destination, snappy_names)
+            old_snappy = True
         if (new_openh264 and not old_openh264 and
                 (options.phase == 'reconfigure' or
                  (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
@@ -2518,6 +2603,32 @@ def gn_source(options):
                 ots.verify_view(view, options.workspace / 'src', destination, old_ots, options.ml_sdk['sourceprep'])
             else:
                 old_ots = new_ots
+        leveldb_root = compression_root / 'leveldatabase'
+        if (new_leveldb and old_leveldb != new_leveldb and
+                (options.phase == 'reconfigure' or
+                 (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
+                                                    getattr(options, 'resume_configure', False)))) and
+                not os.path.lexists(leveldb_marker) and leveldb_root.is_dir() and not leveldb_root.is_symlink()):
+            try:
+                leveldb.verify_view(view, options.workspace / 'src', destination, new_leveldb, options.ml_sdk['sourceprep'])
+            except (ValueError, OSError):
+                require(old_leveldb is not None, 'foreign LEVELDB projection during recovery')
+                leveldb.verify_view(view, options.workspace / 'src', destination, old_leveldb, options.ml_sdk['sourceprep'])
+            else:
+                old_leveldb = new_leveldb
+        spirv_root = compression_root / 'spirv-tools'
+        if (new_spirv and old_spirv != new_spirv and
+                (options.phase == 'reconfigure' or
+                 (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
+                                                    getattr(options, 'resume_configure', False)))) and
+                not os.path.lexists(spirv_marker) and spirv_root.is_dir() and not spirv_root.is_symlink()):
+            try:
+                spirv.verify_view(view, options.workspace / 'src', destination, new_spirv, options.ml_sdk['sourceprep'])
+            except (ValueError, OSError):
+                require(old_spirv is not None, 'foreign SPIRV projection during recovery')
+                spirv.verify_view(view, options.workspace / 'src', destination, old_spirv, options.ml_sdk['sourceprep'])
+            else:
+                old_spirv = new_spirv
         sqlite_root = compression_root / 'sqlite'
         if (new_sqlite and old_sqlite != new_sqlite and
                 (options.phase == 'reconfigure' or
@@ -2608,6 +2719,12 @@ def gn_source(options):
             if old_ots:
                 names.append(ots.NAME)
                 checks.append(lambda: ots.verify_view(view, options.workspace / 'src', destination, old_ots, sp))
+            if old_leveldb:
+                names.append(leveldb.NAME)
+                checks.append(lambda: leveldb.verify_view(view, options.workspace / 'src', destination, old_leveldb, sp))
+            if old_spirv:
+                names.append(spirv.NAME)
+                checks.append(lambda: spirv.verify_view(view, options.workspace / 'src', destination, old_spirv, sp))
             if old_sqlite:
                 names.append(sqlite.NAME)
                 checks.append(lambda: sqlite.verify_view(view, options.workspace / 'src', destination, old_sqlite))
@@ -2620,9 +2737,15 @@ def gn_source(options):
             if old_cpuinfo:
                 names.extend(cpuinfo_names)
                 checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, cpuinfo_names))
+            if old_vulkan:
+                names.extend(vulkan_names)
+                checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, vulkan_names, registry=vulkan_registry))
             if old_woff2:
                 names.extend(woff2_names)
                 checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, woff2_names))
+            if old_snappy:
+                names.extend(snappy_names)
+                checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, snappy_names))
             if old_openh264:
                 names.extend(openh264_names)
                 checks.append(lambda: compression.verify_view(view, options.workspace / 'src', destination, openh264_names))
@@ -2706,6 +2829,20 @@ def gn_source(options):
             ots.activate(view, options.workspace / 'src', destination, new_ots, old_ots, sp,
                          lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring))
             old_ots = new_ots
+        if os.path.lexists(leveldb_marker):
+            require(new_leveldb and (options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+                    'LEVELDB transaction recovery requires selected LEVELDB reconfigure')
+            leveldb.activate(view, options.workspace / 'src', destination, new_leveldb, old_leveldb, sp,
+                         lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring))
+            old_leveldb = new_leveldb
+        if os.path.lexists(spirv_marker):
+            require(new_spirv and (options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+                    'SPIRV transaction recovery requires selected SPIRV reconfigure')
+            spirv.activate(view, options.workspace / 'src', destination, new_spirv, old_spirv, sp,
+                         lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring))
+            old_spirv = new_spirv
         if os.path.lexists(sqlite_marker):
             require(new_sqlite and (options.phase == 'reconfigure' or
                     getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
@@ -2737,6 +2874,14 @@ def gn_source(options):
                                  lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring),
                                  cpuinfo_names, 'cpuinfo-components')
             old_cpuinfo = True
+        if os.path.lexists(vulkan_marker):
+            require(new_vulkan and (options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+                    'VULKAN transaction recovery requires shared VULKAN reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring),
+                                 vulkan_names, 'vulkan-components', registry=vulkan_registry)
+            old_vulkan = True
         if os.path.lexists(woff2_marker):
             require(new_woff2 and (options.phase == 'reconfigure' or
                     getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
@@ -2745,6 +2890,14 @@ def gn_source(options):
                                  lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring),
                                  woff2_names, 'woff2-components')
             old_woff2 = True
+        if os.path.lexists(snappy_marker):
+            require(new_snappy and (options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+                    'SNAPPY transaction recovery requires shared SNAPPY reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring),
+                                 snappy_names, 'snappy-components')
+            old_snappy = True
         if os.path.lexists(openh264_marker):
             require(new_openh264 and (options.phase == 'reconfigure' or
                     getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
@@ -2879,6 +3032,24 @@ def gn_source(options):
             old_ots = new_ots
             transition_result = verify_selection(ids, new_headers, new_media, new_compression)
             transition = True
+        if old_leveldb != new_leveldb or os.path.lexists(leveldb_marker):
+            require(new_leveldb, 'disabling common LEVELDB requires a new source view')
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'LEVELDB transition requires reconfigure')
+            leveldb.activate(view, options.workspace / 'src', destination, new_leveldb, old_leveldb, sp,
+                         lambda: verify_selection(ids, new_headers, new_media, new_compression))
+            old_leveldb = new_leveldb
+            transition_result = verify_selection(ids, new_headers, new_media, new_compression)
+            transition = True
+        if old_spirv != new_spirv or os.path.lexists(spirv_marker):
+            require(new_spirv, 'disabling common SPIRV requires a new source view')
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'SPIRV transition requires reconfigure')
+            spirv.activate(view, options.workspace / 'src', destination, new_spirv, old_spirv, sp,
+                         lambda: verify_selection(ids, new_headers, new_media, new_compression))
+            old_spirv = new_spirv
+            transition_result = verify_selection(ids, new_headers, new_media, new_compression)
+            transition = True
         if old_sqlite != new_sqlite or os.path.lexists(sqlite_marker):
             require(new_sqlite, 'disabling common SQLite requires a new source view')
             require(options.phase == 'reconfigure' or new_view or initial,
@@ -2938,6 +3109,16 @@ def gn_source(options):
             old_cpuinfo = True
             transition_result = verify_selection(ids, new_headers, new_media, new_compression)
             transition = True
+        if old_vulkan != new_vulkan or os.path.lexists(vulkan_marker):
+            require(new_vulkan, 'disabling shared VULKAN requires a new source view')
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'VULKAN transition requires reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(ids, new_headers, new_media, new_compression),
+                                 vulkan_names, 'vulkan-components', registry=vulkan_registry)
+            old_vulkan = True
+            transition_result = verify_selection(ids, new_headers, new_media, new_compression)
+            transition = True
         if old_woff2 != new_woff2 or os.path.lexists(woff2_marker):
             require(new_woff2, 'disabling shared WOFF2 requires a new source view')
             require(options.phase == 'reconfigure' or new_view or initial,
@@ -2946,6 +3127,16 @@ def gn_source(options):
                                  lambda: verify_selection(ids, new_headers, new_media, new_compression),
                                  woff2_names, 'woff2-components')
             old_woff2 = True
+            transition_result = verify_selection(ids, new_headers, new_media, new_compression)
+            transition = True
+        if old_snappy != new_snappy or os.path.lexists(snappy_marker):
+            require(new_snappy, 'disabling shared SNAPPY requires a new source view')
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'SNAPPY transition requires reconfigure')
+            compression.activate(view, options.workspace / 'src', destination,
+                                 lambda: verify_selection(ids, new_headers, new_media, new_compression),
+                                 snappy_names, 'snappy-components')
+            old_snappy = True
             transition_result = verify_selection(ids, new_headers, new_media, new_compression)
             transition = True
         if old_openh264 != new_openh264 or os.path.lexists(openh264_marker):
@@ -3230,6 +3421,57 @@ def ots_activation_args(options, old_environment, environment, old_arguments, va
     return set()
 
 
+
+def leveldb_activation_args(options, old_environment, environment, old_arguments, values, receipt_name):
+    selection = getattr(options, 'leveldb_selection', None)
+    if not selection:
+        return set()
+    require(values.get('emberbsd_common_leveldb') is True and values.get('emberbsd_leveldb_identity') ==
+            str(Path(selection['path']) / receipt_name), 'verified LEVELDB GN inputs are incomplete')
+    require(old_arguments.get('emberbsd_common_leveldb') in (None, False, True), 'invalid previous LEVELDB selection')
+    require(environment.get('EMBERBSD_LEVELDB_SELECTION') == json.dumps(selection, sort_keys=True, separators=(',', ':')),
+            'verified LEVELDB selection identity is missing')
+    previous = old_environment.get('EMBERBSD_LEVELDB_SELECTION')
+    if not previous:
+        require(old_arguments.get('emberbsd_leveldb_identity') in (None, ''),
+                'LEVELDB activation cannot replace an unrelated identity')
+        return {'emberbsd_common_leveldb', 'emberbsd_leveldb_identity'}
+    if previous != environment.get('EMBERBSD_LEVELDB_SELECTION'):
+        return {'emberbsd_leveldb_identity'}
+    return set()
+
+
+def spirv_activation_args(options, old_environment, environment, old_arguments, values, receipt_name):
+    if not getattr(options, 'shared_spirv_tools', False):
+        return set()
+    selection = getattr(options, 'spirv_selection', None)
+    require(selection and values.get('emberbsd_spirv_source_identity') ==
+            str(Path(selection['path']) / receipt_name), 'verified SPIRV source is incomplete')
+    keys = ('EMBERBSD_SPIRV_TOOLS_SOURCE_SHA256', 'EMBERBSD_SPIRV_HEADERS_SOURCE_SHA256',
+            'EMBERBSD_SPIRV_LINK_SOURCE_SHA256', 'EMBERBSD_SPIRV_CORE_SOURCE_SHA256')
+    require(all(re.fullmatch(r'[0-9a-f]{64}', environment.get(key, '')) for key in keys),
+            'verified SPIRV package identities are incomplete')
+    require(environment.get('EMBERBSD_SPIRV_SELECTION') == json.dumps(selection, sort_keys=True, separators=(',', ':')),
+            'verified SPIRV source identity is missing')
+    names = {'emberbsd_common_spirv_tools', 'emberbsd_spirv_source_identity'}
+    names.update('emberbsd_' + name + '_' + role + '_' + kind
+                 for name in ('spirv_tools', 'spirv_link', 'spirv_core')
+                 for role in ('host', 'target') for kind in ('libraries', 'inputs'))
+    names.update('emberbsd_spirv_tools_' + role + '_table' for role in ('host', 'target'))
+    names.update('emberbsd_spirv_headers_' + role + '_inputs' for role in ('host', 'target'))
+    require(all(values.get(name) for name in names), 'verified SPIRV GN inputs are incomplete')
+    if not old_environment.get('EMBERBSD_SPIRV_SELECTION'):
+        require(not any(old_environment.get(key) for key in keys), 'partial previous SPIRV selection')
+        require(all(old_arguments.get(name) in (None, False, '', []) for name in names),
+                'SPIRV activation cannot replace unrelated GN inputs')
+        return names
+    require(all(old_environment.get(key) == environment.get(key) for key in keys),
+            'SPIRV package identities changed during reconfigure')
+    if old_environment['EMBERBSD_SPIRV_SELECTION'] != environment['EMBERBSD_SPIRV_SELECTION']:
+        return {'emberbsd_spirv_source_identity'}
+    return set()
+
+
 def pffft_activation_args(options, old_environment, environment, old_arguments, values):
     if not getattr(options, 'shared_pffft', False):
         return set()
@@ -3275,6 +3517,28 @@ def cpuinfo_activation_args(options, old_environment, environment, old_arguments
     require(all(values.get(name) for name in names), 'verified CPUINFO GN inputs are incomplete')
     return names
 
+def vulkan_activation_args(options, old_environment, environment, old_arguments, values):
+    if not getattr(options, 'shared_vulkan', False):
+        return set()
+    key = 'EMBERBSD_VULKAN_SOURCE_SHA256'
+    require(re.fullmatch(r'[0-9a-f]{64}', environment.get(key, '')), 'verified Vulkan identity is missing')
+    names = {'emberbsd_vulkan_' + role + '_' + kind
+             for role in ('host', 'target') for kind in ('library', 'inputs', 'runtime_dir')}
+    names.update('emberbsd_vulkan_headers_' + role + '_' + kind
+                 for role in ('host', 'target') for kind in ('include', 'inputs'))
+    names.add('emberbsd_common_vulkan')
+    if old_environment.get(key):
+        return set()
+    require(all(old_arguments.get(name) in (None, False, '', []) for name in names),
+            'Vulkan activation cannot replace existing GN inputs')
+    require(all(values.get(name) for name in names), 'verified Vulkan GN inputs are incomplete')
+    require(old_arguments.get('angle_use_custom_libvulkan') in (None, True, False) and
+            values.get('angle_use_custom_libvulkan') is False,
+            'Vulkan activation requires system loader search')
+    names.add('angle_use_custom_libvulkan')
+    return names
+
+
 def woff2_activation_args(options, old_environment, environment, old_arguments, values):
     if not getattr(options, 'shared_woff2', False):
         return set()
@@ -3288,6 +3552,21 @@ def woff2_activation_args(options, old_environment, environment, old_arguments, 
     require(all(old_arguments.get(name) in (None, False, []) for name in names),
             'WOFF2 activation cannot replace existing GN inputs')
     require(all(values.get(name) for name in names), 'verified WOFF2 GN inputs are incomplete')
+    return names
+
+def snappy_activation_args(options, old_environment, environment, old_arguments, values):
+    if not getattr(options, 'shared_snappy', False):
+        return set()
+    key = 'EMBERBSD_SNAPPY_SOURCE_SHA256'
+    require(re.fullmatch(r'[0-9a-f]{64}', environment.get(key, '')), 'verified SNAPPY identity is missing')
+    names = {'emberbsd_snappy_' + role + '_' + kind
+             for role in ('host', 'target') for kind in ('libraries', 'inputs')}
+    names.add('emberbsd_common_snappy')
+    if old_environment.get(key):
+        return set()
+    require(all(old_arguments.get(name) in (None, False, []) for name in names),
+            'SNAPPY activation cannot replace existing GN inputs')
+    require(all(values.get(name) for name in names), 'verified SNAPPY GN inputs are incomplete')
     return names
 
 def openh264_activation_args(options, old_environment, environment, old_arguments, values):
@@ -3565,8 +3844,12 @@ def reconfigure(options):
                 permitted_env.add('EMBERBSD_EXPAT_SOURCE_SHA256')
                 options.old_cpuinfo_identity = old_env.get('EMBERBSD_CPUINFO_SOURCE_SHA256')
                 permitted_env.add('EMBERBSD_CPUINFO_SOURCE_SHA256')
+                options.old_vulkan_identity = old_env.get('EMBERBSD_VULKAN_SOURCE_SHA256')
+                permitted_env.add('EMBERBSD_VULKAN_SOURCE_SHA256')
                 options.old_woff2_identity = old_env.get('EMBERBSD_WOFF2_SOURCE_SHA256')
                 permitted_env.add('EMBERBSD_WOFF2_SOURCE_SHA256')
+                options.old_snappy_identity = old_env.get('EMBERBSD_SNAPPY_SOURCE_SHA256')
+                permitted_env.add('EMBERBSD_SNAPPY_SOURCE_SHA256')
                 options.old_openh264_identity = old_env.get('EMBERBSD_OPENH264_SOURCE_SHA256')
                 permitted_env.add('EMBERBSD_OPENH264_SOURCE_SHA256')
                 options.old_codec_identity = old_env.get('EMBERBSD_CODEC_SOURCE_SHA256')
@@ -3582,6 +3865,14 @@ def reconfigure(options):
                 options.ots_selection = getattr(candidate, 'ots_selection', None)
                 options.old_ots_selection = json.loads(old_env['EMBERBSD_OTS_SELECTION']) if old_env.get('EMBERBSD_OTS_SELECTION') else None
                 permitted_env.add('EMBERBSD_OTS_SELECTION')
+                options.leveldb_selection = getattr(candidate, 'leveldb_selection', None)
+                options.old_leveldb_selection = json.loads(old_env['EMBERBSD_LEVELDB_SELECTION']) if old_env.get('EMBERBSD_LEVELDB_SELECTION') else None
+                permitted_env.add('EMBERBSD_LEVELDB_SELECTION')
+                options.spirv_selection = getattr(candidate, 'spirv_selection', None)
+                options.old_spirv_selection = json.loads(old_env['EMBERBSD_SPIRV_SELECTION']) if old_env.get('EMBERBSD_SPIRV_SELECTION') else None
+                permitted_env.add('EMBERBSD_SPIRV_SELECTION')
+                permitted_env.update(('EMBERBSD_SPIRV_TOOLS_SOURCE_SHA256', 'EMBERBSD_SPIRV_HEADERS_SOURCE_SHA256',
+                                      'EMBERBSD_SPIRV_LINK_SOURCE_SHA256', 'EMBERBSD_SPIRV_CORE_SOURCE_SHA256'))
                 options.sqlite_selection = getattr(candidate, 'sqlite_selection', None)
                 options.old_sqlite_selection = json.loads(old_env['EMBERBSD_SQLITE_SELECTION']) if old_env.get('EMBERBSD_SQLITE_SELECTION') else None
                 permitted_env.add('EMBERBSD_SQLITE_SELECTION')
@@ -3674,12 +3965,18 @@ def reconfigure(options):
         xml_args = xml_activation_args(options, old_env, environment, saved['arguments'], values)
         ots_args = ots_activation_args(options, old_env, environment, saved['arguments'], values,
                                        sdk['sourceprep'].PREPARED_TREE_RECEIPT)
+        leveldb_args = leveldb_activation_args(options, old_env, environment, saved['arguments'], values,
+                                       sdk['sourceprep'].PREPARED_TREE_RECEIPT)
+        spirv_args = spirv_activation_args(options, old_env, environment, saved['arguments'], values,
+                                           sdk['sourceprep'].PREPARED_TREE_RECEIPT)
         codec_args = codec_activation_args(options, old_env, environment, saved['arguments'], values)
         pdf_args = pdfium_activation_args(options, old_env, environment, saved['arguments'], values)
         pffft_args = pffft_activation_args(options, old_env, environment, saved['arguments'], values)
         expat_args = expat_activation_args(options, old_env, environment, saved['arguments'], values)
         cpuinfo_args = cpuinfo_activation_args(options, old_env, environment, saved['arguments'], values)
+        vulkan_args = vulkan_activation_args(options, old_env, environment, saved['arguments'], values)
         woff2_args = woff2_activation_args(options, old_env, environment, saved['arguments'], values)
+        snappy_args = snappy_activation_args(options, old_env, environment, saved['arguments'], values)
         openh264_args = openh264_activation_args(options, old_env, environment, saved['arguments'], values)
         image_args = image_activation_args(options, old_env, environment, saved['arguments'], values)
         font_args = font_activation_args(options, old_env, environment, saved['arguments'], values)
@@ -3748,6 +4045,13 @@ def reconfigure(options):
             require(saved['arguments'].get('use_system_ffmpeg') in (None, False, True),
                     'invalid previous FFmpeg selection')
         identity_args.update(('emberbsd_common_ots', 'emberbsd_ots_identity'))
+        identity_args.update(('emberbsd_common_leveldb', 'emberbsd_leveldb_identity'))
+        identity_args.update(('emberbsd_common_spirv_tools', 'emberbsd_spirv_source_identity'))
+        identity_args.update('emberbsd_' + name + '_' + role + '_' + kind
+                             for name in ('spirv_tools', 'spirv_link', 'spirv_core')
+                             for role in ('host', 'target') for kind in ('libraries', 'inputs'))
+        identity_args.update('emberbsd_spirv_tools_' + role + '_table' for role in ('host', 'target'))
+        identity_args.update('emberbsd_spirv_headers_' + role + '_inputs' for role in ('host', 'target'))
         identity_args.add('emberbsd_common_pffft')
         identity_args.update('emberbsd_pffft_' + role + '_' + kind
                              for role in ('host', 'target') for kind in ('libraries', 'inputs'))
@@ -3757,8 +4061,16 @@ def reconfigure(options):
         identity_args.add('emberbsd_common_cpuinfo')
         identity_args.update('emberbsd_cpuinfo_' + role + '_' + kind
                              for role in ('host', 'target') for kind in ('libraries', 'inputs'))
+        identity_args.update(('emberbsd_common_vulkan', 'angle_use_custom_libvulkan'))
+        identity_args.update('emberbsd_vulkan_' + role + '_' + kind
+                             for role in ('host', 'target') for kind in ('library', 'inputs', 'runtime_dir'))
+        identity_args.update('emberbsd_vulkan_headers_' + role + '_' + kind
+                             for role in ('host', 'target') for kind in ('include', 'inputs'))
         identity_args.add('emberbsd_common_woff2')
         identity_args.update('emberbsd_woff2_' + role + '_' + kind
+                             for role in ('host', 'target') for kind in ('libraries', 'inputs'))
+        identity_args.add('emberbsd_common_snappy')
+        identity_args.update('emberbsd_snappy_' + role + '_' + kind
                              for role in ('host', 'target') for kind in ('libraries', 'inputs'))
         identity_args.update(('emberbsd_common_openh264', 'rtc_system_openh264'))
         identity_args.update('emberbsd_openh264_' + role + '_' + kind
@@ -3790,7 +4102,7 @@ def reconfigure(options):
             if node_source_refresh and name == 'emberbsd_node_source_identity':
                 continue
             if (name in activation_args or name in minizip_args or name in xml_args or
-                    name in image_args or name in font_args or name in pdf_args or name in codec_args or name in openh264_args or name in pffft_args or name in expat_args or name in cpuinfo_args or name in ots_args or name in woff2_args or name in buildlink_args):
+                    name in image_args or name in font_args or name in pdf_args or name in codec_args or name in openh264_args or name in pffft_args or name in expat_args or name in cpuinfo_args or name in vulkan_args or name in ots_args or name in leveldb_args or name in spirv_args or name in woff2_args or name in snappy_args or name in buildlink_args):
                 continue
             if name in ('use_litert_tflite', 'emberbsd_flatc', 'emberbsd_flatc_inputs') and getattr(options, 'activate_common_ml', False) and not old_ml:
                 continue
@@ -3868,13 +4180,17 @@ def build(options):
     options.old_pffft_identity = saved_env.get('EMBERBSD_PFFFT_SOURCE_SHA256')
     options.old_expat_identity = saved_env.get('EMBERBSD_EXPAT_SOURCE_SHA256')
     options.old_cpuinfo_identity = saved_env.get('EMBERBSD_CPUINFO_SOURCE_SHA256')
+    options.old_vulkan_identity = saved_env.get('EMBERBSD_VULKAN_SOURCE_SHA256')
     options.old_woff2_identity = saved_env.get('EMBERBSD_WOFF2_SOURCE_SHA256')
+    options.old_snappy_identity = saved_env.get('EMBERBSD_SNAPPY_SOURCE_SHA256')
     options.old_openh264_identity = saved_env.get('EMBERBSD_OPENH264_SOURCE_SHA256')
     options.old_codec_identity = saved_env.get('EMBERBSD_CODEC_SOURCE_SHA256')
     options.old_image_identity = saved_env.get('EMBERBSD_IMAGE_SOURCE_SHA256')
     options.old_font_identity = saved_env.get('EMBERBSD_FONT_SOURCE_SHA256')
     options.old_pdf_identity = saved_env.get('EMBERBSD_PDF_SOURCE_SHA256')
     options.old_ots_selection = json.loads(saved_env['EMBERBSD_OTS_SELECTION']) if saved_env.get('EMBERBSD_OTS_SELECTION') else None
+    options.old_leveldb_selection = json.loads(saved_env['EMBERBSD_LEVELDB_SELECTION']) if saved_env.get('EMBERBSD_LEVELDB_SELECTION') else None
+    options.old_spirv_selection = json.loads(saved_env['EMBERBSD_SPIRV_SELECTION']) if saved_env.get('EMBERBSD_SPIRV_SELECTION') else None
     options.old_sqlite_selection = json.loads(saved_env['EMBERBSD_SQLITE_SELECTION']) if saved_env.get('EMBERBSD_SQLITE_SELECTION') else None
     options.old_xml_identity = saved_env.get('EMBERBSD_XML_SOURCE_SHA256')
     options.old_minizip_identity = saved_env.get('EMBERBSD_MINIZIP_SOURCE_SHA256')
@@ -3928,6 +4244,8 @@ def main():
                      'host-buildlink-pkgsrc', 'host-buildlink-stage-root',
                      'host-buildlink-base-makeconf', 'host-buildlink-bmake-mk',
                      'ots-source', 'ots-archive', 'ots-patch', 'ots-pkgsrc-export', 'ots-export-patch',
+                     'leveldb-source', 'leveldb-archive', 'leveldb-patch', 'leveldb-pkgsrc-export', 'leveldb-export-patch',
+                     'spirv-source', 'spirv-archive', 'spirv-patch', 'spirv-pkgsrc-export', 'spirv-export-patch',
                      'sqlite-source', 'sqlite-archive', 'sqlite-amalgamation', 'sqlite-patch',
                      'sqlite-pkgsrc-export', 'sqlite-export-patch',
                      'protobuf-source', 'protobuf-ports-source', 'protobuf-archive', 'protobuf-patch',
@@ -3956,7 +4274,10 @@ def main():
         command.add_argument('--shared-openh264', action='store_true')
         command.add_argument('--shared-expat', action='store_true')
         command.add_argument('--shared-cpuinfo', action='store_true')
+        command.add_argument('--shared-vulkan', action='store_true')
+        command.add_argument('--shared-spirv-tools', action='store_true')
         command.add_argument('--shared-woff2', action='store_true')
+        command.add_argument('--shared-snappy', action='store_true')
         command.add_argument('--shared-pffft', action='store_true')
         if phase == 'configure':
             initial = command.add_mutually_exclusive_group()
@@ -4003,6 +4324,8 @@ def main():
                             options.host_prefix, options.sysroot, options.host_buildlink_pkgsrc,
                             options.boringssl_source, options.boringssl_archive,
                             options.ots_source, options.ots_archive, options.ots_patch, options.ots_pkgsrc_export, options.ots_export_patch,
+                            options.leveldb_source, options.leveldb_archive, options.leveldb_patch, options.leveldb_pkgsrc_export, options.leveldb_export_patch,
+                            options.spirv_source, options.spirv_archive, options.spirv_patch, options.spirv_pkgsrc_export, options.spirv_export_patch,
                             options.sqlite_source, options.sqlite_archive, options.sqlite_amalgamation,
                             options.sqlite_patch, options.sqlite_pkgsrc_export, options.sqlite_export_patch,
                             options.host_buildlink_stage_root, options.ml_patch, options.ml_pkgsrc_export, options.ml_ports_source, options.ml_export_patch,

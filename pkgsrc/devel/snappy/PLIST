@@ -8,5 +8,6 @@ lib/cmake/Snappy/SnappyConfigVersion.cmake
 lib/cmake/Snappy/SnappyTargets-noconfig.cmake
 lib/cmake/Snappy/SnappyTargets.cmake
 lib/libsnappy.so
-lib/libsnappy.so.${PKGVERSION}
+lib/libsnappy.so.${SNAPPY_VERSION}
 lib/libsnappy.so.1
+lib/pkgconfig/snappy.pc

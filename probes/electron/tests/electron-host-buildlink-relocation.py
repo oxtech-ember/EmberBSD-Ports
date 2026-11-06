@@ -46,6 +46,7 @@ with tempfile.TemporaryDirectory(prefix='electron-buildlink-relocation-') as tem
     font_record['invocation']['shared_expat'] = 'yes'
     font_record['invocation']['shared_pdf_libraries'] = 'yes'
     font_record['invocation']['shared_cpuinfo'] = 'yes'
+    font_record['invocation']['shared_vulkan'] = 'yes'
     record_path.write_text(json.dumps(font_record))
     assert check() == {key}
     record_path.write_text(original)
