@@ -84,3 +84,10 @@ snapshots for wxArtProvider, including theme-coloured symbolic icons. It retains
 provider fallback for unknown names and expands scalable sources into usable
 icon-bundle sizes. Its complete target translation unit passes syntax checks;
 real-display icon rendering is covered by the pending `style4-contract` run.
+
+GTK4 mini-frames use the shared native utility-window implementation for
+parent ownership, close/resize handling and client-area measurements. Their
+caption appearance follows the desktop theme/window manager; the previous
+hand-painted small caption is not reproduced pixel for pixel. The top-level
+fixture includes a mapped mini-frame and checks its parent, client size and
+native capabilities; real-desktop execution remains pending.

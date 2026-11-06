@@ -1,7 +1,12 @@
 // Origin: EmberBSD (AI-assisted). SPDX-License-Identifier: BSD-2-Clause
 // Requires a real GTK4 desktop with a window manager/compositor.
-#include <wx/wx.h>
+#include <wx/app.h>
+#include <wx/frame.h>
+#include <wx/log.h>
+#include <wx/menu.h>
+#include <wx/timer.h>
 #include <wx/weakref.h>
+#include <wx/minifram.h>
 #include <gtk/gtk.h>
 #ifdef GDK_WINDOWING_X11
 #include <gdk/x11/gdkx.h>
@@ -18,6 +23,7 @@ static void Check(bool ok, const char* message)
 class ToplevelContract : public wxApp
 {
     wxWeakRef<wxFrame> frame;
+    wxWeakRef<wxMiniFrame> mini;
     wxTimer timer;
     int stage = 0, ticks = 0, closeEvents = 0, shows = 0, hides = 0, result = 1;
     wxSize outer;
@@ -139,6 +145,28 @@ class ToplevelContract : public wxApp
                       "explicit modal grab exits and restores native modal state");
                 Next(); timer.Start(100); return;
             case 11:
+                mini = new wxMiniFrame(frame.get(), wxID_ANY, "GTK4 utility frame",
+                    wxDefaultPosition, wxDefaultSize, wxCAPTION | wxRESIZE_BORDER | wxCLOSE_BOX);
+                mini->SetClientSize(220, 140);
+                mini->Show();
+                Next(); return;
+            case 12:
+            {
+                Check(mini.get() != NULL, "utility frame remains alive");
+                if (!gtk_widget_get_mapped(GTK_WIDGET(mini->GetHandle())) ||
+                    mini->GetClientSize() != wxSize(220, 140)) return;
+                GtkWindow* native = GTK_WINDOW(mini->GetHandle());
+                Check(gtk_window_get_transient_for(native) == GTK_WINDOW(frame->GetHandle()),
+                      "utility frame retains native parent relationship");
+                Check(gtk_window_get_resizable(native) && gtk_window_get_deletable(native),
+                      "utility frame retains resize and close capabilities");
+                mini->SetTitle("Updated utility title");
+                Check(wxString::FromUTF8(gtk_window_get_title(native)) == "Updated utility title",
+                      "utility title updates through native frame");
+                mini->Destroy();
+                Next(); return;
+            }
+            case 13:
             {
                 timer.Stop();
                 wxFrame* transient = new wxFrame(frame.get(), wxID_ANY, "Destroy during grab");

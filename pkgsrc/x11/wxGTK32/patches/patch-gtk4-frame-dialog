@@ -235,3 +235,52 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
  }
  
  void wxDialog::EndModal( int retCode )
+--- src/gtk/minifram.cpp.orig
++++ src/gtk/minifram.cpp
+@@ -12,6 +12,39 @@
+ #if wxUSE_MINIFRAME
+ 
+ #include "wx/minifram.h"
++
++#ifdef __WXGTK4__
++// The shared GTK4 frame implements native titlebars, close/resize handling,
++// transient ownership and client-area measurements. A mini-frame uses the
++// same window path with utility-window semantics instead of a second set of
++// hand-painted decorations and pointer grabs.
++wxIMPLEMENT_DYNAMIC_CLASS(wxMiniFrame, wxFrame);
++
++wxMiniFrame::~wxMiniFrame() {}
++
++bool wxMiniFrame::Create(wxWindow* parent, wxWindowID id, const wxString& title,
++    const wxPoint& pos, const wxSize& size, long style, const wxString& name)
++{
++    m_miniEdge = m_miniTitle = 0;
++    return wxFrame::Create(parent, id, title, pos, size,
++        style | wxFRAME_TOOL_WINDOW | wxFRAME_FLOAT_ON_PARENT, name);
++}
++
++void wxMiniFrame::DoGetClientSize(int* width, int* height) const
++{
++    wxFrame::DoGetClientSize(width, height);
++}
++
++void wxMiniFrame::DoSetSizeHints(int minW, int minH, int maxW, int maxH, int incW, int incH)
++{
++    wxFrame::DoSetSizeHints(minW, minH, maxW, maxH, incW, incH);
++}
++
++void wxMiniFrame::SetTitle(const wxString& title)
++{
++    wxFrame::SetTitle(title);
++}
++#else // !__WXGTK4__
+ 
+ #ifndef WX_PRECOMP
+     #include "wx/settings.h"
+@@ -460,4 +493,6 @@
+         gdk_window_invalidate_rect(window, NULL, false);
+ }
+ 
++#endif // __WXGTK4__
++
+ #endif // wxUSE_MINIFRAME
