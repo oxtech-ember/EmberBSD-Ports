@@ -92,8 +92,12 @@ bmake EMBERBSD_GI_DUMP_MODE=capture \
   EMBERBSD_GI_DUMP_CAPTURE_DIR=/absolute/gi-capture build
 ```
 
-Dumps appear under `/absolute/gi-capture/PLATFORM/CATEGORY_NAME/`. Review
-them and copy them to `pkgsrc/CATEGORY/NAME/files/gi-dump/PLATFORM/`.
+Dumps appear under `/absolute/gi-capture/PLATFORM/CATEGORY_NAME/`. For a local
+recipe, review them and copy them to `pkgsrc/CATEGORY/NAME/files/gi-dump/PLATFORM/`.
+For a recipe inherited from the pinned upstream, store the data under this
+profile's `cross/gi-dumps/` and use an existing `file` entry in `pkgsrc/export.conf`
+to place it in the exported recipe's `files/gi-dump/PLATFORM/` directory, as for
+`net/libsoup3`. Do not create an incomplete local recipe just to add a data file.
 Capture refuses to overwrite an existing captured file.
 
 ## GdkPixbuf target data
