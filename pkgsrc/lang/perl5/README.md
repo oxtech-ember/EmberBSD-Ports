@@ -41,6 +41,19 @@ shell relative to its versioned `libexec/perl5` directory. The shared `PL_sh_pat
 Package configuration scripts run after textual prefix relocation through the
 SDK's qualified deferred-hook contract.
 
+The recipe declares the mksh runtime dependency when Perl or native `perllink`
+selects `${LOCALBASE}/bin/mksh`, both inside and outside bootstrap profiles.
+The cross recipe uses the target's `/bin/sh`; its build-host shell does not
+add a target mksh dependency. Native revision 19 adds this package metadata;
+the existing target revision 19 is unchanged.
+
+Run `files/test-runtime-shell.py --bmake /selected/bin/bmake
+--sed /selected/bin/gsed --work-parent /work`
+with the selected Python to check native, bootstrap and target shell dependency
+selection, including a missing-dependency causal control. This evaluates the
+recipe with unrelated pkgsrc includes omitted and the bootstrap Perl policy
+branches; it does not build or install Perl.
+
 Check a packaged installation at a new prefix with
 `profiles/common-build-tools/tests/perl-relocation.py --prefix PATH
 --producer-prefix ORIGINAL --deny-producer` (Darwin). It loads core and XS

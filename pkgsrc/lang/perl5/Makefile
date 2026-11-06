@@ -3,7 +3,7 @@
 .include "license.mk"
 .include "Makefile.common"
 
-PKGREVISION=	18
+PKGREVISION=	19
 
 COMMENT=	Practical Extraction and Report Language
 
@@ -30,11 +30,6 @@ USE_GCC_RUNTIME=	yes
 USE_LANGUAGES=		c
 
 .include "../../mk/bsd.prefs.mk"
-
-# Only the cross-built Time::HiRes module changes; native payload is unchanged.
-.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
-PKGREVISION=	19
-.endif
 
 # Determine the Perl API version from the patchlevel.h file from the
 # source distribution.
@@ -100,6 +95,15 @@ MAKE_ENV+= PERL_BUILD_SHELL=${PERL_BUILD_SHELL:Q}
 CONFIGURE_ENV+= PERL_BUILD_CAT=${TOOLS_CAT:Q}
 CONFIGURE_ARGS+= -Dsh=${PERL_BUILD_SHELL:Q} -Dtargetsh=${PERL_RUNTIME_SHELL:Q}
 .  endif
+.endif
+# Runtime dependencies belong to the recipe, including outside bootstrap.
+# A host build shell is not a dependency of a cross-built Perl using /bin/sh.
+_PERL5_RUNTIME_SHELLS= ${PERL_RUNTIME_SHELL:U}
+.if ${USE_CROSS_COMPILE:Uno:tl} != "yes"
+_PERL5_RUNTIME_SHELLS+= ${PERL_RUNTIME_SHELL:U${TOOLS_SH:U${SH}}} ${PERLLINK_SH:U${SH}}
+.endif
+.if !empty(_PERL5_RUNTIME_SHELLS:M${LOCALBASE}/bin/mksh)
+DEPENDS+= mksh>=59b:../../shells/mksh
 .endif
 # END explicit native runtime shells
 # In-place native interpreters cannot use their installed relative shell route.
