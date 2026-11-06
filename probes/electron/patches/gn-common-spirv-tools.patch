@@ -1,0 +1,131 @@
+--- a/build/linux/unbundle/vulkan-SPIRV-Tools.gn
++++ b/build/linux/unbundle/vulkan-SPIRV-Tools.gn
+@@ -1,69 +1,68 @@
+-# This shim can only be used if you build Chromium without DAWN
++# Copyright 2026 EmberBSD contributors. BSD-2-Clause.
++import("//build/config/linux/pkg_config.gni")
++import("//build/config/emberbsd_codecs.gni")
+ 
+-import("//build/config/linux/pkg_config.gni")
+-import("//build/shim_headers.gni")
++declare_args() {
++  emberbsd_common_spirv_tools = false
++  emberbsd_spirv_source_identity = ""
++  emberbsd_spirv_tools_host_libraries = []
++  emberbsd_spirv_tools_host_inputs = []
++  emberbsd_spirv_tools_host_table = ""
++  emberbsd_spirv_tools_target_libraries = []
++  emberbsd_spirv_tools_target_inputs = []
++  emberbsd_spirv_tools_target_table = ""
++  emberbsd_spirv_core_host_libraries = []
++  emberbsd_spirv_core_host_inputs = []
++  emberbsd_spirv_core_target_libraries = []
++  emberbsd_spirv_core_target_inputs = []
++  emberbsd_spirv_link_host_libraries = []
++  emberbsd_spirv_link_host_inputs = []
++  emberbsd_spirv_link_target_libraries = []
++  emberbsd_spirv_link_target_inputs = []
++  emberbsd_spirv_headers_host_inputs = []
++  emberbsd_spirv_headers_target_inputs = []
++}
++assert(emberbsd_common_spirv_tools, "A selected common SPIRV-Tools provider is required")
+ 
+-pkg_config("spvtools_internal_config") {
++if (emberbsd_pkg_config_role == "native") {
++  _table = emberbsd_spirv_tools_host_table
++  _header_inputs = emberbsd_spirv_headers_host_inputs
++} else {
++  _table = emberbsd_spirv_tools_target_table
++  _header_inputs = emberbsd_spirv_headers_target_inputs
++}
++assert(_table != "" && emberbsd_spirv_source_identity != "" && _header_inputs != [], "Selected SPIRV-Tools headers are incomplete")
++pkg_config("system_spirv_tools") {
+   packages = [ "SPIRV-Tools" ]
++  ignore_libs = true
+ }
+-
+-shim_headers("vulkan-SPIRV-Tools_shim") {
+-  root_path = "include"
+-  headers = [
+-    "spirv-tools/instrument.hpp",
+-    "spirv-tools/libspirv.h",
+-    "spirv-tools/libspirv.hpp",
+-    "spirv-tools/linker.hpp",
+-    "spirv-tools/optimizer.hpp",
+-  ]
++config("spirv_private_headers") {
++  include_dirs = [ ".", get_path_info(_table, "dir") ]
+ }
+-
+-source_set("SPIRV-Tools") {
+-  deps = [ ":vulkan-SPIRV-Tools_shim" ]
+-  public_configs = [ ":spvtools_internal_config" ]
++source_set("spvtools_headers") {
++  inputs = _header_inputs + [ emberbsd_spirv_source_identity ]
++  public_configs = [ ":system_spirv_tools", ":spirv_private_headers" ]
+ }
+-
+-source_set("spvtools") {
+-  deps = [ ":vulkan-SPIRV-Tools_shim" ]
+-  public_configs = [ ":spvtools_internal_config" ]
++emberbsd_codec_provider("selected_core") {
++  host_libraries = emberbsd_spirv_core_host_libraries
++  host_inputs = emberbsd_spirv_core_host_inputs
++  target_libraries = emberbsd_spirv_core_target_libraries
++  target_inputs = emberbsd_spirv_core_target_inputs
+ }
+-
+-source_set("spvtools_core_enums_unified1") {
+-  deps = [ ":vulkan-SPIRV-Tools_shim" ]
+-  public_configs = [ ":spvtools_internal_config" ]
++emberbsd_codec_provider("selected_opt") {
++  host_libraries = emberbsd_spirv_tools_host_libraries
++  host_inputs = emberbsd_spirv_tools_host_inputs
++  target_libraries = emberbsd_spirv_tools_target_libraries
++  target_inputs = emberbsd_spirv_tools_target_inputs
+ }
+-
+-source_set("spvtools_core_tables_unified1") {
+-  deps = [ ":vulkan-SPIRV-Tools_shim" ]
+-  public_configs = [ ":spvtools_internal_config" ]
++emberbsd_codec_provider("selected_link") {
++  host_libraries = emberbsd_spirv_link_host_libraries
++  host_inputs = emberbsd_spirv_link_host_inputs
++  target_libraries = emberbsd_spirv_link_target_libraries
++  target_inputs = emberbsd_spirv_link_target_inputs
+ }
+-
+-source_set("spvtools_headers") {
+-  deps = [ ":vulkan-SPIRV-Tools_shim" ]
+-  public_configs = [ ":spvtools_internal_config" ]
+-}
+-
+-source_set("spvtools_language_header_cldebuginfo100") {
+-  deps = [ ":vulkan-SPIRV-Tools_shim" ]
+-  public_configs = [ ":spvtools_internal_config" ]
+-}
+-
+-source_set("spvtools_language_header_debuginfo") {
+-  deps = [ ":vulkan-SPIRV-Tools_shim" ]
+-  public_configs = [ ":spvtools_internal_config" ]
+-}
+-
+-source_set("spvtools_language_header_vkdebuginfo100") {
+-  deps = [ ":vulkan-SPIRV-Tools_shim" ]
+-  public_configs = [ ":spvtools_internal_config" ]
+-}
+-
+-source_set("spvtools_opt") {
+-  deps = [ ":vulkan-SPIRV-Tools_shim" ]
+-  public_configs = [ ":spvtools_internal_config" ]
+-}
+-
+-source_set("spvtools_val") {
+-  deps = [ ":vulkan-SPIRV-Tools_shim" ]
+-  public_configs = [ ":spvtools_internal_config" ]
+-}
++group("spvtools") { public_deps = [ ":spvtools_headers", ":selected_core" ] }
++group("spvtools_val") { public_deps = [ ":spvtools_headers", ":selected_core" ] }
++group("spvtools_opt") { public_deps = [ ":spvtools_headers", ":selected_core", ":selected_opt" ] }
++group("spvtools_link") { public_deps = [ ":spvtools_opt", ":selected_link" ] }
++group("spvtools_language_headers") { public_deps = [ ":spvtools_headers" ] }

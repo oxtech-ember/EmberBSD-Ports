@@ -121,6 +121,17 @@ SPIRV_HEADERS_PROVIDER = {
                                'include/spirv/unified1/spirv.core.grammar.json')),
 }
 
+SPIRV_LINK_PROVIDER = {
+    'spirv_link': ('parallel/spirv-tools', 'spirv-tools', (2026, 4, 0, 4),
+                   ('libSPIRV-Tools-link', 'libSPIRV-Tools-opt', 'libSPIRV-Tools'),
+                   ('SPIRV-Tools',), ()),
+}
+
+SPIRV_CORE_PROVIDER = {
+    'spirv_core': ('parallel/spirv-tools', 'spirv-tools', (2026, 4, 0, 4),
+                   ('libSPIRV-Tools',), ('SPIRV-Tools',), ()),
+}
+
 
 def select_spirv_tools(image, controller, options, sdk, native, environment, buildlink):
     if not getattr(options, 'shared_spirv_tools', False):
@@ -136,8 +147,38 @@ def select_spirv_tools(image, controller, options, sdk, native, environment, bui
     values = image.select_roles(controller, options, sdk, native, environment, buildlink,
                                 SPIRV_TOOLS_PROVIDER, {'emberbsd_common_spirv_tools': True},
                                 'EMBERBSD_SPIRV_TOOLS_SOURCE_SHA256', static_libraries=True)
-    return image.select_roles(controller, options, sdk, native, environment, buildlink,
-                              SPIRV_HEADERS_PROVIDER, values, 'EMBERBSD_SPIRV_HEADERS_SOURCE_SHA256')
+    for role in ('host', 'target'):
+        tables = [item for item in values['emberbsd_spirv_tools_' + role + '_inputs']
+                  if item.endswith('/share/spirv-tools/generated/core_tables_header.inc')]
+        controller.require(len(tables) == 1, 'selected SPIRV-Tools table is missing')
+        values['emberbsd_spirv_tools_' + role + '_table'] = tables[0]
+    values = image.select_roles(controller, options, sdk, native, environment, buildlink,
+                                SPIRV_HEADERS_PROVIDER, values, 'EMBERBSD_SPIRV_HEADERS_SOURCE_SHA256')
+    for role in ('host', 'target'):
+        del values['emberbsd_spirv_headers_' + role + '_libraries']
+    values = image.select_roles(controller, options, sdk, native, environment, buildlink,
+                                SPIRV_LINK_PROVIDER, values, 'EMBERBSD_SPIRV_LINK_SOURCE_SHA256',
+                                static_libraries=True)
+    values = image.select_roles(controller, options, sdk, native, environment, buildlink,
+                                SPIRV_CORE_PROVIDER, values, 'EMBERBSD_SPIRV_CORE_SOURCE_SHA256',
+                                static_libraries=True)
+    work = Path(options.work).resolve(strict=True)
+    for role in ('host', 'target'):
+        if role == 'host' and native.host['os'] == 'Darwin':
+            continue
+        for name in ('spirv_tools', 'spirv_link'):
+            key = 'emberbsd_' + name + '_' + role
+            libraries = values[key + '_libraries']
+            controller.require(all(Path(path).is_absolute() and not any(c in '\\"' or ord(c) < 32 for c in path)
+                                   for path in libraries), 'invalid SPIRV archive path')
+            content = 'GROUP ( ' + ' '.join('"' + path + '"' for path in libraries) + ' )\n'
+            script = work / (name + '-' + role + '-group.a')
+            controller.require(not script.is_symlink(), 'SPIRV group script is a symlink')
+            if not script.is_file() or script.read_text() != content:
+                controller.atomic_write(script, content)
+            values[key + '_libraries'] = [str(script)]
+            values[key + '_inputs'] = sorted(set(values[key + '_inputs'] + [str(script)]))
+    return values
 
 
 def select_woff2(image, controller, options, sdk, native, environment, buildlink):

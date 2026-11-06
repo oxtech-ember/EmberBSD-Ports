@@ -971,6 +971,14 @@ adds the source files needed by the current common release, and tracks the
 prepared source receipt as a build input. Building the standalone OTS tools is
 not required for this source selection.
 
+`--shared-spirv-tools` (or `EMBERBSD_ELECTRON_SHARED_SPIRV_TOOLS=yes`)
+selects the common SPIRV-Tools 2026.4nb4 static archives and matching
+SPIRV-Headers for both roles. Supply `--spirv-source`, `--spirv-archive` and
+`--spirv-patch` using the [SPIRV-Tools source owner](../../scripts/source-inputs/spirv-tools/README.md).
+The projection keeps Chromium's labels while using the verified common private
+headers and generated table for Tint. ELF linker group scripts are build inputs;
+they are not installed or distributed.
+
 `--shared-woff2` (or `EMBERBSD_ELECTRON_SHARED_WOFF2=yes`) selects the common
 WOFF2 1.0.2nb4 decoder for host and target. Its upstream-compatible header
 shim and role-specific library replace the bundled decoder and use the common

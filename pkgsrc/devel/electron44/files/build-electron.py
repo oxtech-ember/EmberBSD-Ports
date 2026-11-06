@@ -496,6 +496,7 @@ def host_buildlink(options, sdk, native, environment, host_binding):
                 *(['--shared-pffft'] if getattr(options, 'shared_pffft', False) else []),
                 *(['--shared-cpuinfo'] if getattr(options, 'shared_cpuinfo', False) else []),
                 *(['--shared-vulkan'] if getattr(options, 'shared_vulkan', False) else []),
+                *(['--shared-spirv-tools'] if getattr(options, 'shared_spirv_tools', False) else []),
                 *(['--shared-woff2'] if getattr(options, 'shared_woff2', False) else []),
                 *(['--shared-snappy'] if getattr(options, 'shared_snappy', False) else []),
                 *(['--shared-expat'] if getattr(options, 'shared_expat', False) else []), '--base-makeconf', str(selected[2]),
@@ -582,7 +583,7 @@ def additive_host_buildlink_relocation(old_args, new_args, old_env, new_env, wor
     require(all(new_links.get(name) == target for name, target in old_links.items()),
             'host buildlink relocation removed or replaced an existing link')
     old_call, new_call = (record['invocation'] for record in records)
-    selection_keys = {'shared_ffmpeg', 'shared_minizip', 'shared_xml', 'shared_image', 'shared_font', 'shared_codecs', 'shared_openh264', 'shared_pffft', 'shared_expat', 'shared_cpuinfo', 'shared_vulkan', 'shared_woff2', 'shared_snappy', 'shared_pdf_libraries'}
+    selection_keys = {'shared_ffmpeg', 'shared_minizip', 'shared_xml', 'shared_image', 'shared_font', 'shared_codecs', 'shared_openh264', 'shared_pffft', 'shared_expat', 'shared_cpuinfo', 'shared_vulkan', 'shared_woff2', 'shared_snappy', 'shared_pdf_libraries', 'shared_spirv_tools'}
     for name in (set(old_call) | set(new_call)) - {'work'} - selection_keys:
         require(old_call.get(name) == new_call.get(name),
                 'host buildlink relocation changed an unrelated input: ' + name)
@@ -1407,6 +1408,8 @@ def compression_recipe_catalog(options, sdk, native, environment):
         packages += ('fonts/woff2',)
     if getattr(options, 'shared_snappy', False):
         packages += ('devel/snappy',)
+    if getattr(options, 'shared_spirv_tools', False):
+        packages += ('parallel/spirv-tools', 'parallel/spirv-headers')
     if getattr(options, 'shared_openh264', False):
         packages += ('multimedia/openh264',)
     if getattr(options, 'shared_codecs', False):
@@ -2145,6 +2148,14 @@ def producer_inputs(options, sdk):
                 types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
                                       selected_owned_library=selected_owned_library),
                 options, sdk, native, environment, buildlink))
+        if getattr(options, 'shared_spirv_tools', False):
+            values.update(local_module('electron_codec_provider', 'codec-provider.py').select_spirv_tools(
+                local_module('electron_image_provider', 'image-provider.py'),
+                types.SimpleNamespace(require=require, validate_package_source=validate_package_source,
+                                      selected_owned_library=selected_owned_library,
+                                      atomic_write=local_module('electron_protobuf_source_view',
+                                                                'protobuf-source-view.py')._write_transaction_marker),
+                options, sdk, native, environment, buildlink))
         if getattr(options, 'shared_openh264', False):
             values.update(local_module('electron_codec_provider', 'codec-provider.py').select_openh264(
                 local_module('electron_image_provider', 'image-provider.py'),
@@ -2221,6 +2232,15 @@ def producer_inputs(options, sdk):
                                       source_environment=source_owner_environment,
                                       view=local_module('electron_protobuf_source_view', 'protobuf-source-view.py')),
                 leveldb_view, options, sdk, native, environment))
+        if getattr(options, 'shared_spirv_tools', False):
+            require(all(getattr(options, name, None) for name in ('spirv_source', 'spirv_archive', 'spirv_patch')),
+                    'shared SPIRV-Tools requires verified common source inputs')
+            spirv_view = local_module('electron_spirv_source_view', 'spirv-source-view.py')
+            values.update(local_module('electron_spirv_provider', 'spirv-provider.py').select(
+                types.SimpleNamespace(require=require, git=selected_control_git,
+                                      source_environment=source_owner_environment,
+                                      view=local_module('electron_protobuf_source_view', 'protobuf-source-view.py')),
+                spirv_view, options, sdk, native, environment))
         if any(getattr(options, name, None) for name in ('sqlite_source', 'sqlite_archive', 'sqlite_amalgamation', 'sqlite_patch', 'sqlite_pkgsrc_export', 'sqlite_export_patch')):
             sqlite_view = local_module('electron_sqlite_source_view', 'sqlite-source-view.py')
             local_module('electron_sqlite_provider', 'sqlite-provider.py').select(
@@ -2447,6 +2467,11 @@ def gn_source(options):
         leveldb_marker = destination.parent / ('.' + destination.name + '.leveldb-components-migration')
         leveldb = (local_module('electron_leveldb_source_view', 'leveldb-source-view.py')
                if old_leveldb or new_leveldb or os.path.lexists(leveldb_marker) else None)
+        old_spirv = getattr(options, 'old_spirv_selection', None)
+        new_spirv = getattr(options, 'spirv_selection', None)
+        spirv_marker = destination.parent / ('.' + destination.name + '.spirv-components-migration')
+        spirv = (local_module('electron_spirv_source_view', 'spirv-source-view.py')
+               if old_spirv or new_spirv or os.path.lexists(spirv_marker) else None)
         old_sqlite = getattr(options, 'old_sqlite_selection', None)
         new_sqlite = getattr(options, 'sqlite_selection', None)
         sqlite_marker = destination.parent / ('.' + destination.name + '.sqlite-components-migration')
@@ -2591,6 +2616,19 @@ def gn_source(options):
                 leveldb.verify_view(view, options.workspace / 'src', destination, old_leveldb, options.ml_sdk['sourceprep'])
             else:
                 old_leveldb = new_leveldb
+        spirv_root = compression_root / 'spirv-tools'
+        if (new_spirv and old_spirv != new_spirv and
+                (options.phase == 'reconfigure' or
+                 (options.phase == 'configure' and (getattr(options, 'retry_configure', False) or
+                                                    getattr(options, 'resume_configure', False)))) and
+                not os.path.lexists(spirv_marker) and spirv_root.is_dir() and not spirv_root.is_symlink()):
+            try:
+                spirv.verify_view(view, options.workspace / 'src', destination, new_spirv, options.ml_sdk['sourceprep'])
+            except (ValueError, OSError):
+                require(old_spirv is not None, 'foreign SPIRV projection during recovery')
+                spirv.verify_view(view, options.workspace / 'src', destination, old_spirv, options.ml_sdk['sourceprep'])
+            else:
+                old_spirv = new_spirv
         sqlite_root = compression_root / 'sqlite'
         if (new_sqlite and old_sqlite != new_sqlite and
                 (options.phase == 'reconfigure' or
@@ -2684,6 +2722,9 @@ def gn_source(options):
             if old_leveldb:
                 names.append(leveldb.NAME)
                 checks.append(lambda: leveldb.verify_view(view, options.workspace / 'src', destination, old_leveldb, sp))
+            if old_spirv:
+                names.append(spirv.NAME)
+                checks.append(lambda: spirv.verify_view(view, options.workspace / 'src', destination, old_spirv, sp))
             if old_sqlite:
                 names.append(sqlite.NAME)
                 checks.append(lambda: sqlite.verify_view(view, options.workspace / 'src', destination, old_sqlite))
@@ -2795,6 +2836,13 @@ def gn_source(options):
             leveldb.activate(view, options.workspace / 'src', destination, new_leveldb, old_leveldb, sp,
                          lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring))
             old_leveldb = new_leveldb
+        if os.path.lexists(spirv_marker):
+            require(new_spirv and (options.phase == 'reconfigure' or
+                    getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
+                    'SPIRV transaction recovery requires selected SPIRV reconfigure')
+            spirv.activate(view, options.workspace / 'src', destination, new_spirv, old_spirv, sp,
+                         lambda: verify_selection(old_ml, old_headers, old_media, old_compression, old_boring))
+            old_spirv = new_spirv
         if os.path.lexists(sqlite_marker):
             require(new_sqlite and (options.phase == 'reconfigure' or
                     getattr(options, 'resume_configure', False) or getattr(options, 'retry_configure', False)),
@@ -2991,6 +3039,15 @@ def gn_source(options):
             leveldb.activate(view, options.workspace / 'src', destination, new_leveldb, old_leveldb, sp,
                          lambda: verify_selection(ids, new_headers, new_media, new_compression))
             old_leveldb = new_leveldb
+            transition_result = verify_selection(ids, new_headers, new_media, new_compression)
+            transition = True
+        if old_spirv != new_spirv or os.path.lexists(spirv_marker):
+            require(new_spirv, 'disabling common SPIRV requires a new source view')
+            require(options.phase == 'reconfigure' or new_view or initial,
+                    'SPIRV transition requires reconfigure')
+            spirv.activate(view, options.workspace / 'src', destination, new_spirv, old_spirv, sp,
+                         lambda: verify_selection(ids, new_headers, new_media, new_compression))
+            old_spirv = new_spirv
             transition_result = verify_selection(ids, new_headers, new_media, new_compression)
             transition = True
         if old_sqlite != new_sqlite or os.path.lexists(sqlite_marker):
@@ -3381,6 +3438,37 @@ def leveldb_activation_args(options, old_environment, environment, old_arguments
         return {'emberbsd_common_leveldb', 'emberbsd_leveldb_identity'}
     if previous != environment.get('EMBERBSD_LEVELDB_SELECTION'):
         return {'emberbsd_leveldb_identity'}
+    return set()
+
+
+def spirv_activation_args(options, old_environment, environment, old_arguments, values, receipt_name):
+    if not getattr(options, 'shared_spirv_tools', False):
+        return set()
+    selection = getattr(options, 'spirv_selection', None)
+    require(selection and values.get('emberbsd_spirv_source_identity') ==
+            str(Path(selection['path']) / receipt_name), 'verified SPIRV source is incomplete')
+    keys = ('EMBERBSD_SPIRV_TOOLS_SOURCE_SHA256', 'EMBERBSD_SPIRV_HEADERS_SOURCE_SHA256',
+            'EMBERBSD_SPIRV_LINK_SOURCE_SHA256', 'EMBERBSD_SPIRV_CORE_SOURCE_SHA256')
+    require(all(re.fullmatch(r'[0-9a-f]{64}', environment.get(key, '')) for key in keys),
+            'verified SPIRV package identities are incomplete')
+    require(environment.get('EMBERBSD_SPIRV_SELECTION') == json.dumps(selection, sort_keys=True, separators=(',', ':')),
+            'verified SPIRV source identity is missing')
+    names = {'emberbsd_common_spirv_tools', 'emberbsd_spirv_source_identity'}
+    names.update('emberbsd_' + name + '_' + role + '_' + kind
+                 for name in ('spirv_tools', 'spirv_link', 'spirv_core')
+                 for role in ('host', 'target') for kind in ('libraries', 'inputs'))
+    names.update('emberbsd_spirv_tools_' + role + '_table' for role in ('host', 'target'))
+    names.update('emberbsd_spirv_headers_' + role + '_inputs' for role in ('host', 'target'))
+    require(all(values.get(name) for name in names), 'verified SPIRV GN inputs are incomplete')
+    if not old_environment.get('EMBERBSD_SPIRV_SELECTION'):
+        require(not any(old_environment.get(key) for key in keys), 'partial previous SPIRV selection')
+        require(all(old_arguments.get(name) in (None, False, '', []) for name in names),
+                'SPIRV activation cannot replace unrelated GN inputs')
+        return names
+    require(all(old_environment.get(key) == environment.get(key) for key in keys),
+            'SPIRV package identities changed during reconfigure')
+    if old_environment['EMBERBSD_SPIRV_SELECTION'] != environment['EMBERBSD_SPIRV_SELECTION']:
+        return {'emberbsd_spirv_source_identity'}
     return set()
 
 
@@ -3780,6 +3868,11 @@ def reconfigure(options):
                 options.leveldb_selection = getattr(candidate, 'leveldb_selection', None)
                 options.old_leveldb_selection = json.loads(old_env['EMBERBSD_LEVELDB_SELECTION']) if old_env.get('EMBERBSD_LEVELDB_SELECTION') else None
                 permitted_env.add('EMBERBSD_LEVELDB_SELECTION')
+                options.spirv_selection = getattr(candidate, 'spirv_selection', None)
+                options.old_spirv_selection = json.loads(old_env['EMBERBSD_SPIRV_SELECTION']) if old_env.get('EMBERBSD_SPIRV_SELECTION') else None
+                permitted_env.add('EMBERBSD_SPIRV_SELECTION')
+                permitted_env.update(('EMBERBSD_SPIRV_TOOLS_SOURCE_SHA256', 'EMBERBSD_SPIRV_HEADERS_SOURCE_SHA256',
+                                      'EMBERBSD_SPIRV_LINK_SOURCE_SHA256', 'EMBERBSD_SPIRV_CORE_SOURCE_SHA256'))
                 options.sqlite_selection = getattr(candidate, 'sqlite_selection', None)
                 options.old_sqlite_selection = json.loads(old_env['EMBERBSD_SQLITE_SELECTION']) if old_env.get('EMBERBSD_SQLITE_SELECTION') else None
                 permitted_env.add('EMBERBSD_SQLITE_SELECTION')
@@ -3874,6 +3967,8 @@ def reconfigure(options):
                                        sdk['sourceprep'].PREPARED_TREE_RECEIPT)
         leveldb_args = leveldb_activation_args(options, old_env, environment, saved['arguments'], values,
                                        sdk['sourceprep'].PREPARED_TREE_RECEIPT)
+        spirv_args = spirv_activation_args(options, old_env, environment, saved['arguments'], values,
+                                           sdk['sourceprep'].PREPARED_TREE_RECEIPT)
         codec_args = codec_activation_args(options, old_env, environment, saved['arguments'], values)
         pdf_args = pdfium_activation_args(options, old_env, environment, saved['arguments'], values)
         pffft_args = pffft_activation_args(options, old_env, environment, saved['arguments'], values)
@@ -3951,6 +4046,12 @@ def reconfigure(options):
                     'invalid previous FFmpeg selection')
         identity_args.update(('emberbsd_common_ots', 'emberbsd_ots_identity'))
         identity_args.update(('emberbsd_common_leveldb', 'emberbsd_leveldb_identity'))
+        identity_args.update(('emberbsd_common_spirv_tools', 'emberbsd_spirv_source_identity'))
+        identity_args.update('emberbsd_' + name + '_' + role + '_' + kind
+                             for name in ('spirv_tools', 'spirv_link', 'spirv_core')
+                             for role in ('host', 'target') for kind in ('libraries', 'inputs'))
+        identity_args.update('emberbsd_spirv_tools_' + role + '_table' for role in ('host', 'target'))
+        identity_args.update('emberbsd_spirv_headers_' + role + '_inputs' for role in ('host', 'target'))
         identity_args.add('emberbsd_common_pffft')
         identity_args.update('emberbsd_pffft_' + role + '_' + kind
                              for role in ('host', 'target') for kind in ('libraries', 'inputs'))
@@ -4001,7 +4102,7 @@ def reconfigure(options):
             if node_source_refresh and name == 'emberbsd_node_source_identity':
                 continue
             if (name in activation_args or name in minizip_args or name in xml_args or
-                    name in image_args or name in font_args or name in pdf_args or name in codec_args or name in openh264_args or name in pffft_args or name in expat_args or name in cpuinfo_args or name in vulkan_args or name in ots_args or name in leveldb_args or name in woff2_args or name in snappy_args or name in buildlink_args):
+                    name in image_args or name in font_args or name in pdf_args or name in codec_args or name in openh264_args or name in pffft_args or name in expat_args or name in cpuinfo_args or name in vulkan_args or name in ots_args or name in leveldb_args or name in spirv_args or name in woff2_args or name in snappy_args or name in buildlink_args):
                 continue
             if name in ('use_litert_tflite', 'emberbsd_flatc', 'emberbsd_flatc_inputs') and getattr(options, 'activate_common_ml', False) and not old_ml:
                 continue
@@ -4089,6 +4190,7 @@ def build(options):
     options.old_pdf_identity = saved_env.get('EMBERBSD_PDF_SOURCE_SHA256')
     options.old_ots_selection = json.loads(saved_env['EMBERBSD_OTS_SELECTION']) if saved_env.get('EMBERBSD_OTS_SELECTION') else None
     options.old_leveldb_selection = json.loads(saved_env['EMBERBSD_LEVELDB_SELECTION']) if saved_env.get('EMBERBSD_LEVELDB_SELECTION') else None
+    options.old_spirv_selection = json.loads(saved_env['EMBERBSD_SPIRV_SELECTION']) if saved_env.get('EMBERBSD_SPIRV_SELECTION') else None
     options.old_sqlite_selection = json.loads(saved_env['EMBERBSD_SQLITE_SELECTION']) if saved_env.get('EMBERBSD_SQLITE_SELECTION') else None
     options.old_xml_identity = saved_env.get('EMBERBSD_XML_SOURCE_SHA256')
     options.old_minizip_identity = saved_env.get('EMBERBSD_MINIZIP_SOURCE_SHA256')
@@ -4143,6 +4245,7 @@ def main():
                      'host-buildlink-base-makeconf', 'host-buildlink-bmake-mk',
                      'ots-source', 'ots-archive', 'ots-patch', 'ots-pkgsrc-export', 'ots-export-patch',
                      'leveldb-source', 'leveldb-archive', 'leveldb-patch', 'leveldb-pkgsrc-export', 'leveldb-export-patch',
+                     'spirv-source', 'spirv-archive', 'spirv-patch', 'spirv-pkgsrc-export', 'spirv-export-patch',
                      'sqlite-source', 'sqlite-archive', 'sqlite-amalgamation', 'sqlite-patch',
                      'sqlite-pkgsrc-export', 'sqlite-export-patch',
                      'protobuf-source', 'protobuf-ports-source', 'protobuf-archive', 'protobuf-patch',
@@ -4172,6 +4275,7 @@ def main():
         command.add_argument('--shared-expat', action='store_true')
         command.add_argument('--shared-cpuinfo', action='store_true')
         command.add_argument('--shared-vulkan', action='store_true')
+        command.add_argument('--shared-spirv-tools', action='store_true')
         command.add_argument('--shared-woff2', action='store_true')
         command.add_argument('--shared-snappy', action='store_true')
         command.add_argument('--shared-pffft', action='store_true')
@@ -4221,6 +4325,7 @@ def main():
                             options.boringssl_source, options.boringssl_archive,
                             options.ots_source, options.ots_archive, options.ots_patch, options.ots_pkgsrc_export, options.ots_export_patch,
                             options.leveldb_source, options.leveldb_archive, options.leveldb_patch, options.leveldb_pkgsrc_export, options.leveldb_export_patch,
+                            options.spirv_source, options.spirv_archive, options.spirv_patch, options.spirv_pkgsrc_export, options.spirv_export_patch,
                             options.sqlite_source, options.sqlite_archive, options.sqlite_amalgamation,
                             options.sqlite_patch, options.sqlite_pkgsrc_export, options.sqlite_export_patch,
                             options.host_buildlink_stage_root, options.ml_patch, options.ml_pkgsrc_export, options.ml_ports_source, options.ml_export_patch,

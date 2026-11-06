@@ -1277,6 +1277,11 @@
       "path": "gn-common-vulkan.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-common-spirv-tools.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

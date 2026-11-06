@@ -211,6 +211,7 @@ def main():
     parser.add_argument('--shared-expat', action='store_true')
     parser.add_argument('--shared-cpuinfo', action='store_true')
     parser.add_argument('--shared-vulkan', action='store_true')
+    parser.add_argument('--shared-spirv-tools', action='store_true')
     parser.add_argument('--shared-woff2', action='store_true')
     parser.add_argument('--shared-snappy', action='store_true')
     parser.add_argument('--stage-root', type=Path, help='explicit replacement stage; omit for installed prefix')
@@ -270,6 +271,8 @@ def main():
         invocation['shared_cpuinfo'] = 'yes'
     if args.shared_vulkan:
         invocation['shared_vulkan'] = 'yes'
+    if args.shared_spirv_tools:
+        invocation['shared_spirv_tools'] = 'yes'
     if args.shared_woff2:
         invocation['shared_woff2'] = 'yes'
     if args.shared_snappy:
@@ -307,6 +310,7 @@ def main():
                            *(['EMBERBSD_ELECTRON_SHARED_PFFFT=yes'] if args.shared_pffft else []),
                            *(['EMBERBSD_ELECTRON_SHARED_EXPAT=yes'] if args.shared_expat else []),
                            *(['EMBERBSD_ELECTRON_SHARED_CPUINFO=yes'] if args.shared_cpuinfo else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_SPIRV_TOOLS=yes'] if args.shared_spirv_tools else []),
                            *(['EMBERBSD_ELECTRON_SHARED_VULKAN=yes'] if args.shared_vulkan else []),
                            *(['EMBERBSD_ELECTRON_SHARED_WOFF2=yes'] if args.shared_woff2 else []),
                            *(['EMBERBSD_ELECTRON_SHARED_SNAPPY=yes'] if args.shared_snappy else []), 'wrapper']
@@ -411,6 +415,7 @@ def main():
                            *(['EMBERBSD_ELECTRON_SHARED_PFFFT=yes'] if args.shared_pffft else []),
                            *(['EMBERBSD_ELECTRON_SHARED_EXPAT=yes'] if args.shared_expat else []),
                            *(['EMBERBSD_ELECTRON_SHARED_CPUINFO=yes'] if args.shared_cpuinfo else []),
+                           *(['EMBERBSD_ELECTRON_SHARED_SPIRV_TOOLS=yes'] if args.shared_spirv_tools else []),
                            *(['EMBERBSD_ELECTRON_SHARED_VULKAN=yes'] if args.shared_vulkan else []),
                            *(['EMBERBSD_ELECTRON_SHARED_WOFF2=yes'] if args.shared_woff2 else []),
                            *(['EMBERBSD_ELECTRON_SHARED_SNAPPY=yes'] if args.shared_snappy else []), 'wrapper']
