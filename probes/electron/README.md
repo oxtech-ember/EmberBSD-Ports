@@ -982,3 +982,14 @@ hides the bundled copies and exposes the verified native registry to host
 generators. The loader remains an installed runtime dependency; the Electron
 distribution does not copy it. The option requires vulkan-loader
 1.4.363.0nb1 and vulkan-headers 1.4.363.0 or newer in both roles.
+
+The common LevelDB source owner can project verified `databases/leveldb` sources
+under Chromium's existing LevelDB port and environment glue. Set the explicit
+`EMBERBSD_ELECTRON_LEVELDB_SOURCE`, `_ARCHIVE`, and `_PATCH` inputs (and the
+optional pkgsrc export inputs) for this selection. The GN target tracks the
+prepared-source receipt. `EMBERBSD_ELECTRON_SHARED_SNAPPY=yes` selects the
+package-owned Snappy 1.3.1nb1 headers and shared library separately for native
+and target builds, through Chromium's unbundle wrapper. Source-view recovery,
+role ownership and GN selection fixtures pass. Actual installed package,
+production GN transition, target execution and browser acceptance remain
+separate checks.

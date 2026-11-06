@@ -146,3 +146,19 @@ def select_woff2(image, controller, options, sdk, native, environment, buildlink
     return image.select_roles(controller, options, sdk, native, environment, buildlink,
                               WOFF2_PROVIDER, {'emberbsd_common_woff2': True},
                               'EMBERBSD_WOFF2_SOURCE_SHA256')
+
+
+SNAPPY_PROVIDER = {
+    'snappy': ('devel/snappy', 'snappy', (1, 3, 1, 1),
+               ('libsnappy',), ('snappy',),
+               ('include/snappy.h', 'include/snappy-c.h', 'include/snappy-sinksource.h',
+                'include/snappy-stubs-public.h')),
+}
+
+
+def select_snappy(image, controller, options, sdk, native, environment, buildlink):
+    if not getattr(options, 'shared_snappy', False):
+        return {}
+    return image.select_roles(controller, options, sdk, native, environment, buildlink,
+                              SNAPPY_PROVIDER, {'emberbsd_common_snappy': True},
+                              'EMBERBSD_SNAPPY_SOURCE_SHA256')
