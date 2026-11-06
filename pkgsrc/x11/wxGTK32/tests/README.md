@@ -321,3 +321,45 @@ The diagnostic configuration excludes PNG/SVG, GL, WebView and media controls;
 these remain separately selected features in the Ports recipe. Linking, GUI
 execution and executable memory checking remain pending; syntax checks do not
 establish runtime acceptance.
+
+# GTK4 toolbar contract
+
+`patch-gtk4-toolbar` replaces removed GtkToolbar/GtkToolItem APIs with real
+GtkButton/GtkToggleButton widgets in a themed GtkBox. Contiguous radio groups
+remain owned by wx, including dynamic insertion/removal and OnLeftClick veto.
+Split dropdown arrows dispatch wxEVT_TOOL_DROPDOWN and use the common wx popup
+menu implementation when unhandled. Tools retain command, hover, right-click,
+enabled, checked, label, help, bitmap and embedded-control behavior. Dynamic
+conversion between normal and check tools rebuilds its native button; removed
+tools can be inserted again. Accessible labels also exist when text is hidden.
+
+Overflow uses a scrolling GtkViewport with scroll-to-focus instead of the
+removed GtkToolbar overflow menu. This preserves access to embedded controls,
+keyboard focus and all tools in horizontal and vertical layouts. Presentation
+and navigation under mouse, keyboard, RTL and touch require GUI acceptance.
+Native widget lifetime and copied bitmap providers are independent of tool
+objects; callbacks use cleared native lookups and wx weak references when an
+event deletes a tool or its toolbar. Generated disabled bitmaps are cached and
+invalidated when their source changes. wxAddRemoveCtrl uses the same toolbar.
+
+Primary references:
+
+- [GTK4 button content and activation](https://docs.gtk.org/gtk4/class.Button.html)
+- [GtkToggleButton native state](https://docs.gtk.org/gtk4/class.ToggleButton.html)
+- [GtkViewport focus scrolling](https://docs.gtk.org/gtk4/method.Viewport.set_scroll_to_focus.html)
+- [GTK4 accessible property updates](https://docs.gtk.org/gtk4/method.Accessible.update_property.html)
+
+`toolbar4-contract` is selected with `BUILD_TOOLBAR_CONTRACT`. It activates real
+native buttons and checks wx command/state synchronization, check/radio veto,
+radio group merging, disabled state, dynamic labels/tooltips/toggle type,
+remove/reinsert ownership, dropdown events, text-only to bitmap presentation,
+orientation and destruction during a command callback. Run it under ASan for
+reentrant lifetime checks. Popup rendering is also covered by menu4-contract;
+actual toolbar keyboard delivery, overflow scrolling, icon rendering and focus
+notifications remain interactive checks.
+
+The complete toolbar.cpp and common/addremovectrl.cpp translation units and
+this fixture pass target Clang syntax checks using real configured wx and GTK4
+headers. Source Cppcheck reports no warnings with its GTK/wx libraries. Linking,
+GUI execution and executable memory checks remain pending the shared build;
+prepared fixtures and successful compilation are not runtime acceptance.

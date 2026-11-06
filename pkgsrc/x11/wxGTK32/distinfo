@@ -14,6 +14,7 @@ SHA1 (patch-gtk4-menus) = 1bbbaf58706c2fc175c6fa7a0f0625d355eac3ec
 SHA1 (patch-gtk4-notebook-statbox) = 6d058093b50a8ff461797621be8f2829b1399ab1
 SHA1 (patch-gtk4-pizza) = 30eec4d7bbf040cf75261e3523034d99b9699f1c
 SHA1 (patch-gtk4-text) = a66faa73aa6c395bd930bad4672e8fcba4cb74cd
+SHA1 (patch-gtk4-toolbar) = a33a1c655afbaa3650982d2f4f5eb0c5ca184d2a
 SHA1 (patch-gtk4-webview) = 0394ddef8d1549e6e0602b589657aa6a151ae9fe
 SHA1 (patch-gtk4-window) = 77c6373c8fa6fd7dc088b852bed505e4862ba80c
 SHA1 (patch-src_unix_glegl.cpp) = 1610bc04a0f8155138b169eb68f4b03e60ccecd9
