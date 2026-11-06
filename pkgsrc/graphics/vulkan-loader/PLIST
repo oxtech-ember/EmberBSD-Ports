@@ -4,7 +4,6 @@ lib/cmake/VulkanLoader/VulkanLoaderConfig.cmake
 lib/cmake/VulkanLoader/VulkanLoaderConfigVersion.cmake
 ${PLIST.elf}lib/libvulkan.so
 ${PLIST.elf}lib/libvulkan.so.1
-${PLIST.elf}lib/libvulkan.so.1.4.357
 ${PLIST.elf}lib/libvulkan.so.${LIBVERSION}
 ${PLIST.darwin}lib/libvulkan.dylib
 ${PLIST.darwin}lib/libvulkan.1.dylib

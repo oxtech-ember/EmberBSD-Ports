@@ -530,6 +530,74 @@ with patch.object(m.os, 'replace', side_effect=fail_after_one):
         self.assertEqual((other.stat().st_ino, other.stat().st_mtime_ns), before)
         self.assertFalse(self.marker.exists())
 
+    def stale_checksum_fixture(self):
+        upstream = self.ports / 'upstream/pkgsrc'
+        payload = 'old patch payload\n'
+        checksum = 'SHA1 (patch-old) = ' + hashlib.sha1(payload.encode()).hexdigest() + '\n'
+        write(upstream, 'cat/pkg/patches/patch-old', payload)
+        write(upstream, 'cat/pkg/distinfo', '$NetBSD$\n' + checksum)
+        commit(upstream, 'upstream recipe with patch')
+        write(self.ports, 'patches/remove-old.patch',
+              '--- a/cat/pkg/patches/patch-old\n+++ /dev/null\n'
+              '@@ -1 +0,0 @@\n-old patch payload\n')
+        write(self.ports, 'pkgsrc/export.conf',
+              'patch\tpatches/remove-old.patch\nfile\tresources/owner.txt\tmisc/owner.txt\n')
+        commit(self.ports, 'old export removes patch but retains checksum')
+        self.export = self.work / 'stale-full'
+        self.command[3] = self.export
+        run(self.command, self.ports)
+        self.tree = self.export / 'pkgsrc'
+        self.receipt = self.export / 'pkgsrc-export.json'
+        self.marker = self.export / '.pkgsrc-update-incomplete'
+        self.assertFalse((self.tree / 'cat/pkg/patches/patch-old').exists())
+        self.assertEqual((self.tree / 'cat/pkg/distinfo').read_text(), '$NetBSD$\n' + checksum)
+        return checksum
+
+    def add_checksum_repair(self, checksum):
+        write(self.ports, 'patches/repair-checksum.patch',
+              '--- a/cat/pkg/distinfo\n+++ b/cat/pkg/distinfo\n'
+              '@@ -1,2 +1 @@\n $NetBSD$\n-' + checksum)
+        conf = self.ports / 'pkgsrc/export.conf'
+        conf.write_text(conf.read_text() + 'patch\tpatches/repair-checksum.patch\n')
+        commit(self.ports, 'remove stale patch checksum')
+
+    def test_scoped_update_repairs_recorded_stale_patch_checksum(self):
+        checksum = self.stale_checksum_fixture()
+        neighbor = self.tree / 'cat/other/Makefile'
+        stamp = (neighbor.stat().st_ino, neighbor.stat().st_mtime_ns)
+        self.add_checksum_repair(checksum)
+        result = self.update()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.tree / 'cat/pkg/distinfo').read_text(), '$NetBSD$\n')
+        self.assertFalse((self.tree / 'cat/pkg/patches/patch-old').exists())
+        self.assertEqual((neighbor.stat().st_ino, neighbor.stat().st_mtime_ns), stamp)
+        self.assertFalse(self.marker.exists())
+
+    def test_scoped_update_rejects_still_invalid_candidate(self):
+        self.stale_checksum_fixture()
+        write(self.ports, 'patches/next.patch',
+              '--- a/cat/pkg/Makefile\n+++ b/cat/pkg/Makefile\n'
+              '@@ -1 +1 @@\n-PKGNAME=fixture-1\n+PKGNAME=fixture-2\n')
+        conf = self.ports / 'pkgsrc/export.conf'
+        conf.write_text(conf.read_text() + 'patch\tpatches/next.patch\n')
+        commit(self.ports, 'candidate leaves stale checksum')
+        receipt = self.receipt.read_bytes()
+        result = self.update()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.receipt.read_bytes(), receipt)
+        self.assertEqual((self.tree / 'cat/pkg/Makefile').read_text(), 'PKGNAME=fixture-1\n')
+
+    def test_scoped_update_rejects_modified_stale_old_preimage(self):
+        checksum = self.stale_checksum_fixture()
+        self.add_checksum_repair(checksum)
+        old = self.tree / 'cat/pkg/distinfo'
+        old.write_text('$NetBSD$\n' + checksum + '# local change\n')
+        receipt = self.receipt.read_bytes()
+        result = self.update()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.receipt.read_bytes(), receipt)
+        self.assertEqual(old.read_text(), '$NetBSD$\n' + checksum + '# local change\n')
+
     def test_interrupted_write_leaves_marker_and_old_receipt(self):
         self.newer_inputs()
         code = r"""import importlib.util,sys
