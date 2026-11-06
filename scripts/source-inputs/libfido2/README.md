@@ -8,7 +8,7 @@ directory and can be reused with matching source inputs.
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/libfido2/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
   --archive "$DISTDIR/libfido2-1.17.0.tar.gz" --patch "$PATCH" \
-  --output "$WORK/libfido2-source" --scoped-identity --pkgsrc-export "$SHARED_EXPORT"
+  --output "$WORK/libfido2-source" --pkgsrc-export "$SHARED_EXPORT"
 ```
 
 Use `verify-source --source "$WORK/libfido2-source"` with the same SDK and Git;

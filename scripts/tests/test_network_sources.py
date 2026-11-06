@@ -29,14 +29,14 @@ class NetworkSourcesTest(unittest.TestCase):
         owner.load_sdk(['--sdk-source', str(SDK)])
         with tempfile.TemporaryDirectory(dir=WORK) as temp:
             from emberbsd_sdk import sourceprep
-            effective = {'api': 2, 'package': owner.PACKAGE,
+            effective = {'api': 3, 'package': owner.PACKAGE,
                          'effective_package_sha256': 'a' * 64, 'upstream': 'b' * 40}
             old = {'effective': effective, 'owner_sha256': owner.engine.owner_digest()}
             record = sourceprep.write_prepared_tree_receipt(
                 temp, package=owner.PACKAGE, identity=old)
             selector = owner.identity_module()
             with patch.object(owner.engine, 'identity_module', return_value=selector), \
-                    patch.object(owner.engine, 'git_effective_identity', return_value=dict(effective, api=3, legacy_api2_sha256=effective['effective_package_sha256'])), \
+                    patch.object(owner.engine, 'git_effective_identity', return_value=effective), \
                     patch.object(owner.engine, 'source_identity',
                                  side_effect=AssertionError('global export identity was consulted')), \
                     patch.object(selector, 'shared_export',
@@ -52,7 +52,7 @@ class NetworkSourcesTest(unittest.TestCase):
         owner.load_sdk(['--sdk-source', str(SDK)])
         with tempfile.TemporaryDirectory(dir=WORK) as temp:
             from emberbsd_sdk import sourceprep
-            old_effective = {'api': 2, 'package': owner.PACKAGE,
+            old_effective = {'api': 3, 'package': owner.PACKAGE,
                              'effective_package_sha256': 'a' * 64, 'upstream': 'b' * 40}
             changed_effective = dict(old_effective, effective_package_sha256='c' * 64)
             old = {'effective': old_effective, 'owner_sha256': owner.engine.owner_digest()}
@@ -62,7 +62,7 @@ class NetworkSourcesTest(unittest.TestCase):
             current = {'export': {'current': True, 'upstream': 'b' * 40},
                        'owner_sha256': owner.engine.owner_digest()}
             with patch.object(owner.engine, 'identity_module', return_value=selector), \
-                    patch.object(owner.engine, 'git_effective_identity', return_value=dict(changed_effective, api=3, legacy_api2_sha256=changed_effective['effective_package_sha256'])), \
+                    patch.object(owner.engine, 'git_effective_identity', return_value=changed_effective), \
                     patch.object(owner.engine, 'source_identity', return_value=current), \
                     patch.object(selector, 'shared_export', return_value=export) as shared, \
                     patch.object(selector, 'effective_package_identity', return_value=changed_effective):
@@ -70,28 +70,26 @@ class NetworkSourcesTest(unittest.TestCase):
                     owner.verify(temp, '/git', patch='/patch', pkgsrc_export='/current-export')
             shared.assert_called_once()
 
-    def test_libpcap_pre_extraction_receipt_is_still_accepted(self):
+    def test_changed_libpcap_owner_requires_payload_comparison(self):
         spec = importlib.util.spec_from_file_location('libpcap_owner', ROOT / 'scripts/source-inputs/libpcap/source.py')
         owner = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(owner)
         owner.load_sdk(['--sdk-source', str(SDK)])
         from emberbsd_sdk import sourceprep
-        effective = {'api': 2, 'package': owner.PACKAGE,
+        effective = {'api': 3, 'package': owner.PACKAGE,
                      'effective_package_sha256': 'a' * 64, 'upstream': 'b' * 40}
-        selector = owner.identity_module()
-        for old_digest in sorted(owner.compatible_owner_digests):
-            with self.subTest(owner_digest=old_digest), tempfile.TemporaryDirectory(dir=WORK) as temp:
-                old = {'effective': effective, 'owner_sha256': old_digest}
-                record = sourceprep.write_prepared_tree_receipt(
-                    temp, package=owner.PACKAGE, identity=old)
-                with patch.object(owner, 'source_identity',
-                                  side_effect=AssertionError('global export identity was consulted')), \
-                        patch.object(owner, 'identity_module', return_value=selector), \
-                        patch.object(owner, 'git_effective_identity', return_value=dict(effective, api=3, legacy_api2_sha256=effective['effective_package_sha256'])), \
-                        patch.object(selector, 'shared_export',
-                                     side_effect=AssertionError('unrelated shared export was consulted')):
-                    self.assertEqual(owner.verify(temp, '/bin/true', patch='/patch',
-                                                  pkgsrc_export='/stale-unrelated-export'), record)
+        with tempfile.TemporaryDirectory(dir=WORK) as temp:
+            old = {'effective': effective, 'owner_sha256': '0' * 64}
+            sourceprep.write_prepared_tree_receipt(temp, package=owner.PACKAGE, identity=old)
+            selector = owner.identity_module()
+            current = {'export': {'upstream': 'b' * 40}, 'owner_sha256': owner.owner_digest()}
+            with patch.object(owner, 'source_identity', return_value=current), \
+                    patch.object(owner, 'identity_module', return_value=selector), \
+                    patch.object(owner, 'git_effective_identity', return_value=effective), \
+                    patch.object(selector, 'shared_export', return_value=Path('/export')), \
+                    patch.object(selector, 'effective_package_identity', return_value=dict(effective, api=1)):
+                with self.assertRaisesRegex(SDKError, 'require an explicit archive'):
+                    owner.verify(temp, '/git', patch='/patch', pkgsrc_export='/export')
 
     def test_recipe_archive_receipt_and_patch_inventory(self):
         for name, package in (('mdns', 'net/mDNSResponder'), ('dhcpcd', 'net/dhcpcd')):
@@ -133,7 +131,9 @@ class NetworkSourcesTest(unittest.TestCase):
                             owner.recipe(root / 'export')
                 common.write_text(original)
                 identity = {'export': {'package': package}, 'owner_sha256': owner.owner_digest()}
-                with patch.object(owner.engine, 'source_identity', return_value=identity):
+                with patch.object(owner.engine, 'source_identity', return_value=identity), \
+                        patch.object(owner.engine, 'git_effective_identity', return_value={
+                            'api': 3, 'package': package, 'effective_package_sha256': 'a' * 64, 'upstream': 'b' * 40}):
                     out = root / 'prepared'
                     receipt = owner.engine.prepare(str(archive), str(out), '/bin/true', '/bin/true',
                                                    exported=root / 'export')

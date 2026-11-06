@@ -61,7 +61,7 @@ class RefreshTest(unittest.TestCase):
             def git_identity(git):
                 rows = sorted((p.relative_to(recipe).as_posix(), p.read_bytes().hex())
                               for p in recipe.rglob('*') if p.is_file())
-                return {'api': 2, 'package': owner.PACKAGE, 'upstream': '1' * 40,
+                return {'api': 3, 'package': owner.PACKAGE, 'upstream': '1' * 40,
                         'effective_package_sha256': hashlib.sha256(repr(rows).encode()).hexdigest()}
             tool, git = os.environ['EMBERBSD_TEST_PATCH'], os.environ['EMBERBSD_TEST_GIT']
             output = root / 'prepared'
@@ -132,14 +132,14 @@ class RefreshTest(unittest.TestCase):
             (root / 'payload').write_text('unchanged')
             old = {'effective': {'old': True}, 'owner_sha256': '1' * 64}
             record = sourceprep.write_prepared_tree_receipt(root, package=owner.PACKAGE, identity=old)
-            current = {'api': 2, 'package': owner.PACKAGE, 'upstream': '2' * 40,
+            current = {'api': 3, 'package': owner.PACKAGE, 'upstream': '2' * 40,
                        'effective_package_sha256': '3' * 64}
             state = {'export': {}, 'owner_sha256': '4' * 64}
             with patch.object(owner, 'source_identity', return_value=state), \
                     patch.object(owner, 'git_effective_identity', return_value=current), \
                     patch.object(owner, 'verify', return_value=record) as verifier:
                 updated = owner.refresh(root, '/git', '/archive', '/patch', pkgsrc_export='/export')
-            verifier.assert_called_once_with(root, '/git', '/archive', '/patch', pkgsrc_export='/export')
+            verifier.assert_called_once_with(root, '/git', '/archive', '/patch', pkgsrc_export='/export', export_patch=None)
             self.assertEqual(updated['identity'], {'effective': current, 'owner_sha256': '4' * 64})
             self.assertEqual(updated['tree_sha256'], record['tree_sha256'])
             self.assertEqual((root / 'payload').read_text(), 'unchanged')

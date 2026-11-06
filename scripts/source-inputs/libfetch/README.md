@@ -9,7 +9,7 @@ not replace the recipe or its patches.
 Use the selected SDK and explicit source tools:
 
 ```sh
-python3 -B scripts/source-inputs/libfetch/source.py --sdk-source /path/to/sdk-source --git /path/to/git prepare --patch /path/to/patch --output /new/libfetch --scoped-identity
+python3 -B scripts/source-inputs/libfetch/source.py --sdk-source /path/to/sdk-source --git /path/to/git prepare --patch /path/to/patch --output /new/libfetch
 python3 -B scripts/source-inputs/libfetch/source.py --sdk-source /path/to/sdk-source --git /path/to/git verify-source --source /new/libfetch
 ```
 

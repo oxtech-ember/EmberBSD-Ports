@@ -29,7 +29,7 @@ with tempfile.TemporaryDirectory(dir=args.work_dir) as directory:
     identity = receipt['identity']
     assert set(identity) == {'effective', 'owner_sha256'}
     assert identity['effective']['package'] == 'security/openssh'
-    assert identity['effective']['api'] == 2
+    assert identity['effective']['api'] == 3
     checker = owner.parents[3] / 'scripts/prepared-source-current.py'
     current = subprocess.run([sys.executable, '-B', str(checker),
                               '--sdk-source', str(args.sdk_source.resolve()),
@@ -38,19 +38,10 @@ with tempfile.TemporaryDirectory(dir=args.work_dir) as directory:
                              capture_output=True, text=True)
     assert current.returncode == 0, current.stderr
     run('verify-source', '--source', root, '--patch', args.patch)
-    legacy = Path(directory) / 'legacy'
-    run('prepare', '--archive', args.archive, '--patch', args.patch,
-        '--output', legacy, '--export-identity')
-    legacy_receipt = json.loads((legacy / 'emberbsd-prepared-source.json').read_text())
-    assert set(legacy_receipt['identity']) == {'export', 'owner_sha256'}
-    run('verify-source', '--source', legacy, '--patch', args.patch)
-    legacy_current = subprocess.run([sys.executable, '-B', str(checker),
-                                     '--sdk-source', str(args.sdk_source.resolve()),
-                                     '--git', str(args.git.resolve()), '--patch', str(args.patch.resolve()),
-                                     '--source', 'openssh=' + str(legacy)],
-                                    capture_output=True, text=True)
-    assert legacy_current.returncode != 0
-    assert 'does not name its recipe' in legacy_current.stderr
+    for flag in ('--export-identity', '--scoped-identity'):
+        rejected = run('prepare', '--archive', args.archive, '--patch', args.patch,
+                       '--output', Path(directory) / 'retired', flag, success=False)
+        assert 'unrecognized arguments' in rejected.stderr
     bad = Path(directory) / args.archive.name
     shutil.copyfile(args.archive, bad)
     with bad.open('r+b') as stream:

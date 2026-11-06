@@ -74,8 +74,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
     if receipt_path.is_symlink() or not receipt_path.is_file():
         raise ValueError('missing shared export receipt')
     receipt = json.loads(receipt_path.read_text())
-    if receipt.get('format') != ident.SHARED_EXPORT_FORMAT or receipt.get('version') not in (2, 3, 4):
-        raise ValueError('unsupported shared export receipt')
+    ident.validate_shared_receipt(receipt)
     if pending is not None:
         recorded = pending.get('previous_receipt')
         if not isinstance(recorded, dict) or not isinstance(recorded.get('identity'), dict):
@@ -83,23 +82,8 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
         if receipt != recorded and receipt != pending.get('expected_new_receipt'):
             raise ValueError('receipt differs from interrupted update')
         receipt = recorded
+    ident.validate_shared_receipt(receipt)
     previous = receipt['identity']
-    if receipt['version'] == 4:
-        ident.validate_patch_provenance(receipt.get('patch_provenance'))
-    if receipt['version'] in (3, 4):
-        raw = json.dumps(receipt.get('inputs'), sort_keys=True, separators=(',', ':')).encode()
-        if hashlib.sha256(raw).hexdigest() != previous.get('export_inputs_sha256'):
-            raise ValueError('invalid previous input snapshot')
-        entries = receipt.get('dirty_inputs')
-        if not isinstance(entries, dict):
-            raise ValueError('invalid dirty input inventory')
-        for name, entry in entries.items():
-            exp.relative_parts(name, 'dirty input path')
-            if (not isinstance(entry, dict) or set(entry) != {'sha256', 'mode'} or
-                    not isinstance(entry['sha256'], str) or
-                    re.fullmatch('[0-9a-f]{64}', entry['sha256']) is None or
-                    type(entry['mode']) is not int or entry['mode'] not in (0o644, 0o755)):
-                raise ValueError('invalid dirty input inventory entry')
     root, _, snapshot, run = ident.export_inputs(ports, git, sdk)
     current = ident.export_identity_from_payload(snapshot, run(root, 'rev-parse', 'HEAD').decode('ascii'), patch)
     if pending is not None and not ident.equivalent_export_inputs(pending.get('new_identity'), current):
@@ -107,7 +91,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
     if previous['upstream'] != current['upstream']:
         raise ValueError('upstream pin changed; update refused')
     oldrev = previous['ports_commit']
-    old_inputs = receipt.get('inputs') if receipt['version'] in (3, 4) else None
+    old_inputs = receipt['inputs']
     dirty_before = receipt.get('dirty_inputs', {})
     cache = directory / '.pkgsrc-update-inputs'
     def git_call(*args, check=True):
@@ -134,7 +118,6 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                     entries[name.decode('utf-8')] = metadata.split()
             tree_cache[revision] = entries
         return tree_cache[revision]
-    historical_entries = historical_tree(oldrev)
     old_blobs = {}
     blob_cache = {oldrev: old_blobs}
     def historical_blob(name, revision=oldrev):
@@ -260,33 +243,6 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
         changed = {name for name in changed
                    if name in material_mode_changes or
                    input_row(old_inputs, name, True) != input_row(snapshot, name, False)}
-    legacy_links = {}
-    if receipt['version'] == 2:
-        link_names = {tree + '/' + name for tree, rows in snapshot['trees'].items()
-                      for name, row in rows.items() if row['kind'] == 'link'}
-        link_names.update(name for name in changed
-                          if historical_entries.get(name, [None])[0] == b'120000')
-        if link_names:
-            with tempfile.TemporaryDirectory(prefix='.pkgsrc-link-mode-', dir=directory.parent) as temp:
-                link = Path(temp) / 'link'
-                link.symlink_to('target')
-                link_mode = stat.S_IMODE(link.lstat().st_mode)
-            for name in link_names:
-                data, mode = historical_file(name)
-                entry = historical_entries.get(name)
-                if entry and entry[0] == b'120000':
-                    row = {'kind': 'link', 'mode': link_mode,
-                           'target': historical_blob(name).decode('utf-8'),
-                           'target_sha256': hashlib.sha256(data).hexdigest()}
-                elif data is not None:
-                    row = {'kind': 'file', 'mode': mode, 'size': len(data),
-                           'sha256': hashlib.sha256(data).hexdigest()}
-                else:
-                    row = None
-                legacy_links[name] = row
-                for tree, rows in snapshot['trees'].items():
-                    if name.startswith(tree + '/') and rows.get(name[len(tree) + 1:]) != row:
-                        changed.add(name)
     changes = {}
     for name in changed:
         if name not in old_refs and name not in current_refs and not any(name.startswith(t + '/') for t in snapshot['trees']):
@@ -297,46 +253,7 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
         else:
             mode = old_mode(name)
         changes[name] = (before, mode, name in old_refs and before is not None)
-    if receipt['version'] == 2:
-        legacy = copy.deepcopy(snapshot)
-        # Git has no empty directories. Restore historical parent rows for
-        # changed recipe files, then prove the complete v2 digest below.
-        for name in changes:
-            for tree, rows in legacy['trees'].items():
-                if not name.startswith(tree + '/'):
-                    continue
-                relative = Path(name[len(tree) + 1:])
-                for parent in relative.parents:
-                    if str(parent) == '.':
-                        continue
-                    path = tree + '/' + parent.as_posix()
-                    entry = git_call('ls-tree', oldrev, '--', path).stdout.split()
-                    if entry and entry[0] == b'040000':
-                        rows.setdefault(parent.as_posix(), {'kind': 'directory', 'mode': 0o755})
-                    elif parent.as_posix() in rows and rows[parent.as_posix()].get('kind') == 'directory':
-                        rows.pop(parent.as_posix())
-        for name, row in legacy_links.items():
-            for tree, rows in legacy['trees'].items():
-                if name.startswith(tree + '/'):
-                    relative = name[len(tree) + 1:]
-                    if row is None:
-                        rows.pop(relative, None)
-                    else:
-                        rows[relative] = row
-            if name in old_refs:
-                legacy['files'][name] = hashlib.sha256(old_file(name)).hexdigest()
-            else:
-                legacy['files'].pop(name, None)
-        # A newly selected overlay was absent from the old v2 snapshot.
-        for package in packages:
-            tree = 'pkgsrc/' + package
-            if tree in legacy['trees'] and tree + '/Makefile' not in historical_entries:
-                legacy['trees'].pop(tree)
-        regular_changes = {name: value for name, value in changes.items() if name not in legacy_links}
-        old_snapshot = ident.reconstruct_legacy_payload(legacy, regular_changes, previous['export_inputs_sha256'])
-    else:
-        # The v3 snapshot is already bound to the recorded aggregate above.
-        old_snapshot = receipt['inputs']
+    old_snapshot = receipt['inputs']
     selected_recipes = {name: source.relative_to(ports).as_posix()
                         for name, source in exp.configuration(ports)[0] if name in packages}
     overlays = {package: selected_recipes.get(package) for package in packages}
@@ -793,31 +710,28 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
                         raise ValueError('package directory changed')
                     target.mkdir(parents=True, exist_ok=True)
                     sync_dir(target.parent)
-        updated = {'format': ident.SHARED_EXPORT_FORMAT, 'version': 3, 'identity': current,
+        updated = {'format': ident.SHARED_EXPORT_FORMAT, 'version': ident.SHARED_EXPORT_VERSION, 'identity': current,
                    'material': {name: ident.material_snapshot(directory / 'pkgsrc' / name)
                                 for name in ident.SHARED_EXPORT_MATERIAL}, 'inputs': snapshot,
                    'dirty_inputs': dirty_inputs}
-        if receipt['version'] == 4 or previous['patch'] != current['patch']:
-            provenance = copy.deepcopy(receipt.get('patch_provenance', {
-                'base': previous['patch'], 'packages': {}, 'files': {}}))
-            for package in packages:
-                for name in list(provenance['files']):
-                    if name.startswith(package + '/'):
-                        del provenance['files'][name]
-                if current['patch'] == provenance['base']:
-                    provenance['packages'].pop(package, None)
-                else:
-                    provenance['packages'][package] = current['patch']
-            for name in selected_files:
-                parent = '/'.join(name.split('/')[:2])
-                inherited = provenance['packages'].get(parent, provenance['base'])
-                if current['patch'] == inherited:
-                    provenance['files'].pop(name, None)
-                else:
-                    provenance['files'][name] = current['patch']
-            ident.validate_patch_provenance(provenance)
-            updated['version'] = 4
-            updated['patch_provenance'] = provenance
+        provenance = copy.deepcopy(receipt['patch_provenance'])
+        for package in packages:
+            for name in list(provenance['files']):
+                if name.startswith(package + '/'):
+                    del provenance['files'][name]
+            if current['patch'] == provenance['base']:
+                provenance['packages'].pop(package, None)
+            else:
+                provenance['packages'][package] = current['patch']
+        for name in selected_files:
+            parent = '/'.join(name.split('/')[:2])
+            inherited = provenance['packages'].get(parent, provenance['base'])
+            if current['patch'] == inherited:
+                provenance['files'].pop(name, None)
+            else:
+                provenance['files'][name] = current['patch']
+        ident.validate_patch_provenance(provenance)
+        updated['patch_provenance'] = provenance
         # Commit the complete expected receipt to the durable marker first.
         # A resumed transaction accepts no other published receipt, even if
         # its input identity happens to match.

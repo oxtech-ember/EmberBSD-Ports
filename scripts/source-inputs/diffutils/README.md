@@ -9,7 +9,7 @@ generated-source timestamps as the recipe does; it does not install a package.
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/diffutils/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
   --archive "$DISTFILES/diffutils-3.12.tar.xz" --patch "$HOST_PREFIX/bin/gpatch" \
-  --scoped-identity --output "$WORK/diffutils-source"
+  --output "$WORK/diffutils-source"
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/diffutils/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" verify-source \
   --source "$WORK/diffutils-source" --patch "$HOST_PREFIX/bin/gpatch" \

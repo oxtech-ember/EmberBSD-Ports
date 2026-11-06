@@ -159,7 +159,7 @@ class IdentityTest(unittest.TestCase):
 
 
 class GitPackageIdentityTest(unittest.TestCase):
-    """The API 2 identity is made of Git object ids; no export is written."""
+    """The API 3 identity is made of Git object ids; no export is written."""
 
     def setUp(self):
         self.git = os.environ.get('EXPORT_TEST_GIT')
@@ -315,26 +315,28 @@ class GitPackageIdentityTest(unittest.TestCase):
         self.write(self.root / 'patches/infra.patch', 'no file names\n')
         self.assertChanged(before, 'unknown patch targets are included')
 
-    def test_legacy_and_scoped_sections(self):
+    def test_current_contract_and_scoped_sections(self):
         one = '--- a/cat/pkg/Makefile\n+++ b/cat/pkg/Makefile\n@@ -1 +1 @@\n-old\n+new\n'
         two = '--- a/cat/other/Makefile\n+++ b/cat/other/Makefile\n@@ -1 +1 @@\n-old\n+new\n'
         patchfile = self.root / 'patches/infra.patch'
         self.conf('patch\tpatches/infra.patch\n')
         self.write(patchfile, 'Prose preamble.\n\n' + one + two)
-        old = identity.git_package_identity(self.root, 'cat/pkg', self.git, api=2)
         first = self.current()
-        self.assertEqual(first['legacy_api2_sha256'], old['effective_package_sha256'])
-        self.assertTrue(identity.matches_current_git_package(old, first))
-        self.assertTrue(identity.current_git_package({'effective': old, 'owner_sha256': '0'*64}, '0'*64, self.current))
+        self.assertEqual(set(first), {'api', 'package', 'effective_package_sha256', 'upstream'})
+        self.assertEqual(first['api'], 3)
+        self.assertTrue(identity.matches_current_git_package(first, first))
+        self.assertTrue(identity.current_git_package(
+            {'effective': first, 'owner_sha256': '0' * 64}, '0' * 64, self.current))
         self.write(patchfile, 'Prose preamble.\n\n' + one + two.replace('+new', '+other'))
         second = self.current()
-        self.assertTrue(identity.equivalent_effective_package(first, second))
-        self.assertNotEqual(first['legacy_api2_sha256'], second['legacy_api2_sha256'])
-        self.assertFalse(identity.matches_current_git_package(old, second))
-        self.assertFalse(identity.matches_current_git_package(second, old))
-        self.assertFalse(identity.matches_current_git_package(dict(old, package='cat/other'), first))
-        self.assertFalse(identity.matches_current_git_package(dict(old, api=1), first))
-        for invalid in (dict(first, api=True), dict(first, legacy_api2_sha256='x'),
+        self.assertEqual(first, second)
+        self.assertTrue(identity.matches_current_git_package(first, second))
+        for retired in (dict(first, api=1), dict(first, api=2),
+                        dict(first, legacy_api2_sha256=first['effective_package_sha256'])):
+            self.assertFalse(identity.matches_current_git_package(retired, first))
+            self.assertFalse(identity.current_git_package(
+                {'effective': retired, 'owner_sha256': '0' * 64}, '0' * 64, self.current))
+        for invalid in (dict(first, api=True), dict(first, effective_package_sha256='x'),
                         dict(first, extra=1), dict(first, upstream='bad')):
             self.assertFalse(identity.equivalent_effective_package(first, invalid))
             self.assertFalse(identity.matches_current_git_package(invalid, first))
@@ -363,28 +365,6 @@ class GitPackageIdentityTest(unittest.TestCase):
         sections = identity._plain_patch_sections(data)
         self.assertIsNotNone(sections)
         self.assertGreater(len(sections), 1)
-
-    def test_legacy_payload_requires_exact_recorded_identity(self):
-        import hashlib
-        import json
-        old = b'old configuration\n'
-        row = {'kind': 'file', 'mode': 0o644, 'size': len(old),
-               'sha256': hashlib.sha256(old).hexdigest()}
-        old_snapshot = {'api': 1, 'upstream': '1' * 40,
-                        'files': {'pkgsrc/export.conf': row['sha256']},
-                        'trees': {'pkgsrc': {'export.conf': row}}}
-        digest = hashlib.sha256(json.dumps(old_snapshot, sort_keys=True,
-            separators=(',', ':')).encode()).hexdigest()
-        current = {'api': 1, 'upstream': '1' * 40,
-                   'files': {'pkgsrc/export.conf': 'changed', 'new.patch': 'added'},
-                   'trees': {'pkgsrc': {'export.conf': dict(row, sha256='changed')}}}
-        changes = {'pkgsrc/export.conf': (old, 0o644, True),
-                   'new.patch': (None, None, False)}
-        self.assertEqual(identity.reconstruct_legacy_payload(current, changes, digest), old_snapshot)
-        with self.assertRaisesRegex(ValueError, 'do not match'):
-            identity.reconstruct_legacy_payload(current, changes, '0' * 64)
-        with self.assertRaisesRegex(ValueError, 'unsafe'):
-            identity.reconstruct_legacy_payload(current, {'../escape': (old, 0o644, True)}, digest)
 
     def test_gnu_diff_sections_require_matching_names(self):
         data = (ROOT / 'profiles/common-build-tools/patches/pkgsrc-bmake-executable-path.patch').read_bytes()

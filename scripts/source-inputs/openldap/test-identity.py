@@ -23,7 +23,7 @@ assert identity(b'a', b'bc') != identity(b'a', b'bd'), 'version not bound'
 
 # The SDK fast selector compares the effective identity and treats owner
 # digest changes as provenance only; the version must affect that key too.
-base = {'api': 2, 'package': 'databases/openldap',
+base = {'api': 3, 'package': 'databases/openldap',
         'effective_package_sha256': '0' * 64, 'upstream': '1' * 40}
 module.identity_module = lambda: SimpleNamespace(git_package_identity=lambda *args: dict(base))
 module.version_bytes = lambda: b'2.7.1'

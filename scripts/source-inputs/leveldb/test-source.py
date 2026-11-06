@@ -16,18 +16,18 @@ with tempfile.TemporaryDirectory(prefix='leveldb-owner-test-') as td:
  root=Path(td);pkgroot=root/'pkgsrc';recipe=pkgroot/'databases/leveldb';recipe.parent.mkdir(parents=True)
  shutil.copytree(ports/'pkgsrc/databases/leveldb',recipe)
  archive=root/'leveldb-1.23.tar.gz';shutil.copyfile(a.archive,archive)
- out=root/'source';record=owner.prepare(str(archive),str(out),str(a.patch),str(a.git),True,exported=str(pkgroot))
+ out=root/'source';record=owner.prepare(str(archive),str(out),str(a.patch),str(a.git),exported=str(pkgroot))
  assert record['package']=='databases/leveldb'
  assert (out/'include/leveldb/cache.h').is_file()
  assert 'is_standard_layout<NoDestructor<InstanceType>>::value' in (out/'util/no_destructor.h').read_text()
  assert 'GetLengthPrefixedSlice(const char* p' in (out/'util/coding.cc').read_text()
  archive.write_bytes(b'wrong archive')
- try:owner.prepare(str(archive),str(root/'bad-archive'),str(a.patch),str(a.git),True,exported=str(pkgroot))
+ try:owner.prepare(str(archive),str(root/'bad-archive'),str(a.patch),str(a.git),exported=str(pkgroot))
  except (ValueError,owner.SDKError):pass
  else:raise AssertionError('incorrect archive accepted')
  archive.unlink();shutil.copyfile(a.archive,archive)
  with (recipe/'patches/patch-chromium-compat').open('ab') as f:f.write(b'foreign')
- try:owner.prepare(str(archive),str(root/'bad-patch'),str(a.patch),str(a.git),True,exported=str(pkgroot))
+ try:owner.prepare(str(archive),str(root/'bad-patch'),str(a.patch),str(a.git),exported=str(pkgroot))
  except (ValueError,owner.SDKError):pass
  else:raise AssertionError('incorrect patch accepted')
 print('PASS: LevelDB owner verifies archive, complete patch set and prepared source')

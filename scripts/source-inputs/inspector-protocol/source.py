@@ -106,11 +106,10 @@ def verify_source(source, pkgsrc_root):
     require(os.path.isabs(pkgsrc_root), 'select an absolute prepared pkgsrc export')
     record = verify_payload(source)
     identity = record['identity']
-    require(set(identity) in ({'effective'}, {'effective', 'owner_sha256'}),
+    require(set(identity) == {'effective', 'owner_sha256'},
             'inspector protocol receipt lacks an effective recipe')
-    if 'owner_sha256' in identity:
-        require(identity['owner_sha256'] == digest(read(Path(__file__).resolve())),
-                'inspector protocol source owner changed')
+    require(identity['owner_sha256'] == digest(read(Path(__file__).resolve())),
+            'inspector protocol source owner changed')
     selector = identity_module()
     old = identity['effective']
     require(selector.equivalent_effective_package(old, old) and old['package'] == PACKAGE,

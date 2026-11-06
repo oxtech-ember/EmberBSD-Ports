@@ -68,8 +68,6 @@ def export_tree(tmp, git, patch, shared, export_patch=None):
         # the overlay inputs and the patch tool that produced this FILESDIR.
         # A matching key selects the export without reading FILESDIR again.
         snapshot = identity_module().shared_export_material(shared, PACKAGE + '/files')
-        if snapshot is None:
-            snapshot = payload(selected / PACKAGE / 'files')
         return selected, snapshot
     exported = Path(tmp) / 'pkgsrc'
     process.capture([sys.executable, '-B', str(PORTS / 'scripts/prepare-pkgsrc.py'),
@@ -101,6 +99,7 @@ def verify(source, git, patch, shared=None, export_patch=None):
     record = jsonio.read_json(str(source / sourceprep.PREPARED_TREE_RECEIPT))
     old = record.get('identity') if isinstance(record, dict) else None
     record = sourceprep.validate_prepared_tree(source, package=PACKAGE, identity=old)
+    prepared_receipt.require_current_identity(old, PACKAGE)
     current = identity(git)
     if identity_module().current_git_package(old, current['owner_sha256'], lambda: current['effective']):
         # The Git key already covers files/; a matched key does not reread the export.
@@ -136,7 +135,6 @@ def main():
     prep = sub.add_parser('prepare')
     prep.add_argument('--output', required=True)
     prep.add_argument('--patch', required=True)
-    prep.add_argument('--scoped-identity', action='store_true')
     prep.add_argument('--pkgsrc-export')
     prep.add_argument('--export-patch', help='patch used to create the shared export')
     check = sub.add_parser('verify-source')

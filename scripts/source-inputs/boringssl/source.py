@@ -36,8 +36,8 @@ class Owner(NetworkOwner):
         self.require(len(values) == 1, 'ambiguous BoringSSL DISTNAME')
         return self.archive_metadata.read_recipe(root, values[0] + '.tar', values[0])
 
-    def prepare(self, archive, output, patch, git, scoped_identity=False, exported=None):
-        return prepare(self, archive, output, patch, git, scoped_identity, exported)
+    def prepare(self, archive, output, patch, git, exported=None):
+        return prepare(self, archive, output, patch, git, exported)
 
     def verify(self, source, git, archive=None, patch=None, pkgsrc_export=None, export_patch=None):
         return verify(self, source, git, archive, patch, pkgsrc_export, export_patch)

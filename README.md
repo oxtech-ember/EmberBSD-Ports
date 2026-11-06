@@ -967,10 +967,27 @@ After inspecting and stopping users of the tree, rerun the same selection with
 `--resume`. The updater verifies both recorded states before finishing. A
 failed check leaves the marker and existing files for diagnosis.
 
-The SDK `scripts/pkgsrc-export-stage.py prepare ROOT --git GIT --patch PATCH`
+The SDK `scripts/pkgsrc-export-stage.py prepare ROOT --sdk-source SDK --git GIT --patch PATCH`
 publishes one stage at `ROOT/FINGERPRINT`. Source owners accept that stage via
 their `--pkgsrc-export` option; the same stage can serve source preparation and
 the OS release builder's gettext input, avoiding a second full pkgsrc export.
+Stages and shared exports use the same version 4 `pkgsrc-export.json` receipt;
+older receipt formats and `pkgsrc-stage.json` are not accepted. The stage key
+includes this receipt format, so a new stage does not collide with a retired one.
+Update the SDK and Ports together; the stage CLI requires explicit `--sdk-source`.
+
+Prepared-source identities retain only the current effective recipe and owner
+digest. Receipts carrying `legacy_api2_sha256` are retired too. For a one-time
+transition, stop consumers and have the current source owner prepare and verify
+a sibling tree. Validate the existing tree with the SDK payload verifier and
+compare its complete tree digest with the newly prepared tree. When both digests
+and package identities match, atomically replace only the old receipt with the
+new owner-generated record; preserve payload files, their timestamps and build
+objects. Verify the rebound tree with the current owner before resuming users.
+Do not merely delete legacy fields or accept a mismatched payload. If the source
+really changed, use the owner's normal source refresh and preserve unchanged
+files. Remove the retired derived stage only after its replacement is accepted;
+no runtime reader or adapter for retired formats is provided.
 
 The callable remains
 `export_pkgsrc(root, destination, selection=selection, runner=runner, scratch=scratch)`.

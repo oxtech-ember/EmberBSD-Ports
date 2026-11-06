@@ -33,6 +33,10 @@ def configuration(root, *, include_manifests=False):
     root = Path(root)
     return [('cross/demo', root / 'profiles/demo/recipe')], [], [], [], []
 
+def configuration_input_paths(root):
+    root = Path(root)
+    return [root / 'profiles/demo/recipe']
+
 if __name__ == '__main__':
     destination, git = Path(sys.argv[1]), sys.argv[sys.argv.index('--git') + 1]
     root = Path(__file__).resolve().parents[1]
@@ -43,6 +47,28 @@ if __name__ == '__main__':
     with open({str(runs)!r}, 'a') as stream:
         stream.write('run\\n')
 ''')
+(fixture / 'scripts/pkgsrc-source-identity.py').write_text(r"""
+SHARED_EXPORT_FORMAT = 'emberbsd-pkgsrc-shared-export'
+SHARED_EXPORT_VERSION = 4
+import json, subprocess, sys
+from pathlib import Path
+
+def create_shared_export(directory, root, git, sdk_source, patch):
+    directory = Path(directory)
+    directory.mkdir()
+    subprocess.run([sys.executable, '-B', str(Path(root) / 'scripts/prepare-pkgsrc.py'),
+                    str(directory / 'pkgsrc'), '--git', git, '--patch', patch], check=True)
+    pin = subprocess.check_output([git, '-C', str(root), 'ls-files', '--stage', 'upstream/pkgsrc']).decode().split()[1]
+    (directory / 'pkgsrc-export.json').write_text(json.dumps({'format':'canonical', 'version':4, 'upstream':pin}))
+
+def shared_export(directory, root, git, sdk_source, patch):
+    directory = Path(directory)
+    record = json.loads((directory / 'pkgsrc-export.json').read_text())
+    pin = subprocess.check_output([git, '-C', str(root), 'ls-files', '--stage', 'upstream/pkgsrc']).decode().split()[1]
+    if record != {'format':'canonical', 'version':4, 'upstream':pin}:
+        raise ValueError('receipt differs')
+    return directory / 'pkgsrc'
+""")
 (fixture / 'pkgsrc/export.conf').write_text('recipe\tprofiles/demo/recipe\tcross/demo\n')
 (fixture / 'pkgsrc/cross/demo/Makefile').write_text('# demo\n')
 (fixture / 'profiles/demo/recipe/Makefile').write_text('# recipe\n')
@@ -51,7 +77,7 @@ if __name__ == '__main__':
 
 def run(*args, check=True):
     return subprocess.run(list(args), cwd=fixture, capture_output=True, text=True, check=check,
-                          env=dict(os.environ, GIT_AUTHOR_NAME='t', GIT_AUTHOR_EMAIL='t@example.org',
+                          env=dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_AUTHOR_NAME='t', GIT_AUTHOR_EMAIL='t@example.org',
                                    GIT_COMMITTER_NAME='t', GIT_COMMITTER_EMAIL='t@example.org'))
 
 
@@ -73,7 +99,7 @@ stage = [sys.executable, '-B', str(fixture / 'scripts/pkgsrc-export-stage.py')]
 
 
 def prepare():
-    result = run(*stage, 'prepare', str(stages), '--git', git, '--patch', patch, check=False)
+    result = run(*stage, 'prepare', str(stages), '--sdk-source', str(work), '--git', git, '--patch', patch, check=False)
     assert result.returncode == 0, result.stderr
     return json.loads(result.stdout)
 
@@ -113,21 +139,21 @@ assert (stages / result['fingerprint'] / 'pkgsrc/EMBERBSD-PKGSRC-REVISION').read
 
 # Uncommitted inputs have no Git fingerprint and are refused.
 (fixture / 'profiles/demo/recipe/Makefile').write_text('# dirty\n')
-refused = run(*stage, 'prepare', str(stages), '--git', git, '--patch', patch, check=False)
+refused = run(*stage, 'prepare', str(stages), '--sdk-source', str(work), '--git', git, '--patch', patch, check=False)
 assert refused.returncode == 1 and 'uncommitted pkgsrc export inputs' in refused.stderr, refused.stderr
 run(git, 'checkout', '--', 'profiles/demo/recipe/Makefile')
 (fixture / '.gitignore').write_text('work/\n')
 commit('ignore work')
 (fixture / 'pkgsrc/cross/demo/work').mkdir()
-refused = run(*stage, 'prepare', str(stages), '--git', git, '--patch', patch, check=False)
+refused = run(*stage, 'prepare', str(stages), '--sdk-source', str(work), '--git', git, '--patch', patch, check=False)
 assert refused.returncode == 1 and 'cross/demo/work' in refused.stderr, refused.stderr
 (fixture / 'pkgsrc/cross/demo/work').rmdir()
 
 # A stage whose receipt or tree differs from its name is refused.
-receipt = stages / result['fingerprint'] / 'pkgsrc-stage.json'
+receipt = stages / result['fingerprint'] / 'pkgsrc-export.json'
 saved = receipt.read_text()
 receipt.write_text(saved.replace('b' * 40, 'c' * 40))
-refused = run(*stage, 'prepare', str(stages), '--git', git, '--patch', patch, check=False)
+refused = run(*stage, 'prepare', str(stages), '--sdk-source', str(work), '--git', git, '--patch', patch, check=False)
 assert refused.returncode == 1 and 'receipt differs' in refused.stderr, refused.stderr
 receipt.write_text(saved)
 assert prepare()['reused']

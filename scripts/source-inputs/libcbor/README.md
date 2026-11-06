@@ -8,7 +8,7 @@ directory and can be reused with matching source inputs.
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/libcbor/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
   --archive "$DISTDIR/libcbor-0.14.0.tar.gz" --patch "$PATCH" \
-  --output "$WORK/libcbor-source" --scoped-identity --pkgsrc-export "$SHARED_EXPORT"
+  --output "$WORK/libcbor-source" --pkgsrc-export "$SHARED_EXPORT"
 ```
 
 Use `verify-source --source "$WORK/libcbor-source"` with the same SDK and Git;

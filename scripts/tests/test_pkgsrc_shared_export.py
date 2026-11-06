@@ -60,6 +60,8 @@ class SharedExportTest(unittest.TestCase):
         self.pins = {'upstream': b'1' * 40, 'ports': b'a' * 40}
 
         def git(argv, *, env):
+            if 'diff' in argv or '--others' in argv:
+                return b''
             if 'ls-files' in argv:
                 return b'160000 ' + self.pins['upstream'] + b' 0\tupstream/pkgsrc\n'
             if Path(argv[2]) == self.root:
@@ -217,50 +219,36 @@ class SharedExportTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'invalid shared pkgsrc export receipt'):
             self.select(directory)
 
-    def test_fingerprinted_stage_is_reused_and_ignores_unrelated_head(self):
-        stage = load(self.root / 'scripts/pkgsrc-export-stage.py', 'stage_test')
-        inputs = {'format': stage.FORMAT, 'version': stage.VERSION,
-                  'upstream': '1' * 40, 'objects': {'pkgsrc/export.conf': 'a' * 40},
-                  'patch': {'path': str(self.tool), 'sha256': 'b' * 64}}
-        with patch.object(identity, '_pkgsrc_export_stage', return_value=stage), \
-             patch.object(stage, 'fingerprint_inputs', return_value=inputs):
-            key = stage.fingerprint(inputs)
-            directory = Path(self.temp.name) / key
-            tree = directory / 'pkgsrc'
-            (tree / 'net/libfetch/files').mkdir(parents=True)
-            (tree / 'EMBERBSD-PKGSRC-REVISION').write_text('1' * 40 + '\n')
-            (directory / stage.RECEIPT).write_text(json.dumps({'fingerprint': key, 'inputs': inputs}))
-            self.assertEqual(self.select(directory), tree)
-            self.assertIsNone(identity.shared_export_material(directory, 'net/libfetch/files'))
-            self.pins['ports'] = b'c' * 40  # unrelated HEAD movement does not change Git input keys
-            self.assertEqual(self.select(directory), tree)
-            changed = dict(inputs, objects={'pkgsrc/export.conf': 'd' * 40})
-            with patch.object(stage, 'fingerprint_inputs', return_value=changed):
-                with self.assertRaisesRegex(ValueError, 'different inputs'):
-                    self.select(directory)
-        self.assertEqual(len(self.exports), 0)
-
-    def test_stage_receipt_symlink_is_rejected(self):
-        directory = Path(self.temp.name) / 'stage'
-        directory.mkdir()
-        target = Path(self.temp.name) / 'receipt'
-        target.write_text('{}')
-        (directory / 'pkgsrc-stage.json').symlink_to(target)
-        with self.assertRaisesRegex(ValueError, 'invalid pkgsrc export stage receipt'):
-            self.select(directory)
-
-    def test_corrupt_stage_receipt_is_rejected(self):
-        stage = load(self.root / 'scripts/pkgsrc-export-stage.py', 'stage_corrupt_test')
+    def test_stage_uses_only_canonical_receipt(self):
+        stage = load(self.root / 'scripts/pkgsrc-export-stage.py', 'stage_canonical_test')
         inputs = {'format': stage.FORMAT, 'version': stage.VERSION,
                   'upstream': '1' * 40, 'objects': {'pkgsrc/export.conf': 'a' * 40},
                   'patch': {'path': str(self.tool), 'sha256': 'b' * 64}}
         directory = Path(self.temp.name) / stage.fingerprint(inputs)
-        directory.mkdir()
-        (directory / stage.RECEIPT).write_text('{broken')
-        with patch.object(identity, '_pkgsrc_export_stage', return_value=stage), \
+        identity.create_shared_export(directory, self.root, sys.executable, SDK, str(self.tool))
+        self.assertTrue((directory / 'pkgsrc-export.json').is_file())
+        self.assertFalse((directory / 'pkgsrc-stage.json').exists())
+        with patch.object(stage, '_selector', return_value=identity), \
              patch.object(stage, 'fingerprint_inputs', return_value=inputs):
+            self.assertEqual(stage.verify(directory, sys.executable, str(self.tool), SDK, self.root),
+                             directory / 'pkgsrc')
+            (directory / 'pkgsrc-export.json').write_text('{broken')
             with self.assertRaises(ValueError):
+                stage.verify(directory, sys.executable, str(self.tool), SDK, self.root)
+
+    def test_retired_receipts_and_stage_only_are_rejected(self):
+        directory = Path(self.temp.name) / 'export'
+        identity.create_shared_export(directory, self.root, sys.executable, SDK, str(self.tool))
+        path = directory / identity.SHARED_EXPORT_RECEIPT
+        record = json.loads(path.read_text())
+        for version in (1, 2, 3):
+            path.write_text(json.dumps({**record, 'version': version}))
+            with self.subTest(version=version), self.assertRaises(ValueError):
                 self.select(directory)
+        path.unlink()
+        (directory / 'pkgsrc-stage.json').write_text('{}')
+        with self.assertRaises(ValueError):
+            self.select(directory)
 
 
 class OwnerTest(unittest.TestCase):
@@ -272,60 +260,46 @@ class OwnerTest(unittest.TestCase):
             module.load_sdk(['--sdk-source', str(SDK)])
         return module
 
-    def test_legacy_owners_share_selected_export_and_keep_default(self):
+    def test_retired_owners_refuse_export_receipts(self):
         from emberbsd_sdk.errors import SDKError
-        with tempfile.TemporaryDirectory(dir=WORK) as temp:
-            tree = Path(temp) / 'selected-tree'
-            for name in ('tdb', 'ppp', 'libpcap', 'tcp_wrappers', 'libevent'):
-                with self.subTest(owner=name):
-                    owner = self.owner(name)
-                    selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')
-                    old = {'export': {'api': 1, 'package': owner.PACKAGE,
-                           'export_inputs_sha256': '1' * 64, 'upstream': '2' * 40},
-                           'owner_sha256': '3' * 64}
-                    current = {'export': {'upstream': '2' * 40}, 'owner_sha256': '4' * 64}
-                    with patch.object(owner, 'source_identity', return_value=current), \
-                         patch.object(owner.jsonio, 'read_json', return_value={'identity': old}), \
-                         patch.object(owner.sourceprep, 'validate_prepared_tree', return_value={'tree_sha256': '5' * 64}), \
-                         patch.object(owner, 'identity_module', return_value=selector), \
-                         patch.object(selector, 'shared_export', return_value=tree) as shared, \
-                         patch.object(owner, 'prepare', return_value={'tree_sha256': '5' * 64}) as prepare:
-                        owner.verify('/source', sys.executable, archive='/archive', patch='/patch', pkgsrc_export='/export')
-                        self.assertEqual(prepare.call_args.kwargs['exported'], tree)
-                        shared.assert_called_once_with('/export', owner.PORTS, sys.executable, owner.SDK_SOURCE, '/patch')
+        for name in ('tdb', 'ppp', 'libpcap', 'tcp_wrappers', 'libevent'):
+            with self.subTest(owner=name):
+                owner = self.owner(name)
+                old = {'export': {'api': 1, 'package': owner.PACKAGE,
+                       'export_inputs_sha256': '1' * 64, 'upstream': '2' * 40},
+                       'owner_sha256': '3' * 64}
+                with patch.object(owner, 'source_identity', return_value=old), \
+                     patch.object(owner.jsonio, 'read_json', return_value={'identity': old}), \
+                     patch.object(owner.sourceprep, 'validate_prepared_tree', return_value={'tree_sha256': '5' * 64}), \
+                     patch.object(owner, 'prepare') as prepare:
+                    with self.assertRaisesRegex(SDKError, 'prepare the source again'):
                         owner.verify('/source', sys.executable, archive='/archive', patch='/patch')
-                        self.assertIsNone(prepare.call_args.kwargs['exported'])
-                        shared.side_effect = SDKError('invalid shared export')
-                        with self.assertRaisesRegex(SDKError, 'invalid shared export'):
-                            owner.verify('/source', sys.executable, archive='/archive', patch='/patch', pkgsrc_export='/invalid')
+                    prepare.assert_not_called()
 
-    def test_libfetch_reads_small_filesdir_for_stage_without_material_snapshot(self):
+    def test_libfetch_reads_canonical_material_snapshot(self):
         owner = self.owner('libfetch')
         owner.SDK_SOURCE = SDK
         with tempfile.TemporaryDirectory(dir=WORK) as temp:
             stage = Path(temp) / 'stage'
-            stage.mkdir()
-            inputs = {'format': 'emberbsd-pkgsrc-export-stage', 'version': 1}
-            key = hashlib.sha256(
-                json.dumps(inputs, sort_keys=True, separators=(',', ':')).encode('ascii')).hexdigest()
-            (stage / 'pkgsrc-stage.json').write_text(
-                json.dumps({'fingerprint': key, 'inputs': inputs}))
             tree = stage / 'pkgsrc'
             files = tree / 'net/libfetch/files'
             files.mkdir(parents=True)
             (files / 'fetch.c').write_text('common source')
+            expected = identity.material_snapshot(files)
+            (stage / 'pkgsrc-export.json').write_text(json.dumps({
+                'version': 4, 'material': {'net/libfetch/files': expected}}))
             with patch.object(owner, 'identity_module', return_value=identity), \
                  patch.object(identity, 'shared_export', return_value=tree):
                 selected, snapshot = owner.export_tree(temp, sys.executable, '/patch', str(stage))
             self.assertEqual(selected, tree)
-            self.assertEqual(snapshot, identity.material_snapshot(files))
+            self.assertEqual(snapshot, expected)
 
     def test_scoped_owners_keep_one_default_export(self):
         for name in ('tdb', 'ppp', 'libpcap', 'tcp_wrappers'):
             with self.subTest(owner=name):
                 owner = self.owner(name)
                 selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')
-                effective = {'api': 1, 'package': owner.PACKAGE,
+                effective = {'api': 3, 'package': owner.PACKAGE,
                              'effective_package_sha256': '4' * 64, 'upstream': '1' * 40}
                 old = {'effective': effective, 'owner_sha256': '2' * 64}
                 current = {'export': {'upstream': '1' * 40}, 'owner_sha256': '3' * 64}
@@ -333,7 +307,8 @@ class OwnerTest(unittest.TestCase):
                      patch.object(owner.jsonio, 'read_json', return_value={'identity': old}), \
                      patch.object(owner.sourceprep, 'validate_prepared_tree', return_value={'tree_sha256': '5' * 64}), \
                      patch.object(owner, 'identity_module', return_value=selector), \
-                     patch.object(selector, 'effective_package_identity', return_value=effective), \
+                     patch.object(selector, 'effective_package_identity', return_value=dict(effective, api=1)), \
+                     patch.object(owner, 'git_effective_identity', return_value=dict(effective, effective_package_sha256='9' * 64)), \
                      patch.object(owner.process, 'capture') as capture, \
                      patch.object(owner, 'prepare', return_value={'tree_sha256': '5' * 64}) as prepare:
                     owner.verify('/source', sys.executable, archive='/archive', patch='/patch')
@@ -341,12 +316,12 @@ class OwnerTest(unittest.TestCase):
                     self.assertEqual(prepare.call_args.kwargs['exported'], Path(capture.call_args.args[0][3]))
 
     def test_git_identity_receipts_verify_without_an_export(self):
-        """An API 2 receipt naming the current Git objects needs no export."""
+        """An current Git receipt naming the current Git objects needs no export."""
         for name in GIT_OWNERS:
             with self.subTest(owner=name):
                 owner = self.owner(name)
                 selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')
-                effective = {'api': 2, 'package': owner.PACKAGE,
+                effective = {'api': 3, 'package': owner.PACKAGE,
                              'effective_package_sha256': '4' * 64, 'upstream': '1' * 40}
                 old = {'effective': effective, 'owner_sha256': '3' * 64}
                 current = {'export': {'upstream': '1' * 40}, 'owner_sha256': '3' * 64}
@@ -355,7 +330,7 @@ class OwnerTest(unittest.TestCase):
                      patch.object(owner.jsonio, 'read_json', return_value={'identity': old}), \
                      patch.object(owner.sourceprep, 'validate_prepared_tree', return_value=record), \
                      patch.object(owner, 'identity_module', return_value=selector), \
-                     patch.object(owner, 'git_effective_identity', return_value=dict(effective, api=3, legacy_api2_sha256=effective['effective_package_sha256'])) as git_identity, \
+                     patch.object(owner, 'git_effective_identity', return_value=effective) as git_identity, \
                      patch.object(selector, 'effective_package_identity', return_value=dict(effective, api=1)), \
                      patch.object(selector, 'shared_export') as shared, \
                      patch.object(owner.process, 'capture') as capture, \
@@ -369,17 +344,17 @@ class OwnerTest(unittest.TestCase):
                     self.assertEqual((capture.call_count, shared.call_count, prepare.call_count),
                                      (0, len(shared_args), 0))
                     # A changed dependent Git object falls back to the payload comparison.
-                    git_identity.return_value = dict(effective, api=3, legacy_api2_sha256='6' * 64)
+                    git_identity.return_value = dict(effective, effective_package_sha256='6' * 64)
                     owner.verify('/source', sys.executable, archive='/archive', patch='/patch', **extra)
                     self.assertEqual((capture.call_count, prepare.call_count), (1, 1))
                     # So does a changed owner.
-                    git_identity.return_value = dict(effective, api=3, legacy_api2_sha256=effective['effective_package_sha256'])
+                    git_identity.return_value = effective
                     current['owner_sha256'] = '7' * 64
                     owner.verify('/source', sys.executable, archive='/archive', patch='/patch', **extra)
                     self.assertEqual((capture.call_count, prepare.call_count), (2, 2))
 
     def test_git_identity_receipts_refuse_a_broken_shared_export(self):
-        """An unchanged API 2 receipt does not let a broken shared export pass."""
+        """An unchanged current Git receipt does not let a broken shared export pass."""
         owners = [name for name in GIT_OWNERS
                   if 'pkgsrc_export' in inspect.signature(self.owner(name).verify).parameters]
         self.assertGreaterEqual(len(owners), 18)
@@ -387,7 +362,7 @@ class OwnerTest(unittest.TestCase):
             with self.subTest(owner=name):
                 owner = self.owner(name)
                 selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')
-                effective = {'api': 2, 'package': owner.PACKAGE,
+                effective = {'api': 3, 'package': owner.PACKAGE,
                              'effective_package_sha256': '4' * 64, 'upstream': '1' * 40}
                 old = {'effective': effective, 'owner_sha256': '3' * 64}
                 current = {'export': {'upstream': '1' * 40}, 'owner_sha256': '3' * 64}
@@ -395,7 +370,7 @@ class OwnerTest(unittest.TestCase):
                      patch.object(owner.jsonio, 'read_json', return_value={'identity': old}), \
                      patch.object(owner.sourceprep, 'validate_prepared_tree', return_value={'tree_sha256': '5' * 64}), \
                      patch.object(owner, 'identity_module', return_value=selector), \
-                     patch.object(owner, 'git_effective_identity', return_value=dict(effective, api=3, legacy_api2_sha256=effective['effective_package_sha256'])), \
+                     patch.object(owner, 'git_effective_identity', return_value=effective), \
                      patch.object(selector, 'shared_export',
                                   side_effect=ValueError('invalid shared pkgsrc export receipt')):
                     with self.assertRaisesRegex(ValueError, 'invalid shared pkgsrc export receipt'):
@@ -414,9 +389,9 @@ class OwnerTest(unittest.TestCase):
                 owner = self.owner(name)
                 selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')
                 argv = ['--git', sys.executable, 'prepare', '--archive', '/archive', '--output', '/output',
-                        '--patch', '/patch', '--scoped-identity', '--pkgsrc-export', '/export']
+                        '--patch', '/patch', '--pkgsrc-export', '/export']
                 if name == 'rcs':
-                    argv[argv.index('--scoped-identity'):argv.index('--scoped-identity')] = ['--lzip', '/lzip']
+                    argv[argv.index('--pkgsrc-export'):argv.index('--pkgsrc-export')] = ['--lzip', '/lzip']
                 with patch.object(owner, 'load_sdk', return_value=argv), \
                      patch.object(owner, 'identity_module', return_value=selector), \
                      patch.object(selector, 'shared_export', return_value=Path('/tree')) as shared, \
@@ -432,7 +407,7 @@ class OwnerTest(unittest.TestCase):
             for name in OWNERS:
                 with self.subTest(owner=name):
                     owner = self.owner(name)
-                    effective = {'api': 1, 'package': owner.PACKAGE,
+                    effective = {'api': 3, 'package': owner.PACKAGE,
                                  'effective_package_sha256': '4' * 64, 'upstream': '1' * 40}
                     old = {'effective': effective, 'owner_sha256': '3' * 64}
                     selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')
@@ -447,7 +422,8 @@ class OwnerTest(unittest.TestCase):
                             patch.object(owner.sourceprep, 'validate_prepared_tree', return_value={'tree_sha256': '5' * 64}), \
                             patch.object(owner, 'identity_module', return_value=selector), \
                             patch.object(selector, 'shared_export', side_effect=select), \
-                            patch.object(selector, 'effective_package_identity', return_value=effective), \
+                            patch.object(selector, 'effective_package_identity', return_value=dict(effective, api=1)), \
+                     patch.object(owner, 'git_effective_identity', return_value=effective), \
                             patch.object(owner.process, 'capture', side_effect=capture):
                         record = owner.verify(str(Path(temp) / 'source'), sys.executable,
                                               patch='/selected/patch', pkgsrc_export=str(shared))
@@ -470,7 +446,7 @@ class OwnerTest(unittest.TestCase):
                 with self.subTest(owner=name):
                     owner = self.owner(name)
                     selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')
-                    effective = {'api': 1, 'package': owner.PACKAGE,
+                    effective = {'api': 3, 'package': owner.PACKAGE,
                                  'effective_package_sha256': '4' * 64, 'upstream': '1' * 40}
                     old = {'effective': effective, 'owner_sha256': '2' * 64}
                     tree = temp / 'shared-tree'
@@ -494,7 +470,8 @@ class OwnerTest(unittest.TestCase):
                             patch.object(owner.sourceprep, 'validate_prepared_tree', return_value={'tree_sha256': '5' * 64}), \
                             patch.object(owner, 'identity_module', return_value=selector), \
                             patch.object(selector, 'shared_export', return_value=tree), \
-                            patch.object(selector, 'effective_package_identity', return_value=effective), \
+                            patch.object(selector, 'effective_package_identity', return_value=dict(effective, api=1)), \
+                     patch.object(owner, 'git_effective_identity', return_value=dict(effective, effective_package_sha256='9' * 64)), \
                             patch.object(owner, 'prepare', side_effect=prepare), \
                             patch.object(owner.process, 'capture', side_effect=capture if shared else own_export):
                         owner.verify(str(temp / 'source'), sys.executable, archive='/selected/archive',
@@ -521,16 +498,15 @@ class OwnerTest(unittest.TestCase):
     def test_libarchive_uses_the_shared_export_without_exporting(self):
         owner = load(ROOT / 'scripts/libarchive-source.py', 'libarchive_owner')
         selector = load(ROOT / 'scripts/pkgsrc-source-identity.py', 'selector')
-        effective = {'api': 1, 'package': owner.PACKAGE, 'effective_package_sha256': '4' * 64, 'upstream': '1' * 40}
+        effective = {'api': 3, 'package': owner.PACKAGE, 'effective_package_sha256': '4' * 64, 'upstream': '1' * 40}
         old = {'effective': effective, 'owner_sha256': '3' * 64}
         from emberbsd_sdk import jsonio, sourceprep
         with tempfile.TemporaryDirectory(dir=WORK) as temp, \
-                patch.object(owner, 'selected_identity', return_value={'upstream': '1' * 40, 'owner_sha256': '3' * 64}), \
+                patch.object(owner, 'selected_identity', return_value=old), \
                 patch.object(jsonio, 'read_json', return_value={'identity': old}), \
                 patch.object(sourceprep, 'validate_prepared_tree', return_value={'tree_sha256': '5' * 64}), \
                 patch.object(owner, 'module', return_value=selector), \
                 patch.object(selector, 'shared_export', return_value=Path('/unused/tree')) as select, \
-                patch.object(selector, 'effective_package_identity', return_value=effective), \
                 patch.object(owner.subprocess, 'run', side_effect=AssertionError('owner exported pkgsrc itself')):
             record = owner.verify(str(Path(temp) / 'source'), str(SDK), sys.executable,
                                   '/selected/patch', str(Path(temp) / 'shared'))

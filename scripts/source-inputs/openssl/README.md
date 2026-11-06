@@ -8,7 +8,7 @@ absolute directory and can be reused by consumers with the same source inputs.
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/openssl/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
   --archive "$DISTDIR/openssl-4.1.0.tar.gz" --patch "$PATCH" \
-  --output "$WORK/openssl-source" --scoped-identity --pkgsrc-export "$SHARED_EXPORT"
+  --output "$WORK/openssl-source" --pkgsrc-export "$SHARED_EXPORT"
 ```
 
 Use `verify-source --source "$WORK/openssl-source"` with the same SDK and Git;

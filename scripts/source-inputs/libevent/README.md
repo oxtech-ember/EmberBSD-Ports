@@ -11,7 +11,7 @@ unrelated export change does not invalidate an identical package.
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/libevent/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \
   --archive "$DISTFILES/libevent-2.1.13-stable.tar.gz" \
-  --patch "$HOST_PREFIX/bin/gpatch" --output "$WORK/libevent-source" --scoped-identity
+  --patch "$HOST_PREFIX/bin/gpatch" --output "$WORK/libevent-source"
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/libevent/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" verify-source \
   --source "$WORK/libevent-source" --patch "$HOST_PREFIX/bin/gpatch"
@@ -36,8 +36,7 @@ input identity and the complete prepared tree. Verification refuses changed
 inputs or payloads. This prepares source only; it does not build a package,
 sysroot or target library.
 
-The scoped identity is opt-in for compatibility with existing consumers;
-without it, preparation retains the historical export-wide identity.
+Prepared receipts use one effective Git recipe identity.
 
 For a verified existing tree, `refresh-source --source SOURCE --archive ARCHIVE
 --patch PATCH --pkgsrc-export EXPORT --export-patch EXPORT_PATCH` checks the
