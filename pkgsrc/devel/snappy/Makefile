@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.23 2025/03/31 09:42:35 adam Exp $
 
 DISTNAME=	snappy-1.3.1
+PKGREVISION=	1
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=google/}
 GITHUB_TAG=	${PKGVERSION_NOREV}
@@ -11,10 +12,17 @@ COMMENT=	General purpose data compression library
 LICENSE=	apache-2.0
 
 USE_LANGUAGES=	c c++
+PLIST_SUBST+=	SNAPPY_VERSION=${PKGVERSION_NOREV}
 
 CMAKE_CONFIGURE_ARGS+=	-DSNAPPY_BUILD_TESTS=OFF
 CMAKE_CONFIGURE_ARGS+=	-DSNAPPY_BUILD_BENCHMARKS=OFF
 CMAKE_CONFIGURE_ARGS+=	-DBUILD_SHARED_LIBS=ON
+
+post-install:
+	${SED} -e 's,@PREFIX@,${PREFIX},g' -e 's,@VERSION@,${PKGVERSION_NOREV},g' \
+	    ${FILESDIR}/snappy.pc.in > ${WRKDIR}/snappy.pc
+	${INSTALL_DATA_DIR} ${DESTDIR}${PREFIX}/lib/pkgconfig
+	${INSTALL_DATA} ${WRKDIR}/snappy.pc ${DESTDIR}${PREFIX}/lib/pkgconfig/snappy.pc
 
 .include "../../archivers/lzo/buildlink3.mk"
 .include "../../devel/cmake/build.mk"
