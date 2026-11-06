@@ -252,3 +252,9 @@ writer in the same work directory. Then use `bmake reconfigure` followed by
 compatible objects while resetting the build phase. Packages with `NO_CONFIGURE`
 keep their existing configure behavior. Meson setup reconfigures an existing
 valid build directory in place.
+
+The stage-local configuration preservation path adds newly missing pkgsrc
+buildlink providers during `package` and `package-install`. The existing factory
+creates their links under the stage lock. Existing provider cookies and compiled
+objects remain intact. Interrupted additions can be retried. This refresh path
+does not support new or changed libtool `.la` outputs.
