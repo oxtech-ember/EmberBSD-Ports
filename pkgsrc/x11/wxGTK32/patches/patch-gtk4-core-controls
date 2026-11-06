@@ -202,6 +202,56 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
  
      size.x += padding.left + padding.right + border.left + border.right;
      size.y += padding.top + padding.bottom + border.top + border.bottom;
+--- src/gtk/infobar.cpp.orig
++++ src/gtk/infobar.cpp
+@@ -129,10 +129,14 @@
+     m_impl->m_label = gtk_label_new("");
+     gtk_widget_show(m_impl->m_label);
+ 
++#ifdef __WXGTK4__
++    gtk_info_bar_add_child(GTK_INFO_BAR(m_widget), m_impl->m_label);
++#else
+     GtkWidget * const
+         contentArea = gtk_info_bar_get_content_area(GTK_INFO_BAR(m_widget));
+     wxCHECK_MSG( contentArea, false, "failed to get GtkInfoBar content area" );
+     gtk_container_add(GTK_CONTAINER(contentArea), m_impl->m_label);
++#endif
+ 
+     // finish creation and connect to all the signals we're interested in
+     m_parent->DoAddChild(this);
+@@ -147,7 +151,7 @@
+     // shown at all.
+     //
+     // Compile-time check is needed because GtkRevealer is new in 3.10.
+-#if GTK_CHECK_VERSION(3, 10, 0)
++#if GTK_CHECK_VERSION(3, 10, 0) && !defined(__WXGTK4__)
+     // Run-time check is needed because the bug was introduced in 3.10 and
+     // fixed in 3.22.29 (see 6b4d95e86dabfcdaa805fbf068a99e19736a39a4 and a
+     // couple of previous commits in GTK+ repository).
+@@ -278,7 +282,11 @@
+     // have some user-defined button
+     if ( m_impl->m_close )
+     {
++#ifdef __WXGTK4__
++        gtk_info_bar_remove_action_widget(GTK_INFO_BAR(m_widget), m_impl->m_close);
++#else
+         gtk_widget_destroy(m_impl->m_close);
++#endif
+         m_impl->m_close = NULL;
+     }
+ 
+@@ -321,7 +329,11 @@
+     {
+         if (i->id == btnid)
+         {
++#ifdef __WXGTK4__
++            gtk_info_bar_remove_action_widget(GTK_INFO_BAR(m_widget), i->button);
++#else
+             gtk_widget_destroy(i->button);
++#endif
+             buttons.erase(i.base() - 1);
+ 
+             // see comment in GTKAddButton()
 --- src/gtk/activityindicator.cpp.orig
 +++ src/gtk/activityindicator.cpp
 @@ -94,10 +94,13 @@

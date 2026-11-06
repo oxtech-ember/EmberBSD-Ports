@@ -1,0 +1,39 @@
+$NetBSD$
+
+GTK4 window integration (work in progress).
+Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
+
+--- src/gtk/timer.cpp.orig
++++ src/gtk/timer.cpp
+@@ -13,6 +13,9 @@
+ 
+ #include "wx/gtk/private/timer.h"
+ #include "wx/app.h"
++#ifdef __WXGTK4__
++#include "wx/thread.h"
++#endif
+ 
+ #include "wx/gtk/private/wrapgtk.h"
+ 
+@@ -30,6 +33,13 @@
+     if ( !keepGoing )
+         timer->Stop();
+ 
++#ifdef __WXGTK4__
++    // GTK4 uses the shared wx GUI mutex instead of the removed GDK lock.
++    {
++        wxMutexGuiLocker lock;
++        timer->Notify();
++    }
++#else
+     // When getting called from GDK's timer handler we
+     // are no longer within GDK's grab on the GUI
+     // thread so we must lock it here ourselves.
+@@ -39,6 +49,7 @@
+ 
+     // Release lock again.
+     gdk_threads_leave();
++#endif
+ 
+     wxApp* app = wxTheApp;
+     if (app)
