@@ -395,6 +395,58 @@ class GitPackageIdentityTest(unittest.TestCase):
             b'diff -ruN a/cat/pkg/a b/cat/pkg/b\n'
             b'--- a/cat/pkg/a\n+++ b/cat/pkg/a\n@@ -1 +1 @@\n-old\n+new\n'))
 
+    def test_real_gcc_mail_patch_is_update_only(self):
+        data = (ROOT / 'profiles/development-toolchain/patches/pkgsrc-gcc16.2.patch').read_bytes()
+        self.assertIsNone(identity._plain_patch_sections(data))
+        sections = identity._update_patch_sections(data)
+        self.assertIsNotNone(sections)
+        self.assertEqual([row[0] for row in sections], [
+            ['lang/gcc16-libjit/Makefile', 'lang/gcc16-libjit/Makefile'],
+            ['lang/gcc16-libs/Makefile', 'lang/gcc16-libs/Makefile'],
+            ['lang/gcc16/Makefile', 'lang/gcc16/Makefile'],
+            ['lang/gcc16/distinfo', 'lang/gcc16/distinfo'],
+            ['lang/gcc16/version.mk', 'lang/gcc16/version.mk'],
+        ])
+
+    def test_mail_patch_update_envelope_validation(self):
+        def mail(sha=b'a' * 40, extra=b'', stat=None, wrapper=None):
+            if stat is None:
+                stat = (b' cat/pkg/a | 2 +-\n cat/other/b | 2 +-\n'
+                        b' 2 files changed, 2 insertions(+), 2 deletions(-)\n')
+            if wrapper is None:
+                wrapper = (b'diff --git a/cat/pkg/a b/cat/pkg/a\n'
+                           b'index 1234567..abcdef0 100644\n'
+                           b'--- a/cat/pkg/a\n+++ b/cat/pkg/a\n'
+                           b'@@ -1 +1 @@\n-old\n+new\n')
+            return (b'From ' + sha + b' Mon Sep 17 00:00:00 2001\n'
+                    b'From: Author <author@example.org>\nSubject: [PATCH] fixture\n\n'
+                    + extra + b'---\n' + stat + b'\n' + wrapper +
+                    b'diff --git a/cat/other/b b/cat/other/b\n'
+                    b'--- a/cat/other/b\n+++ b/cat/other/b\n'
+                    b'@@ -1 +1 @@\n-before\n+after\n')
+        for sha in (b'a' * 40, b'b' * 64):
+            data = mail(sha)
+            with self.subTest(sha_length=len(sha)):
+                self.assertIsNone(identity._plain_patch_sections(data))
+                sections = identity._update_patch_sections(data)
+                self.assertIsNotNone(sections)
+                self.assertEqual([row[0] for row in sections], [
+                    ['cat/pkg/a', 'cat/pkg/a'], ['cat/other/b', 'cat/other/b']])
+        hunk = b'--- a/cat/pkg/a\n+++ b/cat/pkg/a\n@@ -1 +1 @@\n-old\n+new\n'
+        invalid = [
+            mail(sha=b'a' * 39),
+            mail(extra=b'--- a/evil/file\n+++ b/evil/file\n@@ -1 +1 @@\n-x\n+y\n'),
+            mail(stat=b' cat/pkg/a | not-a-count +-\n'),
+            mail(stat=b' cat/pkg/a | 2 +-\nmalicious patch text\n'),
+            mail(wrapper=b'diff --git a/cat/pkg/a b/cat/pkg/b\n' + hunk),
+            mail(wrapper=b'diff --git a/cat/pkg/a b/cat/pkg/a\nold mode 100644\nnew mode 100755\n' + hunk),
+            mail(wrapper=b'diff --git a/cat/pkg/a b/cat/pkg/a\nrename from cat/pkg/a\nrename to cat/pkg/b\n' + hunk),
+            mail(wrapper=b'diff --git a/cat/pkg/a b/cat/pkg/a\nGIT binary patch\n' + hunk),
+        ]
+        for data in invalid:
+            with self.subTest(data=data[:180]):
+                self.assertIsNone(identity._update_patch_sections(data))
+
     def test_git_wrappers_reject_ambiguous_changes(self):
         hunk = b'--- a/cat/pkg/a\n+++ b/cat/pkg/a\n@@ -1 +1 @@\n-old\n+new\n'
         for wrapper in (
