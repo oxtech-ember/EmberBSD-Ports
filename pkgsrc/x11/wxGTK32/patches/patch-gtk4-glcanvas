@@ -1,0 +1,904 @@
+$NetBSD$
+
+Use real EGL contexts/pbuffers and immutable GPU texture snapshots on GTK4.
+Origin: EmberBSD (AI-assisted). wxWindows licence, like upstream.
+Keeps native context identity, framebuffer zero and compatibility-profile GL.
+Presentation is buffered; the pbuffer itself is single-buffered. Mesa maps
+BACK names to its FRONT storage. Context resources share GTK's display group.
+See tests/README.md for the precise contract and pending runtime acceptance.
+https://docs.gtk.org/gdk4/class.GLTextureBuilder.html
+https://registry.khronos.org/EGL/specs/eglspec.1.5.pdf
+
+--- include/wx/gtk/glcanvas.h.orig
++++ include/wx/gtk/glcanvas.h
+@@ -13,7 +13,38 @@
+ 
+ #include "wx/setup.h"
+ 
+-#if wxUSE_GLCANVAS_EGL
++#ifdef __WXGTK4__
++    #include <GL/gl.h>
++    struct wxGTKGLCanvasData;
++    struct wxGTKGLContextData;
++    typedef struct _GtkSnapshot GtkSnapshot;
++
++class WXDLLIMPEXP_GL wxGLContext : public wxGLContextBase
++{
++public:
++    wxGLContext(wxGLCanvas* win, const wxGLContext* other = NULL,
++                const wxGLContextAttrs* ctxAttrs = NULL);
++    virtual ~wxGLContext();
++    virtual bool SetCurrent(const wxGLCanvas& win) const wxOVERRIDE;
++private:
++    wxGTKGLContextData* m_gtkGL;
++    wxDECLARE_CLASS(wxGLContext);
++};
++
++class WXDLLIMPEXP_GL wxGLCanvasGTK4 : public wxGLCanvasBase
++{
++public:
++    wxGLCanvasGTK4();
++    virtual ~wxGLCanvasGTK4();
++    bool InitVisual(const wxGLAttributes& attrs);
++    virtual bool SwapBuffers() wxOVERRIDE;
++    void GTKSnapshot(GtkSnapshot* snapshot);
++private:
++    wxGTKGLCanvasData* m_gtkGL;
++    friend class wxGLContext;
++};
++    typedef wxGLCanvasGTK4 wxGLCanvasImpl;
++#elif wxUSE_GLCANVAS_EGL
+     #include "wx/unix/glegl.h"
+     typedef wxGLCanvasEGL wxGLCanvasImpl;
+ #else
+@@ -71,8 +102,10 @@
+     // implement wxGLCanvasX11 methods
+     // --------------------------------
+ 
++#ifndef __WXGTK4__
+     virtual unsigned long GetXWindow() const wxOVERRIDE;
+     void* GetNativeWindow() const;
++#endif
+ 
+     // deprecated methods
+     // ------------------
+--- src/gtk/glcanvas.cpp.orig
++++ src/gtk/glcanvas.cpp
+@@ -13,7 +13,14 @@
+ 
+ #if wxUSE_GLCANVAS
+ 
++#ifdef __WXGTK4__
++#include <epoxy/gl.h>
++#endif
+ #include "wx/glcanvas.h"
++
++#ifdef __WXGTK4__
++#include "glcanvas_gtk4.inc"
++#else
+ 
+ #include "wx/gtk/private/wrapgdk.h"
+ #include "wx/gtk/private/backend.h"
+@@ -300,4 +307,6 @@
+ 
+ #endif // WXWIN_COMPATIBILITY_2_8
+ 
++#endif // __WXGTK4__
++
+ #endif // wxUSE_GLCANVAS
+--- src/unix/glegl.cpp.orig
++++ src/unix/glegl.cpp
+@@ -18,7 +18,7 @@
+ // for compilers that support precompilation, includes "wx.h".
+ #include "wx/wxprec.h"
+ 
+-#if wxUSE_GLCANVAS && wxUSE_GLCANVAS_EGL
++#if wxUSE_GLCANVAS && wxUSE_GLCANVAS_EGL && !defined(__WXGTK4__)
+ 
+ #include "wx/glcanvas.h"
+ 
+--- /dev/null
++++ src/gtk/glcanvas_gtk4.inc
+@@ -0,0 +1,655 @@
++///////////////////////////////////////////////////////////////////////////////
++// GTK4 GL canvas: native EGL contexts/pbuffers, GPU-only GTK texture presentation.
++// Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++#include "wx/log.h"
++#include "wx/thread.h"
++#include "wx/gtk/private/win_gtk.h"
++#include <gtk/gtk.h>
++#include <EGL/egl.h>
++#include <EGL/eglext.h>
++#include <vector>
++
++#if !wxUSE_GLCANVAS_EGL
++#error wxGTK4 GLCanvas requires EGL.
++#endif
++
++namespace
++{
++// GDK caches its current context separately from EGL. Always clear that cache
++// before raw eglMakeCurrent, and restore both APIs after internal operations.
++class wxGTKGLCurrent
++{
++public:
++    wxGTKGLCurrent() : m_gdk(gdk_gl_context_get_current()),
++        m_display(eglGetCurrentDisplay()), m_context(eglGetCurrentContext()),
++        m_draw(eglGetCurrentSurface(EGL_DRAW)), m_read(eglGetCurrentSurface(EGL_READ)),
++        m_api(eglQueryAPI()), m_restore(true)
++    {
++        if (m_gdk) g_object_ref(m_gdk);
++    }
++    ~wxGTKGLCurrent()
++    {
++        if (m_restore)
++        {
++            gdk_gl_context_clear_current();
++            eglBindAPI(m_api);
++            if (m_gdk)
++                gdk_gl_context_make_current(m_gdk);
++            else if (m_display != EGL_NO_DISPLAY)
++                eglMakeCurrent(m_display, m_draw, m_read, m_context);
++            else if (eglGetCurrentDisplay() != EGL_NO_DISPLAY)
++                eglMakeCurrent(eglGetCurrentDisplay(), EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
++        }
++        if (m_gdk) g_object_unref(m_gdk);
++    }
++    void KeepCurrent() { m_restore = false; }
++private:
++    GdkGLContext* m_gdk;
++    EGLDisplay m_display;
++    EGLContext m_context;
++    EGLSurface m_draw, m_read;
++    EGLenum m_api;
++    bool m_restore;
++};
++
++static bool wxGTKGLFailure(const char* message)
++{
++    wxLogError("GTK4 GLCanvas: %s (EGL error 0x%x)", message, eglGetError());
++    return false;
++}
++
++static GdkGLContext* wxGTKGLBridge(GdkDisplay* display, bool es, EGLDisplay* eglDisplay)
++{
++    GError* error = NULL;
++    GdkGLContext* bridge = gdk_display_create_gl_context(display, &error);
++    if (bridge)
++    {
++        gdk_gl_context_set_allowed_apis(bridge, es ? GDK_GL_API_GLES : GDK_GL_API_GL);
++        if (!gdk_gl_context_realize(bridge, &error))
++        {
++            g_object_unref(bridge);
++            bridge = NULL;
++        }
++    }
++    if (!bridge)
++    {
++        wxLogError("GTK4 GLCanvas: %s", error ? error->message : "unable to create GL bridge");
++        g_clear_error(&error);
++        return NULL;
++    }
++    // An unrelated raw EGL context must not masquerade as GDK's context on
++    // an X11 GLX display. Clear both APIs first, then inspect what GDK bound.
++    gdk_gl_context_clear_current();
++    if (eglGetCurrentDisplay() != EGL_NO_DISPLAY)
++        eglMakeCurrent(eglGetCurrentDisplay(), EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
++    gdk_gl_context_make_current(bridge);
++    *eglDisplay = eglGetCurrentDisplay();
++    if (*eglDisplay == EGL_NO_DISPLAY || eglGetCurrentContext() == EGL_NO_CONTEXT)
++    {
++        wxGTKGLFailure("the GTK display must use the EGL backend (X11 or Wayland)");
++        g_object_unref(bridge);
++        return NULL;
++    }
++    return bridge;
++}
++
++static void wxGTKGLPair(std::vector<EGLint>& values, EGLint name, EGLint value)
++{
++    values.push_back(name);
++    values.push_back(value);
++}
++
++// A completed frame owns its immutable shared texture until GTK releases it.
++// Never recycle a buffer while a retained snapshot may still sample it.
++struct wxGTKGLFrame
++{
++    GdkGLContext* bridge;
++    GLuint texture;
++    GLsync sync;
++};
++
++static gboolean wxGTKGLDeleteFrame(gpointer data)
++{
++    wxGTKGLFrame* frame = static_cast<wxGTKGLFrame*>(data);
++    wxGTKGLCurrent restore;
++    gdk_gl_context_make_current(frame->bridge);
++    glDeleteTextures(1, &frame->texture);
++    if (frame->sync) glDeleteSync(frame->sync);
++    g_object_unref(frame->bridge);
++    delete frame;
++    return G_SOURCE_REMOVE;
++}
++
++static void wxGTKGLReleaseFrame(gpointer data)
++{
++    // GTK may release its last texture ref from another thread. Queue on the
++    // main loop in that case: g_main_context_invoke may execute immediately on
++    // a worker when the context happens to be unowned.
++    if (wxIsMainThread())
++        wxGTKGLDeleteFrame(data);
++    else
++        g_idle_add_full(G_PRIORITY_DEFAULT, wxGTKGLDeleteFrame, data, NULL);
++}
++
++static void wxGTKGLSnapshot(GtkWidget*, GtkSnapshot* snapshot, wxGLCanvasGTK4* canvas)
++{
++    canvas->GTKSnapshot(snapshot);
++}
++}
++
++struct wxGTKGLCanvasData
++{
++    wxGTKGLCanvasData() : display(NULL), egl(EGL_NO_DISPLAY), config(NULL),
++        surface(EGL_NO_SURFACE), bridge(NULL), current(EGL_NO_CONTEXT),
++        frame(NULL), width(0), height(0), srgb(false), textureFormat(GL_RGBA8),
++        memoryFormat(GDK_MEMORY_R8G8B8A8) {}
++    GdkDisplay* display;
++    EGLDisplay egl;
++    EGLConfig config;
++    EGLSurface surface;
++    GdkGLContext* bridge;
++    EGLContext current;
++    GdkTexture* frame;
++    int width, height;
++    bool srgb;
++    GLint textureFormat;
++    GdkMemoryFormat memoryFormat;
++};
++
++struct wxGTKGLContextData
++{
++    wxGTKGLContextData() : bridge(NULL), egl(EGL_NO_DISPLAY), context(EGL_NO_CONTEXT), es(false) {}
++    GdkGLContext* bridge;
++    EGLDisplay egl;
++    EGLContext context;
++    bool es;
++};
++
++// Display and context attribute builders retain every requested attribute.
++// Unsupported framebuffer capabilities are rejected by InitVisual, not ignored.
++#define WX_GL_FLAG(cls, method, key) cls& cls::method() { AddAttribute(key); AddAttribute(1); return *this; }
++#define WX_GL_VALUE(cls, method, key) cls& cls::method(int value) { AddAttribute(key); AddAttribute(value); return *this; }
++WX_GL_FLAG(wxGLAttributes, RGBA, WX_GL_RGBA)
++WX_GL_FLAG(wxGLAttributes, DoubleBuffer, WX_GL_DOUBLEBUFFER)
++WX_GL_FLAG(wxGLAttributes, Stereo, WX_GL_STEREO)
++WX_GL_FLAG(wxGLAttributes, FrameBuffersRGB, WX_GL_FRAMEBUFFER_SRGB)
++WX_GL_VALUE(wxGLAttributes, BufferSize, WX_GL_BUFFER_SIZE)
++WX_GL_VALUE(wxGLAttributes, Level, WX_GL_LEVEL)
++WX_GL_VALUE(wxGLAttributes, AuxBuffers, WX_GL_AUX_BUFFERS)
++WX_GL_VALUE(wxGLAttributes, Depth, WX_GL_DEPTH_SIZE)
++WX_GL_VALUE(wxGLAttributes, Stencil, WX_GL_STENCIL_SIZE)
++WX_GL_VALUE(wxGLAttributes, SampleBuffers, WX_GL_SAMPLE_BUFFERS)
++WX_GL_VALUE(wxGLAttributes, Samplers, WX_GL_SAMPLES)
++WX_GL_FLAG(wxGLContextAttrs, CoreProfile, WX_GL_CORE_PROFILE)
++WX_GL_FLAG(wxGLContextAttrs, CompatibilityProfile, WX_GL_COMPAT_PROFILE)
++WX_GL_FLAG(wxGLContextAttrs, ForwardCompatible, WX_GL_FORWARD_COMPAT)
++WX_GL_FLAG(wxGLContextAttrs, ES2, WX_GL_ES2)
++WX_GL_FLAG(wxGLContextAttrs, DebugCtx, WX_GL_DEBUG)
++WX_GL_FLAG(wxGLContextAttrs, Robust, WX_GL_ROBUST_ACCESS)
++WX_GL_FLAG(wxGLContextAttrs, NoResetNotify, WX_GL_NO_RESET_NOTIFY)
++WX_GL_FLAG(wxGLContextAttrs, LoseOnReset, WX_GL_LOSE_ON_RESET)
++WX_GL_FLAG(wxGLContextAttrs, ResetIsolation, WX_GL_RESET_ISOLATION)
++WX_GL_VALUE(wxGLContextAttrs, MajorVersion, WX_GL_MAJOR_VERSION)
++WX_GL_VALUE(wxGLContextAttrs, MinorVersion, WX_GL_MINOR_VERSION)
++WX_GL_VALUE(wxGLContextAttrs, ReleaseFlush, WX_GL_RELEASE_FLUSH)
++#undef WX_GL_FLAG
++#undef WX_GL_VALUE
++
++wxGLAttributes& wxGLAttributes::MinRGBA(int r, int g, int b, int a)
++{
++    const int keys[] = { WX_GL_MIN_RED, WX_GL_MIN_GREEN, WX_GL_MIN_BLUE, WX_GL_MIN_ALPHA };
++    const int values[] = { r, g, b, a };
++    for (unsigned i = 0; i != 4; ++i)
++        if (values[i] >= 0) { AddAttribute(keys[i]); AddAttribute(values[i]); }
++    return *this;
++}
++wxGLAttributes& wxGLAttributes::MinAcumRGBA(int r, int g, int b, int a)
++{
++    const int keys[] = { WX_GL_MIN_ACCUM_RED, WX_GL_MIN_ACCUM_GREEN, WX_GL_MIN_ACCUM_BLUE, WX_GL_MIN_ACCUM_ALPHA };
++    const int values[] = { r, g, b, a };
++    for (unsigned i = 0; i != 4; ++i)
++        if (values[i] >= 0) { AddAttribute(keys[i]); AddAttribute(values[i]); }
++    return *this;
++}
++wxGLAttributes& wxGLAttributes::PlatformDefaults() { return *this; }
++wxGLAttributes& wxGLAttributes::Defaults() { return RGBA().DoubleBuffer().Depth(16).SampleBuffers(1).Samplers(4); }
++void wxGLAttributes::AddDefaultsForWXBefore31() { RGBA().DoubleBuffer(); }
++void wxGLAttributes::EndList() { AddAttribute(0); }
++wxGLContextAttrs& wxGLContextAttrs::PlatformDefaults() { return *this; }
++void wxGLContextAttrs::EndList() { AddAttribute(0); }
++
++static bool wxGTKGLConfig(wxGTKGLCanvasData* data, const wxGLAttributes& attrs)
++{
++    data->display = gdk_display_get_default();
++    if (!data->display) return wxGTKGLFailure("no GTK display");
++    g_object_ref(data->display);
++    wxGTKGLCurrent restore;
++    data->bridge = wxGTKGLBridge(data->display, false, &data->egl);
++    if (!data->bridge) return false;
++
++    std::vector<EGLint> config;
++    wxGTKGLPair(config, EGL_SURFACE_TYPE, EGL_PBUFFER_BIT);
++    wxGTKGLPair(config, EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT);
++    const int* values = attrs.GetGLAttrs();
++    const int count = attrs.GetSize();
++    for (int i = 0; values && i < count && values[i]; i += 2)
++    {
++        if (i + 1 >= count) return wxGTKGLFailure("unterminated display attributes");
++        const int key = values[i], value = values[i + 1];
++        switch (key)
++        {
++        case WX_GL_RGBA: break;
++        case WX_GL_DOUBLEBUFFER:
++            // GTK presents an immutable front texture while GL renders into
++            // a pbuffer. This is presentation buffering, not GL_DOUBLEBUFFER.
++            break;
++        case WX_GL_BUFFER_SIZE: wxGTKGLPair(config, EGL_BUFFER_SIZE, value); break;
++        case WX_GL_MIN_RED: wxGTKGLPair(config, EGL_RED_SIZE, value); break;
++        case WX_GL_MIN_GREEN: wxGTKGLPair(config, EGL_GREEN_SIZE, value); break;
++        case WX_GL_MIN_BLUE: wxGTKGLPair(config, EGL_BLUE_SIZE, value); break;
++        case WX_GL_MIN_ALPHA: wxGTKGLPair(config, EGL_ALPHA_SIZE, value); break;
++        case WX_GL_DEPTH_SIZE: wxGTKGLPair(config, EGL_DEPTH_SIZE, value); break;
++        case WX_GL_STENCIL_SIZE: wxGTKGLPair(config, EGL_STENCIL_SIZE, value); break;
++        case WX_GL_SAMPLE_BUFFERS: wxGTKGLPair(config, EGL_SAMPLE_BUFFERS, value); break;
++        case WX_GL_SAMPLES: wxGTKGLPair(config, EGL_SAMPLES, value); break;
++        case WX_GL_FRAMEBUFFER_SRGB: data->srgb = value != 0; break;
++        case WX_GL_LEVEL: case WX_GL_AUX_BUFFERS: case WX_GL_STEREO:
++        case WX_GL_MIN_ACCUM_RED: case WX_GL_MIN_ACCUM_GREEN:
++        case WX_GL_MIN_ACCUM_BLUE: case WX_GL_MIN_ACCUM_ALPHA:
++            if (value != 0) return wxGTKGLFailure("stereo, overlay, auxiliary and accumulation buffers are unavailable");
++            break;
++        default: return wxGTKGLFailure("unknown display attribute");
++        }
++    }
++    config.push_back(EGL_NONE);
++    EGLint found = 0;
++    if (!eglChooseConfig(data->egl, &config[0], &data->config, 1, &found) || found != 1)
++        return wxGTKGLFailure("no compatible EGL pbuffer configuration");
++    EGLint red = 0, green = 0, blue = 0, alpha = 0;
++    eglGetConfigAttrib(data->egl, data->config, EGL_RED_SIZE, &red);
++    eglGetConfigAttrib(data->egl, data->config, EGL_GREEN_SIZE, &green);
++    eglGetConfigAttrib(data->egl, data->config, EGL_BLUE_SIZE, &blue);
++    eglGetConfigAttrib(data->egl, data->config, EGL_ALPHA_SIZE, &alpha);
++    const int bits = wxMax(wxMax(red, green), wxMax(blue, alpha));
++    if (bits > 16) return wxGTKGLFailure("the selected framebuffer colour precision cannot be presented");
++    if (bits > 8)
++    {
++        data->textureFormat = GL_RGBA16;
++        data->memoryFormat = GDK_MEMORY_R16G16B16A16;
++    }
++    return true;
++}
++
++static EGLSurface wxGTKGLPbuffer(wxGTKGLCanvasData* data, int width, int height)
++{
++    const EGLint attrs[] = { EGL_WIDTH, width, EGL_HEIGHT, height,
++        EGL_GL_COLORSPACE, data->srgb ? EGL_GL_COLORSPACE_SRGB : EGL_GL_COLORSPACE_LINEAR, EGL_NONE };
++    return eglCreatePbufferSurface(data->egl, data->config, attrs);
++}
++
++wxIMPLEMENT_CLASS(wxGLContext, wxObject);
++wxIMPLEMENT_CLASS(wxGLCanvas, wxWindow);
++wxIMPLEMENT_DYNAMIC_CLASS(wxGLApp, wxApp);
++
++wxGLContext::wxGLContext(wxGLCanvas* win, const wxGLContext* other, const wxGLContextAttrs* attrs)
++    : m_gtkGL(new wxGTKGLContextData)
++{
++    m_isOk = false;
++    wxGTKGLCanvasData* canvas = win->m_gtkGL;
++    if (!canvas || !canvas->config) return;
++    if (!attrs) attrs = &win->GetGLCTXAttrs();
++    int major = 3, minor = 2, profile = EGL_CONTEXT_OPENGL_COMPATIBILITY_PROFILE_BIT;
++    bool forward = false, debug = false, robust = false;
++    bool majorSpecified = false, minorSpecified = false;
++    int reset = 0, release = -1;
++    const int* values = attrs->GetGLAttrs();
++    for (int i = 0; values && i < attrs->GetSize() && values[i]; i += 2)
++    {
++        if (i + 1 >= attrs->GetSize()) { wxGTKGLFailure("unterminated context attributes"); return; }
++        switch (values[i])
++        {
++        case WX_GL_MAJOR_VERSION: major = values[i + 1]; majorSpecified = true; break;
++        case WX_GL_MINOR_VERSION: minor = values[i + 1]; minorSpecified = true; break;
++        case WX_GL_CORE_PROFILE: profile = EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT; break;
++        case WX_GL_COMPAT_PROFILE: profile = EGL_CONTEXT_OPENGL_COMPATIBILITY_PROFILE_BIT; break;
++        case WX_GL_FORWARD_COMPAT: forward = true; break;
++        case WX_GL_ES2: m_gtkGL->es = true; break;
++        case WX_GL_DEBUG: debug = true; break;
++        case WX_GL_ROBUST_ACCESS: robust = true; break;
++        case WX_GL_NO_RESET_NOTIFY: reset = EGL_NO_RESET_NOTIFICATION; break;
++        case WX_GL_LOSE_ON_RESET: reset = EGL_LOSE_CONTEXT_ON_RESET; break;
++        case WX_GL_RELEASE_FLUSH: release = values[i + 1] ? EGL_CONTEXT_RELEASE_BEHAVIOR_FLUSH_KHR : EGL_CONTEXT_RELEASE_BEHAVIOR_NONE_KHR; break;
++        case WX_GL_RESET_ISOLATION: wxGTKGLFailure("reset isolation is not available through EGL"); return;
++        default: wxGTKGLFailure("unknown context attribute"); return;
++        }
++    }
++    // GTK's shared presentation group requires modern GL entry points. A
++    // compatibility 3.2+ context also supports the caller's older desktop API.
++    if (majorSpecified && !minorSpecified) minor = 0;
++    if (major < 3) { major = 3; minor = m_gtkGL->es ? 0 : 2; }
++    if (!m_gtkGL->es && major == 3 && minor < 2) minor = 2;
++    if (m_gtkGL->es && !minorSpecified) minor = 0;
++    if (other && (!other->IsOK() || other->m_gtkGL->es != m_gtkGL->es))
++    { wxGTKGLFailure("shared contexts must use the same GL client API"); return; }
++
++    wxGTKGLCurrent restore;
++    m_gtkGL->bridge = wxGTKGLBridge(canvas->display, m_gtkGL->es, &m_gtkGL->egl);
++    if (!m_gtkGL->bridge || m_gtkGL->egl != canvas->egl) return;
++    EGLContext share = eglGetCurrentContext();
++    if (other)
++    {
++        if (other->m_gtkGL->egl != m_gtkGL->egl ||
++            !gdk_gl_context_is_shared(m_gtkGL->bridge, other->m_gtkGL->bridge))
++        { wxGTKGLFailure("contexts belong to different native sharing groups"); return; }
++        share = other->m_gtkGL->context;
++    }
++    const EGLenum api = m_gtkGL->es ? EGL_OPENGL_ES_API : EGL_OPENGL_API;
++    std::vector<EGLint> context;
++    wxGTKGLPair(context, EGL_CONTEXT_MAJOR_VERSION, major);
++    wxGTKGLPair(context, EGL_CONTEXT_MINOR_VERSION, minor);
++    if (!m_gtkGL->es) wxGTKGLPair(context, EGL_CONTEXT_OPENGL_PROFILE_MASK, profile);
++    if (forward) wxGTKGLPair(context, EGL_CONTEXT_OPENGL_FORWARD_COMPATIBLE, EGL_TRUE);
++    if (debug) wxGTKGLPair(context, EGL_CONTEXT_OPENGL_DEBUG, EGL_TRUE);
++    if (robust) wxGTKGLPair(context, EGL_CONTEXT_OPENGL_ROBUST_ACCESS, EGL_TRUE);
++    if (reset) wxGTKGLPair(context, EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY, reset);
++    if (release != -1) wxGTKGLPair(context, EGL_CONTEXT_RELEASE_BEHAVIOR_KHR, release);
++    context.push_back(EGL_NONE);
++    if (!eglBindAPI(api)) { wxGTKGLFailure("unable to bind requested GL client API"); return; }
++    m_gtkGL->context = eglCreateContext(canvas->egl, canvas->config, share, &context[0]);
++    m_isOk = m_gtkGL->context != EGL_NO_CONTEXT;
++    if (!m_isOk) wxGTKGLFailure("unable to create requested shared EGL context/profile");
++}
++
++wxGLContext::~wxGLContext()
++{
++    if (m_gtkGL->context != EGL_NO_CONTEXT)
++    {
++        if (eglGetCurrentContext() == m_gtkGL->context)
++        {
++            gdk_gl_context_clear_current();
++            eglMakeCurrent(m_gtkGL->egl, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
++        }
++        eglDestroyContext(m_gtkGL->egl, m_gtkGL->context);
++    }
++    if (m_gtkGL->bridge) g_object_unref(m_gtkGL->bridge);
++    delete m_gtkGL;
++}
++
++bool wxGLContext::SetCurrent(const wxGLCanvas& win) const
++{
++    wxGTKGLCanvasData* canvas = win.m_gtkGL;
++    if (!m_isOk || !canvas || canvas->egl != m_gtkGL->egl) return false;
++    const wxSize size = win.GetClientSize();
++    const double scale = win.GetContentScaleFactor();
++    const int width = wxMax(1, wxRound(size.x * scale));
++    const int height = wxMax(1, wxRound(size.y * scale));
++    const bool resize = width != canvas->width || height != canvas->height;
++    EGLSurface surface = resize ? wxGTKGLPbuffer(canvas, width, height) : canvas->surface;
++    if (surface == EGL_NO_SURFACE) return wxGTKGLFailure("unable to allocate canvas pbuffer");
++    wxGTKGLCurrent restore;
++    gdk_gl_context_clear_current();
++    if (!eglBindAPI(m_gtkGL->es ? EGL_OPENGL_ES_API : EGL_OPENGL_API) ||
++        !eglMakeCurrent(canvas->egl, surface, surface, m_gtkGL->context))
++    {
++        if (resize) eglDestroySurface(canvas->egl, surface);
++        return wxGTKGLFailure("unable to make requested context current on canvas");
++    }
++    restore.KeepCurrent();
++    if (resize)
++    {
++        if (canvas->surface != EGL_NO_SURFACE) eglDestroySurface(canvas->egl, canvas->surface);
++        canvas->surface = surface;
++        canvas->width = width;
++        canvas->height = height;
++    }
++    if (canvas->bridge) g_object_unref(canvas->bridge);
++    canvas->bridge = GDK_GL_CONTEXT(g_object_ref(m_gtkGL->bridge));
++    canvas->current = m_gtkGL->context;
++    return true;
++}
++
++wxGLCanvasGTK4::wxGLCanvasGTK4() : m_gtkGL(NULL) {}
++wxGLCanvasGTK4::~wxGLCanvasGTK4()
++{
++    if (!m_gtkGL) return;
++    if (m_wxwindow) g_signal_handlers_disconnect_by_data(m_wxwindow, this);
++    if (m_gtkGL->frame) g_object_unref(m_gtkGL->frame);
++    if (m_gtkGL->surface != EGL_NO_SURFACE)
++    {
++        if (eglGetCurrentSurface(EGL_DRAW) == m_gtkGL->surface ||
++            eglGetCurrentSurface(EGL_READ) == m_gtkGL->surface)
++        {
++            gdk_gl_context_clear_current();
++            eglMakeCurrent(m_gtkGL->egl, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
++        }
++        eglDestroySurface(m_gtkGL->egl, m_gtkGL->surface);
++    }
++    if (m_gtkGL->bridge) g_object_unref(m_gtkGL->bridge);
++    if (m_gtkGL->display) g_object_unref(m_gtkGL->display);
++    delete m_gtkGL;
++}
++
++bool wxGLCanvasGTK4::InitVisual(const wxGLAttributes& attrs)
++{
++    if (m_gtkGL) return wxGTKGLFailure("canvas visual already initialized");
++    m_gtkGL = new wxGTKGLCanvasData;
++    if (!wxGTKGLConfig(m_gtkGL, attrs)) return false;
++    m_gtkGL->surface = wxGTKGLPbuffer(m_gtkGL, 1, 1);
++    if (m_gtkGL->surface == EGL_NO_SURFACE)
++        return wxGTKGLFailure("the selected EGL configuration cannot allocate the requested pbuffer");
++    m_gtkGL->width = m_gtkGL->height = 1;
++    return true;
++}
++
++bool wxGLCanvasGTK4::SwapBuffers()
++{
++    if (!m_gtkGL || !m_gtkGL->bridge || m_gtkGL->current == EGL_NO_CONTEXT ||
++        eglGetCurrentContext() != m_gtkGL->current ||
++        eglGetCurrentDisplay() != m_gtkGL->egl ||
++        eglGetCurrentSurface(EGL_DRAW) != m_gtkGL->surface ||
++        eglGetCurrentSurface(EGL_READ) != m_gtkGL->surface)
++        return wxGTKGLFailure("SwapBuffers requires a context current on this canvas");
++
++    GLint readFbo = 0, texture = 0, readBuffer = 0, unpackBuffer = 0;
++    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFbo);
++    glGetIntegerv(GL_TEXTURE_BINDING_2D, &texture);
++    glGetIntegerv(GL_PIXEL_UNPACK_BUFFER_BINDING, &unpackBuffer);
++    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
++    glGetIntegerv(GL_READ_BUFFER, &readBuffer);
++    GLboolean doubleBuffered = GL_TRUE;
++    if (epoxy_is_desktop_gl()) glGetBooleanv(GL_DOUBLEBUFFER, &doubleBuffered);
++    glReadBuffer(doubleBuffered ? GL_BACK : GL_FRONT);
++
++    wxGTKGLFrame* frame = new wxGTKGLFrame;
++    frame->bridge = GDK_GL_CONTEXT(g_object_ref(m_gtkGL->bridge));
++    frame->sync = NULL;
++    glGenTextures(1, &frame->texture);
++    glBindTexture(GL_TEXTURE_2D, frame->texture);
++    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
++    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
++    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
++    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
++    // Allocate without interpreting NULL as an offset into a caller's PBO.
++    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
++    glTexImage2D(GL_TEXTURE_2D, 0, m_gtkGL->textureFormat,
++                m_gtkGL->width, m_gtkGL->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
++    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, unpackBuffer);
++    if (epoxy_is_desktop_gl())
++    {
++        // A blit bypasses legacy pixel-transfer state and resolves MSAA.
++        // Disable sRGB conversion to retain the stored display-encoded values;
++        // the ordinary RGBA texture is explicitly tagged sRGB below. Using an
++        // sRGB texture here would make GL sampling decode it a second time.
++        GLint drawFbo = 0;
++        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
++        const GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
++        const GLboolean srgb = glIsEnabled(GL_FRAMEBUFFER_SRGB);
++        glDisable(GL_SCISSOR_TEST);
++        glDisable(GL_FRAMEBUFFER_SRGB);
++        GLuint copyFbo = 0;
++        glGenFramebuffers(1, &copyFbo);
++        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, copyFbo);
++        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
++                               GL_TEXTURE_2D, frame->texture, 0);
++        glBlitFramebuffer(0, 0, m_gtkGL->width, m_gtkGL->height,
++                          0, 0, m_gtkGL->width, m_gtkGL->height,
++                          GL_COLOR_BUFFER_BIT, GL_NEAREST);
++        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, drawFbo);
++        glDeleteFramebuffers(1, &copyFbo);
++        if (srgb) glEnable(GL_FRAMEBUFFER_SRGB);
++        if (scissor) glEnable(GL_SCISSOR_TEST);
++    }
++    else
++    {
++        // GLES has no legacy pixel-transfer state. CopyTexSubImage copies
++        // stored channel values without sRGB conversion; unlike CopyTexImage,
++        // it does not require matching source/destination colour encodings.
++        glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0,
++                           m_gtkGL->width, m_gtkGL->height);
++    }
++    const GLenum error = glGetError();
++    glBindTexture(GL_TEXTURE_2D, texture);
++    glReadBuffer(readBuffer);
++    glBindFramebuffer(GL_READ_FRAMEBUFFER, readFbo);
++    if (error != GL_NO_ERROR)
++    {
++        wxGTKGLReleaseFrame(frame);
++        wxLogError("GTK4 GLCanvas: GPU frame copy failed (GL error 0x%x)", error);
++        return false;
++    }
++    frame->sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
++    if (!frame->sync)
++    {
++        wxGTKGLReleaseFrame(frame);
++        wxLogError("GTK4 GLCanvas: unable to synchronize the completed GL frame");
++        return false;
++    }
++    glFlush();
++    GdkGLTextureBuilder* builder = gdk_gl_texture_builder_new();
++    gdk_gl_texture_builder_set_context(builder, frame->bridge);
++    gdk_gl_texture_builder_set_id(builder, frame->texture);
++    gdk_gl_texture_builder_set_width(builder, m_gtkGL->width);
++    gdk_gl_texture_builder_set_height(builder, m_gtkGL->height);
++    gdk_gl_texture_builder_set_format(builder, m_gtkGL->memoryFormat);
++    gdk_gl_texture_builder_set_color_state(builder, gdk_color_state_get_srgb());
++    gdk_gl_texture_builder_set_sync(builder, frame->sync);
++    GdkTexture* image = gdk_gl_texture_builder_build(builder, wxGTKGLReleaseFrame, frame);
++    g_object_unref(builder);
++    if (!image) { wxGTKGLReleaseFrame(frame); return false; }
++    if (m_gtkGL->frame) g_object_unref(m_gtkGL->frame);
++    m_gtkGL->frame = image;
++    // Pbuffers have no window-system front buffer. Publishing this immutable
++    // GPU image is the actual swap; EGL's pbuffer SwapBuffers does nothing.
++    if (!WX_PIZZA(m_wxwindow)->m_inSnapshot) gtk_widget_queue_draw(m_wxwindow);
++    return true;
++}
++
++void wxGLCanvasGTK4::GTKSnapshot(GtkSnapshot* snapshot)
++{
++    if (!m_gtkGL || !m_gtkGL->frame) return;
++    const float width = gtk_widget_get_width(m_wxwindow);
++    const float height = gtk_widget_get_height(m_wxwindow);
++    graphene_point_t origin;
++    graphene_point_init(&origin, 0, height);
++    graphene_rect_t bounds;
++    graphene_rect_init(&bounds, 0, 0, width, height);
++    gtk_snapshot_save(snapshot);
++    gtk_snapshot_translate(snapshot, &origin);
++    gtk_snapshot_scale(snapshot, 1, -1);
++    gtk_snapshot_append_texture(snapshot, m_gtkGL->frame, &bounds);
++    gtk_snapshot_restore(snapshot);
++}
++
++bool wxGLCanvasBase::IsDisplaySupported(const wxGLAttributes& attrs)
++{
++    wxGLCanvasGTK4 probe;
++    if (!probe.InitVisual(attrs)) return false;
++    // IsDisplaySupported tests actual pbuffer allocation, including colorspace.
++    // Destruction releases the bridge and the selected display reference.
++    return true;
++}
++bool wxGLCanvasBase::IsDisplaySupported(const int* attrs)
++{
++    wxGLAttributes display;
++    return ParseAttribList(attrs, display) && IsDisplaySupported(display);
++}
++bool wxGLCanvasBase::IsExtensionSupported(const char* extension)
++{
++    EGLDisplay display = eglGetCurrentDisplay();
++    return display != EGL_NO_DISPLAY && IsExtensionInList(eglQueryString(display, EGL_EXTENSIONS), extension);
++}
++bool wxGLApp::InitGLVisual(const int* attrs) { return wxGLCanvas::IsDisplaySupported(attrs); }
++
++wxGLCanvas::wxGLCanvas(wxWindow* parent, const wxGLAttributes& attrs, wxWindowID id,
++    const wxPoint& pos, const wxSize& size, long style, const wxString& name, const wxPalette& palette)
++#if WXWIN_COMPATIBILITY_2_8
++    : m_sharedContext(NULL), m_sharedContextOf(NULL), m_createImplicitContext(false)
++#endif
++{ Create(parent, attrs, id, pos, size, style, name, palette); }
++wxGLCanvas::wxGLCanvas(wxWindow* parent, wxWindowID id, const int* attrs,
++    const wxPoint& pos, const wxSize& size, long style, const wxString& name, const wxPalette& palette)
++#if WXWIN_COMPATIBILITY_2_8
++    : m_sharedContext(NULL), m_sharedContextOf(NULL), m_createImplicitContext(false)
++#endif
++{ Create(parent, id, pos, size, style, name, attrs, palette); }
++
++#if WXWIN_COMPATIBILITY_2_8
++wxGLCanvas::wxGLCanvas(wxWindow* parent, wxWindowID id, const wxPoint& pos,
++    const wxSize& size, long style, const wxString& name, const int* attrs, const wxPalette& palette)
++    : m_sharedContext(NULL), m_sharedContextOf(NULL), m_createImplicitContext(true)
++{ Create(parent, id, pos, size, style, name, attrs, palette); }
++wxGLCanvas::wxGLCanvas(wxWindow* parent, const wxGLContext* shared, wxWindowID id,
++    const wxPoint& pos, const wxSize& size, long style, const wxString& name,
++    const int* attrs, const wxPalette& palette)
++    : m_sharedContext(const_cast<wxGLContext*>(shared)), m_sharedContextOf(NULL), m_createImplicitContext(true)
++{ Create(parent, id, pos, size, style, name, attrs, palette); }
++wxGLCanvas::wxGLCanvas(wxWindow* parent, const wxGLCanvas* shared, wxWindowID id,
++    const wxPoint& pos, const wxSize& size, long style, const wxString& name,
++    const int* attrs, const wxPalette& palette)
++    : m_sharedContext(NULL), m_sharedContextOf(const_cast<wxGLCanvas*>(shared)), m_createImplicitContext(true)
++{ Create(parent, id, pos, size, style, name, attrs, palette); }
++#endif
++
++bool wxGLCanvas::Create(wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size,
++    long style, const wxString& name, const int* attrs, const wxPalette& palette)
++{
++    wxGLAttributes display;
++    return ParseAttribList(attrs, display, &m_GLCTXAttrs) &&
++        Create(parent, display, id, pos, size, style, name, palette);
++}
++bool wxGLCanvas::Create(wxWindow* parent, const wxGLAttributes& attrs, wxWindowID id,
++    const wxPoint& pos, const wxSize& size, long style, const wxString& name, const wxPalette& palette)
++{
++#if wxUSE_PALETTE
++    if (palette.IsOk()) return wxGTKGLFailure("indexed palettes are not supported");
++#else
++    wxUnusedVar(palette);
++#endif
++    m_nativeSizeEvent = true;
++    m_noExpose = false; // use wxWindow's wx-paint callback before wx-snapshot
++    m_backgroundStyle = wxBG_STYLE_PAINT;
++    if (!InitVisual(attrs) || !wxWindow::Create(parent, id, pos, size, style, name)) return false;
++    g_signal_connect(m_wxwindow, "wx-snapshot", G_CALLBACK(wxGTKGLSnapshot), this);
++    return true;
++}
++bool wxGLCanvas::SetBackgroundStyle(wxBackgroundStyle) { return false; }
++void wxGLCanvas::GTKHandleRealized()
++{
++    BaseType::GTKHandleRealized();
++#if WXWIN_COMPATIBILITY_2_8
++    GTKInitImplicitContext();
++#endif
++    SendSizeEvent();
++}
++#if WXWIN_COMPATIBILITY_2_8
++void wxGLCanvas::GTKInitImplicitContext()
++{
++    if (!m_glContext && m_createImplicitContext)
++    {
++        wxGLContext* shared = m_sharedContext;
++        if (!shared && m_sharedContextOf) shared = m_sharedContextOf->m_glContext;
++        m_glContext = new wxGLContext(this, shared);
++    }
++}
++#endif
+--- configure.in.orig
++++ configure.in
+@@ -3943,7 +3943,19 @@
+                         found_gl=1
+                         OPENGL_LIBS="-lGL -lGLU"
+ 
+-                        if test "$WXGTK3" = 1; then
++                        if test "$WXGTK4" = 1; then
++                            if test "$wxUSE_GLCANVAS_EGL" = "no"; then
++                                AC_MSG_ERROR([GTK4 GLCanvas requires EGL; remove --disable-glcanvasegl])
++                            fi
++                            PKG_CHECK_MODULES(EGL, [egl >= 1.5 epoxy],
++                                [
++                                    CPPFLAGS="$CPPFLAGS $EGL_CFLAGS"
++                                    OPENGL_LIBS="$OPENGL_LIBS $EGL_LIBS"
++                                    AC_DEFINE(wxUSE_GLCANVAS_EGL)
++                                ],
++                                [AC_MSG_ERROR([GTK4 GLCanvas requires EGL 1.5 and libepoxy])]
++                            )
++                        elif test "$WXGTK3" = 1; then
+                             if test "$wxUSE_GLCANVAS_EGL" != "no"; then
+                                 PKG_CHECK_MODULES(EGL, [egl >= 1.4],
+                                     [
+--- configure.orig
++++ configure
+@@ -33308,7 +33308,90 @@
+                         found_gl=1
+                         OPENGL_LIBS="-lGL -lGLU"
+ 
+-                        if test "$WXGTK3" = 1; then
++                        if test "$WXGTK4" = 1; then
++                            if test "$wxUSE_GLCANVAS_EGL" = "no"; then
++                                as_fn_error $? "GTK4 GLCanvas requires EGL; remove --disable-glcanvasegl" "$LINENO" 5
++                            fi
++pkg_failed=no
++{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for EGL" >&5
++$as_echo_n "checking for EGL... " >&6; }
++
++if test -n "$PKG_CONFIG"; then
++    if test -n "$EGL_CFLAGS"; then
++        pkg_cv_EGL_CFLAGS="$EGL_CFLAGS"
++    else
++        if test -n "$PKG_CONFIG" && \
++    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"egl >= 1.5 epoxy\""; } >&5
++  ($PKG_CONFIG --exists --print-errors "egl >= 1.5 epoxy") 2>&5
++  ac_status=$?
++  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
++  test $ac_status = 0; }; then
++  pkg_cv_EGL_CFLAGS=`$PKG_CONFIG --cflags "egl >= 1.5 epoxy" 2>/dev/null`
++else
++  pkg_failed=yes
++fi
++    fi
++else
++	pkg_failed=untried
++fi
++if test -n "$PKG_CONFIG"; then
++    if test -n "$EGL_LIBS"; then
++        pkg_cv_EGL_LIBS="$EGL_LIBS"
++    else
++        if test -n "$PKG_CONFIG" && \
++    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"egl >= 1.5 epoxy\""; } >&5
++  ($PKG_CONFIG --exists --print-errors "egl >= 1.5 epoxy") 2>&5
++  ac_status=$?
++  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
++  test $ac_status = 0; }; then
++  pkg_cv_EGL_LIBS=`$PKG_CONFIG --libs "egl >= 1.5 epoxy" 2>/dev/null`
++else
++  pkg_failed=yes
++fi
++    fi
++else
++	pkg_failed=untried
++fi
++
++
++
++if test $pkg_failed = yes; then
++
++if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
++        _pkg_short_errors_supported=yes
++else
++        _pkg_short_errors_supported=no
++fi
++        if test $_pkg_short_errors_supported = yes; then
++	        EGL_PKG_ERRORS=`$PKG_CONFIG --short-errors --errors-to-stdout --print-errors "egl >= 1.5 epoxy"`
++        else
++	        EGL_PKG_ERRORS=`$PKG_CONFIG --errors-to-stdout --print-errors "egl >= 1.5 epoxy"`
++        fi
++	# Put the nasty error message in config.log where it belongs
++	echo "$EGL_PKG_ERRORS" >&5
++
++
++        as_fn_error $? "GTK4 GLCanvas requires EGL 1.5 and libepoxy" "$LINENO" 5
++
++
++elif test $pkg_failed = untried; then
++
++        as_fn_error $? "GTK4 GLCanvas requires EGL 1.5 and libepoxy" "$LINENO" 5
++
++
++else
++	EGL_CFLAGS=$pkg_cv_EGL_CFLAGS
++	EGL_LIBS=$pkg_cv_EGL_LIBS
++        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++$as_echo "yes" >&6; }
++
++        CPPFLAGS="$CPPFLAGS $EGL_CFLAGS"
++        OPENGL_LIBS="$OPENGL_LIBS $EGL_LIBS"
++                                        $as_echo "#define wxUSE_GLCANVAS_EGL 1" >>confdefs.h
++
++
++fi
++                        elif test "$WXGTK3" = 1; then
+                             if test "$wxUSE_GLCANVAS_EGL" != "no"; then
+ 
+ pkg_failed=no
+--- build/cmake/init.cmake.orig
++++ build/cmake/init.cmake
+@@ -451,7 +451,17 @@
+ 
+     # extra dependencies
+     if(wxUSE_OPENGL)
+-        if(WXOSX_IPHONE)
++        if(WXGTK4)
++            if(NOT wxUSE_GLCANVAS_EGL)
++                message(FATAL_ERROR "GTK4 GLCanvas requires EGL")
++            endif()
++            find_package(PkgConfig REQUIRED)
++            pkg_check_modules(GTK4_GL REQUIRED egl>=1.5 epoxy gl glu)
++            set(OPENGL_FOUND TRUE)
++            set(OPENGL_INCLUDE_DIR ${GTK4_GL_INCLUDE_DIRS})
++            set(OPENGL_LIBRARIES ${GTK4_GL_LINK_LIBRARIES})
++            set(OpenGL_EGL_FOUND TRUE)
++        elseif(WXOSX_IPHONE)
+             set(OPENGL_FOUND TRUE)
+             set(OPENGL_INCLUDE_DIR "")
+             set(OPENGL_LIBRARIES "-framework OpenGLES" "-framework QuartzCore" "-framework GLKit")
+@@ -487,7 +497,7 @@
+             message(WARNING "OpenGL not found, wxGLCanvas won't be available")
+             wx_option_force_value(wxUSE_OPENGL OFF)
+         endif()
+-        if(UNIX AND (NOT WXGTK3 OR NOT OpenGL_EGL_FOUND))
++        if(UNIX AND NOT WXGTK4 AND (NOT WXGTK3 OR NOT OpenGL_EGL_FOUND))
+             wx_option_force_value(wxUSE_GLCANVAS_EGL OFF)
+         endif()
+     endif()
