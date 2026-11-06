@@ -161,6 +161,13 @@ show:
                 'The generator package does not share the Mesa source patch set and archive digest')
         provider_path = RECIPE.parent / 'mesa-generators'
         provider_make = (provider_path / 'Makefile').read_text()
+        provider_make_lines = provider_make.splitlines()
+        prefs_index = provider_make_lines.index('.include "../../mk/bsd.prefs.mk"')
+        bison_index = provider_make_lines.index('TOOLS_PLATFORM.bison= ${TOOLBASE}/bin/bison')
+        flex_index = provider_make_lines.index('TOOLS_PLATFORM.flex= ${TOOLBASE}/bin/flex')
+        clang_index = provider_make_lines.index('.include "../../lang/clang/buildlink3.mk"')
+        require(prefs_index < bison_index < clang_index and prefs_index < flex_index < clang_index,
+                'The provider must initialize TOOLBASE before selecting host Bison/Flex paths')
         provider_lines = []
         for line in provider_make.splitlines():
             if line.startswith('.include '):
@@ -173,6 +180,8 @@ show:
         provider_query.write_text('PKGVERSION_NOREV= ${PKGNAME:C/^mesa-generators-//}\n' +
                                   'TOOL_PYTHONBIN= /selected/python3.15\n' +
                                   'TOOLBASE= /selected/host-prefix\n' +
+                                  'TOOLS_PLATFORM.bison?= /selected/host-prefix/bin/bison\n' +
+                                  'TOOLS_PLATFORM.flex?= /selected/host-prefix/bin/flex\n' +
                                   '\n'.join(provider_lines) + '''
 show:
 	@printf '%s\\n' ${PKGNAME:Q}

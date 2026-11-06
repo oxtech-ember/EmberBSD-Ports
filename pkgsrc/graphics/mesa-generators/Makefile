@@ -17,6 +17,7 @@ MESON_REQD+= 1.12.1
 USE_TOOLS+= bison flex pkg-config cmake
 TOOL_DEPENDS+= bison-[0-9]*:../../devel/bison
 TOOL_DEPENDS+= flex>=2.5.4a:../../devel/flex
+.include "../../mk/bsd.prefs.mk"
 TOOLS_PLATFORM.bison= ${TOOLBASE}/bin/bison
 TOOLS_PLATFORM.flex= ${TOOLBASE}/bin/flex
 TOOL_DEPENDS+= cmake>=4.4.4:../../devel/cmake
