@@ -1,21 +1,23 @@
 $NetBSD$
 
-GTK4 window integration (work in progress; full backend validation pending).
-Use GtkWidget allocation/snapshot/controllers and opaque GDK events.
-Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
+GTK4 window integration (work in progress).
+Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 
 --- include/wx/gtk/private/win_gtk.h.orig
 +++ include/wx/gtk/private/win_gtk.h
-@@ -27,7 +27,21 @@
+@@ -27,7 +27,24 @@
      void size_allocate_child(
          GtkWidget* child, int x, int y, int width, int height, int parent_width = -1);
  
 +#ifdef __WXGTK4__
 +    void set_virtual_size(int width, int height);
++    void set_focus_order(GList* widgets);
 +    // GTK4 has no child GdkWindows. wxWidgets owns child allocations and
 +    // paints its client area during the widget's snapshot.
 +    GtkWidget m_widget;
 +    bool m_inSnapshot;
++    GList* m_focusOrder;
++    GskRenderNode* m_snapshotCache;
 +    GtkAdjustment* m_hadjustment;
 +    GtkAdjustment* m_vadjustment;
 +    GtkScrollablePolicy m_hpolicy;
@@ -49,7 +51,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +#endif // !__WXGTK4__
 --- /dev/null
 +++ src/gtk/win_gtk4.inc
-@@ -0,0 +1,371 @@
+@@ -0,0 +1,459 @@
 +///////////////////////////////////////////////////////////////////////////////
 +// Name:        src/gtk/win_gtk4.inc
 +// Purpose:     GTK4 client widget: allocation, scrolling and snapshot painting
@@ -67,6 +69,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +    GtkWidget* widget;
 +    int x, y, width, height;
 +    gulong parentHandler;
++    GskRenderNode* snapshot;
 +};
 +
 +struct wxPizzaClass
@@ -78,6 +81,16 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +static guint pizza_paint_signal;
 +static guint pizza_allocate_signal;
 +static guint pizza_snapshot_signal;
++
++static wxPizzaChild* pizza_find_child(wxPizza* pizza, GtkWidget* widget)
++{
++    for (GList* p = pizza->m_children; p; p = p->next)
++    {
++        wxPizzaChild* child = static_cast<wxPizzaChild*>(p->data);
++        if (child->widget == widget) return child;
++    }
++    return NULL;
++}
 +
 +enum
 +{
@@ -102,7 +115,9 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +        if (child->widget == GTK_WIDGET(object))
 +        {
 +            pizza->m_children = g_list_delete_link(pizza->m_children, p);
++            pizza->m_focusOrder = g_list_remove(pizza->m_focusOrder, child->widget);
 +            g_signal_handler_disconnect(object, child->parentHandler);
++            g_clear_pointer(&child->snapshot, gsk_render_node_unref);
 +            delete child;
 +            gtk_widget_queue_resize(GTK_WIDGET(pizza));
 +            return;
@@ -120,10 +135,13 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +        pizza->m_children = g_list_delete_link(pizza->m_children, head);
 +        g_signal_handler_disconnect(child->widget, child->parentHandler);
 +        gtk_widget_unparent(child->widget);
++        g_clear_pointer(&child->snapshot, gsk_render_node_unref);
 +        delete child;
 +    }
 +    g_clear_object(&pizza->m_hadjustment);
 +    g_clear_object(&pizza->m_vadjustment);
++    g_clear_pointer(&pizza->m_focusOrder, g_list_free);
++    g_clear_pointer(&pizza->m_snapshotCache, gsk_render_node_unref);
 +    G_OBJECT_CLASS(parent_class)->dispose(object);
 +}
 +
@@ -139,6 +157,34 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +    *natural = orientation == GTK_ORIENTATION_HORIZONTAL
 +        ? pizza->m_virtual_width : pizza->m_virtual_height;
 +    *minimumBaseline = *naturalBaseline = -1;
++}
++
++static gboolean pizza_focus(GtkWidget* widget, GtkDirectionType direction)
++{
++    wxPizza* pizza = WX_PIZZA(widget);
++    if (!pizza->m_focusOrder ||
++        (direction != GTK_DIR_TAB_FORWARD && direction != GTK_DIR_TAB_BACKWARD))
++        return parent_class->focus(widget, direction);
++    const bool forward = direction == GTK_DIR_TAB_FORWARD;
++    GtkWidget* focused = gtk_widget_get_focus_child(widget);
++    GList* item = g_list_find(pizza->m_focusOrder, focused);
++    if (!item)
++        item = forward ? pizza->m_focusOrder : g_list_last(pizza->m_focusOrder);
++    // Hold references: moving focus can invoke application handlers that
++    // destroy or reorder the next widget in the tab chain.
++    GPtrArray* candidates = g_ptr_array_new_with_free_func(g_object_unref);
++    for (; item; item = forward ? item->next : item->prev)
++        g_ptr_array_add(candidates, g_object_ref(item->data));
++    bool moved = false;
++    for (guint i = 0; i < candidates->len && !moved; ++i)
++    {
++        GtkWidget* child = GTK_WIDGET(g_ptr_array_index(candidates, i));
++        if (gtk_widget_get_parent(child) == widget &&
++            gtk_widget_get_visible(child) && gtk_widget_is_sensitive(child))
++            moved = gtk_widget_child_focus(child, direction);
++    }
++    g_ptr_array_unref(candidates);
++    return moved;
 +}
 +
 +static void pizza_size_allocate(GtkWidget* widget, int width, int height, int)
@@ -172,7 +218,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +    g_ptr_array_unref(children);
 +}
 +
-+static void pizza_snapshot(GtkWidget* widget, GtkSnapshot* snapshot)
++static void pizza_snapshot_contents(GtkWidget* widget, GtkSnapshot* snapshot)
 +{
 +    wxPizza* pizza = WX_PIZZA(widget);
 +    struct SnapshotScope
@@ -205,11 +251,48 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +    for (guint i = 0; i < children->len; ++i)
 +    {
 +        GtkWidget* child = GTK_WIDGET(g_ptr_array_index(children, i));
-+        if (gtk_widget_get_parent(child) == widget)
-+            gtk_widget_snapshot_child(widget, child, snapshot);
++        if (gtk_widget_get_parent(child) != widget || !gtk_widget_get_visible(child))
++            continue;
++        wxPizzaChild* record = pizza_find_child(pizza, child);
++        if (record && record->snapshot && g_object_get_data(G_OBJECT(child), "wx-frozen"))
++            gtk_snapshot_append_node(snapshot, record->snapshot);
++        else
++        {
++            GtkSnapshot* childSnapshot = gtk_snapshot_new();
++            gtk_widget_snapshot_child(widget, child, childSnapshot);
++            GskRenderNode* node = gtk_snapshot_free_to_node(childSnapshot);
++            // A paint handler may have removed the child and its record.
++            record = pizza_find_child(pizza, child);
++            if (record)
++            {
++                g_clear_pointer(&record->snapshot, gsk_render_node_unref);
++                record->snapshot = node;
++                if (node) gtk_snapshot_append_node(snapshot, node);
++            }
++            else if (node)
++            {
++                gtk_snapshot_append_node(snapshot, node);
++                gsk_render_node_unref(node);
++            }
++        }
 +    }
 +    g_ptr_array_unref(children);
 +    gtk_snapshot_pop(snapshot);
++}
++
++static void pizza_snapshot(GtkWidget* widget, GtkSnapshot* snapshot)
++{
++    wxPizza* pizza = WX_PIZZA(widget);
++    if (!pizza->m_snapshotCache || !g_object_get_data(G_OBJECT(widget), "wx-frozen"))
++    {
++        GtkSnapshot* current = gtk_snapshot_new();
++        pizza_snapshot_contents(widget, current);
++        GskRenderNode* node = gtk_snapshot_free_to_node(current);
++        g_clear_pointer(&pizza->m_snapshotCache, gsk_render_node_unref);
++        pizza->m_snapshotCache = node;
++    }
++    if (pizza->m_snapshotCache)
++        gtk_snapshot_append_node(snapshot, pizza->m_snapshotCache);
 +}
 +
 +static void pizza_get_property(GObject* object, guint id, GValue* value,
@@ -271,6 +354,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +    widgetClass->measure = pizza_measure;
 +    widgetClass->size_allocate = pizza_size_allocate;
 +    widgetClass->snapshot = pizza_snapshot;
++    widgetClass->focus = pizza_focus;
 +    gtk_widget_class_set_css_name(widgetClass, "wxwindow");
 +
 +    GObjectClass* objectClass = G_OBJECT_CLASS(klass);
@@ -335,13 +419,19 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +    return widget;
 +}
 +
++void wxPizza::set_focus_order(GList* widgets)
++{
++    g_list_free(m_focusOrder);
++    m_focusOrder = g_list_copy(widgets);
++}
++
 +void wxPizza::put(GtkWidget* widget, int x, int y, int width, int height)
 +{
 +    // A wx toplevel can have an owner, but cannot become a GTK child.
 +    if (GTK_IS_WINDOW(widget))
 +        return;
 +    g_return_if_fail(gtk_widget_get_parent(widget) == NULL);
-+    wxPizzaChild* child = new wxPizzaChild;
++    wxPizzaChild* child = new wxPizzaChild();
 +    child->widget = widget;
 +    child->x = x;
 +    child->y = y;

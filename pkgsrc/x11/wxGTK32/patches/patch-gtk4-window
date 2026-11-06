@@ -1,12 +1,11 @@
 $NetBSD$
 
-GTK4 window integration (work in progress; full backend validation pending).
-Use GtkWidget allocation/snapshot/controllers and opaque GDK events.
-Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
+GTK4 window integration (work in progress).
+Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 
 --- include/wx/gtk/window.h.orig
 +++ include/wx/gtk/window.h
-@@ -22,7 +22,16 @@
+@@ -22,10 +22,22 @@
      #define WXUNUSED_IN_GTK3(x) x
  #endif
  
@@ -15,6 +14,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +typedef GdkEvent wxGTKKeyEvent;
 +typedef GtkWidget wxGTKScrollBar;
 +typedef struct _GdkFrameClock GdkFrameClock;
++typedef struct _GdkSurface GdkSurface;
 +#else
  typedef struct _GdkEventKey GdkEventKey;
 +typedef GdkEventKey wxGTKKeyEvent;
@@ -22,8 +22,49 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +#endif
  typedef struct _GtkIMContext GtkIMContext;
  
++#ifndef __WXGTK4__
  WX_DEFINE_EXPORTED_ARRAY_PTR(GdkWindow *, wxArrayGdkWindows);
-@@ -263,7 +272,8 @@
++#endif
+ 
+ extern "C"
+ {
+@@ -174,7 +186,9 @@
+     // Called from several event handlers, if it returns true or false, the
+     // same value should be immediately returned by the handler without doing
+     // anything else. If it returns -1, the handler should continue as usual
++#ifndef __WXGTK4__
+     int GTKCallbackCommonPrologue(struct _GdkEventAny *event) const;
++#endif
+ 
+     // Simplified form of GTKCallbackCommonPrologue() which can be used from
+     // GTK callbacks without return value to check if the event should be
+@@ -197,7 +211,12 @@
+     void GTKReleaseMouseAndNotify();
+     static void GTKHandleCaptureLost();
+ 
++#ifdef __WXGTK4__
++    // A GTK4 native surface belongs to a toplevel, never to each wx child.
++    GdkSurface* GTKGetSurface() const;
++#else
+     GdkWindow* GTKGetDrawingWindow() const;
++#endif
+ 
+     bool GTKHandleFocusIn();
+     virtual bool GTKHandleFocusOut();
+@@ -238,10 +257,12 @@
+     //
+     // This is not pure virtual for backwards compatibility but almost
+     // certainly must be overridden in any wxControl-derived class!
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const;
+ 
+     // Check if the given window makes part of this widget
+     bool GTKIsOwnWindow(GdkWindow *window) const;
++#endif
+ 
+ public:
+     // Returns the default context which usually is anti-aliased
+@@ -263,7 +284,8 @@
      virtual bool GTKIsTransparentForMouse() const { return false; }
  
      // Common scroll event handling code for wxWindow and wxScrollBar
@@ -33,7 +74,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
      // position and size of the window
      int                  m_x, m_y;
-@@ -306,13 +316,13 @@
+@@ -306,13 +328,13 @@
  
      // Pointer to the event being currently processed by the IME or NULL if not
      // inside key handling.
@@ -49,7 +90,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
      // This method must be called from the derived classes "insert-text" signal
      // handlers to check if the text is not being inserted by the IM and, if
-@@ -331,7 +341,7 @@
+@@ -331,7 +353,7 @@
      enum ScrollDir { ScrollDir_Horz, ScrollDir_Vert, ScrollDir_Max };
  
      // horizontal/vertical scroll bar
@@ -58,7 +99,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
      // horizontal/vertical scroll position
      double m_scrollPos[ScrollDir_Max];
-@@ -350,7 +360,7 @@
+@@ -350,7 +372,7 @@
      }
  
      // find the direction of the given scrollbar (must be one of ours)
@@ -67,7 +108,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
      void GTKUpdateCursor(
          bool isBusyOrGlobalCursor = false,
-@@ -371,6 +381,9 @@
+@@ -371,6 +393,9 @@
      wxRegion             m_nativeUpdateRegion;  // not transformed for RTL
  
  protected:
@@ -77,6 +118,17 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      // implement the base class pure virtuals
      virtual void DoGetTextExtent(const wxString& string,
                                   int *x, int *y,
+@@ -458,8 +483,10 @@
+     void ConstrainSize();
+ 
+ #ifdef __WXGTK3__
++#ifndef __WXGTK4__
+     static GdkWindow* GTKFindWindow(GtkWidget* widget);
+     static void GTKFindWindow(GtkWidget* widget, wxArrayGdkWindows& windows);
++#endif
+ 
+     bool m_needSizeEvent;
+ #endif
 --- include/wx/gtk/evtloop.h.orig
 +++ include/wx/gtk/evtloop.h
 @@ -14,7 +14,11 @@
@@ -102,17 +154,135 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  #include "wx/sysopt.h"
  #ifdef __WXGTK3__
      #include "wx/gtk/dc.h"
-@@ -44,6 +45,9 @@
+@@ -44,12 +45,20 @@
  #include "wx/gtk/private/gtk3-compat.h"
  #include "wx/gtk/private/event.h"
  #include "wx/gtk/private/win_gtk.h"
 +#ifdef __WXGTK4__
 +#include "wx/gtk/private/scrollbar4.h"
++#include "wx/gtk/private/surface4.h"
 +#endif
  #include "wx/gtk/private/backend.h"
  #include "wx/private/textmeasure.h"
  using namespace wxGTKImpl;
-@@ -534,7 +538,12 @@
+ 
+ #ifdef GDK_WINDOWING_X11
++#ifdef __WXGTK4__
++#include <gdk/x11/gdkx.h>
++#else
+ #include <gdk/gdkx.h>
++#endif
+ #include "wx/x11/private/wrapxkb.h"
+ #else
+ typedef guint KeySym;
+@@ -430,54 +439,52 @@
+ // global top level GtkWidget/GdkWindow
+ //-----------------------------------------------------------------------------
+ 
+-static bool wxGetTopLevel(GtkWidget** widget, GdkWindow** window)
+-{
+-    wxWindowList::const_iterator i = wxTopLevelWindows.begin();
+-    for (; i != wxTopLevelWindows.end(); ++i)
+-    {
+-        const wxWindow* win = *i;
+-        if (win->m_widget)
+-        {
+-            GdkWindow* gdkwin = gtk_widget_get_window(win->m_widget);
+-            if (gdkwin)
+-            {
+-                if (widget)
+-                    *widget = win->m_widget;
+-                if (window)
+-                    *window = gdkwin;
+-                return true;
+-            }
+-        }
+-    }
+-    return false;
++static GtkWidget* wxGetTopLevel()
++{
++    for (wxWindowList::const_iterator i = wxTopLevelWindows.begin();
++         i != wxTopLevelWindows.end(); ++i)
++    {
++        GtkWidget* widget = (*i)->m_widget;
++        if (widget && gtk_widget_get_realized(widget))
++            return widget;
++    }
++    return NULL;
+ }
+ 
+ GtkWidget* wxGetTopLevelGTK()
+ {
+-    GtkWidget* widget = NULL;
+-    wxGetTopLevel(&widget, NULL);
+-    return widget;
+-}
+-
++    return wxGetTopLevel();
++}
++
++#ifdef __WXGTK4__
++GdkSurface* wxGetTopLevelSurface()
++{
++    GtkWidget* widget = wxGetTopLevel();
++    GtkNative* native = widget ? gtk_widget_get_native(widget) : NULL;
++    return native ? gtk_native_get_surface(native) : NULL;
++}
++#else
+ GdkWindow* wxGetTopLevelGDK()
+ {
+-    GdkWindow* window;
+-    if (!wxGetTopLevel(NULL, &window))
+-        window = gdk_get_default_root_window();
+-    return window;
+-}
++    GtkWidget* widget = wxGetTopLevel();
++    return widget ? gtk_widget_get_window(widget) : gdk_get_default_root_window();
++}
++#endif
+ 
+ PangoContext* wxGetPangoContext()
+ {
+     PangoContext* context = NULL;
+-    GtkWidget* widget;
+-    if (wxGetTopLevel(&widget, NULL))
++    GtkWidget* widget = wxGetTopLevel();
++    if (widget)
+     {
+         context = gtk_widget_get_pango_context(widget);
+         g_object_ref(context);
+     }
+     else
+     {
++#ifdef __WXGTK4__
++        context = pango_font_map_create_context(pango_cairo_font_map_get_default());
++#else
+         if ( GdkScreen *screen = gdk_screen_get_default() )
+         {
+             context = gdk_pango_context_get_for_screen(screen);
+@@ -496,6 +503,7 @@
+             //else: pango_font_map_create_context() not available
+         }
+ #endif // Pango 1.22+
++#endif // !__WXGTK4__
+     }
+ 
+     return context;
+@@ -505,7 +513,13 @@
+ static bool IsBackend(void* instance, const char* string)
+ {
+     if (instance == NULL)
++#ifdef __WXGTK4__
++        instance = gdk_display_get_default();
++#else
+         instance = wxGetTopLevelGDK();
++#endif
++    if (instance == NULL)
++        return false;
+     const char* name = g_type_name(G_TYPE_FROM_INSTANCE(instance));
+     return strncmp(string, name, strlen(string)) == 0;
+ }
+@@ -534,7 +548,12 @@
  //-----------------------------------------------------------------------------
  
  extern "C" {
@@ -126,7 +296,16 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  static gboolean draw(GtkWidget*, cairo_t* cr, wxWindow* win)
  {
      if (gtk_cairo_should_draw_window(cr, win->GTKGetDrawingWindow()))
-@@ -1044,27 +1053,47 @@
+@@ -553,7 +572,7 @@
+ #endif // !__WXGTK3__
+ }
+ 
+-#ifndef __WXUNIVERSAL__
++#if !defined(__WXUNIVERSAL__) && !defined(__WXGTK4__)
+ //-----------------------------------------------------------------------------
+ // "expose_event"/"draw" from m_wxwindow->parent, for drawing border
+ //-----------------------------------------------------------------------------
+@@ -1044,27 +1063,47 @@
  }
  #endif // wxDEBUG_LEVEL
  
@@ -182,7 +361,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
      // Normally we take the state of modifiers directly from the low level GDK
      // event but unfortunately GDK uses a different convention from MSW for the
-@@ -1082,8 +1111,8 @@
+@@ -1082,8 +1121,8 @@
      // produced events and it seems better to keep that class code the same
      // among all platforms and fix the discrepancy here instead of adding
      // wxGTK-specific code to wxUIActionSimulator.
@@ -193,7 +372,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      {
          case GDK_KEY_Shift_L:
          case GDK_KEY_Shift_R:
-@@ -1108,8 +1137,8 @@
+@@ -1108,8 +1147,8 @@
              break;
      }
  
@@ -204,7 +383,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
      event.m_isRepeat = false; // Detecting key repeat not implemented.
  
-@@ -1122,9 +1151,9 @@
+@@ -1122,9 +1161,9 @@
  static void
  wxTranslateGTKKeyEventToWx(wxKeyEvent& event,
                             wxWindowGTK *win,
@@ -217,7 +396,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
      wxString extraTraceInfo;
  
-@@ -1166,7 +1195,7 @@
+@@ -1166,7 +1205,7 @@
  #ifdef wxHAS_XKB
              char key_code_str[64];
              xkb_state_key_get_utf8(gs_xkbData.GetState(),
@@ -226,7 +405,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
                                     key_code_str,
                                     sizeof(key_code_str));
              if ( strlen(key_code_str) == 1 )
-@@ -1288,13 +1317,15 @@
+@@ -1288,13 +1327,15 @@
  extern "C" {
  static gboolean
  gtk_window_key_press_callback( GtkWidget *WXUNUSED(widget),
@@ -244,7 +423,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
      wxKeyEvent event( wxEVT_KEY_DOWN );
      bool ret = false;
-@@ -1367,7 +1398,7 @@
+@@ -1367,7 +1408,7 @@
      // from it below.
      while ( !ret )
      {
@@ -253,7 +432,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
          wxKeyEvent eventChar(wxEVT_CHAR, event);
  
-@@ -1448,7 +1479,7 @@
+@@ -1448,7 +1489,7 @@
  }
  }
  
@@ -262,7 +441,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  {
      return m_imContext ? gtk_im_context_filter_keypress(m_imContext, event)
                         : FALSE;
-@@ -1525,13 +1556,15 @@
+@@ -1525,13 +1566,15 @@
  extern "C" {
  static gboolean
  gtk_window_key_release_callback( GtkWidget * WXUNUSED(widget),
@@ -280,7 +459,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
      wxKeyEvent event( wxEVT_KEY_UP );
      wxTranslateGTKKeyEventToWx(event, win, gdk_event);
-@@ -1543,6 +1576,10 @@
+@@ -1543,6 +1586,10 @@
  // ============================================================================
  // the mouse events
  // ============================================================================
@@ -291,7 +470,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
  // ----------------------------------------------------------------------------
  // mouse event processing helpers
-@@ -1676,6 +1713,7 @@
+@@ -1676,6 +1723,7 @@
      return g_blockEventsOnDrag;
  }
  
@@ -299,7 +478,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  int wxWindowGTK::GTKCallbackCommonPrologue(GdkEventAny *event) const
  {
      if (g_blockEventsOnDrag)
-@@ -1925,6 +1963,10 @@
+@@ -1925,6 +1973,10 @@
  
  //-----------------------------------------------------------------------------
  
@@ -310,7 +489,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  static void SendSetCursorEvent(wxWindowGTK* win, int x, int y)
  {
      wxPoint posClient(x, y);
-@@ -1960,6 +2002,7 @@
+@@ -1960,6 +2012,7 @@
  // "motion_notify_event"
  //-----------------------------------------------------------------------------
  
@@ -318,7 +497,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  static gboolean
  gtk_window_motion_notify_callback( GtkWidget * WXUNUSED(widget),
                                     GdkEventMotion *gdk_event,
-@@ -2037,14 +2080,14 @@
+@@ -2037,14 +2090,14 @@
  // "scroll_event" (mouse wheel event)
  //-----------------------------------------------------------------------------
  
@@ -336,7 +515,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      }
  }
  
-@@ -2058,8 +2101,8 @@
+@@ -2058,8 +2111,8 @@
      event.m_linesPerAction = 3;
      event.m_columnsPerAction = 3;
  
@@ -347,7 +526,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      const bool is_range_h = (void*)widget == range_h;
      const bool is_range_v = (void*)widget == range_v;
      GdkScrollDirection direction = gdk_event->direction;
-@@ -2129,7 +2172,7 @@
+@@ -2129,7 +2182,7 @@
              return handled;
  #endif // GTK_CHECK_VERSION(3,4,0)
      }
@@ -356,7 +535,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      double step;
      switch (direction)
      {
-@@ -2295,8 +2338,10 @@
+@@ -2295,8 +2348,10 @@
  // "value_changed" from scrollbar
  //-----------------------------------------------------------------------------
  
@@ -368,7 +547,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  {
      wxEventType eventType = win->GTKGetScrollEventType(range);
      if (eventType != wxEVT_NULL)
-@@ -2316,12 +2361,23 @@
+@@ -2316,12 +2371,23 @@
      }
  }
  
@@ -393,7 +572,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  {
      g_blockEventsOnScroll = true;
      win->m_mouseButtonDown = true;
-@@ -2334,7 +2390,7 @@
+@@ -2334,7 +2400,7 @@
  //-----------------------------------------------------------------------------
  
  static void
@@ -402,7 +581,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  {
      if (event->type == GDK_BUTTON_RELEASE)
      {
-@@ -2354,7 +2410,7 @@
+@@ -2354,7 +2420,7 @@
  //-----------------------------------------------------------------------------
  
  static gboolean
@@ -411,7 +590,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  {
      g_blockEventsOnScroll = false;
      win->m_mouseButtonDown = false;
-@@ -2375,6 +2431,8 @@
+@@ -2375,6 +2441,8 @@
  // "realize" from m_widget
  //-----------------------------------------------------------------------------
  
@@ -420,7 +599,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  static void
  gtk_window_realized_callback(GtkWidget* WXUNUSED(widget), wxWindowGTK* win)
  {
-@@ -2390,7 +2448,7 @@
+@@ -2390,7 +2458,7 @@
  {
      int w = alloc->width;
      int h = alloc->height;
@@ -429,7 +608,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      if (wx_is_at_least_gtk3(14))
      {
          // Prevent under-allocated widgets from drawing outside their allocation
-@@ -2419,12 +2477,14 @@
+@@ -2419,12 +2487,14 @@
  #endif
      if (win->m_wxwindow)
      {
@@ -444,7 +623,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      }
      GtkAllocation a;
      gtk_widget_get_allocation(win->m_widget, &a);
-@@ -2453,6 +2513,25 @@
+@@ -2453,11 +2523,30 @@
      }
  }
  
@@ -470,7 +649,13 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  //-----------------------------------------------------------------------------
  // "grab_broken_event"
  //-----------------------------------------------------------------------------
-@@ -2516,9 +2595,26 @@
+ 
+-#if GTK_CHECK_VERSION(2, 8, 0)
++#if GTK_CHECK_VERSION(2, 8, 0) && !defined(__WXGTK4__)
+ static gboolean
+ gtk_window_grab_broken( GtkWidget*,
+                         GdkEventGrabBroken *event,
+@@ -2516,9 +2605,26 @@
  
  } // extern "C"
  
@@ -497,7 +682,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
      if (m_wxwindow)
      {
-@@ -2533,10 +2629,15 @@
+@@ -2533,10 +2639,15 @@
              g_signal_connect(m_imContext,
                  "commit", G_CALLBACK(gtk_wxwindow_commit_cb), this);
          }
@@ -513,7 +698,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      if (m_backgroundStyle == wxBG_STYLE_TRANSPARENT)
      {
  #if wxGTK_HAS_COMPOSITING_SUPPORT
-@@ -2554,6 +2655,7 @@
+@@ -2554,6 +2665,7 @@
              m_backgroundStyle = wxBG_STYLE_ERASE;
          }
      }
@@ -521,7 +706,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
  #ifndef __WXGTK3__
      if (window && (
-@@ -2587,11 +2689,22 @@
+@@ -2587,11 +2699,22 @@
  void wxWindowGTK::GTKHandleUnrealize()
  {
      m_isGtkPositionValid = false;
@@ -544,7 +729,50 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      }
  }
  
-@@ -2709,6 +2822,9 @@
+@@ -2654,10 +2777,18 @@
+ {
+     wxMouseState ms;
+ 
+-    gint x;
+-    gint y;
+-    GdkModifierType mask;
+-
++    gint x = 0;
++    gint y = 0;
++    GdkModifierType mask = GdkModifierType(0);
++
++#ifdef __WXGTK4__
++    wxGetMousePosition(&x, &y);
++    GdkDisplay* display = gdk_display_get_default();
++    GdkSeat* seat = display ? gdk_display_get_default_seat(display) : NULL;
++    GdkDevice* device = seat ? gdk_seat_get_pointer(seat) : NULL;
++    if (device)
++        mask = gdk_device_get_modifier_state(device);
++#else
+     GdkWindow* window = wxGetTopLevelGDK();
+     GdkDisplay* display = gdk_window_get_display(window);
+ #ifdef __WXGTK3__
+@@ -2674,6 +2805,7 @@
+     gdk_device_get_state(device, window, NULL, &mask);
+ #else
+     gdk_display_get_pointer(display, NULL, &x, &y, &mask);
++#endif
+ #endif
+ 
+     ms.SetX(x);
+@@ -2687,7 +2819,11 @@
+ 
+     ms.SetControlDown((mask & GDK_CONTROL_MASK) != 0);
+     ms.SetShiftDown((mask & GDK_SHIFT_MASK) != 0);
++#ifdef __WXGTK4__
++    ms.SetAltDown((mask & GDK_ALT_MASK) != 0);
++#else
+     ms.SetAltDown((mask & GDK_MOD1_MASK) != 0);
++#endif
+     ms.SetMetaDown((mask & GDK_META_MASK) != 0);
+ 
+     return ms;
+@@ -2709,6 +2845,9 @@
      m_widget = NULL;
      m_wxwindow = NULL;
      m_focusWidget = NULL;
@@ -554,7 +782,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
      // position/size
      m_x = 0;
-@@ -2771,7 +2887,11 @@
+@@ -2771,7 +2910,11 @@
      wxASSERT_MSG( HasFlag(wxHSCROLL) || HasFlag(wxVSCROLL),
                    wxS("Must not be called if scrolling is not needed.") );
  
@@ -566,7 +794,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
      GtkScrolledWindow *scrolledWindow = GTK_SCROLLED_WINDOW(m_widget);
  
-@@ -2781,6 +2901,7 @@
+@@ -2781,6 +2924,7 @@
      // direction and notebooks for changing pages -- we decide that if we don't
      // have wxHSCROLL style we can safely sacrifice horizontal scrolling if it
      // means we can get working keyboard navigation in notebooks
@@ -574,7 +802,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      if ( !HasFlag(wxHSCROLL) )
      {
          GtkBindingSet *
-@@ -2791,6 +2912,7 @@
+@@ -2791,6 +2935,7 @@
              gtk_binding_entry_remove(bindings, GDK_KEY_Page_Down, GDK_CONTROL_MASK);
          }
      }
@@ -582,7 +810,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
      // If wx[HV]SCROLL is not given, the corresponding scrollbar is not shown
      // at all. Otherwise it may be shown only on demand (default) or always, if
-@@ -2807,14 +2929,24 @@
+@@ -2807,14 +2952,24 @@
                                  : GTK_POLICY_NEVER;
      gtk_scrolled_window_set_policy( scrolledWindow, horzPolicy, vertPolicy );
  
@@ -607,7 +835,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
          // these handlers block mouse events to any window during scrolling
          // such as motion events and prevent GTK and wxWidgets from fighting
          // over where the slider should be
-@@ -2830,6 +2962,7 @@
+@@ -2830,6 +2985,7 @@
          // these handlers get notified when scrollbar slider moves
          g_signal_connect_after(m_scrollBar[dir], "value_changed",
                       G_CALLBACK(gtk_scrollbar_value_changed), this);
@@ -615,7 +843,16 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      }
  
      gtk_widget_show( view );
-@@ -2891,11 +3024,37 @@
+@@ -2863,7 +3019,7 @@
+ 
+ 
+     m_wxwindow = wxPizza::New(m_windowStyle);
+-#ifndef __WXUNIVERSAL__
++#if !defined(__WXUNIVERSAL__) && !defined(__WXGTK4__)
+     if (HasFlag(wxPizza::BORDER_STYLES))
+     {
+         g_signal_connect(m_wxwindow, "parent_set",
+@@ -2891,11 +3047,37 @@
  void wxWindowGTK::GTKDisconnect(void* instance)
  {
      g_signal_handlers_disconnect_by_data(instance, this);
@@ -653,7 +890,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
      if (gs_currentFocus == this)
          gs_currentFocus = NULL;
-@@ -2926,6 +3085,10 @@
+@@ -2926,6 +3108,10 @@
      }
      if (m_widget && m_widget != m_wxwindow)
          GTKDisconnect(m_widget);
@@ -664,7 +901,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
      // destroy children before destroying this window itself
      DestroyChildren();
-@@ -2953,7 +3116,14 @@
+@@ -2953,7 +3139,14 @@
          // Note that gtk_widget_destroy() does not destroy the widget, it just
          // emits the "destroy" signal. The widget is not actually destroyed
          // until its reference count drops to zero.
@@ -679,7 +916,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
          // Release our reference, should be the last one
          g_object_unref(m_widget);
          m_widget = NULL;
-@@ -3016,14 +3186,18 @@
+@@ -3016,14 +3209,18 @@
          if (!m_noExpose)
          {
              // these get reported to wxWidgets -> wxPaintEvent
@@ -699,7 +936,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
          }
      }
  
-@@ -3034,6 +3208,9 @@
+@@ -3034,6 +3231,9 @@
          if (m_focusWidget == NULL)
              m_focusWidget = m_widget;
  
@@ -709,7 +946,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
          if (m_wxwindow)
          {
              g_signal_connect (m_focusWidget, "focus_in_event",
-@@ -3041,6 +3218,7 @@
+@@ -3041,6 +3241,7 @@
              g_signal_connect (m_focusWidget, "focus_out_event",
                                  G_CALLBACK (gtk_window_focus_out_callback), this);
          }
@@ -717,7 +954,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
          else
          {
              g_signal_connect_after (m_focusWidget, "focus_in_event",
-@@ -3081,8 +3259,13 @@
+@@ -3081,11 +3282,16 @@
  
      if (!IsTopLevel())
      {
@@ -727,11 +964,17 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +#else
          g_signal_connect(m_wxwindow ? m_wxwindow : m_widget, "size_allocate",
              G_CALLBACK(size_allocate), this);
+-    }
+-
+-#if GTK_CHECK_VERSION(2, 8, 0)
 +#endif
-     }
- 
- #if GTK_CHECK_VERSION(2, 8, 0)
-@@ -3938,6 +4121,7 @@
++    }
++
++#if GTK_CHECK_VERSION(2, 8, 0) && !defined(__WXGTK4__)
+     if ( wx_is_at_least_gtk2(8) )
+     {
+         // Make sure we can notify the app when mouse capture is lost
+@@ -3938,6 +4144,7 @@
  
  void wxWindowGTK::ConnectWidget( GtkWidget *widget )
  {
@@ -739,7 +982,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      static bool isSourceAttached;
      if (!isSourceAttached)
      {
-@@ -3953,6 +4137,9 @@
+@@ -3953,6 +4160,9 @@
          g_source_attach(source, NULL);
          g_source_unref(source);
      }
@@ -749,7 +992,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
      // When we're called for the main widget itself (but not when connecting
      // events for some other widget, such as individual radio buttons in
-@@ -3961,11 +4148,19 @@
+@@ -3961,11 +4171,19 @@
      GtkWidget* const focusWidget = widget == m_widget && m_focusWidget
                                      ? m_focusWidget
                                      : widget;
@@ -770,7 +1013,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      g_signal_connect (widget, "button_press_event",
                        G_CALLBACK (gtk_window_button_press_callback), this);
      g_signal_connect (widget, "button_release_event",
-@@ -3974,7 +4169,7 @@
+@@ -3974,7 +4192,7 @@
                        G_CALLBACK (gtk_window_motion_notify_callback), this);
  
      g_signal_connect(widget, "scroll_event", G_CALLBACK(scroll_event), this);
@@ -779,7 +1022,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      if (range)
          g_signal_connect(range, "scroll_event", G_CALLBACK(scroll_event), this);
      range = m_scrollBar[ScrollDir_Vert];
-@@ -3987,6 +4182,7 @@
+@@ -3987,6 +4205,7 @@
                        G_CALLBACK (gtk_window_enter_callback), this);
      g_signal_connect (widget, "leave_notify_event",
                        G_CALLBACK (gtk_window_leave_callback), this);
@@ -787,7 +1030,48 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  }
  
  void wxWindowGTK::DoMoveWindow(int x, int y, int width, int height)
-@@ -4245,7 +4441,7 @@
+@@ -4026,7 +4245,11 @@
+         else
+         {
+             GtkAllocation a = { x, y, width, height };
++#ifdef __WXGTK4__
++            gtk_widget_size_allocate(m_widget, &a, -1);
++#else
+             gtk_widget_size_allocate(m_widget, &a);
++#endif
+         }
+ #if GTK_CHECK_VERSION(3,8,0)
+         if (wx_is_at_least_gtk3(8))
+@@ -4164,7 +4387,11 @@
+         alloc.y = m_y;
+         alloc.width = m_width;
+         alloc.height = m_height;
+-        gtk_widget_size_allocate( m_widget, &alloc );
++#ifdef __WXGTK4__
++        gtk_widget_size_allocate(m_widget, &alloc, -1);
++#else
++        gtk_widget_size_allocate(m_widget, &alloc);
++#endif
+         gtk_widget_show( m_widget );
+         wxShowEvent eventShow(GetId(), true);
+         eventShow.SetEventObject(this);
+@@ -4234,6 +4461,10 @@
+ 
+             // get scrollbar spacing the same way the GTK-private function
+             // _gtk_scrolled_window_get_scrollbar_spacing() does it
++#ifdef __WXGTK4__
++            const int scrollbar_spacing = 0;
++            const bool overlay = gtk_scrolled_window_get_overlay_scrolling(GTK_SCROLLED_WINDOW(m_widget));
++#else
+             int scrollbar_spacing =
+                 GTK_SCROLLED_WINDOW_GET_CLASS(m_widget)->scrollbar_spacing;
+             if (scrollbar_spacing < 0)
+@@ -4241,13 +4472,18 @@
+                 gtk_widget_style_get(
+                     m_widget, "scrollbar-spacing", &scrollbar_spacing, NULL);
+             }
++#endif
+ 
              for ( int i = 0; i < ScrollDir_Max; i++ )
              {
                  // don't account for the scrollbars we don't have
@@ -795,8 +1079,14 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +                wxGTKScrollBar * const range = m_scrollBar[i];
                  if ( !range )
                      continue;
++#ifdef __WXGTK4__
++                if (overlay)
++                    continue;
++#endif
  
-@@ -4265,7 +4461,7 @@
+                 // nor for the ones we have but don't current show
+                 switch ( policy[i] )
+@@ -4265,7 +4501,7 @@
  
                      case GTK_POLICY_AUTOMATIC:
                          // may be shown or not, check
@@ -805,20 +1095,353 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
                          if (gtk_adjustment_get_upper(adj) <= gtk_adjustment_get_page_size(adj))
                              continue;
                  }
-@@ -5014,7 +5210,7 @@
+@@ -4277,7 +4513,12 @@
+                 {
+                     if (height)
+                     {
++#ifdef __WXGTK4__
++                        gtk_widget_measure(widget, GTK_ORIENTATION_VERTICAL, -1,
++                                           NULL, &req.height, NULL, NULL);
++#else
+                         gtk_widget_get_preferred_height(widget, NULL, &req.height);
++#endif
+                         h -= req.height + scrollbar_spacing;
+                     }
+                 }
+@@ -4285,7 +4526,12 @@
+                 {
+                     if (width)
+                     {
++#ifdef __WXGTK4__
++                        gtk_widget_measure(widget, GTK_ORIENTATION_HORIZONTAL, -1,
++                                           NULL, &req.width, NULL, NULL);
++#else
+                         gtk_widget_get_preferred_width(widget, NULL, &req.width);
++#endif
+                         w -= req.width + scrollbar_spacing;
+                     }
+                 }
+@@ -4344,6 +4590,39 @@
+ {
+     wxCHECK_RET( (m_widget != NULL), wxT("invalid window") );
+ 
++#ifdef __WXGTK4__
++    GtkWidget* widget = m_wxwindow ? m_wxwindow : m_widget;
++    double px = x ? *x : 0, py = y ? *y : 0;
++    if (GetLayoutDirection() == wxLayout_RightToLeft)
++        px = GetClientSize().x - px;
++    if (!wxGTKWidgetToScreen(widget, &px, &py))
++    {
++        // Before allocation, use the requested child position. No GdkSurface
++        // exists for an ordinary child widget in GTK4.
++        if (m_parent && !IsTopLevel())
++        {
++            wxPoint pos = GetPosition();
++            if (m_wxwindow)
++            {
++                GtkBorder border;
++                WX_PIZZA(m_wxwindow)->get_border(border);
++                pos.x += border.left;
++                pos.y += border.top;
++            }
++            pos += wxPoint(wxRound(px), wxRound(py));
++            pos = m_parent->ClientToScreen(pos);
++            px = pos.x;
++            py = pos.y;
++        }
++        else
++        {
++            px += m_x;
++            py += m_y;
++        }
++    }
++    if (x) *x = wxRound(px);
++    if (y) *y = wxRound(py);
++#else
+     GtkWidget* widget = m_widget;
+     if (m_wxwindow)
+         widget = m_wxwindow;
+@@ -4412,12 +4691,34 @@
+     }
+ 
+     if (y) *y += org_y;
++#endif
+ }
+ 
+ void wxWindowGTK::DoScreenToClient( int *x, int *y ) const
+ {
+     wxCHECK_RET( (m_widget != NULL), wxT("invalid window") );
+ 
++#ifdef __WXGTK4__
++    GtkWidget* widget = m_wxwindow ? m_wxwindow : m_widget;
++    double px = x ? *x : 0, py = y ? *y : 0;
++    if (!wxGTKScreenToWidget(widget, &px, &py))
++    {
++        // The inverse of the requested-position path used before allocation.
++        int ox = 0, oy = 0;
++        DoClientToScreen(&ox, &oy);
++        px -= ox;
++        py -= oy;
++        if (GetLayoutDirection() == wxLayout_RightToLeft)
++            px = -px;
++        if (x) *x = wxRound(px);
++        if (y) *y = wxRound(py);
++        return;
++    }
++    if (GetLayoutDirection() == wxLayout_RightToLeft)
++        px = GetClientSize().x - px;
++    if (x) *x = wxRound(px);
++    if (y) *y = wxRound(py);
++#else
+     GtkWidget* widget = m_widget;
+     if (m_wxwindow)
+         widget = m_wxwindow;
+@@ -4484,6 +4785,7 @@
+             *x -= org_x;
+     }
+     if (y) *y -= org_y;
++#endif
+ }
+ 
+ bool wxWindowGTK::Show( bool show )
+@@ -4653,7 +4955,12 @@
+ double wxWindowGTK::GetContentScaleFactor() const
+ {
+     double scaleFactor = 1;
+-#if GTK_CHECK_VERSION(3,10,0)
++#ifdef __WXGTK4__
++    if (GdkSurface* surface = GTKGetSurface())
++        scaleFactor = gdk_surface_get_scale(surface);
++    else if (m_widget)
++        scaleFactor = gtk_widget_get_scale_factor(m_widget);
++#elif GTK_CHECK_VERSION(3,10,0)
+     if (m_widget && gtk_check_version(3,10,0) == NULL)
+     {
+         scaleFactor = gtk_widget_get_scale_factor(m_widget);
+@@ -4671,14 +4978,24 @@
+ 
+ void wxWindowGTK::GTKDisableFocusOutEvent()
+ {
++#ifdef __WXGTK4__
++    void* controller = g_object_get_data(G_OBJECT(m_focusWidget), "wx-focus-controller");
++    if (controller) g_signal_handlers_block_by_func(controller, (void*)focus_leave4, this);
++#else
+     g_signal_handlers_block_by_func( m_focusWidget,
+                                 (gpointer) gtk_window_focus_out_callback, this);
++#endif
+ }
+ 
+ void wxWindowGTK::GTKEnableFocusOutEvent()
+ {
++#ifdef __WXGTK4__
++    void* controller = g_object_get_data(G_OBJECT(m_focusWidget), "wx-focus-controller");
++    if (controller) g_signal_handlers_unblock_by_func(controller, (void*)focus_leave4, this);
++#else
+     g_signal_handlers_unblock_by_func( m_focusWidget,
+                                 (gpointer) gtk_window_focus_out_callback, this);
++#endif
+ }
+ 
+ bool wxWindowGTK::GTKHandleFocusIn()
+@@ -4878,8 +5195,13 @@
+ 
+     GtkWidget *widget = m_wxwindow ? m_wxwindow : m_focusWidget;
+ 
+-    if ( GTK_IS_CONTAINER(widget) &&
+-         !gtk_widget_get_can_focus(widget) )
++    if (
++#ifdef __WXGTK4__
++         !gtk_widget_get_focusable(widget)
++#else
++         GTK_IS_CONTAINER(widget) && !gtk_widget_get_can_focus(widget)
++#endif
++       )
+     {
+         wxLogTrace(TRACE_FOCUS,
+                    wxT("Setting focus to a child of %s"),
+@@ -4895,10 +5217,24 @@
+     }
+ }
+ 
++#ifdef __WXGTK4__
+ void wxWindowGTK::SetCanFocus(bool canFocus)
+ {
+     wxCHECK_RET(m_widget, "invalid window");
+ 
++    gtk_widget_set_focusable(m_widget, canFocus);
++
++    if ( m_wxwindow && (m_widget != m_wxwindow) )
++    {
++        gtk_widget_set_focusable(m_wxwindow, canFocus);
++    }
++}
++
++#else
++void wxWindowGTK::SetCanFocus(bool canFocus)
++{
++    wxCHECK_RET(m_widget, "invalid window");
++
+     gtk_widget_set_can_focus(m_widget, canFocus);
+ 
+     if ( m_wxwindow && (m_widget != m_wxwindow) )
+@@ -4906,6 +5242,8 @@
+         gtk_widget_set_can_focus(m_wxwindow, canFocus);
+     }
+ }
++
++#endif
+ 
+ bool wxWindowGTK::Reparent( wxWindowBase *newParentBase )
+ {
+@@ -4923,8 +5261,13 @@
+     // Notice that old m_parent pointer might be non-NULL here but the widget
+     // still not have any parent at GTK level if it's a notebook page that had
+     // been removed from the notebook so test this at GTK level and not wx one.
+-    if ( GtkWidget *parentGTK = gtk_widget_get_parent(m_widget) )
++#ifdef __WXGTK4__
++    if (gtk_widget_get_parent(m_widget))
++        gtk_widget_unparent(m_widget);
++#else
++    if (GtkWidget* parentGTK = gtk_widget_get_parent(m_widget))
+         gtk_container_remove(GTK_CONTAINER(parentGTK), m_widget);
++#endif
+ 
+     wxASSERT( GTK_IS_WIDGET(m_widget) );
+ 
+@@ -5014,8 +5357,12 @@
  
      GTKSetLayout(m_widget, dir);
  
 -    if (GtkRange* range = m_scrollBar[ScrollDir_Horz])
 +    if (wxGTKScrollBar* range = m_scrollBar[ScrollDir_Horz])
++#ifdef __WXGTK4__
++        GTKSetLayout(range, dir);
++#else
          gtk_range_set_inverted(range, dir == wxLayout_RightToLeft);
++#endif
  
      if (m_wxwindow && (m_wxwindow != m_widget))
-@@ -5264,7 +5460,16 @@
- #endif
+         GTKSetLayout(m_wxwindow, dir);
+@@ -5124,12 +5471,20 @@
+ 
+             chain = g_list_reverse(chain);
+ 
++#ifdef __WXGTK4__
++            WX_PIZZA(m_wxwindow)->set_focus_order(chain);
++#else
+             gtk_container_set_focus_chain(GTK_CONTAINER(m_wxwindow), chain);
++#endif
+             g_list_free(chain);
+         }
+         else // no children
+         {
++#ifdef __WXGTK4__
++            WX_PIZZA(m_wxwindow)->set_focus_order(NULL);
++#else
+             gtk_container_unset_focus_chain(GTK_CONTAINER(m_wxwindow));
++#endif
+         }
+     }
+ }
+@@ -5137,7 +5492,12 @@
+ void wxWindowGTK::Raise()
+ {
+     wxCHECK_RET( (m_widget != NULL), wxT("invalid window") );
+-
++#ifdef __WXGTK4__
++    if (GTK_IS_WINDOW(m_widget))
++        gtk_window_present(GTK_WINDOW(m_widget));
++    else if (GtkWidget* parent = gtk_widget_get_parent(m_widget))
++        gtk_widget_insert_before(m_widget, parent, NULL);
++#else
+     if (m_wxwindow && gtk_widget_get_window(m_wxwindow))
+     {
+         gdk_window_raise(gtk_widget_get_window(m_wxwindow));
+@@ -5146,12 +5506,22 @@
+     {
+         gdk_window_raise(gtk_widget_get_window(m_widget));
+     }
++#endif
  }
  
+ void wxWindowGTK::Lower()
+ {
+     wxCHECK_RET( (m_widget != NULL), wxT("invalid window") );
+-
++#ifdef __WXGTK4__
++    if (GTK_IS_WINDOW(m_widget))
++    {
++        GdkSurface* surface = gtk_native_get_surface(GTK_NATIVE(m_widget));
++        if (surface && GDK_IS_TOPLEVEL(surface))
++            gdk_toplevel_lower(GDK_TOPLEVEL(surface));
++    }
++    else if (GtkWidget* parent = gtk_widget_get_parent(m_widget))
++        gtk_widget_insert_after(m_widget, parent, NULL);
++#else
+     if (m_wxwindow && gtk_widget_get_window(m_wxwindow))
+     {
+         gdk_window_lower(gtk_widget_get_window(m_wxwindow));
+@@ -5160,6 +5530,7 @@
+     {
+         gdk_window_lower(gtk_widget_get_window(m_widget));
+     }
++#endif
+ }
+ 
+ bool wxWindowGTK::SetCursor( const wxCursor &cursor )
+@@ -5195,6 +5566,11 @@
+     if (!isBusyOrGlobalCursor)
+         cursor = (overrideCursor ? *overrideCursor : m_cursor).GetCursor();
+ 
++#ifdef __WXGTK4__
++    gtk_widget_set_cursor(m_widget, cursor);
++    if (m_wxwindow && m_wxwindow != m_widget)
++        gtk_widget_set_cursor(m_wxwindow, cursor);
++#else
+     GdkWindow* window = NULL;
+     if (cursor || isBusyOrGlobalCursor || !isRealize)
+     {
+@@ -5231,6 +5607,7 @@
+             g_signal_emit(data, sig_id, 0, state);
+         }
+     }
++#endif
+ }
+ 
+ void wxWindowGTK::WarpPointer( int x, int y )
+@@ -5239,6 +5616,22 @@
+ 
+     ClientToScreen(&x, &y);
+     GdkDisplay* display = gtk_widget_get_display(m_widget);
++#ifdef __WXGTK4__
++#ifdef GDK_WINDOWING_X11
++    if (GDK_IS_X11_DISPLAY(display))
++    {
++        GdkSurface* surface = GTKGetSurface();
++        wxCHECK_RET(surface, "WarpPointer requires a realized window");
++        const double scale = gdk_surface_get_scale(surface);
++        Display* xdisplay = gdk_x11_display_get_xdisplay(display);
++        XWarpPointer(xdisplay, None, DefaultRootWindow(xdisplay),
++                     0, 0, 0, 0, wxRound(x * scale), wxRound(y * scale));
++        XFlush(xdisplay);
++        return;
++    }
++#endif
++    wxFAIL_MSG("The GTK4 display backend does not allow pointer warping");
++#else
+     GdkScreen* screen = gtk_widget_get_screen(m_widget);
+ #ifdef __WXGTK3__
+ #ifdef __WXGTK4__
+@@ -5262,9 +5655,19 @@
+     wxUnusedVar(screen);
+ #endif
+ #endif
+-}
+-
 -wxWindowGTK::ScrollDir wxWindowGTK::ScrollDirFromRange(GtkRange *range) const
++#endif
++}
++
 +GtkAdjustment* wxWindowGTK::GTKGetScrollAdjustment(wxGTKScrollBar* range)
 +{
 +#ifdef __WXGTK4__
@@ -832,7 +1455,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  {
      // find the scrollbar which generated the event
      for ( int dir = 0; dir < ScrollDir_Max; dir++ )
-@@ -5281,15 +5486,15 @@
+@@ -5281,15 +5684,15 @@
  bool wxWindowGTK::DoScrollByUnits(ScrollDir dir, ScrollUnit unit, int units)
  {
      bool changed = false;
@@ -851,7 +1474,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
          changed = wxRound(gtk_adjustment_get_value(adj)) != posOld;
      }
-@@ -5310,6 +5515,14 @@
+@@ -5310,6 +5713,14 @@
  void wxWindowGTK::Refresh(bool WXUNUSED(eraseBackground),
                            const wxRect *rect)
  {
@@ -866,7 +1489,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      if (m_wxwindow)
      {
          if (gtk_widget_get_mapped(m_wxwindow))
-@@ -5336,10 +5549,23 @@
+@@ -5336,10 +5747,23 @@
                  gtk_widget_queue_draw(m_widget);
          }
      }
@@ -890,7 +1513,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      if (m_widget && gtk_widget_get_mapped(m_widget) && m_width > 0 && m_height > 0)
      {
          GdkWindow* window = GTKGetDrawingWindow();
-@@ -5366,6 +5592,7 @@
+@@ -5366,6 +5790,7 @@
  
          gdk_display_flush(display);
      }
@@ -898,7 +1521,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  }
  
  bool wxWindowGTK::DoIsExposed( int x, int y ) const
-@@ -5390,6 +5617,7 @@
+@@ -5390,6 +5815,7 @@
  #endif
  {
  #ifdef __WXGTK3__
@@ -906,7 +1529,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      {
          cairo_region_t* region = gdk_window_get_clip_region(gtk_widget_get_window(m_wxwindow));
          cairo_rectangle_int_t rect;
-@@ -5398,10 +5626,15 @@
+@@ -5398,10 +5824,15 @@
          cairo_rectangle(cr, rect.x, rect.y, rect.width, rect.height);
          cairo_clip(cr);
      }
@@ -922,7 +1545,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
          cairo_translate(cr, w, 0);
          cairo_scale(cr, -1, 1);
      }
-@@ -5508,6 +5741,11 @@
+@@ -5508,6 +5939,11 @@
          case wxBG_STYLE_SYSTEM:
              if ( GetThemeEnabled() )
              {
@@ -934,7 +1557,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
                  GdkWindow* gdkWindow = GTKGetDrawingWindow();
                  const int w = gdk_window_get_width(gdkWindow);
                  const int h = gdk_window_get_height(gdkWindow);
-@@ -5530,6 +5768,7 @@
+@@ -5530,6 +5966,7 @@
                                      const_cast<char*>("base"),
                                      0, 0, w, h);
  #endif // !__WXGTK3__
@@ -942,7 +1565,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
              }
  #ifdef __WXGTK3__
              else if (m_backgroundColour.IsOk() && gtk_check_version(3,20,0) == NULL)
-@@ -5556,7 +5795,7 @@
+@@ -5556,7 +5993,7 @@
      wxPaintEvent paint_event( this );
      HandleWindowEvent( paint_event );
  
@@ -951,7 +1574,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      if (IsTransparentBackgroundSupported())
      { // now composite children which need it
          // Overlay all our composite children on top of the painted area
-@@ -5698,7 +5937,11 @@
+@@ -5698,7 +6135,11 @@
      gtk_style_context_remove_provider(gtk_widget_get_style_context(m_widget),
                                        GTK_STYLE_PROVIDER(provider));
  
@@ -963,7 +1586,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  
      gtk_style_context_add_provider(gtk_widget_get_style_context(m_widget),
                                     GTK_STYLE_PROVIDER(provider),
-@@ -5917,8 +6160,12 @@
+@@ -5917,8 +6358,12 @@
          wxGtkString s(g_string_free(css, false));
          if (m_styleProvider)
          {
@@ -976,7 +1599,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
              DoApplyWidgetStyle(NULL);
          }
  #else
-@@ -5968,7 +6215,12 @@
+@@ -5968,7 +6413,12 @@
  
  bool wxWindowGTK::IsTransparentBackgroundSupported(wxString* reason) const
  {
@@ -990,7 +1613,33 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  #ifndef __WXGTK3__
      if (!wx_is_at_least_gtk2(12))
      {
-@@ -6436,7 +6688,7 @@
+@@ -6011,7 +6461,7 @@
+ #endif // wxGTK_HAS_COMPOSITING_SUPPORT/!wxGTK_HAS_COMPOSITING_SUPPORT
+ }
+ 
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) && !defined(__WXGTK4__)
+ GdkWindow* wxWindowGTK::GTKFindWindow(GtkWidget* widget)
+ {
+     GdkWindow* window = gtk_widget_get_window(widget);
+@@ -6219,6 +6669,7 @@
+     return connect_widget;
+ }
+ 
++#ifndef __WXGTK4__
+ bool wxWindowGTK::GTKIsOwnWindow(GdkWindow *window) const
+ {
+     wxArrayGdkWindows windowsThis;
+@@ -6232,6 +6683,8 @@
+ {
+     return m_wxwindow ? GTKGetDrawingWindow() : gtk_widget_get_window(m_widget);
+ }
++
++#endif
+ 
+ #ifdef __WXGTK3__
+ void wxWindowGTK::GTKSizeRevalidate()
+@@ -6436,7 +6889,7 @@
                                 bool WXUNUSED(update))
  {
      const int dir = ScrollDirFromOrient(orient);
@@ -999,7 +1648,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      wxCHECK_RET( sb, wxT("this window is not scrollable") );
  
      if (range <= 0)
-@@ -6448,72 +6700,90 @@
+@@ -6448,72 +6901,90 @@
      else if (thumbVisible <= 0)
          thumbVisible = 1;
  
@@ -1107,7 +1756,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  }
  
  // Determine if increment is the same as +/-x, allowing for some small
-@@ -6525,13 +6795,13 @@
+@@ -6525,13 +6996,13 @@
      return fabs(increment - fabs(x)) < tolerance;
  }
  
@@ -1123,6 +1772,131 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
      const double value = gtk_adjustment_get_value(adj);
  
      // save previous position
+@@ -6611,6 +7082,10 @@
+ 
+ void wxWindowGTK::GTKScrolledWindowSetBorder(GtkWidget* w, int wxstyle)
+ {
++#ifdef __WXGTK4__
++    gtk_scrolled_window_set_has_frame(GTK_SCROLLED_WINDOW(w),
++        !(wxstyle & wxNO_BORDER) && !(wxstyle & wxBORDER_STATIC));
++#else
+     //RN: Note that static controls usually have no border on gtk, so maybe
+     //it makes sense to treat that as simply no border at the wx level
+     //as well...
+@@ -6624,6 +7099,7 @@
+         gtk_scrolled_window_set_shadow_type( GTK_SCROLLED_WINDOW(w),
+                                              gtkstyle );
+     }
++#endif
+ }
+ 
+ // Find the wxWindow at the current mouse position, also returning the mouse
+@@ -6638,6 +7114,38 @@
+ // Get the current mouse position.
+ void wxGetMousePosition(int* x, int* y)
+ {
++#ifdef __WXGTK4__
++    double px = 0, py = 0;
++    GdkDisplay* display = gdk_display_get_default();
++    GdkSeat* seat = display ? gdk_display_get_default_seat(display) : NULL;
++    GdkDevice* device = seat ? gdk_seat_get_pointer(seat) : NULL;
++    GdkSurface* surface = device ? gdk_device_get_surface_at_position(device, &px, &py) : NULL;
++    if (surface)
++    {
++        const wxPoint origin = wxGTKSurfaceOrigin(surface);
++        px += origin.x;
++        py += origin.y;
++    }
++#ifdef GDK_WINDOWING_X11
++    else if (display && GDK_IS_X11_DISPLAY(display))
++    {
++        Display* xdisplay = gdk_x11_display_get_xdisplay(display);
++        Window root, child;
++        int rx, ry, wx, wy;
++        unsigned mask;
++        if (XQueryPointer(xdisplay, DefaultRootWindow(xdisplay), &root, &child,
++                          &rx, &ry, &wx, &wy, &mask))
++        {
++            GdkSurface* top = wxGetTopLevelSurface();
++            const double scale = top ? gdk_surface_get_scale(top) : 1;
++            px = rx / scale;
++            py = ry / scale;
++        }
++    }
++#endif
++    if (x) *x = wxRound(px);
++    if (y) *y = wxRound(py);
++#else
+     GdkDisplay* display = gdk_window_get_display(wxGetTopLevelGDK());
+ #ifdef __WXGTK3__
+ #ifdef __WXGTK4__
+@@ -6653,6 +7161,7 @@
+ #else
+     gdk_display_get_pointer(display, NULL, x, y, NULL);
+ #endif
++#endif
+ }
+ 
+ wxPoint wxGetMousePosition()
+@@ -6662,6 +7171,14 @@
+     return pt;
+ }
+ 
++#ifdef __WXGTK4__
++GdkSurface* wxWindowGTK::GTKGetSurface() const
++{
++    GtkWidget* widget = m_wxwindow ? m_wxwindow : m_widget;
++    GtkNative* native = widget ? gtk_widget_get_native(widget) : NULL;
++    return native ? gtk_native_get_surface(native) : NULL;
++}
++#else
+ GdkWindow* wxWindowGTK::GTKGetDrawingWindow() const
+ {
+     GdkWindow* window = NULL;
+@@ -6670,6 +7187,8 @@
+     return window;
+ }
+ 
++#endif
++
+ // ----------------------------------------------------------------------------
+ // freeze/thaw
+ // ----------------------------------------------------------------------------
+@@ -6684,22 +7203,34 @@
+ 
+ void wxWindowGTK::GTKConnectFreezeWidget(GtkWidget* widget)
+ {
++#ifdef __WXGTK4__
++    g_object_set_data(G_OBJECT(widget), "wx-frozen", NULL);
++#else
+ #ifdef __WXGTK3__
+     gulong id = g_signal_connect(widget, "draw", G_CALLBACK(draw_freeze), this);
+ #else
+     gulong id = g_signal_connect(widget, "expose-event", G_CALLBACK(draw_freeze), this);
+ #endif
+     g_signal_handler_block(widget, id);
++#endif
+ }
+ 
+ void wxWindowGTK::GTKFreezeWidget(GtkWidget* widget)
+ {
++#ifdef __WXGTK4__
++    g_object_set_data(G_OBJECT(widget), "wx-frozen", GINT_TO_POINTER(1));
++#else
+     g_signal_handlers_unblock_by_func(widget, (void*)draw_freeze, this);
++#endif
+ }
+ 
+ void wxWindowGTK::GTKThawWidget(GtkWidget* widget)
+ {
++#ifdef __WXGTK4__
++    g_object_set_data(G_OBJECT(widget), "wx-frozen", NULL);
++#else
+     g_signal_handlers_block_by_func(widget, (void*)draw_freeze, this);
++#endif
+     gtk_widget_queue_draw(widget);
+ }
+ 
 --- include/wx/gtk/scrolwin.h.orig
 +++ include/wx/gtk/scrolwin.h
 @@ -38,7 +38,7 @@
@@ -1193,7 +1967,18 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  #endif
 --- include/wx/gtk/private/event.h.orig
 +++ include/wx/gtk/private/event.h
-@@ -36,6 +36,44 @@
+@@ -9,6 +9,10 @@
+ 
+ #ifndef _GTK_PRIVATE_EVENT_H_
+ #define _GTK_PRIVATE_EVENT_H_
++
++#ifdef __WXGTK4__
++#include "wx/gtk/private/surface4.h"
++#endif
+ 
+ #if !GTK_CHECK_VERSION(2,10,0)
+     // GTK+ can reliably detect Meta key state only since 2.10 when
+@@ -36,6 +40,55 @@
  namespace wxGTKImpl
  {
  
@@ -1217,6 +2002,17 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +    graphene_point_t point, local;
 +    if (top && gdk_event_get_position(native, &x, &y))
 +    {
++        GdkSurface* from = gdk_event_get_surface(native);
++        GdkSurface* to = gtk_native_get_surface(top);
++        if (from != to && !gdk_surface_translate_coordinates(from, to, &x, &y))
++        {
++            // Separate X11 toplevels share desktop coordinates. Wayland
++            // never delivers a pointer event across unrelated surfaces.
++            const wxPoint source = wxGTKSurfaceOrigin(from);
++            const wxPoint target = wxGTKSurfaceOrigin(to);
++            x += source.x - target.x;
++            y += source.y - target.y;
++        }
 +        gtk_native_get_surface_transform(top, &dx, &dy);
 +        graphene_point_init(&point, float(x - dx), float(y - dy));
 +        if (gtk_widget_compute_point(GTK_WIDGET(top), widget, &point, &local))
@@ -1238,7 +2034,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  // init wxMouseEvent with the info from GdkEventXXX struct
  template<typename T> void InitMouseEvent(wxWindowGTK *win,
                                           wxMouseEvent& event,
-@@ -87,6 +125,7 @@
+@@ -87,6 +140,7 @@
      event.SetId( win->GetId() );
      event.SetTimestamp( gdk_event->time );
  }
@@ -1355,6 +2151,87 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +    guint m_releaseSource;
 +};
 +
++#endif
+--- /dev/null
++++ include/wx/gtk/private/surface4.h
+@@ -0,0 +1,78 @@
++///////////////////////////////////////////////////////////////////////////////
++// GTK4 widget/surface coordinates. Origin: EmberBSD (AI-assisted).
++// Licence: wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++#ifndef _WX_GTK_PRIVATE_SURFACE4_H_
++#define _WX_GTK_PRIVATE_SURFACE4_H_
++
++#include "wx/math.h"
++#ifdef GDK_WINDOWING_X11
++#include <gdk/x11/gdkx.h>
++#endif
++
++// X11 exposes desktop coordinates. On Wayland the desktop origin is private
++// to the compositor: wx screen coordinates are relative to the toplevel.
++// Popups still use their real position relative to that toplevel.
++inline wxPoint wxGTKSurfaceOrigin(GdkSurface* surface)
++{
++    double x = 0, y = 0;
++    while (surface && GDK_IS_POPUP(surface))
++    {
++        x += gdk_popup_get_position_x(GDK_POPUP(surface));
++        y += gdk_popup_get_position_y(GDK_POPUP(surface));
++        surface = gdk_popup_get_parent(GDK_POPUP(surface));
++    }
++#ifdef GDK_WINDOWING_X11
++    if (surface && GDK_IS_X11_SURFACE(surface))
++    {
++        Display* display = gdk_x11_display_get_xdisplay(gdk_surface_get_display(surface));
++        Window root, child;
++        int tx, ty;
++        unsigned width, height, border, depth;
++        const Window xid = gdk_x11_surface_get_xid(surface);
++        if (XGetGeometry(display, xid, &root, &tx, &ty, &width, &height, &border, &depth) &&
++            XTranslateCoordinates(display, xid, root, 0, 0, &tx, &ty, &child))
++        {
++            const double scale = gdk_surface_get_scale(surface);
++            x += tx / scale;
++            y += ty / scale;
++        }
++    }
++#endif
++    return wxPoint(wxRound(x), wxRound(y));
++}
++
++inline bool wxGTKWidgetToScreen(GtkWidget* widget, double* x, double* y)
++{
++    GtkNative* native = gtk_widget_get_native(widget);
++    if (!native || !gtk_native_get_surface(native))
++        return false;
++    graphene_point_t input, output;
++    graphene_point_init(&input, float(*x), float(*y));
++    if (!gtk_widget_compute_point(widget, GTK_WIDGET(native), &input, &output))
++        return false;
++    double dx, dy;
++    gtk_native_get_surface_transform(native, &dx, &dy);
++    const wxPoint origin = wxGTKSurfaceOrigin(gtk_native_get_surface(native));
++    *x = output.x + dx + origin.x;
++    *y = output.y + dy + origin.y;
++    return true;
++}
++
++inline bool wxGTKScreenToWidget(GtkWidget* widget, double* x, double* y)
++{
++    GtkNative* native = gtk_widget_get_native(widget);
++    if (!native || !gtk_native_get_surface(native))
++        return false;
++    const wxPoint origin = wxGTKSurfaceOrigin(gtk_native_get_surface(native));
++    double dx, dy;
++    gtk_native_get_surface_transform(native, &dx, &dy);
++    graphene_point_t input, output;
++    graphene_point_init(&input, float(*x - origin.x - dx), float(*y - origin.y - dy));
++    if (!gtk_widget_compute_point(GTK_WIDGET(native), widget, &input, &output))
++        return false;
++    *x = output.x;
++    *y = output.y;
++    return true;
++}
 +#endif
 --- src/gtk/scrolbar.cpp.orig
 +++ src/gtk/scrolbar.cpp
@@ -1536,7 +2413,7 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
  void wxScrollBar::SetThumbSize(int thumbSize)
 --- /dev/null
 +++ src/gtk/window_input4.inc
-@@ -0,0 +1,79 @@
+@@ -0,0 +1,80 @@
 +///////////////////////////////////////////////////////////////////////////////
 +// GTK4 controller dispatch for wxWindow. Included by window.cpp.
 +// Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
@@ -1612,13 +2489,14 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +static void wxGTKConnectFocus(GtkWidget* widget, wxWindowGTK* win)
 +{
 +    GtkEventController* focus = gtk_event_controller_focus_new();
++    g_object_set_data(G_OBJECT(widget), "wx-focus-controller", focus);
 +    g_signal_connect(focus, "enter", G_CALLBACK(focus_enter4), win);
 +    g_signal_connect(focus, "leave", G_CALLBACK(focus_leave4), win);
 +    wxGTKAddController(widget, focus, win);
 +}
 --- /dev/null
 +++ src/gtk/window_mouse4.inc
-@@ -0,0 +1,191 @@
+@@ -0,0 +1,193 @@
 +///////////////////////////////////////////////////////////////////////////////
 +// GTK4 pointer dispatch. Included by window.cpp after legacy event callbacks.
 +// Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
@@ -1641,8 +2519,9 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +{
 +public:
 +    explicit wxGTKMouseEventScope(GdkEvent* event) : m_previous(g_lastMouseEvent)
-+        { g_lastMouseEvent = event; }
-+    ~wxGTKMouseEventScope() { g_lastMouseEvent = m_previous; }
++        { g_lastMouseEvent = gdk_event_ref(event); }
++    ~wxGTKMouseEventScope()
++        { gdk_event_unref(g_lastMouseEvent); g_lastMouseEvent = m_previous; }
 +private:
 +    GdkEvent* m_previous;
 +};
@@ -1666,12 +2545,13 @@ Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 +    GdkEvent* native = gtk_event_controller_get_current_event(controller);
 +    if (!native || g_blockEventsOnDrag || g_blockEventsOnScroll)
 +        return;
++    wxGtkObject<GtkGesture> keepGesture(GTK_GESTURE(g_object_ref(gesture)));
 +    wxWindow* win = g_captureWindow ? static_cast<wxWindow*>(g_captureWindow) : owner;
 +    // A release outside the original widget still belongs to its active
 +    // gesture, just like GTK's implicit pointer grab.
 +    if (!release)
 +    {
-+        if (!g_captureWindow && wxGTKPointerOwner(controller, native) != owner)
++        if (g_captureWindow ? !owner->IsTopLevel() : wxGTKPointerOwner(controller, native) != owner)
 +            return;
 +        g_object_set_data(G_OBJECT(gesture), "wx-pressed", GINT_TO_POINTER(1));
 +    }

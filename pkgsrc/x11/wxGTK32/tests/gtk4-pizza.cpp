@@ -24,6 +24,24 @@ static void Flush()
         g_main_context_iteration(NULL, false);
 }
 
+static void FramePainted(GdkFrameClock*, bool* painted) { *painted = true; }
+
+static void Redraw(GtkWidget* widget)
+{
+    GdkFrameClock* clock = gtk_widget_get_frame_clock(widget);
+    bool painted = false;
+    const gulong id = g_signal_connect_after(clock, "after-paint", G_CALLBACK(FramePainted), &painted);
+    gtk_widget_queue_draw(widget);
+    const gint64 deadline = g_get_monotonic_time() + 3000000;
+    while (!painted && g_get_monotonic_time() < deadline)
+    {
+        Flush();
+        g_usleep(1000);
+    }
+    g_signal_handler_disconnect(clock, id);
+    Check(painted, "requested frame did not complete");
+}
+
 static void CheckPosition(GtkWidget* parent, GtkWidget* child, float x, float y)
 {
     graphene_point_t origin, position;
@@ -89,6 +107,14 @@ int main()
         pizza->get_border(border);
         Check(border.left == 1 && border.right == 1 && border.top == 1 && border.bottom == 1,
               "simple border contract");
+
+        const unsigned beforeFreeze = paints;
+        g_object_set_data(G_OBJECT(widget), "wx-frozen", GINT_TO_POINTER(1));
+        Redraw(widget);
+        Check(paints == beforeFreeze, "frozen widget repainted instead of retaining its snapshot");
+        g_object_set_data(G_OBJECT(widget), "wx-frozen", NULL);
+        Redraw(widget);
+        Check(paints > beforeFreeze, "thawed widget did not repaint");
 
         pizza->set_virtual_size(1000, 800);
         int minimum, natural;

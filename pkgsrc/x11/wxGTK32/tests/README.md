@@ -75,7 +75,7 @@ widget, controller and context remain referenced across synchronous callbacks. C
 GtkEditable delegate. Completion observes its GTK4 popover map/unmap signals.
 Text geometry uses the public GtkAccessibleText interface, and style queries
 read public GtkTextTag properties in priority order. Scrollbars use the shared
-GTK4 wxWindow adjustment implementation supplied by `patch-gtk4-core`.
+GTK4 wxWindow adjustment implementation supplied by `patch-gtk4-window`.
 
 The current stable libspelling 0.4.10 TextBufferAdapter requires GtkSourceBuffer.
 Multiline controls create that buffer directly. Singleline entries synchronize
