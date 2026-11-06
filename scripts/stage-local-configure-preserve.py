@@ -207,7 +207,8 @@ def refresh_new_buildlinks(a, command, work):
     for provider in packages:
         require(re.fullmatch(r'[A-Za-z0-9_+-]+', provider), 'invalid buildlink provider name')
         fields.extend(('${USE_BUILTIN.' + provider + '}', '${_BLNK_COOKIE.' + provider + '}'))
-    values = subprocess.run(command + sum((['-V', field] for field in fields), []), check=True,
+    values = subprocess.run(command + ['_PKGSRC_BARRIER=yes'] +
+                            sum((['-V', field] for field in fields), []), check=True,
                              text=True, stdout=subprocess.PIPE).stdout.splitlines()
     require(len(values) == len(fields), 'invalid buildlink metadata')
     cross = values[0].strip()
@@ -220,7 +221,7 @@ def refresh_new_buildlinks(a, command, work):
         cookie = Path(values[index + 1].strip())
         require(cookie.name == '.buildlink_' + provider + '_done' and
                 cookie.parent.resolve(strict=True) == live.resolve(strict=True),
-                'unexpected buildlink provider cookie path')
+                'unexpected buildlink provider cookie path for ' + provider + ': ' + str(cookie))
         if os.path.lexists(cookie):
             require(cookie.is_file() and not cookie.is_symlink(), 'invalid provider cookie')
             continue

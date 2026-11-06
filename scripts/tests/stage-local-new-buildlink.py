@@ -52,6 +52,8 @@ values={'_BLNK_PACKAGES':'demo egl-headers','_BLNK_COOKIE.demo':str(live/'.build
  'BUILDLINK_PKGNAME.egl-headers':'egl-headers-1','_BLNK_PKG_INFO.egl-headers':sys.executable+' '+str(r/'pkginfo.py'),
  '_BLNK_FILES_CMD.egl-headers':'true','GREP':'/usr/bin/grep','USE_CROSS_COMPILE':'no'}
 if (r/'include-badla').exists(): values['_BLNK_PACKAGES']+=' badla'
+if '_PKGSRC_BARRIER=yes' not in a:
+ for provider in ('demo','egl-headers','badla'): values['_BLNK_COOKIE.'+provider]=''
 for provider in ('demo','badla'):
  values.update({'USE_BUILTIN.'+provider:'no','BUILDLINK_PREFIX.'+provider:str(prefix),
   'BUILDLINK_PKGNAME.'+provider:provider+'-1','_BLNK_PKG_INFO.'+provider:sys.executable+' '+str(r/'pkginfo.py'),
@@ -75,6 +77,11 @@ if target:
     fake.chmod(0o755)
     args = SimpleNamespace(bmake=fake, recipe=recipe, make_arg=[], bmake_args=[])
     command = [str(fake), '-C', str(recipe)]
+    lazy = subprocess.run(command + ['-V', '${_BLNK_COOKIE.egl-headers}'], check=True,
+                          text=True, stdout=subprocess.PIPE).stdout.strip()
+    barrier = subprocess.run(command + ['_PKGSRC_BARRIER=yes', '-V', '${_BLNK_COOKIE.egl-headers}'],
+                             check=True, text=True, stdout=subprocess.PIPE).stdout.strip()
+    assert not lazy and barrier == str(live / '.buildlink_egl-headers_done')
     header_link = live / 'include/KHR/khrplatform.h'
     egl_cookie = live / '.buildlink_egl-headers_done'
     (root / 'fail-refresh').touch()
