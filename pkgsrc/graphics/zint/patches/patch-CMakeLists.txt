@@ -1,0 +1,44 @@
+$NetBSD$
+
+Provide an external shared libzint target for the CLI and Qt frontends.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -28,6 +28,7 @@
+ option(ZINT_USE_PNG   "Build with PNG support"          ON)
+ option(ZINT_USE_QT    "Build with Qt support"           ON)
+ option(ZINT_QT6       "If ZINT_USE_QT, use Qt6"         OFF)
++option(ZINT_USE_EXTERNAL_LIBRARY "Use an installed libzint" OFF)
+ option(ZINT_UNINSTALL "Add uninstall target"            ON)
+ 
+ if(NOT ZINT_SHARED AND NOT ZINT_STATIC)
+@@ -147,7 +148,18 @@
+     add_subdirectory(getopt)
+ endif()
+ 
+-add_subdirectory(backend)
++if(ZINT_USE_EXTERNAL_LIBRARY)
++    if(NOT ZINT_SHARED OR ZINT_STATIC)
++        message(FATAL_ERROR "ZINT_USE_EXTERNAL_LIBRARY requires ZINT_SHARED=ON and ZINT_STATIC=OFF")
++    endif()
++    find_package(zint CONFIG REQUIRED)
++    if(NOT TARGET zint::zint)
++        message(FATAL_ERROR "ZINT_USE_EXTERNAL_LIBRARY requires zint::zint")
++    endif()
++    add_library(zint ALIAS zint::zint)
++else()
++    add_subdirectory(backend)
++endif()
+ if(ZINT_FRONTEND)
+     add_subdirectory(frontend)
+ endif()
+@@ -201,5 +213,7 @@
+       "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
+ endif()
+ 
+-configure_file("zint-config.cmake.in" "zint-config.cmake" @ONLY)
+-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/zint-config.cmake" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/zint")
++if(NOT ZINT_USE_EXTERNAL_LIBRARY)
++    configure_file("zint-config.cmake.in" "zint-config.cmake" @ONLY)
++    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/zint-config.cmake" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/zint")
++endif()

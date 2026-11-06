@@ -1,0 +1,3 @@
+Zint is a barcode encoding library supporting a wide range of public-domain
+barcode standards. This package provides the shared libzint API and CMake
+package metadata. Command-line and Qt frontends are packaged separately.

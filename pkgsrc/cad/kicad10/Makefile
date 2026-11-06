@@ -99,7 +99,7 @@ BUILDLINK_API_DEPENDS.glm+=	glm>=0.9.9.8
 .include "../../graphics/hicolor-icon-theme/buildlink3.mk"
 .include "../../graphics/nanosvg/buildlink3.mk"
 .include "../../graphics/potrace/buildlink3.mk"
-.include "../../graphics/zint/buildlink3.mk"
+.include "../../graphics/zint-lib/buildlink3.mk"
 .include "../../lang/python/extension.mk"
 .include "../../math/clipper2/buildlink3.mk"
 .include "../../math/delaunator/buildlink3.mk"
