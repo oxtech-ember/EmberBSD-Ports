@@ -3,6 +3,18 @@ $NetBSD$
 GTK4 drawing and texture support for wxGTK.
 Origin: EmberBSD, wxWindows licence.
 
+--- include/wx/gtk/bitmap.h.orig
++++ include/wx/gtk/bitmap.h
+@@ -14,6 +14,9 @@
+ typedef struct _cairo_surface cairo_surface_t;
+ #endif
+ typedef struct _GdkPixbuf GdkPixbuf;
++#ifdef __WXGTK4__
++typedef struct _GdkTexture GdkTexture;
++#endif
+ 
+ //-----------------------------------------------------------------------------
+ // wxMask
 --- include/wx/gtk/anybutton.h.orig
 +++ include/wx/gtk/anybutton.h
 @@ -37,7 +37,9 @@
