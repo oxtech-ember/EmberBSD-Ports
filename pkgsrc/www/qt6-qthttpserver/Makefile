@@ -1,6 +1,7 @@
 # $NetBSD: Makefile,v 1.31 2026/09/02 19:05:01 wiz Exp $
 
 DISTNAME=	qthttpserver-everywhere-src-${QTVERSION}
+PKGREVISION=	1
 PKGNAME=	qt6-qthttpserver-${QTVERSION}
 COMMENT=	Qt6 classes for creating http servers
 CATEGORIES=	www

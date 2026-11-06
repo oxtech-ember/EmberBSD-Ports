@@ -625,6 +625,14 @@ installs into, so installs into one prefix never overlap and installs into
 the target sysroot and the native prefix run independently. Only the
 active controller writes the state lists. SIGTERM starts no new package, lets the
 running ones finish and exits with 143; the next run skips the done packages.
+For an existing stage whose installed dependency has added buildlink files,
+`CROSS_BULK_BUILDLINK_PROVIDER=NAME cross-bulk.sh buildlink-refresh PKGPATH[@native] STATE`
+uses the normal provider factory under the stage lock. It checks package inventory,
+existing links and collisions, preserves compatible objects and retries interrupted
+link updates. Existing libtool `.la` outputs must exactly match the current factory
+output after relocating only its temporary buildlink root; new or changed `.la`
+outputs are unsupported and cause refusal. The live factory does not rewrite them.
+
 For a package whose stage already exists, `cross-bulk.sh package-install PKGPATH STATE`
 runs that package's normal `package-install` target, or
 `package` plus `replace` when the target sysroot already has its package
@@ -636,13 +644,35 @@ checks and lock but creates package archives only, refusing unpreflighted
 missing dependencies. Success goes to `STATE/packaged`, failure to
 `STATE/package-failed`; installed-state rows are unchanged. Matching paired
 Qt roles are packaged from their retained full stage, which remains reusable.
-Neither package is installed.
+Neither package is installed. When the saved pkgsrc tools cookie differs from
+current `USE_TOOLS`, the stage-local package path refreshes the affected tool
+wrappers through the pkgsrc factory and reconfigures the retained stage. Only
+additive changes are supported. It
+preserves unchanged wrappers and compatible objects; custom `post-tools` is
+not supported for this refresh.
 For an existing stage whose archive and earlier patches still match the installed
 package provenance, `cross-bulk.sh patch-refresh PKGPATH[@native] STATE` replays
 the old and current ordered patch series and atomically updates only changed
 source files. It preserves compatible objects and unchanged file times, then
 invalidates the build stage. The command refuses incompatible provenance,
-custom patch hooks, and substitutions affecting the changed source files.
+custom patch hooks, and unsupported substitutions affecting changed source files.
+For an existing changed patch, set `CROSS_BULK_PATCH_REFRESH_PREVIOUS_RECIPE`
+to an absolute directory containing the installed recipe's Makefile, distinfo,
+patches, and recipe-local includes. The installed package provenance binds those
+inputs; the current recipe is reconfigured before the next build. Current local
+includes may change configuration or package policy when source preparation,
+extraction hooks and substitutions remain identical. Both recipes' local inputs
+must stay unchanged during replay. When one unchanged substitution at
+`pre-configure` or `do-configure-pre-hook` affects the changed files, also set
+`CROSS_BULK_PATCH_REFRESH_EXISTING_SUBST` to its class name. The owner replays
+that class against both candidates and retains the verified existing cookie.
+If an older patch inventory omits patches from that installed recipe, each
+omitted patch target must already match the complete old replay. These files
+are verified within the same transaction and retain their timestamps; an
+unapplied or divergent omitted patch is rejected. Archives may contain verified
+internal symlinks, but patch targets and backup paths must not traverse them.
+Extraction remains bounded to 512 MiB per candidate.
+Unsupported changes and mismatched live inputs remain errors.
 Normal builds and stage-local commands lock each selected work directory until
 their owned worker session has drained.
 For a retained stage whose newly prepared `WRKSRC` differs only in explicitly

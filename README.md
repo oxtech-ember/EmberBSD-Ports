@@ -948,7 +948,11 @@ The updater proves the previous input identity, replays the selected package's
 ordered overlays and checks their old contents before replacing changed files.
 Repeat `--package` for every changed package in the same transaction; all
 changed inputs must be covered by the selected packages or named file outputs.
-It keeps unchanged bytes, modes and mtimes. A changed upstream pin, unrelated
+It keeps unchanged bytes, modes and mtimes. The selected `--patch` can change:
+the updater replays the old selected outputs with that tool and refuses a
+mismatch before writing. The receipt records the original producer and current
+per-output overrides; untouched outputs retain their provenance. It never runs
+the previously recorded tool. A changed upstream pin, unrelated
 global input, opaque cross-package patch, removal or move of a recipe overlay,
 or an unsafe source link is refused. A new overlay replacing an upstream recipe
 requires its entry in `pkgsrc/replaces` and selection in the same transaction. This is not a full-export replacement.

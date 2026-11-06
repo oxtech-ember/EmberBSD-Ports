@@ -14,6 +14,7 @@ with tempfile.TemporaryDirectory() as d:
  with tarfile.open(archive,'w:xz') as tf:
   for name,data in [('demo-1/first',b'A\n'),('demo-1/second',b'C\n')]:
    entry=tarfile.TarInfo(name);entry.size=len(data);entry.mode=0o644;tf.addfile(entry,io.BytesIO(data))
+  entry=tarfile.TarInfo('demo-1/archive-alias');entry.type=tarfile.SYMTYPE;entry.linkname='first';tf.addfile(entry)
  data=archive.read_bytes(); lines=(f'BLAKE2s ({archive.name}) = {hashlib.blake2s(data).hexdigest()}\nSHA512 ({archive.name}) = {hashlib.sha512(data).hexdigest()}\nSize ({archive.name}) = {len(data)} bytes\n')
  b=f'SHA1 (patch-b) = {hashlib.sha1(old).hexdigest()}\n';c=f'SHA1 (patch-a) = {hashlib.sha1(new).hexdigest()}\n'
  old_info=('$NetBSD$\n\n'+lines+b).encode();(recipe/'distinfo').write_text('$NetBSD$\n\n'+lines+c+b)
@@ -29,11 +30,34 @@ with tempfile.TemporaryDirectory() as d:
  blocked=subprocess.run(cmd,capture_output=True,text=True);assert blocked.returncode and 'needs substitution refresh' in blocked.stderr
  assert (src/'second').read_text()=='C\n' and not (root/'clean').exists()
  fake.write_text(intersect.replace("'SUBST_FILES.rewrite': 'second'", "'SUBST_FILES.rewrite': '*.pc.in'"))
- blocked=subprocess.run(cmd,capture_output=True,text=True);assert blocked.returncode and 'unsupported substitution paths' in blocked.stderr
- assert (src/'second').read_text()=='C\n' and not (root/'clean').exists()
+ (src/'second').write_text('foreign\n')
+ blocked=subprocess.run(cmd,capture_output=True,text=True);assert blocked.returncode and 'preimage differs' in blocked.stderr
+ assert not (root/'clean').exists()
+ (src/'second').write_text('C\n')
  (src/'alias').symlink_to('second')
  fake.write_text(intersect.replace("'SUBST_FILES.rewrite': 'second'", "'SUBST_FILES.rewrite': 'alias'"))
  blocked=subprocess.run(cmd,capture_output=True,text=True);assert blocked.returncode
+ assert (src/'second').read_text()=='C\n' and not (root/'clean').exists()
+ # An absent optional literal must be absent in both replay trees, too. Force
+ # a later preimage refusal to prove the missing-input guard was passed without
+ # committing the fixture's stage.
+ fake.write_text(intersect.replace("'SUBST_FILES.rewrite': 'second'", "'SUBST_FILES.rewrite': 'missing.pc.in'"))
+ (src/'second').write_text('foreign\n')
+ blocked=subprocess.run(cmd,capture_output=True,text=True)
+ assert blocked.returncode and 'preimage differs' in blocked.stderr
+ assert not (root/'clean').exists()
+ (src/'second').write_text('C\n')
+ # Missing live input with an archive preimage must still fail closed.
+ fake.write_text(intersect.replace("'SUBST_FILES.rewrite': 'second'", "'SUBST_FILES.rewrite': 'first'"))
+ (src/'first').unlink()
+ blocked=subprocess.run(cmd,capture_output=True,text=True)
+ assert blocked.returncode and 'missing substitution input differs from archive' in blocked.stderr
+ assert (src/'second').read_text()=='C\n' and not (root/'clean').exists()
+ (src/'first').write_text('B\n')
+ # A missing live input does not permit an archive symlink as its preimage.
+ fake.write_text(intersect.replace("'SUBST_FILES.rewrite': 'second'", "'SUBST_FILES.rewrite': 'archive-alias'"))
+ blocked=subprocess.run(cmd,capture_output=True,text=True)
+ assert blocked.returncode and 'expected a regular file' in blocked.stderr
  assert (src/'second').read_text()=='C\n' and not (root/'clean').exists()
  (src/'libxslt.pc.in').write_text('template');(src/'libexslt.pc.in').write_text('template')
  fake.write_text(intersect.replace("'SUBST_FILES.rewrite': 'second'", "'SUBST_FILES.rewrite': 'libxslt.pc.in libexslt.pc.in'"))

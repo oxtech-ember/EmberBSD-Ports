@@ -3,3 +3,4 @@ $NetBSD: distinfo,v 1.25 2026/08/18 18:26:06 adam Exp $
 BLAKE2s (qtwebsockets-everywhere-src-6.12.0.tar.xz) = 6c0297833030f73ba4027c8c80785b9505cf5a185d9b5de2cfe21d1c82edba80
 SHA512 (qtwebsockets-everywhere-src-6.12.0.tar.xz) = 6802d9c517b745a501e1c4d3ae0d234ca93a5c729f162d2217e7953f93d1f67fcb411984586f158bec82a817a1ab7777b37c699d8fc0cdd38d0d0224d6647fbb
 Size (qtwebsockets-everywhere-src-6.12.0.tar.xz) = 453988 bytes
+SHA1 (patch-aa) = f91e3c4417f5b1e6ff6e27866245434dcface816

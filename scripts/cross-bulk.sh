@@ -65,7 +65,7 @@ umask 022
 
 [ "$#" -eq 3 ] || {
     echo 'Usage: scripts/cross-bulk.sh order|fetch|build|selected-order|selected-build PKGPATH_LIST ABSOLUTE_STATE' >&2
-    echo '       scripts/cross-bulk.sh package|package-install|patch-refresh|source-refresh PKGPATH[@native] ABSOLUTE_STATE' >&2
+    echo '       scripts/cross-bulk.sh package|package-install|patch-refresh|source-refresh|buildlink-refresh PKGPATH[@native] ABSOLUTE_STATE' >&2
     exit 2
 }
 mode=$1
@@ -130,7 +130,7 @@ state_lock_release()
     state_lock_owned=no
 }
 case "$mode" in
-    order|fetch|build|package|package-install|patch-refresh|source-refresh|selected-order|selected-build)
+    order|fetch|build|package|package-install|patch-refresh|source-refresh|buildlink-refresh|selected-order|selected-build)
         if [ "$stage_supervised" = no ]; then state_lock_acquire || exit $?; fi
         trap 'if [ "$state_lock_release_safe" = yes ]; then state_lock_release; else echo "Workers may not have drained; keeping lock $state/build.lock" >&2; fi' EXIT
         ;;
@@ -1108,10 +1108,6 @@ stage_configure_preserve()
 {
     scp_path=$1 scp_work=$2
     shift 2
-    if [ -f "$scp_work/.configure_done" ] && [ ! -e "$scp_work/.emberbsd-configure-preserve.json" ] &&
-        [ ! -L "$scp_work/.emberbsd-configure-preserve.json" ]; then
-        return 0
-    fi
     if [ -n "$link_args" ]; then
         set -- --sdk-source "$sdk_source" --bmake "$BMAKE" --recipe "$PKGSRCDIR/$scp_path" \
             --expected-work "$scp_work" --make-arg "EMBERBSD_NATIVE_TOOLSET_VERIFIED=$native" \
@@ -1544,6 +1540,27 @@ shared_pairs_configure()
     shared_pair_configure_one icu
 }
 
+# A single-package invocation can also restore the producer or package its
+# consumer. Lock that possible pair before evaluating the shared-stage inputs;
+# a disabled/incompatible pair may use only the requested stage afterwards.
+package_stage_nodes()
+(
+    printf '%s\n' "$requested"
+    case "$mode:$role:${CROSS_BULK_SHARED_BUILD:-yes}" in
+        package:target:yes|package-install:target:yes) ;;
+        *) return 0 ;;
+    esac
+    shared_pair_for_path "$path"
+    [ -n "$shared_pair" ] || return 0
+    grep -qFx "$shared_producer" "$state/order" &&
+        grep -qFx "$shared_consumer" "$state/order" || return 0
+    if [ "$path" = "$shared_producer" ]; then
+        printf '%s\n' "$shared_consumer"
+    else
+        printf '%s\n' "$shared_producer"
+    fi
+)
+
 shared_pair_ready()
 {
     shared_pair_for_path "$1"
@@ -1590,6 +1607,10 @@ shared_pair_restore_producer()
     [ ! -L "$producer_build" ] && [ -f "$producer_build" ] || return 0
     [ "$(cat "$producer_build")" = "$producer_name" ] || return 0
     stage_local_preflight "$producer_work" "$producer_base" "$producer_version" "$producer_name" "$log" >/dev/null || return 0
+    stage_verify_locked "$producer_work" || {
+        echo "Producer stage is not locked: $producer_work" >> "$log"
+        return 1
+    }
     stage_local=yes
     wrkdir=$producer_work
     shared_pair_reset_stage "$shared_producer" >> "$log" 2>&1 || return 1
@@ -1625,6 +1646,11 @@ shared_pair_reset_stage()
     shared_pair_for_path "$1"
     [ "${stage_local:-no}" = yes ] && [ -n "$shared_pair" ] || return 0
     [ "$(cat "$run/shared-$shared_pair/enabled" 2>/dev/null)" = yes ] || return 0
+    reset_work=$(pkg_vars "$1" WRKDIR) || return 1
+    stage_verify_locked "$reset_work" || {
+        echo "Shared package stage is not locked: $reset_work" >&2
+        return 1
+    }
     bmk -C "$PKGSRCDIR/$1" _package-clean < /dev/null || return 1
     if [ "$1" = "$shared_producer" ]; then
         shared_dir=$run/shared-$shared_pair
@@ -1856,8 +1882,24 @@ package_install_one()
     stamp=$(date '+%Y%m%d%H%M%S')
     link_launcher_args
     if [ "$stage_supervised" = no ]; then
-        printf '%s\n' "$requested" > "$run/stage-node"
+        package_stage_nodes > "$run/stage-node" || return 1
         stage_supervise "$mode" "$run/stage-node"
+        return $?
+    fi
+    if [ "$mode" = buildlink-refresh ]; then
+        : "${CROSS_BULK_LOCKED_WORK:?Missing supervised stage identity}"
+        : "${CROSS_BULK_BUILDLINK_PROVIDER:?Select a buildlink provider}"
+        set -- --bmake "$BMAKE" --recipe "$PKGSRCDIR/$path" \
+            --expected-work "$CROSS_BULK_LOCKED_WORK" --provider "$CROSS_BULK_BUILDLINK_PROVIDER"
+        if [ "$role" = native ]; then
+            set -- "$@" --native --make-arg USE_CROSS_COMPILE=no --make-arg "PACKAGES=$native_packages"
+            if grep -qFx "$requested" "$run/crossfed"; then
+                set -f
+                for stage_arg in $target_settings; do set -- "$@" --make-arg "$stage_arg"; done
+                set +f
+            fi
+        fi
+        "$host_python" -B -E -S "$(dirname "$0")/stage-local-buildlink-refresh.py" "$@"
         return $?
     fi
     if [ "$mode" = patch-refresh ] || [ "$mode" = source-refresh ]; then
@@ -1876,6 +1918,16 @@ package_install_one()
             : "${CROSS_BULK_SOURCE_REFRESH_FILES:?Set an explicit whitespace list of prepared source leaves}"
             "$host_python" -B -E -S "$(dirname "$0")/stage-local-source-refresh.py" "$@"
             return $?
+        fi
+        if [ -n "${CROSS_BULK_PATCH_REFRESH_PREVIOUS_RECIPE:-}" ]; then
+            case "$CROSS_BULK_PATCH_REFRESH_PREVIOUS_RECIPE" in
+                /*) ;;
+                *) echo 'Previous recipe must be an absolute path' >&2; return 2 ;;
+            esac
+            set -- "$@" --previous-recipe "$CROSS_BULK_PATCH_REFRESH_PREVIOUS_RECIPE"
+        fi
+        if [ -n "${CROSS_BULK_PATCH_REFRESH_EXISTING_SUBST:-}" ]; then
+            set -- "$@" --refresh-subst "$CROSS_BULK_PATCH_REFRESH_EXISTING_SUBST"
         fi
         if [ -n "${CROSS_BULK_PATCH_REFRESH_PREVIOUS_MAKEFILE:-}${CROSS_BULK_PATCH_REFRESH_SUBST_CLASS:-}" ]; then
             : "${CROSS_BULK_PATCH_REFRESH_PREVIOUS_MAKEFILE:?select the installed Makefile preimage}"
@@ -2273,6 +2325,6 @@ case "$mode" in
             mv "$state/$key.tmp" "$state/$key.deps" ;;
     fetch) fetch ;;
     build) build ;;
-    package|package-install|patch-refresh|source-refresh) package_install_one ;;
+    package|package-install|patch-refresh|source-refresh|buildlink-refresh) package_install_one ;;
     *) echo "Unknown mode: $mode" >&2; exit 2 ;;
 esac
