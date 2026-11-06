@@ -1,0 +1,559 @@
+$NetBSD$
+
+Introduce opaque GTK4 key events and the GtkAdjustment scrollbar boundary.
+Wire wxScrolledWindow virtual extent to wxPizza natural measurement.
+Origin: EmberBSD (AI-assisted), wxWindows licence.
+This is an integration draft: the remaining window/controller port and actual
+GTK4 compilation/runtime acceptance are not complete.
+
+--- include/wx/gtk/window.h.orig
++++ include/wx/gtk/window.h
+@@ -22,7 +22,15 @@
+     #define WXUNUSED_IN_GTK3(x) x
+ #endif
+ 
++#ifdef __WXGTK4__
++typedef struct _GdkEvent GdkEvent;
++typedef GdkEvent wxGTKKeyEvent;
++typedef GtkWidget wxGTKScrollBar;
++#else
+ typedef struct _GdkEventKey GdkEventKey;
++typedef GdkEventKey wxGTKKeyEvent;
++typedef GtkRange wxGTKScrollBar;
++#endif
+ typedef struct _GtkIMContext GtkIMContext;
+ 
+ WX_DEFINE_EXPORTED_ARRAY_PTR(GdkWindow *, wxArrayGdkWindows);
+@@ -263,7 +271,8 @@
+     virtual bool GTKIsTransparentForMouse() const { return false; }
+ 
+     // Common scroll event handling code for wxWindow and wxScrollBar
+-    wxEventType GTKGetScrollEventType(GtkRange* range);
++    wxEventType GTKGetScrollEventType(wxGTKScrollBar* range);
++    static GtkAdjustment* GTKGetScrollAdjustment(wxGTKScrollBar* range);
+ 
+     // position and size of the window
+     int                  m_x, m_y;
+@@ -306,13 +315,13 @@
+ 
+     // Pointer to the event being currently processed by the IME or NULL if not
+     // inside key handling.
+-    GdkEventKey* m_imKeyEvent;
++    wxGTKKeyEvent* m_imKeyEvent;
+ 
+     // This method generalizes gtk_im_context_filter_keypress(): for the
+     // generic windows it does just that but it's overridden by the classes
+     // wrapping native widgets that use IM themselves and so provide specific
+     // methods for accessing it such gtk_entry_im_context_filter_keypress().
+-    virtual int GTKIMFilterKeypress(GdkEventKey* event) const;
++    virtual int GTKIMFilterKeypress(wxGTKKeyEvent* event) const;
+ 
+     // This method must be called from the derived classes "insert-text" signal
+     // handlers to check if the text is not being inserted by the IM and, if
+@@ -331,7 +340,7 @@
+     enum ScrollDir { ScrollDir_Horz, ScrollDir_Vert, ScrollDir_Max };
+ 
+     // horizontal/vertical scroll bar
+-    GtkRange* m_scrollBar[ScrollDir_Max];
++    wxGTKScrollBar* m_scrollBar[ScrollDir_Max];
+ 
+     // horizontal/vertical scroll position
+     double m_scrollPos[ScrollDir_Max];
+@@ -350,7 +359,7 @@
+     }
+ 
+     // find the direction of the given scrollbar (must be one of ours)
+-    ScrollDir ScrollDirFromRange(GtkRange *range) const;
++    ScrollDir ScrollDirFromRange(wxGTKScrollBar *range) const;
+ 
+     void GTKUpdateCursor(
+         bool isBusyOrGlobalCursor = false,
+--- include/wx/gtk/evtloop.h.orig
++++ include/wx/gtk/evtloop.h
+@@ -14,7 +14,11 @@
+ // wxGUIEventLoop for wxGTK
+ // ----------------------------------------------------------------------------
+ 
+-typedef union  _GdkEvent        GdkEvent;
++#ifdef __WXGTK4__
++typedef struct _GdkEvent GdkEvent;
++#else
++typedef union _GdkEvent GdkEvent;
++#endif
+ 
+ class WXDLLIMPEXP_CORE wxGUIEventLoop : public wxEventLoopBase
+ {
+--- include/wx/gtk/scrolwin.h.orig
++++ include/wx/gtk/scrolwin.h
+@@ -38,7 +38,7 @@
+ 
+ private:
+     // this does (each) half of AdjustScrollbars() work
+-    void DoAdjustScrollbar(GtkRange* range,
++    void DoAdjustScrollbar(wxGTKScrollBar* range,
+                            int pixelsPerLine,
+                            int winSize,
+                            int virtSize,
+--- src/gtk/window.cpp.orig
++++ src/gtk/window.cpp
+@@ -1044,27 +1044,47 @@
+ }
+ #endif // wxDEBUG_LEVEL
+ 
++// GTK4 key events are immutable and opaque. Keep the existing wx key mapping
++// and accelerator order, reading the actual event through GDK accessors.
++#ifdef __WXGTK4__
++static guint wxGTKKeyTime(wxGTKKeyEvent* event) { return gdk_event_get_time(event); }
++static GdkModifierType wxGTKKeyState(wxGTKKeyEvent* event) { return gdk_event_get_modifier_state(event); }
++static GdkEventType wxGTKKeyType(wxGTKKeyEvent* event) { return gdk_event_get_event_type(event); }
++static guint wxGTKKeyval(wxGTKKeyEvent* event) { return gdk_key_event_get_keyval(event); }
++static guint wxGTKKeycode(wxGTKKeyEvent* event) { return gdk_key_event_get_keycode(event); }
++static const GdkModifierType wxGTKAltMask = GDK_ALT_MASK;
++#else
++static guint wxGTKKeyTime(wxGTKKeyEvent* event) { return event->time; }
++static guint wxGTKKeyState(wxGTKKeyEvent* event) { return event->state; }
++static GdkEventType wxGTKKeyType(wxGTKKeyEvent* event) { return event->type; }
++static guint wxGTKKeyval(wxGTKKeyEvent* event) { return event->keyval; }
++static guint wxGTKKeycode(wxGTKKeyEvent* event) { return event->hardware_keycode; }
++static const GdkModifierType wxGTKAltMask = GDK_MOD1_MASK;
++#endif
++
+ static void wxFillOtherKeyEventFields(wxKeyEvent& event,
+                                       wxWindowGTK *win,
+-                                      GdkEventKey *gdk_event)
+-{
+-    event.SetTimestamp( gdk_event->time );
++                                      wxGTKKeyEvent *gdk_event)
++{
++    event.SetTimestamp( wxGTKKeyTime(gdk_event) );
+     event.SetId(win->GetId());
+ 
+-    event.m_shiftDown = (gdk_event->state & GDK_SHIFT_MASK) != 0;
+-    event.m_controlDown = (gdk_event->state & GDK_CONTROL_MASK) != 0;
+-    event.m_altDown = (gdk_event->state & GDK_MOD1_MASK) != 0;
+-    event.m_metaDown = (gdk_event->state & GDK_META_MASK) != 0;
++    event.m_shiftDown = (wxGTKKeyState(gdk_event) & GDK_SHIFT_MASK) != 0;
++    event.m_controlDown = (wxGTKKeyState(gdk_event) & GDK_CONTROL_MASK) != 0;
++    event.m_altDown = (wxGTKKeyState(gdk_event) & wxGTKAltMask) != 0;
++    event.m_metaDown = (wxGTKKeyState(gdk_event) & GDK_META_MASK) != 0;
+ 
+     // At least with current Linux systems, MOD5 corresponds to AltGr key and
+     // we represent it, for consistency with Windows, which really allows to
+     // use Ctrl+Alt as a replacement for AltGr if this key is not present, as a
+     // combination of these two modifiers.
+-    if ( gdk_event->state & GDK_MOD5_MASK )
++#ifndef __WXGTK4__
++    if ( wxGTKKeyState(gdk_event) & GDK_MOD5_MASK )
+     {
+         event.m_controlDown =
+         event.m_altDown = true;
+     }
++#endif // !__WXGTK4__
+ 
+     // Normally we take the state of modifiers directly from the low level GDK
+     // event but unfortunately GDK uses a different convention from MSW for the
+@@ -1082,8 +1102,8 @@
+     // produced events and it seems better to keep that class code the same
+     // among all platforms and fix the discrepancy here instead of adding
+     // wxGTK-specific code to wxUIActionSimulator.
+-    const bool isPress = gdk_event->type == GDK_KEY_PRESS;
+-    switch ( gdk_event->keyval )
++    const bool isPress = wxGTKKeyType(gdk_event) == GDK_KEY_PRESS;
++    switch ( wxGTKKeyval(gdk_event) )
+     {
+         case GDK_KEY_Shift_L:
+         case GDK_KEY_Shift_R:
+@@ -1108,8 +1128,8 @@
+             break;
+     }
+ 
+-    event.m_rawCode = (wxUint32) gdk_event->keyval;
+-    event.m_rawFlags = gdk_event->hardware_keycode;
++    event.m_rawCode = (wxUint32) wxGTKKeyval(gdk_event);
++    event.m_rawFlags = wxGTKKeycode(gdk_event);
+ 
+     event.m_isRepeat = false; // Detecting key repeat not implemented.
+ 
+@@ -1122,9 +1142,9 @@
+ static void
+ wxTranslateGTKKeyEventToWx(wxKeyEvent& event,
+                            wxWindowGTK *win,
+-                           GdkEventKey *gdk_event)
+-{
+-    const KeySym keysym = gdk_event->keyval;
++                           wxGTKKeyEvent *gdk_event)
++{
++    const KeySym keysym = wxGTKKeyval(gdk_event);
+ 
+     wxString extraTraceInfo;
+ 
+@@ -1166,7 +1186,7 @@
+ #ifdef wxHAS_XKB
+             char key_code_str[64];
+             xkb_state_key_get_utf8(gs_xkbData.GetState(),
+-                                   gdk_event->hardware_keycode,
++                                   wxGTKKeycode(gdk_event),
+                                    key_code_str,
+                                    sizeof(key_code_str));
+             if ( strlen(key_code_str) == 1 )
+@@ -1288,13 +1308,15 @@
+ extern "C" {
+ static gboolean
+ gtk_window_key_press_callback( GtkWidget *WXUNUSED(widget),
+-                               GdkEventKey *gdk_event,
++                               wxGTKKeyEvent *gdk_event,
+                                wxWindow *win )
+ {
+     if (g_blockEventsOnDrag)
+         return FALSE;
+ 
+-    wxPROCESS_EVENT_ONCE(GdkEventKey, gdk_event);
++#ifndef __WXGTK4__
++    wxPROCESS_EVENT_ONCE(wxGTKKeyEvent, gdk_event);
++#endif
+ 
+     wxKeyEvent event( wxEVT_KEY_DOWN );
+     bool ret = false;
+@@ -1367,7 +1389,7 @@
+     // from it below.
+     while ( !ret )
+     {
+-        KeySym keysym = gdk_event->keyval;
++        KeySym keysym = wxGTKKeyval(gdk_event);
+ 
+         wxKeyEvent eventChar(wxEVT_CHAR, event);
+ 
+@@ -1448,7 +1470,7 @@
+ }
+ }
+ 
+-int wxWindowGTK::GTKIMFilterKeypress(GdkEventKey* event) const
++int wxWindowGTK::GTKIMFilterKeypress(wxGTKKeyEvent* event) const
+ {
+     return m_imContext ? gtk_im_context_filter_keypress(m_imContext, event)
+                        : FALSE;
+@@ -1525,13 +1547,15 @@
+ extern "C" {
+ static gboolean
+ gtk_window_key_release_callback( GtkWidget * WXUNUSED(widget),
+-                                 GdkEventKey *gdk_event,
++                                 wxGTKKeyEvent *gdk_event,
+                                  wxWindowGTK *win )
+ {
+     if (g_blockEventsOnDrag)
+         return FALSE;
+ 
+-    wxPROCESS_EVENT_ONCE(GdkEventKey, gdk_event);
++#ifndef __WXGTK4__
++    wxPROCESS_EVENT_ONCE(wxGTKKeyEvent, gdk_event);
++#endif
+ 
+     wxKeyEvent event( wxEVT_KEY_UP );
+     wxTranslateGTKKeyEventToWx(event, win, gdk_event);
+@@ -2037,14 +2061,14 @@
+ // "scroll_event" (mouse wheel event)
+ //-----------------------------------------------------------------------------
+ 
+-static void AdjustRangeValue(GtkRange* range, double step)
++static void AdjustRangeValue(wxGTKScrollBar* range, double step)
+ {
+     if (gtk_widget_get_visible(GTK_WIDGET(range)))
+     {
+-        GtkAdjustment* adj = gtk_range_get_adjustment(range);
++        GtkAdjustment* adj = wxWindowGTK::GTKGetScrollAdjustment(range);
+         double value = gtk_adjustment_get_value(adj);
+         value += step * gtk_adjustment_get_step_increment(adj);
+-        gtk_range_set_value(range, value);
++        gtk_adjustment_set_value(wxWindowGTK::GTKGetScrollAdjustment(range), value);
+     }
+ }
+ 
+@@ -2058,8 +2082,8 @@
+     event.m_linesPerAction = 3;
+     event.m_columnsPerAction = 3;
+ 
+-    GtkRange* range_h = win->m_scrollBar[wxWindow::ScrollDir_Horz];
+-    GtkRange* range_v = win->m_scrollBar[wxWindow::ScrollDir_Vert];
++    wxGTKScrollBar* range_h = win->m_scrollBar[wxWindow::ScrollDir_Horz];
++    wxGTKScrollBar* range_v = win->m_scrollBar[wxWindow::ScrollDir_Vert];
+     const bool is_range_h = (void*)widget == range_h;
+     const bool is_range_v = (void*)widget == range_v;
+     GdkScrollDirection direction = gdk_event->direction;
+@@ -2129,7 +2153,7 @@
+             return handled;
+ #endif // GTK_CHECK_VERSION(3,4,0)
+     }
+-    GtkRange *range;
++    wxGTKScrollBar *range;
+     double step;
+     switch (direction)
+     {
+@@ -2296,7 +2320,7 @@
+ //-----------------------------------------------------------------------------
+ 
+ static void
+-gtk_scrollbar_value_changed(GtkRange* range, wxWindow* win)
++gtk_scrollbar_value_changed(wxGTKScrollBar* range, wxWindow* win)
+ {
+     wxEventType eventType = win->GTKGetScrollEventType(range);
+     if (eventType != wxEVT_NULL)
+@@ -2321,7 +2345,7 @@
+ //-----------------------------------------------------------------------------
+ 
+ static gboolean
+-gtk_scrollbar_button_press_event(GtkRange*, GdkEventButton*, wxWindow* win)
++gtk_scrollbar_button_press_event(wxGTKScrollBar*, GdkEventButton*, wxWindow* win)
+ {
+     g_blockEventsOnScroll = true;
+     win->m_mouseButtonDown = true;
+@@ -2334,7 +2358,7 @@
+ //-----------------------------------------------------------------------------
+ 
+ static void
+-gtk_scrollbar_event_after(GtkRange* range, GdkEvent* event, wxWindow* win)
++gtk_scrollbar_event_after(wxGTKScrollBar* range, GdkEvent* event, wxWindow* win)
+ {
+     if (event->type == GDK_BUTTON_RELEASE)
+     {
+@@ -2354,7 +2378,7 @@
+ //-----------------------------------------------------------------------------
+ 
+ static gboolean
+-gtk_scrollbar_button_release_event(GtkRange* range, GdkEventButton*, wxWindow* win)
++gtk_scrollbar_button_release_event(wxGTKScrollBar* range, GdkEventButton*, wxWindow* win)
+ {
+     g_blockEventsOnScroll = false;
+     win->m_mouseButtonDown = false;
+@@ -3974,7 +3998,7 @@
+                       G_CALLBACK (gtk_window_motion_notify_callback), this);
+ 
+     g_signal_connect(widget, "scroll_event", G_CALLBACK(scroll_event), this);
+-    GtkRange* range = m_scrollBar[ScrollDir_Horz];
++    wxGTKScrollBar* range = m_scrollBar[ScrollDir_Horz];
+     if (range)
+         g_signal_connect(range, "scroll_event", G_CALLBACK(scroll_event), this);
+     range = m_scrollBar[ScrollDir_Vert];
+@@ -4245,7 +4269,7 @@
+             for ( int i = 0; i < ScrollDir_Max; i++ )
+             {
+                 // don't account for the scrollbars we don't have
+-                GtkRange * const range = m_scrollBar[i];
++                wxGTKScrollBar * const range = m_scrollBar[i];
+                 if ( !range )
+                     continue;
+ 
+@@ -4265,7 +4289,7 @@
+ 
+                     case GTK_POLICY_AUTOMATIC:
+                         // may be shown or not, check
+-                        GtkAdjustment *adj = gtk_range_get_adjustment(range);
++                        GtkAdjustment *adj = wxWindowGTK::GTKGetScrollAdjustment(range);
+                         if (gtk_adjustment_get_upper(adj) <= gtk_adjustment_get_page_size(adj))
+                             continue;
+                 }
+@@ -5014,7 +5038,7 @@
+ 
+     GTKSetLayout(m_widget, dir);
+ 
+-    if (GtkRange* range = m_scrollBar[ScrollDir_Horz])
++    if (wxGTKScrollBar* range = m_scrollBar[ScrollDir_Horz])
+         gtk_range_set_inverted(range, dir == wxLayout_RightToLeft);
+ 
+     if (m_wxwindow && (m_wxwindow != m_widget))
+@@ -5264,7 +5288,16 @@
+ #endif
+ }
+ 
+-wxWindowGTK::ScrollDir wxWindowGTK::ScrollDirFromRange(GtkRange *range) const
++GtkAdjustment* wxWindowGTK::GTKGetScrollAdjustment(wxGTKScrollBar* range)
++{
++#ifdef __WXGTK4__
++    return gtk_scrollbar_get_adjustment(GTK_SCROLLBAR(range));
++#else
++    return gtk_range_get_adjustment(range);
++#endif
++}
++
++wxWindowGTK::ScrollDir wxWindowGTK::ScrollDirFromRange(wxGTKScrollBar *range) const
+ {
+     // find the scrollbar which generated the event
+     for ( int dir = 0; dir < ScrollDir_Max; dir++ )
+@@ -5281,15 +5314,15 @@
+ bool wxWindowGTK::DoScrollByUnits(ScrollDir dir, ScrollUnit unit, int units)
+ {
+     bool changed = false;
+-    GtkRange* range = m_scrollBar[dir];
++    wxGTKScrollBar* range = m_scrollBar[dir];
+     if ( range && units )
+     {
+-        GtkAdjustment* adj = gtk_range_get_adjustment(range);
++        GtkAdjustment* adj = wxWindowGTK::GTKGetScrollAdjustment(range);
+         double inc = unit == ScrollUnit_Line ? gtk_adjustment_get_step_increment(adj)
+                                              : gtk_adjustment_get_page_increment(adj);
+ 
+         const int posOld = wxRound(gtk_adjustment_get_value(adj));
+-        gtk_range_set_value(range, posOld + units*inc);
++        gtk_adjustment_set_value(adj, posOld + units*inc);
+ 
+         changed = wxRound(gtk_adjustment_get_value(adj)) != posOld;
+     }
+@@ -6436,7 +6469,7 @@
+                                bool WXUNUSED(update))
+ {
+     const int dir = ScrollDirFromOrient(orient);
+-    GtkRange* const sb = m_scrollBar[dir];
++    wxGTKScrollBar* const sb = m_scrollBar[dir];
+     wxCHECK_RET( sb, wxT("this window is not scrollable") );
+ 
+     if (range <= 0)
+@@ -6451,17 +6484,19 @@
+     g_signal_handlers_block_by_func(
+         sb, (void*)gtk_scrollbar_value_changed, this);
+ 
+-    GtkAdjustment* adj = gtk_range_get_adjustment(sb);
++    GtkAdjustment* adj = GTKGetScrollAdjustment(sb);
+     const bool wasVisible = gtk_adjustment_get_upper(adj) > gtk_adjustment_get_page_size(adj);
+ 
+     g_object_freeze_notify(G_OBJECT(adj));
+-    gtk_range_set_increments(sb, 1, thumbVisible);
++    gtk_adjustment_set_step_increment(adj, 1);
++    gtk_adjustment_set_page_increment(adj, thumbVisible);
+     gtk_adjustment_set_page_size(adj, thumbVisible);
+-    gtk_range_set_range(sb, 0, range);
++    gtk_adjustment_set_lower(adj, 0);
++    gtk_adjustment_set_upper(adj, range);
+     g_object_thaw_notify(G_OBJECT(adj));
+ 
+-    gtk_range_set_value(sb, pos);
+-    m_scrollPos[dir] = gtk_range_get_value(sb);
++    gtk_adjustment_set_value(GTKGetScrollAdjustment(sb), pos);
++    m_scrollPos[dir] = gtk_adjustment_get_value(GTKGetScrollAdjustment(sb));
+ 
+     const bool isVisible = gtk_adjustment_get_upper(adj) > gtk_adjustment_get_page_size(adj);
+     if (isVisible != wasVisible)
+@@ -6474,7 +6509,7 @@
+ void wxWindowGTK::SetScrollPos(int orient, int pos, bool WXUNUSED(refresh))
+ {
+     const int dir = ScrollDirFromOrient(orient);
+-    GtkRange * const sb = m_scrollBar[dir];
++    wxGTKScrollBar * const sb = m_scrollBar[dir];
+     wxCHECK_RET( sb, wxT("this window is not scrollable") );
+ 
+     // This check is more than an optimization. Without it, the slider
+@@ -6484,8 +6519,8 @@
+         g_signal_handlers_block_by_func(
+             sb, (void*)gtk_scrollbar_value_changed, this);
+ 
+-        gtk_range_set_value(sb, pos);
+-        m_scrollPos[dir] = gtk_range_get_value(sb);
++        gtk_adjustment_set_value(GTKGetScrollAdjustment(sb), pos);
++        m_scrollPos[dir] = gtk_adjustment_get_value(GTKGetScrollAdjustment(sb));
+ 
+         g_signal_handlers_unblock_by_func(
+             sb, (void*)gtk_scrollbar_value_changed, this);
+@@ -6494,26 +6529,26 @@
+ 
+ int wxWindowGTK::GetScrollThumb(int orient) const
+ {
+-    GtkRange * const sb = m_scrollBar[ScrollDirFromOrient(orient)];
++    wxGTKScrollBar * const sb = m_scrollBar[ScrollDirFromOrient(orient)];
+     wxCHECK_MSG( sb, 0, wxT("this window is not scrollable") );
+ 
+-    return wxRound(gtk_adjustment_get_page_size(gtk_range_get_adjustment(sb)));
++    return wxRound(gtk_adjustment_get_page_size(GTKGetScrollAdjustment(sb)));
+ }
+ 
+ int wxWindowGTK::GetScrollPos( int orient ) const
+ {
+-    GtkRange * const sb = m_scrollBar[ScrollDirFromOrient(orient)];
++    wxGTKScrollBar * const sb = m_scrollBar[ScrollDirFromOrient(orient)];
+     wxCHECK_MSG( sb, 0, wxT("this window is not scrollable") );
+ 
+-    return wxRound(gtk_range_get_value(sb));
++    return wxRound(gtk_adjustment_get_value(GTKGetScrollAdjustment(sb)));
+ }
+ 
+ int wxWindowGTK::GetScrollRange( int orient ) const
+ {
+-    GtkRange * const sb = m_scrollBar[ScrollDirFromOrient(orient)];
++    wxGTKScrollBar * const sb = m_scrollBar[ScrollDirFromOrient(orient)];
+     wxCHECK_MSG( sb, 0, wxT("this window is not scrollable") );
+ 
+-    return wxRound(gtk_adjustment_get_upper(gtk_range_get_adjustment(sb)));
++    return wxRound(gtk_adjustment_get_upper(GTKGetScrollAdjustment(sb)));
+ }
+ 
+ // Determine if increment is the same as +/-x, allowing for some small
+@@ -6525,13 +6560,13 @@
+     return fabs(increment - fabs(x)) < tolerance;
+ }
+ 
+-wxEventType wxWindowGTK::GTKGetScrollEventType(GtkRange* range)
++wxEventType wxWindowGTK::GTKGetScrollEventType(wxGTKScrollBar* range)
+ {
+     wxASSERT(range == m_scrollBar[0] || range == m_scrollBar[1]);
+ 
+     const int barIndex = range == m_scrollBar[1];
+ 
+-    GtkAdjustment* adj = gtk_range_get_adjustment(range);
++    GtkAdjustment* adj = wxWindowGTK::GTKGetScrollAdjustment(range);
+     const double value = gtk_adjustment_get_value(adj);
+ 
+     // save previous position
+--- src/gtk/scrolwin.cpp.orig
++++ src/gtk/scrolwin.cpp
+@@ -16,6 +16,9 @@
+ #include "wx/scrolwin.h"
+ 
+ #include "wx/gtk/private/wrapgtk.h"
++#ifdef __WXGTK4__
++#include "wx/gtk/private/win_gtk.h"
++#endif
+ 
+ // ----------------------------------------------------------------------------
+ // wxScrollHelper implementation
+@@ -34,7 +37,7 @@
+         pixelsPerUnitX, pixelsPerUnitY, noUnitsX, noUnitsY, xPos, yPos, noRefresh);
+ }
+ 
+-void wxScrollHelper::DoAdjustScrollbar(GtkRange* range,
++void wxScrollHelper::DoAdjustScrollbar(wxGTKScrollBar* range,
+                                        int pixelsPerLine,
+                                        int winSize,
+                                        int virtSize,
+@@ -66,7 +69,7 @@
+         *linesPerPage = 0;
+     }
+ 
+-    GtkAdjustment* adj = gtk_range_get_adjustment(range);
++    GtkAdjustment* adj = wxWindowGTK::GTKGetScrollAdjustment(range);
+     const double adj_upper = gtk_adjustment_get_upper(adj);
+     const double adj_page_size = gtk_adjustment_get_page_size(adj);
+     if (adj_upper != upper || adj_page_size != page_size)
+@@ -74,9 +77,11 @@
+         const bool wasVisible = adj_upper > adj_page_size;
+ 
+         g_object_freeze_notify(G_OBJECT(adj));
+-        gtk_range_set_increments(range, 1, page_size);
++        gtk_adjustment_set_step_increment(adj, 1);
++        gtk_adjustment_set_page_increment(adj, page_size);
+         gtk_adjustment_set_page_size(adj, page_size);
+-        gtk_range_set_range(range, 0, upper);
++        gtk_adjustment_set_lower(adj, 0);
++        gtk_adjustment_set_upper(adj, upper);
+         g_object_thaw_notify(G_OBJECT(adj));
+ 
+         const bool isVisible = gtk_adjustment_get_upper(adj) > gtk_adjustment_get_page_size(adj);
+@@ -93,7 +98,11 @@
+ {
+     int vw, vh;
+     m_targetWindow->GetVirtualSize(&vw, &vh);
+-#ifdef __WXGTK3__
++#ifdef __WXGTK4__
++    // A virtual extent is a natural size, not a minimum allocation. GTK4
++    // no longer has adjust_size_request() to undo gtk_widget_set_size_request.
++    WX_PIZZA(m_win->m_wxwindow)->set_virtual_size(vw, vh);
++#elif defined(__WXGTK3__)
+     // GtkScrolledWindow uses child's preferred size as virtual size
+     gtk_widget_set_size_request(m_win->m_wxwindow, vw, vh);
+ #endif
