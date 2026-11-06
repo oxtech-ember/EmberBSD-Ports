@@ -12,6 +12,7 @@ SHA1 (patch-gtk4-evtloop) = 06a64389bff6f226fd51c45b4d72d7c12d4810ab
 SHA1 (patch-gtk4-frame-dialog) = 965a1db64dce3d52e6e36f5cfbb07c96a3a892ba
 SHA1 (patch-gtk4-glcanvas) = e69ec1be1b8d2c163db6ea67d0df08b2ae2b06b8
 SHA1 (patch-gtk4-menus) = 1bbbaf58706c2fc175c6fa7a0f0625d355eac3ec
+SHA1 (patch-gtk4-notebook-statbox) = 6d058093b50a8ff461797621be8f2829b1399ab1
 SHA1 (patch-gtk4-pizza) = 446bf8d36705c8edc3838f7b6983c45e4303ca8d
 SHA1 (patch-gtk4-pointer-deps) = 6734dc044ad1f22ed5053cbf6bb692b7b647ad14
 SHA1 (patch-gtk4-style) = 53696da9826803cc30608e0c9d34823adfcd9f9a
