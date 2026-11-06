@@ -58,7 +58,7 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +#endif // !__WXGTK4__
 --- /dev/null
 +++ src/gtk/win_gtk4.inc
-@@ -0,0 +1,620 @@
+@@ -0,0 +1,621 @@
 +///////////////////////////////////////////////////////////////////////////////
 +// Name:        src/gtk/win_gtk4.inc
 +// Purpose:     GTK4 client widget: allocation, scrolling and snapshot painting
@@ -72,6 +72,7 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +// and wxWindow::ScrollWindow changes the child coordinate origin.
 +
 +#include <cmath>
++#include <algorithm>
 +
 +struct wxPizzaChild
 +{
@@ -511,8 +512,8 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +{
 +    if (parentWidth < 0)
 +        parentWidth = gtk_widget_get_width(GTK_WIDGET(this));
-+    width = wxMax(0, width);
-+    height = wxMax(0, height);
++    width = std::max(0, width);
++    height = std::max(0, height);
 +    x -= m_scroll_x;
 +    y -= m_scroll_y;
 +    if (gtk_widget_get_direction(GTK_WIDGET(this)) == GTK_TEXT_DIR_RTL)
@@ -591,7 +592,7 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +                                   0, 0, width, height);
 +    gtk_snapshot_append_node(copy, m_contentSnapshot);
 +    GskRenderNode* node = gtk_snapshot_free_to_node(copy);
-+    const graphene_rect_t bounds = GRAPHENE_RECT_INIT(0, 0, pixelWidth, pixelHeight);
++    const graphene_rect_t bounds = GRAPHENE_RECT_INIT(0, 0, float(pixelWidth), float(pixelHeight));
 +    GdkTexture* texture = gsk_renderer_render_texture(renderer, node, &bounds);
 +    gsk_render_node_unref(node);
 +    if (!texture)
@@ -643,7 +644,7 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +                GDK_MEMORY_DEFAULT, pixels, stride);
 +            g_bytes_unref(pixels);
 +            GtkSnapshot* snapshot = gtk_snapshot_new();
-+            const graphene_rect_t bounds = GRAPHENE_RECT_INIT(0, 0, state->width, state->height);
++            const graphene_rect_t bounds = GRAPHENE_RECT_INIT(0, 0, float(state->width), float(state->height));
 +            gtk_snapshot_append_texture(snapshot, texture, &bounds);
 +            g_object_unref(texture);
 +            GskRenderNode* node = gtk_snapshot_free_to_node(snapshot);
@@ -659,8 +660,8 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +
 +void wxPizza::set_virtual_size(int width, int height)
 +{
-+    width = wxMax(0, width);
-+    height = wxMax(0, height);
++    width = std::max(0, width);
++    height = std::max(0, height);
 +    if (width == m_virtual_width && height == m_virtual_height)
 +        return;
 +    m_virtual_width = width;
