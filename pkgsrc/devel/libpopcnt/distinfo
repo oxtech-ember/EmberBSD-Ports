@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (libpopcnt-4.2.tar.gz) = 8f5b86fbe086b11fb90da4958c8e040b5248e19c219f1d8f2abc1f5388c4e967
+SHA512 (libpopcnt-4.2.tar.gz) = 5c79fb6690bd39f322430657b26508b8092c1d1d078b435d35fd20771053c021cbc7e819d7a4fb2bb88bf527f5fbab7ba992dca02009eb20cff70d2d369a6658
+Size (libpopcnt-4.2.tar.gz) = 18818 bytes

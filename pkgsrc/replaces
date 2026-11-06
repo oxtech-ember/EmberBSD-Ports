@@ -545,6 +545,13 @@ security/libfido2
 
 security/zxcvbn-c
 
+# Current common header-only C++ providers.
+devel/argparse
+devel/dynamic_bitset
+devel/libpopcnt
+devel/magic_enum
+devel/thread-pool
+
 graphics/glad
 sysutils/cpuinfo
 

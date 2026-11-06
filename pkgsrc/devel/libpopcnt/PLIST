@@ -1,0 +1,4 @@
+@comment $NetBSD$
+include/libpopcnt.h
+lib/cmake/LibPopcnt/LibPopcntConfig.cmake
+share/licenses/libpopcnt/LICENSE

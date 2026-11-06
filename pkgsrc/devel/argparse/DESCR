@@ -1,0 +1,2 @@
+argparse is a single-header C++17 argument parser that provides a convenient
+interface for defining command-line options and parsing arguments.

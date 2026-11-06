@@ -1,0 +1,2 @@
+BS::thread_pool is a fast, lightweight, modern C++17/20/23 header-only
+thread pool library.

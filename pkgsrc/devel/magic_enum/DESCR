@@ -1,0 +1,1 @@
+magic_enum provides static reflection for enum types, including enum-to-name and name-to-enum conversion, without macros.

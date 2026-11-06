@@ -1,0 +1,2 @@
+libpopcnt is a portable header-only library for fast population count
+operations on integer arrays.
