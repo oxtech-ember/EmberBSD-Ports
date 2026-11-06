@@ -172,6 +172,7 @@ show:
         provider_query = work / 'provider-query.mk'
         provider_query.write_text('PKGVERSION_NOREV= ${PKGNAME:C/^mesa-generators-//}\n' +
                                   'TOOL_PYTHONBIN= /selected/python3.15\n' +
+                                  'TOOLBASE= /selected/host-prefix\n' +
                                   '\n'.join(provider_lines) + '''
 show:
 	@printf '%s\\n' ${PKGNAME:Q}
@@ -188,6 +189,8 @@ show:
 	@printf '%s\\n' ${SUBST_SED.python:Q}
 	@printf '%s\\n' ${MESON_ARGS:Q}
 	@printf '%s\\n' ${USE_TOOLS:Q}
+	@printf '%s\\n' ${TOOLS_PLATFORM.bison:Q}
+	@printf '%s\\n' ${TOOLS_PLATFORM.flex:Q}
 ''')
         provider_values = subprocess.check_output([str(args.bmake), '-r', '-m', '/', '-f',
                                                    str(provider_query), 'show'],
@@ -209,6 +212,9 @@ show:
                 'The provider tool declaration does not match the Meson input tools')
         require('bison-' in provider_values[7] and 'flex>=' in provider_values[7],
                 'The provider does not declare its selected Bison/Flex packages')
+        require(provider_values[14:16] == ['/selected/host-prefix/bin/bison',
+                                            '/selected/host-prefix/bin/flex'],
+                'The provider fell back to a platform Bison/Flex tool')
         provider_plist = (RECIPE.parent / 'mesa-generators/PLIST').read_text().splitlines()
         require({'bin/mesa_clc', 'bin/vtn_bindgen2', 'bin/pco_clc'} ==
                 {line for line in provider_plist if line.startswith('bin/')},
@@ -278,7 +284,7 @@ show:
                                               '-Dprecomp-compiler=system', '-Dprecomp-compiler=enabled'))
                                 for x in options), 'Softpipe imported CLC generators')
                 require('vulkan-loader' not in values['DEPENDS'], 'Softpipe imported Vulkan loader')
-                require(not any(item.startswith('mesa-generators>') for item in values['TOOL_DEPENDS'].split()),
+                require(not any(item.startswith('mesa-generators-') for item in values['TOOL_DEPENDS'].split()),
                         'Softpipe imported the native shader tools package')
                 require(not (set(values['TEST_INCLUDES'].split()) & BUILD_LINKS),
                         'Softpipe imported native CLC dependencies')
