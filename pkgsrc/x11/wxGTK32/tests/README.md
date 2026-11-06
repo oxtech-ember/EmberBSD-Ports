@@ -149,3 +149,75 @@ python3 tests/evtloop-glib.py --source /prepared/wxWidgets \
 Pass any selected host ABI/compiler flags using repeated `--cxx-flag=...`.
 The test runs native output only and treats GLib critical diagnostics as fatal.
 No target program is executed on the build host.
+
+# GTK4 GLCanvas contract
+
+`patch-gtk4-glcanvas` uses real EGL contexts and pbuffer drawables with GTK4
+snapshot presentation. `SetCurrent(canvas)` binds the requested native context
+to that canvas, including switching one context between canvases. Desktop GL
+uses a compatibility profile by default, preserving KiCad's immediate-mode GL
+and framebuffer-zero contract. GLES is an explicit context request. EGL 1.5,
+libepoxy and a GTK display using EGL are required; a GLX-only display produces
+an error. There is no hidden GDK debug switch or CPU pixel readback in this
+presentation implementation.
+
+Framebuffer zero is the native pbuffer. It is **single-buffered**:
+`GL_DOUBLEBUFFER` is false even when wx `DoubleBuffer()` is requested. Mesa
+supports `GL_BACK` / `GL_BACK_LEFT` on a pbuffer by mapping them to its front
+storage. Presentation has separate buffers: `SwapBuffers()` copies the rendered
+frame into a new immutable GPU texture and publishes it to GTK; further GL
+rendering does not alter the displayed frame. This is not a native double-buffer
+framebuffer or a window-system `eglSwapBuffers` operation. Stereo, overlays,
+auxiliary buffers and accumulation buffers are rejected explicitly.
+
+The bridge shares GTK's display-wide resource group. Contexts have distinct
+native identities and independent GL state, but **resource isolation is not
+provided**, including when the wx context constructor receives no `other`
+context. Explicit sharing validates display and client API compatibility.
+Completed textures and fences remain alive while GTK retains their snapshots,
+even after canvas/context destruction. Worker-thread texture release queues a
+GLib idle source; GL deletion occurs on the UI loop, never via an inline-capable
+`g_main_context_invoke` call.
+
+Presentation textures use ordinary RGBA storage tagged with GDK's sRGB color
+state. Desktop blits disable sRGB conversion while copying stored encoded
+values, bypass caller pixel-transfer state, and preserve scissor, framebuffer,
+texture, unpack-buffer and sRGB state. GLES uses `CopyTexSubImage2D`, which also
+copies stored values and has no legacy pixel-transfer state; it avoids the
+sRGB-format matching restriction of `CopyTexImage2D`. An sRGB texture format
+would decode values again during GTK sampling and is deliberately not used.
+The EGL sRGB framebuffer option still controls application rendering normally.
+
+Primary implementation references:
+
+- [Mesa pbuffer config selection](https://gitlab.freedesktop.org/mesa/mesa/-/blob/mesa-26.2.6/src/egl/drivers/dri2/egl_dri2.c)
+- [Mesa BACK-to-FRONT pbuffer mapping](https://gitlab.freedesktop.org/mesa/mesa/-/blob/mesa-26.2.6/src/mesa/main/buffers.c)
+- [Mesa copy validation](https://gitlab.freedesktop.org/mesa/mesa/-/blob/mesa-26.2.6/src/mesa/main/teximage.c)
+- [Mesa copy color formats](https://gitlab.freedesktop.org/mesa/mesa/-/blob/mesa-26.2.6/src/mesa/state_tracker/st_cb_texture.c)
+- [GTK shared GL texture import](https://gitlab.gnome.org/GNOME/gtk/-/blob/4.24.1/gsk/gpu/gskglframe.c)
+
+```sh
+python3 tests/gl4-selection.py --source /prepared/wxWidgets \
+  --shell /native/bin/mksh --work-parent /work/tmp
+python3 tests/gl4-release-glib.py --source /prepared/wxWidgets \
+  --cxx /native/bin/clang++ --pkg-config /native/bin/pkg-config \
+  --work-parent /work/tmp
+```
+
+The first check executes actual generated-configure logic for EGL 1.5/epoxy,
+missing dependencies, explicit EGL disable, and preserved GTK3 selection. The
+second compiles the production release-dispatch function against native GLib;
+its worker releases a frame while the main context is unowned. Replacing the
+queued idle source with `g_main_context_invoke` makes this regression fail.
+Use repeated `--cxx-flag=...` for selected host ABI/compiler flags.
+
+Build `gl4-contract` using the same CMake project and selected SDK, optionally
+with `-DBUILD_WEBKIT_CONTRACT=OFF -DBUILD_TEXT_CONTRACT=OFF`. Run on the matching
+GTK4/EGL target. It checks native context identity, display-wide/explicit sharing,
+FB0, the single-buffer limitation and KiCad BACK readback, immutable presentation,
+vertical orientation, retained-frame lifetime, resizing, sRGB values and caller
+GL state preservation. Hardware GL is required by default. Explicit
+`WX_GL_ALLOW_SOFTWARE=1` permits a software-only recovery/CI environment and does
+not establish hardware acceptance. Full translation-unit compilation and this
+GUI fixture remain pending the shared GTK4 build; method/metadata checks do not
+claim that runtime acceptance.
