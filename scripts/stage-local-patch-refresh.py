@@ -678,6 +678,28 @@ def transaction(sdk, work, source, changes, old_cookie, new_inventory, build_cle
         raise
 
 
+def same_source_input(name, before, after):
+    """Resolve aliases only for the two standard, recipe-bound patch inputs."""
+    if before == after:
+        return True
+    return (name in ('PATCHDIR', 'DISTINFO_FILE') and
+            Path(before).resolve(strict=True) == Path(after).resolve(strict=True))
+
+
+def validate_reconfigure_context(selected_values, oldcmd, cmd):
+    """Permit explicit recipe reconfiguration without changing toolchain or ABI."""
+    fields = ('OPSYS OS_VERSION MACHINE_ARCH MACHINE_GNU_PLATFORM ABI USE_CROSS_COMPILE '
+              'PKGSRC_COMPILER EMBERBSD_CROSS_COMPILER_FAMILY EMBERBSD_HOST_COMPILER_FAMILY '
+              'CC CXX CPP FC F77 AR AS LD NM RANLIB STRIP CFLAGS CXXFLAGS CPPFLAGS FFLAGS LDFLAGS '
+              'CWRAPPERS_APPEND.cc CWRAPPERS_APPEND.cxx '
+              'PREFIX LOCALBASE TOOLBASE CROSS_DESTDIR TOOLDIR '
+              'EMBERBSD_HOST_PREFIX EMBERBSD_CROSS_HOST_PREFIX EMBERBSD_CROSS_SYSROOT '
+              'EMBERBSD_HOST_PYTHON PYTHONBIN TOOL_PYTHONBIN').split()
+    before, after = selected_values(oldcmd, fields), selected_values(cmd, fields)
+    changed = [name for name, old, new in zip(fields, before, after) if old != new]
+    require(not changed, 'reconfigure changes toolchain/ABI inputs: ' + ', '.join(changed))
+
+
 def validate_added_revision_includes(paths, recipe, names, selected_values, oldcmd, cmd):
     """Accept new literal revision metadata only when build inputs are unchanged."""
     variables = set()
@@ -795,6 +817,8 @@ def main():
     p.add_argument('--subst-class', help='one added pre-configure SUBST class')
     p.add_argument('--previous-recipe', type=Path, help='installed recipe preimage directory')
     p.add_argument('--refresh-subst', help='one existing substitution before configure')
+    p.add_argument('--reconfigure', action='store_true',
+                   help='explicitly accept new recipe configuration with the previous recipe')
     a = p.parse_args()
     sys.path.insert(0, str(a.sdk_source / 'src'))
     from emberbsd_sdk import archive_metadata, jsonio, paths, sourceprep
@@ -808,6 +832,8 @@ def main():
     if a.native:
         cmd.append('USE_CROSS_COMPILE=no')
     cmd.extend(a.make_arg)
+    require(not a.reconfigure or a.previous_recipe,
+            'explicit reconfigure requires the previous recipe')
     require(not a.refresh_subst or (a.previous_recipe and not a.previous_makefile and not a.subst_class),
             'existing substitution refresh requires previous recipe only')
     if a.refresh_subst:
@@ -949,7 +975,9 @@ def main():
         new_includes = validate_recipe_includes(paths, a.recipe, v['.MAKE.MAKEFILES'], None,
                                                observed=observed_recipe_inputs)
         require(old_includes <= new_includes, 'included recipe inputs removed')
-        if new_includes != old_includes:
+        if a.reconfigure:
+            validate_reconfigure_context(selected_values, oldcmd, cmd)
+        elif new_includes != old_includes:
             validate_added_revision_includes(paths, a.recipe, new_includes - old_includes,
                                              selected_values, oldcmd, cmd)
         # Configuration and package policy may legitimately change in a local
@@ -960,8 +988,11 @@ def main():
                          'EXTRACT_CMD', 'EXTRACT_ENV', 'EXTRACT_BEFORE_ARGS', 'EXTRACT_AFTER_ARGS',
                          'PATCH', 'PATCH_ARGS', 'PATCHFILES', 'PATCHDIR', 'DISTINFO_FILE', 'LOCALPATCHES']
         old_source, new_source = selected_values(oldcmd, source_fields), selected_values(cmd, source_fields)
-        require(old_source == new_source, 'previous source preparation inputs changed')
-        require(all(name not in v or value == v[name] for name, value in zip(source_fields, new_source)),
+        require(all(same_source_input(name, old, new)
+                    for name, old, new in zip(source_fields, old_source, new_source)),
+                'previous source preparation inputs changed')
+        require(all(name not in v or same_source_input(name, value, v[name])
+                    for name, value in zip(source_fields, new_source)),
                 'current source preparation inputs changed during verification')
         for command in (oldcmd, cmd):
             result = subprocess.run(command + ['-n', 'pre-extract', 'post-extract'], check=True,

@@ -1960,6 +1960,11 @@ package_install_one()
             esac
             set -- "$@" --previous-recipe "$CROSS_BULK_PATCH_REFRESH_PREVIOUS_RECIPE"
         fi
+        case "${CROSS_BULK_PATCH_REFRESH_RECONFIGURE:-no}" in
+            yes) set -- "$@" --reconfigure ;;
+            no) ;;
+            *) echo 'CROSS_BULK_PATCH_REFRESH_RECONFIGURE must be yes or no' >&2; return 2 ;;
+        esac
         if [ -n "${CROSS_BULK_PATCH_REFRESH_EXISTING_SUBST:-}" ]; then
             set -- "$@" --refresh-subst "$CROSS_BULK_PATCH_REFRESH_EXISTING_SUBST"
         fi

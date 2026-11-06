@@ -268,4 +268,60 @@ sys.exit(3)
     result = subprocess.run(command, capture_output=True, text=True)
     assert result.returncode and 'revision include changes configure/build commands' in result.stderr, result.stderr
     assert (source / 'input').read_bytes() == b'old /prefix\n'
+    def reconfigure_setup(name):
+        result = revision_setup(name, 'COMPONENT_VERSION= 1\n')
+        base, work, source, command, previous = result
+        config = base / 'vars.json'
+        values = json.loads(config.read_text())
+        values['_new_hooks'] = 'copy provider header before configure'
+        config.write_text(json.dumps(values))
+        return result
+
+    base, work, source, command, previous = reconfigure_setup('explicit-reconfigure')
+    stamp = (source / 'sibling.o').stat().st_mtime_ns
+    refused = subprocess.run(command, capture_output=True, text=True)
+    assert refused.returncode and 'revision-only include' in refused.stderr, refused.stderr
+    result = subprocess.run(command + ['--reconfigure'], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert (source / 'input').read_bytes() == b'new /prefix\n'
+    assert (base / 'configure-clean').is_file()
+    assert (source / 'sibling.o').read_bytes() == b'object'
+    assert (source / 'sibling.o').stat().st_mtime_ns == stamp
+    for field in ('MACHINE_GNU_PLATFORM', 'ABI', 'CC', 'CFLAGS', 'LDFLAGS', 'EMBERBSD_CROSS_SYSROOT'):
+        base, work, source, command, previous = reconfigure_setup('reconfigure-changed-'+field)
+        config = base / 'vars.json'; values = json.loads(config.read_text())
+        values[field] = 'changed'; values['_old_'+field] = ''
+        config.write_text(json.dumps(values))
+        result = subprocess.run(command + ['--reconfigure'], capture_output=True, text=True)
+        assert result.returncode and 'reconfigure changes toolchain/ABI inputs' in result.stderr, result.stderr
+        assert (source / 'input').read_bytes() == b'old /prefix\n'
+    base, work, source, command, previous = reconfigure_setup('reconfigure-live-edit')
+    (source / 'input').write_bytes(b'unrelated edit\n')
+    result = subprocess.run(command + ['--reconfigure'], capture_output=True, text=True)
+    assert result.returncode and 'differs' in result.stderr, result.stderr
+    assert (source / 'input').read_bytes() == b'unrelated edit\n'
+    base, work, source, command, previous = reconfigure_setup('reconfigure-include-drift')
+    fake = base / 'bmake'
+    fake.write_text(fake.read_text().replace("if 'subst-rewrite' in args:",
+        "if 'subst-rewrite' in args:\n pathlib.Path(" + repr(str(base / 'pkgsrc/cat/demo/revisions.mk')) + ").write_text('COMPONENT_VERSION= 2\\n')"))
+    result = subprocess.run(command + ['--reconfigure'], capture_output=True, text=True)
+    assert result.returncode and 'recipe input changed during source replay' in result.stderr, result.stderr
+    assert (source / 'input').read_bytes() == b'old /prefix\n'
+    base, work, source, command, previous = reconfigure_setup('reconfigure-source-path-alias')
+    config = base / 'vars.json'; values = json.loads(config.read_text())
+    recipe = base / 'pkgsrc/cat/demo'
+    for field, name in [('PATCHDIR', 'patches'), ('DISTINFO_FILE', 'distinfo')]:
+        values['_old_'+field] = values[field]
+        values[field] = str(recipe / '../demo' / name)
+    config.write_text(json.dumps(values))
+    result = subprocess.run(command + ['--reconfigure'], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert (source / 'input').read_bytes() == b'new /prefix\n'
+    base, work, source, command, previous = reconfigure_setup('reconfigure-foreign-source-path')
+    config = base / 'vars.json'; values = json.loads(config.read_text())
+    values['_old_DISTINFO_FILE'] = str(previous / 'distinfo')
+    config.write_text(json.dumps(values))
+    result = subprocess.run(command + ['--reconfigure'], capture_output=True, text=True)
+    assert result.returncode and 'source preparation inputs changed' in result.stderr, result.stderr
+    assert (source / 'input').read_bytes() == b'old /prefix\n'
 print('PASS: existing SUBST replay, exact inputs, cookie, recovery and mtimes')

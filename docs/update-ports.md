@@ -253,6 +253,16 @@ compatible objects while resetting the build phase. Packages with `NO_CONFIGURE`
 keep their existing configure behavior. Meson setup reconfigures an existing
 valid build directory in place.
 
+For a new patch set with changed recipe configuration, use `patch-refresh`
+with `CROSS_BULK_PATCH_REFRESH_RECONFIGURE=yes` and
+`CROSS_BULK_PATCH_REFRESH_PREVIOUS_RECIPE=/absolute/previous/recipe`.
+This explicit mode accepts new local includes and configure hooks. It verifies
+the installed source preimages and invalidates configuration while retaining
+objects. It rejects changes to the source archive, toolchain, ABI and compiler
+flags. Then resume `package` or `package-install` to run normal configuration
+and incremental compilation. Without this selector, new includes remain
+restricted to revision metadata with unchanged build inputs and commands.
+
 The stage-local configuration preservation path adds newly missing pkgsrc
 buildlink providers during `package` and `package-install`. The existing factory
 creates their links under the stage lock. Existing provider cookies and compiled
