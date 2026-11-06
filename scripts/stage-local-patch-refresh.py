@@ -50,14 +50,33 @@ def active_parse_trace(command):
     return result.stderr
 
 
-def validate_active_target(paths, command, recipe, makefiles, framework_files, target):
+def validate_active_target(paths, command, recipe, makefiles, framework_files, target,
+                           *, previous_recipe=None, observed=None):
     """Reject active non-framework target rules, including dependencies."""
     import shlex
+    sources = [(Path(item) if Path(item).is_absolute() else recipe / item)
+               for item in shlex.split(makefiles)]
+    framework_files = set(framework_files)
+    if previous_recipe is not None:
+        current_root = recipe.parents[1].resolve()
+        previous_root = previous_recipe.parents[1].resolve()
+        loaded = {source.resolve() for source in sources}
+        for current in tuple(framework_files):
+            previous = previous_root / current.relative_to(current_root)
+            if previous == current or previous.resolve() not in loaded:
+                continue
+            require(previous.resolve() == previous, 'previous framework path is not canonical')
+            current_data, previous_data = stable_read(paths, current), stable_read(paths, previous)
+            require(previous_data == current_data, 'previous framework differs: ' + str(previous))
+            # Keep both identities in the transaction's existing drift guard.
+            require(observed is not None, 'previous framework requires input observation')
+            for path, data in ((current, current_data), (previous, previous_data)):
+                require(path not in observed or observed[path] == data,
+                        'framework input changed during verification: ' + str(path))
+                observed[path] = data
+            framework_files.add(previous)
     potential = False
-    for item in shlex.split(makefiles):
-        source = Path(item)
-        if not source.is_absolute():
-            source = recipe / source
+    for source in sources:
         if (source.resolve() not in framework_files and
                 re.search(rb'(?m)^\s*' + re.escape(target.encode()) + rb'\s*:', stable_read(paths, source))):
             potential = True
@@ -869,7 +888,8 @@ def main():
             require(len(result) == len(fields), 'unexpected previous recipe metadata')
             return result
         old_classes, old_makefiles = selected_values(oldcmd, ['SUBST_CLASSES', '.MAKE.MAKEFILES'])
-        validate_active_target(paths, oldcmd, a.recipe, old_makefiles, framework_files, 'do-patch')
+        validate_active_target(paths, oldcmd, a.recipe, old_makefiles, framework_files, 'do-patch',
+                               previous_recipe=a.previous_recipe, observed=observed_recipe_inputs)
         require(old_classes == v['SUBST_CLASSES'], 'previous SUBST classes changed')
         old_includes = validate_recipe_includes(paths, a.previous_recipe, old_makefiles, records,
                                                package=package, cwd=a.recipe, observed=observed_recipe_inputs)
@@ -897,7 +917,8 @@ def main():
             else:
                 require(result == old_extract_hooks, 'previous extraction hooks changed')
         extract_framework = (a.recipe.parents[1] / 'mk/extract/extract.mk').resolve()
-        validate_active_target(paths, oldcmd, a.recipe, old_makefiles, {extract_framework}, 'do-extract')
+        validate_active_target(paths, oldcmd, a.recipe, old_makefiles, {extract_framework}, 'do-extract',
+                               previous_recipe=a.previous_recipe, observed=observed_recipe_inputs)
         validate_active_target(paths, cmd, a.recipe, v['.MAKE.MAKEFILES'], {extract_framework}, 'do-extract')
         class_names = old_classes.split()
         require(len(class_names) == len(set(class_names)) and
