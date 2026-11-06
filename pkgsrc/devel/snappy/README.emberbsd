@@ -1,0 +1,8 @@
+Snappy 1.3.1 remains the pkgsrc common package and uses the upstream Apache-2.0
+license and archive hashes. EmberBSD adds a package-owned pkg-config file so
+native and cross consumers can select the same installed library and headers;
+the metadata change does not alter the library or its ABI.
+Native Darwin arm64 and cross NetBSD amd64 package-only metadata repackaging
+passed the normal staged PLIST and package checks. Both nb1 package manifests
+list snappy.pc with its matching MD5 and identify devel/snappy in +BUILD_INFO.
+No package was installed and target execution was not tested.
