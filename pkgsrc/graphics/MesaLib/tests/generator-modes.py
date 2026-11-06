@@ -77,7 +77,7 @@ show:
     return dict(zip(FIELDS, output))
 
 
-def oracle(values, arch, cross, sealed, tests=False):
+def oracle(values, arch, cross, sealed, provider_version, tests=False):
     require(values['PLIST.full_drivers'] == 'yes', 'Default full-driver PLIST was lost')
     options = set(values['MESON_ARGS'].split())
     drivers = ('iris,radeonsi,virgl,softpipe,llvmpipe,zink' if arch == 'x86_64'
@@ -103,10 +103,11 @@ def oracle(values, arch, cross, sealed, tests=False):
         require(not (includes & BUILD_LINKS), 'Cross builds imported target CLC libraries')
         require('--native-file' in values['MESON_NATIVE_ARGS'], 'Cross native-file binding was lost')
         if sealed:
-            require(not any(item.startswith('mesa-generators>') for item in values['TOOL_DEPENDS'].split()),
+            require(not any(item.startswith('mesa-generators-') for item in values['TOOL_DEPENDS'].split()),
                     'Explicit external tools unexpectedly add a package dependency')
         else:
-            require('mesa-generators>=26.2.6nb17:../mesa-generators' in values['TOOL_DEPENDS'].split(),
+            require(('mesa-generators-' + provider_version + ':../mesa-generators') in
+                    values['TOOL_DEPENDS'].split(),
                     'The normal cross path does not depend on the matching native generator package')
             for name in (('mesa_clc', 'vtn_bindgen2', 'pco_clc') if arch == 'aarch64'
                          else ('mesa_clc', 'vtn_bindgen2')):
@@ -115,7 +116,7 @@ def oracle(values, arch, cross, sealed, tests=False):
     else:
         require(not values['PKG_FAIL_REASON'] and not values['MESON_NATIVE_ARGS'],
                 'Native builds still require a sealed generator directory')
-        require(not any(item.startswith('mesa-generators>') for item in values['TOOL_DEPENDS'].split()),
+        require(not any(item.startswith('mesa-generators-') for item in values['TOOL_DEPENDS'].split()),
                 'Native builds unexpectedly depend on the cross generator package')
         require({'-Dmesa-clc=enabled', '-Dprecomp-compiler=enabled', '-Dspirv-tools=enabled',
                  '-Dinstall-mesa-clc=false', '-Dinstall-precomp-compiler=false'} <= options,
@@ -147,21 +148,71 @@ def main():
         source_vars.write_text('''
 .include "{source}"
 show:
-	@printf '%s\\n' ${{DISTNAME}} ${{MESA_PORT_REVISION}} ${{MESA_GENERATORS_VERSION}} ${{PATCHDIR}} ${{DISTINFO_FILE}}
+	@printf '%s\\n' ${{DISTNAME}} ${{MESA_SOURCE_VERSION}} ${{MESA_PORT_REVISION}} \\
+	    ${{MESA_GENERATORS_VERSION}} ${{PATCHDIR}} ${{DISTINFO_FILE}}
 '''.format(source=RECIPE / 'mesa-source.mk'))
         source_values = subprocess.check_output([str(args.bmake), '-r', '-m', '/', '-f',
                                                   str(source_vars), 'show'], cwd=RECIPE, text=True).splitlines()
-        require(source_values[:3] == ['mesa-26.2.6', '17', '26.2.6nb17'],
+        distname, mesa_version, revision, generator_version, patchdir, distinfo = source_values
+        require(distname == 'mesa-' + mesa_version and
+                generator_version == mesa_version + 'nb' + revision,
                 'Mesa source and generator package versions are not shared')
-        require(source_values[3].endswith('/MesaLib/patches') and
-                source_values[4].endswith('/MesaLib/distinfo'),
+        require(patchdir.endswith('/MesaLib/patches') and distinfo.endswith('/MesaLib/distinfo'),
                 'The generator package does not share the Mesa source patch set and archive digest')
-        provider_make = (RECIPE.parent / 'mesa-generators/Makefile').read_text()
+        provider_path = RECIPE.parent / 'mesa-generators'
+        provider_make = (provider_path / 'Makefile').read_text()
+        provider_lines = []
+        for line in provider_make.splitlines():
+            if line.startswith('.include '):
+                include = line.split('"')[1]
+                if include == '../MesaLib/mesa-source.mk':
+                    provider_lines.append('.include "' + str(RECIPE / 'mesa-source.mk') + '"')
+                continue
+            provider_lines.append(line)
+        provider_query = work / 'provider-query.mk'
+        provider_query.write_text('PKGVERSION_NOREV= ${PKGNAME:C/^mesa-generators-//}\n' +
+                                  'TOOL_PYTHONBIN= /selected/python3.15\n' +
+                                  '\n'.join(provider_lines) + '''
+show:
+	@printf '%s\\n' ${PKGNAME:Q}
+	@printf '%s\\n' ${PKGREVISION:Q}
+	@printf '%s\\n' ${PKGVERSION_NOREV:Q}
+	@printf '%s\\n' ${MESA_GENERATORS_VERSION:Q}
+	@printf '%s\\n' ${DISTNAME:Q}
+	@printf '%s\\n' ${PATCHDIR:Q}
+	@printf '%s\\n' ${DISTINFO_FILE:Q}
+	@printf '%s\\n' ${TOOL_DEPENDS:Q}
+	@printf '%s\\n' ${SUBST_CLASSES:Q}
+	@printf '%s\\n' ${SUBST_STAGE.python:Q}
+	@printf '%s\\n' ${SUBST_FILES.python:Q}
+	@printf '%s\\n' ${SUBST_SED.python:Q}
+	@printf '%s\\n' ${MESON_ARGS:Q}
+	@printf '%s\\n' ${USE_TOOLS:Q}
+''')
+        provider_values = subprocess.check_output([str(args.bmake), '-r', '-m', '/', '-f',
+                                                   str(provider_query), 'show'],
+                                                  cwd=provider_path, text=True).splitlines()
+        expected_name = 'mesa-generators-' + mesa_version
+        expected_pkgver = mesa_version + 'nb' + revision
+        require(provider_values[0:4] == [expected_name, revision, mesa_version, expected_pkgver],
+                'The provider package name/version metadata is cyclic or does not match Mesa')
+        require(provider_values[4] == distname and provider_values[5].endswith('/MesaLib/patches') and
+                provider_values[6].endswith('/MesaLib/distinfo'),
+                'The provider package does not use the shared source identity and complete patch set')
+        require(provider_values[8:11] == ['python', 'pre-configure', 'meson.build'] and
+                '/selected/python3.15' in provider_values[11],
+                'The provider does not substitute the selected host Python before configure')
+        require('-Dcpp_rtti=true' in provider_values[12].split(),
+                'The provider passed an invalid Meson boolean for C++ RTTI')
+        require({'bison', 'flex', 'cmake', 'pkg-config'} <= set(provider_values[13].split()) and
+                'ninja' not in provider_values[13].split(),
+                'The provider tool declaration does not match the Meson input tools')
+        require('bison-' in provider_values[7] and 'flex>=' in provider_values[7],
+                'The provider does not declare its selected Bison/Flex packages')
         provider_plist = (RECIPE.parent / 'mesa-generators/PLIST').read_text().splitlines()
-        require('PKGREVISION= ${MESA_PORT_REVISION}' in provider_make and
-                {'bin/mesa_clc', 'bin/vtn_bindgen2', 'bin/pco_clc'} ==
+        require({'bin/mesa_clc', 'bin/vtn_bindgen2', 'bin/pco_clc'} ==
                 {line for line in provider_plist if line.startswith('bin/')},
-                'The native package revision or installed generator interface is incomplete')
+                'The native package installed generator interface is incomplete')
         require(not any(name in provider_make for name in ('py-lxml', 'py-rnc2rng', 'py-rply', 'py-appdirs')),
                 'Optional schema/test modules became mandatory native package dependencies')
         tools = work / 'sealed'
@@ -173,7 +224,7 @@ show:
             for cross, selected in ((False, False), (True, None), (True, True)):
                 values = parse(args.bmake, work, source, arch, 'yes' if cross else 'no',
                                tools if selected is True else '' if selected is None else work / 'missing')
-                oracle(values, arch, cross, selected)
+                oracle(values, arch, cross, selected, expected_pkgver)
                 if cross and selected is None:
                     for name in ('mesa_clc', 'vtn_bindgen2', 'pco_clc'):
                         path = work / 'native-prefix/bin' / name
@@ -212,7 +263,7 @@ show:
             for cross in (False, True):
                 values = parse(args.bmake, work, source, arch, 'yes' if cross else 'no',
                                '' if cross else work / 'missing', tests=True)
-                oracle(values, arch, cross, None, tests=True)
+                oracle(values, arch, cross, None, expected_pkgver, tests=True)
                 checks += 1
         for arch in ('x86_64', 'aarch64'):
             for cross in (False, True):
@@ -287,7 +338,7 @@ show:
             require(source.count(old) == 1, 'Causal control no longer matches the production recipe')
             values = parse(args.bmake, work, source.replace(old, new, 1), 'x86_64', 'no', work / 'missing')
             try:
-                oracle(values, 'x86_64', False, False)
+                oracle(values, 'x86_64', False, False, expected_pkgver)
             except ValueError:
                 checks += 1
             else:

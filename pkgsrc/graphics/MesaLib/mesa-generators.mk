@@ -27,7 +27,7 @@ ${_EMBERBSD_MESA_NATIVE}:
 .endfor
 	${RUN}${MV} -f ${.TARGET:Q}.tmp ${.TARGET:Q}
 .else
-TOOL_DEPENDS+= mesa-generators>=${MESA_GENERATORS_VERSION}:../mesa-generators
+TOOL_DEPENDS+= mesa-generators-${MESA_GENERATORS_VERSION}:../mesa-generators
 .for generator in ${_EMBERBSD_MESA_GENERATOR_NAMES:O:u}
 TOOLS_PATH.${generator}= ${TOOLBASE}/bin/${generator}
 .endfor

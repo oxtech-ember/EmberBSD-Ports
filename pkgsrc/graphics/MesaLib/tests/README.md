@@ -127,12 +127,14 @@ python3 -B tests/generator-modes.py --bmake /absolute/bmake \
 
 This finite check parses the production recipe with real bmake for both
 architectures. It keeps the local generator policy active. It replaces external
-pkgsrc includes with records of the selected interfaces. It checks native and
-cross options, build-only dependency methods, generator installation, missing
-cross seals, and deliberate selection/dependency faults. It does not resolve
-the full pkgsrc dependency graph, configure Meson, build a generator, or check
-the staged package. Full native shader generation and package linkage/PLIST
-checks remain required. Run the upstream test suite when the explicit
+pkgsrc includes with records of the selected interfaces. It queries the
+provider's package name/version through bmake, checks its shared source and
+patch identity, exact version match, selected-Python substitution, generator
+paths and external-seal branch, along with native/cross options and deliberate
+selection/dependency faults. It does not resolve the full pkgsrc dependency
+graph, configure Meson, build a generator, or check the staged package. Full
+native shader generation and package linkage/PLIST checks remain required. Run
+the upstream test suite when the explicit
 `PKG_OPTIONS.MesaLib+=tests` option is selected.
 
 ## Darwin generator language selection
