@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
 # Origin: EmberBSD (AI-assisted).
 # Include after setting EMBERBSD_HOST_PREFIX and before the cross profile.
-# Preserve target flags across the host configuration, while native package
-# dependencies retain the host flags from that same configuration.
+# Preserve target flags and DBus options across the host configuration, while
+# native dependencies retain the host values from that same configuration.
 USE_CROSS_COMPILE?=yes
 
 .if !defined(EMBERBSD_HOST_PREFIX) || empty(EMBERBSD_HOST_PREFIX)
@@ -13,7 +13,7 @@ EMBERBSD_HOST_MAKECONF?=${EMBERBSD_HOST_PREFIX}/etc/mk.conf
 .error Host make configuration does not exist: ${EMBERBSD_HOST_MAKECONF}
 .endif
 
-.for _ember_host_flag in CPPFLAGS CFLAGS CXXFLAGS LDFLAGS
+.for _ember_host_flag in CPPFLAGS CFLAGS CXXFLAGS LDFLAGS PKG_OPTIONS.dbus
 .if defined(${_ember_host_flag})
 _EMBER_HOST_CONFIG_${_ember_host_flag}_DEFINED=yes
 _EMBER_HOST_CONFIG_${_ember_host_flag}:=${${_ember_host_flag}}
@@ -25,11 +25,16 @@ _EMBER_HOST_CONFIG_${_ember_host_flag}_DEFINED=no
 .include "${EMBERBSD_HOST_MAKECONF}"
 
 .if ${USE_CROSS_COMPILE:tl} == "yes"
-.for _ember_host_flag in CPPFLAGS CFLAGS CXXFLAGS LDFLAGS
+.for _ember_host_flag in CPPFLAGS CFLAGS CXXFLAGS LDFLAGS PKG_OPTIONS.dbus
 .if ${_EMBER_HOST_CONFIG_${_ember_host_flag}_DEFINED} == "yes"
 ${_ember_host_flag}:=${_EMBER_HOST_CONFIG_${_ember_host_flag}}
 .else
 .undef ${_ember_host_flag}
 .endif
 .endfor
+.endif
+
+# Native SDK host tools require the session bus, not system integration.
+.if ${USE_CROSS_COMPILE:tl} == "no"
+PKG_OPTIONS.dbus?= -dbus-system
 .endif
