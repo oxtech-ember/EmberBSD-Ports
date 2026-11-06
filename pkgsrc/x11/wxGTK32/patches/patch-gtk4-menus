@@ -947,7 +947,7 @@ https://docs.gtk.org/gtk4/class.ShortcutController.html
 +        double sx = 0, sy = 0;
 +        if (native) gtk_native_get_surface_transform(native, &sx, &sy);
 +        graphene_point_t from, to;
-+        graphene_point_init(&from, px + sx, py + sy);
++        graphene_point_init(&from, px - sx, py - sy);
 +        if (native && surface == gtk_native_get_surface(native) &&
 +            gtk_widget_compute_point(GTK_WIDGET(native), anchor, &from, &to))
 +        { x = int(to.x); y = int(to.y); }
