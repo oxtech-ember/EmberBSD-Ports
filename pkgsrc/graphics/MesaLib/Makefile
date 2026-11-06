@@ -183,6 +183,8 @@ _EMBERBSD_MESA_LIBELF_CHECK=	${TOOL_PYTHONBIN:Q} -B -E -S ${FILESDIR:Q}/check-ba
 	--mode ${_EMBERBSD_MESA_LIBELF_MODE:Q} --arch ${MACHINE_ARCH:Q}
 .endif
 pre-configure:
+	@if ! ${CMP} -s ${WRKSRC}/include/EGL/eglplatform.h ${BUILDLINK_DIR}/include/EGL/eglplatform.h; then ${CP} ${BUILDLINK_DIR}/include/EGL/eglplatform.h ${WRKSRC}/include/EGL/eglplatform.h; fi
+	@if ! ${CMP} -s ${WRKSRC}/include/KHR/khrplatform.h ${BUILDLINK_DIR}/include/KHR/khrplatform.h; then ${CP} ${BUILDLINK_DIR}/include/KHR/khrplatform.h ${WRKSRC}/include/KHR/khrplatform.h; fi
 	${TEST} -x ${TOOL_PYTHONBIN:Q}
 	${_EMBERBSD_MESA_ELF_CHECK} --check-sdk
 	${TOOL_PYTHONBIN} -c 'import sys, mako, packaging, yaml; assert sys.version_info[:2] == tuple(map(int, "${PYVERSSUFFIX}".split(".")))'
@@ -207,10 +209,6 @@ pre-configure:
 .endif
 post-install:
 	${_EMBERBSD_MESA_ELF_CHECK} --library-dir ${_EMBERBSD_MESA_STAGED_LIB:Q}
-
-post-extract:
-	@if ! ${CMP} -s ${WRKSRC}/include/EGL/eglplatform.h ${BUILDLINK_DIR}/include/EGL/eglplatform.h; then ${CP} ${BUILDLINK_DIR}/include/EGL/eglplatform.h ${WRKSRC}/include/EGL/eglplatform.h; fi
-	@if ! ${CMP} -s ${WRKSRC}/include/KHR/khrplatform.h ${BUILDLINK_DIR}/include/KHR/khrplatform.h; then ${CP} ${BUILDLINK_DIR}/include/KHR/khrplatform.h ${WRKSRC}/include/KHR/khrplatform.h; fi
 
 .include "../../graphics/egl-headers/buildlink3.mk"
 .include "../../x11/libdrm/buildlink3.mk"

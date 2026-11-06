@@ -13,11 +13,12 @@ WRKSRC=${WRKDIR}/EGL-Registry-${EGL_REGISTRY_COMMIT}
 MAINTAINER=pkgsrc-users@NetBSD.org
 HOMEPAGE=https://github.com/KhronosGroup/EGL-Registry
 COMMENT=Shared EGL and Khronos platform headers
-LICENSE=apache-2.0 AND modified-bsd
+LICENSE=apache-2.0 AND mit
 
 NO_CONFIGURE=yes
 NO_BUILD=yes
 USE_LANGUAGES=none
+EXTRACT_ELEMENTS= ${DISTNAME}/api/EGL/eglplatform.h ${DISTNAME}/api/KHR/khrplatform.h
 
 INSTALLATION_DIRS=include/EGL include/KHR
 

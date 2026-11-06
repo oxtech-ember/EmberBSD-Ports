@@ -14,7 +14,7 @@ USE_CXX_FEATURES= c++17
 PYTHON_FOR_BUILD_ONLY= tool
 PYTHON_VERSION_REQD= 315
 MESON_REQD+= 1.12.1
-USE_TOOLS+= bison flex pkg-config cmake
+USE_TOOLS+= bison flex pkg-config cmake cmp
 TOOL_DEPENDS+= bison-[0-9]*:../../devel/bison
 TOOL_DEPENDS+= flex>=2.5.4a:../../devel/flex
 .include "../../mk/bsd.prefs.mk"
@@ -53,6 +53,12 @@ MESON_ARGS+= -Dprecomp-compiler=enabled -Dinstall-precomp-compiler=true
 MESON_ARGS+= -Dllvm=enabled -Dshared-llvm=enabled -Ddraw-use-llvm=false -Damd-use-llvm=false
 MESON_ARGS+= -Dspirv-tools=enabled -Dbuild-tests=false -Db_ndebug=false
 MESON_ARGS+= -Dallow-fallback-for=
+
+BUILDLINK_DEPMETHOD.egl-headers= build
+.include "../egl-headers/buildlink3.mk"
+
+pre-configure:
+	@if ! ${CMP} -s ${WRKSRC}/include/KHR/khrplatform.h ${BUILDLINK_DIR}/include/KHR/khrplatform.h; then ${CP} ${BUILDLINK_DIR}/include/KHR/khrplatform.h ${WRKSRC}/include/KHR/khrplatform.h; fi
 
 .include "../../lang/python/tool.mk"
 .include "../../devel/meson/build.mk"

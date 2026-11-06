@@ -20,6 +20,8 @@ PYTHON_FOR_BUILD_ONLY=	tool
 post-extract:
 	${MKDIR} ${WRKSRC}/files
 	${CP} ${FILESDIR}/gladConfig.cmake.in ${WRKSRC}/files/
+
+pre-configure:
 	@if ! ${CMP} -s ${WRKSRC}/glad/files/eglplatform.h ${BUILDLINK_DIR}/include/EGL/eglplatform.h; then ${CP} ${BUILDLINK_DIR}/include/EGL/eglplatform.h ${WRKSRC}/glad/files/eglplatform.h; fi
 	@if ! ${CMP} -s ${WRKSRC}/glad/files/khrplatform.h ${BUILDLINK_DIR}/include/KHR/khrplatform.h; then ${CP} ${BUILDLINK_DIR}/include/KHR/khrplatform.h ${WRKSRC}/glad/files/khrplatform.h; fi
 

@@ -1,9 +1,10 @@
 # EGL platform header ownership
 
 The source is pinned to the official KhronosGroup/EGL-Registry commit
-`8e56e86e65687697ef54114cdb1afabdfac756bf`. It installs only
-`api/EGL/eglplatform.h` and `api/KHR/khrplatform.h`; their embedded licenses
-are Apache-2.0 and Khronos' three-clause BSD terms, respectively.
+`8e56e86e65687697ef54114cdb1afabdfac756bf` (committed 2026-11-06). It
+extracts and installs only `api/EGL/eglplatform.h` and
+`api/KHR/khrplatform.h`; their embedded licenses are Apache-2.0 and MIT,
+respectively.
 
 The two installed files were byte-compared with the corresponding headers in
 the pinned Glad 2.0.8 source and Mesa 26.2.6 source. Both consumers copy these
