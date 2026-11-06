@@ -58,7 +58,7 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +#endif // !__WXGTK4__
 --- /dev/null
 +++ src/gtk/win_gtk4.inc
-@@ -0,0 +1,616 @@
+@@ -0,0 +1,620 @@
 +///////////////////////////////////////////////////////////////////////////////
 +// Name:        src/gtk/win_gtk4.inc
 +// Purpose:     GTK4 client widget: allocation, scrolling and snapshot painting
@@ -542,8 +542,9 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +    guint references;
 +    guint64 serial;
 +    int width, height;
-+    wxPizzaClientDC(wxPizza* pizza, cairo_surface_t* pixels, int w, int h)
-+        : surface(pixels), references(1), serial(pizza->m_paintSerial), width(w), height(h)
++    double scale;
++    wxPizzaClientDC(wxPizza* pizza, cairo_surface_t* pixels, int w, int h, double s)
++        : surface(pixels), references(1), serial(pizza->m_paintSerial), width(w), height(h), scale(s)
 +        { g_weak_ref_init(&widget, pizza); }
 +    ~wxPizzaClientDC()
 +        { g_weak_ref_clear(&widget); cairo_surface_destroy(surface); }
@@ -566,20 +567,20 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +    const int height = gtk_widget_get_height(widget);
 +    if (width <= 0 || height <= 0)
 +        return NULL;
++    GtkNative* native = gtk_widget_get_native(widget);
++    GskRenderer* renderer = native ? gtk_native_get_renderer(native) : NULL;
++    if (!renderer || !gtk_native_get_surface(native))
++        return NULL;
++    const double scale = gdk_surface_get_scale(gtk_native_get_surface(native));
 +    wxPizzaClientDC* current = static_cast<wxPizzaClientDC*>(
 +        g_object_get_data(G_OBJECT(this), "wx-client-dc"));
 +    if (current && current->serial == m_paintSerial &&
-+        current->width == width && current->height == height)
++        current->width == width && current->height == height && current->scale == scale)
 +    {
 +        ++current->references;
 +        *token = current;
 +        return cairo_create(current->surface);
 +    }
-+    GtkNative* native = gtk_widget_get_native(widget);
-+    GskRenderer* renderer = native ? gtk_native_get_renderer(native) : NULL;
-+    if (!renderer)
-+        return NULL;
-+    const double scale = gdk_surface_get_scale(gtk_native_get_surface(native));
 +    const int pixelWidth = int(std::ceil(width * scale));
 +    const int pixelHeight = int(std::ceil(height * scale));
 +    GtkSnapshot* copy = gtk_snapshot_new();
@@ -607,7 +608,7 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +    g_object_unref(texture);
 +    cairo_surface_mark_dirty(surface);
 +    cairo_surface_set_device_scale(surface, scale, scale);
-+    current = new wxPizzaClientDC(this, surface, width, height);
++    current = new wxPizzaClientDC(this, surface, width, height, scale);
 +    g_object_set_data(G_OBJECT(this), "wx-client-dc", current);
 +    *token = current;
 +    return cairo_create(surface);
@@ -622,11 +623,14 @@ Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
 +    if (widget)
 +    {
 +        wxPizza* pizza = WX_PIZZA(widget);
++        GtkNative* native = gtk_widget_get_native(widget);
++        GdkSurface* surface = native ? gtk_native_get_surface(native) : NULL;
 +        if (g_object_get_data(G_OBJECT(widget), "wx-client-dc") == state)
 +            g_object_set_data(G_OBJECT(widget), "wx-client-dc", NULL);
 +        // A normal repaint requested during the DC lifetime supersedes the
 +        // transient pixels, just as it does with immediate window drawing.
-+        if (pizza->m_paintSerial == state->serial && !pizza->m_contentInvalidated &&
++        if (surface && gdk_surface_get_scale(surface) == state->scale &&
++            pizza->m_paintSerial == state->serial && !pizza->m_contentInvalidated &&
 +            gtk_widget_get_mapped(widget) && gtk_widget_get_width(widget) == state->width &&
 +            gtk_widget_get_height(widget) == state->height)
 +        {
