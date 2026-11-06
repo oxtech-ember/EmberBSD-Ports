@@ -223,7 +223,7 @@ def _write_exclusive(path, data, mode):
 
 
 def transaction(sdk, work, source, changes, old_cookie, new_inventory, build_clean, *,
-               cookie_bytes=None, inject=None):
+               cookie_bytes=None, expected_files=None, inject=None):
     """Commit validated leaves and owner cookie; preserve journal until build-clean succeeds.
 
     The caller must hold the same canonical stage lock as ordinary package stages.
@@ -239,12 +239,15 @@ def transaction(sdk, work, source, changes, old_cookie, new_inventory, build_cle
     require(source != work and source.is_relative_to(work), 'source is not inside work directory')
     marker, staging = work / '.emberbsd-patch-refresh.json', work / '.emberbsd-patch-refresh'
     cookie = work / '.patch_done'
+    require(expected_files is None or os.path.lexists(marker),
+            'journal file expectations require an existing patch refresh journal')
     new_cookie = (''.join(str(p) + '\n' for p in new_inventory).encode()
                   if cookie_bytes is None else cookie_bytes)
     require(changes and len({row[0] for row in changes}) == len(changes), 'empty or duplicate patch changes')
-    expected = [dict(index=i, name=name, old_sha=None if before is None else _sha(before),
-                     new_sha=_sha(after), old_mode=old_mode, new_mode=new_mode)
-                for i, (name, before, after, old_mode, new_mode) in enumerate(changes)]
+    expected = (expected_files if expected_files is not None else
+                [dict(index=i, name=name, old_sha=None if before is None else _sha(before),
+                      new_sha=_sha(after), old_mode=old_mode, new_mode=new_mode)
+                 for i, (name, before, after, old_mode, new_mode) in enumerate(changes)])
     def step(label):
         if inject:
             inject(label)
@@ -367,7 +370,8 @@ def transaction(sdk, work, source, changes, old_cookie, new_inventory, build_cle
             if complete:
                 return
             return transaction(sdk, work, source, changes, old_cookie, new_inventory, build_clean,
-                               cookie_bytes=cookie_bytes, inject=inject)
+                               cookie_bytes=cookie_bytes, expected_files=expected_files,
+                               inject=inject)
         paths.real_directory(str(staging))
         require(stable_read(paths, staging / 'cookie-old') == old_cookie and
                 stable_read(paths, staging / 'cookie-new') == new_cookie,

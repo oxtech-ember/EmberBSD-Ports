@@ -52,6 +52,7 @@ def source_refresh(sdk, patch_refresh, bmake, recipe, work, make_args, scope):
     paths.real_directory(str(work))
     paths.real_directory(str(retained_source))
     require(retained_source.is_relative_to(work), 'retained WRKSRC is outside locked stage')
+    retained_rel_source = retained_source.relative_to(work)
 
     require(scope and len(scope) == len(set(scope)), 'empty or duplicate source refresh scope')
     for name in scope:
@@ -70,7 +71,9 @@ def source_refresh(sdk, patch_refresh, bmake, recipe, work, make_args, scope):
         candidate_source = variables(candidate_work)
         paths.real_directory(str(candidate_source))
         rel_source = candidate_source.relative_to(candidate_work.resolve())
-        retained_source = work / rel_source
+        require(rel_source == retained_rel_source,
+                'candidate WRKSRC relative path differs from retained stage')
+        retained_source = work / retained_rel_source
         paths.real_directory(str(retained_source))
         candidate_cookie = candidate_work / '.patch_done'
         paths.regular_file(str(candidate_cookie))
@@ -131,17 +134,28 @@ def source_refresh(sdk, patch_refresh, bmake, recipe, work, make_args, scope):
                             stat.S_IMODE(paths.regular_file(str(candidate)).st_mode),
                             'unexpected source mode difference outside explicit scope: ' + rel)
         require(set(scope) <= candidate_names, 'authorized source leaf is absent from candidate WRKSRC')
+        journal_expected = None
         if journal_path.exists():
             record = sdk['jsonio'].read_json(str(journal_path))
             staging = work / '.emberbsd-patch-refresh'
             resumed = []
+            journal_names = set()
             for row in record.get('files', []):
                 name, index = row.get('name'), row.get('index')
                 require(name in scope and isinstance(index, int), 'source refresh journal scope changed')
+                journal_names.add(name)
                 candidate = candidate_source / name
                 paths.regular_file(str(candidate))
                 after = patch_refresh.stable_read(paths, candidate)
                 new_mode = stat.S_IMODE(paths.regular_file(str(candidate)).st_mode)
+                require(name in candidate_names and
+                        patch_refresh._sha(after) == row.get('new_sha') and
+                        new_mode == row.get('new_mode'),
+                        'candidate no longer matches source refresh journal')
+                if record.get('phase') in ('complete', 'rolled-back'):
+                    before, old_mode = after, row.get('old_mode')
+                    resumed.append((name, before, after, old_mode, new_mode))
+                    continue
                 if row.get('old_sha') is None:
                     before, old_mode = None, None
                 else:
@@ -162,14 +176,25 @@ def source_refresh(sdk, patch_refresh, bmake, recipe, work, make_args, scope):
                         'candidate no longer matches source refresh journal')
                 resumed.append((name, before, after, old_mode, new_mode))
             require(resumed, 'authorized source leaves are already current')
+            fresh_names = {row[0] for row in changes}
+            require(fresh_names <= journal_names,
+                    'candidate has new authorized source changes outside the pending journal: ' +
+                    ', '.join(sorted(fresh_names - journal_names)))
             changes = resumed
-        require(changes, 'authorized source leaves are already current')
+            if record.get('phase') in ('complete', 'rolled-back'):
+                journal_expected = record['files']
+        elif not changes:
+            require(new_cookie == old_cookie,
+                    'source and patch cookie are unchanged only when candidate cookie matches')
+            return False
 
         def build_clean():
             subprocess.run(base + ['build-clean'], check=True)
 
         patch_refresh.transaction(sdk, work, retained_source, changes, old_cookie, [],
-                                  build_clean, cookie_bytes=new_cookie)
+                                  build_clean, cookie_bytes=new_cookie,
+                                  expected_files=journal_expected)
+    return True
 
 
 def main():
@@ -194,8 +219,11 @@ def main():
     patch_refresh = importlib.util.module_from_spec(module_spec)
     module_spec.loader.exec_module(patch_refresh)
     args = (["USE_CROSS_COMPILE=no"] if a.native else []) + a.make_arg
-    source_refresh(sdk, patch_refresh, a.bmake, a.recipe, a.expected_work, args, scope)
-    print('Refreshed the explicitly selected prepared source leaves; compatible objects retained.')
+    changed = source_refresh(sdk, patch_refresh, a.bmake, a.recipe, a.expected_work, args, scope)
+    if changed:
+        print('Refreshed the explicitly selected prepared source leaves; compatible objects retained.')
+    else:
+        print('Selected prepared source leaves and pkgsrc patch cookie are already current.')
 
 
 if __name__ == '__main__':
