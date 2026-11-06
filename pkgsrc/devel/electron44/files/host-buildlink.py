@@ -262,6 +262,68 @@ def _additive_wrapper(old, candidate, old_work, candidate_work, prefix, candidat
     return candidate.replace(candidate_path, old_path)
 
 
+def _saved_selection_command(command, saved):
+    """Query an existing wrapper using only the flags which created it."""
+    selection = saved.get('invocation')
+    if not isinstance(selection, dict) or not command or command[-1] != 'wrapper':
+        raise ValueError('invalid saved host buildlink selection')
+    flags = ('ffmpeg', 'minizip', 'xml', 'image', 'font', 'pdf_libraries',
+             'codecs', 'openh264', 'pffft', 'expat', 'cpuinfo', 'spirv_tools',
+             'vulkan', 'woff2', 'snappy')
+    prefix = 'EMBERBSD_ELECTRON_SHARED_'
+    if any(key.startswith('shared_') and key.removeprefix('shared_') not in flags
+           for key in selection):
+        raise ValueError('unknown saved host buildlink provider flag')
+    if any(arg.startswith(prefix) and arg.split('=', 1)[0].removeprefix(prefix).lower() not in flags
+           for arg in command[:-1]):
+        raise ValueError('unknown requested host buildlink provider flag')
+    base = [arg for arg in command[:-1] if not arg.startswith(prefix)]
+    for flag in flags:
+        value = selection.get('shared_' + flag)
+        if value not in (None, 'yes'):
+            raise ValueError('invalid saved host buildlink provider flag')
+        if value == 'yes':
+            base.append(prefix + flag.upper() + '=yes')
+    return base + ['wrapper']
+
+
+def _new_external_inputs(candidate_external, external, new_targets, invocation, prefix):
+    """Admit selected pkgsrc makefiles and paired native package metadata."""
+    added = set(candidate_external) - set(external) - new_targets
+    if not added:
+        return set()
+    export = Path(invocation['pkgsrc_root']).resolve(strict=True)
+    owner = Path(__file__).resolve().parents[3]
+    db = (prefix / 'pkgdb').resolve(strict=True)
+    metadata = set()
+    for value in added:
+        path = Path(value)
+        if not path.is_absolute() or path.resolve(strict=True) != path or not path.is_file():
+            raise ValueError('invalid new host buildlink input')
+        if path.is_relative_to(db):
+            rel = path.relative_to(db)
+            if len(rel.parts) != 2 or rel.name not in ('+CONTENTS', '+BUILD_INFO'):
+                raise ValueError('unsupported new host package metadata')
+            metadata.add(path)
+            continue
+        if path.suffix != '.mk':
+            raise ValueError('unsupported new host buildlink input')
+        if path.is_relative_to(export):
+            continue
+        if path.is_relative_to(owner):
+            exported = export / path.relative_to(owner)
+            if (exported.resolve(strict=True) != exported or not exported.is_file() or
+                    hashlib.sha256(exported.read_bytes()).hexdigest() != candidate_external[value]):
+                raise ValueError('owner makefile differs from selected pkgsrc export')
+            continue
+        raise ValueError('foreign new host buildlink input')
+    for path in metadata:
+        peer = path.with_name('+BUILD_INFO' if path.name == '+CONTENTS' else '+CONTENTS')
+        if peer not in metadata and str(peer) not in external:
+            raise ValueError('incomplete new host package metadata')
+    return added
+
+
 def _extension_plan(saved, current, candidate, invocation, candidate_invocation,
                     work, candidate_work, prefix, *, recovery=False):
     """Validate an additive candidate before touching the existing work tree."""
@@ -363,7 +425,8 @@ def _extension_plan(saved, current, candidate, invocation, candidate_invocation,
     candidate_external = {key: value for key, value in candidate['inputs'].items()
                           if not Path(key).is_relative_to(candidate_work)}
     new_targets = {str((candidate_work / view_rel / name).resolve(strict=True)) for name in added}
-    if (set(candidate_external) != set(external) | new_targets or
+    allowed = _new_external_inputs(candidate_external, external, new_targets, invocation, prefix)
+    if (set(candidate_external) != set(external) | new_targets | allowed or
             any(candidate_external.get(key) != value for key, value in external.items())):
         raise ValueError('candidate host buildlink external inputs differ')
     return wrapper, files, added
@@ -665,7 +728,8 @@ def main():
                 if not args.stage_root:
                     check_installed_context(process, command, env, args.host_prefix)
                 try:
-                    current = identity(process, command, env, consumer, view, args.host_prefix,
+                    current_command = _saved_selection_command(command, saved) if args.extend_from else command
+                    current = identity(process, current_command, env, consumer, view, args.host_prefix,
                                        (Path(__file__), args.binding_record, deps,
                                         Path(darwin_makeconf.__file__)))
                 except (FileNotFoundError, process.CommandError):
