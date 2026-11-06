@@ -110,3 +110,42 @@ each committed Unicode code point, including a commit delivered after the
 capture key handler has cleared m_imKeyEvent. Clipboard, completion popup
 keyboard interaction and memory checks also remain separate acceptance tasks. This fixture and text translation units are prepared
 but have not yet been compiled or executed against the shared GTK4 target stack.
+
+# GTK4 application and event loop contract
+
+`patch-gtk4-evtloop` replaces removed GTK main-loop APIs with one GLib main loop
+per wx loop. An exit request for an outer loop does not terminate a nested
+modal loop. Default-context wakeups, timeouts and wx FD sources remain shared.
+GdkSurface event/layout signals re-arm the existing one-shot idle source;
+GtkWindow `notify::is-active` and the toplevel list model track application
+activation. Cleanup disconnects observers and removes hooks and idle sources.
+GTK4 widget operations remain on the main thread; queued wx events and idle
+wakeups provide the supported worker-thread path.
+
+Selective native `YieldFor(mask)` currently returns false before dispatching
+anything, with one diagnostic per process. GTK4 removed the global GDK event
+handler used by GTK3. Temporarily blocking Surface signal handlers from an
+emission hook is unsafe for nested emissions: it can also suppress remaining
+handlers of the outer emission. This implementation does not use that approach.
+Ordinary `Yield()` and `YieldFor(wxEVT_CATEGORY_ALL)` dispatch pending native and
+wx events normally. Consumers requiring selective yielding need further GTK4
+integration; this boundary is not full KiCad runtime acceptance.
+
+The method-level regression compiles the actual prepared event-loop and idle
+methods against the selected native GLib/GObject. Its harness supplies wx base
+lifecycle callbacks and a GObject with the same idle-signal declarations. It
+checks nested exit ordering, loop reuse, an exit before DoRun, timeout source
+cancellation, worker wakeup without wxApp, selective-yield refusal, full yield,
+one-shot idle hooks, nested idle/modal processing and stored-exception cleanup.
+It does not substitute for compiling the complete wx/GTK translation units or
+checking real GTK activation, native events and frame rendering.
+
+```sh
+python3 tests/evtloop-glib.py --source /prepared/wxWidgets \
+  --cxx /native/bin/clang++ --pkg-config /native/bin/pkg-config \
+  --work-parent /work/tmp
+```
+
+Pass any selected host ABI/compiler flags using repeated `--cxx-flag=...`.
+The test runs native output only and treats GLib critical diagnostics as fatal.
+No target program is executed on the build host.
