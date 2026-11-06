@@ -11,3 +11,4 @@ SHA1 (patch-rwstl-netbsd) = b53cd5db5abe6cbfed4a61b1cd8636a70a4fc276
 SHA1 (patch-stacktrace-bounds) = bd0cb062b7ca241f75126c0939f147c9b6eae4be
 SHA1 (patch-sunos-portability) = f2ad178fc7c665e3730874e8bf08cef9779ab989
 SHA1 (patch-tk9-discovery) = 7f7f47b76bef6d9c306757aa2bf2f9409d98fe27
+SHA1 (patch-NCollection_IncAllocator_mutex) = 6285dfac127a55fb39887334dbd953cbb0b28955

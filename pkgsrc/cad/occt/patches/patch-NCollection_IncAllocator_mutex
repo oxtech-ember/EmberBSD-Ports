@@ -1,0 +1,25 @@
+$NetBSD$
+
+Declare std::lock_guard directly instead of relying on transitive includes.
+Origin: EmberBSD contributors (AI-assisted); not submitted upstream.
+
+--- a/src/FoundationClasses/TKernel/NCollection/NCollection_IncAllocator.cxx
++++ b/src/FoundationClasses/TKernel/NCollection/NCollection_IncAllocator.cxx
+@@ -16,5 +16,6 @@
+ #include <Standard_OutOfMemory.hxx>
+ 
+ #include <cmath>
++#include <mutex>
+ 
+ IMPLEMENT_STANDARD_RTTIEXT(NCollection_IncAllocator, NCollection_BaseAllocator)
+
+--- a/src/Visualization/TKService/Aspect/Aspect_VKeySet.cxx
++++ b/src/Visualization/TKService/Aspect/Aspect_VKeySet.cxx
+@@ -12,5 +12,7 @@
+ // commercial license or contractual agreement.
+ 
+ #include "Aspect_VKeySet.hxx"
+ 
++#include <mutex>
++
+ IMPLEMENT_STANDARD_RTTIEXT(Aspect_VKeySet, Standard_Transient)
