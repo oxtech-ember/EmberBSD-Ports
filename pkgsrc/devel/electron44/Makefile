@@ -38,6 +38,10 @@ TOOL_DEPENDS+= expat>=2.10.0nb1:../../textproc/expat
 TOOL_DEPENDS+= cpuinfo>=0.0.20261104:../../sysutils/cpuinfo
 .endif
 
+.if ${EMBERBSD_ELECTRON_SHARED_WOFF2:Uno} == "yes"
+TOOL_DEPENDS+= woff2>=1.0.2nb4:../../fonts/woff2
+.endif
+
 .if ${EMBERBSD_ELECTRON_SHARED_PFFFT:Uno} == "yes"
 TOOL_DEPENDS+= pffft>=1.1.0nb2:../../audio/pffft
 .endif

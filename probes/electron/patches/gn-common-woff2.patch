@@ -1,0 +1,40 @@
+--- a/build/linux/unbundle/woff2.gn
++++ b/build/linux/unbundle/woff2.gn
+@@ -1,10 +1,26 @@
+ import("//build/config/linux/pkg_config.gni")
++import("//build/config/emberbsd_codecs.gni")
+ import("//build/shim_headers.gni")
+ 
++declare_args() {
++  emberbsd_common_woff2 = false
++  emberbsd_woff2_host_libraries = []
++  emberbsd_woff2_host_inputs = []
++  emberbsd_woff2_target_libraries = []
++  emberbsd_woff2_target_inputs = []
++}
++assert(emberbsd_common_woff2, "A selected common WOFF2 provider is required")
++
++emberbsd_codec_provider("emberbsd_woff2") {
++  host_libraries = emberbsd_woff2_host_libraries
++  host_inputs = emberbsd_woff2_host_inputs
++  target_libraries = emberbsd_woff2_target_libraries
++  target_inputs = emberbsd_woff2_target_inputs
++}
+ pkg_config("system_woff2") {
+   packages = [ "libwoff2dec" ]
++  ignore_libs = true
+ }
+-
+ shim_headers("woff2_shim") {
+   root_path = "include"
+   headers = [
+@@ -13,8 +29,7 @@
+     "woff2/output.h",
+   ]
+ }
+-
+ source_set("woff2_dec") {
+-  deps = [ ":woff2_shim" ]
++  public_deps = [ ":emberbsd_woff2", ":woff2_shim" ]
+   public_configs = [ ":system_woff2" ]
+ }

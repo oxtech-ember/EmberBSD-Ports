@@ -97,3 +97,18 @@ def select_cpuinfo(image, controller, options, sdk, native, environment, buildli
     return image.select_roles(controller, options, sdk, native, environment, buildlink,
                               CPUINFO_PROVIDER, {'emberbsd_common_cpuinfo': True},
                               'EMBERBSD_CPUINFO_SOURCE_SHA256')
+
+
+WOFF2_PROVIDER = {
+    'woff2': ('fonts/woff2', 'woff2', (1, 0, 2, 4),
+              ('libwoff2dec', 'libwoff2common'), ('libwoff2dec',),
+              ('include/woff2/decode.h', 'include/woff2/encode.h', 'include/woff2/output.h')),
+}
+
+
+def select_woff2(image, controller, options, sdk, native, environment, buildlink):
+    if not getattr(options, 'shared_woff2', False):
+        return {}
+    return image.select_roles(controller, options, sdk, native, environment, buildlink,
+                              WOFF2_PROVIDER, {'emberbsd_common_woff2': True},
+                              'EMBERBSD_WOFF2_SOURCE_SHA256')

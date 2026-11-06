@@ -970,3 +970,8 @@ needed. The source view retains Chromium's GN integration and font policy,
 adds the source files needed by the current common release, and tracks the
 prepared source receipt as a build input. Building the standalone OTS tools is
 not required for this source selection.
+
+`--shared-woff2` (or `EMBERBSD_ELECTRON_SHARED_WOFF2=yes`) selects the common
+WOFF2 1.0.2nb4 decoder for host and target. Its upstream-compatible header
+shim and role-specific library replace the bundled decoder and use the common
+Brotli provider. The selection requires the matching package in both roles.
