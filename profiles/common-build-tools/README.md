@@ -832,3 +832,9 @@ The [common SQLite 3.54.1 recipe](../../pkgsrc/databases/sqlite3/README.md)
 replaces both the older pkgsrc provider and the former robotics-only recipe.
 All consumers use `databases/sqlite3`; release selection and source-family
 checksums move together. See its checks for the current acceptance boundary.
+
+Gettext tools use the shared Tree-sitter runtime with gettext-pinned language
+grammars. The target `pkg-config`, headers and library must resolve together;
+gettext's configure probe checks the runtime API and grammar ABI before
+building scanner backends. See the [Tree-sitter source owner](../../scripts/source-inputs/tree-sitter/README.md)
+and [gettext source owner](../../scripts/source-inputs/gettext/README.md).

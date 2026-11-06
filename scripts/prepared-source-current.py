@@ -62,6 +62,7 @@ OWNERS = {
     'tcpdump': ('scripts/source-inputs/tcpdump/source.py', 'net/tcpdump'),
     'tcp-wrappers': ('scripts/source-inputs/tcp_wrappers/source.py', 'security/tcp_wrappers'),
     'gettext': ('scripts/source-inputs/gettext/source.py', 'devel/gettext'),
+    'tree-sitter': ('scripts/source-inputs/tree-sitter/source.py', 'textproc/tree-sitter'),
     'libxml2': ('scripts/source-inputs/libxml2/source.py', 'textproc/libxml2'),
     'ppp': ('scripts/source-inputs/ppp/source.py', 'net/pppd'),
     'tdb': ('scripts/source-inputs/tdb/source.py', 'databases/tdb'),
@@ -191,7 +192,7 @@ def current(name, identity, git, sdk, patch=None):
     tree it prepares."""
     script, package = OWNERS[name]
     owner_path = PORTS / script
-    owner_sha256 = (owner_module(name, owner_path).owner_digest() if name in ('openldap', 'libpcap', 'mdns', 'dhcpcd', 'zlib')
+    owner_sha256 = (owner_module(name, owner_path).owner_digest() if name in ('openldap', 'libpcap', 'mdns', 'dhcpcd', 'zlib', 'tree-sitter')
                     else sha256(owner_path.read_bytes()))
     selector_module = selector()
     if isinstance(identity, dict) and set(identity) == {'effective', 'owner_sha256'}:

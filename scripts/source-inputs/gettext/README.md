@@ -28,6 +28,13 @@ target library and headers.
 The archive includes upstream licenses and notices. If effective source inputs
 change, verification prepares and compares the complete payload.
 
+The common gettext-tools build links the shared `textproc/tree-sitter`
+runtime, while its language grammars remain pinned in `tree-sitter.cfg`.
+Prepare that runtime with the dedicated [Tree-sitter source owner](../tree-sitter/README.md)
+and make its target `tree-sitter.pc`, headers, and library available through
+the selected target `pkg-config`. The configure probe checks the compatible
+grammar ABI and linkable runtime before building gettext scanner backends.
+
 For unchanged prepared payloads, `refresh-source --source "$OUTPUT" --archive
 "$ARCHIVE" --patch "$PATCH"` verifies the payload and current source identity,
 then atomically updates its receipt to the current scoped identity. Supply
