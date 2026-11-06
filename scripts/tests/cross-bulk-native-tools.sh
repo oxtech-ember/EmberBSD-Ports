@@ -108,7 +108,13 @@ work()
 }
 list()
 {
-    for x in \$(cat \$dir/\$1 2> /dev/null); do printf '%s ' "\$x>=1:../../\$2/\$x"; done
+    for x in \$(cat \$dir/\$1 2> /dev/null); do
+        if [ "\$pkg" = a ] && [ "\$1" = tools ] && [ "\$x" = mesa-generators ]; then
+            printf '%s ' "\$x>=1:../\$x"
+        else
+            printf '%s ' "\$x>=1:../../\$2/\$x"
+        fi
+    done
     echo
 }
 case "\$target" in
@@ -180,6 +186,23 @@ before t/flang-rt "$out/state/order" n/dispatch@native || fail 'target Flang-RT 
 before n/dispatch@native "$out/state/order" t/a || fail 'the native dispatcher is not ordered before its target consumer'
 before n/base@native "$out/state/order" n/gen@native || fail 'n/base@native is not ordered before n/gen@native'
 grep -q 'n/cyc' "$out/state/edges" && fail 'the installed n/old@native was asked for its tools'
+
+# Same-category pkgsrc dependencies are commonly written as ../sibling.
+# Exercise that path in an isolated second order so the build fixture's
+# existing golden package list remains unchanged.
+mkdir -p "$out/tree/t/mesa-generators" "$out/state-sibling"
+echo mesa-generators >> "$out/tree/t/a/tools"
+bulk order state-sibling
+grep -qFx 't/mesa-generators@native t/a' "$out/state-sibling/edges" ||
+	fail 'same-category sibling TOOL_DEPENDS was not resolved'
+before t/mesa-generators@native "$out/state-sibling/order" t/a ||
+	fail 'same-category sibling TOOL_DEPENDS is not ordered before its consumer'
+sed '/^mesa-generators$/d' "$out/tree/t/a/tools" > "$out/tree/t/a/tools.tmp"
+mv "$out/tree/t/a/tools.tmp" "$out/tree/t/a/tools"
+if [ "${CROSS_BULK_TEST_ORDER_ONLY:-no}" = yes ]; then
+	echo 'PASS: native TOOL_DEPENDS graph order, including sibling package paths'
+	exit 0
+fi
 
 bulk build state
 [ ! -s "$out/errors" ] || fail "$(cat "$out/errors")"

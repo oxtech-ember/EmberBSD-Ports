@@ -447,12 +447,21 @@ node_deps()
         name=$(printf '%s\n' "$vars" | sed -n 7p) || return 1
         ! native_current "$base" "$name" || current=yes
     fi
-    deps=$(printf '%s\n' "$vars" | awk -v suffix="$suffix" -v current="$current" '
+    deps=$(printf '%s\n' "$vars" | awk -v suffix="$suffix" -v current="$current" -v package="$dir" '
         NR == 1 || NR > 8 || (current == "yes" && NR != 2) { next }
         { s = NR <= 3 ? suffix : (NR <= 5 ? "@native" : ""); hard = NR == 8 ? "target" : ""; n = split($0, w, " ")
-          for (i = 1; i <= n; i++)
-              if (match(w[i], /:\.\.\/\.\.\/[^\/:]+\/[^\/:]+$/))
-                  print substr(w[i], RSTART + 7) s, substr(w[i], 1, RSTART - 1), hard }') || return 1
+          for (i = 1; i <= n; i++) {
+              if (match(w[i], /:\.\.\/\.\.\/[^\/:]+\/[^\/:]+$/)) {
+                  dependency = substr(w[i], RSTART + 7)
+              } else if (match(w[i], /:\.\.\/[^\/:]+$/)) {
+                  split(package, parent, "/")
+                  dependency = parent[1] "/" substr(w[i], RSTART + 4)
+              } else {
+                  continue
+              }
+              print dependency s, substr(w[i], 1, RSTART - 1), hard
+          }
+        }') || return 1
     # A dependency is soft only when every pattern that names it is satisfied.
     printf '%s\n' "$deps" | while read -r dep pattern hard; do
         [ -n "$dep" ] || continue
