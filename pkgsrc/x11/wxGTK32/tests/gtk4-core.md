@@ -33,6 +33,16 @@ The container emits `wx-size-allocate(width, height)` with GTK content dimension
 `m_inSnapshot` covers that snapshot call so a GL swap during a paint event can
 provide a texture without recursively requesting another frame.
 
+`patch-gtk4-dc` routes `wxPaintDC` through the active snapshot Cairo context.
+Outside paint, `wxClientDC` and `wxWindowDC` use a short-lived Cairo frame on
+the containing `GtkNative` surface and clip to the widget allocation; the
+deprecated GDK begin/end-frame API is an immediate compatibility path whose
+draw may be replaced by the next GTK redraw. GTK4 has no desktop surface for
+`wxScreenDC`, so that API reports unsupported. Bitmap textures copy pixels
+into immutable `GdkMemoryTexture` generations because retained snapshots can
+outlive later writes to a `wxBitmap`. Textures for bitmaps with exposed writable
+pixel data or a mutable Cairo surface refresh on each snapshot.
+
 `patch-gtk4-controls` adapts buttons, checkboxes, radio buttons, labels, choices
 and combo boxes. GTK4 removed GtkComboBox's multi-column popup API; `SetColumns`
 with more than one column reports an unsupported operation. Existing upstream
@@ -47,6 +57,6 @@ wxWidgets include/defines and GTK4 pkg-config flags. Run with
 This component test does not establish wxWindow, GPU or KiCad acceptance.
 
 The container patch passes zero-fuzz application to the verified upstream
-3.2.12 release. C++ compilation, runtime and memory checks are pending the
-shared GTK4 target build. Do not merge the provider switch or publish a
-wxWidgets binary based only on patch-application or metadata tests.
+3.2.12 release. GTK4 DC/bitmap changes and the combined backend still need
+compilation, runtime and memory checks. Do not publish a wxWidgets binary
+based only on patch-application or metadata tests.

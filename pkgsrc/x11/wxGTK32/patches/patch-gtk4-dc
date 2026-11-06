@@ -1,0 +1,1026 @@
+$NetBSD$
+
+GTK4 drawing and texture support for wxGTK.
+Origin: EmberBSD, wxWindows licence.
+
+--- include/wx/gtk/anybutton.h.orig
++++ include/wx/gtk/anybutton.h
+@@ -37,7 +37,9 @@
+     void GTKReleased();
+ 
+ protected:
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+     virtual void DoEnable(bool enable) wxOVERRIDE;
+ 
+--- include/wx/gtk/bitmap.h.orig
++++ include/wx/gtk/bitmap.h
+@@ -135,6 +135,12 @@
+     void Draw(cairo_t* cr, int x, int y, bool useMask = true, const wxColour* fg = NULL, const wxColour* bg = NULL) const;
+     void SetSourceSurface(cairo_t* cr, int x, int y, const wxColour* fg = NULL, const wxColour* bg = NULL) const;
+     wxBitmap CreateDisabled() const;
++#ifdef __WXGTK4__
++    // Return a texture backed by an immutable copy of the bitmap pixels.
++    GdkTexture* GetTexture() const;
++    unsigned long GetTextureGeneration() const;
++    bool HasMutablePixels() const;
++#endif
+ #else
+     GdkPixmap *GetPixmap() const;
+     bool HasPixmap() const;
+--- include/wx/gtk/checkbox.h.orig
++++ include/wx/gtk/checkbox.h
+@@ -49,7 +49,9 @@
+ 
+ protected:
+     virtual void DoApplyWidgetStyle(GtkRcStyle *style) wxOVERRIDE;
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+     virtual void DoEnable(bool enable) wxOVERRIDE;
+ 
+--- include/wx/gtk/choice.h.orig
++++ include/wx/gtk/choice.h
+@@ -103,7 +103,9 @@
+     virtual void DoDeleteOneItem(unsigned int n) wxOVERRIDE;
+ 
+     virtual bool GTKHandleFocusOut() wxOVERRIDE;
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+     virtual void DoApplyWidgetStyle(GtkRcStyle *style) wxOVERRIDE;
+ 
+     // in derived classes, implement this to insert list store entry
+--- include/wx/gtk/combobox.h.orig
++++ include/wx/gtk/combobox.h
+@@ -132,7 +132,9 @@
+ 
+ protected:
+     // From wxWindowGTK:
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+     // Widgets that use the style->base colour for the BG colour should
+     // override this and return true.
+--- include/wx/gtk/dc.h.orig
++++ include/wx/gtk/dc.h
+@@ -13,12 +13,18 @@
+ 
+ #include "wx/dcgraph.h"
+ 
++#ifdef __WXGTK4__
++typedef struct _GtkWidget GtkWidget;
++typedef struct _GdkDrawContext GdkDrawContext;
++#endif
++
+ class wxGTKCairoDCImpl: public wxGCDCImpl
+ {
+     typedef wxGCDCImpl BaseType;
+ public:
+     wxGTKCairoDCImpl(wxDC* owner);
+     wxGTKCairoDCImpl(wxDC* owner, wxWindow* window, wxLayoutDirection dir = wxLayout_Default, int width = 0);
++    virtual ~wxGTKCairoDCImpl();
+ 
+     virtual void DoDrawBitmap(const wxBitmap& bitmap, int x, int y, bool useMask) wxOVERRIDE;
+     virtual void DoDrawCheckMark(int x, int y, int width, int height) wxOVERRIDE;
+@@ -39,8 +45,14 @@
+     virtual wxLayoutDirection GetLayoutDirection() const wxOVERRIDE;
+ 
+ protected:
++#ifdef __WXGTK4__
++    // Set m_size from the GTK widget's allocated content size.
++    void InitSize(GtkWidget* widget);
++    GdkDrawContext* m_surfaceDrawContext;
++#else
+     // Set m_size from the given (valid) GdkWindow.
+     void InitSize(GdkWindow* window);
++#endif
+     void AdjustForRTL(cairo_t* cr);
+ 
+     wxSize m_size;
+--- include/wx/gtk/private/image.h.orig
++++ include/wx/gtk/private/image.h
+@@ -8,7 +8,11 @@
+ // Class that can be used in place of GtkImage, to allow drawing of alternate
+ // bitmaps, such as HiDPI or disabled.
+ 
++#ifdef __WXGTK4__
++class wxGtkImage: GtkWidget
++#else
+ class wxGtkImage: GtkImage
++#endif
+ {
+ public:
+     struct BitmapProvider
+@@ -35,6 +39,10 @@
+ 
+     // This pointer is never null and is owned by this class.
+     BitmapProvider* m_provider;
++#ifdef __WXGTK4__
++    struct TextureCache;
++    TextureCache* m_textureCache;
++#endif
+ 
+     wxDECLARE_NO_COPY_CLASS(wxGtkImage);
+ 
+--- include/wx/gtk/radiobut.h.orig
++++ include/wx/gtk/radiobut.h
+@@ -51,7 +51,9 @@
+     virtual wxBorder GetDefaultBorder() const wxOVERRIDE { return wxBORDER_NONE; }
+ 
+     virtual void DoApplyWidgetStyle(GtkRcStyle *style) wxOVERRIDE;
++#ifndef __WXGTK4__
+     virtual GdkWindow *GTKGetWindow(wxArrayGdkWindows& windows) const wxOVERRIDE;
++#endif
+ 
+     virtual void DoEnable(bool enable) wxOVERRIDE;
+ 
+--- src/gtk/anybutton.cpp.orig
++++ src/gtk/anybutton.cpp
+@@ -243,6 +243,7 @@
+     GTKUpdateBitmap();
+ }
+ 
++#ifndef __WXGTK4__
+ GdkWindow *wxAnyButton::GTKGetWindow(wxArrayGdkWindows& WXUNUSED(windows)) const
+ {
+ #ifdef __WXGTK4__
+@@ -251,6 +252,7 @@
+     return gtk_button_get_event_window(GTK_BUTTON(m_widget));
+ #endif
+ }
++#endif
+ 
+ // static
+ wxVisualAttributes
+--- src/gtk/bitmap.cpp.orig
++++ src/gtk/bitmap.cpp
+@@ -25,7 +25,9 @@
+ #include "wx/gtk/private/object.h"
+ #include "wx/gtk/private.h"
+ 
++#ifndef __WXGTK3__
+ GdkWindow* wxGetTopLevelGDK();
++#endif
+ 
+ #ifndef __WXGTK3__
+ static void PixmapToPixbuf(GdkPixmap* pixmap, GdkPixbuf* pixbuf, int w, int h)
+@@ -337,6 +339,12 @@
+     GdkPixbuf* m_pixbufNoMask;
+     cairo_surface_t* m_surface;
+     double m_scaleFactor;
++#ifdef __WXGTK4__
++    GdkTexture* m_texture;
++    unsigned long m_textureGeneration;
++    bool m_pixbufExposed;
++    bool m_textureRead;
++#endif
+ #else
+     GdkPixmap      *m_pixmap;
+     GdkPixbuf      *m_pixbuf;
+@@ -363,6 +371,12 @@
+     m_pixbufNoMask = NULL;
+     m_surface = NULL;
+     m_scaleFactor = 1;
++#ifdef __WXGTK4__
++    m_texture = NULL;
++    m_textureGeneration = 0;
++    m_pixbufExposed = false;
++    m_textureRead = false;
++#endif
+ #else
+     m_pixmap = NULL;
+     m_pixbuf = NULL;
+@@ -389,6 +403,10 @@
+         g_object_unref(m_pixbufNoMask);
+     if (m_surface)
+         cairo_surface_destroy(m_surface);
++#ifdef __WXGTK4__
++    if (m_texture)
++        g_object_unref(m_texture);
++#endif
+ #else
+     if (m_pixmap)
+         g_object_unref (m_pixmap);
+@@ -410,6 +428,18 @@
+ //-----------------------------------------------------------------------------
+ 
+ #define M_BMPDATA static_cast<wxBitmapRefData*>(m_refData)
++
++#ifdef __WXGTK4__
++static void wxBitmapInvalidateTexture(wxBitmapRefData* bmpData)
++{
++    if (bmpData->m_texture)
++    {
++        g_object_unref(bmpData->m_texture);
++        bmpData->m_texture = NULL;
++    }
++    ++bmpData->m_textureGeneration;
++}
++#endif
+ 
+ wxIMPLEMENT_DYNAMIC_CLASS(wxBitmap,wxGDIObject);
+ 
+@@ -991,6 +1021,9 @@
+     wxCHECK_RET( IsOk(), wxT("invalid bitmap") );
+ 
+     AllocExclusive();
++#ifdef __WXGTK4__
++    wxBitmapInvalidateTexture(M_BMPDATA);
++#endif
+     delete M_BMPDATA->m_mask;
+     M_BMPDATA->m_mask = mask;
+     if (M_BMPDATA->m_pixbufMask)
+@@ -1022,6 +1055,9 @@
+     if ( M_BMPDATA->m_scaleFactor != scale )
+     {
+         AllocExclusive();
++#ifdef __WXGTK4__
++        wxBitmapInvalidateTexture(M_BMPDATA);
++#endif
+ 
+         M_BMPDATA->m_scaleFactor = scale;
+     }
+@@ -1200,18 +1236,27 @@
+ void wxBitmap::SetHeight( int height )
+ {
+     AllocExclusive();
++#ifdef __WXGTK4__
++    wxBitmapInvalidateTexture(M_BMPDATA);
++#endif
+     M_BMPDATA->m_height = height;
+ }
+ 
+ void wxBitmap::SetWidth( int width )
+ {
+     AllocExclusive();
++#ifdef __WXGTK4__
++    wxBitmapInvalidateTexture(M_BMPDATA);
++#endif
+     M_BMPDATA->m_width = width;
+ }
+ 
+ void wxBitmap::SetDepth( int depth )
+ {
+     AllocExclusive();
++#ifdef __WXGTK4__
++    wxBitmapInvalidateTexture(M_BMPDATA);
++#endif
+     M_BMPDATA->m_bpp = depth;
+ }
+ #endif
+@@ -1279,6 +1324,15 @@
+     wxCHECK_MSG(IsOk(), NULL, "invalid bitmap");
+ 
+     wxBitmapRefData* bmpData = M_BMPDATA;
++#ifdef __WXGTK4__
++    if (!bmpData->m_textureRead)
++    {
++        // This API exposes writable pixel storage. Keep rebuilding immutable
++        // snapshots while the pointer may still be held by its caller.
++        bmpData->m_pixbufExposed = true;
++        wxBitmapInvalidateTexture(bmpData);
++    }
++#endif
+     GdkPixbuf* pixbuf = bmpData->m_pixbufNoMask;
+     if (pixbuf)
+         return pixbuf;
+@@ -1385,6 +1439,9 @@
+     wxCHECK_MSG(IsOk(), NULL, "invalid bitmap");
+ 
+     wxBitmapRefData* bmpData = M_BMPDATA;
++#ifdef __WXGTK4__
++    wxBitmapInvalidateTexture(bmpData);
++#endif
+     cairo_t* cr;
+     if (bmpData->m_surface)
+         cr = cairo_create(bmpData->m_surface);
+@@ -1506,6 +1563,13 @@
+     wxCHECK_MSG( IsOk(), NULL, wxT("invalid bitmap") );
+ 
+     wxBitmapRefData* bmpData = M_BMPDATA;
++#ifdef __WXGTK4__
++    if (!bmpData->m_textureRead)
++    {
++        bmpData->m_pixbufExposed = true;
++        wxBitmapInvalidateTexture(bmpData);
++    }
++#endif
+ #ifdef __WXGTK3__
+     if (bmpData->m_pixbufMask)
+         return bmpData->m_pixbufMask;
+@@ -1567,6 +1631,88 @@
+ #endif
+ }
+ 
++#ifdef __WXGTK4__
++GdkTexture* wxBitmap::GetTexture() const
++{
++    wxCHECK_MSG(IsOk(), NULL, "invalid bitmap");
++
++    wxBitmapRefData* bmpData = M_BMPDATA;
++    const bool mutablePixels = bmpData->m_surface != NULL || bmpData->m_pixbufExposed;
++    if (!mutablePixels && bmpData->m_texture)
++        return bmpData->m_texture;
++
++    GdkPixbuf* pixbuf;
++    if (mutablePixels)
++    {
++        // A MemoryDC can keep writing to its surface, and callers can retain
++        // writable pixbuf pointers. Re-copy current pixels for every
++        // snapshot instead of keeping a texture from an earlier draw.
++        wxBitmapInvalidateTexture(bmpData);
++        if (bmpData->m_surface)
++        {
++            cairo_surface_flush(bmpData->m_surface);
++            if (bmpData->m_pixbufNoMask)
++            {
++                g_object_unref(bmpData->m_pixbufNoMask);
++                bmpData->m_pixbufNoMask = NULL;
++            }
++            if (bmpData->m_pixbufMask)
++            {
++                g_object_unref(bmpData->m_pixbufMask);
++                bmpData->m_pixbufMask = NULL;
++            }
++        }
++        bmpData->m_textureRead = true;
++        pixbuf = GetPixbuf();
++        bmpData->m_textureRead = false;
++    }
++    else
++    {
++        bmpData->m_textureRead = true;
++        pixbuf = GetPixbuf();
++        bmpData->m_textureRead = false;
++    }
++    if (!pixbuf || gdk_pixbuf_get_colorspace(pixbuf) != GDK_COLORSPACE_RGB ||
++        gdk_pixbuf_get_bits_per_sample(pixbuf) != 8)
++    {
++        return NULL;
++    }
++
++    const int channels = gdk_pixbuf_get_n_channels(pixbuf);
++    if (channels != 3 && channels != 4)
++    {
++        return NULL;
++    }
++
++    const gsize length = gsize(gdk_pixbuf_get_rowstride(pixbuf)) *
++                         gdk_pixbuf_get_height(pixbuf);
++    // GdkMemoryTexture may outlive this bitmap generation in retained render
++    // nodes, so its backing pixels must not alias mutable wxBitmap storage.
++    GBytes* bytes = g_bytes_new(gdk_pixbuf_read_pixels(pixbuf), length);
++    const GdkMemoryFormat format = channels == 4
++        ? GDK_MEMORY_R8G8B8A8
++        : GDK_MEMORY_R8G8B8;
++    bmpData->m_texture = gdk_memory_texture_new(
++        gdk_pixbuf_get_width(pixbuf), gdk_pixbuf_get_height(pixbuf),
++        format, bytes, gdk_pixbuf_get_rowstride(pixbuf));
++    g_bytes_unref(bytes);
++    return bmpData->m_texture;
++}
++
++unsigned long wxBitmap::GetTextureGeneration() const
++{
++    wxCHECK_MSG(IsOk(), 0, "invalid bitmap");
++    return M_BMPDATA->m_textureGeneration;
++}
++
++bool wxBitmap::HasMutablePixels() const
++{
++    wxCHECK_MSG(IsOk(), false, "invalid bitmap");
++    const wxBitmapRefData* const bmpData = M_BMPDATA;
++    return bmpData->m_surface != NULL || bmpData->m_pixbufExposed;
++}
++#endif
++
+ #ifndef __WXGTK3__
+ bool wxBitmap::HasPixbuf() const
+ {
+@@ -1595,11 +1741,14 @@
+ {
+     void* bits = NULL;
+ #ifdef __WXGTK3__
++    wxBitmapRefData* bmpData = M_BMPDATA;
+     GdkPixbuf* pixbuf = GetPixbufNoMask();
++#ifdef __WXGTK4__
++    wxBitmapInvalidateTexture(bmpData);
++#endif
+     if ((bpp == 32) == (gdk_pixbuf_get_has_alpha(pixbuf) != 0))
+     {
+         bits = gdk_pixbuf_get_pixels(pixbuf);
+-        wxBitmapRefData* bmpData = M_BMPDATA;
+         data.m_width = bmpData->m_width;
+         data.m_height = bmpData->m_height;
+         data.m_stride = gdk_pixbuf_get_rowstride(pixbuf);
+--- src/gtk/checkbox.cpp.orig
++++ src/gtk/checkbox.cpp
+@@ -292,6 +292,7 @@
+     GTKApplyStyle(m_widgetLabel, style);
+ }
+ 
++#ifndef __WXGTK4__
+ GdkWindow *wxCheckBox::GTKGetWindow(wxArrayGdkWindows& WXUNUSED(windows)) const
+ {
+ #ifdef __WXGTK4__
+@@ -302,6 +303,7 @@
+     return gtk_button_get_event_window(GTK_BUTTON(m_widgetCheckbox));
+ #endif
+ }
++#endif
+ 
+ // static
+ wxVisualAttributes
+--- src/gtk/choice.cpp.orig
++++ src/gtk/choice.cpp
+@@ -377,6 +377,7 @@
+                                 (gpointer) gtk_choice_changed_callback, this);
+ }
+ 
++#ifndef __WXGTK4__
+ GdkWindow *wxChoice::GTKGetWindow(wxArrayGdkWindows& WXUNUSED(windows)) const
+ {
+ #ifdef __WXGTK4__
+@@ -385,6 +386,7 @@
+     return gtk_widget_get_window(m_widget);
+ #endif
+ }
++#endif
+ 
+ wxSize wxChoice::DoGetBestSize() const
+ {
+--- src/gtk/combobox.cpp.orig
++++ src/gtk/combobox.cpp
+@@ -277,6 +277,7 @@
+     return GTK_WIDGET( GetEntry() );
+ }
+ 
++#ifndef __WXGTK4__
+ GdkWindow* wxComboBox::GTKGetWindow(wxArrayGdkWindows& /* windows */) const
+ {
+ #ifdef __WXGTK4__
+@@ -289,6 +290,7 @@
+ #endif
+ #endif
+ }
++#endif
+ 
+ // static
+ wxVisualAttributes
+--- src/gtk/dc.cpp.orig
++++ src/gtk/dc.cpp
+@@ -22,8 +22,13 @@
+ 
+ #include "wx/gtk/private/wrapgtk.h"
+ 
++#include <math.h>
++
+ wxGTKCairoDCImpl::wxGTKCairoDCImpl(wxDC* owner)
+     : wxGCDCImpl(owner)
++#ifdef __WXGTK4__
++    , m_surfaceDrawContext(NULL)
++#endif
+ {
+     m_layoutDir = wxLayout_Default;
+ }
+@@ -31,6 +36,9 @@
+ wxGTKCairoDCImpl::wxGTKCairoDCImpl(wxDC* owner, wxWindow* window, wxLayoutDirection dir, int width)
+     : wxGCDCImpl(owner, 0)
+     , m_size(width, 0)
++#ifdef __WXGTK4__
++    , m_surfaceDrawContext(NULL)
++#endif
+ {
+     m_layoutDir = dir;
+     if ( window )
+@@ -43,11 +51,95 @@
+     }
+ }
+ 
++wxGTKCairoDCImpl::~wxGTKCairoDCImpl()
++{
++#ifdef __WXGTK4__
++    // The GDK draw context commits its frame only after the wx graphics
++    // context has released the Cairo context that targets its frame buffer.
++    SetGraphicsContext(NULL);
++    if (m_surfaceDrawContext)
++    {
++        gdk_draw_context_end_frame(m_surfaceDrawContext);
++        g_object_unref(m_surfaceDrawContext);
++    }
++#endif
++}
++
++#ifdef __WXGTK4__
++void wxGTKCairoDCImpl::InitSize(GtkWidget* widget)
++{
++    m_size.x = gtk_widget_get_width(widget);
++    m_size.y = gtk_widget_get_height(widget);
++}
++
++// Create a short-lived drawing frame on the real GtkNative surface. GTK4 has
++// no child GdkWindows: drawing is clipped to the widget allocation and
++// translated into the native surface's coordinate space. GTK deprecated the
++// begin/end frame API in 4.16 in favor of retained rendering; this immediate
++// compatibility path lasts until the next GTK redraw of the same area.
++static cairo_t* wxCreateGTKSurfaceContext(GtkWidget* widget,
++                                          GdkDrawContext** drawContext,
++                                          wxSize* size)
++{
++    GtkNative* native = gtk_widget_get_native(widget);
++    if (!native)
++        return NULL;
++
++    GdkSurface* surface = gtk_native_get_surface(native);
++    if (!surface || gdk_surface_is_destroyed(surface) ||
++        !gdk_surface_get_mapped(surface))
++        return NULL;
++
++    GtkWidget* nativeWidget = GTK_WIDGET(native);
++    const graphene_point_t localOrigin = GRAPHENE_POINT_INIT(0, 0);
++    graphene_point_t origin;
++    if (!gtk_widget_compute_point(widget, nativeWidget, &localOrigin, &origin))
++        return NULL;
++
++    size->x = gtk_widget_get_width(widget);
++    size->y = gtk_widget_get_height(widget);
++    if (size->x <= 0 || size->y <= 0)
++        return NULL;
++
++    const int left = int(floor(origin.x));
++    const int top = int(floor(origin.y));
++    const int right = int(ceil(origin.x + size->x));
++    const int bottom = int(ceil(origin.y + size->y));
++    const cairo_rectangle_int_t rect = { left, top, right - left, bottom - top };
++    cairo_region_t* region = cairo_region_create_rectangle(&rect);
++    GdkCairoContext* context = gdk_surface_create_cairo_context(surface);
++    if (!context)
++    {
++        cairo_region_destroy(region);
++        return NULL;
++    }
++
++    *drawContext = GDK_DRAW_CONTEXT(context);
++    gdk_draw_context_begin_frame(*drawContext, region);
++    cairo_region_destroy(region);
++
++    cairo_t* cr = gdk_cairo_context_cairo_create(context);
++    if (cairo_status(cr) != CAIRO_STATUS_SUCCESS)
++    {
++        cairo_destroy(cr);
++        gdk_draw_context_end_frame(*drawContext);
++        g_object_unref(*drawContext);
++        *drawContext = NULL;
++        return NULL;
++    }
++
++    cairo_translate(cr, origin.x, origin.y);
++    cairo_rectangle(cr, 0, 0, size->x, size->y);
++    cairo_clip(cr);
++    return cr;
++}
++#else
+ void wxGTKCairoDCImpl::InitSize(GdkWindow* window)
+ {
+     m_size.x = gdk_window_get_width(window);
+     m_size.y = gdk_window_get_height(window);
+ }
++#endif
+ 
+ void wxGTKCairoDCImpl::DoDrawBitmap(const wxBitmap& bitmap, int x, int y, bool useMask)
+ {
+@@ -408,6 +500,44 @@
+ wxWindowDCImpl::wxWindowDCImpl(wxWindowDC* owner, wxWindow* window)
+     : wxGTKCairoDCImpl(owner, window)
+ {
++#ifdef __WXGTK4__
++    GtkWidget* widget = window->m_wxwindow ? window->m_wxwindow : window->m_widget;
++    if (!widget)
++        return;
++
++    InitSize(widget);
++    cairo_t* cr = window->GTKPaintContext();
++    const bool inPaint = cr != NULL;
++    if (!cr)
++        cr = wxCreateGTKSurfaceContext(widget, &m_surfaceDrawContext, &m_size);
++    if (!cr)
++    {
++        wxFAIL_MSG("wxWindowDC requires a mapped GtkNative surface or an active GTK paint");
++        return;
++    }
++
++    m_ok = true;
++    SetLayoutDirection(wxLayout_Default);
++    if (!inPaint)
++        AdjustForRTL(cr);
++    wxGraphicsContext* gc = wxGraphicsContext::CreateFromNative(cr);
++    cairo_destroy(cr);
++    if (gc)
++    {
++        gc->SetContentScaleFactor(m_contentScaleFactor);
++        SetGraphicsContext(gc);
++    }
++    else
++    {
++        m_ok = false;
++        if (m_surfaceDrawContext)
++        {
++            gdk_draw_context_end_frame(m_surfaceDrawContext);
++            g_object_unref(m_surfaceDrawContext);
++            m_surfaceDrawContext = NULL;
++        }
++    }
++#else
+     GtkWidget* widget = window->m_wxwindow;
+     if (widget == NULL)
+         widget = window->m_widget;
+@@ -450,12 +580,51 @@
+     }
+     else
+         SetGraphicsContext(wxGraphicsContext::Create());
++#endif
+ }
+ //-----------------------------------------------------------------------------
+ 
+ wxClientDCImpl::wxClientDCImpl(wxClientDC* owner, wxWindow* window)
+     : wxGTKCairoDCImpl(owner, window)
+ {
++#ifdef __WXGTK4__
++    GtkWidget* widget = window->m_wxwindow ? window->m_wxwindow : window->m_widget;
++    if (!widget)
++        return;
++
++    InitSize(widget);
++    cairo_t* cr = window->GTKPaintContext();
++    const bool inPaint = cr != NULL;
++    if (!cr)
++        cr = wxCreateGTKSurfaceContext(widget, &m_surfaceDrawContext, &m_size);
++    if (!cr)
++    {
++        wxFAIL_MSG("wxClientDC requires a mapped GtkNative surface or an active GTK paint");
++        return;
++    }
++
++    m_ok = true;
++    SetLayoutDirection(wxLayout_Default);
++    if (!inPaint)
++        AdjustForRTL(cr);
++    wxGraphicsContext* gc = wxGraphicsContext::CreateFromNative(cr);
++    cairo_destroy(cr);
++    if (gc)
++    {
++        gc->SetContentScaleFactor(m_contentScaleFactor);
++        SetGraphicsContext(gc);
++    }
++    else
++    {
++        m_ok = false;
++        if (m_surfaceDrawContext)
++        {
++            gdk_draw_context_end_frame(m_surfaceDrawContext);
++            g_object_unref(m_surfaceDrawContext);
++            m_surfaceDrawContext = NULL;
++        }
++    }
++#else
+     GtkWidget* widget = window->m_wxwindow;
+     if (widget == NULL)
+         widget = window->m_widget;
+@@ -486,6 +655,7 @@
+     }
+     else
+         SetGraphicsContext(wxGraphicsContext::Create());
++#endif
+ }
+ //-----------------------------------------------------------------------------
+ 
+@@ -495,7 +665,13 @@
+ {
+     cairo_t* cr = window->GTKPaintContext();
+     wxCHECK_RET(cr, "using wxPaintDC without being in a native paint event");
++#ifdef __WXGTK4__
++    GtkWidget* widget = window->m_wxwindow ? window->m_wxwindow : window->m_widget;
++    wxCHECK_RET(widget, "using wxPaintDC without a GTK widget");
++    InitSize(widget);
++#else
+     InitSize(gtk_widget_get_window(window->m_wxwindow));
++#endif
+     wxGraphicsContext* gc = wxGraphicsContext::CreateFromNative(cr);
+     gc->SetContentScaleFactor(m_contentScaleFactor);
+     SetGraphicsContext(gc);
+@@ -521,6 +697,9 @@
+ wxScreenDCImpl::wxScreenDCImpl(wxScreenDC* owner)
+     : wxGTKCairoDCImpl(owner, static_cast<wxWindow*>(NULL))
+ {
++#ifdef __WXGTK4__
++    wxFAIL_MSG("GTK4 does not expose a desktop surface for wxScreenDC");
++#else
+     GdkWindow* window = gdk_get_default_root_window();
+     InitSize(window);
+ 
+@@ -529,6 +708,7 @@
+     cairo_destroy(cr);
+     gc->SetContentScaleFactor(m_contentScaleFactor);
+     SetGraphicsContext(gc);
++#endif
+ }
+ 
+ wxSize wxScreenDCImpl::GetPPI() const
+--- src/gtk/image_gtk.cpp.orig
++++ src/gtk/image_gtk.cpp
+@@ -10,6 +10,7 @@
+ #include "wx/bmpbndl.h"
+ #include "wx/log.h"
+ #include "wx/window.h"
++#include "wx/weakref.h"
+ 
+ #include "wx/gtk/private/wrapgtk.h"
+ #include "wx/gtk/private/gtk3-compat.h"
+@@ -23,22 +24,48 @@
+ // Default provider for HiDPI common case
+ struct BitmapProviderDefault: wxGtkImage::BitmapProvider
+ {
+-    BitmapProviderDefault(wxWindow* win) : m_win(win) { }
++    BitmapProviderDefault(wxWindow* win)
++        : m_win(win)
++#ifdef __WXGTK4__
++        , m_disabledScale(-1), m_disabledGeneration(0)
++#endif
++    { }
+ 
+     virtual wxBitmap Get(int scale) const wxOVERRIDE;
+     virtual void Set(const wxBitmapBundle& bitmap) wxOVERRIDE;
+ 
+-    wxWindow* const m_win;
++    wxWindowRef m_win;
+ 
+     // All the bitmaps we use.
+     wxBitmapBundle m_bitmapBundle;
++#ifdef __WXGTK4__
++    mutable wxBitmap m_disabledSource;
++    mutable wxBitmap m_disabledBitmap;
++    mutable int m_disabledScale;
++    mutable unsigned long m_disabledGeneration;
++#endif
+ };
+ 
+ wxBitmap BitmapProviderDefault::Get(int scale) const
+ {
+     wxBitmap bitmap(GetAtScale(m_bitmapBundle, scale));
+-    if (m_win && !m_win->IsEnabled())
++    wxWindow* const win = m_win.get();
++    if (win && !win->IsEnabled() && bitmap.IsOk())
++    {
++#ifdef __WXGTK4__
++        if (m_disabledScale != scale || !m_disabledSource.IsSameAs(bitmap) ||
++            m_disabledGeneration != bitmap.GetTextureGeneration())
++        {
++            m_disabledSource = bitmap;
++            m_disabledBitmap = bitmap.CreateDisabled();
++            m_disabledScale = scale;
++            m_disabledGeneration = bitmap.GetTextureGeneration();
++        }
++        bitmap = m_disabledBitmap;
++#else
+         bitmap = bitmap.CreateDisabled();
++#endif
++    }
+ 
+     return bitmap;
+ }
+@@ -46,6 +73,12 @@
+ void BitmapProviderDefault::Set(const wxBitmapBundle& bitmapBundle)
+ {
+     m_bitmapBundle = bitmapBundle;
++#ifdef __WXGTK4__
++    m_disabledSource = wxBitmap();
++    m_disabledBitmap = wxBitmap();
++    m_disabledScale = -1;
++    m_disabledGeneration = 0;
++#endif
+ }
+ 
+ #else // !__WXGTK3__
+@@ -61,6 +94,18 @@
+ 
+ } // namespace
+ 
++#ifdef __WXGTK4__
++struct wxGtkImage::TextureCache
++{
++    wxBitmap bitmap;
++    GdkTexture* texture;
++    int scale;
++    unsigned long generation;
++
++    TextureCache() : texture(NULL), scale(-1), generation(0) { }
++};
++#endif
++
+ extern "C" {
+ static void wxGtkImageClassInit(void* g_class, void* class_data);
+ }
+@@ -71,14 +116,23 @@
+     if (type == 0)
+     {
+         const GTypeInfo info = {
++#ifdef __WXGTK4__
++            sizeof(GtkWidgetClass),
++#else
+             sizeof(GtkImageClass),
++#endif
+             NULL, NULL,
+             wxGtkImageClassInit, NULL, NULL,
+             sizeof(wxGtkImage), 0, NULL,
+             NULL
+         };
++#ifdef __WXGTK4__
++        type = g_type_register_static(
++            GTK_TYPE_WIDGET, "wxGtkImage", &info, GTypeFlags(0));
++#else
+         type = g_type_register_static(
+             GTK_TYPE_IMAGE, "wxGtkImage", &info, GTypeFlags(0));
++#endif
+     }
+     return type;
+ }
+@@ -87,6 +141,9 @@
+ {
+     wxGtkImage* image = WX_GTK_IMAGE(g_object_new(Type(), NULL));
+     image->m_provider = provider;
++#ifdef __WXGTK4__
++    image->m_textureCache = new TextureCache;
++#endif
+     return GTK_WIDGET(image);
+ }
+ 
+@@ -99,22 +156,112 @@
+ {
+     m_provider->Set(bitmapBundle);
+ 
++#ifdef __WXGTK4__
++    if (m_textureCache)
++    {
++        if (m_textureCache->texture)
++            g_object_unref(m_textureCache->texture);
++        m_textureCache->texture = NULL;
++        m_textureCache->bitmap = wxBitmap();
++        m_textureCache->scale = -1;
++        m_textureCache->generation = 0;
++    }
++    gtk_widget_queue_resize(GTK_WIDGET(this));
++    gtk_widget_queue_draw(GTK_WIDGET(this));
++#else
+     // Always set the default bitmap to use the correct size, even if we draw a
+     // different bitmap below.
+     wxBitmap bitmap = bitmapBundle.GetBitmap(wxDefaultSize);
+-
+     GdkPixbuf* pixbuf = NULL;
+     if (bitmap.IsOk())
+     {
+         pixbuf = bitmap.GetPixbuf();
+     }
+     gtk_image_set_from_pixbuf(GTK_IMAGE(this), pixbuf);
++#endif
+ }
+ 
+ static GtkWidgetClass* wxGtkImageParentClass;
+ 
+ extern "C"
+ {
++#ifdef __WXGTK4__
++static GdkTexture* wxGtkImageGetTexture(wxGtkImage* image, int scale)
++{
++    const wxBitmap bitmap(image->m_provider->Get(scale));
++    if (!bitmap.IsOk())
++        return NULL;
++
++    wxGtkImage::TextureCache* const cache = image->m_textureCache;
++    if (!cache)
++        return NULL;
++
++    if (bitmap.HasMutablePixels() || !cache->texture || cache->scale != scale ||
++        !cache->bitmap.IsSameAs(bitmap) ||
++        cache->generation != bitmap.GetTextureGeneration())
++    {
++        if (cache->texture)
++            g_object_unref(cache->texture);
++        cache->texture = bitmap.GetTexture();
++        if (cache->texture)
++            g_object_ref(cache->texture);
++        cache->bitmap = bitmap;
++        cache->scale = scale;
++        cache->generation = bitmap.GetTextureGeneration();
++    }
++
++    return cache->texture;
++}
++
++static void wxGtkImageMeasure(GtkWidget* widget,
++                              GtkOrientation orientation,
++                              int forSize,
++                              int* minimum,
++                              int* natural,
++                              int* minimumBaseline,
++                              int* naturalBaseline)
++{
++    wxGtkImage* const image = WX_GTK_IMAGE(widget);
++    const int scale = gtk_widget_get_scale_factor(widget);
++    const wxBitmap bitmap(image->m_provider->Get(scale));
++    if (bitmap.IsOk())
++    {
++        const int size = orientation == GTK_ORIENTATION_HORIZONTAL
++            ? bitmap.GetLogicalWidth()
++            : bitmap.GetLogicalHeight();
++        *minimum = size;
++        *natural = size;
++        *minimumBaseline = -1;
++        *naturalBaseline = -1;
++        return;
++    }
++
++    GTK_WIDGET_CLASS(wxGtkImageParentClass)->measure(
++        widget, orientation, forSize, minimum, natural,
++        minimumBaseline, naturalBaseline);
++}
++
++static void wxGtkImageSnapshot(GtkWidget* widget, GtkSnapshot* snapshot)
++{
++    wxGtkImage* const image = WX_GTK_IMAGE(widget);
++    const int scale = gtk_widget_get_scale_factor(widget);
++    GdkTexture* const texture = wxGtkImageGetTexture(image, scale);
++    if (!texture)
++    {
++        GTK_WIDGET_CLASS(wxGtkImageParentClass)->snapshot(widget, snapshot);
++        return;
++    }
++
++    const wxBitmap& bitmap = image->m_textureCache->bitmap;
++    const float width = bitmap.GetLogicalWidth();
++    const float height = bitmap.GetLogicalHeight();
++    const graphene_rect_t bounds = GRAPHENE_RECT_INIT(
++        (gtk_widget_get_width(widget) - width) / 2.0f,
++        (gtk_widget_get_height(widget) - height) / 2.0f,
++        width, height);
++    gtk_snapshot_append_texture(snapshot, texture, &bounds);
++}
++#else
+ #ifdef __WXGTK3__
+ static gboolean wxGtkImageDraw(GtkWidget* widget, cairo_t* cr)
+ #else
+@@ -160,10 +307,20 @@
+ #endif
+     return false;
+ }
++#endif
+ 
+ static void wxGtkImageFinalize(GObject* object)
+ {
+     wxGtkImage* image = WX_GTK_IMAGE(object);
++#ifdef __WXGTK4__
++    if (image->m_textureCache)
++    {
++        if (image->m_textureCache->texture)
++            g_object_unref(image->m_textureCache->texture);
++        delete image->m_textureCache;
++        image->m_textureCache = NULL;
++    }
++#endif
+     delete image->m_provider;
+     image->m_provider = NULL;
+     G_OBJECT_CLASS(wxGtkImageParentClass)->finalize(object);
+@@ -171,7 +328,10 @@
+ 
+ static void wxGtkImageClassInit(void* g_class, void* /*class_data*/)
+ {
+-#ifdef __WXGTK3__
++#ifdef __WXGTK4__
++    GTK_WIDGET_CLASS(g_class)->measure = wxGtkImageMeasure;
++    GTK_WIDGET_CLASS(g_class)->snapshot = wxGtkImageSnapshot;
++#elif defined(__WXGTK3__)
+     GTK_WIDGET_CLASS(g_class)->draw = wxGtkImageDraw;
+ #else
+     GTK_WIDGET_CLASS(g_class)->expose_event = wxGtkImageDraw;
+--- src/gtk/radiobut.cpp.orig
++++ src/gtk/radiobut.cpp
+@@ -278,6 +278,7 @@
+ #endif
+ }
+ 
++#ifndef __WXGTK4__
+ GdkWindow *
+ wxRadioButton::GTKGetWindow(wxArrayGdkWindows& WXUNUSED(windows)) const
+ {
+@@ -289,6 +290,7 @@
+     return gtk_button_get_event_window(GTK_BUTTON(m_widget));
+ #endif
+ }
++#endif
+ 
+ // static
+ wxVisualAttributes
