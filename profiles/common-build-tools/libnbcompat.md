@@ -25,10 +25,9 @@ Unavailable legacy platform queries return failure without executing a host
 tool. Ordinary mode retains its existing platform queries and feature tests.
 
 GCC uses the same helper bytes through its generated new-file patch hunk.
-Legacy `GCC_CONFIGURE_SDK` and `GCC_CONFIGURE_UNAME` selectors remain supported.
-Conflicting legacy and common selectors fail. Regenerate the GCC hunk with the
-selected SDK Python and `generate-configure-diagnostics.py --write`. Its default
-mode checks exact byte parity. Do not maintain a separate GCC implementation.
+All callers use `EMBERBSD_CONFIGURE_SDK` and `EMBERBSD_CONFIGURE_UNAME`.
+Regenerate the GCC hunk with the selected SDK Python and
+`generate-configure-diagnostics.py --write`. Its default mode checks exact byte parity. Do not maintain a separate GCC implementation.
 The helper retains GPL-3.0-or-later licensing.
 
 The libnbcompat patch retains the diagnostic routing in `configure` and

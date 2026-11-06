@@ -53,8 +53,6 @@ class InitialLibraryTests(unittest.TestCase):
         self.assertEqual(module.generated(text,source),text)
         self.assertNotEqual(module.generated(text,source+'# changed\n'),text)
         self.assertIn('SPDX-License-Identifier: GPL-3.0-or-later',source)
-        self.assertIn('conflicting SDK mode selectors',source)
-        self.assertIn('conflicting SDK uname selectors',source)
         self.assertIn('test ! -f "$EMBERBSD_CONFIGURE_UNAME" || test ! -x "$EMBERBSD_CONFIGURE_UNAME"',source)
         self.assertIn("echo 'unavailable (selected SDK profile)'\n  return 1",source)
         recipe=(ROOT/'profiles/development-toolchain/patches/gcc-darwin-host.patch').read_text()
