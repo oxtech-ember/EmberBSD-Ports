@@ -261,8 +261,18 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, pre
     except UnicodeError as exc:
         raise ValueError('invalid old patch cookie') from exc
     patchdir = (recipe / 'patches').resolve(strict=True)
-    require(all(p.is_absolute() and p.resolve(strict=True).parent == patchdir for p in old_paths),
+    cookie_roots = {patchdir}
+    if previous_recipe is not None:
+        previous_patches = Path(previous_recipe) / 'patches'
+        require(previous_patches.is_absolute() and
+                previous_patches.resolve(strict=True) == previous_patches,
+                'previous patch directory is not canonical')
+        cookie_roots.add(previous_patches)
+    require(all(p.is_absolute() and p.resolve(strict=True) == p and
+                p.parent in cookie_roots for p in old_paths),
             'old patch cookie contains an unsupported path')
+    # The explicit previous directory only identifies cookie origins. Its
+    # complete recipe and patch inventory must still match installed provenance.
     old = [p.name for p in old_paths]
     require(len(set(old)) == len(old), 'duplicate old patch')
     version = stable_read(paths, installed_version).decode('utf-8')

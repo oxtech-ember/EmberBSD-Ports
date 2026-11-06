@@ -47,7 +47,7 @@ with tempfile.TemporaryDirectory(prefix='changed-patch-test-') as temp:
         (directory / 'Makefile').write_text('# demo\n')
         (directory / 'patches/patch-a').write_bytes(patch)
         (directory / 'distinfo').write_text(rows + f'SHA1 (patch-a) = {hashlib.sha1(patch).hexdigest()}\n')
-    (work / '.patch_done').write_text(str(recipe / 'patches/patch-a') + '\n')
+    (work / '.patch_done').write_text(str(previous / 'patches/patch-a') + '\n')
     (source / 'input').write_bytes(b'old\n')
     (source / 'sibling').write_bytes(b'keep\n')
     (source / 'object.o').write_bytes(b'object\n')
@@ -76,6 +76,22 @@ with tempfile.TemporaryDirectory(prefix='changed-patch-test-') as temp:
     assert (source / 'input').read_bytes() == b'new\n'
     assert (source / 'sibling').stat().st_mtime_ns == sibling
     assert (source / 'object.o').stat().st_mtime_ns == obj
+    saved_cookie = (work / '.patch_done').read_bytes()
+    unknown = root / 'unknown/patches'
+    unknown.mkdir(parents=True)
+    (unknown / 'patch-a').write_bytes(old_patch)
+    alias = root / 'previous-alias'
+    alias.symlink_to(previous, target_is_directory=True)
+    for name, origin in [('unknown-origin', unknown / 'patch-a'),
+                         ('symlink-origin', alias / 'patches/patch-a')]:
+        (work / '.patch_done').write_text(str(origin) + '\n')
+        try:
+            replay(name)
+        except ValueError as exc:
+            assert 'unsupported path' in str(exc)
+        else:
+            raise AssertionError('foreign or aliased patch cookie accepted')
+    (work / '.patch_done').write_bytes(saved_cookie)
     (previous / 'patches/patch-a').write_bytes(b'foreign\n')
     try:
         replay('bad-old')
