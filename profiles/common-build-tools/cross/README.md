@@ -619,6 +619,14 @@ installs into, so installs into one prefix never overlap and installs into
 the target sysroot and the native prefix run independently. Only the
 active controller writes the state lists. SIGTERM starts no new package, lets the
 running ones finish and exits with 143; the next run skips the done packages.
+For an existing stage whose installed dependency has added buildlink files,
+`CROSS_BULK_BUILDLINK_PROVIDER=NAME cross-bulk.sh buildlink-refresh PKGPATH[@native] STATE`
+uses the normal provider factory under the stage lock. It checks package inventory,
+existing links and collisions, preserves compatible objects and retries interrupted
+link updates. Existing libtool `.la` outputs must exactly match the current factory
+output after relocating only its temporary buildlink root; new or changed `.la`
+outputs are unsupported and cause refusal. The live factory does not rewrite them.
+
 For a package whose stage already exists, `cross-bulk.sh package-install PKGPATH STATE`
 runs that package's normal `package-install` target, or
 `package` plus `replace` when the target sysroot already has its package

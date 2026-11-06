@@ -60,6 +60,13 @@ with tempfile.TemporaryDirectory(prefix='pkgsrc-supervisor-test-') as tmp:
  assert done.exists(), 'stage child writer was killed when its shell died'
  assert supervisor.wait(timeout=20)==137, supervisor.stderr.read()
  assert subprocess.run(second,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,text=True,timeout=10).returncode==0
+ # The dedicated buildlink mode enters the same stage lock and receives its work identity.
+ script=root/'entry.sh'; result=root/'entry-result'
+ script.write_text('printf "%s\\n%s\\n" "$CROSS_BULK_LOCKED_WORK" "$CROSS_BULK_SUPERVISED" > "$2"\n')
+ stage=[str(a.python),'-B',str(helper),'--sdk-source',str(a.sdk_source),'--locks',str(state1/'locks.json'),'--manifest',str(root/'manifest'),'--bulk','--',str(a.shell),str(script),'buildlink-refresh',str(result),str(state1)]
+ subprocess.run(stage,check=True,timeout=20)
+ lines=result.read_text().splitlines()
+ assert Path(lines[0]).resolve()==work.resolve() and '|buildlink-refresh|' in lines[1], lines
  # Injected SDK inspection failure cannot release locks while unresolved.
  sys.path.insert(0,str(a.sdk_source/'src'))
  from emberbsd_sdk import paths, process

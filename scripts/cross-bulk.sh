@@ -65,7 +65,7 @@ umask 022
 
 [ "$#" -eq 3 ] || {
     echo 'Usage: scripts/cross-bulk.sh order|fetch|build|selected-order|selected-build PKGPATH_LIST ABSOLUTE_STATE' >&2
-    echo '       scripts/cross-bulk.sh package|package-install|patch-refresh PKGPATH[@native] ABSOLUTE_STATE' >&2
+    echo '       scripts/cross-bulk.sh package|package-install|patch-refresh|buildlink-refresh PKGPATH[@native] ABSOLUTE_STATE' >&2
     exit 2
 }
 mode=$1
@@ -130,7 +130,7 @@ state_lock_release()
     state_lock_owned=no
 }
 case "$mode" in
-    order|fetch|build|package|package-install|patch-refresh|selected-order|selected-build)
+    order|fetch|build|package|package-install|patch-refresh|buildlink-refresh|selected-order|selected-build)
         if [ "$stage_supervised" = no ]; then state_lock_acquire || exit $?; fi
         trap 'if [ "$state_lock_release_safe" = yes ]; then state_lock_release; else echo "Workers may not have drained; keeping lock $state/build.lock" >&2; fi' EXIT
         ;;
@@ -1851,6 +1851,22 @@ package_install_one()
         stage_supervise "$mode" "$run/stage-node"
         return $?
     fi
+    if [ "$mode" = buildlink-refresh ]; then
+        : "${CROSS_BULK_LOCKED_WORK:?Missing supervised stage identity}"
+        : "${CROSS_BULK_BUILDLINK_PROVIDER:?Select a buildlink provider}"
+        set -- --bmake "$BMAKE" --recipe "$PKGSRCDIR/$path" \
+            --expected-work "$CROSS_BULK_LOCKED_WORK" --provider "$CROSS_BULK_BUILDLINK_PROVIDER"
+        if [ "$role" = native ]; then
+            set -- "$@" --native --make-arg USE_CROSS_COMPILE=no --make-arg "PACKAGES=$native_packages"
+            if grep -qFx "$requested" "$run/crossfed"; then
+                set -f
+                for stage_arg in $target_settings; do set -- "$@" --make-arg "$stage_arg"; done
+                set +f
+            fi
+        fi
+        "$host_python" -B -E -S "$(dirname "$0")/stage-local-buildlink-refresh.py" "$@"
+        return $?
+    fi
     if [ "$mode" = patch-refresh ]; then
         : "${CROSS_BULK_LOCKED_WORK:?Missing supervised stage identity}"
         set -- --sdk-source "$sdk_source" --bmake "$BMAKE" --recipe "$PKGSRCDIR/$path" \
@@ -2269,6 +2285,6 @@ case "$mode" in
             mv "$state/$key.tmp" "$state/$key.deps" ;;
     fetch) fetch ;;
     build) build ;;
-    package|package-install|patch-refresh) package_install_one ;;
+    package|package-install|patch-refresh|buildlink-refresh) package_install_one ;;
     *) echo "Unknown mode: $mode" >&2; exit 2 ;;
 esac
