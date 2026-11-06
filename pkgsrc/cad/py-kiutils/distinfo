@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (kiutils-1.4.8.tar.gz) = ef33526ce6abdca916f54cabbb46ac6051ff52884153ad6ee7061225998588b5
+SHA512 (kiutils-1.4.8.tar.gz) = cf7745ff82a8abec3d04527fefa7e752ed003af895a976287b45fadd8e244f3e4fba1f2d3e9c3065b3dd6bab0cac161cafea2e2536e1dc8a01287f73bf538ff4
+Size (kiutils-1.4.8.tar.gz) = 84024 bytes
+SHA1 (patch-src_kiutils_items_schitems.py) = be551754663354a85685c744afd5062a6604f548
