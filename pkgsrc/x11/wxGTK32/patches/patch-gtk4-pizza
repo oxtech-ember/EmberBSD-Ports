@@ -1,13 +1,12 @@
 $NetBSD$
 
-Implement the GTK4 wxPizza client container using GtkWidget allocation and
-snapshot APIs instead of removed child GdkWindows and GtkContainer.
-Origin: EmberBSD (AI-assisted), wxWindows licence. GTK3 code is unchanged.
-https://docs.gtk.org/gtk4/migrating-3to4.html
+GTK4 window integration (work in progress; full backend validation pending).
+Use GtkWidget allocation/snapshot/controllers and opaque GDK events.
+Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 
 --- include/wx/gtk/private/win_gtk.h.orig
 +++ include/wx/gtk/private/win_gtk.h
-@@ -27,7 +27,20 @@
+@@ -27,7 +27,21 @@
      void size_allocate_child(
          GtkWidget* child, int x, int y, int width, int height, int parent_width = -1);
  
@@ -16,6 +15,7 @@ https://docs.gtk.org/gtk4/migrating-3to4.html
 +    // GTK4 has no child GdkWindows. wxWidgets owns child allocations and
 +    // paints its client area during the widget's snapshot.
 +    GtkWidget m_widget;
++    bool m_inSnapshot;
 +    GtkAdjustment* m_hadjustment;
 +    GtkAdjustment* m_vadjustment;
 +    GtkScrollablePolicy m_hpolicy;
@@ -49,7 +49,7 @@ https://docs.gtk.org/gtk4/migrating-3to4.html
 +#endif // !__WXGTK4__
 --- /dev/null
 +++ src/gtk/win_gtk4.inc
-@@ -0,0 +1,351 @@
+@@ -0,0 +1,371 @@
 +///////////////////////////////////////////////////////////////////////////////
 +// Name:        src/gtk/win_gtk4.inc
 +// Purpose:     GTK4 client widget: allocation, scrolling and snapshot painting
@@ -76,6 +76,8 @@ https://docs.gtk.org/gtk4/migrating-3to4.html
 +
 +static GtkWidgetClass* parent_class;
 +static guint pizza_paint_signal;
++static guint pizza_allocate_signal;
++static guint pizza_snapshot_signal;
 +
 +enum
 +{
@@ -139,9 +141,12 @@ https://docs.gtk.org/gtk4/migrating-3to4.html
 +    *minimumBaseline = *naturalBaseline = -1;
 +}
 +
-+static void pizza_size_allocate(GtkWidget* widget, int width, int, int)
++static void pizza_size_allocate(GtkWidget* widget, int width, int height, int)
 +{
 +    wxPizza* pizza = WX_PIZZA(widget);
++    // GTK has already removed CSS border/padding. Notify wx before laying
++    // out children so a wxSizeEvent handler can update their geometry.
++    g_signal_emit(widget, pizza_allocate_signal, 0, width, height);
 +    const int clientWidth = width;
 +    // Allocation can call application code which reparents or destroys a
 +    // sibling. Keep widget references, not pointers into the mutable list.
@@ -169,6 +174,13 @@ https://docs.gtk.org/gtk4/migrating-3to4.html
 +
 +static void pizza_snapshot(GtkWidget* widget, GtkSnapshot* snapshot)
 +{
++    wxPizza* pizza = WX_PIZZA(widget);
++    struct SnapshotScope
++    {
++        wxPizza* pizza;
++        explicit SnapshotScope(wxPizza* p) : pizza(p) { pizza->m_inSnapshot = true; }
++        ~SnapshotScope() { pizza->m_inSnapshot = false; }
++    } inSnapshot(pizza);
 +    const int width = gtk_widget_get_width(widget);
 +    const int height = gtk_widget_get_height(widget);
 +    // GTK snapshots CSS background/border before this vfunc and translates
@@ -182,6 +194,8 @@ https://docs.gtk.org/gtk4/migrating-3to4.html
 +    cairo_t* cr = gtk_snapshot_append_cairo(snapshot, &client);
 +    g_signal_emit(widget, pizza_paint_signal, 0, cr);
 +    cairo_destroy(cr);
++    // Native GPU surfaces append their texture node without a CPU readback.
++    g_signal_emit(widget, pizza_snapshot_signal, 0, snapshot);
 +
 +    // Use GTK's child order, so z ordering follows gtk_widget_insert_*().
 +    GPtrArray* children = g_ptr_array_new_with_free_func(g_object_unref);
@@ -268,6 +282,12 @@ https://docs.gtk.org/gtk4/migrating-3to4.html
 +    g_object_class_override_property(objectClass, PROP_HSCROLL_POLICY, "hscroll-policy");
 +    g_object_class_override_property(objectClass, PROP_VSCROLL_POLICY, "vscroll-policy");
 +    pizza_paint_signal = g_signal_new("wx-paint", G_TYPE_FROM_CLASS(klass),
++        G_SIGNAL_RUN_LAST, 0, NULL, NULL, g_cclosure_marshal_VOID__POINTER,
++        G_TYPE_NONE, 1, G_TYPE_POINTER);
++    pizza_allocate_signal = g_signal_new("wx-size-allocate", G_TYPE_FROM_CLASS(klass),
++        G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
++        G_TYPE_NONE, 2, G_TYPE_INT, G_TYPE_INT);
++    pizza_snapshot_signal = g_signal_new("wx-snapshot", G_TYPE_FROM_CLASS(klass),
 +        G_SIGNAL_RUN_LAST, 0, NULL, NULL, g_cclosure_marshal_VOID__POINTER,
 +        G_TYPE_NONE, 1, G_TYPE_POINTER);
 +}

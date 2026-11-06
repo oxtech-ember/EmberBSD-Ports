@@ -1,14 +1,12 @@
 $NetBSD$
 
-Introduce opaque GTK4 key events and the GtkAdjustment scrollbar boundary.
-Wire wxScrolledWindow virtual extent to wxPizza natural measurement.
-Origin: EmberBSD (AI-assisted), wxWindows licence.
-This is an integration draft: the remaining window/controller port and actual
-GTK4 compilation/runtime acceptance are not complete.
+GTK4 window integration (work in progress; full backend validation pending).
+Use GtkWidget allocation/snapshot/controllers and opaque GDK events.
+Origin: EmberBSD, AI-assisted adaptation under the wxWindows licence.
 
 --- include/wx/gtk/window.h.orig
 +++ include/wx/gtk/window.h
-@@ -22,7 +22,15 @@
+@@ -22,7 +22,16 @@
      #define WXUNUSED_IN_GTK3(x) x
  #endif
  
@@ -16,6 +14,7 @@ GTK4 compilation/runtime acceptance are not complete.
 +typedef struct _GdkEvent GdkEvent;
 +typedef GdkEvent wxGTKKeyEvent;
 +typedef GtkWidget wxGTKScrollBar;
++typedef struct _GdkFrameClock GdkFrameClock;
 +#else
  typedef struct _GdkEventKey GdkEventKey;
 +typedef GdkEventKey wxGTKKeyEvent;
@@ -24,7 +23,7 @@ GTK4 compilation/runtime acceptance are not complete.
  typedef struct _GtkIMContext GtkIMContext;
  
  WX_DEFINE_EXPORTED_ARRAY_PTR(GdkWindow *, wxArrayGdkWindows);
-@@ -263,7 +271,8 @@
+@@ -263,7 +272,8 @@
      virtual bool GTKIsTransparentForMouse() const { return false; }
  
      // Common scroll event handling code for wxWindow and wxScrollBar
@@ -34,7 +33,7 @@ GTK4 compilation/runtime acceptance are not complete.
  
      // position and size of the window
      int                  m_x, m_y;
-@@ -306,13 +315,13 @@
+@@ -306,13 +316,13 @@
  
      // Pointer to the event being currently processed by the IME or NULL if not
      // inside key handling.
@@ -50,7 +49,7 @@ GTK4 compilation/runtime acceptance are not complete.
  
      // This method must be called from the derived classes "insert-text" signal
      // handlers to check if the text is not being inserted by the IM and, if
-@@ -331,7 +340,7 @@
+@@ -331,7 +341,7 @@
      enum ScrollDir { ScrollDir_Horz, ScrollDir_Vert, ScrollDir_Max };
  
      // horizontal/vertical scroll bar
@@ -59,7 +58,7 @@ GTK4 compilation/runtime acceptance are not complete.
  
      // horizontal/vertical scroll position
      double m_scrollPos[ScrollDir_Max];
-@@ -350,7 +359,7 @@
+@@ -350,7 +360,7 @@
      }
  
      // find the direction of the given scrollbar (must be one of ours)
@@ -68,6 +67,16 @@ GTK4 compilation/runtime acceptance are not complete.
  
      void GTKUpdateCursor(
          bool isBusyOrGlobalCursor = false,
+@@ -371,6 +381,9 @@
+     wxRegion             m_nativeUpdateRegion;  // not transformed for RTL
+ 
+ protected:
++#ifdef __WXGTK4__
++    GdkFrameClock* m_sizeFrameClock;
++#endif
+     // implement the base class pure virtuals
+     virtual void DoGetTextExtent(const wxString& string,
+                                  int *x, int *y,
 --- include/wx/gtk/evtloop.h.orig
 +++ include/wx/gtk/evtloop.h
 @@ -14,7 +14,11 @@
@@ -83,20 +92,41 @@ GTK4 compilation/runtime acceptance are not complete.
  
  class WXDLLIMPEXP_CORE wxGUIEventLoop : public wxEventLoopBase
  {
---- include/wx/gtk/scrolwin.h.orig
-+++ include/wx/gtk/scrolwin.h
-@@ -38,7 +38,7 @@
- 
- private:
-     // this does (each) half of AdjustScrollbars() work
--    void DoAdjustScrollbar(GtkRange* range,
-+    void DoAdjustScrollbar(wxGTKScrollBar* range,
-                            int pixelsPerLine,
-                            int winSize,
-                            int virtSize,
 --- src/gtk/window.cpp.orig
 +++ src/gtk/window.cpp
-@@ -1044,27 +1044,47 @@
+@@ -33,6 +33,7 @@
+ #include "wx/caret.h"
+ #include "wx/fontutil.h"
+ #include "wx/recguard.h"
++#include "wx/weakref.h"
+ #include "wx/sysopt.h"
+ #ifdef __WXGTK3__
+     #include "wx/gtk/dc.h"
+@@ -44,6 +45,9 @@
+ #include "wx/gtk/private/gtk3-compat.h"
+ #include "wx/gtk/private/event.h"
+ #include "wx/gtk/private/win_gtk.h"
++#ifdef __WXGTK4__
++#include "wx/gtk/private/scrollbar4.h"
++#endif
+ #include "wx/gtk/private/backend.h"
+ #include "wx/private/textmeasure.h"
+ using namespace wxGTKImpl;
+@@ -534,7 +538,12 @@
+ //-----------------------------------------------------------------------------
+ 
+ extern "C" {
+-#ifdef __WXGTK3__
++#ifdef __WXGTK4__
++static void draw(GtkWidget*, cairo_t* cr, wxWindow* win)
++{
++    win->GTKSendPaintEvents(cr);
++}
++#elif defined(__WXGTK3__)
+ static gboolean draw(GtkWidget*, cairo_t* cr, wxWindow* win)
+ {
+     if (gtk_cairo_should_draw_window(cr, win->GTKGetDrawingWindow()))
+@@ -1044,27 +1053,47 @@
  }
  #endif // wxDEBUG_LEVEL
  
@@ -152,7 +182,7 @@ GTK4 compilation/runtime acceptance are not complete.
  
      // Normally we take the state of modifiers directly from the low level GDK
      // event but unfortunately GDK uses a different convention from MSW for the
-@@ -1082,8 +1102,8 @@
+@@ -1082,8 +1111,8 @@
      // produced events and it seems better to keep that class code the same
      // among all platforms and fix the discrepancy here instead of adding
      // wxGTK-specific code to wxUIActionSimulator.
@@ -163,7 +193,7 @@ GTK4 compilation/runtime acceptance are not complete.
      {
          case GDK_KEY_Shift_L:
          case GDK_KEY_Shift_R:
-@@ -1108,8 +1128,8 @@
+@@ -1108,8 +1137,8 @@
              break;
      }
  
@@ -174,7 +204,7 @@ GTK4 compilation/runtime acceptance are not complete.
  
      event.m_isRepeat = false; // Detecting key repeat not implemented.
  
-@@ -1122,9 +1142,9 @@
+@@ -1122,9 +1151,9 @@
  static void
  wxTranslateGTKKeyEventToWx(wxKeyEvent& event,
                             wxWindowGTK *win,
@@ -187,7 +217,7 @@ GTK4 compilation/runtime acceptance are not complete.
  
      wxString extraTraceInfo;
  
-@@ -1166,7 +1186,7 @@
+@@ -1166,7 +1195,7 @@
  #ifdef wxHAS_XKB
              char key_code_str[64];
              xkb_state_key_get_utf8(gs_xkbData.GetState(),
@@ -196,7 +226,7 @@ GTK4 compilation/runtime acceptance are not complete.
                                     key_code_str,
                                     sizeof(key_code_str));
              if ( strlen(key_code_str) == 1 )
-@@ -1288,13 +1308,15 @@
+@@ -1288,13 +1317,15 @@
  extern "C" {
  static gboolean
  gtk_window_key_press_callback( GtkWidget *WXUNUSED(widget),
@@ -214,7 +244,7 @@ GTK4 compilation/runtime acceptance are not complete.
  
      wxKeyEvent event( wxEVT_KEY_DOWN );
      bool ret = false;
-@@ -1367,7 +1389,7 @@
+@@ -1367,7 +1398,7 @@
      // from it below.
      while ( !ret )
      {
@@ -223,7 +253,7 @@ GTK4 compilation/runtime acceptance are not complete.
  
          wxKeyEvent eventChar(wxEVT_CHAR, event);
  
-@@ -1448,7 +1470,7 @@
+@@ -1448,7 +1479,7 @@
  }
  }
  
@@ -232,7 +262,7 @@ GTK4 compilation/runtime acceptance are not complete.
  {
      return m_imContext ? gtk_im_context_filter_keypress(m_imContext, event)
                         : FALSE;
-@@ -1525,13 +1547,15 @@
+@@ -1525,13 +1556,15 @@
  extern "C" {
  static gboolean
  gtk_window_key_release_callback( GtkWidget * WXUNUSED(widget),
@@ -250,7 +280,45 @@ GTK4 compilation/runtime acceptance are not complete.
  
      wxKeyEvent event( wxEVT_KEY_UP );
      wxTranslateGTKKeyEventToWx(event, win, gdk_event);
-@@ -2037,14 +2061,14 @@
+@@ -1543,6 +1576,10 @@
+ // ============================================================================
+ // the mouse events
+ // ============================================================================
++
++#ifdef __WXGTK4__
++#include "window_input4.inc"
++#endif
+ 
+ // ----------------------------------------------------------------------------
+ // mouse event processing helpers
+@@ -1676,6 +1713,7 @@
+     return g_blockEventsOnDrag;
+ }
+ 
++#ifndef __WXGTK4__
+ int wxWindowGTK::GTKCallbackCommonPrologue(GdkEventAny *event) const
+ {
+     if (g_blockEventsOnDrag)
+@@ -1925,6 +1963,10 @@
+ 
+ //-----------------------------------------------------------------------------
+ 
++} // extern "C"
++#endif // !__WXGTK4__
++
++extern "C" {
+ static void SendSetCursorEvent(wxWindowGTK* win, int x, int y)
+ {
+     wxPoint posClient(x, y);
+@@ -1960,6 +2002,7 @@
+ // "motion_notify_event"
+ //-----------------------------------------------------------------------------
+ 
++#ifndef __WXGTK4__
+ static gboolean
+ gtk_window_motion_notify_callback( GtkWidget * WXUNUSED(widget),
+                                    GdkEventMotion *gdk_event,
+@@ -2037,14 +2080,14 @@
  // "scroll_event" (mouse wheel event)
  //-----------------------------------------------------------------------------
  
@@ -268,7 +336,7 @@ GTK4 compilation/runtime acceptance are not complete.
      }
  }
  
-@@ -2058,8 +2082,8 @@
+@@ -2058,8 +2101,8 @@
      event.m_linesPerAction = 3;
      event.m_columnsPerAction = 3;
  
@@ -279,7 +347,7 @@ GTK4 compilation/runtime acceptance are not complete.
      const bool is_range_h = (void*)widget == range_h;
      const bool is_range_v = (void*)widget == range_v;
      GdkScrollDirection direction = gdk_event->direction;
-@@ -2129,7 +2153,7 @@
+@@ -2129,7 +2172,7 @@
              return handled;
  #endif // GTK_CHECK_VERSION(3,4,0)
      }
@@ -288,25 +356,44 @@ GTK4 compilation/runtime acceptance are not complete.
      double step;
      switch (direction)
      {
-@@ -2296,7 +2320,7 @@
+@@ -2295,8 +2338,10 @@
+ // "value_changed" from scrollbar
  //-----------------------------------------------------------------------------
  
++#endif // !__WXGTK4__
++
  static void
 -gtk_scrollbar_value_changed(GtkRange* range, wxWindow* win)
 +gtk_scrollbar_value_changed(wxGTKScrollBar* range, wxWindow* win)
  {
      wxEventType eventType = win->GTKGetScrollEventType(range);
      if (eventType != wxEVT_NULL)
-@@ -2321,7 +2345,7 @@
+@@ -2316,12 +2361,23 @@
+     }
+ }
+ 
++#ifdef __WXGTK4__
++static void gtk_scrollbar_released4(GtkWidget* bar, wxWindow* win)
++{
++    const int orient = wxWindow::OrientFromScrollDir(win->ScrollDirFromRange(bar));
++    wxScrollWinEvent event(wxEVT_SCROLLWIN_THUMBRELEASE, win->GetScrollPos(orient), orient);
++    event.SetEventObject(win);
++    win->GTKProcessEvent(event);
++}
++#endif
++
+ //-----------------------------------------------------------------------------
+ // "button_press_event" from scrollbar
  //-----------------------------------------------------------------------------
  
++#ifndef __WXGTK4__
  static gboolean
 -gtk_scrollbar_button_press_event(GtkRange*, GdkEventButton*, wxWindow* win)
 +gtk_scrollbar_button_press_event(wxGTKScrollBar*, GdkEventButton*, wxWindow* win)
  {
      g_blockEventsOnScroll = true;
      win->m_mouseButtonDown = true;
-@@ -2334,7 +2358,7 @@
+@@ -2334,7 +2390,7 @@
  //-----------------------------------------------------------------------------
  
  static void
@@ -315,7 +402,7 @@ GTK4 compilation/runtime acceptance are not complete.
  {
      if (event->type == GDK_BUTTON_RELEASE)
      {
-@@ -2354,7 +2378,7 @@
+@@ -2354,7 +2410,7 @@
  //-----------------------------------------------------------------------------
  
  static gboolean
@@ -324,7 +411,366 @@ GTK4 compilation/runtime acceptance are not complete.
  {
      g_blockEventsOnScroll = false;
      win->m_mouseButtonDown = false;
-@@ -3974,7 +3998,7 @@
+@@ -2375,6 +2431,8 @@
+ // "realize" from m_widget
+ //-----------------------------------------------------------------------------
+ 
++#endif // !__WXGTK4__
++
+ static void
+ gtk_window_realized_callback(GtkWidget* WXUNUSED(widget), wxWindowGTK* win)
+ {
+@@ -2390,7 +2448,7 @@
+ {
+     int w = alloc->width;
+     int h = alloc->height;
+-#if GTK_CHECK_VERSION(3,14,0)
++#if GTK_CHECK_VERSION(3,14,0) && !defined(__WXGTK4__)
+     if (wx_is_at_least_gtk3(14))
+     {
+         // Prevent under-allocated widgets from drawing outside their allocation
+@@ -2419,12 +2477,14 @@
+ #endif
+     if (win->m_wxwindow)
+     {
++#ifndef __WXGTK4__
+         GtkBorder border;
+         WX_PIZZA(win->m_wxwindow)->get_border(border);
+         w -= border.left + border.right;
+         h -= border.top + border.bottom;
+         if (w < 0) w = 0;
+         if (h < 0) h = 0;
++#endif
+     }
+     GtkAllocation a;
+     gtk_widget_get_allocation(win->m_widget, &a);
+@@ -2453,6 +2513,25 @@
+     }
+ }
+ 
++#ifdef __WXGTK4__
++// wxPizza's vfunc supplies content dimensions, after GTK's CSS allocation.
++static void size_allocate4(GtkWidget* widget, int width, int height, wxWindow* win)
++{
++    GtkAllocation client = { 0, 0, width, height };
++    size_allocate(widget, &client, win);
++}
++
++// Native controls have no size-allocate signal in GTK4. Observe completed
++// frames without adding a tick callback (which would animate an idle window).
++static void native_size_after_paint(GdkFrameClock*, wxWindow* win)
++{
++    GtkWidget* widget = win->m_widget;
++    GtkAllocation allocation;
++    gtk_widget_get_allocation(widget, &allocation);
++    size_allocate(widget, &allocation, win);
++}
++#endif
++
+ //-----------------------------------------------------------------------------
+ // "grab_broken_event"
+ //-----------------------------------------------------------------------------
+@@ -2516,9 +2595,26 @@
+ 
+ } // extern "C"
+ 
++#ifdef __WXGTK4__
++#include "window_mouse4.inc"
++#endif
++
+ void wxWindowGTK::GTKHandleRealized()
+ {
++#ifndef __WXGTK4__
+     GdkWindow* const window = GTKGetDrawingWindow();
++#else
++    if (!IsTopLevel() && !m_wxwindow && !m_sizeFrameClock)
++    {
++        m_sizeFrameClock = gtk_widget_get_frame_clock(m_widget);
++        if (m_sizeFrameClock)
++        {
++            g_object_ref(m_sizeFrameClock);
++            g_signal_connect_after(m_sizeFrameClock, "after-paint",
++                G_CALLBACK(native_size_after_paint), this);
++        }
++    }
++#endif
+ 
+     if (m_wxwindow)
+     {
+@@ -2533,10 +2629,15 @@
+             g_signal_connect(m_imContext,
+                 "commit", G_CALLBACK(gtk_wxwindow_commit_cb), this);
+         }
++#ifdef __WXGTK4__
++        gtk_im_context_set_client_widget(m_imContext, m_wxwindow);
++#else
+         gtk_im_context_set_client_window(m_imContext, window);
++#endif
+     }
+ 
+     // Use composited window if background is transparent, if supported.
++#ifndef __WXGTK4__
+     if (m_backgroundStyle == wxBG_STYLE_TRANSPARENT)
+     {
+ #if wxGTK_HAS_COMPOSITING_SUPPORT
+@@ -2554,6 +2655,7 @@
+             m_backgroundStyle = wxBG_STYLE_ERASE;
+         }
+     }
++#endif
+ 
+ #ifndef __WXGTK3__
+     if (window && (
+@@ -2587,11 +2689,22 @@
+ void wxWindowGTK::GTKHandleUnrealize()
+ {
+     m_isGtkPositionValid = false;
++#ifdef __WXGTK4__
++    if (m_sizeFrameClock)
++    {
++        g_signal_handlers_disconnect_by_data(m_sizeFrameClock, this);
++        g_clear_object(&m_sizeFrameClock);
++    }
++#endif
+ 
+     if (m_wxwindow)
+     {
+         if (m_imContext)
++#ifdef __WXGTK4__
++            gtk_im_context_set_client_widget(m_imContext, NULL);
++#else
+             gtk_im_context_set_client_window(m_imContext, NULL);
++#endif
+     }
+ }
+ 
+@@ -2709,6 +2822,9 @@
+     m_widget = NULL;
+     m_wxwindow = NULL;
+     m_focusWidget = NULL;
++#ifdef __WXGTK4__
++    m_sizeFrameClock = NULL;
++#endif
+ 
+     // position/size
+     m_x = 0;
+@@ -2771,7 +2887,11 @@
+     wxASSERT_MSG( HasFlag(wxHSCROLL) || HasFlag(wxVSCROLL),
+                   wxS("Must not be called if scrolling is not needed.") );
+ 
++#ifdef __WXGTK4__
++    m_widget = gtk_scrolled_window_new();
++#else
+     m_widget = gtk_scrolled_window_new( NULL, NULL );
++#endif
+ 
+     GtkScrolledWindow *scrolledWindow = GTK_SCROLLED_WINDOW(m_widget);
+ 
+@@ -2781,6 +2901,7 @@
+     // direction and notebooks for changing pages -- we decide that if we don't
+     // have wxHSCROLL style we can safely sacrifice horizontal scrolling if it
+     // means we can get working keyboard navigation in notebooks
++#ifndef __WXGTK4__
+     if ( !HasFlag(wxHSCROLL) )
+     {
+         GtkBindingSet *
+@@ -2791,6 +2912,7 @@
+             gtk_binding_entry_remove(bindings, GDK_KEY_Page_Down, GDK_CONTROL_MASK);
+         }
+     }
++#endif
+ 
+     // If wx[HV]SCROLL is not given, the corresponding scrollbar is not shown
+     // at all. Otherwise it may be shown only on demand (default) or always, if
+@@ -2807,14 +2929,24 @@
+                                 : GTK_POLICY_NEVER;
+     gtk_scrolled_window_set_policy( scrolledWindow, horzPolicy, vertPolicy );
+ 
++#ifdef __WXGTK4__
++    m_scrollBar[ScrollDir_Horz] = gtk_scrolled_window_get_hscrollbar(scrolledWindow);
++    m_scrollBar[ScrollDir_Vert] = gtk_scrolled_window_get_vscrollbar(scrolledWindow);
++    gtk_scrolled_window_set_child(scrolledWindow, view);
++#else
+     m_scrollBar[ScrollDir_Horz] = GTK_RANGE(gtk_scrolled_window_get_hscrollbar(scrolledWindow));
+     m_scrollBar[ScrollDir_Vert] = GTK_RANGE(gtk_scrolled_window_get_vscrollbar(scrolledWindow));
+ 
+     gtk_container_add( GTK_CONTAINER(m_widget), view );
++#endif
+ 
+     // connect various scroll-related events
+     for ( int dir = 0; dir < ScrollDir_Max; dir++ )
+     {
++#ifdef __WXGTK4__
++        new wxGTKScrollObserver(m_scrollBar[dir], static_cast<wxWindow*>(this),
++                                 gtk_scrollbar_value_changed, gtk_scrollbar_released4);
++#else
+         // these handlers block mouse events to any window during scrolling
+         // such as motion events and prevent GTK and wxWidgets from fighting
+         // over where the slider should be
+@@ -2830,6 +2962,7 @@
+         // these handlers get notified when scrollbar slider moves
+         g_signal_connect_after(m_scrollBar[dir], "value_changed",
+                      G_CALLBACK(gtk_scrollbar_value_changed), this);
++#endif
+     }
+ 
+     gtk_widget_show( view );
+@@ -2891,11 +3024,37 @@
+ void wxWindowGTK::GTKDisconnect(void* instance)
+ {
+     g_signal_handlers_disconnect_by_data(instance, this);
++#ifdef __WXGTK4__
++    if (GTK_IS_WIDGET(instance))
++    {
++        GtkWidget* widget = GTK_WIDGET(instance);
++        GListModel* controllers = gtk_widget_observe_controllers(widget);
++        for (guint i = g_list_model_get_n_items(controllers); i > 0; --i)
++        {
++            GtkEventController* controller = GTK_EVENT_CONTROLLER(
++                g_list_model_get_item(controllers, i - 1));
++            g_signal_handlers_disconnect_by_data(controller, this);
++            if (g_object_get_data(G_OBJECT(controller), "wx-owner") == this)
++                gtk_widget_remove_controller(widget, controller);
++            g_object_unref(controller);
++        }
++        g_object_unref(controllers);
++        if (g_object_get_data(G_OBJECT(widget), "wx-window") == this)
++            g_object_set_data(G_OBJECT(widget), "wx-window", NULL);
++    }
++#endif
+ }
+ 
+ wxWindowGTK::~wxWindowGTK()
+ {
+     SendDestroyEvent();
++#ifdef __WXGTK4__
++    if (m_sizeFrameClock)
++    {
++        g_signal_handlers_disconnect_by_data(m_sizeFrameClock, this);
++        g_clear_object(&m_sizeFrameClock);
++    }
++#endif
+ 
+     if (gs_currentFocus == this)
+         gs_currentFocus = NULL;
+@@ -2926,6 +3085,10 @@
+     }
+     if (m_widget && m_widget != m_wxwindow)
+         GTKDisconnect(m_widget);
++#ifdef __WXGTK4__
++    if (m_focusWidget && m_focusWidget != m_widget && m_focusWidget != m_wxwindow)
++        GTKDisconnect(m_focusWidget);
++#endif
+ 
+     // destroy children before destroying this window itself
+     DestroyChildren();
+@@ -2953,7 +3116,14 @@
+         // Note that gtk_widget_destroy() does not destroy the widget, it just
+         // emits the "destroy" signal. The widget is not actually destroyed
+         // until its reference count drops to zero.
++#ifdef __WXGTK4__
++        if (GTK_IS_WINDOW(m_widget))
++            gtk_window_destroy(GTK_WINDOW(m_widget));
++        else if (gtk_widget_get_parent(m_widget))
++            gtk_widget_unparent(m_widget);
++#else
+         gtk_widget_destroy(m_widget);
++#endif
+         // Release our reference, should be the last one
+         g_object_unref(m_widget);
+         m_widget = NULL;
+@@ -3016,14 +3186,18 @@
+         if (!m_noExpose)
+         {
+             // these get reported to wxWidgets -> wxPaintEvent
+-#ifdef __WXGTK3__
++#ifdef __WXGTK4__
++            g_signal_connect(m_wxwindow, "wx-paint", G_CALLBACK(draw), this);
++#elif defined(__WXGTK3__)
+             g_signal_connect(m_wxwindow, "draw", G_CALLBACK(draw), this);
+ #else
+             g_signal_connect(m_wxwindow, "expose_event", G_CALLBACK(expose_event), this);
+ #endif
+ 
++#ifndef __WXGTK4__
+             if (GetLayoutDirection() == wxLayout_LeftToRight)
+                 gtk_widget_set_redraw_on_allocate(m_wxwindow, HasFlag(wxFULL_REPAINT_ON_RESIZE));
++#endif
+         }
+     }
+ 
+@@ -3034,6 +3208,9 @@
+         if (m_focusWidget == NULL)
+             m_focusWidget = m_widget;
+ 
++#ifdef __WXGTK4__
++        wxGTKConnectFocus(m_focusWidget, this);
++#else
+         if (m_wxwindow)
+         {
+             g_signal_connect (m_focusWidget, "focus_in_event",
+@@ -3041,6 +3218,7 @@
+             g_signal_connect (m_focusWidget, "focus_out_event",
+                                 G_CALLBACK (gtk_window_focus_out_callback), this);
+         }
++#endif
+         else
+         {
+             g_signal_connect_after (m_focusWidget, "focus_in_event",
+@@ -3081,8 +3259,13 @@
+ 
+     if (!IsTopLevel())
+     {
++#ifdef __WXGTK4__
++        if (m_wxwindow)
++            g_signal_connect(m_wxwindow, "wx-size-allocate", G_CALLBACK(size_allocate4), this);
++#else
+         g_signal_connect(m_wxwindow ? m_wxwindow : m_widget, "size_allocate",
+             G_CALLBACK(size_allocate), this);
++#endif
+     }
+ 
+ #if GTK_CHECK_VERSION(2, 8, 0)
+@@ -3938,6 +4121,7 @@
+ 
+ void wxWindowGTK::ConnectWidget( GtkWidget *widget )
+ {
++#ifndef __WXGTK4__
+     static bool isSourceAttached;
+     if (!isSourceAttached)
+     {
+@@ -3953,6 +4137,9 @@
+         g_source_attach(source, NULL);
+         g_source_unref(source);
+     }
++#else
++    g_object_set_data(G_OBJECT(widget), "wx-window", this);
++#endif
+ 
+     // When we're called for the main widget itself (but not when connecting
+     // events for some other widget, such as individual radio buttons in
+@@ -3961,11 +4148,19 @@
+     GtkWidget* const focusWidget = widget == m_widget && m_focusWidget
+                                     ? m_focusWidget
+                                     : widget;
++#ifdef __WXGTK4__
++    g_object_set_data(G_OBJECT(focusWidget), "wx-window", this);
++    wxGTKConnectKeys(focusWidget, this);
++#else
+     g_signal_connect (focusWidget, "key_press_event",
+                       G_CALLBACK (gtk_window_key_press_callback), this);
+     g_signal_connect (focusWidget, "key_release_event",
+                       G_CALLBACK (gtk_window_key_release_callback), this);
+-
++#endif
++
++#ifdef __WXGTK4__
++    wxGTKConnectPointer(widget, this);
++#else
+     g_signal_connect (widget, "button_press_event",
+                       G_CALLBACK (gtk_window_button_press_callback), this);
+     g_signal_connect (widget, "button_release_event",
+@@ -3974,7 +4169,7 @@
                        G_CALLBACK (gtk_window_motion_notify_callback), this);
  
      g_signal_connect(widget, "scroll_event", G_CALLBACK(scroll_event), this);
@@ -333,7 +779,15 @@ GTK4 compilation/runtime acceptance are not complete.
      if (range)
          g_signal_connect(range, "scroll_event", G_CALLBACK(scroll_event), this);
      range = m_scrollBar[ScrollDir_Vert];
-@@ -4245,7 +4269,7 @@
+@@ -3987,6 +4182,7 @@
+                       G_CALLBACK (gtk_window_enter_callback), this);
+     g_signal_connect (widget, "leave_notify_event",
+                       G_CALLBACK (gtk_window_leave_callback), this);
++#endif
+ }
+ 
+ void wxWindowGTK::DoMoveWindow(int x, int y, int width, int height)
+@@ -4245,7 +4441,7 @@
              for ( int i = 0; i < ScrollDir_Max; i++ )
              {
                  // don't account for the scrollbars we don't have
@@ -342,7 +796,7 @@ GTK4 compilation/runtime acceptance are not complete.
                  if ( !range )
                      continue;
  
-@@ -4265,7 +4289,7 @@
+@@ -4265,7 +4461,7 @@
  
                      case GTK_POLICY_AUTOMATIC:
                          // may be shown or not, check
@@ -351,7 +805,7 @@ GTK4 compilation/runtime acceptance are not complete.
                          if (gtk_adjustment_get_upper(adj) <= gtk_adjustment_get_page_size(adj))
                              continue;
                  }
-@@ -5014,7 +5038,7 @@
+@@ -5014,7 +5210,7 @@
  
      GTKSetLayout(m_widget, dir);
  
@@ -360,7 +814,7 @@ GTK4 compilation/runtime acceptance are not complete.
          gtk_range_set_inverted(range, dir == wxLayout_RightToLeft);
  
      if (m_wxwindow && (m_wxwindow != m_widget))
-@@ -5264,7 +5288,16 @@
+@@ -5264,7 +5460,16 @@
  #endif
  }
  
@@ -378,7 +832,7 @@ GTK4 compilation/runtime acceptance are not complete.
  {
      // find the scrollbar which generated the event
      for ( int dir = 0; dir < ScrollDir_Max; dir++ )
-@@ -5281,15 +5314,15 @@
+@@ -5281,15 +5486,15 @@
  bool wxWindowGTK::DoScrollByUnits(ScrollDir dir, ScrollUnit unit, int units)
  {
      bool changed = false;
@@ -397,7 +851,146 @@ GTK4 compilation/runtime acceptance are not complete.
  
          changed = wxRound(gtk_adjustment_get_value(adj)) != posOld;
      }
-@@ -6436,7 +6469,7 @@
+@@ -5310,6 +5515,14 @@
+ void wxWindowGTK::Refresh(bool WXUNUSED(eraseBackground),
+                           const wxRect *rect)
+ {
++#ifdef __WXGTK4__
++    // GTK4 invalidates render nodes, not GdkWindow rectangles. The renderer
++    // computes damage from the changed nodes; repainting is always queued.
++    wxUnusedVar(rect);
++    GtkWidget* widget = m_wxwindow ? m_wxwindow : m_widget;
++    if (widget)
++        gtk_widget_queue_draw(widget);
++#else
+     if (m_wxwindow)
+     {
+         if (gtk_widget_get_mapped(m_wxwindow))
+@@ -5336,10 +5549,23 @@
+                 gtk_widget_queue_draw(m_widget);
+         }
+     }
++#endif
+ }
+ 
+ void wxWindowGTK::Update()
+ {
++#ifdef __WXGTK4__
++    if (m_widget && gtk_widget_get_mapped(m_widget))
++    {
++        // GTK4 renders through the frame clock on all backends. Request the
++        // frame without recursively dispatching application/input callbacks.
++        gtk_widget_queue_draw(m_wxwindow ? m_wxwindow : m_widget);
++        GdkFrameClock* clock = gtk_widget_get_frame_clock(m_widget);
++        if (clock)
++            gdk_frame_clock_request_phase(clock, GDK_FRAME_CLOCK_PHASE_PAINT);
++        gdk_display_flush(gtk_widget_get_display(m_widget));
++    }
++#else
+     if (m_widget && gtk_widget_get_mapped(m_widget) && m_width > 0 && m_height > 0)
+     {
+         GdkWindow* window = GTKGetDrawingWindow();
+@@ -5366,6 +5592,7 @@
+ 
+         gdk_display_flush(display);
+     }
++#endif
+ }
+ 
+ bool wxWindowGTK::DoIsExposed( int x, int y ) const
+@@ -5390,6 +5617,7 @@
+ #endif
+ {
+ #ifdef __WXGTK3__
++#ifndef __WXGTK4__
+     {
+         cairo_region_t* region = gdk_window_get_clip_region(gtk_widget_get_window(m_wxwindow));
+         cairo_rectangle_int_t rect;
+@@ -5398,10 +5626,15 @@
+         cairo_rectangle(cr, rect.x, rect.y, rect.width, rect.height);
+         cairo_clip(cr);
+     }
++#endif
+     if (GetLayoutDirection() == wxLayout_RightToLeft)
+     {
+         // wxDC is mirrored for RTL
++#ifdef __WXGTK4__
++        const int w = gtk_widget_get_width(m_wxwindow);
++#else
+         const int w = gdk_window_get_width(gtk_widget_get_window(m_wxwindow));
++#endif
+         cairo_translate(cr, w, 0);
+         cairo_scale(cr, -1, 1);
+     }
+@@ -5508,6 +5741,11 @@
+         case wxBG_STYLE_SYSTEM:
+             if ( GetThemeEnabled() )
+             {
++#ifdef __WXGTK4__
++                // GtkWidget already snapshots its CSS background and border
++                // before wxPizza::snapshot. Painting it again here doubles
++                // translucent colours and is wrong for CSS backgrounds.
++#else
+                 GdkWindow* gdkWindow = GTKGetDrawingWindow();
+                 const int w = gdk_window_get_width(gdkWindow);
+                 const int h = gdk_window_get_height(gdkWindow);
+@@ -5530,6 +5768,7 @@
+                                     const_cast<char*>("base"),
+                                     0, 0, w, h);
+ #endif // !__WXGTK3__
++#endif // !__WXGTK4__
+             }
+ #ifdef __WXGTK3__
+             else if (m_backgroundColour.IsOk() && gtk_check_version(3,20,0) == NULL)
+@@ -5556,7 +5795,7 @@
+     wxPaintEvent paint_event( this );
+     HandleWindowEvent( paint_event );
+ 
+-#if wxGTK_HAS_COMPOSITING_SUPPORT
++#if wxGTK_HAS_COMPOSITING_SUPPORT && !defined(__WXGTK4__)
+     if (IsTransparentBackgroundSupported())
+     { // now composite children which need it
+         // Overlay all our composite children on top of the painted area
+@@ -5698,7 +5937,11 @@
+     gtk_style_context_remove_provider(gtk_widget_get_style_context(m_widget),
+                                       GTK_STYLE_PROVIDER(provider));
+ 
++#ifdef __WXGTK4__
++    gtk_css_provider_load_from_string(provider, style);
++#else
+     gtk_css_provider_load_from_data(provider, style, -1, NULL);
++#endif
+ 
+     gtk_style_context_add_provider(gtk_widget_get_style_context(m_widget),
+                                    GTK_STYLE_PROVIDER(provider),
+@@ -5917,8 +6160,12 @@
+         wxGtkString s(g_string_free(css, false));
+         if (m_styleProvider)
+         {
++#ifdef __WXGTK4__
++            gtk_css_provider_load_from_string(GTK_CSS_PROVIDER(m_styleProvider), s);
++#else
+             gtk_css_provider_load_from_data(
+                 GTK_CSS_PROVIDER(m_styleProvider), s, -1, NULL);
++#endif
+             DoApplyWidgetStyle(NULL);
+         }
+ #else
+@@ -5968,7 +6215,12 @@
+ 
+ bool wxWindowGTK::IsTransparentBackgroundSupported(wxString* reason) const
+ {
+-#if wxGTK_HAS_COMPOSITING_SUPPORT
++#ifdef __WXGTK4__
++    wxUnusedVar(reason);
++    // All GTK4 rendering is composited. wxPizza's snapshot leaves unpainted
++    // pixels transparent and GTK composes it with its parent's render node.
++    return true;
++#elif wxGTK_HAS_COMPOSITING_SUPPORT
+ #ifndef __WXGTK3__
+     if (!wx_is_at_least_gtk2(12))
+     {
+@@ -6436,7 +6688,7 @@
                                 bool WXUNUSED(update))
  {
      const int dir = ScrollDirFromOrient(orient);
@@ -406,11 +999,19 @@ GTK4 compilation/runtime acceptance are not complete.
      wxCHECK_RET( sb, wxT("this window is not scrollable") );
  
      if (range <= 0)
-@@ -6451,17 +6484,19 @@
+@@ -6448,72 +6700,90 @@
+     else if (thumbVisible <= 0)
+         thumbVisible = 1;
+ 
++#ifdef __WXGTK4__
++    wxGTKScrollObserver::Block(sb, true);
++#else
      g_signal_handlers_block_by_func(
          sb, (void*)gtk_scrollbar_value_changed, this);
- 
+-
 -    GtkAdjustment* adj = gtk_range_get_adjustment(sb);
++#endif
++
 +    GtkAdjustment* adj = GTKGetScrollAdjustment(sb);
      const bool wasVisible = gtk_adjustment_get_upper(adj) > gtk_adjustment_get_page_size(adj);
  
@@ -431,7 +1032,16 @@ GTK4 compilation/runtime acceptance are not complete.
  
      const bool isVisible = gtk_adjustment_get_upper(adj) > gtk_adjustment_get_page_size(adj);
      if (isVisible != wasVisible)
-@@ -6474,7 +6509,7 @@
+         m_useCachedClientSize = false;
+ 
++#ifdef __WXGTK4__
++    wxGTKScrollObserver::Block(sb, false);
++#else
+     g_signal_handlers_unblock_by_func(
+         sb, (void*)gtk_scrollbar_value_changed, this);
++#endif
+ }
+ 
  void wxWindowGTK::SetScrollPos(int orient, int pos, bool WXUNUSED(refresh))
  {
      const int dir = ScrollDirFromOrient(orient);
@@ -440,18 +1050,31 @@ GTK4 compilation/runtime acceptance are not complete.
      wxCHECK_RET( sb, wxT("this window is not scrollable") );
  
      // This check is more than an optimization. Without it, the slider
-@@ -6484,8 +6519,8 @@
+     //   will not move smoothly while tracking when using wxScrollHelper.
+     if (GetScrollPos(orient) != pos)
+     {
++#ifdef __WXGTK4__
++        wxGTKScrollObserver::Block(sb, true);
++#else
          g_signal_handlers_block_by_func(
              sb, (void*)gtk_scrollbar_value_changed, this);
- 
+-
 -        gtk_range_set_value(sb, pos);
 -        m_scrollPos[dir] = gtk_range_get_value(sb);
+-
++#endif
++
 +        gtk_adjustment_set_value(GTKGetScrollAdjustment(sb), pos);
 +        m_scrollPos[dir] = gtk_adjustment_get_value(GTKGetScrollAdjustment(sb));
- 
++
++#ifdef __WXGTK4__
++        wxGTKScrollObserver::Block(sb, false);
++#else
          g_signal_handlers_unblock_by_func(
              sb, (void*)gtk_scrollbar_value_changed, this);
-@@ -6494,26 +6529,26 @@
++#endif
+     }
+ }
  
  int wxWindowGTK::GetScrollThumb(int orient) const
  {
@@ -484,7 +1107,7 @@ GTK4 compilation/runtime acceptance are not complete.
  }
  
  // Determine if increment is the same as +/-x, allowing for some small
-@@ -6525,13 +6560,13 @@
+@@ -6525,13 +6795,13 @@
      return fabs(increment - fabs(x)) < tolerance;
  }
  
@@ -500,6 +1123,17 @@ GTK4 compilation/runtime acceptance are not complete.
      const double value = gtk_adjustment_get_value(adj);
  
      // save previous position
+--- include/wx/gtk/scrolwin.h.orig
++++ include/wx/gtk/scrolwin.h
+@@ -38,7 +38,7 @@
+ 
+ private:
+     // this does (each) half of AdjustScrollbars() work
+-    void DoAdjustScrollbar(GtkRange* range,
++    void DoAdjustScrollbar(wxGTKScrollBar* range,
+                            int pixelsPerLine,
+                            int winSize,
+                            int virtSize,
 --- src/gtk/scrolwin.cpp.orig
 +++ src/gtk/scrolwin.cpp
 @@ -16,6 +16,9 @@
@@ -557,3 +1191,622 @@ GTK4 compilation/runtime acceptance are not complete.
      // GtkScrolledWindow uses child's preferred size as virtual size
      gtk_widget_set_size_request(m_win->m_wxwindow, vw, vh);
  #endif
+--- include/wx/gtk/private/event.h.orig
++++ include/wx/gtk/private/event.h
+@@ -36,6 +36,44 @@
+ namespace wxGTKImpl
+ {
+ 
++#ifdef __WXGTK4__
++inline void InitMouseEvent(wxWindowGTK* win, wxMouseEvent& event, GdkEvent* native)
++{
++    const GdkModifierType state = gdk_event_get_modifier_state(native);
++    event.m_shiftDown = (state & GDK_SHIFT_MASK) != 0;
++    event.m_controlDown = (state & GDK_CONTROL_MASK) != 0;
++    event.m_altDown = (state & GDK_ALT_MASK) != 0;
++    event.m_metaDown = (state & GDK_META_MASK) != 0;
++    event.m_leftDown = (state & GDK_BUTTON1_MASK) != 0;
++    event.m_middleDown = (state & GDK_BUTTON2_MASK) != 0;
++    event.m_rightDown = (state & GDK_BUTTON3_MASK) != 0;
++    event.m_aux1Down = (state & GDK_BUTTON4_MASK) != 0;
++    event.m_aux2Down = (state & GDK_BUTTON5_MASK) != 0;
++
++    GtkWidget* widget = win->m_wxwindow ? win->m_wxwindow : win->m_widget;
++    GtkNative* top = gtk_widget_get_native(widget);
++    double x = 0, y = 0, dx = 0, dy = 0;
++    graphene_point_t point, local;
++    if (top && gdk_event_get_position(native, &x, &y))
++    {
++        gtk_native_get_surface_transform(top, &dx, &dy);
++        graphene_point_init(&point, float(x - dx), float(y - dy));
++        if (gtk_widget_compute_point(GTK_WIDGET(top), widget, &point, &local))
++        {
++            x = local.x;
++            y = local.y;
++        }
++    }
++    const wxPoint origin = win->GetClientAreaOrigin();
++    event.m_x = wxRound(x) - origin.x;
++    event.m_y = wxRound(y) - origin.y;
++    if (win->m_wxwindow && win->GetLayoutDirection() == wxLayout_RightToLeft)
++        event.m_x = gtk_widget_get_width(widget) - event.m_x;
++    event.SetEventObject(win);
++    event.SetId(win->GetId());
++    event.SetTimestamp(gdk_event_get_time(native));
++}
++#else
+ // init wxMouseEvent with the info from GdkEventXXX struct
+ template<typename T> void InitMouseEvent(wxWindowGTK *win,
+                                          wxMouseEvent& event,
+@@ -87,6 +125,7 @@
+     event.SetId( win->GetId() );
+     event.SetTimestamp( gdk_event->time );
+ }
++#endif
+ 
+ // Update the window currently known to be under the mouse pointer.
+ //
+--- /dev/null
++++ include/wx/gtk/private/scrollbar4.h
+@@ -0,0 +1,107 @@
++///////////////////////////////////////////////////////////////////////////////
++// GTK4 scrollbar notifications shared by wxWindow and wxScrollBar.
++// Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++#ifndef _WX_GTK_PRIVATE_SCROLLBAR4_H_
++#define _WX_GTK_PRIVATE_SCROLLBAR4_H_
++
++#include "wx/weakref.h"
++#include "wx/gtk/private/object.h"
++
++class wxGTKScrollObserver
++{
++public:
++    typedef void (*Callback)(GtkWidget*, wxWindow*);
++    wxGTKScrollObserver(GtkWidget* widget, wxWindow* owner,
++                        Callback changed, Callback released)
++        : m_widget(widget), m_owner(owner), m_changed(changed),
++          m_released(released), m_releaseSource(0)
++    {
++        m_adjustment = gtk_scrollbar_get_adjustment(GTK_SCROLLBAR(widget));
++        g_object_ref(m_adjustment);
++        m_changeHandler = g_signal_connect(m_adjustment, "value-changed",
++                                           G_CALLBACK(Changed), this);
++        GtkEventController* input = gtk_event_controller_legacy_new();
++        gtk_event_controller_set_propagation_phase(input, GTK_PHASE_CAPTURE);
++        g_signal_connect(input, "event", G_CALLBACK(Input), this);
++        gtk_widget_add_controller(widget, input);
++        g_object_set_data_full(G_OBJECT(widget), "wx-scroll-observer", this, Delete);
++    }
++
++    ~wxGTKScrollObserver()
++    {
++        if (m_releaseSource) g_source_remove(m_releaseSource);
++        g_signal_handler_disconnect(m_adjustment, m_changeHandler);
++        g_object_unref(m_adjustment);
++    }
++
++    static void Block(GtkWidget* widget, bool block)
++    {
++        wxGTKScrollObserver* self = static_cast<wxGTKScrollObserver*>(
++            g_object_get_data(G_OBJECT(widget), "wx-scroll-observer"));
++        if (!self) return;
++        if (block) g_signal_handler_block(self->m_adjustment, self->m_changeHandler);
++        else g_signal_handler_unblock(self->m_adjustment, self->m_changeHandler);
++    }
++
++private:
++    static void Delete(void* data) { delete static_cast<wxGTKScrollObserver*>(data); }
++    static void Changed(GtkAdjustment*, wxGTKScrollObserver* self)
++    {
++        if (self->m_owner)
++            self->m_changed(self->m_widget, self->m_owner.get());
++    }
++    static gboolean Released(void* data)
++    {
++        wxGTKScrollObserver* self = static_cast<wxGTKScrollObserver*>(data);
++        self->m_releaseSource = 0;
++        if (self->m_owner && self->m_owner->m_isScrolling)
++        {
++            self->m_owner->m_isScrolling = false;
++            self->m_released(self->m_widget, self->m_owner.get());
++        }
++        return G_SOURCE_REMOVE;
++    }
++    static gboolean Input(GtkEventController*, GdkEvent* event, wxGTKScrollObserver* self)
++    {
++        wxGtkObject<GtkWidget> keepAlive(GTK_WIDGET(g_object_ref(self->m_widget)));
++        if (!self->m_owner)
++            return false;
++        switch (gdk_event_get_event_type(event))
++        {
++            case GDK_BUTTON_PRESS:
++            case GDK_TOUCH_BEGIN:
++                if (self->m_releaseSource)
++                {
++                    g_source_remove(self->m_releaseSource);
++                    Released(self);
++                    if (!self->m_owner) return false;
++                }
++                self->m_owner->m_mouseButtonDown = true;
++                break;
++            case GDK_BUTTON_RELEASE:
++            case GDK_TOUCH_END:
++            case GDK_TOUCH_CANCEL:
++            case GDK_GRAB_BROKEN:
++                self->m_owner->m_mouseButtonDown = false;
++                // GTK's internal range must finish processing this release
++                // before a wx handler is allowed to change its adjustment.
++                if (!self->m_releaseSource)
++                    self->m_releaseSource = g_idle_add_full(G_PRIORITY_HIGH_IDLE,
++                                                           Released, self, NULL);
++                break;
++            default:
++                break;
++        }
++        return false;
++    }
++
++    GtkWidget* m_widget;
++    wxWeakRef<wxWindow> m_owner;
++    GtkAdjustment* m_adjustment;
++    Callback m_changed, m_released;
++    gulong m_changeHandler;
++    guint m_releaseSource;
++};
++
++#endif
+--- src/gtk/scrolbar.cpp.orig
++++ src/gtk/scrolbar.cpp
+@@ -18,6 +18,9 @@
+ #endif
+ 
+ #include "wx/gtk/private.h"
++#ifdef __WXGTK4__
++#include "wx/gtk/private/scrollbar4.h"
++#endif
+ 
+ //-----------------------------------------------------------------------------
+ // "value_changed" from scrollbar
+@@ -25,7 +28,7 @@
+ 
+ extern "C" {
+ static void
+-gtk_value_changed(GtkRange* range, wxScrollBar* win)
++gtk_value_changed(wxGTKScrollBar* range, wxScrollBar* win)
+ {
+     wxEventType eventType = win->GTKGetScrollEventType(range);
+     if (eventType != wxEVT_NULL)
+@@ -50,6 +53,45 @@
+ }
+ }
+ 
++#ifdef __WXGTK4__
++static void gtk_value_changed4(GtkWidget* bar, wxWindow* win)
++{
++    gtk_value_changed(bar, static_cast<wxScrollBar*>(win));
++}
++
++static void gtk_released4(GtkWidget*, wxWindow* owner)
++{
++    wxScrollBar* win = static_cast<wxScrollBar*>(owner);
++    wxWeakRef<wxScrollBar> alive(win);
++    const int value = win->GetThumbPosition();
++    const int orient = win->HasFlag(wxSB_VERTICAL) ? wxVERTICAL : wxHORIZONTAL;
++    const int id = win->GetId();
++    wxScrollEvent release(wxEVT_SCROLL_THUMBRELEASE, id, value, orient);
++    release.SetEventObject(win);
++    win->HandleWindowEvent(release);
++    if (alive)
++    {
++        wxScrollEvent changed(wxEVT_SCROLL_CHANGED, id, value, orient);
++        changed.SetEventObject(win);
++        win->HandleWindowEvent(changed);
++    }
++}
++#endif
++
++static void gtk_block_changed(GtkWidget* widget, wxScrollBar* win, bool block)
++{
++#ifdef __WXGTK4__
++    wxUnusedVar(win);
++    wxGTKScrollObserver::Block(widget, block);
++#else
++    if (block)
++        g_signal_handlers_block_by_func(widget, (void*)gtk_value_changed, win);
++    else
++        g_signal_handlers_unblock_by_func(widget, (void*)gtk_value_changed, win);
++#endif
++}
++
++#ifndef __WXGTK4__
+ //-----------------------------------------------------------------------------
+ // "button_press_event" from scrollbar
+ //-----------------------------------------------------------------------------
+@@ -113,6 +155,8 @@
+ }
+ }
+ 
++#endif
++
+ //-----------------------------------------------------------------------------
+ // wxScrollBar
+ //-----------------------------------------------------------------------------
+@@ -140,8 +184,11 @@
+     m_widget = gtk_scrollbar_new(GtkOrientation(isVertical), NULL);
+     g_object_ref(m_widget);
+ 
+-    m_scrollBar[0] = (GtkRange*)m_widget;
+-
++    m_scrollBar[0] = reinterpret_cast<wxGTKScrollBar*>(m_widget);
++
++#ifdef __WXGTK4__
++    new wxGTKScrollObserver(m_widget, this, gtk_value_changed4, gtk_released4);
++#else
+     g_signal_connect_after(m_widget, "value_changed",
+                      G_CALLBACK(gtk_value_changed), this);
+     g_signal_connect(m_widget, "button_press_event",
+@@ -154,6 +201,8 @@
+         m_widget, "event_after", G_CALLBACK(gtk_event_after), this);
+     g_signal_handler_block(m_widget, handler_id);
+ 
++#endif
++
+     m_parent->DoAddChild( this );
+ 
+     PostCreation(size);
+@@ -163,24 +212,24 @@
+ 
+ int wxScrollBar::GetThumbPosition() const
+ {
+-    return wxRound(gtk_range_get_value(GTK_RANGE(m_widget)));
++    return wxRound(gtk_adjustment_get_value(GTKGetScrollAdjustment(m_scrollBar[0])));
+ }
+ 
+ int wxScrollBar::GetThumbSize() const
+ {
+-    GtkAdjustment* adj = gtk_range_get_adjustment(GTK_RANGE(m_widget));
++    GtkAdjustment* adj = GTKGetScrollAdjustment(m_scrollBar[0]);
+     return int(gtk_adjustment_get_page_size(adj));
+ }
+ 
+ int wxScrollBar::GetPageSize() const
+ {
+-    GtkAdjustment* adj = gtk_range_get_adjustment(GTK_RANGE(m_widget));
++    GtkAdjustment* adj = GTKGetScrollAdjustment(m_scrollBar[0]);
+     return int(gtk_adjustment_get_page_increment(adj));
+ }
+ 
+ int wxScrollBar::GetRange() const
+ {
+-    GtkAdjustment* adj = gtk_range_get_adjustment(GTK_RANGE(m_widget));
++    GtkAdjustment* adj = GTKGetScrollAdjustment(m_scrollBar[0]);
+     return int(gtk_adjustment_get_upper(adj));
+ }
+ 
+@@ -188,14 +237,12 @@
+ {
+     if (GetThumbPosition() != viewStart)
+     {
+-        g_signal_handlers_block_by_func(m_widget,
+-            (gpointer)gtk_value_changed, this);
+-
+-        gtk_range_set_value((GtkRange*)m_widget, viewStart);
+-        m_scrollPos[0] = gtk_range_get_value((GtkRange*)m_widget);
+-
+-        g_signal_handlers_unblock_by_func(m_widget,
+-            (gpointer)gtk_value_changed, this);
++        gtk_block_changed(m_widget, this, true);
++
++        gtk_adjustment_set_value(GTKGetScrollAdjustment(m_scrollBar[0]), viewStart);
++        m_scrollPos[0] = gtk_adjustment_get_value(GTKGetScrollAdjustment(m_scrollBar[0]));
++
++        gtk_block_changed(m_widget, this, false);
+     }
+ }
+ 
+@@ -210,19 +257,20 @@
+     }
+     else if (pageSize <= 0)
+         pageSize = 1;
+-    g_signal_handlers_block_by_func(m_widget, (void*)gtk_value_changed, this);
+-    GtkRange* widget = GTK_RANGE(m_widget);
+-    GtkAdjustment* adj = gtk_range_get_adjustment(widget);
++    gtk_block_changed(m_widget, this, true);
++    GtkAdjustment* adj = GTKGetScrollAdjustment(m_scrollBar[0]);
+ 
+     g_object_freeze_notify(G_OBJECT(adj));
+-    gtk_range_set_increments(widget, 1, pageSize);
++    gtk_adjustment_set_step_increment(adj, 1);
++    gtk_adjustment_set_page_increment(adj, pageSize);
+     gtk_adjustment_set_page_size(adj, thumbSize);
+-    gtk_range_set_range(widget, 0, range);
++    gtk_adjustment_set_lower(adj, 0);
++    gtk_adjustment_set_upper(adj, range);
+     g_object_thaw_notify(G_OBJECT(adj));
+ 
+-    gtk_range_set_value(widget, position);
+-    m_scrollPos[0] = gtk_range_get_value(widget);
+-    g_signal_handlers_unblock_by_func(m_widget, (void*)gtk_value_changed, this);
++    gtk_adjustment_set_value(adj, position);
++    m_scrollPos[0] = gtk_adjustment_get_value(adj);
++    gtk_block_changed(m_widget, this, false);
+ }
+ 
+ void wxScrollBar::SetThumbSize(int thumbSize)
+--- /dev/null
++++ src/gtk/window_input4.inc
+@@ -0,0 +1,79 @@
++///////////////////////////////////////////////////////////////////////////////
++// GTK4 controller dispatch for wxWindow. Included by window.cpp.
++// Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++
++static wxWindowGTK* wxWindowFromGtkWidget(GtkWidget* widget)
++{
++    for (; widget; widget = gtk_widget_get_parent(widget))
++    {
++        if (void* win = g_object_get_data(G_OBJECT(widget), "wx-window"))
++            return static_cast<wxWindowGTK*>(win);
++    }
++    return NULL;
++}
++
++static wxWindowGTK* wxGTKFocusOwner(GtkWidget* widget)
++{
++    GtkRoot* root = gtk_widget_get_root(widget);
++    return root ? wxWindowFromGtkWidget(gtk_root_get_focus(root)) : NULL;
++}
++
++static void wxGTKAddController(GtkWidget* widget, GtkEventController* controller,
++                               wxWindowGTK* win)
++{
++    g_object_set_data(G_OBJECT(controller), "wx-owner", win);
++    gtk_widget_add_controller(widget, controller);
++}
++
++extern "C" {
++
++static gboolean key_event4(GtkEventController* controller, GdkEvent* event,
++                           wxWindow* win)
++{
++    GtkWidget* widget = gtk_event_controller_get_widget(controller);
++    // Capture lets wx CHAR_HOOK/accelerators run before native actions, but
++    // only the closest wx owner handles the event. Parent wx windows receive
++    // their documented CHAR_HOOK propagation, never a duplicate KEY_DOWN.
++    if (wxGTKFocusOwner(widget) != win)
++        return false;
++    switch (gdk_event_get_event_type(event))
++    {
++        case GDK_KEY_PRESS:
++            return gtk_window_key_press_callback(widget, event, win);
++        case GDK_KEY_RELEASE:
++            return gtk_window_key_release_callback(widget, event, win);
++        default:
++            return false;
++    }
++}
++
++static void focus_enter4(GtkEventController* controller, wxWindowGTK* win)
++{
++    if (wxGTKFocusOwner(gtk_event_controller_get_widget(controller)) == win)
++        win->GTKHandleFocusIn();
++}
++
++static void focus_leave4(GtkEventController*, wxWindowGTK* win)
++{
++    if (gs_currentFocus == win)
++        win->GTKHandleFocusOut();
++}
++
++} // extern "C"
++
++static void wxGTKConnectKeys(GtkWidget* widget, wxWindowGTK* win)
++{
++    GtkEventController* keys = gtk_event_controller_legacy_new();
++    gtk_event_controller_set_propagation_phase(keys, GTK_PHASE_CAPTURE);
++    g_signal_connect(keys, "event", G_CALLBACK(key_event4), win);
++    wxGTKAddController(widget, keys, win);
++}
++
++static void wxGTKConnectFocus(GtkWidget* widget, wxWindowGTK* win)
++{
++    GtkEventController* focus = gtk_event_controller_focus_new();
++    g_signal_connect(focus, "enter", G_CALLBACK(focus_enter4), win);
++    g_signal_connect(focus, "leave", G_CALLBACK(focus_leave4), win);
++    wxGTKAddController(widget, focus, win);
++}
+--- /dev/null
++++ src/gtk/window_mouse4.inc
+@@ -0,0 +1,191 @@
++///////////////////////////////////////////////////////////////////////////////
++// GTK4 pointer dispatch. Included by window.cpp after legacy event callbacks.
++// Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++
++static wxWindow* wxGTKPointerOwner(GtkEventController* controller, GdkEvent* event)
++{
++    GtkWidget* widget = gtk_event_controller_get_widget(controller);
++    GtkNative* native = gtk_widget_get_native(widget);
++    double x, y, dx, dy;
++    if (!native || !gdk_event_get_position(event, &x, &y))
++        return NULL;
++    gtk_native_get_surface_transform(native, &dx, &dy);
++    GtkWidget* picked = gtk_widget_pick(GTK_WIDGET(native), x - dx, y - dy,
++                                         GTK_PICK_DEFAULT);
++    return static_cast<wxWindow*>(wxWindowFromGtkWidget(picked));
++}
++
++class wxGTKMouseEventScope
++{
++public:
++    explicit wxGTKMouseEventScope(GdkEvent* event) : m_previous(g_lastMouseEvent)
++        { g_lastMouseEvent = event; }
++    ~wxGTKMouseEventScope() { g_lastMouseEvent = m_previous; }
++private:
++    GdkEvent* m_previous;
++};
++
++static wxEventType wxGTKButtonType(guint button, bool release, bool twice)
++{
++    switch (button)
++    {
++        case 1: return release ? wxEVT_LEFT_UP : twice ? wxEVT_LEFT_DCLICK : wxEVT_LEFT_DOWN;
++        case 2: return release ? wxEVT_MIDDLE_UP : twice ? wxEVT_MIDDLE_DCLICK : wxEVT_MIDDLE_DOWN;
++        case 3: return release ? wxEVT_RIGHT_UP : twice ? wxEVT_RIGHT_DCLICK : wxEVT_RIGHT_DOWN;
++        case 8: return release ? wxEVT_AUX1_UP : twice ? wxEVT_AUX1_DCLICK : wxEVT_AUX1_DOWN;
++        case 9: return release ? wxEVT_AUX2_UP : twice ? wxEVT_AUX2_DCLICK : wxEVT_AUX2_DOWN;
++        default: return wxEVT_NULL;
++    }
++}
++
++static void wxGTKClick(GtkGesture* gesture, int presses, wxWindow* owner, bool release)
++{
++    GtkEventController* controller = GTK_EVENT_CONTROLLER(gesture);
++    GdkEvent* native = gtk_event_controller_get_current_event(controller);
++    if (!native || g_blockEventsOnDrag || g_blockEventsOnScroll)
++        return;
++    wxWindow* win = g_captureWindow ? static_cast<wxWindow*>(g_captureWindow) : owner;
++    // A release outside the original widget still belongs to its active
++    // gesture, just like GTK's implicit pointer grab.
++    if (!release)
++    {
++        if (!g_captureWindow && wxGTKPointerOwner(controller, native) != owner)
++            return;
++        g_object_set_data(G_OBJECT(gesture), "wx-pressed", GINT_TO_POINTER(1));
++    }
++    else
++    {
++        if (!g_object_get_data(G_OBJECT(gesture), "wx-pressed"))
++            return;
++        g_object_set_data(G_OBJECT(gesture), "wx-pressed", NULL);
++    }
++    const guint button = gtk_gesture_single_get_current_button(GTK_GESTURE_SINGLE(gesture));
++    const wxEventType type = wxGTKButtonType(button, release, presses == 2);
++    if (type == wxEVT_NULL)
++        return;
++    wxMouseEvent event(type);
++    InitMouseEvent(win, event, native);
++    // GDK's event state describes the state before this button transition.
++    if (button == 1) event.m_leftDown = !release;
++    if (button == 2) event.m_middleDown = !release;
++    if (button == 3) event.m_rightDown = !release;
++    if (button == 8) event.m_aux1Down = !release;
++    if (button == 9) event.m_aux2Down = !release;
++    g_lastButtonNumber = button;
++    wxGTKMouseEventScope current(native);
++    wxWeakRef<wxWindow> alive(win);
++    if (win->GTKProcessEvent(event))
++        gtk_gesture_set_state(gesture, GTK_EVENT_SEQUENCE_CLAIMED);
++    else if (alive && !release && button == 1 && win->AcceptsFocus())
++        win->SetFocus();
++    else if (alive && release && button == 3)
++    {
++        wxContextMenuEvent menu(wxEVT_CONTEXT_MENU, win->GetId(),
++                                win->ClientToScreen(event.GetPosition()));
++        menu.SetEventObject(win);
++        if (win->GTKProcessEvent(menu))
++            gtk_gesture_set_state(gesture, GTK_EVENT_SEQUENCE_CLAIMED);
++    }
++}
++
++extern "C" {
++static void click_pressed4(GtkGesture* gesture, int presses, double, double, wxWindow* win)
++    { wxGTKClick(gesture, presses, win, false); }
++static void click_released4(GtkGesture* gesture, int presses, double, double, wxWindow* win)
++    { wxGTKClick(gesture, presses, win, true); }
++
++static gboolean pointer_event4(GtkEventController* controller, GdkEvent* native, wxWindow* owner)
++{
++    const GdkEventType type = gdk_event_get_event_type(native);
++    if (type != GDK_MOTION_NOTIFY && type != GDK_SCROLL)
++        return false;
++    if (g_blockEventsOnDrag || g_blockEventsOnScroll)
++        return false;
++    if (g_captureWindow)
++    {
++        if (!owner->IsTopLevel())
++            return false;
++    }
++    else if (wxGTKPointerOwner(controller, native) != owner)
++        return false;
++    wxWindow* win = g_captureWindow ? static_cast<wxWindow*>(g_captureWindow) : owner;
++    wxWeakRef<wxWindow> alive(win);
++    wxGTKMouseEventScope current(native);
++    wxMouseEvent event(type == GDK_SCROLL ? wxEVT_MOUSEWHEEL : wxEVT_MOTION);
++    InitMouseEvent(win, event, native);
++    if (type == GDK_MOTION_NOTIFY)
++    {
++        SendSetCursorEvent(win, event.m_x, event.m_y);
++        return alive && win->GTKProcessEvent(event);
++    }
++    double dx = 0, dy = 0;
++    gdk_scroll_event_get_deltas(native, &dx, &dy);
++    event.m_wheelDelta = 120;
++    event.m_linesPerAction = event.m_columnsPerAction = 3;
++    // Convert logical pixel deltas to the configured number of text lines
++    // per wx detent. Wheel units already represent detents.
++    const bool pixels = gdk_scroll_event_get_unit(native) == GDK_SCROLL_UNIT_SURFACE;
++    const double scaleX = pixels ? 120.0 / wxMax(1, win->GetCharWidth() * 3) : 120;
++    const double scaleY = pixels ? 120.0 / wxMax(1, win->GetCharHeight() * 3) : 120;
++    bool handled = false;
++    if (dx != 0)
++    {
++        event.m_wheelAxis = wxMOUSE_WHEEL_HORIZONTAL;
++        event.m_wheelRotation = wxRound(dx * scaleX);
++        handled = win->GTKProcessEvent(event);
++    }
++    if (alive && dy != 0)
++    {
++        event.m_wheelAxis = wxMOUSE_WHEEL_VERTICAL;
++        event.m_wheelRotation = wxRound(-dy * scaleY);
++        handled = win->GTKProcessEvent(event) || handled;
++    }
++    // Unhandled input reaches GtkScrolledWindow's native scroll controller,
++    // which owns adjustments, smooth scrolling and kinetic deceleration.
++    return handled;
++}
++
++static void pointer_enter4(GtkEventController* controller, double, double, wxWindow* owner)
++{
++    GdkEvent* native = gtk_event_controller_get_current_event(controller);
++    if (!native || wxGTKPointerOwner(controller, native) != owner || g_windowUnderMouse == owner)
++        return;
++    g_windowUnderMouse = owner;
++    wxMouseEvent event(wxEVT_ENTER_WINDOW);
++    InitMouseEvent(owner, event, native);
++    owner->GTKProcessEvent(event);
++}
++
++static void pointer_leave4(GtkEventController* controller, wxWindow* owner)
++{
++    if (g_windowUnderMouse != owner)
++        return;
++    g_windowUnderMouse = NULL;
++    GdkEvent* native = gtk_event_controller_get_current_event(controller);
++    if (native)
++    {
++        wxMouseEvent event(wxEVT_LEAVE_WINDOW);
++        InitMouseEvent(owner, event, native);
++        owner->GTKProcessEvent(event);
++    }
++}
++} // extern "C"
++
++static void wxGTKConnectPointer(GtkWidget* widget, wxWindowGTK* win)
++{
++    GtkGesture* click = gtk_gesture_click_new();
++    gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(click), 0);
++    gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(click), GTK_PHASE_CAPTURE);
++    g_signal_connect(click, "pressed", G_CALLBACK(click_pressed4), win);
++    g_signal_connect(click, "released", G_CALLBACK(click_released4), win);
++    wxGTKAddController(widget, GTK_EVENT_CONTROLLER(click), win);
++    GtkEventController* pointer = gtk_event_controller_legacy_new();
++    gtk_event_controller_set_propagation_phase(pointer, GTK_PHASE_CAPTURE);
++    g_signal_connect(pointer, "event", G_CALLBACK(pointer_event4), win);
++    wxGTKAddController(widget, pointer, win);
++    GtkEventController* motion = gtk_event_controller_motion_new();
++    g_signal_connect(motion, "enter", G_CALLBACK(pointer_enter4), win);
++    g_signal_connect(motion, "leave", G_CALLBACK(pointer_leave4), win);
++    wxGTKAddController(widget, motion, win);
++}

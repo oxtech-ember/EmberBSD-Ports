@@ -12,10 +12,22 @@ placement. Child removal and container disposal release coordinate records
 and GTK references. Virtual extent is a natural size, so it does not impose a
 minimum viewport size.
 
-`patch-gtk4-window` introduces genuine opaque key-event access and a common
-scrollbar adjustment boundary. It connects `wxScrollHelper` to the container's
-virtual extent. The rest of the window, input, rendering and GL integration
-is still being implemented; these changes are not a completed backend.
+`patch-gtk4-window` adds opaque key-event access, capture controllers scoped
+to the nearest wx owner, pointer gestures and adjustment notifications shared
+by window scrollbars and `wxScrollBar`. It connects `wxScrollHelper` to the
+container's virtual extent. Native size notifications observe completed frames
+without requesting continuous animation. These changes are still uncompiled;
+the rest of the window, input, rendering and GL integration is in progress.
+
+The container emits `wx-size-allocate(width, height)` with GTK content dimensions,
+`wx-paint(cairo_t*)`, then `wx-snapshot(GtkSnapshot*)` before its children.
+`m_inSnapshot` covers that snapshot call so a GL swap during a paint event can
+provide a texture without recursively requesting another frame.
+
+`patch-gtk4-controls` adapts buttons, checkboxes, radio buttons, labels, choices
+and combo boxes. GTK4 removed GtkComboBox's multi-column popup API; `SetColumns`
+with more than one column reports an unsupported operation. Existing upstream
+control tests must run against the resulting package before acceptance.
 
 `gtk4-pizza.cpp` exercises the actual container with a real GTK4 display:
 allocation, painting, CSS border, scrolling, RTL, virtual extent, external
