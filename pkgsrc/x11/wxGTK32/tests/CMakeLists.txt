@@ -1,0 +1,13 @@
+cmake_minimum_required(VERSION 3.20)
+project(wx_webkit6_contract LANGUAGES CXX)
+# Use the selected native or target SDK toolchain and installed wx-config.
+find_package(wxWidgets 3.2 REQUIRED COMPONENTS core base webview)
+include(${wxWidgets_USE_FILE})
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(WEBKIT6 REQUIRED IMPORTED_TARGET webkitgtk-6.0)
+add_executable(webkit6-contract webkit6-contract.cpp)
+target_compile_features(webkit6-contract PRIVATE cxx_std_11)
+target_link_libraries(webkit6-contract PRIVATE ${wxWidgets_LIBRARIES} PkgConfig::WEBKIT6)
+enable_testing()
+add_test(NAME webkit6-contract COMMAND webkit6-contract)
+set_tests_properties(webkit6-contract PROPERTIES TIMEOUT 40)
