@@ -35,3 +35,11 @@ prefix available while exercising synthetic relocated inputs.
 --output WORKDIR` checks old first-lookup failure, new default lookup,
 explicit setter before and after lookup, and concurrent queries and setter
 against two synthetic MIME databases. The timeout detects hangs. Darwin only.
+
+`relocated-gir.py --prefix DISPOSABLE_PREFIX --old-prefix PRODUCER_PREFIX`
+checks installed gi-compile-repository default GIR lookup: a missing relocated
+GLib GIR must not fall back to the old prefix, a temporary relocated GIR must
+work, and explicit `--includedir` and GI_GIR_PATH must still work. It requires
+a Darwin prefix with all runtime dependencies, but without a pre-existing
+`share/gir-1.0/GLib-2.0.gir`, and an existing producer GLib GIR. The fixture
+creates and removes only its own temporary GIR file.
