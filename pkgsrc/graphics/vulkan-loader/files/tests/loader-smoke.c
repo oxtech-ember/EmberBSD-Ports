@@ -6,18 +6,25 @@
 #include <vulkan/vulkan.h>
 
 int
-main(void)
+main(int argc, char **argv)
 {
 #if defined(__APPLE__)
 	const char *name = "libvulkan.1.dylib";
 #else
 	const char *name = "libvulkan.so.1";
 #endif
-	void *loader = dlopen(name, RTLD_NOW | RTLD_LOCAL);
+	void *loader;
 	PFN_vkGetInstanceProcAddr get_proc;
 	PFN_vkEnumerateInstanceVersion get_version;
 	uint32_t version = 0;
 
+	if (argc > 2) {
+		fprintf(stderr, "usage: %s [loader-path]\n", argv[0]);
+		return 2;
+	}
+	if (argc == 2)
+		name = argv[1];
+	loader = dlopen(name, RTLD_NOW | RTLD_LOCAL);
 	if (loader == NULL) {
 		fprintf(stderr, "dlopen: %s\n", dlerror());
 		return 1;
