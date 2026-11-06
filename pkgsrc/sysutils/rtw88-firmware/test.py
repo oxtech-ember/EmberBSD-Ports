@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify pinned RTL8723D firmware inputs and private package lifecycle."""
+"""Verify pinned RTL8723D and RTL8821C firmware inputs and private package lifecycle."""
 # SPDX-License-Identifier: BSD-2-Clause
 import argparse
 import hashlib
@@ -12,6 +12,8 @@ from pathlib import Path
 SOURCES = {
     'rtw8723d_fw.bin': ('rtw88/rtw8723d_fw.bin', 28884,
                         '9c64e079815a333a3f7b731be7cc0be65206ebc883891659dc8ff5ed36a5e2f5'),
+    'rtw8821c_fw.bin': ('rtw88/rtw8821c_fw.bin', 139472,
+                        '2ef409bc418549fcf294061dd0cae1fc22fd9da79b60524950b25de18732f3f0'),
     'WHENCE': ('WHENCE', 513960,
                'ee6fcbd18f7b69d331ade28de5a7b0b9ba68220e86f26d445679a3f939906353'),
     'LICENCE.rtlwifi_firmware.txt': (
@@ -20,6 +22,7 @@ SOURCES = {
 }
 PAYLOADS = {
     'rtw8723d_fw.bin': 'libdata/firmware/rtw88/rtw8723d_fw.bin',
+    'rtw8821c_fw.bin': 'libdata/firmware/rtw88/rtw8821c_fw.bin',
     'WHENCE': 'share/doc/rtw88-firmware/WHENCE',
     'LICENCE.rtlwifi_firmware.txt':
         'share/licenses/rtw88-firmware/LICENCE.rtlwifi_firmware.txt',
@@ -65,6 +68,7 @@ def exercise_faults(source_root):
         prepare_flat_inputs(source_root, valid)
         for label, mutate in (
             ('bad hash', lambda d: (d / 'rtw8723d_fw.bin').write_bytes(b'bad')),
+            ('bad 8821c hash', lambda d: (d / 'rtw8821c_fw.bin').write_bytes(b'bad')),
             ('missing license', lambda d: (d / 'LICENCE.rtlwifi_firmware.txt').unlink()),
             ('unexpected filename', lambda d: (d / 'unexpected.bin').write_bytes(b'extra')),
         ):
@@ -87,7 +91,7 @@ def run(command):
     return result.stdout
 
 
-def verify_installed(prefix, pkg_info, pkgdb):
+def verify_installed(prefix, pkg_info, pkgdb, package_name):
     actual = {path.relative_to(prefix).as_posix()
               for path in prefix.rglob('*') if path.is_file() or path.is_symlink()}
     expected = set(PAYLOADS.values())
@@ -98,7 +102,7 @@ def verify_installed(prefix, pkg_info, pkgdb):
         if not path.is_file() or path.stat().st_size != size or sha256(path) != expected_hash:
             raise ContractError('installed payload mismatch: ' + str(path))
     listing = run([str(pkg_info), '-K', str(pkgdb), '-L',
-                   'rtw88-firmware-48'])
+                   package_name])
     for relative in PAYLOADS.values():
         full_path = (prefix / relative).as_posix()
         if full_path not in listing:
@@ -146,16 +150,23 @@ def main():
     pkgdb = args.output / 'pkgdb'
     prefix.mkdir()
     pkgdb.mkdir()
-    package_name = 'rtw88-firmware-48'
+    summary = run([str(args.pkg_info), '-X', str(args.package)])
+    names = [line.removeprefix('PKGNAME=') for line in summary.splitlines()
+             if line.startswith('PKGNAME=')]
+    paths = [line.removeprefix('PKGPATH=') for line in summary.splitlines()
+             if line.startswith('PKGPATH=')]
+    if len(names) != 1 or paths != ['sysutils/rtw88-firmware']:
+        raise ContractError('archive package identity differs')
+    package_name = names[0]
     for cycle in ('install', 'reinstall'):
         run([str(args.pkg_add), '-K', str(pkgdb), '-p', str(prefix), str(args.package)])
-        verify_installed(prefix, args.pkg_info, pkgdb)
+        verify_installed(prefix, args.pkg_info, pkgdb, package_name)
         print(cycle + ': PASS')
         if cycle == 'install':
             unexpected = prefix / 'libdata/firmware/rtw88/unexpected.bin'
             unexpected.write_bytes(b'extra')
             try:
-                verify_installed(prefix, args.pkg_info, pkgdb)
+                verify_installed(prefix, args.pkg_info, pkgdb, package_name)
             except ContractError:
                 unexpected.unlink()
             else:
