@@ -8,3 +8,4 @@ SHA1 (patch-src_unix_glegl.cpp) = 1610bc04a0f8155138b169eb68f4b03e60ccecd9
 SHA1 (patch-src_unix_utilsunx.cpp) = be61cc3931e8aa8cf790cfedf6f916a84970f074
 SHA1 (patch-configure.in) = c8d2aa4596b575e2b704a7fe7a1728c5c1a98377
 SHA1 (patch-wx-config.in) = 87cca953a550858cb95ad061352fd82038e67e16
+SHA1 (patch-gtk4-webview) = c9356605fd890cbd821bb42bd9e2fd2e6f73bb63
