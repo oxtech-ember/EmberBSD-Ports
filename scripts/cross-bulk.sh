@@ -447,12 +447,60 @@ node_deps()
         name=$(printf '%s\n' "$vars" | sed -n 7p) || return 1
         ! native_current "$base" "$name" || current=yes
     fi
-    deps=$(printf '%s\n' "$vars" | awk -v suffix="$suffix" -v current="$current" '
+    # pkgsrc resolves each dependency directory from the package that declares
+    # it. A same-category sibling is as real as ../../category/package. A path
+    # that is not one category/package inside this tree is an error: omitting
+    # it would build the dependent with that provider absent.
+    deps=$(printf '%s\n' "$vars" | awk -v suffix="$suffix" -v current="$current" -v pkgdir="$dir" '
+        function fail(msg) {
+            print "cross-bulk: " msg > "/dev/stderr"
+            exit 2
+        }
+        function last_colon(text,    rest, pos) {
+            rest = text
+            pos = 0
+            while (match(rest, /:/)) {
+                pos = pos + RSTART
+                rest = substr(rest, RSTART + 1)
+            }
+            return pos
+        }
+        function resolve(base, rel,    n, m, i, count, part, stack) {
+            if (rel ~ /^\//) fail("absolute dependency path in " base ": " rel)
+            n = split(base, stack, "/")
+            count = n
+            m = split(rel, part, "/")
+            for (i = 1; i <= m; i++) {
+                if (part[i] == "" || part[i] == ".") continue
+                if (part[i] == "..") {
+                    if (count < 1) fail("dependency path leaves the pkgsrc tree: " rel " from " base)
+                    count--
+                    continue
+                }
+                if (part[i] ~ /[^A-Za-z0-9_.+-]/)
+                    fail("unsupported dependency path in " base ": " rel)
+                count++
+                stack[count] = part[i]
+            }
+            if (count != 2 || stack[1] == "" || stack[2] == "")
+                fail("dependency path is not a category/package: " rel " from " base)
+            return stack[1] "/" stack[2]
+        }
         NR == 1 || NR > 5 || (current == "yes" && NR != 2) { next }
-        { s = NR <= 3 ? suffix : "@native"; n = split($0, w, " ")
-          for (i = 1; i <= n; i++)
-              if (match(w[i], /:\.\.\/\.\.\/[^\/:]+\/[^\/:]+$/))
-                  print substr(w[i], RSTART + 7) s, substr(w[i], 1, RSTART - 1) }') || return 1
+        {
+            s = NR <= 3 ? suffix : "@native"
+            n = split($0, w, " ")
+            for (i = 1; i <= n; i++) {
+                if (w[i] == "") continue
+                colon = last_colon(w[i])
+                if (colon < 1) fail("dependency entry has no package path: " w[i] " from " pkgdir)
+                pattern = substr(w[i], 1, colon - 1)
+                rel = substr(w[i], colon + 1)
+                if (pattern == "" || rel == "")
+                    fail("malformed dependency entry: " w[i] " from " pkgdir)
+                print resolve(pkgdir, rel) s, pattern
+            }
+        }') || return 1
     # A dependency is soft only when every pattern that names it is satisfied.
     printf '%s\n' "$deps" | while read -r dep pattern; do
         [ -n "$dep" ] || continue
