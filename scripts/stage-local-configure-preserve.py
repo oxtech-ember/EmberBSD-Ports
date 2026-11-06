@@ -193,6 +193,50 @@ def refresh_tools(a, paths, jsonio, command, work):
         print('Refreshed staged pkgsrc tools')
 
 
+def refresh_new_buildlinks(a, command, work):
+    """Materialize newly added pkgsrc buildlink providers before configure."""
+    live = work / '.buildlink'
+    if not os.path.lexists(live):
+        return
+    require(live.is_dir() and not live.is_symlink(), 'invalid staged buildlink root')
+    packages = subprocess.run(command + ['-V', '${_BLNK_PACKAGES}'], check=True,
+                              text=True, stdout=subprocess.PIPE).stdout.split()
+    if not packages:
+        return
+    fields = ['${TOOLS_CROSS_DESTDIR}']
+    for provider in packages:
+        require(re.fullmatch(r'[A-Za-z0-9_+-]+', provider), 'invalid buildlink provider name')
+        fields.extend(('${USE_BUILTIN.' + provider + '}', '${_BLNK_COOKIE.' + provider + '}'))
+    values = subprocess.run(command + sum((['-V', field] for field in fields), []), check=True,
+                             text=True, stdout=subprocess.PIPE).stdout.splitlines()
+    require(len(values) == len(fields), 'invalid buildlink metadata')
+    cross = values[0].strip()
+    for position, provider in enumerate(packages):
+        index = 1 + position * 2
+        builtin = values[index].strip().lower()
+        if builtin == 'yes':
+            continue
+        require(builtin == 'no', 'invalid provider builtin setting')
+        cookie = Path(values[index + 1].strip())
+        require(cookie.name == '.buildlink_' + provider + '_done' and
+                cookie.parent.resolve(strict=True) == live.resolve(strict=True),
+                'unexpected buildlink provider cookie path')
+        if os.path.lexists(cookie):
+            require(cookie.is_file() and not cookie.is_symlink(), 'invalid provider cookie')
+            continue
+        helper = Path(__file__).with_name('stage-local-buildlink-refresh.py')
+        args = [sys.executable, '-B', '-E', '-S', str(helper), '--bmake', str(a.bmake),
+                '--recipe', str(a.recipe), '--expected-work', str(work),
+                '--provider', provider]
+        for value in (*a.make_arg, *a.bmake_args):
+            args.extend(('--make-arg', value))
+        if not cross:
+            args.append('--native')
+        subprocess.run(args, check=True)
+        require(cookie.is_file() and not cookie.is_symlink(),
+                'buildlink factory did not create provider cookie')
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     for name in ('sdk-source','bmake','recipe','expected-work'):
@@ -219,6 +263,7 @@ def main():
             'selected WRKDIR differs from locked stage')
     work=Path(paths.canonical_existing(str(work)))
     marker=work/'.emberbsd-configure-preserve.json'
+    refresh_new_buildlinks(a, command, work)
     # A partially created stage may not have extracted WRKSRC yet.
     if not os.path.lexists(source):
         require(not os.path.lexists(marker), 'configure source is missing during retry')

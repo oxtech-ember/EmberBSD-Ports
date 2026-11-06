@@ -72,8 +72,14 @@ def main():
     require(pkginfo and files_cmd and grep and Path(grep).is_absolute(), 'missing selected provider tools')
     installed = subprocess.run(shlex.split(pkginfo) + ['-f', pkgname], check=True, text=True, stdout=subprocess.PIPE).stdout
     require(any(line.lstrip().startswith('File:') for line in installed.splitlines()), 'empty provider package inventory')
-    require(cookie.parent == live and cookie.name == '.buildlink_' + a.provider + '_done' and regular(cookie), 'invalid provider cookie')
-    old = parse_cookie(cookie, live)
+    require(cookie.parent == live and cookie.name == '.buildlink_' + a.provider + '_done', 'invalid provider cookie')
+    if os.path.lexists(cookie):
+        require(regular(cookie), 'invalid provider cookie')
+        old = parse_cookie(cookie, live)
+    else:
+        # A newly added buildlink dependency has no prior inventory. The same
+        # factory and collision checks below safely add its links and cookie.
+        old = {}
     others = set()
     for other in live.glob('.buildlink_*_done'):
         if other != cookie:
