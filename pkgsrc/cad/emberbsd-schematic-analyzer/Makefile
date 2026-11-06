@@ -15,6 +15,7 @@ LICENSE=	gnu-gpl-v3
 TOOL_DEPENDS+=	${PYPKGPREFIX}-setuptools>=77:../../devel/py-setuptools
 DEPENDS+=	${PYPKGPREFIX}-kiutils>=1.4.8nb1:../../cad/py-kiutils
 DEPENDS+=	kicad>=10.0.8:../../cad/kicad10
+TEST_DEPENDS+=	${PYPKGPREFIX}-kiutils>=1.4.8nb1:../../cad/py-kiutils
 
 USE_LANGUAGES=	# none
 USE_PYTEST=	no
