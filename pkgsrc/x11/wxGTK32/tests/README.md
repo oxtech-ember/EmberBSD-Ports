@@ -363,3 +363,64 @@ this fixture pass target Clang syntax checks using real configured wx and GTK4
 headers. Source Cppcheck reports no warnings with its GTK/wx libraries. Linking,
 GUI execution and executable memory checks remain pending the shared build;
 prepared fixtures and successful compilation are not runtime acceptance.
+
+# GTK4 top-level contract
+
+`patch-gtk4-toplevel` implements the GtkWindow lifecycle on GTK 4.24 or newer.
+A vertical `m_mainWidget` owns the expanding wxPizza client area; wxFrame places
+its menu/status/tool bars around that area. Public GtkHeaderBar titlebars retain
+caption button selection on both display backends. Actual allocation supplies
+client and decoration sizes; an early explicit client size is corrected once
+when those extents become measurable. Native state notifications drive wx
+activation, iconize, maximize and fullscreen state.
+
+`close-request` passes through wx close handling and veto without allowing GTK
+to destroy a live wx owner independently. GTK 4.24 `force-close` hides the window,
+sends a non-vetoable wx close event and schedules wx destruction. The explicit
+`AddGrab` API uses the existing wx event loop plus GtkWindow modality and the
+common window disabler; weak ownership and a retained native reference permit
+destruction while its synchronous call is waiting. Native signals, X11 event
+observers, configure idles and attention timers are disconnected on destruction.
+Refresh delegates to the shared window implementation to invalidate retained
+ClientDC contents.
+
+On X11, the public `GdkX11Display::xevent` observer always returns false. A
+coalesced idle reads geometry after GDK processes the native event, including
+pure window-manager moves. ICCCM/Motif/EWMH requests implement positioning,
+caption functions, tool-window/taskbar state, resize maxima/increments and
+attention. Increment reset preserves only GTK's scale alignment; extra hints
+are merged after GTK rewrites WM_NORMAL_HINTS and only changed properties are
+written. Always-on-top is requested after native map, when the WM can handle it.
+
+Wayland keeps the shared backend's toplevel-relative screen coordinates. Its
+public GTK/GDK API does not expose global positioning, application-selected
+always-on-top/taskbar state, non-activating attention, or arbitrary interactive
+maximum/increment constraints. These requests are not reported as successful
+native transitions. Minimum and programmatic size constraints still use GTK
+measurement and wx size constraints. `ShowWithoutActivating` avoids an explicit
+activation request; final focus policy belongs to the compositor. No private
+GDK structures or substitute GTK3 window objects are used.
+
+Primary references:
+
+- [GtkWindow sizing and state](https://docs.gtk.org/gtk4/class.Window.html)
+- [GtkWindow close veto](https://docs.gtk.org/gtk4/signal.Window.close-request.html)
+- [GTK 4.24 force-close](https://docs.gtk.org/gtk4/signal.Window.force-close.html)
+- [GdkX11Display event observation](https://docs.gtk.org/gdk4-x11/signal.X11Display.xevent.html)
+- [GTK's CSD size and lifecycle implementation](https://gitlab.gnome.org/GNOME/gtk/-/blob/4.24.1/gtk/gtkwindow.c)
+- [GDK X11 geometry hints](https://gitlab.gnome.org/GNOME/gtk/-/blob/4.24.1/gdk/x11/gdksurface-x11.c)
+
+`toplevel4-contract` is built by the tests CMake project; select it with
+`BUILD_TOPLEVEL_CONTRACT`. It requires a real desktop window manager/compositor,
+not an unmanaged X server. The fixture exercises measured client size with
+frame bars, size round trips, hide/show notifications, close disable/veto,
+maximize/fullscreen/minimize restoration, nested grabs, synchronous owner
+removal and compositor force-close. X11 additionally checks initial above state
+and native resize increments changing from 7x9 to the default. Run under ASan
+for the destruction paths. Manual acceptance includes dragging/resizing across
+scaled monitors, titlebar controls, activation policy and transient ownership.
+
+Source-only Cppcheck 2.22.0, public API/header inspection and zero-fuzz patch
+application are preparation checks. The fixture and complete translation unit
+have not yet been compiled or run against the shared GTK4 SDK. Geometry, WM
+policy and executable memory-safety acceptance remain pending that build.

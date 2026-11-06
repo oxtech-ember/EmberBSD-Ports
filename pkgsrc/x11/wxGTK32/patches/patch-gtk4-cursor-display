@@ -1,0 +1,596 @@
+--- src/gtk/cursor.cpp.orig
++++ src/gtk/cursor.cpp
+@@ -22,7 +22,9 @@
+ #include "wx/gtk/private/object.h"
+ #include "wx/gtk/private/backend.h"
+ 
++#ifndef __WXGTK4__
+ GdkWindow* wxGetTopLevelGDK();
++#endif
+ 
+ //-----------------------------------------------------------------------------
+ // wxCursorRefData
+@@ -37,6 +39,7 @@
+     virtual bool IsOk() const wxOVERRIDE { return m_cursor != NULL; }
+ 
+     GdkCursor *m_cursor;
++    wxPoint m_hotSpot;
+ 
+ private:
+     // There is no way to copy m_cursor so we can't implement a copy ctor
+@@ -47,13 +50,14 @@
+ wxCursorRefData::wxCursorRefData()
+ {
+     m_cursor = NULL;
++    m_hotSpot = wxPoint(0, 0);
+ }
+ 
+ wxCursorRefData::~wxCursorRefData()
+ {
+     if (m_cursor)
+     {
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) || defined(__WXGTK4__)
+         g_object_unref(m_cursor);
+ #else
+         gdk_cursor_unref(m_cursor);
+@@ -61,6 +65,26 @@
+     }
+ }
+ 
++#ifdef __WXGTK4__
++static GdkCursor* wxCreateGTKCursorFromPixbuf(GdkPixbuf* pixbuf,
++                                               int hotSpotX, int hotSpotY)
++{
++    // wxImage-backed pixbufs may refer to caller-owned memory. Give the
++    // texture independent pixels before retaining it in a cursor.
++    GdkPixbuf* const copy = gdk_pixbuf_copy(pixbuf);
++    if (!copy)
++        return NULL;
++    GdkTexture* const texture = gdk_texture_new_for_pixbuf(copy);
++    GdkCursor* const cursor = texture
++        ? gdk_cursor_new_from_texture(texture, hotSpotX, hotSpotY, NULL)
++        : NULL;
++    if (texture)
++        g_object_unref(texture);
++    g_object_unref(copy);
++    return cursor;
++}
++#endif
++
+ //-----------------------------------------------------------------------------
+ // wxCursor
+ //-----------------------------------------------------------------------------
+@@ -113,7 +137,47 @@
+         hotSpotX = 0;
+     if (hotSpotY < 0 || hotSpotY >= height)
+         hotSpotY = 0;
+-#ifdef __WXGTK3__
++#ifdef __WXGTK4__
++    wxBitmap bitmap(bits, width, height);
++    if (maskBits)
++        bitmap.SetMask(new wxMask(wxBitmap(maskBits, width, height), *wxWHITE));
++    GdkPixbuf* const source = bitmap.GetPixbuf();
++    GdkPixbuf* pixbuf = source ? gdk_pixbuf_copy(source) : NULL;
++    if (!pixbuf)
++        return;
++    if ((fg && *fg != *wxBLACK) || (bg && *bg != *wxWHITE))
++    {
++        const int stride = gdk_pixbuf_get_rowstride(pixbuf);
++        const int n_channels = gdk_pixbuf_get_n_channels(pixbuf);
++        guchar* data = gdk_pixbuf_get_pixels(pixbuf);
++        for (int j = 0; j < height; j++, data += stride)
++        {
++            guchar* p = data;
++            for (int i = 0; i < width; i++, p += n_channels)
++            {
++                if (p[0] == 0)
++                {
++                    if (fg)
++                    {
++                        p[0] = fg->Red();
++                        p[1] = fg->Green();
++                        p[2] = fg->Blue();
++                    }
++                }
++                else if (bg)
++                {
++                    p[0] = bg->Red();
++                    p[1] = bg->Green();
++                    p[2] = bg->Blue();
++                }
++            }
++        }
++    }
++    M_CURSORDATA->m_cursor = wxCreateGTKCursorFromPixbuf(
++        pixbuf, hotSpotX, hotSpotY);
++    M_CURSORDATA->m_hotSpot = wxPoint(hotSpotX, hotSpotY);
++    g_object_unref(pixbuf);
++#elif defined(__WXGTK3__)
+     wxBitmap bitmap(bits, width, height);
+     if (maskBits)
+         bitmap.SetMask(new wxMask(wxBitmap(maskBits, width, height), *wxWHITE));
+@@ -179,7 +243,10 @@
+ 
+ wxPoint wxCursor::GetHotSpot() const
+ {
+-#if GTK_CHECK_VERSION(2,8,0)
++#ifdef __WXGTK4__
++    if (m_refData)
++        return M_CURSORDATA->m_hotSpot;
++#elif GTK_CHECK_VERSION(2,8,0)
+     if (GetCursor())
+     {
+         if (wx_is_at_least_gtk2(8))
+@@ -210,6 +277,47 @@
+ {
+     m_refData = new wxCursorRefData();
+ 
++#ifdef __WXGTK4__
++    const char* name = "default";
++    switch (cursorId)
++    {
++        case wxCURSOR_BLANK:            name = "none"; break;
++        case wxCURSOR_ARROW:
++        case wxCURSOR_DEFAULT:
++        case wxCURSOR_RIGHT_ARROW:      name = "default"; break;
++        case wxCURSOR_HAND:             name = "pointer"; break;
++        case wxCURSOR_CROSS:            name = "crosshair"; break;
++        case wxCURSOR_SIZEWE:           name = "ew-resize"; break;
++        case wxCURSOR_SIZENS:           name = "ns-resize"; break;
++        case wxCURSOR_ARROWWAIT:        name = "progress"; break;
++        case wxCURSOR_WAIT:
++        case wxCURSOR_WATCH:            name = "wait"; break;
++        case wxCURSOR_SIZING:           name = "move"; break;
++        case wxCURSOR_SPRAYCAN:
++        case wxCURSOR_PENCIL:
++        case wxCURSOR_PAINT_BRUSH:
++        case wxCURSOR_BULLSEYE:         name = "crosshair"; break;
++        case wxCURSOR_IBEAM:
++        case wxCURSOR_CHAR:             name = "text"; break;
++        case wxCURSOR_NO_ENTRY:         name = "not-allowed"; break;
++        case wxCURSOR_SIZENWSE:         name = "nwse-resize"; break;
++        case wxCURSOR_SIZENESW:         name = "nesw-resize"; break;
++        case wxCURSOR_QUESTION_ARROW:   name = "help"; break;
++        case wxCURSOR_MAGNIFIER:        name = "zoom-in"; break;
++        case wxCURSOR_LEFT_BUTTON:
++        case wxCURSOR_MIDDLE_BUTTON:
++        case wxCURSOR_RIGHT_BUTTON:     name = "pointer"; break;
++        case wxCURSOR_POINT_LEFT:       name = "w-resize"; break;
++        case wxCURSOR_POINT_RIGHT:      name = "e-resize"; break;
++        default:
++            wxFAIL_MSG(wxT("unsupported cursor type"));
++            break;
++    }
++    M_CURSORDATA->m_cursor = gdk_cursor_new_from_name(name, NULL);
++    if (!M_CURSORDATA->m_cursor && strcmp(name, "default") != 0)
++        M_CURSORDATA->m_cursor = gdk_cursor_new_from_name("default", NULL);
++    return;
++#else
+     GdkCursorType gdk_cur = GDK_LEFT_PTR;
+     switch (cursorId)
+     {
+@@ -282,6 +390,7 @@
+     }
+ #endif
+     M_CURSORDATA->m_cursor = gdk_cursor_new_for_display(display, gdk_cur);
++#endif
+ }
+ 
+ #if wxUSE_IMAGE
+@@ -294,8 +403,8 @@
+     const bool hasMask = image.HasMask();
+     int hotSpotX = image.GetOptionInt(wxIMAGE_OPTION_CUR_HOTSPOT_X);
+     int hotSpotY = image.GetOptionInt(wxIMAGE_OPTION_CUR_HOTSPOT_Y);
+-    if (hotSpotX < 0 || hotSpotX > w) hotSpotX = 0;
+-    if (hotSpotY < 0 || hotSpotY > h) hotSpotY = 0;
++    if (hotSpotX < 0 || hotSpotX >= w) hotSpotX = 0;
++    if (hotSpotY < 0 || hotSpotY >= h) hotSpotY = 0;
+     GdkPixbuf* pixbuf = gdk_pixbuf_new_from_data(image.GetData(), GDK_COLORSPACE_RGB, false, 8, w, h, w * 3, NULL, NULL);
+     if (alpha || hasMask)
+     {
+@@ -320,8 +429,14 @@
+         }
+     }
+     m_refData = new wxCursorRefData;
++#ifdef __WXGTK4__
++    M_CURSORDATA->m_cursor = wxCreateGTKCursorFromPixbuf(
++        pixbuf, hotSpotX, hotSpotY);
++    M_CURSORDATA->m_hotSpot = wxPoint(hotSpotX, hotSpotY);
++#else
+     M_CURSORDATA->m_cursor = gdk_cursor_new_from_pixbuf(
+         gdk_window_get_display(wxGetTopLevelGDK()), pixbuf, hotSpotX, hotSpotY);
++#endif
+     g_object_unref(pixbuf);
+ }
+ 
+@@ -384,6 +499,27 @@
+ static void SetGlobalCursor(const wxCursor& cursor)
+ {
+     GdkCursor* gdk_cursor = cursor.GetCursor();
++#ifdef __WXGTK4__
++    wxWindowList::const_iterator i = wxTopLevelWindows.begin();
++    for (size_t n = wxTopLevelWindows.size(); n--; ++i)
++    {
++        wxWindow* const win = *i;
++        if (!gdk_cursor)
++        {
++            UpdateCursors(win, false);
++            continue;
++        }
++
++        if (win->m_widget)
++            gtk_widget_set_cursor(win->m_widget, gdk_cursor);
++        if (win->m_wxwindow && win->m_wxwindow != win->m_widget)
++            gtk_widget_set_cursor(win->m_wxwindow, gdk_cursor);
++        const wxWindowList& children = win->GetChildren();
++        for (wxWindowList::const_iterator child = children.begin();
++             child != children.end(); ++child)
++            UpdateCursors(*child, true);
++    }
++#else
+     GdkDisplay* display = NULL;
+     wxWindowList::const_iterator i = wxTopLevelWindows.begin();
+     for (size_t n = wxTopLevelWindows.size(); n--; ++i)
+@@ -400,6 +536,7 @@
+     }
+     if (display)
+         gdk_display_flush(display);
++#endif
+ }
+ 
+ void wxBeginBusyCursor(const wxCursor* cursor)
+--- src/gtk/display.cpp.orig
++++ src/gtk/display.cpp
+@@ -16,28 +16,59 @@
+ #include "wx/gtk/private/wrapgtk.h"
+ #include "wx/gtk/private/backend.h"
+ #ifdef GDK_WINDOWING_X11
+-    #ifndef __WXGTK4__
+-        #include "wx/unix/private/displayx11.h"
+-
+-        #define wxGTK_HAVE_X11_DISPLAY
+-    #endif
+-
++    #include "wx/unix/private/displayx11.h"
+     #include <gdk/gdkx.h>
++    #define wxGTK_HAVE_X11_DISPLAY
+ #endif
+ 
+ // This file is not used at all when using Win32.
+ #if !defined(GDK_WINDOWING_WIN32)
+ 
++#ifndef __WXGTK4__
+ GdkWindow* wxGetTopLevelGDK();
++#endif
+ 
+ // There are 2 quite different implementations here: one for GTK+ 4 and the
+ // other one for the previous versions.
+ 
+ #ifdef __WXGTK4__
+ 
+-static inline GdkDisplay* GetDisplay()
++static GdkDisplay* GetDisplay()
++{
++    return gdk_display_get_default();
++}
++
++static GListModel* GetMonitors()
+ {
+-    return gdk_window_get_display(wxGetTopLevelGDK());
++    GdkDisplay* const display = GetDisplay();
++    return display ? gdk_display_get_monitors(display) : NULL;
++}
++
++static GdkMonitor* GetMonitor(unsigned index)
++{
++    GListModel* const monitors = GetMonitors();
++    if (!monitors || index >= g_list_model_get_n_items(monitors))
++        return NULL;
++    return GDK_MONITOR(g_list_model_get_item(monitors, index));
++}
++
++static int GetMonitorIndex(GdkMonitor* monitor)
++{
++    if (!monitor)
++        return wxNOT_FOUND;
++    GListModel* const monitors = GetMonitors();
++    if (!monitors)
++        return wxNOT_FOUND;
++    const guint count = g_list_model_get_n_items(monitors);
++    for (guint i = 0; i < count; ++i)
++    {
++        GdkMonitor* const item = GDK_MONITOR(g_list_model_get_item(monitors, i));
++        const bool matches = item == monitor;
++        g_object_unref(item);
++        if (matches)
++            return int(i);
++    }
++    return wxNOT_FOUND;
+ }
+ 
+ // This class is always defined as it's used for the main display even when
+@@ -47,6 +78,7 @@
+     typedef wxDisplayImpl base_type;
+ public:
+     wxDisplayImplGTK(unsigned i);
++    virtual ~wxDisplayImplGTK();
+     virtual wxRect GetGeometry() const wxOVERRIDE;
+     virtual wxRect GetClientArea() const wxOVERRIDE;
+     virtual int GetDepth() const wxOVERRIDE;
+@@ -80,55 +112,66 @@
+ 
+ unsigned wxDisplayFactoryGTK::GetCount()
+ {
+-    return gdk_display_get_n_monitors(::GetDisplay());
++    GListModel* const monitors = GetMonitors();
++    return monitors ? g_list_model_get_n_items(monitors) : 0;
+ }
+ 
+ int wxDisplayFactoryGTK::GetFromPoint(const wxPoint& pt)
+ {
+-    GdkRectangle rect;
+-    GdkDisplay* display = ::GetDisplay();
+-    GdkMonitor* monitor = gdk_display_get_monitor_at_point(display, pt.x, pt.y);
+-    gdk_monitor_get_geometry(monitor, &rect);
+-    if (wxRect(rect.x, rect.y, rect.width, rect.height).Contains(pt))
++    GdkDisplay* const display = GetDisplay();
++#ifdef GDK_WINDOWING_X11
++    // wx screen points are global only on X11. Wayland does not expose a
++    // global monitor coordinate space, so do not guess from toplevel-relative
++    // window coordinates here.
++    if (display && wxGTKImpl::IsX11(display))
+     {
+-        for (unsigned i = gdk_display_get_n_monitors(display); i--;)
++        GListModel* const monitors = GetMonitors();
++        const guint count = monitors ? g_list_model_get_n_items(monitors) : 0;
++        for (guint i = 0; i < count; ++i)
+         {
+-            if (gdk_display_get_monitor(display, i) == monitor)
+-                return i;
++            GdkMonitor* const monitor = GDK_MONITOR(g_list_model_get_item(monitors, i));
++            GdkRectangle rect;
++            gdk_monitor_get_geometry(monitor, &rect);
++            g_object_unref(monitor);
++            if (wxRect(rect.x, rect.y, rect.width, rect.height).Contains(pt))
++                return int(i);
+         }
+     }
++#else
++    wxUnusedVar(pt);
++#endif
+     return wxNOT_FOUND;
+ }
+ 
+ int wxDisplayFactoryGTK::GetFromWindow(const wxWindow* win)
+ {
+-    if (win && win->m_widget)
+-    {
+-        GdkDisplay* display = gtk_widget_get_display(win->m_widget);
+-        GdkMonitor* monitor;
+-        if (GdkWindow* window = gtk_widget_get_window(win->m_widget))
+-            monitor = gdk_display_get_monitor_at_window(display, window);
+-        else
+-            monitor = gdk_display_get_primary_monitor(display);
+-
+-        for (unsigned i = gdk_display_get_n_monitors(display); i--;)
+-        {
+-            if (gdk_display_get_monitor(display, i) == monitor)
+-                return i;
+-        }
+-    }
+-    return wxNOT_FOUND;
++    if (!win || !win->m_widget)
++        return wxNOT_FOUND;
++    GtkNative* const native = gtk_widget_get_native(win->m_widget);
++    GdkSurface* const surface = native ? gtk_native_get_surface(native) : NULL;
++    GdkDisplay* const display = surface ? gdk_surface_get_display(surface) : NULL;
++    GdkMonitor* const monitor = display && surface
++        ? gdk_display_get_monitor_at_surface(display, surface)
++        : NULL;
++    return GetMonitorIndex(monitor);
+ }
+ #endif // wxUSE_DISPLAY
+ 
+ wxDisplayImplGTK::wxDisplayImplGTK(unsigned i)
+-    : base_type(i)
+-    , m_monitor(gdk_display_get_monitor(GetDisplay(), i))
++    : base_type(i), m_monitor(GetMonitor(i))
+ {
+ }
+ 
++wxDisplayImplGTK::~wxDisplayImplGTK()
++{
++    if (m_monitor)
++        g_object_unref(m_monitor);
++}
++
+ wxRect wxDisplayImplGTK::GetGeometry() const
+ {
++    if (!m_monitor)
++        return wxRect();
+     GdkRectangle rect;
+     gdk_monitor_get_geometry(m_monitor, &rect);
+     return wxRect(rect.x, rect.y, rect.width, rect.height);
+@@ -136,9 +179,25 @@
+ 
+ wxRect wxDisplayImplGTK::GetClientArea() const
+ {
+-    GdkRectangle rect;
+-    gdk_monitor_get_workarea(m_monitor, &rect);
+-    return wxRect(rect.x, rect.y, rect.width, rect.height);
++    wxRect client = GetGeometry();
++#ifdef GDK_WINDOWING_X11
++    GdkDisplay* const display = GetDisplay();
++    if (display && wxGTKImpl::IsX11(display))
++    {
++        GdkRectangle work = { 0, 0, 0, 0 };
++        wxGetWorkAreaX11(gdk_x11_display_get_xscreen(display),
++                         work.x, work.y, work.width, work.height);
++        if (work.width > 0 && work.height > 0)
++        {
++            GdkRectangle geometry = { client.x, client.y, client.width, client.height };
++            gdk_rectangle_intersect(&geometry, &work, &geometry);
++            client = wxRect(geometry.x, geometry.y, geometry.width, geometry.height);
++        }
++    }
++#endif
++    // Wayland has no public GTK4 workarea API; keep the monitor geometry
++    // rather than inventing a compositor-global workarea.
++    return client;
+ }
+ 
+ int wxDisplayImplGTK::GetDepth() const
+@@ -148,13 +207,20 @@
+ 
+ double wxDisplayImplGTK::GetScaleFactor() const
+ {
+-    return gdk_monitor_get_scale_factor(m_monitor);
++    return m_monitor ? gdk_monitor_get_scale_factor(m_monitor) : 1.0;
+ }
+ 
+ #if wxUSE_DISPLAY
+ bool wxDisplayImplGTK::IsPrimary() const
+ {
+-    return gdk_monitor_is_primary(m_monitor) != 0;
++#ifdef GDK_WINDOWING_X11
++    GdkDisplay* const display = GetDisplay();
++    if (display && wxGTKImpl::IsX11(display))
++        return GetMonitorIndex(gdk_x11_display_get_primary_monitor(display)) == int(GetIndex());
++#endif
++    // GTK4/Wayland has no primary-monitor property; use model order as the
++    // stable fallback for wxDisplay()'s primary-display API.
++    return GetIndex() == 0;
+ }
+ 
+ wxArrayVideoModes
+--- src/gtk/utilsgtk.cpp.orig
++++ src/gtk/utilsgtk.cpp
+@@ -49,7 +49,9 @@
+     #include "wx/unix/utilsx11.h"
+ #endif
+ 
++#ifndef __WXGTK4__
+ GdkWindow* wxGetTopLevelGDK();
++#endif
+ 
+ //----------------------------------------------------------------------------
+ // misc.
+@@ -57,7 +59,12 @@
+ 
+ void wxBell()
+ {
++#ifdef __WXGTK4__
++    if (GdkDisplay* const display = gdk_display_get_default())
++        gdk_display_beep(display);
++#else
+     gdk_beep();
++#endif
+ }
+ 
+ // ----------------------------------------------------------------------------
+@@ -75,13 +82,15 @@
+ {
+     wxDisplayInfo info = { NULL, wxDisplayNone };
+ #if defined(GDK_WINDOWING_WAYLAND) || defined(GDK_WINDOWING_X11)
+-    GdkDisplay *display = gdk_window_get_display(wxGetTopLevelGDK());
++#ifdef __WXGTK4__
++    GdkDisplay* const display = gdk_display_get_default();
++#else
++    GdkDisplay* const display = gdk_window_get_display(wxGetTopLevelGDK());
++#endif
+ #endif
+ 
+ #ifdef GDK_WINDOWING_X11
+-#ifdef __WXGTK3__
+-    if (wxGTKImpl::IsX11(display))
+-#endif
++    if (display && wxGTKImpl::IsX11(display))
+     {
+         info.dpy = GDK_DISPLAY_XDISPLAY(display);
+         info.type = wxDisplayX11;
+@@ -342,6 +351,38 @@
+ 
+ #endif // wxDEBUG_LEVEL && wxUSE_STACKWALKER
+ 
++#ifdef __WXGTK4__
++struct wxGtkDialogRunState
++{
++    GMainLoop* loop;
++    gint response;
++    bool done;
++};
++
++static void wxGtkDialogResponse(GtkDialog*, gint response, gpointer data)
++{
++    wxGtkDialogRunState* const state = static_cast<wxGtkDialogRunState*>(data);
++    state->response = response;
++    state->done = true;
++    if (g_main_loop_is_running(state->loop))
++        g_main_loop_quit(state->loop);
++}
++
++static gint wxGtkDialogRun(GtkDialog* dialog)
++{
++    wxGtkDialogRunState state = { g_main_loop_new(NULL, FALSE), GTK_RESPONSE_NONE, false };
++    const gulong handler = g_signal_connect(dialog, "response",
++        G_CALLBACK(wxGtkDialogResponse), &state);
++    gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
++    gtk_window_present(GTK_WINDOW(dialog));
++    if (!state.done)
++        g_main_loop_run(state.loop);
++    g_signal_handler_disconnect(dialog, handler);
++    g_main_loop_unref(state.loop);
++    return state.response;
++}
++#endif // __WXGTK4__
++
+ bool wxGUIAppTraits::ShowAssertDialog(const wxString& msg)
+ {
+ #if wxDEBUG_LEVEL
+@@ -355,16 +396,16 @@
+         GtkWidget *dialog = gtk_assert_dialog_new();
+         gtk_assert_dialog_set_message(GTK_ASSERT_DIALOG(dialog), msg.mb_str());
+ 
++#ifndef __WXGTK4__
+         GdkDisplay* display = gtk_widget_get_display(dialog);
+-#ifdef __WXGTK4__
+-        gdk_seat_ungrab(gdk_display_get_default_seat(display));
+-#elif defined(__WXGTK3__)
++#endif
++#ifdef __WXGTK3__
+         wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+         GdkDeviceManager* manager = gdk_display_get_device_manager(display);
+         GdkDevice* device = gdk_device_manager_get_client_pointer(manager);
+         gdk_device_ungrab(device, unsigned(GDK_CURRENT_TIME));
+         wxGCC_WARNING_RESTORE()
+-#else
++#elif !defined(__WXGTK4__)
+         gdk_display_pointer_ungrab(display, unsigned(GDK_CURRENT_TIME));
+ #endif
+ 
+@@ -382,7 +423,11 @@
+         );
+ #endif // wxUSE_STACKWALKER
+ 
+-        gint result = gtk_dialog_run(GTK_DIALOG (dialog));
++#ifdef __WXGTK4__
++        gint result = wxGtkDialogRun(GTK_DIALOG(dialog));
++#else
++        gint result = gtk_dialog_run(GTK_DIALOG(dialog));
++#endif
+         bool returnCode = false;
+         switch (result)
+         {
+@@ -407,7 +452,11 @@
+                 wxFAIL_MSG( wxT("unexpected return code from GtkAssertDialog") );
+         }
+ 
++#ifdef __WXGTK4__
++        gtk_window_destroy(GTK_WINDOW(dialog));
++#else
+         gtk_widget_destroy(dialog);
++#endif
+         return returnCode;
+     }
+ #endif // wxDEBUG_LEVEL

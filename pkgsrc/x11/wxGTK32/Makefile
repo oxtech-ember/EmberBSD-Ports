@@ -173,6 +173,8 @@ post-install:
 .include "../../textproc/libspelling/buildlink3.mk"
 .include "../../www/webkit-gtk60/buildlink3.mk"
 .include "../../x11/libSM/buildlink3.mk"
+.include "../../x11/libXi/buildlink3.mk"
+BUILDLINK_API_DEPENDS.gtk4+=	gtk4>=4.24.0
 .include "../../x11/gtk4/buildlink3.mk"
 PLIST_SRC+=	PLIST.gtk4
 .endif

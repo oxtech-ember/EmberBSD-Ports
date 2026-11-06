@@ -58,6 +58,31 @@ CPP='/absolute/llvm-seed/bin/clang -E' CLANGBASE=/absolute/llvm-seed \
 Use the real seed paths and host ABI, with any other needed bootstrap inputs
 explicitly selected. The fragment is read only for bootstrap packages;
 `--mk-fragment` remains the separate installed package configuration input.
+The installed package configuration must include the exported
+`EMBERBSD-DEFAULTS-MK.CONF` as well as the bootstrap-generated pkgsrc settings.
+These are separate from a later SDK-generated native-tool include.
+For initial nested builds select `PKG_AR`, `PKG_RANLIB`, `PKG_NM`, `PKG_STRIP`,
+`PKG_LD` and `PKG_AS`, their ordinary make aliases, and the corresponding
+`TOOLS_PLATFORM` variables. For example, `AR` alone does not select pkgsrc's
+`TOOLS_PLATFORM.ar`; configure scripts can otherwise find no usable `ar`.
+Keep `TOOLS_PATH.readelf` selected in the installed configuration too.
+Use the seed's LLVM archive tools and the explicitly selected host assembler
+and linker. These initial providers do not qualify the final native prefix.
+
+Install `shells/mksh` before building native CMake. Then select that prefix's
+`bin/mksh` as `SH`, `CONFIG_SHELL` and `TOOLS_PLATFORM.sh` in the initial package
+configuration. The common CMake recipe uses this selection for generated Unix
+Makefiles. A CMake initially built with the host `/bin/sh` must be rebuilt with
+the prefix shell before ordinary prefix-only builds. Check the generated
+Makefile's `SHELL`, not only `cmake --version`.
+For an initial `net/libfetch` and `net/fetch` build, select
+`PKG_OPTIONS.libfetch+=openssl` and install the Mozilla CA packages described
+above. The normal native profile sets this option after bootstrap.
+
+Follow the [gettext bootstrap composition](../gettext-bootstrap.md) before
+building a dependency closure that needs GLib and gettext style support.
+Use a control Python with `ctypes`, `ssl` and the compression modules required
+by the selected archives (`lzma` for LLVM's xz archive).
 For the initial native tool closure, set `EMBERBSD_NATIVE_BOOTSTRAP=yes` in
 its pkgsrc make configuration. The common lz4 recipe then uses upstream GNU
 Make without CMake package metadata, breaking the cmake → libarchive → zstd

@@ -8,6 +8,8 @@ The new directory holds pkgsrc/ and pkgsrc-export.json.  Source owners accept
 it with verify-source --pkgsrc-export DIR and refuse it unless the Ports
 commit, the pinned pkgsrc commit, the overlay inputs and the patch tool still
 match the receipt.
+Use the same umask for initial export and scoped updates. Patch-created output
+modes depend on it; replay refuses a different preimage rather than ignoring modes.
 """
 import argparse
 import importlib.util

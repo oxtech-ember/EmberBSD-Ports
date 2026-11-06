@@ -5,6 +5,7 @@ import importlib.util
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -33,6 +34,16 @@ class CurrentIdentityTest(unittest.TestCase):
         self.identity = {'effective': self.effective, 'owner_sha256': '3' * 64}
         self.record = sourceprep.write_prepared_tree_receipt(
             self.source, package=owner.PACKAGE, identity=self.identity)
+
+    def test_standalone_cli_loads_selected_sdk_without_pythonpath(self):
+        result = subprocess.run(
+            [sys.executable, '-I', '-S', '-B', str(ROOT / 'scripts/libarchive-source.py'),
+             'verify', str(self.source), '--sdk-source', os.environ['EMBERBSD_SDK_SOURCE'],
+             '--git', str(self.root / 'missing-git')],
+            capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('git must be an absolute executable', result.stderr)
+        self.assertNotIn('ModuleNotFoundError', result.stderr)
 
     def test_git_identity_receipt_needs_no_export(self):
         with patch.object(owner, 'selected_identity', return_value=self.identity), \

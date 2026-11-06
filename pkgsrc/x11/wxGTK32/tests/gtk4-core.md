@@ -18,8 +18,11 @@ frame. Native children have individual retained nodes, released on unparent.
 to the nearest wx owner, pointer gestures and adjustment notifications shared
 by window scrollbars and `wxScrollBar`. It connects `wxScrollHelper` to the
 container's virtual extent. Native size notifications observe completed frames
-without requesting continuous animation. These changes are still uncompiled;
-the rest of the window, input, rendering and GL integration is in progress.
+without requesting continuous animation. The container, settings, theme
+renderer, dialog, scroll helper and scrollbar translation units pass target
+Clang syntax compilation with GTK 4.24.1 source/generated headers and a real
+configured wxWidgets setup. Library linking and GUI/runtime acceptance remain
+pending; this check does not establish a working wxWidgets package.
 
 Ordinary wx child windows expose their actual `GtkNative` surface through
 `GTKGetSurface()`, rather than pretending every child owns a GdkWindow.
@@ -61,7 +64,17 @@ wxWidgets include/defines and GTK4 pkg-config flags. Run with
 `G_DEBUG=fatal-warnings`. Display absence is a failure, never a passing test.
 This component test does not establish wxWindow, GPU or KiCad acceptance.
 
-The container patch passes zero-fuzz application to the verified upstream
-3.2.12 release. GTK4 DC/bitmap changes and the combined backend still need
-compilation, runtime and memory checks. Do not publish a wxWidgets binary
+`patch-gtk4-style` obtains theme colours and dimensions from cached native
+GTK widgets. Scoped contexts restore their state after rendering. Text
+selection uses named theme colours because GTK4 does not expose the textview
+selection CSS node as a widget. Frame-decoration metrics use the X11 window
+manager property when available; unknown server decorations on Wayland report
+an unavailable metric. GTK4 widgets always use buffered GSK rendering.
+`style4-contract.cpp` exercises theme changes, native font/metrics and scoped
+button/check/radio rendering through the public wx renderer. It passes target
+syntax compilation; its real-display runtime check is still pending.
+
+The combined patches pass zero-fuzz application to the verified upstream
+3.2.12 release. Full backend compilation, linking, runtime and memory checks
+remain required. Do not publish a wxWidgets binary
 based only on patch-application or metadata tests.

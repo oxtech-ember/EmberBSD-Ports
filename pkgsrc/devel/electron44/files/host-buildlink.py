@@ -550,21 +550,22 @@ def refresh_selection(saved, current, candidate, invocation, candidate_invocatio
     selected_root = str(Path(source))
     targets = {str((Path(work) / 'objects/devel/electron-host-context/work/.buildlink' / name).resolve(strict=True))
                for name in current['links']}
-    def canonical(path, owner_root):
-        if path not in targets and path.startswith(owner_root + '/'):
-            return selected_root + path[len(owner_root):]
+    def canonical(path):
+        for root in (previous_root, current_root):
+            if path not in targets and path.startswith(root + '/'):
+                return selected_root + path[len(root):]
         return path
-    def map_inputs(inputs, owner_root):
+    def map_inputs(inputs):
         mapped = {}
         for path, digest in inputs.items():
-            path = canonical(path, owner_root)
+            path = canonical(path)
             if path in mapped and mapped[path] != digest:
                 raise ValueError('conflicting host buildlink source paths')
             mapped[path] = digest
         return mapped
-    old_inputs = map_inputs(old_inputs, previous_root)
-    now = map_inputs(now, current_root)
-    canonical_script = canonical(str(script), current_root)
+    old_inputs = map_inputs(old_inputs)
+    now = map_inputs(now)
+    canonical_script = canonical(str(script))
     # Makefile inputs may legitimately change; all other prior inputs remain exact.
     allowed = str(Path(source) / 'mk') + '/'
     if set(old_inputs) != set(now):
@@ -581,7 +582,7 @@ def refresh_selection(saved, current, candidate, invocation, candidate_invocatio
                 key = '@WORK@/' + p.relative_to(base).as_posix()
                 digest = _normal_work_file(p, base)
             else:
-                key = canonical(path, current_root)
+                key = canonical(path)
             if key in result and result[key] != digest:
                 raise ValueError('conflicting regenerated host buildlink inputs')
             result[key] = digest
@@ -776,9 +777,13 @@ def main():
                         jsonio.write_json(work / 'selection.json', {'identity': updated, 'invocation': invocation}, exclusive=False)
                         journal.unlink()
                     else:
-                        refreshed = refresh_selection(saved, current, candidate, invocation,
-                                                      candidate_saved.get('invocation'), work, candidate_work,
-                                                      source, Path(__file__).resolve(strict=True))
+                        try:
+                            refreshed = refresh_selection(saved, current, candidate, invocation,
+                                                          candidate_saved.get('invocation'), work, candidate_work,
+                                                          source, Path(__file__).resolve(strict=True))
+                        except ValueError as error:
+                            print('host buildlink cannot refresh: ' + str(error), file=sys.stderr)
+                            sys.exit(3)
                         jsonio.write_json(work / 'selection.json', refreshed, exclusive=False)
                 elif args.migrate_selection:
                     migrated = migrate_legacy_selection(

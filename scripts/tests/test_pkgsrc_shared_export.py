@@ -143,6 +143,48 @@ class SharedExportTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'update is incomplete'):
             self.select(directory)
 
+    def test_private_link_targets_keep_their_permissions_in_replay_inputs(self):
+        files = self.root / 'pkgsrc/cat/pkg/files'
+        files.mkdir()
+        payload = files / 'payload'
+        payload.write_bytes(b'private source\n')
+        (files / 'link').symlink_to('payload')
+        for mode in (0o400, 0o444, 0o600, 0o640, 0o700, 0o750):
+            with self.subTest(mode=oct(mode)):
+                payload.chmod(mode)
+                directory = Path(self.temp.name) / ('export-' + oct(mode))
+                receipt = identity.create_shared_export(
+                    directory, self.root, sys.executable, SDK, str(self.tool))
+                entry = receipt['dirty_inputs']['pkgsrc/cat/pkg/files/link']
+                self.assertEqual(entry['mode'], mode)
+                self.assertEqual(payload.stat().st_mode & 0o777, mode)
+                self.assertEqual(
+                    (directory / '.pkgsrc-update-inputs' / entry['sha256']).read_bytes(),
+                    payload.read_bytes())
+                identity.validate_shared_receipt(receipt)
+                self.assertEqual(self.select(directory), directory / 'pkgsrc')
+
+    def test_dirty_input_receipt_rejects_write_and_special_bits(self):
+        source = self.root / 'pkgsrc/export.conf'
+        source.chmod(0o600)
+        receipt = identity.create_shared_export(
+            Path(self.temp.name) / 'unsafe-mode-export', self.root,
+            sys.executable, SDK, str(self.tool))
+        for mode in (0o666, 0o777, 0o4755, 0o000, True):
+            with self.subTest(mode=mode):
+                receipt['dirty_inputs']['pkgsrc/export.conf']['mode'] = mode
+                with self.assertRaisesRegex(ValueError, 'invalid dirty input inventory'):
+                    identity.validate_shared_receipt(receipt)
+
+    def test_clean_private_input_mode_is_recorded_for_replay(self):
+        source = self.root / 'pkgsrc/export.conf'
+        source.chmod(0o600)
+        directory = Path(self.temp.name) / 'clean-private-export'
+        receipt = identity.create_shared_export(
+            directory, self.root, sys.executable, SDK, str(self.tool))
+        self.assertEqual(receipt['dirty_inputs']['pkgsrc/export.conf']['mode'], 0o600)
+        self.assertEqual(source.stat().st_mode & 0o777, 0o600)
+
     def test_export_identity_covers_commits_overlays_and_patch_tool(self):
         before = identity.export_identity(self.root, sys.executable, SDK, str(self.tool))
         self.assertEqual(before['ports_commit'], 'a' * 40)

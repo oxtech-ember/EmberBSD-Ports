@@ -1,0 +1,1204 @@
+$NetBSD$
+
+GTK4 window integration (work in progress).
+Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
+
+--- include/wx/gtk/private.h.orig
++++ include/wx/gtk/private.h
+@@ -113,6 +113,9 @@
+ //
+ // the returned widgets shouldn't be destroyed, this is done automatically on
+ // shutdown
++#ifdef __WXGTK4__
++WXDLLIMPEXP_CORE GtkWidget *GetStyleWidget(GType type);
++#endif
+ WXDLLIMPEXP_CORE GtkWidget *GetButtonWidget();
+ WXDLLIMPEXP_CORE GtkWidget *GetCheckButtonWidget();
+ WXDLLIMPEXP_CORE GtkWidget *GetComboBoxWidget();
+--- include/wx/gtk/private/stylecontext.h.orig
++++ include/wx/gtk/private/stylecontext.h
+@@ -32,6 +32,10 @@
+     wxGtkStyleContext& AddTreeviewHeaderButton(int pos);
+ #endif // GTK >= 3.20
+     wxGtkStyleContext& AddWindow(const char* className2 = NULL);
++#ifdef __WXGTK4__
++    GtkWidget* GetWidget() const { return m_widget; }
++    wxGtkStyleContext& AddRadioButton();
++#endif
+     void Bg(wxColour& color, int state = GTK_STATE_FLAG_NORMAL) const;
+     void Fg(wxColour& color, int state = GTK_STATE_FLAG_NORMAL) const;
+     void Border(wxColour& color) const;
+@@ -39,7 +43,13 @@
+ 
+ private:
+     GtkStyleContext* m_context;
++#ifdef __WXGTK4__
++    void Select(GtkWidget* widget);
++    GtkWidget* m_widget;
++    bool m_selection;
++#else
+     GtkWidgetPath* const m_path;
++#endif
+     const int m_scale;
+ 
+     wxDECLARE_NO_COPY_CLASS(wxGtkStyleContext);
+--- src/gtk/private.cpp.orig
++++ src/gtk/private.cpp
+@@ -35,6 +35,23 @@
+ 
+ static GtkWidget *gs_container = NULL;
+ 
++#ifdef __WXGTK4__
++static GtkWidget* GetContainer()
++{
++    if (!gs_container)
++    {
++        GtkWidget* window = gtk_window_new();
++        gs_container = gtk_fixed_new();
++        gtk_window_set_child(GTK_WINDOW(window), gs_container);
++    }
++    return gs_container;
++}
++static void AddToContainer(GtkWidget* widget)
++{
++    gtk_fixed_put(GTK_FIXED(GetContainer()), widget, 0, 0);
++}
++static GHashTable* gs_styleWidgets;
++#else
+ static GtkContainer* GetContainer()
+ {
+     if ( gs_container == NULL )
+@@ -46,6 +63,8 @@
+     return GTK_CONTAINER(gs_container);
+ }
+ 
++#endif
++
+ GtkWidget *GetButtonWidget()
+ {
+     static GtkWidget *s_button = NULL;
+@@ -54,7 +73,11 @@
+     {
+         s_button = gtk_button_new();
+         g_object_add_weak_pointer(G_OBJECT(s_button), (void**)&s_button);
++#ifdef __WXGTK4__
++        AddToContainer(s_button);
++#else
+         gtk_container_add(GetContainer(), s_button);
++#endif
+         gtk_widget_realize(s_button);
+     }
+ 
+@@ -69,7 +92,11 @@
+     {
+         s_notebook = gtk_notebook_new();
+         g_object_add_weak_pointer(G_OBJECT(s_notebook), (void**)&s_notebook);
++#ifdef __WXGTK4__
++        AddToContainer(s_notebook);
++#else
+         gtk_container_add(GetContainer(), s_notebook);
++#endif
+         gtk_widget_realize(s_notebook);
+     }
+ 
+@@ -84,7 +111,11 @@
+     {
+         s_button = gtk_check_button_new();
+         g_object_add_weak_pointer(G_OBJECT(s_button), (void**)&s_button);
++#ifdef __WXGTK4__
++        AddToContainer(s_button);
++#else
+         gtk_container_add(GetContainer(), s_button);
++#endif
+         gtk_widget_realize(s_button);
+     }
+ 
+@@ -99,7 +130,11 @@
+     {
+         s_button = gtk_combo_box_new();
+         g_object_add_weak_pointer(G_OBJECT(s_button), (void**)&s_button);
++#ifdef __WXGTK4__
++        AddToContainer(s_button);
++#else
+         gtk_container_add(GetContainer(), s_button);
++#endif
+         gtk_widget_realize( s_button );
+     }
+ 
+@@ -115,7 +150,11 @@
+     {
+         s_entry = gtk_entry_new();
+         g_object_add_weak_pointer(G_OBJECT(s_entry), (void**)&s_entry);
++#ifdef __WXGTK4__
++        AddToContainer(s_entry);
++#else
+         gtk_container_add(GetContainer(), s_entry);
++#endif
+         gtk_widget_realize(s_entry);
+     }
+ 
+@@ -194,9 +233,20 @@
+ 
+     if ( !s_button )
+     {
++#ifdef __WXGTK4__
++        s_button = gtk_check_button_new();
++        GtkWidget* peer = gtk_check_button_new();
++        AddToContainer(peer);
++        gtk_check_button_set_group(GTK_CHECK_BUTTON(s_button), GTK_CHECK_BUTTON(peer));
++#else
+         s_button = gtk_radio_button_new(NULL);
++#endif
+         g_object_add_weak_pointer(G_OBJECT(s_button), (void**)&s_button);
++#ifdef __WXGTK4__
++        AddToContainer(s_button);
++#else
+         gtk_container_add(GetContainer(), s_button);
++#endif
+         gtk_widget_realize( s_button );
+     }
+ 
+@@ -220,7 +270,11 @@
+             widget = gtk_vpaned_new();
+ #endif
+         g_object_add_weak_pointer(G_OBJECT(widget), (void**)&widgets[gtkOrient]);
++#ifdef __WXGTK4__
++        AddToContainer(widget);
++#else
+         gtk_container_add(GetContainer(), widget);
++#endif
+         gtk_widget_realize(widget);
+     }
+ 
+@@ -235,7 +289,11 @@
+     {
+         s_button = gtk_entry_new();
+         g_object_add_weak_pointer(G_OBJECT(s_button), (void**)&s_button);
++#ifdef __WXGTK4__
++        AddToContainer(s_button);
++#else
+         gtk_container_add(GetContainer(), s_button);
++#endif
+         gtk_widget_realize( s_button );
+     }
+ 
+@@ -250,12 +308,55 @@
+     {
+         s_tree = gtk_tree_view_new();
+         g_object_add_weak_pointer(G_OBJECT(s_tree), (void**)&s_tree);
++#ifdef __WXGTK4__
++        AddToContainer(s_tree);
++#else
+         gtk_container_add(GetContainer(), s_tree);
++#endif
+         gtk_widget_realize(s_tree);
+     }
+ 
+     return s_tree;
+ }
++
++#ifdef __WXGTK4__
++// One rooted native widget per kind. GTK updates its CSS when settings change;
++// the scoped style helper saves/restores each context instead of mutating it
++// permanently. No GtkWidgetPath or private CSS node API is used.
++GtkWidget* GetStyleWidget(GType type)
++{
++    if (type == GTK_TYPE_WINDOW)
++        return gtk_widget_get_parent(GetContainer());
++    if (type == GTK_TYPE_BUTTON) return GetButtonWidget();
++    if (type == GTK_TYPE_CHECK_BUTTON) return GetCheckButtonWidget();
++    if (type == GTK_TYPE_ENTRY) return GetEntryWidget();
++    if (type == GTK_TYPE_TREE_VIEW) return GetTreeWidget();
++    if (type == GTK_TYPE_NOTEBOOK) return GetNotebookWidget();
++    if (type == GTK_TYPE_PANED) return GetSplitterWidget();
++    if (!gs_styleWidgets)
++        gs_styleWidgets = g_hash_table_new(g_direct_hash, g_direct_equal);
++    GtkWidget* widget = static_cast<GtkWidget*>(
++        g_hash_table_lookup(gs_styleWidgets, GSIZE_TO_POINTER(type)));
++    if (!widget)
++    {
++        if (type == GTK_TYPE_LINK_BUTTON)
++            widget = gtk_link_button_new_with_label("", "");
++        else if (type == GTK_TYPE_SCROLLBAR)
++            widget = gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, NULL);
++        else
++            widget = GTK_WIDGET(g_object_new(type, NULL));
++        if (!GTK_IS_WINDOW(widget))
++        {
++            if (GTK_IS_POPOVER(widget))
++                gtk_widget_set_parent(widget, GetContainer());
++            else
++                AddToContainer(widget);
++        }
++        g_hash_table_insert(gs_styleWidgets, GSIZE_TO_POINTER(type), widget);
++    }
++    return widget;
++}
++#endif
+ 
+ // Module for destroying created widgets
+ class WidgetsCleanupModule : public wxModule
+@@ -268,10 +369,25 @@
+ 
+     virtual void OnExit() wxOVERRIDE
+     {
++#ifdef __WXGTK4__
++        if (gs_styleWidgets)
++        {
++            GHashTableIter iter;
++            gpointer value;
++            g_hash_table_iter_init(&iter, gs_styleWidgets);
++            while (g_hash_table_iter_next(&iter, NULL, &value))
++                if (GTK_IS_WINDOW(value)) gtk_window_destroy(GTK_WINDOW(value));
++            g_clear_pointer(&gs_styleWidgets, g_hash_table_unref);
++        }
++#endif
+         if ( gs_container )
+         {
+             GtkWidget* parent = gtk_widget_get_parent(gs_container);
++#ifdef __WXGTK4__
++            gtk_window_destroy(GTK_WINDOW(parent));
++#else
+             gtk_widget_destroy(parent);
++#endif
+             gs_container = NULL;
+         }
+     }
+--- src/gtk/settings.cpp.orig
++++ src/gtk/settings.cpp
+@@ -20,13 +20,54 @@
+ #include "wx/fontutil.h"
+ #include "wx/fontenum.h"
+ 
++#include "wx/gtk/private.h"
+ #include "wx/gtk/private/wrapgtk.h"
+ #include "wx/gtk/private/gtk3-compat.h"
+ #include "wx/gtk/private/win_gtk.h"
+ #include "wx/gtk/private/stylecontext.h"
+ #include "wx/gtk/private/value.h"
+ 
++#ifdef __WXGTK4__
++#ifdef GDK_WINDOWING_X11
++#include <gdk/x11/gdkx.h>
++#include <X11/Xatom.h>
++#endif
++static bool wxGetFrameExtents(GdkSurface* surface, int* left, int* right, int* top, int* bottom)
++{
++#ifdef GDK_WINDOWING_X11
++    if (GDK_IS_X11_SURFACE(surface))
++    {
++        Display* display = gdk_x11_display_get_xdisplay(gdk_surface_get_display(surface));
++        Atom property = XInternAtom(display, "_NET_FRAME_EXTENTS", True), actual;
++        if (property == None) return false;
++        int format;
++        unsigned long count, remaining;
++        unsigned char* data = NULL;
++        int result = XGetWindowProperty(display, gdk_x11_surface_get_xid(surface),
++            property, 0, 4, False, XA_CARDINAL, &actual, &format, &count, &remaining, &data);
++        bool valid = result == Success && actual == XA_CARDINAL && format == 32 && count == 4;
++        if (valid)
++        {
++            unsigned long* values = reinterpret_cast<unsigned long*>(data);
++            const double scale = gdk_surface_get_scale(surface);
++            if (left) *left = wxRound(values[0] / scale);
++            if (right) *right = wxRound(values[1] / scale);
++            if (top) *top = wxRound(values[2] / scale);
++            if (bottom) *bottom = wxRound(values[3] / scale);
++        }
++        if (data) XFree(data);
++        return valid;
++    }
++#else
++    wxUnusedVar(surface); wxUnusedVar(left); wxUnusedVar(right);
++    wxUnusedVar(top); wxUnusedVar(bottom);
++#endif
++    // Wayland doesn't expose server-decoration dimensions.
++    return false;
++}
++#else
+ bool wxGetFrameExtents(GdkWindow* window, int* left, int* right, int* top, int* bottom);
++#endif
+ 
+ // ----------------------------------------------------------------------------
+ // wxSystemSettings implementation
+@@ -36,6 +77,12 @@
+ static int gs_scrollWidth;
+ static GtkWidget* gs_tlw_parent;
+ 
++#ifdef __WXGTK4__
++static GtkWidget* ContainerWidget()
++{
++    return wxGTKPrivate::GetStyleWidget(GTK_TYPE_WINDOW);
++}
++#else
+ static GtkContainer* ContainerWidget()
+ {
+     static GtkContainer* s_widget;
+@@ -49,8 +96,13 @@
+     return s_widget;
+ }
+ 
++#endif
++
+ static GtkWidget* ScrollBarWidget()
+ {
++#ifdef __WXGTK4__
++    return wxGTKPrivate::GetStyleWidget(GTK_TYPE_SCROLLBAR);
++#else
+     static GtkWidget* s_widget;
+     if (s_widget == NULL)
+     {
+@@ -62,6 +114,7 @@
+ #endif
+     }
+     return s_widget;
++#endif
+ }
+ 
+ #ifndef __WXGTK3__
+@@ -245,6 +298,9 @@
+ }
+ }
+ 
++#ifdef __WXGTK4__
++#include "stylecontext4.inc"
++#else
+ // Some notes on using GtkStyleContext. Style information from a context
+ // attached to a non-visible GtkWidget is not accurate. The context has an
+ // internal visibility state, controlled by the widget, which it presumably
+@@ -549,6 +605,8 @@
+ 
+ //-----------------------------------------------------------------------------
+ 
++#endif // __WXGTK4__
++
+ wxColour wxSystemSettingsNative::GetColour(wxSystemColour index)
+ {
+     if (unsigned(index) > wxSYS_COLOUR_MAX)
+@@ -564,6 +622,10 @@
+         once = true;
+         g_signal_connect(gtk_settings_get_default(), "notify::gtk-theme-name",
+             G_CALLBACK(notify_gtk_theme_name), NULL);
++#ifdef __WXGTK4__
++        g_signal_connect(gtk_settings_get_default(), "notify::gtk-application-prefer-dark-theme",
++            G_CALLBACK(notify_gtk_theme_name), NULL);
++#endif
+     }
+ 
+     wxGtkStyleContext sc;
+@@ -575,7 +637,9 @@
+     case wxSYS_COLOUR_GRADIENTACTIVECAPTION:
+     case wxSYS_COLOUR_GRADIENTINACTIVECAPTION:
+ #if GTK_CHECK_VERSION(3,10,0)
++#ifndef __WXGTK4__
+         if (gtk_check_version(3,10,0) == NULL)
++#endif
+         {
+             int state = GTK_STATE_FLAG_NORMAL;
+             if (index == wxSYS_COLOUR_INACTIVECAPTION ||
+@@ -616,7 +680,9 @@
+         break;
+     case wxSYS_COLOUR_CAPTIONTEXT:
+ #if GTK_CHECK_VERSION(3,10,0)
++#ifndef __WXGTK4__
+         if (gtk_check_version(3,10,0) == NULL)
++#endif
+         {
+             sc.AddHeaderbar().AddLabel().Fg(color);
+             break;
+@@ -628,7 +694,9 @@
+         break;
+     case wxSYS_COLOUR_INACTIVECAPTIONTEXT:
+ #if GTK_CHECK_VERSION(3,10,0)
++#ifndef __WXGTK4__
+         if (gtk_check_version(3,10,0) == NULL)
++#endif
+         {
+             sc.AddHeaderbar().AddLabel().Fg(color, GTK_STATE_FLAG_BACKDROP);
+             break;
+@@ -640,7 +708,9 @@
+         break;
+     case wxSYS_COLOUR_HOTLIGHT:
+         sc.Add(GTK_TYPE_LINK_BUTTON, "button", "link", NULL);
++#ifndef __WXGTK4__
+         if (wx_is_at_least_gtk3(12))
++#endif
+             sc.Fg(color, GTK_STATE_FLAG_LINK);
+ #ifndef __WXGTK4__
+         else
+@@ -676,7 +746,11 @@
+         sc.AddMenu().Bg(color);
+         break;
+     case wxSYS_COLOUR_MENUBAR:
++#ifdef __WXGTK4__
++        sc.Add(GTK_TYPE_BOX, "box", "menubar", NULL).Bg(color);
++#else
+         sc.Add(GTK_TYPE_MENU_BAR, "menubar", "menubar", NULL).Bg(color);
++#endif
+         break;
+     case wxSYS_COLOUR_MENUHILIGHT:
+         sc.AddMenuItem().Bg(color, GTK_STATE_FLAG_PRELIGHT);
+@@ -884,6 +958,11 @@
+                     g_signal_connect(gtk_settings_get_default(), "notify::gtk-font-name",
+                         G_CALLBACK(notify_gtk_font_name), NULL);
+                 }
++#ifdef __WXGTK4__
++                GtkWidget* label = wxGTKPrivate::GetStyleWidget(GTK_TYPE_LABEL);
++                info.description = pango_font_description_copy(
++                    pango_context_get_font_description(gtk_widget_get_pango_context(label)));
++#else
+                 ContainerWidget();
+                 int scale = 1;
+ #if GTK_CHECK_VERSION(3,10,0)
+@@ -894,6 +973,7 @@
+                 sc.AddButton().AddLabel();
+                 gtk_style_context_get(sc, GTK_STATE_FLAG_NORMAL,
+                     GTK_STYLE_PROPERTY_FONT, &info.description, NULL);
++#endif // __WXGTK4__
+ #else
+                 info.description = ButtonStyle()->font_desc;
+ #endif
+@@ -927,11 +1007,19 @@
+ 
+ // helper: return the GtkSettings either for the screen the current window is
+ // on or for the default screen if window is NULL
++#ifdef __WXGTK4__
++static GtkSettings* GetSettingsForWindowScreen(GdkSurface* window)
++{
++    return window ? gtk_settings_get_for_display(gdk_surface_get_display(window))
++                  : gtk_settings_get_default();
++}
++#else
+ static GtkSettings *GetSettingsForWindowScreen(GdkWindow *window)
+ {
+     return window ? gtk_settings_get_for_screen(gdk_window_get_screen(window))
+                   : gtk_settings_get_default();
+ }
++#endif
+ 
+ static int GetBorderWidth(wxSystemMetric index, const wxWindow* win)
+ {
+@@ -954,20 +1042,23 @@
+ }
+ 
+ #ifdef __WXGTK4__
+-static GdkRectangle GetMonitorGeom(GdkWindow* window)
+-{
+-    GdkMonitor* monitor;
+-    if (window)
+-        monitor = gdk_display_get_monitor_at_window(gdk_window_get_display(window), window);
+-    else
+-        monitor = gdk_display_get_primary_monitor(gdk_display_get_default());
+-    GdkRectangle rect;
+-    gdk_monitor_get_geometry(monitor, &rect);
++static GdkRectangle GetMonitorGeom(GdkSurface* window)
++{
++    GdkDisplay* display = window ? gdk_surface_get_display(window) : gdk_display_get_default();
++    GdkMonitor* monitor = window ? gdk_display_get_monitor_at_surface(display, window) : NULL;
++    if (monitor) g_object_ref(monitor);
++    else monitor = GDK_MONITOR(g_list_model_get_item(gdk_display_get_monitors(display), 0));
++    GdkRectangle rect = {};
++    if (monitor)
++    {
++        gdk_monitor_get_geometry(monitor, &rect);
++        g_object_unref(monitor);
++    }
+     return rect;
+ }
+ #endif
+ 
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) && !defined(__WXGTK4__)
+ static int GetNodeWidth(wxGtkStyleContext& sc)
+ {
+     int width;
+@@ -987,6 +1078,10 @@
+ static int GetScrollbarWidth()
+ {
+     int width;
++#ifdef __WXGTK4__
++    gtk_widget_measure(ScrollBarWidget(), GTK_ORIENTATION_HORIZONTAL, -1,
++                       &width, NULL, NULL, NULL);
++#else
+ #ifdef __WXGTK3__
+     if (wx_is_at_least_gtk3(20))
+     {
+@@ -1015,14 +1110,19 @@
+             "slider-width", &slider_width, "trough-border", &trough_border, NULL);
+         width = slider_width + (2 * trough_border);
+     }
++#endif // __WXGTK4__
+     return width;
+ }
+ 
+ int wxSystemSettingsNative::GetMetric( wxSystemMetric index, const wxWindow* win )
+ {
++#ifdef __WXGTK4__
++    GdkSurface* window = win ? win->GTKGetSurface() : NULL;
++#else
+     GdkWindow *window = NULL;
+     if (win)
+         window = gtk_widget_get_window(win->GetHandle());
++#endif
+ 
+     switch (index)
+     {
+@@ -1062,9 +1162,17 @@
+ 
+         case wxSYS_CURSOR_X:
+         case wxSYS_CURSOR_Y:
++#ifdef __WXGTK4__
++            {
++                gint size = 0;
++                g_object_get(GetSettingsForWindowScreen(window), "gtk-cursor-theme-size", &size, NULL);
++                return size > 0 ? size : -1;
++            }
++#else
+                 return gdk_display_get_default_cursor_size(
+                             window ? gdk_window_get_display(window)
+                                    : gdk_display_get_default());
++#endif
+ 
+         case wxSYS_DCLICK_X:
+         case wxSYS_DCLICK_Y:
+@@ -1297,7 +1405,11 @@
+ #endif
+     if (gs_tlw_parent)
+     {
++#ifdef __WXGTK4__
++        gtk_window_destroy(GTK_WINDOW(gs_tlw_parent));
++#else
+         gtk_widget_destroy(gs_tlw_parent);
++#endif
+         gs_tlw_parent = NULL;
+     }
+ }
+--- /dev/null
++++ src/gtk/stylecontext4.inc
+@@ -0,0 +1,222 @@
++///////////////////////////////////////////////////////////////////////////////
++// GTK4 theme queries through real, rooted widgets and public style APIs.
++// Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++
++namespace
++{
++GtkWidget* FindStyleChild(GtkWidget* widget, const char* name)
++{
++    for (GtkWidget* child = gtk_widget_get_first_child(widget); child;
++         child = gtk_widget_get_next_sibling(child))
++    {
++        if (strcmp(gtk_widget_get_css_name(child), name) == 0)
++            return child;
++        if (GtkWidget* found = FindStyleChild(child, name))
++            return found;
++    }
++    return NULL;
++}
++
++// GtkTooltip's implementation is private. A public GtkWindow subclass gives
++// the measurement widget the standard tooltip CSS name without accessing it.
++struct wxThemeTooltip { GtkWindow parent; };
++struct wxThemeTooltipClass { GtkWindowClass parent; };
++G_DEFINE_TYPE(wxThemeTooltip, wx_theme_tooltip, GTK_TYPE_WINDOW)
++static void wx_theme_tooltip_class_init(wxThemeTooltipClass* klass)
++{
++    gtk_widget_class_set_css_name(GTK_WIDGET_CLASS(klass), "tooltip");
++}
++static void wx_theme_tooltip_init(wxThemeTooltip* self)
++{
++    gtk_window_set_child(GTK_WINDOW(self), gtk_label_new(""));
++}
++
++wxColour SampleStyleColour(GtkStyleContext* context, bool frame)
++{
++    // This is a tiny colour query, not a replacement for GTK's renderer.
++    cairo_surface_t* surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 16, 16);
++    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS)
++    {
++        cairo_surface_destroy(surface);
++        return wxColour(0, 0, 0, 0);
++    }
++    cairo_t* cr = cairo_create(surface);
++    if (frame) gtk_render_frame(context, cr, 0, 0, 16, 16);
++    else gtk_render_background(context, cr, 0, 0, 16, 16);
++    cairo_destroy(cr);
++    cairo_surface_flush(surface);
++    const unsigned char* data = cairo_image_surface_get_data(surface);
++    const int stride = cairo_image_surface_get_stride(surface);
++    unsigned pixel = 0;
++    if (frame)
++    {
++        for (int y = 0; y < 16; ++y)
++            for (int x = 0; x < 16; ++x)
++            {
++                unsigned sample;
++                memcpy(&sample, data + y * stride + x * 4, sizeof(sample));
++                if ((sample >> 24) > (pixel >> 24)) pixel = sample;
++            }
++    }
++    else
++        memcpy(&pixel, data + 8 * stride + 8 * 4, sizeof(pixel));
++    cairo_surface_destroy(surface);
++    const unsigned a = pixel >> 24;
++    if (!a) return wxColour(0, 0, 0, 0);
++    return wxColour(((pixel >> 16) & 255) * 255 / a,
++                    ((pixel >> 8) & 255) * 255 / a,
++                    (pixel & 255) * 255 / a, a);
++}
++}
++
++wxGtkStyleContext::wxGtkStyleContext(double scale)
++    : m_context(NULL), m_widget(NULL), m_selection(false), m_scale(wxMax(1, int(scale)))
++{
++}
++
++void wxGtkStyleContext::Select(GtkWidget* widget)
++{
++    if (m_context) gtk_style_context_restore(m_context);
++    if (m_widget) g_object_unref(m_widget);
++    m_widget = GTK_WIDGET(g_object_ref(widget));
++    m_selection = false;
++    m_context = gtk_widget_get_style_context(widget);
++    gtk_style_context_save(m_context);
++    gtk_style_context_set_scale(m_context, m_scale);
++}
++
++wxGtkStyleContext::~wxGtkStyleContext()
++{
++    if (m_context) gtk_style_context_restore(m_context);
++    if (m_widget) g_object_unref(m_widget);
++}
++
++wxGtkStyleContext& wxGtkStyleContext::Add(GType type, const char* name, ...)
++{
++    if (type == G_TYPE_NONE)
++        Add(name);
++    else
++        Select(wxGTKPrivate::GetStyleWidget(type));
++    va_list args;
++    va_start(args, name);
++    while (const char* cssClass = va_arg(args, const char*))
++        gtk_style_context_add_class(m_context, cssClass);
++    va_end(args);
++    return *this;
++}
++
++wxGtkStyleContext& wxGtkStyleContext::Add(const char* name)
++{
++    if (m_widget)
++        if (GtkWidget* child = FindStyleChild(m_widget, name)) Select(child);
++    return *this;
++}
++
++wxGtkStyleContext& wxGtkStyleContext::AddButton()
++{
++    return Add(GTK_TYPE_BUTTON, "button", NULL);
++}
++wxGtkStyleContext& wxGtkStyleContext::AddCheckButton()
++{
++    return Add(GTK_TYPE_CHECK_BUTTON, "checkbutton", NULL);
++}
++wxGtkStyleContext& wxGtkStyleContext::AddRadioButton()
++{
++    Select(wxGTKPrivate::GetRadioButtonWidget());
++    return Add("radio");
++}
++wxGtkStyleContext& wxGtkStyleContext::AddHeaderbar()
++{
++    return Add(GTK_TYPE_HEADER_BAR, "headerbar", "titlebar", NULL);
++}
++wxGtkStyleContext& wxGtkStyleContext::AddLabel()
++{
++    GtkWidget* label = m_widget ? FindStyleChild(m_widget, "label") : NULL;
++    if (!label && m_widget && GTK_IS_BUTTON(m_widget))
++    {
++        gtk_button_set_child(GTK_BUTTON(m_widget), gtk_label_new(""));
++        label = gtk_button_get_child(GTK_BUTTON(m_widget));
++    }
++    if (!label && m_widget && GTK_IS_HEADER_BAR(m_widget))
++    {
++        label = gtk_label_new("");
++        gtk_header_bar_set_title_widget(GTK_HEADER_BAR(m_widget), label);
++    }
++    Select(label ? label : wxGTKPrivate::GetStyleWidget(GTK_TYPE_LABEL));
++    return *this;
++}
++wxGtkStyleContext& wxGtkStyleContext::AddMenu()
++{
++    Select(wxGTKPrivate::GetStyleWidget(GTK_TYPE_POPOVER));
++    return Add("contents");
++}
++wxGtkStyleContext& wxGtkStyleContext::AddMenuItem()
++{
++    GtkWidget* popover = wxGTKPrivate::GetStyleWidget(GTK_TYPE_POPOVER);
++    GtkWidget* button = gtk_popover_get_child(GTK_POPOVER(popover));
++    if (!button)
++    {
++        button = gtk_button_new_with_label("");
++        gtk_widget_add_css_class(button, "flat");
++        gtk_popover_set_child(GTK_POPOVER(popover), button);
++    }
++    Select(button);
++    return *this;
++}
++wxGtkStyleContext& wxGtkStyleContext::AddTextview(const char* child1, const char* child2)
++{
++    Select(wxGTKPrivate::GetStyleWidget(GTK_TYPE_TEXT_VIEW));
++    // "text" and "selection" are CSS nodes, not public GtkWidgets. Query
++    // the theme's selection colours instead of inventing a widget path.
++    m_selection = (child1 && strcmp(child1, "selection") == 0) ||
++                  (child2 && strcmp(child2, "selection") == 0);
++    return *this;
++}
++wxGtkStyleContext& wxGtkStyleContext::AddTooltip()
++{
++    Select(wxGTKPrivate::GetStyleWidget(wx_theme_tooltip_get_type()));
++    return *this;
++}
++wxGtkStyleContext& wxGtkStyleContext::AddTreeview()
++{
++    return Add(GTK_TYPE_TREE_VIEW, "treeview", NULL);
++}
++wxGtkStyleContext& wxGtkStyleContext::AddTreeviewHeaderButton(int pos)
++{
++    Select(pos == 0 ? wxGTKPrivate::GetHeaderButtonWidgetFirst() :
++           pos == 2 ? wxGTKPrivate::GetHeaderButtonWidgetLast() :
++                      wxGTKPrivate::GetHeaderButtonWidget());
++    return *this;
++}
++wxGtkStyleContext& wxGtkStyleContext::AddWindow(const char* cssClass)
++{
++    return Add(GTK_TYPE_WINDOW, "window", "background", cssClass, NULL);
++}
++void wxGtkStyleContext::Bg(wxColour& color, int state) const
++{
++    gtk_style_context_set_state(m_context, GtkStateFlags(state));
++    GdkRGBA rgba;
++    if (m_selection &&
++        (gtk_style_context_lookup_color(m_context, "theme_selected_bg_color", &rgba) ||
++         gtk_style_context_lookup_color(m_context, "accent_bg_color", &rgba)))
++        color = wxColour(rgba);
++    else
++        color = SampleStyleColour(m_context, false);
++    if (!color.Alpha() && !GTK_IS_WINDOW(m_widget))
++        wxGtkStyleContext().AddWindow().Bg(color, state);
++}
++void wxGtkStyleContext::Fg(wxColour& color, int state) const
++{
++    gtk_style_context_set_state(m_context, GtkStateFlags(state));
++    GdkRGBA rgba;
++    if (!(m_selection &&
++          (gtk_style_context_lookup_color(m_context, "theme_selected_fg_color", &rgba) ||
++           gtk_style_context_lookup_color(m_context, "accent_fg_color", &rgba))))
++        gtk_style_context_get_color(m_context, &rgba);
++    color = wxColour(rgba);
++}
++void wxGtkStyleContext::Border(wxColour& color) const
++{
++    color = SampleStyleColour(m_context, true);
++}
+--- src/gtk/renderer.cpp.orig
++++ src/gtk/renderer.cpp
+@@ -42,6 +42,24 @@
+ #include "wx/gtk/private.h"
+ #include "wx/gtk/private/stylecontext.h"
+ #include "wx/gtk/private/value.h"
++
++#ifdef __WXGTK4__
++enum wxGtkRenderState
++{
++    wxGTK_STATE_NORMAL, wxGTK_STATE_ACTIVE, wxGTK_STATE_PRELIGHT,
++    wxGTK_STATE_SELECTED, wxGTK_STATE_INSENSITIVE, wxGTK_STATE_INCONSISTENT,
++    wxGTK_STATE_FOCUSED
++};
++#else
++typedef GtkStateType wxGtkRenderState;
++static const wxGtkRenderState wxGTK_STATE_NORMAL = GTK_STATE_NORMAL;
++static const wxGtkRenderState wxGTK_STATE_ACTIVE = GTK_STATE_ACTIVE;
++static const wxGtkRenderState wxGTK_STATE_PRELIGHT = GTK_STATE_PRELIGHT;
++static const wxGtkRenderState wxGTK_STATE_SELECTED = GTK_STATE_SELECTED;
++static const wxGtkRenderState wxGTK_STATE_INSENSITIVE = GTK_STATE_INSENSITIVE;
++static const wxGtkRenderState wxGTK_STATE_INCONSISTENT = GTK_STATE_INCONSISTENT;
++static const wxGtkRenderState wxGTK_STATE_FOCUSED = GTK_STATE_FOCUSED;
++#endif
+ 
+ #if defined(__WXGTK3__) && !GTK_CHECK_VERSION(3,14,0)
+     #define GTK_STATE_FLAG_CHECKED (1 << 11)
+@@ -220,13 +238,13 @@
+     if (flags & wxCONTROL_DIRTY)
+         button = wxGTKPrivate::GetHeaderButtonWidgetLast();
+ 
+-    GtkStateType state = GTK_STATE_NORMAL;
++    wxGtkRenderState state = wxGTK_STATE_NORMAL;
+     if (flags & wxCONTROL_DISABLED)
+-        state = GTK_STATE_INSENSITIVE;
++        state = wxGTK_STATE_INSENSITIVE;
+     else
+     {
+         if (flags & wxCONTROL_CURRENT)
+-            state = GTK_STATE_PRELIGHT;
++            state = wxGTK_STATE_PRELIGHT;
+     }
+ 
+ #ifdef __WXGTK3__
+@@ -236,7 +254,7 @@
+ 
+     // AddTreeviewHeaderButton() is only available in 3.20 or later.
+ #if GTK_CHECK_VERSION(3,20,0)
+-    if (gtk_check_version(3,20,0) == NULL)
++    if (GTK_MAJOR_VERSION >= 4 || gtk_check_version(3,20,0) == NULL)
+     {
+         int pos = 1;
+         if (flags & wxCONTROL_SPECIAL)
+@@ -267,7 +285,11 @@
+         if (params)
+         {
+             GdkRGBA rgba;
++#ifdef __WXGTK4__
++            gtk_style_context_get_color(sc, &rgba);
++#else
+             gtk_style_context_get_color(sc, stateTypeToFlags[state], &rgba);
++#endif
+             params->m_arrowColour = wxColour(rgba);
+             params->m_labelColour = params->m_arrowColour;
+         }
+@@ -300,7 +322,9 @@
+     GtkWidget *button = wxGTKPrivate::GetHeaderButtonWidget();
+ 
+     GtkRequisition req;
+-#ifdef __WXGTK3__
++#ifdef __WXGTK4__
++    gtk_widget_measure(button, GTK_ORIENTATION_VERTICAL, -1, NULL, &req.height, NULL, NULL);
++#elif defined(__WXGTK3__)
+     gtk_widget_get_preferred_height(button, NULL, &req.height);
+ #else
+     GTK_WIDGET_GET_CLASS(button)->size_request(button, &req);
+@@ -331,23 +355,34 @@
+     if (flags & wxCONTROL_EXPANDED)
+     {
+         state = GTK_STATE_FLAG_ACTIVE;
+-        if (gtk_check_version(3,14,0) == NULL)
++        if (GTK_MAJOR_VERSION >= 4 || gtk_check_version(3,14,0) == NULL)
+             state = GTK_STATE_FLAG_CHECKED;
+     }
+     if (flags & wxCONTROL_CURRENT)
+         state |= GTK_STATE_FLAG_PRELIGHT;
+ 
+     int expander_size;
++#ifdef __WXGTK4__
++    wxGtkStyleContext expander;
++    expander.Add(GTK_TYPE_EXPANDER, "expander", NULL).Add("expander");
++    gtk_widget_measure(expander.GetWidget(), GTK_ORIENTATION_HORIZONTAL, -1,
++                       &expander_size, NULL, NULL, NULL);
++#else
+     gtk_widget_style_get(tree, "expander-size", &expander_size, NULL);
+     // +1 to match GtkTreeView behavior
+     expander_size++;
++#endif
+     const int x = rect.x + (rect.width - expander_size) / 2;
+     const int y = rect.y + (rect.width - expander_size) / 2;
+ 
++#ifdef __WXGTK4__
++    GtkStyleContext* sc = expander;
++#else
+     GtkStyleContext* sc = gtk_widget_get_style_context(tree);
++#endif
+     gtk_style_context_save(sc);
+     gtk_style_context_set_state(sc, GtkStateFlags(state));
+-    gtk_style_context_add_class(sc, GTK_STYLE_CLASS_EXPANDER);
++    gtk_style_context_add_class(sc, "expander");
+     gtk_render_expander(sc, drawable, x, y, expander_size, expander_size);
+     gtk_style_context_restore(sc);
+ #else
+@@ -355,11 +390,11 @@
+     if (win->GetLayoutDirection() == wxLayout_RightToLeft)
+         x_diff = rect.width;
+ 
+-    GtkStateType state;
++    wxGtkRenderState state;
+     if ( flags & wxCONTROL_CURRENT )
+-        state = GTK_STATE_PRELIGHT;
++        state = wxGTK_STATE_PRELIGHT;
+     else
+-        state = GTK_STATE_NORMAL;
++        state = wxGTK_STATE_NORMAL;
+ 
+     // x and y parameters specify the center of the expander
+     gtk_paint_expander
+@@ -385,8 +420,17 @@
+ 
+ static int GetGtkSplitterFullSize(GtkWidget* widget)
+ {
+-    gint handle_size;
++    gint handle_size = 0;
++#ifdef __WXGTK4__
++    GtkWidget* separator = gtk_widget_get_first_child(widget);
++    while (separator && strcmp(gtk_widget_get_css_name(separator), "separator") != 0)
++        separator = gtk_widget_get_next_sibling(separator);
++    if (separator)
++        gtk_widget_measure(separator, gtk_orientable_get_orientation(GTK_ORIENTABLE(widget)),
++                           -1, &handle_size, NULL, NULL, NULL);
++#else
+     gtk_widget_style_get(widget, "handle_size", &handle_size, NULL);
++#endif
+     // Narrow handles don't work well with wxSplitterWindow
+     if (handle_size < 5)
+         handle_size = 5;
+@@ -423,7 +467,11 @@
+                                 wxOrientation orient,
+                                 int flags)
+ {
++#ifdef __WXGTK4__
++    if (!win->GTKGetSurface())
++#else
+     if (gtk_widget_get_window(win->m_wxwindow) == NULL)
++#endif
+     {
+         // window not realized yet
+         return;
+@@ -462,7 +510,7 @@
+     gtk_render_background(sc, drawable, rect.x, rect.y, rect.width, rect.height);
+ 
+     sc.Add(GTK_TYPE_PANED, "paned", "pane-separator", NULL);
+-    if (gtk_check_version(3,20,0) == NULL)
++    if (GTK_MAJOR_VERSION >= 4 || gtk_check_version(3,20,0) == NULL)
+         sc.Add("separator");
+ 
+     gtk_style_context_set_state(sc,
+@@ -480,7 +528,7 @@
+     (
+         gtk_widget_get_style(win->m_wxwindow),
+         gdk_window,
+-        flags & wxCONTROL_CURRENT ? GTK_STATE_PRELIGHT : GTK_STATE_NORMAL,
++        flags & wxCONTROL_CURRENT ? wxGTK_STATE_PRELIGHT : wxGTK_STATE_NORMAL,
+         GTK_SHADOW_NONE,
+         NULL /* no clipping */,
+         win->m_wxwindow,
+@@ -512,16 +560,16 @@
+     const int x = rect.x + (size + 1) / 2;
+     const int y = rect.y + (rect.height - size + 1) / 2;
+ 
+-    GtkStateType state;
++    wxGtkRenderState state;
+ 
+     if ( flags & wxCONTROL_PRESSED )
+-        state = GTK_STATE_ACTIVE;
++        state = wxGTK_STATE_ACTIVE;
+     else if ( flags & wxCONTROL_DISABLED )
+-        state = GTK_STATE_INSENSITIVE;
++        state = wxGTK_STATE_INSENSITIVE;
+     else if ( flags & wxCONTROL_CURRENT )
+-        state = GTK_STATE_PRELIGHT;
++        state = wxGTK_STATE_PRELIGHT;
+     else
+-        state = GTK_STATE_NORMAL;
++        state = wxGTK_STATE_NORMAL;
+ 
+ #ifdef __WXGTK3__
+     cairo_t* cr = wxGetGTKDrawable(dc);
+@@ -579,7 +627,23 @@
+         wxUnusedVar(flags);
+ 
+         sc.AddCheckButton();
+-        if (gtk_check_version(3,20,0) == NULL)
++#ifdef __WXGTK4__
++        sc.Add("check");
++        gtk_widget_measure(sc.GetWidget(), GTK_ORIENTATION_HORIZONTAL, -1,
++                           &indicator_width, NULL, NULL, NULL);
++        gtk_widget_measure(sc.GetWidget(), GTK_ORIENTATION_VERTICAL, indicator_width,
++                           &indicator_height, NULL, NULL, NULL);
++        GtkBorder border, padding;
++        gtk_style_context_get_border(sc, &border);
++        gtk_style_context_get_padding(sc, &padding);
++        margin_left = border.left + padding.left;
++        margin_right = border.right + padding.right;
++        margin_top = border.top + padding.top;
++        margin_bottom = border.bottom + padding.bottom;
++        indicator_width = wxMax(0, indicator_width - margin_left - margin_right);
++        indicator_height = wxMax(0, indicator_height - margin_top - margin_bottom);
++#else
++        if (GTK_MAJOR_VERSION >= 4 || gtk_check_version(3,20,0) == NULL)
+         {
+             sc.Add("check");
+             gtk_style_context_get(sc, GTK_STATE_FLAG_NORMAL,
+@@ -610,6 +674,7 @@
+             margin_right =
+             margin_bottom = g_value_get_int(value);
+         }
++#endif // __WXGTK4__
+     }
+ #else // !__WXGTK3__
+     CheckBoxInfo(GtkWidget* button, int flags)
+@@ -727,7 +792,7 @@
+     if (flags & wxCONTROL_CHECKED)
+     {
+         state = GTK_STATE_FLAG_ACTIVE;
+-        if (gtk_check_version(3,14,0) == NULL)
++        if (GTK_MAJOR_VERSION >= 4 || gtk_check_version(3,14,0) == NULL)
+             state = GTK_STATE_FLAG_CHECKED;
+     }
+     if (flags & wxCONTROL_DISABLED)
+@@ -757,7 +822,7 @@
+         x = -x - w;
+     }
+ 
+-    if (gtk_check_version(3,20,0) == NULL)
++    if (GTK_MAJOR_VERSION >= 4 || gtk_check_version(3,20,0) == NULL)
+     {
+         gtk_style_context_set_state(sc, GtkStateFlags(state));
+         gtk_render_background(sc, cr, x, y, w, h);
+@@ -788,16 +853,16 @@
+     CheckBoxInfo info(button, flags);
+     info.FitInto(rect);
+ 
+-    GtkStateType state;
++    wxGtkRenderState state;
+ 
+     if ( flags & wxCONTROL_PRESSED )
+-        state = GTK_STATE_ACTIVE;
++        state = wxGTK_STATE_ACTIVE;
+     else if ( flags & wxCONTROL_DISABLED )
+-        state = GTK_STATE_INSENSITIVE;
++        state = wxGTK_STATE_INSENSITIVE;
+     else if ( flags & wxCONTROL_CURRENT )
+-        state = GTK_STATE_PRELIGHT;
++        state = wxGTK_STATE_PRELIGHT;
+     else
+-        state = GTK_STATE_NORMAL;
++        state = wxGTK_STATE_NORMAL;
+ 
+     GtkShadowType shadow_type;
+ 
+@@ -837,16 +902,16 @@
+     GtkWidget *button = wxGTKPrivate::GetButtonWidget();
+ 
+     // draw button
+-    GtkStateType state;
++    wxGtkRenderState state;
+ 
+     if ( flags & wxCONTROL_PRESSED )
+-        state = GTK_STATE_ACTIVE;
++        state = wxGTK_STATE_ACTIVE;
+     else if ( flags & wxCONTROL_DISABLED )
+-        state = GTK_STATE_INSENSITIVE;
++        state = wxGTK_STATE_INSENSITIVE;
+     else if ( flags & wxCONTROL_CURRENT )
+-        state = GTK_STATE_PRELIGHT;
++        state = wxGTK_STATE_PRELIGHT;
+     else
+-        state = GTK_STATE_NORMAL;
++        state = wxGTK_STATE_NORMAL;
+ 
+ #ifdef __WXGTK3__
+     cairo_t* cr = wxGetGTKDrawable(dc);
+@@ -902,7 +967,7 @@
+         if (flags & wxCONTROL_FOCUSED)
+             state |= GTK_STATE_FLAG_FOCUSED;
+         gtk_style_context_set_state(sc, GtkStateFlags(state));
+-        gtk_style_context_add_class(sc, GTK_STYLE_CLASS_CELL);
++        gtk_style_context_add_class(sc, "cell");
+         gtk_render_background(sc, drawable, rect.x, rect.y, rect.width, rect.height);
+         gtk_style_context_restore(sc);
+ #else
+@@ -914,7 +979,7 @@
+         // directly from the m_wxwindow by GTK+
+         gtk_paint_flat_box(gtk_widget_get_style(treeWidget),
+                         drawable,
+-                        GTK_STATE_SELECTED,
++                        wxGTK_STATE_SELECTED,
+                         GTK_SHADOW_NONE,
+                         NULL_RECT
+                         win->m_wxwindow,
+@@ -936,11 +1001,11 @@
+     if (drawable == NULL)
+         return;
+ 
+-    GtkStateType state;
++    wxGtkRenderState state;
+     if (flags & wxCONTROL_SELECTED)
+-        state = GTK_STATE_SELECTED;
++        state = wxGTK_STATE_SELECTED;
+     else
+-        state = GTK_STATE_NORMAL;
++        state = wxGTK_STATE_NORMAL;
+ 
+ #ifdef __WXGTK3__
+     GtkStyleContext* sc = gtk_widget_get_style_context(win->m_widget);
+@@ -985,9 +1050,9 @@
+ #else
+     GtkWidget* entry = wxGTKPrivate::GetTextEntryWidget();
+ 
+-    GtkStateType state = GTK_STATE_NORMAL;
++    wxGtkRenderState state = wxGTK_STATE_NORMAL;
+     if ( flags & wxCONTROL_DISABLED )
+-        state = GTK_STATE_INSENSITIVE;
++        state = wxGTK_STATE_INSENSITIVE;
+ 
+     gtk_widget_set_can_focus(entry, (flags & wxCONTROL_CURRENT) != 0);
+ 
+@@ -1017,9 +1082,9 @@
+ 
+     GtkWidget* combo = wxGTKPrivate::GetComboBoxWidget();
+ 
+-    GtkStateType state = GTK_STATE_NORMAL;
++    wxGtkRenderState state = wxGTK_STATE_NORMAL;
+     if ( flags & wxCONTROL_DISABLED )
+-       state = GTK_STATE_INSENSITIVE;
++       state = wxGTK_STATE_INSENSITIVE;
+ 
+     gtk_widget_set_can_focus(combo, (flags & wxCONTROL_CURRENT) != 0);
+ 
+@@ -1115,7 +1180,7 @@
+     if (flags & wxCONTROL_CHECKED)
+     {
+         state = GTK_STATE_FLAG_ACTIVE;
+-        if (gtk_check_version(3,14,0) == NULL)
++        if (GTK_MAJOR_VERSION >= 4 || gtk_check_version(3,14,0) == NULL)
+             state = GTK_STATE_FLAG_CHECKED;
+     }
+     if (flags & wxCONTROL_DISABLED)
+@@ -1127,8 +1192,15 @@
+ 
+     int min_width, min_height;
+     wxGtkStyleContext sc(dc.GetContentScaleFactor());
++#ifdef __WXGTK4__
++    sc.AddRadioButton();
++    gtk_widget_measure(sc.GetWidget(), GTK_ORIENTATION_HORIZONTAL, -1,
++                       &min_width, NULL, NULL, NULL);
++    gtk_widget_measure(sc.GetWidget(), GTK_ORIENTATION_VERTICAL, min_width,
++                       &min_height, NULL, NULL, NULL);
++#else
+     sc.Add(GTK_TYPE_RADIO_BUTTON, "radiobutton", NULL);
+-    if (gtk_check_version(3,20,0) == NULL)
++    if (GTK_MAJOR_VERSION >= 4 || gtk_check_version(3,20,0) == NULL)
+     {
+         sc.Add("radio");
+         gtk_style_context_get(sc, GTK_STATE_FLAG_NORMAL,
+@@ -1141,6 +1213,7 @@
+         min_width = g_value_get_int(value);
+         min_height = min_width;
+     }
++#endif // __WXGTK4__
+ 
+     // need save/restore for GTK+ 3.6 & 3.8
+     gtk_style_context_save(sc);
+@@ -1161,14 +1234,14 @@
+     else if ( flags & wxCONTROL_UNDETERMINED )
+         shadow_type = GTK_SHADOW_ETCHED_IN;
+ 
+-    GtkStateType state = GTK_STATE_NORMAL;
++    wxGtkRenderState state = wxGTK_STATE_NORMAL;
+     if ( flags & wxCONTROL_DISABLED )
+-        state = GTK_STATE_INSENSITIVE;
++        state = wxGTK_STATE_INSENSITIVE;
+     if ( flags & wxCONTROL_PRESSED )
+-        state = GTK_STATE_ACTIVE;
++        state = wxGTK_STATE_ACTIVE;
+ /*
+     Don't know when to set this
+-       state_type = GTK_STATE_PRELIGHT;
++       state_type = wxGTK_STATE_PRELIGHT;
+ */
+ 
+     gtk_paint_option
