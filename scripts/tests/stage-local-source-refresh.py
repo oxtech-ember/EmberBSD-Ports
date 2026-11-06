@@ -35,9 +35,11 @@ with tempfile.TemporaryDirectory(prefix='pkgsrc-source-refresh-test-') as temp:
     retained.mkdir(parents=True)
     scope = 'tools/llvm-objcopy/Objcopy.cpp'
     scope_b = 'tools/llvm-objcopy/Archive.cpp'
+    scope_c = 'test/tools/llvm-objcopy/MachO/reexport.test'
     unchanged = 'llvm/include/llvm/Config/llvm-config.h'
     (retained / scope).parent.mkdir(parents=True)
     (retained / unchanged).parent.mkdir(parents=True)
+    (retained / scope_c).parent.mkdir(parents=True)
     (retained / scope).write_bytes(b'old objcopy\n')
     (retained / scope_b).write_bytes(b'old archive\n')
     (retained / unchanged).write_bytes(b'generated stable\n')
@@ -65,6 +67,8 @@ elif 'extract' in args and 'patch' in args:
     (src / 'llvm/include/llvm/Config').mkdir(parents=True)
     (src / 'tools/llvm-objcopy/Objcopy.cpp').write_bytes(b'new objcopy\\n')
     (src / 'tools/llvm-objcopy/Archive.cpp').write_bytes(b'new archive\\n' if os.environ.get('CHANGE_SCOPE_B') else b'old archive\\n')
+    (src / 'test/tools/llvm-objcopy/MachO').mkdir(parents=True)
+    (src / 'test/tools/llvm-objcopy/MachO/reexport.test').write_bytes(b'added test\\n')
     (src / 'llvm/include/llvm/Config/llvm-config.h').write_bytes(b'generated stable\\n')
     (wrkdir / '.patch_done').write_bytes(b'current pkgsrc cookie\\n')
 elif 'build-clean' in args:
@@ -76,13 +80,14 @@ else:
     raise SystemExit('unexpected fake bmake invocation: ' + repr(args))
 ''')
     fake.chmod(0o755)
-    def run(expected_failure=False, fail_clean=None, error=None):
+    def run(expected_failure=False, fail_clean=None, error=None, scope_override=None):
         old = os.environ.get('FAIL_BUILD_CLEAN')
         if fail_clean:
             os.environ['FAIL_BUILD_CLEAN'] = str(fail_clean)
         try:
             result = refresh.source_refresh(sdk, patch, fake, recipe, work,
-                                            ['WRKDIR=' + str(work)], [scope, scope_b])
+                                            ['WRKDIR=' + str(work)],
+                                            scope_override or [scope, scope_b, scope_c])
         except Exception as exc:
             if not expected_failure:
                 raise
@@ -103,6 +108,7 @@ else:
     assert run() is True
     assert (retained / scope).read_bytes() == b'new objcopy\n'
     assert (retained / scope_b).read_bytes() == b'old archive\n'
+    assert (retained / scope_c).read_bytes() == b'added test\n'
     assert (retained / unchanged).read_bytes() == b'generated stable\n'
     assert (work / '.patch_done').read_bytes() == b'current pkgsrc cookie\n'
     assert obj.read_bytes() == b'preserve build output'
@@ -189,6 +195,32 @@ else:
     assert (retained / scope).read_bytes() == b'old objcopy\n'
     run()
     assert (retained / scope).read_bytes() == b'new objcopy\n'
+    assert not (work / '.emberbsd-patch-refresh.json').exists()
+
+    # Addition rollback is journaled as old_sha=None; retry after rollback
+    # cleanup must verify the leaf remains absent before adding it again.
+    added = retained / scope_c
+    added.unlink()
+    (work / '.patch_done').write_bytes(b'old patch cookie\n')
+    def interrupt_added_rollback(*args, **kwargs):
+        def interrupt(point):
+            if point == 'file-0':
+                raise RuntimeError('force added-leaf rollback')
+            if point == 'stage-cleaned':
+                raise RuntimeError('interrupted after added-leaf rollback cleanup')
+        kwargs['inject'] = interrupt
+        return original_transaction(*args, **kwargs)
+    patch.transaction = interrupt_added_rollback
+    try:
+        run(expected_failure=True, error='interrupted after added-leaf rollback cleanup',
+            scope_override=[scope_c])
+    finally:
+        patch.transaction = original_transaction
+    assert not added.exists()
+    assert (work / '.emberbsd-patch-refresh.json').exists()
+    assert not (work / '.emberbsd-patch-refresh').exists()
+    run(scope_override=[scope_c])
+    assert added.read_bytes() == b'added test\n'
     assert not (work / '.emberbsd-patch-refresh.json').exists()
 
 print('Prepared source refresh fixtures passed.')

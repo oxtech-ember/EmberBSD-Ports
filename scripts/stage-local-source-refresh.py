@@ -116,12 +116,16 @@ def source_refresh(sdk, patch_refresh, bmake, recipe, work, make_args, scope):
                     continue
                 paths.regular_file(str(candidate))
                 if rel in scope:
-                    require(not live.is_symlink(), 'authorized source leaf is not a regular file: ' + rel)
-                    paths.regular_file(str(live))
-                    before = patch_refresh.stable_read(paths, live)
+                    live = patch_refresh._entry(paths, retained_source, rel)
                     after = patch_refresh.stable_read(paths, candidate)
-                    old_mode = stat.S_IMODE(paths.regular_file(str(live)).st_mode)
                     new_mode = stat.S_IMODE(paths.regular_file(str(candidate)).st_mode)
+                    if os.path.lexists(live):
+                        require(not live.is_symlink(), 'authorized source leaf is not a regular file: ' + rel)
+                        old_stat = paths.regular_file(str(live))
+                        before = patch_refresh.stable_read(paths, live)
+                        old_mode = stat.S_IMODE(old_stat.st_mode)
+                    else:
+                        before, old_mode = None, None
                     if before != after or old_mode != new_mode:
                         changes.append((rel, before, after, old_mode, new_mode))
                 else:
@@ -158,10 +162,15 @@ def source_refresh(sdk, patch_refresh, bmake, recipe, work, make_args, scope):
                     continue
                 if record.get('phase') == 'rolled-back':
                     live = retained_source / name
-                    before = patch_refresh.stable_read(paths, live)
-                    old_mode = stat.S_IMODE(paths.regular_file(str(live)).st_mode)
-                    require(patch_refresh._sha(before) == row.get('old_sha') and
-                            old_mode == row.get('old_mode'),
+                    if row.get('old_sha') is None:
+                        require(not os.path.lexists(live),
+                                'rolled-back added source leaf was not removed: ' + name)
+                        before, old_mode = None, None
+                    else:
+                        before = patch_refresh.stable_read(paths, live)
+                        old_mode = stat.S_IMODE(paths.regular_file(str(live)).st_mode)
+                    require((patch_refresh._sha(before) if before is not None else None) ==
+                            row.get('old_sha') and old_mode == row.get('old_mode'),
                             'rolled-back source preimage differs from journal: ' + name)
                     resumed.append((name, before, after, old_mode, new_mode))
                     continue

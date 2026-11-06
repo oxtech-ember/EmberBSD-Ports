@@ -646,10 +646,12 @@ custom patch hooks, and substitutions affecting the changed source files.
 Normal builds and stage-local commands lock each selected work directory until
 their owned worker session has drained.
 For a retained stage whose newly prepared `WRKSRC` differs only in explicitly
-selected existing source leaves, `cross-bulk.sh source-refresh
+selected source leaves, `cross-bulk.sh source-refresh
 PKGPATH[@native] STATE` runs the selected bmake's real `extract patch` targets
 in a sibling work directory. Set `CROSS_BULK_SOURCE_REFRESH_FILES` to the
-whitespace-separated relative paths authorized for replacement. Every other
+whitespace-separated relative paths authorized for replacement; leaves may
+already exist or be new regular files beneath existing real directories. The
+transaction never creates directories or deletes source leaves. Every other
 regular file and symlink in candidate `WRKSRC` must match the retained source;
 unexpected changes stop before the transaction. The command carries forward
 pkgsrc's genuine candidate `.patch_done` cookie, uses the existing journal and
