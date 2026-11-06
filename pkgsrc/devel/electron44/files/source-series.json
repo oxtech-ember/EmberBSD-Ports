@@ -1282,6 +1282,11 @@
       "path": "gn-common-spirv-tools.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "tflite-support-zlib-types.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {

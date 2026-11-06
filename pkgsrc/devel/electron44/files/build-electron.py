@@ -519,6 +519,17 @@ def host_buildlink(options, sdk, native, environment, host_binding):
         previous = Path(previous)
         require(previous.parent == root and previous.name.startswith('host-buildlink-'),
                 'saved host buildlink work is outside the Electron output')
+        marker = previous / '.host-buildlink-extension.json'
+        if os.path.lexists(marker):
+            require(getattr(options, 'phase', None) != 'build',
+                    'host buildlink extension requires reconfigure recovery')
+            require(marker.is_file() and not marker.is_symlink(), 'invalid host buildlink extension journal')
+            candidate = Path(json.loads(marker.read_text())['candidate'])
+            require(candidate.parent == root and re.fullmatch(r'host-buildlink-[0-9]+', candidate.name),
+                    'host buildlink extension candidate is outside the Electron output')
+            result = sdk['process'].capture(command(previous) + ['--extend-from', str(candidate)], env=environment)
+            environment['EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK'] = str(previous)
+            return result.stdout.decode('utf-8', 'strict').strip()
         try:
             result = sdk['process'].capture(command(previous) + ['--check'], env=environment)
             environment['EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK'] = str(previous)
@@ -536,6 +547,17 @@ def host_buildlink(options, sdk, native, environment, host_binding):
         raise ValueError('too many retained host buildlink contexts')
     require(getattr(options, 'phase', None) != 'build', 'host buildlink requires configuration')
     result = sdk['process'].capture(command(work), env=environment)
+    if previous:
+        try:
+            extended = sdk['process'].capture(command(previous) + ['--extend-from', str(work)], env=environment)
+        except sdk['process'].CommandError as error:
+            if error.returncode != 3:
+                raise
+            require(not os.path.lexists(previous / '.host-buildlink-extension.json'),
+                    'host buildlink extension requires reconfigure recovery')
+        else:
+            environment['EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK'] = str(previous)
+            return extended.stdout.decode('utf-8', 'strict').strip()
     environment['EMBERBSD_ELECTRON_HOST_BUILDLINK_WORK'] = str(work)
     return result.stdout.decode('utf-8', 'strict').strip()
 

@@ -487,8 +487,16 @@ def _locked(directory, ports, git, sdk, patch, packages, selected_files, ident, 
             if global_file:
                 entry = subprocess.run([git, '-C', str(ports / 'upstream/pkgsrc'), 'ls-tree',
                                         previous['upstream'], '--', package], capture_output=True, check=True).stdout
-                if not entry.startswith((b'100644 blob ', b'100755 blob ')) or (stage / package).is_symlink() or not (stage / package).is_file():
-                    raise ValueError('selected upstream file is not regular: ' + package)
+                if entry:
+                    if not entry.startswith((b'100644 blob ', b'100755 blob ')) or (stage / package).is_symlink() or not (stage / package).is_file():
+                        raise ValueError('selected upstream file is not regular: ' + package)
+                else:
+                    # A global patch can create a file absent from upstream.
+                    # Replay the complete old/new chain against an absent file;
+                    # the output must still be regular and match the live tree.
+                    parent = package.rpartition('/')[0]
+                    if parent:
+                        exp.ensure_destination_directory(stage, parent)
             elif overlay is not None and (not old or overlay in old_snapshot['trees']):
                 replaces = old_file('pkgsrc/replaces') if old else (
                     (ports / 'pkgsrc/replaces').read_bytes() if (ports / 'pkgsrc/replaces').is_file() else b'')

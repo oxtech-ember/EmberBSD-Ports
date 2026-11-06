@@ -1,0 +1,32 @@
+# TFLite Support directly uses zlib callback types alongside MiniZip.
+# Origin: EmberBSD contributors (AI-assisted).
+--- a/third_party/tflite_support/src/tensorflow_lite_support/metadata/cc/utils/zip_readonly_mem_file.h
++++ b/third_party/tflite_support/src/tensorflow_lite_support/metadata/cc/utils/zip_readonly_mem_file.h
+@@ -20,6 +20,7 @@
+ 
+ #include "absl/strings/string_view.h"  // from @com_google_absl
+ #include "third_party/zlib/contrib/minizip/ioapi.h"
++#include "third_party/zlib/zlib.h"
+ 
+ namespace tflite {
+ namespace metadata {
+--- a/third_party/tflite_support/src/tensorflow_lite_support/metadata/cc/utils/zip_writable_mem_file.h
++++ b/third_party/tflite_support/src/tensorflow_lite_support/metadata/cc/utils/zip_writable_mem_file.h
+@@ -21,6 +21,7 @@
+ 
+ #include "absl/strings/string_view.h"  // from @com_google_absl
+ #include "third_party/zlib/contrib/minizip/ioapi.h"
++#include "third_party/zlib/zlib.h"
+ 
+ namespace tflite {
+ namespace metadata {
+--- a/third_party/tflite_support/BUILD.gn
++++ b/third_party/tflite_support/BUILD.gn
+@@ -151,6 +151,7 @@
+     "//third_party/libyuv",
+     "//third_party/tensorflow-text",
+     "//third_party/tflite",
++    "//third_party/zlib",
+     "//third_party/zlib:minizip",
+   ]
+ 

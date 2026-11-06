@@ -28,3 +28,28 @@ The source-only options and consumer graph can be checked with:
 "$HOST_PREFIX/bin/python3.15" pkgsrc/x11/qt6-qtbase/tests/vulkan-offscreen-options.py \
     --bmake "$HOST_PREFIX/bin/bmake" --work-parent /absolute/existing/work-directory
 ```
+
+## Host-visible static uploads
+
+`QT_VULKAN_HOST_STATIC_UPLOADS=1` enables direct static-buffer writes through VMA
+for host-visible allocations in idle offscreen frames. VMA retains its flush
+handling for non-coherent memory. The default remains the staging-copy path.
+
+The optimization rejects buffers already used by the current frame, pending
+offscreen frames, registered swapchains, and frames with external commands.
+These cases retain staging copies and their command ordering. It does not
+change dynamic buffers or remove texture uploads and framebuffer readback.
+
+The original pure-offscreen implementation ran Qt Quick on A133/GE8300.
+The conservative mixed-render guards have a compiled backend-predicate test;
+this does not establish mixed-render hardware acceptance or a frame-rate target.
+The patched Vulkan translation unit compiles for AArch64 with SDK Clang 23.
+Clang Static Analyzer retains the same eight diagnostics as the unpatched unit.
+Cppcheck 2.22 stops in Qt's `__has_builtin` preprocessing, so it provides no
+translation-unit analysis result. Ordinary package lifecycle checks remain separate.
+The test extracts the actual function and controls only its frame/VMA inputs:
+
+```sh
+CXX="$HOST_PREFIX/bin/clang++" sh pkgsrc/x11/qt6-qtbase/tests/host-static-uploads.sh \
+    /absolute/patched/qtbase/src/gui/rhi/qrhivulkan.cpp /absolute/new-test-output
+```
