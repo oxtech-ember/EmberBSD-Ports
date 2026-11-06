@@ -58,6 +58,8 @@ module must fail the ON negative control. It does not invoke a compiler.
 The new `TestRegExPcre` cases cover empty matches, empty input, lookaround,
 large capture sets, UTF-8, match errors and callback exceptions.
 They are prepared for the ordinary upstream test runner.
+The focused target-preprocessor limitations and minimal Clang/C++ fixtures are
+documented in [tests/README.md](tests/README.md).
 
 Run `tests/metadata.py --sdk-source /absolute/SDK --help` for recipe evaluation.
 Supply an exported tree, make configuration, selected bmake and complete environment JSON.
