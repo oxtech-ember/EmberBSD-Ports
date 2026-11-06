@@ -1,0 +1,151 @@
+# Avoid bundling the Vulkan loader when the common provider is selected.
+# Origin: EmberBSD contributors (AI-assisted).
+--- a/ui/gl/BUILD.gn
++++ b/ui/gl/BUILD.gn
+@@ -7,6 +7,7 @@
+ import("//build/config/linux/pkg_config.gni")
+ import("//build/config/ozone.gni")
+ import("//build/config/ui.gni")
++import("//build/config/emberbsd_vulkan.gni")
+ import("//gpu/vulkan/features.gni")
+ import("//testing/test.gni")
+ import("//third_party/angle/gni/angle.gni")
+@@ -488,10 +489,12 @@
+     }
+   }
+ 
+-  copy("vulkan_loader_library_copy") {
+-    sources = [ "$root_out_dir/libvulkan.dylib" ]
+-    outputs = [ "$root_out_dir/vulkan_intermediates/{{source_file_part}}" ]
+-    deps = [ "//third_party/vulkan-loader/src:libvulkan" ]
++  if (!emberbsd_common_vulkan) {
++    copy("vulkan_loader_library_copy") {
++      sources = [ "$root_out_dir/libvulkan.dylib" ]
++      outputs = [ "$root_out_dir/vulkan_intermediates/{{source_file_part}}" ]
++      deps = [ "//third_party/vulkan-loader/src:libvulkan" ]
++    }
+   }
+ }
+ 
+--- a/chrome/BUILD.gn
++++ b/chrome/BUILD.gn
+@@ -11,6 +11,7 @@
+ import("//build/config/python.gni")
+ import("//build/config/sanitizers/sanitizers.gni")
+ import("//build/config/ui.gni")
++import("//build/config/emberbsd_vulkan.gni")
+ import("//build/config/win/console_app.gni")
+ import("//build/config/win/manifest.gni")
+ import("//build/private_code_test/private_code_test.gni")
+@@ -1174,10 +1175,12 @@
+     public_deps = [ "//ui/gl:swiftshader_vk_library_copy" ]
+   }
+ 
+-  bundle_data("vulkan_loader_binaries") {
+-    sources = [ "$root_out_dir/vulkan_intermediates/libvulkan.dylib" ]
+-    outputs = [ "{{bundle_contents_dir}}/Libraries/{{source_file_part}}" ]
+-    public_deps = [ "//ui/gl:vulkan_loader_library_copy" ]
++  if (!emberbsd_common_vulkan) {
++    bundle_data("vulkan_loader_binaries") {
++      sources = [ "$root_out_dir/vulkan_intermediates/libvulkan.dylib" ]
++      outputs = [ "{{bundle_contents_dir}}/Libraries/{{source_file_part}}" ]
++      public_deps = [ "//ui/gl:vulkan_loader_library_copy" ]
++    }
+   }
+ 
+   if (bundle_widevine_cdm) {
+@@ -1407,7 +1410,9 @@
+       bundle_deps += [ ":angle_binaries" ]
+     }
+ 
+-    bundle_deps += [ ":vulkan_loader_binaries" ]
++    if (!emberbsd_common_vulkan) {
++      bundle_deps += [ ":vulkan_loader_binaries" ]
++    }
+ 
+     if (enable_separate_renderer_binary) {
+       bundle_deps += [ ":chrome_renderer_library" ]
+@@ -1497,7 +1502,9 @@
+       "$root_out_dir/libvk_swiftshader.dylib",
+       _framework_binary_path,
+     ]
+-    _chrome_symbols_sources += [ "$root_out_dir/libvulkan.dylib" ]
++    if (!emberbsd_common_vulkan) {
++      _chrome_symbols_sources += [ "$root_out_dir/libvulkan.dylib" ]
++    }
+     if (build_with_internal_optimization_guide) {
+       _chrome_symbols_sources +=
+           [ "$root_out_dir/liboptimization_guide_internal.dylib" ]
+@@ -1541,7 +1548,9 @@
+         "//third_party/swiftshader/src/Vulkan:swiftshader_libvulkan",
+         dump_syms,
+       ]
+-      deps += [ "//third_party/vulkan-loader/src:libvulkan" ]
++      if (!emberbsd_common_vulkan) {
++        deps += [ "//third_party/vulkan-loader/src:libvulkan" ]
++      }
+       if (build_with_internal_optimization_guide) {
+         deps += [ "//components/optimization_guide/internal:optimization_guide_internal" ]
+       }
+@@ -1579,7 +1588,9 @@
+         "$root_out_dir/chrome_crashpad_handler.dSYM",
+         "$root_out_dir/libvk_swiftshader.dylib.dSYM",
+       ]
+-      _dsyms += [ "$root_out_dir/libvulkan.dylib.dSYM" ]
++      if (!emberbsd_common_vulkan) {
++        _dsyms += [ "$root_out_dir/libvulkan.dylib.dSYM" ]
++      }
+       if (build_with_internal_optimization_guide) {
+         _dsyms += [ "$root_out_dir/liboptimization_guide_internal.dylib.dSYM" ]
+       }
+@@ -1594,7 +1605,9 @@
+         "//components/crash/core/app:chrome_crashpad_handler",
+         "//third_party/swiftshader/src/Vulkan:swiftshader_libvulkan",
+       ]
+-      deps += [ "//third_party/vulkan-loader/src:libvulkan" ]
++      if (!emberbsd_common_vulkan) {
++        deps += [ "//third_party/vulkan-loader/src:libvulkan" ]
++      }
+       if (build_with_internal_optimization_guide) {
+         deps += [ "//components/optimization_guide/internal:optimization_guide_internal" ]
+       }
+--- a/content/shell/BUILD.gn
++++ b/content/shell/BUILD.gn
+@@ -6,6 +6,7 @@
+ import("//build/config/ozone.gni")
+ import("//build/config/sanitizers/sanitizers.gni")
+ import("//build/config/ui.gni")
++import("//build/config/emberbsd_vulkan.gni")
+ import("//build/config/win/console_app.gni")
+ import("//build/config/win/manifest.gni")
+ import("//build/rust/rust_static_library.gni")
+@@ -936,7 +937,9 @@
+       ":content_shell_framework_resources",
+       ":content_shell_swiftshader_binaries",
+     ]
+-    bundle_deps += [ ":content_shell_vulkan_binaries" ]
++    if (!emberbsd_common_vulkan) {
++      bundle_deps += [ ":content_shell_vulkan_binaries" ]
++    }
+ 
+     if (!is_component_build) {
+       # Specify a sensible install_name for static builds. The library is
+@@ -1080,11 +1083,13 @@
+     public_deps = [ "//ui/gl:swiftshader_vk_library_copy" ]
+   }
+ 
+-  # Add the Vulkan loader .dylib in the Libraries directory of the Framework.
+-  bundle_data("content_shell_vulkan_binaries") {
+-    sources = [ "$root_out_dir/vulkan_intermediates/libvulkan.dylib" ]
+-    outputs = [ "{{bundle_contents_dir}}/Libraries/{{source_file_part}}" ]
+-    public_deps = [ "//ui/gl:vulkan_loader_library_copy" ]
++  if (!emberbsd_common_vulkan) {
++    # Add the Vulkan loader .dylib in the Libraries directory of the Framework.
++    bundle_data("content_shell_vulkan_binaries") {
++      sources = [ "$root_out_dir/vulkan_intermediates/libvulkan.dylib" ]
++      outputs = [ "{{bundle_contents_dir}}/Libraries/{{source_file_part}}" ]
++      public_deps = [ "//ui/gl:vulkan_loader_library_copy" ]
++    }
+   }
+ }
+ 
