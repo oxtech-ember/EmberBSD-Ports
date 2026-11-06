@@ -30,6 +30,13 @@ CHECK_PORTABILITY_SKIP=	win/configure
 
 .include "options.mk"
 
+# Tk's configure has its own copy of the NetBSD case. Clang expects linker
+# options to be passed through the driver, otherwise feature link probes fail.
+SUBST_CLASSES+=		export-dynamic
+SUBST_STAGE.export-dynamic=	pre-configure
+SUBST_FILES.export-dynamic=	unix/configure
+SUBST_SED.export-dynamic=	-e 's|LDFLAGS="$$LDFLAGS -export-dynamic"|LDFLAGS="$$LDFLAGS -Wl,-export-dynamic"|'
+
 .if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
 # The embedded script archive and host helper must use native tools.
 TOOL_DEPENDS+=		tcl>=${TCL_VERSION}:../../lang/tcl
