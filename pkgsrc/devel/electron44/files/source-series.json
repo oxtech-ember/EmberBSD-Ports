@@ -1287,6 +1287,11 @@
       "path": "tflite-support-zlib-types.patch",
       "root": "",
       "strip": 1
+    },
+    {
+      "path": "gn-common-vulkan-macos-packaging.patch",
+      "root": "",
+      "strip": 1
     }
   ],
   "superseded": {
