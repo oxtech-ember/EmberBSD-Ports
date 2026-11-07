@@ -11,8 +11,13 @@ includes the generated host-tools.mk. That include selects
 llvm-install-name-tool and creates ar, nm and ranlib. It does not create
 install_name_tool. The native profile must, and a cross include of the
 same generated file must not.
+
+The selected mksh has no printf builtin (pkgsrc/shells/mksh). The included
+profile replaces PATH with the host prefix path, so that directory must
+contain the external printf. /usr/bin:/bin is not the recipe PATH.
 """
 import importlib.util
+import os
 import shutil
 import stat
 import subprocess
@@ -41,12 +46,24 @@ def load_adapter():
     return adapter
 
 
+def external_printf():
+    # mksh executes printf from PATH. A shell builtin is not that utility.
+    for candidate in (Path('/usr/bin/printf'), Path('/bin/printf')):
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return candidate
+    raise AssertionError('the host has no external printf utility')
+
+
 def toolset(adapter, root, host):
     tools = {role: str(root / ('sdk-' + role))
              for role in (*adapter.ROLE_VARIABLES, *adapter.ROLE_DIRECTORIES, *adapter.OPTIONAL_ROLES, 'fetch')}
     flags = {'cppflags': (), 'cflags': (), 'cxxflags': (), 'ldflags': ()}
+    path = root / 'bin'
+    path.mkdir(parents=True)
+    printf = path / 'printf'
+    printf.symlink_to(external_printf())
     return types.SimpleNamespace(
-        tool=lambda role: tools[role], tools=tools, path=str(root / 'bin'),
+        tool=lambda role: tools[role], tools=tools, path=str(path),
         abi_flags=flags, compiler_family='clang', host={'os': host},
         command=lambda role: (tools[role], '-c', '-x', 'assembler') if role == 'as' else (tools[role],))
 
@@ -56,7 +73,7 @@ def render(adapter, selected, prefix, services):
     bindir.mkdir(parents=True)
     for _role, _variable, name in adapter.DARWIN_HOST_TOOLS:
         path = bindir / name
-        path.write_text('#!/bin/sh\nprintf \'%s\\n\' "$0"\nprintf \'%s\\n\' "$@"\n')
+        path.write_text('#!/bin/sh\nexec ' + str(external_printf()) + ' \'%s\\n\' "$0" "$@"\n')
         path.chmod(path.stat().st_mode | stat.S_IEXEC)
     with mock.patch.object(adapter, 'DARWIN_SYSTEM_SERVICES', services):
         extra = adapter.darwin_host_tools(str(prefix), selected) if selected.host['os'] == 'Darwin' else ()
@@ -92,8 +109,20 @@ def evaluate(bmake, work, host_tools, opsys, cross):
     ]
     makefile = work / 'aarch64.mk.conf'
     makefile.write_text('\n'.join(lines) + '\n')
+    # The include replaces PATH. Keep the external printf on the initial path
+    # too: bmake may run the selected shell before that assignment.
+    exported = None
+    for line in host_tools.read_bytes().splitlines():
+        if line.startswith(b'PATH:= '):
+            exported = line.split(b' ', 1)[1].decode()
+    require(exported, 'the included profile does not assign PATH')
+    utility = Path(exported) / 'printf'
+    require(utility.is_symlink() and os.access(utility, os.X_OK),
+            f'the included profile PATH has no external printf: {exported!r}')
+    environment = os.environ.copy()
+    environment['PATH'] = exported + os.pathsep + '/usr/bin:/bin'
     return subprocess.run([bmake, '-f', str(makefile), 'all'], cwd=work,
-                          capture_output=True, text=True, env={'PATH': '/usr/bin:/bin'})
+                          capture_output=True, text=True, env=environment)
 
 
 def main():
@@ -120,6 +149,13 @@ def main():
     require(f'EMBERBSD_DARWIN_INSTALL_NAME_TOOL?= {selected}'.encode() in generated
             or f'.if "${{EMBERBSD_DARWIN_INSTALL_NAME_TOOL}}" != "{selected}"'.encode() in generated,
             'the generated host include does not select llvm-install-name-tool')
+    require(f'PATH:= {darwin.path}\n'.encode() in generated,
+            'the included profile does not export the fixture prefix path')
+    # mksh runs printf by PATH lookup. This is that lookup, with no shell builtin.
+    external = subprocess.run(['printf', '%s\n', 'external-printf'],
+                              capture_output=True, text=True, env={'PATH': darwin.path})
+    require(external.returncode == 0 and external.stdout == 'external-printf\n',
+            f'external printf did not run from the profile PATH: {external.stderr}')
     host_tools = work / 'config/host-tools.mk'
     host_tools.parent.mkdir()
     host_tools.write_bytes(generated)
@@ -148,9 +184,11 @@ def main():
     hidden = subprocess.run(['/bin/sh', '-c', 'install_name_tool -id @rpath/x x'], cwd=work,
                             capture_output=True, text=True, env={'PATH': str(work / 'empty')})
     require(hidden.returncode == 127, f'bare command exited {hidden.returncode}')
+    alone_env = os.environ.copy()
+    alone_env.update(PATH=darwin.path + os.pathsep + '/usr/bin:/bin',
+                     USE_CROSS_COMPILE='no', OPSYS='Darwin')
     alone = subprocess.run([bmake, '-f', str(host_tools), '-V', '${TOOLS_CREATE}'],
-                           cwd=work, capture_output=True, text=True,
-                           env={'PATH': '/usr/bin:/bin', 'USE_CROSS_COMPILE': 'no', 'OPSYS': 'Darwin'})
+                           cwd=work, capture_output=True, text=True, env=alone_env)
     require(alone.returncode == 0 and 'install_name_tool' not in alone.stdout.split(),
             f'generated include leaked install_name_tool: {alone.stdout} {alone.stderr}')
     netbsd_tools = work / 'config/netbsd-host-tools.mk'
