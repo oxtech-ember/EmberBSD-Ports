@@ -45,4 +45,9 @@ the common libfdt package and checks its environment adapter.
 `tests/s31-reset-check.py <source>` exercises the real reset-type callback on
 host and checks the target reset call address in emitted RV32 code. `CC` and
 `RISCV_CC` select the SDK native compiler for host and target checks.
+`tests/s31-flash-check.py <source>` exercises flash read/program/erase range,
+alignment, capacity, maximum-transfer, ROM/cache error propagation, and stale
+hart-callback cleanup across a newer request from production helpers. ROM calls
+and multi-hart cache rendezvous still require target hardware validation; this
+regression does not write NOR.
 These tests do not execute firmware on the target.

@@ -1633,3 +1633,636 @@ index 1df0280..e501c12 100644
  		      CONFIG_PLATFORM_GENERIC_FDT_EMPTY_SPACE * 1024);
  
  	return 0;
+
+--- a/platform/generic/espressif/esp32s31/esp32s31.c
++++ b/platform/generic/espressif/esp32s31/esp32s31.c
+@@ -165,6 +165,9 @@
+ 	s31_tee_supervisor_priv_sel_to_m();
+ 	root.next_arg1 = s31_uboot_dtb;
+ 	sbi_scratch_thishart_ptr()->next_arg1 = s31_uboot_dtb;
++	rc = s31_flash_init();
++	if (rc)
++		sbi_printf("OpenSBI: S31 flash SBI unavailable (%d)\n", rc);
+ 	sbi_free(s31_fdt_buffer);
+ 	s31_fdt_buffer = NULL;
+ 	return 0;
+@@ -173,6 +176,19 @@
+ 	sbi_free(s31_fdt_buffer);
+ 	s31_fdt_buffer = NULL;
+ 	return rc;
++}
++
++bool s31_flash_range_valid(u32 address, u32 length, u32 capacity,
++			   u32 alignment, u32 maximum)
++{
++	if (capacity == 0 || alignment == 0 || maximum == 0)
++		return false;
++	if (address > capacity || length > capacity - address ||
++	    length > maximum)
++		return false;
++	if ((address % alignment) != 0 || (length % alignment) != 0)
++		return false;
++	return true;
+ }
+ 
+ /* Vendor SBI extension: DMA cache maintenance. */
+@@ -187,6 +203,9 @@
+ 					struct sbi_trap_regs *regs,
+ 					struct sbi_ecall_return *out)
+ {
++	if (funcid >= 6 && funcid <= 10)
++		return s31_flash_vendor_ext_provider(funcid, regs, out);
++
+ 	u32 vaddr = (u32)regs->a0;
+ 	u32 size  = (u32)regs->a1;
+ 
+--- a/platform/generic/espressif/esp32s31/objects.mk
++++ b/platform/generic/espressif/esp32s31/objects.mk
+@@ -13,6 +13,7 @@
+ platform-objs-y += espressif/esp32s31/cache_mmu.o
+ platform-objs-y += espressif/esp32s31/apm.o
+ platform-objs-y += espressif/esp32s31/hsm.o
++platform-objs-y += espressif/esp32s31/flash.o
+ 
+ FW_TEXT_START    = 0x2F000000
+ 
+--- a/platform/generic/espressif/esp32s31/platform.h
++++ b/platform/generic/espressif/esp32s31/platform.h
+@@ -7,8 +7,18 @@
+ #ifndef _ESP32S31_PLATFORM_H_
+ #define _ESP32S31_PLATFORM_H_
+ 
++#include <sbi/sbi_types.h>
++
++struct sbi_ecall_return;
++struct sbi_trap_regs;
++
+ void s31_apm_init(void);
+ void s31_tee_supervisor_priv_sel_to_m(void);
++int s31_flash_init(void);
++int s31_flash_vendor_ext_provider(long funcid, struct sbi_trap_regs *regs,
++				  struct sbi_ecall_return *out);
++bool s31_flash_range_valid(u32 address, u32 length, u32 capacity,
++			   u32 alignment, u32 maximum);
+ 
+ /* hsm.c -- hart 1 (CPU1) start and stop for SMP. */
+ void s31_hsm_register(void);
+--- /dev/null
++++ b/platform/generic/espressif/esp32s31/flash.c
+@@ -0,0 +1,503 @@
++/*
++ * SPDX-License-Identifier: BSD-2-Clause
++ *
++ * ESP32-S31 SPI0 NOR operations for S-mode through a vendor SBI extension.
++ * The M-mode implementation uses only firmware/ROM internal RAM while the
++ * external flash/PSRAM cache is suspended.
++ */
++
++#include <sbi/riscv_asm.h>
++#include <sbi/riscv_encoding.h>
++#include <sbi/riscv_locks.h>
++#include <sbi/sbi_domain.h>
++#include <sbi/sbi_ecall.h>
++#include <sbi/sbi_error.h>
++#include <sbi/sbi_hart.h>
++#include <sbi/sbi_hartmask.h>
++#include <sbi/sbi_hsm.h>
++#include <sbi/sbi_ipi.h>
++#include <sbi/sbi_scratch.h>
++#include <sbi/sbi_string.h>
++#include <sbi/sbi_timer.h>
++#include <sbi/sbi_trap.h>
++
++#include "config.h"
++#include "platform.h"
++
++#define S31_SBI_FLASH_GETINFO	6
++#define S31_SBI_FLASH_READ	7
++#define S31_SBI_FLASH_WRITE	8
++#define S31_SBI_FLASH_ERASE	9
++#define S31_SBI_FLASH_SYNC	10
++
++#define S31_FLASH_INFO_SIZE	0
++#define S31_FLASH_INFO_ERASESIZE	1
++#define S31_FLASH_INFO_PAGESIZE	2
++#define S31_FLASH_INFO_WRITESIZE	3
++
++#define S31_FLASH_BOUNCE_SIZE	4096
++#define S31_FLASH_WRITE_ALIGN	4
++#define S31_FLASH_CACHE_LINE	64
++#define S31_FLASH_MAX_CAPACITY	0x01000000U
++#define S31_FLASH_PARK_TIMEOUT_MS	100
++
++#define S31_ROM_LEGACY_DATA_PTR	0x2f07ffe0U
++
++typedef int (*s31_rom_read_fn)(u32, u32 *, int32_t);
++typedef int (*s31_rom_write_fn)(u32, const u32 *, int32_t);
++typedef int (*s31_rom_erase_area_fn)(u32, u32);
++typedef int (*s31_rom_wait_idle_fn)(void *);
++typedef int (*s31_rom_cache_all_fn)(u32);
++typedef int (*s31_rom_cache_range_fn)(u32, u32, u32);
++typedef u32 (*s31_rom_cache_disable_fn)(void);
++typedef void (*s31_rom_cache_enable_fn)(u32);
++
++#define S31_ROM_FLASH_READ \
++	((s31_rom_read_fn)0x2f80016cU)
++#define S31_ROM_FLASH_WRITE \
++	((s31_rom_write_fn)0x2f800168U)
++#define S31_ROM_FLASH_ERASE_AREA \
++	((s31_rom_erase_area_fn)0x2f800174U)
++#define S31_ROM_FLASH_WAIT_IDLE \
++	((s31_rom_wait_idle_fn)0x2f80012cU)
++#define S31_ROM_CACHE_WRITEBACK_ALL \
++	((s31_rom_cache_all_fn)0x2f800600U)
++#define S31_ROM_CACHE_INVALIDATE_RANGE \
++	((s31_rom_cache_range_fn)0x2f8005e8U)
++#define S31_ROM_CACHE_DISABLE_ICACHE0 \
++	((s31_rom_cache_disable_fn)0x2f80068cU)
++#define S31_ROM_CACHE_ENABLE_ICACHE0 \
++	((s31_rom_cache_enable_fn)0x2f800690U)
++#define S31_ROM_CACHE_DISABLE_ICACHE1 \
++	((s31_rom_cache_disable_fn)0x2f80069cU)
++#define S31_ROM_CACHE_ENABLE_ICACHE1 \
++	((s31_rom_cache_enable_fn)0x2f8006a0U)
++#define S31_ROM_CACHE_DISABLE_DCACHE \
++	((s31_rom_cache_disable_fn)0x2f8006acU)
++#define S31_ROM_CACHE_ENABLE_DCACHE \
++	((s31_rom_cache_enable_fn)0x2f8006b0U)
++
++#define S31_CACHE_MAP_L1_ICACHE	0x03U
++#define S31_CACHE_MAP_L1_DCACHE	0x10U
++#define S31_CACHE_MAP_L1_ALL	(S31_CACHE_MAP_L1_ICACHE | \
++				 S31_CACHE_MAP_L1_DCACHE)
++
++struct s31_rom_flash_chip {
++	u32 device_id;
++	u32 chip_size;
++	u32 block_size;
++	u32 sector_size;
++	u32 page_size;
++	u32 status_mask;
++};
++
++struct s31_rom_flash_legacy_data {
++	struct s31_rom_flash_chip chip;
++	u8 dummy_len_plus[3];
++	u8 sig_matrix;
++};
++
++static DEFINE_SPIN_LOCK(s31_flash_lock);
++static u32 s31_flash_bounce[S31_FLASH_BOUNCE_SIZE / sizeof(u32)]
++	__aligned(64);
++static volatile u32 s31_flash_active_generation;
++static volatile u32 s31_flash_generation[SBI_HARTMASK_MAX_BITS];
++static volatile u32 s31_flash_parked_generation[SBI_HARTMASK_MAX_BITS];
++static u32 s31_flash_park_event = SBI_IPI_EVENT_MAX;
++static u32 s31_flash_next_generation;
++static bool s31_flash_ready;
++
++static bool
++s31_flash_park_ack_matches(u32 ack, u32 generation)
++{
++	return generation != 0 && ack == generation;
++}
++
++static struct s31_rom_flash_legacy_data *
++s31_flash_legacy_data(void)
++{
++	struct s31_rom_flash_legacy_data *data;
++	uintptr_t p = *(volatile uintptr_t *)S31_ROM_LEGACY_DATA_PTR;
++
++	if (p < HP_RAM_START || p > HP_RAM_START + HP_RAM_SIZE -
++	    sizeof(*data) || (p & 3) != 0)
++		return NULL;
++	data = (struct s31_rom_flash_legacy_data *)p;
++	return data;
++}
++
++static int
++s31_flash_get_chip(struct s31_rom_flash_chip **chip)
++{
++	struct s31_rom_flash_legacy_data *data = s31_flash_legacy_data();
++	struct s31_rom_flash_chip *c;
++
++	if (data == NULL)
++		return SBI_ENOTSUPP;
++	c = &data->chip;
++	if (c->chip_size == 0 || c->chip_size > S31_FLASH_MAX_CAPACITY ||
++	    c->sector_size == 0 || c->page_size < S31_FLASH_WRITE_ALIGN ||
++	    c->page_size > S31_FLASH_BOUNCE_SIZE ||
++	    (c->page_size & (c->page_size - 1)) != 0 ||
++	    c->sector_size < c->page_size ||
++	    c->sector_size % c->page_size != 0)
++		return SBI_ENOTSUPP;
++	*chip = c;
++	return 0;
++}
++
++static int
++s31_flash_park_update(struct sbi_scratch *scratch,
++	    struct sbi_scratch *remote_scratch, u32 remote_hartindex, void *data)
++{
++	u32 generation = (u32)(uintptr_t)data;
++
++	(void)scratch;
++	if (remote_hartindex >= SBI_HARTMASK_MAX_BITS || generation == 0)
++		return SBI_ERR_INVALID_PARAM;
++	__atomic_store_n(&s31_flash_generation[remote_hartindex], generation,
++	    __ATOMIC_RELEASE);
++	(void)remote_scratch;
++	return SBI_IPI_UPDATE_SUCCESS;
++}
++
++static void
++s31_flash_park_process(struct sbi_scratch *scratch)
++{
++	u32 index = scratch->hartindex;
++	u32 generation;
++	u32 pending;
++
++	if (index >= SBI_HARTMASK_MAX_BITS || index >= sizeof(ulong) * 8)
++		return;
++	generation = __atomic_load_n(&s31_flash_generation[index],
++	    __ATOMIC_ACQUIRE);
++	if (generation == 0 || __atomic_load_n(&s31_flash_active_generation,
++	    __ATOMIC_ACQUIRE) != generation) {
++		pending = generation;
++		(void)__atomic_compare_exchange_n(&s31_flash_generation[index],
++		    &pending, 0, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
++		return;
++	}
++	__atomic_store_n(&s31_flash_parked_generation[index], generation,
++	    __ATOMIC_RELEASE);
++	if (__atomic_load_n(&s31_flash_active_generation,
++	    __ATOMIC_ACQUIRE) != generation) {
++		(void)__atomic_compare_exchange_n(&s31_flash_parked_generation[index],
++		    &generation, 0, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
++		return;
++	}
++	while (__atomic_load_n(&s31_flash_active_generation,
++	    __ATOMIC_ACQUIRE) == generation)
++		__asm__ __volatile__("nop");
++	__atomic_store_n(&s31_flash_generation[index], 0, __ATOMIC_RELEASE);
++	(void)__atomic_compare_exchange_n(&s31_flash_parked_generation[index],
++	    &generation, 0, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
++}
++
++static const struct sbi_ipi_event_ops s31_flash_park_ops = {
++	.name = "S31_FLASH_PARK",
++	.update = s31_flash_park_update,
++	.process = s31_flash_park_process,
++};
++
++int
++s31_flash_init(void)
++{
++	int event;
++
++	event = sbi_ipi_event_create(&s31_flash_park_ops);
++	if (event < 0)
++		return event;
++	s31_flash_park_event = event;
++	s31_flash_ready = true;
++	return 0;
++}
++
++static int
++s31_flash_release_harts(u32 generation, ulong expected)
++{
++	const u64 start = sbi_timer_value();
++	const u64 timeout = sbi_timer_compute_mdelta(S31_FLASH_PARK_TIMEOUT_MS);
++	u32 i;
++
++	__atomic_store_n(&s31_flash_active_generation, 0, __ATOMIC_RELEASE);
++	while (expected != 0) {
++		bool pending = false;
++
++		for (i = 0; i < SBI_HARTMASK_MAX_BITS &&
++		    i < sizeof(ulong) * 8; i++) {
++			if ((expected & (1UL << i)) != 0 &&
++			    s31_flash_park_ack_matches(
++			    __atomic_load_n(&s31_flash_parked_generation[i],
++			    __ATOMIC_ACQUIRE), generation)) {
++				pending = true;
++				break;
++			}
++		}
++		if (!pending)
++			return 0;
++		if (sbi_timer_value() - start >= timeout)
++			return SBI_ERR_ALREADY_STARTED;
++	}
++	return 0;
++}
++
++static int
++s31_flash_park_harts(u32 generation, ulong *expected)
++{
++	struct sbi_hartmask harts;
++	const u32 self_index = sbi_hartid_to_hartindex(current_hartid());
++	ulong hmask = 0;
++	u32 i;
++	int error;
++	const u64 start = sbi_timer_value();
++	const u64 timeout = sbi_timer_compute_mdelta(S31_FLASH_PARK_TIMEOUT_MS);
++
++	*expected = 0;
++	error = sbi_hsm_hart_interruptible_mask(sbi_domain_thishart_ptr(),
++	    &harts);
++	if (error)
++		return error;
++	for (i = 0; i < sbi_hart_count(); i++) {
++		u32 hartid;
++		if (i == self_index || !sbi_hartmask_test_hartindex(i, &harts))
++			continue;
++		hartid = sbi_hartindex_to_hartid(i);
++		if (hartid >= sizeof(ulong) * 8 || i >= sizeof(ulong) * 8)
++			return SBI_ENOTSUPP;
++		hmask |= 1UL << hartid;
++		*expected |= 1UL << i;
++	}
++	if (*expected == 0)
++		return 0;
++	__atomic_store_n(&s31_flash_active_generation, generation,
++	    __ATOMIC_RELEASE);
++	error = sbi_ipi_send_many(hmask, 0, s31_flash_park_event,
++	    (void *)(uintptr_t)generation);
++	if (error)
++		goto release;
++	for (;;) {
++		bool parked = true;
++
++		for (i = 0; i < SBI_HARTMASK_MAX_BITS &&
++		    i < sizeof(ulong) * 8; i++) {
++			if ((*expected & (1UL << i)) != 0 &&
++			    !s31_flash_park_ack_matches(
++			    __atomic_load_n(&s31_flash_parked_generation[i],
++			    __ATOMIC_ACQUIRE), generation)) {
++				parked = false;
++				break;
++			}
++		}
++		if (parked)
++			return 0;
++		if (sbi_timer_value() - start >= timeout) {
++			error = SBI_ERR_ALREADY_STARTED;
++			goto release;
++		}
++	}
++
++release:
++	(void)s31_flash_release_harts(generation, *expected);
++	return error;
++}
++
++static int
++s31_flash_cache_disable(u32 *icache_state, u32 *dcache_state)
++{
++	u32 hartid = current_hartid();
++	if (S31_ROM_CACHE_WRITEBACK_ALL(S31_CACHE_MAP_L1_DCACHE) != 0)
++		return SBI_EFAIL;
++	*dcache_state = S31_ROM_CACHE_DISABLE_DCACHE();
++	if (hartid == 0)
++		*icache_state = S31_ROM_CACHE_DISABLE_ICACHE0();
++	else if (hartid == 1)
++		*icache_state = S31_ROM_CACHE_DISABLE_ICACHE1();
++	else {
++		S31_ROM_CACHE_ENABLE_DCACHE(*dcache_state);
++		return SBI_ENOTSUPP;
++	}
++	return 0;
++}
++
++static void
++s31_flash_cache_restore(u32 icache_state, u32 dcache_state)
++{
++	if (current_hartid() == 0)
++		S31_ROM_CACHE_ENABLE_ICACHE0(icache_state);
++	else
++		S31_ROM_CACHE_ENABLE_ICACHE1(icache_state);
++	S31_ROM_CACHE_ENABLE_DCACHE(dcache_state);
++}
++
++static int
++s31_flash_invalidate(u32 address, u32 length)
++{
++	u32 start, end;
++	u32 flash_end = FLASH_START + FLASH_SIZE;
++
++	if (length == 0)
++		return 0;
++	start = (FLASH_START + address) & ~(S31_FLASH_CACHE_LINE - 1);
++	if (length > flash_end - (FLASH_START + address))
++		return SBI_ERR_INVALID_PARAM;
++	end = ((FLASH_START + address) + length +
++	    (S31_FLASH_CACHE_LINE - 1)) & ~(S31_FLASH_CACHE_LINE - 1);
++	if (end > flash_end)
++		end = flash_end;
++	if (S31_ROM_CACHE_INVALIDATE_RANGE(S31_CACHE_MAP_L1_ALL, start,
++	    end - start) != 0)
++		return SBI_EFAIL;
++	return 0;
++}
++
++static int
++s31_flash_validate_buffer(u32 address, u32 length, bool output)
++{
++	unsigned long access = output ? SBI_DOMAIN_WRITE : SBI_DOMAIN_READ;
++
++	if (length == 0)
++		return 0;
++	if (address < PSRAM_START || length > PSRAM_SIZE ||
++	    address - PSRAM_START > PSRAM_SIZE - length)
++		return SBI_ERR_INVALID_ADDRESS;
++	if (!sbi_domain_check_addr_range(sbi_domain_thishart_ptr(), address,
++	    length, PRV_S, access))
++		return SBI_ERR_INVALID_ADDRESS;
++	return 0;
++}
++
++static int
++s31_flash_get_info(u32 selector, struct sbi_ecall_return *out)
++{
++	struct s31_rom_flash_chip *chip;
++	int error = s31_flash_get_chip(&chip);
++	if (error)
++		return error;
++	switch (selector) {
++	case S31_FLASH_INFO_SIZE:
++		out->value = chip->chip_size;
++		break;
++	case S31_FLASH_INFO_ERASESIZE:
++		out->value = chip->sector_size;
++		break;
++	case S31_FLASH_INFO_PAGESIZE:
++		out->value = chip->page_size;
++		break;
++	case S31_FLASH_INFO_WRITESIZE:
++		out->value = S31_FLASH_WRITE_ALIGN;
++		break;
++	default:
++		return SBI_ERR_INVALID_PARAM;
++	}
++	return 0;
++}
++
++static int
++s31_flash_result(int rom_error, int cache_error)
++{
++	return (rom_error == 0 && cache_error == 0) ? 0 : SBI_EFAIL;
++}
++
++static int
++s31_flash_operation(long funcid, u32 address, u32 buffer, u32 length)
++{
++	struct s31_rom_flash_chip *chip;
++	const bool writes = funcid == S31_SBI_FLASH_WRITE;
++	const bool changes = writes || funcid == S31_SBI_FLASH_ERASE;
++	u32 generation, icache_state = 0, dcache_state = 0;
++	ulong expected = 0;
++	int error, rom_error = 0, cache_error = 0, release_error;
++	bool caches_disabled = false;
++
++	if (!spin_trylock(&s31_flash_lock))
++		return SBI_ERR_ALREADY_STARTED;
++	error = s31_flash_get_chip(&chip);
++	if (error)
++		goto done;
++	if (funcid == S31_SBI_FLASH_READ || writes) {
++		error = s31_flash_range_valid(address, length, chip->chip_size,
++		    S31_FLASH_WRITE_ALIGN, S31_FLASH_BOUNCE_SIZE) ? 0 :
++		    SBI_ERR_INVALID_PARAM;
++		if (error)
++			goto done;
++		error = s31_flash_validate_buffer(buffer, length, !writes);
++		if (error)
++			goto done;
++		if (writes && length)
++			sbi_memcpy(s31_flash_bounce, (const void *)(uintptr_t)buffer,
++			    length);
++	} else if (funcid == S31_SBI_FLASH_ERASE) {
++		error = s31_flash_range_valid(address, length, chip->chip_size,
++		    chip->sector_size, S31_FLASH_BOUNCE_SIZE) ? 0 :
++		    SBI_ERR_INVALID_PARAM;
++		if (error)
++			goto done;
++	} else if (funcid != S31_SBI_FLASH_SYNC) {
++		error = SBI_ERR_NOT_SUPPORTED;
++		goto done;
++	}
++	if (funcid != S31_SBI_FLASH_SYNC && length == 0) {
++		error = 0;
++		goto done;
++	}
++
++	generation = ++s31_flash_next_generation;
++	if (generation == 0)
++		generation = ++s31_flash_next_generation;
++	error = s31_flash_park_harts(generation, &expected);
++	if (error)
++		goto done;
++	error = s31_flash_cache_disable(&icache_state, &dcache_state);
++	if (error)
++		goto release_harts;
++	caches_disabled = true;
++	switch (funcid) {
++	case S31_SBI_FLASH_READ:
++		rom_error = S31_ROM_FLASH_READ(address, s31_flash_bounce,
++		    (int32_t)length);
++		break;
++	case S31_SBI_FLASH_WRITE:
++		rom_error = S31_ROM_FLASH_WRITE(address, s31_flash_bounce,
++		    (int32_t)length);
++		break;
++	case S31_SBI_FLASH_ERASE:
++		rom_error = S31_ROM_FLASH_ERASE_AREA(address, length);
++		break;
++	case S31_SBI_FLASH_SYNC:
++		rom_error = S31_ROM_FLASH_WAIT_IDLE(chip);
++		break;
++	}
++	s31_flash_cache_restore(icache_state, dcache_state);
++	caches_disabled = false;
++	if (changes)
++		cache_error = s31_flash_invalidate(address, length);
++	if (funcid == S31_SBI_FLASH_READ && rom_error == 0 && length)
++		sbi_memcpy((void *)(uintptr_t)buffer, s31_flash_bounce, length);
++	error = s31_flash_result(rom_error, cache_error);
++
++release_harts:
++	if (caches_disabled)
++		s31_flash_cache_restore(icache_state, dcache_state);
++	release_error = s31_flash_release_harts(generation, expected);
++	if (error == 0 && release_error)
++		error = release_error;
++done:
++	spin_unlock(&s31_flash_lock);
++	return error;
++}
++
++int
++s31_flash_vendor_ext_provider(long funcid, struct sbi_trap_regs *regs,
++	    struct sbi_ecall_return *out)
++{
++	if (!s31_flash_ready)
++		return SBI_ENOTSUPP;
++	if (funcid == S31_SBI_FLASH_GETINFO)
++		return s31_flash_get_info((u32)regs->a0, out);
++	if (funcid < S31_SBI_FLASH_READ || funcid > S31_SBI_FLASH_SYNC)
++		return SBI_ENOTSUPP;
++	return s31_flash_operation(funcid, (u32)regs->a0, (u32)regs->a1,
++	    (u32)regs->a2);
++}
+--- a/platform/generic/espressif/esp32s31/flash.c
++++ b/platform/generic/espressif/esp32s31/flash.c
+@@ -113,6 +113,19 @@
+ 	return generation != 0 && ack == generation;
+ }
+ 
++static void
++s31_flash_park_cleanup(volatile u32 *pending_slot,
++	    volatile u32 *ack_slot, u32 generation)
++{
++	u32 expected = generation;
++
++	(void)__atomic_compare_exchange_n(pending_slot, &expected, 0, false,
++	    __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
++	expected = generation;
++	(void)__atomic_compare_exchange_n(ack_slot, &expected, 0, false,
++	    __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
++}
++
+ static struct s31_rom_flash_legacy_data *
+ s31_flash_legacy_data(void)
+ {
+@@ -190,9 +203,8 @@
+ 	while (__atomic_load_n(&s31_flash_active_generation,
+ 	    __ATOMIC_ACQUIRE) == generation)
+ 		__asm__ __volatile__("nop");
+-	__atomic_store_n(&s31_flash_generation[index], 0, __ATOMIC_RELEASE);
+-	(void)__atomic_compare_exchange_n(&s31_flash_parked_generation[index],
+-	    &generation, 0, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
++	s31_flash_park_cleanup(&s31_flash_generation[index],
++	    &s31_flash_parked_generation[index], generation);
+ }
+ 
+ static const struct sbi_ipi_event_ops s31_flash_park_ops = {
+@@ -255,6 +267,8 @@
+ 	const u64 timeout = sbi_timer_compute_mdelta(S31_FLASH_PARK_TIMEOUT_MS);
+ 
+ 	*expected = 0;
++	if (current_hartid() > 1)
++		return SBI_ENOTSUPP;
+ 	error = sbi_hsm_hart_interruptible_mask(sbi_domain_thishart_ptr(),
+ 	    &harts);
+ 	if (error)
+@@ -264,7 +278,8 @@
+ 		if (i == self_index || !sbi_hartmask_test_hartindex(i, &harts))
+ 			continue;
+ 		hartid = sbi_hartindex_to_hartid(i);
+-		if (hartid >= sizeof(ulong) * 8 || i >= sizeof(ulong) * 8)
++		if (hartid > 1 || hartid >= sizeof(ulong) * 8 ||
++		    i >= sizeof(ulong) * 8)
+ 			return SBI_ENOTSUPP;
+ 		hmask |= 1UL << hartid;
+ 		*expected |= 1UL << i;
