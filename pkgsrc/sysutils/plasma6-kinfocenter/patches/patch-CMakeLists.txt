@@ -1,0 +1,23 @@
+$NetBSD$
+
+Qt Graphs is required only by the Linux energy page.
+That page is not built on NetBSD.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -27,12 +27,14 @@
+ option(BUILD_DOC "Whether to build the documentation" ON)
+ 
+ find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS
+     Core
+-    Graphs
+     Gui
+     Qml
+     Widgets
+ )
++if (CMAKE_SYSTEM_NAME MATCHES "Linux")
++    find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS Graphs)
++endif()
+ 
+ find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS
+     Config
