@@ -1,0 +1,50 @@
+$NetBSD$
+
+The Qt tests also call qt.preprocess. On a cross build that executes
+the target moc. Use the same build-machine moc as the library. The
+generated name stays @BASENAME@.moc, which these sources include.
+
+--- qt/tests/meson.build.orig
++++ qt/tests/meson.build
+@@ -1,6 +1,5 @@
+ # Meson definition for AppStream Qt Tests
+ 
+-qt = import('qt6')
+ qt_test_dep = dependency(
+     'qt6',
+     modules: ['Core', 'Test'],
+@@ -21,7 +20,16 @@
+ asqt_test_pool_src = [
+     'asqt-pool-test.cpp'
+ ]
+-asqt_test_pool_src += qt.preprocess (moc_sources: asqt_test_pool_src)
++if meson.is_cross_build()
++    asqt_test_pool_src += generator(
++        asqt_host_moc,
++        output: '@BASENAME@.moc',
++        arguments: asqt_moc_args + ['-I' + meson.current_source_dir()],
++    ).process('asqt-pool-test.cpp')
++else
++    qt = import('qt6')
++    asqt_test_pool_src += qt.preprocess(moc_sources: asqt_test_pool_src)
++endif
+ 
+ as_test_qt_pool_exe = executable('as-test_qt-pool',
+     [asqt_test_pool_src],
+@@ -40,7 +48,15 @@
+ asqt_test_misc_src = [
+     'asqt-misc-test.cpp'
+ ]
+-asqt_test_misc_src += qt.preprocess (moc_sources: asqt_test_misc_src)
++if meson.is_cross_build()
++    asqt_test_misc_src += generator(
++        asqt_host_moc,
++        output: '@BASENAME@.moc',
++        arguments: asqt_moc_args + ['-I' + meson.current_source_dir()],
++    ).process('asqt-misc-test.cpp')
++else
++    asqt_test_misc_src += qt.preprocess(moc_sources: asqt_test_misc_src)
++endif
+ 
+ as_test_qt_misc_exe = executable('as-test_qt-misc',
+     [asqt_test_misc_src],

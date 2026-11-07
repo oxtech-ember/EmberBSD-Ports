@@ -14,14 +14,8 @@ PLIST_VARS+=	qt gir man
 PLIST.qt=	yes
 MESON_ARGS+=	-Dqt=true
 .include "../../x11/qt6-qtbase/buildlink3.mk"
-# lrelease, moc and rcc must be the host Qt tools. The sysroot copies are
-# NetBSD binaries and cannot run while cross-building. Meson probes the
-# plain tool name on PATH after the target file is absent.
-CONFIGURE_ENV+=	PATH=${EMBERBSD_HOST_PREFIX}/qt6/libexec:${EMBERBSD_HOST_PREFIX}/qt6/bin:${PATH}
-MAKE_ENV+=	PATH=${EMBERBSD_HOST_PREFIX}/qt6/libexec:${EMBERBSD_HOST_PREFIX}/qt6/bin:${PATH}
-MESON_ARGS+=	--cross-file ${WRKDIR}/.qt-cross
-# Qt's pkg-config files live in qt6/lib/pkgconfig. Meson only searches
-# the buildlink lib/pkgconfig directory.
+# Qt's pkg-config files live in qt6/lib/pkgconfig. Meson searches the
+# buildlink lib/pkgconfig directory. The links stay inside this build.
 pre-configure: appstream-qt-pkgconfig
 appstream-qt-pkgconfig:
 	cd ${BUILDLINK_DIR}/qt6/lib/pkgconfig && \
@@ -29,17 +23,17 @@ appstream-qt-pkgconfig:
 		${LN} -sf ${BUILDLINK_DIR}/qt6/lib/pkgconfig/$$pc \
 		    ${BUILDLINK_DIR}/lib/pkgconfig/$$pc; \
 	    done
-	${PRINTF} '%s\n' '[binaries]' > ${WRKDIR}/.qt-cross
-	for tool in ${EMBERBSD_HOST_PREFIX}/qt6/libexec/* \
-	    ${EMBERBSD_HOST_PREFIX}/qt6/bin/lrelease \
-	    ${EMBERBSD_HOST_PREFIX}/qt6/bin/lupdate \
-	    ${EMBERBSD_HOST_PREFIX}/qt6/bin/qmake \
-	    ${EMBERBSD_HOST_PREFIX}/qt6/bin/qmake6; do \
-		if ${TEST} -x "$$tool"; then \
-		    ${PRINTF} "%s = '%s'\n" "$${tool##*/}" "$$tool" \
-			>> ${WRKDIR}/.qt-cross; \
-		fi; \
-	done
+# Meson 1.12 runs moc from the target Qt prefix and stops when that ELF
+# exists. Leave the sysroot files in place. qt/meson.build reads this
+# build-machine property and runs the Ports SDK host moc instead.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes"
+MESON_ARGS+=		--native-file ${WRKDIR}/.qt-host
+pre-configure: appstream-qt-host-moc
+appstream-qt-host-moc:
+	${PRINTF} '%s\n' '[properties]' \
+	    "qt_host_moc = '${EMBERBSD_HOST_PREFIX}/qt6/libexec/moc'" \
+	    > ${WRKDIR}/.qt-host
+.endif
 .else
 MESON_ARGS+=	-Dqt=false
 .endif

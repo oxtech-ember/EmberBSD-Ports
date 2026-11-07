@@ -5,4 +5,6 @@ SHA512 (appstream-1.1.6.tar.gz) = aecb6c4a1ecf414213f65565b366782696b6e5161b29ab
 Size (appstream-1.1.6.tar.gz) = 4372775 bytes
 SHA1 (patch-data_meson.build) = e0ab2f991490408aa77a75d53764677250bd1411
 SHA1 (patch-docs_meson.build) = a40e94677655387ca1c94c46b044aebafb617686
+SHA1 (patch-qt_meson.build) = 04f4ce1b17d12d030d3d28af9a5d4d498163c1d2
+SHA1 (patch-qt_tests_meson.build) = a22b308ca4bf58f548eef97da73e6262425070b0
 SHA1 (patch-src_as-system-info.c) = 7d96a06658739979901e526126755b374fcf4aad

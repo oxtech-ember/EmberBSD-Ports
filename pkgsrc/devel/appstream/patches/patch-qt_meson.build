@@ -1,0 +1,54 @@
+$NetBSD$
+
+Cross builds must run the build-machine moc.
+
+The target moc is a NetBSD ELF in the sysroot Qt prefix. Meson 1.12 finds
+that file first and stops, because the file exists. The build machine
+cannot execute it. The Ports SDK host moc writes the same moc_*.cpp.
+Its path is a build-machine property, not a target bindir. The target
+executables stay in place.
+
+--- qt/meson.build.orig
++++ qt/meson.build
+@@ -5,7 +5,6 @@
+ 
+ asqt_api_level = '3'
+ 
+-qt = import('qt6')
+ qt_dep = dependency(
+     'qt6',
+     modules: ['Core'],
+@@ -86,10 +85,29 @@
+     'chelpers.h',
+ ]
+ 
+-asqt_moc = qt.preprocess (
+-    moc_headers: asqt_pub_headers + asqt_priv_headers,
+-    #moc_sources: asqt_src
+-)
++if meson.is_cross_build()
++    # Do not call qt.preprocess here. Meson 1.12 executes every Qt tool
++    # from the target prefix first and stops when that ELF exists.
++    # qt_host_moc is the Ports SDK moc on the build machine.
++    asqt_host_moc = find_program(
++        meson.get_external_property('qt_host_moc', native: true),
++        native: true,
++    )
++    asqt_moc_args = [
++        '-I' + qt_dep.get_variable(pkgconfig: 'includedir'),
++        '-I' + meson.current_source_dir(),
++        '@INPUT@',
++        '-o', '@OUTPUT@',
++    ]
++    asqt_moc = generator(
++        asqt_host_moc,
++        output: 'moc_@BASENAME@.cpp',
++        arguments: asqt_moc_args,
++    ).process(asqt_pub_headers + asqt_priv_headers)
++else
++    qt = import('qt6')
++    asqt_moc = qt.preprocess(moc_headers: asqt_pub_headers + asqt_priv_headers)
++endif
+ 
+ asqt_cpp_args = ['-DQT_NO_KEYWORDS']
+ if get_option('maintainer')

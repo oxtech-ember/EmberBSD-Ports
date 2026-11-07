@@ -6,7 +6,7 @@ BUILDLINK_TREE+=	appstream
 APPSTREAM_BUILDLINK3_MK:=
 
 BUILDLINK_API_DEPENDS.appstream+=	appstream>=0.16.3
-BUILDLINK_ABI_DEPENDS.appstream+=	appstream>=1.1.6nb2
+BUILDLINK_ABI_DEPENDS.appstream+=	appstream>=1.1.6nb3
 BUILDLINK_PKGSRCDIR.appstream?=		../../devel/appstream
 
 .include "../../archivers/zstd/buildlink3.mk"

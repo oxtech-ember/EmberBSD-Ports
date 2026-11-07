@@ -1,7 +1,7 @@
 # $NetBSD: Makefile,v 1.35 2026/09/02 19:01:21 wiz Exp $
 
 DISTNAME=	appstream-1.1.6
-PKGREVISION=	2
+PKGREVISION=	3
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=ximion/}
 GITHUB_TAG=	v${PKGVERSION_NOREV}
@@ -39,6 +39,17 @@ PKGCONFIG_OVERRIDE_STAGE=	post-configure
 MESON_ARGS+=	-Dgir=false
 # The man-page stylesheet path is the target prefix. The host cannot read it.
 MESON_ARGS+=	-Dman=false
+# Meson 1.12 find_tool() reads the target machine file, then a pkg-config
+# variable. That variable is prefixed with the sysroot, so a host generator
+# path does not exist and configure stops. Name the Ports SDK generators
+# here. They run on the build machine. Target libraries stay in the sysroot.
+MESON_ARGS+=	--cross-file ${WRKDIR}/.host-tools
+pre-configure: appstream-host-tools
+appstream-host-tools:
+	${PRINTF} '%s\n' '[binaries]' \
+	    "glib-mkenums = '${EMBERBSD_HOST_PREFIX}/bin/glib-mkenums'" \
+	    "glib-compile-resources = '${EMBERBSD_HOST_PREFIX}/bin/glib-compile-resources'" \
+	    > ${WRKDIR}/.host-tools
 .else
 PLIST.gir=	yes
 PLIST.man=	yes
