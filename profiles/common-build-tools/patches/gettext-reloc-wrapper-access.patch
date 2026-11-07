@@ -1,0 +1,47 @@
+$NetBSD$
+
+Use the system access function in the relocating wrapper.
+Origin: EmberBSD (AI-assisted).
+Upstream status: not submitted.
+
+install-reloc links a fixed source list. That list includes progreloc.c and
+omits access.c. A target whose gnulib unistd.h renames access to rpl_access
+then fails at the msgcmp wrapper link. The library build does not define
+IN_RELOCWRAPPER, so libgettextlib still provides rpl_access.
+
+--- gettext-runtime/gnulib-lib/progreloc.c.orig
++++ gettext-runtime/gnulib-lib/progreloc.c
+@@ -110,6 +110,15 @@
+ 
+ #undef set_program_name
+ 
++#if defined IN_RELOCWRAPPER
++/* When building the relocatable program wrapper, use the system's access
++   function, not the gnulib override, otherwise we would get a link error.
++   install-reloc compiles this file. Its source list has no access.c.
++   The library compilation does not define IN_RELOCWRAPPER and keeps
++   rpl_access.  */
++# undef access
++#endif
++
+ 
+ #if ENABLE_RELOCATABLE
+ 
+--- gettext-tools/gnulib-lib/progreloc.c.orig
++++ gettext-tools/gnulib-lib/progreloc.c
+@@ -110,6 +110,15 @@
+ 
+ #undef set_program_name
+ 
++#if defined IN_RELOCWRAPPER
++/* When building the relocatable program wrapper, use the system's access
++   function, not the gnulib override, otherwise we would get a link error.
++   install-reloc compiles this file. Its source list has no access.c.
++   The library compilation does not define IN_RELOCWRAPPER and keeps
++   rpl_access.  */
++# undef access
++#endif
++
+ 
+ #if ENABLE_RELOCATABLE
+ 

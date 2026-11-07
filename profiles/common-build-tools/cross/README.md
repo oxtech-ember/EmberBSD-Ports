@@ -394,6 +394,14 @@ Newly built gettext-tools pass `--enable-relocatable`. Upstream disables
 rpath for that option and rewrites the Darwin install name with
 `install_name_tool`. The native common-tools profile publishes the selected
 `llvm-install-name-tool` under that name. Cross builds do not include it.
+`build-aux/install-reloc` links each relocating wrapper from a fixed source
+list. That list includes `progreloc.c` and has no `access.c`. When the target
+gnulib `unistd.h` renames `access` to `rpl_access`, the wrapper compilation
+defines `IN_RELOCWRAPPER` and `progreloc.c` calls the system `access`. The
+library compilation leaves the rename in place, so `libgettextlib` still
+provides `rpl_access`. The shared tools revision for that source change is 9.
+The Darwin native assignment remains 9, because that host does not replace
+`access` and the later native revision line is unchanged.
 The SQLite `readline` option is off by default on a Darwin build host.
 This breaks the native Python → SQLite → editline → automake → help2man →
 gettext-tools → Python bootstrap cycle. Target and native EmberBSD packages

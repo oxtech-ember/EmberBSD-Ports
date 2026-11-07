@@ -28,6 +28,14 @@ target library and headers.
 The archive includes upstream licenses and notices. If effective source inputs
 change, verification prepares and compares the complete payload.
 
+`profiles/common-build-tools/patches/gettext-reloc-wrapper-access.patch`
+is exported as `devel/gettext/patches/patch-zz_ember_reloc_wrapper_access`.
+Both `progreloc.c` copies call the system `access` while
+`install-reloc` builds the wrapper. The archive checksum is unchanged.
+Shared `gettext-tools` is `gettext-tools-1.0nb9`; the Darwin native
+assignment stays `gettext-tools-1.0nb9`. After this patch lands, refresh a
+prepared tree with `refresh-source` so its receipt names the new patch set.
+
 The common gettext-tools build links the shared `textproc/tree-sitter`
 runtime, while its language grammars remain pinned in `tree-sitter.cfg`.
 Prepare that runtime with the dedicated [Tree-sitter source owner](../tree-sitter/README.md)
