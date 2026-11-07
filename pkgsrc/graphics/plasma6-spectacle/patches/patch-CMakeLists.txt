@@ -1,0 +1,18 @@
+$NetBSD$
+
+Tesseract is not part of this system. Screenshots do not need it.
+The OCR manager is replaced by a stub that reports recognition unavailable.
+
+--- CMakeLists.txt.orig
++++ CMakeLists.txt
+@@ -101,7 +101,9 @@
+     PURPOSE "Add image editing capability to the screenshots"
+ )
+ 
+-pkg_check_modules(TESSERACT REQUIRED IMPORTED_TARGET tesseract)
++pkg_check_modules(TESSERACT IMPORTED_TARGET tesseract)
++set(SPECTACLE_OCR_SOURCE OcrManagerStub.cpp)
++set(SPECTACLE_TESSERACT_LIB "")
+ 
+ # optional components
+ find_package(KF6DocTools ${KF6_MIN_VERSION})

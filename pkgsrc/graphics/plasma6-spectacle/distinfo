@@ -1,0 +1,8 @@
+$NetBSD$
+
+BLAKE2s (spectacle-6.8.2.tar.xz) = 5cdbb3346e3d39ac760c8f5f432937bfc28f3673593d7cce6880caca16223add
+SHA512 (spectacle-6.8.2.tar.xz) = 4d9745c46027ac8239a097babc4b55e8512d1fcb11b2f322294976a6d7f185d5682b4cc06a2783f1407b65cd7fd75c8a00ddcf1f3e4ca2a733d41d7fb79efe42
+Size (spectacle-6.8.2.tar.xz) = 1631380 bytes
+SHA1 (patch-CMakeLists.txt) = efd49fef5f343a63fab395e1c374578fb91db743
+SHA1 (patch-src_CMakeLists.txt) = 94876a85d6433baaed6366a932bc77fb0feb01e8
+SHA1 (patch-src_OcrManager.h) = e13b95044e214a074f97cc5c3924f9f7c8dc17aa

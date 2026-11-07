@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (kpipewire-6.8.2.tar.xz) = c23715329942a64cf4c67349a8131afa2e23afb09f86ad02227a1f983ba0e30a
+SHA512 (kpipewire-6.8.2.tar.xz) = fc617075c87ab53dfddb351daf39975ef3845e44d26493f98b582e35213a3595635373a896a79f830c16c13ebf04a6380f97d61d583b5ca13e65620e741ab064
+Size (kpipewire-6.8.2.tar.xz) = 170412 bytes
+SHA1 (patch-src_pipewireproduce.cpp) = e0a3aaff72381354239f4afd0e07ff3afe90d99f

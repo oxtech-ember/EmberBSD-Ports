@@ -1,0 +1,2 @@
+KQuickImageEditor provides Qt Quick components for cropping and annotating
+images. Spectacle uses this library for the screenshot editor.

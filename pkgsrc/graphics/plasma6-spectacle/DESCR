@@ -1,0 +1,3 @@
+Spectacle takes screenshots of the current Wayland session.
+Text recognition is not available in this build.
+Video recording is compiled through KPipeWire and is not a verified function.

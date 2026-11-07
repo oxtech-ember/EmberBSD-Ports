@@ -1,0 +1,24 @@
+$NetBSD$
+
+Build the OCR stub instead of the Tesseract manager.
+
+--- src/CMakeLists.txt.orig
++++ src/CMakeLists.txt
+@@ -25,7 +25,7 @@
+     CommandLineOptions.cpp
+     ExportManager.cpp
+     Geometry.cpp
+-    OcrManager.cpp
++    ${SPECTACLE_OCR_SOURCE}
+     Gui/CaptureWindow.cpp
+     Gui/ExportMenu.cpp
+     Gui/HelpMenu.cpp
+@@ -126,7 +126,7 @@
+     Wayland::Client
+     LayerShellQt::Interface
+     KQuickImageEditor
+-    PkgConfig::TESSERACT
++    ${SPECTACLE_TESSERACT_LIB}
+ )
+ 
+ # qt_add_qml_module doesn't know how to deal with headers in subdirectories so

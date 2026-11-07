@@ -1,0 +1,3 @@
+KPipeWire records and plays PipeWire streams for KDE applications.
+Spectacle links it for screen capture support on this Plasma release.
+Video recording is not a verified function of this package.
