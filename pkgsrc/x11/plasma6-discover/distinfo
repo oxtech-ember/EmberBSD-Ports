@@ -1,0 +1,6 @@
+$NetBSD$
+
+BLAKE2s (discover-6.8.2.tar.xz) = 50a4762840b78441ce93b9303a8ea82480d06d600af524441c11ba40a3e7fcad
+SHA512 (discover-6.8.2.tar.xz) = f0f3e3de05735473d61994e4796838fc80478b1841c71a657a6cbaae8754f97e4a13cb7d3976ddb5e3798ab534d3979d2a32dff490b2156bb087b840b53c7cca
+Size (discover-6.8.2.tar.xz) = 1209444 bytes
+SHA1 (patch-discover_main.cpp) = db01630f6400aa8b0940f25efb0789f0bcccfd58
