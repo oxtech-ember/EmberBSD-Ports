@@ -1,0 +1,4 @@
+@comment $NetBSD: PLIST,v 1.2 2023/07/13 06:21:47 nia Exp $
+include/libstemmer.h
+lib/libstemmer.la
+@pkgdir bin
