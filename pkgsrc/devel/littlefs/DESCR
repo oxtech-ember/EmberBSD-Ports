@@ -1,0 +1,4 @@
+littlefs is a small-footprint filesystem for embedded storage. This source-only
+package provides the pinned upstream source tree to native OS and host image
+builder integrations; it does not select a storage device or provide a BSD
+filesystem adapter.
