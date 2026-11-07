@@ -8,7 +8,10 @@
 #include <Transaction/Transaction.h>
 #include <resources/AbstractResourcesBackend.h>
 
+#include <QVector>
+
 class EmberBSDResource;
+class QProcess;
 class StandardBackendUpdater;
 
 class EmberBSDBackend : public AbstractResourcesBackend
@@ -25,15 +28,20 @@ public:
     int fetchingUpdatesProgress() const override;
     QString displayName() const override;
     bool hasApplications() const override;
+    InlineMessage *explainDysfunction() const override;
     Transaction *installApplication(AbstractResource *app, const AddonList &addons) override;
     Transaction *removeApplication(AbstractResource *app) override;
     void checkForUpdates() override;
 
 private:
     void reload();
+    void applyCatalog(const QByteArray &output, const QByteArray &errors, int code, bool crashed);
     Transaction *refused(AbstractResource *app, Transaction::Role role);
 
-    EmberBSDResource *m_browser = nullptr;
+    QVector<EmberBSDResource *> m_resources;
     StandardBackendUpdater *m_updater = nullptr;
+    QProcess *m_process = nullptr;
+    QString m_error;
+    QString m_summary;
     bool m_ready = false;
 };

@@ -4,7 +4,14 @@
     <Name>Applications</Name>
     <Icon>applications-other</Icon>
     <Include>
-      <Category>emberbsd</Category>
+      <Category>applications</Category>
+    </Include>
+  </Menu>
+  <Menu>
+    <Name>All packages</Name>
+    <Icon>package</Icon>
+    <Include>
+      <Category>packages</Category>
     </Include>
   </Menu>
 </Menu>

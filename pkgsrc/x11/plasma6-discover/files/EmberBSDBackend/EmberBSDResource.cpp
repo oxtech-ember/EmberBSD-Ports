@@ -7,14 +7,24 @@
 
 #include <KLocalizedString>
 
-EmberBSDResource::EmberBSDResource(QString packageId, QString version, bool installed, quint64 size, QString releaseId, AbstractResourcesBackend *parent)
+EmberBSDResource::EmberBSDResource(QString packageId, QString version, QString root, QString role, QString action, QString installedPackage, quint64 size, QString releaseId, AbstractResourcesBackend *parent)
     : AbstractResource(parent)
     , m_packageId(std::move(packageId))
     , m_version(std::move(version))
-    , m_state(installed ? Installed : None)
+    , m_root(std::move(root))
+    , m_role(std::move(role))
+    , m_action(std::move(action))
+    , m_installedPackage(std::move(installedPackage))
     , m_size(size)
     , m_releaseId(std::move(releaseId))
+    , m_state(None)
 {
+    if (m_action == QLatin1String("upgrade"))
+        m_state = Upgradeable;
+    else if (m_action == QLatin1String("available"))
+        m_state = None;
+    else if (m_action == QLatin1String("installed") || m_action == QLatin1String("installed-newer") || m_action == QLatin1String("version-uncompared"))
+        m_state = Installed;
 }
 
 QString EmberBSDResource::packageName() const
@@ -24,35 +34,38 @@ QString EmberBSDResource::packageName() const
 
 QString EmberBSDResource::name() const
 {
-    return i18n("Ember Browser");
+    return m_packageId;
 }
 
 QString EmberBSDResource::comment()
 {
-    return i18n("Signed package %1", m_version);
+    return m_root;
 }
 
 QString EmberBSDResource::longDescription()
 {
-    return i18n("Signed current release %1. Catalog root www/blanc. Package %2 is %3. Install and remove stay unavailable until a verified helper exists.",
+    return i18n("Signed package %1 from %2. Catalog root %3. Role %4. State %5. Installed package %6. The signed catalog has no desktop metadata, so this name is the package name.",
+                m_version,
                 m_releaseId,
-                m_packageId,
-                m_state == Installed ? i18n("installed") : i18n("not installed"));
+                m_root,
+                m_role,
+                m_action,
+                m_installedPackage.isEmpty() ? i18n("none") : m_installedPackage);
 }
 
 QVariant EmberBSDResource::icon() const
 {
-    return QStringLiteral("internet-web-browser");
+    return QStringLiteral("package-x-generic");
 }
 
 AbstractResource::Type EmberBSDResource::type() const
 {
-    return Application;
+    return m_role == QLatin1String("library") ? System : Application;
 }
 
 QString EmberBSDResource::sourceIcon() const
 {
-    return QStringLiteral("internet-web-browser");
+    return QStringLiteral("package-x-generic");
 }
 
 QDate EmberBSDResource::releaseDate() const
@@ -80,7 +93,11 @@ AbstractResource::State EmberBSDResource::state()
 
 bool EmberBSDResource::hasCategory(const QString &category) const
 {
-    return category == QLatin1String("emberbsd");
+    if (category == QLatin1String("packages"))
+        return true;
+    if (category == QLatin1String("applications"))
+        return !isLibrary();
+    return false;
 }
 
 bool EmberBSDResource::isRemovable() const
@@ -90,7 +107,8 @@ bool EmberBSDResource::isRemovable() const
 
 QString EmberBSDResource::installedVersion() const
 {
-    return m_state == Installed ? m_version : QString();
+    const int split = m_installedPackage.lastIndexOf(QLatin1Char('-'));
+    return split > 0 ? m_installedPackage.mid(split + 1) : QString();
 }
 
 QString EmberBSDResource::availableVersion() const
@@ -105,7 +123,7 @@ QString EmberBSDResource::origin() const
 
 QString EmberBSDResource::section()
 {
-    return QStringLiteral("www");
+    return m_root.section(QLatin1Char('/'), 0, 0);
 }
 
 quint64 EmberBSDResource::size()
@@ -115,7 +133,7 @@ quint64 EmberBSDResource::size()
 
 QString EmberBSDResource::author() const
 {
-    return QStringLiteral("EmberBSD");
+    return QString();
 }
 
 QList<PackageState> EmberBSDResource::addonsInformation()
@@ -136,4 +154,9 @@ QUrl EmberBSDResource::homepage()
 QUrl EmberBSDResource::url() const
 {
     return QUrl(QStringLiteral("appstream://") + m_packageId);
+}
+
+bool EmberBSDResource::isLibrary() const
+{
+    return m_role == QLatin1String("library");
 }
