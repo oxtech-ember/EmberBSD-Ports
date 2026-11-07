@@ -10,6 +10,15 @@ fi
 bmake=$1
 pkgsrc=$2
 pkg=$pkgsrc/security/wolfssl
+pc_patch=$pkg/patches/patch-support_wolfssl_pc.in
+private_libs=$(sed -n 's/^+Libs[.]private: //p' "$pc_patch")
+case "$private_libs" in
+*'@PTHREAD_LIBS@'*) ;;
+*) echo "static pkg-config interface omits detected pthread libraries: $private_libs" >&2; exit 1 ;;
+esac
+case "$private_libs" in
+*'-lpthread'*|*'-pthread'*) echo "pkg-config interface hardcodes pthread for single-threaded builds: $private_libs" >&2; exit 1 ;;
+esac
 supported=$("$bmake" -C "$pkg" -V PKG_SUPPORTED_OPTIONS)
 case " $supported " in
 *" shared "*) ;;

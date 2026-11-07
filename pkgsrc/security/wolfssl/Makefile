@@ -4,7 +4,7 @@ DISTNAME=	wolfssl-5.9.4
 CATEGORIES=	security
 MASTER_SITES=	https://www.wolfssl.com/
 EXTRACT_SUFX=	.zip
-PKGREVISION=	2
+PKGREVISION=	3
 
 MAINTAINER=	fox@NetBSD.org
 HOMEPAGE=	https://www.wolfssl.com/

@@ -1,0 +1,12 @@
+$NetBSD$
+
+Propagate the detected thread library to static pkg-config consumers.
+
+--- support/wolfssl.pc.in.orig
++++ support/wolfssl.pc.in
+@@ -7,4 +7,4 @@
+ Version: @VERSION@
+ Libs: -Wl,-R${libdir} -L${libdir} -lwolfssl
+-Libs.private: @LIBM@ @PC_LIBS_PRIVATE@
++Libs.private: @LIBM@ @PC_LIBS_PRIVATE@ @PTHREAD_LIBS@
+ Cflags: -I${includedir}
