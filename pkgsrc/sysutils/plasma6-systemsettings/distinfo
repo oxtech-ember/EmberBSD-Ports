@@ -1,0 +1,5 @@
+$NetBSD: distinfo,v 1.2 2026/09/06 10:23:31 markd Exp $
+
+BLAKE2s (systemsettings-6.8.2.tar.xz) = d7e4475a613d851d9a185b597605bd04f12bc4524a8aebdd794174eb96cf50c9
+SHA512 (systemsettings-6.8.2.tar.xz) = 52a94bda5fa6f42d2c3ee0439d07c6203cd6f1653fe075521b6e2dd1f4ebf941e76a1a1d8ae15d557a0357970f375d26575e9df2cb669e0ee5108a2bf94c9e10
+Size (systemsettings-6.8.2.tar.xz) = 225516 bytes

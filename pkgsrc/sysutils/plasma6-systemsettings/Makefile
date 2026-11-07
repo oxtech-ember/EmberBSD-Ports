@@ -1,0 +1,32 @@
+# $NetBSD: Makefile,v 1.9 2026/09/06 10:23:31 markd Exp $
+
+DISTNAME=	systemsettings-${PLASMAVER}
+CATEGORIES=	sysutils
+
+HOMEPAGE=	https://kde.org/plasma-desktop/
+COMMENT=	KDE system manager for hardware, software, and workspaces
+LICENSE=	gnu-gpl-v2 AND gnu-fdl-v1.2
+
+.include "../../meta-pkgs/kde/plasma6.mk"
+
+# The host already has kf6-kdoctools-generators. The full kf6-kdoctools
+# package conflicts with that split and must not be rebuilt here.
+USE_TOOLS+=	msgmerge
+
+SUBST_CLASSES+=		fix-moc
+SUBST_STAGE.fix-moc=	post-configure
+SUBST_MESSAGE.fix-moc=	Cleaning up MOC includes
+SUBST_FILES.fix-moc=	_KDE_build/*/CMakeFiles/*_autogen.dir/AutogenInfo.json
+SUBST_NOOP_OK.fix-moc=	yes
+SUBST_SED.fix-moc=	-e 's;"${PREFIX}/include",;;g'
+
+.include "../../devel/kf6-kcmutils/buildlink3.mk"
+.include "../../devel/kf6-kio/buildlink3.mk"
+.include "../../devel/kf6-krunner/buildlink3.mk"
+.include "../../x11/kf6-kirigami/buildlink3.mk"
+.include "../../x11/kf6-kwindowsystem/buildlink3.mk"
+.include "../../x11/kf6-kxmlgui/buildlink3.mk"
+.include "../../x11/plasma6-plasma-activities/buildlink3.mk"
+.include "../../lang/qt6-qtdeclarative/buildlink3.mk"
+.include "../../x11/qt6-qtbase/buildlink3.mk"
+.include "../../mk/bsd.pkg.mk"
