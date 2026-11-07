@@ -11,6 +11,12 @@ The recipe uses GitHub's tag archive (`archive/refs/tags/v2.11.3.tar.gz`),
 not a release asset. The upstream BSD-3-Clause license and complete source
 tree are retained. No device policy or OS adapter is provided here.
 
+The local `lfs.c` patch keeps CTZ blocks reachable during filesystem traversal
+while a regular file remains open after unlink or rename-overwrite. Without
+this, allocation under pressure can reuse blocks still referenced by the open
+descriptor. `tests/open-unlinked.c` exercises both operations against the
+actual library on a RAM flash model, and also checks inline write/sync/unlink.
+
 ```sh
 "$HOST_PREFIX/bin/python3.15" -B scripts/source-inputs/littlefs/source.py \
   --sdk-source "$SDK_SOURCE" --git "$GIT" prepare \

@@ -32,9 +32,10 @@ class LittlefsSourceTests(unittest.TestCase):
         self.assertEqual(metadata['archive'], 'littlefs-2.11.3.tar.gz')
         self.assertEqual(metadata['archive_root'], 'littlefs-2.11.3')
         self.assertEqual(metadata['size'], 279822)
-        self.assertEqual([path.name for path in patches], ['patch-lfs_util.h'])
-        self.assertEqual(metadata['recipe']['patches/patch-lfs_util.h'],
-                         hashlib.sha256(patches[0].read_bytes()).hexdigest())
+        self.assertEqual([path.name for path in patches], ['patch-lfs.c', 'patch-lfs_util.h'])
+        for path in patches:
+            self.assertEqual(metadata['recipe']['patches/' + path.name],
+                             hashlib.sha256(path.read_bytes()).hexdigest())
 
     def test_recipe_rejects_changed_patch_checksum(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -43,6 +44,10 @@ class LittlefsSourceTests(unittest.TestCase):
             for name in ('Makefile', 'DESCR', 'distinfo'):
                 source = PORTS / 'pkgsrc/devel/littlefs' / name
                 (root / name).write_bytes(source.read_bytes())
+            (root / 'patches').mkdir(exist_ok=True)
+            for name in ('patch-lfs.c', 'patch-lfs_util.h'):
+                source = PORTS / 'pkgsrc/devel/littlefs/patches' / name
+                (root / 'patches' / name).write_bytes(source.read_bytes())
             patch = PORTS / 'pkgsrc/devel/littlefs/patches/patch-lfs_util.h'
             (root / 'patches/patch-lfs_util.h').write_bytes(patch.read_bytes() + b'\n')
             with self.assertRaisesRegex(ValueError, 'patch checksum differs'):

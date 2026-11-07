@@ -1,6 +1,7 @@
 # Origin: littlefs-project/littlefs v2.11.3; source-only shared owner.
 DISTNAME=	littlefs-2.11.3
 PKGNAME=	littlefs-source-2.11.3
+PKGREVISION=	1
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GITHUB:=littlefs-project/}
 GITHUB_PROJECT=	littlefs

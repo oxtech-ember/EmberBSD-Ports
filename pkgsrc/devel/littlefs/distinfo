@@ -4,3 +4,4 @@ BLAKE2s (littlefs-2.11.3.tar.gz) = 9dd76bdb57d8c1d86df129826df63870ea720337913a0
 SHA512 (littlefs-2.11.3.tar.gz) = d907301c9bd8d1fe615691b8f42faa6b297723f7935f8a4d1a623bae4764b1018b9debd2ca3884c9934db8cce2b23645bee4753c2782ec1e39808896d3b34911
 Size (littlefs-2.11.3.tar.gz) = 279822 bytes
 SHA1 (patch-lfs_util.h) = 697a5d9098fbcc01d635b18f097a7a7f7dd9b319
+SHA1 (patch-lfs.c) = 0788ec36b0bbd8b9c929cd04ed470a7c71cf7772
