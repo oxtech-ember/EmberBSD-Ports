@@ -37,7 +37,7 @@ SUBST_CLASSES+=	python
 SUBST_STAGE.python=	pre-configure
 SUBST_FILES.python=	meson.build
 SUBST_SED.python=	-e 's|@PYTHONBIN@|${TOOL_PYTHONBIN}|g'
-PLIST_VARS+= intel v3d powervr radeonsi full_drivers
+PLIST_VARS+= intel v3d powervr radeonsi full_drivers vaapi
 .if !empty(PKG_OPTIONS:Msoftpipe-only)
 # X11 software renderer retains common GL, EGL, GLES and GBM interfaces.
 MESON_ARGS+= -Dgallium-drivers=softpipe
@@ -113,7 +113,17 @@ BUILDLINK_DEPMETHOD.spirv-llvm-translator=	build
 .include "../../parallel/spirv-llvm-translator/buildlink3.mk"
 .endif
 .endif
-MESON_ARGS+=	-Dgallium-va=disabled -Dgallium-mediafoundation=disabled
+# VA support is shared by the selected RadeonSI and VirGL drivers.
+# Mesa uses libva headers to build the dynamically loaded backend.
+.if empty(PKG_OPTIONS:Msoftpipe-only)
+BUILDLINK_DEPMETHOD.libva?= build
+.include "../../multimedia/libva/buildlink3.mk"
+MESON_ARGS+= -Dgallium-va=enabled -Dvideo-codecs=all_free,h264dec
+PLIST.vaapi= yes
+.else
+MESON_ARGS+= -Dgallium-va=disabled
+.endif
+MESON_ARGS+= -Dgallium-mediafoundation=disabled
 MESON_ARGS+=	-Dgallium-rusticl=false -Dteflon=false -Dperfetto=false
 MESON_ARGS+=	-Dmicrosoft-clc=disabled -Dallow-fallback-for=
 MESON_ARGS+=	-Dzlib=enabled -Dzstd=enabled -Ddisplay-info=disabled

@@ -64,8 +64,10 @@ lib/dri/swrast_dri.so
 ${PLIST.full_drivers}lib/dri/udl_dri.so
 ${PLIST.intel}lib/dri/iris_dri.so
 ${PLIST.radeonsi}lib/dri/radeonsi_dri.so
+${PLIST.radeonsi}lib/dri/radeonsi_drv_video.so
 ${PLIST.v3d}lib/dri/v3d_dri.so
 ${PLIST.full_drivers}lib/dri/virtio_gpu_dri.so
+${PLIST.vaapi}lib/dri/virtio_gpu_drv_video.so
 ${PLIST.full_drivers}lib/dri/vkms_dri.so
 ${PLIST.full_drivers}lib/dri/zink_dri.so
 ${PLIST.full_drivers}lib/dri/zynqmp-dpsub_dri.so
