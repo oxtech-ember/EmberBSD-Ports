@@ -186,6 +186,17 @@ Neither configuration supports encrypted flash; hashes provide integrity,
 not authentication. Preparing source or an image does not itself establish
 successful persistent boot.
 
+With `CONFIG_ESP32S31_NOR_MAP`, SPL reads JEDEC RDID (`0x9f`) after ROM attach
+and configures the ROM legacy geometry before cache and PSRAM setup. The
+command byte order follows ESP-IDF's S31
+[`bootloader_read_flash_id()`](https://github.com/espressif/esp-idf/blob/master/components/bootloader_support/bootloader_flash/src/bootloader_flash.c)
+convention. Only density bytes `0x14` through `0x18` (1–16 MiB) are accepted;
+other IDs fail initialization. Geometry is 64 KiB block, 4 KiB sector, and
+256-byte page, matching the S31
+[`bootloader_flash_config_esp32s31.c`](https://github.com/espressif/esp-idf/blob/master/components/bootloader_support/bootloader_flash/src/bootloader_flash_config_esp32s31.c)
+setup. This path reads identification only; it does not write NOR and does
+not establish hardware acceptance.
+
 When building a configured U-Boot output tree with the selected native
 prefix, append `PYTHON3="$HOST_PREFIX/bin/python3.15"` and
 `DTC="$HOST_PREFIX/bin/dtc"` to the normal `gmake` invocation. Pass them as
@@ -203,7 +214,8 @@ and `HOST_PREFIX` set to those directories:
 for check in test-sha256.py test-spl-strings.py test-fit-flow.py \
     test-fit-read.py test-fit-hash.py test-psram-layout.py test-reserve.py test-s31-mpll.py \
     test-mips-endian.py test-prof-align.py test-env-awk.py \
-    test-spl-nor-bounds.py test-s31-nor-map.py test-s31-nor-order.py \
+    test-spl-nor-bounds.py test-s31-nor-map.py test-s31-nor-capacity.py \
+    test-s31-nor-order.py \
     test-s31-mosaico-splash.py \
     test-s31-nor-bootcmd.py test-s31-nor-attach.py; do
     "$HOST_PREFIX/bin/python3.15" "tests/$check" \

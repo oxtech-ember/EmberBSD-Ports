@@ -51,6 +51,25 @@ typedef int (*rom_cache_range_fn_t)(u32 map, u32 addr, u32 size);
 typedef void (*rom_sf_attach_fn_t)(u32 config, bool legacy);
 #define esp_rom_spiflash_attach          ((rom_sf_attach_fn_t)0x2F800200U)
 
+struct rom_sf_chip {
+	u32 device_id;
+	u32 chip_size;
+	u32 block_size;
+	u32 sector_size;
+	u32 page_size;
+	u32 status_mask;
+};
+
+struct rom_sf_legacy_data {
+	struct rom_sf_chip chip;
+	u8 dummy_len_plus[3];
+	u8 sig_matrix;
+};
+
+typedef int (*rom_sf_config_fn_t)(u32 id, u32 size, u32 block_size,
+				u32 sector_size, u32 page_size, u32 status_mask);
+#define esp_rom_spiflash_config_param    ((rom_sf_config_fn_t)0x2F80017CU)
+
 typedef int (*rom_sf_status_fn_t)(void *chip, u32 *status);
 typedef int (*rom_sf_wstatus_fn_t)(void *chip, u32 status);
 typedef int (*rom_sf_waitidle_fn_t)(void *chip);

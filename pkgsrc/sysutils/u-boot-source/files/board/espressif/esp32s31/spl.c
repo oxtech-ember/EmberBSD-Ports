@@ -20,7 +20,96 @@
 #include "spl_cache_mmu.h"
 #include "spl_clk.h"
 #include "spl_psram.h"
+#include "spl_poll.h"
 #include "psram-layout.h"
+
+#if IS_ENABLED(CONFIG_ESP32S31_NOR_MAP)
+/* SPI1 flash registers from the ESP32-S31 spi1_mem_c_reg.h contract. */
+#define S31_FLASH_SPI1_BASE 0x20501000U
+#define S31_FLASH_CMD      0x00
+#define S31_FLASH_CTRL     0x08
+#define S31_FLASH_USER     0x18
+#define S31_FLASH_USER1    0x1c
+#define S31_FLASH_USER2    0x20
+#define S31_FLASH_MISO_LEN 0x28
+#define S31_FLASH_W0       0x58
+#define S31_FLASH_USR      BIT(18)
+#define S31_FLASH_WP_HIGH  BIT(21)
+#define S31_FLASH_PHASES   GENMASK(31, 27)
+#define S31_FLASH_RX       (BIT(31) | BIT(28))
+#define S31_FLASH_DUMMY    BIT(29)
+
+static u32 s31_nor_capacity(u32 id)
+{
+	u32 density = id & 0xff;
+	u32 manufacturer = (id >> 16) & 0xff;
+
+	/* Only the common 1--16 MiB JEDEC convention fits this 24-bit map. */
+	if (id >> 24 || !manufacturer || manufacturer == 0xff ||
+	    density < 0x14 || density > 0x18)
+		return 0;
+	return 1U << density;
+}
+
+static int s31_nor_init_geometry(void)
+{
+	void *spi = (void *)S31_FLASH_SPI1_BASE;
+	uintptr_t legacy_addr = readl((void *)rom_spiflash_legacy_data);
+	volatile struct rom_sf_legacy_data *legacy;
+	u32 ctrl, user, user1, user2, miso_len, data, dummy, id, size;
+	bool ready;
+
+	/* The ROM state must remain inside HP SRAM. */
+	if ((legacy_addr & 3) || legacy_addr < 0x2f000000U ||
+	    legacy_addr > 0x2f080000U - sizeof(*legacy))
+		return -1;
+	legacy = (volatile struct rom_sf_legacy_data *)legacy_addr;
+	dummy = legacy->dummy_len_plus[1];
+	if (dummy > 64)
+		return -1;
+	if (!s31_poll_register(spi + S31_FLASH_CMD, ~0U, 0))
+		return -1;
+
+	ctrl = readl(spi + S31_FLASH_CTRL);
+	user = readl(spi + S31_FLASH_USER);
+	user1 = readl(spi + S31_FLASH_USER1);
+	user2 = readl(spi + S31_FLASH_USER2);
+	miso_len = readl(spi + S31_FLASH_MISO_LEN);
+
+	/*
+	 * RDID: one command byte, no address, three input bytes. As in
+	 * ESP-IDF bootloader_read_flash_id(), include the ROM's input delay.
+	 * Run before cache/PSRAM setup; restore the controller after RDID.
+	 */
+	writel(S31_FLASH_WP_HIGH, spi + S31_FLASH_CTRL);
+	writel((user & ~S31_FLASH_PHASES) | S31_FLASH_RX |
+	       (dummy ? S31_FLASH_DUMMY : 0), spi + S31_FLASH_USER);
+	writel((user1 & ~0x3fU) | (dummy ? dummy - 1 : 0),
+	       spi + S31_FLASH_USER1);
+	writel((7U << 28) | 0x9f, spi + S31_FLASH_USER2);
+	writel(23, spi + S31_FLASH_MISO_LEN);
+	writel(0, spi + S31_FLASH_W0);
+	writel(S31_FLASH_USR, spi + S31_FLASH_CMD);
+	ready = s31_poll_register(spi + S31_FLASH_CMD, S31_FLASH_USR, 0);
+	data = readl(spi + S31_FLASH_W0);
+	writel(ctrl, spi + S31_FLASH_CTRL);
+	writel(user, spi + S31_FLASH_USER);
+	writel(user1, spi + S31_FLASH_USER1);
+	writel(user2, spi + S31_FLASH_USER2);
+	writel(miso_len, spi + S31_FLASH_MISO_LEN);
+	if (!ready)
+		return -1;
+
+	id = ((data & 0xff) << 16) | (data & 0xff00) |
+	     ((data >> 16) & 0xff);
+	size = s31_nor_capacity(id);
+	printf("spl: NOR JEDEC %06x, capacity %u bytes\n", id, size);
+	if (!size)
+		return -1;
+	return esp_rom_spiflash_config_param(id, size, 0x10000, 0x1000,
+					   0x100, 0xffff);
+}
+#endif
 
 /* ROM-armed watchdogs (RTC WDT + super-WDT + MWDT0). Disabled from
  * harts_early_init (start.S, earliest C hook) so the chip doesn't reset a
@@ -68,6 +157,10 @@ void spl_board_init(void)
 	puts("spl: ROM flash attach begin\n");
 	esp_rom_spiflash_attach(0, false);
 	puts("spl: ROM flash attach done\n");
+	if (s31_nor_init_geometry()) {
+		puts("spl: NOR geometry setup failed\n");
+		hang();
+	}
 #endif
 
 	/* RAM-only trial: initialise PSRAM before receiving a FIT over UART. */
