@@ -54,6 +54,13 @@ entire payload instead of the small FIT structure and is rejected. Check the
 generated data offsets, hashes, FDT capacity and memory map for the chosen
 inputs separately.
 
+For a RAM-loaded firmware FIT that needs the kernel to access mapped NOR, set
+`CONFIG_ESP32S31_NOR_MAP=y`, `CONFIG_ESP32S31_NOR_BOOT` unset and
+`CONFIG_ESP32S31_NOR_PROBE` unset. SPL attaches the ROM NOR interface during
+initialization, then keeps UART/YMODEM as its only image source. For persistent
+NOR-first boot, enable `CONFIG_ESP32S31_NOR_BOOT`; SPL tries NOR before its UART
+fallback. Keep these modes explicit when selecting or producing an SPL image.
+
 ### S31 NOR image from prepared inputs
 
 `board/espressif/esp32s31/make-nor-image.py` assembles a 16 MiB NOR image
