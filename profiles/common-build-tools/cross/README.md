@@ -391,8 +391,9 @@ metainfo rules after the prefix moves. The value is shell-quoted into the
 configure, build, and global environments. An explicit `GETTEXTDATADIR` is
 left unchanged. `devel/gettext-tools` does not use this tool while it is built.
 Newly built gettext-tools pass `--enable-relocatable`. Upstream disables
-rpath for that option; a Darwin build of the relocatable package has not
-been run from this tree.
+rpath for that option and rewrites the Darwin install name with
+`install_name_tool`. The Darwin bootstrap profile publishes that command
+in the package tools directory.
 The SQLite `readline` option is off by default on a Darwin build host.
 This breaks the native Python → SQLite → editline → automake → help2man →
 gettext-tools → Python bootstrap cycle. Target and native EmberBSD packages

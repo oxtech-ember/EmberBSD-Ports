@@ -136,6 +136,7 @@ not an admission report or a second package manager.
 | `EMBERBSD_COMPILER_FAMILY` | `clang` by default, or explicit `gcc` |
 | `EMBERBSD_DARWIN_SEED_CC`, `CXX`, `CPP`, `AS` | Complete selected compiler and assembler commands |
 | `EMBERBSD_DARWIN_LD64_LLD`, `DSYMUTIL`, `AR`, `RANLIB`, `NM`, `STRIP` | Explicit native linker and archive/symbol tools |
+| `EMBERBSD_DARWIN_INSTALL_NAME_TOOL` | Mach-O install-name command; defaults to `/usr/bin/install_name_tool` |
 | `EMBERBSD_DARWIN_SDK_VERSION`, `OSX_SDK_PATH` | Native ABI metadata and directory |
 | `EMBERBSD_DARWIN_HOST_*` | Actual host OS, CPU, kernel, product and pkgsrc OS versions |
 | `EMBERBSD_DARWIN_MAKE`, `GMAKE`, `SH` | Complete make commands and the selected shell |
@@ -152,6 +153,13 @@ The installed Clang package supplies `bin/clang-as` for APIs that accept only
 one executable path. This entry point executes the same prefix's Clang and
 mksh. It does not search PATH or replace a missing compiler.
 
+`ar`, `nm`, `ranlib`, and `install_name_tool` are created in each package tools
+directory. GNU `libtool-reloc` runs `install_name_tool` by name after a
+relocatable shared library link. The utility PATH does not include
+`/usr/bin`, so the tools directory must provide that name. An unset
+`EMBERBSD_DARWIN_INSTALL_NAME_TOOL` selects `/usr/bin/install_name_tool`.
+The gettext-tools recipe stays `gettext-tools-1.0nb9` and keeps
+`--enable-relocatable`; this profile change does not publish a new package.
 The profile selects the ordinary unprivileged pkgsrc install policy.
 It does not modify system users or `/etc/shells`. Native package checks,
 checksums, and required-library checks remain enabled.

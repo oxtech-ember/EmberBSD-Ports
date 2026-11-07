@@ -82,7 +82,7 @@ Origin: EmberBSD (AI-assisted); upstream status: not submitted.
  CONFIGURE_ARGS+=	--disable-csharp
 +CONFIGURE_ARGS+=	--without-included-libxml
 +# GNU --enable-relocatable asks for a prefix-relative install. Upstream
-+# disables rpath to do that; this tree has not executed that Darwin build.
++# disables rpath and rewrites the Darwin install name with install_name_tool.
 +CONFIGURE_ARGS+=	--enable-relocatable
 +USE_TOOLS+=		pkg-config
  CONFIGURE_ARGS+=	--disable-java
