@@ -1,0 +1,15 @@
+$NetBSD$
+
+Build the EmberBSD signed-catalog backend.
+
+--- libdiscover/backends/CMakeLists.txt.orig
++++ libdiscover/backends/CMakeLists.txt
+@@ -102,3 +102,8 @@
+ if(BUILD_AlpineApkBackend AND ApkQt_FOUND)
+     add_subdirectory(AlpineApkBackend)
+ endif()
++
++option(BUILD_EmberBSDBackend "Build the EmberBSD signed catalog backend." ON)
++if (BUILD_EmberBSDBackend)
++    add_subdirectory(EmberBSDBackend)
++endif()

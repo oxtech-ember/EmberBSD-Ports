@@ -4,7 +4,9 @@ etc/xdg/autostart/org.kde.discover.notifier.desktop
 lib/plasma-discover/libDiscoverCommon.so
 lib/plasma-discover/libDiscoverNotifiers.so
 libexec/DiscoverNotifier
+qt6/plugins/discover/emberbsd-backend.so
 qt6/plugins/plasma/kcms/systemsettings/kcm_updates.so
+share/libdiscover/categories/emberbsd-categories.xml
 share/applications/kcm_updates.desktop
 share/applications/org.kde.discover.desktop
 share/applications/org.kde.discover.notifier.desktop

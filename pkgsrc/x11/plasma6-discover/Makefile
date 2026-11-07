@@ -9,6 +9,7 @@ LICENSE=	gnu-gpl-v2 AND gnu-lgpl-v2.1 AND gnu-fdl-v1.2
 
 .include "../../meta-pkgs/kde/plasma6.mk"
 
+PKGREVISION=	1
 USE_TOOLS+=	msgmerge pkg-config
 
 # PackageKit, Flatpak, Snap, Fwupd and the other Linux stores are not
@@ -30,6 +31,11 @@ CMAKE_CONFIGURE_ARGS+=	-DCMAKE_DISABLE_FIND_PACKAGE_packagekitqt6=ON
 # lib/plasma-discover. The executable must search that directory.
 LDFLAGS+=		${COMPILER_RPATH_FLAG}${PREFIX}/lib/plasma-discover
 
+
+# The signed-catalog backend is package source. It calls the installed
+# SDK client with fixed arguments.
+post-extract:
+	${CP} -R ${FILESDIR}/EmberBSDBackend ${WRKSRC}/libdiscover/backends/
 
 # Snap and the AppStream preview backend are not built. Their desktop
 # files would claim MIME types for those backends.
