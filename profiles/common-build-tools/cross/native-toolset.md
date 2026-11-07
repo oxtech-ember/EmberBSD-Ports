@@ -197,6 +197,12 @@ symbol table already lists common symbols. `scripts/tests/openssl-darwin-ranlib.
 reads the exported configure environment.
 `tests/native-archiver-commands.py` builds a native recipe that calls `ar`
 by name.
+The same generated include selects `llvm-install-name-tool` but does not
+create an `install_name_tool` command. GNU `libtool-reloc` runs that name.
+The native profile in `mk.conf` publishes it, executing the selected file
+so the basename stays `llvm-install-name-tool`. An existing `host-tools.mk`
+does not need to be regenerated. Cross builds do not include that profile.
+`tests/darwin-native-install-name-tool.py` reads this MAKECONF chain.
 
 `tests/native-toolset-selection.py` checks the LLVM command and environment
 with API doubles. `tests/native-toolset-make.py` checks the make mapping,

@@ -45,7 +45,9 @@ Keep its package database, object, cache and package-output settings in that
 configuration. `MAKE_JOBS` defaults to one and accepts an explicit resource limit.
 The profile also selects shared Python 3.15, Ruby 4.0 and current Meson/LLVM policy.
 Regenerate `host-tools.mk` when the selected tools change. It is a configuration
-include, not an admission report.
+include, not an admission report. On Darwin the profile also creates
+`install_name_tool` from the `llvm-install-name-tool` path already recorded
+there; that command does not require regenerating the include.
 
 For the GCC alternative, add `--compiler-family gcc` when generating the include
 and set `EMBERBSD_HOST_COMPILER_FAMILY=gcc` before the profile include. That route
