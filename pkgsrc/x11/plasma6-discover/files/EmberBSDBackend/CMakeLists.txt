@@ -13,4 +13,6 @@ set_target_properties(emberbsd-backend PROPERTIES
     INSTALL_RPATH ${CMAKE_INSTALL_FULL_LIBDIR}/plasma-discover
 )
 
-install(FILES emberbsd-categories.xml DESTINATION ${KDE_INSTALL_DATADIR}/libdiscover/categories)
+install(FILES emberbsd-categories.xml
+    DESTINATION ${KDE_INSTALL_DATADIR}/libdiscover/categories
+    RENAME emberbsd-backend-categories.xml)

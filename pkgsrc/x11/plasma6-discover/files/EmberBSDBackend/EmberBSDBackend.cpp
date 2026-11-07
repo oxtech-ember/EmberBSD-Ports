@@ -5,6 +5,10 @@
  * The package list is the SDK client's read-only catalog command.
  * Arguments are fixed. State and cache are this user's XDG directories.
  * Install and remove are not called.
+ *
+ * A search that arrives before the catalog stays open. It is completed with
+ * the real resources, or with the real error, when the client finishes.
+ * An empty result is not emitted before that attempt.
  */
 
 #include "EmberBSDBackend.h"
@@ -20,6 +24,8 @@
 #include <QJsonObject>
 #include <QProcess>
 #include <QStandardPaths>
+#include <QTimer>
+#include <utility>
 
 DISCOVER_BACKEND_PLUGIN(EmberBSDBackend)
 
@@ -74,13 +80,12 @@ void EmberBSDBackend::reload()
         m_error = i18n("No user state directory is available for the signed catalog.");
         m_ready = true;
         Q_EMIT passiveMessage(m_error);
+        completePending();
         Q_EMIT fetchingUpdatesProgressChanged();
         return;
     }
     m_ready = false;
     m_error.clear();
-    qDeleteAll(m_resources);
-    m_resources.clear();
     Q_EMIT fetchingUpdatesProgressChanged();
     m_process = new QProcess(this);
     connect(m_process, &QProcess::finished, this, [this](int code, QProcess::ExitStatus status) {
@@ -105,62 +110,90 @@ void EmberBSDBackend::applyCatalog(const QByteArray &output, const QByteArray &e
             m_error = i18n("The signed catalog client returned an unexpected index.");
             Q_EMIT passiveMessage(m_error);
         } else {
+            QVector<EmberBSDResource *> created;
             const QString releaseId = root.value(QStringLiteral("release_id")).toString();
-            const QJsonObject counts = root.value(QStringLiteral("counts")).toObject();
             for (const QJsonValue &value : root.value(QStringLiteral("packages")).toArray()) {
                 const QJsonObject package = value.toObject();
-                const QString pkgname = package.value(QStringLiteral("pkgname")).toString();
-                const QString base = package.value(QStringLiteral("base")).toString();
-                if (base.isEmpty() || pkgname.isEmpty())
+                if (package.value(QStringLiteral("base")).toString().isEmpty() || package.value(QStringLiteral("pkgname")).toString().isEmpty())
                     continue;
-                m_resources.append(new EmberBSDResource(
-                    base,
-                    package.value(QStringLiteral("version")).toString(),
-                    package.value(QStringLiteral("root")).toString(),
-                    package.value(QStringLiteral("role")).toString(),
-                    package.value(QStringLiteral("action")).toString(),
-                    package.value(QStringLiteral("installed_pkgname")).toString(),
-                    static_cast<quint64>(package.value(QStringLiteral("size")).toDouble()),
-                    releaseId,
-                    this));
+                bool desktop = false;
+                if (package.value(QStringLiteral("role")).toString() == QLatin1String("desktop")) {
+                    for (const QJsonValue &desktopValue : package.value(QStringLiteral("desktops")).toArray()) {
+                        auto *resource = new EmberBSDResource(package, desktopValue.toObject(), releaseId, this);
+                        if (resource->isDesktop()) {
+                            created.append(resource);
+                            desktop = true;
+                        } else {
+                            delete resource;
+                        }
+                    }
+                }
+                if (!desktop)
+                    created.append(new EmberBSDResource(package, {}, releaseId, this));
             }
-            m_summary = i18n("Signed current %1 has %2 packages. %3 are outside the library categories and appear under Applications. %4 libraries stay in All packages and in search. The catalog has no desktop metadata.",
-                             releaseId,
-                             counts.value(QStringLiteral("total")).toInt(),
-                             counts.value(QStringLiteral("package")).toInt(),
-                             counts.value(QStringLiteral("library")).toInt());
-            qInfo().noquote() << QStringLiteral("emberbsd-catalog") << releaseId
-                              << QStringLiteral("total") << counts.value(QStringLiteral("total")).toInt()
-                              << QStringLiteral("package") << counts.value(QStringLiteral("package")).toInt()
-                              << QStringLiteral("library") << counts.value(QStringLiteral("library")).toInt();
-            Q_EMIT passiveMessage(m_summary);
+            const auto retired = m_resources;
+            m_resources = created;
+            for (EmberBSDResource *resource : retired) {
+                Q_EMIT resourceRemoved(resource);
+                resource->deleteLater();
+            }
+            m_error.clear();
+            m_binding = root.value(QStringLiteral("desktop_binding")).toString();
+            m_desktopCount = 0;
+            for (EmberBSDResource *resource : m_resources) {
+                if (resource->isDesktop())
+                    ++m_desktopCount;
+            }
+            const QJsonObject counts = root.value(QStringLiteral("counts")).toObject();
+            qInfo().noquote() << QStringLiteral("emberbsd-desktop") << releaseId
+                              << QStringLiteral("desktop") << m_desktopCount
+                              << QStringLiteral("packages") << counts.value(QStringLiteral("total")).toInt()
+                              << QStringLiteral("binding") << m_binding;
         }
     }
     m_ready = true;
+    completePending();
     Q_EMIT contentsChanged();
     Q_EMIT fetchingUpdatesProgressChanged();
 }
 
-ResultsStream *EmberBSDBackend::search(const Filters &filter)
+void EmberBSDBackend::completePending()
+{
+    if (!m_ready)
+        return;
+    const auto pending = std::exchange(m_pending, {});
+    for (const PendingSearch &item : pending) {
+        if (!item.stream)
+            continue;
+        item.stream->deliver(match(item.filter));
+    }
+}
+
+QVector<StreamResult> EmberBSDBackend::match(const Filters &filter) const
 {
     QVector<StreamResult> found;
-    Filters effective = filter;
-    if (!filter.search.isEmpty())
-        effective.category.reset();
+    const bool allPackages = filter.category && filter.category->matchesCategoryName(QStringLiteral("packages"));
     for (EmberBSDResource *resource : m_resources) {
-        if (filter.search.isEmpty() && resource->isLibrary()) {
-            const bool allPackages = filter.category && filter.category->matchesCategoryName(QStringLiteral("packages"));
-            if (!allPackages)
-                continue;
-        }
-        if (!filter.search.isEmpty() && !resource->name().contains(filter.search, Qt::CaseInsensitive) && !resource->packageName().contains(filter.search, Qt::CaseInsensitive)
-            && !resource->comment().contains(filter.search, Qt::CaseInsensitive)) {
+        if (!filter.resourceUrl.isEmpty() && resource->url() != filter.resourceUrl)
             continue;
-        }
-        if (effective.shouldFilter(resource))
-            found.append(resource);
+        if (!allPackages && !resource->isDesktop())
+            continue;
+        if (!filter.search.isEmpty() && !resource->matchesText(filter.search))
+            continue;
+        if (filter.shouldFilter(resource))
+            found.append(StreamResult(resource));
     }
-    return new ResultsStream(QStringLiteral("emberbsd"), found);
+    return found;
+}
+
+ResultsStream *EmberBSDBackend::search(const Filters &filter)
+{
+    auto *stream = new EmberBSDResultsStream;
+    m_pending.append(PendingSearch{stream, filter});
+    QTimer::singleShot(0, this, [this] {
+        completePending();
+    });
+    return stream;
 }
 
 AbstractReviewsBackend *EmberBSDBackend::reviewsBackend() const
@@ -202,10 +235,14 @@ InlineMessage *EmberBSDBackend::explainDysfunction() const
 {
     if (!m_error.isEmpty())
         return new InlineMessage(InlineMessage::Error, QStringLiteral("dialog-error"), m_error);
-    if (!m_summary.isEmpty())
-        return new InlineMessage(InlineMessage::Information, QStringLiteral("package-x-generic"), m_summary);
     if (!m_ready)
         return new InlineMessage(InlineMessage::Information, QStringLiteral("package-x-generic"), i18n("Reading the signed package catalog."));
+    if (m_desktopCount == 0) {
+        const QString message = m_binding == QLatin1String("unavailable")
+            ? i18n("Installed desktop files could not be read. Application cards are omitted. Packages stay in All packages.")
+            : i18n("No installed desktop application matched the signed catalog. Packages stay in All packages.");
+        return new InlineMessage(InlineMessage::Information, QStringLiteral("package-x-generic"), message);
+    }
     return nullptr;
 }
 

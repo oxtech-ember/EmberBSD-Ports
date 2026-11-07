@@ -8,11 +8,28 @@
 #include <Transaction/Transaction.h>
 #include <resources/AbstractResourcesBackend.h>
 
+#include <QPointer>
 #include <QVector>
 
 class EmberBSDResource;
 class QProcess;
 class StandardBackendUpdater;
+
+class EmberBSDResultsStream : public ResultsStream
+{
+public:
+    EmberBSDResultsStream()
+        : ResultsStream(QStringLiteral("emberbsd"))
+    {
+    }
+
+    void deliver(const QVector<StreamResult> &resources)
+    {
+        if (!resources.isEmpty())
+            Q_EMIT resourcesFound(resources);
+        finish();
+    }
+};
 
 class EmberBSDBackend : public AbstractResourcesBackend
 {
@@ -34,14 +51,23 @@ public:
     void checkForUpdates() override;
 
 private:
+    struct PendingSearch {
+        QPointer<EmberBSDResultsStream> stream;
+        Filters filter;
+    };
+
     void reload();
     void applyCatalog(const QByteArray &output, const QByteArray &errors, int code, bool crashed);
+    void completePending();
+    QVector<StreamResult> match(const Filters &filter) const;
     Transaction *refused(AbstractResource *app, Transaction::Role role);
 
     QVector<EmberBSDResource *> m_resources;
+    QVector<PendingSearch> m_pending;
     StandardBackendUpdater *m_updater = nullptr;
     QProcess *m_process = nullptr;
     QString m_error;
-    QString m_summary;
+    QString m_binding;
+    int m_desktopCount = 0;
     bool m_ready = false;
 };

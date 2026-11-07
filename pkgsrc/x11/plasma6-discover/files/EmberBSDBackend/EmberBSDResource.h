@@ -7,16 +7,20 @@
 
 #include <resources/AbstractResource.h>
 
+#include <QJsonObject>
+#include <QStringList>
+
 class EmberBSDResource : public AbstractResource
 {
     Q_OBJECT
 public:
-    EmberBSDResource(QString packageId, QString version, QString root, QString role, QString action, QString installedPackage, quint64 size, QString releaseId, AbstractResourcesBackend *parent);
+    EmberBSDResource(const QJsonObject &package, const QJsonObject &desktop, const QString &releaseId, AbstractResourcesBackend *parent);
 
     QString packageName() const override;
     QString name() const override;
     QString comment() override;
     QString longDescription() override;
+    QString appstreamId() const override;
     QVariant icon() const override;
     Type type() const override;
     QString sourceIcon() const override;
@@ -37,16 +41,27 @@ public:
     QJsonArray licenses() override;
     QUrl homepage() override;
     QUrl url() const override;
-    bool isLibrary() const;
+    bool isDesktop() const;
+    bool matchesText(const QString &text) const;
 
 private:
+    bool m_desktop = false;
     QString m_packageId;
     QString m_version;
     QString m_root;
     QString m_role;
     QString m_action;
     QString m_installedPackage;
-    quint64 m_size;
     QString m_releaseId;
-    State m_state;
+    QString m_prefix;
+    QString m_desktopId;
+    QString m_name;
+    QString m_comment;
+    QString m_icon;
+    QString m_desktopFile;
+    QString m_desktopPackage;
+    QStringList m_exec;
+    QStringList m_categories;
+    quint64 m_size = 0;
+    State m_state = None;
 };

@@ -1,0 +1,16 @@
+$NetBSD$
+
+Russian title for the desktop application group.
+
+--- po/ru/plasma-discover.po.orig
++++ po/ru/plasma-discover.po
+@@ -2388,3 +2388,9 @@
+ 
+ #~ msgid "Sign in is required"
+ #~ msgstr "Необходимо выполнить вход"
++
++#: discover/qml/BrowsingPage.qml
++#, kde-format
++msgctxt "@title:group"
++msgid "Desktop applications"
++msgstr "Приложения"

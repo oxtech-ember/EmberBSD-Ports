@@ -6,18 +6,51 @@
 #include "EmberBSDResource.h"
 
 #include <KLocalizedString>
+#include <QFileInfo>
+#include <QJsonArray>
+#include <QLocale>
+#include <QProcess>
 
-EmberBSDResource::EmberBSDResource(QString packageId, QString version, QString root, QString role, QString action, QString installedPackage, quint64 size, QString releaseId, AbstractResourcesBackend *parent)
+namespace {
+QString canonicalInside(const QString &prefix, const QString &path)
+{
+    const QString root = QFileInfo(prefix).canonicalFilePath();
+    const QFileInfo info(path);
+    const QString canonical = info.canonicalFilePath();
+    if (root.isEmpty() || canonical.isEmpty() || !info.isFile())
+        return {};
+    if (canonical != root && !canonical.startsWith(root + QLatin1Char('/')))
+        return {};
+    return canonical;
+}
+
+QString localizedValue(const QJsonObject &values)
+{
+    const QStringList languages = QLocale().uiLanguages();
+    for (QString language : languages) {
+        language.replace(QLatin1Char('-'), QLatin1Char('_'));
+        const QString exact = values.value(language).toString();
+        if (!exact.isEmpty())
+            return exact;
+        const QString base = values.value(language.section(QLatin1Char('_'), 0, 0)).toString();
+        if (!base.isEmpty())
+            return base;
+    }
+    return values.value(QStringLiteral("C")).toString();
+}
+}
+
+EmberBSDResource::EmberBSDResource(const QJsonObject &package, const QJsonObject &desktop, const QString &releaseId, AbstractResourcesBackend *parent)
     : AbstractResource(parent)
-    , m_packageId(std::move(packageId))
-    , m_version(std::move(version))
-    , m_root(std::move(root))
-    , m_role(std::move(role))
-    , m_action(std::move(action))
-    , m_installedPackage(std::move(installedPackage))
-    , m_size(size)
-    , m_releaseId(std::move(releaseId))
-    , m_state(None)
+    , m_packageId(package.value(QStringLiteral("base")).toString())
+    , m_version(package.value(QStringLiteral("version")).toString())
+    , m_root(package.value(QStringLiteral("root")).toString())
+    , m_role(package.value(QStringLiteral("catalog_role")).toString(package.value(QStringLiteral("role")).toString()))
+    , m_action(package.value(QStringLiteral("action")).toString())
+    , m_installedPackage(package.value(QStringLiteral("installed_pkgname")).toString())
+    , m_releaseId(releaseId)
+    , m_prefix(package.value(QStringLiteral("prefix")).toString())
+    , m_size(static_cast<quint64>(package.value(QStringLiteral("size")).toDouble()))
 {
     if (m_action == QLatin1String("upgrade"))
         m_state = Upgradeable;
@@ -25,6 +58,51 @@ EmberBSDResource::EmberBSDResource(QString packageId, QString version, QString r
         m_state = None;
     else if (m_action == QLatin1String("installed") || m_action == QLatin1String("installed-newer") || m_action == QLatin1String("version-uncompared"))
         m_state = Installed;
+
+    if (desktop.isEmpty())
+        return;
+    const QString relative = desktop.value(QStringLiteral("file")).toString();
+    const QString desktopPath = canonicalInside(m_prefix, m_prefix + QLatin1Char('/') + relative);
+    const bool desktopLocation = !relative.contains(QLatin1String("..")) && relative.startsWith(QLatin1String("share/applications/")) && relative.endsWith(QLatin1String(".desktop"))
+        && desktopPath.startsWith(QFileInfo(m_prefix).canonicalFilePath() + QStringLiteral("/share/applications/"));
+    QStringList exec;
+    const QJsonArray argv = desktop.value(QStringLiteral("exec")).toArray();
+    for (const QJsonValue &value : argv) {
+        const QString arg = value.toString();
+        if (arg.isEmpty() || arg.contains(QLatin1Char('\n')) || arg.contains(QChar::Null)) {
+            exec.clear();
+            break;
+        }
+        exec.append(arg);
+    }
+    QString program;
+    if (!exec.isEmpty())
+        program = canonicalInside(m_prefix, exec.first());
+    const QString name = localizedValue(desktop.value(QStringLiteral("names")).toObject());
+    const QString fallbackName = desktop.value(QStringLiteral("name")).toString();
+    if (!desktopLocation || program.isEmpty() || !QFileInfo(program).isExecutable() || (name.isEmpty() && fallbackName.isEmpty()))
+        return;
+    exec[0] = program;
+    m_desktop = true;
+    m_role = QStringLiteral("desktop");
+    m_desktopId = desktop.value(QStringLiteral("id")).toString();
+    if (m_desktopId.isEmpty())
+        m_desktopId = QFileInfo(relative).completeBaseName();
+    m_name = name.isEmpty() ? fallbackName : name;
+    m_comment = desktop.value(QStringLiteral("comment")).toString();
+    m_desktopFile = relative;
+    m_desktopPackage = desktop.value(QStringLiteral("pkgname")).toString();
+    m_exec = exec;
+    const QString icon = desktop.value(QStringLiteral("icon")).toString();
+    if (icon.contains(QLatin1Char('/')))
+        m_icon = canonicalInside(m_prefix, icon);
+    else if (!icon.isEmpty() && !icon.contains(QLatin1String("..")))
+        m_icon = icon;
+    for (const QJsonValue &category : desktop.value(QStringLiteral("categories")).toArray()) {
+        const QString text = category.toString();
+        if (!text.isEmpty() && !text.contains(QLatin1Char('/')) && !text.contains(QLatin1Char('\n')))
+            m_categories.append(text);
+    }
 }
 
 QString EmberBSDResource::packageName() const
@@ -34,33 +112,45 @@ QString EmberBSDResource::packageName() const
 
 QString EmberBSDResource::name() const
 {
-    return m_packageId;
+    return m_desktop ? m_name : m_packageId;
 }
 
 QString EmberBSDResource::comment()
 {
+    if (m_desktop && !m_comment.isEmpty())
+        return m_comment;
     return m_root;
 }
 
 QString EmberBSDResource::longDescription()
 {
-    return i18n("Signed package %1 from %2. Catalog root %3. Role %4. State %5. Installed package %6. The signed catalog has no desktop metadata, so this name is the package name.",
-                m_version,
-                m_releaseId,
-                m_root,
-                m_role,
-                m_action,
-                m_installedPackage.isEmpty() ? i18n("none") : m_installedPackage);
+    if (m_desktop) {
+        return i18n("Desktop file %1 from installed package %2, catalog root %3, signed current %4. The name and icon come from that file. The signed catalog records the package only.",
+                    m_desktopFile,
+                    m_desktopPackage,
+                    m_root,
+                    m_releaseId);
+    }
+    return i18n("Signed package %1 from %2. Catalog root %3. This is not a desktop application.", m_version, m_releaseId, m_root);
+}
+
+QString EmberBSDResource::appstreamId() const
+{
+    return m_desktop ? m_desktopId : QStringLiteral("package:") + m_packageId;
 }
 
 QVariant EmberBSDResource::icon() const
 {
-    return QStringLiteral("package-x-generic");
+    return m_icon.isEmpty() ? QStringLiteral("package-x-generic") : m_icon;
 }
 
 AbstractResource::Type EmberBSDResource::type() const
 {
-    return m_role == QLatin1String("library") ? System : Application;
+    if (m_desktop)
+        return Application;
+    if (m_role == QLatin1String("library"))
+        return System;
+    return ApplicationSupport;
 }
 
 QString EmberBSDResource::sourceIcon() const
@@ -79,11 +169,14 @@ void EmberBSDResource::fetchChangelog()
 
 bool EmberBSDResource::canExecute() const
 {
-    return false;
+    return m_desktop && !m_exec.isEmpty() && (m_state == Installed || m_state == Upgradeable);
 }
 
 void EmberBSDResource::invokeApplication() const
 {
+    if (!canExecute())
+        return;
+    QProcess::startDetached(m_exec.first(), m_exec.mid(1));
 }
 
 AbstractResource::State EmberBSDResource::state()
@@ -95,9 +188,11 @@ bool EmberBSDResource::hasCategory(const QString &category) const
 {
     if (category == QLatin1String("packages"))
         return true;
-    if (category == QLatin1String("applications"))
-        return !isLibrary();
-    return false;
+    if (!m_desktop)
+        return false;
+    if (category == QLatin1String("desktop") || category == QLatin1String("applications"))
+        return true;
+    return m_categories.contains(category);
 }
 
 bool EmberBSDResource::isRemovable() const
@@ -153,10 +248,17 @@ QUrl EmberBSDResource::homepage()
 
 QUrl EmberBSDResource::url() const
 {
-    return QUrl(QStringLiteral("appstream://") + m_packageId);
+    return QUrl(QStringLiteral("appstream://") + appstreamId());
 }
 
-bool EmberBSDResource::isLibrary() const
+bool EmberBSDResource::isDesktop() const
 {
-    return m_role == QLatin1String("library");
+    return m_desktop;
+}
+
+bool EmberBSDResource::matchesText(const QString &text) const
+{
+    const QString note = (m_desktop && !m_comment.isEmpty()) ? m_comment : m_root;
+    return name().contains(text, Qt::CaseInsensitive) || packageName().contains(text, Qt::CaseInsensitive) || note.contains(text, Qt::CaseInsensitive)
+        || appstreamId().contains(text, Qt::CaseInsensitive);
 }
