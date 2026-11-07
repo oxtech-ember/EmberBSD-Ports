@@ -18,7 +18,7 @@ case "$out" in /*) ;; *) echo 'NEW_OUTPUT must be absolute' >&2; exit 2 ;; esac
 case "$out" in *[!A-Za-z0-9_./-]*) echo 'Use simple paths.' >&2; exit 2 ;; esac
 [ ! -e "$out" ] || exit 2
 ports=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd -P)
-for p in t/a t/b s/coreutils l/perl5 x/x y/y; do mkdir -p "$out/tree/$p"; done
+for p in t/a t/b t/c s/coreutils l/perl5 x/x y/y n/a n/b n/c; do mkdir -p "$out/tree/$p"; done
 mkdir -p "$out/packages/All" "$out/work" "$out/native-db" "$out/vars"
 : > "$out/native-db/coreutils-9.12"
 : > "$out/native-db/perl-5.44.0nb11"
@@ -36,6 +36,20 @@ v x native PKGNAME x-1.0
 v x native TOOL_DEPENDS 'y>=1:../../y/y'
 v y native PKGNAME y-1.0
 v y native TOOL_DEPENDS 'x>=1:../../x/x'
+# Two cycles share a soft edge. After dropping a->b, the remaining
+# a->c->b->a cycle still reports a and b, but a->b is no longer active.
+# The sorter must choose the remaining active soft edge a->c.
+: > "$out/native-db/a-1.0"
+: > "$out/native-db/b-1.0"
+: > "$out/native-db/c-1.0"
+v c target PKGNAME c-1.0
+v c target TOOL_DEPENDS 'a>=1:../../n/a'
+v a native PKGNAME a-2.0
+v a native TOOL_DEPENDS 'b>=1:../../n/b'
+v b native PKGNAME b-2.0
+v b native TOOL_DEPENDS 'a>=1:../../n/a c>=1:../../n/c'
+v c native PKGNAME c-2.0
+v c native TOOL_DEPENDS 'a>=1:../../n/a'
 # pkg_info -K DB -e PATTERN for BASE and BASE>=VERSION patterns.
 cat > "$out/pkg_info" <<'WRAP'
 #!/bin/sh
@@ -119,4 +133,48 @@ grep -qx 'Cycle broken: s/coreutils@native builds with the installed l/perl5@nat
 echo t/b > "$out/list-b"
 ! bulk order "$out/list-b" "$out/state-b" > "$out/order-b.log" 2>&1 || fail 'order accepted a cycle of unsatisfied edges'
 grep -q 'Refused: the dependency graph has a cycle' "$out/order-b.log" || fail "order-b: $(cat "$out/order-b.log")"
+# Keep the production order command bounded: the regression is an infinite
+# retry with no graph change, not a slow package query.
+echo t/c > "$out/list-c"
+if python3 - "$ports" "$out" <<'PY'
+import os
+import subprocess
+import sys
+
+ports, out = sys.argv[1:]
+env = os.environ.copy()
+env.update({
+    "BMAKE": ports + "/scripts/tests/cross-bulk-bmake-proxy.sh",
+    "CROSS_BULK_TEST_REAL_BMAKE": out + "/bmake",
+    "MAKECONF": out + "/mk.conf",
+    "PKGSRCDIR": out + "/tree",
+    "CROSS_BULK_CPUS": "1",
+    "CROSS_BULK_JOBS": "1",
+    "CROSS_BULK_VARS_CACHE": "no",
+})
+try:
+    result = subprocess.run(
+        ["sh", ports + "/scripts/cross-bulk.sh", "order",
+         out + "/list-c", out + "/state-c"],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        timeout=5, env=env, check=False)
+except subprocess.TimeoutExpired as exc:
+    output = exc.stdout or ""
+    if isinstance(output, bytes):
+        output = output.decode(errors="replace")
+    open(out + "/order-c.log", "w").write(output)
+    print("bounded production order timed out", file=sys.stderr)
+    raise SystemExit(124)
+open(out + "/order-c.log", "w").write(result.stdout)
+raise SystemExit(result.returncode)
+PY
+then
+    :
+else
+    fail "overlapping native cycles did not order: $(tail -n 12 "$out/order-c.log")"
+fi
+grep -qx 'n/b@native n/a@native' "$out/state-c/edges" || fail "the first cycle cut was not retained: $(cat "$out/state-c/edges")"
+! grep -qx 'n/a@native n/b@native' "$out/state-c/edges" || fail "the first soft edge remains active: $(cat "$out/state-c/edges")"
+! grep -qx 'n/a@native n/c@native' "$out/state-c/edges" || fail "the remaining active cycle edge was not cut: $(cat "$out/state-c/edges")"
+grep -qx 'n/c@native n/b@native' "$out/state-c/edges" || fail "the uncut edge in the residual cycle is missing: $(cat "$out/state-c/edges")"
 echo 'PASS: a native cycle breaks at a satisfied edge; an unsatisfied cycle is refused'
