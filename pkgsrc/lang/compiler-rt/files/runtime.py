@@ -117,13 +117,7 @@ def freestanding_cli(commands):
 def normalize_export_revision(data):
     # Only this metadata-only export identity transition is normalized.
     export = b"""    if owner.EXPORTED:
-        export = owner.jsonio.read_json(owner.PKGSRC.parent / 'pkgsrc-export.json')
-        owner.require(isinstance(export, dict) and export.get('format') == 'emberbsd-pkgsrc-shared-export'
-                      and export.get('version') == 2 and isinstance(export.get('identity'), dict),
-                      'invalid shared pkgsrc export identity')
-        revision = export['identity'].get('ports_commit')
-        owner.require(isinstance(revision, str) and re.fullmatch(r'[0-9a-f]{40}', revision) is not None,
-                      'invalid shared pkgsrc export revision')
+        revision = owner.shared_export_revision()
     else:
         revision = owner.git_revision(git, owner.PORTS)
 """

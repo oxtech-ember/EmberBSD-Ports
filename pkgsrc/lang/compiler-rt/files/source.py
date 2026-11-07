@@ -64,6 +64,22 @@ def input_name(path):
     return 'pkgsrc/' + str(path.relative_to(PKGSRC))
 
 
+def shared_export_revision():
+    """Read the current shared-export provenance used by runtime receipts."""
+    export = jsonio.read_json(PKGSRC.parent / 'pkgsrc-export.json')
+    require(isinstance(export, dict) and
+            export.get('format') == 'emberbsd-pkgsrc-shared-export' and
+            type(export.get('version')) is int and export['version'] == 4 and
+            isinstance(export.get('identity'), dict),
+            'invalid shared pkgsrc export identity')
+    identity = export['identity']
+    require(type(identity.get('api')) is int and identity['api'] == 1 and
+            isinstance(identity.get('ports_commit'), str) and
+            re.fullmatch(r'[0-9a-f]{40}', identity['ports_commit']) is not None,
+            'invalid shared pkgsrc export identity')
+    return identity['ports_commit']
+
+
 def require(condition, message):
     if not condition:
         raise SDKError(message)

@@ -12,7 +12,9 @@ owner_root = pkgsrc / 'lang/compiler-rt'
 spec = importlib.util.spec_from_file_location('runtime_build', owner_root / 'files/build.py')
 build = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(build)
-
+source_spec = importlib.util.spec_from_file_location('runtime_source', owner_root / 'files/source.py')
+source = importlib.util.module_from_spec(source_spec)
+source_spec.loader.exec_module(source)
 def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
@@ -27,8 +29,14 @@ def receipt(exported):
         input_name=lambda path: 'pkgsrc/' + str(Path(path).relative_to(pkgsrc)),
         inventory=SimpleNamespace(sha256_file=digest), git_revision=revision,
         require=lambda condition, message: None if condition else (_ for _ in ()).throw(ValueError(message)),
-        jsonio=SimpleNamespace(read_json=lambda path: {"format": "emberbsd-pkgsrc-shared-export", "version": 2, "identity": {"ports_commit": "b" * 40}}),
+        shared_export_revision=lambda: source.shared_export_revision(),
     )
+    export = {'format': 'emberbsd-pkgsrc-shared-export', 'version': 4,
+              'identity': {'api': 1, 'ports_commit': 'b' * 40}}
+    source.EXPORTED = exported
+    source.PKGSRC = pkgsrc
+    source.SDKError = ValueError
+    source.jsonio = SimpleNamespace(read_json=lambda path: export)
     result = build.effective_recipe(selected, {'recipe': {'files': {}}}, '/usr/bin/git')
     expected = {
         'pkgsrc/lang/compiler-rt/files/build.py',
@@ -44,16 +52,20 @@ def receipt(exported):
     if calls:
         assert calls[0] == ('/usr/bin/git', root)
     if exported:
-        for invalid in (None, 'not-a-revision', 'a' * 39):
-            selected.jsonio.read_json = lambda path: {
-                'format': 'emberbsd-pkgsrc-shared-export', 'version': 2,
-                'identity': {'ports_commit': invalid}}
+        valid = export
+        for malformed in (
+                {**valid, 'version': 2},
+                {**valid, 'identity': {**valid['identity'], 'api': 2}},
+                {**valid, 'identity': {**valid['identity'], 'ports_commit': 'not-a-revision'}},
+                {**valid, 'identity': {**valid['identity'], 'ports_commit': 'a' * 39}},
+        ):
+            source.jsonio.read_json = lambda path, record=malformed: record
             try:
                 build.effective_recipe(selected, {'recipe': {'files': {}}}, '/usr/bin/git')
             except ValueError:
                 pass
             else:
-                raise AssertionError('invalid export revision was accepted')
+                raise AssertionError('malformed or non-current export provenance was accepted')
 
 receipt(False)
 receipt(True)

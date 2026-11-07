@@ -431,10 +431,12 @@ dynamic_new = new_finalizer.replace(b'selected = inspect_inputs(owner, args, pre
 assert not runtime.compatible_build_for_target(dynamic_old, dynamic_new, 'aarch64')
 current_build = (files / 'build.py').read_bytes()
 normalized = runtime.normalize_export_revision(current_build)
-assert normalized is not None and runtime.normalize_recipe_recording(normalized) is not None
-mutated_export = current_build.replace(b"export.get('version') == 2", b"export.get('version') == 3")
+assert normalized is not None and normalized != current_build
+assert runtime.normalize_recipe_recording(normalized) is not None
+mutated_export = current_build.replace(b'owner.shared_export_revision()',
+                                       b'owner.git_revision(git, owner.PORTS)')
 assert mutated_export != current_build
-assert runtime.normalize_recipe_recording(runtime.normalize_export_revision(mutated_export)) is None
+assert runtime.normalize_export_revision(mutated_export) == mutated_export
 
 old_cli = b"""
 def main(arguments):
