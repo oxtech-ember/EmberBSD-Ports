@@ -3,6 +3,7 @@
 # 2.8.1 fixes CVE-2026-115207; upstream includes the former pkgsrc patches.
 
 DISTNAME=	patch-2.8.1
+PKGREVISION=	1
 CATEGORIES=	devel
 MASTER_SITES=	${MASTER_SITE_GNU:=patch/}
 EXTRACT_SUFX=	.tar.xz
@@ -21,8 +22,12 @@ CONFIGURE_ARGS+=	--program-prefix=g
 
 INSTALLATION_DIRS=	${PKGGNUDIR}bin ${PKGGNUDIR}${PKGMANDIR}/man1
 
+PATCH_GNU_BIN_REL=	${PKGGNUDIR:C,[^/]+,..,g}../bin
+PATCH_GNU_MAN_DIR=	${PKGGNUDIR}${PKGMANDIR}/man1
+PATCH_GNU_MAN_REL=	${PATCH_GNU_MAN_DIR:C,[^/]+,..,g}/${PKGMANDIR}/man1
+
 post-install:
-	${LN} -sf ${PREFIX}/bin/gpatch ${DESTDIR}${PREFIX}/${PKGGNUDIR}bin/patch
-	${LN} -sf ${PREFIX}/${PKGMANDIR}/man1/gpatch.1 ${DESTDIR}${PREFIX}/${PKGGNUDIR}${PKGMANDIR}/man1/patch.1
+	${LN} -sf ${PATCH_GNU_BIN_REL}/gpatch ${DESTDIR}${PREFIX}/${PKGGNUDIR}bin/patch
+	${LN} -sf ${PATCH_GNU_MAN_REL}/gpatch.1 ${DESTDIR}${PREFIX}/${PKGGNUDIR}${PKGMANDIR}/man1/patch.1
 
 .include "../../mk/bsd.pkg.mk"
