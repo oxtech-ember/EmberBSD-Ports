@@ -107,11 +107,18 @@ MESON_NATIVE_FILE=	${WRKDIR}/.meson_native
 MESON_NATIVE_ARGS+=	--native-file ${MESON_NATIVE_FILE:Q}
 MESON_NATIVE_ARGS+=	${MESON_NATIVE_EXTRA_ARGS:U}
 .include "../../devel/glib2/native-stage-meson-tools.mk"
+# Packages that use Meson do not all include the Python tool. Without a
+# fallback, an empty TOOL_PYTHONBIN makes the shell execute the helper.
+.if empty(TOOL_PYTHONBIN)
+MESON_NATIVE_PYTHON=	${TOOLBASE}/bin/python3.15
+.else
+MESON_NATIVE_PYTHON=	${TOOL_PYTHONBIN}
+.endif
 .PHONY: meson-native-file
 meson-configure: ${MESON_CROSS_FILE} meson-native-file
 meson-native-file:
 	@${STEP_MSG} Creating meson native file
-	${RUN}${TOOL_PYTHONBIN} ${PKGSRCDIR}/devel/meson/files/native-file.py \
+	${RUN}${MESON_NATIVE_PYTHON} ${PKGSRCDIR}/devel/meson/files/native-file.py \
 	    --output ${MESON_NATIVE_FILE:Q} \
 	    --binary=c=${HOST_CC:Q} --binary=cpp=${HOST_CXX:Q} \
 	    --binary=ar=${TOOLS_PLATFORM.ar:Q} \
