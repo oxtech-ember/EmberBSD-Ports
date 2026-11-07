@@ -8007,6 +8007,7 @@ share/u-boot-source/board/espressif/esp32s31/mosaico_splash.c
 share/u-boot-source/board/espressif/esp32s31/mosaico_splash_core.c
 share/u-boot-source/board/espressif/esp32s31/mosaico_splash_core.h
 share/u-boot-source/board/espressif/esp32s31/nor-firmware.its
+share/u-boot-source/board/espressif/esp32s31/nor-flash-root-firmware.its
 share/u-boot-source/board/espressif/esp32s31/psram-layout.h
 share/u-boot-source/board/espressif/esp32s31/spl.c
 share/u-boot-source/board/espressif/esp32s31/spl_cache.c

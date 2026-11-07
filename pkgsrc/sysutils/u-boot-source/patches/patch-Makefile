@@ -11,3 +11,7 @@ $NetBSD$
  CLANG_FLAGS	+= --prefix=$(GCC_TOOLCHAIN_DIR)$(notdir $(CROSS_COMPILE:%-=%))-
  GCC_TOOLCHAIN	:= $(realpath $(GCC_TOOLCHAIN_DIR)/..)
  endif
+@@ -1682,2 +1682,2 @@
+ quiet_cmd_binman = BINMAN  $@
+-cmd_binman = $(srctree)/tools/binman/binman $(if $(BINMAN_DEBUG),-D) \
++cmd_binman = $(PYTHON3) $(srctree)/tools/binman/binman $(if $(BINMAN_DEBUG),-D) \

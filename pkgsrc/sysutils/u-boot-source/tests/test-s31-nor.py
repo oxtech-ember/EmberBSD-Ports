@@ -33,6 +33,28 @@ def rom():
 
 
 class NorInputs(unittest.TestCase):
+    def test_root_storage_geometry_keeps_nor_fs_after_fit(self):
+        m.validate_root_layout('nor', 0x600000, 0xa00000, 0xa00000,
+                               0x526000, 4096)
+        with self.assertRaises(ValueError):
+            m.validate_root_layout('nor', 0x600000, 0xa00000,
+                                   0xa00000, 0x600001, 4096)
+        with self.assertRaises(ValueError):
+            m.validate_root_layout('nor', 0x600000, 0xa00000,
+                                   0x9fffff, 0x526000, 4096)
+        with self.assertRaises(ValueError):
+            m.validate_root_layout('nor', 0x600000, 0xa00001,
+                                   0xa00001, 0x526000, 4096)
+        with self.assertRaises(ValueError):
+            m.validate_root_layout('nor', 0x600001, 0x9fffff,
+                                   0x9fffff, 0x526000, 4096)
+
+    def test_ram_root_geometry_keeps_existing_fixed_payload(self):
+        m.validate_root_layout('ram', None, None, 0x400000, 0x526000, None)
+        with self.assertRaises(ValueError):
+            m.validate_root_layout('ram', None, None, 0x400001,
+                                   0x526000, None)
+
     def test_mkimage_prefix_and_symlink(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d).resolve(); prefix = root/'prefix'; prefix.mkdir()

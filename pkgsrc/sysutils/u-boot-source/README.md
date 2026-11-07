@@ -59,9 +59,13 @@ inputs separately.
 `board/espressif/esp32s31/make-nor-image.py` assembles a 16 MiB NOR image
 from an already prepared ESP32-S31 ROM-format SPL, OpenSBI, U-Boot proper
 binary and matching ELF, firmware DTB, nested kernel FIT and matching ELF,
-and exactly 4 MiB root filesystem. It checks ROM geometry, segment ranges and digest, U-Boot
-ELF load and BSS bounds, payload layout and SHA-256 integrity. External FIT
-payloads are 512-byte aligned. The output must not already exist.
+and a root filesystem. RAM mode remains the default: it includes exactly
+4 MiB of root data as a FIT loadable for PSRAM. NOR mode instead places the
+root data directly in a caller-selected erase-aligned NOR partition; the
+root is omitted from the FIT loadables. It checks ROM geometry, segment
+ranges and digest, U-Boot ELF load and BSS bounds, FIT/partition non-overlap,
+flash capacity, payload layout and SHA-256 integrity. External FIT payloads
+are 512-byte aligned. The output must not already exist.
 
 ```sh
 "$HOST_PREFIX/bin/python3.15" "$SOURCE/board/espressif/esp32s31/make-nor-image.py" \
@@ -72,6 +76,24 @@ payloads are 512-byte aligned. The output must not already exist.
     --kernel-elf "$KERNEL_ELF" \
     --root-fs "$ROOT_FS" --output "$NOR_IMAGE"
 ```
+
+For an external flash root, select the mode and provide the partition geometry
+and the exact bootargs to store in the firmware FDT's `/chosen` node. For
+example, a 6 MiB read-only boot prefix and 10 MiB root partition use:
+
+```sh
+    --root-mode nor --root-offset 0x600000 --root-size 0xa00000 \
+    --erase-size 4096 \
+    --bootargs 'root=flash1 mtdparts=espnor0:6M@0(boot)ro,10M@6M(root)'
+```
+
+The producer sets `/chosen/emberbsd,root-mode` to `nor` and copies these
+bootargs into `/chosen/bootargs`. U-Boot selects a kernel-only `bootm` when
+that explicit mode marker is present; otherwise the existing RAM-root
+loadable validation and boot command remain active. Device names, partition
+offsets and erase geometry come from the producer's profile inputs, not the
+generic board hook. The flash-root layout is a preparation contract and does
+not establish a writable filesystem or hardware acceptance.
 
 Use `mkimage` from the common `sysutils/u-boot-tools` package in the host
 prefix; `dtc`, `fdtget`, `llvm-objcopy`, and `llvm-readobj` also come from
@@ -156,6 +178,12 @@ root and kernel at the profile addresses. The console can interrupt boot.
 Neither configuration supports encrypted flash; hashes provide integrity,
 not authentication. Preparing source or an image does not itself establish
 successful persistent boot.
+
+When building a configured U-Boot output tree with the selected native
+prefix, append `PYTHON3="$HOST_PREFIX/bin/python3.15"` and
+`DTC="$HOST_PREFIX/bin/dtc"` to the normal `gmake` invocation. Pass them as
+make command-line variables: U-Boot's Makefile assignments override
+environment variables and otherwise select ambient `python3` and `dtc`.
 
 ## Host regression checks
 

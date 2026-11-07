@@ -21,8 +21,8 @@ DTB_SIZE = 0x3000
 IMAGES = {'firmware': ('opensbi.bin', 0x2f000000, 0x30000),
           'uboot': ('u-boot.bin', 0x50400000, 0x30000),
           'fdt': ('firmware.dtb', 0x50430000, DTB_SIZE),
-          'root': ('root.fs', 0x50000000, ROOT_SIZE),
           'kernel': ('kernel.itb', 0x50c00000, 0x370000)}
+RAM_ROOT_IMAGE = ('root.fs', 0x50000000, ROOT_SIZE)
 
 
 def validate_rom(data):
@@ -79,13 +79,49 @@ def resolve_mkimage(path, prefix):
     return mkimage
 
 
+def validate_root_layout(mode, root_offset, root_size, root_length, fit_end,
+                         erase_size):
+    if mode == 'ram':
+        if root_offset is not None or root_size is not None:
+            raise ValueError('RAM root does not accept NOR partition geometry')
+        if root_length != ROOT_SIZE:
+            raise ValueError('RAM root must be exactly 4 MiB')
+        return
+    if mode != 'nor':
+        raise ValueError('root mode must be ram or nor')
+    if root_offset is None or root_size is None or root_size <= 0:
+        raise ValueError('NOR root requires a positive offset and size')
+    if erase_size is None or erase_size <= 0:
+        raise ValueError('NOR root requires a positive erase size')
+    if root_length != root_size:
+        raise ValueError('NOR root file size must match its partition size')
+    if root_offset % erase_size or root_size % erase_size:
+        raise ValueError('NOR root geometry must align to erase size')
+    if root_offset < fit_end:
+        raise ValueError('NOR root partition overlaps the firmware FIT')
+    if root_offset > FLASH_SIZE or root_size > FLASH_SIZE - root_offset:
+        raise ValueError('NOR root partition exceeds flash capacity')
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     for name in ('host-prefix', 'mkimage', 'spl-rom', 'opensbi', 'uboot', 'uboot-elf', 'firmware-dtb', 'kernel-fit', 'kernel-elf', 'root-fs', 'output'):
         ap.add_argument('--' + name, type=Path, required=True)
+    ap.add_argument('--root-mode', choices=('ram', 'nor'), default='ram')
+    ap.add_argument('--root-offset', type=lambda value: int(value, 0))
+    ap.add_argument('--root-size', type=lambda value: int(value, 0))
+    ap.add_argument('--erase-size', type=lambda value: int(value, 0))
+    ap.add_argument('--bootargs')
     a = ap.parse_args()
+    bootargs = a.bootargs if a.bootargs is not None else '-s'
+    if a.root_mode == 'nor':
+        if a.bootargs is None or a.root_offset is None or a.root_size is None or a.erase_size is None:
+            ap.error('NOR root mode requires --bootargs, --root-offset, --root-size and --erase-size')
+    elif (a.root_offset is not None or a.root_size is not None or
+          a.erase_size is not None or a.bootargs not in (None, '-s')):
+        ap.error('RAM root mode only supports the existing -s bootargs')
     prefix = a.host_prefix.resolve(strict=True)
-    tools = {n: (prefix / 'bin' / n).resolve(strict=True) for n in ('dtc', 'fdtget', 'llvm-objcopy', 'llvm-readobj')}
+    tools = {n: (prefix / 'bin' / n).resolve(strict=True) for n in ('dtc', 'fdtget', 'fdtput', 'llvm-objcopy', 'llvm-readobj')}
     if any(not v.is_relative_to(prefix) for v in tools.values()): raise ValueError('host tool resolves outside prefix')
     mkimage = resolve_mkimage(a.mkimage, prefix)
     env = dict(os.environ, PATH=str(prefix / 'bin') + os.pathsep + str(prefix / 'gnu/bin'), SOURCE_DATE_EPOCH='0', LC_ALL='C')
@@ -98,24 +134,43 @@ def main():
     proper = a.uboot.read_bytes(); extent = elf_extent(a.uboot_elf.read_bytes())
     root = a.root_fs.read_bytes(); kernel = a.kernel_fit.read_bytes(); opensbi = a.opensbi.read_bytes()
     kernel_end = elf_extent(a.kernel_elf.read_bytes(), 0x80200000, 0x80800000)
-    if len(root) != ROOT_SIZE: raise ValueError('root FS must be exactly 4 MiB')
     with tempfile.TemporaryDirectory(prefix='s31-nor-') as tmp:
         work = Path(tmp)
         run((tools['llvm-objcopy'], '--gap-fill=0xff', '-O', 'binary', a.uboot_elf.resolve(), work / 'proper-flat'), env=env)
         if not proper.startswith((work / 'proper-flat').read_bytes()): raise ValueError('U-Boot binary differs from ELF')
-        for name, data in (('opensbi.bin', opensbi), ('u-boot.bin', proper), ('root.fs', root), ('kernel.itb', kernel)):
+        input_files = [('opensbi.bin', opensbi), ('u-boot.bin', proper),
+                       ('kernel.itb', kernel)]
+        if a.root_mode == 'ram':
+            input_files.append((RAM_ROOT_IMAGE[0], root))
+        for name, data in input_files:
             (work / name).write_bytes(data)
         run((tools['dtc'], '-I', 'dtb', '-O', 'dtb', '-S', str(DTB_SIZE), '-o', work / 'firmware.dtb', a.firmware_dtb.resolve()), env=env)
         if (work / 'firmware.dtb').stat().st_size != DTB_SIZE: raise ValueError('firmware FDT exceeds padded slot')
+        run((tools['fdtput'], '-t', 's', work/'firmware.dtb', '/chosen',
+             'emberbsd,root-mode', a.root_mode), env=env)
+        run((tools['fdtput'], '-t', 's', work/'firmware.dtb', '/chosen',
+             'bootargs', bootargs), env=env)
+        padded_dtb = work / 'firmware-padded.dtb'
+        run((tools['dtc'], '-I', 'dtb', '-O', 'dtb', '-S', str(DTB_SIZE),
+             '-o', padded_dtb, work/'firmware.dtb'), env=env)
+        os.replace(padded_dtb, work/'firmware.dtb')
+        if (work / 'firmware.dtb').stat().st_size != DTB_SIZE:
+            raise ValueError('profiled firmware FDT exceeds padded slot')
         def firmware_get(node, prop, typ='s'):
             return run((tools['fdtget'], '-t', typ, work/'firmware.dtb', node, prop), env=env).decode().strip()
+        if (firmware_get('/chosen', 'emberbsd,root-mode') != a.root_mode or
+            firmware_get('/chosen', 'bootargs') != bootargs):
+            raise ValueError('firmware FDT root mode or bootargs differ from profile')
         if 'fit-images' in run((tools['fdtget'], '-l', work/'firmware.dtb', '/'), env=env).decode().splitlines():
             raise ValueError('firmware DTB already contains fit-images')
         if ('espressif,esp32s31' not in firmware_get('/', 'compatible').split() or
             firmware_get('/memory@50000000', 'reg', 'x') != '50000000 1000000' or
             firmware_get('/chosen', 'stdout-path') != 'serial0:115200n8'):
             raise ValueError('firmware DTB memory, console or SoC differs from profile')
-        for name, (filename, address, limit) in IMAGES.items():
+        image_specs = dict(IMAGES)
+        if a.root_mode == 'ram':
+            image_specs['root'] = RAM_ROOT_IMAGE
+        for name, (filename, address, limit) in image_specs.items():
             size = (work / filename).stat().st_size
             if not size or size > limit: raise ValueError(name + ' exceeds its memory slot')
         def nested_get(node, prop, typ='s'):
@@ -165,20 +220,26 @@ def main():
             int(nested_get('/images/kernel', 'load', 'x'), 16) != 0x50600000 or
             int(nested_get('/images/kernel', 'entry', 'x'), 16) != 0x50600000):
             raise ValueError('nested kernel FIT metadata differs from profile')
-        shutil.copyfile(Path(__file__).with_name('nor-firmware.its'), work / 'firmware.its')
+        template = 'nor-firmware.its' if a.root_mode == 'ram' else 'nor-flash-root-firmware.its'
+        shutil.copyfile(Path(__file__).with_name(template), work / 'firmware.its')
         run((mkimage, '-E', '-B', '0x200', '-f', 'firmware.its', 'firmware.itb'), cwd=work, env=env)
         fit = (work / 'firmware.itb').read_bytes()
         if FIT_OFFSET + len(fit) > FLASH_SIZE: raise ValueError('FIT exceeds NOR')
+        root_offset = a.root_offset if a.root_mode == 'nor' else None
+        root_size = a.root_size if a.root_mode == 'nor' else None
+        validate_root_layout(a.root_mode, root_offset, root_size, len(root),
+                             FIT_OFFSET + len(fit), a.erase_size)
         def get(node, prop, typ='s'):
             return run((tools['fdtget'], '-t', typ, work/'firmware.itb', node, prop), env=env).decode().strip()
         if (get('/configurations', 'default') != 'conf' or
             get('/configurations/conf', 'firmware') != 'firmware' or
             get('/configurations/conf', 'fdt') != 'fdt' or
-            get('/configurations/conf', 'loadables') != 'uboot root kernel'):
+            get('/configurations/conf', 'loadables') !=
+            ('uboot root kernel' if a.root_mode == 'ram' else 'uboot kernel')):
             raise ValueError('unexpected FIT configuration')
         fit_size = struct.unpack_from('>I', fit, 4)[0]
         payload_ranges = []
-        for name, (filename, address, _) in IMAGES.items():
+        for name, (filename, address, _) in image_specs.items():
             node = '/images/' + name
             props = set(run((tools['fdtget'], '-p', work/'firmware.itb', node), env=env).decode().splitlines())
             expected_type = 'flat_dt' if name == 'fdt' else 'firmware'
@@ -204,9 +265,13 @@ def main():
         image = bytearray(b'\xff') * FLASH_SIZE
         image[SPL_OFFSET:SPL_OFFSET+len(spl)] = spl
         image[FIT_OFFSET:FIT_OFFSET+len(fit)] = fit
+        if a.root_mode == 'nor':
+            image[root_offset:root_offset+root_size] = root
         with a.output.open('xb') as output:
             output.write(image)
-        print(f'NOR image {len(image)} bytes; FIT {len(fit)} bytes; U-Boot runtime end 0x{extent:08x}; kernel RAM end 0x{0x50600000 + kernel_end - 0x80200000:08x}; SHA256 {hashlib.sha256(image).hexdigest()}')
+        root_placement = ('RAM root' if a.root_mode == 'ram' else
+                          f'NOR root 0x{root_offset:x}+0x{root_size:x}')
+        print(f'NOR image {len(image)} bytes; FIT {len(fit)} bytes; {root_placement}; U-Boot runtime end 0x{extent:08x}; kernel RAM end 0x{0x50600000 + kernel_end - 0x80200000:08x}; SHA256 {hashlib.sha256(image).hexdigest()}')
 
 if __name__ == '__main__':
     main()

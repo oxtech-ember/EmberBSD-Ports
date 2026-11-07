@@ -95,6 +95,34 @@ int board_late_init(void)
 	puts("ESP32-S31 U-Boot active\n");
 
 #if IS_ENABLED(CONFIG_ESP32S31_NOR_BOOT)
+	const char *root_mode, *bootargs;
+	int chosen, len;
+
+	chosen = fdt_path_offset(gd->fdt_blob, "/chosen");
+	root_mode = chosen < 0 ? NULL :
+	    fdt_getprop(gd->fdt_blob, chosen, "emberbsd,root-mode", &len);
+	if (root_mode) {
+		if (len == sizeof("nor") &&
+		    !memcmp(root_mode, "nor", sizeof("nor"))) {
+			bootargs = fdt_getprop(gd->fdt_blob, chosen, "bootargs", &len);
+			if (!bootargs || len < 2 || bootargs[len - 1] != '\0' ||
+			    !s31_fit_payload_ready(gd->fdt_blob,
+			    "/fit-images/kernel", 0x50c00000, 1, 0x370000))
+				return -EINVAL;
+			if (env_set("bootargs", bootargs))
+				return -EINVAL;
+			return env_set("bootcmd", "setenv fdt_high 50500000; "
+			    "setenv verify yes; bootm 50c00000");
+		}
+		if (len != sizeof("ram") ||
+		    memcmp(root_mode, "ram", sizeof("ram")))
+			return -EINVAL;
+		bootargs = fdt_getprop(gd->fdt_blob, chosen, "bootargs", &len);
+		if (!bootargs || len < 2 || bootargs[len - 1] != '\0' ||
+		    env_set("bootargs", bootargs))
+			return -EINVAL;
+	}
+
 	/* A UART recovery FIT need not contain the persistent payloads. */
 	if (s31_fit_payload_ready(gd->fdt_blob, "/fit-images/root",
 				  0x50000000, 0x400000, 0x400000) &&
