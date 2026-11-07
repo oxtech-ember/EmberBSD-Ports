@@ -1,0 +1,12 @@
+@comment $NetBSD: PLIST,v 1.9 2026/02/19 15:12:09 wiz Exp $
+${PYSITELIB}/drv_libxml2.py
+${PYSITELIB}/drv_libxml2.pyc
+${PYSITELIB}/drv_libxml2.pyo
+${PYSITELIB}/libxml2.py
+${PYSITELIB}/libxml2.pyc
+${PYSITELIB}/libxml2.pyo
+${PYSITELIB}/${WHEEL_INFODIR}/METADATA
+${PYSITELIB}/${WHEEL_INFODIR}/RECORD
+${PYSITELIB}/${WHEEL_INFODIR}/WHEEL
+${PYSITELIB}/${WHEEL_INFODIR}/top_level.txt
+${PYSITELIB}/libxml2mod.so
