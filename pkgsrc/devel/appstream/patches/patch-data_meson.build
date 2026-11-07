@@ -1,0 +1,28 @@
+$NetBSD$
+
+Cross builds cannot run the target appstreamcli. Skip news-to-metainfo.
+
+--- data/meson.build.orig
++++ data/meson.build
+@@ -9,10 +9,9 @@
+ 
+ # Do not rely on an exe wrapper for rel-info, use the system one in that case
+ if meson.is_cross_build()
+-    dependency('appstream', version: '>=' + as_version, native: true,
+-               not_found_message: 'Native appstream required for cross-building')
+-    ascli_exe = find_program('appstreamcli', native: true)
+-endif
++    metainfo_with_relinfo = files('org.freedesktop.appstream.cli.metainfo.xml')
++    ascli_exe = find_program('true', native: true)
++else
+ 
+ # NOTE: We do not translate the release notes on purpose here.
+ # If you do want to give translators a chance to translate them,
+@@ -23,6 +22,7 @@
+     output : ['nol10n_withrelinfo_org.freedesktop.appstream.cli.metainfo.xml'],
+     command : [ascli_exe, 'news-to-metainfo', '--limit=6', '@INPUT0@', '@INPUT1@', '@OUTPUT@']
+ )
++endif
+ 
+ metainfo_i18n = i18n.itstool_join(
+     input:  metainfo_with_relinfo,
