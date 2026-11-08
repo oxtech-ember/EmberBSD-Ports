@@ -1,0 +1,23 @@
+$NetBSD$
+
+Select the NetBSD brightness and charge-threshold helpers.
+
+--- daemon/CMakeLists.txt.orig
++++ daemon/CMakeLists.txt
+@@ -133,5 +133,7 @@
+-if (CMAKE_SYSTEM_NAME MATCHES "OpenBSD")
++if (CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
++    target_sources(chargethresholdhelper PRIVATE chargethresholdhelper_netbsd.cpp)
++elseif (CMAKE_SYSTEM_NAME MATCHES "OpenBSD")
+     target_sources(chargethresholdhelper PRIVATE chargethresholdhelper_openbsd.cpp)
+ else()
+     target_sources(chargethresholdhelper PRIVATE chargethresholdhelper_linux.cpp)
+ endif()
+@@ -153,4 +155,6 @@
+-if (CMAKE_SYSTEM_NAME STREQUAL FreeBSD)
++if (CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
++    list(APPEND backlighthelpers_SRCS controllers/backlighthelper_netbsd.cpp controllers/backlighthelper_netbsd.h)
++elseif (CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+     list(APPEND backlighthelpers_SRCS controllers/backlighthelper_freebsd.cpp controllers/backlighthelper_freebsd.h)
+ else()
+     list(APPEND backlighthelpers_SRCS controllers/backlighthelper_linux.cpp controllers/backlighthelper_linux.h)
