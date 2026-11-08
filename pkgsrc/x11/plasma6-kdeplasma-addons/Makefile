@@ -11,8 +11,8 @@ LICENSE=	gnu-lgpl-v2
 
 # The QMK helper is skipped on NetBSD, so Corrosion is not required.
 # The web browser applet is optional and needs Qt WebEngine, which is not built here.
-# The desktop cube is optional and needs Qt Quick 3D. Its assimp dependency
-# is not built for the NetBSD target in this pass.
+# The desktop cube QML imports QtQuick3D. That module is the target
+# qt6-qtquick3d package. Qt WebEngine and the QMK helper stay unavailable.
 
 USE_TOOLS+=	gmake msgmerge pkg-config
 

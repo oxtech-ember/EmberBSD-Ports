@@ -1,11 +1,19 @@
-$NetBSD: patch-cmake_compilers_Clang.cmake,v 1.5 2026/07/23 12:28:40 prlw1 Exp $
+$NetBSD$
 
-Remove security hardening flags so that the mk/ infrastructure can pass
-them depending on whether they are supported by the target platform.
+Do not add the stack-clash flag on NetBSD, and leave link hardening to pkgsrc.
 
---- cmake/compilers/Clang.cmake.orig	2026-07-19 16:53:28.896273751 +0000
+--- cmake/compilers/Clang.cmake.orig
 +++ cmake/compilers/Clang.cmake
-@@ -97,11 +97,6 @@ endif()
+@@ -82,7 +82,7 @@
+     $<$<NOT:$<PLATFORM_ID:Windows>>:-fPIC>
+     $<$<NOT:$<PLATFORM_ID:Emscripten>>:-fstack-protector-strong>)
+ 
+-if (NOT APPLE AND NOT ANDROID_PLATFORM AND CMAKE_SYSTEM_PROCESSOR MATCHES "(AMD64|amd64|i.86|x86)" AND NOT WIN32)
++if (NOT APPLE AND NOT ANDROID_PLATFORM AND CMAKE_SYSTEM_PROCESSOR MATCHES "(AMD64|amd64|i.86|x86)" AND NOT WIN32 AND NOT CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
+     set(TBB_LIB_COMPILE_FLAGS ${TBB_LIB_COMPILE_FLAGS} -fstack-clash-protection)
+     if (NOT EMSCRIPTEN)
+         # Some versions of Clang implicitly set -march=i686 when compiling for x86 and some don't.
+@@ -102,11 +102,6 @@
      endif()
  endif()
  

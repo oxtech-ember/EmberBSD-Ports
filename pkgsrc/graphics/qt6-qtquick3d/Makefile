@@ -28,12 +28,16 @@ PKGCONFIG_OVERRIDE+=	lib/pkgconfig/Qt6Quick3DUtils.pc
 PLIST_SRC=	PLIST PLIST.openxr
 .endif
 
+BUILDLINK_DEPMETHOD.zlib=	full
+.include "../../devel/zlib/buildlink3.mk"
 .include "../../graphics/tinyexr/buildlink3.mk"
 .include "../../graphics/xatlas/buildlink3.mk"
 .include "../../graphics/meshoptimizer/buildlink3.mk"
-.if !empty(MACHINE_PLATFORM:MDarwin-*-aarch64) || !empty(MACHINE_PLATFORM:MDarwin-*-x86_64) || \
-    !empty(MACHINE_PLATFORM:MLinux-*-aarch64) || !empty(MACHINE_PLATFORM:MLinux-*-x86_64) || \
-    !empty(MACHINE_PLATFORM:MNetBSD-*-aarch64) || !empty(MACHINE_PLATFORM:MNetBSD-*-x86_64)
+# Embree is a target runtime library. The host balsam tool does not use it,
+# so a Darwin tool build must not pull embree and its host dependencies.
+.if ${USE_CROSS_COMPILE:Uno:tl} == "yes" \
+ || !empty(MACHINE_PLATFORM:MLinux-*-aarch64) || !empty(MACHINE_PLATFORM:MLinux-*-x86_64) \
+ || !empty(MACHINE_PLATFORM:MNetBSD-*-aarch64) || !empty(MACHINE_PLATFORM:MNetBSD-*-x86_64)
 .include "../../graphics/embree/buildlink3.mk"
 .endif
 
