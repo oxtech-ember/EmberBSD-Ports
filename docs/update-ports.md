@@ -317,12 +317,23 @@ previous-recipe selector, refresh replays the applied patches listed in the
 existing `.patch_done` cookie, including an empty cookie, against the verified
 archive. The cookie must be an ordered subset of the previous recipe's complete
 patch inventory. Both recipes' archive checksums and complete patch inventories
-are validated. All old/current patch targets, including unchanged targets and
-expected absent files, must match the old replay before any live source write.
-Then refresh applies the complete current series, preserving unchanged source
-and object timestamps. No package database entry is created. Without a previous
-recipe, or when an existing installed owner's metadata is invalid, refresh
-still refuses.
+are validated. The replay extracts the full endpoint set for both patch
+inventories, including header spellings and `.orig` backup paths, plus inputs
+named by `SUBST_FILES.*` and `REPLACE_FILES.*`. Unrelated archive members are
+not extracted; a root-level `SUBST` or interpreter-replacement glob requires
+full archive scope. All old/current patch targets, including unchanged targets
+and expected absent files, must match the old replay before any live source
+write. Then refresh applies the complete current series, preserving unchanged
+source and object timestamps. No package database entry is created. Without a
+previous recipe, or when an existing installed owner's metadata is invalid,
+refresh still refuses.
+
+Candidate replay follows pkgsrc stage order: `SUBST_STAGE=pre-configure` runs
+before the `replace-interpreter` configure hook; for `do-configure-pre-hook`,
+bmake runs the already-declared interpreter prerequisite before a later SUBST
+prerequisite. The transaction journal stores the selected interpreter replay
+state, so an ordinary retry can reproduce those rewrites after `configure-clean`
+removes the configure cookie.
 
 For an explicitly failed source stage whose saved `.patch_done` cookie is an
 ordered subset of the installed package's complete patch inventory, use

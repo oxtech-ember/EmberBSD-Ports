@@ -19,7 +19,7 @@ a = p.parse_args()
 helper = Path(__file__).resolve().parents[1] / 'stage-local-patch-refresh.py'
 with tempfile.TemporaryDirectory(prefix='existing-subst-test-') as tmp:
     root = Path(tmp).resolve()
-    def setup(name):
+    def setup(name, overlap=False):
         base = root / name
         recipe = base / 'pkgsrc/cat/demo'
         previous = base / 'previous'
@@ -31,14 +31,20 @@ with tempfile.TemporaryDirectory(prefix='existing-subst-test-') as tmp:
         source = work / 'demo-1'
         source.mkdir(parents=True)
         archive = base / 'demo-1.tar.xz'
+        original_input = (b'#!/usr/bin/env python3\nbase @PREFIX@\n' if overlap
+                          else b'base @PREFIX@\n')
         with tarfile.open(archive, 'w:xz') as tar:
-            for n, data in [('demo-1/input', b'base @PREFIX@\n'), ('demo-1/third', b'third @PREFIX@\n')]:
+            for n, data in [('demo-1/input', original_input), ('demo-1/third', b'third @PREFIX@\n')]:
                 entry = tarfile.TarInfo(n)
                 entry.size = len(data)
                 entry.mode = 0o644
                 tar.addfile(entry, io.BytesIO(data))
-        old = b'--- input\n+++ input\n@@ -1 +1 @@\n-base @PREFIX@\n+old @PREFIX@\n'
-        new = b'--- input\n+++ input\n@@ -1 +1 @@\n-base @PREFIX@\n+new @PREFIX@\n'
+        old = (b'--- input\n+++ input\n@@ -1,2 +1,2 @@\n #!/usr/bin/env python3\n'
+               b'-base @PREFIX@\n+old @PREFIX@\n' if overlap else
+               b'--- input\n+++ input\n@@ -1 +1 @@\n-base @PREFIX@\n+old @PREFIX@\n')
+        new = (b'--- input\n+++ input\n@@ -1,2 +1,2 @@\n #!/usr/bin/env python3\n'
+               b'-base @PREFIX@\n+new @PREFIX@\n' if overlap else
+               b'--- input\n+++ input\n@@ -1 +1 @@\n-base @PREFIX@\n+new @PREFIX@\n')
         data = archive.read_bytes()
         rows = (f'BLAKE2s ({archive.name}) = {hashlib.blake2s(data).hexdigest()}\n'
                 f'SHA512 ({archive.name}) = {hashlib.sha512(data).hexdigest()}\n'
@@ -50,8 +56,10 @@ with tempfile.TemporaryDirectory(prefix='existing-subst-test-') as tmp:
             (d / 'distinfo').write_text(rows + f'SHA1 (patch-a) = {hashlib.sha1(patch).hexdigest()}\n')
         (work / '.patch_done').write_text(str(recipe / 'patches/patch-a') + '\n')
         (work / '.subst_rewrite_done').write_text('input\nthird\n')
-        (source / 'input').write_bytes(b'old /prefix\n')
+        (source / 'input').write_bytes(b'#!/selected/python3\nold /prefix\n' if overlap else b'old /prefix\n')
         (source / 'third').write_bytes(b'third /prefix\n')
+        if overlap:
+            (work / '.configure_done').write_text('configured\n')
         (source / 'sibling.o').write_bytes(b'object')
         db = base / 'sys/usr/pkg/pkgdb/demo-1nb1'
         db.mkdir(parents=True)
@@ -70,6 +78,11 @@ with tempfile.TemporaryDirectory(prefix='existing-subst-test-') as tmp:
                 'SUBST_SED.rewrite': '-e replace', 'SUBST_FILTER_CMD.rewrite': '/selected/sed -e replace',
                 'SUBST_SKIP_TEXT_CHECK.rewrite': 'no', 'SUBST_NOOP_OK.rewrite': 'no',
                 '_SUBST_COOKIE.rewrite': str(work / '.subst_rewrite_done'), 'PKG_FAIL_REASON': '',
+                'REPLACE_INTERPRETER': 'tool-python' if overlap else '',
+                'REPLACE_FILES.tool-python': 'input' if overlap else '',
+                'REPLACE.tool-python.old': '.*python3[^ ]*' if overlap else '',
+                'REPLACE.tool-python.new': '/selected/python3' if overlap else '',
+                '_COOKIE.configure': str(work / '.configure_done'),
                 '.MAKE.MAKEFILES': f'{recipe}/Makefile {recipe}/Makefile.common ../../mk/bsd.prefs.mk'}
         config = base / 'vars.json'
         config.write_text(json.dumps(vals))
@@ -88,15 +101,25 @@ if '-d' in args:
 if 'pre-patch' in args or 'post-patch' in args or 'pre-extract' in args or 'post-extract' in args:sys.exit()
 if 'configure-clean' in args:
  flag=pathlib.Path(''' + repr(str(base / 'fail-clean')) + ''')
- if flag.exists():flag.unlink();sys.exit(8)
+ if flag.exists():
+  flag.unlink()
+  if ''' + repr(overlap) + ''':pathlib.Path(''' + repr(str(work / '.configure_done')) + ''').unlink()
+  sys.exit(8)
  pathlib.Path(''' + repr(str(base / 'configure-clean')) + ''').write_text('done')
  sys.exit()
 if 'subst-rewrite' in args:
  d=pathlib.Path(next(x[7:] for x in args if x.startswith('WRKSRC=')))
  c=pathlib.Path(next(x.split('=',1)[1] for x in args if x.startswith('_SUBST_COOKIE.rewrite=')))
  for n in ('input','third'):
-  f=d/n;f.write_bytes(f.read_bytes().replace(b'@PREFIX@',b'/prefix'))
+  f=d/n;data=f.read_bytes().replace(b'@PREFIX@',b'/prefix')
+  if ''' + repr(overlap) + ''':data=data.replace(b'python3',b'python3-custom')
+  f.write_bytes(data)
  c.write_text('input\\nthird\\n');sys.exit()
+if 'replace-interpreter' in args:
+ d=pathlib.Path(next(x[7:] for x in args if x.startswith('WRKSRC=')))
+ f=d/'input';data=f.read_bytes()
+ if not data.startswith(b'#!/usr/bin/env python3-custom\\n'):sys.exit(4)
+ f.write_bytes(data.replace(b'#!/usr/bin/env python3-custom',b'#!/selected/python3',1));sys.exit()
 sys.exit(3)
 ''')
         fake.chmod(0o755)
@@ -136,6 +159,17 @@ sys.exit(3)
     subprocess.run(command, check=True, capture_output=True, text=True)
     assert (source / 'input').read_bytes() == b'new /prefix\n'
     assert not (work / '.emberbsd-patch-refresh.json').exists()
+    base, work, source, command, previous = setup('overlap-retry', overlap=True)
+    (base / 'fail-clean').write_text('once')
+    assert subprocess.run(command, capture_output=True).returncode != 0
+    marker = work / '.emberbsd-patch-refresh.json'
+    journal = json.loads(marker.read_text())
+    assert journal['phase'] == 'cookie' and journal['replay_state']['interpreter_applied'] is True
+    assert not (work / '.configure_done').exists()
+    subprocess.run(command, check=True, capture_output=True, text=True)
+    assert (source / 'input').read_bytes() == b'#!/selected/python3\nnew /prefix\n'
+    assert (source / 'third').read_bytes() == b'third /prefix\n'
+    assert not marker.exists()
     for name, target in [('foreign', 'input'), ('unmodified-third', 'third')]:
         base, work, source, command, previous = setup(name)
         (source / target).write_bytes(b'foreign\n')

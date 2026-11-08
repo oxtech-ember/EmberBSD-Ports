@@ -18,12 +18,15 @@ recipe and the actual cookie define the old replay. All patch targets must
 match its preimages before the same transaction applies the current series.
 """
 import base64
+import fnmatch
 import hashlib
 from functools import lru_cache
 import os
 from pathlib import Path, PurePosixPath
 import re
+import shlex
 import stat
+import subprocess
 
 MAX_STAGE_ARCHIVE_BYTES = 512 * 1024 * 1024
 
@@ -41,6 +44,53 @@ def stable_read(paths, path):
                 'file changed while reading: ' + str(path))
     paths.verify_stable(str(path), before)
     return data
+
+
+def selected_values(command, fields):
+    result = subprocess.run(command + ['show-vars', 'VARNAMES=' + ' '.join(fields)],
+                            check=True, stdout=subprocess.PIPE, text=True).stdout.splitlines()
+    require(len(result) == len(fields), 'unexpected selected make metadata')
+    return result
+
+
+def interpreter_replay_metadata(oldcmd, cmd, work):
+    old_interpreters = shlex.split(selected_values(oldcmd, ['REPLACE_INTERPRETER'])[0])
+    new_interpreters = shlex.split(selected_values(cmd, ['REPLACE_INTERPRETER'])[0])
+    require(old_interpreters == new_interpreters and
+            len(old_interpreters) == len(set(old_interpreters)) and
+            all(re.fullmatch(r'[A-Za-z0-9_.-]+', name) for name in old_interpreters),
+            'previous interpreter replacement classes changed or are unsupported')
+    fields = [field for name in old_interpreters for field in
+              ('REPLACE_FILES.' + name, 'REPLACE.' + name + '.old',
+               'REPLACE.' + name + '.new')]
+    old_values = selected_values(oldcmd, fields) if fields else []
+    new_values = selected_values(cmd, fields) if fields else []
+    require(old_values == new_values, 'previous interpreter replacement configuration changed')
+    metadata = {}
+    for index, name in enumerate(old_interpreters):
+        start = index * 3
+        files, old_pattern, new_path = old_values[start:start + 3]
+        patterns = shlex.split(files)
+        require(all(not pattern.startswith('/') and '\\' not in pattern and
+                    all(part not in ('', '.', '..') for part in pattern.split('/')) and
+                    all(ord(c) >= 32 and ord(c) != 127 for c in pattern)
+                    for pattern in patterns),
+                'unsafe interpreter replacement file pattern')
+        metadata[name] = (patterns, old_pattern, new_path)
+    old_cookie, new_cookie = selected_values(oldcmd, ['_COOKIE.configure'])[0], \
+        selected_values(cmd, ['_COOKIE.configure'])[0]
+    require(old_cookie == new_cookie and Path(new_cookie) == Path(work) / '.configure_done',
+            'previous configure cookie path changed or is unsupported')
+    return metadata, Path(new_cookie)
+
+
+def interpreter_replay_state(metadata, applied):
+    return {'version': 1, 'interpreter_applied': bool(applied),
+            'interpreter_classes': {
+                name: {'files': files, 'old': old_pattern, 'new': new_path}
+                for name, (files, old_pattern, new_path) in metadata.items()
+            }}
+
 
 
 @lru_cache(maxsize=4)
@@ -132,9 +182,38 @@ def targets(data):
     return result
 
 
-def validate_patch_endpoints(paths, tree, data):
-    """Reject link/special patch targets and backups before executing patch."""
+def archive_replay_components(series, extra_components=()):
+    """Select archive paths needed to replay patches and SUBST preimages.
+
+    A root-level glob has no safe bounded directory prefix, so it requests the
+    full archive and retains the archive reader's complete collision checks.
+    """
+    components = set()
+    for _patch_path, contents in series:
+        components.update(patch_endpoint_names(contents))
+    for value in extra_components:
+        require(isinstance(value, str) and value and not value.startswith('/') and
+                '\\' not in value and
+                all(part not in ('', '.', '..') and
+                    all(ord(c) >= 32 and ord(c) != 127 for c in part)
+                    for part in value.split('/')),
+                'unsafe archive replay component')
+        parts = value.split('/')
+        wildcard = next((i for i, part in enumerate(parts) if any(c in part for c in '*?[')), None)
+        if wildcard is None:
+            components.add(value)
+        elif wildcard == 0:
+            return None
+        else:
+            components.add('/'.join(parts[:wildcard]))
+    return sorted(components) or None
+
+
+def patch_endpoint_names(data):
+    """Return every header spelling, stripped spelling and patch backup path."""
+    targets(data)  # Preserve rename, deletion, and target-path validation.
     lines = data.splitlines()
+    result = set()
     found = False
     for index, line in enumerate(lines[:-1]):
         if not line.startswith(b'--- ') or not lines[index + 1].startswith(b'+++ '):
@@ -147,27 +226,27 @@ def validate_patch_endpoints(paths, tree, data):
                 name = field.decode('ascii')
             except UnicodeError as exc:
                 raise ValueError('non-ASCII patch path') from exc
-            parts = name.split('/')
-            require(name and not name.startswith('/') and '\\' not in name and
-                    all(part not in ('', '.', '..') for part in parts) and
-                    all(ord(c) >= 32 and ord(c) != 127 for c in name),
-                    'unsafe patch path')
-            # Both header spellings and the backup names may be inspected by
-            # patch; check each without ever following an archive symlink.
             for candidate in {name, name.removesuffix('.orig')}:
-                for endpoint in (candidate, candidate + '.orig'):
-                    current = tree
-                    pieces = endpoint.split('/')
-                    for part in pieces[:-1]:
-                        current /= part
-                        if paths.entry(str(current)) is None:
-                            break
-                        paths.real_directory(str(current))
-                    else:
-                        current /= pieces[-1]
-                        if paths.entry(str(current)) is not None:
-                            paths.regular_file(str(current))
-    require(found, 'patch has no supported file headers')
+                result.add(candidate)
+                result.add(candidate + '.orig')
+    require(found and result, 'patch has no supported file headers')
+    return result
+
+
+def validate_patch_endpoints(paths, tree, data):
+    """Reject link/special patch targets and backups before executing patch."""
+    for endpoint in patch_endpoint_names(data):
+        current = tree
+        pieces = endpoint.split('/')
+        for part in pieces[:-1]:
+            current /= part
+            if paths.entry(str(current)) is None:
+                break
+            paths.real_directory(str(current))
+        else:
+            current /= pieces[-1]
+            if paths.entry(str(current)) is not None:
+                paths.regular_file(str(current))
 
 
 def unselected_subst_file(paths, root, name):
@@ -370,7 +449,7 @@ def selected_patch_inputs(pkgsrc_root, patchdir, distinfo):
     return patchdir, distinfo
 
 
-def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, patch_args, scratch, *, old_cookie=None, transform=None, allow_completed=False, previous_recipe=None, old_transform=None, patchdir=None, distinfo=None, previous_patchdir=None, previous_distinfo=None, recover_applied_patches=False):
+def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, patch_args, scratch, *, old_cookie=None, transform=None, allow_completed=False, previous_recipe=None, old_transform=None, patchdir=None, distinfo=None, previous_patchdir=None, previous_distinfo=None, recover_applied_patches=False, extra_components=(), pre_transform=None, old_pre_transform=None, extra_transform_targets=(), subst_before_pre_transform=False):
     """Replay complete old and current patch order and return validated leaf changes."""
     unfinished = installed_version is None
     require(not (unfinished and allow_completed),
@@ -421,12 +500,19 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
         for name in new:
             affected.update(targets(stable_read(paths, patchdir / name)))
     candidates = []
+    replay_series = [(old_patchdir / name, stable_read(paths, old_patchdir / name))
+                     for name in old_inventory]
+    replay_series.extend((patchdir / name, stable_read(paths, patchdir / name)) for name in new)
+    components = archive_replay_components(replay_series, extra_components)
+    require(getattr(sourceprep, 'ARCHIVE_INTERNAL_SYMLINKS_API', None) == 1,
+            'selected SDK lacks verified internal symlink extraction')
+    require(getattr(sourceprep, 'ARCHIVE_OPTIONAL_COMPONENTS_API', None) == 1,
+            'selected SDK lacks optional component extraction')
     for label, series in (('old', old), ('new', new)):
         dest = scratch / label
         dest.mkdir()
-        require(getattr(sourceprep, 'ARCHIVE_INTERNAL_SYMLINKS_API', None) == 1,
-                'selected SDK lacks verified internal symlink extraction')
         sourceprep.extract_archive(archive, dest, archive_root, label,
+                                   components=components, require_components=False,
                                    internal_symlinks=True,
                                    max_bytes=MAX_STAGE_ARCHIVE_BYTES)
         tree = dest / archive_root
@@ -441,10 +527,14 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
                                    patch_args=tuple(patch_args), allow_dev_null=True)
             require(stable_read(paths, path) == contents, 'patch changed while applying: ' + name)
         candidates.append(tree)
-    if old_transform is not None:
-        old_transform(candidates[0], affected)
-    if transform is not None:
-        transform(candidates[1], affected)
+    replay_targets = affected | verify_targets | set(extra_transform_targets)
+    transforms = ((old_transform, transform), (old_pre_transform, pre_transform)) \
+        if subst_before_pre_transform else ((old_pre_transform, pre_transform), (old_transform, transform))
+    for old_callback, new_callback in transforms:
+        if old_callback is not None:
+            old_callback(candidates[0], replay_targets)
+        if new_callback is not None:
+            new_callback(candidates[1], replay_targets)
     require(sourceprep.archive_hashes(stable_read(paths, archive)) == measured,
             'archive changed during replay')
     changes = []
@@ -534,7 +624,8 @@ def _write_exclusive(path, data, mode):
         os.fsync(out.fileno())
 
 
-def transaction(sdk, work, source, changes, old_cookie, new_inventory, build_clean, *, inject=None):
+def transaction(sdk, work, source, changes, old_cookie, new_inventory, build_clean, *, inject=None,
+                replay_state=None):
     """Commit validated leaves and owner cookie; preserve journal until build-clean succeeds.
 
     The caller must hold the same canonical stage lock as ordinary package stages.
@@ -624,6 +715,8 @@ def transaction(sdk, work, source, changes, old_cookie, new_inventory, build_cle
         record = dict(version=1, source=str(source), files=expected, old_cookie=_sha(old_cookie),
                       old_cookie_b64=base64.b64encode(old_cookie).decode('ascii'),
                       new_cookie=_sha(new_cookie), phase='preparing')
+        if replay_state is not None:
+            record['replay_state'] = replay_state
         jsonio.write_json(str(marker), record)
         try:
             step('preparing-marker')
@@ -660,6 +753,12 @@ def transaction(sdk, work, source, changes, old_cookie, new_inventory, build_cle
                 'patch refresh journal identity changed')
         require(record['files'] == expected, 'patch refresh journal leaves changed')
         check_stage(record)
+        if replay_state is not None:
+            require(record.get('replay_state') == replay_state,
+                    'patch refresh replay state changed or is missing')
+        else:
+            require('replay_state' not in record,
+                    'patch refresh replay state is unavailable for this invocation')
         if record['phase'] in ('preparing', 'complete', 'rolled-back'):
             complete = record['phase'] == 'complete'
             require(stable_read(paths, cookie) == (new_cookie if complete else old_cookie),
@@ -984,6 +1083,8 @@ def main():
     require(len(candidates) == 1 or (not candidates and a.previous_recipe is not None),
             'expected exactly one compatible installed package owner or an explicit previous recipe for an unfinished stage')
     owner = candidates[0] / '+BUILD_VERSION' if candidates else None
+    marker = work / '.emberbsd-patch-refresh.json'
+    subst_stage = None
     if a.subst_class:
         records = {}
         for line in stable_read(paths, owner).decode('utf-8').splitlines():
@@ -1020,6 +1121,7 @@ def main():
                                   check=True, stdout=subprocess.PIPE, text=True).stdout.splitlines()
         require(len(selected) == len(fields), 'unexpected SUBST metadata')
         stage, files, variables, sed, noop, subst_cookie, failed = selected
+        subst_stage = stage
         subst_files = shlex.split(files)
         require(stage == 'pre-configure' and subst_files and len(set(subst_files)) == len(subst_files) and
                 all(re.fullmatch(r'[A-Za-z0-9_./+-]+', name) and
@@ -1042,6 +1144,9 @@ def main():
         pending_cookie = Path(subst_cookie + '.tmp')
         if os.path.lexists(pending_cookie):
             require(stable_read(paths, pending_cookie) == b'', 'foreign pending SUBST cookie')
+    subst_metadata = {}
+    interpreter_metadata = {}
+    interpreter_ready = False
     if a.previous_recipe:
         package = '/'.join(a.recipe.parts[-2:])
         previous_makefile = a.previous_recipe / 'Makefile'
@@ -1060,11 +1165,6 @@ def main():
                     'previous Makefile differs from installed provenance')
         observed_recipe_inputs[previous_makefile] = previous_data
         oldcmd = cmd[:3] + ['-f', str(previous_makefile)] + cmd[3:]
-        def selected_values(command, fields):
-            result = subprocess.run(command + ['show-vars', 'VARNAMES=' + ' '.join(fields)],
-                                    check=True, stdout=subprocess.PIPE, text=True).stdout.splitlines()
-            require(len(result) == len(fields), 'unexpected previous recipe metadata')
-            return result
         old_pkgsrc_root = a.previous_recipe.parents[1]
         if a.previous_recipe.parts[-2:] == a.recipe.parts[-2:]:
             previous_patchdir = old_pkgsrc_root / patchdir.relative_to(a.recipe.parents[1].resolve())
@@ -1150,12 +1250,33 @@ def main():
             new_values = tuple(after[start:start + len(attributes)])
             require(old_values == new_values, 'previous SUBST configuration changed: ' + name)
             subst_metadata[name] = new_values
+        interpreter_metadata, configure_cookie = interpreter_replay_metadata(oldcmd, cmd, work)
+        configure_cookie_present = os.path.lexists(configure_cookie)
+        if configure_cookie_present:
+            stable_read(paths, configure_cookie)
+        saved_replay_state = None
+        if marker.exists():
+            prior_transaction = jsonio.read_json(str(marker))
+            require(isinstance(prior_transaction, dict), 'invalid patch refresh journal')
+            saved_replay_state = prior_transaction.get('replay_state')
+            require(isinstance(saved_replay_state, dict) and
+                    saved_replay_state.get('version') == 1 and
+                    isinstance(saved_replay_state.get('interpreter_applied'), bool),
+                    'committed patch refresh lacks interpreter replay state; explicit migration required')
+            interpreter_ready = saved_replay_state['interpreter_applied']
+        else:
+            interpreter_ready = configure_cookie_present
+        replay_state = interpreter_replay_state(interpreter_metadata, interpreter_ready)
+        if saved_replay_state is not None:
+            require(saved_replay_state == replay_state,
+                    'patch refresh interpreter metadata changed')
         require(stable_read(paths, previous_makefile) == previous_data,
                 'previous Makefile changed during verification')
     if a.refresh_subst:
         require(a.refresh_subst in subst_metadata,
                 'existing SUBST class not uniquely present')
         stage, files, variables, sed, filter_cmd, skip, noop, subst_cookie = subst_metadata[a.refresh_subst]
+        subst_stage = stage
         subst_files = shlex.split(files)
         require(stage in ('pre-configure', 'do-configure-pre-hook') and subst_files and
                 len(set(subst_files)) == len(subst_files) and
@@ -1168,8 +1289,24 @@ def main():
         live_subst_cookie = stable_read(paths, Path(subst_cookie))
         require(not os.path.lexists(subst_cookie + '.tmp'), 'unexpected pending existing SUBST cookie')
         subst_candidates = {}
+    all_subst_classes = shlex.split(v['SUBST_CLASSES'])
+    require(len(all_subst_classes) == len(set(all_subst_classes)) and
+            all(re.fullmatch(r'[A-Za-z0-9_.-]+', name) for name in all_subst_classes),
+            'unsupported SUBST classes')
+    subst_files_by_class = {}
+    if all_subst_classes:
+        subst_fields = ['SUBST_FILES.' + name for name in all_subst_classes]
+        subst_values = subprocess.run(cmd + ['show-vars', 'VARNAMES=' + ' '.join(subst_fields)],
+                                      check=True, stdout=subprocess.PIPE, text=True).stdout.splitlines()
+        require(len(subst_values) == len(subst_fields), 'unexpected SUBST file metadata')
+        subst_files_by_class = dict(zip(all_subst_classes, subst_values))
+    archive_subst_inputs = [name for value in subst_files_by_class.values() for name in shlex.split(value)]
+    archive_interpreter_inputs = [pattern for files, _old, _new in interpreter_metadata.values()
+                                  for pattern in files]
+    interpreter_literals = list(archive_interpreter_inputs)
+    archive_interpreter_inputs.extend(pattern + '.new' for pattern in interpreter_literals
+                                      if not any(char in pattern for char in '*?['))
     archive = Path(v['DISTDIR']) / v['DIST_SUBDIR'] / distfiles[0]
-    marker = work / '.emberbsd-patch-refresh.json'
     old_cookie = journal_old_cookie(sdk, work) if marker.exists() else None
     with tempfile.TemporaryDirectory(prefix='.patch-refresh-candidates-', dir=work) as scratch:
         def transform(candidate, affected):
@@ -1193,10 +1330,43 @@ def main():
                                       'subst-' + a.refresh_subst], check=True)
             require(stable_read(paths, scratch_cookie) == live_subst_cookie,
                     'existing SUBST cookie differs from replay')
-            subst_candidates[label] = {name: stable_read(paths, _entry(paths, candidate, name))
-                                       for name in subst_files}
             require(all(not os.path.lexists(str(_entry(paths, candidate, name)) + '.subst.sav')
                         for name in subst_files), 'existing SUBST temporary file remains')
+        def replace_interpreters(label, command, candidate, affected):
+            selected = {}
+            for name, (patterns, _old, _new) in interpreter_metadata.items():
+                files = sorted(path for path in affected
+                               if any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns))
+                if files:
+                    selected[name] = files
+            if not selected:
+                return
+            args = command + ['WRKSRC=' + str(candidate),
+                              'REPLACE_INTERPRETER=' + ' '.join(selected)]
+            args.extend('REPLACE_FILES.' + name + '=' + ' '.join(files)
+                        for name, files in selected.items())
+            for files in selected.values():
+                for name in files:
+                    parent = candidate
+                    for component in name.split('/')[:-1]:
+                        parent = parent / component
+                        entry = paths.entry(str(parent))
+                        if entry is None:
+                            break
+                        paths.real_directory(str(parent))
+                    else:
+                        path = parent / name.split('/')[-1]
+                        if paths.entry(str(path)) is not None:
+                            paths.regular_file(str(path))
+                        require(paths.entry(str(path) + '.new') is None,
+                                'unexpected interpreter replacement temporary file: ' + name)
+            subprocess.run(args + ['replace-interpreter'], check=True)
+            for files in selected.values():
+                for name in files:
+                    path = candidate.joinpath(*name.split('/'))
+                    if path.exists():
+                        require(paths.entry(str(path) + '.new') is None,
+                                'interpreter replacement temporary file remains: ' + name)
         changes, cookie, inventory = prepare(sdk, a.recipe, work, archive, v['DISTNAME'], owner,
                                              Path(v['PATCH']), patch_args[2:], Path(scratch), old_cookie=old_cookie,
                                              transform=(transform if a.subst_class else
@@ -1209,8 +1379,21 @@ def main():
                                              distinfo=distinfo,
                                              previous_patchdir=(previous_patchdir if a.previous_recipe else None),
                                              previous_distinfo=(previous_distinfo if a.previous_recipe else None),
-                                             recover_applied_patches=a.recover_applied_patches)
+                                             recover_applied_patches=a.recover_applied_patches,
+                                             extra_components=archive_subst_inputs + archive_interpreter_inputs,
+                                             extra_transform_targets=(subst_files if a.refresh_subst else ()),
+                                             subst_before_pre_transform=(subst_stage == 'pre-configure'),
+                                             pre_transform=(lambda candidate, affected: replace_interpreters('new', cmd, candidate, affected))
+                                                           if a.previous_recipe and interpreter_ready else None,
+                                             old_pre_transform=(lambda candidate, affected: replace_interpreters('old', oldcmd, candidate, affected))
+                                                               if a.previous_recipe and interpreter_ready else None)
         if a.refresh_subst:
+            for label in ('old', 'new'):
+                candidate = Path(scratch) / label / v['DISTNAME']
+                subst_candidates[label] = {
+                    name: stable_read(paths, _entry(paths, candidate, name))
+                    for name in subst_files
+                }
             for name in subst_files:
                 if subst_candidates['old'][name] == subst_candidates['new'][name]:
                     require(stable_read(paths, _entry(paths, source, name)) == subst_candidates['old'][name],
@@ -1218,12 +1401,7 @@ def main():
         classes = [name for name in shlex.split(v['SUBST_CLASSES'])
                    if name not in (a.subst_class, a.refresh_subst)]
         if classes:
-            require(all(re.fullmatch(r'[A-Za-z0-9_.-]+', name) for name in classes),
-                    'unsupported substitution class')
-            requested = ['SUBST_FILES.' + name for name in classes]
-            values = subprocess.run(cmd + ['show-vars', 'VARNAMES=' + ' '.join(requested)],
-                                    check=True, stdout=subprocess.PIPE, text=True).stdout.splitlines()
-            require(len(values) == len(requested), 'unexpected substitution metadata')
+            values = [subst_files_by_class[name] for name in classes]
             changed = {row[0] for row in changes}
             for value in values:
                 files = shlex.split(value)
@@ -1270,7 +1448,8 @@ def main():
                 require(stable_read(paths, path) == contents,
                         'recipe input changed during source replay: ' + str(path))
         transaction(sdk, work, source, changes, cookie,
-                    [patchdir / name for name in inventory], clean)
+                    [patchdir / name for name in inventory], clean,
+                    replay_state=(replay_state if a.previous_recipe else None))
     print('Refreshed verified patch inputs; compatible build objects retained.')
 
 
