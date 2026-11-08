@@ -1,0 +1,1 @@
+Bluetooth integration for Plasma. It is a BlueZ D-Bus client and does not open an adapter.
