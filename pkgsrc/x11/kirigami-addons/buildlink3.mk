@@ -5,7 +5,7 @@ BUILDLINK_TREE+=	kirigami-addons
 .if !defined(KIRIGAMI_ADDONS_BUILDLINK3_MK)
 KIRIGAMI_ADDONS_BUILDLINK3_MK:=
 
-BUILDLINK_API_DEPENDS.kirigami-addons+=	kirigami-addons>=1.10.0
+BUILDLINK_API_DEPENDS.kirigami-addons+=	kirigami-addons>=1.12.0
 BUILDLINK_PKGSRCDIR.kirigami-addons?=	../../x11/kirigami-addons
 
 .endif	# KIRIGAMI_ADDONS_BUILDLINK3_MK
