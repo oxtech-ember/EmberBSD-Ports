@@ -93,7 +93,8 @@ def main():
     require(patch_bin and compiler and shutil.which('nm'),
             'patch, cc, and nm are required')
     revision = REVISION.read_text()
-    require('+PKGREVISION=\t9\n' in revision, 'shared gettext-tools revision is not 9')
+    require('+PKGREVISION=\t10\n' in revision, 'shared gettext-tools revision is not 10')
+    require('+PKGREVISION=\t9\n' not in revision, 'shared gettext-tools revision is still 9')
     require('+PKGREVISION= 9\n' in revision, 'Darwin gettext-tools revision is not 9')
     require('+PKGREVISION=\t8\n' not in revision, 'shared gettext-tools revision is still 8')
     require('--enable-relocatable' in RECIPE.read_text(), 'relocatable gettext-tools was removed')

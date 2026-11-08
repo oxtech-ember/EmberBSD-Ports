@@ -32,7 +32,7 @@ change, verification prepares and compares the complete payload.
 is exported as `devel/gettext/patches/patch-zz_ember_reloc_wrapper_access`.
 Both `progreloc.c` copies call the system `access` while
 `install-reloc` builds the wrapper. The archive checksum is unchanged.
-Shared `gettext-tools` is `gettext-tools-1.0nb9`; the Darwin native
+Shared `gettext-tools` is `gettext-tools-1.0nb10`; the Darwin native
 assignment stays `gettext-tools-1.0nb9`. After this patch lands, refresh a
 prepared tree with `refresh-source` so its receipt names the new patch set.
 

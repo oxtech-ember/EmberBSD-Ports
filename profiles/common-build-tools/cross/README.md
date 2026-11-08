@@ -399,9 +399,14 @@ list. That list includes `progreloc.c` and has no `access.c`. When the target
 gnulib `unistd.h` renames `access` to `rpl_access`, the wrapper compilation
 defines `IN_RELOCWRAPPER` and `progreloc.c` calls the system `access`. The
 library compilation leaves the rename in place, so `libgettextlib` still
-provides `rpl_access`. The shared tools revision for that source change is 9.
-The Darwin native assignment remains 9, because that host does not replace
-`access` and the later native revision line is unchanged.
+provides `rpl_access`. On the unversioned NetBSD cross triplet, install-reloc
+then stores each real program in program.bin and leaves the wrapper at the
+public name. The tools PLIST records those 25 payloads with PLIST.relocbin.
+Scripts installed with INSTALL_SCRIPT have no .bin sibling. Darwin and a
+versioned NetBSD host do not stage program.bin, so those entries stay
+commented out. The shared tools revision is 10. The Darwin native assignment
+remains 9, because that host does not replace `access`, does not install
+program.bin, and the later native revision line is unchanged.
 The SQLite `readline` option is off by default on a Darwin build host.
 This breaks the native Python → SQLite → editline → automake → help2man →
 gettext-tools → Python bootstrap cycle. Target and native EmberBSD packages

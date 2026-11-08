@@ -31,7 +31,7 @@ index f4f336de..88bd5d28 100644
  
  PKGNAME=	${DISTNAME:S/-/-tools-/}
 -PKGREVISION=	6
-+PKGREVISION=	9
++PKGREVISION=	10
  COMMENT=	Tools for providing messages in different languages
  
  PKG_OPTIONS_VAR=	PKG_OPTIONS.gettext-tools

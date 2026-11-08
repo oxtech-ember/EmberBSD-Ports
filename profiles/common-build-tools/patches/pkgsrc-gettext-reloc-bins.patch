@@ -1,0 +1,94 @@
+Package the relocatable program.bin payloads for the NetBSD cross install.
+Origin: EmberBSD (AI-assisted); upstream status: not submitted.
+
+--- a/devel/gettext-tools/Makefile
++++ b/devel/gettext-tools/Makefile
+@@ -81,11 +81,17 @@
+ SUBST_SED.offset+=	-e 's/FILE_OFFSET_BITS=64/FILE_OFFSET_BITS=32/g'
+ .endif
+ 
+-PLIST_VARS+=	glibc
++PLIST_VARS+=	glibc relocbin
+ 
+ .if !empty(GLIBC_VERSION)
+ PLIST.glibc=	yes
+ .endif
++# install-reloc keeps the public name as the wrapper and stores the real
++# program in program.bin on the unversioned NetBSD cross triplet. Darwin
++# and a versioned NetBSD host do not install program.bin.
++.if ${OPSYS} == "NetBSD" && ${USE_CROSS_COMPILE:Uno:tl} == "yes"
++PLIST.relocbin=	yes
++.endif
+ 
+ REPLACE_PYTHON=	gettext-tools/src/spit.py.in
+ 
+
+--- a/devel/gettext-tools/PLIST
++++ b/devel/gettext-tools/PLIST
+@@ -1,31 +1,53 @@
+ @comment $NetBSD: PLIST,v 1.18 2026/07/21 12:55:54 adam Exp $
+ bin/autopoint
+ bin/envsubst
++${PLIST.relocbin}bin/envsubst.bin
+ bin/gettext
++${PLIST.relocbin}bin/gettext.bin
+ bin/gettext.sh
+ bin/gettextize
+ bin/msgattrib
++${PLIST.relocbin}bin/msgattrib.bin
+ bin/msgcat
++${PLIST.relocbin}bin/msgcat.bin
+ bin/msgcmp
++${PLIST.relocbin}bin/msgcmp.bin
+ bin/msgcomm
++${PLIST.relocbin}bin/msgcomm.bin
+ bin/msgconv
++${PLIST.relocbin}bin/msgconv.bin
+ bin/msgen
++${PLIST.relocbin}bin/msgen.bin
+ bin/msgexec
++${PLIST.relocbin}bin/msgexec.bin
+ bin/msgfilter
++${PLIST.relocbin}bin/msgfilter.bin
+ bin/msgfmt
++${PLIST.relocbin}bin/msgfmt.bin
+ bin/msggrep
++${PLIST.relocbin}bin/msggrep.bin
+ bin/msginit
++${PLIST.relocbin}bin/msginit.bin
+ bin/msgmerge
++${PLIST.relocbin}bin/msgmerge.bin
+ bin/msgpre
++${PLIST.relocbin}bin/msgpre.bin
+ bin/msgunfmt
++${PLIST.relocbin}bin/msgunfmt.bin
+ bin/msguniq
++${PLIST.relocbin}bin/msguniq.bin
+ bin/ngettext
++${PLIST.relocbin}bin/ngettext.bin
+ bin/po-fetch
+ bin/printf_gettext
++${PLIST.relocbin}bin/printf_gettext.bin
+ bin/printf_ngettext
++${PLIST.relocbin}bin/printf_ngettext.bin
+ bin/recode-sr-latin
++${PLIST.relocbin}bin/recode-sr-latin.bin
+ bin/spit
+ bin/xgettext
++${PLIST.relocbin}bin/xgettext.bin
+ include/gettext-po.h
+ ${PLIST.style}include/textstyle.h
+ ${PLIST.style}include/textstyle/version.h
+@@ -37,9 +59,12 @@
+ lib/libgettextsrc.la
+ ${PLIST.style}lib/libtextstyle.la
+ libexec/gettext/cldr-plurals
++${PLIST.relocbin}libexec/gettext/cldr-plurals.bin
+ libexec/gettext/hostname
++${PLIST.relocbin}libexec/gettext/hostname.bin
+ libexec/gettext/project-id
+ libexec/gettext/urlget
++${PLIST.relocbin}libexec/gettext/urlget.bin
+ libexec/gettext/user-email
+ man/man1/autopoint.1
+ man/man1/envsubst.1
