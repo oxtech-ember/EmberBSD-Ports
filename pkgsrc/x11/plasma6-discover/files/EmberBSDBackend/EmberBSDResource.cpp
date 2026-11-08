@@ -160,7 +160,7 @@ QString EmberBSDResource::longDescription()
                     m_releaseId);
     }
     if (m_component) {
-        return i18n("Plasma component %1 from signed catalog %2, root %3. No standalone desktop launcher is recorded. Install and remove stay unavailable.",
+        return i18n("Plasma component %1 from signed catalog %2, root %3. No standalone desktop launcher is recorded. Install uses the signed package. Remove stays unavailable.",
                     m_version,
                     m_releaseId,
                     m_root);
