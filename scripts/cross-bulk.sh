@@ -1333,16 +1333,25 @@ build_native()
         result "$key" "skipped $nnode $skip"
         return 0
     fi
-    stage_local_revision_changed=no
+    stage_local_metadata_changed=no
     if [ "${stage_local:-no}" = yes ]; then
+        : > "$log"
         stage_local_identity=$(stage_local_preflight "$wrkdir" "$base" "$version" "$name" "$log") || {
             result "$key" "failed $nnode incompatible-stage"
             return 0
         }
-        [ "$stage_local_identity" != revision ] || stage_local_revision_changed=yes
+        [ "$stage_local_identity" != revision ] || stage_local_metadata_changed=yes
         set -- "$@" _EMBER_STAGE_LOCAL_PACKAGE_INSTALL=yes \
             "_EMBER_STAGE_LOCAL_PKGPATH=$path" \
             "_EMBER_STAGE_LOCAL_WRKDIR=$wrkdir"
+        if work_dependencies_current "$wrkdir" "$job.$key" "$path" "$@" >> "$log" 2>&1; then
+            :
+        else
+            case $? in
+            1) stage_local_metadata_changed=yes ;;
+            *) result "$key" "failed $nnode workdir-dependency-check"; return 0 ;;
+            esac
+        fi
     fi
     if [ "${stage_local:-no}" != yes ] && native_current "$base" "$name"; then
         result "$key" "done $nnode"
@@ -1356,9 +1365,9 @@ build_native()
     if [ "${stage_local:-no}" != yes ]; then
         prepare_wrkdir "$wrkdir" "$job.$key" "$path" "$@" || { result "$key" "failed $nnode ${prepare_wrkdir_error:-incompatible-workdir}"; return 0; }
     fi
-    : > "$log"
+    [ "${stage_local:-no}" = yes ] || : > "$log"
     if { [ "${stage_local:-no}" = yes ] || [ -z "$clean" ] || bmk -C "$PKGSRCDIR/$path" "$@" clean < /dev/null >> "$log" 2>&1; } &&
-        { [ "${stage_local_revision_changed:-no}" != yes ] || bmk -C "$PKGSRCDIR/$path" "$@" depends-clean _package-clean < /dev/null >> "$log" 2>&1; } &&
+        { [ "${stage_local_metadata_changed:-no}" != yes ] || bmk -C "$PKGSRCDIR/$path" "$@" depends-clean _package-clean < /dev/null >> "$log" 2>&1; } &&
         { [ "${stage_local:-no}" != yes ] || stage_configure_preserve "$path" "$wrkdir" "$@" _AUTOMATIC=yes >> "$log" 2>&1; } &&
         if [ "${package_only:-no}" = yes ]; then
             bmk -C "$PKGSRCDIR/$path" "$@" _AUTOMATIC=yes package < /dev/null >> "$log" 2>&1
@@ -1756,12 +1765,20 @@ build_one()
             result "$key" "failed $path incompatible-stage"
             return 0
         }
-        stage_local_revision_changed=no
-        [ "$stage_local_identity" != revision ] || stage_local_revision_changed=yes
+        stage_local_metadata_changed=no
+        [ "$stage_local_identity" != revision ] || stage_local_metadata_changed=yes
         : > "$log"
+        if work_dependencies_current "$wrkdir" "$job.$key" "$path" >> "$log" 2>&1; then
+            :
+        else
+            case $? in
+            1) stage_local_metadata_changed=yes ;;
+            *) result "$key" "failed $path workdir-dependency-check"; return 0 ;;
+            esac
+        fi
         shared_pair_for_path "$path"
         if [ -n "$shared_pair" ] && [ "$(cat "$run/shared-$shared_pair/enabled" 2>/dev/null)" = yes ]; then
-            if [ "$stage_local_revision_changed" = yes ] &&
+            if [ "$stage_local_metadata_changed" = yes ] &&
                 ! bmk -C "$PKGSRCDIR/$path" depends-clean < /dev/null >> "$log" 2>&1; then
                 result "$key" "failed $path depends-clean"
                 return 0
@@ -1770,7 +1787,7 @@ build_one()
                 result "$key" "failed $path shared-stage-cleanup"
                 return 0
             fi
-        elif [ "$stage_local_revision_changed" = yes ] &&
+        elif [ "$stage_local_metadata_changed" = yes ] &&
             ! bmk -C "$PKGSRCDIR/$path" depends-clean _package-clean < /dev/null >> "$log" 2>&1; then
             result "$key" "failed $path package-clean"
             return 0

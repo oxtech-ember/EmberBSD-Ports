@@ -300,6 +300,14 @@ tool, documentation or packaging change, use the existing scoped `package` /
 compiler changes require rebuilding the affected objects; the dependency
 check does not silently accept them or clean the whole stage.
 
+The explicit stage-local `package` and `package-install` commands also compare
+retained dependency metadata with the current resolution. A change refreshes
+only dependency and package metadata through `depends-clean` and `_package-clean`,
+even when the package name is unchanged. Build/install cookies and compiled
+objects remain intact, and the package records current `@blddep` names. A failed
+dependency query stops before cleanup or packaging and preserves the old stage.
+Choosing this scoped recovery path does not establish ABI compatibility.
+
 When a selected package's provider configuration changes, `invalidate-makevars`
 removes that work directory's cached phase variables, without removing source,
 objects or phase cookies. It does not itself reconfigure or rebuild. For a

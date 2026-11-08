@@ -113,21 +113,52 @@ cat > "$out/bmake" <<WRAP
 #!/bin/sh
 out=$out
 dir= target= varname= varnames= native=no packages= keep_bin_pkgs=no depguard=no
+depends_file= rdepends_file= reset_depends=no
 for a do echo "\$a" >> \$out/calls; done
 while [ "\$#" -gt 0 ]; do
     case "\$1" in
         -C) dir=\$2; shift 2;;
+        -V) varnames="\$varnames \$2"; target=query; shift 2;;
         VARNAME=*) varname=\${1#VARNAME=}; shift;;
         VARNAMES=*) varnames=\${1#VARNAMES=}; shift;;
         USE_CROSS_COMPILE=no) native=yes; shift;;
         PKGSRC_KEEP_BIN_PKGS=yes) keep_bin_pkgs=yes; shift;;
         DEPENDS_TARGET=emberbsd-refuse-unpreflighted-dependency) depguard=yes; shift;;
         PACKAGES=*) packages=\${1#PACKAGES=}; shift;;
+        _DEPENDS_FILE=*) depends_file=\${1#_DEPENDS_FILE=}; shift;;
+        _RDEPENDS_FILE=*) rdepends_file=\${1#_RDEPENDS_FILE=}; shift;;
+        depends-clean) reset_depends=yes; target=\$1; shift;;
         *=*) shift;;
         *) target=\$1; shift;;
     esac
 done
+work=$out/work/demo
+[ "\$native" != yes ] || work=$out/work/demo-native
+if [ "\$reset_depends" = yes ]; then
+    rm -f "\$work/.depends" "\$work/.rdepends" "\$work/.rrdepends"
+fi
 case "\$target" in
+    package|package-install|install)
+        if [ -f $out/current.depends ]; then
+            [ -f "\$work/.depends" ] || cp $out/current.depends "\$work/.depends"
+            [ -f "\$work/.rdepends" ] || cp $out/current.rdepends "\$work/.rdepends"
+            awk '{ print "@blddep " \$3 }' "\$work/.rdepends" > $out/blddeps
+        fi;;
+esac
+case "\$target" in
+    query)
+        for v in \$varnames; do
+            case "\$v" in
+                '\${WRKDIR}') echo "\$work";;
+                '\${_COOKIE.tools}') echo "\$work/.tools_done";;
+                '\${USE_TOOLS}') echo;;
+                *) exit 2;;
+            esac
+        done;;
+    *.dependencies.depends|*.dependencies.rdepends)
+        [ ! -f $out/fail-resolve ] || { echo dependency-resolver-failed >&2; exit 1; }
+        cp $out/current.depends "\$depends_file"
+        [ "\$target" != "\$rdepends_file" ] || cp $out/current.rdepends "\$rdepends_file";;
     show-var)
         case "\$varname" in
             EMBERBSD_NATIVE_TOOLSET_VERIFIED) echo fake;;
@@ -143,6 +174,11 @@ case "\$target" in
                 PKGNAME) echo demo-1.0;;
                 PKGVERSION_NOREV) echo 1.0;;
                 WRKDIR) if [ "\$native" = yes ]; then echo $out/work/demo-native; else echo $out/work/demo; fi;;
+                WRKSRC) echo "\$work/source";;
+                CONFIG_SHELL) echo /bin/sh;;
+                _COOKIE.configure) echo "\$work/.configure_done";;
+                GNU_CONFIGURE) echo no;;
+                CONFIGURE_DIRS) echo "\$work/source";;
                 PKGFILE) echo $out/packages/All/demo-1.0.tgz;;
                 WRKOBJDIR) echo $out/work;;
                 STAGE_PKGFILE) echo $out/work/demo/.packages/demo-1.0.tgz;;
@@ -538,6 +574,73 @@ rm "$out/fail-package"
 run_package cat/demo > "$out/package-retry.log" 2>&1 || fail 'package-only retry failed'
 ! grep -q '^cat/demo ' "$out/package-state/package-failed" || fail 'successful retry left stale failure'
 echo 'PASS: package-only target/native, failure and retry preserve installation state'
+
+# Explicit stage-local recovery must refresh same-PKGNAME dependency metadata
+# before packaging. Model pkgsrc's @blddep producer reading retained .rdepends.
+printf 'tool\tpy315-gi-docgen>=2026.1nb1\t../../devel/py-gi-docgen\n' > "$out/current.depends"
+printf 'tool\tpy315-gi-docgen>=2026.1nb1\tpy315-gi-docgen-2026.1nb1\n' > "$out/current.rdepends"
+stage_snapshot()
+{
+    "$host_python" - "$1" <<'PY'
+from pathlib import Path
+import sys
+root = Path(sys.argv[1])
+for name in ('compiled.o', '.build_done', '.install_done'):
+    p = root / name
+    s = p.stat()
+    print(name, p.read_bytes(), s.st_ino, s.st_mtime_ns)
+PY
+}
+for dependency_mode in package package-install; do
+    for dependency_role in target native; do
+        dependency_work=$out/work/demo
+        dependency_node=cat/demo
+        if [ "$dependency_role" = native ]; then
+            dependency_work=$out/work/demo-native
+            dependency_node=cat/demo@native
+        fi
+        printf '%s\n' demo-1.0 > "$dependency_work/.extract_done"
+        printf '%s\n' demo-1.0 > "$dependency_work/.build_done"
+        printf '%s\n' demo-1.0 > "$dependency_work/.install_done"
+        printf '%s\n' retained-object > "$dependency_work/compiled.o"
+        printf 'tool\tpy315-gi-docgen-[0-9]*\t../../devel/py-gi-docgen\n' > "$dependency_work/.depends"
+        printf 'tool\tpy315-gi-docgen-[0-9]*\tpy315-gi-docgen-2026.1\n' > "$dependency_work/.rdepends"
+        stage_snapshot "$dependency_work" > "$out/dependency-before"
+        run_dependency_case()
+        {
+            if [ "$dependency_mode" = package ]; then
+                run_package "$dependency_node"
+            elif [ "$dependency_role" = native ]; then
+                run_native "$out/native-state"
+            else
+                run "$out/revision-state"
+            fi
+        }
+        : > "$out/calls"
+        : > "$out/targets"
+        run_dependency_case > "$out/dependency-refresh.log" 2>&1 || fail "dependency refresh: $(cat "$out/dependency-refresh.log")"
+        grep -qx depends-clean "$out/calls" || fail 'same-PKGNAME dependency change kept stale dependency metadata'
+        grep -qx _package-clean "$out/targets" || fail 'dependency change kept stale package metadata'
+        grep -qx '@blddep py315-gi-docgen-2026.1nb1' "$out/blddeps" || fail 'package recorded stale @blddep'
+        stage_snapshot "$dependency_work" > "$out/dependency-after"
+        cmp "$out/dependency-before" "$out/dependency-after" || fail 'metadata refresh changed objects or build/install cookies'
+        : > "$out/calls"
+        run_dependency_case > "$out/dependency-unchanged.log" 2>&1 || fail 'unchanged dependency retry failed'
+        ! grep -qx depends-clean "$out/calls" || fail 'unchanged dependency retry cleaned metadata'
+        cp "$dependency_work/.rdepends" "$out/dependency-resolved-before"
+        : > "$out/fail-resolve"
+        : > "$out/calls"
+        : > "$out/targets"
+        if run_dependency_case > "$out/dependency-error.log" 2>&1; then fail 'resolver failure returned success'; fi
+        [ ! -s "$out/targets" ] || fail 'resolver failure reached package/install cleanup or execution'
+        ! grep -qx depends-clean "$out/calls" || fail 'resolver failure cleared dependency metadata'
+        cmp "$dependency_work/.rdepends" "$out/dependency-resolved-before" || fail 'resolver failure changed dependency metadata'
+        stage_snapshot "$dependency_work" > "$out/dependency-after"
+        cmp "$out/dependency-before" "$out/dependency-after" || fail 'resolver failure changed retained stage'
+        rm "$out/fail-resolve"
+    done
+done
+echo 'PASS: same-PKGNAME dependency refresh, current @blddep, unchanged retry and resolver refusal for target/native package/install'
 
 : > "$out/missing-dependency"
 : > "$out/targets"
