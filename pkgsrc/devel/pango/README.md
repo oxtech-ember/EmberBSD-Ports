@@ -31,5 +31,12 @@ Use the corresponding `.so` library on ELF hosts. The fixture only copies that
 library into a temporary prefix, calls both exported getters, and checks
 defaults, environment overrides and stable cached pointers. Its dependencies
 may still load from the original prefix; full SDK relocation qualification is
-separate. Native compilation and the fixed-library runtime check must precede
-binary publication; source patch application alone does not establish them.
+separate. Native Darwin ARM64 1.58.2nb4 compilation, packaging, installation
+and this fixture pass with Clang 23.1.4. The same fixture passes with the changed
+`pango-utils.c` instrumented by ASan/UBSan and linked with retained ordinary
+library objects; other units and dependencies were not instrumented. Darwin
+ARM64 is outside the [Valgrind platform list](https://valgrind.org/info/platforms.html).
+Cppcheck 2.22.0 reproduces the same GLib-header warning in the original and
+changed unit; Clang Static Analyzer 23.1.4 reports no finding in either. Both use
+the real native buildlink flags. Static consumers, the full signed-package
+lifecycle and target execution remain separate checks.

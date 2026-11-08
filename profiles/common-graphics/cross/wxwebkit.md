@@ -26,10 +26,12 @@ tool; these consumers do not require a target Vala compiler or its Graphviz
 dependencies. The common GI provider retains introspection, while native
 VAPI generation reads GIR and VAPI dependencies from the target sysroot.
 Package options `PKG_OPTIONS.libspelling=tests` and
-`PKG_OPTIONS.gtksourceview5=tests` explicitly enable test builds. Recipe
-metadata and release patch checks are verified. GtkSourceView compiled for
-AArch64 and its real target GI query passed offline scanner replay using the
-checked-in dump; package and GUI spellchecking acceptance remain separate.
+`PKG_OPTIONS.gtksourceview5=tests` explicitly enable test builds. Both complete
+AArch64 packages passed the normal package/install checks and are published in
+the signed current repository. Their real target GI queries passed offline
+scanner replay using the checked-in dumps. Native VAPI and documentation
+generation use target GIR/VAPI inputs. GUI spellchecking acceptance remains
+separate from these package and generator checks.
 
 The AI-assisted cross recipe enables pkgsrc `USE_GNU_CONFIGURE_HOST`.
 The GNU configure framework supplies the selected `--build` and `--host`

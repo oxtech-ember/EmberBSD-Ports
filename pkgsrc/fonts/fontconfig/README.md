@@ -38,6 +38,15 @@ prefix-local `var/cache/fontconfig` layout. Dependencies may still load from the
 original prefix. It does not compile code or modify the supplied installation.
 
 The old 2.18.3nb3 library fails by reading the producer configuration instead of
-the relocated one. The source patch and Meson syntax have been checked;
-compilation, the fixed runtime, static consumers, full signed-package lifecycle
-and target execution remain unverified.
+the relocated one. Native Darwin ARM64 2.18.3nb4 compilation, packaging,
+installation and the fixed-library fixture pass with Clang 23.1.4. The same
+fixture passes with the changed `fccfg.c` and `fcinit.c` units instrumented by
+ASan/UBSan and linked with the retained ordinary library objects. Other units
+and dependencies were not instrumented. Darwin ARM64 is outside the
+[Valgrind platform list](https://valgrind.org/info/platforms.html); this is not
+a Valgrind or whole-library leak-check result. Cppcheck 2.22.0 and Clang Static
+Analyzer 23.1.4 checked both changed units with the real native buildlink flags.
+The existing `fccfg.c` allocation/variadic warnings and two analyzer leak
+reports also reproduce in the original release source; no new finding appears
+in the changed code. Static consumers, the full
+signed-package lifecycle and target execution remain separate checks.
