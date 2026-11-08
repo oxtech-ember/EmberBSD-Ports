@@ -1,0 +1,923 @@
+$NetBSD$
+
+Run native GTK4 modal consumers through the shared wx event loop, retaining
+response, parent lifetime, assertion backtrace and native printing behavior.
+Select the public gtk4-unix-print module in both build systems.
+Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
+
+--- include/wx/gtk/print.h.orig
++++ include/wx/gtk/print.h
+@@ -15,6 +15,9 @@
+ #if wxUSE_GTKPRINT
+ 
+ #include "wx/print.h"
++#ifdef __WXGTK4__
++#include "wx/weakref.h"
++#endif
+ #include "wx/printdlg.h"
+ #include "wx/prntbase.h"
+ #include "wx/dc.h"
+@@ -102,7 +105,11 @@
+ 
+ private:
+     wxPrintDialogData    m_printDialogData;
++#ifdef __WXGTK4__
++    wxWeakRef<wxWindow> m_parent;
++#else
+     wxWindow            *m_parent;
++#endif
+     bool                 m_showDialog;
+ 
+     wxDECLARE_DYNAMIC_CLASS(wxGtkPrintDialog);
+@@ -138,7 +145,11 @@
+ 
+ private:
+     wxPageSetupDialogData    m_pageDialogData;
++#ifdef __WXGTK4__
++    wxWeakRef<wxWindow> m_parent;
++#else
+     wxWindow                *m_parent;
++#endif
+ 
+     wxDECLARE_DYNAMIC_CLASS(wxGtkPageSetupDialog);
+ };
+--- include/wx/gtk/msgdlg.h.orig
++++ include/wx/gtk/msgdlg.h
+@@ -10,6 +10,9 @@
+ 
+ #ifndef _WX_GTK_MSGDLG_H_
+ #define _WX_GTK_MSGDLG_H_
++#ifdef __WXGTK4__
++#include "wx/weakref.h"
++#endif
+ 
+ class WXDLLIMPEXP_CORE wxMessageDialog : public wxMessageDialogBase
+ {
+@@ -19,6 +22,9 @@
+                     long style = wxOK|wxCENTRE,
+                     const wxPoint& pos = wxDefaultPosition);
+ 
++#ifdef __WXGTK4__
++    virtual ~wxMessageDialog();
++#endif
+     virtual int ShowModal() wxOVERRIDE;
+     virtual bool Show(bool WXUNUSED(show) = true) wxOVERRIDE { return false; }
+ 
+@@ -34,6 +40,9 @@
+     virtual void DoSetCustomLabel(wxString& var, const ButtonLabel& label) wxOVERRIDE;
+ 
+ private:
++#ifdef __WXGTK4__
++    wxWeakRef<wxWindow> m_gtk4Parent;
++#endif
+     // override to use stock GTK+ defaults instead of just string ones
+     virtual wxString GetDefaultYesLabel() const wxOVERRIDE;
+     virtual wxString GetDefaultNoLabel() const wxOVERRIDE;
+--- include/wx/gtk/private/native-dialog4.h.orig
++++ include/wx/gtk/private/native-dialog4.h
+@@ -0,0 +1,142 @@
++///////////////////////////////////////////////////////////////////////////////
++// GTK4 native modal responses using the existing wx GUI event loop.
++// Origin: EmberBSD (AI-assisted). wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++#ifndef _WX_GTK_PRIVATE_NATIVE_DIALOG4_H_
++#define _WX_GTK_PRIVATE_NATIVE_DIALOG4_H_
++#include <gtk/gtk.h>
++#include "wx/evtloop.h"
++#include "wx/gtk/private/object.h"
++#include "wx/gtk/private/dialogcount.h"
++
++namespace wxGTKNativeDialog4
++{
++inline bool IsToplevel(GtkWindow* window)
++{
++    GListModel* windows = gtk_window_get_toplevels();
++    for (guint i = 0; i < g_list_model_get_n_items(windows); ++i)
++    {
++        wxGtkObject<GObject> candidate(G_OBJECT(g_list_model_get_item(windows, i)));
++        if (candidate.get() == G_OBJECT(window)) return true;
++    }
++    return false;
++}
++inline GtkWindow* Parent(GtkWidget* widget)
++{
++    GtkRoot* root = widget ? gtk_widget_get_root(widget) : NULL;
++    return GTK_IS_WINDOW(root) ? GTK_WINDOW(root) : NULL;
++}
++// Keep a raw native dialog alive after Run returns and destroy it on every
++// exit path, including exceptions and removal from the GTK toplevel registry.
++class DialogOwner
++{
++    wxGtkObject<GtkWidget> m_widget;
++public:
++    explicit DialogOwner(GtkWidget* widget) : m_widget(GTK_WIDGET(g_object_ref(widget))) {}
++    ~DialogOwner() { gtk_window_destroy(GTK_WINDOW(m_widget.get())); }
++private:
++    wxDECLARE_NO_COPY_CLASS(DialogOwner);
++};
++class RunState
++{
++    // OnEventLoopEnter can respond before wxEventLoopBase::Run has set its
++    // running flag. DoRun must observe that response before starting GLib.
++    class Loop : public wxGUIEventLoop
++    {
++        bool& m_done;
++    public:
++        explicit Loop(bool& done) : m_done(done) {}
++        void Stop() { if (IsInsideRun()) ScheduleExit(); }
++    protected:
++        int DoRun() wxOVERRIDE
++        {
++            if (!m_done) return wxGUIEventLoop::DoRun();
++            OnExit();
++            return 0;
++        }
++    };
++    wxGtkObject<GtkDialog> m_dialog;
++    wxGtkObject<GtkWindow> m_parent;
++    bool m_done;
++    gint m_response;
++    Loop m_loop;
++    bool m_wasModal;
++    gulong m_responseHandler, m_closeHandler, m_visibleHandler, m_destroyHandler;
++    gulong m_windowsHandler;
++
++    void Finish(gint response)
++    {
++        if (m_done) return;
++        m_response = response;
++        m_done = true;
++        m_loop.Stop();
++    }
++    static void Disconnect(gpointer object, gulong handler)
++    {
++        if (g_signal_handler_is_connected(object, handler))
++            g_signal_handler_disconnect(object, handler);
++    }
++    static void Response(GtkDialog*, gint response, gpointer data)
++    { static_cast<RunState*>(data)->Finish(response); }
++    static gboolean Close(GtkWindow*, gpointer data)
++    {
++        static_cast<RunState*>(data)->Finish(GTK_RESPONSE_DELETE_EVENT);
++        return TRUE;
++    }
++    static void Hidden(GObject* object, GParamSpec*, gpointer data)
++    {
++        if (!gtk_widget_get_visible(GTK_WIDGET(object)))
++            static_cast<RunState*>(data)->Finish(GTK_RESPONSE_NONE);
++    }
++    static void Destroy(GtkWidget*, gpointer data)
++    { static_cast<RunState*>(data)->Finish(GTK_RESPONSE_NONE); }
++    static void WindowsChanged(GListModel*, guint, guint, guint, gpointer data)
++    {
++        RunState* self = static_cast<RunState*>(data);
++        if (!IsToplevel(GTK_WINDOW(self->m_dialog.get())) ||
++            (self->m_parent.get() && !IsToplevel(self->m_parent)))
++            self->Finish(GTK_RESPONSE_NONE);
++    }
++public:
++    explicit RunState(GtkDialog* dialog)
++        : m_dialog(GTK_DIALOG(g_object_ref(dialog))), m_done(false),
++          m_response(GTK_RESPONSE_NONE), m_loop(m_done),
++          m_wasModal(gtk_window_get_modal(GTK_WINDOW(dialog)))
++    {
++        GtkWindow* parent = gtk_window_get_transient_for(GTK_WINDOW(dialog));
++        if (parent) m_parent = GTK_WINDOW(g_object_ref(parent));
++        m_responseHandler = g_signal_connect(dialog, "response", G_CALLBACK(Response), this);
++        m_closeHandler = g_signal_connect(dialog, "close-request", G_CALLBACK(Close), this);
++        m_visibleHandler = g_signal_connect(dialog, "notify::visible", G_CALLBACK(Hidden), this);
++        m_destroyHandler = g_signal_connect(dialog, "destroy", G_CALLBACK(Destroy), this);
++        m_windowsHandler = g_signal_connect(gtk_window_get_toplevels(), "items-changed",
++                                           G_CALLBACK(WindowsChanged), this);
++    }
++    ~RunState()
++    {
++        Disconnect(gtk_window_get_toplevels(), m_windowsHandler);
++        Disconnect(m_dialog, m_responseHandler);
++        Disconnect(m_dialog, m_closeHandler);
++        Disconnect(m_dialog, m_visibleHandler);
++        Disconnect(m_dialog, m_destroyHandler);
++        if (IsToplevel(GTK_WINDOW(m_dialog.get())))
++            gtk_window_set_modal(GTK_WINDOW(m_dialog.get()), m_wasModal);
++    }
++    gint Run()
++    {
++        wxOpenModalDialogLocker modalCount;
++        WindowsChanged(NULL, 0, 0, 0, this);
++        if (!m_done)
++        {
++            gtk_window_set_modal(GTK_WINDOW(m_dialog.get()), TRUE);
++            if (!m_done) gtk_window_present(GTK_WINDOW(m_dialog.get()));
++            if (!m_done) m_loop.Run();
++        }
++        return m_response;
++    }
++private:
++    wxDECLARE_NO_COPY_CLASS(RunState);
++};
++inline gint Run(GtkDialog* dialog) { RunState state(dialog); return state.Run(); }
++}
++#endif
+--- include/wx/gtk/private/windowstate4.h.orig
++++ include/wx/gtk/private/windowstate4.h
+@@ -0,0 +1,42 @@
++///////////////////////////////////////////////////////////////////////////////
++// Shared GTK4 native window state requests. Origin: EmberBSD (AI-assisted).
++// Licence: wxWindows licence.
++///////////////////////////////////////////////////////////////////////////////
++#ifndef _WX_GTK_PRIVATE_WINDOWSTATE4_H_
++#define _WX_GTK_PRIVATE_WINDOWSTATE4_H_
++#include <gtk/gtk.h>
++#ifdef GDK_WINDOWING_X11
++#include <gdk/x11/gdkx.h>
++#include <X11/Xlib.h>
++#endif
++namespace wxGTKWindowState4
++{
++// Apply after mapping, when the WM manages the surface. Wayland deliberately
++// has no equivalent public always-on-top protocol; return false there.
++inline bool SetKeepAbove(GtkWindow* window, bool above)
++{
++    if (!gtk_widget_get_mapped(GTK_WIDGET(window))) return false;
++    GdkSurface* surface = gtk_native_get_surface(GTK_NATIVE(window));
++#ifdef GDK_WINDOWING_X11
++    if (surface && GDK_IS_X11_SURFACE(surface))
++    {
++        Display* display = gdk_x11_display_get_xdisplay(gdk_surface_get_display(surface));
++        XEvent event = {};
++        event.xclient.type = ClientMessage;
++        event.xclient.window = gdk_x11_surface_get_xid(surface);
++        event.xclient.message_type = XInternAtom(display, "_NET_WM_STATE", False);
++        event.xclient.format = 32;
++        event.xclient.data.l[0] = above ? 1 : 0;
++        event.xclient.data.l[1] = XInternAtom(display, "_NET_WM_STATE_ABOVE", False);
++        event.xclient.data.l[3] = 1;
++        XSendEvent(display, DefaultRootWindow(display), False,
++                   SubstructureRedirectMask | SubstructureNotifyMask, &event);
++        return true;
++    }
++#endif
++    wxUnusedVar(surface);
++    wxUnusedVar(above);
++    return false;
++}
++}
++#endif
+--- include/wx/gtk/private/wrapgdk.h.orig
++++ include/wx/gtk/private/wrapgdk.h
+@@ -17,17 +17,29 @@
+     // __STDC_VERSION__ used there being undefined, suppress this.
+     wxGCC_WARNING_SUPPRESS(undef)
+ 
+-    #include <gdk/gdkwayland.h>
++    #ifdef __WXGTK4__
++        #include <gdk/wayland/gdkwayland.h>
++    #else
++        #include <gdk/gdkwayland.h>
++    #endif
+ 
+     wxGCC_WARNING_RESTORE(undef)
+ #endif // GDK_WINDOWING_WAYLAND
+ 
+ #ifdef GDK_WINDOWING_X11
+-    #include <gdk/gdkx.h>
++    #ifdef __WXGTK4__
++        #include <gdk/x11/gdkx.h>
++    #else
++        #include <gdk/gdkx.h>
++    #endif
+ #endif
+ 
+ #ifdef GDK_WINDOWING_WIN32
+-    #include <gdk/gdkwin32.h>
++    #ifdef __WXGTK4__
++        #include <gdk/win32/gdkwin32.h>
++    #else
++        #include <gdk/gdkwin32.h>
++    #endif
+ #endif
+ 
+ #endif // _WX_GTK_PRIVATE_WRAPGDK_H_
+--- src/gtk/msgdlg.cpp.orig
++++ src/gtk/msgdlg.cpp
+@@ -21,6 +21,12 @@
+ #endif
+ 
+ #include "wx/modalhook.h"
++#include "wx/weakref.h"
++#ifdef __WXGTK4__
++#include "wx/gtk/private/native-dialog4.h"
++#include "wx/gtk/private/windowstate4.h"
++#include "wx/log.h"
++#endif
+ 
+ #include "wx/gtk/private.h"
+ #include "wx/gtk/private/list.h"
+@@ -43,7 +49,19 @@
+                     style
+                  )
+ {
+-}
++#ifdef __WXGTK4__
++    m_gtk4Parent = m_parent;
++#endif
++}
++
++#ifdef __WXGTK4__
++wxMessageDialog::~wxMessageDialog()
++{
++    // Native message dialogs don't register as wx child windows. The parent
++    // can disappear independently, including before the first ShowModal call.
++    if (!m_gtk4Parent) m_parent = NULL;
++}
++#endif
+ 
+ wxString wxMessageDialog::GetDefaultYesLabel() const
+ {
+@@ -114,7 +132,11 @@
+     if (g_type_class_peek(GDK_TYPE_DISPLAY) == NULL)
+         return;
+ 
++#ifdef __WXGTK4__
++    GtkWindow* const parent = wxGTKNativeDialog4::Parent(m_parent ? m_parent->m_widget : NULL);
++#else
+     GtkWindow * const parent = m_parent ? GTK_WINDOW(m_parent->m_widget) : NULL;
++#endif
+ 
+     GtkMessageType type = GTK_MESSAGE_ERROR;
+     GtkButtonsType buttons = GTK_BUTTONS_NONE;
+@@ -185,7 +207,15 @@
+ 
+     if ( m_dialogStyle & wxSTAY_ON_TOP )
+     {
++#ifdef __WXGTK4__
++        g_signal_connect(m_widget, "map", G_CALLBACK(+[](GtkWidget* widget, gpointer)
++        {
++            if (!wxGTKWindowState4::SetKeepAbove(GTK_WINDOW(widget), true))
++                wxLogDebug("GTK4: the compositor has no public always-on-top request");
++        }), NULL);
++#else
+         gtk_window_set_keep_above(GTK_WINDOW(m_widget), TRUE);
++#endif
+     }
+ 
+ #if GTK_CHECK_VERSION(2,22,0)
+@@ -197,11 +227,17 @@
+         GtkMessageDialog * const msgdlg = GTK_MESSAGE_DIALOG(m_widget);
+ 
+         GtkWidget* const area = gtk_message_dialog_get_message_area(msgdlg);
++#ifdef __WXGTK4__
++        for (GtkWidget* widget = gtk_widget_get_first_child(area); widget;
++             widget = gtk_widget_get_next_sibling(widget))
++        {
++#else
+         wxGtkList labels(gtk_container_get_children(GTK_CONTAINER(area)));
+ 
+         for ( GList* elem = labels; elem; elem = elem->next )
+         {
+             GtkWidget* const widget = GTK_WIDGET( elem->data );
++#endif
+ 
+             if ( GTK_IS_LABEL(widget) )
+             {
+@@ -274,6 +310,9 @@
+ int wxMessageDialog::ShowModal()
+ {
+     WX_HOOK_MODAL_DIALOG();
++#ifdef __WXGTK4__
++    m_parent = m_gtk4Parent.get();
++#endif
+ 
+     if ( !m_widget )
+     {
+@@ -282,6 +321,29 @@
+                      wxT("failed to create GtkMessageDialog") );
+     }
+ 
++#ifdef __WXGTK4__
++    struct MessageScope
++    {
++        wxWeakRef<wxMessageDialog> self;
++        wxGtkObject<GtkWidget> widget;
++        MessageScope(wxMessageDialog* owner, GtkWidget* native)
++            : self(owner), widget(GTK_WIDGET(g_object_ref(native))) {}
++        ~MessageScope()
++        {
++            if (self)
++            {
++                self->m_parent = self->m_gtk4Parent.get();
++                self->GTKDisconnect(widget);
++                self->m_widget = NULL;
++                g_object_unref(widget); // release the wx owner's reference
++            }
++            gtk_window_destroy(GTK_WINDOW(widget.get()));
++        }
++    } scope(this, m_widget);
++    GTKReleaseMouseAndNotify();
++    if (!scope.self || scope.self->IsBeingDeleted()) return wxID_CANCEL;
++    const gint result = wxGTKNativeDialog4::Run(GTK_DIALOG(scope.widget.get()));
++#else
+     // break the mouse capture as it would interfere with modal dialog (see
+     // wxDialog::ShowModal)
+     GTKReleaseMouseAndNotify();
+@@ -299,12 +361,15 @@
+     g_object_unref(m_widget);
+     m_widget = NULL;
+ 
++#endif
++
+     switch (result)
+     {
+         default:
+             wxFAIL_MSG(wxT("unexpected GtkMessageDialog return code"));
+             wxFALLTHROUGH;
+ 
++        case GTK_RESPONSE_NONE:
+         case GTK_RESPONSE_CANCEL:
+         case GTK_RESPONSE_DELETE_EVENT:
+         case GTK_RESPONSE_CLOSE:
+--- src/gtk/print.cpp.orig
++++ src/gtk/print.cpp
+@@ -43,6 +43,10 @@
+ wxFORCE_LINK_THIS_MODULE(gtk_print)
+ 
+ #include "wx/gtk/private/object.h"
++#ifdef __WXGTK4__
++#include "wx/gtk/private/native-dialog4.h"
++#include "wx/weakref.h"
++#endif
+ 
+ // Useful to convert angles from degrees to radians.
+ static const double DEG2RAD  = M_PI / 180.0;
+@@ -708,6 +712,13 @@
+     gtk_print_operation_set_use_full_page(printOp, TRUE);
+ 
+     // Show the dialog if needed.
++#ifdef __WXGTK4__
++    wxWeakRef<wxGtkPrintDialog> self(this);
++    wxGtkObject<GtkPrintOperation> operation(GTK_PRINT_OPERATION(g_object_ref(printOp)));
++    GtkWindow* parent = wxGTKNativeDialog4::Parent(m_parent ? m_parent->m_widget : NULL);
++    wxGtkObject<GtkWindow> keepParent(parent ? GTK_WINDOW(g_object_ref(parent)) : NULL);
++    wxOpenModalDialogLocker modalCount;
++#endif
+     GError* gError = NULL;
+     GtkPrintOperationResult response = gtk_print_operation_run
+                                        (
+@@ -715,12 +726,23 @@
+                                            GetShowDialog()
+                                             ? GTK_PRINT_OPERATION_ACTION_PRINT_DIALOG
+                                             : GTK_PRINT_OPERATION_ACTION_PRINT,
++#ifdef __WXGTK4__
++                                           parent,
++#else
+                                            m_parent
+                                             ? GTK_WINDOW(gtk_widget_get_toplevel(m_parent->m_widget))
+                                             : NULL,
++#endif
+                                            &gError
+                                        );
+ 
++#ifdef __WXGTK4__
++    if (!self || self->IsBeingDeleted())
++    {
++        g_clear_error(&gError);
++        return wxID_CANCEL;
++    }
++#endif
+     // Does everything went well?
+     if (response == GTK_PRINT_OPERATION_RESULT_CANCEL)
+     {
+@@ -853,9 +875,15 @@
+         title = _("Page Setup");
+     GtkWidget *
+         dlg = gtk_page_setup_unix_dialog_new(title.utf8_str(),
++#ifdef __WXGTK4__
++                                             wxGTKNativeDialog4::Parent(m_parent ? m_parent->m_widget : NULL));
++    wxGTKNativeDialog4::DialogOwner keep(dlg);
++    wxWeakRef<wxGtkPageSetupDialog> self(this);
++#else
+                                              m_parent
+                                                 ? GTK_WINDOW(m_parent->m_widget)
+                                                 : NULL);
++#endif
+ 
+     gtk_page_setup_unix_dialog_set_print_settings(
+         GTK_PAGE_SETUP_UNIX_DIALOG(dlg), nativeData);
+@@ -864,7 +892,15 @@
+ 
+     g_object_unref(oldPageSetup);
+ 
++#ifdef __WXGTK4__
++    int result = wxGTKNativeDialog4::Run(GTK_DIALOG(dlg));
++    if (!self || self->IsBeingDeleted())
++    {
++        return wxID_CANCEL;
++    }
++#else
+     int result = gtk_dialog_run(GTK_DIALOG(dlg));
++#endif
+     gtk_widget_hide(dlg);
+ 
+     switch ( result )
+@@ -917,7 +953,9 @@
+             break;
+     }
+ 
++#ifndef __WXGTK4__
+     gtk_widget_destroy(dlg);
++#endif
+ 
+     return result;
+ }
+--- src/gtk/assertdlg_gtk.cpp.orig
++++ src/gtk/assertdlg_gtk.cpp
+@@ -15,6 +15,10 @@
+ #include "wx/gtk/private/mnemonics.h"
+ #include "wx/translation.h"
+ #include "wx/stockitem.h"
++#ifdef __WXGTK4__
++#include "wx/gtk/private/native-dialog4.h"
++#include "wx/gtk/private/filechooser4.h"
++#endif
+ 
+ #include <stdio.h>
+ 
+@@ -35,6 +39,7 @@
+    GtkAssertDialog helpers
+  ---------------------------------------------------------------------------- */
+ 
++#ifndef __WXGTK4__
+ // This function is called only for GTK+ < 3.10
+ static
+ GtkWidget *gtk_assert_dialog_add_button_to (GtkBox *box, const gchar *label,
+@@ -79,6 +84,8 @@
+     return button;
+ }
+ 
++#endif
++
+ #if wxUSE_STACKWALKER
+ 
+ // This function is called only for GTK+ < 3.10
+@@ -131,6 +138,16 @@
+ static
+ void gtk_assert_dialog_process_backtrace (GtkAssertDialog *dlg)
+ {
++#ifdef __WXGTK4__
++    wxGtkObject<GtkWidget> keep(GTK_WIDGET(g_object_ref(dlg)));
++    wxGtkObject<GdkCursor> previous(gtk_widget_get_cursor(keep) ?
++        GDK_CURSOR(g_object_ref(gtk_widget_get_cursor(keep))) : NULL);
++    gtk_widget_set_cursor_from_name(keep, "wait");
++    GtkAssertDialogStackFrameCallback callback = dlg->callback;
++    dlg->callback = NULL; // Reentrant expansion must not walk the stack twice.
++    if (callback) callback(dlg->userdata);
++    gtk_widget_set_cursor(keep, previous);
++#else
+     /* set busy cursor */
+     GdkWindow *parent = gtk_widget_get_window(GTK_WIDGET(dlg));
+     GdkDisplay* display = gdk_window_get_display(parent);
+@@ -147,6 +164,7 @@
+ #else
+     gdk_cursor_unref (cur);
+ #endif
++#endif
+ }
+ 
+ extern "C" {
+@@ -166,11 +184,17 @@
+     gtk_assert_dialog_process_backtrace (dlg);
+ 
+     /* mark the work as done (so that next activate we won't call the callback again) */
++#ifndef __WXGTK4__
+     dlg->callback = NULL;
++#endif
+ }
+ 
+ static void gtk_assert_dialog_save_backtrace_callback(GtkWidget*, GtkAssertDialog* dlg)
+ {
++#ifdef __WXGTK4__
++    wxGtkString message(gtk_assert_dialog_get_message(dlg));
++    wxGtkString trace(gtk_assert_dialog_get_backtrace(dlg));
++#endif
+     GtkWidget *dialog;
+ 
+     dialog = gtk_file_chooser_dialog_new ("Save assert info to file", GTK_WINDOW(dlg),
+@@ -179,22 +203,36 @@
+                                           static_cast<const char*>(wxConvertMnemonicsToGTK(wxGetStockLabel(wxID_SAVE)).utf8_str()), GTK_RESPONSE_ACCEPT,
+                                           NULL);
+ 
++#ifdef __WXGTK4__
++    wxGTKNativeDialog4::DialogOwner keep(dialog);
++    if (wxGTKNativeDialog4::Run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT)
++#else
+     if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT)
++#endif
+     {
+         char *filename, *msg, *backtrace;
+         FILE *fp;
+ 
++#ifdef __WXGTK4__
++        filename = wxGTKFileChooser4::Filename(GTK_FILE_CHOOSER(dialog));
++#else
+         filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (dialog));
++#endif
+         if ( filename )
+         {
++#ifdef __WXGTK4__
++            msg = g_strdup(message);
++            backtrace = g_strdup(trace ? static_cast<const char*>(trace) : "");
++#else
+             msg = gtk_assert_dialog_get_message (dlg);
+             backtrace = gtk_assert_dialog_get_backtrace (dlg);
++#endif
+ 
+             /* open the file and write all info inside it */
+             fp = fopen (filename, "w");
+             if (fp)
+             {
+-                fprintf (fp, "ASSERT INFO:\n%s\n\nBACKTRACE:\n%s", msg, backtrace);
++                fprintf (fp, "ASSERT INFO:\n%s\n\nBACKTRACE:\n%s", msg, backtrace ? backtrace : "");
+                 fclose (fp);
+             }
+ 
+@@ -204,13 +242,17 @@
+         }
+     }
+ 
++#ifndef __WXGTK4__
+     gtk_widget_destroy (dialog);
++#endif
+ }
+ 
+ static void gtk_assert_dialog_copy_callback(GtkWidget*, GtkAssertDialog* dlg)
+ {
+     char *msg, *backtrace;
++#ifndef __WXGTK4__
+     GtkClipboard *clipboard;
++#endif
+     GString *str;
+ 
+     msg = gtk_assert_dialog_get_message (dlg);
+@@ -218,8 +260,13 @@
+ 
+     /* combine both in a single string */
+     str = g_string_new("");
+-    g_string_printf (str, "ASSERT INFO:\n%s\n\nBACKTRACE:\n%s\n\n", msg, backtrace);
+-
++    g_string_printf (str, "ASSERT INFO:\n%s\n\nBACKTRACE:\n%s\n\n", msg, backtrace ? backtrace : "");
++
++#ifdef __WXGTK4__
++    GdkDisplay* display = gtk_widget_get_display(GTK_WIDGET(dlg));
++    gdk_clipboard_set_text(gdk_display_get_clipboard(display), str->str);
++    gdk_clipboard_set_text(gdk_display_get_primary_clipboard(display), str->str);
++#else
+     /* copy everything in default clipboard */
+     clipboard = gtk_clipboard_get (GDK_SELECTION_CLIPBOARD);
+     gtk_clipboard_set_text (clipboard, str->str, str->len);
+@@ -228,6 +275,8 @@
+     clipboard = gtk_clipboard_get (GDK_SELECTION_PRIMARY);
+     gtk_clipboard_set_text (clipboard, str->str, str->len);
+ 
++#endif
++
+     g_free (msg);
+     g_free (backtrace);
+     g_string_free (str, TRUE);
+@@ -240,7 +289,11 @@
+ static void gtk_assert_dialog_continue_callback(GtkWidget*, GtkAssertDialog* dlg)
+ {
+     gint response =
++#ifdef __WXGTK4__
++        gtk_check_button_get_active(GTK_CHECK_BUTTON(dlg->shownexttime)) ?
++#else
+         gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(dlg->shownexttime)) ?
++#endif
+             GTK_ASSERT_DIALOG_CONTINUE : GTK_ASSERT_DIALOG_CONTINUE_SUPPRESSING;
+ 
+     gtk_dialog_response (GTK_DIALOG(dlg), response);
+@@ -252,7 +305,7 @@
+  ---------------------------------------------------------------------------- */
+ 
+ extern "C" {
+-#if GTK_CHECK_VERSION(3,10,0)
++#if GTK_CHECK_VERSION(3,10,0) && !defined(__WXGTK4__)
+ static void gtk_assert_dialog_class_init(gpointer g_class, void*);
+ #endif // GTK+ >= 3.10
+ static void gtk_assert_dialog_init(GTypeInstance* instance, void*);
+@@ -269,7 +322,7 @@
+             sizeof (GtkAssertDialogClass),
+             NULL,           /* base_init */
+             NULL,           /* base_finalize */
+-#if GTK_CHECK_VERSION(3,10,0)
++#if GTK_CHECK_VERSION(3,10,0) && !defined(__WXGTK4__)
+             gtk_assert_dialog_class_init,  /* class init */
+ #else
+             NULL,
+@@ -289,7 +342,7 @@
+ 
+ extern "C" {
+ // For GTK+ >= 3.10, Composite Widget Templates are used to define composite widgets.
+-#if GTK_CHECK_VERSION(3,10,0)
++#if GTK_CHECK_VERSION(3,10,0) && !defined(__WXGTK4__)
+ static void gtk_assert_dialog_class_init(gpointer g_class, void*)
+ {
+     if (gtk_check_version(3,10,0) == NULL)
+@@ -675,9 +728,65 @@
+ 
+ static void gtk_assert_dialog_init(GTypeInstance* instance, void*)
+ {
++#ifdef __WXGTK4__
++    GtkAssertDialog* dlg = GTK_ASSERT_DIALOG(instance);
++    dlg->callback = NULL;
++    dlg->userdata = NULL;
++    gtk_window_set_title(GTK_WINDOW(dlg), "Application assertion");
++    gtk_window_set_default_size(GTK_WINDOW(dlg), 600, -1);
++    GtkWidget* content = gtk_dialog_get_content_area(GTK_DIALOG(dlg));
++    gtk_box_set_spacing(GTK_BOX(content), 8);
++    gtk_widget_set_margin_start(content, 12);
++    gtk_widget_set_margin_end(content, 12);
++    gtk_widget_set_margin_top(content, 12);
++    gtk_widget_set_margin_bottom(content, 12);
++    GtkWidget* explanation = gtk_label_new("An assertion failed. You can stop the application or continue.");
++    gtk_label_set_wrap(GTK_LABEL(explanation), TRUE);
++    gtk_box_append(GTK_BOX(content), explanation);
++    dlg->message = gtk_label_new("");
++    gtk_label_set_selectable(GTK_LABEL(dlg->message), TRUE);
++    gtk_label_set_wrap(GTK_LABEL(dlg->message), TRUE);
++    gtk_box_append(GTK_BOX(content), dlg->message);
++#if wxUSE_STACKWALKER
++    dlg->expander = gtk_expander_new_with_mnemonic("_Backtrace");
++    GtkWidget* details = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
++    gtk_expander_set_child(GTK_EXPANDER(dlg->expander), details);
++    gtk_box_append(GTK_BOX(content), dlg->expander);
++    GtkWidget* scroll = gtk_scrolled_window_new();
++    gtk_widget_set_size_request(scroll, 540, 220);
++    gtk_widget_set_vexpand(scroll, TRUE);
++    dlg->treeview = gtk_assert_dialog_create_backtrace_list_model();
++    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), dlg->treeview);
++    gtk_box_append(GTK_BOX(details), scroll);
++    GtkWidget* actions = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
++    GtkWidget* save = gtk_button_new_with_mnemonic("_Save backtrace");
++    GtkWidget* copy = gtk_button_new_with_mnemonic("_Copy backtrace");
++    gtk_box_append(GTK_BOX(actions), save);
++    gtk_box_append(GTK_BOX(actions), copy);
++    gtk_box_append(GTK_BOX(details), actions);
++    g_signal_connect(dlg->expander, "activate", G_CALLBACK(gtk_assert_dialog_expander_callback), dlg);
++    g_signal_connect(save, "clicked", G_CALLBACK(gtk_assert_dialog_save_backtrace_callback), dlg);
++    g_signal_connect(copy, "clicked", G_CALLBACK(gtk_assert_dialog_copy_callback), dlg);
++#endif
++    dlg->shownexttime = gtk_check_button_new_with_mnemonic("Show this dialog _next time");
++    gtk_check_button_set_active(GTK_CHECK_BUTTON(dlg->shownexttime), TRUE);
++    gtk_box_append(GTK_BOX(content), dlg->shownexttime);
++    GtkWidget* buttons = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
++    gtk_widget_set_halign(buttons, GTK_ALIGN_END);
++    gtk_box_append(GTK_BOX(content), buttons);
++    GtkWidget* stop = gtk_button_new_with_mnemonic("_Stop");
++    GtkWidget* proceed = gtk_button_new_with_mnemonic("_Continue");
++    gtk_box_append(GTK_BOX(buttons), stop);
++    gtk_box_append(GTK_BOX(buttons), proceed);
++    g_signal_connect(stop, "clicked", G_CALLBACK(+[](GtkWidget*, gpointer data)
++    { gtk_dialog_response(GTK_DIALOG(data), GTK_ASSERT_DIALOG_STOP); }), dlg);
++    g_signal_connect(proceed, "clicked", G_CALLBACK(gtk_assert_dialog_continue_callback), dlg);
++    gtk_window_set_default_widget(GTK_WINDOW(dlg), proceed);
++    gtk_window_set_resizable(GTK_WINDOW(dlg), FALSE);
++#else
+     // For GTK+ >= 3.10 create and initialize the dialog from the already assigned template
+     // or create the dialog "manually" otherwise.
+-#if GTK_CHECK_VERSION(3,10,0)
++#if GTK_CHECK_VERSION(3,10,0) && !defined(__WXGTK4__)
+     if (gtk_check_version(3,10,0) == NULL)
+     {
+         GtkAssertDialog* dlg = GTK_ASSERT_DIALOG(instance);
+@@ -804,6 +913,7 @@
+         wxGCC_WARNING_RESTORE()
+         gtk_widget_show_all (GTK_WIDGET(dlg));
+     }
++#endif
+ }
+ }
+ 
+--- src/gtk/utilsgtk.cpp.orig
++++ src/gtk/utilsgtk.cpp
+@@ -352,36 +352,8 @@
+ #endif // wxDEBUG_LEVEL && wxUSE_STACKWALKER
+ 
+ #ifdef __WXGTK4__
+-struct wxGtkDialogRunState
+-{
+-    GMainLoop* loop;
+-    gint response;
+-    bool done;
+-};
+-
+-static void wxGtkDialogResponse(GtkDialog*, gint response, gpointer data)
+-{
+-    wxGtkDialogRunState* const state = static_cast<wxGtkDialogRunState*>(data);
+-    state->response = response;
+-    state->done = true;
+-    if (g_main_loop_is_running(state->loop))
+-        g_main_loop_quit(state->loop);
+-}
+-
+-static gint wxGtkDialogRun(GtkDialog* dialog)
+-{
+-    wxGtkDialogRunState state = { g_main_loop_new(NULL, FALSE), GTK_RESPONSE_NONE, false };
+-    const gulong handler = g_signal_connect(dialog, "response",
+-        G_CALLBACK(wxGtkDialogResponse), &state);
+-    gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
+-    gtk_window_present(GTK_WINDOW(dialog));
+-    if (!state.done)
+-        g_main_loop_run(state.loop);
+-    g_signal_handler_disconnect(dialog, handler);
+-    g_main_loop_unref(state.loop);
+-    return state.response;
+-}
+-#endif // __WXGTK4__
++#include "wx/gtk/private/native-dialog4.h"
++#endif
+ 
+ bool wxGUIAppTraits::ShowAssertDialog(const wxString& msg)
+ {
+@@ -394,12 +366,15 @@
+         // wxWidgets idle processing to work correctly which might not be the
+         // case when assert happens
+         GtkWidget *dialog = gtk_assert_dialog_new();
++#ifdef __WXGTK4__
++        wxGTKNativeDialog4::DialogOwner keep(dialog);
++#endif
+         gtk_assert_dialog_set_message(GTK_ASSERT_DIALOG(dialog), msg.mb_str());
+ 
+ #ifndef __WXGTK4__
+         GdkDisplay* display = gtk_widget_get_display(dialog);
+ #endif
+-#ifdef __WXGTK3__
++#if defined(__WXGTK3__) && !defined(__WXGTK4__)
+         wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+         GdkDeviceManager* manager = gdk_display_get_device_manager(display);
+         GdkDevice* device = gdk_device_manager_get_client_pointer(manager);
+@@ -424,7 +399,7 @@
+ #endif // wxUSE_STACKWALKER
+ 
+ #ifdef __WXGTK4__
+-        gint result = wxGtkDialogRun(GTK_DIALOG(dialog));
++        gint result = wxGTKNativeDialog4::Run(GTK_DIALOG(dialog));
+ #else
+         gint result = gtk_dialog_run(GTK_DIALOG(dialog));
+ #endif
+@@ -448,13 +423,14 @@
+                 returnCode = true;
+                 break;
+ 
++            case GTK_RESPONSE_NONE:
++            case GTK_RESPONSE_DELETE_EVENT:
++                break;
+             default:
+                 wxFAIL_MSG( wxT("unexpected return code from GtkAssertDialog") );
+         }
+ 
+-#ifdef __WXGTK4__
+-        gtk_window_destroy(GTK_WINDOW(dialog));
+-#else
++#ifndef __WXGTK4__
+         gtk_widget_destroy(dialog);
+ #endif
+         return returnCode;
+--- configure.orig
++++ configure
+@@ -39667,7 +39667,9 @@
+     if test "$wxUSE_PRINTING_ARCHITECTURE" = "yes" ; then
+ 
+         if test "$wxUSE_GTKPRINT" = "yes" ; then
+-            if test "$WXGTK3" = 1; then
++            if test "$WXGTK4" = 1; then
++                gtk_unix_print="gtk4-unix-print"
++            elif test "$WXGTK3" = 1; then
+                 gtk_unix_print="gtk+-unix-print-${TOOLKIT_VERSION}.0"
+             else
+                 gtk_unix_print="gtk+-unix-print-2.0 >= 2.10"
+--- configure.in.orig
++++ configure.in
+@@ -6026,7 +6026,9 @@
+     if test "$wxUSE_PRINTING_ARCHITECTURE" = "yes" ; then
+ 
+         if test "$wxUSE_GTKPRINT" = "yes" ; then
+-            if test "$WXGTK3" = 1; then
++            if test "$WXGTK4" = 1; then
++                gtk_unix_print="gtk4-unix-print"
++            elif test "$WXGTK3" = 1; then
+                 gtk_unix_print="gtk+-unix-print-${TOOLKIT_VERSION}.0"
+             else
+                 gtk_unix_print="gtk+-unix-print-2.0 >= 2.10"
+--- build/cmake/modules/FindGTKPRINT.cmake.orig
++++ build/cmake/modules/FindGTKPRINT.cmake
+@@ -12,7 +12,9 @@
+ endif()
+ set(GTKPRINT_FIND_VERSION_USED "${GTKPRINT_FIND_VERSION}" CACHE INTERNAL "")
+ 
+-if(GTKPRINT_FIND_VERSION VERSION_LESS 3.0)
++if(GTKPRINT_FIND_VERSION VERSION_GREATER_EQUAL 4.0)
++    set(GTKPRINT_LIB_NAME "gtk4-unix-print")
++elseif(GTKPRINT_FIND_VERSION VERSION_LESS 3.0)
+     set(GTKPRINT_LIB_NAME "gtk+-unix-print-2.0")
+ else()
+     set(GTKPRINT_LIB_NAME "gtk+-unix-print-3.0")

@@ -126,3 +126,29 @@ activation without relying on removed GtkCalendar properties or signals.
 keyboard month locking/navigation, marks and double-click dispatch after mapping.
 This fixture does not replace real pointer-input, theme or accessibility checks;
 linked GUI execution remains pending the complete wxWidgets package.
+
+Native message dialogs, page setup and assertion dialogs use one GTK4 modal
+adapter backed by the existing wx GUI event loop. It retains native objects,
+restores modality, and stops on response, close, hide or removal of the dialog
+or parent from GTK's public toplevel registry. Responses arriving before the
+loop starts or while another dialog is nested are retained. Raw native dialog
+owners clean up on exceptions as well as normal return. Assertions retain
+backtrace expansion, saving, clipboard copying and continue/suppress actions.
+
+`GtkPrintOperation` remains the GTK printing provider, including its native
+operation lifecycle. Both configure and CMake select `gtk4-unix-print`; the
+actual diagnostic configure enables `wxUSE_GTKPRINT`, rather than overriding
+a setup macro for an empty translation-unit check. Message-dialog always-on-top
+requests share the existing mapped X11 EWMH implementation with top-level
+windows; Wayland has no equivalent public request.
+
+`modal4-contract.cpp` exercises early and nested responses, Help/Cancel/close,
+direct native destruction, wx owner/parent destruction, destruction from a
+modal-property notification, page-setup acceptance/cancellation, assert
+suppression and native print cancellation without submitting a print job.
+The five affected full translation units and fixture pass target syntax
+compilation. Clang static analysis reports no finding in the changed paths;
+two diagnostics in unchanged wx string-buffer code were inspected against its
+reference-counted copy semantics. Runtime, sanitizer, visual assertion layout,
+backtrace save/copy and actual printed/PDF output acceptance remain pending the
+linked GTK4/wxWidgets package and target display.

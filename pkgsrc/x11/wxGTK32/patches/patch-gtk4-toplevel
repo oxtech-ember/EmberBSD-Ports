@@ -52,7 +52,7 @@ https://docs.gtk.org/gdk4-x11/signal.X11Display.xevent.html
 +#endif // __WXGTK4__
 --- /dev/null
 +++ src/gtk/toplevel_gtk4.inc
-@@ -0,0 +1,830 @@
+@@ -0,0 +1,823 @@
 +///////////////////////////////////////////////////////////////////////////////
 +// GTK4 top-level windows. Origin: EmberBSD (AI-assisted).
 +// Licence: wxWindows licence, like the surrounding wxWidgets implementation.
@@ -70,6 +70,7 @@ https://docs.gtk.org/gdk4-x11/signal.X11Display.xevent.html
 +#include "wx/gtk/private.h"
 +#include "wx/gtk/private/win_gtk.h"
 +#include "wx/gtk/private/surface4.h"
++#include "wx/gtk/private/windowstate4.h"
 +#ifdef GDK_WINDOWING_X11
 +#include <X11/Xatom.h>
 +#include <X11/Xutil.h>
@@ -389,16 +390,8 @@ https://docs.gtk.org/gdk4-x11/signal.X11Display.xevent.html
 +            // set the state there rather than sending an ignored pre-map
 +            // request (or a property GDK overwrites while mapping).
 +            if (!gtk_widget_get_mapped(win->m_widget)) return;
-+            XEvent event = {};
-+            event.xclient.type = ClientMessage;
-+            event.xclient.window = xid;
-+            event.xclient.message_type = XInternAtom(xdpy, "_NET_WM_STATE", False);
-+            event.xclient.format = 32;
-+            event.xclient.data.l[0] = (style & wxSTAY_ON_TOP) ? 1 : 0;
-+            event.xclient.data.l[1] = XInternAtom(xdpy, "_NET_WM_STATE_ABOVE", False);
-+            event.xclient.data.l[3] = 1; // normal application source
-+            XSendEvent(xdpy, DefaultRootWindow(xdpy), False,
-+                SubstructureRedirectMask | SubstructureNotifyMask, &event);
++            wxGTKWindowState4::SetKeepAbove(GTK_WINDOW(win->m_widget),
++                                             (style & wxSTAY_ON_TOP) != 0);
 +        }
 +#endif
 +    }
