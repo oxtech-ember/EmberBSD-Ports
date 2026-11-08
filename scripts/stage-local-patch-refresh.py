@@ -925,8 +925,8 @@ def main():
     require(not a.recover_applied_patches or a.previous_recipe,
             'applied-patch recovery requires the previous recipe')
     require(not (a.recover_applied_patches and
-                 (a.subst_class or a.refresh_subst or a.previous_makefile)),
-            'applied-patch recovery cannot be combined with SUBST refresh')
+                 (a.subst_class or a.previous_makefile)),
+            'applied-patch recovery cannot add a new SUBST class')
     require(not a.refresh_subst or (a.previous_recipe and not a.previous_makefile and not a.subst_class),
             'existing substitution refresh requires previous recipe only')
     if a.refresh_subst:
