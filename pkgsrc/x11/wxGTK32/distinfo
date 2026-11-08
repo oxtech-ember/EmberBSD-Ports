@@ -5,6 +5,7 @@ SHA512 (wxWidgets-3.2.12.tar.bz2) = c3be2f2933dae1a2d7b05fa38fee11a0bde16ccb4afb
 Size (wxWidgets-3.2.12.tar.bz2) = 27550987 bytes
 SHA1 (patch-configure) = 256efcd0a7a82d407527964402960474f2906d76
 SHA1 (patch-configure.in) = c8d2aa4596b575e2b704a7fe7a1728c5c1a98377
+SHA1 (patch-gtk4-about) = f359166a9852b6f755328715fc27fbcb5cbe3655
 SHA1 (patch-gtk4-art) = b2f4f062548be201f88aeb0bb43f646a7c8d9ba3
 SHA1 (patch-gtk4-controls) = d0a0871c136b93cc24381315d5dc545f7c691ac5
 SHA1 (patch-gtk4-core-controls) = e728ef5b15a3c6840f1a3963684b7d2b99080e1f

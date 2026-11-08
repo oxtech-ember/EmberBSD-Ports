@@ -1,0 +1,138 @@
+$NetBSD$
+
+Use native GTK4 about windows and paintables with one set of lifetime handlers.
+Origin: EmberBSD (AI-assisted). Licence: wxWindows licence.
+
+--- src/gtk/aboutdlg.cpp.orig
++++ src/gtk/aboutdlg.cpp
+@@ -100,19 +100,40 @@
+ static GtkAboutDialog *gs_aboutDialog = NULL;
+ 
+ extern "C" {
++#ifdef __WXGTK4__
++static void wxGtkAboutDialogReset(GtkWidget* about, void*)
++{
++    if (about == GTK_WIDGET(gs_aboutDialog))
++        gs_aboutDialog = NULL;
++}
++
++static gboolean wxGtkAboutDialogOnClose(GtkWindow* about, void*)
++{
++    wxGtkAboutDialogReset(GTK_WIDGET(about), NULL);
++    return FALSE; // GtkWindow performs its normal close/destroy operation.
++}
++#else
+ static void wxGtkAboutDialogOnClose(GtkAboutDialog *about)
+ {
+     gtk_widget_destroy(GTK_WIDGET(about));
+     if ( about == gs_aboutDialog )
+         gs_aboutDialog = NULL;
+ }
++#endif
+ }
+ 
+ #ifdef __WXGTK3__
+ extern "C" {
+-static gboolean activate_link(GtkAboutDialog*, const char* link, void* dontIgnore)
+-{
++static gboolean activate_link(GtkAboutDialog* about, const char* link, void* dontIgnore)
++{
++#ifdef __WXGTK4__
++    // The cached dialog can be updated with a different website.
++    wxUnusedVar(dontIgnore);
++    if (gtk_about_dialog_get_website(about))
++#else
++    wxUnusedVar(about);
+     if (dontIgnore)
++#endif
+     {
+         wxLaunchDefaultBrowser(wxGTK_CONV_BACK_SYS(link));
+         return true;
+@@ -131,9 +152,38 @@
+ 
+ void wxAboutBox(const wxAboutDialogInfo& info, wxWindow* parent)
+ {
++#ifdef __WXGTK4__
++    if (gs_aboutDialog)
++    {
++        // gtk_window_destroy() removes the toplevel immediately, but an
++        // external reference can postpone GtkWidget::destroy until disposal.
++        GListModel* windows = gtk_window_get_toplevels();
++        bool present = false;
++        for (guint i = 0; i < g_list_model_get_n_items(windows); ++i)
++        {
++            GObject* window = G_OBJECT(g_list_model_get_item(windows, i));
++            present = window == G_OBJECT(gs_aboutDialog);
++            g_object_unref(window);
++            if (present) break;
++        }
++        if (!present) gs_aboutDialog = NULL;
++    }
++#endif
+     // don't create another dialog if one is already present
+     if ( !gs_aboutDialog )
++    {
+         gs_aboutDialog = GTK_ABOUT_DIALOG(gtk_about_dialog_new());
++#ifdef __WXGTK4__
++        g_signal_connect(gs_aboutDialog, "close-request",
++                         G_CALLBACK(wxGtkAboutDialogOnClose), NULL);
++        g_signal_connect(gs_aboutDialog, "force-close",
++                         G_CALLBACK(wxGtkAboutDialogReset), NULL);
++        g_signal_connect(gs_aboutDialog, "destroy",
++                         G_CALLBACK(wxGtkAboutDialogReset), NULL);
++        g_signal_connect(gs_aboutDialog, "activate-link",
++                         G_CALLBACK(activate_link), NULL);
++#endif
++    }
+ 
+     GtkAboutDialog * const dlg = gs_aboutDialog;
+     gtk_about_dialog_set_program_name(dlg, wxGTK_CONV_SYS(info.GetName()));
+@@ -155,11 +205,16 @@
+         gtk_about_dialog_set_license(dlg, NULL);
+ 
+     wxIcon icon = info.GetIcon();
++#ifdef __WXGTK4__
++    gtk_about_dialog_set_logo(dlg, icon.IsOk() ? GDK_PAINTABLE(icon.GetTexture()) : NULL);
++#else
+     if ( icon.IsOk() )
+         gtk_about_dialog_set_logo(dlg, info.GetIcon().GetPixbuf());
++#endif
+ 
+     if ( info.HasWebSite() )
+     {
++#ifndef __WXGTK4__
+ #ifdef __WXGTK3__
+         g_signal_connect(dlg, "activate-link", G_CALLBACK(activate_link), dlg);
+ #else
+@@ -167,6 +222,7 @@
+         //     otherwise it has no effect (although GTK+ docs don't mention
+         //     this...)
+         gtk_about_dialog_set_url_hook(wxGtkAboutDialogOnLink, NULL, NULL);
++#endif
+ #endif
+ 
+         gtk_about_dialog_set_website(dlg, wxGTK_CONV_SYS(info.GetWebSiteURL()));
+@@ -180,10 +236,12 @@
+     {
+         gtk_about_dialog_set_website(dlg, NULL);
+         gtk_about_dialog_set_website_label(dlg, NULL);
++#ifndef __WXGTK4__
+ #ifdef __WXGTK3__
+         g_signal_connect(dlg, "activate-link", G_CALLBACK(activate_link), NULL);
+ #else
+         gtk_about_dialog_set_url_hook(NULL, NULL, NULL);
++#endif
+ #endif
+     }
+ 
+@@ -230,8 +288,10 @@
+     else
+         gtk_about_dialog_set_translator_credits(dlg, NULL);
+ 
++#ifndef __WXGTK4__
+     g_signal_connect(dlg, "response",
+                         G_CALLBACK(wxGtkAboutDialogOnClose), NULL);
++#endif
+ 
+     GtkWindow* gtkParent = NULL;
+     if (parent && parent->m_widget)

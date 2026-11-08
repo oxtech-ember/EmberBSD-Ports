@@ -110,3 +110,11 @@ The five affected wx translation units, the shared GTK producer's two C units,
 and the fixture pass target syntax compilation. GUI, memory-check and package
 acceptance are pending the shared GTK4 build, including preference isolation
 and preview/extra-control layout under the actual theme.
+
+`about4-contract` covers native about-window metadata and paintables, reuse of
+an open window, normal/compositor close, and direct native destruction while
+another reference delays disposal. The full target translation unit and fixture
+pass syntax compilation, and Clang Static Analyzer reports no diagnostics.
+Cppcheck cannot parse the target system headers in either the upstream or
+modified translation unit; this is not a successful Cppcheck check. Executable
+GUI and memory checks require the completed GTK4 wxWidgets library.
