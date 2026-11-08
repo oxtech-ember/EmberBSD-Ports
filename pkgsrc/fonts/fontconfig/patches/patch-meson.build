@@ -1,8 +1,67 @@
 $NetBSD: patch-meson.build,v 1.1 2025/08/10 13:58:35 ryoon Exp $
 
---- meson.build.orig	2025-04-02 14:51:30.122923578 +0000
+Relocate prefix-owned runtime defaults using the loaded shared library.
+Preserve upstream platform fixes and explicit caller configuration.
+Additional changes: EmberBSD contributors (AI-assisted).
+
+--- meson.build.orig
 +++ meson.build
-@@ -529,7 +529,7 @@ configure_file(output: 'config.h', confi
+@@ -200,6 +200,26 @@
+ c_args = []
+ 
+ deps = [freetype_dep, xml_dep]
++relocation_deps = []
++if host_machine.system() in ['darwin', 'netbsd', 'linux']
++  dl_dep = cc.find_library('dl', required: false)
++  if dl_dep.found()
++    relocation_deps += dl_dep
++  endif
++  if cc.links('''
++    #define _GNU_SOURCE 1
++    #define _DARWIN_C_SOURCE 1
++    #define _NETBSD_SOURCE 1
++    #include <dlfcn.h>
++    static char anchor;
++    int main(void) { Dl_info info; return !dladdr(&anchor, &info); }
++  ''', dependencies: relocation_deps, name: 'dladdr and Dl_info for default paths')
++    conf.set('FC_HAVE_DLADDR', 1)
++    conf.set('_DARWIN_C_SOURCE', 1)
++    conf.set('_NETBSD_SOURCE', 1)
++    deps += relocation_deps
++  endif
++endif
+ incbase = include_directories('.', 'fc-lang')
+ 
+ # For compatibility to autoconf (regardless of the usage in fontconfig)
+@@ -351,6 +371,8 @@
+ conf.set('HAVE_C99_VSNPRINTF', 1)
+ 
+ prefix = get_option('prefix')
++conf.set_quoted('FC_INSTALL_PREFIX', prefix.rstrip('/'))
++conf.set_quoted('FC_INSTALL_LIBDIR', (prefix / get_option('libdir')).rstrip('/'))
+ 
+ fonts_conf = configuration_data()
+ 
+@@ -370,7 +392,10 @@
+ endif
+ xml_path = ''
+ escaped_xml_path = ''
++default_font_c_paths = []
+ foreach p : fc_fonts_paths
++  c_path = p.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
++  default_font_c_paths += '"' + c_path + '"'
+   s = '\t<dir>' + p + '</dir>\n'
+   xml_path += s
+   # No substitution method for string
+@@ -378,6 +403,7 @@
+   escaped_xml_path += s
+ endforeach
+ conf.set_quoted('FC_DEFAULT_FONTS', escaped_xml_path)
++conf.set('FC_DEFAULT_FONT_DIRS', '{' + ', '.join(default_font_c_paths + ['NULL']) + '}')
+ fonts_conf.set('FC_DEFAULT_FONTS', xml_path)
+ 
+ # Add more fonts if available.  By default, add only the directories
+@@ -620,7 +646,7 @@
  configure_file(output: 'fonts.conf',
                 input: 'fonts.conf.in',
                 configuration: fonts_conf,

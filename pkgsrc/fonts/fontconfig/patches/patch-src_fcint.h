@@ -1,8 +1,12 @@
 $NetBSD: patch-src_fcint.h,v 1.4 2025/08/10 13:58:35 ryoon Exp $
 
---- src/fcint.h.orig	2025-07-02 04:46:34.000000000 +0000
+Relocate prefix-owned runtime defaults using the loaded shared library.
+Preserve upstream platform fixes and explicit caller configuration.
+Additional changes: EmberBSD contributors (AI-assisted).
+
+--- src/fcint.h.orig
 +++ src/fcint.h
-@@ -92,6 +92,17 @@ extern pfnSHGetFolderPathA          pSHG
+@@ -97,6 +97,17 @@
  #  define FC_PATH_MAX 128
  #endif
  
@@ -20,7 +24,7 @@ $NetBSD: patch-src_fcint.h,v 1.4 2025/08/10 13:58:35 ryoon Exp $
  #if __GNUC__ >= 4
  #  define FC_UNUSED __attribute__ ((unused))
  #else
-@@ -123,7 +134,13 @@ extern pfnSHGetFolderPathA          pSHG
+@@ -128,7 +139,13 @@
  #define FC_MAX(a, b)                     ((a) > (b) ? (a) : (b))
  
  /* slim_internal.h */
@@ -35,3 +39,13 @@ $NetBSD: patch-src_fcint.h,v 1.4 2025/08/10 13:58:35 ryoon Exp $
  #  define FcPrivate           __attribute__ ((__visibility__ ("hidden")))
  #  define HAVE_GNUC_ATTRIBUTE 1
  #  include "fcalias.h"
+@@ -761,6 +778,9 @@
+ FcDirCacheUnlock (int fd);
+ 
+ /* fccfg.c */
++
++FcPrivate FcChar8 *
++FcConfigRelocatePath (const FcChar8 *path);
+ 
+ FcPrivate FcBool
+ FcConfigInit (void);
