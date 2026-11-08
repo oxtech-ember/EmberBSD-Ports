@@ -254,7 +254,7 @@ def unselected_subst_pattern(paths, roots, pattern, changed):
 
 
 def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, previous_recipe=None,
-                 patchdir=None, distinfo=None, previous_patchdir=None, previous_distinfo=None):
+                 patchdir=None, previous_patchdir=None):
     """Bind the old ordered cookie to installed BUILD_VERSION and current recipe."""
     cookie = stable_read(paths, work / '.patch_done') if old_cookie is None else old_cookie
     try:
@@ -262,7 +262,6 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, pre
     except UnicodeError as exc:
         raise ValueError('invalid old patch cookie') from exc
     patchdir = Path(patchdir or recipe / 'patches').resolve(strict=True)
-    distinfo = Path(distinfo or recipe / 'distinfo').resolve(strict=True)
     cookie_roots = {patchdir}
     if previous_recipe is not None:
         previous_patches = Path(previous_patchdir or Path(previous_recipe) / 'patches').resolve(strict=True)
@@ -288,7 +287,6 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, pre
     pkgpath = '/'.join(recipe.parts[-2:])
     pkgsrc_root = recipe.parents[1].resolve(strict=True)
     patch_prefix = patchdir.relative_to(pkgsrc_root).as_posix() + '/'
-    distinfo_key = distinfo.relative_to(pkgsrc_root).as_posix()
     if not old:
         require(not any(key.startswith(patch_prefix + 'patch-') for key in records),
                 'empty patch cookie contradicts installed patch provenance')
@@ -296,8 +294,6 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, pre
     old_recipe = Path(previous_recipe) if previous_recipe is not None else recipe
     old_patchdir = (Path(previous_patchdir or old_recipe / 'patches').resolve(strict=True)
                     if previous_recipe is not None else patchdir)
-    old_distinfo_path = (Path(previous_distinfo or old_recipe / 'distinfo').resolve(strict=True)
-                         if previous_recipe is not None else distinfo)
     def provenance_path(path, root, fallback):
         if old_recipe.parts[-2:] != recipe.parts[-2:]:
             return fallback
@@ -323,6 +319,12 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, pre
         # Reconcile it only against the complete installed recipe; prepare()
         # adds mandatory live preimage checks for every omitted patch target.
         old = complete
+    else:
+        recorded_prefix = patch_prefix
+        recorded = sorted(key[len(recorded_prefix):] for key in records
+                          if key.startswith(recorded_prefix + 'patch-'))
+        require(sorted(old) == recorded,
+                'old patch cookie differs from installed patch provenance')
     require([p for p in new if p in old] == old and
             (previous_recipe is not None or len(new) > len(old)),
             'old patch list is not a proper subsequence')
@@ -332,15 +334,9 @@ def old_metadata(paths, recipe, work, installed_version, old_cookie=None, *, pre
         require(expected and hashlib.sha256(stable_read(paths, old_patchdir / name)).hexdigest() == expected,
                 'old patch identity changed: ' + name)
     additions = [p for p in new if p not in old]
-    distinfo_data = stable_read(paths, distinfo)
-    old_distinfo_data = (stable_read(paths, old_distinfo_path) if previous_recipe is not None else
-                    b''.join(line for line in distinfo_data.splitlines(keepends=True)
-                             if not any(line.startswith(b'SHA1 (' + name.encode() + b') = ') for name in additions)))
-    old_distinfo_key = (provenance_path(old_distinfo_path, old_recipe.parents[1], pkgpath + '/distinfo')
-                        if previous_recipe is not None else distinfo_key)
-    expected = records.get(old_distinfo_key)
-    require(expected and hashlib.sha256(old_distinfo_data).hexdigest() == expected,
-            'old distinfo cannot be reconstructed exactly')
+    # pkgsrc's BUILD_VERSION records patch bytes but not distinfo itself.
+    # prepare() authenticates the archive checksums and complete patch
+    # inventory declared by each old/current distinfo.
     return old, new, additions, cookie
 
 
@@ -369,10 +365,10 @@ def prepare(sdk, recipe, work, archive, archive_root, installed_version, patch, 
     recipe, work, archive, scratch = map(Path, (recipe, work, archive, scratch))
     patchdir = Path(patchdir or recipe / 'patches')
     distinfo = Path(distinfo or recipe / 'distinfo')
-    old, new, additions, old_cookie = old_metadata(paths, recipe, work, installed_version, old_cookie, previous_recipe=previous_recipe,
-                                                   patchdir=patchdir, distinfo=distinfo,
-                                                   previous_patchdir=previous_patchdir,
-                                                   previous_distinfo=previous_distinfo)
+    old, new, additions, old_cookie = old_metadata(paths, recipe, work, installed_version, old_cookie,
+                                                   previous_recipe=previous_recipe,
+                                                   patchdir=patchdir,
+                                                   previous_patchdir=previous_patchdir)
     metadata, patches = archive_metadata.read_recipe(patchdir.parent, archive.name, archive_root)
     if previous_recipe is not None:
         old_recipe = Path(previous_recipe)

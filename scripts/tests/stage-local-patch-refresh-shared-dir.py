@@ -45,7 +45,7 @@ def expect_refusal(call, marker):
         raise AssertionError('unsafe or incomplete shared patch input accepted')
 
 with tempfile.TemporaryDirectory(prefix='patch-refresh-shared-dir-') as temp:
-    base = Path(temp)
+    base = Path(temp).resolve()
     roots = [base / 'old' / 'pkgsrc', base / 'new' / 'pkgsrc']
     for root in roots:
         (root / 'graphics/mesa-generators').mkdir(parents=True)
@@ -77,7 +77,6 @@ with tempfile.TemporaryDirectory(prefix='patch-refresh-shared-dir-') as temp:
     build_version = base / 'BUILD_VERSION'
     build_version.write_text(
         'graphics/mesa-generators/Makefile: ' + hashlib.sha256((old_recipe / 'Makefile').read_bytes()).hexdigest() + '\n' +
-        'graphics/MesaLib/distinfo: ' + hashlib.sha256(old_info).hexdigest() + '\n' +
         'graphics/MesaLib/patches/' + patch_name + ': ' + hashlib.sha256(old_patch).hexdigest() + '\n')
     scratch = base / 'scratch'
     scratch.mkdir()
@@ -90,6 +89,31 @@ with tempfile.TemporaryDirectory(prefix='patch-refresh-shared-dir-') as temp:
         ('configure.ac', b'A\nold\n', b'A\nnew\n')]
     assert refresh.selected_patch_inputs(roots[1], new_owner / 'patches', new_owner / 'distinfo') == (
         (new_owner / 'patches').resolve(), (new_owner / 'distinfo').resolve())
+    # The package producer records the archive recipe's patch bytes, but not
+    # the whole distinfo file. Its declared archive checksums and patch
+    # inventory still authenticate the old replay.
+    bad_patch_scratch = base / 'bad-patch-scratch'
+    bad_patch_scratch.mkdir()
+    saved_old_patch = (old_owner / 'patches' / patch_name).read_bytes()
+    (old_owner / 'patches' / patch_name).write_bytes(saved_old_patch + b'# changed\n')
+    expect_refusal(lambda: refresh.prepare(
+        sdk, new_recipe, work, archive, 'mesa-1', build_version,
+        args.patch, ['-E', '-p0', '--batch', '--forward', '-V', 'simple', '-z', '.orig'], bad_patch_scratch,
+        previous_recipe=old_recipe, patchdir=new_owner / 'patches', distinfo=new_owner / 'distinfo',
+        previous_patchdir=old_owner / 'patches', previous_distinfo=old_owner / 'distinfo'),
+        'old patch identity changed')
+    (old_owner / 'patches' / patch_name).write_bytes(saved_old_patch)
+    bad_archive_scratch = base / 'bad-archive-scratch'
+    bad_archive_scratch.mkdir()
+    saved_archive = archive.read_bytes()
+    archive.write_bytes(saved_archive + b'changed')
+    expect_refusal(lambda: refresh.prepare(
+        sdk, new_recipe, work, archive, 'mesa-1', build_version,
+        args.patch, ['-E', '-p0', '--batch', '--forward', '-V', 'simple', '-z', '.orig'], bad_archive_scratch,
+        previous_recipe=old_recipe, patchdir=new_owner / 'patches', distinfo=new_owner / 'distinfo',
+        previous_patchdir=old_owner / 'patches', previous_distinfo=old_owner / 'distinfo'),
+        'archive differs from previous distinfo')
+    archive.write_bytes(saved_archive)
     outside = base / 'outside'
     (outside / 'patches').mkdir(parents=True)
     (outside / 'distinfo').write_text('')
@@ -101,8 +125,8 @@ with tempfile.TemporaryDirectory(prefix='patch-refresh-shared-dir-') as temp:
     bad_scratch.mkdir()
     expect_refusal(lambda: refresh.old_metadata(
         paths, new_recipe, work, build_version, previous_recipe=old_recipe,
-        patchdir=new_owner / 'patches', distinfo=new_owner / 'distinfo',
-        previous_patchdir=old_owner / 'patches', previous_distinfo=old_owner / 'distinfo'),
+        patchdir=new_owner / 'patches',
+        previous_patchdir=old_owner / 'patches'),
         'inventory differs')
 
     # Additive refresh for a current recipe that shares an owner, without a
@@ -128,7 +152,6 @@ with tempfile.TemporaryDirectory(prefix='patch-refresh-shared-dir-') as temp:
     (add_owner / 'patches' / second_name).write_bytes(second)
     add_info = distinfo(archive, first_name, first) + f'SHA1 ({second_name}) = {hashlib.sha1(second).hexdigest()}\n'.encode()
     (add_owner / 'distinfo').write_bytes(add_info)
-    old_info = distinfo(archive, first_name, first)
     add_work = base / 'add-work'
     add_source = add_work / 'mesa-1'
     add_source.mkdir(parents=True)
@@ -139,8 +162,13 @@ with tempfile.TemporaryDirectory(prefix='patch-refresh-shared-dir-') as temp:
     add_version = base / 'add-BUILD_VERSION'
     add_version.write_text(
         'graphics/mesa-generators/Makefile: ' + hashlib.sha256((add_recipe / 'Makefile').read_bytes()).hexdigest() + '\n' +
-        'graphics/MesaLib/distinfo: ' + hashlib.sha256(old_info).hexdigest() + '\n' +
         'graphics/MesaLib/patches/' + first_name + ': ' + hashlib.sha256(first).hexdigest() + '\n')
+    saved_add_cookie = (add_work / '.patch_done').read_bytes()
+    (add_work / '.patch_done').write_bytes(b'')
+    expect_refusal(lambda: refresh.old_metadata(
+        paths, add_recipe, add_work, add_version, patchdir=add_owner / 'patches'),
+        'empty patch cookie contradicts installed patch provenance')
+    (add_work / '.patch_done').write_bytes(saved_add_cookie)
     add_scratch = base / 'add-scratch'
     add_scratch.mkdir()
     added = refresh.prepare(
