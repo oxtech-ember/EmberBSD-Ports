@@ -574,3 +574,7 @@ textproc/py-libxml2
 x11/kirigami-addons
 x11/plasma6-kdeplasma-addons
 x11/plasma6-kscreen
+x11/plasma6-plasma-integration
+misc/plasma6-xdg-desktop-portal-kde
+security/plasma6-polkit-kde-agent
+sysutils/plasma6-kde-cli-tools
