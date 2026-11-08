@@ -48,13 +48,20 @@ void IfaddrsNetDevice::update()
 
     QStringList ipv4;
     QStringList ipv6;
-    const if_data *data = nullptr;
+    quint64 download = 0;
+    quint64 upload = 0;
+    bool haveCounters = false;
     for (ifaddrs *item = list; item != nullptr; item = item->ifa_next) {
         if (item->ifa_name == nullptr || name() != QString::fromLatin1(item->ifa_name) || item->ifa_addr == nullptr) {
             continue;
         }
-        if (item->ifa_addr->sa_family == AF_LINK && data == nullptr) {
-            data = static_cast<const if_data *>(item->ifa_data);
+        if (item->ifa_addr->sa_family == AF_LINK && !haveCounters) {
+            const auto *data = static_cast<const if_data *>(item->ifa_data);
+            if (data != nullptr) {
+                download = data->ifi_ibytes;
+                upload = data->ifi_obytes;
+                haveCounters = true;
+            }
             continue;
         }
         char host[NI_MAXHOST];
@@ -72,12 +79,10 @@ void IfaddrsNetDevice::update()
 
     m_ipv4Sensor->setValue(ipv4.join(QLatin1Char('\n')));
     m_ipv6Sensor->setValue(ipv6.join(QLatin1Char('\n')));
-    if (data == nullptr) {
+    if (!haveCounters) {
         return;
     }
 
-    const quint64 download = data->ifi_ibytes;
-    const quint64 upload = data->ifi_obytes;
     if (m_haveSample) {
         const qint64 elapsed = m_timer.elapsed();
         if (download >= m_previousDownload) {

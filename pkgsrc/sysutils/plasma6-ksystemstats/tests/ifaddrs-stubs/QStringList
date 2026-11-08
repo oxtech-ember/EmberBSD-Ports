@@ -1,0 +1,22 @@
+#pragma once
+
+#include "QString"
+#include <string>
+#include <vector>
+
+class QStringList
+{
+public:
+    void append(const QString &value) { values.push_back(value.toStdString()); }
+    QString join(QLatin1Char separator) const
+    {
+        std::string result;
+        for (const auto &value : values) {
+            if (!result.empty()) result += separator.value;
+            result += value;
+        }
+        return QString(result);
+    }
+private:
+    std::vector<std::string> values;
+};

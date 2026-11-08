@@ -1,0 +1,20 @@
+#pragma once
+
+#include <vector>
+
+template<class Key, class Value>
+class QHash
+{
+public:
+    void insert(const Key &, Value value) { values.push_back(value); }
+    auto begin() { return values.begin(); }
+    auto end() { return values.end(); }
+private:
+    std::vector<Value> values;
+};
+
+template<class Range>
+void qDeleteAll(Range &range)
+{
+    for (auto value : range) delete value;
+}

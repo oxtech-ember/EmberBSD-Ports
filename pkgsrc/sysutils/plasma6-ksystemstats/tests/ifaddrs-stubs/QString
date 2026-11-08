@@ -1,0 +1,43 @@
+#pragma once
+
+#include <string>
+#include <utility>
+
+using quint64 = unsigned long long;
+
+class QByteArray;
+class QLatin1Char
+{
+public:
+    explicit QLatin1Char(char value) : value(value) {}
+    char value;
+};
+
+class QString
+{
+public:
+    QString() = default;
+    QString(const char *value) : value(value ? value : "") {}
+    QString(std::string value) : value(std::move(value)) {}
+    static QString fromLatin1(const char *value) { return QString(value); }
+    static QString fromLatin1(const QByteArray &value);
+    friend bool operator==(const QString &a, const QString &b) { return a.value == b.value; }
+    friend bool operator!=(const QString &a, const QString &b) { return !(a == b); }
+    const std::string &toStdString() const { return value; }
+private:
+    std::string value;
+};
+
+class QByteArray
+{
+public:
+    QByteArray() = default;
+    QByteArray(const char *value) : value(value ? value : "") {}
+    friend bool operator==(const QByteArray &a, const QByteArray &b) { return a.value == b.value; }
+    friend bool operator<(const QByteArray &a, const QByteArray &b) { return a.value < b.value; }
+    const std::string &toStdString() const { return value; }
+private:
+    std::string value;
+};
+
+inline QString QString::fromLatin1(const QByteArray &value) { return QString(value.toStdString()); }

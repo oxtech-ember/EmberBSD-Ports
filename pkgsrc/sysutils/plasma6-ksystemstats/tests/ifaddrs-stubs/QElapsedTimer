@@ -1,0 +1,11 @@
+#pragma once
+
+using qint64 = long long;
+
+class QElapsedTimer
+{
+public:
+    void start() {}
+    qint64 elapsed() const { return 1000; }
+    qint64 restart() { return 1000; }
+};

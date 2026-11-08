@@ -1,0 +1,17 @@
+#pragma once
+
+#include <vector>
+
+template<class Value>
+class QSet
+{
+public:
+    bool contains(const Value &value) const
+    {
+        for (const auto &item : values) if (item == value) return true;
+        return false;
+    }
+    void insert(const Value &value) { values.push_back(value); }
+private:
+    std::vector<Value> values;
+};
