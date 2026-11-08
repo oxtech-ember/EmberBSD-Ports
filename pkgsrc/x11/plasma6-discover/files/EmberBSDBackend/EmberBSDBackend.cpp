@@ -23,6 +23,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QStandardPaths>
 #include <QTimer>
 #include <utility>
@@ -256,9 +257,163 @@ Transaction *EmberBSDBackend::refused(AbstractResource *app, Transaction::Role r
     return new RefusedTransaction(app, role);
 }
 
+void EmberBSDBackend::installFinished()
+{
+    m_installing = false;
+}
+
+void EmberBSDBackend::reportInstall(const QString &text)
+{
+    const QString detail = text.trimmed();
+    if (!detail.isEmpty())
+        Q_EMIT passiveMessage(detail.left(800));
+}
+
+namespace {
+const QRegularExpression packageRootPattern(QStringLiteral("^[A-Za-z0-9][A-Za-z0-9._+-]*(?:/[A-Za-z0-9][A-Za-z0-9._+-]*)+$"));
+
+bool catalogRoot(const QString &root)
+{
+    return packageRootPattern.match(root).hasMatch() && !root.split(QLatin1Char('/')).contains(QStringLiteral(".."));
+}
+}
+
+class InstallTransaction : public Transaction
+{
+public:
+    InstallTransaction(EmberBSDBackend *backend, EmberBSDResource *app)
+        : Transaction(app, app, InstallRole, {}, true)
+        , m_backend(backend)
+        , m_root(app->packageRoot())
+        , m_base(app->packageName())
+        , m_version(app->availableVersion())
+    {
+        setCancellable(true);
+        setStatus(QueuedStatus);
+        QTimer::singleShot(0, this, [this] {
+            start();
+        });
+    }
+
+    void cancel() override
+    {
+        if (m_committing)
+            return;
+        m_cancel = true;
+        if (m_process && m_process->state() != QProcess::NotRunning)
+            m_process->kill();
+        setStatus(CancelledStatus);
+    }
+
+    QString name() const override
+    {
+        return i18n("Install");
+    }
+
+private:
+    void start()
+    {
+        if (m_cancel || !m_backend)
+            return;
+        m_process = new QProcess(this);
+        m_process->setProgram(QStringLiteral("/usr/pkg/bin/pkexec"));
+        m_process->setArguments({QStringLiteral("/usr/pkg/libexec/emberbsd-discover-install"), m_root});
+        connect(m_process, &QProcess::readyReadStandardError, this, [this] {
+            const QString text = QString::fromUtf8(m_process->readAllStandardError());
+            m_detail += text;
+            if (!m_committing && text.contains(QLatin1String("Install:"))) {
+                m_committing = true;
+                setCancellable(false);
+                setStatus(CommittingStatus);
+                setProgress(60);
+            } else if (!m_committing) {
+                setStatus(DownloadingStatus);
+                setProgress(25);
+            }
+        });
+        connect(m_process, &QProcess::finished, this, [this](int code, QProcess::ExitStatus status) {
+            m_process = nullptr;
+            if (m_cancel) {
+                setStatus(CancelledStatus);
+                finish();
+                return;
+            }
+            if (status != QProcess::NormalExit || code != 0) {
+                if (code == 126 || code == 127 || m_detail.contains(QLatin1String("not authorized"), Qt::CaseInsensitive)
+                    || m_detail.contains(QLatin1String("dismissed"), Qt::CaseInsensitive)
+                    || m_detail.contains(QLatin1String("Authorization"), Qt::CaseInsensitive))
+                    m_detail = i18n("Authorization was denied.");
+                if (m_backend)
+                    m_backend->reportInstall(m_detail);
+                setStatus(DoneWithErrorStatus);
+                finish();
+                return;
+            }
+            confirmInstalled();
+        });
+        connect(m_process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) {
+            if (m_process && m_process->state() == QProcess::NotRunning && !m_cancel) {
+                m_detail = m_process->errorString();
+                setStatus(DoneWithErrorStatus);
+                finish();
+            }
+        });
+        setStatus(DownloadingStatus);
+        setProgress(10);
+        m_process->start();
+    }
+
+    void confirmInstalled()
+    {
+        auto *check = new QProcess(this);
+        connect(check, &QProcess::finished, this, [this, check](int code, QProcess::ExitStatus) {
+            const QString installed = QString::fromUtf8(check->readAllStandardOutput()).trimmed();
+            check->deleteLater();
+            const QString expected = m_base + QLatin1Char('-') + m_version;
+            if (code != 0 || installed != expected) {
+                m_detail = i18n("The package database does not list %1.", expected);
+                if (m_backend)
+                    m_backend->reportInstall(m_detail);
+                setStatus(DoneWithErrorStatus);
+            } else {
+                setProgress(100);
+                setStatus(DoneStatus);
+                if (m_backend)
+                    m_backend->checkForUpdates();
+            }
+            finish();
+        });
+        check->start(QStringLiteral("/usr/sbin/pkg_info"), {QStringLiteral("-e"), m_base});
+    }
+
+    void finish()
+    {
+        if (m_finished)
+            return;
+        m_finished = true;
+        if (m_backend)
+            m_backend->installFinished();
+        m_backend = nullptr;
+    }
+
+    EmberBSDBackend *m_backend = nullptr;
+    QProcess *m_process = nullptr;
+    QString m_root;
+    QString m_base;
+    QString m_version;
+    QString m_detail;
+    bool m_committing = false;
+    bool m_cancel = false;
+    bool m_finished = false;
+};
+
 Transaction *EmberBSDBackend::installApplication(AbstractResource *app, const AddonList &)
 {
-    return refused(app, Transaction::InstallRole);
+    auto *resource = qobject_cast<EmberBSDResource *>(app);
+    if (!resource || m_installing || resource->catalogAction() != QLatin1String("available") || !catalogRoot(resource->packageRoot()))
+        return refused(app, Transaction::InstallRole);
+    m_installing = true;
+    return new InstallTransaction(this, resource);
 }
 
 Transaction *EmberBSDBackend::removeApplication(AbstractResource *app)

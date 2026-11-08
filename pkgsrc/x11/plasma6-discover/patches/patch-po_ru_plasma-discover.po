@@ -4,7 +4,7 @@ Russian title for the desktop application group.
 
 --- po/ru/plasma-discover.po.orig
 +++ po/ru/plasma-discover.po
-@@ -2388,3 +2388,21 @@
+@@ -2388,3 +2388,15 @@
  
  #~ msgid "Sign in is required"
  #~ msgstr "Необходимо выполнить вход"
@@ -14,12 +14,6 @@ Russian title for the desktop application group.
 +msgctxt "@title:group"
 +msgid "Desktop applications"
 +msgstr "Приложения"
-+
-+#: discover/qml/InstallApplicationButton.qml
-+#, kde-format
-+msgctxt "@action:button"
-+msgid "Install stays unavailable until a verified helper exists"
-+msgstr "Установка недоступна, пока нет проверенного помощника"
 +
 +#: discover/qml/InstallApplicationButton.qml
 +#, kde-format

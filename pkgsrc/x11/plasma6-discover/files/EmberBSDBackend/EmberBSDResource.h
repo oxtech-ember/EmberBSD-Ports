@@ -43,6 +43,8 @@ public:
     QUrl url() const override;
     bool isDesktop() const;
     bool isComponent() const;
+    QString packageRoot() const;
+    QString catalogAction() const;
     bool matchesText(const QString &text) const;
 
 private:

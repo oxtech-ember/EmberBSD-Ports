@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1.0/policyconfig.dtd">
+<policyconfig>
+  <vendor>EmberBSD</vendor>
+  <vendor_url>https://emberbsd.local</vendor_url>
+  <action id="org.emberbsd.discover.install">
+    <description>Install one package from the signed EmberBSD catalog</description>
+    <description xml:lang="ru">Установить один пакет из подписанного каталога EmberBSD</description>
+    <message>Authentication is required to install a signed catalog package</message>
+    <message xml:lang="ru">Для установки пакета из подписанного каталога нужна аутентификация</message>
+    <icon_name>package-x-generic</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/pkg/libexec/emberbsd-discover-install</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+</policyconfig>

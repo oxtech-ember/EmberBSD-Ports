@@ -297,6 +297,16 @@ bool EmberBSDResource::isComponent() const
     return m_component;
 }
 
+QString EmberBSDResource::packageRoot() const
+{
+    return m_root;
+}
+
+QString EmberBSDResource::catalogAction() const
+{
+    return m_action;
+}
+
 bool EmberBSDResource::matchesText(const QString &text) const
 {
     const QString note = (m_desktop && !m_comment.isEmpty()) ? m_comment : m_root;

@@ -1,0 +1,38 @@
+#!/usr/pkg/bin/python3.15
+# SPDX-License-Identifier: BSD-2-Clause
+# Copyright (c) 2026 EmberBSD contributors.
+
+"""Install one published catalog root. pkexec starts this helper as root.
+
+The only accepted argument is a pkgsrc PKGPATH. The helper executes the
+installed SDK client with a fixed argument list. It does not remove packages
+and it does not pass the root through a shell.
+"""
+
+import os
+import re
+import sys
+
+PYTHON = '/usr/pkg/bin/python3.15'
+CLIENT = '/usr/local/libexec/ember-sdk.pyz'
+CONFIG = '/usr/local/etc/ember-sdk.json'
+_ROOT = re.compile(r'[A-Za-z0-9][A-Za-z0-9._+-]*(?:/[A-Za-z0-9][A-Za-z0-9._+-]*)+')
+
+
+def valid_root(root):
+    return isinstance(root, str) and _ROOT.fullmatch(root) is not None and '..' not in root.split('/')
+
+
+def main(argv):
+    if len(argv) != 2 or not valid_root(argv[1]):
+        print('sdk-client: refused package root', file=sys.stderr)
+        return 2
+    if os.geteuid() != 0:
+        print('sdk-client: installation requires authorization', file=sys.stderr)
+        return 2
+    os.execv(PYTHON, [PYTHON, CLIENT, '--config', CONFIG, 'install', '--package', argv[1]])
+    return 2
+
+
+if __name__ == '__main__':
+    raise SystemExit(main(sys.argv))

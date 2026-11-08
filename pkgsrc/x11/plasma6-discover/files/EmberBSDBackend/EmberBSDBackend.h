@@ -12,6 +12,7 @@
 #include <QVector>
 
 class EmberBSDResource;
+class InstallTransaction;
 class QProcess;
 class StandardBackendUpdater;
 
@@ -34,6 +35,7 @@ public:
 class EmberBSDBackend : public AbstractResourcesBackend
 {
     Q_OBJECT
+    friend class InstallTransaction;
 public:
     explicit EmberBSDBackend(QObject *parent = nullptr);
 
@@ -61,6 +63,8 @@ private:
     void completePending();
     QVector<StreamResult> match(const Filters &filter) const;
     Transaction *refused(AbstractResource *app, Transaction::Role role);
+    void installFinished();
+    void reportInstall(const QString &text);
 
     QVector<EmberBSDResource *> m_resources;
     QVector<PendingSearch> m_pending;
@@ -70,4 +74,5 @@ private:
     QString m_binding;
     int m_desktopCount = 0;
     bool m_ready = false;
+    bool m_installing = false;
 };
