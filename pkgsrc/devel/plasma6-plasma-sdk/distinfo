@@ -1,0 +1,5 @@
+$NetBSD$
+
+BLAKE2s (plasma-sdk-6.8.2.tar.xz) = 7cace549ee41e203f62cecd6379fba6a6263d350698de3798a4e255779bd0b23
+SHA512 (plasma-sdk-6.8.2.tar.xz) = ce6339dcc07cbf55fa2d8e7c2fd5c8e35b4e114cf448c7de75f5d8a1c6423db42c25367ea2912058f7a537a6d9282d046989b6bb3a4b3bd18a6dbf54ababd30a
+Size (plasma-sdk-6.8.2.tar.xz) = 368520 bytes
